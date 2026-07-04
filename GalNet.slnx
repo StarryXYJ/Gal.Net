@@ -2,6 +2,7 @@
   <Folder Name="/src/" />
   <Folder Name="/src/Editor/">
     <Project Path="src/GalNet.Editor.Control/GalNet.Editor.Control.csproj" />
+    <Project Path="src/GalNet.Editor.Shared/GalNet.Editor.Shared.csproj" />
     <Project Path="src/GalNet.Editor/GalNet.Editor.csproj" />
     <Project Path="src/GalNet.Headless/GalNet.Headless.csproj" />
   </Folder>
@@ -24,5 +25,8 @@
     <Project Path="src/GalNet.Control/GalNet.Control.csproj" />
     <Project Path="src/GalNet.Core/GalNet.Core.csproj" />
     <Project Path="src/GalNet.Runtime/GalNet.Runtime.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/GeneralTest/GeneralTest.csproj" />
   </Folder>
 </Solution>

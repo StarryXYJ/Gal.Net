@@ -1,10 +1,14 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <RootNamespace>GalDotNet.Abstractions</RootNamespace>
+        <RootNamespace>GalNet.Core</RootNamespace>
     </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="DynamicLocalization.Core" Version="2.0.2" />
+    </ItemGroup>
 
 </Project>
