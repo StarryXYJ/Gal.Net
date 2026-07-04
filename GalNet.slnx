@@ -1,0 +1,28 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Editor/">
+    <Project Path="src/GalNet.Editor.Control/GalNet.Editor.Control.csproj" />
+    <Project Path="src/GalNet.Editor/GalNet.Editor.csproj" />
+    <Project Path="src/GalNet.Headless/GalNet.Headless.csproj" />
+  </Folder>
+  <Folder Name="/src/Launcher/">
+    <Project Path="src/Launcher/GalNet.Launcher.Headless/GalNet.Launcher.Headless.csproj" />
+  </Folder>
+  <Folder Name="/src/Launcher/Launcher/">
+    <Project Path="src/Launcher/GalNet.Launcher/GalNet.Launcher.Android/GalNet.Launcher.Android.csproj">
+      <Deploy />
+    </Project>
+    <Project Path="src/Launcher/GalNet.Launcher/GalNet.Launcher.Browser/GalNet.Launcher.Browser.csproj" />
+    <Project Path="src/Launcher/GalNet.Launcher/GalNet.Launcher.Desktop/GalNet.Launcher.Desktop.csproj" />
+    <Project Path="src/Launcher/GalNet.Launcher/GalNet.Launcher.iOS/GalNet.Launcher.iOS.csproj">
+      <Deploy />
+    </Project>
+    <Project Path="src/Launcher/GalNet.Launcher/GalNet.Launcher/GalNet.Launcher.csproj" />
+  </Folder>
+  <Folder Name="/src/Shared/">
+    <Project Path="src/GalNet.Assets/GalNet.Assets.csproj" />
+    <Project Path="src/GalNet.Control/GalNet.Control.csproj" />
+    <Project Path="src/GalNet.Core/GalNet.Core.csproj" />
+    <Project Path="src/GalNet.Runtime/GalNet.Runtime.csproj" />
+  </Folder>
+</Solution>

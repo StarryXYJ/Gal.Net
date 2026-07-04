@@ -1,0 +1,11 @@
+﻿<Solution>
+  <Project Path="GalNet.Launcher.Android/GalNet.Launcher.Android.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="GalNet.Launcher.Browser/GalNet.Launcher.Browser.csproj" />
+  <Project Path="GalNet.Launcher.Desktop/GalNet.Launcher.Desktop.csproj" />
+  <Project Path="GalNet.Launcher.iOS/GalNet.Launcher.iOS.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="GalNet.Launcher/GalNet.Launcher.csproj" />
+</Solution>
