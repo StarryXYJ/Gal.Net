@@ -2,6 +2,34 @@
 
 ---
 
+## IGameGraphCompiler
+
+位于 `GalNet.Runtime.Compilation` 命名空间。编译管道的核心抽象 —— 将 Graph 中所有 Group 的 ComplexEntry 编译为 SimpleEntry 列表。
+
+```csharp
+public interface IGameGraphCompiler
+{
+    IReadOnlyDictionary<string, IReadOnlyList<SimpleEntry>> Compile(Graph graph);
+}
+```
+
+### GameGraphCompiler（默认实现）
+
+```csharp
+public sealed class GameGraphCompiler : IGameGraphCompiler
+{
+    public static GameGraphCompiler Default { get; } = new();
+    public IReadOnlyDictionary<string, IReadOnlyList<SimpleEntry>> Compile(Graph graph);
+}
+```
+
+- 遍历 Graph 中所有 `Group` 节点
+- 对每个 Group，遍历其 `Entries`（ComplexEntry 列表），调用 `Compile()` 展开
+- 返回 `Dictionary<GroupId, IReadOnlyList<SimpleEntry>>`
+- 可通过 `GameEngine` 构造函数注入自定义实现
+
+---
+
 ## GameRuntime
 
 位于 `GalNet.Runtime.Runtime` 命名空间。实现 `IGameRuntime` 接口，是游戏状态的**唯一来源（single source of truth）**。
@@ -17,18 +45,20 @@
 | `IsGameEnded` | `bool` | 游戏结束标志 |
 | `View` | `IGameView?` | 游戏视图接口实例 |
 | `I18n` | `ICultureService?` | 国际化服务实例 |
+| `Settings` | `SettingsContainer` | 设置容器 |
 | `SceneState` | `SceneState` | 场景状态（图层、控件、特效等） |
 
 ### 内部状态
 
-- `VariableStore` — 变量存储
+- `VariableStore` — 变量存储（私有字段，不直接暴露）
 - `ExpressionEvaluator` — 表达式求值器
 - `Stack<(string NodeId, int EntryIndex)>` — 调用栈（支持子流程调用/返回）
 
 ### 构造
 
 ```csharp
-public GameRuntime(IGameView? view, ICultureService? i18n, string rootNodeId = "")
+public GameRuntime(IGameView? view, ICultureService? i18n,
+    string rootNodeId = "", SettingsContainer? settings = null)
 ```
 
 ### 方法
@@ -65,6 +95,9 @@ public interface IGameRuntime
     IGameView? View { get; }
     ICultureService? I18n { get; }
 
+    // ── 设置 ──
+    SettingsContainer Settings { get; }
+
     // ── 场景状态 ──
     SceneState SceneState { get; }
 
@@ -94,16 +127,17 @@ public interface IGameRuntime
 ### 状态机循环
 
 ```
-  CompileAll (编译所有组) 
+  CompileAll (编译所有组，通过 IGameGraphCompiler)
   → 定位入口节点
   → 进入 Group: 逐条目执行
      → 检查条件 (condition)
-     → Resolve Handler → Start()
-     → 若阻塞: 循环 IsCompleted / Interrupt → Complete()
+     → Resolve Handler → 若为 jump 类型: 递归调用 StepAsync
+     → 若阻塞: handler.Start → 循环 WaitForClickAsync / Interrupt → handler.Complete
+     → 若非阻塞: handler.Start, 立即继续
      → EntryIndex++
   → 组结束: EntryIndex=0, MoveToNext() (沿边转移)
   → 进入 Branch: 选项或条件分支
-     → 选项: 显示选项列表 → 等待选择 → 沿边转移
+     → 选项: 过滤可见选项 → 显示选项列表 → 等待选择 → 沿边转移
      → 条件: 顺序匹配条件表达式 → 沿边转移
   → 重复直到游戏结束
 ```
@@ -120,12 +154,20 @@ public interface IGameRuntime
 ### 构造
 
 ```csharp
-// 标准构造
-public GameEngine(Graph graph, IGameView view, ICultureService? i18n = null)
+// 标准构造：从 Graph + IGameView 创建，使用默认或自定义编译器和 Handler 注册表
+public GameEngine(Graph graph, IGameView view, ICultureService? i18n = null,
+    SettingsContainer? settings = null,
+    IGameGraphCompiler? compiler = null,
+    EntryHandlerRegistry? registry = null)
 
-// 读档恢复：使用外部 GameRuntime
-public GameEngine(Graph graph, IGameRuntime runtime)
+// 读档恢复：使用外部已有的 IGameRuntime 实例
+public GameEngine(Graph graph, IGameRuntime runtime,
+    IGameGraphCompiler? compiler = null,
+    EntryHandlerRegistry? registry = null)
 ```
+
+- `compiler` 负责编译 ComplexEntry → SimpleEntry，默认使用 `GameGraphCompiler.Default`
+- `registry` 负责 EntryHandler 的注册与查找，默认使用 `EntryHandlerRegistry.CreateDefault()`
 
 ### 核心方法
 
@@ -141,20 +183,13 @@ public async Task<bool> StepAsync(CancellationToken ct = default)
 - 返回 `true` — 等待用户交互
 
 执行流程：
-1. 编译所有 Group 的复杂条目 → SimpleEntry 列表
+1. 通过注入的 `IGameGraphCompiler` 编译所有 Group 的复杂条目 → SimpleEntry 列表
 2. 进入主循环，检查 `IsGameEnded`
 3. 根据 `CurrentNodeId` 定位当前节点
 4. 若为 Group：执行组内条目（条件判断 → handler.Start → 阻塞/非阻塞 → Complete）
-5. 若为 Branch：选项分支或条件分支
-6. 组结束或分支完成后沿边转移（MoveToNext）
-
-#### CompileAll
-
-```csharp
-public static IReadOnlyDictionary<string, IReadOnlyList<SimpleEntry>> CompileAll(Graph graph)
-```
-
-编译所有 Group 条目的复杂条目 → 简单条目内存列表。
+5. **特殊处理 `jump` 类型条目**：执行 `handler.Start(ctx)` 后递归调用 `await StepAsync(ct)`
+6. 若为 Branch：选项分支或条件分支
+7. 组结束或分支完成后沿边转移（`MoveToNext`）
 
 #### CreateSaveData / RestoreFrom
 
@@ -163,7 +198,7 @@ public GameSnapshot CreateSaveData()
 public void RestoreFrom(GameSnapshot data)
 ```
 
-创建/恢复存档快照。
+创建/恢复存档快照。`RestoreFrom` 将 `IsRunning` 设为 true。
 
 ### 条目执行细节
 
@@ -193,7 +228,7 @@ public sealed class GameSnapshot
 }
 ```
 
-### JSON 结构示例
+### JSON 结构示例（camelCase 序列化）
 
 ```json
 {
@@ -207,8 +242,9 @@ public sealed class GameSnapshot
     "layers": [
       { "id": "bg", "assetId": "bg_classroom", "x": 0, "y": 0, "z": 0, "visible": true }
     ],
-    "activeControls": ["default_dialogue"],
-    "activeEffects": []
+    "activeControlIds": ["default_dialogue"],
+    "activeEffectIds": [],
+    "activeTransition": null
   }
 }
 ```
@@ -236,7 +272,7 @@ public static class SaveManager
 }
 ```
 
-序列化配置：缩进输出、camelCase 命名策略。
+序列化配置：缩进输出、camelCase 命名策略（`JsonNamingPolicy.CamelCase`）。
 
 ---
 
@@ -319,3 +355,47 @@ public sealed class ExpressionEvaluator
 - `[a] * [b] + sin([angle])` — 混合运算（函数预留）
 - `[hp] / [max_hp] * 100` — 百分比计算
 - `flag == true && score > 50` — 复合条件
+
+---
+
+## NullGameView
+
+位于 `GalNet.Runtime.View` 命名空间。`IGameView` 的无界面实现，供 Headless 和测试使用。
+
+- 所有异步方法自动完成（`Task.CompletedTask`）
+- Layer/控件操作输出至控制台（Verbose 模式可追踪）
+- 不依赖任何 UI 框架
+
+---
+
+## EntryHandlerRegistry
+
+位于 `GalNet.Runtime.Handlers` 命名空间。EntryHandler 的注册与查找中心。
+
+```csharp
+public sealed class EntryHandlerRegistry
+{
+    // 注册 Handler 类型（工厂方式，非单例）
+    public void Register(string entryType, Func<EntryHandler> factory);
+
+    // 根据条目类型查找 Handler 实例
+    public EntryHandler? Resolve(string entryType);
+
+    // 创建默认注册表（内置所有标准 Handler）
+    public static EntryHandlerRegistry CreateDefault();
+}
+```
+
+### 内置 Handler
+
+| 条目类型 | Handler | 阻塞? | 说明 |
+|---|---|---|---|
+| `text` | `TextHandler` | 是 | 打字机 + 语音 + i18n key 解析 |
+| `audio` | `AudioHandler` | 否 | play/stop/pause/resume/enqueue |
+| `layer` | `LayerHandler` | 否 | show/hide/move |
+| `effect` | `EffectHandler` | 否 | apply/stop |
+| `control` | `ControlHandler` | 否 | show/hide/set |
+| `wait` | `WaitHandler` | 是 | duration 秒，可打断 |
+| `video` | `VideoHandler` | 否 | play/stop |
+| `variable` | `VariableHandler` | 否 | 通过 GameRuntime 操作变量 |
+| `jump` | `JumpHandler` | 否 | 节点跳转（特殊处理：递归 StepAsync） |

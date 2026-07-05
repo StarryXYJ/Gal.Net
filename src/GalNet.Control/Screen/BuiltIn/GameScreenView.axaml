@@ -2,16 +2,23 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vlc="clr-namespace:LibVLCSharp.Avalonia;assembly=LibVLCSharp.Avalonia"
              mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="600"
              x:Class="GalNet.Control.Screen.BuiltIn.GameScreenView"
              Width="960" Height="600"
              Background="#111118">
 
     <Grid>
-        <!-- Background layer canvas (bottom) -->
+        <!-- Image/background layer canvas (bottom) -->
         <Canvas Name="LayerCanvas" ClipToBounds="True" />
 
-        <!-- Dialogue host (bottom) -->
+        <!-- Video layer (above image canvas, below dialog) -->
+        <vlc:VideoView Name="VideoView"
+                       IsVisible="False"
+                       HorizontalAlignment="Stretch"
+                       VerticalAlignment="Stretch" />
+
+        <!-- Dialogue host -->
         <ContentControl Name="DialogueHost"
                         IsVisible="False"
                         VerticalAlignment="Bottom" />

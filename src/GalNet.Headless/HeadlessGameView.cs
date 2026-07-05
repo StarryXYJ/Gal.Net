@@ -132,29 +132,49 @@ public sealed class HeadlessGameView : NullGameView
             {
                 if (text[i + 1] == 'd')
                 {
-                    // \d{ms} 延迟指令
+                    // \d{ms} 或 \dNNN 延迟指令
                     i += 2;
-                    if (i < text.Length && text[i] == '-')
+                    if (i < text.Length && text[i] == '{')
                     {
-                        // \d- ：剩余文本立即显示
+                        // \d{...} 格式
+                        i++;
+                        if (i < text.Length && text[i] == '-')
+                        {
+                            // \d{-}：剩余文本立即显示
+                            instant = true;
+                            i = text.IndexOf('}', i);
+                            if (i >= 0) i++;
+                        }
+                        else
+                        {
+                            var numStr = "";
+                            while (i < text.Length && char.IsDigit(text[i]))
+                            {
+                                numStr += text[i];
+                                i++;
+                            }
+                            if (text[i] == '}') i++;
+                            if (numStr.Length > 0 && int.TryParse(numStr, out var delayMs) && delayMs > 0)
+                                await Task.Delay(delayMs, ct);
+                        }
+                    }
+                    else if (i < text.Length && text[i] == '-')
+                    {
+                        // \d-：剩余文本立即显示
                         instant = true;
                         i++;
                     }
                     else
                     {
+                        // \dNNN 无大括号格式（兼容）
                         var numStr = "";
                         while (i < text.Length && char.IsDigit(text[i]))
                         {
                             numStr += text[i];
                             i++;
                         }
-                        if (numStr.Length > 0 && int.TryParse(numStr, out var delayMs))
-                        {
-                            if (delayMs < 0)
-                                instant = true;
-                            else
-                                await Task.Delay(delayMs, ct);
-                        }
+                        if (numStr.Length > 0 && int.TryParse(numStr, out var delayMs) && delayMs > 0)
+                            await Task.Delay(delayMs, ct);
                     }
                     continue;
                 }

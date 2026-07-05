@@ -18,13 +18,13 @@ public sealed class ControlHandler : EntryHandler
         switch (action)
         {
             case "show":
-                ctx.View.ShowControl(ctx.GetString("id"));
+                ctx.Controls.ShowControl(ctx.GetString("id"));
                 break;
             case "hide":
-                ctx.View.HideControl(ctx.GetString("id"));
+                ctx.Controls.HideControl(ctx.GetString("id"));
                 break;
             case "set":
-                ctx.View.SetControlProperty(
+                ctx.Controls.SetControlProperty(
                     ctx.GetString("id"),
                     ctx.GetString("property"),
                     ctx.GetString("value"));

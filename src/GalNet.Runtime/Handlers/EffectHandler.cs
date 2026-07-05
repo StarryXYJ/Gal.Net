@@ -24,10 +24,10 @@ public sealed class EffectHandler : EntryHandler
                     if (key is "action" or "type") continue;
                     parameters[key] = value;
                 }
-                ctx.View.ApplyEffect(ctx.GetString("type"), parameters);
+                ctx.Effects.ApplyEffect(ctx.GetString("type"), parameters);
                 break;
             case "stop":
-                ctx.View.StopEffect(ctx.GetString("id"));
+                ctx.Effects.StopEffect(ctx.GetString("id"));
                 break;
         }
     }

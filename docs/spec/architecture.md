@@ -65,19 +65,19 @@
 | 条目结构 | 纯扁平队列，按编号顺序执行。唯一通用参数：`condition`；其余参数条目自行定义 |
 | 条目状态 | 仅 Running / Completed 两态。Interrupt 由 handler 自行决定是否响应 |
 | 坐标体系 | 背景和立绘统一为 Layer；使用 x/y/z 坐标，z 为 z-index 控制层叠顺序 |
-| Runtime ↔ UI 契约 | `IGameView` 接口；页面通过 `ScreenTemplate`/`ScreenInstance` + `ShowPageAsync()` 切换 |
+| Runtime ↔ UI 契约 | `IGameView` 组合接口（继承 7 个子接口）；页面通过 `ScreenTemplate`/`ScreenInstance` + `ShowPageAsync()` 切换 |
 | 控件体系 | Category→Template→Instance 三层：`WidgetCategory`（类按钮/滑条）→ `WidgetTemplate`（具体样式）→ `WidgetInstance`（填入参数）。页面同理：`ScreenCategory`→`ScreenTemplate`→`ScreenInstance` |
 | 变量系统 | VariableRoute（树状键路径）标识；player 和 save 共用命名空间，不可重名；变量为封装对象（非值类型）；表达式求值用自建 ExpressionEvaluator（递归下降，支持 [var] 占位符、比较/逻辑/算术） |
 | 对话框切换 | 条目通过 `control_instance` 参数引用 WidgetInstance ID；缺省继承 |
-| 音频模型 | 多 Channel（bgm / sfx1~N / voice / ambient），同 channel 替换，支持 once / repeat / times(n) |
-| 存档内容 | GameSnapshot（当前节点 ID + 条目索引 + 场景快照（含 z 轴）+ 存档变量）|
+| 音频模型 | 多 Channel（bgm / bgm2 / voice / sfx1~N），同 channel 替换，支持 once / repeat / times(n) |
+| 存档内容 | GameSnapshot（节点 ID + 条目索引 + 变量快照 + 场景快照），camelCase JSON 序列化 |
 | 用户变量作用域 | 按游戏隔离 |
 | 包校验 | Hash 完整性校验；保留签名扩展点 |
 | 日志 | Serilog；Runtime 通过 `ILogger` 输出，资源缺失跳过并 log；Editor 有 Log Dock 面板 |
 | i18n | 文本：字符串 key + DynamicLocalization.ICultureService；资源：目录 fallback |
 | 测试 | 参见「测试策略总览」章节 |
 | Headless | `GalNet.Headless` = 编辑器的无界面版本，供 AI 集成和 CI，功能与 GUI Editor 对等 |
-| 扩展点 | IGameView/IGameRuntime、WidgetCategory/WidgetTemplate/WidgetInstance、ScreenCategory/ScreenTemplate/ScreenInstance、EntryHandler、ITransition、IEffect |
+| 扩展点 | IGameView/IGameRuntime、IGameGraphCompiler、WidgetCategory/WidgetTemplate/WidgetInstance、ScreenCategory/ScreenTemplate/ScreenInstance、EntryHandler、ITransition、IEffect |
 
 ---
 
@@ -114,7 +114,7 @@
 - **`ITransition` / `IEffect` 接口** — 转场与特效扩展契约
 - **`EntryContext`** — 条目执行的上下文载体（通过 Runtime 统一管理 View/I18n/变量）
 - **`EntryHandler` 基类** — 条目类型扩展点
-- **`IGameRuntime`** — Runtime 状态契约（CurrentNodeId/EntryIndex/VariableStore/SceneState/调用栈/View/I18n）
+- **`IGameRuntime`** — Runtime 状态契约（CurrentNodeId/EntryIndex/SceneState/调用栈/View/I18n/Settings）
 
 ### GalNet.Assets
 
@@ -132,11 +132,12 @@
 核心入口为 **GameRuntime（实现 IGameRuntime）**，统一管理运行时状态：
 
 - **CurrentNodeId / EntryIndex** — 当前执行位置
-- **VariableStore** — 变量存储（VariableRoute 树状键路径）
+- **VariableStore** — 变量存储（私有字段，通过方法访问）
 - **SceneState** — 场景快照
 - **调用栈** — 支持子流程调用/返回
 - **View** — IGameView 实例
 - **I18n** — ICultureService 实例
+- **Settings** — SettingsContainer 设置容器
 
 **功能列表**：
 
@@ -378,52 +379,88 @@ Runtime 对每个条目驱动的状态循环：
 
 ### IGameView 契约
 
-定义在 Core，Runtime 与 UI 的唯一接口。页面切换通过 `ShowPageAsync`。
+定义在 Core，Runtime 与 UI 的唯一接口。采用**组合接口**设计，将不同功能域拆分到独立子接口：
 
 ```csharp
-public interface IGameView
+public interface IGameView :
+    ILayerView,
+    IControlView,
+    IPageView,
+    IAudioView,
+    IVideoView,
+    IEffectView,
+    ITypewriterView,
+    IInteractionView
 {
-    // ── Layer 管理 ──
+}
+
+// ── Layer 管理 ──
+public interface ILayerView
+{
     void ShowLayer(string id, string assetId, float x, float y, float z = 0);
     void HideLayer(string id);
     void MoveLayer(string id, float x, float y, float z, float durationSec);
+}
 
-    // ── 控件实例管理 ──
+// ── 控件实例管理 ──
+public interface IControlView
+{
     void ShowControl(string instanceId);
     void HideControl(string instanceId);
+    void SetControlProperty(string instanceId, string property, string value);
+}
 
-    // ── 页面切换 ──
+// ── 页面切换 ──
+public interface IPageView
+{
     /// <summary>切换到指定页面实例。隐藏当前所有 Layer+控件，渲染目标 ScreenInstance。
-    /// 返回被点击控件的索引（如选项索引），Runtime 据此决策。</summary>
-    Task<int> ShowPageAsync(string ScreenInstanceId, CancellationToken ct);
+    /// 返回被点击控件的 ID（字符串），Runtime 据此决策。</summary>
+    Task<string> ShowPageAsync(string screenInstanceId, CancellationToken ct);
+}
 
-    // ── 音频 ──
+// ── 音频 ──
+public interface IAudioView
+{
     void PlayAudio(string channel, string assetId, float volume, string mode, int times);
     void StopAudio(string channel);
     void PauseAudio(string channel);
     void ResumeAudio(string channel);
     void EnqueueAudio(string channel, string assetId, int times);
     void ConfigureAudioQueue(string channel, string onEnd, string onEmpty);
+}
 
-    // ── 视频 ──
+// ── 视频 ──
+public interface IVideoView
+{
     void PlayVideo(string assetId);
     void StopVideo();
+}
 
-    // ── 控件 ──
-    void SetControlProperty(string instanceId, string property, string value);
+// ── 转场与特效 ──
+public interface IEffectView
+{
     void ApplyTransition(string type, float durationSec);
     void ApplyEffect(string effectType, IReadOnlyDictionary<string, object> parameters);
+    void StopEffect(string effectId);
+}
 
-    // ── 异步操作 ──
-    Task StartTypewriter(string WidgetInstanceId, string speaker, string text, CancellationToken ct);
-    void SkipTypewriter(string WidgetInstanceId);
+// ── 打字机效果 ──
+public interface ITypewriterView
+{
+    Task StartTypewriter(string widgetInstanceId, string speaker, string text, CancellationToken ct);
+    void SkipTypewriter(string widgetInstanceId);
     void SetVoice(string assetId);
+}
 
-    // ── 阻塞交互 ──
+// ── 阻塞交互 ──
+public interface IInteractionView
+{
     Task WaitForClickAsync(CancellationToken ct);
-    Task<int> WaitForChoiceAsync(string WidgetInstanceId, string[] options, CancellationToken ct);
+    Task<int> WaitForChoiceAsync(string widgetInstanceId, string[] options, CancellationToken ct);
 }
 ```
+
+> **注意**：`IAudioView` 声明了 `EnqueueAudio` 和 `ConfigureAudioQueue` 方法，但当前 `AudioChannelManager` 尚未实现队列功能 —— 这是一个预备扩展点。
 
 ### ScreenInstance — 页面实例
 
@@ -455,14 +492,29 @@ ShowPageAsync("title_page")
 ### EntryContext
 
 ```csharp
-public class EntryContext
+public sealed class EntryContext
 {
-    public IGameRuntime Runtime { get; }                        // 运行时状态入口
-    public Dictionary<string, string> Params { get; }
+    public required SimpleEntry Entry { get; init; }            // 当前条目
+    public required IGameRuntime Runtime { get; init; }         // 运行时状态入口
+    public Dictionary<string, string> Params => Entry.Params;   // 条目参数字典
+
+    // View 子接口快捷访问（通过 IGameView 组合接口转发）
+    public IGameView View => Runtime.View!;
+    public ILayerView Layers => View;
+    public IControlView Controls => View;
+    public IPageView Pages => View;
+    public IAudioView Audio => View;
+    public IVideoView Video => View;
+    public IEffectView Effects => View;
+    public ITypewriterView Text => View;
+    public IInteractionView Interaction => View;
+
+    // 国际化服务
+    public ICultureService? I18n => Runtime.I18n;
 
     // 文本查找：通过 ICultureService 解析 key
     public string GetText(string key, string def = "")
-        => Runtime.I18n.GetString(GetString(key), def);
+        => I18n?[GetString(key, def)] ?? GetString(key, def);
 
     public string GetString(string key, string def = "") => Params.GetValueOrDefault(key, def);
     public bool GetBool(string key, bool def = false) => bool.TryParse(Params.GetValueOrDefault(key), out var v) ? v : def;
@@ -526,23 +578,15 @@ public class EntryContext
 | Channel | 用途 |
 |---|---|
 | `bgm` | 背景音乐 |
+| `bgm2` | 第二 BGM 轨道 |
 | `voice` | 角色配音 |
 | `sfx1` ~ `sfxN` | 音效（默认 4 个，可配置） |
-| `ambient` | 环境音 |
 
 播放模式：`once`（一遍）、`repeat`（循环）、`times:N`（N 遍）。
 
 规则：同一 Channel 新播放自动替换旧播放。`play_audio` / `stop_audio` / `pause_audio` 均为独立条目类型。
 
-**队列与直接播放交互规则**：
-
-- 每个轨道维护独立队列（通过 `音频队列设置` 配置行为）
-- `播放音频`（直接播放）强制结束当前音乐，插入新歌 → 被中断的歌重新入队首
-- 直接播放不影响队列中后续歌曲
-- 当前歌曲正在交叉淡入时，直接播放取消淡入
-
-示例：队列设为 `保留并顺序播放`，正在播 BGM_A，突然 `播放音频 BGM_B (once)`：
-→ BGM_A 停止并入队首 → BGM_B 播放一次 → 播放完毕 → 继续队列（队首 = BGM_A）
+> **关于音频队列**：`IAudioView` 接口声明了 `EnqueueAudio` 和 `ConfigureAudioQueue` 方法作为预备扩展点，但当前 `AudioChannelManager` 仅实现基础播放/停止/暂停/恢复功能，**队列功能尚未实现**。
 
 ---
 
@@ -555,27 +599,23 @@ public class EntryContext
 
 ### 存档结构（GameSnapshot）
 
-存档数据模型为 **GameSnapshot**（在 `GalNet.Core.Runtime` 命名空间），包含当前节点 ID、条目索引、场景快照和存档变量。由 **SaveManager** 负责序列化/反序列化。
+存档数据模型为 **GameSnapshot**（在 `GalNet.Core.Runtime` 命名空间），包含当前节点 ID、条目索引、变量快照和场景状态。由 **SaveManager** 负责序列化/反序列化（camelCase 命名策略）。
 
 ```json
 {
-  "version": 1,
-  "timestamp": "2026-07-04T12:00:00Z",
-  "current_node_id": "group_05",
-  "current_entry_index": 3,
-  "scene": {
-    "layers": [
-      { "id": "bg",     "asset": "bg_classroom", "x": 0,   "y": 0,   "z": 0,  "visible": true },
-      { "id": "alice",  "asset": "alice_smile",  "x": 0.3, "y": 0.5, "z": 10, "visible": true },
-      { "id": "bob",    "asset": "bob_normal",   "x": 0.7, "y": 0.5, "z": 5,  "visible": true }
-    ],
-    "active_controls": ["default_dialogue", "fancy_choices"],
-    "active_effects": ["shake"],
-    "active_transition": null
+  "nodeId": "group_05",
+  "entryIndex": 3,
+  "variables": {
+    "affection_alice": { "type": "int", "value": 5 },
+    "route_flag": { "type": "string", "value": "alice_route" }
   },
-  "save_variables": {
-    "affection_alice": 5,
-    "route_flag": "alice_route"
+  "sceneState": {
+    "layers": [
+      { "id": "bg", "assetId": "bg_classroom", "x": 0, "y": 0, "z": 0, "visible": true }
+    ],
+    "activeControlIds": ["default_dialogue"],
+    "activeEffectIds": [],
+    "activeTransition": null
   }
 }
 ```
@@ -659,7 +699,7 @@ runtime.RegisterHandler(new ShakeHandler());
 public interface ITransition
 {
     string Name { get; }
-    Task ExecuteAsync(IGameView view, string fromAsset, string toAsset, 
+    Task ExecuteAsync(IGameView view, string? fromAsset, string? toAsset, 
                       float durationSec, CancellationToken ct);
 }
 ```

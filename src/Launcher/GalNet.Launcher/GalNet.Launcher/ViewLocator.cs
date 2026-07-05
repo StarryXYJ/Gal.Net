@@ -1,8 +1,9 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
-using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using GalNet.Launcher.ViewModels;
+using AvaloniaControl = Avalonia.Controls.Control;
+using AvaloniaTextBlock = Avalonia.Controls.TextBlock;
 
 namespace GalNet.Launcher;
 
@@ -14,7 +15,7 @@ namespace GalNet.Launcher;
     Url = "https://docs.avaloniaui.net/docs/concepts/view-locator")]
 public class ViewLocator : IDataTemplate
 {
-    public Control? Build(object? param)
+    public AvaloniaControl? Build(object? param)
     {
         if (param is null)
             return null;
@@ -24,10 +25,10 @@ public class ViewLocator : IDataTemplate
 
         if (type != null)
         {
-            return (Control)Activator.CreateInstance(type)!;
+            return (AvaloniaControl)Activator.CreateInstance(type)!;
         }
 
-        return new TextBlock { Text = "Not Found: " + name };
+        return new AvaloniaTextBlock { Text = "Not Found: " + name };
     }
 
     public bool Match(object? data)

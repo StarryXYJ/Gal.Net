@@ -22,7 +22,7 @@ provider.LoadJsonString("""
                             },
                             "Node": {
                               "group_intro": {
-                                "entry_1": { "Text": "欢迎来到这个世界...\\d2000黑暗中，你缓缓睁开眼睛。" },
+                                "entry_1": { "Text": "欢迎来到这个世界...\\d{2000}黑暗中，你缓缓睁开眼睛。" },
                                 "entry_4": { "Text": "你好，旅行者。我需要你的帮助。" }
                               },
                               "group_accept": {
@@ -107,12 +107,10 @@ File.WriteAllText(Path.Combine(sampleDir, "intro.galgroup"), """
 File.WriteAllText(Path.Combine(sampleDir, "accept.galgroup"), """
     text : speaker:Game.Speaker.speaker_alice; content:Game.Node.group_accept.entry_1.Text
     variable : action:set; target:quest_accepted; value:true; type:bool
-    jump : type:end
     """);
 
 File.WriteAllText(Path.Combine(sampleDir, "reject.galgroup"), """
     text : speaker:Game.Speaker.speaker_alice; content:Game.Node.group_reject.entry_1.Text
-    jump : type:end
     """);
 
 // ── 加载图 ──

@@ -18,10 +18,10 @@ public sealed class VideoHandler : EntryHandler
         switch (action)
         {
             case "play":
-                ctx.View.PlayVideo(ctx.GetString("asset"));
+                ctx.Video.PlayVideo(ctx.GetString("asset"));
                 break;
             case "stop":
-                ctx.View.StopVideo();
+                ctx.Video.StopVideo();
                 break;
         }
     }

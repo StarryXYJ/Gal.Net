@@ -18,7 +18,7 @@ public sealed class LayerHandler : EntryHandler
         switch (action)
         {
             case "show":
-                ctx.View.ShowLayer(
+                ctx.Layers.ShowLayer(
                     ctx.GetString("id"),
                     ctx.GetString("asset"),
                     ctx.GetFloat("x", 0),
@@ -26,10 +26,10 @@ public sealed class LayerHandler : EntryHandler
                     ctx.GetFloat("z", 0));
                 break;
             case "hide":
-                ctx.View.HideLayer(ctx.GetString("id"));
+                ctx.Layers.HideLayer(ctx.GetString("id"));
                 break;
             case "move":
-                ctx.View.MoveLayer(
+                ctx.Layers.MoveLayer(
                     ctx.GetString("id"),
                     ctx.GetFloat("x"),
                     ctx.GetFloat("y"),

@@ -18,7 +18,7 @@ public sealed class AudioHandler : EntryHandler
         switch (action)
         {
             case "play":
-                ctx.View.PlayAudio(
+                ctx.Audio.PlayAudio(
                     ctx.GetString("channel", "bgm"),
                     ctx.GetString("asset"),
                     ctx.GetFloat("volume", 0.8f),
@@ -26,16 +26,16 @@ public sealed class AudioHandler : EntryHandler
                     ctx.GetInt("times", 1));
                 break;
             case "stop":
-                ctx.View.StopAudio(ctx.GetString("channel"));
+                ctx.Audio.StopAudio(ctx.GetString("channel"));
                 break;
             case "pause":
-                ctx.View.PauseAudio(ctx.GetString("channel"));
+                ctx.Audio.PauseAudio(ctx.GetString("channel"));
                 break;
             case "resume":
-                ctx.View.ResumeAudio(ctx.GetString("channel"));
+                ctx.Audio.ResumeAudio(ctx.GetString("channel"));
                 break;
             case "enqueue":
-                ctx.View.EnqueueAudio(
+                ctx.Audio.EnqueueAudio(
                     ctx.GetString("channel"),
                     ctx.GetString("asset"),
                     ctx.GetInt("times", 1));

@@ -2,19 +2,22 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:host="using:GalNet.Control.Host"
+        xmlns:vm="using:GalNet.Editor.ViewModels"
         mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="600"
         x:Class="GalNet.Editor.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
         Width="960" Height="640"
-        Title="GalNet Editor MVP">
+        Title="{Binding WindowTitle}">
 
     <Grid RowDefinitions="*,Auto">
-        <!-- Game host (main area) -->
-        <host:GameHostView Name="GameHost" />
+        <!-- Main content area: binds to NavigationService.CurrentPage -->
+        <ContentControl Name="PageHost"
+                        Content="{Binding CurrentPage}" />
 
         <!-- Status bar -->
         <Border Grid.Row="1" Background="#222">
-            <TextBlock Name="StatusText" Text="Ready" Foreground="White" Margin="8,4" />
+            <TextBlock Name="StatusText" Text="{Binding WindowTitle}"
+                       Foreground="White" Margin="8,4" />
         </Border>
     </Grid>
 

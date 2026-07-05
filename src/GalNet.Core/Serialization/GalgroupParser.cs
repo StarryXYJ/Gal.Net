@@ -71,7 +71,7 @@ public static class GalgroupParser
         return sb.ToString();
     }
 
-    /// <summary>反转义字符串：将转义序列还原。</summary>
+    /// <summary>反转义字符串：将转义序列还原。仅处理已知转义（\\ \: \;），未知转义保留反斜杠。</summary>
     public static string Unescape(string escaped)
     {
         var sb = new System.Text.StringBuilder(escaped.Length);
@@ -79,7 +79,18 @@ public static class GalgroupParser
         {
             if (escaped[i] == '\\' && i + 1 < escaped.Length)
             {
-                sb.Append(escaped[i + 1]);
+                var next = escaped[i + 1];
+                if (next == '\\' || next == ':' || next == ';')
+                {
+                    // 已知转义：\\ → \ , \: → : , \; → ;
+                    sb.Append(next);
+                }
+                else
+                {
+                    // 未知转义：保留反斜杠
+                    sb.Append('\\');
+                    sb.Append(next);
+                }
                 i++;
             }
             else
