@@ -1,0 +1,40 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="600"
+             x:Class="GalNet.Control.Screen.BuiltIn.GameScreenView"
+             Width="960" Height="600"
+             Background="#111118">
+
+    <Grid>
+        <!-- Background layer canvas (bottom) -->
+        <Canvas Name="LayerCanvas" ClipToBounds="True" />
+
+        <!-- Dialogue host (bottom) -->
+        <ContentControl Name="DialogueHost"
+                        IsVisible="False"
+                        VerticalAlignment="Bottom" />
+
+        <!-- Choice panel host (centered over dialogue) -->
+        <ContentControl Name="ChoiceHost"
+                        IsVisible="False"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center" />
+
+        <!-- Screen overlay (top layer, covers everything) -->
+        <ContentControl Name="ScreenOverlay"
+                        IsVisible="False" />
+
+        <!-- Click-to-continue indicator (bottom-right) -->
+        <TextBlock Name="ClickIndicator"
+                   Text="&#x25BC;"
+                   FontSize="14"
+                   Foreground="White"
+                   IsVisible="False"
+                   HorizontalAlignment="Right"
+                   VerticalAlignment="Bottom"
+                   Margin="0,0,20,10" />
+    </Grid>
+
+</UserControl>

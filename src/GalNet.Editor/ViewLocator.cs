@@ -14,7 +14,7 @@ namespace GalNet.Editor;
     Url = "https://docs.avaloniaui.net/docs/concepts/view-locator")]
 public class ViewLocator : IDataTemplate
 {
-    public Control? Build(object? param)
+    public Avalonia.Controls.Control? Build(object? param)
     {
         if (param is null)
             return null;
@@ -24,7 +24,7 @@ public class ViewLocator : IDataTemplate
 
         if (type != null)
         {
-            return (Control)Activator.CreateInstance(type)!;
+            return (Avalonia.Controls.Control)Activator.CreateInstance(type)!;
         }
 
         return new TextBlock { Text = "Not Found: " + name };
