@@ -8,7 +8,7 @@
 
     <ItemGroup>
       <PackageReference Include="Avalonia" Version="12.0.5" />
-      <PackageReference Include="DynamicLocalization.Avalonia" Version="2.0.2" />
+      <PackageReference Include="DynamicLocalization.Avalonia" Version="2.1.0" />
       <PackageReference Include="Irihi.Ursa" Version="2.1.0" />
       <PackageReference Include="Irihi.Ursa.Themes.Semi" Version="2.1.0" />
     </ItemGroup>
