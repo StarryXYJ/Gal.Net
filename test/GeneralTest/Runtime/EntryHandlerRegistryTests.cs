@@ -1,8 +1,6 @@
-using GalNet.Core.Graph;
-using GalNet.Core.Handler;
 using GalNet.Runtime.Handlers;
 
-namespace GeneralTest.Runtime.Handlers;
+namespace GeneralTest.Runtime;
 
 public class EntryHandlerRegistryTests
 {

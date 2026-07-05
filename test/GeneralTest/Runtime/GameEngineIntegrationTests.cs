@@ -1,18 +1,17 @@
 using GalNet.Core.Graph;
-using GalNet.Core.Scene;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Loader;
 using GalNet.Runtime.SaveLoad;
 using GalNet.Runtime.View;
 
-namespace GeneralTest.Runtime.Engine;
+namespace GeneralTest.Runtime;
 
 public class GameEngineIntegrationTests
 {
     [Test]
     public async Task Simple_Linear_Graph_Should_Run_To_Completion()
     {
-        var graph = new Graph
+        var graph = new GalNet.Core.Graph.Graph
         {
             Name = "Test",
             RootNodeId = "group_main",
@@ -46,7 +45,7 @@ public class GameEngineIntegrationTests
     [Test]
     public async Task Graph_With_Variable_Set_Then_Condition_Branch_Should_Take_Expected_Path()
     {
-        var graph = new Graph
+        var graph = new GalNet.Core.Graph.Graph
         {
             Name = "Test",
             RootNodeId = "group_setup",
@@ -121,7 +120,7 @@ public class GameEngineIntegrationTests
     [Test]
     public async Task Save_And_Restore_Should_Preserve_State()
     {
-        var graph = new Graph
+        var graph = new GalNet.Core.Graph.Graph
         {
             Name = "Test",
             RootNodeId = "group_main",

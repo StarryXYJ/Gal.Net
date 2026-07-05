@@ -1,7 +1,7 @@
-using GalNetGraph = GalNet.Core.Graph.Graph;
 using GalNet.Core.Graph;
+using GalNetGraph = GalNet.Core.Graph.Graph;
 
-namespace GeneralTest.GraphTests;
+namespace GeneralTest.Graph;
 
 public class GraphModelTests
 {

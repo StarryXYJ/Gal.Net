@@ -1,7 +1,7 @@
 using GalNet.Core.Graph;
 using GalNet.Runtime.Loader;
 
-namespace GeneralTest.Runtime.Loader;
+namespace GeneralTest.Runtime;
 
 public class GraphLoaderTests
 {

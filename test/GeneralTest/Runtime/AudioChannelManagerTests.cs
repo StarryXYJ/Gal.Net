@@ -1,6 +1,6 @@
 using GalNet.Runtime.Audio;
 
-namespace GeneralTest.Runtime.Audio;
+namespace GeneralTest.Runtime;
 
 public class AudioChannelManagerTests
 {

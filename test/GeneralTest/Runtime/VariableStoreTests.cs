@@ -1,6 +1,6 @@
 using GalNet.Runtime.Variables;
 
-namespace GeneralTest.Runtime.Variables;
+namespace GeneralTest.Runtime;
 
 public class VariableStoreTests
 {

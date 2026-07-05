@@ -1,7 +1,7 @@
-using GalNetVar = GalNet.Core.Variable.Variable;
 using GalNet.Core.Variable;
+using GalNetVar = GalNet.Core.Variable.Variable;
 
-namespace GeneralTest.VariableTests;
+namespace GeneralTest.Variable;
 
 public class VariableTests
 {
