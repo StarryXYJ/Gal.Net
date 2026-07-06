@@ -18,12 +18,21 @@ public partial class GameRunView : UserControl
     {
         base.OnDataContextChanged(e);
 
-        Content = DataContext is GameRunViewModel vm ? vm.GameView : null;
+        if (DataContext is GameRunViewModel vm)
+        {
+            vm.GameView.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch;
+            vm.GameView.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch;
+            GameViewHost.Content = vm.GameView;
+        }
+        else
+        {
+            GameViewHost.Content = null;
+        }
     }
 
     protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     {
-        Content = null;
+        GameViewHost.Content = null;
         base.OnDetachedFromVisualTree(e);
     }
 }

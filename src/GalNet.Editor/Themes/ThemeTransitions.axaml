@@ -1,0 +1,26 @@
+<Styles xmlns="https://github.com/avaloniaui">
+    <Style Selector="Border">
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="{DynamicResource ThemeTransitionDuration}" />
+                <BrushTransition Property="BorderBrush" Duration="{DynamicResource ThemeTransitionDuration}" />
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <Style Selector="Panel">
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="{DynamicResource ThemeTransitionDuration}" />
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <Style Selector="TextBlock">
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Foreground" Duration="{DynamicResource ThemeTransitionDuration}" />
+            </Transitions>
+        </Setter>
+    </Style>
+</Styles>

@@ -8,42 +8,42 @@
              x:DataType="vm:StartupPageViewModel"
              x:Name="Root">
 
-    <Grid RowDefinitions="Auto,*,Auto" Background="#1E1E2E">
-        <!-- Header -->
-        <StackPanel  Grid.Row="0" HorizontalAlignment="Left" Margin="10,10,0,40">
+    <Grid RowDefinitions="Auto,*,Auto" Background="{DynamicResource SemiColorBackground0}">
+        <StackPanel Grid.Row="0" HorizontalAlignment="Left" Margin="10,10,0,40">
             <TextBlock Text="GalNet Editor"
                        FontSize="36" FontWeight="Bold"
-                       Foreground="#CDD6F4"
+                       Foreground="{DynamicResource SemiColorText0}"
                        HorizontalAlignment="Center" />
-
         </StackPanel>
 
-        <!-- Main Actions -->
         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
             <StackPanel VerticalAlignment="Top" HorizontalAlignment="Center" Spacing="16" Margin="0,0,0,32">
-                <!-- New Project Button -->
                 <Button Content="  新建项目"
                         Command="{Binding NewProjectCommand}"
                         Width="260" Height="48"
-                        Background="#CBA6F7" Foreground="#1E1E2E"
+                        Background="{DynamicResource SemiColorPrimary}"
+                        Foreground="{DynamicResource SemiColorText0}"
                         FontSize="16" FontWeight="SemiBold"
                         CornerRadius="6" />
 
-                <!-- Open Project Button -->
                 <Button Content="  打开项目"
                         Command="{Binding OpenProjectCommand}"
                         Width="260" Height="48"
-                        Background="#45475A" Foreground="#CDD6F4"
+                        Background="{DynamicResource SemiColorBackground3}"
+                        Foreground="{DynamicResource SemiColorText0}"
                         FontSize="16" FontWeight="SemiBold"
                         CornerRadius="6" />
 
-                <!-- Separator -->
-                <Separator Margin="0,12" Background="#45475A" Height="1" Width="260" />
+                <Separator Margin="0,12"
+                           Background="{DynamicResource SemiColorBorder}"
+                           Height="1"
+                           Width="260" />
 
-                <!-- Recent Projects -->
                 <TextBlock Text="最近项目"
-                           FontSize="13" Foreground="#585B70"
-                           HorizontalAlignment="Center" Margin="0,4,0,0" />
+                           FontSize="13"
+                           Foreground="{DynamicResource SemiColorText3}"
+                           HorizontalAlignment="Center"
+                           Margin="0,4,0,0" />
 
                 <ItemsControl ItemsSource="{Binding RecentProjects}">
                     <ItemsControl.ItemsPanel>
@@ -53,27 +53,31 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:RecentProjectItem">
-                            <Border Background="#313244" CornerRadius="6" Padding="12,10" Width="260">
+                            <Border Background="{DynamicResource SemiColorBackground2}"
+                                    BorderBrush="{DynamicResource SemiColorBorder}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="12,10"
+                                    Width="260">
                                 <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                                    <!-- Name -->
                                     <TextBlock Grid.Row="0" Grid.Column="0"
                                                Text="{Binding Name}"
                                                FontSize="14" FontWeight="SemiBold"
-                                               Foreground="#CDD6F4" />
-                                    <!-- Open button -->
+                                               Foreground="{DynamicResource SemiColorText0}" />
                                     <Button Grid.Row="0" Grid.Column="1" Grid.RowSpan="2"
                                             Content="打开"
                                             Command="{Binding ElementName=Root, Path=DataContext.OpenRecentProjectCommand}"
                                             CommandParameter="{Binding}"
-                                            Background="Transparent" Foreground="#89B4FA"
-                                            FontSize="12" Margin="8,0,0,0"
+                                            Background="Transparent"
+                                            Foreground="{DynamicResource SemiColorLink}"
+                                            FontSize="12"
+                                            Margin="8,0,0,0"
                                             Padding="8,4" />
 
-                                    <!-- Path -->
                                     <TextBlock Grid.Row="1" Grid.Column="0"
                                                Text="{Binding Path}"
                                                FontSize="11"
-                                               Foreground="#585B70"
+                                               Foreground="{DynamicResource SemiColorText3}"
                                                TextTrimming="CharacterEllipsis" />
                                 </Grid>
                             </Border>
@@ -83,12 +87,13 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- Footer -->
-        <Border Grid.Row="2" Background="#181825" Padding="12,8">
-            <TextBlock Text="GalNet Editor v0.1 — Phase 3.2 MVP"
-                       FontSize="11" Foreground="#585B70"
+        <Border Grid.Row="2"
+                Background="{DynamicResource SemiColorBackground1}"
+                Padding="12,8">
+            <TextBlock Text="GalNet Editor v0.1 - Phase 3.2 MVP"
+                       FontSize="11"
+                       Foreground="{DynamicResource SemiColorText3}"
                        HorizontalAlignment="Center" />
         </Border>
     </Grid>
-
 </UserControl>

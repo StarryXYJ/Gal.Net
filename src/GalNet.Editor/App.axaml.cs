@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using GalNet.Core.Services;
 using GalNet.Editor.Composition;
+using GalNet.Editor.Services;
 using GalNet.Editor.Views;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -32,6 +33,9 @@ public partial class App : Application
             ValidateOnBuild = true,
             ValidateScopes = true
         });
+
+        var editorSettings = ServiceProvider.GetRequiredService<IEditorSettingsService>().GetSettings();
+        ServiceProvider.GetRequiredService<IThemeService>().ApplyThemeByName(editorSettings.Theme);
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

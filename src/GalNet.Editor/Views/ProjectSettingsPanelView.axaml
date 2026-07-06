@@ -3,53 +3,64 @@
              xmlns:vm="using:GalNet.Editor.ViewModels"
              x:Class="GalNet.Editor.Views.ProjectSettingsPanelView"
              x:DataType="vm:ProjectSettingsPanelViewModel"
-             Background="#1E1E2E">
+             Background="{DynamicResource SemiColorBackground0}">
     <Grid RowDefinitions="Auto,*,Auto" Margin="12">
         <TextBlock Grid.Row="0" Text="项目设置"
                    FontSize="16" FontWeight="Bold"
-                   Foreground="#CDD6F4" Margin="0,0,0,12" />
+                   Foreground="{DynamicResource SemiColorText0}"
+                   Margin="0,0,0,12" />
 
         <ScrollViewer Grid.Row="1">
             <StackPanel Spacing="8">
-                <!-- 分辨率 -->
-                <TextBlock Text="默认分辨率" Foreground="#A6ADC8" FontSize="12" />
+                <TextBlock Text="默认分辨率"
+                           Foreground="{DynamicResource SemiColorText2}"
+                           FontSize="12" />
                 <Grid ColumnDefinitions="*,Auto,*">
                     <NumericUpDown Grid.Column="0" Value="{Binding DefaultWidth}"
                                    Minimum="640" Maximum="7680" Increment="1"
-                                   Foreground="#CDD6F4" />
-                    <TextBlock Grid.Column="1" Text=" × " VerticalAlignment="Center"
-                               Foreground="#585B70" Margin="4,0" />
+                                   Foreground="{DynamicResource SemiColorText0}" />
+                    <TextBlock Grid.Column="1" Text=" x " VerticalAlignment="Center"
+                               Foreground="{DynamicResource SemiColorText3}"
+                               Margin="4,0" />
                     <NumericUpDown Grid.Column="2" Value="{Binding DefaultHeight}"
                                    Minimum="480" Maximum="4320" Increment="1"
-                                   Foreground="#CDD6F4" />
+                                   Foreground="{DynamicResource SemiColorText0}" />
                 </Grid>
 
-                <!-- 存档槽位数 -->
-                <TextBlock Text="存档槽位数" Foreground="#A6ADC8" FontSize="12" Margin="0,4,0,0" />
+                <TextBlock Text="存档槽位数"
+                           Foreground="{DynamicResource SemiColorText2}"
+                           FontSize="12"
+                           Margin="0,4,0,0" />
                 <NumericUpDown Value="{Binding SaveSlotCount}"
                                Minimum="1" Maximum="999" Increment="1"
-                               Foreground="#CDD6F4" />
+                               Foreground="{DynamicResource SemiColorText0}" />
 
-                <!-- 音效通道数 -->
-                <TextBlock Text="音效通道数" Foreground="#A6ADC8" FontSize="12" Margin="0,4,0,0" />
+                <TextBlock Text="音效通道数"
+                           Foreground="{DynamicResource SemiColorText2}"
+                           FontSize="12"
+                           Margin="0,4,0,0" />
                 <NumericUpDown Value="{Binding SfxChannelCount}"
                                Minimum="1" Maximum="16" Increment="1"
-                               Foreground="#CDD6F4" />
+                               Foreground="{DynamicResource SemiColorText0}" />
 
-                <!-- 目标语言 -->
-                <TextBlock Text="目标语言" Foreground="#A6ADC8" FontSize="12" Margin="0,4,0,0" />
+                <TextBlock Text="目标语言"
+                           Foreground="{DynamicResource SemiColorText2}"
+                           FontSize="12"
+                           Margin="0,4,0,0" />
                 <TextBox Text="{Binding TargetLocale}"
-                         Foreground="#CDD6F4" PlaceholderText="zh-CN" />
+                         Foreground="{DynamicResource SemiColorText0}"
+                         PlaceholderText="zh-CN" />
             </StackPanel>
         </ScrollViewer>
 
-        <!-- 底部状态与保存按钮 -->
         <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
             <TextBlock Grid.Column="0" Text="{Binding IsDirtyText}"
-                       Foreground="#A6ADC8" VerticalAlignment="Center" />
+                       Foreground="{DynamicResource SemiColorText2}"
+                       VerticalAlignment="Center" />
             <Button Grid.Column="1" Content="保存设置"
                     Command="{Binding SaveSettingsCommand}"
-                    Background="#89B4FA" Foreground="#1E1E2E"
+                    Background="{DynamicResource SemiColorPrimary}"
+                    Foreground="{DynamicResource SemiColorText0}"
                     Padding="16,8" />
         </Grid>
     </Grid>

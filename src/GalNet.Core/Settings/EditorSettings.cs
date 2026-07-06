@@ -13,7 +13,7 @@ public sealed class EditorSettings : SettingsSection
     public I18nLocale UiLocale { get; set; } = I18nLocale.ZhCn;
 
     /// <summary>Avalonia 主题</summary>
-    public string Theme { get; set; } = "Dark";
+    public string Theme { get; set; } = "Violet";
 
     /// <summary>Dock 布局序列化数据（保存窗口面板布局）</summary>
     public string? DockLayout { get; set; }
