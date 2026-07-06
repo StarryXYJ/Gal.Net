@@ -6,24 +6,24 @@ using Dock.Model.Core;
 using Dock.Model.Mvvm;
 using Dock.Model.Mvvm.Controls;
 using Dock.Settings;
+using GalNet.Editor.Services;
 using GalNet.Editor.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
 namespace GalNet.Editor.Dock;
 
 public sealed class EditorDockFactory : Factory
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IGamePreviewPanelFactory _previewPanelFactory;
 
-    public EditorDockFactory(IServiceProvider serviceProvider)
+    public EditorDockFactory(IGamePreviewPanelFactory previewPanelFactory)
     {
-        _serviceProvider = serviceProvider;
+        _previewPanelFactory = previewPanelFactory;
     }
 
     public override IRootDock CreateLayout()
     {
-        var previewVm = _serviceProvider.GetRequiredService<GamePreviewPanelViewModel>();
+        var previewVm = _previewPanelFactory.Create();
         var previewDocument = new Document
         {
             Id = "GamePreview",

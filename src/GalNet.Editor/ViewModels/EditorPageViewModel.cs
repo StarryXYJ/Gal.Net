@@ -16,9 +16,8 @@ using GalNet.Editor.Commands;
 using GalNet.Editor.Dock;
 using GalNet.Editor.Models;
 using GalNet.Editor.Project;
+using GalNet.Editor.Services;
 using GalNet.Editor.Shared.Services;
-using GalNet.Editor.Views;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Editor.ViewModels;
 
@@ -32,7 +31,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
     private readonly IProjectService _projectService;
     private readonly CommandService _commandService;
     private readonly EditorDockFactory _dockFactory;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IEditorWindowFactory _windowFactory;
 
     [ObservableProperty]
     private string _statusText = "就绪";
@@ -68,13 +67,13 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
         IProjectService projectService,
         CommandService commandService,
         EditorDockFactory dockFactory,
-        IServiceProvider serviceProvider)
+        IEditorWindowFactory windowFactory)
     {
         _navigation = navigation;
         _projectService = projectService;
         _commandService = commandService;
         _dockFactory = dockFactory;
-        _serviceProvider = serviceProvider;
+        _windowFactory = windowFactory;
 
         var project = _projectService.Current
             ?? throw new InvalidOperationException("EditorPageViewModel requires an open project");
@@ -108,9 +107,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
         var mainWindow = GetMainWindow();
         if (mainWindow == null) return;
 
-        var vm = _serviceProvider.GetRequiredService<ProjectSettingsPanelViewModel>();
-        var window = _serviceProvider.GetRequiredService<ProjectSettingsWindow>();
-        window.DataContext = vm;
+        var window = _windowFactory.CreateProjectSettingsWindow();
         await window.ShowDialog(mainWindow);
     }
 
@@ -120,9 +117,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
         var mainWindow = GetMainWindow();
         if (mainWindow == null) return;
 
-        var vm = _serviceProvider.GetRequiredService<EditorSettingsPanelViewModel>();
-        var window = _serviceProvider.GetRequiredService<EditorSettingsWindow>();
-        window.DataContext = vm;
+        var window = _windowFactory.CreateEditorSettingsWindow();
         await window.ShowDialog(mainWindow);
     }
 

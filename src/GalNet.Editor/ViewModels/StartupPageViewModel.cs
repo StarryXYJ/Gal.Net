@@ -7,7 +7,6 @@ using CommunityToolkit.Mvvm.Input;
 using GalNet.Core.Services;
 using GalNet.Editor.Project;
 using GalNet.Editor.Services;
-using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
 namespace GalNet.Editor.ViewModels;
@@ -20,18 +19,18 @@ public partial class StartupPageViewModel : PageViewModelBase
 {
     private readonly INavigationService _navigation;
     private readonly IProjectService _projectService;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IEditorPageFactory _editorPageFactory;
     private readonly IFileDialogService _fileDialog;
 
     public StartupPageViewModel(
         INavigationService navigation,
         IProjectService projectService,
-        IServiceProvider serviceProvider,
+        IEditorPageFactory editorPageFactory,
         IFileDialogService fileDialog)
     {
         _navigation = navigation;
         _projectService = projectService;
-        _serviceProvider = serviceProvider;
+        _editorPageFactory = editorPageFactory;
         _fileDialog = fileDialog;
         Title = "GalNet Editor";
 
@@ -140,8 +139,7 @@ public partial class StartupPageViewModel : PageViewModelBase
 
     private void NavigateToEditor(GalProject project)
     {
-        var editorVm = _serviceProvider.GetRequiredService<EditorPageViewModel>();
-        _navigation.NavigateTo(editorVm);
+        _navigation.NavigateTo(_editorPageFactory.CreateEditorPage());
     }
 }
 

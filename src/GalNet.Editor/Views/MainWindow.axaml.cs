@@ -1,6 +1,6 @@
-using System;
 using Avalonia.Controls;
 using GalNet.Core.Services;
+using GalNet.Editor.Services;
 using GalNet.Editor.ViewModels;
 using Serilog;
 using Ursa.Controls;
@@ -10,14 +10,14 @@ namespace GalNet.Editor.Views;
 public partial class MainWindow : UrsaWindow
 {
     private readonly INavigationService _navigation;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IEditorViewFactory _viewFactory;
 
-    public MainWindow(MainWindowViewModel viewModel, IServiceProvider serviceProvider)
+    public MainWindow(MainWindowViewModel viewModel, IEditorViewFactory viewFactory)
     {
         InitializeComponent();
         DataContext = viewModel;
         _navigation = viewModel.Navigation;
-        _serviceProvider = serviceProvider;
+        _viewFactory = viewFactory;
 
         _navigation.CurrentPageChanged += OnCurrentPageChanged;
 
@@ -44,9 +44,6 @@ public partial class MainWindow : UrsaWindow
             return;
         }
 
-        var view = (Avalonia.Controls.Control)(_serviceProvider.GetService(viewType)
-                   ?? Activator.CreateInstance(viewType)!);
-        view.DataContext = page;
-        PageHost.Content = view;
+        PageHost.Content = _viewFactory.CreateView(viewType, page);
     }
 }

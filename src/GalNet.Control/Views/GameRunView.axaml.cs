@@ -18,9 +18,12 @@ public partial class GameRunView : UserControl
     {
         base.OnDataContextChanged(e);
 
-        if (DataContext is GameRunViewModel vm)
-        {
-            Content = vm.GameView;
-        }
+        Content = DataContext is GameRunViewModel vm ? vm.GameView : null;
+    }
+
+    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    {
+        Content = null;
+        base.OnDetachedFromVisualTree(e);
     }
 }

@@ -1,17 +1,16 @@
 using System;
+using Avalonia;
 using Avalonia.Controls;
 using GalNet.Control.ViewModels;
-using GalNet.Core.Services;
 using Serilog;
 
 namespace GalNet.Control.Views;
 
-/// <summary>
-/// 游戏主机页面 —— 持有 InternalContent 用于子页面切换。
-/// 订阅 GamePageHostViewModel 内部导航服务的 CurrentPageChanged 事件。
-/// </summary>
 public partial class GamePageHostView : UserControl
 {
+    private GamePageHostViewModel? _viewModel;
+    private object? _currentPage;
+
     public GamePageHostView()
     {
         InitializeComponent();
@@ -19,37 +18,47 @@ public partial class GamePageHostView : UserControl
 
     protected override void OnDataContextChanged(EventArgs e)
     {
-        base.OnDataContextChanged(e);
+        if (_viewModel is not null)
+            _viewModel.InternalNav.CurrentPageChanged -= OnCurrentPageChanged;
 
-        if (DataContext is GamePageHostViewModel vm)
+        _viewModel = DataContext as GamePageHostViewModel;
+        _currentPage = null;
+        InternalContent.Content = null;
+
+        if (_viewModel is not null)
         {
-            vm.InternalNav.CurrentPageChanged += OnCurrentPageChanged;
+            _viewModel.InternalNav.CurrentPageChanged += OnCurrentPageChanged;
 
-            // 处理构造时已导航好的初始页面
-            if (vm.InternalNav.CurrentPage != null)
-                OnCurrentPageChanged(vm.InternalNav.CurrentPage);
+            if (_viewModel.InternalNav.CurrentPage is { } currentPage)
+                OnCurrentPageChanged(currentPage);
         }
+
+        base.OnDataContextChanged(e);
     }
 
     private void OnCurrentPageChanged(object? page)
     {
+        if (ReferenceEquals(page, _currentPage) && InternalContent.Content is not null)
+            return;
+
         if (page == null)
         {
+            _currentPage = null;
             InternalContent.Content = null;
             return;
         }
 
-        // 从 DataContext 获取导航服务
-        if (DataContext is not GamePageHostViewModel vm)
+        if (_viewModel is null)
         {
             Log.Warning("GamePageHostView: DataContext is not GamePageHostViewModel");
             return;
         }
 
-        var viewType = vm.InternalNav.GetRegisteredViewType(page.GetType());
+        var viewType = _viewModel.InternalNav.GetRegisteredViewType(page.GetType());
         if (viewType == null)
         {
             Log.Warning("No view registered for {Type}", page.GetType().Name);
+            _currentPage = page;
             InternalContent.Content = new TextBlock
             {
                 Text = $"No view for {page.GetType().Name}",
@@ -63,11 +72,24 @@ public partial class GamePageHostView : UserControl
         {
             var view = (Avalonia.Controls.Control)Activator.CreateInstance(viewType)!;
             view.DataContext = page;
+            _currentPage = page;
             InternalContent.Content = view;
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to create view for {Type}", page.GetType().Name);
         }
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        if (_viewModel is not null)
+            _viewModel.InternalNav.CurrentPageChanged -= OnCurrentPageChanged;
+
+        _viewModel = null;
+        _currentPage = null;
+        InternalContent.Content = null;
+
+        base.OnDetachedFromVisualTree(e);
     }
 }

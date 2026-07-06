@@ -5,8 +5,6 @@ using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Control.ViewModels;
-using GalNet.Core.Services;
-using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
 namespace GalNet.Editor.ViewModels;
@@ -21,11 +19,15 @@ public partial class GamePreviewPanelViewModel : ObservableObject
     public ObservableCollection<string> OutputLines { get; } = [];
     public ObservableCollection<VariableItemViewModel> Variables { get; } = [];
 
-    private readonly IServiceProvider _serviceProvider;
+    private readonly GalNet.Core.Services.INavigationService _navigation;
+    private readonly IGameFlowFactory _gameFlowFactory;
 
-    public GamePreviewPanelViewModel(IServiceProvider serviceProvider)
+    public GamePreviewPanelViewModel(
+        GalNet.Core.Services.INavigationService navigation,
+        IGameFlowFactory gameFlowFactory)
     {
-        _serviceProvider = serviceProvider;
+        _navigation = navigation;
+        _gameFlowFactory = gameFlowFactory;
         Log.Information("[PreviewVM] .ctor thread={ThreadId}, isUI={IsUI}",
             Environment.CurrentManagedThreadId, Dispatcher.UIThread.CheckAccess());
 
@@ -35,8 +37,7 @@ public partial class GamePreviewPanelViewModel : ObservableObject
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 Log.Information("[PreviewVM] Creating GamePageHostViewModel...");
-                var navService = _serviceProvider.GetRequiredService<INavigationService>();
-                PageHostVm = new GamePageHostViewModel(navService, _serviceProvider);
+                PageHostVm = _gameFlowFactory.CreatePageHost(_navigation);
                 OnPropertyChanged(nameof(PageHostVm));
                 Log.Information("[PreviewVM] GamePageHostViewModel created");
             });
