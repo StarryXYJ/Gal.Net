@@ -4,10 +4,11 @@ using GalNet.Control.ViewModels;
 using GalNet.Core.Services;
 using GalNet.Editor.ViewModels;
 using Serilog;
+using Ursa.Controls;
 
 namespace GalNet.Editor.Views;
 
-public partial class MainWindow : Window
+public partial class MainWindow : UrsaWindow
 {
     private readonly INavigationService _navigation;
 
@@ -21,8 +22,8 @@ public partial class MainWindow : Window
 
         Loaded += (_, _) =>
         {
-            Log.Information("=== GalNet Editor MVP starting ===");
-            _navigation.NavigateTo<GamePageHostViewModel>();
+            Log.Information("=== GalNet Editor starting ===");
+            _navigation.NavigateTo<StartupPageViewModel>();
         };
     }
 

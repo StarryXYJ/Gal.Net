@@ -33,6 +33,13 @@
       <ProjectReference Include="..\GalNet.Assets\GalNet.Assets.csproj" />
       <ProjectReference Include="..\GalNet.Control\GalNet.Control.csproj" />
       <ProjectReference Include="..\GalNet.Core\GalNet.Core.csproj" />
+      <ProjectReference Include="..\GalNet.Editor.Shared\GalNet.Editor.Shared.csproj" />
       <ProjectReference Include="..\GalNet.Runtime\GalNet.Runtime.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Update="Views\EditorPageView.axaml.cs">
+        <DependentUpon>EditorPageView.axaml</DependentUpon>
+      </Compile>
     </ItemGroup>
 </Project>

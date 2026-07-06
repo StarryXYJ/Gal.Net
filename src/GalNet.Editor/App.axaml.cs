@@ -8,6 +8,9 @@ using GalNet.Control.View;
 using GalNet.Control.ViewModels;
 using GalNet.Control.Views;
 using GalNet.Core.Services;
+using GalNet.Editor.Commands;
+using GalNet.Editor.Project;
+using GalNet.Editor.Shared.Services;
 using GalNet.Editor.ViewModels;
 using GalNet.Editor.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,14 +36,22 @@ public partial class App : Application
         // ── Build DI container ──
         var services = new ServiceCollection();
 
-        // Core services
+        // ── 编辑器级 Singleton ──
         services.AddSingleton<ISettingsService, SettingsService>();
+        services.AddSingleton<IProjectService, ProjectService>();
+
+        // ── 命令系统 ──
+        services.AddSingleton<CommandService>();
+        services.AddSingleton<SaveProjectCommand>();
+        services.AddSingleton<CloseProjectCommand>();
 
         // Navigation (singleton — shared across all pages)
         services.AddSingleton<INavigationService>(sp =>
         {
             var nav = new NavigationService(sp);
             // Register VM→View mappings
+            nav.RegisterMap(typeof(StartupPageViewModel), typeof(StartupPageView));
+            nav.RegisterMap(typeof(EditorPageViewModel), typeof(EditorPageView));
             nav.RegisterMap(typeof(GamePageHostViewModel), typeof(GamePageHostView));
             return nav;
         });
@@ -56,6 +67,10 @@ public partial class App : Application
         services.AddTransient<GamePageHostViewModel>();
         services.AddTransient<GameStartViewModel>();
         services.AddTransient<GameRunViewModel>();
+
+        // Pages / ViewModels
+        services.AddTransient<StartupPageViewModel>();
+        services.AddTransient<EditorPageViewModel>();
 
         // Window + ViewModel
         services.AddTransient<MainWindowViewModel>();

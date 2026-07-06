@@ -18,6 +18,9 @@ public sealed class EditorSettings : SettingsSection
     /// <summary>Dock 布局序列化数据（保存窗口面板布局）</summary>
     public string? DockLayout { get; set; }
 
-    /// <summary>最近打开的项目路径列表</summary>
-    public List<string> RecentProjects { get; set; } = [];
+    /// <summary>最近打开的项目列表（含名称、路径、最后打开时间）</summary>
+    public List<RecentProjectInfo> RecentProjects { get; set; } = [];
+
+    /// <summary>最近项目列表最大保留数</summary>
+    public int MaxRecentProjects { get; set; } = 10;
 }

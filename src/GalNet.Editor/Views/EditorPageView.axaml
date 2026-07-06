@@ -1,0 +1,26 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:GalNet.Editor.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+             x:Class="GalNet.Editor.Views.EditorPageView">
+
+    <Grid RowDefinitions="*,Auto" Background="#1E1E2E">
+        <!-- ==== Dock 面板宿主 ==== -->
+        <ContentControl Grid.Row="0" Name="DockHost" Margin="4" />
+
+        <!-- ==== 底部状态栏（编译绑定仅在此区域生效） ==== -->
+        <Border Grid.Row="1" Background="#181825" Padding="12,6"
+                x:DataType="vm:EditorPageViewModel">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Text="{Binding StatusText}"
+                           FontSize="12" Foreground="#A6ADC8" />
+                <TextBlock Grid.Column="2"
+                           Text="{Binding Project.Name}"
+                           FontSize="12" Foreground="#585B70" />
+            </Grid>
+        </Border>
+    </Grid>
+
+</UserControl>

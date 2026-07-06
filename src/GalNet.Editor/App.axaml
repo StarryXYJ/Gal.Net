@@ -1,9 +1,13 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:semi="https://irihi.tech/semi"
              x:Class="GalNet.Editor.App"
              RequestedThemeVariant="Default">
 
     <Application.Styles>
         <FluentTheme />
+        <semi:SemiTheme Locale="zh-CN" />
+        <semi:UrsaSemiTheme Locale="zh-CN"/>
+        <semi:SemiPopupAnimations />
     </Application.Styles>
 </Application>

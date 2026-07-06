@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
+using GalNet.Control.Effect;
 using GalNet.Control.Screen.BuiltIn;
+using GalNet.Control.Transition;
 using GalNet.Core.Settings;
 using GalNet.Core.View;
 using LibVLCSharp.Shared;
@@ -12,6 +14,8 @@ namespace GalNet.Control.View;
 public class DefaultGameView : UserControl, IGameView
 {
     private static bool _vlcInitialized;
+    private static readonly TransitionRegistry _transitionRegistry = new();
+    private static readonly EffectRegistry _effectRegistry = new();
 
     private readonly GameScreenView _gameScreen;
     private readonly DefaultGameViewRegistry _registry;
@@ -34,6 +38,27 @@ public class DefaultGameView : UserControl, IGameView
             Log.Warning(ex, "LibVLC initialization failed — audio/video will be unavailable");
             _vlcInitialized = false;
         }
+
+        // ── 注册内置转场 ──
+        RegisterBuiltInTransitions();
+
+        // ── 注册内置特效 ──
+        RegisterBuiltInEffects();
+    }
+
+    private static void RegisterBuiltInTransitions()
+    {
+        _transitionRegistry.Register(new FadeTransition());
+        _transitionRegistry.Register(new SlideLeftTransition());
+        _transitionRegistry.Register(new SlideRightTransition());
+        _transitionRegistry.Register(new DissolveTransition());
+    }
+
+    private static void RegisterBuiltInEffects()
+    {
+        _effectRegistry.Register(new ShakeEffect());
+        _effectRegistry.Register(new VignetteEffect());
+        _effectRegistry.Register(new FlashEffect());
     }
 
     public DefaultGameView(GameSettings? settings = null)
@@ -132,8 +157,6 @@ public class DefaultGameView : UserControl, IGameView
         var player = PlayerFor(channel);
         player.Play(new Media(_libVlc, assetId));
         player.Volume = (int)(volume * 100);
-        // loop mode: LibVLCSharp native loop via MediaListPlayer not used here for simplicity;
-        // script-level repeat can be handled by re-triggering in the engine layer
     }
 
     void IAudioView.StopAudio(string channel)
@@ -183,11 +206,40 @@ public class DefaultGameView : UserControl, IGameView
         Avalonia.Threading.Dispatcher.UIThread.Post(() => _gameScreen.VideoView.IsVisible = false);
     }
 
-    // ── IEffectView (stubs) ──
+    // ── IEffectView ──
 
-    void IEffectView.ApplyTransition(string type, float durationSec) { }
-    void IEffectView.ApplyEffect(string effectType, IReadOnlyDictionary<string, object> parameters) { }
-    void IEffectView.StopEffect(string effectId) { }
+    async void IEffectView.ApplyTransition(string type, float durationSec)
+    {
+        var transition = _transitionRegistry.Get(type);
+        if (transition == null)
+        {
+            Log.Warning("Transition not found: {Type}", type);
+            return;
+        }
+
+        try
+        {
+            await transition.ExecuteAsync(this, null, null, durationSec, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Transition failed: {Type}", type);
+        }
+    }
+
+    void IEffectView.ApplyEffect(string effectType, IReadOnlyDictionary<string, object> parameters)
+    {
+        var effectId = _effectRegistry.Start(effectType, this, parameters);
+        if (string.IsNullOrEmpty(effectId))
+        {
+            Log.Warning("Effect not found: {Type}", effectType);
+        }
+    }
+
+    void IEffectView.StopEffect(string effectId)
+    {
+        _effectRegistry.Stop(effectId);
+    }
 
     // ── Helpers ──
 
