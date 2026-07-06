@@ -1,17 +1,17 @@
+using System;
 using GalNet.Control.View;
 using GalNet.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Control.ViewModels;
 
-/// <summary>
-/// 游戏开始页 ViewModel。
-/// 持有标题文本和菜单按钮，按钮回调通过 INavigationService 导航。
-/// </summary>
 public class GameStartViewModel
 {
     public string Title { get; }
     public string[] Buttons { get; }
+
+    private readonly INavigationService _nav;
+    private readonly IServiceProvider _sp;
 
     public GameStartViewModel(INavigationService nav, IServiceProvider serviceProvider)
     {
@@ -20,9 +20,6 @@ public class GameStartViewModel
         _nav = nav;
         _sp = serviceProvider;
     }
-
-    private readonly INavigationService _nav;
-    private readonly IServiceProvider _sp;
 
     public void OnButtonClicked(int index)
     {
@@ -34,10 +31,8 @@ public class GameStartViewModel
                 var settings = _sp.GetRequiredService<ISettingsService>();
                 var runVm = new GameRunViewModel(gameView, settings, () =>
                 {
-                    // 游戏结束 → 清空导航栈，回到开始页
                     _nav.Clear();
-                    var startVm = new GameStartViewModel(_nav, _sp);
-                    _nav.NavigateTo(startVm);
+                    _nav.NavigateTo(new GameStartViewModel(_nav, _sp));
                 });
                 _nav.NavigateTo(runVm);
                 break;
@@ -49,7 +44,12 @@ public class GameStartViewModel
                 break;
             }
             case 2: // Quit
-                Environment.Exit(0);
+                // Resolve from DI, fall back to Environment.Exit
+                var exitService = _sp.GetService<IGameExitService>();
+                if (exitService != null)
+                    exitService.Exit();
+                else
+                    Environment.Exit(0);
                 break;
         }
     }

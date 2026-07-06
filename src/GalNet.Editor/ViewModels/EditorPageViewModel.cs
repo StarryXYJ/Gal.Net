@@ -1,36 +1,50 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using System.Windows.Input;
+using Avalonia;
 using Avalonia.Collections;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Dock.Model.Controls;
+using Dock.Model.Core;
 using GalNet.Core.Services;
 using GalNet.Editor.Commands;
+using GalNet.Editor.Dock;
 using GalNet.Editor.Models;
 using GalNet.Editor.Project;
 using GalNet.Editor.Shared.Services;
+using GalNet.Editor.Views;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Editor.ViewModels;
 
 /// <summary>
 /// 编辑器主页面 ViewModel —— 打开项目后显示的编辑界面。
-/// 实现 IMenuProvider 向 MainWindow 提供菜单数据。
-/// 所有命令通过 CommandService 统一管理。
+/// 管理 Dock 布局和所有面板的生命周期。
 /// </summary>
 public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
 {
     private readonly INavigationService _navigation;
     private readonly IProjectService _projectService;
     private readonly CommandService _commandService;
-
-    public GalProject Project { get; }
+    private readonly EditorDockFactory _dockFactory;
+    private readonly IServiceProvider _serviceProvider;
 
     [ObservableProperty]
     private string _statusText = "就绪";
 
+    /// <summary>当前项目名称（仅用于 UI 显示）</summary>
+    public string ProjectName => _projectService.Current?.Name ?? "";
+
     /// <summary>菜单项集合 —— 由 SideMenu 控件绑定</summary>
     public IList<MenuData> MenuItems { get; } = new AvaloniaList<MenuData>();
+
+    /// <summary>Dock 布局根节点 —— 绑定到 DockControl</summary>
+    public IRootDock? Layout { get; private set; }
 
     // ── 纯 UI 命令（与 DI 无关） ──
 
@@ -52,17 +66,71 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
     public EditorPageViewModel(
         INavigationService navigation,
         IProjectService projectService,
-        CommandService commandService)
+        CommandService commandService,
+        EditorDockFactory dockFactory,
+        IServiceProvider serviceProvider)
     {
         _navigation = navigation;
         _projectService = projectService;
         _commandService = commandService;
-        Project = _projectService.Current!;
-        Title = $"GalNet Editor — {Project.Name}";
-        StatusText = $"项目: {Project.Name}  |  路径: {Project.RootPath}";
+        _dockFactory = dockFactory;
+        _serviceProvider = serviceProvider;
+
+        var project = _projectService.Current
+            ?? throw new InvalidOperationException("EditorPageViewModel requires an open project");
+        Title = $"GalNet Editor — {project.Name}";
+        StatusText = $"项目: {project.Name}  |  路径: {project.RootPath}";
+
+        // ── 初始化 Dock 布局 ──
+        InitializeDock();
 
         // ── 构建菜单数据 ──
         BuildMenuItems();
+    }
+
+    // ═══════════════════════════════════════════
+    //  Dock 布局
+    // ═══════════════════════════════════════════
+
+    private void InitializeDock()
+    {
+        Layout = _dockFactory.CreateLayout();
+        _dockFactory.InitLayout(Layout);
+    }
+
+    // ═══════════════════════════════════════════
+    //  弹出设置窗口
+    // ═══════════════════════════════════════════
+
+    [RelayCommand]
+    private async Task ShowProjectSettingsAsync()
+    {
+        var mainWindow = GetMainWindow();
+        if (mainWindow == null) return;
+
+        var vm = _serviceProvider.GetRequiredService<ProjectSettingsPanelViewModel>();
+        var window = _serviceProvider.GetRequiredService<ProjectSettingsWindow>();
+        window.DataContext = vm;
+        await window.ShowDialog(mainWindow);
+    }
+
+    [RelayCommand]
+    private async Task ShowEditorSettingsAsync()
+    {
+        var mainWindow = GetMainWindow();
+        if (mainWindow == null) return;
+
+        var vm = _serviceProvider.GetRequiredService<EditorSettingsPanelViewModel>();
+        var window = _serviceProvider.GetRequiredService<EditorSettingsWindow>();
+        window.DataContext = vm;
+        await window.ShowDialog(mainWindow);
+    }
+
+    private static Window? GetMainWindow()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            return desktop.MainWindow;
+        return null;
     }
 
     // ═══════════════════════════════════════════
@@ -71,13 +139,11 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
 
     private void BuildMenuItems()
     {
-        // 从 CommandService 获取 DI 管理的命令
         var saveCmd = _commandService.GetCommand<SaveProjectCommand>();
         var closeCmd = _commandService.GetCommand<CloseProjectCommand>();
 
         var items = new AvaloniaList<MenuData>
         {
-            // ── 文件 ──
             new()
             {
                 Header = "文件",
@@ -90,8 +156,6 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
                     new() { Header = "退出", InputGesture = new Avalonia.Input.KeyGesture(Key.F4, KeyModifiers.Alt), IsEnabled = false },
                 }
             },
-
-            // ── 编辑 ──
             new()
             {
                 Header = "编辑",
@@ -101,8 +165,15 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
                     new() { Header = "重做", InputGesture = new Avalonia.Input.KeyGesture(Key.Y, KeyModifiers.Control), Command = RedoCommand },
                 }
             },
-
-            // ── 查看 ──
+            new()
+            {
+                Header = "设置",
+                Children = new AvaloniaList<MenuData>
+                {
+                    new() { Header = "项目设置...", Command = ShowProjectSettingsCommand },
+                    new() { Header = "编辑器设置...", Command = ShowEditorSettingsCommand },
+                }
+            },
             new()
             {
                 Header = "查看",
@@ -114,8 +185,6 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
                     new() { Header = "游戏预览",   Command = TogglePanelCommand, CommandParameter = "game-preview" },
                 }
             },
-
-            // ── 窗口 ──
             new()
             {
                 Header = "窗口",
@@ -126,8 +195,6 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
                     new() { Header = "重置为默认布局", Command = ResetLayoutCommand },
                 }
             },
-
-            // ── 帮助 ──
             new()
             {
                 Header = "帮助",

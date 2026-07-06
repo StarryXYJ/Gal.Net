@@ -48,6 +48,22 @@ public sealed class GameRuntime : IGameRuntime
         _evaluator = new ExpressionEvaluator(_variables);
     }
 
+    public void JumpTo(string nodeId, int entryIndex = 0)
+    {
+        CurrentNodeId = nodeId;
+        EntryIndex = entryIndex;
+    }
+
+    public void SetEntryIndex(int entryIndex)
+    {
+        EntryIndex = entryIndex;
+    }
+
+    public void EndGame()
+    {
+        IsGameEnded = true;
+    }
+
     // ── 变量操作 ──
 
     public void SetVariable(VariableRoute route, object value) => _variables.Set(route, value);

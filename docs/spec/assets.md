@@ -61,8 +61,11 @@ IAssetManager      资源管理器：加载/缓存（引用计数）/释放
 ### 接口定义（GalNet.Core/Assets）
 
 ```csharp
-interface IAssetManager
+interface IAssetManager : IDisposable
 {
+    int CachedCount { get; }
+
+    void RegisterProvider(IAssetProvider provider);
     Task<T?> LoadAsync<T>(string assetId, CancellationToken ct = default) where T : class;
     Task<T?> LoadByPathAsync<T>(string path, CancellationToken ct = default) where T : class;
     void Release(string assetId);
@@ -74,6 +77,7 @@ interface IAssetProvider
 {
     string Name { get; }
     bool Exists(string name);
+    IArchive OpenArchive(string archiveName);
     Task<IArchive> OpenArchiveAsync(string name, CancellationToken ct = default);
 }
 
@@ -91,10 +95,10 @@ interface IGameFile
     string Id { get; }
     string Path { get; }
     ResourceType Type { get; }
-    CompressionMode Compression { get; }
-    IReadOnlyDictionary<string, string> Metadata { get; }
     long Length { get; }
     string? Hash { get; }
+    Stream OpenRead();
+    byte[] ReadAllBytes();
     Task<byte[]> ReadAllBytesAsync(CancellationToken ct = default);
 }
 ```
@@ -121,14 +125,16 @@ AssetManager 通过注册不同 Provider 切换数据源：
 ├─────────────────────────────────────┤
 │ Entry Table (EntryCount 项)         │
 │ ┌─────────────────────────────────┐ │
-│ │ Id (GUID string, 36 bytes)     │ │
-│ │ Path (length-prefixed string)  │ │
-│ │ Type (int32)                   │ │
-│ │ Offset (int64, 文件内偏移)      │ │
-│ │ OriginalLength (int64)         │ │
-│ │ StoredLength (int64)           │ │
-│ │ Compression (int32)            │ │
-│ │ Hash (SHA256 hex, 64 bytes)    │ │
+│ │ IdLen     (int32)              │ │
+│ │ Id        (UTF-8, IdLen bytes) │ │
+│ │ PathLen   (int32)              │ │
+│ │ Path      (UTF-8, PathLen)     │ │
+│ │ Type      (int32)              │ │
+│ │ Offset    (int64, 数据段偏移)   │ │
+│ │ OrigLength(int64, 未压缩大小)   │ │
+│ │ StoredLen (int64, 存储大小)     │ │
+│ │ Compress  (int32)              │ │
+│ │ Hash      (32 bytes, SHA256)   │ │
 │ └─────────────────────────────────┘ │
 ├─────────────────────────────────────┤
 │ Data Section                        │
@@ -195,27 +201,19 @@ GalNet.Assets/             ← 实现
 └── CryptoHelper.cs
 ```
 
-## Scene 场景系统
+## Scene 场景状态
 
-Scene 是运行时游戏状态的统一容器，同时作为 IGameView 的实现。
+SceneState 是运行时游戏状态的统一容器，由 `IGameView` 实现负责维护。
 
 ```
-Scene (IGameView + 状态字段)
-├── ObservableScene (Scene + INotifyPropertyChanged)  ← Control 层用
-└── HeadlessScene (Scene)                              ← Headless/测试用
+SceneState (可序列化的状态数据)
+├── Layers (图层列表：图片资源、位置等)
+└── AudioState (各音频轨道状态)
 ```
 
-Scene 持有 `IAssetManager` 引用（构造注入），在 IGameView 方法内部做 assetId → 实际资源的解析：
-- 资源未找到 → 静默忽略，对象留存作为缓存占位符（后续释放即清除）
-- 资源正常 → 更新 Scene 内部状态字段
+SceneState 持有场景运行中需要持久化的数据字段（图层信息、音频状态等），通过 `SaveManager` 序列化为存档。
 
-### Scene 的职责
-
-- 存储当前各音频轨道状态
-- 存储图层列表（图片资源、位置等）
-- 存储当前文本
-- 场景开始后的界面抽象——可作为 ViewModel 或其基类
-- **自身序列化**：Scene 提供 `SaveState()` / `RestoreState()` 方法
+游戏运行时，`IGameView` 实现（如 `DefaultGameView`）负责将 `EntryHandler` 的指令转化为对 SceneState 的更新。无头测试使用 `NullGameView`。
 
 ### 存档数据结构
 
@@ -225,6 +223,6 @@ SaveManager 统一调度存档：
 GameSnapshot
 ├── CurrentNodeId
 ├── CurrentEntryIndex
-├── Variables
-└── SceneData  (Scene 自己序列化的状态字段)
+├── Variables (VariableStore 快照)
+└── SceneData  (SceneState 序列化数据)
 ```

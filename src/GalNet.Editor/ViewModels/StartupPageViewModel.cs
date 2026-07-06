@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Core.Services;
 using GalNet.Editor.Project;
+using GalNet.Editor.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -20,12 +21,18 @@ public partial class StartupPageViewModel : PageViewModelBase
     private readonly INavigationService _navigation;
     private readonly IProjectService _projectService;
     private readonly IServiceProvider _serviceProvider;
+    private readonly IFileDialogService _fileDialog;
 
-    public StartupPageViewModel(INavigationService navigation, IProjectService projectService, IServiceProvider serviceProvider)
+    public StartupPageViewModel(
+        INavigationService navigation,
+        IProjectService projectService,
+        IServiceProvider serviceProvider,
+        IFileDialogService fileDialog)
     {
         _navigation = navigation;
         _projectService = projectService;
         _serviceProvider = serviceProvider;
+        _fileDialog = fileDialog;
         Title = "GalNet Editor";
 
         RefreshRecentProjects();
@@ -85,18 +92,9 @@ public partial class StartupPageViewModel : PageViewModelBase
     {
         try
         {
-            // 使用系统文件夹选择对话框
-            var dialog = new Avalonia.Controls.Window();
-            var folders = await dialog.StorageProvider.OpenFolderPickerAsync(
-                new Avalonia.Platform.Storage.FolderPickerOpenOptions
-                {
-                    Title = "选择项目目录",
-                    AllowMultiple = false
-                });
+            var projectPath = await _fileDialog.OpenFolderPickerAsync("选择项目目录");
+            if (projectPath == null) return;
 
-            if (folders.Count == 0) return;
-
-            var projectPath = folders[0].Path.LocalPath;
             var program = await _projectService.OpenAsync(projectPath);
             NavigateToEditor(program);
         }

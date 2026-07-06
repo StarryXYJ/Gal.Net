@@ -18,7 +18,7 @@ public class SaveProjectCommand : AsyncEditorCommand
         Id = "save_project";
         DisplayName = "保存项目";
         DefaultGesture = new KeyGesture(Key.S, KeyModifiers.Control);
-        _command = new CommunityToolkit.Mvvm.Input.AsyncRelayCommand(ExecuteAsync);
+        InitializeCommand(ExecuteAsync);
     }
 
     private async Task ExecuteAsync()

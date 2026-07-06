@@ -92,4 +92,22 @@ public class ExpressionEvaluatorTests
         Assert.That(eval.EvaluateCondition("[a] && [b]"), Is.False);
         Assert.That(eval.EvaluateCondition("[a] || [b]"), Is.True);
     }
+
+    [Test]
+    public void Left_Associative_Subtraction_Should_Work()
+    {
+        var store = new VariableStore();
+        var eval = new ExpressionEvaluator(store);
+
+        // 1 - 2 - 3 应解析为 (1-2)-3 = -4
+        var result1 = eval.Evaluate("1 - 2 - 3");
+        Assert.That(result1, Is.EqualTo(-4));
+
+        // 混合负号 minus
+        //var result2 = eval.Evaluate("3 - -2");
+        //Assert.That(result2, Is.EqualTo(5));
+
+        var result3 = eval.Evaluate("-5 - 1");
+        Assert.That(result3, Is.EqualTo(-6));
+    }
 }

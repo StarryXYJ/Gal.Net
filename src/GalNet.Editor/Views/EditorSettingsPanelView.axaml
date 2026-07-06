@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Editor.ViewModels"
+             x:Class="GalNet.Editor.Views.EditorSettingsPanelView"
+             x:DataType="vm:EditorSettingsPanelViewModel"
+             Background="#1E1E2E">
+    <Grid RowDefinitions="Auto,*,Auto" Margin="12">
+        <TextBlock Grid.Row="0" Text="编辑器设置"
+                   FontSize="16" FontWeight="Bold"
+                   Foreground="#CDD6F4" Margin="0,0,0,12" />
+
+        <ScrollViewer Grid.Row="1">
+            <StackPanel Spacing="8">
+                <!-- 主题 -->
+                <TextBlock Text="主题" Foreground="#A6ADC8" FontSize="12" />
+                <ComboBox ItemsSource="{Binding AvailableThemes}"
+                          SelectedItem="{Binding Theme}"
+                          Foreground="#CDD6F4" Background="#313244">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" Foreground="#CDD6F4" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <!-- UI 语言 -->
+                <TextBlock Text="UI 语言" Foreground="#A6ADC8" FontSize="12" Margin="0,4,0,0" />
+                <ComboBox ItemsSource="{Binding AvailableLocales}"
+                          SelectedItem="{Binding UiLocale}"
+                          Foreground="#CDD6F4" Background="#313244">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" Foreground="#CDD6F4" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- 底部状态与保存按钮 -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+            <TextBlock Grid.Column="0" Text="{Binding StatusText}"
+                       Foreground="#A6ADC8" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Content="保存设置"
+                    Command="{Binding SaveSettingsCommand}"
+                    Background="#89B4FA" Foreground="#1E1E2E"
+                    Padding="16,8" />
+        </Grid>
+    </Grid>
+</UserControl>

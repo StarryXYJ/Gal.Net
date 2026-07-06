@@ -19,7 +19,7 @@ public class CloseProjectCommand : AsyncEditorCommand
         _navigation = navigation;
         Id = "close_project";
         DisplayName = "关闭项目";
-        _command = new CommunityToolkit.Mvvm.Input.AsyncRelayCommand(ExecuteAsync);
+        InitializeCommand(ExecuteAsync);
     }
 
     private async Task ExecuteAsync()

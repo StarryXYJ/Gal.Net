@@ -22,8 +22,9 @@ public class DefaultGameView : UserControl, IGameView
     private readonly DefaultTypewriterPresenter _typewriter;
     private readonly DefaultChoicePresenter _choice;
     private readonly LibVLC _libVlc;
-    private readonly Dictionary<string, MediaPlayer> _audioPlayers = new(StringComparer.OrdinalIgnoreCase);
     private readonly MediaPlayer _videoPlayer;
+    private readonly AudioController _audioController;
+    private readonly VideoController _videoController;
     private TaskCompletionSource<int>? _clickTcs;
 
     static DefaultGameView()
@@ -70,6 +71,9 @@ public class DefaultGameView : UserControl, IGameView
 
         _libVlc = _vlcInitialized ? new LibVLC() : null!;
         _videoPlayer = _vlcInitialized ? new MediaPlayer(_libVlc) : null!;
+        
+        _audioController = new AudioController(_libVlc, _vlcInitialized);
+        _videoController = new VideoController(_libVlc, _videoPlayer, _vlcInitialized, _gameScreen);
 
         Content = _gameScreen;
 
@@ -153,34 +157,27 @@ public class DefaultGameView : UserControl, IGameView
 
     void IAudioView.PlayAudio(string channel, string assetId, float volume, string mode, int times)
     {
-        if (!_vlcInitialized) return;
-        var player = PlayerFor(channel);
-        player.Play(new Media(_libVlc, assetId));
-        player.Volume = (int)(volume * 100);
+        _audioController.Play(channel, assetId, volume);
     }
 
     void IAudioView.StopAudio(string channel)
     {
-        if (!_vlcInitialized) return;
-        PlayerFor(channel).Stop();
+        _audioController.Stop(channel);
     }
 
     void IAudioView.PauseAudio(string channel)
     {
-        if (!_vlcInitialized) return;
-        PlayerFor(channel).Pause();
+        _audioController.Pause(channel);
     }
 
     void IAudioView.ResumeAudio(string channel)
     {
-        if (!_vlcInitialized) return;
-        PlayerFor(channel).Play();
+        _audioController.Resume(channel);
     }
 
     void IAudioView.EnqueueAudio(string channel, string assetId, int times)
     {
-        if (!_vlcInitialized) return;
-        PlayerFor(channel).Play(new Media(_libVlc, assetId));
+        _audioController.Enqueue(channel, assetId);
     }
 
     void IAudioView.ConfigureAudioQueue(string channel, string onEnd, string onEmpty) { }
@@ -189,21 +186,12 @@ public class DefaultGameView : UserControl, IGameView
 
     void GalNet.Core.View.IVideoView.PlayVideo(string assetId)
     {
-        if (!_vlcInitialized) return;
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-        {
-            _gameScreen.VideoView.IsVisible = true;
-            _gameScreen.VideoView.MediaPlayer = _videoPlayer;
-            _videoPlayer.Media = new Media(_libVlc, assetId);
-            _videoPlayer.Play();
-        });
+        _videoController.Play(assetId);
     }
 
     void GalNet.Core.View.IVideoView.StopVideo()
     {
-        if (!_vlcInitialized) return;
-        _videoPlayer.Stop();
-        Avalonia.Threading.Dispatcher.UIThread.Post(() => _gameScreen.VideoView.IsVisible = false);
+        _videoController.Stop();
     }
 
     // ── IEffectView ──
@@ -239,17 +227,5 @@ public class DefaultGameView : UserControl, IGameView
     void IEffectView.StopEffect(string effectId)
     {
         _effectRegistry.Stop(effectId);
-    }
-
-    // ── Helpers ──
-
-    private MediaPlayer PlayerFor(string channel)
-    {
-        if (!_audioPlayers.TryGetValue(channel, out var player))
-        {
-            player = new MediaPlayer(_libVlc);
-            _audioPlayers[channel] = player;
-        }
-        return player;
     }
 }

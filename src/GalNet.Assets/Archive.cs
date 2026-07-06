@@ -69,7 +69,7 @@ public sealed class Archive : IArchive
 
     public IGameFile? GetAssetByPath(string path)
     {
-        if (_pathToId.TryGetValue(NormalizePath(path), out var id))
+        if (_pathToId.TryGetValue(AssetPathHelper.Normalize(path), out var id))
             return GetAsset(id);
         return null;
     }
@@ -147,7 +147,7 @@ public sealed class Archive : IArchive
                 Hash = hash,
             };
 
-            pathToId[NormalizePath(path)] = id;
+            pathToId[AssetPathHelper.Normalize(path)] = id;
         }
 
         // Data section starts at offset
@@ -161,18 +161,21 @@ public sealed class Archive : IArchive
         CompressionMode compression = CompressionMode.Brotli)
     {
         // Build entry descriptors (compress if needed)
-        var entryList = new List<(IGameFile file, byte[] storedData, CompressionMode actualCompression)>();
+        var entryList = new List<(IGameFile file, byte[] storedData, CompressionMode actualCompression, string hash)>();
         foreach (var file in files)
         {
             var data = file.ReadAllBytes();
+            var hash = string.IsNullOrEmpty(file.Hash)
+                ? CryptoHelper.HashSHA256(data)
+                : file.Hash;
             var useCompression = compression != CompressionMode.None && data.Length > 256;
             var stored = useCompression ? CompressionHelper.Compress(data, compression) : data;
-            entryList.Add((file, stored, useCompression ? compression : CompressionMode.None));
+            entryList.Add((file, stored, useCompression ? compression : CompressionMode.None, hash));
         }
 
         // Calculate sizes
         var headerSize = 4 + 4 + 4; // magic + version + count
-        foreach (var (file, storedData, _) in entryList)
+        foreach (var (file, storedData, _, _) in entryList)
         {
             headerSize += 4 + Encoding.UTF8.GetByteCount(file.Id); // id
             headerSize += 4 + Encoding.UTF8.GetByteCount(file.Path); // path
@@ -180,7 +183,7 @@ public sealed class Archive : IArchive
         }
 
         var pakSize = headerSize;
-        foreach (var (_, storedData, _) in entryList)
+        foreach (var (_, storedData, _, _) in entryList)
             pakSize += storedData.Length;
 
         var pak = new byte[pakSize];
@@ -201,12 +204,8 @@ public sealed class Archive : IArchive
 
         // Entry table
         var dataRelativeOffset = 0L;
-        foreach (var (file, storedData, actualCompression) in entryList)
+        foreach (var (file, storedData, actualCompression, hash) in entryList)
         {
-            var hash = string.IsNullOrEmpty(file.Hash)
-                ? CryptoHelper.HashSHA256(file.ReadAllBytes())
-                : file.Hash;
-
             // Id
             var idBytes = Encoding.UTF8.GetBytes(file.Id);
             BinaryPrimitives.WriteInt32LittleEndian(span[pos..], idBytes.Length);
@@ -250,7 +249,7 @@ public sealed class Archive : IArchive
         }
 
         // Data section
-        foreach (var (_, storedData, _) in entryList)
+        foreach (var (_, storedData, _, _) in entryList)
         {
             storedData.CopyTo(span[pos..]);
             pos += storedData.Length;
@@ -258,9 +257,6 @@ public sealed class Archive : IArchive
 
         return pak;
     }
-
-    private static string NormalizePath(string path) =>
-        path.Replace('\\', '/').TrimStart('/').ToLowerInvariant();
 
     private struct EntryDescriptor
     {

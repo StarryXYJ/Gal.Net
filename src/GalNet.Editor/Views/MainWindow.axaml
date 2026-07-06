@@ -11,11 +11,23 @@
               WindowStartupLocation="CenterScreen"
               Width="1200" Height="800"
               MinWidth="960" MinHeight="640"
+              TransparencyLevelHint="AcrylicBlur"
+              Background="Transparent"
               Title="{Binding WindowTitle}">
     <u:UrsaWindow.LeftContent>
         <controls:SideMenu ItemsSource="{Binding MenuItems}" />
     </u:UrsaWindow.LeftContent>
-    <ContentControl Name="PageHost"
-                    Content="{Binding CurrentPage}" />
-
+    <Panel>
+        <!-- <ExperimentalAcrylicBorder IsHitTestVisible="False"> -->
+        <!--     <ExperimentalAcrylicBorder.Material> -->
+        <!--         <ExperimentalAcrylicMaterial -->
+        <!--             BackgroundSource="Digger" -->
+        <!--             TintColor="{DynamicResource SemiBackground0Color}" -->
+        <!--             TintOpacity="1" -->
+        <!--             MaterialOpacity="0.65" /> -->
+        <!--     </ExperimentalAcrylicBorder.Material> -->
+        <!-- </ExperimentalAcrylicBorder> -->
+        <ContentControl Name="PageHost"
+                        Content="{Binding CurrentPage}" />
+</Panel>
 </u:UrsaWindow>

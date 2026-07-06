@@ -17,9 +17,9 @@ public sealed class ProjectService : IProjectService
 {
     private readonly IServiceProvider _globalServices;
     private readonly string _editorSettingsPath;
+    private readonly Lazy<EditorSettings> _editorSettings;
 
     private GalProject? _current;
-    private EditorSettings _editorSettings = new();
 
     public GalProject? Current => _current;
 
@@ -32,26 +32,27 @@ public sealed class ProjectService : IProjectService
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "GalNet", "editor-settings.json");
 
-        LoadEditorSettings();
+        // 延迟加载，避免构造函数中执行同步 IO
+        _editorSettings = new Lazy<EditorSettings>(LoadEditorSettings);
     }
 
     // ────────── 编辑器设置持久化 ──────────
 
-    private void LoadEditorSettings()
+    private EditorSettings LoadEditorSettings()
     {
         try
         {
             if (File.Exists(_editorSettingsPath))
             {
                 var json = File.ReadAllText(_editorSettingsPath);
-                _editorSettings = JsonSerializer.Deserialize<EditorSettings>(json) ?? new EditorSettings();
+                return JsonSerializer.Deserialize<EditorSettings>(json) ?? new EditorSettings();
             }
         }
         catch (Exception ex)
         {
             Log.Warning(ex, "Failed to load editor settings, using defaults");
-            _editorSettings = new EditorSettings();
         }
+        return new EditorSettings();
     }
 
     private void SaveEditorSettings()
@@ -62,7 +63,7 @@ public sealed class ProjectService : IProjectService
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
 
-            var json = JsonSerializer.Serialize(_editorSettings, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(_editorSettings.Value, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(_editorSettingsPath, json);
         }
         catch (Exception ex)
@@ -161,7 +162,7 @@ public sealed class ProjectService : IProjectService
 
     public IReadOnlyList<RecentProjectInfo> GetRecentProjects()
     {
-        return _editorSettings.RecentProjects
+        return _editorSettings.Value.RecentProjects
             .OrderByDescending(r => r.LastOpened)
             .ToList()
             .AsReadOnly();
@@ -169,7 +170,7 @@ public sealed class ProjectService : IProjectService
 
     public void RemoveRecentProject(string projectPath)
     {
-        _editorSettings.RecentProjects.RemoveAll(r =>
+        _editorSettings.Value.RecentProjects.RemoveAll(r =>
             string.Equals(r.Path, projectPath, StringComparison.OrdinalIgnoreCase));
         SaveEditorSettings();
     }
@@ -181,18 +182,18 @@ public sealed class ProjectService : IProjectService
 
     private void AddToRecentProjects(string name, string projectPath)
     {
-        _editorSettings.RecentProjects.RemoveAll(r =>
+        _editorSettings.Value.RecentProjects.RemoveAll(r =>
             string.Equals(r.Path, projectPath, StringComparison.OrdinalIgnoreCase));
 
-        _editorSettings.RecentProjects.Add(new RecentProjectInfo
+        _editorSettings.Value.RecentProjects.Add(new RecentProjectInfo
         {
             Name = name,
             Path = projectPath,
             LastOpened = DateTime.Now
         });
 
-        while (_editorSettings.RecentProjects.Count > _editorSettings.MaxRecentProjects)
-            _editorSettings.RecentProjects.RemoveAt(0);
+        while (_editorSettings.Value.RecentProjects.Count > _editorSettings.Value.MaxRecentProjects)
+            _editorSettings.Value.RecentProjects.RemoveAt(0);
     }
 
     // ────────── 项目设置持久化 ──────────

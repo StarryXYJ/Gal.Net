@@ -16,16 +16,7 @@ public sealed class VariableStore
     public void Set(VariableRoute route, object value)
     {
         var v = GetOrCreate(route);
-        switch (value)
-        {
-            case bool b: v.SetValue(b); v.Type = VariableType.Bool; break;
-            case int i: v.SetValue(i); v.Type = VariableType.Int; break;
-            case float f: v.SetValue(f); v.Type = VariableType.Float; break;
-            case string s: v.SetValue(s); v.Type = VariableType.String; break;
-            case double d: v.SetValue((float)d); v.Type = VariableType.Float; break;
-            case long l: v.SetValue((int)l); v.Type = VariableType.Int; break;
-            default: v.SetValue(value.ToString() ?? ""); v.Type = VariableType.String; break;
-        }
+        v.SetValue(value);
     }
 
     /// <summary>获取 bool 值，不存在返回默认。</summary>

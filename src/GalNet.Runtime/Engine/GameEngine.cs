@@ -21,9 +21,9 @@ public sealed class GameEngine
 
     public IGameRuntime Runtime => _runtime;
 
-    public string CurrentNodeId { get => _runtime.CurrentNodeId; private set => _runtime.CurrentNodeId = value; }
+    public string CurrentNodeId => _runtime.CurrentNodeId;
 
-    public int EntryIndex { get => _runtime.EntryIndex; private set => _runtime.EntryIndex = value; }
+    public int EntryIndex => _runtime.EntryIndex;
 
     public bool IsRunning { get; private set; }
 
@@ -76,7 +76,7 @@ public sealed class GameEngine
                 case Group group:
                 {
                     var entries = _compiled.GetValueOrDefault(group.Id, Array.Empty<SimpleEntry>());
-                    for (; _runtime.EntryIndex < entries.Count; _runtime.EntryIndex++)
+                    for (; _runtime.EntryIndex < entries.Count; _runtime.SetEntryIndex(_runtime.EntryIndex + 1))
                     {
                         var entry = entries[_runtime.EntryIndex];
 
@@ -106,7 +106,7 @@ public sealed class GameEngine
                         }
                     }
 
-                    _runtime.EntryIndex = 0;
+                    _runtime.SetEntryIndex(0);
                     MoveToNext();
                     break;
                 }
@@ -136,8 +136,7 @@ public sealed class GameEngine
                                 .Find(e => e.FromNodeId == branch.Id && e.FromOutlet == visibleOptions[selected].Index);
                             if (targetEdge != null)
                             {
-                                _runtime.CurrentNodeId = targetEdge.ToNodeId;
-                                _runtime.EntryIndex = 0;
+                                _runtime.JumpTo(targetEdge.ToNodeId);
                             }
                         }
                     }
@@ -152,8 +151,7 @@ public sealed class GameEngine
                                     .Find(e => e.FromNodeId == branch.Id && e.FromOutlet == i);
                                 if (targetEdge != null)
                                 {
-                                    _runtime.CurrentNodeId = targetEdge.ToNodeId;
-                                    _runtime.EntryIndex = 0;
+                                    _runtime.JumpTo(targetEdge.ToNodeId);
                                 }
 
                                 matched = true;
@@ -178,8 +176,7 @@ public sealed class GameEngine
         var edge = _graph.Edges.Find(e => e.FromNodeId == _runtime.CurrentNodeId && e.FromOutlet == 0);
         if (edge != null)
         {
-            _runtime.CurrentNodeId = edge.ToNodeId;
-            _runtime.EntryIndex = 0;
+            _runtime.JumpTo(edge.ToNodeId);
         }
         else
         {

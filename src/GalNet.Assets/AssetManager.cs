@@ -20,6 +20,7 @@ public sealed class AssetManager : IAssetManager
     private readonly Dictionary<string, CacheEntry> _cache = new();
     private readonly Dictionary<string, string> _pathToId = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
+    private readonly Dictionary<string, Task<object?>> _inFlight = new();
     private bool _disposed;
 
     public AssetManager()
@@ -56,15 +57,70 @@ public sealed class AssetManager : IAssetManager
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrEmpty(assetId);
 
-        // 检查缓存
+        // 1. 检查缓存
         var cached = CheckCache<T>(assetId);
         if (cached != null) return cached;
 
-        // 遍历 provider 按 ID 查找
-        var gameFile = await FindInProvidersAsync(assetId, findById: true, ct);
-        if (gameFile == null) return null;
+        // 2. 检查是否有 in-flight 任务
+        Task<object?>? waitTask;
+        lock (_lock)
+        {
+            _inFlight.TryGetValue(assetId, out waitTask);
+        }
 
-        return await LoadAndCacheAsync<T>(assetId, gameFile, ct);
+        if (waitTask != null)
+        {
+            await waitTask;
+            return CheckCache<T>(assetId);
+        }
+
+        // 3. 作为发起者启动加载任务并存入 in-flight 字典中
+        var tcs = new TaskCompletionSource<object?>();
+        lock (_lock)
+        {
+            // 防并发竞争下已经有其他线程写入
+            if (_inFlight.TryGetValue(assetId, out waitTask))
+            {
+                tcs.TrySetResult(null); // 释放当前无用 tcs
+            }
+            else
+            {
+                _inFlight[assetId] = tcs.Task;
+            }
+        }
+
+        if (waitTask != null)
+        {
+            await waitTask;
+            return CheckCache<T>(assetId);
+        }
+
+        try
+        {
+            // 遍历 provider 按 ID 查找
+            var gameFile = await FindInProvidersAsync(assetId, findById: true, ct);
+            if (gameFile == null)
+            {
+                tcs.TrySetResult(null);
+                return null;
+            }
+
+            var result = await LoadAndCacheAsync<T>(assetId, gameFile, ct);
+            tcs.TrySetResult(result);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            tcs.TrySetException(ex);
+            throw;
+        }
+        finally
+        {
+            lock (_lock)
+            {
+                _inFlight.Remove(assetId);
+            }
+        }
     }
 
     // ── 按路径加载 ──
@@ -74,34 +130,29 @@ public sealed class AssetManager : IAssetManager
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrEmpty(path);
 
-        var normalizedPath = NormalizePath(path);
+        var normalizedPath = AssetPathHelper.Normalize(path);
 
-        // 检查路径缓存（path → id）
-        string? assetId;
+        // 1. 尝试从 path -> id 查找
+        string? assetId = null;
         lock (_lock)
         {
-            if (_pathToId.TryGetValue(normalizedPath, out assetId) && assetId != null)
-            {
-                var cached = CheckCache<T>(assetId);
-                if (cached != null) return cached;
-            }
+            _pathToId.TryGetValue(normalizedPath, out assetId);
         }
 
-        // 已知道 ID 但不在缓存中？直接从缓存字典再查一次（防并发竞争）
         if (assetId != null)
         {
-            var cached = CheckCache<T>(assetId);
-            if (cached != null) return cached;
+            return await LoadAsync<T>(assetId, ct);
         }
 
-        // 遍历 provider 按路径查找
+        // 2. 没有 ID 映射，遍历 provider 查找
         var gameFile = await FindInProvidersAsync(normalizedPath, findById: false, ct);
         if (gameFile == null) return null;
 
-        // 记录 path → id 映射
+        // 记录映射
         lock (_lock)
             _pathToId[normalizedPath] = gameFile.Id;
 
+        // 3. 直接加载并缓存（gameFile 已找到，无需重复查找 provider）
         return await LoadAndCacheAsync<T>(gameFile.Id, gameFile, ct);
     }
 
@@ -128,6 +179,7 @@ public sealed class AssetManager : IAssetManager
         {
             _cache.Clear();
             _pathToId.Clear();
+            _inFlight.Clear();
         }
     }
 
@@ -139,6 +191,7 @@ public sealed class AssetManager : IAssetManager
         {
             _cache.Clear();
             _pathToId.Clear();
+            _inFlight.Clear();
             _providers.Clear();
         }
     }
@@ -234,12 +287,8 @@ public sealed class AssetManager : IAssetManager
         return result;
     }
 
-    /// <summary>统一路径格式（小写 / 分隔符）。</summary>
-    private static string NormalizePath(string path) =>
-        path.Replace('\\', '/').TrimStart('/').ToLowerInvariant();
-
     /// <summary>
-    /// 将原始字节数据转换为目标类型。
+    /// 将原始字节 data 转换为目标类型。
     /// 当前支持：
     ///   - byte[] → byte[]
     ///   - byte[] → string (UTF-8)
@@ -259,7 +308,7 @@ public sealed class AssetManager : IAssetManager
         return null;
     }
 
-    private sealed class CacheEntry
+    private class CacheEntry
     {
         public object Data = default!;
         public byte[] RawData = [];

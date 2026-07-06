@@ -3,21 +3,27 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:GalNet.Editor.ViewModels"
+             xmlns:views="using:GalNet.Editor.Views"
+             xmlns:dock="using:Dock.Avalonia"
              mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
-             x:Class="GalNet.Editor.Views.EditorPageView">
+             x:Class="GalNet.Editor.Views.EditorPageView"
+             x:DataType="vm:EditorPageViewModel">
 
     <Grid RowDefinitions="*,Auto" Background="#1E1E2E">
-        <!-- ==== Dock 面板宿主 ==== -->
-        <ContentControl Grid.Row="0" Name="DockHost" Margin="4" />
+        <!-- ==== Dock 面板宿主（Dock.Avalonia） ==== -->
+        <DockControl Grid.Row="0"
+                     Margin="0,30,0,0"
+                     Layout="{Binding Layout}"
+                     Background="#1E1E2E" />
 
-        <!-- ==== 底部状态栏（编译绑定仅在此区域生效） ==== -->
+        <!-- ==== 底部状态栏 ==== -->
         <Border Grid.Row="1" Background="#181825" Padding="12,6"
                 x:DataType="vm:EditorPageViewModel">
             <Grid ColumnDefinitions="Auto,*,Auto">
                 <TextBlock Text="{Binding StatusText}"
                            FontSize="12" Foreground="#A6ADC8" />
                 <TextBlock Grid.Column="2"
-                           Text="{Binding Project.Name}"
+                           Text="{Binding ProjectName}"
                            FontSize="12" Foreground="#585B70" />
             </Grid>
         </Border>

@@ -134,8 +134,8 @@ public sealed class ExpressionEvaluator
         compIdx = FindTopLevelOp(expr, "<");
         if (compIdx >= 0) return Compare(expr[..compIdx], expr[(compIdx + 1)..]) < 0;
 
-        // 加减法
-        var addIdx = FindTopLevelOp(expr, "+");
+        // 加减法（从右向左扫描以满足左结合）
+        var addIdx = FindTopLevelOpRightToLeft(expr, "+");
         if (addIdx >= 0)
         {
             var left = EvaluateSimple(expr[..addIdx]);
@@ -143,17 +143,16 @@ public sealed class ExpressionEvaluator
             return ArithOp(left, right, '+');
         }
 
-        var subIdx = FindTopLevelOp(expr, "-");
-        // 避免负号被当作减法：首个字符或前面是 ( 时跳过
-        if (subIdx > 0 && expr[subIdx - 1] != '(')
+        var subIdx = FindTopLevelOpRightToLeft(expr, "-");
+        if (subIdx > 0 && IsInfixMinus(expr, subIdx))
         {
             var left = EvaluateSimple(expr[..subIdx]);
             var right = EvaluateSimple(expr[(subIdx + 1)..]);
             return ArithOp(left, right, '-');
         }
 
-        // 乘除法
-        var mulIdx = FindTopLevelOp(expr, "*");
+        // 乘除法（同样左结合）
+        var mulIdx = FindTopLevelOpRightToLeft(expr, "*");
         if (mulIdx >= 0)
         {
             var left = EvaluateSimple(expr[..mulIdx]);
@@ -161,7 +160,7 @@ public sealed class ExpressionEvaluator
             return ArithOp(left, right, '*');
         }
 
-        var divIdx = FindTopLevelOp(expr, "/");
+        var divIdx = FindTopLevelOpRightToLeft(expr, "/");
         if (divIdx >= 0)
         {
             var left = EvaluateSimple(expr[..divIdx]);
@@ -182,7 +181,7 @@ public sealed class ExpressionEvaluator
     }
 
     /// <summary>
-    /// 查找不在括号内的顶层运算符位置。
+    /// 从左到右查找不在括号内的第一个顶层操作符位置。
     /// </summary>
     private static int FindTopLevelOp(string expr, string op)
     {
@@ -195,6 +194,36 @@ public sealed class ExpressionEvaluator
                 return i;
         }
         return -1;
+    }
+
+    /// <summary>
+    /// 从右到左查找不在括号内的最后一个顶层操作符位置（确保左结合性，如 1-2-3 解析为 (1-2)-3）。
+    /// </summary>
+    private static int FindTopLevelOpRightToLeft(string expr, string op)
+    {
+        var depth = 0;
+        for (var i = expr.Length - op.Length; i >= 0; i--)
+        {
+            if (expr[i] == ')') depth++;
+            else if (expr[i] == '(') depth--;
+            else if (depth == 0 && expr[i..].StartsWith(op))
+                return i;
+        }
+        return -1;
+    }
+
+    /// <summary>
+    /// 判断指定的 '-' 字符是否是二元中缀减法（而非单元前缀负号）。
+    /// </summary>
+    private static bool IsInfixMinus(string expr, int idx)
+    {
+        for (var i = idx - 1; i >= 0; i--)
+        {
+            if (char.IsWhiteSpace(expr[i])) continue;
+            var c = expr[i];
+            return char.IsLetterOrDigit(c) || c == ')' || c == '"';
+        }
+        return false;
     }
 
     // ── 字面量解析 ──

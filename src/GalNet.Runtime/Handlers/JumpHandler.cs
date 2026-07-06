@@ -22,18 +22,16 @@ public sealed class JumpHandler : EntryHandler
         switch (jumpType)
         {
             case "goto":
-                runtime.CurrentNodeId = target;
-                runtime.EntryIndex = 0;
+                runtime.JumpTo(target);
                 break;
 
             case "end":
-                runtime.IsGameEnded = true;
+                runtime.EndGame();
                 break;
 
             case "call":
                 runtime.PushCallStack(runtime.CurrentNodeId);
-                runtime.CurrentNodeId = target;
-                runtime.EntryIndex = 0;
+                runtime.JumpTo(target);
                 break;
 
             case "return":
@@ -41,8 +39,7 @@ public sealed class JumpHandler : EntryHandler
                 var saved = runtime.PopCallStack();
                 if (saved.HasValue)
                 {
-                    runtime.CurrentNodeId = saved.Value.nodeId;
-                    runtime.EntryIndex = saved.Value.entryIndex;
+                    runtime.JumpTo(saved.Value.nodeId, saved.Value.entryIndex);
                 }
                 break;
             }

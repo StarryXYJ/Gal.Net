@@ -22,8 +22,15 @@
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1"/>
+        <PackageReference Include="Dock.Avalonia" Version="12.0.0.2" />
+        <PackageReference Include="Dock.Avalonia.Themes.Fluent" Version="12.0.0.2" />
+        <PackageReference Include="Dock.Model" Version="12.0.0.2" />
+        <PackageReference Include="Dock.Model.Avalonia" Version="12.0.0.2" />
+        <PackageReference Include="Dock.Model.Mvvm" Version="12.0.0.2" />
+        <PackageReference Include="Dock.Settings" Version="12.0.0.2" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0-preview.1.25080.5"/>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0-preview.1.25080.5"/>
+        <PackageReference Include="Semi.Avalonia.Dock" Version="12.0.0.2" />
         <PackageReference Include="Serilog" Version="4.2.0"/>
         <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0"/>
         <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0"/>
@@ -40,6 +47,21 @@
     <ItemGroup>
       <Compile Update="Views\EditorPageView.axaml.cs">
         <DependentUpon>EditorPageView.axaml</DependentUpon>
+      </Compile>
+      <Compile Update="Views\ProjectSettingsPanelView.axaml.cs">
+        <DependentUpon>ProjectSettingsPanelView.axaml</DependentUpon>
+      </Compile>
+      <Compile Update="Views\EditorSettingsPanelView.axaml.cs">
+        <DependentUpon>EditorSettingsPanelView.axaml</DependentUpon>
+      </Compile>
+      <Compile Update="Views\GamePreviewPanelView.axaml.cs">
+        <DependentUpon>GamePreviewPanelView.axaml</DependentUpon>
+      </Compile>
+      <Compile Update="Views\ProjectSettingsWindow.axaml.cs">
+        <DependentUpon>ProjectSettingsWindow.axaml</DependentUpon>
+      </Compile>
+      <Compile Update="Views\EditorSettingsWindow.axaml.cs">
+        <DependentUpon>EditorSettingsWindow.axaml</DependentUpon>
       </Compile>
     </ItemGroup>
 </Project>

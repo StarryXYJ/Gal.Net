@@ -1,4 +1,6 @@
 using Avalonia;
+using Dock.Model.Core;
+using Dock.Settings;
 using Serilog;
 using System;
 
@@ -40,6 +42,8 @@ sealed class Program
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
+            .UseManagedWindows(false)
+            .UseFloatingWindowHostMode(DockFloatingWindowHostMode.Native)
 #if DEBUG
             .WithDeveloperTools()
 #endif

@@ -84,12 +84,12 @@ public GameRuntime(IGameView? view, ICultureService? i18n,
 ```csharp
 public interface IGameRuntime
 {
-    // ── 位置 ──
-    string CurrentNodeId { get; set; }
-    int EntryIndex { get; set; }
+    // ── 位置（只读，控制流通过显式方法变更）──
+    string CurrentNodeId { get; }
+    int EntryIndex { get; }
 
-    // ── 游戏结束标志 ──
-    bool IsGameEnded { get; set; }
+    // ── 游戏结束标志（只读）──
+    bool IsGameEnded { get; }
 
     // ── 核心引用 ──
     IGameView? View { get; }
@@ -101,16 +101,21 @@ public interface IGameRuntime
     // ── 场景状态 ──
     SceneState SceneState { get; }
 
+    // ── 控制流方法（取代属性的可写 setter）──
+    void JumpTo(string nodeId, int entryIndex = 0);
+    void SetEntryIndex(int entryIndex);
+    void EndGame();
+
+    // ── 调用栈（call/return）──
+    void PushCallStack(string nodeId);
+    (string nodeId, int entryIndex)? PopCallStack();
+
     // ── 变量操作 ──
     void SetVariable(VariableRoute route, object value);
     Variable? GetVariable(VariableRoute route);
     bool TryGetVariable(VariableRoute route, out Variable variable);
     bool EvaluateCondition(string expression);
     object? EvaluateExpression(string expression);
-
-    // ── 调用栈 ──
-    void PushCallStack(string nodeId);
-    (string nodeId, int entryIndex)? PopCallStack();
 
     // ── 存档快照 ──
     GameSnapshot CreateSnapshot();
@@ -179,8 +184,7 @@ public async Task<bool> StepAsync(CancellationToken ct = default)
 
 运行到结束或第一个阻塞点。
 
-- 返回 `false` — 游戏结束
-- 返回 `true` — 等待用户交互
+- 返回 `false` — 游戏结束或等待用户交互（当前实现始终返回 false）
 
 执行流程：
 1. 通过注入的 `IGameGraphCompiler` 编译所有 Group 的复杂条目 → SimpleEntry 列表

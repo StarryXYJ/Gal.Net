@@ -1,0 +1,29 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Editor.ViewModels"
+             x:Class="GalNet.Editor.Views.GamePreviewPanelView"
+             x:DataType="vm:GamePreviewPanelViewModel"
+             MinHeight="300"
+             MinWidth="300"
+             Background="#1E1E2E">
+    <Grid RowDefinitions="Auto,*" Margin="4">
+        <!-- Header -->
+        <!-- <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="4,4,4,2"> -->
+        <!--     <TextBlock Grid.Column="0" Text="Game Preview" -->
+        <!--                FontSize="14" FontWeight="Bold" -->
+        <!--                Foreground="#CDD6F4" VerticalAlignment="Center" /> -->
+        <!--     <TextBlock Grid.Column="2" Text="{Binding StatusText}" -->
+        <!--                Foreground="#A6ADC8" FontSize="11" -->
+        <!--                VerticalAlignment="Center" /> -->
+        <!-- </Grid> -->
+
+        <!-- Game host area -->
+        <Border Grid.Row="1" Background="#11111B"
+                BorderBrush="#313244" BorderThickness="1"
+                CornerRadius="4" Margin="4,2" ClipToBounds="True">
+            <ContentControl Name="GameViewHost"
+                            HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Stretch" />
+        </Border>
+    </Grid>
+</UserControl>

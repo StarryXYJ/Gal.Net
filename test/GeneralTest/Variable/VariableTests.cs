@@ -8,35 +8,39 @@ public class VariableTests
     [Test]
     public void Variable_Should_Store_Bool()
     {
-        var v = new GalNetVar { Name = "flag", Type = VariableType.Bool };
+        var v = new GalNetVar { Name = "flag" };
         v.SetValue(true);
         Assert.That(v.AsBool(), Is.True);
-        Assert.That(v.Value, Is.EqualTo("true"));
+        Assert.That(v.Type, Is.EqualTo(VariableType.Bool));
+        Assert.That(v.AsString(), Is.EqualTo("true"));
     }
 
     [Test]
     public void Variable_Should_Store_Int()
     {
-        var v = new GalNetVar { Name = "score", Type = VariableType.Int };
+        var v = new GalNetVar { Name = "score" };
         v.SetValue(42);
         Assert.That(v.AsInt(), Is.EqualTo(42));
         Assert.That(v.AsFloat(), Is.EqualTo(42f));
+        Assert.That(v.Type, Is.EqualTo(VariableType.Int));
     }
 
     [Test]
     public void Variable_Should_Store_Float()
     {
-        var v = new GalNetVar { Name = "ratio", Type = VariableType.Float };
+        var v = new GalNetVar { Name = "ratio" };
         v.SetValue(0.75f);
         Assert.That(v.AsFloat(), Is.EqualTo(0.75f));
+        Assert.That(v.Type, Is.EqualTo(VariableType.Float));
     }
 
     [Test]
     public void Variable_Should_Store_String()
     {
-        var v = new GalNetVar { Name = "name", Type = VariableType.String };
+        var v = new GalNetVar { Name = "name" };
         v.SetValue("Alice");
         Assert.That(v.AsString(), Is.EqualTo("Alice"));
+        Assert.That(v.Type, Is.EqualTo(VariableType.String));
     }
 
     [Test]

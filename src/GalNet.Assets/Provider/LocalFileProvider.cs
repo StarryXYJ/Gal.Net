@@ -17,6 +17,11 @@ public sealed class LocalFileProvider : IAssetProvider
 {
     private readonly string _assetsRoot;
     private readonly bool _optional;
+    private List<IGameFile>? _cachedFiles;
+    private Dictionary<string, string>? _cachedPathToId;
+    private FileSystemWatcher? _watcher;
+    private readonly object _cacheLock = new();
+    private bool _cacheDirty = true;
 
     /// <summary>
     /// 创建 LocalFileProvider。
@@ -44,6 +49,17 @@ public sealed class LocalFileProvider : IAssetProvider
                 return new DevArchive(_assetsRoot, [], []);
 
             throw new DirectoryNotFoundException($"Assets directory not found: {_assetsRoot}");
+        }
+
+        InitWatcher();
+
+        lock (_cacheLock)
+        {
+            if (!_cacheDirty && _cachedFiles != null && _cachedPathToId != null)
+            {
+                // 用缓存的数据快速 new 新实例返回，避免多线程 Dispose 冲突，消除 IO 扫描
+                return new DevArchive(_assetsRoot, _cachedFiles, _cachedPathToId);
+            }
         }
 
         // Scan for meta files
@@ -78,14 +94,40 @@ public sealed class LocalFileProvider : IAssetProvider
             var hash = CryptoHelper.HashSHA256(data);
             var gameFile = new GameFile(meta.Id, meta.Path, meta.ParseResourceType(), data, hash);
             files.Add(gameFile);
-            pathToId[NormalizePath(meta.Path)] = meta.Id;
+            pathToId[AssetPathHelper.Normalize(meta.Path)] = meta.Id;
+        }
+
+        lock (_cacheLock)
+        {
+            _cachedFiles = files;
+            _cachedPathToId = pathToId;
+            _cacheDirty = false;
         }
 
         return new DevArchive(_assetsRoot, files, pathToId);
     }
 
-    private static string NormalizePath(string path) =>
-        path.Replace('\\', '/').TrimStart('/').ToLowerInvariant();
+    private void InitWatcher()
+    {
+        if (_watcher != null || !Directory.Exists(_assetsRoot)) return;
+        try
+        {
+            _watcher = new FileSystemWatcher(_assetsRoot)
+            {
+                IncludeSubdirectories = true,
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.DirectoryName
+            };
+            _watcher.Changed += (s, e) => { lock (_cacheLock) { _cacheDirty = true; } };
+            _watcher.Created += (s, e) => { lock (_cacheLock) { _cacheDirty = true; } };
+            _watcher.Deleted += (s, e) => { lock (_cacheLock) { _cacheDirty = true; } };
+            _watcher.Renamed += (s, e) => { lock (_cacheLock) { _cacheDirty = true; } };
+            _watcher.EnableRaisingEvents = true;
+        }
+        catch
+        {
+            // 防御权限或平台不支持
+        }
+    }
 
     /// <summary>
     /// 开发模式归档 —— 基于内存文件列表的轻量 IArchive。
@@ -118,7 +160,7 @@ public sealed class LocalFileProvider : IAssetProvider
         public IGameFile? GetAssetByPath(string path)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            if (_pathToId.TryGetValue(path.Replace('\\', '/').TrimStart('/').ToLowerInvariant(), out var id))
+            if (_pathToId.TryGetValue(AssetPathHelper.Normalize(path), out var id))
                 return GetAsset(id);
             return null;
         }
