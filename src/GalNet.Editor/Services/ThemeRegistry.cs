@@ -9,11 +9,11 @@ public sealed class ThemeRegistry : IThemeRegistry
 {
     private readonly Dictionary<string, ThemeInfo> _themes = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["Default"] = new("Default", "跟随系统", ThemeVariant.Default),
-        ["Light"] = new("Light", "浅色", ThemeVariant.Light),
-        ["Dark"] = new("Dark", "深色", ThemeVariant.Dark),
-        ["Violet"] = new("Violet", "Violet", EditorThemeVariant.Violet),
-        ["Aurora"] = new("Aurora", "Aurora", EditorThemeVariant.Aurora),
+        ["Default"] = new("Default", "Theme.Default", ThemeVariant.Default),
+        ["Light"] = new("Light", "Theme.Light", ThemeVariant.Light),
+        ["Dark"] = new("Dark", "Theme.Dark", ThemeVariant.Dark),
+        ["Violet"] = new("Violet", "Theme.Violet", EditorThemeVariant.Violet),
+        ["Aurora"] = new("Aurora", "Theme.Aurora", EditorThemeVariant.Aurora),
     };
 
     public IReadOnlyDictionary<string, ThemeInfo> GetAvailableThemes() => _themes;

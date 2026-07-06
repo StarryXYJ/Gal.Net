@@ -23,7 +23,9 @@ public sealed class AudioController : IDisposable
     {
         if (!_vlcInitialized || _libVlc == null) return;
         var player = GetPlayer(channel);
-        player.Play(new Media(_libVlc, assetId));
+        player.Stop();
+        using var media = new Media(_libVlc, assetId);
+        player.Play(media);
         player.Volume = (int)(volume * 100);
     }
 
@@ -31,6 +33,13 @@ public sealed class AudioController : IDisposable
     {
         if (!_vlcInitialized) return;
         GetPlayer(channel).Stop();
+    }
+
+    public void StopAll()
+    {
+        if (!_vlcInitialized) return;
+        foreach (var player in _audioPlayers.Values)
+            player.Stop();
     }
 
     public void Pause(string channel)

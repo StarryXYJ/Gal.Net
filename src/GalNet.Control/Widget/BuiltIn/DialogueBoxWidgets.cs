@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Layout;
 using Avalonia.Media;
 using GalNet.Core.Widget;
@@ -13,11 +14,13 @@ public sealed class DefaultDialogueConfig
     public double FontSize { get; set; } = 16;
     /// <summary>Horizontal alignment.</summary>
     public HorizontalAlignment HorizontalAlignment { get; set; } = HorizontalAlignment.Left;
+    /// <summary>Minimum height of the dialog box.</summary>
+    public double MinHeight { get; set; } = 140;
 }
 
 /// <summary>
 /// Standard dialogue box widget — implements IDialogueWidget.
-/// Usage: var dlg = new DefaultDialogueTemplate(config); dlg.SetSpeaker("Alice"); dlg.SetContent("Hello");
+/// Supports rich text via &lt;b&gt; and &lt;i&gt; tags.
 /// </summary>
 public sealed class DefaultDialogueTemplate : Border, IDialogueWidget
 {
@@ -47,6 +50,7 @@ public sealed class DefaultDialogueTemplate : Border, IDialogueWidget
             MaxWidth = 800,
         };
 
+        MinHeight = cfg.MinHeight;
         Background = new SolidColorBrush(
             Color.FromArgb((byte)(cfg.BackgroundOpacity * 255), 0, 0, 0));
         CornerRadius = new Avalonia.CornerRadius(8);
@@ -66,7 +70,75 @@ public sealed class DefaultDialogueTemplate : Border, IDialogueWidget
         _speakerBlock.IsVisible = !string.IsNullOrEmpty(speaker);
     }
 
-    public void SetContent(string text) => _textBlock.Text = text;
+    public void SetContent(string text)
+    {
+        _textBlock.Inlines = ParseRichText(text);
+    }
+
+    /// <summary>直接设置 InlineCollection（用于打字机预建 Run 逐步填充）。</summary>
+    public void SetInlines(InlineCollection inlines)
+    {
+        _textBlock.Inlines = inlines;
+    }
+
+    /// <summary>Parse &lt;b&gt;/&lt;i&gt; tags and &apos;\n&apos; newlines into InlineCollection.</summary>
+    private static InlineCollection ParseRichText(string text)
+    {
+        var inlines = new InlineCollection();
+        var i = 0;
+        while (i < text.Length)
+        {
+            // <b>...</b>
+            if (i + 3 <= text.Length && text[i] == '<' && text[i + 1] == 'b' && text[i + 2] == '>')
+            {
+                var end = text.IndexOf("</b>", i + 3, StringComparison.Ordinal);
+                if (end >= 0)
+                {
+                    AddStyledRuns(inlines, text[(i + 3)..end], FontWeight.Bold, null);
+                    i = end + 4;
+                    continue;
+                }
+            }
+
+            // <i>...</i>
+            if (i + 3 <= text.Length && text[i] == '<' && text[i + 1] == 'i' && text[i + 2] == '>')
+            {
+                var end = text.IndexOf("</i>", i + 3, StringComparison.Ordinal);
+                if (end >= 0)
+                {
+                    AddStyledRuns(inlines, text[(i + 3)..end], null, FontStyle.Italic);
+                    i = end + 4;
+                    continue;
+                }
+            }
+
+            // Plain text until next tag or end
+            var nextTag = text.IndexOf('<', i + 1);
+            if (nextTag < 0) nextTag = text.Length;
+            AddStyledRuns(inlines, text[i..nextTag], null, null);
+            i = nextTag;
+        }
+        return inlines;
+    }
+
+    /// <summary>Add text content as runs, splitting on '\n' with LineBreak elements.</summary>
+    private static void AddStyledRuns(InlineCollection inlines, string text, FontWeight? fontWeight, FontStyle? fontStyle)
+    {
+        var parts = text.Split('\n');
+        for (var p = 0; p < parts.Length; p++)
+        {
+            if (p > 0)
+                inlines.Add(new LineBreak());
+
+            if (parts[p].Length == 0)
+                continue; // skip empty segments (leading/trailing/consecutive \n)
+
+            var run = new Run { Text = parts[p] };
+            if (fontWeight.HasValue) run.FontWeight = fontWeight.Value;
+            if (fontStyle.HasValue) run.FontStyle = fontStyle.Value;
+            inlines.Add(run);
+        }
+    }
 
     public void SetAvatarVisible(bool visible)
     {

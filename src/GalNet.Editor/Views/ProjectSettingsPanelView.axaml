@@ -1,18 +1,19 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:GalNet.Editor.MarkupExtensions"
              xmlns:vm="using:GalNet.Editor.ViewModels"
              x:Class="GalNet.Editor.Views.ProjectSettingsPanelView"
              x:DataType="vm:ProjectSettingsPanelViewModel"
              Background="{DynamicResource SemiColorBackground0}">
     <Grid RowDefinitions="Auto,*,Auto" Margin="12">
-        <TextBlock Grid.Row="0" Text="项目设置"
+        <TextBlock Grid.Row="0" Text="{loc:Localize Settings.Project.Title}"
                    FontSize="16" FontWeight="Bold"
                    Foreground="{DynamicResource SemiColorText0}"
                    Margin="0,0,0,12" />
 
         <ScrollViewer Grid.Row="1">
             <StackPanel Spacing="8">
-                <TextBlock Text="默认分辨率"
+                <TextBlock Text="{loc:Localize Settings.Project.DefaultResolution}"
                            Foreground="{DynamicResource SemiColorText2}"
                            FontSize="12" />
                 <Grid ColumnDefinitions="*,Auto,*">
@@ -27,7 +28,7 @@
                                    Foreground="{DynamicResource SemiColorText0}" />
                 </Grid>
 
-                <TextBlock Text="存档槽位数"
+                <TextBlock Text="{loc:Localize Settings.Project.SaveSlotCount}"
                            Foreground="{DynamicResource SemiColorText2}"
                            FontSize="12"
                            Margin="0,4,0,0" />
@@ -35,7 +36,7 @@
                                Minimum="1" Maximum="999" Increment="1"
                                Foreground="{DynamicResource SemiColorText0}" />
 
-                <TextBlock Text="音效通道数"
+                <TextBlock Text="{loc:Localize Settings.Project.SfxChannelCount}"
                            Foreground="{DynamicResource SemiColorText2}"
                            FontSize="12"
                            Margin="0,4,0,0" />
@@ -43,7 +44,7 @@
                                Minimum="1" Maximum="16" Increment="1"
                                Foreground="{DynamicResource SemiColorText0}" />
 
-                <TextBlock Text="目标语言"
+                <TextBlock Text="{loc:Localize Settings.Project.TargetLanguage}"
                            Foreground="{DynamicResource SemiColorText2}"
                            FontSize="12"
                            Margin="0,4,0,0" />
@@ -57,7 +58,7 @@
             <TextBlock Grid.Column="0" Text="{Binding IsDirtyText}"
                        Foreground="{DynamicResource SemiColorText2}"
                        VerticalAlignment="Center" />
-            <Button Grid.Column="1" Content="保存设置"
+            <Button Grid.Column="1" Content="{loc:Localize Settings.Save}"
                     Command="{Binding SaveSettingsCommand}"
                     Background="{DynamicResource SemiColorPrimary}"
                     Foreground="{DynamicResource SemiColorText0}"

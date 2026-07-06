@@ -36,6 +36,7 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<IProjectService, ProjectService>();
         services.AddSingleton<IFileDialogService, FileDialogService>();
         services.AddSingleton<IEditorSettingsService, EditorSettingsService>();
+        services.AddSingleton<IEditorLocalizationService, EditorLocalizationService>();
         services.AddSingleton<IThemeRegistry, ThemeRegistry>();
         services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<IGameExitService, EditorGameExitService>();

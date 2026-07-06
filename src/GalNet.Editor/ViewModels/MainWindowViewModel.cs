@@ -2,47 +2,42 @@ using Avalonia.Collections;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Core.Services;
 using GalNet.Editor.Models;
+using GalNet.Editor.Services;
 
 namespace GalNet.Editor.ViewModels;
 
-/// <summary>
-/// 主窗口 ViewModel —— 持有导航服务，提供全局状态。
-/// ContentControl 绑定到 CurrentPage（由 INavigationService 事件驱动）。
-/// MenuItems 由当前页面的 IMenuProvider 提供。
-/// </summary>
 public partial class MainWindowViewModel : ViewModelBase
 {
-    /// <summary>导航服务（共享给子页面）。</summary>
+    private readonly IEditorLocalizationService _localization;
+
     public INavigationService Navigation { get; }
 
-    /// <summary>
-    /// 当前页面 —— 由 Navigation.CurrentPageChanged 事件驱动更新，
-    /// ContentControl 直接绑定此属性以响应 INotifyPropertyChanged。
-    /// </summary>
     [ObservableProperty]
     private object? _currentPage;
 
-    /// <summary>窗口标题</summary>
     [ObservableProperty]
-    private string _windowTitle = "GalNet Editor";
+    private string _windowTitle = "";
 
-    /// <summary>当前菜单项集合 —— 由当前页面的 IMenuProvider 提供</summary>
     [ObservableProperty]
     private AvaloniaList<MenuData> _menuItems = new();
 
-    public MainWindowViewModel(INavigationService navigation)
+    public MainWindowViewModel(INavigationService navigation, IEditorLocalizationService localization)
     {
         Navigation = navigation;
+        _localization = localization;
+        WindowTitle = _localization["App.Title"];
 
-        // 监听导航变化，更新可绑定的 CurrentPage 属性
         Navigation.CurrentPageChanged += page =>
         {
             CurrentPage = page;
-            if (page is PageViewModelBase pvm)
-                WindowTitle = pvm.Title;
-
-            // 从页面获取菜单数据
+            WindowTitle = page is PageViewModelBase pvm ? pvm.Title : _localization["App.Title"];
             UpdateMenuItems(page);
+        };
+
+        _localization.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == "Item[]")
+                WindowTitle = CurrentPage is PageViewModelBase pvm ? pvm.Title : _localization["App.Title"];
         };
     }
 

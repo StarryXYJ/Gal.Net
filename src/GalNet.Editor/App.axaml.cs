@@ -35,6 +35,7 @@ public partial class App : Application
         });
 
         var editorSettings = ServiceProvider.GetRequiredService<IEditorSettingsService>().GetSettings();
+        ServiceProvider.GetRequiredService<IEditorLocalizationService>().ApplyLocale(editorSettings.UiLocale.Code);
         ServiceProvider.GetRequiredService<IThemeService>().ApplyThemeByName(editorSettings.Theme);
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)

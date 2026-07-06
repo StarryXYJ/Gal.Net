@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Threading;
 using GalNet.Control.Effect;
 using GalNet.Control.Screen.BuiltIn;
 using GalNet.Control.Transition;
@@ -11,7 +12,7 @@ using AvaloniaControl = Avalonia.Controls.Control;
 
 namespace GalNet.Control.View;
 
-public class DefaultGameView : UserControl, IGameView
+public class DefaultGameView : Grid, IGameView
 {
     private static bool _vlcInitialized;
     private static readonly TransitionRegistry _transitionRegistry = new();
@@ -26,6 +27,13 @@ public class DefaultGameView : UserControl, IGameView
     private readonly AudioController _audioController;
     private readonly VideoController _videoController;
     private TaskCompletionSource<int>? _clickTcs;
+
+    /// <summary>Stop all audio/video and release resources.</summary>
+    public void Cleanup()
+    {
+        _audioController.StopAll();
+        _videoController.Stop();
+    }
 
     static DefaultGameView()
     {
@@ -75,7 +83,7 @@ public class DefaultGameView : UserControl, IGameView
         _audioController = new AudioController(_libVlc, _vlcInitialized);
         _videoController = new VideoController(_libVlc, _videoPlayer, _vlcInitialized, _gameScreen);
 
-        Content = _gameScreen;
+        Children.Add(_gameScreen);
 
         PointerPressed += (_, e) =>
         {
@@ -141,6 +149,10 @@ public class DefaultGameView : UserControl, IGameView
         {
             try { await _typewriter.CurrentTask; }
             catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Typewriter task faulted — continuing to click wait");
+            }
         }
 
         Avalonia.Threading.Dispatcher.UIThread.Post(() => _gameScreen.ClickIndicator.IsVisible = true);
@@ -196,36 +208,111 @@ public class DefaultGameView : UserControl, IGameView
 
     // ── IEffectView ──
 
-    async void IEffectView.ApplyTransition(string type, float durationSec)
+    void IEffectView.ApplyTransition(string type, float durationSec)
     {
-        var transition = _transitionRegistry.Get(type);
-        if (transition == null)
+        if (type == "dissolve")
         {
-            Log.Warning("Transition not found: {Type}", type);
+            Dispatcher.UIThread.Post(async () =>
+            {
+                try { await DissolveAsync(durationSec); }
+                catch (Exception ex) { Log.Error(ex, "Dissolve transition failed"); }
+            });
             return;
         }
 
-        try
+        Dispatcher.UIThread.Post(async () =>
         {
-            await transition.ExecuteAsync(this, null, null, durationSec, CancellationToken.None);
-        }
-        catch (Exception ex)
+            var transition = _transitionRegistry.Get(type);
+            if (transition == null)
+            {
+                Log.Warning("Transition not found: {Type}", type);
+                return;
+            }
+
+            try
+            {
+                await transition.ExecuteAsync(this, null, null, durationSec, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Transition failed: {Type}", type);
+            }
+        });
+    }
+
+    /// <summary>
+    /// Cross-fade between old and new layers. Captures current layer images into an
+    /// overlay, waits for pending layer changes (hide/show), then fades the overlay out.
+    /// </summary>
+    private async Task DissolveAsync(float durationSec)
+    {
+        var canvas = _gameScreen.LayerCanvas;
+        var overlay = new Canvas { IsHitTestVisible = false };
+
+        // Phase 1: snapshot current layers into overlay
+        var layerImages = canvas.Children.OfType<Image>().ToList();
+        foreach (var img in layerImages)
         {
-            Log.Error(ex, "Transition failed: {Type}", type);
+            var copy = new Image
+            {
+                Source = img.Source,
+                Stretch = img.Stretch,
+                Opacity = img.Opacity,
+            };
+            copy.SetValue(Canvas.LeftProperty, img.GetValue(Canvas.LeftProperty));
+            copy.SetValue(Canvas.TopProperty, img.GetValue(Canvas.TopProperty));
+            copy.SetValue(Canvas.ZIndexProperty, (int)img.GetValue(Canvas.ZIndexProperty) + 1000);
+            overlay.Children.Add(copy);
         }
+
+        if (overlay.Children.Count == 0)
+        {
+            Log.Debug("Dissolve: no layers to capture, skipping");
+            return;
+        }
+
+        // Ensure overlay renders on top of ALL canvas children (including new layers)
+        overlay.SetValue(Canvas.ZIndexProperty, 9999);
+        canvas.Children.Add(overlay);
+        Log.Debug("Dissolve: overlay added with {Count} children", overlay.Children.Count);
+
+        // Phase 2: wait for all pending Normal-priority dispatcher operations
+        // (HideLayer, ShowLayer, etc.) to complete before starting the fade.
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+
+        Log.Debug("Dissolve: starting fade, duration={Duration}s", durationSec);
+
+        // Phase 3: fade overlay from visible to transparent using manual interpolation
+        if (durationSec > 0f)
+        {
+            var stepMs = 16; // ~60 fps
+            var steps = (int)(durationSec * 1000 / stepMs);
+            for (var s = 0; s <= steps; s++)
+            {
+                var t = (float)s / steps; // 0 → 1
+                overlay.Opacity = 1f - t;
+                await Task.Delay(stepMs);
+            }
+        }
+
+        Log.Debug("Dissolve: fade complete, removing overlay");
+        canvas.Children.Remove(overlay);
     }
 
     void IEffectView.ApplyEffect(string effectType, IReadOnlyDictionary<string, object> parameters)
     {
-        var effectId = _effectRegistry.Start(effectType, this, parameters);
-        if (string.IsNullOrEmpty(effectId))
+        Dispatcher.UIThread.Post(() =>
         {
-            Log.Warning("Effect not found: {Type}", effectType);
-        }
+            var effectId = _effectRegistry.Start(effectType, this, parameters);
+            if (string.IsNullOrEmpty(effectId))
+            {
+                Log.Warning("Effect not found: {Type}", effectType);
+            }
+        });
     }
 
     void IEffectView.StopEffect(string effectId)
     {
-        _effectRegistry.Stop(effectId);
+        Dispatcher.UIThread.Post(() => _effectRegistry.Stop(effectId));
     }
 }

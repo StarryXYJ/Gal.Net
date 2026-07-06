@@ -1,14 +1,15 @@
 <u:UrsaWindow xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:u="https://irihi.tech/ursa"
-             xmlns:vm="using:GalNet.Editor.ViewModels"
-             xmlns:views="using:GalNet.Editor.Views"
-             x:Class="GalNet.Editor.Views.ProjectSettingsWindow"
-             x:DataType="vm:ProjectSettingsPanelViewModel"
-             Title="项目设置"
-             Width="520" Height="480"
-             WindowStartupLocation="CenterOwner"
-             TransparencyLevelHint="AcrylicBlur"
-             Background="Transparent">
+              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+              xmlns:loc="using:GalNet.Editor.MarkupExtensions"
+              xmlns:u="https://irihi.tech/ursa"
+              xmlns:vm="using:GalNet.Editor.ViewModels"
+              xmlns:views="using:GalNet.Editor.Views"
+              x:Class="GalNet.Editor.Views.ProjectSettingsWindow"
+              x:DataType="vm:ProjectSettingsPanelViewModel"
+              Title="{loc:Localize Settings.Project.Title}"
+              Width="520" Height="480"
+              WindowStartupLocation="CenterOwner"
+              TransparencyLevelHint="AcrylicBlur"
+              Background="Transparent">
     <views:ProjectSettingsPanelView />
 </u:UrsaWindow>

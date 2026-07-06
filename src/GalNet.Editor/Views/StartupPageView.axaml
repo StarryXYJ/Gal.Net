@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:loc="using:GalNet.Editor.MarkupExtensions"
              xmlns:vm="using:GalNet.Editor.ViewModels"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="560"
              x:Class="GalNet.Editor.Views.StartupPageView"
@@ -10,7 +11,7 @@
 
     <Grid RowDefinitions="Auto,*,Auto" Background="{DynamicResource SemiColorBackground0}">
         <StackPanel Grid.Row="0" HorizontalAlignment="Left" Margin="10,10,0,40">
-            <TextBlock Text="GalNet Editor"
+            <TextBlock Text="{loc:Localize App.Title}"
                        FontSize="36" FontWeight="Bold"
                        Foreground="{DynamicResource SemiColorText0}"
                        HorizontalAlignment="Center" />
@@ -18,7 +19,7 @@
 
         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
             <StackPanel VerticalAlignment="Top" HorizontalAlignment="Center" Spacing="16" Margin="0,0,0,32">
-                <Button Content="  新建项目"
+                <Button Content="{loc:Localize Startup.NewProject}"
                         Command="{Binding NewProjectCommand}"
                         Width="260" Height="48"
                         Background="{DynamicResource SemiColorPrimary}"
@@ -26,7 +27,7 @@
                         FontSize="16" FontWeight="SemiBold"
                         CornerRadius="6" />
 
-                <Button Content="  打开项目"
+                <Button Content="{loc:Localize Startup.OpenProject}"
                         Command="{Binding OpenProjectCommand}"
                         Width="260" Height="48"
                         Background="{DynamicResource SemiColorBackground3}"
@@ -39,7 +40,7 @@
                            Height="1"
                            Width="260" />
 
-                <TextBlock Text="最近项目"
+                <TextBlock Text="{loc:Localize Startup.RecentProjects}"
                            FontSize="13"
                            Foreground="{DynamicResource SemiColorText3}"
                            HorizontalAlignment="Center"
@@ -65,7 +66,7 @@
                                                FontSize="14" FontWeight="SemiBold"
                                                Foreground="{DynamicResource SemiColorText0}" />
                                     <Button Grid.Row="0" Grid.Column="1" Grid.RowSpan="2"
-                                            Content="打开"
+                                            Content="{loc:Localize Startup.OpenRecent}"
                                             Command="{Binding ElementName=Root, Path=DataContext.OpenRecentProjectCommand}"
                                             CommandParameter="{Binding}"
                                             Background="Transparent"
@@ -90,7 +91,7 @@
         <Border Grid.Row="2"
                 Background="{DynamicResource SemiColorBackground1}"
                 Padding="12,8">
-            <TextBlock Text="GalNet Editor v0.1 - Phase 3.2 MVP"
+            <TextBlock Text="{loc:Localize Startup.Footer}"
                        FontSize="11"
                        Foreground="{DynamicResource SemiColorText3}"
                        HorizontalAlignment="Center" />

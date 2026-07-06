@@ -2,18 +2,17 @@ using System;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GalNet.Core.Settings;
 using GalNet.Editor.Project;
+using GalNet.Editor.Services;
 using Serilog;
 
 namespace GalNet.Editor.ViewModels;
 
-/// <summary>
-/// 项目设置面板 —— 编辑 ProjectSettings（分辨率、语言、存档槽位数等）。
-/// </summary>
 public partial class ProjectSettingsPanelViewModel : ObservableObject
 {
     private readonly IProjectService _projectService;
+
+    public IEditorLocalizationService L { get; }
 
     [ObservableProperty]
     private int _defaultWidth = 1920;
@@ -33,24 +32,38 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
     [ObservableProperty]
     private string _isDirtyText = "";
 
-    public ProjectSettingsPanelViewModel(IProjectService projectService)
+    public ProjectSettingsPanelViewModel(
+        IProjectService projectService,
+        IEditorLocalizationService localization)
     {
         _projectService = projectService;
+        L = localization;
+        L.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == "Item[]")
+                UpdateDirtyText();
+        };
+
         LoadFromProject();
     }
 
     private void LoadFromProject()
     {
-        if (_projectService.Current?.Settings is not { } s) return;
-        DefaultWidth = s.DefaultWidth;
-        DefaultHeight = s.DefaultHeight;
-        SaveSlotCount = s.SaveSlotCount;
-        SfxChannelCount = s.SfxChannelCount;
-        TargetLocale = s.TargetLocale.Code;
-        IsDirtyText = _projectService.Current.IsDirty ? "（有未保存的修改）" : "";
+        if (_projectService.Current?.Settings is not { } settings) return;
+
+        DefaultWidth = settings.DefaultWidth;
+        DefaultHeight = settings.DefaultHeight;
+        SaveSlotCount = settings.SaveSlotCount;
+        SfxChannelCount = settings.SfxChannelCount;
+        TargetLocale = settings.TargetLocale.Code;
+        UpdateDirtyText();
     }
 
-    /// <summary>保存项目设置到 settings.json</summary>
+    private void UpdateDirtyText()
+    {
+        IsDirtyText = _projectService.Current?.IsDirty == true ? L["Settings.Project.Unsaved"] : "";
+    }
+
     [RelayCommand]
     private async Task SaveSettingsAsync()
     {
@@ -67,12 +80,12 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
             await _projectService.SaveAsync();
             project.IsDirty = false;
 
-            IsDirtyText = "已保存";
+            IsDirtyText = L["Settings.Saved"];
             Log.Information("Project settings saved");
         }
         catch (Exception ex)
         {
-            IsDirtyText = "保存失败";
+            IsDirtyText = L["Settings.SaveFailed"];
             Log.Error(ex, "Failed to save project settings");
         }
     }

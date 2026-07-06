@@ -4,5 +4,5 @@ namespace GalNet.Editor.Services;
 
 public sealed record ThemeInfo(
     string Name,
-    string DisplayName,
+    string DisplayKey,
     ThemeVariant Variant);

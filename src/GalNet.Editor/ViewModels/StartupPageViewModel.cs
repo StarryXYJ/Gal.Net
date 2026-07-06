@@ -21,18 +21,26 @@ public partial class StartupPageViewModel : PageViewModelBase
     private readonly IProjectService _projectService;
     private readonly IEditorPageFactory _editorPageFactory;
     private readonly IFileDialogService _fileDialog;
+    public IEditorLocalizationService L { get; }
 
     public StartupPageViewModel(
         INavigationService navigation,
         IProjectService projectService,
         IEditorPageFactory editorPageFactory,
-        IFileDialogService fileDialog)
+        IFileDialogService fileDialog,
+        IEditorLocalizationService localization)
     {
         _navigation = navigation;
         _projectService = projectService;
         _editorPageFactory = editorPageFactory;
         _fileDialog = fileDialog;
-        Title = "GalNet Editor";
+        L = localization;
+        Title = L["App.Title"];
+        L.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == "Item[]")
+                Title = L["App.Title"];
+        };
 
         RefreshRecentProjects();
     }

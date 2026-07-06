@@ -2,21 +2,26 @@ using System;
 using System.Threading.Tasks;
 using Avalonia.Input;
 using GalNet.Editor.Project;
+using GalNet.Editor.Services;
 using GalNet.Editor.Shared.Commands;
 using Serilog;
 
 namespace GalNet.Editor.Commands;
 
-/// <summary>保存当前项目 (Ctrl+S)</summary>
 public class SaveProjectCommand : AsyncEditorCommand
 {
     private readonly IProjectService _projectService;
 
-    public SaveProjectCommand(IProjectService projectService)
+    public SaveProjectCommand(IProjectService projectService, IEditorLocalizationService localization)
     {
         _projectService = projectService;
         Id = "save_project";
-        DisplayName = "保存项目";
+        DisplayName = localization["Command.SaveProject"];
+        localization.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == "Item[]")
+                DisplayName = localization["Command.SaveProject"];
+        };
         DefaultGesture = new KeyGesture(Key.S, KeyModifiers.Control);
         InitializeCommand(ExecuteAsync);
     }

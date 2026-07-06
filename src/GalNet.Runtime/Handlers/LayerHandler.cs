@@ -18,6 +18,10 @@ public sealed class LayerHandler : EntryHandler
         switch (action)
         {
             case "show":
+                var transition = ctx.GetString("transition", "");
+                if (!string.IsNullOrEmpty(transition))
+                    ctx.Effects.ApplyTransition(transition, ctx.GetFloat("duration", 0.5f));
+
                 ctx.Layers.ShowLayer(
                     ctx.GetString("id"),
                     ctx.GetString("asset"),
@@ -26,6 +30,10 @@ public sealed class LayerHandler : EntryHandler
                     ctx.GetFloat("z", 0));
                 break;
             case "hide":
+                var hideTransition = ctx.GetString("transition", "");
+                if (!string.IsNullOrEmpty(hideTransition))
+                    ctx.Effects.ApplyTransition(hideTransition, ctx.GetFloat("duration", 0.5f));
+
                 ctx.Layers.HideLayer(ctx.GetString("id"));
                 break;
             case "move":

@@ -2,23 +2,31 @@ using System;
 using System.Threading.Tasks;
 using GalNet.Core.Services;
 using GalNet.Editor.Project;
+using GalNet.Editor.Services;
 using GalNet.Editor.Shared.Commands;
 using Serilog;
 
 namespace GalNet.Editor.Commands;
 
-/// <summary>关闭当前项目，返回启动页</summary>
 public class CloseProjectCommand : AsyncEditorCommand
 {
     private readonly IProjectService _projectService;
     private readonly INavigationService _navigation;
 
-    public CloseProjectCommand(IProjectService projectService, INavigationService navigation)
+    public CloseProjectCommand(
+        IProjectService projectService,
+        INavigationService navigation,
+        IEditorLocalizationService localization)
     {
         _projectService = projectService;
         _navigation = navigation;
         Id = "close_project";
-        DisplayName = "关闭项目";
+        DisplayName = localization["Command.CloseProject"];
+        localization.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == "Item[]")
+                DisplayName = localization["Command.CloseProject"];
+        };
         InitializeCommand(ExecuteAsync);
     }
 

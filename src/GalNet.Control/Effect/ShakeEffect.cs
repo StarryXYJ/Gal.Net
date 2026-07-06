@@ -36,6 +36,15 @@ public sealed class ShakeEffect : global::GalNet.Core.View.IEffect
         };
         timer.Start();
 
+        // Auto-stop if duration is specified
+        var duration = GetFloat(parameters, "duration", 0f);
+        if (duration > 0f)
+        {
+            var stopTimer = new System.Timers.Timer(duration * 1000d) { AutoReset = false };
+            stopTimer.Elapsed += (_, _) => Stop(view);
+            stopTimer.Start();
+        }
+
         _timers[view] = new Disposer(() =>
         {
             cts.Cancel(); timer.Stop(); timer.Dispose();
