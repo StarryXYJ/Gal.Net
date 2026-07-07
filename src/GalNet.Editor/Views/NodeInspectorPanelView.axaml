@@ -1,0 +1,135 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Editor.ViewModels"
+             x:Class="GalNet.Editor.Views.NodeInspectorPanelView"
+             x:Name="Root"
+             x:DataType="vm:NodeInspectorPanelViewModel"
+             Background="{DynamicResource SemiColorBackground0}">
+    <ScrollViewer>
+        <StackPanel Margin="12" Spacing="10">
+            <TextBlock Text="Inspector"
+                       FontSize="16"
+                       FontWeight="SemiBold" />
+
+            <StackPanel Spacing="8"
+                        IsVisible="{Binding IsPreviewVariablesVisible}">
+                <TextBlock Text="Preview Variables"
+                           FontWeight="SemiBold" />
+                <ListBox ItemsSource="{Binding Workspace.ActivePreview.Variables}"
+                         Background="Transparent">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:VariableItemViewModel">
+                            <Grid RowDefinitions="Auto,Auto"
+                                  Margin="0,4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="{Binding Name}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding TypeName}"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource SemiColorText3}" />
+                                </Grid>
+                                <TextBox Grid.Row="1"
+                                         Text="{Binding Value}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </StackPanel>
+
+            <StackPanel Spacing="8"
+                        IsVisible="{Binding IsNodeInspectorVisible}">
+                <TextBlock Text="No node selected"
+                           Foreground="{DynamicResource SemiColorText2}"
+                           IsVisible="{Binding !HasSelectedNode}" />
+
+                <StackPanel Spacing="8"
+                            IsVisible="{Binding HasSelectedNode}">
+                    <TextBlock Text="Name" />
+                    <TextBox Text="{Binding Workspace.SelectedNode.Name}" />
+
+                    <TextBlock Text="Type" />
+                    <TextBox Text="{Binding Workspace.SelectedNode.KindLabel}"
+                             IsReadOnly="True" />
+
+                    <TextBlock Text="Id" />
+                    <TextBox Text="{Binding Workspace.SelectedNode.Id}"
+                             IsReadOnly="True" />
+
+                    <CheckBox Content="Entry node"
+                              IsChecked="{Binding Workspace.SelectedNode.IsRoot}" />
+
+                    <StackPanel Spacing="6"
+                                IsVisible="{Binding IsLinearGroupSelected}">
+                        <TextBlock Text="Linear Group"
+                                   FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Workspace.SelectedNode.EntryCount, StringFormat='Entries: {0}'}"
+                                   Foreground="{DynamicResource SemiColorText2}" />
+                        <Button Content="Open Group Editor"
+                                HorizontalAlignment="Left"
+                                Command="{Binding OpenGroupEditorCommand}" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="6"
+                                IsVisible="{Binding IsChoiceBranchSelected}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="Options"
+                                       FontWeight="SemiBold" />
+                            <Button Grid.Column="1"
+                                    Content="Add"
+                                    Command="{Binding Workspace.AddChoiceOptionCommand}" />
+                        </Grid>
+                        <ListBox ItemsSource="{Binding Workspace.SelectedNode.Options}"
+                                 Background="Transparent">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:BranchOptionEditorItemViewModel">
+                                    <Grid ColumnDefinitions="*,Auto"
+                                          ColumnSpacing="6"
+                                          Margin="0,3">
+                                        <StackPanel Spacing="4">
+                                            <TextBox PlaceholderText="Text"
+                                                     Text="{Binding Text}" />
+                                            <TextBox PlaceholderText="Condition"
+                                                     Text="{Binding Condition}" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1"
+                                                Content="Remove"
+                                                Command="{Binding #Root.DataContext.Workspace.RemoveChoiceOptionCommand}"
+                                                CommandParameter="{Binding}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </StackPanel>
+
+                    <StackPanel Spacing="6"
+                                IsVisible="{Binding IsConditionBranchSelected}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="Conditions"
+                                       FontWeight="SemiBold" />
+                            <Button Grid.Column="1"
+                                    Content="Add"
+                                    Command="{Binding Workspace.AddConditionCommand}" />
+                        </Grid>
+                        <ListBox ItemsSource="{Binding Workspace.SelectedNode.Conditions}"
+                                 Background="Transparent">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:BranchConditionEditorItemViewModel">
+                                    <Grid ColumnDefinitions="*,Auto"
+                                          ColumnSpacing="6"
+                                          Margin="0,3">
+                                        <TextBox Text="{Binding Expression}" />
+                                        <Button Grid.Column="1"
+                                                Content="Remove"
+                                                Command="{Binding #Root.DataContext.Workspace.RemoveConditionCommand}"
+                                                CommandParameter="{Binding}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

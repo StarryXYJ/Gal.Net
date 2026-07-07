@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
 using Avalonia.Controls;
+using GalNet.Editor.ViewModels;
+using GalNet.Editor.Views;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Editor.Services;
@@ -7,6 +10,17 @@ namespace GalNet.Editor.Services;
 public sealed class EditorViewFactory : IEditorViewFactory
 {
     private readonly IServiceProvider _serviceProvider;
+    private static readonly IReadOnlyDictionary<Type, Type> ViewModelToViewMap = new Dictionary<Type, Type>
+    {
+        [typeof(ProjectSettingsPanelViewModel)] = typeof(ProjectSettingsPanelView),
+        [typeof(EditorSettingsPanelViewModel)] = typeof(EditorSettingsPanelView),
+        [typeof(NodeGraphPanelViewModel)] = typeof(NodeGraphPanelView),
+        [typeof(NodeInspectorPanelViewModel)] = typeof(NodeInspectorPanelView),
+        [typeof(GroupEditorPanelViewModel)] = typeof(GroupEditorPanelView),
+        [typeof(NewProjectPanelViewModel)] = typeof(NewProjectPanelView),
+        [typeof(GamePreviewPanelViewModel)] = typeof(GamePreviewPanelView),
+        [typeof(LogPanelViewModel)] = typeof(LogPanelView)
+    };
 
     public EditorViewFactory(IServiceProvider serviceProvider)
     {
@@ -20,4 +34,15 @@ public sealed class EditorViewFactory : IEditorViewFactory
         view.DataContext = dataContext;
         return view;
     }
+
+    public Avalonia.Controls.Control? CreateViewForViewModel(object viewModel)
+    {
+        if (!ViewModelToViewMap.TryGetValue(viewModel.GetType(), out var viewType))
+            return null;
+
+        return CreateView(viewType, viewModel);
+    }
+
+    public bool CanCreateViewForViewModel(object viewModel) =>
+        ViewModelToViewMap.ContainsKey(viewModel.GetType());
 }

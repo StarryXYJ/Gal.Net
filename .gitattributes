@@ -1,0 +1,13 @@
+* text=auto
+
+*.cs text diff
+*.xaml text
+*.csproj text
+*.sln text
+*.md text
+*.json text
+*.xml text
+*.yml text
+
+*.ico binary
+*.png binary

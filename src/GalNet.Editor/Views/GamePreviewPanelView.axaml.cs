@@ -1,8 +1,8 @@
 using System;
 using Avalonia;
 using Avalonia.Controls;
-using Dock.Model.Core;
-using GalNet.Control.ViewModels;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using GalNet.Control.Views;
 using GalNet.Editor.ViewModels;
 using Serilog;
@@ -23,6 +23,7 @@ public partial class GamePreviewPanelView : UserControl
 
         AttachedToVisualTree += OnAttachedToVisualTree;
         DetachedFromVisualTree += OnDetachedFromVisualTree;
+        AddHandler(PointerPressedEvent, OnPreviewPointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
     }
 
     private void OnAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
@@ -58,22 +59,10 @@ public partial class GamePreviewPanelView : UserControl
 
     protected override void OnDataContextChanged(EventArgs e)
     {
-        var dc = DataContext;
-        Log.Information("[PreviewView] OnDataContextChanged DC={DCType}",
-            dc?.GetType().Name ?? "null");
-
-        // Dock passes Document as DataContext — override with the real ViewModel
-        if (dc is IDockable dockable && dockable.Context is GamePreviewPanelViewModel vm)
-        {
-            Log.Information("[PreviewView] Overriding DataContext: Document -> GamePreviewPanelViewModel");
-            DataContext = vm;
-            return;
-        }
-
         if (_vm is not null)
             _vm.PropertyChanged -= OnVmPropertyChanged;
 
-        _vm = dc as GamePreviewPanelViewModel;
+        _vm = DataContext as GamePreviewPanelViewModel;
         Log.Information("[PreviewView] VM setup: {Type}, PageHostVm={PH}",
             _vm?.GetType().Name ?? "null",
             _vm?.PageHostVm?.GetType().Name ?? "null");
@@ -97,11 +86,15 @@ public partial class GamePreviewPanelView : UserControl
         }
     }
 
+    private void OnPreviewPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        _vm?.FocusInspector();
+    }
+
     private void SyncPageHost()
     {
         if (_vm?.PageHostVm is null) return;
 
-        // Avoid re-creating if already showing the same host
         if (GameViewHost.Content is GamePageHostView existing
             && ReferenceEquals(existing.DataContext, _vm.PageHostVm))
             return;

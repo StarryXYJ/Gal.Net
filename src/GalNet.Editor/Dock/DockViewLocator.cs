@@ -1,37 +1,21 @@
 using Avalonia.Controls.Templates;
 using Dock.Model.Core;
-using GalNet.Editor.ViewModels;
-using GalNet.Editor.Views;
+using GalNet.Editor.Services;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
 namespace GalNet.Editor.Dock;
 
-/// <summary>
-/// Resolves ViewModel to View for Dock.Avalonia.
-/// Dock passes IDockable objects to Match/Build, NOT the Context directly.
-/// We extract Context from IDockable and resolve the corresponding View.
-/// </summary>
 public class DockViewLocator : IDataTemplate
 {
     public Avalonia.Controls.Control? Build(object? data)
     {
-        if (data is null) return null;
+        var context = ExtractContext(data);
+        if (context is null)
+            return null;
 
-        Log.Information("[DockViewLocator] Build called with: {Type}", data.GetType().Name);
-
-        // Extract Context from IDockable (Document/Tool)
-        object? context = data;
-        if (data is IDockable dockable && dockable.Context is not null)
-        {
-            context = dockable.Context;
-            Log.Information("[DockViewLocator] Extracted Context: {Type}", context.GetType().Name);
-        }
-
-        Avalonia.Controls.Control? control = context switch
-        {
-            GamePreviewPanelViewModel => new GamePreviewPanelView(),
-            _ => null
-        };
+        var factory = App.ServiceProvider?.GetRequiredService<IEditorViewFactory>();
+        var control = factory?.CreateViewForViewModel(context);
 
         if (control is not null)
         {
@@ -48,17 +32,24 @@ public class DockViewLocator : IDataTemplate
 
     public bool Match(object? data)
     {
-        if (data is null) return false;
+        var context = ExtractContext(data);
+        if (context is null)
+            return false;
 
-        // Match on IDockable — Dock passes Document/Tool objects, not Context directly
-        if (data is IDockable dockable)
-        {
-            bool matches = dockable.Context is GamePreviewPanelViewModel;
-            Log.Information("[DockViewLocator] Match called: {DockType} -> Context={CtxType}, matches={M}",
-                data.GetType().Name, dockable.Context?.GetType().Name ?? "null", matches);
-            return matches;
-        }
+        var factory = App.ServiceProvider?.GetRequiredService<IEditorViewFactory>();
+        var matches = factory?.CanCreateViewForViewModel(context) == true;
+        Log.Information("[DockViewLocator] Match called: {DataType} -> Context={CtxType}, matches={M}",
+            data?.GetType().Name ?? "null", context.GetType().Name, matches);
+        return matches;
+    }
 
-        return data is GamePreviewPanelViewModel;
+    private static object? ExtractContext(object? data)
+    {
+        if (data is null)
+            return null;
+
+        return data is IDockable { Context: not null } dockable
+            ? dockable.Context
+            : data;
     }
 }

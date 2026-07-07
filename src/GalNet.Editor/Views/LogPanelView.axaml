@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Editor.ViewModels"
+             x:Class="GalNet.Editor.Views.LogPanelView"
+             x:DataType="vm:LogPanelViewModel"
+             Background="{DynamicResource SemiColorBackground0}">
+    <ListBox ItemsSource="{Binding Lines}"
+             Margin="4"
+             Background="Transparent">
+        <ListBox.ItemTemplate>
+            <DataTemplate>
+                <TextBlock Text="{Binding}"
+                           FontFamily="Consolas"
+                           FontSize="12"
+                           Foreground="{DynamicResource SemiColorText2}" />
+            </DataTemplate>
+        </ListBox.ItemTemplate>
+    </ListBox>
+</UserControl>

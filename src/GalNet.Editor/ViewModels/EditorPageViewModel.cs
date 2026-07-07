@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Avalonia;
@@ -27,6 +29,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
     private readonly CommandService _commandService;
     private readonly EditorDockFactory _dockFactory;
     private readonly IEditorWindowFactory _windowFactory;
+    private readonly IEditorSettingsService _editorSettingsService;
 
     public IEditorLocalizationService L { get; }
 
@@ -41,11 +44,11 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
 
     public ICommand UndoCommand { get; } = new RelayCommand(() => { }, () => false);
     public ICommand RedoCommand { get; } = new RelayCommand(() => { }, () => false);
-    public ICommand TogglePanelCommand { get; } = new RelayCommand<string>(_ => { });
+    public ICommand TogglePanelCommand { get; }
 
-    public ICommand SaveLayoutCommand { get; } = new RelayCommand(() => { });
-    public ICommand LoadLayoutCommand { get; } = new RelayCommand(() => { });
-    public ICommand ResetLayoutCommand { get; } = new RelayCommand(() => { });
+    public ICommand SaveLayoutCommand { get; }
+    public ICommand LoadLayoutCommand { get; }
+    public ICommand ResetLayoutCommand { get; }
 
     public EditorPageViewModel(
         INavigationService navigation,
@@ -53,13 +56,20 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
         CommandService commandService,
         EditorDockFactory dockFactory,
         IEditorWindowFactory windowFactory,
+        IEditorSettingsService editorSettingsService,
         IEditorLocalizationService localization)
     {
         _projectService = projectService;
         _commandService = commandService;
         _dockFactory = dockFactory;
         _windowFactory = windowFactory;
+        _editorSettingsService = editorSettingsService;
         L = localization;
+
+        TogglePanelCommand = new RelayCommand<string>(TogglePanel);
+        SaveLayoutCommand = new RelayCommand(SaveLayout);
+        LoadLayoutCommand = new RelayCommand(LoadLayout);
+        ResetLayoutCommand = new RelayCommand(ResetLayout);
 
         var project = _projectService.Current
             ?? throw new InvalidOperationException("EditorPageViewModel requires an open project");
@@ -88,6 +98,60 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
     {
         Layout = _dockFactory.CreateLayout();
         _dockFactory.InitLayout(Layout);
+        OnPropertyChanged(nameof(Layout));
+    }
+
+    private void TogglePanel(string? panelId)
+    {
+        if (string.IsNullOrWhiteSpace(panelId))
+            return;
+
+        StatusText = $"Panel requested: {panelId}. Use Window > Reset to restore closed panels.";
+    }
+
+    private void SaveLayout()
+    {
+        if (Layout is null)
+            return;
+
+        var snapshot = new DockLayoutSnapshot(CollectDockableIds(Layout).ToArray());
+        var settings = _editorSettingsService.GetSettings();
+        settings.DockLayout = JsonSerializer.Serialize(snapshot);
+        _editorSettingsService.SaveSettings();
+        StatusText = "Window layout saved.";
+    }
+
+    private void LoadLayout()
+    {
+        var settings = _editorSettingsService.GetSettings();
+        if (string.IsNullOrWhiteSpace(settings.DockLayout))
+        {
+            StatusText = "No saved window layout.";
+            return;
+        }
+
+        ResetLayout();
+        StatusText = "Window layout loaded.";
+    }
+
+    private void ResetLayout()
+    {
+        Layout = _dockFactory.CreateLayout();
+        _dockFactory.InitLayout(Layout);
+        OnPropertyChanged(nameof(Layout));
+        StatusText = "Default window layout restored.";
+    }
+
+    private static IEnumerable<string> CollectDockableIds(IDockable dockable)
+    {
+        if (!string.IsNullOrWhiteSpace(dockable.Id))
+            yield return dockable.Id;
+
+        if (dockable is IDock dock && dock.VisibleDockables is not null)
+        {
+            foreach (var child in dock.VisibleDockables.SelectMany(CollectDockableIds))
+                yield return child;
+        }
     }
 
     [RelayCommand]
@@ -190,3 +254,5 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
             MenuItems.Add(item);
     }
 }
+
+public sealed record DockLayoutSnapshot(string[] DockableIds);

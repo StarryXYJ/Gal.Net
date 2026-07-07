@@ -62,6 +62,7 @@ public static class EditorServiceCollectionExtensions
         {
             var nav = new NavigationService(sp);
             nav.RegisterMap(typeof(StartupPageViewModel), typeof(StartupPageView));
+            nav.RegisterMap(typeof(NewProjectPanelViewModel), typeof(NewProjectPanelView));
             nav.RegisterMap(typeof(EditorPageViewModel), typeof(EditorPageView));
             nav.RegisterMap(typeof(GamePageHostViewModel), typeof(GamePageHostView));
             return nav;
@@ -73,6 +74,7 @@ public static class EditorServiceCollectionExtensions
     private static IServiceCollection AddEditorViews(this IServiceCollection services)
     {
         services.AddTransient<StartupPageView>();
+        services.AddTransient<NewProjectPanelView>();
         services.AddTransient<EditorPageView>();
         services.AddTransient<GamePageHostView>();
         services.AddTransient<MainWindow>();
@@ -86,6 +88,11 @@ public static class EditorServiceCollectionExtensions
     {
         services.AddTransient<StartupPageViewModel>();
         services.AddTransient<EditorPageViewModel>();
+        services.AddSingleton<EditorWorkspaceViewModel>();
+        services.AddTransient<NodeGraphPanelViewModel>();
+        services.AddTransient<NodeInspectorPanelViewModel>();
+        services.AddTransient<NewProjectPanelViewModel>();
+        services.AddTransient<LogPanelViewModel>();
         services.AddTransient<ProjectSettingsPanelViewModel>();
         services.AddTransient<EditorSettingsPanelViewModel>();
         services.AddTransient<GamePreviewPanelViewModel>();

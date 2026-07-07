@@ -1,6 +1,7 @@
 using Avalonia;
 using Dock.Model.Core;
 using Dock.Settings;
+using GalNet.Editor.Services;
 using Serilog;
 using System;
 
@@ -20,6 +21,7 @@ sealed class Program
                 outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
             .WriteTo.Debug(
                 outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+            .WriteTo.Sink(EditorLogSink.Instance)
             .CreateLogger();
 
         try

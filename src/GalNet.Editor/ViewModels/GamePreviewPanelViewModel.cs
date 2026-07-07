@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
+using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Control.ViewModels;
 using Serilog;
@@ -21,26 +22,41 @@ public partial class GamePreviewPanelViewModel : ObservableObject
 
     private readonly GalNet.Core.Services.INavigationService _navigation;
     private readonly IGameFlowFactory _gameFlowFactory;
+    private readonly EditorWorkspaceViewModel _workspace;
 
     public GamePreviewPanelViewModel(
         GalNet.Core.Services.INavigationService navigation,
-        IGameFlowFactory gameFlowFactory)
+        IGameFlowFactory gameFlowFactory,
+        EditorWorkspaceViewModel workspace)
     {
         _navigation = navigation;
         _gameFlowFactory = gameFlowFactory;
+        _workspace = workspace;
         Log.Information("[PreviewVM] .ctor thread={ThreadId}, isUI={IsUI}",
             Environment.CurrentManagedThreadId, Dispatcher.UIThread.CheckAccess());
 
-        Task.Run(async () =>
+        Variables.Add(new VariableItemViewModel { Name = "player.name", TypeName = "string", Value = "Alice" });
+        Variables.Add(new VariableItemViewModel { Name = "save.route", TypeName = "string", Value = "opening" });
+        Variables.Add(new VariableItemViewModel { Name = "flag.firstChoice", TypeName = "bool", Value = "false" });
+
+        _ = RestartPreviewAsync();
+    }
+
+    public void FocusInspector() => _workspace.FocusPreview(this);
+
+    [RelayCommand]
+    private async Task RestartPreviewAsync()
+    {
+        StatusText = "Restarting...";
+        await Task.Delay(100);
+        await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            await Task.Delay(100);
-            await Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                Log.Information("[PreviewVM] Creating GamePageHostViewModel...");
-                PageHostVm = _gameFlowFactory.CreatePageHost(_navigation);
-                OnPropertyChanged(nameof(PageHostVm));
-                Log.Information("[PreviewVM] GamePageHostViewModel created");
-            });
+            Log.Information("[PreviewVM] Creating GamePageHostViewModel...");
+            PageHostVm = _gameFlowFactory.CreatePageHost(_navigation);
+            OnPropertyChanged(nameof(PageHostVm));
+            OutputLines.Insert(0, $"Preview restarted at {DateTime.Now:T}");
+            StatusText = "Running";
+            Log.Information("[PreviewVM] GamePageHostViewModel created");
         });
     }
 }

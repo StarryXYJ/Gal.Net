@@ -7,6 +7,21 @@
              MinWidth="300"
              Background="{DynamicResource SemiColorBackground0}">
     <Grid RowDefinitions="Auto,*" Margin="4">
+        <Border Grid.Row="0"
+                Background="{DynamicResource SemiColorBackground1}"
+                BorderBrush="{DynamicResource SemiColorBorder}"
+                BorderThickness="0,0,0,1"
+                Padding="8,6">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <Button Content="Restart"
+                        Command="{Binding RestartPreviewCommand}" />
+                <TextBlock Grid.Column="2"
+                           Text="{Binding StatusText}"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource SemiColorText2}" />
+            </Grid>
+        </Border>
+
         <Border Grid.Row="1"
                 Background="{DynamicResource SemiColorBackground1}"
                 BorderBrush="{DynamicResource SemiColorBorder}"
