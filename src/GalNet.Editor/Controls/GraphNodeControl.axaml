@@ -1,0 +1,113 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Editor.ViewModels"
+             x:Class="GalNet.Editor.Controls.GraphNodeControl"
+             x:DataType="vm:GraphNodeViewModel"
+             Focusable="True">
+    <Border Name="NodeChrome"
+            Classes.selected="{Binding IsSelected}"
+            Classes.entry="{Binding IsEntryNode}"
+            Width="188"
+            MinHeight="96"
+            CornerRadius="6"
+            Padding="8">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+            <ItemsControl Grid.Column="0"
+                          ItemsSource="{Binding InputConnectors}"
+                          VerticalAlignment="Center">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:GraphConnectorViewModel">
+                        <Grid Width="18"
+                              Height="18"
+                              Margin="0,4,6,4"
+                              Background="Transparent"
+                              PointerPressed="OnConnectorPointerPressed"
+                              PointerReleased="OnConnectorPointerReleased">
+                            <Ellipse Width="18"
+                                     Height="18"
+                                     Fill="Transparent"
+                                     Stroke="{DynamicResource SemiColorFocusBorder}"
+                                     StrokeThickness="2"
+                                     IsVisible="{Binding IsPreviewTarget}" />
+                            <Ellipse Width="14"
+                                     Height="14"
+                                     Fill="{DynamicResource SemiColorBackground1}"
+                                     Stroke="{DynamicResource SemiColorSuccess}"
+                                     StrokeThickness="2" />
+                            <Ellipse Width="8"
+                                     Height="8"
+                                     Fill="{DynamicResource SemiColorSuccess}"
+                                     IsVisible="{Binding IsConnected}" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto">
+                <TextBlock Text="{Binding Name}"
+                           FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Row="1"
+                           Text="{Binding KindLabel}"
+                           FontSize="11"
+                           Foreground="{DynamicResource SemiColorText2}" />
+                <TextBlock Grid.Row="2"
+                           Text="入口"
+                           Margin="0,8,0,0"
+                           FontSize="11"
+                           FontWeight="SemiBold"
+                           IsVisible="{Binding IsEntryNode}" />
+            </Grid>
+
+            <ItemsControl Grid.Column="2"
+                          ItemsSource="{Binding OutputConnectors}"
+                          VerticalAlignment="Center">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:GraphConnectorViewModel">
+                        <Grid Width="18"
+                              Height="18"
+                              Margin="6,4,0,4"
+                              Background="Transparent"
+                              PointerPressed="OnConnectorPointerPressed"
+                              PointerReleased="OnConnectorPointerReleased">
+                            <Ellipse Width="18"
+                                     Height="18"
+                                     Fill="Transparent"
+                                     Stroke="{DynamicResource SemiColorFocusBorder}"
+                                     StrokeThickness="2"
+                                     IsVisible="{Binding IsPreviewTarget}" />
+                            <Ellipse Width="14"
+                                     Height="14"
+                                     Fill="{DynamicResource SemiColorBackground1}"
+                                     Stroke="{DynamicResource SemiColorPrimary}"
+                                     StrokeThickness="2" />
+                            <Ellipse Width="8"
+                                     Height="8"
+                                     Fill="{DynamicResource SemiColorPrimary}"
+                                     IsVisible="{Binding IsConnected}" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Grid>
+    </Border>
+
+    <UserControl.Styles>
+        <Style Selector="Border#NodeChrome">
+            <Setter Property="Background" Value="{DynamicResource SemiColorBackground1}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Border#NodeChrome.entry">
+            <Setter Property="BorderBrush" Value="{DynamicResource SemiColorFocusBorder}" />
+        </Style>
+        <Style Selector="Border#NodeChrome.selected">
+            <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <Style Selector="UserControl:focus-within Border#NodeChrome">
+            <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" />
+        </Style>
+    </UserControl.Styles>
+</UserControl>

@@ -1,24 +1,28 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:GalNet.Editor.Controls"
              xmlns:vm="using:GalNet.Editor.ViewModels"
              x:Class="GalNet.Editor.Views.NodeGraphPanelView"
              x:DataType="vm:NodeGraphPanelViewModel"
              Focusable="True"
              KeyDown="OnKeyDown"
              Background="{DynamicResource SemiColorBackground0}">
-    <Border Name="Viewport"
-            ClipToBounds="True"
-            Background="{DynamicResource SemiColorBackground0}"
-            PointerWheelChanged="OnViewportPointerWheelChanged"
-            PointerPressed="OnViewportPointerPressed"
-            PointerMoved="OnViewportPointerMoved"
-            PointerReleased="OnViewportPointerReleased"
-            PointerEntered="OnViewportPointerEntered"
-            PointerExited="OnViewportPointerExited"
-            RightTapped="OnViewportRightTapped">
+    <controls:PanZoomCanvas Name="Viewport"
+                            Background="{DynamicResource SemiColorBackground0}"
+                            CanvasWidth="10000"
+                            CanvasHeight="10000"
+                            MinZoom="0.2"
+                            MaxZoom="3"
+                            ZoomStep="1.04"
+                            PointerPressed="OnViewportPointerPressed"
+                            PointerMoved="OnViewportPointerMoved"
+                            PointerReleased="OnViewportPointerReleased"
+                            PointerEntered="OnViewportPointerEntered"
+                            PointerExited="OnViewportPointerExited"
+                            RightTapped="OnViewportRightTapped">
         <Canvas Name="GraphCanvas"
-                Width="1800"
-                Height="1200"
+                Width="10000"
+                Height="10000"
                 RenderTransformOrigin="0,0">
             <ItemsControl Width="{Binding #GraphCanvas.Width}"
                           Height="{Binding #GraphCanvas.Height}"
@@ -31,9 +35,10 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:GraphEdgeViewModel">
                         <Path Data="{Binding PathData}"
-                              Stroke="{DynamicResource SemiColorPrimary}"
-                              StrokeThickness="2"
-                              Opacity="0.75" />
+                              Stroke="Transparent"
+                              StrokeThickness="14"
+                              PointerPressed="OnEdgePointerPressed"
+                              RightTapped="OnEdgeRightTapped" />
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
@@ -55,84 +60,51 @@
                 </ItemsControl.ItemContainerTheme>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:GraphNodeViewModel">
-                        <Border Classes.node="{Binding !IsSelected}"
-                                Classes.selected="{Binding IsSelected}"
-                                Width="188"
-                                MinHeight="96"
-                                CornerRadius="6"
-                                BorderThickness="1"
-                                Padding="8"
-                                PointerPressed="OnNodePointerPressed"
-                                PointerMoved="OnNodePointerMoved"
-                                PointerReleased="OnNodePointerReleased"
-                                DoubleTapped="OnNodeDoubleTapped"
-                                RightTapped="OnNodeRightTapped">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <ItemsControl Grid.Column="0"
-                                              ItemsSource="{Binding InputConnectors}"
-                                              VerticalAlignment="Center">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:GraphConnectorViewModel">
-                                            <Ellipse Width="12"
-                                                     Height="12"
-                                                     Margin="-14,4,6,4"
-                                                     Fill="{DynamicResource SemiColorSuccess}"
-                                                     Stroke="{DynamicResource SemiColorBorder}"
-                                                     StrokeThickness="1"
-                                                     PointerPressed="OnConnectorPointerPressed"
-                                                     PointerReleased="OnConnectorPointerReleased" />
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-
-                                <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto">
-                                    <TextBlock Text="{Binding Name}"
-                                               FontWeight="SemiBold"
-                                               TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Grid.Row="1"
-                                               Text="{Binding KindLabel}"
-                                               FontSize="11"
-                                               Foreground="{DynamicResource SemiColorText2}" />
-                                    <TextBlock Grid.Row="2"
-                                               Text="Entry"
-                                               Margin="0,8,0,0"
-                                               FontSize="11"
-                                               FontWeight="SemiBold"
-                                               IsVisible="{Binding IsRoot}" />
-                                </Grid>
-
-                                <ItemsControl Grid.Column="2"
-                                              ItemsSource="{Binding OutputConnectors}"
-                                              VerticalAlignment="Center">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:GraphConnectorViewModel">
-                                            <Ellipse Width="12"
-                                                     Height="12"
-                                                     Margin="6,4,-14,4"
-                                                     Fill="{DynamicResource SemiColorPrimary}"
-                                                     Stroke="{DynamicResource SemiColorBorder}"
-                                                     StrokeThickness="1"
-                                                     PointerPressed="OnConnectorPointerPressed"
-                                                     PointerReleased="OnConnectorPointerReleased" />
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </Grid>
-                        </Border>
+                        <controls:GraphNodeControl NodePointerPressed="OnNodePointerPressed"
+                                                   NodePointerMoved="OnNodePointerMoved"
+                                                   NodePointerReleased="OnNodePointerReleased"
+                                                   NodeDoubleTapped="OnNodeDoubleTapped"
+                                                   NodeRightTapped="OnNodeRightTapped"
+                                                   ConnectorPointerPressed="OnConnectorPointerPressed"
+                                                   ConnectorPointerReleased="OnConnectorPointerReleased" />
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-        </Canvas>
-    </Border>
 
-    <UserControl.Styles>
-        <Style Selector="Border.node">
-            <Setter Property="Background" Value="{DynamicResource SemiColorBackground1}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
-        </Style>
-        <Style Selector="Border.selected">
-            <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLow}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" />
-        </Style>
-    </UserControl.Styles>
+            <ItemsControl Width="{Binding #GraphCanvas.Width}"
+                          Height="{Binding #GraphCanvas.Height}"
+                          ItemsSource="{Binding Workspace.Edges}"
+                          IsHitTestVisible="False">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:GraphEdgeViewModel">
+                        <Path Data="{Binding PathData}"
+                              Stroke="{Binding StrokeBrush}"
+                              StrokeThickness="{Binding StrokeThickness}"
+                              Opacity="0.85"
+                              IsHitTestVisible="False" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Path Name="PendingConnectionPath"
+                  Stroke="{DynamicResource SemiColorFocusBorder}"
+                  StrokeThickness="2.5"
+                  StrokeDashArray="5,3"
+                  Opacity="0.9"
+                  IsVisible="False"
+                  IsHitTestVisible="False" />
+
+            <Rectangle Name="SelectionRectangle"
+                       Fill="#338F72FF"
+                       Stroke="{DynamicResource SemiColorPrimary}"
+                       StrokeThickness="1"
+                       IsVisible="False"
+                       IsHitTestVisible="False" />
+        </Canvas>
+    </controls:PanZoomCanvas>
 </UserControl>

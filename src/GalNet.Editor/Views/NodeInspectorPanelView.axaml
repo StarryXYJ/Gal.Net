@@ -49,15 +49,38 @@
                     <TextBox Text="{Binding Workspace.SelectedNode.Name}" />
 
                     <TextBlock Text="Type" />
-                    <TextBox Text="{Binding Workspace.SelectedNode.KindLabel}"
-                             IsReadOnly="True" />
+                    <Border Background="{DynamicResource SemiColorFill0}"
+                            BorderBrush="{DynamicResource SemiColorBorder}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="8,5">
+                        <TextBlock Text="{Binding Workspace.SelectedNode.KindLabel}"
+                                   Foreground="{DynamicResource SemiColorText1}"
+                                   TextTrimming="CharacterEllipsis" />
+                    </Border>
 
                     <TextBlock Text="Id" />
-                    <TextBox Text="{Binding Workspace.SelectedNode.Id}"
-                             IsReadOnly="True" />
+                    <Border Background="{DynamicResource SemiColorFill0}"
+                            BorderBrush="{DynamicResource SemiColorBorder}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="8,5">
+                        <TextBlock Text="{Binding Workspace.SelectedNode.Id}"
+                                   FontFamily="Consolas"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource SemiColorText2}"
+                                   TextTrimming="CharacterEllipsis" />
+                    </Border>
 
-                    <CheckBox Content="Entry node"
-                              IsChecked="{Binding Workspace.SelectedNode.IsRoot}" />
+                    <Border Background="{DynamicResource SemiColorPrimaryLight}"
+                            BorderBrush="{DynamicResource SemiColorPrimary}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="8,5"
+                            IsVisible="{Binding Workspace.SelectedNode.IsEntryNode}">
+                        <TextBlock Text="入口节点"
+                                   Foreground="{DynamicResource SemiColorText1}" />
+                    </Border>
 
                     <StackPanel Spacing="6"
                                 IsVisible="{Binding IsLinearGroupSelected}">

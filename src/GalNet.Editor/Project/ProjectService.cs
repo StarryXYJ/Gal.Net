@@ -85,12 +85,13 @@ public sealed class ProjectService : IProjectService
             throw new DirectoryNotFoundException($"Project directory not found: {projectPath}");
 
         var settings = await LoadProjectSettingsAsync(projectPath);
+        var editorState = await LoadEditorProjectStateAsync(projectPath);
         var scope = _globalServices.CreateScope();
 
         var name = Path.GetFileName(projectPath);
         var id = name;
 
-        var program = new GalProject(id, name, projectPath, settings, scope);
+        var program = new GalProject(id, name, projectPath, settings, editorState, scope);
 
         _current = program;
 
@@ -118,11 +119,15 @@ public sealed class ProjectService : IProjectService
         Directory.CreateDirectory(Path.Combine(projectPath, "I18n"));
         Directory.CreateDirectory(Path.Combine(projectPath, "Output"));
         Directory.CreateDirectory(Path.Combine(projectPath, "Temp"));
+        Directory.CreateDirectory(Path.Combine(projectPath, ".galnet"));
 
         await SaveProjectSettingsAsync(projectPath, settings);
+        await SaveEditorProjectStateAsync(projectPath, new EditorProjectState());
+        await SaveInitialGraphAsync(projectPath, name);
 
         var scope = _globalServices.CreateScope();
-        var program = new GalProject(name, name, projectPath, settings, scope);
+        var editorState = await LoadEditorProjectStateAsync(projectPath);
+        var program = new GalProject(name, name, projectPath, settings, editorState, scope);
 
         _current = program;
 
@@ -155,7 +160,9 @@ public sealed class ProjectService : IProjectService
         if (_current == null)
             return Task.CompletedTask;
 
-        return SaveProjectSettingsAsync(_current.RootPath, _current.Settings);
+        return Task.WhenAll(
+            SaveProjectSettingsAsync(_current.RootPath, _current.Settings),
+            SaveEditorProjectStateAsync(_current.RootPath, _current.EditorState));
     }
 
     // ────────── 最近项目 ──────────
@@ -214,5 +221,79 @@ public sealed class ProjectService : IProjectService
         var settingsPath = Path.Combine(projectPath, "settings.json");
         var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
         await File.WriteAllTextAsync(settingsPath, json);
+    }
+
+    private static async Task<EditorProjectState> LoadEditorProjectStateAsync(string projectPath)
+    {
+        var statePath = Path.Combine(projectPath, ".galnet", "editor-state.json");
+        if (File.Exists(statePath))
+        {
+            var json = await File.ReadAllTextAsync(statePath);
+            return JsonSerializer.Deserialize<EditorProjectState>(json) ?? new EditorProjectState();
+        }
+        return new EditorProjectState();
+    }
+
+    private static async Task SaveEditorProjectStateAsync(string projectPath, EditorProjectState state)
+    {
+        var stateDir = Path.Combine(projectPath, ".galnet");
+        Directory.CreateDirectory(stateDir);
+        var statePath = Path.Combine(stateDir, "editor-state.json");
+        var json = JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(statePath, json);
+    }
+
+    private static async Task SaveInitialGraphAsync(string projectPath, string name)
+    {
+        var graphPath = Path.Combine(projectPath, "Graph");
+        Directory.CreateDirectory(Path.Combine(graphPath, "groups"));
+
+        var entryId = Guid.NewGuid().ToString("N");
+        var groupId = Guid.NewGuid().ToString("N");
+        var graph = new EditorGraphDocument
+        {
+            Name = name,
+            RootNodeId = entryId,
+            Nodes =
+            [
+                new EditorGraphNodeDto
+                {
+                    Id = entryId,
+                    Type = "Entry",
+                    Name = "Entry",
+                    X = 4620,
+                    Y = 4950
+                },
+                new EditorGraphNodeDto
+                {
+                    Id = groupId,
+                    Type = "Group",
+                    Name = "Opening",
+                    X = 4900,
+                    Y = 4950,
+                    File = $"groups/{groupId}.galgroup"
+                }
+            ],
+            Edges =
+            [
+                new EditorGraphEdgeDto
+                {
+                    FromNodeId = entryId,
+                    FromOutlet = 0,
+                    ToNodeId = groupId
+                }
+            ]
+        };
+
+        await File.WriteAllTextAsync(
+            Path.Combine(graphPath, "graph.json"),
+            JsonSerializer.Serialize(graph, new JsonSerializerOptions { WriteIndented = true }));
+        await File.WriteAllTextAsync(
+            Path.Combine(graphPath, "groups", $"{groupId}.galgroup"),
+            GalNet.Core.Serialization.GalgroupParser.Serialize("text", new Dictionary<string, string>
+            {
+                ["speaker"] = "Alice",
+                ["text"] = "Hello GalNet"
+            }));
     }
 }

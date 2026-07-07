@@ -32,6 +32,8 @@ public sealed partial class NodeInspectorPanelViewModel : ObservableObject
     {
         if (e.PropertyName is nameof(EditorWorkspaceViewModel.InspectorMode)
             or nameof(EditorWorkspaceViewModel.SelectedNode)
+            or nameof(EditorWorkspaceViewModel.SelectedEdge)
+            or nameof(EditorWorkspaceViewModel.HasMultipleNodeSelection)
             or nameof(EditorWorkspaceViewModel.ActivePreview))
         {
             OnPropertyChanged(nameof(IsNodeInspectorVisible));

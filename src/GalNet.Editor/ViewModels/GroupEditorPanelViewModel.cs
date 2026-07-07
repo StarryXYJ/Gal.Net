@@ -23,7 +23,6 @@ public partial class GroupEditorPanelViewModel : ObservableObject
             Type = "text",
             Parameters = "speaker=; text="
         });
-        GroupNode.RefreshConnectors();
     }
 
     [RelayCommand]
@@ -34,7 +33,6 @@ public partial class GroupEditorPanelViewModel : ObservableObject
 
         GroupNode.Entries.Remove(entry);
         RenumberEntries();
-        GroupNode.RefreshConnectors();
     }
 
     [RelayCommand]

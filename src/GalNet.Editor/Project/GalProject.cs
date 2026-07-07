@@ -48,8 +48,14 @@ public sealed class GalProject : IDisposable
     /// <summary>设置文件路径</summary>
     public string SettingsFilePath => Path.Combine(RootPath, "settings.json");
 
+    public string EditorStateDirectory => Path.Combine(RootPath, ".galnet");
+
+    public string EditorStateFilePath => Path.Combine(EditorStateDirectory, "editor-state.json");
+
     /// <summary>项目设置（持久化在 settings.json，每个项目一份）</summary>
     public ProjectSettings Settings { get; }
+
+    public EditorProjectState EditorState { get; }
 
     /// <summary>项目级 DI Scope。从此 Scope 解析的 Service 在项目关闭时自动 Dispose。</summary>
     public IServiceScope Scope { get; }
@@ -60,12 +66,13 @@ public sealed class GalProject : IDisposable
     /// <summary>工程项目是否有未保存的修改</summary>
     public bool IsDirty { get; set; }
 
-    public GalProject(string id, string name, string rootPath, ProjectSettings settings, IServiceScope scope)
+    public GalProject(string id, string name, string rootPath, ProjectSettings settings, EditorProjectState editorState, IServiceScope scope)
     {
         Id = id;
         Name = name;
         RootPath = rootPath;
         Settings = settings;
+        EditorState = editorState;
         Scope = scope;
     }
 

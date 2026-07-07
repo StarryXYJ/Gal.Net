@@ -1,8 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Core.Entry;
@@ -23,6 +27,9 @@ public partial class EditorWorkspaceViewModel : ObservableObject
     private GraphNodeViewModel? _selectedNode;
 
     [ObservableProperty]
+    private GraphEdgeViewModel? _selectedEdge;
+
+    [ObservableProperty]
     private GamePreviewPanelViewModel? _activePreview;
 
     [ObservableProperty]
@@ -33,6 +40,11 @@ public partial class EditorWorkspaceViewModel : ObservableObject
 
     public ObservableCollection<GraphNodeViewModel> Nodes { get; } = [];
     public ObservableCollection<GraphEdgeViewModel> Edges { get; } = [];
+    public ObservableCollection<GraphNodeViewModel> SelectedNodes { get; } = [];
+    public GraphViewportState GraphViewport => _projectService.Current?.EditorState.GraphViewport ?? _fallbackViewport;
+    public bool HasMultipleNodeSelection => SelectedNodes.Count > 1;
+
+    private readonly GraphViewportState _fallbackViewport = new();
 
     public EditorWorkspaceViewModel(
         IProjectService projectService,
@@ -40,25 +52,108 @@ public partial class EditorWorkspaceViewModel : ObservableObject
     {
         _projectService = projectService;
         _dockFactory = dockFactory;
-        BuildSampleGraph();
+        _projectService.CurrentChanged += _ => LoadCurrentProjectGraph();
+        LoadCurrentProjectGraph();
     }
 
-    public void SelectNode(GraphNodeViewModel? node)
+    public void SelectNode(GraphNodeViewModel? node, bool additive = false)
     {
-        if (SelectedNode is not null)
-            SelectedNode.IsSelected = false;
+        if (!additive)
+            ClearSelection();
 
-        SelectedNode = node;
+        if (node is not null && !SelectedNodes.Contains(node))
+            SelectedNodes.Add(node);
+
+        foreach (var selected in SelectedNodes)
+            selected.IsSelected = true;
+
+        SelectedNode = SelectedNodes.Count == 1 ? SelectedNodes[0] : null;
         InspectorMode = InspectorMode.Node;
+        OnPropertyChanged(nameof(HasMultipleNodeSelection));
+    }
 
-        if (SelectedNode is not null)
-            SelectedNode.IsSelected = true;
+    public void SelectNodes(IEnumerable<GraphNodeViewModel> nodes)
+    {
+        ClearSelection();
+
+        foreach (var node in nodes)
+        {
+            if (SelectedNodes.Contains(node))
+                continue;
+
+            SelectedNodes.Add(node);
+            node.IsSelected = true;
+        }
+
+        SelectedNode = SelectedNodes.Count == 1 ? SelectedNodes[0] : null;
+        InspectorMode = InspectorMode.Node;
+        OnPropertyChanged(nameof(HasMultipleNodeSelection));
+    }
+
+    public void SelectEdge(GraphEdgeViewModel? edge)
+    {
+        ClearSelection();
+        SelectedEdge = edge;
+        if (SelectedEdge is not null)
+            SelectedEdge.IsSelected = true;
+        InspectorMode = InspectorMode.Node;
+    }
+
+    public void ClearSelection()
+    {
+        foreach (var node in SelectedNodes)
+            node.IsSelected = false;
+
+        SelectedNodes.Clear();
+
+        if (SelectedEdge is not null)
+            SelectedEdge.IsSelected = false;
+
+        SelectedNode = null;
+        SelectedEdge = null;
+        OnPropertyChanged(nameof(HasMultipleNodeSelection));
+    }
+
+    public void DeleteSelection()
+    {
+        if (SelectedEdge is not null)
+        {
+            DeleteEdge(SelectedEdge);
+            return;
+        }
+
+        var nodes = SelectedNodes.Where(n => n.CanDelete).ToList();
+        foreach (var node in nodes)
+            DeleteNode(node);
+    }
+
+    public void DeleteEdge(GraphEdgeViewModel edge)
+    {
+        if (!Edges.Remove(edge))
+            return;
+
+        if (ReferenceEquals(SelectedEdge, edge))
+            SelectedEdge = null;
+
+        UpdateConnectorStates();
+        Log.Information("Edge deleted: {From} [{Outlet}] -> {To}", edge.From.Name, edge.Outlet, edge.To.Name);
+        SaveGraphDocument();
     }
 
     public void FocusPreview(GamePreviewPanelViewModel preview)
     {
+        ClearSelection();
         ActivePreview = preview;
         InspectorMode = InspectorMode.PreviewVariables;
+    }
+
+    public void SaveGraphViewport()
+    {
+        if (_projectService.Current is not { } project)
+            return;
+
+        project.IsDirty = true;
+        _ = _projectService.SaveAsync();
     }
 
     public GraphNodeViewModel AddNode(GraphNodeKind kind, double x, double y)
@@ -79,13 +174,18 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         };
 
         Nodes.Add(vm);
+        UpdateConnectorStates();
         SelectNode(vm);
         Log.Information("Node created: {NodeName} ({NodeKind})", vm.Name, vm.NodeKind);
+        SaveGraphDocument();
         return vm;
     }
 
     public void DeleteNode(GraphNodeViewModel node)
     {
+        if (!node.CanDelete)
+            return;
+
         var relatedEdges = Edges
             .Where(e => ReferenceEquals(e.From, node) || ReferenceEquals(e.To, node))
             .ToList();
@@ -94,14 +194,19 @@ public partial class EditorWorkspaceViewModel : ObservableObject
             Edges.Remove(edge);
 
         Nodes.Remove(node);
+        UpdateConnectorStates();
 
+        SelectedNodes.Remove(node);
+        node.IsSelected = false;
         if (ReferenceEquals(SelectedNode, node))
-            SelectNode(null);
+            SelectedNode = SelectedNodes.Count == 1 ? SelectedNodes[0] : null;
+        OnPropertyChanged(nameof(HasMultipleNodeSelection));
 
         if (node.NodeKind == GraphNodeKind.LinearGroup)
             _dockFactory.CloseGroupEditor(node.Id);
 
         Log.Information("Node deleted: {NodeName} ({NodeKind})", node.Name, node.NodeKind);
+        SaveGraphDocument();
     }
 
     public void OpenGroupEditor(GraphNodeViewModel node)
@@ -121,14 +226,19 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         var output = first.Kind == GraphConnectorKind.Output ? first : second;
         var input = first.Kind == GraphConnectorKind.Input ? first : second;
 
-        if (Edges.Any(e =>
-                ReferenceEquals(e.From, output.Node)
-                && e.Outlet == output.Index
-                && ReferenceEquals(e.To, input.Node)))
-            return;
+        var conflictingEdges = Edges
+            .Where(e =>
+                ReferenceEquals(e.To, input.Node)
+                || (ReferenceEquals(e.From, output.Node) && e.Outlet == output.Index))
+            .ToList();
+
+        foreach (var edge in conflictingEdges)
+            Edges.Remove(edge);
 
         Edges.Add(new GraphEdgeViewModel(output.Node, input.Node, output.Index));
+        UpdateConnectorStates();
         Log.Information("Nodes connected: {From} [{Outlet}] -> {To}", output.Node.Name, output.Index, input.Node.Name);
+        SaveGraphDocument();
     }
 
     [RelayCommand]
@@ -142,7 +252,9 @@ public partial class EditorWorkspaceViewModel : ObservableObject
             Text = $"Option {SelectedNode.Options.Count + 1}"
         });
         SelectedNode.RefreshConnectors();
+        UpdateConnectorStates();
         Log.Information("Choice option added: {NodeName}", SelectedNode.Name);
+        SaveGraphDocument();
     }
 
     [RelayCommand]
@@ -154,6 +266,8 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         SelectedNode.Options.Remove(option);
         SelectedNode.RefreshConnectors();
         RemoveDanglingOutletEdges(SelectedNode);
+        UpdateConnectorStates();
+        SaveGraphDocument();
     }
 
     [RelayCommand]
@@ -167,7 +281,9 @@ public partial class EditorWorkspaceViewModel : ObservableObject
             Expression = "true"
         });
         SelectedNode.RefreshConnectors();
+        UpdateConnectorStates();
         Log.Information("Condition added: {NodeName}", SelectedNode.Name);
+        SaveGraphDocument();
     }
 
     [RelayCommand]
@@ -179,6 +295,95 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         SelectedNode.Conditions.Remove(condition);
         SelectedNode.RefreshConnectors();
         RemoveDanglingOutletEdges(SelectedNode);
+        UpdateConnectorStates();
+        SaveGraphDocument();
+    }
+
+    public void SaveGraphDocument()
+    {
+        if (_projectService.Current is not { } project)
+            return;
+
+        Directory.CreateDirectory(project.GraphPath);
+        var groupsDir = Path.Combine(project.GraphPath, "groups");
+        Directory.CreateDirectory(groupsDir);
+
+        var document = new EditorGraphDocument
+        {
+            Name = project.Name,
+            RootNodeId = EntryNode?.Id ?? Nodes.FirstOrDefault()?.Id ?? "",
+            Nodes = Nodes.Select(ToNodeDto).ToList(),
+            Edges = Edges.Select(e => new EditorGraphEdgeDto
+            {
+                FromNodeId = e.From.Id,
+                FromOutlet = e.Outlet,
+                ToNodeId = e.To.Id
+            }).ToList()
+        };
+
+        foreach (var group in Nodes.Where(n => n.NodeKind == GraphNodeKind.LinearGroup))
+            File.WriteAllLines(
+                Path.Combine(groupsDir, $"{group.Id}.galgroup"),
+                group.Entries.Select(SerializeEntry));
+
+        var json = JsonSerializer.Serialize(document, new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(Path.Combine(project.GraphPath, "graph.json"), json);
+        project.IsDirty = true;
+    }
+
+    private static EditorGraphNodeDto ToNodeDto(GraphNodeViewModel node)
+    {
+        var dto = new EditorGraphNodeDto
+        {
+            Id = node.Id,
+            Type = node.NodeKind switch
+            {
+                GraphNodeKind.Entry => "Entry",
+                GraphNodeKind.LinearGroup => "Group",
+                _ => "Branch"
+            },
+            Name = node.Name,
+            X = node.X,
+            Y = node.Y
+        };
+
+        if (node.NodeKind == GraphNodeKind.LinearGroup)
+        {
+            dto.File = $"groups/{node.Id}.galgroup";
+        }
+        else if (node.NodeKind is GraphNodeKind.ChoiceBranch or GraphNodeKind.ConditionBranch)
+        {
+            dto.BranchType = node.NodeKind == GraphNodeKind.ChoiceBranch ? "Choice" : "Condition";
+            dto.Options = node.NodeKind == GraphNodeKind.ChoiceBranch
+                ? node.Options.Select(o => new EditorGraphBranchOptionDto
+                {
+                    Text = o.Text,
+                    Condition = o.Condition
+                }).ToList()
+                : null;
+            dto.Conditions = node.NodeKind == GraphNodeKind.ConditionBranch
+                ? node.Conditions.Select(c => new EditorGraphBranchConditionDto
+                {
+                    Expression = c.Expression
+                }).ToList()
+                : null;
+        }
+
+        return dto;
+    }
+
+    private static string SerializeEntry(EntryEditorItemViewModel entry)
+    {
+        var parameters = entry.Parameters
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(part => part.Split('=', 2, StringSplitOptions.TrimEntries))
+            .Where(parts => parts.Length > 0 && !string.IsNullOrWhiteSpace(parts[0]))
+            .ToDictionary(parts => parts[0], parts => parts.Length > 1 ? parts[1] : "");
+
+        if (!string.IsNullOrWhiteSpace(entry.Condition))
+            parameters["condition"] = entry.Condition;
+
+        return GalNet.Core.Serialization.GalgroupParser.Serialize(entry.Type, parameters);
     }
 
     public async Task CreateProjectAsync(string name, string path)
@@ -204,15 +409,209 @@ public partial class EditorWorkspaceViewModel : ObservableObject
 
         foreach (var edge in dangling)
             Edges.Remove(edge);
+
+        UpdateConnectorStates();
+    }
+
+    private void UpdateConnectorStates()
+    {
+        foreach (var connector in Nodes.SelectMany(n => n.InputConnectors.Concat(n.OutputConnectors)))
+            connector.IsConnected = false;
+
+        foreach (var edge in Edges)
+        {
+            var output = edge.From.OutputConnectors.FirstOrDefault(c => c.Index == edge.Outlet);
+            if (output is not null)
+                output.IsConnected = true;
+
+            var input = edge.To.InputConnectors.FirstOrDefault();
+            if (input is not null)
+                input.IsConnected = true;
+        }
+    }
+
+    private void LoadCurrentProjectGraph()
+    {
+        ClearSelection();
+        Nodes.Clear();
+        Edges.Clear();
+
+        if (_projectService.Current is not { } project)
+        {
+            BuildSampleGraph();
+            return;
+        }
+
+        var graphFile = Path.Combine(project.GraphPath, "graph.json");
+        if (!File.Exists(graphFile))
+        {
+            BuildSampleGraph();
+            return;
+        }
+
+        try
+        {
+            var json = File.ReadAllText(graphFile);
+            var document = JsonSerializer.Deserialize<EditorGraphDocument>(json);
+            if (document is null || document.Nodes.Count == 0)
+            {
+                BuildSampleGraph();
+                return;
+            }
+
+            var nodeMap = new Dictionary<string, GraphNodeViewModel>();
+
+            foreach (var dto in document.Nodes)
+            {
+                var vm = CreateNodeFromDto(dto);
+                vm.IsRoot = vm.NodeKind == GraphNodeKind.Entry;
+                Nodes.Add(vm);
+                nodeMap[vm.Id] = vm;
+            }
+
+            EnsureEntryNode(document, nodeMap);
+
+            foreach (var edge in document.Edges)
+            {
+                if (!nodeMap.TryGetValue(edge.FromNodeId, out var from)
+                    || !nodeMap.TryGetValue(edge.ToNodeId, out var to)
+                    || edge.FromOutlet < 0
+                    || edge.FromOutlet >= from.OutputConnectors.Count
+                    || to.InputConnectors.Count == 0)
+                    continue;
+
+                Edges.Add(new GraphEdgeViewModel(from, to, edge.FromOutlet));
+            }
+
+            UpdateConnectorStates();
+            SelectNode(EntryNode ?? Nodes.FirstOrDefault());
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to load graph document; using sample graph");
+            ClearSelection();
+            Nodes.Clear();
+            Edges.Clear();
+            BuildSampleGraph();
+        }
+    }
+
+    private GraphNodeViewModel CreateNodeFromDto(EditorGraphNodeDto dto)
+    {
+        var kind = dto.Type.Equals("Entry", StringComparison.OrdinalIgnoreCase)
+            ? GraphNodeKind.Entry
+            : dto.Type.Equals("Group", StringComparison.OrdinalIgnoreCase)
+                ? GraphNodeKind.LinearGroup
+                : dto.BranchType?.Equals("Condition", StringComparison.OrdinalIgnoreCase) == true
+                    ? GraphNodeKind.ConditionBranch
+                    : GraphNodeKind.ChoiceBranch;
+
+        Node node = kind switch
+        {
+            GraphNodeKind.Entry => new Group { Id = dto.Id, Name = string.IsNullOrWhiteSpace(dto.Name) ? "Entry" : dto.Name },
+            GraphNodeKind.LinearGroup => new Group { Id = dto.Id, Name = dto.Name },
+            GraphNodeKind.ChoiceBranch => new Branch { Id = dto.Id, Name = dto.Name, BranchType = BranchType.Choice },
+            GraphNodeKind.ConditionBranch => new Branch { Id = dto.Id, Name = dto.Name, BranchType = BranchType.Condition },
+            _ => throw new ArgumentOutOfRangeException()
+        };
+
+        var vm = new GraphNodeViewModel(node, kind)
+        {
+            X = dto.X,
+            Y = dto.Y
+        };
+
+        if (kind == GraphNodeKind.LinearGroup)
+            LoadGroupEntries(vm, dto.File);
+
+        if (kind == GraphNodeKind.ChoiceBranch)
+        {
+            vm.Options.Clear();
+            foreach (var option in dto.Options ?? [])
+            {
+                vm.Options.Add(new BranchOptionEditorItemViewModel
+                {
+                    Text = option.Text,
+                    Condition = option.Condition
+                });
+            }
+        }
+
+        if (kind == GraphNodeKind.ConditionBranch)
+        {
+            vm.Conditions.Clear();
+            foreach (var condition in dto.Conditions ?? [])
+                vm.Conditions.Add(new BranchConditionEditorItemViewModel { Expression = condition.Expression });
+        }
+
+        vm.RefreshConnectors();
+        return vm;
+    }
+
+    private void LoadGroupEntries(GraphNodeViewModel group, string? relativeFile)
+    {
+        group.Entries.Clear();
+
+        if (_projectService.Current is not { } project || string.IsNullOrWhiteSpace(relativeFile))
+            return;
+
+        var file = Path.Combine(project.GraphPath, relativeFile.Replace('/', Path.DirectorySeparatorChar));
+        if (!File.Exists(file))
+            return;
+
+        var parsed = GalNet.Core.Serialization.GalgroupParser.Parse(File.ReadAllText(file));
+        foreach (var entry in parsed)
+        {
+            var parameters = entry.Params
+                .Where(p => p.Key != "condition")
+                .Select(p => string.IsNullOrEmpty(p.Value) ? p.Key : $"{p.Key}={p.Value}");
+
+            group.Entries.Add(new EntryEditorItemViewModel
+            {
+                Id = group.Entries.Count + 1,
+                Type = entry.EntryType,
+                Condition = entry.Params.TryGetValue("condition", out var condition) ? condition : "",
+                Parameters = string.Join("; ", parameters)
+            });
+        }
+    }
+
+    private void EnsureEntryNode(EditorGraphDocument document, Dictionary<string, GraphNodeViewModel> nodeMap)
+    {
+        if (EntryNode is not null)
+            return;
+
+        var root = !string.IsNullOrWhiteSpace(document.RootNodeId) && nodeMap.TryGetValue(document.RootNodeId, out var rootNode)
+            ? rootNode
+            : Nodes.FirstOrDefault();
+
+        var entry = new GraphNodeViewModel(new Group { Name = "Entry" }, GraphNodeKind.Entry)
+        {
+            X = root is null ? 4420 : Math.Max(0, root.X - 280),
+            Y = root?.Y ?? 4900,
+            IsRoot = true
+        };
+
+        Nodes.Insert(0, entry);
+        nodeMap[entry.Id] = entry;
+
+        if (root is not null && !ReferenceEquals(root, entry))
+            Edges.Add(new GraphEdgeViewModel(entry, root));
     }
 
     private void BuildSampleGraph()
     {
+        var entry = new GraphNodeViewModel(new Group { Name = "Entry" }, GraphNodeKind.Entry)
+        {
+            X = 4420,
+            Y = 4900,
+            IsRoot = true
+        };
+
         var opening = new GraphNodeViewModel(new Group { Name = "Opening" }, GraphNodeKind.LinearGroup)
         {
-            X = 120,
-            Y = 120,
-            IsRoot = true
+            X = 4700,
+            Y = 4900
         };
 
         var choice = new GraphNodeViewModel(new Branch
@@ -221,37 +620,42 @@ public partial class EditorWorkspaceViewModel : ObservableObject
             BranchType = BranchType.Choice
         }, GraphNodeKind.ChoiceBranch)
         {
-            X = 420,
-            Y = 160
+            X = 5000,
+            Y = 4940
         };
 
         var routeA = new GraphNodeViewModel(new Group { Name = "Route A" }, GraphNodeKind.LinearGroup)
         {
-            X = 720,
-            Y = 80
+            X = 5300,
+            Y = 4860
         };
 
         var routeB = new GraphNodeViewModel(new Group { Name = "Route B" }, GraphNodeKind.LinearGroup)
         {
-            X = 720,
-            Y = 260
+            X = 5300,
+            Y = 5040
         };
 
         choice.Options.Add(new BranchOptionEditorItemViewModel { Text = "Go Route A" });
         choice.Options.Add(new BranchOptionEditorItemViewModel { Text = "Go Route B" });
         choice.RefreshConnectors();
 
+        Nodes.Add(entry);
         Nodes.Add(opening);
         Nodes.Add(choice);
         Nodes.Add(routeA);
         Nodes.Add(routeB);
 
+        Edges.Add(new GraphEdgeViewModel(entry, opening));
         Edges.Add(new GraphEdgeViewModel(opening, choice));
         Edges.Add(new GraphEdgeViewModel(choice, routeA, 0));
         Edges.Add(new GraphEdgeViewModel(choice, routeB, 1));
+        UpdateConnectorStates();
 
-        SelectNode(opening);
+        SelectNode(entry);
     }
+
+    public GraphNodeViewModel? EntryNode => Nodes.FirstOrDefault(n => n.NodeKind == GraphNodeKind.Entry);
 }
 
 public enum InspectorMode
@@ -262,6 +666,7 @@ public enum InspectorMode
 
 public enum GraphNodeKind
 {
+    Entry,
     LinearGroup,
     ChoiceBranch,
     ConditionBranch
@@ -290,17 +695,31 @@ public partial class GraphNodeViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSelected;
 
+    partial void OnIsSelectedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(NodeBackground));
+        OnPropertyChanged(nameof(NodeBorderBrush));
+        OnPropertyChanged(nameof(NodeBorderThickness));
+    }
+
     [ObservableProperty]
     private bool _isRoot;
 
     public string Id => Node.Id;
     public string KindLabel => NodeKind switch
     {
+        GraphNodeKind.Entry => "入口",
         GraphNodeKind.LinearGroup => "线性组",
         GraphNodeKind.ChoiceBranch => "选项分支",
         GraphNodeKind.ConditionBranch => "条件分支",
         _ => NodeKind.ToString()
     };
+
+    public bool IsEntryNode => NodeKind == GraphNodeKind.Entry;
+    public bool CanDelete => !IsEntryNode;
+    public IBrush NodeBackground => IsSelected ? Brush.Parse("#312A55") : Brush.Parse("#1E1E2E");
+    public IBrush NodeBorderBrush => IsSelected ? Brush.Parse("#8F72FF") : IsEntryNode ? Brush.Parse("#A891FF") : Brush.Parse("#45475A");
+    public double NodeBorderThickness => IsSelected ? 2 : 1;
 
     public ObservableCollection<GraphConnectorViewModel> InputConnectors { get; } = [];
     public ObservableCollection<GraphConnectorViewModel> OutputConnectors { get; } = [];
@@ -340,10 +759,12 @@ public partial class GraphNodeViewModel : ObservableObject
         InputConnectors.Clear();
         OutputConnectors.Clear();
 
-        InputConnectors.Add(new GraphConnectorViewModel(this, GraphConnectorKind.Input, 0));
+        if (!IsEntryNode)
+            InputConnectors.Add(new GraphConnectorViewModel(this, GraphConnectorKind.Input, 0));
 
         var outputCount = NodeKind switch
         {
+            GraphNodeKind.Entry => 1,
             GraphNodeKind.ChoiceBranch => Math.Max(1, Options.Count),
             GraphNodeKind.ConditionBranch => Math.Max(1, Conditions.Count),
             _ => 1
@@ -355,17 +776,38 @@ public partial class GraphNodeViewModel : ObservableObject
         OnPropertyChanged(nameof(EntryCount));
     }
 
+    public Point GetConnectorCenter(GraphConnectorKind kind, int index)
+    {
+        const double nodeWidth = 188;
+        const double nodeHeight = 96;
+        const double connectorXInset = 17;
+        const double connectorSlotHeight = 26;
+
+        var connectors = kind == GraphConnectorKind.Input ? InputConnectors : OutputConnectors;
+        var count = Math.Max(1, connectors.Count);
+        var firstY = nodeHeight / 2 - count * connectorSlotHeight / 2 + connectorSlotHeight / 2;
+        var x = kind == GraphConnectorKind.Input ? connectorXInset : nodeWidth - connectorXInset;
+
+        return new Point(X + x, Y + firstY + index * connectorSlotHeight);
+    }
+
     partial void OnNameChanged(string value)
     {
         Node.Name = value;
     }
 }
 
-public sealed class GraphConnectorViewModel
+public partial class GraphConnectorViewModel : ObservableObject
 {
     public GraphNodeViewModel Node { get; }
     public GraphConnectorKind Kind { get; }
     public int Index { get; }
+
+    [ObservableProperty]
+    private bool _isConnected;
+
+    [ObservableProperty]
+    private bool _isPreviewTarget;
 
     public GraphConnectorViewModel(GraphNodeViewModel node, GraphConnectorKind kind, int index)
     {
@@ -381,10 +823,16 @@ public partial class GraphEdgeViewModel : ObservableObject
     public GraphNodeViewModel To { get; }
     public int Outlet { get; }
 
-    public double StartX => From.X + 188;
-    public double StartY => From.Y + 48 + Outlet * 22;
-    public double EndX => To.X - 8;
-    public double EndY => To.Y + 48;
+    [ObservableProperty]
+    private bool _isSelected;
+
+    public IBrush StrokeBrush => IsSelected ? Brush.Parse("#A891FF") : Brush.Parse("#8F72FF");
+    public double StrokeThickness => IsSelected ? 4 : 2.5;
+
+    public double StartX => From.GetConnectorCenter(GraphConnectorKind.Output, Outlet).X;
+    public double StartY => From.GetConnectorCenter(GraphConnectorKind.Output, Outlet).Y;
+    public double EndX => To.GetConnectorCenter(GraphConnectorKind.Input, 0).X;
+    public double EndY => To.GetConnectorCenter(GraphConnectorKind.Input, 0).Y;
     public double ControlOffset => Math.Max(80, Math.Abs(EndX - StartX) * 0.5);
     public string PathData => $"M {StartX},{StartY} C {StartX + ControlOffset},{StartY} {EndX - ControlOffset},{EndY} {EndX},{EndY}";
 
@@ -410,6 +858,12 @@ public partial class GraphEdgeViewModel : ObservableObject
         OnPropertyChanged(nameof(EndX));
         OnPropertyChanged(nameof(EndY));
         OnPropertyChanged(nameof(PathData));
+    }
+
+    partial void OnIsSelectedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(StrokeBrush));
+        OnPropertyChanged(nameof(StrokeThickness));
     }
 }
 
