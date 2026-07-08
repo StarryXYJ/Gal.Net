@@ -57,22 +57,21 @@ public class VariableStoreTests
     }
 
     [Test]
-    public void RestoreFrom_Should_Replace_All()
+    public void RestoreSaveFrom_Should_Only_Replace_Save_Variables()
     {
         var store = new VariableStore();
         store.Set("player.score", 100);
-        store.Set("player.hp", 50);
+        store.Set("save.hp", 50);
 
-        var snapshot = new Dictionary<GalNet.Core.Variable.VariableRoute, GalNet.Core.Variable.Variable>();
-        var v = new GalNet.Core.Variable.Variable { Name = "player.restored" };
+        var snapshot = new Dictionary<string, GalNet.Core.Variable.Variable>();
+        var v = new GalNet.Core.Variable.Variable { Name = "restored" };
         v.SetValue(999);
-        snapshot[new GalNet.Core.Variable.VariableRoute("player.restored")] = v;
+        snapshot["restored"] = v;
 
-        store.RestoreFrom(snapshot);
+        store.RestoreSaveFrom(snapshot);
 
-        // Old values gone
-        Assert.That(store.GetInt("player.score"), Is.EqualTo(0));
-        // New value present
-        Assert.That(store.GetInt("player.restored"), Is.EqualTo(999));
+        Assert.That(store.GetInt("player.score"), Is.EqualTo(100));
+        Assert.That(store.GetInt("save.hp"), Is.EqualTo(0));
+        Assert.That(store.GetInt("restored"), Is.EqualTo(999));
     }
 }

@@ -49,9 +49,10 @@ public interface IGameRuntime
     (string nodeId, int entryIndex)? PopCallStack();
 
     // ── 变量操作 ──
-    void SetVariable(VariableRoute route, object value);
-    GalNet.Core.Variable.Variable? GetVariable(VariableRoute route);
-    bool TryGetVariable(VariableRoute route, out GalNet.Core.Variable.Variable variable);
+    void SetVariable(string name, object value);
+    GalNet.Core.Variable.Variable? GetVariable(string name);
+    bool TryGetVariable(string name, out GalNet.Core.Variable.Variable variable);
+    IReadOnlyDictionary<string, GalNet.Core.Variable.Variable> GetVariables(VariableScope scope);
     bool EvaluateCondition(string expression);
     object? EvaluateExpression(string expression);
 

@@ -12,6 +12,7 @@ using CommunityToolkit.Mvvm.Input;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.Settings;
+using GalNet.Editor.Controls;
 using GalNet.Editor.Dock;
 using GalNet.Editor.Project;
 using Serilog;
@@ -270,6 +271,15 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         SaveGraphDocument();
     }
 
+    public void MoveChoiceOptionTo(BranchOptionEditorItemViewModel? option, int newIndex)
+    {
+        if (SelectedNode?.NodeKind != GraphNodeKind.ChoiceBranch || option is null)
+            return;
+
+        MoveBranchItemWithEdges(SelectedNode, SelectedNode.Options, option, newIndex);
+        SaveGraphDocument();
+    }
+
     [RelayCommand]
     private void AddCondition()
     {
@@ -296,6 +306,15 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         SelectedNode.RefreshConnectors();
         RemoveDanglingOutletEdges(SelectedNode);
         UpdateConnectorStates();
+        SaveGraphDocument();
+    }
+
+    public void MoveConditionTo(BranchConditionEditorItemViewModel? condition, int newIndex)
+    {
+        if (SelectedNode?.NodeKind != GraphNodeKind.ConditionBranch || condition is null)
+            return;
+
+        MoveBranchItemWithEdges(SelectedNode, SelectedNode.Conditions, condition, newIndex);
         SaveGraphDocument();
     }
 
@@ -410,6 +429,35 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         foreach (var edge in dangling)
             Edges.Remove(edge);
 
+        UpdateConnectorStates();
+    }
+
+    private void MoveBranchItemWithEdges<TItem>(
+        GraphNodeViewModel node,
+        ObservableCollection<TItem> items,
+        TItem item,
+        int newIndex)
+        where TItem : class
+    {
+        var oldIndex = items.IndexOf(item);
+        if (oldIndex < 0 || newIndex < 0 || newIndex >= items.Count || oldIndex == newIndex)
+            return;
+
+        var oldOrder = items.ToList();
+        var edgeByItem = oldOrder
+            .Select((entry, index) => new { entry, edge = Edges.FirstOrDefault(e => ReferenceEquals(e.From, node) && e.Outlet == index) })
+            .Where(x => x.edge is not null)
+            .ToDictionary(x => x.entry, x => x.edge!);
+
+        items.Move(oldIndex, newIndex);
+
+        for (var i = 0; i < items.Count; i++)
+        {
+            if (edgeByItem.TryGetValue(items[i], out var edge))
+                edge.Outlet = i;
+        }
+
+        node.RefreshConnectors();
         UpdateConnectorStates();
     }
 
@@ -778,17 +826,18 @@ public partial class GraphNodeViewModel : ObservableObject
 
     public Point GetConnectorCenter(GraphConnectorKind kind, int index)
     {
-        const double nodeWidth = 188;
-        const double nodeHeight = 96;
-        const double connectorXInset = 17;
-        const double connectorSlotHeight = 26;
-
         var connectors = kind == GraphConnectorKind.Input ? InputConnectors : OutputConnectors;
+        var inputCount = InputConnectors.Count;
+        var outputCount = OutputConnectors.Count;
         var count = Math.Max(1, connectors.Count);
-        var firstY = nodeHeight / 2 - count * connectorSlotHeight / 2 + connectorSlotHeight / 2;
-        var x = kind == GraphConnectorKind.Input ? connectorXInset : nodeWidth - connectorXInset;
+        var nodeHeight = GraphLayoutMetrics.GetNodeHeight(inputCount, outputCount);
+        var rowHeight = GraphLayoutMetrics.ConnectorHitSize + GraphLayoutMetrics.ConnectorVerticalMargin * 2;
+        var firstY = nodeHeight / 2 - count * rowHeight / 2 + rowHeight / 2;
+        var x = kind == GraphConnectorKind.Input
+            ? GraphLayoutMetrics.NodeHorizontalPadding + GraphLayoutMetrics.ConnectorHitSize / 2
+            : GraphLayoutMetrics.NodeWidth - GraphLayoutMetrics.NodeHorizontalPadding - GraphLayoutMetrics.ConnectorHitSize / 2;
 
-        return new Point(X + x, Y + firstY + index * connectorSlotHeight);
+        return new Point(X + x, Y + firstY + index * rowHeight);
     }
 
     partial void OnNameChanged(string value)
@@ -821,7 +870,9 @@ public partial class GraphEdgeViewModel : ObservableObject
 {
     public GraphNodeViewModel From { get; }
     public GraphNodeViewModel To { get; }
-    public int Outlet { get; }
+
+    [ObservableProperty]
+    private int _outlet;
 
     [ObservableProperty]
     private bool _isSelected;
@@ -840,7 +891,7 @@ public partial class GraphEdgeViewModel : ObservableObject
     {
         From = from;
         To = to;
-        Outlet = outlet;
+        _outlet = outlet;
 
         From.PropertyChanged += (_, e) => OnNodeMoved(e.PropertyName);
         To.PropertyChanged += (_, e) => OnNodeMoved(e.PropertyName);
@@ -864,6 +915,13 @@ public partial class GraphEdgeViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(StrokeBrush));
         OnPropertyChanged(nameof(StrokeThickness));
+    }
+
+    partial void OnOutletChanged(int value)
+    {
+        OnPropertyChanged(nameof(StartX));
+        OnPropertyChanged(nameof(StartY));
+        OnPropertyChanged(nameof(PathData));
     }
 }
 

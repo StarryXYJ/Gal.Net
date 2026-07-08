@@ -42,7 +42,7 @@ public static class GraphLoader
 
     private static Node ConvertNode(NodeDto dto) => dto.Type switch
     {
-        "Group" => new Group
+        "Group" or "Entry" => new Group
         {
             Id = dto.Id,
             Name = dto.Name ?? "",
@@ -126,7 +126,7 @@ public static class GraphLoader
             if (element.TryGetProperty("branchType", out var btProp))
                 dto.BranchType = btProp.GetString();
 
-            if (element.TryGetProperty("options", out var optsProp))
+            if (element.TryGetProperty("options", out var optsProp) && optsProp.ValueKind == JsonValueKind.Array)
             {
                 dto.Options = [];
                 foreach (var opt in optsProp.EnumerateArray())
@@ -139,7 +139,7 @@ public static class GraphLoader
                 }
             }
 
-            if (element.TryGetProperty("conditions", out var condsProp))
+            if (element.TryGetProperty("conditions", out var condsProp) && condsProp.ValueKind == JsonValueKind.Array)
             {
                 dto.Conditions = [];
                 foreach (var cond in condsProp.EnumerateArray())

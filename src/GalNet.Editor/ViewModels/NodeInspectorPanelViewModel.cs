@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GalNet.Core.Variable;
 
 namespace GalNet.Editor.ViewModels;
 
@@ -14,6 +16,8 @@ public sealed partial class NodeInspectorPanelViewModel : ObservableObject
     public bool IsLinearGroupSelected => Workspace.SelectedNode?.NodeKind == GraphNodeKind.LinearGroup;
     public bool IsChoiceBranchSelected => Workspace.SelectedNode?.NodeKind == GraphNodeKind.ChoiceBranch;
     public bool IsConditionBranchSelected => Workspace.SelectedNode?.NodeKind == GraphNodeKind.ConditionBranch;
+    public IReadOnlyList<ConditionVariableSuggestion> ConditionSuggestions => Workspace.GetConditionVariableSuggestions();
+    public IReadOnlyList<ProjectVariableDefinition> ValidationVariables => Workspace.AllProjectVariableDefinitions;
 
     public NodeInspectorPanelViewModel(EditorWorkspaceViewModel workspace)
     {
@@ -42,6 +46,8 @@ public sealed partial class NodeInspectorPanelViewModel : ObservableObject
             OnPropertyChanged(nameof(IsLinearGroupSelected));
             OnPropertyChanged(nameof(IsChoiceBranchSelected));
             OnPropertyChanged(nameof(IsConditionBranchSelected));
+            OnPropertyChanged(nameof(ConditionSuggestions));
+            OnPropertyChanged(nameof(ValidationVariables));
         }
     }
 }

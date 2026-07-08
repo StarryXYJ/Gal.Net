@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using GalNet.Core.Settings;
+using GalNet.Editor.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -85,6 +86,7 @@ public sealed class ProjectService : IProjectService
             throw new DirectoryNotFoundException($"Project directory not found: {projectPath}");
 
         var settings = await LoadProjectSettingsAsync(projectPath);
+        VariableNameRules.Normalize(settings);
         var editorState = await LoadEditorProjectStateAsync(projectPath);
         var scope = _globalServices.CreateScope();
 
@@ -110,6 +112,7 @@ public sealed class ProjectService : IProjectService
             await CloseAsync();
 
         projectPath = Path.GetFullPath(projectPath);
+        VariableNameRules.Normalize(settings);
 
         Directory.CreateDirectory(projectPath);
         Directory.CreateDirectory(Path.Combine(projectPath, "Graph"));

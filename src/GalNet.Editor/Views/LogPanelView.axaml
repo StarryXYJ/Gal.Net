@@ -1,19 +1,32 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:GalNet.Editor.ViewModels"
+             xmlns:s="using:GalNet.Editor.Services"
              x:Class="GalNet.Editor.Views.LogPanelView"
              x:DataType="vm:LogPanelViewModel"
              Background="{DynamicResource SemiColorBackground0}">
-    <ListBox ItemsSource="{Binding Lines}"
-             Margin="4"
-             Background="Transparent">
-        <ListBox.ItemTemplate>
-            <DataTemplate>
-                <TextBlock Text="{Binding}"
-                           FontFamily="Consolas"
-                           FontSize="12"
-                           Foreground="{DynamicResource SemiColorText2}" />
-            </DataTemplate>
-        </ListBox.ItemTemplate>
-    </ListBox>
+    <Grid RowDefinitions="Auto,*">
+        <StackPanel Orientation="Horizontal" Spacing="8" Margin="4,4,4,0">
+            <ToggleButton Content="Errors Only"
+                          IsChecked="{Binding OnlyShowErrors}" />
+            <CheckBox Content="Auto-scroll"
+                      VerticalAlignment="Center"
+                      IsChecked="{Binding AutoScroll}" />
+        </StackPanel>
+
+        <ListBox Name="LogListBox"
+                 Grid.Row="1"
+                 ItemsSource="{Binding Lines}"
+                 Margin="4"
+                 Background="Transparent">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="s:LogLine">
+                    <TextBlock Text="{Binding DisplayText}"
+                               FontFamily="Consolas"
+                               FontSize="12"
+                               Foreground="{DynamicResource SemiColorText2}" />
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </Grid>
 </UserControl>

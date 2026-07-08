@@ -37,7 +37,7 @@ Graph → IGameGraphCompiler 编译 → 状态机循环 → 组执行完 → 沿
                                       ↓
                                Handler.Start(ctx)
                                → IsBlocking? → 等待/打断 → Complete
-                               → jump 类型 → 递归 StepAsync
+                               
 ```
 
 ### 文件格式管道

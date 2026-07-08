@@ -32,24 +32,10 @@ public sealed class EditorDockFactory : Factory
     {
         _documentDock = null;
 
-        var inspectorTool = CreateTool(
-            "Inspector",
-            "Inspector",
-            _serviceProvider.GetRequiredService<NodeInspectorPanelViewModel>());
         var logTool = CreateTool(
             "Log",
             "Log",
             _serviceProvider.GetRequiredService<LogPanelViewModel>());
-
-        var rightDock = new ToolDock
-        {
-            Id = "RightTools",
-            Title = "Right",
-            ActiveDockable = inspectorTool,
-            VisibleDockables = CreateList<IDockable>([inspectorTool]),
-            Alignment = Alignment.Right,
-            IsExpanded = true
-        };
 
         var bottomDock = new ToolDock
         {
@@ -80,6 +66,15 @@ public sealed class EditorDockFactory : Factory
             CanClose = true,
             CanPin = false
         };
+        var inspectorDocument = new Document
+        {
+            Id = "Inspector",
+            Title = "Inspector",
+            Context = _serviceProvider.GetRequiredService<NodeInspectorPanelViewModel>(),
+            CanFloat = true,
+            CanClose = false,
+            CanPin = false
+        };
 
         _documentDock = new DocumentDock
         {
@@ -89,6 +84,16 @@ public sealed class EditorDockFactory : Factory
             ActiveDockable = nodeGraphDocument,
             VisibleDockables = CreateList<IDockable>([nodeGraphDocument, previewDocument]),
             EnableGlobalDocking = true
+        };
+
+        var inspectorTool = new ToolDock
+        {
+            Id = "RightTools",
+            Title = "Inspector",
+            ActiveDockable = inspectorDocument,
+            VisibleDockables = CreateList<IDockable>([inspectorDocument]),
+            Alignment = Alignment.Right,
+            IsExpanded = true
         };
 
         var centerDock = new ProportionalDock
@@ -115,7 +120,7 @@ public sealed class EditorDockFactory : Factory
             [
                 centerDock,
                 new ProportionalDockSplitter(),
-                rightDock
+                inspectorTool
             ])
         };
 
@@ -154,7 +159,9 @@ public sealed class EditorDockFactory : Factory
         {
             Id = documentId,
             Title = $"Group: {groupNode.Name}",
-            Context = new GroupEditorPanelViewModel(groupNode),
+            Context = new GroupEditorPanelViewModel(
+                _serviceProvider.GetRequiredService<EditorWorkspaceViewModel>(),
+                groupNode),
             CanFloat = true,
             CanClose = true,
             CanPin = false

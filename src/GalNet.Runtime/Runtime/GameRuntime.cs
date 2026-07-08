@@ -1,6 +1,7 @@
 using DynamicLocalization.Core;
 using GalNet.Core.Runtime;
 using GalNet.Core.Scene;
+using GalNet.Core.Services;
 using GalNet.Core.Settings;
 using GalNet.Core.View;
 using GalNet.Runtime.Variables;
@@ -36,16 +37,34 @@ public sealed class GameRuntime : IGameRuntime
     private readonly VariableStore _variables;
     private readonly ExpressionEvaluator _evaluator;
     private readonly Stack<(string NodeId, int EntryIndex)> _callStack = new();
+    private readonly IVariableService? _variableService;
 
     public GameRuntime(IGameView? view, ICultureService? i18n, string rootNodeId = "",
-        SettingsContainer? settings = null)
+        SettingsContainer? settings = null,
+        IVariableService? variableService = null)
     {
         View = view;
         I18n = i18n;
         CurrentNodeId = rootNodeId;
         Settings = settings ?? new SettingsContainer();
-        _variables = new VariableStore();
+        _variableService = variableService;
+
+        _variables = new VariableStore(
+            variableService is not null ? name => variableService.ResolveScope(name) : null,
+            variableService is not null ? OnVariableChanged : null);
+
+        if (variableService is not null)
+        {
+            _variables.RestorePlayerFrom(variableService.GetSnapshot(VariableScope.Player));
+            _variables.RestoreSaveFrom(variableService.GetSnapshot(VariableScope.Save));
+        }
+
         _evaluator = new ExpressionEvaluator(_variables);
+    }
+
+    private void OnVariableChanged(VariableScope scope, string name, GalVariable variable)
+    {
+        _variableService?.NotifyVariableChanged(scope, name, variable);
     }
 
     public void JumpTo(string nodeId, int entryIndex = 0)
@@ -66,16 +85,19 @@ public sealed class GameRuntime : IGameRuntime
 
     // ── 变量操作 ──
 
-    public void SetVariable(VariableRoute route, object value) => _variables.Set(route, value);
+    public void SetVariable(string name, object value) => _variables.Set(name, value);
 
-    public GalVariable? GetVariable(VariableRoute route)
+    public GalVariable? GetVariable(string name)
     {
-        _variables.TryGet(route, out var v);
+        _variables.TryGet(name, out var v);
         return v;
     }
 
-    public bool TryGetVariable(VariableRoute route, out GalVariable variable) =>
-        _variables.TryGet(route, out variable!);
+    public bool TryGetVariable(string name, out GalVariable variable) =>
+        _variables.TryGet(name, out variable!);
+
+    public IReadOnlyDictionary<string, GalVariable> GetVariables(VariableScope scope) =>
+        _variables.GetSnapshot(scope);
 
     public bool EvaluateCondition(string expression) => _evaluator.EvaluateCondition(expression);
 
@@ -100,7 +122,7 @@ public sealed class GameRuntime : IGameRuntime
         {
             NodeId = CurrentNodeId,
             EntryIndex = EntryIndex,
-            Variables = _variables.Snapshot.ToDictionary(kv => kv.Key.Path, kv => kv.Value),
+            Variables = _variables.SaveSnapshot.ToDictionary(kv => kv.Key, kv => kv.Value),
             SceneState = SceneState
         };
     }
@@ -110,10 +132,7 @@ public sealed class GameRuntime : IGameRuntime
         CurrentNodeId = snapshot.NodeId;
         EntryIndex = snapshot.EntryIndex;
 
-        var dict = new Dictionary<VariableRoute, GalVariable>();
-        foreach (var (key, value) in snapshot.Variables)
-            dict[new VariableRoute(key)] = value;
-        _variables.RestoreFrom(dict);
+        _variables.RestoreSaveFrom(snapshot.Variables);
 
         foreach (var layer in snapshot.SceneState.Layers)
             View?.ShowLayer(layer.Id, layer.AssetId, layer.X, layer.Y, layer.Z);

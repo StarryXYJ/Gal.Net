@@ -40,6 +40,11 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<IThemeRegistry, ThemeRegistry>();
         services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<IGameExitService, EditorGameExitService>();
+        services.AddSingleton<IEditorPlayerVariableStore, EditorPlayerVariableStore>();
+        services.AddSingleton<EditorVariableService>();
+        services.AddSingleton<IVariableService>(sp => sp.GetRequiredService<EditorVariableService>());
+        services.AddSingleton<EditorGameDataProvider>();
+        services.AddSingleton<IGameDataProvider>(sp => sp.GetRequiredService<EditorGameDataProvider>());
         services.AddSingleton<EditorDockFactory>();
 
         return services;

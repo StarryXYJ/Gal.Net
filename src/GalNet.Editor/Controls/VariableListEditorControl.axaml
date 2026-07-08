@@ -1,0 +1,100 @@
+<controls:ReorderableListControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:GalNet.Editor.Controls"
+             xmlns:vm="using:GalNet.Editor.ViewModels"
+             x:Class="GalNet.Editor.Controls.VariableListEditorControl"
+             x:Name="Root"
+             x:DataType="vm:VariableListEditorViewModel"
+             PointerMoved="OnDragPointerMoved"
+             PointerReleased="OnDragPointerReleased">
+    <Grid RowDefinitions="Auto,*">
+        <Button Content="Add Variable"
+                HorizontalAlignment="Left"
+                Command="{Binding AddVariableCommand}" />
+
+        <ListBox Name="ItemsListBox"
+                 Grid.Row="1"
+                 Margin="0,8,0,0"
+                 ItemsSource="{Binding Items}"
+                 Background="Transparent">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:VariableEditorItemViewModel">
+                    <Border Margin="0,4"
+                            Padding="8"
+                            Background="{DynamicResource SemiColorBackground1}"
+                            BorderBrush="{DynamicResource SemiColorBorder}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                        <Grid ColumnDefinitions="Auto,*,120,*,*,Auto"
+                              ColumnSpacing="8">
+                            <Border Padding="6,0"
+                                    VerticalAlignment="Center"
+                                    Background="Transparent"
+                                    Cursor="SizeAll"
+                                    PointerPressed="OnDragHandlePressed">
+                                <TextBlock Text="::" />
+                            </Border>
+                                <TextBox Grid.Column="1" VerticalAlignment="Center" Text="{Binding Name}" />
+                                
+                            <ComboBox Grid.Column="2"
+                                      VerticalAlignment="Center"
+                                      SelectedItem="{Binding SelectedType}"
+                                      ItemsSource="{Binding Source={x:Static vm:VariableTypeValues.All}}" />
+                            <ContentControl Grid.Column="3"
+                                            Content="{Binding}">
+                                <ContentControl.Styles>
+                                    <Style Selector="ContentControl">
+                                        <Setter Property="ContentTemplate">
+                                            <DataTemplate x:DataType="vm:VariableEditorItemViewModel">
+                                                <Grid>
+                                                    <CheckBox VerticalAlignment="Center" IsVisible="{Binding IsBool}"
+                                                              IsChecked="{Binding DefaultBoolValue}" />
+                                                    <NumericUpDown VerticalAlignment="Center" IsVisible="{Binding IsInt}"
+                                                                   Value="{Binding DefaultIntValue}" />
+                                                    <NumericUpDown VerticalAlignment="Center" IsVisible="{Binding IsFloat}"
+                                                                   Increment="0.1"
+                                                                   Value="{Binding DefaultFloatValue}" />
+                                                    <TextBox PlaceholderText="Default" VerticalAlignment="Center" IsVisible="{Binding IsString}"
+                                                             Text="{Binding DefaultStringValue}" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </Setter>
+                                    </Style>
+                                </ContentControl.Styles>
+                            </ContentControl>
+                            <ContentControl Grid.Column="4"
+                                            Content="{Binding}"
+                                            IsVisible="{Binding #Root.DataContext.ShowCurrentValue}">
+                                <ContentControl.Styles>
+                                    <Style Selector="ContentControl">
+                                        <Setter Property="ContentTemplate">
+                                            <DataTemplate x:DataType="vm:VariableEditorItemViewModel">
+                                                <Grid IsEnabled="{Binding CanEditCurrentValue}">
+                                                    <CheckBox VerticalAlignment="Center" IsVisible="{Binding IsBool}"
+                                                              IsChecked="{Binding CurrentBoolValue}" />
+                                                    <NumericUpDown VerticalAlignment="Center" IsVisible="{Binding IsInt}"
+                                                                   Value="{Binding CurrentIntValue}" />
+                                                    <NumericUpDown VerticalAlignment="Center" IsVisible="{Binding IsFloat}"
+                                                                   Increment="0.1"
+                                                                   Value="{Binding CurrentFloatValue}" />
+                                                    <TextBox PlaceholderText="Current" VerticalAlignment="Center" IsVisible="{Binding IsString}"
+                                                             Text="{Binding CurrentStringValue}" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </Setter>
+                                    </Style>
+                                </ContentControl.Styles>
+                            </ContentControl>
+                            <Button Grid.Column="5"
+                                    VerticalAlignment="Center"
+                                    HorizontalAlignment="Right"
+                                    Content="Remove"
+                                    Command="{Binding #Root.DataContext.RemoveVariableCommand}"
+                                    CommandParameter="{Binding}" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </Grid>
+</controls:ReorderableListControl>

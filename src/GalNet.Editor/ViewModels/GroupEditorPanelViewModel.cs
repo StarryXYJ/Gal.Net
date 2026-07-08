@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -5,12 +6,16 @@ namespace GalNet.Editor.ViewModels;
 
 public partial class GroupEditorPanelViewModel : ObservableObject
 {
+    public EditorWorkspaceViewModel Workspace { get; }
     public GraphNodeViewModel GroupNode { get; }
 
     public string GroupId => GroupNode.Id;
+    public IReadOnlyList<ConditionVariableSuggestion> ConditionSuggestions => Workspace.GetConditionVariableSuggestions();
+    public IReadOnlyList<GalNet.Core.Variable.ProjectVariableDefinition> ValidationVariables => Workspace.AllProjectVariableDefinitions;
 
-    public GroupEditorPanelViewModel(GraphNodeViewModel groupNode)
+    public GroupEditorPanelViewModel(EditorWorkspaceViewModel workspace, GraphNodeViewModel groupNode)
     {
+        Workspace = workspace;
         GroupNode = groupNode;
     }
 
@@ -47,18 +52,25 @@ public partial class GroupEditorPanelViewModel : ObservableObject
         MoveEntry(entry, 1);
     }
 
-    private void MoveEntry(EntryEditorItemViewModel? entry, int delta)
+    public void MoveEntryTo(EntryEditorItemViewModel? entry, int newIndex)
     {
         if (entry is null)
             return;
 
         var oldIndex = GroupNode.Entries.IndexOf(entry);
-        var newIndex = oldIndex + delta;
         if (oldIndex < 0 || newIndex < 0 || newIndex >= GroupNode.Entries.Count)
             return;
 
         GroupNode.Entries.Move(oldIndex, newIndex);
         RenumberEntries();
+    }
+
+    private void MoveEntry(EntryEditorItemViewModel? entry, int delta)
+    {
+        if (entry is null)
+            return;
+
+        MoveEntryTo(entry, GroupNode.Entries.IndexOf(entry) + delta);
     }
 
     private void RenumberEntries()

@@ -1,0 +1,58 @@
+<controls:ReorderableListControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:GalNet.Editor.Controls"
+             xmlns:vm="using:GalNet.Editor.ViewModels"
+             x:Class="GalNet.Editor.Controls.EntryListEditorControl"
+             x:Name="Root"
+             x:DataType="vm:GroupEditorPanelViewModel"
+             PointerMoved="OnDragPointerMoved"
+             PointerReleased="OnDragPointerReleased">
+    <Grid RowDefinitions="Auto,*">
+        <Button Content="Add Entry"
+                HorizontalAlignment="Left"
+                Command="{Binding AddEntryCommand}" />
+
+        <ListBox Name="ItemsListBox"
+                 Grid.Row="1"
+                 Margin="0,8,0,0"
+                 ItemsSource="{Binding GroupNode.Entries}"
+                 Background="Transparent">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:EntryEditorItemViewModel">
+                    <Border Margin="0,4"
+                            Padding="8"
+                            Background="{DynamicResource SemiColorBackground1}"
+                            BorderBrush="{DynamicResource SemiColorBorder}"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                        <Grid ColumnDefinitions="Auto,48,140,*,*,Auto"
+                              ColumnSpacing="8">
+                            <Border Padding="6,0"
+                                    VerticalAlignment="Center"
+                                    Background="Transparent"
+                                    Cursor="SizeAll"
+                                    PointerPressed="OnDragHandlePressed">
+                                <TextBlock Text="::" />
+                            </Border>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding Id}"
+                                       VerticalAlignment="Center" />
+                            <TextBox Grid.Column="2"
+                                     Text="{Binding Type}" />
+                            <controls:ConditionEditorControl Grid.Column="3"
+                                                             Text="{Binding Condition}"
+                                                             Suggestions="{Binding #Root.DataContext.ConditionSuggestions}"
+                                                             ValidationVariables="{Binding #Root.DataContext.ValidationVariables}" />
+                            <TextBox Grid.Column="4"
+                                     Text="{Binding Parameters}" />
+                            <Button Grid.Column="5"
+                                    Content="Remove"
+                                    Command="{Binding #Root.DataContext.RemoveEntryCommand}"
+                                    CommandParameter="{Binding}" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </Grid>
+</controls:ReorderableListControl>

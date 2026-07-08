@@ -12,9 +12,13 @@
                 BorderBrush="{DynamicResource SemiColorBorder}"
                 BorderThickness="0,0,0,1"
                 Padding="8,6">
-            <Grid ColumnDefinitions="Auto,*,Auto">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto">
                 <Button Content="Restart"
                         Command="{Binding RestartPreviewCommand}" />
+                <Button Grid.Column="1"
+                        Margin="8,0,0,0"
+                        Content="Reset Player"
+                        Click="OnResetPlayerClick" />
                 <TextBlock Grid.Column="2"
                            Text="{Binding StatusText}"
                            VerticalAlignment="Center"

@@ -23,15 +23,16 @@ public partial class GraphNodeControl : UserControl
         PointerReleased += (_, e) =>
         {
             NodePointerReleased?.Invoke(this, e);
-            if (e.InitialPressMouseButton == MouseButton.Left)
-                e.Handled = true;
         };
-        NodeChrome.DoubleTapped += (_, e) =>
+        DoubleTapped += (_, e) =>
         {
             if (DataContext is GraphNodeViewModel node)
+            {
                 NodeDoubleTapped?.Invoke(this, new GraphNodeEventArgs(node, e));
+                e.Handled = true;
+            }
         };
-        NodeChrome.RightTapped += (_, e) =>
+        RightTapped += (_, e) =>
         {
             if (DataContext is GraphNodeViewModel node)
             {

@@ -70,8 +70,7 @@ public sealed class ExpressionEvaluator
                 else
                 {
                     var varPath = expr[(i + 1)..close];
-                    var route = new VariableRoute(varPath);
-                    var value = _store.TryGet(route, out var v)
+                    var value = _store.TryGet(varPath, out var v)
                         ? FormatLiteral(v)
                         : "null";
                     sb.Append(value);

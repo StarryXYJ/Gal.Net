@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -6,6 +7,7 @@ using Avalonia.Interactivity;
 using GalNet.Control.Views;
 using GalNet.Editor.ViewModels;
 using Serilog;
+using Ursa.Controls;
 
 namespace GalNet.Editor.Views;
 
@@ -60,7 +62,10 @@ public partial class GamePreviewPanelView : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         if (_vm is not null)
+        {
             _vm.PropertyChanged -= OnVmPropertyChanged;
+            _vm.NameConflictRequested -= OnNameConflictRequested;
+        }
 
         _vm = DataContext as GamePreviewPanelViewModel;
         Log.Information("[PreviewView] VM setup: {Type}, PageHostVm={PH}",
@@ -70,10 +75,24 @@ public partial class GamePreviewPanelView : UserControl
         if (_vm is not null)
         {
             _vm.PropertyChanged += OnVmPropertyChanged;
+            _vm.NameConflictRequested += OnNameConflictRequested;
             SyncPageHost();
         }
 
         base.OnDataContextChanged(e);
+    }
+
+    private async void OnNameConflictRequested(string name)
+    {
+        var owner = TopLevel.GetTopLevel(this) as Window;
+        if (owner is null)
+            return;
+
+        await MessageBox.ShowAsync(
+            owner,
+            $"Variable name \"{name}\" already exists.",
+            "Duplicate Name",
+            button: MessageBoxButton.OK);
     }
 
     private void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -89,6 +108,25 @@ public partial class GamePreviewPanelView : UserControl
     private void OnPreviewPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         _vm?.FocusInspector();
+    }
+
+    private async void OnResetPlayerClick(object? sender, RoutedEventArgs e)
+    {
+        if (_vm is null)
+            return;
+
+        var owner = TopLevel.GetTopLevel(this) as Window;
+        if (owner is null)
+            return;
+
+        var result = await MessageBox.ShowAsync(
+            owner,
+            "Reset all player variables to their default values?",
+            "Reset Player",
+            button: MessageBoxButton.OKCancel);
+
+        if (result == MessageBoxResult.OK)
+            await _vm.ResetPlayerAsync();
     }
 
     private void SyncPageHost()

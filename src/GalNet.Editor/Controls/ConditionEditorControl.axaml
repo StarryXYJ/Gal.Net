@@ -1,0 +1,45 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Editor.ViewModels"
+             x:Class="GalNet.Editor.Controls.ConditionEditorControl"
+             x:Name="Root">
+    <Grid RowDefinitions="Auto,Auto">
+        <TextBox x:Name="EditorBox"
+                 Text="{Binding Text, ElementName=Root, Mode=TwoWay}" />
+        <Border x:Name="ValidationBorder"
+                Grid.Row="1"
+                Margin="0,4,0,0"
+                IsVisible="False"
+                Background="#33AA4444"
+                BorderBrush="#AAFF6666"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="6,3">
+            <TextBlock x:Name="ValidationText"
+                       FontSize="11" />
+        </Border>
+        <Popup x:Name="SuggestionsPopup"
+               PlacementTarget="{Binding #EditorBox}"
+               Placement="BottomEdgeAlignedLeft"
+               IsLightDismissEnabled="True">
+            <Border MinWidth="220"
+                    MaxHeight="220"
+                    Background="{DynamicResource SemiColorBackground1}"
+                    BorderBrush="{DynamicResource SemiColorBorder}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="4">
+                <ListBox x:Name="SuggestionsList"
+                         ItemsSource="{Binding FilteredSuggestions, ElementName=Root}"
+                         Background="Transparent">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ConditionVariableSuggestion">
+                            <TextBlock Text="{Binding DisplayText}"
+                                       Margin="4,2" />
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Border>
+        </Popup>
+    </Grid>
+</UserControl>

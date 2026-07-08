@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:GalNet.Editor.Controls"
              xmlns:vm="using:GalNet.Editor.ViewModels"
              x:Class="GalNet.Editor.Views.NodeInspectorPanelView"
              x:Name="Root"
@@ -13,28 +14,14 @@
 
             <StackPanel Spacing="8"
                         IsVisible="{Binding IsPreviewVariablesVisible}">
-                <TextBlock Text="Preview Variables"
-                           FontWeight="SemiBold" />
-                <ListBox ItemsSource="{Binding Workspace.ActivePreview.Variables}"
-                         Background="Transparent">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate x:DataType="vm:VariableItemViewModel">
-                            <Grid RowDefinitions="Auto,Auto"
-                                  Margin="0,4">
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="{Binding Name}"
-                                               TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Grid.Column="1"
-                                               Text="{Binding TypeName}"
-                                               FontSize="11"
-                                               Foreground="{DynamicResource SemiColorText3}" />
-                                </Grid>
-                                <TextBox Grid.Row="1"
-                                         Text="{Binding Value}" />
-                            </Grid>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+                <Expander Header="Player Variables"
+                          IsExpanded="True">
+                    <controls:VariableListEditorControl DataContext="{Binding Workspace.ActivePreview.PlayerVariables}" />
+                </Expander>
+                <Expander Header="Save Variables"
+                          IsExpanded="True">
+                    <controls:VariableListEditorControl DataContext="{Binding Workspace.ActivePreview.SaveVariables}" />
+                </Expander>
             </StackPanel>
 
             <StackPanel Spacing="8"
@@ -72,16 +59,6 @@
                                    TextTrimming="CharacterEllipsis" />
                     </Border>
 
-                    <Border Background="{DynamicResource SemiColorPrimaryLight}"
-                            BorderBrush="{DynamicResource SemiColorPrimary}"
-                            BorderThickness="1"
-                            CornerRadius="4"
-                            Padding="8,5"
-                            IsVisible="{Binding Workspace.SelectedNode.IsEntryNode}">
-                        <TextBlock Text="入口节点"
-                                   Foreground="{DynamicResource SemiColorText1}" />
-                    </Border>
-
                     <StackPanel Spacing="6"
                                 IsVisible="{Binding IsLinearGroupSelected}">
                         <TextBlock Text="Linear Group"
@@ -102,24 +79,37 @@
                                     Content="Add"
                                     Command="{Binding Workspace.AddChoiceOptionCommand}" />
                         </Grid>
-                        <ListBox ItemsSource="{Binding Workspace.SelectedNode.Options}"
+                        <ListBox Name="OptionsListBox"
+                                 ItemsSource="{Binding Workspace.SelectedNode.Options}"
                                  Background="Transparent">
                             <ListBox.ItemTemplate>
                                 <DataTemplate x:DataType="vm:BranchOptionEditorItemViewModel">
-                                    <Grid ColumnDefinitions="*,Auto"
-                                          ColumnSpacing="6"
-                                          Margin="0,3">
-                                        <StackPanel Spacing="4">
-                                            <TextBox PlaceholderText="Text"
+                                    <Border Margin="0,4"
+                                            Padding="8"
+                                            Background="{DynamicResource SemiColorBackground1}"
+                                            BorderBrush="{DynamicResource SemiColorBorder}"
+                                            BorderThickness="1"
+                                            CornerRadius="6">
+                                        <Grid ColumnDefinitions="Auto,*,*,Auto"
+                                              ColumnSpacing="6">
+                                            <Border Padding="6,0"
+                                                    Background="Transparent"
+                                                    Cursor="SizeAll"
+                                                    PointerPressed="OnChoiceOptionDragPointerPressed">
+                                                <TextBlock Text="::" />
+                                            </Border>
+                                            <TextBox Grid.Column="1"
                                                      Text="{Binding Text}" />
-                                            <TextBox PlaceholderText="Condition"
-                                                     Text="{Binding Condition}" />
-                                        </StackPanel>
-                                        <Button Grid.Column="1"
-                                                Content="Remove"
-                                                Command="{Binding #Root.DataContext.Workspace.RemoveChoiceOptionCommand}"
-                                                CommandParameter="{Binding}" />
-                                    </Grid>
+                                            <controls:ConditionEditorControl Grid.Column="2"
+                                                                             Text="{Binding Condition}"
+                                                                             Suggestions="{Binding #Root.DataContext.ConditionSuggestions}"
+                                                                             ValidationVariables="{Binding #Root.DataContext.ValidationVariables}" />
+                                            <Button Grid.Column="3"
+                                                    Content="Remove"
+                                                    Command="{Binding #Root.DataContext.Workspace.RemoveChoiceOptionCommand}"
+                                                    CommandParameter="{Binding}" />
+                                        </Grid>
+                                    </Border>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
@@ -134,19 +124,35 @@
                                     Content="Add"
                                     Command="{Binding Workspace.AddConditionCommand}" />
                         </Grid>
-                        <ListBox ItemsSource="{Binding Workspace.SelectedNode.Conditions}"
+                        <ListBox Name="ConditionsListBox"
+                                 ItemsSource="{Binding Workspace.SelectedNode.Conditions}"
                                  Background="Transparent">
                             <ListBox.ItemTemplate>
                                 <DataTemplate x:DataType="vm:BranchConditionEditorItemViewModel">
-                                    <Grid ColumnDefinitions="*,Auto"
-                                          ColumnSpacing="6"
-                                          Margin="0,3">
-                                        <TextBox Text="{Binding Expression}" />
-                                        <Button Grid.Column="1"
-                                                Content="Remove"
-                                                Command="{Binding #Root.DataContext.Workspace.RemoveConditionCommand}"
-                                                CommandParameter="{Binding}" />
-                                    </Grid>
+                                    <Border Margin="0,4"
+                                            Padding="8"
+                                            Background="{DynamicResource SemiColorBackground1}"
+                                            BorderBrush="{DynamicResource SemiColorBorder}"
+                                            BorderThickness="1"
+                                            CornerRadius="6">
+                                        <Grid ColumnDefinitions="Auto,*,Auto"
+                                              ColumnSpacing="6">
+                                            <Border Padding="6,0"
+                                                    Background="Transparent"
+                                                    Cursor="SizeAll"
+                                                    PointerPressed="OnConditionDragPointerPressed">
+                                                <TextBlock Text="::" />
+                                            </Border>
+                                            <controls:ConditionEditorControl Grid.Column="1"
+                                                                             Text="{Binding Expression}"
+                                                                             Suggestions="{Binding #Root.DataContext.ConditionSuggestions}"
+                                                                             ValidationVariables="{Binding #Root.DataContext.ValidationVariables}" />
+                                            <Button Grid.Column="2"
+                                                    Content="Remove"
+                                                    Command="{Binding #Root.DataContext.Workspace.RemoveConditionCommand}"
+                                                    CommandParameter="{Binding}" />
+                                        </Grid>
+                                    </Border>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>

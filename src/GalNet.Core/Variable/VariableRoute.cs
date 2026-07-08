@@ -1,8 +1,5 @@
 namespace GalNet.Core.Variable;
 
-/// <summary>
-/// 变量路由 —— 树状键路径解析（如 "player.affection.alice"）。
-/// </summary>
 public sealed class VariableRoute
 {
     /// <summary>路由路径（点分隔）</summary>

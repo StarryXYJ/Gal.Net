@@ -11,17 +11,20 @@ public class GameStartViewModel
     private readonly INavigationService _nav;
     private readonly IGameFlowFactory _gameFlowFactory;
     private readonly IGameExitService? _exitService;
+    private readonly GameFlowOptions? _options;
 
     public GameStartViewModel(
         INavigationService nav,
         IGameFlowFactory gameFlowFactory,
-        IGameExitService? exitService)
+        IGameExitService? exitService,
+        GameFlowOptions? options = null)
     {
-        Title = "GalNet Demo";
+        Title = options?.Title ?? "GalNet Demo";
         Buttons = ["New Game", "Settings", "Quit"];
         _nav = nav;
         _gameFlowFactory = gameFlowFactory;
         _exitService = exitService;
+        _options = options;
     }
 
     public void OnButtonClicked(int index)
@@ -30,7 +33,7 @@ public class GameStartViewModel
         {
             case 0: // New Game
             {
-                _nav.NavigateTo(_gameFlowFactory.CreateRun(_nav));
+                _nav.NavigateTo(_gameFlowFactory.CreateRun(_nav, _options));
                 break;
             }
             case 1: // Settings

@@ -13,21 +13,23 @@ public sealed class GameFlowFactory : IGameFlowFactory
         _serviceProvider = serviceProvider;
     }
 
-    public GamePageHostViewModel CreatePageHost(INavigationService parentNavigation) =>
-        new(parentNavigation, this);
+    public GamePageHostViewModel CreatePageHost(INavigationService parentNavigation, GameFlowOptions? options = null) =>
+        new(parentNavigation, this, options);
 
-    public GameStartViewModel CreateStart(INavigationService navigation) =>
-        new(navigation, this, _serviceProvider.GetService<IGameExitService>());
+    public GameStartViewModel CreateStart(INavigationService navigation, GameFlowOptions? options = null) =>
+        new(navigation, this, _serviceProvider.GetService<IGameExitService>(), options);
 
-    public GameRunViewModel CreateRun(INavigationService navigation)
+    public GameRunViewModel CreateRun(INavigationService navigation, GameFlowOptions? options = null)
     {
         var gameView = _serviceProvider.GetRequiredService<DefaultGameView>();
         var settings = _serviceProvider.GetRequiredService<ISettingsService>();
+        var variableService = options?.VariableService ?? _serviceProvider.GetService<IVariableService>();
+        var gameDataProvider = options?.GameDataProvider ?? _serviceProvider.GetService<IGameDataProvider>();
 
-        return new GameRunViewModel(gameView, settings, () =>
+        return new GameRunViewModel(gameView, settings, variableService, gameDataProvider, options, () =>
         {
             navigation.Clear();
-            navigation.NavigateTo(CreateStart(navigation));
+            navigation.NavigateTo(CreateStart(navigation, options));
         });
     }
 

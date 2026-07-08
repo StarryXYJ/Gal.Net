@@ -2,70 +2,123 @@ using GalNet.Core.Variable;
 
 namespace GalNet.Runtime.Variables;
 
-/// <summary>
-/// 运行时变量存储。player 和 save 共用命名空间，不可重名。
-/// </summary>
 public sealed class VariableStore
 {
-    private readonly Dictionary<VariableRoute, Variable> _variables = new();
+    private readonly Dictionary<string, Variable> _playerVariables = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Variable> _saveVariables = new(StringComparer.Ordinal);
+    private readonly Func<string, VariableScope> _scopeResolver;
+    private readonly Action<VariableScope, string, Variable>? _onVariableChanged;
 
-    /// <summary>获取所有变量快照（用于存档）。</summary>
-    public IReadOnlyDictionary<VariableRoute, Variable> Snapshot => _variables;
-
-    /// <summary>获取或创建设置变量值。</summary>
-    public void Set(VariableRoute route, object value)
+    public VariableStore(
+        Func<string, VariableScope>? scopeResolver = null,
+        Action<VariableScope, string, Variable>? onVariableChanged = null)
     {
-        var v = GetOrCreate(route);
-        v.SetValue(value);
+        _scopeResolver = scopeResolver ?? (_ => VariableScope.Save);
+        _onVariableChanged = onVariableChanged;
     }
 
-    /// <summary>获取 bool 值，不存在返回默认。</summary>
-    public bool GetBool(VariableRoute route, bool def = false)
+    public IReadOnlyDictionary<string, Variable> PlayerSnapshot => _playerVariables;
+    public IReadOnlyDictionary<string, Variable> SaveSnapshot => _saveVariables;
+
+    public void Set(string name, object value)
     {
-        return _variables.TryGetValue(route, out var v) ? v.AsBool() : def;
+        var normalized = NormalizeName(name);
+        var scope = ResolveScope(name);
+        var variable = GetOrCreate(normalized, scope);
+        variable.Name = normalized;
+        variable.SetValue(value);
+        _onVariableChanged?.Invoke(scope, normalized, CloneVariable(variable, normalized));
     }
 
-    /// <summary>获取 int 值。</summary>
-    public int GetInt(VariableRoute route, int def = 0)
+    public bool GetBool(string name, bool def = false) =>
+        TryGet(name, out var variable) ? variable.AsBool() : def;
+
+    public int GetInt(string name, int def = 0) =>
+        TryGet(name, out var variable) ? variable.AsInt() : def;
+
+    public float GetFloat(string name, float def = 0f) =>
+        TryGet(name, out var variable) ? variable.AsFloat() : def;
+
+    public string GetString(string name, string def = "") =>
+        TryGet(name, out var variable) ? variable.AsString() : def;
+
+    public bool TryGet(string name, out Variable variable)
     {
-        return _variables.TryGetValue(route, out var v) ? v.AsInt() : def;
+        var normalized = NormalizeName(name);
+        return _playerVariables.TryGetValue(normalized, out variable!)
+            || _saveVariables.TryGetValue(normalized, out variable!);
     }
 
-    /// <summary>获取 float 值。</summary>
-    public float GetFloat(VariableRoute route, float def = 0f)
+    public IReadOnlyDictionary<string, Variable> GetSnapshot(VariableScope scope) =>
+        scope == VariableScope.Player ? _playerVariables : _saveVariables;
+
+    public void RestorePlayerFrom(IReadOnlyDictionary<string, Variable> snapshot)
     {
-        return _variables.TryGetValue(route, out var v) ? v.AsFloat() : def;
+        _playerVariables.Clear();
+        foreach (var (name, variable) in snapshot)
+            _playerVariables[NormalizeName(name)] = CloneVariable(variable, NormalizeName(name));
     }
 
-    /// <summary>获取 string 值。</summary>
-    public string GetString(VariableRoute route, string def = "")
+    public void RestoreSaveFrom(IReadOnlyDictionary<string, Variable> snapshot)
     {
-        return _variables.TryGetValue(route, out var v) ? v.AsString() : def;
+        _saveVariables.Clear();
+        foreach (var (name, variable) in snapshot)
+            _saveVariables[NormalizeName(name)] = CloneVariable(variable, NormalizeName(name));
     }
 
-    /// <summary>尝试获取变量。</summary>
-    public bool TryGet(VariableRoute route, out Variable variable)
+    private Variable GetOrCreate(string name, VariableScope scope)
     {
-        return _variables.TryGetValue(route, out variable!);
-    }
-
-    /// <summary>从快照恢复（读档用）。</summary>
-    public void RestoreFrom(IReadOnlyDictionary<VariableRoute, Variable> snapshot)
-    {
-        _variables.Clear();
-        foreach (var (route, variable) in snapshot)
+        var variables = scope == VariableScope.Player ? _playerVariables : _saveVariables;
+        if (!variables.TryGetValue(name, out var variable))
         {
-            _variables[route] = variable;
+            variable = new Variable { Name = name };
+            variables[name] = variable;
         }
+
+        return variable;
     }
 
-    private Variable GetOrCreate(VariableRoute route)
+    private VariableScope ResolveScope(string name)
     {
-        if (!_variables.TryGetValue(route, out var v))
+        if (name.StartsWith("player.", StringComparison.Ordinal))
+            return VariableScope.Player;
+
+        if (name.StartsWith("save.", StringComparison.Ordinal))
+            return VariableScope.Save;
+
+        return _scopeResolver(NormalizeName(name));
+    }
+
+    private static string NormalizeName(string name)
+    {
+        if (name.StartsWith("player.", StringComparison.Ordinal))
+            return name["player.".Length..];
+
+        if (name.StartsWith("save.", StringComparison.Ordinal))
+            return name["save.".Length..];
+
+        return name;
+    }
+
+    private static Variable CloneVariable(Variable variable, string name)
+    {
+        var clone = new Variable { Name = name };
+        switch (variable.Type)
         {
-            v = new Variable { Name = route.Path };
-            _variables[route] = v;
+            case VariableType.Bool:
+                clone.SetValue(variable.AsBool());
+                break;
+            case VariableType.Int:
+                clone.SetValue(variable.AsInt());
+                break;
+            case VariableType.Float:
+                clone.SetValue(variable.AsFloat());
+                break;
+            default:
+                clone.SetValue(variable.AsString());
+                break;
         }
-        return v;
+
+        return clone;
     }
 }

@@ -21,6 +21,7 @@ public partial class NodeGraphPanelView : UserControl
     private Point _lastViewportPointerPosition;
     private bool _isSelecting;
     private bool _selectionMoved;
+    private bool _nodeDragMoved;
     private Point _selectionStartWorld;
     private bool _isPointerInsideGraph;
     private bool _hasAppliedViewportState;
@@ -153,7 +154,11 @@ public partial class NodeGraphPanelView : UserControl
 
         var rect = new Rect(_selectionStartWorld, end).Normalize();
         var selected = ViewModel?.Workspace.Nodes
-            .Where(node => rect.Intersects(new Rect(node.X, node.Y, 188, 96)))
+            .Where(node => rect.Intersects(new Rect(
+                node.X,
+                node.Y,
+                GraphLayoutMetrics.NodeWidth,
+                GraphLayoutMetrics.GetNodeHeight(node.InputConnectors.Count, node.OutputConnectors.Count))))
             .ToList() ?? [];
 
         if (selected.Count > 0)
@@ -200,6 +205,7 @@ public partial class NodeGraphPanelView : UserControl
             workspace.SelectNode(e.Node);
 
         _draggedNode = e.Node;
+        _nodeDragMoved = false;
         _dragStartWorld = ViewportToWorld(e.OriginalEventArgs.GetPosition(Viewport));
         _dragStartPositions.Clear();
         var dragNodes = wasSelected ? workspace.SelectedNodes.ToList() : [e.Node];
@@ -226,10 +232,17 @@ public partial class NodeGraphPanelView : UserControl
         var current = ViewportToWorld(_lastViewportPointerPosition);
         var deltaX = current.X - _dragStartWorld.X;
         var deltaY = current.Y - _dragStartWorld.Y;
+        if (!_nodeDragMoved && Math.Abs(deltaX) < 2 && Math.Abs(deltaY) < 2)
+            return;
+
+        _nodeDragMoved = true;
         foreach (var (node, start) in _dragStartPositions)
         {
-            node.X = Math.Clamp(start.X + deltaX, 0, GraphCanvas.Width - 220);
-            node.Y = Math.Clamp(start.Y + deltaY, 0, GraphCanvas.Height - 140);
+            node.X = Math.Clamp(start.X + deltaX, 0, GraphCanvas.Width - GraphLayoutMetrics.NodeWidth);
+            node.Y = Math.Clamp(
+                start.Y + deltaY,
+                0,
+                GraphCanvas.Height - GraphLayoutMetrics.GetNodeHeight(node.InputConnectors.Count, node.OutputConnectors.Count));
         }
         e.Handled = true;
     }
@@ -245,10 +258,11 @@ public partial class NodeGraphPanelView : UserControl
 
     private void EndNodeDrag(IPointer pointer)
     {
-        if (_draggedNode is not null)
+        if (_draggedNode is not null && _nodeDragMoved)
             ViewModel?.Workspace.SaveGraphDocument();
 
         _draggedNode = null;
+        _nodeDragMoved = false;
         _dragStartPositions.Clear();
         pointer.Capture(null);
     }
@@ -441,8 +455,8 @@ public partial class NodeGraphPanelView : UserControl
         var item = new MenuItem { Header = header };
         item.Click += (_, _) =>
         {
-            var x = Math.Clamp(position.X, 0, GraphCanvas.Width - 220);
-            var y = Math.Clamp(position.Y, 0, GraphCanvas.Height - 140);
+            var x = Math.Clamp(position.X, 0, GraphCanvas.Width - GraphLayoutMetrics.NodeWidth);
+            var y = Math.Clamp(position.Y, 0, GraphCanvas.Height - GraphLayoutMetrics.NodeMinHeight);
             var node = ViewModel?.Workspace.AddNode(kind, x, y);
             if (node is not null && connectFrom is not null)
                 ViewModel?.Workspace.Connect(connectFrom, node.InputConnectors[0]);
@@ -494,7 +508,9 @@ public partial class NodeGraphPanelView : UserControl
         return ViewModel.Workspace.Nodes.Any(node =>
         {
             var topLeft = Viewport.WorldToViewport(new Point(node.X, node.Y));
-            var bottomRight = Viewport.WorldToViewport(new Point(node.X + 220, node.Y + 140));
+            var bottomRight = Viewport.WorldToViewport(new Point(
+                node.X + GraphLayoutMetrics.NodeWidth,
+                node.Y + GraphLayoutMetrics.GetNodeHeight(node.InputConnectors.Count, node.OutputConnectors.Count)));
             return bottomRight.X >= 0
                 && bottomRight.Y >= 0
                 && topLeft.X <= Viewport.Bounds.Width

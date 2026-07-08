@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:GalNet.Editor.Controls"
              xmlns:vm="using:GalNet.Editor.ViewModels"
              x:Class="GalNet.Editor.Views.GroupEditorPanelView"
-             x:Name="Root"
              x:DataType="vm:GroupEditorPanelViewModel"
              Background="{DynamicResource SemiColorBackground0}">
     <Grid RowDefinitions="Auto,*">
@@ -11,62 +11,11 @@
                 BorderBrush="{DynamicResource SemiColorBorder}"
                 BorderThickness="0,0,0,1"
                 Padding="8">
-            <StackPanel Orientation="Horizontal" Spacing="6">
-                <Button Content="Add Entry"
-                        Command="{Binding AddEntryCommand}" />
-                <TextBlock Text="{Binding GroupNode.Name}"
-                           VerticalAlignment="Center"
-                           Foreground="{DynamicResource SemiColorText2}" />
-            </StackPanel>
+            <TextBlock Text="{Binding GroupNode.Name}"
+                       FontWeight="SemiBold" />
         </Border>
 
-        <Grid Grid.Row="1" RowDefinitions="Auto,*">
-            <Border Background="{DynamicResource SemiColorBackground1}"
-                    BorderBrush="{DynamicResource SemiColorBorder}"
-                    BorderThickness="0,0,0,1"
-                    Padding="8,6">
-                <Grid ColumnDefinitions="48,120,180,*,170">
-                    <TextBlock Text="#" FontWeight="SemiBold" />
-                    <TextBlock Grid.Column="1" Text="Type" FontWeight="SemiBold" />
-                    <TextBlock Grid.Column="2" Text="Condition" FontWeight="SemiBold" />
-                    <TextBlock Grid.Column="3" Text="Parameters" FontWeight="SemiBold" />
-                    <TextBlock Grid.Column="4" Text="Actions" FontWeight="SemiBold" />
-                </Grid>
-            </Border>
-
-            <ListBox Grid.Row="1"
-                     ItemsSource="{Binding GroupNode.Entries}"
-                     Background="Transparent">
-                <ListBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:EntryEditorItemViewModel">
-                        <Grid ColumnDefinitions="48,120,180,*,170"
-                              ColumnSpacing="8"
-                              Margin="4">
-                            <TextBlock Text="{Binding Id}"
-                                       VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1"
-                                     Text="{Binding Type}" />
-                            <TextBox Grid.Column="2"
-                                     Text="{Binding Condition}" />
-                            <TextBox Grid.Column="3"
-                                     Text="{Binding Parameters}" />
-                            <StackPanel Grid.Column="4"
-                                        Orientation="Horizontal"
-                                        Spacing="4">
-                                <Button Content="Up"
-                                        Command="{Binding #Root.DataContext.MoveEntryUpCommand}"
-                                        CommandParameter="{Binding}" />
-                                <Button Content="Down"
-                                        Command="{Binding #Root.DataContext.MoveEntryDownCommand}"
-                                        CommandParameter="{Binding}" />
-                                <Button Content="Remove"
-                                        Command="{Binding #Root.DataContext.RemoveEntryCommand}"
-                                        CommandParameter="{Binding}" />
-                            </StackPanel>
-                        </Grid>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
-        </Grid>
+        <controls:EntryListEditorControl Grid.Row="1"
+                                         Margin="8" />
     </Grid>
 </UserControl>

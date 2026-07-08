@@ -4,8 +4,8 @@ namespace GalNet.Control.ViewModels;
 
 public interface IGameFlowFactory
 {
-    GamePageHostViewModel CreatePageHost(INavigationService parentNavigation);
-    GameStartViewModel CreateStart(INavigationService navigation);
-    GameRunViewModel CreateRun(INavigationService navigation);
+    GamePageHostViewModel CreatePageHost(INavigationService parentNavigation, GameFlowOptions? options = null);
+    GameStartViewModel CreateStart(INavigationService navigation, GameFlowOptions? options = null);
+    GameRunViewModel CreateRun(INavigationService navigation, GameFlowOptions? options = null);
     SettingsViewModel CreateSettings(INavigationService navigation);
 }

@@ -1,5 +1,4 @@
 using GalNet.Core.Handler;
-using GalNet.Core.Variable;
 
 namespace GalNet.Runtime.Handlers;
 
@@ -14,7 +13,7 @@ public sealed class VariableHandler : EntryHandler
 
     public override void Start(EntryContext ctx)
     {
-        var route = new VariableRoute(ctx.GetString("target", ""));
+        var target = ctx.GetString("target", "");
         var action = ctx.GetString("action", "set");
 
         switch (action)
@@ -23,7 +22,7 @@ public sealed class VariableHandler : EntryHandler
             {
                 var rawValue = ctx.GetString("value", "");
                 var type = ctx.GetString("type", "string");
-                ctx.Runtime.SetVariable(route, ParseValue(rawValue, type));
+                ctx.Runtime.SetVariable(target, ParseValue(rawValue, type));
                 break;
             }
             case "eval":
@@ -33,7 +32,7 @@ public sealed class VariableHandler : EntryHandler
                 {
                     var result = ctx.Runtime.EvaluateExpression(expression);
                     if (result != null)
-                        ctx.Runtime.SetVariable(route, result);
+                        ctx.Runtime.SetVariable(target, result);
                 }
                 break;
             }
