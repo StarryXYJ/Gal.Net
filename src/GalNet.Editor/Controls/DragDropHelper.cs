@@ -122,6 +122,9 @@ public sealed class DragDropHelper
 
     public void OnPointerReleased(PointerReleasedEventArgs e)
     {
+        if (_dragIndex < 0 && !_isDragging)
+            return;
+
         if (_dragIndex >= 0)
             SetItemOpacity(_dragIndex, 1.0);
 

@@ -142,6 +142,9 @@ public abstract class ReorderableListControl : UserControl
     /// </summary>
     protected void OnDragPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
+        if (_dragIndex < 0 && !_isDragging)
+            return;
+
         CleanupDrag();
         e.Pointer.Capture(null);
         e.Handled = true;
