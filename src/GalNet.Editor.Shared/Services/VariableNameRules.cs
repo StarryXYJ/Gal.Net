@@ -6,7 +6,7 @@ using GalNet.Core.Settings;
 using GalNet.Core.Variable;
 using Serilog;
 
-namespace GalNet.Editor.Services;
+namespace GalNet.Editor.Shared.Services;
 
 public static partial class VariableNameRules
 {

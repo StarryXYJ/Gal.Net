@@ -8,6 +8,7 @@ using GalNet.Editor.Commands;
 using GalNet.Editor.Dock;
 using GalNet.Editor.Project;
 using GalNet.Editor.Services;
+using GalNet.Editor.Shared.Services;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
 using GalNet.Editor.ViewModels;

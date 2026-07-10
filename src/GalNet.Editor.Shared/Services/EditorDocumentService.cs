@@ -2,7 +2,7 @@ using System;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 
-namespace GalNet.Editor.Services;
+namespace GalNet.Editor.Shared.Services;
 
 public sealed class EditorDocumentService : IEditorDocumentService
 {

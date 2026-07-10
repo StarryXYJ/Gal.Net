@@ -4,7 +4,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Core.Variable;
-using GalNet.Editor.Services;
+using GalNet.Editor.Shared.Services;
 
 namespace GalNet.Editor.ViewModels;
 
@@ -18,6 +18,7 @@ public sealed partial class VariableListEditorViewModel : ObservableObject
     private readonly Action<string> _removeCurrentValue;
     private readonly Action<string, string> _renameCurrentValue;
     private readonly Func<string, VariableScope, bool> _isNameAvailable;
+    private readonly Func<string, VariableScope, string> _resolveAvailableName;
     private readonly Action<string>? _onNameConflict;
     private readonly bool _allowCurrentEditing;
 
@@ -32,6 +33,7 @@ public sealed partial class VariableListEditorViewModel : ObservableObject
         bool showCurrentValue,
         bool allowCurrentEditing,
         Func<string, VariableScope, bool> isNameAvailable,
+        Func<string, VariableScope, string> resolveAvailableName,
         Func<string, Variable?> getCurrentValue,
         Action<string, object> setCurrentValue,
         Action<string> removeCurrentValue,
@@ -47,6 +49,7 @@ public sealed partial class VariableListEditorViewModel : ObservableObject
         _removeCurrentValue = removeCurrentValue;
         _renameCurrentValue = renameCurrentValue;
         _isNameAvailable = isNameAvailable;
+        _resolveAvailableName = resolveAvailableName;
         _onNameConflict = onNameConflict;
         _allowCurrentEditing = allowCurrentEditing;
         ShowCurrentValue = showCurrentValue;
@@ -119,6 +122,7 @@ public sealed partial class VariableListEditorViewModel : ObservableObject
             _allowCurrentEditing,
             currentValue,
             _isNameAvailable,
+            _resolveAvailableName,
             OnItemChanged,
             OnItemRenamed,
             OnCurrentValueChanged,
@@ -171,6 +175,7 @@ public sealed partial class VariableEditorItemViewModel : ObservableObject
     private readonly VariableScope _scope;
     private readonly bool _allowCurrentEditing;
     private readonly Func<string, VariableScope, bool> _isNameAvailable;
+    private readonly Func<string, VariableScope, string> _resolveAvailableName;
     private readonly Action<VariableEditorItemViewModel> _onChanged;
     private readonly Action<VariableEditorItemViewModel, string, string> _onRenamed;
     private readonly Action<VariableEditorItemViewModel, object> _onCurrentValueChanged;
@@ -304,6 +309,7 @@ public sealed partial class VariableEditorItemViewModel : ObservableObject
         bool allowCurrentEditing,
         Variable? currentValue,
         Func<string, VariableScope, bool> isNameAvailable,
+        Func<string, VariableScope, string> resolveAvailableName,
         Action<VariableEditorItemViewModel> onChanged,
         Action<VariableEditorItemViewModel, string, string> onRenamed,
         Action<VariableEditorItemViewModel, object> onCurrentValueChanged,
@@ -313,6 +319,7 @@ public sealed partial class VariableEditorItemViewModel : ObservableObject
         _scope = scope;
         _allowCurrentEditing = allowCurrentEditing;
         _isNameAvailable = isNameAvailable;
+        _resolveAvailableName = resolveAvailableName;
         _onChanged = onChanged;
         _onRenamed = onRenamed;
         _onCurrentValueChanged = onCurrentValueChanged;
@@ -343,9 +350,17 @@ public sealed partial class VariableEditorItemViewModel : ObservableObject
 
         if (!_isNameAvailable(sanitized, _scope))
         {
+            var resolved = _resolveAvailableName(sanitized, _scope);
             _reverting = true;
-            Name = oldName;
+            Name = resolved;
             _reverting = false;
+            NameError = string.Empty;
+            if (!string.Equals(resolved, oldName, StringComparison.Ordinal))
+            {
+                Definition.Name = resolved;
+                Definition.DefaultValue.Name = resolved;
+                _onRenamed(this, oldName, resolved);
+            }
             _onNameConflict?.Invoke(sanitized);
             return;
         }

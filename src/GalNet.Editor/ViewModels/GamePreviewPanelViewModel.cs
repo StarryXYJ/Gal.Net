@@ -12,6 +12,7 @@ using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Project;
 using GalNet.Editor.Services;
+using GalNet.Editor.Shared.Services;
 using Serilog;
 
 namespace GalNet.Editor.ViewModels;
@@ -127,6 +128,7 @@ public partial class GamePreviewPanelViewModel : ObservableObject
             showCurrentValue: true,
             allowCurrentEditing: true,
             IsNameAvailable,
+            ResolveAvailableName,
             name => _variableService.GetSnapshot(VariableScope.Player).TryGetValue(name, out var v) ? CloneVariable(v, name) : null,
             (name, value) =>
             {
@@ -148,6 +150,7 @@ public partial class GamePreviewPanelViewModel : ObservableObject
             showCurrentValue: IsGameStarted,
             allowCurrentEditing: IsGameStarted,
             IsNameAvailable,
+            ResolveAvailableName,
             name => _variableService.GetSnapshot(VariableScope.Save).TryGetValue(name, out var v) ? CloneVariable(v, name) : null,
             (name, value) =>
             {
@@ -165,6 +168,20 @@ public partial class GamePreviewPanelViewModel : ObservableObject
     private bool IsNameAvailable(string name, VariableScope scope)
     {
         return _variableDefinitions.IsNameAvailable(name, scope);
+    }
+
+    private string ResolveAvailableName(string name, VariableScope scope)
+    {
+        var sanitized = VariableNameRules.Sanitize(name, $"var_{scope.ToString().ToLowerInvariant()}");
+        if (_variableDefinitions.IsNameAvailable(sanitized, scope))
+            return sanitized;
+
+        var suffix = 1;
+        var candidate = sanitized;
+        while (!_variableDefinitions.IsNameAvailable(candidate, scope))
+            candidate = $"{sanitized}_{suffix++}";
+
+        return candidate;
     }
 
     private void RenamePlayerVariable(string oldName, string newName)

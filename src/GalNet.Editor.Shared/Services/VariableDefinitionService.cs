@@ -4,7 +4,7 @@ using System.Linq;
 using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Services;
 
-namespace GalNet.Editor.Services;
+namespace GalNet.Editor.Shared.Services;
 
 public sealed class VariableDefinitionService : IVariableDefinitionService
 {

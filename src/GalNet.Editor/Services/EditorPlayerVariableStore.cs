@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Shared.Services;
 using GalNet.Editor.Project;
 using Serilog;
 

@@ -4,7 +4,7 @@ using System.Text.Json;
 using GalNet.Core.Settings;
 using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Documents;
-using GalNet.Editor.Services;
+using GalNet.Editor.Shared.Services;
 
 namespace GeneralTest.Editor;
 

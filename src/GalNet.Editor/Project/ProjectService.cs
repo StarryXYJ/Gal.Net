@@ -6,7 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Documents;
-using GalNet.Editor.Services;
+using GalNet.Editor.Shared.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
