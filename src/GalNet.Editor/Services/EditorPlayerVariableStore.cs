@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using GalNet.Core.Settings;
 using GalNet.Core.Variable;
+using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Project;
 using Serilog;
 
@@ -13,16 +13,19 @@ namespace GalNet.Editor.Services;
 public sealed class EditorPlayerVariableStore : IEditorPlayerVariableStore
 {
     private readonly IProjectService _projectService;
+    private readonly IVariableDefinitionService _variableDefinitions;
     private readonly Dictionary<string, Variable> _variables = new(StringComparer.Ordinal);
 
     public event Action? Changed;
 
     public IReadOnlyDictionary<string, Variable> Snapshot => _variables;
 
-    public EditorPlayerVariableStore(IProjectService projectService)
+    public EditorPlayerVariableStore(IProjectService projectService, IVariableDefinitionService variableDefinitions)
     {
         _projectService = projectService;
+        _variableDefinitions = variableDefinitions;
         _projectService.CurrentChanged += _ => Reload();
+        _variableDefinitions.DefinitionsChanged += OnDefinitionsChanged;
         Reload();
     }
 
@@ -36,8 +39,6 @@ public sealed class EditorPlayerVariableStore : IEditorPlayerVariableStore
             return;
         }
 
-        VariableNameRules.Normalize(project.Settings);
-
         var path = GetStoragePath(project);
         if (File.Exists(path))
         {
@@ -45,7 +46,7 @@ public sealed class EditorPlayerVariableStore : IEditorPlayerVariableStore
             {
                 var json = File.ReadAllText(path);
                 var restored = JsonSerializer.Deserialize<Dictionary<string, Variable>>(json) ?? [];
-                foreach (var definition in project.Settings.PlayerVariables)
+                foreach (var definition in _variableDefinitions.GetDefinitions(VariableScope.Player))
                 {
                     if (restored.TryGetValue(definition.Name, out var variable))
                         _variables[definition.Name] = CloneVariable(definition.Name, variable);
@@ -59,19 +60,19 @@ public sealed class EditorPlayerVariableStore : IEditorPlayerVariableStore
             }
         }
 
-        EnsureInitialized(project.Settings);
+        EnsureInitialized();
         Changed?.Invoke();
     }
 
-    public IReadOnlyDictionary<string, Variable> EnsureInitialized(ProjectSettings settings)
+    public IReadOnlyDictionary<string, Variable> EnsureInitialized()
     {
-        VariableNameRules.Normalize(settings);
+        var definitions = _variableDefinitions.GetDefinitions(VariableScope.Player);
 
-        var staleNames = _variables.Keys.Except(settings.PlayerVariables.Select(v => v.Name), StringComparer.Ordinal).ToList();
+        var staleNames = _variables.Keys.Except(definitions.Select(v => v.Name), StringComparer.Ordinal).ToList();
         foreach (var staleName in staleNames)
             _variables.Remove(staleName);
 
-        foreach (var definition in settings.PlayerVariables)
+        foreach (var definition in definitions)
         {
             if (_variables.TryGetValue(definition.Name, out var variable) && variable.Type == definition.Type)
                 continue;
@@ -83,10 +84,10 @@ public sealed class EditorPlayerVariableStore : IEditorPlayerVariableStore
         return Snapshot;
     }
 
-    public void Reset(ProjectSettings settings)
+    public void Reset()
     {
         _variables.Clear();
-        foreach (var definition in settings.PlayerVariables)
+        foreach (var definition in _variableDefinitions.GetDefinitions(VariableScope.Player))
             _variables[definition.Name] = CloneVariable(definition.Name, definition.DefaultValue);
 
         Save();
@@ -144,6 +145,15 @@ public sealed class EditorPlayerVariableStore : IEditorPlayerVariableStore
 
     private static string GetStoragePath(GalProject project) =>
         Path.Combine(project.EditorStateDirectory, "player-variables.json");
+
+    private void OnDefinitionsChanged(VariableScope scope)
+    {
+        if (scope != VariableScope.Player)
+            return;
+
+        EnsureInitialized();
+        Changed?.Invoke();
+    }
 
     private static Variable CloneVariable(string name, Variable source)
     {

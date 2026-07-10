@@ -69,7 +69,7 @@ public sealed partial class VariableListEditorViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void AddVariable()
+    public void AddVariable()
     {
         var index = _source.Count + 1;
         var name = GenerateUniqueName($"var_{_scope.ToString().ToLowerInvariant()}_{index}");

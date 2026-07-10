@@ -41,6 +41,11 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.MainWindow = ServiceProvider.GetRequiredService<MainWindow>();
+            desktop.Exit += (_, _) =>
+            {
+                if (ServiceProvider is IDisposable disposable)
+                    disposable.Dispose();
+            };
         }
 
         base.OnFrameworkInitializationCompleted();

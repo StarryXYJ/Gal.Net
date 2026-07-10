@@ -11,6 +11,7 @@ namespace GalNet.Editor.ViewModels;
 public partial class ProjectSettingsPanelViewModel : ObservableObject
 {
     private readonly IProjectService _projectService;
+    private bool _isLoading;
 
     public IEditorLocalizationService L { get; }
 
@@ -51,11 +52,13 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
     {
         if (_projectService.Current?.Settings is not { } settings) return;
 
+        _isLoading = true;
         DefaultWidth = settings.DefaultWidth;
         DefaultHeight = settings.DefaultHeight;
         SaveSlotCount = settings.SaveSlotCount;
         SfxChannelCount = settings.SfxChannelCount;
         TargetLocale = settings.TargetLocale.Code;
+        _isLoading = false;
         UpdateDirtyText();
     }
 
@@ -78,8 +81,6 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
             project.Settings.TargetLocale = new Core.I18n.I18nLocale(TargetLocale);
 
             await _projectService.SaveAsync();
-            project.IsDirty = false;
-
             IsDirtyText = L["Settings.Saved"];
             Log.Information("Project settings saved");
         }
@@ -88,5 +89,19 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
             IsDirtyText = L["Settings.SaveFailed"];
             Log.Error(ex, "Failed to save project settings");
         }
+    }
+
+    partial void OnDefaultWidthChanged(int value) => TriggerAutoSave();
+    partial void OnDefaultHeightChanged(int value) => TriggerAutoSave();
+    partial void OnSaveSlotCountChanged(int value) => TriggerAutoSave();
+    partial void OnSfxChannelCountChanged(int value) => TriggerAutoSave();
+    partial void OnTargetLocaleChanged(string value) => TriggerAutoSave();
+
+    private void TriggerAutoSave()
+    {
+        if (_isLoading || _projectService.Current is null)
+            return;
+
+        _ = SaveSettingsAsync();
     }
 }

@@ -23,6 +23,7 @@ public sealed partial class NodeInspectorPanelViewModel : ObservableObject
     {
         Workspace = workspace;
         Workspace.PropertyChanged += OnWorkspacePropertyChanged;
+        Workspace.VariableDefinitionsChanged += OnVariableDefinitionsChanged;
     }
 
     [RelayCommand]
@@ -49,5 +50,11 @@ public sealed partial class NodeInspectorPanelViewModel : ObservableObject
             OnPropertyChanged(nameof(ConditionSuggestions));
             OnPropertyChanged(nameof(ValidationVariables));
         }
+    }
+
+    private void OnVariableDefinitionsChanged()
+    {
+        OnPropertyChanged(nameof(ConditionSuggestions));
+        OnPropertyChanged(nameof(ValidationVariables));
     }
 }

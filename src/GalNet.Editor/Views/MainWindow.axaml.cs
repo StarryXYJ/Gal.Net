@@ -20,12 +20,19 @@ public partial class MainWindow : UrsaWindow
         _viewFactory = viewFactory;
 
         _navigation.CurrentPageChanged += OnCurrentPageChanged;
+        Closed += OnClosed;
 
         Loaded += (_, _) =>
         {
             Log.Information("=== GalNet Editor starting ===");
             _navigation.NavigateTo<StartupPageViewModel>();
         };
+    }
+
+    private void OnClosed(object? sender, System.EventArgs e)
+    {
+        _navigation.CurrentPageChanged -= OnCurrentPageChanged;
+        Closed -= OnClosed;
     }
 
     private void OnCurrentPageChanged(object? page)

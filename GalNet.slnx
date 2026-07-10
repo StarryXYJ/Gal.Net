@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/" />
   <Folder Name="/src/Editor/">
+    <Project Path="src/GalNet.Editor.Abstraction/GalNet.Editor.Abstraction.csproj" />
     <Project Path="src/GalNet.Editor.Shared/GalNet.Editor.Shared.csproj" />
     <Project Path="src/GalNet.Editor/GalNet.Editor.csproj" />
     <Project Path="src/GalNet.Headless/GalNet.Headless.csproj" />

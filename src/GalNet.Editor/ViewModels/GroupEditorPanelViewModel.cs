@@ -17,6 +17,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject
     {
         Workspace = workspace;
         GroupNode = groupNode;
+        Workspace.VariableDefinitionsChanged += OnVariableDefinitionsChanged;
     }
 
     [RelayCommand]
@@ -77,5 +78,11 @@ public partial class GroupEditorPanelViewModel : ObservableObject
     {
         for (var i = 0; i < GroupNode.Entries.Count; i++)
             GroupNode.Entries[i].Id = i + 1;
+    }
+
+    private void OnVariableDefinitionsChanged()
+    {
+        OnPropertyChanged(nameof(ConditionSuggestions));
+        OnPropertyChanged(nameof(ValidationVariables));
     }
 }

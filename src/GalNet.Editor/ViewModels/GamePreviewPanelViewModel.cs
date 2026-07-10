@@ -9,6 +9,7 @@ using GalNet.Control.ViewModels;
 using GalNet.Core.Runtime;
 using GalNet.Core.Services;
 using GalNet.Core.Variable;
+using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Project;
 using GalNet.Editor.Services;
 using Serilog;
@@ -22,6 +23,8 @@ public partial class GamePreviewPanelViewModel : ObservableObject
     private readonly EditorWorkspaceViewModel _workspace;
     private readonly IProjectService _projectService;
     private readonly EditorVariableService _variableService;
+    private readonly IVariableDefinitionService _variableDefinitions;
+    private readonly IEditorDocumentService _documentService;
 
     private IGameRuntime? _runtime;
 
@@ -47,15 +50,24 @@ public partial class GamePreviewPanelViewModel : ObservableObject
         IGameFlowFactory gameFlowFactory,
         EditorWorkspaceViewModel workspace,
         IProjectService projectService,
-        EditorVariableService variableService)
+        EditorVariableService variableService,
+        IVariableDefinitionService variableDefinitions,
+        IEditorDocumentService documentService)
     {
         _navigation = navigation;
         _gameFlowFactory = gameFlowFactory;
         _workspace = workspace;
         _projectService = projectService;
         _variableService = variableService;
+        _variableDefinitions = variableDefinitions;
+        _documentService = documentService;
 
-        _projectService.CurrentChanged += _ => ReloadEditors();
+        _projectService.CurrentChanged += _ =>
+        {
+            _runtime = null;
+            IsGameStarted = false;
+            ReloadEditors();
+        };
         _variableService.VariableChanged += OnVariableServiceChanged;
 
         ReloadEditors();
@@ -106,13 +118,11 @@ public partial class GamePreviewPanelViewModel : ObservableObject
 
     private void ReloadEditors()
     {
-        if (_projectService.Current?.Settings is not { } settings)
+        if (_projectService.Current is null)
             return;
 
-        VariableNameRules.Normalize(settings);
-
         PlayerVariables = new VariableListEditorViewModel(
-            settings.PlayerVariables,
+            _variableDefinitions.GetDefinitions(VariableScope.Player),
             VariableScope.Player,
             showCurrentValue: true,
             allowCurrentEditing: true,
@@ -127,13 +137,13 @@ public partial class GamePreviewPanelViewModel : ObservableObject
                 _variableService.NotifyVariableChanged(VariableScope.Player, name, v);
                 _runtime?.SetVariable(name, value);
             },
-            name => { /* Remove handled by rename */ },
+            name => _variableService.RemoveRuntimeVariable(VariableScope.Player, name),
             RenamePlayerVariable,
             PersistVariableDefinitions,
             OnNameConflict);
 
         SaveVariables = new VariableListEditorViewModel(
-            settings.SaveVariables,
+            _variableDefinitions.GetDefinitions(VariableScope.Save),
             VariableScope.Save,
             showCurrentValue: IsGameStarted,
             allowCurrentEditing: IsGameStarted,
@@ -144,7 +154,7 @@ public partial class GamePreviewPanelViewModel : ObservableObject
                 if (_runtime is null) return;
                 _runtime.SetVariable(name, value);
             },
-            name => { /* Remove handled by rename */ },
+            name => _variableService.RemoveRuntimeVariable(VariableScope.Save, name),
             RenameSaveVariable,
             PersistVariableDefinitions);
 
@@ -154,14 +164,7 @@ public partial class GamePreviewPanelViewModel : ObservableObject
 
     private bool IsNameAvailable(string name, VariableScope scope)
     {
-        if (_projectService.Current?.Settings is not { } settings)
-            return true;
-
-        var allNames = settings.PlayerVariables.Select(v => v.Name)
-            .Concat(settings.SaveVariables.Select(v => v.Name))
-            .ToList();
-        var count = allNames.Count(n => string.Equals(n, name, StringComparison.Ordinal));
-        return count <= 1;
+        return _variableDefinitions.IsNameAvailable(name, scope);
     }
 
     private void RenamePlayerVariable(string oldName, string newName)
@@ -169,12 +172,9 @@ public partial class GamePreviewPanelViewModel : ObservableObject
         if (string.Equals(oldName, newName, StringComparison.Ordinal))
             return;
 
-        if (_variableService.GetSnapshot(VariableScope.Player).TryGetValue(oldName, out var variable))
-        {
-            var cloned = CloneVariable(variable, newName);
-            _variableService.NotifyVariableChanged(VariableScope.Player, newName, cloned);
-            _runtime?.SetVariable(newName, GetRawValue(cloned));
-        }
+        _variableService.RenameRuntimeVariable(VariableScope.Player, oldName, newName);
+        if (_variableService.GetSnapshot(VariableScope.Player).TryGetValue(newName, out var variable))
+            _runtime?.SetVariable(newName, GetRawValue(variable));
     }
 
     private void RenameSaveVariable(string oldName, string newName)
@@ -182,21 +182,15 @@ public partial class GamePreviewPanelViewModel : ObservableObject
         if (string.Equals(oldName, newName, StringComparison.Ordinal))
             return;
 
-        if (_variableService.GetSnapshot(VariableScope.Save).TryGetValue(oldName, out var variable))
-        {
-            var cloned = CloneVariable(variable, newName);
-            _variableService.NotifyVariableChanged(VariableScope.Save, newName, cloned);
-        }
+        _variableService.RenameRuntimeVariable(VariableScope.Save, oldName, newName);
     }
 
     private void PersistVariableDefinitions()
     {
-        if (_projectService.Current is not { } project)
-            return;
-
-        VariableNameRules.Normalize(project.Settings);
-        project.IsDirty = true;
-        _ = _projectService.SaveAsync();
+        _variableDefinitions.ResetFromDocument();
+        _documentService.MarkDirty();
+        if (_projectService.Current is { } project)
+            project.IsDirty = true;
     }
 
     /// <summary>Event raised when a variable name conflict is detected. The view shows a dialog.</summary>

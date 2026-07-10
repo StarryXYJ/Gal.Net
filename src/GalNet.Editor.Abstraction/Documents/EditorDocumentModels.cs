@@ -1,12 +1,13 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using GalNet.Core.Variable;
 
-namespace GalNet.Editor.Project;
+namespace GalNet.Editor.Abstraction.Documents;
 
 public sealed class EditorGraphDocument
 {
     [JsonPropertyName("version")]
-    public int Version { get; set; } = 1;
+    public int Version { get; set; } = 2;
 
     [JsonPropertyName("name")]
     public string Name { get; set; } = "Main";
@@ -19,6 +20,12 @@ public sealed class EditorGraphDocument
 
     [JsonPropertyName("edges")]
     public List<EditorGraphEdgeDto> Edges { get; set; } = [];
+
+    [JsonPropertyName("playerVariables")]
+    public List<ProjectVariableDefinition> PlayerVariables { get; set; } = [];
+
+    [JsonPropertyName("saveVariables")]
+    public List<ProjectVariableDefinition> SaveVariables { get; set; } = [];
 }
 
 public sealed class EditorGraphNodeDto
@@ -76,4 +83,18 @@ public sealed class EditorGraphEdgeDto
 
     [JsonPropertyName("toNodeId")]
     public string ToNodeId { get; set; } = "";
+}
+
+public sealed class EditorEntryData
+{
+    public int Id { get; set; }
+    public string Type { get; set; } = "";
+    public string Condition { get; set; } = "";
+    public string Parameters { get; set; } = "";
+}
+
+public sealed class LoadedEditorProjectDocument
+{
+    public EditorGraphDocument Document { get; set; } = new();
+    public Dictionary<string, List<EditorEntryData>> GroupEntries { get; set; } = [];
 }

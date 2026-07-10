@@ -4,6 +4,7 @@ using Avalonia.Input;
 using GalNet.Editor.Project;
 using GalNet.Editor.Services;
 using GalNet.Editor.Shared.Commands;
+using GalNet.Editor.ViewModels;
 using Serilog;
 
 namespace GalNet.Editor.Commands;
@@ -11,10 +12,15 @@ namespace GalNet.Editor.Commands;
 public class SaveProjectCommand : AsyncEditorCommand
 {
     private readonly IProjectService _projectService;
+    private readonly EditorWorkspaceViewModel _workspace;
 
-    public SaveProjectCommand(IProjectService projectService, IEditorLocalizationService localization)
+    public SaveProjectCommand(
+        IProjectService projectService,
+        EditorWorkspaceViewModel workspace,
+        IEditorLocalizationService localization)
     {
         _projectService = projectService;
+        _workspace = workspace;
         Id = "save_project";
         DisplayName = localization["Command.SaveProject"];
         localization.PropertyChanged += (_, e) =>
@@ -30,6 +36,7 @@ public class SaveProjectCommand : AsyncEditorCommand
     {
         try
         {
+            _workspace.PersistGraphDocument();
             await _projectService.SaveAsync();
             if (_projectService.Current is { } program)
             {

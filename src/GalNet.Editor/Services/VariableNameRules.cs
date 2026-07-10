@@ -40,9 +40,16 @@ public static partial class VariableNameRules
 
     public static void Normalize(ProjectSettings settings)
     {
+        Normalize(settings.PlayerVariables, settings.SaveVariables);
+    }
+
+    public static void Normalize(
+        List<ProjectVariableDefinition> playerVariables,
+        List<ProjectVariableDefinition> saveVariables)
+    {
         var usedNames = new HashSet<string>(StringComparer.Ordinal);
-        NormalizeDefinitions(settings.PlayerVariables, usedNames, "player");
-        NormalizeDefinitions(settings.SaveVariables, usedNames, "save");
+        NormalizeDefinitions(playerVariables, usedNames, "player");
+        NormalizeDefinitions(saveVariables, usedNames, "save");
     }
 
     private static void NormalizeDefinitions(

@@ -3,6 +3,7 @@ using GalNet.Control.View;
 using GalNet.Control.ViewModels;
 using GalNet.Control.Views;
 using GalNet.Core.Services;
+using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Commands;
 using GalNet.Editor.Dock;
 using GalNet.Editor.Project;
@@ -41,6 +42,10 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<IGameExitService, EditorGameExitService>();
         services.AddSingleton<IEditorPlayerVariableStore, EditorPlayerVariableStore>();
+        services.AddSingleton<IEditorDocumentRepository, EditorDocumentRepository>();
+        services.AddSingleton<IEditorDocumentService, EditorDocumentService>();
+        services.AddSingleton<IEditorSaveCoordinator, EditorSaveCoordinator>();
+        services.AddSingleton<IVariableDefinitionService, VariableDefinitionService>();
         services.AddSingleton<EditorVariableService>();
         services.AddSingleton<IVariableService>(sp => sp.GetRequiredService<EditorVariableService>());
         services.AddSingleton<EditorGameDataProvider>();

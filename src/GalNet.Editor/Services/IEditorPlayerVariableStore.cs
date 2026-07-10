@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using GalNet.Core.Settings;
 using GalNet.Core.Variable;
 
 namespace GalNet.Editor.Services;
@@ -13,9 +12,9 @@ public interface IEditorPlayerVariableStore
 
     void Reload();
 
-    IReadOnlyDictionary<string, Variable> EnsureInitialized(ProjectSettings settings);
+    IReadOnlyDictionary<string, Variable> EnsureInitialized();
 
-    void Reset(ProjectSettings settings);
+    void Reset();
 
     void SetValue(string name, object value);
 
