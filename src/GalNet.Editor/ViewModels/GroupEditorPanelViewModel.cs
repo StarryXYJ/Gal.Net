@@ -1,11 +1,14 @@
 using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GalNet.Editor.Services;
 
 namespace GalNet.Editor.ViewModels;
 
 public partial class GroupEditorPanelViewModel : ObservableObject
 {
+    private readonly IGraphEditingService _graphEditingService;
+
     public EditorWorkspaceViewModel Workspace { get; }
     public GraphNodeViewModel GroupNode { get; }
 
@@ -13,22 +16,19 @@ public partial class GroupEditorPanelViewModel : ObservableObject
     public IReadOnlyList<ConditionVariableSuggestion> ConditionSuggestions => Workspace.GetConditionVariableSuggestions();
     public IReadOnlyList<GalNet.Core.Variable.ProjectVariableDefinition> ValidationVariables => Workspace.AllProjectVariableDefinitions;
 
-    public GroupEditorPanelViewModel(EditorWorkspaceViewModel workspace, GraphNodeViewModel groupNode)
+    public GroupEditorPanelViewModel(EditorWorkspaceViewModel workspace, GraphNodeViewModel groupNode, IGraphEditingService graphEditingService)
     {
         Workspace = workspace;
         GroupNode = groupNode;
+        _graphEditingService = graphEditingService;
         Workspace.VariableDefinitionsChanged += OnVariableDefinitionsChanged;
     }
 
     [RelayCommand]
     private void AddEntry()
     {
-        GroupNode.Entries.Add(new EntryEditorItemViewModel
-        {
-            Id = GroupNode.Entries.Count + 1,
-            Type = "text",
-            Parameters = "speaker=; text="
-        });
+        if (_graphEditingService.AddEntry(GroupNode))
+            Workspace.SaveGraphDocument();
     }
 
     [RelayCommand]
@@ -37,8 +37,8 @@ public partial class GroupEditorPanelViewModel : ObservableObject
         if (entry is null)
             return;
 
-        GroupNode.Entries.Remove(entry);
-        RenumberEntries();
+        if (_graphEditingService.RemoveEntry(GroupNode, entry))
+            Workspace.SaveGraphDocument();
     }
 
     [RelayCommand]
@@ -58,12 +58,8 @@ public partial class GroupEditorPanelViewModel : ObservableObject
         if (entry is null)
             return;
 
-        var oldIndex = GroupNode.Entries.IndexOf(entry);
-        if (oldIndex < 0 || newIndex < 0 || newIndex >= GroupNode.Entries.Count)
-            return;
-
-        GroupNode.Entries.Move(oldIndex, newIndex);
-        RenumberEntries();
+        if (_graphEditingService.MoveEntry(GroupNode, entry, newIndex))
+            Workspace.SaveGraphDocument();
     }
 
     private void MoveEntry(EntryEditorItemViewModel? entry, int delta)
@@ -72,12 +68,6 @@ public partial class GroupEditorPanelViewModel : ObservableObject
             return;
 
         MoveEntryTo(entry, GroupNode.Entries.IndexOf(entry) + delta);
-    }
-
-    private void RenumberEntries()
-    {
-        for (var i = 0; i < GroupNode.Entries.Count; i++)
-            GroupNode.Entries[i].Id = i + 1;
     }
 
     private void OnVariableDefinitionsChanged()

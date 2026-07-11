@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Input;
 using GalNet.Editor.Controls;
@@ -24,16 +26,14 @@ public partial class NodeInspectorPanelView : UserControl
 
         if (DataContext is NodeInspectorPanelViewModel vm)
         {
-            _optionsDragHelper = new DragDropHelper(
+            _optionsDragHelper = CreateDragHelper(
                 OptionsListBox,
-                this,
                 (from, to) => vm.Workspace.MoveChoiceOptionTo(
                     vm.Workspace.SelectedNode?.Options[from]!,
                     to));
 
-            _conditionsDragHelper = new DragDropHelper(
+            _conditionsDragHelper = CreateDragHelper(
                 ConditionsListBox,
-                this,
                 (from, to) => vm.Workspace.MoveConditionTo(
                     vm.Workspace.SelectedNode?.Conditions[from]!,
                     to));
@@ -48,13 +48,22 @@ public partial class NodeInspectorPanelView : UserControl
 
     private void OnDragPointerMoved(object? sender, PointerEventArgs e)
     {
-        _optionsDragHelper?.OnPointerMoved(e);
-        _conditionsDragHelper?.OnPointerMoved(e);
+        if (_optionsDragHelper is not null)
+            _optionsDragHelper.OnPointerMoved(e);
+
+        if (_conditionsDragHelper is not null)
+            _conditionsDragHelper.OnPointerMoved(e);
     }
 
     private void OnDragPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        _optionsDragHelper?.OnPointerReleased(e);
-        _conditionsDragHelper?.OnPointerReleased(e);
+        if (_optionsDragHelper is not null)
+            _optionsDragHelper.OnPointerReleased(e);
+
+        if (_conditionsDragHelper is not null)
+            _conditionsDragHelper.OnPointerReleased(e);
     }
+
+    private DragDropHelper CreateDragHelper(ListBox listBox, Action<int, int> onMove) =>
+        new(listBox, this, onMove);
 }

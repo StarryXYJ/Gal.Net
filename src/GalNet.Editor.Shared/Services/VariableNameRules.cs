@@ -24,16 +24,13 @@ public static partial class VariableNameRules
         var builder = new StringBuilder(raw.Length);
         foreach (var ch in raw)
         {
-            if (char.IsLetterOrDigit(ch) || ch == '_')
+            if (IsAsciiLetter(ch) || char.IsAsciiDigit(ch) || ch == '_')
                 builder.Append(ch);
         }
 
         var sanitized = builder.ToString();
         if (sanitized.Length == 0)
             sanitized = fallback;
-
-        if (!char.IsLetter(sanitized[0]) && sanitized[0] != '_')
-            sanitized = $"_{sanitized}";
 
         return sanitized;
     }
@@ -75,6 +72,9 @@ public static partial class VariableNameRules
         }
     }
 
-    [GeneratedRegex("^[A-Za-z_][A-Za-z0-9_]*$")]
+    [GeneratedRegex("^[A-Za-z0-9_]+$")]
     private static partial Regex ValidNameRegex();
+
+    private static bool IsAsciiLetter(char ch) =>
+        ch is >= 'a' and <= 'z' or >= 'A' and <= 'Z';
 }

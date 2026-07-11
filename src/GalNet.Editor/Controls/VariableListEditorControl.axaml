@@ -25,8 +25,10 @@
                             BorderBrush="{DynamicResource SemiColorBorder}"
                             BorderThickness="1"
                             CornerRadius="6">
-                        <Grid ColumnDefinitions="Auto,*,120,*,*,Auto"
-                              ColumnSpacing="8">
+                        <Grid RowDefinitions="Auto,Auto"
+                              ColumnDefinitions="Auto,*,120,*,*,Auto"
+                              ColumnSpacing="8"
+                              RowSpacing="4">
                             <Border Padding="6,0"
                                     VerticalAlignment="Center"
                                     Background="Transparent"
@@ -34,7 +36,9 @@
                                     PointerPressed="OnDragHandlePressed">
                                 <TextBlock Text="::" />
                             </Border>
-                                <TextBox Grid.Column="1" VerticalAlignment="Center" Text="{Binding Name}" />
+                                <TextBox Grid.Column="1"
+                                         VerticalAlignment="Center"
+                                         Text="{Binding Name, UpdateSourceTrigger=LostFocus}" />
                                 
                             <ComboBox Grid.Column="2"
                                       VerticalAlignment="Center"
@@ -91,6 +95,13 @@
                                     Content="Remove"
                                     Command="{Binding #Root.DataContext.RemoveVariableCommand}"
                                     CommandParameter="{Binding}" />
+                            <TextBlock Grid.Row="1"
+                                       Grid.Column="1"
+                                       Grid.ColumnSpan="5"
+                                       Foreground="#E06C75"
+                                       FontSize="11"
+                                       IsVisible="{Binding HasNameError}"
+                                       Text="{Binding NameError}" />
                         </Grid>
                     </Border>
                 </DataTemplate>

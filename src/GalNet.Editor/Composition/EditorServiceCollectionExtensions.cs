@@ -10,7 +10,6 @@ using GalNet.Editor.Project;
 using GalNet.Editor.Services;
 using GalNet.Editor.Shared.Services;
 using GalNet.Editor.Shared.Commands;
-using GalNet.Editor.Shared.Services;
 using GalNet.Editor.ViewModels;
 using GalNet.Editor.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,6 +42,7 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<IGameExitService, EditorGameExitService>();
         services.AddSingleton<IEditorPlayerVariableStore, EditorPlayerVariableStore>();
+        services.AddSingleton<IGraphEditingService, GraphEditingService>();
         services.AddSingleton<IEditorDocumentRepository, EditorDocumentRepository>();
         services.AddSingleton<IEditorDocumentService, EditorDocumentService>();
         services.AddSingleton<IEditorSaveCoordinator, EditorSaveCoordinator>();

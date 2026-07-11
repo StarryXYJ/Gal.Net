@@ -86,14 +86,13 @@ public sealed class EditorDockFactory : Factory
             EnableGlobalDocking = true
         };
 
-        var inspectorTool = new ToolDock
+        var inspectorDock = new DocumentDock
         {
-            Id = "RightTools",
+            Id = "InspectorDocuments",
             Title = "Inspector",
             ActiveDockable = inspectorDocument,
             VisibleDockables = CreateList<IDockable>([inspectorDocument]),
-            Alignment = Alignment.Right,
-            IsExpanded = true
+            EnableGlobalDocking = true
         };
 
         var centerDock = new ProportionalDock
@@ -120,7 +119,7 @@ public sealed class EditorDockFactory : Factory
             [
                 centerDock,
                 new ProportionalDockSplitter(),
-                inspectorTool
+                inspectorDock
             ])
         };
 
@@ -161,7 +160,8 @@ public sealed class EditorDockFactory : Factory
             Title = $"Group: {groupNode.Name}",
             Context = new GroupEditorPanelViewModel(
                 _serviceProvider.GetRequiredService<EditorWorkspaceViewModel>(),
-                groupNode),
+                groupNode,
+                _serviceProvider.GetRequiredService<IGraphEditingService>()),
             CanFloat = true,
             CanClose = true,
             CanPin = false

@@ -18,6 +18,7 @@ using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Controls;
 using GalNet.Editor.Dock;
 using GalNet.Editor.Project;
+using GalNet.Editor.Services;
 using Serilog;
 
 namespace GalNet.Editor.ViewModels;
@@ -27,6 +28,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
     private readonly IProjectService _projectService;
     private readonly EditorDockFactory _dockFactory;
     private readonly IEditorDocumentRepository _documentRepository;
+    private readonly IGraphEditingService _graphEditingService;
     public event Action? VariableDefinitionsChanged;
 
     [ObservableProperty]
@@ -59,13 +61,15 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         IEditorDocumentRepository documentRepository,
         IEditorDocumentService documentService,
         IEditorSaveCoordinator saveCoordinator,
-        IVariableDefinitionService variableDefinitionService)
+        IVariableDefinitionService variableDefinitionService,
+        IGraphEditingService graphEditingService)
     {
         _projectService = projectService;
         _dockFactory = dockFactory;
         _documentRepository = documentRepository;
         _documentService = documentService;
         _saveCoordinator = saveCoordinator;
+        _graphEditingService = graphEditingService;
         _projectService.CurrentChanged += _ => LoadCurrentProjectGraph();
         _documentService.DirtyStateChanged += OnDocumentDirtyStateChanged;
         variableDefinitionService.DefinitionsChanged += _ =>
@@ -149,15 +153,14 @@ public partial class EditorWorkspaceViewModel : ObservableObject
 
     public void DeleteEdge(GraphEdgeViewModel edge)
     {
-        if (!Edges.Remove(edge))
+        if (!_graphEditingService.DeleteEdge(Nodes, Edges, edge))
             return;
 
         if (ReferenceEquals(SelectedEdge, edge))
             SelectedEdge = null;
 
-        UpdateConnectorStates();
         Log.Information("Edge deleted: {From} [{Outlet}] -> {To}", edge.From.Name, edge.Outlet, edge.To.Name);
-        SaveGraphDocument();
+        MarkGraphDirty();
     }
 
     public void FocusPreview(GamePreviewPanelViewModel preview)
@@ -177,21 +180,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
 
     public GraphNodeViewModel AddNode(GraphNodeKind kind, double x, double y)
     {
-        var index = Nodes.Count(n => n.NodeKind == kind) + 1;
-        Node node = kind switch
-        {
-            GraphNodeKind.LinearGroup => new Group { Name = $"Linear Group {index}" },
-            GraphNodeKind.ChoiceBranch => new Branch { Name = $"Choice Branch {index}", BranchType = BranchType.Choice },
-            GraphNodeKind.ConditionBranch => new Branch { Name = $"Condition Branch {index}", BranchType = BranchType.Condition },
-            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
-        };
-
-        var vm = new GraphNodeViewModel(node, kind)
-        {
-            X = x,
-            Y = y
-        };
-
+        var vm = _graphEditingService.CreateNode(Nodes, kind, x, y);
         TrackNode(vm);
         Nodes.Add(vm);
         UpdateConnectorStates();
@@ -203,18 +192,8 @@ public partial class EditorWorkspaceViewModel : ObservableObject
 
     public void DeleteNode(GraphNodeViewModel node)
     {
-        if (!node.CanDelete)
+        if (!_graphEditingService.DeleteNode(Nodes, Edges, node))
             return;
-
-        var relatedEdges = Edges
-            .Where(e => ReferenceEquals(e.From, node) || ReferenceEquals(e.To, node))
-            .ToList();
-
-        foreach (var edge in relatedEdges)
-            Edges.Remove(edge);
-
-        Nodes.Remove(node);
-        UpdateConnectorStates();
 
         SelectedNodes.Remove(node);
         node.IsSelected = false;
@@ -240,23 +219,12 @@ public partial class EditorWorkspaceViewModel : ObservableObject
 
     public void Connect(GraphConnectorViewModel first, GraphConnectorViewModel second)
     {
-        if (ReferenceEquals(first.Node, second.Node) || first.Kind == second.Kind)
+        if (!_graphEditingService.Connect(Nodes, Edges, first, second))
             return;
 
         var output = first.Kind == GraphConnectorKind.Output ? first : second;
         var input = first.Kind == GraphConnectorKind.Input ? first : second;
 
-        var conflictingEdges = Edges
-            .Where(e =>
-                ReferenceEquals(e.To, input.Node)
-                || (ReferenceEquals(e.From, output.Node) && e.Outlet == output.Index))
-            .ToList();
-
-        foreach (var edge in conflictingEdges)
-            Edges.Remove(edge);
-
-        Edges.Add(new GraphEdgeViewModel(output.Node, input.Node, output.Index));
-        UpdateConnectorStates();
         Log.Information("Nodes connected: {From} [{Outlet}] -> {To}", output.Node.Name, output.Index, input.Node.Name);
         MarkGraphDirty();
     }
@@ -264,15 +232,12 @@ public partial class EditorWorkspaceViewModel : ObservableObject
     [RelayCommand]
     private void AddChoiceOption()
     {
-        if (SelectedNode?.NodeKind != GraphNodeKind.ChoiceBranch)
+        if (SelectedNode is null)
             return;
 
-        SelectedNode.Options.Add(new BranchOptionEditorItemViewModel
-        {
-            Text = $"Option {SelectedNode.Options.Count + 1}"
-        });
-        SelectedNode.RefreshConnectors();
-        UpdateConnectorStates();
+        if (!_graphEditingService.AddChoiceOption(Nodes, Edges, SelectedNode))
+            return;
+
         Log.Information("Choice option added: {NodeName}", SelectedNode.Name);
         MarkGraphDirty();
     }
@@ -283,10 +248,9 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         if (SelectedNode is null || option is null)
             return;
 
-        SelectedNode.Options.Remove(option);
-        SelectedNode.RefreshConnectors();
-        RemoveDanglingOutletEdges(SelectedNode);
-        UpdateConnectorStates();
+        if (!_graphEditingService.RemoveChoiceOption(Nodes, Edges, SelectedNode, option))
+            return;
+
         MarkGraphDirty();
     }
 
@@ -295,22 +259,21 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         if (SelectedNode?.NodeKind != GraphNodeKind.ChoiceBranch || option is null)
             return;
 
-        MoveBranchItemWithEdges(SelectedNode, SelectedNode.Options, option, newIndex);
+        if (!_graphEditingService.MoveChoiceOption(Nodes, Edges, SelectedNode, option, newIndex))
+            return;
+
         MarkGraphDirty();
     }
 
     [RelayCommand]
     private void AddCondition()
     {
-        if (SelectedNode?.NodeKind != GraphNodeKind.ConditionBranch)
+        if (SelectedNode is null)
             return;
 
-        SelectedNode.Conditions.Add(new BranchConditionEditorItemViewModel
-        {
-            Expression = "true"
-        });
-        SelectedNode.RefreshConnectors();
-        UpdateConnectorStates();
+        if (!_graphEditingService.AddCondition(Nodes, Edges, SelectedNode))
+            return;
+
         Log.Information("Condition added: {NodeName}", SelectedNode.Name);
         MarkGraphDirty();
     }
@@ -321,10 +284,9 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         if (SelectedNode is null || condition is null)
             return;
 
-        SelectedNode.Conditions.Remove(condition);
-        SelectedNode.RefreshConnectors();
-        RemoveDanglingOutletEdges(SelectedNode);
-        UpdateConnectorStates();
+        if (!_graphEditingService.RemoveCondition(Nodes, Edges, SelectedNode, condition))
+            return;
+
         MarkGraphDirty();
     }
 
@@ -333,7 +295,9 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         if (SelectedNode?.NodeKind != GraphNodeKind.ConditionBranch || condition is null)
             return;
 
-        MoveBranchItemWithEdges(SelectedNode, SelectedNode.Conditions, condition, newIndex);
+        if (!_graphEditingService.MoveCondition(Nodes, Edges, SelectedNode, condition, newIndex))
+            return;
+
         MarkGraphDirty();
     }
 
@@ -409,64 +373,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         Log.Information("Project created from startup page: {Name} at {Path}", name, projectPath);
     }
 
-    private void RemoveDanglingOutletEdges(GraphNodeViewModel node)
-    {
-        var maxOutlet = node.OutputConnectors.Count - 1;
-        var dangling = Edges
-            .Where(e => ReferenceEquals(e.From, node) && e.Outlet > maxOutlet)
-            .ToList();
-
-        foreach (var edge in dangling)
-            Edges.Remove(edge);
-
-        UpdateConnectorStates();
-    }
-
-    private void MoveBranchItemWithEdges<TItem>(
-        GraphNodeViewModel node,
-        ObservableCollection<TItem> items,
-        TItem item,
-        int newIndex)
-        where TItem : class
-    {
-        var oldIndex = items.IndexOf(item);
-        if (oldIndex < 0 || newIndex < 0 || newIndex >= items.Count || oldIndex == newIndex)
-            return;
-
-        var oldOrder = items.ToList();
-        var edgeByItem = oldOrder
-            .Select((entry, index) => new { entry, edge = Edges.FirstOrDefault(e => ReferenceEquals(e.From, node) && e.Outlet == index) })
-            .Where(x => x.edge is not null)
-            .ToDictionary(x => x.entry, x => x.edge!);
-
-        items.Move(oldIndex, newIndex);
-
-        for (var i = 0; i < items.Count; i++)
-        {
-            if (edgeByItem.TryGetValue(items[i], out var edge))
-                edge.Outlet = i;
-        }
-
-        node.RefreshConnectors();
-        UpdateConnectorStates();
-    }
-
-    private void UpdateConnectorStates()
-    {
-        foreach (var connector in Nodes.SelectMany(n => n.InputConnectors.Concat(n.OutputConnectors)))
-            connector.IsConnected = false;
-
-        foreach (var edge in Edges)
-        {
-            var output = edge.From.OutputConnectors.FirstOrDefault(c => c.Index == edge.Outlet);
-            if (output is not null)
-                output.IsConnected = true;
-
-            var input = edge.To.InputConnectors.FirstOrDefault();
-            if (input is not null)
-                input.IsConnected = true;
-        }
-    }
+    private void UpdateConnectorStates() => _graphEditingService.UpdateConnectorStates(Nodes, Edges);
 
     private void LoadCurrentProjectGraph()
     {

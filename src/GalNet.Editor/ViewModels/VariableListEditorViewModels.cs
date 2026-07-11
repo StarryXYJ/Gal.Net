@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Core.Variable;
@@ -155,10 +158,11 @@ public sealed partial class VariableListEditorViewModel : ObservableObject
 
     private string GenerateUniqueName(string baseName)
     {
-        var candidate = VariableNameRules.Sanitize(baseName);
+        var root = VariableNameRules.Sanitize(baseName);
+        var candidate = root;
         var suffix = 1;
         while (!_isNameAvailable(candidate, _scope))
-            candidate = $"{baseName}_{suffix++}";
+            candidate = $"{root}_{suffix++}";
 
         return candidate;
     }
@@ -170,7 +174,7 @@ public static class VariableTypeValues
         [VariableType.Bool, VariableType.Int, VariableType.Float, VariableType.String];
 }
 
-public sealed partial class VariableEditorItemViewModel : ObservableObject
+public sealed partial class VariableEditorItemViewModel : ObservableValidator
 {
     private readonly VariableScope _scope;
     private readonly bool _allowCurrentEditing;
@@ -187,14 +191,34 @@ public sealed partial class VariableEditorItemViewModel : ObservableObject
 
     public ProjectVariableDefinition Definition { get; }
 
-    [ObservableProperty]
     private string _name;
+
+    [Required(ErrorMessage = "Variable name is required.")]
+    [RegularExpression("^[A-Za-z0-9_]+$", ErrorMessage = "Only ASCII letters, digits, and underscore are allowed.")]
+    public string Name
+    {
+        get => _name;
+        set
+        {
+            if (!SetProperty(ref _name, value, true))
+                return;
+
+            HandleNameChanged(value);
+        }
+    }
 
     [ObservableProperty]
     private string _nameError = "";
 
     [ObservableProperty]
     private bool _isCurrentValueVisible;
+
+    public bool HasNameError => !string.IsNullOrEmpty(NameError);
+
+    partial void OnNameErrorChanged(string value)
+    {
+        OnPropertyChanged(nameof(HasNameError));
+    }
 
     public VariableType SelectedType
     {
@@ -327,9 +351,12 @@ public sealed partial class VariableEditorItemViewModel : ObservableObject
         _name = definition.Name;
         _currentValue = currentValue is null ? CreateTypedVariable(definition.Name, definition.Type) : CloneVariable(currentValue, definition.Name);
         _isCurrentValueVisible = showCurrentValue;
+        ErrorsChanged += OnErrorsChanged;
+        ValidateProperty(_name, nameof(Name));
+        UpdateNameError();
     }
 
-    partial void OnNameChanged(string value)
+    private void HandleNameChanged(string value)
     {
         if (_reverting)
             return;
@@ -376,6 +403,19 @@ public sealed partial class VariableEditorItemViewModel : ObservableObject
     {
         IsCurrentValueVisible = visible;
         OnPropertyChanged(nameof(CanEditCurrentValue));
+    }
+
+    private void UpdateNameError()
+    {
+        NameError = GetErrors(nameof(Name))
+            .Cast<object>()
+            .FirstOrDefault()?.ToString() ?? string.Empty;
+    }
+
+    private void OnErrorsChanged(object? sender, DataErrorsChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(Name))
+            UpdateNameError();
     }
 
     private void RaiseValuePropertiesChanged()
