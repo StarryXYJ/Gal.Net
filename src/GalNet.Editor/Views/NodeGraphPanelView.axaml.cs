@@ -13,10 +13,10 @@ namespace GalNet.Editor.Views;
 
 public partial class NodeGraphPanelView : UserControl
 {
-    private GraphNodeViewModel? _draggedNode;
-    private readonly Dictionary<GraphNodeViewModel, Point> _dragStartPositions = [];
-    private GraphConnectorViewModel? _pendingConnector;
-    private GraphConnectorViewModel? _previewTargetConnector;
+    private GraphNode? _draggedNode;
+    private readonly Dictionary<GraphNode, Point> _dragStartPositions = [];
+    private GraphConnector? _pendingConnector;
+    private GraphConnector? _previewTargetConnector;
     private Point _dragStartWorld;
     private Point _lastViewportPointerPosition;
     private bool _isSelecting;
@@ -291,7 +291,7 @@ public partial class NodeGraphPanelView : UserControl
         workspace.SelectNode(e.Node);
 
         var menu = new MenuFlyout();
-        var deleteItem = new MenuItem { Header = e.Node.CanDelete ? "删除" : "入口节点不可删除", IsEnabled = e.Node.CanDelete };
+        var deleteItem = new MenuItem { Header = e.Node.CanDelete ? "鍒犻櫎" : "鍏ュ彛鑺傜偣涓嶅彲鍒犻櫎", IsEnabled = e.Node.CanDelete };
         deleteItem.Click += (_, _) => ViewModel?.Workspace.DeleteNode(e.Node);
         menu.Items.Add(deleteItem);
         menu.Placement = PlacementMode.Pointer;
@@ -301,7 +301,7 @@ public partial class NodeGraphPanelView : UserControl
 
     private void OnEdgePointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (sender is not Avalonia.Controls.Control { DataContext: GraphEdgeViewModel edge })
+        if (sender is not Avalonia.Controls.Control { DataContext: GraphEdge edge })
             return;
 
         if (!e.GetCurrentPoint(sender as Avalonia.Controls.Control).Properties.IsLeftButtonPressed)
@@ -314,14 +314,14 @@ public partial class NodeGraphPanelView : UserControl
 
     private void OnEdgeRightTapped(object? sender, TappedEventArgs e)
     {
-        if (sender is not Avalonia.Controls.Control { DataContext: GraphEdgeViewModel edge } control)
+        if (sender is not Avalonia.Controls.Control { DataContext: GraphEdge edge } control)
             return;
 
         Focus();
         ViewModel?.Workspace.SelectEdge(edge);
 
         var menu = new MenuFlyout();
-        var deleteItem = new MenuItem { Header = "删除" };
+        var deleteItem = new MenuItem { Header = "鍒犻櫎" };
         deleteItem.Click += (_, _) => ViewModel?.Workspace.DeleteEdge(edge);
         menu.Items.Add(deleteItem);
         menu.Placement = PlacementMode.Pointer;
@@ -332,7 +332,7 @@ public partial class NodeGraphPanelView : UserControl
     private void ShowSelectionMenu(Avalonia.Controls.Control? target = null)
     {
         var menu = new MenuFlyout();
-        var deleteItem = new MenuItem { Header = "删除" };
+        var deleteItem = new MenuItem { Header = "鍒犻櫎" };
         deleteItem.Click += (_, _) => ViewModel?.Workspace.DeleteSelection();
         menu.Items.Add(deleteItem);
         menu.Placement = PlacementMode.Pointer;
@@ -377,12 +377,12 @@ public partial class NodeGraphPanelView : UserControl
         PendingConnectionPath.IsVisible = true;
     }
 
-    private GraphConnectorViewModel? FindNearestConnector(Point viewportPosition)
+    private GraphConnector? FindNearestConnector(Point viewportPosition)
     {
         if (_pendingConnector is null || ViewModel?.Workspace is not { } workspace)
             return null;
 
-        GraphConnectorViewModel? nearest = null;
+        GraphConnector? nearest = null;
         var nearestDistance = ConnectorSnapDistance;
 
         foreach (var connector in workspace.Nodes.SelectMany(n => n.InputConnectors.Concat(n.OutputConnectors)))
@@ -402,12 +402,12 @@ public partial class NodeGraphPanelView : UserControl
         return nearest;
     }
 
-    private static bool CanConnectPreview(GraphConnectorViewModel first, GraphConnectorViewModel second)
+    private static bool CanConnectPreview(GraphConnector first, GraphConnector second)
     {
         return !ReferenceEquals(first.Node, second.Node) && first.Kind != second.Kind;
     }
 
-    private void SetPreviewTarget(GraphConnectorViewModel? connector)
+    private void SetPreviewTarget(GraphConnector? connector)
     {
         if (ReferenceEquals(_previewTargetConnector, connector))
             return;
@@ -435,12 +435,12 @@ public partial class NodeGraphPanelView : UserControl
         return $"M {start.X},{start.Y} C {start.X + controlOffset},{start.Y} {end.X - controlOffset},{end.Y} {end.X},{end.Y}";
     }
 
-    private void ShowCreateNodeMenu(Point position, GraphConnectorViewModel? connectFrom)
+    private void ShowCreateNodeMenu(Point position, GraphConnector? connectFrom)
     {
         var menu = new MenuFlyout();
-        AddCreateNodeMenuItem(menu, "线性组", GraphNodeKind.LinearGroup, position, connectFrom);
-        AddCreateNodeMenuItem(menu, "选项分支", GraphNodeKind.ChoiceBranch, position, connectFrom);
-        AddCreateNodeMenuItem(menu, "条件分支", GraphNodeKind.ConditionBranch, position, connectFrom);
+        AddCreateNodeMenuItem(menu, "绾挎€х粍", GraphNodeKind.LinearGroup, position, connectFrom);
+        AddCreateNodeMenuItem(menu, "閫夐」鍒嗘敮", GraphNodeKind.ChoiceBranch, position, connectFrom);
+        AddCreateNodeMenuItem(menu, "鏉′欢鍒嗘敮", GraphNodeKind.ConditionBranch, position, connectFrom);
         menu.Placement = PlacementMode.Pointer;
         menu.ShowAt(Viewport, true);
     }
@@ -450,7 +450,7 @@ public partial class NodeGraphPanelView : UserControl
         string header,
         GraphNodeKind kind,
         Point position,
-        GraphConnectorViewModel? connectFrom)
+        GraphConnector? connectFrom)
     {
         var item = new MenuItem { Header = header };
         item.Click += (_, _) =>

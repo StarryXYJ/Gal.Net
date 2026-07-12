@@ -11,13 +11,13 @@ public partial class GroupEditorPanelViewModel : ObservableObject
     private readonly IGraphEditingService _graphEditingService;
 
     public EditorWorkspaceViewModel Workspace { get; }
-    public GraphNodeViewModel GroupNode { get; }
+    public GraphNode GroupNode { get; }
 
     public string GroupId => GroupNode.Id;
     public IReadOnlyList<ConditionVariableSuggestion> ConditionSuggestions => Workspace.GetConditionVariableSuggestions();
     public IReadOnlyList<GalNet.Core.Variable.ProjectVariableDefinition> ValidationVariables => Workspace.AllProjectVariableDefinitions;
 
-    public GroupEditorPanelViewModel(EditorWorkspaceViewModel workspace, GraphNodeViewModel groupNode, IGraphEditingService graphEditingService)
+    public GroupEditorPanelViewModel(EditorWorkspaceViewModel workspace, GraphNode groupNode, IGraphEditingService graphEditingService)
     {
         Workspace = workspace;
         GroupNode = groupNode;

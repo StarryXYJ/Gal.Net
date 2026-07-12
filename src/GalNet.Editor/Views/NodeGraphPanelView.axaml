@@ -1,7 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="using:GalNet.Editor.Controls"
-             xmlns:vm="using:GalNet.Editor.ViewModels"
+             xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:models="using:GalNet.Editor.Models.Graph"
              x:Class="GalNet.Editor.Views.NodeGraphPanelView"
              x:DataType="vm:NodeGraphPanelViewModel"
              Focusable="True"
@@ -33,7 +33,7 @@
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:GraphEdgeViewModel">
+                    <DataTemplate x:DataType="models:GraphEdge">
                         <Path Data="{Binding PathData}"
                               Stroke="Transparent"
                               StrokeThickness="14"
@@ -53,13 +53,13 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemContainerTheme>
                     <ControlTheme TargetType="ContentPresenter"
-                                  x:DataType="vm:GraphNodeViewModel">
+                                  x:DataType="models:GraphNode">
                         <Setter Property="Canvas.Left" Value="{Binding X}" />
                         <Setter Property="Canvas.Top" Value="{Binding Y}" />
                     </ControlTheme>
                 </ItemsControl.ItemContainerTheme>
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:GraphNodeViewModel">
+                    <DataTemplate x:DataType="models:GraphNode">
                         <controls:GraphNodeControl NodePointerPressed="OnNodePointerPressed"
                                                    NodePointerMoved="OnNodePointerMoved"
                                                    NodePointerReleased="OnNodePointerReleased"
@@ -81,7 +81,7 @@
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:GraphEdgeViewModel">
+                    <DataTemplate x:DataType="models:GraphEdge">
                         <Path Data="{Binding PathData}"
                               Stroke="{Binding StrokeBrush}"
                               StrokeThickness="{Binding StrokeThickness}"

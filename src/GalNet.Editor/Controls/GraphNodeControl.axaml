@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:GalNet.Editor.ViewModels"
+             xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:models="using:GalNet.Editor.Models.Graph"
              x:Class="GalNet.Editor.Controls.GraphNodeControl"
-             x:DataType="vm:GraphNodeViewModel"
+             x:DataType="models:GraphNode"
              Focusable="True">
     <Border Name="NodeChrome"
             Classes.selected="{Binding IsSelected}"
@@ -16,7 +16,7 @@
                           ItemsSource="{Binding InputConnectors}"
                           VerticalAlignment="Center">
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:GraphConnectorViewModel">
+                    <DataTemplate x:DataType="models:GraphConnector">
                         <Grid Width="18"
                               Height="18"
                               Margin="0,4,6,4"
@@ -52,7 +52,7 @@
                            FontSize="11"
                            Foreground="{DynamicResource SemiColorText2}" />
                 <TextBlock Grid.Row="2"
-                           Text="入口"
+                           Text="Entry"
                            Margin="0,8,0,0"
                            FontSize="11"
                            FontWeight="SemiBold"
@@ -63,7 +63,7 @@
                           ItemsSource="{Binding OutputConnectors}"
                           VerticalAlignment="Center">
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:GraphConnectorViewModel">
+                    <DataTemplate x:DataType="models:GraphConnector">
                         <Grid Width="18"
                               Height="18"
                               Margin="6,4,0,4"

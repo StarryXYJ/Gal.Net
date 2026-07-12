@@ -8,7 +8,7 @@ namespace GalNet.Editor.Services;
 
 public sealed class GraphEditingService : IGraphEditingService
 {
-    public GraphNodeViewModel CreateNode(ObservableCollection<GraphNodeViewModel> nodes, GraphNodeKind kind, double x, double y)
+    public GraphNode CreateNode(ObservableCollection<GraphNode> nodes, GraphNodeKind kind, double x, double y)
     {
         var index = nodes.Count(node => node.NodeKind == kind) + 1;
         Node node = kind switch
@@ -19,14 +19,14 @@ public sealed class GraphEditingService : IGraphEditingService
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
         };
 
-        return new GraphNodeViewModel(node, kind)
+        return new GraphNode(node, kind)
         {
             X = x,
             Y = y
         };
     }
 
-    public bool DeleteEdge(ObservableCollection<GraphNodeViewModel> nodes, ObservableCollection<GraphEdgeViewModel> edges, GraphEdgeViewModel edge)
+    public bool DeleteEdge(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphEdge edge)
     {
         var removed = edges.Remove(edge);
         if (removed)
@@ -35,7 +35,7 @@ public sealed class GraphEditingService : IGraphEditingService
         return removed;
     }
 
-    public bool DeleteNode(ObservableCollection<GraphNodeViewModel> nodes, ObservableCollection<GraphEdgeViewModel> edges, GraphNodeViewModel node)
+    public bool DeleteNode(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphNode node)
     {
         if (!node.CanDelete)
             return false;
@@ -54,7 +54,7 @@ public sealed class GraphEditingService : IGraphEditingService
         return removed;
     }
 
-    public bool Connect(ObservableCollection<GraphNodeViewModel> nodes, ObservableCollection<GraphEdgeViewModel> edges, GraphConnectorViewModel first, GraphConnectorViewModel second)
+    public bool Connect(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphConnector first, GraphConnector second)
     {
         if (ReferenceEquals(first.Node, second.Node) || first.Kind == second.Kind)
             return false;
@@ -71,12 +71,12 @@ public sealed class GraphEditingService : IGraphEditingService
         foreach (var edge in conflictingEdges)
             edges.Remove(edge);
 
-        edges.Add(new GraphEdgeViewModel(output.Node, input.Node, output.Index));
+        edges.Add(new GraphEdge(output.Node, input.Node, output.Index));
         UpdateConnectorStates(nodes, edges);
         return true;
     }
 
-    public bool AddEntry(GraphNodeViewModel groupNode)
+    public bool AddEntry(GraphNode groupNode)
     {
         if (groupNode.NodeKind != GraphNodeKind.LinearGroup)
             return false;
@@ -90,7 +90,7 @@ public sealed class GraphEditingService : IGraphEditingService
         return true;
     }
 
-    public bool RemoveEntry(GraphNodeViewModel groupNode, EntryEditorItemViewModel entry)
+    public bool RemoveEntry(GraphNode groupNode, EntryEditorItemViewModel entry)
     {
         var removed = groupNode.Entries.Remove(entry);
         if (removed)
@@ -99,7 +99,7 @@ public sealed class GraphEditingService : IGraphEditingService
         return removed;
     }
 
-    public bool MoveEntry(GraphNodeViewModel groupNode, EntryEditorItemViewModel entry, int newIndex)
+    public bool MoveEntry(GraphNode groupNode, EntryEditorItemViewModel entry, int newIndex)
     {
         var oldIndex = groupNode.Entries.IndexOf(entry);
         if (oldIndex < 0 || newIndex < 0 || newIndex >= groupNode.Entries.Count || oldIndex == newIndex)
@@ -110,7 +110,7 @@ public sealed class GraphEditingService : IGraphEditingService
         return true;
     }
 
-    public bool AddChoiceOption(ObservableCollection<GraphNodeViewModel> nodes, ObservableCollection<GraphEdgeViewModel> edges, GraphNodeViewModel node)
+    public bool AddChoiceOption(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphNode node)
     {
         if (node.NodeKind != GraphNodeKind.ChoiceBranch)
             return false;
@@ -124,7 +124,7 @@ public sealed class GraphEditingService : IGraphEditingService
         return true;
     }
 
-    public bool RemoveChoiceOption(ObservableCollection<GraphNodeViewModel> nodes, ObservableCollection<GraphEdgeViewModel> edges, GraphNodeViewModel node, BranchOptionEditorItemViewModel option)
+    public bool RemoveChoiceOption(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphNode node, BranchOptionEditorItemViewModel option)
     {
         if (node.NodeKind != GraphNodeKind.ChoiceBranch || !node.Options.Remove(option))
             return false;
@@ -135,7 +135,7 @@ public sealed class GraphEditingService : IGraphEditingService
         return true;
     }
 
-    public bool MoveChoiceOption(ObservableCollection<GraphNodeViewModel> nodes, ObservableCollection<GraphEdgeViewModel> edges, GraphNodeViewModel node, BranchOptionEditorItemViewModel option, int newIndex)
+    public bool MoveChoiceOption(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphNode node, BranchOptionEditorItemViewModel option, int newIndex)
     {
         if (node.NodeKind != GraphNodeKind.ChoiceBranch)
             return false;
@@ -143,7 +143,7 @@ public sealed class GraphEditingService : IGraphEditingService
         return MoveBranchItemWithEdges(nodes, edges, node, node.Options, option, newIndex);
     }
 
-    public bool AddCondition(ObservableCollection<GraphNodeViewModel> nodes, ObservableCollection<GraphEdgeViewModel> edges, GraphNodeViewModel node)
+    public bool AddCondition(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphNode node)
     {
         if (node.NodeKind != GraphNodeKind.ConditionBranch)
             return false;
@@ -157,7 +157,7 @@ public sealed class GraphEditingService : IGraphEditingService
         return true;
     }
 
-    public bool RemoveCondition(ObservableCollection<GraphNodeViewModel> nodes, ObservableCollection<GraphEdgeViewModel> edges, GraphNodeViewModel node, BranchConditionEditorItemViewModel condition)
+    public bool RemoveCondition(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphNode node, BranchConditionEditorItemViewModel condition)
     {
         if (node.NodeKind != GraphNodeKind.ConditionBranch || !node.Conditions.Remove(condition))
             return false;
@@ -168,7 +168,7 @@ public sealed class GraphEditingService : IGraphEditingService
         return true;
     }
 
-    public bool MoveCondition(ObservableCollection<GraphNodeViewModel> nodes, ObservableCollection<GraphEdgeViewModel> edges, GraphNodeViewModel node, BranchConditionEditorItemViewModel condition, int newIndex)
+    public bool MoveCondition(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphNode node, BranchConditionEditorItemViewModel condition, int newIndex)
     {
         if (node.NodeKind != GraphNodeKind.ConditionBranch)
             return false;
@@ -176,7 +176,7 @@ public sealed class GraphEditingService : IGraphEditingService
         return MoveBranchItemWithEdges(nodes, edges, node, node.Conditions, condition, newIndex);
     }
 
-    public void UpdateConnectorStates(ObservableCollection<GraphNodeViewModel> nodes, ObservableCollection<GraphEdgeViewModel> edges)
+    public void UpdateConnectorStates(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges)
     {
         foreach (var connector in nodes.SelectMany(node => node.InputConnectors.Concat(node.OutputConnectors)))
             connector.IsConnected = false;
@@ -193,13 +193,13 @@ public sealed class GraphEditingService : IGraphEditingService
         }
     }
 
-    private static void RenumberEntries(GraphNodeViewModel groupNode)
+    private static void RenumberEntries(GraphNode groupNode)
     {
         for (var index = 0; index < groupNode.Entries.Count; index++)
             groupNode.Entries[index].Id = index + 1;
     }
 
-    private static void RemoveDanglingOutletEdges(GraphNodeViewModel node, ObservableCollection<GraphEdgeViewModel> edges)
+    private static void RemoveDanglingOutletEdges(GraphNode node, ObservableCollection<GraphEdge> edges)
     {
         var maxOutlet = node.OutputConnectors.Count - 1;
         var danglingEdges = edges
@@ -211,9 +211,9 @@ public sealed class GraphEditingService : IGraphEditingService
     }
 
     private bool MoveBranchItemWithEdges<TItem>(
-        ObservableCollection<GraphNodeViewModel> nodes,
-        ObservableCollection<GraphEdgeViewModel> edges,
-        GraphNodeViewModel node,
+        ObservableCollection<GraphNode> nodes,
+        ObservableCollection<GraphEdge> edges,
+        GraphNode node,
         ObservableCollection<TItem> items,
         TItem item,
         int newIndex)

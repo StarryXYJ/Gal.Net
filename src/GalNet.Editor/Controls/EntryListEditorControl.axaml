@@ -1,7 +1,7 @@
 <controls:ReorderableListControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="using:GalNet.Editor.Controls"
-             xmlns:vm="using:GalNet.Editor.ViewModels"
+             xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:models="using:GalNet.Editor.Models.Graph"
              x:Class="GalNet.Editor.Controls.EntryListEditorControl"
              x:Name="Root"
              x:DataType="vm:GroupEditorPanelViewModel"
@@ -20,7 +20,7 @@
                  ItemsSource="{Binding GroupNode.Entries}"
                  Background="Transparent">
             <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:EntryEditorItemViewModel">
+                <DataTemplate x:DataType="models:EntryEditorItemViewModel">
                     <Border Margin="0,4"
                             Padding="8"
                             Background="{DynamicResource SemiColorBackground1}"

@@ -4,6 +4,7 @@ using GalNet.Control.ViewModels;
 using GalNet.Control.Views;
 using GalNet.Core.Services;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Abstraction.Extensibility;
 using GalNet.Editor.Commands;
 using GalNet.Editor.Dock;
 using GalNet.Editor.Services;
@@ -52,6 +53,7 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<EditorGameDataProvider>();
         services.AddSingleton<IGameDataProvider>(sp => sp.GetRequiredService<EditorGameDataProvider>());
         services.AddSingleton<EditorDockFactory>();
+        services.AddSingleton<IEditorExtensionRegistry, EditorExtensionRegistry>();
         services.AddSingleton<IAssetCatalogService, AssetCatalogService>();
 
         return services;

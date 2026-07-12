@@ -26,7 +26,7 @@ public partial class GraphNodeControl : UserControl
         };
         DoubleTapped += (_, e) =>
         {
-            if (DataContext is GraphNodeViewModel node)
+            if (DataContext is GraphNode node)
             {
                 NodeDoubleTapped?.Invoke(this, new GraphNodeEventArgs(node, e));
                 e.Handled = true;
@@ -34,7 +34,7 @@ public partial class GraphNodeControl : UserControl
         };
         RightTapped += (_, e) =>
         {
-            if (DataContext is GraphNodeViewModel node)
+            if (DataContext is GraphNode node)
             {
                 NodeRightTapped?.Invoke(this, new GraphNodeEventArgs(node, e));
                 e.Handled = true;
@@ -46,7 +46,7 @@ public partial class GraphNodeControl : UserControl
     {
         Focus();
 
-        if (DataContext is GraphNodeViewModel node)
+        if (DataContext is GraphNode node)
         {
             NodePointerPressed?.Invoke(this, new GraphNodePointerPressedEventArgs(node, e));
         }
@@ -54,7 +54,7 @@ public partial class GraphNodeControl : UserControl
 
     private void OnConnectorPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (sender is Avalonia.Controls.Control { DataContext: GraphConnectorViewModel connector })
+        if (sender is Avalonia.Controls.Control { DataContext: GraphConnector connector })
         {
             ConnectorPointerPressed?.Invoke(this, new GraphConnectorPointerPressedEventArgs(connector, e));
             e.Handled = true;
@@ -63,7 +63,7 @@ public partial class GraphNodeControl : UserControl
 
     private void OnConnectorPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (sender is Avalonia.Controls.Control { DataContext: GraphConnectorViewModel connector })
+        if (sender is Avalonia.Controls.Control { DataContext: GraphConnector connector })
         {
             ConnectorPointerReleased?.Invoke(this, new GraphConnectorPointerReleasedEventArgs(connector, e));
             e.Handled = true;
@@ -73,10 +73,10 @@ public partial class GraphNodeControl : UserControl
 
 public sealed class GraphNodeEventArgs : EventArgs
 {
-    public GraphNodeViewModel Node { get; }
+    public GraphNode Node { get; }
     public TappedEventArgs OriginalEventArgs { get; }
 
-    public GraphNodeEventArgs(GraphNodeViewModel node, TappedEventArgs originalEventArgs)
+    public GraphNodeEventArgs(GraphNode node, TappedEventArgs originalEventArgs)
     {
         Node = node;
         OriginalEventArgs = originalEventArgs;
@@ -85,10 +85,10 @@ public sealed class GraphNodeEventArgs : EventArgs
 
 public sealed class GraphNodePointerPressedEventArgs : EventArgs
 {
-    public GraphNodeViewModel Node { get; }
+    public GraphNode Node { get; }
     public PointerPressedEventArgs OriginalEventArgs { get; }
 
-    public GraphNodePointerPressedEventArgs(GraphNodeViewModel node, PointerPressedEventArgs originalEventArgs)
+    public GraphNodePointerPressedEventArgs(GraphNode node, PointerPressedEventArgs originalEventArgs)
     {
         Node = node;
         OriginalEventArgs = originalEventArgs;
@@ -97,10 +97,10 @@ public sealed class GraphNodePointerPressedEventArgs : EventArgs
 
 public sealed class GraphConnectorPointerPressedEventArgs : EventArgs
 {
-    public GraphConnectorViewModel Connector { get; }
+    public GraphConnector Connector { get; }
     public PointerPressedEventArgs OriginalEventArgs { get; }
 
-    public GraphConnectorPointerPressedEventArgs(GraphConnectorViewModel connector, PointerPressedEventArgs originalEventArgs)
+    public GraphConnectorPointerPressedEventArgs(GraphConnector connector, PointerPressedEventArgs originalEventArgs)
     {
         Connector = connector;
         OriginalEventArgs = originalEventArgs;
@@ -109,10 +109,10 @@ public sealed class GraphConnectorPointerPressedEventArgs : EventArgs
 
 public sealed class GraphConnectorPointerReleasedEventArgs : EventArgs
 {
-    public GraphConnectorViewModel Connector { get; }
+    public GraphConnector Connector { get; }
     public PointerReleasedEventArgs OriginalEventArgs { get; }
 
-    public GraphConnectorPointerReleasedEventArgs(GraphConnectorViewModel connector, PointerReleasedEventArgs originalEventArgs)
+    public GraphConnectorPointerReleasedEventArgs(GraphConnector connector, PointerReleasedEventArgs originalEventArgs)
     {
         Connector = connector;
         OriginalEventArgs = originalEventArgs;

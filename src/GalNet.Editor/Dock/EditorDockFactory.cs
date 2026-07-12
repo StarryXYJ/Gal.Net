@@ -148,7 +148,7 @@ public sealed class EditorDockFactory : Factory
         return rootDock;
     }
 
-    public void OpenGroupEditor(GraphNodeViewModel groupNode)
+    public void OpenGroupEditor(GraphNode groupNode)
     {
         if (_documentDock?.VisibleDockables is null)
             return;

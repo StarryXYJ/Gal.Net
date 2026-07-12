@@ -36,10 +36,10 @@ public partial class EditorWorkspaceViewModel : ObservableObject
     public event Action? VariableDefinitionsChanged;
 
     [ObservableProperty]
-    private GraphNodeViewModel? _selectedNode;
+    private GraphNode? _selectedNode;
 
     [ObservableProperty]
-    private GraphEdgeViewModel? _selectedEdge;
+    private GraphEdge? _selectedEdge;
 
     [ObservableProperty]
     private GamePreviewPanelViewModel? _activePreview;
@@ -53,9 +53,9 @@ public partial class EditorWorkspaceViewModel : ObservableObject
     [ObservableProperty]
     private string _statusText = "Ready";
 
-    public ObservableCollection<GraphNodeViewModel> Nodes { get; } = [];
-    public ObservableCollection<GraphEdgeViewModel> Edges { get; } = [];
-    public ObservableCollection<GraphNodeViewModel> SelectedNodes { get; } = [];
+    public ObservableCollection<GraphNode> Nodes { get; } = [];
+    public ObservableCollection<GraphEdge> Edges { get; } = [];
+    public ObservableCollection<GraphNode> SelectedNodes { get; } = [];
     public GraphViewportState GraphViewport => _projectService.Current?.EditorState.GraphViewport ?? _fallbackViewport;
     public bool HasMultipleNodeSelection => SelectedNodes.Count > 1;
 
@@ -89,7 +89,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         LoadCurrentProjectGraph();
     }
 
-    public void SelectNode(GraphNodeViewModel? node, bool additive = false)
+    public void SelectNode(GraphNode? node, bool additive = false)
     {
         if (!additive)
             ClearSelection();
@@ -105,7 +105,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         OnPropertyChanged(nameof(HasMultipleNodeSelection));
     }
 
-    public void SelectNodes(IEnumerable<GraphNodeViewModel> nodes)
+    public void SelectNodes(IEnumerable<GraphNode> nodes)
     {
         ClearSelection();
 
@@ -123,7 +123,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         OnPropertyChanged(nameof(HasMultipleNodeSelection));
     }
 
-    public void SelectEdge(GraphEdgeViewModel? edge)
+    public void SelectEdge(GraphEdge? edge)
     {
         ClearSelection();
         SelectedEdge = edge;
@@ -160,7 +160,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
             DeleteNode(node);
     }
 
-    public void DeleteEdge(GraphEdgeViewModel edge)
+    public void DeleteEdge(GraphEdge edge)
     {
         ExecuteGraphChange(
             () => _graphEditingService.DeleteEdge(Nodes, Edges, edge),
@@ -187,7 +187,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         _ = _projectService.SaveAsync();
     }
 
-    public GraphNodeViewModel AddNode(GraphNodeKind kind, double x, double y)
+    public GraphNode AddNode(GraphNodeKind kind, double x, double y)
     {
         var vm = _graphEditingService.CreateNode(Nodes, kind, x, y);
         TrackNode(vm);
@@ -199,7 +199,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         return vm;
     }
 
-    public void DeleteNode(GraphNodeViewModel node)
+    public void DeleteNode(GraphNode node)
     {
         ExecuteGraphChange(
             () => _graphEditingService.DeleteNode(Nodes, Edges, node),
@@ -217,7 +217,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
             () => Log.Information("Node deleted: {NodeName} ({NodeKind})", node.Name, node.NodeKind));
     }
 
-    public void OpenGroupEditor(GraphNodeViewModel node)
+    public void OpenGroupEditor(GraphNode node)
     {
         if (node.NodeKind != GraphNodeKind.LinearGroup)
             return;
@@ -226,7 +226,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         Log.Information("Group editor opened: {NodeName}", node.Name);
     }
 
-    public void Connect(GraphConnectorViewModel first, GraphConnectorViewModel second)
+    public void Connect(GraphConnector first, GraphConnector second)
     {
         var output = first.Kind == GraphConnectorKind.Output ? first : second;
         var input = first.Kind == GraphConnectorKind.Input ? first : second;
@@ -316,7 +316,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         MarkGraphDirty();
     }
 
-    private static EditorGraphNodeDto ToNodeDto(GraphNodeViewModel node)
+    private static EditorGraphNodeDto ToNodeDto(GraphNode node)
     {
         var dto = new EditorGraphNodeDto
         {
@@ -386,8 +386,8 @@ public partial class EditorWorkspaceViewModel : ObservableObject
     private void UpdateConnectorStates() => _graphEditingService.UpdateConnectorStates(Nodes, Edges);
 
     private void ExecuteSelectedNodeGraphChange(
-        Func<GraphNodeViewModel, bool> change,
-        Action<GraphNodeViewModel>? onLogged = null)
+        Func<GraphNode, bool> change,
+        Action<GraphNode>? onLogged = null)
     {
         if (SelectedNode is null)
             return;
@@ -438,7 +438,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
 
             _documentService.Load(loaded);
 
-            var nodeMap = new Dictionary<string, GraphNodeViewModel>();
+            var nodeMap = new Dictionary<string, GraphNode>();
 
             foreach (var dto in document.Nodes)
             {
@@ -460,7 +460,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
                     || to.InputConnectors.Count == 0)
                     continue;
 
-                Edges.Add(new GraphEdgeViewModel(from, to, edge.FromOutlet));
+                Edges.Add(new GraphEdge(from, to, edge.FromOutlet));
             }
 
             UpdateConnectorStates();
@@ -481,7 +481,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         }
     }
 
-    private GraphNodeViewModel CreateNodeFromDto(EditorGraphNodeDto dto, IReadOnlyDictionary<string, List<EditorEntryData>> groupEntries)
+    private GraphNode CreateNodeFromDto(EditorGraphNodeDto dto, IReadOnlyDictionary<string, List<EditorEntryData>> groupEntries)
     {
         var kind = dto.Type.Equals("Entry", StringComparison.OrdinalIgnoreCase)
             ? GraphNodeKind.Entry
@@ -500,7 +500,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
             _ => throw new ArgumentOutOfRangeException()
         };
 
-        var vm = new GraphNodeViewModel(node, kind)
+        var vm = new GraphNode(node, kind)
         {
             X = dto.X,
             Y = dto.Y
@@ -533,7 +533,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         return vm;
     }
 
-    private void LoadGroupEntries(GraphNodeViewModel group, IReadOnlyList<EditorEntryData>? entries)
+    private void LoadGroupEntries(GraphNode group, IReadOnlyList<EditorEntryData>? entries)
     {
         group.Entries.Clear();
         if (entries is null)
@@ -549,7 +549,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
             });
     }
 
-    private void EnsureEntryNode(EditorGraphDocument document, Dictionary<string, GraphNodeViewModel> nodeMap)
+    private void EnsureEntryNode(EditorGraphDocument document, Dictionary<string, GraphNode> nodeMap)
     {
         if (EntryNode is not null)
             return;
@@ -558,7 +558,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
             ? rootNode
             : Nodes.FirstOrDefault();
 
-        var entry = new GraphNodeViewModel(new Group { Name = "Entry" }, GraphNodeKind.Entry)
+        var entry = new GraphNode(new Group { Name = "Entry" }, GraphNodeKind.Entry)
         {
             X = root is null ? 4420 : Math.Max(0, root.X - 280),
             Y = root?.Y ?? 4900,
@@ -570,25 +570,25 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         nodeMap[entry.Id] = entry;
 
         if (root is not null && !ReferenceEquals(root, entry))
-            Edges.Add(new GraphEdgeViewModel(entry, root));
+            Edges.Add(new GraphEdge(entry, root));
     }
 
     private void BuildSampleGraph()
     {
-        var entry = new GraphNodeViewModel(new Group { Name = "Entry" }, GraphNodeKind.Entry)
+        var entry = new GraphNode(new Group { Name = "Entry" }, GraphNodeKind.Entry)
         {
             X = 4420,
             Y = 4900,
             IsRoot = true
         };
 
-        var opening = new GraphNodeViewModel(new Group { Name = "Opening" }, GraphNodeKind.LinearGroup)
+        var opening = new GraphNode(new Group { Name = "Opening" }, GraphNodeKind.LinearGroup)
         {
             X = 4700,
             Y = 4900
         };
 
-        var choice = new GraphNodeViewModel(new Branch
+        var choice = new GraphNode(new Branch
         {
             Name = "First Choice",
             BranchType = BranchType.Choice
@@ -598,13 +598,13 @@ public partial class EditorWorkspaceViewModel : ObservableObject
             Y = 4940
         };
 
-        var routeA = new GraphNodeViewModel(new Group { Name = "Route A" }, GraphNodeKind.LinearGroup)
+        var routeA = new GraphNode(new Group { Name = "Route A" }, GraphNodeKind.LinearGroup)
         {
             X = 5300,
             Y = 4860
         };
 
-        var routeB = new GraphNodeViewModel(new Group { Name = "Route B" }, GraphNodeKind.LinearGroup)
+        var routeB = new GraphNode(new Group { Name = "Route B" }, GraphNodeKind.LinearGroup)
         {
             X = 5300,
             Y = 5040
@@ -625,10 +625,10 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         Nodes.Add(routeB);
         TrackNode(routeB);
 
-        Edges.Add(new GraphEdgeViewModel(entry, opening));
-        Edges.Add(new GraphEdgeViewModel(opening, choice));
-        Edges.Add(new GraphEdgeViewModel(choice, routeA, 0));
-        Edges.Add(new GraphEdgeViewModel(choice, routeB, 1));
+        Edges.Add(new GraphEdge(entry, opening));
+        Edges.Add(new GraphEdge(opening, choice));
+        Edges.Add(new GraphEdge(choice, routeA, 0));
+        Edges.Add(new GraphEdge(choice, routeB, 1));
         UpdateConnectorStates();
 
         SelectNode(entry);
@@ -698,7 +698,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
                     Parameters = entry.Parameters
                 }).ToList());
 
-    private void TrackNode(GraphNodeViewModel node)
+    private void TrackNode(GraphNode node)
     {
         node.PropertyChanged += OnNodePropertyChanged;
         TrackCollection(node.Entries, OnEntryChanged);
@@ -738,7 +738,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         if (_isLoadingGraph)
             return;
 
-        if (e.PropertyName is nameof(GraphNodeViewModel.Name))
+        if (e.PropertyName is nameof(GraphNode.Name))
             MarkGraphDirty();
     }
 
@@ -763,7 +763,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
             MarkGraphDirty();
     }
 
-    public GraphNodeViewModel? EntryNode => Nodes.FirstOrDefault(n => n.NodeKind == GraphNodeKind.Entry);
+    public GraphNode? EntryNode => Nodes.FirstOrDefault(n => n.NodeKind == GraphNodeKind.Entry);
 }
 
 public enum InspectorMode
@@ -773,245 +773,3 @@ public enum InspectorMode
     Asset
 }
 
-public enum GraphNodeKind
-{
-    Entry,
-    LinearGroup,
-    ChoiceBranch,
-    ConditionBranch
-}
-
-public enum GraphConnectorKind
-{
-    Input,
-    Output
-}
-
-public partial class GraphNodeViewModel : ObservableObject
-{
-    public Node Node { get; }
-    public GraphNodeKind NodeKind { get; }
-
-    [ObservableProperty]
-    private double _x;
-
-    [ObservableProperty]
-    private double _y;
-
-    [ObservableProperty]
-    private string _name = "";
-
-    [ObservableProperty]
-    private bool _isSelected;
-
-    partial void OnIsSelectedChanged(bool value)
-    {
-        OnPropertyChanged(nameof(NodeBackground));
-        OnPropertyChanged(nameof(NodeBorderBrush));
-        OnPropertyChanged(nameof(NodeBorderThickness));
-    }
-
-    [ObservableProperty]
-    private bool _isRoot;
-
-    public string Id => Node.Id;
-    public string KindLabel => NodeKind switch
-    {
-        GraphNodeKind.Entry => "入口",
-        GraphNodeKind.LinearGroup => "线性组",
-        GraphNodeKind.ChoiceBranch => "选项分支",
-        GraphNodeKind.ConditionBranch => "条件分支",
-        _ => NodeKind.ToString()
-    };
-
-    public bool IsEntryNode => NodeKind == GraphNodeKind.Entry;
-    public bool CanDelete => !IsEntryNode;
-    public IBrush NodeBackground => IsSelected ? Brush.Parse("#312A55") : Brush.Parse("#1E1E2E");
-    public IBrush NodeBorderBrush => IsSelected ? Brush.Parse("#8F72FF") : IsEntryNode ? Brush.Parse("#A891FF") : Brush.Parse("#45475A");
-    public double NodeBorderThickness => IsSelected ? 2 : 1;
-
-    public ObservableCollection<GraphConnectorViewModel> InputConnectors { get; } = [];
-    public ObservableCollection<GraphConnectorViewModel> OutputConnectors { get; } = [];
-    public ObservableCollection<EntryEditorItemViewModel> Entries { get; } = [];
-    public ObservableCollection<BranchOptionEditorItemViewModel> Options { get; } = [];
-    public ObservableCollection<BranchConditionEditorItemViewModel> Conditions { get; } = [];
-
-    public int EntryCount => Entries.Count;
-
-    public GraphNodeViewModel(Node node, GraphNodeKind nodeKind)
-    {
-        Node = node;
-        NodeKind = nodeKind;
-        Name = string.IsNullOrWhiteSpace(node.Name) ? KindLabel : node.Name;
-
-        if (NodeKind == GraphNodeKind.LinearGroup)
-        {
-            Entries.Add(new EntryEditorItemViewModel
-            {
-                Id = 1,
-                Type = "text",
-                Parameters = "speaker=Alice; text=Hello GalNet"
-            });
-        }
-
-        if (NodeKind == GraphNodeKind.ConditionBranch)
-            Conditions.Add(new BranchConditionEditorItemViewModel { Expression = "true" });
-
-        if (NodeKind == GraphNodeKind.ChoiceBranch && Options.Count == 0)
-            Options.Add(new BranchOptionEditorItemViewModel { Text = "Option 1" });
-
-        RefreshConnectors();
-    }
-
-    public void RefreshConnectors()
-    {
-        InputConnectors.Clear();
-        OutputConnectors.Clear();
-
-        if (!IsEntryNode)
-            InputConnectors.Add(new GraphConnectorViewModel(this, GraphConnectorKind.Input, 0));
-
-        var outputCount = NodeKind switch
-        {
-            GraphNodeKind.Entry => 1,
-            GraphNodeKind.ChoiceBranch => Math.Max(1, Options.Count),
-            GraphNodeKind.ConditionBranch => Math.Max(1, Conditions.Count),
-            _ => 1
-        };
-
-        for (var i = 0; i < outputCount; i++)
-            OutputConnectors.Add(new GraphConnectorViewModel(this, GraphConnectorKind.Output, i));
-
-        OnPropertyChanged(nameof(EntryCount));
-    }
-
-    public Point GetConnectorCenter(GraphConnectorKind kind, int index)
-    {
-        var connectors = kind == GraphConnectorKind.Input ? InputConnectors : OutputConnectors;
-        var inputCount = InputConnectors.Count;
-        var outputCount = OutputConnectors.Count;
-        var count = Math.Max(1, connectors.Count);
-        var nodeHeight = GraphLayoutMetrics.GetNodeHeight(inputCount, outputCount);
-        var rowHeight = GraphLayoutMetrics.ConnectorHitSize + GraphLayoutMetrics.ConnectorVerticalMargin * 2;
-        var firstY = nodeHeight / 2 - count * rowHeight / 2 + rowHeight / 2;
-        var x = kind == GraphConnectorKind.Input
-            ? GraphLayoutMetrics.NodeHorizontalPadding + GraphLayoutMetrics.ConnectorHitSize / 2
-            : GraphLayoutMetrics.NodeWidth - GraphLayoutMetrics.NodeHorizontalPadding - GraphLayoutMetrics.ConnectorHitSize / 2;
-
-        return new Point(X + x, Y + firstY + index * rowHeight);
-    }
-
-    partial void OnNameChanged(string value)
-    {
-        Node.Name = value;
-    }
-}
-
-public partial class GraphConnectorViewModel : ObservableObject
-{
-    public GraphNodeViewModel Node { get; }
-    public GraphConnectorKind Kind { get; }
-    public int Index { get; }
-
-    [ObservableProperty]
-    private bool _isConnected;
-
-    [ObservableProperty]
-    private bool _isPreviewTarget;
-
-    public GraphConnectorViewModel(GraphNodeViewModel node, GraphConnectorKind kind, int index)
-    {
-        Node = node;
-        Kind = kind;
-        Index = index;
-    }
-}
-
-public partial class GraphEdgeViewModel : ObservableObject
-{
-    public GraphNodeViewModel From { get; }
-    public GraphNodeViewModel To { get; }
-
-    [ObservableProperty]
-    private int _outlet;
-
-    [ObservableProperty]
-    private bool _isSelected;
-
-    public IBrush StrokeBrush => IsSelected ? Brush.Parse("#A891FF") : Brush.Parse("#8F72FF");
-    public double StrokeThickness => IsSelected ? 4 : 2.5;
-
-    public double StartX => From.GetConnectorCenter(GraphConnectorKind.Output, Outlet).X;
-    public double StartY => From.GetConnectorCenter(GraphConnectorKind.Output, Outlet).Y;
-    public double EndX => To.GetConnectorCenter(GraphConnectorKind.Input, 0).X;
-    public double EndY => To.GetConnectorCenter(GraphConnectorKind.Input, 0).Y;
-    public double ControlOffset => Math.Max(80, Math.Abs(EndX - StartX) * 0.5);
-    public string PathData => $"M {StartX},{StartY} C {StartX + ControlOffset},{StartY} {EndX - ControlOffset},{EndY} {EndX},{EndY}";
-
-    public GraphEdgeViewModel(GraphNodeViewModel from, GraphNodeViewModel to, int outlet = 0)
-    {
-        From = from;
-        To = to;
-        _outlet = outlet;
-
-        From.PropertyChanged += (_, e) => OnNodeMoved(e.PropertyName);
-        To.PropertyChanged += (_, e) => OnNodeMoved(e.PropertyName);
-        From.OutputConnectors.CollectionChanged += (_, _) => OnNodeMoved(nameof(GraphNodeViewModel.Y));
-        To.InputConnectors.CollectionChanged += (_, _) => OnNodeMoved(nameof(GraphNodeViewModel.Y));
-    }
-
-    private void OnNodeMoved(string? propertyName)
-    {
-        if (propertyName is not (nameof(GraphNodeViewModel.X) or nameof(GraphNodeViewModel.Y)))
-            return;
-
-        OnPropertyChanged(nameof(StartX));
-        OnPropertyChanged(nameof(StartY));
-        OnPropertyChanged(nameof(EndX));
-        OnPropertyChanged(nameof(EndY));
-        OnPropertyChanged(nameof(PathData));
-    }
-
-    partial void OnIsSelectedChanged(bool value)
-    {
-        OnPropertyChanged(nameof(StrokeBrush));
-        OnPropertyChanged(nameof(StrokeThickness));
-    }
-
-    partial void OnOutletChanged(int value)
-    {
-        OnPropertyChanged(nameof(StartX));
-        OnPropertyChanged(nameof(StartY));
-        OnPropertyChanged(nameof(PathData));
-    }
-}
-
-public partial class EntryEditorItemViewModel : ObservableObject
-{
-    [ObservableProperty]
-    private int _id;
-
-    [ObservableProperty]
-    private string _type = "";
-
-    [ObservableProperty]
-    private string _condition = "";
-
-    [ObservableProperty]
-    private string _parameters = "";
-}
-
-public partial class BranchOptionEditorItemViewModel : ObservableObject
-{
-    [ObservableProperty]
-    private string _text = "";
-
-    [ObservableProperty]
-    private string _condition = "";
-}
-
-public partial class BranchConditionEditorItemViewModel : ObservableObject
-{
-    [ObservableProperty]
-    private string _expression = "";
-}
