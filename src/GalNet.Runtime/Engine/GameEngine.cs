@@ -10,6 +10,7 @@ using GalNet.Runtime.Compilation;
 using GalNet.Runtime.Handlers;
 using GalNet.Runtime.Runtime;
 using Serilog;
+using GalNet.Runtime.Logging;
 
 namespace GalNet.Runtime.Engine;
 
@@ -77,7 +78,7 @@ public sealed class GameEngine
                 case Group group:
                 {
                     var entries = _compiled.GetValueOrDefault(group.Id, Array.Empty<SimpleEntry>());
-                    Log.Information("Engine: Processing group '{GroupId}' ({EntryCount} entries, entryIndex={EntryIndex})",
+                    GameLog.Logger.Information("Engine: Processing group '{GroupId}' ({EntryCount} entries, entryIndex={EntryIndex})",
                         group.Id, entries.Count, _runtime.EntryIndex);
                     for (; _runtime.EntryIndex < entries.Count; _runtime.SetEntryIndex(_runtime.EntryIndex + 1))
                     {
@@ -179,13 +180,13 @@ public sealed class GameEngine
         var edge = _graph.Edges.Find(e => e.FromNodeId == _runtime.CurrentNodeId && e.FromOutlet == 0);
         if (edge != null)
         {
-            Log.Information("Engine: Moving from '{FromNodeId}' -> '{ToNodeId}'",
+            GameLog.Logger.Information("Engine: Moving from '{FromNodeId}' -> '{ToNodeId}'",
                 _runtime.CurrentNodeId, edge.ToNodeId);
             _runtime.JumpTo(edge.ToNodeId);
         }
         else
         {
-            Log.Information("Engine: No outgoing edge from '{NodeId}' - stopping",
+            GameLog.Logger.Information("Engine: No outgoing edge from '{NodeId}' - stopping",
                 _runtime.CurrentNodeId);
             IsRunning = false;
         }

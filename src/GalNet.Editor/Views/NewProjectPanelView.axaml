@@ -16,6 +16,11 @@
             <TextBlock Text="Parent Folder" />
             <TextBox Text="{Binding ProjectRoot}" />
 
+            <TextBlock Text="Design Resolution" />
+            <ComboBox ItemsSource="{Binding ResolutionPresets}"
+                      Text="{Binding Resolution}"
+                      IsEditable="True" />
+
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <Button Content="Create Project"
                         Command="{Binding CreateCommand}" />

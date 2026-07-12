@@ -184,7 +184,6 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
 
     private void BuildMenuItems()
     {
-        var saveCmd = _commandService.GetCommand<SaveProjectCommand>();
         var closeCmd = _commandService.GetCommand<CloseProjectCommand>();
 
         var items = new AvaloniaList<MenuData>
@@ -194,8 +193,6 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
                 HeaderKey = "Editor.Menu.File",
                 Children = new AvaloniaList<MenuData>
                 {
-                    new() { HeaderKey = "Command.SaveProject", InputGesture = saveCmd.Gesture, Command = saveCmd.Command },
-                    new() { IsSeparator = true },
                     new() { HeaderKey = "Command.CloseProject", Command = closeCmd.Command },
                     new() { IsSeparator = true },
                     new() { HeaderKey = "Editor.Menu.Exit", InputGesture = new Avalonia.Input.KeyGesture(Key.F4, KeyModifiers.Alt), IsEnabled = false },

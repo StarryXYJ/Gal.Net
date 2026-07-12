@@ -17,12 +17,7 @@ public class DockViewLocator : IDataTemplate
         var factory = App.ServiceProvider?.GetRequiredService<IEditorViewFactory>();
         var control = factory?.CreateViewForViewModel(context);
 
-        if (control is not null)
-        {
-            Log.Information("[DockViewLocator] Built {ViewType} for {VMType}",
-                control.GetType().Name, context.GetType().Name);
-        }
-        else
+        if (control is null)
         {
             Log.Warning("[DockViewLocator] No view registered for {VMType}", context.GetType().Name);
         }
@@ -38,8 +33,6 @@ public class DockViewLocator : IDataTemplate
 
         var factory = App.ServiceProvider?.GetRequiredService<IEditorViewFactory>();
         var matches = factory?.CanCreateViewForViewModel(context) == true;
-        Log.Information("[DockViewLocator] Match called: {DataType} -> Context={CtxType}, matches={M}",
-            data?.GetType().Name ?? "null", context.GetType().Name, matches);
         return matches;
     }
 

@@ -25,6 +25,34 @@
                 </Expander>
             </StackPanel>
 
+            <StackPanel Spacing="8" IsVisible="{Binding IsAssetInspectorVisible}">
+                <TextBlock Text="Asset" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding Workspace.SelectedAsset.Name}" />
+                <TextBlock Text="Id" />
+                <TextBlock Text="{Binding Workspace.SelectedAsset.Id}" FontFamily="Consolas" FontSize="12" />
+                <TextBlock Text="Path" />
+                <TextBlock Text="{Binding Workspace.SelectedAsset.RelativePath}" />
+                <StackPanel IsVisible="{Binding IsSelectedAssetImage}" Spacing="6">
+                    <Image Source="{Binding Workspace.SelectedAsset.FullPath}" MaxHeight="220" Stretch="Uniform" />
+                    <TextBlock Text="Image preview" Foreground="{DynamicResource SemiColorText2}" />
+                    <TextBlock Text="Filter" />
+                    <ComboBox ItemsSource="{Binding FilterOptions}" SelectedItem="{Binding AssetFilter}" />
+                    <TextBlock Text="Compression" />
+                    <ComboBox ItemsSource="{Binding CompressionOptions}" SelectedItem="{Binding AssetCompression}" />
+                </StackPanel>
+                <StackPanel IsVisible="{Binding IsSelectedAssetAudio}" Spacing="6">
+                    <TextBlock Text="Audio preview" />
+                    <Button Content="{Binding IsAudioPreviewPlaying, StringFormat={}{0:Pause;Play}}" Command="{Binding ToggleAudioPreviewCommand}" />
+                    <Slider Minimum="0" Maximum="{Binding AudioPreviewDuration}" Value="{Binding AudioPreviewPosition}" />
+                    <TextBlock Text="{Binding AudioPreviewError}" Foreground="OrangeRed" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel IsVisible="{Binding IsSelectedAssetVideo}" Spacing="6">
+                    <TextBlock Text="Video preview" />
+                    <TextBlock Text="Compression" />
+                    <ComboBox ItemsSource="{Binding CompressionOptions}" SelectedItem="{Binding AssetCompression}" />
+                </StackPanel>
+            </StackPanel>
+
             <StackPanel Spacing="8"
                         IsVisible="{Binding IsNodeInspectorVisible}">
                 <TextBlock Text="No node selected"

@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Editor.Abstraction.Services;
@@ -9,7 +10,9 @@ namespace GalNet.Editor.ViewModels;
 
 public partial class ProjectSettingsPanelViewModel : ObservableObject
 {
+    public IReadOnlyList<string> ResolutionPresets => NewProjectPanelViewModel.ResolutionPresets;
     private readonly IProjectService _projectService;
+    private readonly IEditorSettingsService _editorSettings;
     private bool _isLoading;
 
     public IEditorLocalizationService L { get; }
@@ -32,11 +35,16 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
     [ObservableProperty]
     private string _isDirtyText = "";
 
+    [ObservableProperty]
+    private string _resolution = "1920×1080";
+
     public ProjectSettingsPanelViewModel(
         IProjectService projectService,
+        IEditorSettingsService editorSettings,
         IEditorLocalizationService localization)
     {
         _projectService = projectService;
+        _editorSettings = editorSettings;
         L = localization;
         L.PropertyChanged += (_, e) =>
         {
@@ -54,6 +62,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
         _isLoading = true;
         DefaultWidth = settings.DefaultWidth;
         DefaultHeight = settings.DefaultHeight;
+        Resolution = $"{DefaultWidth}×{DefaultHeight}";
         SaveSlotCount = settings.SaveSlotCount;
         SfxChannelCount = settings.SfxChannelCount;
         TargetLocale = settings.TargetLocale.Code;
@@ -92,6 +101,11 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
 
     partial void OnDefaultWidthChanged(int value) => TriggerAutoSave();
     partial void OnDefaultHeightChanged(int value) => TriggerAutoSave();
+    partial void OnResolutionChanged(string value)
+    {
+        if (_isLoading || !NewProjectPanelViewModel.TryParseResolution(value, out var width, out var height)) return;
+        _isLoading = true; DefaultWidth = width; DefaultHeight = height; _isLoading = false; TriggerAutoSave();
+    }
     partial void OnSaveSlotCountChanged(int value) => TriggerAutoSave();
     partial void OnSfxChannelCountChanged(int value) => TriggerAutoSave();
     partial void OnTargetLocaleChanged(string value) => TriggerAutoSave();
@@ -100,7 +114,6 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
     {
         if (_isLoading || _projectService.Current is null)
             return;
-
         _ = SaveSettingsAsync();
     }
 }

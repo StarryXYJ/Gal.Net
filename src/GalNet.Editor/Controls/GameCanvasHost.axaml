@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="GalNet.Editor.Controls.GameCanvasHost"
+             x:Name="Root"
+             Background="Black">
+  <Viewbox Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center">
+    <ContentControl x:Name="CanvasContent"
+                    Width="{Binding DesignWidth, ElementName=Root}"
+                    Height="{Binding DesignHeight, ElementName=Root}"
+                    HorizontalContentAlignment="Stretch"
+                    VerticalContentAlignment="Stretch" />
+  </Viewbox>
+</UserControl>

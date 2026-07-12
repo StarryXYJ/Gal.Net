@@ -60,7 +60,7 @@ public class DefaultGameView : Grid, IGameView, IDisposable
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "LibVLC initialization failed — audio/video will be unavailable");
+            Log.ForContext("LogChannel", "Game").Warning(ex, "LibVLC initialization failed — audio/video will be unavailable");
             _vlcInitialized = false;
         }
 
@@ -103,7 +103,7 @@ public class DefaultGameView : Grid, IGameView, IDisposable
 
         PointerPressed += (_, e) =>
         {
-            Log.Debug("PointerPressed at {X},{Y}", e.GetPosition(this).X, e.GetPosition(this).Y);
+            Log.ForContext("LogChannel", "Game").Debug("PointerPressed at {X},{Y}", e.GetPosition(this).X, e.GetPosition(this).Y);
 
             if (_clickTcs is { Task.IsCompleted: false })
             {

@@ -1,32 +1,33 @@
-using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using GalNet.Editor.Abstraction.Services;
 
 namespace GalNet.Editor.Services;
 
-/// <summary>
-/// 基于 Avalonia StorageProvider 的文件夹选择对话框实现。
-/// 通过 TopLevel.GetTopLevel 获取顶层窗口，不依赖 Window 实例。
-/// </summary>
 public sealed class FileDialogService : IFileDialogService
 {
+    private static TopLevel? GetOwner() => Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+        ? desktop.Windows.FirstOrDefault(w => w.IsActive) ?? desktop.MainWindow
+        : null;
+
     public async Task<string?> OpenFolderPickerAsync(string title)
     {
-        // 从当前焦点窗口获取 StorageProvider
-        var topLevel = TopLevel.GetTopLevel(TopLevel.GetTopLevel(null) as Window);
-        if (topLevel?.StorageProvider == null)
-            return null;
+        var owner = GetOwner();
+        if (owner?.StorageProvider is null) return null;
+        var folders = await owner.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = title, AllowMultiple = false });
+        return folders.FirstOrDefault()?.Path.LocalPath;
+    }
 
-        var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(
-            new FolderPickerOpenOptions
-            {
-                Title = title,
-                AllowMultiple = false
-            });
-
-        return folders.Count > 0 ? folders[0].Path.LocalPath : null;
+    public async Task<IReadOnlyList<string>> OpenFilePickerAsync(string title, bool allowMultiple = true)
+    {
+        var owner = GetOwner();
+        if (owner?.StorageProvider is null) return [];
+        var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions { Title = title, AllowMultiple = allowMultiple });
+        return files.Select(x => x.Path.LocalPath).ToList();
     }
 }

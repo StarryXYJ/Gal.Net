@@ -14,6 +14,7 @@ using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Services;
 using GalNet.Editor.Shared.Services;
 using Serilog;
+using Serilog.Context;
 
 namespace GalNet.Editor.ViewModels;
 
@@ -45,6 +46,9 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
 
     [ObservableProperty]
     private VariableListEditorViewModel? _saveVariables;
+
+    public int DesignWidth => _projectService.Current?.Settings.DefaultWidth ?? 1920;
+    public int DesignHeight => _projectService.Current?.Settings.DefaultHeight ?? 1080;
 
     public ObservableCollection<string> OutputLines { get; } = [];
 
@@ -86,6 +90,7 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
         StatusText = "Restarting...";
         await StopPreviewAsync();
 
+        using var gameLogContext = LogContext.PushProperty("LogChannel", "Game");
         var options = new GameFlowOptions
         {
             Title = project.Name,
@@ -290,6 +295,8 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
 
     private void OnProjectChanged(GalProject? project)
     {
+        OnPropertyChanged(nameof(DesignWidth));
+        OnPropertyChanged(nameof(DesignHeight));
         if (!_disposed)
             _ = StopPreviewAsync();
     }

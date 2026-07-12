@@ -29,6 +29,9 @@ public partial class EditorSettingsPanelViewModel : ObservableObject
     [ObservableProperty]
     private string _statusText = "";
 
+    [ObservableProperty]
+    private bool _autoSaveProject = true;
+
     public ObservableCollection<ThemeSelectionItem> AvailableThemes { get; } = [];
     public ObservableCollection<CultureInfo> AvailableCultures { get; } = [];
 
@@ -68,6 +71,7 @@ public partial class EditorSettingsPanelViewModel : ObservableObject
                               string.Equals(culture.Name, settings.UiLocale.Code, StringComparison.OrdinalIgnoreCase))
                           ?? AvailableCultures.FirstOrDefault(culture => culture.Name == "zh-CN")
                           ?? AvailableCultures.FirstOrDefault();
+        AutoSaveProject = settings.AutoSaveProject;
         _loading = false;
     }
 
@@ -111,6 +115,15 @@ public partial class EditorSettingsPanelViewModel : ObservableObject
         L.ApplyCulture(value);
 
         StatusText = L["Settings.Saved"];
+    }
+
+    partial void OnAutoSaveProjectChanged(bool value)
+    {
+        if (_loading) return;
+        var settings = _editorSettings.GetSettings();
+        settings.AutoSaveProject = value;
+        _editorSettings.SaveSettings();
+        StatusText = value ? "Auto-save enabled" : "Auto-save disabled";
     }
 
     [RelayCommand]

@@ -52,6 +52,7 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<EditorGameDataProvider>();
         services.AddSingleton<IGameDataProvider>(sp => sp.GetRequiredService<EditorGameDataProvider>());
         services.AddSingleton<EditorDockFactory>();
+        services.AddSingleton<IAssetCatalogService, AssetCatalogService>();
 
         return services;
     }
@@ -89,6 +90,7 @@ public static class EditorServiceCollectionExtensions
         services.AddTransient<EditorPageView>();
         services.AddTransient<GamePageHostView>();
         services.AddTransient<MainWindow>();
+        services.AddTransient<AssetPanelView>();
         services.AddTransient<ProjectSettingsWindow>();
         services.AddTransient<EditorSettingsWindow>();
 
@@ -104,6 +106,7 @@ public static class EditorServiceCollectionExtensions
         services.AddTransient<NodeInspectorPanelViewModel>();
         services.AddTransient<NewProjectPanelViewModel>();
         services.AddTransient<LogPanelViewModel>();
+        services.AddSingleton<AssetPanelViewModel>();
         services.AddTransient<ProjectSettingsPanelViewModel>();
         services.AddTransient<EditorSettingsPanelViewModel>();
         services.AddTransient<GamePreviewPanelViewModel>();

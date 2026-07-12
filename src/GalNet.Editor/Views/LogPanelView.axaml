@@ -17,6 +17,12 @@
                           AutomationProperties.Name="Auto-scroll">
                 <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource ScrollIcon}" /><TextBlock Text="Auto-scroll" /></StackPanel>
             </ToggleButton>
+            <Menu VerticalAlignment="Center">
+                <MenuItem Header="{Binding ChannelDisplay}">
+                    <MenuItem Header="Game" ToggleType="CheckBox" IsChecked="{Binding IsGameEnabled, Mode=TwoWay}" />
+                    <MenuItem Header="Editor" ToggleType="CheckBox" IsChecked="{Binding IsEditorEnabled, Mode=TwoWay}" />
+                </MenuItem>
+            </Menu>
         </StackPanel>
 
         <ListBox Name="LogListBox"

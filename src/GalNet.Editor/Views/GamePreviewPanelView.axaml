@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:GalNet.Editor.ViewModels"
+             xmlns:controls="using:GalNet.Editor.Controls"
              x:Class="GalNet.Editor.Views.GamePreviewPanelView"
              x:DataType="vm:GamePreviewPanelViewModel"
              MinHeight="300"
@@ -27,15 +28,15 @@
         </Border>
 
         <Border Grid.Row="1"
-                Background="{DynamicResource SemiColorBackground1}"
+                Background="Black"
                 BorderBrush="{DynamicResource SemiColorBorder}"
                 BorderThickness="1"
                 CornerRadius="4"
                 Margin="4,2"
                 ClipToBounds="True">
-            <ContentControl Name="GameViewHost"
-                            HorizontalContentAlignment="Stretch"
-                            VerticalContentAlignment="Stretch" />
+            <controls:GameCanvasHost x:Name="GameViewHost"
+                                     DesignWidth="{Binding DesignWidth}"
+                                     DesignHeight="{Binding DesignHeight}" />
         </Border>
     </Grid>
 </UserControl>

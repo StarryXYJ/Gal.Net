@@ -23,4 +23,6 @@ public sealed class EditorSettings : SettingsSection
 
     /// <summary>最近项目列表最大保留数</summary>
     public int MaxRecentProjects { get; set; } = 10;
+
+    public bool AutoSaveProject { get; set; } = true;
 }

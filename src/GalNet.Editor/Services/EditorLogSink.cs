@@ -26,7 +26,8 @@ public sealed class EditorLogSink : ILogEventSink
             Level = logEvent.Level,
             Message = logEvent.RenderMessage(),
             Exception = logEvent.Exception?.ToString(),
-            Source = GetSource(logEvent)
+            Source = GetSource(logEvent),
+            Channel = GetChannel(logEvent)
         };
 
         Dispatcher.UIThread.Post(() =>
@@ -45,7 +46,18 @@ public sealed class EditorLogSink : ILogEventSink
 
         return string.Empty;
     }
+
+    private static LogChannel GetChannel(LogEvent logEvent)
+    {
+        if (logEvent.Properties.TryGetValue("LogChannel", out var value)
+            && string.Equals(value.ToString().Trim('\"'), "Game", StringComparison.OrdinalIgnoreCase))
+            return LogChannel.Game;
+        return LogChannel.Editor;
+    }
 }
+
+[Flags]
+public enum LogChannel { None = 0, Game = 1, Editor = 2 }
 
 public sealed class LogLine
 {
@@ -54,6 +66,7 @@ public sealed class LogLine
     public string Message { get; init; } = "";
     public string? Exception { get; init; }
     public string Source { get; init; } = "";
+    public LogChannel Channel { get; init; } = LogChannel.Editor;
 
     public bool IsError => Level >= LogEventLevel.Error;
     public bool IsWarning => Level == LogEventLevel.Warning;

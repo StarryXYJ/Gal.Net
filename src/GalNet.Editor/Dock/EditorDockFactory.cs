@@ -41,6 +41,11 @@ public sealed class EditorDockFactory : Factory
             CanClose = true,
             CanPin = false
         };
+        var assetsDocument = new Document
+        {
+            Id = "Assets", Title = "Assets", Context = _serviceProvider.GetRequiredService<AssetPanelViewModel>(),
+            CanFloat = true, CanClose = true, CanPin = false
+        };
 
         var nodeGraphDocument = new Document
         {
@@ -105,7 +110,7 @@ public sealed class EditorDockFactory : Factory
                     Id = "LogDocuments",
                     Title = "Log",
                     ActiveDockable = logDocument,
-                    VisibleDockables = CreateList<IDockable>([logDocument]),
+                    VisibleDockables = CreateList<IDockable>([logDocument, assetsDocument]),
                     EnableGlobalDocking = true
                 }
             ])

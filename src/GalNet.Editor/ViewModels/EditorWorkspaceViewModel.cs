@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading;
 using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -19,6 +20,7 @@ using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Controls;
 using GalNet.Editor.Dock;
 using GalNet.Editor.Services;
+using GalNet.Editor.Models;
 using Serilog;
 
 namespace GalNet.Editor.ViewModels;
@@ -29,6 +31,8 @@ public partial class EditorWorkspaceViewModel : ObservableObject
     private readonly EditorDockFactory _dockFactory;
     private readonly IEditorDocumentRepository _documentRepository;
     private readonly IGraphEditingService _graphEditingService;
+    private readonly IEditorSettingsService _editorSettings;
+    private CancellationTokenSource? _autoSaveCts;
     public event Action? VariableDefinitionsChanged;
 
     [ObservableProperty]
@@ -39,6 +43,9 @@ public partial class EditorWorkspaceViewModel : ObservableObject
 
     [ObservableProperty]
     private GamePreviewPanelViewModel? _activePreview;
+
+    [ObservableProperty]
+    private AssetEntry? _selectedAsset;
 
     [ObservableProperty]
     private InspectorMode _inspectorMode = InspectorMode.Node;
@@ -62,7 +69,8 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         IEditorDocumentService documentService,
         IEditorSaveCoordinator saveCoordinator,
         IVariableDefinitionService variableDefinitionService,
-        IGraphEditingService graphEditingService)
+        IGraphEditingService graphEditingService,
+        IEditorSettingsService editorSettings)
     {
         _projectService = projectService;
         _dockFactory = dockFactory;
@@ -70,6 +78,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         _documentService = documentService;
         _saveCoordinator = saveCoordinator;
         _graphEditingService = graphEditingService;
+        _editorSettings = editorSettings;
         _projectService.CurrentChanged += _ => LoadCurrentProjectGraph();
         _documentService.DirtyStateChanged += OnDocumentDirtyStateChanged;
         variableDefinitionService.DefinitionsChanged += _ =>
@@ -252,6 +261,13 @@ public partial class EditorWorkspaceViewModel : ObservableObject
 
         ExecuteGraphChange(
             () => _graphEditingService.MoveChoiceOption(Nodes, Edges, SelectedNode, option, newIndex));
+    }
+
+    public void FocusAsset(AssetEntry asset)
+    {
+        ClearSelection();
+        SelectedAsset = asset;
+        InspectorMode = InspectorMode.Asset;
     }
 
     [RelayCommand]
@@ -623,6 +639,28 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         _documentService.MarkDirty();
         if (_projectService.Current is { } project)
             project.IsDirty = true;
+        ScheduleAutoSave();
+    }
+
+    private void ScheduleAutoSave()
+    {
+        _autoSaveCts?.Cancel(); _autoSaveCts?.Dispose();
+        var cts = _autoSaveCts = new CancellationTokenSource();
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(500, cts.Token);
+                if (!cts.IsCancellationRequested)
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                    {
+                        PersistGraphDocument();
+                        _ = _projectService.SaveAsync();
+                        StatusText = "Auto-saved";
+                    });
+            }
+            catch (OperationCanceledException) { }
+        });
     }
 
     private void OnDocumentDirtyStateChanged(bool isDirty)
@@ -731,7 +769,8 @@ public partial class EditorWorkspaceViewModel : ObservableObject
 public enum InspectorMode
 {
     Node,
-    PreviewVariables
+    PreviewVariables,
+    Asset
 }
 
 public enum GraphNodeKind

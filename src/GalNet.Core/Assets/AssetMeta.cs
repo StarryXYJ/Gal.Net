@@ -15,10 +15,12 @@ public sealed class AssetMeta
     public string Path { get; set; } = "";
 
     /// <summary>滤波模式（point / bilinear / trilinear）</summary>
-    public string Filter { get; set; } = "bilinear";
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? Filter { get; set; }
 
     /// <summary>压缩格式（none / deflate / gzip / brotli）</summary>
-    public string Compress { get; set; } = "none";
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? Compress { get; set; }
 
     /// <summary>从字符串解析资源类型</summary>
     public ResourceType ParseResourceType() => Type.ToLowerInvariant() switch
@@ -31,7 +33,7 @@ public sealed class AssetMeta
     };
 
     /// <summary>从字符串解析压缩模式</summary>
-    public CompressionMode ParseCompression() => Compress.ToLowerInvariant() switch
+    public CompressionMode ParseCompression() => (Compress ?? "none").ToLowerInvariant() switch
     {
         "deflate" => CompressionMode.Deflate,
         "gzip" => CompressionMode.GZip,

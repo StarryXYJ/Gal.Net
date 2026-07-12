@@ -20,6 +20,7 @@ public sealed class EditorViewFactory : IEditorViewFactory
         [typeof(NewProjectPanelViewModel)] = typeof(NewProjectPanelView),
         [typeof(GamePreviewPanelViewModel)] = typeof(GamePreviewPanelView),
         [typeof(LogPanelViewModel)] = typeof(LogPanelView)
+        , [typeof(AssetPanelViewModel)] = typeof(AssetPanelView)
     };
 
     public EditorViewFactory(IServiceProvider serviceProvider)

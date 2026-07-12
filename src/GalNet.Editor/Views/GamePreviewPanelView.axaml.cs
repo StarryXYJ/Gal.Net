@@ -135,7 +135,7 @@ public partial class GamePreviewPanelView : UserControl
     {
         if (_vm?.PageHostVm is null) return;
 
-        if (GameViewHost.Content is GamePageHostView existing
+        if (GameViewHost.GameContent is GamePageHostView existing
             && ReferenceEquals(existing.DataContext, _vm.PageHostVm))
             return;
 
@@ -146,6 +146,6 @@ public partial class GamePreviewPanelView : UserControl
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
             VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch
         };
-        GameViewHost.Content = hostView;
+        GameViewHost.GameContent = hostView;
     }
 }
