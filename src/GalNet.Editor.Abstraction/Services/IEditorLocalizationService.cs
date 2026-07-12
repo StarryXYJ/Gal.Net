@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
 
-namespace GalNet.Editor.Services;
+namespace GalNet.Editor.Abstraction.Services;
 
 public interface IEditorLocalizationService : INotifyPropertyChanged
 {

@@ -4,12 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using GalNet.Core.Variable;
+using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
-using GalNet.Editor.Shared.Services;
-using GalNet.Editor.Project;
 using Serilog;
 
-namespace GalNet.Editor.Services;
+namespace GalNet.Editor.Shared.Services;
 
 public sealed class EditorPlayerVariableStore : IEditorPlayerVariableStore
 {

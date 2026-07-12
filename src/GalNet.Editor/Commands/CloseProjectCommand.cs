@@ -1,8 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using GalNet.Core.Services;
-using GalNet.Editor.Project;
-using GalNet.Editor.Services;
+using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Shared.Commands;
 using Serilog;
 

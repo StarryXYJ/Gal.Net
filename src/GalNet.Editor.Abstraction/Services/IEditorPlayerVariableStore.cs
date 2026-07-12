@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using GalNet.Core.Variable;
 
-namespace GalNet.Editor.Services;
+namespace GalNet.Editor.Abstraction.Services;
 
 public interface IEditorPlayerVariableStore
 {

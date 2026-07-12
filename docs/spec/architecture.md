@@ -88,7 +88,9 @@
 │  GalNet.Editor        GalNet.Launcher        │  ← 壳层
 │  GalNet.Headless      Launcher.Headless      │  ← 无头 CLI
 ├──────────────────────────────────────────────┤
-│  GalNet.Editor.Control                       │  ← 编辑器专用控件
+│  GalNet.Editor.Shared                        │  ← 编辑器共享服务实现（Headless + Editor 共用）
+│  GalNet.Editor.Abstraction                   │  ← 编辑器抽象接口与模型（插件可用）
+├──────────────────────────────────────────────┤
 │  GalNet.Control                              │  ← 通用游戏 UI 控件（实现 IGameView）
 ├──────────────────────────────────────────────┤
 │  GalNet.Runtime                              │  ← 游戏执行引擎
@@ -244,13 +246,18 @@ public abstract class ScreenConfig { }
 
 页面 XAML 内用 Grid/StackPanel 布局 + ControlPlaceholder 引用 WidgetInstance。自定义页面：新增 ScreenCategory 或 ScreenTemplate（XAML + DLL）。
 
-### GalNet.Editor.Control
+### GalNet.Editor.Abstraction
 
-编辑器专属控件：节点图画布、连线、节点面板、组编辑器、Dock 面板、资源选择器、变量编辑器。
+编辑器抽象接口与数据模型，不依赖 UI 框架。插件可引用此层获取编辑器扩展接口。
+
+### GalNet.Editor.Shared
+
+编辑器共享服务实现，无 UI 依赖，Headless 和 Editor 均可使用。插件不直接依赖此层。
 
 ### GalNet.Editor
 
 编辑器主程序。Dock 布局：节点图、组编辑、变量编辑、资源管理、游戏预览、日志。
+包含 UI 相关服务：本地化、主题、文件对话框、视图工厂、日志面板等。
 
 ### GalNet.Headless / GalNet.Launcher.Headless
 

@@ -9,7 +9,7 @@ using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using GalNet.Core.Variable;
-using GalNet.Editor.Services;
+using GalNet.Editor.Shared.Services;
 using GalNet.Editor.ViewModels;
 
 namespace GalNet.Editor.Controls;

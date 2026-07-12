@@ -15,6 +15,7 @@
     <ItemGroup>
         <ProjectReference Include="..\GalNet.Core\GalNet.Core.csproj" />
         <ProjectReference Include="..\GalNet.Editor.Abstraction\GalNet.Editor.Abstraction.csproj" />
+        <ProjectReference Include="..\GalNet.Runtime\GalNet.Runtime.csproj" />
     </ItemGroup>
 
 </Project>

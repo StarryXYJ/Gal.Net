@@ -1,4 +1,4 @@
-namespace GalNet.Editor.Project;
+namespace GalNet.Editor.Abstraction.Project;
 
 public sealed class EditorProjectState
 {

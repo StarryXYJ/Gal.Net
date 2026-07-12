@@ -5,7 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Core.Services;
 using GalNet.Core.Settings;
-using GalNet.Editor.Project;
+using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Services;
 
 namespace GalNet.Editor.ViewModels;

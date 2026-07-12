@@ -14,10 +14,10 @@ using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Documents;
+using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Controls;
 using GalNet.Editor.Dock;
-using GalNet.Editor.Project;
 using GalNet.Editor.Services;
 using Serilog;
 
@@ -153,14 +153,14 @@ public partial class EditorWorkspaceViewModel : ObservableObject
 
     public void DeleteEdge(GraphEdgeViewModel edge)
     {
-        if (!_graphEditingService.DeleteEdge(Nodes, Edges, edge))
-            return;
-
-        if (ReferenceEquals(SelectedEdge, edge))
-            SelectedEdge = null;
-
-        Log.Information("Edge deleted: {From} [{Outlet}] -> {To}", edge.From.Name, edge.Outlet, edge.To.Name);
-        MarkGraphDirty();
+        ExecuteGraphChange(
+            () => _graphEditingService.DeleteEdge(Nodes, Edges, edge),
+            () =>
+            {
+                if (ReferenceEquals(SelectedEdge, edge))
+                    SelectedEdge = null;
+            },
+            () => Log.Information("Edge deleted: {From} [{Outlet}] -> {To}", edge.From.Name, edge.Outlet, edge.To.Name));
     }
 
     public void FocusPreview(GamePreviewPanelViewModel preview)
@@ -192,20 +192,20 @@ public partial class EditorWorkspaceViewModel : ObservableObject
 
     public void DeleteNode(GraphNodeViewModel node)
     {
-        if (!_graphEditingService.DeleteNode(Nodes, Edges, node))
-            return;
+        ExecuteGraphChange(
+            () => _graphEditingService.DeleteNode(Nodes, Edges, node),
+            () =>
+            {
+                SelectedNodes.Remove(node);
+                node.IsSelected = false;
+                if (ReferenceEquals(SelectedNode, node))
+                    SelectedNode = SelectedNodes.Count == 1 ? SelectedNodes[0] : null;
+                OnPropertyChanged(nameof(HasMultipleNodeSelection));
 
-        SelectedNodes.Remove(node);
-        node.IsSelected = false;
-        if (ReferenceEquals(SelectedNode, node))
-            SelectedNode = SelectedNodes.Count == 1 ? SelectedNodes[0] : null;
-        OnPropertyChanged(nameof(HasMultipleNodeSelection));
-
-        if (node.NodeKind == GraphNodeKind.LinearGroup)
-            _dockFactory.CloseGroupEditor(node.Id);
-
-        Log.Information("Node deleted: {NodeName} ({NodeKind})", node.Name, node.NodeKind);
-        MarkGraphDirty();
+                if (node.NodeKind == GraphNodeKind.LinearGroup)
+                    _dockFactory.CloseGroupEditor(node.Id);
+            },
+            () => Log.Information("Node deleted: {NodeName} ({NodeKind})", node.Name, node.NodeKind));
     }
 
     public void OpenGroupEditor(GraphNodeViewModel node)
@@ -219,27 +219,20 @@ public partial class EditorWorkspaceViewModel : ObservableObject
 
     public void Connect(GraphConnectorViewModel first, GraphConnectorViewModel second)
     {
-        if (!_graphEditingService.Connect(Nodes, Edges, first, second))
-            return;
-
         var output = first.Kind == GraphConnectorKind.Output ? first : second;
         var input = first.Kind == GraphConnectorKind.Input ? first : second;
-
-        Log.Information("Nodes connected: {From} [{Outlet}] -> {To}", output.Node.Name, output.Index, input.Node.Name);
-        MarkGraphDirty();
+        ExecuteGraphChange(
+            () => _graphEditingService.Connect(Nodes, Edges, first, second),
+            onSucceeded: null,
+            onLogged: () => Log.Information("Nodes connected: {From} [{Outlet}] -> {To}", output.Node.Name, output.Index, input.Node.Name));
     }
 
     [RelayCommand]
     private void AddChoiceOption()
     {
-        if (SelectedNode is null)
-            return;
-
-        if (!_graphEditingService.AddChoiceOption(Nodes, Edges, SelectedNode))
-            return;
-
-        Log.Information("Choice option added: {NodeName}", SelectedNode.Name);
-        MarkGraphDirty();
+        ExecuteSelectedNodeGraphChange(
+            node => _graphEditingService.AddChoiceOption(Nodes, Edges, node),
+            node => Log.Information("Choice option added: {NodeName}", node.Name));
     }
 
     [RelayCommand]
@@ -248,10 +241,8 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         if (SelectedNode is null || option is null)
             return;
 
-        if (!_graphEditingService.RemoveChoiceOption(Nodes, Edges, SelectedNode, option))
-            return;
-
-        MarkGraphDirty();
+        ExecuteGraphChange(
+            () => _graphEditingService.RemoveChoiceOption(Nodes, Edges, SelectedNode, option));
     }
 
     public void MoveChoiceOptionTo(BranchOptionEditorItemViewModel? option, int newIndex)
@@ -259,23 +250,16 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         if (SelectedNode?.NodeKind != GraphNodeKind.ChoiceBranch || option is null)
             return;
 
-        if (!_graphEditingService.MoveChoiceOption(Nodes, Edges, SelectedNode, option, newIndex))
-            return;
-
-        MarkGraphDirty();
+        ExecuteGraphChange(
+            () => _graphEditingService.MoveChoiceOption(Nodes, Edges, SelectedNode, option, newIndex));
     }
 
     [RelayCommand]
     private void AddCondition()
     {
-        if (SelectedNode is null)
-            return;
-
-        if (!_graphEditingService.AddCondition(Nodes, Edges, SelectedNode))
-            return;
-
-        Log.Information("Condition added: {NodeName}", SelectedNode.Name);
-        MarkGraphDirty();
+        ExecuteSelectedNodeGraphChange(
+            node => _graphEditingService.AddCondition(Nodes, Edges, node),
+            node => Log.Information("Condition added: {NodeName}", node.Name));
     }
 
     [RelayCommand]
@@ -284,10 +268,8 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         if (SelectedNode is null || condition is null)
             return;
 
-        if (!_graphEditingService.RemoveCondition(Nodes, Edges, SelectedNode, condition))
-            return;
-
-        MarkGraphDirty();
+        ExecuteGraphChange(
+            () => _graphEditingService.RemoveCondition(Nodes, Edges, SelectedNode, condition));
     }
 
     public void MoveConditionTo(BranchConditionEditorItemViewModel? condition, int newIndex)
@@ -295,10 +277,8 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         if (SelectedNode?.NodeKind != GraphNodeKind.ConditionBranch || condition is null)
             return;
 
-        if (!_graphEditingService.MoveCondition(Nodes, Edges, SelectedNode, condition, newIndex))
-            return;
-
-        MarkGraphDirty();
+        ExecuteGraphChange(
+            () => _graphEditingService.MoveCondition(Nodes, Edges, SelectedNode, condition, newIndex));
     }
 
     public void SaveGraphDocument()
@@ -374,6 +354,32 @@ public partial class EditorWorkspaceViewModel : ObservableObject
     }
 
     private void UpdateConnectorStates() => _graphEditingService.UpdateConnectorStates(Nodes, Edges);
+
+    private void ExecuteSelectedNodeGraphChange(
+        Func<GraphNodeViewModel, bool> change,
+        Action<GraphNodeViewModel>? onLogged = null)
+    {
+        if (SelectedNode is null)
+            return;
+
+        ExecuteGraphChange(
+            () => change(SelectedNode),
+            onSucceeded: null,
+            onLogged: onLogged is null ? null : () => onLogged(SelectedNode));
+    }
+
+    private void ExecuteGraphChange(
+        Func<bool> change,
+        Action? onSucceeded = null,
+        Action? onLogged = null)
+    {
+        if (!change())
+            return;
+
+        onSucceeded?.Invoke();
+        onLogged?.Invoke();
+        MarkGraphDirty();
+    }
 
     private void LoadCurrentProjectGraph()
     {

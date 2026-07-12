@@ -2,8 +2,7 @@ using System;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GalNet.Editor.Project;
-using GalNet.Editor.Services;
+using GalNet.Editor.Abstraction.Services;
 using Serilog;
 
 namespace GalNet.Editor.ViewModels;

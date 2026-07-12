@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Collections.Generic;
 using DynamicLocalization.Core;
 using DynamicLocalization.Core.Providers;
+using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Views;
 
 namespace GalNet.Editor.Services;

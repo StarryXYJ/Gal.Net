@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
 
-namespace GalNet.Editor.Services;
+namespace GalNet.Editor.Abstraction.Services;
 
 /// <summary>
 /// 文件对话框服务接口 —— 抽象平台文件/文件夹选择对话框，

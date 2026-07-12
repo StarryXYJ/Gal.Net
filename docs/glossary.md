@@ -244,12 +244,20 @@
 
 ## 五、编辑器层（GalNet.Editor）
 
+### 编辑器分层
+
+| 术语 | 英文 | 说明 |
+|------|------|------|
+| **编辑器抽象层** | GalNet.Editor.Abstraction | 编辑器抽象接口与数据模型，不依赖 UI 框架，插件可引用。包含 IProjectService、GalProject、IEditorLocalizationService 等。 |
+| **编辑器共享层** | GalNet.Editor.Shared | 编辑器共享服务实现，无 UI 依赖，Headless 和 Editor 均可使用。包含 ProjectService、EditorSettingsService、CommandService 等。 |
+| **编辑器主程序** | GalNet.Editor | 编辑器主程序，包含 UI 相关服务（本地化实现、主题、文件对话框、视图工厂、日志面板等）。 |
+
 ### 项目管理
 
 | 术语 | 英文 | 说明 |
 |------|------|------|
-| **游戏工程** | GalProgram | 编辑器核心抽象，管理项目路径、设置和 DI 作用域。 |
-| **项目服务** | IProjectService / ProjectService | 新建、打开、关闭、保存项目，管理最近项目列表。 |
+| **游戏工程** | GalProject | 编辑器核心抽象，管理项目路径、设置和 DI 作用域。位于 Abstraction 层。 |
+| **项目服务** | IProjectService / ProjectService | 新建、打开、关闭、保存项目，管理最近项目列表。接口在 Abstraction，实现在 Shared。 |
 
 ### 编辑器命令
 

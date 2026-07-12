@@ -2,8 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using GalNet.Core.Settings;
+using GalNet.Editor.Abstraction.Project;
 
-namespace GalNet.Editor.Project;
+namespace GalNet.Editor.Abstraction.Services;
 
 /// <summary>
 /// 项目管理 —— 编辑器全局单例。

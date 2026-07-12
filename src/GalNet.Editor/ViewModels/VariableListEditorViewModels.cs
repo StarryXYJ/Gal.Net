@@ -208,17 +208,10 @@ public sealed partial class VariableEditorItemViewModel : ObservableValidator
     }
 
     [ObservableProperty]
-    private string _nameError = "";
-
-    [ObservableProperty]
     private bool _isCurrentValueVisible;
 
-    public bool HasNameError => !string.IsNullOrEmpty(NameError);
-
-    partial void OnNameErrorChanged(string value)
-    {
-        OnPropertyChanged(nameof(HasNameError));
-    }
+    public bool HasNameError => HasErrors;
+    public string NameValidationMessage => GetValidationMessage(nameof(Name));
 
     public VariableType SelectedType
     {
@@ -353,7 +346,7 @@ public sealed partial class VariableEditorItemViewModel : ObservableValidator
         _isCurrentValueVisible = showCurrentValue;
         ErrorsChanged += OnErrorsChanged;
         ValidateProperty(_name, nameof(Name));
-        UpdateNameError();
+        NotifyValidationStateChanged();
     }
 
     private void HandleNameChanged(string value)
@@ -371,7 +364,8 @@ public sealed partial class VariableEditorItemViewModel : ObservableValidator
 
         if (string.Equals(sanitized, oldName, StringComparison.Ordinal))
         {
-            NameError = string.Empty;
+            ClearErrors(nameof(Name));
+            NotifyValidationStateChanged();
             return;
         }
 
@@ -381,7 +375,8 @@ public sealed partial class VariableEditorItemViewModel : ObservableValidator
             _reverting = true;
             Name = resolved;
             _reverting = false;
-            NameError = string.Empty;
+            ClearErrors(nameof(Name));
+            NotifyValidationStateChanged();
             if (!string.Equals(resolved, oldName, StringComparison.Ordinal))
             {
                 Definition.Name = resolved;
@@ -393,7 +388,8 @@ public sealed partial class VariableEditorItemViewModel : ObservableValidator
         }
 
         // Valid rename — update definition without triggering restart
-        NameError = string.Empty;
+        ClearErrors(nameof(Name));
+        NotifyValidationStateChanged();
         Definition.Name = sanitized;
         Definition.DefaultValue.Name = sanitized;
         _onRenamed(this, oldName, sanitized);
@@ -405,18 +401,22 @@ public sealed partial class VariableEditorItemViewModel : ObservableValidator
         OnPropertyChanged(nameof(CanEditCurrentValue));
     }
 
-    private void UpdateNameError()
-    {
-        NameError = GetErrors(nameof(Name))
-            .Cast<object>()
-            .FirstOrDefault()?.ToString() ?? string.Empty;
-    }
-
     private void OnErrorsChanged(object? sender, DataErrorsChangedEventArgs e)
     {
         if (e.PropertyName == nameof(Name))
-            UpdateNameError();
+            NotifyValidationStateChanged();
     }
+
+    private void NotifyValidationStateChanged()
+    {
+        OnPropertyChanged(nameof(HasNameError));
+        OnPropertyChanged(nameof(NameValidationMessage));
+    }
+
+    private string GetValidationMessage(string propertyName) =>
+        GetErrors(propertyName)
+            .Cast<object>()
+            .FirstOrDefault()?.ToString() ?? string.Empty;
 
     private void RaiseValuePropertiesChanged()
     {

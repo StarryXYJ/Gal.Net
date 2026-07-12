@@ -101,7 +101,7 @@
                                        Foreground="#E06C75"
                                        FontSize="11"
                                        IsVisible="{Binding HasNameError}"
-                                       Text="{Binding NameError}" />
+                                       Text="{Binding NameValidationMessage}" />
                         </Grid>
                     </Border>
                 </DataTemplate>

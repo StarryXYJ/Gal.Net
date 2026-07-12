@@ -5,6 +5,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Core.I18n;
+using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Services;
 using Serilog;
 

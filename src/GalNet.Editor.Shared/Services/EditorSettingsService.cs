@@ -1,15 +1,11 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text.Json;
-using System.Threading.Tasks;
-using GalNet.Core.I18n;
 using GalNet.Core.Settings;
-using Microsoft.Extensions.DependencyInjection;
+using GalNet.Editor.Abstraction.Services;
 using Serilog;
 
-namespace GalNet.Editor.Services;
+namespace GalNet.Editor.Shared.Services;
 
 /// <summary>
 /// 编辑器设置管理 —— 读取/保存 EditorSettings 到 AppData。

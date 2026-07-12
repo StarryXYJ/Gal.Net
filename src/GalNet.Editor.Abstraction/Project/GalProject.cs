@@ -3,7 +3,7 @@ using System.IO;
 using GalNet.Core.Settings;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace GalNet.Editor.Project;
+namespace GalNet.Editor.Abstraction.Project;
 
 /// <summary>
 /// 编辑器打开中的一个游戏工程。

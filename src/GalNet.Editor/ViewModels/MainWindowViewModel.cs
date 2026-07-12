@@ -2,7 +2,7 @@ using Avalonia.Collections;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Core.Services;
 using GalNet.Editor.Models;
-using GalNet.Editor.Services;
+using GalNet.Editor.Abstraction.Services;
 
 namespace GalNet.Editor.ViewModels;
 

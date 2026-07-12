@@ -1,6 +1,6 @@
 using GalNet.Core.Settings;
 
-namespace GalNet.Editor.Services;
+namespace GalNet.Editor.Abstraction.Services;
 
 /// <summary>
 /// 编辑器设置管理 —— 读取/保存 EditorSettings。

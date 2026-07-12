@@ -1,6 +1,20 @@
 # GalNet — Services Analysis
 
 > 游戏运行所需的服务清单、职责边界、依赖关系。
+> 
+> **更新于 2026-07-11**：Editor 服务已拆分至 Abstraction（接口/模型，插件可用）和 Shared（实现，Headless + Editor 共用）。
+
+---
+
+## 项目分层（服务视角）
+
+```
+GalNet.Editor              ← UI 相关服务（本地化实现、主题、文件对话框、视图工厂）
+GalNet.Editor.Shared       ← 非 UI 服务实现（Headless + Editor 共用，插件不可用）
+GalNet.Editor.Abstraction  ← 抽象接口与模型（插件可用）
+GalNet.Runtime             ← 游戏执行引擎
+GalNet.Core                ← 领域模型 & 共享协议
+```
 
 ---
 

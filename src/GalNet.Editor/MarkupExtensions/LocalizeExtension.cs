@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using Avalonia.Data;
 using Avalonia.Data.Converters;
+using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Services;
 
 namespace GalNet.Editor.MarkupExtensions;

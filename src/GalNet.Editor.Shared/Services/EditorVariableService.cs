@@ -4,9 +4,8 @@ using System.Linq;
 using GalNet.Core.Services;
 using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Services;
-using GalNet.Editor.Project;
 
-namespace GalNet.Editor.Services;
+namespace GalNet.Editor.Shared.Services;
 
 /// <summary>
 /// Editor implementation of IVariableService.

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using GalNet.Core.Variable;
 using GalNet.Runtime.Variables;
 
-namespace GalNet.Editor.Services;
+namespace GalNet.Editor.Shared.Services;
 
 public static class ConditionExpressionValidator
 {

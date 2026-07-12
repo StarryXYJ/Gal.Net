@@ -1,4 +1,4 @@
-namespace GalNet.Editor.Services;
+namespace GalNet.Editor.Shared.Services;
 
 /// <summary>
 /// Editor implementation: Quit does nothing — the embedded game stays on its page.

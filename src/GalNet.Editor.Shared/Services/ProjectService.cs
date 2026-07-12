@@ -6,11 +6,12 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Documents;
-using GalNet.Editor.Shared.Services;
+using GalNet.Editor.Abstraction.Project;
+using GalNet.Editor.Abstraction.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
-namespace GalNet.Editor.Project;
+namespace GalNet.Editor.Shared.Services;
 
 /// <summary>
 /// 项目管理服务 —— 编辑器全局单例。
