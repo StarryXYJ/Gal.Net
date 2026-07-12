@@ -16,5 +16,9 @@ public sealed class GameFlowOptions
     public IGameDataProvider? GameDataProvider { get; init; }
 
     public Action<IGameRuntime>? RuntimeCreated { get; init; }
+    /// <summary>Raised after a new game or restored save begins executing.</summary>
     public Action? GameStarted { get; init; }
+    public Action? GameEnded { get; init; }
+    public Action<Exception>? GameFailed { get; init; }
+    public Action<GameRunViewModel>? RunCreated { get; init; }
 }

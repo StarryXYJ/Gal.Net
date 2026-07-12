@@ -7,6 +7,7 @@ using GalNet.Core.Services;
 using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Services;
+using GalNet.Editor.Services.Interfaces;
 
 namespace GalNet.Editor.ViewModels;
 

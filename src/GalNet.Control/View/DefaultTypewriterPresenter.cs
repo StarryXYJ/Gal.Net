@@ -370,5 +370,7 @@ internal sealed class DefaultTypewriterPresenter
         _typewriterCts?.Cancel();
     }
 
+    public void Cancel() => _typewriterCts?.Cancel();
+
     public void SetVoice(string assetId) { }
 }

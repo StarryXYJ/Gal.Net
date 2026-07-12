@@ -17,7 +17,7 @@ using Serilog;
 
 namespace GalNet.Editor.ViewModels;
 
-public partial class GamePreviewPanelViewModel : ObservableObject
+public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, IAsyncDisposable
 {
     private readonly GalNet.Core.Services.INavigationService _navigation;
     private readonly IGameFlowFactory _gameFlowFactory;
@@ -28,6 +28,8 @@ public partial class GamePreviewPanelViewModel : ObservableObject
     private readonly IEditorDocumentService _documentService;
 
     private IGameRuntime? _runtime;
+    private GameRunViewModel? _activeRun;
+    private bool _disposed;
 
     [ObservableProperty]
     private string _statusText = "Ready";
@@ -63,12 +65,7 @@ public partial class GamePreviewPanelViewModel : ObservableObject
         _variableDefinitions = variableDefinitions;
         _documentService = documentService;
 
-        _projectService.CurrentChanged += _ =>
-        {
-            _runtime = null;
-            IsGameStarted = false;
-            ReloadEditors();
-        };
+        _projectService.CurrentChanged += OnProjectChanged;
         _variableService.VariableChanged += OnVariableServiceChanged;
 
         ReloadEditors();
@@ -87,15 +84,18 @@ public partial class GamePreviewPanelViewModel : ObservableObject
         }
 
         StatusText = "Restarting...";
-        _runtime = null;
-        IsGameStarted = false;
+        await StopPreviewAsync();
 
         var options = new GameFlowOptions
         {
             Title = project.Name,
             UseSampleDataIfMissing = false,
             VariableService = _variableService,
-            RuntimeCreated = OnRuntimeCreated
+            RuntimeCreated = OnRuntimeCreated,
+            GameStarted = OnGameStarted,
+            GameEnded = OnGameEnded,
+            GameFailed = OnGameFailed,
+            RunCreated = run => _activeRun = run
         };
 
         PageHostVm = _gameFlowFactory.CreatePageHost(_navigation, options);
@@ -148,7 +148,7 @@ public partial class GamePreviewPanelViewModel : ObservableObject
             _variableDefinitions.GetDefinitions(VariableScope.Save),
             VariableScope.Save,
             showCurrentValue: IsGameStarted,
-            allowCurrentEditing: IsGameStarted,
+            allowCurrentEditing: true,
             IsNameAvailable,
             ResolveAvailableName,
             name => _variableService.GetSnapshot(VariableScope.Save).TryGetValue(name, out var v) ? CloneVariable(v, name) : null,
@@ -221,9 +221,77 @@ public partial class GamePreviewPanelViewModel : ObservableObject
     private void OnRuntimeCreated(IGameRuntime runtime)
     {
         _runtime = runtime;
-        IsGameStarted = true;
+    }
+
+    private void OnGameStarted()
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (_disposed) return;
+            IsGameStarted = true;
+            StatusText = "Running";
+        });
+    }
+
+    private void OnGameEnded()
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (_disposed) return;
+            _runtime = null;
+            _activeRun = null;
+            IsGameStarted = false;
+            StatusText = "Ready";
+        });
+    }
+
+    private void OnGameFailed(Exception exception)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (_disposed) return;
+            _runtime = null;
+            _activeRun = null;
+            IsGameStarted = false;
+            StatusText = $"Preview failed: {exception.Message}";
+        });
+    }
+
+    partial void OnIsGameStartedChanged(bool value)
+    {
+        SaveVariables?.SetCurrentValueVisibility(value);
+    }
+
+    private async Task StopPreviewAsync()
+    {
+        IsGameStarted = false;
+        _runtime = null;
+        var run = _activeRun;
+        _activeRun = null;
+        if (run is not null)
+            await run.DisposeAsync();
         ReloadEditors();
-        StatusText = "Running";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        _projectService.CurrentChanged -= OnProjectChanged;
+        _variableService.VariableChanged -= OnVariableServiceChanged;
+        await StopPreviewAsync();
+    }
+
+    /// <summary>
+    /// Dock.Model disposes document contexts synchronously. Start the same idempotent
+    /// cleanup path without blocking the UI thread that owns the document close.
+    /// </summary>
+    public void Dispose() => _ = DisposeAsync();
+
+    private void OnProjectChanged(GalProject? project)
+    {
+        if (!_disposed)
+            _ = StopPreviewAsync();
     }
 
     private static Variable CloneVariable(Variable variable, string name)

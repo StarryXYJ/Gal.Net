@@ -5,12 +5,14 @@
              x:Class="GalNet.Editor.Controls.EntryListEditorControl"
              x:Name="Root"
              x:DataType="vm:GroupEditorPanelViewModel"
+             MoveCommand="{Binding ReorderEntryCommand}"
              PointerMoved="OnDragPointerMoved"
              PointerReleased="OnDragPointerReleased">
     <Grid RowDefinitions="Auto,*">
-        <Button Content="Add Entry"
-                HorizontalAlignment="Left"
-                Command="{Binding AddEntryCommand}" />
+        <Button HorizontalAlignment="Left"
+                ToolTip.Tip="Add entry"
+                AutomationProperties.Name="Add entry"
+                Command="{Binding AddEntryCommand}"><PathIcon Width="16" Height="16" Data="{StaticResource AddIcon}" /></Button>
 
         <ListBox Name="ItemsListBox"
                  Grid.Row="1"
@@ -46,9 +48,10 @@
                             <TextBox Grid.Column="4"
                                      Text="{Binding Parameters}" />
                             <Button Grid.Column="5"
-                                    Content="Remove"
+                                    ToolTip.Tip="Remove entry"
+                                    AutomationProperties.Name="Remove entry"
                                     Command="{Binding #Root.DataContext.RemoveEntryCommand}"
-                                    CommandParameter="{Binding}" />
+                                    CommandParameter="{Binding}"><PathIcon Width="16" Height="16" Data="{StaticResource DeleteRegularIcon}" /></Button>
                         </Grid>
                     </Border>
                 </DataTemplate>

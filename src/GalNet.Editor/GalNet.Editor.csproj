@@ -69,5 +69,8 @@
       <Compile Update="Views\EditorSettingsWindow.axaml.cs">
         <DependentUpon>EditorSettingsWindow.axaml</DependentUpon>
       </Compile>
+      <Compile Update="Controls\BranchOptionListEditorControl.axaml.cs">
+        <DependentUpon>BranchOptionListEditorControl.axaml</DependentUpon>
+      </Compile>
     </ItemGroup>
 </Project>

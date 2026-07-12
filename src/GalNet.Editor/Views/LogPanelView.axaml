@@ -7,11 +7,16 @@
              Background="{DynamicResource SemiColorBackground0}">
     <Grid RowDefinitions="Auto,*">
         <StackPanel Orientation="Horizontal" Spacing="8" Margin="4,4,4,0">
-            <ToggleButton Content="Errors Only"
-                          IsChecked="{Binding OnlyShowErrors}" />
-            <CheckBox Content="Auto-scroll"
-                      VerticalAlignment="Center"
-                      IsChecked="{Binding AutoScroll}" />
+            <ToggleButton IsChecked="{Binding OnlyShowErrors}"
+                          ToolTip.Tip="Errors only"
+                          AutomationProperties.Name="Errors only">
+                <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource FilterIcon}" /><TextBlock Text="Errors Only" /></StackPanel>
+            </ToggleButton>
+            <ToggleButton IsChecked="{Binding AutoScroll}"
+                          ToolTip.Tip="Auto-scroll"
+                          AutomationProperties.Name="Auto-scroll">
+                <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource ScrollIcon}" /><TextBlock Text="Auto-scroll" /></StackPanel>
+            </ToggleButton>
         </StackPanel>
 
         <ListBox Name="LogListBox"

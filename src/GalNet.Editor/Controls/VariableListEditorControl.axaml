@@ -5,12 +5,14 @@
              x:Class="GalNet.Editor.Controls.VariableListEditorControl"
              x:Name="Root"
              x:DataType="vm:VariableListEditorViewModel"
+             MoveCommand="{Binding ReorderCommand}"
              PointerMoved="OnDragPointerMoved"
              PointerReleased="OnDragPointerReleased">
     <Grid RowDefinitions="Auto,*">
-        <Button Content="Add Variable"
-                HorizontalAlignment="Left"
-                Command="{Binding AddVariableCommand}" />
+        <Button HorizontalAlignment="Left"
+                ToolTip.Tip="Add variable"
+                AutomationProperties.Name="Add variable"
+                Command="{Binding AddVariableCommand}"><PathIcon Width="16" Height="16" Data="{StaticResource AddIcon}" /></Button>
 
         <ListBox Name="ItemsListBox"
                  Grid.Row="1"
@@ -92,9 +94,10 @@
                             <Button Grid.Column="5"
                                     VerticalAlignment="Center"
                                     HorizontalAlignment="Right"
-                                    Content="Remove"
+                                    ToolTip.Tip="Remove variable"
+                                    AutomationProperties.Name="Remove variable"
                                     Command="{Binding #Root.DataContext.RemoveVariableCommand}"
-                                    CommandParameter="{Binding}" />
+                                    CommandParameter="{Binding}"><PathIcon Width="16" Height="16" Data="{StaticResource DeleteRegularIcon}" /></Button>
                             <TextBlock Grid.Row="1"
                                        Grid.Column="1"
                                        Grid.ColumnSpan="5"

@@ -255,6 +255,13 @@ public partial class EditorWorkspaceViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void ReorderChoiceOption(ReorderRequest? request)
+    {
+        if (request?.Item is BranchOptionEditorItemViewModel option)
+            MoveChoiceOptionTo(option, request.NewIndex);
+    }
+
+    [RelayCommand]
     private void AddCondition()
     {
         ExecuteSelectedNodeGraphChange(
@@ -279,6 +286,13 @@ public partial class EditorWorkspaceViewModel : ObservableObject
 
         ExecuteGraphChange(
             () => _graphEditingService.MoveCondition(Nodes, Edges, SelectedNode, condition, newIndex));
+    }
+
+    [RelayCommand]
+    private void ReorderCondition(ReorderRequest? request)
+    {
+        if (request?.Item is BranchConditionEditorItemViewModel condition)
+            MoveConditionTo(condition, request.NewIndex);
     }
 
     public void SaveGraphDocument()

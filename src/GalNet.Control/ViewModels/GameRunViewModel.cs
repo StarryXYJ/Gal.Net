@@ -13,7 +13,7 @@ using Serilog;
 
 namespace GalNet.Control.ViewModels;
 
-public class GameRunViewModel
+public sealed class GameRunViewModel : IAsyncDisposable
 {
     public DefaultGameView GameView { get; }
 
@@ -22,6 +22,9 @@ public class GameRunViewModel
     private readonly IGameDataProvider? _gameDataProvider;
     private readonly Action? _onGameEnded;
     private readonly GameFlowOptions? _options;
+    private readonly CancellationTokenSource _lifetimeCts = new();
+    private readonly Task _runTask;
+    private int _stopped;
 
     public GameRunViewModel(
         DefaultGameView gameView,
@@ -38,15 +41,26 @@ public class GameRunViewModel
         _options = options;
         _onGameEnded = onGameEnded;
 
-        _ = RunAsync();
+        _runTask = RunAsync(_lifetimeCts.Token);
     }
 
-    private async Task RunAsync()
+    public async ValueTask DisposeAsync()
+    {
+        if (Interlocked.Exchange(ref _stopped, 1) == 0)
+            _lifetimeCts.Cancel();
+
+        try { await _runTask; }
+        catch (OperationCanceledException) { }
+        _lifetimeCts.Dispose();
+    }
+
+    private async Task RunAsync(CancellationToken cancellationToken)
     {
         var dataDirectory = ResolveGameDataDirectory();
         var settings = new SettingsContainer();
         settings.Set(_settingsService.GetSnapshot());
 
+        var completedNormally = false;
         try
         {
             var graph = LoadGraph(dataDirectory);
@@ -59,16 +73,23 @@ public class GameRunViewModel
             var engine = new GameEngine(graph, runtime);
             _options?.RuntimeCreated?.Invoke(runtime);
             _options?.GameStarted?.Invoke();
-            await engine.StepAsync();
+            await engine.StepAsync(cancellationToken);
+            completedNormally = !cancellationToken.IsCancellationRequested;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (Exception ex)
         {
             Log.Warning(ex, "Failed to run game from {Directory}", dataDirectory);
+            _options?.GameFailed?.Invoke(ex);
         }
         finally
         {
             GameView.Cleanup();
-            if (_onGameEnded is not null)
+            if (completedNormally)
+            {
+                _options?.GameEnded?.Invoke();
+            }
+            if (completedNormally && _onGameEnded is not null)
                 Avalonia.Threading.Dispatcher.UIThread.Post(_onGameEnded);
         }
     }

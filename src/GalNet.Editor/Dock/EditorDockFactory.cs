@@ -32,19 +32,14 @@ public sealed class EditorDockFactory : Factory
     {
         _documentDock = null;
 
-        var logTool = CreateTool(
-            "Log",
-            "Log",
-            _serviceProvider.GetRequiredService<LogPanelViewModel>());
-
-        var bottomDock = new ToolDock
+        var logDocument = new Document
         {
-            Id = "BottomTools",
-            Title = "Bottom",
-            ActiveDockable = logTool,
-            VisibleDockables = CreateList<IDockable>([logTool]),
-            Alignment = Alignment.Bottom,
-            IsExpanded = true
+            Id = "Log",
+            Title = "Log",
+            Context = _serviceProvider.GetRequiredService<LogPanelViewModel>(),
+            CanFloat = true,
+            CanClose = true,
+            CanPin = false
         };
 
         var nodeGraphDocument = new Document
@@ -105,7 +100,14 @@ public sealed class EditorDockFactory : Factory
             [
                 _documentDock,
                 new ProportionalDockSplitter(),
-                bottomDock
+                new DocumentDock
+                {
+                    Id = "LogDocuments",
+                    Title = "Log",
+                    ActiveDockable = logDocument,
+                    VisibleDockables = CreateList<IDockable>([logDocument]),
+                    EnableGlobalDocking = true
+                }
             ])
         };
 

@@ -47,4 +47,13 @@ internal sealed class DefaultChoicePresenter
         ct.Register(() => tcs.TrySetCanceled());
         return tcs.Task;
     }
+
+    public void Cancel()
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            _gameScreen.ChoiceHost.Content = null;
+            _gameScreen.ChoiceHost.IsVisible = false;
+        });
+    }
 }

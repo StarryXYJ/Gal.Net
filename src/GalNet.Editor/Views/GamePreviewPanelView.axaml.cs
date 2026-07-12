@@ -45,6 +45,8 @@ public partial class GamePreviewPanelView : UserControl
         Log.Information("[PreviewView] DetachedFromVisualTree #{Count}, Root={Root}",
             _attachCount, e.RootVisual?.GetType().Name ?? "null");
         LayoutUpdated -= OnLayoutUpdated;
+        if (_vm is not null)
+            _ = _vm.DisposeAsync();
     }
 
     private void OnLayoutUpdated(object? sender, EventArgs e)

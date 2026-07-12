@@ -26,11 +26,13 @@ public sealed class GameFlowFactory : IGameFlowFactory
         var variableService = options?.VariableService ?? _serviceProvider.GetService<IVariableService>();
         var gameDataProvider = options?.GameDataProvider ?? _serviceProvider.GetService<IGameDataProvider>();
 
-        return new GameRunViewModel(gameView, settings, variableService, gameDataProvider, options, () =>
+        var run = new GameRunViewModel(gameView, settings, variableService, gameDataProvider, options, () =>
         {
             navigation.Clear();
             navigation.NavigateTo(CreateStart(navigation, options));
         });
+        options?.RunCreated?.Invoke(run);
+        return run;
     }
 
     public SettingsViewModel CreateSettings(INavigationService navigation) =>

@@ -7,13 +7,15 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Core.Variable;
+using GalNet.Editor.Models;
+using GalNet.Editor.Controls;
 using GalNet.Editor.Shared.Services;
 
 namespace GalNet.Editor.ViewModels;
 
 public sealed partial class VariableListEditorViewModel : ObservableObject
 {
-    private readonly List<ProjectVariableDefinition> _source;
+    private readonly VariableDefinitionCollection _definitions;
     private readonly VariableScope _scope;
     private readonly Action _persistDefinitions;
     private readonly Func<string, Variable?> _getCurrentValue;
@@ -44,7 +46,7 @@ public sealed partial class VariableListEditorViewModel : ObservableObject
         Action persistDefinitions,
         Action<string>? onNameConflict = null)
     {
-        _source = source;
+        _definitions = new VariableDefinitionCollection(source);
         _scope = scope;
         _persistDefinitions = persistDefinitions;
         _getCurrentValue = getCurrentValue;
@@ -63,7 +65,7 @@ public sealed partial class VariableListEditorViewModel : ObservableObject
     public void Reload()
     {
         Items.Clear();
-        foreach (var definition in _source)
+        foreach (var definition in _definitions.Items)
             Items.Add(CreateItem(definition));
     }
 
@@ -77,15 +79,9 @@ public sealed partial class VariableListEditorViewModel : ObservableObject
     [RelayCommand]
     public void AddVariable()
     {
-        var index = _source.Count + 1;
+        var index = _definitions.Count + 1;
         var name = GenerateUniqueName($"var_{_scope.ToString().ToLowerInvariant()}_{index}");
-        var definition = new ProjectVariableDefinition
-        {
-            Name = name,
-            DefaultValue = new Variable { Name = name }
-        };
-
-        _source.Add(definition);
+        var definition = _definitions.Add(name);
         var item = CreateItem(definition);
         Items.Add(item);
         _persistDefinitions();
@@ -97,21 +93,22 @@ public sealed partial class VariableListEditorViewModel : ObservableObject
         if (item is null)
             return;
 
-        _source.Remove(item.Definition);
+        _definitions.Remove(item.Definition);
         Items.Remove(item);
         _removeCurrentValue(item.Name);
         _persistDefinitions();
     }
 
-    public void MoveItem(VariableEditorItemViewModel item, int newIndex)
+    [RelayCommand]
+    private void Reorder(ReorderRequest? request)
     {
+        if (request?.Item is not VariableEditorItemViewModel item)
+            return;
         var oldIndex = Items.IndexOf(item);
-        if (oldIndex < 0 || newIndex < 0 || newIndex >= Items.Count || oldIndex == newIndex)
+        if (oldIndex < 0 || !_definitions.Move(item.Definition, request.NewIndex))
             return;
 
-        Items.Move(oldIndex, newIndex);
-        _source.Remove(item.Definition);
-        _source.Insert(newIndex, item.Definition);
+        Items.Move(oldIndex, request.NewIndex);
         _persistDefinitions();
     }
 

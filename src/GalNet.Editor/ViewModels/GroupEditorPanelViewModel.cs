@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Editor.Services;
+using GalNet.Editor.Controls;
 
 namespace GalNet.Editor.ViewModels;
 
@@ -53,12 +54,13 @@ public partial class GroupEditorPanelViewModel : ObservableObject
         MoveEntry(entry, 1);
     }
 
-    public void MoveEntryTo(EntryEditorItemViewModel? entry, int newIndex)
+    [RelayCommand]
+    private void ReorderEntry(ReorderRequest? request)
     {
-        if (entry is null)
+        if (request?.Item is not EntryEditorItemViewModel entry)
             return;
 
-        if (_graphEditingService.MoveEntry(GroupNode, entry, newIndex))
+        if (_graphEditingService.MoveEntry(GroupNode, entry, request.NewIndex))
             Workspace.SaveGraphDocument();
     }
 
@@ -67,7 +69,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject
         if (entry is null)
             return;
 
-        MoveEntryTo(entry, GroupNode.Entries.IndexOf(entry) + delta);
+        ReorderEntry(new ReorderRequest(entry, GroupNode.Entries.IndexOf(entry) + delta));
     }
 
     private void OnVariableDefinitionsChanged()

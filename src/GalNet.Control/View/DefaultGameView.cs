@@ -12,7 +12,7 @@ using AvaloniaControl = Avalonia.Controls.Control;
 
 namespace GalNet.Control.View;
 
-public class DefaultGameView : Grid, IGameView
+public class DefaultGameView : Grid, IGameView, IDisposable
 {
     private static bool _vlcInitialized;
     private static readonly TransitionRegistry _transitionRegistry = new();
@@ -27,12 +27,28 @@ public class DefaultGameView : Grid, IGameView
     private readonly AudioController _audioController;
     private readonly VideoController _videoController;
     private TaskCompletionSource<int>? _clickTcs;
+    private int _disposed;
 
     /// <summary>Stop all audio/video and release resources.</summary>
     public void Cleanup()
     {
+        _clickTcs?.TrySetCanceled();
+        _clickTcs = null;
+        _typewriter.Cancel();
+        _choice.Cancel();
         _audioController.StopAll();
         _videoController.Stop();
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+            return;
+
+        Cleanup();
+        _audioController.Dispose();
+        _videoController.Dispose();
+        _libVlc?.Dispose();
     }
 
     static DefaultGameView()

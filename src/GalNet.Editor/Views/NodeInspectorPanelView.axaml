@@ -6,6 +6,7 @@
              x:Name="Root"
              x:DataType="vm:NodeInspectorPanelViewModel"
              Background="{DynamicResource SemiColorBackground0}">
+    <Grid x:Name="LayoutRoot">
     <ScrollViewer>
         <StackPanel Margin="12" Spacing="10">
             <TextBlock Text="Inspector"
@@ -72,93 +73,28 @@
 
                     <StackPanel Spacing="6"
                                 IsVisible="{Binding IsChoiceBranchSelected}">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Text="Options"
-                                       FontWeight="SemiBold" />
-                            <Button Grid.Column="1"
-                                    Content="Add"
-                                    Command="{Binding Workspace.AddChoiceOptionCommand}" />
-                        </Grid>
-                        <ListBox Name="OptionsListBox"
-                                 ItemsSource="{Binding Workspace.SelectedNode.Options}"
-                                 Background="Transparent">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate x:DataType="vm:BranchOptionEditorItemViewModel">
-                                    <Border Margin="0,4"
-                                            Padding="8"
-                                            Background="{DynamicResource SemiColorBackground1}"
-                                            BorderBrush="{DynamicResource SemiColorBorder}"
-                                            BorderThickness="1"
-                                            CornerRadius="6">
-                                        <Grid ColumnDefinitions="Auto,*,*,Auto"
-                                              ColumnSpacing="6">
-                                            <Border Padding="6,0"
-                                                    Background="Transparent"
-                                                    Cursor="SizeAll"
-                                                    PointerPressed="OnChoiceOptionDragPointerPressed">
-                                                <TextBlock Text="::" />
-                                            </Border>
-                                            <TextBox Grid.Column="1"
-                                                     Text="{Binding Text}" />
-                                            <controls:ConditionEditorControl Grid.Column="2"
-                                                                             Text="{Binding Condition}"
-                                                                             Suggestions="{Binding #Root.DataContext.ConditionSuggestions}"
-                                                                             ValidationVariables="{Binding #Root.DataContext.ValidationVariables}" />
-                                            <Button Grid.Column="3"
-                                                    Content="Remove"
-                                                    Command="{Binding #Root.DataContext.Workspace.RemoveChoiceOptionCommand}"
-                                                    CommandParameter="{Binding}" />
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
+                        <TextBlock Text="Options" FontWeight="SemiBold" />
+                        <controls:BranchOptionListEditorControl ItemsSource="{Binding Workspace.SelectedNode.Options}"
+                                                                  AddCommand="{Binding Workspace.AddChoiceOptionCommand}"
+                                                                  RemoveCommand="{Binding Workspace.RemoveChoiceOptionCommand}"
+                                                                  MoveCommand="{Binding Workspace.ReorderChoiceOptionCommand}"
+                                                                  ConditionSuggestions="{Binding ConditionSuggestions}"
+                                                                  ValidationVariables="{Binding ValidationVariables}" />
                     </StackPanel>
 
                     <StackPanel Spacing="6"
                                 IsVisible="{Binding IsConditionBranchSelected}">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Text="Conditions"
-                                       FontWeight="SemiBold" />
-                            <Button Grid.Column="1"
-                                    Content="Add"
-                                    Command="{Binding Workspace.AddConditionCommand}" />
-                        </Grid>
-                        <ListBox Name="ConditionsListBox"
-                                 ItemsSource="{Binding Workspace.SelectedNode.Conditions}"
-                                 Background="Transparent">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate x:DataType="vm:BranchConditionEditorItemViewModel">
-                                    <Border Margin="0,4"
-                                            Padding="8"
-                                            Background="{DynamicResource SemiColorBackground1}"
-                                            BorderBrush="{DynamicResource SemiColorBorder}"
-                                            BorderThickness="1"
-                                            CornerRadius="6">
-                                        <Grid ColumnDefinitions="Auto,*,Auto"
-                                              ColumnSpacing="6">
-                                            <Border Padding="6,0"
-                                                    Background="Transparent"
-                                                    Cursor="SizeAll"
-                                                    PointerPressed="OnConditionDragPointerPressed">
-                                                <TextBlock Text="::" />
-                                            </Border>
-                                            <controls:ConditionEditorControl Grid.Column="1"
-                                                                             Text="{Binding Expression}"
-                                                                             Suggestions="{Binding #Root.DataContext.ConditionSuggestions}"
-                                                                             ValidationVariables="{Binding #Root.DataContext.ValidationVariables}" />
-                                            <Button Grid.Column="2"
-                                                    Content="Remove"
-                                                    Command="{Binding #Root.DataContext.Workspace.RemoveConditionCommand}"
-                                                    CommandParameter="{Binding}" />
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
+                        <TextBlock Text="Conditions" FontWeight="SemiBold" />
+                        <controls:BranchConditionListEditorControl ItemsSource="{Binding Workspace.SelectedNode.Conditions}"
+                                                                     AddCommand="{Binding Workspace.AddConditionCommand}"
+                                                                     RemoveCommand="{Binding Workspace.RemoveConditionCommand}"
+                                                                     MoveCommand="{Binding Workspace.ReorderConditionCommand}"
+                                                                     ConditionSuggestions="{Binding ConditionSuggestions}"
+                                                                     ValidationVariables="{Binding ValidationVariables}" />
                     </StackPanel>
                 </StackPanel>
             </StackPanel>
         </StackPanel>
     </ScrollViewer>
+    </Grid>
 </UserControl>
