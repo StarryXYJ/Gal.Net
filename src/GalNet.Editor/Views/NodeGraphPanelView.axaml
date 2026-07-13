@@ -83,7 +83,7 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="models:GraphEdge">
                         <Path Data="{Binding PathData}"
-                              Stroke="{Binding StrokeBrush}"
+                              Stroke="{DynamicResource SemiColorPrimary}"
                               StrokeThickness="{Binding StrokeThickness}"
                               Opacity="0.85"
                               IsHitTestVisible="False" />

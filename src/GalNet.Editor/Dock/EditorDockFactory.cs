@@ -68,6 +68,7 @@ public sealed class EditorDockFactory : Factory
         {
             Id = "InspectorDocuments",
             Title = "Inspector",
+            Proportion = 0.32,
             ActiveDockable = inspectorDocument,
             VisibleDockables = CreateList<IDockable>([inspectorDocument]),
             EnableGlobalDocking = true
@@ -77,6 +78,7 @@ public sealed class EditorDockFactory : Factory
         {
             Id = "Center",
             Title = "Center",
+            Proportion = 0.68,
             Orientation = Orientation.Vertical,
             ActiveDockable = _documentDock,
             VisibleDockables = CreateList<IDockable>(

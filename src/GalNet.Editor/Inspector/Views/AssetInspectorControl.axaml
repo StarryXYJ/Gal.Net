@@ -15,7 +15,8 @@
    
    <StackPanel IsVisible="{Binding IsSelectedAssetImage}" Spacing="6">
     <TextBlock Text="{loc:Localize Inspector.Asset.ImagePreview}" FontWeight="SemiBold" Foreground="{DynamicResource SemiColorText2}" />
-    <Image Source="{Binding Workspace.SelectedAsset.FullPath}" MaxHeight="220" Stretch="Uniform" />
+    <Image Source="{Binding ImagePreview}" MaxHeight="220" Stretch="Uniform" />
+    <TextBlock Text="{Binding ImagePreviewError}" Foreground="OrangeRed" TextWrapping="Wrap" />
     
     <TextBlock Text="{loc:Localize Inspector.Asset.Filter}" />
     <ComboBox ItemsSource="{Binding FilterOptions}" SelectedItem="{Binding AssetFilter}" />
@@ -26,10 +27,12 @@
    
    <StackPanel IsVisible="{Binding IsSelectedAssetAudio}" Spacing="6">
     <TextBlock Text="{loc:Localize Inspector.Asset.AudioPreview}" />
-    <Button HorizontalAlignment="Left" Command="{Binding ToggleAudioPreviewCommand}" >
-     
-    </Button>
-    <Slider Minimum="0" Maximum="{Binding AudioPreviewDuration}" Value="{Binding AudioPreviewPosition}" />
+    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+     <Button Command="{Binding ToggleAudioPreviewCommand}" IsVisible="{Binding !IsAudioPreviewPlaying}"><PathIcon Data="M8,5V19L19,12Z" /></Button>
+     <Button Command="{Binding ToggleAudioPreviewCommand}" IsVisible="{Binding IsAudioPreviewPlaying}"><PathIcon Data="M6,5H10V19H6ZM14,5H18V19H14Z" /></Button>
+     <TextBlock Grid.Column="2" Text="{Binding AudioPreviewTimeText}" VerticalAlignment="Center" />
+    </Grid>
+    <Slider Minimum="0" Maximum="{Binding AudioPreviewDuration}" Value="{Binding AudioPreviewPosition}" PointerPressed="OnAudioSeekStarted" PointerReleased="OnAudioSeekCompleted" />
     <TextBlock Text="{Binding AudioPreviewError}" Foreground="OrangeRed" TextWrapping="Wrap" />
    </StackPanel>
    

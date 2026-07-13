@@ -2,42 +2,74 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:GalNet.Editor.ViewModels"
              xmlns:model="using:GalNet.Editor.Models"
+             xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
              x:Class="GalNet.Editor.Views.AssetPanelView"
              x:Name="Root"
              x:DataType="vm:AssetPanelViewModel"
              Background="{DynamicResource SemiColorBackground0}">
   <Grid RowDefinitions="Auto,*,Auto">
     <StackPanel Orientation="Horizontal" Spacing="8" Margin="4">
-      <Button Content="←" Command="{Binding BackCommand}" IsEnabled="{Binding CanGoBack}" ToolTip.Tip="Back"/>
+      <Button Content="←" Command="{Binding BackCommand}" IsEnabled="{Binding CanGoBack}" ToolTip.Tip="{loc:Localize Asset.Menu.Back}"
+              DragDrop.AllowDrop="True" DragDrop.DragOver="OnBackDragOver" DragDrop.DragLeave="OnBackDragLeave" DragDrop.Drop="OnBackDrop"
+              Classes.drop-target="{Binding IsParentDropTarget}">
+        <Button.Styles><Style Selector="Button.drop-target"><Setter Property="Background" Value="{DynamicResource SemiColorPrimary}" /></Style></Button.Styles>
+      </Button>
       <TextBox Width="280" Text="{Binding PathText}" LostFocus="OnPathLostFocus" KeyDown="OnPathKeyDown" />
     </StackPanel>
-    <ListBox Grid.Row="1" ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry}" Margin="4">
+    <ListBox Grid.Row="1" ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry}" Margin="4" DragDrop.AllowDrop="True" DragDrop.DragOver="OnDragOver" DragDrop.DragLeave="OnDragLeave" DragDrop.Drop="OnDrop">
+      <ListBox.ContextMenu>
+        <ContextMenu>
+          <MenuItem Header="{loc:Localize Asset.Menu.OpenInExplorer}" Command="{Binding ShowCurrentDirectoryInExplorerCommand}" />
+          <MenuItem Header="{loc:Localize Asset.Menu.Import}" Command="{Binding ImportCommand}" />
+          <MenuItem Header="{loc:Localize Asset.Menu.Paste}" Command="{Binding PasteCommand}" />
+          <MenuItem Header="{loc:Localize Asset.Menu.NewFolder}" Command="{Binding NewFolderCommand}" />
+          <Separator />
+          <MenuItem Header="{loc:Localize Asset.Menu.Refresh}" Command="{Binding RefreshCommand}" />
+        </ContextMenu>
+      </ListBox.ContextMenu>
       <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="model:AssetEntry">
-          <Border Width="116" Height="128" Padding="6" Margin="3" DoubleTapped="OnEntryDoubleTapped">
+          <Border Width="116" Height="128" Padding="6" Margin="3" DoubleTapped="OnEntryDoubleTapped"
+                  PointerPressed="OnEntryPointerPressed" PointerMoved="OnEntryPointerMoved"
+                  DragDrop.AllowDrop="True" DragDrop.DragOver="OnEntryDragOver" DragDrop.DragLeave="OnEntryDragLeave" DragDrop.Drop="OnEntryDrop"
+                  Classes.drop-target="{Binding IsDropTarget}">
+            <Border.Styles>
+              <Style Selector="Border.drop-target"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorAccent}" /><Setter Property="BorderThickness" Value="2" /></Style>
+            </Border.Styles>
             <Border.ContextMenu>
               <ContextMenu>
-                <MenuItem Header="Open" Command="{Binding #Root.DataContext.OpenCommand}" CommandParameter="{Binding}" />
-                <MenuItem Header="Show in Explorer" Command="{Binding #Root.DataContext.ShowInExplorerCommand}" CommandParameter="{Binding}" />
+                <MenuItem Header="{loc:Localize Asset.Menu.Open}" Command="{Binding #Root.DataContext.OpenCommand}" CommandParameter="{Binding}" />
+                <MenuItem Header="{loc:Localize Asset.Menu.Rename}" Command="{Binding #Root.DataContext.BeginRenameCommand}" CommandParameter="{Binding}" />
+                <MenuItem Header="{loc:Localize Asset.Menu.OpenInExplorer}" Command="{Binding #Root.DataContext.ShowInExplorerCommand}" CommandParameter="{Binding}" />
                 <Separator />
-                <MenuItem Header="Copy" Command="{Binding #Root.DataContext.CopySelectedCommand}" />
-                <MenuItem Header="Cut" Command="{Binding #Root.DataContext.CutSelectedCommand}" />
-                <MenuItem Header="Paste" Command="{Binding #Root.DataContext.PasteCommand}" />
+                <MenuItem Header="{loc:Localize Asset.Menu.Copy}" Command="{Binding #Root.DataContext.CopySelectedCommand}" />
+                <MenuItem Header="{loc:Localize Asset.Menu.Cut}" Command="{Binding #Root.DataContext.CutSelectedCommand}" />
+                <MenuItem Header="{loc:Localize Asset.Menu.Paste}" Command="{Binding #Root.DataContext.PasteCommand}" />
                 <Separator />
-                <MenuItem Header="Delete" Command="{Binding #Root.DataContext.DeleteSelectedCommand}" />
+                <MenuItem Header="{loc:Localize Asset.Menu.Delete}" Command="{Binding #Root.DataContext.DeleteSelectedCommand}" />
               </ContextMenu>
             </Border.ContextMenu>
             <StackPanel Spacing="4">
               <Border Height="88" Background="{DynamicResource SemiColorFill0}" CornerRadius="4">
-                <TextBlock Text="{Binding IconText}" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <Grid>
+                  <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" IsVisible="{Binding HasThumbnail}" />
+                  <PathIcon Data="{StaticResource FolderRegular}" Width="48" Height="48" IsVisible="{Binding IsDirectory}" />
+                  <PathIcon Data="{StaticResource MusicRegular}" Width="40" Height="40" IsVisible="{Binding IsAudio}" />
+                  <PathIcon Data="{StaticResource VideoClipRegular}" Width="40" Height="40" IsVisible="{Binding IsVideo}" />
+                  <PathIcon Data="{StaticResource FileRegular}" Width="40" Height="40" IsVisible="{Binding IsOtherFile}" />
+                </Grid>
               </Border>
-              <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" />
+              <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" IsVisible="{Binding !IsRenaming}" />
+              <TextBox Text="{Binding #Root.DataContext.RenameText, Mode=TwoWay}" IsVisible="{Binding IsRenaming}" AttachedToVisualTree="OnRenameTextBoxAttached" LostFocus="OnRenameLostFocus" KeyDown="OnRenameKeyDown" />
             </StackPanel>
           </Border>
         </DataTemplate>
       </ListBox.ItemTemplate>
     </ListBox>
+    <Border Grid.Row="1" Margin="4" BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="2" Background="#334A90E2" IsVisible="{Binding IsExternalDropActive}" IsHitTestVisible="False">
+      <TextBlock Text="{loc:Localize Asset.Drop.Import}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+    </Border>
     <TextBlock Grid.Row="2" Text="{Binding ErrorText}" Margin="4" Foreground="OrangeRed" TextWrapping="Wrap"/>
   </Grid>
 </UserControl>

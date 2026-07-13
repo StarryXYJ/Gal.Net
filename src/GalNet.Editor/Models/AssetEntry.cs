@@ -1,8 +1,9 @@
-using System;
+using Avalonia.Media.Imaging;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace GalNet.Editor.Models;
 
-public sealed class AssetEntry
+public sealed partial class AssetEntry : ObservableObject
 {
     public required string RelativePath { get; init; }
     public required string FullPath { get; init; }
@@ -13,11 +14,18 @@ public sealed class AssetEntry
     public string? Filter { get; init; }
     public string? Compress { get; init; }
     public bool HasValidMeta { get; init; }
+    [ObservableProperty] private Bitmap? _thumbnail;
+    [ObservableProperty] private bool _isRenaming;
+    [ObservableProperty] private bool _isDropTarget;
+    public bool HasThumbnail => Thumbnail is not null;
+    partial void OnThumbnailChanged(Bitmap? value)
+    {
+        OnPropertyChanged(nameof(HasThumbnail));
+        OnPropertyChanged(nameof(IsOtherFile));
+    }
     public bool IsImage => Type == "sprite";
     public bool IsAudio => Type == "audio";
     public bool IsVideo => Type == "video";
+    public bool IsOtherFile => !IsDirectory && !IsAudio && !IsVideo && !HasThumbnail;
     public string MetaPath => IsDirectory ? string.Empty : FullPath + ".meta";
-    public string IconText => IsDirectory
-        ? Name.Equals("Layer", StringComparison.OrdinalIgnoreCase) ? "▧" : Name.Equals("Audio", StringComparison.OrdinalIgnoreCase) ? "♫" : Name.Equals("Video", StringComparison.OrdinalIgnoreCase) ? "▶" : "▰"
-        : IsAudio ? "♫" : IsVideo ? "▶" : IsImage ? "▣" : "□";
 }

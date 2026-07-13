@@ -106,6 +106,51 @@ public sealed class AssetCatalogService : IAssetCatalogService
         Changed?.Invoke();
     }
 
+    public async Task ImportExternalAsync(IEnumerable<string> sourcePaths, string targetDirectory, CancellationToken cancellationToken = default)
+    {
+        var target = Resolve(targetDirectory);
+        Directory.CreateDirectory(target);
+        foreach (var source in sourcePaths.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (File.Exists(source))
+            {
+                var destination = UniquePath(Path.Combine(target, Path.GetFileName(source)));
+                File.Copy(source, destination);
+                await EnsureMetaAsync(destination, cancellationToken);
+            }
+            else if (Directory.Exists(source))
+            {
+                var destination = UniquePath(Path.Combine(target, Path.GetFileName(source.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))));
+                await CopyDirectoryAsync(source, destination, cancellationToken);
+            }
+        }
+        Changed?.Invoke();
+    }
+
+    public Task<string?> GetThumbnailPathAsync(AssetEntry entry, CancellationToken cancellationToken = default)
+    {
+        if (entry.IsImage) return Task.FromResult<string?>(entry.FullPath);
+        // Video intentionally remains an icon-only asset. Decoding a frame while browsing
+        // must not create a native VLC output window or compete with the editor preview.
+        return Task.FromResult<string?>(null);
+    }
+
+    private async Task CopyDirectoryAsync(string source, string destination, CancellationToken cancellationToken)
+    {
+        Directory.CreateDirectory(destination);
+        foreach (var directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
+            Directory.CreateDirectory(Path.Combine(destination, Path.GetRelativePath(source, directory)));
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories).Where(file => !file.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var target = Path.Combine(destination, Path.GetRelativePath(source, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(file, target, overwrite: false);
+            await EnsureMetaAsync(target, cancellationToken);
+        }
+    }
+
     public async Task MoveAsync(string relativePath, string targetDirectory, CancellationToken cancellationToken = default)
     {
         var source = Resolve(relativePath); var targetDir = Resolve(targetDirectory);

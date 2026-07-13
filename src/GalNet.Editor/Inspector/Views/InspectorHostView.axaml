@@ -4,5 +4,5 @@
              x:Class="GalNet.Editor.Inspector.Views.InspectorHostView"
              x:DataType="vm:InspectorHostViewModel"
              Background="{DynamicResource SemiColorBackground0}">
-  <ContentControl Content="{Binding CurrentInspectorView}" />
+  <ContentControl x:Name="InspectorContent" />
 </UserControl>

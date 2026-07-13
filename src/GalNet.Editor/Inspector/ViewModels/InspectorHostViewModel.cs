@@ -10,10 +10,10 @@ public sealed partial class InspectorHostViewModel : ObservableObject, IDisposab
 {
     private readonly IServiceProvider _services;
     private readonly IEditorExtensionRegistry _extensions;
-    private IInspectorControlViewModel? _currentInspectorViewModel;
+    private IInspectorControlViewModel? _currentInspectorControlViewModel;
     private IInspectorControlContribution? _currentContribution;
 
-    [ObservableProperty] private Avalonia.Controls.Control? _currentInspectorView;
+    [ObservableProperty] private IInspectorControlViewModel? _currentInspectorViewModel;
 
     public InspectorHostViewModel(IServiceProvider services, IEditorExtensionRegistry extensions)
     {
@@ -31,36 +31,38 @@ public sealed partial class InspectorHostViewModel : ObservableObject, IDisposab
 
     private void ReplaceInspector(IInspectorControlViewModel? viewModel, IInspectorControlContribution? contribution)
     {
-        if (ReferenceEquals(viewModel, _currentInspectorViewModel))
+        if (ReferenceEquals(viewModel, _currentInspectorControlViewModel))
             return;
 
-        if (_currentInspectorViewModel is not null)
+        if (_currentInspectorControlViewModel is not null)
         {
-            _currentInspectorViewModel.PropertyChanged -= OnInspectorPropertyChanged;
-            _currentInspectorViewModel.Dispose();
+            _currentInspectorControlViewModel.PropertyChanged -= OnInspectorPropertyChanged;
+            _currentInspectorControlViewModel.Dispose();
         }
 
-        _currentInspectorViewModel = viewModel;
+        _currentInspectorControlViewModel = viewModel;
         _currentContribution = contribution;
         if (viewModel is null || contribution is null)
         {
-            CurrentInspectorView = null;
+            CurrentInspectorViewModel = null;
             return;
         }
 
         viewModel.PropertyChanged += OnInspectorPropertyChanged;
-        CurrentInspectorView = viewModel.IsAvailable
-            ? contribution.CreateView(_services, viewModel) as Avalonia.Controls.Control
-            : null;
+        CurrentInspectorViewModel = viewModel.IsAvailable ? viewModel : null;
     }
 
     private void OnInspectorPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(IInspectorControlViewModel.IsAvailable) && sender is IInspectorControlViewModel vm)
-            CurrentInspectorView = vm.IsAvailable && _currentContribution is not null
-                ? _currentContribution.CreateView(_services, vm) as Avalonia.Controls.Control
-                : null;
+            CurrentInspectorViewModel = vm.IsAvailable && _currentContribution is not null ? vm : null;
     }
+
+    /// <summary>Creates a view for this host instance; views must never be shared across Dock presenters.</summary>
+    public Avalonia.Controls.Control? CreateCurrentInspectorView() =>
+        CurrentInspectorViewModel is not null && _currentContribution is not null
+            ? _currentContribution.CreateView(_services, CurrentInspectorViewModel) as Avalonia.Controls.Control
+            : null;
 
     public void Dispose() => ClearInspector();
 }
