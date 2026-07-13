@@ -48,9 +48,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject
     private AssetEntry? _selectedAsset;
 
     [ObservableProperty]
-    private InspectorMode _inspectorMode = InspectorMode.Node;
-
-    [ObservableProperty]
     private string _statusText = "Ready";
 
     public ObservableCollection<GraphNode> Nodes { get; } = [];
@@ -101,7 +98,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject
             selected.IsSelected = true;
 
         SelectedNode = SelectedNodes.Count == 1 ? SelectedNodes[0] : null;
-        InspectorMode = InspectorMode.Node;
         OnPropertyChanged(nameof(HasMultipleNodeSelection));
     }
 
@@ -119,7 +115,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         }
 
         SelectedNode = SelectedNodes.Count == 1 ? SelectedNodes[0] : null;
-        InspectorMode = InspectorMode.Node;
         OnPropertyChanged(nameof(HasMultipleNodeSelection));
     }
 
@@ -129,7 +124,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         SelectedEdge = edge;
         if (SelectedEdge is not null)
             SelectedEdge.IsSelected = true;
-        InspectorMode = InspectorMode.Node;
     }
 
     public void ClearSelection()
@@ -170,13 +164,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject
                     SelectedEdge = null;
             },
             () => Log.Information("Edge deleted: {From} [{Outlet}] -> {To}", edge.From.Name, edge.Outlet, edge.To.Name));
-    }
-
-    public void FocusPreview(GamePreviewPanelViewModel preview)
-    {
-        ClearSelection();
-        ActivePreview = preview;
-        InspectorMode = InspectorMode.PreviewVariables;
     }
 
     public void SaveGraphViewport()
@@ -267,7 +254,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject
     {
         ClearSelection();
         SelectedAsset = asset;
-        InspectorMode = InspectorMode.Asset;
     }
 
     [RelayCommand]
@@ -764,12 +750,5 @@ public partial class EditorWorkspaceViewModel : ObservableObject
     }
 
     public GraphNode? EntryNode => Nodes.FirstOrDefault(n => n.NodeKind == GraphNodeKind.Entry);
-}
-
-public enum InspectorMode
-{
-    Node,
-    PreviewVariables,
-    Asset
 }
 

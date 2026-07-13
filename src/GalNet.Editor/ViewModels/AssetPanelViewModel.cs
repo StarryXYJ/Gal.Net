@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using GalNet.Editor.Models;
 using GalNet.Editor.Services.Interfaces;
 using GalNet.Editor.Abstraction.Services;
+using System.Diagnostics;
 
 namespace GalNet.Editor.ViewModels;
 
@@ -14,6 +15,8 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
     private readonly IAssetCatalogService _catalog;
     private readonly EditorWorkspaceViewModel _workspace;
     private readonly IFileDialogService _fileDialogs;
+    private AssetEntry? _clipboardEntry;
+    private bool _isCut;
     [ObservableProperty] private string _currentDirectory = "";
     [ObservableProperty] private string _pathText = "Assets";
     [ObservableProperty] private AssetEntry? _selectedEntry;
@@ -59,6 +62,39 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         var files = await _fileDialogs.OpenFilePickerAsync("Import Assets");
         if (files.Count == 0) return;
         try { await _catalog.ImportAsync(files, CurrentDirectory); LoadEntries(); }
+        catch (Exception ex) { ErrorText = ex.Message; }
+    }
+    [RelayCommand] private void CopySelected()
+    {
+        _clipboardEntry = SelectedEntry;
+        _isCut = false;
+    }
+    [RelayCommand] private void CutSelected()
+    {
+        _clipboardEntry = SelectedEntry;
+        _isCut = true;
+    }
+    [RelayCommand] private async Task PasteAsync()
+    {
+        if (_clipboardEntry is null) return;
+        try
+        {
+            if (_isCut) await _catalog.MoveAsync(_clipboardEntry.RelativePath, CurrentDirectory);
+            else if (!_clipboardEntry.IsDirectory) await _catalog.ImportAsync([_clipboardEntry.FullPath], CurrentDirectory);
+            _clipboardEntry = null; _isCut = false; LoadEntries();
+        }
+        catch (Exception ex) { ErrorText = ex.Message; }
+    }
+    [RelayCommand] private async Task NewFolderAsync()
+    {
+        try { await _catalog.CreateDirectoryAsync(CurrentDirectory, "New Folder"); LoadEntries(); }
+        catch (Exception ex) { ErrorText = ex.Message; }
+    }
+    [RelayCommand] private void ShowInExplorer(AssetEntry? entry)
+    {
+        var path = entry?.FullPath;
+        if (string.IsNullOrWhiteSpace(path)) return;
+        try { Process.Start(new ProcessStartInfo("explorer.exe", entry!.IsDirectory ? $"\"{path}\"" : $"/select,\"{path}\"") { UseShellExecute = true }); }
         catch (Exception ex) { ErrorText = ex.Message; }
     }
     [RelayCommand] private Task DeleteSelected() => DeleteSelectedAsync();

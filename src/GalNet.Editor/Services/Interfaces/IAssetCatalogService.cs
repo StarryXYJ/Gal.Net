@@ -18,4 +18,5 @@ public interface IAssetCatalogService : IDisposable
     Task RenameAsync(string relativePath, string newName, CancellationToken cancellationToken = default);
     Task DeleteAsync(string relativePath, CancellationToken cancellationToken = default);
     Task UpdateMetaAsync(AssetEntry entry, string? filter, string? compress, CancellationToken cancellationToken = default);
+    Task CreateDirectoryAsync(string parentDirectory, string name, CancellationToken cancellationToken = default);
 }

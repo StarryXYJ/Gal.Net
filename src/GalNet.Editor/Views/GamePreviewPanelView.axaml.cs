@@ -25,7 +25,6 @@ public partial class GamePreviewPanelView : UserControl
 
         AttachedToVisualTree += OnAttachedToVisualTree;
         DetachedFromVisualTree += OnDetachedFromVisualTree;
-        AddHandler(PointerPressedEvent, OnPreviewPointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
     }
 
     private void OnAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
@@ -105,11 +104,6 @@ public partial class GamePreviewPanelView : UserControl
                 _vm?.PageHostVm?.GetType().Name ?? "null");
             SyncPageHost();
         }
-    }
-
-    private void OnPreviewPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        _vm?.FocusInspector();
     }
 
     private async void OnResetPlayerClick(object? sender, RoutedEventArgs e)

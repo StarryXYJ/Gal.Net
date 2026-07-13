@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using Avalonia.Controls;
 using GalNet.Editor.ViewModels;
 using GalNet.Editor.Views;
+using GalNet.Editor.Inspector.ViewModels;
+using GalNet.Editor.Inspector.Views;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Editor.Services;
@@ -15,7 +17,7 @@ public sealed class EditorViewFactory : IEditorViewFactory
         [typeof(ProjectSettingsPanelViewModel)] = typeof(ProjectSettingsPanelView),
         [typeof(EditorSettingsPanelViewModel)] = typeof(EditorSettingsPanelView),
         [typeof(NodeGraphPanelViewModel)] = typeof(NodeGraphPanelView),
-        [typeof(NodeInspectorPanelViewModel)] = typeof(NodeInspectorPanelView),
+        [typeof(InspectorHostViewModel)] = typeof(InspectorHostView),
         [typeof(GroupEditorPanelViewModel)] = typeof(GroupEditorPanelView),
         [typeof(NewProjectPanelViewModel)] = typeof(NewProjectPanelView),
         [typeof(GamePreviewPanelViewModel)] = typeof(GamePreviewPanelView),

@@ -3,6 +3,7 @@
              xmlns:vm="using:GalNet.Editor.ViewModels"
              xmlns:model="using:GalNet.Editor.Models"
              x:Class="GalNet.Editor.Views.AssetPanelView"
+             x:Name="Root"
              x:DataType="vm:AssetPanelViewModel"
              Background="{DynamicResource SemiColorBackground0}">
   <Grid RowDefinitions="Auto,*,Auto">
@@ -15,6 +16,18 @@
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="model:AssetEntry">
           <Border Width="116" Height="128" Padding="6" Margin="3" DoubleTapped="OnEntryDoubleTapped">
+            <Border.ContextMenu>
+              <ContextMenu>
+                <MenuItem Header="Open" Command="{Binding #Root.DataContext.OpenCommand}" CommandParameter="{Binding}" />
+                <MenuItem Header="Show in Explorer" Command="{Binding #Root.DataContext.ShowInExplorerCommand}" CommandParameter="{Binding}" />
+                <Separator />
+                <MenuItem Header="Copy" Command="{Binding #Root.DataContext.CopySelectedCommand}" />
+                <MenuItem Header="Cut" Command="{Binding #Root.DataContext.CutSelectedCommand}" />
+                <MenuItem Header="Paste" Command="{Binding #Root.DataContext.PasteCommand}" />
+                <Separator />
+                <MenuItem Header="Delete" Command="{Binding #Root.DataContext.DeleteSelectedCommand}" />
+              </ContextMenu>
+            </Border.ContextMenu>
             <StackPanel Spacing="4">
               <Border Height="88" Background="{DynamicResource SemiColorFill0}" CornerRadius="4">
                 <TextBlock Text="{Binding IconText}" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center" />

@@ -76,8 +76,6 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
         _ = RestartPreviewAsync();
     }
 
-    public void FocusInspector() => _workspace.FocusPreview(this);
-
     [RelayCommand]
     private async Task RestartPreviewAsync()
     {

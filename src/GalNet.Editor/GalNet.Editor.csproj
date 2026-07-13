@@ -72,5 +72,8 @@
       <Compile Update="Controls\BranchOptionListEditorControl.axaml.cs">
         <DependentUpon>BranchOptionListEditorControl.axaml</DependentUpon>
       </Compile>
+      <Compile Update="Inspector\Views\InspectorHostView.axaml.cs">
+        <DependentUpon>InspectorHostView.axaml</DependentUpon>
+      </Compile>
     </ItemGroup>
 </Project>

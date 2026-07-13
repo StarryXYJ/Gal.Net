@@ -1,0 +1,8 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:GalNet.Editor.Controls" xmlns:vm="using:GalNet.Editor.Inspector.ViewModels" xmlns:loc="using:GalNet.Editor.MarkupExtensions"
+             x:Class="GalNet.Editor.Inspector.Views.PreviewVariablesInspectorControl" x:DataType="vm:PreviewVariablesInspectorControlViewModel">
+  <ScrollViewer><StackPanel Margin="12" Spacing="10">
+    <Expander Header="{loc:Localize Inspector.Preview.PlayerVariables}" IsExpanded="True"><controls:VariableListEditorControl DataContext="{Binding Preview.PlayerVariables}" /></Expander>
+    <Expander Header="{loc:Localize Inspector.Preview.SaveVariables}" IsExpanded="True"><controls:VariableListEditorControl DataContext="{Binding Preview.SaveVariables}" /></Expander>
+  </StackPanel></ScrollViewer>
+</UserControl>

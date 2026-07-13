@@ -12,6 +12,8 @@ using GalNet.Editor.Services.Interfaces;
 using GalNet.Editor.Shared.Services;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.ViewModels;
+using GalNet.Editor.Inspector.ViewModels;
+using GalNet.Editor.Inspector.Views;
 using GalNet.Editor.Views;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -52,8 +54,13 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<IVariableService>(sp => sp.GetRequiredService<EditorVariableService>());
         services.AddSingleton<EditorGameDataProvider>();
         services.AddSingleton<IGameDataProvider>(sp => sp.GetRequiredService<EditorGameDataProvider>());
+        services.AddSingleton<IEditorExtensionRegistry>(_ =>
+        {
+            var registry = new EditorExtensionRegistry();
+            BuiltInDockContributions.Register(registry);
+            return registry;
+        });
         services.AddSingleton<EditorDockFactory>();
-        services.AddSingleton<IEditorExtensionRegistry, EditorExtensionRegistry>();
         services.AddSingleton<IAssetCatalogService, AssetCatalogService>();
 
         return services;
@@ -93,6 +100,10 @@ public static class EditorServiceCollectionExtensions
         services.AddTransient<GamePageHostView>();
         services.AddTransient<MainWindow>();
         services.AddTransient<AssetPanelView>();
+        services.AddTransient<InspectorHostView>();
+        services.AddTransient<NodeInspectorControl>();
+        services.AddTransient<PreviewVariablesInspectorControl>();
+        services.AddTransient<AssetInspectorControl>();
         services.AddTransient<ProjectSettingsWindow>();
         services.AddTransient<EditorSettingsWindow>();
 
@@ -105,7 +116,9 @@ public static class EditorServiceCollectionExtensions
         services.AddTransient<EditorPageViewModel>();
         services.AddSingleton<EditorWorkspaceViewModel>();
         services.AddTransient<NodeGraphPanelViewModel>();
-        services.AddTransient<NodeInspectorPanelViewModel>();
+        services.AddTransient<InspectorHostViewModel>();
+        services.AddTransient<NodeInspectorControlViewModel>();
+        services.AddTransient<AssetInspectorControlViewModel>();
         services.AddTransient<NewProjectPanelViewModel>();
         services.AddTransient<LogPanelViewModel>();
         services.AddSingleton<AssetPanelViewModel>();

@@ -143,6 +143,16 @@ public sealed class AssetCatalogService : IAssetCatalogService
         await WriteMetaAsync(entry.FullPath, meta, cancellationToken); Changed?.Invoke();
     }
 
+    public Task CreateDirectoryAsync(string parentDirectory, string name, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            throw new ArgumentException("Invalid folder name.");
+        var parent = Resolve(parentDirectory);
+        Directory.CreateDirectory(UniquePath(Path.Combine(parent, name)));
+        Changed?.Invoke();
+        return Task.CompletedTask;
+    }
+
     private AssetEntry CreateDirectory(string fullPath) => new() { FullPath = fullPath, RelativePath = Relative(fullPath), Name = Path.GetFileName(fullPath), IsDirectory = true };
     private AssetEntry CreateFile(string fullPath)
     {

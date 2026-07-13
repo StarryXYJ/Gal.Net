@@ -1,0 +1,8 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Editor.Inspector.ViewModels"
+             x:Class="GalNet.Editor.Inspector.Views.InspectorHostView"
+             x:DataType="vm:InspectorHostViewModel"
+             Background="{DynamicResource SemiColorBackground0}">
+  <ContentControl Content="{Binding CurrentInspectorView}" />
+</UserControl>

@@ -9,6 +9,9 @@ using Dock.Model.Mvvm.Controls;
 using Dock.Settings;
 using GalNet.Editor.Services;
 using GalNet.Editor.ViewModels;
+using GalNet.Editor.Inspector.ViewModels;
+using GalNet.Editor.Abstraction.Extensibility;
+using GalNet.Editor.Abstraction.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -16,65 +19,40 @@ namespace GalNet.Editor.Dock;
 
 public sealed class EditorDockFactory : Factory
 {
-    private readonly IGamePreviewPanelFactory _previewPanelFactory;
     private readonly IServiceProvider _serviceProvider;
+    private readonly IEditorExtensionRegistry _extensions;
+    private readonly IEditorLocalizationService _localization;
+    private readonly Dictionary<IDockable, IDockPanelContribution> _panelByDockable = [];
+    private InspectorHostViewModel? _inspectorHost;
+    private bool _activeDockableHandlerAttached;
     private DocumentDock? _documentDock;
 
     public EditorDockFactory(
-        IGamePreviewPanelFactory previewPanelFactory,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        IEditorExtensionRegistry extensions,
+        IEditorLocalizationService localization)
     {
-        _previewPanelFactory = previewPanelFactory;
         _serviceProvider = serviceProvider;
+        _extensions = extensions;
+        _localization = localization;
+        _localization.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(IEditorLocalizationService.CurrentCulture) or "Item[]")
+                RefreshDockTitles();
+        };
     }
 
     public override IRootDock CreateLayout()
     {
         _documentDock = null;
-
-        var logDocument = new Document
-        {
-            Id = "Log",
-            Title = "Log",
-            Context = _serviceProvider.GetRequiredService<LogPanelViewModel>(),
-            CanFloat = true,
-            CanClose = true,
-            CanPin = false
-        };
-        var assetsDocument = new Document
-        {
-            Id = "Assets", Title = "Assets", Context = _serviceProvider.GetRequiredService<AssetPanelViewModel>(),
-            CanFloat = true, CanClose = true, CanPin = false
-        };
-
-        var nodeGraphDocument = new Document
-        {
-            Id = "NodeGraph",
-            Title = "Node Graph",
-            Context = _serviceProvider.GetRequiredService<NodeGraphPanelViewModel>(),
-            CanFloat = true,
-            CanClose = false,
-            CanPin = false
-        };
-        var previewVm = _previewPanelFactory.Create();
-        var previewDocument = new Document
-        {
-            Id = "GamePreview",
-            Title = "Game Preview",
-            Context = previewVm,
-            CanFloat = true,
-            CanClose = true,
-            CanPin = false
-        };
-        var inspectorDocument = new Document
-        {
-            Id = "Inspector",
-            Title = "Inspector",
-            Context = _serviceProvider.GetRequiredService<NodeInspectorPanelViewModel>(),
-            CanFloat = true,
-            CanClose = false,
-            CanPin = false
-        };
+        _panelByDockable.Clear();
+        var panels = _extensions.DockPanelContributions.ToDictionary(panel => panel.PanelId, StringComparer.Ordinal);
+        var nodeGraphDocument = CreateDocument(panels[EditorDockPanelIds.NodeGraph]);
+        var previewDocument = CreateDocument(panels[EditorDockPanelIds.GamePreview]);
+        var logDocument = CreateDocument(panels[EditorDockPanelIds.Log]);
+        var assetsDocument = CreateDocument(panels[EditorDockPanelIds.Assets]);
+        var inspectorDocument = CreateDocument(panels[EditorDockPanelIds.Inspector]);
+        _inspectorHost = (InspectorHostViewModel)inspectorDocument.Context!;
 
         _documentDock = new DocumentDock
         {
@@ -82,7 +60,7 @@ public sealed class EditorDockFactory : Factory
             Title = "Documents",
             IsCollapsable = false,
             ActiveDockable = nodeGraphDocument,
-            VisibleDockables = CreateList<IDockable>([nodeGraphDocument, previewDocument]),
+            VisibleDockables = CreateList<IDockable>(CreateDefaultPanels(DockPanelPlacement.MainDocument, nodeGraphDocument, previewDocument).ToArray()),
             EnableGlobalDocking = true
         };
 
@@ -110,7 +88,7 @@ public sealed class EditorDockFactory : Factory
                     Id = "LogDocuments",
                     Title = "Log",
                     ActiveDockable = logDocument,
-                    VisibleDockables = CreateList<IDockable>([logDocument, assetsDocument]),
+                    VisibleDockables = CreateList<IDockable>(CreateDefaultPanels(DockPanelPlacement.BottomDocument, logDocument, assetsDocument).ToArray()),
                     EnableGlobalDocking = true
                 }
             ])
@@ -145,6 +123,7 @@ public sealed class EditorDockFactory : Factory
         rootDock.FloatingWindowHostMode = DockFloatingWindowHostMode.Native;
 
         Log.Information("[DockFactory] CreateLayout done");
+        ActivateInspectorFor(nodeGraphDocument);
         return rootDock;
     }
 
@@ -161,18 +140,7 @@ public sealed class EditorDockFactory : Factory
             return;
         }
 
-        var document = new Document
-        {
-            Id = documentId,
-            Title = $"Group: {groupNode.Name}",
-            Context = new GroupEditorPanelViewModel(
-                _serviceProvider.GetRequiredService<EditorWorkspaceViewModel>(),
-                groupNode,
-                _serviceProvider.GetRequiredService<IGraphEditingService>()),
-            CanFloat = true,
-            CanClose = true,
-            CanPin = false
-        };
+        var document = CreateDocument(_extensions.FindDockPanel(EditorDockPanelIds.GroupEditor)!, groupNode, documentId, [groupNode.Name]);
 
         _documentDock.VisibleDockables.Add(document);
         _documentDock.ActiveDockable = document;
@@ -207,6 +175,12 @@ public sealed class EditorDockFactory : Factory
             }
         };
 
+        if (!_activeDockableHandlerAttached)
+        {
+            ActiveDockableChanged += (_, args) => ActivateInspectorFor(args.Dockable);
+            _activeDockableHandlerAttached = true;
+        }
+
         // Subscribe to factory events for debugging
         DockableAdded += (_, args) =>
             Log.Information("[DockFactory] DockableAdded: {Id}", args.Dockable?.Id);
@@ -218,16 +192,39 @@ public sealed class EditorDockFactory : Factory
         base.InitLayout(layout);
     }
 
-    private static Tool CreateTool(string id, string title, object context) =>
-        new()
-        {
-            Id = id,
-            Title = title,
-            Context = context,
-            CanFloat = true,
-            CanClose = true,
-            CanPin = true
-        };
+    private Document CreateDocument(IDockPanelContribution panel, object? parameter = null, string? id = null, object[]? titleArguments = null)
+    {
+        var document = new Document { Id = id ?? panel.PanelId, Title = LocalizeTitle(panel, titleArguments), Context = panel.CreateViewModel(_serviceProvider, parameter), CanFloat = panel.CanFloat, CanClose = panel.CanClose, CanPin = false };
+        _panelByDockable[document] = panel;
+        return document;
+    }
+
+    private IEnumerable<IDockable> CreateDefaultPanels(DockPanelPlacement placement, params Document[] builtIns)
+    {
+        var documents = builtIns.Cast<IDockable>().ToList();
+        foreach (var panel in _extensions.DockPanelContributions.Where(panel => panel.IsDefaultPanel && panel.Placement == placement && builtIns.All(document => document.Id != panel.PanelId)))
+            documents.Add(CreateDocument(panel));
+        return documents;
+    }
+
+    private void ActivateInspectorFor(IDockable? dockable)
+    {
+        if (dockable is null || !_panelByDockable.TryGetValue(dockable, out var panel) || panel.PanelId == EditorDockPanelIds.Inspector)
+            return;
+        if (panel.Inspector is null || dockable.Context is null) _inspectorHost?.ClearInspector();
+        else _inspectorHost?.ShowInspectorFor(panel.PanelId, dockable.Context);
+    }
+
+    private string LocalizeTitle(IDockPanelContribution panel, object[]? arguments = null) =>
+        arguments is { Length: > 0 } ? _localization.Format(panel.TitleKey, arguments) : _localization[panel.TitleKey];
+
+    private void RefreshDockTitles()
+    {
+        foreach (var (dockable, panel) in _panelByDockable)
+            dockable.Title = panel.PanelId == EditorDockPanelIds.GroupEditor && dockable.Context is GroupEditorPanelViewModel group
+                ? LocalizeTitle(panel, [group.GroupNode.Name])
+                : LocalizeTitle(panel);
+    }
 
     private static string GetGroupEditorDocumentId(string groupId) => $"GroupEditor:{groupId}";
 }

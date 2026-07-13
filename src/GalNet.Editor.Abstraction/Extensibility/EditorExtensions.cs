@@ -1,47 +1,45 @@
-using System;
 using System.Collections.Generic;
+using System;
+using System.ComponentModel;
 
 namespace GalNet.Editor.Abstraction.Extensibility;
 
-public interface IEditorPanelViewModel
+public enum DockPanelPlacement
 {
-    string PanelId { get; }
-    string Title { get; }
+    MainDocument,
+    BottomDocument,
+    InspectorDocument
 }
 
-public interface IEditorSelectionContext
+public interface IInspectorControlViewModel : IDisposable, INotifyPropertyChanged
 {
-    object? PrimarySelection { get; }
-    IReadOnlyList<object> Selections { get; }
-    event EventHandler? SelectionChanged;
+    /// <summary>Whether the inspector is applicable to the current state of its dock panel.</summary>
+    bool IsAvailable { get; }
 }
 
-public interface IInspectorViewModel : IDisposable
+public interface IInspectorControlContribution
 {
-    IEditorSelectionContext Selection { get; }
-}
-
-public interface IInspectorContribution
-{
-    string InspectorId { get; }
-    int Priority { get; }
-    bool CanInspect(IEditorSelectionContext selection);
-    IInspectorViewModel CreateViewModel(IServiceProvider services, IEditorSelectionContext selection);
-    object CreateView(IServiceProvider services, IInspectorViewModel viewModel);
+    IInspectorControlViewModel CreateViewModel(IServiceProvider services, object dockViewModel);
+    object CreateView(IServiceProvider services, IInspectorControlViewModel viewModel);
 }
 
 public interface IDockPanelContribution
 {
     string PanelId { get; }
-    string Title { get; }
-    object CreateViewModel(IServiceProvider services);
+    /// <summary>Localization key used for the dock tab title.</summary>
+    string TitleKey { get; }
+    DockPanelPlacement Placement { get; }
+    bool IsDefaultPanel { get; }
+    bool CanClose { get; }
+    bool CanFloat { get; }
+    IInspectorControlContribution? Inspector { get; }
+    object CreateViewModel(IServiceProvider services, object? parameter = null);
     object CreateView(IServiceProvider services, object viewModel);
 }
 
 public interface IEditorExtensionRegistry
 {
-    IEnumerable<IInspectorContribution> InspectorContributions { get; }
     IEnumerable<IDockPanelContribution> DockPanelContributions { get; }
-    void RegisterInspector(IInspectorContribution contribution);
     void RegisterDockPanel(IDockPanelContribution contribution);
+    IDockPanelContribution? FindDockPanel(string panelId);
 }

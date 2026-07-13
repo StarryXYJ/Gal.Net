@@ -1,0 +1,45 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Editor.Inspector.ViewModels" xmlns:loc="using:GalNet.Editor.MarkupExtensions" x:Class="GalNet.Editor.Inspector.Views.AssetInspectorControl" x:DataType="vm:AssetInspectorControlViewModel">
+ <ScrollViewer>
+  <StackPanel Margin="12" Spacing="10">
+   
+   <StackPanel Spacing="8" IsVisible="{Binding HasSelectedAsset}">
+   <TextBlock Text="{loc:Localize Inspector.Asset.Title}" FontWeight="SemiBold" />
+   <TextBlock Text="{Binding Workspace.SelectedAsset.Name}" />
+   <TextBlock Text="{loc:Localize Inspector.Asset.Id}" />
+   <TextBlock Text="{Binding Workspace.SelectedAsset.Id}" FontFamily="Consolas" FontSize="12" />
+   <TextBlock Text="{loc:Localize Inspector.Asset.Path}" />
+   <TextBlock Text="{Binding Workspace.SelectedAsset.RelativePath}" />
+   
+   <Panel Margin="5"></Panel>
+   
+   <StackPanel IsVisible="{Binding IsSelectedAssetImage}" Spacing="6">
+    <TextBlock Text="{loc:Localize Inspector.Asset.ImagePreview}" FontWeight="SemiBold" Foreground="{DynamicResource SemiColorText2}" />
+    <Image Source="{Binding Workspace.SelectedAsset.FullPath}" MaxHeight="220" Stretch="Uniform" />
+    
+    <TextBlock Text="{loc:Localize Inspector.Asset.Filter}" />
+    <ComboBox ItemsSource="{Binding FilterOptions}" SelectedItem="{Binding AssetFilter}" />
+    
+    <TextBlock Text="{loc:Localize Inspector.Asset.Compression}" />
+    <ComboBox ItemsSource="{Binding CompressionOptions}" SelectedItem="{Binding AssetCompression}" />
+   </StackPanel>
+   
+   <StackPanel IsVisible="{Binding IsSelectedAssetAudio}" Spacing="6">
+    <TextBlock Text="{loc:Localize Inspector.Asset.AudioPreview}" />
+    <Button HorizontalAlignment="Left" Command="{Binding ToggleAudioPreviewCommand}" >
+     
+    </Button>
+    <Slider Minimum="0" Maximum="{Binding AudioPreviewDuration}" Value="{Binding AudioPreviewPosition}" />
+    <TextBlock Text="{Binding AudioPreviewError}" Foreground="OrangeRed" TextWrapping="Wrap" />
+   </StackPanel>
+   
+   <StackPanel IsVisible="{Binding IsSelectedAssetVideo}" Spacing="6">
+    <TextBlock Text="{loc:Localize Inspector.Asset.VideoPreview}" />
+    <TextBlock Text="{loc:Localize Inspector.Asset.Compression}" />
+    <ComboBox ItemsSource="{Binding CompressionOptions}" SelectedItem="{Binding AssetCompression}" />
+   </StackPanel>
+   
+  </StackPanel>
+ </StackPanel>
+ </ScrollViewer>
+</UserControl>
