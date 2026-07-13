@@ -12,4 +12,10 @@ public class MenuEntry
 
     public static bool GetIsSeparator(AvaloniaObject obj) => obj.GetValue(IsSeparatorProperty);
     public static void SetIsSeparator(AvaloniaObject obj, bool value) => obj.SetValue(IsSeparatorProperty, value);
+
+    public static readonly AttachedProperty<bool> IsCheckableProperty =
+        AvaloniaProperty.RegisterAttached<MenuEntry, AvaloniaObject, bool>("IsCheckable");
+
+    public static bool GetIsCheckable(AvaloniaObject obj) => obj.GetValue(IsCheckableProperty);
+    public static void SetIsCheckable(AvaloniaObject obj, bool value) => obj.SetValue(IsCheckableProperty, value);
 }

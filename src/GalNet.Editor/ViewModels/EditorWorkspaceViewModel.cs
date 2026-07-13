@@ -226,28 +226,38 @@ public partial class EditorWorkspaceViewModel : ObservableObject
     [RelayCommand]
     private void AddChoiceOption()
     {
-        ExecuteSelectedNodeGraphChange(
-            node => _graphEditingService.AddChoiceOption(Nodes, Edges, node),
-            node => Log.Information("Choice option added: {NodeName}", node.Name));
+        AddChoiceOptionTo(SelectedNode);
+    }
+
+    public void AddChoiceOptionTo(GraphNode? node)
+    {
+        if (node?.NodeKind != GraphNodeKind.ChoiceBranch) return;
+        ExecuteGraphChange(
+            () => _graphEditingService.AddChoiceOption(Nodes, Edges, node),
+            onLogged: () => Log.Information("Choice option added: {NodeName}", node.Name));
     }
 
     [RelayCommand]
     private void RemoveChoiceOption(BranchOptionEditorItemViewModel? option)
     {
-        if (SelectedNode is null || option is null)
-            return;
+        RemoveChoiceOptionFrom(SelectedNode, option);
+    }
 
-        ExecuteGraphChange(
-            () => _graphEditingService.RemoveChoiceOption(Nodes, Edges, SelectedNode, option));
+    public void RemoveChoiceOptionFrom(GraphNode? node, BranchOptionEditorItemViewModel? option)
+    {
+        if (node?.NodeKind != GraphNodeKind.ChoiceBranch || option is null) return;
+        ExecuteGraphChange(() => _graphEditingService.RemoveChoiceOption(Nodes, Edges, node, option));
     }
 
     public void MoveChoiceOptionTo(BranchOptionEditorItemViewModel? option, int newIndex)
     {
-        if (SelectedNode?.NodeKind != GraphNodeKind.ChoiceBranch || option is null)
-            return;
+        MoveChoiceOptionTo(SelectedNode, option, newIndex);
+    }
 
-        ExecuteGraphChange(
-            () => _graphEditingService.MoveChoiceOption(Nodes, Edges, SelectedNode, option, newIndex));
+    public void MoveChoiceOptionTo(GraphNode? node, BranchOptionEditorItemViewModel? option, int newIndex)
+    {
+        if (node?.NodeKind != GraphNodeKind.ChoiceBranch || option is null) return;
+        ExecuteGraphChange(() => _graphEditingService.MoveChoiceOption(Nodes, Edges, node, option, newIndex));
     }
 
     public void FocusAsset(AssetEntry asset)
@@ -266,28 +276,38 @@ public partial class EditorWorkspaceViewModel : ObservableObject
     [RelayCommand]
     private void AddCondition()
     {
-        ExecuteSelectedNodeGraphChange(
-            node => _graphEditingService.AddCondition(Nodes, Edges, node),
-            node => Log.Information("Condition added: {NodeName}", node.Name));
+        AddConditionTo(SelectedNode);
+    }
+
+    public void AddConditionTo(GraphNode? node)
+    {
+        if (node?.NodeKind != GraphNodeKind.ConditionBranch) return;
+        ExecuteGraphChange(
+            () => _graphEditingService.AddCondition(Nodes, Edges, node),
+            onLogged: () => Log.Information("Condition added: {NodeName}", node.Name));
     }
 
     [RelayCommand]
     private void RemoveCondition(BranchConditionEditorItemViewModel? condition)
     {
-        if (SelectedNode is null || condition is null)
-            return;
+        RemoveConditionFrom(SelectedNode, condition);
+    }
 
-        ExecuteGraphChange(
-            () => _graphEditingService.RemoveCondition(Nodes, Edges, SelectedNode, condition));
+    public void RemoveConditionFrom(GraphNode? node, BranchConditionEditorItemViewModel? condition)
+    {
+        if (node?.NodeKind != GraphNodeKind.ConditionBranch || condition is null) return;
+        ExecuteGraphChange(() => _graphEditingService.RemoveCondition(Nodes, Edges, node, condition));
     }
 
     public void MoveConditionTo(BranchConditionEditorItemViewModel? condition, int newIndex)
     {
-        if (SelectedNode?.NodeKind != GraphNodeKind.ConditionBranch || condition is null)
-            return;
+        MoveConditionTo(SelectedNode, condition, newIndex);
+    }
 
-        ExecuteGraphChange(
-            () => _graphEditingService.MoveCondition(Nodes, Edges, SelectedNode, condition, newIndex));
+    public void MoveConditionTo(GraphNode? node, BranchConditionEditorItemViewModel? condition, int newIndex)
+    {
+        if (node?.NodeKind != GraphNodeKind.ConditionBranch || condition is null) return;
+        ExecuteGraphChange(() => _graphEditingService.MoveCondition(Nodes, Edges, node, condition, newIndex));
     }
 
     [RelayCommand]

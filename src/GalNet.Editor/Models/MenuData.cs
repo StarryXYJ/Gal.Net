@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Windows.Input;
 using Avalonia.Input;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace GalNet.Editor.Models;
 
@@ -8,10 +9,14 @@ namespace GalNet.Editor.Models;
 /// 菜单项数据模型 —— 抽象描述一个菜单项，包含显示文本、快捷键、命令等。
 /// 支持嵌套子菜单（Children）和分隔线（IsSeparator）。
 /// </summary>
-public class MenuData
+public partial class MenuData : ObservableObject
 {
     /// <summary>菜单项显示文本（直接文本，优先级高于 HeaderKey）</summary>
-    public string? Header { get; set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasHeader))]
+    private string? _header;
+
+    public bool HasHeader => !string.IsNullOrWhiteSpace(Header);
 
     /// <summary>i18n key，用于国际化查找显示文本</summary>
     public string? HeaderKey { get; set; }
@@ -33,4 +38,10 @@ public class MenuData
 
     /// <summary>是否启用</summary>
     public bool IsEnabled { get; set; } = true;
+
+    /// <summary>Render the item as a checkable menu entry.</summary>
+    public bool IsCheckable { get; set; }
+
+    [ObservableProperty]
+    private bool _isChecked;
 }

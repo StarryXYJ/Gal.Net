@@ -24,6 +24,7 @@
   "Editor.Menu.GamePreview": "게임 미리보기",
   "Editor.Menu.SaveLayout": "창 레이아웃 저장",
   "Editor.Menu.LoadLayout": "창 레이아웃 불러오기",
+  "Editor.Menu.DeleteLayout": "창 레이아웃 삭제",
   "Editor.Menu.ResetLayout": "기본 레이아웃으로 재설정",
   "Editor.Menu.About": "GalNet Editor 정보",
   "Command.SaveProject": "프로젝트 저장",

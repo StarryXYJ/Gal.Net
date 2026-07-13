@@ -1,5 +1,8 @@
+using System;
 using GalNet.Core.Services;
+using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Editor.Services;
 
@@ -9,12 +12,15 @@ namespace GalNet.Editor.Services;
 /// </summary>
 public sealed class EditorGameDataProvider : IGameDataProvider
 {
-    private readonly EditorWorkspaceViewModel _workspace;
+    private readonly IProjectService _projectService;
 
-    public EditorGameDataProvider(EditorWorkspaceViewModel workspace)
+    public EditorGameDataProvider(IProjectService projectService)
     {
-        _workspace = workspace;
+        _projectService = projectService;
     }
 
-    public string DataDirectory => _workspace.BuildPreviewData();
+    public string DataDirectory => _projectService.Current?.Services
+        .GetRequiredService<EditorWorkspaceViewModel>()
+        .BuildPreviewData()
+        ?? throw new InvalidOperationException("A project must be open before preview data is requested.");
 }

@@ -5,11 +5,11 @@
    
    <StackPanel Spacing="8" IsVisible="{Binding HasSelectedAsset}">
    <TextBlock Text="{loc:Localize Inspector.Asset.Title}" FontWeight="SemiBold" />
-   <TextBlock Text="{Binding Workspace.SelectedAsset.Name}" />
+   <TextBlock Text="{Binding InspectedAsset.Name}" />
    <TextBlock Text="{loc:Localize Inspector.Asset.Id}" />
-   <TextBlock Text="{Binding Workspace.SelectedAsset.Id}" FontFamily="Consolas" FontSize="12" />
+   <TextBlock Text="{Binding InspectedAsset.Id}" FontFamily="Consolas" FontSize="12" />
    <TextBlock Text="{loc:Localize Inspector.Asset.Path}" />
-   <TextBlock Text="{Binding Workspace.SelectedAsset.RelativePath}" />
+   <TextBlock Text="{Binding InspectedAsset.RelativePath}" />
    
    <Panel Margin="5"></Panel>
    

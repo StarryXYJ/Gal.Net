@@ -24,6 +24,7 @@
   "Editor.Menu.GamePreview": "游戏预览",
   "Editor.Menu.SaveLayout": "保存窗口布局",
   "Editor.Menu.LoadLayout": "加载窗口布局",
+  "Editor.Menu.DeleteLayout": "删除窗口布局",
   "Editor.Menu.ResetLayout": "重置为默认布局",
   "Editor.Menu.About": "关于 GalNet Editor",
   "Command.SaveProject": "保存项目",

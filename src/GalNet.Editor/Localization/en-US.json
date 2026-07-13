@@ -24,6 +24,7 @@
   "Editor.Menu.GamePreview": "Game Preview",
   "Editor.Menu.SaveLayout": "Save Window Layout",
   "Editor.Menu.LoadLayout": "Load Window Layout",
+  "Editor.Menu.DeleteLayout": "Delete Window Layout",
   "Editor.Menu.ResetLayout": "Reset to Default Layout",
   "Editor.Menu.About": "About GalNet Editor",
   "Command.SaveProject": "Save Project",

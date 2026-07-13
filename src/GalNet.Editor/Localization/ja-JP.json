@@ -24,6 +24,7 @@
   "Editor.Menu.GamePreview": "ゲーム プレビュー",
   "Editor.Menu.SaveLayout": "ウィンドウ レイアウトを保存",
   "Editor.Menu.LoadLayout": "ウィンドウ レイアウトを読み込み",
+  "Editor.Menu.DeleteLayout": "ウィンドウ レイアウトを削除",
   "Editor.Menu.ResetLayout": "既定のレイアウトに戻す",
   "Editor.Menu.About": "GalNet Editor について",
   "Command.SaveProject": "プロジェクトを保存",

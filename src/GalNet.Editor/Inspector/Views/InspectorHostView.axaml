@@ -4,5 +4,17 @@
              x:Class="GalNet.Editor.Inspector.Views.InspectorHostView"
              x:DataType="vm:InspectorHostViewModel"
              Background="{DynamicResource SemiColorBackground0}">
-  <ContentControl x:Name="InspectorContent" />
+  <Grid RowDefinitions="Auto,*">
+    <Border Padding="4" BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="0,0,0,1">
+      <Button HorizontalAlignment="Right"
+              Command="{Binding ToggleLockCommand}"
+              ToolTip.Tip="Lock inspector target">
+        <Grid>
+          <PathIcon Width="16" Height="16" Data="{StaticResource LockRegular}" IsVisible="{Binding IsLocked}" />
+          <PathIcon Width="16" Height="16" Data="{StaticResource UnlockRegular}" IsVisible="{Binding !IsLocked}" />
+        </Grid>
+      </Button>
+    </Border>
+    <ContentControl Grid.Row="1" x:Name="InspectorContent" />
+  </Grid>
 </UserControl>

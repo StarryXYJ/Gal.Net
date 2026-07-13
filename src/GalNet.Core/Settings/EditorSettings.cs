@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using GalNet.Core.I18n;
 
 namespace GalNet.Core.Settings;
@@ -16,7 +18,11 @@ public sealed class EditorSettings : SettingsSection
     public string Theme { get; set; } = "Violet";
 
     /// <summary>Dock 布局序列化数据（保存窗口面板布局）</summary>
-    public string? DockLayout { get; set; }
+    /// <summary>Last automatically saved editor dock view.</summary>
+    public string? LastDockLayout { get; set; }
+
+    /// <summary>User-named dock layouts. Default is code-defined and not stored here.</summary>
+    public Dictionary<string, string> DockLayouts { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>最近打开的项目列表（含名称、路径、最后打开时间）</summary>
     public List<RecentProjectInfo> RecentProjects { get; set; } = [];

@@ -114,14 +114,14 @@ public static class EditorServiceCollectionExtensions
     {
         services.AddTransient<StartupPageViewModel>();
         services.AddTransient<EditorPageViewModel>();
-        services.AddSingleton<EditorWorkspaceViewModel>();
+        services.AddScoped<EditorWorkspaceViewModel>();
         services.AddTransient<NodeGraphPanelViewModel>();
         services.AddTransient<InspectorHostViewModel>();
         services.AddTransient<NodeInspectorControlViewModel>();
         services.AddTransient<AssetInspectorControlViewModel>();
         services.AddTransient<NewProjectPanelViewModel>();
         services.AddTransient<LogPanelViewModel>();
-        services.AddSingleton<AssetPanelViewModel>();
+        services.AddScoped<AssetPanelViewModel>();
         services.AddTransient<ProjectSettingsPanelViewModel>();
         services.AddTransient<EditorSettingsPanelViewModel>();
         services.AddTransient<GamePreviewPanelViewModel>();

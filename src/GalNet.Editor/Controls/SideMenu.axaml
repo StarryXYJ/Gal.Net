@@ -16,10 +16,16 @@
             <!-- 附加属性用 ReflectionBinding 避免编译绑定语法限制 -->
             <Style Selector="MenuItem">
                 <Setter Property="(local:MenuEntry.IsSeparator)" Value="{ReflectionBinding IsSeparator}" />
+                <Setter Property="(local:MenuEntry.IsCheckable)" Value="{ReflectionBinding IsCheckable}" />
                 <Setter Property="Command" Value="{Binding Command}" x:DataType="models:MenuData" />
                 <Setter Property="CommandParameter" Value="{Binding CommandParameter}" x:DataType="models:MenuData" />
                 <Setter Property="InputGesture" Value="{Binding InputGesture}" x:DataType="models:MenuData" />
                 <Setter Property="IsEnabled" Value="{Binding IsEnabled}" x:DataType="models:MenuData" />
+                <Setter Property="IsChecked" Value="{Binding IsChecked}" x:DataType="models:MenuData" />
+            </Style>
+
+            <Style Selector="MenuItem[(local|MenuEntry.IsCheckable)=True]">
+                <Setter Property="ToggleType" Value="CheckBox" />
             </Style>
 
             <!-- 顶级分隔符 — 显示为竖线，无交互 -->
@@ -59,9 +65,14 @@
         <Menu.ItemTemplate>
             <TreeDataTemplate DataType="models:MenuData"
                               ItemsSource="{Binding Children}">
-                <TextBlock x:DataType="models:MenuData"
-                           Text="{loc:Localize HeaderKey}"
-                           Margin="4,0" />
+                <StackPanel Orientation="Horizontal" Margin="4,0">
+                    <TextBlock x:DataType="models:MenuData"
+                               Text="{Binding Header}"
+                               IsVisible="{Binding HasHeader}" />
+                    <TextBlock x:DataType="models:MenuData"
+                               Text="{loc:Localize HeaderKey}"
+                               IsVisible="{Binding !HasHeader}" />
+                </StackPanel>
             </TreeDataTemplate>
         </Menu.ItemTemplate>
     </Menu>

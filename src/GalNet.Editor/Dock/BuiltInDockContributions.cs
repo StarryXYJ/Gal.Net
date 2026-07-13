@@ -24,33 +24,34 @@ public static class BuiltInDockContributions
 {
     public static void Register(IEditorExtensionRegistry registry)
     {
-        registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.NodeGraph, "Dock.Panel.NodeGraph", DockPanelPlacement.MainDocument, false, true, true,
+        registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.NodeGraph, "Dock.Panel.NodeGraph", DockPanelPlacement.MainDocument, true, true, true, true, true,
             (sp, _) => sp.GetRequiredService<NodeGraphPanelViewModel>(), typeof(NodeGraphPanelView), new DelegateInspectorContribution(
                 (sp, _) => sp.GetRequiredService<NodeInspectorControlViewModel>(), typeof(NodeInspectorControl))));
-        registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.GamePreview, "Dock.Panel.GamePreview", DockPanelPlacement.MainDocument, true, true, true,
-            (sp, _) => sp.GetRequiredService<IGamePreviewPanelFactory>().Create(), typeof(GamePreviewPanelView), new DelegateInspectorContribution(
+        registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.GamePreview, "Dock.Panel.GamePreview", DockPanelPlacement.MainDocument, true, true, true, true, true,
+            (sp, _) => sp.GetRequiredService<IGamePreviewPanelFactory>().Create(sp), typeof(GamePreviewPanelView), new DelegateInspectorContribution(
                 (_, dock) => new PreviewVariablesInspectorControlViewModel((GamePreviewPanelViewModel)dock), typeof(PreviewVariablesInspectorControl))));
-        registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.Assets, "Dock.Panel.Assets", DockPanelPlacement.BottomDocument, true, true, true,
+        registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.Assets, "Dock.Panel.Assets", DockPanelPlacement.BottomDocument, true, true, true, true, true,
             (sp, _) => sp.GetRequiredService<AssetPanelViewModel>(), typeof(AssetPanelView), new DelegateInspectorContribution(
                 (sp, _) => sp.GetRequiredService<AssetInspectorControlViewModel>(), typeof(AssetInspectorControl))));
-        registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.Log, "Dock.Panel.Log", DockPanelPlacement.BottomDocument, true, true, true,
+        registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.Log, "Dock.Panel.Log", DockPanelPlacement.BottomDocument, true, true, true, true, true,
             (sp, _) => sp.GetRequiredService<LogPanelViewModel>(), typeof(LogPanelView), null));
-        registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.GroupEditor, "Dock.Panel.GroupEditor", DockPanelPlacement.MainDocument, true, true, false,
+        registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.GroupEditor, "Dock.Panel.GroupEditor", DockPanelPlacement.MainDocument, false, true, true, false, false,
             (sp, parameter) => new GroupEditorPanelViewModel(sp.GetRequiredService<EditorWorkspaceViewModel>(), (GraphNode)parameter!, sp.GetRequiredService<IGraphEditingService>()), typeof(GroupEditorPanelView), null));
-        registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.Inspector, "Dock.Panel.Inspector", DockPanelPlacement.InspectorDocument, false, true, true,
+        registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.Inspector, "Dock.Panel.Inspector", DockPanelPlacement.InspectorDocument, false, true, true, true, true,
             (sp, _) => sp.GetRequiredService<InspectorHostViewModel>(), typeof(InspectorHostView), null));
     }
 }
 
-internal sealed class DelegateDockPanelContribution : IDockPanelContribution
+internal sealed class DelegateDockPanelContribution : DockPanelContributionBase
 {
     private readonly Func<IServiceProvider, object?, object> _createViewModel; private readonly Type _viewType;
-    public string PanelId { get; } public string TitleKey { get; } public DockPanelPlacement Placement { get; }
-    public bool CanClose { get; } public bool CanFloat { get; } public bool IsDefaultPanel { get; } public IInspectorControlContribution? Inspector { get; }
-    public DelegateDockPanelContribution(string panelId, string title, DockPanelPlacement placement, bool canClose, bool canFloat, bool isDefaultPanel, Func<IServiceProvider, object?, object> createViewModel, Type viewType, IInspectorControlContribution? inspector)
-    { PanelId = panelId; TitleKey = title; Placement = placement; CanClose = canClose; CanFloat = canFloat; IsDefaultPanel = isDefaultPanel; _createViewModel = createViewModel; _viewType = viewType; Inspector = inspector; }
-    public object CreateViewModel(IServiceProvider services, object? parameter = null) => _createViewModel(services, parameter);
-    public object CreateView(IServiceProvider services, object viewModel) => CreateControl(services, _viewType, viewModel);
+    public override string PanelId { get; } public override string TitleKey { get; } public override DockPanelPlacement Placement { get; }
+    public override bool IsGlobal { get; } public override bool ShowInViewMenu { get; }
+    public override bool CanClose { get; } public override bool CanFloat { get; } public override bool IsDefaultPanel { get; } public override IInspectorControlContribution? Inspector { get; }
+    public DelegateDockPanelContribution(string panelId, string title, DockPanelPlacement placement, bool isGlobal, bool canClose, bool canFloat, bool isDefaultPanel, bool showInViewMenu, Func<IServiceProvider, object?, object> createViewModel, Type viewType, IInspectorControlContribution? inspector)
+    { PanelId = panelId; TitleKey = title; Placement = placement; IsGlobal = isGlobal; CanClose = canClose; CanFloat = canFloat; IsDefaultPanel = isDefaultPanel; ShowInViewMenu = showInViewMenu; _createViewModel = createViewModel; _viewType = viewType; Inspector = inspector; }
+    public override object CreateViewModel(IServiceProvider services, object? parameter = null) => _createViewModel(services, parameter);
+    public override object CreateView(IServiceProvider services, object viewModel) => CreateControl(services, _viewType, viewModel);
     internal static Avalonia.Controls.Control CreateControl(IServiceProvider services, Type type, object dataContext)
     {
         var control = (Avalonia.Controls.Control)(services.GetService(type) ?? Activator.CreateInstance(type)!);
