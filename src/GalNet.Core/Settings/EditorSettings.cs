@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 using GalNet.Core.I18n;
 
 namespace GalNet.Core.Settings;
@@ -19,6 +20,7 @@ public sealed class EditorSettings : SettingsSection
 
     /// <summary>Dock 布局序列化数据（保存窗口面板布局）</summary>
     /// <summary>Last automatically saved editor dock view.</summary>
+    [JsonConverter(typeof(RawJsonStringConverter))]
     public string? LastDockLayout { get; set; }
 
     /// <summary>User-named dock layouts. Default is code-defined and not stored here.</summary>

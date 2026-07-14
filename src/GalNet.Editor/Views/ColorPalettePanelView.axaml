@@ -1,0 +1,27 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Editor.ViewModels"
+             xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
+             x:Class="GalNet.Editor.Views.ColorPalettePanelView"
+             x:DataType="vm:ColorPalettePanelViewModel">
+  <Grid RowDefinitions="Auto,*,Auto" Margin="12" RowSpacing="8">
+    <StackPanel Orientation="Horizontal" Spacing="8">
+      <TextBox Width="180" PlaceholderText="{loc:Localize Palette.NewKey}" Text="{Binding NewKey}" />
+      <Button Content="{loc:Localize Palette.Add}" Command="{Binding AddCommand}" />
+    </StackPanel>
+    <ListBox Grid.Row="1" ItemsSource="{Binding Colors}" SelectedItem="{Binding Selected}">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:ColorItem">
+          <Grid ColumnDefinitions="2*,Auto,Auto" ColumnSpacing="8">
+            <TextBlock Text="{Binding Key}" VerticalAlignment="Center" />
+            <ColorPicker Grid.Column="1" HorizontalAlignment="Center"
+                         Color="{Binding Color}" />
+            <Button Grid.Column="2" Content="{loc:Localize Palette.Delete}"
+                    Click="OnDeleteClicked" Tag="{Binding}" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+    <TextBlock Grid.Row="2" Text="{Binding Message}" TextWrapping="Wrap" />
+  </Grid>
+</UserControl>

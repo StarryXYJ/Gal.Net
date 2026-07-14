@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using GalNet.Core.Screen;
+using GalNet.Core.UI;
 using Serilog;
 
 namespace GalNet.Control.Screen.BuiltIn;
@@ -9,6 +10,7 @@ namespace GalNet.Control.Screen.BuiltIn;
 /// </summary>
 public partial class TitleScreenView : UserControl, ITitleScreen
 {
+    private IColorPalette? _palette;
     public string Category => "Title";
 
     public event Action<int>? ButtonClicked;
@@ -57,6 +59,34 @@ public partial class TitleScreenView : UserControl, ITitleScreen
             Log.Debug("  added button[{Index}]: '{Text}'", i, buttonTexts[i]);
         }
         Log.Debug("SetButtons done, panel children={Count}", ButtonPanel.Children.Count);
+    }
+
+    /// <summary>Uses palette keys instead of copying colours so an open preview updates in place.</summary>
+    public void SetPalette(IColorPalette palette)
+    {
+        if (_palette is not null) _palette.ColorChanged -= OnPaletteChanged;
+        _palette = palette;
+        _palette.ColorChanged += OnPaletteChanged;
+        ApplyPalette();
+    }
+
+    private void OnPaletteChanged(string _) => ApplyPalette();
+    private void ApplyPalette()
+    {
+        if (_palette is null) return;
+        Background = Avalonia.Media.SolidColorBrush.Parse(_palette.Resolve("surface", "#CC0A0A1E"));
+        foreach (var button in ButtonPanel.Children.OfType<Button>())
+        {
+            button.Background = Avalonia.Media.SolidColorBrush.Parse(_palette.Resolve("accent", "#334"));
+            button.Foreground = Avalonia.Media.SolidColorBrush.Parse(_palette.Resolve("text", "#FFFFFFFF"));
+        }
+        TitleBlock.Foreground = Avalonia.Media.SolidColorBrush.Parse(_palette.Resolve("text", "#FFFFFFFF"));
+    }
+
+    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    {
+        if (_palette is not null) _palette.ColorChanged -= OnPaletteChanged;
+        base.OnDetachedFromVisualTree(e);
     }
 
     /// <summary>Initialize with ViewModel for data binding.</summary>

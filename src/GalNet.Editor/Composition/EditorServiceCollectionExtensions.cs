@@ -14,6 +14,8 @@ using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.ViewModels;
 using GalNet.Editor.Inspector.ViewModels;
 using GalNet.Editor.Inspector.Views;
+using GalNet.Control.UI;
+using GalNet.Core.UI;
 using GalNet.Editor.Views;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -53,7 +55,7 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<EditorVariableService>();
         services.AddSingleton<IVariableService>(sp => sp.GetRequiredService<EditorVariableService>());
         services.AddSingleton<EditorGameDataProvider>();
-        services.AddSingleton<IGameDataProvider>(sp => sp.GetRequiredService<EditorGameDataProvider>());
+        services.AddSingleton<IGameContentProvider>(sp => sp.GetRequiredService<EditorGameDataProvider>());
         services.AddSingleton<IEditorExtensionRegistry>(_ =>
         {
             var registry = new EditorExtensionRegistry();
@@ -61,6 +63,7 @@ public static class EditorServiceCollectionExtensions
             return registry;
         });
         services.AddSingleton<EditorDockFactory>();
+        services.AddSingleton<DockLayoutSerializer>();
         services.AddSingleton<IAssetCatalogService, AssetCatalogService>();
 
         return services;
@@ -100,6 +103,7 @@ public static class EditorServiceCollectionExtensions
         services.AddTransient<GamePageHostView>();
         services.AddTransient<MainWindow>();
         services.AddTransient<AssetPanelView>();
+        services.AddTransient<ColorPalettePanelView>();
         services.AddTransient<InspectorHostView>();
         services.AddTransient<NodeInspectorControl>();
         services.AddTransient<PreviewVariablesInspectorControl>();
@@ -122,6 +126,7 @@ public static class EditorServiceCollectionExtensions
         services.AddTransient<NewProjectPanelViewModel>();
         services.AddTransient<LogPanelViewModel>();
         services.AddScoped<AssetPanelViewModel>();
+        services.AddTransient<ColorPalettePanelViewModel>();
         services.AddTransient<ProjectSettingsPanelViewModel>();
         services.AddTransient<EditorSettingsPanelViewModel>();
         services.AddTransient<GamePreviewPanelViewModel>();
@@ -143,6 +148,14 @@ public static class EditorServiceCollectionExtensions
 
     private static IServiceCollection AddGamePreviewServices(this IServiceCollection services)
     {
+        services.AddSingleton<TemplateRegistry>(_ =>
+        {
+            var registry = new TemplateRegistry();
+            BuiltInUiTemplates.Register(registry);
+            return registry;
+        });
+        services.AddSingleton<IWidgetTemplateRegistry>(sp => sp.GetRequiredService<TemplateRegistry>());
+        services.AddSingleton<IScreenTemplateRegistry>(sp => sp.GetRequiredService<TemplateRegistry>());
         services.AddTransient<DefaultGameView>(sp =>
         {
             var settings = sp.GetRequiredService<ISettingsService>();

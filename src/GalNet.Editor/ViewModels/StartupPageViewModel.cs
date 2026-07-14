@@ -52,7 +52,11 @@ public partial class StartupPageViewModel : PageViewModelBase
         {
             RecentProjects.Add(new RecentProjectItem
             {
-                Name = info.Name,
+                // Records created before path normalization may have an empty Name
+                // when the folder picker returned a trailing directory separator.
+                Name = string.IsNullOrWhiteSpace(info.Name)
+                    ? Path.GetFileName(Path.TrimEndingDirectorySeparator(info.Path))
+                    : info.Name,
                 Path = info.Path,
                 LastOpened = info.LastOpened.ToString("yyyy-MM-dd HH:mm")
             });

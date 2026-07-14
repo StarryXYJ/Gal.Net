@@ -1,5 +1,6 @@
 using System;
 using GalNet.Core.Services;
+using GalNet.Core.UI;
 
 namespace GalNet.Control.ViewModels;
 
@@ -14,15 +15,17 @@ public class GameStartViewModel
     private readonly IGameExitService? _exitService;
     private readonly GameFlowOptions? _options;
     private readonly ISaveService? _saves;
+    public IColorPalette? Palette { get; }
 
     public GameStartViewModel(
         INavigationService nav,
         IGameFlowFactory gameFlowFactory,
         IGameExitService? exitService,
-        GameFlowOptions? options = null, ISaveService? saves = null)
+        GameFlowOptions? options = null, ISaveService? saves = null, IColorPalette? palette = null)
     {
         Title = options?.Title ?? "GalNet Demo";
         _saves = saves;
+        Palette = palette;
         Buttons = ["New Game", "Load", "Gallery", "Settings", "Quit"];
         _nav = nav;
         _gameFlowFactory = gameFlowFactory;

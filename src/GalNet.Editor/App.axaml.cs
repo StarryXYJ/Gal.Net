@@ -6,6 +6,7 @@ using GalNet.Core.Services;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Composition;
 using GalNet.Editor.Services;
+using GalNet.Editor.ViewModels;
 using GalNet.Editor.Views;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -44,6 +45,8 @@ public partial class App : Application
             desktop.MainWindow = ServiceProvider.GetRequiredService<MainWindow>();
             desktop.Exit += (_, _) =>
             {
+                var navigation = ServiceProvider.GetRequiredService<INavigationService>();
+                (navigation.CurrentPage as EditorPageViewModel)?.PersistLayoutNow();
                 if (ServiceProvider is IDisposable disposable)
                     disposable.Dispose();
             };

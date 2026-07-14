@@ -8,11 +8,11 @@ using Avalonia.Collections;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dock.Model.Controls;
 using Dock.Model.Core;
-using Dock.Serializer.SystemTextJson;
 using GalNet.Core.Services;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
@@ -21,6 +21,7 @@ using GalNet.Editor.Dock;
 using GalNet.Editor.Models;
 using GalNet.Editor.Services;
 using GalNet.Editor.Shared.Services;
+using Serilog;
 
 namespace GalNet.Editor.ViewModels;
 
@@ -29,6 +30,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
     private readonly IProjectService _projectService;
     private readonly CommandService _commandService;
     private readonly EditorDockFactory _dockFactory;
+    private readonly DockLayoutSerializer _dockLayoutSerializer;
     private readonly IEditorWindowFactory _windowFactory;
     private readonly IEditorSettingsService _editorSettingsService;
 
@@ -47,8 +49,9 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
     public ICommand RedoCommand { get; } = new RelayCommand(() => { }, () => false);
     public ICommand TogglePanelCommand { get; }
 
-    private readonly DockSerializer _dockSerializer = new();
     private bool _savingLayout;
+    private bool _layoutSavePending;
+    private readonly DispatcherTimer _layoutSaveTimer;
     public ICommand SaveLayoutCommand { get; }
     public ICommand LoadLayoutCommand { get; }
     public ICommand ResetLayoutCommand { get; }
@@ -58,6 +61,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
         IProjectService projectService,
         CommandService commandService,
         EditorDockFactory dockFactory,
+        DockLayoutSerializer dockLayoutSerializer,
         IEditorWindowFactory windowFactory,
         IEditorSettingsService editorSettingsService,
         IEditorLocalizationService localization)
@@ -65,6 +69,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
         _projectService = projectService;
         _commandService = commandService;
         _dockFactory = dockFactory;
+        _dockLayoutSerializer = dockLayoutSerializer;
         _windowFactory = windowFactory;
         _editorSettingsService = editorSettingsService;
         L = localization;
@@ -73,6 +78,8 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
         SaveLayoutCommand = new AsyncRelayCommand(SaveLayoutAsync);
         LoadLayoutCommand = new RelayCommand<string>(LoadLayout);
         ResetLayoutCommand = new RelayCommand(ResetLayout);
+        _layoutSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        _layoutSaveTimer.Tick += OnLayoutSaveTimerTick;
 
         var project = _projectService.Current
             ?? throw new InvalidOperationException("EditorPageViewModel requires an open project");
@@ -81,12 +88,19 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
         InitializeDock();
         BuildMenuItems();
         _dockFactory.LayoutChanged += OnDockLayoutChanged;
+        _projectService.CurrentChanged += OnCurrentProjectChanged;
 
         L.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName != "Item[]") return;
             UpdateLocalizedText();
         };
+    }
+
+    private void OnCurrentProjectChanged(GalProject? _)
+    {
+        OnPropertyChanged(nameof(ProjectName));
+        UpdateLocalizedText();
     }
 
     private void UpdateLocalizedText()
@@ -100,9 +114,21 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
 
     private void InitializeDock()
     {
-        var saved = _editorSettingsService.GetSettings().LastDockLayout;
-        Layout = TryLoadLayout(saved) ?? _dockFactory.CreateLayout();
-        _dockFactory.InitLayout(Layout);
+        var settings = _editorSettingsService.GetSettings();
+        Layout = TryLoadLayout(settings.LastDockLayout);
+        if (Layout is null && !string.IsNullOrWhiteSpace(settings.LastDockLayout))
+        {
+            // A previous implementation could persist the host Window back-reference.
+            // Discard that malformed global value once so every subsequent start is clean.
+            settings.LastDockLayout = null;
+            _editorSettingsService.SaveSettings();
+            StatusText = "Saved window layout was invalid and has been reset.";
+        }
+        if (Layout is null)
+        {
+            Layout = _dockFactory.CreateLayout();
+            _dockFactory.InitLayout(Layout);
+        }
         OnPropertyChanged(nameof(Layout));
     }
 
@@ -129,7 +155,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
             return;
         }
         var settings = _editorSettingsService.GetSettings();
-        settings.DockLayouts[name] = _dockSerializer.Serialize(Layout);
+        settings.DockLayouts[name] = SerializeLayout(Layout);
         _editorSettingsService.SaveSettings();
         StatusText = $"Window layout '{name}' saved.";
         BuildMenuItems();
@@ -148,8 +174,13 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
             StatusText = "No saved window layout.";
             return;
         }
-        Layout = TryLoadLayout(serialized) ?? _dockFactory.CreateLayout();
-        _dockFactory.InitLayout(Layout);
+        var layout = TryLoadLayout(serialized);
+        if (layout is null)
+        {
+            StatusText = $"Window layout '{name}' could not be loaded.";
+            return;
+        }
+        Layout = layout;
         OnPropertyChanged(nameof(Layout));
         StatusText = $"Window layout '{name}' loaded.";
     }
@@ -177,28 +208,66 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
         if (string.IsNullOrWhiteSpace(serialized)) return null;
         try
         {
-            var layout = _dockSerializer.Deserialize<IRootDock>(serialized);
-            return layout is not null && _dockFactory.PrepareRestoredLayout(layout) ? layout : null;
+            var layout = _dockLayoutSerializer.Deserialize(serialized);
+            if (layout is null)
+                return null;
+
+            _dockFactory.InitLayout(layout);
+            return _dockFactory.PrepareRestoredLayout(layout) ? layout : null;
         }
-        catch { return null; }
+        catch (Exception exception)
+        {
+            Log.Warning(exception, "Failed to restore editor dock layout");
+            return null;
+        }
     }
 
     private void OnDockLayoutChanged()
+    {
+        if (Layout is null) return;
+        _layoutSavePending = true;
+        _layoutSaveTimer.Stop();
+        _layoutSaveTimer.Start();
+        RefreshViewMenuChecks();
+    }
+
+    private void OnLayoutSaveTimerTick(object? sender, EventArgs e)
+    {
+        _layoutSaveTimer.Stop();
+        PersistLayoutNow();
+    }
+
+    private void PersistLayoutCore()
     {
         if (_savingLayout || Layout is null) return;
         try
         {
             _savingLayout = true;
-            _editorSettingsService.GetSettings().LastDockLayout = _dockSerializer.Serialize(Layout);
+            var serialized = SerializeLayout(Layout);
+            _editorSettingsService.GetSettings().LastDockLayout = serialized;
             _editorSettingsService.SaveSettings();
-            RefreshViewMenuChecks();
         }
-        catch { /* Layout persistence must not interrupt editing. */ }
+        catch (Exception exception)
+        {
+            StatusText = "Failed to save window layout.";
+            Log.Error(exception, "Failed to persist editor dock layout");
+        }
         finally { _savingLayout = false; }
     }
 
-    /// <summary>Called after splitter interaction so proportional panel sizes are persisted globally.</summary>
+    /// <summary>Called after splitter interaction; persistence is debounced to avoid disk writes during dragging.</summary>
     public void PersistLayout() => OnDockLayoutChanged();
+
+    /// <summary>Flushes a pending layout change. Called during application shutdown.</summary>
+    public void PersistLayoutNow()
+    {
+        _layoutSaveTimer.Stop();
+        if (!_layoutSavePending && Layout is null) return;
+        _layoutSavePending = false;
+        PersistLayoutCore();
+    }
+
+    private string SerializeLayout(IRootDock layout) => _dockLayoutSerializer.Serialize(layout);
 
     [RelayCommand]
     private async Task ShowProjectSettingsAsync()

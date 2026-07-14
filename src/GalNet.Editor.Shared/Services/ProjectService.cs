@@ -10,6 +10,7 @@ using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
+using GalNet.Control.UI;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -18,9 +19,9 @@ namespace GalNet.Editor.Shared.Services;
 /// </summary>
 public sealed class ProjectService : IProjectService
 {
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     private readonly IServiceProvider _globalServices;
-    private readonly string _editorSettingsPath;
-    private readonly Lazy<EditorSettings> _editorSettings;
+    private readonly IEditorSettingsService _editorSettingsService;
 
     private GalProject? _current;
 
@@ -28,52 +29,14 @@ public sealed class ProjectService : IProjectService
 
     public event Action<GalProject?>? CurrentChanged;
 
-    public ProjectService(IServiceProvider globalServices)
+    public ProjectService(IServiceProvider globalServices, IEditorSettingsService editorSettingsService)
     {
         _globalServices = globalServices;
-        _editorSettingsPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "GalNet", "editor-settings.json");
-
+        _editorSettingsService = editorSettingsService;
         // 延迟加载，避免构造函数中执行同步 IO
-        _editorSettings = new Lazy<EditorSettings>(LoadEditorSettings);
     }
 
     // ────────── 编辑器设置持久化 ──────────
-
-    private EditorSettings LoadEditorSettings()
-    {
-        try
-        {
-            if (File.Exists(_editorSettingsPath))
-            {
-                var json = File.ReadAllText(_editorSettingsPath);
-                return JsonSerializer.Deserialize<EditorSettings>(json) ?? new EditorSettings();
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "Failed to load editor settings, using defaults");
-        }
-        return new EditorSettings();
-    }
-
-    private void SaveEditorSettings()
-    {
-        try
-        {
-            var dir = Path.GetDirectoryName(_editorSettingsPath);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                Directory.CreateDirectory(dir);
-
-            var json = JsonSerializer.Serialize(_editorSettings.Value, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(_editorSettingsPath, json);
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "Failed to save editor settings");
-        }
-    }
 
     // ────────── 项目管理 ──────────
 
@@ -82,12 +45,13 @@ public sealed class ProjectService : IProjectService
         if (_current != null)
             await CloseAsync();
 
-        projectPath = Path.GetFullPath(projectPath);
+        projectPath = NormalizeProjectPath(projectPath);
 
         if (!Directory.Exists(projectPath))
             throw new DirectoryNotFoundException($"Project directory not found: {projectPath}");
 
         var settings = await LoadProjectSettingsAsync(projectPath);
+        await EnsureUiProjectAsync(projectPath);
         VariableNameRules.Normalize(settings);
         var editorState = await LoadEditorProjectStateAsync(projectPath);
         var scope = _globalServices.CreateScope();
@@ -95,12 +59,12 @@ public sealed class ProjectService : IProjectService
         var name = Path.GetFileName(projectPath);
         var id = name;
 
-        var program = new GalProject(id, name, projectPath, settings, editorState, scope);
+        var program = new GalProject(id, name, projectPath, settings, editorState, new FileUiProjectProvider(projectPath), scope);
 
         _current = program;
 
         AddToRecentProjects(name, projectPath);
-        SaveEditorSettings();
+        _editorSettingsService.SaveSettings();
 
         Log.Information("Project opened: {Name} at {Path}", name, projectPath);
         CurrentChanged?.Invoke(program);
@@ -113,7 +77,7 @@ public sealed class ProjectService : IProjectService
         if (_current != null)
             await CloseAsync();
 
-        projectPath = Path.GetFullPath(projectPath);
+        projectPath = NormalizeProjectPath(projectPath);
 
         Directory.CreateDirectory(projectPath);
         Directory.CreateDirectory(Path.Combine(projectPath, "Graph"));
@@ -124,6 +88,7 @@ public sealed class ProjectService : IProjectService
         Directory.CreateDirectory(Path.Combine(projectPath, "Output"));
         Directory.CreateDirectory(Path.Combine(projectPath, "Temp"));
         Directory.CreateDirectory(Path.Combine(projectPath, ".galnet"));
+        await EnsureUiProjectAsync(projectPath);
 
         await SaveProjectSettingsAsync(projectPath, settings);
         await SaveEditorProjectStateAsync(projectPath, new EditorProjectState());
@@ -131,12 +96,12 @@ public sealed class ProjectService : IProjectService
 
         var scope = _globalServices.CreateScope();
         var editorState = await LoadEditorProjectStateAsync(projectPath);
-        var program = new GalProject(name, name, projectPath, settings, editorState, scope);
+        var program = new GalProject(name, name, projectPath, settings, editorState, new FileUiProjectProvider(projectPath), scope);
 
         _current = program;
 
         AddToRecentProjects(name, projectPath);
-        SaveEditorSettings();
+        _editorSettingsService.SaveSettings();
 
         Log.Information("Project created: {Name} at {Path}", name, projectPath);
         CurrentChanged?.Invoke(program);
@@ -149,10 +114,13 @@ public sealed class ProjectService : IProjectService
         if (_current == null)
             return;
 
-        Log.Information("Closing project: {Name}", _current.Name);
+        var closingProject = _current;
+        Log.Information("Closing project: {Name}", closingProject.Name);
 
-        _current.Dispose();
+        // Scoped services can raise notifications while being disposed. Clear the
+        // current reference first so those notifications cannot resolve a disposed scope.
         _current = null;
+        closingProject.Dispose();
 
         CurrentChanged?.Invoke(null);
 
@@ -173,7 +141,7 @@ public sealed class ProjectService : IProjectService
 
     public IReadOnlyList<RecentProjectInfo> GetRecentProjects()
     {
-        return _editorSettings.Value.RecentProjects
+        return _editorSettingsService.GetSettings().RecentProjects
             .OrderByDescending(r => r.LastOpened)
             .ToList()
             .AsReadOnly();
@@ -181,9 +149,10 @@ public sealed class ProjectService : IProjectService
 
     public void RemoveRecentProject(string projectPath)
     {
-        _editorSettings.Value.RecentProjects.RemoveAll(r =>
-            string.Equals(r.Path, projectPath, StringComparison.OrdinalIgnoreCase));
-        SaveEditorSettings();
+        var normalizedPath = NormalizeProjectPath(projectPath);
+        _editorSettingsService.GetSettings().RecentProjects.RemoveAll(r =>
+            string.Equals(NormalizeProjectPath(r.Path), normalizedPath, StringComparison.OrdinalIgnoreCase));
+        _editorSettingsService.SaveSettings();
     }
 
     public Task<bool> CheckUnsavedChangesAsync()
@@ -193,18 +162,22 @@ public sealed class ProjectService : IProjectService
 
     private void AddToRecentProjects(string name, string projectPath)
     {
-        _editorSettings.Value.RecentProjects.RemoveAll(r =>
-            string.Equals(r.Path, projectPath, StringComparison.OrdinalIgnoreCase));
+        var settings = _editorSettingsService.GetSettings();
+        settings.RecentProjects.RemoveAll(r =>
+            string.Equals(
+                NormalizeProjectPath(r.Path),
+                projectPath,
+                StringComparison.OrdinalIgnoreCase));
 
-        _editorSettings.Value.RecentProjects.Add(new RecentProjectInfo
+        settings.RecentProjects.Add(new RecentProjectInfo
         {
             Name = name,
             Path = projectPath,
             LastOpened = DateTime.Now
         });
 
-        while (_editorSettings.Value.RecentProjects.Count > _editorSettings.Value.MaxRecentProjects)
-            _editorSettings.Value.RecentProjects.RemoveAt(0);
+        while (settings.RecentProjects.Count > settings.MaxRecentProjects)
+            settings.RecentProjects.RemoveAt(0);
     }
 
     // ────────── 项目设置持久化 ──────────
@@ -215,7 +188,7 @@ public sealed class ProjectService : IProjectService
         if (File.Exists(settingsPath))
         {
             var json = await File.ReadAllTextAsync(settingsPath);
-            return JsonSerializer.Deserialize<ProjectSettings>(json) ?? new ProjectSettings();
+            return JsonSerializer.Deserialize<ProjectSettings>(json, JsonOptions) ?? new ProjectSettings();
         }
         return new ProjectSettings();
     }
@@ -223,7 +196,7 @@ public sealed class ProjectService : IProjectService
     private static async Task SaveProjectSettingsAsync(string projectPath, ProjectSettings settings)
     {
         var settingsPath = Path.Combine(projectPath, "settings.json");
-        var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+        var json = JsonSerializer.Serialize(settings, JsonOptions);
         await File.WriteAllTextAsync(settingsPath, json);
     }
 
@@ -233,7 +206,7 @@ public sealed class ProjectService : IProjectService
         if (File.Exists(statePath))
         {
             var json = await File.ReadAllTextAsync(statePath);
-            return JsonSerializer.Deserialize<EditorProjectState>(json) ?? new EditorProjectState();
+            return JsonSerializer.Deserialize<EditorProjectState>(json, JsonOptions) ?? new EditorProjectState();
         }
         return new EditorProjectState();
     }
@@ -243,7 +216,7 @@ public sealed class ProjectService : IProjectService
         var stateDir = Path.Combine(projectPath, ".galnet");
         Directory.CreateDirectory(stateDir);
         var statePath = Path.Combine(stateDir, "editor-state.json");
-        var json = JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true });
+        var json = JsonSerializer.Serialize(state, JsonOptions);
         await File.WriteAllTextAsync(statePath, json);
     }
 
@@ -291,7 +264,7 @@ public sealed class ProjectService : IProjectService
 
         await File.WriteAllTextAsync(
             Path.Combine(graphPath, "graph.json"),
-            JsonSerializer.Serialize(graph, new JsonSerializerOptions { WriteIndented = true }));
+            JsonSerializer.Serialize(graph, JsonOptions));
         await File.WriteAllTextAsync(
             Path.Combine(graphPath, "groups", $"{groupId}.galgroup"),
             GalNet.Core.Serialization.GalgroupParser.Serialize("text", new Dictionary<string, string>
@@ -300,4 +273,16 @@ public sealed class ProjectService : IProjectService
                 ["text"] = "Hello GalNet"
             }));
     }
+
+    /// <summary>One-time, deliberate migration for projects created before the UI project existed.</summary>
+    private static async Task EnsureUiProjectAsync(string projectPath)
+    {
+        if (File.Exists(Path.Combine(projectPath, "UI", "ui.json")))
+            return;
+        var ui = new FileUiProjectProvider(projectPath, UiProjectDefaults.Create());
+        await ui.SaveAsync();
+    }
+
+    private static string NormalizeProjectPath(string projectPath) =>
+        Path.TrimEndingDirectorySeparator(Path.GetFullPath(projectPath));
 }

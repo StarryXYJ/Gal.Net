@@ -1,4 +1,4 @@
-using Avalonia.Collections;
+using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Core.Services;
 using GalNet.Editor.Models;
@@ -19,7 +19,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private string _windowTitle = "";
 
     [ObservableProperty]
-    private AvaloniaList<MenuData> _menuItems = new();
+    private IList<MenuData> _menuItems = [];
 
     public MainWindowViewModel(INavigationService navigation, IEditorLocalizationService localization)
     {
@@ -43,11 +43,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void UpdateMenuItems(object? page)
     {
-        MenuItems.Clear();
-        if (page is IMenuProvider provider && provider.MenuItems is { } items)
-        {
-            foreach (var item in items)
-                MenuItems.Add(item);
-        }
+        // Keep the menu bound to the page-owned observable collection. Rebuilding a
+        // page menu (for example after saving or deleting a layout) then updates the
+        // visible Menu without a second page navigation.
+        MenuItems = page is IMenuProvider provider ? provider.MenuItems : [];
     }
 }

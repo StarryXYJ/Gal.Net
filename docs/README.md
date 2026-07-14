@@ -63,3 +63,6 @@ Graph → IGameGraphCompiler 编译 → 状态机循环 → 组执行完 → 沿
 ## 开发计划
 
 详见 [dev/phase-plan.md](../dev/phase-plan.md)。
+# 文档
+
+- [架构与低代码 UI](spec/architecture.md)

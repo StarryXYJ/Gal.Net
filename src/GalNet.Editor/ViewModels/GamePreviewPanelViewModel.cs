@@ -14,8 +14,11 @@ using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Services;
 using GalNet.Editor.Shared.Services;
+using GalNet.Control.Services;
+using GalNet.Control.UI;
 using Serilog;
 using Serilog.Context;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Editor.ViewModels;
 
@@ -93,9 +96,10 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
         var options = new GameFlowOptions
         {
             Title = project.Name,
-            UseSampleDataIfMissing = false,
-            ProfileDirectory = Path.Combine(project.EditorStateDirectory, "player"),
-            SaveSlotCount = project.Settings.SaveSlotCount,
+            GameContentProvider = _projectService.Current.Services.GetRequiredService<IGameContentProvider>(),
+            UiProjectProvider = project.UiProject,
+            SaveService = new FileSaveService(Path.Combine(project.EditorStateDirectory, "player"), project.Settings.SaveSlotCount),
+            ProgressService = new FileGameProgressService(Path.Combine(project.EditorStateDirectory, "player")),
             VariableService = _variableService,
             RuntimeCreated = OnRuntimeCreated,
             GameStarted = OnGameStarted,

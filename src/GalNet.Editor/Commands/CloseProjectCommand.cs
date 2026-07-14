@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using GalNet.Core.Services;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Shared.Commands;
+using GalNet.Editor.ViewModels;
 using Serilog;
 
 namespace GalNet.Editor.Commands;
@@ -26,15 +27,18 @@ public class CloseProjectCommand : AsyncEditorCommand
             if (e.PropertyName == "Item[]")
                 DisplayName = localization["Command.CloseProject"];
         };
-        InitializeCommand(ExecuteAsync);
+        InitializeCommand(ExecuteAsync, () => _projectService.Current is not null);
+        _projectService.CurrentChanged += _ => RelayCommand.NotifyCanExecuteChanged();
     }
 
     private async Task ExecuteAsync()
     {
         try
         {
+            if (_projectService.Current is null)
+                return;
+            _navigation.ResetTo<StartupPageViewModel>();
             await _projectService.CloseAsync();
-            _navigation.GoBack();
         }
         catch (Exception ex)
         {

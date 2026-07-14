@@ -75,6 +75,21 @@ public sealed class NavigationService : INavigationService
         CurrentPage = viewModel;
     }
 
+    public void ResetTo<TViewModel>() where TViewModel : class
+    {
+        var vm = _services.GetService(typeof(TViewModel));
+        if (vm is null)
+            throw new InvalidOperationException($"Cannot resolve {typeof(TViewModel)} from DI");
+        ResetTo(vm);
+    }
+
+    public void ResetTo(object viewModel)
+    {
+        ArgumentNullException.ThrowIfNull(viewModel);
+        _stack.Clear();
+        CurrentPage = viewModel;
+    }
+
     public void GoBack()
     {
         if (_stack.Count > 0)

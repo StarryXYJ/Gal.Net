@@ -29,6 +29,7 @@ public sealed class EditorDockFactory : Factory
     private IDockable? _lastInspectableDockable;
     private EditorWorkspaceViewModel? _workspace;
     private bool _activeDockableHandlerAttached;
+    private bool _dockableEventHandlersAttached;
     private DocumentDock? _documentDock;
 
     /// <summary>Raised after a panel is created, closed, moved, or activated.</summary>
@@ -53,7 +54,7 @@ public sealed class EditorDockFactory : Factory
     {
         _documentDock = null;
         _panelByDockable.Clear();
-        _inspectorHosts.Clear();
+        ClearInspectorHosts();
         _lastInspectableDockable = null;
         AttachWorkspace();
         var panels = _extensions.DockPanelContributions.ToDictionary(panel => panel.PanelId, StringComparer.Ordinal);
@@ -147,19 +148,26 @@ public sealed class EditorDockFactory : Factory
     public bool PrepareRestoredLayout(IRootDock layout)
     {
         _panelByDockable.Clear();
-        _inspectorHosts.Clear();
+        ClearInspectorHosts();
         _lastInspectableDockable = null;
         AttachWorkspace();
         _documentDock = FindDockById(layout, "Documents") as DocumentDock;
 
         var documents = EnumerateDockables(layout).Where(dockable => dockable is Document).ToList();
+        var hasInvalidDocument = false;
         foreach (var document in documents)
         {
             var panel = FindPanelForDocument(document.Id);
             if (panel is null)
             {
                 if (document.Owner is IDock owner && owner.VisibleDockables is { } ownerItems)
+                {
                     ownerItems.Remove(document);
+                    if (ReferenceEquals(owner.ActiveDockable, document))
+                        owner.ActiveDockable = ownerItems.FirstOrDefault(item => item is not IProportionalDockSplitter);
+                }
+                else
+                    hasInvalidDocument = true;
                 continue;
             }
 
@@ -167,7 +175,11 @@ public sealed class EditorDockFactory : Factory
             if (panel.PanelId == EditorDockPanelIds.GroupEditor)
             {
                 if (document.Owner is IDock owner && owner.VisibleDockables is not null)
+                {
                     owner.VisibleDockables.Remove(document);
+                    if (ReferenceEquals(owner.ActiveDockable, document))
+                        owner.ActiveDockable = owner.VisibleDockables.FirstOrDefault(item => item is not IProportionalDockSplitter);
+                }
                 continue;
             }
 
@@ -185,7 +197,10 @@ public sealed class EditorDockFactory : Factory
         if (activeDockable is not null)
             UpdateInspectorsFor(activeDockable);
 
-        return _documentDock is not null && _panelByDockable.Count > 0;
+        return !hasInvalidDocument
+               && _documentDock is not null
+               && _panelByDockable.Count > 0
+               && _panelByDockable.Keys.All(document => document.Context is not null);
     }
 
     public bool HasGlobalPanel(string panelId) => _panelByDockable.Any(pair =>
@@ -285,10 +300,13 @@ public sealed class EditorDockFactory : Factory
             _activeDockableHandlerAttached = true;
         }
 
-        // Subscribe to factory events for debugging
-        DockableAdded += (_, args) => { Log.Information("[DockFactory] DockableAdded: {Id}", args.Dockable?.Id); LayoutChanged?.Invoke(); };
-        DockableRemoved += (_, args) => { Log.Information("[DockFactory] DockableRemoved: {Id}", args.Dockable?.Id); LayoutChanged?.Invoke(); };
-        DockableMoved += (_, args) => { Log.Information("[DockFactory] DockableMoved: {Id}", args.Dockable?.Id); LayoutChanged?.Invoke(); };
+        if (!_dockableEventHandlersAttached)
+        {
+            DockableAdded += (_, args) => { Log.Information("[DockFactory] DockableAdded: {Id}", args.Dockable?.Id); LayoutChanged?.Invoke(); };
+            DockableRemoved += (_, args) => { Log.Information("[DockFactory] DockableRemoved: {Id}", args.Dockable?.Id); LayoutChanged?.Invoke(); };
+            DockableMoved += (_, args) => { Log.Information("[DockFactory] DockableMoved: {Id}", args.Dockable?.Id); LayoutChanged?.Invoke(); };
+            _dockableEventHandlersAttached = true;
+        }
 
         base.InitLayout(layout);
     }
@@ -402,6 +420,16 @@ public sealed class EditorDockFactory : Factory
     {
         inspector.PropertyChanged -= OnInspectorHostPropertyChanged;
         _inspectorHosts.Remove(inspector);
+    }
+
+    private void ClearInspectorHosts()
+    {
+        foreach (var inspector in _inspectorHosts)
+        {
+            inspector.PropertyChanged -= OnInspectorHostPropertyChanged;
+            inspector.Dispose();
+        }
+        _inspectorHosts.Clear();
     }
 
     private void OnInspectorHostPropertyChanged(object? sender, PropertyChangedEventArgs e)

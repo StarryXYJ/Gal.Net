@@ -37,6 +37,7 @@ public partial class GameStartView : UserControl
             _viewModel = vm;
             TitleScreen.SetTitle(vm.Title);
             TitleScreen.SetButtons(vm.Buttons);
+            if (vm.Palette is not null) TitleScreen.SetPalette(vm.Palette);
 
             _buttonHandler = index => vm.OnButtonClicked(index);
             TitleScreen.ButtonClicked += _buttonHandler;

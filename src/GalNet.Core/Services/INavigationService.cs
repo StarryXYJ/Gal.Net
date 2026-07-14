@@ -28,6 +28,12 @@ public interface INavigationService
     /// <summary>导航到现有 VM 实例。</summary>
     void NavigateTo(object viewModel);
 
+    /// <summary>Clear history and navigate to the supplied page with one change notification.</summary>
+    void ResetTo(object viewModel);
+
+    /// <summary>Resolve a page from DI, clear history, and navigate to it with one change notification.</summary>
+    void ResetTo<TViewModel>() where TViewModel : class;
+
     /// <summary>返回上一页。</summary>
     void GoBack();
 

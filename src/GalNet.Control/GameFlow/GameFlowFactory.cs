@@ -1,5 +1,6 @@
 using GalNet.Control.View;
 using GalNet.Core.Services;
+using GalNet.Core.UI;
 using Microsoft.Extensions.DependencyInjection;
 using GalNet.Control.Services;
 using GalNet.Control.Views;
@@ -17,21 +18,22 @@ public sealed class GameFlowFactory : IGameFlowFactory
     }
 
     public GamePageHostViewModel CreatePageHost(INavigationService parentNavigation, GameFlowOptions? options = null) =>
-        new(parentNavigation, this, options);
+        new(parentNavigation, this, _serviceProvider.GetRequiredService<IScreenTemplateRegistry>(), options);
 
     public GameStartViewModel CreateStart(INavigationService navigation, GameFlowOptions? options = null) =>
-        new(navigation, this, _serviceProvider.GetService<IGameExitService>(), options, _serviceProvider.GetService<ISaveService>() ?? CreateSaveService(options));
+        new(navigation, this, _serviceProvider.GetService<IGameExitService>(), options,
+            options?.SaveService ?? _serviceProvider.GetService<ISaveService>(),
+            options is null ? null : new UI.UiColorPalette(options.UiProjectProvider));
 
     public GameRunViewModel CreateRun(INavigationService navigation, GameFlowOptions? options = null)
     {
         var gameView = _serviceProvider.GetRequiredService<DefaultGameView>();
         var settings = _serviceProvider.GetRequiredService<ISettingsService>();
         var variableService = options?.VariableService ?? _serviceProvider.GetService<IVariableService>();
-        var gameDataProvider = options?.GameDataProvider ?? _serviceProvider.GetService<IGameDataProvider>();
-
-        var save = _serviceProvider.GetService<ISaveService>() ?? CreateSaveService(options);
-        var progress = _serviceProvider.GetService<IGameProgressService>() ?? CreateProgressService(options);
-        var run = new GameRunViewModel(gameView, settings, variableService, gameDataProvider, save, progress, options, () =>
+        ArgumentNullException.ThrowIfNull(options);
+        var save = options.SaveService ?? _serviceProvider.GetService<ISaveService>();
+        var progress = options.ProgressService ?? _serviceProvider.GetService<IGameProgressService>();
+        var run = new GameRunViewModel(gameView, settings, variableService, options.GameContentProvider, save, progress, options, () =>
         {
             navigation.Clear();
             navigation.NavigateTo(CreateStart(navigation, options));
@@ -45,14 +47,9 @@ public sealed class GameFlowFactory : IGameFlowFactory
         new(_serviceProvider.GetRequiredService<ISettingsService>(), navigation);
 
     public SaveLoadViewModel CreateSaveLoad(INavigationService navigation, GameFlowOptions? options, SaveLoadMode mode, Func<int, Task>? load = null, Func<int, Task>? save = null) =>
-        new(navigation, _serviceProvider.GetService<ISaveService>() ?? CreateSaveService(options), mode, load, save);
+        new(navigation, options?.SaveService ?? _serviceProvider.GetService<ISaveService>(), mode, load, save);
     public GalleryViewModel CreateGallery(INavigationService navigation, GameFlowOptions? options) =>
-        new(navigation, this, options, _serviceProvider.GetService<IGameProgressService>() ?? CreateProgressService(options));
-
-    private static ISaveService? CreateSaveService(GameFlowOptions? options) =>
-        string.IsNullOrWhiteSpace(options?.ProfileDirectory) ? null : new FileSaveService(options.ProfileDirectory, options.SaveSlotCount);
-    private static IGameProgressService? CreateProgressService(GameFlowOptions? options) =>
-        string.IsNullOrWhiteSpace(options?.ProfileDirectory) ? null : new FileGameProgressService(options.ProfileDirectory);
+        new(navigation, this, options, options?.ProgressService ?? _serviceProvider.GetService<IGameProgressService>());
 
     private void HandleRunCommand(string command, GameRunViewModel run, INavigationService navigation, GameFlowOptions? options, ISaveService? saves)
     {
