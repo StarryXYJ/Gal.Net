@@ -29,6 +29,8 @@ public partial class SettingsView : UserControl
             SettingsPanel.Children.Add(CreateSliderRow("SFX Volume", vm.SfxVolume, v => vm.SfxVolume = (float)v, 1f));
             SettingsPanel.Children.Add(CreateSliderRow("Voice Volume", vm.VoiceVolume, v => vm.VoiceVolume = (float)v, 1f));
             SettingsPanel.Children.Add(CreateSliderRow("Text Speed", vm.TextSpeed, v => vm.TextSpeed = (float)v, 200));
+            SettingsPanel.Children.Add(CreateSliderRow("Auto Delay", vm.AutoAdvanceInterval, v => vm.AutoAdvanceInterval = (float)v, 10));
+            SettingsPanel.Children.Add(CreateSliderRow("Quick Delay", vm.QuickAdvanceInterval, v => vm.QuickAdvanceInterval = (float)v, 2));
             SettingsPanel.Children.Add(CreateToggleRow("Fullscreen", vm.Fullscreen, v => vm.Fullscreen = v));
 
             BackButton.Click += (_, _) => vm.Back();

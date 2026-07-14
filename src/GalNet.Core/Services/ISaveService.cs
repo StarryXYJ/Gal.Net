@@ -11,6 +11,16 @@ public sealed class SaveSlotInfo
     public DateTime Timestamp { get; init; }
     public string? Description { get; init; }
     public string? PreviewImage { get; init; }
+    public bool IsQuickSave { get; init; }
+    public bool IsCorrupt { get; init; }
+}
+
+/// <summary>Data written alongside a snapshot. PreviewImage is a PNG byte array.</summary>
+public sealed class SaveRequest
+{
+    public required GameSnapshot Snapshot { get; init; }
+    public byte[]? PreviewImage { get; init; }
+    public string? Description { get; init; }
 }
 
 /// <summary>
@@ -27,4 +37,11 @@ public interface ISaveService
 
     Task QuickSaveAsync(GameSnapshot snapshot);
     Task<GameSnapshot?> QuickLoadAsync();
+
+    Task<IReadOnlyList<SaveSlotInfo>> ListSlotsAsync(CancellationToken ct = default);
+    Task<SaveSlotInfo?> GetQuickSaveInfoAsync(CancellationToken ct = default);
+    Task<bool> HasQuickSaveAsync(CancellationToken ct = default);
+    Task DeleteQuickSaveAsync(CancellationToken ct = default);
+    Task SaveAsync(int slot, SaveRequest request, CancellationToken ct = default);
+    Task QuickSaveAsync(SaveRequest request, CancellationToken ct = default);
 }

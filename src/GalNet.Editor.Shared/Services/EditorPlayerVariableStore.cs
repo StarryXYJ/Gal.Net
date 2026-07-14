@@ -144,7 +144,7 @@ public sealed class EditorPlayerVariableStore : IEditorPlayerVariableStore
     }
 
     private static string GetStoragePath(GalProject project) =>
-        Path.Combine(project.EditorStateDirectory, "player-variables.json");
+        Path.Combine(project.EditorStateDirectory, "player", "player-variables.json");
 
     private void OnDefinitionsChanged(VariableScope scope)
     {

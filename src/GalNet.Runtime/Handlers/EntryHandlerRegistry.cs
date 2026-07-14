@@ -1,4 +1,5 @@
 using GalNet.Core.Handler;
+using GalNet.Core.Services;
 
 namespace GalNet.Runtime.Handlers;
 
@@ -40,6 +41,13 @@ public sealed class EntryHandlerRegistry
         registry.Register("variable", () => new VariableHandler());
         registry.Register("jump", () => new JumpHandler());
         registry.Register("video", () => new VideoHandler());
+        return registry;
+    }
+
+    public static EntryHandlerRegistry CreateDefault(IGameProgressService? progress)
+    {
+        var registry = CreateDefault();
+        if (progress is not null) registry.Register("unlock_gallery", () => new UnlockGalleryHandler(progress));
         return registry;
     }
 }

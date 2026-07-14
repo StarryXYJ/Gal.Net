@@ -9,6 +9,7 @@ namespace GalNet.Control.Views;
 /// </summary>
 public partial class GameRunView : UserControl
 {
+    private GameRunViewModel? _viewModel;
     public GameRunView()
     {
         InitializeComponent();
@@ -20,14 +21,29 @@ public partial class GameRunView : UserControl
 
         if (DataContext is GameRunViewModel vm)
         {
+            _viewModel = vm;
             vm.GameView.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch;
             vm.GameView.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch;
             GameViewHost.Content = vm.GameView;
+            StartIfAttached();
         }
         else
         {
             GameViewHost.Content = null;
+            _viewModel = null;
         }
+    }
+
+    protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        StartIfAttached();
+    }
+
+    private void StartIfAttached()
+    {
+        if (VisualRoot is not null && _viewModel is not null)
+            _viewModel.Start();
     }
 
     protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)

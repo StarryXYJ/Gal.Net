@@ -14,6 +14,9 @@ public sealed class GameSettings : SettingsSection
     /// <summary>自动推进间隔（秒）</summary>
     public float AutoAdvanceInterval { get; set; } = 2f;
 
+    /// <summary>Delay used by quick/skip mode between entries.</summary>
+    public float QuickAdvanceInterval { get; set; } = 0.05f;
+
     /// <summary>跳过模式：All = 全部, ReadOnly = 仅已读</summary>
     public string SkipMode { get; set; } = "ReadOnly";
 

@@ -39,14 +39,14 @@ public partial class TitleScreenView : UserControl, ITitleScreen
             var btn = new Button
             {
                 Content = buttonTexts[i],
-                Width = 260,
-                Height = 50,
-                FontSize = 20,
+                Width = 340,
+                Height = 64,
+                FontSize = 24,
                 Foreground = Avalonia.Media.Brushes.White,
                 Background = Avalonia.Media.SolidColorBrush.Parse("#334"),
                 BorderThickness = new Avalonia.Thickness(0),
                 CornerRadius = new Avalonia.CornerRadius(4),
-                Margin = new Avalonia.Thickness(0, 6),
+                Margin = new Avalonia.Thickness(0, 8),
             };
             btn.Click += (_, _) =>
             {
@@ -73,14 +73,14 @@ public partial class TitleScreenView : UserControl, ITitleScreen
             var btn = new Button
             {
                 Content = btnVm.Text,
-                Width = 260,
-                Height = 50,
-                FontSize = 20,
+                Width = 340,
+                Height = 64,
+                FontSize = 24,
                 Foreground = Avalonia.Media.Brushes.White,
                 Background = Avalonia.Media.SolidColorBrush.Parse("#334"),
                 BorderThickness = new Avalonia.Thickness(0),
                 CornerRadius = new Avalonia.CornerRadius(4),
-                Margin = new Avalonia.Thickness(0, 6),
+                Margin = new Avalonia.Thickness(0, 8),
             };
             btn.Click += (_, _) => btnVm.Action?.Invoke();
             ButtonPanel.Children.Add(btn);

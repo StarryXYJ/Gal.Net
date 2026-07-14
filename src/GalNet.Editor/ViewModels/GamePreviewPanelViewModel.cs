@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -93,6 +94,8 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
         {
             Title = project.Name,
             UseSampleDataIfMissing = false,
+            ProfileDirectory = Path.Combine(project.EditorStateDirectory, "player"),
+            SaveSlotCount = project.Settings.SaveSlotCount,
             VariableService = _variableService,
             RuntimeCreated = OnRuntimeCreated,
             GameStarted = OnGameStarted,
@@ -110,6 +113,14 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
     public async Task ResetPlayerAsync()
     {
         _variableService.ResetAll();
+        if (_projectService.Current is { } project)
+        {
+            var playerDirectory = Path.Combine(project.EditorStateDirectory, "player");
+            var savesDirectory = Path.Combine(playerDirectory, "saves");
+            if (Directory.Exists(savesDirectory)) Directory.Delete(savesDirectory, true);
+            var progressPath = Path.Combine(playerDirectory, "progress.json");
+            if (File.Exists(progressPath)) File.Delete(progressPath);
+        }
         await RestartPreviewAsync();
     }
 

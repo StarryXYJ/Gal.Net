@@ -9,7 +9,7 @@
              x:DataType="vm:EditorPageViewModel">
 
     <Grid RowDefinitions="*,Auto" Background="{DynamicResource SemiColorBackground0}">
-        <DockControl Grid.Row="0"
+        <DockControl Name="DockHost" Grid.Row="0"
                      Margin="0,30,0,0"
                      Layout="{Binding Layout}"
                      Background="{DynamicResource SemiColorBackground0}" />

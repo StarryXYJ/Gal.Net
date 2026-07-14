@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using GalNet.Control.Effect;
 using GalNet.Control.Screen.BuiltIn;
@@ -26,8 +27,25 @@ public class DefaultGameView : Grid, IGameView, IDisposable
     private readonly MediaPlayer _videoPlayer;
     private readonly AudioController _audioController;
     private readonly VideoController _videoController;
+    private readonly GameSettings _gameSettings;
     private TaskCompletionSource<int>? _clickTcs;
     private int _disposed;
+    private bool _dialogueWasVisible;
+    private bool _choiceWasVisible;
+    private bool _indicatorWasVisible;
+    public bool AutoMode { get; private set; }
+    public bool QuickMode { get; private set; }
+    public bool IsUiHidden { get; private set; }
+    public event Action<string>? CommandRequested;
+    public Task<byte[]> CapturePngAsync(bool includeUi)
+    {
+        var target = includeUi ? (AvaloniaControl)_gameScreen : _gameScreen.LayerCanvas;
+        var pixelSize = new PixelSize(Math.Max(1, (int)target.Bounds.Width), Math.Max(1, (int)target.Bounds.Height));
+        var bitmap = new RenderTargetBitmap(pixelSize, new Vector(96, 96));
+        bitmap.Render(target);
+        using var stream = new MemoryStream(); bitmap.Save(stream);
+        return Task.FromResult(stream.ToArray());
+    }
 
     /// <summary>Stop all audio/video and release resources.</summary>
     public void Cleanup()
@@ -88,9 +106,10 @@ public class DefaultGameView : Grid, IGameView, IDisposable
 
     public DefaultGameView(GameSettings? settings = null)
     {
+        _gameSettings = settings ?? new GameSettings();
         _gameScreen = new GameScreenView();
         _registry = new DefaultGameViewRegistry(_gameScreen);
-        _typewriter = new DefaultTypewriterPresenter(settings ?? new GameSettings(), _gameScreen, _registry);
+        _typewriter = new DefaultTypewriterPresenter(_gameSettings, _gameScreen, _registry);
         _choice = new DefaultChoicePresenter(_gameScreen, _registry);
 
         _libVlc = _vlcInitialized ? new LibVLC() : null!;
@@ -101,8 +120,31 @@ public class DefaultGameView : Grid, IGameView, IDisposable
 
         Children.Add(_gameScreen);
 
+        _gameScreen.AutoButton.Click += (_, _) =>
+        {
+            AutoMode = _gameScreen.AutoButton.IsChecked == true;
+            if (AutoMode) { QuickMode = false; _gameScreen.QuickButton.IsChecked = false; }
+        };
+        _gameScreen.QuickButton.Click += (_, _) =>
+        {
+            QuickMode = _gameScreen.QuickButton.IsChecked == true;
+            if (QuickMode) { AutoMode = false; _gameScreen.AutoButton.IsChecked = false; }
+        };
+        _gameScreen.SaveButton.Click += (_, _) => CommandRequested?.Invoke("save");
+        _gameScreen.LoadButton.Click += (_, _) => CommandRequested?.Invoke("load");
+        _gameScreen.SettingsButton.Click += (_, _) => CommandRequested?.Invoke("settings");
+        _gameScreen.MenuButton.Click += (_, _) => CommandRequested?.Invoke("menu");
+        _gameScreen.ScreenshotButton.Click += (_, _) => CommandRequested?.Invoke("screenshot");
+        _gameScreen.HideButton.Click += (_, _) => HideUi();
+
         PointerPressed += (_, e) =>
         {
+            if (IsUiHidden)
+            {
+                RestoreUi();
+                e.Handled = true;
+                return;
+            }
             Log.ForContext("LogChannel", "Game").Debug("PointerPressed at {X},{Y}", e.GetPosition(this).X, e.GetPosition(this).Y);
 
             if (_clickTcs is { Task.IsCompleted: false })
@@ -118,6 +160,8 @@ public class DefaultGameView : Grid, IGameView, IDisposable
                 _typewriter.Skip(string.Empty);
             }
         };
+
+        KeyDown += (_, e) => { if (IsUiHidden) { RestoreUi(); e.Handled = true; } };
     }
 
     // ── ILayerView ──
@@ -149,7 +193,13 @@ public class DefaultGameView : Grid, IGameView, IDisposable
     // ── ITypewriterView ──
 
     Task ITypewriterView.StartTypewriter(string widgetInstanceId, string speaker, string text, CancellationToken ct)
-        => _typewriter.StartAsync(widgetInstanceId, speaker, text, ct);
+        => StartTypewriterAsync(widgetInstanceId, speaker, text, ct);
+    private async Task StartTypewriterAsync(string widgetInstanceId, string speaker, string text, CancellationToken ct)
+    {
+        var task = _typewriter.StartAsync(widgetInstanceId, speaker, text, ct);
+        if (QuickMode) Dispatcher.UIThread.Post(() => _typewriter.Skip(widgetInstanceId));
+        await task;
+    }
     void ITypewriterView.SkipTypewriter(string widgetInstanceId) => _typewriter.Skip(widgetInstanceId);
     void ITypewriterView.SetVoice(string assetId) => _typewriter.SetVoice(assetId);
 
@@ -172,10 +222,38 @@ public class DefaultGameView : Grid, IGameView, IDisposable
         }
 
         Avalonia.Threading.Dispatcher.UIThread.Post(() => _gameScreen.ClickIndicator.IsVisible = true);
+        if (QuickMode || AutoMode)
+        {
+            var delay = QuickMode ? Math.Max(0.01f, _gameSettings.QuickAdvanceInterval) : Math.Max(0.01f, _gameSettings.AutoAdvanceInterval);
+            await Task.Delay(TimeSpan.FromSeconds(delay), ct);
+            return;
+        }
         var tcs = new TaskCompletionSource<int>();
         _clickTcs = tcs;
         ct.Register(() => { _clickTcs = null; tcs.TrySetCanceled(); });
         await tcs.Task;
+    }
+
+    private void HideUi()
+    {
+        IsUiHidden = true;
+        _dialogueWasVisible = _gameScreen.DialogueHost.IsVisible;
+        _choiceWasVisible = _gameScreen.ChoiceHost.IsVisible;
+        _indicatorWasVisible = _gameScreen.ClickIndicator.IsVisible;
+        _gameScreen.DialogueHost.IsVisible = false;
+        _gameScreen.ChoiceHost.IsVisible = false;
+        _gameScreen.CommandBar.IsVisible = false;
+        _gameScreen.ClickIndicator.IsVisible = false;
+        Focus();
+    }
+
+    private void RestoreUi()
+    {
+        IsUiHidden = false;
+        _gameScreen.CommandBar.IsVisible = true;
+        _gameScreen.DialogueHost.IsVisible = _dialogueWasVisible;
+        _gameScreen.ChoiceHost.IsVisible = _choiceWasVisible;
+        _gameScreen.ClickIndicator.IsVisible = _indicatorWasVisible;
     }
 
     public Task<int> WaitForChoiceAsync(string widgetInstanceId, string[] options, CancellationToken ct)

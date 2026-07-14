@@ -40,6 +40,18 @@ public class SettingsViewModel
         set => _settings.Fullscreen = value;
     }
 
+    public float AutoAdvanceInterval
+    {
+        get => _settings.GetSnapshot().AutoAdvanceInterval;
+        set { var snapshot = _settings.GetSnapshot(); snapshot.AutoAdvanceInterval = value; _settings.ApplySnapshot(snapshot); }
+    }
+
+    public float QuickAdvanceInterval
+    {
+        get => _settings.GetSnapshot().QuickAdvanceInterval;
+        set { var snapshot = _settings.GetSnapshot(); snapshot.QuickAdvanceInterval = value; _settings.ApplySnapshot(snapshot); }
+    }
+
     public SettingsViewModel(ISettingsService settings, INavigationService nav)
     {
         _settings = settings;

@@ -37,6 +37,9 @@ public partial class MainWindow : UrsaWindow
 
     private void OnCurrentPageChanged(object? page)
     {
+        if (page is EditorPageViewModel)
+            WindowState = WindowState.Maximized;
+
         if (page == null)
         {
             PageHost.Content = null;

@@ -1,0 +1,9 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="GalNet.Control.Views.ScreenshotDialog">
+  <Border Width="520" Padding="24" Background="#2A2A34" CornerRadius="8"><StackPanel Spacing="14">
+    <TextBlock Text="Save Screenshot" FontSize="22" FontWeight="Bold"/>
+    <TextBlock Text="Directory"/><Grid ColumnDefinitions="*,Auto"><TextBox Name="DirectoryBox"/><Button Grid.Column="1" Name="BrowseButton" Content="Browse" Margin="8,0,0,0"/></Grid>
+    <CheckBox Name="IncludeUiBox" Content="Include game UI"/>
+    <TextBlock Name="ErrorBlock" Foreground="Tomato" TextWrapping="Wrap"/>
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8"><Button Name="CancelButton" Content="Cancel"/><Button Name="SaveButton" Content="Save"/></StackPanel>
+  </StackPanel></Border>
+</UserControl>

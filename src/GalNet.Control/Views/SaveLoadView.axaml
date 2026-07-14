@@ -1,0 +1,7 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="https://irihi.tech/ursa" x:Class="GalNet.Control.Views.SaveLoadView" Background="#111111">
+  <Grid RowDefinitions="Auto,*,Auto" Margin="28">
+    <TextBlock Name="TitleBlock" FontSize="30" Foreground="White" />
+    <ScrollViewer Grid.Row="1"><UniformGrid Name="SlotPanel" Columns="4" Rows="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" /></ScrollViewer>
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12"><u:Pagination Name="Pagination" PageSize="12"/><Button Name="BackButton" Content="Back"/></StackPanel>
+  </Grid>
+</UserControl>

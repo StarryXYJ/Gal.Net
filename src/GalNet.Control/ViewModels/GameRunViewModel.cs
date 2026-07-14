@@ -7,6 +7,7 @@ using GalNet.Core.Runtime;
 using GalNet.Core.Services;
 using GalNet.Core.Settings;
 using GalNet.Runtime.Engine;
+using GalNet.Runtime.Handlers;
 using GalNet.Runtime.Loader;
 using GalNet.Runtime.Runtime;
 using Serilog;
@@ -16,21 +17,34 @@ namespace GalNet.Control.ViewModels;
 public sealed class GameRunViewModel : IAsyncDisposable
 {
     public DefaultGameView GameView { get; }
+    public event Action<string>? CommandRequested;
+    public GameSnapshot? CurrentSnapshot => _runtime?.CreateSnapshot();
+    public async Task<bool> SaveCurrentAsync(int slot)
+    {
+        if (_saveService is null || CurrentSnapshot is not { } snapshot) return false;
+        await _saveService.SaveAsync(slot, snapshot);
+        return true;
+    }
 
     private readonly ISettingsService _settingsService;
     private readonly IVariableService? _variableService;
     private readonly IGameDataProvider? _gameDataProvider;
+    private readonly ISaveService? _saveService;
+    private readonly IGameProgressService? _progressService;
     private readonly Action? _onGameEnded;
     private readonly GameFlowOptions? _options;
     private readonly CancellationTokenSource _lifetimeCts = new();
-    private readonly Task _runTask;
+    private Task? _runTask;
     private int _stopped;
+    private IGameRuntime? _runtime;
 
     public GameRunViewModel(
         DefaultGameView gameView,
         ISettingsService settingsService,
         IVariableService? variableService = null,
         IGameDataProvider? gameDataProvider = null,
+        ISaveService? saveService = null,
+        IGameProgressService? progressService = null,
         GameFlowOptions? options = null,
         Action? onGameEnded = null)
     {
@@ -38,10 +52,19 @@ public sealed class GameRunViewModel : IAsyncDisposable
         _settingsService = settingsService;
         _variableService = variableService;
         _gameDataProvider = gameDataProvider;
+        _saveService = saveService;
+        _progressService = progressService;
         _options = options;
         _onGameEnded = onGameEnded;
+        GameView.CommandRequested += command => CommandRequested?.Invoke(command);
 
-        _runTask = RunAsync(_lifetimeCts.Token);
+    }
+
+    /// <summary>Called by the host view after the game surface is attached to the visual tree.</summary>
+    public void Start()
+    {
+        if (_runTask is null)
+            _runTask = RunAsync(_lifetimeCts.Token);
     }
 
     public async ValueTask DisposeAsync()
@@ -49,13 +72,18 @@ public sealed class GameRunViewModel : IAsyncDisposable
         if (Interlocked.Exchange(ref _stopped, 1) == 0)
             _lifetimeCts.Cancel();
 
-        try { await _runTask; }
+        try { if (_runTask is not null) await _runTask; }
         catch (OperationCanceledException) { }
         _lifetimeCts.Dispose();
     }
 
     private async Task RunAsync(CancellationToken cancellationToken)
     {
+        // Let the GameRunView attach DefaultGameView and complete its first layout before
+        // presenters create dialogue controls. Without this, the first queued UI update can
+        // be lost when a game starts immediately after navigation.
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
+            () => { }, Avalonia.Threading.DispatcherPriority.Render, cancellationToken);
         var dataDirectory = ResolveGameDataDirectory();
         var settings = new SettingsContainer();
         settings.Set(_settingsService.GetSnapshot());
@@ -67,10 +95,14 @@ public sealed class GameRunViewModel : IAsyncDisposable
             var runtime = new GameRuntime(
                 GameView,
                 null,
-                graph.RootNodeId,
+                _options?.StartNodeId ?? graph.RootNodeId,
                 settings,
                 _variableService);
-            var engine = new GameEngine(graph, runtime);
+            if (_options?.RestoreSnapshot is { } snapshot)
+                runtime.RestoreFrom(snapshot);
+            _runtime = runtime;
+            var engine = new GameEngine(graph, runtime, registry: EntryHandlerRegistry.CreateDefault(_progressService), progress: _progressService);
+            engine.CheckpointCreated += snapshot => _ = WriteQuickSaveAsync(snapshot);
             _options?.RuntimeCreated?.Invoke(runtime);
             _options?.GameStarted?.Invoke();
             await engine.StepAsync(cancellationToken);
@@ -85,13 +117,23 @@ public sealed class GameRunViewModel : IAsyncDisposable
         finally
         {
             GameView.Cleanup();
+            _runtime = null;
             if (completedNormally)
             {
+                if (!_options!.IsGalleryPresentation && _saveService is not null)
+                    await _saveService.DeleteQuickSaveAsync();
                 _options?.GameEnded?.Invoke();
             }
             if (completedNormally && _onGameEnded is not null)
                 Avalonia.Threading.Dispatcher.UIThread.Post(_onGameEnded);
         }
+    }
+
+    private async Task WriteQuickSaveAsync(GameSnapshot snapshot)
+    {
+        if (_options?.IsGalleryPresentation == true || _saveService is null) return;
+        try { await _saveService.QuickSaveAsync(snapshot); }
+        catch (Exception ex) { Log.Warning(ex, "Failed to write quick save"); }
     }
 
     private string ResolveGameDataDirectory()

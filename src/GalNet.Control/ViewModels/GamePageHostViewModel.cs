@@ -15,6 +15,8 @@ public class GamePageHostViewModel
         InternalNav.RegisterMap(typeof(GameStartViewModel), typeof(GameStartView));
         InternalNav.RegisterMap(typeof(GameRunViewModel), typeof(GameRunView));
         InternalNav.RegisterMap(typeof(SettingsViewModel), typeof(SettingsView));
+        InternalNav.RegisterMap(typeof(SaveLoadViewModel), typeof(SaveLoadView));
+        InternalNav.RegisterMap(typeof(GalleryViewModel), typeof(GalleryView));
 
         InternalNav.NavigateTo(gameFlowFactory.CreateStart(InternalNav, _options));
     }

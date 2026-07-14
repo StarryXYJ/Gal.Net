@@ -9,6 +9,42 @@
              VerticalAlignment="Stretch"
              Background="#111118">
 
+    <UserControl.Styles>
+        <Style Selector="Button.CommandBarItem">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="Padding" Value="4,2" />
+        </Style>
+        <Style Selector="ToggleButton.CommandBarItem">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="Padding" Value="4,2" />
+        </Style>
+        <Style Selector="ToggleButton.CommandBarItem:pointerover">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#8ED8FF" />
+        </Style>
+        <Style Selector="ToggleButton.CommandBarItem:pressed">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#FFC857" />
+        </Style>
+        <Style Selector="ToggleButton.CommandBarItem:checked">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#FFC857" />
+        </Style>
+        <Style Selector="Button.CommandBarItem:pointerover">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="TextBlock.TextDecorations" Value="Underline" />
+        </Style>
+        <Style Selector="Button.CommandBarItem:pressed">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#FFC857" />
+        </Style>
+    </UserControl.Styles>
+
     <Grid>
         <!-- Image/background layer canvas (bottom) -->
         <Canvas Name="LayerCanvas" ClipToBounds="True" />
@@ -43,6 +79,19 @@
                    HorizontalAlignment="Right"
                    VerticalAlignment="Bottom"
                    Margin="0,0,20,10" />
+
+        <!-- Built-in game command bar. It is deliberately outside the dialogue widget system. -->
+        <StackPanel Name="CommandBar" Orientation="Horizontal" Spacing="10"
+                    HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,12">
+            <ToggleButton Classes="CommandBarItem" Name="AutoButton" Content="Auto" />
+            <ToggleButton Classes="CommandBarItem" Name="QuickButton" Content="Quick" />
+            <Button Classes="CommandBarItem" Name="SaveButton" Content="Save" />
+            <Button Classes="CommandBarItem" Name="LoadButton" Content="Load" />
+            <Button Classes="CommandBarItem" Name="SettingsButton" Content="Settings" />
+            <Button Classes="CommandBarItem" Name="MenuButton" Content="Menu" />
+            <Button Classes="CommandBarItem" Name="ScreenshotButton" Content="Screenshot" />
+            <Button Classes="CommandBarItem" Name="HideButton" Content="×" />
+        </StackPanel>
     </Grid>
 
 </UserControl>

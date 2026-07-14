@@ -11,6 +11,7 @@ using GalNet.Runtime.Handlers;
 using GalNet.Runtime.Runtime;
 using Serilog;
 using GalNet.Runtime.Logging;
+using GalNet.Core.Services;
 
 namespace GalNet.Runtime.Engine;
 
@@ -20,6 +21,10 @@ public sealed class GameEngine
     private readonly IReadOnlyDictionary<string, IReadOnlyList<SimpleEntry>> _compiled;
     private readonly EntryHandlerRegistry _registry;
     private readonly IGameRuntime _runtime;
+    private readonly IGameProgressService? _progress;
+
+    /// <summary>Raised at interaction boundaries, before the engine waits for input.</summary>
+    public event Action<GameSnapshot>? CheckpointCreated;
 
     public IGameRuntime Runtime => _runtime;
 
@@ -35,24 +40,26 @@ public sealed class GameEngine
         ICultureService? i18n = null,
         SettingsContainer? settings = null,
         IGameGraphCompiler? compiler = null,
-        EntryHandlerRegistry? registry = null)
+        EntryHandlerRegistry? registry = null, IGameProgressService? progress = null)
     {
         _graph = graph;
         _compiled = (compiler ?? GameGraphCompiler.Default).Compile(graph);
         _registry = registry ?? EntryHandlerRegistry.CreateDefault();
         _runtime = new GameRuntime(view, i18n, graph.RootNodeId, settings);
+        _progress = progress;
     }
 
     public GameEngine(
         Graph graph,
         IGameRuntime runtime,
         IGameGraphCompiler? compiler = null,
-        EntryHandlerRegistry? registry = null)
+        EntryHandlerRegistry? registry = null, IGameProgressService? progress = null)
     {
         _graph = graph;
         _compiled = (compiler ?? GameGraphCompiler.Default).Compile(graph);
         _registry = registry ?? EntryHandlerRegistry.CreateDefault();
         _runtime = runtime;
+        _progress = progress;
     }
 
     public async Task<bool> StepAsync(CancellationToken ct = default)
@@ -96,6 +103,8 @@ public sealed class GameEngine
                         if (handler.IsBlocking)
                         {
                             handler.Start(ctx);
+                            if (entry.Type == "text") _progress?.MarkRead(group.Id, entry.Id);
+                            CheckpointCreated?.Invoke(CreateSaveData());
                             while (!handler.IsCompleted(ctx))
                             {
                                 await _runtime.View!.WaitForClickAsync(ct);
@@ -132,6 +141,7 @@ public sealed class GameEngine
 
                         string Resolve(string key) => _runtime.I18n?[key] ?? key;
                         var texts = visibleOptions.Select(x => Resolve(x.Option.Text)).ToArray();
+                        CheckpointCreated?.Invoke(CreateSaveData());
                         var selected = await _runtime.View!.WaitForChoiceAsync("default_choice", texts, ct);
 
                         if (selected >= 0 && selected < visibleOptions.Count)

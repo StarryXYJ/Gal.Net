@@ -10,6 +10,8 @@ namespace GalNet.Control.Views;
 public partial class GameStartView : UserControl
 {
     private Action<int>? _buttonHandler;
+    private Action? _buttonsChangedHandler;
+    private GameStartViewModel? _viewModel;
 
     public GameStartView()
     {
@@ -27,13 +29,20 @@ public partial class GameStartView : UserControl
             _buttonHandler = null;
         }
 
+        if (_buttonsChangedHandler != null && _viewModel is not null)
+            _viewModel.ButtonsChanged -= _buttonsChangedHandler;
+
         if (DataContext is GameStartViewModel vm)
         {
+            _viewModel = vm;
             TitleScreen.SetTitle(vm.Title);
             TitleScreen.SetButtons(vm.Buttons);
 
             _buttonHandler = index => vm.OnButtonClicked(index);
             TitleScreen.ButtonClicked += _buttonHandler;
+            _buttonsChangedHandler = () => TitleScreen.SetButtons(vm.Buttons);
+            vm.ButtonsChanged += _buttonsChangedHandler;
         }
+        else _viewModel = null;
     }
 }

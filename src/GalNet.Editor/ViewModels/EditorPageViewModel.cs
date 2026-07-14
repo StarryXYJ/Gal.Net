@@ -197,6 +197,9 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
         finally { _savingLayout = false; }
     }
 
+    /// <summary>Called after splitter interaction so proportional panel sizes are persisted globally.</summary>
+    public void PersistLayout() => OnDockLayoutChanged();
+
     [RelayCommand]
     private async Task ShowProjectSettingsAsync()
     {
