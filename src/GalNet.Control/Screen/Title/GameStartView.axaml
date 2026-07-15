@@ -2,10 +2,23 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:screen="using:GalNet.Control.Screen.BuiltIn"
+             xmlns:ui="clr-namespace:GalNet.Control.Abstraction.UI;assembly=GalNet.Control.Abstraction"
+             xmlns:vm="clr-namespace:GalNet.Control.ViewModels"
              mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="600"
-             x:Class="GalNet.Control.Views.GameStartView">
+             x:Class="GalNet.Control.Views.GameStartView"
+             x:DataType="vm:GameStartViewModel"
+             Background="{ui:PaletteBrush Background0}">
 
-    <screen:TitleScreenView x:Name="TitleScreen" />
-
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
+        <TextBlock Text="{Binding Title}" FontSize="48" FontWeight="Bold"
+                   Foreground="{ui:PaletteBrush FontColor0}" HorizontalAlignment="Center" />
+        <StackPanel HorizontalAlignment="Center" Spacing="12">
+            <ContentControl Content="{Binding ContinueHost.View}" IsVisible="{Binding IsContinueVisible}" />
+            <ContentControl Content="{Binding NewGameHost.View}" />
+            <ContentControl Content="{Binding LoadHost.View}" />
+            <ContentControl Content="{Binding GalleryHost.View}" IsVisible="{Binding ShowGallery}" />
+            <ContentControl Content="{Binding SettingsHost.View}" />
+            <ContentControl Content="{Binding QuitHost.View}" />
+        </StackPanel>
+    </StackPanel>
 </UserControl>

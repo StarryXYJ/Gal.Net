@@ -1,29 +1,15 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="600"
-             x:Class="GalNet.Control.Views.SettingsView"
-             Background="#111111">
-
-    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
-        <TextBlock Name="TitleBlock"
-                   Text="Settings"
-                   FontSize="32" FontWeight="Bold"
-                   Foreground="White"
-                   HorizontalAlignment="Center" />
-
-        <StackPanel Name="SettingsPanel"
-                    Orientation="Vertical"
-                    HorizontalAlignment="Center"
-                    Spacing="14" />
-
-        <Button Name="BackButton"
-                Content="Back"
-                FontSize="16"
-                Width="160" Height="40"
-                HorizontalAlignment="Center"
-                Margin="0,20,0,0" />
-    </StackPanel>
-
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:ui="clr-namespace:GalNet.Control.Abstraction.UI;assembly=GalNet.Control.Abstraction" xmlns:vm="clr-namespace:GalNet.Control.ViewModels" x:Class="GalNet.Control.Views.SettingsView" x:DataType="vm:SettingsViewModel" Background="{ui:PaletteBrush Background0}">
+  <Border VerticalAlignment="Center" HorizontalAlignment="Center" Width="520" Padding="32" CornerRadius="12" Background="{ui:PaletteBrush Background1}">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="130,*" RowSpacing="14" ColumnSpacing="12">
+      <TextBlock Grid.ColumnSpan="2" Text="Settings" FontSize="32" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{ui:PaletteBrush FontColor0}"/>
+      <TextBlock Grid.Row="1" Text="BGM Volume" VerticalAlignment="Center"/><ContentControl Grid.Row="1" Grid.Column="1" Content="{Binding BgmVolumeHost.View}"/>
+      <TextBlock Grid.Row="2" Text="SFX Volume" VerticalAlignment="Center"/><ContentControl Grid.Row="2" Grid.Column="1" Content="{Binding SfxVolumeHost.View}"/>
+      <TextBlock Grid.Row="3" Text="Voice Volume" VerticalAlignment="Center"/><ContentControl Grid.Row="3" Grid.Column="1" Content="{Binding VoiceVolumeHost.View}"/>
+      <TextBlock Grid.Row="4" Text="Text Speed" VerticalAlignment="Center"/><ContentControl Grid.Row="4" Grid.Column="1" Content="{Binding TextSpeedHost.View}"/>
+      <TextBlock Grid.Row="5" Text="Auto Delay" VerticalAlignment="Center"/><ContentControl Grid.Row="5" Grid.Column="1" Content="{Binding AutoDelayHost.View}"/>
+      <TextBlock Grid.Row="6" Text="Quick Delay" VerticalAlignment="Center"/><ContentControl Grid.Row="6" Grid.Column="1" Content="{Binding QuickDelayHost.View}"/>
+      <TextBlock Grid.Row="7" Text="Fullscreen" VerticalAlignment="Center"/><ContentControl Grid.Row="7" Grid.Column="1" Content="{Binding FullscreenHost.View}"/>
+      <ContentControl Grid.Row="8" Grid.ColumnSpan="2" HorizontalAlignment="Center" Content="{Binding BackButtonHost.View}"/>
+    </Grid>
+  </Border>
 </UserControl>

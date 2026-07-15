@@ -1,88 +1,57 @@
-using System;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using GalNet.Control.Abstraction.UI;
+using GalNet.Control.UI;
 using GalNet.Core.Services;
-using GalNet.Core.UI;
 
 namespace GalNet.Control.ViewModels;
 
-public class GameStartViewModel
+public sealed partial class GameStartViewModel : ObservableObject
 {
-    public string Title { get; }
-    public string[] Buttons { get; private set; }
-    public event Action? ButtonsChanged;
-
-    private readonly INavigationService _nav;
-    private readonly IGameFlowFactory _gameFlowFactory;
+    private readonly IGameScreenNavigator _navigator;
     private readonly IGameExitService? _exitService;
-    private readonly GameFlowOptions? _options;
     private readonly ISaveService? _saves;
-    public IColorPalette? Palette { get; }
 
-    public GameStartViewModel(
-        INavigationService nav,
-        IGameFlowFactory gameFlowFactory,
-        IGameExitService? exitService,
-        GameFlowOptions? options = null, ISaveService? saves = null, IColorPalette? palette = null)
+    public string Title { get; }
+    public WidgetHostViewModel ContinueHost { get; private set; } = null!;
+    public WidgetHostViewModel NewGameHost { get; private set; } = null!;
+    public WidgetHostViewModel LoadHost { get; private set; } = null!;
+    public WidgetHostViewModel GalleryHost { get; private set; } = null!;
+    public WidgetHostViewModel SettingsHost { get; private set; } = null!;
+    public WidgetHostViewModel QuitHost { get; private set; } = null!;
+    [ObservableProperty] private bool _isContinueVisible;
+    [ObservableProperty] private bool _showGallery = true;
+
+    public GameStartViewModel(IGameScreenNavigator navigator, IGameExitService? exitService, GameFlowOptions options, ISaveService? saves = null)
     {
-        Title = options?.Title ?? "GalNet Demo";
-        _saves = saves;
-        Palette = palette;
-        Buttons = ["New Game", "Load", "Gallery", "Settings", "Quit"];
-        _nav = nav;
-        _gameFlowFactory = gameFlowFactory;
-        _exitService = exitService;
-        _options = options;
+        Title = options.Title ?? "GalNet Demo";
+        _navigator = navigator; _exitService = exitService; _saves = saves;
         _ = RefreshContinueAsync();
     }
+
+    public void SetHosts(WidgetHostViewModel continueHost, WidgetHostViewModel newGameHost, WidgetHostViewModel loadHost,
+        WidgetHostViewModel galleryHost, WidgetHostViewModel settingsHost, WidgetHostViewModel quitHost, bool showGallery)
+    {
+        ContinueHost = continueHost; NewGameHost = newGameHost; LoadHost = loadHost;
+        GalleryHost = galleryHost; SettingsHost = settingsHost; QuitHost = quitHost; ShowGallery = showGallery;
+        Configure(ContinueHost, "Continue", ContinueCommand); Configure(NewGameHost, "New Game", NewGameCommand);
+        Configure(LoadHost, "Load", LoadCommand); Configure(GalleryHost, "Gallery", GalleryCommand);
+        Configure(SettingsHost, "Settings", SettingsCommand); Configure(QuitHost, "Quit", QuitCommand);
+    }
+
+    private static void Configure(WidgetHostViewModel host, string text, System.Windows.Input.ICommand command)
+    { var button = host.RequireWidget<GalNet.Core.Widget.IButtonWidget>(); button.Text = text; button.Command = command; }
+
+    [RelayCommand] private async Task ContinueAsync() { var snapshot = _saves is null ? null : await _saves.QuickLoadAsync(); if (snapshot is not null) await _navigator.NavigateAsync("game", snapshot); }
+    [RelayCommand] private Task NewGameAsync() => _navigator.NavigateAsync("game");
+    [RelayCommand] private Task LoadAsync() => _navigator.NavigateAsync("save-load");
+    [RelayCommand] private Task GalleryAsync() => _navigator.NavigateAsync("gallery");
+    [RelayCommand] private Task SettingsAsync() => _navigator.NavigateAsync("settings");
+    [RelayCommand] private void Quit() { if (_exitService is not null) _exitService.Exit(); else Environment.Exit(0); }
 
     private async Task RefreshContinueAsync()
     {
         if (_saves is null || !await _saves.HasQuickSaveAsync().ConfigureAwait(false)) return;
-        Buttons = ["Continue", "New Game", "Load", "Gallery", "Settings", "Quit"];
-        Avalonia.Threading.Dispatcher.UIThread.Post(() => ButtonsChanged?.Invoke());
-    }
-
-    public void OnButtonClicked(int index)
-    {
-        var button = Buttons[index];
-        switch (button)
-        {
-            case "Continue":
-                _ = ContinueAsync();
-                break;
-            case "New Game":
-            {
-                _nav.NavigateTo(_gameFlowFactory.CreateRun(_nav, _options));
-                break;
-            }
-            case "Load":
-                _nav.NavigateTo(_gameFlowFactory.CreateSaveLoad(_nav, _options, SaveLoadMode.Load, LoadAsync));
-                break;
-            case "Gallery":
-                _nav.NavigateTo(_gameFlowFactory.CreateGallery(_nav, _options));
-                break;
-            case "Settings":
-            {
-                _nav.NavigateTo(_gameFlowFactory.CreateSettings(_nav));
-                break;
-            }
-            case "Quit":
-                if (_exitService != null)
-                    _exitService.Exit();
-                else
-                    Environment.Exit(0);
-                break;
-        }
-    }
-
-    private async Task ContinueAsync()
-    {
-        var snapshot = _saves is null ? null : await _saves.QuickLoadAsync();
-        if (snapshot is not null) _nav.NavigateTo(_gameFlowFactory.CreateRun(_nav, _options with { RestoreSnapshot = snapshot }));
-    }
-
-    private async Task LoadAsync(int slot)
-    {
-        var snapshot = _saves is null ? null : await _saves.LoadAsync(slot);
-        if (snapshot is not null) _nav.NavigateTo(_gameFlowFactory.CreateRun(_nav, _options with { RestoreSnapshot = snapshot }));
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => IsContinueVisible = true);
     }
 }

@@ -5,6 +5,8 @@ using Avalonia.Threading;
 using GalNet.Control.Effect;
 using GalNet.Control.Screen.BuiltIn;
 using GalNet.Control.Transition;
+using GalNet.Control.Abstraction.UI;
+using GalNet.Control.ViewModels;
 using GalNet.Core.Settings;
 using GalNet.Core.View;
 using LibVLCSharp.Shared;
@@ -28,13 +30,14 @@ public class DefaultGameView : Grid, IGameView, IDisposable
     private readonly AudioController _audioController;
     private readonly VideoController _videoController;
     private readonly GameSettings _gameSettings;
+    private readonly GameScreenViewModel _screen;
     private TaskCompletionSource<int>? _clickTcs;
     private int _disposed;
     private bool _dialogueWasVisible;
     private bool _choiceWasVisible;
     private bool _indicatorWasVisible;
-    public bool AutoMode { get; private set; }
-    public bool QuickMode { get; private set; }
+    public bool AutoMode => _screen.AutoMode;
+    public bool QuickMode => _screen.QuickMode;
     public bool IsUiHidden { get; private set; }
     public event Action<string>? CommandRequested;
     public Task<byte[]> CapturePngAsync(bool includeUi)
@@ -104,13 +107,14 @@ public class DefaultGameView : Grid, IGameView, IDisposable
         _effectRegistry.Register(new FlashEffect());
     }
 
-    public DefaultGameView(GameSettings? settings = null)
+    public DefaultGameView(GameSettings settings, IWidgetFactory widgetFactory, WidgetBuildContext widgetContext, GameScreenViewModel screen)
     {
-        _gameSettings = settings ?? new GameSettings();
-        _gameScreen = new GameScreenView();
+        _gameSettings = settings;
+        _screen = screen;
+        _gameScreen = new GameScreenView { DataContext = screen };
         _registry = new DefaultGameViewRegistry(_gameScreen);
-        _typewriter = new DefaultTypewriterPresenter(_gameSettings, _gameScreen, _registry);
-        _choice = new DefaultChoicePresenter(_gameScreen, _registry);
+        _typewriter = new DefaultTypewriterPresenter(_gameSettings, _gameScreen, _registry, widgetFactory, widgetContext, screen);
+        _choice = new DefaultChoicePresenter(_registry, widgetFactory, widgetContext, screen);
 
         _libVlc = _vlcInitialized ? new LibVLC() : null!;
         _videoPlayer = _vlcInitialized ? new MediaPlayer(_libVlc) : null!;
@@ -120,22 +124,8 @@ public class DefaultGameView : Grid, IGameView, IDisposable
 
         Children.Add(_gameScreen);
 
-        _gameScreen.AutoButton.Click += (_, _) =>
-        {
-            AutoMode = _gameScreen.AutoButton.IsChecked == true;
-            if (AutoMode) { QuickMode = false; _gameScreen.QuickButton.IsChecked = false; }
-        };
-        _gameScreen.QuickButton.Click += (_, _) =>
-        {
-            QuickMode = _gameScreen.QuickButton.IsChecked == true;
-            if (QuickMode) { AutoMode = false; _gameScreen.AutoButton.IsChecked = false; }
-        };
-        _gameScreen.SaveButton.Click += (_, _) => CommandRequested?.Invoke("save");
-        _gameScreen.LoadButton.Click += (_, _) => CommandRequested?.Invoke("load");
-        _gameScreen.SettingsButton.Click += (_, _) => CommandRequested?.Invoke("settings");
-        _gameScreen.MenuButton.Click += (_, _) => CommandRequested?.Invoke("menu");
-        _gameScreen.ScreenshotButton.Click += (_, _) => CommandRequested?.Invoke("screenshot");
-        _gameScreen.HideButton.Click += (_, _) => HideUi();
+        _screen.CommandRequested += command => CommandRequested?.Invoke(command);
+        _screen.HideRequested += HideUi;
 
         PointerPressed += (_, e) =>
         {
@@ -221,7 +211,7 @@ public class DefaultGameView : Grid, IGameView, IDisposable
             }
         }
 
-        Avalonia.Threading.Dispatcher.UIThread.Post(() => _gameScreen.ClickIndicator.IsVisible = true);
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => _screen.IsClickIndicatorVisible = true);
         if (QuickMode || AutoMode)
         {
             var delay = QuickMode ? Math.Max(0.01f, _gameSettings.QuickAdvanceInterval) : Math.Max(0.01f, _gameSettings.AutoAdvanceInterval);
@@ -237,23 +227,23 @@ public class DefaultGameView : Grid, IGameView, IDisposable
     private void HideUi()
     {
         IsUiHidden = true;
-        _dialogueWasVisible = _gameScreen.DialogueHost.IsVisible;
-        _choiceWasVisible = _gameScreen.ChoiceHost.IsVisible;
-        _indicatorWasVisible = _gameScreen.ClickIndicator.IsVisible;
-        _gameScreen.DialogueHost.IsVisible = false;
-        _gameScreen.ChoiceHost.IsVisible = false;
-        _gameScreen.CommandBar.IsVisible = false;
-        _gameScreen.ClickIndicator.IsVisible = false;
+        _dialogueWasVisible = _screen.IsDialogueVisible;
+        _choiceWasVisible = _screen.IsChoiceVisible;
+        _indicatorWasVisible = _screen.IsClickIndicatorVisible;
+        _screen.IsDialogueVisible = false;
+        _screen.IsChoiceVisible = false;
+        _screen.IsCommandBarVisible = false;
+        _screen.IsClickIndicatorVisible = false;
         Focus();
     }
 
     private void RestoreUi()
     {
         IsUiHidden = false;
-        _gameScreen.CommandBar.IsVisible = true;
-        _gameScreen.DialogueHost.IsVisible = _dialogueWasVisible;
-        _gameScreen.ChoiceHost.IsVisible = _choiceWasVisible;
-        _gameScreen.ClickIndicator.IsVisible = _indicatorWasVisible;
+        _screen.IsCommandBarVisible = true;
+        _screen.IsDialogueVisible = _dialogueWasVisible;
+        _screen.IsChoiceVisible = _choiceWasVisible;
+        _screen.IsClickIndicatorVisible = _indicatorWasVisible;
     }
 
     public Task<int> WaitForChoiceAsync(string widgetInstanceId, string[] options, CancellationToken ct)

@@ -22,14 +22,10 @@ public partial class GameRunView : UserControl
         if (DataContext is GameRunViewModel vm)
         {
             _viewModel = vm;
-            vm.GameView.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch;
-            vm.GameView.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch;
-            GameViewHost.Content = vm.GameView;
             StartIfAttached();
         }
         else
         {
-            GameViewHost.Content = null;
             _viewModel = null;
         }
     }
@@ -48,7 +44,6 @@ public partial class GameRunView : UserControl
 
     protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     {
-        GameViewHost.Content = null;
         base.OnDetachedFromVisualTree(e);
     }
 }

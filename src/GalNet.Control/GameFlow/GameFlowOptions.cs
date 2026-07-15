@@ -2,6 +2,7 @@ using GalNet.Core.Runtime;
 using GalNet.Core.Services;
 using GalNet.Core.Gallery;
 using GalNet.Core.UI;
+using GalNet.Control.Abstraction.UI;
 
 namespace GalNet.Control.ViewModels;
 
@@ -18,7 +19,10 @@ public sealed record GameFlowOptions
 
     /// <summary>Content is always supplied by the embedding host; previews may build it in memory.</summary>
     public required IGameContentProvider GameContentProvider { get; init; }
-    public required IUiProjectProvider UiProjectProvider { get; init; }
+    /// <summary>Runtime UI data is supplied by the host; Control never loads project files.</summary>
+    public required IWidgetInstanceProvider Widgets { get; init; }
+    public required IScreenInstanceProvider Screens { get; init; }
+    public required IColorPalette Palette { get; init; }
     public ISaveService? SaveService { get; init; }
     public IGameProgressService? ProgressService { get; init; }
 

@@ -35,7 +35,6 @@ public sealed class EditorGameDataProvider : IGameContentProvider
             var file = Path.Combine(directory, $"{group.Id}.galgroup");
             if (File.Exists(file)) GalgroupLoader.LoadIntoGroup(group, file);
         }
-        var ui = project.UiProject.Current;
-        return Task.FromResult(new GameContent { Graph = graph, Ui = ui, AssetRoot = project.AssetsPath });
+        return Task.FromResult(new GameContent { Graph = graph, AssetRoot = project.AssetsPath });
     }
 }

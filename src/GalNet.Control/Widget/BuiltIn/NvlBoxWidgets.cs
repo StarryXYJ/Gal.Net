@@ -2,54 +2,41 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using GalNet.Core.Widget;
+using GalNet.Control.Abstraction.UI;
+using GalNet.Control.Widget;
+using Avalonia.Data;
 
 namespace GalNet.Control.Widget.BuiltIn;
 
-public sealed class DefaultNvlConfig
+public sealed class DefaultNvlConfig : PresentationConfig
 {
     public double BackgroundOpacity { get; set; } = 0.75;
-    public double FontSize { get; set; } = 15;
+    public DefaultNvlConfig() => FontSize = 15;
     public int MaxLines { get; set; } = 20;
 }
 
-public sealed class DefaultNvlTemplate : Border, INvlWidget
+public sealed class DefaultNvlTemplate : Border
 {
     public string Category => "NvlBox";
-
-    private readonly TextBlock _textBlock;
-
-    int INvlWidget.MaxLines
-    {
-        get => _textBlock.MaxLines;
-        set => _textBlock.MaxLines = value;
-    }
 
     public DefaultNvlTemplate(DefaultNvlConfig? config = null)
     {
         var cfg = config ?? new DefaultNvlConfig();
 
-        _textBlock = new TextBlock
+        var textBlock = new TextBlock
         {
-            FontSize = cfg.FontSize,
+            FontSize = cfg.FontSize ?? 15,
             TextWrapping = TextWrapping.Wrap,
-            Foreground = Brushes.White,
             MaxLines = cfg.MaxLines,
-            LineHeight = cfg.FontSize * 1.6,
+            LineHeight = (cfg.FontSize ?? 15) * 1.6,
             Margin = new Avalonia.Thickness(20),
         };
 
-        Background = new SolidColorBrush(
-            Color.FromArgb((byte)(cfg.BackgroundOpacity * 255), 0, 0, 0));
+        Bind(BackgroundProperty, PaletteBinding.Create(this, "Background1"));
+        textBlock.Bind(TextBlock.TextProperty, new Binding(nameof(NvlWidgetViewModel.DisplayText)));
+        textBlock.Bind(TextBlock.ForegroundProperty, PaletteBinding.Create(textBlock, "FontColor0"));
         HorizontalAlignment = HorizontalAlignment.Stretch;
         VerticalAlignment = VerticalAlignment.Stretch;
-        Child = _textBlock;
+        Child = textBlock;
     }
-
-    public void AppendText(string text, string? speaker = null)
-    {
-        var line = speaker != null ? $"{speaker}: {text}" : text;
-        _textBlock.Text += (_textBlock.Text.Length > 0 ? "\n" : "") + (line ?? "");
-    }
-
-    public void Clear() => _textBlock.Text = "";
 }

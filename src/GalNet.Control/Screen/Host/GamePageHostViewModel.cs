@@ -1,37 +1,17 @@
-using GalNet.Core.Services;
-using GalNet.Control.Views;
-using GalNet.Control.UI.Instances;
-using GalNet.Core.UI;
+using GalNet.Control.Abstraction.UI;
 
 namespace GalNet.Control.ViewModels;
 
-public class GamePageHostViewModel
+public sealed class GamePageHostViewModel
 {
-    public INavigationService InternalNav { get; }
-    private readonly GameFlowOptions? _options;
-    public IGameScreenRouter Router { get; }
+    public IGameScreenNavigator Navigator { get; }
 
-    public GamePageHostViewModel(INavigationService parentNav, IGameFlowFactory gameFlowFactory, IScreenTemplateRegistry templates, GameFlowOptions? options = null)
+    public GamePageHostViewModel(IServiceProvider services, IScreenTemplateRegistry templates, GameFlowOptions options)
     {
-        _options = options;
-        InternalNav = parentNav.CreateScope();
-        InternalNav.RegisterMap(typeof(GameStartViewModel), typeof(GameStartView));
-        InternalNav.RegisterMap(typeof(GameRunViewModel), typeof(GameRunView));
-        InternalNav.RegisterMap(typeof(SettingsViewModel), typeof(SettingsView));
-        InternalNav.RegisterMap(typeof(SaveLoadViewModel), typeof(SaveLoadView));
-        InternalNav.RegisterMap(typeof(GalleryViewModel), typeof(GalleryView));
-        if (options is null) throw new ArgumentNullException(nameof(options));
-        Router = new GalNet.Control.UI.GameScreenRouter(options.UiProjectProvider, (screen, parameter) =>
-        {
-            if (!templates.TryGet(screen.TemplateId, out var template) || template is not IScreenBuilderTemplate builder)
-                throw new InvalidOperationException($"Unsupported screen template '{screen.TemplateId}'.");
-            return builder.Build(screen, new ScreenBuildContext(InternalNav, gameFlowFactory, options, parameter));
-        });
-        Router.CurrentScreenChanged += screen =>
-        {
-            InternalNav.Clear();
-            if (screen is not null) InternalNav.NavigateTo(screen);
-        };
-        _ = Router.NavigateAsync("title");
+        GalNet.Control.UI.GameScreenNavigator? navigator = null;
+        navigator = new GalNet.Control.UI.GameScreenNavigator(options.Screens, templates,
+            parameter => new ScreenBuildContext(services, options.Palette, options.Widgets, options.Screens, navigator!, parameter, options));
+        Navigator = navigator;
+        _ = Navigator.NavigateAsync("title");
     }
 }

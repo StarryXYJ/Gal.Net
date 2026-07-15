@@ -1,0 +1,6 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:ui="clr-namespace:GalNet.Control.Abstraction.UI;assembly=GalNet.Control.Abstraction" xmlns:vm="clr-namespace:GalNet.Control.Widget" x:Class="GalNet.Control.Widget.BuiltIn.HorizontalChoiceTemplate" x:DataType="vm:ChoicePanelWidgetViewModel">
+  <ItemsControl ItemsSource="{Binding Options}" Tag="{Binding SelectCommand}" HorizontalAlignment="Center" VerticalAlignment="Bottom">
+    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="12"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+    <ItemsControl.DataTemplates><DataTemplate x:DataType="x:String"><Button Content="{Binding}" Command="{Binding $parent[ItemsControl].Tag}" CommandParameter="{Binding}" MinWidth="160" MinHeight="50" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Background="{ui:PaletteBrush Background1}" Foreground="{ui:PaletteBrush FontColor0}"/></DataTemplate></ItemsControl.DataTemplates>
+  </ItemsControl>
+</UserControl>

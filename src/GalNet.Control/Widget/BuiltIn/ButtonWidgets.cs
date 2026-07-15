@@ -1,62 +1,57 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
-using GalNet.Core.Widget;
+using GalNet.Control.Abstraction.UI;
+using GalNet.Control.Widget;
+using Avalonia.Data;
 
 namespace GalNet.Control.Widget.BuiltIn;
 
-public sealed class DefaultButtonConfig
+public sealed class DefaultButtonConfig : PresentationConfig
 {
-    public double FontSize { get; set; } = 16;
-    public double Width { get; set; } = 160;
-    public double Height { get; set; } = 40;
+    public DefaultButtonConfig() { FontSize = 16; Width = 160; Height = 40; }
     public string BackgroundColor { get; set; } = "#444";
 }
 
-public sealed class DefaultButtonTemplate : Button, IButtonWidget
+public sealed class DefaultButtonTemplate : Button
 {
-    public string Category => "Button";
-
-    public event Action? Clicked;
-
     public DefaultButtonTemplate(DefaultButtonConfig? config = null)
     {
         var cfg = config ?? new DefaultButtonConfig();
-        FontSize = cfg.FontSize;
-        MinWidth = cfg.Width;
-        MinHeight = cfg.Height;
-        Background = Brush.Parse(cfg.BackgroundColor);
-        Foreground = Brushes.White;
+        FontSize = cfg.FontSize ?? 16;
+        MinWidth = cfg.Width ?? 160;
+        MinHeight = cfg.Height ?? 40;
+        HorizontalContentAlignment = HorizontalAlignment.Center;
+        VerticalContentAlignment = VerticalAlignment.Center;
+        Bind(BackgroundProperty, PaletteBinding.Create(this, "Background1"));
+        Bind(ForegroundProperty, PaletteBinding.Create(this, "FontColor0"));
 
-        Click += (_, _) => Clicked?.Invoke();
+        Bind(ContentProperty, new Binding(nameof(ButtonWidgetViewModel.Text)));
+        Bind(IsEnabledProperty, new Binding(nameof(ButtonWidgetViewModel.IsEnabled)));
+        Bind(CommandProperty, new Binding(nameof(ButtonWidgetViewModel.Command)));
     }
-
-    public void SetText(string text) => Content = text;
 }
 
-public sealed class LargeButtonConfig
+public sealed class LargeButtonConfig : PresentationConfig
 {
-    public double FontSize { get; set; } = 20;
-    public double Width { get; set; } = 300;
-    public double Height { get; set; } = 60;
+    public LargeButtonConfig() { FontSize = 20; Width = 300; Height = 60; }
 }
 
-public sealed class LargeButtonTemplate : Button, IButtonWidget
+public sealed class LargeButtonTemplate : Button
 {
-    public string Category => "Button";
-
-    public event Action? Clicked;
-
     public LargeButtonTemplate(LargeButtonConfig? config = null)
     {
         var cfg = config ?? new LargeButtonConfig();
-        FontSize = cfg.FontSize;
-        MinWidth = cfg.Width;
-        MinHeight = cfg.Height;
-        Foreground = Brushes.White;
+        FontSize = cfg.FontSize ?? 20;
+        MinWidth = cfg.Width ?? 300;
+        MinHeight = cfg.Height ?? 60;
+        HorizontalContentAlignment = HorizontalAlignment.Center;
+        VerticalContentAlignment = VerticalAlignment.Center;
+        Bind(BackgroundProperty, PaletteBinding.Create(this, "HighlightBackground"));
+        Bind(ForegroundProperty, PaletteBinding.Create(this, "FontHighlightColor"));
 
-        Click += (_, _) => Clicked?.Invoke();
+        Bind(ContentProperty, new Binding(nameof(ButtonWidgetViewModel.Text)));
+        Bind(IsEnabledProperty, new Binding(nameof(ButtonWidgetViewModel.IsEnabled)));
+        Bind(CommandProperty, new Binding(nameof(ButtonWidgetViewModel.Command)));
     }
-
-    public void SetText(string text) => Content = text;
 }

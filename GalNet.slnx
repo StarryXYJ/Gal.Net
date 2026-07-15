@@ -22,6 +22,7 @@
   </Folder>
   <Folder Name="/src/Shared/">
     <Project Path="src/GalNet.Assets/GalNet.Assets.csproj" />
+    <Project Path="src/GalNet.Control.Abstraction/GalNet.Control.Abstraction.csproj" />
     <Project Path="src/GalNet.Control/GalNet.Control.csproj" />
     <Project Path="src/GalNet.Core/GalNet.Core.csproj" />
     <Project Path="src/GalNet.Runtime/GalNet.Runtime.csproj" />

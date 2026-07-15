@@ -1,7 +1,27 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="https://irihi.tech/ursa" x:Class="GalNet.Control.Views.SaveLoadView" Background="#111111">
-  <Grid RowDefinitions="Auto,*,Auto" Margin="28">
-    <TextBlock Name="TitleBlock" FontSize="30" Foreground="White" />
-    <ScrollViewer Grid.Row="1"><UniformGrid Name="SlotPanel" Columns="4" Rows="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" /></ScrollViewer>
-    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12"><u:Pagination Name="Pagination" PageSize="12"/><Button Name="BackButton" Content="Back"/></StackPanel>
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:ui="clr-namespace:GalNet.Control.Abstraction.UI;assembly=GalNet.Control.Abstraction" xmlns:vm="clr-namespace:GalNet.Control.ViewModels" xmlns:host="clr-namespace:GalNet.Control.UI" x:Class="GalNet.Control.Views.SaveLoadView" x:DataType="vm:SaveLoadViewModel" Background="{ui:PaletteBrush Background0}">
+  <UserControl.DataTemplates>
+    <DataTemplate DataType="host:WidgetHostViewModel" x:DataType="host:WidgetHostViewModel">
+      <ContentControl HorizontalAlignment="Stretch" VerticalAlignment="Stretch" 
+                      Content="{Binding View}"/>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+  <Grid RowDefinitions="Auto,*,Auto" Margin="36" RowSpacing="20">
+    <TextBlock Text="{Binding Title}" 
+               FontSize="32" FontWeight="SemiBold" Foreground="{ui:PaletteBrush FontColor0}"/>
+    <ScrollViewer Grid.Row="1">
+      <ItemsControl ItemsSource="{Binding SlotHosts}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <UniformGrid Columns="4" Rows="3"/>
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+      </ItemsControl>
+    </ScrollViewer>
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="16">
+      <ContentControl Content="{Binding PreviousButtonHost.View}"/>
+      <TextBlock Text="{Binding PageLabel}" VerticalAlignment="Center"/>
+      <ContentControl Content="{Binding NextButtonHost.View}"/>
+      <ContentControl Content="{Binding BackButtonHost.View}"/>
+    </StackPanel>
   </Grid>
 </UserControl>

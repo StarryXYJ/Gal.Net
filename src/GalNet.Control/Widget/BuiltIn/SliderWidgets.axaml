@@ -1,0 +1,7 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:ui="clr-namespace:GalNet.Control.Abstraction.UI;assembly=GalNet.Control.Abstraction" xmlns:vm="clr-namespace:GalNet.Control.Widget" x:Class="GalNet.Control.Widget.BuiltIn.DefaultSliderTemplate" x:DataType="vm:SliderWidgetViewModel">
+  <Grid ColumnDefinitions="Auto,*,60" ColumnSpacing="8" VerticalAlignment="Center">
+    <TextBlock Text="{Binding Label}" Width="100" VerticalAlignment="Center" Foreground="{ui:PaletteBrush FontColor0}"/>
+    <Slider Grid.Column="1" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value, Mode=TwoWay}" SmallChange="{Binding Step}" Foreground="{ui:PaletteBrush PrimaryColor}" Background="{ui:PaletteBrush Background2}"/>
+    <TextBlock Grid.Column="2" Text="{Binding DisplayValue}" IsVisible="{Binding ShowValue}" VerticalAlignment="Center" TextAlignment="Right" Foreground="{ui:PaletteBrush FontColor1}"/>
+  </Grid>
+</UserControl>

@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.Input;
 using GalNet.Control.ViewModels;
 using GalNet.Core.Runtime;
 using GalNet.Core.Services;
+using GalNet.Control.Abstraction.UI;
 using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
@@ -97,7 +98,9 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
         {
             Title = project.Name,
             GameContentProvider = _projectService.Current.Services.GetRequiredService<IGameContentProvider>(),
-            UiProjectProvider = project.UiProject,
+            Widgets = (IWidgetInstanceProvider)project.UiProject,
+            Screens = (IScreenInstanceProvider)project.UiProject,
+            Palette = project.Palette,
             SaveService = new FileSaveService(Path.Combine(project.EditorStateDirectory, "player"), project.Settings.SaveSlotCount),
             ProgressService = new FileGameProgressService(Path.Combine(project.EditorStateDirectory, "player")),
             VariableService = _variableService,

@@ -9,8 +9,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
     <ProjectReference Include="..\..\src\GalNet.Control\GalNet.Control.csproj" />
     <ProjectReference Include="..\..\src\GalNet.Core\GalNet.Core.csproj" />
+    <ProjectReference Include="..\..\src\GalNet.Editor.Shared\GalNet.Editor.Shared.csproj" />
+    <ProjectReference Include="..\..\src\GalNet.Control.Abstraction\GalNet.Control.Abstraction.csproj" />
   </ItemGroup>
 
   <ItemGroup>

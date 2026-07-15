@@ -1,4 +1,3 @@
-using GalNet.Core.UI;
 using GameGraph = GalNet.Core.Graph.Graph;
 
 namespace GalNet.Core.Services;
@@ -12,6 +11,5 @@ public interface IGameContentProvider
 public sealed class GameContent
 {
     public required GameGraph Graph { get; init; }
-    public required UiProject Ui { get; init; }
     public string? AssetRoot { get; init; }
 }

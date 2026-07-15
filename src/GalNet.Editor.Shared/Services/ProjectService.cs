@@ -10,7 +10,7 @@ using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
-using GalNet.Control.UI;
+using GalNet.Editor.Shared.UI;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -59,7 +59,8 @@ public sealed class ProjectService : IProjectService
         var name = Path.GetFileName(projectPath);
         var id = name;
 
-        var program = new GalProject(id, name, projectPath, settings, editorState, new FileUiProjectProvider(projectPath), scope);
+        var ui = new FileUiProjectProvider(projectPath);
+        var program = new GalProject(id, name, projectPath, settings, editorState, ui, new ProjectColorPalette(ui), scope);
 
         _current = program;
 
@@ -96,7 +97,8 @@ public sealed class ProjectService : IProjectService
 
         var scope = _globalServices.CreateScope();
         var editorState = await LoadEditorProjectStateAsync(projectPath);
-        var program = new GalProject(name, name, projectPath, settings, editorState, new FileUiProjectProvider(projectPath), scope);
+        var ui = new FileUiProjectProvider(projectPath);
+        var program = new GalProject(name, name, projectPath, settings, editorState, ui, new ProjectColorPalette(ui), scope);
 
         _current = program;
 

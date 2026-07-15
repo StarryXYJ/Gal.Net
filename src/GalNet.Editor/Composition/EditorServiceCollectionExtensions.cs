@@ -15,6 +15,8 @@ using GalNet.Editor.ViewModels;
 using GalNet.Editor.Inspector.ViewModels;
 using GalNet.Editor.Inspector.Views;
 using GalNet.Control.UI;
+using GalNet.Control.Widget.BuiltIn;
+using GalNet.Control.Abstraction.UI;
 using GalNet.Core.UI;
 using GalNet.Editor.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -148,19 +150,24 @@ public static class EditorServiceCollectionExtensions
 
     private static IServiceCollection AddGamePreviewServices(this IServiceCollection services)
     {
-        services.AddSingleton<TemplateRegistry>(_ =>
-        {
-            var registry = new TemplateRegistry();
-            BuiltInUiTemplates.Register(registry);
-            return registry;
-        });
+        services.AddSingleton<IWidgetTemplate, ButtonWidgetTemplate>();
+        services.AddSingleton<IWidgetTemplate, TitleButtonWidgetTemplate>();
+        services.AddSingleton<IWidgetTemplate, DialogueWidgetTemplate>();
+        services.AddSingleton<IWidgetTemplate, NvlWidgetTemplate>();
+        services.AddSingleton<IWidgetTemplate, ChoiceWidgetTemplate>();
+        services.AddSingleton<IWidgetTemplate, SliderWidgetTemplate>();
+        services.AddSingleton<IWidgetTemplate, ToggleWidgetTemplate>();
+        services.AddSingleton<IWidgetTemplate, CommandToggleWidgetTemplate>();
+        services.AddSingleton<IWidgetTemplate, SaveSlotWidgetTemplate>();
+        services.AddSingleton<IScreenTemplate, TitleScreenTemplate>();
+        services.AddSingleton<IScreenTemplate, GameScreenTemplate>();
+        services.AddSingleton<IScreenTemplate, SettingsScreenTemplate>();
+        services.AddSingleton<IScreenTemplate, SaveLoadScreenTemplate>();
+        services.AddSingleton<IScreenTemplate, GalleryScreenTemplate>();
+        services.AddSingleton<TemplateRegistry>();
         services.AddSingleton<IWidgetTemplateRegistry>(sp => sp.GetRequiredService<TemplateRegistry>());
         services.AddSingleton<IScreenTemplateRegistry>(sp => sp.GetRequiredService<TemplateRegistry>());
-        services.AddTransient<DefaultGameView>(sp =>
-        {
-            var settings = sp.GetRequiredService<ISettingsService>();
-            return new DefaultGameView(settings.GetSnapshot());
-        });
+        services.AddSingleton<IWidgetFactory, WidgetFactory>();
 
         return services;
     }
