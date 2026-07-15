@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -17,6 +18,7 @@ using GalNet.Editor.Services;
 using GalNet.Editor.Shared.Services;
 using GalNet.Control.Services;
 using GalNet.Control.UI;
+using GalNet.Core.Assets;
 using Serilog;
 using Serilog.Context;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,9 +34,12 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
     private readonly EditorVariableService _variableService;
     private readonly IVariableDefinitionService _variableDefinitions;
     private readonly IEditorDocumentService _documentService;
+    private readonly IAssetManager _assets;
 
     private IGameRuntime? _runtime;
     private GameRunViewModel? _activeRun;
+    private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
+    private IDisposable? _projectClosingRegistration;
     private bool _disposed;
 
     [ObservableProperty]
@@ -64,7 +69,7 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
         IProjectService projectService,
         EditorVariableService variableService,
         IVariableDefinitionService variableDefinitions,
-        IEditorDocumentService documentService)
+        IEditorDocumentService documentService, IAssetManager assets)
     {
         _navigation = navigation;
         _gameFlowFactory = gameFlowFactory;
@@ -73,7 +78,9 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
         _variableService = variableService;
         _variableDefinitions = variableDefinitions;
         _documentService = documentService;
+        _assets = assets;
         _workspace.ActivePreview = this;
+        _projectClosingRegistration = _projectService.Current?.RegisterClosingCallback(DisposePreviewForProjectCloseAsync);
 
         _projectService.CurrentChanged += OnProjectChanged;
         _variableService.VariableChanged += OnVariableServiceChanged;
@@ -85,35 +92,43 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
     [RelayCommand]
     private async Task RestartPreviewAsync()
     {
-        if (_projectService.Current is not { } project)
+        await _lifecycleGate.WaitAsync();
+        try
         {
-            StatusText = "No project";
-            return;
+            if (_disposed || _projectService.Current is not { } project)
+            {
+                StatusText = "No project";
+                return;
+            }
+
+            StatusText = "Restarting...";
+            await StopPreviewAsync();
+            if (_disposed || !ReferenceEquals(_projectService.Current, project))
+                return;
+
+            using var gameLogContext = LogContext.PushProperty("LogChannel", "Game");
+            var options = new GameFlowOptions
+            {
+                Title = project.Name,
+                GameContentProvider = project.Services.GetRequiredService<IGameContentProvider>(),
+                Ui = project.UiProject.Current,
+                AssetManager = _assets,
+                SaveService = new FileSaveService(Path.Combine(project.EditorStateDirectory, "player"), project.Settings.SaveSlotCount),
+                ProgressService = new FileGameProgressService(Path.Combine(project.EditorStateDirectory, "player")),
+                VariableService = _variableService,
+                RuntimeCreated = OnRuntimeCreated,
+                GameStarted = OnGameStarted,
+                GameEnded = OnGameEnded,
+                GameFailed = OnGameFailed,
+                RunCreated = run => _activeRun = run
+            };
+
+            PageHostVm = _gameFlowFactory.CreatePageHost(_navigation, options);
+            ReloadEditors();
+            OutputLines.Insert(0, $"Preview restarted at {DateTime.Now:T}");
+            StatusText = "Ready";
         }
-
-        StatusText = "Restarting...";
-        await StopPreviewAsync();
-
-        using var gameLogContext = LogContext.PushProperty("LogChannel", "Game");
-        var options = new GameFlowOptions
-        {
-            Title = project.Name,
-            GameContentProvider = _projectService.Current.Services.GetRequiredService<IGameContentProvider>(),
-            Ui = project.UiProject.Current,
-            SaveService = new FileSaveService(Path.Combine(project.EditorStateDirectory, "player"), project.Settings.SaveSlotCount),
-            ProgressService = new FileGameProgressService(Path.Combine(project.EditorStateDirectory, "player")),
-            VariableService = _variableService,
-            RuntimeCreated = OnRuntimeCreated,
-            GameStarted = OnGameStarted,
-            GameEnded = OnGameEnded,
-            GameFailed = OnGameFailed,
-            RunCreated = run => _activeRun = run
-        };
-
-        PageHostVm = _gameFlowFactory.CreatePageHost(_navigation, options);
-        ReloadEditors();
-        OutputLines.Insert(0, $"Preview restarted at {DateTime.Now:T}");
-        StatusText = "Ready";
+        finally { _lifecycleGate.Release(); }
     }
 
     public Task RestartAsync() => RestartPreviewAsync();
@@ -297,12 +312,7 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
 
     public async ValueTask DisposeAsync()
     {
-        if (_disposed) return;
-        _disposed = true;
-        _projectService.CurrentChanged -= OnProjectChanged;
-        _variableService.VariableChanged -= OnVariableServiceChanged;
-        if (ReferenceEquals(_workspace.ActivePreview, this)) _workspace.ActivePreview = null;
-        await StopPreviewAsync();
+        await DisposePreviewForProjectCloseAsync();
     }
 
     /// <summary>
@@ -311,12 +321,40 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
     /// </summary>
     public void Dispose() => _ = DisposeAsync();
 
+    private async Task DisposePreviewForProjectCloseAsync()
+    {
+        await _lifecycleGate.WaitAsync();
+        try
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _projectClosingRegistration?.Dispose();
+            _projectClosingRegistration = null;
+            _projectService.CurrentChanged -= OnProjectChanged;
+            _variableService.VariableChanged -= OnVariableServiceChanged;
+            if (ReferenceEquals(_workspace.ActivePreview, this)) _workspace.ActivePreview = null;
+            await StopPreviewAsync();
+        }
+        finally { _lifecycleGate.Release(); }
+    }
+
     private void OnProjectChanged(GalProject? project)
     {
         OnPropertyChanged(nameof(DesignWidth));
         OnPropertyChanged(nameof(DesignHeight));
         if (!_disposed)
-            _ = StopPreviewAsync();
+            _ = StopPreviewForProjectChangeAsync();
+    }
+
+    private async Task StopPreviewForProjectChangeAsync()
+    {
+        await _lifecycleGate.WaitAsync();
+        try
+        {
+            if (!_disposed)
+                await StopPreviewAsync();
+        }
+        finally { _lifecycleGate.Release(); }
     }
 
     private static Variable CloneVariable(Variable variable, string name)

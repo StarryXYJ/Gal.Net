@@ -122,11 +122,26 @@ public sealed class ProjectService : IProjectService
         // Scoped services can raise notifications while being disposed. Clear the
         // current reference first so those notifications cannot resolve a disposed scope.
         _current = null;
-        closingProject.Dispose();
-
-        CurrentChanged?.Invoke(null);
-
-        await Task.CompletedTask;
+        // The workspace still owns Dock/Inspector event handlers. Let it clear its
+        // selection while the project scope remains valid; otherwise the inspector
+        // can attempt to resolve a view model from an already disposed provider.
+        try
+        {
+            CurrentChanged?.Invoke(null);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "A project-change listener failed while closing {Name}", closingProject.Name);
+        }
+        try
+        {
+            await closingProject.DisposeAsync();
+        }
+        catch (Exception ex)
+        {
+            // Scope disposal is guaranteed by GalProject even when preview shutdown fails.
+            Log.Warning(ex, "Project cleanup reported an error while closing {Name}", closingProject.Name);
+        }
     }
 
     public Task SaveAsync()

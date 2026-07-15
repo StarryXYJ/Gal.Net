@@ -13,6 +13,7 @@
                     HorizontalContentAlignment="Stretch"
                     VerticalContentAlignment="Stretch">
         <ContentControl.DataTemplates>
+            <DataTemplate DataType="vm:TextMenuTitleViewModel"><views:TextMenuTitleView /></DataTemplate>
             <DataTemplate DataType="vm:GameStartViewModel"><views:GameStartView /></DataTemplate>
             <DataTemplate DataType="vm:GameRunViewModel"><views:GameRunView /></DataTemplate>
             <DataTemplate DataType="vm:SettingsViewModel"><views:SettingsView /></DataTemplate>

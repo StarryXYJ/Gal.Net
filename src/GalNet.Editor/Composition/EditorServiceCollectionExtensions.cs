@@ -16,6 +16,7 @@ using GalNet.Editor.Inspector.ViewModels;
 using GalNet.Editor.Inspector.Views;
 using GalNet.Control.UI;
 using GalNet.Control.Abstraction.UI;
+using GalNet.Core.Assets;
 using GalNet.Core.UI;
 using GalNet.Editor.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -66,6 +67,9 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<EditorDockFactory>();
         services.AddSingleton<DockLayoutSerializer>();
         services.AddSingleton<IAssetCatalogService, AssetCatalogService>();
+        services.AddSingleton<EditorAssetManager>();
+        services.AddSingleton<IAssetManager>(sp => sp.GetRequiredService<EditorAssetManager>());
+        services.AddSingleton<IUiPresetRegistry, BuiltInUiPresetRegistry>();
 
         return services;
     }

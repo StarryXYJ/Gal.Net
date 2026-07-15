@@ -50,6 +50,40 @@ public sealed class AssetManager : IAssetManager
             return _cache.ContainsKey(assetId);
     }
 
+    public Task<IGameFile?> GetFileAsync(string assetId, CancellationToken ct = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return string.IsNullOrWhiteSpace(assetId) ? Task.FromResult<IGameFile?>(null) : FindInProvidersAsync(assetId, findById: true, ct);
+    }
+
+    public async Task<IReadOnlyList<IGameFile>> GetFilesAsync(ResourceType? type = null, CancellationToken ct = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        List<IAssetProvider> providers;
+        lock (_lock) providers = _providers.ToList();
+        var files = new Dictionary<string, IGameFile>(StringComparer.OrdinalIgnoreCase);
+        foreach (var provider in providers)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (!provider.Exists("assets")) continue;
+            IArchive? archive = null;
+            try
+            {
+                archive = await provider.OpenArchiveAsync("assets", ct);
+                foreach (var id in archive.AssetIds)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    if (files.ContainsKey(id)) continue;
+                    var file = archive.GetAsset(id);
+                    if (file is not null && (type is null || file.Type == type)) files[id] = file;
+                }
+            }
+            catch { /* A failed provider must not make the UI resource browser unusable. */ }
+            finally { archive?.Dispose(); }
+        }
+        return files.Values.OrderBy(x => x.Path, StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+
     // ── 按 ID 加载 ──
 
     public async Task<T?> LoadAsync<T>(string assetId, CancellationToken ct = default) where T : class

@@ -37,8 +37,8 @@ public class CloseProjectCommand : AsyncEditorCommand
         {
             if (_projectService.Current is null)
                 return;
-            _navigation.ResetTo<StartupPageViewModel>();
             await _projectService.CloseAsync();
+            _navigation.ResetTo<StartupPageViewModel>();
         }
         catch (Exception ex)
         {

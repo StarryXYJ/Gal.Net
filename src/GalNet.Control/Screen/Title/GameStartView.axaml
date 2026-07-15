@@ -1,20 +1,23 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="clr-namespace:GalNet.Control.ViewModels"
-             x:Class="GalNet.Control.Views.GameStartView"
-             x:DataType="vm:GameStartViewModel">
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:GalNet.Control.ViewModels" x:Class="GalNet.Control.Views.GameStartView" x:DataType="vm:GameStartViewModel">
   <Grid>
-    <Grid.Background><SolidColorBrush Color="{Binding Configuration.BackgroundColor}" /></Grid.Background>
-    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{Binding Configuration.MenuSpacing}">
-      <TextBlock Text="{Binding Title}" FontSize="{Binding Configuration.TitleFontSize}" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,14">
-        <TextBlock.Foreground><SolidColorBrush Color="{Binding Configuration.TitleColor}" /></TextBlock.Foreground>
-      </TextBlock>
-      <Button Content="New Game" Command="{Binding NewGameCommand}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}"><Button.Background><SolidColorBrush Color="{Binding Configuration.ButtonColor}" /></Button.Background><Button.Foreground><SolidColorBrush Color="{Binding Configuration.ButtonTextColor}" /></Button.Foreground></Button>
-      <Button Content="Continue" Command="{Binding ContinueCommand}" IsVisible="{Binding IsContinueVisible}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}"><Button.Background><SolidColorBrush Color="{Binding Configuration.ButtonColor}" /></Button.Background><Button.Foreground><SolidColorBrush Color="{Binding Configuration.ButtonTextColor}" /></Button.Foreground></Button>
-      <Button Content="Load" Command="{Binding LoadCommand}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}"><Button.Background><SolidColorBrush Color="{Binding Configuration.ButtonColor}" /></Button.Background><Button.Foreground><SolidColorBrush Color="{Binding Configuration.ButtonTextColor}" /></Button.Foreground></Button>
-      <Button Content="Gallery" Command="{Binding GalleryCommand}" IsVisible="{Binding ShowGallery}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}"><Button.Background><SolidColorBrush Color="{Binding Configuration.ButtonColor}" /></Button.Background><Button.Foreground><SolidColorBrush Color="{Binding Configuration.ButtonTextColor}" /></Button.Foreground></Button>
-      <Button Content="Settings" Command="{Binding SettingsCommand}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}"><Button.Background><SolidColorBrush Color="{Binding Configuration.ButtonColor}" /></Button.Background><Button.Foreground><SolidColorBrush Color="{Binding Configuration.ButtonTextColor}" /></Button.Foreground></Button>
-      <Button Content="Quit" Command="{Binding QuitCommand}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}"><Button.Background><SolidColorBrush Color="{Binding Configuration.ButtonColor}" /></Button.Background><Button.Foreground><SolidColorBrush Color="{Binding Configuration.ButtonTextColor}" /></Button.Foreground></Button>
+    <Border Background="{Binding BackgroundBrush}" />
+    <Image Source="{Binding BackgroundImageSource}" Stretch="{Binding BackgroundStretch}" IsVisible="{Binding HasBackgroundImage}" />
+    <Grid.Resources>
+      <ControlTheme x:Key="TitleButtonTheme" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Background" Value="{Binding MenuItemBackgroundBrush}" /><Setter Property="Foreground" Value="{Binding MenuTextBrush}" />
+        <Setter Property="FontSize" Value="{Binding Configuration.MenuFontSize}" /><Setter Property="HorizontalContentAlignment" Value="{Binding MenuHorizontalAlignment}" />
+        <Style Selector="^:pointerover"><Setter Property="Background" Value="{Binding MenuItemHoverBackgroundBrush}" /></Style>
+      </ControlTheme>
+    </Grid.Resources>
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="{Binding MenuHorizontalAlignment}" Margin="{Binding ContentMargin}" Spacing="{Binding Configuration.MenuSpacing}">
+      <TextBlock Text="{Binding Title}" FontSize="{Binding Configuration.TitleFontSize}" Foreground="{Binding TitleBrush}" HorizontalAlignment="{Binding MenuHorizontalAlignment}" TextWrapping="Wrap" TextAlignment="{Binding MenuTextAlignment}" Margin="{Binding TitleMenuMargin}" />
+      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Theme="{StaticResource TitleButtonTheme}" Content="New Game" Command="{Binding NewGameCommand}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}" />
+      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Theme="{StaticResource TitleButtonTheme}" Content="Continue" Command="{Binding ContinueCommand}" IsVisible="{Binding IsContinueVisible}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}" />
+      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Theme="{StaticResource TitleButtonTheme}" Content="Load" Command="{Binding LoadCommand}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}" />
+      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Theme="{StaticResource TitleButtonTheme}" Content="Gallery" Command="{Binding GalleryCommand}" IsVisible="{Binding ShowGallery}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}" />
+      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Theme="{StaticResource TitleButtonTheme}" Content="Settings" Command="{Binding SettingsCommand}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}" />
+      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Theme="{StaticResource TitleButtonTheme}" Content="Quit" Command="{Binding QuitCommand}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}" />
     </StackPanel>
   </Grid>
 </UserControl>

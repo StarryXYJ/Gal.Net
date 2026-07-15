@@ -23,6 +23,7 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
     private readonly IEditorLocalizationService _localization;
     private AssetEntry? _clipboardEntry;
     private bool _isCut;
+    private bool _disposed;
     private CancellationTokenSource? _thumbnailCancellation;
     [ObservableProperty] private string _currentDirectory = "";
     [ObservableProperty] private string _pathText = "Assets";
@@ -211,9 +212,15 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         var slash = CurrentDirectory.LastIndexOf('/');
         return slash < 0 ? "" : CurrentDirectory[..slash];
     }
-    private void OnCatalogChanged() => Avalonia.Threading.Dispatcher.UIThread.Post(LoadEntries);
+    private void OnCatalogChanged() => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+    {
+        if (!_disposed)
+            LoadEntries();
+    });
     private void LoadEntries()
     {
+        if (_disposed)
+            return;
         SetDropTarget(null);
         CancelRename();
         _thumbnailCancellation?.Cancel();
@@ -241,6 +248,9 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
     }
     public void Dispose()
     {
+        if (_disposed)
+            return;
+        _disposed = true;
         _catalog.Changed -= OnCatalogChanged;
         _thumbnailCancellation?.Cancel();
         _thumbnailCancellation?.Dispose();

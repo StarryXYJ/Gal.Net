@@ -80,6 +80,34 @@ public sealed class AssetManagerTests
     }
 
     [Test]
+    public async Task GetFileAsync_FindsMetadataWithoutAddingCacheEntry()
+    {
+        using var manager = new AssetManager();
+        manager.RegisterProvider(new MockProvider("test", new GameFile("id-image", "bg/title.png", ResourceType.Sprite, "data"u8.ToArray())));
+
+        var file = await manager.GetFileAsync("id-image");
+
+        Assert.That(file, Is.Not.Null);
+        Assert.That(file!.Path, Is.EqualTo("bg/title.png"));
+        Assert.That(manager.CachedCount, Is.EqualTo(0));
+    }
+
+    [Test]
+    public async Task GetFilesAsync_FiltersByResourceTypeAndDeduplicatesIds()
+    {
+        using var manager = new AssetManager();
+        manager.RegisterProvider(new MockProvider("first", new GameFile("id-image", "bg/first.png", ResourceType.Sprite, "data"u8.ToArray())));
+        manager.RegisterProvider(new MockProvider("second", new GameFile("id-image", "bg/second.png", ResourceType.Sprite, "other"u8.ToArray())));
+
+        var images = await manager.GetFilesAsync(ResourceType.Sprite);
+        var audio = await manager.GetFilesAsync(ResourceType.Audio);
+
+        Assert.That(images, Has.Count.EqualTo(1));
+        Assert.That(images[0].Path, Is.EqualTo("bg/first.png"));
+        Assert.That(audio, Is.Empty);
+    }
+
+    [Test]
     public async Task LoadAsync_AsString_ReturnsUtf8String()
     {
         using var manager = new AssetManager();

@@ -2,6 +2,7 @@ using GalNet.Core.Runtime;
 using GalNet.Core.Services;
 using GalNet.Core.Gallery;
 using GalNet.Core.UI;
+using GalNet.Core.Assets;
 
 namespace GalNet.Control.ViewModels;
 
@@ -20,6 +21,8 @@ public sealed record GameFlowOptions
     public required IGameContentProvider GameContentProvider { get; init; }
     /// <summary>One host-owned document configuring the fixed built-in screens.</summary>
     public required UiProject Ui { get; init; }
+    /// <summary>Host-provided resource lookup used by UI pages for ID-backed visual assets.</summary>
+    public IAssetManager? AssetManager { get; init; }
     public ISaveService? SaveService { get; init; }
     public IGameProgressService? ProgressService { get; init; }
 

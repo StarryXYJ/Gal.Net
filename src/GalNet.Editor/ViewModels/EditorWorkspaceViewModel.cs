@@ -25,14 +25,18 @@ using Serilog;
 
 namespace GalNet.Editor.ViewModels;
 
-public partial class EditorWorkspaceViewModel : ObservableObject
+public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable
 {
     private readonly IProjectService _projectService;
     private readonly EditorDockFactory _dockFactory;
     private readonly IEditorDocumentRepository _documentRepository;
     private readonly IGraphEditingService _graphEditingService;
     private readonly IEditorSettingsService _editorSettings;
+    private readonly IVariableDefinitionService _variableDefinitionService;
+    private readonly Action<GalProject?> _projectChangedHandler;
+    private readonly Action<GalNet.Core.Variable.VariableScope> _definitionsChangedHandler;
     private CancellationTokenSource? _autoSaveCts;
+    private bool _disposed;
     public event Action? VariableDefinitionsChanged;
 
     [ObservableProperty]
@@ -76,14 +80,30 @@ public partial class EditorWorkspaceViewModel : ObservableObject
         _saveCoordinator = saveCoordinator;
         _graphEditingService = graphEditingService;
         _editorSettings = editorSettings;
-        _projectService.CurrentChanged += _ => LoadCurrentProjectGraph();
-        _documentService.DirtyStateChanged += OnDocumentDirtyStateChanged;
-        variableDefinitionService.DefinitionsChanged += _ =>
+        _variableDefinitionService = variableDefinitionService;
+        _projectChangedHandler = _ => LoadCurrentProjectGraph();
+        _definitionsChangedHandler = _ =>
         {
             OnPropertyChanged(nameof(AllProjectVariableDefinitions));
             VariableDefinitionsChanged?.Invoke();
         };
+        _projectService.CurrentChanged += _projectChangedHandler;
+        _documentService.DirtyStateChanged += OnDocumentDirtyStateChanged;
+        _variableDefinitionService.DefinitionsChanged += _definitionsChangedHandler;
         LoadCurrentProjectGraph();
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+        _disposed = true;
+        _projectService.CurrentChanged -= _projectChangedHandler;
+        _documentService.DirtyStateChanged -= OnDocumentDirtyStateChanged;
+        _variableDefinitionService.DefinitionsChanged -= _definitionsChangedHandler;
+        _autoSaveCts?.Cancel();
+        _autoSaveCts?.Dispose();
+        _autoSaveCts = null;
     }
 
     public void SelectNode(GraphNode? node, bool additive = false)

@@ -133,7 +133,7 @@ public sealed class EditorPlayerVariableStore : IEditorPlayerVariableStore
 
         try
         {
-            Directory.CreateDirectory(project.EditorStateDirectory);
+            Directory.CreateDirectory(Path.GetDirectoryName(GetStoragePath(project))!);
             var json = JsonSerializer.Serialize(_variables, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(GetStoragePath(project), json);
         }

@@ -32,6 +32,12 @@
       <Compile Update="Screen\SaveLoad\SaveSlotCard.axaml.cs">
         <DependentUpon>SaveSlotCard.axaml</DependentUpon>
       </Compile>
+      <Compile Update="Screen\Title\TextMenuTitleView.axaml.cs">
+        <DependentUpon>TextMenuTitleView.axaml</DependentUpon>
+      </Compile>
+      <Compile Update="Controls\AssetPicker.axaml.cs">
+        <DependentUpon>AssetPicker.axaml</DependentUpon>
+      </Compile>
     </ItemGroup>
 
 </Project>

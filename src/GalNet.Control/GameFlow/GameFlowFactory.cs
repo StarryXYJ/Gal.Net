@@ -8,17 +8,21 @@ using GalNet.Control.Abstraction.UI;
 using GalNet.Core.UI;
 using Ursa.Controls;
 using Avalonia.Controls;
+using Avalonia.Media;
+using GalNet.Core.Assets;
 
 namespace GalNet.Control.ViewModels;
 
 public sealed class GameFlowFactory : IGameFlowFactory
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly IUiPresetRegistry _presets;
     private readonly Dictionary<IGameScreenNavigator, GameRunViewModel> _runs = [];
 
-    public GameFlowFactory(IServiceProvider serviceProvider)
+    public GameFlowFactory(IServiceProvider serviceProvider, IUiPresetRegistry presets)
     {
         _serviceProvider = serviceProvider;
+        _presets = presets;
     }
 
     public GamePageHostViewModel CreatePageHost(INavigationService parentNavigation, GameFlowOptions options) => new(this, options);
@@ -27,7 +31,7 @@ public sealed class GameFlowFactory : IGameFlowFactory
     {
         return screen.ToLowerInvariant() switch
         {
-            "title" => CreateStart(navigator, options, options.Ui.Title),
+            "title" => CreateTitle(navigator, options),
             "game" => CreateRun(navigator, options, options.Ui.Game, parameter),
             "settings" => CreateSettings(navigator, options.Ui.Settings),
             "save-load" => CreateSaveLoad(navigator, options, parameter as string == "save" ? SaveLoadMode.Save : SaveLoadMode.Load, options.Ui.SaveLoad),
@@ -36,9 +40,63 @@ public sealed class GameFlowFactory : IGameFlowFactory
         };
     }
 
-    public GameStartViewModel CreateStart(IGameScreenNavigator navigator, GameFlowOptions options, TitleUiConfiguration config) =>
+    private object CreateTitle(IGameScreenNavigator navigator, GameFlowOptions options)
+    {
+        var selection = options.Ui.GetPage(UiPageKind.Title);
+        var preset = _presets.GetRequired(selection.PresetId);
+        var config = CreateTitleConfiguration(options.Ui.Title, preset, selection.Settings);
+        return string.Equals(preset.Metadata.Id, "builtin.title.text-menu", StringComparison.OrdinalIgnoreCase)
+            ? new TextMenuTitleViewModel(navigator, _serviceProvider.GetService<IGameExitService>(), options,
+                options.SaveService ?? _serviceProvider.GetService<ISaveService>(), config, selection.Settings, options.AssetManager)
+            : CreateStart(navigator, options, config, selection.Settings.GetValueOrDefault("horizontalAlignment", "center"), options.AssetManager);
+    }
+
+    private static TitleUiConfiguration CreateTitleConfiguration(TitleUiConfiguration defaults, IUiPagePreset preset, IReadOnlyDictionary<string, string> settings)
+    {
+        var values = preset.CreateDefaultSettings().ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, value) in settings) values[key] = value;
+        var config = new TitleUiConfiguration
+        {
+            BackgroundColor = defaults.BackgroundColor, BackgroundImage = defaults.BackgroundImage, BackgroundStretch = defaults.BackgroundStretch, ContentPadding = defaults.ContentPadding, TitleColor = defaults.TitleColor,
+            TitleFontSize = defaults.TitleFontSize, ButtonColor = defaults.ButtonColor, ButtonTextColor = defaults.ButtonTextColor,
+            ButtonHoverColor = defaults.ButtonHoverColor, ButtonWidth = defaults.ButtonWidth, ButtonHeight = defaults.ButtonHeight,
+            MenuSpacing = defaults.MenuSpacing, ShowGallery = defaults.ShowGallery, MenuTextColor = defaults.MenuTextColor,
+            MenuFontSize = defaults.MenuFontSize, TitleMenuGap = defaults.TitleMenuGap, MenuHoverTextColor = defaults.MenuHoverTextColor
+        };
+        if (TryNumber(values, "titleFontSize", out var titleSize)) config.TitleFontSize = titleSize;
+        if (TryNumber(values, "contentPadding", out var contentPadding)) config.ContentPadding = contentPadding;
+        if (TryNumber(values, "menuItemWidth", out var buttonWidth)) config.ButtonWidth = buttonWidth;
+        if (TryNumber(values, "menuItemHeight", out var buttonHeight)) config.ButtonHeight = buttonHeight;
+        if (TryNumber(values, "menuSpacing", out var spacing)) config.MenuSpacing = spacing;
+        if (TryNumber(values, "titleMenuGap", out var gap)) config.TitleMenuGap = gap;
+        if (TryNumber(values, "menuFontSize", out var menuFontSize)) config.MenuFontSize = menuFontSize;
+        if (values.TryGetValue("showGallery", out var gallery) && bool.TryParse(gallery, out var showGallery)) config.ShowGallery = showGallery;
+        if (TryColor(values, "titleColor", out var titleColor)) config.TitleColor = titleColor;
+        if (TryColor(values, "backgroundColor", out var backgroundColor)) config.BackgroundColor = backgroundColor;
+        if (values.TryGetValue("backgroundImage", out var backgroundImage)) config.BackgroundImage = string.IsNullOrWhiteSpace(backgroundImage) ? null : backgroundImage;
+        if (values.TryGetValue("backgroundStretch", out var backgroundStretch)) config.BackgroundStretch = backgroundStretch;
+        if (TryColor(values, "menuTextColor", out var menuTextColor)) config.MenuTextColor = menuTextColor;
+        if (TryColor(values, "menuHoverTextColor", out var menuHoverTextColor)) config.MenuHoverTextColor = menuHoverTextColor;
+        if (TryColor(values, "menuItemBackgroundColor", out var buttonColor)) config.ButtonColor = buttonColor;
+        config.ButtonTextColor = config.MenuTextColor;
+        if (TryColor(values, "menuItemHoverBackgroundColor", out var hoverColor)) config.ButtonHoverColor = hoverColor;
+        return config;
+    }
+
+    private static bool TryNumber(IReadOnlyDictionary<string, string> values, string key, out double result)
+    {
+        result = default;
+        return values.TryGetValue(key, out var value) && double.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out result);
+    }
+    private static bool TryColor(IReadOnlyDictionary<string, string> values, string key, out Color result)
+    {
+        result = default;
+        return values.TryGetValue(key, out var value) && Color.TryParse(value, out result);
+    }
+
+    public GameStartViewModel CreateStart(IGameScreenNavigator navigator, GameFlowOptions options, TitleUiConfiguration config, string horizontalAlignment = "center", IAssetManager? assets = null) =>
         new(navigator, _serviceProvider.GetService<IGameExitService>(), options,
-            options.SaveService ?? _serviceProvider.GetService<ISaveService>(), config);
+            options.SaveService ?? _serviceProvider.GetService<ISaveService>(), config, horizontalAlignment, assets);
 
     public GameRunViewModel CreateRun(IGameScreenNavigator navigator, GameFlowOptions options, GameUiConfiguration config, object? parameter)
     {

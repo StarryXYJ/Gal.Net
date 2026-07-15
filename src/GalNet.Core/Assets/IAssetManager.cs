@@ -6,6 +6,11 @@ namespace GalNet.Core.Assets;
 /// </summary>
 public interface IAssetManager : IDisposable
 {
+    /// <summary>Finds an asset's metadata and readable content by its stable ID without adding it to the cache.</summary>
+    Task<IGameFile?> GetFileAsync(string assetId, CancellationToken ct = default);
+
+    /// <summary>Lists known assets across registered providers. A null type returns every asset.</summary>
+    Task<IReadOnlyList<IGameFile>> GetFilesAsync(ResourceType? type = null, CancellationToken ct = default);
     /// <summary>
     /// 异步加载指定 ID 的资源。
     /// 若已缓存则直接返回，否则从 provider 加载并缓存。

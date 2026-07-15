@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using GalNet.Core.Settings;
 using GalNet.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,8 +13,11 @@ namespace GalNet.Editor.Abstraction.Project;
 /// 承载工程元数据、路径、项目设置、项目级 DI Scope。
 /// 注意：编辑器级设置（字体、主题、快捷键等）不在此处，走全局 ISettingsService。
 /// </summary>
-public sealed class GalProject : IDisposable
+public sealed class GalProject : IDisposable, IAsyncDisposable
 {
+    private readonly List<Func<Task>> _closingCallbacks = [];
+    private bool _disposed;
+
     /// <summary>工程唯一 ID</summary>
     public string Id { get; }
 
@@ -80,8 +85,54 @@ public sealed class GalProject : IDisposable
         Scope = scope;
     }
 
+    /// <summary>Registers asynchronous work that must finish before this project's service scope is released.</summary>
+    public IDisposable RegisterClosingCallback(Func<Task> callback)
+    {
+        ArgumentNullException.ThrowIfNull(callback);
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(GalProject));
+
+        _closingCallbacks.Add(callback);
+        return new CallbackRegistration(_closingCallbacks, callback);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        List<Exception>? failures = null;
+        foreach (var callback in _closingCallbacks.ToArray())
+        {
+            try
+            {
+                await callback();
+            }
+            catch (Exception exception)
+            {
+                failures ??= [];
+                failures.Add(exception);
+            }
+        }
+        _closingCallbacks.Clear();
+        Scope.Dispose();
+
+        if (failures is { Count: > 0 })
+            throw new AggregateException("One or more project shutdown callbacks failed.", failures);
+    }
+
     public void Dispose()
     {
+        if (_disposed)
+            return;
+        _disposed = true;
+        _closingCallbacks.Clear();
         Scope.Dispose();
+    }
+
+    private sealed class CallbackRegistration(List<Func<Task>> callbacks, Func<Task> callback) : IDisposable
+    {
+        public void Dispose() => callbacks.Remove(callback);
     }
 }

@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:GalNet.Control.ViewModels"
+             x:Class="GalNet.Control.Views.TextMenuTitleView" x:DataType="vm:TextMenuTitleViewModel">
+  <Grid>
+    <Border Background="{Binding BackgroundBrush}" />
+    <Image Source="{Binding BackgroundImageSource}" Stretch="{Binding BackgroundStretch}" IsVisible="{Binding HasBackgroundImage}" />
+    <Grid.Styles>
+      <Style Selector="Button.text-menu">
+        <Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /><Setter Property="Padding" Value="2" /><Setter Property="MinWidth" Value="0" />
+        <Setter Property="Foreground" Value="{Binding MenuTextBrush}" /><Setter Property="FontSize" Value="{Binding Configuration.MenuFontSize}" /><Setter Property="HorizontalContentAlignment" Value="{Binding MenuHorizontalAlignment}" /><Setter Property="Cursor" Value="Hand" />
+        <Setter Property="RenderTransformOrigin" Value="50%,50%" /><Setter Property="RenderTransform" Value="scale(1)" />
+        <Setter Property="Transitions"><Transitions><TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" /></Transitions></Setter>
+        <Setter Property="Template"><ControlTemplate><ContentPresenter Background="Transparent" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" Padding="{TemplateBinding Padding}" /></ControlTemplate></Setter>
+      </Style>
+      <Style Selector="Button.text-menu:pointerover"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="Foreground" Value="{Binding MenuHoverTextBrush}" /><Setter Property="RenderTransform" Value="scale(1.08)" /></Style>
+      <Style Selector="Button.text-menu:pressed"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="Foreground" Value="{Binding MenuHoverTextBrush}" /></Style>
+    </Grid.Styles>
+    <StackPanel HorizontalAlignment="{Binding MenuHorizontalAlignment}" VerticalAlignment="Center" Margin="{Binding ContentMargin}" Spacing="{Binding Configuration.MenuSpacing}">
+      <TextBlock Text="{Binding Title}" FontSize="{Binding Configuration.TitleFontSize}" Foreground="{Binding TitleBrush}" HorizontalAlignment="{Binding MenuHorizontalAlignment}" TextAlignment="{Binding MenuTextAlignment}" Margin="{Binding TitleMenuMargin}" />
+      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Classes="text-menu" Content="New Game" Command="{Binding NewGameCommand}" />
+      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Classes="text-menu" Content="Continue" Command="{Binding ContinueCommand}" IsVisible="{Binding IsContinueVisible}" />
+      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Classes="text-menu" Content="Load" Command="{Binding LoadCommand}" />
+      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Classes="text-menu" Content="Gallery" Command="{Binding GalleryCommand}" IsVisible="{Binding ShowGallery}" />
+      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Classes="text-menu" Content="Settings" Command="{Binding SettingsCommand}" />
+      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Classes="text-menu" Content="Quit" Command="{Binding QuitCommand}" />
+    </StackPanel>
+  </Grid>
+</UserControl>

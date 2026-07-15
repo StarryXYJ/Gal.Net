@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:GalNet.Editor.Controls" x:Class="GalNet.Editor.Controls.AssetPicker" x:Name="Root">
+  <UserControl.Styles>
+    <Style Selector="Border.asset-card"><Setter Property="Background" Value="{DynamicResource SemiColorBackground1}" /><Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" /><Setter Property="BorderThickness" Value="1" /></Style>
+  </UserControl.Styles>
+  <Button Name="PickerButton" HorizontalContentAlignment="Stretch" Background="{DynamicResource SemiColorFill0}">
+    <Button.Flyout><Flyout Placement="Bottom" Opened="OnFlyoutOpened" Closed="OnFlyoutClosed"><Border Width="520" Height="450" Padding="10" Background="{DynamicResource SemiColorBackground0}" CornerRadius="8"><Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+      <TextBox Name="SearchBox" PlaceholderText="Search assets" TextChanged="OnSearchTextChanged" />
+      <ListBox Name="ResourceList" Grid.Row="1" ItemsSource="{Binding Items, ElementName=Root}" SelectionChanged="OnSelectionChanged"><ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ListBox.ItemsPanel><ListBox.ItemTemplate><DataTemplate x:DataType="local:AssetPickerItem"><Border Classes="asset-card" Width="116" Height="132" Margin="3" Padding="6" CornerRadius="6"><StackPanel Spacing="4"><Border Height="82" Background="{DynamicResource SemiColorFill0}" CornerRadius="4"><Grid><Image Source="{Binding Thumbnail}" Stretch="UniformToFill" IsVisible="{Binding HasThumbnail}" /><TextBlock Text="{Binding Icon}" FontSize="34" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasThumbnail}" /></Grid></Border><TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" /></StackPanel></Border></DataTemplate></ListBox.ItemTemplate></ListBox>
+      <TextBlock Grid.Row="2" Text="{Binding DetailPath, ElementName=Root}" TextTrimming="CharacterEllipsis" Opacity="0.7" />
+    </Grid></Border></Flyout></Button.Flyout>
+    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8"><TextBlock Text="{Binding DisplayIcon, ElementName=Root}" FontSize="16" /><TextBlock Grid.Column="1" Text="{Binding DisplayText, ElementName=Root}" TextTrimming="CharacterEllipsis" /></Grid>
+  </Button>
+</UserControl>

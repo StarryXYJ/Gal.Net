@@ -9,6 +9,12 @@ internal sealed class ColorJsonConverter : JsonConverter<Color>
 {
     public override Color Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
+        // Earlier ui.json files stored colors as #AARRGGBB strings. Accepting that
+        // form is important: one incompatible color must not discard the complete
+        // preset document (including selected asset IDs).
+        if (reader.TokenType == JsonTokenType.String && Color.TryParse(reader.GetString(), out var parsed))
+            return parsed;
+
         if (reader.TokenType != JsonTokenType.StartObject)
             throw new JsonException("A color must be an ARGB object.");
 
