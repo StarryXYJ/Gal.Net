@@ -23,6 +23,11 @@ public enum GraphConnectorKind
 
 public partial class GraphNode : ObservableObject
 {
+    private static readonly IBrush SelectedBackground = Brush.Parse("#312A55");
+    private static readonly IBrush DefaultBackground = Brush.Parse("#1E1E2E");
+    private static readonly IBrush SelectedBorderBrush = Brush.Parse("#8F72FF");
+    private static readonly IBrush EntryBorderBrush = Brush.Parse("#A891FF");
+    private static readonly IBrush DefaultBorderBrush = Brush.Parse("#45475A");
     public Node Node { get; }
     public GraphNodeKind NodeKind { get; }
 
@@ -60,8 +65,8 @@ public partial class GraphNode : ObservableObject
 
     public bool IsEntryNode => NodeKind == GraphNodeKind.Entry;
     public bool CanDelete => !IsEntryNode;
-    public IBrush NodeBackground => IsSelected ? Brush.Parse("#312A55") : Brush.Parse("#1E1E2E");
-    public IBrush NodeBorderBrush => IsSelected ? Brush.Parse("#8F72FF") : IsEntryNode ? Brush.Parse("#A891FF") : Brush.Parse("#45475A");
+    public IBrush NodeBackground => IsSelected ? SelectedBackground : DefaultBackground;
+    public IBrush NodeBorderBrush => IsSelected ? SelectedBorderBrush : IsEntryNode ? EntryBorderBrush : DefaultBorderBrush;
     public double NodeBorderThickness => IsSelected ? 2 : 1;
 
     public ObservableCollection<GraphConnector> InputConnectors { get; } = [];
@@ -163,6 +168,8 @@ public partial class GraphConnector : ObservableObject
 
 public partial class GraphEdge : ObservableObject
 {
+    private static readonly IBrush DefaultStrokeBrush = Brush.Parse("#8F72FF");
+    private static readonly IBrush SelectedStrokeBrush = Brush.Parse("#A891FF");
     public GraphNode From { get; }
     public GraphNode To { get; }
 
@@ -172,7 +179,7 @@ public partial class GraphEdge : ObservableObject
     [ObservableProperty]
     private bool _isSelected;
 
-    public IBrush StrokeBrush => IsSelected ? Brush.Parse("#A891FF") : Brush.Parse("#8F72FF");
+    public IBrush StrokeBrush => IsSelected ? SelectedStrokeBrush : DefaultStrokeBrush;
     public double StrokeThickness => IsSelected ? 4 : 2.5;
 
     public double StartX => From.GetConnectorCenter(GraphConnectorKind.Output, Outlet).X;

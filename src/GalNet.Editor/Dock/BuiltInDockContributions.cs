@@ -29,7 +29,7 @@ public static class BuiltInDockContributions
             (sp, _) => sp.GetRequiredService<EditorWorkspaceViewModel>(), typeof(NodeGraphPanelView), new DelegateInspectorContribution(
                 (sp, _) => sp.GetRequiredService<NodeInspectorControlViewModel>(), typeof(NodeInspectorControl))));
         registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.GamePreview, "Dock.Panel.GamePreview", DockPanelPlacement.MainDocument, true, true, true, true, true,
-            (sp, _) => sp.GetRequiredService<IGamePreviewPanelFactory>().Create(sp), typeof(GamePreviewPanelView), new DelegateInspectorContribution(
+            (sp, _) => sp.GetRequiredService<GamePreviewPanelViewModel>(), typeof(GamePreviewPanelView), new DelegateInspectorContribution(
                 (_, dock) => new PreviewVariablesInspectorControlViewModel((GamePreviewPanelViewModel)dock), typeof(PreviewVariablesInspectorControl))));
         registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.Assets, "Dock.Panel.Assets", DockPanelPlacement.BottomDocument, true, true, true, true, true,
             (sp, _) => sp.GetRequiredService<AssetPanelViewModel>(), typeof(AssetPanelView), new DelegateInspectorContribution(
@@ -55,12 +55,8 @@ internal sealed class DelegateDockPanelContribution : DockPanelContributionBase
     { PanelId = panelId; TitleKey = title; Placement = placement; IsGlobal = isGlobal; CanClose = canClose; CanFloat = canFloat; IsDefaultPanel = isDefaultPanel; ShowInViewMenu = showInViewMenu; _createViewModel = createViewModel; _viewType = viewType; Inspector = inspector; }
     public override object CreateViewModel(IServiceProvider services, object? parameter = null) => _createViewModel(services, parameter);
     public override object CreateView(IServiceProvider services, object viewModel) => CreateControl(services, _viewType, viewModel);
-    internal static Avalonia.Controls.Control CreateControl(IServiceProvider services, Type type, object dataContext)
-    {
-        var control = (Avalonia.Controls.Control)(services.GetService(type) ?? Activator.CreateInstance(type)!);
-        control.DataContext = dataContext;
-        return control;
-    }
+    internal static Avalonia.Controls.Control CreateControl(IServiceProvider services, Type type, object dataContext) =>
+        EditorViewFactory.CreateControl(services, type, dataContext);
 }
 
 internal sealed class DelegateInspectorContribution : IInspectorControlContribution

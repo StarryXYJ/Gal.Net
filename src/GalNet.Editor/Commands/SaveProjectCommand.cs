@@ -33,8 +33,8 @@ public class SaveProjectCommand : AsyncEditorCommand
     {
         try
         {
-            _projectService.Current?.Services.GetRequiredService<EditorWorkspaceViewModel>().PersistGraphDocument();
-            await _projectService.SaveAsync();
+            if (_projectService.Current is { } project)
+                await project.Services.GetRequiredService<EditorWorkspaceViewModel>().SaveAsync();
             if (_projectService.Current is { } program)
             {
                 program.IsDirty = false;

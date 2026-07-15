@@ -1,12 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Collections.Specialized;
-using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Threading;
 using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -20,6 +17,7 @@ using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Controls;
 using GalNet.Editor.Dock;
 using GalNet.Editor.Services;
+using GalNet.Editor.Services.Interfaces;
 using GalNet.Editor.Models;
 using Serilog;
 
@@ -31,11 +29,13 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable
     private readonly EditorDockFactory _dockFactory;
     private readonly IEditorDocumentRepository _documentRepository;
     private readonly IGraphEditingService _graphEditingService;
+    private readonly GraphDocumentMapper _graphDocumentMapper;
     private readonly IEditorSettingsService _editorSettings;
     private readonly IVariableDefinitionService _variableDefinitionService;
     private readonly Action<GalProject?> _projectChangedHandler;
     private readonly Action<GalNet.Core.Variable.VariableScope> _definitionsChangedHandler;
-    private CancellationTokenSource? _autoSaveCts;
+    private readonly IProjectSaveScheduler _saveScheduler;
+    private readonly GraphChangeTracker _graphChangeTracker;
     private bool _disposed;
     public event Action? VariableDefinitionsChanged;
 
@@ -71,7 +71,9 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable
         IEditorSaveCoordinator saveCoordinator,
         IVariableDefinitionService variableDefinitionService,
         IGraphEditingService graphEditingService,
-        IEditorSettingsService editorSettings)
+        IEditorSettingsService editorSettings,
+        IProjectSaveScheduler saveScheduler,
+        GraphDocumentMapper graphDocumentMapper)
     {
         _projectService = projectService;
         _dockFactory = dockFactory;
@@ -80,6 +82,8 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable
         _saveCoordinator = saveCoordinator;
         _graphEditingService = graphEditingService;
         _editorSettings = editorSettings;
+        _saveScheduler = saveScheduler;
+        _graphDocumentMapper = graphDocumentMapper;
         _variableDefinitionService = variableDefinitionService;
         _projectChangedHandler = _ => LoadCurrentProjectGraph();
         _definitionsChangedHandler = _ =>
@@ -90,6 +94,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable
         _projectService.CurrentChanged += _projectChangedHandler;
         _documentService.DirtyStateChanged += OnDocumentDirtyStateChanged;
         _variableDefinitionService.DefinitionsChanged += _definitionsChangedHandler;
+        _graphChangeTracker = new GraphChangeTracker(MarkGraphDirty, () => _isLoadingGraph);
         LoadCurrentProjectGraph();
     }
 
@@ -101,9 +106,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable
         _projectService.CurrentChanged -= _projectChangedHandler;
         _documentService.DirtyStateChanged -= OnDocumentDirtyStateChanged;
         _variableDefinitionService.DefinitionsChanged -= _definitionsChangedHandler;
-        _autoSaveCts?.Cancel();
-        _autoSaveCts?.Dispose();
-        _autoSaveCts = null;
+        _graphChangeTracker.Dispose();
     }
 
     public void SelectNode(GraphNode? node, bool additive = false)
@@ -188,16 +191,16 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable
 
     public void SaveGraphViewport()
     {
-        if (_projectService.Current is not { } project)
+        if (_projectService.Current is null)
             return;
 
-        _ = _projectService.SaveAsync();
+        _saveScheduler.Schedule(_projectService.SaveAsync);
     }
 
     public GraphNode AddNode(GraphNodeKind kind, double x, double y)
     {
         var vm = _graphEditingService.CreateNode(Nodes, kind, x, y);
-        TrackNode(vm);
+        _graphChangeTracker.Track(vm);
         Nodes.Add(vm);
         UpdateConnectorStates();
         SelectNode(vm);
@@ -342,57 +345,34 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable
         MarkGraphDirty();
     }
 
-    private static EditorGraphNodeDto ToNodeDto(GraphNode node)
-    {
-        var dto = new EditorGraphNodeDto
-        {
-            Id = node.Id,
-            Type = node.NodeKind switch
-            {
-                GraphNodeKind.Entry => "Entry",
-                GraphNodeKind.LinearGroup => "Group",
-                _ => "Branch"
-            },
-            Name = node.Name,
-            X = node.X,
-            Y = node.Y
-        };
-
-        if (node.NodeKind == GraphNodeKind.LinearGroup)
-        {
-            dto.File = $"groups/{node.Id}.galgroup";
-        }
-        else if (node.NodeKind is GraphNodeKind.ChoiceBranch or GraphNodeKind.ConditionBranch)
-        {
-            dto.BranchType = node.NodeKind == GraphNodeKind.ChoiceBranch ? "Choice" : "Condition";
-            dto.Options = node.NodeKind == GraphNodeKind.ChoiceBranch
-                ? node.Options.Select(o => new EditorGraphBranchOptionDto
-                {
-                    Text = o.Text,
-                    Condition = o.Condition
-                }).ToList()
-                : null;
-            dto.Conditions = node.NodeKind == GraphNodeKind.ConditionBranch
-                ? node.Conditions.Select(c => new EditorGraphBranchConditionDto
-                {
-                    Expression = c.Expression
-                }).ToList()
-                : null;
-        }
-
-        return dto;
-    }
-
     public void PersistGraphDocument()
     {
         if (_projectService.Current is not { } project)
             return;
 
-        var document = CreateGraphDocument(project.Name);
-        _saveCoordinator.SaveProjectDocument(project.RootPath, document, CreateGroupEntriesSnapshot());
+        var document = _graphDocumentMapper.CreateDocument(
+            project.Name,
+            _documentService.CurrentDocument.Version,
+            Nodes,
+            Edges,
+            _documentService.CurrentDocument.PlayerVariables,
+            _documentService.CurrentDocument.SaveVariables);
+        _saveCoordinator.SaveProjectDocument(project.RootPath, document, _graphDocumentMapper.CreateGroupEntriesSnapshot(Nodes));
         _documentService.CurrentDocument.Name = project.Name;
+    }
+
+    public Task SaveAsync() => _saveScheduler.SaveNowAsync(SaveCoreAsync);
+
+    private async Task SaveCoreAsync()
+    {
+        if (_projectService.Current is null)
+            return;
+
+        PersistGraphDocument();
+        await _projectService.SaveAsync();
         _documentService.MarkSaved();
-        project.IsDirty = false;
+        if (_projectService.Current is { } project)
+            project.IsDirty = false;
     }
 
     public async Task CreateProjectAsync(string name, string path)
@@ -440,6 +420,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable
     private void LoadCurrentProjectGraph()
     {
         ClearSelection();
+        _graphChangeTracker.Clear();
         Nodes.Clear();
         Edges.Clear();
 
@@ -464,30 +445,15 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable
 
             _documentService.Load(loaded);
 
-            var nodeMap = new Dictionary<string, GraphNode>();
-
-            foreach (var dto in document.Nodes)
+            var graph = _graphDocumentMapper.Load(loaded);
+            foreach (var node in graph.Nodes)
             {
-                var vm = CreateNodeFromDto(dto, loaded.GroupEntries);
-                vm.IsRoot = vm.NodeKind == GraphNodeKind.Entry;
-                TrackNode(vm);
-                Nodes.Add(vm);
-                nodeMap[vm.Id] = vm;
+                node.IsRoot = node.NodeKind == GraphNodeKind.Entry;
+                _graphChangeTracker.Track(node);
+                Nodes.Add(node);
             }
-
-            EnsureEntryNode(document, nodeMap);
-
-            foreach (var edge in document.Edges)
-            {
-                if (!nodeMap.TryGetValue(edge.FromNodeId, out var from)
-                    || !nodeMap.TryGetValue(edge.ToNodeId, out var to)
-                    || edge.FromOutlet < 0
-                    || edge.FromOutlet >= from.OutputConnectors.Count
-                    || to.InputConnectors.Count == 0)
-                    continue;
-
-                Edges.Add(new GraphEdge(from, to, edge.FromOutlet));
-            }
+            foreach (var edge in graph.Edges)
+                Edges.Add(edge);
 
             UpdateConnectorStates();
             SelectNode(EntryNode ?? Nodes.FirstOrDefault());
@@ -505,98 +471,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable
         {
             _isLoadingGraph = false;
         }
-    }
-
-    private GraphNode CreateNodeFromDto(EditorGraphNodeDto dto, IReadOnlyDictionary<string, List<EditorEntryData>> groupEntries)
-    {
-        var kind = dto.Type.Equals("Entry", StringComparison.OrdinalIgnoreCase)
-            ? GraphNodeKind.Entry
-            : dto.Type.Equals("Group", StringComparison.OrdinalIgnoreCase)
-                ? GraphNodeKind.LinearGroup
-                : dto.BranchType?.Equals("Condition", StringComparison.OrdinalIgnoreCase) == true
-                    ? GraphNodeKind.ConditionBranch
-                    : GraphNodeKind.ChoiceBranch;
-
-        Node node = kind switch
-        {
-            GraphNodeKind.Entry => new Group { Id = dto.Id, Name = string.IsNullOrWhiteSpace(dto.Name) ? "Entry" : dto.Name },
-            GraphNodeKind.LinearGroup => new Group { Id = dto.Id, Name = dto.Name },
-            GraphNodeKind.ChoiceBranch => new Branch { Id = dto.Id, Name = dto.Name, BranchType = BranchType.Choice },
-            GraphNodeKind.ConditionBranch => new Branch { Id = dto.Id, Name = dto.Name, BranchType = BranchType.Condition },
-            _ => throw new ArgumentOutOfRangeException()
-        };
-
-        var vm = new GraphNode(node, kind)
-        {
-            X = dto.X,
-            Y = dto.Y
-        };
-
-        if (kind == GraphNodeKind.LinearGroup)
-            LoadGroupEntries(vm, groupEntries.TryGetValue(dto.Id, out var entries) ? entries : null);
-
-        if (kind == GraphNodeKind.ChoiceBranch)
-        {
-            vm.Options.Clear();
-            foreach (var option in dto.Options ?? [])
-            {
-                vm.Options.Add(new BranchOptionEditorItemViewModel
-                {
-                    Text = option.Text,
-                    Condition = option.Condition
-                });
-            }
-        }
-
-        if (kind == GraphNodeKind.ConditionBranch)
-        {
-            vm.Conditions.Clear();
-            foreach (var condition in dto.Conditions ?? [])
-                vm.Conditions.Add(new BranchConditionEditorItemViewModel { Expression = condition.Expression });
-        }
-
-        vm.RefreshConnectors();
-        return vm;
-    }
-
-    private void LoadGroupEntries(GraphNode group, IReadOnlyList<EditorEntryData>? entries)
-    {
-        group.Entries.Clear();
-        if (entries is null)
-            return;
-
-        foreach (var entry in entries)
-            group.Entries.Add(new EntryEditorItemViewModel
-            {
-                Id = group.Entries.Count + 1,
-                Type = entry.Type,
-                Condition = entry.Condition,
-                Parameters = entry.Parameters
-            });
-    }
-
-    private void EnsureEntryNode(EditorGraphDocument document, Dictionary<string, GraphNode> nodeMap)
-    {
-        if (EntryNode is not null)
-            return;
-
-        var root = !string.IsNullOrWhiteSpace(document.RootNodeId) && nodeMap.TryGetValue(document.RootNodeId, out var rootNode)
-            ? rootNode
-            : Nodes.FirstOrDefault();
-
-        var entry = new GraphNode(new Group { Name = "Entry" }, GraphNodeKind.Entry)
-        {
-            X = root is null ? 4420 : Math.Max(0, root.X - 280),
-            Y = root?.Y ?? 4900,
-            IsRoot = true
-        };
-
-        TrackNode(entry);
-        Nodes.Insert(0, entry);
-        nodeMap[entry.Id] = entry;
-
-        if (root is not null && !ReferenceEquals(root, entry))
-            Edges.Add(new GraphEdge(entry, root));
     }
 
     private void BuildSampleGraph()
@@ -641,15 +515,15 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable
         choice.RefreshConnectors();
 
         Nodes.Add(entry);
-        TrackNode(entry);
+        _graphChangeTracker.Track(entry);
         Nodes.Add(opening);
-        TrackNode(opening);
+        _graphChangeTracker.Track(opening);
         Nodes.Add(choice);
-        TrackNode(choice);
+        _graphChangeTracker.Track(choice);
         Nodes.Add(routeA);
-        TrackNode(routeA);
+        _graphChangeTracker.Track(routeA);
         Nodes.Add(routeB);
-        TrackNode(routeB);
+        _graphChangeTracker.Track(routeB);
 
         Edges.Add(new GraphEdge(entry, opening));
         Edges.Add(new GraphEdge(opening, choice));
@@ -670,22 +544,13 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable
 
     private void ScheduleAutoSave()
     {
-        _autoSaveCts?.Cancel(); _autoSaveCts?.Dispose();
-        var cts = _autoSaveCts = new CancellationTokenSource();
-        _ = Task.Run(async () =>
+        if (!_editorSettings.GetSettings().AutoSaveProject)
+            return;
+
+        _saveScheduler.Schedule(async () =>
         {
-            try
-            {
-                await Task.Delay(500, cts.Token);
-                if (!cts.IsCancellationRequested)
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                    {
-                        PersistGraphDocument();
-                        _ = _projectService.SaveAsync();
-                        StatusText = "Auto-saved";
-                    });
-            }
-            catch (OperationCanceledException) { }
+            await SaveCoreAsync();
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => StatusText = "Auto-saved");
         });
     }
 
@@ -693,100 +558,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable
     {
         if (_projectService.Current is { } project)
             project.IsDirty = isDirty;
-    }
-
-    private EditorGraphDocument CreateGraphDocument(string projectName) =>
-        new()
-        {
-            Version = _documentService.CurrentDocument.Version <= 0 ? 2 : _documentService.CurrentDocument.Version,
-            Name = projectName,
-            RootNodeId = EntryNode?.Id ?? Nodes.FirstOrDefault()?.Id ?? "",
-            Nodes = Nodes.Select(ToNodeDto).ToList(),
-            Edges = Edges.Select(e => new EditorGraphEdgeDto
-            {
-                FromNodeId = e.From.Id,
-                FromOutlet = e.Outlet,
-                ToNodeId = e.To.Id
-            }).ToList(),
-            PlayerVariables = _documentService.CurrentDocument.PlayerVariables.Select(v => v.Clone()).ToList(),
-            SaveVariables = _documentService.CurrentDocument.SaveVariables.Select(v => v.Clone()).ToList()
-        };
-
-    private IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> CreateGroupEntriesSnapshot() =>
-        Nodes.Where(n => n.NodeKind == GraphNodeKind.LinearGroup)
-            .ToDictionary(
-                node => node.Id,
-                node => (IReadOnlyList<EditorEntryData>)node.Entries.Select(entry => new EditorEntryData
-                {
-                    Id = entry.Id,
-                    Type = entry.Type,
-                    Condition = entry.Condition,
-                    Parameters = entry.Parameters
-                }).ToList());
-
-    private void TrackNode(GraphNode node)
-    {
-        node.PropertyChanged += OnNodePropertyChanged;
-        TrackCollection(node.Entries, OnEntryChanged);
-        TrackCollection(node.Options, OnBranchOptionChanged);
-        TrackCollection(node.Conditions, OnBranchConditionChanged);
-    }
-
-    private void TrackCollection<TItem>(
-        ObservableCollection<TItem> collection,
-        PropertyChangedEventHandler itemHandler)
-        where TItem : ObservableObject
-    {
-        collection.CollectionChanged += (_, e) =>
-        {
-            if (e.NewItems is not null)
-            {
-                foreach (var item in e.NewItems.OfType<TItem>())
-                    item.PropertyChanged += itemHandler;
-            }
-
-            if (e.OldItems is not null)
-            {
-                foreach (var item in e.OldItems.OfType<TItem>())
-                    item.PropertyChanged -= itemHandler;
-            }
-
-            if (!_isLoadingGraph && e.Action != NotifyCollectionChangedAction.Reset)
-                MarkGraphDirty();
-        };
-
-        foreach (var item in collection)
-            item.PropertyChanged += itemHandler;
-    }
-
-    private void OnNodePropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (_isLoadingGraph)
-            return;
-
-        if (e.PropertyName is nameof(GraphNode.Name))
-            MarkGraphDirty();
-    }
-
-    private void OnEntryChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (!_isLoadingGraph && e.PropertyName is nameof(EntryEditorItemViewModel.Type)
-            or nameof(EntryEditorItemViewModel.Condition)
-            or nameof(EntryEditorItemViewModel.Parameters))
-            MarkGraphDirty();
-    }
-
-    private void OnBranchOptionChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (!_isLoadingGraph && e.PropertyName is nameof(BranchOptionEditorItemViewModel.Text)
-            or nameof(BranchOptionEditorItemViewModel.Condition))
-            MarkGraphDirty();
-    }
-
-    private void OnBranchConditionChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (!_isLoadingGraph && e.PropertyName == nameof(BranchConditionEditorItemViewModel.Expression))
-            MarkGraphDirty();
     }
 
     public GraphNode? EntryNode => Nodes.FirstOrDefault(n => n.NodeKind == GraphNodeKind.Entry);

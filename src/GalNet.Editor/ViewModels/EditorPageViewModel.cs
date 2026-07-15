@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -25,7 +26,7 @@ using Serilog;
 
 namespace GalNet.Editor.ViewModels;
 
-public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
+public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDisposable
 {
     private readonly IProjectService _projectService;
     private readonly CommandService _commandService;
@@ -33,6 +34,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
     private readonly DockLayoutSerializer _dockLayoutSerializer;
     private readonly IEditorWindowFactory _windowFactory;
     private readonly IEditorSettingsService _editorSettingsService;
+    private readonly PropertyChangedEventHandler _localizationChangedHandler;
 
     public IEditorLocalizationService L { get; }
 
@@ -50,6 +52,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
     public ICommand TogglePanelCommand { get; }
 
     private bool _savingLayout;
+    private bool _disposed;
     private bool _layoutSavePending;
     private readonly DispatcherTimer _layoutSaveTimer;
     public ICommand SaveLayoutCommand { get; }
@@ -90,17 +93,20 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
         _dockFactory.LayoutChanged += OnDockLayoutChanged;
         _projectService.CurrentChanged += OnCurrentProjectChanged;
 
-        L.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName != "Item[]") return;
-            UpdateLocalizedText();
-        };
+        _localizationChangedHandler = OnLocalizationChanged;
+        L.PropertyChanged += _localizationChangedHandler;
     }
 
     private void OnCurrentProjectChanged(GalProject? _)
     {
         OnPropertyChanged(nameof(ProjectName));
         UpdateLocalizedText();
+    }
+
+    private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == "Item[]")
+            UpdateLocalizedText();
     }
 
     private void UpdateLocalizedText()
@@ -358,6 +364,19 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider
         MenuItems.Clear();
         foreach (var item in items)
             MenuItems.Add(item);
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        PersistLayoutNow();
+        _layoutSaveTimer.Tick -= OnLayoutSaveTimerTick;
+        _dockFactory.LayoutChanged -= OnDockLayoutChanged;
+        _projectService.CurrentChanged -= OnCurrentProjectChanged;
+        L.PropertyChanged -= _localizationChangedHandler;
     }
 
     private IList<MenuData> BuildViewMenuItems() => new AvaloniaList<MenuData>(

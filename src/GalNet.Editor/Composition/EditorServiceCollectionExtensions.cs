@@ -33,7 +33,6 @@ public static class EditorServiceCollectionExtensions
         services.AddEditorViews();
         services.AddEditorViewModels();
         services.AddEditorFactories();
-        services.AddGamePreviewServices();
 
         return services;
     }
@@ -50,9 +49,11 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<IGameExitService, EditorGameExitService>();
         services.AddSingleton<IEditorPlayerVariableStore, EditorPlayerVariableStore>();
         services.AddSingleton<IGraphEditingService, GraphEditingService>();
+        services.AddSingleton<GraphDocumentMapper>();
         services.AddSingleton<IEditorDocumentRepository, EditorDocumentRepository>();
         services.AddSingleton<IEditorDocumentService, EditorDocumentService>();
         services.AddSingleton<IEditorSaveCoordinator, EditorSaveCoordinator>();
+        services.AddScoped<IProjectSaveScheduler, ProjectSaveScheduler>();
         services.AddSingleton<IVariableDefinitionService, VariableDefinitionService>();
         services.AddSingleton<EditorVariableService>();
         services.AddSingleton<IVariableService>(sp => sp.GetRequiredService<EditorVariableService>());
@@ -144,14 +145,9 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<IEditorPageFactory, EditorPageFactory>();
         services.AddSingleton<IEditorViewFactory, EditorViewFactory>();
         services.AddSingleton<IEditorWindowFactory, EditorWindowFactory>();
-        services.AddSingleton<IGamePreviewPanelFactory, GamePreviewPanelFactory>();
         services.AddSingleton<IGameFlowFactory, GameFlowFactory>();
 
         return services;
     }
 
-    private static IServiceCollection AddGamePreviewServices(this IServiceCollection services)
-    {
-        return services;
-    }
 }

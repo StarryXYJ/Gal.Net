@@ -1,11 +1,14 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
+using GalNet.Core.Variable;
+using GalNet.Editor.ViewModels;
 using System.Windows.Input;
 using AvaloniaControl = Avalonia.Controls.Control;
 
@@ -22,11 +25,15 @@ public class ReorderableListControl : UserControl
     public static readonly StyledProperty<ICommand?> AddCommandProperty = AvaloniaProperty.Register<ReorderableListControl, ICommand?>(nameof(AddCommand));
     public static readonly StyledProperty<ICommand?> RemoveCommandProperty = AvaloniaProperty.Register<ReorderableListControl, ICommand?>(nameof(RemoveCommand));
     public static readonly StyledProperty<IBrush?> HighlightBrushProperty = AvaloniaProperty.Register<ReorderableListControl, IBrush?>(nameof(HighlightBrush));
+    public static readonly StyledProperty<IEnumerable<ConditionVariableSuggestion>?> ConditionSuggestionsProperty = AvaloniaProperty.Register<ReorderableListControl, IEnumerable<ConditionVariableSuggestion>?>(nameof(ConditionSuggestions));
+    public static readonly StyledProperty<IEnumerable<ProjectVariableDefinition>?> ValidationVariablesProperty = AvaloniaProperty.Register<ReorderableListControl, IEnumerable<ProjectVariableDefinition>?>(nameof(ValidationVariables));
     public IEnumerable? ItemsSource { get => GetValue(ItemsSourceProperty); set => SetValue(ItemsSourceProperty, value); }
     public ICommand? MoveCommand { get => GetValue(MoveCommandProperty); set => SetValue(MoveCommandProperty, value); }
     public ICommand? AddCommand { get => GetValue(AddCommandProperty); set => SetValue(AddCommandProperty, value); }
     public ICommand? RemoveCommand { get => GetValue(RemoveCommandProperty); set => SetValue(RemoveCommandProperty, value); }
     public IBrush? HighlightBrush { get => GetValue(HighlightBrushProperty); set => SetValue(HighlightBrushProperty, value); }
+    public IEnumerable<ConditionVariableSuggestion>? ConditionSuggestions { get => GetValue(ConditionSuggestionsProperty); set => SetValue(ConditionSuggestionsProperty, value); }
+    public IEnumerable<ProjectVariableDefinition>? ValidationVariables { get => GetValue(ValidationVariablesProperty); set => SetValue(ValidationVariablesProperty, value); }
 
     private ListBox? _listBox;
     private readonly Canvas _overlay = new() { IsHitTestVisible = false, ZIndex = 9999 };

@@ -32,10 +32,7 @@ public sealed class EditorViewFactory : IEditorViewFactory
 
     public Avalonia.Controls.Control CreateView(Type viewType, object dataContext)
     {
-        var view = (Avalonia.Controls.Control)(_serviceProvider.GetService(viewType)
-                   ?? Activator.CreateInstance(viewType)!);
-        view.DataContext = dataContext;
-        return view;
+        return CreateControl(_serviceProvider, viewType, dataContext);
     }
 
     public Avalonia.Controls.Control? CreateViewForViewModel(object viewModel)
@@ -48,4 +45,13 @@ public sealed class EditorViewFactory : IEditorViewFactory
 
     public bool CanCreateViewForViewModel(object viewModel) =>
         ViewModelToViewMap.ContainsKey(viewModel.GetType());
+
+    internal static Avalonia.Controls.Control CreateControl(IServiceProvider services, Type viewType, object dataContext)
+    {
+        var view = (Avalonia.Controls.Control)(services.GetService(viewType)
+                   ?? Activator.CreateInstance(viewType)
+                   ?? throw new InvalidOperationException($"Cannot create view {viewType}."));
+        view.DataContext = dataContext;
+        return view;
+    }
 }

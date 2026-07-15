@@ -30,7 +30,13 @@ public partial class EditorWorkspaceViewModel
             throw new InvalidOperationException("No project is currently open.");
 
         var previewPath = Path.Combine(project.TempPath, "preview");
-        var document = CreateGraphDocument(project.Name);
-        return _saveCoordinator.BuildPreviewData(previewPath, document, CreateGroupEntriesSnapshot());
+        var document = _graphDocumentMapper.CreateDocument(
+            project.Name,
+            _documentService.CurrentDocument.Version,
+            Nodes,
+            Edges,
+            _documentService.CurrentDocument.PlayerVariables,
+            _documentService.CurrentDocument.SaveVariables);
+        return _saveCoordinator.BuildPreviewData(previewPath, document, _graphDocumentMapper.CreateGroupEntriesSnapshot(Nodes));
     }
 }

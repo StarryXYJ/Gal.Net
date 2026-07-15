@@ -38,6 +38,8 @@ public class CloseProjectCommand : AsyncEditorCommand
             if (_projectService.Current is null)
                 return;
             await _projectService.CloseAsync();
+            if (_navigation.CurrentPage is IDisposable disposable)
+                disposable.Dispose();
             _navigation.ResetTo<StartupPageViewModel>();
         }
         catch (Exception ex)
