@@ -3,7 +3,7 @@
              xmlns:controls="using:GalNet.Editor.Controls"
              xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:models="using:GalNet.Editor.Models.Graph"
              x:Class="GalNet.Editor.Views.NodeGraphPanelView"
-             x:DataType="vm:NodeGraphPanelViewModel"
+             x:DataType="vm:EditorWorkspaceViewModel"
              Focusable="True"
              KeyDown="OnKeyDown"
              Background="{DynamicResource SemiColorBackground0}">
@@ -26,7 +26,7 @@
                 RenderTransformOrigin="0,0">
             <ItemsControl Width="{Binding #GraphCanvas.Width}"
                           Height="{Binding #GraphCanvas.Height}"
-                          ItemsSource="{Binding Workspace.Edges}">
+                          ItemsSource="{Binding Edges}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <Canvas />
@@ -45,7 +45,7 @@
 
             <ItemsControl Width="{Binding #GraphCanvas.Width}"
                           Height="{Binding #GraphCanvas.Height}"
-                          ItemsSource="{Binding Workspace.Nodes}">
+                          ItemsSource="{Binding Nodes}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <Canvas />
@@ -73,7 +73,7 @@
 
             <ItemsControl Width="{Binding #GraphCanvas.Width}"
                           Height="{Binding #GraphCanvas.Height}"
-                          ItemsSource="{Binding Workspace.Edges}"
+                          ItemsSource="{Binding Edges}"
                           IsHitTestVisible="False">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>

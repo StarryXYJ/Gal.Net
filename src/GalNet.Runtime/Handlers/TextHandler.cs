@@ -23,9 +23,9 @@ public sealed class TextHandler : EntryHandler
         var widgetId = ctx.GetString("widget", "default_dialogue");
 
         if (!string.IsNullOrEmpty(voice))
-            ctx.Text.SetVoice(voice);
+            ctx.View.SetVoice(voice);
 
-        _ = ctx.Text.StartTypewriter(widgetId, speaker, content, CancellationToken.None);
+        _ = ctx.View.StartTypewriter(widgetId, speaker, content, CancellationToken.None);
     }
 
     public override bool IsCompleted(EntryContext ctx) => _completed;
@@ -38,7 +38,7 @@ public sealed class TextHandler : EntryHandler
     public override void Interrupt(EntryContext ctx)
     {
         var widgetId = ctx.GetString("widget", "default_dialogue");
-        ctx.Text.SkipTypewriter(widgetId);
+        ctx.View.SkipTypewriter(widgetId);
         _completed = true;
     }
 }

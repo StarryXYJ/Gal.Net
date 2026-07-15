@@ -11,21 +11,10 @@ namespace GalNet.Core.Handler;
 public sealed class EntryContext
 {
     public required SimpleEntry Entry { get; init; }
-
     public required IGameRuntime Runtime { get; init; }
 
     public Dictionary<string, string> Params => Entry.Params;
-
     public IGameView View => Runtime.View!;
-    public ILayerView Layers => View;
-    public IControlView Controls => View;
-    public IPageView Pages => View;
-    public IAudioView Audio => View;
-    public IVideoView Video => View;
-    public IEffectView Effects => View;
-    public ITypewriterView Text => View;
-    public IInteractionView Interaction => View;
-
     public ICultureService? I18n => Runtime.I18n;
 
     public string GetString(string key, string def = "") =>

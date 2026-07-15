@@ -120,7 +120,6 @@ public static class EditorServiceCollectionExtensions
         services.AddTransient<StartupPageViewModel>();
         services.AddTransient<EditorPageViewModel>();
         services.AddScoped<EditorWorkspaceViewModel>();
-        services.AddTransient<NodeGraphPanelViewModel>();
         services.AddTransient<InspectorHostViewModel>();
         services.AddTransient<NodeInspectorControlViewModel>();
         services.AddTransient<AssetInspectorControlViewModel>();

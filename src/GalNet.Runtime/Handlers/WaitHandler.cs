@@ -23,7 +23,6 @@ public sealed class WaitHandler : EntryHandler
 
     public override void Interrupt(EntryContext ctx)
     {
-        // Wait 可被点击跳过
         _end = DateTime.UtcNow;
     }
 }

@@ -24,9 +24,8 @@ public sealed class EditorDockFactory : Factory
     private readonly IServiceProvider _serviceProvider;
     private readonly IEditorExtensionRegistry _extensions;
     private readonly IEditorLocalizationService _localization;
+    private readonly DockInspectorCoordinator _inspector;
     private readonly Dictionary<IDockable, IDockPanelContribution> _panelByDockable = [];
-    private readonly List<InspectorHostViewModel> _inspectorHosts = [];
-    private IDockable? _lastInspectableDockable;
     private EditorWorkspaceViewModel? _workspace;
     private bool _activeDockableHandlerAttached;
     private bool _dockableEventHandlersAttached;
@@ -43,6 +42,8 @@ public sealed class EditorDockFactory : Factory
         _serviceProvider = serviceProvider;
         _extensions = extensions;
         _localization = localization;
+        _inspector = new DockInspectorCoordinator(_panelByDockable, () =>
+            serviceProvider.GetService<IProjectService>()?.Current?.Services.GetService<EditorWorkspaceViewModel>());
         _localization.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName is nameof(IEditorLocalizationService.CurrentCulture) or "Item[]")
@@ -50,26 +51,26 @@ public sealed class EditorDockFactory : Factory
         };
     }
 
+    // ── Layout creation ──
+
     public override IRootDock CreateLayout()
     {
         _documentDock = null;
         _panelByDockable.Clear();
-        ClearInspectorHosts();
-        _lastInspectableDockable = null;
+        _inspector.Clear();
         AttachWorkspace();
+
         var panels = _extensions.DockPanelContributions.ToDictionary(panel => panel.PanelId, StringComparer.Ordinal);
         var nodeGraphDocument = CreateDocument(panels[EditorDockPanelIds.NodeGraph]);
         var previewDocument = CreateDocument(panels[EditorDockPanelIds.GamePreview]);
         var logDocument = CreateDocument(panels[EditorDockPanelIds.Log]);
         var assetsDocument = CreateDocument(panels[EditorDockPanelIds.Assets]);
         var inspectorDocument = CreateDocument(panels[EditorDockPanelIds.Inspector]);
-        RegisterInspectorHost((InspectorHostViewModel)inspectorDocument.Context!);
+        _inspector.Register((InspectorHostViewModel)inspectorDocument.Context!);
 
         _documentDock = new DocumentDock
         {
-            Id = "Documents",
-            Title = "Documents",
-            IsCollapsable = false,
+            Id = "Documents", Title = "Documents", IsCollapsable = false,
             ActiveDockable = nodeGraphDocument,
             VisibleDockables = CreateList<IDockable>(CreateDefaultPanels(DockPanelPlacement.MainDocument, nodeGraphDocument, previewDocument).ToArray()),
             EnableGlobalDocking = true
@@ -77,9 +78,7 @@ public sealed class EditorDockFactory : Factory
 
         var inspectorDock = new DocumentDock
         {
-            Id = "InspectorDocuments",
-            Title = "Inspector",
-            Proportion = 0.32,
+            Id = "InspectorDocuments", Title = "Inspector", Proportion = 0.32,
             ActiveDockable = inspectorDocument,
             VisibleDockables = CreateList<IDockable>([inspectorDocument]),
             EnableGlobalDocking = true
@@ -87,10 +86,7 @@ public sealed class EditorDockFactory : Factory
 
         var centerDock = new ProportionalDock
         {
-            Id = "Center",
-            Title = "Center",
-            Proportion = 0.68,
-            Orientation = Orientation.Vertical,
+            Id = "Center", Title = "Center", Proportion = 0.68, Orientation = Orientation.Vertical,
             ActiveDockable = _documentDock,
             VisibleDockables = CreateList<IDockable>(
             [
@@ -98,8 +94,7 @@ public sealed class EditorDockFactory : Factory
                 new ProportionalDockSplitter(),
                 new DocumentDock
                 {
-                    Id = "LogDocuments",
-                    Title = "Log",
+                    Id = "LogDocuments", Title = "Log",
                     ActiveDockable = logDocument,
                     VisibleDockables = CreateList<IDockable>(CreateDefaultPanels(DockPanelPlacement.BottomDocument, logDocument, assetsDocument).ToArray()),
                     EnableGlobalDocking = true
@@ -109,23 +104,14 @@ public sealed class EditorDockFactory : Factory
 
         var mainDock = new ProportionalDock
         {
-            Id = "Main",
-            Title = "Main",
-            Orientation = Orientation.Horizontal,
+            Id = "Main", Title = "Main", Orientation = Orientation.Horizontal,
             ActiveDockable = centerDock,
-            VisibleDockables = CreateList<IDockable>(
-            [
-                centerDock,
-                new ProportionalDockSplitter(),
-                inspectorDock
-            ])
+            VisibleDockables = CreateList<IDockable>([centerDock, new ProportionalDockSplitter(), inspectorDock])
         };
 
         var rootDock = CreateRootDock();
-        rootDock.Id = "Root";
-        rootDock.IsCollapsable = false;
-        rootDock.ActiveDockable = mainDock;
-        rootDock.DefaultDockable = mainDock;
+        rootDock.Id = "Root"; rootDock.IsCollapsable = false;
+        rootDock.ActiveDockable = mainDock; rootDock.DefaultDockable = mainDock;
         rootDock.VisibleDockables = CreateList<IDockable>([mainDock]);
         rootDock.EnableGlobalDocking = true;
         rootDock.Windows = CreateList<IDockWindow>();
@@ -136,20 +122,17 @@ public sealed class EditorDockFactory : Factory
         rootDock.FloatingWindowHostMode = DockFloatingWindowHostMode.Native;
 
         Log.Information("[DockFactory] CreateLayout done");
-        UpdateInspectorsFor(nodeGraphDocument);
+        _inspector.UpdateFor(nodeGraphDocument);
         LayoutChanged?.Invoke();
         return rootDock;
     }
 
-    public IReadOnlyList<IDockPanelContribution> ViewMenuPanels =>
-        _extensions.DockPanelContributions.Where(panel => panel.ShowInViewMenu).ToList();
+    // ── Restore ──
 
-    /// <summary>Reattaches runtime view-model contexts after a serialized layout is read.</summary>
     public bool PrepareRestoredLayout(IRootDock layout)
     {
         _panelByDockable.Clear();
-        ClearInspectorHosts();
-        _lastInspectableDockable = null;
+        _inspector.Clear();
         AttachWorkspace();
         _documentDock = FindDockById(layout, "Documents") as DocumentDock;
 
@@ -166,12 +149,10 @@ public sealed class EditorDockFactory : Factory
                     if (ReferenceEquals(owner.ActiveDockable, document))
                         owner.ActiveDockable = ownerItems.FirstOrDefault(item => item is not IProportionalDockSplitter);
                 }
-                else
-                    hasInvalidDocument = true;
+                else hasInvalidDocument = true;
                 continue;
             }
 
-            // Group editor instances require a graph-node parameter and are intentionally transient.
             if (panel.PanelId == EditorDockPanelIds.GroupEditor)
             {
                 if (document.Owner is IDock owner && owner.VisibleDockables is not null)
@@ -190,12 +171,12 @@ public sealed class EditorDockFactory : Factory
             document.CanFloat = panel.CanFloat;
             _panelByDockable[document] = panel;
             if (document.Context is InspectorHostViewModel inspector)
-                RegisterInspectorHost(inspector);
+                _inspector.Register(inspector);
         }
 
         var activeDockable = FindActiveInspectableDockable(layout);
         if (activeDockable is not null)
-            UpdateInspectorsFor(activeDockable);
+            _inspector.UpdateFor(activeDockable);
 
         return !hasInvalidDocument
                && _documentDock is not null
@@ -203,14 +184,18 @@ public sealed class EditorDockFactory : Factory
                && _panelByDockable.Keys.All(document => document.Context is not null);
     }
 
+    public IReadOnlyList<IDockPanelContribution> ViewMenuPanels =>
+        _extensions.DockPanelContributions.Where(panel => panel.ShowInViewMenu).ToList();
+
+    // ── Panel operations ──
+
     public bool HasGlobalPanel(string panelId) => _panelByDockable.Any(pair =>
         pair.Value.PanelId == panelId && pair.Value.IsGlobal && IsAttached(pair.Key));
 
     public void ToggleGlobalPanel(string panelId)
     {
         var panel = _extensions.FindDockPanel(panelId);
-        if (panel is null || !panel.IsGlobal)
-            return;
+        if (panel is null || !panel.IsGlobal) return;
 
         var existing = _panelByDockable.FirstOrDefault(pair => pair.Value.PanelId == panelId && IsAttached(pair.Key)).Key;
         if (existing is not null)
@@ -222,25 +207,20 @@ public sealed class EditorDockFactory : Factory
     public void OpenPanel(string panelId)
     {
         var panel = _extensions.FindDockPanel(panelId);
-        if (panel is null)
-            return;
+        if (panel is null) return;
 
         if (panel.IsGlobal)
         {
             var existing = _panelByDockable.FirstOrDefault(pair => pair.Value.PanelId == panelId && IsAttached(pair.Key)).Key;
-            if (existing is not null)
-            {
-                Activate(existing);
-                return;
-            }
+            if (existing is not null) { Activate(existing); return; }
         }
 
         var document = CreateDocument(panel, id: panel.IsGlobal ? panel.PanelId : $"{panel.PanelId}:{Guid.NewGuid():N}");
         AddDocument(document, panel);
         if (document.Context is InspectorHostViewModel inspector)
         {
-            RegisterInspectorHost(inspector);
-            InitializeInspector(inspector);
+            _inspector.Register(inspector);
+            _inspector.InitializeFor(inspector, () => FindActiveInspectableDockable(FactoryExtensions.GetActiveRoot(this)));
         }
         Activate(document);
         LayoutChanged?.Invoke();
@@ -248,19 +228,13 @@ public sealed class EditorDockFactory : Factory
 
     public void OpenGroupEditor(GraphNode groupNode)
     {
-        if (_documentDock?.VisibleDockables is null)
-            return;
+        if (_documentDock?.VisibleDockables is null) return;
 
         var documentId = GetGroupEditorDocumentId(groupNode.Id);
         var existing = _documentDock.VisibleDockables.FirstOrDefault(d => d.Id == documentId);
-        if (existing is not null)
-        {
-            _documentDock.ActiveDockable = existing;
-            return;
-        }
+        if (existing is not null) { _documentDock.ActiveDockable = existing; return; }
 
         var document = CreateDocument(_extensions.FindDockPanel(EditorDockPanelIds.GroupEditor)!, groupNode, documentId, [groupNode.Name]);
-
         _documentDock.VisibleDockables.Add(document);
         _documentDock.ActiveDockable = document;
         LayoutChanged?.Invoke();
@@ -268,16 +242,12 @@ public sealed class EditorDockFactory : Factory
 
     public void CloseGroupEditor(string groupId)
     {
-        if (_documentDock?.VisibleDockables is null)
-            return;
-
-        var documentId = GetGroupEditorDocumentId(groupId);
-        var document = _documentDock.VisibleDockables.FirstOrDefault(d => d.Id == documentId);
-        if (document is null)
-            return;
-
-        CloseDocument(document);
+        if (_documentDock?.VisibleDockables is null) return;
+        var document = _documentDock.VisibleDockables.FirstOrDefault(d => d.Id == GetGroupEditorDocumentId(groupId));
+        if (document is not null) CloseDocument(document);
     }
+
+    // ── Init ──
 
     public override void InitLayout(IDockable layout)
     {
@@ -296,7 +266,7 @@ public sealed class EditorDockFactory : Factory
 
         if (!_activeDockableHandlerAttached)
         {
-            ActiveDockableChanged += (_, args) => { UpdateInspectorsFor(args.Dockable); LayoutChanged?.Invoke(); };
+            ActiveDockableChanged += (_, args) => { _inspector.UpdateFor(args.Dockable); LayoutChanged?.Invoke(); };
             _activeDockableHandlerAttached = true;
         }
 
@@ -310,6 +280,8 @@ public sealed class EditorDockFactory : Factory
 
         base.InitLayout(layout);
     }
+
+    // ── Document helpers ──
 
     private Document CreateDocument(IDockPanelContribution panel, object? parameter = null, string? id = null, object[]? titleArguments = null)
     {
@@ -325,20 +297,6 @@ public sealed class EditorDockFactory : Factory
         foreach (var panel in _extensions.DockPanelContributions.Where(panel => panel.IsDefaultPanel && panel.Placement == placement && builtIns.All(document => document.Id != panel.PanelId)))
             documents.Add(CreateDocument(panel));
         return documents;
-    }
-
-    private void UpdateInspectorsFor(IDockable? dockable)
-    {
-        if (dockable is null || !_panelByDockable.TryGetValue(dockable, out var panel))
-            return;
-
-        // Selecting an Inspector must not change the target of any Inspector.
-        if (panel.PanelId == EditorDockPanelIds.Inspector)
-            return;
-
-        _lastInspectableDockable = dockable;
-        foreach (var inspector in _inspectorHosts)
-            UpdateInspector(inspector, dockable, isInitialTarget: false);
     }
 
     private string LocalizeTitle(IDockPanelContribution panel, object[]? arguments = null) =>
@@ -365,8 +323,7 @@ public sealed class EditorDockFactory : Factory
     private DocumentDock FindDocumentDock(IDockPanelContribution panel)
     {
         var existing = _panelByDockable.FirstOrDefault(pair => pair.Value.PanelId == panel.PanelId && pair.Key.Owner is DocumentDock).Key;
-        if (existing?.Owner is DocumentDock sameTypeDock)
-            return sameTypeDock;
+        if (existing?.Owner is DocumentDock sameTypeDock) return sameTypeDock;
 
         var id = panel.Placement switch
         {
@@ -377,6 +334,19 @@ public sealed class EditorDockFactory : Factory
         };
         return FindDockById(FactoryExtensions.GetActiveRoot(this), id) as DocumentDock ?? _documentDock!;
     }
+
+    private void CloseDocument(IDockable document)
+    {
+        if (document.Owner is not IDock owner || owner.VisibleDockables is null) return;
+
+        owner.VisibleDockables.Remove(document);
+        owner.ActiveDockable = owner.VisibleDockables.FirstOrDefault();
+        _inspector.RemoveInspectorAndRecover(document, () => FindActiveInspectableDockable(FactoryExtensions.GetActiveRoot(this)));
+        _panelByDockable.Remove(document);
+        LayoutChanged?.Invoke();
+    }
+
+    // ── Utility ──
 
     private static IDockable? FindDockById(IDockable? root, string id)
     {
@@ -403,64 +373,31 @@ public sealed class EditorDockFactory : Factory
                 yield return descendant;
     }
 
-    private void InitializeInspector(InspectorHostViewModel inspector)
+    private IDockable? FindActiveInspectableDockable(IDockable? root)
     {
-        var target = _lastInspectableDockable ?? FindActiveInspectableDockable(FactoryExtensions.GetActiveRoot(this));
-        if (target is not null)
-            UpdateInspector(inspector, target, isInitialTarget: true);
-    }
-
-    private void RegisterInspectorHost(InspectorHostViewModel inspector)
-    {
-        _inspectorHosts.Add(inspector);
-        inspector.PropertyChanged += OnInspectorHostPropertyChanged;
-    }
-
-    private void UnregisterInspectorHost(InspectorHostViewModel inspector)
-    {
-        inspector.PropertyChanged -= OnInspectorHostPropertyChanged;
-        _inspectorHosts.Remove(inspector);
-    }
-
-    private void ClearInspectorHosts()
-    {
-        foreach (var inspector in _inspectorHosts)
+        if (root is IDock dock && dock.ActiveDockable is { } active)
         {
-            inspector.PropertyChanged -= OnInspectorHostPropertyChanged;
-            inspector.Dispose();
-        }
-        _inspectorHosts.Clear();
-    }
-
-    private void OnInspectorHostPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName != nameof(InspectorHostViewModel.IsLocked) || sender is not InspectorHostViewModel inspector || inspector.IsLocked)
-            return;
-
-        var target = _lastInspectableDockable ?? FindActiveInspectableDockable(FactoryExtensions.GetActiveRoot(this));
-        if (target is not null)
-            UpdateInspector(inspector, target, isInitialTarget: false);
-    }
-
-    private void UpdateInspector(InspectorHostViewModel inspector, IDockable dockable, bool isInitialTarget)
-    {
-        if (!_panelByDockable.TryGetValue(dockable, out var panel) || panel.PanelId == EditorDockPanelIds.Inspector)
-            return;
-        if (panel.Inspector is null || dockable.Context is null)
-        {
-            if (!isInitialTarget) inspector.FollowNoInspector();
-            return;
+            var nested = FindActiveInspectableDockable(active);
+            if (nested is not null) return nested;
         }
 
-        if (isInitialTarget) inspector.SetInitialTarget(panel.PanelId, dockable.Context);
-        else inspector.FollowInspectorFor(panel.PanelId, dockable.Context);
+        return root is not null && _panelByDockable.TryGetValue(root, out var panel) && panel.PanelId != EditorDockPanelIds.Inspector
+            ? root : null;
     }
+
+    private static bool IsAttached(IDockable dockable) => dockable.Owner is not null;
+
+    private static void Activate(IDockable dockable)
+    {
+        if (dockable.Owner is IDock owner) owner.ActiveDockable = dockable;
+    }
+
+    // ── Workspace ──
 
     private void AttachWorkspace()
     {
         var workspace = _serviceProvider.GetService<IProjectService>()?.Current?.Services.GetService<EditorWorkspaceViewModel>();
-        if (ReferenceEquals(workspace, _workspace))
-            return;
+        if (ReferenceEquals(workspace, _workspace)) return;
 
         if (_workspace is not null)
             _workspace.PropertyChanged -= OnWorkspacePropertyChanged;
@@ -472,57 +409,10 @@ public sealed class EditorDockFactory : Factory
 
     private void OnWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        var panelId = e.PropertyName switch
+        _inspector.OnWorkspacePropertyChanged(sender, e, panelId =>
         {
-            nameof(EditorWorkspaceViewModel.SelectedNode) or nameof(EditorWorkspaceViewModel.SelectedEdge) => EditorDockPanelIds.NodeGraph,
-            nameof(EditorWorkspaceViewModel.SelectedAsset) => EditorDockPanelIds.Assets,
-            _ => null
-        };
-
-        if (panelId is null)
-            return;
-
-        var dockable = _panelByDockable.FirstOrDefault(pair => pair.Value.PanelId == panelId && IsAttached(pair.Key)).Key;
-        if (dockable is not null)
-            UpdateInspectorsFor(dockable);
-    }
-
-    private IDockable? FindActiveInspectableDockable(IDockable? root)
-    {
-        if (root is IDock dock && dock.ActiveDockable is { } active)
-        {
-            var nested = FindActiveInspectableDockable(active);
-            if (nested is not null) return nested;
-        }
-
-        return root is not null && _panelByDockable.TryGetValue(root, out var panel) && panel.PanelId != EditorDockPanelIds.Inspector
-            ? root
-            : null;
-    }
-
-    private static bool IsAttached(IDockable dockable) => dockable.Owner is not null;
-
-    private static void Activate(IDockable dockable)
-    {
-        if (dockable.Owner is IDock owner)
-            owner.ActiveDockable = dockable;
-    }
-
-    private void CloseDocument(IDockable document)
-    {
-        if (document.Owner is not IDock owner || owner.VisibleDockables is null)
-            return;
-
-        owner.VisibleDockables.Remove(document);
-        owner.ActiveDockable = owner.VisibleDockables.FirstOrDefault();
-        if (document.Context is InspectorHostViewModel inspector)
-        {
-            UnregisterInspectorHost(inspector);
-            inspector.Dispose();
-        }
-        if (ReferenceEquals(_lastInspectableDockable, document))
-            _lastInspectableDockable = FindActiveInspectableDockable(FactoryExtensions.GetActiveRoot(this));
-        _panelByDockable.Remove(document);
-        LayoutChanged?.Invoke();
+            if (panelId is null) return null;
+            return _panelByDockable.FirstOrDefault(pair => pair.Value.PanelId == panelId && IsAttached(pair.Key)).Key;
+        });
     }
 }

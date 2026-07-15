@@ -8,7 +8,7 @@ public sealed class Branch : Node
     public override NodeType NodeType => NodeType.Branch;
 
     /// <summary>分支子类型：选项 / 条件</summary>
-    public BranchType BranchType { get; set; }
+    public BranchType BranchType { get; init; }
 
     /// <summary>选项列表（仅 Choice 分支使用）。按顺序对应出边 0, 1, 2, ...</summary>
     public List<BranchOption> Options { get; init; } = [];

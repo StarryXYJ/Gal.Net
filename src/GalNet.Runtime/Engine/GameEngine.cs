@@ -8,9 +8,9 @@ using GalNet.Core.Settings;
 using GalNet.Core.View;
 using GalNet.Runtime.Compilation;
 using GalNet.Runtime.Handlers;
+using GalNet.Runtime.Logging;
 using GalNet.Runtime.Runtime;
 using Serilog;
-using GalNet.Runtime.Logging;
 using GalNet.Core.Services;
 
 namespace GalNet.Runtime.Engine;
@@ -27,11 +27,8 @@ public sealed class GameEngine
     public event Action<GameSnapshot>? CheckpointCreated;
 
     public IGameRuntime Runtime => _runtime;
-
     public string CurrentNodeId => _runtime.CurrentNodeId;
-
     public int EntryIndex => _runtime.EntryIndex;
-
     public bool IsRunning { get; private set; }
 
     public GameEngine(
@@ -40,7 +37,8 @@ public sealed class GameEngine
         ICultureService? i18n = null,
         SettingsContainer? settings = null,
         IGameGraphCompiler? compiler = null,
-        EntryHandlerRegistry? registry = null, IGameProgressService? progress = null)
+        EntryHandlerRegistry? registry = null,
+        IGameProgressService? progress = null)
     {
         _graph = graph;
         _compiled = (compiler ?? GameGraphCompiler.Default).Compile(graph);
@@ -53,7 +51,8 @@ public sealed class GameEngine
         Graph graph,
         IGameRuntime runtime,
         IGameGraphCompiler? compiler = null,
-        EntryHandlerRegistry? registry = null, IGameProgressService? progress = null)
+        EntryHandlerRegistry? registry = null,
+        IGameProgressService? progress = null)
     {
         _graph = graph;
         _compiled = (compiler ?? GameGraphCompiler.Default).Compile(graph);
@@ -83,106 +82,120 @@ public sealed class GameEngine
             switch (node)
             {
                 case Group group:
-                {
-                    var entries = _compiled.GetValueOrDefault(group.Id, Array.Empty<SimpleEntry>());
-                    GameLog.Logger.Information("Engine: Processing group '{GroupId}' ({EntryCount} entries, entryIndex={EntryIndex})",
-                        group.Id, entries.Count, _runtime.EntryIndex);
-                    for (; _runtime.EntryIndex < entries.Count; _runtime.SetEntryIndex(_runtime.EntryIndex + 1))
-                    {
-                        var entry = entries[_runtime.EntryIndex];
-
-                        if (!_runtime.EvaluateCondition(entry.Condition))
-                            continue;
-
-                        var handler = _registry.Resolve(entry.Type);
-                        if (handler == null)
-                            continue;
-
-                        var ctx = new EntryContext { Entry = entry, Runtime = _runtime };
-
-                        if (handler.IsBlocking)
-                        {
-                            handler.Start(ctx);
-                            if (entry.Type == "text") _progress?.MarkRead(group.Id, entry.Id);
-                            CheckpointCreated?.Invoke(CreateSaveData());
-                            while (!handler.IsCompleted(ctx))
-                            {
-                                await _runtime.View!.WaitForClickAsync(ct);
-                                handler.Interrupt(ctx);
-                            }
-
-                            handler.Complete(ctx);
-                        }
-                        else
-                        {
-                            handler.Start(ctx);
-                        }
-                    }
-
-                    _runtime.SetEntryIndex(0);
-                    MoveToNext();
+                    await ProcessGroupAsync(group, ct);
                     break;
-                }
-
                 case Branch branch:
-                {
-                    if (branch.BranchType == BranchType.Choice)
-                    {
-                        var visibleOptions = branch.Options
-                            .Select((o, i) => (Option: o, Index: i))
-                            .Where(x => _runtime.EvaluateCondition(x.Option.Condition))
-                            .ToList();
-
-                        if (visibleOptions.Count == 0)
-                        {
-                            MoveToNext();
-                            break;
-                        }
-
-                        string Resolve(string key) => _runtime.I18n?[key] ?? key;
-                        var texts = visibleOptions.Select(x => Resolve(x.Option.Text)).ToArray();
-                        CheckpointCreated?.Invoke(CreateSaveData());
-                        var selected = await _runtime.View!.WaitForChoiceAsync("default_choice", texts, ct);
-
-                        if (selected >= 0 && selected < visibleOptions.Count)
-                        {
-                            var targetEdge = _graph.Edges
-                                .Find(e => e.FromNodeId == branch.Id && e.FromOutlet == visibleOptions[selected].Index);
-                            if (targetEdge != null)
-                            {
-                                _runtime.JumpTo(targetEdge.ToNodeId);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        var matched = false;
-                        for (var i = 0; i < branch.Conditions.Count; i++)
-                        {
-                            if (_runtime.EvaluateCondition(branch.Conditions[i].Expression))
-                            {
-                                var targetEdge = _graph.Edges
-                                    .Find(e => e.FromNodeId == branch.Id && e.FromOutlet == i);
-                                if (targetEdge != null)
-                                {
-                                    _runtime.JumpTo(targetEdge.ToNodeId);
-                                }
-
-                                matched = true;
-                                break;
-                            }
-                        }
-
-                        if (!matched)
-                            MoveToNext();
-                    }
-
+                    await ProcessBranchAsync(branch, ct);
                     break;
-                }
             }
         }
 
         return false;
+    }
+
+    private async Task ProcessGroupAsync(Group group, CancellationToken ct)
+    {
+        var entries = _compiled.GetValueOrDefault(group.Id, Array.Empty<SimpleEntry>());
+        GameLog.Logger.Information("Engine: Processing group '{GroupId}' ({EntryCount} entries, entryIndex={EntryIndex})",
+            group.Id, entries.Count, _runtime.EntryIndex);
+
+        for (; _runtime.EntryIndex < entries.Count; _runtime.SetEntryIndex(_runtime.EntryIndex + 1))
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var entry = entries[_runtime.EntryIndex];
+            if (!_runtime.EvaluateCondition(entry.Condition))
+                continue;
+
+            var handler = _registry.Resolve(entry.Type);
+            if (handler == null)
+                continue;
+
+            if (handler.IsBlocking)
+                await ExecuteBlockingEntryAsync(handler, entry, ct);
+            else
+                ExecuteNonBlockingEntry(handler, entry);
+        }
+
+        _runtime.SetEntryIndex(0);
+        MoveToNext();
+    }
+
+    private async Task ExecuteBlockingEntryAsync(EntryHandler handler, SimpleEntry entry, CancellationToken ct)
+    {
+        var ctx = new EntryContext { Entry = entry, Runtime = _runtime };
+
+        handler.Start(ctx);
+        if (entry.Type == "text") _progress?.MarkRead(groupId: _runtime.CurrentNodeId, entry.Id);
+        CheckpointCreated?.Invoke(CreateSaveData());
+
+        while (!handler.IsCompleted(ctx))
+        {
+            await _runtime.View!.WaitForClickAsync(ct);
+            handler.Interrupt(ctx);
+        }
+
+        handler.Complete(ctx);
+    }
+
+    private void ExecuteNonBlockingEntry(EntryHandler handler, SimpleEntry entry)
+    {
+        var ctx = new EntryContext { Entry = entry, Runtime = _runtime };
+        handler.Start(ctx);
+    }
+
+    private async Task ProcessBranchAsync(Branch branch, CancellationToken ct)
+    {
+        if (branch.BranchType == BranchType.Choice)
+            await ProcessChoiceBranchAsync(branch, ct);
+        else
+            ProcessConditionBranch(branch);
+    }
+
+    private async Task ProcessChoiceBranchAsync(Branch branch, CancellationToken ct)
+    {
+        var visibleOptions = branch.Options
+            .Select((o, i) => (Option: o, Index: i))
+            .Where(x => _runtime.EvaluateCondition(x.Option.Condition))
+            .ToList();
+
+        if (visibleOptions.Count == 0)
+        {
+            MoveToNext();
+            return;
+        }
+
+        string Resolve(string key) => _runtime.I18n?[key] ?? key;
+        var texts = visibleOptions.Select(x => Resolve(x.Option.Text)).ToArray();
+
+        CheckpointCreated?.Invoke(CreateSaveData());
+        var selected = await _runtime.View!.WaitForChoiceAsync("default_choice", texts, ct);
+
+        if (selected >= 0 && selected < visibleOptions.Count)
+        {
+            var targetEdge = _graph.Edges
+                .Find(e => e.FromNodeId == branch.Id && e.FromOutlet == visibleOptions[selected].Index);
+            if (targetEdge != null)
+                _runtime.JumpTo(targetEdge.ToNodeId);
+        }
+    }
+
+    private void ProcessConditionBranch(Branch branch)
+    {
+        for (var i = 0; i < branch.Conditions.Count; i++)
+        {
+            if (!_runtime.EvaluateCondition(branch.Conditions[i].Expression))
+                continue;
+
+            var targetEdge = _graph.Edges
+                .Find(e => e.FromNodeId == branch.Id && e.FromOutlet == i);
+            if (targetEdge != null)
+                _runtime.JumpTo(targetEdge.ToNodeId);
+
+            return;
+        }
+
+        MoveToNext();
     }
 
     private void MoveToNext()
@@ -202,10 +215,7 @@ public sealed class GameEngine
         }
     }
 
-    public GameSnapshot CreateSaveData()
-    {
-        return _runtime.CreateSnapshot();
-    }
+    public GameSnapshot CreateSaveData() => _runtime.CreateSnapshot();
 
     public void RestoreFrom(GameSnapshot data)
     {

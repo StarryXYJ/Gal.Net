@@ -26,7 +26,7 @@ public static class BuiltInDockContributions
     public static void Register(IEditorExtensionRegistry registry)
     {
         registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.NodeGraph, "Dock.Panel.NodeGraph", DockPanelPlacement.MainDocument, true, true, true, true, true,
-            (sp, _) => sp.GetRequiredService<NodeGraphPanelViewModel>(), typeof(NodeGraphPanelView), new DelegateInspectorContribution(
+            (sp, _) => sp.GetRequiredService<EditorWorkspaceViewModel>(), typeof(NodeGraphPanelView), new DelegateInspectorContribution(
                 (sp, _) => sp.GetRequiredService<NodeInspectorControlViewModel>(), typeof(NodeInspectorControl))));
         registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.GamePreview, "Dock.Panel.GamePreview", DockPanelPlacement.MainDocument, true, true, true, true, true,
             (sp, _) => sp.GetRequiredService<IGamePreviewPanelFactory>().Create(sp), typeof(GamePreviewPanelView), new DelegateInspectorContribution(

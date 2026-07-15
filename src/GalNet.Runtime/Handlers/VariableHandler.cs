@@ -2,42 +2,32 @@ using GalNet.Core.Handler;
 
 namespace GalNet.Runtime.Handlers;
 
-/// <summary>
-/// 变量操作 —— 非阻塞。通过 Runtime 直接读写变量。
-/// 参数：action（set/mod/eval）、target、value、type、expression
-/// </summary>
 public sealed class VariableHandler : EntryHandler
 {
     public override string EntryType => "variable";
     public override bool IsBlocking => false;
 
-    public override void Start(EntryContext ctx)
+    public VariableHandler()
     {
-        var target = ctx.GetString("target", "");
-        var action = ctx.GetString("action", "set");
-
-        switch (action)
+        On("set", ctx =>
         {
-            case "set":
+            var rawValue = ctx.GetString("value", "");
+            var type = ctx.GetString("type", "string");
+            ctx.Runtime.SetVariable(ctx.GetString("target", ""), ParseValue(rawValue, type));
+        });
+        On("eval", ctx =>
+        {
+            var expression = ctx.GetString("expression", "");
+            if (!string.IsNullOrEmpty(expression))
             {
-                var rawValue = ctx.GetString("value", "");
-                var type = ctx.GetString("type", "string");
-                ctx.Runtime.SetVariable(target, ParseValue(rawValue, type));
-                break;
+                var result = ctx.Runtime.EvaluateExpression(expression);
+                if (result != null)
+                    ctx.Runtime.SetVariable(ctx.GetString("target", ""), result);
             }
-            case "eval":
-            {
-                var expression = ctx.GetString("expression", "");
-                if (!string.IsNullOrEmpty(expression))
-                {
-                    var result = ctx.Runtime.EvaluateExpression(expression);
-                    if (result != null)
-                        ctx.Runtime.SetVariable(target, result);
-                }
-                break;
-            }
-        }
+        });
     }
+
+    public override void Start(EntryContext ctx) => Dispatch(ctx, defaultCommand: "set");
 
     private static object ParseValue(string raw, string type) => type switch
     {

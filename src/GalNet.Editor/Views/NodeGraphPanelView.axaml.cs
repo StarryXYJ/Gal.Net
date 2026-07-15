@@ -36,7 +36,7 @@ public partial class NodeGraphPanelView : UserControl
         Viewport.SizeChanged += (_, _) => ApplyViewportState();
     }
 
-    private NodeGraphPanelViewModel? ViewModel => DataContext as NodeGraphPanelViewModel;
+    private EditorWorkspaceViewModel? Workspace => DataContext as EditorWorkspaceViewModel;
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
@@ -44,7 +44,7 @@ public partial class NodeGraphPanelView : UserControl
         {
             if (e.Key == Key.Delete)
             {
-                ViewModel?.Workspace.DeleteSelection();
+                Workspace?.DeleteSelection();
                 e.Handled = true;
             }
             return;
@@ -72,7 +72,7 @@ public partial class NodeGraphPanelView : UserControl
         _isSelecting = true;
         _selectionMoved = false;
         _selectionStartWorld = ViewportToWorld(_lastViewportPointerPosition);
-        ViewModel?.Workspace.ClearSelection();
+        Workspace?.ClearSelection();
         UpdateSelectionRectangle(_selectionStartWorld, _selectionStartWorld);
         e.Pointer.Capture(Viewport);
         e.Handled = true;
@@ -113,7 +113,7 @@ public partial class NodeGraphPanelView : UserControl
         {
             if (_previewTargetConnector is not null)
             {
-                ViewModel?.Workspace.Connect(_pendingConnector, _previewTargetConnector);
+                Workspace?.Connect(_pendingConnector, _previewTargetConnector);
             }
             else if (_pendingConnector.Kind == GraphConnectorKind.Output)
             {
@@ -148,12 +148,12 @@ public partial class NodeGraphPanelView : UserControl
     {
         if (!_selectionMoved)
         {
-            ViewModel?.Workspace.ClearSelection();
+            Workspace?.ClearSelection();
             return;
         }
 
         var rect = new Rect(_selectionStartWorld, end).Normalize();
-        var selected = ViewModel?.Workspace.Nodes
+        var selected = Workspace?.Nodes
             .Where(node => rect.Intersects(new Rect(
                 node.X,
                 node.Y,
@@ -162,15 +162,15 @@ public partial class NodeGraphPanelView : UserControl
             .ToList() ?? [];
 
         if (selected.Count > 0)
-            ViewModel?.Workspace.SelectNodes(selected);
+            Workspace?.SelectNodes(selected);
         else
-            ViewModel?.Workspace.ClearSelection();
+            Workspace?.ClearSelection();
     }
 
     private void OnViewportRightTapped(object? sender, TappedEventArgs e)
     {
         _lastViewportPointerPosition = e.GetPosition(Viewport);
-        if (ViewModel?.Workspace.SelectedNodes.Count > 1)
+        if (Workspace?.SelectedNodes.Count > 1)
         {
             ShowSelectionMenu();
             e.Handled = true;
@@ -197,18 +197,18 @@ public partial class NodeGraphPanelView : UserControl
         if (!e.OriginalEventArgs.GetCurrentPoint(sender as Avalonia.Controls.Control).Properties.IsLeftButtonPressed)
             return;
 
-        if (ViewModel?.Workspace is not { } workspace)
+        if (Workspace is not null)
             return;
 
         var wasSelected = e.Node.IsSelected;
         if (!wasSelected)
-            workspace.SelectNode(e.Node);
+            Workspace.SelectNode(e.Node);
 
         _draggedNode = e.Node;
         _nodeDragMoved = false;
         _dragStartWorld = ViewportToWorld(e.OriginalEventArgs.GetPosition(Viewport));
         _dragStartPositions.Clear();
-        var dragNodes = wasSelected ? workspace.SelectedNodes.ToList() : [e.Node];
+        var dragNodes = wasSelected ? Workspace.SelectedNodes.ToList() : [e.Node];
         foreach (var node in dragNodes)
             _dragStartPositions[node] = new Point(node.X, node.Y);
 
@@ -259,7 +259,7 @@ public partial class NodeGraphPanelView : UserControl
     private void EndNodeDrag(IPointer pointer)
     {
         if (_draggedNode is not null && _nodeDragMoved)
-            ViewModel?.Workspace.SaveGraphDocument();
+            Workspace?.SaveGraphDocument();
 
         _draggedNode = null;
         _nodeDragMoved = false;
@@ -269,7 +269,7 @@ public partial class NodeGraphPanelView : UserControl
 
     private void OnNodeDoubleTapped(object? sender, GraphNodeEventArgs e)
     {
-        ViewModel?.Workspace.OpenGroupEditor(e.Node);
+        Workspace?.OpenGroupEditor(e.Node);
         e.OriginalEventArgs.Handled = true;
     }
 
@@ -278,21 +278,21 @@ public partial class NodeGraphPanelView : UserControl
         if (sender is not Avalonia.Controls.Control control)
             return;
 
-        if (ViewModel?.Workspace is not { } workspace)
+        if (Workspace is not null)
             return;
 
-        if (e.Node.IsSelected && workspace.SelectedNodes.Count > 1)
+        if (e.Node.IsSelected && Workspace.SelectedNodes.Count > 1)
         {
             ShowSelectionMenu(control);
             e.OriginalEventArgs.Handled = true;
             return;
         }
 
-        workspace.SelectNode(e.Node);
+        Workspace.SelectNode(e.Node);
 
         var menu = new MenuFlyout();
         var deleteItem = new MenuItem { Header = e.Node.CanDelete ? "鍒犻櫎" : "鍏ュ彛鑺傜偣涓嶅彲鍒犻櫎", IsEnabled = e.Node.CanDelete };
-        deleteItem.Click += (_, _) => ViewModel?.Workspace.DeleteNode(e.Node);
+        deleteItem.Click += (_, _) => Workspace?.DeleteNode(e.Node);
         menu.Items.Add(deleteItem);
         menu.Placement = PlacementMode.Pointer;
         menu.ShowAt(control, true);
@@ -308,7 +308,7 @@ public partial class NodeGraphPanelView : UserControl
             return;
 
         Focus();
-        ViewModel?.Workspace.SelectEdge(edge);
+        Workspace?.SelectEdge(edge);
         e.Handled = true;
     }
 
@@ -318,11 +318,11 @@ public partial class NodeGraphPanelView : UserControl
             return;
 
         Focus();
-        ViewModel?.Workspace.SelectEdge(edge);
+        Workspace?.SelectEdge(edge);
 
         var menu = new MenuFlyout();
         var deleteItem = new MenuItem { Header = "鍒犻櫎" };
-        deleteItem.Click += (_, _) => ViewModel?.Workspace.DeleteEdge(edge);
+        deleteItem.Click += (_, _) => Workspace?.DeleteEdge(edge);
         menu.Items.Add(deleteItem);
         menu.Placement = PlacementMode.Pointer;
         menu.ShowAt(control, true);
@@ -333,7 +333,7 @@ public partial class NodeGraphPanelView : UserControl
     {
         var menu = new MenuFlyout();
         var deleteItem = new MenuItem { Header = "鍒犻櫎" };
-        deleteItem.Click += (_, _) => ViewModel?.Workspace.DeleteSelection();
+        deleteItem.Click += (_, _) => Workspace?.DeleteSelection();
         menu.Items.Add(deleteItem);
         menu.Placement = PlacementMode.Pointer;
         menu.ShowAt(target ?? Viewport, true);
@@ -345,7 +345,7 @@ public partial class NodeGraphPanelView : UserControl
             return;
 
         _pendingConnector = e.Connector;
-        ViewModel?.Workspace.SelectNode(e.Connector.Node);
+        Workspace?.SelectNode(e.Connector.Node);
         _lastViewportPointerPosition = e.OriginalEventArgs.GetPosition(Viewport);
         e.OriginalEventArgs.Pointer.Capture(Viewport);
         UpdatePendingConnection(_lastViewportPointerPosition);
@@ -357,7 +357,7 @@ public partial class NodeGraphPanelView : UserControl
         if (_pendingConnector is null)
             return;
 
-        ViewModel?.Workspace.Connect(_pendingConnector, e.Connector);
+        Workspace?.Connect(_pendingConnector, e.Connector);
         ClearPendingConnection();
         e.OriginalEventArgs.Pointer.Capture(null);
         e.OriginalEventArgs.Handled = true;
@@ -379,13 +379,13 @@ public partial class NodeGraphPanelView : UserControl
 
     private GraphConnector? FindNearestConnector(Point viewportPosition)
     {
-        if (_pendingConnector is null || ViewModel?.Workspace is not { } workspace)
+        if (_pendingConnector is null || Workspace is not null)
             return null;
 
         GraphConnector? nearest = null;
         var nearestDistance = ConnectorSnapDistance;
 
-        foreach (var connector in workspace.Nodes.SelectMany(n => n.InputConnectors.Concat(n.OutputConnectors)))
+        foreach (var connector in Workspace.Nodes.SelectMany(n => n.InputConnectors.Concat(n.OutputConnectors)))
         {
             if (!CanConnectPreview(_pendingConnector, connector))
                 continue;
@@ -457,9 +457,9 @@ public partial class NodeGraphPanelView : UserControl
         {
             var x = Math.Clamp(position.X, 0, GraphCanvas.Width - GraphLayoutMetrics.NodeWidth);
             var y = Math.Clamp(position.Y, 0, GraphCanvas.Height - GraphLayoutMetrics.NodeMinHeight);
-            var node = ViewModel?.Workspace.AddNode(kind, x, y);
+            var node = Workspace?.AddNode(kind, x, y);
             if (node is not null && connectFrom is not null)
-                ViewModel?.Workspace.Connect(connectFrom, node.InputConnectors[0]);
+                Workspace?.Connect(connectFrom, node.InputConnectors[0]);
 
             Log.Information("Node menu created {NodeKind} at {X}, {Y}", kind, x, y);
         };
@@ -473,7 +473,7 @@ public partial class NodeGraphPanelView : UserControl
         if (_hasAppliedViewportState || Viewport.Bounds.Width <= 0 || Viewport.Bounds.Height <= 0)
             return;
 
-        var state = ViewModel?.Workspace.GraphViewport;
+        var state = Workspace?.GraphViewport;
         if (state is { OffsetX: not 0 } or { OffsetY: not 0 })
         {
             Viewport.SetViewport(state.Zoom, state.OffsetX, state.OffsetY);
@@ -491,21 +491,21 @@ public partial class NodeGraphPanelView : UserControl
 
     private void SaveViewportState()
     {
-        if (ViewModel?.Workspace.GraphViewport is not { } state)
+        if (Workspace?.GraphViewport is not { } state)
             return;
 
         state.Zoom = Viewport.Zoom;
         state.OffsetX = Viewport.OffsetX;
         state.OffsetY = Viewport.OffsetY;
-        ViewModel.Workspace.SaveGraphViewport();
+        Workspace?.SaveGraphViewport();
     }
 
     private bool AnyNodeVisible()
     {
-        if (ViewModel?.Workspace.Nodes.Count is not > 0)
+        if (Workspace?.Nodes.Count is not > 0)
             return true;
 
-        return ViewModel.Workspace.Nodes.Any(node =>
+        return Workspace?.Nodes.Any(node =>
         {
             var topLeft = Viewport.WorldToViewport(new Point(node.X, node.Y));
             var bottomRight = Viewport.WorldToViewport(new Point(
@@ -515,13 +515,13 @@ public partial class NodeGraphPanelView : UserControl
                 && bottomRight.Y >= 0
                 && topLeft.X <= Viewport.Bounds.Width
                 && topLeft.Y <= Viewport.Bounds.Height;
-        });
+        }) ?? true;
     }
 
     private void CenterOnPrimaryNode()
     {
-        var node = ViewModel?.Workspace.Nodes.FirstOrDefault(n => n.IsRoot)
-            ?? ViewModel?.Workspace.Nodes.FirstOrDefault();
+        var node = Workspace?.Nodes.FirstOrDefault(n => n.IsRoot)
+            ?? Workspace?.Nodes.FirstOrDefault();
         if (node is null)
             return;
 
