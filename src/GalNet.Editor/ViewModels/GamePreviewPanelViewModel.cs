@@ -73,6 +73,7 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
         _variableService = variableService;
         _variableDefinitions = variableDefinitions;
         _documentService = documentService;
+        _workspace.ActivePreview = this;
 
         _projectService.CurrentChanged += OnProjectChanged;
         _variableService.VariableChanged += OnVariableServiceChanged;
@@ -98,9 +99,7 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
         {
             Title = project.Name,
             GameContentProvider = _projectService.Current.Services.GetRequiredService<IGameContentProvider>(),
-            Widgets = (IWidgetInstanceProvider)project.UiProject,
-            Screens = (IScreenInstanceProvider)project.UiProject,
-            Palette = project.Palette,
+            Ui = project.UiProject.Current,
             SaveService = new FileSaveService(Path.Combine(project.EditorStateDirectory, "player"), project.Settings.SaveSlotCount),
             ProgressService = new FileGameProgressService(Path.Combine(project.EditorStateDirectory, "player")),
             VariableService = _variableService,
@@ -116,6 +115,8 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
         OutputLines.Insert(0, $"Preview restarted at {DateTime.Now:T}");
         StatusText = "Ready";
     }
+
+    public Task RestartAsync() => RestartPreviewAsync();
 
     public async Task ResetPlayerAsync()
     {
@@ -300,6 +301,7 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
         _disposed = true;
         _projectService.CurrentChanged -= OnProjectChanged;
         _variableService.VariableChanged -= OnVariableServiceChanged;
+        if (ReferenceEquals(_workspace.ActivePreview, this)) _workspace.ActivePreview = null;
         await StopPreviewAsync();
     }
 

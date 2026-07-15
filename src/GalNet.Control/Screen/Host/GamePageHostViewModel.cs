@@ -1,4 +1,5 @@
 using GalNet.Control.Abstraction.UI;
+using GalNet.Control.UI;
 
 namespace GalNet.Control.ViewModels;
 
@@ -6,11 +7,10 @@ public sealed class GamePageHostViewModel
 {
     public IGameScreenNavigator Navigator { get; }
 
-    public GamePageHostViewModel(IServiceProvider services, IScreenTemplateRegistry templates, GameFlowOptions options)
+    public GamePageHostViewModel(IGameFlowFactory flow, GameFlowOptions options)
     {
-        GalNet.Control.UI.GameScreenNavigator? navigator = null;
-        navigator = new GalNet.Control.UI.GameScreenNavigator(options.Screens, templates,
-            parameter => new ScreenBuildContext(services, options.Palette, options.Widgets, options.Screens, navigator!, parameter, options));
+        GameScreenNavigator? navigator = null;
+        navigator = new GameScreenNavigator((screen, parameter) => flow.BuildScreen(navigator!, screen, parameter, options));
         Navigator = navigator;
         _ = Navigator.NavigateAsync("title");
     }

@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using GalNet.Control.Effect;
@@ -8,6 +9,7 @@ using GalNet.Control.Transition;
 using GalNet.Control.Abstraction.UI;
 using GalNet.Control.ViewModels;
 using GalNet.Core.Settings;
+using GalNet.Core.UI;
 using GalNet.Core.View;
 using LibVLCSharp.Shared;
 using Serilog;
@@ -36,6 +38,7 @@ public class DefaultGameView : Grid, IGameView, IDisposable
     private bool _dialogueWasVisible;
     private bool _choiceWasVisible;
     private bool _indicatorWasVisible;
+    private bool _advanceQueued;
     public bool AutoMode => _screen.AutoMode;
     public bool QuickMode => _screen.QuickMode;
     public bool IsUiHidden { get; private set; }
@@ -107,14 +110,14 @@ public class DefaultGameView : Grid, IGameView, IDisposable
         _effectRegistry.Register(new FlashEffect());
     }
 
-    public DefaultGameView(GameSettings settings, IWidgetFactory widgetFactory, WidgetBuildContext widgetContext, GameScreenViewModel screen)
+    public DefaultGameView(GameSettings settings, GameUiConfiguration config, GameScreenViewModel screen)
     {
         _gameSettings = settings;
         _screen = screen;
         _gameScreen = new GameScreenView { DataContext = screen };
         _registry = new DefaultGameViewRegistry(_gameScreen);
-        _typewriter = new DefaultTypewriterPresenter(_gameSettings, _gameScreen, _registry, widgetFactory, widgetContext, screen);
-        _choice = new DefaultChoicePresenter(_registry, widgetFactory, widgetContext, screen);
+        _typewriter = new DefaultTypewriterPresenter(_gameSettings, _gameScreen, screen);
+        _choice = new DefaultChoicePresenter(screen);
 
         _libVlc = _vlcInitialized ? new LibVLC() : null!;
         _videoPlayer = _vlcInitialized ? new MediaPlayer(_libVlc) : null!;
@@ -126,33 +129,39 @@ public class DefaultGameView : Grid, IGameView, IDisposable
 
         _screen.CommandRequested += command => CommandRequested?.Invoke(command);
         _screen.HideRequested += HideUi;
-
-        PointerPressed += (_, e) =>
-        {
-            if (IsUiHidden)
-            {
-                RestoreUi();
-                e.Handled = true;
-                return;
-            }
-            Log.ForContext("LogChannel", "Game").Debug("PointerPressed at {X},{Y}", e.GetPosition(this).X, e.GetPosition(this).Y);
-
-            if (_clickTcs is { Task.IsCompleted: false })
-            {
-                var tcs = _clickTcs;
-                _clickTcs = null;
-                tcs.TrySetResult(0);
-                return;
-            }
-
-            if (_typewriter.CurrentTask is { IsCompleted: false })
-            {
-                _typewriter.Skip(string.Empty);
-            }
-        };
+        _screen.AdvanceRequested += Advance;
 
         KeyDown += (_, e) => { if (IsUiHidden) { RestoreUi(); e.Handled = true; } };
     }
+
+    private void Advance()
+    {
+        if (IsUiHidden)
+        {
+            RestoreUi();
+            return;
+        }
+
+        // Choices own their input. The transparent advance layer is disabled while one is visible,
+        // but keep this guard to make the rule explicit for future hosts.
+        if (_screen.IsChoiceVisible)
+            return;
+
+        if (_clickTcs is { Task.IsCompleted: false })
+        {
+            var tcs = _clickTcs;
+            _clickTcs = null;
+            tcs.TrySetResult(0);
+            return;
+        }
+
+        if (_typewriter.CurrentTask is { IsCompleted: false })
+        {
+            _advanceQueued = true;
+            _typewriter.Skip(string.Empty);
+        }
+    }
+
 
     // ── ILayerView ──
 
@@ -209,6 +218,14 @@ public class DefaultGameView : Grid, IGameView, IDisposable
             {
                 Log.Warning(ex, "Typewriter task faulted — continuing to click wait");
             }
+        }
+
+        // A click during typewriting is both a skip request and an advance request. Without
+        // queuing it, the runtime reaches this wait only after that click has already passed.
+        if (_advanceQueued)
+        {
+            _advanceQueued = false;
+            return;
         }
 
         Avalonia.Threading.Dispatcher.UIThread.Post(() => _screen.IsClickIndicatorVisible = true);

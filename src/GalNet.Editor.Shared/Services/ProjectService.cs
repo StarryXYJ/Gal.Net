@@ -60,7 +60,7 @@ public sealed class ProjectService : IProjectService
         var id = name;
 
         var ui = new FileUiProjectProvider(projectPath);
-        var program = new GalProject(id, name, projectPath, settings, editorState, ui, new ProjectColorPalette(ui), scope);
+        var program = new GalProject(id, name, projectPath, settings, editorState, ui, scope);
 
         _current = program;
 
@@ -98,7 +98,7 @@ public sealed class ProjectService : IProjectService
         var scope = _globalServices.CreateScope();
         var editorState = await LoadEditorProjectStateAsync(projectPath);
         var ui = new FileUiProjectProvider(projectPath);
-        var program = new GalProject(name, name, projectPath, settings, editorState, ui, new ProjectColorPalette(ui), scope);
+        var program = new GalProject(name, name, projectPath, settings, editorState, ui, scope);
 
         _current = program;
 

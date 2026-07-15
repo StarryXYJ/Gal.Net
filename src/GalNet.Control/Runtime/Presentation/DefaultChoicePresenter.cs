@@ -1,55 +1,37 @@
+using Avalonia.Controls;
+using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.Threading;
-using GalNet.Control.Abstraction.UI;
-using GalNet.Control.UI;
 using GalNet.Control.ViewModels;
-using GalNet.Core.Widget;
 
 namespace GalNet.Control.View;
 
-internal sealed class DefaultChoicePresenter
+internal sealed class DefaultChoicePresenter(GameScreenViewModel screen)
 {
-    private readonly DefaultGameViewRegistry _registry;
-    private readonly IWidgetFactory _factory;
-    private readonly WidgetBuildContext _context;
-    private readonly GameScreenViewModel _screen;
-
-    public DefaultChoicePresenter(DefaultGameViewRegistry registry, IWidgetFactory factory, WidgetBuildContext context, GameScreenViewModel screen)
+    public Task<int> ShowAsync(string id, string[] options, CancellationToken ct)
     {
-        _registry = registry; _factory = factory; _context = context; _screen = screen;
-    }
-
-    public Task<int> ShowAsync(string widgetInstanceId, string[] options, CancellationToken ct)
-    {
-        var tcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var result = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         Dispatcher.UIThread.Post(() =>
         {
-            try
+            var config = screen.Configuration;
+            var panel = new StackPanel { Orientation = string.Equals(config.ChoiceLayout, "horizontal", StringComparison.OrdinalIgnoreCase) ? Orientation.Horizontal : Orientation.Vertical, Spacing = config.ChoiceSpacing };
+            foreach (var (text, index) in options.Select((value, index) => (value, index)))
             {
-                var host = new WidgetHostViewModel(_factory, _context, widgetInstanceId, "choice");
-                var widget = host.RequireWidget<IChoicePanel>();
-                widget.ChoiceSelected += Selected;
-                widget.SetChoices(options);
-                _registry.RegisterWidget(widgetInstanceId, host.View!);
-                _screen.ChoiceHost = host;
-                _screen.IsChoiceVisible = true;
-                _screen.IsClickIndicatorVisible = false;
-
-                void Selected(int index)
+                var button = new Button
                 {
-                    widget.ChoiceSelected -= Selected;
-                    _screen.IsChoiceVisible = false;
-                    tcs.TrySetResult(index);
-                }
+                    Content = text,
+                    Width = config.ChoiceButtonWidth,
+                    Height = config.ChoiceButtonHeight,
+                    Background = new SolidColorBrush(config.ChoiceButtonColor),
+                    Foreground = new SolidColorBrush(config.ChoiceButtonTextColor)
+                };
+                button.Click += (_, _) => { screen.IsChoiceVisible = false; result.TrySetResult(index); };
+                panel.Children.Add(button);
             }
-            catch (Exception ex) { tcs.TrySetException(ex); }
+            screen.ChoiceView = panel; screen.IsChoiceVisible = true; screen.IsClickIndicatorVisible = false;
         });
-        ct.Register(() => { Cancel(); tcs.TrySetCanceled(ct); });
-        return tcs.Task;
+        ct.Register(() => { Cancel(); result.TrySetCanceled(ct); });
+        return result.Task;
     }
-
-    public void Cancel() => Dispatcher.UIThread.Post(() =>
-    {
-        _screen.ChoiceHost = null;
-        _screen.IsChoiceVisible = false;
-    });
+    public void Cancel() => Dispatcher.UIThread.Post(() => { screen.ChoiceView = null; screen.IsChoiceVisible = false; });
 }

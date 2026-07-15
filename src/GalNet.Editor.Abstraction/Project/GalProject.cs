@@ -3,7 +3,6 @@ using System.IO;
 using GalNet.Core.Settings;
 using GalNet.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
-using GalNet.Control.Abstraction.UI;
 
 namespace GalNet.Editor.Abstraction.Project;
 
@@ -60,7 +59,6 @@ public sealed class GalProject : IDisposable
     public EditorProjectState EditorState { get; }
     /// <summary>Single in-memory UI project shared by editors and preview sessions.</summary>
     public IUiProjectProvider UiProject { get; }
-    public IColorPalette Palette { get; }
 
     /// <summary>项目级 DI Scope。从此 Scope 解析的 Service 在项目关闭时自动 Dispose。</summary>
     public IServiceScope Scope { get; }
@@ -71,7 +69,7 @@ public sealed class GalProject : IDisposable
     /// <summary>工程项目是否有未保存的修改</summary>
     public bool IsDirty { get; set; }
 
-    public GalProject(string id, string name, string rootPath, ProjectSettings settings, EditorProjectState editorState, IUiProjectProvider uiProject, IColorPalette palette, IServiceScope scope)
+    public GalProject(string id, string name, string rootPath, ProjectSettings settings, EditorProjectState editorState, IUiProjectProvider uiProject, IServiceScope scope)
     {
         Id = id;
         Name = name;
@@ -79,7 +77,6 @@ public sealed class GalProject : IDisposable
         Settings = settings;
         EditorState = editorState;
         UiProject = uiProject;
-        Palette = palette;
         Scope = scope;
     }
 

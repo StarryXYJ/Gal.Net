@@ -1,0 +1,30 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:GalNet.Control.ViewModels" x:Class="GalNet.Control.Views.SaveSlotCard" x:DataType="vm:SaveSlotItem"
+             HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+             HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+  <Button Command="{Binding SelectCommand}" 
+          IsEnabled="{Binding IsEnabled}" 
+          Padding="0" Background="Transparent" BorderThickness="0" 
+          HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+          HorizontalContentAlignment="Stretch" 
+          VerticalContentAlignment="Stretch">
+    <Border Background="#B81B1C27" BorderBrush="#665F6075" BorderThickness="1" CornerRadius="10" ClipToBounds="True" MinHeight="132">
+      <Grid>
+        <Image Source="{Binding PreviewImage}" Stretch="UniformToFill" IsVisible="{Binding HasPreview}" />
+        <Border Background="#660D0E16" IsVisible="{Binding HasSave}" />
+        
+        <StackPanel IsVisible="{Binding HasSave}" VerticalAlignment="Top" 
+                    Margin="14" Spacing="3">
+          <TextBlock Text="{Binding TimestampLabel}" FontSize="14" Foreground="#FFFFFFFF" />
+          <TextBlock Text="{Binding SlotLabel}" FontSize="12" FontWeight="SemiBold" Foreground="#FFEDEDF5" />
+          
+        </StackPanel>
+        
+        <StackPanel IsVisible="{Binding !HasSave}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="5">
+          <TextBlock Text="{Binding SlotLabel}" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="#FFF0F0F6" />
+          <TextBlock Text="{Binding StatusLabel}" FontSize="11" HorizontalAlignment="Center" Foreground="#FF989AAF" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Button>
+</UserControl>

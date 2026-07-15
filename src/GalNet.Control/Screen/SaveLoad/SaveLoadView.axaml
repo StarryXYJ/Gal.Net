@@ -1,27 +1,33 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:ui="clr-namespace:GalNet.Control.Abstraction.UI;assembly=GalNet.Control.Abstraction" xmlns:vm="clr-namespace:GalNet.Control.ViewModels" xmlns:host="clr-namespace:GalNet.Control.UI" x:Class="GalNet.Control.Views.SaveLoadView" x:DataType="vm:SaveLoadViewModel" Background="{ui:PaletteBrush Background0}">
-  <UserControl.DataTemplates>
-    <DataTemplate DataType="host:WidgetHostViewModel" x:DataType="host:WidgetHostViewModel">
-      <ContentControl HorizontalAlignment="Stretch" VerticalAlignment="Stretch" 
-                      Content="{Binding View}"/>
-    </DataTemplate>
-  </UserControl.DataTemplates>
-  <Grid RowDefinitions="Auto,*,Auto" Margin="36" RowSpacing="20">
-    <TextBlock Text="{Binding Title}" 
-               FontSize="32" FontWeight="SemiBold" Foreground="{ui:PaletteBrush FontColor0}"/>
-    <ScrollViewer Grid.Row="1">
-      <ItemsControl ItemsSource="{Binding SlotHosts}">
-        <ItemsControl.ItemsPanel>
-          <ItemsPanelTemplate>
-            <UniformGrid Columns="4" Rows="3"/>
-          </ItemsPanelTemplate>
-        </ItemsControl.ItemsPanel>
-      </ItemsControl>
-    </ScrollViewer>
-    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="16">
-      <ContentControl Content="{Binding PreviousButtonHost.View}"/>
-      <TextBlock Text="{Binding PageLabel}" VerticalAlignment="Center"/>
-      <ContentControl Content="{Binding NextButtonHost.View}"/>
-      <ContentControl Content="{Binding BackButtonHost.View}"/>
-    </StackPanel>
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:GalNet.Control.ViewModels"
+             xmlns:views="clr-namespace:GalNet.Control.Views"
+             xmlns:ursa="clr-namespace:Ursa.Controls;assembly=Ursa"
+             x:Class="GalNet.Control.Views.SaveLoadView" x:DataType="vm:SaveLoadViewModel">
+  <UserControl.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries><ResourceInclude Source="avares://GalNet.Control/Assets/Icons.axaml" /></ResourceDictionary.MergedDictionaries></ResourceDictionary></UserControl.Resources>
+  <Grid Background="{Binding Configuration.BackgroundColor}">
+    <Border Margin="48" Padding="26" Background="#66171924" BorderBrush="#665F6075" BorderThickness="1" CornerRadius="14">
+      <Grid RowDefinitions="Auto,*,Auto" RowSpacing="20">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="4"><TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" Foreground="{Binding Configuration.TextColor}" /><TextBlock Text="Select a slot to continue" FontSize="13" Foreground="#FF9A9CB0" /></StackPanel>
+          <Button Grid.Column="1" Command="{Binding BackCommand}" VerticalAlignment="Center" ToolTip.Tip="Back"><PathIcon Width="18" Height="18" Data="{StaticResource BackwardRegular}" /></Button>
+        </Grid>
+        <ItemsControl Grid.Row="1" ItemsSource="{Binding Slots}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><UniformGrid Columns="4" Rows="3" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:SaveSlotItem">
+              <views:SaveSlotCard HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="6" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <ursa:Pagination Grid.Row="2"
+                         HorizontalAlignment="Center"
+                         CurrentPage="{Binding CurrentPage, Mode=TwoWay}"
+                         TotalCount="{Binding TotalSlotCount}" PageSize="12"
+                         ShowPageSizeSelector="False" ShowQuickJump="False" />
+      </Grid>
+    </Border>
   </Grid>
 </UserControl>

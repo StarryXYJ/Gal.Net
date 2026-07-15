@@ -1,46 +1,33 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Control.Abstraction.UI;
-using GalNet.Control.UI;
 using GalNet.Core.Services;
-using GalNet.Core.Widget;
+using GalNet.Core.UI;
 
 namespace GalNet.Control.ViewModels;
 
 public sealed partial class SettingsViewModel : ObservableObject
 {
-    private readonly ISettingsService _settings;
-    private readonly IGameScreenNavigator _navigator;
-    public WidgetHostViewModel BgmVolumeHost { get; private set; } = null!;
-    public WidgetHostViewModel SfxVolumeHost { get; private set; } = null!;
-    public WidgetHostViewModel VoiceVolumeHost { get; private set; } = null!;
-    public WidgetHostViewModel TextSpeedHost { get; private set; } = null!;
-    public WidgetHostViewModel AutoDelayHost { get; private set; } = null!;
-    public WidgetHostViewModel QuickDelayHost { get; private set; } = null!;
-    public WidgetHostViewModel FullscreenHost { get; private set; } = null!;
-    public WidgetHostViewModel BackButtonHost { get; private set; } = null!;
-
-    public SettingsViewModel(ISettingsService settings, IGameScreenNavigator navigator) { _settings = settings; _navigator = navigator; }
-
-    public void SetHosts(WidgetHostViewModel bgm, WidgetHostViewModel sfx, WidgetHostViewModel voice, WidgetHostViewModel textSpeed,
-        WidgetHostViewModel autoDelay, WidgetHostViewModel quickDelay, WidgetHostViewModel fullscreen, WidgetHostViewModel back)
+    private readonly ISettingsService _settings; private readonly IGameScreenNavigator _navigator;
+    public SettingsUiConfiguration Configuration { get; }
+    [ObservableProperty] private double _bgmVolume;
+    [ObservableProperty] private double _sfxVolume;
+    [ObservableProperty] private double _voiceVolume;
+    [ObservableProperty] private double _textSpeed;
+    [ObservableProperty] private double _autoDelay;
+    [ObservableProperty] private double _quickDelay;
+    [ObservableProperty] private bool _fullscreen;
+    public SettingsViewModel(ISettingsService settings, IGameScreenNavigator navigator, SettingsUiConfiguration configuration)
     {
-        BgmVolumeHost = bgm; SfxVolumeHost = sfx; VoiceVolumeHost = voice; TextSpeedHost = textSpeed;
-        AutoDelayHost = autoDelay; QuickDelayHost = quickDelay; FullscreenHost = fullscreen; BackButtonHost = back;
-        ConfigureSlider(bgm, _settings.BgmVolume, 1, value => _settings.BgmVolume = (float)value);
-        ConfigureSlider(sfx, _settings.SfxVolume, 1, value => _settings.SfxVolume = (float)value);
-        ConfigureSlider(voice, _settings.VoiceVolume, 1, value => _settings.VoiceVolume = (float)value);
-        ConfigureSlider(textSpeed, _settings.TextSpeed, 200, value => _settings.TextSpeed = (float)value);
-        ConfigureSlider(autoDelay, _settings.GetSnapshot().AutoAdvanceInterval, 10, value => { var snapshot = _settings.GetSnapshot(); snapshot.AutoAdvanceInterval = (float)value; _settings.ApplySnapshot(snapshot); });
-        ConfigureSlider(quickDelay, _settings.GetSnapshot().QuickAdvanceInterval, 2, value => { var snapshot = _settings.GetSnapshot(); snapshot.QuickAdvanceInterval = (float)value; _settings.ApplySnapshot(snapshot); });
-        var toggle = fullscreen.RequireWidget<IToggleWidget>(); toggle.Label = ""; toggle.IsChecked = _settings.Fullscreen; toggle.CheckedChanged += value => _settings.Fullscreen = value;
-        var backButton = back.RequireWidget<IButtonWidget>(); backButton.Text = "Back"; backButton.Command = BackCommand;
+        _settings = settings; _navigator = navigator; Configuration = configuration;
+        var s = settings.GetSnapshot(); BgmVolume = s.BgmVolume; SfxVolume = s.SfxVolume; VoiceVolume = s.VoiceVolume; TextSpeed = s.TextSpeed; AutoDelay = s.AutoAdvanceInterval; QuickDelay = s.QuickAdvanceInterval; Fullscreen = s.Fullscreen;
     }
-
-    private static void ConfigureSlider(WidgetHostViewModel host, double value, double maximum, Action<double> changed)
-    {
-        var slider = host.RequireWidget<ISliderWidget>(); slider.Label = null; slider.Minimum = 0; slider.Maximum = maximum; slider.Value = value; slider.ValueChanged += changed;
-    }
-
+    partial void OnBgmVolumeChanged(double value) => _settings.BgmVolume = (float)value;
+    partial void OnSfxVolumeChanged(double value) => _settings.SfxVolume = (float)value;
+    partial void OnVoiceVolumeChanged(double value) => _settings.VoiceVolume = (float)value;
+    partial void OnTextSpeedChanged(double value) => _settings.TextSpeed = (float)value;
+    partial void OnFullscreenChanged(bool value) => _settings.Fullscreen = value;
+    partial void OnAutoDelayChanged(double value) { var s = _settings.GetSnapshot(); s.AutoAdvanceInterval = (float)value; _settings.ApplySnapshot(s); }
+    partial void OnQuickDelayChanged(double value) { var s = _settings.GetSnapshot(); s.QuickAdvanceInterval = (float)value; _settings.ApplySnapshot(s); }
     [RelayCommand] private Task BackAsync() => _navigator.GoBackAsync();
 }

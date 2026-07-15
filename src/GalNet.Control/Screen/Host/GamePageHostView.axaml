@@ -3,13 +3,22 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:GalNet.Control.ViewModels"
+             xmlns:views="clr-namespace:GalNet.Control.Views"
              mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="600"
              x:Class="GalNet.Control.Views.GamePageHostView"
              x:DataType="vm:GamePageHostViewModel"
              Background="#111">
 
-    <ContentControl Content="{Binding Navigator.Current.View}"
+    <ContentControl Content="{Binding Navigator.Current}"
                     HorizontalContentAlignment="Stretch"
-                    VerticalContentAlignment="Stretch" />
+                    VerticalContentAlignment="Stretch">
+        <ContentControl.DataTemplates>
+            <DataTemplate DataType="vm:GameStartViewModel"><views:GameStartView /></DataTemplate>
+            <DataTemplate DataType="vm:GameRunViewModel"><views:GameRunView /></DataTemplate>
+            <DataTemplate DataType="vm:SettingsViewModel"><views:SettingsView /></DataTemplate>
+            <DataTemplate DataType="vm:SaveLoadViewModel"><views:SaveLoadView /></DataTemplate>
+            <DataTemplate DataType="vm:GalleryViewModel"><views:GalleryView /></DataTemplate>
+        </ContentControl.DataTemplates>
+    </ContentControl>
 
 </UserControl>

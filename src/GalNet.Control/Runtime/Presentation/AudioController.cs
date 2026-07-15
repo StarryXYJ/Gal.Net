@@ -64,7 +64,7 @@ public sealed class AudioController : IDisposable
     {
         if (!_audioPlayers.TryGetValue(channel, out var player))
         {
-            player = new MediaPlayer(_libVlc);
+            player = new MediaPlayer(_libVlc!);
             _audioPlayers[channel] = player;
         }
         return player;

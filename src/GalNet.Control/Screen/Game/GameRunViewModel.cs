@@ -22,7 +22,10 @@ public sealed class GameRunViewModel : IAsyncDisposable
     public async Task<bool> SaveCurrentAsync(int slot)
     {
         if (_saveService is null || CurrentSnapshot is not { } snapshot) return false;
-        await _saveService.SaveAsync(slot, snapshot);
+        byte[]? preview = null;
+        try { preview = await GameView.CapturePngAsync(includeUi: true); }
+        catch (Exception ex) { Log.Warning(ex, "Could not capture save preview image"); }
+        await _saveService.SaveAsync(slot, new SaveRequest { Snapshot = snapshot, PreviewImage = preview });
         return true;
     }
 

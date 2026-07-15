@@ -1,43 +1,68 @@
 using System.Collections.ObjectModel;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Control.Abstraction.UI;
-using GalNet.Control.UI;
 using GalNet.Core.Services;
-using GalNet.Core.Widget;
+using GalNet.Core.UI;
 
 namespace GalNet.Control.ViewModels;
 
-public enum SaveLoadMode { Load, Save }
+public enum SaveLoadMode
+{
+    Load,
+    Save
+}
+
+public sealed partial class SaveSlotItem : ObservableObject
+{
+    public int SlotIndex { get; init; }
+    public string SlotLabel => $"SLOT {SlotIndex + 1:D2}";
+
+    [ObservableProperty] private string _timestampLabel = "Empty slot";
+    [ObservableProperty] private string _statusLabel = "No saved data";
+    [ObservableProperty] private bool _isEnabled = true;
+    [ObservableProperty] private bool _hasPreview;
+    [ObservableProperty] private bool _hasSave;
+    [ObservableProperty] private IImage? _previewImage;
+
+    public IAsyncRelayCommand? SelectCommand { get; init; }
+}
 
 public sealed partial class SaveLoadViewModel : ObservableObject
 {
+    public const int PageSize = 12;
+
     private readonly IGameScreenNavigator _navigator;
-    private readonly ISaveService? _saves;
-    private readonly Func<int, Task>? _load;
-    private readonly Func<int, Task>? _save;
+    private readonly ISaveService? _saveService;
+    private readonly Func<int, Task>? _loadAction;
+    private readonly Func<int, Task>? _saveAction;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
-    private Func<WidgetHostViewModel>? _slotHostFactory;
 
     public SaveLoadMode Mode { get; }
-    public ObservableCollection<WidgetHostViewModel> SlotHosts { get; } = [];
-    public WidgetHostViewModel PreviousButtonHost { get; private set; } = null!;
-    public WidgetHostViewModel NextButtonHost { get; private set; } = null!;
-    public WidgetHostViewModel BackButtonHost { get; private set; } = null!;
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(PageLabel))] private int _currentPage;
+    public SaveLoadUiConfiguration Configuration { get; }
+    public ObservableCollection<SaveSlotItem> Slots { get; } = [];
+    public int TotalSlotCount => _saveService?.MaxSlots ?? PageSize;
+    public string Title => Mode == SaveLoadMode.Load ? "Load Game" : "Save Game";
+
+    [ObservableProperty] private int _currentPage = 1;
     [ObservableProperty] private string? _error;
-    public const int PageSize = 12;
-    public int PageCount => _saves is null ? 1 : Math.Max(1, (int)Math.Ceiling(_saves.MaxSlots / (double)PageSize));
-    public string PageLabel => $"{CurrentPage + 1} / {PageCount}";
-    public string Title => Mode == SaveLoadMode.Load ? "Load" : "Save";
 
-    public SaveLoadViewModel(IGameScreenNavigator navigator, ISaveService? saves, SaveLoadMode mode, Func<int, Task>? load = null, Func<int, Task>? save = null)
-    { _navigator = navigator; _saves = saves; Mode = mode; _load = load; _save = save; }
-
-    public void SetHosts(Func<WidgetHostViewModel> slotHostFactory, WidgetHostViewModel previous, WidgetHostViewModel next, WidgetHostViewModel back)
+    public SaveLoadViewModel(
+        IGameScreenNavigator navigator,
+        ISaveService? saveService,
+        SaveLoadMode mode,
+        SaveLoadUiConfiguration configuration,
+        Func<int, Task>? loadAction = null,
+        Func<int, Task>? saveAction = null)
     {
-        _slotHostFactory = slotHostFactory; PreviousButtonHost = previous; NextButtonHost = next; BackButtonHost = back;
-        ConfigureButton(previous, "Previous", PreviousCommand); ConfigureButton(next, "Next", NextCommand); ConfigureButton(back, "Back", BackCommand);
+        _navigator = navigator;
+        _saveService = saveService;
+        _loadAction = loadAction;
+        _saveAction = saveAction;
+        Mode = mode;
+        Configuration = configuration;
     }
 
     public async Task RefreshAsync()
@@ -45,34 +70,80 @@ public sealed partial class SaveLoadViewModel : ObservableObject
         await _refreshGate.WaitAsync();
         try
         {
-            SlotHosts.Clear(); Error = null;
-            if (_saves is null || _slotHostFactory is null) { Error = "Save storage is not configured."; return; }
-            var all = await _saves.ListSlotsAsync();
-            foreach (var info in all.Skip(CurrentPage * PageSize).Take(PageSize))
+            Slots.Clear();
+            if (_saveService is null)
             {
-                var host = _slotHostFactory();
-                var slot = host.RequireWidget<ISaveSlot>();
-                slot.SlotIndex = info.SlotIndex; slot.Timestamp = info.Timestamp == default ? null : info.Timestamp;
-                slot.Description = info.IsCorrupt ? "Corrupt save" : ""; slot.IsCorrupt = info.IsCorrupt; slot.IsEnabled = !info.IsCorrupt;
-                slot.Command = new AsyncRelayCommand(() => SelectAsync(info));
-                SlotHosts.Add(host);
+                Error = "Save storage is not configured.";
+                return;
+            }
+
+            Error = null;
+            var offset = (CurrentPage - 1) * PageSize;
+            var page = (await _saveService.ListSlotsAsync()).Skip(offset).Take(PageSize);
+            foreach (var slot in page)
+                Slots.Add(CreateSlot(slot));
+        }
+        finally
+        {
+            _refreshGate.Release();
+        }
+    }
+
+    private SaveSlotItem CreateSlot(SaveSlotInfo slot)
+    {
+        var hasSave = slot.Timestamp != default && !slot.IsCorrupt;
+        var isSelectable = !slot.IsCorrupt && (Mode == SaveLoadMode.Save || hasSave);
+        var item = new SaveSlotItem
+        {
+            SlotIndex = slot.SlotIndex,
+            TimestampLabel = hasSave ? slot.Timestamp.ToString("yyyy/MM/dd  HH:mm") : slot.IsCorrupt ? "Unreadable data" : "Empty slot",
+            StatusLabel = hasSave ? string.Empty : slot.IsCorrupt ? "CORRUPTED" : "EMPTY",
+            IsEnabled = isSelectable,
+            HasSave = hasSave,
+            SelectCommand = new AsyncRelayCommand(() => SelectAsync(slot))
+        };
+
+        if (!string.IsNullOrWhiteSpace(slot.PreviewImage) && File.Exists(slot.PreviewImage))
+        {
+            try
+            {
+                item.PreviewImage = new Bitmap(slot.PreviewImage);
+                item.HasPreview = true;
+            }
+            catch
+            {
+                // A broken preview must not make an otherwise valid save unreadable.
             }
         }
-        finally { _refreshGate.Release(); }
+
+        return item;
     }
 
-    private async Task SelectAsync(SaveSlotInfo info)
+    private async Task SelectAsync(SaveSlotInfo slot)
     {
-        if (_saves is null || info.IsCorrupt) { Error = "This save cannot be used."; return; }
-        if (Mode == SaveLoadMode.Load) { if (info.Timestamp != default && _load is not null) await _load(info.SlotIndex); return; }
-        if (_save is not null) await _save(info.SlotIndex);
-        await RefreshAsync();
+        if (_saveService is null || slot.IsCorrupt)
+            return;
+
+        if (Mode == SaveLoadMode.Load)
+        {
+            if (_loadAction is not null && slot.Timestamp != default)
+                await _loadAction(slot.SlotIndex);
+            return;
+        }
+
+        if (_saveAction is not null)
+        {
+            await _saveAction(slot.SlotIndex);
+            await RefreshAsync();
+        }
     }
 
-    [RelayCommand] private async Task PreviousAsync() { if (CurrentPage > 0) CurrentPage--; await RefreshAsync(); }
-    [RelayCommand] private async Task NextAsync() { if (CurrentPage + 1 < PageCount) CurrentPage++; await RefreshAsync(); }
-    [RelayCommand] private Task BackAsync() => _navigator.GoBackAsync();
+    partial void OnCurrentPageChanged(int value)
+    {
+        if (value > 0)
+            _ = RefreshAsync();
+    }
 
-    private static void ConfigureButton(WidgetHostViewModel host, string text, System.Windows.Input.ICommand command)
-    { var button = host.RequireWidget<IButtonWidget>(); button.Text = text; button.Command = command; }
+    [RelayCommand]
+    private Task BackAsync() => _navigator.GoBackAsync();
 }

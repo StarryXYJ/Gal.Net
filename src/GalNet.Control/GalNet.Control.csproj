@@ -29,17 +29,8 @@
       <Compile Update="Screen\Host\GameHostView.axaml.cs">
         <DependentUpon>GameHostView.axaml</DependentUpon>
       </Compile>
-      <Compile Update="Widget\BuiltIn\ChoicePanelWidgets.cs">
-        <DependentUpon>ChoicePanelWidgets.axaml</DependentUpon>
-      </Compile>
-      <Compile Update="Widget\BuiltIn\ToggleWidgets.cs">
-        <DependentUpon>ToggleWidgets.axaml</DependentUpon>
-      </Compile>
-      <Compile Update="Widget\BuiltIn\SliderWidgets.cs">
-        <DependentUpon>SliderWidgets.axaml</DependentUpon>
-      </Compile>
-      <Compile Update="Widget\BuiltIn\SaveSlotWidgets.cs">
-        <DependentUpon>SaveSlotWidgets.axaml</DependentUpon>
+      <Compile Update="Screen\SaveLoad\SaveSlotCard.axaml.cs">
+        <DependentUpon>SaveSlotCard.axaml</DependentUpon>
       </Compile>
     </ItemGroup>
 
