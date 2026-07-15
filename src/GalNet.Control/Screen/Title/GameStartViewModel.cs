@@ -5,9 +5,11 @@ using GalNet.Core.Services;
 using GalNet.Core.UI;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Media.Transformation;
 using Avalonia;
 using Avalonia.Media.Imaging;
 using GalNet.Core.Assets;
+using System.Globalization;
 
 namespace GalNet.Control.ViewModels;
 
@@ -64,6 +66,14 @@ public partial class GameStartViewModel : ObservableObject
 /// <summary>Marker type selecting the text-menu page template while sharing title-page actions.</summary>
 public sealed class TextMenuTitleViewModel : GameStartViewModel
 {
+    public TransformOperations HoverTransform { get; }
+
     public TextMenuTitleViewModel(IGameScreenNavigator navigator, IGameExitService? exit, GameFlowOptions options, ISaveService? saves, TitleUiConfiguration config, IReadOnlyDictionary<string, string> settings, IAssetManager? assets)
-        : base(navigator, exit, options, saves, config, settings.GetValueOrDefault("horizontalAlignment", "center"), assets) { }
+        : base(navigator, exit, options, saves, config, settings.GetValueOrDefault("horizontalAlignment", "center"), assets)
+    {
+        var scale = double.TryParse(settings.GetValueOrDefault("hoverScale"), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+            ? Math.Clamp(value, 0.5, 2)
+            : 1.08;
+        HoverTransform = TransformOperations.Parse($"scale({scale.ToString(CultureInfo.InvariantCulture)})");
+    }
 }

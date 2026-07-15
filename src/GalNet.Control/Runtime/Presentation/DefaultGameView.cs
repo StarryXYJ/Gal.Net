@@ -11,6 +11,7 @@ using GalNet.Control.ViewModels;
 using GalNet.Core.Settings;
 using GalNet.Core.UI;
 using GalNet.Core.View;
+using GalNet.Core.Assets;
 using LibVLCSharp.Shared;
 using Serilog;
 using AvaloniaControl = Avalonia.Controls.Control;
@@ -110,13 +111,13 @@ public class DefaultGameView : Grid, IGameView, IDisposable
         _effectRegistry.Register(new FlashEffect());
     }
 
-    public DefaultGameView(GameSettings settings, GameUiConfiguration config, GameScreenViewModel screen)
+    public DefaultGameView(GameSettings settings, GameUiConfiguration config, GameScreenViewModel screen, IAssetManager? assets = null)
     {
         _gameSettings = settings;
         _screen = screen;
         _gameScreen = new GameScreenView { DataContext = screen };
         _registry = new DefaultGameViewRegistry(_gameScreen);
-        _typewriter = new DefaultTypewriterPresenter(_gameSettings, _gameScreen, screen);
+        _typewriter = new DefaultTypewriterPresenter(_gameSettings, _gameScreen, screen, assets);
         _choice = new DefaultChoicePresenter(screen);
 
         _libVlc = _vlcInitialized ? new LibVLC() : null!;

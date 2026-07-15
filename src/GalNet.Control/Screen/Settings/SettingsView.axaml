@@ -1,13 +1,88 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="clr-namespace:GalNet.Control.ViewModels" x:Class="GalNet.Control.Views.SettingsView" x:DataType="vm:SettingsViewModel">
-<UserControl.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries><ResourceInclude Source="avares://GalNet.Control/Assets/Icons.axaml" /></ResourceDictionary.MergedDictionaries></ResourceDictionary></UserControl.Resources>
-<Grid><Grid.Background><SolidColorBrush Color="{Binding Configuration.BackgroundColor}" /></Grid.Background><Border VerticalAlignment="Center" HorizontalAlignment="Center" Width="560" Padding="30" BorderBrush="#665F6075" BorderThickness="1" CornerRadius="14"><Border.Background><SolidColorBrush Color="{Binding Configuration.PanelColor}" /></Border.Background><Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="142,*" RowSpacing="15" ColumnSpacing="18">
-<TextBlock Grid.ColumnSpan="2" Text="Settings" FontSize="28" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,8"><TextBlock.Foreground><SolidColorBrush Color="{Binding Configuration.TextColor}" /></TextBlock.Foreground></TextBlock>
-<Button Grid.Column="1" Command="{Binding BackCommand}" HorizontalAlignment="Right" VerticalAlignment="Top" ToolTip.Tip="Back"><PathIcon Width="18" Height="18" Data="{StaticResource BackwardRegular}" /></Button>
-<TextBlock Grid.Row="1" Text="BGM Volume"/><Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding BgmVolume,Mode=TwoWay}"/>
-<TextBlock Grid.Row="2" Text="SFX Volume"/><Slider Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding SfxVolume,Mode=TwoWay}"/>
-<TextBlock Grid.Row="3" Text="Voice Volume"/><Slider Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding VoiceVolume,Mode=TwoWay}"/>
-<TextBlock Grid.Row="4" Text="Text Speed"/><Slider Grid.Row="4" Grid.Column="1" Minimum="0" Maximum="200" Value="{Binding TextSpeed,Mode=TwoWay}"/>
-<TextBlock Grid.Row="5" Text="Auto Delay"/><Slider Grid.Row="5" Grid.Column="1" Minimum="0" Maximum="10" Value="{Binding AutoDelay,Mode=TwoWay}"/>
-<TextBlock Grid.Row="6" Text="Quick Delay"/><Slider Grid.Row="6" Grid.Column="1" Minimum="0" Maximum="2" Value="{Binding QuickDelay,Mode=TwoWay}"/>
-<TextBlock Grid.Row="7" Text="Fullscreen"/><CheckBox Grid.Row="7" Grid.Column="1" IsChecked="{Binding Fullscreen,Mode=TwoWay}"/>
-</Grid></Border></Grid></UserControl>
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:GalNet.Control.ViewModels"
+             x:Class="GalNet.Control.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://GalNet.Control/Assets/Icons.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </UserControl.Resources>
+  <Grid>
+    <Grid.Styles>
+      <Style Selector="Button.settings-button">
+        <Setter Property="Background" Value="{Binding ButtonBrush}" />
+        <Setter Property="Foreground" Value="{Binding ButtonTextBrush}" />
+      </Style>
+      <Style Selector="TextBlock">
+        <Setter Property="Foreground" Value="{Binding TextBrush}" />
+      </Style>
+      <!-- CheckBox (Semi template parts: NormalRectangle, CheckGlyph) -->
+      <Style Selector="CheckBox.settings-checkbox /template/ Border#NormalRectangle">
+        <Setter Property="BorderBrush" Value="{Binding CheckBoxBorderBrush}" />
+      </Style>
+      <Style Selector="CheckBox.settings-checkbox:checked /template/ Border#NormalRectangle">
+        <Setter Property="Background" Value="{Binding CheckBoxFillBrush}" />
+        <Setter Property="BorderBrush" Value="{Binding CheckBoxFillBrush}" />
+      </Style>
+      <Style Selector="CheckBox.settings-checkbox:checked /template/ PathIcon#CheckGlyph">
+        <Setter Property="Foreground" Value="{Binding CheckBoxCheckBrush}" />
+      </Style>
+      <!-- Slider thumb: Thumb DataContext=Slider.Value(double), so use RelativeSource to parent Slider's properties -->
+      <Style Selector="Slider.settings-slider /template/ Thumb#thumb">
+        <Setter Property="Background" Value="{Binding Tag, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Slider}}}" />
+        <Setter Property="BorderBrush" Value="{Binding BorderBrush, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Slider}}}" />
+        <Setter Property="BorderThickness" Value="1" />
+      </Style>
+    </Grid.Styles>
+    <Border Background="{Binding BackgroundBrush}" />
+    <Border VerticalAlignment="Center" HorizontalAlignment="Center" Width="560" Padding="30"
+            BorderBrush="#665F6075" BorderThickness="1" CornerRadius="14"
+            Background="{Binding PanelBrush}">
+      <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+            ColumnDefinitions="142,*" RowSpacing="15" ColumnSpacing="18">
+        <TextBlock Grid.ColumnSpan="2" Text="Settings" FontSize="28" FontWeight="SemiBold"
+                   HorizontalAlignment="Center" Margin="0,0,0,8" />
+        <Button Grid.Column="1" Classes="settings-button" Command="{Binding BackCommand}"
+                HorizontalAlignment="Right" VerticalAlignment="Top" ToolTip.Tip="Back">
+          <PathIcon Width="18" Height="18" Data="{StaticResource BackwardRegular}"
+                    Foreground="{Binding BackButtonForegroundBrush}" />
+        </Button>
+        <TextBlock Grid.Row="1" Text="BGM Volume" />
+        <Slider Classes="settings-slider" Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="1"
+                Foreground="{Binding SliderFillBrush}" Background="{Binding SliderTrackBrush}"
+                Tag="{Binding SliderThumbBrush}" BorderBrush="{Binding SliderThumbBorderBrush}"
+                Value="{Binding BgmVolume,Mode=TwoWay}" />
+        <TextBlock Grid.Row="2" Text="SFX Volume" />
+        <Slider Classes="settings-slider" Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="1"
+                Foreground="{Binding SliderFillBrush}" Background="{Binding SliderTrackBrush}"
+                Tag="{Binding SliderThumbBrush}" BorderBrush="{Binding SliderThumbBorderBrush}"
+                Value="{Binding SfxVolume,Mode=TwoWay}" />
+        <TextBlock Grid.Row="3" Text="Voice Volume" />
+        <Slider Classes="settings-slider" Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="1"
+                Foreground="{Binding SliderFillBrush}" Background="{Binding SliderTrackBrush}"
+                Tag="{Binding SliderThumbBrush}" BorderBrush="{Binding SliderThumbBorderBrush}"
+                Value="{Binding VoiceVolume,Mode=TwoWay}" />
+        <TextBlock Grid.Row="4" Text="Text Speed" />
+        <Slider Classes="settings-slider" Grid.Row="4" Grid.Column="1" Minimum="0" Maximum="200"
+                Foreground="{Binding SliderFillBrush}" Background="{Binding SliderTrackBrush}"
+                Tag="{Binding SliderThumbBrush}" BorderBrush="{Binding SliderThumbBorderBrush}"
+                Value="{Binding TextSpeed,Mode=TwoWay}" />
+        <TextBlock Grid.Row="5" Text="Auto Delay" />
+        <Slider Classes="settings-slider" Grid.Row="5" Grid.Column="1" Minimum="0" Maximum="10"
+                Foreground="{Binding SliderFillBrush}" Background="{Binding SliderTrackBrush}"
+                Tag="{Binding SliderThumbBrush}" BorderBrush="{Binding SliderThumbBorderBrush}"
+                Value="{Binding AutoDelay,Mode=TwoWay}" />
+        <TextBlock Grid.Row="6" Text="Quick Delay" />
+        <Slider Classes="settings-slider" Grid.Row="6" Grid.Column="1" Minimum="0" Maximum="2"
+                Foreground="{Binding SliderFillBrush}" Background="{Binding SliderTrackBrush}"
+                Tag="{Binding SliderThumbBrush}" BorderBrush="{Binding SliderThumbBorderBrush}"
+                Value="{Binding QuickDelay,Mode=TwoWay}" />
+        <TextBlock Grid.Row="7" Text="Fullscreen" />
+        <CheckBox Grid.Row="7" Grid.Column="1" Classes="settings-checkbox" IsChecked="{Binding Fullscreen,Mode=TwoWay}" />
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

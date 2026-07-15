@@ -1,3 +1,4 @@
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Control.Abstraction.UI;
@@ -10,6 +11,19 @@ public sealed partial class SettingsViewModel : ObservableObject
 {
     private readonly ISettingsService _settings; private readonly IGameScreenNavigator _navigator;
     public SettingsUiConfiguration Configuration { get; }
+    public IBrush BackgroundBrush => new SolidColorBrush(Configuration.BackgroundColor);
+    public IBrush PanelBrush => new SolidColorBrush(Configuration.PanelColor);
+    public IBrush TextBrush => new SolidColorBrush(Configuration.TextColor);
+    public IBrush ButtonBrush => new SolidColorBrush(Configuration.ButtonColor);
+    public IBrush ButtonTextBrush => new SolidColorBrush(Configuration.ButtonTextColor);
+    public IBrush BackButtonForegroundBrush => new SolidColorBrush(Configuration.BackButtonForegroundColor);
+    public IBrush SliderFillBrush => new SolidColorBrush(Configuration.SliderFillColor);
+    public IBrush SliderTrackBrush => new SolidColorBrush(Configuration.SliderTrackColor);
+    public IBrush SliderThumbBrush => new SolidColorBrush(Configuration.SliderThumbColor);
+    public IBrush SliderThumbBorderBrush => new SolidColorBrush(Configuration.SliderThumbBorderColor);
+    public IBrush CheckBoxBorderBrush => new SolidColorBrush(Configuration.CheckBoxBorderColor);
+    public IBrush CheckBoxFillBrush => new SolidColorBrush(Configuration.CheckBoxFillColor);
+    public IBrush CheckBoxCheckBrush => new SolidColorBrush(Configuration.CheckBoxCheckColor);
     [ObservableProperty] private double _bgmVolume;
     [ObservableProperty] private double _sfxVolume;
     [ObservableProperty] private double _voiceVolume;

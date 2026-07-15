@@ -1,3 +1,4 @@
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Core.UI;
@@ -16,6 +17,9 @@ public sealed partial class GameScreenViewModel : ObservableObject
     [ObservableProperty] private bool _autoMode;
     [ObservableProperty] private bool _quickMode;
     public GameUiConfiguration Configuration { get; }
+    public IBrush CommandTextBrush => new SolidColorBrush(Configuration.CommandTextColor);
+    public IBrush CommandHoverTextBrush => new SolidColorBrush(Configuration.CommandHoverTextColor);
+    public IBrush CommandSelectedTextBrush => new SolidColorBrush(Configuration.CommandSelectedTextColor);
     public event Action<string>? CommandRequested;
     public event Action? HideRequested;
     public event Action? AdvanceRequested;

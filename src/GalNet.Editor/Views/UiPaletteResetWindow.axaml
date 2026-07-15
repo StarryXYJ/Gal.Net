@@ -1,0 +1,31 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
+        xmlns:vm="using:GalNet.Editor.ViewModels"
+        x:Class="GalNet.Editor.Views.UiPaletteResetWindow"
+        x:DataType="vm:UiPaletteResetViewModel"
+        Title="{loc:Localize UiCustomization.ResetPalette.Title}"
+        Width="420" Height="190" CanResize="False"
+        WindowStartupLocation="CenterOwner">
+  <Grid Margin="16" RowDefinitions="Auto,*,Auto" RowSpacing="12">
+    <TextBlock Text="{loc:Localize NewProject.ColorPalette}" />
+    <ComboBox Grid.Row="1" ItemsSource="{Binding Palettes}"
+              SelectedValue="{Binding SelectedPaletteId, Mode=TwoWay}"
+              SelectedValueBinding="{Binding Id}">
+      <ComboBox.ItemTemplate>
+        <DataTemplate>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Border Width="16" Height="16" CornerRadius="8">
+              <Border.Background><SolidColorBrush Color="{Binding PreviewColor}" /></Border.Background>
+            </Border>
+            <TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" />
+          </StackPanel>
+        </DataTemplate>
+      </ComboBox.ItemTemplate>
+    </ComboBox>
+    <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+      <Button Grid.Column="0" Content="{loc:Localize Common.Cancel}" Click="OnCancelClick" />
+      <Button Grid.Column="2" Content="{loc:Localize Common.Confirm}" Click="OnConfirmClick" />
+    </Grid>
+  </Grid>
+</Window>

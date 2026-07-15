@@ -32,10 +32,10 @@ public sealed class GameFlowFactory : IGameFlowFactory
         return screen.ToLowerInvariant() switch
         {
             "title" => CreateTitle(navigator, options),
-            "game" => CreateRun(navigator, options, options.Ui.Game, parameter),
-            "settings" => CreateSettings(navigator, options.Ui.Settings),
-            "save-load" => CreateSaveLoad(navigator, options, parameter as string == "save" ? SaveLoadMode.Save : SaveLoadMode.Load, options.Ui.SaveLoad),
-            "gallery" => CreateGallery(navigator, options, options.Ui.Gallery),
+            "game" => CreateRun(navigator, options, CreateGameConfiguration(options.Ui.Game, GetPageSettings(options.Ui, UiPageKind.Game)), parameter),
+            "settings" => CreateSettings(navigator, CreateSettingsConfiguration(options.Ui.Settings, GetPageSettings(options.Ui, UiPageKind.Settings))),
+            "save-load" => CreateSaveLoad(navigator, options, parameter as string == "save" ? SaveLoadMode.Save : SaveLoadMode.Load, CreateSaveLoadConfiguration(options.Ui.SaveLoad, GetPageSettings(options.Ui, UiPageKind.SaveLoad))),
+            "gallery" => CreateGallery(navigator, options, CreateGalleryConfiguration(options.Ui.Gallery, GetPageSettings(options.Ui, UiPageKind.Gallery))),
             _ => throw new InvalidOperationException($"Unknown built-in screen '{screen}'.")
         };
     }
@@ -83,6 +83,98 @@ public sealed class GameFlowFactory : IGameFlowFactory
         return config;
     }
 
+    private IReadOnlyDictionary<string, string> GetPageSettings(UiProject ui, UiPageKind page)
+    {
+        var selection = ui.GetPage(page);
+        var values = _presets.GetRequired(selection.PresetId).CreateDefaultSettings()
+            .ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, value) in selection.Settings) values[key] = value;
+        return values;
+    }
+
+    private static GameUiConfiguration CreateGameConfiguration(GameUiConfiguration defaults, IReadOnlyDictionary<string, string> values)
+    {
+        var config = new GameUiConfiguration
+        {
+            DialogueBackgroundColor = defaults.DialogueBackgroundColor, DialogueBackgroundImage = defaults.DialogueBackgroundImage, DialogueBackgroundImageOpacity = defaults.DialogueBackgroundImageOpacity,
+            DialogueTextColor = defaults.DialogueTextColor, SpeakerTextColor = defaults.SpeakerTextColor,
+            DialogueHeight = defaults.DialogueHeight, DialogueMargin = defaults.DialogueMargin, DialogueCornerRadius = defaults.DialogueCornerRadius, DialogueFontSize = defaults.DialogueFontSize,
+            ChoiceLayout = defaults.ChoiceLayout, ChoiceButtonColor = defaults.ChoiceButtonColor, ChoiceButtonTextColor = defaults.ChoiceButtonTextColor,
+            ChoiceButtonWidth = defaults.ChoiceButtonWidth, ChoiceButtonHeight = defaults.ChoiceButtonHeight, ChoiceSpacing = defaults.ChoiceSpacing,
+            CommandBarVisible = defaults.CommandBarVisible, CommandTextColor = defaults.CommandTextColor, CommandHoverTextColor = defaults.CommandHoverTextColor, CommandSelectedTextColor = defaults.CommandSelectedTextColor
+        };
+        ApplyGameSettings(config, values);
+        return config;
+    }
+
+    private static void ApplyGameSettings(GameUiConfiguration config, IReadOnlyDictionary<string, string> values)
+    {
+        if (TryColor(values, "dialogueBackgroundColor", out var dialogueBackground)) config.DialogueBackgroundColor = dialogueBackground;
+        if (values.TryGetValue("dialogueBackgroundImage", out var dialogueBackgroundImage)) config.DialogueBackgroundImage = string.IsNullOrWhiteSpace(dialogueBackgroundImage) ? null : dialogueBackgroundImage;
+        if (TryNumber(values, "dialogueBackgroundImageOpacity", out var imageOpacity)) config.DialogueBackgroundImageOpacity = imageOpacity;
+        if (TryColor(values, "dialogueTextColor", out var dialogueText)) config.DialogueTextColor = dialogueText;
+        if (TryColor(values, "speakerTextColor", out var speakerText)) config.SpeakerTextColor = speakerText;
+        if (TryNumber(values, "dialogueHeight", out var dialogueHeight)) config.DialogueHeight = dialogueHeight;
+        if (TryNumber(values, "dialogueMargin", out var dialogueMargin)) config.DialogueMargin = dialogueMargin;
+        if (TryNumber(values, "dialogueCornerRadius", out var dialogueCornerRadius)) config.DialogueCornerRadius = dialogueCornerRadius;
+        if (TryNumber(values, "dialogueFontSize", out var dialogueFontSize)) config.DialogueFontSize = dialogueFontSize;
+        if (values.TryGetValue("choiceLayout", out var choiceLayout)) config.ChoiceLayout = choiceLayout;
+        if (TryColor(values, "choiceButtonColor", out var choiceButtonColor)) config.ChoiceButtonColor = choiceButtonColor;
+        if (TryColor(values, "choiceButtonTextColor", out var choiceButtonText)) config.ChoiceButtonTextColor = choiceButtonText;
+        if (TryNumber(values, "choiceButtonWidth", out var choiceButtonWidth)) config.ChoiceButtonWidth = choiceButtonWidth;
+        if (TryNumber(values, "choiceButtonHeight", out var choiceButtonHeight)) config.ChoiceButtonHeight = choiceButtonHeight;
+        if (TryNumber(values, "choiceSpacing", out var choiceSpacing)) config.ChoiceSpacing = choiceSpacing;
+        if (values.TryGetValue("commandBarVisible", out var commandBarVisible) && bool.TryParse(commandBarVisible, out var visible)) config.CommandBarVisible = visible;
+        if (TryColor(values, "commandTextColor", out var commandText)) config.CommandTextColor = commandText;
+        if (TryColor(values, "commandHoverTextColor", out var commandHoverText)) config.CommandHoverTextColor = commandHoverText;
+        if (TryColor(values, "commandSelectedTextColor", out var commandSelectedText)) config.CommandSelectedTextColor = commandSelectedText;
+    }
+
+    private static SettingsUiConfiguration CreateSettingsConfiguration(SettingsUiConfiguration defaults, IReadOnlyDictionary<string, string> values) =>
+        ApplySettingsScreenSettings(ApplyStandardScreenSettings(new SettingsUiConfiguration(), defaults, values), defaults, values);
+
+    private static SaveLoadUiConfiguration CreateSaveLoadConfiguration(SaveLoadUiConfiguration defaults, IReadOnlyDictionary<string, string> values) =>
+        ApplyStandardScreenSettings(new SaveLoadUiConfiguration(), defaults, values);
+
+    private static GalleryUiConfiguration CreateGalleryConfiguration(GalleryUiConfiguration defaults, IReadOnlyDictionary<string, string> values) =>
+        ApplyStandardScreenSettings(new GalleryUiConfiguration(), defaults, values);
+
+    private static T ApplyStandardScreenSettings<T>(T config, SettingsUiConfiguration defaults, IReadOnlyDictionary<string, string> values) where T : SettingsUiConfiguration
+    {
+        config.BackgroundColor = defaults.BackgroundColor;
+        config.PanelColor = defaults.PanelColor;
+        config.TextColor = defaults.TextColor;
+        config.ButtonColor = defaults.ButtonColor;
+        config.ButtonTextColor = defaults.ButtonTextColor;
+        config.BackButtonForegroundColor = defaults.BackButtonForegroundColor;
+        if (TryColor(values, "backgroundColor", out var background)) config.BackgroundColor = background;
+        if (TryColor(values, "panelColor", out var panel)) config.PanelColor = panel;
+        if (TryColor(values, "textColor", out var text)) config.TextColor = text;
+        if (TryColor(values, "buttonColor", out var button)) config.ButtonColor = button;
+        if (TryColor(values, "buttonTextColor", out var buttonText)) config.ButtonTextColor = buttonText;
+        if (TryColor(values, "backButtonForegroundColor", out var backButtonForeground)) config.BackButtonForegroundColor = backButtonForeground;
+        return config;
+    }
+
+    private static SettingsUiConfiguration ApplySettingsScreenSettings(SettingsUiConfiguration config, SettingsUiConfiguration defaults, IReadOnlyDictionary<string, string> values)
+    {
+        config.SliderTrackColor = defaults.SliderTrackColor;
+        config.SliderFillColor = defaults.SliderFillColor;
+        config.SliderThumbColor = defaults.SliderThumbColor;
+        config.SliderThumbBorderColor = defaults.SliderThumbBorderColor;
+        config.CheckBoxBorderColor = defaults.CheckBoxBorderColor;
+        config.CheckBoxFillColor = defaults.CheckBoxFillColor;
+        config.CheckBoxCheckColor = defaults.CheckBoxCheckColor;
+        if (TryColor(values, "sliderTrackColor", out var sliderTrack)) config.SliderTrackColor = sliderTrack;
+        if (TryColor(values, "sliderFillColor", out var sliderFill)) config.SliderFillColor = sliderFill;
+        if (TryColor(values, "sliderThumbColor", out var sliderThumb)) config.SliderThumbColor = sliderThumb;
+        if (TryColor(values, "sliderThumbBorderColor", out var sliderThumbBorder)) config.SliderThumbBorderColor = sliderThumbBorder;
+        if (TryColor(values, "checkBoxBorderColor", out var checkBoxBorder)) config.CheckBoxBorderColor = checkBoxBorder;
+        if (TryColor(values, "checkBoxFillColor", out var checkBoxFill)) config.CheckBoxFillColor = checkBoxFill;
+        if (TryColor(values, "checkBoxCheckColor", out var checkBoxCheck)) config.CheckBoxCheckColor = checkBoxCheck;
+        return config;
+    }
+
     private static bool TryNumber(IReadOnlyDictionary<string, string> values, string key, out double result)
     {
         result = default;
@@ -102,7 +194,7 @@ public sealed class GameFlowFactory : IGameFlowFactory
     {
         var settings = _serviceProvider.GetRequiredService<ISettingsService>();
         var screen = new GameScreenViewModel(config);
-        var gameView = new DefaultGameView(settings.GetSnapshot(), config, screen);
+        var gameView = new DefaultGameView(settings.GetSnapshot(), config, screen, options.AssetManager);
         var variableService = options.VariableService ?? _serviceProvider.GetService<IVariableService>();
         var save = options.SaveService ?? _serviceProvider.GetService<ISaveService>();
         var progress = options.ProgressService ?? _serviceProvider.GetService<IGameProgressService>();

@@ -27,6 +27,7 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
     private string _statusKey = "UiPreset.Status.NoProject";
 
     public ObservableCollection<UiPageEditorViewModel> Pages { get; } = [];
+    public string CurrentColorPaletteId => _projectService.Current?.UiProject.Current.ColorPaletteId ?? UiColorPalettePresets.DefaultId;
 
     public UiCustomizationPanelViewModel(IProjectService projectService, EditorWorkspaceViewModel workspace, IUiPresetRegistry presets, IAssetManager assets)
     {
@@ -70,6 +71,33 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
         }
     }
 
+    public async Task ApplyColorPaletteAsync(string paletteId)
+    {
+        if (_projectService.Current is not { } project)
+            return;
+
+        try
+        {
+            var ui = project.UiProject.Current;
+            UiColorPalettePresets.Apply(ui, paletteId);
+            SyncPresetSettingsToConfig(ui);
+            project.UiProject.NotifyChanged();
+            project.IsDirty = true;
+            await project.UiProject.SaveAsync();
+            project.IsDirty = false;
+            if (_workspace.ActivePreview is { } preview)
+                await preview.RestartAsync();
+            LoadProject();
+            OnPropertyChanged(nameof(CurrentColorPaletteId));
+            StatusKey = "UiPreset.Status.Applied";
+        }
+        catch (Exception ex)
+        {
+            StatusKey = "UiPreset.Status.SaveFailed";
+            Log.Error(ex, "Failed to reset UI color palette");
+        }
+    }
+
     /// <summary>
     /// Syncs preset setting values (from UiPageSelection.Settings) to the
     /// top-level typed config properties (Title.BackgroundImage etc.)
@@ -80,9 +108,9 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
     {
         SyncTitleToConfig(ui.Title, ui.GetPage(UiPageKind.Title));
         SyncGameToConfig(ui.Game, ui.GetPage(UiPageKind.Game));
-        SyncSettingsToConfig(ui.Settings, ui.GetPage(UiPageKind.Settings));
-        SyncSettingsToConfig(ui.SaveLoad, ui.GetPage(UiPageKind.SaveLoad));
-        SyncSettingsToConfig(ui.Gallery, ui.GetPage(UiPageKind.Gallery));
+        SyncSettingsToConfig(ui.Settings, ui.GetPage(UiPageKind.Settings), includeSettingsControls: true);
+        SyncSettingsToConfig(ui.SaveLoad, ui.GetPage(UiPageKind.SaveLoad), includeSettingsControls: false);
+        SyncSettingsToConfig(ui.Gallery, ui.GetPage(UiPageKind.Gallery), includeSettingsControls: false);
     }
 
     private static void SyncTitleToConfig(TitleUiConfiguration config, UiPageSelection settings)
@@ -108,6 +136,7 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
     private static void SyncGameToConfig(GameUiConfiguration config, UiPageSelection settings)
     {
         ApplyText(settings, "choiceLayout", value => config.ChoiceLayout = value);
+        ApplyText(settings, "dialogueBackgroundImage", value => config.DialogueBackgroundImage = string.IsNullOrWhiteSpace(value) ? null : value);
         ApplyColor(settings, "dialogueBackgroundColor", value => config.DialogueBackgroundColor = value);
         ApplyColor(settings, "dialogueTextColor", value => config.DialogueTextColor = value);
         ApplyColor(settings, "speakerTextColor", value => config.SpeakerTextColor = value);
@@ -115,7 +144,9 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
         ApplyColor(settings, "choiceButtonTextColor", value => config.ChoiceButtonTextColor = value);
         ApplyColor(settings, "commandTextColor", value => config.CommandTextColor = value);
         ApplyColor(settings, "commandHoverTextColor", value => config.CommandHoverTextColor = value);
+        ApplyColor(settings, "commandSelectedTextColor", value => config.CommandSelectedTextColor = value);
         ApplyNumber(settings, "dialogueHeight", value => config.DialogueHeight = value);
+        ApplyNumber(settings, "dialogueBackgroundImageOpacity", value => config.DialogueBackgroundImageOpacity = value);
         ApplyNumber(settings, "dialogueMargin", value => config.DialogueMargin = value);
         ApplyNumber(settings, "dialogueCornerRadius", value => config.DialogueCornerRadius = value);
         ApplyNumber(settings, "dialogueFontSize", value => config.DialogueFontSize = value);
@@ -125,13 +156,23 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
         ApplyBoolean(settings, "commandBarVisible", value => config.CommandBarVisible = value);
     }
 
-    private static void SyncSettingsToConfig(SettingsUiConfiguration config, UiPageSelection settings)
+    private static void SyncSettingsToConfig(SettingsUiConfiguration config, UiPageSelection settings, bool includeSettingsControls)
     {
         ApplyColor(settings, "backgroundColor", value => config.BackgroundColor = value);
         ApplyColor(settings, "panelColor", value => config.PanelColor = value);
         ApplyColor(settings, "textColor", value => config.TextColor = value);
         ApplyColor(settings, "buttonColor", value => config.ButtonColor = value);
         ApplyColor(settings, "buttonTextColor", value => config.ButtonTextColor = value);
+        ApplyColor(settings, "backButtonForegroundColor", value => config.BackButtonForegroundColor = value);
+        if (!includeSettingsControls)
+            return;
+        ApplyColor(settings, "sliderTrackColor", value => config.SliderTrackColor = value);
+        ApplyColor(settings, "sliderFillColor", value => config.SliderFillColor = value);
+        ApplyColor(settings, "sliderThumbColor", value => config.SliderThumbColor = value);
+        ApplyColor(settings, "sliderThumbBorderColor", value => config.SliderThumbBorderColor = value);
+        ApplyColor(settings, "checkBoxBorderColor", value => config.CheckBoxBorderColor = value);
+        ApplyColor(settings, "checkBoxFillColor", value => config.CheckBoxFillColor = value);
+        ApplyColor(settings, "checkBoxCheckColor", value => config.CheckBoxCheckColor = value);
     }
 
     private static void ApplyText(UiPageSelection settings, string key, Action<string> apply)
@@ -209,6 +250,8 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
         var gameSelection = ui.GetPage(UiPageKind.Game);
         SetMissing(gameSelection,
             ("dialogueBackgroundColor", Format(ui.Game.DialogueBackgroundColor)),
+            ("dialogueBackgroundImage", ui.Game.DialogueBackgroundImage ?? string.Empty),
+            ("dialogueBackgroundImageOpacity", Format(ui.Game.DialogueBackgroundImageOpacity)),
             ("dialogueTextColor", Format(ui.Game.DialogueTextColor)),
             ("speakerTextColor", Format(ui.Game.SpeakerTextColor)),
             ("dialogueHeight", Format(ui.Game.DialogueHeight)),
@@ -223,21 +266,33 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
             ("choiceSpacing", Format(ui.Game.ChoiceSpacing)),
             ("commandBarVisible", Format(ui.Game.CommandBarVisible)),
             ("commandTextColor", Format(ui.Game.CommandTextColor)),
-            ("commandHoverTextColor", Format(ui.Game.CommandHoverTextColor)));
+            ("commandHoverTextColor", Format(ui.Game.CommandHoverTextColor)),
+            ("commandSelectedTextColor", Format(ui.Game.CommandSelectedTextColor)));
 
-        SyncConfigToPresetSettings(ui.GetPage(UiPageKind.Settings), ui.Settings);
-        SyncConfigToPresetSettings(ui.GetPage(UiPageKind.SaveLoad), ui.SaveLoad);
-        SyncConfigToPresetSettings(ui.GetPage(UiPageKind.Gallery), ui.Gallery);
+        SyncConfigToPresetSettings(ui.GetPage(UiPageKind.Settings), ui.Settings, includeSettingsControls: true);
+        SyncConfigToPresetSettings(ui.GetPage(UiPageKind.SaveLoad), ui.SaveLoad, includeSettingsControls: false);
+        SyncConfigToPresetSettings(ui.GetPage(UiPageKind.Gallery), ui.Gallery, includeSettingsControls: false);
     }
 
-    private static void SyncConfigToPresetSettings(UiPageSelection selection, SettingsUiConfiguration config)
+    private static void SyncConfigToPresetSettings(UiPageSelection selection, SettingsUiConfiguration config, bool includeSettingsControls)
     {
         SetMissing(selection,
             ("backgroundColor", Format(config.BackgroundColor)),
             ("panelColor", Format(config.PanelColor)),
             ("textColor", Format(config.TextColor)),
             ("buttonColor", Format(config.ButtonColor)),
-            ("buttonTextColor", Format(config.ButtonTextColor)));
+            ("buttonTextColor", Format(config.ButtonTextColor)),
+            ("backButtonForegroundColor", Format(config.BackButtonForegroundColor)));
+        if (!includeSettingsControls)
+            return;
+        SetMissing(selection,
+            ("sliderTrackColor", Format(config.SliderTrackColor)),
+            ("sliderFillColor", Format(config.SliderFillColor)),
+            ("sliderThumbColor", Format(config.SliderThumbColor)),
+            ("sliderThumbBorderColor", Format(config.SliderThumbBorderColor)),
+            ("checkBoxBorderColor", Format(config.CheckBoxBorderColor)),
+            ("checkBoxFillColor", Format(config.CheckBoxFillColor)),
+            ("checkBoxCheckColor", Format(config.CheckBoxCheckColor)));
     }
 
     private static void SetMissing(UiPageSelection selection, params (string Key, string Value)[] values)
@@ -271,6 +326,7 @@ public sealed partial class UiPageEditorViewModel : ObservableObject
         DisplayNameKey = page switch { UiPageKind.Title => "UiPreset.Page.Title", UiPageKind.Game => "UiPreset.Page.Game", UiPageKind.Settings => "UiPreset.Page.Settings", UiPageKind.SaveLoad => "UiPreset.Page.SaveLoad", UiPageKind.Gallery => "UiPreset.Page.Gallery", _ => page.ToString() };
         Presets = new(presets.GetPresets(page).Select(x => x.Metadata));
         if (!Presets.Any(x => string.Equals(x.Id, selection.PresetId, StringComparison.OrdinalIgnoreCase))) selection.PresetId = presets.GetDefault(page).Metadata.Id;
+        _selection.EnsureActivePresetSettings();
         _selectedPresetId = selection.PresetId;
         RebuildSettings();
     }
@@ -283,8 +339,7 @@ public sealed partial class UiPageEditorViewModel : ObservableObject
         if (string.IsNullOrWhiteSpace(value) || string.Equals(_selection.PresetId, value, StringComparison.OrdinalIgnoreCase))
             return;
 
-        _selection.PresetId = value;
-        _selection.Settings = new(_presets.GetRequired(value).CreateDefaultSettings());
+        _selection.SwitchPreset(value, _presets.GetRequired(value).CreateDefaultSettings());
         RebuildSettings();
     }
 
@@ -302,9 +357,14 @@ public sealed partial class UiPageEditorViewModel : ObservableObject
                 if (!string.IsNullOrWhiteSpace(value) || definition.Type != UiSettingType.Asset)
                     _selection.Settings[definition.Key] = value;
             }
-            Settings.Add(new UiSettingEditorViewModel(definition, value, updated => _selection.Settings[definition.Key] = updated, _assets));
+            Settings.Add(new UiSettingEditorViewModel(definition, value, updated =>
+            {
+                _selection.Settings[definition.Key] = updated;
+                _selection.SaveActivePresetSettings();
+            }, _assets));
         }
     }
+
 }
 
 public sealed partial class UiSettingEditorViewModel : ObservableObject

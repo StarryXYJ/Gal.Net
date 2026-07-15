@@ -40,6 +40,6 @@
         </ItemsControl.ItemTemplate>
       </ItemsControl>
     </ScrollViewer>
-    <Grid Grid.Row="1" Margin="0,10,0,0" ColumnDefinitions="*,Auto"><TextBlock Text="{loc:Localize StatusKey}" VerticalAlignment="Center" TextWrapping="Wrap" Opacity="0.7" /><Button Grid.Column="1" Content="{loc:Localize UiCustomization.SaveRefresh}" Command="{Binding ApplyCommand}" /></Grid>
+    <Grid Grid.Row="1" Margin="0,10,0,0" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8"><TextBlock Text="{loc:Localize StatusKey}" VerticalAlignment="Center" TextWrapping="Wrap" Opacity="0.7" /><Button Grid.Column="1" Content="{loc:Localize UiCustomization.ResetPalette}" Click="OnResetPaletteClick" /><Button Grid.Column="2" Content="{loc:Localize UiCustomization.SaveRefresh}" Command="{Binding ApplyCommand}" /></Grid>
   </Grid>
 </UserControl>

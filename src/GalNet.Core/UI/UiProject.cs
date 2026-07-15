@@ -10,12 +10,31 @@ public sealed class UiPageSelection
 {
     public string PresetId { get; set; } = string.Empty;
     public Dictionary<string, string> Settings { get; set; } = [];
+    /// <summary>Settings retained for every preset previously selected on this page.</summary>
+    public Dictionary<string, Dictionary<string, string>> PresetSettings { get; set; } = [];
+
+    public void EnsureActivePresetSettings()
+    {
+        if (!PresetSettings.ContainsKey(PresetId))
+            PresetSettings[PresetId] = new(Settings);
+    }
+
+    public void SaveActivePresetSettings() => PresetSettings[PresetId] = new(Settings);
+
+    public void SwitchPreset(string presetId, IReadOnlyDictionary<string, string> defaults)
+    {
+        SaveActivePresetSettings();
+        PresetId = presetId;
+        Settings = PresetSettings.TryGetValue(presetId, out var saved) ? new(saved) : new(defaults);
+        EnsureActivePresetSettings();
+    }
 }
 
 /// <summary>Serializable UI document. Each fixed page chooses its own presentation preset.</summary>
 public sealed class UiProject
 {
     public int Version { get; set; } = 1;
+    public string ColorPaletteId { get; set; } = UiColorPalettePresets.DefaultId;
     public Dictionary<UiPageKind, UiPageSelection> Pages { get; set; } = CreateDefaultPages();
 
     // The concrete default configurations remain the implementation defaults for the existing pages.
@@ -68,6 +87,8 @@ public sealed class TitleUiConfiguration
 public sealed class GameUiConfiguration
 {
     public Color DialogueBackgroundColor { get; set; } = Color.Parse("#CC292933");
+    public string? DialogueBackgroundImage { get; set; }
+    public double DialogueBackgroundImageOpacity { get; set; } = 1;
     public Color DialogueTextColor { get; set; } = Colors.White;
     public Color SpeakerTextColor { get; set; } = Color.Parse("#FF8ED8FF");
     public double DialogueHeight { get; set; } = 160;
@@ -83,6 +104,7 @@ public sealed class GameUiConfiguration
     public bool CommandBarVisible { get; set; } = true;
     public Color CommandTextColor { get; set; } = Color.Parse("#FFC8C8D0");
     public Color CommandHoverTextColor { get; set; } = Color.Parse("#FF8ED8FF");
+    public Color CommandSelectedTextColor { get; set; } = Color.Parse("#FF8ED8FF");
 }
 
 public class SettingsUiConfiguration
@@ -92,6 +114,14 @@ public class SettingsUiConfiguration
     public Color TextColor { get; set; } = Colors.White;
     public Color ButtonColor { get; set; } = Color.Parse("#FF292933");
     public Color ButtonTextColor { get; set; } = Colors.White;
+    public Color BackButtonForegroundColor { get; set; } = Colors.White;
+    public Color SliderTrackColor { get; set; } = Color.Parse("#665F6075");
+    public Color SliderFillColor { get; set; } = Color.Parse("#FF8ED8FF");
+    public Color SliderThumbColor { get; set; } = Colors.White;
+    public Color SliderThumbBorderColor { get; set; } = Color.Parse("#665F6075");
+    public Color CheckBoxBorderColor { get; set; } = Color.Parse("#FF989AAF");
+    public Color CheckBoxFillColor { get; set; } = Color.Parse("#FF8ED8FF");
+    public Color CheckBoxCheckColor { get; set; } = Color.Parse("#FF111118");
 }
 
 public sealed class SaveLoadUiConfiguration : SettingsUiConfiguration { }

@@ -1,39 +1,41 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vlc="clr-namespace:LibVLCSharp.Avalonia;assembly=LibVLCSharp.Avalonia"
              xmlns:vm="clr-namespace:GalNet.Control.ViewModels" x:Class="GalNet.Control.Screen.BuiltIn.GameScreenView" x:DataType="vm:GameScreenViewModel">
   <Grid>
-    <Grid.Resources>
-      <ControlTheme x:Key="CommandTextButtonTheme" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-        <Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /><Setter Property="Padding" Value="2" /><Setter Property="MinWidth" Value="0" /><Setter Property="Foreground" Value="{Binding Configuration.CommandTextColor}" /><Setter Property="Cursor" Value="Hand" />
+    <Grid.Styles>
+      <Style Selector="Button.command-text">
+        <Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /><Setter Property="Padding" Value="2" /><Setter Property="MinWidth" Value="0" /><Setter Property="Foreground" Value="{Binding CommandTextBrush}" /><Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
           <ControlTemplate>
             <ContentPresenter Name="ContentPresenter" Background="Transparent"
                               Content="{TemplateBinding Content}"
                               ContentTemplate="{TemplateBinding ContentTemplate}"
+                              Foreground="{TemplateBinding Foreground}"
                               HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
                               VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
                               Padding="{TemplateBinding Padding}" />
           </ControlTemplate>
         </Setter>
-        <Style Selector="^:pointerover"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="Foreground" Value="{Binding Configuration.CommandHoverTextColor}" /></Style>
-        <Style Selector="^:pressed"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="Foreground" Value="{Binding Configuration.CommandHoverTextColor}" /></Style>
-      </ControlTheme>
-      <ControlTheme x:Key="CommandTextToggleTheme" TargetType="ToggleButton" BasedOn="{StaticResource {x:Type ToggleButton}}">
-        <Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /><Setter Property="Padding" Value="2" /><Setter Property="MinWidth" Value="0" /><Setter Property="Foreground" Value="{Binding Configuration.CommandTextColor}" /><Setter Property="Cursor" Value="Hand" />
+      </Style>
+      <Style Selector="Button.command-text:pointerover"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="Foreground" Value="{Binding CommandHoverTextBrush}" /></Style>
+      <Style Selector="Button.command-text:pressed"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="Foreground" Value="{Binding CommandHoverTextBrush}" /></Style>
+      <Style Selector="ToggleButton.command-toggle">
+        <Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /><Setter Property="Padding" Value="2" /><Setter Property="MinWidth" Value="0" /><Setter Property="Foreground" Value="{Binding CommandTextBrush}" /><Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
           <ControlTemplate>
             <ContentPresenter Name="ContentPresenter" Background="Transparent"
                               Content="{TemplateBinding Content}"
                               ContentTemplate="{TemplateBinding ContentTemplate}"
+                              Foreground="{TemplateBinding Foreground}"
                               HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
                               VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
                               Padding="{TemplateBinding Padding}" />
           </ControlTemplate>
         </Setter>
-        <Style Selector="^:pointerover"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="Foreground" Value="{Binding Configuration.CommandHoverTextColor}" /></Style>
-        <Style Selector="^:pressed"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="Foreground" Value="{Binding Configuration.CommandHoverTextColor}" /></Style>
-        <Style Selector="^:checked"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="Foreground" Value="{Binding Configuration.CommandHoverTextColor}" /></Style>
-      </ControlTheme>
-      <ControlTheme x:Key="AdvanceLayerTheme" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      </Style>
+      <Style Selector="ToggleButton.command-toggle:pointerover"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="Foreground" Value="{Binding CommandHoverTextBrush}" /></Style>
+      <Style Selector="ToggleButton.command-toggle:pressed"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="Foreground" Value="{Binding CommandHoverTextBrush}" /></Style>
+      <Style Selector="ToggleButton.command-toggle:checked"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="Foreground" Value="{Binding CommandSelectedTextBrush}" /></Style>
+      <Style Selector="Button.advance-layer">
         <Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /><Setter Property="Padding" Value="0" /><Setter Property="Cursor" Value="Arrow" />
         <Setter Property="Template">
           <ControlTemplate>
@@ -45,24 +47,24 @@
                               Padding="{TemplateBinding Padding}" />
           </ControlTemplate>
         </Setter>
-        <Style Selector="^:pointerover"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /></Style>
-        <Style Selector="^:pressed"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /></Style>
-      </ControlTheme>
-    </Grid.Resources>
+      </Style>
+      <Style Selector="Button.advance-layer:pointerover"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /></Style>
+      <Style Selector="Button.advance-layer:pressed"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /></Style>
+    </Grid.Styles>
     <Canvas Name="LayerCanvas" ClipToBounds="True" />
     <vlc:VideoView Name="VideoView" IsVisible="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
     <ContentControl Name="DialogueHost" Content="{Binding DialogueView}" IsVisible="{Binding IsDialogueVisible}" VerticalAlignment="Bottom" />
     <ContentControl Name="ChoiceHost" Content="{Binding ChoiceView}" IsVisible="{Binding IsChoiceVisible}" HorizontalAlignment="Center" VerticalAlignment="Center" />
     <ContentControl Name="ScreenOverlay" IsVisible="False" />
-    <Button Name="AdvanceLayer" Theme="{StaticResource AdvanceLayerTheme}" Command="{Binding AdvanceCommand}"
+    <Button Name="AdvanceLayer" Classes="advance-layer" Command="{Binding AdvanceCommand}"
             IsVisible="{Binding !IsChoiceVisible}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
-    <TextBlock Name="ClickIndicator" Text="&#x25BC;" FontSize="14" Foreground="{Binding Configuration.CommandTextColor}" IsVisible="{Binding IsClickIndicatorVisible}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,20,10" />
+    <TextBlock Name="ClickIndicator" Text="&#x25BC;" FontSize="14" Foreground="{Binding CommandTextBrush}" IsVisible="{Binding IsClickIndicatorVisible}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,20,10" />
     <StackPanel Orientation="Horizontal" Spacing="14" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,18" IsVisible="{Binding IsCommandBarVisible}">
-      <ToggleButton Theme="{StaticResource CommandTextToggleTheme}" Content="Auto" IsChecked="{Binding AutoMode, Mode=TwoWay}" />
-      <ToggleButton Theme="{StaticResource CommandTextToggleTheme}" Content="Quick" IsChecked="{Binding QuickMode, Mode=TwoWay}" />
-      <Button Theme="{StaticResource CommandTextButtonTheme}" Content="Save" Command="{Binding SaveCommand}" /><Button Theme="{StaticResource CommandTextButtonTheme}" Content="Load" Command="{Binding LoadCommand}" />
-      <Button Theme="{StaticResource CommandTextButtonTheme}" Content="Settings" Command="{Binding SettingsCommand}" /><Button Theme="{StaticResource CommandTextButtonTheme}" Content="Menu" Command="{Binding MenuCommand}" />
-      <Button Theme="{StaticResource CommandTextButtonTheme}" Content="Screenshot" Command="{Binding ScreenshotCommand}" /><Button Theme="{StaticResource CommandTextButtonTheme}" Content="Hide" Command="{Binding HideCommand}" />
+      <ToggleButton Classes="command-toggle" Content="Auto" IsChecked="{Binding AutoMode, Mode=TwoWay}" />
+      <ToggleButton Classes="command-toggle" Content="Quick" IsChecked="{Binding QuickMode, Mode=TwoWay}" />
+      <Button Classes="command-text" Content="Save" Command="{Binding SaveCommand}" /><Button Classes="command-text" Content="Load" Command="{Binding LoadCommand}" />
+      <Button Classes="command-text" Content="Settings" Command="{Binding SettingsCommand}" /><Button Classes="command-text" Content="Menu" Command="{Binding MenuCommand}" />
+      <Button Classes="command-text" Content="Screenshot" Command="{Binding ScreenshotCommand}" /><Button Classes="command-text" Content="Hide" Command="{Binding HideCommand}" />
     </StackPanel>
   </Grid>
 </UserControl>

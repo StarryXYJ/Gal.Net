@@ -7,7 +7,7 @@
       <ControlTheme x:Key="TitleButtonTheme" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
         <Setter Property="Background" Value="{Binding MenuItemBackgroundBrush}" /><Setter Property="Foreground" Value="{Binding MenuTextBrush}" />
         <Setter Property="FontSize" Value="{Binding Configuration.MenuFontSize}" /><Setter Property="HorizontalContentAlignment" Value="{Binding MenuHorizontalAlignment}" />
-        <Style Selector="^:pointerover"><Setter Property="Background" Value="{Binding MenuItemHoverBackgroundBrush}" /></Style>
+        <Style Selector="^:pointerover"><Setter Property="Background" Value="{Binding MenuItemHoverBackgroundBrush}" /><Setter Property="Foreground" Value="{Binding MenuHoverTextBrush}" /></Style>
       </ControlTheme>
     </Grid.Resources>
     <StackPanel VerticalAlignment="Center" HorizontalAlignment="{Binding MenuHorizontalAlignment}" Margin="{Binding ContentMargin}" Spacing="{Binding Configuration.MenuSpacing}">

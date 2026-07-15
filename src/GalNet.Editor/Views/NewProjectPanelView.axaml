@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:GalNet.Editor.ViewModels"
+             xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
              x:Class="GalNet.Editor.Views.NewProjectPanelView"
              x:DataType="vm:NewProjectPanelViewModel"
              Background="{DynamicResource SemiColorBackground0}">
@@ -20,6 +21,22 @@
             <ComboBox ItemsSource="{Binding ResolutionPresets}"
                       Text="{Binding Resolution}"
                       IsEditable="True" />
+
+            <TextBlock Text="{loc:Localize NewProject.ColorPalette}" />
+            <ComboBox ItemsSource="{Binding ColorPalettes}"
+                      SelectedValue="{Binding SelectedColorPaletteId}"
+                      SelectedValueBinding="{Binding Id}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Width="16" Height="16" CornerRadius="8">
+                                <Border.Background><SolidColorBrush Color="{Binding PreviewColor}" /></Border.Background>
+                            </Border>
+                            <TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
 
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <Button Content="Create Project"
