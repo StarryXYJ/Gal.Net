@@ -12,6 +12,51 @@ namespace GalNet.Control.Tests;
 public sealed class UiProjectTests
 {
     [Test]
+    public void DefaultUiProject_ContainsAboutPageAndUsesVersionTwo()
+    {
+        var project = new UiProject();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(project.Version, Is.EqualTo(2));
+            Assert.That(project.GetPage(UiPageKind.About).PresetId, Is.EqualTo("builtin.about.default"));
+            Assert.That(project.Title.ShowAbout, Is.True);
+        });
+    }
+
+    [Test]
+    public void VersionOneUiProject_IsUpgradedWithoutLosingExistingSettings()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "galnet-ui-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(root, "UI"));
+            File.WriteAllText(Path.Combine(root, "UI", "ui.json"), """
+                { "Version": 1, "Title": { "TitleFontSize": 72 } }
+                """);
+
+            var project = new FileUiProjectProvider(root).Current;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(project.Version, Is.EqualTo(2));
+                Assert.That(project.Title.TitleFontSize, Is.EqualTo(72));
+                Assert.That(project.GetPage(UiPageKind.About).PresetId, Is.EqualTo("builtin.about.default"));
+            });
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [TestCase("about.md", true)]
+    [TestCase("ABOUT.YAML", true)]
+    [TestCase("credits.jsonc", true)]
+    [TestCase("readme.conf", true)]
+    [TestCase("cover.png", false)]
+    [TestCase("script.exe", false)]
+    public void TextAssetExtensions_AreRecognized(string path, bool expected) =>
+        Assert.That(AssetPickerTextFileExtensions.IsSupported(path), Is.EqualTo(expected));
+
+    [Test]
     public async Task UiConfiguration_IsPersistedAsOneDocument()
     {
         var root = Path.Combine(Path.GetTempPath(), "galnet-ui-" + Guid.NewGuid().ToString("N"));
@@ -91,6 +136,7 @@ public sealed class UiProjectTests
         var settings = registry.GetDefault(UiPageKind.Settings).Settings.Select(x => x.Key).ToHashSet();
         var saveLoad = registry.GetDefault(UiPageKind.SaveLoad).Settings.Select(x => x.Key).ToHashSet();
         var gallery = registry.GetDefault(UiPageKind.Gallery).Settings.Select(x => x.Key).ToHashSet();
+        var about = registry.GetDefault(UiPageKind.About).Settings;
 
         Assert.Multiple(() =>
         {
@@ -105,6 +151,9 @@ public sealed class UiProjectTests
             Assert.That(gallery, Does.Contain("backButtonForegroundColor"));
             Assert.That(saveLoad, Does.Not.Contain("sliderTrackColor"));
             Assert.That(gallery, Does.Not.Contain("checkBoxFillColor"));
+            Assert.That(about.Single(x => x.Key == "contentAsset").AssetFilter, Is.EqualTo(AssetPickerFilter.Text));
+            Assert.That(about.Select(x => x.Key), Does.Contain("linkHoverColor"));
+            Assert.That(about.Select(x => x.Key), Does.Contain("codeFontSize"));
         });
 
         var textMenu = registry.GetRequired("builtin.title.text-menu").Settings;
@@ -201,6 +250,24 @@ public sealed class UiProjectTests
             Assert.That(title.Settings["titleFontSize"], Is.EqualTo("72"));
             Assert.That(title.PresetSettings["builtin.title.text-menu"]["hoverScale"], Is.EqualTo("1.5"));
             Assert.That(title.PresetSettings["builtin.title.text-menu"]["menuTextColor"], Is.EqualTo(Color.Parse("#FFFFF4F8").ToString()));
+            Assert.That(ui.About.LinkColor, Is.EqualTo(Color.Parse("#FFFF8EBC")));
+            Assert.That(ui.About.PanelColor, Is.EqualTo(Color.Parse("#FF382333")));
+            Assert.That(ui.GetPage(UiPageKind.About).Settings["codeBackgroundColor"], Is.EqualTo(Color.Parse("#FF382333").ToString()));
+            Assert.That(UiColorPalettePresets.All, Has.Count.EqualTo(6));
+        });
+    }
+
+    [Test]
+    public void AboutTextDecoder_SupportsUtf8AndUnicodeBom()
+    {
+        var method = typeof(AboutViewModel).GetMethod("DecodeText", BindingFlags.NonPublic | BindingFlags.Static)!;
+        var utf8 = new byte[] { 0xEF, 0xBB, 0xBF, 0x23, 0x20, 0x48, 0x69 };
+        var utf16 = System.Text.Encoding.Unicode.GetPreamble().Concat(System.Text.Encoding.Unicode.GetBytes("# Hi")).ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(method.Invoke(null, [utf8]), Is.EqualTo("# Hi"));
+            Assert.That(method.Invoke(null, [utf16]), Is.EqualTo("# Hi"));
         });
     }
 

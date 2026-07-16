@@ -3,7 +3,7 @@ using Avalonia.Media;
 namespace GalNet.Core.UI;
 
 /// <summary>Identifiers for the fixed game pages. Presets may change their presentation, not this flow.</summary>
-public enum UiPageKind { Title, Game, Settings, SaveLoad, Gallery }
+public enum UiPageKind { Title, Game, Settings, SaveLoad, Gallery, About }
 
 /// <summary>The selected presentation and its preset-owned settings for one fixed game page.</summary>
 public sealed class UiPageSelection
@@ -33,7 +33,7 @@ public sealed class UiPageSelection
 /// <summary>Serializable UI document. Each fixed page chooses its own presentation preset.</summary>
 public sealed class UiProject
 {
-    public int Version { get; set; } = 1;
+    public int Version { get; set; } = 2;
     public string ColorPaletteId { get; set; } = UiColorPalettePresets.DefaultId;
     public Dictionary<UiPageKind, UiPageSelection> Pages { get; set; } = CreateDefaultPages();
 
@@ -44,6 +44,7 @@ public sealed class UiProject
     public SettingsUiConfiguration Settings { get; set; } = new();
     public SaveLoadUiConfiguration SaveLoad { get; set; } = new();
     public GalleryUiConfiguration Gallery { get; set; } = new();
+    public AboutUiConfiguration About { get; set; } = new();
 
     public UiPageSelection GetPage(UiPageKind page)
     {
@@ -59,7 +60,8 @@ public sealed class UiProject
         [UiPageKind.Game] = new() { PresetId = "builtin.game.default" },
         [UiPageKind.Settings] = new() { PresetId = "builtin.settings.default" },
         [UiPageKind.SaveLoad] = new() { PresetId = "builtin.save-load.default" },
-        [UiPageKind.Gallery] = new() { PresetId = "builtin.gallery.default" }
+        [UiPageKind.Gallery] = new() { PresetId = "builtin.gallery.default" },
+        [UiPageKind.About] = new() { PresetId = "builtin.about.default" }
     };
 }
 
@@ -81,6 +83,7 @@ public sealed class TitleUiConfiguration
     public double ButtonHeight { get; set; } = 50;
     public double MenuSpacing { get; set; } = 12;
     public bool ShowGallery { get; set; } = true;
+    public bool ShowAbout { get; set; } = true;
     public Color MenuHoverTextColor { get; set; } = Color.Parse("#FF8ED8FF");
 }
 
@@ -126,3 +129,26 @@ public class SettingsUiConfiguration
 
 public sealed class SaveLoadUiConfiguration : SettingsUiConfiguration { }
 public sealed class GalleryUiConfiguration : SettingsUiConfiguration { }
+
+public sealed class AboutUiConfiguration
+{
+    public string? ContentAsset { get; set; }
+    public Color BackgroundColor { get; set; } = Color.Parse("#FF111118");
+    public Color PanelColor { get; set; } = Color.Parse("#FF292933");
+    public double ContentPadding { get; set; } = 20;
+    public double FontSize { get; set; } = 16;
+    public Color TextColor { get; set; } = Colors.White;
+    public Color HeadingColor { get; set; } = Colors.White;
+    public Color SelectionColor { get; set; } = Color.Parse("#668ED8FF");
+    public Color LinkColor { get; set; } = Color.Parse("#FF8ED8FF");
+    public Color LinkHoverColor { get; set; } = Color.Parse("#FFB5E7FF");
+    public Color LinkVisitedColor { get; set; } = Color.Parse("#FFC8C8D0");
+    public Color BlockquoteBackgroundColor { get; set; } = Color.Parse("#FF292933");
+    public Color BlockquoteBorderColor { get; set; } = Color.Parse("#FF8ED8FF");
+    public Color CodeBackgroundColor { get; set; } = Color.Parse("#FF292933");
+    public Color CodeBorderColor { get; set; } = Color.Parse("#FF8ED8FF");
+    public Color CodeTextColor { get; set; } = Colors.White;
+    public double CodeFontSize { get; set; } = 16;
+    public Color RuleColor { get; set; } = Color.Parse("#FF989AAF");
+    public Color BackButtonForegroundColor { get; set; } = Colors.White;
+}

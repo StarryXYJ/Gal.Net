@@ -3,21 +3,59 @@
   <Grid>
     <Border Background="{Binding BackgroundBrush}" />
     <Image Source="{Binding BackgroundImageSource}" Stretch="{Binding BackgroundStretch}" IsVisible="{Binding HasBackgroundImage}" />
-    <Grid.Resources>
-      <ControlTheme x:Key="TitleButtonTheme" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-        <Setter Property="Background" Value="{Binding MenuItemBackgroundBrush}" /><Setter Property="Foreground" Value="{Binding MenuTextBrush}" />
-        <Setter Property="FontSize" Value="{Binding Configuration.MenuFontSize}" /><Setter Property="HorizontalContentAlignment" Value="{Binding MenuHorizontalAlignment}" />
-        <Style Selector="^:pointerover"><Setter Property="Background" Value="{Binding MenuItemHoverBackgroundBrush}" /><Setter Property="Foreground" Value="{Binding MenuHoverTextBrush}" /></Style>
-      </ControlTheme>
-    </Grid.Resources>
+
+    <Grid.Styles>
+      <Style Selector="Button.title-button">
+        <Setter Property="Background" Value="{Binding MenuItemBackgroundBrush}" />
+        <Setter Property="Foreground" Value="{Binding MenuTextBrush}" />
+        <Setter Property="FontSize" Value="{Binding Configuration.MenuFontSize}" />
+        <Setter Property="HorizontalContentAlignment" Value="{Binding MenuHorizontalAlignment}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+          <ControlTemplate>
+            <Border Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="{TemplateBinding CornerRadius}">
+              <ContentPresenter Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                Padding="{TemplateBinding Padding}"
+                                Cursor="Hand" />
+            </Border>
+          </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pointerover">
+          <Setter Property="Background" Value="{Binding MenuItemHoverBackgroundBrush}" />
+          <Setter Property="Foreground" Value="{Binding MenuHoverTextBrush}" />
+        </Style>
+        <Style Selector="^:pressed">
+          <Setter Property="Background" Value="{Binding MenuItemHoverBackgroundBrush}" />
+          <Setter Property="Foreground" Value="{Binding MenuHoverTextBrush}" />
+        </Style>
+      </Style>
+    </Grid.Styles>
+
     <StackPanel VerticalAlignment="Center" HorizontalAlignment="{Binding MenuHorizontalAlignment}" Margin="{Binding ContentMargin}" Spacing="{Binding Configuration.MenuSpacing}">
       <TextBlock Text="{Binding Title}" FontSize="{Binding Configuration.TitleFontSize}" Foreground="{Binding TitleBrush}" HorizontalAlignment="{Binding MenuHorizontalAlignment}" TextWrapping="Wrap" TextAlignment="{Binding MenuTextAlignment}" Margin="{Binding TitleMenuMargin}" />
-      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Theme="{StaticResource TitleButtonTheme}" Content="New Game" Command="{Binding NewGameCommand}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}" />
-      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Theme="{StaticResource TitleButtonTheme}" Content="Continue" Command="{Binding ContinueCommand}" IsVisible="{Binding IsContinueVisible}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}" />
-      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Theme="{StaticResource TitleButtonTheme}" Content="Load" Command="{Binding LoadCommand}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}" />
-      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Theme="{StaticResource TitleButtonTheme}" Content="Gallery" Command="{Binding GalleryCommand}" IsVisible="{Binding ShowGallery}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}" />
-      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Theme="{StaticResource TitleButtonTheme}" Content="Settings" Command="{Binding SettingsCommand}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}" />
-      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Theme="{StaticResource TitleButtonTheme}" Content="Quit" Command="{Binding QuitCommand}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}" />
+      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}"
+              Classes="title-button" Content="New Game"
+              Command="{Binding NewGameCommand}"
+              Width="{Binding Configuration.ButtonWidth}"
+              Height="{Binding Configuration.ButtonHeight}" />
+      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}"
+              Classes="title-button" Content="Continue"
+              Command="{Binding ContinueCommand}"
+              IsVisible="{Binding IsContinueVisible}"
+              Width="{Binding Configuration.ButtonWidth}"
+              Height="{Binding Configuration.ButtonHeight}" />
+      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Classes="title-button" Content="Load" Command="{Binding LoadCommand}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}" />
+      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Classes="title-button" Content="Gallery" Command="{Binding GalleryCommand}" IsVisible="{Binding ShowGallery}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}" />
+      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Classes="title-button" Content="Settings" Command="{Binding SettingsCommand}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}" />
+      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Classes="title-button" Content="About" Command="{Binding AboutCommand}" IsVisible="{Binding ShowAbout}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}" />
+      <Button HorizontalAlignment="{Binding MenuHorizontalAlignment}" Classes="title-button" Content="Quit" Command="{Binding QuitCommand}" Width="{Binding Configuration.ButtonWidth}" Height="{Binding Configuration.ButtonHeight}" />
     </StackPanel>
   </Grid>
 </UserControl>

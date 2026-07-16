@@ -19,6 +19,7 @@
             <DataTemplate DataType="vm:SettingsViewModel"><views:SettingsView /></DataTemplate>
             <DataTemplate DataType="vm:SaveLoadViewModel"><views:SaveLoadView /></DataTemplate>
             <DataTemplate DataType="vm:GalleryViewModel"><views:GalleryView /></DataTemplate>
+            <DataTemplate DataType="vm:AboutViewModel"><views:AboutView /></DataTemplate>
         </ContentControl.DataTemplates>
     </ContentControl>
 

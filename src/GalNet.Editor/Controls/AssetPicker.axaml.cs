@@ -88,9 +88,12 @@ public partial class AssetPicker : UserControl
         var type = Filter switch { AssetPickerFilter.Image => ResourceType.Sprite, AssetPickerFilter.Audio => ResourceType.Audio, AssetPickerFilter.Video => ResourceType.Video, _ => (ResourceType?)null };
         var files = await assetManager.GetFilesAsync(type);
         if (Filter == AssetPickerFilter.All) files = files.Where(x => x.Type is ResourceType.Sprite or ResourceType.Audio or ResourceType.Video).ToArray();
+        else if (Filter == AssetPickerFilter.Text) files = files.Where(x => IsTextPath(x.Path)).ToArray();
         _allItems = await Task.WhenAll(files.Select(AssetPickerItem.CreateAsync));
         ApplyFilter(SearchBox?.Text);
     }
+
+    internal static bool IsTextPath(string path) => AssetPickerTextFileExtensions.IsSupported(path);
 
     private void ApplyFilter(string? search)
     {
@@ -110,7 +113,7 @@ public partial class AssetPicker : UserControl
 public sealed class AssetPickerItem
 {
     public static AssetPickerItem Empty { get; } = new(null, "None", string.Empty, "×", null);
-    private AssetPickerItem(IGameFile? file, string name, string path, string icon, Bitmap? thumbnail) { File = file; Name = name; Path = path; Icon = icon; Thumbnail = thumbnail; }
+    private AssetPickerItem(IGameFile? file, string name, string path, string icon, Bitmap? thumbnail) { File = file; Name = name; Path = path; Icon = file is not null && AssetPicker.IsTextPath(path) ? "T" : icon; Thumbnail = thumbnail; }
     public IGameFile? File { get; }
     public string Name { get; }
     public string Path { get; }

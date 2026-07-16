@@ -29,7 +29,23 @@ public static class UiColorPalettePresets
         new("rose-dusk", "UiColorPalette.RoseDusk", Color.Parse("#FFFF8EBC"),
             Color.Parse("#FF1A1018"), Color.Parse("#FF382333"), Color.Parse("#FFFFF4F8"),
             Color.Parse("#FFFF8EBC"), Color.Parse("#FFFFB5D1"), Color.Parse("#FFE8C9D5"),
-            Color.Parse("#FFC99AAA"), Color.Parse("#FF30111F"))
+            Color.Parse("#FFC99AAA"), Color.Parse("#FF30111F")),
+        new("emerald-night", "UiColorPalette.EmeraldNight", Color.Parse("#FF55D6A9"),
+            Color.Parse("#FF0E1714"), Color.Parse("#FF1C2A25"), Color.Parse("#FFEAF7F1"),
+            Color.Parse("#FF55D6A9"), Color.Parse("#FF82E5C0"), Color.Parse("#FFB7CEC5"),
+            Color.Parse("#FF6F9184"), Color.Parse("#FF08271D")),
+        new("amber-noir", "UiColorPalette.AmberNoir", Color.Parse("#FFF4B860"),
+            Color.Parse("#FF17130D"), Color.Parse("#FF2B2418"), Color.Parse("#FFFFF8E8"),
+            Color.Parse("#FFF4B860"), Color.Parse("#FFFFD08A"), Color.Parse("#FFD5C5A7"),
+            Color.Parse("#FF9A8260"), Color.Parse("#FF2C1A00")),
+        new("daylight-sky", "UiColorPalette.DaylightSky", Color.Parse("#FF2878D0"),
+            Color.Parse("#FFF4F8FC"), Color.Parse("#FFFFFFFF"), Color.Parse("#FF1A2633"),
+            Color.Parse("#FF2878D0"), Color.Parse("#FF4A93E2"), Color.Parse("#FF5F7185"),
+            Color.Parse("#FFAAB8C6"), Color.Parse("#FFFFFFFF")),
+        new("violet-neon", "UiColorPalette.VioletNeon", Color.Parse("#FFB58CFF"),
+            Color.Parse("#FF120F1B"), Color.Parse("#FF292139"), Color.Parse("#FFF7F1FF"),
+            Color.Parse("#FFB58CFF"), Color.Parse("#FFCFB3FF"), Color.Parse("#FFC8B9DD"),
+            Color.Parse("#FF83749B"), Color.Parse("#FF1A102B"))
     ];
 
     public static UiColorPalettePreset GetRequired(string? id) =>
@@ -60,12 +76,14 @@ public static class UiColorPalettePresets
         ApplyStandard(project.Settings, palette);
         ApplyStandard(project.SaveLoad, palette);
         ApplyStandard(project.Gallery, palette);
+        ApplyAbout(project.About, palette);
 
         ApplyTitleSettings(project.GetPage(UiPageKind.Title), palette);
         ApplyGameSettings(project.GetPage(UiPageKind.Game), palette);
         ApplyStandardSettings(project.GetPage(UiPageKind.Settings), palette, includeSettingsControls: true);
         ApplyStandardSettings(project.GetPage(UiPageKind.SaveLoad), palette, includeSettingsControls: false);
         ApplyStandardSettings(project.GetPage(UiPageKind.Gallery), palette, includeSettingsControls: false);
+        ApplyAboutSettings(project.GetPage(UiPageKind.About), palette);
     }
 
     private static void ApplyStandard(SettingsUiConfiguration config, UiColorPalettePreset palette)
@@ -83,6 +101,25 @@ public static class UiColorPalettePresets
         config.CheckBoxBorderColor = palette.BorderColor;
         config.CheckBoxFillColor = palette.AccentColor;
         config.CheckBoxCheckColor = palette.CheckMarkColor;
+    }
+
+    private static void ApplyAbout(AboutUiConfiguration config, UiColorPalettePreset palette)
+    {
+        config.BackgroundColor = palette.BackgroundColor;
+        config.PanelColor = palette.PanelColor;
+        config.TextColor = palette.TextColor;
+        config.HeadingColor = palette.TextColor;
+        config.SelectionColor = WithOpacity(palette.AccentColor, 0.4);
+        config.LinkColor = palette.AccentColor;
+        config.LinkHoverColor = palette.AccentHoverColor;
+        config.LinkVisitedColor = palette.MutedTextColor;
+        config.BlockquoteBackgroundColor = palette.PanelColor;
+        config.BlockquoteBorderColor = palette.AccentColor;
+        config.CodeBackgroundColor = palette.PanelColor;
+        config.CodeBorderColor = palette.AccentColor;
+        config.CodeTextColor = palette.TextColor;
+        config.RuleColor = palette.BorderColor;
+        config.BackButtonForegroundColor = palette.TextColor;
     }
 
     private static void ApplyTitleSettings(UiPageSelection selection, UiColorPalettePreset palette) =>
@@ -126,6 +163,26 @@ public static class UiColorPalettePresets
             values["checkBoxBorderColor"] = Format(palette.BorderColor);
             values["checkBoxFillColor"] = Format(palette.AccentColor);
             values["checkBoxCheckColor"] = Format(palette.CheckMarkColor);
+        });
+
+    private static void ApplyAboutSettings(UiPageSelection selection, UiColorPalettePreset palette) =>
+        UpdateAllSettings(selection, values =>
+        {
+            values["backgroundColor"] = Format(palette.BackgroundColor);
+            values["panelColor"] = Format(palette.PanelColor);
+            values["textColor"] = Format(palette.TextColor);
+            values["headingColor"] = Format(palette.TextColor);
+            values["selectionColor"] = Format(WithOpacity(palette.AccentColor, 0.4));
+            values["linkColor"] = Format(palette.AccentColor);
+            values["linkHoverColor"] = Format(palette.AccentHoverColor);
+            values["linkVisitedColor"] = Format(palette.MutedTextColor);
+            values["blockquoteBackgroundColor"] = Format(palette.PanelColor);
+            values["blockquoteBorderColor"] = Format(palette.AccentColor);
+            values["codeBackgroundColor"] = Format(palette.PanelColor);
+            values["codeBorderColor"] = Format(palette.AccentColor);
+            values["codeTextColor"] = Format(palette.TextColor);
+            values["ruleColor"] = Format(palette.BorderColor);
+            values["backButtonForegroundColor"] = Format(palette.TextColor);
         });
 
     private static void UpdateAllSettings(UiPageSelection selection, Action<Dictionary<string, string>> update)

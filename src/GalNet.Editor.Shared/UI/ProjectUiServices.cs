@@ -51,6 +51,12 @@ public sealed class FileUiProjectProvider : IUiProjectProvider
                 return defaults;
             }
 
+            if (project.Version < 2)
+            {
+                project.GetPage(UiPageKind.About);
+                project.Version = 2;
+            }
+
             Log.Information("Loaded UI project {Path}: bytes={ByteCount}, version={Version}, pages={PageCount}, titlePreset={TitlePreset}, titleSettings={TitleSettings}, titleValues={@TitleValues}",
                 _path, json.Length, project.Version, project.Pages.Count,
                 project.GetPage(UiPageKind.Title).PresetId, project.GetPage(UiPageKind.Title).Settings.Count, project.GetPage(UiPageKind.Title).Settings);

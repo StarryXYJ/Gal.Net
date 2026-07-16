@@ -111,6 +111,7 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
         SyncSettingsToConfig(ui.Settings, ui.GetPage(UiPageKind.Settings), includeSettingsControls: true);
         SyncSettingsToConfig(ui.SaveLoad, ui.GetPage(UiPageKind.SaveLoad), includeSettingsControls: false);
         SyncSettingsToConfig(ui.Gallery, ui.GetPage(UiPageKind.Gallery), includeSettingsControls: false);
+        SyncAboutToConfig(ui.About, ui.GetPage(UiPageKind.About));
     }
 
     private static void SyncTitleToConfig(TitleUiConfiguration config, UiPageSelection settings)
@@ -131,6 +132,7 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
         ApplyNumber(settings, "menuItemWidth", value => config.ButtonWidth = value);
         ApplyNumber(settings, "menuItemHeight", value => config.ButtonHeight = value);
         ApplyBoolean(settings, "showGallery", value => config.ShowGallery = value);
+        ApplyBoolean(settings, "showAbout", value => config.ShowAbout = value);
     }
 
     private static void SyncGameToConfig(GameUiConfiguration config, UiPageSelection settings)
@@ -173,6 +175,29 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
         ApplyColor(settings, "checkBoxBorderColor", value => config.CheckBoxBorderColor = value);
         ApplyColor(settings, "checkBoxFillColor", value => config.CheckBoxFillColor = value);
         ApplyColor(settings, "checkBoxCheckColor", value => config.CheckBoxCheckColor = value);
+    }
+
+    private static void SyncAboutToConfig(AboutUiConfiguration config, UiPageSelection settings)
+    {
+        ApplyText(settings, "contentAsset", value => config.ContentAsset = string.IsNullOrWhiteSpace(value) ? null : value);
+        ApplyNumber(settings, "contentPadding", value => config.ContentPadding = value);
+        ApplyNumber(settings, "fontSize", value => config.FontSize = value);
+        ApplyNumber(settings, "codeFontSize", value => config.CodeFontSize = value);
+        ApplyColor(settings, "backgroundColor", value => config.BackgroundColor = value);
+        ApplyColor(settings, "panelColor", value => config.PanelColor = value);
+        ApplyColor(settings, "textColor", value => config.TextColor = value);
+        ApplyColor(settings, "headingColor", value => config.HeadingColor = value);
+        ApplyColor(settings, "selectionColor", value => config.SelectionColor = value);
+        ApplyColor(settings, "linkColor", value => config.LinkColor = value);
+        ApplyColor(settings, "linkHoverColor", value => config.LinkHoverColor = value);
+        ApplyColor(settings, "linkVisitedColor", value => config.LinkVisitedColor = value);
+        ApplyColor(settings, "blockquoteBackgroundColor", value => config.BlockquoteBackgroundColor = value);
+        ApplyColor(settings, "blockquoteBorderColor", value => config.BlockquoteBorderColor = value);
+        ApplyColor(settings, "codeBackgroundColor", value => config.CodeBackgroundColor = value);
+        ApplyColor(settings, "codeBorderColor", value => config.CodeBorderColor = value);
+        ApplyColor(settings, "codeTextColor", value => config.CodeTextColor = value);
+        ApplyColor(settings, "ruleColor", value => config.RuleColor = value);
+        ApplyColor(settings, "backButtonForegroundColor", value => config.BackButtonForegroundColor = value);
     }
 
     private static void ApplyText(UiPageSelection settings, string key, Action<string> apply)
@@ -242,6 +267,7 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
             ("titleMenuGap", Format(ui.Title.TitleMenuGap)),
             ("menuSpacing", Format(ui.Title.MenuSpacing)),
             ("showGallery", Format(ui.Title.ShowGallery)),
+            ("showAbout", Format(ui.Title.ShowAbout)),
             ("menuItemBackgroundColor", Format(ui.Title.ButtonColor)),
             ("menuItemHoverBackgroundColor", Format(ui.Title.ButtonHoverColor)),
             ("menuItemWidth", Format(ui.Title.ButtonWidth)),
@@ -272,6 +298,27 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
         SyncConfigToPresetSettings(ui.GetPage(UiPageKind.Settings), ui.Settings, includeSettingsControls: true);
         SyncConfigToPresetSettings(ui.GetPage(UiPageKind.SaveLoad), ui.SaveLoad, includeSettingsControls: false);
         SyncConfigToPresetSettings(ui.GetPage(UiPageKind.Gallery), ui.Gallery, includeSettingsControls: false);
+        var about = ui.About;
+        SetMissing(ui.GetPage(UiPageKind.About),
+            ("contentAsset", about.ContentAsset ?? string.Empty),
+            ("backgroundColor", Format(about.BackgroundColor)),
+            ("panelColor", Format(about.PanelColor)),
+            ("contentPadding", Format(about.ContentPadding)),
+            ("fontSize", Format(about.FontSize)),
+            ("textColor", Format(about.TextColor)),
+            ("headingColor", Format(about.HeadingColor)),
+            ("selectionColor", Format(about.SelectionColor)),
+            ("linkColor", Format(about.LinkColor)),
+            ("linkHoverColor", Format(about.LinkHoverColor)),
+            ("linkVisitedColor", Format(about.LinkVisitedColor)),
+            ("blockquoteBackgroundColor", Format(about.BlockquoteBackgroundColor)),
+            ("blockquoteBorderColor", Format(about.BlockquoteBorderColor)),
+            ("codeBackgroundColor", Format(about.CodeBackgroundColor)),
+            ("codeBorderColor", Format(about.CodeBorderColor)),
+            ("codeTextColor", Format(about.CodeTextColor)),
+            ("codeFontSize", Format(about.CodeFontSize)),
+            ("ruleColor", Format(about.RuleColor)),
+            ("backButtonForegroundColor", Format(about.BackButtonForegroundColor)));
     }
 
     private static void SyncConfigToPresetSettings(UiPageSelection selection, SettingsUiConfiguration config, bool includeSettingsControls)
@@ -323,7 +370,7 @@ public sealed partial class UiPageEditorViewModel : ObservableObject
     public UiPageEditorViewModel(UiPageKind page, UiPageSelection selection, IUiPresetRegistry presets, IAssetManager assets)
     {
         _selection = selection; _presets = presets; _assets = assets;
-        DisplayNameKey = page switch { UiPageKind.Title => "UiPreset.Page.Title", UiPageKind.Game => "UiPreset.Page.Game", UiPageKind.Settings => "UiPreset.Page.Settings", UiPageKind.SaveLoad => "UiPreset.Page.SaveLoad", UiPageKind.Gallery => "UiPreset.Page.Gallery", _ => page.ToString() };
+        DisplayNameKey = page switch { UiPageKind.Title => "UiPreset.Page.Title", UiPageKind.Game => "UiPreset.Page.Game", UiPageKind.Settings => "UiPreset.Page.Settings", UiPageKind.SaveLoad => "UiPreset.Page.SaveLoad", UiPageKind.Gallery => "UiPreset.Page.Gallery", UiPageKind.About => "UiPreset.Page.About", _ => page.ToString() };
         Presets = new(presets.GetPresets(page).Select(x => x.Metadata));
         if (!Presets.Any(x => string.Equals(x.Id, selection.PresetId, StringComparison.OrdinalIgnoreCase))) selection.PresetId = presets.GetDefault(page).Metadata.Id;
         _selection.EnsureActivePresetSettings();

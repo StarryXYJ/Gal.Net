@@ -25,7 +25,8 @@ public sealed class BuiltInUiPresetRegistry : IUiPresetRegistry
             new Definition("builtin.game.default", UiPageKind.Game, "UiPreset.DefaultGame.Name", "UiPreset.DefaultGame.Description", GameSettings()),
             new Definition("builtin.settings.default", UiPageKind.Settings, "UiPreset.DefaultSettings.Name", "UiPreset.DefaultSettings.Description", SettingsScreenSettings()),
             new Definition("builtin.save-load.default", UiPageKind.SaveLoad, "UiPreset.DefaultSaveLoad.Name", "UiPreset.DefaultSaveLoad.Description", StandardScreenSettings()),
-            new Definition("builtin.gallery.default", UiPageKind.Gallery, "UiPreset.DefaultGallery.Name", "UiPreset.DefaultGallery.Description", StandardScreenSettings())
+            new Definition("builtin.gallery.default", UiPageKind.Gallery, "UiPreset.DefaultGallery.Name", "UiPreset.DefaultGallery.Description", StandardScreenSettings()),
+            new Definition("builtin.about.default", UiPageKind.About, "UiPreset.DefaultAbout.Name", "UiPreset.DefaultAbout.Description", AboutSettings())
         };
         _byId = presets.ToDictionary(x => x.Metadata.Id, StringComparer.OrdinalIgnoreCase);
     }
@@ -53,7 +54,29 @@ public sealed class BuiltInUiPresetRegistry : IUiPresetRegistry
         Integer("menuFontSize", "UiPreset.Setting.MenuFontSize", "20", 8, 100),
         Color("menuTextColor", "UiPreset.Setting.MenuTextColor", "#FFFFFFFF"),
         Integer("menuSpacing", "UiPreset.Setting.MenuSpacing", "12", 0, 100),
-        Bool("showGallery", "UiPreset.Setting.ShowGallery", "true")];
+        Bool("showGallery", "UiPreset.Setting.ShowGallery", "true"),
+        Bool("showAbout", "UiPreset.Setting.ShowAbout", "true")];
+
+    private static UiSettingDefinition[] AboutSettings() => [
+        Asset("contentAsset", "UiPreset.Setting.AboutContentAsset", AssetPickerFilter.Text),
+        Color("backgroundColor", "UiPreset.Setting.BackgroundColor", "#FF111118"),
+        Color("panelColor", "UiPreset.Setting.PanelColor", "#FF292933"),
+        Integer("contentPadding", "UiPreset.Setting.ContentPadding", "20", 0, 500),
+        Integer("fontSize", "UiPreset.Setting.FontSize", "16", 8, 100),
+        Color("textColor", "UiPreset.Setting.TextColor", "#FFFFFFFF"),
+        Color("headingColor", "UiPreset.Setting.HeadingColor", "#FFFFFFFF"),
+        Color("selectionColor", "UiPreset.Setting.SelectionColor", "#668ED8FF"),
+        Color("linkColor", "UiPreset.Setting.LinkColor", "#FF8ED8FF"),
+        Color("linkHoverColor", "UiPreset.Setting.LinkHoverColor", "#FFB5E7FF"),
+        Color("linkVisitedColor", "UiPreset.Setting.LinkVisitedColor", "#FFC8C8D0"),
+        Color("blockquoteBackgroundColor", "UiPreset.Setting.BlockquoteBackgroundColor", "#FF292933"),
+        Color("blockquoteBorderColor", "UiPreset.Setting.BlockquoteBorderColor", "#FF8ED8FF"),
+        Color("codeBackgroundColor", "UiPreset.Setting.CodeBackgroundColor", "#FF292933"),
+        Color("codeBorderColor", "UiPreset.Setting.CodeBorderColor", "#FF8ED8FF"),
+        Color("codeTextColor", "UiPreset.Setting.CodeTextColor", "#FFFFFFFF"),
+        Integer("codeFontSize", "UiPreset.Setting.CodeFontSize", "16", 8, 100),
+        Color("ruleColor", "UiPreset.Setting.RuleColor", "#FF989AAF"),
+        Color("backButtonForegroundColor", "UiPreset.Setting.BackButtonForegroundColor", "#FFFFFFFF")];
 
     private static UiSettingDefinition[] GameSettings() => [
         Color("dialogueBackgroundColor", "UiPreset.Setting.DialogueBackgroundColor", "#CC292933"),

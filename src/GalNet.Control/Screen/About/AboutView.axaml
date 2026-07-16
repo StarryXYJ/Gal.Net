@@ -1,0 +1,110 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:GalNet.Control.ViewModels"
+             xmlns:md="https://github.com/whistyun/Markdown.Avalonia"
+             xmlns:mdxaml="https://github.com/whistyun/Markdown.Avalonia.Tight"
+             xmlns:ctxt="clr-namespace:ColorTextBlock.Avalonia;assembly=ColorTextBlock.Avalonia"
+             xmlns:mdctl="clr-namespace:Markdown.Avalonia.Controls;assembly=Markdown.Avalonia"
+
+             x:Class="GalNet.Control.Views.AboutView"
+             x:DataType="vm:AboutViewModel">
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://GalNet.Control/Assets/Icons.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+
+    </ResourceDictionary>
+  </UserControl.Resources>
+  <Grid>
+    <Grid.Background><SolidColorBrush Color="{Binding Configuration.BackgroundColor}" /></Grid.Background>
+    <Border Margin="48" Padding="{Binding ContentMargin}" BorderThickness="1" CornerRadius="14">
+      <Border.Background><SolidColorBrush Color="{Binding Configuration.PanelColor}" /></Border.Background>
+      <Border.BorderBrush><SolidColorBrush Color="{Binding Configuration.RuleColor}" /></Border.BorderBrush>
+      <Grid RowDefinitions="Auto,*" RowSpacing="20">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="About" FontSize="28" FontWeight="SemiBold" VerticalAlignment="Center">
+            <TextBlock.Foreground><SolidColorBrush Color="{Binding Configuration.HeadingColor}" /></TextBlock.Foreground>
+          </TextBlock>
+          <Button Grid.Column="1" Command="{Binding BackCommand}" ToolTip.Tip="Back">
+            <Button.Background><SolidColorBrush Color="{Binding Configuration.CodeBackgroundColor}" /></Button.Background>
+            <PathIcon Width="18" Height="18" Data="{StaticResource BackwardRegular}">
+              <PathIcon.Foreground><SolidColorBrush Color="{Binding Configuration.BackButtonForegroundColor}" /></PathIcon.Foreground>
+            </PathIcon>
+          </Button>
+        </Grid>
+        <md:MarkdownScrollViewer x:Name="MarkdownScrollViewer" Grid.Row="1"
+                                 Markdown="{Binding Markdown}"
+                                 SelectionEnabled="False"
+                                 >
+
+          <md:MarkdownScrollViewer.Engine>
+            <mdxaml:Markdown></mdxaml:Markdown>
+          </md:MarkdownScrollViewer.Engine>
+          <md:MarkdownScrollViewer.Styles>
+           
+            
+  <Style Selector="ctxt|CTextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource AboutTextBrush}" />
+    <Setter Property="FontSize" Value="{DynamicResource AboutFontSize}" />
+  </Style>
+  <Style Selector="ctxt|CTextBlock.Heading1"><Setter Property="Foreground" Value="{DynamicResource AboutHeadingBrush}" /></Style>
+  <Style Selector="ctxt|CTextBlock.Heading2"><Setter Property="Foreground" Value="{DynamicResource AboutHeadingBrush}" /></Style>
+  <Style Selector="ctxt|CTextBlock.Heading3"><Setter Property="Foreground" Value="{DynamicResource AboutHeadingBrush}" /></Style>
+  <Style Selector="ctxt|CTextBlock.Heading4"><Setter Property="Foreground" Value="{DynamicResource AboutHeadingBrush}" /></Style>
+  <Style Selector="ctxt|CTextBlock.Heading5"><Setter Property="Foreground" Value="{DynamicResource AboutHeadingBrush}" /></Style>
+  <Style Selector="ctxt|CTextBlock.Heading6"><Setter Property="Foreground" Value="{DynamicResource AboutHeadingBrush}" /></Style>
+  <Style Selector="Border.Blockquote">
+    <Setter Property="BorderBrush" Value="{DynamicResource AboutBlockquoteBorderBrush}" />
+    <Setter Property="Background" Value="{DynamicResource AboutBlockquoteBackgroundBrush}" />
+    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="CornerRadius" Value="10" />
+  </Style>
+  <Style Selector="Border.CodeBlock">
+    <Setter Property="BorderBrush" Value="{DynamicResource AboutCodeBorderBrush}" />
+    <Setter Property="BorderThickness" Value="0,3" />
+    <Setter Property="Margin" Value="5" />
+    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="Background" Value="{DynamicResource AboutCodeBackgroundBrush}" />
+  </Style>
+  <Style Selector="TextBlock.CodeBlock">
+    <Setter Property="Foreground" Value="{DynamicResource AboutCodeTextBrush}" />
+    <Setter Property="FontSize" Value="{DynamicResource AboutCodeFontSize}" />
+  </Style>
+  <Style Selector=".CodeBlock Button.CopyButton TextBlock"><Setter Property="Text" Value="📋" /></Style>
+  <Style Selector="mdctl|Rule.Single"><Setter Property="Foreground" Value="{DynamicResource AboutRuleBrush}" /></Style>
+  <Style Selector="mdctl|Rule.TwoLines"><Setter Property="SingleLineWidth" Value="2" /><Setter Property="Foreground" Value="{DynamicResource AboutRuleBrush}" /></Style>
+  <Style Selector="mdctl|Rule.Bold"><Setter Property="BoldLineWidth" Value="12" /><Setter Property="Foreground" Value="{DynamicResource AboutRuleBrush}" /></Style>
+  <Style Selector="mdctl|Rule.BoldWithSingle">
+    <Setter Property="SingleLineWidth" Value="2" /><Setter Property="LineMargin" Value="6" /><Setter Property="BoldLineWidth" Value="4" /><Setter Property="Foreground" Value="{DynamicResource AboutRuleBrush}" />
+  </Style>
+            
+            
+            <Style Selector=".Markdown_Avalonia_MarkdownViewer ctxt|CHyperlink">
+              <Setter Property="IsUnderline" Value="False" />
+              <Setter Property="Foreground" Value="{DynamicResource AboutLinkBrush}" />
+              <Setter Property="HoverForeground" Value="{DynamicResource AboutLinkHoverBrush}" />
+              <Setter Property="Padding" Value="2" />
+              <Setter Property="BorderThickness" Value="0" />
+            </Style>
+            <Style Selector=".Markdown_Avalonia_MarkdownViewer ctxt|CHyperlink:pointerover">
+              <Setter Property="Foreground" Value="{DynamicResource AboutLinkHoverBrush}" />
+              <Setter Property="HoverForeground" Value="{DynamicResource AboutLinkHoverBrush}" />
+              <Setter Property="Padding" Value="2" />
+              <Setter Property="BorderBrush" Value="Transparent" />
+              <Setter Property="BorderThickness" Value="0" />
+            </Style>
+            <Style Selector=".Markdown_Avalonia_MarkdownViewer ctxt|CHyperlink:pressed">
+              <Setter Property="Foreground" Value="{DynamicResource AboutLinkVisitedBrush}" />
+              <Setter Property="HoverForeground" Value="{DynamicResource AboutLinkVisitedBrush}" />
+              <Setter Property="Padding" Value="2" />
+              <Setter Property="BorderBrush" Value="Transparent" />
+            </Style> 
+            
+            
+          </md:MarkdownScrollViewer.Styles>
+        </md:MarkdownScrollViewer>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

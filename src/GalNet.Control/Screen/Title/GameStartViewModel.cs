@@ -33,6 +33,7 @@ public partial class GameStartViewModel : ObservableObject
     [ObservableProperty] private Bitmap? _backgroundImageSource;
     public bool HasBackgroundImage => BackgroundImageSource is not null;
     public bool ShowGallery => Configuration.ShowGallery;
+    public bool ShowAbout => Configuration.ShowAbout;
     public GameStartViewModel(IGameScreenNavigator navigator, IGameExitService? exit, GameFlowOptions options, ISaveService? saves, TitleUiConfiguration config, string horizontalAlignment = "center", IAssetManager? assets = null)
     { _navigator = navigator; _exit = exit; _saves = saves; Configuration = config; Title = options.Title; MenuHorizontalAlignment = ParseHorizontal(horizontalAlignment); MenuTextAlignment = ParseTextAlignment(horizontalAlignment); _ = RefreshContinueAsync(); if (assets is not null) _ = LoadBackgroundAsync(assets); }
     [RelayCommand] private async Task ContinueAsync() { var snapshot = _saves is null ? null : await _saves.QuickLoadAsync(); if (snapshot is not null) await _navigator.NavigateAsync("game", snapshot); }
@@ -40,6 +41,7 @@ public partial class GameStartViewModel : ObservableObject
     [RelayCommand] private Task LoadAsync() => _navigator.NavigateAsync("save-load");
     [RelayCommand] private Task GalleryAsync() => _navigator.NavigateAsync("gallery");
     [RelayCommand] private Task SettingsAsync() => _navigator.NavigateAsync("settings");
+    [RelayCommand] private Task AboutAsync() => _navigator.NavigateAsync("about");
     [RelayCommand] private void Quit() { if (_exit is not null) _exit.Exit(); else Environment.Exit(0); }
     private async Task RefreshContinueAsync() { if (_saves is not null && await _saves.HasQuickSaveAsync()) Avalonia.Threading.Dispatcher.UIThread.Post(() => IsContinueVisible = true); }
     private async Task LoadBackgroundAsync(IAssetManager assets)

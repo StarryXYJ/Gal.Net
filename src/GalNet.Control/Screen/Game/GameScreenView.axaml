@@ -16,8 +16,16 @@
           </ControlTemplate>
         </Setter>
       </Style>
-      <Style Selector="Button.command-text:pointerover"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="Foreground" Value="{Binding CommandHoverTextBrush}" /></Style>
-      <Style Selector="Button.command-text:pressed"><Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="Foreground" Value="{Binding CommandHoverTextBrush}" /></Style>
+      <Style Selector="Button.command-text:pointerover">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Foreground" Value="{Binding CommandHoverTextBrush}" />
+      </Style>
+      <Style Selector="Button.command-text:pressed">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Foreground" Value="{Binding CommandHoverTextBrush}" />
+      </Style>
       <Style Selector="ToggleButton.command-toggle">
         <Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /><Setter Property="Padding" Value="2" /><Setter Property="MinWidth" Value="0" /><Setter Property="Foreground" Value="{Binding CommandTextBrush}" /><Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
