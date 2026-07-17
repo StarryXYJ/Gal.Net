@@ -12,20 +12,21 @@ using GalNet.Core.Assets;
 using GalNet.Core.UI;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Abstraction.Changes;
-using GalNet.Editor.Abstraction.Commands;
-using GalNet.Editor.Abstraction.Sessions;
+using GalNet.Editor.History;
 using Serilog;
 
 namespace GalNet.Editor.ViewModels;
 
 /// <summary>Generic editor for preset-owned settings. Display strings remain localization keys until XAML resolves them.</summary>
-public sealed partial class UiCustomizationPanelViewModel : ObservableObject, IDisposable
+public sealed partial class UiCustomizationPanelViewModel : ObservableObject, IDisposable, IUndoRedoTarget
 {
     private readonly IProjectService _projectService;
-    private readonly IEditorSession _session;
+    private readonly EditorHistories _histories;
     private readonly EditorWorkspaceViewModel _workspace;
     private readonly IUiPresetRegistry _presets;
     private readonly IAssetManager _assets;
+    private UiProject? _appliedSnapshot;
+    public IUndoRedoHistory UndoRedoHistory => _histories.Ui;
 
     [ObservableProperty]
     private string _statusKey = "UiPreset.Status.NoProject";
@@ -33,15 +34,14 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
     public ObservableCollection<UiPageEditorViewModel> Pages { get; } = [];
     public string CurrentColorPaletteId => _projectService.Current?.UiProject.Current.ColorPaletteId ?? UiColorPalettePresets.DefaultId;
 
-    public UiCustomizationPanelViewModel(IProjectService projectService, IEditorSession session, EditorWorkspaceViewModel workspace, IUiPresetRegistry presets, IAssetManager assets)
+    public UiCustomizationPanelViewModel(IProjectService projectService, EditorHistories histories, EditorWorkspaceViewModel workspace, IUiPresetRegistry presets, IAssetManager assets)
     {
         _projectService = projectService;
-        _session = session;
+        _histories = histories;
         _workspace = workspace;
         _presets = presets;
         _assets = assets;
         _projectService.CurrentChanged += OnProjectChanged;
-        _session.DocumentChanged += OnSessionDocumentChanged;
         LoadProject();
     }
 
@@ -60,13 +60,13 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
             SyncPresetSettingsToConfig(ui);
             Log.Information("UI customization synchronized for {Project}: titleColor={TitleColor}, titleSize={TitleSize}, backgroundImage={BackgroundImage}",
                 project.Name, ui.Title.TitleColor, ui.Title.TitleFontSize, ui.Title.BackgroundImage);
-            var result = _session.Execute(new ReplaceUiProjectCommand(ui), new ExecuteOptions(MergeKey: "ui:project"));
-            if (!result.Success)
-                throw new InvalidOperationException(string.Join("; ", result.Diagnostics.Select(item => item.Message)));
-            ProjectSessionUi(project);
+            var before = _appliedSnapshot is null ? EditorDocumentCloner.CloneUiProject(ui) : EditorDocumentCloner.CloneUiProject(_appliedSnapshot);
+            var after = EditorDocumentCloner.CloneUiProject(ui);
+            _histories.Ui.PushAlreadyApplied(new DelegateEdit("Apply UI customization",
+                () => { project.UiProject.Replace(EditorDocumentCloner.CloneUiProject(before)); LoadProject(); },
+                () => { project.UiProject.Replace(EditorDocumentCloner.CloneUiProject(after)); LoadProject(); }));
+            _appliedSnapshot = EditorDocumentCloner.CloneUiProject(after);
             project.IsDirty = true;
-            await _session.SaveAsync();
-            project.IsDirty = false;
 
             if (_workspace.ActivePreview is { } preview)
                 await preview.RestartAsync();
@@ -87,13 +87,14 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
 
         try
         {
-            var result = _session.Execute(new ApplyUiColorPaletteCommand(paletteId));
-            if (!result.Success)
-                throw new InvalidOperationException(string.Join("; ", result.Diagnostics.Select(item => item.Message)));
-            ProjectSessionUi(project);
+            var before = EditorDocumentCloner.CloneUiProject(project.UiProject.Current);
+            UiColorPalettePresets.Apply(project.UiProject.Current, paletteId);
+            var after = EditorDocumentCloner.CloneUiProject(project.UiProject.Current);
+            _histories.Ui.PushAlreadyApplied(new DelegateEdit("Apply UI color palette",
+                () => { project.UiProject.Replace(EditorDocumentCloner.CloneUiProject(before)); LoadProject(); },
+                () => { project.UiProject.Replace(EditorDocumentCloner.CloneUiProject(after)); LoadProject(); }));
+            _appliedSnapshot = EditorDocumentCloner.CloneUiProject(after);
             project.IsDirty = true;
-            await _session.SaveAsync();
-            project.IsDirty = false;
             if (_workspace.ActivePreview is { } preview)
                 await preview.RestartAsync();
             LoadProject();
@@ -121,19 +122,6 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
         SyncSettingsToConfig(ui.SaveLoad, ui.GetPage(UiPageKind.SaveLoad), includeSettingsControls: false);
         SyncSettingsToConfig(ui.Gallery, ui.GetPage(UiPageKind.Gallery), includeSettingsControls: false);
         SyncAboutToConfig(ui.About, ui.GetPage(UiPageKind.About));
-    }
-
-    private void OnSessionDocumentChanged()
-    {
-        if (_projectService.Current is { } project)
-            ProjectSessionUi(project);
-        LoadProject();
-        OnPropertyChanged(nameof(CurrentColorPaletteId));
-    }
-
-    private void ProjectSessionUi(GalNet.Editor.Abstraction.Project.GalProject project)
-    {
-        project.UiProject.Replace(EditorDocumentCloner.CloneUiProject(_session.Document.UiProject));
     }
 
     private static void SyncTitleToConfig(TitleUiConfiguration config, UiPageSelection settings)
@@ -257,6 +245,7 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
             return;
         }
         var ui = project.UiProject.Current;
+        _appliedSnapshot = EditorDocumentCloner.CloneUiProject(ui);
         var title = ui.GetPage(UiPageKind.Title);
         Log.Information("Loading UI customization for {Project}: titlePreset={TitlePreset}, titleSettings={TitleSettings}, titleValues={@TitleValues}, titleColor={TitleColor}, titleSize={TitleSize}",
             project.Name, title.PresetId, title.Settings.Count, title.Settings, ui.Title.TitleColor, ui.Title.TitleFontSize);
@@ -380,7 +369,6 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
     public void Dispose()
     {
         _projectService.CurrentChanged -= OnProjectChanged;
-        _session.DocumentChanged -= OnSessionDocumentChanged;
     }
 }
 

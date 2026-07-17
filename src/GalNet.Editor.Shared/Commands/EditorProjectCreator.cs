@@ -69,7 +69,7 @@ public static class EditorProjectCreator
         };
 
         var repository = new EditorDocumentRepository();
-        await new FileEditorSessionPersistence(projectPath, repository).SaveAsync(document, cancellationToken);
+        await new DirectProjectPersistence(projectPath, repository).SaveAsync(document, cancellationToken);
         await File.WriteAllTextAsync(
             Path.Combine(projectPath, ".galnet", "editor-state.json"),
             JsonSerializer.Serialize(new GalNet.Editor.Abstraction.Project.EditorProjectState(), new JsonSerializerOptions { WriteIndented = true }),

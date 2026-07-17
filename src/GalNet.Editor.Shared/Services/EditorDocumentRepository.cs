@@ -62,10 +62,16 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
 
             groupEntries.TryGetValue(groupNode.Id, out var entries);
             var serialized = (entries ?? []).Select(SerializeEntry).ToArray();
-            File.WriteAllLines(Path.Combine(graphPath, relativeFile.Replace('/', Path.DirectorySeparatorChar)), serialized);
+            var groupFile = Path.Combine(graphPath, relativeFile.Replace('/', Path.DirectorySeparatorChar));
+            var groupTemporary = groupFile + ".tmp";
+            File.WriteAllLines(groupTemporary, serialized);
+            File.Move(groupTemporary, groupFile, true);
         }
 
-        File.WriteAllText(Path.Combine(graphPath, "graph.json"), JsonSerializer.Serialize(document, JsonOptions));
+        var graphFile = Path.Combine(graphPath, "graph.json");
+        var graphTemporary = graphFile + ".tmp";
+        File.WriteAllText(graphTemporary, JsonSerializer.Serialize(document, JsonOptions));
+        File.Move(graphTemporary, graphFile, true);
     }
 
     private static EditorGraphDocument CreateDefaultDocument(string projectName)

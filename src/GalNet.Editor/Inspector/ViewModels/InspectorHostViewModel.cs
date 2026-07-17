@@ -3,11 +3,12 @@ using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Editor.Abstraction.Extensibility;
+using GalNet.Editor.History;
 
 namespace GalNet.Editor.Inspector.ViewModels;
 
 /// <summary>Hosts the optional inspector supplied by the currently active dock panel.</summary>
-public sealed partial class InspectorHostViewModel : ObservableObject, IDisposable
+public sealed partial class InspectorHostViewModel : ObservableObject, IDisposable, IUndoRedoTarget
 {
     private readonly IServiceProvider _services;
     private readonly IEditorExtensionRegistry _extensions;
@@ -20,6 +21,7 @@ public sealed partial class InspectorHostViewModel : ObservableObject, IDisposab
     [ObservableProperty] private string? _targetPanelId;
 
     public bool HasTarget => TargetPanelId is not null;
+    public IUndoRedoHistory? UndoRedoHistory => (_targetDockViewModel as IUndoRedoTarget)?.UndoRedoHistory;
 
     public InspectorHostViewModel(IServiceProvider services, IEditorExtensionRegistry extensions)
     {

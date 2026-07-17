@@ -14,6 +14,7 @@ using GalNet.Editor.Inspector.ViewModels;
 using GalNet.Editor.Abstraction.Extensibility;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Abstraction.Project;
+using GalNet.Editor.History;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -119,6 +120,8 @@ public sealed class EditorDockFactory : Factory
         rootDock.RightPinnedDockables = CreateList<IDockable>();
         rootDock.TopPinnedDockables = CreateList<IDockable>();
         rootDock.BottomPinnedDockables = CreateList<IDockable>();
+        (_serviceProvider.GetService<IProjectService>()?.Current?.Services ?? _serviceProvider)
+            .GetService<UndoRedoRouter>()?.SetActive(nodeGraphDocument.Context);
         rootDock.FloatingWindowHostMode = DockFloatingWindowHostMode.Native;
 
         Log.Information("[DockFactory] CreateLayout done");
@@ -266,7 +269,13 @@ public sealed class EditorDockFactory : Factory
 
         if (!_activeDockableHandlerAttached)
         {
-            ActiveDockableChanged += (_, args) => { _inspector.UpdateFor(args.Dockable); LayoutChanged?.Invoke(); };
+            ActiveDockableChanged += (_, args) =>
+            {
+                _inspector.UpdateFor(args.Dockable);
+                var services = _serviceProvider.GetService<IProjectService>()?.Current?.Services;
+                services?.GetService<UndoRedoRouter>()?.SetActive(args.Dockable?.Context);
+                LayoutChanged?.Invoke();
+            };
             _activeDockableHandlerAttached = true;
         }
 

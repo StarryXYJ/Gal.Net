@@ -3,15 +3,17 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Editor.Services;
 using GalNet.Editor.Controls;
+using GalNet.Editor.History;
 
 namespace GalNet.Editor.ViewModels;
 
-public partial class GroupEditorPanelViewModel : ObservableObject
+public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarget
 {
     private readonly IGraphEditingService _graphEditingService;
 
     public EditorWorkspaceViewModel Workspace { get; }
     public GraphNode GroupNode { get; }
+    public IUndoRedoHistory? UndoRedoHistory => Workspace.UndoRedoHistory;
 
     public string GroupId => GroupNode.Id;
     public IReadOnlyList<ConditionVariableSuggestion> ConditionSuggestions => Workspace.GetConditionVariableSuggestions();

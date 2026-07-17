@@ -160,7 +160,7 @@ public sealed class AssetFileCommandExecutor : IProjectFileCommandExecutor
         catch (JsonException) { }
 
         var references = new List<string>();
-        var document = new EditorSessionFactory().Open(projectPath).Document;
+        var document = new DirectProjectPersistence(projectPath).Load();
         foreach (var node in document.Graph.Nodes)
             if (values.Any(value => string.Equals(node.File, value, StringComparison.OrdinalIgnoreCase)))
                 references.Add($"graph/nodes/{node.Id}");

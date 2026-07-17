@@ -6,7 +6,6 @@ using GalNet.Control.Views;
 using GalNet.Core.Services;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Abstraction.Commands;
-using GalNet.Editor.Abstraction.Sessions;
 using GalNet.Editor.Abstraction.Extensibility;
 using GalNet.Editor.Commands;
 using GalNet.Editor.Dock;
@@ -14,6 +13,7 @@ using GalNet.Editor.Services;
 using GalNet.Editor.Services.Interfaces;
 using GalNet.Editor.Shared.Services;
 using GalNet.Editor.Shared.Commands;
+using GalNet.Editor.History;
 using GalNet.Editor.ViewModels;
 using GalNet.Editor.Inspector.ViewModels;
 using GalNet.Editor.Inspector.Views;
@@ -52,17 +52,10 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<IGameExitService, EditorGameExitService>();
         services.AddSingleton<IEditorPlayerVariableStore, EditorPlayerVariableStore>();
         services.AddSingleton<IGraphEditingService, GraphEditingService>();
-        services.AddSingleton<IEditorCommandCatalog, EditorCommandCatalog>();
-        services.AddSingleton<IEditorCommandHandler, BuiltInEditorCommandHandler>();
         services.AddSingleton<IProjectFileCommandCatalog, AssetFileCommandCatalog>();
         services.AddSingleton<IProjectFileCommandExecutor, AssetFileCommandExecutor>();
-        services.AddSingleton<EditorSessionFactory>();
-        services.AddScoped<IEditorSession>(sp =>
-        {
-            var project = sp.GetRequiredService<IProjectService>().Current
-                ?? throw new InvalidOperationException("An editor session requires an open project.");
-            return sp.GetRequiredService<EditorSessionFactory>().Open(project.RootPath);
-        });
+        services.AddScoped<EditorHistories>();
+        services.AddScoped<UndoRedoRouter>();
         services.AddSingleton<GraphDocumentMapper>();
         services.AddSingleton<IEditorDocumentRepository, EditorDocumentRepository>();
         services.AddSingleton<IEditorDocumentService, EditorDocumentService>();

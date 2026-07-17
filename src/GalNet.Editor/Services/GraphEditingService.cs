@@ -8,14 +8,14 @@ namespace GalNet.Editor.Services;
 
 public sealed class GraphEditingService : IGraphEditingService
 {
-    public GraphNode CreateNode(ObservableCollection<GraphNode> nodes, GraphNodeKind kind, double x, double y)
+    public GraphNode CreateNode(ObservableCollection<GraphNode> nodes, GraphNodeKind kind, double x, double y, string? id = null)
     {
         var index = nodes.Count(node => node.NodeKind == kind) + 1;
         Node node = kind switch
         {
-            GraphNodeKind.LinearGroup => new Group { Name = $"Linear Group {index}" },
-            GraphNodeKind.ChoiceBranch => new Branch { Name = $"Choice Branch {index}", BranchType = BranchType.Choice },
-            GraphNodeKind.ConditionBranch => new Branch { Name = $"Condition Branch {index}", BranchType = BranchType.Condition },
+            GraphNodeKind.LinearGroup => new Group { Id = id ?? Guid.NewGuid().ToString("N"), Name = $"Linear Group {index}" },
+            GraphNodeKind.ChoiceBranch => new Branch { Id = id ?? Guid.NewGuid().ToString("N"), Name = $"Choice Branch {index}", BranchType = BranchType.Choice },
+            GraphNodeKind.ConditionBranch => new Branch { Id = id ?? Guid.NewGuid().ToString("N"), Name = $"Condition Branch {index}", BranchType = BranchType.Condition },
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
         };
 

@@ -29,7 +29,9 @@ public sealed class FileUiProjectProvider : IUiProjectProvider
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-        await File.WriteAllTextAsync(_path, JsonSerializer.Serialize(Current, Options), cancellationToken);
+        var temporary = _path + ".tmp";
+        await File.WriteAllTextAsync(temporary, JsonSerializer.Serialize(Current, Options), cancellationToken);
+        File.Move(temporary, _path, true);
         Log.Information("Saved UI project {Path}: version={Version}, pages={PageCount}", _path, Current.Version, Current.Pages.Count);
     }
 

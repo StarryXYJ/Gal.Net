@@ -9,16 +9,18 @@ using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Controls;
 using GalNet.Editor.Models.Graph;
 using GalNet.Editor.ViewModels;
+using GalNet.Editor.History;
 
 namespace GalNet.Editor.Inspector.ViewModels;
 
 /// <summary>Inspector state is a snapshot so a locked inspector remains on its original node.</summary>
-public sealed partial class NodeInspectorControlViewModel : ObservableObject, IInspectorControlViewModel, IInspectorLockAware
+public sealed partial class NodeInspectorControlViewModel : ObservableObject, IInspectorControlViewModel, IInspectorLockAware, IUndoRedoTarget
 {
     private readonly IEditorLocalizationService _localization;
     private bool _isLocked;
 
     public EditorWorkspaceViewModel Workspace { get; }
+    public IUndoRedoHistory? UndoRedoHistory => Workspace.UndoRedoHistory;
     [ObservableProperty] private GraphNode? _inspectedNode;
     [ObservableProperty] private GraphEdge? _inspectedEdge;
 
