@@ -58,6 +58,7 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
             Log.Information("Saving UI customization for {Project}: titlePreset={TitlePreset}, titleValuesBefore={@TitleValues}",
                 project.Name, title.PresetId, title.Settings);
             SyncPresetSettingsToConfig(ui);
+            project.UiProject.NotifyChanged();
             Log.Information("UI customization synchronized for {Project}: titleColor={TitleColor}, titleSize={TitleSize}, backgroundImage={BackgroundImage}",
                 project.Name, ui.Title.TitleColor, ui.Title.TitleFontSize, ui.Title.BackgroundImage);
             var before = _appliedSnapshot is null ? EditorDocumentCloner.CloneUiProject(ui) : EditorDocumentCloner.CloneUiProject(_appliedSnapshot);
@@ -67,6 +68,7 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
                 () => { project.UiProject.Replace(EditorDocumentCloner.CloneUiProject(after)); LoadProject(); }));
             _appliedSnapshot = EditorDocumentCloner.CloneUiProject(after);
             project.IsDirty = true;
+            await _workspace.SaveAsync();
 
             if (_workspace.ActivePreview is { } preview)
                 await preview.RestartAsync();
@@ -89,12 +91,14 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
         {
             var before = EditorDocumentCloner.CloneUiProject(project.UiProject.Current);
             UiColorPalettePresets.Apply(project.UiProject.Current, paletteId);
+            project.UiProject.NotifyChanged();
             var after = EditorDocumentCloner.CloneUiProject(project.UiProject.Current);
             _histories.Ui.PushAlreadyApplied(new DelegateEdit("Apply UI color palette",
                 () => { project.UiProject.Replace(EditorDocumentCloner.CloneUiProject(before)); LoadProject(); },
                 () => { project.UiProject.Replace(EditorDocumentCloner.CloneUiProject(after)); LoadProject(); }));
             _appliedSnapshot = EditorDocumentCloner.CloneUiProject(after);
             project.IsDirty = true;
+            await _workspace.SaveAsync();
             if (_workspace.ActivePreview is { } preview)
                 await preview.RestartAsync();
             LoadProject();

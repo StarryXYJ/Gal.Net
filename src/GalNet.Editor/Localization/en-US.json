@@ -246,6 +246,11 @@
   "UiColorPalette.RoseDusk": "Rose Dusk",
   "UiCustomization.ResetPalette": "Reset palette",
   "UiCustomization.ResetPalette.Title": "Reset UI color palette",
+  "Graph.Menu.Delete": "Delete",
+  "Graph.Menu.CannotDeleteEntry": "The entry node cannot be deleted",
+  "Graph.Menu.CreateLinearGroup": "Linear Group",
+  "Graph.Menu.CreateChoiceBranch": "Choice Branch",
+  "Graph.Menu.CreateConditionBranch": "Condition Branch",
   "Common.Cancel": "Cancel",
   "Common.Confirm": "Confirm"
 }

@@ -33,6 +33,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
     private readonly IGraphEditingService _graphEditingService;
     private readonly GraphDocumentMapper _graphDocumentMapper;
     private readonly IEditorSettingsService _editorSettings;
+    private readonly IEditorLocalizationService _localization;
     private readonly IVariableDefinitionService _variableDefinitionService;
     private readonly Action<GalProject?> _projectChangedHandler;
     private readonly Action<GalNet.Core.Variable.VariableScope> _definitionsChangedHandler;
@@ -81,6 +82,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         IVariableDefinitionService variableDefinitionService,
         IGraphEditingService graphEditingService,
         IEditorSettingsService editorSettings,
+        IEditorLocalizationService localization,
         IProjectSaveScheduler saveScheduler,
         GraphDocumentMapper graphDocumentMapper)
     {
@@ -92,6 +94,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         _saveCoordinator = saveCoordinator;
         _graphEditingService = graphEditingService;
         _editorSettings = editorSettings;
+        _localization = localization;
         _saveScheduler = saveScheduler;
         _graphDocumentMapper = graphDocumentMapper;
         _variableDefinitionService = variableDefinitionService;
@@ -403,7 +406,9 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         {
             if (!_savedPositions.TryGetValue(node.Id, out var before) || (before.X == node.X && before.Y == node.Y)) continue;
             var after = (node.X, node.Y);
-            edits.Add(new DelegateEdit("Move node", () => { node.X = before.X; node.Y = before.Y; }, () => { node.X = after.X; node.Y = after.Y; }));
+            edits.Add(new DelegateEdit("Move node",
+                () => { node.X = before.X; node.Y = before.Y; _savedPositions[node.Id] = before; },
+                () => { node.X = after.X; node.Y = after.Y; _savedPositions[node.Id] = after; }));
             _savedPositions[node.Id] = after;
         }
         if (edits.Count > 0) PushGraphEdit(new CompositeEdit("Move nodes", edits));
@@ -413,6 +418,8 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
     {
         // The live ViewModels are the canonical GUI state. SaveCoreAsync maps them to files.
     }
+
+    public string Localize(string key) => _localization[key];
 
     public Task SaveAsync() => _saveScheduler.SaveNowAsync(SaveCoreAsync);
 
@@ -427,6 +434,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
                 _documentService.CurrentDocument.PlayerVariables, _documentService.CurrentDocument.SaveVariables);
             _saveCoordinator.SaveProjectDocument(project.RootPath, document, _graphDocumentMapper.CreateGroupEntriesSnapshot(Nodes));
             await _projectService.SaveAsync();
+            await project.UiProject.SaveAsync();
             _documentService.MarkSaved();
             _histories.MarkSaved();
             project.IsDirty = false;

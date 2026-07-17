@@ -197,7 +197,7 @@ public partial class NodeGraphPanelView : UserControl
         if (!e.OriginalEventArgs.GetCurrentPoint(sender as Avalonia.Controls.Control).Properties.IsLeftButtonPressed)
             return;
 
-        if (Workspace is not null)
+        if (Workspace is null)
             return;
 
         var wasSelected = e.Node.IsSelected;
@@ -213,6 +213,7 @@ public partial class NodeGraphPanelView : UserControl
             _dragStartPositions[node] = new Point(node.X, node.Y);
 
         e.OriginalEventArgs.Pointer.Capture(sender as Avalonia.Controls.Control);
+        e.OriginalEventArgs.Handled = true;
     }
 
     private void OnNodePointerMoved(object? sender, PointerEventArgs e)
@@ -278,7 +279,7 @@ public partial class NodeGraphPanelView : UserControl
         if (sender is not Avalonia.Controls.Control control)
             return;
 
-        if (Workspace is not null)
+        if (Workspace is null)
             return;
 
         if (e.Node.IsSelected && Workspace.SelectedNodes.Count > 1)
@@ -291,7 +292,11 @@ public partial class NodeGraphPanelView : UserControl
         Workspace.SelectNode(e.Node);
 
         var menu = new MenuFlyout();
-        var deleteItem = new MenuItem { Header = e.Node.CanDelete ? "鍒犻櫎" : "鍏ュ彛鑺傜偣涓嶅彲鍒犻櫎", IsEnabled = e.Node.CanDelete };
+        var deleteItem = new MenuItem
+        {
+            Header = Workspace.Localize(e.Node.CanDelete ? "Graph.Menu.Delete" : "Graph.Menu.CannotDeleteEntry"),
+            IsEnabled = e.Node.CanDelete
+        };
         deleteItem.Click += (_, _) => Workspace?.DeleteNode(e.Node);
         menu.Items.Add(deleteItem);
         menu.Placement = PlacementMode.Pointer;
@@ -321,7 +326,7 @@ public partial class NodeGraphPanelView : UserControl
         Workspace?.SelectEdge(edge);
 
         var menu = new MenuFlyout();
-        var deleteItem = new MenuItem { Header = "鍒犻櫎" };
+        var deleteItem = new MenuItem { Header = Workspace?.Localize("Graph.Menu.Delete") ?? "Delete" };
         deleteItem.Click += (_, _) => Workspace?.DeleteEdge(edge);
         menu.Items.Add(deleteItem);
         menu.Placement = PlacementMode.Pointer;
@@ -332,7 +337,7 @@ public partial class NodeGraphPanelView : UserControl
     private void ShowSelectionMenu(Avalonia.Controls.Control? target = null)
     {
         var menu = new MenuFlyout();
-        var deleteItem = new MenuItem { Header = "鍒犻櫎" };
+        var deleteItem = new MenuItem { Header = Workspace?.Localize("Graph.Menu.Delete") ?? "Delete" };
         deleteItem.Click += (_, _) => Workspace?.DeleteSelection();
         menu.Items.Add(deleteItem);
         menu.Placement = PlacementMode.Pointer;
@@ -379,7 +384,7 @@ public partial class NodeGraphPanelView : UserControl
 
     private GraphConnector? FindNearestConnector(Point viewportPosition)
     {
-        if (_pendingConnector is null || Workspace is not null)
+        if (_pendingConnector is null || Workspace is null)
             return null;
 
         GraphConnector? nearest = null;
@@ -438,9 +443,9 @@ public partial class NodeGraphPanelView : UserControl
     private void ShowCreateNodeMenu(Point position, GraphConnector? connectFrom)
     {
         var menu = new MenuFlyout();
-        AddCreateNodeMenuItem(menu, "绾挎€х粍", GraphNodeKind.LinearGroup, position, connectFrom);
-        AddCreateNodeMenuItem(menu, "閫夐」鍒嗘敮", GraphNodeKind.ChoiceBranch, position, connectFrom);
-        AddCreateNodeMenuItem(menu, "鏉′欢鍒嗘敮", GraphNodeKind.ConditionBranch, position, connectFrom);
+        AddCreateNodeMenuItem(menu, Workspace?.Localize("Graph.Menu.CreateLinearGroup") ?? "Linear Group", GraphNodeKind.LinearGroup, position, connectFrom);
+        AddCreateNodeMenuItem(menu, Workspace?.Localize("Graph.Menu.CreateChoiceBranch") ?? "Choice Branch", GraphNodeKind.ChoiceBranch, position, connectFrom);
+        AddCreateNodeMenuItem(menu, Workspace?.Localize("Graph.Menu.CreateConditionBranch") ?? "Condition Branch", GraphNodeKind.ConditionBranch, position, connectFrom);
         menu.Placement = PlacementMode.Pointer;
         menu.ShowAt(Viewport, true);
     }
