@@ -455,4 +455,4 @@ riderModule.iml
 !.vscode/extensions.json
 
 # Project-specific
-dev/
+dev/*

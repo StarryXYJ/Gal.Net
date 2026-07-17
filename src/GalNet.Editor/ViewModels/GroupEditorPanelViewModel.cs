@@ -28,8 +28,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject
     [RelayCommand]
     private void AddEntry()
     {
-        if (_graphEditingService.AddEntry(GroupNode))
-            Workspace.SaveGraphDocument();
+        Workspace.AddEntryTo(GroupNode);
     }
 
     [RelayCommand]
@@ -38,8 +37,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject
         if (entry is null)
             return;
 
-        if (_graphEditingService.RemoveEntry(GroupNode, entry))
-            Workspace.SaveGraphDocument();
+        Workspace.RemoveEntryFrom(GroupNode, entry);
     }
 
     [RelayCommand]
@@ -60,8 +58,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject
         if (request?.Item is not EntryEditorItemViewModel entry)
             return;
 
-        if (_graphEditingService.MoveEntry(GroupNode, entry, request.NewIndex))
-            Workspace.SaveGraphDocument();
+        Workspace.MoveEntryTo(GroupNode, entry, request.NewIndex);
     }
 
     private void MoveEntry(EntryEditorItemViewModel? entry, int delta)

@@ -83,6 +83,7 @@ public sealed class GraphEditingService : IGraphEditingService
 
         groupNode.Entries.Add(new EntryEditorItemViewModel
         {
+            StableId = Guid.NewGuid().ToString("N"),
             Id = groupNode.Entries.Count + 1,
             Type = "text",
             Parameters = "speaker=; text="
@@ -117,6 +118,7 @@ public sealed class GraphEditingService : IGraphEditingService
 
         node.Options.Add(new BranchOptionEditorItemViewModel
         {
+            Id = Guid.NewGuid().ToString("N"),
             Text = $"Option {node.Options.Count + 1}"
         });
         node.RefreshConnectors();
@@ -150,6 +152,7 @@ public sealed class GraphEditingService : IGraphEditingService
 
         node.Conditions.Add(new BranchConditionEditorItemViewModel
         {
+            Id = Guid.NewGuid().ToString("N"),
             Expression = "true"
         });
         node.RefreshConnectors();

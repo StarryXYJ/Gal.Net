@@ -45,6 +45,37 @@
                     </ComboBox.ItemTemplate>
                 </ComboBox>
                 <!-- Auto-save is intentionally forced on for the current editor experience. -->
+
+                <Separator Margin="0,10,0,6" />
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{loc:Localize Settings.Shortcuts}" FontWeight="SemiBold"
+                               Foreground="{DynamicResource SemiColorText0}" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Content="{loc:Localize Settings.Shortcuts.ResetAll}"
+                            Command="{Binding ResetAllShortcutsCommand}" />
+                </Grid>
+                <TextBox Text="{Binding ShortcutSearchText, Mode=TwoWay}" PlaceholderText="Search commands" />
+                <ItemsControl ItemsSource="{Binding Shortcuts}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ShortcutSettingItemViewModel">
+                            <Border BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="0,0,0,1" Padding="0,7">
+                                <Grid ColumnDefinitions="2*,1.2*,1.2*,Auto,Auto" ColumnSpacing="8">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding DisplayName}" Foreground="{DynamicResource SemiColorText0}" />
+                                        <TextBlock Text="{Binding CommandId}" FontSize="10" Foreground="{DynamicResource SemiColorText2}" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="{Binding Category}" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource SemiColorText2}" />
+                                    <StackPanel Grid.Column="2">
+                                        <TextBox Text="{Binding GestureText, Mode=TwoWay}" />
+                                        <TextBlock Text="{Binding ValidationMessage}" FontSize="10" Foreground="OrangeRed" />
+                                    </StackPanel>
+                                    <Button Grid.Column="3" Content="Apply" Command="{Binding ApplyCommand}" />
+                                    <Button Grid.Column="4" Content="Reset" Command="{Binding ResetCommand}" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </StackPanel>
         </ScrollViewer>
 

@@ -1,4 +1,8 @@
 {
+  "Command.Category.File": "文件",
+  "Command.Category.Edit": "编辑",
+  "Settings.Shortcuts": "键盘快捷键",
+  "Settings.Shortcuts.ResetAll": "全部恢复默认",
   "App.Title": "GalNet 编辑器",
   "Startup.NewProject": "新建项目",
   "Startup.OpenProject": "打开项目",

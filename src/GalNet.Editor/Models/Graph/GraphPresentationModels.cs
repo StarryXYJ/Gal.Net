@@ -172,6 +172,7 @@ public partial class GraphEdge : ObservableObject
     private static readonly IBrush SelectedStrokeBrush = Brush.Parse("#A891FF");
     public GraphNode From { get; }
     public GraphNode To { get; }
+    public string Id { get; }
 
     [ObservableProperty]
     private int _outlet;
@@ -189,8 +190,9 @@ public partial class GraphEdge : ObservableObject
     public double ControlOffset => Math.Max(80, Math.Abs(EndX - StartX) * 0.5);
     public string PathData => $"M {StartX},{StartY} C {StartX + ControlOffset},{StartY} {EndX - ControlOffset},{EndY} {EndX},{EndY}";
 
-    public GraphEdge(GraphNode from, GraphNode to, int outlet = 0)
+    public GraphEdge(GraphNode from, GraphNode to, int outlet = 0, string? id = null)
     {
+        Id = string.IsNullOrWhiteSpace(id) ? Guid.NewGuid().ToString("N") : id;
         From = from;
         To = to;
         _outlet = outlet;
@@ -229,6 +231,8 @@ public partial class GraphEdge : ObservableObject
 
 public partial class EntryEditorItemViewModel : ObservableObject
 {
+    public string StableId { get; init; } = Guid.NewGuid().ToString("N");
+
     [ObservableProperty]
     private int _id;
 
@@ -244,6 +248,8 @@ public partial class EntryEditorItemViewModel : ObservableObject
 
 public partial class BranchOptionEditorItemViewModel : ObservableObject
 {
+    public string Id { get; init; } = Guid.NewGuid().ToString("N");
+
     [ObservableProperty]
     private string _text = "";
 
@@ -253,6 +259,8 @@ public partial class BranchOptionEditorItemViewModel : ObservableObject
 
 public partial class BranchConditionEditorItemViewModel : ObservableObject
 {
+    public string Id { get; init; } = Guid.NewGuid().ToString("N");
+
     [ObservableProperty]
     private string _expression = "";
 }

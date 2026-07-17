@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using GalNet.Core.Settings;
 using GalNet.Core.Variable;
 
 namespace GalNet.Editor.Abstraction.Documents;
@@ -60,6 +61,9 @@ public sealed class EditorGraphNodeDto
 
 public sealed class EditorGraphBranchOptionDto
 {
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = "";
+
     [JsonPropertyName("text")]
     public string Text { get; set; } = "";
 
@@ -69,12 +73,18 @@ public sealed class EditorGraphBranchOptionDto
 
 public sealed class EditorGraphBranchConditionDto
 {
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = "";
+
     [JsonPropertyName("expression")]
     public string Expression { get; set; } = "";
 }
 
 public sealed class EditorGraphEdgeDto
 {
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = "";
+
     [JsonPropertyName("fromNodeId")]
     public string FromNodeId { get; set; } = "";
 
@@ -87,6 +97,7 @@ public sealed class EditorGraphEdgeDto
 
 public sealed class EditorEntryData
 {
+    public string StableId { get; set; } = "";
     public int Id { get; set; }
     public string Type { get; set; } = "";
     public string Condition { get; set; } = "";
@@ -97,4 +108,15 @@ public sealed class LoadedEditorProjectDocument
 {
     public EditorGraphDocument Document { get; set; } = new();
     public Dictionary<string, List<EditorEntryData>> GroupEntries { get; set; } = [];
+}
+
+/// <summary>
+/// UI-independent aggregate edited by command handlers. Presentation models are projections of this object.
+/// </summary>
+public sealed class EditorProjectDocument
+{
+    public EditorGraphDocument Graph { get; set; } = new();
+    public Dictionary<string, List<EditorEntryData>> GroupEntries { get; set; } = [];
+    public ProjectSettings Settings { get; set; } = new();
+    public GalNet.Core.UI.UiProject UiProject { get; set; } = new();
 }

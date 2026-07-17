@@ -33,4 +33,7 @@ public sealed class EditorSettings : SettingsSection
     public int MaxRecentProjects { get; set; } = 10;
 
     public bool AutoSaveProject { get; set; } = true;
+
+    /// <summary>Stable UI command ID to Avalonia gesture text. Empty text disables the shortcut.</summary>
+    public Dictionary<string, string> GestureOverrides { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }

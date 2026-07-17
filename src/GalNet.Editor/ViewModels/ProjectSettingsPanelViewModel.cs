@@ -1,17 +1,22 @@
 using System;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Abstraction.Sessions;
 using Serilog;
 
 namespace GalNet.Editor.ViewModels;
 
-public partial class ProjectSettingsPanelViewModel : ObservableObject
+public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposable
 {
     public IReadOnlyList<string> ResolutionPresets => NewProjectPanelViewModel.ResolutionPresets;
     private readonly IProjectService _projectService;
+    private readonly IEditorSession _session;
     private readonly IEditorSettingsService _editorSettings;
     private bool _isLoading;
 
@@ -40,10 +45,12 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
 
     public ProjectSettingsPanelViewModel(
         IProjectService projectService,
+        IEditorSession session,
         IEditorSettingsService editorSettings,
         IEditorLocalizationService localization)
     {
         _projectService = projectService;
+        _session = session;
         _editorSettings = editorSettings;
         L = localization;
         L.PropertyChanged += (_, e) =>
@@ -52,12 +59,20 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
                 UpdateDirtyText();
         };
 
+        _session.DocumentChanged += LoadFromProject;
+        _session.HistoryChanged += UpdateDirtyText;
         LoadFromProject();
+    }
+
+    public void Dispose()
+    {
+        _session.DocumentChanged -= LoadFromProject;
+        _session.HistoryChanged -= UpdateDirtyText;
     }
 
     private void LoadFromProject()
     {
-        if (_projectService.Current?.Settings is not { } settings) return;
+        var settings = _session.Document.Settings;
 
         _isLoading = true;
         DefaultWidth = settings.DefaultWidth;
@@ -72,7 +87,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
 
     private void UpdateDirtyText()
     {
-        IsDirtyText = _projectService.Current?.IsDirty == true ? L["Settings.Project.Unsaved"] : "";
+        IsDirtyText = _session.IsDirty ? L["Settings.Project.Unsaved"] : "";
     }
 
     [RelayCommand]
@@ -81,16 +96,25 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
         try
         {
             if (_projectService.Current is not { } project) return;
+            var values = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+            {
+                ["defaultWidth"] = JsonSerializer.SerializeToElement(DefaultWidth),
+                ["defaultHeight"] = JsonSerializer.SerializeToElement(DefaultHeight),
+                ["saveSlotCount"] = JsonSerializer.SerializeToElement(SaveSlotCount),
+                ["sfxChannelCount"] = JsonSerializer.SerializeToElement(SfxChannelCount),
+                ["targetLocale"] = JsonSerializer.SerializeToElement(TargetLocale)
+            };
+            var result = _session.Execute(
+                new PatchProjectSettingsCommand(values),
+                new ExecuteOptions(MergeKey: "project:settings", MergeWindow: TimeSpan.FromSeconds(1)));
+            if (!result.Success)
+                throw new InvalidOperationException(string.Join("; ", result.Diagnostics.Select(item => item.Message)));
 
-            project.Settings.DefaultWidth = DefaultWidth;
-            project.Settings.DefaultHeight = DefaultHeight;
-            project.Settings.SaveSlotCount = SaveSlotCount;
-            project.Settings.SfxChannelCount = SfxChannelCount;
-            project.Settings.TargetLocale = new Core.I18n.I18nLocale(TargetLocale);
-
-            await _projectService.SaveAsync();
-            IsDirtyText = L["Settings.Saved"];
-            Log.Information("Project settings saved");
+            CopySettings(_session.Document.Settings, project.Settings);
+            project.IsDirty = _session.IsDirty;
+            UpdateDirtyText();
+            Log.Information("Project settings updated through command session");
+            await Task.CompletedTask;
         }
         catch (Exception ex)
         {
@@ -115,5 +139,19 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject
         if (_isLoading || _projectService.Current is null)
             return;
         _ = SaveSettingsAsync();
+    }
+
+    private static void CopySettings(Core.Settings.ProjectSettings source, Core.Settings.ProjectSettings target)
+    {
+        target.DefaultWidth = source.DefaultWidth;
+        target.DefaultHeight = source.DefaultHeight;
+        target.SaveSlotCount = source.SaveSlotCount;
+        target.SfxChannelCount = source.SfxChannelCount;
+        target.TargetLocale = new Core.I18n.I18nLocale(source.TargetLocale.Code);
+        target.AvailableLocales = source.AvailableLocales
+            .Select(locale => new Core.I18n.I18nLocale(locale.Code))
+            .ToList();
+        target.PlayerVariables = source.PlayerVariables.Select(item => item.Clone()).ToList();
+        target.SaveVariables = source.SaveVariables.Select(item => item.Clone()).ToList();
     }
 }

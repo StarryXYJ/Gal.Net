@@ -2,30 +2,25 @@ using System;
 using System.Threading.Tasks;
 using Avalonia.Input;
 using GalNet.Editor.Abstraction.Services;
-using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.ViewModels;
+using GalNet.Core.I18n;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
 namespace GalNet.Editor.Commands;
 
-public class SaveProjectCommand : AsyncEditorCommand
+public sealed class SaveProjectCommand : AsyncEditorUiCommand
 {
     private readonly IProjectService _projectService;
+    public override string Id => "editor.file.saveProject";
+    public override string Description => "Saves the current editor document and project settings.";
+    public override I18nKey DisplayNameKey { get; } = new("Command.SaveProject");
+    public override I18nKey CategoryKey { get; } = new("Command.Category.File");
+    public override KeyGesture? DefaultGesture { get; } = new(Key.S, KeyModifiers.Control);
 
-    public SaveProjectCommand(
-        IProjectService projectService,
-        IEditorLocalizationService localization)
+    public SaveProjectCommand(IProjectService projectService)
     {
         _projectService = projectService;
-        Id = "save_project";
-        DisplayName = localization["Command.SaveProject"];
-        localization.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == "Item[]")
-                DisplayName = localization["Command.SaveProject"];
-        };
-        DefaultGesture = new KeyGesture(Key.S, KeyModifiers.Control);
         InitializeCommand(ExecuteAsync);
     }
 

@@ -29,7 +29,7 @@ namespace GalNet.Editor.ViewModels;
 public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDisposable
 {
     private readonly IProjectService _projectService;
-    private readonly CommandService _commandService;
+    private readonly EditorShortcutService _shortcutService;
     private readonly EditorDockFactory _dockFactory;
     private readonly DockLayoutSerializer _dockLayoutSerializer;
     private readonly IEditorWindowFactory _windowFactory;
@@ -47,8 +47,8 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
 
     public IRootDock? Layout { get; private set; }
 
-    public ICommand UndoCommand { get; } = new RelayCommand(() => { }, () => false);
-    public ICommand RedoCommand { get; } = new RelayCommand(() => { }, () => false);
+    public ICommand UndoCommand { get; }
+    public ICommand RedoCommand { get; }
     public ICommand TogglePanelCommand { get; }
 
     private bool _savingLayout;
@@ -62,7 +62,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
     public EditorPageViewModel(
         INavigationService navigation,
         IProjectService projectService,
-        CommandService commandService,
+        EditorShortcutService shortcutService,
         EditorDockFactory dockFactory,
         DockLayoutSerializer dockLayoutSerializer,
         IEditorWindowFactory windowFactory,
@@ -70,12 +70,15 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
         IEditorLocalizationService localization)
     {
         _projectService = projectService;
-        _commandService = commandService;
+        _shortcutService = shortcutService;
         _dockFactory = dockFactory;
         _dockLayoutSerializer = dockLayoutSerializer;
         _windowFactory = windowFactory;
         _editorSettingsService = editorSettingsService;
         L = localization;
+
+        UndoCommand = _shortcutService.GetCommand<UndoEditorCommand>().Command;
+        RedoCommand = _shortcutService.GetCommand<RedoEditorCommand>().Command;
 
         TogglePanelCommand = new RelayCommand<string>(TogglePanel);
         SaveLayoutCommand = new AsyncRelayCommand(SaveLayoutAsync);
@@ -102,6 +105,10 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
         OnPropertyChanged(nameof(ProjectName));
         UpdateLocalizedText();
     }
+
+    public bool TryExecuteShortcut(KeyEventArgs args, string context = "Global") =>
+        _shortcutService.TryExecute(new Avalonia.Input.KeyGesture(args.Key, args.KeyModifiers), context);
+
 
     private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -304,7 +311,8 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
 
     private void BuildMenuItems()
     {
-        var closeCmd = _commandService.GetCommand<CloseProjectCommand>();
+        var closeCmd = _shortcutService.GetCommand<CloseProjectCommand>();
+        var saveCmd = _shortcutService.GetCommand<SaveProjectCommand>();
 
         var items = new AvaloniaList<MenuData>
         {
@@ -313,7 +321,8 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
                 HeaderKey = "Editor.Menu.File",
                 Children = new AvaloniaList<MenuData>
                 {
-                    new() { HeaderKey = "Command.CloseProject", Command = closeCmd.Command },
+                    new() { HeaderKey = "Command.SaveProject", Command = saveCmd.Command, InputGesture = saveCmd.Gesture },
+                    new() { HeaderKey = "Command.CloseProject", Command = closeCmd.Command, InputGesture = closeCmd.Gesture },
                     new() { IsSeparator = true },
                     new() { HeaderKey = "Editor.Menu.Exit", InputGesture = new Avalonia.Input.KeyGesture(Key.F4, KeyModifiers.Alt), IsEnabled = false },
                 }

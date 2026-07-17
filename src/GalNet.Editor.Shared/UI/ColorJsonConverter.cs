@@ -5,7 +5,7 @@ using Avalonia.Media;
 namespace GalNet.Editor.Shared.UI;
 
 /// <summary>Persists Avalonia colors as explicit ARGB components instead of UI-specific strings.</summary>
-internal sealed class ColorJsonConverter : JsonConverter<Color>
+public sealed class ColorJsonConverter : JsonConverter<Color>
 {
     public override Color Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {

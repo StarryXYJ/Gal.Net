@@ -13,6 +13,7 @@ namespace GalNet.Editor.Shared.Services;
 public sealed class EditorDocumentRepository : IEditorDocumentRepository
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private const string StableIdParameter = "__editorId";
 
     public LoadedEditorProjectDocument Load(string projectPath, string projectName, ProjectSettings settings)
     {
@@ -32,6 +33,7 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
 
         document.Name = string.IsNullOrWhiteSpace(document.Name) ? projectName : document.Name;
         MigrateVariableDefinitions(document, settings);
+        EnsureStableIds(document);
 
         var loaded = new LoadedEditorProjectDocument { Document = document };
         foreach (var groupNode in document.Nodes.Where(n => string.Equals(n.Type, "Group", StringComparison.OrdinalIgnoreCase)))
@@ -131,11 +133,14 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
         foreach (var entry in parsed)
         {
             var parameters = entry.Params
-                .Where(p => p.Key != "condition")
+                .Where(p => p.Key is not "condition" and not StableIdParameter)
                 .Select(p => string.IsNullOrEmpty(p.Value) ? p.Key : $"{p.Key}={p.Value}");
 
             entries.Add(new EditorEntryData
             {
+                StableId = entry.Params.TryGetValue(StableIdParameter, out var stableId) && !string.IsNullOrWhiteSpace(stableId)
+                    ? stableId
+                    : Guid.NewGuid().ToString("N"),
                 Id = entries.Count + 1,
                 Type = entry.EntryType,
                 Condition = entry.Params.TryGetValue("condition", out var condition) ? condition : "",
@@ -157,6 +162,28 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
         if (!string.IsNullOrWhiteSpace(entry.Condition))
             parameters["condition"] = entry.Condition;
 
+        entry.StableId = string.IsNullOrWhiteSpace(entry.StableId)
+            ? Guid.NewGuid().ToString("N")
+            : entry.StableId;
+        parameters[StableIdParameter] = entry.StableId;
+
         return GalNet.Core.Serialization.GalgroupParser.Serialize(entry.Type, parameters);
     }
+
+    private static void EnsureStableIds(EditorGraphDocument document)
+    {
+        foreach (var edge in document.Edges)
+            edge.Id = EnsureId(edge.Id);
+
+        foreach (var node in document.Nodes)
+        {
+            foreach (var option in node.Options ?? [])
+                option.Id = EnsureId(option.Id);
+            foreach (var condition in node.Conditions ?? [])
+                condition.Id = EnsureId(condition.Id);
+        }
+    }
+
+    private static string EnsureId(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? Guid.NewGuid().ToString("N") : value;
 }

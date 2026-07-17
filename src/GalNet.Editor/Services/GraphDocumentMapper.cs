@@ -26,7 +26,7 @@ public sealed class GraphDocumentMapper
                 && edge.FromOutlet >= 0
                 && edge.FromOutlet < from.OutputConnectors.Count
                 && to.InputConnectors.Count > 0)
-            .Select(edge => new GraphEdge(nodeMap[edge.FromNodeId], nodeMap[edge.ToNodeId], edge.FromOutlet))
+            .Select(edge => new GraphEdge(nodeMap[edge.FromNodeId], nodeMap[edge.ToNodeId], edge.FromOutlet, edge.Id))
             .ToList();
         if (entryEdge is not null)
             edges.Add(entryEdge);
@@ -47,7 +47,7 @@ public sealed class GraphDocumentMapper
             Name = projectName,
             RootNodeId = nodes.FirstOrDefault(node => node.NodeKind == GraphNodeKind.Entry)?.Id ?? nodes.FirstOrDefault()?.Id ?? "",
             Nodes = nodes.Select(ToDto).ToList(),
-            Edges = edges.Select(edge => new EditorGraphEdgeDto { FromNodeId = edge.From.Id, FromOutlet = edge.Outlet, ToNodeId = edge.To.Id }).ToList(),
+            Edges = edges.Select(edge => new EditorGraphEdgeDto { Id = edge.Id, FromNodeId = edge.From.Id, FromOutlet = edge.Outlet, ToNodeId = edge.To.Id }).ToList(),
             PlayerVariables = playerVariables.Select(variable => variable.Clone()).ToList(),
             SaveVariables = saveVariables.Select(variable => variable.Clone()).ToList()
         };
@@ -58,7 +58,7 @@ public sealed class GraphDocumentMapper
                 node => node.Id,
                 node => (IReadOnlyList<EditorEntryData>)node.Entries.Select(entry => new EditorEntryData
                 {
-                    Id = entry.Id, Type = entry.Type, Condition = entry.Condition, Parameters = entry.Parameters
+                    StableId = entry.StableId, Id = entry.Id, Type = entry.Type, Condition = entry.Condition, Parameters = entry.Parameters
                 }).ToList());
 
     private static EditorGraphNodeDto ToDto(GraphNode node)
@@ -77,10 +77,10 @@ public sealed class GraphDocumentMapper
         {
             dto.BranchType = node.NodeKind == GraphNodeKind.ChoiceBranch ? "Choice" : "Condition";
             dto.Options = node.NodeKind == GraphNodeKind.ChoiceBranch
-                ? node.Options.Select(option => new EditorGraphBranchOptionDto { Text = option.Text, Condition = option.Condition }).ToList()
+                ? node.Options.Select(option => new EditorGraphBranchOptionDto { Id = option.Id, Text = option.Text, Condition = option.Condition }).ToList()
                 : null;
             dto.Conditions = node.NodeKind == GraphNodeKind.ConditionBranch
-                ? node.Conditions.Select(condition => new EditorGraphBranchConditionDto { Expression = condition.Expression }).ToList()
+                ? node.Conditions.Select(condition => new EditorGraphBranchConditionDto { Id = condition.Id, Expression = condition.Expression }).ToList()
                 : null;
         }
         return dto;
@@ -106,19 +106,19 @@ public sealed class GraphDocumentMapper
             graphNode.Entries.Clear();
             if (groupEntries.TryGetValue(dto.Id, out var entries))
                 foreach (var entry in entries)
-                    graphNode.Entries.Add(new EntryEditorItemViewModel { Id = graphNode.Entries.Count + 1, Type = entry.Type, Condition = entry.Condition, Parameters = entry.Parameters });
+                    graphNode.Entries.Add(new EntryEditorItemViewModel { StableId = entry.StableId, Id = graphNode.Entries.Count + 1, Type = entry.Type, Condition = entry.Condition, Parameters = entry.Parameters });
         }
         if (kind == GraphNodeKind.ChoiceBranch)
         {
             graphNode.Options.Clear();
             foreach (var option in dto.Options ?? [])
-                graphNode.Options.Add(new BranchOptionEditorItemViewModel { Text = option.Text, Condition = option.Condition });
+                graphNode.Options.Add(new BranchOptionEditorItemViewModel { Id = option.Id, Text = option.Text, Condition = option.Condition });
         }
         if (kind == GraphNodeKind.ConditionBranch)
         {
             graphNode.Conditions.Clear();
             foreach (var condition in dto.Conditions ?? [])
-                graphNode.Conditions.Add(new BranchConditionEditorItemViewModel { Expression = condition.Expression });
+                graphNode.Conditions.Add(new BranchConditionEditorItemViewModel { Id = condition.Id, Expression = condition.Expression });
         }
         graphNode.RefreshConnectors();
         return graphNode;

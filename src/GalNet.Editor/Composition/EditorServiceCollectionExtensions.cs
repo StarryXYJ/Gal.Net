@@ -1,9 +1,12 @@
+using System;
 using GalNet.Control.Services;
 using GalNet.Control.View;
 using GalNet.Control.ViewModels;
 using GalNet.Control.Views;
 using GalNet.Core.Services;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Abstraction.Commands;
+using GalNet.Editor.Abstraction.Sessions;
 using GalNet.Editor.Abstraction.Extensibility;
 using GalNet.Editor.Commands;
 using GalNet.Editor.Dock;
@@ -49,6 +52,17 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<IGameExitService, EditorGameExitService>();
         services.AddSingleton<IEditorPlayerVariableStore, EditorPlayerVariableStore>();
         services.AddSingleton<IGraphEditingService, GraphEditingService>();
+        services.AddSingleton<IEditorCommandCatalog, EditorCommandCatalog>();
+        services.AddSingleton<IEditorCommandHandler, BuiltInEditorCommandHandler>();
+        services.AddSingleton<IProjectFileCommandCatalog, AssetFileCommandCatalog>();
+        services.AddSingleton<IProjectFileCommandExecutor, AssetFileCommandExecutor>();
+        services.AddSingleton<EditorSessionFactory>();
+        services.AddScoped<IEditorSession>(sp =>
+        {
+            var project = sp.GetRequiredService<IProjectService>().Current
+                ?? throw new InvalidOperationException("An editor session requires an open project.");
+            return sp.GetRequiredService<EditorSessionFactory>().Open(project.RootPath);
+        });
         services.AddSingleton<GraphDocumentMapper>();
         services.AddSingleton<IEditorDocumentRepository, EditorDocumentRepository>();
         services.AddSingleton<IEditorDocumentService, EditorDocumentService>();
@@ -77,11 +91,15 @@ public static class EditorServiceCollectionExtensions
 
     private static IServiceCollection AddEditorCommands(this IServiceCollection services)
     {
-        services.AddSingleton<CommandService>();
         services.AddSingleton<SaveProjectCommand>();
         services.AddSingleton<CloseProjectCommand>();
-        services.AddSingleton<EditorCommand>(sp => sp.GetRequiredService<SaveProjectCommand>());
-        services.AddSingleton<EditorCommand>(sp => sp.GetRequiredService<CloseProjectCommand>());
+        services.AddSingleton<IEditorShortcutCommandDefinition>(sp => sp.GetRequiredService<SaveProjectCommand>());
+        services.AddSingleton<IEditorShortcutCommandDefinition>(sp => sp.GetRequiredService<CloseProjectCommand>());
+        services.AddScoped<UndoEditorCommand>();
+        services.AddScoped<RedoEditorCommand>();
+        services.AddScoped<IEditorShortcutCommandDefinition>(sp => sp.GetRequiredService<UndoEditorCommand>());
+        services.AddScoped<IEditorShortcutCommandDefinition>(sp => sp.GetRequiredService<RedoEditorCommand>());
+        services.AddScoped<EditorShortcutService>();
 
         return services;
     }
@@ -123,7 +141,7 @@ public static class EditorServiceCollectionExtensions
     private static IServiceCollection AddEditorViewModels(this IServiceCollection services)
     {
         services.AddTransient<StartupPageViewModel>();
-        services.AddTransient<EditorPageViewModel>();
+        services.AddScoped<EditorPageViewModel>();
         services.AddScoped<EditorWorkspaceViewModel>();
         services.AddTransient<InspectorHostViewModel>();
         services.AddTransient<NodeInspectorControlViewModel>();

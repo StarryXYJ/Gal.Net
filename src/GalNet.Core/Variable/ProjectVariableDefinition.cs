@@ -15,6 +15,7 @@ public sealed class ProjectVariableDefinition
 
             DefaultValue = new Variable
             {
+                Uid = DefaultValue.Uid,
                 Name = Name,
                 Value = value switch
                 {
@@ -34,6 +35,7 @@ public sealed class ProjectVariableDefinition
             Name = Name,
             DefaultValue = new Variable
             {
+                Uid = DefaultValue.Uid,
                 Name = Name,
                 Value = CloneValue(DefaultValue)
             }

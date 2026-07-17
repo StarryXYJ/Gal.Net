@@ -1,4 +1,8 @@
 {
+  "Command.Category.File": "File",
+  "Command.Category.Edit": "Edit",
+  "Settings.Shortcuts": "Keyboard shortcuts",
+  "Settings.Shortcuts.ResetAll": "Reset all",
   "App.Title": "GalNet Editor",
   "Startup.NewProject": "New Project",
   "Startup.OpenProject": "Open Project",

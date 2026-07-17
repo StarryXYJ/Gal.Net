@@ -1,4 +1,8 @@
 {
+  "Command.Category.File": "ファイル",
+  "Command.Category.Edit": "編集",
+  "Settings.Shortcuts": "キーボードショートカット",
+  "Settings.Shortcuts.ResetAll": "すべてリセット",
   "App.Title": "GalNet エディター",
   "Startup.NewProject": "新規プロジェクト",
   "Startup.OpenProject": "プロジェクトを開く",

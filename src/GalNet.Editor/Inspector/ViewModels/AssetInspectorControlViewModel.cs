@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Editor.Abstraction.Extensibility;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Models;
 using GalNet.Editor.Services.Interfaces;
 using GalNet.Editor.ViewModels;
@@ -19,6 +20,8 @@ namespace GalNet.Editor.Inspector.ViewModels;
 public sealed partial class AssetInspectorControlViewModel : ObservableObject, IInspectorControlViewModel, IInspectorLockAware
 {
     private readonly IAssetCatalogService _assets;
+    private readonly IProjectFileCommandExecutor _fileCommands;
+    private readonly IProjectService _projects;
     private readonly IEditorLocalizationService _localization;
     private bool _loading;
     private bool _isLocked;
@@ -48,10 +51,12 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
     [ObservableProperty] private Bitmap? _imagePreview;
     [ObservableProperty] private string _imagePreviewError = "";
 
-    public AssetInspectorControlViewModel(EditorWorkspaceViewModel workspace, IAssetCatalogService assets, IEditorLocalizationService localization)
+    public AssetInspectorControlViewModel(EditorWorkspaceViewModel workspace, IAssetCatalogService assets, IProjectFileCommandExecutor fileCommands, IProjectService projects, IEditorLocalizationService localization)
     {
         Workspace = workspace;
         _assets = assets;
+        _fileCommands = fileCommands;
+        _projects = projects;
         _localization = localization;
         SyncAsset();
         Workspace.PropertyChanged += OnWorkspacePropertyChanged;
@@ -89,7 +94,20 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
     private void Save()
     {
         if (!_loading && InspectedAsset is { IsDirectory: false } asset)
-            _ = _assets.UpdateMetaAsync(asset, AssetFilter, AssetCompression);
+            _ = SaveMetadataAsync(asset);
+    }
+
+    private async Task SaveMetadataAsync(AssetEntry asset)
+    {
+        if (_projects.Current is not { } project) return;
+        var result = await _fileCommands.ExecuteAsync(
+            project.RootPath,
+            new PatchAssetMetadataCommand(asset.RelativePath, AssetFilter, AssetCompression));
+        if (result.Success)
+        {
+            project.IsDirty = true;
+            await _assets.RefreshAsync();
+        }
     }
 
     [RelayCommand]

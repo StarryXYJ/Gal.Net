@@ -1,4 +1,8 @@
 {
+  "Command.Category.File": "파일",
+  "Command.Category.Edit": "편집",
+  "Settings.Shortcuts": "키보드 단축키",
+  "Settings.Shortcuts.ResetAll": "모두 초기화",
   "App.Title": "GalNet 편집기",
   "Startup.NewProject": "새 프로젝트",
   "Startup.OpenProject": "프로젝트 열기",
