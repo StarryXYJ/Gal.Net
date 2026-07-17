@@ -1,5 +1,7 @@
 using System.Text.Json;
 using GalNet.Core.UI;
+using GalNet.Control.UI;
+using GalNet.Control.Abstraction.UI;
 using GalNet.Editor.Shared.UI;
 using NUnit.Framework;
 
@@ -39,5 +41,13 @@ public sealed class UiProjectTests
         Assert.That(project.ColorPaletteId, Is.EqualTo("rose-dusk"));
         Assert.That(project.GetPage(UiPageKind.Title).Settings["backgroundColor"], Is.EqualTo("#FF1A1018").IgnoreCase);
         Assert.That(project.GetPage(UiPageKind.Game).Settings["dialogueTextColor"], Is.EqualTo("#FFFFF4F8").IgnoreCase);
+    }
+
+    [Test]
+    public void ButtonMenuPreset_ExposesHoverTextColor()
+    {
+        var presets = new BuiltInUiPresetRegistry();
+        var preset = presets.GetRequired("builtin.title.button-menu");
+        Assert.That(preset.Settings.Select(setting => setting.Key), Does.Contain("menuHoverTextColor"));
     }
 }

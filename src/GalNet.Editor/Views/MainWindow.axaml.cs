@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Notifications;
 using GalNet.Core.Services;
 using GalNet.Editor.Services;
 using GalNet.Editor.ViewModels;
@@ -11,6 +12,7 @@ public partial class MainWindow : UrsaWindow
 {
     private readonly INavigationService _navigation;
     private readonly IEditorViewFactory _viewFactory;
+    private readonly WindowToastManager _toastManager;
 
     public MainWindow(MainWindowViewModel viewModel, IEditorViewFactory viewFactory)
     {
@@ -18,6 +20,7 @@ public partial class MainWindow : UrsaWindow
         DataContext = viewModel;
         _navigation = viewModel.Navigation;
         _viewFactory = viewFactory;
+        _toastManager = new WindowToastManager(this);
 
         _navigation.CurrentPageChanged += OnCurrentPageChanged;
         Closed += OnClosed;
@@ -28,6 +31,9 @@ public partial class MainWindow : UrsaWindow
             _navigation.NavigateTo<StartupPageViewModel>();
         };
     }
+
+    public void ShowSuccessToast(string message) =>
+        _toastManager.Show(new Toast(message), showIcon: false, showClose: true, type: NotificationType.Success);
 
     private void OnClosed(object? sender, System.EventArgs e)
     {

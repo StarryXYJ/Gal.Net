@@ -78,6 +78,7 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<EditorAssetManager>();
         services.AddSingleton<IAssetManager>(sp => sp.GetRequiredService<EditorAssetManager>());
         services.AddSingleton<IUiPresetRegistry, BuiltInUiPresetRegistry>();
+        services.AddScoped<IGameExportService, GameExportService>();
 
         return services;
     }
@@ -127,6 +128,8 @@ public static class EditorServiceCollectionExtensions
         services.AddTransient<AssetInspectorControl>();
         services.AddTransient<ProjectSettingsWindow>();
         services.AddTransient<EditorSettingsWindow>();
+        services.AddTransient<ExportWindow>();
+        services.AddTransient<ExportPanelView>();
 
         return services;
     }
@@ -144,6 +147,7 @@ public static class EditorServiceCollectionExtensions
         services.AddScoped<AssetPanelViewModel>();
         services.AddTransient<ProjectSettingsPanelViewModel>();
         services.AddTransient<EditorSettingsPanelViewModel>();
+        services.AddTransient<ExportPanelViewModel>();
         services.AddTransient<GamePreviewPanelViewModel>();
         services.AddScoped<UiCustomizationPanelViewModel>();
         services.AddTransient<MainWindowViewModel>();

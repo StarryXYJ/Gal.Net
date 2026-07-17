@@ -32,4 +32,11 @@ public sealed class EditorWindowFactory : IEditorWindowFactory
         window.DataContext = ProjectServices.GetRequiredService<EditorSettingsPanelViewModel>();
         return window;
     }
+
+    public ExportWindow CreateExportWindow()
+    {
+        var window = ProjectServices.GetRequiredService<ExportWindow>();
+        window.DataContext = ProjectServices.GetRequiredService<ExportPanelViewModel>();
+        return window;
+    }
 }

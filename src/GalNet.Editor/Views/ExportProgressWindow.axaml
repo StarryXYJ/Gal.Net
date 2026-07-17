@@ -1,0 +1,27 @@
+<u:UrsaWindow xmlns="https://github.com/avaloniaui"
+              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+              xmlns:u="https://irihi.tech/ursa"
+              xmlns:loc="using:GalNet.Editor.MarkupExtensions"
+              xmlns:vm="using:GalNet.Editor.ViewModels"
+              x:Class="GalNet.Editor.Views.ExportProgressWindow"
+              x:DataType="vm:ExportProgressViewModel"
+              Title="{loc:Localize Export.Progress.Title}"
+              Width="440" Height="230"
+              CanResize="False"
+              WindowStartupLocation="CenterOwner"
+              TransparencyLevelHint="AcrylicBlur"
+              Background="Transparent">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="20">
+        <TextBlock Text="{loc:Localize Export.Progress.Title}" FontSize="16" FontWeight="Bold" />
+        <TextBlock Grid.Row="1" Margin="0,14,0,8" Text="{loc:Localize Export.Progress.Working}" />
+        <ProgressBar Grid.Row="2" IsIndeterminate="{Binding IsRunning}" Height="6" />
+        <StackPanel Grid.Row="3" Spacing="12">
+            <StackPanel IsVisible="{Binding HasError}" Spacing="4">
+                <TextBlock Text="{loc:Localize Export.Failed}" FontWeight="Bold" Foreground="{DynamicResource SemiColorDanger}" />
+                <TextBlock Text="{Binding Error}" TextWrapping="Wrap" Foreground="{DynamicResource SemiColorDanger}" />
+            </StackPanel>
+            <Button Content="{loc:Localize Export.Progress.Cancel}" Command="{Binding CancelCommand}" IsVisible="{Binding IsRunning}" HorizontalAlignment="Right" />
+            <Button Content="{loc:Localize Export.Progress.Close}" IsVisible="{Binding !IsRunning}" Click="OnCloseClicked" HorizontalAlignment="Right" />
+        </StackPanel>
+    </Grid>
+</u:UrsaWindow>

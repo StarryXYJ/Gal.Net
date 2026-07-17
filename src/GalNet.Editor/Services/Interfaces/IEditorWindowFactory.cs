@@ -6,4 +6,5 @@ public interface IEditorWindowFactory
 {
     ProjectSettingsWindow CreateProjectSettingsWindow();
     EditorSettingsWindow CreateEditorSettingsWindow();
+    ExportWindow CreateExportWindow();
 }

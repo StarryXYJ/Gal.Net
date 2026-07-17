@@ -253,4 +253,18 @@
   "Graph.Menu.CreateConditionBranch": "条件分支",
   "Common.Cancel": "取消",
   "Common.Confirm": "确认"
+  ,"Editor.Menu.Export": "导出游戏..."
+  ,"Export.Title": "导出游戏"
+  ,"Export.OutputDirectory": "输出目录"
+  ,"Export.Browse": "浏览..."
+  ,"Export.Package": "输出包"
+  ,"Export.Action": "导出"
+  ,"Export.SelectDirectory": "选择导出目录"
+  ,"Export.Success": "游戏包导出成功。"
+  ,"Export.Failed": "导出失败。"
+  ,"Export.Unavailable": "需要先打开项目并选择输出目录。"
+  ,"Export.Progress.Title": "正在导出游戏"
+  ,"Export.Progress.Working": "正在构建游戏包..."
+  ,"Export.Progress.Cancel": "取消"
+  ,"Export.Progress.Close": "关闭"
 }

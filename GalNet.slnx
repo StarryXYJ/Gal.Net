@@ -10,6 +10,7 @@
   <Folder Name="/src/Launcher/">
     <Project Path="src/Launcher/GalNet.Launcher.Headless/GalNet.Launcher.Headless.csproj" />
   </Folder>
+  <Folder Name="/src/Launcher/Dependent/" />
   <Folder Name="/src/Launcher/Launcher/">
     <Project Path="src/Launcher/GalNet.Launcher/GalNet.Launcher.Android/GalNet.Launcher.Android.csproj">
       <Deploy />

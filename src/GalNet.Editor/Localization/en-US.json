@@ -253,4 +253,18 @@
   "Graph.Menu.CreateConditionBranch": "Condition Branch",
   "Common.Cancel": "Cancel",
   "Common.Confirm": "Confirm"
+  ,"Editor.Menu.Export": "Export Game..."
+  ,"Export.Title": "Export Game"
+  ,"Export.OutputDirectory": "Output directory"
+  ,"Export.Browse": "Browse..."
+  ,"Export.Package": "Package"
+  ,"Export.Action": "Export"
+  ,"Export.SelectDirectory": "Select export directory"
+  ,"Export.Success": "Game package exported successfully."
+  ,"Export.Failed": "Export failed."
+  ,"Export.Unavailable": "A project and output directory are required."
+  ,"Export.Progress.Title": "Exporting game"
+  ,"Export.Progress.Working": "Building the game package..."
+  ,"Export.Progress.Cancel": "Cancel"
+  ,"Export.Progress.Close": "Close"
 }

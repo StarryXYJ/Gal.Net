@@ -42,6 +42,7 @@ internal static class Program
 
             var verb = args[0].ToLowerInvariant();
             var projectPath = Path.GetFullPath(args[1]);
+            if (verb == "export") return await ExportAsync(projectPath, args);
             var document = Load(projectPath);
             switch (verb)
             {
@@ -110,6 +111,20 @@ internal static class Program
         return new DirectProjectPersistence(projectPath).Load();
     }
 
+    private static async Task<int> ExportAsync(string projectPath, string[] args)
+    {
+        if (!Directory.Exists(projectPath)) throw new DirectoryNotFoundException($"Project directory not found: {projectPath}");
+        var outputIndex = Array.IndexOf(args, "--output");
+        if (outputIndex >= 0 && outputIndex + 1 >= args.Length) return Fail("--output requires a directory path.");
+        var outputDirectory = outputIndex >= 0
+            ? Path.GetFullPath(args[outputIndex + 1])
+            : Path.Combine(projectPath, "Output");
+        var projectName = Path.GetFileName(Path.TrimEndingDirectorySeparator(projectPath));
+        var result = await GamePackageExporter.ExportAsync(projectName, projectName, projectPath, outputDirectory);
+        WriteJson(new { success = result.Success, packagePath = result.PackagePath, error = result.Error });
+        return result.Success ? 0 : 5;
+    }
+
     private static string GetCommandId(JsonElement element) =>
         element.TryGetProperty("commandId", out var id) && !string.IsNullOrWhiteSpace(id.GetString())
             ? id.GetString()! : throw new JsonException("Every command requires a non-empty commandId.");
@@ -160,6 +175,7 @@ internal static class Program
           galnet-editor-headless summary|nodes|variables|validate <project>
           galnet-editor-headless node <project> <node-id>
           galnet-editor-headless entries <project> <group-id>
+          galnet-editor-headless export <project> [--output <directory>]
           galnet-editor-headless execute <project> <command-file|->
 
         Each invocation loads project files, applies one transaction, validates it, and writes it back.

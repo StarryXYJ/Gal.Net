@@ -302,6 +302,14 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
         await window.ShowDialog(mainWindow);
     }
 
+    [RelayCommand]
+    private async Task ShowExportAsync()
+    {
+        var mainWindow = GetMainWindow();
+        if (mainWindow is null) return;
+        await _windowFactory.CreateExportWindow().ShowDialog(mainWindow);
+    }
+
     private static Window? GetMainWindow()
     {
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
@@ -322,6 +330,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
                 Children = new AvaloniaList<MenuData>
                 {
                     new() { HeaderKey = "Command.SaveProject", Command = saveCmd.Command, InputGesture = saveCmd.Gesture },
+                    new() { HeaderKey = "Editor.Menu.Export", Command = ShowExportCommand },
                     new() { HeaderKey = "Command.CloseProject", Command = closeCmd.Command, InputGesture = closeCmd.Gesture },
                     new() { IsSeparator = true },
                     new() { HeaderKey = "Editor.Menu.Exit", InputGesture = new Avalonia.Input.KeyGesture(Key.F4, KeyModifiers.Alt), IsEnabled = false },
