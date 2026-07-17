@@ -46,6 +46,11 @@ public sealed class FileUiProjectProvider : IUiProjectProvider
         try
         {
             var json = File.ReadAllText(_path);
+            using var source = JsonDocument.Parse(json);
+            if (source.RootElement.TryGetProperty("Title", out _) || source.RootElement.TryGetProperty("Game", out _) ||
+                source.RootElement.TryGetProperty("Settings", out _) || source.RootElement.TryGetProperty("SaveLoad", out _) ||
+                source.RootElement.TryGetProperty("Gallery", out _) || source.RootElement.TryGetProperty("About", out _))
+                throw new JsonException("This UI project uses the retired typed configuration format. Recreate or migrate UI/ui.json to version 3.");
             var project = JsonSerializer.Deserialize<UiProject>(json, Options);
             if (project is null)
             {
@@ -53,11 +58,8 @@ public sealed class FileUiProjectProvider : IUiProjectProvider
                 return defaults;
             }
 
-            if (project.Version < 2)
-            {
-                project.GetPage(UiPageKind.About);
-                project.Version = 2;
-            }
+            if (project.Version != 3)
+                throw new JsonException($"Unsupported UI project version {project.Version}. Version 3 is required.");
 
             Log.Information("Loaded UI project {Path}: bytes={ByteCount}, version={Version}, pages={PageCount}, titlePreset={TitlePreset}, titleSettings={TitleSettings}, titleValues={@TitleValues}",
                 _path, json.Length, project.Version, project.Pages.Count,

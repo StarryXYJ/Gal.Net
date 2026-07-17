@@ -56,70 +56,12 @@ public static class UiColorPalettePresets
         var palette = GetRequired(id);
         project.ColorPaletteId = palette.Id;
 
-        project.Title.BackgroundColor = palette.BackgroundColor;
-        project.Title.TitleColor = palette.TextColor;
-        project.Title.MenuTextColor = palette.TextColor;
-        project.Title.MenuHoverTextColor = palette.AccentColor;
-        project.Title.ButtonColor = palette.AccentColor;
-        project.Title.ButtonTextColor = palette.CheckMarkColor;
-        project.Title.ButtonHoverColor = palette.AccentHoverColor;
-
-        project.Game.DialogueBackgroundColor = WithOpacity(palette.PanelColor, 0.8);
-        project.Game.DialogueTextColor = palette.TextColor;
-        project.Game.SpeakerTextColor = palette.AccentColor;
-        project.Game.ChoiceButtonColor = palette.PanelColor;
-        project.Game.ChoiceButtonTextColor = palette.TextColor;
-        project.Game.CommandTextColor = palette.MutedTextColor;
-        project.Game.CommandHoverTextColor = palette.AccentColor;
-        project.Game.CommandSelectedTextColor = palette.AccentColor;
-
-        ApplyStandard(project.Settings, palette);
-        ApplyStandard(project.SaveLoad, palette);
-        ApplyStandard(project.Gallery, palette);
-        ApplyAbout(project.About, palette);
-
         ApplyTitleSettings(project.GetPage(UiPageKind.Title), palette);
         ApplyGameSettings(project.GetPage(UiPageKind.Game), palette);
         ApplyStandardSettings(project.GetPage(UiPageKind.Settings), palette, includeSettingsControls: true);
         ApplyStandardSettings(project.GetPage(UiPageKind.SaveLoad), palette, includeSettingsControls: false);
         ApplyStandardSettings(project.GetPage(UiPageKind.Gallery), palette, includeSettingsControls: false);
         ApplyAboutSettings(project.GetPage(UiPageKind.About), palette);
-    }
-
-    private static void ApplyStandard(SettingsUiConfiguration config, UiColorPalettePreset palette)
-    {
-        config.BackgroundColor = palette.BackgroundColor;
-        config.PanelColor = palette.PanelColor;
-        config.TextColor = palette.TextColor;
-        config.ButtonColor = palette.PanelColor;
-        config.ButtonTextColor = palette.TextColor;
-        config.BackButtonForegroundColor = palette.TextColor;
-        config.SliderTrackColor = WithOpacity(palette.BorderColor, 0.4);
-        config.SliderFillColor = palette.AccentColor;
-        config.SliderThumbColor = palette.TextColor;
-        config.SliderThumbBorderColor = palette.BorderColor;
-        config.CheckBoxBorderColor = palette.BorderColor;
-        config.CheckBoxFillColor = palette.AccentColor;
-        config.CheckBoxCheckColor = palette.CheckMarkColor;
-    }
-
-    private static void ApplyAbout(AboutUiConfiguration config, UiColorPalettePreset palette)
-    {
-        config.BackgroundColor = palette.BackgroundColor;
-        config.PanelColor = palette.PanelColor;
-        config.TextColor = palette.TextColor;
-        config.HeadingColor = palette.TextColor;
-        config.SelectionColor = WithOpacity(palette.AccentColor, 0.4);
-        config.LinkColor = palette.AccentColor;
-        config.LinkHoverColor = palette.AccentHoverColor;
-        config.LinkVisitedColor = palette.MutedTextColor;
-        config.BlockquoteBackgroundColor = palette.PanelColor;
-        config.BlockquoteBorderColor = palette.AccentColor;
-        config.CodeBackgroundColor = palette.PanelColor;
-        config.CodeBorderColor = palette.AccentColor;
-        config.CodeTextColor = palette.TextColor;
-        config.RuleColor = palette.BorderColor;
-        config.BackButtonForegroundColor = palette.TextColor;
     }
 
     private static void ApplyTitleSettings(UiPageSelection selection, UiColorPalettePreset palette) =>

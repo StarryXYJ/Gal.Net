@@ -32,11 +32,11 @@ public sealed class GameFlowFactory : IGameFlowFactory
         return screen.ToLowerInvariant() switch
         {
             "title" => CreateTitle(navigator, options),
-            "game" => CreateRun(navigator, options, CreateGameConfiguration(options.Ui.Game, GetPageSettings(options.Ui, UiPageKind.Game)), parameter),
-            "settings" => CreateSettings(navigator, CreateSettingsConfiguration(options.Ui.Settings, GetPageSettings(options.Ui, UiPageKind.Settings))),
-            "save-load" => CreateSaveLoad(navigator, options, parameter as string == "save" ? SaveLoadMode.Save : SaveLoadMode.Load, CreateSaveLoadConfiguration(options.Ui.SaveLoad, GetPageSettings(options.Ui, UiPageKind.SaveLoad))),
-            "gallery" => CreateGallery(navigator, options, CreateGalleryConfiguration(options.Ui.Gallery, GetPageSettings(options.Ui, UiPageKind.Gallery))),
-            "about" => CreateAbout(navigator, options, CreateAboutConfiguration(options.Ui.About, GetPageSettings(options.Ui, UiPageKind.About))),
+            "game" => CreateRun(navigator, options, CreateGameConfiguration(GetPageSettings(options.Ui, UiPageKind.Game)), parameter),
+            "settings" => CreateSettings(navigator, CreateSettingsConfiguration(GetPageSettings(options.Ui, UiPageKind.Settings))),
+            "save-load" => CreateSaveLoad(navigator, options, parameter as string == "save" ? SaveLoadMode.Save : SaveLoadMode.Load, CreateSaveLoadConfiguration(GetPageSettings(options.Ui, UiPageKind.SaveLoad))),
+            "gallery" => CreateGallery(navigator, options, CreateGalleryConfiguration(GetPageSettings(options.Ui, UiPageKind.Gallery))),
+            "about" => CreateAbout(navigator, options, CreateAboutConfiguration(GetPageSettings(options.Ui, UiPageKind.About))),
             _ => throw new InvalidOperationException($"Unknown built-in screen '{screen}'.")
         };
     }
@@ -45,25 +45,18 @@ public sealed class GameFlowFactory : IGameFlowFactory
     {
         var selection = options.Ui.GetPage(UiPageKind.Title);
         var preset = _presets.GetRequired(selection.PresetId);
-        var config = CreateTitleConfiguration(options.Ui.Title, preset, selection.Settings);
+        var config = CreateTitleConfiguration(preset, selection.Settings);
         return string.Equals(preset.Metadata.Id, "builtin.title.text-menu", StringComparison.OrdinalIgnoreCase)
             ? new TextMenuTitleViewModel(navigator, _serviceProvider.GetService<IGameExitService>(), options,
                 options.SaveService ?? _serviceProvider.GetService<ISaveService>(), config, selection.Settings, options.AssetManager)
             : CreateStart(navigator, options, config, selection.Settings.GetValueOrDefault("horizontalAlignment", "center"), options.AssetManager);
     }
 
-    private static TitleUiConfiguration CreateTitleConfiguration(TitleUiConfiguration defaults, IUiPagePreset preset, IReadOnlyDictionary<string, string> settings)
+    private static TitleUiConfiguration CreateTitleConfiguration(IUiPagePreset preset, IReadOnlyDictionary<string, string> settings)
     {
         var values = preset.CreateDefaultSettings().ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
         foreach (var (key, value) in settings) values[key] = value;
-        var config = new TitleUiConfiguration
-        {
-            BackgroundColor = defaults.BackgroundColor, BackgroundImage = defaults.BackgroundImage, BackgroundStretch = defaults.BackgroundStretch, ContentPadding = defaults.ContentPadding, TitleColor = defaults.TitleColor,
-            TitleFontSize = defaults.TitleFontSize, ButtonColor = defaults.ButtonColor, ButtonTextColor = defaults.ButtonTextColor,
-            ButtonHoverColor = defaults.ButtonHoverColor, ButtonWidth = defaults.ButtonWidth, ButtonHeight = defaults.ButtonHeight,
-            MenuSpacing = defaults.MenuSpacing, ShowGallery = defaults.ShowGallery, ShowAbout = defaults.ShowAbout, MenuTextColor = defaults.MenuTextColor,
-            MenuFontSize = defaults.MenuFontSize, TitleMenuGap = defaults.TitleMenuGap, MenuHoverTextColor = defaults.MenuHoverTextColor
-        };
+        var config = new TitleUiConfiguration();
         if (TryNumber(values, "titleFontSize", out var titleSize)) config.TitleFontSize = titleSize;
         if (TryNumber(values, "contentPadding", out var contentPadding)) config.ContentPadding = contentPadding;
         if (TryNumber(values, "menuItemWidth", out var buttonWidth)) config.ButtonWidth = buttonWidth;
@@ -94,17 +87,9 @@ public sealed class GameFlowFactory : IGameFlowFactory
         return values;
     }
 
-    private static GameUiConfiguration CreateGameConfiguration(GameUiConfiguration defaults, IReadOnlyDictionary<string, string> values)
+    private static GameUiConfiguration CreateGameConfiguration(IReadOnlyDictionary<string, string> values)
     {
-        var config = new GameUiConfiguration
-        {
-            DialogueBackgroundColor = defaults.DialogueBackgroundColor, DialogueBackgroundImage = defaults.DialogueBackgroundImage, DialogueBackgroundImageOpacity = defaults.DialogueBackgroundImageOpacity,
-            DialogueTextColor = defaults.DialogueTextColor, SpeakerTextColor = defaults.SpeakerTextColor,
-            DialogueHeight = defaults.DialogueHeight, DialogueMargin = defaults.DialogueMargin, DialogueCornerRadius = defaults.DialogueCornerRadius, DialogueFontSize = defaults.DialogueFontSize,
-            ChoiceLayout = defaults.ChoiceLayout, ChoiceButtonColor = defaults.ChoiceButtonColor, ChoiceButtonTextColor = defaults.ChoiceButtonTextColor,
-            ChoiceButtonWidth = defaults.ChoiceButtonWidth, ChoiceButtonHeight = defaults.ChoiceButtonHeight, ChoiceSpacing = defaults.ChoiceSpacing,
-            CommandBarVisible = defaults.CommandBarVisible, CommandTextColor = defaults.CommandTextColor, CommandHoverTextColor = defaults.CommandHoverTextColor, CommandSelectedTextColor = defaults.CommandSelectedTextColor
-        };
+        var config = new GameUiConfiguration();
         ApplyGameSettings(config, values);
         return config;
     }
@@ -132,26 +117,18 @@ public sealed class GameFlowFactory : IGameFlowFactory
         if (TryColor(values, "commandSelectedTextColor", out var commandSelectedText)) config.CommandSelectedTextColor = commandSelectedText;
     }
 
-    private static SettingsUiConfiguration CreateSettingsConfiguration(SettingsUiConfiguration defaults, IReadOnlyDictionary<string, string> values) =>
-        ApplySettingsScreenSettings(ApplyStandardScreenSettings(new SettingsUiConfiguration(), defaults, values), defaults, values);
+    private static SettingsUiConfiguration CreateSettingsConfiguration(IReadOnlyDictionary<string, string> values) =>
+        ApplySettingsScreenSettings(ApplyStandardScreenSettings(new SettingsUiConfiguration(), values), values);
 
-    private static SaveLoadUiConfiguration CreateSaveLoadConfiguration(SaveLoadUiConfiguration defaults, IReadOnlyDictionary<string, string> values) =>
-        ApplyStandardScreenSettings(new SaveLoadUiConfiguration(), defaults, values);
+    private static SaveLoadUiConfiguration CreateSaveLoadConfiguration(IReadOnlyDictionary<string, string> values) =>
+        ApplyStandardScreenSettings(new SaveLoadUiConfiguration(), values);
 
-    private static GalleryUiConfiguration CreateGalleryConfiguration(GalleryUiConfiguration defaults, IReadOnlyDictionary<string, string> values) =>
-        ApplyStandardScreenSettings(new GalleryUiConfiguration(), defaults, values);
+    private static GalleryUiConfiguration CreateGalleryConfiguration(IReadOnlyDictionary<string, string> values) =>
+        ApplyStandardScreenSettings(new GalleryUiConfiguration(), values);
 
-    private static AboutUiConfiguration CreateAboutConfiguration(AboutUiConfiguration defaults, IReadOnlyDictionary<string, string> values)
+    private static AboutUiConfiguration CreateAboutConfiguration(IReadOnlyDictionary<string, string> values)
     {
-        var config = new AboutUiConfiguration
-        {
-            ContentAsset = defaults.ContentAsset, BackgroundColor = defaults.BackgroundColor, PanelColor = defaults.PanelColor, ContentPadding = defaults.ContentPadding,
-            FontSize = defaults.FontSize, TextColor = defaults.TextColor, HeadingColor = defaults.HeadingColor, SelectionColor = defaults.SelectionColor,
-            LinkColor = defaults.LinkColor, LinkHoverColor = defaults.LinkHoverColor, LinkVisitedColor = defaults.LinkVisitedColor,
-            BlockquoteBackgroundColor = defaults.BlockquoteBackgroundColor, BlockquoteBorderColor = defaults.BlockquoteBorderColor,
-            CodeBackgroundColor = defaults.CodeBackgroundColor, CodeBorderColor = defaults.CodeBorderColor, CodeTextColor = defaults.CodeTextColor,
-            CodeFontSize = defaults.CodeFontSize, RuleColor = defaults.RuleColor, BackButtonForegroundColor = defaults.BackButtonForegroundColor
-        };
+        var config = new AboutUiConfiguration();
         if (values.TryGetValue("contentAsset", out var contentAsset)) config.ContentAsset = string.IsNullOrWhiteSpace(contentAsset) ? null : contentAsset;
         if (TryNumber(values, "contentPadding", out var padding)) config.ContentPadding = padding;
         if (TryNumber(values, "fontSize", out var fontSize)) config.FontSize = fontSize;
@@ -179,14 +156,8 @@ public sealed class GameFlowFactory : IGameFlowFactory
         if (TryColor(values, key, out var color)) apply(color);
     }
 
-    private static T ApplyStandardScreenSettings<T>(T config, SettingsUiConfiguration defaults, IReadOnlyDictionary<string, string> values) where T : SettingsUiConfiguration
+    private static T ApplyStandardScreenSettings<T>(T config, IReadOnlyDictionary<string, string> values) where T : SettingsUiConfiguration
     {
-        config.BackgroundColor = defaults.BackgroundColor;
-        config.PanelColor = defaults.PanelColor;
-        config.TextColor = defaults.TextColor;
-        config.ButtonColor = defaults.ButtonColor;
-        config.ButtonTextColor = defaults.ButtonTextColor;
-        config.BackButtonForegroundColor = defaults.BackButtonForegroundColor;
         if (TryColor(values, "backgroundColor", out var background)) config.BackgroundColor = background;
         if (TryColor(values, "panelColor", out var panel)) config.PanelColor = panel;
         if (TryColor(values, "textColor", out var text)) config.TextColor = text;
@@ -196,15 +167,8 @@ public sealed class GameFlowFactory : IGameFlowFactory
         return config;
     }
 
-    private static SettingsUiConfiguration ApplySettingsScreenSettings(SettingsUiConfiguration config, SettingsUiConfiguration defaults, IReadOnlyDictionary<string, string> values)
+    private static SettingsUiConfiguration ApplySettingsScreenSettings(SettingsUiConfiguration config, IReadOnlyDictionary<string, string> values)
     {
-        config.SliderTrackColor = defaults.SliderTrackColor;
-        config.SliderFillColor = defaults.SliderFillColor;
-        config.SliderThumbColor = defaults.SliderThumbColor;
-        config.SliderThumbBorderColor = defaults.SliderThumbBorderColor;
-        config.CheckBoxBorderColor = defaults.CheckBoxBorderColor;
-        config.CheckBoxFillColor = defaults.CheckBoxFillColor;
-        config.CheckBoxCheckColor = defaults.CheckBoxCheckColor;
         if (TryColor(values, "sliderTrackColor", out var sliderTrack)) config.SliderTrackColor = sliderTrack;
         if (TryColor(values, "sliderFillColor", out var sliderFill)) config.SliderFillColor = sliderFill;
         if (TryColor(values, "sliderThumbColor", out var sliderThumb)) config.SliderThumbColor = sliderThumb;

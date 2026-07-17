@@ -57,10 +57,7 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
             var title = ui.GetPage(UiPageKind.Title);
             Log.Information("Saving UI customization for {Project}: titlePreset={TitlePreset}, titleValuesBefore={@TitleValues}",
                 project.Name, title.PresetId, title.Settings);
-            SyncPresetSettingsToConfig(ui);
             project.UiProject.NotifyChanged();
-            Log.Information("UI customization synchronized for {Project}: titleColor={TitleColor}, titleSize={TitleSize}, backgroundImage={BackgroundImage}",
-                project.Name, ui.Title.TitleColor, ui.Title.TitleFontSize, ui.Title.BackgroundImage);
             var before = _appliedSnapshot is null ? EditorDocumentCloner.CloneUiProject(ui) : EditorDocumentCloner.CloneUiProject(_appliedSnapshot);
             var after = EditorDocumentCloner.CloneUiProject(ui);
             _histories.Ui.PushAlreadyApplied(new DelegateEdit("Apply UI customization",
@@ -112,6 +109,7 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
         }
     }
 
+    #if false // Legacy typed UiProject synchronization; settings are now the sole source of truth.
     /// <summary>
     /// Syncs preset setting values (from UiPageSelection.Settings) to the
     /// top-level typed config properties (Title.BackgroundImage etc.)
@@ -238,6 +236,8 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
             apply(boolean);
     }
 
+    #endif
+
     private void OnProjectChanged(Abstraction.Project.GalProject? _) => LoadProject();
 
     private void LoadProject()
@@ -251,9 +251,8 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
         var ui = project.UiProject.Current;
         _appliedSnapshot = EditorDocumentCloner.CloneUiProject(ui);
         var title = ui.GetPage(UiPageKind.Title);
-        Log.Information("Loading UI customization for {Project}: titlePreset={TitlePreset}, titleSettings={TitleSettings}, titleValues={@TitleValues}, titleColor={TitleColor}, titleSize={TitleSize}",
-            project.Name, title.PresetId, title.Settings.Count, title.Settings, ui.Title.TitleColor, ui.Title.TitleFontSize);
-        SyncConfigToPresetSettings(ui);
+        Log.Information("Loading UI customization for {Project}: titlePreset={TitlePreset}, titleSettings={TitleSettings}, titleValues={@TitleValues}",
+            project.Name, title.PresetId, title.Settings.Count, title.Settings);
         foreach (var page in Enum.GetValues<UiPageKind>())
             Pages.Add(new UiPageEditorViewModel(page, ui.GetPage(page), _presets, _assets));
         Log.Information("UI customization hydrated for {Project}: titlePreset={TitlePreset}, titleSettings={TitleSettings}, pageEditors={PageCount}",
@@ -261,6 +260,7 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
         StatusKey = "UiPreset.Status.Ready";
     }
 
+    #if false // Legacy typed UiProject synchronization; settings are now the sole source of truth.
     /// <summary>
     /// Syncs top-level typed config property values (Title.BackgroundImage etc.)
     /// into preset UiPageSelection.Settings so the panel displays them correctly
@@ -369,6 +369,8 @@ public sealed partial class UiCustomizationPanelViewModel : ObservableObject, ID
     private static string Format(Color value) => value.ToString();
     private static string Format(double value) => value.ToString("G", CultureInfo.InvariantCulture);
     private static string Format(bool value) => value.ToString().ToLowerInvariant();
+
+    #endif
 
     public void Dispose()
     {

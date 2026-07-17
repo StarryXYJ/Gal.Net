@@ -8,7 +8,7 @@ using GalNet.Editor.Shared.Services;
 
 namespace GalNet.Editor.Shared.Commands;
 
-public sealed class BuiltInEditorCommandHandler : IEditorCommandHandler
+public sealed partial class BuiltInEditorCommandHandler : IEditorCommandHandler
 {
     private static readonly HashSet<string> AllowedUiSettingKeys = new(StringComparer.Ordinal)
     {
@@ -28,65 +28,13 @@ public sealed class BuiltInEditorCommandHandler : IEditorCommandHandler
         "linkVisitedColor", "blockquoteBackgroundColor", "blockquoteBorderColor",
         "codeBackgroundColor", "codeBorderColor", "codeTextColor", "codeFontSize", "ruleColor"
     };
-    public bool CanHandle(IProjectEditCommand command) => command is
-        CreateNodeCommand or DeleteNodeCommand or RenameNodeCommand or MoveNodesCommand or SetRootNodeCommand or
-        ConnectNodesCommand or DeleteEdgeCommand or
-        AddEntryCommand or DeleteEntryCommand or MoveEntryCommand or SetEntryTypeCommand or
-        SetEntryConditionCommand or SetEntryParametersCommand or PatchEntryParametersCommand or
-        AddChoiceOptionCommand or DeleteChoiceOptionCommand or MoveChoiceOptionCommand or
-        SetChoiceOptionTextCommand or SetChoiceOptionConditionCommand or
-        AddBranchConditionCommand or DeleteBranchConditionCommand or MoveBranchConditionCommand or
-        SetBranchConditionExpressionCommand or
-        AddVariableDefinitionCommand or DeleteVariableDefinitionCommand or MoveVariableDefinitionCommand or
-        RenameVariableDefinitionCommand or SetVariableDefinitionTypeCommand or SetVariableDefaultValueCommand or
-        RenameProjectCommand or PatchProjectSettingsCommand or ApplyUiPresetCommand or
-        SetUiProjectValueCommand or PatchUiProjectValuesCommand or ResetUiProjectValuesCommand or
-        ApplyUiColorPaletteCommand or ReplaceUiProjectCommand;
+    public bool CanHandle(IProjectEditCommand command) => Domains.Any(domain => domain.CanHandle(command));
 
     public CommandExecution Execute(
         EditorProjectDocument document,
         IProjectEditCommand command,
-        EditorCommandContext context) => command switch
-    {
-        CreateNodeCommand value => CreateNode(document, value),
-        DeleteNodeCommand value => DeleteNode(document, value),
-        RenameNodeCommand value => RenameNode(document, value),
-        MoveNodesCommand value => MoveNodes(document, value),
-        SetRootNodeCommand value => SetRoot(document, value),
-        ConnectNodesCommand value => Connect(document, value),
-        DeleteEdgeCommand value => DeleteEdge(document, value),
-        AddEntryCommand value => AddEntry(document, value),
-        DeleteEntryCommand value => DeleteEntry(document, value),
-        MoveEntryCommand value => MoveEntry(document, value),
-        SetEntryTypeCommand value => SetEntryType(document, value),
-        SetEntryConditionCommand value => SetEntryCondition(document, value),
-        SetEntryParametersCommand value => SetEntryParameters(document, value),
-        PatchEntryParametersCommand value => PatchEntryParameters(document, value),
-        AddChoiceOptionCommand value => AddOption(document, value),
-        DeleteChoiceOptionCommand value => DeleteOption(document, value),
-        MoveChoiceOptionCommand value => MoveOption(document, value),
-        SetChoiceOptionTextCommand value => SetOptionText(document, value),
-        SetChoiceOptionConditionCommand value => SetOptionCondition(document, value),
-        AddBranchConditionCommand value => AddCondition(document, value),
-        DeleteBranchConditionCommand value => DeleteCondition(document, value),
-        MoveBranchConditionCommand value => MoveCondition(document, value),
-        SetBranchConditionExpressionCommand value => SetConditionExpression(document, value),
-        AddVariableDefinitionCommand value => AddVariable(document, value),
-        DeleteVariableDefinitionCommand value => DeleteVariable(document, value),
-        MoveVariableDefinitionCommand value => MoveVariable(document, value),
-        RenameVariableDefinitionCommand value => RenameVariable(document, value),
-        SetVariableDefinitionTypeCommand value => SetVariableType(document, value),
-        SetVariableDefaultValueCommand value => SetVariableDefault(document, value),
-        RenameProjectCommand value => RenameProject(document, value),
-        PatchProjectSettingsCommand value => PatchSettings(document, value),
-        ApplyUiPresetCommand value => ApplyUiPreset(document, value),
-        SetUiProjectValueCommand value => SetUiValue(document, value),
-        PatchUiProjectValuesCommand value => PatchUiValues(document, value),
-        ResetUiProjectValuesCommand value => ResetUiValues(document, value),
-        ApplyUiColorPaletteCommand value => ApplyUiPalette(document, value),
-        ReplaceUiProjectCommand value => ReplaceUiProject(document, value),
-        _ => CommandExecution.Failed(EditorDiagnostic.Error("command.unsupported", $"Unsupported command '{command.CommandId}'."))
-    };
+        EditorCommandContext context) => Domains.FirstOrDefault(domain => domain.CanHandle(command))?.Execute(document, command, context)
+            ?? CommandExecution.Failed(EditorDiagnostic.Error("command.unsupported", $"Unsupported command '{command.CommandId}'."));
 
     private static CommandExecution CreateNode(EditorProjectDocument document, CreateNodeCommand command)
     {

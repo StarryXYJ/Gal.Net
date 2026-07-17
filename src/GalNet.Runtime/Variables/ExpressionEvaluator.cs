@@ -53,7 +53,7 @@ public sealed class ExpressionEvaluator
         if (string.IsNullOrWhiteSpace(expression))
             return null;
 
-        var expr = new Expression(expression);
+        var expr = new Expression(NormalizeStringLiterals(expression));
         expr.EvaluateParameter += ResolveParameter;
 
         return expr.Evaluate();
@@ -75,4 +75,10 @@ public sealed class ExpressionEvaluator
         VariableType.String => v.AsString(),
         _ => v.AsString()
     };
+
+    // NCalc string literals use single quotes, while graph expressions commonly
+    // use JSON/C#-style double quotes. Normalize only the delimiters so both
+    // forms are accepted by the public expression syntax.
+    private static string NormalizeStringLiterals(string expression) =>
+        expression.Replace('"', '\'');
 }
