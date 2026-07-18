@@ -6,7 +6,6 @@ using GalNet.Core.Runtime;
 using GalNet.Core.Scene;
 using GalNet.Core.Settings;
 using GalNet.Core.View;
-using GalNet.Runtime.Compilation;
 using GalNet.Runtime.Handlers;
 using GalNet.Runtime.Logging;
 using GalNet.Runtime.Runtime;
@@ -18,7 +17,6 @@ namespace GalNet.Runtime.Engine;
 public sealed class GameEngine
 {
     private readonly Graph _graph;
-    private readonly IReadOnlyDictionary<string, IReadOnlyList<SimpleEntry>> _compiled;
     private readonly EntryHandlerRegistry _registry;
     private readonly IGameRuntime _runtime;
     private readonly IGameProgressService? _progress;
@@ -36,12 +34,10 @@ public sealed class GameEngine
         IGameView view,
         ICultureService? i18n = null,
         SettingsContainer? settings = null,
-        IGameGraphCompiler? compiler = null,
         EntryHandlerRegistry? registry = null,
         IGameProgressService? progress = null)
     {
         _graph = graph;
-        _compiled = (compiler ?? GameGraphCompiler.Default).Compile(graph);
         _registry = registry ?? EntryHandlerRegistry.CreateDefault();
         _runtime = new GameRuntime(view, i18n, graph.RootNodeId, settings);
         _progress = progress;
@@ -50,12 +46,10 @@ public sealed class GameEngine
     public GameEngine(
         Graph graph,
         IGameRuntime runtime,
-        IGameGraphCompiler? compiler = null,
         EntryHandlerRegistry? registry = null,
         IGameProgressService? progress = null)
     {
         _graph = graph;
-        _compiled = (compiler ?? GameGraphCompiler.Default).Compile(graph);
         _registry = registry ?? EntryHandlerRegistry.CreateDefault();
         _runtime = runtime;
         _progress = progress;
@@ -95,7 +89,7 @@ public sealed class GameEngine
 
     private async Task ProcessGroupAsync(Group group, CancellationToken ct)
     {
-        var entries = _compiled.GetValueOrDefault(group.Id, Array.Empty<SimpleEntry>());
+        var entries = group.Entries;
         GameLog.Logger.Information("Engine: Processing group '{GroupId}' ({EntryCount} entries, entryIndex={EntryIndex})",
             group.Id, entries.Count, _runtime.EntryIndex);
 
@@ -121,12 +115,12 @@ public sealed class GameEngine
         MoveToNext();
     }
 
-    private async Task ExecuteBlockingEntryAsync(EntryHandler handler, SimpleEntry entry, CancellationToken ct)
+    private async Task ExecuteBlockingEntryAsync(EntryHandler handler, Entry entry, CancellationToken ct)
     {
         var ctx = new EntryContext { Entry = entry, Runtime = _runtime };
 
         handler.Start(ctx);
-        if (entry.Type == "text") _progress?.MarkRead(groupId: _runtime.CurrentNodeId, entry.Id);
+        if (entry.Type == TextEntry.TypeId) _progress?.MarkRead(groupId: _runtime.CurrentNodeId, entry.Id.ToString());
         CheckpointCreated?.Invoke(CreateSaveData());
 
         while (!handler.IsCompleted(ctx))
@@ -138,7 +132,7 @@ public sealed class GameEngine
         handler.Complete(ctx);
     }
 
-    private void ExecuteNonBlockingEntry(EntryHandler handler, SimpleEntry entry)
+    private void ExecuteNonBlockingEntry(EntryHandler handler, Entry entry)
     {
         var ctx = new EntryContext { Entry = entry, Runtime = _runtime };
         handler.Start(ctx);

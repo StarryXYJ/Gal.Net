@@ -101,7 +101,8 @@ public sealed class EditorEntryData
     public int Id { get; set; }
     public string Type { get; set; } = "";
     public string Condition { get; set; } = "";
-    public string Parameters { get; set; } = "";
+    /// <summary>Runtime-compatible parameter map. Values remain strings because they are serialized to .galgroup.</summary>
+    public Dictionary<string, string> Parameters { get; set; } = new();
 }
 
 public sealed class LoadedEditorProjectDocument

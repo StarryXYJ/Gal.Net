@@ -49,7 +49,7 @@ public class EditorDocumentRepositoryTests
             JsonSerializer.Serialize(document, new JsonSerializerOptions { WriteIndented = true }));
         File.WriteAllText(
             Path.Combine(_tempDir, "Graph", "groups", $"{groupId}.galgroup"),
-            GalNet.Core.Serialization.GalgroupParser.Serialize("text", new() { ["text"] = "hello" }));
+            GalNet.Core.Serialization.GalgroupParser.Serialize("text", new() { ["content"] = "hello", ["obsolete"] = "discard" }));
 
         var settings = new ProjectSettings
         {
@@ -70,6 +70,8 @@ public class EditorDocumentRepositoryTests
         Assert.That(loaded.Document.SaveVariables.Select(v => v.Name), Is.EqualTo(new[] { "save_count" }));
         Assert.That(loaded.GroupEntries[groupId], Has.Count.EqualTo(1));
         Assert.That(loaded.GroupEntries[groupId][0].Type, Is.EqualTo("text"));
+        Assert.That(loaded.GroupEntries[groupId][0].Parameters, Does.ContainKey("content").WithValue("hello"));
+        Assert.That(loaded.GroupEntries[groupId][0].Parameters, Does.Not.ContainKey("obsolete"));
     }
 
     [Test]
@@ -102,7 +104,7 @@ public class EditorDocumentRepositoryTests
                         Id = 1,
                         Type = "text",
                         Condition = "player_name==Alice",
-                        Parameters = "speaker=Alice; text=Hello"
+                        Parameters = new Dictionary<string, string> { ["speaker"] = "Alice", ["content"] = "Hello" }
                     }
                 ]
             });
@@ -116,6 +118,7 @@ public class EditorDocumentRepositoryTests
         Assert.That(savedDocument.SaveVariables.Select(v => v.Name), Is.EqualTo(new[] { "save_slot" }));
         Assert.That(savedGroup, Does.Contain("condition: player_name==Alice"));
         Assert.That(savedGroup, Does.Contain("speaker: Alice"));
+        Assert.That(savedGroup, Does.Contain("content: Hello"));
     }
 
     private static ProjectVariableDefinition CreateDefinition(string name, object value)

@@ -1,5 +1,7 @@
 using System;
 using GalNet.Editor.Abstraction.Extensibility;
+using GalNet.Editor.Abstraction.Services;
+using GalNet.Core.Assets;
 using GalNet.Editor.Inspector.ViewModels;
 using GalNet.Editor.Inspector.Views;
 using GalNet.Editor.Services;
@@ -37,7 +39,7 @@ public static class BuiltInDockContributions
         registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.Log, "Dock.Panel.Log", DockPanelPlacement.BottomDocument, true, true, true, true, true,
             (sp, _) => sp.GetRequiredService<LogPanelViewModel>(), typeof(LogPanelView), null));
         registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.GroupEditor, "Dock.Panel.GroupEditor", DockPanelPlacement.MainDocument, false, true, true, false, false,
-            (sp, parameter) => new GroupEditorPanelViewModel(sp.GetRequiredService<EditorWorkspaceViewModel>(), (GraphNode)parameter!, sp.GetRequiredService<IGraphEditingService>()), typeof(GroupEditorPanelView), null));
+            (sp, parameter) => new GroupEditorPanelViewModel(sp.GetRequiredService<EditorWorkspaceViewModel>(), (GraphNode)parameter!, sp.GetRequiredService<IGraphEditingService>(), sp.GetRequiredService<IProjectService>(), sp.GetRequiredService<IAssetManager>()), typeof(GroupEditorPanelView), null));
         registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.Inspector, "Dock.Panel.Inspector", DockPanelPlacement.InspectorDocument, false, true, true, true, true,
             (sp, _) => sp.GetRequiredService<InspectorHostViewModel>(), typeof(InspectorHostView), null));
         registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.UiCustomization, "Dock.Panel.UiCustomization", DockPanelPlacement.BottomDocument, true, true, true, false, true,

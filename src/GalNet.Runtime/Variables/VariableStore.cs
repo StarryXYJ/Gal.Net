@@ -24,6 +24,10 @@ public sealed class VariableStore
     {
         var normalized = NormalizeName(name);
         var scope = ResolveScope(name);
+        var variables = scope == VariableScope.Player ? _playerVariables : _saveVariables;
+        if (variables.TryGetValue(normalized, out var current) && HasSameValue(current, value))
+            return;
+
         var variable = GetOrCreate(normalized, scope);
         variable.Name = normalized;
         variable.SetValue(value);
@@ -120,5 +124,20 @@ public sealed class VariableStore
         }
 
         return clone;
+    }
+
+    private static bool HasSameValue(Variable variable, object value)
+    {
+        var candidate = VariableValue.FromObject(value);
+        if (variable.Type != candidate.Type)
+            return false;
+
+        return variable.Type switch
+        {
+            VariableType.Bool => variable.AsBool() == candidate.AsBool(),
+            VariableType.Int => variable.AsInt() == candidate.AsInt(),
+            VariableType.Float => variable.AsFloat().Equals(candidate.AsFloat()),
+            _ => string.Equals(variable.AsString(), candidate.AsString(), StringComparison.Ordinal)
+        };
     }
 }

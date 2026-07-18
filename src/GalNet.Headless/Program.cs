@@ -99,14 +99,14 @@ File.WriteAllText(graphPath, graphJson);
 File.WriteAllText(Path.Combine(sampleDir, "intro.galgroup"), """
     text : speaker:Game.Speaker.speaker_narrator; content:Game.Node.group_intro.entry_1.Text
     wait : duration:0.5
-    layer : action:show; id:bg; asset:bg_classroom
+    layer.show : id:bg; asset:bg_classroom
     text : speaker:Game.Speaker.speaker_alice; content:Game.Node.group_intro.entry_4.Text
-    variable : action:set; target:met_alice; value:true; type:bool
+    variable.set : target:met_alice; value:true; valueType:bool
     """);
 
 File.WriteAllText(Path.Combine(sampleDir, "accept.galgroup"), """
     text : speaker:Game.Speaker.speaker_alice; content:Game.Node.group_accept.entry_1.Text
-    variable : action:set; target:quest_accepted; value:true; type:bool
+    variable.set : target:quest_accepted; value:true; valueType:bool
     """);
 
 File.WriteAllText(Path.Combine(sampleDir, "reject.galgroup"), """

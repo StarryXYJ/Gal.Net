@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -11,6 +12,7 @@ using GalNet.Core.Variable;
 using GalNet.Editor.ViewModels;
 using System.Windows.Input;
 using AvaloniaControl = Avalonia.Controls.Control;
+using Avalonia.VisualTree;
 
 namespace GalNet.Editor.Controls;
 
@@ -36,6 +38,7 @@ public class ReorderableListControl : UserControl
     public IEnumerable<ProjectVariableDefinition>? ValidationVariables { get => GetValue(ValidationVariablesProperty); set => SetValue(ValidationVariablesProperty, value); }
 
     private ListBox? _listBox;
+    private ScrollViewer? _scrollViewer;
     private readonly Canvas _overlay = new() { IsHitTestVisible = false, ZIndex = 9999 };
     private readonly ContentControl _preview = new() { IsHitTestVisible = false, Opacity = .85, IsVisible = false };
     private readonly Border _line = new() { Height = 3, Background = Brush.Parse("#8F72FF"), IsVisible = false };
@@ -49,6 +52,7 @@ public class ReorderableListControl : UserControl
         // Use handledEventsToo to ensure PointerMoved/Released fire even when ListBox consumes events
         AddHandler(PointerMovedEvent, OnDragPointerMoved, RoutingStrategies.Tunnel, handledEventsToo: true);
         AddHandler(PointerReleasedEvent, OnDragPointerReleased, RoutingStrategies.Tunnel, handledEventsToo: true);
+        AddHandler(PointerWheelChangedEvent, OnDragPointerWheelChanged, RoutingStrategies.Tunnel, handledEventsToo: true);
 
         Loaded += OnLoaded;
     }
@@ -66,6 +70,7 @@ public class ReorderableListControl : UserControl
     {
         _listBox = listBox;
         AttachOverlay();
+        Dispatcher.UIThread.Post(() => _scrollViewer = listBox.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault(), DispatcherPriority.Loaded);
     }
 
     /// <summary>
@@ -96,7 +101,34 @@ public class ReorderableListControl : UserControl
             _dragging = true; _preview.IsVisible = true; SetOpacity(_dragIndex, .3);
         }
         Canvas.SetLeft(_preview, pos.X + 12); Canvas.SetTop(_preview, pos.Y - _preview.Bounds.Height / 2);
+        AutoScroll(pos);
         UpdateTarget(pos);
+    }
+
+    private void OnDragPointerWheelChanged(object? sender, PointerWheelEventArgs e)
+    {
+        if (!_dragging || _scrollViewer is null) return;
+        ScrollBy(-e.Delta.Y * 48);
+        UpdateTarget(e.GetPosition(this));
+        e.Handled = true;
+    }
+
+    private void AutoScroll(Point pointer)
+    {
+        if (_scrollViewer is null || _listBox?.TranslatePoint(default, this) is not { } origin) return;
+        const double edge = 42;
+        var top = origin.Y;
+        var bottom = origin.Y + _listBox.Bounds.Height;
+        if (pointer.Y < top + edge) ScrollBy(-14);
+        else if (pointer.Y > bottom - edge) ScrollBy(14);
+    }
+
+    private void ScrollBy(double delta)
+    {
+        if (_scrollViewer is null) return;
+        var maximum = Math.Max(0, _scrollViewer.Extent.Height - _scrollViewer.Viewport.Height);
+        var y = Math.Clamp(_scrollViewer.Offset.Y + delta, 0, maximum);
+        _scrollViewer.Offset = new Vector(_scrollViewer.Offset.X, y);
     }
 
     /// <summary>

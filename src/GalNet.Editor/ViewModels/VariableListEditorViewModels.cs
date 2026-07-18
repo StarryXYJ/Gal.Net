@@ -76,6 +76,13 @@ public sealed partial class VariableListEditorViewModel : ObservableObject
             item.SetCurrentValueVisible(visible);
     }
 
+    public void UpdateCurrentValue(string name, Variable variable)
+    {
+        var item = Items.FirstOrDefault(candidate =>
+            string.Equals(candidate.Name, name, StringComparison.Ordinal));
+        item?.SetCurrentValue(variable);
+    }
+
     [RelayCommand]
     public void AddVariable()
     {
@@ -398,6 +405,12 @@ public sealed partial class VariableEditorItemViewModel : ObservableValidator
         OnPropertyChanged(nameof(CanEditCurrentValue));
     }
 
+    public void SetCurrentValue(Variable variable)
+    {
+        _currentValue = CloneVariable(variable, Name);
+        RaiseCurrentValuePropertiesChanged();
+    }
+
     private void OnErrorsChanged(object? sender, DataErrorsChangedEventArgs e)
     {
         if (e.PropertyName == nameof(Name))
@@ -425,11 +438,16 @@ public sealed partial class VariableEditorItemViewModel : ObservableValidator
         OnPropertyChanged(nameof(DefaultIntValue));
         OnPropertyChanged(nameof(DefaultFloatValue));
         OnPropertyChanged(nameof(DefaultStringValue));
+        RaiseCurrentValuePropertiesChanged();
+        OnPropertyChanged(nameof(CanEditCurrentValue));
+    }
+
+    private void RaiseCurrentValuePropertiesChanged()
+    {
         OnPropertyChanged(nameof(CurrentBoolValue));
         OnPropertyChanged(nameof(CurrentIntValue));
         OnPropertyChanged(nameof(CurrentFloatValue));
         OnPropertyChanged(nameof(CurrentStringValue));
-        OnPropertyChanged(nameof(CanEditCurrentValue));
     }
 
     private object GetCurrentBoxedValue() => SelectedType switch

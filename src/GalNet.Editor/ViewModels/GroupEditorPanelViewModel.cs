@@ -1,15 +1,23 @@
+using System;
 using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Editor.Services;
 using GalNet.Editor.Controls;
 using GalNet.Editor.History;
+using GalNet.Editor.Abstraction.Services;
+using GalNet.Core.Assets;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Linq;
+using GalNet.Core.Entry;
 
 namespace GalNet.Editor.ViewModels;
 
 public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarget
 {
     private readonly IGraphEditingService _graphEditingService;
+    private readonly IProjectService _projects;
 
     public EditorWorkspaceViewModel Workspace { get; }
     public GraphNode GroupNode { get; }
@@ -18,13 +26,21 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     public string GroupId => GroupNode.Id;
     public IReadOnlyList<ConditionVariableSuggestion> ConditionSuggestions => Workspace.GetConditionVariableSuggestions();
     public IReadOnlyList<GalNet.Core.Variable.ProjectVariableDefinition> ValidationVariables => Workspace.AllProjectVariableDefinitions;
+    public IAssetManager AssetManager { get; }
+    public IReadOnlyList<EntryTypeOption> EntryTypes { get; } = EntryRegistry.Definitions
+        .Select(definition => new EntryTypeOption(definition.Type, $"Entry.Type.{definition.Type}"))
+        .ToArray();
 
-    public GroupEditorPanelViewModel(EditorWorkspaceViewModel workspace, GraphNode groupNode, IGraphEditingService graphEditingService)
+    public GroupEditorPanelViewModel(EditorWorkspaceViewModel workspace, GraphNode groupNode, IGraphEditingService graphEditingService, IProjectService projects, IAssetManager assetManager)
     {
         Workspace = workspace;
         GroupNode = groupNode;
         _graphEditingService = graphEditingService;
+        _projects = projects;
+        AssetManager = assetManager;
         Workspace.VariableDefinitionsChanged += OnVariableDefinitionsChanged;
+        GroupNode.Entries.CollectionChanged += OnEntriesChanged;
+        foreach (var entry in GroupNode.Entries) Attach(entry);
     }
 
     [RelayCommand]
@@ -75,5 +91,36 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     {
         OnPropertyChanged(nameof(ConditionSuggestions));
         OnPropertyChanged(nameof(ValidationVariables));
+    }
+
+    private void OnEntriesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems is not null)
+            foreach (EntryEditorItemViewModel entry in e.NewItems) Attach(entry);
+        if (e.OldItems is not null)
+            foreach (EntryEditorItemViewModel entry in e.OldItems) entry.PropertyChanged -= OnEntryPropertyChanged;
+    }
+
+    private void Attach(EntryEditorItemViewModel entry)
+    {
+        entry.PropertyChanged += OnEntryPropertyChanged;
+        Configure(entry);
+    }
+
+    private void OnEntryPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (sender is not EntryEditorItemViewModel entry) return;
+        if (e.PropertyName == nameof(EntryEditorItemViewModel.Type)) Configure(entry, resetValues: true);
+    }
+
+    private void Configure(EntryEditorItemViewModel entry, bool resetValues = false) => entry.ConfigureParameterFields(_projects.Current?.Settings.Speakers ?? [], resetValues);
+
+    public void CommitSpeaker(string value)
+    {
+        var speaker = value.Trim();
+        if (string.IsNullOrEmpty(speaker) || _projects.Current is not { } project) return;
+        if (project.Settings.Speakers.Any(item => string.Equals(item, speaker, StringComparison.OrdinalIgnoreCase))) return;
+        project.Settings.Speakers.Add(speaker);
+        project.IsDirty = true;
     }
 }

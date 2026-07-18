@@ -16,7 +16,7 @@ public class GraphChangeTrackerTests
         tracker.Track(node);
 
         node.Name = "Renamed";
-        node.Entries[0].Parameters = "text=Hello";
+        node.Entries[0].Parameters = new Dictionary<string, string> { ["content"] = "Hello" };
 
         Assert.That(changes, Is.EqualTo(2));
 

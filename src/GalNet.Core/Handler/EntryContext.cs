@@ -10,10 +10,10 @@ namespace GalNet.Core.Handler;
 /// </summary>
 public sealed class EntryContext
 {
-    public required SimpleEntry Entry { get; init; }
+    public required Entry.Entry Entry { get; init; }
     public required IGameRuntime Runtime { get; init; }
 
-    public Dictionary<string, string> Params => Entry.Params;
+    public Dictionary<string, string> Params => Entry.Values;
     public IGameView View => Runtime.View!;
     public ICultureService? I18n => Runtime.I18n;
 

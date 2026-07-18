@@ -659,7 +659,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
 
     private void OnTrackedItemChanged(GraphNode node, object item, string propertyName)
     {
-        var current = (item, propertyName) switch
+        object? current = (item, propertyName) switch
         {
             (EntryEditorItemViewModel entry, nameof(EntryEditorItemViewModel.Type)) => entry.Type,
             (EntryEditorItemViewModel entry, nameof(EntryEditorItemViewModel.Condition)) => entry.Condition,
@@ -669,7 +669,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
             (BranchConditionEditorItemViewModel condition, nameof(BranchConditionEditorItemViewModel.Expression)) => condition.Expression,
             _ => null
         };
-        if (current is not null) RecordPropertyEdit(item, propertyName, current, value => SetTrackedProperty(item, propertyName, (string)value!));
+        if (current is not null) RecordPropertyEdit(item, propertyName, current, value => SetTrackedProperty(item, propertyName, value));
     }
 
     private void RecordPropertyEdit(object item, string propertyName, object? current, Action<object?> setter)
@@ -683,16 +683,16 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
             () => { _isApplyingHistory = true; try { setter(current); _propertyValues[key] = current; } finally { _isApplyingHistory = false; } }));
     }
 
-    private static void SetTrackedProperty(object item, string propertyName, string value)
+    private static void SetTrackedProperty(object item, string propertyName, object? value)
     {
         switch (item, propertyName)
         {
-            case (EntryEditorItemViewModel entry, nameof(EntryEditorItemViewModel.Type)): entry.Type = value; break;
-            case (EntryEditorItemViewModel entry, nameof(EntryEditorItemViewModel.Condition)): entry.Condition = value; break;
-            case (EntryEditorItemViewModel entry, nameof(EntryEditorItemViewModel.Parameters)): entry.Parameters = value; break;
-            case (BranchOptionEditorItemViewModel option, nameof(BranchOptionEditorItemViewModel.Text)): option.Text = value; break;
-            case (BranchOptionEditorItemViewModel option, nameof(BranchOptionEditorItemViewModel.Condition)): option.Condition = value; break;
-            case (BranchConditionEditorItemViewModel condition, nameof(BranchConditionEditorItemViewModel.Expression)): condition.Expression = value; break;
+            case (EntryEditorItemViewModel entry, nameof(EntryEditorItemViewModel.Type)): entry.Type = (string)value!; break;
+            case (EntryEditorItemViewModel entry, nameof(EntryEditorItemViewModel.Condition)): entry.Condition = (string)value!; break;
+            case (EntryEditorItemViewModel entry, nameof(EntryEditorItemViewModel.Parameters)): entry.Parameters = new Dictionary<string, string>((Dictionary<string, string>)value!); break;
+            case (BranchOptionEditorItemViewModel option, nameof(BranchOptionEditorItemViewModel.Text)): option.Text = (string)value!; break;
+            case (BranchOptionEditorItemViewModel option, nameof(BranchOptionEditorItemViewModel.Condition)): option.Condition = (string)value!; break;
+            case (BranchConditionEditorItemViewModel condition, nameof(BranchConditionEditorItemViewModel.Expression)): condition.Expression = (string)value!; break;
         }
     }
 

@@ -1,9 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Core.Entry;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -81,11 +83,10 @@ public sealed class EditorSaveCoordinator : IEditorSaveCoordinator
 
     private static string SerializeEntry(EditorEntryData entry)
     {
+        var definition = EntryRegistry.Get(entry.Type);
         var parameters = entry.Parameters
-            .Split(';', System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries)
-            .Select(part => part.Split('=', 2, System.StringSplitOptions.TrimEntries))
-            .Where(parts => parts.Length > 0 && !string.IsNullOrWhiteSpace(parts[0]))
-            .ToDictionary(parts => parts[0], parts => parts.Length > 1 ? parts[1] : "");
+            .Where(pair => definition.Parameters.ContainsKey(pair.Key) && pair.Value.Length > 0)
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
 
         if (!string.IsNullOrWhiteSpace(entry.Condition))
             parameters["condition"] = entry.Condition;

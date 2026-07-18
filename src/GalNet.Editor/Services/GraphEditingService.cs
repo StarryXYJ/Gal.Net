@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Collections.Generic;
 using System.Linq;
 using GalNet.Core.Graph;
 using GalNet.Editor.ViewModels;
@@ -86,7 +87,7 @@ public sealed class GraphEditingService : IGraphEditingService
             StableId = Guid.NewGuid().ToString("N"),
             Id = groupNode.Entries.Count + 1,
             Type = "text",
-            Parameters = "speaker=; text="
+            Parameters = new Dictionary<string, string> { ["speaker"] = "", ["content"] = "" }
         });
         return true;
     }

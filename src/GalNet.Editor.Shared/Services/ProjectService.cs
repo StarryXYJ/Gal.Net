@@ -287,7 +287,7 @@ public sealed class ProjectService : IProjectService
             GalNet.Core.Serialization.GalgroupParser.Serialize("text", new Dictionary<string, string>
             {
                 ["speaker"] = "Alice",
-                ["text"] = "Hello GalNet"
+                ["content"] = "Hello GalNet"
             }));
     }
 

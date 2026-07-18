@@ -1,3 +1,4 @@
+using GalNet.Core.Entry;
 using GalNet.Runtime.Handlers;
 
 namespace GeneralTest.Runtime;
@@ -5,39 +6,20 @@ namespace GeneralTest.Runtime;
 public class EntryHandlerRegistryTests
 {
     [Test]
-    public void CreateDefault_Should_Register_All_Handlers()
+    public void CreateDefault_Should_Register_Every_Core_Entry()
     {
         var registry = EntryHandlerRegistry.CreateDefault();
-
-        Assert.That(registry.Resolve("text"), Is.Not.Null);
-        Assert.That(registry.Resolve("audio"), Is.Not.Null);
-        Assert.That(registry.Resolve("layer"), Is.Not.Null);
-        Assert.That(registry.Resolve("effect"), Is.Not.Null);
-        Assert.That(registry.Resolve("control"), Is.Not.Null);
-        Assert.That(registry.Resolve("wait"), Is.Not.Null);
-        Assert.That(registry.Resolve("variable"), Is.Not.Null);
-        Assert.That(registry.Resolve("jump"), Is.Not.Null);
-        Assert.That(registry.Resolve("video"), Is.Not.Null);
+        foreach (var definition in EntryRegistry.Definitions.Where(x => x.Type != UnlockGalleryEntry.TypeId))
+            Assert.That(registry.Resolve(definition.Type), Is.Not.Null, definition.Type);
+        Assert.That(registry.Resolve("jump"), Is.Null);
     }
 
     [Test]
-    public void Resolve_Unknown_Should_Return_Null()
+    public void Blocking_Metadata_Should_Match()
     {
         var registry = EntryHandlerRegistry.CreateDefault();
-        Assert.That(registry.Resolve("nonexistent"), Is.Null);
-    }
-
-    [Test]
-    public void Handler_Properties_Should_Match()
-    {
-        var registry = EntryHandlerRegistry.CreateDefault();
-
-        var text = registry.Resolve("text")!;
-        Assert.That(text.EntryType, Is.EqualTo("text"));
-        Assert.That(text.IsBlocking, Is.True);
-
-        var audio = registry.Resolve("audio")!;
-        Assert.That(audio.EntryType, Is.EqualTo("audio"));
-        Assert.That(audio.IsBlocking, Is.False);
+        Assert.That(registry.Resolve(TextEntry.TypeId)!.IsBlocking, Is.True);
+        Assert.That(registry.Resolve(WaitEntry.TypeId)!.IsBlocking, Is.True);
+        Assert.That(registry.Resolve(PlayAudioEntry.TypeId)!.IsBlocking, Is.False);
     }
 }

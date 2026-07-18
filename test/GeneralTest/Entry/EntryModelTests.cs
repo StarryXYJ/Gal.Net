@@ -5,104 +5,51 @@ namespace GeneralTest.Entry;
 public class EntryModelTests
 {
     [Test]
-    public void SimpleEntry_Should_Store_Data()
+    public void Registry_Should_Create_All_BuiltIn_Entries()
     {
-        var entry = new SimpleEntry
+        Assert.That(EntryRegistry.Definitions, Has.Count.EqualTo(20));
+        foreach (var definition in EntryRegistry.Definitions)
+            Assert.That(EntryRegistry.Create(definition.Type).Type, Is.EqualTo(definition.Type));
+    }
+
+    [Test]
+    public void Create_Should_Apply_Defaults_And_Discard_Unknown_Values()
+    {
+        var entry = EntryRegistry.Create(ShowLayerEntry.TypeId, 3, "flag", new Dictionary<string, string>
         {
-            Id = "5_1",
-            SourceId = 5,
-            Type = "show_layer",
-            Condition = "flag == true",
-            Params = new Dictionary<string, string>
-            {
-                ["id"] = "alice",
-                ["asset"] = "alice_smile"
-            }
-        };
+            ["id"] = "hero", ["unknown"] = "discard"
+        });
 
-        Assert.That(entry.Id, Is.EqualTo("5_1"));
-        Assert.That(entry.SourceId, Is.EqualTo(5));
-        Assert.That(entry.Type, Is.EqualTo("show_layer"));
-        Assert.That(entry.Condition, Is.EqualTo("flag == true"));
-        Assert.That(entry.Params["id"], Is.EqualTo("alice"));
+        Assert.That(entry, Is.TypeOf<ShowLayerEntry>());
+        Assert.That(entry.Id, Is.EqualTo(3));
+        Assert.That(entry.Condition, Is.EqualTo("flag"));
+        Assert.That(entry.Values["duration"], Is.EqualTo("0.5"));
+        Assert.That(entry.Values["id"], Is.EqualTo("hero"));
+        Assert.That(entry.Values, Does.Not.ContainKey("unknown"));
     }
 
     [Test]
-    public void SimpleEntry_Should_Have_Empty_Condition_By_Default()
+    public void Entry_Values_Should_Not_Be_Shared()
     {
-        var entry = new SimpleEntry { Id = "1", Type = "narration" };
-        Assert.That(entry.Condition, Is.Empty);
-    }
-}
-
-/// <summary>
-/// 模拟复杂条目编译——验证 ID 方案。
-/// </summary>
-public sealed class MockComplexEntry : ComplexEntry
-{
-    private readonly int _subEntryCount;
-
-    public MockComplexEntry(int id, string type, int subEntryCount = 1)
-    {
-        Id = id;
-        Type = type;
-        _subEntryCount = subEntryCount;
-    }
-
-    public override IReadOnlyList<SimpleEntry> Compile()
-    {
-        var result = new List<SimpleEntry>();
-        for (var i = 1; i <= _subEntryCount; i++)
-        {
-            result.Add(new SimpleEntry
-            {
-                Id = _subEntryCount == 1 ? $"{Id}" : $"{Id}_{i}",
-                SourceId = Id,
-                Type = Type,
-                Condition = Condition,
-                Params = new Dictionary<string, string>(Params)
-            });
-        }
-        return result;
-    }
-}
-
-public class CompileIdSchemeTests
-{
-    [Test]
-    public void Compile_SingleEntry_Should_Use_Raw_Id()
-    {
-        var complex = new MockComplexEntry(5, "narration");
-        var result = complex.Compile();
-
-        Assert.That(result, Has.Count.EqualTo(1));
-        Assert.That(result[0].Id, Is.EqualTo("5"));
-        Assert.That(result[0].SourceId, Is.EqualTo(5));
+        var first = EntryRegistry.Create(TextEntry.TypeId);
+        var second = EntryRegistry.Create(TextEntry.TypeId);
+        first.Values["content"] = "first";
+        Assert.That(second.Values, Does.Not.ContainKey("content"));
     }
 
     [Test]
-    public void Compile_MultipleEntries_Should_Use_Underscore_Suffix()
-    {
-        var complex = new MockComplexEntry(5, "show_character", subEntryCount: 3);
-        var result = complex.Compile();
-
-        Assert.That(result, Has.Count.EqualTo(3));
-        Assert.That(result[0].Id, Is.EqualTo("5_1"));
-        Assert.That(result[1].Id, Is.EqualTo("5_2"));
-        Assert.That(result[2].Id, Is.EqualTo("5_3"));
-        // All should trace back to source 5
-        Assert.That(result.All(e => e.SourceId == 5), Is.True);
-    }
+    public void Unknown_Type_Should_Throw_Clear_Error() =>
+        Assert.That(() => EntryRegistry.Create("jump"), Throws.TypeOf<InvalidDataException>().With.Message.Contains("jump"));
 
     [Test]
-    public void Compile_Should_Inherit_Condition()
-    {
-        var complex = new MockComplexEntry(3, "simple_text")
-        {
-            Condition = "flag == true"
-        };
-        var result = complex.Compile();
+    public void Concrete_Action_Types_Should_Not_Declare_Action_Parameter() =>
+        Assert.That(EntryRegistry.Definitions.All(x => !x.Parameters.ContainsKey("action")), Is.True);
 
-        Assert.That(result[0].Condition, Is.EqualTo("flag == true"));
+    [Test]
+    public void TextEntry_Should_Not_Expose_Widget_Parameter()
+    {
+        var definition = EntryRegistry.Get(TextEntry.TypeId);
+        Assert.That(definition.Parameters.Keys, Is.EquivalentTo(new[] { "speaker", "content", "voice" }));
+        Assert.That(EntryRegistry.Create(TextEntry.TypeId).Values, Does.Not.ContainKey("widget"));
     }
 }

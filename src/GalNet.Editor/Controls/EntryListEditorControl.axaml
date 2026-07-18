@@ -2,16 +2,15 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="using:GalNet.Editor.Controls"
              xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:models="using:GalNet.Editor.Models.Graph"
+             xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
              x:Class="GalNet.Editor.Controls.EntryListEditorControl"
              x:Name="Root"
              x:DataType="vm:GroupEditorPanelViewModel"
-             MoveCommand="{Binding ReorderEntryCommand}"
-             PointerMoved="OnDragPointerMoved"
-             PointerReleased="OnDragPointerReleased">
+             MoveCommand="{Binding ReorderEntryCommand}">
     <Grid RowDefinitions="Auto,*">
         <Button HorizontalAlignment="Left"
-                ToolTip.Tip="Add entry"
-                AutomationProperties.Name="Add entry"
+                ToolTip.Tip="{loc:Localize Entry.Add}"
+                AutomationProperties.Name="{loc:Localize Entry.Add}"
                 Command="{Binding AddEntryCommand}"><PathIcon Width="16" Height="16" Data="{StaticResource AddIcon}" /></Button>
 
         <ListBox Name="ItemsListBox"
@@ -27,7 +26,8 @@
                             BorderBrush="{DynamicResource SemiColorBorder}"
                             BorderThickness="1"
                             CornerRadius="6">
-                        <Grid ColumnDefinitions="Auto,48,140,*,*,Auto"
+                        <StackPanel>
+                        <Grid ColumnDefinitions="Auto,48,140,*,Auto,Auto"
                               ColumnSpacing="8">
                             <Border Padding="6,0"
                                     VerticalAlignment="Center"
@@ -39,20 +39,56 @@
                             <TextBlock Grid.Column="1"
                                        Text="{Binding Id}"
                                        VerticalAlignment="Center" />
-                            <TextBox Grid.Column="2"
-                                     Text="{Binding Type}" />
+                            <ComboBox Grid.Column="2"
+                                      ItemsSource="{Binding #Root.DataContext.EntryTypes}"
+                                      SelectedValue="{Binding Type}"
+                                      SelectedValueBinding="{Binding Value}">
+                                <ComboBox.ItemTemplate><DataTemplate x:DataType="models:EntryTypeOption"><TextBlock Text="{loc:Localize DisplayNameKey}" /></DataTemplate></ComboBox.ItemTemplate>
+                            </ComboBox>
                             <controls:ConditionEditorControl Grid.Column="3"
                                                              Text="{Binding Condition}"
                                                              Suggestions="{Binding #Root.DataContext.ConditionSuggestions}"
                                                              ValidationVariables="{Binding #Root.DataContext.ValidationVariables}" />
-                            <TextBox Grid.Column="4"
-                                     Text="{Binding Parameters}" />
+                            <ToggleButton Grid.Column="4"
+                                          Width="30"
+                                          IsChecked="{Binding IsExpanded}"
+                                          ToolTip.Tip="{loc:Localize Entry.ToggleParameters}">
+                                <Grid>
+                                    <PathIcon Width="16"
+                                              Height="16"
+                                              Data="{StaticResource ChevronUpRegular}"
+                                              IsVisible="{Binding IsExpanded}" />
+                                    <PathIcon Width="16"
+                                              Height="16"
+                                              Data="{StaticResource ChevronDownRegular}"
+                                              IsVisible="{Binding !IsExpanded}" />
+                                </Grid>
+                            </ToggleButton>
                             <Button Grid.Column="5"
-                                    ToolTip.Tip="Remove entry"
-                                    AutomationProperties.Name="Remove entry"
+                                    ToolTip.Tip="{loc:Localize Entry.Remove}"
+                                    AutomationProperties.Name="{loc:Localize Entry.Remove}"
                                     Command="{Binding #Root.DataContext.RemoveEntryCommand}"
                                     CommandParameter="{Binding}"><PathIcon Width="16" Height="16" Data="{StaticResource DeleteRegularIcon}" /></Button>
                         </Grid>
+                        <StackPanel Margin="0,8,0,0" Spacing="6" IsVisible="{Binding IsExpanded}">
+                            <ItemsControl ItemsSource="{Binding ParameterFields}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:EntryParameterEditorItemViewModel">
+                                        <ContentControl Content="{Binding}">
+                                            <ContentControl.DataTemplates>
+                                                <DataTemplate DataType="models:TextEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding StringValue}" AcceptsReturn="{Binding IsMultiline}" TextWrapping="Wrap" MinHeight="30" HorizontalAlignment="Stretch" /></Grid></DataTemplate>
+                                                <DataTemplate DataType="models:AutocompleteEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><ComboBox Grid.Column="1" IsEditable="True" ItemsSource="{Binding Suggestions}" Text="{Binding StringValue}" HorizontalAlignment="Stretch" LostFocus="OnAutocompleteLostFocus" /></Grid></DataTemplate>
+                                                <DataTemplate DataType="models:IntegerEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><NumericUpDown Grid.Column="1" Value="{Binding NumericValue}" Increment="1" FormatString="0" HorizontalAlignment="Stretch" /></Grid></DataTemplate>
+                                                <DataTemplate DataType="models:FloatEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><NumericUpDown Grid.Column="1" Value="{Binding NumericValue}" Increment="0.1" FormatString="0.##" HorizontalAlignment="Stretch" /></Grid></DataTemplate>
+                                                <DataTemplate DataType="models:AssetEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><controls:AssetPicker Grid.Column="1" AssetManager="{Binding #Root.DataContext.AssetManager}" Filter="{Binding AssetFilter}" SelectedAssetId="{Binding StringValue}" HorizontalAlignment="Left" /></Grid></DataTemplate>
+                                                <DataTemplate DataType="models:SelectEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><ComboBox Grid.Column="1" ItemsSource="{Binding Options}" SelectedValue="{Binding StringValue}" SelectedValueBinding="{Binding Value}" HorizontalAlignment="Stretch"><ComboBox.ItemTemplate><DataTemplate x:DataType="models:EntrySelectOption"><TextBlock Text="{loc:Localize DisplayNameKey}" /></DataTemplate></ComboBox.ItemTemplate></ComboBox></Grid></DataTemplate>
+                                            </ContentControl.DataTemplates>
+                                        </ContentControl>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                        </StackPanel>
                     </Border>
                 </DataTemplate>
             </ListBox.ItemTemplate>

@@ -20,7 +20,7 @@ public sealed class TextHandler : EntryHandler
         var speaker = ctx.GetText("speaker");
         var content = ctx.GetText("content");
         var voice = ctx.GetString("voice");
-        var widgetId = ctx.GetString("widget", "default_dialogue");
+        const string widgetId = "default_dialogue";
 
         if (!string.IsNullOrEmpty(voice))
             ctx.View.SetVoice(voice);
@@ -37,7 +37,7 @@ public sealed class TextHandler : EntryHandler
 
     public override void Interrupt(EntryContext ctx)
     {
-        var widgetId = ctx.GetString("widget", "default_dialogue");
+        const string widgetId = "default_dialogue";
         ctx.View.SkipTypewriter(widgetId);
         _completed = true;
     }

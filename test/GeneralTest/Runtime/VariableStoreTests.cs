@@ -57,6 +57,35 @@ public class VariableStoreTests
     }
 
     [Test]
+    public void Set_Same_Value_Should_Not_Notify_Again()
+    {
+        var notificationCount = 0;
+        var store = new VariableStore(onVariableChanged: (_, _, _) => notificationCount++);
+
+        store.Set("player.score", 42);
+        store.Set("player.score", 42);
+
+        Assert.That(notificationCount, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Set_Feedback_With_Same_Value_Should_Not_Recurse()
+    {
+        var notificationCount = 0;
+        VariableStore? store = null;
+        store = new VariableStore(_ => GalNet.Core.Variable.VariableScope.Player, (_, name, variable) =>
+        {
+            notificationCount++;
+            store!.Set(name, variable.AsInt());
+        });
+
+        store.Set("score", 42);
+
+        Assert.That(notificationCount, Is.EqualTo(1));
+        Assert.That(store.GetInt("player.score"), Is.EqualTo(42));
+    }
+
+    [Test]
     public void RestoreSaveFrom_Should_Only_Replace_Save_Variables()
     {
         var store = new VariableStore();

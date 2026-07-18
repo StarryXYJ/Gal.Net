@@ -116,7 +116,7 @@ public class DefaultGameView : Grid, IGameView, IDisposable
         _gameSettings = settings;
         _screen = screen;
         _gameScreen = new GameScreenView { DataContext = screen };
-        _registry = new DefaultGameViewRegistry(_gameScreen);
+        _registry = new DefaultGameViewRegistry(_gameScreen, assets);
         _typewriter = new DefaultTypewriterPresenter(_gameSettings, _gameScreen, screen, assets);
         _choice = new DefaultChoicePresenter(screen);
 

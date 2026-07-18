@@ -96,7 +96,7 @@ public static class EditorDocumentCloner
         Id = source.Id,
         Type = source.Type,
         Condition = source.Condition,
-        Parameters = source.Parameters
+        Parameters = new Dictionary<string, string>(source.Parameters)
     };
 
     private static GalNet.Core.Settings.ProjectSettings CloneSettings(GalNet.Core.Settings.ProjectSettings source) => new()

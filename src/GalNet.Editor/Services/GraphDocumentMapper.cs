@@ -58,7 +58,7 @@ public sealed class GraphDocumentMapper
                 node => node.Id,
                 node => (IReadOnlyList<EditorEntryData>)node.Entries.Select(entry => new EditorEntryData
                 {
-                    StableId = entry.StableId, Id = entry.Id, Type = entry.Type, Condition = entry.Condition, Parameters = entry.Parameters
+                    StableId = entry.StableId, Id = entry.Id, Type = entry.Type, Condition = entry.Condition, Parameters = new Dictionary<string, string>(entry.Parameters)
                 }).ToList());
 
     private static EditorGraphNodeDto ToDto(GraphNode node)
@@ -106,7 +106,7 @@ public sealed class GraphDocumentMapper
             graphNode.Entries.Clear();
             if (groupEntries.TryGetValue(dto.Id, out var entries))
                 foreach (var entry in entries)
-                    graphNode.Entries.Add(new EntryEditorItemViewModel { StableId = entry.StableId, Id = graphNode.Entries.Count + 1, Type = entry.Type, Condition = entry.Condition, Parameters = entry.Parameters });
+                    graphNode.Entries.Add(new EntryEditorItemViewModel { StableId = entry.StableId, Id = graphNode.Entries.Count + 1, Type = entry.Type, Condition = entry.Condition, Parameters = new Dictionary<string, string>(entry.Parameters) });
         }
         if (kind == GraphNodeKind.ChoiceBranch)
         {

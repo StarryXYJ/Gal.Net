@@ -4,29 +4,33 @@ using GalNet.Control.Screen.BuiltIn;
 using Serilog;
 using AvaloniaControl = Avalonia.Controls.Control;
 using AvaloniaImage = Avalonia.Controls.Image;
+using GalNet.Core.Assets;
 
 namespace GalNet.Control.View;
 
 internal sealed class DefaultGameViewRegistry
 {
     private readonly GameScreenView _gameScreen;
+    private readonly IAssetManager? _assets;
     private readonly Dictionary<string, AvaloniaImage> _layers = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, AvaloniaControl> _widgets = new(StringComparer.OrdinalIgnoreCase);
 
-    public DefaultGameViewRegistry(GameScreenView gameScreen)
+    public DefaultGameViewRegistry(GameScreenView gameScreen, IAssetManager? assets)
     {
         _gameScreen = gameScreen;
+        _assets = assets;
     }
 
     public void ShowLayer(string id, string assetId, float x, float y, float z = 0)
     {
-        Dispatcher.UIThread.Post(async () =>
+        Dispatcher.UIThread.Post(() =>
         {
             if (_layers.TryGetValue(id, out var existing))
             {
                 existing.SetValue(Avalonia.Controls.Canvas.LeftProperty, (double)x);
                 existing.SetValue(Avalonia.Controls.Canvas.TopProperty, (double)y);
                 existing.SetValue(Avalonia.Controls.Canvas.ZIndexProperty, (int)z);
+                _ = LoadLayerSourceAsync(id, existing, assetId);
                 return;
             }
 
@@ -35,23 +39,50 @@ internal sealed class DefaultGameViewRegistry
             img.SetValue(Avalonia.Controls.Canvas.TopProperty, (double)y);
             img.SetValue(Avalonia.Controls.Canvas.ZIndexProperty, (int)z);
 
-            // 尝试按 assetId 路径加载图片
-            if (!string.IsNullOrEmpty(assetId))
-            {
-                try
-                {
-                    var bitmap = new Bitmap(assetId);
-                    img.Source = bitmap;
-                }
-                catch (Exception ex)
-                {
-                    Log.Warning(ex, "Failed to load layer image: {Path}", assetId);
-                }
-            }
-
             _layers[id] = img;
             _gameScreen.LayerCanvas.Children.Add(img);
+            _ = LoadLayerSourceAsync(id, img, assetId);
         });
+    }
+
+    private async Task LoadLayerSourceAsync(string layerId, AvaloniaImage image, string assetId)
+    {
+        if (string.IsNullOrWhiteSpace(assetId)) return;
+        try
+        {
+            Bitmap bitmap;
+            var file = _assets is null ? null : await _assets.GetFileAsync(assetId);
+            if (file is not null)
+            {
+                var bytes = await file.ReadAllBytesAsync();
+                using var stream = new MemoryStream(bytes);
+                bitmap = new Bitmap(stream);
+            }
+            else if (File.Exists(assetId))
+            {
+                bitmap = new Bitmap(assetId);
+            }
+            else
+            {
+                Log.Warning("Layer image asset was not found: {AssetId}", assetId);
+                return;
+            }
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (_layers.TryGetValue(layerId, out var current) && ReferenceEquals(current, image))
+                {
+                    if (current.Source is Bitmap previous) previous.Dispose();
+                    current.Source = bitmap;
+                }
+                else
+                    bitmap.Dispose();
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to load layer image asset: {AssetId}", assetId);
+        }
     }
 
     public void HideLayer(string id)
@@ -59,7 +90,10 @@ internal sealed class DefaultGameViewRegistry
         Dispatcher.UIThread.Post(() =>
         {
             if (_layers.Remove(id, out var img))
+            {
                 _gameScreen.LayerCanvas.Children.Remove(img);
+                if (img.Source is Bitmap bitmap) bitmap.Dispose();
+            }
         });
     }
 

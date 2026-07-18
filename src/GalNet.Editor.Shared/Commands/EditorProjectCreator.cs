@@ -62,7 +62,7 @@ public static class EditorProjectCreator
                         StableId = Guid.NewGuid().ToString("N"),
                         Id = 1,
                         Type = "text",
-                        Parameters = "speaker=Alice; text=Hello GalNet"
+                        Parameters = new Dictionary<string, string> { ["speaker"] = "Alice", ["content"] = "Hello GalNet" }
                     }
                 ]
             }

@@ -19,6 +19,9 @@ public sealed class ProjectSettings : SettingsSection
 
     public int DefaultHeight { get; set; } = 1080;
 
+    /// <summary>Stable, project-wide dialogue speaker names used by editor autocomplete.</summary>
+    public List<string> Speakers { get; set; } = [];
+
     public List<ProjectVariableDefinition> PlayerVariables { get; set; } = [];
 
     public List<ProjectVariableDefinition> SaveVariables { get; set; } = [];

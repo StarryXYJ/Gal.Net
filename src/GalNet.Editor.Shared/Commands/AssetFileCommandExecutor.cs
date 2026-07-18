@@ -166,7 +166,7 @@ public sealed class AssetFileCommandExecutor : IProjectFileCommandExecutor
                 references.Add($"graph/nodes/{node.Id}");
         foreach (var (groupId, entries) in document.GroupEntries)
         foreach (var entry in entries)
-            if (values.Any(value => entry.Parameters.Contains(value, StringComparison.OrdinalIgnoreCase)))
+            if (values.Any(value => entry.Parameters.Values.Any(parameter => parameter.Contains(value, StringComparison.OrdinalIgnoreCase))))
                 references.Add($"groups/{groupId}/entries/{entry.StableId}");
         var uiPath = Path.Combine(projectPath, "UI", "ui.json");
         if (File.Exists(uiPath))

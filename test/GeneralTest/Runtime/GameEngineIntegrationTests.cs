@@ -3,6 +3,7 @@ using GalNet.Runtime.Engine;
 using GalNet.Runtime.Loader;
 using GalNet.Runtime.SaveLoad;
 using GalNet.Runtime.View;
+using GalNet.Core.Entry;
 
 namespace GeneralTest.Runtime;
 
@@ -23,12 +24,7 @@ public class GameEngineIntegrationTests
                     Name = "Main",
                     Entries =
                     {
-                        new GenericComplexEntry { Id = 1, Type = "text",
-                            Params = new() { ["speaker"] = "Narrator", ["content"] = "Test text" }
-                        },
-                        new GenericComplexEntry { Id = 2, Type = "jump",
-                            Params = new() { ["type"] = "end" }
-                        }
+                        Create(TextEntry.TypeId, 1, ("speaker", "Narrator"), ("content", "Test text"))
                     }
                 }
             },
@@ -57,9 +53,7 @@ public class GameEngineIntegrationTests
                     Name = "Setup",
                     Entries =
                     {
-                        new GenericComplexEntry { Id = 1, Type = "variable",
-                            Params = new() { ["action"] = "set", ["target"] = "flag_route_a", ["value"] = "true", ["type"] = "bool" }
-                        }
+                        Create(SetVariableEntry.TypeId, 1, ("target", "flag_route_a"), ("value", "true"), ("valueType", "bool"))
                     }
                 },
                 new Branch
@@ -79,10 +73,7 @@ public class GameEngineIntegrationTests
                     Name = "RouteA",
                     Entries =
                     {
-                        new GenericComplexEntry { Id = 1, Type = "variable",
-                            Params = new() { ["action"] = "set", ["target"] = "route_taken", ["value"] = "a", ["type"] = "string" }
-                        },
-                        new GenericComplexEntry { Id = 2, Type = "jump", Params = new() { ["type"] = "end" } }
+                        Create(SetVariableEntry.TypeId, 1, ("target", "route_taken"), ("value", "a"), ("valueType", "string"))
                     }
                 },
                 new Group
@@ -91,10 +82,7 @@ public class GameEngineIntegrationTests
                     Name = "RouteB",
                     Entries =
                     {
-                        new GenericComplexEntry { Id = 1, Type = "variable",
-                            Params = new() { ["action"] = "set", ["target"] = "route_taken", ["value"] = "b", ["type"] = "string" }
-                        },
-                        new GenericComplexEntry { Id = 2, Type = "jump", Params = new() { ["type"] = "end" } }
+                        Create(SetVariableEntry.TypeId, 1, ("target", "route_taken"), ("value", "b"), ("valueType", "string"))
                     }
                 }
             },
@@ -132,16 +120,9 @@ public class GameEngineIntegrationTests
                     Name = "Main",
                     Entries =
                     {
-                        new GenericComplexEntry { Id = 1, Type = "text",
-                            Params = new() { ["speaker"] = "Narrator", ["content"] = "Half way" }
-                        },
-                        new GenericComplexEntry { Id = 2, Type = "variable",
-                            Params = new() { ["action"] = "set", ["target"] = "save_point", ["value"] = "true", ["type"] = "bool" }
-                        },
-                        new GenericComplexEntry { Id = 3, Type = "text",
-                            Params = new() { ["speaker"] = "Narrator", ["content"] = "End" }
-                        },
-                        new GenericComplexEntry { Id = 4, Type = "jump", Params = new() { ["type"] = "end" } }
+                        Create(TextEntry.TypeId, 1, ("speaker", "Narrator"), ("content", "Half way")),
+                        Create(SetVariableEntry.TypeId, 2, ("target", "save_point"), ("value", "true"), ("valueType", "bool")),
+                        Create(TextEntry.TypeId, 3, ("speaker", "Narrator"), ("content", "End"))
                     }
                 }
             },
@@ -159,4 +140,7 @@ public class GameEngineIntegrationTests
         Assert.That(restored, Is.Not.Null);
         Assert.That(restored!.Variables.GetValueOrDefault("save_point")!.AsBool(), Is.True);
     }
+
+    private static GalNet.Core.Entry.Entry Create(string type, int id, params (string Key, string Value)[] values) =>
+        EntryRegistry.Create(type, id, values: values.ToDictionary(x => x.Key, x => x.Value));
 }

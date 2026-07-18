@@ -149,9 +149,23 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
 
     private void OnVariableServiceChanged(VariableScope scope, string name, Variable variable)
     {
-        // Update runtime as well when editor modifies variables
+        Log.Debug(
+            "Preview variable synchronized: {Scope}.{VariableName} = {VariableValue} ({VariableType})",
+            scope, name, GetRawValue(variable), variable.Type);
+
+        // Update runtime as well when editor modifies player variables. VariableStore
+        // ignores equal values, so runtime-originated notifications are not echoed.
         if (scope == VariableScope.Player)
             _runtime?.SetVariable(name, GetRawValue(variable));
+
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (_disposed)
+                return;
+
+            var editor = scope == VariableScope.Player ? PlayerVariables : SaveVariables;
+            editor?.UpdateCurrentValue(name, variable);
+        });
     }
 
     private void ReloadEditors()
@@ -174,7 +188,6 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
                 var v = existing is not null ? CloneVariable(existing, name) : new Variable { Name = name };
                 v.SetValue(value);
                 _variableService.NotifyVariableChanged(VariableScope.Player, name, v);
-                _runtime?.SetVariable(name, value);
             },
             name => _variableService.RemoveRuntimeVariable(VariableScope.Player, name),
             RenamePlayerVariable,

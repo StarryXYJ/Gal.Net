@@ -1,10 +1,13 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Collections.Generic;
+using System.Linq;
 using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Core.Graph;
 using GalNet.Editor.Controls;
+using GalNet.Core.Entry;
 
 namespace GalNet.Editor.Models.Graph;
 public enum GraphNodeKind
@@ -89,7 +92,10 @@ public partial class GraphNode : ObservableObject
             {
                 Id = 1,
                 Type = "text",
-                Parameters = "speaker=Alice; text=Hello GalNet"
+                Parameters = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["speaker"] = "Alice", ["content"] = "Hello GalNet"
+                }
             });
         }
 
@@ -231,6 +237,7 @@ public partial class GraphEdge : ObservableObject
 
 public partial class EntryEditorItemViewModel : ObservableObject
 {
+    private IReadOnlyList<string> _speakers = [];
     public string StableId { get; init; } = Guid.NewGuid().ToString("N");
 
     [ObservableProperty]
@@ -243,7 +250,53 @@ public partial class EntryEditorItemViewModel : ObservableObject
     private string _condition = "";
 
     [ObservableProperty]
-    private string _parameters = "";
+    private Dictionary<string, string> _parameters = new(StringComparer.Ordinal);
+
+    [ObservableProperty]
+    private bool _isExpanded = true;
+
+    public ObservableCollection<EntryParameterEditorItemViewModel> ParameterFields { get; } = [];
+    /// <summary>Builds the editor projection from the Core registry, the single schema source.</summary>
+    public void ConfigureParameterFields(IReadOnlyList<string> speakers, bool resetValues = false)
+    {
+        _speakers = speakers;
+        var schema = EntryRegistry.Get(Type);
+        var values = resetValues
+            ? new Dictionary<string, string>(schema.Defaults, StringComparer.Ordinal)
+            : Parameters.Where(pair => schema.Parameters.ContainsKey(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        foreach (var pair in schema.Defaults)
+            values.TryAdd(pair.Key, pair.Value);
+        if (!Parameters.OrderBy(x => x.Key).SequenceEqual(values.OrderBy(x => x.Key)))
+            Parameters = values;
+        ParameterFields.Clear();
+
+        foreach (var (id, type) in schema.Parameters)
+        {
+            var defaultValue = schema.Defaults.GetValueOrDefault(id, "");
+            var options = schema.Options.GetValueOrDefault(id, [])
+                .Select(value => new EntrySelectOption(value, $"Entry.Option.{(value.Length == 0 ? "None" : value)}"))
+                .ToArray();
+            var definition = new EntryParameterDefinition(id, type, $"Entry.Parameter.{id}", defaultValue, options);
+            var value = Parameters.GetValueOrDefault(id, defaultValue);
+            ParameterFields.Add(CreateField(definition, value, speakers));
+        }
+    }
+
+    private EntryParameterEditorItemViewModel CreateField(EntryParameterDefinition definition, string value, IReadOnlyList<string> speakers) => definition.Type switch
+    {
+        EntryParameterType.Autocomplete => new AutocompleteEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
+        EntryParameterType.Integer => new IntegerEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
+        EntryParameterType.Float => new FloatEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
+        EntryParameterType.ImageAsset or EntryParameterType.AudioAsset or EntryParameterType.VideoAsset => new AssetEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
+        EntryParameterType.Select => new SelectEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
+        _ => new TextEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter)
+    };
+
+    private void SetParameter(string id, string value)
+    {
+        var updated = new Dictionary<string, string>(Parameters, StringComparer.Ordinal) { [id] = value };
+        Parameters = updated;
+    }
 }
 
 public partial class BranchOptionEditorItemViewModel : ObservableObject

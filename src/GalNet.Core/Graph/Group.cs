@@ -1,4 +1,4 @@
-using GalNet.Core.Entry;
+using EntryModel = GalNet.Core.Entry.Entry;
 
 namespace GalNet.Core.Graph;
 
@@ -10,5 +10,5 @@ public sealed class Group : Node
     public override NodeType NodeType => NodeType.Group;
 
     /// <summary>该组包含的复杂条目列表（开发期编写）</summary>
-    public List<ComplexEntry> Entries { get; init; } = [];
+    public List<EntryModel> Entries { get; init; } = [];
 }

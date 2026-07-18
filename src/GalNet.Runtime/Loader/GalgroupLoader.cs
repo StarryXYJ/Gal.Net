@@ -5,7 +5,7 @@ using GalNet.Core.Serialization;
 namespace GalNet.Runtime.Loader;
 
 /// <summary>
-/// 加载 .galgroup 文件，解析为 ComplexEntry 列表并注入到 Group 对象。
+/// 加载 .galgroup 文件，通过 Core EntryRegistry 创建具体 Entry 并注入 Group。
 /// 条目类型名直接使用英文标识（text / audio / layer / ...），
 /// 编辑器中通过 i18n 键（如 editor.handler.text）查找显示名称。
 /// </summary>
@@ -22,17 +22,13 @@ public static class GalgroupLoader
     public static void LoadIntoGroupFromContent(Group group, string content)
     {
         var parsed = GalgroupParser.Parse(content);
-        var entries = new List<ComplexEntry>();
+        var entries = new List<Entry>();
 
         foreach (var (_, entryType, parameters) in parsed)
         {
-            var entry = new GenericComplexEntry
-            {
-                Id = entries.Count + 1,
-                Type = entryType,
-                Condition = parameters.TryGetValue("condition", out var cond) ? cond : "",
-                Params = parameters
-            };
+            var condition = parameters.Remove("condition", out var cond) ? cond : "";
+            parameters.Remove("__editorId");
+            var entry = EntryRegistry.Create(entryType, entries.Count + 1, condition, parameters);
             entries.Add(entry);
         }
 

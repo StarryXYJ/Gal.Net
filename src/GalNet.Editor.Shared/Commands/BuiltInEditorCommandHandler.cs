@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using GalNet.Core.I18n;
+using GalNet.Core.Entry;
 using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Documents;
@@ -217,12 +218,15 @@ public sealed partial class BuiltInEditorCommandHandler : IEditorCommandHandler
         var index = command.Index ?? groupEntries.Count;
         if (index < 0 || index > groupEntries.Count)
             return InvalidIndex("entry", index, groupEntries.Count);
+        var type = string.IsNullOrWhiteSpace(command.Type) ? TextEntry.TypeId : command.Type.Trim();
+        if (!EntryRegistry.TryGet(type, out var definition))
+            return Error("group.entry.unknownType", $"Unknown entry type '{type}'.");
         var entry = new EditorEntryData
         {
             StableId = command.EntryId,
-            Type = string.IsNullOrWhiteSpace(command.Type) ? "text" : command.Type.Trim(),
+            Type = type,
             Condition = command.Condition ?? "",
-            Parameters = SerializeParameters(command.Parameters ?? new Dictionary<string, string>())
+            Parameters = EntryRegistry.Create(type, values: command.Parameters).Values
         };
         groupEntries.Insert(index, entry);
         Renumber(groupEntries);
@@ -258,7 +262,11 @@ public sealed partial class BuiltInEditorCommandHandler : IEditorCommandHandler
             return failure!;
         if (string.IsNullOrWhiteSpace(command.Type))
             return Error("group.entry.typeRequired", "Entry type is required.");
-        entry!.Type = command.Type.Trim();
+        var type = command.Type.Trim();
+        if (!EntryRegistry.TryGet(type, out _))
+            return Error("group.entry.unknownType", $"Unknown entry type '{type}'.");
+        entry!.Type = type;
+        entry.Parameters = new Dictionary<string, string>(EntryRegistry.Create(type).Values, StringComparer.Ordinal);
         return Success($"Set entry '{command.EntryId}' type to '{entry.Type}'.", "History.Entry.SetType", EntryResource(command.GroupId, command.EntryId), command.EntryId, entry.Type);
     }
 
@@ -274,7 +282,7 @@ public sealed partial class BuiltInEditorCommandHandler : IEditorCommandHandler
     {
         if (!TryFindEntry(document, command.GroupId, command.EntryId, out _, out var entry, out var failure))
             return failure!;
-        entry!.Parameters = SerializeParameters(command.Parameters);
+        entry!.Parameters = new Dictionary<string, string>(EntryRegistry.Create(entry.Type, values: command.Parameters).Values, StringComparer.Ordinal);
         return Success($"Replaced parameters for entry '{command.EntryId}'.", "History.Entry.SetParameters", EntryResource(command.GroupId, command.EntryId), command.EntryId);
     }
 
@@ -282,7 +290,7 @@ public sealed partial class BuiltInEditorCommandHandler : IEditorCommandHandler
     {
         if (!TryFindEntry(document, command.GroupId, command.EntryId, out _, out var entry, out var failure))
             return failure!;
-        var parameters = ParseParameters(entry!.Parameters);
+        var parameters = new Dictionary<string, string>(entry!.Parameters, StringComparer.Ordinal);
         foreach (var (key, value) in command.Parameters)
         {
             if (string.IsNullOrWhiteSpace(key))
@@ -290,7 +298,7 @@ public sealed partial class BuiltInEditorCommandHandler : IEditorCommandHandler
             if (value is null) parameters.Remove(key);
             else parameters[key] = value;
         }
-        entry.Parameters = SerializeParameters(parameters);
+        entry.Parameters = new Dictionary<string, string>(EntryRegistry.Create(entry.Type, values: parameters).Values, StringComparer.Ordinal);
         return Success($"Patched parameters for entry '{command.EntryId}'.", "History.Entry.PatchParameters", EntryResource(command.GroupId, command.EntryId), command.EntryId);
     }
 
@@ -659,7 +667,7 @@ public sealed partial class BuiltInEditorCommandHandler : IEditorCommandHandler
         foreach (var entry in document.GroupEntries.Values.SelectMany(value => value))
         {
             entry.Condition = Regex.Replace(entry.Condition, pattern, newName);
-            entry.Parameters = Regex.Replace(entry.Parameters, pattern, newName);
+            entry.Parameters = entry.Parameters.ToDictionary(pair => pair.Key, pair => Regex.Replace(pair.Value, pattern, newName), StringComparer.Ordinal);
         }
         foreach (var node in document.Graph.Nodes)
         {
@@ -836,15 +844,6 @@ public sealed partial class BuiltInEditorCommandHandler : IEditorCommandHandler
             else if (newIndex < oldIndex && edge.FromOutlet >= newIndex && edge.FromOutlet < oldIndex) edge.FromOutlet++;
         }
     }
-
-    private static Dictionary<string, string> ParseParameters(string value) =>
-        value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(part => part.Split('=', 2, StringSplitOptions.TrimEntries))
-            .Where(parts => parts.Length > 0 && !string.IsNullOrWhiteSpace(parts[0]))
-            .ToDictionary(parts => parts[0], parts => parts.Length > 1 ? parts[1] : "", StringComparer.Ordinal);
-
-    private static string SerializeParameters(IEnumerable<KeyValuePair<string, string>> parameters) =>
-        string.Join("; ", parameters.Select(pair => $"{pair.Key}={pair.Value}"));
 
     private static void Renumber(IReadOnlyList<EditorEntryData> entries)
     {
