@@ -1,8 +1,7 @@
 using System;
 using Avalonia.Controls;
-using GalNet.Control.ViewModels;
 
-namespace GalNet.Control.Views;
+namespace GalNet.Control.Screen.Game;
 
 /// <summary>
 /// 游戏运行页 View —— 将自身 Content 设置为 ViewModel 的 GameView。

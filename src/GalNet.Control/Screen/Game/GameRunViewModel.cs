@@ -2,7 +2,8 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using GalNet.Control.View;
+using GalNet.Control.Runtime.Presentation;
+using GalNet.Control.Screen.Flow;
 using GalNet.Core.Runtime;
 using GalNet.Core.Services;
 using GalNet.Core.Settings;
@@ -12,7 +13,7 @@ using GalNet.Runtime.Loader;
 using GalNet.Runtime.Runtime;
 using Serilog;
 
-namespace GalNet.Control.ViewModels;
+namespace GalNet.Control.Screen.Game;
 
 public sealed class GameRunViewModel : IAsyncDisposable
 {

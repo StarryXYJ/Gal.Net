@@ -2,9 +2,9 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
-using GalNet.Control.ViewModels;
+using GalNet.Control.Screen.Game;
 
-namespace GalNet.Control.View;
+namespace GalNet.Control.Runtime.Presentation;
 
 internal sealed class DefaultChoicePresenter(GameScreenViewModel screen)
 {

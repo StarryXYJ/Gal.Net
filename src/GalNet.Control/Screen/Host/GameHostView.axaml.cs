@@ -3,7 +3,7 @@ using Avalonia.Threading;
 using GalNet.Core.Services;
 using Serilog;
 
-namespace GalNet.Control.Host;
+namespace GalNet.Control.Screen.Host;
 
 /// <summary>
 /// Root host view — owns navigation, modal dialogs, and toast notifications.

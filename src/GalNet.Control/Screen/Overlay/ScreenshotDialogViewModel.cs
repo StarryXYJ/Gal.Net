@@ -1,6 +1,6 @@
 using Irihi.Avalonia.Shared.Contracts;
 
-namespace GalNet.Control.ViewModels;
+namespace GalNet.Control.Screen.Overlay;
 
 public sealed class ScreenshotDialogViewModel : IDialogContext
 {

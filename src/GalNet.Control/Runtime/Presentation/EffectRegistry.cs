@@ -1,4 +1,4 @@
-namespace GalNet.Control.View;
+namespace GalNet.Control.Runtime.Presentation;
 
 /// <summary>
 /// 特效注册表 —— 按名称管理所有 IEffect 实现。

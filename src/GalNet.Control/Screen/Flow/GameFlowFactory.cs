@@ -1,5 +1,12 @@
-using GalNet.Control.View;
-using GalNet.Control.Views;
+using GalNet.Control.Runtime.Presentation;
+using GalNet.Control.Screen.About;
+using GalNet.Control.Screen.Game;
+using GalNet.Control.Screen.Gallery;
+using GalNet.Control.Screen.Host;
+using GalNet.Control.Screen.SaveLoad;
+using GalNet.Control.Screen.Settings;
+using GalNet.Control.Screen.Title;
+using GalNet.Control.Screen.Overlay;
 using GalNet.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
 using GalNet.Control.Services;
@@ -11,7 +18,7 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using GalNet.Core.Assets;
 
-namespace GalNet.Control.ViewModels;
+namespace GalNet.Control.Screen.Flow;
 
 public sealed class GameFlowFactory : IGameFlowFactory
 {

@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace GalNet.Control.Screen.BuiltIn;
+namespace GalNet.Control.Screen.Game;
 
 /// <summary>
 /// Game screen root layout — holds LayerCanvas, DialogueHost, ChoiceHost,

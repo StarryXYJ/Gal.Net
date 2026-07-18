@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="clr-namespace:GalNet.Control.ViewModels" x:Class="GalNet.Control.Views.GalleryView" x:DataType="vm:GalleryViewModel">
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="clr-namespace:GalNet.Control.Screen.Gallery" x:Class="GalNet.Control.Screen.Gallery.GalleryView" x:DataType="vm:GalleryViewModel">
   <UserControl.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries><ResourceInclude Source="avares://GalNet.Control/Assets/Icons.axaml" /></ResourceDictionary.MergedDictionaries></ResourceDictionary></UserControl.Resources>
   <Grid><Grid.Background><SolidColorBrush Color="{Binding Configuration.BackgroundColor}" /></Grid.Background><Border Margin="48" Padding="28" BorderBrush="#665F6075" BorderThickness="1" CornerRadius="14">
     <Border.Background><SolidColorBrush Color="{Binding Configuration.PanelColor}" /></Border.Background>

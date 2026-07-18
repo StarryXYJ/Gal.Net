@@ -2,10 +2,15 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:vm="clr-namespace:GalNet.Control.ViewModels"
-             xmlns:views="clr-namespace:GalNet.Control.Views"
+             xmlns:vm="clr-namespace:GalNet.Control.Screen.Host"
+             xmlns:title="clr-namespace:GalNet.Control.Screen.Title"
+             xmlns:game="clr-namespace:GalNet.Control.Screen.Game"
+             xmlns:settings="clr-namespace:GalNet.Control.Screen.Settings"
+             xmlns:saveLoad="clr-namespace:GalNet.Control.Screen.SaveLoad"
+             xmlns:gallery="clr-namespace:GalNet.Control.Screen.Gallery"
+             xmlns:about="clr-namespace:GalNet.Control.Screen.About"
              mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="600"
-             x:Class="GalNet.Control.Views.GamePageHostView"
+             x:Class="GalNet.Control.Screen.Host.GamePageHostView"
              x:DataType="vm:GamePageHostViewModel"
              Background="#111">
 
@@ -13,13 +18,13 @@
                     HorizontalContentAlignment="Stretch"
                     VerticalContentAlignment="Stretch">
         <ContentControl.DataTemplates>
-            <DataTemplate DataType="vm:TextMenuTitleViewModel"><views:TextMenuTitleView /></DataTemplate>
-            <DataTemplate DataType="vm:GameStartViewModel"><views:GameStartView /></DataTemplate>
-            <DataTemplate DataType="vm:GameRunViewModel"><views:GameRunView /></DataTemplate>
-            <DataTemplate DataType="vm:SettingsViewModel"><views:SettingsView /></DataTemplate>
-            <DataTemplate DataType="vm:SaveLoadViewModel"><views:SaveLoadView /></DataTemplate>
-            <DataTemplate DataType="vm:GalleryViewModel"><views:GalleryView /></DataTemplate>
-            <DataTemplate DataType="vm:AboutViewModel"><views:AboutView /></DataTemplate>
+            <DataTemplate DataType="title:TextMenuTitleViewModel"><title:TextMenuTitleView /></DataTemplate>
+            <DataTemplate DataType="title:GameStartViewModel"><title:GameStartView /></DataTemplate>
+            <DataTemplate DataType="game:GameRunViewModel"><game:GameRunView /></DataTemplate>
+            <DataTemplate DataType="settings:SettingsViewModel"><settings:SettingsView /></DataTemplate>
+            <DataTemplate DataType="saveLoad:SaveLoadViewModel"><saveLoad:SaveLoadView /></DataTemplate>
+            <DataTemplate DataType="gallery:GalleryViewModel"><gallery:GalleryView /></DataTemplate>
+            <DataTemplate DataType="about:AboutViewModel"><about:AboutView /></DataTemplate>
         </ContentControl.DataTemplates>
     </ContentControl>
 

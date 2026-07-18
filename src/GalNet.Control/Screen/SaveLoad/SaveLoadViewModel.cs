@@ -7,7 +7,7 @@ using GalNet.Control.Abstraction.UI;
 using GalNet.Core.Services;
 using GalNet.Core.UI;
 
-namespace GalNet.Control.ViewModels;
+namespace GalNet.Control.Screen.SaveLoad;
 
 public enum SaveLoadMode
 {

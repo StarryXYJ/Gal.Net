@@ -1,8 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
-using GalNet.Control.ViewModels;
 
-namespace GalNet.Control.Views;
+namespace GalNet.Control.Screen.Overlay;
 public partial class ScreenshotDialog : UserControl
 {
     public ScreenshotDialog() { InitializeComponent(); }

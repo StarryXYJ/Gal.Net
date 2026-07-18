@@ -1,12 +1,12 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="clr-namespace:GalNet.Control.ViewModels"
+             xmlns:vm="clr-namespace:GalNet.Control.Screen.About"
              xmlns:md="https://github.com/whistyun/Markdown.Avalonia"
              xmlns:mdxaml="https://github.com/whistyun/Markdown.Avalonia.Tight"
              xmlns:ctxt="clr-namespace:ColorTextBlock.Avalonia;assembly=ColorTextBlock.Avalonia"
              xmlns:mdctl="clr-namespace:Markdown.Avalonia.Controls;assembly=Markdown.Avalonia"
 
-             x:Class="GalNet.Control.Views.AboutView"
+             x:Class="GalNet.Control.Screen.About.AboutView"
              x:DataType="vm:AboutViewModel">
   <UserControl.Resources>
     <ResourceDictionary>

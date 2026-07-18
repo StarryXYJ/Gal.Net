@@ -1,8 +1,9 @@
 using GalNet.Core.Services;
 using GalNet.Control.Abstraction.UI;
 using GalNet.Control.UI;
+using GalNet.Control.Screen.Host;
 
-namespace GalNet.Control.ViewModels;
+namespace GalNet.Control.Screen.Flow;
 
 public interface IGameFlowFactory
 {

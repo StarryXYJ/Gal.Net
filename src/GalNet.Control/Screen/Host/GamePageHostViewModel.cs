@@ -1,7 +1,8 @@
 using GalNet.Control.Abstraction.UI;
 using GalNet.Control.UI;
+using GalNet.Control.Screen.Flow;
 
-namespace GalNet.Control.ViewModels;
+namespace GalNet.Control.Screen.Host;
 
 public sealed class GamePageHostViewModel
 {

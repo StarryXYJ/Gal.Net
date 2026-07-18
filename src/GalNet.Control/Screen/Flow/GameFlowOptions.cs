@@ -3,8 +3,9 @@ using GalNet.Core.Services;
 using GalNet.Core.Gallery;
 using GalNet.Core.UI;
 using GalNet.Core.Assets;
+using GalNet.Control.Screen.Game;
 
-namespace GalNet.Control.ViewModels;
+namespace GalNet.Control.Screen.Flow;
 
 public sealed record GameFlowOptions
 {

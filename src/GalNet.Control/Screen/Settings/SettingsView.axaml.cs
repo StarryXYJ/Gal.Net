@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace GalNet.Control.Views;
+namespace GalNet.Control.Screen.Settings;
 
 public partial class SettingsView : UserControl
 {

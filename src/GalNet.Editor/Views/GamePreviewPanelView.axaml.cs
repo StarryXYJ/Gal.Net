@@ -4,7 +4,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using GalNet.Control.Views;
+using GalNet.Control.Screen.Host;
 using GalNet.Editor.ViewModels;
 using Serilog;
 using Ursa.Controls;

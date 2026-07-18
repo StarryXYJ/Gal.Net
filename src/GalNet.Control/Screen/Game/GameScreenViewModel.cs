@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Core.UI;
 
-namespace GalNet.Control.ViewModels;
+namespace GalNet.Control.Screen.Game;
 
 /// <summary>State for the fixed game screen. It deliberately exposes no user-defined controls.</summary>
 public sealed partial class GameScreenViewModel : ObservableObject

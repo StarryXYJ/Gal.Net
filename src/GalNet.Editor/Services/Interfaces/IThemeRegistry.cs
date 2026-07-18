@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Avalonia.Styling;
 
-namespace GalNet.Editor.Services;
+namespace GalNet.Editor.Services.Interfaces;
 
 public interface IThemeRegistry
 {

@@ -2,9 +2,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:vm="clr-namespace:GalNet.Control.ViewModels"
+             xmlns:vm="clr-namespace:GalNet.Control.Screen.Game"
              mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="600"
-             x:Class="GalNet.Control.Views.GameRunView"
+             x:Class="GalNet.Control.Screen.Game.GameRunView"
              x:DataType="vm:GameRunViewModel"
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch">

@@ -1,10 +1,10 @@
 using Avalonia.Threading;
-using GalNet.Control.Screen.BuiltIn;
+using GalNet.Control.Screen.Game;
 using GalNet.Core.Assets;
 using LibVLCSharp.Shared;
 using Serilog;
 
-namespace GalNet.Control.View;
+namespace GalNet.Control.Runtime.Presentation;
 
 public sealed class VideoController : IDisposable
 {

@@ -5,7 +5,7 @@ using GalNet.Control.Abstraction.UI;
 using GalNet.Core.Services;
 using GalNet.Core.UI;
 
-namespace GalNet.Control.ViewModels;
+namespace GalNet.Control.Screen.Settings;
 
 public sealed partial class SettingsViewModel : ObservableObject
 {

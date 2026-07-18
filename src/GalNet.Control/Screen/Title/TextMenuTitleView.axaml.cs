@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace GalNet.Control.Views;
+namespace GalNet.Control.Screen.Title;
 
 public partial class TextMenuTitleView : UserControl
 {

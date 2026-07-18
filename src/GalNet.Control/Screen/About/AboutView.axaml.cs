@@ -1,9 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
-using GalNet.Control.ViewModels;
 
-namespace GalNet.Control.Views;
+namespace GalNet.Control.Screen.About;
 
 public partial class AboutView : UserControl
 {

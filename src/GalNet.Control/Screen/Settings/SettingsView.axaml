@@ -1,7 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="clr-namespace:GalNet.Control.ViewModels"
-             x:Class="GalNet.Control.Views.SettingsView"
+             xmlns:vm="clr-namespace:GalNet.Control.Screen.Settings"
+             x:Class="GalNet.Control.Screen.Settings.SettingsView"
              x:DataType="vm:SettingsViewModel">
   <UserControl.Resources>
     <ResourceDictionary>

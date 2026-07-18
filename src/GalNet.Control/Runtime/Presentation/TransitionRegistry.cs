@@ -1,4 +1,4 @@
-namespace GalNet.Control.View;
+namespace GalNet.Control.Runtime.Presentation;
 
 /// <summary>
 /// 转场注册表 —— 按名称管理所有 ITransition 实现。

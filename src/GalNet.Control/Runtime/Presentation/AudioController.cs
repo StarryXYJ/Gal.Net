@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using LibVLCSharp.Shared;
 
-namespace GalNet.Control.View;
+namespace GalNet.Control.Runtime.Presentation;
 
 /// <summary>
 /// 音频子系统控制器 —— 封装 LibVLC MediaPlayer，将音频业务逻辑从 DefaultGameView 隔离开。

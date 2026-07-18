@@ -1,8 +1,8 @@
 using System;
 using GalNet.Control.Services;
-using GalNet.Control.View;
-using GalNet.Control.ViewModels;
-using GalNet.Control.Views;
+using GalNet.Control.Runtime.Presentation;
+using GalNet.Control.Screen.Flow;
+using GalNet.Control.Screen.Host;
 using GalNet.Core.Services;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Abstraction.Commands;

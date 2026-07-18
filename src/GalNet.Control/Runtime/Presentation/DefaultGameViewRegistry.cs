@@ -1,11 +1,11 @@
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
-using GalNet.Control.Screen.BuiltIn;
+using GalNet.Control.Screen.Game;
 using Serilog;
 using AvaloniaImage = Avalonia.Controls.Image;
 using GalNet.Core.Assets;
 
-namespace GalNet.Control.View;
+namespace GalNet.Control.Runtime.Presentation;
 
 internal sealed class DefaultGameViewRegistry
 {

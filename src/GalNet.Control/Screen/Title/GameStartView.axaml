@@ -1,5 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="clr-namespace:GalNet.Control.ViewModels" x:Class="GalNet.Control.Views.GameStartView" x:DataType="vm:GameStartViewModel">
+             xmlns:vm="clr-namespace:GalNet.Control.Screen.Title" x:Class="GalNet.Control.Screen.Title.GameStartView" x:DataType="vm:GameStartViewModel">
   <Grid>
     <Border Background="{Binding BackgroundBrush}" />
     <Image Source="{Binding BackgroundImageSource}" Stretch="{Binding BackgroundStretch}" IsVisible="{Binding HasBackgroundImage}" />

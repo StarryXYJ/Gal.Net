@@ -1,6 +1,6 @@
 using System;
 
-namespace GalNet.Editor.Services;
+namespace GalNet.Editor.Services.Interfaces;
 
 public interface IEditorViewFactory
 {

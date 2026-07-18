@@ -4,10 +4,9 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using GalNet.Control.Effect;
-using GalNet.Control.Screen.BuiltIn;
+using GalNet.Control.Screen.Game;
 using GalNet.Control.Transition;
 using GalNet.Control.Abstraction.UI;
-using GalNet.Control.ViewModels;
 using GalNet.Core.Settings;
 using GalNet.Core.UI;
 using GalNet.Core.View;
@@ -16,7 +15,7 @@ using LibVLCSharp.Shared;
 using Serilog;
 using AvaloniaControl = Avalonia.Controls.Control;
 
-namespace GalNet.Control.View;
+namespace GalNet.Control.Runtime.Presentation;
 
 public class DefaultGameView : Grid, IGameView, IDisposable
 {

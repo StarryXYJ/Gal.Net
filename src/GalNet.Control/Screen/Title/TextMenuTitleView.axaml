@@ -1,6 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="clr-namespace:GalNet.Control.ViewModels"
-             x:Class="GalNet.Control.Views.TextMenuTitleView" x:DataType="vm:TextMenuTitleViewModel">
+             xmlns:vm="clr-namespace:GalNet.Control.Screen.Title"
+             x:Class="GalNet.Control.Screen.Title.TextMenuTitleView" x:DataType="vm:TextMenuTitleViewModel">
   <Grid>
     <Border Background="{Binding BackgroundBrush}" />
     <Image Source="{Binding BackgroundImageSource}" Stretch="{Binding BackgroundStretch}" IsVisible="{Binding HasBackgroundImage}" />

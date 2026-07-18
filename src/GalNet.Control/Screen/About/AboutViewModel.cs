@@ -7,7 +7,7 @@ using GalNet.Control.Abstraction.UI;
 using GalNet.Core.Assets;
 using GalNet.Core.UI;
 
-namespace GalNet.Control.ViewModels;
+namespace GalNet.Control.Screen.About;
 
 public sealed partial class AboutViewModel : ObservableObject
 {

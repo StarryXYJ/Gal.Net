@@ -10,8 +10,9 @@ using Avalonia;
 using Avalonia.Media.Imaging;
 using GalNet.Core.Assets;
 using System.Globalization;
+using GalNet.Control.Screen.Flow;
 
-namespace GalNet.Control.ViewModels;
+namespace GalNet.Control.Screen.Title;
 
 public partial class GameStartViewModel : ObservableObject
 {

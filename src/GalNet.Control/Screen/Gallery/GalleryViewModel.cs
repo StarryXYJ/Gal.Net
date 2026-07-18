@@ -5,8 +5,9 @@ using GalNet.Control.Abstraction.UI;
 using GalNet.Core.Gallery;
 using GalNet.Core.Services;
 using GalNet.Core.UI;
+using GalNet.Control.Screen.Flow;
 
-namespace GalNet.Control.ViewModels;
+namespace GalNet.Control.Screen.Gallery;
 public sealed partial class GalleryItemViewModel : ObservableObject { [ObservableProperty] private string _title=""; public IRelayCommand? OpenCommand {get;init;} }
 public sealed partial class GalleryViewModel : ObservableObject
 {

@@ -3,12 +3,11 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
-using GalNet.Control.Screen.BuiltIn;
-using GalNet.Control.ViewModels;
+using GalNet.Control.Screen.Game;
 using GalNet.Core.Assets;
 using GalNet.Core.Settings;
 
-namespace GalNet.Control.View;
+namespace GalNet.Control.Runtime.Presentation;
 
 internal sealed class DefaultTypewriterPresenter
 {

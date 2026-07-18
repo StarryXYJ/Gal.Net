@@ -1,5 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vlc="clr-namespace:LibVLCSharp.Avalonia;assembly=LibVLCSharp.Avalonia"
-             xmlns:vm="clr-namespace:GalNet.Control.ViewModels" x:Class="GalNet.Control.Screen.BuiltIn.GameScreenView" x:DataType="vm:GameScreenViewModel">
+             xmlns:vm="clr-namespace:GalNet.Control.Screen.Game" x:Class="GalNet.Control.Screen.Game.GameScreenView" x:DataType="vm:GameScreenViewModel">
   <Grid>
     <Grid.Styles>
       <Style Selector="Button.command-text">

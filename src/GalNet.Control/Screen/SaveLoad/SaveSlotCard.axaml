@@ -1,5 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="clr-namespace:GalNet.Control.ViewModels" x:Class="GalNet.Control.Views.SaveSlotCard" x:DataType="vm:SaveSlotItem"
+             xmlns:vm="clr-namespace:GalNet.Control.Screen.SaveLoad" x:Class="GalNet.Control.Screen.SaveLoad.SaveSlotCard" x:DataType="vm:SaveSlotItem"
              HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
              HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
   <Button Command="{Binding SelectCommand}" 
