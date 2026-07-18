@@ -116,26 +116,18 @@ public sealed class StopVideoEntry : Entry
     public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters();
 }
 
-public sealed class ShowControlEntry : Entry
+public sealed class ShowDialogueEntry : Entry
 {
-    public const string TypeId = "control.show";
+    public const string TypeId = "dialogue.show";
     public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("id", EntryParameterType.Text));
+    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters();
 }
 
-public sealed class HideControlEntry : Entry
+public sealed class HideDialogueEntry : Entry
 {
-    public const string TypeId = "control.hide";
+    public const string TypeId = "dialogue.hide";
     public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes => ShowControlEntry.ParameterTypes;
-}
-
-public sealed class SetControlEntry : Entry
-{
-    public const string TypeId = "control.set";
-    public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(
-        ("id", EntryParameterType.Text), ("property", EntryParameterType.Text), ("value", EntryParameterType.Text));
+    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes => ShowDialogueEntry.ParameterTypes;
 }
 
 public sealed class ApplyEffectEntry : Entry
@@ -166,17 +158,7 @@ public sealed class SetVariableEntry : Entry
     public const string TypeId = "variable.set";
     public override string Type => TypeId;
     public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(
-        ("target", EntryParameterType.Text), ("value", EntryParameterType.Text), ("valueType", EntryParameterType.Select));
-    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("valueType", "string"));
-    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(("valueType", ["string", "bool", "int", "float"]));
-}
-
-public sealed class EvaluateVariableEntry : Entry
-{
-    public const string TypeId = "variable.eval";
-    public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(
-        ("target", EntryParameterType.Text), ("expression", EntryParameterType.MultilineText));
+        ("target", EntryParameterType.VariableName), ("expression", EntryParameterType.Expression));
 }
 
 public sealed class UnlockGalleryEntry : Entry

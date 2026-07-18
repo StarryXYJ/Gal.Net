@@ -93,6 +93,10 @@ public static class EditorServiceCollectionExtensions
         services.AddScoped<RedoEditorCommand>();
         services.AddScoped<IEditorShortcutCommandDefinition>(sp => sp.GetRequiredService<UndoEditorCommand>());
         services.AddScoped<IEditorShortcutCommandDefinition>(sp => sp.GetRequiredService<RedoEditorCommand>());
+        foreach (var definition in GalNet.Core.Entry.EntryRegistry.Definitions)
+        {
+            services.AddScoped<IEditorShortcutCommandDefinition>(_ => new EntryTypeShortcutCommand(definition));
+        }
         services.AddScoped<EditorShortcutService>();
 
         return services;

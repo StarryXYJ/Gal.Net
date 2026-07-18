@@ -7,7 +7,7 @@
              x:Name="Root"
              x:DataType="vm:GroupEditorPanelViewModel"
              MoveCommand="{Binding ReorderEntryCommand}">
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,*,Auto">
         <Button HorizontalAlignment="Left"
                 ToolTip.Tip="{loc:Localize Entry.Add}"
                 AutomationProperties.Name="{loc:Localize Entry.Add}"
@@ -17,6 +17,8 @@
                  Grid.Row="1"
                  Margin="0,8,0,0"
                  ItemsSource="{Binding GroupNode.Entries}"
+                 SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
+                 SelectionMode="Single"
                  Background="Transparent">
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="models:EntryEditorItemViewModel">
@@ -39,12 +41,10 @@
                             <TextBlock Grid.Column="1"
                                        Text="{Binding Id}"
                                        VerticalAlignment="Center" />
-                            <ComboBox Grid.Column="2"
-                                      ItemsSource="{Binding #Root.DataContext.EntryTypes}"
-                                      SelectedValue="{Binding Type}"
-                                      SelectedValueBinding="{Binding Value}">
-                                <ComboBox.ItemTemplate><DataTemplate x:DataType="models:EntryTypeOption"><TextBlock Text="{loc:Localize DisplayNameKey}" /></DataTemplate></ComboBox.ItemTemplate>
-                            </ComboBox>
+                            <controls:EntryTypePicker Grid.Column="2"
+                                                      Options="{Binding #Root.DataContext.EntryTypes}"
+                                                      ShortcutService="{Binding #Root.DataContext.ShortcutService}"
+                                                      SelectedValue="{Binding Type, Mode=TwoWay}" />
                             <controls:ConditionEditorControl Grid.Column="3"
                                                              Text="{Binding Condition}"
                                                              Suggestions="{Binding #Root.DataContext.ConditionSuggestions}"
@@ -82,6 +82,8 @@
                                                 <DataTemplate DataType="models:FloatEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><NumericUpDown Grid.Column="1" Value="{Binding NumericValue}" Increment="0.1" FormatString="0.##" HorizontalAlignment="Stretch" /></Grid></DataTemplate>
                                                 <DataTemplate DataType="models:AssetEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><controls:AssetPicker Grid.Column="1" AssetManager="{Binding #Root.DataContext.AssetManager}" Filter="{Binding AssetFilter}" SelectedAssetId="{Binding StringValue}" HorizontalAlignment="Left" /></Grid></DataTemplate>
                                                 <DataTemplate DataType="models:SelectEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><ComboBox Grid.Column="1" ItemsSource="{Binding Options}" SelectedValue="{Binding StringValue}" SelectedValueBinding="{Binding Value}" HorizontalAlignment="Stretch"><ComboBox.ItemTemplate><DataTemplate x:DataType="models:EntrySelectOption"><TextBlock Text="{loc:Localize DisplayNameKey}" /></DataTemplate></ComboBox.ItemTemplate></ComboBox></Grid></DataTemplate>
+                                                <DataTemplate DataType="models:VariableNameEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><ComboBox Grid.Column="1" IsEditable="True" ItemsSource="{Binding Suggestions}" Text="{Binding StringValue, Mode=TwoWay}" HorizontalAlignment="Stretch" /></Grid></DataTemplate>
+                                                <DataTemplate DataType="models:ExpressionEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><controls:ConditionEditorControl Grid.Column="1" Text="{Binding StringValue}" Suggestions="{Binding #Root.DataContext.ConditionSuggestions}" ValidationVariables="{Binding #Root.DataContext.ValidationVariables}" /></Grid></DataTemplate>
                                             </ContentControl.DataTemplates>
                                         </ContentControl>
                                     </DataTemplate>
@@ -93,5 +95,11 @@
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
+        <StackPanel Grid.Row="2" Margin="0,8,0,0" Orientation="Horizontal"
+                    HorizontalAlignment="Center" Spacing="8">
+            <NumericUpDown Width="90" Minimum="1" Maximum="1000" Increment="1" FormatString="0"
+                           Value="{Binding BatchAddCount, Mode=TwoWay}" />
+            <Button Content="{loc:Localize Entry.AppendBatch}" Command="{Binding AppendEntriesCommand}" />
+        </StackPanel>
     </Grid>
 </controls:ReorderableListControl>

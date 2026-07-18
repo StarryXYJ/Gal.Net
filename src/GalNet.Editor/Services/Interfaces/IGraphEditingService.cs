@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Collections.Generic;
 using GalNet.Editor.ViewModels;
 
 namespace GalNet.Editor.Services;
@@ -9,7 +10,7 @@ public interface IGraphEditingService
     bool DeleteEdge(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphEdge edge);
     bool DeleteNode(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphNode node);
     bool Connect(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphConnector first, GraphConnector second);
-    bool AddEntry(GraphNode groupNode);
+    IReadOnlyList<EntryEditorItemViewModel> InsertEntries(GraphNode groupNode, int index, int count);
     bool RemoveEntry(GraphNode groupNode, EntryEditorItemViewModel entry);
     bool MoveEntry(GraphNode groupNode, EntryEditorItemViewModel entry, int newIndex);
     bool AddChoiceOption(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphNode node);

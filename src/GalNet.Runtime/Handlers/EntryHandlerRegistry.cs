@@ -36,9 +36,9 @@ public sealed class EntryHandlerRegistry
         registry.Register(new ShowLayerHandler()); registry.Register(new HideLayerHandler()); registry.Register(new MoveLayerHandler());
         registry.Register(new PlayAudioHandler()); registry.Register(new StopAudioHandler()); registry.Register(new PauseAudioHandler()); registry.Register(new ResumeAudioHandler()); registry.Register(new EnqueueAudioHandler());
         registry.Register(new PlayVideoHandler()); registry.Register(new StopVideoHandler());
-        registry.Register(new ShowControlHandler()); registry.Register(new HideControlHandler()); registry.Register(new SetControlHandler());
+        registry.Register(new ShowDialogueHandler()); registry.Register(new HideDialogueHandler());
         registry.Register(new ApplyEffectHandler()); registry.Register(new StopEffectHandler());
-        registry.Register(new WaitHandler()); registry.Register(new SetVariableHandler()); registry.Register(new EvaluateVariableHandler());
+        registry.Register(new WaitHandler()); registry.Register(new SetVariableHandler());
         return registry;
     }
 

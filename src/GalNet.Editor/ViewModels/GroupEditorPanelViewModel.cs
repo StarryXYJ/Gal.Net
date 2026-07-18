@@ -11,6 +11,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using GalNet.Core.Entry;
+using GalNet.Editor.Commands;
 
 namespace GalNet.Editor.ViewModels;
 
@@ -27,17 +28,25 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     public IReadOnlyList<ConditionVariableSuggestion> ConditionSuggestions => Workspace.GetConditionVariableSuggestions();
     public IReadOnlyList<GalNet.Core.Variable.ProjectVariableDefinition> ValidationVariables => Workspace.AllProjectVariableDefinitions;
     public IAssetManager AssetManager { get; }
+    public EditorShortcutService ShortcutService { get; }
     public IReadOnlyList<EntryTypeOption> EntryTypes { get; } = EntryRegistry.Definitions
-        .Select(definition => new EntryTypeOption(definition.Type, $"Entry.Type.{definition.Type}"))
+        .Select(definition => new EntryTypeOption(definition.Type, definition.Category, $"Entry.Type.{definition.Type}"))
         .ToArray();
 
-    public GroupEditorPanelViewModel(EditorWorkspaceViewModel workspace, GraphNode groupNode, IGraphEditingService graphEditingService, IProjectService projects, IAssetManager assetManager)
+    [ObservableProperty]
+    private EntryEditorItemViewModel? _selectedEntry;
+
+    [ObservableProperty]
+    private decimal _batchAddCount = 1;
+
+    public GroupEditorPanelViewModel(EditorWorkspaceViewModel workspace, GraphNode groupNode, IGraphEditingService graphEditingService, IProjectService projects, IAssetManager assetManager, EditorShortcutService shortcutService)
     {
         Workspace = workspace;
         GroupNode = groupNode;
         _graphEditingService = graphEditingService;
         _projects = projects;
         AssetManager = assetManager;
+        ShortcutService = shortcutService;
         Workspace.VariableDefinitionsChanged += OnVariableDefinitionsChanged;
         GroupNode.Entries.CollectionChanged += OnEntriesChanged;
         foreach (var entry in GroupNode.Entries) Attach(entry);
@@ -46,7 +55,27 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     [RelayCommand]
     private void AddEntry()
     {
-        Workspace.AddEntryTo(GroupNode);
+        var selectedIndex = SelectedEntry is null ? -1 : GroupNode.Entries.IndexOf(SelectedEntry);
+        InsertEntries(selectedIndex >= 0 ? selectedIndex + 1 : GroupNode.Entries.Count, 1);
+    }
+
+    [RelayCommand]
+    private void AppendEntry()
+    {
+        InsertEntries(GroupNode.Entries.Count, 1);
+    }
+
+    [RelayCommand]
+    private void AppendEntries()
+    {
+        InsertEntries(GroupNode.Entries.Count, Math.Clamp((int)BatchAddCount, 1, 1000));
+    }
+
+    private void InsertEntries(int index, int count)
+    {
+        var inserted = Workspace.InsertEntriesInto(GroupNode, index, count);
+        if (inserted.Count > 0)
+            SelectedEntry = inserted[^1];
     }
 
     [RelayCommand]
@@ -91,6 +120,8 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     {
         OnPropertyChanged(nameof(ConditionSuggestions));
         OnPropertyChanged(nameof(ValidationVariables));
+        foreach (var entry in GroupNode.Entries)
+            Configure(entry);
     }
 
     private void OnEntriesChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -113,7 +144,10 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         if (e.PropertyName == nameof(EntryEditorItemViewModel.Type)) Configure(entry, resetValues: true);
     }
 
-    private void Configure(EntryEditorItemViewModel entry, bool resetValues = false) => entry.ConfigureParameterFields(_projects.Current?.Settings.Speakers ?? [], resetValues);
+    private void Configure(EntryEditorItemViewModel entry, bool resetValues = false) => entry.ConfigureParameterFields(
+        _projects.Current?.Settings.Speakers ?? [],
+        Workspace.AllProjectVariableDefinitions.Select(variable => variable.Name).ToArray(),
+        resetValues);
 
     public void CommitSpeaker(string value)
     {

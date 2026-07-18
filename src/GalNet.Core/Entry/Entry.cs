@@ -19,11 +19,14 @@ public enum EntryParameterType
     ImageAsset,
     AudioAsset,
     VideoAsset,
-    Select
+    Select,
+    VariableName,
+    Expression
 }
 
 public sealed record EntryDefinition(
     string Type,
+    string Category,
     Func<Entry> Factory,
     IReadOnlyDictionary<string, EntryParameterType> Parameters,
     IReadOnlyDictionary<string, string> Defaults,

@@ -9,7 +9,7 @@
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch">
 
-    <ContentControl Content="{Binding GameView}"
+    <ContentControl x:Name="GameViewHost"
                     HorizontalContentAlignment="Stretch"
                     VerticalContentAlignment="Stretch" />
 

@@ -83,6 +83,11 @@ public sealed class EditorShortcutService
         return true;
     }
 
+    public IEditorShortcutCommandDefinition? FindByGesture(KeyGesture gesture, string context) =>
+        _commands.FirstOrDefault(candidate =>
+            candidate.Context.Equals(context, StringComparison.OrdinalIgnoreCase) &&
+            candidate.Gesture?.Equals(gesture) == true);
+
     private IEditorShortcutCommandDefinition Find(string commandId) =>
         _commands.FirstOrDefault(command => command.Id.Equals(commandId, StringComparison.OrdinalIgnoreCase))
         ?? throw new KeyNotFoundException($"UI command '{commandId}' is not registered.");

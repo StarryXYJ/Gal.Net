@@ -101,12 +101,12 @@ File.WriteAllText(Path.Combine(sampleDir, "intro.galgroup"), """
     wait : duration:0.5
     layer.show : id:bg; asset:bg_classroom
     text : speaker:Game.Speaker.speaker_alice; content:Game.Node.group_intro.entry_4.Text
-    variable.set : target:met_alice; value:true; valueType:bool
+    variable.set : target:met_alice; expression:true
     """);
 
 File.WriteAllText(Path.Combine(sampleDir, "accept.galgroup"), """
     text : speaker:Game.Speaker.speaker_alice; content:Game.Node.group_accept.entry_1.Text
-    variable.set : target:quest_accepted; value:true; valueType:bool
+    variable.set : target:quest_accepted; expression:true
     """);
 
 File.WriteAllText(Path.Combine(sampleDir, "reject.galgroup"), """

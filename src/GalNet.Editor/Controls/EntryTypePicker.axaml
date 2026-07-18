@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:GalNet.Editor.Controls"
+             xmlns:loc="using:GalNet.Editor.MarkupExtensions"
+             x:Class="GalNet.Editor.Controls.EntryTypePicker"
+             x:Name="Root"
+             Focusable="True">
+    <Grid>
+        <ToggleButton x:Name="OpenButton"
+                      IsChecked="{Binding #PickerPopup.IsOpen, Mode=TwoWay}"
+                      HorizontalContentAlignment="Stretch">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <TextBlock DataContext="{Binding #Root}"
+                           Text="{loc:Localize SelectedDisplayNameKey}" />
+                <TextBlock Grid.Column="1" Text="{Binding SelectedGestureText, ElementName=Root}"
+                           Foreground="{DynamicResource SemiColorText2}" FontSize="11" />
+            </Grid>
+        </ToggleButton>
+        <Popup x:Name="PickerPopup"
+               PlacementTarget="{Binding #OpenButton}"
+               Placement="BottomEdgeAlignedLeft"
+               IsLightDismissEnabled="True"
+               Opened="OnPopupOpened">
+            <Border MinWidth="280" MaxHeight="420" Padding="6"
+                    Background="{DynamicResource SemiColorBackground1}"
+                    BorderBrush="{DynamicResource SemiColorBorder}"
+                    BorderThickness="1" CornerRadius="6">
+                <TreeView x:Name="TypeTree" ItemsSource="{Binding Categories, ElementName=Root}">
+                    <TreeView.Styles>
+                        <Style Selector="TreeViewItem">
+                            <Setter Property="IsExpanded" Value="True" />
+                        </Style>
+                    </TreeView.Styles>
+                    <TreeView.DataTemplates>
+                        <TreeDataTemplate DataType="controls:EntryTypeCategoryItem" ItemsSource="{Binding Items}">
+                            <TextBlock Text="{loc:Localize DisplayNameKey}" FontWeight="SemiBold" />
+                        </TreeDataTemplate>
+                        <DataTemplate DataType="controls:EntryTypeLeafItem">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                                <TextBlock Text="{loc:Localize DisplayNameKey}" />
+                                <TextBlock Grid.Column="1" Text="{Binding GestureText}"
+                                           Foreground="{DynamicResource SemiColorText2}" FontSize="11" />
+                            </Grid>
+                        </DataTemplate>
+                    </TreeView.DataTemplates>
+                </TreeView>
+            </Border>
+        </Popup>
+    </Grid>
+</UserControl>

@@ -53,7 +53,7 @@ public class GameEngineIntegrationTests
                     Name = "Setup",
                     Entries =
                     {
-                        Create(SetVariableEntry.TypeId, 1, ("target", "flag_route_a"), ("value", "true"), ("valueType", "bool"))
+                        Create(SetVariableEntry.TypeId, 1, ("target", "flag_route_a"), ("expression", "true"))
                     }
                 },
                 new Branch
@@ -73,7 +73,7 @@ public class GameEngineIntegrationTests
                     Name = "RouteA",
                     Entries =
                     {
-                        Create(SetVariableEntry.TypeId, 1, ("target", "route_taken"), ("value", "a"), ("valueType", "string"))
+                        Create(SetVariableEntry.TypeId, 1, ("target", "route_taken"), ("expression", "\"a\""))
                     }
                 },
                 new Group
@@ -82,7 +82,7 @@ public class GameEngineIntegrationTests
                     Name = "RouteB",
                     Entries =
                     {
-                        Create(SetVariableEntry.TypeId, 1, ("target", "route_taken"), ("value", "b"), ("valueType", "string"))
+                        Create(SetVariableEntry.TypeId, 1, ("target", "route_taken"), ("expression", "\"b\""))
                     }
                 }
             },
@@ -121,7 +121,7 @@ public class GameEngineIntegrationTests
                     Entries =
                     {
                         Create(TextEntry.TypeId, 1, ("speaker", "Narrator"), ("content", "Half way")),
-                        Create(SetVariableEntry.TypeId, 2, ("target", "save_point"), ("value", "true"), ("valueType", "bool")),
+                        Create(SetVariableEntry.TypeId, 2, ("target", "save_point"), ("expression", "true")),
                         Create(TextEntry.TypeId, 3, ("speaker", "Narrator"), ("content", "End"))
                     }
                 }
@@ -139,6 +139,34 @@ public class GameEngineIntegrationTests
 
         Assert.That(restored, Is.Not.Null);
         Assert.That(restored!.Variables.GetValueOrDefault("save_point")!.AsBool(), Is.True);
+    }
+
+    [Test]
+    public async Task Invalid_SetVariable_Expression_Should_Not_Overwrite_The_Previous_Value()
+    {
+        var graph = new GalNet.Core.Graph.Graph
+        {
+            Name = "Test",
+            RootNodeId = "group_main",
+            Nodes =
+            {
+                new Group
+                {
+                    Id = "group_main",
+                    Name = "Main",
+                    Entries =
+                    {
+                        Create(SetVariableEntry.TypeId, 1, ("target", "result"), ("expression", "\"before\"")),
+                        Create(SetVariableEntry.TypeId, 2, ("target", "result"), ("expression", "1 +"))
+                    }
+                }
+            }
+        };
+
+        var engine = new GameEngine(graph, new NullGameView(verbose: false));
+        Assert.DoesNotThrowAsync(async () => await engine.StepAsync());
+
+        Assert.That(engine.CreateSaveData().Variables["result"].AsString(), Is.EqualTo("before"));
     }
 
     private static GalNet.Core.Entry.Entry Create(string type, int id, params (string Key, string Value)[] values) =>

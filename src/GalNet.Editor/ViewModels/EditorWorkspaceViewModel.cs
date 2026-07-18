@@ -696,14 +696,27 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         }
     }
 
-    public bool AddEntryTo(GraphNode groupNode)
+    public IReadOnlyList<EntryEditorItemViewModel> InsertEntriesInto(GraphNode groupNode, int index, int count)
     {
-        if (groupNode.NodeKind != GraphNodeKind.LinearGroup) return false;
-        if (!_graphEditingService.AddEntry(groupNode)) return false;
-        var entry = groupNode.Entries[^1];
-        CacheEntry(entry);
-        PushGraphEdit(new DelegateEdit("Add entry", () => groupNode.Entries.Remove(entry), () => groupNode.Entries.Add(entry)));
-        return true;
+        if (groupNode.NodeKind != GraphNodeKind.LinearGroup) return [];
+        var inserted = _graphEditingService.InsertEntries(groupNode, index, Math.Clamp(count, 1, 1000));
+        if (inserted.Count == 0) return inserted;
+        foreach (var entry in inserted) CacheEntry(entry);
+        var actualIndex = groupNode.Entries.IndexOf(inserted[0]);
+        PushGraphEdit(new DelegateEdit(
+            inserted.Count == 1 ? "Add entry" : $"Add {inserted.Count} entries",
+            () =>
+            {
+                foreach (var entry in inserted) groupNode.Entries.Remove(entry);
+                RenumberGroupEntries(groupNode);
+            },
+            () =>
+            {
+                for (var offset = 0; offset < inserted.Count; offset++)
+                    groupNode.Entries.Insert(Math.Min(actualIndex + offset, groupNode.Entries.Count), inserted[offset]);
+                RenumberGroupEntries(groupNode);
+            }));
+        return inserted;
     }
 
     public bool RemoveEntryFrom(GraphNode groupNode, EntryEditorItemViewModel entry)
@@ -718,6 +731,12 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         var oldIndex = groupNode.Entries.IndexOf(entry); if (!_graphEditingService.MoveEntry(groupNode, entry, newIndex)) return false;
         PushGraphEdit(new CollectionMoveEdit<EntryEditorItemViewModel>("Move entry", groupNode.Entries, oldIndex, newIndex));
         return true;
+    }
+
+    private static void RenumberGroupEntries(GraphNode groupNode)
+    {
+        for (var index = 0; index < groupNode.Entries.Count; index++)
+            groupNode.Entries[index].Id = index + 1;
     }
 
     private void TrackNode(GraphNode node)

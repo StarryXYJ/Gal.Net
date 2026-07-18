@@ -33,22 +33,16 @@ public class NullGameView : IGameView
             Console.WriteLine($"[Layer] move id={id} to ({x},{y},{z}) in {durationSec}s");
     }
 
-    public void ShowControl(string instanceId)
+    public void ShowDialogue()
     {
         if (_verbose)
-            Console.WriteLine($"[Control] show id={instanceId}");
+            Console.WriteLine("[Dialogue] show");
     }
 
-    public void HideControl(string instanceId)
+    public void HideDialogue()
     {
         if (_verbose)
-            Console.WriteLine($"[Control] hide id={instanceId}");
-    }
-
-    public void SetControlProperty(string instanceId, string property, string value)
-    {
-        if (_verbose)
-            Console.WriteLine($"[Control] set id={instanceId}, {property}={value}");
+            Console.WriteLine("[Dialogue] hide");
     }
 
     public Task<string> ShowPageAsync(string screenInstanceId, CancellationToken ct)

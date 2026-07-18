@@ -2,7 +2,6 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using GalNet.Control.Screen.BuiltIn;
 using Serilog;
-using AvaloniaControl = Avalonia.Controls.Control;
 using AvaloniaImage = Avalonia.Controls.Image;
 using GalNet.Core.Assets;
 
@@ -13,7 +12,6 @@ internal sealed class DefaultGameViewRegistry
     private readonly GameScreenView _gameScreen;
     private readonly IAssetManager? _assets;
     private readonly Dictionary<string, AvaloniaImage> _layers = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, AvaloniaControl> _widgets = new(StringComparer.OrdinalIgnoreCase);
 
     public DefaultGameViewRegistry(GameScreenView gameScreen, IAssetManager? assets)
     {
@@ -110,53 +108,4 @@ internal sealed class DefaultGameViewRegistry
         });
     }
 
-    public void RegisterWidget(string id, AvaloniaControl control)
-    {
-        _widgets[id] = control;
-    }
-
-    public void ShowControl(string instanceId)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (_widgets.TryGetValue(instanceId, out var ctrl))
-                ctrl.IsVisible = true;
-        });
-    }
-
-    public void HideControl(string instanceId)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (_widgets.TryGetValue(instanceId, out var ctrl))
-                ctrl.IsVisible = false;
-        });
-    }
-
-    public void SetControlProperty(string instanceId, string property, string value)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (!_widgets.TryGetValue(instanceId, out var ctrl))
-                return;
-
-            var prop = ctrl.GetType().GetProperty(property);
-            if (prop?.CanWrite != true)
-                return;
-
-            var converted = ConvertValue(prop.PropertyType, value);
-            if (converted != null)
-                prop.SetValue(ctrl, converted);
-        });
-    }
-
-    private static object? ConvertValue(Type targetType, string value)
-    {
-        if (targetType == typeof(string)) return value;
-        if (targetType == typeof(int) && int.TryParse(value, out var i)) return i;
-        if (targetType == typeof(double) && double.TryParse(value, out var d)) return d;
-        if (targetType == typeof(float) && float.TryParse(value, out var f)) return f;
-        if (targetType == typeof(bool) && bool.TryParse(value, out var b)) return b;
-        return null;
-    }
 }

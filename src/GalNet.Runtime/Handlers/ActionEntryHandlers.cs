@@ -84,25 +84,18 @@ public sealed class StopVideoHandler : EntryHandler
     public override void Start(EntryContext ctx) => ctx.View.StopVideo();
 }
 
-public sealed class ShowControlHandler : EntryHandler
+public sealed class ShowDialogueHandler : EntryHandler
 {
-    public override string EntryType => ShowControlEntry.TypeId;
+    public override string EntryType => ShowDialogueEntry.TypeId;
     public override bool IsBlocking => false;
-    public override void Start(EntryContext ctx) => ctx.View.ShowControl(ctx.GetString("id"));
+    public override void Start(EntryContext ctx) => ctx.View.ShowDialogue();
 }
 
-public sealed class HideControlHandler : EntryHandler
+public sealed class HideDialogueHandler : EntryHandler
 {
-    public override string EntryType => HideControlEntry.TypeId;
+    public override string EntryType => HideDialogueEntry.TypeId;
     public override bool IsBlocking => false;
-    public override void Start(EntryContext ctx) => ctx.View.HideControl(ctx.GetString("id"));
-}
-
-public sealed class SetControlHandler : EntryHandler
-{
-    public override string EntryType => SetControlEntry.TypeId;
-    public override bool IsBlocking => false;
-    public override void Start(EntryContext ctx) => ctx.View.SetControlProperty(ctx.GetString("id"), ctx.GetString("property"), ctx.GetString("value"));
+    public override void Start(EntryContext ctx) => ctx.View.HideDialogue();
 }
 
 public sealed class ApplyEffectHandler : EntryHandler
@@ -137,27 +130,27 @@ public sealed class SetVariableHandler : EntryHandler
     public override bool IsBlocking => false;
     public override void Start(EntryContext ctx)
     {
-        var raw = ctx.GetString("value");
-        object value = ctx.GetString("valueType", "string") switch
-        {
-            "bool" => bool.TryParse(raw, out var b) && b,
-            "int" => int.TryParse(raw, out var i) ? i : 0,
-            "float" => float.TryParse(raw, out var f) ? f : 0f,
-            _ => raw
-        };
-        ctx.Runtime.SetVariable(ctx.GetString("target"), value);
-    }
-}
-
-public sealed class EvaluateVariableHandler : EntryHandler
-{
-    public override string EntryType => EvaluateVariableEntry.TypeId;
-    public override bool IsBlocking => false;
-    public override void Start(EntryContext ctx)
-    {
+        var target = ctx.GetString("target");
         var expression = ctx.GetString("expression");
-        if (expression.Length == 0) return;
-        var result = ctx.Runtime.EvaluateExpression(expression);
-        if (result is not null) ctx.Runtime.SetVariable(ctx.GetString("target"), result);
+        if (string.IsNullOrWhiteSpace(target) || string.IsNullOrWhiteSpace(expression))
+        {
+            Serilog.Log.ForContext("LogChannel", "Game").Warning("Set variable skipped because target or expression is empty: target={Target}", target);
+            return;
+        }
+
+        try
+        {
+            var result = ctx.Runtime.EvaluateExpression(expression);
+            if (result is null)
+            {
+                Serilog.Log.ForContext("LogChannel", "Game").Warning("Set variable expression returned null: target={Target}, expression={Expression}", target, expression);
+                return;
+            }
+            ctx.Runtime.SetVariable(target, result);
+        }
+        catch (Exception exception)
+        {
+            Serilog.Log.ForContext("LogChannel", "Game").Warning(exception, "Set variable expression failed: target={Target}, expression={Expression}", target, expression);
+        }
     }
 }

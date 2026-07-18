@@ -35,6 +35,7 @@ public sealed class GameRunViewModel : IAsyncDisposable
     private readonly ISaveService? _saveService;
     private readonly IGameProgressService? _progressService;
     private readonly Action? _onGameEnded;
+    private readonly Action? _onDisposed;
     private readonly GameFlowOptions? _options;
     private readonly CancellationTokenSource _lifetimeCts = new();
     private Task? _runTask;
@@ -49,7 +50,8 @@ public sealed class GameRunViewModel : IAsyncDisposable
         ISaveService? saveService = null,
         IGameProgressService? progressService = null,
         GameFlowOptions? options = null,
-        Action? onGameEnded = null)
+        Action? onGameEnded = null,
+        Action? onDisposed = null)
     {
         GameView = gameView;
         _settingsService = settingsService;
@@ -59,6 +61,7 @@ public sealed class GameRunViewModel : IAsyncDisposable
         _progressService = progressService;
         _options = options;
         _onGameEnded = onGameEnded;
+        _onDisposed = onDisposed;
         GameView.CommandRequested += command => CommandRequested?.Invoke(command);
 
     }
@@ -72,12 +75,21 @@ public sealed class GameRunViewModel : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if (Interlocked.Exchange(ref _stopped, 1) == 0)
-            _lifetimeCts.Cancel();
+        if (Interlocked.Exchange(ref _stopped, 1) != 0)
+            return;
+        _lifetimeCts.Cancel();
 
-        try { if (_runTask is not null) await _runTask; }
-        catch (OperationCanceledException) { }
-        _lifetimeCts.Dispose();
+        try
+        {
+            try { if (_runTask is not null) await _runTask; }
+            catch (OperationCanceledException) { }
+        }
+        finally
+        {
+            GameView.Dispose();
+            _lifetimeCts.Dispose();
+            _onDisposed?.Invoke();
+        }
     }
 
     private async Task RunAsync(CancellationToken cancellationToken)

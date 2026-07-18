@@ -7,7 +7,7 @@ public class EntryModelTests
     [Test]
     public void Registry_Should_Create_All_BuiltIn_Entries()
     {
-        Assert.That(EntryRegistry.Definitions, Has.Count.EqualTo(20));
+        Assert.That(EntryRegistry.Definitions, Has.Count.EqualTo(18));
         foreach (var definition in EntryRegistry.Definitions)
             Assert.That(EntryRegistry.Create(definition.Type).Type, Is.EqualTo(definition.Type));
     }
@@ -41,6 +41,13 @@ public class EntryModelTests
     public void Unknown_Type_Should_Throw_Clear_Error() =>
         Assert.That(() => EntryRegistry.Create("jump"), Throws.TypeOf<InvalidDataException>().With.Message.Contains("jump"));
 
+    [TestCase("control.show")]
+    [TestCase("control.hide")]
+    [TestCase("control.set")]
+    [TestCase("variable.eval")]
+    public void Removed_Types_Should_Be_Unknown(string type) =>
+        Assert.That(() => EntryRegistry.Create(type), Throws.TypeOf<InvalidDataException>());
+
     [Test]
     public void Concrete_Action_Types_Should_Not_Declare_Action_Parameter() =>
         Assert.That(EntryRegistry.Definitions.All(x => !x.Parameters.ContainsKey("action")), Is.True);
@@ -52,4 +59,33 @@ public class EntryModelTests
         Assert.That(definition.Parameters.Keys, Is.EquivalentTo(new[] { "speaker", "content", "voice" }));
         Assert.That(EntryRegistry.Create(TextEntry.TypeId).Values, Does.Not.ContainKey("widget"));
     }
+
+    [Test]
+    public void Dialogue_Visibility_Entries_Should_Have_No_Parameters()
+    {
+        Assert.That(EntryRegistry.Get(ShowDialogueEntry.TypeId).Parameters, Is.Empty);
+        Assert.That(EntryRegistry.Get(HideDialogueEntry.TypeId).Parameters, Is.Empty);
+    }
+
+    [Test]
+    public void SetVariable_Should_Only_Expose_Target_And_Expression()
+    {
+        var definition = EntryRegistry.Get(SetVariableEntry.TypeId);
+        Assert.That(definition.Parameters.Keys, Is.EquivalentTo(new[] { "target", "expression" }));
+        Assert.That(definition.Parameters["target"], Is.EqualTo(EntryParameterType.VariableName));
+        Assert.That(definition.Parameters["expression"], Is.EqualTo(EntryParameterType.Expression));
+    }
+
+    [Test]
+    public void Legacy_SetVariable_Parameters_Should_Fail_Loading() =>
+        Assert.That(() => EntryRegistry.Create(SetVariableEntry.TypeId, values: new Dictionary<string, string>
+        {
+            ["target"] = "flag",
+            ["value"] = "true",
+            ["valueType"] = "bool"
+        }), Throws.TypeOf<InvalidDataException>().With.Message.Contains("target").And.Message.Contains("expression"));
+
+    [Test]
+    public void Every_Definition_Should_Have_A_Category() =>
+        Assert.That(EntryRegistry.Definitions.All(x => !string.IsNullOrWhiteSpace(x.Category)), Is.True);
 }

@@ -124,7 +124,7 @@ public class DefaultGameView : Grid, IGameView, IDisposable
         _videoPlayer = _vlcInitialized ? new MediaPlayer(_libVlc) : null!;
         
         _audioController = new AudioController(_libVlc, _vlcInitialized);
-        _videoController = new VideoController(_libVlc, _videoPlayer, _vlcInitialized, _gameScreen);
+        _videoController = new VideoController(_libVlc, _videoPlayer, _vlcInitialized, _gameScreen, assets);
 
         Children.Add(_gameScreen);
 
@@ -180,10 +180,8 @@ public class DefaultGameView : Grid, IGameView, IDisposable
 
     // ── IControlView ──
 
-    void IControlView.ShowControl(string instanceId) => _registry.ShowControl(instanceId);
-    void IControlView.HideControl(string instanceId) => _registry.HideControl(instanceId);
-    void IControlView.SetControlProperty(string instanceId, string property, string value)
-        => _registry.SetControlProperty(instanceId, property, value);
+    void IControlView.ShowDialogue() => Dispatcher.UIThread.Post(() => _screen.IsDialogueVisible = true);
+    void IControlView.HideDialogue() => Dispatcher.UIThread.Post(() => _screen.IsDialogueVisible = false);
 
     // ── IPageView ──
 

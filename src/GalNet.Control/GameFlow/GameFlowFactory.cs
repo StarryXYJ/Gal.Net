@@ -204,14 +204,22 @@ public sealed class GameFlowFactory : IGameFlowFactory
         var progress = options.ProgressService ?? _serviceProvider.GetService<IGameProgressService>();
         var runOptions = parameter is GalNet.Core.Runtime.GameSnapshot snapshot ? options with { RestoreSnapshot = snapshot } :
             parameter is string startNode ? options with { StartNodeId = startNode, IsGalleryPresentation = true } : options;
-        var run = new GameRunViewModel(gameView, settings, variableService, options.GameContentProvider, save, progress, runOptions, () =>
+        GameRunViewModel? run = null;
+        run = new GameRunViewModel(gameView, settings, variableService, options.GameContentProvider, save, progress, runOptions, () =>
         {
-            _ = navigator.NavigateAsync("title");
-        });
+            _runs.Remove(navigator);
+            _ = DisposeRunAndNavigateAsync(run!, navigator);
+        }, () => _runs.Remove(navigator));
         _runs[navigator] = run;
         run.CommandRequested += command => HandleRunCommand(command, run, navigator, options, save);
         options.RunCreated?.Invoke(run);
         return run;
+    }
+
+    private static async Task DisposeRunAndNavigateAsync(GameRunViewModel run, IGameScreenNavigator navigator)
+    {
+        await run.DisposeAsync();
+        await navigator.NavigateAsync("title");
     }
 
     public SettingsViewModel CreateSettings(IGameScreenNavigator navigator, SettingsUiConfiguration config) =>
@@ -250,9 +258,8 @@ public sealed class GameFlowFactory : IGameFlowFactory
             case "load": _ = navigator.NavigateAsync("save-load"); break;
             case "save": _ = navigator.NavigateAsync("save-load", "save"); break;
             case "menu":
-                _ = run.DisposeAsync();
                 _runs.Remove(navigator);
-                _ = navigator.NavigateAsync("title");
+                _ = DisposeRunAndNavigateAsync(run, navigator);
                 break;
             case "screenshot": _ = ShowScreenshotAsync(run); break;
         }

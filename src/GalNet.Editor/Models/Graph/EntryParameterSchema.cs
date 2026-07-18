@@ -7,7 +7,7 @@ using GalNet.Core.Entry;
 
 namespace GalNet.Editor.Models.Graph;
 
-public sealed record EntryTypeOption(string Value, string DisplayNameKey);
+public sealed record EntryTypeOption(string Value, string Category, string DisplayNameKey);
 public sealed record EntrySelectOption(string Value, string DisplayNameKey);
 
 public sealed record EntryParameterDefinition(
@@ -66,3 +66,5 @@ public sealed class IntegerEntryParameterEditorItemViewModel(EntryParameterDefin
 public sealed class FloatEntryParameterEditorItemViewModel(EntryParameterDefinition d, string v, IReadOnlyList<string> s, Action<string, string> set) : EntryParameterEditorItemViewModel(d, v, s, set);
 public sealed class AssetEntryParameterEditorItemViewModel(EntryParameterDefinition d, string v, IReadOnlyList<string> s, Action<string, string> set) : EntryParameterEditorItemViewModel(d, v, s, set);
 public sealed class SelectEntryParameterEditorItemViewModel(EntryParameterDefinition d, string v, IReadOnlyList<string> s, Action<string, string> set) : EntryParameterEditorItemViewModel(d, v, s, set);
+public sealed class VariableNameEntryParameterEditorItemViewModel(EntryParameterDefinition d, string v, IReadOnlyList<string> s, Action<string, string> set) : EntryParameterEditorItemViewModel(d, v, s, set);
+public sealed class ExpressionEntryParameterEditorItemViewModel(EntryParameterDefinition d, string v, IReadOnlyList<string> s, Action<string, string> set) : EntryParameterEditorItemViewModel(d, v, s, set);

@@ -237,7 +237,6 @@ public partial class GraphEdge : ObservableObject
 
 public partial class EntryEditorItemViewModel : ObservableObject
 {
-    private IReadOnlyList<string> _speakers = [];
     public string StableId { get; init; } = Guid.NewGuid().ToString("N");
 
     [ObservableProperty]
@@ -257,9 +256,8 @@ public partial class EntryEditorItemViewModel : ObservableObject
 
     public ObservableCollection<EntryParameterEditorItemViewModel> ParameterFields { get; } = [];
     /// <summary>Builds the editor projection from the Core registry, the single schema source.</summary>
-    public void ConfigureParameterFields(IReadOnlyList<string> speakers, bool resetValues = false)
+    public void ConfigureParameterFields(IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames, bool resetValues = false)
     {
-        _speakers = speakers;
         var schema = EntryRegistry.Get(Type);
         var values = resetValues
             ? new Dictionary<string, string>(schema.Defaults, StringComparer.Ordinal)
@@ -278,13 +276,15 @@ public partial class EntryEditorItemViewModel : ObservableObject
                 .ToArray();
             var definition = new EntryParameterDefinition(id, type, $"Entry.Parameter.{id}", defaultValue, options);
             var value = Parameters.GetValueOrDefault(id, defaultValue);
-            ParameterFields.Add(CreateField(definition, value, speakers));
+            ParameterFields.Add(CreateField(definition, value, speakers, variableNames));
         }
     }
 
-    private EntryParameterEditorItemViewModel CreateField(EntryParameterDefinition definition, string value, IReadOnlyList<string> speakers) => definition.Type switch
+    private EntryParameterEditorItemViewModel CreateField(EntryParameterDefinition definition, string value, IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames) => definition.Type switch
     {
         EntryParameterType.Autocomplete => new AutocompleteEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
+        EntryParameterType.VariableName => new VariableNameEntryParameterEditorItemViewModel(definition, value, variableNames, SetParameter),
+        EntryParameterType.Expression => new ExpressionEntryParameterEditorItemViewModel(definition, value, variableNames, SetParameter),
         EntryParameterType.Integer => new IntegerEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
         EntryParameterType.Float => new FloatEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
         EntryParameterType.ImageAsset or EntryParameterType.AudioAsset or EntryParameterType.VideoAsset => new AssetEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),

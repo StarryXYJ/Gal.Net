@@ -77,19 +77,28 @@ public sealed class GraphEditingService : IGraphEditingService
         return true;
     }
 
-    public bool AddEntry(GraphNode groupNode)
+    public IReadOnlyList<EntryEditorItemViewModel> InsertEntries(GraphNode groupNode, int index, int count)
     {
-        if (groupNode.NodeKind != GraphNodeKind.LinearGroup)
-            return false;
+        if (groupNode.NodeKind != GraphNodeKind.LinearGroup || count < 1)
+            return [];
 
-        groupNode.Entries.Add(new EntryEditorItemViewModel
+        index = Math.Clamp(index, 0, groupNode.Entries.Count);
+        var inserted = new List<EntryEditorItemViewModel>(count);
+        for (var offset = 0; offset < count; offset++)
         {
-            StableId = Guid.NewGuid().ToString("N"),
-            Id = groupNode.Entries.Count + 1,
-            Type = "text",
-            Parameters = new Dictionary<string, string> { ["speaker"] = "", ["content"] = "" }
-        });
-        return true;
+            var entry = new EntryEditorItemViewModel
+            {
+                StableId = Guid.NewGuid().ToString("N"),
+                Type = GalNet.Core.Entry.TextEntry.TypeId,
+                Parameters = new Dictionary<string, string>(
+                    GalNet.Core.Entry.EntryRegistry.Create(GalNet.Core.Entry.TextEntry.TypeId).Values,
+                    StringComparer.Ordinal)
+            };
+            groupNode.Entries.Insert(index + offset, entry);
+            inserted.Add(entry);
+        }
+        RenumberEntries(groupNode);
+        return inserted;
     }
 
     public bool RemoveEntry(GraphNode groupNode, EntryEditorItemViewModel entry)
