@@ -187,4 +187,13 @@ public class GalgroupParserTests
             Assert.That(restored, Is.EqualTo(original), $"Failed for: '{original}'");
         }
     }
+
+    [Test]
+    public void Serialize_Should_Store_Physical_Newlines_As_Explicit_Escape()
+    {
+        var line = GalgroupParser.Serialize("text", new() { ["content"] = "first\r\nsecond" });
+
+        Assert.That(line, Does.Contain(@"first\nsecond"));
+        Assert.That(GalgroupParser.Parse(line)[0].Params["content"], Is.EqualTo(@"first\nsecond"));
+    }
 }

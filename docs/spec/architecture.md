@@ -21,6 +21,7 @@ flowchart BT
   EditorShared["GalNet.Editor.Shared\n项目、持久化、命令实现"] --> Core
   EditorShared --> Assets
   EditorShared --> Runtime
+  EditorShared --> ControlAbstraction
   Editor["GalNet.Editor\n编辑器组合根与 UI"] --> EditorAbstraction
   Editor --> EditorShared
   Editor --> Control
@@ -35,6 +36,7 @@ flowchart BT
 | `GalNet.Assets` | 目录与 pak 资源提供者、压缩、加密、资源索引 | 游戏流程或 UI 逻辑 |
 | `GalNet.Runtime` | 图加载、`GameEngine`、条目处理器、快照和变量运行态 | 具体窗口、控件或文件选择器 |
 | `GalNet.Control` | Avalonia 页面、默认游戏视图、媒体适配、页面路由 | 编辑器项目持久化 |
+| `GalNet.Control.Abstraction` | UI 页面预设契约、模板接口、调色板绑定 | Avalonia 具体实现 |
 | `GalNet.Editor.Abstraction` | 编辑器命令、DTO、服务接口、扩展点 | Avalonia 或磁盘实现 |
 | `GalNet.Editor.Shared` | 项目读写、命令执行、导出、编辑器专用服务 | 编辑器窗口和控件 |
 | `GalNet.Editor` | 组合根、编辑器页面、Dock、ViewModel | 持久化格式和运行时规则 |
@@ -65,9 +67,9 @@ sequenceDiagram
 
 ## Control 页面与 UI 预设
 
-`GalNet.Control.Screen` 的每个功能目录同时拥有 View、ViewModel 和对应 XAML；其命名空间必须与物理路径一致。`Screen.Flow` 是页面创建边界，按 `title`、`game`、`settings`、`save-load`、`gallery`、`about` 路由，并为一次游戏运行维护其 ViewModel 生命周期。
+`GalNet.Control.Screen` 的每个功能目录同时拥有 View、ViewModel 和对应 XAML；其命名空间必须与物理路径一致。`Screen.Flow` 是页面创建边界，按 `title`、`game`、`settings`、`save-load`、`gallery`、`about` 路由，并为一次游戏运行维护其 ViewModel 生命周期。`Screen.Overlay` 提供覆盖层对话框（如截图保存）。
 
-`UiProject` 保存页面预设 ID 与用户覆盖值。`IUiPresetRegistry` 提供预设默认值；页面工厂合并“预设默认值 + 项目覆盖值”后生成不可持久化的页面配置对象。配置解析不得修改原始 `UiProject`，也不得让页面直接读取 JSON 或文件系统。
+`UiProject` 保存页面预设 ID 与用户覆盖值。`IUiPresetRegistry` 提供预设默认值；页面工厂合并"预设默认值 + 项目覆盖值"后生成不可持久化的页面配置对象。配置解析不得修改原始 `UiProject`，也不得让页面直接读取 JSON 或文件系统。
 
 新增页面时：定义 `UiPageKind` 和预设元数据；在 `Screen/<Feature>` 放置同名 View/ViewModel/XAML；在 Flow 注册创建分支和 DataTemplate；最后补充路由与配置解析测试。
 
@@ -93,8 +95,9 @@ flowchart LR
 
 ## 扩展点
 
-- 新增条目：在 `Core.Entry` 声明类型和参数，在 `Runtime.Handlers` 注册处理器，并补充文件格式和运行时测试。
+- 新增条目类型：在 `Core.Entry` 声明类型 class（含 `TypeId`、参数 schema 和默认值），在 `Runtime.Handlers` 注册处理器，并在 `EntryHandlerRegistry.CreateDefault()` 中注册。
 - 新增编辑器命令：在 `Editor.Abstraction.Commands` 声明 record，在命令领域处理器实现校验和执行，并为成功、无效输入和历史记录编写测试。
+- 新增 Dock 面板：创建 ViewModel 和 View，在 `BuiltInDockContributions.Register()` 中注册面板和 ViewModel 工厂。
 - 新增资源来源：实现 `IAssetProvider`，由宿主或编辑器资产管理器组合，不把路径规则带入 Core。
 - 新增平台宿主：实现内容与玩家服务契约，注册 Control/Runtime 所需服务，保持宿主专有代码在入口程序集内。
 

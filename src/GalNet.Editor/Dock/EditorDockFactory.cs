@@ -139,7 +139,7 @@ public sealed class EditorDockFactory : Factory
         AttachWorkspace();
         _documentDock = FindDockById(layout, "Documents") as DocumentDock;
 
-        var documents = EnumerateDockables(layout).Where(dockable => dockable is Document).ToList();
+        var documents = EnumerateDockables(layout).OfType<Document>().ToList();
         var hasInvalidDocument = false;
         foreach (var document in documents)
         {
@@ -156,20 +156,25 @@ public sealed class EditorDockFactory : Factory
                 continue;
             }
 
+            var services = _serviceProvider.GetService<IProjectService>()?.Current?.Services ?? _serviceProvider;
             if (panel.PanelId == EditorDockPanelIds.GroupEditor)
             {
-                if (document.Owner is IDock owner && owner.VisibleDockables is not null)
+                var groupId = GetGroupEditorId(document.Id);
+                var group = _workspace?.Nodes.FirstOrDefault(node => node.Id == groupId && node.NodeKind == GraphNodeKind.LinearGroup);
+                if (group is null)
                 {
-                    owner.VisibleDockables.Remove(document);
-                    if (ReferenceEquals(owner.ActiveDockable, document))
-                        owner.ActiveDockable = owner.VisibleDockables.FirstOrDefault(item => item is not IProportionalDockSplitter);
+                    RemoveRestoredDocument(document);
+                    continue;
                 }
-                continue;
-            }
 
-            var services = _serviceProvider.GetService<IProjectService>()?.Current?.Services ?? _serviceProvider;
-            document.Context = panel.CreateViewModel(services);
-            document.Title = LocalizeTitle(panel);
+                document.Context = panel.CreateViewModel(services, group);
+                document.Title = LocalizeTitle(panel, [group.Name]);
+            }
+            else
+            {
+                document.Context = panel.CreateViewModel(services);
+                document.Title = LocalizeTitle(panel);
+            }
             document.CanClose = panel.CanClose;
             document.CanFloat = panel.CanFloat;
             _panelByDockable[document] = panel;
@@ -320,6 +325,21 @@ public sealed class EditorDockFactory : Factory
     }
 
     private static string GetGroupEditorDocumentId(string groupId) => $"GroupEditor:{groupId}";
+
+    private static string? GetGroupEditorId(string? documentId) =>
+        documentId?.StartsWith(EditorDockPanelIds.GroupEditor + ":", StringComparison.Ordinal) == true
+            ? documentId[(EditorDockPanelIds.GroupEditor.Length + 1)..]
+            : null;
+
+    private static void RemoveRestoredDocument(Document document)
+    {
+        if (document.Owner is not IDock owner || owner.VisibleDockables is null)
+            return;
+
+        owner.VisibleDockables.Remove(document);
+        if (ReferenceEquals(owner.ActiveDockable, document))
+            owner.ActiveDockable = owner.VisibleDockables.FirstOrDefault(item => item is not IProportionalDockSplitter);
+    }
 
     private void AddDocument(Document document, IDockPanelContribution panel)
     {

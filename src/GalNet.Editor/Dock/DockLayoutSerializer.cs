@@ -104,9 +104,6 @@ public sealed class DockLayoutSerializer
 
     private NodeData? SaveNode(IDockable dockable, string key)
     {
-        if (dockable is Document document && IsTransient(document))
-            return null;
-
         _keys[dockable] = key;
         var data = new NodeData
         {
@@ -152,9 +149,6 @@ public sealed class DockLayoutSerializer
             .ToList() ?? [];
 
     private string? GetKey(IDockable? dockable) => dockable is not null && _keys.TryGetValue(dockable, out var key) ? key : null;
-
-    private static bool IsTransient(Document document) =>
-        document.Id?.StartsWith(EditorDockPanelIds.GroupEditor + ":", StringComparison.Ordinal) == true;
 
     private static NodeType GetNodeType(IDockable dockable) => dockable switch
     {

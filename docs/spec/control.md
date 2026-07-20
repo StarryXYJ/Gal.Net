@@ -26,7 +26,7 @@ Widget 与 Screen 都分为三层。
 | 模板 | 定义配置语义、默认值、颜色/实例引用校验、交互，并构造真实 View/VM | `Control/UI` 或插件程序集 |
 | 实例 | 仅保存 `Id`、`TemplateId`、配置 JSON、颜色覆盖；不保存 Avalonia 对象或服务 | `Core/UI`，由宿主持久化 |
 
-实例像 Material，模板像 Shader：同一 Widget 实例可在多个 Screen 中构造出独立的可视对象。Screen 实例由类别路由键选择，默认键为 `title`、`game`、`settings`、`save-load`、`gallery`。
+实例像 Material，模板像 Shader：同一 Widget 实例可在多个 Screen 中构造出独立的可视对象。Screen 实例由类别路由键选择，默认键为 `title`、`game`、`settings`、`save-load`、`gallery`、`about`。
 
 ## 插件契约与 DI
 
@@ -41,7 +41,7 @@ Widget 与 Screen 都分为三层。
 
 模板由宿主显式注册为 DI 服务；`TemplateRegistry` 由 `IEnumerable<IWidgetTemplate>` 与 `IEnumerable<IScreenTemplate>` 建索引，重复模板 ID 必须失败。模板可以在构造函数中注入稳定服务；每次构造 Screen/Widget 时，都从当前游戏或预览的服务作用域取得会话服务。
 
-内置 Title、Game、Settings、SaveLoad、Gallery 都是独立的 Screen 模板工厂。模板使用 `ActivatorUtilities` 创建 View，设置 `DataContext`，设置继承调色板，并返回 Presentation。
+内置 Title、Game、Settings、SaveLoad、Gallery、About 都是独立的 Screen 模板工厂。模板使用 `ActivatorUtilities` 创建 View，设置 `DataContext`，设置继承调色板，并返回 Presentation。
 
 ## 构建与导航
 
@@ -59,6 +59,23 @@ Widget 与 Screen 都分为三层。
 ```
 
 不使用 `InternalNav`、VM→View 注册表、当前页面事件或 `Activator.CreateInstance`。Screen VM 直接注入 `IGameScreenNavigator`，按路由键导航或回退。
+
+## Screen 页面路由
+
+`GameFlowFactory.BuildScreen()` 按路由键分发创建：
+
+| 路由键 | ViewModel | 说明 |
+| --- | --- | --- |
+| `title` | `GameStartViewModel` / `TextMenuTitleViewModel` | 标题页（根据预设选择模板） |
+| `game` | `GameRunViewModel` | 游戏运行页（核心游玩界面） |
+| `settings` | `SettingsViewModel` | 设置页 |
+| `save-load` | `SaveLoadViewModel` | 存档/读档页（通过参数区分模式） |
+| `gallery` | `GalleryViewModel` | 鉴赏页 |
+| `about` | `AboutViewModel` | 关于页（Markdown 渲染） |
+
+## Overlay 覆盖层
+
+`ScreenshotDialog` 是覆盖层对话框，不参与 Screen 路由。通过 `OverlayDialog.ShowCustomAsync<>()` 弹出，用于截图保存等场景。
 
 ## 调色板与绑定
 
@@ -99,7 +116,7 @@ UI/
   ScreenInstance/*.json
 ```
 
-`ui.json` 包含 `Colors` 和“类别键 → 默认 Screen 实例 ID”的 `DefaultViews`。实例文件仅保存数据；模板代码由宿主 DI 提供。本层不承诺插件程序集自动扫描，也不提供 UI 实例可视化编辑器。
+`ui.json` 包含 `Colors` 和"类别键 → 默认 Screen 实例 ID"的 `DefaultViews`。实例文件仅保存数据；模板代码由宿主 DI 提供。本层不承诺插件程序集自动扫描，也不提供 UI 实例可视化编辑器。
 
 ## 约束
 

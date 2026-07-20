@@ -63,6 +63,8 @@ public static class GalgroupParser
             sb.Append(ch switch
             {
                 '\\' => @"\\",
+                '\r' => "",
+                '\n' => @"\n",
                 ':' => @"\:",
                 ';' => @"\;",
                 _ => ch

@@ -60,10 +60,7 @@ public partial class EntryTypePicker : UserControl
         else if (change.Property == OptionsProperty)
             RebuildCategories();
         else if (change.Property == SelectedValueProperty)
-        {
             RaiseSelectedProperties();
-            RebuildCategories();
-        }
     }
 
     protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
