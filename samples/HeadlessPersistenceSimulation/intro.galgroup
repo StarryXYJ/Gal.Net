@@ -1,4 +1,10 @@
-// Minimal published-game fixture for the Headless persistence script.
+// Minimal published-game fixture for the Headless simulation script.
+layer.show : id: background; asset: assets/backgrounds/station-platform.png; x: 0; y: 0; z: 0; transitionId: black; transitionDuration: 0.2; transitionBlocking: true
+layer.show : id: guide; asset: assets/characters/guide-neutral.png; x: 0.2; y: 0; z: 1
+layer.move : id: guide; x: 0.35; y: 0; z: 1; duration: 0.15
+audio.play : channel: bgm; asset: assets/audio/station-loop.ogg; volume: 0.5; mode: loop; times: 1
+effect.apply : id: weather.rain; instanceId: platform-rain; duration: -1; blocking: false; parameters: intensity=low
+dialogue.show
 variable.set : target: player.simulation_completed; expression: true
 variable.set : target: save.simulation_slot_marker; expression: 7
-text : speaker: Simulator; content: Persistence simulation ready\d{1}.
+text : speaker: Guide; content: The station is ready.\d{80}\nChoose where to continue.

@@ -1,13 +1,25 @@
 {
   "version": 1,
-  "name": "Headless Persistence Simulation",
+  "name": "Headless Story and Persistence Simulation",
   "rootNodeId": "intro",
   "nodes": [
+    { "id": "intro", "type": "Group", "name": "Station Platform" },
     {
-      "id": "intro",
-      "type": "Group",
-      "name": "Intro"
-    }
+      "id": "route_choice",
+      "type": "Branch",
+      "name": "Choose a route",
+      "branchType": "Choice",
+      "options": [
+        { "text": "Take the downtown line" },
+        { "text": "Walk to the harbor" }
+      ]
+    },
+    { "id": "downtown", "type": "Group", "name": "Downtown" },
+    { "id": "harbor", "type": "Group", "name": "Harbor" }
   ],
-  "edges": []
+  "edges": [
+    { "fromNodeId": "intro", "fromOutlet": 0, "toNodeId": "route_choice" },
+    { "fromNodeId": "route_choice", "fromOutlet": 0, "toNodeId": "downtown" },
+    { "fromNodeId": "route_choice", "fromOutlet": 1, "toNodeId": "harbor" }
+  ]
 }

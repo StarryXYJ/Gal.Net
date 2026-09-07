@@ -1,0 +1,8 @@
+layer.hide : id: background; transitionId: cross; transitionDuration: 0.2; transitionBlocking: true
+layer.show : id: background; asset: assets/backgrounds/downtown-night.png; x: 0; y: 0; z: 0; transitionId: cross; transitionDuration: 0.2; transitionBlocking: true
+layer.hide : id: guide
+effect.stop : instanceId: platform-rain
+variable.set : target: save.route; expression: "downtown"
+text : speaker: Guide; content: Downtown selected. The save now records this route.
+audio.stop : channel: bgm
+dialogue.hide
