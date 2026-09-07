@@ -167,6 +167,24 @@ public sealed record EffectRequest(
 6. 扩展转场条目为 ID、时长、是否阻塞、原始参数，并在执行时传入源/目标图像 ID。
 7. 存档与读档按 `SceneState` 恢复图层、对话、音频等可恢复状态；不再让视图保存真实状态。
 8. 引入 `IClock` 并为等待、阻塞转场和取消行为编写测试。
+9. 新增无 UI 框架依赖的 `CompositeGameView`：由构造函数接收 `ILayerView`、`IDialogueView`、`IAudioView`、`IVideoView`、`IInteractionView`、`ITransitionView` 和 `IEffectView`，只转发调用。宿主 DI 容器负责创建各实现并注册每会话的 `IGameView`；禁止在 Runtime 或 `CompositeGameView` 中注入、保存或调用 `IServiceProvider`。
+10. 将 `NullGameView` 改为基于上述组合接口的无操作/测试实现；`GalNet.Player.Console` 开始接替现有 `GalNet.Headless` 的实际游戏运行职责。只有在 Console 能加载真实项目后，才删除旧 `GalNet.Headless`。
+11. 合并测试项目：把 `GalNet.Control.Tests` 中仍有价值的项目生命周期测试迁入 `GeneralTest`；UI 配置测试随遗留 UI 配置功能迁移。迁移完成后删除独立的 `GalNet.Control.Tests` 项目，统一由 `GeneralTest` 承担核心、运行时和编辑器共享逻辑测试。
+12. 清理遗留 UI 定制依赖的第一步：将通用的 `AssetPickerFilter` 迁入 `GalNet.Editor.Abstraction`，使 `Editor.Abstraction` 不再依赖 `GalNet.Control.Abstraction`。`GalNet.Control.Abstraction`、`Core/UI`、`Editor.Shared/UI` 和 UI 配置测试标记为遗留模块；它们在 Phase 6 与编辑器 UI 定制功能一起删除，不能在本阶段提前删除。
+13. 冻结 `GalNet.Control` 的新增功能：它是旧默认 Avalonia 客户端与页面流程的混合体，后续只做兼容修复。其游戏运行页、标题、设置、存读档、画廊和媒体实现将在 Phase 5 选择性迁入 `GalNet.Sample.Avalonia`，之后删除 `GalNet.Control`。
+
+项目取舍：
+
+| 项目 | Phase 2 决策 | 原因 |
+| --- | --- | --- |
+| `GalNet.Presentation.Abstractions` | 保留 | 面向所有宿主的稳定展示端口。 |
+| `GalNet.Avalonia.Controls` | 保留 | 是用户可直接引用和覆写模板的控件库，不应并入示例应用。 |
+| `GalNet.Storage.Abstractions` + `GalNet.Storage.FileSystem` | 保留为两个项目 | 前者定义可替换存储端口，后者只是默认磁盘实现；合并会重新耦合云端或平台存储。 |
+| `GalNet.Editor.Abstraction` + `GalNet.Editor.Shared` | 暂不合并 | 前者是编辑器协议/扩展边界，后者是文件与命令实现；目前边界有效。 |
+| `GalNet.Editor.Headless` | 保留，可在后续重命名为 `GalNet.Editor.Cli` | 它提供真实的项目创建、校验、命令执行与导出 CLI，不是游戏播放器重复实现。 |
+| `GalNet.Headless` | 迁移后删除 | 当前是写死示例数据的旧游戏演示；由 `GalNet.Player.Console` 取代。 |
+| `GalNet.Control.Tests` | 合并后删除 | 仅两类测试，独立测试程序集没有长期价值。 |
+| `GalNet.Launcher` 及 Android/iOS/Browser/Desktop 外壳 | 暂不删除 | 目前仍是模板级实现，是否作为“游戏库启动器”保留与最终示例客户端是产品决策；Phase 2 不再让它引用或承载新的游戏客户端功能。 |
 
 验收：Runtime 单元测试能借助假接口覆盖剧情推进、阻塞/非阻塞转场、特效、读档恢复和取消。
 
