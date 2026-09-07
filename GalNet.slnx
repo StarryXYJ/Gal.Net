@@ -7,6 +7,9 @@
     <Project Path="src/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj" />
     <Project Path="src/GalNet.Headless/GalNet.Headless.csproj" />
   </Folder>
+  <Folder Name="/src/Infrastructure/">
+    <Project Path="src/GalNet.Storage.FileSystem/GalNet.Storage.FileSystem.csproj" />
+  </Folder>
   <Folder Name="/src/Launcher/">
     <Project Path="src/Launcher/GalNet.Launcher.Headless/GalNet.Launcher.Headless.csproj" />
   </Folder>
@@ -21,6 +24,15 @@
       <Deploy />
     </Project>
     <Project Path="src/Launcher/GalNet.Launcher/GalNet.Launcher/GalNet.Launcher.csproj" />
+  </Folder>
+  <Folder Name="/src/Player/">
+    <Project Path="src/GalNet.Player.Console/GalNet.Player.Console.csproj" />
+  </Folder>
+  <Folder Name="/src/Presentation/">
+    <Project Path="src/GalNet.Avalonia.Controls/GalNet.Avalonia.Controls.csproj" />
+  </Folder>
+  <Folder Name="/src/Samples/">
+    <Project Path="src/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj" />
   </Folder>
   <Folder Name="/src/Shared/">
     <Project Path="src/GalNet.Assets/GalNet.Assets.csproj" />
