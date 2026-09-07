@@ -27,7 +27,9 @@
     <Project Path="src/GalNet.Control.Abstraction/GalNet.Control.Abstraction.csproj" />
     <Project Path="src/GalNet.Control/GalNet.Control.csproj" />
     <Project Path="src/GalNet.Core/GalNet.Core.csproj" />
+    <Project Path="src/GalNet.Presentation.Abstractions/GalNet.Presentation.Abstractions.csproj" />
     <Project Path="src/GalNet.Runtime/GalNet.Runtime.csproj" />
+    <Project Path="src/GalNet.Storage.Abstractions/GalNet.Storage.Abstractions.csproj" />
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/GalNet.Assets.Tests/GalNet.Assets.Tests.csproj" />
