@@ -3,7 +3,6 @@ using GalNet.Core.Runtime;
 using GalNet.Core.Scene;
 using GalNet.Core.Services;
 using GalNet.Core.Settings;
-using GalNet.Core.View;
 using GalNet.Runtime.Variables;
 using GalVariable = GalNet.Core.Variable.Variable;
 using GalNet.Core.Variable;
@@ -24,7 +23,6 @@ public sealed class GameRuntime : IGameRuntime
     public bool IsGameEnded { get; set; }
 
     // ── 核心引用 ──
-    public IGameView? View { get; }
     public ICultureService? I18n { get; }
 
     // ── 设置 ──
@@ -39,11 +37,10 @@ public sealed class GameRuntime : IGameRuntime
     private readonly Stack<(string NodeId, int EntryIndex)> _callStack = new();
     private readonly IVariableService? _variableService;
 
-    public GameRuntime(IGameView? view, ICultureService? i18n, string rootNodeId = "",
+    public GameRuntime(ICultureService? i18n, string rootNodeId = "",
         SettingsContainer? settings = null,
         IVariableService? variableService = null)
     {
-        View = view;
         I18n = i18n;
         CurrentNodeId = rootNodeId;
         Settings = settings ?? new SettingsContainer();
@@ -133,8 +130,20 @@ public sealed class GameRuntime : IGameRuntime
         EntryIndex = snapshot.EntryIndex;
 
         _variables.RestoreSaveFrom(snapshot.Variables);
-
-        foreach (var layer in snapshot.SceneState.Layers)
-            View?.ShowLayer(layer.Id, layer.AssetId, layer.X, layer.Y, layer.Z);
+        SceneState.Layers.Clear();
+        SceneState.Layers.AddRange(snapshot.SceneState.Layers.Select(layer => new Layer
+        {
+            Id = layer.Id,
+            AssetId = layer.AssetId,
+            X = layer.X,
+            Y = layer.Y,
+            Z = layer.Z,
+            Visible = layer.Visible
+        }));
+        SceneState.ActiveControlIds.Clear();
+        SceneState.ActiveControlIds.AddRange(snapshot.SceneState.ActiveControlIds);
+        SceneState.ActiveEffectIds.Clear();
+        SceneState.ActiveEffectIds.AddRange(snapshot.SceneState.ActiveEffectIds);
+        SceneState.ActiveTransition = snapshot.SceneState.ActiveTransition;
     }
 }

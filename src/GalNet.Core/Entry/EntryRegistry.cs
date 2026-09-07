@@ -47,7 +47,7 @@ public static class EntryRegistry
             Define(EnqueueAudioEntry.TypeId, "Audio", () => new EnqueueAudioEntry(), EnqueueAudioEntry.ParameterTypes, EnqueueAudioEntry.DefaultValues, EnqueueAudioEntry.ParameterOptions),
             Define(PlayVideoEntry.TypeId, "Video", () => new PlayVideoEntry(), PlayVideoEntry.ParameterTypes),
             Define(StopVideoEntry.TypeId, "Video", () => new StopVideoEntry(), StopVideoEntry.ParameterTypes),
-            Define(ApplyEffectEntry.TypeId, "Effect", () => new ApplyEffectEntry(), ApplyEffectEntry.ParameterTypes),
+            Define(ApplyEffectEntry.TypeId, "Effect", () => new ApplyEffectEntry(), ApplyEffectEntry.ParameterTypes, ApplyEffectEntry.DefaultValues, ApplyEffectEntry.ParameterOptions),
             Define(StopEffectEntry.TypeId, "Effect", () => new StopEffectEntry(), StopEffectEntry.ParameterTypes),
             Define(WaitEntry.TypeId, "Flow", () => new WaitEntry(), WaitEntry.ParameterTypes, WaitEntry.DefaultValues),
             Define(SetVariableEntry.TypeId, "Variable", () => new SetVariableEntry(), SetVariableEntry.ParameterTypes),

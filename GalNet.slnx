@@ -5,7 +5,6 @@
     <Project Path="src/GalNet.Editor.Shared/GalNet.Editor.Shared.csproj" />
     <Project Path="src/GalNet.Editor/GalNet.Editor.csproj" />
     <Project Path="src/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj" />
-    <Project Path="src/GalNet.Headless/GalNet.Headless.csproj" />
   </Folder>
   <Folder Name="/src/Infrastructure/">
     <Project Path="src/GalNet.Storage.FileSystem/GalNet.Storage.FileSystem.csproj" />
@@ -13,7 +12,6 @@
   <Folder Name="/src/Launcher/">
     <Project Path="src/Launcher/GalNet.Launcher.Headless/GalNet.Launcher.Headless.csproj" />
   </Folder>
-  <Folder Name="/src/Launcher/Dependent/" />
   <Folder Name="/src/Launcher/Launcher/">
     <Project Path="src/Launcher/GalNet.Launcher/GalNet.Launcher.Android/GalNet.Launcher.Android.csproj">
       <Deploy />

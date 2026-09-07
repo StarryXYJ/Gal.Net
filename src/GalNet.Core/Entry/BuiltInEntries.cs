@@ -28,10 +28,10 @@ public sealed class ShowLayerEntry : Entry
     public override string Type => TypeId;
     public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(
         ("id", EntryParameterType.Text), ("asset", EntryParameterType.ImageAsset), ("x", EntryParameterType.Float),
-        ("y", EntryParameterType.Float), ("z", EntryParameterType.Float), ("transition", EntryParameterType.Select),
-        ("duration", EntryParameterType.Float));
-    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("x", "0"), ("y", "0"), ("z", "0"), ("duration", "0.5"));
-    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(("transition", ["", "fade", "dissolve", "slide_left", "slide_right"]));
+        ("y", EntryParameterType.Float), ("z", EntryParameterType.Float), ("transitionId", EntryParameterType.Text),
+        ("transitionDuration", EntryParameterType.Float), ("transitionBlocking", EntryParameterType.Select), ("transitionParameters", EntryParameterType.MultilineText));
+    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("x", "0"), ("y", "0"), ("z", "0"), ("transitionDuration", "0.5"), ("transitionBlocking", "false"));
+    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(("transitionBlocking", ["false", "true"]));
 }
 
 public sealed class HideLayerEntry : Entry
@@ -39,8 +39,9 @@ public sealed class HideLayerEntry : Entry
     public const string TypeId = "layer.hide";
     public override string Type => TypeId;
     public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(
-        ("id", EntryParameterType.Text), ("transition", EntryParameterType.Select), ("duration", EntryParameterType.Float));
-    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("duration", "0.5"));
+        ("id", EntryParameterType.Text), ("transitionId", EntryParameterType.Text), ("transitionDuration", EntryParameterType.Float),
+        ("transitionBlocking", EntryParameterType.Select), ("transitionParameters", EntryParameterType.MultilineText));
+    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("transitionDuration", "0.5"), ("transitionBlocking", "false"));
     public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = ShowLayerEntry.ParameterOptions;
 }
 
@@ -135,14 +136,17 @@ public sealed class ApplyEffectEntry : Entry
     public const string TypeId = "effect.apply";
     public override string Type => TypeId;
     public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(
-        ("type", EntryParameterType.Text), ("parameters", EntryParameterType.MultilineText));
+        ("id", EntryParameterType.Text), ("instanceId", EntryParameterType.Text), ("duration", EntryParameterType.Float),
+        ("blocking", EntryParameterType.Select), ("parameters", EntryParameterType.MultilineText));
+    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("duration", "-1"), ("blocking", "false"));
+    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(("blocking", ["false", "true"]));
 }
 
 public sealed class StopEffectEntry : Entry
 {
     public const string TypeId = "effect.stop";
     public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("id", EntryParameterType.Text));
+    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("instanceId", EntryParameterType.Text));
 }
 
 public sealed class WaitEntry : Entry

@@ -2,12 +2,13 @@ using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Media;
+using GalNet.Control.Runtime.Presentation;
 using Avalonia.Styling;
 using AvaloniaControl = Avalonia.Controls.Control;
 
 namespace GalNet.Control.Effect;
 
-public sealed class FlashEffect : global::GalNet.Core.View.IEffect
+public sealed class FlashEffect : IVisualEffect
 {
     public string Name => "flash";
     private readonly Dictionary<global::GalNet.Core.View.IGameView, Border> _overlays = new();

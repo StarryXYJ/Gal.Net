@@ -109,15 +109,14 @@ public sealed class GameRunViewModel : IAsyncDisposable
             var content = await _contentProvider.LoadAsync(cancellationToken);
             var graph = content.Graph;
             var runtime = new GameRuntime(
-                GameView,
                 null,
                 _options?.StartNodeId ?? graph.RootNodeId,
                 settings,
                 _variableService);
-            if (_options?.RestoreSnapshot is { } snapshot)
-                runtime.RestoreFrom(snapshot);
             _runtime = runtime;
-            var engine = new GameEngine(graph, runtime, registry: EntryHandlerRegistry.CreateDefault(_progressService), progress: _progressService);
+            var engine = new GameEngine(graph, runtime, GameView, registry: EntryHandlerRegistry.CreateDefault(_progressService), progress: _progressService);
+            if (_options?.RestoreSnapshot is { } snapshot)
+                engine.RestoreFrom(snapshot);
             engine.CheckpointCreated += snapshot => _ = WriteQuickSaveAsync(snapshot);
             _options?.RuntimeCreated?.Invoke(runtime);
             _options?.GameStarted?.Invoke();

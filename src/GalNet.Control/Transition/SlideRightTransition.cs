@@ -3,11 +3,12 @@ using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Styling;
+using GalNet.Control.Runtime.Presentation;
 using AvaloniaControl = Avalonia.Controls.Control;
 
 namespace GalNet.Control.Transition;
 
-public sealed class SlideRightTransition : global::GalNet.Core.View.ITransition
+public sealed class SlideRightTransition : IVisualTransition
 {
     public string Name => "slide_right";
 

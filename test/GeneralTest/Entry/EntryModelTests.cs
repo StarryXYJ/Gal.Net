@@ -23,7 +23,7 @@ public class EntryModelTests
         Assert.That(entry, Is.TypeOf<ShowLayerEntry>());
         Assert.That(entry.Id, Is.EqualTo(3));
         Assert.That(entry.Condition, Is.EqualTo("flag"));
-        Assert.That(entry.Values["duration"], Is.EqualTo("0.5"));
+        Assert.That(entry.Values["transitionDuration"], Is.EqualTo("0.5"));
         Assert.That(entry.Values["id"], Is.EqualTo("hero"));
         Assert.That(entry.Values, Does.Not.ContainKey("unknown"));
     }

@@ -1,11 +1,12 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using GalNet.Control.Runtime.Presentation;
 using AvaloniaControl = Avalonia.Controls.Control;
 
 namespace GalNet.Control.Effect;
 
-public sealed class VignetteEffect : global::GalNet.Core.View.IEffect
+public sealed class VignetteEffect : IVisualEffect
 {
     public string Name => "vignette";
     private readonly Dictionary<global::GalNet.Core.View.IGameView, Border> _overlays = new();

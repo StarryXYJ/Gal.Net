@@ -1,7 +1,6 @@
 using DynamicLocalization.Core;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
-using GalNet.Core.Handler;
 using GalNet.Core.Runtime;
 using GalNet.Core.Scene;
 using GalNet.Core.Settings;
@@ -19,7 +18,9 @@ public sealed class GameEngine
     private readonly Graph _graph;
     private readonly EntryHandlerRegistry _registry;
     private readonly IGameRuntime _runtime;
+    private readonly IGameView _view;
     private readonly IGameProgressService? _progress;
+    private readonly TimeProvider _timeProvider;
 
     /// <summary>Raised at interaction boundaries, before the engine waits for input.</summary>
     public event Action<GameSnapshot>? CheckpointCreated;
@@ -35,24 +36,31 @@ public sealed class GameEngine
         ICultureService? i18n = null,
         SettingsContainer? settings = null,
         EntryHandlerRegistry? registry = null,
-        IGameProgressService? progress = null)
+        IGameProgressService? progress = null,
+        TimeProvider? timeProvider = null)
     {
         _graph = graph;
         _registry = registry ?? EntryHandlerRegistry.CreateDefault();
-        _runtime = new GameRuntime(view, i18n, graph.RootNodeId, settings);
+        _runtime = new GameRuntime(i18n, graph.RootNodeId, settings);
+        _view = view;
         _progress = progress;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public GameEngine(
         Graph graph,
         IGameRuntime runtime,
+        IGameView view,
         EntryHandlerRegistry? registry = null,
-        IGameProgressService? progress = null)
+        IGameProgressService? progress = null,
+        TimeProvider? timeProvider = null)
     {
         _graph = graph;
         _registry = registry ?? EntryHandlerRegistry.CreateDefault();
         _runtime = runtime;
+        _view = view;
         _progress = progress;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<bool> StepAsync(CancellationToken ct = default)
@@ -105,37 +113,24 @@ public sealed class GameEngine
             if (handler == null)
                 continue;
 
-            if (handler.IsBlocking)
-                await ExecuteBlockingEntryAsync(handler, entry, ct);
-            else
-                ExecuteNonBlockingEntry(handler, entry);
+            await ExecuteEntryAsync(handler, entry, ct);
         }
 
         _runtime.SetEntryIndex(0);
         MoveToNext();
     }
 
-    private async Task ExecuteBlockingEntryAsync(EntryHandler handler, Entry entry, CancellationToken ct)
+    private async Task ExecuteEntryAsync(EntryHandler handler, Entry entry, CancellationToken ct)
     {
         var ctx = new EntryContext { Entry = entry, Runtime = _runtime };
 
-        handler.Start(ctx);
-        if (entry.Type == TextEntry.TypeId) _progress?.MarkRead(groupId: _runtime.CurrentNodeId, entry.Id.ToString());
-        CheckpointCreated?.Invoke(CreateSaveData());
-
-        while (!handler.IsCompleted(ctx))
+        if (handler.CreatesCheckpoint)
         {
-            await _runtime.View!.WaitForClickAsync(ct);
-            handler.Interrupt(ctx);
+            if (entry.Type == TextEntry.TypeId) _progress?.MarkRead(groupId: _runtime.CurrentNodeId, entry.Id.ToString());
+            CheckpointCreated?.Invoke(CreateSaveData());
         }
 
-        handler.Complete(ctx);
-    }
-
-    private void ExecuteNonBlockingEntry(EntryHandler handler, Entry entry)
-    {
-        var ctx = new EntryContext { Entry = entry, Runtime = _runtime };
-        handler.Start(ctx);
+        await handler.ExecuteAsync(ctx, _view, _timeProvider, ct);
     }
 
     private async Task ProcessBranchAsync(Branch branch, CancellationToken ct)
@@ -163,7 +158,7 @@ public sealed class GameEngine
         var texts = visibleOptions.Select(x => Resolve(x.Option.Text)).ToArray();
 
         CheckpointCreated?.Invoke(CreateSaveData());
-        var selected = await _runtime.View!.WaitForChoiceAsync("default_choice", texts, ct);
+        var selected = await _view.WaitForChoiceAsync("default_choice", texts, ct);
 
         if (selected >= 0 && selected < visibleOptions.Count)
         {
@@ -214,6 +209,8 @@ public sealed class GameEngine
     public void RestoreFrom(GameSnapshot data)
     {
         _runtime.RestoreFrom(data);
+        foreach (var layer in _runtime.SceneState.Layers.Where(layer => layer.Visible))
+            _view.ShowLayer(layer.Id, layer.AssetId, layer.X, layer.Y, layer.Z);
         IsRunning = true;
     }
 }

@@ -15,11 +15,11 @@ public class EntryHandlerRegistryTests
     }
 
     [Test]
-    public void Blocking_Metadata_Should_Match()
+    public void Checkpoint_Metadata_Should_Only_Mark_Input_Boundaries()
     {
         var registry = EntryHandlerRegistry.CreateDefault();
-        Assert.That(registry.Resolve(TextEntry.TypeId)!.IsBlocking, Is.True);
-        Assert.That(registry.Resolve(WaitEntry.TypeId)!.IsBlocking, Is.True);
-        Assert.That(registry.Resolve(PlayAudioEntry.TypeId)!.IsBlocking, Is.False);
+        Assert.That(registry.Resolve(TextEntry.TypeId)!.CreatesCheckpoint, Is.True);
+        Assert.That(registry.Resolve(WaitEntry.TypeId)!.CreatesCheckpoint, Is.False);
+        Assert.That(registry.Resolve(PlayAudioEntry.TypeId)!.CreatesCheckpoint, Is.False);
     }
 }

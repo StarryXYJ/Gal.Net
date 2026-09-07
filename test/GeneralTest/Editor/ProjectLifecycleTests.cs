@@ -4,7 +4,7 @@ using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Shared.UI;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace GalNet.Control.Tests;
+namespace GeneralTest.Editor;
 
 public sealed class ProjectLifecycleTests
 {

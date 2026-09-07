@@ -1,11 +1,12 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using GalNet.Control.Runtime.Presentation;
 using AvaloniaControl = Avalonia.Controls.Control;
 
 namespace GalNet.Control.Effect;
 
-public sealed class ShakeEffect : global::GalNet.Core.View.IEffect
+public sealed class ShakeEffect : IVisualEffect
 {
     public string Name => "shake";
     private readonly Dictionary<global::GalNet.Core.View.IGameView, IDisposable> _timers = new();

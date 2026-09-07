@@ -1,4 +1,4 @@
-using GalNet.Core.Handler;
+using GalNet.Core.View;
 
 namespace GalNet.Runtime.Handlers;
 
@@ -9,36 +9,21 @@ namespace GalNet.Runtime.Handlers;
 public sealed class TextHandler : EntryHandler
 {
     public override string EntryType => "text";
-    public override bool IsBlocking => true;
+    public override bool CreatesCheckpoint => true;
 
-    private bool _completed;
-
-    public override void Start(EntryContext ctx)
+    public override async Task ExecuteAsync(EntryContext context, IGameView view, TimeProvider timeProvider, CancellationToken ct)
     {
-        _completed = false;
-
-        var speaker = ctx.GetText("speaker");
-        var content = ctx.GetText("content");
-        var voice = ctx.GetString("voice");
+        var speaker = context.GetText("speaker");
+        var content = context.GetText("content");
+        var voice = context.GetString("voice");
         const string widgetId = "default_dialogue";
 
         if (!string.IsNullOrEmpty(voice))
-            ctx.View.SetVoice(voice);
+            view.SetVoice(voice);
 
-        _ = ctx.View.StartTypewriter(widgetId, speaker, content, CancellationToken.None);
-    }
-
-    public override bool IsCompleted(EntryContext ctx) => _completed;
-
-    public override void Complete(EntryContext ctx)
-    {
-        _completed = true;
-    }
-
-    public override void Interrupt(EntryContext ctx)
-    {
-        const string widgetId = "default_dialogue";
-        ctx.View.SkipTypewriter(widgetId);
-        _completed = true;
+        var typewriter = view.StartTypewriter(widgetId, speaker, content, ct);
+        await view.WaitForClickAsync(ct);
+        view.SkipTypewriter(widgetId);
+        await typewriter;
     }
 }

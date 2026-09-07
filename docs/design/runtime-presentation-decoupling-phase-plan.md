@@ -35,7 +35,7 @@ Avalonia 示例客户端 / CLI / 编辑器预览     文件系统 / pak / 云端
 GalNet.Presentation.Abstractions
   └─ 视觉与交互接口、转场/特效请求 DTO；零 UI 框架依赖
 
-GalNet.Core                       --> Presentation.Abstractions（Phase 2 后移除）
+GalNet.Core
   └─ 游戏文件模型、Graph、Entry、SceneState、Snapshot、值对象
 
 GalNet.Storage.Abstractions       --> GalNet.Core
@@ -58,7 +58,7 @@ GalNet.Player.Console             --> Runtime + Assets + Storage.FileSystem
 GalNet.Editor                     --> Runtime + Assets + Storage.FileSystem + Avalonia.Controls
 ```
 
-`GalNet.Control`、`GalNet.Control.Abstraction` 与现有 `GalNet.Headless` 在迁移期间保留；所有调用方完成迁移、测试通过后再删除。
+`GalNet.Control` 与 `GalNet.Control.Abstraction` 在迁移期间保留；所有调用方完成迁移、测试通过后再删除。
 
 ## 3. 核心契约设计
 
@@ -155,23 +155,20 @@ public sealed record EffectRequest(
 - 已更新项目引用并验证：存储测试 78 项通过，Control 和 Editor 均在隔离输出目录构建成功。
 - `GalNet.Core` 中遗留的 Avalonia `UiProject`/调色板模型属于编辑器 UI 定制功能，将随 Phase 6 一并移除，而非在本阶段拆出。
 
-### Phase 2：运行时状态机与条目迁移
+### Phase 2：运行时状态机与宿主边界（已完成）
 
-工作项：
+- `IGameRuntime` 与 Runtime Context 已移除 `IGameView`；Core 不再引用展示抽象项目。
+- `GameEngine` 显式接收每会话的 `IGameView` 和 `TimeProvider`，Runtime Handler 通过显式参数执行，不再隐藏地从状态对象取得 UI 服务。
+- 图层状态会先写入 `SceneState`；读档恢复 Runtime 状态后由 Engine 重放可见图层。文本、选择、等待、音视频、对话、变量及画廊 Handler 已迁入新执行模型。
+- 转场条目使用 `transitionId`、`transitionDuration`、`transitionBlocking`、`transitionParameters`；特效条目使用 `id`、`instanceId`、`duration`、`blocking`、`parameters`。动态参数保持原始 JSON，Core 不解析。
+- 已实现构造函数注入的 `CompositeGameView`。组合根创建各展示服务后传入 facade；Runtime 与 facade 均不依赖 `IServiceProvider`。
+- `NullGameView` 已切换到新契约；`GalNet.Player.Console` 可运行真实游戏目录并演示组合根注入。旧的硬编码 `GalNet.Headless` 已删除。
+- `GalNet.Control.Tests` 已合并到 `GeneralTest`，保留项目生命周期测试；旧 UI 配置测试已删除。
+- `GalNet.Control` 仅保留现有预览的适配维护，其内部转场/特效注册表已改为宿主私有契约。
 
-1. 从 `IGameRuntime` 移除 `View`，从 `EntryContext` 移除 `ctx.View` 的隐式服务定位。
-2. `GameEngine` 使用构造函数注入展示/输入接口，且只传给真正需要的处理器。
-3. 改造图层、对话、音频、视频、文本、选择和等待 Handler：先更新运行时状态，再调用专用接口。
-4. 改造 `ShowLayerEntry`、`HideLayerEntry`、`MoveLayerEntry`，保留原有字段；过渡部分映射为 `TransitionRequest`。
-5. 改造 `ApplyEffectEntry`：`type` 更名/解释为 Effect ID，增加可选实例 ID、时长、是否阻塞；参数仍以原始 JSON 保存。
-6. 扩展转场条目为 ID、时长、是否阻塞、原始参数，并在执行时传入源/目标图像 ID。
-7. 存档与读档按 `SceneState` 恢复图层、对话、音频等可恢复状态；不再让视图保存真实状态。
-8. 引入 `IClock` 并为等待、阻塞转场和取消行为编写测试。
-9. 新增无 UI 框架依赖的 `CompositeGameView`：由构造函数接收 `ILayerView`、`IDialogueView`、`IAudioView`、`IVideoView`、`IInteractionView`、`ITransitionView` 和 `IEffectView`，只转发调用。宿主 DI 容器负责创建各实现并注册每会话的 `IGameView`；禁止在 Runtime 或 `CompositeGameView` 中注入、保存或调用 `IServiceProvider`。
-10. 将 `NullGameView` 改为基于上述组合接口的无操作/测试实现；`GalNet.Player.Console` 开始接替现有 `GalNet.Headless` 的实际游戏运行职责。只有在 Console 能加载真实项目后，才删除旧 `GalNet.Headless`。
-11. 合并测试项目：把 `GalNet.Control.Tests` 中仍有价值的项目生命周期测试迁入 `GeneralTest`；UI 配置测试随遗留 UI 配置功能迁移。迁移完成后删除独立的 `GalNet.Control.Tests` 项目，统一由 `GeneralTest` 承担核心、运行时和编辑器共享逻辑测试。
-12. 清理遗留 UI 定制依赖的第一步：将通用的 `AssetPickerFilter` 迁入 `GalNet.Editor.Abstraction`，使 `Editor.Abstraction` 不再依赖 `GalNet.Control.Abstraction`。`GalNet.Control.Abstraction`、`Core/UI`、`Editor.Shared/UI` 和 UI 配置测试标记为遗留模块；它们在 Phase 6 与编辑器 UI 定制功能一起删除，不能在本阶段提前删除。
-13. 冻结 `GalNet.Control` 的新增功能：它是旧默认 Avalonia 客户端与页面流程的混合体，后续只做兼容修复。其游戏运行页、标题、设置、存读档、画廊和媒体实现将在 Phase 5 选择性迁入 `GalNet.Sample.Avalonia`，之后删除 `GalNet.Control`。
+验证：`GeneralTest` 127 项通过；命令行 Player、Runtime、Control 和 Editor（隔离输出）均已构建通过。
+
+`AssetPickerFilter` 暂不移动：`GalNet.Editor.Abstraction` 当前反向依赖 `GalNet.Control.Abstraction`，直接迁移会形成项目循环。它随 Phase 5 删除旧 UI 定制链后自然消失，而非引入错误依赖。
 
 项目取舍：
 
@@ -188,17 +185,14 @@ public sealed record EffectRequest(
 
 验收：Runtime 单元测试能借助假接口覆盖剧情推进、阻塞/非阻塞转场、特效、读档恢复和取消。
 
-### Phase 3：NullGameView 与命令行客户端
+### Phase 3：命令行持久化补全
 
 工作项：
 
-1. 重写 `NullGameView`，使其实现新的抽象接口：记录调用、自动继续、默认选首项，并对阻塞转场/特效立即完成。
-2. 让运行时集成测试全部改用新 `NullGameView`。
-3. 创建 `GalNet.Player.Console`，迁移现有 `HeadlessGameView` 的逐字符输出与特殊记号解析。
-4. 命令行实现固定音频/视频/图层行为的文本日志；转场、特效输出包含 ID、源/目标、时长、阻塞与原始参数。
-5. 实现命令行存档、读档、玩家变量持久化的默认文件系统组合。
+1. 为命令行 Player 接入默认文件系统存档、读档和玩家变量持久化。
+2. 把项目定义的逐字符特殊记号解析收敛为可复用实现，并用于命令行与后续 Avalonia 控件库。
 
-验收：命令行可运行真实项目，支持文本、选项、变量、存读档、全局变量及动态视觉命令日志。
+验收：命令行可运行真实项目并支持持久化存档/全局变量；文本记号在各官方宿主一致。
 
 ### Phase 4：Avalonia 控件库
 

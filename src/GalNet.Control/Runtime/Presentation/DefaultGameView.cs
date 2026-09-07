@@ -13,6 +13,7 @@ using GalNet.Core.View;
 using GalNet.Core.Assets;
 using LibVLCSharp.Shared;
 using Serilog;
+using System.Text.Json;
 using AvaloniaControl = Avalonia.Controls.Control;
 
 namespace GalNet.Control.Runtime.Presentation;
@@ -182,11 +183,6 @@ public class DefaultGameView : Grid, IGameView, IDisposable
     void IControlView.ShowDialogue() => Dispatcher.UIThread.Post(() => _screen.IsDialogueVisible = true);
     void IControlView.HideDialogue() => Dispatcher.UIThread.Post(() => _screen.IsDialogueVisible = false);
 
-    // ── IPageView ──
-
-    Task<string> IPageView.ShowPageAsync(string screenInstanceId, CancellationToken ct)
-        => Task.FromResult(screenInstanceId);
-
     // ── ITypewriterView ──
 
     Task ITypewriterView.StartTypewriter(string widgetInstanceId, string speaker, string text, CancellationToken ct)
@@ -305,39 +301,21 @@ public class DefaultGameView : Grid, IGameView, IDisposable
         _videoController.Stop();
     }
 
-    // ── IEffectView ──
+    // ── ITransitionView ──
 
-    void IEffectView.ApplyTransition(string type, float durationSec)
-    {
-        if (type == "dissolve")
+    Task ITransitionView.PlayTransitionAsync(TransitionRequest request, CancellationToken ct) =>
+        RunOnUiThreadAsync(async () =>
         {
-            Dispatcher.UIThread.Post(async () =>
+            var transition = _transitionRegistry.Get(request.Id);
+            if (transition is null)
             {
-                try { await DissolveAsync(durationSec); }
-                catch (Exception ex) { Log.Error(ex, "Dissolve transition failed"); }
-            });
-            return;
-        }
-
-        Dispatcher.UIThread.Post(async () =>
-        {
-            var transition = _transitionRegistry.Get(type);
-            if (transition == null)
-            {
-                Log.Warning("Transition not found: {Type}", type);
+                Log.Warning("Transition not found: {Id}", request.Id);
                 return;
             }
 
-            try
-            {
-                await transition.ExecuteAsync(this, null, null, durationSec, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Transition failed: {Type}", type);
-            }
-        });
-    }
+            await transition.ExecuteAsync(this, request.FromImageId, request.ToImageId,
+                (float)request.Duration.TotalSeconds, ct);
+        }, ct);
 
     /// <summary>
     /// Cross-fade between old and new layers. Captures current layer images into an
@@ -398,20 +376,64 @@ public class DefaultGameView : Grid, IGameView, IDisposable
         canvas.Children.Remove(overlay);
     }
 
-    void IEffectView.ApplyEffect(string effectType, IReadOnlyDictionary<string, object> parameters)
-    {
-        Dispatcher.UIThread.Post(() =>
+    // ── IEffectView ──
+
+    Task IEffectView.StartEffectAsync(EffectRequest request, CancellationToken ct) =>
+        RunOnUiThreadAsync(() =>
         {
-            var effectId = _effectRegistry.Start(effectType, this, parameters);
-            if (string.IsNullOrEmpty(effectId))
-            {
-                Log.Warning("Effect not found: {Type}", effectType);
-            }
-        });
+            if (!_effectRegistry.Start(request.Id, request.InstanceId, this, ParseParameters(request.Parameters)))
+                Log.Warning("Effect not found: {Id}", request.Id);
+            return Task.CompletedTask;
+        }, ct);
+
+    Task IEffectView.StopEffectAsync(string instanceId, CancellationToken ct) =>
+        RunOnUiThreadAsync(() =>
+        {
+            _effectRegistry.Stop(instanceId);
+            return Task.CompletedTask;
+        }, ct);
+
+    private static IReadOnlyDictionary<string, object> ParseParameters(string parameters)
+    {
+        if (string.IsNullOrWhiteSpace(parameters)) return new Dictionary<string, object>();
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<string, object>>(parameters) ?? new Dictionary<string, object>();
+        }
+        catch (JsonException exception)
+        {
+            Log.Warning(exception, "Effect parameters must be a JSON object");
+            return new Dictionary<string, object>();
+        }
     }
 
-    void IEffectView.StopEffect(string effectId)
+    private static Task RunOnUiThreadAsync(Func<Task> operation, CancellationToken ct)
     {
-        Dispatcher.UIThread.Post(() => _effectRegistry.Stop(effectId));
+        if (Dispatcher.UIThread.CheckAccess()) return operation();
+
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var registration = ct.Register(() => completion.TrySetCanceled(ct));
+        Dispatcher.UIThread.Post(async () =>
+        {
+            try
+            {
+                ct.ThrowIfCancellationRequested();
+                await operation();
+                completion.TrySetResult();
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                completion.TrySetCanceled(ct);
+            }
+            catch (Exception exception)
+            {
+                completion.TrySetException(exception);
+            }
+            finally
+            {
+                registration.Dispose();
+            }
+        });
+        return completion.Task;
     }
 }

@@ -2,7 +2,6 @@ using DynamicLocalization.Core;
 using GalNet.Core.Scene;
 using GalNet.Core.Settings;
 using GalNet.Core.Variable;
-using GalNet.Core.View;
 
 namespace GalNet.Core.Runtime;
 
@@ -24,7 +23,6 @@ public interface IGameRuntime
     bool IsGameEnded { get; }
 
     // ── 核心引用 ──
-    IGameView? View { get; }
     ICultureService? I18n { get; }
 
     // ── 设置 ──

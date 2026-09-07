@@ -15,19 +15,19 @@ public class NullGameView : IGameView
         _verbose = verbose;
     }
 
-    public void ShowLayer(string id, string assetId, float x, float y, float z = 0)
+    public virtual void ShowLayer(string id, string assetId, float x, float y, float z = 0)
     {
         if (_verbose)
             Console.WriteLine($"[Layer] show id={id}, asset={assetId}, pos=({x},{y},{z})");
     }
 
-    public void HideLayer(string id)
+    public virtual void HideLayer(string id)
     {
         if (_verbose)
             Console.WriteLine($"[Layer] hide id={id}");
     }
 
-    public void MoveLayer(string id, float x, float y, float z, float durationSec)
+    public virtual void MoveLayer(string id, float x, float y, float z, float durationSec)
     {
         if (_verbose)
             Console.WriteLine($"[Layer] move id={id} to ({x},{y},{z}) in {durationSec}s");
@@ -43,13 +43,6 @@ public class NullGameView : IGameView
     {
         if (_verbose)
             Console.WriteLine("[Dialogue] hide");
-    }
-
-    public Task<string> ShowPageAsync(string screenInstanceId, CancellationToken ct)
-    {
-        if (_verbose)
-            Console.WriteLine($"[Screen] show id={screenInstanceId}");
-        return Task.FromResult("");
     }
 
     public void PlayAudio(string channel, string assetId, float volume, string mode, int times)
@@ -100,22 +93,25 @@ public class NullGameView : IGameView
             Console.WriteLine($"[Video] stop");
     }
 
-    public void ApplyTransition(string type, float durationSec)
+    public virtual Task PlayTransitionAsync(TransitionRequest request, CancellationToken ct)
     {
         if (_verbose)
-            Console.WriteLine($"[Transition] type={type}, duration={durationSec}s");
+            Console.WriteLine($"[Transition] id={request.Id}, from={request.FromImageId}, to={request.ToImageId}, duration={request.Duration.TotalSeconds}s, blocking={request.IsBlocking}, parameters={request.Parameters}");
+        return Task.CompletedTask;
     }
 
-    public void ApplyEffect(string effectType, IReadOnlyDictionary<string, object> parameters)
+    public virtual Task StartEffectAsync(EffectRequest request, CancellationToken ct)
     {
         if (_verbose)
-            Console.WriteLine($"[Effect] type={effectType}, params={string.Join(", ", parameters.Select(kv => $"{kv.Key}={kv.Value}"))}");
+            Console.WriteLine($"[Effect] start id={request.Id}, instance={request.InstanceId}, duration={request.Duration}, blocking={request.IsBlocking}, parameters={request.Parameters}");
+        return Task.CompletedTask;
     }
 
-    public void StopEffect(string effectId)
+    public virtual Task StopEffectAsync(string instanceId, CancellationToken ct)
     {
         if (_verbose)
-            Console.WriteLine($"[Effect] stop id={effectId}");
+            Console.WriteLine($"[Effect] stop instance={instanceId}");
+        return Task.CompletedTask;
     }
 
     public virtual Task StartTypewriter(string widgetInstanceId, string speaker, string text, CancellationToken ct)
