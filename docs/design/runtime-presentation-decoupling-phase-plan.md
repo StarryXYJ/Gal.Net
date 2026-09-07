@@ -195,12 +195,9 @@ public sealed record EffectRequest(
 
 ### Phase 3：命令行持久化补全
 
-工作项：
+已完成：`GalNet.Sample.Headless` 以组合根方式接入默认目录内容、存档、进度和玩家变量存储；支持 `--profile`、`--save-slot` 与 `--load-slot`。`player.` 前缀的变量写入跨存档的玩家变量文件，其余变量保留在各槽位快照中。项目既有的 `GalNet.Core.Text.TypewriterTextParser` 已作为唯一的跨宿主特殊记号解析器，命令行样例直接复用，后续 Avalonia 控件库也将复用它。
 
-1. 为命令行 Player 接入默认文件系统存档、读档和玩家变量持久化。
-2. 把项目定义的逐字符特殊记号解析收敛为可复用实现，并用于命令行与后续 Avalonia 控件库。
-
-验收：命令行可运行真实项目并支持持久化存档/全局变量；文本记号在各官方宿主一致。
+验证：命令行可运行真实项目并支持持久化存档/全局变量；文本记号在各官方宿主保持一致。
 
 ### Phase 4：Avalonia 控件库
 

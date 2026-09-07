@@ -1,4 +1,5 @@
 using GalNet.Core.Settings;
+using GalNet.Core.Text;
 using GalNet.Core.View;
 
 namespace GalNet.Sample.Headless;
@@ -62,12 +63,26 @@ internal sealed class ConsolePresentation :
         try
         {
             if (!string.IsNullOrWhiteSpace(speaker)) Console.Write($"{speaker}: ");
-            foreach (var character in text)
+            foreach (var token in TypewriterTextParser.Parse(text))
             {
-                ct.ThrowIfCancellationRequested();
-                Console.Write(character);
-                if (!_skipCurrentTypewriter && _settings.TextSpeed > 0)
-                    await Task.Delay(TimeSpan.FromSeconds(1d / _settings.TextSpeed), ct);
+                switch (token.Kind)
+                {
+                    case TypewriterTokenKind.Text:
+                        foreach (var character in token.Text)
+                        {
+                            ct.ThrowIfCancellationRequested();
+                            Console.Write(character);
+                            if (!_skipCurrentTypewriter && _settings.TextSpeed > 0)
+                                await Task.Delay(TimeSpan.FromSeconds(1d / _settings.TextSpeed), ct);
+                        }
+                        break;
+                    case TypewriterTokenKind.Delay when !_skipCurrentTypewriter:
+                        await Task.Delay(token.DelayMilliseconds, ct);
+                        break;
+                    case TypewriterTokenKind.Instant:
+                        _skipCurrentTypewriter = true;
+                        break;
+                }
             }
             Console.WriteLine();
             completion.TrySetResult();
