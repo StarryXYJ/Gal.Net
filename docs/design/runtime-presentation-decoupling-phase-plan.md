@@ -164,7 +164,7 @@ public sealed record EffectRequest(
 - 已实现构造函数注入的 `CompositeGameView`。组合根创建各展示服务后传入 facade；Runtime 与 facade 均不依赖 `IServiceProvider`。
 - `NullGameView` 已切换到新契约；`GalNet.Player.Console` 可运行真实游戏目录并演示组合根注入。旧的硬编码 `GalNet.Headless` 已删除。
 - `GalNet.Control.Tests` 已合并到 `GeneralTest`，保留项目生命周期测试；旧 UI 配置测试已删除。
-- `GalNet.Control` 仅保留现有预览的适配维护，其内部转场/特效注册表已改为宿主私有契约。
+- `GalNet.Control` 仅保留现有预览的适配维护：效果接口为空实现；转场按动态 ID 识别 `black`、`white`、`cross` 等入口，暂不承载动画实现。
 
 验证：`GeneralTest` 127 项通过；命令行 Player、Runtime、Control 和 Editor（隔离输出）均已构建通过。
 
@@ -181,6 +181,7 @@ public sealed record EffectRequest(
 | `GalNet.Editor.Headless` | 保留，可在后续重命名为 `GalNet.Editor.Cli` | 它提供真实的项目创建、校验、命令执行与导出 CLI，不是游戏播放器重复实现。 |
 | `GalNet.Headless` | 迁移后删除 | 当前是写死示例数据的旧游戏演示；由 `GalNet.Player.Console` 取代。 |
 | `GalNet.Control.Tests` | 合并后删除 | 仅两类测试，独立测试程序集没有长期价值。 |
+| `GalNet.Launcher.Headless` | 已删除 | 仅包含 `Hello World`，没有调用方或产品职责。 |
 | `GalNet.Launcher` 及 Android/iOS/Browser/Desktop 外壳 | 暂不删除 | 目前仍是模板级实现，是否作为“游戏库启动器”保留与最终示例客户端是产品决策；Phase 2 不再让它引用或承载新的游戏客户端功能。 |
 
 验收：Runtime 单元测试能借助假接口覆盖剧情推进、阻塞/非阻塞转场、特效、读档恢复和取消。
@@ -212,7 +213,7 @@ public sealed record EffectRequest(
 1. 创建 `GalNet.Sample.Avalonia` 作为完整可运行参考项目。
 2. 在应用组合根注册内容、资源、存档、玩家变量、进度、设置、音频、视频、转场和特效服务。
 3. 使用控件库实现默认游戏屏幕、对话、选项、存读档、标题、设置、画廊和截图流程。
-4. 实现 `TransitionRegistry` 与 `EffectRegistry`：按 `Id` 分派请求；默认实现复用现有 fade、dissolve、shake、flash 等效果。
+4. 在组合根按 `Id` 分派转场/特效请求。转场首先实现 black、white、cross；特效保留动态入口，按需求由最终客户端添加，不设每个效果一个框架抽象类型。
 5. 将视觉实现放在示例工程；开发者可替换单个服务、覆盖控件模板或复制整个工程，不影响 `Core`/`Runtime`。
 
 验收：示例工程能加载发布包并完整运行；替换一个转场/特效/音频实现不修改运行时工程。
@@ -235,12 +236,12 @@ public sealed record EffectRequest(
 工作项：
 
 1. 增加游戏文件格式版本，写入转场/特效新字段。
-2. 提供旧字段到新 `TransitionRequest`、`EffectRequest` 的兼容读取；旧项目可打开并升级。
+2. 固化新字段与校验规则；不提供旧字段兼容读取。
 3. 更新导出器：只导出游戏数据和资源，不导出编辑器 UI 配置。
 4. 更新架构、运行时、条目、文件格式与控件库文档。
-5. 所有调用方迁移后，删除旧 `GalNet.Control`、`GalNet.Control.Abstraction`、旧 `IGameView` 兼容层和旧 Headless 项目。
+5. 所有调用方迁移后，删除旧 `GalNet.Control`、`GalNet.Control.Abstraction` 及遗留 UI 定制链。
 
-验收：旧项目完成升级后可由 CLI 和示例 Avalonia 客户端运行；最终依赖图无反向引用，完整测试通过。
+验收：新格式项目可由 CLI 和示例 Avalonia 客户端运行；最终依赖图无反向引用，完整测试通过。
 
 ## 5. 不在本次短期范围
 

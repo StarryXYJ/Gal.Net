@@ -48,11 +48,11 @@ public sealed class GameEngine
     }
 
     public GameEngine(
-        Graph graph,
+        Graph graph,  // 游戏文件
         IGameRuntime runtime,
         IGameView view,
-        EntryHandlerRegistry? registry = null,
-        IGameProgressService? progress = null,
+        EntryHandlerRegistry? registry = null,  // 开发者定义动态变量提供
+        IGameProgressService? progress = null,  //游戏进度(画廊解锁之类的)
         TimeProvider? timeProvider = null)
     {
         _graph = graph;

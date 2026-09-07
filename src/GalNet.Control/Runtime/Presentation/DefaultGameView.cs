@@ -3,9 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
-using GalNet.Control.Effect;
 using GalNet.Control.Screen.Game;
-using GalNet.Control.Transition;
 using GalNet.Control.Abstraction.UI;
 using GalNet.Core.Settings;
 using GalNet.Core.UI;
@@ -13,7 +11,6 @@ using GalNet.Core.View;
 using GalNet.Core.Assets;
 using LibVLCSharp.Shared;
 using Serilog;
-using System.Text.Json;
 using AvaloniaControl = Avalonia.Controls.Control;
 
 namespace GalNet.Control.Runtime.Presentation;
@@ -21,8 +18,6 @@ namespace GalNet.Control.Runtime.Presentation;
 public class DefaultGameView : Grid, IGameView, IDisposable
 {
     private static bool _vlcInitialized;
-    private static readonly TransitionRegistry _transitionRegistry = new();
-    private static readonly EffectRegistry _effectRegistry = new();
 
     private readonly GameScreenView _gameScreen;
     private readonly DefaultGameViewRegistry _registry;
@@ -89,26 +84,6 @@ public class DefaultGameView : Grid, IGameView, IDisposable
             _vlcInitialized = false;
         }
 
-        // ── 注册内置转场 ──
-        RegisterBuiltInTransitions();
-
-        // ── 注册内置特效 ──
-        RegisterBuiltInEffects();
-    }
-
-    private static void RegisterBuiltInTransitions()
-    {
-        _transitionRegistry.Register(new FadeTransition());
-        _transitionRegistry.Register(new SlideLeftTransition());
-        _transitionRegistry.Register(new SlideRightTransition());
-        _transitionRegistry.Register(new DissolveTransition());
-    }
-
-    private static void RegisterBuiltInEffects()
-    {
-        _effectRegistry.Register(new ShakeEffect());
-        _effectRegistry.Register(new VignetteEffect());
-        _effectRegistry.Register(new FlashEffect());
     }
 
     public DefaultGameView(GameSettings settings, GameUiConfiguration config, GameScreenViewModel screen, IAssetManager? assets = null)
@@ -304,108 +279,36 @@ public class DefaultGameView : Grid, IGameView, IDisposable
     // ── ITransitionView ──
 
     Task ITransitionView.PlayTransitionAsync(TransitionRequest request, CancellationToken ct) =>
-        RunOnUiThreadAsync(async () =>
+        RunOnUiThreadAsync(() =>
         {
-            var transition = _transitionRegistry.Get(request.Id);
-            if (transition is null)
+            switch (request.Id.Trim().ToLowerInvariant())
             {
-                Log.Warning("Transition not found: {Id}", request.Id);
-                return;
+                case "black":
+                case "blackout":
+                case "transition.black":
+                case "white":
+                case "whiteout":
+                case "transition.white":
+                case "cross":
+                case "crossfade":
+                case "dissolve":
+                case "transition.cross":
+                    Log.Debug("Transition '{Id}' is recognized but has no editor-preview animation yet", request.Id);
+                    break;
+                default:
+                    Log.Information("Transition '{Id}' has no editor-preview implementation", request.Id);
+                    break;
             }
-
-            await transition.ExecuteAsync(this, request.FromImageId, request.ToImageId,
-                (float)request.Duration.TotalSeconds, ct);
+            return Task.CompletedTask;
         }, ct);
-
-    /// <summary>
-    /// Cross-fade between old and new layers. Captures current layer images into an
-    /// overlay, waits for pending layer changes (hide/show), then fades the overlay out.
-    /// </summary>
-    private async Task DissolveAsync(float durationSec)
-    {
-        var canvas = _gameScreen.LayerCanvas;
-        var overlay = new Canvas { IsHitTestVisible = false };
-
-        // Phase 1: snapshot current layers into overlay
-        var layerImages = canvas.Children.OfType<Image>().ToList();
-        foreach (var img in layerImages)
-        {
-            var copy = new Image
-            {
-                Source = img.Source,
-                Stretch = img.Stretch,
-                Opacity = img.Opacity,
-            };
-            copy.SetValue(Canvas.LeftProperty, img.GetValue(Canvas.LeftProperty));
-            copy.SetValue(Canvas.TopProperty, img.GetValue(Canvas.TopProperty));
-            copy.SetValue(Canvas.ZIndexProperty, (int)img.GetValue(Canvas.ZIndexProperty) + 1000);
-            overlay.Children.Add(copy);
-        }
-
-        if (overlay.Children.Count == 0)
-        {
-            Log.Debug("Dissolve: no layers to capture, skipping");
-            return;
-        }
-
-        // Ensure overlay renders on top of ALL canvas children (including new layers)
-        overlay.SetValue(Canvas.ZIndexProperty, 9999);
-        canvas.Children.Add(overlay);
-        Log.Debug("Dissolve: overlay added with {Count} children", overlay.Children.Count);
-
-        // Phase 2: wait for all pending Normal-priority dispatcher operations
-        // (HideLayer, ShowLayer, etc.) to complete before starting the fade.
-        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
-
-        Log.Debug("Dissolve: starting fade, duration={Duration}s", durationSec);
-
-        // Phase 3: fade overlay from visible to transparent using manual interpolation
-        if (durationSec > 0f)
-        {
-            var stepMs = 16; // ~60 fps
-            var steps = (int)(durationSec * 1000 / stepMs);
-            for (var s = 0; s <= steps; s++)
-            {
-                var t = (float)s / steps; // 0 → 1
-                overlay.Opacity = 1f - t;
-                await Task.Delay(stepMs);
-            }
-        }
-
-        Log.Debug("Dissolve: fade complete, removing overlay");
-        canvas.Children.Remove(overlay);
-    }
 
     // ── IEffectView ──
 
     Task IEffectView.StartEffectAsync(EffectRequest request, CancellationToken ct) =>
-        RunOnUiThreadAsync(() =>
-        {
-            if (!_effectRegistry.Start(request.Id, request.InstanceId, this, ParseParameters(request.Parameters)))
-                Log.Warning("Effect not found: {Id}", request.Id);
-            return Task.CompletedTask;
-        }, ct);
+        Task.CompletedTask;
 
     Task IEffectView.StopEffectAsync(string instanceId, CancellationToken ct) =>
-        RunOnUiThreadAsync(() =>
-        {
-            _effectRegistry.Stop(instanceId);
-            return Task.CompletedTask;
-        }, ct);
-
-    private static IReadOnlyDictionary<string, object> ParseParameters(string parameters)
-    {
-        if (string.IsNullOrWhiteSpace(parameters)) return new Dictionary<string, object>();
-        try
-        {
-            return JsonSerializer.Deserialize<Dictionary<string, object>>(parameters) ?? new Dictionary<string, object>();
-        }
-        catch (JsonException exception)
-        {
-            Log.Warning(exception, "Effect parameters must be a JSON object");
-            return new Dictionary<string, object>();
-        }
-    }
+        Task.CompletedTask;
 
     private static Task RunOnUiThreadAsync(Func<Task> operation, CancellationToken ct)
     {
