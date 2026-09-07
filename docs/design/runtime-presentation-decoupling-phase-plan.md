@@ -32,11 +32,11 @@ Avalonia 示例客户端 / CLI / 编辑器预览     文件系统 / pak / 云端
 新增项目均放在 `src/`。仓库当前未跟踪 `.sln` 文件；开始实施时应先确认实际解决方案位置，或在仓库根目录新建并纳入版本控制。
 
 ```text
-GalNet.Core
-  └─ 游戏文件模型、Graph、Entry、SceneState、Snapshot、值对象
+GalNet.Presentation.Abstractions
+  └─ 视觉与交互接口、转场/特效请求 DTO；零 UI 框架依赖
 
-GalNet.Presentation.Abstractions  --> GalNet.Core
-  └─ 视觉与交互接口、转场/特效请求 DTO
+GalNet.Core                       --> Presentation.Abstractions（Phase 2 后移除）
+  └─ 游戏文件模型、Graph、Entry、SceneState、Snapshot、值对象
 
 GalNet.Storage.Abstractions       --> GalNet.Core
   └─ 内容、资源、存档、玩家变量、游戏进度接口
@@ -47,7 +47,7 @@ GalNet.Runtime                    --> Core + 两个 Abstractions
 GalNet.Assets                     --> Core + Storage.Abstractions
   └─ pak、归档、资源文件实现
 
-GalNet.Storage.FileSystem         --> Core + Storage.Abstractions + Assets
+GalNet.Storage.FileSystem         --> Core + Runtime + Storage.Abstractions
   └─ 目录游戏内容、文件存档、玩家变量、游戏进度实现
 
 GalNet.Avalonia.Controls          --> Presentation.Abstractions
@@ -146,18 +146,14 @@ public sealed record EffectRequest(
 - 已创建 `GalNet.Presentation.Abstractions`、`GalNet.Storage.Abstractions`、`GalNet.Storage.FileSystem`、`GalNet.Avalonia.Controls`、`GalNet.Sample.Avalonia`、`GalNet.Player.Console` 骨架。
 - 六个新增项目均已独立构建通过。既有资源测试共 77 项通过；完整解决方案构建受正在运行的编辑器锁定 `GalNet.Runtime.dll` 影响，未修改任何运行中进程。
 
-### Phase 1：抽取视觉与存储契约
+### Phase 1：抽取视觉与存储契约（已完成）
 
-工作项：
-
-1. 将 `View/` 下接口迁入 `GalNet.Presentation.Abstractions`，移除其对 Avalonia 的任何依赖。
-2. 将 `IGameView` 改为小接口组合；保留必要的兼容适配层，逐步迁移调用点。
-3. 用新 `ITransitionView`、`IEffectView` 与请求 DTO 替换现有合并的 `IEffectView`、`ITransition` 设计。
-4. 将内容、资源、存档、全局变量和进度接口迁入 `GalNet.Storage.Abstractions`。
-5. 将 `LocalFileProvider`、`PakFileProvider`、`DirectoryGameContentProvider`、`FileSaveService`、`FileGameProgressService` 等移入对应基础设施实现项目或提供适配器。
-6. 在 `GalNet.Core` 中移除 Avalonia 包和即将废弃的 UI 工程配置模型。
-
-验收：`Core` 与 `Runtime` 均不引用 UI 框架或实际文件系统；现有旧宿主可通过适配器继续工作。
+- 已将所有 `View` 契约迁入 `GalNet.Presentation.Abstractions`，保留原命名空间以保持旧宿主兼容；`IGameView` 现为小接口组合。
+- 已新增独立的 `ITransitionView`/`TransitionRequest` 与 `IEffectView`/`EffectRequest`；旧转场/特效成员作为 Phase 2 前的兼容层保留。
+- 已将资源、内容、存档、变量和进度契约迁入 `GalNet.Storage.Abstractions`，新增 `IPlayerVariableStore`。
+- 已将目录内容读取、文件存档、文件进度和文件玩家变量实现迁入 `GalNet.Storage.FileSystem`；编辑器预览已改用该实现。
+- 已更新项目引用并验证：存储测试 78 项通过，Control 和 Editor 均在隔离输出目录构建成功。
+- `GalNet.Core` 中遗留的 Avalonia `UiProject`/调色板模型属于编辑器 UI 定制功能，将随 Phase 6 一并移除，而非在本阶段拆出。
 
 ### Phase 2：运行时状态机与条目迁移
 

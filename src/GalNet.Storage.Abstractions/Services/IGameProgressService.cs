@@ -2,7 +2,7 @@ using GalNet.Core.Gallery;
 
 namespace GalNet.Core.Services;
 
-/// <summary>Per-player, per-game progress which must not be restored by save slots.</summary>
+/// <summary>Per-player progress that must not be restored by a save slot.</summary>
 public interface IGameProgressService
 {
     bool IsRead(string groupId, string entryId);

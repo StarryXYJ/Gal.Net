@@ -1,11 +1,10 @@
 using System.Text.Json;
 using GalNet.Core.Runtime;
 using GalNet.Core.Services;
-using GalNet.Runtime.SaveLoad;
 
-namespace GalNet.Control.Services;
+namespace GalNet.Storage.FileSystem;
 
-/// <summary>File-backed slot store. A profile directory is supplied by the launcher.</summary>
+/// <summary>File-backed slot and quick-save store.</summary>
 public sealed class FileSaveService : ISaveService
 {
     private const int FormatVersion = 1;
@@ -21,6 +20,7 @@ public sealed class FileSaveService : ISaveService
     }
 
     public IReadOnlyList<SaveSlotInfo> ListSlots() => ListSlotsAsync().GetAwaiter().GetResult();
+
     public async Task<IReadOnlyList<SaveSlotInfo>> ListSlotsAsync(CancellationToken ct = default)
     {
         var result = new List<SaveSlotInfo>(MaxSlots);
@@ -48,11 +48,13 @@ public sealed class FileSaveService : ISaveService
     public Task QuickSaveAsync(SaveRequest request, CancellationToken ct = default) => WriteAsync(-1, true, request, ct);
     public Task<GameSnapshot?> QuickLoadAsync() => ReadAsync(GetPath(-1, true));
     public async Task<bool> HasQuickSaveAsync(CancellationToken ct = default) => (await GetQuickSaveInfoAsync(ct)) is { IsCorrupt: false };
+
     public async Task<SaveSlotInfo?> GetQuickSaveInfoAsync(CancellationToken ct = default)
     {
         var path = GetPath(-1, true);
         return File.Exists(path) ? await GetInfoAsync(-1, true, ct) : null;
     }
+
     public async Task DeleteQuickSaveAsync(CancellationToken ct = default)
     {
         await _gate.WaitAsync(ct);
@@ -104,9 +106,11 @@ public sealed class FileSaveService : ISaveService
 
     private string GetPath(int slot, bool quick) => Path.Combine(_root, quick ? "quick.json" : $"slot-{slot:D3}.json");
     private string GetPreviewPath(int slot, bool quick) => Path.Combine(_root, quick ? "quick.png" : $"slot-{slot:D3}.png");
+
     private void DeleteFiles(int slot, bool quick)
     {
-        foreach (var path in new[] { GetPath(slot, quick), GetPreviewPath(slot, quick) }) if (File.Exists(path)) File.Delete(path);
+        foreach (var path in new[] { GetPath(slot, quick), GetPreviewPath(slot, quick) })
+            if (File.Exists(path)) File.Delete(path);
     }
 
     private sealed class StoredSave

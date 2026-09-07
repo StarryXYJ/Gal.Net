@@ -49,7 +49,10 @@
       <ProjectReference Include="..\GalNet.Control\GalNet.Control.csproj" />
       <ProjectReference Include="..\GalNet.Core\GalNet.Core.csproj" />
       <ProjectReference Include="..\GalNet.Editor.Shared\GalNet.Editor.Shared.csproj" />
+      <ProjectReference Include="..\GalNet.Presentation.Abstractions\GalNet.Presentation.Abstractions.csproj" />
       <ProjectReference Include="..\GalNet.Runtime\GalNet.Runtime.csproj" />
+      <ProjectReference Include="..\GalNet.Storage.Abstractions\GalNet.Storage.Abstractions.csproj" />
+      <ProjectReference Include="..\GalNet.Storage.FileSystem\GalNet.Storage.FileSystem.csproj" />
     </ItemGroup>
 
     <ItemGroup>

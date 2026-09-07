@@ -6,4 +6,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\GalNet.Core\GalNet.Core.csproj" />
+    <ProjectReference Include="..\GalNet.Runtime\GalNet.Runtime.csproj" />
+    <ProjectReference Include="..\GalNet.Storage.Abstractions\GalNet.Storage.Abstractions.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -2,7 +2,7 @@ using GameGraph = GalNet.Core.Graph.Graph;
 
 namespace GalNet.Core.Services;
 
-/// <summary>Host supplied game content. Implementations may read a package or build content in memory.</summary>
+/// <summary>Host supplied game content, loaded from a package or built in memory.</summary>
 public interface IGameContentProvider
 {
     Task<GameContent> LoadAsync(CancellationToken cancellationToken = default);

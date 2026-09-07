@@ -19,5 +19,6 @@
     <ItemGroup>
         <ProjectReference Include="..\..\src\GalNet.Assets\GalNet.Assets.csproj" />
         <ProjectReference Include="..\..\src\GalNet.Core\GalNet.Core.csproj" />
+        <ProjectReference Include="..\..\src\GalNet.Storage.FileSystem\GalNet.Storage.FileSystem.csproj" />
     </ItemGroup>
 </Project>
