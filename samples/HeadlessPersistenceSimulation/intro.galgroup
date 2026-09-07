@@ -1,0 +1,4 @@
+// Minimal published-game fixture for the Headless persistence script.
+variable.set : target: player.simulation_completed; expression: true
+variable.set : target: save.simulation_slot_marker; expression: 7
+text : speaker: Simulator; content: Persistence simulation ready\d{1}.

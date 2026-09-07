@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "name": "Headless Persistence Simulation",
+  "rootNodeId": "intro",
+  "nodes": [
+    {
+      "id": "intro",
+      "type": "Group",
+      "name": "Intro"
+    }
+  ],
+  "edges": []
+}
