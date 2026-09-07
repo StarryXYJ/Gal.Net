@@ -9,6 +9,7 @@ using GalNet.Core.Settings;
 using GalNet.Core.UI;
 using GalNet.Core.View;
 using GalNet.Core.Assets;
+using GalNet.Presentation.Defaults.Media;
 using LibVLCSharp.Shared;
 using Serilog;
 using AvaloniaControl = Avalonia.Controls.Control;
@@ -25,7 +26,7 @@ public class DefaultGameView : Grid, IGameView, IDisposable
     private readonly DefaultChoicePresenter _choice;
     private readonly LibVLC _libVlc;
     private readonly MediaPlayer _videoPlayer;
-    private readonly AudioController _audioController;
+    private readonly LibVlcAudioController _audioController;
     private readonly VideoController _videoController;
     private readonly GameSettings _gameSettings;
     private readonly GameScreenViewModel _screen;
@@ -98,7 +99,7 @@ public class DefaultGameView : Grid, IGameView, IDisposable
         _libVlc = _vlcInitialized ? new LibVLC() : null!;
         _videoPlayer = _vlcInitialized ? new MediaPlayer(_libVlc) : null!;
         
-        _audioController = new AudioController(_libVlc, _vlcInitialized);
+        _audioController = new LibVlcAudioController(_libVlc);
         _videoController = new VideoController(_libVlc, _videoPlayer, _vlcInitialized, _gameScreen, assets);
 
         Children.Add(_gameScreen);

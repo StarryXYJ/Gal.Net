@@ -21,14 +21,14 @@
     </Project>
     <Project Path="src/Launcher/GalNet.Launcher/GalNet.Launcher/GalNet.Launcher.csproj" />
   </Folder>
-  <Folder Name="/src/Player/">
-    <Project Path="src/GalNet.Player.Console/GalNet.Player.Console.csproj" />
-  </Folder>
   <Folder Name="/src/Presentation/">
     <Project Path="src/GalNet.Avalonia.Controls/GalNet.Avalonia.Controls.csproj" />
+    <Project Path="src/GalNet.Avalonia.GameView/GalNet.Avalonia.GameView.csproj" />
+    <Project Path="src/GalNet.Presentation.Defaults/GalNet.Presentation.Defaults.csproj" />
   </Folder>
   <Folder Name="/src/Samples/">
     <Project Path="src/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj" />
+    <Project Path="src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj" />
   </Folder>
   <Folder Name="/src/Shared/">
     <Project Path="src/GalNet.Assets/GalNet.Assets.csproj" />

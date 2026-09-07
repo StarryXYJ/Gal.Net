@@ -23,4 +23,9 @@
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GalNet.Avalonia.Controls\GalNet.Avalonia.Controls.csproj" />
+    <ProjectReference Include="..\GalNet.Avalonia.GameView\GalNet.Avalonia.GameView.csproj" />
+  </ItemGroup>
 </Project>

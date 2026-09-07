@@ -24,6 +24,7 @@
       <ProjectReference Include="..\GalNet.Control.Abstraction\GalNet.Control.Abstraction.csproj" />
       <ProjectReference Include="..\GalNet.Core\GalNet.Core.csproj" />
       <ProjectReference Include="..\GalNet.Presentation.Abstractions\GalNet.Presentation.Abstractions.csproj" />
+      <ProjectReference Include="..\GalNet.Presentation.Defaults\GalNet.Presentation.Defaults.csproj" />
       <ProjectReference Include="..\GalNet.Runtime\GalNet.Runtime.csproj" />
       <ProjectReference Include="..\GalNet.Storage.Abstractions\GalNet.Storage.Abstractions.csproj" />
     </ItemGroup>

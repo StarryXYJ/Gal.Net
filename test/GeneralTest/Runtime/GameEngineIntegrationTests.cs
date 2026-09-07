@@ -2,7 +2,7 @@ using GalNet.Core.Graph;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Loader;
 using GalNet.Runtime.SaveLoad;
-using GalNet.Runtime.View;
+using GalNet.Presentation.Defaults;
 using GalNet.Core.Entry;
 using GalNet.Core.View;
 
@@ -32,7 +32,7 @@ public class GameEngineIntegrationTests
             Edges = { }
         };
 
-        var view = new NullGameView(verbose: false);
+        var view = new NullGameView();
         var engine = new GameEngine(graph, view);
 
         var finished = await engine.StepAsync();
@@ -95,7 +95,7 @@ public class GameEngineIntegrationTests
             }
         };
 
-        var view = new NullGameView(verbose: false);
+        var view = new NullGameView();
         var engine = new GameEngine(graph, view);
 
         await engine.StepAsync();
@@ -130,7 +130,7 @@ public class GameEngineIntegrationTests
             Edges = { }
         };
 
-        var view1 = new NullGameView(verbose: false);
+        var view1 = new NullGameView();
         var engine1 = new GameEngine(graph, view1);
         await engine1.StepAsync();
 
@@ -164,7 +164,7 @@ public class GameEngineIntegrationTests
             }
         };
 
-        var engine = new GameEngine(graph, new NullGameView(verbose: false));
+        var engine = new GameEngine(graph, new NullGameView());
         Assert.DoesNotThrowAsync(async () => await engine.StepAsync());
 
         Assert.That(engine.CreateSaveData().Variables["result"].AsString(), Is.EqualTo("before"));

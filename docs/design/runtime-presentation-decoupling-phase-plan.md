@@ -35,6 +35,9 @@ Avalonia 示例客户端 / CLI / 编辑器预览     文件系统 / pak / 云端
 GalNet.Presentation.Abstractions
   └─ 视觉与交互接口、转场/特效请求 DTO；零 UI 框架依赖
 
+GalNet.Presentation.Defaults      --> Presentation.Abstractions
+  └─ 无 UI 框架差异的默认实现：NullGameView、跨平台音频后端等
+
 GalNet.Core
   └─ 游戏文件模型、Graph、Entry、SceneState、Snapshot、值对象
 
@@ -53,8 +56,11 @@ GalNet.Storage.FileSystem         --> Core + Runtime + Storage.Abstractions
 GalNet.Avalonia.Controls          --> Presentation.Abstractions
   └─ 无样式/默认样式 Avalonia 控件；不依赖 Runtime 或 Assets
 
-GalNet.Sample.Avalonia            --> Runtime + Assets + Storage.FileSystem + Avalonia.Controls
-GalNet.Player.Console             --> Runtime + Assets + Storage.FileSystem
+GalNet.Avalonia.GameView          --> Avalonia.Controls + Presentation.Defaults + Presentation.Abstractions
+  └─ Avalonia 专属的图层、输入、视频承载与动态转场/特效适配
+
+GalNet.Sample.Avalonia            --> Runtime + Assets + Storage.FileSystem + Avalonia.GameView
+GalNet.Sample.Headless            --> Runtime + Presentation.Abstractions
 GalNet.Editor                     --> Runtime + Assets + Storage.FileSystem + Avalonia.Controls
 ```
 
@@ -163,6 +169,7 @@ public sealed record EffectRequest(
 - 转场条目使用 `transitionId`、`transitionDuration`、`transitionBlocking`、`transitionParameters`；特效条目使用 `id`、`instanceId`、`duration`、`blocking`、`parameters`。动态参数保持原始 JSON，Core 不解析。
 - 已实现构造函数注入的 `CompositeGameView`。组合根创建各展示服务后传入 facade；Runtime 与 facade 均不依赖 `IServiceProvider`。
 - `NullGameView` 已切换到新契约；`GalNet.Player.Console` 可运行真实游戏目录并演示组合根注入。旧的硬编码 `GalNet.Headless` 已删除。
+- 已将无平台差异的 `NullGameView` 与 LibVLC 音频控制器移入 `GalNet.Presentation.Defaults`；新增 `GalNet.Avalonia.GameView` 作为 Avalonia 动态展示服务的唯一入口。编辑器与官方 Avalonia 示例均引用 `GalNet.Avalonia.Controls`，Headless 示例已改名为 `GalNet.Sample.Headless` 并移入 `Samples`。
 - `GalNet.Control.Tests` 已合并到 `GeneralTest`，保留项目生命周期测试；旧 UI 配置测试已删除。
 - `GalNet.Control` 仅保留现有预览的适配维护：效果接口为空实现；转场按动态 ID 识别 `black`、`white`、`cross` 等入口，暂不承载动画实现。
 

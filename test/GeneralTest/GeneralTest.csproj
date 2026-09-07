@@ -26,6 +26,7 @@
         <ProjectReference Include="..\..\src\GalNet.Editor\GalNet.Editor.csproj" />
         <ProjectReference Include="..\..\src\GalNet.Core\GalNet.Core.csproj" />
         <ProjectReference Include="..\..\src\GalNet.Runtime\GalNet.Runtime.csproj" />
+        <ProjectReference Include="..\..\src\GalNet.Presentation.Defaults\GalNet.Presentation.Defaults.csproj" />
     </ItemGroup>
 
 </Project>

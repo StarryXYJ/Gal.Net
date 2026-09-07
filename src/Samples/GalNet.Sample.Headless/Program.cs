@@ -1,13 +1,13 @@
 using GalNet.Core.Graph;
 using GalNet.Core.Settings;
 using GalNet.Core.View;
-using GalNet.Player.ConsoleHost;
+using GalNet.Sample.Headless;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Loader;
 
 if (args.Length != 1)
 {
-    Console.Error.WriteLine("Usage: GalNet.Player.Console <game-data-directory>");
+    Console.Error.WriteLine("Usage: GalNet.Sample.Headless <game-data-directory>");
     return 1;
 }
 

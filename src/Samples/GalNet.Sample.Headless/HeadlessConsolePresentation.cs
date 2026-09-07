@@ -1,7 +1,7 @@
 using GalNet.Core.Settings;
 using GalNet.Core.View;
 
-namespace GalNet.Player.ConsoleHost;
+namespace GalNet.Sample.Headless;
 
 /// <summary>Basic interactive console adapters used by the official sample player.</summary>
 internal sealed class ConsolePresentation :
