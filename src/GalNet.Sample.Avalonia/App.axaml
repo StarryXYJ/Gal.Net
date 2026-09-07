@@ -11,5 +11,6 @@
 
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="avares://GalNet.Avalonia.Controls/Styles/Generic.axaml" />
     </Application.Styles>
 </Application>

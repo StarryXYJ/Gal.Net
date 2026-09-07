@@ -456,3 +456,4 @@ riderModule.iml
 
 # Project-specific
 dev/*
+.galnet/

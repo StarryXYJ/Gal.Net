@@ -201,14 +201,11 @@ public sealed record EffectRequest(
 
 ### Phase 4：Avalonia 控件库
 
-工作项：
+已完成：`GalNet.Avalonia.Controls` 提供 `TypewriterTextBlock`、`DialoguePresenter`、`NvlPresenter`、`ChoiceList`、`SaveSlotCard` 与 `SceneLayerHost`。它们仅接收绑定数据或由宿主调用，不读取游戏文件、不创建 `GameEngine`、不注册服务。逐字符控件直接复用 `GalNet.Core.Text.TypewriterTextParser`，支持项目既有的延迟、瞬显和换行记号。公开命名空间为 `GalNet.Game.Controls`，避免与 Avalonia 框架的 `Avalonia.Controls` 命名空间冲突。
 
-1. 创建无业务逻辑的 `TypewriterTextBlock`，支持当前特殊记号、速度、完成与跳过。
-2. 创建 `DialoguePresenter`、`ChoiceList`、`SaveSlotCard`、`SceneLayerHost` 等绑定型控件。
-3. 提供默认 `Generic.axaml` 样式与资源字典；控件必须允许应用工程覆盖模板和样式。
-4. 控件库不读取游戏文件、不创建 `GameEngine`、不注册存档或音频服务。
+默认样式位于 `Styles/Generic.axaml`，官方 Avalonia 示例已显式引用；最终客户端可按常规 Avalonia 样式覆盖模板、项目模板或绑定的数据模型。
 
-验收：任意 Avalonia 应用可引用控件库并自行绑定 ViewModel；控件库不依赖 `Runtime`、`Assets` 或编辑器。
+验证：控件库、引用默认主题的 Avalonia 示例客户端构建成功；`GeneralTest` 129/129 通过。
 
 ### Phase 5：官方 Avalonia 示例客户端
 

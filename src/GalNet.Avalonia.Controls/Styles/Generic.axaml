@@ -1,0 +1,88 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GalNet.Game.Controls">
+  <Style Selector="local|TypewriterTextBlock">
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+
+  <Style Selector="local|DialoguePresenter">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="#D91B1C27" BorderBrush="#805F6075" BorderThickness="1" CornerRadius="8" Padding="20">
+          <StackPanel Spacing="8">
+            <TextBlock Text="{TemplateBinding Speaker}" FontWeight="SemiBold" FontSize="18" />
+            <local:TypewriterTextBlock Name="PART_Typewriter"
+                                       SourceText="{TemplateBinding Text}"
+                                       CharactersPerSecond="{TemplateBinding CharactersPerSecond}" />
+          </StackPanel>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+
+  <Style Selector="local|ChoiceList">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="local|ChoiceList ListBoxItem">
+    <Setter Property="Margin" Value="0,4" />
+    <Setter Property="Padding" Value="14,9" />
+  </Style>
+
+  <Style Selector="local|SaveSlotCard">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Button Command="{TemplateBinding Command}" CommandParameter="{TemplateBinding CommandParameter}" Padding="0" Background="Transparent" BorderThickness="0">
+          <Border MinHeight="116" Padding="14" Background="#C21B1C27" BorderBrush="#665F6075" BorderThickness="1" CornerRadius="8">
+            <Grid ColumnDefinitions="112,*" ColumnSpacing="14">
+              <Border Background="#33101018" CornerRadius="4">
+                <Image Source="{TemplateBinding Preview}" Stretch="UniformToFill" />
+              </Border>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                <TextBlock Text="Slot {TemplateBinding SlotIndex}" FontWeight="SemiBold" />
+                <TextBlock Text="{TemplateBinding Timestamp}" Opacity="0.8" />
+                <TextBlock Text="{TemplateBinding Description}" TextWrapping="Wrap" />
+                <TextBlock Text="Empty" IsVisible="{TemplateBinding IsEmpty}" Opacity="0.7" />
+                <TextBlock Text="Corrupt save" IsVisible="{TemplateBinding IsCorrupt}" Foreground="IndianRed" />
+              </StackPanel>
+            </Grid>
+          </Border>
+        </Button>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+
+  <Style Selector="local|SceneLayerHost">
+    <Setter Property="ItemsPanel">
+      <ItemsPanelTemplate><Canvas ClipToBounds="True" /></ItemsPanelTemplate>
+    </Setter>
+    <Setter Property="ItemTemplate">
+      <DataTemplate DataType="local:SceneLayerItem">
+        <ContentPresenter Content="{Binding Content}" Canvas.Left="{Binding X}" Canvas.Top="{Binding Y}"
+                          Panel.ZIndex="{Binding ZIndex}" IsVisible="{Binding IsVisible}" />
+      </DataTemplate>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate><ItemsPresenter /></ControlTemplate>
+    </Setter>
+  </Style>
+
+  <Style Selector="local|NvlPresenter">
+    <Setter Property="ItemsPanel">
+      <ItemsPanelTemplate><StackPanel Spacing="14" /></ItemsPanelTemplate>
+    </Setter>
+    <Setter Property="ItemTemplate">
+      <DataTemplate DataType="local:NvlLine">
+        <StackPanel Spacing="3">
+          <TextBlock Text="{Binding Speaker}" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+        </StackPanel>
+      </DataTemplate>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsPresenter /></ScrollViewer>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+</Styles>
