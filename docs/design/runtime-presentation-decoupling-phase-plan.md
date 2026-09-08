@@ -148,18 +148,11 @@ public sealed record EffectRequest(
 
 ### Phase 0：基线与项目骨架（已完成）
 
-- 已确认根解决方案为 `GalNet.slnx`，并将六个新项目加入对应解决方案文件夹。
-- 已创建 `GalNet.Presentation.Abstractions`、`GalNet.Storage.Abstractions`、`GalNet.Storage.FileSystem`、`GalNet.Avalonia.Controls`、`GalNet.Sample.Avalonia`、`GalNet.Player.Console` 骨架。
-- 六个新增项目均已独立构建通过。既有资源测试共 77 项通过；完整解决方案构建受正在运行的编辑器锁定 `GalNet.Runtime.dll` 影响，未修改任何运行中进程。
+- 已建立展示/存储契约、默认文件系统实现、Avalonia 控件与 Sample/Player 宿主骨架，并纳入 `GalNet.slnx`。
 
 ### Phase 1：抽取视觉与存储契约（已完成）
 
-- 已将所有 `View` 契约迁入 `GalNet.Presentation.Abstractions`，保留原命名空间以保持旧宿主兼容；`IGameView` 现为小接口组合。
-- 已新增独立的 `ITransitionView`/`TransitionRequest` 与 `IEffectView`/`EffectRequest`；旧转场/特效成员作为 Phase 2 前的兼容层保留。
-- 已将资源、内容、存档、变量和进度契约迁入 `GalNet.Storage.Abstractions`，新增 `IPlayerVariableStore`。
-- 已将目录内容读取、文件存档、文件进度和文件玩家变量实现迁入 `GalNet.Storage.FileSystem`；编辑器预览已改用该实现。
-- 已更新项目引用并验证：存储测试 78 项通过，Control 和 Editor 均在隔离输出目录构建成功。
-- `GalNet.Core` 中遗留的 Avalonia `UiProject`/调色板模型属于编辑器 UI 定制功能，将随 Phase 6 一并移除，而非在本阶段拆出。
+- 展示、转场/特效与存储/玩家变量契约已分离到专用抽象项目，默认文件系统实现可由任意宿主替换。
 
 ### Phase 2：运行时状态机与宿主边界（已完成）
 
@@ -195,22 +188,16 @@ public sealed record EffectRequest(
 
 ### Phase 3：命令行持久化补全
 
-已完成：`GalNet.Sample.Headless` 以组合根方式接入默认目录内容、存档、进度和玩家变量存储；支持 `--profile`、`--save-slot` 与 `--load-slot`。`player.` 前缀的变量写入跨存档的玩家变量文件，其余变量保留在各槽位快照中。项目既有的 `GalNet.Core.Text.TypewriterTextParser` 已作为唯一的跨宿主特殊记号解析器，命令行样例直接复用，后续 Avalonia 控件库也将复用它。
-
-验证：命令行可运行真实项目并支持持久化存档/全局变量；文本记号在各官方宿主保持一致。
+`GalNet.Sample.Headless` 已支持真实项目、存档、全局变量和文本记号解析。
 
 ### Phase 4：Avalonia 控件库
 
-已完成：`GalNet.Avalonia.Controls` 提供 `TypewriterTextBlock`、`DialoguePresenter`、`NvlPresenter`、`ChoiceList`、`SaveSlotCard` 与 `SceneLayerHost`。它们仅接收绑定数据或由宿主调用，不读取游戏文件、不创建 `GameEngine`、不注册服务。逐字符控件直接复用 `GalNet.Core.Text.TypewriterTextParser`，支持项目既有的延迟、瞬显和换行记号。公开命名空间为 `GalNet.Game.Controls`，避免与 Avalonia 框架的 `Avalonia.Controls` 命名空间冲突。
-
-默认样式位于 `Styles/Generic.axaml`，官方 Avalonia 示例已显式引用；最终客户端可按常规 Avalonia 样式覆盖模板、项目模板或绑定的数据模型。
-
-验证：控件库、引用默认主题的 Avalonia 示例客户端构建成功；`GeneralTest` 129/129 通过。
+`GalNet.Avalonia.Controls` 提供纯绑定/宿主调用的文本、对话、选项、存档和场景控件，默认样式可由最终客户端覆盖。
 
 ### Phase 5：官方 Avalonia 示例客户端（已完成）
 
-- `GalNet.Avalonia.GameView` 现在提供共享的 `GameShell`、标题页、游戏页、存档页、设置页、画廊页、关于页和 `GamePageNavigationService`；它们全部是可替换的 `UserControl`。`AvaloniaGamePageView` 把游戏页的小型展示接口组合为 `IGameView` 所需的图层、对话、打字机与输入端口；页面不引用 Runtime、编辑器、文件系统或游戏目录。
-- 默认壳已改为 DI 的 VM-first 导航：`IGameNavigationService.Navigate<TViewModel>()` 从当前游戏 Scope 解析 VM，`IPageViewFactory` 根据 VM 声明的 View 类型从同一 Scope 取得页面并设置 `DataContext`。导航参数使用 `IActivatablePageViewModel<TArgs>.ActivateAsync` 传入，绝不注册到 DI。
+- `GalNet.Avalonia.GameView` 现在提供共享的 `GameShell`、标题页、游戏页、存档页、设置页、画廊页、关于页和 `IGameNavigationService`；它们全部是可替换的 `UserControl`。`AvaloniaGamePageView` 把游戏页的小型展示接口组合为 `IGameView` 所需的图层、对话、打字机与输入端口；页面不引用 Runtime、编辑器、文件系统或游戏目录。
+- 默认壳使用 DI 的 VM-first 导航：`IGameNavigationService.Navigate<TViewModel>()` 从当前游戏 Scope 解析 VM，`IPageViewFactory` 通过 `IPageViewRegistry` 从同一 Scope 取得页面并设置 `DataContext`。导航参数使用 `IActivatablePageViewModel<TArgs>.ActivateAsync` 传入，绝不注册到 DI。
 - 默认页面 VM、页面 View、导航器、会话服务均为 Scoped，即一个游戏会话内唯一；弹窗或一次性视觉元素才应为 Transient。Sample 在窗口生命周期创建一个 Scope；编辑器预览可在重启或切换项目时释放旧 Scope 并创建新 Scope。
 - `IGamePageLayerFactory` 是页面唯一的宿主视觉扩展点：Sample 和将来的 Editor 预览各自把资源 ID 映射为 Avalonia 控件。游戏文件读取、存档、全局变量、进度、设置与媒体后端仍由各自组合根装配。
 - `GalNet.Sample.Avalonia` 使用共享页完成默认游戏屏幕、对话、NVL、选项、存读档、标题、设置和画廊外壳；转场在组合根按 `black`、`white`、`cross` 动态注册，特效保留按 ID 的动态入口。截图/复杂媒体呈现继续是最终客户端可替换的宿主服务，不进入共享页。
@@ -233,19 +220,13 @@ public sealed record EffectRequest(
 
 `MyGame.View` 是开发者修改页面、样式、资源图层工厂和默认服务的共同位置；客户端和编辑器都引用它，故修改会同时生效。没有编辑器的模板只包含前两项。官方 `GalNet.Avalonia.GameView` 保持可升级的默认实现，开发者优先在自己的 `MyGame.View` 覆盖或组合页面，而非直接修改官方工程。
 
-### Phase 6：编辑器瘦身与基础预览
+### Phase 6：编辑器瘦身与基础预览（已完成）
 
-工作项：
+- `EditorPreviewHost` 在独立游戏 Scope 中承载共享壳与预览占位服务；编辑器、Launcher 与 Core 已脱离旧 Control/UI 配置链，旧 Control 源码仅待 Phase 7 物理删除。
+- `IPageViewRegistry` 在组合期允许 `MyGame.View` 覆盖 VM→View；存档使用可编译绑定行 VM，Sample 显示 NullAudio 状态。
+- 游戏和编辑器复用无框架 `NavigationHistory<TPage>` 栈算法，但保持独立契约：`IGameNavigationService` 只切换游戏壳内页面，`INavigationService` 只管理编辑器启动、项目与 Dock 工作区页面。
 
-1. 将编辑器预览迁移为 `EditorPreviewHost + GameShell + IGameNavigationService + AvaloniaGamePageView`：创建预览专用游戏 Scope，使用编辑器主题和预览服务装配同一套页面、图层、文本、选项与变量流程。
-2. 删除编辑器对 `GalNet.Control`、`GameFlowFactory`、`DefaultGameView` 和旧完整游戏页面的依赖；同步迁移 `Editor.Shared`、`Editor.Abstraction` 的 `GalNet.Control.Abstraction` 依赖。只有在 Editor 与 Launcher 均无调用方后，才删除两个旧 Control 项目。
-3. 清理 `GalNet.Core` 的编辑器/UI 泄漏：移除或迁出 `UiProject`、预设注册、UI 调色板及 UI 定制模型；项目文件不再保存最终游戏 UI 配置。将本地化依赖收敛为 Core 自有的轻量文本解析契约，由外层宿主适配具体本地化库。
-4. 增加 `IPageViewRegistry`，允许 `MyGame.View` 覆盖默认的 `ViewModel -> View` 映射；开发者改共享自定义页面即可同时改变客户端与编辑器预览。
-5. 完成官方宿主的默认服务边界：初始化真实 LibVLC 音频后端，或改用明确可见的 NullAudio；将存档页面调整为可编译绑定的槽位行 VM/命令模型；把 `AvaloniaGamePageView` 从页面目录移至展示适配器目录。
-6. 为游戏 Scope、导航历史、带参数激活、页面 View/VM 复用和 Scope 释放增加自动化测试；确保编辑器重启/切换预览不会残留旧引擎、音频或 UI 状态。
-7. 预览样式只继承编辑器主题；不允许项目级 UI 定制。音频、视频、特效和复杂转场在预览中使用基础实现、占位或日志；保留临时预览数据构建、变量调试、重启预览和图编辑工作流。
-
-验收：编辑器可编辑并通过独立预览 Scope 基础运行项目，不引用官方示例客户端，也不承担最终游戏 UI 定制职责；`GalNet.Core` 不再依赖 Avalonia 或具体本地化实现，旧 Control 链不再有实际调用方。
+验证：Editor、Editor.Headless、官方 Avalonia Sample 构建通过；`GeneralTest` 133 项通过。纯 DI 构造 XAML View 的 `AVLN3001` 提示不影响 DI 路径。
 
 ### Phase 7：文件格式迁移、清理与发布
 

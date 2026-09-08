@@ -98,7 +98,7 @@ public static class EditorServiceCollectionExtensions
     {
         services.AddSingleton<INavigationService>(sp =>
         {
-            var nav = new NavigationService(sp);
+            var nav = new EditorNavigationService(sp);
             nav.RegisterMap(typeof(StartupPageViewModel), typeof(StartupPageView));
             nav.RegisterMap(typeof(NewProjectPanelViewModel), typeof(NewProjectPanelView));
             nav.RegisterMap(typeof(EditorPageViewModel), typeof(EditorPageView));

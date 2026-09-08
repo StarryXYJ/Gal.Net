@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.DependencyInjection;
+using GalNet.Presentation.Abstractions.Navigation;
 
 namespace GalNet.Avalonia.GameView.Navigation;
 
@@ -27,12 +28,10 @@ public interface IGameNavigationService
 }
 
 /// <summary>Resolves page VMs from the current game scope and owns only navigation state/history.</summary>
-public sealed class GameNavigationService(IServiceProvider services) : IGameNavigationService
+public sealed class GameNavigationService(IServiceProvider services)
+    : NavigationHistory<PageViewModelBase>, IGameNavigationService
 {
-    private readonly Stack<PageViewModelBase> _history = [];
-
-    public PageViewModelBase? CurrentViewModel { get; private set; }
-    public bool CanGoBack => _history.Count > 0;
+    public PageViewModelBase? CurrentViewModel => Current;
     public event EventHandler? CurrentViewModelChanged;
 
     public void Navigate<TViewModel>() where TViewModel : PageViewModelBase => Navigate(services.GetRequiredService<TViewModel>());
@@ -46,27 +45,14 @@ public sealed class GameNavigationService(IServiceProvider services) : IGameNavi
     }
 
     public void ResetTo<TViewModel>() where TViewModel : PageViewModelBase
-    {
-        _history.Clear();
-        SetCurrent(services.GetRequiredService<TViewModel>());
-    }
+        => Replace(services.GetRequiredService<TViewModel>());
 
-    public void GoBack()
-    {
-        if (_history.TryPop(out var previous)) SetCurrent(previous);
-    }
+    public void GoBack() => TryGoBack();
 
-    private void Navigate(PageViewModelBase viewModel)
-    {
-        if (CurrentViewModel is not null) _history.Push(CurrentViewModel);
-        SetCurrent(viewModel);
-    }
+    private void Navigate(PageViewModelBase viewModel) => Push(viewModel);
 
-    private void SetCurrent(PageViewModelBase viewModel)
-    {
-        CurrentViewModel = viewModel;
+    protected override void OnCurrentChanged(PageViewModelBase? _) =>
         CurrentViewModelChanged?.Invoke(this, EventArgs.Empty);
-    }
 }
 
 public interface IPageViewFactory
