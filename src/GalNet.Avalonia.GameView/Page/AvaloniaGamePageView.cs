@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Threading;
 using GalNet.Core.View;
 using GalNet.Game.Controls;
+using GalNet.Avalonia.GameView.ViewModels;
 
 namespace GalNet.Avalonia.GameView.Page;
 

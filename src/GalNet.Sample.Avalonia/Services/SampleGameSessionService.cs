@@ -4,6 +4,8 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Avalonia.GameView;
 using GalNet.Avalonia.GameView.Page;
+using GalNet.Avalonia.GameView.Services;
+using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Runtime;
 using GalNet.Core.Settings;
 using GalNet.Core.View;

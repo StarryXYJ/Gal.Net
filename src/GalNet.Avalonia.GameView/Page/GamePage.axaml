@@ -2,8 +2,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="using:GalNet.Game.Controls"
              xmlns:local="using:GalNet.Avalonia.GameView.Page"
+             xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
              x:Class="GalNet.Avalonia.GameView.Page.GamePage"
-             x:DataType="local:GamePageViewModel">
+             x:DataType="vm:GamePageViewModel">
   <Grid Background="#101018">
     <controls:SceneLayerHost ItemsSource="{Binding Layers}" />
     <Border Background="{Binding TransitionBrush}" Opacity="{Binding TransitionOpacity}" IsHitTestVisible="False" ZIndex="10" />

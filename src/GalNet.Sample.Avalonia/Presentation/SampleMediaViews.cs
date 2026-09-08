@@ -1,4 +1,5 @@
 using GalNet.Avalonia.GameView.Page;
+using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.View;
 using GalNet.Presentation.Defaults.Media;
 

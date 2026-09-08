@@ -1,5 +1,6 @@
 using GalNet.Avalonia.GameView;
 using GalNet.Avalonia.GameView.Page;
+using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.View;
 
 namespace GalNet.Sample.Avalonia.Presentation;

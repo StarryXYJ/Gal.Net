@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using GalNet.Avalonia.GameView.Navigation;
+using GalNet.Avalonia.GameView.ViewModels;
 
 namespace GalNet.Avalonia.GameView.Page;
 

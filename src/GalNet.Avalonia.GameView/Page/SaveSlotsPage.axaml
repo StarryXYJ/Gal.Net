@@ -2,15 +2,17 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="using:GalNet.Game.Controls"
              xmlns:local="using:GalNet.Avalonia.GameView.Page"
+             xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
+             xmlns:services="using:GalNet.Avalonia.GameView.Services"
              x:Class="GalNet.Avalonia.GameView.Page.SaveSlotsPage"
-             x:DataType="local:SaveSlotsPageViewModel"
+             x:DataType="vm:SaveSlotsPageViewModel"
              x:CompileBindings="False">
   <Grid Margin="64" RowDefinitions="Auto,*,Auto" RowSpacing="14">
     <TextBlock Text="Save / Load" FontSize="28" FontWeight="SemiBold" />
     <ScrollViewer Grid.Row="1" MaxHeight="560">
       <ItemsControl ItemsSource="{Binding SaveSlots}">
         <ItemsControl.ItemTemplate>
-          <DataTemplate DataType="local:GameSaveSlot">
+          <DataTemplate DataType="services:GameSaveSlot">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,4">
               <controls:SaveSlotCard SlotIndex="{Binding SlotIndex}" Timestamp="{Binding Timestamp}" Description="{Binding Description}" IsEmpty="{Binding IsEmpty}" IsCorrupt="{Binding IsCorrupt}"
                                       Command="{Binding DataContext.LoadSlotCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding SlotIndex}" />

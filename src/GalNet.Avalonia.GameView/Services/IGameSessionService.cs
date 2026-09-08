@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 
-namespace GalNet.Avalonia.GameView.Page;
+namespace GalNet.Avalonia.GameView.Services;
 
 /// <summary>Host-owned session operations consumed by the default page VMs.</summary>
 public interface IGameSessionService : INotifyPropertyChanged

@@ -1,7 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Avalonia.GameView.Navigation;
 
-namespace GalNet.Avalonia.GameView.Page;
+namespace GalNet.Avalonia.GameView.ViewModels;
 
 /// <summary>Scope-owned navigation host for the default game pages.</summary>
 public sealed class GameShellViewModel : ObservableObject, IDisposable

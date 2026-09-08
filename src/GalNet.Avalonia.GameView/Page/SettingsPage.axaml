@@ -1,8 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:GalNet.Avalonia.GameView.Page"
+             xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
              x:Class="GalNet.Avalonia.GameView.Page.SettingsPage"
-             x:DataType="local:SettingsPageViewModel">
+             x:DataType="vm:SettingsPageViewModel">
   <Grid Margin="64">
     <StackPanel Width="460" Spacing="12" HorizontalAlignment="Center" VerticalAlignment="Center">
       <TextBlock Text="Settings" FontSize="28" FontWeight="SemiBold" />

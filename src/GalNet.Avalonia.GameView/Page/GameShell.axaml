@@ -1,8 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:GalNet.Avalonia.GameView.Page"
+             xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
              x:Class="GalNet.Avalonia.GameView.Page.GameShell"
-             x:DataType="local:GameShellViewModel">
+             x:DataType="vm:GameShellViewModel">
   <Grid Background="#101018">
     <ContentControl x:Name="PageHost" />
   </Grid>

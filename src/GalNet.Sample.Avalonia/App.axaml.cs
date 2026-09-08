@@ -7,6 +7,8 @@ using Avalonia.Markup.Xaml;
 using GalNet.Avalonia.GameView.Composition;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Page;
+using GalNet.Avalonia.GameView.Services;
+using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Sample.Avalonia.Services;
 using GalNet.Sample.Avalonia.Views;
 using Microsoft.Extensions.DependencyInjection;

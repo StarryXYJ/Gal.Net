@@ -1,11 +1,11 @@
 using System.Collections.ObjectModel;
 using Avalonia.Media;
-using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
+using GalNet.Avalonia.GameView.Page;
 using GalNet.Game.Controls;
 
-namespace GalNet.Avalonia.GameView.Page;
+namespace GalNet.Avalonia.GameView.ViewModels;
 
 /// <summary>Platform UI state shared by the editor preview and the official Avalonia sample.</summary>
 public sealed partial class GamePageViewModel : PageViewModelBase<GamePage>
@@ -22,13 +22,13 @@ public sealed partial class GamePageViewModel : PageViewModelBase<GamePage>
     public ObservableCollection<NvlLine> NvlLines { get; } = [];
     public ObservableCollection<string> ActiveEffects { get; } = [];
 
-    [ObservableProperty] private bool _isDialogueVisible;
-    [ObservableProperty] private bool _isChoiceVisible;
-    [ObservableProperty] private bool _isNvlMode;
-    [ObservableProperty] private double _transitionOpacity;
-    [ObservableProperty] private IBrush _transitionBrush = Brushes.Black;
-    [ObservableProperty] private double _textSpeed = 30d;
-    [ObservableProperty] private string _statusMessage = string.Empty;
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isDialogueVisible;
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isChoiceVisible;
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isNvlMode;
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private double _transitionOpacity;
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private IBrush _transitionBrush = Brushes.Black;
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private double _textSpeed = 30d;
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private string _statusMessage = string.Empty;
 
     public event Action? AdvanceRequested;
 
@@ -69,9 +69,7 @@ public sealed partial class GamePageViewModel : PageViewModelBase<GamePage>
         return _pageWaiter.Task.WaitAsync(cancellationToken);
     }
 
-    [RelayCommand]
-    private void CompleteChoice(int selectedIndex) => _choiceWaiter?.TrySetResult(selectedIndex);
-
+    [RelayCommand] private void CompleteChoice(int selectedIndex) => _choiceWaiter?.TrySetResult(selectedIndex);
     public void PresentNvlLine(string speaker, string text) => NvlLines.Add(new NvlLine(speaker, text));
 
     public void SetLayer(string id, SceneLayerItem item)

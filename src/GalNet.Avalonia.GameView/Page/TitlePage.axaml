@@ -1,8 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:GalNet.Avalonia.GameView.Page"
+             xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
              x:Class="GalNet.Avalonia.GameView.Page.TitlePage"
-             x:DataType="local:TitlePageViewModel">
+             x:DataType="vm:TitlePageViewModel">
   <Grid>
     <StackPanel Width="520" Spacing="18" HorizontalAlignment="Center" VerticalAlignment="Center">
       <TextBlock Text="{Binding GameTitle}" FontSize="34" FontWeight="Bold" HorizontalAlignment="Center" />
