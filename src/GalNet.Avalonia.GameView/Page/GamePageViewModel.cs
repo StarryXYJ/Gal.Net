@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Windows.Input;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -9,18 +8,18 @@ using GalNet.Game.Controls;
 namespace GalNet.Avalonia.GameView.Page;
 
 /// <summary>Platform UI state shared by the editor preview and the official Avalonia sample.</summary>
-public sealed partial class GamePageViewModel : ObservableObject
+public sealed partial class GamePageViewModel : PageViewModelBase<GamePage>
 {
-    private readonly GamePageNavigationService _navigation;
+    private readonly IGameNavigationService _navigation;
     private TaskCompletionSource? _advanceWaiter;
     private TaskCompletionSource<int>? _choiceWaiter;
+    private TaskCompletionSource<GamePage>? _pageWaiter;
 
-    public GamePageViewModel(GamePageNavigationService navigation) => _navigation = navigation;
+    public GamePageViewModel(IGameNavigationService navigation) => _navigation = navigation;
 
     public ObservableCollection<SceneLayerItem> Layers { get; } = [];
     public ObservableCollection<string> Choices { get; } = [];
     public ObservableCollection<NvlLine> NvlLines { get; } = [];
-    public ObservableCollection<GamePageSaveSlot> SaveSlots { get; } = [];
     public ObservableCollection<string> ActiveEffects { get; } = [];
 
     [ObservableProperty] private bool _isDialogueVisible;
@@ -32,18 +31,14 @@ public sealed partial class GamePageViewModel : ObservableObject
     [ObservableProperty] private string _statusMessage = string.Empty;
 
     public event Action? AdvanceRequested;
-    public event Action<int>? SaveSlotRequested;
-    public event Action<int>? LoadSlotRequested;
 
     [RelayCommand] private void Advance() => AdvanceRequested?.Invoke();
-    [RelayCommand] private void OpenSaveSlots() => _navigation.Navigate(GamePageRoute.SaveSlots);
+    [RelayCommand] private void OpenSaveSlots() => _navigation.Navigate<SaveSlotsPageViewModel>();
     [RelayCommand] private void ToggleNvlMode() => IsNvlMode = !IsNvlMode;
-    [RelayCommand] private void OpenSettings() => _navigation.Navigate(GamePageRoute.Settings);
-    [RelayCommand] private void OpenGallery() => _navigation.Navigate(GamePageRoute.Gallery);
-    [RelayCommand] private void ReturnToTitle() => _navigation.ReturnToTitle();
+    [RelayCommand] private void OpenSettings() => _navigation.Navigate<SettingsPageViewModel>();
+    [RelayCommand] private void OpenGallery() => _navigation.Navigate<GalleryPageViewModel>();
+    [RelayCommand] private void ReturnToTitle() => _navigation.ResetTo<TitlePageViewModel>();
     [RelayCommand] private void ReturnToGame() => _navigation.GoBack();
-    [RelayCommand] private void SaveSlot(int slotIndex) => SaveSlotRequested?.Invoke(slotIndex);
-    [RelayCommand] private void LoadSlot(int slotIndex) => LoadSlotRequested?.Invoke(slotIndex);
 
     public Task WaitForAdvanceAsync(CancellationToken cancellationToken)
     {
@@ -61,6 +56,18 @@ public sealed partial class GamePageViewModel : ObservableObject
     }
 
     public void CompleteAdvance() => _advanceWaiter?.TrySetResult();
+
+    internal void AttachView(GamePage page)
+    {
+        _pageWaiter ??= new TaskCompletionSource<GamePage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _pageWaiter.TrySetResult(page);
+    }
+
+    public Task<GamePage> WaitForViewAsync(CancellationToken cancellationToken = default)
+    {
+        _pageWaiter ??= new TaskCompletionSource<GamePage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        return _pageWaiter.Task.WaitAsync(cancellationToken);
+    }
 
     [RelayCommand]
     private void CompleteChoice(int selectedIndex) => _choiceWaiter?.TrySetResult(selectedIndex);
@@ -115,5 +122,3 @@ public sealed partial class GamePageViewModel : ObservableObject
         }
     }
 }
-
-public sealed record GamePageSaveSlot(int SlotIndex, string Timestamp, string Description, bool IsEmpty, bool IsCorrupt, ICommand? SaveCommand, ICommand? LoadCommand);

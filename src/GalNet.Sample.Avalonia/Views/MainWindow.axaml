@@ -1,11 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:game="using:GalNet.Avalonia.GameView.Page"
-        xmlns:vm="using:GalNet.Sample.Avalonia.ViewModels"
         x:Class="GalNet.Sample.Avalonia.Views.MainWindow"
-        x:DataType="vm:MainWindowViewModel"
         Width="1280" Height="720" MinWidth="800" MinHeight="500"
         Icon="/Assets/avalonia-logo.ico"
         Title="GalNet Avalonia Sample Player">
-  <game:GameShell x:Name="GameShellControl" DataContext="{Binding Shell}" />
+  <ContentControl x:Name="ShellHost" />
 </Window>

@@ -5,10 +5,9 @@ namespace GalNet.Sample.Avalonia.Views;
 
 public partial class MainWindow : Window
 {
-    public GameShell GameShell => GameShellControl;
-
-    public MainWindow()
+    public MainWindow(GameShell shell)
     {
         InitializeComponent();
+        ShellHost.Content = shell;
     }
 }

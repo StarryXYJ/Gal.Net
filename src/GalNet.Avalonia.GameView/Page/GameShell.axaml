@@ -4,11 +4,6 @@
              x:Class="GalNet.Avalonia.GameView.Page.GameShell"
              x:DataType="local:GameShellViewModel">
   <Grid Background="#101018">
-    <local:TitlePage DataContext="{Binding}" IsVisible="{Binding Navigation.IsTitlePage}" />
-    <local:GamePage x:Name="GamePageControl" DataContext="{Binding Game}" IsVisible="{Binding Navigation.IsGameplayPage}" />
-    <local:SaveSlotsPage DataContext="{Binding Game}" IsVisible="{Binding Navigation.IsSaveSlotsPage}" />
-    <local:SettingsPage DataContext="{Binding}" IsVisible="{Binding Navigation.IsSettingsPage}" />
-    <local:GalleryPage DataContext="{Binding Game}" IsVisible="{Binding Navigation.IsGalleryPage}" />
-    <local:AboutPage DataContext="{Binding}" IsVisible="{Binding Navigation.IsAboutPage}" />
+    <ContentControl x:Name="PageHost" />
   </Grid>
 </UserControl>

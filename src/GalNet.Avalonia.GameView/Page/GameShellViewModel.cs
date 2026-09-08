@@ -1,36 +1,22 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
 
 namespace GalNet.Avalonia.GameView.Page;
 
-/// <summary>State and commands for the default page shell. Hosts provide gameplay and persistence services.</summary>
-public sealed partial class GameShellViewModel : ObservableObject
+/// <summary>Scope-owned navigation host for the default game pages.</summary>
+public sealed class GameShellViewModel : ObservableObject, IDisposable
 {
-    public GameShellViewModel()
+    private readonly IGameNavigationService _navigation;
+
+    public GameShellViewModel(IGameNavigationService navigation)
     {
-        Game = new GamePageViewModel(Navigation);
+        _navigation = navigation;
+        _navigation.CurrentViewModelChanged += OnCurrentViewModelChanged;
     }
 
-    public GamePageNavigationService Navigation { get; } = new();
-    public GamePageViewModel Game { get; }
+    public PageViewModelBase? CurrentViewModel => _navigation.CurrentViewModel;
 
-    [ObservableProperty] private string _gameTitle = "GalNet Game";
-    [ObservableProperty] private string _statusMessage = "Load a game to begin.";
-    [ObservableProperty] private bool _isReady;
+    public void Dispose() => _navigation.CurrentViewModelChanged -= OnCurrentViewModelChanged;
 
-    public event Action? StartGameRequested;
-
-    [RelayCommand]
-    private void StartGame()
-    {
-        if (!IsReady) return;
-        Navigation.Navigate(GamePageRoute.Gameplay, rememberCurrent: false);
-        StartGameRequested?.Invoke();
-    }
-
-    [RelayCommand] private void OpenSettings() => Navigation.Navigate(GamePageRoute.Settings);
-    [RelayCommand] private void OpenAbout() => Navigation.Navigate(GamePageRoute.About);
-    [RelayCommand] private void Back() => Navigation.GoBack();
-    [RelayCommand] private void ReturnToTitle() => Navigation.ReturnToTitle();
+    private void OnCurrentViewModelChanged(object? sender, EventArgs e) => OnPropertyChanged(nameof(CurrentViewModel));
 }
