@@ -237,14 +237,15 @@ public sealed record EffectRequest(
 
 工作项：
 
-1. 删除编辑器对 `GalNet.Control`、`GameFlowFactory`、`DefaultGameView` 和完整游戏页面的依赖。
-2. 移除 `UiProject`、预设注册、UI 调色板与 UI 定制面板；项目文件不再保存最终游戏 UI 配置。
-3. 将游戏预览改为 `EditorPreviewHost + GamePage + AvaloniaGamePageView`：它以编辑器主题托管同一共享页，并装配预览专用服务来显示基础图层、文本、选项和变量。
-4. 预览样式只继承编辑器主题；不允许项目级 UI 定制。
-5. 音频、视频、特效和复杂转场使用基础实现、占位或日志；预览目标是验证剧情而非还原最终客户端。
-6. 保留临时预览数据构建、变量调试、重启预览和图编辑工作流。
+1. 将编辑器预览迁移为 `EditorPreviewHost + GameShell + IGameNavigationService + AvaloniaGamePageView`：创建预览专用游戏 Scope，使用编辑器主题和预览服务装配同一套页面、图层、文本、选项与变量流程。
+2. 删除编辑器对 `GalNet.Control`、`GameFlowFactory`、`DefaultGameView` 和旧完整游戏页面的依赖；同步迁移 `Editor.Shared`、`Editor.Abstraction` 的 `GalNet.Control.Abstraction` 依赖。只有在 Editor 与 Launcher 均无调用方后，才删除两个旧 Control 项目。
+3. 清理 `GalNet.Core` 的编辑器/UI 泄漏：移除或迁出 `UiProject`、预设注册、UI 调色板及 UI 定制模型；项目文件不再保存最终游戏 UI 配置。将本地化依赖收敛为 Core 自有的轻量文本解析契约，由外层宿主适配具体本地化库。
+4. 增加 `IPageViewRegistry`，允许 `MyGame.View` 覆盖默认的 `ViewModel -> View` 映射；开发者改共享自定义页面即可同时改变客户端与编辑器预览。
+5. 完成官方宿主的默认服务边界：初始化真实 LibVLC 音频后端，或改用明确可见的 NullAudio；将存档页面调整为可编译绑定的槽位行 VM/命令模型；把 `AvaloniaGamePageView` 从页面目录移至展示适配器目录。
+6. 为游戏 Scope、导航历史、带参数激活、页面 View/VM 复用和 Scope 释放增加自动化测试；确保编辑器重启/切换预览不会残留旧引擎、音频或 UI 状态。
+7. 预览样式只继承编辑器主题；不允许项目级 UI 定制。音频、视频、特效和复杂转场在预览中使用基础实现、占位或日志；保留临时预览数据构建、变量调试、重启预览和图编辑工作流。
 
-验收：编辑器可编辑并基础预览项目，但不引用官方示例客户端，也不承担最终游戏 UI 定制职责。
+验收：编辑器可编辑并通过独立预览 Scope 基础运行项目，不引用官方示例客户端，也不承担最终游戏 UI 定制职责；`GalNet.Core` 不再依赖 Avalonia 或具体本地化实现，旧 Control 链不再有实际调用方。
 
 ### Phase 7：文件格式迁移、清理与发布
 
