@@ -1,7 +1,4 @@
 using GalNet.Editor.Abstraction.Documents;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using Avalonia.Media;
 
 namespace GalNet.Editor.Abstraction.Changes;
 
@@ -45,8 +42,7 @@ public static class EditorDocumentCloner
         GroupEntries = source.GroupEntries.ToDictionary(
             pair => pair.Key,
             pair => pair.Value.Select(CloneEntry).ToList()),
-        Settings = CloneSettings(source.Settings),
-        UiProject = CloneUiProject(source.UiProject)
+        Settings = CloneSettings(source.Settings)
     };
 
     public static EditorGraphDocument CloneGraph(EditorGraphDocument source) => new()
@@ -111,41 +107,4 @@ public static class EditorDocumentCloner
         SaveVariables = source.SaveVariables.Select(variable => variable.Clone()).ToList()
     };
 
-    public static GalNet.Core.UI.UiProject CloneUiProject(GalNet.Core.UI.UiProject source)
-    {
-        var options = new JsonSerializerOptions
-        {
-            Converters = { new ProjectColorJsonConverter(), new JsonStringEnumConverter() }
-        };
-        return JsonSerializer.Deserialize<GalNet.Core.UI.UiProject>(JsonSerializer.Serialize(source, options), options)
-            ?? new GalNet.Core.UI.UiProject();
-    }
-
-    private sealed class ProjectColorJsonConverter : JsonConverter<Color>
-    {
-        public override Color Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-        {
-            if (reader.TokenType == JsonTokenType.String && Color.TryParse(reader.GetString(), out var parsed))
-                return parsed;
-            if (reader.TokenType != JsonTokenType.StartObject)
-                throw new JsonException("A color must be an ARGB object.");
-            byte a = 0, r = 0, g = 0, b = 0;
-            while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
-            {
-                var name = reader.GetString();
-                reader.Read();
-                var value = reader.GetByte();
-                switch (name) { case "A": a = value; break; case "R": r = value; break; case "G": g = value; break; case "B": b = value; break; }
-            }
-            return Color.FromArgb(a, r, g, b);
-        }
-
-        public override void Write(Utf8JsonWriter writer, Color value, JsonSerializerOptions options)
-        {
-            writer.WriteStartObject();
-            writer.WriteNumber("A", value.A); writer.WriteNumber("R", value.R);
-            writer.WriteNumber("G", value.G); writer.WriteNumber("B", value.B);
-            writer.WriteEndObject();
-        }
-    }
 }

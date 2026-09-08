@@ -4,7 +4,6 @@ using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
-using GalNet.Editor.Shared.UI;
 
 namespace GalNet.Editor.Headless;
 

@@ -4,16 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Avalonia.GameView.Navigation;
 
-/// <summary>Base type for view-first navigation. A page VM declares only its default Avalonia view.</summary>
-public abstract class PageViewModelBase : ObservableObject
-{
-    public abstract Type ViewType { get; }
-}
-
-public abstract class PageViewModelBase<TView> : PageViewModelBase where TView : Control
-{
-    public override Type ViewType => typeof(TView);
-}
+/// <summary>Framework-neutral identity for a navigable page within an Avalonia game scope.</summary>
+public abstract class PageViewModelBase : ObservableObject;
 
 /// <summary>Optional activation contract for per-navigation data that must not enter DI.</summary>
 public interface IActivatablePageViewModel<in TArgs>
@@ -82,12 +74,39 @@ public interface IPageViewFactory
     Control Create(PageViewModelBase viewModel);
 }
 
+/// <summary>Maps page VM types to Avalonia controls. Later registrations intentionally replace defaults.</summary>
+public interface IPageViewRegistry
+{
+    void Register<TViewModel, TView>()
+        where TViewModel : PageViewModelBase
+        where TView : Control;
+    Type GetViewType(Type viewModelType);
+}
+
+public sealed class PageViewRegistry : IPageViewRegistry
+{
+    private readonly Dictionary<Type, Type> _views = [];
+
+    public void Register<TViewModel, TView>()
+        where TViewModel : PageViewModelBase
+        where TView : Control => _views[typeof(TViewModel)] = typeof(TView);
+
+    public Type GetViewType(Type viewModelType)
+    {
+        ArgumentNullException.ThrowIfNull(viewModelType);
+        if (_views.TryGetValue(viewModelType, out var viewType)) return viewType;
+        throw new InvalidOperationException($"No page view is registered for '{viewModelType.FullName}'.");
+    }
+}
+
 /// <summary>Resolves page controls from the same game scope and assigns their resolved VM.</summary>
-public sealed class PageViewFactory(IServiceProvider services) : IPageViewFactory
+public sealed class PageViewFactory(IServiceProvider services, IPageViewRegistry registry) : IPageViewFactory
 {
     public Control Create(PageViewModelBase viewModel)
     {
-        var view = (Control)services.GetRequiredService(viewModel.ViewType);
+        ArgumentNullException.ThrowIfNull(viewModel);
+        var viewType = registry.GetViewType(viewModel.GetType());
+        var view = (Control)services.GetRequiredService(viewType);
         view.DataContext = viewModel;
         return view;
     }

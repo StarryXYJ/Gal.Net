@@ -119,5 +119,4 @@ public sealed class EditorProjectDocument
     public EditorGraphDocument Graph { get; set; } = new();
     public Dictionary<string, List<EditorEntryData>> GroupEntries { get; set; } = [];
     public ProjectSettings Settings { get; set; } = new();
-    public GalNet.Core.UI.UiProject UiProject { get; set; } = new();
 }

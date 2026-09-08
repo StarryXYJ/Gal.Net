@@ -9,7 +9,6 @@ using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Services;
 using GalNet.Editor.Services.Interfaces;
-using GalNet.Core.UI;
 
 namespace GalNet.Editor.ViewModels;
 
@@ -37,10 +36,6 @@ public partial class NewProjectPanelViewModel : PageViewModelBase
     [ObservableProperty]
     private string _resolution = "1920×1080";
 
-    public IReadOnlyList<UiColorPalettePreset> ColorPalettes => UiColorPalettePresets.All;
-
-    [ObservableProperty]
-    private string _selectedColorPaletteId = UiColorPalettePresets.DefaultId;
 
     public NewProjectPanelViewModel(
         INavigationService navigation,
@@ -72,10 +67,7 @@ public partial class NewProjectPanelViewModel : PageViewModelBase
             var projectPath = Path.Combine(ProjectRoot, ProjectName);
             if (!TryParseResolution(Resolution, out var width, out var height))
                 throw new InvalidOperationException("Resolution must be in the form width×height.");
-            var project = await _projectService.CreateAsync(projectPath, ProjectName, new ProjectSettings { DefaultWidth = width, DefaultHeight = height });
-            UiColorPalettePresets.Apply(project.UiProject.Current, SelectedColorPaletteId);
-            project.UiProject.NotifyChanged();
-            await project.UiProject.SaveAsync();
+            await _projectService.CreateAsync(projectPath, ProjectName, new ProjectSettings { DefaultWidth = width, DefaultHeight = height });
             _navigation.NavigateTo(_editorPageFactory.CreateEditorPage());
         }
         catch (Exception ex)

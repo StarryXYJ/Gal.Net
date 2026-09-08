@@ -21,7 +21,6 @@ public static class EditorDockPanelIds
     public const string Log = "Log";
     public const string GroupEditor = "GroupEditor";
     public const string Inspector = "Inspector";
-    public const string UiCustomization = "UiCustomization";
 }
 
 public static class BuiltInDockContributions
@@ -43,8 +42,6 @@ public static class BuiltInDockContributions
             (sp, parameter) => new GroupEditorPanelViewModel(sp.GetRequiredService<EditorWorkspaceViewModel>(), (GraphNode)parameter!, sp.GetRequiredService<IGraphEditingService>(), sp.GetRequiredService<IProjectService>(), sp.GetRequiredService<IAssetManager>(), sp.GetRequiredService<EditorShortcutService>()), typeof(GroupEditorPanelView), null));
         registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.Inspector, "Dock.Panel.Inspector", DockPanelPlacement.InspectorDocument, false, true, true, true, true,
             (sp, _) => sp.GetRequiredService<InspectorHostViewModel>(), typeof(InspectorHostView), null));
-        registry.RegisterDockPanel(new DelegateDockPanelContribution(EditorDockPanelIds.UiCustomization, "Dock.Panel.UiCustomization", DockPanelPlacement.BottomDocument, true, true, true, false, true,
-            (sp, _) => sp.GetRequiredService<UiCustomizationPanelViewModel>(), typeof(UiCustomizationPanelView), null));
     }
 }
 

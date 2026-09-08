@@ -1,4 +1,3 @@
-using DynamicLocalization.Core;
 using GalNet.Core.Runtime;
 using GalNet.Core.Scene;
 using GalNet.Core.Services;
@@ -23,7 +22,7 @@ public sealed class GameRuntime : IGameRuntime
     public bool IsGameEnded { get; set; }
 
     // ── 核心引用 ──
-    public ICultureService? I18n { get; }
+    public ITextResolver TextResolver { get; }
 
     // ── 设置 ──
     public SettingsContainer Settings { get; }
@@ -37,11 +36,11 @@ public sealed class GameRuntime : IGameRuntime
     private readonly Stack<(string NodeId, int EntryIndex)> _callStack = new();
     private readonly IVariableService? _variableService;
 
-    public GameRuntime(ICultureService? i18n, string rootNodeId = "",
+    public GameRuntime(ITextResolver? textResolver, string rootNodeId = "",
         SettingsContainer? settings = null,
         IVariableService? variableService = null)
     {
-        I18n = i18n;
+        TextResolver = textResolver ?? PassthroughTextResolver.Instance;
         CurrentNodeId = rootNodeId;
         Settings = settings ?? new SettingsContainer();
         _variableService = variableService;

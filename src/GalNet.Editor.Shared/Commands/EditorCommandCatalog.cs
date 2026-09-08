@@ -72,12 +72,7 @@ public sealed class EditorCommandCatalog : IEditorCommandCatalog
         Define<SetVariableDefinitionTypeCommand>("variable.definition.setType", "Changes a variable type and converts or resets its default value."),
         Define<SetVariableDefaultValueCommand>("variable.definition.setDefault", "Changes the default value of a project variable."),
         Define<RenameProjectCommand>("project.rename", "Changes the project display name without moving its directory."),
-        Define<PatchProjectSettingsCommand>("project.settings.patch", "Updates selected project settings after validating each supported field."),
-        Define<ApplyUiPresetCommand>("ui.preset.apply", "Applies a registered UI preset to the project UI configuration."),
-        Define<ApplyUiColorPaletteCommand>("ui.palette.apply", "Applies a registered color palette to the project UI configuration."),
-        Define<SetUiProjectValueCommand>("ui.value.set", "Sets one schema-approved UI project value."),
-        Define<PatchUiProjectValuesCommand>("ui.values.patch", "Updates multiple schema-approved UI project values as one transaction."),
-        Define<ResetUiProjectValuesCommand>("ui.values.reset", "Resets selected UI project values to preset or built-in defaults.")
+        Define<PatchProjectSettingsCommand>("project.settings.patch", "Updates selected project settings after validating each supported field.")
     ];
 
     private static IProjectCommandDefinition Define<TCommand>(string id, string description)

@@ -10,7 +10,6 @@ using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
-using GalNet.Editor.Shared.UI;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -51,7 +50,6 @@ public sealed class ProjectService : IProjectService
             throw new DirectoryNotFoundException($"Project directory not found: {projectPath}");
 
         var settings = await LoadProjectSettingsAsync(projectPath);
-        await EnsureUiProjectAsync(projectPath);
         VariableNameRules.Normalize(settings);
         var editorState = await LoadEditorProjectStateAsync(projectPath);
         var scope = _globalServices.CreateScope();
@@ -59,8 +57,7 @@ public sealed class ProjectService : IProjectService
         var name = Path.GetFileName(projectPath);
         var id = name;
 
-        var ui = new FileUiProjectProvider(projectPath);
-        var program = new GalProject(id, name, projectPath, settings, editorState, ui, scope);
+        var program = new GalProject(id, name, projectPath, settings, editorState, scope);
 
         _current = program;
 
@@ -89,7 +86,6 @@ public sealed class ProjectService : IProjectService
         Directory.CreateDirectory(Path.Combine(projectPath, "Output"));
         Directory.CreateDirectory(Path.Combine(projectPath, "Temp"));
         Directory.CreateDirectory(Path.Combine(projectPath, ".galnet"));
-        await EnsureUiProjectAsync(projectPath);
 
         await SaveProjectSettingsAsync(projectPath, settings);
         await SaveEditorProjectStateAsync(projectPath, new EditorProjectState());
@@ -97,8 +93,7 @@ public sealed class ProjectService : IProjectService
 
         var scope = _globalServices.CreateScope();
         var editorState = await LoadEditorProjectStateAsync(projectPath);
-        var ui = new FileUiProjectProvider(projectPath);
-        var program = new GalProject(name, name, projectPath, settings, editorState, ui, scope);
+        var program = new GalProject(name, name, projectPath, settings, editorState, scope);
 
         _current = program;
 
@@ -289,15 +284,6 @@ public sealed class ProjectService : IProjectService
                 ["speaker"] = "Alice",
                 ["content"] = "Hello GalNet"
             }));
-    }
-
-    /// <summary>One-time, deliberate migration for projects created before the UI project existed.</summary>
-    private static async Task EnsureUiProjectAsync(string projectPath)
-    {
-        if (File.Exists(Path.Combine(projectPath, "UI", "ui.json")))
-            return;
-        var ui = new FileUiProjectProvider(projectPath, UiProjectDefaults.Create());
-        await ui.SaveAsync();
     }
 
     private static string NormalizeProjectPath(string projectPath) =>

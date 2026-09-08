@@ -1,12 +1,11 @@
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
-using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Services;
 
 namespace GalNet.Avalonia.GameView.ViewModels;
 
-public sealed partial class TitlePageViewModel : PageViewModelBase<TitlePage>, IDisposable
+public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
 {
     private readonly IGameSessionService _session;
     private readonly IGameNavigationService _navigation;

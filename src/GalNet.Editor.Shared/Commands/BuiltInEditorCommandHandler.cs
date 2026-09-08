@@ -11,24 +11,6 @@ namespace GalNet.Editor.Shared.Commands;
 
 public sealed partial class BuiltInEditorCommandHandler : IEditorCommandHandler
 {
-    private static readonly HashSet<string> AllowedUiSettingKeys = new(StringComparer.Ordinal)
-    {
-        "backgroundImage", "backgroundColor", "backgroundStretch", "contentPadding",
-        "titleColor", "titleFontSize", "menuTextColor", "menuHoverTextColor", "menuFontSize",
-        "titleMenuGap", "menuSpacing", "showGallery", "showAbout", "menuItemBackgroundColor",
-        "menuItemHoverBackgroundColor", "menuItemWidth", "menuItemHeight",
-        "dialogueBackgroundColor", "dialogueBackgroundImage", "dialogueBackgroundImageOpacity",
-        "dialogueTextColor", "speakerTextColor", "dialogueHeight", "dialogueMargin",
-        "dialogueCornerRadius", "dialogueFontSize", "choiceLayout", "choiceButtonColor",
-        "choiceButtonTextColor", "choiceButtonWidth", "choiceButtonHeight", "choiceSpacing",
-        "commandBarVisible", "commandTextColor", "commandHoverTextColor", "commandSelectedTextColor",
-        "panelColor", "textColor", "buttonColor", "buttonTextColor", "backButtonForegroundColor",
-        "sliderTrackColor", "sliderFillColor", "sliderThumbColor", "sliderThumbBorderColor",
-        "checkBoxBorderColor", "checkBoxFillColor", "checkBoxCheckColor", "contentAsset",
-        "fontSize", "headingColor", "selectionColor", "linkColor", "linkHoverColor",
-        "linkVisitedColor", "blockquoteBackgroundColor", "blockquoteBorderColor",
-        "codeBackgroundColor", "codeBorderColor", "codeTextColor", "codeFontSize", "ruleColor"
-    };
     public bool CanHandle(IProjectEditCommand command) => Domains.Any(domain => domain.CanHandle(command));
 
     public CommandExecution Execute(
@@ -558,72 +540,6 @@ public sealed partial class BuiltInEditorCommandHandler : IEditorCommandHandler
     {
         var result = value.GetInt32();
         return result > 0 ? result : throw new InvalidOperationException($"'{key}' must be greater than zero.");
-    }
-
-    private static CommandExecution ApplyUiPreset(EditorProjectDocument document, ApplyUiPresetCommand command)
-    {
-        if (string.IsNullOrWhiteSpace(command.PresetId))
-            return Error("ui.preset.idRequired", "A UI preset ID is required.");
-        if (command.Defaults?.Keys.Any(key => !AllowedUiSettingKeys.Contains(key)) == true)
-            return Error("ui.settings.unknownKey", "One or more preset defaults use an unknown UI setting key.");
-        var selection = document.UiProject.GetPage(command.Page);
-        selection.SwitchPreset(command.PresetId.Trim(), command.Defaults ?? new Dictionary<string, string>());
-        return Success($"Set the {command.Page} UI page preset to '{selection.PresetId}'.", "History.Ui.SetPreset", $"ui/pages/{command.Page}", command.Page, selection.PresetId);
-    }
-
-    private static CommandExecution SetUiValue(EditorProjectDocument document, SetUiProjectValueCommand command) =>
-        PatchUiValues(document, new PatchUiProjectValuesCommand(command.Page, new Dictionary<string, string?> { [command.Key] = command.Value }));
-
-    private static CommandExecution PatchUiValues(EditorProjectDocument document, PatchUiProjectValuesCommand command)
-    {
-        if (command.Values.Count == 0)
-            return Error("ui.settings.emptyPatch", "At least one UI setting is required.");
-        var selection = document.UiProject.GetPage(command.Page);
-        foreach (var (key, value) in command.Values)
-        {
-            if (string.IsNullOrWhiteSpace(key))
-                return Error("ui.settings.keyRequired", "UI setting keys cannot be empty.");
-            if (!AllowedUiSettingKeys.Contains(key))
-                return Error("ui.settings.unknownKey", $"UI setting '{key}' is not approved by the editor schema.");
-            if (value is null) selection.Settings.Remove(key);
-            else selection.Settings[key] = value;
-        }
-        selection.SaveActivePresetSettings();
-        return Success($"Updated {command.Values.Count} setting(s) on the {command.Page} UI page.", "History.Ui.PatchSettings", $"ui/pages/{command.Page}", command.Page, command.Values.Count);
-    }
-
-    private static CommandExecution ResetUiValues(EditorProjectDocument document, ResetUiProjectValuesCommand command)
-    {
-        if (command.Keys.Count == 0)
-            return Error("ui.settings.emptyReset", "At least one UI setting key is required.");
-        var selection = document.UiProject.GetPage(command.Page);
-        foreach (var key in command.Keys)
-        {
-            if (string.IsNullOrWhiteSpace(key))
-                return Error("ui.settings.keyRequired", "UI setting keys cannot be empty.");
-            if (!AllowedUiSettingKeys.Contains(key))
-                return Error("ui.settings.unknownKey", $"UI setting '{key}' is not approved by the editor schema.");
-            if (command.Defaults?.TryGetValue(key, out var value) == true) selection.Settings[key] = value;
-            else selection.Settings.Remove(key);
-        }
-        selection.SaveActivePresetSettings();
-        return Success($"Reset {command.Keys.Count} setting(s) on the {command.Page} UI page.", "History.Ui.ResetSettings", $"ui/pages/{command.Page}", command.Page, command.Keys.Count);
-    }
-
-    private static CommandExecution ApplyUiPalette(EditorProjectDocument document, ApplyUiColorPaletteCommand command)
-    {
-        if (!GalNet.Core.UI.UiColorPalettePresets.All.Any(item => string.Equals(item.Id, command.PaletteId, StringComparison.Ordinal)))
-            return Error("ui.palette.notFound", $"UI color palette '{command.PaletteId}' was not found.");
-        GalNet.Core.UI.UiColorPalettePresets.Apply(document.UiProject, command.PaletteId);
-        return Success($"Applied UI color palette '{command.PaletteId}'.", "History.Ui.ApplyPalette", "ui/palette", command.PaletteId);
-    }
-
-    private static CommandExecution ReplaceUiProject(EditorProjectDocument document, ReplaceUiProjectCommand command)
-    {
-        if (command.Project is null)
-            return Error("ui.project.required", "A UI project document is required.");
-        document.UiProject = command.Project;
-        return Success("Replaced the UI project document.", "History.Ui.ReplaceProject", "ui");
     }
 
     private static int NonNegativeInt(JsonElement value, string key)

@@ -2,7 +2,7 @@ namespace GalNet.Core.I18n;
 
 /// <summary>
 /// I18n 键 —— 包装树形路径键，非 string，分配后不可变。
-/// 运行时由 DynamicLocalization 的 ICultureService 解析为目标语言文本。
+/// 运行时由宿主提供的轻量文本解析器解析为目标语言文本。
 /// 键基于稳定 ID（组/条目 ID），不受重命名影响。
 /// </summary>
 public sealed class I18nKey

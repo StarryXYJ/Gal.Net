@@ -1,7 +1,5 @@
 using GalNet.Core.Settings;
-using GalNet.Core.UI;
 using GalNet.Editor.Abstraction.Project;
-using GalNet.Editor.Shared.UI;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GeneralTest.Editor;
@@ -12,7 +10,7 @@ public sealed class ProjectLifecycleTests
     public async Task ProjectWaitsForRegisteredCleanupBeforeDisposingScope()
     {
         using var scope = new TestScope();
-        var project = new GalProject("test", "test", Path.GetTempPath(), new ProjectSettings(), new EditorProjectState(), new FileUiProjectProvider(Path.GetTempPath()), scope);
+        var project = new GalProject("test", "test", Path.GetTempPath(), new ProjectSettings(), new EditorProjectState(), scope);
         var cleanupFinished = false;
         project.RegisterClosingCallback(async () =>
         {

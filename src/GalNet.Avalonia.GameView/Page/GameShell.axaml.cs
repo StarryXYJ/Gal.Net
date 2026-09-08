@@ -5,7 +5,7 @@ using GalNet.Avalonia.GameView.ViewModels;
 namespace GalNet.Avalonia.GameView.Page;
 
 /// <summary>Reusable page host. Editors and players inject different services but reuse this layout.</summary>
-public partial class GameShell : UserControl
+public partial class GameShell : UserControl, IDisposable
 {
     private readonly GameShellViewModel _viewModel;
     private readonly IPageViewFactory _views;
@@ -16,11 +16,15 @@ public partial class GameShell : UserControl
         _views = views;
         InitializeComponent();
         DataContext = viewModel;
-        viewModel.PropertyChanged += (_, eventArgs) =>
-        {
-            if (eventArgs.PropertyName == nameof(GameShellViewModel.CurrentViewModel)) ShowCurrentPage();
-        };
+        viewModel.PropertyChanged += OnViewModelPropertyChanged;
         ShowCurrentPage();
+    }
+
+    public void Dispose() => _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs eventArgs)
+    {
+        if (eventArgs.PropertyName == nameof(GameShellViewModel.CurrentViewModel)) ShowCurrentPage();
     }
 
     private void ShowCurrentPage()

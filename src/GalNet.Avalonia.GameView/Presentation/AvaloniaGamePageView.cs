@@ -1,10 +1,11 @@
 using Avalonia.Controls;
 using Avalonia.Threading;
+using GalNet.Avalonia.GameView.Page;
 using GalNet.Core.View;
 using GalNet.Game.Controls;
 using GalNet.Avalonia.GameView.ViewModels;
 
-namespace GalNet.Avalonia.GameView.Page;
+namespace GalNet.Avalonia.GameView.Presentation;
 
 /// <summary>Host-provided creation of layer visuals; the shared page never resolves files itself.</summary>
 public interface IGamePageLayerFactory
@@ -105,3 +106,4 @@ public sealed class AvaloniaGamePageView : ILayerView, IControlView, ITypewriter
         return completion.Task;
     }
 }
+

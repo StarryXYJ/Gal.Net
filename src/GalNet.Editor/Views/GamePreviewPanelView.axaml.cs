@@ -4,7 +4,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using GalNet.Control.Screen.Host;
 using GalNet.Editor.ViewModels;
 using Serilog;
 using Ursa.Controls;
@@ -69,9 +68,9 @@ public partial class GamePreviewPanelView : UserControl
         }
 
         _vm = DataContext as GamePreviewPanelViewModel;
-        Log.Information("[PreviewView] VM setup: {Type}, PageHostVm={PH}",
+        Log.Information("[PreviewView] VM setup: {Type}, PreviewShell={PH}",
             _vm?.GetType().Name ?? "null",
-            _vm?.PageHostVm?.GetType().Name ?? "null");
+            _vm?.PreviewShell?.GetType().Name ?? "null");
 
         if (_vm is not null)
         {
@@ -98,10 +97,10 @@ public partial class GamePreviewPanelView : UserControl
 
     private void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(GamePreviewPanelViewModel.PageHostVm))
+        if (e.PropertyName == nameof(GamePreviewPanelViewModel.PreviewShell))
         {
-            Log.Information("[PreviewView] PageHostVm prop changed: {V}",
-                _vm?.PageHostVm?.GetType().Name ?? "null");
+            Log.Information("[PreviewView] PreviewShell prop changed: {V}",
+                _vm?.PreviewShell?.GetType().Name ?? "null");
             SyncPageHost();
         }
     }
@@ -127,19 +126,16 @@ public partial class GamePreviewPanelView : UserControl
 
     private void SyncPageHost()
     {
-        if (_vm?.PageHostVm is null) return;
+        if (_vm?.PreviewShell is null)
+        {
+            GameViewHost.GameContent = null;
+            return;
+        }
 
-        if (GameViewHost.GameContent is GamePageHostView existing
-            && ReferenceEquals(existing.DataContext, _vm.PageHostVm))
+        if (ReferenceEquals(GameViewHost.GameContent, _vm.PreviewShell))
             return;
 
-        Log.Information("[PreviewView] SyncPageHost: creating GamePageHostView");
-        var hostView = new GamePageHostView
-        {
-            DataContext = _vm.PageHostVm,
-            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
-            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch
-        };
-        GameViewHost.GameContent = hostView;
+        Log.Information("[PreviewView] SyncPageHost: attaching shared GameShell");
+        GameViewHost.GameContent = _vm.PreviewShell;
     }
 }

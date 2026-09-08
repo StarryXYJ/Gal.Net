@@ -434,7 +434,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
                 _documentService.CurrentDocument.PlayerVariables, _documentService.CurrentDocument.SaveVariables);
             _saveCoordinator.SaveProjectDocument(project.RootPath, document, _graphDocumentMapper.CreateGroupEntriesSnapshot(Nodes));
             await _projectService.SaveAsync();
-            await project.UiProject.SaveAsync();
             _documentService.MarkSaved();
             _histories.MarkSaved();
             project.IsDirty = false;

@@ -8,9 +8,5 @@ public partial class GamePage : UserControl
 {
     public DialoguePresenter Dialogue => DialogueControl;
 
-    public GamePage()
-    {
-        InitializeComponent();
-        DataContextChanged += (_, _) => (DataContext as GamePageViewModel)?.AttachView(this);
-    }
+    public GamePage() => InitializeComponent();
 }

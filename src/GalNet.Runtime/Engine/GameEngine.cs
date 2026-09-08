@@ -1,4 +1,3 @@
-using DynamicLocalization.Core;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.Runtime;
@@ -33,7 +32,7 @@ public sealed class GameEngine
     public GameEngine(
         Graph graph,
         IGameView view,
-        ICultureService? i18n = null,
+        ITextResolver? textResolver = null,
         SettingsContainer? settings = null,
         EntryHandlerRegistry? registry = null,
         IGameProgressService? progress = null,
@@ -41,7 +40,7 @@ public sealed class GameEngine
     {
         _graph = graph;
         _registry = registry ?? EntryHandlerRegistry.CreateDefault();
-        _runtime = new GameRuntime(i18n, graph.RootNodeId, settings);
+        _runtime = new GameRuntime(textResolver, graph.RootNodeId, settings);
         _view = view;
         _progress = progress;
         _timeProvider = timeProvider ?? TimeProvider.System;
@@ -154,7 +153,7 @@ public sealed class GameEngine
             return;
         }
 
-        string Resolve(string key) => _runtime.I18n?[key] ?? key;
+        string Resolve(string key) => _runtime.TextResolver.Resolve(key);
         var texts = visibleOptions.Select(x => Resolve(x.Option.Text)).ToArray();
 
         CheckpointCreated?.Invoke(CreateSaveData());

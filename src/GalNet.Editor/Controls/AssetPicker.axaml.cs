@@ -9,7 +9,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
-using GalNet.Control.Abstraction.UI;
+using GalNet.Editor.Models;
 using GalNet.Core.Assets;
 
 namespace GalNet.Editor.Controls;

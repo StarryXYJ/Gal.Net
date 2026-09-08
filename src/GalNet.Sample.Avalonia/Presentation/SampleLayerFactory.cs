@@ -2,7 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
-using GalNet.Avalonia.GameView.Page;
+using GalNet.Avalonia.GameView.Presentation;
 
 namespace GalNet.Sample.Avalonia.Presentation;
 

@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using GalNet.Core.Services;
-using GalNet.Control.UI;
 using GalNet.Runtime.Loader;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.ViewModels;

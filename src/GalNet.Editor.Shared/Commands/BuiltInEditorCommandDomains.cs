@@ -11,7 +11,7 @@ public sealed partial class BuiltInEditorCommandHandler
         CommandExecution Execute(EditorProjectDocument document, IProjectEditCommand command, EditorCommandContext context);
     }
 
-    private static readonly ICommandDomain[] Domains = [new GraphDomain(), new EntryDomain(), new VariableDomain(), new ProjectDomain(), new UiDomain()];
+    private static readonly ICommandDomain[] Domains = [new GraphDomain(), new EntryDomain(), new VariableDomain(), new ProjectDomain()];
 
     private sealed class GraphDomain : ICommandDomain
     {
@@ -41,13 +41,5 @@ public sealed partial class BuiltInEditorCommandHandler
     {
         public bool CanHandle(IProjectEditCommand command) => command is RenameProjectCommand or PatchProjectSettingsCommand;
         public CommandExecution Execute(EditorProjectDocument d, IProjectEditCommand c, EditorCommandContext _) => c switch { RenameProjectCommand v => RenameProject(d, v), PatchProjectSettingsCommand v => PatchSettings(d, v), _ => throw new InvalidOperationException() };
-    }
-    private sealed class UiDomain : ICommandDomain
-    {
-        public bool CanHandle(IProjectEditCommand command) => command is ApplyUiPresetCommand or SetUiProjectValueCommand or PatchUiProjectValuesCommand or ResetUiProjectValuesCommand or ApplyUiColorPaletteCommand or ReplaceUiProjectCommand;
-        public CommandExecution Execute(EditorProjectDocument d, IProjectEditCommand c, EditorCommandContext _) => c switch
-        {
-            ApplyUiPresetCommand v => ApplyUiPreset(d, v), SetUiProjectValueCommand v => SetUiValue(d, v), PatchUiProjectValuesCommand v => PatchUiValues(d, v), ResetUiProjectValuesCommand v => ResetUiValues(d, v), ApplyUiColorPaletteCommand v => ApplyUiPalette(d, v), ReplaceUiProjectCommand v => ReplaceUiProject(d, v), _ => throw new InvalidOperationException()
-        };
     }
 }

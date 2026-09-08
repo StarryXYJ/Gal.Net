@@ -7,19 +7,15 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GalNet.Control.Screen.Flow;
-using GalNet.Control.Screen.Game;
-using GalNet.Control.Screen.Host;
+using Avalonia.Controls;
 using GalNet.Core.Runtime;
 using GalNet.Core.Services;
-using GalNet.Control.Abstraction.UI;
 using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Services;
 using GalNet.Editor.Shared.Services;
 using GalNet.Storage.FileSystem;
-using GalNet.Control.UI;
 using GalNet.Core.Assets;
 using Serilog;
 using Serilog.Context;
@@ -29,17 +25,15 @@ namespace GalNet.Editor.ViewModels;
 
 public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, IAsyncDisposable
 {
-    private readonly GalNet.Core.Services.INavigationService _navigation;
-    private readonly IGameFlowFactory _gameFlowFactory;
     private readonly EditorWorkspaceViewModel _workspace;
     private readonly IProjectService _projectService;
     private readonly EditorVariableService _variableService;
     private readonly IVariableDefinitionService _variableDefinitions;
     private readonly IEditorDocumentService _documentService;
-    private readonly IAssetManager _assets;
+    private readonly IGameContentProvider _contentProvider;
 
     private IGameRuntime? _runtime;
-    private GameRunViewModel? _activeRun;
+    private EditorPreviewHost? _previewHost;
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
     private IDisposable? _projectClosingRegistration;
     private bool _disposed;
@@ -50,8 +44,12 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
     [ObservableProperty]
     private bool _isGameStarted;
 
-    [ObservableProperty]
-    private GamePageHostViewModel? _pageHostVm;
+    private Control? _previewShell;
+    public Control? PreviewShell
+    {
+        get => _previewShell;
+        private set => SetProperty(ref _previewShell, value);
+    }
 
     [ObservableProperty]
     private VariableListEditorViewModel? _playerVariables;
@@ -65,22 +63,19 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
     public ObservableCollection<string> OutputLines { get; } = [];
 
     public GamePreviewPanelViewModel(
-        GalNet.Core.Services.INavigationService navigation,
-        IGameFlowFactory gameFlowFactory,
         EditorWorkspaceViewModel workspace,
         IProjectService projectService,
         EditorVariableService variableService,
         IVariableDefinitionService variableDefinitions,
-        IEditorDocumentService documentService, IAssetManager assets)
+        IEditorDocumentService documentService,
+        IGameContentProvider contentProvider)
     {
-        _navigation = navigation;
-        _gameFlowFactory = gameFlowFactory;
         _workspace = workspace;
         _projectService = projectService;
         _variableService = variableService;
         _variableDefinitions = variableDefinitions;
         _documentService = documentService;
-        _assets = assets;
+        _contentProvider = contentProvider;
         _workspace.ActivePreview = this;
         _projectClosingRegistration = _projectService.Current?.RegisterClosingCallback(DisposePreviewForProjectCloseAsync);
 
@@ -109,23 +104,22 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
                 return;
 
             using var gameLogContext = LogContext.PushProperty("LogChannel", "Game");
-            var options = new GameFlowOptions
-            {
-                Title = project.Name,
-                GameContentProvider = project.Services.GetRequiredService<IGameContentProvider>(),
-                Ui = project.UiProject.Current,
-                AssetManager = _assets,
-                SaveService = new FileSaveService(Path.Combine(project.EditorStateDirectory, "player"), project.Settings.SaveSlotCount),
-                ProgressService = new FileGameProgressService(Path.Combine(project.EditorStateDirectory, "player")),
-                VariableService = _variableService,
-                RuntimeCreated = OnRuntimeCreated,
-                GameStarted = OnGameStarted,
-                GameEnded = OnGameEnded,
-                GameFailed = OnGameFailed,
-                RunCreated = run => _activeRun = run
-            };
-
-            PageHostVm = _gameFlowFactory.CreatePageHost(_navigation, options);
+            var profileDirectory = Path.Combine(project.EditorStateDirectory, "player");
+            var context = new EditorPreviewContext(
+                project.Name,
+                project.AssetsPath,
+                _contentProvider,
+                _variableService,
+                new FileSaveService(profileDirectory, project.Settings.SaveSlotCount),
+                new FileGameProgressService(profileDirectory),
+                OnRuntimeCreated,
+                OnGameStarted,
+                OnGameEnded,
+                OnGameFailed);
+            var host = new EditorPreviewHost(context);
+            _previewHost = host;
+            PreviewShell = host.Shell;
+            _ = host.StartAsync();
             ReloadEditors();
             OutputLines.Insert(0, $"Preview restarted at {DateTime.Now:T}");
             StatusText = "Ready";
@@ -291,7 +285,6 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
         {
             if (_disposed) return;
             _runtime = null;
-            _activeRun = null;
             IsGameStarted = false;
             StatusText = "Ready";
         });
@@ -303,7 +296,6 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
         {
             if (_disposed) return;
             _runtime = null;
-            _activeRun = null;
             IsGameStarted = false;
             StatusText = $"Preview failed: {exception.Message}";
         });
@@ -318,10 +310,11 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
     {
         IsGameStarted = false;
         _runtime = null;
-        var run = _activeRun;
-        _activeRun = null;
-        if (run is not null)
-            await run.DisposeAsync();
+        PreviewShell = null;
+        var host = _previewHost;
+        _previewHost = null;
+        if (host is not null)
+            await host.DisposeAsync();
         ReloadEditors();
     }
 

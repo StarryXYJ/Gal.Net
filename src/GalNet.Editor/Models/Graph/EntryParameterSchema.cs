@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
-using GalNet.Control.Abstraction.UI;
+using GalNet.Editor.Models;
 using GalNet.Core.Entry;
 
 namespace GalNet.Editor.Models.Graph;

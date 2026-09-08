@@ -23,7 +23,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\GalNet.Assets\GalNet.Assets.csproj" />
-    <ProjectReference Include="..\..\..\GalNet.Control\GalNet.Control.csproj" />
     <ProjectReference Include="..\..\..\GalNet.Core\GalNet.Core.csproj" />
     <ProjectReference Include="..\..\..\GalNet.Runtime\GalNet.Runtime.csproj" />
   </ItemGroup>

@@ -8,8 +8,20 @@ namespace GalNet.Avalonia.GameView.Composition;
 /// <summary>Registers default page VMs and their stateful views in one game scope.</summary>
 public static class AvaloniaGameViewServiceCollectionExtensions
 {
-    public static IServiceCollection AddAvaloniaGameViewPages(this IServiceCollection services)
+    public static IServiceCollection AddAvaloniaGameViewPages(
+        this IServiceCollection services,
+        Action<IPageViewRegistry>? configureViews = null)
     {
+        var views = new PageViewRegistry();
+        views.Register<TitlePageViewModel, TitlePage>();
+        views.Register<GamePageViewModel, GamePage>();
+        views.Register<SaveSlotsPageViewModel, SaveSlotsPage>();
+        views.Register<SettingsPageViewModel, SettingsPage>();
+        views.Register<GalleryPageViewModel, GalleryPage>();
+        views.Register<AboutPageViewModel, AboutPage>();
+        configureViews?.Invoke(views);
+
+        services.AddSingleton<IPageViewRegistry>(views);
         services.AddScoped<IGameNavigationService, GameNavigationService>();
         services.AddScoped<IPageViewFactory, PageViewFactory>();
         services.AddScoped<GameShellViewModel>();

@@ -2,18 +2,16 @@ using System.Collections.ObjectModel;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
-using GalNet.Avalonia.GameView.Page;
 using GalNet.Game.Controls;
 
 namespace GalNet.Avalonia.GameView.ViewModels;
 
 /// <summary>Platform UI state shared by the editor preview and the official Avalonia sample.</summary>
-public sealed partial class GamePageViewModel : PageViewModelBase<GamePage>
+public sealed partial class GamePageViewModel : PageViewModelBase
 {
     private readonly IGameNavigationService _navigation;
     private TaskCompletionSource? _advanceWaiter;
     private TaskCompletionSource<int>? _choiceWaiter;
-    private TaskCompletionSource<GamePage>? _pageWaiter;
 
     public GamePageViewModel(IGameNavigationService navigation) => _navigation = navigation;
 
@@ -56,18 +54,6 @@ public sealed partial class GamePageViewModel : PageViewModelBase<GamePage>
     }
 
     public void CompleteAdvance() => _advanceWaiter?.TrySetResult();
-
-    internal void AttachView(GamePage page)
-    {
-        _pageWaiter ??= new TaskCompletionSource<GamePage>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _pageWaiter.TrySetResult(page);
-    }
-
-    public Task<GamePage> WaitForViewAsync(CancellationToken cancellationToken = default)
-    {
-        _pageWaiter ??= new TaskCompletionSource<GamePage>(TaskCreationOptions.RunContinuationsAsynchronously);
-        return _pageWaiter.Task.WaitAsync(cancellationToken);
-    }
 
     [RelayCommand] private void CompleteChoice(int selectedIndex) => _choiceWaiter?.TrySetResult(selectedIndex);
     public void PresentNvlLine(string speaker, string text) => NvlLines.Add(new NvlLine(speaker, text));

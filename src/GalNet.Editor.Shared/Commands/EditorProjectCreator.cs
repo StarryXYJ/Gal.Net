@@ -2,7 +2,6 @@ using System.Text.Json;
 using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Shared.Services;
-using GalNet.Editor.Shared.UI;
 
 namespace GalNet.Editor.Shared.Commands;
 
@@ -23,7 +22,7 @@ public static class EditorProjectCreator
         foreach (var directory in new[]
                  {
                      "Graph/groups", "Assets/Layer", "Assets/Audio", "Assets/Video",
-                     "I18n", "Output", "Temp", ".galnet", "UI"
+                     "I18n", "Output", "Temp", ".galnet"
                  })
             Directory.CreateDirectory(Path.Combine(projectPath, directory.Replace('/', Path.DirectorySeparatorChar)));
 
@@ -74,6 +73,5 @@ public static class EditorProjectCreator
             Path.Combine(projectPath, ".galnet", "editor-state.json"),
             JsonSerializer.Serialize(new GalNet.Editor.Abstraction.Project.EditorProjectState(), new JsonSerializerOptions { WriteIndented = true }),
             cancellationToken);
-        await new FileUiProjectProvider(projectPath, UiProjectDefaults.Create()).SaveAsync(cancellationToken);
     }
 }

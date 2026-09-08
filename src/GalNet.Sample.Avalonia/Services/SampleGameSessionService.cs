@@ -4,6 +4,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Avalonia.GameView;
 using GalNet.Avalonia.GameView.Page;
+using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Runtime;
@@ -21,6 +22,7 @@ namespace GalNet.Sample.Avalonia.Services;
 internal sealed partial class SampleGameSessionService : ObservableObject, IGameSessionService, IDisposable
 {
     private readonly GamePageViewModel _gameplay;
+    private readonly GamePage _page;
     private readonly ObservableCollection<GameSaveSlot> _saveSlots = [];
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySaveSlots;
     private DirectoryGameContentProvider? _contentProvider;
@@ -33,9 +35,10 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private SampleMediaViews? _media;
     private string? _gameDirectory;
 
-    public SampleGameSessionService(GamePageViewModel gameplay)
+    public SampleGameSessionService(GamePageViewModel gameplay, GamePage page)
     {
         _gameplay = gameplay;
+        _page = page;
         _readOnlySaveSlots = new ReadOnlyObservableCollection<GameSaveSlot>(_saveSlots);
     }
 
@@ -121,9 +124,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         if (!IsReady || _contentProvider is null || _variables is null || _progress is null || _settings is null || _gameDirectory is null)
             throw new InvalidOperationException("The game session is not initialized.");
 
-        var page = await _gameplay.WaitForViewAsync(cancellationToken);
-        _pageView = new AvaloniaGamePageView(_gameplay, page, new SampleLayerFactory(_gameDirectory));
-        _media = new SampleMediaViews(_gameplay, _gameDirectory);
+        _pageView = new AvaloniaGamePageView(_gameplay, _page, new SampleLayerFactory(_gameDirectory));
+        _media = new SampleMediaViews(_gameplay);
         var transitions = new AvaloniaTransitionView(new Dictionary<string, Func<TransitionRequest, CancellationToken, Task>>(StringComparer.OrdinalIgnoreCase)
         {
             ["black"] = (request, ct) => InvokeOnUiAsync(() => _gameplay.PlayTransitionAsync(Brushes.Black, request.Duration, ct)),

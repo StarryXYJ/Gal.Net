@@ -1,8 +1,4 @@
 using System;
-using GalNet.Control.Services;
-using GalNet.Control.Runtime.Presentation;
-using GalNet.Control.Screen.Flow;
-using GalNet.Control.Screen.Host;
 using GalNet.Core.Services;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Abstraction.Commands;
@@ -17,10 +13,7 @@ using GalNet.Editor.History;
 using GalNet.Editor.ViewModels;
 using GalNet.Editor.Inspector.ViewModels;
 using GalNet.Editor.Inspector.Views;
-using GalNet.Control.UI;
-using GalNet.Control.Abstraction.UI;
 using GalNet.Core.Assets;
-using GalNet.Core.UI;
 using GalNet.Editor.Views;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -77,7 +70,6 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<IAssetCatalogService, AssetCatalogService>();
         services.AddSingleton<EditorAssetManager>();
         services.AddSingleton<IAssetManager>(sp => sp.GetRequiredService<EditorAssetManager>());
-        services.AddSingleton<IUiPresetRegistry, BuiltInUiPresetRegistry>();
         services.AddScoped<IGameExportService, GameExportService>();
 
         return services;
@@ -110,7 +102,6 @@ public static class EditorServiceCollectionExtensions
             nav.RegisterMap(typeof(StartupPageViewModel), typeof(StartupPageView));
             nav.RegisterMap(typeof(NewProjectPanelViewModel), typeof(NewProjectPanelView));
             nav.RegisterMap(typeof(EditorPageViewModel), typeof(EditorPageView));
-            nav.RegisterMap(typeof(GamePageHostViewModel), typeof(GamePageHostView));
             return nav;
         });
 
@@ -122,10 +113,8 @@ public static class EditorServiceCollectionExtensions
         services.AddTransient<StartupPageView>();
         services.AddTransient<NewProjectPanelView>();
         services.AddTransient<EditorPageView>();
-        services.AddTransient<GamePageHostView>();
         services.AddTransient<MainWindow>();
         services.AddTransient<AssetPanelView>();
-        services.AddTransient<UiCustomizationPanelView>();
         services.AddTransient<InspectorHostView>();
         services.AddTransient<NodeInspectorControl>();
         services.AddTransient<PreviewVariablesInspectorControl>();
@@ -153,7 +142,6 @@ public static class EditorServiceCollectionExtensions
         services.AddTransient<EditorSettingsPanelViewModel>();
         services.AddTransient<ExportPanelViewModel>();
         services.AddTransient<GamePreviewPanelViewModel>();
-        services.AddScoped<UiCustomizationPanelViewModel>();
         services.AddTransient<MainWindowViewModel>();
 
         return services;
@@ -164,7 +152,6 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<IEditorPageFactory, EditorPageFactory>();
         services.AddSingleton<IEditorViewFactory, EditorViewFactory>();
         services.AddSingleton<IEditorWindowFactory, EditorWindowFactory>();
-        services.AddSingleton<IGameFlowFactory, GameFlowFactory>();
 
         return services;
     }
