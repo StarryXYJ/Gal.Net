@@ -1,9 +1,9 @@
 using Avalonia.Media;
 using Avalonia.Threading;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView;
+using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Page;
+using CommunityToolkit.Mvvm.Input;
 using GalNet.Core.Runtime;
 using GalNet.Core.Settings;
 using GalNet.Core.View;
@@ -30,19 +30,14 @@ public sealed partial class MainWindowViewModel : ViewModelBase, IDisposable
     private SampleMediaViews? _media;
     private GameSettings? _settings;
 
-    public GamePageViewModel Page { get; } = new();
+    public GameShellViewModel Shell { get; } = new();
+    public GamePageViewModel Page => Shell.Game;
 
-    [ObservableProperty] private string _statusMessage = "Pass a published game directory when launching the sample.";
-    [ObservableProperty] private bool _isReady;
-    [ObservableProperty] private bool _isGameStarted;
-    [ObservableProperty] private bool _isSettingsVisible;
-    [ObservableProperty] private bool _isGalleryVisible;
-
-    internal async Task InitializeAsync(GameLaunchOptions options, GamePage gamePage)
+    internal async Task InitializeAsync(GameLaunchOptions options, GameShell gameShell)
     {
         if (string.IsNullOrWhiteSpace(options.GameDirectory))
         {
-            StatusMessage = "Usage: GalNet.Sample.Avalonia <game-data-directory> [--profile <directory>]";
+            Shell.StatusMessage = "Usage: GalNet.Sample.Avalonia <game-data-directory> [--profile <directory>]";
             return;
         }
 
@@ -56,12 +51,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase, IDisposable
             _progress = new FileGameProgressService(profileDirectory);
             _settings = new GameSettings();
 
-            _pageView = new AvaloniaGamePageView(Page, gamePage, new SampleLayerFactory(gameDirectory));
+            _pageView = new AvaloniaGamePageView(Page, gameShell.GamePage, new SampleLayerFactory(gameDirectory));
             _media = new SampleMediaViews(Page, gameDirectory);
-            Page.SaveRequested += () => _ = SaveToSlotAsync(0);
+            Shell.StartGameRequested += () => _ = StartGameAsync();
+            Page.SaveSlotRequested += slotIndex => _ = SaveToSlotAsync(slotIndex);
             Page.LoadSlotRequested += slotIndex => _ = LoadFromSlotAsync(slotIndex);
-            Page.SettingsRequested += () => { Page.IsMenuVisible = false; IsSettingsVisible = true; };
-            Page.GalleryRequested += () => { Page.IsMenuVisible = false; IsGalleryVisible = true; };
 
             var transitions = new AvaloniaTransitionView(new Dictionary<string, Func<TransitionRequest, CancellationToken, Task>>(StringComparer.OrdinalIgnoreCase)
             {
@@ -73,13 +67,13 @@ public sealed partial class MainWindowViewModel : ViewModelBase, IDisposable
 
             CreateEngine(gameView);
             await RefreshSlotsAsync();
-            IsReady = true;
-            StatusMessage = $"Loaded game data: {gameDirectory}";
+            Shell.IsReady = true;
+            Shell.StatusMessage = $"Loaded game data: {gameDirectory}";
             Page.StatusMessage = "Ready";
         }
         catch (Exception exception)
         {
-            StatusMessage = $"Unable to load game: {exception.Message}";
+            Shell.StatusMessage = $"Unable to load game: {exception.Message}";
         }
     }
 
@@ -88,16 +82,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         if (_engine is null)
         {
-            StatusMessage = "No game data is available.";
+            Shell.StatusMessage = "No game data is available.";
             return;
         }
 
         try
         {
-            IsGameStarted = true;
-            Page.IsMenuVisible = false;
-            IsSettingsVisible = false;
-            IsGalleryVisible = false;
             Page.StatusMessage = "Playing";
             await _engine.StepAsync();
             Page.StatusMessage = "Game flow completed.";
@@ -132,14 +122,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase, IDisposable
         }
 
         _engine.RestoreFrom(snapshot);
-        IsGameStarted = true;
-        Page.IsMenuVisible = false;
+        Shell.Navigation.Navigate(GamePageRoute.Gameplay, rememberCurrent: false);
         Page.StatusMessage = $"Loaded slot {slotIndex}.";
         await StartGameAsync();
     }
-
-    [RelayCommand] private void CloseSettings() => IsSettingsVisible = false;
-    [RelayCommand] private void CloseGallery() => IsGalleryVisible = false;
 
     private void CreateEngine(IGameView gameView)
     {
@@ -165,7 +151,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase, IDisposable
                 slot.Timestamp == default ? string.Empty : slot.Timestamp.ToString("g"),
                 slot.IsCorrupt ? "Corrupt save" : slot.Timestamp == default ? "Empty" : "Saved game",
                 slot.Timestamp == default && !slot.IsCorrupt,
-                slot.IsCorrupt));
+                slot.IsCorrupt,
+                Page.SaveSlotCommand,
+                Page.LoadSlotCommand));
         }
     }
 

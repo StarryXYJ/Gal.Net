@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:GalNet.Avalonia.GameView.Page"
+             x:Class="GalNet.Avalonia.GameView.Page.AboutPage"
+             x:DataType="local:GameShellViewModel">
+  <Grid Margin="64">
+    <StackPanel Width="520" Spacing="12" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <TextBlock Text="About" FontSize="28" FontWeight="SemiBold" />
+      <TextBlock Text="{Binding GameTitle}" FontSize="18" />
+      <TextBlock Text="This default page belongs to the shared Avalonia game view layer. A client can replace its content without changing the runtime." TextWrapping="Wrap" />
+      <Button Content="Back" Command="{Binding BackCommand}" HorizontalAlignment="Right" />
+    </StackPanel>
+  </Grid>
+</UserControl>

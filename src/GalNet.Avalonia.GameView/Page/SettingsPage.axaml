@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:GalNet.Avalonia.GameView.Page"
+             x:Class="GalNet.Avalonia.GameView.Page.SettingsPage"
+             x:DataType="local:GameShellViewModel">
+  <Grid Margin="64">
+    <StackPanel Width="460" Spacing="12" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <TextBlock Text="Settings" FontSize="28" FontWeight="SemiBold" />
+      <TextBlock Text="Text speed" />
+      <Slider Minimum="0" Maximum="120" Value="{Binding Game.TextSpeed, Mode=TwoWay}" />
+      <Button Content="Back" Command="{Binding BackCommand}" HorizontalAlignment="Right" />
+    </StackPanel>
+  </Grid>
+</UserControl>

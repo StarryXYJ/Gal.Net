@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:GalNet.Game.Controls"
+             xmlns:local="using:GalNet.Avalonia.GameView.Page"
+             x:Class="GalNet.Avalonia.GameView.Page.SaveSlotsPage"
+             x:DataType="local:GamePageViewModel">
+  <Grid Margin="64" RowDefinitions="Auto,*,Auto" RowSpacing="14">
+    <TextBlock Text="Save / Load" FontSize="28" FontWeight="SemiBold" />
+    <ScrollViewer Grid.Row="1" MaxHeight="560">
+      <ItemsControl ItemsSource="{Binding SaveSlots}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="local:GamePageSaveSlot">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,4">
+              <controls:SaveSlotCard SlotIndex="{Binding SlotIndex}" Timestamp="{Binding Timestamp}" Description="{Binding Description}" IsEmpty="{Binding IsEmpty}" IsCorrupt="{Binding IsCorrupt}"
+                                      Command="{Binding LoadCommand}" CommandParameter="{Binding SlotIndex}" />
+              <Button Grid.Column="1" Content="Save" Command="{Binding SaveCommand}" CommandParameter="{Binding SlotIndex}" VerticalAlignment="Center" />
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+    <Button Grid.Row="2" Content="Back" Command="{Binding ReturnToGameCommand}" HorizontalAlignment="Right" />
+  </Grid>
+</UserControl>

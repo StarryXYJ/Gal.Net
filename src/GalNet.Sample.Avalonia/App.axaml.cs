@@ -25,7 +25,7 @@ public partial class App : Application
             var viewModel = new MainWindowViewModel();
             var mainWindow = new MainWindow { DataContext = viewModel };
             desktop.MainWindow = mainWindow;
-            mainWindow.Opened += async (_, _) => await viewModel.InitializeAsync(LaunchOptions, mainWindow.GamePage);
+            mainWindow.Opened += async (_, _) => await viewModel.InitializeAsync(LaunchOptions, mainWindow.GameShell);
             mainWindow.Closed += (_, _) => viewModel.Dispose();
         }
 

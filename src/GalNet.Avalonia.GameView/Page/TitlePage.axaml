@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:GalNet.Avalonia.GameView.Page"
+             x:Class="GalNet.Avalonia.GameView.Page.TitlePage"
+             x:DataType="local:GameShellViewModel">
+  <Grid>
+    <StackPanel Width="520" Spacing="18" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <TextBlock Text="{Binding GameTitle}" FontSize="34" FontWeight="Bold" HorizontalAlignment="Center" />
+      <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center" Opacity="0.8" />
+      <Button Content="Start" Command="{Binding StartGameCommand}" IsEnabled="{Binding IsReady}" HorizontalAlignment="Center" MinWidth="180" />
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+        <Button Content="Settings" Command="{Binding OpenSettingsCommand}" />
+        <Button Content="About" Command="{Binding OpenAboutCommand}" />
+      </StackPanel>
+    </StackPanel>
+  </Grid>
+</UserControl>

@@ -209,12 +209,27 @@ public sealed record EffectRequest(
 
 ### Phase 5：官方 Avalonia 示例客户端（已完成）
 
-- `GalNet.Avalonia.GameView` 现在提供共享的 `GamePage`、`GamePageViewModel` 与 `AvaloniaGamePageView`。后者把小型展示接口组合为 `IGameView` 所需的图层、对话、打字机与输入端口；页面不引用 Runtime、编辑器、文件系统或游戏目录。
+- `GalNet.Avalonia.GameView` 现在提供共享的 `GameShell`、标题页、游戏页、存档页、设置页、画廊页、关于页和 `GamePageNavigationService`；它们全部是可替换的 `UserControl`。`AvaloniaGamePageView` 把游戏页的小型展示接口组合为 `IGameView` 所需的图层、对话、打字机与输入端口；页面不引用 Runtime、编辑器、文件系统或游戏目录。
 - `IGamePageLayerFactory` 是页面唯一的宿主视觉扩展点：Sample 和将来的 Editor 预览各自把资源 ID 映射为 Avalonia 控件。游戏文件读取、存档、全局变量、进度、设置与媒体后端仍由各自组合根装配。
 - `GalNet.Sample.Avalonia` 使用共享页完成默认游戏屏幕、对话、NVL、选项、存读档、标题、设置和画廊外壳；转场在组合根按 `black`、`white`、`cross` 动态注册，特效保留按 ID 的动态入口。截图/复杂媒体呈现继续是最终客户端可替换的宿主服务，不进入共享页。
 - 共享 `GamePage` 或控件默认模板的修改会同时反映在官方 Sample 和编辑器预览；只修改 Sample 的资源工厂、媒体/转场实现、窗口外壳或样式则只影响 Sample。开发者可覆盖模板、替换单个服务或复制 Sample，而无需修改 `Core`/`Runtime`。
 
-验证：共享页及官方示例工程均以隔离输出编译成功；回归测试通过。编辑器实际接入该页留在 Phase 6，使其以编辑器主题和预览服务装配同一页面。
+验证：共享壳及官方示例工程均以隔离输出编译成功；回归测试通过。编辑器实际接入该壳留在 Phase 6，使其以编辑器主题和预览服务装配同一页面。
+
+推荐的开发者模板形态：
+
+```text
+基础客户端模板
+  MyGame.View          --> GalNet.Avalonia.GameView
+  MyGame.Client        --> MyGame.View + Runtime + Storage.FileSystem
+
+含编辑器模板
+  MyGame.View          --> GalNet.Avalonia.GameView
+  MyGame.Client        --> MyGame.View + Runtime + Storage.FileSystem
+  MyGame.Editor        --> MyGame.View + Editor + Runtime + Storage.FileSystem
+```
+
+`MyGame.View` 是开发者修改页面、样式、资源图层工厂和默认服务的共同位置；客户端和编辑器都引用它，故修改会同时生效。没有编辑器的模板只包含前两项。官方 `GalNet.Avalonia.GameView` 保持可升级的默认实现，开发者优先在自己的 `MyGame.View` 覆盖或组合页面，而非直接修改官方工程。
 
 ### Phase 6：编辑器瘦身与基础预览
 

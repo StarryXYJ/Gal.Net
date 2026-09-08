@@ -5,7 +5,7 @@ namespace GalNet.Sample.Avalonia.Views;
 
 public partial class MainWindow : Window
 {
-    public GamePage GamePage => GamePageControl;
+    public GameShell GameShell => GameShellControl;
 
     public MainWindow()
     {
