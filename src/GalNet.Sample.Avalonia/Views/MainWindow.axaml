@@ -1,20 +1,38 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:game="using:GalNet.Avalonia.GameView.Page"
         xmlns:vm="using:GalNet.Sample.Avalonia.ViewModels"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="GalNet.Sample.Avalonia.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
+        Width="1280" Height="720" MinWidth="800" MinHeight="500"
         Icon="/Assets/avalonia-logo.ico"
-        Title="GalNet.Sample.Avalonia">
+        Title="GalNet Avalonia Sample Player">
+  <Grid Background="#101018">
+    <game:GamePage x:Name="GamePageControl" DataContext="{Binding Page}" />
 
-    <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-        <vm:MainWindowViewModel/>
-    </Design.DataContext>
+    <Border IsVisible="{Binding !IsGameStarted}" Background="#E0101018" Panel.ZIndex="100">
+      <StackPanel Width="520" Spacing="18" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <TextBlock Text="GalNet Avalonia Sample" FontSize="34" FontWeight="Bold" HorizontalAlignment="Center" />
+        <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center" Opacity="0.8" />
+        <Button Content="Start" Command="{Binding StartGameCommand}" IsEnabled="{Binding IsReady}" HorizontalAlignment="Center" MinWidth="160" />
+      </StackPanel>
+    </Border>
 
-    <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+    <Border IsVisible="{Binding IsSettingsVisible}" Background="#F0101018" Padding="24" CornerRadius="10" Width="460" HorizontalAlignment="Center" VerticalAlignment="Center" Panel.ZIndex="110">
+      <StackPanel Spacing="12">
+        <TextBlock Text="Settings" FontSize="24" FontWeight="SemiBold" />
+        <TextBlock Text="Text speed" />
+        <Slider Minimum="0" Maximum="120" Value="{Binding Page.TextSpeed, Mode=TwoWay}" />
+        <Button Content="Close" Command="{Binding CloseSettingsCommand}" HorizontalAlignment="Right" />
+      </StackPanel>
+    </Border>
 
+    <Border IsVisible="{Binding IsGalleryVisible}" Background="#F0101018" Padding="24" CornerRadius="10" Width="460" HorizontalAlignment="Center" VerticalAlignment="Center" Panel.ZIndex="110">
+      <StackPanel Spacing="12">
+        <TextBlock Text="Gallery" FontSize="24" FontWeight="SemiBold" />
+        <TextBlock Text="Unlocked gallery entries are supplied by the host's progress service. This reference UI keeps the presentation extension point intentionally simple." TextWrapping="Wrap" />
+        <Button Content="Close" Command="{Binding CloseGalleryCommand}" HorizontalAlignment="Right" />
+      </StackPanel>
+    </Border>
+  </Grid>
 </Window>

@@ -57,11 +57,11 @@ GalNet.Avalonia.Controls          --> Presentation.Abstractions
   └─ 无样式/默认样式 Avalonia 控件；不依赖 Runtime 或 Assets
 
 GalNet.Avalonia.GameView          --> Avalonia.Controls + Presentation.Defaults + Presentation.Abstractions
-  └─ Avalonia 专属的图层、输入、视频承载与动态转场/特效适配
+  └─ 可复用的 Avalonia 游戏页面、图层/输入适配与动态转场/特效入口；不读取游戏文件
 
 GalNet.Sample.Avalonia            --> Runtime + Assets + Storage.FileSystem + Avalonia.GameView
 GalNet.Sample.Headless            --> Runtime + Presentation.Abstractions
-GalNet.Editor                     --> Runtime + Assets + Storage.FileSystem + Avalonia.Controls
+GalNet.Editor                     --> Runtime + Assets + Storage.FileSystem + Avalonia.GameView
 ```
 
 `GalNet.Control` 与 `GalNet.Control.Abstraction` 在迁移期间保留；所有调用方完成迁移、测试通过后再删除。
@@ -207,17 +207,14 @@ public sealed record EffectRequest(
 
 验证：控件库、引用默认主题的 Avalonia 示例客户端构建成功；`GeneralTest` 129/129 通过。
 
-### Phase 5：官方 Avalonia 示例客户端
+### Phase 5：官方 Avalonia 示例客户端（已完成）
 
-工作项：
+- `GalNet.Avalonia.GameView` 现在提供共享的 `GamePage`、`GamePageViewModel` 与 `AvaloniaGamePageView`。后者把小型展示接口组合为 `IGameView` 所需的图层、对话、打字机与输入端口；页面不引用 Runtime、编辑器、文件系统或游戏目录。
+- `IGamePageLayerFactory` 是页面唯一的宿主视觉扩展点：Sample 和将来的 Editor 预览各自把资源 ID 映射为 Avalonia 控件。游戏文件读取、存档、全局变量、进度、设置与媒体后端仍由各自组合根装配。
+- `GalNet.Sample.Avalonia` 使用共享页完成默认游戏屏幕、对话、NVL、选项、存读档、标题、设置和画廊外壳；转场在组合根按 `black`、`white`、`cross` 动态注册，特效保留按 ID 的动态入口。截图/复杂媒体呈现继续是最终客户端可替换的宿主服务，不进入共享页。
+- 共享 `GamePage` 或控件默认模板的修改会同时反映在官方 Sample 和编辑器预览；只修改 Sample 的资源工厂、媒体/转场实现、窗口外壳或样式则只影响 Sample。开发者可覆盖模板、替换单个服务或复制 Sample，而无需修改 `Core`/`Runtime`。
 
-1. 创建 `GalNet.Sample.Avalonia` 作为完整可运行参考项目。
-2. 在应用组合根注册内容、资源、存档、玩家变量、进度、设置、音频、视频、转场和特效服务。
-3. 使用控件库实现默认游戏屏幕、对话、选项、存读档、标题、设置、画廊和截图流程。
-4. 在组合根按 `Id` 分派转场/特效请求。转场首先实现 black、white、cross；特效保留动态入口，按需求由最终客户端添加，不设每个效果一个框架抽象类型。
-5. 将视觉实现放在示例工程；开发者可替换单个服务、覆盖控件模板或复制整个工程，不影响 `Core`/`Runtime`。
-
-验收：示例工程能加载发布包并完整运行；替换一个转场/特效/音频实现不修改运行时工程。
+验证：共享页及官方示例工程均以隔离输出编译成功；回归测试通过。编辑器实际接入该页留在 Phase 6，使其以编辑器主题和预览服务装配同一页面。
 
 ### Phase 6：编辑器瘦身与基础预览
 
@@ -225,7 +222,7 @@ public sealed record EffectRequest(
 
 1. 删除编辑器对 `GalNet.Control`、`GameFlowFactory`、`DefaultGameView` 和完整游戏页面的依赖。
 2. 移除 `UiProject`、预设注册、UI 调色板与 UI 定制面板；项目文件不再保存最终游戏 UI 配置。
-3. 将游戏预览改为 `EditorPreviewHost + IGameView`：它用控件库显示基础图层、文本、选项和变量。
+3. 将游戏预览改为 `EditorPreviewHost + GamePage + AvaloniaGamePageView`：它以编辑器主题托管同一共享页，并装配预览专用服务来显示基础图层、文本、选项和变量。
 4. 预览样式只继承编辑器主题；不允许项目级 UI 定制。
 5. 音频、视频、特效和复杂转场使用基础实现、占位或日志；预览目标是验证剧情而非还原最终客户端。
 6. 保留临时预览数据构建、变量调试、重启预览和图编辑工作流。

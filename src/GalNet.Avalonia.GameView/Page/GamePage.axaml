@@ -1,0 +1,47 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:GalNet.Game.Controls"
+             xmlns:local="using:GalNet.Avalonia.GameView.Page"
+             x:Class="GalNet.Avalonia.GameView.Page.GamePage"
+             x:DataType="local:GamePageViewModel">
+  <Grid Background="#101018">
+    <controls:SceneLayerHost ItemsSource="{Binding Layers}" />
+    <Border Background="{Binding TransitionBrush}" Opacity="{Binding TransitionOpacity}" IsHitTestVisible="False" Panel.ZIndex="10" />
+    <Button Command="{Binding AdvanceCommand}" Background="Transparent" BorderThickness="0" Panel.ZIndex="1" />
+    <controls:NvlPresenter ItemsSource="{Binding NvlLines}" IsVisible="{Binding IsNvlMode}" Margin="64,48,64,116" Panel.ZIndex="12" />
+    <controls:DialoguePresenter x:Name="DialogueControl" IsVisible="{Binding IsDialogueVisible}" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" Margin="64,0,64,64" Panel.ZIndex="13" />
+    <Border IsVisible="{Binding IsChoiceVisible}" Background="#CC101018" Padding="24" CornerRadius="10" HorizontalAlignment="Center" VerticalAlignment="Center" Width="420" Panel.ZIndex="20">
+      <controls:ChoiceList ItemsSource="{Binding Choices}" SelectionCommand="{Binding CompleteChoiceCommand}" />
+    </Border>
+    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="16" Panel.ZIndex="30">
+      <Button Content="Save" Command="{Binding SaveCommand}" />
+      <Button Content="Load" Command="{Binding ToggleMenuCommand}" />
+      <Button Content="NVL" Command="{Binding ToggleNvlModeCommand}" />
+      <Button Content="Menu" Command="{Binding ToggleMenuCommand}" />
+    </StackPanel>
+    <Border IsVisible="{Binding IsMenuVisible}" Background="#E8101018" Padding="24" CornerRadius="10" Width="600" HorizontalAlignment="Center" VerticalAlignment="Center" Panel.ZIndex="40">
+      <Grid RowDefinitions="Auto,*,Auto" RowSpacing="14">
+        <TextBlock Text="Game menu" FontSize="24" FontWeight="SemiBold" />
+        <ScrollViewer Grid.Row="1" MaxHeight="420">
+          <ItemsControl ItemsSource="{Binding SaveSlots}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="local:GamePageSaveSlot">
+                <controls:SaveSlotCard SlotIndex="{Binding SlotIndex}" Timestamp="{Binding Timestamp}" Description="{Binding Description}" IsEmpty="{Binding IsEmpty}" IsCorrupt="{Binding IsCorrupt}"
+                                        Command="{Binding DataContext.LoadSlotCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding SlotIndex}" Margin="0,4" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+          <Button Content="Settings" Command="{Binding OpenSettingsCommand}" />
+          <Button Content="Gallery" Command="{Binding OpenGalleryCommand}" />
+          <Button Content="Close" Command="{Binding ToggleMenuCommand}" />
+        </StackPanel>
+      </Grid>
+    </Border>
+    <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="16" Spacing="4" Panel.ZIndex="30">
+      <TextBlock Text="{Binding StatusMessage}" MaxWidth="520" TextWrapping="Wrap" />
+      <ItemsControl ItemsSource="{Binding ActiveEffects}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Opacity="0.75" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+    </StackPanel>
+  </Grid>
+</UserControl>

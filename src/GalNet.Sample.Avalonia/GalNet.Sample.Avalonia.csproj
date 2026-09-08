@@ -3,6 +3,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
@@ -27,5 +28,10 @@
   <ItemGroup>
     <ProjectReference Include="..\GalNet.Avalonia.Controls\GalNet.Avalonia.Controls.csproj" />
     <ProjectReference Include="..\GalNet.Avalonia.GameView\GalNet.Avalonia.GameView.csproj" />
+    <ProjectReference Include="..\GalNet.Core\GalNet.Core.csproj" />
+    <ProjectReference Include="..\GalNet.Presentation.Abstractions\GalNet.Presentation.Abstractions.csproj" />
+    <ProjectReference Include="..\GalNet.Presentation.Defaults\GalNet.Presentation.Defaults.csproj" />
+    <ProjectReference Include="..\GalNet.Runtime\GalNet.Runtime.csproj" />
+    <ProjectReference Include="..\GalNet.Storage.FileSystem\GalNet.Storage.FileSystem.csproj" />
   </ItemGroup>
 </Project>

@@ -11,6 +11,8 @@ namespace GalNet.Sample.Avalonia;
 
 public partial class App : Application
 {
+    internal static GameLaunchOptions LaunchOptions { get; set; } = new(null, null);
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -20,10 +22,11 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow
-            {
-                DataContext = new MainWindowViewModel(),
-            };
+            var viewModel = new MainWindowViewModel();
+            var mainWindow = new MainWindow { DataContext = viewModel };
+            desktop.MainWindow = mainWindow;
+            mainWindow.Opened += async (_, _) => await viewModel.InitializeAsync(LaunchOptions, mainWindow.GamePage);
+            mainWindow.Closed += (_, _) => viewModel.Dispose();
         }
 
         base.OnFrameworkInitializationCompleted();
