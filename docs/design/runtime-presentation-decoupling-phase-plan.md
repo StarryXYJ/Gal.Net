@@ -188,7 +188,7 @@ public sealed record EffectRequest(
 
 ### Phase 3：命令行持久化补全
 
-`GalNet.Sample.Headless` 已支持真实项目、存档、全局变量和文本记号解析。
+`GalNet.Sample.Headless` 已支持真实项目、存档、全局变量和文本记号解析；仓库根目录的 `GameTestCase` 是 Headless 与 Avalonia Sample 共用的冒烟案例，分别由 `run-headless-sample.ps1` 和 `run-avalonia-sample.ps1` 启动。
 
 ### Phase 4：Avalonia 控件库
 

@@ -101,7 +101,8 @@ internal sealed class ConsolePresentation :
     {
         await _typewriterFinished.Task.WaitAsync(ct);
         Console.Write("  >> ");
-        await Task.Run(Console.ReadLine, ct);
+        if (await Task.Run(Console.ReadLine, ct) is null)
+            throw new EndOfStreamException("Console input closed while waiting to advance.");
     }
 
     public async Task<int> WaitForChoiceAsync(string widgetInstanceId, string[] options, CancellationToken ct)
@@ -113,6 +114,8 @@ internal sealed class ConsolePresentation :
         {
             Console.Write("  Select: ");
             var input = await Task.Run(Console.ReadLine, ct);
+            if (input is null)
+                throw new EndOfStreamException("Console input closed while waiting for a choice.");
             if (int.TryParse(input, out var selected) && selected >= 1 && selected <= options.Length) return selected - 1;
             Console.WriteLine($"  Enter a number from 1 to {options.Length}.");
         }
