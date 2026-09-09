@@ -112,6 +112,23 @@ public sealed class GameNavigationTests
     }
 
     [Test]
+    public async Task Selecting_a_choice_completes_the_choice_wait()
+    {
+        var page = new GamePageViewModel(new NoOpGameNavigationService());
+        var choice = page.WaitForChoiceAsync(["Downtown", "Harbor"], TestContext.CurrentContext.CancellationToken);
+
+        page.CompleteChoiceCommand.Execute(1);
+
+        var selected = await choice.WaitAsync(TimeSpan.FromSeconds(1));
+        Assert.Multiple(() =>
+        {
+            Assert.That(selected, Is.EqualTo(1));
+            Assert.That(page.IsChoiceVisible, Is.False);
+            Assert.That(page.Choices, Is.Empty);
+        });
+    }
+
+    [Test]
     public void Disposing_scope_disposes_resolved_page_view_models()
     {
         DisposablePage.DisposeCount = 0;

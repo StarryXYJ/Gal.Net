@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
@@ -31,7 +32,10 @@ public partial class GamePage : UserControl
 
     private static bool IsPlayerControl(object? source)
     {
-        for (var current = source as Control; current is not null; current = current.GetVisualParent() as Control)
+        // Input from a ListBoxItem can originate at a non-Control visual such as its
+        // text presenter. Walk every visual ancestor so choice input is never confused
+        // with scene input by this global advance handler.
+        for (var current = source as Visual; current is not null; current = current.GetVisualParent())
         {
             if (current is Button or ChoiceList)
                 return true;

@@ -21,12 +21,42 @@
   </Style>
 
   <Style Selector="local|ChoiceList">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Background" Value="#321B1C27" />
+    <Setter Property="BorderBrush" Value="#805F6075" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="8">
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <ItemsPresenter />
+          </ScrollViewer>
+        </Border>
+      </ControlTemplate>
+    </Setter>
   </Style>
   <Style Selector="local|ChoiceList ListBoxItem">
     <Setter Property="Margin" Value="0,4" />
     <Setter Property="Padding" Value="14,9" />
+    <Setter Property="Background" Value="#4C3F4160" />
+    <Setter Property="BorderBrush" Value="#AA9C9AB7" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+          <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="local|ChoiceList ListBoxItem:pointerover">
+    <Setter Property="Background" Value="#805B5D88" />
+  </Style>
+  <Style Selector="local|ChoiceList ListBoxItem:selected">
+    <Setter Property="Background" Value="#AA6B68A5" />
   </Style>
 
   <Style Selector="local|SaveSlotCard">

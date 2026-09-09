@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using GalNet.Avalonia.GameView.Presentation;
+using GalNet.Runtime.Logging;
 
 namespace GalNet.Sample.Avalonia.Presentation;
 
@@ -16,16 +17,33 @@ internal sealed class SampleLayerFactory(string assetRoot) : IGamePageLayerFacto
         {
             if (File.Exists(path))
                 return new Image { Source = new Bitmap(path), Stretch = Stretch.UniformToFill };
+
+            GameLog.Logger.Warning("Layer asset was not found; rendering placeholder: {AssetId}", assetId);
         }
-        catch (Exception)
+        catch (Exception exception)
         {
-            // The reference client shows an explicit placeholder for missing visual assets.
+            GameLog.Logger.Warning(exception, "Layer asset could not be read; rendering placeholder: {AssetId}", assetId);
         }
 
         return new Border
         {
-            Background = new SolidColorBrush(Color.Parse("#551B1C27")),
-            Child = new TextBlock { Text = assetId, Margin = new Thickness(12), TextWrapping = TextWrapping.Wrap }
+            Width = 240,
+            Height = 240,
+            Background = new SolidColorBrush(Color.Parse("#A82A2D42")),
+            BorderBrush = new SolidColorBrush(Color.Parse("#C89591D8")),
+            BorderThickness = new Thickness(2),
+            CornerRadius = new CornerRadius(8),
+            Child = new StackPanel
+            {
+                Margin = new Thickness(16),
+                VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center,
+                Spacing = 10,
+                Children =
+                {
+                    new TextBlock { Text = "Missing layer", FontWeight = FontWeight.SemiBold, FontSize = 18 },
+                    new TextBlock { Text = assetId, TextWrapping = TextWrapping.Wrap }
+                }
+            }
         };
     }
 }
