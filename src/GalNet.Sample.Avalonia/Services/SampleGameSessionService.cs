@@ -12,6 +12,7 @@ using GalNet.Core.Settings;
 using GalNet.Core.View;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Handlers;
+using GalNet.Runtime.Logging;
 using GalNet.Runtime.Runtime;
 using GalNet.Sample.Avalonia.Presentation;
 using GalNet.Storage.FileSystem;
@@ -44,6 +45,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         _gameplay = gameplay;
         _page = page;
         _readOnlySaveSlots = new ReadOnlyObservableCollection<GameSaveSlot>(_saveSlots);
+        _gameplay.InteractionObserved += OnInteractionObserved;
     }
 
     public ReadOnlyObservableCollection<GameSaveSlot> SaveSlots => _readOnlySaveSlots;
@@ -58,6 +60,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         if (string.IsNullOrWhiteSpace(options.GameDirectory))
         {
             StatusMessage = "Usage: GalNet.Sample.Avalonia <game-data-directory> [--profile <directory>]";
+            GameLog.Logger.Warning("Session initialized without a game directory");
             return;
         }
 
@@ -74,15 +77,21 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             IsReady = true;
             StatusMessage = $"Loaded game data: {_gameDirectory}";
             _gameplay.StatusMessage = "Ready";
+            GameLog.Logger.Information("Session initialized. SaveSlots={SaveSlotCount}, CanContinue={CanContinue}",
+                _saveSlots.Count, CanContinue);
         }
         catch (Exception exception)
         {
             StatusMessage = $"Unable to load game: {exception.Message}";
+            GameLog.Logger.Error(exception, "Session initialization failed");
         }
     }
 
-    public Task StartNewGameAsync(CancellationToken cancellationToken = default) =>
-        RestartAsync(null, cancellationToken);
+    public Task StartNewGameAsync(CancellationToken cancellationToken = default)
+    {
+        GameLog.Logger.Information("Starting a new game");
+        return RestartAsync(null, cancellationToken);
+    }
 
     public async Task ContinueAsync(CancellationToken cancellationToken = default)
     {
@@ -93,15 +102,18 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         if (slot is null)
         {
             StatusMessage = "There is no valid save to continue.";
+            GameLog.Logger.Warning("Continue requested but no valid slot exists");
             return;
         }
 
+        GameLog.Logger.Information("Continuing from slot {SlotIndex} at {Timestamp}", slot.SlotIndex, slot.Timestamp);
         await LoadAsync(slot.SlotIndex, cancellationToken);
     }
 
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
         if (_disposed) return;
+        GameLog.Logger.Information("Stopping active game flow");
         await _lifecycle.WaitAsync(cancellationToken);
         try
         {
@@ -125,6 +137,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
 
     public async Task LoadAsync(int slotIndex, CancellationToken cancellationToken = default)
     {
+        GameLog.Logger.Information("Loading slot {SlotIndex}", slotIndex);
         GameSnapshot? snapshot;
         await _lifecycle.WaitAsync(cancellationToken);
         try
@@ -133,6 +146,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             if (snapshot is null)
             {
                 _gameplay.StatusMessage = $"Slot {slotIndex} is empty or invalid.";
+                GameLog.Logger.Warning("Slot {SlotIndex} contained no valid snapshot", slotIndex);
                 return;
             }
 
@@ -154,6 +168,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         finally
         {
             _disposed = true;
+            _gameplay.InteractionObserved -= OnInteractionObserved;
             DisposeEngine();
         }
     }
@@ -177,6 +192,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     {
         _runCancellation = new CancellationTokenSource();
         _runTask = RunEngineAsync(_engine!, _runCancellation.Token);
+        GameLog.Logger.Debug("Game engine run task created");
     }
 
     private async Task RunEngineAsync(GameEngine engine, CancellationToken cancellationToken)
@@ -185,16 +201,20 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         {
             IsPlaying = true;
             _gameplay.StatusMessage = "Playing";
+            GameLog.Logger.Information("Game engine flow started");
             await engine.StepAsync(cancellationToken);
             _gameplay.StatusMessage = "Game flow completed.";
+            GameLog.Logger.Information("Game engine flow completed");
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             _gameplay.StatusMessage = "Game flow was cancelled.";
+            GameLog.Logger.Information("Game engine flow cancelled");
         }
         catch (Exception exception)
         {
             _gameplay.StatusMessage = $"Game flow failed: {exception.Message}";
+            GameLog.Logger.Error(exception, "Game engine flow failed");
         }
         finally
         {
@@ -210,6 +230,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         _runCancellation = null;
         _runTask = null;
         cancellation?.Cancel();
+        GameLog.Logger.Debug("Cancellation requested for the active engine flow");
         if (run is not null)
         {
             try { await run; }
@@ -280,4 +301,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         });
         return completion.Task;
     }
+
+    private static void OnInteractionObserved(string interaction) =>
+        GameLog.Logger.Information("Player interaction: {Interaction}", interaction);
 }

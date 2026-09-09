@@ -36,16 +36,20 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     public event Action? AdvanceRequested;
     public event Action? ScreenshotRequested;
     public event Action? ReturnToTitleRequested;
+    /// <summary>Host-observable player actions, kept logger-free so the shared view remains reusable.</summary>
+    public event Action<string>? InteractionObserved;
 
     [RelayCommand]
     private void Advance()
     {
         if (IsUiHidden)
         {
+            InteractionObserved?.Invoke("advance.restore-ui");
             IsUiHidden = false;
             return;
         }
 
+        InteractionObserved?.Invoke("advance.request");
         AdvanceRequested?.Invoke();
     }
 
@@ -64,6 +68,8 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     [RelayCommand] private void HideUi() => IsUiHidden = true;
     [RelayCommand] private void ReturnToGame() => _navigation.GoBack();
 
+    public void ObserveAdvancePointerPressed() => InteractionObserved?.Invoke("advance.pointer-pressed");
+
     partial void OnIsUiHiddenChanged(bool value)
     {
         OnPropertyChanged(nameof(IsGameUiVisible));
@@ -78,6 +84,7 @@ public sealed partial class GamePageViewModel : PageViewModelBase
 
     public Task WaitForAdvanceAsync(CancellationToken cancellationToken)
     {
+        InteractionObserved?.Invoke("wait.advance");
         _advanceWaiter = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         return _advanceWaiter.Task.WaitAsync(cancellationToken);
     }
@@ -87,13 +94,19 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         Choices.Clear();
         foreach (var option in options) Choices.Add(option);
         IsChoiceVisible = true;
+        InteractionObserved?.Invoke($"wait.choice:{Choices.Count}");
         _choiceWaiter = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         return AwaitChoiceAsync(_choiceWaiter, cancellationToken);
     }
 
     public void CompleteAdvance() => _advanceWaiter?.TrySetResult();
 
-    [RelayCommand] private void CompleteChoice(int selectedIndex) => _choiceWaiter?.TrySetResult(selectedIndex);
+    [RelayCommand]
+    private void CompleteChoice(int selectedIndex)
+    {
+        InteractionObserved?.Invoke($"choice.selected:{selectedIndex}");
+        _choiceWaiter?.TrySetResult(selectedIndex);
+    }
     public void PresentNvlLine(string speaker, string text) => NvlLines.Add(new NvlLine(speaker, text));
 
     public void SetLayer(string id, SceneLayerItem item)

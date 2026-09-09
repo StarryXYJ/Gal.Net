@@ -2,6 +2,14 @@ namespace GalNet.Sample.Avalonia;
 
 internal sealed record GameLaunchOptions(string? GameDirectory, string? ProfileDirectory)
 {
+    public string LogDirectory =>
+        Path.Combine(
+            ProfileDirectory
+            ?? (GameDirectory is null
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GalNet", "Sample")
+                : Path.Combine(GameDirectory, ".galnet")),
+            "logs");
+
     public static GameLaunchOptions Parse(string[] args)
     {
         string? gameDirectory = null;

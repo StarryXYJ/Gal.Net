@@ -26,7 +26,7 @@
     <!-- Covers the scene and dialogue/NVL surface so either can advance or restore hidden UI.
          Choices and the quick bar are deliberately above it and keep their own pointer handling. -->
     <Button Command="{Binding AdvanceCommand}" Background="Transparent" BorderThickness="0"
-            IsTabStop="False" ZIndex="30" />
+            IsTabStop="False" ZIndex="30" PointerPressed="OnAdvancePointerPressed" />
 
     <Border IsVisible="{Binding IsGameUiVisible}" Background="#80202030" Padding="12,8"
             HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,20" ZIndex="40">
