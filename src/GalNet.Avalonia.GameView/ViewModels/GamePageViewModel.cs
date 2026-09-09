@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
+using GalNet.Avalonia.GameView.Services;
 using GalNet.Game.Controls;
 
 namespace GalNet.Avalonia.GameView.ViewModels;
@@ -10,10 +11,15 @@ namespace GalNet.Avalonia.GameView.ViewModels;
 public sealed partial class GamePageViewModel : PageViewModelBase
 {
     private readonly IGameNavigationService _navigation;
+    private readonly IGameSessionService _session;
     private TaskCompletionSource? _advanceWaiter;
     private TaskCompletionSource<int>? _choiceWaiter;
 
-    public GamePageViewModel(IGameNavigationService navigation) => _navigation = navigation;
+    public GamePageViewModel(IGameNavigationService navigation, IGameSessionService session)
+    {
+        _navigation = navigation;
+        _session = session;
+    }
 
     public ObservableCollection<SceneLayerItem> Layers { get; } = [];
     public ObservableCollection<string> Choices { get; } = [];
@@ -27,16 +33,58 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private IBrush _transitionBrush = Brushes.Black;
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private double _textSpeed = 30d;
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private string _statusMessage = string.Empty;
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isUiHidden;
+    public bool IsGameUiVisible => !IsUiHidden;
+    public bool IsDialogueOverlayVisible => IsDialogueVisible && !IsUiHidden;
+    public bool IsNvlOverlayVisible => IsNvlMode && !IsUiHidden;
+    public bool IsChoiceOverlayVisible => IsChoiceVisible && !IsUiHidden;
 
     public event Action? AdvanceRequested;
+    public event Action? ScreenshotRequested;
 
-    [RelayCommand] private void Advance() => AdvanceRequested?.Invoke();
-    [RelayCommand] private void OpenSaveSlots() => _navigation.Navigate<SaveSlotsPageViewModel>();
+    [RelayCommand]
+    private void Advance()
+    {
+        if (IsUiHidden)
+        {
+            IsUiHidden = false;
+            return;
+        }
+
+        AdvanceRequested?.Invoke();
+    }
+
+    [RelayCommand]
+    private Task OpenSaveSlotsAsync(CancellationToken cancellationToken) =>
+        _navigation.NavigateAsync<SaveSlotsPageViewModel, SaveSlotsMode>(SaveSlotsMode.Save, cancellationToken);
+
+    [RelayCommand]
+    private Task OpenLoadSlotsAsync(CancellationToken cancellationToken) =>
+        _navigation.NavigateAsync<SaveSlotsPageViewModel, SaveSlotsMode>(SaveSlotsMode.Load, cancellationToken);
+
     [RelayCommand] private void ToggleNvlMode() => IsNvlMode = !IsNvlMode;
     [RelayCommand] private void OpenSettings() => _navigation.Navigate<SettingsPageViewModel>();
-    [RelayCommand] private void OpenGallery() => _navigation.Navigate<GalleryPageViewModel>();
-    [RelayCommand] private void ReturnToTitle() => _navigation.ResetTo<TitlePageViewModel>();
+    [RelayCommand]
+    private async Task ReturnToTitleAsync(CancellationToken cancellationToken)
+    {
+        await _session.StopAsync(cancellationToken);
+        _navigation.ResetTo<TitlePageViewModel>();
+    }
+    [RelayCommand] private void RequestScreenshot() => ScreenshotRequested?.Invoke();
+    [RelayCommand] private void HideUi() => IsUiHidden = true;
     [RelayCommand] private void ReturnToGame() => _navigation.GoBack();
+
+    partial void OnIsUiHiddenChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsGameUiVisible));
+        OnPropertyChanged(nameof(IsDialogueOverlayVisible));
+        OnPropertyChanged(nameof(IsNvlOverlayVisible));
+        OnPropertyChanged(nameof(IsChoiceOverlayVisible));
+    }
+
+    partial void OnIsDialogueVisibleChanged(bool value) => OnPropertyChanged(nameof(IsDialogueOverlayVisible));
+    partial void OnIsNvlModeChanged(bool value) => OnPropertyChanged(nameof(IsNvlOverlayVisible));
+    partial void OnIsChoiceVisibleChanged(bool value) => OnPropertyChanged(nameof(IsChoiceOverlayVisible));
 
     public Task WaitForAdvanceAsync(CancellationToken cancellationToken)
     {

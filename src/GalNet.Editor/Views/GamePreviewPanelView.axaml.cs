@@ -1,62 +1,26 @@
 using System;
-using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Input;
 using Avalonia.Interactivity;
 using GalNet.Editor.ViewModels;
-using Serilog;
 using Ursa.Controls;
 
 namespace GalNet.Editor.Views;
 
 public partial class GamePreviewPanelView : UserControl
 {
-    private int _attachCount;
-    private bool _layoutLoggedForThisAttach;
     private GamePreviewPanelViewModel? _vm;
 
     public GamePreviewPanelView()
     {
-        Log.Information("[PreviewView] .ctor thread={ThreadId}", Environment.CurrentManagedThreadId);
         InitializeComponent();
-        Log.Information("[PreviewView] InitializeComponent done");
-
-        AttachedToVisualTree += OnAttachedToVisualTree;
         DetachedFromVisualTree += OnDetachedFromVisualTree;
-    }
-
-    private void OnAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
-    {
-        _attachCount++;
-        _layoutLoggedForThisAttach = false;
-
-        Log.Information("[PreviewView] AttachedToVisualTree #{Count}, Root={Root}, Bounds={Bounds}",
-            _attachCount, e.RootVisual?.GetType().Name ?? "null", Bounds);
-
-        LayoutUpdated += OnLayoutUpdated;
-        SyncPageHost();
     }
 
     private void OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
     {
-        Log.Information("[PreviewView] DetachedFromVisualTree #{Count}, Root={Root}",
-            _attachCount, e.RootVisual?.GetType().Name ?? "null");
-        LayoutUpdated -= OnLayoutUpdated;
         if (_vm is not null)
             _ = _vm.DisposeAsync();
-    }
-
-    private void OnLayoutUpdated(object? sender, EventArgs e)
-    {
-        if (_layoutLoggedForThisAttach) return;
-        _layoutLoggedForThisAttach = true;
-
-        Log.Information("[PreviewView] First LayoutUpdated (attach #{Count}): Bounds={Bounds}, Desired={Desired}",
-            _attachCount, Bounds, DesiredSize);
-
-        Log.Information("[PreviewView] GameViewHost: Bounds={B}, Content={C}",
-            GameViewHost.Bounds, GameViewHost.Content?.GetType().Name ?? "null");
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -68,10 +32,6 @@ public partial class GamePreviewPanelView : UserControl
         }
 
         _vm = DataContext as GamePreviewPanelViewModel;
-        Log.Information("[PreviewView] VM setup: {Type}, PreviewShell={PH}",
-            _vm?.GetType().Name ?? "null",
-            _vm?.PreviewShell?.GetType().Name ?? "null");
-
         if (_vm is not null)
         {
             _vm.PropertyChanged += OnVmPropertyChanged;
@@ -98,11 +58,7 @@ public partial class GamePreviewPanelView : UserControl
     private void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(GamePreviewPanelViewModel.PreviewShell))
-        {
-            Log.Information("[PreviewView] PreviewShell prop changed: {V}",
-                _vm?.PreviewShell?.GetType().Name ?? "null");
             SyncPageHost();
-        }
     }
 
     private async void OnResetPlayerClick(object? sender, RoutedEventArgs e)
@@ -135,7 +91,6 @@ public partial class GamePreviewPanelView : UserControl
         if (ReferenceEquals(GameViewHost.GameContent, _vm.PreviewShell))
             return;
 
-        Log.Information("[PreviewView] SyncPageHost: attaching shared GameShell");
         GameViewHost.GameContent = _vm.PreviewShell;
     }
 }

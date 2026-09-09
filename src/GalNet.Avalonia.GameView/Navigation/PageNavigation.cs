@@ -60,22 +60,49 @@ public interface IPageViewFactory
     Control Create(PageViewModelBase viewModel);
 }
 
-/// <summary>Maps page VM types to Avalonia controls. Later registrations intentionally replace defaults.</summary>
+/// <summary>Read-only VM-to-view mapping used after the game scope has been composed.</summary>
 public interface IPageViewRegistry
+{
+    Type GetViewType(Type viewModelType);
+}
+
+/// <summary>Composition-time registry builder. Later registrations intentionally replace defaults.</summary>
+public interface IPageViewRegistryBuilder
 {
     void Register<TViewModel, TView>()
         where TViewModel : PageViewModelBase
         where TView : Control;
-    Type GetViewType(Type viewModelType);
+
+    IPageViewRegistry Build();
 }
 
-public sealed class PageViewRegistry : IPageViewRegistry
+public sealed class PageViewRegistryBuilder : IPageViewRegistryBuilder
 {
     private readonly Dictionary<Type, Type> _views = [];
+    private bool _built;
 
     public void Register<TViewModel, TView>()
         where TViewModel : PageViewModelBase
-        where TView : Control => _views[typeof(TViewModel)] = typeof(TView);
+        where TView : Control
+    {
+        if (_built) throw new InvalidOperationException("Page view mappings are immutable after composition.");
+        _views[typeof(TViewModel)] = typeof(TView);
+    }
+
+    public IPageViewRegistry Build()
+    {
+        _built = true;
+        return new PageViewRegistry(_views);
+    }
+}
+
+/// <summary>Immutable runtime page mapping.</summary>
+public sealed class PageViewRegistry : IPageViewRegistry
+{
+    private readonly IReadOnlyDictionary<Type, Type> _views;
+
+    internal PageViewRegistry(IReadOnlyDictionary<Type, Type> views) =>
+        _views = new Dictionary<Type, Type>(views);
 
     public Type GetViewType(Type viewModelType)
     {

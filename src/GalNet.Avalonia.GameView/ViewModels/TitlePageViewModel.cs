@@ -20,16 +20,34 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
     public string GameTitle => _session.GameTitle;
     public string StatusMessage => _session.StatusMessage;
     public bool IsReady => _session.IsReady;
+    public bool CanContinue => _session.CanContinue;
 
     [RelayCommand]
-    private async Task StartGameAsync(CancellationToken cancellationToken)
+    private async Task StartNewGameAsync(CancellationToken cancellationToken)
     {
         if (!IsReady) return;
         _navigation.ResetTo<GamePageViewModel>();
-        await _session.StartAsync(cancellationToken);
+        await _session.StartNewGameAsync(cancellationToken);
     }
 
+    [RelayCommand]
+    private async Task ContinueAsync(CancellationToken cancellationToken)
+    {
+        if (!CanContinue) return;
+        _navigation.ResetTo<GamePageViewModel>();
+        await _session.ContinueAsync(cancellationToken);
+    }
+
+    [RelayCommand]
+    private Task OpenSaveSlotsAsync(CancellationToken cancellationToken) =>
+        _navigation.NavigateAsync<SaveSlotsPageViewModel, SaveSlotsMode>(SaveSlotsMode.Save, cancellationToken);
+
+    [RelayCommand]
+    private Task OpenLoadSlotsAsync(CancellationToken cancellationToken) =>
+        _navigation.NavigateAsync<SaveSlotsPageViewModel, SaveSlotsMode>(SaveSlotsMode.Load, cancellationToken);
+
     [RelayCommand] private void OpenSettings() => _navigation.Navigate<SettingsPageViewModel>();
+    [RelayCommand] private void OpenGallery() => _navigation.Navigate<GalleryPageViewModel>();
     [RelayCommand] private void OpenAbout() => _navigation.Navigate<AboutPageViewModel>();
 
     public void Dispose() => _session.PropertyChanged -= OnSessionPropertyChanged;
@@ -39,5 +57,6 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
         if (e.PropertyName is nameof(IGameSessionService.GameTitle)) OnPropertyChanged(nameof(GameTitle));
         if (e.PropertyName is nameof(IGameSessionService.StatusMessage)) OnPropertyChanged(nameof(StatusMessage));
         if (e.PropertyName is nameof(IGameSessionService.IsReady)) OnPropertyChanged(nameof(IsReady));
+        if (e.PropertyName is nameof(IGameSessionService.CanContinue)) OnPropertyChanged(nameof(CanContinue));
     }
 }

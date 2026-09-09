@@ -222,11 +222,12 @@ public sealed record EffectRequest(
 
 ### Phase 6：编辑器瘦身与基础预览（已完成）
 
-- `EditorPreviewHost` 在独立游戏 Scope 中承载共享壳与预览占位服务；编辑器、Launcher 与 Core 已脱离旧 Control/UI 配置链，旧 Control 源码仅待 Phase 7 物理删除。
-- `IPageViewRegistry` 在组合期允许 `MyGame.View` 覆盖 VM→View；存档使用可编译绑定行 VM，Sample 显示 NullAudio 状态。
+- `EditorPreviewHost` 在独立游戏 Scope 中承载共享壳与预览占位服务；预览重启、读档和释放 Scope 会先停止旧执行任务，避免多个引擎驱动同一页面。
+- `GameCanvasHost` 已下沉到 `GalNet.Avalonia.Controls`；编辑器按项目设计尺寸使用它，官方 Sample 在 1920×1080 外层画布中承载同一个 `GameShell`。壳本身不包含缩放规则。
+- `GameShell` 现为完整 Avalonia 玩家根：标题、剧情、保存/加载、设置、画廊、关于和截图均在壳内。运行期页面表不可变，`MyGame.View` 仍能在组合期覆盖 VM→View。
 - 游戏和编辑器复用无框架 `NavigationHistory<TPage>` 栈算法，但保持独立契约：`IGameNavigationService` 只切换游戏壳内页面，`INavigationService` 只管理编辑器启动、项目与 Dock 工作区页面。
 
-验证：Editor、Editor.Headless、官方 Avalonia Sample 构建通过；`GeneralTest` 133 项通过。纯 DI 构造 XAML View 的 `AVLN3001` 提示不影响 DI 路径。
+验证：Editor、Editor.Headless、官方 Avalonia Sample 和 `GeneralTest` 构建/回归均应在提交前执行。纯 DI 构造 XAML View 的 `AVLN3001` 提示不影响 DI 路径。
 
 ### Phase 7：文件格式迁移、清理与发布
 

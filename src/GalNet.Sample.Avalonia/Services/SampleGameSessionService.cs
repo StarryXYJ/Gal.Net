@@ -34,6 +34,9 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private AvaloniaGamePageView? _pageView;
     private SampleMediaViews? _media;
     private string? _gameDirectory;
+    private readonly SemaphoreSlim _lifecycle = new(1, 1);
+    private CancellationTokenSource? _runCancellation;
+    private Task? _runTask;
 
     public SampleGameSessionService(GamePageViewModel gameplay, GamePage page)
     {
@@ -46,6 +49,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     [ObservableProperty] private string _gameTitle = "GalNet Avalonia Sample";
     [ObservableProperty] private string _statusMessage = "Pass a published game directory when launching the sample.";
     [ObservableProperty] private bool _isReady;
+    [ObservableProperty] private bool _isPlaying;
+    [ObservableProperty] private bool _canContinue;
 
     public async Task InitializeAsync(GameLaunchOptions options, CancellationToken cancellationToken = default)
     {
@@ -75,47 +80,145 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         }
     }
 
-    public async Task StartAsync(CancellationToken cancellationToken = default)
+    public Task StartNewGameAsync(CancellationToken cancellationToken = default) =>
+        RestartAsync(null, cancellationToken);
+
+    public async Task ContinueAsync(CancellationToken cancellationToken = default)
     {
-        try
+        var slot = _saveSlots
+            .Where(candidate => !candidate.IsEmpty && !candidate.IsCorrupt)
+            .OrderByDescending(candidate => candidate.Timestamp)
+            .FirstOrDefault();
+        if (slot is null)
         {
-            await EnsureEngineAsync(cancellationToken);
-            _gameplay.StatusMessage = "Playing";
-            await _engine!.StepAsync(cancellationToken);
-            _gameplay.StatusMessage = "Game flow completed.";
-            await RefreshSlotsAsync(cancellationToken);
+            StatusMessage = "There is no valid save to continue.";
+            return;
         }
-        catch (OperationCanceledException) { _gameplay.StatusMessage = "Game flow was cancelled."; }
-        catch (Exception exception) { _gameplay.StatusMessage = $"Game flow failed: {exception.Message}"; }
+
+        await LoadAsync(slot.SlotIndex, cancellationToken);
+    }
+
+    public async Task StopAsync(CancellationToken cancellationToken = default)
+    {
+        await _lifecycle.WaitAsync(cancellationToken);
+        try { await StopCurrentRunAsync(); }
+        finally { _lifecycle.Release(); }
     }
 
     public async Task SaveAsync(int slotIndex, CancellationToken cancellationToken = default)
     {
-        await EnsureEngineAsync(cancellationToken);
-        await _saves!.SaveAsync(slotIndex, _engine!.CreateSaveData());
-        _gameplay.StatusMessage = $"Saved to slot {slotIndex}.";
-        await RefreshSlotsAsync(cancellationToken);
+        await _lifecycle.WaitAsync(cancellationToken);
+        try
+        {
+            await EnsureEngineAsync(cancellationToken);
+            await _saves!.SaveAsync(slotIndex, _engine!.CreateSaveData());
+            _gameplay.StatusMessage = $"Saved to slot {slotIndex}.";
+            await RefreshSlotsAsync(cancellationToken);
+        }
+        finally { _lifecycle.Release(); }
     }
 
     public async Task LoadAsync(int slotIndex, CancellationToken cancellationToken = default)
     {
-        await EnsureEngineAsync(cancellationToken);
-        var snapshot = await _saves!.LoadAsync(slotIndex);
-        if (snapshot is null)
+        GameSnapshot? snapshot;
+        await _lifecycle.WaitAsync(cancellationToken);
+        try
         {
-            _gameplay.StatusMessage = $"Slot {slotIndex} is empty or invalid.";
-            return;
-        }
+            snapshot = await _saves!.LoadAsync(slotIndex);
+            if (snapshot is null)
+            {
+                _gameplay.StatusMessage = $"Slot {slotIndex} is empty or invalid.";
+                return;
+            }
 
-        _engine!.RestoreFrom(snapshot);
-        _gameplay.StatusMessage = $"Loaded slot {slotIndex}.";
-        await StartAsync(cancellationToken);
+            await StopCurrentRunAsync();
+            DisposeEngine();
+            await EnsureEngineAsync(cancellationToken);
+            _engine!.RestoreFrom(snapshot);
+            StartRun();
+            _gameplay.StatusMessage = $"Loaded slot {slotIndex}.";
+        }
+        finally { _lifecycle.Release(); }
+        await AwaitCurrentRunAsync(cancellationToken);
     }
 
     public void Dispose()
     {
+        StopAsync().GetAwaiter().GetResult();
+        DisposeEngine();
+        _lifecycle.Dispose();
+    }
+
+    private async Task RestartAsync(GameSnapshot? snapshot, CancellationToken cancellationToken)
+    {
+        await _lifecycle.WaitAsync(cancellationToken);
+        try
+        {
+            await StopCurrentRunAsync();
+            DisposeEngine();
+            await EnsureEngineAsync(cancellationToken);
+            if (snapshot is not null) _engine!.RestoreFrom(snapshot);
+            StartRun();
+        }
+        finally { _lifecycle.Release(); }
+        await AwaitCurrentRunAsync(cancellationToken);
+    }
+
+    private void StartRun()
+    {
+        _runCancellation = new CancellationTokenSource();
+        _runTask = RunEngineAsync(_engine!, _runCancellation.Token);
+    }
+
+    private async Task RunEngineAsync(GameEngine engine, CancellationToken cancellationToken)
+    {
+        try
+        {
+            IsPlaying = true;
+            _gameplay.StatusMessage = "Playing";
+            await engine.StepAsync(cancellationToken);
+            _gameplay.StatusMessage = "Game flow completed.";
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            _gameplay.StatusMessage = "Game flow was cancelled.";
+        }
+        catch (Exception exception)
+        {
+            _gameplay.StatusMessage = $"Game flow failed: {exception.Message}";
+        }
+        finally
+        {
+            IsPlaying = false;
+            await RefreshSlotsAsync(CancellationToken.None);
+        }
+    }
+
+    private async Task StopCurrentRunAsync()
+    {
+        var cancellation = _runCancellation;
+        var run = _runTask;
+        _runCancellation = null;
+        _runTask = null;
+        cancellation?.Cancel();
+        if (run is not null)
+        {
+            try { await run; }
+            catch (OperationCanceledException) { }
+        }
+        cancellation?.Dispose();
+    }
+
+    private Task AwaitCurrentRunAsync(CancellationToken cancellationToken) =>
+        _runTask?.WaitAsync(cancellationToken) ?? Task.CompletedTask;
+
+    private void DisposeEngine()
+    {
         _pageView?.Dispose();
+        _pageView = null;
         _media?.Dispose();
+        _media = null;
+        _engine = null;
     }
 
     private async Task EnsureEngineAsync(CancellationToken cancellationToken)
@@ -149,11 +252,12 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         {
             _saveSlots.Add(new GameSaveSlot(
                 slot.SlotIndex,
-                slot.Timestamp == default ? string.Empty : slot.Timestamp.ToString("g"),
+                slot.Timestamp,
                 slot.IsCorrupt ? "Corrupt save" : slot.Timestamp == default ? "Empty" : "Saved game",
                 slot.Timestamp == default && !slot.IsCorrupt,
                 slot.IsCorrupt));
         }
+        CanContinue = _saveSlots.Any(slot => !slot.IsEmpty && !slot.IsCorrupt);
     }
 
     private static Task InvokeOnUiAsync(Func<Task> action)

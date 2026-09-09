@@ -10,16 +10,18 @@ public sealed class GameSaveSlotRowViewModel
     public string Description { get; }
     public bool IsEmpty { get; }
     public bool IsCorrupt { get; }
+    public bool IsSaveMode { get; }
     public IAsyncRelayCommand SaveCommand { get; }
     public IAsyncRelayCommand LoadCommand { get; }
 
-    public GameSaveSlotRowViewModel(GameSaveSlot slot, Func<int, Task> save, Func<int, Task> load)
+    public GameSaveSlotRowViewModel(GameSaveSlot slot, bool isSaveMode, Func<int, Task> save, Func<int, Task> load)
     {
         SlotIndex = slot.SlotIndex;
-        Timestamp = slot.Timestamp;
+        Timestamp = slot.DisplayTimestamp;
         Description = slot.Description;
         IsEmpty = slot.IsEmpty;
         IsCorrupt = slot.IsCorrupt;
+        IsSaveMode = isSaveMode;
         SaveCommand = new AsyncRelayCommand(() => save(SlotIndex));
         LoadCommand = new AsyncRelayCommand(() => load(SlotIndex), () => !IsEmpty && !IsCorrupt);
     }

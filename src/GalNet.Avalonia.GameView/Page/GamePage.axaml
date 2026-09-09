@@ -6,24 +6,45 @@
              x:Class="GalNet.Avalonia.GameView.Page.GamePage"
              x:DataType="vm:GamePageViewModel">
   <Grid Background="#101018">
-    <controls:SceneLayerHost ItemsSource="{Binding Layers}" />
-    <Border Background="{Binding TransitionBrush}" Opacity="{Binding TransitionOpacity}" IsHitTestVisible="False" ZIndex="10" />
+    <Grid x:Name="SceneSurface">
+      <controls:SceneLayerHost ItemsSource="{Binding Layers}" />
+      <Border Background="{Binding TransitionBrush}" Opacity="{Binding TransitionOpacity}"
+              IsHitTestVisible="False" />
+    </Grid>
+
+    <!-- This is intentionally below every player control: an unhandled scene click advances. -->
     <Button Command="{Binding AdvanceCommand}" Background="Transparent" BorderThickness="0" ZIndex="1" />
-    <controls:NvlPresenter ItemsSource="{Binding NvlLines}" IsVisible="{Binding IsNvlMode}" Margin="64,48,64,116" ZIndex="12" />
-    <controls:DialoguePresenter x:Name="DialogueControl" IsVisible="{Binding IsDialogueVisible}" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" Margin="64,0,64,64" ZIndex="13" />
-    <Border IsVisible="{Binding IsChoiceVisible}" Background="#CC101018" Padding="24" CornerRadius="10" HorizontalAlignment="Center" VerticalAlignment="Center" Width="420" ZIndex="20">
+
+    <controls:NvlPresenter ItemsSource="{Binding NvlLines}" IsVisible="{Binding IsNvlOverlayVisible}"
+                           Margin="64,48,64,138" ZIndex="12" />
+    <controls:DialoguePresenter x:Name="DialogueControl" IsVisible="{Binding IsDialogueOverlayVisible}"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Bottom" Margin="64,0,64,94" ZIndex="13" />
+    <Border IsVisible="{Binding IsChoiceOverlayVisible}" Background="#D9101018" Padding="28"
+            CornerRadius="10" HorizontalAlignment="Center" VerticalAlignment="Center"
+            Width="460" ZIndex="20">
       <controls:ChoiceList ItemsSource="{Binding Choices}" SelectionCommand="{Binding CompleteChoiceCommand}" />
     </Border>
-    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="16" ZIndex="30">
-      <Button Content="Save / Load" Command="{Binding OpenSaveSlotsCommand}" />
-      <Button Content="Settings" Command="{Binding OpenSettingsCommand}" />
-      <Button Content="Gallery" Command="{Binding OpenGalleryCommand}" />
-      <Button Content="NVL" Command="{Binding ToggleNvlModeCommand}" />
-      <Button Content="Menu" Command="{Binding ReturnToTitleCommand}" />
-    </StackPanel>
-    <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="16" Spacing="4" ZIndex="30">
-      <TextBlock Text="{Binding StatusMessage}" MaxWidth="520" TextWrapping="Wrap" />
-      <ItemsControl ItemsSource="{Binding ActiveEffects}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Opacity="0.75" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
-    </StackPanel>
+
+    <Border IsVisible="{Binding IsGameUiVisible}" Background="#80202030" Padding="12,8"
+            HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,20" ZIndex="30">
+      <StackPanel Orientation="Horizontal" Spacing="22">
+        <Button Content="Save" Command="{Binding OpenSaveSlotsCommand}" Classes="quick" />
+        <Button Content="Load" Command="{Binding OpenLoadSlotsCommand}" Classes="quick" />
+        <Button Content="Settings" Command="{Binding OpenSettingsCommand}" Classes="quick" />
+        <Button Content="Title" Command="{Binding ReturnToTitleCommand}" Classes="quick" />
+        <Button Content="Screenshot" Command="{Binding RequestScreenshotCommand}" Classes="quick" />
+        <Button Content="Hide UI" Command="{Binding HideUiCommand}" Classes="quick" />
+      </StackPanel>
+    </Border>
   </Grid>
+
+  <UserControl.Styles>
+    <Style Selector="Button.quick">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Padding" Value="4,1" />
+      <Setter Property="Foreground" Value="#F4F4F7" />
+    </Style>
+  </UserControl.Styles>
 </UserControl>

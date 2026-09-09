@@ -8,6 +8,6 @@ public partial class MainWindow : Window
     public MainWindow(GameShell shell)
     {
         InitializeComponent();
-        ShellHost.Content = shell;
+        GameCanvas.GameContent = shell;
     }
 }

@@ -7,6 +7,7 @@ namespace GalNet.Avalonia.GameView.Page;
 public partial class GamePage : UserControl
 {
     public DialoguePresenter Dialogue => DialogueControl;
+    public Control Scene => SceneSurface;
 
     public GamePage() => InitializeComponent();
 }

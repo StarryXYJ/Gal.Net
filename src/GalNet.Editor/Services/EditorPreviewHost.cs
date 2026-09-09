@@ -29,9 +29,7 @@ public sealed class EditorPreviewHost : IAsyncDisposable
 {
     private readonly ServiceProvider _services;
     private readonly AsyncServiceScope _scope;
-    private readonly CancellationTokenSource _lifetime = new();
     private readonly EditorPreviewSessionService _session;
-    private Task? _runTask;
     private bool _disposed;
 
     public GameShell Shell { get; }
@@ -56,22 +54,16 @@ public sealed class EditorPreviewHost : IAsyncDisposable
     public Task StartAsync()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        return _runTask ??= _session.StartAsync(_lifetime.Token);
+        return _session.StartNewGameAsync();
     }
 
     public async ValueTask DisposeAsync()
     {
         if (_disposed) return;
         _disposed = true;
-        await _lifetime.CancelAsync();
-        if (_runTask is not null)
-        {
-            try { await _runTask; }
-            catch (OperationCanceledException) { }
-        }
+        await _session.StopAsync();
         await _scope.DisposeAsync();
         await _services.DisposeAsync();
-        _lifetime.Dispose();
     }
 }
 
@@ -97,6 +89,9 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
     private readonly NullGameView _fallback = new();
     private AvaloniaGamePageView? _pageView;
     private GameEngine? _engine;
+    private readonly SemaphoreSlim _lifecycle = new(1, 1);
+    private CancellationTokenSource? _runCancellation;
+    private Task? _runTask;
 
     public EditorPreviewSessionService(EditorPreviewContext context, GamePageViewModel gameplay, GamePage page)
     {
@@ -111,15 +106,99 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
     public bool IsReady => true;
     public ReadOnlyObservableCollection<GameSaveSlot> SaveSlots => _readOnlySlots;
     [ObservableProperty] private string _statusMessage = "Ready";
+    [ObservableProperty] private bool _isPlaying;
+    [ObservableProperty] private bool _canContinue;
 
-    public async Task StartAsync(CancellationToken cancellationToken = default)
+    public Task StartNewGameAsync(CancellationToken cancellationToken = default) =>
+        RestartAsync(null, cancellationToken);
+
+    public async Task ContinueAsync(CancellationToken cancellationToken = default)
     {
+        var slot = _slots
+            .Where(candidate => !candidate.IsEmpty && !candidate.IsCorrupt)
+            .OrderByDescending(candidate => candidate.Timestamp)
+            .FirstOrDefault();
+        if (slot is not null) await LoadAsync(slot.SlotIndex, cancellationToken);
+    }
+
+    public async Task StopAsync(CancellationToken cancellationToken = default)
+    {
+        await _lifecycle.WaitAsync(cancellationToken);
+        try { await StopCurrentRunAsync(); }
+        finally { _lifecycle.Release(); }
+    }
+
+    public async Task SaveAsync(int slotIndex, CancellationToken cancellationToken = default)
+    {
+        await _lifecycle.WaitAsync(cancellationToken);
         try
         {
             await EnsureEngineAsync(cancellationToken);
+            await _context.Saves.SaveAsync(slotIndex, new SaveRequest { Snapshot = _engine!.CreateSaveData() }, cancellationToken);
+            await RefreshSlotsAsync(cancellationToken);
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    public async Task LoadAsync(int slotIndex, CancellationToken cancellationToken = default)
+    {
+        await _lifecycle.WaitAsync(cancellationToken);
+        try
+        {
+            var snapshot = await _context.Saves.LoadAsync(slotIndex);
+            if (snapshot is null)
+            {
+                StatusMessage = $"Slot {slotIndex} is empty or invalid.";
+                return;
+            }
+
+            await StopCurrentRunAsync();
+            DisposeEngine();
+            await EnsureEngineAsync(cancellationToken);
+            _engine!.RestoreFrom(snapshot);
+            StartRun();
+            StatusMessage = $"Loaded slot {slotIndex}.";
+        }
+        finally { _lifecycle.Release(); }
+        await AwaitCurrentRunAsync(cancellationToken);
+    }
+
+    public void Dispose()
+    {
+        StopAsync().GetAwaiter().GetResult();
+        DisposeEngine();
+        _lifecycle.Dispose();
+    }
+
+    private async Task RestartAsync(GameSnapshot? snapshot, CancellationToken cancellationToken)
+    {
+        await _lifecycle.WaitAsync(cancellationToken);
+        try
+        {
+            await StopCurrentRunAsync();
+            DisposeEngine();
+            await EnsureEngineAsync(cancellationToken);
+            if (snapshot is not null) _engine!.RestoreFrom(snapshot);
+            StartRun();
+        }
+        finally { _lifecycle.Release(); }
+        await AwaitCurrentRunAsync(cancellationToken);
+    }
+
+    private void StartRun()
+    {
+        _runCancellation = new CancellationTokenSource();
+        _runTask = RunEngineAsync(_engine!, _runCancellation.Token);
+    }
+
+    private async Task RunEngineAsync(GameEngine engine, CancellationToken cancellationToken)
+    {
+        try
+        {
+            IsPlaying = true;
             _context.GameStarted();
             StatusMessage = "Running";
-            await _engine!.StepAsync(cancellationToken);
+            await engine.StepAsync(cancellationToken);
             StatusMessage = "Ready";
             _context.GameEnded();
         }
@@ -132,23 +211,37 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
             StatusMessage = $"Preview failed: {exception.Message}";
             _context.GameFailed(exception);
         }
+        finally
+        {
+            IsPlaying = false;
+            await RefreshSlotsAsync(CancellationToken.None);
+        }
     }
 
-    public async Task SaveAsync(int slotIndex, CancellationToken cancellationToken = default)
+    private async Task StopCurrentRunAsync()
     {
-        await EnsureEngineAsync(cancellationToken);
-        await _context.Saves.SaveAsync(slotIndex, new SaveRequest { Snapshot = _engine!.CreateSaveData() }, cancellationToken);
-        await RefreshSlotsAsync(cancellationToken);
+        var cancellation = _runCancellation;
+        var run = _runTask;
+        _runCancellation = null;
+        _runTask = null;
+        cancellation?.Cancel();
+        if (run is not null)
+        {
+            try { await run; }
+            catch (OperationCanceledException) { }
+        }
+        cancellation?.Dispose();
     }
 
-    public async Task LoadAsync(int slotIndex, CancellationToken cancellationToken = default)
+    private Task AwaitCurrentRunAsync(CancellationToken cancellationToken) =>
+        _runTask?.WaitAsync(cancellationToken) ?? Task.CompletedTask;
+
+    private void DisposeEngine()
     {
-        await EnsureEngineAsync(cancellationToken);
-        if (await _context.Saves.LoadAsync(slotIndex) is { } snapshot)
-            _engine!.RestoreFrom(snapshot);
+        _pageView?.Dispose();
+        _pageView = null;
+        _engine = null;
     }
-
-    public void Dispose() => _pageView?.Dispose();
 
     private async Task EnsureEngineAsync(CancellationToken cancellationToken)
     {
@@ -169,9 +262,10 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
         var slots = await _context.Saves.ListSlotsAsync(cancellationToken);
         _slots.Clear();
         foreach (var slot in slots)
-            _slots.Add(new(slot.SlotIndex, slot.Timestamp == default ? string.Empty : slot.Timestamp.ToString("g"),
+            _slots.Add(new(slot.SlotIndex, slot.Timestamp,
                 slot.IsCorrupt ? "Corrupt save" : slot.Description ?? (slot.Timestamp == default ? "Empty" : "Saved game"),
                 slot.Timestamp == default && !slot.IsCorrupt, slot.IsCorrupt));
+        CanContinue = _slots.Any(slot => !slot.IsEmpty && !slot.IsCorrupt);
     }
 }
 

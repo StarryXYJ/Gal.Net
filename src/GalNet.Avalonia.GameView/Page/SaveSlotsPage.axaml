@@ -7,15 +7,15 @@
              x:DataType="vm:SaveSlotsPageViewModel"
              x:CompileBindings="True">
   <Grid Margin="64" RowDefinitions="Auto,*,Auto" RowSpacing="14">
-    <TextBlock Text="Save / Load" FontSize="28" FontWeight="SemiBold" />
+    <TextBlock Text="{Binding Heading}" FontSize="28" FontWeight="SemiBold" />
     <ScrollViewer Grid.Row="1" MaxHeight="560">
       <ItemsControl ItemsSource="{Binding Slots}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:GameSaveSlotRowViewModel">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,4">
+            <Grid ColumnDefinitions="*" Margin="0,4">
               <controls:SaveSlotCard SlotIndex="{Binding SlotIndex}" Timestamp="{Binding Timestamp}" Description="{Binding Description}" IsEmpty="{Binding IsEmpty}" IsCorrupt="{Binding IsCorrupt}"
-                                      Command="{Binding LoadCommand}" />
-              <Button Grid.Column="1" Content="Save" Command="{Binding SaveCommand}" VerticalAlignment="Center" />
+                                      Command="{Binding LoadCommand}" IsVisible="{Binding !IsSaveMode}" />
+              <Button Content="Save" Command="{Binding SaveCommand}" IsVisible="{Binding IsSaveMode}" />
             </Grid>
           </DataTemplate>
         </ItemsControl.ItemTemplate>

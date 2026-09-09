@@ -1,6 +1,7 @@
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.ViewModels;
+using GalNet.Avalonia.GameView.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Avalonia.GameView.Composition;
@@ -10,9 +11,9 @@ public static class AvaloniaGameViewServiceCollectionExtensions
 {
     public static IServiceCollection AddAvaloniaGameViewPages(
         this IServiceCollection services,
-        Action<IPageViewRegistry>? configureViews = null)
+        Action<IPageViewRegistryBuilder>? configureViews = null)
     {
-        var views = new PageViewRegistry();
+        var views = new PageViewRegistryBuilder();
         views.Register<TitlePageViewModel, TitlePage>();
         views.Register<GamePageViewModel, GamePage>();
         views.Register<SaveSlotsPageViewModel, SaveSlotsPage>();
@@ -21,9 +22,10 @@ public static class AvaloniaGameViewServiceCollectionExtensions
         views.Register<AboutPageViewModel, AboutPage>();
         configureViews?.Invoke(views);
 
-        services.AddSingleton<IPageViewRegistry>(views);
+        services.AddSingleton(views.Build());
         services.AddScoped<IGameNavigationService, GameNavigationService>();
         services.AddScoped<IPageViewFactory, PageViewFactory>();
+        services.AddScoped<IGameScreenshotService, AvaloniaGameScreenshotService>();
         services.AddScoped<GameShellViewModel>();
         services.AddScoped<TitlePageViewModel>();
         services.AddScoped<GamePageViewModel>();

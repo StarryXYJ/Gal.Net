@@ -44,11 +44,11 @@ public sealed class GameNavigationTests
     [Test]
     public void Registry_override_controls_the_view_mapping_and_scope_reuses_the_view()
     {
-        var registry = new PageViewRegistry();
+        var registry = new PageViewRegistryBuilder();
         registry.Register<FirstPage, FirstView>();
         registry.Register<FirstPage, ReplacementView>();
         var services = CreateServices();
-        services.AddSingleton<IPageViewRegistry>(registry);
+        services.AddSingleton(registry.Build());
         services.AddScoped<IPageViewFactory, PageViewFactory>();
         services.AddScoped<FirstView>();
         services.AddScoped<ReplacementView>();
@@ -66,6 +66,17 @@ public sealed class GameNavigationTests
             Assert.That(second, Is.SameAs(first));
             Assert.That(first.DataContext, Is.SameAs(page));
         });
+    }
+
+    [Test]
+    public void Registry_build_creates_an_immutable_mapping_snapshot()
+    {
+        var builder = new PageViewRegistryBuilder();
+        builder.Register<FirstPage, FirstView>();
+        var registry = builder.Build();
+
+        Assert.That(registry.GetViewType(typeof(FirstPage)), Is.EqualTo(typeof(FirstView)));
+        Assert.Throws<InvalidOperationException>(() => builder.Register<FirstPage, ReplacementView>());
     }
 
     [Test]

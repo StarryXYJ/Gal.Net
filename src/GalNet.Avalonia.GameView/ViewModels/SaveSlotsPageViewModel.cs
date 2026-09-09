@@ -6,13 +6,18 @@ using GalNet.Avalonia.GameView.Services;
 
 namespace GalNet.Avalonia.GameView.ViewModels;
 
-public sealed partial class SaveSlotsPageViewModel : PageViewModelBase, IDisposable
+public enum SaveSlotsMode { Save, Load }
+
+public sealed partial class SaveSlotsPageViewModel : PageViewModelBase, IActivatablePageViewModel<SaveSlotsMode>, IDisposable
 {
     private readonly IGameSessionService _session;
     private readonly IGameNavigationService _navigation;
 
     public ReadOnlyObservableCollection<GameSaveSlot> SaveSlots => _session.SaveSlots;
     public ObservableCollection<GameSaveSlotRowViewModel> Slots { get; } = [];
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private SaveSlotsMode _mode;
+    public string Heading => Mode == SaveSlotsMode.Save ? "Save game" : "Load game";
+    public bool IsSaveMode => Mode == SaveSlotsMode.Save;
 
     public SaveSlotsPageViewModel(IGameSessionService session, IGameNavigationService navigation)
     {
@@ -22,7 +27,12 @@ public sealed partial class SaveSlotsPageViewModel : PageViewModelBase, IDisposa
         RebuildRows();
     }
 
-    [RelayCommand] private Task SaveSlotAsync(int slotIndex) => _session.SaveAsync(slotIndex);
+    [RelayCommand]
+    private async Task SaveSlotAsync(int slotIndex)
+    {
+        await _session.SaveAsync(slotIndex);
+        _navigation.GoBack();
+    }
 
     [RelayCommand]
     private async Task LoadSlotAsync(int slotIndex)
@@ -33,12 +43,26 @@ public sealed partial class SaveSlotsPageViewModel : PageViewModelBase, IDisposa
 
     [RelayCommand] private void Back() => _navigation.GoBack();
 
+    public Task ActivateAsync(SaveSlotsMode mode, CancellationToken cancellationToken = default)
+    {
+        Mode = mode;
+        OnPropertyChanged(nameof(Heading));
+        OnPropertyChanged(nameof(IsSaveMode));
+        RebuildRows();
+        return Task.CompletedTask;
+    }
+
     public void Dispose() => ((INotifyCollectionChanged)_session.SaveSlots).CollectionChanged -= OnSlotsChanged;
     private void OnSlotsChanged(object? sender, NotifyCollectionChangedEventArgs e) => RebuildRows();
     private void RebuildRows()
     {
         Slots.Clear();
         foreach (var slot in _session.SaveSlots)
-            Slots.Add(new GameSaveSlotRowViewModel(slot, SaveSlotAsync, LoadSlotAsync));
+        {
+            var row = new GameSaveSlotRowViewModel(slot, Mode == SaveSlotsMode.Save, SaveSlotAsync, LoadSlotAsync);
+            if (Mode == SaveSlotsMode.Save)
+                row.LoadCommand.NotifyCanExecuteChanged();
+            Slots.Add(row);
+        }
     }
 }

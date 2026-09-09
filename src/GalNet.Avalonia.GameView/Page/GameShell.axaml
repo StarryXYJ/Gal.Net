@@ -4,6 +4,21 @@
              xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
              x:Class="GalNet.Avalonia.GameView.Page.GameShell"
              x:DataType="vm:GameShellViewModel">
+  <UserControl.Styles>
+    <!-- Player defaults live with the shell so embedding it in the editor never imports editor resources. -->
+    <Style Selector="TextBlock">
+      <Setter Property="Foreground" Value="#F4F4F7" />
+    </Style>
+    <Style Selector="Button">
+      <Setter Property="Background" Value="#563F4160" />
+      <Setter Property="BorderBrush" Value="#AA9C9AB7" />
+      <Setter Property="Foreground" Value="#F8F8FA" />
+      <Setter Property="Padding" Value="14,7" />
+    </Style>
+    <Style Selector="Button:pointerover">
+      <Setter Property="Background" Value="#805B5D88" />
+    </Style>
+  </UserControl.Styles>
   <Grid Background="#101018">
     <ContentControl x:Name="PageHost" />
   </Grid>
