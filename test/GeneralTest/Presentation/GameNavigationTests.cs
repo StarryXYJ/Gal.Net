@@ -100,6 +100,18 @@ public sealed class GameNavigationTests
     }
 
     [Test]
+    public async Task Advance_completes_the_current_player_wait()
+    {
+        var page = new GamePageViewModel(new NoOpGameNavigationService());
+        page.AdvanceRequested += page.CompleteAdvance;
+        var wait = page.WaitForAdvanceAsync(TestContext.CurrentContext.CancellationToken);
+
+        page.AdvanceCommand.Execute(null);
+
+        await wait.WaitAsync(TimeSpan.FromSeconds(1));
+    }
+
+    [Test]
     public void Disposing_scope_disposes_resolved_page_view_models()
     {
         DisposablePage.DisposeCount = 0;

@@ -82,11 +82,17 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     partial void OnIsNvlModeChanged(bool value) => OnPropertyChanged(nameof(IsNvlOverlayVisible));
     partial void OnIsChoiceVisibleChanged(bool value) => OnPropertyChanged(nameof(IsChoiceOverlayVisible));
 
-    public Task WaitForAdvanceAsync(CancellationToken cancellationToken)
+    public async Task WaitForAdvanceAsync(CancellationToken cancellationToken)
     {
         InteractionObserved?.Invoke("wait.advance");
-        _advanceWaiter = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        return _advanceWaiter.Task.WaitAsync(cancellationToken);
+        var waiter = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _advanceWaiter = waiter;
+        try { await waiter.Task.WaitAsync(cancellationToken); }
+        finally
+        {
+            if (ReferenceEquals(_advanceWaiter, waiter))
+                _advanceWaiter = null;
+        }
     }
 
     public Task<int> WaitForChoiceAsync(IEnumerable<string> options, CancellationToken cancellationToken)
@@ -152,6 +158,8 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         try { return await choice.Task.WaitAsync(cancellationToken); }
         finally
         {
+            if (ReferenceEquals(_choiceWaiter, choice))
+                _choiceWaiter = null;
             IsChoiceVisible = false;
             Choices.Clear();
         }
