@@ -14,18 +14,21 @@ public partial class GameShell : UserControl, IDisposable
     private readonly IPageViewFactory _views;
     private readonly IGameScreenshotService _screenshots;
     private readonly IGameSessionService _session;
+    private readonly IGameNavigationService _navigation;
     private GamePageViewModel? _gameplay;
 
     public GameShell(
         GameShellViewModel viewModel,
         IPageViewFactory views,
         IGameScreenshotService screenshots,
-        IGameSessionService session)
+        IGameSessionService session,
+        IGameNavigationService navigation)
     {
         _viewModel = viewModel;
         _views = views;
         _screenshots = screenshots;
         _session = session;
+        _navigation = navigation;
         InitializeComponent();
         DataContext = viewModel;
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
@@ -35,7 +38,11 @@ public partial class GameShell : UserControl, IDisposable
     public void Dispose()
     {
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
-        if (_gameplay is not null) _gameplay.ScreenshotRequested -= OnScreenshotRequested;
+        if (_gameplay is not null)
+        {
+            _gameplay.ScreenshotRequested -= OnScreenshotRequested;
+            _gameplay.ReturnToTitleRequested -= OnReturnToTitleRequested;
+        }
     }
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs eventArgs)
@@ -48,9 +55,17 @@ public partial class GameShell : UserControl, IDisposable
         var viewModel = _viewModel.CurrentViewModel;
         if (!ReferenceEquals(_gameplay, viewModel))
         {
-            if (_gameplay is not null) _gameplay.ScreenshotRequested -= OnScreenshotRequested;
+            if (_gameplay is not null)
+            {
+                _gameplay.ScreenshotRequested -= OnScreenshotRequested;
+                _gameplay.ReturnToTitleRequested -= OnReturnToTitleRequested;
+            }
             _gameplay = viewModel as GamePageViewModel;
-            if (_gameplay is not null) _gameplay.ScreenshotRequested += OnScreenshotRequested;
+            if (_gameplay is not null)
+            {
+                _gameplay.ScreenshotRequested += OnScreenshotRequested;
+                _gameplay.ReturnToTitleRequested += OnReturnToTitleRequested;
+            }
         }
         PageHost.Content = viewModel is not null ? _views.Create(viewModel) : null;
     }
@@ -64,6 +79,12 @@ public partial class GameShell : UserControl, IDisposable
             _session.GameTitle,
             owner,
             includeUi => Task.FromResult(CapturePng(includeUi ? this : page.Scene))));
+    }
+
+    private async void OnReturnToTitleRequested()
+    {
+        await _session.StopAsync();
+        _navigation.ResetTo<TitlePageViewModel>();
     }
 
     private static byte[] CapturePng(Control target)

@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
-using GalNet.Avalonia.GameView.Services;
 using GalNet.Game.Controls;
 
 namespace GalNet.Avalonia.GameView.ViewModels;
@@ -11,15 +10,10 @@ namespace GalNet.Avalonia.GameView.ViewModels;
 public sealed partial class GamePageViewModel : PageViewModelBase
 {
     private readonly IGameNavigationService _navigation;
-    private readonly IGameSessionService _session;
     private TaskCompletionSource? _advanceWaiter;
     private TaskCompletionSource<int>? _choiceWaiter;
 
-    public GamePageViewModel(IGameNavigationService navigation, IGameSessionService session)
-    {
-        _navigation = navigation;
-        _session = session;
-    }
+    public GamePageViewModel(IGameNavigationService navigation) => _navigation = navigation;
 
     public ObservableCollection<SceneLayerItem> Layers { get; } = [];
     public ObservableCollection<string> Choices { get; } = [];
@@ -41,6 +35,7 @@ public sealed partial class GamePageViewModel : PageViewModelBase
 
     public event Action? AdvanceRequested;
     public event Action? ScreenshotRequested;
+    public event Action? ReturnToTitleRequested;
 
     [RelayCommand]
     private void Advance()
@@ -64,12 +59,7 @@ public sealed partial class GamePageViewModel : PageViewModelBase
 
     [RelayCommand] private void ToggleNvlMode() => IsNvlMode = !IsNvlMode;
     [RelayCommand] private void OpenSettings() => _navigation.Navigate<SettingsPageViewModel>();
-    [RelayCommand]
-    private async Task ReturnToTitleAsync(CancellationToken cancellationToken)
-    {
-        await _session.StopAsync(cancellationToken);
-        _navigation.ResetTo<TitlePageViewModel>();
-    }
+    [RelayCommand] private void ReturnToTitle() => ReturnToTitleRequested?.Invoke();
     [RelayCommand] private void RequestScreenshot() => ScreenshotRequested?.Invoke();
     [RelayCommand] private void HideUi() => IsUiHidden = true;
     [RelayCommand] private void ReturnToGame() => _navigation.GoBack();
