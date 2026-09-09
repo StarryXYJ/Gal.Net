@@ -92,6 +92,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private CancellationTokenSource? _runCancellation;
     private Task? _runTask;
+    private bool _disposed;
 
     public EditorPreviewSessionService(EditorPreviewContext context, GamePageViewModel gameplay, GamePage page)
     {
@@ -123,8 +124,12 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
 
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
+        if (_disposed) return;
         await _lifecycle.WaitAsync(cancellationToken);
-        try { await StopCurrentRunAsync(); }
+        try
+        {
+            if (!_disposed) await StopCurrentRunAsync();
+        }
         finally { _lifecycle.Release(); }
     }
 
@@ -165,9 +170,13 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
 
     public void Dispose()
     {
-        StopAsync().GetAwaiter().GetResult();
-        DisposeEngine();
-        _lifecycle.Dispose();
+        if (_disposed) return;
+        try { StopAsync().GetAwaiter().GetResult(); }
+        finally
+        {
+            _disposed = true;
+            DisposeEngine();
+        }
     }
 
     private async Task RestartAsync(GameSnapshot? snapshot, CancellationToken cancellationToken)

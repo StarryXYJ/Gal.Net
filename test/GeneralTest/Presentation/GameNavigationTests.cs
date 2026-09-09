@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using GalNet.Avalonia.GameView.Navigation;
+using GalNet.Avalonia.GameView.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GeneralTest.Presentation;
@@ -80,6 +81,25 @@ public sealed class GameNavigationTests
     }
 
     [Test]
+    public void First_advance_after_hiding_ui_only_restores_the_player_ui()
+    {
+        var page = new GamePageViewModel(new NoOpGameNavigationService());
+        var advances = 0;
+        page.AdvanceRequested += () => advances++;
+        page.IsUiHidden = true;
+
+        page.AdvanceCommand.Execute(null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(page.IsUiHidden, Is.False);
+            Assert.That(advances, Is.Zero);
+        });
+
+        page.AdvanceCommand.Execute(null);
+        Assert.That(advances, Is.EqualTo(1));
+    }
+
+    [Test]
     public void Disposing_scope_disposes_resolved_page_view_models()
     {
         DisposablePage.DisposeCount = 0;
@@ -121,4 +141,16 @@ public sealed class GameNavigationTests
     }
     private sealed class FirstView : Control;
     private sealed class ReplacementView : Control;
+
+    private sealed class NoOpGameNavigationService : IGameNavigationService
+    {
+        public PageViewModelBase? CurrentViewModel => null;
+        public bool CanGoBack => false;
+        public event EventHandler? CurrentViewModelChanged { add { } remove { } }
+        public void Navigate<TViewModel>() where TViewModel : PageViewModelBase { }
+        public Task NavigateAsync<TViewModel, TArgs>(TArgs args, CancellationToken cancellationToken = default)
+            where TViewModel : PageViewModelBase, IActivatablePageViewModel<TArgs> => Task.CompletedTask;
+        public void ResetTo<TViewModel>() where TViewModel : PageViewModelBase { }
+        public void GoBack() { }
+    }
 }

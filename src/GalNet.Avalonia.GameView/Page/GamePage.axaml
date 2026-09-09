@@ -12,9 +12,6 @@
               IsHitTestVisible="False" />
     </Grid>
 
-    <!-- This is intentionally below every player control: an unhandled scene click advances. -->
-    <Button Command="{Binding AdvanceCommand}" Background="Transparent" BorderThickness="0" ZIndex="1" />
-
     <controls:NvlPresenter ItemsSource="{Binding NvlLines}" IsVisible="{Binding IsNvlOverlayVisible}"
                            Margin="64,48,64,138" ZIndex="12" />
     <controls:DialoguePresenter x:Name="DialogueControl" IsVisible="{Binding IsDialogueOverlayVisible}"
@@ -22,12 +19,17 @@
                                 VerticalAlignment="Bottom" Margin="64,0,64,94" ZIndex="13" />
     <Border IsVisible="{Binding IsChoiceOverlayVisible}" Background="#D9101018" Padding="28"
             CornerRadius="10" HorizontalAlignment="Center" VerticalAlignment="Center"
-            Width="460" ZIndex="20">
+            Width="460" ZIndex="50">
       <controls:ChoiceList ItemsSource="{Binding Choices}" SelectionCommand="{Binding CompleteChoiceCommand}" />
     </Border>
 
+    <!-- Covers the scene and dialogue/NVL surface so either can advance or restore hidden UI.
+         Choices and the quick bar are deliberately above it and keep their own pointer handling. -->
+    <Button Command="{Binding AdvanceCommand}" Background="Transparent" BorderThickness="0"
+            IsTabStop="False" ZIndex="30" />
+
     <Border IsVisible="{Binding IsGameUiVisible}" Background="#80202030" Padding="12,8"
-            HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,20" ZIndex="30">
+            HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,20" ZIndex="40">
       <StackPanel Orientation="Horizontal" Spacing="22">
         <Button Content="Save" Command="{Binding OpenSaveSlotsCommand}" Classes="quick" />
         <Button Content="Load" Command="{Binding OpenLoadSlotsCommand}" Classes="quick" />
