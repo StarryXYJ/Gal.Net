@@ -18,18 +18,18 @@
     <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
       <ItemsControl ItemsSource="{Binding Slots}">
         <ItemsControl.ItemsPanel>
-          <ItemsPanelTemplate><UniformGrid Columns="4" /></ItemsPanelTemplate>
+          <ItemsPanelTemplate><UniformGrid Columns="4" ColumnSpacing="6" RowSpacing="8"/></ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:GameSaveSlotRowViewModel">
-            <Grid Margin="7">
+            <Panel Margin="7">
               <controls:SaveSlotCard SlotIndex="{Binding SlotIndex}" Timestamp="{Binding Timestamp}" Description="{Binding Description}"
                                       IsEmpty="{Binding IsEmpty}" IsCorrupt="{Binding IsCorrupt}"
                                       Command="{Binding LoadCommand}" IsVisible="{Binding !IsSaveMode}" />
               <controls:SaveSlotCard SlotIndex="{Binding SlotIndex}" Timestamp="{Binding Timestamp}" Description="{Binding Description}"
                                       IsEmpty="{Binding IsEmpty}" IsCorrupt="{Binding IsCorrupt}"
                                       Command="{Binding SaveCommand}" IsVisible="{Binding IsSaveMode}" />
-            </Grid>
+            </Panel>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>

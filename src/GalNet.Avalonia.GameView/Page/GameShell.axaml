@@ -24,6 +24,7 @@
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="FontSize" Value="18" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="HorizontalAlignment" Value="Center"></Setter>
       <Setter Property="Padding" Value="16,9" />
     </Style>
     <Style Selector="Button.player-menu:pointerover">

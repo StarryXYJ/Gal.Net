@@ -63,12 +63,14 @@
   <Style Selector="local|SaveSlotCard">
     <Setter Property="Template">
       <ControlTemplate>
-        <Button Command="{TemplateBinding Command}" CommandParameter="{TemplateBinding CommandParameter}"
+        <Button
+          HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+          Command="{TemplateBinding Command}" CommandParameter="{TemplateBinding CommandParameter}"
                 Padding="0" Background="Transparent" BorderBrush="Transparent" BorderThickness="0"
                 HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
           <Border MinHeight="136" Padding="16" Background="#B81B1C27" BorderBrush="#665F6075" BorderThickness="1" CornerRadius="8">
             <Grid RowDefinitions="*,Auto" RowSpacing="12">
-              <StackPanel Spacing="4" VerticalAlignment="Center">
+              <StackPanel Spacing="4" VerticalAlignment="Top">
                 <TextBlock FontWeight="SemiBold" FontSize="16"><Run Text="Slot " /><Run Text="{TemplateBinding SlotIndex}" /></TextBlock>
                 <TextBlock Text="{TemplateBinding Description}" TextWrapping="Wrap" Opacity="0.75" />
               </StackPanel>
