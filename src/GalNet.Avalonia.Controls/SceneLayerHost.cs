@@ -1,7 +1,5 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Presenters;
-using Avalonia.Layout;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -9,16 +7,15 @@ using System.Runtime.CompilerServices;
 namespace GalNet.Game.Controls;
 
 /// <summary>
-/// Canvas host for application-provided visual scene layers. It owns the actual visual
-/// children so layer coordinates and z-order always target the arranged controls rather
-/// than an intermediary ItemsControl container.
+/// Canvas host for application-provided visual scene layers. It owns the actual layer
+/// controls, matching the original player preview's direct Canvas composition.
 /// </summary>
 public class SceneLayerHost : Canvas
 {
     public static readonly StyledProperty<IEnumerable<SceneLayerItem>?> ItemsSourceProperty =
         AvaloniaProperty.Register<SceneLayerHost, IEnumerable<SceneLayerItem>?>(nameof(ItemsSource));
 
-    private readonly Dictionary<SceneLayerItem, ContentPresenter> _presenters = [];
+    private readonly Dictionary<SceneLayerItem, Control> _controls = [];
     private INotifyCollectionChanged? _collection;
 
     static SceneLayerHost() => ItemsSourceProperty.Changed.AddClassHandler<SceneLayerHost>((host, _) => host.ResetItems());
@@ -33,11 +30,9 @@ public class SceneLayerHost : Canvas
     {
         if (_collection is not null)
             _collection.CollectionChanged -= OnCollectionChanged;
-        foreach (var item in _presenters.Keys)
-            item.PropertyChanged -= OnItemPropertyChanged;
+        foreach (var item in _controls.Keys.ToArray())
+            RemoveItem(item);
 
-        _presenters.Clear();
-        Children.Clear();
         _collection = ItemsSource as INotifyCollectionChanged;
         if (_collection is not null)
             _collection.CollectionChanged += OnCollectionChanged;
@@ -47,34 +42,61 @@ public class SceneLayerHost : Canvas
             AddItem(item);
     }
 
-    private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs eventArgs) => ResetItems();
+    private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs eventArgs)
+    {
+        if (eventArgs.Action == NotifyCollectionChangedAction.Reset)
+        {
+            ResetItems();
+            return;
+        }
+
+        if (eventArgs.OldItems is not null)
+            foreach (var item in eventArgs.OldItems.OfType<SceneLayerItem>())
+                RemoveItem(item);
+
+        if (eventArgs.NewItems is not null)
+            foreach (var item in eventArgs.NewItems.OfType<SceneLayerItem>())
+                AddItem(item);
+    }
 
     private void AddItem(SceneLayerItem item)
     {
-        var presenter = new ContentPresenter
-        {
-            HorizontalAlignment = HorizontalAlignment.Left,
-            VerticalAlignment = VerticalAlignment.Top
-        };
-        _presenters.Add(item, presenter);
+        if (item.Content is not { } control || _controls.ContainsKey(item)) return;
+
+        _controls.Add(item, control);
         item.PropertyChanged += OnItemPropertyChanged;
-        Apply(item, presenter);
-        Children.Add(presenter);
+        Apply(item, control);
+        Children.Add(control);
     }
 
     private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {
-        if (sender is SceneLayerItem item && _presenters.TryGetValue(item, out var presenter))
-            Apply(item, presenter);
+        if (sender is not SceneLayerItem item || !_controls.TryGetValue(item, out var control)) return;
+
+        if (eventArgs.PropertyName == nameof(SceneLayerItem.Content) && !ReferenceEquals(control, item.Content))
+        {
+            RemoveItem(item);
+            AddItem(item);
+            return;
+        }
+
+        Apply(item, control);
     }
 
-    private static void Apply(SceneLayerItem item, ContentPresenter presenter)
+    private void RemoveItem(SceneLayerItem item)
     {
-        presenter.Content = item.Content;
-        presenter.IsVisible = item.IsVisible;
-        SetLeft(presenter, item.X);
-        SetTop(presenter, item.Y);
-        presenter.SetValue(ZIndexProperty, item.ZIndex);
+        if (!_controls.Remove(item, out var control)) return;
+
+        item.PropertyChanged -= OnItemPropertyChanged;
+        Children.Remove(control);
+    }
+
+    private static void Apply(SceneLayerItem item, Control control)
+    {
+        control.IsVisible = item.IsVisible;
+        SetLeft(control, item.X);
+        SetTop(control, item.Y);
+        control.SetValue(ZIndexProperty, item.ZIndex);
     }
 }
 

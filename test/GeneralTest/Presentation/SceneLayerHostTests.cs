@@ -31,17 +31,19 @@ public sealed class SceneLayerHostTests
         };
 
         Assert.That(host.Children.Count, Is.EqualTo(2));
+        Assert.That(host.Children[0], Is.SameAs(background.Content));
+        Assert.That(host.Children[1], Is.SameAs(character.Content));
         Assert.That(Canvas.GetLeft(host.Children[0]), Is.EqualTo(0));
         Assert.That(Canvas.GetTop(host.Children[0]), Is.EqualTo(0));
-        Assert.That(Canvas.GetZIndex(host.Children[0]), Is.EqualTo(0));
+        Assert.That(host.Children[0].GetValue(Canvas.ZIndexProperty), Is.EqualTo(0));
         Assert.That(Canvas.GetLeft(host.Children[1]), Is.EqualTo(700));
         Assert.That(Canvas.GetTop(host.Children[1]), Is.EqualTo(250));
-        Assert.That(Canvas.GetZIndex(host.Children[1]), Is.EqualTo(20));
+        Assert.That(host.Children[1].GetValue(Canvas.ZIndexProperty), Is.EqualTo(20));
 
         character.X = 720;
         character.ZIndex = 30;
 
         Assert.That(Canvas.GetLeft(host.Children[1]), Is.EqualTo(720));
-        Assert.That(Canvas.GetZIndex(host.Children[1]), Is.EqualTo(30));
+        Assert.That(host.Children[1].GetValue(Canvas.ZIndexProperty), Is.EqualTo(30));
     }
 }
