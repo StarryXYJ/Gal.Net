@@ -8,12 +8,16 @@ The opening scene intentionally also references the non-existent
 remains covered. Layer coordinates are design-pixel values (the Avalonia sample hosts
 the game at 1920×1080).
 
-Story path: start → station dialogue → select downtown or harbor → one route dialogue.
+Story path: start → station dialogue → choose a tiled or filled background → route dialogue.
 The opening scene keeps the background at the origin, then renders portraits and the
 intentional missing-resource fallback at increasing z values. It therefore verifies visible
 occlusion, z-order and resource fallback, plus a typewriter wait with
 `\d{...}` delays, `\n`, `<b>`, `<i>`, and `<color>` rich text, choice input, transitions,
 effects, variables and the selected route.
+
+The first choice removes the opening layers and displays `bg.png` with `Tile`, so its
+repeated native-size pattern is unobstructed. The second choice keeps the comparison
+background in `Fill` mode.
 
 - Headless: `powershell -File scripts/run-headless-sample.ps1`
 - Avalonia: `powershell -File scripts/run-avalonia-sample.ps1`

@@ -9,7 +9,7 @@
     { "id": "40000000000000000000000000000011", "type": "layer.hide", "parameters": { "handleId": "20000000000000000000000000000005" } },
     { "id": "40000000000000000000000000000006", "type": "effect.stop", "parameters": { "instanceId": "platform-rain" } },
     { "id": "40000000000000000000000000000007", "type": "variable.set", "parameters": { "target": "save.route", "expression": "\"harbor\"" } },
-    { "id": "40000000000000000000000000000008", "type": "text", "parameters": { "speaker": "Guide", "content": "<i>Harbor selected.</i>\\d{220} The save now records this <color=#A7F3D0>route</color>." } },
+    { "id": "40000000000000000000000000000008", "type": "text", "parameters": { "speaker": "Guide", "content": "<i>Filled background selected.</i>\\d{220} This route keeps the <color=#A7F3D0>Fill</color> display mode." } },
     { "id": "40000000000000000000000000000009", "type": "audio.stop", "parameters": { "channel": "bgm" } },
     { "id": "40000000000000000000000000000010", "type": "dialogue.hide", "parameters": {} }
   ]

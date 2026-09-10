@@ -2,14 +2,14 @@
   "version": 1,
   "entries": [
     { "id": "30000000000000000000000000000001", "type": "layer.hide", "parameters": { "handleId": "20000000000000000000000000000001", "transitionId": "cross", "transitionDuration": 0.2, "transitionBlocking": true } },
-    { "id": "30000000000000000000000000000002", "type": "layer.show", "parameters": { "handleId": "30000000000000000000000000000010", "assetId": "bg.png", "transform": { "x": 0, "y": 0, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 }, "z": 0, "displayMode": "Fill" } },
+    { "id": "30000000000000000000000000000002", "type": "layer.show", "parameters": { "handleId": "30000000000000000000000000000010", "assetId": "bg.png", "transform": { "x": 0, "y": 0, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 }, "z": 0, "displayMode": "Tile" } },
     { "id": "30000000000000000000000000000003", "type": "layer.hide", "parameters": { "handleId": "20000000000000000000000000000002" } },
     { "id": "30000000000000000000000000000004", "type": "layer.hide", "parameters": { "handleId": "20000000000000000000000000000003" } },
     { "id": "30000000000000000000000000000005", "type": "layer.hide", "parameters": { "handleId": "20000000000000000000000000000004" } },
     { "id": "30000000000000000000000000000011", "type": "layer.hide", "parameters": { "handleId": "20000000000000000000000000000005" } },
     { "id": "30000000000000000000000000000006", "type": "effect.stop", "parameters": { "instanceId": "platform-rain" } },
     { "id": "30000000000000000000000000000007", "type": "variable.set", "parameters": { "target": "save.route", "expression": "\"downtown\"" } },
-    { "id": "30000000000000000000000000000008", "type": "text", "parameters": { "speaker": "Guide", "content": "<b>Downtown selected.</b>\\d{220} The save now records this <color=#FBBF24>route</color>." } },
+    { "id": "30000000000000000000000000000008", "type": "text", "parameters": { "speaker": "Guide", "content": "<b>Tiled background selected.</b>\\d{220} This route shows <color=#FBBF24>bg.png</color> at its native repeated size." } },
     { "id": "30000000000000000000000000000009", "type": "audio.stop", "parameters": { "channel": "bgm" } },
     { "id": "30000000000000000000000000000010", "type": "dialogue.hide", "parameters": {} }
   ]

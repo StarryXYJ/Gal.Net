@@ -10,12 +10,12 @@
       "name": "Choose a route",
       "branchType": "Choice",
       "options": [
-        { "text": "Take the downtown line" },
-        { "text": "Walk to the harbor" }
+        { "text": "Show tiled background" },
+        { "text": "Show filled background" }
       ]
     },
-    { "id": "downtown", "type": "Group", "name": "Downtown" },
-    { "id": "harbor", "type": "Group", "name": "Harbor" }
+    { "id": "downtown", "type": "Group", "name": "Tiled background" },
+    { "id": "harbor", "type": "Group", "name": "Filled background" }
   ],
   "edges": [
     { "fromNodeId": "intro", "fromOutlet": 0, "toNodeId": "route_choice" },
