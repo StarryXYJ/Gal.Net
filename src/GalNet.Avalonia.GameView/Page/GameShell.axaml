@@ -10,13 +10,45 @@
       <Setter Property="Foreground" Value="#F4F4F7" />
     </Style>
     <Style Selector="Button">
-      <Setter Property="Background" Value="#563F4160" />
-      <Setter Property="BorderBrush" Value="#AA9C9AB7" />
+      <Setter Property="Background" Value="#403F4160" />
+      <Setter Property="BorderBrush" Value="#8C9C9AB7" />
       <Setter Property="Foreground" Value="#F8F8FA" />
       <Setter Property="Padding" Value="14,7" />
     </Style>
     <Style Selector="Button:pointerover">
       <Setter Property="Background" Value="#805B5D88" />
+    </Style>
+    <Style Selector="Button.player-menu">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="FontSize" Value="18" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="Padding" Value="16,9" />
+    </Style>
+    <Style Selector="Button.player-menu:pointerover">
+      <Setter Property="Background" Value="#303F4160" />
+    </Style>
+    <Style Selector="Button.player-link">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="6,3" />
+    </Style>
+    <Style Selector="Button.player-link:pointerover">
+      <Setter Property="Foreground" Value="#C9C5FF" />
+    </Style>
+    <Style Selector="Button.save-slot">
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Stretch" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Button.save-slot:pointerover Border.slot-surface">
+      <Setter Property="Background" Value="#663F4160" />
+      <Setter Property="BorderBrush" Value="#C1BDEB" />
     </Style>
   </UserControl.Styles>
   <Grid Background="#101018">

@@ -4,24 +4,23 @@
              xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
              x:Class="GalNet.Avalonia.GameView.Page.TitlePage"
              x:DataType="vm:TitlePageViewModel">
-  <Grid Background="#101018">
-    <Border Width="560" Padding="56,42" Background="#B8181A2A" CornerRadius="12"
-            HorizontalAlignment="Center" VerticalAlignment="Center">
-      <StackPanel Spacing="12">
-        <TextBlock Text="{Binding GameTitle}" FontSize="40" FontWeight="Bold"
-                   HorizontalAlignment="Center" TextAlignment="Center" />
-        <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" HorizontalAlignment="Center"
-                   TextAlignment="Center" Opacity="0.78" Margin="0,0,0,18" />
-        <Button Content="Start new game" Command="{Binding StartNewGameCommand}"
-                IsEnabled="{Binding IsReady}" HorizontalAlignment="Stretch" />
-        <Button Content="Continue" Command="{Binding ContinueCommand}"
-                IsEnabled="{Binding CanContinue}" HorizontalAlignment="Stretch" />
-        <Button Content="Save" Command="{Binding OpenSaveSlotsCommand}" HorizontalAlignment="Stretch" />
-        <Button Content="Load" Command="{Binding OpenLoadSlotsCommand}" HorizontalAlignment="Stretch" />
-        <Button Content="Settings" Command="{Binding OpenSettingsCommand}" HorizontalAlignment="Stretch" />
-        <Button Content="Gallery" Command="{Binding OpenGalleryCommand}" HorizontalAlignment="Stretch" />
-        <Button Content="About" Command="{Binding OpenAboutCommand}" HorizontalAlignment="Stretch" />
-      </StackPanel>
-    </Border>
+  <Grid Background="#0B0C15">
+    <Border Margin="44" BorderBrush="#335F6075" BorderThickness="1" CornerRadius="10" IsHitTestVisible="False" />
+    <StackPanel Width="380" Spacing="5" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <TextBlock Text="{Binding GameTitle}" FontSize="48" FontWeight="Bold"
+                 HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+      <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" HorizontalAlignment="Center"
+                 TextAlignment="Center" Opacity="0.68" Margin="0,2,0,30" />
+      <Button Classes="player-menu" Content="Start new game" Command="{Binding StartNewGameCommand}"
+              IsEnabled="{Binding IsReady}" />
+      <Button Classes="player-menu" Content="Continue" Command="{Binding ContinueCommand}"
+              IsEnabled="{Binding CanContinue}" IsVisible="{Binding CanContinue}" />
+      <Button Classes="player-menu" Content="Load" Command="{Binding OpenLoadSlotsCommand}" />
+      <Button Classes="player-menu" Content="Settings" Command="{Binding OpenSettingsCommand}" />
+      <Button Classes="player-menu" Content="Gallery" Command="{Binding OpenGalleryCommand}" />
+      <Button Classes="player-menu" Content="About" Command="{Binding OpenAboutCommand}" />
+    </StackPanel>
+    <TextBlock Text="GALNET PLAYER" Opacity="0.35" FontSize="12" LetterSpacing="2"
+               HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,30" />
   </Grid>
 </UserControl>

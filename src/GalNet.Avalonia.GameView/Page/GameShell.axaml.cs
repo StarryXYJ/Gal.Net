@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.ViewModels;
@@ -16,6 +17,7 @@ public partial class GameShell : UserControl, IDisposable
     private readonly IGameSessionService _session;
     private readonly IGameNavigationService _navigation;
     private GamePageViewModel? _gameplay;
+    private bool _hadActiveRun;
 
     public GameShell(
         GameShellViewModel viewModel,
@@ -32,12 +34,14 @@ public partial class GameShell : UserControl, IDisposable
         InitializeComponent();
         DataContext = viewModel;
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        session.PropertyChanged += OnSessionPropertyChanged;
         ShowCurrentPage();
     }
 
     public void Dispose()
     {
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        _session.PropertyChanged -= OnSessionPropertyChanged;
         if (_gameplay is not null)
         {
             _gameplay.ScreenshotRequested -= OnScreenshotRequested;
@@ -48,6 +52,26 @@ public partial class GameShell : UserControl, IDisposable
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs eventArgs)
     {
         if (eventArgs.PropertyName == nameof(GameShellViewModel.CurrentViewModel)) ShowCurrentPage();
+    }
+
+    private void OnSessionPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs eventArgs)
+    {
+        if (eventArgs.PropertyName != nameof(IGameSessionService.IsPlaying)) return;
+        if (_session.IsPlaying)
+        {
+            _hadActiveRun = true;
+            return;
+        }
+
+        if (!_hadActiveRun) return;
+        _hadActiveRun = false;
+        Dispatcher.UIThread.Post(() =>
+        {
+            // Do not rewrite history if a new run has already started or the host navigated
+            // away while the old run was stopping.
+            if (!_session.IsPlaying && _viewModel.CurrentViewModel is GamePageViewModel)
+                _navigation.ResetTo<TitlePageViewModel>();
+        });
     }
 
     private void ShowCurrentPage()

@@ -4,12 +4,24 @@
              xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
              x:Class="GalNet.Avalonia.GameView.Page.SettingsPage"
              x:DataType="vm:SettingsPageViewModel">
-  <Grid Margin="64">
-    <StackPanel Width="460" Spacing="12" HorizontalAlignment="Center" VerticalAlignment="Center">
-      <TextBlock Text="Settings" FontSize="28" FontWeight="SemiBold" />
-      <TextBlock Text="Text speed" />
-      <Slider Minimum="0" Maximum="120" Value="{Binding TextSpeed, Mode=TwoWay}" />
-      <Button Content="Back" Command="{Binding BackCommand}" HorizontalAlignment="Right" />
-    </StackPanel>
+  <Grid Background="#0B0C15">
+    <Border Width="560" Padding="36" Background="#A8181A2A" BorderBrush="#665F6075" BorderThickness="1"
+            CornerRadius="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="26">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="3">
+            <TextBlock Text="Settings" FontSize="32" FontWeight="SemiBold" />
+            <TextBlock Text="Playback preferences" Opacity="0.64" />
+          </StackPanel>
+          <Button Grid.Column="1" Classes="player-link" Content="Back" Command="{Binding BackCommand}"
+                  VerticalAlignment="Center" />
+        </Grid>
+        <Grid Grid.Row="1" ColumnDefinitions="150,*" ColumnSpacing="22">
+          <TextBlock Text="Text speed" VerticalAlignment="Center" />
+          <Slider Grid.Column="1" Minimum="0" Maximum="120" Value="{Binding TextSpeed, Mode=TwoWay}" />
+        </Grid>
+        <TextBlock Grid.Row="2" Text="Changes apply to the active player session." Opacity="0.48" FontSize="12" />
+      </Grid>
+    </Border>
   </Grid>
 </UserControl>

@@ -5,26 +5,24 @@
              xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
              x:Class="GalNet.Avalonia.GameView.Page.GamePage"
              x:DataType="vm:GamePageViewModel">
-  <Grid Background="#101018">
-    <Grid x:Name="SceneSurface">
+  <Grid Background="#0B0C15">
+    <Grid x:Name="SceneSurface" ClipToBounds="True">
       <controls:SceneLayerHost ItemsSource="{Binding Layers}" />
       <Border Background="{Binding TransitionBrush}" Opacity="{Binding TransitionOpacity}"
               IsHitTestVisible="False" />
     </Grid>
 
     <controls:NvlPresenter ItemsSource="{Binding NvlLines}" IsVisible="{Binding IsNvlOverlayVisible}"
-                           Margin="64,48,64,138" ZIndex="12" />
+                           Margin="72,56,72,144" ZIndex="12" />
     <controls:DialoguePresenter x:Name="DialogueControl" IsVisible="{Binding IsDialogueOverlayVisible}"
                                 HorizontalAlignment="Stretch"
-                                VerticalAlignment="Bottom" Margin="64,0,64,94" ZIndex="13" />
-    <Border IsVisible="{Binding IsChoiceOverlayVisible}" Background="#D9101018" Padding="28"
-            CornerRadius="10" HorizontalAlignment="Center" VerticalAlignment="Center"
-            Width="460" ZIndex="50">
-      <controls:ChoiceList ItemsSource="{Binding Choices}" SelectionCommand="{Binding CompleteChoiceCommand}" />
-    </Border>
+                                VerticalAlignment="Bottom" Margin="72,0,72,104" ZIndex="13" />
+    <controls:ChoiceList ItemsSource="{Binding Choices}" SelectionCommand="{Binding CompleteChoiceCommand}"
+                         IsVisible="{Binding IsChoiceOverlayVisible}" Width="500"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="50" />
 
-    <Border IsVisible="{Binding IsGameUiVisible}" Background="#80202030" Padding="12,8"
-            HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,20" ZIndex="40">
+    <Border IsVisible="{Binding IsGameUiVisible}" Background="Transparent" Padding="4,2"
+            HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,22" ZIndex="40">
       <StackPanel Orientation="Horizontal" Spacing="22">
         <Button Content="Save" Command="{Binding OpenSaveSlotsCommand}" Classes="quick" />
         <Button Content="Load" Command="{Binding OpenLoadSlotsCommand}" Classes="quick" />
@@ -40,8 +38,10 @@
     <Style Selector="Button.quick">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
       <Setter Property="Padding" Value="4,1" />
-      <Setter Property="Foreground" Value="#F4F4F7" />
+      <Setter Property="Foreground" Value="#D9D8E7" />
     </Style>
+    <Style Selector="Button.quick:pointerover"><Setter Property="Foreground" Value="#C9C5FF" /></Style>
   </UserControl.Styles>
 </UserControl>

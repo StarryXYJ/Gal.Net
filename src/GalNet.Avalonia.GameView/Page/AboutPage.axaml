@@ -4,12 +4,21 @@
              xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
              x:Class="GalNet.Avalonia.GameView.Page.AboutPage"
              x:DataType="vm:AboutPageViewModel">
-  <Grid Margin="64">
-    <StackPanel Width="520" Spacing="12" HorizontalAlignment="Center" VerticalAlignment="Center">
-      <TextBlock Text="About" FontSize="28" FontWeight="SemiBold" />
-      <TextBlock Text="{Binding GameTitle}" FontSize="18" />
-      <TextBlock Text="This default page belongs to the shared Avalonia game view layer. A client can replace its content without changing the runtime." TextWrapping="Wrap" />
-      <Button Content="Back" Command="{Binding BackCommand}" HorizontalAlignment="Right" />
-    </StackPanel>
+  <Grid Background="#0B0C15">
+    <Border Width="560" Padding="36" Background="#A8181A2A" BorderBrush="#665F6075" BorderThickness="1"
+            CornerRadius="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <Grid RowDefinitions="Auto,*" RowSpacing="26">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="About" FontSize="32" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Classes="player-link" Content="Back" Command="{Binding BackCommand}"
+                  VerticalAlignment="Center" />
+        </Grid>
+        <StackPanel Grid.Row="1" Spacing="12">
+          <TextBlock Text="{Binding GameTitle}" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="This default player shell is fully replaceable by a game client without changing its runtime or game data."
+                     TextWrapping="Wrap" Opacity="0.72" />
+        </StackPanel>
+      </Grid>
+    </Border>
   </Grid>
 </UserControl>

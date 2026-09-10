@@ -39,10 +39,6 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private Task OpenSaveSlotsAsync(CancellationToken cancellationToken) =>
-        _navigation.NavigateAsync<SaveSlotsPageViewModel, SaveSlotsMode>(SaveSlotsMode.Save, cancellationToken);
-
-    [RelayCommand]
     private Task OpenLoadSlotsAsync(CancellationToken cancellationToken) =>
         _navigation.NavigateAsync<SaveSlotsPageViewModel, SaveSlotsMode>(SaveSlotsMode.Load, cancellationToken);
 

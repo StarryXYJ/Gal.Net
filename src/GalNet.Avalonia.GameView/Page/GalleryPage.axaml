@@ -4,11 +4,20 @@
              xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
              x:Class="GalNet.Avalonia.GameView.Page.GalleryPage"
              x:DataType="vm:GalleryPageViewModel">
-  <Grid Margin="64">
-    <StackPanel Width="520" Spacing="12" HorizontalAlignment="Center" VerticalAlignment="Center">
-      <TextBlock Text="Gallery" FontSize="28" FontWeight="SemiBold" />
-      <TextBlock Text="The host's progress service supplies unlocked entries. This default page is intentionally neutral so projects can replace its template or bind their own gallery model." TextWrapping="Wrap" />
-      <Button Content="Back" Command="{Binding BackCommand}" HorizontalAlignment="Right" />
-    </StackPanel>
+  <Grid Background="#0B0C15" Margin="44" RowDefinitions="Auto,*">
+    <Grid ColumnDefinitions="*,Auto">
+      <StackPanel Spacing="3">
+        <TextBlock Text="Gallery" FontSize="32" FontWeight="SemiBold" />
+        <TextBlock Text="Unlocked memories and artwork" Opacity="0.64" />
+      </StackPanel>
+      <Button Grid.Column="1" Classes="player-link" Content="Back" Command="{Binding BackCommand}"
+              VerticalAlignment="Center" />
+    </Grid>
+    <Border Grid.Row="1" Margin="0,24,0,0" Background="#48181A2A" BorderBrush="#4D5F6075"
+            BorderThickness="1" CornerRadius="10" Padding="28">
+      <TextBlock Text="The host's progress service supplies unlocked entries. A game can replace this default page with its own gallery view."
+                 TextWrapping="Wrap" Opacity="0.72" VerticalAlignment="Center" HorizontalAlignment="Center"
+                 TextAlignment="Center" MaxWidth="440" />
+    </Border>
   </Grid>
 </UserControl>
