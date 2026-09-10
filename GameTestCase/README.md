@@ -2,15 +2,16 @@
 
 This data-only game is the shared smoke-test fixture for both official sample hosts.
 
-The fixture intentionally contains no media files. The Avalonia sample renders every
-missing layer as a labelled square, so the scene/layer sequence remains visible while
-the repository stays small. Layer coordinates are design-pixel values (the Avalonia
-sample hosts the game at 1920×1080).
+`bg*` files are used as backgrounds and the `xy*` PNG files as portrait resources.
+The opening scene intentionally also references the non-existent
+`portraits/missing-fallback.png` as one portrait, so the Avalonia fallback rendering
+remains covered. Layer coordinates are design-pixel values (the Avalonia sample hosts
+the game at 1920×1080).
 
 Story path: start → station dialogue → select downtown or harbor → one route dialogue.
-The station scene keeps the background at the origin, then overlaps the 240×240 missing
-asset placeholders for `guide` (z=10), `light` (z=20), and `foreground` (z=30) in one
-cluster. It therefore verifies visible occlusion and z-order, plus a typewriter wait with
+The opening scene keeps the background at the origin, then renders portraits and the
+intentional missing-resource fallback at increasing z values. It therefore verifies visible
+occlusion, z-order and resource fallback, plus a typewriter wait with
 `\d{...}` delays, `\n`, `<b>`, `<i>`, and `<color>` rich text, choice input, transitions,
 effects, variables and the selected route.
 
