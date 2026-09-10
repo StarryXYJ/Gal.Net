@@ -9,6 +9,9 @@
     { "id": "10000000000000000000000000000009", "type": "dialogue.show", "parameters": {} },
     { "id": "10000000000000000000000000000010", "type": "variable.set", "parameters": { "target": "player.simulation_completed", "expression": "true" } },
     { "id": "10000000000000000000000000000011", "type": "variable.set", "parameters": { "target": "save.simulation_slot_marker", "expression": "7" } },
-    { "id": "10000000000000000000000000000012", "type": "text", "parameters": { "speaker": "Guide", "content": "<b>The station is ready.</b>\\d{450}\\n<i>Choose where to continue.</i> <color=#7DD3FC>Both routes are open.</color>" } }
+    { "id": "10000000000000000000000000000012", "type": "text", "parameters": { "speaker": "Guide", "content": "<b>The station is ready.</b>\\d{450}\\n<i>Let me show you the platform.</i>" } },
+    { "id": "10000000000000000000000000000013", "type": "animate", "parameters": { "handleId": "20000000000000000000000000000002", "property": "transform.x", "to": 540, "duration": 0.75, "easing": "EaseOut", "blocking": false, "skippable": true, "batchId": "intro-portrait-shift" } },
+    { "id": "10000000000000000000000000000014", "type": "text", "parameters": { "speaker": "Guide", "content": "The guide moves left while this line appears.\\d{300} A left click can finish the movement." } },
+    { "id": "10000000000000000000000000000015", "type": "text", "parameters": { "speaker": "Guide", "content": "<i>Choose where to continue.</i> <color=#7DD3FC>Both routes are open.</color>" } }
   ]
 }

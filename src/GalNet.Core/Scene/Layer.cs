@@ -22,6 +22,9 @@ public sealed class Layer : ISceneInstance
 
     public bool Visible { get; set; } = true;
 
+    [Animatable("opacity", Minimum = 0, Maximum = 1)]
+    public float Opacity { get; set; } = 1;
+
     // Read-only compatibility bridge for saves written before Transform existed.
     [JsonPropertyName("X")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

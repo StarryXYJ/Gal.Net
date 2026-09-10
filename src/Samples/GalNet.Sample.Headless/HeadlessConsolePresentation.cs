@@ -28,6 +28,12 @@ internal sealed class ConsolePresentation :
     public void HideLayer(string handleId) => Console.WriteLine($"[Layer] hide {handleId}");
     public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSec) =>
         Console.WriteLine($"[Layer] move {handleId}: ({transform.X}, {transform.Y}, {z}) in {durationSec}s");
+    public Task<AnimationOutcome> AnimateLayerAsync(LayerAnimationRequest request, CancellationToken ct)
+    {
+        Console.WriteLine($"[Animate] {request.HandleId}.{request.Property} -> {request.To} in {request.DurationSeconds}s");
+        return Task.FromResult(AnimationOutcome.Completed);
+    }
+    public bool SkipLayerAnimationBatch(string? batchId) => false;
     public void ShowDialogue() => Console.WriteLine("[Dialogue] show");
     public void HideDialogue() => Console.WriteLine("[Dialogue] hide");
     public void PlayAudio(string channel, string assetId, float volume, string mode, int times) =>

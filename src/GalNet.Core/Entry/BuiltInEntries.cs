@@ -63,6 +63,22 @@ public sealed class ReplaceLayerEntry : Entry
         ("handleId", EntryParameterType.Text), ("assetId", EntryParameterType.ImageAsset));
 }
 
+public sealed class AnimateLayerEntry : Entry
+{
+    public const string TypeId = "animate";
+    public override string Type => TypeId;
+    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(
+        ("handleId", EntryParameterType.Text), ("property", EntryParameterType.Select), ("from", EntryParameterType.Float),
+        ("to", EntryParameterType.Float), ("duration", EntryParameterType.Float), ("easing", EntryParameterType.Select),
+        ("blocking", EntryParameterType.Select), ("skippable", EntryParameterType.Select), ("batchId", EntryParameterType.Text));
+    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(
+        ("duration", "0.25"), ("easing", "Linear"), ("blocking", "false"), ("skippable", "false"));
+    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(
+        ("property", ["transform.x", "transform.y", "transform.rotationDegrees", "transform.scaleX", "transform.scaleY", "opacity"]),
+        ("easing", ["Linear", "Step", "EaseIn", "EaseOut", "EaseInOut"]),
+        ("blocking", ["false", "true"]), ("skippable", ["false", "true"]));
+}
+
 public sealed class PlayAudioEntry : Entry
 {
     public const string TypeId = "audio.play";

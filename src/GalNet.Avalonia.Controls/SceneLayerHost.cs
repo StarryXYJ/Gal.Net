@@ -90,6 +90,7 @@ public class SceneLayerHost : Canvas
     {
         presenter.Update(item, Bounds.Size);
         presenter.IsVisible = item.IsVisible;
+        presenter.Opacity = item.Opacity;
         SetLeft(presenter, 0);
         SetTop(presenter, 0);
         presenter.SetValue(ZIndexProperty, (int)item.Z);
@@ -119,6 +120,7 @@ public sealed class SceneLayerItem : INotifyPropertyChanged
     private double _scaleY = 1;
     private double _z;
     private LayerDisplayMode _displayMode;
+    private double _opacity = 1;
     private bool _isVisible = true;
 
     public string HandleId { get => _handleId; set => SetField(ref _handleId, value); }
@@ -130,6 +132,7 @@ public sealed class SceneLayerItem : INotifyPropertyChanged
     public double ScaleY { get => _scaleY; set => SetField(ref _scaleY, value); }
     public double Z { get => _z; set => SetField(ref _z, value); }
     public LayerDisplayMode DisplayMode { get => _displayMode; set => SetField(ref _displayMode, value); }
+    public double Opacity { get => _opacity; set => SetField(ref _opacity, value); }
     public bool IsVisible { get => _isVisible; set => SetField(ref _isVisible, value); }
 
     public event PropertyChangedEventHandler? PropertyChanged;

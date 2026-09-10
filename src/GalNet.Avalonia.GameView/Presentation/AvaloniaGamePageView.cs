@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Threading;
+using System.Diagnostics;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Core.View;
 using GalNet.Core.Scene;
@@ -22,6 +23,8 @@ public sealed class AvaloniaGamePageView : ILayerView, IControlView, ITypewriter
     private readonly GamePage _page;
     private readonly IGamePageLayerFactory _layers;
     private bool _isTyping;
+    private readonly object _animationGate = new();
+    private readonly Dictionary<string, ActiveAnimation> _activeAnimations = new(StringComparer.Ordinal);
 
     public AvaloniaGamePageView(GamePageViewModel state, GamePage page, IGamePageLayerFactory layers)
     {
@@ -42,12 +45,60 @@ public sealed class AvaloniaGamePageView : ILayerView, IControlView, ITypewriter
             ScaleX = request.Transform.ScaleX,
             ScaleY = request.Transform.ScaleY,
             Z = request.Z,
-            DisplayMode = request.DisplayMode
+            DisplayMode = request.DisplayMode,
+            Opacity = request.Opacity
         }));
 
     public void ReplaceLayer(string handleId, string assetId) => OnUi(() => _state.ReplaceLayer(handleId, _layers.ResolveLayerImage(assetId)));
     public void HideLayer(string handleId) => OnUi(() => _state.HideLayer(handleId));
     public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSec) => OnUi(() => _state.MoveLayer(handleId, transform, z));
+    public async Task<AnimationOutcome> AnimateLayerAsync(LayerAnimationRequest request, CancellationToken ct)
+    {
+        var key = $"{request.HandleId}:{request.Property}";
+        var active = new ActiveAnimation(request);
+        lock (_animationGate)
+        {
+            if (_activeAnimations.Remove(key, out var replaced)) replaced.Complete(AnimationOutcome.Replaced);
+            _activeAnimations.Add(key, active);
+        }
+
+        try
+        {
+            var from = request.From ?? (float)await OnUiAsync(() =>
+                Task.FromResult(_state.TryGetLayerAnimationValue(request.HandleId, request.Property, out var value) ? value : double.NaN));
+            if (double.IsNaN(from)) return AnimationOutcome.Replaced;
+            if (request.From.HasValue) await SetAnimationValueAsync(request, from);
+
+            var stopwatch = Stopwatch.StartNew();
+            while (true)
+            {
+                if (active.Outcome.Task.IsCompleted) return await active.Outcome.Task;
+                var progress = request.DurationSeconds <= 0 ? 1 : Math.Min(1, stopwatch.Elapsed.TotalSeconds / request.DurationSeconds);
+                await SetAnimationValueAsync(request, Lerp(from, request.To, ApplyEasing(progress, request.Easing)));
+                if (progress >= 1) return AnimationOutcome.Completed;
+                await Task.WhenAny(Task.Delay(TimeSpan.FromMilliseconds(16), ct), active.Outcome.Task);
+            }
+        }
+        finally
+        {
+            lock (_animationGate)
+                if (_activeAnimations.TryGetValue(key, out var current) && ReferenceEquals(current, active)) _activeAnimations.Remove(key);
+        }
+    }
+
+    public bool SkipLayerAnimationBatch(string? batchId)
+    {
+        ActiveAnimation[] matches;
+        lock (_animationGate)
+            matches = _activeAnimations.Values.Where(active => active.Request.Skippable &&
+                (batchId is null || string.Equals(active.Request.BatchId, batchId, StringComparison.Ordinal))).ToArray();
+        foreach (var animation in matches)
+        {
+            OnUi(() => _state.SetLayerAnimationValue(animation.Request.HandleId, animation.Request.Property, animation.Request.To));
+            animation.Complete(AnimationOutcome.Skipped);
+        }
+        return matches.Length > 0;
+    }
     public void ShowDialogue() => OnUi(() => _state.IsDialogueVisible = true);
     public void HideDialogue() => OnUi(() => _state.IsDialogueVisible = false);
 
@@ -84,10 +135,36 @@ public sealed class AvaloniaGamePageView : ILayerView, IControlView, ITypewriter
             return;
         }
 
+        if (SkipLayerAnimationBatch(null)) return;
+
         _state.CompleteAdvance();
     }
 
     public void Dispose() => _state.AdvanceRequested -= Advance;
+
+    private Task SetAnimationValueAsync(LayerAnimationRequest request, double value) =>
+        OnUiAsync(() =>
+        {
+            _state.SetLayerAnimationValue(request.HandleId, request.Property, value);
+            return Task.CompletedTask;
+        });
+
+    private static double Lerp(double from, double to, double amount) => from + ((to - from) * amount);
+    private static double ApplyEasing(double value, AnimationEasing easing) => easing switch
+    {
+        AnimationEasing.Step => value >= 1 ? 1 : 0,
+        AnimationEasing.EaseIn => value * value,
+        AnimationEasing.EaseOut => 1 - ((1 - value) * (1 - value)),
+        AnimationEasing.EaseInOut => value < .5 ? 2 * value * value : 1 - (Math.Pow(-2 * value + 2, 2) / 2),
+        _ => value
+    };
+
+    private sealed class ActiveAnimation(LayerAnimationRequest request)
+    {
+        public LayerAnimationRequest Request { get; } = request;
+        public TaskCompletionSource<AnimationOutcome> Outcome { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public void Complete(AnimationOutcome outcome) => Outcome.TrySetResult(outcome);
+    }
 
     private static void OnUi(Action action)
     {

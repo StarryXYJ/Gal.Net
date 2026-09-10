@@ -148,6 +148,8 @@ public class DefaultGameView : Grid, IGameView, IDisposable
     void ILayerView.HideLayer(string handleId) => HideLayer(handleId);
     void ILayerView.MoveLayer(string handleId, LayerTransform transform, float z, float durationSec)
         => MoveLayer(handleId, transform, z, durationSec);
+    Task<AnimationOutcome> ILayerView.AnimateLayerAsync(LayerAnimationRequest request, CancellationToken ct) => Task.FromResult(AnimationOutcome.Completed);
+    bool ILayerView.SkipLayerAnimationBatch(string? batchId) => false;
 
     public void ShowLayer(LayerRenderRequest request) => _registry.ShowLayer(request);
     public void ReplaceLayer(string handleId, string assetId) => _registry.ReplaceLayer(handleId, assetId);

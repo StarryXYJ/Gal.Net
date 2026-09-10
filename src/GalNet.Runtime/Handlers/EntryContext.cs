@@ -40,4 +40,22 @@ public sealed class EntryContext
             throw new InvalidDataException($"Invalid layer transform: {raw}", exception);
         }
     }
+
+    public LayerAnimationRequest GetLayerAnimation()
+    {
+        var property = GetString("property");
+        if (string.IsNullOrWhiteSpace(property)) throw new InvalidDataException("Animation property is required.");
+        if (!float.TryParse(GetString("to"), out var to)) throw new InvalidDataException("Animation target value is required.");
+        if (GetFloat("duration", .25f) < 0) throw new InvalidDataException("Animation duration must not be negative.");
+        if (!Enum.TryParse<AnimationEasing>(GetString("easing", "Linear"), true, out var easing))
+            throw new InvalidDataException($"Unknown animation easing '{GetString("easing")}'.");
+        return new LayerAnimationRequest
+        {
+            HandleId = GetString("handleId"), Property = property,
+            From = Params.TryGetValue("from", out var from) && !string.IsNullOrWhiteSpace(from) && float.TryParse(from, out var fromValue) ? fromValue : null,
+            To = to, DurationSeconds = GetFloat("duration", .25f), Easing = easing,
+            Blocking = GetBool("blocking"), Skippable = GetBool("skippable"), BatchId = GetString("batchId")
+        };
+    }
+
 }

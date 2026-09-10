@@ -25,7 +25,7 @@ public sealed class ShowLayerHandler : EntryHandler
             : LayerDisplayMode.Native;
         layer.Visible = true;
 
-        view.ShowLayer(new LayerRenderRequest(layer.Id, layer.AssetId, layer.Transform.Clone(), layer.Z, layer.DisplayMode));
+        view.ShowLayer(new LayerRenderRequest(layer.Id, layer.AssetId, layer.Transform.Clone(), layer.Z, layer.DisplayMode, layer.Opacity));
         await PresentationRequests.PlayTransitionAsync(context, view, previousAsset, asset, ct);
     }
 }
@@ -85,6 +85,47 @@ public sealed class ReplaceLayerHandler : EntryHandler
         layer.AssetId = assetId;
         view.ReplaceLayer(handleId, assetId);
         return Task.CompletedTask;
+    }
+}
+
+public sealed class AnimateLayerHandler : EntryHandler
+{
+    public override string EntryType => AnimateLayerEntry.TypeId;
+
+    public override async Task ExecuteAsync(EntryContext context, IGameView view, TimeProvider timeProvider, CancellationToken ct)
+    {
+        var request = context.GetLayerAnimation();
+        if (!context.Runtime.SceneInstances.TryGet<Layer>(request.HandleId, out var layer))
+        {
+            GameLog.Logger.Warning("Animate ignored because layer handle '{HandleId}' is not active.", request.HandleId);
+            return;
+        }
+        if (!LayerAnimationProperties.IsValid(request.Property, request.To) ||
+            (request.From is { } from && !LayerAnimationProperties.IsValid(request.Property, from)))
+        {
+            GameLog.Logger.Warning("Animate ignored because '{Property}' does not accept the supplied value.", request.Property);
+            return;
+        }
+
+        var animation = view.AnimateLayerAsync(request, ct);
+        async Task CommitAsync()
+        {
+            var outcome = await animation;
+            if (outcome is AnimationOutcome.Completed or AnimationOutcome.Skipped)
+                LayerAnimationProperties.TryApply(layer, request.Property, request.To);
+        }
+
+        if (request.Blocking)
+        {
+            await CommitAsync();
+            return;
+        }
+
+        _ = CommitAsync().ContinueWith(
+            task => GameLog.Logger.Error(task.Exception, "Non-blocking animation failed"),
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted,
+            TaskScheduler.Default);
     }
 }
 

@@ -209,7 +209,7 @@ public sealed class GameEngine
     {
         _runtime.RestoreFrom(data);
         foreach (var layer in _runtime.SceneState.Layers.Where(layer => layer.Visible))
-            _view.ShowLayer(new LayerRenderRequest(layer.Id, layer.AssetId, layer.Transform.Clone(), layer.Z, layer.DisplayMode));
+            _view.ShowLayer(new LayerRenderRequest(layer.Id, layer.AssetId, layer.Transform.Clone(), layer.Z, layer.DisplayMode, layer.Opacity));
         IsRunning = true;
     }
 }

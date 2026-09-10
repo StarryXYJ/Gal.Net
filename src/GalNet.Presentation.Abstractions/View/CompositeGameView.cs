@@ -41,6 +41,8 @@ public sealed class CompositeGameView : IGameView
     public void ReplaceLayer(string handleId, string assetId) => _layers.ReplaceLayer(handleId, assetId);
     public void HideLayer(string handleId) => _layers.HideLayer(handleId);
     public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSec) => _layers.MoveLayer(handleId, transform, z, durationSec);
+    public Task<AnimationOutcome> AnimateLayerAsync(LayerAnimationRequest request, CancellationToken ct) => _layers.AnimateLayerAsync(request, ct);
+    public bool SkipLayerAnimationBatch(string? batchId) => _layers.SkipLayerAnimationBatch(batchId);
     public void ShowDialogue() => _controls.ShowDialogue();
     public void HideDialogue() => _controls.HideDialogue();
     public void PlayAudio(string channel, string assetId, float volume, string mode, int times) => _audio.PlayAudio(channel, assetId, volume, mode, times);

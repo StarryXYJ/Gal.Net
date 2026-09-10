@@ -159,6 +159,39 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         layer.Z = z;
     }
 
+    public bool TryGetLayerAnimationValue(string id, string property, out double value)
+    {
+        var layer = Layers.FirstOrDefault(candidate => candidate.HandleId == id);
+        if (layer is null) { value = 0; return false; }
+        value = property switch
+        {
+            "transform.x" => layer.X,
+            "transform.y" => layer.Y,
+            "transform.rotationDegrees" => layer.RotationDegrees,
+            "transform.scaleX" => layer.ScaleX,
+            "transform.scaleY" => layer.ScaleY,
+            "opacity" => layer.Opacity,
+            _ => 0
+        };
+        return property is "transform.x" or "transform.y" or "transform.rotationDegrees" or "transform.scaleX" or "transform.scaleY" or "opacity";
+    }
+
+    public bool SetLayerAnimationValue(string id, string property, double value)
+    {
+        var layer = Layers.FirstOrDefault(candidate => candidate.HandleId == id);
+        if (layer is null) return false;
+        switch (property)
+        {
+            case "transform.x": layer.X = value; return true;
+            case "transform.y": layer.Y = value; return true;
+            case "transform.rotationDegrees": layer.RotationDegrees = value; return true;
+            case "transform.scaleX": layer.ScaleX = value; return true;
+            case "transform.scaleY": layer.ScaleY = value; return true;
+            case "opacity": layer.Opacity = value; return true;
+            default: return false;
+        }
+    }
+
     public async Task PlayTransitionAsync(IBrush brush, TimeSpan duration, CancellationToken cancellationToken, double peakOpacity = 1d)
     {
         TransitionBrush = brush;

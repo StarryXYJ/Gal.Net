@@ -8,4 +8,5 @@ public sealed record LayerRenderRequest(
     string AssetId,
     LayerTransform Transform,
     float Z,
-    LayerDisplayMode DisplayMode);
+    LayerDisplayMode DisplayMode,
+    float Opacity);

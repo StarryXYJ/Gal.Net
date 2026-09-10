@@ -139,7 +139,8 @@ public sealed class GameRuntime : IGameRuntime
             Transform = layer.Transform?.Clone() ?? new LayerTransform(),
             Z = layer.Z,
             DisplayMode = layer.DisplayMode,
-            Visible = layer.Visible
+            Visible = layer.Visible,
+            Opacity = layer.Opacity
         }));
         SceneState.ActiveControlIds.Clear();
         SceneState.ActiveControlIds.AddRange(snapshot.SceneState.ActiveControlIds);

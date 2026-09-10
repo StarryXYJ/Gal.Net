@@ -263,6 +263,33 @@ public class GameEngineIntegrationTests
         });
     }
 
+    [Test]
+    public async Task Animate_commits_the_final_layer_value_after_completion()
+    {
+        var graph = new GalNet.Core.Graph.Graph
+        {
+            RootNodeId = "group_main",
+            Nodes =
+            {
+                new Group
+                {
+                    Id = "group_main",
+                    Entries =
+                    {
+                        Create(ShowLayerEntry.TypeId, 1, ("handleId", "hero"), ("assetId", "hero"), ("transform", "{\"x\":680}")),
+                        Create(AnimateLayerEntry.TypeId, 2, ("handleId", "hero"), ("property", "transform.x"), ("to", "540"), ("duration", "0"), ("blocking", "true")),
+                        Create(TextEntry.TypeId, 3, ("content", "pause"))
+                    }
+                }
+            }
+        };
+
+        var engine = new GameEngine(graph, new NullGameView());
+        await engine.StepAsync();
+
+        Assert.That(engine.Runtime.SceneInstances.GetAll<GalNet.Core.Scene.Layer>().Single().Transform.X, Is.EqualTo(540));
+    }
+
     private static GalNet.Core.Entry.Entry Create(string type, int id, params (string Key, string Value)[] values) =>
         EntryRegistry.Create(type, id, values: values.ToDictionary(x => x.Key, x => x.Value));
 

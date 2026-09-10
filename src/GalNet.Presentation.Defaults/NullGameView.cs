@@ -10,6 +10,8 @@ public class NullGameView : IGameView
     public virtual void ReplaceLayer(string handleId, string assetId) { }
     public virtual void HideLayer(string handleId) { }
     public virtual void MoveLayer(string handleId, LayerTransform transform, float z, float durationSec) { }
+    public virtual Task<AnimationOutcome> AnimateLayerAsync(LayerAnimationRequest request, CancellationToken ct) => Task.FromResult(AnimationOutcome.Completed);
+    public virtual bool SkipLayerAnimationBatch(string? batchId) => false;
     public virtual void ShowDialogue() { }
     public virtual void HideDialogue() { }
     public virtual void PlayAudio(string channel, string assetId, float volume, string mode, int times) { }

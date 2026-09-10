@@ -41,6 +41,7 @@ public static class EntryRegistry
             Define(HideLayerEntry.TypeId, "Layer", () => new HideLayerEntry(), HideLayerEntry.ParameterTypes, HideLayerEntry.DefaultValues, HideLayerEntry.ParameterOptions),
             Define(MoveLayerEntry.TypeId, "Layer", () => new MoveLayerEntry(), MoveLayerEntry.ParameterTypes, MoveLayerEntry.DefaultValues),
             Define(ReplaceLayerEntry.TypeId, "Layer", () => new ReplaceLayerEntry(), ReplaceLayerEntry.ParameterTypes),
+            Define(AnimateLayerEntry.TypeId, "Animation", () => new AnimateLayerEntry(), AnimateLayerEntry.ParameterTypes, AnimateLayerEntry.DefaultValues, AnimateLayerEntry.ParameterOptions),
             Define(PlayAudioEntry.TypeId, "Audio", () => new PlayAudioEntry(), PlayAudioEntry.ParameterTypes, PlayAudioEntry.DefaultValues, PlayAudioEntry.ParameterOptions),
             Define(StopAudioEntry.TypeId, "Audio", () => new StopAudioEntry(), StopAudioEntry.ParameterTypes, StopAudioEntry.DefaultValues, StopAudioEntry.ParameterOptions),
             Define(PauseAudioEntry.TypeId, "Audio", () => new PauseAudioEntry(), PauseAudioEntry.ParameterTypes, PauseAudioEntry.DefaultValues, PauseAudioEntry.ParameterOptions),
