@@ -268,23 +268,19 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
 
 internal sealed class EditorPreviewLayerFactory(string assetRoot) : IGamePageLayerFactory
 {
-    public Control CreateLayer(string assetId)
+    public IImage? ResolveLayerImage(string assetId)
     {
         var path = Path.IsPathRooted(assetId) ? assetId : Path.Combine(assetRoot, assetId);
         try
         {
             if (File.Exists(path))
-                return new Image { Source = new Bitmap(path), Stretch = Stretch.UniformToFill };
+                return new Bitmap(path);
         }
         catch
         {
             // Preview intentionally falls back to a visible placeholder.
         }
 
-        return new Border
-        {
-            Background = new SolidColorBrush(Color.Parse("#551B1C27")),
-            Child = new TextBlock { Text = assetId, Margin = new Thickness(12), TextWrapping = TextWrapping.Wrap }
-        };
+        return null;
     }
 }

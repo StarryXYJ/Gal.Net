@@ -30,6 +30,7 @@ public interface IGameRuntime
 
     // ── 场景状态 ──
     SceneState SceneState { get; }
+    ISceneInstanceManager SceneInstances { get; }
 
     // ── 控制流方法 ──
 

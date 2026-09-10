@@ -6,6 +6,7 @@ using System.Text.Json;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Core.Entry;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -74,23 +75,37 @@ public sealed class EditorSaveCoordinator : IEditorSaveCoordinator
         File.WriteAllText(Path.Combine(previewPath, "graph.json"), JsonSerializer.Serialize(previewDocument, JsonOptions));
         foreach (var (groupId, entries) in groupEntries)
         {
-            var serialized = entries.Select(SerializeEntry).ToArray();
-            File.WriteAllLines(Path.Combine(previewPath, $"{groupId}.galgroup"), serialized);
+            var serialized = new GroupDocument { Entries = entries.Select(SerializeEntry).ToList() };
+            File.WriteAllText(Path.Combine(previewPath, $"{groupId}.galgroup"), JsonSerializer.Serialize(serialized, JsonOptions));
         }
 
         return previewPath;
     }
 
-    private static string SerializeEntry(EditorEntryData entry)
+    private static GroupEntryDocument SerializeEntry(EditorEntryData entry)
     {
         var definition = EntryRegistry.Get(entry.Type);
         var parameters = entry.Parameters
             .Where(pair => definition.Parameters.ContainsKey(pair.Key) && pair.Value.Length > 0)
             .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
 
-        if (!string.IsNullOrWhiteSpace(entry.Condition))
-            parameters["condition"] = entry.Condition;
+        entry.StableId = string.IsNullOrWhiteSpace(entry.StableId) ? Guid.NewGuid().ToString("N") : entry.StableId;
+        return new GroupEntryDocument
+        {
+            Id = entry.StableId,
+            Type = entry.Type,
+            Condition = entry.Condition,
+            Parameters = parameters.ToDictionary(pair => pair.Key, pair => ToJsonValue(pair.Key, pair.Value), StringComparer.Ordinal)
+        };
+    }
 
-        return GalNet.Core.Serialization.GalgroupParser.Serialize(entry.Type, parameters);
+    private static JsonElement ToJsonValue(string name, string value)
+    {
+        if (name == "transform")
+        {
+            using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(value) ? "{}" : value);
+            return document.RootElement.Clone();
+        }
+        return JsonSerializer.SerializeToElement(value);
     }
 }

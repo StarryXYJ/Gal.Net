@@ -10,8 +10,10 @@ public class LayerTests
         var layer = new Layer { Id = "bg", AssetId = "bg_classroom" };
         Assert.That(layer.Visible, Is.True);
         Assert.That(layer.Z, Is.EqualTo(0));
-        Assert.That(layer.X, Is.EqualTo(0));
-        Assert.That(layer.Y, Is.EqualTo(0));
+        Assert.That(layer.Transform.X, Is.EqualTo(0));
+        Assert.That(layer.Transform.Y, Is.EqualTo(0));
+        Assert.That(layer.Transform.ScaleX, Is.EqualTo(1));
+        Assert.That(layer.DisplayMode, Is.EqualTo(LayerDisplayMode.Native));
     }
 }
 

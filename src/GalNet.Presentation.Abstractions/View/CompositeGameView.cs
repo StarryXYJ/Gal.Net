@@ -1,3 +1,5 @@
+using GalNet.Core.Scene;
+
 namespace GalNet.Core.View;
 
 /// <summary>
@@ -35,9 +37,10 @@ public sealed class CompositeGameView : IGameView
         _interaction = interaction;
     }
 
-    public void ShowLayer(string id, string assetId, float x, float y, float z = 0) => _layers.ShowLayer(id, assetId, x, y, z);
-    public void HideLayer(string id) => _layers.HideLayer(id);
-    public void MoveLayer(string id, float x, float y, float z, float durationSec) => _layers.MoveLayer(id, x, y, z, durationSec);
+    public void ShowLayer(LayerRenderRequest request) => _layers.ShowLayer(request);
+    public void ReplaceLayer(string handleId, string assetId) => _layers.ReplaceLayer(handleId, assetId);
+    public void HideLayer(string handleId) => _layers.HideLayer(handleId);
+    public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSec) => _layers.MoveLayer(handleId, transform, z, durationSec);
     public void ShowDialogue() => _controls.ShowDialogue();
     public void HideDialogue() => _controls.HideDialogue();
     public void PlayAudio(string channel, string assetId, float volume, string mode, int times) => _audio.PlayAudio(channel, assetId, volume, mode, times);

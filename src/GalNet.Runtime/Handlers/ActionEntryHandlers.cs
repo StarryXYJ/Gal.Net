@@ -2,6 +2,7 @@ using GalNet.Core.Entry;
 using GalNet.Core.Runtime;
 using GalNet.Core.Scene;
 using GalNet.Core.View;
+using GalNet.Runtime.Logging;
 
 namespace GalNet.Runtime.Handlers;
 
@@ -10,23 +11,21 @@ public sealed class ShowLayerHandler : EntryHandler
     public override string EntryType => ShowLayerEntry.TypeId;
     public override async Task ExecuteAsync(EntryContext context, IGameView view, TimeProvider timeProvider, CancellationToken ct)
     {
-        var id = context.GetString("id");
-        var asset = context.GetString("asset");
-        var layer = context.Runtime.SceneState.Layers.Find(candidate => candidate.Id == id);
+        var id = context.GetString("handleId");
+        var asset = context.GetString("assetId");
+        var layer = context.Runtime.SceneInstances.TryGet<Layer>(id, out var existing) ? existing : null;
         var previousAsset = layer?.AssetId;
-        if (layer is null)
-        {
-            layer = new Layer { Id = id };
-            context.Runtime.SceneState.Layers.Add(layer);
-        }
+        layer ??= context.Runtime.SceneInstances.GetOrAdd(id, handleId => new Layer { Id = handleId });
 
         layer.AssetId = asset;
-        layer.X = context.GetFloat("x");
-        layer.Y = context.GetFloat("y");
+        layer.Transform = context.GetLayerTransform();
         layer.Z = context.GetFloat("z");
+        layer.DisplayMode = Enum.TryParse<LayerDisplayMode>(context.GetString("displayMode", "Native"), true, out var displayMode)
+            ? displayMode
+            : LayerDisplayMode.Native;
         layer.Visible = true;
 
-        view.ShowLayer(id, asset, layer.X, layer.Y, layer.Z);
+        view.ShowLayer(new LayerRenderRequest(layer.Id, layer.AssetId, layer.Transform.Clone(), layer.Z, layer.DisplayMode));
         await PresentationRequests.PlayTransitionAsync(context, view, previousAsset, asset, ct);
     }
 }
@@ -36,11 +35,14 @@ public sealed class HideLayerHandler : EntryHandler
     public override string EntryType => HideLayerEntry.TypeId;
     public override async Task ExecuteAsync(EntryContext context, IGameView view, TimeProvider timeProvider, CancellationToken ct)
     {
-        var id = context.GetString("id");
-        var previousAsset = context.Runtime.SceneState.Layers.Find(layer => layer.Id == id)?.AssetId;
-        context.Runtime.SceneState.Layers.RemoveAll(layer => layer.Id == id);
+        var id = context.GetString("handleId");
+        if (!context.Runtime.SceneInstances.Remove<Layer>(id, out var removed))
+        {
+            GameLog.Logger.Warning("Layer hide ignored because handle '{HandleId}' is not active.", id);
+            return;
+        }
 
-        await PresentationRequests.PlayTransitionAsync(context, view, previousAsset, null, ct);
+        await PresentationRequests.PlayTransitionAsync(context, view, removed!.AssetId, null, ct);
         view.HideLayer(id);
     }
 }
@@ -50,16 +52,38 @@ public sealed class MoveLayerHandler : EntryHandler
     public override string EntryType => MoveLayerEntry.TypeId;
     public override Task ExecuteAsync(EntryContext context, IGameView view, TimeProvider timeProvider, CancellationToken ct)
     {
-        var id = context.GetString("id");
-        var layer = context.Runtime.SceneState.Layers.Find(candidate => candidate.Id == id);
-        if (layer is not null)
+        var id = context.GetString("handleId");
+        var transform = context.GetLayerTransform();
+        if (!context.Runtime.SceneInstances.TryGet<Layer>(id, out var layer))
         {
-            layer.X = context.GetFloat("x");
-            layer.Y = context.GetFloat("y");
-            layer.Z = context.GetFloat("z");
+            GameLog.Logger.Warning("Layer move ignored because handle '{HandleId}' is not active.", id);
+            return Task.CompletedTask;
         }
 
-        view.MoveLayer(id, context.GetFloat("x"), context.GetFloat("y"), context.GetFloat("z"), context.GetFloat("duration", 0.5f));
+        layer.Transform = transform;
+        layer.Z = context.GetFloat("z");
+
+        view.MoveLayer(id, transform, context.GetFloat("z"), context.GetFloat("duration", 0.5f));
+        return Task.CompletedTask;
+    }
+}
+
+public sealed class ReplaceLayerHandler : EntryHandler
+{
+    public override string EntryType => ReplaceLayerEntry.TypeId;
+
+    public override Task ExecuteAsync(EntryContext context, IGameView view, TimeProvider timeProvider, CancellationToken ct)
+    {
+        var handleId = context.GetString("handleId");
+        var assetId = context.GetString("assetId");
+        if (!context.Runtime.SceneInstances.TryGet<Layer>(handleId, out var layer))
+        {
+            GameLog.Logger.Warning("Layer replace ignored because handle '{HandleId}' is not active.", handleId);
+            return Task.CompletedTask;
+        }
+
+        layer.AssetId = assetId;
+        view.ReplaceLayer(handleId, assetId);
         return Task.CompletedTask;
     }
 }

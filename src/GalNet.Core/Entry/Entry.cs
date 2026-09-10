@@ -21,7 +21,8 @@ public enum EntryParameterType
     VideoAsset,
     Select,
     VariableName,
-    Expression
+    Expression,
+    Json
 }
 
 public sealed record EntryDefinition(

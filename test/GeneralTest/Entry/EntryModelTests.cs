@@ -7,7 +7,7 @@ public class EntryModelTests
     [Test]
     public void Registry_Should_Create_All_BuiltIn_Entries()
     {
-        Assert.That(EntryRegistry.Definitions, Has.Count.EqualTo(18));
+        Assert.That(EntryRegistry.Definitions, Has.Count.EqualTo(19));
         foreach (var definition in EntryRegistry.Definitions)
             Assert.That(EntryRegistry.Create(definition.Type).Type, Is.EqualTo(definition.Type));
     }
@@ -17,14 +17,14 @@ public class EntryModelTests
     {
         var entry = EntryRegistry.Create(ShowLayerEntry.TypeId, 3, "flag", new Dictionary<string, string>
         {
-            ["id"] = "hero", ["unknown"] = "discard"
+            ["handleId"] = "hero", ["unknown"] = "discard"
         });
 
         Assert.That(entry, Is.TypeOf<ShowLayerEntry>());
         Assert.That(entry.Id, Is.EqualTo(3));
         Assert.That(entry.Condition, Is.EqualTo("flag"));
         Assert.That(entry.Values["transitionDuration"], Is.EqualTo("0.5"));
-        Assert.That(entry.Values["id"], Is.EqualTo("hero"));
+        Assert.That(entry.Values["handleId"], Is.EqualTo("hero"));
         Assert.That(entry.Values, Does.Not.ContainKey("unknown"));
     }
 

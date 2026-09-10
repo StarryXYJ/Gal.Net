@@ -29,6 +29,7 @@ public sealed class GameRuntime : IGameRuntime
 
     // ── 场景状态 ──
     public SceneState SceneState { get; } = new();
+    public ISceneInstanceManager SceneInstances { get; }
 
     // ── 内部状态 ──
     private readonly VariableStore _variables;
@@ -43,6 +44,7 @@ public sealed class GameRuntime : IGameRuntime
         TextResolver = textResolver ?? PassthroughTextResolver.Instance;
         CurrentNodeId = rootNodeId;
         Settings = settings ?? new SettingsContainer();
+        SceneInstances = new SceneInstanceManager(SceneState);
         _variableService = variableService;
 
         _variables = new VariableStore(
@@ -134,9 +136,9 @@ public sealed class GameRuntime : IGameRuntime
         {
             Id = layer.Id,
             AssetId = layer.AssetId,
-            X = layer.X,
-            Y = layer.Y,
+            Transform = layer.Transform?.Clone() ?? new LayerTransform(),
             Z = layer.Z,
+            DisplayMode = layer.DisplayMode,
             Visible = layer.Visible
         }));
         SceneState.ActiveControlIds.Clear();
@@ -144,5 +146,6 @@ public sealed class GameRuntime : IGameRuntime
         SceneState.ActiveEffectIds.Clear();
         SceneState.ActiveEffectIds.AddRange(snapshot.SceneState.ActiveEffectIds);
         SceneState.ActiveTransition = snapshot.SceneState.ActiveTransition;
+        SceneInstances.Rebuild(SceneState.Layers);
     }
 }

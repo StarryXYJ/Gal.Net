@@ -8,13 +8,13 @@ using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Core.Entry;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Editor.Shared.Services;
 
 public sealed class EditorDocumentRepository : IEditorDocumentRepository
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
-    private const string StableIdParameter = "__editorId";
 
     public LoadedEditorProjectDocument Load(string projectPath, string projectName, ProjectSettings settings)
     {
@@ -62,10 +62,10 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
             groupNode.File = relativeFile;
 
             groupEntries.TryGetValue(groupNode.Id, out var entries);
-            var serialized = (entries ?? []).Select(SerializeEntry).ToArray();
+            var serialized = new GroupDocument { Entries = (entries ?? []).Select(SerializeEntry).ToList() };
             var groupFile = Path.Combine(graphPath, relativeFile.Replace('/', Path.DirectorySeparatorChar));
             var groupTemporary = groupFile + ".tmp";
-            File.WriteAllLines(groupTemporary, serialized);
+            File.WriteAllText(groupTemporary, JsonSerializer.Serialize(serialized, JsonOptions));
             File.Move(groupTemporary, groupFile, true);
         }
 
@@ -136,23 +136,24 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
         if (!File.Exists(file))
             return entries;
 
-        var parsed = GalNet.Core.Serialization.GalgroupParser.Parse(File.ReadAllText(file));
-        foreach (var entry in parsed)
+        var document = JsonSerializer.Deserialize<GroupDocument>(File.ReadAllText(file), JsonOptions)
+            ?? throw new InvalidDataException($"The .galgroup file '{relativeFile}' is empty.");
+        if (document.Version != 1)
+            throw new InvalidDataException($"Unsupported .galgroup version '{document.Version}'.");
+
+        foreach (var entry in document.Entries)
         {
-            var definition = EntryRegistry.Get(entry.EntryType);
-            var parameters = entry.Params
-                .Where(p => p.Key is not "condition" and not StableIdParameter)
+            var definition = EntryRegistry.Get(entry.Type);
+            var parameters = entry.Parameters
                 .Where(p => definition.Parameters.ContainsKey(p.Key))
-                .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+                .ToDictionary(pair => pair.Key, pair => ToEditorValue(pair.Value), StringComparer.Ordinal);
 
             entries.Add(new EditorEntryData
             {
-                StableId = entry.Params.TryGetValue(StableIdParameter, out var stableId) && !string.IsNullOrWhiteSpace(stableId)
-                    ? stableId
-                    : Guid.NewGuid().ToString("N"),
+                StableId = string.IsNullOrWhiteSpace(entry.Id) ? Guid.NewGuid().ToString("N") : entry.Id,
                 Id = entries.Count + 1,
-                Type = entry.EntryType,
-                Condition = entry.Params.TryGetValue("condition", out var condition) ? condition : "",
+                Type = entry.Type,
+                Condition = entry.Condition,
                 Parameters = parameters
             });
         }
@@ -160,22 +161,37 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
         return entries;
     }
 
-    private static string SerializeEntry(EditorEntryData entry)
+    private static GroupEntryDocument SerializeEntry(EditorEntryData entry)
     {
         var definition = EntryRegistry.Get(entry.Type);
         var parameters = entry.Parameters
             .Where(pair => definition.Parameters.ContainsKey(pair.Key) && pair.Value.Length > 0)
             .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
 
-        if (!string.IsNullOrWhiteSpace(entry.Condition))
-            parameters["condition"] = entry.Condition;
-
         entry.StableId = string.IsNullOrWhiteSpace(entry.StableId)
             ? Guid.NewGuid().ToString("N")
             : entry.StableId;
-        parameters[StableIdParameter] = entry.StableId;
+        return new GroupEntryDocument
+        {
+            Id = entry.StableId,
+            Type = entry.Type,
+            Condition = entry.Condition,
+            Parameters = parameters.ToDictionary(pair => pair.Key, pair => ToJsonValue(pair.Key, pair.Value), StringComparer.Ordinal)
+        };
+    }
 
-        return GalNet.Core.Serialization.GalgroupParser.Serialize(entry.Type, parameters);
+    private static string ToEditorValue(JsonElement value) => value.ValueKind == JsonValueKind.String
+        ? value.GetString() ?? ""
+        : value.GetRawText();
+
+    private static JsonElement ToJsonValue(string name, string value)
+    {
+        if (name == "transform")
+        {
+            using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(value) ? "{}" : value);
+            return document.RootElement.Clone();
+        }
+        return JsonSerializer.SerializeToElement(value);
     }
 
     private static void EnsureStableIds(EditorGraphDocument document)

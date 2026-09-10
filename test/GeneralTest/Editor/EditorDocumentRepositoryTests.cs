@@ -49,7 +49,7 @@ public class EditorDocumentRepositoryTests
             JsonSerializer.Serialize(document, new JsonSerializerOptions { WriteIndented = true }));
         File.WriteAllText(
             Path.Combine(_tempDir, "Graph", "groups", $"{groupId}.galgroup"),
-            GalNet.Core.Serialization.GalgroupParser.Serialize("text", new() { ["content"] = "hello", ["obsolete"] = "discard" }));
+            """{ "version": 1, "entries": [ { "id": "entry-1", "type": "text", "parameters": { "content": "hello", "obsolete": "discard" } } ] }""");
 
         var settings = new ProjectSettings
         {
@@ -116,9 +116,11 @@ public class EditorDocumentRepositoryTests
         Assert.That(savedDocument, Is.Not.Null);
         Assert.That(savedDocument!.PlayerVariables.Select(v => v.Name), Is.EqualTo(new[] { "player_name" }));
         Assert.That(savedDocument.SaveVariables.Select(v => v.Name), Is.EqualTo(new[] { "save_slot" }));
-        Assert.That(savedGroup, Does.Contain("condition: player_name==Alice"));
-        Assert.That(savedGroup, Does.Contain("speaker: Alice"));
-        Assert.That(savedGroup, Does.Contain("content: Hello"));
+        var savedGroupDocument = JsonDocument.Parse(savedGroup);
+        var entry = savedGroupDocument.RootElement.GetProperty("entries")[0];
+        Assert.That(entry.GetProperty("condition").GetString(), Is.EqualTo("player_name==Alice"));
+        Assert.That(entry.GetProperty("parameters").GetProperty("speaker").GetString(), Is.EqualTo("Alice"));
+        Assert.That(entry.GetProperty("parameters").GetProperty("content").GetString(), Is.EqualTo("Hello"));
     }
 
     private static ProjectVariableDefinition CreateDefinition(string name, object value)

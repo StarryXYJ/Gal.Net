@@ -184,7 +184,7 @@ public class GameEngineIntegrationTests
                     Entries =
                     {
                         Create(ShowLayerEntry.TypeId, 1,
-                            ("id", "background"), ("asset", "school"),
+                            ("handleId", "background"), ("assetId", "school"), ("transform", "{}"),
                             ("transitionId", "custom.fade"), ("transitionDuration", "1.25"),
                             ("transitionBlocking", "true"), ("transitionParameters", "{\"curve\":\"easeIn\"}"))
                     }
@@ -201,8 +201,66 @@ public class GameEngineIntegrationTests
         var layer = engine.Runtime.SceneState.Layers.Single();
         Assert.That(layer.Id, Is.EqualTo("background"));
         Assert.That(layer.AssetId, Is.EqualTo("school"));
+        Assert.That(engine.Runtime.SceneInstances.TryGet<GalNet.Core.Scene.Layer>("background", out _), Is.True);
         Assert.That(services.LastTransition, Is.EqualTo(new TransitionRequest(
             "custom.fade", null, "school", TimeSpan.FromSeconds(1.25), true, "{\"curve\":\"easeIn\"}")));
+    }
+
+    [Test]
+    public void Scene_instance_handles_are_type_checked_and_invalid_after_removal()
+    {
+        var runtime = new GalNet.Runtime.Runtime.GameRuntime(null);
+        var layer = runtime.SceneInstances.GetOrAdd<GalNet.Core.Scene.Layer>("layer-handle", id => new() { Id = id, AssetId = "bg" });
+
+        Assert.That(runtime.SceneInstances.GetAll<GalNet.Core.Scene.Layer>(), Is.EquivalentTo(new[] { layer }));
+        Assert.That(runtime.SceneInstances.TryGet<GalNet.Core.Scene.Layer>("layer-handle", out var resolved), Is.True);
+        Assert.That(resolved, Is.SameAs(layer));
+
+        Assert.That(runtime.SceneInstances.Remove<GalNet.Core.Scene.Layer>("layer-handle", out var removed), Is.True);
+        Assert.That(removed, Is.SameAs(layer));
+        Assert.That(runtime.SceneInstances.TryGet<GalNet.Core.Scene.Layer>("layer-handle", out _), Is.False);
+        Assert.That(runtime.SceneInstances.GetAll<GalNet.Core.Scene.Layer>(), Is.Empty);
+    }
+
+    [Test]
+    public async Task Layer_replace_keeps_instance_transform_z_and_display_mode()
+    {
+        var graph = new GalNet.Core.Graph.Graph
+        {
+            RootNodeId = "group_main",
+            Nodes =
+            {
+                new Group
+                {
+                    Id = "group_main",
+                    Entries =
+                    {
+                        Create(ShowLayerEntry.TypeId, 1,
+                            ("handleId", "hero"), ("assetId", "hero-neutral"),
+                            ("transform", "{\"x\":120,\"y\":-40,\"rotationDegrees\":12,\"scaleX\":1.25,\"scaleY\":0.8}"),
+                            ("z", "12"), ("displayMode", "Uniform")),
+                        Create(ReplaceLayerEntry.TypeId, 2, ("handleId", "hero"), ("assetId", "hero-smile")),
+                        Create(TextEntry.TypeId, 3, ("content", "pause"))
+                    }
+                }
+            }
+        };
+
+        var engine = new GameEngine(graph, new NullGameView());
+        await engine.StepAsync();
+
+        var layer = engine.Runtime.SceneInstances.GetAll<GalNet.Core.Scene.Layer>().Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(layer.AssetId, Is.EqualTo("hero-smile"));
+            Assert.That(layer.Transform.X, Is.EqualTo(120));
+            Assert.That(layer.Transform.Y, Is.EqualTo(-40));
+            Assert.That(layer.Transform.RotationDegrees, Is.EqualTo(12));
+            Assert.That(layer.Transform.ScaleX, Is.EqualTo(1.25f));
+            Assert.That(layer.Transform.ScaleY, Is.EqualTo(0.8f));
+            Assert.That(layer.Z, Is.EqualTo(12));
+            Assert.That(layer.DisplayMode, Is.EqualTo(GalNet.Core.Scene.LayerDisplayMode.Uniform));
+        });
     }
 
     private static GalNet.Core.Entry.Entry Create(string type, int id, params (string Key, string Value)[] values) =>

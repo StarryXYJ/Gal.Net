@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using GalNet.Core.Settings;
+using GalNet.Core.Serialization;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
@@ -279,11 +280,22 @@ public sealed class ProjectService : IProjectService
             JsonSerializer.Serialize(graph, JsonOptions));
         await File.WriteAllTextAsync(
             Path.Combine(graphPath, "groups", $"{groupId}.galgroup"),
-            GalNet.Core.Serialization.GalgroupParser.Serialize("text", new Dictionary<string, string>
+            JsonSerializer.Serialize(new GroupDocument
             {
-                ["speaker"] = "Alice",
-                ["content"] = "Hello GalNet"
-            }));
+                Entries =
+                [
+                    new GroupEntryDocument
+                    {
+                        Id = Guid.NewGuid().ToString("N"),
+                        Type = "text",
+                        Parameters = new Dictionary<string, JsonElement>
+                        {
+                            ["speaker"] = JsonSerializer.SerializeToElement("Alice"),
+                            ["content"] = JsonSerializer.SerializeToElement("Hello GalNet")
+                        }
+                    }
+                ]
+            }, JsonOptions));
     }
 
     private static string NormalizeProjectPath(string projectPath) =>

@@ -4,6 +4,8 @@ using GalNet.Control.Screen.Game;
 using Serilog;
 using AvaloniaImage = Avalonia.Controls.Image;
 using GalNet.Core.Assets;
+using GalNet.Core.Scene;
+using GalNet.Core.View;
 
 namespace GalNet.Control.Runtime.Presentation;
 
@@ -19,27 +21,31 @@ internal sealed class DefaultGameViewRegistry
         _assets = assets;
     }
 
-    public void ShowLayer(string id, string assetId, float x, float y, float z = 0)
+    public void ShowLayer(LayerRenderRequest request)
     {
         Dispatcher.UIThread.Post(() =>
         {
-            if (_layers.TryGetValue(id, out var existing))
+            if (_layers.TryGetValue(request.HandleId, out var existing))
             {
-                existing.SetValue(Avalonia.Controls.Canvas.LeftProperty, (double)x);
-                existing.SetValue(Avalonia.Controls.Canvas.TopProperty, (double)y);
-                existing.SetValue(Avalonia.Controls.Canvas.ZIndexProperty, (int)z);
-                _ = LoadLayerSourceAsync(id, existing, assetId);
+                ApplyTransform(existing, request.Transform, request.Z);
+                _ = LoadLayerSourceAsync(request.HandleId, existing, request.AssetId);
                 return;
             }
 
             var img = new AvaloniaImage { Opacity = 1, Stretch = Avalonia.Media.Stretch.Uniform };
-            img.SetValue(Avalonia.Controls.Canvas.LeftProperty, (double)x);
-            img.SetValue(Avalonia.Controls.Canvas.TopProperty, (double)y);
-            img.SetValue(Avalonia.Controls.Canvas.ZIndexProperty, (int)z);
+            ApplyTransform(img, request.Transform, request.Z);
 
-            _layers[id] = img;
+            _layers[request.HandleId] = img;
             _gameScreen.LayerCanvas.Children.Add(img);
-            _ = LoadLayerSourceAsync(id, img, assetId);
+            _ = LoadLayerSourceAsync(request.HandleId, img, request.AssetId);
+        });
+    }
+
+    public void ReplaceLayer(string handleId, string assetId)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_layers.TryGetValue(handleId, out var image)) _ = LoadLayerSourceAsync(handleId, image, assetId);
         });
     }
 
@@ -95,17 +101,31 @@ internal sealed class DefaultGameViewRegistry
         });
     }
 
-    public void MoveLayer(string id, float x, float y, float z, float durationSec)
+    public void MoveLayer(string id, LayerTransform transform, float z, float durationSec)
     {
         Dispatcher.UIThread.Post(() =>
         {
             if (!_layers.TryGetValue(id, out var img))
                 return;
 
-            img.SetValue(Avalonia.Controls.Canvas.LeftProperty, (double)x);
-            img.SetValue(Avalonia.Controls.Canvas.TopProperty, (double)y);
-            img.SetValue(Avalonia.Controls.Canvas.ZIndexProperty, (int)z);
+            ApplyTransform(img, transform, z);
         });
+    }
+
+    private static void ApplyTransform(AvaloniaImage image, LayerTransform transform, float z)
+    {
+        image.SetValue(Avalonia.Controls.Canvas.LeftProperty, (double)transform.X);
+        image.SetValue(Avalonia.Controls.Canvas.TopProperty, (double)transform.Y);
+        image.SetValue(Avalonia.Controls.Canvas.ZIndexProperty, (int)z);
+        image.RenderTransformOrigin = Avalonia.RelativePoint.Center;
+        image.RenderTransform = new Avalonia.Media.TransformGroup
+        {
+            Children =
+            [
+                new Avalonia.Media.ScaleTransform(transform.ScaleX, transform.ScaleY),
+                new Avalonia.Media.RotateTransform(transform.RotationDegrees)
+            ]
+        };
     }
 
 }

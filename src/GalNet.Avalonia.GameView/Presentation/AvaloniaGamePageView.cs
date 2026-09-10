@@ -1,7 +1,9 @@
 using Avalonia.Controls;
+using Avalonia.Media;
 using Avalonia.Threading;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Core.View;
+using GalNet.Core.Scene;
 using GalNet.Game.Controls;
 using GalNet.Avalonia.GameView.ViewModels;
 
@@ -10,7 +12,7 @@ namespace GalNet.Avalonia.GameView.Presentation;
 /// <summary>Host-provided creation of layer visuals; the shared page never resolves files itself.</summary>
 public interface IGamePageLayerFactory
 {
-    Control CreateLayer(string assetId);
+    IImage? ResolveLayerImage(string assetId);
 }
 
 /// <summary>Maps runtime layer, dialogue and interaction ports onto a shared <see cref="GamePage"/>.</summary>
@@ -29,11 +31,23 @@ public sealed class AvaloniaGamePageView : ILayerView, IControlView, ITypewriter
         _state.AdvanceRequested += Advance;
     }
 
-    public void ShowLayer(string id, string assetId, float x, float y, float z) => OnUi(() =>
-        _state.SetLayer(id, new SceneLayerItem { Id = id, Content = _layers.CreateLayer(assetId), X = x, Y = y, ZIndex = (int)z }));
+    public void ShowLayer(LayerRenderRequest request) => OnUi(() =>
+        _state.SetLayer(request.HandleId, new SceneLayerItem
+        {
+            HandleId = request.HandleId,
+            Image = _layers.ResolveLayerImage(request.AssetId),
+            X = request.Transform.X,
+            Y = request.Transform.Y,
+            RotationDegrees = request.Transform.RotationDegrees,
+            ScaleX = request.Transform.ScaleX,
+            ScaleY = request.Transform.ScaleY,
+            Z = request.Z,
+            DisplayMode = request.DisplayMode
+        }));
 
-    public void HideLayer(string id) => OnUi(() => _state.HideLayer(id));
-    public void MoveLayer(string id, float x, float y, float z, float durationSec) => OnUi(() => _state.MoveLayer(id, x, y, z));
+    public void ReplaceLayer(string handleId, string assetId) => OnUi(() => _state.ReplaceLayer(handleId, _layers.ResolveLayerImage(assetId)));
+    public void HideLayer(string handleId) => OnUi(() => _state.HideLayer(handleId));
+    public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSec) => OnUi(() => _state.MoveLayer(handleId, transform, z));
     public void ShowDialogue() => OnUi(() => _state.IsDialogueVisible = true);
     public void HideDialogue() => OnUi(() => _state.IsDialogueVisible = false);
 

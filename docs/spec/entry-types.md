@@ -3,7 +3,7 @@
 ## 格式约定
 
 - 条目类型 ID 使用点分隔格式，如 `layer.show`、`audio.play`
-- 条目参数用 `; ` 分隔，键值对用 `: ` 分隔
+- `.galgroup` 中的条目参数为 JSON 对象；以下表格描述对象字段
 - `?` 后缀 = 可选参数，缺省有默认值
 - 所有参数类型都是包装过后的类型，而不是原类型
 - 所有条目均携带：`condition` — 基于变量的表达式，false 则跳过本条目，默认 true
@@ -34,37 +34,45 @@
 
 | 参数 | 类型 | 说明 |
 |---|---|---|
-| id | string | Layer ID，同 ID 再次调用则替换 |
-| asset | ImageAsset | 图像资源 |
-| x | float? | 默认 0 |
-| y | float? | 默认 0 |
+| handleId | SceneHandle | 场上 Layer 实例的内部句柄；编辑器通过同类型句柄定位器写入 |
+| assetId | ImageAsset | 图像资源 |
+| transform | object? | `{ x, y, rotationDegrees, scaleX, scaleY }`；原点为游戏画布中心，缩放必须大于 0 |
 | z | float? | 默认 0（背景），立绘建议 5~20 |
+| displayMode | select? | `Native`、`Tile`、`Fill`、`Uniform`、`UniformToFill`，默认 `Native` |
 | transition | select? | 过渡效果：`fade` / `dissolve` / `slide_left` / `slide_right` |
 | duration | float? | 过渡持续时间（秒），默认 0.5 |
 
-> Handler: `ShowLayerHandler`（非阻塞）。先应用 transition（如有），再调用 `ILayerView.ShowLayer()`。
+> Handler: `ShowLayerHandler`（非阻塞）。创建或更新句柄对应的 Layer，再调用 `ILayerView.ShowLayer()`。
 
 ### layer.hide
 
 | 参数 | 类型 | 说明 |
 |---|---|---|
-| id | string | Layer ID |
+| handleId | SceneHandle | 要移除的 Layer 实例句柄 |
 | transition | select? | 过渡效果 |
 | duration | float? | 过渡持续时间，默认 0.5 |
 
-> Handler: `HideLayerHandler`（非阻塞）。
+> Handler: `HideLayerHandler`（非阻塞）。从动态实例管理器和场景状态中删除 Layer；句柄随即失效。后续使用失效句柄的操作会记录诊断并安全跳过。
 
 ### layer.move
 
 | 参数 | 类型 | 说明 |
 |---|---|---|
-| id | string | Layer ID |
-| x | float | 目标 x |
-| y | float | 目标 y |
+| handleId | SceneHandle | 要移动的 Layer 实例句柄 |
+| transform | object | 完整目标 Transform |
 | z | float | 目标 z |
 | duration | float | 移动持续时间（秒），默认 0.5 |
 
 > Handler: `MoveLayerHandler`（非阻塞）。
+
+### layer.replace
+
+| 参数 | 类型 | 说明 |
+|---|---|---|
+| handleId | SceneHandle | 要替换资源的 Layer 实例句柄 |
+| assetId | ImageAsset | 新图像资源 |
+
+> 仅替换资源，保留 Layer 的 Transform、z 和展示模式；不存在或类型不匹配的句柄安全跳过。
 
 ---
 

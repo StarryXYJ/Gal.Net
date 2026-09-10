@@ -1,13 +1,15 @@
 using GalNet.Core.View;
+using GalNet.Core.Scene;
 
 namespace GalNet.Presentation.Defaults;
 
 /// <summary>Framework-neutral no-op game view for tests and headless hosts.</summary>
 public class NullGameView : IGameView
 {
-    public virtual void ShowLayer(string id, string assetId, float x, float y, float z = 0) { }
-    public virtual void HideLayer(string id) { }
-    public virtual void MoveLayer(string id, float x, float y, float z, float durationSec) { }
+    public virtual void ShowLayer(LayerRenderRequest request) { }
+    public virtual void ReplaceLayer(string handleId, string assetId) { }
+    public virtual void HideLayer(string handleId) { }
+    public virtual void MoveLayer(string handleId, LayerTransform transform, float z, float durationSec) { }
     public virtual void ShowDialogue() { }
     public virtual void HideDialogue() { }
     public virtual void PlayAudio(string channel, string assetId, float volume, string mode, int times) { }

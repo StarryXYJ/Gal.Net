@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using GalNet.Core.Scene;
 using GalNet.Control.Screen.Game;
 using GalNet.Control.Abstraction.UI;
 using GalNet.Core.Settings;
@@ -142,17 +143,17 @@ public class DefaultGameView : Grid, IGameView, IDisposable
 
     // ── ILayerView ──
 
-    void ILayerView.ShowLayer(string id, string assetId, float x, float y, float z)
-        => ShowLayer(id, assetId, x, y, z);
-    void ILayerView.HideLayer(string id) => HideLayer(id);
-    void ILayerView.MoveLayer(string id, float x, float y, float z, float durationSec)
-        => MoveLayer(id, x, y, z, durationSec);
+    void ILayerView.ShowLayer(LayerRenderRequest request) => ShowLayer(request);
+    void ILayerView.ReplaceLayer(string handleId, string assetId) => ReplaceLayer(handleId, assetId);
+    void ILayerView.HideLayer(string handleId) => HideLayer(handleId);
+    void ILayerView.MoveLayer(string handleId, LayerTransform transform, float z, float durationSec)
+        => MoveLayer(handleId, transform, z, durationSec);
 
-    public void ShowLayer(string id, string assetId, float x, float y, float z = 0)
-        => _registry.ShowLayer(id, assetId, x, y, z);
-    public void HideLayer(string id) => _registry.HideLayer(id);
-    public void MoveLayer(string id, float x, float y, float z, float durationSec)
-        => _registry.MoveLayer(id, x, y, z, durationSec);
+    public void ShowLayer(LayerRenderRequest request) => _registry.ShowLayer(request);
+    public void ReplaceLayer(string handleId, string assetId) => _registry.ReplaceLayer(handleId, assetId);
+    public void HideLayer(string handleId) => _registry.HideLayer(handleId);
+    public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSec)
+        => _registry.MoveLayer(handleId, transform, z, durationSec);
 
     // ── IControlView ──
 

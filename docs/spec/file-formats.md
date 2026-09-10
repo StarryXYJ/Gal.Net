@@ -6,7 +6,7 @@
 
 ```
 graph.json          ← 节点/边元数据（位置、参数等），每个 Group 对应一个 .galgroup 文件
-*.galgroup          ← 组条目文件，纯文本格式，每行一条 Entry
+*.galgroup          ← 组条目文件，JSON（版本化、有序 Entry）
 .galnet             ← 编译产物：graph.json + 所有 galgroup → 单文件（可二进制化/加密/压缩），纯逻辑不含资源
 .galpak             ← 最终分发包：.galnet + 资源文件 → 压缩打包
 ```
@@ -52,39 +52,28 @@ graph.json          ← 节点/边元数据（位置、参数等），每个 Gro
 
 ## .galgroup 格式
 
-组条目文件，一种纯文本格式。每行一个 Entry，条目类型使用点分隔格式（如 `layer.show`、`audio.play`）。
+`.galgroup` 是 JSON 权威源；不再接受旧的分号文本格式。文档包含版本号和按数组顺序执行的条目。每个条目都有编辑器稳定 ID、类型、可选条件和结构化参数。运行时加载时会将 JSON 显式编译为 Runtime `Entry`，Runtime 本身不解析编辑器格式。
 
-### 转义规则
-
-值内可通过 `\` 转义分隔符：
-- `\:` 表示字面 `:`
-- `\;` 表示字面 `;`
-- `\\` 表示字面 `\`
-
-### 每行格式
-
-```
-条目类型 : 参数1:值1; 参数2:值2; ...
-```
-
-### 示例
-
-```
-单行文本 : 名称:Alice; 内容:你好\:世界; 语音:voice_01
-显示图像 : id:bg; 文件引用:bg_classroom; z:0; 转场:fade
-播放音频 : 轨道:bgm; 文件引用:bgm_01; 播放形式:loop
-变量设置 : 目标变量:score; 表达式:[score] + 10 * [multiplier]
+```json
+{
+  "version": 1,
+  "entries": [
+    {
+      "id": "8fa123d4-cc1a-4a6a-a2c6-4f03013f2fe6",
+      "type": "layer.show",
+      "parameters": {
+        "handleId": "c6b0b154-2f43-4e1d-bcf1-0dd6936522e4",
+        "assetId": "assets/backgrounds/classroom.png",
+        "transform": { "x": 0, "y": 0, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 },
+        "z": 0,
+        "displayMode": "Fill"
+      }
+    }
+  ]
+}
 ```
 
-### 解析算法
-
-1. 按行分割
-2. 按首个未转义 `:` 取条目类型
-3. 剩余部分按未转义 `; ` 分割为参数段
-4. 每个参数段按首个未转义 `:` 分割为键值对
-5. 反转义键与值
-
-条目在编辑器中使用中文显示名，序列化到 `.galgroup` 时使用英文类型 ID。`EntryRegistry` 负责类型 ID 与显示名之间的映射。
+`id` 是条目在编辑器中的稳定标识；`handleId` 是场上实例的内部句柄，两者都应为 GUID 字符串。编辑器向开发者展示资源和实例名称/类型，并通过资源定位器写入句柄，不要求开发者输入或识别 GUID。
 
 ---
 
@@ -133,8 +122,8 @@ graph.json          ← 节点/边元数据（位置、参数等），每个 Gro
 
 ```
 图编辑 ──→ graph.json（节点 + 边 + 元数据）
-组编辑 ──→ *.galgroup（一行一条 Entry）
-条目编辑 ──→ 组文件的某一行，参数由分隔符分隔
+组编辑 ──→ *.galgroup（JSON 条目数组）
+条目编辑 ──→ 组文件中的一个 JSON Entry，参数保持结构化
 ```
 
 ### 运行时（编辑器预览 / 启动器运行）
@@ -142,7 +131,7 @@ graph.json          ← 节点/边元数据（位置、参数等），每个 Gro
 ```
 Runtime 加载（由 GameEngine 驱动）：
   1. 读取 graph.json → 解析节点/边结构
-  2. 按 Group 节点引用的 path 加载对应 .galgroup → 解析 Entry 行
+  2. 按 Group 节点引用的 path 加载对应 .galgroup → 验证 JSON 并编译 Entry
   3. GameEngine 通过 IGameRuntime 接口统一管理运行时状态
      （CurrentNodeId/EntryIndex/VariableStore/SceneState/调用栈/View/I18n）
   4. 定位入口节点，开始状态机循环

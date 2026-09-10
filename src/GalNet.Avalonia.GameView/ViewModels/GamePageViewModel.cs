@@ -3,6 +3,7 @@ using Avalonia.Media;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Game.Controls;
+using GalNet.Core.Scene;
 
 namespace GalNet.Avalonia.GameView.ViewModels;
 
@@ -117,31 +118,45 @@ public sealed partial class GamePageViewModel : PageViewModelBase
 
     public void SetLayer(string id, SceneLayerItem item)
     {
-        var existing = Layers.FirstOrDefault(layer => layer.Id == id);
+        var existing = Layers.FirstOrDefault(layer => layer.HandleId == id);
         if (existing is null) Layers.Add(item);
         else
         {
-            existing.Content = item.Content;
+            existing.Image = item.Image;
             existing.X = item.X;
             existing.Y = item.Y;
-            existing.ZIndex = item.ZIndex;
+            existing.RotationDegrees = item.RotationDegrees;
+            existing.ScaleX = item.ScaleX;
+            existing.ScaleY = item.ScaleY;
+            existing.Z = item.Z;
+            existing.DisplayMode = item.DisplayMode;
             existing.IsVisible = true;
         }
     }
 
     public void HideLayer(string id)
     {
-        var layer = Layers.FirstOrDefault(candidate => candidate.Id == id);
-        if (layer is not null) layer.IsVisible = false;
+        var layer = Layers.FirstOrDefault(candidate => candidate.HandleId == id);
+        if (layer is not null) Layers.Remove(layer);
     }
 
-    public void MoveLayer(string id, float x, float y, float z)
+    public void ReplaceLayer(string id, IImage? image)
     {
-        var layer = Layers.FirstOrDefault(candidate => candidate.Id == id);
+        var layer = Layers.FirstOrDefault(candidate => candidate.HandleId == id);
         if (layer is null) return;
-        layer.X = x;
-        layer.Y = y;
-        layer.ZIndex = (int)z;
+        layer.Image = image;
+    }
+
+    public void MoveLayer(string id, LayerTransform transform, float z)
+    {
+        var layer = Layers.FirstOrDefault(candidate => candidate.HandleId == id);
+        if (layer is null) return;
+        layer.X = transform.X;
+        layer.Y = transform.Y;
+        layer.RotationDegrees = transform.RotationDegrees;
+        layer.ScaleX = transform.ScaleX;
+        layer.ScaleY = transform.ScaleY;
+        layer.Z = z;
     }
 
     public async Task PlayTransitionAsync(IBrush brush, TimeSpan duration, CancellationToken cancellationToken, double peakOpacity = 1d)

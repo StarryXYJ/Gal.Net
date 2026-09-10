@@ -1,6 +1,7 @@
 using GalNet.Core.Settings;
 using GalNet.Core.Text;
 using GalNet.Core.View;
+using GalNet.Core.Scene;
 
 namespace GalNet.Sample.Headless;
 
@@ -21,11 +22,12 @@ internal sealed class ConsolePresentation :
 
     public ConsolePresentation(GameSettings settings) => _settings = settings;
 
-    public void ShowLayer(string id, string assetId, float x, float y, float z) =>
-        Console.WriteLine($"[Layer] show {id}: {assetId} ({x}, {y}, {z})");
-    public void HideLayer(string id) => Console.WriteLine($"[Layer] hide {id}");
-    public void MoveLayer(string id, float x, float y, float z, float durationSec) =>
-        Console.WriteLine($"[Layer] move {id}: ({x}, {y}, {z}) in {durationSec}s");
+    public void ShowLayer(LayerRenderRequest request) =>
+        Console.WriteLine($"[Layer] show {request.HandleId}: {request.AssetId} ({request.Transform.X}, {request.Transform.Y}, {request.Z})");
+    public void ReplaceLayer(string handleId, string assetId) => Console.WriteLine($"[Layer] replace {handleId}: {assetId}");
+    public void HideLayer(string handleId) => Console.WriteLine($"[Layer] hide {handleId}");
+    public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSec) =>
+        Console.WriteLine($"[Layer] move {handleId}: ({transform.X}, {transform.Y}, {z}) in {durationSec}s");
     public void ShowDialogue() => Console.WriteLine("[Dialogue] show");
     public void HideDialogue() => Console.WriteLine("[Dialogue] hide");
     public void PlayAudio(string channel, string assetId, float volume, string mode, int times) =>
