@@ -10,6 +10,7 @@ using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Runtime;
 using GalNet.Core.Settings;
 using GalNet.Core.View;
+using GalNet.Presentation.Abstractions.Runtime;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Handlers;
 using GalNet.Runtime.Logging;
@@ -36,8 +37,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private SampleMediaViews? _media;
     private string? _gameDirectory;
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
-    private CancellationTokenSource? _runCancellation;
-    private Task? _runTask;
+    private readonly GameRunCoordinator _run = new();
     private bool _disposed;
 
     public SampleGameSessionService(GamePageViewModel gameplay, GamePage page)
@@ -189,8 +189,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
 
     private void StartRun()
     {
-        _runCancellation = new CancellationTokenSource();
-        _runTask = RunEngineAsync(_engine!, _runCancellation.Token);
+        _run.Start(cancellationToken => RunEngineAsync(_engine!, cancellationToken));
         GameLog.Logger.Debug("Game engine run task created");
     }
 
@@ -224,22 +223,12 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
 
     private async Task StopCurrentRunAsync()
     {
-        var cancellation = _runCancellation;
-        var run = _runTask;
-        _runCancellation = null;
-        _runTask = null;
-        cancellation?.Cancel();
         GameLog.Logger.Debug("Cancellation requested for the active engine flow");
-        if (run is not null)
-        {
-            try { await run; }
-            catch (OperationCanceledException) { }
-        }
-        cancellation?.Dispose();
+        await _run.StopAsync();
     }
 
     private Task AwaitCurrentRunAsync(CancellationToken cancellationToken) =>
-        _runTask?.WaitAsync(cancellationToken) ?? Task.CompletedTask;
+        _run.WaitAsync(cancellationToken);
 
     private void DisposeEngine()
     {

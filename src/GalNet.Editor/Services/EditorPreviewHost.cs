@@ -20,6 +20,7 @@ using GalNet.Runtime.Engine;
 using GalNet.Runtime.Handlers;
 using GalNet.Runtime.Runtime;
 using GalNet.Presentation.Defaults;
+using GalNet.Presentation.Abstractions.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Editor.Services;
@@ -90,8 +91,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
     private AvaloniaGamePageView? _pageView;
     private GameEngine? _engine;
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
-    private CancellationTokenSource? _runCancellation;
-    private Task? _runTask;
+    private readonly GameRunCoordinator _run = new();
     private bool _disposed;
 
     public EditorPreviewSessionService(EditorPreviewContext context, GamePageViewModel gameplay, GamePage page)
@@ -195,8 +195,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
 
     private void StartRun()
     {
-        _runCancellation = new CancellationTokenSource();
-        _runTask = RunEngineAsync(_engine!, _runCancellation.Token);
+        _run.Start(cancellationToken => RunEngineAsync(_engine!, cancellationToken));
     }
 
     private async Task RunEngineAsync(GameEngine engine, CancellationToken cancellationToken)
@@ -228,21 +227,11 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
 
     private async Task StopCurrentRunAsync()
     {
-        var cancellation = _runCancellation;
-        var run = _runTask;
-        _runCancellation = null;
-        _runTask = null;
-        cancellation?.Cancel();
-        if (run is not null)
-        {
-            try { await run; }
-            catch (OperationCanceledException) { }
-        }
-        cancellation?.Dispose();
+        await _run.StopAsync();
     }
 
     private Task AwaitCurrentRunAsync(CancellationToken cancellationToken) =>
-        _runTask?.WaitAsync(cancellationToken) ?? Task.CompletedTask;
+        _run.WaitAsync(cancellationToken);
 
     private void DisposeEngine()
     {

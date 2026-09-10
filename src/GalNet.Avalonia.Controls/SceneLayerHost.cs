@@ -100,7 +100,7 @@ public class SceneLayerHost : Canvas
     }
 }
 
-/// <summary>Minimal bindable layer item used by the default <see cref="SceneLayerHost"/> template.</summary>
+/// <summary>Bindable layer description whose content is attached directly to <see cref="SceneLayerHost"/>.</summary>
 public sealed class SceneLayerItem : INotifyPropertyChanged
 {
     private string _id = string.Empty;
