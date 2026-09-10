@@ -86,21 +86,6 @@
     </Setter>
   </Style>
 
-  <Style Selector="local|SceneLayerHost">
-    <Setter Property="ItemsPanel">
-      <ItemsPanelTemplate><Canvas ClipToBounds="True" /></ItemsPanelTemplate>
-    </Setter>
-    <Setter Property="ItemTemplate">
-      <DataTemplate DataType="local:SceneLayerItem">
-        <ContentPresenter Content="{Binding Content}" Canvas.Left="{Binding X}" Canvas.Top="{Binding Y}"
-                          Panel.ZIndex="{Binding ZIndex}" IsVisible="{Binding IsVisible}" />
-      </DataTemplate>
-    </Setter>
-    <Setter Property="Template">
-      <ControlTemplate><ItemsPresenter /></ControlTemplate>
-    </Setter>
-  </Style>
-
   <Style Selector="local|NvlPresenter">
     <Setter Property="ItemsPanel">
       <ItemsPanelTemplate><StackPanel Spacing="14" /></ItemsPanelTemplate>
