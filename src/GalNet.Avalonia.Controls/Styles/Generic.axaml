@@ -41,6 +41,7 @@
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderBrush" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="Template">
       <ControlTemplate>
         <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
@@ -62,18 +63,19 @@
   <Style Selector="local|SaveSlotCard">
     <Setter Property="Template">
       <ControlTemplate>
-        <Button Command="{TemplateBinding Command}" CommandParameter="{TemplateBinding CommandParameter}" Padding="0" Background="Transparent" BorderThickness="0">
-          <Border MinHeight="116" Padding="14" Background="#C21B1C27" BorderBrush="#665F6075" BorderThickness="1" CornerRadius="8">
-            <Grid ColumnDefinitions="112,*" ColumnSpacing="14">
-              <Border Background="#33101018" CornerRadius="4">
-                <Image Source="{TemplateBinding Preview}" Stretch="UniformToFill" />
-              </Border>
-              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
-                <TextBlock Text="Slot {TemplateBinding SlotIndex}" FontWeight="SemiBold" />
-                <TextBlock Text="{TemplateBinding Timestamp}" Opacity="0.8" />
-                <TextBlock Text="{TemplateBinding Description}" TextWrapping="Wrap" />
-                <TextBlock Text="Empty" IsVisible="{TemplateBinding IsEmpty}" Opacity="0.7" />
-                <TextBlock Text="Corrupt save" IsVisible="{TemplateBinding IsCorrupt}" Foreground="IndianRed" />
+        <Button Command="{TemplateBinding Command}" CommandParameter="{TemplateBinding CommandParameter}"
+                Padding="0" Background="Transparent" BorderBrush="Transparent" BorderThickness="0"
+                HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+          <Border MinHeight="136" Padding="16" Background="#B81B1C27" BorderBrush="#665F6075" BorderThickness="1" CornerRadius="8">
+            <Grid RowDefinitions="*,Auto" RowSpacing="12">
+              <StackPanel Spacing="4" VerticalAlignment="Center">
+                <TextBlock FontWeight="SemiBold" FontSize="16"><Run Text="Slot " /><Run Text="{TemplateBinding SlotIndex}" /></TextBlock>
+                <TextBlock Text="{TemplateBinding Description}" TextWrapping="Wrap" Opacity="0.75" />
+              </StackPanel>
+              <StackPanel Grid.Row="1" Spacing="2">
+                <TextBlock Text="{TemplateBinding Timestamp}" FontSize="12" Opacity="0.74" />
+                <TextBlock Text="Empty" IsVisible="{TemplateBinding IsEmpty}" FontSize="12" Opacity="0.56" />
+                <TextBlock Text="Corrupt save" IsVisible="{TemplateBinding IsCorrupt}" FontSize="12" Foreground="IndianRed" />
               </StackPanel>
             </Grid>
           </Border>

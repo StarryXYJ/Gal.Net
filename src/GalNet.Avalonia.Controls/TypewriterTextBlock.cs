@@ -1,5 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
+using Avalonia.Media;
 using GalNet.Core.Text;
 
 namespace GalNet.Game.Controls;
@@ -74,7 +76,8 @@ public sealed class TypewriterTextBlock : TextBlock
         _skipRequested = false;
         IsRunning = true;
         IsCompleted = false;
-        Text = string.Empty;
+        Text = null;
+        (Inlines ?? throw new InvalidOperationException("TextBlock did not provide an inline collection.")).Clear();
         _ = RenderAsync(SourceText, _runCancellation.Token, _completion, _skipSignal);
         return _completion.Task;
     }
@@ -96,25 +99,36 @@ public sealed class TypewriterTextBlock : TextBlock
     {
         try
         {
-            var visible = new System.Text.StringBuilder();
-            foreach (var token in TypewriterTextParser.Parse(source))
+            var inlines = Inlines ?? throw new InvalidOperationException("TextBlock did not provide an inline collection.");
+            foreach (var token in RichTypewriterTextParser.Parse(source))
             {
                 switch (token.Kind)
                 {
-                    case TypewriterTokenKind.Text:
+                    case RichTypewriterTokenKind.Text:
+                        var run = new Run
+                        {
+                            Text = string.Empty,
+                            FontWeight = token.IsBold ? FontWeight.Bold : FontWeight.Normal,
+                            FontStyle = token.IsItalic ? FontStyle.Italic : FontStyle.Normal
+                        };
+                        if (token.Color is { } color && Color.TryParse(color, out var parsed))
+                            run.Foreground = new SolidColorBrush(parsed);
+                        inlines.Add(run);
                         foreach (var character in token.Text)
                         {
                             cancellationToken.ThrowIfCancellationRequested();
-                            visible.Append(character);
-                            Text = visible.ToString();
+                            run.Text += character;
                             if (CharactersPerSecond > 0)
                                 await DelayOrSkipAsync(TimeSpan.FromSeconds(1d / CharactersPerSecond), cancellationToken, skipSignal);
                         }
                         break;
-                    case TypewriterTokenKind.Delay:
+                    case RichTypewriterTokenKind.LineBreak:
+                        inlines.Add(new LineBreak());
+                        break;
+                    case RichTypewriterTokenKind.Delay:
                         await DelayOrSkipAsync(TimeSpan.FromMilliseconds(token.DelayMilliseconds), cancellationToken, skipSignal);
                         break;
-                    case TypewriterTokenKind.Instant:
+                    case RichTypewriterTokenKind.Instant:
                         _skipRequested = true;
                         skipSignal.TrySetResult();
                         break;

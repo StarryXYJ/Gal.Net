@@ -165,7 +165,6 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
             StatusMessage = $"Loaded slot {slotIndex}.";
         }
         finally { _lifecycle.Release(); }
-        await AwaitCurrentRunAsync(cancellationToken);
     }
 
     public void Dispose()

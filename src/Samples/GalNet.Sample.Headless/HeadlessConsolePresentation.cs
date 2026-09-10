@@ -63,11 +63,11 @@ internal sealed class ConsolePresentation :
         try
         {
             if (!string.IsNullOrWhiteSpace(speaker)) Console.Write($"{speaker}: ");
-            foreach (var token in TypewriterTextParser.Parse(text))
+            foreach (var token in RichTypewriterTextParser.Parse(text))
             {
                 switch (token.Kind)
                 {
-                    case TypewriterTokenKind.Text:
+                    case RichTypewriterTokenKind.Text:
                         foreach (var character in token.Text)
                         {
                             ct.ThrowIfCancellationRequested();
@@ -76,10 +76,13 @@ internal sealed class ConsolePresentation :
                                 await Task.Delay(TimeSpan.FromSeconds(1d / _settings.TextSpeed), ct);
                         }
                         break;
-                    case TypewriterTokenKind.Delay when !_skipCurrentTypewriter:
+                    case RichTypewriterTokenKind.LineBreak:
+                        Console.WriteLine();
+                        break;
+                    case RichTypewriterTokenKind.Delay when !_skipCurrentTypewriter:
                         await Task.Delay(token.DelayMilliseconds, ct);
                         break;
-                    case TypewriterTokenKind.Instant:
+                    case RichTypewriterTokenKind.Instant:
                         _skipCurrentTypewriter = true;
                         break;
                 }

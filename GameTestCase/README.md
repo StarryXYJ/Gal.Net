@@ -8,7 +8,8 @@ the repository stays small. Layer coordinates are design-pixel values (the Avalo
 sample hosts the game at 1920×1080).
 
 Story path: start → station dialogue → select downtown or harbor → one route dialogue.
-The station scene therefore verifies background/character layers, a typewriter wait,
+The station scene verifies background/character/effect layer overlap and z-order, a
+typewriter wait with `\d{...}` delays, `\n`, `<b>`, `<i>`, and `<color>` rich text,
 choice input, transitions, effects, variables and the selected route.
 
 - Headless: `powershell -File scripts/run-headless-sample.ps1`

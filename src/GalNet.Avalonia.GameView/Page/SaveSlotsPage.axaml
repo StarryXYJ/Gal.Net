@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:GalNet.Game.Controls"
              xmlns:local="using:GalNet.Avalonia.GameView.Page"
              xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
              x:Class="GalNet.Avalonia.GameView.Page.SaveSlotsPage"
@@ -22,37 +23,12 @@
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:GameSaveSlotRowViewModel">
             <Grid Margin="7">
-              <Button Classes="save-slot" Command="{Binding LoadCommand}" IsVisible="{Binding !IsSaveMode}">
-                <Border Classes="slot-surface" MinHeight="136" Padding="16" CornerRadius="8"
-                        Background="#B81B1C27" BorderBrush="#665F6075" BorderThickness="1">
-                  <Grid RowDefinitions="*,Auto" RowSpacing="12">
-                    <StackPanel Spacing="4" VerticalAlignment="Center">
-                      <TextBlock FontWeight="SemiBold" FontSize="16"><Run Text="Slot " /><Run Text="{Binding SlotIndex}" /></TextBlock>
-                      <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Opacity="0.75" />
-                    </StackPanel>
-                    <StackPanel Grid.Row="1" Spacing="2">
-                      <TextBlock Text="{Binding Timestamp}" FontSize="12" Opacity="0.74" />
-                      <TextBlock Text="Empty" FontSize="12" Opacity="0.56" IsVisible="{Binding IsEmpty}" />
-                      <TextBlock Text="Corrupt save" FontSize="12" Foreground="IndianRed" IsVisible="{Binding IsCorrupt}" />
-                    </StackPanel>
-                  </Grid>
-                </Border>
-              </Button>
-              <Button Classes="save-slot" Command="{Binding SaveCommand}" IsVisible="{Binding IsSaveMode}">
-                <Border Classes="slot-surface" MinHeight="136" Padding="16" CornerRadius="8"
-                        Background="#B81B1C27" BorderBrush="#665F6075" BorderThickness="1">
-                  <Grid RowDefinitions="*,Auto" RowSpacing="12">
-                    <StackPanel Spacing="4" VerticalAlignment="Center">
-                      <TextBlock FontWeight="SemiBold" FontSize="16"><Run Text="Slot " /><Run Text="{Binding SlotIndex}" /></TextBlock>
-                      <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Opacity="0.75" />
-                    </StackPanel>
-                    <StackPanel Grid.Row="1" Spacing="2">
-                      <TextBlock Text="{Binding Timestamp}" FontSize="12" Opacity="0.74" />
-                      <TextBlock Text="Empty — save here" FontSize="12" Opacity="0.56" IsVisible="{Binding IsEmpty}" />
-                    </StackPanel>
-                  </Grid>
-                </Border>
-              </Button>
+              <controls:SaveSlotCard SlotIndex="{Binding SlotIndex}" Timestamp="{Binding Timestamp}" Description="{Binding Description}"
+                                      IsEmpty="{Binding IsEmpty}" IsCorrupt="{Binding IsCorrupt}"
+                                      Command="{Binding LoadCommand}" IsVisible="{Binding !IsSaveMode}" />
+              <controls:SaveSlotCard SlotIndex="{Binding SlotIndex}" Timestamp="{Binding Timestamp}" Description="{Binding Description}"
+                                      IsEmpty="{Binding IsEmpty}" IsCorrupt="{Binding IsCorrupt}"
+                                      Command="{Binding SaveCommand}" IsVisible="{Binding IsSaveMode}" />
             </Grid>
           </DataTemplate>
         </ItemsControl.ItemTemplate>

@@ -158,7 +158,6 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _gameplay.StatusMessage = $"Loaded slot {slotIndex}.";
         }
         finally { _lifecycle.Release(); }
-        await AwaitCurrentRunAsync(cancellationToken);
     }
 
     public void Dispose()

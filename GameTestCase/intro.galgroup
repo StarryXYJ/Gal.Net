@@ -2,9 +2,10 @@
 layer.show : id: background; asset: assets/backgrounds/station-platform.png; x: 0; y: 0; z: 0; transitionId: black; transitionDuration: 0.2; transitionBlocking: true
 layer.show : id: guide; asset: assets/characters/guide-neutral.png; x: 680; y: 230; z: 1
 layer.move : id: guide; x: 800; y: 230; z: 1; duration: 0.15
+layer.show : id: light; asset: assets/effects/platform-light.png; x: 740; y: 300; z: 2
 audio.play : channel: bgm; asset: assets/audio/station-loop.ogg; volume: 0.5; mode: loop; times: 1
 effect.apply : id: weather.rain; instanceId: platform-rain; duration: -1; blocking: false; parameters: intensity=low
 dialogue.show
 variable.set : target: player.simulation_completed; expression: true
 variable.set : target: save.simulation_slot_marker; expression: 7
-text : speaker: Guide; content: The station is ready.\d{80}\nChoose where to continue.
+text : speaker: Guide; content: <b>The station is ready.</b>\d{450}\n<i>Choose where to continue.</i> <color=#7DD3FC>Both routes are open.</color>

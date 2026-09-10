@@ -65,11 +65,11 @@ public sealed class AvaloniaGamePageView : ILayerView, IControlView, ITypewriter
     private void Advance()
     {
         if (_isTyping)
+        {
             _page.Dialogue.Skip();
+            return;
+        }
 
-        // TextHandler starts the typewriter and click wait together.  The legacy player
-        // treated a click while text was appearing as both "show all" and "next"; finish
-        // the active wait as well so the runtime does not remain blocked after Skip().
         _state.CompleteAdvance();
     }
 
