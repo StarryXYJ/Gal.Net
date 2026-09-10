@@ -1,10 +1,15 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="GalNet.Sample.Avalonia.App"
+             xmlns:semi="https://irihi.tech/semi"            
+             xmlns:usemi="https://irihi.tech/ursa/themes/semi"
+
              RequestedThemeVariant="Default">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
     <Application.Styles>
+        <semi:SemiTheme></semi:SemiTheme>
+        <semi:UrsaSemiTheme></semi:UrsaSemiTheme>
         <FluentTheme />
         <StyleInclude Source="avares://GalNet.Avalonia.Controls/Styles/Generic.axaml" />
     </Application.Styles>

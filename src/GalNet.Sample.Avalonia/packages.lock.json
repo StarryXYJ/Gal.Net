@@ -61,6 +61,28 @@
         "resolved": "8.4.1",
         "contentHash": "BTRteP8SvFyd/4KAreIFJBcxD2O9trLxLDD/p8YkSDDrfFOzy2U8cHyz6r+5Eh4kDhJdzAVglei6a+Bh4jCpUA=="
       },
+      "Irihi.Ursa": {
+        "type": "Direct",
+        "requested": "[2.1.0, )",
+        "resolved": "2.1.0",
+        "contentHash": "G2wAmenCgMZkBOqs5MYRtlurhU2tAKKmcNJzjjaA9Mj5v3YIivuv7wyNpIpgYZ602sOZhFtQwYrCaLVUhn9Htw==",
+        "dependencies": {
+          "Avalonia": "12.0.2",
+          "Irihi.Avalonia.Shared": "0.4.0",
+          "Irihi.Avalonia.Shared.Contracts": "0.4.0"
+        }
+      },
+      "Irihi.Ursa.Themes.Semi": {
+        "type": "Direct",
+        "requested": "[2.1.0, )",
+        "resolved": "2.1.0",
+        "contentHash": "vz7iA6YcAqJ9Z34CXGtapsROERLjZ7vD1CqblO7V5NWQyrJ5igbAYSuFFWnZnPVFKkyKM/c43oGmcWjiDBLoHA==",
+        "dependencies": {
+          "Avalonia": "12.0.2",
+          "Irihi.Ursa": "2.1.0",
+          "Semi.Avalonia": "12.0.1"
+        }
+      },
       "Microsoft.Extensions.DependencyInjection": {
         "type": "Direct",
         "requested": "[10.0.0-preview.1.25080.5, )",
@@ -68,6 +90,16 @@
         "contentHash": "T50DtUNMlTWsIjJaufPsPBEkeN7firM83Z/JDY0q9v4uL47llTCBdRtlrJ+NlGrF6+3Ny0mtWB7gIKn4AUeGzA==",
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0-preview.1.25080.5"
+        }
+      },
+      "Semi.Avalonia": {
+        "type": "Direct",
+        "requested": "[12.0.1, )",
+        "resolved": "12.0.1",
+        "contentHash": "WAjB/Clu8eD+AjLbCUV/fNwHdCk5iSwLoFyWG7UeBBbr8zP7GWQHDqr4EcDgY9vbTpynYFoOql72FCHxOPHjPA==",
+        "dependencies": {
+          "Avalonia": "12.0.1",
+          "Irihi.Avalonia.Shared": "0.4.0"
         }
       },
       "Serilog": {
@@ -212,6 +244,19 @@
         "type": "Transitive",
         "resolved": "8.3.1.3",
         "contentHash": "bx8CE8Js+XGX8PUxAHCBDEORt5aaBYtMN4Hr9QFs57Xithh6yjUyYqksizH6eRDhJkwsGI+SXWmPmMm8lZC9Pw=="
+      },
+      "Irihi.Avalonia.Shared": {
+        "type": "Transitive",
+        "resolved": "0.4.0",
+        "contentHash": "T6+jezCUjisJNz6zkNcNLVNI2ttWznbyQnW6MS9L45EXhePqRCIxB3xV/5L8gFAJ83JrhiCIokMOxRWdq9/1Zg==",
+        "dependencies": {
+          "Avalonia": "12.0.0"
+        }
+      },
+      "Irihi.Avalonia.Shared.Contracts": {
+        "type": "Transitive",
+        "resolved": "0.4.0",
+        "contentHash": "Du8DY2YqlSmCmywqZtuOhgwLkgklMeE1ajZ4Dd/iqVz6HmAKptjVTqA1oloZX5ihqsdKRiNuUGCdYPe1rekf2Q=="
       },
       "MicroCom.Runtime": {
         "type": "Transitive",

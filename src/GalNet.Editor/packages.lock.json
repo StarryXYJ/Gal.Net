@@ -415,15 +415,6 @@
         "resolved": "3.0.1",
         "contentHash": "s/s20YTVY9r9TPfTrN5g8zPF1YhwxyqO6PxUkrYTGI2B+OGPe9AdajWZrLhFqXIvqIW23fnUE4+ztrUWNU1+9g=="
       },
-      "Semi.Avalonia": {
-        "type": "Transitive",
-        "resolved": "12.0.1",
-        "contentHash": "WAjB/Clu8eD+AjLbCUV/fNwHdCk5iSwLoFyWG7UeBBbr8zP7GWQHDqr4EcDgY9vbTpynYFoOql72FCHxOPHjPA==",
-        "dependencies": {
-          "Avalonia": "12.0.1",
-          "Irihi.Avalonia.Shared": "0.4.0"
-        }
-      },
       "SkiaSharp": {
         "type": "Transitive",
         "resolved": "3.119.4",
@@ -561,6 +552,16 @@
         "requested": "[3.10.0, )",
         "resolved": "3.10.0",
         "contentHash": "VHuOfq8Xtb/lNz0asvCm5qDjgTmfB3m3lC40Dz9iH9oL3DM0fSXHjZaLxdtYVr5nsldJoh5BTeG8MtODprhC9Q=="
+      },
+      "Semi.Avalonia": {
+        "type": "CentralTransitive",
+        "requested": "[12.0.1, )",
+        "resolved": "12.0.1",
+        "contentHash": "WAjB/Clu8eD+AjLbCUV/fNwHdCk5iSwLoFyWG7UeBBbr8zP7GWQHDqr4EcDgY9vbTpynYFoOql72FCHxOPHjPA==",
+        "dependencies": {
+          "Avalonia": "12.0.1",
+          "Irihi.Avalonia.Shared": "0.4.0"
+        }
       }
     }
   }
