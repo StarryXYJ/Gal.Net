@@ -16,7 +16,7 @@
                            Margin="72,56,72,144" ZIndex="12" />
     <controls:DialoguePresenter x:Name="DialogueControl" IsVisible="{Binding IsDialogueOverlayVisible}"
                                 HorizontalAlignment="Stretch"
-                                VerticalAlignment="Bottom" Margin="72,0,72,104" ZIndex="13" />
+                                VerticalAlignment="Bottom" Margin="72,0,72,42" ZIndex="13" />
     <controls:ChoiceList ItemsSource="{Binding Choices}" SelectionCommand="{Binding CompleteChoiceCommand}"
                          IsVisible="{Binding IsChoiceOverlayVisible}" Width="500"
                          HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="50" />

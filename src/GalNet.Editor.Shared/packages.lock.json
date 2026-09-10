@@ -1,0 +1,78 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net10.0": {
+      "CommunityToolkit.Mvvm": {
+        "type": "Direct",
+        "requested": "[8.4.1, )",
+        "resolved": "8.4.1",
+        "contentHash": "BTRteP8SvFyd/4KAreIFJBcxD2O9trLxLDD/p8YkSDDrfFOzy2U8cHyz6r+5Eh4kDhJdzAVglei6a+Bh4jCpUA=="
+      },
+      "Serilog": {
+        "type": "Direct",
+        "requested": "[4.2.0, )",
+        "resolved": "4.2.0",
+        "contentHash": "gmoWVOvKgbME8TYR+gwMf7osROiWAURterc6Rt2dQyX7wtjZYpqFiA/pY6ztjGQKKV62GGCyOcmtP1UKMHgSmA=="
+      },
+      "Antlr4.Runtime.Standard": {
+        "type": "Transitive",
+        "resolved": "4.13.1",
+        "contentHash": "Da5+i4kFHUseJRZGcBG5fmZGpA/Ns180ibrQMxgZzjpQOnENVvSL5gi5HZ8Ncz8/AR2WsKbOg2lMBzjz0HUQcA=="
+      },
+      "galnet.assets": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Storage.Abstractions": "[1.0.0, )"
+        }
+      },
+      "galnet.core": {
+        "type": "Project"
+      },
+      "galnet.editor.abstraction": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Core": "[1.0.0, )",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.0-preview.1.25080.5, )"
+        }
+      },
+      "galnet.presentation.abstractions": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Core": "[1.0.0, )"
+        }
+      },
+      "galnet.runtime": {
+        "type": "Project",
+        "dependencies": {
+          "CoreCLR-NCalc": "[3.1.253, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "GalNet.Storage.Abstractions": "[1.0.0, )",
+          "Serilog": "[4.2.0, )"
+        }
+      },
+      "galnet.storage.abstractions": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Core": "[1.0.0, )"
+        }
+      },
+      "CoreCLR-NCalc": {
+        "type": "CentralTransitive",
+        "requested": "[3.1.253, )",
+        "resolved": "3.1.253",
+        "contentHash": "XrcIZAbjsnW+4/PJKd8bbfeDMYEM41cKK13DmgIRoH2+UPpoiu2mF7gfdfAsr10ePrzH4NyfD8Y3u8nbj9G2lQ==",
+        "dependencies": {
+          "Antlr4.Runtime.Standard": "4.13.1"
+        }
+      },
+      "Microsoft.Extensions.DependencyInjection.Abstractions": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.0-preview.1.25080.5, )",
+        "resolved": "10.0.0-preview.1.25080.5",
+        "contentHash": "/6gp/48ibjQePwjWlSu72bditSihLVRXf3L+kcoj6JKWA+tnWxEgOIuKmrSigTvSeqmAHcdpSwu7Fuf6bgFAyQ=="
+      }
+    }
+  }
+}

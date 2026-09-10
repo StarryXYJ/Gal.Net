@@ -8,7 +8,7 @@
   <Style Selector="local|DialoguePresenter">
     <Setter Property="Template">
       <ControlTemplate>
-        <Border Background="#D91B1C27" BorderBrush="#805F6075" BorderThickness="1" CornerRadius="8" Padding="20">
+        <Border Height="200" Background="#D91B1C27" BorderBrush="#805F6075" BorderThickness="1" CornerRadius="8" Padding="20">
           <StackPanel Spacing="8">
             <TextBlock Text="{TemplateBinding Speaker}" FontWeight="SemiBold" FontSize="18" />
             <local:TypewriterTextBlock Name="PART_Typewriter"
