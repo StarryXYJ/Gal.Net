@@ -177,7 +177,16 @@ internal sealed class LayerPresenter : Border
             case LayerDisplayMode.Tile:
                 Child = null;
                 Background = source is IImageBrushSource brushSource
-                    ? new ImageBrush { Source = brushSource, Stretch = Stretch.None, TileMode = TileMode.Tile, Transform = new ScaleTransform(item.ScaleX, item.ScaleY) }
+                    ? new ImageBrush
+                    {
+                        Source = brushSource,
+                        // The default destination rect is the whole surface, which produces one
+                        // image plus letterboxing. A native-size absolute tile rect makes TileMode
+                        // repeat the image over the complete layer surface.
+                        DestinationRect = new RelativeRect(new Rect(0, 0, sourceWidth, sourceHeight), RelativeUnit.Absolute),
+                        Stretch = Stretch.Fill,
+                        TileMode = TileMode.Tile
+                    }
                     : new SolidColorBrush(Color.Parse("#662A2D42"));
                 RenderTransform = CreateTransform(item, 1, 1);
                 break;

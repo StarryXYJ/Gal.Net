@@ -9,9 +9,9 @@ remains covered. Layer coordinates are design-pixel values (the Avalonia sample 
 the game at 1920×1080).
 
 Story path: start → station dialogue → choose a tiled or filled background → route dialogue.
-The opening scene keeps the background at the origin, then renders portraits and the
-intentional missing-resource fallback at increasing z values. It therefore verifies visible
-occlusion, z-order and resource fallback, plus a typewriter wait with
+The opening scene contains only one filled background, one normal portrait and one
+intentional missing-resource fallback portrait. It therefore verifies visible occlusion,
+z-order and resource fallback, plus a typewriter wait with
 `\d{...}` delays, `\n`, `<b>`, `<i>`, and `<color>` rich text, choice input, transitions,
 effects, variables and the selected route.
 
