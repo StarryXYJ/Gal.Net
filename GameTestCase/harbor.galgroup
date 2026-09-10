@@ -2,6 +2,7 @@ layer.hide : id: background; transitionId: white; transitionDuration: 0.2; trans
 layer.show : id: background; asset: assets/backgrounds/harbor-sunset.png; x: 0; y: 0; z: 0; transitionId: white; transitionDuration: 0.2; transitionBlocking: true
 layer.hide : id: guide
 layer.hide : id: light
+layer.hide : id: foreground
 effect.stop : instanceId: platform-rain
 variable.set : target: save.route; expression: "harbor"
 text : speaker: Guide; content: <i>Harbor selected.</i>\d{220} The save now records this <color=#A7F3D0>route</color>.

@@ -8,9 +8,11 @@ the repository stays small. Layer coordinates are design-pixel values (the Avalo
 sample hosts the game at 1920×1080).
 
 Story path: start → station dialogue → select downtown or harbor → one route dialogue.
-The station scene verifies background/character/effect layer overlap and z-order, a
-typewriter wait with `\d{...}` delays, `\n`, `<b>`, `<i>`, and `<color>` rich text,
-choice input, transitions, effects, variables and the selected route.
+The station scene keeps the background at the origin, then overlaps the 240×240 missing
+asset placeholders for `guide` (z=10), `light` (z=20), and `foreground` (z=30) in one
+cluster. It therefore verifies visible occlusion and z-order, plus a typewriter wait with
+`\d{...}` delays, `\n`, `<b>`, `<i>`, and `<color>` rich text, choice input, transitions,
+effects, variables and the selected route.
 
 - Headless: `powershell -File scripts/run-headless-sample.ps1`
 - Avalonia: `powershell -File scripts/run-avalonia-sample.ps1`
