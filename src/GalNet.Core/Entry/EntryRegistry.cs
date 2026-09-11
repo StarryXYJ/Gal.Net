@@ -15,7 +15,7 @@ public static class EntryRegistry
 
     /// <summary>Creates an entry and applies the registered default parameter values before supplied values.</summary>
     /// <param name="type">Registered entry type identifier.</param>
-    /// <param name="id">Ordinal assigned by the containing group for execution resumption.</param>
+    /// <param name="id">Identifier assigned to the created entry.</param>
     /// <param name="condition">Optional execution condition expression.</param>
     /// <param name="values">Persisted parameter values; unsupported names are ignored except for <c>variable.set</c>.</param>
     /// <returns>A concrete entry matching the registered schema.</returns>

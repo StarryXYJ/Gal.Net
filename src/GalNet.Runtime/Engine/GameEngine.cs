@@ -12,6 +12,10 @@ using GalNet.Core.Services;
 
 namespace GalNet.Runtime.Engine;
 
+/// <summary>
+/// Drives the graph one entry at a time, keeping runtime state authoritative while
+/// delegating all rendering and interaction to <see cref="IGameView"/>.
+/// </summary>
 public sealed class GameEngine
 {
     private readonly Graph _graph;
@@ -24,11 +28,20 @@ public sealed class GameEngine
     /// <summary>Raised at interaction boundaries, before the engine waits for input.</summary>
     public event Action<GameSnapshot>? CheckpointCreated;
 
+    /// <summary>Mutable runtime state used by handlers and save/restore operations.</summary>
     public IGameRuntime Runtime => _runtime;
     public string CurrentNodeId => _runtime.CurrentNodeId;
     public int EntryIndex => _runtime.EntryIndex;
     public bool IsRunning { get; private set; }
 
+    /// <summary>Creates an engine with a new runtime rooted at the graph's entry node.</summary>
+    /// <param name="graph">The compiled story graph to execute.</param>
+    /// <param name="view">Presentation and input adapter; it does not own game state.</param>
+    /// <param name="textResolver">Optional localization resolver for the new runtime.</param>
+    /// <param name="settings">Optional initial settings for the new runtime.</param>
+    /// <param name="registry">Optional entry-handler registry; the built-in registry is used by default.</param>
+    /// <param name="progress">Optional service notified when checkpointable content is read.</param>
+    /// <param name="timeProvider">Clock supplied to time-based handlers.</param>
     public GameEngine(
         Graph graph,
         IGameView view,
@@ -46,12 +59,19 @@ public sealed class GameEngine
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
+    /// <summary>Creates an engine over an existing runtime, such as one restored from a save.</summary>
+    /// <param name="graph">The graph whose identifiers must match the supplied runtime.</param>
+    /// <param name="runtime">Existing mutable game state.</param>
+    /// <param name="view">Presentation and input adapter.</param>
+    /// <param name="registry">Optional entry-handler registry; the built-in registry is used by default.</param>
+    /// <param name="progress">Optional service notified when checkpointable content is read.</param>
+    /// <param name="timeProvider">Clock supplied to time-based handlers.</param>
     public GameEngine(
-        Graph graph,  // 游戏文件
+        Graph graph,
         IGameRuntime runtime,
         IGameView view,
-        EntryHandlerRegistry? registry = null,  // 开发者定义动态变量提供
-        IGameProgressService? progress = null,  //游戏进度(画廊解锁之类的)
+        EntryHandlerRegistry? registry = null,
+        IGameProgressService? progress = null,
         TimeProvider? timeProvider = null)
     {
         _graph = graph;
@@ -62,6 +82,12 @@ public sealed class GameEngine
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
+    /// <summary>
+    /// Continues execution until the graph ends, has no outgoing edge, or the operation is cancelled.
+    /// Interaction entries suspend this method until the view supplies their input.
+    /// </summary>
+    /// <param name="ct">Cancels pending interaction or timed-entry work.</param>
+    /// <returns><see langword="false"/> when execution stops; cancellation is propagated.</returns>
     public async Task<bool> StepAsync(CancellationToken ct = default)
     {
         IsRunning = true;
@@ -216,8 +242,11 @@ public sealed class GameEngine
         }
     }
 
+    /// <summary>Captures the runtime-owned state at the current execution position.</summary>
     public GameSnapshot CreateSaveData() => _runtime.CreateSnapshot();
 
+    /// <summary>Restores runtime state and replays every visible layer into the presentation adapter.</summary>
+    /// <param name="data">A snapshot produced for a compatible graph and runtime configuration.</param>
     public void RestoreFrom(GameSnapshot data)
     {
         _runtime.RestoreFrom(data);

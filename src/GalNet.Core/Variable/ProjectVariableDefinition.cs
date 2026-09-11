@@ -1,10 +1,15 @@
 namespace GalNet.Core.Variable;
 
+/// <summary>Project-level variable declaration and its initial value.</summary>
 public sealed class ProjectVariableDefinition
 {
     public string Name { get; set; } = "";
     public Variable DefaultValue { get; set; } = new();
 
+    /// <summary>
+    /// Declared value type. Changing it replaces the default value with that type's zero value,
+    /// while retaining the variable UID and synchronizing its name.
+    /// </summary>
     public VariableType Type
     {
         get => DefaultValue.Type;
@@ -28,6 +33,7 @@ public sealed class ProjectVariableDefinition
         }
     }
 
+    /// <summary>Creates an independent declaration while preserving the variable UID and typed value.</summary>
     public ProjectVariableDefinition Clone()
     {
         return new ProjectVariableDefinition

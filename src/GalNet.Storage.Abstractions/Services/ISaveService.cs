@@ -2,6 +2,7 @@ using GalNet.Core.Runtime;
 
 namespace GalNet.Core.Services;
 
+/// <summary>Metadata for one normal or quick-save slot without loading its full snapshot.</summary>
 public sealed class SaveSlotInfo
 {
     public int SlotIndex { get; init; }
@@ -12,6 +13,7 @@ public sealed class SaveSlotInfo
     public bool IsCorrupt { get; init; }
 }
 
+/// <summary>Optional save presentation data paired with the runtime snapshot.</summary>
 public sealed class SaveRequest
 {
     public required GameSnapshot Snapshot { get; init; }
@@ -33,6 +35,8 @@ public interface ISaveService
     Task<SaveSlotInfo?> GetQuickSaveInfoAsync(CancellationToken ct = default);
     Task<bool> HasQuickSaveAsync(CancellationToken ct = default);
     Task DeleteQuickSaveAsync(CancellationToken ct = default);
+    /// <summary>Saves a slot with optional preview and user-facing description.</summary>
     Task SaveAsync(int slot, SaveRequest request, CancellationToken ct = default);
+    /// <summary>Updates the host's dedicated quick-save using optional presentation metadata.</summary>
     Task QuickSaveAsync(SaveRequest request, CancellationToken ct = default);
 }

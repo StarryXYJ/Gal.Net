@@ -1,5 +1,6 @@
 namespace GalNet.Core.Scene;
 
+/// <summary>Named easing curves available to immediate <c>animate</c> entries.</summary>
 public enum BuiltinAnimationCurve
 {
     Linear,
@@ -19,6 +20,10 @@ public static class AnimationCurves
 {
     public static readonly IAnimationCurve Linear = Create(BuiltinAnimationCurve.Linear);
 
+    /// <summary>Creates a stateless evaluator for the selected built-in curve.</summary>
+    /// <param name="curve">Named curve selected by authored content.</param>
+    /// <returns>An evaluator that clamps input time to the closed <c>[0, 1]</c> interval.</returns>
+    /// <exception cref="InvalidDataException">The enum value is not a supported curve.</exception>
     public static IAnimationCurve Create(BuiltinAnimationCurve curve)
     {
         if (!Enum.IsDefined(curve))

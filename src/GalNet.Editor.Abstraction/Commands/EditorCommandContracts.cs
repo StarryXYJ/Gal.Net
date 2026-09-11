@@ -4,6 +4,7 @@ using GalNet.Editor.Abstraction.Documents;
 
 namespace GalNet.Editor.Abstraction.Commands;
 
+/// <summary>Metadata used to expose an editor command to UI and automation clients.</summary>
 public interface IEditorCommandDefinition
 {
     string Id { get; }
@@ -11,12 +12,14 @@ public interface IEditorCommandDefinition
     I18nKey DisplayNameKey { get; }
 }
 
+/// <summary>Metadata for a command that mutates an editable project document.</summary>
 public interface IProjectCommandDefinition : IEditorCommandDefinition
 {
     Type CommandType { get; }
     EditorCommandSchema Schema { get; }
 }
 
+/// <summary>Serializable parameter contract for a project command.</summary>
 public sealed record EditorCommandSchema(IReadOnlyList<EditorCommandParameter> Parameters);
 
 public sealed record EditorCommandParameter(
@@ -32,6 +35,7 @@ public interface IEditorCommand
 
 public interface IProjectEditCommand : IEditorCommand;
 
+/// <summary>Resolves command schemas and deserializes their JSON payloads into typed edit commands.</summary>
 public interface IEditorCommandCatalog
 {
     IReadOnlyList<IProjectCommandDefinition> GetAll();
@@ -39,12 +43,16 @@ public interface IEditorCommandCatalog
     IProjectEditCommand Deserialize(string commandId, JsonElement payload, JsonSerializerOptions? options = null);
 }
 
+/// <summary>Applies a typed edit command to a document at a specific revision.</summary>
 public interface IEditorCommandHandler
 {
     bool CanHandle(IProjectEditCommand command);
     CommandExecution Execute(EditorProjectDocument document, IProjectEditCommand command, EditorCommandContext context);
 }
 
+/// <summary>Execution settings supplied by the command coordinator.</summary>
+/// <param name="Revision">Revision the command is evaluated against.</param>
+/// <param name="IsDryRun">When true, handlers validate and describe changes without committing them.</param>
 public sealed record EditorCommandContext(long Revision, bool IsDryRun);
 
 public sealed record EditorExecutionDescription(
@@ -89,6 +97,7 @@ public sealed record CommandExecution(
         new(false, null, [], diagnostics);
 }
 
+/// <summary>Concurrency, preview, and history-merge options for one command execution.</summary>
 public sealed record ExecuteOptions(
     long? ExpectedRevision = null,
     bool DryRun = false,
@@ -109,6 +118,7 @@ public sealed record CommandResult(
         new(false, revision, null, null, null, [], [], diagnostics);
 }
 
+/// <summary>Validation outcome; only error diagnostics make the result invalid.</summary>
 public sealed record ValidationResult(IReadOnlyList<EditorDiagnostic> Diagnostics)
 {
     public bool IsValid => Diagnostics.All(diagnostic => diagnostic.Severity != EditorDiagnosticSeverity.Error);
