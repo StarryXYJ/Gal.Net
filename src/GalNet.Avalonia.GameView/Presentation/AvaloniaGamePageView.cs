@@ -13,6 +13,9 @@ namespace GalNet.Avalonia.GameView.Presentation;
 /// <summary>Host-provided creation of layer visuals; the shared page never resolves files itself.</summary>
 public interface IGamePageLayerFactory
 {
+    /// <summary>Resolves a content asset ID to the Avalonia image displayed for a layer.</summary>
+    /// <param name="assetId">Host-defined asset identifier from a Layer request.</param>
+    /// <returns>The image to display, or <see langword="null"/> when the host cannot resolve the asset.</returns>
     IImage? ResolveLayerImage(string assetId);
 }
 
@@ -23,10 +26,11 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
     private readonly GamePage _page;
     private readonly IGamePageLayerFactory _layers;
     private bool _isTyping;
-    private readonly object _animationGate = new();
+    private readonly Lock _animationGate = new();
     private readonly Dictionary<string, ActiveAnimation> _activeAnimations = new(StringComparer.Ordinal);
     private readonly Dictionary<string, ActivePlanTrack> _activePlanTracks = new(StringComparer.Ordinal);
     private readonly List<ActivePlan> _activePlans = [];
+    private readonly Dictionary<string, ICompletablePlayback> _activePlaybacks = new(StringComparer.Ordinal);
     private long _animationSequence;
 
     public AvaloniaGamePageView(GamePageViewModel state, GamePage page, IGamePageLayerFactory layers)
@@ -61,9 +65,11 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
         var active = new ActiveAnimation(request, Interlocked.Increment(ref _animationSequence));
         lock (_animationGate)
         {
+            if (_activePlaybacks.ContainsKey(request.PlaybackHandleId)) return AnimationOutcome.Replaced;
             if (_activePlanTracks.Remove(key, out var planTrack)) planTrack.Complete(AnimationOutcome.Replaced);
             if (_activeAnimations.Remove(key, out var replaced)) replaced.Complete(AnimationOutcome.Replaced);
             _activeAnimations.Add(key, active);
+            _activePlaybacks.Add(request.PlaybackHandleId, active);
         }
 
         try
@@ -87,7 +93,10 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
         finally
         {
             lock (_animationGate)
+            {
                 if (_activeAnimations.TryGetValue(key, out var current) && ReferenceEquals(current, active)) _activeAnimations.Remove(key);
+                if (_activePlaybacks.TryGetValue(request.PlaybackHandleId, out var playback) && ReferenceEquals(playback, active)) _activePlaybacks.Remove(request.PlaybackHandleId);
+            }
         }
     }
 
@@ -95,7 +104,13 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
     {
         ct.ThrowIfCancellationRequested();
         var active = new ActivePlan(plan, Interlocked.Increment(ref _animationSequence));
-        lock (_animationGate) _activePlans.Add(active);
+        lock (_animationGate)
+        {
+            if (_activePlaybacks.ContainsKey(plan.PlaybackHandleId))
+                return new AnimationPlanPlayResult { Outcome = AnimationOutcome.Replaced };
+            _activePlans.Add(active);
+            _activePlaybacks.Add(plan.PlaybackHandleId, active);
+        }
 
         try
         {
@@ -119,9 +134,20 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
             lock (_animationGate)
             {
                 _activePlans.Remove(active);
+                if (_activePlaybacks.TryGetValue(plan.PlaybackHandleId, out var playback) && ReferenceEquals(playback, active)) _activePlaybacks.Remove(plan.PlaybackHandleId);
                 foreach (var track in active.Tracks)
                     if (_activePlanTracks.TryGetValue(track.Key, out var current) && ReferenceEquals(current, track)) _activePlanTracks.Remove(track.Key);
             }
+        }
+    }
+
+    public bool CompleteAnimationImmediately(string playbackHandleId)
+    {
+        lock (_animationGate)
+        {
+            if (!_activePlaybacks.TryGetValue(playbackHandleId, out var playback)) return false;
+            playback.Complete(AnimationOutcome.Skipped);
+            return true;
         }
     }
 
@@ -246,7 +272,12 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
         string BatchKey { get; }
     }
 
-    private sealed class ActiveAnimation(AnimationRequest request, long sequence) : ISkippableAnimation
+    private interface ICompletablePlayback
+    {
+        void Complete(AnimationOutcome outcome);
+    }
+
+    private sealed class ActiveAnimation(AnimationRequest request, long sequence) : ISkippableAnimation, ICompletablePlayback
     {
         public AnimationRequest Request { get; } = request;
         public long Sequence { get; } = sequence;
@@ -255,7 +286,7 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
         public void Complete(AnimationOutcome outcome) => Outcome.TrySetResult(outcome);
     }
 
-    private sealed class ActivePlan(AnimationPlanDefinition plan, long sequence) : ISkippableAnimation
+    private sealed class ActivePlan(AnimationPlanDefinition plan, long sequence) : ISkippableAnimation, ICompletablePlayback
     {
         public AnimationPlanDefinition Plan { get; } = plan;
         public long Sequence { get; } = sequence;

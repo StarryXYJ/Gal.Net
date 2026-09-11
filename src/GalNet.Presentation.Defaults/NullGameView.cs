@@ -10,9 +10,19 @@ public class NullGameView : IGameView
     public virtual void ReplaceLayer(string handleId, string assetId) { }
     public virtual void HideLayer(string handleId) { }
     public virtual void MoveLayer(string handleId, LayerTransform transform, float z, float durationSec) { }
-    public virtual Task<AnimationOutcome> AnimateAsync(AnimationRequest request, CancellationToken ct) => Task.FromResult(AnimationOutcome.Completed);
-    public virtual Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken ct) =>
-        Task.FromResult(new AnimationPlanPlayResult { Outcome = AnimationOutcome.Completed, TrackOutcomes = plan.Tracks.ToDictionary(track => $"{track.HandleId}:{track.Property}", _ => AnimationOutcome.Completed) });
+    public virtual async Task<AnimationOutcome> AnimateAsync(AnimationRequest request, CancellationToken ct)
+    {
+        if (request.LoopMode == AnimationLoopMode.Loop)
+            await Task.Delay(TimeSpan.FromSeconds(request.DurationSeconds), ct);
+        return AnimationOutcome.Completed;
+    }
+    public virtual async Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken ct)
+    {
+        if (plan.LoopMode == AnimationLoopMode.Loop)
+            await Task.Delay(TimeSpan.FromSeconds(plan.DurationFrames / (double)plan.FrameRate), ct);
+        return new AnimationPlanPlayResult { Outcome = AnimationOutcome.Completed, TrackOutcomes = plan.Tracks.ToDictionary(track => $"{track.HandleId}:{track.Property}", _ => AnimationOutcome.Completed) };
+    }
+    public virtual bool CompleteAnimationImmediately(string playbackHandleId) => false;
     public virtual bool SkipAnimationBatch() => false;
     public virtual void ShowDialogue() { }
     public virtual void HideDialogue() { }

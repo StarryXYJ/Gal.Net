@@ -65,27 +65,53 @@ public sealed class ReplaceLayerEntry : Entry
         ("handleId", EntryParameterType.Text), ("assetId", EntryParameterType.ImageAsset));
 }
 
+/// <summary>Plays one interpolated property animation on an active scene instance.</summary>
+/// <remarks>
+/// <c>playbackHandleId</c> identifies this playback and must be unique while active;
+/// <c>handleId</c> and <c>property</c> identify the target. <c>from</c> is optional,
+/// <c>to</c> is required, and <c>duration</c> is expressed in seconds. Looping animations
+/// must be non-blocking and non-skippable; <c>batchId</c> groups eligible one-shot animations
+/// for a single advance-to-skip operation.
+/// </remarks>
 public sealed class AnimateEntry : Entry
 {
     public const string TypeId = "animate";
     public override string Type => TypeId;
     public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(
-        ("handleId", EntryParameterType.Text), ("property", EntryParameterType.Select), ("from", EntryParameterType.Float),
+        ("playbackHandleId", EntryParameterType.Text), ("handleId", EntryParameterType.Text), ("property", EntryParameterType.Select), ("from", EntryParameterType.Float),
         ("to", EntryParameterType.Float), ("duration", EntryParameterType.Float), ("curve", EntryParameterType.Select),
-        ("blocking", EntryParameterType.Select), ("skippable", EntryParameterType.Select), ("batchId", EntryParameterType.Text));
+        ("blocking", EntryParameterType.Select), ("skippable", EntryParameterType.Select), ("batchId", EntryParameterType.Text), ("loopMode", EntryParameterType.Select));
     public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(
-        ("duration", "0.25"), ("curve", "Linear"), ("blocking", "false"), ("skippable", "false"));
+        ("duration", "0.25"), ("curve", "Linear"), ("blocking", "false"), ("skippable", "false"), ("loopMode", "Once"));
     public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(
         ("property", Layer.AnimationProperties.Select(property => property.Name).ToArray()),
         ("curve", ["Linear", "Step", "EaseIn", "EaseOut", "EaseInOut"]),
-        ("blocking", ["false", "true"]), ("skippable", ["false", "true"]));
+        ("blocking", ["false", "true"]), ("skippable", ["false", "true"]), ("loopMode", ["Once", "Loop"]));
 }
 
+/// <summary>Plays a JSON keyframe timeline containing parallel property tracks and timed entry events.</summary>
+/// <remarks>The <c>plan</c> parameter is an <see cref="AnimationPlanDefinition"/> serialized as JSON.</remarks>
 public sealed class PlayAnimationPlanEntry : Entry
 {
     public const string TypeId = "animation.play";
     public override string Type => TypeId;
     public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("plan", EntryParameterType.Json));
+}
+
+/// <summary>Requests that a looped animation playback stop.</summary>
+/// <remarks>
+/// <c>playbackHandleId</c> selects the active playback. <c>mode</c> is <c>AfterIteration</c>
+/// by default, or <c>CompleteImmediately</c> to finish without waiting for the current loop.
+/// </remarks>
+public sealed class StopAnimationEntry : Entry
+{
+    public const string TypeId = "animation.stop";
+    public override string Type => TypeId;
+    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(
+        ("playbackHandleId", EntryParameterType.Text), ("mode", EntryParameterType.Select));
+    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("mode", "AfterIteration"));
+    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(
+        ("mode", ["AfterIteration", "CompleteImmediately"]));
 }
 
 public sealed class PlayAudioEntry : Entry

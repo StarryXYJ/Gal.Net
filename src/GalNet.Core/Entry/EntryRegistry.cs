@@ -1,8 +1,10 @@
 namespace GalNet.Core.Entry;
 
+/// <summary>Central registry for built-in entry schemas and their concrete factories.</summary>
 public static class EntryRegistry
 {
     private static readonly IReadOnlyDictionary<string, EntryDefinition> DefinitionsByType = BuildDefinitions();
+    /// <summary>All registered definitions, for editor palettes and serialization tooling.</summary>
     public static IReadOnlyList<EntryDefinition> Definitions { get; } = DefinitionsByType.Values.ToArray();
 
     public static bool TryGet(string type, out EntryDefinition definition) => DefinitionsByType.TryGetValue(type, out definition!);
@@ -11,6 +13,13 @@ public static class EntryRegistry
         ? definition
         : throw new InvalidDataException($"Unknown entry type '{type}'.");
 
+    /// <summary>Creates an entry and applies the registered default parameter values before supplied values.</summary>
+    /// <param name="type">Registered entry type identifier.</param>
+    /// <param name="id">Ordinal assigned by the containing group for execution resumption.</param>
+    /// <param name="condition">Optional execution condition expression.</param>
+    /// <param name="values">Persisted parameter values; unsupported names are ignored except for <c>variable.set</c>.</param>
+    /// <returns>A concrete entry matching the registered schema.</returns>
+    /// <exception cref="InvalidDataException">Thrown when <paramref name="type"/> is unknown or <c>variable.set</c> contains unsupported parameters.</exception>
     public static Entry Create(string type, int id = 0, string condition = "", IReadOnlyDictionary<string, string>? values = null)
     {
         var definition = Get(type);
@@ -43,6 +52,7 @@ public static class EntryRegistry
             Define(ReplaceLayerEntry.TypeId, "Layer", () => new ReplaceLayerEntry(), ReplaceLayerEntry.ParameterTypes),
             Define(AnimateEntry.TypeId, "Animation", () => new AnimateEntry(), AnimateEntry.ParameterTypes, AnimateEntry.DefaultValues, AnimateEntry.ParameterOptions),
             Define(PlayAnimationPlanEntry.TypeId, "Animation", () => new PlayAnimationPlanEntry(), PlayAnimationPlanEntry.ParameterTypes),
+            Define(StopAnimationEntry.TypeId, "Animation", () => new StopAnimationEntry(), StopAnimationEntry.ParameterTypes, StopAnimationEntry.DefaultValues, StopAnimationEntry.ParameterOptions),
             Define(PlayAudioEntry.TypeId, "Audio", () => new PlayAudioEntry(), PlayAudioEntry.ParameterTypes, PlayAudioEntry.DefaultValues, PlayAudioEntry.ParameterOptions),
             Define(StopAudioEntry.TypeId, "Audio", () => new StopAudioEntry(), StopAudioEntry.ParameterTypes, StopAudioEntry.DefaultValues, StopAudioEntry.ParameterOptions),
             Define(PauseAudioEntry.TypeId, "Audio", () => new PauseAudioEntry(), PauseAudioEntry.ParameterTypes, PauseAudioEntry.DefaultValues, PauseAudioEntry.ParameterOptions),

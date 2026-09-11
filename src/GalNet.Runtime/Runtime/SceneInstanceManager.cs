@@ -30,6 +30,12 @@ internal sealed class SceneInstanceManager : ISceneInstanceManager
     }
 
     public TInstance GetOrAdd<TInstance>(string handleId, Func<string, TInstance> factory) where TInstance : class, ISceneInstance
+        => GetOrAddCore(handleId, factory, persistLayer: true);
+
+    public TInstance GetOrAddTransient<TInstance>(string handleId, Func<string, TInstance> factory) where TInstance : class, ISceneInstance
+        => GetOrAddCore(handleId, factory, persistLayer: false);
+
+    private TInstance GetOrAddCore<TInstance>(string handleId, Func<string, TInstance> factory, bool persistLayer) where TInstance : class, ISceneInstance
     {
         if (TryGet<TInstance>(handleId, out var existing)) return existing;
         if (_instances.TryGetValue(handleId, out var conflicting))
@@ -37,7 +43,7 @@ internal sealed class SceneInstanceManager : ISceneInstanceManager
 
         var created = factory(handleId);
         _instances.Add(handleId, created);
-        if (created is Layer layer) _sceneState.Layers.Add(layer);
+        if (persistLayer && created is Layer layer) _sceneState.Layers.Add(layer);
         return created;
     }
 

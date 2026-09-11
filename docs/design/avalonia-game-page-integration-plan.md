@@ -19,6 +19,8 @@
 
 已完成：通用 `AnimationRequest` 与内置曲线语法糖、可序列化关键帧 `AnimationPlan`（Step/Linear/Hermite、帧事件、Replace、阻塞/跳过/batchId）、独立 `IAnimationView`、稳定状态提交和 Avalonia 实时多轨播放。Sample 已用手写 48 帧交叉淡化验证第 0 帧显示、双背景透明度轨道、结束帧隐藏与批次跳过。
 
+补充完成：两类动画均有独立播放句柄、`Loop` 与 `animation.stop`。Loop 强制非阻塞、不可跳过；每轮事件完整重放，Layer 句柄翻译为本轮局部实例并在轮末清理，不进入存档。`AfterIteration` 与 `CompleteImmediately` 分别在轮末或跳到终点后结束。Loop 的局部 `show`/`hide` 不做静态配对校验，由作者控制，运行时始终执行轮末兜底清理。
+
 ## Phase 3：Effect 效果
 
 - 实现角色出现/隐藏、移动、透明度、震动与闪烁等基础效果。

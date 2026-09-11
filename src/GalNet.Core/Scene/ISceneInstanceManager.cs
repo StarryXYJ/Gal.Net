@@ -8,6 +8,8 @@ public interface ISceneInstanceManager
     IReadOnlyList<TInstance> GetAll<TInstance>() where TInstance : class, ISceneInstance;
     bool TryGet<TInstance>(string handleId, out TInstance instance) where TInstance : class, ISceneInstance;
     TInstance GetOrAdd<TInstance>(string handleId, Func<string, TInstance> factory) where TInstance : class, ISceneInstance;
+    /// <summary>Adds a runtime-only instance that must not enter SceneState or saves.</summary>
+    TInstance GetOrAddTransient<TInstance>(string handleId, Func<string, TInstance> factory) where TInstance : class, ISceneInstance;
     bool Remove<TInstance>(string handleId, out TInstance? instance) where TInstance : class, ISceneInstance;
     void Rebuild(IEnumerable<ISceneInstance> instances);
 }

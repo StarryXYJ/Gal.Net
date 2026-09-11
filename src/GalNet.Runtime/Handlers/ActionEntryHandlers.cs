@@ -16,7 +16,9 @@ public sealed class ShowLayerHandler : EntryHandler
         var asset = context.GetString("assetId");
         var layer = context.Runtime.SceneInstances.TryGet<Layer>(id, out var existing) ? existing : null;
         var previousAsset = layer?.AssetId;
-        layer ??= context.Runtime.SceneInstances.GetOrAdd(id, handleId => new Layer { Id = handleId });
+        layer ??= context.GetBool("transient")
+            ? context.Runtime.SceneInstances.GetOrAddTransient(id, handleId => new Layer { Id = handleId })
+            : context.Runtime.SceneInstances.GetOrAdd(id, handleId => new Layer { Id = handleId });
 
         layer.AssetId = asset;
         layer.Transform = context.GetLayerTransform();
@@ -97,6 +99,11 @@ public sealed class AnimateHandler : EntryHandler
     public override async Task ExecuteAsync(EntryContext context, IGameView view, TimeProvider timeProvider, CancellationToken ct)
     {
         var request = context.GetAnimation();
+        if (context.Runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(request.PlaybackHandleId, out _))
+        {
+            GameLog.Logger.Warning("Animate ignored because playback handle '{PlaybackHandleId}' is already active.", request.PlaybackHandleId);
+            return;
+        }
         if (!context.Runtime.SceneInstances.TryGet<AnimatableSceneInstance>(request.HandleId, out var instance))
         {
             GameLog.Logger.Warning("Animate ignored because handle '{HandleId}' is not an active animatable instance.", request.HandleId);
@@ -110,28 +117,75 @@ public sealed class AnimateHandler : EntryHandler
             return;
         }
 
-        var animation = view.AnimateAsync(request, ct);
-        async Task CommitAsync()
+        AnimationPlaybackInstance playbackInstance;
+        try
         {
-            var outcome = await animation;
-            if (outcome is AnimationOutcome.Completed or AnimationOutcome.Skipped)
+            playbackInstance = context.Runtime.SceneInstances.GetOrAdd(request.PlaybackHandleId,
+                id => new AnimationPlaybackInstance { Id = id, LoopMode = request.LoopMode });
+        }
+        catch (InvalidOperationException exception)
+        {
+            GameLog.Logger.Warning(exception, "Animate ignored because playback handle '{PlaybackHandleId}' belongs to another scene instance type.", request.PlaybackHandleId);
+            return;
+        }
+
+        async Task RunAsync()
+        {
+            try
             {
-                if (!instance.TrySetAnimationValue(request.Property, request.To, out var error))
+                AnimationOutcome outcome;
+                do
+                {
+                    outcome = await view.AnimateAsync(request, ct);
+                    if (request.LoopMode != AnimationLoopMode.Loop || playbackInstance.RequestedStop is not null || outcome != AnimationOutcome.Completed)
+                        break;
+                } while (true);
+
+                if ((outcome is AnimationOutcome.Completed or AnimationOutcome.Skipped) &&
+                    context.Runtime.SceneInstances.TryGet<AnimatableSceneInstance>(request.HandleId, out var current) &&
+                    ReferenceEquals(current, instance) &&
+                    !instance.TrySetAnimationValue(request.Property, request.To, out var error))
                     GameLog.Logger.Warning("Animation completion could not set '{Property}' on '{HandleId}': {Error}", request.Property, request.HandleId, error);
+            }
+            finally
+            {
+                context.Runtime.SceneInstances.Remove<AnimationPlaybackInstance>(request.PlaybackHandleId, out _);
             }
         }
 
         if (request.Blocking)
         {
-            await CommitAsync();
+            await RunAsync();
             return;
         }
 
-        _ = CommitAsync().ContinueWith(
+        _ = RunAsync().ContinueWith(
             task => GameLog.Logger.Error(task.Exception, "Non-blocking animation failed"),
             CancellationToken.None,
             TaskContinuationOptions.OnlyOnFaulted,
             TaskScheduler.Default);
+    }
+}
+
+public sealed class StopAnimationHandler : EntryHandler
+{
+    public override string EntryType => StopAnimationEntry.TypeId;
+
+    public override Task ExecuteAsync(EntryContext context, IGameView view, TimeProvider timeProvider, CancellationToken ct)
+    {
+        var playbackHandleId = context.GetString("playbackHandleId");
+        if (!Enum.TryParse<AnimationStopMode>(context.GetString("mode", "AfterIteration"), true, out var mode) || !Enum.IsDefined(mode))
+            throw new InvalidDataException($"Unknown animation stop mode '{context.GetString("mode")}'.");
+        if (!context.Runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(playbackHandleId, out var playback))
+        {
+            GameLog.Logger.Warning("Animation stop ignored because playback handle '{PlaybackHandleId}' is not active.", playbackHandleId);
+            return Task.CompletedTask;
+        }
+
+        playback.RequestStop(mode);
+        if (mode == AnimationStopMode.CompleteImmediately && !view.CompleteAnimationImmediately(playbackHandleId))
+            GameLog.Logger.Warning("Animation stop could not complete playback handle '{PlaybackHandleId}' because it is not currently rendering.", playbackHandleId);
+        return Task.CompletedTask;
     }
 }
 
@@ -142,43 +196,82 @@ public sealed class PlayAnimationPlanHandler : EntryHandler
     public override async Task ExecuteAsync(EntryContext context, IGameView view, TimeProvider timeProvider, CancellationToken ct)
     {
         var plan = context.GetAnimationPlan();
-        var events = new TimelineEventDispatcher(context, timeProvider, ct);
-        events.Start(plan);
-        // Frame-zero events may create a target (for example, the transparent incoming
-        // layer of a cross-fade), so validate targets after they have been dispatched.
-        if (!ValidateTracks(context.Runtime, plan))
+        if (context.Runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(plan.PlaybackHandleId, out _))
         {
-            events.Complete(plan, AnimationOutcome.Replaced);
+            GameLog.Logger.Warning("Animation plan ignored because playback handle '{PlaybackHandleId}' is already active.", plan.PlaybackHandleId);
             return;
         }
-        var playback = view.PlayAnimationPlanAsync(plan, ct);
-
-        async Task CompleteAsync()
+        AnimationPlaybackInstance playbackInstance;
+        try
         {
-            var result = await playback;
-            events.Complete(plan, result.Outcome);
-            CommitStableTracks(context.Runtime, plan, result);
+            playbackInstance = context.Runtime.SceneInstances.GetOrAdd(plan.PlaybackHandleId,
+                id => new AnimationPlaybackInstance { Id = id, LoopMode = plan.LoopMode });
+        }
+        catch (InvalidOperationException exception)
+        {
+            GameLog.Logger.Warning(exception, "Animation plan ignored because playback handle '{PlaybackHandleId}' belongs to another scene instance type.", plan.PlaybackHandleId);
+            return;
+        }
+
+        async Task RunAsync()
+        {
+            try
+            {
+                var iteration = 0;
+                while (true)
+                {
+                    var scope = plan.LoopMode == AnimationLoopMode.Loop
+                        ? new AnimationIterationScope(plan.PlaybackHandleId, iteration++)
+                        : null;
+                    var iterationPlan = scope?.Bind(plan) ?? plan;
+                    var events = new TimelineEventDispatcher(context, timeProvider, ct);
+                    events.Start(iterationPlan);
+                    if (!ValidateTracks(context.Runtime, iterationPlan, scope?.Handles))
+                    {
+                        events.Complete(iterationPlan, AnimationOutcome.Replaced);
+                        return;
+                    }
+
+                    var result = await view.PlayAnimationPlanAsync(iterationPlan, ct);
+                    events.Complete(iterationPlan, result.Outcome);
+                    CommitStableTracks(context.Runtime, iterationPlan, result);
+                    scope?.Cleanup(context.Runtime, view);
+
+                    if (plan.LoopMode != AnimationLoopMode.Loop || playbackInstance.RequestedStop is not null ||
+                        result.Outcome != AnimationOutcome.Completed)
+                        return;
+                }
+            }
+            finally
+            {
+                context.Runtime.SceneInstances.Remove<AnimationPlaybackInstance>(plan.PlaybackHandleId, out _);
+            }
         }
 
         if (plan.Blocking)
         {
-            await CompleteAsync();
+            await RunAsync();
             return;
         }
 
-        _ = CompleteAsync().ContinueWith(
+        _ = RunAsync().ContinueWith(
             task => GameLog.Logger.Error(task.Exception, "Non-blocking animation plan failed"),
             CancellationToken.None,
             TaskContinuationOptions.OnlyOnFaulted,
             TaskScheduler.Default);
     }
 
-    private static bool ValidateTracks(IGameRuntime runtime, AnimationPlanDefinition plan)
+    private static bool ValidateTracks(IGameRuntime runtime, AnimationPlanDefinition plan, IReadOnlySet<string>? deferredLayerHandles = null)
     {
         foreach (var track in plan.Tracks)
         {
             if (!runtime.SceneInstances.TryGet<AnimatableSceneInstance>(track.HandleId, out var instance))
             {
+                if (deferredLayerHandles?.Contains(track.HandleId) == true)
+                {
+                    var layerProperty = Layer.AnimationProperties.FirstOrDefault(candidate => candidate.Name == track.Property);
+                    if (layerProperty is not null && track.Keys.All(key => layerProperty.Accepts(key.Value))) continue;
+                }
                 GameLog.Logger.Warning("Animation plan ignored because handle '{HandleId}' is not active.", track.HandleId);
                 return false;
             }
@@ -204,6 +297,89 @@ public sealed class PlayAnimationPlanHandler : EntryHandler
                 !instance.TrySetAnimationValue(track.Property, track.Keys[^1].Value, out var error))
                 GameLog.Logger.Warning("Animation plan completion could not set '{HandleId}.{Property}': {Error}", track.HandleId, track.Property, error);
         }
+    }
+
+    /// <summary>Translates Loop Plan handles into one-iteration-only internal scene handles.</summary>
+    private sealed class AnimationIterationScope(string playbackHandleId, int iteration)
+    {
+        private readonly Dictionary<string, string> _handles = new(StringComparer.Ordinal);
+        public IReadOnlySet<string> Handles => _handles.Values.ToHashSet(StringComparer.Ordinal);
+
+        public AnimationPlanDefinition Bind(AnimationPlanDefinition source)
+        {
+            foreach (var track in source.Tracks) Resolve(track.HandleId);
+            foreach (var timelineEvent in source.Events.Where(item => item.Type.StartsWith("layer.", StringComparison.Ordinal)))
+                if (timelineEvent.Parameters.TryGetValue("handleId", out var handle)) Resolve(ToValue(handle));
+
+            return new AnimationPlanDefinition
+            {
+                PlaybackHandleId = source.PlaybackHandleId,
+                FrameRate = source.FrameRate,
+                DurationFrames = source.DurationFrames,
+                Blocking = source.Blocking,
+                Skippable = source.Skippable,
+                BatchId = source.BatchId,
+                LoopMode = source.LoopMode,
+                Tracks = source.Tracks.Select(track => new AnimationTrackDefinition
+                {
+                    HandleId = Resolve(track.HandleId),
+                    Property = track.Property,
+                    Keys = track.Keys.Select(key => new AnimationKeyframeDefinition
+                    {
+                        Frame = key.Frame, Value = key.Value, InTangent = key.InTangent,
+                        OutTangent = key.OutTangent, InterpolationToNext = key.InterpolationToNext
+                    }).ToList()
+                }).ToList(),
+                Events = source.Events.Select(timelineEvent => new AnimationPlanEventDefinition
+                {
+                    Frame = timelineEvent.Frame,
+                    Type = timelineEvent.Type,
+                    Parameters = BindParameters(timelineEvent)
+                }).ToList()
+            };
+        }
+
+        public void Cleanup(IGameRuntime runtime, IGameView view)
+        {
+            foreach (var handle in _handles.Values)
+            {
+                if (runtime.SceneInstances.Remove<Layer>(handle, out _)) view.HideLayer(handle);
+            }
+        }
+
+        private string Resolve(string logicalHandle)
+        {
+            if (_handles.TryGetValue(logicalHandle, out var resolved)) return resolved;
+            resolved = $"{playbackHandleId}:loop:{iteration}:{logicalHandle}";
+            _handles.Add(logicalHandle, resolved);
+            return resolved;
+        }
+
+        private Dictionary<string, JsonElement> BindParameters(AnimationPlanEventDefinition timelineEvent)
+        {
+            var parameters = timelineEvent.Parameters.ToDictionary(pair => pair.Key,
+                pair => timelineEvent.Type.StartsWith("layer.", StringComparison.Ordinal) && pair.Key == "handleId"
+                    ? ToJsonElement(Resolve(ToValue(pair.Value)))
+                    : pair.Value.Clone(), StringComparer.Ordinal);
+            if (timelineEvent.Type == ShowLayerEntry.TypeId)
+                parameters["transient"] = ToJsonElement("true");
+            return parameters;
+        }
+
+        private static JsonElement ToJsonElement(string value)
+        {
+            using var document = JsonDocument.Parse(JsonSerializer.Serialize(value));
+            return document.RootElement.Clone();
+        }
+
+        private static string ToValue(JsonElement value) => value.ValueKind switch
+        {
+            JsonValueKind.String => value.GetString() ?? "",
+            JsonValueKind.Number or JsonValueKind.True or JsonValueKind.False => value.GetRawText(),
+            JsonValueKind.Object or JsonValueKind.Array => value.GetRawText(),
+            JsonValueKind.Null => "",
+            _ => throw new InvalidDataException("Timeline event parameters cannot be undefined.")
+        };
     }
 
     private sealed class TimelineEventDispatcher(EntryContext context, TimeProvider timeProvider, CancellationToken outerCancellation)
@@ -259,7 +435,12 @@ public sealed class PlayAnimationPlanHandler : EntryHandler
             Entry entry;
             try
             {
-                entry = EntryRegistry.Create(timelineEvent.Type, values: timelineEvent.Parameters.ToDictionary(pair => pair.Key, pair => ToValue(pair.Value)));
+                var values = timelineEvent.Parameters.ToDictionary(pair => pair.Key, pair => ToValue(pair.Value));
+                entry = EntryRegistry.Create(timelineEvent.Type, values: values);
+                // The loop scope injects this runtime-only marker after schema filtering, so
+                // authoring UIs never expose a persistence-breaking transient toggle.
+                if (timelineEvent.Type == ShowLayerEntry.TypeId && values.TryGetValue("transient", out var transient))
+                    entry.Values["transient"] = transient;
             }
             catch (Exception exception)
             {

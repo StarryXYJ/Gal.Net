@@ -148,9 +148,17 @@ public class DefaultGameView : Grid, IGameView, IDisposable
     void ILayerView.HideLayer(string handleId) => HideLayer(handleId);
     void ILayerView.MoveLayer(string handleId, LayerTransform transform, float z, float durationSec)
         => MoveLayer(handleId, transform, z, durationSec);
-    Task<AnimationOutcome> IAnimationView.AnimateAsync(AnimationRequest request, CancellationToken ct) => Task.FromResult(AnimationOutcome.Completed);
-    Task<AnimationPlanPlayResult> IAnimationView.PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken ct) =>
-        Task.FromResult(new AnimationPlanPlayResult { Outcome = AnimationOutcome.Completed, TrackOutcomes = plan.Tracks.ToDictionary(track => $"{track.HandleId}:{track.Property}", _ => AnimationOutcome.Completed) });
+    async Task<AnimationOutcome> IAnimationView.AnimateAsync(AnimationRequest request, CancellationToken ct)
+    {
+        if (request.LoopMode == AnimationLoopMode.Loop) await Task.Delay(TimeSpan.FromSeconds(request.DurationSeconds), ct);
+        return AnimationOutcome.Completed;
+    }
+    async Task<AnimationPlanPlayResult> IAnimationView.PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken ct)
+    {
+        if (plan.LoopMode == AnimationLoopMode.Loop) await Task.Delay(TimeSpan.FromSeconds(plan.DurationFrames / (double)plan.FrameRate), ct);
+        return new AnimationPlanPlayResult { Outcome = AnimationOutcome.Completed, TrackOutcomes = plan.Tracks.ToDictionary(track => $"{track.HandleId}:{track.Property}", _ => AnimationOutcome.Completed) };
+    }
+    bool IAnimationView.CompleteAnimationImmediately(string playbackHandleId) => false;
     bool IAnimationView.SkipAnimationBatch() => false;
 
     public void ShowLayer(LayerRenderRequest request) => _registry.ShowLayer(request);

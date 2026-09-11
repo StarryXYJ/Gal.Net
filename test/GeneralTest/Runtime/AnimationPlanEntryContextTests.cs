@@ -10,7 +10,7 @@ public class AnimationPlanEntryContextTests
     public void Plan_deserializes_nested_tracks_keys_and_events()
     {
         var plan = ReadPlan("""
-            { "frameRate": 30, "durationFrames": 12, "blocking": true, "batchId": "scene-enter",
+            { "playbackHandleId": "scene-enter-clip", "frameRate": 30, "durationFrames": 12, "blocking": true, "batchId": "scene-enter",
               "tracks": [ { "handleId": "hero", "property": "opacity", "keys": [
                 { "frame": 0, "value": 0, "outTangent": 0.5, "interpolationToNext": "CubicHermite" },
                 { "frame": 12, "value": 1, "inTangent": 0.25 }
@@ -33,6 +33,15 @@ public class AnimationPlanEntryContextTests
     public void Plan_rejects_invalid_key_frames(string json)
     {
         Assert.That(() => ReadPlan(json), Throws.TypeOf<InvalidDataException>());
+    }
+
+    [Test]
+    public void Loop_plan_requires_nonblocking_unskippable_playback()
+    {
+        Assert.That(() => ReadPlan("""
+            { "playbackHandleId": "loop", "loopMode": "Loop", "durationFrames": 30, "blocking": true,
+              "tracks": [ { "handleId": "hero", "property": "opacity", "keys": [ { "frame": 0, "value": 0 } ] } ] }
+            """), Throws.TypeOf<InvalidDataException>());
     }
 
     private static GalNet.Core.Scene.AnimationPlanDefinition ReadPlan(string json)

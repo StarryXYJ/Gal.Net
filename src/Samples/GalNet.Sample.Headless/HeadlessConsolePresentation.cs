@@ -29,16 +29,19 @@ internal sealed class ConsolePresentation :
     public void HideLayer(string handleId) => Console.WriteLine($"[Layer] hide {handleId}");
     public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSec) =>
         Console.WriteLine($"[Layer] move {handleId}: ({transform.X}, {transform.Y}, {z}) in {durationSec}s");
-    public Task<AnimationOutcome> AnimateAsync(AnimationRequest request, CancellationToken ct)
+    public async Task<AnimationOutcome> AnimateAsync(AnimationRequest request, CancellationToken ct)
     {
         Console.WriteLine($"[Animate] {request.HandleId}.{request.Property} -> {request.To} in {request.DurationSeconds}s");
-        return Task.FromResult(AnimationOutcome.Completed);
+        if (request.LoopMode == AnimationLoopMode.Loop) await Task.Delay(TimeSpan.FromSeconds(request.DurationSeconds), ct);
+        return AnimationOutcome.Completed;
     }
-    public Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken ct)
+    public async Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken ct)
     {
         Console.WriteLine($"[AnimationPlan] {plan.Tracks.Count} tracks, {plan.DurationFrames} frames @ {plan.FrameRate} FPS");
-        return Task.FromResult(new AnimationPlanPlayResult { Outcome = AnimationOutcome.Completed, TrackOutcomes = plan.Tracks.ToDictionary(track => $"{track.HandleId}:{track.Property}", _ => AnimationOutcome.Completed) });
+        if (plan.LoopMode == AnimationLoopMode.Loop) await Task.Delay(TimeSpan.FromSeconds(plan.DurationFrames / (double)plan.FrameRate), ct);
+        return new AnimationPlanPlayResult { Outcome = AnimationOutcome.Completed, TrackOutcomes = plan.Tracks.ToDictionary(track => $"{track.HandleId}:{track.Property}", _ => AnimationOutcome.Completed) };
     }
+    public bool CompleteAnimationImmediately(string playbackHandleId) => false;
     public bool SkipAnimationBatch() => false;
     public void ShowDialogue() => Console.WriteLine("[Dialogue] show");
     public void HideDialogue() => Console.WriteLine("[Dialogue] hide");

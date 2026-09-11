@@ -49,24 +49,40 @@ public sealed class EntryContext
         }
     }
 
+    /// <summary>Builds and validates an immediate <c>animate</c> request from the current entry.</summary>
+    /// <returns>A request with a unique playback handle and legal loop/blocking combination.</returns>
+    /// <exception cref="InvalidDataException">A required parameter is absent or the request violates animation constraints.</exception>
     public AnimationRequest GetAnimation()
     {
+        var playbackHandleId = GetString("playbackHandleId");
+        if (string.IsNullOrWhiteSpace(playbackHandleId)) throw new InvalidDataException("Animation playbackHandleId is required.");
         var property = GetString("property");
         if (string.IsNullOrWhiteSpace(property)) throw new InvalidDataException("Animation property is required.");
         if (!float.TryParse(GetString("to"), out var to)) throw new InvalidDataException("Animation target value is required.");
         if (GetFloat("duration", .25f) < 0) throw new InvalidDataException("Animation duration must not be negative.");
         if (!Enum.TryParse<BuiltinAnimationCurve>(GetString("curve", "Linear"), true, out var curve) || !Enum.IsDefined(curve))
             throw new InvalidDataException($"Unknown built-in animation curve '{GetString("curve")}'.");
+        if (!Enum.TryParse<AnimationLoopMode>(GetString("loopMode", "Once"), true, out var loopMode) || !Enum.IsDefined(loopMode))
+            throw new InvalidDataException($"Unknown animation loopMode '{GetString("loopMode")}'.");
+        var blocking = GetBool("blocking");
+        var skippable = GetBool("skippable");
+        if (loopMode == AnimationLoopMode.Loop && (blocking || skippable))
+            throw new InvalidDataException("Loop animations must be non-blocking and non-skippable.");
+        if (loopMode == AnimationLoopMode.Loop && GetFloat("duration", .25f) <= 0)
+            throw new InvalidDataException("Loop animations require a positive duration.");
 
         return new AnimationRequest
         {
-            HandleId = GetString("handleId"), Property = property,
+            PlaybackHandleId = playbackHandleId, HandleId = GetString("handleId"), Property = property,
             From = GetOptionalFloat("from"),
             To = to, DurationSeconds = GetFloat("duration", .25f), Curve = AnimationCurves.Create(curve),
-            Blocking = GetBool("blocking"), Skippable = GetBool("skippable"), BatchId = NullIfWhiteSpace(GetString("batchId"))
+            Blocking = blocking, Skippable = skippable, BatchId = NullIfWhiteSpace(GetString("batchId")), LoopMode = loopMode
         };
     }
 
+    /// <summary>Deserializes and validates an <c>animation.play</c> keyframe timeline.</summary>
+    /// <returns>A plan whose tracks are frame-ordered, property-unique and safe for Runtime dispatch.</returns>
+    /// <exception cref="InvalidDataException">The plan JSON or any timeline invariant is invalid.</exception>
     public AnimationPlanDefinition GetAnimationPlan()
     {
         AnimationPlanDefinition plan;
@@ -87,9 +103,15 @@ public sealed class EntryContext
 
     private static void ValidateAnimationPlan(AnimationPlanDefinition plan)
     {
+        if (string.IsNullOrWhiteSpace(plan.PlaybackHandleId)) throw new InvalidDataException("Animation plan playbackHandleId is required.");
         if (plan.FrameRate is < 1 or > 240) throw new InvalidDataException("Animation plan frameRate must be between 1 and 240.");
         if (plan.DurationFrames < 0) throw new InvalidDataException("Animation plan durationFrames must not be negative.");
         if (plan.Tracks is null || plan.Events is null) throw new InvalidDataException("Animation plan tracks and events must be arrays.");
+        if (!Enum.IsDefined(plan.LoopMode)) throw new InvalidDataException("Animation plan loopMode is invalid.");
+        if (plan.LoopMode == AnimationLoopMode.Loop && (plan.Blocking || plan.Skippable))
+            throw new InvalidDataException("Loop animation plans must be non-blocking and non-skippable.");
+        if (plan.LoopMode == AnimationLoopMode.Loop && plan.DurationFrames == 0)
+            throw new InvalidDataException("Loop animation plans require a positive durationFrames value.");
 
         var properties = new HashSet<string>(StringComparer.Ordinal);
         foreach (var track in plan.Tracks)

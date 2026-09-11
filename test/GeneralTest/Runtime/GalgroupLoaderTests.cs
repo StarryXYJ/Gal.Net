@@ -20,7 +20,7 @@ public class GalgroupLoaderTests
                   "transform": { "x": 120, "y": -30, "rotationDegrees": 12, "scaleX": 2, "scaleY": 1 }
                 } },
                 { "id": "entry-animation", "type": "animation.play", "parameters": {
-                  "plan": { "frameRate": 60, "durationFrames": 30, "blocking": true,
+                  "plan": { "playbackHandleId": "intro-clip", "frameRate": 60, "durationFrames": 30, "blocking": true,
                     "tracks": [ { "handleId": "layer-handle", "property": "opacity", "keys": [
                       { "frame": 0, "value": 0, "interpolationToNext": "Linear" },
                       { "frame": 30, "value": 1 }

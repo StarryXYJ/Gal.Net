@@ -223,6 +223,19 @@ public class GameEngineIntegrationTests
     }
 
     [Test]
+    public void Transient_scene_instances_are_active_but_not_saved()
+    {
+        var runtime = new GalNet.Runtime.Runtime.GameRuntime(null);
+        var transient = runtime.SceneInstances.GetOrAddTransient<GalNet.Core.Scene.Layer>("loop:0:spark", id => new() { Id = id, AssetId = "spark" });
+
+        Assert.That(runtime.SceneInstances.TryGet<GalNet.Core.Scene.Layer>(transient.Id, out var active), Is.True);
+        Assert.That(active, Is.SameAs(transient));
+        Assert.That(runtime.SceneState.Layers, Is.Empty);
+
+        Assert.That(runtime.SceneInstances.Remove<GalNet.Core.Scene.Layer>(transient.Id, out _), Is.True);
+    }
+
+    [Test]
     public async Task Layer_replace_keeps_instance_transform_z_and_display_mode()
     {
         var graph = new GalNet.Core.Graph.Graph
@@ -277,7 +290,7 @@ public class GameEngineIntegrationTests
                     Entries =
                     {
                         Create(ShowLayerEntry.TypeId, 1, ("handleId", "hero"), ("assetId", "hero"), ("transform", "{\"x\":680}")),
-                        Create(AnimateEntry.TypeId, 2, ("handleId", "hero"), ("property", "transform.x"), ("to", "540"), ("duration", "0"), ("blocking", "true")),
+                        Create(AnimateEntry.TypeId, 2, ("playbackHandleId", "hero-enter"), ("handleId", "hero"), ("property", "transform.x"), ("to", "540"), ("duration", "0"), ("blocking", "true")),
                         Create(TextEntry.TypeId, 3, ("content", "pause"))
                     }
                 }
@@ -294,7 +307,7 @@ public class GameEngineIntegrationTests
     public async Task Animation_plan_events_and_final_tracks_update_stable_scene_state()
     {
         var plan = """
-            { "frameRate": 60, "durationFrames": 1, "blocking": true, "tracks": [
+            { "playbackHandleId": "crossfade", "frameRate": 60, "durationFrames": 1, "blocking": true, "tracks": [
               { "handleId": "old", "property": "opacity", "keys": [ { "frame": 0, "value": 1 }, { "frame": 1, "value": 0 } ] },
               { "handleId": "new", "property": "opacity", "keys": [ { "frame": 0, "value": 0 }, { "frame": 1, "value": 1 } ] }
             ], "events": [

@@ -46,6 +46,7 @@ public sealed class CompositeGameView : IGameView
     public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSec) => _layers.MoveLayer(handleId, transform, z, durationSec);
     public Task<AnimationOutcome> AnimateAsync(AnimationRequest request, CancellationToken ct) => _animations.AnimateAsync(request, ct);
     public Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken ct) => _animations.PlayAnimationPlanAsync(plan, ct);
+    public bool CompleteAnimationImmediately(string playbackHandleId) => _animations.CompleteAnimationImmediately(playbackHandleId);
     public bool SkipAnimationBatch() => _animations.SkipAnimationBatch();
     public void ShowDialogue() => _controls.ShowDialogue();
     public void HideDialogue() => _controls.HideDialogue();
