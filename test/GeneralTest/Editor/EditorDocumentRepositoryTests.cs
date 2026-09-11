@@ -39,7 +39,7 @@ public class EditorDocumentRepositoryTests
             Nodes =
             [
                 new EditorGraphNodeDto { Id = "entry_1", Type = "Entry", Name = "Entry", X = 0, Y = 0 },
-                new EditorGraphNodeDto { Id = groupId, Type = "Group", Name = "Start", X = 10, Y = 20, File = $"groups/{groupId}.galgroup" }
+                new EditorGraphNodeDto { Id = groupId, Type = "Group", Name = "Start", X = 10, Y = 20, File = $"groups/{groupId}.rawgalgroup" }
             ],
             Edges = [new EditorGraphEdgeDto { FromNodeId = "entry_1", FromOutlet = 0, ToNodeId = groupId }]
         };
@@ -48,7 +48,7 @@ public class EditorDocumentRepositoryTests
             Path.Combine(_tempDir, "Graph", "graph.json"),
             JsonSerializer.Serialize(document, new JsonSerializerOptions { WriteIndented = true }));
         File.WriteAllText(
-            Path.Combine(_tempDir, "Graph", "groups", $"{groupId}.galgroup"),
+            Path.Combine(_tempDir, "Graph", "groups", $"{groupId}.rawgalgroup"),
             """{ "version": 1, "entries": [ { "id": "entry-1", "type": "text", "parameters": { "content": "hello", "obsolete": "discard" } } ] }""");
 
         var settings = new ProjectSettings
@@ -85,7 +85,7 @@ public class EditorDocumentRepositoryTests
             Nodes =
             [
                 new EditorGraphNodeDto { Id = "entry_1", Type = "Entry", Name = "Entry", X = 0, Y = 0 },
-                new EditorGraphNodeDto { Id = "group_1", Type = "Group", Name = "Start", X = 10, Y = 20, File = "groups/group_1.galgroup" }
+                new EditorGraphNodeDto { Id = "group_1", Type = "Group", Name = "Start", X = 10, Y = 20, File = "groups/group_1.rawgalgroup" }
             ],
             Edges = [new EditorGraphEdgeDto { FromNodeId = "entry_1", FromOutlet = 0, ToNodeId = "group_1" }],
             PlayerVariables = [CreateDefinition("player_name", "Alice")],
@@ -111,12 +111,13 @@ public class EditorDocumentRepositoryTests
 
         var savedJson = File.ReadAllText(Path.Combine(_tempDir, "Graph", "graph.json"));
         var savedDocument = JsonSerializer.Deserialize<EditorGraphDocument>(savedJson);
-        var savedGroup = File.ReadAllText(Path.Combine(_tempDir, "Graph", "groups", "group_1.galgroup"));
+        var savedGroup = File.ReadAllText(Path.Combine(_tempDir, "Graph", "groups", "group_1.rawgalgroup"));
 
         Assert.That(savedDocument, Is.Not.Null);
         Assert.That(savedDocument!.PlayerVariables.Select(v => v.Name), Is.EqualTo(new[] { "player_name" }));
         Assert.That(savedDocument.SaveVariables.Select(v => v.Name), Is.EqualTo(new[] { "save_slot" }));
         var savedGroupDocument = JsonDocument.Parse(savedGroup);
+        Assert.That(savedGroupDocument.RootElement.GetProperty("kind").GetString(), Is.EqualTo("Raw"));
         var entry = savedGroupDocument.RootElement.GetProperty("entries")[0];
         Assert.That(entry.GetProperty("condition").GetString(), Is.EqualTo("player_name==Alice"));
         Assert.That(entry.GetProperty("parameters").GetProperty("speaker").GetString(), Is.EqualTo("Alice"));

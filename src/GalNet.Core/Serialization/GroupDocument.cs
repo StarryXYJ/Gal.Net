@@ -3,14 +3,25 @@ using System.Text.Json.Serialization;
 
 namespace GalNet.Core.Serialization;
 
-/// <summary>Authoring document stored in a JSON .galgroup file.</summary>
+/// <summary>Serialized group document. Raw documents are editor source; compiled documents are Runtime input.</summary>
 public sealed class GroupDocument
 {
     [JsonPropertyName("version")]
     public int Version { get; set; } = 1;
 
+    [JsonPropertyName("kind")]
+    [JsonConverter(typeof(JsonStringEnumConverter<GroupDocumentKind>))]
+    public GroupDocumentKind Kind { get; set; } = GroupDocumentKind.Raw;
+
     [JsonPropertyName("entries")]
     public List<GroupEntryDocument> Entries { get; set; } = [];
+}
+
+/// <summary>The stage represented by a serialized group document.</summary>
+public enum GroupDocumentKind
+{
+    Raw,
+    Compiled
 }
 
 /// <summary>Stable authoring entry. Parameters remain structured JSON until compiled for Runtime.</summary>

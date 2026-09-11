@@ -45,7 +45,8 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
         _state.SetLayer(request.HandleId, new SceneLayerItem
         {
             HandleId = request.HandleId,
-            Image = _layers.ResolveLayerImage(request.AssetId),
+            Image = request.Color is null ? _layers.ResolveLayerImage(request.AssetId) : null,
+            Color = request.Color,
             X = request.Transform.X,
             Y = request.Transform.Y,
             RotationDegrees = request.Transform.RotationDegrees,

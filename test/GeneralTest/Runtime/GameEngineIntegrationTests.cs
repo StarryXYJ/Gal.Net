@@ -340,6 +340,37 @@ public class GameEngineIntegrationTests
         Assert.That(incoming!.Opacity, Is.EqualTo(1));
     }
 
+    [Test]
+    public async Task Color_overlay_is_a_transient_layer_and_is_excluded_from_snapshot()
+    {
+        var graph = new GalNet.Core.Graph.Graph
+        {
+            RootNodeId = "group_main",
+            Nodes =
+            {
+                new Group
+                {
+                    Id = "group_main",
+                    Entries =
+                    {
+                        Create(ShowColorLayerEntry.TypeId, 1,
+                            ("handleId", "temporary-overlay"), ("color", "#112233"), ("transform", "{}"), ("z", "1000"), ("opacity", "0.5")),
+                        Create(TextEntry.TypeId, 2, ("content", "pause"))
+                    }
+                }
+            }
+        };
+
+        var engine = new GameEngine(graph, new NullGameView());
+        await engine.StepAsync();
+
+        Assert.That(engine.Runtime.SceneInstances.TryGet<GalNet.Core.Scene.Layer>("temporary-overlay", out var overlay), Is.True);
+        Assert.That(overlay!.Color, Is.EqualTo("#112233"));
+        Assert.That(overlay.Opacity, Is.EqualTo(0.5f));
+        Assert.That(engine.Runtime.SceneState.Layers, Is.Empty);
+        Assert.That(engine.CreateSaveData().SceneState.Layers, Is.Empty);
+    }
+
     private static GalNet.Core.Entry.Entry Create(string type, int id, params (string Key, string Value)[] values) =>
         EntryRegistry.Create(type, id, values: values.ToDictionary(x => x.Key, x => x.Value));
 

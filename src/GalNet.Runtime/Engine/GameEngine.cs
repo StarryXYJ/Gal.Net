@@ -133,6 +133,8 @@ public sealed class GameEngine
             var entry = entries[_runtime.EntryIndex];
             if (!_runtime.EvaluateCondition(entry.Condition))
                 continue;
+            if (entry is not PrimitiveEntry)
+                throw new InvalidOperationException($"Runtime cannot execute non-primitive entry '{entry.Type}'. Compile the source group first.");
 
             var handler = _registry.Resolve(entry.Type);
             if (handler == null)
@@ -160,6 +162,11 @@ public sealed class GameEngine
 
     private Task DispatchTimelineEventAsync(Entry entry, CancellationToken ct)
     {
+        if (entry is not PrimitiveEntry)
+        {
+            GameLog.Logger.Warning("Animation plan event ignored because entry type '{EntryType}' is not a primitive.", entry.Type);
+            return Task.CompletedTask;
+        }
         var handler = _registry.Resolve(entry.Type);
         if (handler is null)
         {
@@ -251,7 +258,7 @@ public sealed class GameEngine
     {
         _runtime.RestoreFrom(data);
         foreach (var layer in _runtime.SceneState.Layers.Where(layer => layer.Visible))
-            _view.ShowLayer(new LayerRenderRequest(layer.Id, layer.AssetId, layer.Transform.Clone(), layer.Z, layer.DisplayMode, layer.Opacity));
+            _view.ShowLayer(new LayerRenderRequest(layer.Id, layer.AssetId, layer.Transform.Clone(), layer.Z, layer.DisplayMode, layer.Opacity, layer.Color));
         IsRunning = true;
     }
 }

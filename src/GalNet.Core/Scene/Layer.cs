@@ -23,6 +23,9 @@ public sealed class Layer : AnimatableSceneInstance
     /// <summary>资源 ID 引用</summary>
     public string AssetId { get; set; } = "";
 
+    /// <summary>Optional #RRGGBB or #AARRGGBB solid color used instead of an image asset.</summary>
+    public string? Color { get; set; }
+
     public LayerTransform Transform { get; set; } = new();
 
     /// <summary>z-index 层叠顺序，越大越靠前。背景建议 0，立绘建议 5~20</summary>
@@ -78,6 +81,9 @@ public sealed class Layer : AnimatableSceneInstance
         error = null;
         return true;
     }
+
+    /// <summary>Checks the portable hexadecimal color syntax supported by color layers.</summary>
+    public static bool IsValidColor(string? value) => value is { Length: 7 or 9 } && value[0] == '#' && value[1..].All(Uri.IsHexDigit);
 
     // Read-only compatibility bridge for saves written before Transform existed.
     // [JsonPropertyName("X")]

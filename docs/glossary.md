@@ -6,11 +6,15 @@
 | --- | --- | --- |
 | 图 | `Graph` | 剧情流程图，由节点和边组成。 |
 | 入口节点 | `Entry` | 图的起始节点；Runtime 将其视为不含条目的 Group。 |
-| 组 | `Group` | 线性执行一组 Entry；作者条目放在单独的 `.galgroup`。 |
+| 组 | `Group` | 线性执行一组 Entry；编辑源条目放在单独的 `.rawgalgroup`。 |
 | 分支 | `Branch` | `Choice`（玩家选择）或 `Condition`（条件匹配）节点。 |
-| 条目 | `Entry` | 最小剧情动作，例如文本、图层、音频、效果或变量赋值。 |
-| 条目定义 | `EntryDefinition` | 条目类型、分类、参数 schema、默认值与可选值的注册信息。 |
-| 条目处理器 | `EntryHandler` | Runtime 中执行某一条目类型的实现。 |
+| 条目 | `Entry` | 剧情动作的数据载体；可为原语或非原语。 |
+| 原语条目 | `PrimitiveEntry` | 有 Runtime Handler、可直接执行的条目；编译 `.galgroup` 只允许这一类。 |
+| 非原语条目 | `NonPrimitiveEntry` | 没有 Handler，通过 `Compile(EntryCompileContext)` 展开为有序原语。 |
+| 条目定义 | `EntryDefinition` | 条目类型、分类、参数 schema、默认值、可选值与原语分类的注册信息。 |
+| 条目处理器 | `EntryHandler` | Runtime 中执行一个原语条目类型的实现。 |
+| 原始组文件 | `.rawgalgroup` | 编辑器保存的 Group 源文件，可含原语和非原语，`kind` 为 `Raw`。 |
+| 编译组文件 | `.galgroup` | 仅供 Runtime 加载的 Group 产物，只含原语，`kind` 为 `Compiled`。 |
 | 运行时 | `IGameRuntime` / `GameRuntime` | 当前节点、条目位置、变量、场景实例和文本解析器的唯一状态源。 |
 | 游戏引擎 | `GameEngine` | 驱动节点转移与条目执行，产生 checkpoint 和存档快照。 |
 | 呈现接口 | `IGameView` | Runtime 向具体 UI/无界面宿主发送画面和交互请求的端口。 |

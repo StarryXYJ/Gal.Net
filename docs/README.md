@@ -8,3 +8,4 @@
 - [Control](spec/control.md)：固定默认页面流、UI 预设与 Avalonia 呈现边界。
 - [国际化](spec/i18n.md)：编辑器本地化、运行时文本解析器和项目语言设置。
 - [术语表](glossary.md)：项目术语。
+- [杂项待办](design/misc-todo.md)：与游戏本体解耦的工程性后续工作。

@@ -261,7 +261,7 @@ public sealed class ProjectService : IProjectService
                     Name = "Opening",
                     X = 4900,
                     Y = 4950,
-                    File = $"groups/{groupId}.galgroup"
+                    File = $"groups/{groupId}.rawgalgroup"
                 }
             ],
             Edges =
@@ -279,9 +279,10 @@ public sealed class ProjectService : IProjectService
             Path.Combine(graphPath, "graph.json"),
             JsonSerializer.Serialize(graph, JsonOptions));
         await File.WriteAllTextAsync(
-            Path.Combine(graphPath, "groups", $"{groupId}.galgroup"),
+            Path.Combine(graphPath, "groups", $"{groupId}.rawgalgroup"),
             JsonSerializer.Serialize(new GroupDocument
             {
+                Kind = GroupDocumentKind.Raw,
                 Entries =
                 [
                     new GroupEntryDocument

@@ -32,7 +32,7 @@ public sealed class EntryHandlerRegistry
     {
         var registry = new EntryHandlerRegistry();
         registry.Register(new TextHandler());
-        registry.Register(new ShowLayerHandler()); registry.Register(new HideLayerHandler()); registry.Register(new MoveLayerHandler()); registry.Register(new ReplaceLayerHandler());
+        registry.Register(new ShowLayerHandler()); registry.Register(new ShowColorLayerHandler()); registry.Register(new HideLayerHandler()); registry.Register(new MoveLayerHandler()); registry.Register(new ReplaceLayerHandler());
         registry.Register(new AnimateHandler()); registry.Register(new PlayAnimationPlanHandler()); registry.Register(new StopAnimationHandler());
         registry.Register(new PlayAudioHandler()); registry.Register(new StopAudioHandler()); registry.Register(new PauseAudioHandler()); registry.Register(new ResumeAudioHandler()); registry.Register(new EnqueueAudioHandler());
         registry.Register(new PlayVideoHandler()); registry.Register(new StopVideoHandler());

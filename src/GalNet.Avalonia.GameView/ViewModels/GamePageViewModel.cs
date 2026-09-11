@@ -123,6 +123,7 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         else
         {
             existing.Image = item.Image;
+            existing.Color = item.Color;
             existing.X = item.X;
             existing.Y = item.Y;
             existing.RotationDegrees = item.RotationDegrees;
@@ -146,6 +147,7 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         var layer = Layers.FirstOrDefault(candidate => candidate.HandleId == id);
         if (layer is null) return;
         layer.Image = image;
+        layer.Color = null;
     }
 
     public void MoveLayer(string id, LayerTransform transform, float z)

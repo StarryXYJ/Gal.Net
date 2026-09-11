@@ -21,6 +21,7 @@ public sealed class ShowLayerHandler : EntryHandler
             : context.Runtime.SceneInstances.GetOrAdd(id, handleId => new Layer { Id = handleId });
 
         layer.AssetId = asset;
+        layer.Color = null;
         layer.Transform = context.GetLayerTransform();
         layer.Z = context.GetFloat("z");
         layer.Opacity = context.GetFloat("opacity", 1);
@@ -29,8 +30,31 @@ public sealed class ShowLayerHandler : EntryHandler
             : LayerDisplayMode.Native;
         layer.Visible = true;
 
-        view.ShowLayer(new LayerRenderRequest(layer.Id, layer.AssetId, layer.Transform.Clone(), layer.Z, layer.DisplayMode, layer.Opacity));
+        view.ShowLayer(new LayerRenderRequest(layer.Id, layer.AssetId, layer.Transform.Clone(), layer.Z, layer.DisplayMode, layer.Opacity, layer.Color));
         await PresentationRequests.PlayTransitionAsync(context, view, previousAsset, asset, ct);
+    }
+}
+
+public sealed class ShowColorLayerHandler : EntryHandler
+{
+    public override string EntryType => ShowColorLayerEntry.TypeId;
+
+    public override Task ExecuteAsync(EntryContext context, IGameView view, TimeProvider timeProvider, CancellationToken ct)
+    {
+        var color = context.GetString("color");
+        if (!Layer.IsValidColor(color))
+            throw new InvalidDataException("Color layers require a #RRGGBB or #AARRGGBB color.");
+
+        var layer = context.Runtime.SceneInstances.GetOrAddTransient(context.GetString("handleId"), id => new Layer { Id = id });
+        layer.AssetId = "";
+        layer.Color = color;
+        layer.Transform = context.GetLayerTransform();
+        layer.Z = context.GetFloat("z", 1000);
+        layer.Opacity = context.GetFloat("opacity", 1);
+        layer.DisplayMode = LayerDisplayMode.Fill;
+        layer.Visible = true;
+        view.ShowLayer(new LayerRenderRequest(layer.Id, layer.AssetId, layer.Transform.Clone(), layer.Z, layer.DisplayMode, layer.Opacity, layer.Color));
+        return Task.CompletedTask;
     }
 }
 
@@ -87,6 +111,7 @@ public sealed class ReplaceLayerHandler : EntryHandler
         }
 
         layer.AssetId = assetId;
+        layer.Color = null;
         view.ReplaceLayer(handleId, assetId);
         return Task.CompletedTask;
     }

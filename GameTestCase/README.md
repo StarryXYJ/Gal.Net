@@ -1,6 +1,7 @@
 # Shared game test case
 
-This data-only game is the shared smoke-test fixture for both official sample hosts.
+This data-only game is the shared smoke-test fixture for both official sample hosts. Its
+`.galgroup` files are compiled Runtime content; editor source uses the `.rawgalgroup` suffix.
 
 `bg*` files are used as backgrounds and the `xy*` PNG files as portrait resources.
 The opening scene intentionally also references the non-existent
@@ -24,9 +25,10 @@ it shows the Filled background at opacity 0, fades the two backgrounds together,
 the old one. This keeps the shared fixture useful for validating both timeline events and
 property tracks in the headless and Avalonia hosts.
 
-The first choice removes the opening layers and displays `bg.png` with `Tile`, so its
-repeated native-size pattern is unobstructed. The second choice keeps the comparison
-background in `Fill` mode.
+The first choice starts a non-blocking, skippable 54-frame black-field fade: a transient
+pure-black Overlay covers the opening background, swaps to tiled `bg.png` at full black,
+then fades away. The second choice keeps the comparison background in `Fill` mode and
+uses the cross-fade Plan.
 
 - Headless: `powershell -File scripts/run-headless-sample.ps1`
 - Avalonia: `powershell -File scripts/run-avalonia-sample.ps1`

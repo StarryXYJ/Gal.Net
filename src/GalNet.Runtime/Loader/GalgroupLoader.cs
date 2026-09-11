@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.Scene;
@@ -6,10 +7,14 @@ using GalNet.Core.Serialization;
 
 namespace GalNet.Runtime.Loader;
 
-/// <summary>Loads JSON .galgroup authoring documents and compiles them into Runtime entries.</summary>
+/// <summary>Loads compiled JSON .galgroup documents into Runtime entries.</summary>
 public static class GalgroupLoader
 {
-    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter() }
+    };
 
     public static void LoadIntoGroup(Group group, string galgroupPath) =>
         LoadIntoGroupFromContent(group, File.ReadAllText(galgroupPath));
@@ -29,6 +34,8 @@ public static class GalgroupLoader
 
         if (document.Version != 1)
             throw new InvalidDataException($"Unsupported .galgroup version '{document.Version}'.");
+        if (document.Kind != GroupDocumentKind.Compiled)
+            throw new InvalidDataException("Runtime only accepts compiled .galgroup documents. Compile the .rawgalgroup source first.");
 
         var stableIds = new HashSet<string>(StringComparer.Ordinal);
         var entries = new List<Entry>(document.Entries.Count);
@@ -42,6 +49,10 @@ public static class GalgroupLoader
 
             try
             {
+                var definition = EntryRegistry.Get(source.Type);
+                if (definition.Kind != EntryKind.Primitive)
+                    throw new InvalidDataException($"Non-primitive entry '{source.Type}' is not valid in compiled .galgroup content.");
+                if (source.Type == PlayAnimationPlanEntry.TypeId) ValidatePlanEvents(source.Parameters);
                 entries.Add(EntryRegistry.Create(source.Type, index + 1, source.Condition, CompileParameters(source)));
             }
             catch (Exception exception) when (exception is InvalidDataException or JsonException or ArgumentException)
@@ -52,6 +63,27 @@ public static class GalgroupLoader
 
         group.Entries.Clear();
         group.Entries.AddRange(entries);
+    }
+
+    private static void ValidatePlanEvents(IReadOnlyDictionary<string, JsonElement> parameters)
+    {
+        if (!parameters.TryGetValue("plan", out var planValue))
+            throw new InvalidDataException("animation.play requires a plan.");
+        try
+        {
+            var plan = JsonSerializer.Deserialize<AnimationPlanDefinition>(planValue.GetRawText(), JsonOptions)
+                ?? throw new InvalidDataException("animation.play plan is empty.");
+            foreach (var timelineEvent in plan.Events)
+            {
+                var definition = EntryRegistry.Get(timelineEvent.Type);
+                if (definition.Kind != EntryKind.Primitive)
+                    throw new InvalidDataException($"animation.play event '{timelineEvent.Type}' must be a primitive entry.");
+            }
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidDataException("animation.play plan must be valid JSON.", exception);
+        }
     }
 
     private static IReadOnlyDictionary<string, string> CompileParameters(GroupEntryDocument source)

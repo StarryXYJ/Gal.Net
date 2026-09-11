@@ -136,6 +136,7 @@ public sealed class GameRuntime : IGameRuntime
         {
             Id = layer.Id,
             AssetId = layer.AssetId,
+            Color = layer.Color,
             Transform = layer.Transform?.Clone() ?? new LayerTransform(),
             Z = layer.Z,
             DisplayMode = layer.DisplayMode,

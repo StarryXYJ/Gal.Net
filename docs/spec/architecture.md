@@ -26,9 +26,9 @@ flowchart BT
 
 | 程序集 | 当前职责 |
 | --- | --- |
-| `GalNet.Core` | 图、条目、变量、场景、设置、序列化 DTO 与宿主服务接口 |
+| `GalNet.Core` | 图、条目、原语/非原语编译、变量、场景、设置、序列化 DTO 与宿主服务接口 |
 | `GalNet.Presentation.Abstractions` | `IGameView` 及文本、图层、交互、媒体、转场和效果端口 |
-| `GalNet.Runtime` | Graph / `.galgroup` 加载、`GameEngine`、条目处理器、运行态和存档 |
+| `GalNet.Runtime` | Graph / 已编译 `.galgroup` 加载、`GameEngine`、原语条目处理器、运行态和存档 |
 | `GalNet.Presentation.Defaults` | 无界面/默认呈现实现，供测试与简单宿主使用 |
 | `GalNet.Assets` | 本地目录、pak、资源索引、压缩与缓存 |
 | `GalNet.Control(.Abstraction)` | 固定默认页面流、UI 预设 schema、默认 Avalonia 游戏 View |
@@ -58,13 +58,13 @@ sequenceDiagram
 
 ## 编辑器工作流
 
-编辑器以 `EditorProjectDocument` 为 UI 无关的编辑聚合。`EditorDocumentRepository` 负责 `Graph/graph.json` 与 `Graph/groups/*.galgroup` 的读写；命令处理器原子修改该聚合，历史与保存调度器分别负责撤销/重做和合并写入。预览通过 `EditorGameDataProvider` 从当前项目内存状态建立内容，不依赖示例项目路径。
+编辑器以 `EditorProjectDocument` 为 UI 无关的编辑聚合。`EditorDocumentRepository` 负责 `Graph/graph.json` 与 `Graph/groups/*.rawgalgroup` 的读写；命令处理器原子修改该聚合，历史与保存调度器分别负责撤销/重做和合并写入。预览通过 `EditorGameDataProvider` 从当前项目内存状态建立内容：`GalgroupCompiler` 先将 Raw 条目编译为仅含原语的 `.galgroup`，再交给 Runtime，不依赖示例项目路径。
 
 Dock 面板由 `IEditorExtensionRegistry` 注册，`EditorDockFactory` 管理其布局和生命周期。现有内置面板是节点图、游戏预览、资源、日志、组编辑器和检查器；检查器由当前活动面板的可选贡献提供。
 
 ## 维护规则
 
 - 不让 Core、Runtime 或 Editor.Shared 反向引用 Avalonia 编辑器实现。
-- 新条目必须同时更新 Core schema、Runtime Handler/注册、加载验证、测试和 `entry-types.md`。
+- 新原语条目必须同时更新 Core schema、Runtime Handler/注册、加载验证、测试和 `entry-types.md`；新非原语条目必须实现编译并覆盖其展开测试，不得注册 Runtime Handler。
 - 新的持久化字段必须在 authoring JSON、加载器、导出包和兼容性测试中一起处理。
 - 新呈现能力先增加 `Presentation.Abstractions` 端口，再由所需宿主实现；不要让 Runtime 直接调用 UI 类型。

@@ -72,7 +72,7 @@ public sealed class GraphDocumentMapper
             Y = node.Y
         };
         if (node.NodeKind == GraphNodeKind.LinearGroup)
-            dto.File = $"groups/{node.Id}.galgroup";
+            dto.File = $"groups/{node.Id}.rawgalgroup";
         else if (node.NodeKind is GraphNodeKind.ChoiceBranch or GraphNodeKind.ConditionBranch)
         {
             dto.BranchType = node.NodeKind == GraphNodeKind.ChoiceBranch ? "Choice" : "Condition";

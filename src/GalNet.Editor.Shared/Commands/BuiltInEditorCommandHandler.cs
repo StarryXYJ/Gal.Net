@@ -48,7 +48,7 @@ public sealed partial class BuiltInEditorCommandHandler : IEditorCommandHandler
             Name = string.IsNullOrWhiteSpace(command.Name) ? command.NodeId : command.Name.Trim(),
             X = command.X,
             Y = command.Y,
-            File = command.Kind == EditorNodeKind.LinearGroup ? $"groups/{command.NodeId}.galgroup" : null,
+            File = command.Kind == EditorNodeKind.LinearGroup ? $"groups/{command.NodeId}.rawgalgroup" : null,
             Options = command.Kind == EditorNodeKind.ChoiceBranch ? [] : null,
             Conditions = command.Kind == EditorNodeKind.ConditionBranch ? [] : null
         };

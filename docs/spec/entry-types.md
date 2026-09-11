@@ -3,10 +3,12 @@
 ## 格式约定
 
 - 条目类型 ID 使用点分隔格式，如 `layer.show`、`audio.play`
-- `.galgroup` 中的条目参数为 JSON 对象；以下表格描述对象字段
+- `.rawgalgroup` 中的条目参数为 JSON 对象；`.galgroup` 是其编译产物，只允许原语条目
 - `?` 后缀 = 可选参数，缺省有默认值
 - 所有参数类型都是包装过后的类型，而不是原类型
 - 所有条目均携带：`condition` — 基于变量的表达式，false 则跳过本条目，默认 true
+
+原语有对应的 Runtime Handler；非原语只能保存在 `.rawgalgroup`，由编译器展开为原语。`animation.play` 是原语，即使它包含多条轨道和时间轴事件。
 
 ---
 
@@ -46,6 +48,20 @@
 
 > Handler: `ShowLayerHandler`（非阻塞）。创建或更新句柄对应的 Layer，再调用 `ILayerView.ShowLayer()`。
 
+### layer.showColor
+
+显示一个没有图像资源的纯色 Layer。它是原语，主要由场过渡等非原语在编译产物中使用；`color` 必须为 `#RRGGBB` 或 `#AARRGGBB`。该 Layer 是临时实例，不写入稳定场景状态或存档。
+
+| 参数 | 类型 | 说明 |
+|---|---|---|
+| handleId | SceneHandle | 临时纯色 Layer 句柄 |
+| color | string | `#RRGGBB` 或 `#AARRGGBB` |
+| transform | object? | 完整 Transform，默认单位 Transform |
+| z | float? | 默认 1000，通常覆盖目标 Layer |
+| opacity | float? | 默认 1 |
+
+> Handler: `ShowColorLayerHandler`（非阻塞）。创建临时 Layer，使用 `Fill` 方式覆盖游戏画布；后续仍通过 `layer.hide` 使其句柄失效。
+
 ### layer.hide
 
 | 参数 | 类型 | 说明 |
@@ -84,19 +100,60 @@
 
 | 参数 | 类型 | 说明 |
 |---|---|---|
+| playbackHandleId | SceneHandle | 本次动画播放实例的句柄；活动期间必须唯一，可由 `animation.stop` 定位 |
 | handleId | SceneHandle | 场上可动画实例的内部句柄 |
 | property | select | 目标属性。Layer 支持 `transform.x`、`transform.y`、`transform.rotationDegrees`、`transform.scaleX`、`transform.scaleY`、`opacity` |
 | from | float? | 起始值；省略时在动画实际开始时读取当前显示值 |
 | to | float | 目标值 |
 | duration | float? | 持续时间（秒），默认 0.25，不能小于 0 |
-| curve | object? | 曲线定义，默认 `{"kind":"Builtin","builtin":"Linear"}` |
+| curve | select? | `Linear`、`Step`、`EaseIn`、`EaseOut`、`EaseInOut`，默认 `Linear` |
 | blocking | bool? | 是否等待动画完成，默认 `false` |
 | skippable | bool? | 是否允许用户推进时跳过，默认 `false` |
 | batchId | string? | 供宿主按批跳过动画的可选标识 |
+| loopMode | select? | `Once` 或 `Loop`，默认 `Once`；Loop 必须非阻塞且不可跳过 |
 
-`curve` 支持三种格式：`Builtin`（`Linear`、`Step`、`EaseIn`、`EaseOut`、`EaseInOut`）、`CubicBezier`（`x1`、`y1`、`x2`、`y2`）及 `Lut`（至少两个 `{ value, tangent }` 节点和 `Step`、`Linear` 或 `Smooth` 插值）。曲线输入固定归一化到 `[0, 1]`，输出不截断，因而贝塞尔或 LUT 可产生回弹/超调；`Smooth` 使用节点切线，`Step` 与 `Linear` 忽略切线。
+`animate` 是单属性便捷原语，只使用内置曲线。复杂多段曲线与多属性同步动画应使用 `animation.play`。
 
 > Handler: `AnimateHandler`。无效、失效或类型不匹配的句柄，以及不被属性范围接受的起止值，都会记录诊断并安全跳过。
+
+### animation.play
+
+播放一个关键帧 `AnimationPlan` 原语。Plan 含 `playbackHandleId`、帧率、总帧数、阻塞/跳过/批次/循环设置，以及并行的 Float 属性轨道和时间轴事件。轨道关键帧支持 `Step`、`Linear`、`CubicHermite`；事件只能是原语条目。Loop 的每一轮都会重放全部事件。
+
+### animation.stop
+
+| 参数 | 类型 | 说明 |
+|---|---|---|
+| playbackHandleId | SceneHandle | 要停止的活动动画播放句柄 |
+| mode | select? | `AfterIteration`（默认，当前轮结束后停止）或 `CompleteImmediately` |
+
+### transition.crossFade（非原语）
+
+仅可出现在 `.rawgalgroup`。它接收旧/新 Layer 句柄、新资源与 Layer 显示参数、帧率和持续帧数，编译成一个 `animation.play`：第 0 帧显示透明新 Layer、两条 opacity 轨道交叉淡化、结束帧隐藏旧 Layer。该类型没有 Handler。
+
+### transition.fadeBlack / transition.fadeWhite / transition.fadeColor（非原语）
+
+三个场过渡共享同一组参数 schema，分别使用黑色、白色或 `color` 指定的纯色 Overlay。它们都编译为一个 `animation.play`：第 0 帧显示透明 Overlay，先淡入至不透明；随后隐藏旧 Layer 并显示新 Layer；全遮挡保持指定时长后淡出 Overlay，结束帧删除其临时句柄。整个过程同时只保留旧/新目标 Layer 与内部 Overlay，不复制图像或 Layer 状态。
+
+| 参数 | 类型 | 说明 |
+|---|---|---|
+| playbackHandleId | SceneHandle | 本次过渡播放句柄 |
+| fromLayerHandleId | SceneHandle | 要在场色完全遮住时隐藏的当前 Layer |
+| toLayerHandleId | SceneHandle | 中点显示的新 Layer 句柄 |
+| toAssetId | ImageAsset | 新 Layer 图像资源 |
+| toTransform | object? | 新 Layer Transform，默认单位 Transform |
+| toZ | float? | 新 Layer z，默认 0 |
+| toDisplayMode | select? | 新 Layer 展示方式，默认 `Fill` |
+| overlayZ | float? | 临时 Overlay 的 z，默认 1000 |
+| fadeInDuration | float? | Overlay 淡入时长（秒），默认 0.4，必须大于 0 |
+| holdDuration | float? | 全遮住画面后的保持时长（秒），默认 0.1，可为 0 |
+| fadeOutDuration | float? | Overlay 淡出时长（秒），默认 0.4，必须大于 0 |
+| blocking | bool? | 是否等待整个过渡结束，默认 `false` |
+| skippable | bool? | 是否允许推进时跳过，默认 `true` |
+| batchId | string? | 可跳过过渡的批次标识 |
+| color | string | 仅 `transition.fadeColor`：`#RRGGBB` 或 `#AARRGGBB` |
+
+这些类型与其他非原语一样，都是具有声明式参数列表的 Entry；它们只实现 `Compile`，不拥有特殊的转场运行时接口或 Handler。编译器以固定 60 FPS 将上述真实时间量化为关键帧 Plan。编辑器可按所属 `Transition` 分类聚合展示，并完全依据 schema 生成表单。
 
 ---
 
@@ -260,10 +317,17 @@
 |---|---|---|
 | `text` | 是 | 打字机文本显示 |
 | `layer.show` | 否 | 显示图层 |
+| `layer.showColor` | 否 | 显示临时纯色 Overlay 图层 |
 | `layer.hide` | 否 | 隐藏图层 |
 | `layer.move` | 否 | 移动图层 |
 | `layer.replace` | 否 | 替换图层资源，保留其余状态 |
 | `animate` | 由 `blocking` 决定 | 插值场上实例属性 |
+| `animation.play` | 由 Plan 的 `blocking` 决定 | 多轨关键帧时间轴 |
+| `animation.stop` | 否 | 请求停止 Loop 动画播放 |
+| `transition.crossFade` | — | 非原语；编译为 `animation.play` |
+| `transition.fadeBlack` | — | 非原语；黑场过渡，编译为 `animation.play` |
+| `transition.fadeWhite` | — | 非原语；白场过渡，编译为 `animation.play` |
+| `transition.fadeColor` | — | 非原语；自定义颜色场过渡，编译为 `animation.play` |
 | `audio.play` | 否 | 播放音频 |
 | `audio.stop` | 否 | 停止音频 |
 | `audio.pause` | 否 | 暂停音频 |

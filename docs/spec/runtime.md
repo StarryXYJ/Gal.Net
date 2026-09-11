@@ -2,7 +2,7 @@
 
 ## 职责边界
 
-`GalNet.Runtime` 负责读取 Graph 与 `.galgroup`、驱动故事流程、维护运行时状态、执行条目和创建存档。具体 UI 由 `IGameView` 提供；Runtime 不引用 Avalonia 或文件选择器。
+`GalNet.Runtime` 负责读取 Graph 与已编译 `.galgroup`、驱动故事流程、维护运行时状态、执行原语条目和创建存档。具体 UI 由 `IGameView` 提供；Runtime 不引用 Avalonia 或文件选择器。
 
 ```
 Graph + .galgroup
@@ -11,6 +11,8 @@ Graph + .galgroup
   → EntryHandlerRegistry
   → IGameView（宿主呈现）
 ```
+
+`.galgroup` 必须声明 `kind: "Compiled"`，且仅含有原语条目；`GalgroupLoader` 会拒绝 `.rawgalgroup` 的 `Raw` 文档和非原语。`GameEngine` 也会拒绝被程序直接注入的非原语，保证 Runtime 不承担内容编译职责。
 
 ## GameEngine
 
@@ -60,6 +62,6 @@ public void RestoreFrom(GameSnapshot data);
 
 ## 内置处理器
 
-`EntryHandlerRegistry.CreateDefault()` 注册文本、图层、动画、音频、视频、对话框、效果、等待和变量处理器。`CreateDefault(IGameProgressService?)` 在提供进度服务时还注册 `unlock_gallery`。条目定义、参数和默认值的权威参考在 [条目类型](entry-types.md)。
+`EntryHandlerRegistry.CreateDefault()` 注册文本、图层、动画、音频、视频、对话框、效果、等待和变量原语的处理器。`CreateDefault(IGameProgressService?)` 在提供进度服务时还注册 `unlock_gallery`。非原语不会注册 Handler；它们必须在进入 Runtime 前由 `GalgroupCompiler` 展开。条目定义、参数和默认值的权威参考在 [条目类型](entry-types.md)。
 
 Handler 处理无效句柄、无法解析的参数或无法执行的呈现请求时应记录诊断并安全失败；宿主不应依赖异常来处理普通内容错误。

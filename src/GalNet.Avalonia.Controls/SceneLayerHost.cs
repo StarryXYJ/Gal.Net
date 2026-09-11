@@ -113,6 +113,7 @@ public sealed class SceneLayerItem : INotifyPropertyChanged
 {
     private string _handleId = string.Empty;
     private IImage? _image;
+    private string? _color;
     private double _x;
     private double _y;
     private double _rotationDegrees;
@@ -125,6 +126,7 @@ public sealed class SceneLayerItem : INotifyPropertyChanged
 
     public string HandleId { get => _handleId; set => SetField(ref _handleId, value); }
     public IImage? Image { get => _image; set => SetField(ref _image, value); }
+    public string? Color { get => _color; set => SetField(ref _color, value); }
     public double X { get => _x; set => SetField(ref _x, value); }
     public double Y { get => _y; set => SetField(ref _y, value); }
     public double RotationDegrees { get => _rotationDegrees; set => SetField(ref _rotationDegrees, value); }
@@ -153,6 +155,14 @@ internal sealed class LayerPresenter : Border
         Height = Math.Max(0, surface.Height);
         ClipToBounds = true;
         RenderTransformOrigin = RelativePoint.Center;
+
+        if (!string.IsNullOrWhiteSpace(item.Color))
+        {
+            Background = new SolidColorBrush(Color.Parse(item.Color));
+            Child = null;
+            RenderTransform = CreateTransform(item, item.ScaleX, item.ScaleY);
+            return;
+        }
 
         var source = item.Image;
         if (source is null)

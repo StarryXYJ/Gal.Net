@@ -7,7 +7,7 @@ public class EntryModelTests
     [Test]
     public void Registry_Should_Create_All_BuiltIn_Entries()
     {
-        Assert.That(EntryRegistry.Definitions, Has.Count.EqualTo(22));
+        Assert.That(EntryRegistry.Definitions, Has.Count.EqualTo(27));
         foreach (var definition in EntryRegistry.Definitions)
             Assert.That(EntryRegistry.Create(definition.Type).Type, Is.EqualTo(definition.Type));
     }
@@ -88,4 +88,20 @@ public class EntryModelTests
     [Test]
     public void Every_Definition_Should_Have_A_Category() =>
         Assert.That(EntryRegistry.Definitions.All(x => !string.IsNullOrWhiteSpace(x.Category)), Is.True);
+
+    [Test]
+    public void Color_Field_Transitions_Are_NonPrimitive_Entries_With_Declared_Parameter_Schemas()
+    {
+        foreach (var type in new[] { BlackFadeTransitionEntry.TypeId, WhiteFadeTransitionEntry.TypeId, ColorFadeTransitionEntry.TypeId })
+        {
+            var definition = EntryRegistry.Get(type);
+            Assert.That(definition.Kind, Is.EqualTo(EntryKind.NonPrimitive));
+            Assert.That(definition.Parameters.Keys, Does.Contain("fromLayerHandleId"));
+            Assert.That(definition.Parameters.Keys, Does.Contain("toLayerHandleId"));
+            Assert.That(definition.Parameters.Keys, Does.Contain("fadeInDuration"));
+            Assert.That(definition.Parameters.Keys, Does.Contain("holdDuration"));
+            Assert.That(definition.Parameters.Keys, Does.Contain("fadeOutDuration"));
+        }
+        Assert.That(EntryRegistry.Get(ColorFadeTransitionEntry.TypeId).Parameters.Keys, Does.Contain("color"));
+    }
 }

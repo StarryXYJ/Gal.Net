@@ -47,12 +47,17 @@ public static class EntryRegistry
             Define(ShowDialogueEntry.TypeId, "Dialogue", () => new ShowDialogueEntry(), ShowDialogueEntry.ParameterTypes),
             Define(HideDialogueEntry.TypeId, "Dialogue", () => new HideDialogueEntry(), HideDialogueEntry.ParameterTypes),
             Define(ShowLayerEntry.TypeId, "Layer", () => new ShowLayerEntry(), ShowLayerEntry.ParameterTypes, ShowLayerEntry.DefaultValues, ShowLayerEntry.ParameterOptions),
+            Define(ShowColorLayerEntry.TypeId, "Layer", () => new ShowColorLayerEntry(), ShowColorLayerEntry.ParameterTypes, ShowColorLayerEntry.DefaultValues),
             Define(HideLayerEntry.TypeId, "Layer", () => new HideLayerEntry(), HideLayerEntry.ParameterTypes, HideLayerEntry.DefaultValues, HideLayerEntry.ParameterOptions),
             Define(MoveLayerEntry.TypeId, "Layer", () => new MoveLayerEntry(), MoveLayerEntry.ParameterTypes, MoveLayerEntry.DefaultValues),
             Define(ReplaceLayerEntry.TypeId, "Layer", () => new ReplaceLayerEntry(), ReplaceLayerEntry.ParameterTypes),
             Define(AnimateEntry.TypeId, "Animation", () => new AnimateEntry(), AnimateEntry.ParameterTypes, AnimateEntry.DefaultValues, AnimateEntry.ParameterOptions),
             Define(PlayAnimationPlanEntry.TypeId, "Animation", () => new PlayAnimationPlanEntry(), PlayAnimationPlanEntry.ParameterTypes),
             Define(StopAnimationEntry.TypeId, "Animation", () => new StopAnimationEntry(), StopAnimationEntry.ParameterTypes, StopAnimationEntry.DefaultValues, StopAnimationEntry.ParameterOptions),
+            Define(CrossFadeTransitionEntry.TypeId, "Transition", () => new CrossFadeTransitionEntry(), CrossFadeTransitionEntry.ParameterTypes, CrossFadeTransitionEntry.DefaultValues, CrossFadeTransitionEntry.ParameterOptions, EntryKind.NonPrimitive),
+            Define(BlackFadeTransitionEntry.TypeId, "Transition", () => new BlackFadeTransitionEntry(), BlackFadeTransitionEntry.ParameterTypes, BlackFadeTransitionEntry.DefaultValues, BlackFadeTransitionEntry.ParameterOptions, EntryKind.NonPrimitive),
+            Define(WhiteFadeTransitionEntry.TypeId, "Transition", () => new WhiteFadeTransitionEntry(), WhiteFadeTransitionEntry.ParameterTypes, WhiteFadeTransitionEntry.DefaultValues, WhiteFadeTransitionEntry.ParameterOptions, EntryKind.NonPrimitive),
+            Define(ColorFadeTransitionEntry.TypeId, "Transition", () => new ColorFadeTransitionEntry(), ColorFadeTransitionEntry.ParameterTypes, ColorFadeTransitionEntry.DefaultValues, ColorFadeTransitionEntry.ParameterOptions, EntryKind.NonPrimitive),
             Define(PlayAudioEntry.TypeId, "Audio", () => new PlayAudioEntry(), PlayAudioEntry.ParameterTypes, PlayAudioEntry.DefaultValues, PlayAudioEntry.ParameterOptions),
             Define(StopAudioEntry.TypeId, "Audio", () => new StopAudioEntry(), StopAudioEntry.ParameterTypes, StopAudioEntry.DefaultValues, StopAudioEntry.ParameterOptions),
             Define(PauseAudioEntry.TypeId, "Audio", () => new PauseAudioEntry(), PauseAudioEntry.ParameterTypes, PauseAudioEntry.DefaultValues, PauseAudioEntry.ParameterOptions),
@@ -75,6 +80,7 @@ public static class EntryRegistry
         Func<Entry> factory,
         IReadOnlyDictionary<string, EntryParameterType> parameters,
         IReadOnlyDictionary<string, string>? defaults = null,
-        IReadOnlyDictionary<string, IReadOnlyList<string>>? options = null) =>
-        new(type, category, factory, parameters, defaults ?? new Dictionary<string, string>(), options ?? new Dictionary<string, IReadOnlyList<string>>());
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? options = null,
+        EntryKind kind = EntryKind.Primitive) =>
+        new(type, category, factory, parameters, defaults ?? new Dictionary<string, string>(), options ?? new Dictionary<string, IReadOnlyList<string>>(), kind);
 }

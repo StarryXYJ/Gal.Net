@@ -57,12 +57,12 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
         foreach (var groupNode in document.Nodes.Where(n => string.Equals(n.Type, "Group", StringComparison.OrdinalIgnoreCase)))
         {
             var relativeFile = string.IsNullOrWhiteSpace(groupNode.File)
-                ? $"groups/{groupNode.Id}.galgroup"
-                : groupNode.File!;
+                ? $"groups/{groupNode.Id}.rawgalgroup"
+                : ToRawGroupFile(groupNode.File!);
             groupNode.File = relativeFile;
 
             groupEntries.TryGetValue(groupNode.Id, out var entries);
-            var serialized = new GroupDocument { Entries = (entries ?? []).Select(SerializeEntry).ToList() };
+            var serialized = new GroupDocument { Kind = GroupDocumentKind.Raw, Entries = (entries ?? []).Select(SerializeEntry).ToList() };
             var groupFile = Path.Combine(graphPath, relativeFile.Replace('/', Path.DirectorySeparatorChar));
             var groupTemporary = groupFile + ".tmp";
             File.WriteAllText(groupTemporary, JsonSerializer.Serialize(serialized, JsonOptions));
@@ -100,7 +100,7 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
                     Name = "Opening",
                     X = 4900,
                     Y = 4950,
-                    File = $"groups/{groupId}.galgroup"
+                    File = $"groups/{groupId}.rawgalgroup"
                 }
             ],
             Edges =
@@ -140,6 +140,8 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
             ?? throw new InvalidDataException($"The .galgroup file '{relativeFile}' is empty.");
         if (document.Version != 1)
             throw new InvalidDataException($"Unsupported .galgroup version '{document.Version}'.");
+        if (document.Kind != GroupDocumentKind.Raw)
+            throw new InvalidDataException($"The editor source file '{relativeFile}' must be a .rawgalgroup document.");
 
         foreach (var entry in document.Entries)
         {
@@ -210,4 +212,10 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
 
     private static string EnsureId(string? value) =>
         string.IsNullOrWhiteSpace(value) ? Guid.NewGuid().ToString("N") : value;
+
+    private static string ToRawGroupFile(string file) => file.EndsWith(".rawgalgroup", StringComparison.OrdinalIgnoreCase)
+        ? file
+        : file.EndsWith(".galgroup", StringComparison.OrdinalIgnoreCase)
+            ? $"{file[..^".galgroup".Length]}.rawgalgroup"
+            : $"{file}.rawgalgroup";
 }

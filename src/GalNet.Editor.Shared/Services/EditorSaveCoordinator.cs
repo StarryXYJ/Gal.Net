@@ -6,6 +6,7 @@ using System.Text.Json;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Core.Entry;
+using GalNet.Core.Compilation;
 using GalNet.Core.Serialization;
 
 namespace GalNet.Editor.Shared.Services;
@@ -75,8 +76,9 @@ public sealed class EditorSaveCoordinator : IEditorSaveCoordinator
         File.WriteAllText(Path.Combine(previewPath, "graph.json"), JsonSerializer.Serialize(previewDocument, JsonOptions));
         foreach (var (groupId, entries) in groupEntries)
         {
-            var serialized = new GroupDocument { Entries = entries.Select(SerializeEntry).ToList() };
-            File.WriteAllText(Path.Combine(previewPath, $"{groupId}.galgroup"), JsonSerializer.Serialize(serialized, JsonOptions));
+            var raw = new GroupDocument { Kind = GroupDocumentKind.Raw, Entries = entries.Select(SerializeEntry).ToList() };
+            var compiled = GalgroupCompiler.Compile(raw).Document;
+            File.WriteAllText(Path.Combine(previewPath, $"{groupId}.galgroup"), JsonSerializer.Serialize(compiled, JsonOptions));
         }
 
         return previewPath;

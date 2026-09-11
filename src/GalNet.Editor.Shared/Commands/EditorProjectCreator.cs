@@ -39,7 +39,7 @@ public static class EditorProjectCreator
                 Nodes =
                 [
                     new EditorGraphNodeDto { Id = entryId, Type = "Entry", Name = "Entry", X = 4620, Y = 4950 },
-                    new EditorGraphNodeDto { Id = groupId, Type = "Group", Name = "Opening", X = 4900, Y = 4950, File = $"groups/{groupId}.galgroup" }
+                    new EditorGraphNodeDto { Id = groupId, Type = "Group", Name = "Opening", X = 4900, Y = 4950, File = $"groups/{groupId}.rawgalgroup" }
                 ],
                 Edges =
                 [

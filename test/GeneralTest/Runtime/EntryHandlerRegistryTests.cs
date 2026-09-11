@@ -9,7 +9,7 @@ public class EntryHandlerRegistryTests
     public void CreateDefault_Should_Register_Every_Core_Entry()
     {
         var registry = EntryHandlerRegistry.CreateDefault();
-        foreach (var definition in EntryRegistry.Definitions.Where(x => x.Type != UnlockGalleryEntry.TypeId))
+        foreach (var definition in EntryRegistry.Definitions.Where(x => x.Kind == EntryKind.Primitive && x.Type != UnlockGalleryEntry.TypeId))
             Assert.That(registry.Resolve(definition.Type), Is.Not.Null, definition.Type);
         Assert.That(registry.Resolve("jump"), Is.Null);
     }
