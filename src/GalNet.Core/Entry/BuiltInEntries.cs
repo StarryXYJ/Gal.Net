@@ -1,3 +1,5 @@
+using GalNet.Core.Scene;
+
 namespace GalNet.Core.Entry;
 
 internal static class EntrySchema
@@ -74,7 +76,7 @@ public sealed class AnimateLayerEntry : Entry
     public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(
         ("duration", "0.25"), ("easing", "Linear"), ("blocking", "false"), ("skippable", "false"));
     public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(
-        ("property", ["transform.x", "transform.y", "transform.rotationDegrees", "transform.scaleX", "transform.scaleY", "opacity"]),
+        ("property", Layer.AnimationProperties.Select(property => property.Name).ToArray()),
         ("easing", ["Linear", "Step", "EaseIn", "EaseOut", "EaseInOut"]),
         ("blocking", ["false", "true"]), ("skippable", ["false", "true"]));
 }

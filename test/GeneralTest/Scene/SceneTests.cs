@@ -15,6 +15,20 @@ public class LayerTests
         Assert.That(layer.Transform.ScaleX, Is.EqualTo(1));
         Assert.That(layer.DisplayMode, Is.EqualTo(LayerDisplayMode.Native));
     }
+
+    [Test]
+    public void Layer_Should_Expose_And_Encapsulate_Animatable_Properties()
+    {
+        var layer = new Layer { Id = "portrait" };
+
+        Assert.That(layer.AnimatableProperties.Select(property => property.Name),
+            Is.EquivalentTo(["transform.x", "transform.y", "transform.rotationDegrees", "transform.scaleX", "transform.scaleY", "opacity"]));
+        Assert.That(layer.TrySetAnimationValue("transform.x", 42, out var setError), Is.True, setError);
+        Assert.That(layer.TryGetAnimationValue("transform.x", out var x), Is.True);
+        Assert.That(x, Is.EqualTo(42));
+        Assert.That(layer.TrySetAnimationValue("opacity", 2, out var invalidError), Is.False);
+        Assert.That(invalidError, Does.Contain("does not accept"));
+    }
 }
 
 public class SceneStateTests

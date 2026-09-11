@@ -95,13 +95,14 @@ public sealed class AnimateLayerHandler : EntryHandler
     public override async Task ExecuteAsync(EntryContext context, IGameView view, TimeProvider timeProvider, CancellationToken ct)
     {
         var request = context.GetLayerAnimation();
-        if (!context.Runtime.SceneInstances.TryGet<Layer>(request.HandleId, out var layer))
+        if (!context.Runtime.SceneInstances.TryGet<AnimatableSceneInstance>(request.HandleId, out var instance))
         {
-            GameLog.Logger.Warning("Animate ignored because layer handle '{HandleId}' is not active.", request.HandleId);
+            GameLog.Logger.Warning("Animate ignored because handle '{HandleId}' is not an active animatable instance.", request.HandleId);
             return;
         }
-        if (!LayerAnimationProperties.IsValid(request.Property, request.To) ||
-            (request.From is { } from && !LayerAnimationProperties.IsValid(request.Property, from)))
+        var property = instance.AnimatableProperties.FirstOrDefault(item => item.Name == request.Property);
+        if (property is null || !property.Accepts(request.To) ||
+            (request.From is { } from && !property.Accepts(from)))
         {
             GameLog.Logger.Warning("Animate ignored because '{Property}' does not accept the supplied value.", request.Property);
             return;
@@ -112,7 +113,10 @@ public sealed class AnimateLayerHandler : EntryHandler
         {
             var outcome = await animation;
             if (outcome is AnimationOutcome.Completed or AnimationOutcome.Skipped)
-                LayerAnimationProperties.TryApply(layer, request.Property, request.To);
+            {
+                if (!instance.TrySetAnimationValue(request.Property, request.To, out var error))
+                    GameLog.Logger.Warning("Animation completion could not set '{Property}' on '{HandleId}': {Error}", request.Property, request.HandleId, error);
+            }
         }
 
         if (request.Blocking)

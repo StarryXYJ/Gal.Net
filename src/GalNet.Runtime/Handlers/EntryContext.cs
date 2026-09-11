@@ -52,10 +52,19 @@ public sealed class EntryContext
         return new LayerAnimationRequest
         {
             HandleId = GetString("handleId"), Property = property,
-            From = Params.TryGetValue("from", out var from) && !string.IsNullOrWhiteSpace(from) && float.TryParse(from, out var fromValue) ? fromValue : null,
+            From = GetOptionalFloat("from"),
             To = to, DurationSeconds = GetFloat("duration", .25f), Easing = easing,
             Blocking = GetBool("blocking"), Skippable = GetBool("skippable"), BatchId = GetString("batchId")
         };
+    }
+
+    private float? GetOptionalFloat(string key)
+    {
+        var raw = GetString(key);
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        return float.TryParse(raw, out var value)
+            ? value
+            : throw new InvalidDataException($"'{key}' must be a valid float.");
     }
 
 }

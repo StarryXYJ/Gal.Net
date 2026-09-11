@@ -14,6 +14,7 @@
 
 已完成：JSON `.galgroup` 编译、隐藏句柄的泛型动态实例管理、Layer 的 Transform/z/五种展示模式、`layer.replace`、场景恢复，以及 Sample/编辑器预览共享渲染链路。`hide` 会删除实例并立即使句柄失效；失效操作记录诊断后安全跳过。
 
+
 ## Phase 2：动画原语与转场（进行中）
 
 当前增量先实现单条 `animate`：单句柄、单个浮点属性、默认 Replace、可选 `from`、曲线、阻塞、可跳过和 `batchId`。案例以立绘左移验证该最小链路；多轨 `AnimationPlan` 与转场编译在此基础稳定后再实现。
@@ -23,7 +24,7 @@
 - `layer.show`、`layer.hide`、`instance.set` 是立即生效的场景原语；`hide` 仍立即使句柄失效。
 - 新增 `animate` 属性插值原语：目标为场上实例句柄，参数为经实例类型注册的可动画属性，包含 `from?`、`to`、`duration`、`easing`、`blocking`、`skippable`、开发者提供的 `batchId?`，以及默认的 `Replace` 冲突策略。
 - `from` 未填写时，在动画真正开始时读取实时显示值；填写时先瞬时写入 `from`，再插值至 `to`。后续再增加增量型动画策略，第一版只实现 `Replace`。
-- 实例以特性声明可动画属性的名称、值类型、范围和编辑器元数据；Runtime 建立类型化注册表，负责安全读写、校验与插值，编辑器据此为句柄定位器提供可选参数。
+- 场上可动画实例继承 `AnimatableSceneInstance`，自行提供只读属性描述并封装读取与校验写入；Runtime 不硬编码实例属性，编辑器据此为句柄定位器提供可选参数。
 - `layer.move`、淡入淡出和 `transition.*` 等编辑器级命令由 JSON 编译层展开为场景原语与 `animation.play`，Runtime 只执行原语和动画计划。
 
 ### 动画计划

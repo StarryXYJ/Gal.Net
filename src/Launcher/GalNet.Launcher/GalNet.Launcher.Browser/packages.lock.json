@@ -17,15 +17,15 @@
       },
       "Microsoft.NET.ILLink.Tasks": {
         "type": "Direct",
-        "requested": "[10.0.9, )",
-        "resolved": "10.0.9",
-        "contentHash": "4Iw41e2h7I4t70SJcX2GCmbyKJIlA273Cfm9RJMM050/3VBejGAG1KcthP5Z2L6SQcbfbf6BhNWO26+ZG+GzMg=="
+        "requested": "[10.0.12, )",
+        "resolved": "10.0.12",
+        "contentHash": "xi+BDjFpW+Sb+MHFHaH6Y/gV9I8BluFwRXc1QyCdoZbIK26eNiBeFuMTe/FMwc33G1wdHCyDg7CVTmb8OdQrMQ=="
       },
       "Microsoft.NET.Sdk.WebAssembly.Pack": {
         "type": "Direct",
-        "requested": "[10.0.9, )",
-        "resolved": "10.0.9",
-        "contentHash": "Kx11pQOyrjd5hFiQWA0AsyRQTU6RHcOQbwvXmR67cjNdSbRZwEXIXPCx/vwHlqtVdFv3NyPF7bdyJYC9mFkkJg=="
+        "requested": "[10.0.12, )",
+        "resolved": "10.0.12",
+        "contentHash": "u1XrZ7IAKh4XfqSaU/MsVfi5pz7RgPNn5hZaw5750YulFaSLLc0kFsVxH9jaHxGbdBWWrkovnVA4J9emtrq8tg=="
       },
       "Antlr4.Runtime.Standard": {
         "type": "Transitive",
