@@ -245,6 +245,13 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         _effects?.Dispose();
         _effects = null;
         _engine = null;
+        ResetScenePresentation();
+    }
+
+    private void ResetScenePresentation()
+    {
+        if (Dispatcher.UIThread.CheckAccess()) _gameplay.ResetScenePresentation();
+        else Dispatcher.UIThread.Post(_gameplay.ResetScenePresentation);
     }
 
     private async Task EnsureEngineAsync(CancellationToken cancellationToken)

@@ -73,6 +73,13 @@ public class SceneLayerHost : Canvas
     {
         if (sender is SceneLayerItem item && _presenters.TryGetValue(item, out var presenter))
         {
+            if (eventArgs.PropertyName == nameof(SceneLayerItem.BlindsProgress))
+            {
+                // This changes every animation frame. Rebuilding the Image child here caused
+                // avoidable allocations and a visible hitch when a blinds transition began.
+                presenter.UpdateBlindsClip(item, Bounds.Size);
+                return;
+            }
             Apply(item, presenter);
             ReorderPresenters();
         }
@@ -162,7 +169,7 @@ internal sealed class LayerPresenter : Border
         Width = Math.Max(0, surface.Width);
         Height = Math.Max(0, surface.Height);
         ClipToBounds = true;
-        Clip = CreateBlindsClip(item, surface);
+        UpdateBlindsClip(item, surface);
         RenderTransformOrigin = RelativePoint.Center;
 
         if (!string.IsNullOrWhiteSpace(item.Color))
@@ -231,6 +238,8 @@ internal sealed class LayerPresenter : Border
                 break;
         }
     }
+
+    public void UpdateBlindsClip(SceneLayerItem item, Size surface) => Clip = CreateBlindsClip(item, surface);
 
     private static Geometry? CreateBlindsClip(SceneLayerItem item, Size surface)
     {

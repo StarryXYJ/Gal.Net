@@ -38,7 +38,7 @@ public sealed class AvaloniaParticleEffectView(GamePageViewModel page, IGamePage
     });
     public void Dispose()
     {
-        foreach (var emitter in _emitters.Values) emitter.Dispose();
+        foreach (var emitter in _emitters.Values) { page.OverlayEffects.Remove(emitter); emitter.Dispose(); }
         _emitters.Clear();
         foreach (var (instanceId, layer) in _blinds) { page.UnregisterEffectAnimation(instanceId); layer.BlindsBladeCount = 0; layer.BlindsProgress = 1; }
         _blinds.Clear();

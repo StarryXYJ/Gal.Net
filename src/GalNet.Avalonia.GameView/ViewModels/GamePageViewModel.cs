@@ -146,6 +146,19 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         if (layer is not null) Layers.Remove(layer);
     }
 
+    /// <summary>Removes all host-owned visuals before a new game session is constructed.</summary>
+    public void ResetScenePresentation()
+    {
+        Layers.Clear();
+        OverlayEffects.Clear();
+        ActiveEffects.Clear();
+        _effectAnimations.Clear();
+        TransitionOpacity = 0;
+        IsDialogueVisible = false;
+        IsChoiceVisible = false;
+        NvlLines.Clear();
+    }
+
     public void ReplaceLayer(string id, IImage? image)
     {
         var layer = Layers.FirstOrDefault(candidate => candidate.HandleId == id);
