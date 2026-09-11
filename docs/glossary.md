@@ -1,332 +1,61 @@
 # GalNet 术语表
 
-> 本文档按层级整理 GalNet 项目中使用的核心术语。
-
----
-
-## 一、核心数据模型（GalNet.Core）
-
-### 图结构（Graph）
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **图** | Graph | 游戏故事的主数据结构，由节点和边组成，描述整个故事流程。 |
-| **节点** | Node | 图中的基本单元，分为组节点和分支节点，可包含入口/出口。 |
-| **组节点** | Group | 代表一段线性内容序列，包含多个条目，连通后会自动顺序执行。 |
-| **分支节点** | Branch | 用于表示选项或条件分支，支持选择分支和条件分支两种类型。 |
-| **边** | Edge | 节点间的转移关系，连接一个节点的出口到另一个节点的入口。 |
-| **节点类型** | NodeType | 枚举，区分 `Group`（组节点）和 `Branch`（分支节点）。 |
-| **分支类型** | BranchType | 枚举，区分 `Choice`（选项分支）和 `Condition`（条件分支）。 |
-
-### 条目（Entry）
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **条目** | Entry | 游戏内容的最小逻辑单元，如一句对话、一段音频、一个特效。 |
-| **复杂条目** | ComplexEntry | 开发者编写的高级条目类型，编译时会被展开为多个简单条目。 |
-| **简单条目** | SimpleEntry | 编译后的最小执行单元，运行时直接由 EntryHandler 处理。 |
-| **条目处理器** | EntryHandler | 处理特定类型条目的处理器基类，所有条目类型必须继承此类。 |
-| **条目上下文** | EntryContext | 条目执行时传入的上下文，封装运行时所需的所有信息。 |
-| **条目处理器注册表** | EntryHandlerRegistry | 管理所有 EntryHandler 的注册和查找。 |
-
-### 变量（Variable）
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **变量** | Variable | 游戏中可存储和修改的命名数据，支持布尔、整数、浮点数和字符串类型。 |
-| **变量类型** | VariableType | 枚举，定义变量的数据类型（Bool / Int / Float / String）。 |
-| **变量存储** | VariableStore | 管理游戏中的所有变量，支持快照创建和恢复。 |
-| **表达式求值器** | ExpressionEvaluator | 递归下降解析器，用于解析和求值条件表达式。 |
-
-### 控件三层模型（Widget）
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **控件大类** | WidgetCategory | 控件的分类标识，如对话框、选择面板、按钮等。 |
-| **控件模板** | WidgetTemplate | 控件的模板定义，描述控件的外观和默认配置。 |
-| **控件实例** | WidgetInstance | 运行时实际使用的控件实例，由模板实例化而来。 |
-| **控件占位符** | ControlPlaceholder | 在页面中占位，指定需要渲染的控件实例引用。 |
-
-### 内置控件类别
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **对话框** | DialogueBox | 标准 ADV 对话框，显示说话人名称和文本内容。 |
-| **NVL 框** | NvlBox | 小说模式文本框，全屏显示文本。 |
-| **选项面板** | ChoicePanel | 显示选项列表供玩家选择。 |
-| **存档槽位** | SaveSlot | 存档/读档界面中的单个槽位。 |
-| **按钮** | Button | 通用按钮控件。 |
-| **滑块** | Slider | 滑块控件，用于调节音量、文字速度等。 |
-| **开关** | Toggle | 开关控件，用于启用/禁用选项。 |
-| **标题按钮** | TitleButton | 标题画面专用的按钮样式。 |
-
-### 页面三层模型（Screen）
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **页面大类** | ScreenCategory | 页面的分类标识，如标题页、设置页、存档页等。 |
-| **页面模板** | ScreenTemplate | 页面的模板定义，描述页面结构和默认配置。 |
-| **页面实例** | ScreenInstance | 运行时实际使用的页面实例，由模板实例化而来。 |
-
-### 内置页面类别
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **标题页** | TitleScreen | 游戏标题画面，通常包含开始、读取、设置等按钮。 |
-| **设置页** | SettingsScreen | 游戏设置画面，包含音量、文字速度、语言等选项。 |
-| **存档页** | SaveLoadScreen | 存档/读档画面，显示存档列表。 |
-| **画廊页** | GalleryScreen | 画廊页面，用于回顾已解锁的 CG。 |
-| **游戏页** | GameScreen | 游戏主画面，包含图层画布、对话框、选项面板等。 |
-
-### 场景与图层（Scene & Layer）
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **场景状态** | SceneState | 描述当前场景的整体状态，包含图层列表和可见性。 |
-| **图层** | Layer | 背景和立绘的统一抽象，包含位置、层级和可见性信息。 |
-
-### 设置（Settings）
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **设置容器** | SettingsContainer | 统一的设置存储容器，管理不同类型的设置项。 |
-| **游戏设置** | GameSettings | 运行时游戏设置，包含文本速度、自动推进间隔等。 |
-| **项目设置** | ProjectSettings | 项目级别的配置，如分辨率、语言、默认字体等。 |
-
-### 序列化与资源
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **打包清单** | Manifest | 描述导出包的结构、版本和资源索引信息。 |
-| **资源类型** | ResourceType | 枚举，定义资源类型（Image / Audio / Video / Font / Script / Other）。 |
-| **国际化键** | I18nKey | 国际化键定义，用于在运行时查找本地化文本。 |
-
-### 视图接口（View）
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **游戏视图** | IGameView | 游戏视图组合接口，定义了游戏展示所需的所有方法。 |
-| **音频视图** | IAudioView | 音频播放的视图接口。 |
-| **转场** | ITransition | 页面切换过渡效果接口。 |
-| **特效视图** | IEffectView | 视觉特效的视图接口。 |
-
-### 服务接口（Services）
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **导航服务** | INavigationService | 屏幕间导航的服务接口。 |
-| **设置服务** | ISettingsService | 管理游戏/编辑器设置的服务接口。 |
-| **音频服务** | IAudioService | 音频播放控制的服务接口。 |
-| **保存服务** | ISaveService | 存档管理的服务接口。 |
-| **输入服务** | IInputService | 用户输入处理的服务接口。 |
-| **游戏会话** | IGameSession | 游戏运行期间会话管理的服务接口。 |
-
----
-
-## 二、运行时层（GalNet.Runtime）
-
-### 引擎与运行时
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **游戏引擎** | GameEngine | 核心引擎，管理状态机循环，协调各组件执行游戏逻辑。 |
-| **游戏运行时** | GameRuntime | 运行时环境，管理游戏状态、当前会话和处理器注册。 |
-| **游戏快照** | GameSnapshot | 游戏的存档快照，包含当前节点、条目索引和变量状态。 |
-| **默认游戏会话** | DefaultGameSession | 默认的游戏会话实现，管理游戏生命周期。 |
-
-### 内置条目处理器
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **文本处理器** | TextHandler | 处理文本显示（说话人、内容、打字机效果）。 |
-| **音频处理器** | AudioHandler | 处理音频播放、停止和通道控制。 |
-| **图层处理器** | LayerHandler | 处理图层的显示/隐藏/移动。 |
-| **特效处理器** | EffectHandler | 处理视觉特效的触发/停止。 |
-| **控件处理器** | ControlHandler | 处理控件的显示/隐藏/属性设置。 |
-| **等待处理器** | WaitHandler | 处理等待点击或等待指定时长。 |
-| **视频处理器** | VideoHandler | 处理视频播放。 |
-| **变量处理器** | VariableHandler | 处理变量操作（设置/增加/减少）。 |
-| **跳转处理器** | JumpHandler | 处理跳转到其他节点。 |
-
-### 资源加载
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **图加载器** | GraphLoader | 从 JSON 文件加载图结构。 |
-| **组加载器** | GalgroupLoader | 加载 `.galgroup` 文件中的条目到组节点。 |
-
-### 音频管理
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **音频通道管理器** | AudioChannelManager | 管理多个音频通道的生命周期，支持多通道同时播放。 |
-
-### 存档管理
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **存档管理器** | SaveManager | 负责序列化和反序列化游戏存档快照。 |
-
-### 无头测试
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **空游戏视图** | NullGameView | 无头测试用的 IGameView 实现，记录操作但不渲染。 |
-
----
-
-## 三、控件与渲染层（GalNet.Control）
-
-### 游戏视图
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **默认游戏视图** | DefaultGameView | 完整的 IGameView 实现，管理图层、控件、页面切换、打字机效果、选项面板、音频和视频。 |
-
-### 内置转场
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **黑场过渡** | FadeTransition | 通过不透明度变化实现淡入淡出效果。 |
-| **左滑** | SlideLeftTransition | 新画面从右侧滑入，旧画面向左滑出。 |
-| **右滑** | SlideRightTransition | 新画面从左侧滑入，旧画面向右滑出。 |
-| **交叉溶解** | DissolveTransition | 两个画面通过不透明度交叉混合实现过渡。 |
-| **转场注册表** | TransitionRegistry | 按名称管理所有 ITransition 实现的注册表。 |
-
-### 内置特效
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **屏幕震动** | ShakeEffect | 通过改变元素的渲染变换实现屏幕抖动效果。 |
-| **暗角** | VignetteEffect | 添加径向渐变覆盖层，模拟镜头暗角效果。 |
-| **闪白** | FlashEffect | 添加半透明覆盖层实现闪烁效果。 |
-| **精灵表动画** | FlipbookHelper | 精灵表动画辅助，支持行列数/帧率/方向控制。 |
-| **特效注册表** | EffectRegistry | 注册和管理所有特效实例的注册表。 |
-
-### 内置控件模板
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **按钮控件** | ButtonWidgets | 各种按钮样式和交互（基本按钮、切换按钮、导航按钮）。 |
-| **选项面板控件** | ChoicePanelWidgets | 选择面板的 UI 呈现和交互逻辑。 |
-| **对话框控件** | DialogueBoxWidgets | 标准 ADV 对话框的文本显示和样式。 |
-| **NVL 框控件** | NvlBoxWidgets | 小说模式文本框的文本显示。 |
-| **存档槽位控件** | SaveSlotWidgets | 存档槽位的显示和管理。 |
-| **滑块控件** | SliderWidgets | 设置选项的滑块调节。 |
-| **标题按钮控件** | TitleButtonWidgets | 标题画面专用的按钮样式。 |
-| **开关控件** | ToggleWidgets | 启用/禁用设置的开关。 |
-
-### 内置页面
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **标题画面** | TitleScreenView | 标题画面视图，显示游戏标题和操作按钮。 |
-| **设置画面** | SettingsScreenView | 设置画面视图，显示音量、文字速度、全屏等选项。 |
-| **游戏画面** | GameScreenView | 游戏主画面根布局，包含图层画布、对话框和选项面板。 |
-| **存档画面** | SaveLoadScreenView | 存档/读档画面视图。 |
-| **画廊画面** | GalleryScreenView | 画廊页面视图。 |
-
----
-
-## 四、资源管理（GalNet.Assets）
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **资源管理器** | ResourceManager | 资源 ID 映射、异步加载、缓存和卸载的核心管理器。 |
-| **资源加载器** | ResourceLoader | 负责从不同源（文件、包、网络）加载资源数据。 |
-| **打包生成器** | PakBuilder | 构建 `.galpak` 打包文件的工具。 |
-| **打包文件提供器** | PakFileProvider | 从 `.galpak` 包中读取资源的提供器。 |
-| **本地文件提供器** | LocalFileProvider | 从本地文件系统读取资源的提供器。 |
-| **压缩辅助** | CompressionHelper | 支持 Deflate / GZip / Brotli 压缩解压。 |
-| **加密辅助** | CryptoHelper | 支持 AES-256-CBC 加密解密。 |
-
----
-
-## 五、编辑器层（GalNet.Editor）
-
-### 编辑器分层
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **编辑器抽象层** | GalNet.Editor.Abstraction | 编辑器抽象接口与数据模型，不依赖 UI 框架，插件可引用。包含 IProjectService、GalProject、IEditorLocalizationService 等。 |
-| **编辑器共享层** | GalNet.Editor.Shared | 编辑器共享服务实现，无 UI 依赖，Headless 和 Editor 均可使用。包含 ProjectService、EditorSettingsService、CommandService 等。 |
-| **编辑器主程序** | GalNet.Editor | 编辑器主程序，包含 UI 相关服务（本地化实现、主题、文件对话框、视图工厂、日志面板等）。 |
-
-### 项目管理
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **游戏工程** | GalProject | 编辑器核心抽象，管理项目路径、设置和 DI 作用域。位于 Abstraction 层。 |
-| **项目服务** | IProjectService / ProjectService | 新建、打开、关闭、保存项目，管理最近项目列表。接口在 Abstraction，实现在 Shared。 |
-
-### 编辑器命令
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **编辑器命令** | EditorCommands | 命令共享层，定义编辑器中的通用操作命令。 |
-| **撤销/重做栈** | UndoRedoStack | 命令模式实现，支持撤销和重做操作历史。 |
-
-### Dock 布局
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **Dock 工厂** | EditorDockFactory | 创建和管理所有可拖拽停靠面板的工厂。 |
-| **Dock 视图定位器** | DockViewLocator | 将 ViewModel 类型映射到对应 View 实例的定位器。 |
-| **Ursa Dock 主机窗口** | UrsaDockHostWindow | 基于 UrsaWindow 的 Dock 布局宿主窗口。 |
-
-### 编辑器面板
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **启动页面** | StartupPageView | VS/Rider 风格启动页，展示新建/打开项目和最近项目列表。 |
-| **编辑器工作区** | EditorWorkspaceViewModel | 编辑器主工作区，管理节点图、选择逻辑和图形编辑。 |
-| **节点图面板** | NodeGraphPanelView | 可视化节点图画布，支持拖拽、缩放、节点渲染和连线。 |
-| **组编辑器面板** | GroupEditorPanelView | 组节点的条目列表编辑面板，支持增/删/上移/下移/编辑参数。 |
-| **节点检查器面板** | NodeInspectorPanelView | 节点属性编辑和变量编辑面板。 |
-| **项目设置面板** | ProjectSettingsPanelView | 项目级配置编辑面板。 |
-| **编辑器设置面板** | EditorSettingsPanelView | 编辑器自身配置编辑面板。 |
-| **游戏预览面板** | GamePreviewPanelView | 内嵌 Runtime 的游戏预览面板。 |
-| **新建项目面板** | NewProjectPanelView | 创建新项目的表单面板（名称、路径等）。 |
-| **日志面板** | LogPanelView | 运行时日志输出显示面板。 |
-
----
-
-## 六、无头 CLI（GalNet.Headless）
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **无头游戏视图** | HeadlessGameView | 无头模式下的 IGameView 实现，支持文本输出和用户输入交互。 |
-
----
-
-## 七、启动器（GalNet.Launcher）
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **主视图模型** | MainViewModel | 启动器主视图模型，管理游戏列表、用户管理和设置。 |
-| **主视图** | MainView / MainWindow | 启动器主界面，提供游戏导入、列表、启动等功能。 |
-| **主题服务** | IThemeService | 主题切换服务接口。 |
-| **游戏退出服务** | IGameExitService | 游戏退出和资源释放服务接口。 |
-
----
-
-## 八、文件格式
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **图文件** | `.galgraph` / `graph.json` | 描述图结构（节点、边、位置）的 JSON 文件。 |
-| **组文件** | `.galgroup` | 描述组节点内条目列表的文本文件。 |
-| **打包文件** | `.galpak` | 游戏导出打包文件，包含所有资源和编译后的数据。 |
-| **打包清单** | `manifest.json` | 打包文件内的清单，描述资源索引和版本信息。 |
-
----
-
-## 九、通用概念
-
-| 术语 | 英文 | 说明 |
-|------|------|------|
-| **打字机效果** | Typewriter Effect | 文本逐字显示的效果，支持 `<b>`、`<i>` 等富文本标签。 |
-| **国际化** | I18n | 多语言支持，通过键值对系统实现文本本地化。 |
-| **依赖注入** | Dependency Injection / DI | 通过 DI 容器管理服务和 ViewModel 的生命周期。 |
-| **视图模型** | ViewModel | MVVM 架构中的视图模型层，负责 UI 逻辑和数据绑定。 |
-| **Dock 面板** | Dock Panel | 可拖拽、拆分、组合、保存布局的停靠面板。 |
+## 内容与运行时
+
+| 术语 | 英文 / 类型 | 当前含义 |
+| --- | --- | --- |
+| 图 | `Graph` | 剧情流程图，由节点和边组成。 |
+| 入口节点 | `Entry` | 图的起始节点；Runtime 将其视为不含条目的 Group。 |
+| 组 | `Group` | 线性执行一组 Entry；作者条目放在单独的 `.galgroup`。 |
+| 分支 | `Branch` | `Choice`（玩家选择）或 `Condition`（条件匹配）节点。 |
+| 条目 | `Entry` | 最小剧情动作，例如文本、图层、音频、效果或变量赋值。 |
+| 条目定义 | `EntryDefinition` | 条目类型、分类、参数 schema、默认值与可选值的注册信息。 |
+| 条目处理器 | `EntryHandler` | Runtime 中执行某一条目类型的实现。 |
+| 运行时 | `IGameRuntime` / `GameRuntime` | 当前节点、条目位置、变量、场景实例和文本解析器的唯一状态源。 |
+| 游戏引擎 | `GameEngine` | 驱动节点转移与条目执行，产生 checkpoint 和存档快照。 |
+| 呈现接口 | `IGameView` | Runtime 向具体 UI/无界面宿主发送画面和交互请求的端口。 |
+| 快照 | `GameSnapshot` | 可保存和恢复的运行时位置、变量与场景状态。 |
+
+## 场景与动画
+
+| 术语 | 英文 / 类型 | 当前含义 |
+| --- | --- | --- |
+| 场景状态 | `SceneState` | 可存档的图层、激活控件/效果和转场标识。 |
+| 场景实例 | `ISceneInstance` | 由稳定句柄定位的活跃场景对象。 |
+| 图层 | `Layer` | 背景与立绘的统一资源图层，拥有 transform、z、显示模式和 opacity。 |
+| 场景句柄 | `handleId` | 作者内容中用于定位场上实例的稳定字符串，不是显示名称。 |
+| 动画请求 | `AnimationRequest` | 对单一可动画属性的一次 Replace 模式插值请求。 |
+| 动画曲线 | `IAnimationCurve` | 归一化时间到进度值的函数；支持内置、三次贝塞尔与 LUT。 |
+
+## 页面与 UI
+
+| 术语 | 英文 / 类型 | 当前含义 |
+| --- | --- | --- |
+| 页面流 | `GameFlowFactory` | 创建固定的标题、游戏、设置、存读档、鉴赏和关于页面。 |
+| 页面导航器 | `IGameScreenNavigator` | Control 默认页面的当前页和回退栈。 |
+| UI 预设 | `IUiPagePreset` | 某个固定页面的设置 schema 和默认值，不含可实例化的模板 View。 |
+| UI 项目 | `UiProject` | 宿主提供的页面预设选择与设置覆盖。 |
+| 独立游戏页面宿主 | `GalNet.Avalonia.GameView` | 使用 ViewModel→View 注册表和 `GameShell` 的 Avalonia 页面实现。 |
+
+`WidgetTemplate`、`WidgetInstance`、`ScreenTemplate`、`ScreenInstance` 与调色板模板体系是历史设计术语，不是当前 Control 的实现模型。
+
+## 编辑器与项目
+
+| 术语 | 英文 / 类型 | 当前含义 |
+| --- | --- | --- |
+| 编辑器文档 | `EditorProjectDocument` | 命令处理器编辑的 UI 无关聚合：图、组条目和项目设置。 |
+| 图作者文档 | `EditorGraphDocument` | `Graph/graph.json` 的 DTO，包含编辑器坐标、稳定 ID 和变量定义。 |
+| 项目服务 | `IProjectService` | 新建、打开、关闭与保存项目，并管理每个项目的 DI scope。 |
+| Dock 贡献 | `IDockPanelContribution` | 描述一个编辑器面板的创建、位置、生命周期能力和可选检查器。 |
+| 检查器贡献 | `IInspectorControlContribution` | 为当前活动面板创建检查器 ViewModel 与 View。 |
+
+## 资源与发布
+
+| 术语 | 英文 / 类型 | 当前含义 |
+| --- | --- | --- |
+| 资源提供者 | `IAssetProvider` | 打开命名资源归档的来源，例如本地目录或 pak。 |
+| 归档 | `IArchive` | 按资源 ID 或路径寻址的一组 `IGameFile`。 |
+| 资源管理器 | `IAssetManager` | 注册提供者、加载、缓存和释放已解析资源。 |
+| pak | `.pak` | `PakBuilder` 构建的资源归档，含资源索引和数据。 |
+| 分发包 | `.galpak` | 当前为 ZIP，含 `Assets/content.pak`、`Assets/assets.pak` 与 JSON manifest。 |
+| manifest | `<项目名>.galnet` | 当前 `.galpak` 内描述项目与两个 pak 哈希的 JSON 文件；不是独立逻辑二进制。 |

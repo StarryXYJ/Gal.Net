@@ -1,127 +1,61 @@
-# Control 层设计
+# Control 与默认游戏页面
 
-## 目标与边界
+## 当前范围
 
-`GalNet.Control` 是 GalNet 的 Avalonia 默认 UI 实现。它负责将 UI 模板构造成真实的 View 和 ViewModel，并提供运行时场景、媒体、转场及控件适配；它不读取项目目录、不保存 UI 文件，也不拥有编辑器状态。
+`GalNet.Control` 是当前默认游戏 UI 的 Avalonia 实现。它提供固定的内置页面、运行期游戏 View 和页面流工厂；它不是 Widget/Screen 模板市场，也不从项目目录直接读取或保存 UI 文件。
 
-插件只依赖 `GalNet.Control.Abstraction`。宿主（Editor、启动器或未来独立播放器）负责把模板、当前项目的实例 Provider、调色板和会话服务组合到 DI 容器。
+页面外观由 `UiProject` 中每种页面的“预设 ID + 字符串设置覆盖”决定。宿主创建 `GameFlowOptions`，传入游戏内容、`UiProject`、可选的资源、存档、变量和进度服务，再由 `GameFlowFactory` 组合页面与一次游戏运行。
 
 ```
-Core                 实例数据模型：TemplateId、配置、颜色覆盖
-Control.Abstraction  插件契约：模板、实例 Provider、导航、调色板、AXAML 扩展
-Control              内置模板、Avalonia View/VM、运行时表现层
-Editor.Shared        UI 项目文件、共享调色板、加载/保存
-Editor               编辑 UI 与预览宿主
+宿主 / 编辑器预览
+  └─ GameFlowFactory
+       ├─ GamePageHostViewModel + GameScreenNavigator
+       ├─ 标题、设置、存读档、鉴赏、关于页面
+       └─ 游戏页面 + DefaultGameView + GameRunViewModel
+            └─ Runtime.GameEngine
 ```
 
-`GameContent` 只携带剧情图和资源根；UI 项目不是游戏内容的一部分。
+`GalNet.Avalonia.GameView` 是另一套较轻量的独立页面宿主：它用 `IGameNavigationService`、`GameShell` 和不可变的 ViewModel→View 注册表承载标题、游戏、存档、设置、鉴赏和关于页面。编辑器预览使用这套页面宿主与 `AvaloniaGamePageView`，而不是直接让 Runtime 依赖 Avalonia。
 
-## 三层模型
+## 内置页面和路由
 
-Widget 与 Screen 都分为三层。
+`GameScreenNavigator` 保存当前页面和回退栈；`GameFlowFactory.BuildScreen()` 只接受下列路由键：
 
-| 层 | 职责 | 位置 |
+| 路由键 | 页面 / ViewModel | 说明 |
 | --- | --- | --- |
-| 类别 | 定义最小行为和类别键，例如按钮、对话、标题、设置、存读档 | `Control.Abstraction`（插件契约） |
-| 模板 | 定义配置语义、默认值、颜色/实例引用校验、交互，并构造真实 View/VM | `Control/UI` 或插件程序集 |
-| 实例 | 仅保存 `Id`、`TemplateId`、配置 JSON、颜色覆盖；不保存 Avalonia 对象或服务 | `Core/UI`，由宿主持久化 |
+| `title` | `GameStartViewModel` 或 `TextMenuTitleViewModel` | 开始、继续、设置、鉴赏、关于与退出 |
+| `game` | `GameRunViewModel` | 创建或恢复 `GameEngine`，并承载默认游戏 View |
+| `settings` | `SettingsViewModel` | 运行期设置 |
+| `save-load` | `SaveLoadViewModel` | 默认读取；参数为 `"save"` 时进入保存模式 |
+| `gallery` | `GalleryViewModel` | 已解锁内容 |
+| `about` | `AboutViewModel` | 读取可选 Markdown 资源 |
 
-实例像 Material，模板像 Shader：同一 Widget 实例可在多个 Screen 中构造出独立的可视对象。Screen 实例由类别路由键选择，默认键为 `title`、`game`、`settings`、`save-load`、`gallery`、`about`。
+未知路由会抛出错误，不存在历史文档中所述的“按类别查找自定义 Screen 实例后回退”的机制。截图是游戏运行页的覆盖层，由 `ScreenshotDialog` 通过 Ursa 的 `OverlayDialog` 打开，不参与页面导航。
 
-## 插件契约与 DI
+## UI 预设
 
-`GalNet.Control.Abstraction.UI` 提供：
+`GalNet.Control.Abstraction.UI` 当前的稳定契约是预设元数据和设置 schema：
 
-- `IWidgetTemplate`、`IScreenTemplate`：模板 ID、类别、校验和 `Build`。
-- `IWidgetInstanceProvider`、`IScreenInstanceProvider`：按 ID 或 Screen 类别键提供实例。
-- `IColorPalette`：`INotifyPropertyChanged` + `IBrush this[string key]`。
-- `WidgetBuildContext`、`ScreenBuildContext`：当前服务作用域、实例 Provider、调色板、导航器和会话参数。
-- `WidgetPresentation`、`ScreenPresentation`：真实 `Control View` 与 ViewModel 的配对结果。
-- `IGameScreenNavigator`：可绑定的 `Current` Screen Presentation。
+- `IUiPagePreset`：预设 ID、适用的 `UiPageKind`、编辑器本地化名称/说明键，以及默认设置；
+- `IUiPresetRegistry`：按页面查找预设、按 ID 获取预设和取得默认预设；
+- `UiSettingDefinition`：设置键、类型、默认值、数值范围、选项或资源筛选器；
+- `IGameScreenNavigator`：固定内置页面的绑定式导航状态。
 
-模板由宿主显式注册为 DI 服务；`TemplateRegistry` 由 `IEnumerable<IWidgetTemplate>` 与 `IEnumerable<IScreenTemplate>` 建索引，重复模板 ID 必须失败。模板可以在构造函数中注入稳定服务；每次构造 Screen/Widget 时，都从当前游戏或预览的服务作用域取得会话服务。
+内置预设包括两个标题页预设（按钮菜单与文字菜单）以及 Game、Settings、SaveLoad、Gallery、About 各一个默认预设。`GameFlowFactory` 总是先取得预设默认值，再叠加项目中的设置，最后转换为非持久化的 `*UiConfiguration`。解析过程不修改 `UiProject`，页面也不读取 JSON 或文件系统。
 
-内置 Title、Game、Settings、SaveLoad、Gallery、About 都是独立的 Screen 模板工厂。模板使用 `ActivatorUtilities` 创建 View，设置 `DataContext`，设置继承调色板，并返回 Presentation。
+当前 `UiSettingType` 支持 `Text`、`Integer`、`Float`、`Color`、`Asset`、`Boolean` 与 `Select`。资源型设置只保存资源 ID；由宿主传入的 `IAssetManager` 负责实际解析。
 
-## 构建与导航
+## 运行期呈现边界
 
-`GamePageHostViewModel` 创建 `IGameScreenNavigator` 并初始导航至 `title`。导航器的工作流为：
+Runtime 只依赖 `GalNet.Presentation.Abstractions` 中的 `IGameView` 与细分接口（文本、交互、图层、转场、音频、视频、效果）。`DefaultGameView` 是 Control 内的默认组合实现；`NullGameView` 与 Headless 呈现用于测试或无界面宿主。
 
-1. 以类别键从 `IScreenInstanceProvider` 解析默认 Screen 实例。
-2. 用实例的 `TemplateId` 从 `IScreenTemplateRegistry` 找到模板。
-3. 以当前 `ScreenBuildContext` 调用模板，取得新 `ScreenPresentation`。
-4. 更新 `Current`，并维护回退栈。
+实际 Avalonia 游戏页面可由 `AvaloniaGamePageView` 实现图层、文本和输入端口。它通过宿主提供的 `IGamePageLayerFactory` 解析图层图像，因而共享页面不会自行推断资源路径。`animate` 的逐帧视觉更新由该呈现实现完成；Runtime 仅提交动画结束后的场景属性。
 
-宿主 View 只需绑定实际 View：
+## 宿主接入约束
 
-```xml
-<ContentControl Content="{Binding Navigator.Current.View}" />
-```
+- 宿主负责提供 `IGameContentProvider`、`UiProject` 和按需的资源/玩家数据服务；Control 不拥有项目目录。
+- 每次独立运行必须使用独立的游戏会话与页面作用域，不能复用上一次 `GameRunViewModel`。
+- 扩展页面 View 映射时，在 `AddAvaloniaGameViewPages()` 的注册回调中完成；注册表构建后不可修改。
+- 新增固定页面时，需要同时补充路由分支、预设 schema、页面 View/ViewModel、资源解析与导航测试。
 
-不使用 `InternalNav`、VM→View 注册表、当前页面事件或 `Activator.CreateInstance`。Screen VM 直接注入 `IGameScreenNavigator`，按路由键导航或回退。
-
-## Screen 页面路由
-
-`GameFlowFactory.BuildScreen()` 按路由键分发创建：
-
-| 路由键 | ViewModel | 说明 |
-| --- | --- | --- |
-| `title` | `GameStartViewModel` / `TextMenuTitleViewModel` | 标题页（根据预设选择模板） |
-| `game` | `GameRunViewModel` | 游戏运行页（核心游玩界面） |
-| `settings` | `SettingsViewModel` | 设置页 |
-| `save-load` | `SaveLoadViewModel` | 存档/读档页（通过参数区分模式） |
-| `gallery` | `GalleryViewModel` | 鉴赏页 |
-| `about` | `AboutViewModel` | 关于页（Markdown 渲染） |
-
-## Overlay 覆盖层
-
-`ScreenshotDialog` 是覆盖层对话框，不参与 Screen 路由。通过 `OverlayDialog.ShowCustomAsync<>()` 弹出，用于截图保存等场景。
-
-## 调色板与绑定
-
-`PaletteScope.Palette` 是继承型 Avalonia 附加属性。模板将当前 `IColorPalette` 设到 Screen 根 View，子树中的控件可通过 `PaletteBinding.Create(control, key)` 绑定 Brush；AXAML 可写为：
-
-```xml
-Background="{ui:PaletteBrush Background0}"
-Foreground="{ui:PaletteBrush FontColor0}"
-```
-
-调色板实现只要在任意颜色变化时触发 `PropertyChanged("Item[]")`。绑定代理会重新读取索引器，已显示的 View/Widget 无需重建或重新导航。
-
-`ProjectColorPalette` 位于 `Editor.Shared`，由 `FileUiProjectProvider` 的项目内存状态驱动。颜色面板修改 `ColorItem` 时必须立刻写入该共享 palette、通知绑定并保存 UI 文件。Control 不实现磁盘 Provider。
-
-### 内置语义色键
-
-内置模板和插件应优先使用 `UiColorKeys`，而不是复制 `#AARRGGBB` 字面量：
-
-| 角色 | 键 |
-| --- | --- |
-| 品牌/强调 | `PrimaryColor`、`PrimaryColorHover`、`HighlightColor` |
-| 背景层级 | `Background0`、`Background1`、`Background2`、`HighlightBackground` |
-| 文字层级 | `FontColor0`、`FontColor1`、`FontColor2`、`FontHighlightColor` |
-| 状态与轮廓 | `BorderColor`、`DisabledColor`、`DangerColor` |
-
-Screen 根会把 `FontColor0` 作为继承前景色，普通文字不应逐个硬编码；需要弱化、强调或危险状态时再显式绑定对应键。Slider、CheckBox、返回按钮、存档卡片、运行期 Widget 和游戏命令栏均应使用这些键。
-
-游戏命令栏是例外：无论常态、悬浮或按下，背景始终透明；只改变前景色（常态 `FontColor1`、悬浮 `PrimaryColor`、按下 `HighlightColor`）。
-
-## UI 项目存储
-
-项目文件由 Editor.Shared 负责：
-
-```
-UI/
-  ui.json
-  WidgetInstance/*.json
-  ScreenInstance/*.json
-```
-
-`ui.json` 包含 `Colors` 和"类别键 → 默认 Screen 实例 ID"的 `DefaultViews`。实例文件仅保存数据；模板代码由宿主 DI 提供。本层不承诺插件程序集自动扫描，也不提供 UI 实例可视化编辑器。
-
-## 约束
-
-- 模板不得缓存颜色字符串或手工订阅颜色事件；使用 palette Binding。
-- Control 不得直接加载 `UI/`、创建 `UiProject` 或保存项目文件。
-- 缺失实例、模板或类别不匹配必须给出验证错误，不使用硬编码页面回退。
-- 新模板必须声明自己的配置、颜色引用和 Widget/Screen 引用校验。
-- 未来插件可添加类别、模板及色键；宿主必须显式注册模板，保持 ID 唯一。
+旧版文档中关于 `IWidgetTemplate`、`IScreenTemplate`、`IColorPalette`、`UI/ui.json`、`WidgetInstance` 和 `ScreenInstance` 的描述不是当前实现的一部分。

@@ -1,106 +1,70 @@
 # GalNet 架构
 
-## 目标与边界
+## 分层与依赖
 
-GalNet 是一个 Galgame 内容制作与运行平台。设计目标是让游戏逻辑、运行时执行、平台 UI 和编辑器工作流彼此独立：内容可以在编辑器预览、桌面启动器和无头测试中运行，而不依赖某个具体宿主。
-
-`Core` 只定义稳定的领域模型与协议；实现程序集只能依赖更底层的程序集。项目文件、`.galgroup`、资源包和存档是长期兼容边界，重构不得随意修改其字段和含义。
-
-## 解决方案与依赖方向
+GalNet 将内容模型、运行时、呈现端口、Avalonia 页面和编辑器拆开。`Core` 不引用 UI、磁盘或 DI；Runtime 只依赖 Core 与呈现抽象，宿主负责组装具体实现。
 
 ```mermaid
 flowchart BT
-  Core["GalNet.Core\n模型、契约、序列化"]
-  Assets["GalNet.Assets\n资源与包实现"] --> Core
-  Runtime["GalNet.Runtime\n引擎、处理器、状态"] --> Core
-  ControlAbstraction["GalNet.Control.Abstraction\n页面预设契约"] --> Core
-  Control["GalNet.Control\nAvalonia 呈现"] --> Core
-  Control --> Runtime
-  Control --> ControlAbstraction
-  EditorAbstraction["GalNet.Editor.Abstraction\n编辑器 DTO/命令/服务契约"] --> Core
-  EditorShared["GalNet.Editor.Shared\n项目、持久化、命令实现"] --> Core
+  Core["GalNet.Core\n领域模型、序列化契约、服务接口"]
+  Presentation["GalNet.Presentation.Abstractions\nIGameView 与呈现端口"] --> Core
+  Runtime["GalNet.Runtime\n图加载、引擎、处理器、存档"] --> Core
+  Runtime --> Presentation
+  Defaults["GalNet.Presentation.Defaults\nNullGameView"] --> Presentation
+  Assets["GalNet.Assets\n目录与 pak 资源实现"] --> Core
+  ControlAbs["GalNet.Control.Abstraction\nUI 预设与导航契约"] --> Core
+  Control["GalNet.Control\n默认页面流和 DefaultGameView"] --> Runtime
+  Control --> Presentation
+  Control --> ControlAbs
+  GameView["GalNet.Avalonia.GameView\n独立游戏页面与 Avalonia 呈现"] --> Presentation
+  EditorShared["GalNet.Editor.Shared\n项目读写、命令与导出"] --> Runtime
   EditorShared --> Assets
-  EditorShared --> Runtime
-  EditorShared --> ControlAbstraction
-  Editor["GalNet.Editor\n编辑器组合根与 UI"] --> EditorAbstraction
-  Editor --> EditorShared
-  Editor --> Control
-  Launcher["Launcher / Headless\n宿主"] --> Assets
-  Launcher --> Runtime
-  Launcher --> Control
+  Editor["GalNet.Editor\n组合根、Dock、预览"] --> EditorShared
+  Editor --> GameView
+  Editor --> Presentation
 ```
 
-| 程序集 | 职责 | 不应承担的职责 |
-|---|---|---|
-| `GalNet.Core` | 图、条目、变量、场景、设置、接口和文件模型 | Avalonia 控件、磁盘路径推断、DI 注册 |
-| `GalNet.Assets` | 目录与 pak 资源提供者、压缩、加密、资源索引 | 游戏流程或 UI 逻辑 |
-| `GalNet.Runtime` | 图加载、`GameEngine`、条目处理器、快照和变量运行态 | 具体窗口、控件或文件选择器 |
-| `GalNet.Control` | Avalonia 页面、默认游戏视图、媒体适配、页面路由 | 编辑器项目持久化 |
-| `GalNet.Control.Abstraction` | UI 页面预设契约、模板接口、调色板绑定 | Avalonia 具体实现 |
-| `GalNet.Editor.Abstraction` | 编辑器命令、DTO、服务接口、扩展点 | Avalonia 或磁盘实现 |
-| `GalNet.Editor.Shared` | 项目读写、命令执行、导出、编辑器专用服务 | 编辑器窗口和控件 |
-| `GalNet.Editor` | 组合根、编辑器页面、Dock、ViewModel | 持久化格式和运行时规则 |
+| 程序集 | 当前职责 |
+| --- | --- |
+| `GalNet.Core` | 图、条目、变量、场景、设置、序列化 DTO 与宿主服务接口 |
+| `GalNet.Presentation.Abstractions` | `IGameView` 及文本、图层、交互、媒体、转场和效果端口 |
+| `GalNet.Runtime` | Graph / `.galgroup` 加载、`GameEngine`、条目处理器、运行态和存档 |
+| `GalNet.Presentation.Defaults` | 无界面/默认呈现实现，供测试与简单宿主使用 |
+| `GalNet.Assets` | 本地目录、pak、资源索引、压缩与缓存 |
+| `GalNet.Control(.Abstraction)` | 固定默认页面流、UI 预设 schema、默认 Avalonia 游戏 View |
+| `GalNet.Avalonia.GameView` | 页面导航、页面 View/VM 映射和 Avalonia 游戏画布呈现 |
+| `GalNet.Editor.Abstraction` | 编辑器 DTO、命令和扩展契约 |
+| `GalNet.Editor.Shared` | 项目读写、命令执行、变量/保存服务与导出 |
+| `GalNet.Editor` | Avalonia 编辑器、Dock、预览与组合根 |
 
-依赖必须自上而下传递，禁止 `Core` 引用实现程序集；禁止 `Runtime` 引用 `Control`；禁止 `Editor.Shared` 引用 `Editor`。宿主负责选择内容提供者、玩家数据服务、平台窗口与 DI 生命周期。
-
-## 游戏运行数据流
+## 游戏运行
 
 ```mermaid
 sequenceDiagram
-  participant Host as 宿主/编辑器预览
+  participant Host as 宿主 / 编辑器预览
   participant Content as IGameContentProvider
-  participant Flow as Screen.Flow
-  participant Engine as Runtime.GameEngine
-  participant Handler as EntryHandlerRegistry
+  participant Run as GameRunCoordinator / GameEngine
+  participant Handlers as EntryHandlerRegistry
   participant View as IGameView
-  Host->>Content: 获取图、资源根、UiProject
-  Host->>Flow: 创建页面宿主和 GameFlowOptions
-  Flow->>Engine: 创建/恢复运行会话
-  Engine->>Handler: 执行当前 Entry
-  Handler->>View: 呈现文本、图层、音频、选择
-  View-->>Engine: 用户推进或选择结果
-  Engine-->>Host: GameSnapshot / 结束状态
-  Host->>Host: 通过 ISaveService、IVariableService 保存数据
+  Host->>Content: 提供 Graph、资源根与文本解析器
+  Host->>Run: 创建或恢复一次游戏会话
+  Run->>Handlers: 执行当前 Entry
+  Handlers->>View: 呈现文本、图层、选择和媒体请求
+  View-->>Run: 推进、选择或跳过
+  Run-->>Host: Checkpoint / GameSnapshot / 结束或失败
 ```
 
-`IGameContentProvider` 提供游戏内容；`ISettingsService`、`ISaveService`、`IVariableService` 和 `IGameProgressService` 由宿主提供玩家数据。`GameEngine` 只解释图和条目，所有可见行为经 `IGameView` 完成。默认 Avalonia 实现位于 `GalNet.Control.Runtime.Presentation`，包含文本、选择、图层、音频、视频、转场和效果的适配器。
+`GameEngine` 保有 `IGameRuntime`，解释图的节点与条目；它不认识 Avalonia 控件。条目 Handler 将可见行为发送给 `IGameView`。图层和动画的长期状态在 Runtime 的场景实例中，呈现端只保存画面所需的短期状态。
 
-## Control 页面与 UI 预设
+## 编辑器工作流
 
-`GalNet.Control.Screen` 的每个功能目录同时拥有 View、ViewModel 和对应 XAML；其命名空间必须与物理路径一致。`Screen.Flow` 是页面创建边界，按 `title`、`game`、`settings`、`save-load`、`gallery`、`about` 路由，并为一次游戏运行维护其 ViewModel 生命周期。`Screen.Overlay` 提供覆盖层对话框（如截图保存）。
+编辑器以 `EditorProjectDocument` 为 UI 无关的编辑聚合。`EditorDocumentRepository` 负责 `Graph/graph.json` 与 `Graph/groups/*.galgroup` 的读写；命令处理器原子修改该聚合，历史与保存调度器分别负责撤销/重做和合并写入。预览通过 `EditorGameDataProvider` 从当前项目内存状态建立内容，不依赖示例项目路径。
 
-`UiProject` 保存页面预设 ID 与用户覆盖值。`IUiPresetRegistry` 提供预设默认值；页面工厂合并"预设默认值 + 项目覆盖值"后生成不可持久化的页面配置对象。配置解析不得修改原始 `UiProject`，也不得让页面直接读取 JSON 或文件系统。
-
-新增页面时：定义 `UiPageKind` 和预设元数据；在 `Screen/<Feature>` 放置同名 View/ViewModel/XAML；在 Flow 注册创建分支和 DataTemplate；最后补充路由与配置解析测试。
-
-## 编辑器数据流
-
-```mermaid
-flowchart LR
-  Open[打开项目] --> Repository[EditorDocumentRepository]
-  Repository --> DTO[EditorProjectDocument / DTO]
-  DTO --> Mapper[GraphDocumentMapper]
-  Mapper --> Workspace[EditorWorkspaceViewModel]
-  Workspace --> Command[编辑命令]
-  Command --> Handler[BuiltInEditorCommandHandler]
-  Handler --> Dirty[DocumentService: 脏状态]
-  Dirty --> History[UndoRedoHistory]
-  Dirty --> Scheduler[ProjectSaveScheduler]
-  Scheduler --> Repository
-  Workspace --> Preview[GameFlow 预览]
-  Repository --> Export[GamePackageExporter]
-```
-
-编辑操作必须以 `IProjectEditCommand` 表达。命令处理器负责校验并原子地修改 DTO，返回诊断与历史描述；UI 不得绕过命令直接改持久化模型。`GraphDocumentMapper` 在 DTO 与编辑器展示模型间转换，`GraphChangeTracker` 将展示层改动汇入脏状态，`ProjectSaveScheduler` 合并保存请求。预览通过 `IGameContentProvider` 使用当前项目内容，不读取示例目录或猜测资源路径。
-
-## 扩展点
-
-- 新增条目类型：在 `Core.Entry` 声明类型 class（含 `TypeId`、参数 schema 和默认值），在 `Runtime.Handlers` 注册处理器，并在 `EntryHandlerRegistry.CreateDefault()` 中注册。
-- 新增编辑器命令：在 `Editor.Abstraction.Commands` 声明 record，在命令领域处理器实现校验和执行，并为成功、无效输入和历史记录编写测试。
-- 新增 Dock 面板：创建 ViewModel 和 View，在 `BuiltInDockContributions.Register()` 中注册面板和 ViewModel 工厂。
-- 新增资源来源：实现 `IAssetProvider`，由宿主或编辑器资产管理器组合，不把路径规则带入 Core。
-- 新增平台宿主：实现内容与玩家服务契约，注册 Control/Runtime 所需服务，保持宿主专有代码在入口程序集内。
+Dock 面板由 `IEditorExtensionRegistry` 注册，`EditorDockFactory` 管理其布局和生命周期。现有内置面板是节点图、游戏预览、资源、日志、组编辑器和检查器；检查器由当前活动面板的可选贡献提供。
 
 ## 维护规则
 
-源文件目录、C# 命名空间和 Avalonia `x:Class` 必须一致；生成目录 `bin`、`obj` 与临时目录不参与该检查。大类应按领域或生命周期拆分，单一协调器只保留路由和依赖组装。任何结构重构完成后至少运行相关测试、项目构建和命名空间一致性检查。
+- 不让 Core、Runtime 或 Editor.Shared 反向引用 Avalonia 编辑器实现。
+- 新条目必须同时更新 Core schema、Runtime Handler/注册、加载验证、测试和 `entry-types.md`。
+- 新的持久化字段必须在 authoring JSON、加载器、导出包和兼容性测试中一起处理。
+- 新呈现能力先增加 `Presentation.Abstractions` 端口，再由所需宿主实现；不要让 Runtime 直接调用 UI 类型。

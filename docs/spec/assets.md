@@ -8,11 +8,11 @@
 
 | 格式 | 说明 |
 |---|---|
-| `.galpak` | **游戏分发包**，根目录包含一个 `.galnet` + `Assets/` 目录下多个 `.pak` |
-| `.galnet` | **编译后的游戏逻辑单文件**（打包了 graph.json + 所有 .galgroup，含二进制化/加密/压缩） |
-| `.pak` | **资源归档文件**，内部包含寻址表和资源数据块 |
+| `.galpak` | 游戏分发 ZIP；当前含 JSON manifest、`Assets/content.pak` 与 `Assets/assets.pak` |
+| `.galnet` | 当前 `.galpak` 内 manifest 的文件名，不是独立逻辑二进制 |
+| `.pak` | 资源归档文件，内部包含寻址表和资源数据块 |
 
-当前先实现单 pak（`Assets/` 下所有资源打一个包），后续可按组/使用频率拆分。
+当前导出器将 `Assets/**` 打为 `Assets/assets.pak`，并将 `settings.json`、`Graph/**`、`I18n/**` 打为 `Assets/content.pak`；完整发布布局见[文件格式](file-formats.md)。
 
 ## 资源描述文件
 
@@ -153,12 +153,9 @@ AssetManager 通过注册不同 Provider 切换数据源：
 
 提供同步/异步压缩解压，流式 API 和字节数组 API。
 
-### 加密（CryptoHelper）
+### 加密
 
-- **算法**：AES-256-CBC（带随机 IV）
-- **密钥派生**：PBKDF2（密码 + 随机 salt，100000 次迭代，SHA256）
-- 每次加密生成随机 salt + IV，同一数据每次密文不同
-- Hash 校验：SHA256
+当前 `GamePackageExporter` 不对 `.galpak` 或其内部 `.pak` 加密；它使用 SHA-256 校验导出包中的两个 pak。任何 `CryptoHelper` 能力均不构成当前发布格式的兼容性承诺。
 
 ### 资源缓存与引用计数
 
@@ -203,7 +200,7 @@ GalNet.Assets/             ← 实现
 
 ## Scene 场景状态
 
-SceneState 是运行时游戏状态的统一容器，由 `IGameView` 实现负责维护。
+`SceneState` 是 `GameRuntime` 拥有的可序列化场景快照；`SceneInstanceManager` 以它为基础维护活跃实例。`IGameView` 只呈现 Handler 发出的请求，不是场景状态的唯一来源。
 
 ```
 SceneState (可序列化的状态数据)
@@ -215,7 +212,7 @@ SceneState (可序列化的状态数据)
 
 SceneState 持有场景运行中需要持久化的数据字段（图层信息、控件/特效状态等），通过 `SaveManager` 序列化为存档。
 
-游戏运行时，`IGameView` 实现（如 `DefaultGameView`）负责将 `EntryHandler` 的指令转化为对 SceneState 的更新。无头测试使用 `NullGameView`。
+游戏运行时，Handler 先更新 Runtime 的场景实例/状态，再向 `IGameView` 发送呈现请求。无头测试使用 `NullGameView`。
 
 ### 存档数据结构
 
@@ -223,8 +220,8 @@ SaveManager 统一调度存档：
 
 ```
 GameSnapshot
-├── CurrentNodeId
-├── CurrentEntryIndex
+├── NodeId
+├── EntryIndex
 ├── Variables (VariableStore 快照)
-└── SceneData  (SceneState 序列化数据)
+└── SceneState
 ```

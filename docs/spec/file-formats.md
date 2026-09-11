@@ -1,69 +1,64 @@
-# 文件格式与编译管道
+# 项目与发布格式
 
----
+## 项目目录
 
-## 格式总览
+编辑器新建项目时创建如下目录；`Output`、`Temp` 和 `.galnet` 是工作目录，不是游戏内容源。
 
+```text
+Project/
+  settings.json
+  Graph/
+    graph.json
+    groups/*.galgroup
+  Assets/
+    Layer/ Audio/ Video/ ...
+  I18n/
+  Output/
+  Temp/
+  .galnet/editor-state.json
 ```
-graph.json          ← 节点/边元数据（位置、参数等），每个 Group 对应一个 .galgroup 文件
-*.galgroup          ← 组条目文件，JSON（版本化、有序 Entry）
-.galnet             ← 编译产物：graph.json + 所有 galgroup → 单文件（可二进制化/加密/压缩），纯逻辑不含资源
-.galpak             ← 最终分发包：.galnet + 资源文件 → 压缩打包
-```
 
----
+`settings.json` 存放项目设置；`graph.json` 是节点图和变量定义；每个 Group 的条目存放在单独的 `.galgroup`。编辑器状态（例如项目级编辑器信息）写入 `.galnet/editor-state.json`，不应作为运行时内容处理。
 
 ## graph.json
 
-每个项目一张主图，存储所有节点和边的元数据（节点类型、位置、显示名称、配置参数等）。Group 节点通过一个 `file` 字段引用对应的 `.galgroup` 文件路径。
+当前作者格式的版本为 2。节点有稳定字符串 ID、类型、名称和编辑器坐标；`Group` 节点以 `file` 指向 Group 条目文件，`Entry` 是图入口节点，`Branch` 节点携带 `branchType` 与 options 或 conditions。边包含稳定 ID、起点、出口索引与终点。
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "name": "MyGame",
-  "rootNodeId": "group_intro",
+  "rootNodeId": "entry-id",
   "nodes": [
-    {
-      "id": "group_intro",
-      "type": "Group",
-      "name": "开场",
-      "x": 100, "y": 220,
-      "file": "groups/intro.galgroup"
-    },
-    {
-      "id": "branch_01",
-      "type": "Branch",
-      "name": "选择路线",
-      "x": 350, "y": 220,
-      "branchType": "Choice",
-      "options": [
-        { "text": "选项A", "condition": "" },
-        { "text": "选项B", "condition": "flag == true" }
-      ]
-    }
+    { "id": "entry-id", "type": "Entry", "name": "Entry", "x": 100, "y": 100 },
+    { "id": "group-id", "type": "Group", "name": "Opening", "x": 360, "y": 100,
+      "file": "groups/group-id.galgroup" }
   ],
   "edges": [
-    { "fromNodeId": "group_intro", "fromOutlet": 0, "toNodeId": "branch_01" }
-  ]
+    { "id": "edge-id", "fromNodeId": "entry-id", "fromOutlet": 0, "toNodeId": "group-id" }
+  ],
+  "playerVariables": [],
+  "saveVariables": []
 }
 ```
 
----
+Runtime 的 `GraphLoader` 会将 `Entry` 和 `Group` 都转换为运行时 Group；实际条目仅由对应 `Group` 的 `.galgroup` 另行加载。运行时图不保留编辑器坐标、节点/边稳定 ID 或 Group 文件路径。
 
-## .galgroup 格式
+## .galgroup
 
-`.galgroup` 是 JSON 权威源；不再接受旧的分号文本格式。文档包含版本号和按数组顺序执行的条目。每个条目都有编辑器稳定 ID、类型、可选条件和结构化参数。运行时加载时会将 JSON 显式编译为 Runtime `Entry`，Runtime 本身不解析编辑器格式。
+`.galgroup` 是版本 1 的 JSON 作者格式，不再支持旧的分号文本格式。条目数组顺序就是执行顺序。每个条目必须拥有在本文件内唯一、非空的稳定 `id`；`type` 必须在 `EntryRegistry` 中注册。
 
 ```json
 {
   "version": 1,
   "entries": [
     {
-      "id": "8fa123d4-cc1a-4a6a-a2c6-4f03013f2fe6",
+      "id": "entry-id",
       "type": "layer.show",
+      "condition": "",
       "parameters": {
-        "handleId": "c6b0b154-2f43-4e1d-bcf1-0dd6936522e4",
-        "assetId": "assets/backgrounds/classroom.png",
+        "handleId": "layer-id",
+        "assetId": "Layer/classroom.png",
         "transform": { "x": 0, "y": 0, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 },
         "z": 0,
         "displayMode": "Fill"
@@ -73,90 +68,19 @@ graph.json          ← 节点/边元数据（位置、参数等），每个 Gro
 }
 ```
 
-`id` 是条目在编辑器中的稳定标识；`handleId` 是场上实例的内部句柄，两者都应为 GUID 字符串。编辑器向开发者展示资源和实例名称/类型，并通过资源定位器写入句柄，不要求开发者输入或识别 GUID。
+参数在文件中保持结构化 JSON。`GalgroupLoader` 将其编译为 Runtime 的字符串参数表，并验证 Layer 的 transform、展示模式、必填句柄和资源等特例。条目参数的权威清单见 [条目类型](entry-types.md)。
 
----
+## 导出 .galpak
 
-## .galnet 格式
+当前 `.galpak` 是 ZIP 容器，而非历史文档中描述的单一二进制 `.galnet` blob。导出器会创建：
 
-**编译后的游戏逻辑单文件**，内容来源：
-- `graph.json`（节点/边结构）
-- 所有 `.galgroup`（条目列表）
-
-格式为二进制 blob（可加密、压缩），供 Runtime 直接加载。不含资源文件（资源由 Assets 模块独立管理）。
-
-### 结构
-
-```
-[Header]        ← 版本号 + 图数量 + 是否加密 + 是否压缩
-[GraphData]     ← 序列化的 Graph 对象（含所有组的 Entry 列表）
-[Hash]          ← SHA256 完整性校验
+```text
+<Project>.galpak
+  <Project>.galnet       JSON manifest（格式版本 1）
+  Assets/content.pak     settings.json、Graph/**、I18n/**
+  Assets/assets.pak      Assets/**
 ```
 
----
+两个 `.pak` 均由 `PakBuilder` 构造，默认使用 Brotli；manifest 记录项目 ID、项目名称、导出时间、内容包入口及每个包的 SHA-256 和大小。导出在临时文件中完成，随后重新读取 ZIP、校验每个包哈希并验证 pak 可反序列化，最后才替换目标文件。
 
-## .galpak 格式
-
-**最终分发的游戏包**，启动器可导入。内容：
-- `.galnet`（游戏逻辑，可加密/压缩）
-- 资源文件列表（每个资源可独立设置压缩/加密选项）
-- `Manifest` 清单（资源索引、版本、入口图 ID、全局 Hash）
-
-### 结构
-
-```
-[Manifest]      ← JSON，资源索引 + 元数据
-[.galnet blob]  ← 二进制游戏逻辑块
-[Asset_1]       ← 资源数据（可选压缩/加密）
-[Asset_2]
-...
-[Asset_N]
-[GlobalHash]    ← 整体 SHA256
-```
-
----
-
-## 数据流
-
-### 开发期
-
-```
-图编辑 ──→ graph.json（节点 + 边 + 元数据）
-组编辑 ──→ *.galgroup（JSON 条目数组）
-条目编辑 ──→ 组文件中的一个 JSON Entry，参数保持结构化
-```
-
-### 运行时（编辑器预览 / 启动器运行）
-
-```
-Runtime 加载（由 GameEngine 驱动）：
-  1. 读取 graph.json → 解析节点/边结构
-  2. 按 Group 节点引用的 path 加载对应 .galgroup → 验证 JSON 并编译 Entry
-  3. GameEngine 通过 IGameRuntime 接口统一管理运行时状态
-     （CurrentNodeId/EntryIndex/VariableStore/SceneState/调用栈/View/I18n）
-  4. 定位入口节点，开始状态机循环
-  （开发期目录形式或 .galnet 单文件形式，加载路径不同但内部逻辑一致）
-```
-
-### 导出（编辑器 → .galpak）
-
-```
-                                                                  ┌── 可选加密
-                                                                  │
-graph.json + *.galgroup ──→ 序列化 ──→ .galnet ──┐
-                                                                  │         │
-资源文件 ──→ 构建索引（Manifest）─────────────────────────────────→ ────────┤
-                                                                  │         │
-                                          .galnet + 资源 ──→ 打包 ──→ .galpak
-                                                                  │
-                                                      ┌── 可选压缩/加密
-                                                      └── SHA256 校验
-```
-
-### 导入（启动器）
-
-```
-.galpak ──→ 校验 Hash ──→ 解压/解密 ──→ 提取 .galnet + 资源
-                                            │
-                                            └── Runtime 加载 .galnet ──→ 运行
-```
+`.galnet` 在当前发布格式中只是 manifest 的文件名，不能假定它包含可直接运行的图数据。加密的 `.galnet`、单独 `.galnet` 逻辑包以及旧版 `.galpak` 布局均不是当前导出器承诺的格式。
