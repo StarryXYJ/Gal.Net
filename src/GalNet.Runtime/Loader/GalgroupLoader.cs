@@ -66,7 +66,7 @@ public static class GalgroupLoader
     private static IReadOnlyDictionary<string, string> CompileLayerShow(IReadOnlyDictionary<string, JsonElement> parameters)
     {
         var compiled = Rename(parameters,
-            ("handleId", "handleId"), ("assetId", "assetId"), ("z", "z"), ("displayMode", "displayMode"),
+            ("handleId", "handleId"), ("assetId", "assetId"), ("z", "z"), ("opacity", "opacity"), ("displayMode", "displayMode"),
             ("transitionId", "transitionId"), ("transitionDuration", "transitionDuration"), ("transitionBlocking", "transitionBlocking"),
             ("transitionParameters", "transitionParameters"));
         compiled["transform"] = ReadTransform(parameters);

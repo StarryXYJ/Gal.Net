@@ -30,9 +30,9 @@ public sealed class ShowLayerEntry : Entry
     public override string Type => TypeId;
     public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(
         ("handleId", EntryParameterType.Text), ("assetId", EntryParameterType.ImageAsset), ("transform", EntryParameterType.Json),
-        ("z", EntryParameterType.Float), ("displayMode", EntryParameterType.Select), ("transitionId", EntryParameterType.Text),
+        ("z", EntryParameterType.Float), ("opacity", EntryParameterType.Float), ("displayMode", EntryParameterType.Select), ("transitionId", EntryParameterType.Text),
         ("transitionDuration", EntryParameterType.Float), ("transitionBlocking", EntryParameterType.Select), ("transitionParameters", EntryParameterType.MultilineText));
-    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("transform", "{}"), ("z", "0"), ("displayMode", "Native"), ("transitionDuration", "0.5"), ("transitionBlocking", "false"));
+    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("transform", "{}"), ("z", "0"), ("opacity", "1"), ("displayMode", "Native"), ("transitionDuration", "0.5"), ("transitionBlocking", "false"));
     public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(("transitionBlocking", ["false", "true"]), ("displayMode", ["Native", "Tile", "Fill", "Uniform", "UniformToFill"]));
 }
 
@@ -65,20 +65,27 @@ public sealed class ReplaceLayerEntry : Entry
         ("handleId", EntryParameterType.Text), ("assetId", EntryParameterType.ImageAsset));
 }
 
-public sealed class AnimateLayerEntry : Entry
+public sealed class AnimateEntry : Entry
 {
     public const string TypeId = "animate";
     public override string Type => TypeId;
     public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(
         ("handleId", EntryParameterType.Text), ("property", EntryParameterType.Select), ("from", EntryParameterType.Float),
-        ("to", EntryParameterType.Float), ("duration", EntryParameterType.Float), ("easing", EntryParameterType.Select),
+        ("to", EntryParameterType.Float), ("duration", EntryParameterType.Float), ("curve", EntryParameterType.Select),
         ("blocking", EntryParameterType.Select), ("skippable", EntryParameterType.Select), ("batchId", EntryParameterType.Text));
     public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(
-        ("duration", "0.25"), ("easing", "Linear"), ("blocking", "false"), ("skippable", "false"));
+        ("duration", "0.25"), ("curve", "Linear"), ("blocking", "false"), ("skippable", "false"));
     public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(
         ("property", Layer.AnimationProperties.Select(property => property.Name).ToArray()),
-        ("easing", ["Linear", "Step", "EaseIn", "EaseOut", "EaseInOut"]),
+        ("curve", ["Linear", "Step", "EaseIn", "EaseOut", "EaseInOut"]),
         ("blocking", ["false", "true"]), ("skippable", ["false", "true"]));
+}
+
+public sealed class PlayAnimationPlanEntry : Entry
+{
+    public const string TypeId = "animation.play";
+    public override string Type => TypeId;
+    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("plan", EntryParameterType.Json));
 }
 
 public sealed class PlayAudioEntry : Entry

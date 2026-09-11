@@ -121,7 +121,7 @@ public sealed class GameEngine
 
     private async Task ExecuteEntryAsync(EntryHandler handler, Entry entry, CancellationToken ct)
     {
-        var ctx = new EntryContext { Entry = entry, Runtime = _runtime };
+        var ctx = new EntryContext { Entry = entry, Runtime = _runtime, DispatchTimelineEventAsync = DispatchTimelineEventAsync };
 
         if (handler.CreatesCheckpoint)
         {
@@ -130,6 +130,19 @@ public sealed class GameEngine
         }
 
         await handler.ExecuteAsync(ctx, _view, _timeProvider, ct);
+    }
+
+    private Task DispatchTimelineEventAsync(Entry entry, CancellationToken ct)
+    {
+        var handler = _registry.Resolve(entry.Type);
+        if (handler is null)
+        {
+            GameLog.Logger.Warning("Animation plan event ignored because entry type '{EntryType}' is unknown.", entry.Type);
+            return Task.CompletedTask;
+        }
+
+        var context = new EntryContext { Entry = entry, Runtime = _runtime, DispatchTimelineEventAsync = DispatchTimelineEventAsync };
+        return handler.ExecuteAsync(context, _view, _timeProvider, ct);
     }
 
     private async Task ProcessBranchAsync(Branch branch, CancellationToken ct)

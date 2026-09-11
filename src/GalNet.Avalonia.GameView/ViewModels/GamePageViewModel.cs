@@ -130,6 +130,7 @@ public sealed partial class GamePageViewModel : PageViewModelBase
             existing.ScaleY = item.ScaleY;
             existing.Z = item.Z;
             existing.DisplayMode = item.DisplayMode;
+            existing.Opacity = item.Opacity;
             existing.IsVisible = true;
         }
     }

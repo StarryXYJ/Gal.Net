@@ -8,6 +8,7 @@ namespace GalNet.Sample.Headless;
 /// <summary>Basic interactive console adapters used by the official sample player.</summary>
 internal sealed class ConsolePresentation :
     ILayerView,
+    IAnimationView,
     IControlView,
     IAudioView,
     IVideoView,
@@ -28,12 +29,17 @@ internal sealed class ConsolePresentation :
     public void HideLayer(string handleId) => Console.WriteLine($"[Layer] hide {handleId}");
     public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSec) =>
         Console.WriteLine($"[Layer] move {handleId}: ({transform.X}, {transform.Y}, {z}) in {durationSec}s");
-    public Task<AnimationOutcome> AnimateLayerAsync(LayerAnimationRequest request, CancellationToken ct)
+    public Task<AnimationOutcome> AnimateAsync(AnimationRequest request, CancellationToken ct)
     {
         Console.WriteLine($"[Animate] {request.HandleId}.{request.Property} -> {request.To} in {request.DurationSeconds}s");
         return Task.FromResult(AnimationOutcome.Completed);
     }
-    public bool SkipLayerAnimationBatch(string? batchId) => false;
+    public Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken ct)
+    {
+        Console.WriteLine($"[AnimationPlan] {plan.Tracks.Count} tracks, {plan.DurationFrames} frames @ {plan.FrameRate} FPS");
+        return Task.FromResult(new AnimationPlanPlayResult { Outcome = AnimationOutcome.Completed, TrackOutcomes = plan.Tracks.ToDictionary(track => $"{track.HandleId}:{track.Property}", _ => AnimationOutcome.Completed) });
+    }
+    public bool SkipAnimationBatch() => false;
     public void ShowDialogue() => Console.WriteLine("[Dialogue] show");
     public void HideDialogue() => Console.WriteLine("[Dialogue] hide");
     public void PlayAudio(string channel, string assetId, float volume, string mode, int times) =>

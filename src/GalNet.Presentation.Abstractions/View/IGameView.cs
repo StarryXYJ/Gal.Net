@@ -6,6 +6,7 @@ namespace GalNet.Core.View;
 /// </summary>
 public interface IGameView :
     ILayerView,
+    IAnimationView,
     IControlView,
     IAudioView,
     IVideoView,

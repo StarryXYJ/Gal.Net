@@ -253,7 +253,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             ["white"] = (request, ct) => InvokeOnUiAsync(() => _gameplay.PlayTransitionAsync(Brushes.White, request.Duration, ct)),
             ["cross"] = (request, ct) => InvokeOnUiAsync(() => _gameplay.PlayTransitionAsync(Brushes.Black, request.Duration, ct, 0.35d))
         });
-        var gameView = new CompositeGameView(_pageView, _pageView, _media, _media, transitions, new SampleEffectView(_gameplay), _pageView, _pageView);
+        var gameView = new CompositeGameView(_pageView, _pageView, _pageView, _media, _media, transitions, new SampleEffectView(_gameplay), _pageView, _pageView);
         var content = await _contentProvider.LoadAsync(cancellationToken);
         var settings = new SettingsContainer();
         settings.Set(_settings);

@@ -193,7 +193,7 @@ public class GameEngineIntegrationTests
         };
 
         var services = new RecordingGameView();
-        IGameView facade = new CompositeGameView(services, services, services, services, services, services, services, services);
+        IGameView facade = new CompositeGameView(services, services, services, services, services, services, services, services, services);
         var engine = new GameEngine(graph, facade);
 
         await engine.StepAsync();
@@ -277,7 +277,7 @@ public class GameEngineIntegrationTests
                     Entries =
                     {
                         Create(ShowLayerEntry.TypeId, 1, ("handleId", "hero"), ("assetId", "hero"), ("transform", "{\"x\":680}")),
-                        Create(AnimateLayerEntry.TypeId, 2, ("handleId", "hero"), ("property", "transform.x"), ("to", "540"), ("duration", "0"), ("blocking", "true")),
+                        Create(AnimateEntry.TypeId, 2, ("handleId", "hero"), ("property", "transform.x"), ("to", "540"), ("duration", "0"), ("blocking", "true")),
                         Create(TextEntry.TypeId, 3, ("content", "pause"))
                     }
                 }
@@ -288,6 +288,43 @@ public class GameEngineIntegrationTests
         await engine.StepAsync();
 
         Assert.That(engine.Runtime.SceneInstances.GetAll<GalNet.Core.Scene.Layer>().Single().Transform.X, Is.EqualTo(540));
+    }
+
+    [Test]
+    public async Task Animation_plan_events_and_final_tracks_update_stable_scene_state()
+    {
+        var plan = """
+            { "frameRate": 60, "durationFrames": 1, "blocking": true, "tracks": [
+              { "handleId": "old", "property": "opacity", "keys": [ { "frame": 0, "value": 1 }, { "frame": 1, "value": 0 } ] },
+              { "handleId": "new", "property": "opacity", "keys": [ { "frame": 0, "value": 0 }, { "frame": 1, "value": 1 } ] }
+            ], "events": [
+              { "frame": 0, "type": "layer.show", "parameters": { "handleId": "new", "assetId": "new-bg", "transform": {}, "z": 0, "opacity": 0, "displayMode": "Fill" } },
+              { "frame": 1, "type": "layer.hide", "parameters": { "handleId": "old" } }
+            ] }
+            """;
+        var graph = new GalNet.Core.Graph.Graph
+        {
+            RootNodeId = "group_main",
+            Nodes =
+            {
+                new Group
+                {
+                    Id = "group_main",
+                    Entries =
+                    {
+                        Create(ShowLayerEntry.TypeId, 1, ("handleId", "old"), ("assetId", "old-bg"), ("transform", "{}"), ("opacity", "1")),
+                        Create(PlayAnimationPlanEntry.TypeId, 2, ("plan", plan))
+                    }
+                }
+            }
+        };
+
+        var engine = new GameEngine(graph, new NullGameView());
+        await engine.StepAsync();
+
+        Assert.That(engine.Runtime.SceneInstances.TryGet<GalNet.Core.Scene.Layer>("old", out _), Is.False);
+        Assert.That(engine.Runtime.SceneInstances.TryGet<GalNet.Core.Scene.Layer>("new", out var incoming), Is.True);
+        Assert.That(incoming!.Opacity, Is.EqualTo(1));
     }
 
     private static GalNet.Core.Entry.Entry Create(string type, int id, params (string Key, string Value)[] values) =>

@@ -9,6 +9,7 @@ namespace GalNet.Core.View;
 public sealed class CompositeGameView : IGameView
 {
     private readonly ILayerView _layers;
+    private readonly IAnimationView _animations;
     private readonly IControlView _controls;
     private readonly IAudioView _audio;
     private readonly IVideoView _video;
@@ -19,6 +20,7 @@ public sealed class CompositeGameView : IGameView
 
     public CompositeGameView(
         ILayerView layers,
+        IAnimationView animations,
         IControlView controls,
         IAudioView audio,
         IVideoView video,
@@ -28,6 +30,7 @@ public sealed class CompositeGameView : IGameView
         IInteractionView interaction)
     {
         _layers = layers;
+        _animations = animations;
         _controls = controls;
         _audio = audio;
         _video = video;
@@ -41,8 +44,9 @@ public sealed class CompositeGameView : IGameView
     public void ReplaceLayer(string handleId, string assetId) => _layers.ReplaceLayer(handleId, assetId);
     public void HideLayer(string handleId) => _layers.HideLayer(handleId);
     public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSec) => _layers.MoveLayer(handleId, transform, z, durationSec);
-    public Task<AnimationOutcome> AnimateLayerAsync(LayerAnimationRequest request, CancellationToken ct) => _layers.AnimateLayerAsync(request, ct);
-    public bool SkipLayerAnimationBatch(string? batchId) => _layers.SkipLayerAnimationBatch(batchId);
+    public Task<AnimationOutcome> AnimateAsync(AnimationRequest request, CancellationToken ct) => _animations.AnimateAsync(request, ct);
+    public Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken ct) => _animations.PlayAnimationPlanAsync(plan, ct);
+    public bool SkipAnimationBatch() => _animations.SkipAnimationBatch();
     public void ShowDialogue() => _controls.ShowDialogue();
     public void HideDialogue() => _controls.HideDialogue();
     public void PlayAudio(string channel, string assetId, float volume, string mode, int times) => _audio.PlayAudio(channel, assetId, volume, mode, times);
