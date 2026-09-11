@@ -135,8 +135,9 @@ public sealed class AnimateHandler : EntryHandler
             return;
         }
         var property = instance.AnimatableProperties.FirstOrDefault(item => item.Name == request.Property);
-        if (property is null || !property.Accepts(request.To) ||
-            (request.From is { } from && !property.Accepts(from)))
+        if (property is null ||
+            (request.BlendMode == AnimationBlendMode.Replace &&
+             (!property.Accepts(request.To) || (request.From is { } from && !property.Accepts(from)))))
         {
             GameLog.Logger.Warning("Animate ignored because '{Property}' does not accept the supplied value.", request.Property);
             return;
@@ -162,14 +163,15 @@ public sealed class AnimateHandler : EntryHandler
                 do
                 {
                     outcome = await view.AnimateAsync(request, ct);
-                    if (request.LoopMode != AnimationLoopMode.Loop || playbackInstance.RequestedStop is not null || outcome != AnimationOutcome.Completed)
+                    if (request.LoopMode == AnimationLoopMode.Once || playbackInstance.RequestedStop is not null || outcome != AnimationOutcome.Completed)
                         break;
                 } while (true);
 
                 if ((outcome is AnimationOutcome.Completed or AnimationOutcome.Skipped) &&
+                    !(request.LoopMode != AnimationLoopMode.Once && request.BlendMode == AnimationBlendMode.Additive) &&
                     context.Runtime.SceneInstances.TryGet<AnimatableSceneInstance>(request.HandleId, out var current) &&
                     ReferenceEquals(current, instance) &&
-                    !instance.TrySetAnimationValue(request.Property, request.To, out var error))
+                    !instance.TrySetAnimationValue(request.Property, GetCommittedValue(instance, property, request.Property, request.To, request.BlendMode), out var error))
                     GameLog.Logger.Warning("Animation completion could not set '{Property}' on '{HandleId}': {Error}", request.Property, request.HandleId, error);
             }
             finally
@@ -189,6 +191,25 @@ public sealed class AnimateHandler : EntryHandler
             CancellationToken.None,
             TaskContinuationOptions.OnlyOnFaulted,
             TaskScheduler.Default);
+    }
+
+    private static float GetCommittedValue(
+        AnimatableSceneInstance instance,
+        AnimatableProperty property,
+        string propertyName,
+        float animationValue,
+        AnimationBlendMode blendMode)
+    {
+        if (blendMode == AnimationBlendMode.Replace)
+            return animationValue;
+
+        if (!instance.TryGetAnimationValue(propertyName, out var baseValue))
+            return animationValue;
+
+        var value = baseValue + animationValue;
+        return property.Minimum is { } minimum && value < minimum ? minimum
+            : property.Maximum is { } maximum && value > maximum ? maximum
+            : value;
     }
 }
 
@@ -302,7 +323,8 @@ public sealed class PlayAnimationPlanHandler : EntryHandler
             }
 
             var property = instance.AnimatableProperties.FirstOrDefault(candidate => candidate.Name == track.Property);
-            if (property is null || track.Keys.Any(key => !property.Accepts(key.Value)))
+            if (property is null ||
+                (track.BlendMode == AnimationBlendMode.Replace && track.Keys.Any(key => !property.Accepts(key.Value))))
             {
                 GameLog.Logger.Warning("Animation plan ignored because '{HandleId}.{Property}' has an unsupported key value.", track.HandleId, track.Property);
                 return false;
@@ -316,12 +338,32 @@ public sealed class PlayAnimationPlanHandler : EntryHandler
         foreach (var track in plan.Tracks)
         {
             var key = $"{track.HandleId}:{track.Property}";
-            if (!result.TrackOutcomes.TryGetValue(key, out var outcome) || outcome is not (AnimationOutcome.Completed or AnimationOutcome.Skipped))
+            if (!result.TrackOutcomes.TryGetValue(key, out var outcome) || outcome is not (AnimationOutcome.Completed or AnimationOutcome.Skipped) ||
+                (plan.LoopMode == AnimationLoopMode.Loop && track.BlendMode == AnimationBlendMode.Additive))
                 continue;
             if (runtime.SceneInstances.TryGet<AnimatableSceneInstance>(track.HandleId, out var instance) &&
-                !instance.TrySetAnimationValue(track.Property, track.Keys[^1].Value, out var error))
+                !instance.TrySetAnimationValue(track.Property, GetCommittedValue(instance, instance.AnimatableProperties.First(candidate => candidate.Name == track.Property), track.Property, track.Keys[^1].Value, track.BlendMode), out var error))
                 GameLog.Logger.Warning("Animation plan completion could not set '{HandleId}.{Property}': {Error}", track.HandleId, track.Property, error);
         }
+    }
+
+    private static float GetCommittedValue(
+        AnimatableSceneInstance instance,
+        AnimatableProperty property,
+        string propertyName,
+        float animationValue,
+        AnimationBlendMode blendMode)
+    {
+        if (blendMode == AnimationBlendMode.Replace)
+            return animationValue;
+
+        if (!instance.TryGetAnimationValue(propertyName, out var baseValue))
+            return animationValue;
+
+        var value = baseValue + animationValue;
+        return property.Minimum is { } minimum && value < minimum ? minimum
+            : property.Maximum is { } maximum && value > maximum ? maximum
+            : value;
     }
 
     /// <summary>Translates Loop Plan handles into one-iteration-only internal scene handles.</summary>
@@ -348,7 +390,7 @@ public sealed class PlayAnimationPlanHandler : EntryHandler
                 Tracks = source.Tracks.Select(track => new AnimationTrackDefinition
                 {
                     HandleId = Resolve(track.HandleId),
-                    Property = track.Property,
+                    Property = track.Property, BlendMode = track.BlendMode,
                     Keys = track.Keys.Select(key => new AnimationKeyframeDefinition
                     {
                         Frame = key.Frame, Value = key.Value, InTangent = key.InTangent,

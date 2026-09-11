@@ -96,7 +96,7 @@
 
 ### animate
 
-对场上可动画实例的一个浮点属性执行 Replace 模式插值。当前内置的可动画实例是 Layer；Runtime 在动画完成或跳过后才提交最终值。若同一 `handleId` 与 `property` 已有动画在执行，新动画会替换旧动画。
+对场上可动画实例的一个浮点属性执行插值。当前内置的可动画实例是 Layer；Runtime 在动画完成或跳过后才提交最终值。`Replace` 使用绝对值，同一 `handleId` 与 `property` 的新 Replace 动画会替换旧 Replace 动画。`Additive` 将关键值视为相对增量，可与 Replace 及其他 Additive 动画同时运行，显示值为 Replace 基值加上所有活动增量。
 
 | 参数 | 类型 | 说明 |
 |---|---|---|
@@ -110,7 +110,8 @@
 | blocking | bool? | 是否等待动画完成，默认 `false` |
 | skippable | bool? | 是否允许用户推进时跳过，默认 `false` |
 | batchId | string? | 供宿主按批跳过动画的可选标识 |
-| loopMode | select? | `Once` 或 `Loop`，默认 `Once`；Loop 必须非阻塞且不可跳过 |
+| loopMode | select? | `Once`、`Loop` 或 `PingPong`，默认 `Once`；后两者必须非阻塞且不可跳过。PingPong 每轮从目标值平滑返回起始值后再重复 |
+| blendMode | select? | `Replace`（默认，绝对值）或 `Additive`（相对增量） |
 
 `animate` 是单属性便捷原语，只使用内置曲线。复杂多段曲线与多属性同步动画应使用 `animation.play`。
 
@@ -118,7 +119,7 @@
 
 ### animation.play
 
-播放一个关键帧 `AnimationPlan` 原语。Plan 含 `playbackHandleId`、帧率、总帧数、阻塞/跳过/批次/循环设置，以及并行的 Float 属性轨道和时间轴事件。轨道关键帧支持 `Step`、`Linear`、`CubicHermite`；事件只能是原语条目。Loop 的每一轮都会重放全部事件。
+播放一个关键帧 `AnimationPlan` 原语。Plan 含 `playbackHandleId`、帧率、总帧数、阻塞/跳过/批次/循环设置，以及并行的 Float 属性轨道和时间轴事件。每条轨道可用 `blendMode: Replace|Additive` 选择绝对值或相对增量；轨道关键帧支持 `Step`、`Linear`、`CubicHermite`；事件只能是原语条目。Plan 目前支持 `Once` 与 `Loop`，Loop 的每一轮都会重放全部事件；`PingPong` 仅适用于 `animate`。
 
 ### animation.stop
 

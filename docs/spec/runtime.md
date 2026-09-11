@@ -47,7 +47,7 @@ public void RestoreFrom(GameSnapshot data);
 
 图层由 `SceneInstanceManager` 按稳定 `handleId` 管理。`layer.show` 创建或更新 Layer，`layer.hide` 删除它并使句柄立即失效，`layer.replace` 保留 transform、z 和 display mode。
 
-`animate` 目标是 `AnimatableSceneInstance` 的一个浮点属性。当前 Layer 支持位置、旋转、双轴缩放和不透明度。曲线由内容 JSON 的 `AnimationCurveDefinition` 解析为 `IAnimationCurve`，再通过 `AnimationRequest` 发给 `ILayerView.AnimateAsync()`；完成或跳过后才提交目标属性。详细参数及曲线格式见 [条目类型](entry-types.md)。
+`animate` 目标是 `AnimatableSceneInstance` 的一个浮点属性。当前 Layer 支持位置、旋转、双轴缩放和不透明度。`Replace` 轨道写入绝对值；`Additive` 轨道贡献相对增量，呈现层将全部活动增量叠加在 Replace 基值之上。一次性动画完成或跳过时，Additive 的末值会归并到稳定场景状态；Additive Loop 在每轮后回到基值，停止时不留下累计偏移。`PingPong` 以起点→目标→起点为一轮，因此 `AfterIteration` 能在平滑回到基值后停止。`opacity` 和缩放的最终合成值会被限制在有效范围内。曲线由内容 JSON 的 `AnimationCurveDefinition` 解析为 `IAnimationCurve`，再通过 `AnimationRequest` 发给 `ILayerView.AnimateAsync()`；详细参数及曲线格式见 [条目类型](entry-types.md)。
 
 ## 呈现端口
 

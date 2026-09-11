@@ -1,4 +1,5 @@
 using GalNet.Core.Entry;
+using GalNet.Core.Scene;
 using GalNet.Runtime.Handlers;
 using GalNet.Runtime.Runtime;
 
@@ -27,6 +28,38 @@ public class AnimationPlanEntryContextTests
         });
     }
 
+    [Test]
+    public void Plan_deserializes_additive_track_mode()
+    {
+        var plan = ReadPlan("""
+            { "playbackHandleId": "float", "durationFrames": 12,
+              "tracks": [ { "handleId": "hero", "property": "transform.y", "blendMode": "Additive", "keys": [
+                { "frame": 0, "value": 0 }, { "frame": 12, "value": -8 }
+              ] } ] }
+            """);
+
+        Assert.That(plan.Tracks.Single().BlendMode, Is.EqualTo(AnimationBlendMode.Additive));
+    }
+
+    [Test]
+    public void Animate_supports_nonblocking_pingpong_loops()
+    {
+        var entry = EntryRegistry.Create(AnimateEntry.TypeId, values: new Dictionary<string, string>
+        {
+            ["playbackHandleId"] = "float", ["handleId"] = "hero", ["property"] = "transform.y",
+            ["from"] = "0", ["to"] = "-8", ["duration"] = "0.2", ["loopMode"] = "PingPong",
+            ["blendMode"] = "Additive"
+        });
+
+        var animation = new EntryContext { Entry = entry, Runtime = new GameRuntime(null) }.GetAnimation();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(animation.LoopMode, Is.EqualTo(AnimationLoopMode.PingPong));
+            Assert.That(animation.BlendMode, Is.EqualTo(AnimationBlendMode.Additive));
+        });
+    }
+
     [TestCase("""{ "durationFrames": 2, "tracks": [ { "handleId": "hero", "property": "opacity", "keys": [ { "frame": 1, "value": 0 } ] } ] }""")]
     [TestCase("""{ "durationFrames": 2, "tracks": [ { "handleId": "hero", "property": "opacity", "keys": [ { "frame": 0, "value": 0 }, { "frame": 0, "value": 1 } ] } ] }""")]
     [TestCase("""{ "durationFrames": 2, "tracks": [ { "handleId": "hero", "property": "opacity", "keys": [ { "frame": 0, "value": 0 }, { "frame": 3, "value": 1 } ] } ] }""")]
@@ -41,6 +74,15 @@ public class AnimationPlanEntryContextTests
         Assert.That(() => ReadPlan("""
             { "playbackHandleId": "loop", "loopMode": "Loop", "durationFrames": 30, "blocking": true,
               "tracks": [ { "handleId": "hero", "property": "opacity", "keys": [ { "frame": 0, "value": 0 } ] } ] }
+            """), Throws.TypeOf<InvalidDataException>());
+    }
+
+    [Test]
+    public void Plan_rejects_pingpong_mode()
+    {
+        Assert.That(() => ReadPlan("""
+            { "playbackHandleId": "ping", "loopMode": "PingPong", "durationFrames": 30,
+              "tracks": [ { "handleId": "hero", "property": "opacity", "keys": [ { "frame": 0, "value": 1 } ] } ] }
             """), Throws.TypeOf<InvalidDataException>());
     }
 

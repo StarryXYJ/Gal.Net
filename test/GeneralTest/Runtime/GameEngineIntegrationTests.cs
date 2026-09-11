@@ -304,6 +304,43 @@ public class GameEngineIntegrationTests
     }
 
     [Test]
+    public async Task Additive_animation_tracks_commit_offsets_without_overwriting_the_base_layer_state()
+    {
+        var plan = """
+            { "playbackHandleId": "float", "frameRate": 60, "durationFrames": 1, "blocking": true, "tracks": [
+              { "handleId": "hero", "property": "transform.x", "blendMode": "Additive", "keys": [ { "frame": 0, "value": 0 }, { "frame": 1, "value": 15 } ] },
+              { "handleId": "hero", "property": "opacity", "blendMode": "Additive", "keys": [ { "frame": 0, "value": 0 }, { "frame": 1, "value": 0.3 } ] }
+            ] }
+            """;
+        var graph = new GalNet.Core.Graph.Graph
+        {
+            RootNodeId = "group_main",
+            Nodes =
+            {
+                new Group
+                {
+                    Id = "group_main",
+                    Entries =
+                    {
+                        Create(ShowLayerEntry.TypeId, 1, ("handleId", "hero"), ("assetId", "hero"), ("transform", "{\"x\":100}"), ("opacity", "0.9")),
+                        Create(PlayAnimationPlanEntry.TypeId, 2, ("plan", plan))
+                    }
+                }
+            }
+        };
+
+        var engine = new GameEngine(graph, new NullGameView());
+        await engine.StepAsync();
+
+        var layer = engine.Runtime.SceneInstances.GetAll<GalNet.Core.Scene.Layer>().Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(layer.Transform.X, Is.EqualTo(115));
+            Assert.That(layer.Opacity, Is.EqualTo(1));
+        });
+    }
+
+    [Test]
     public async Task Animation_plan_events_and_final_tracks_update_stable_scene_state()
     {
         var plan = """

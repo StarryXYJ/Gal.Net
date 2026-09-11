@@ -40,6 +40,8 @@ public sealed class AnimationTrackDefinition
 {
     public string HandleId { get; set; } = "";
     public string Property { get; set; } = "";
+    /// <summary>Whether keys are absolute property values or relative offsets from the current Replace value.</summary>
+    public AnimationBlendMode BlendMode { get; set; }
     /// <summary>Strictly frame-ordered keys; the first key must be at frame 0.</summary>
     public List<AnimationKeyframeDefinition> Keys { get; set; } = [];
 }

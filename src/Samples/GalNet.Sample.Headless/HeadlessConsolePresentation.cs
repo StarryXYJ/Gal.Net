@@ -32,7 +32,8 @@ internal sealed class ConsolePresentation :
     public async Task<AnimationOutcome> AnimateAsync(AnimationRequest request, CancellationToken ct)
     {
         Console.WriteLine($"[Animate] {request.HandleId}.{request.Property} -> {request.To} in {request.DurationSeconds}s");
-        if (request.LoopMode == AnimationLoopMode.Loop) await Task.Delay(TimeSpan.FromSeconds(request.DurationSeconds), ct);
+        if (request.LoopMode != AnimationLoopMode.Once)
+            await Task.Delay(TimeSpan.FromSeconds(request.DurationSeconds * (request.LoopMode == AnimationLoopMode.PingPong ? 2 : 1)), ct);
         return AnimationOutcome.Completed;
     }
     public async Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken ct)

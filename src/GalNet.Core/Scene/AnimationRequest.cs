@@ -1,12 +1,23 @@
 namespace GalNet.Core.Scene;
 
-/// <summary>One Replace-mode interpolation of an active scene-instance property.</summary>
+/// <summary>Controls whether a sampled animation value replaces or offsets the underlying property value.</summary>
+public enum AnimationBlendMode
+{
+    /// <summary>The sampled value is the property's absolute value. A newer Replace animation supersedes an older one.</summary>
+    Replace,
+    /// <summary>The sampled value is an offset added to the underlying property value. Multiple additive animations may coexist.</summary>
+    Additive
+}
+
+/// <summary>One absolute or additive interpolation of an active scene-instance property.</summary>
 public sealed class AnimationRequest
 {
     /// <summary>Opaque handle for this playback, distinct from the animated target handle.</summary>
     public string PlaybackHandleId { get; set; } = "";
     public string HandleId { get; set; } = "";
     public string Property { get; set; } = "";
+    /// <summary>Whether <see cref="From"/> and <see cref="To"/> are absolute property values or relative offsets.</summary>
+    public AnimationBlendMode BlendMode { get; set; }
     /// <summary>Optional explicit start value. When absent, the presentation reads the displayed value at playback start.</summary>
     public float? From { get; set; }
     /// <summary>Validated value written to Runtime state after a completed or skipped playback.</summary>
@@ -26,7 +37,13 @@ public sealed class AnimationRequest
 public enum AnimationOutcome { Completed, Skipped, Replaced }
 
 /// <summary>Controls whether an animation request performs one iteration or repeats indefinitely.</summary>
-public enum AnimationLoopMode { Once, Loop }
+public enum AnimationLoopMode
+{
+    Once,
+    Loop,
+    /// <summary>Runs from the start value to the target and back to the start before repeating.</summary>
+    PingPong
+}
 
 /// <summary>Defines how a looped playback responds to an explicit stop request.</summary>
 public enum AnimationStopMode { AfterIteration, CompleteImmediately }

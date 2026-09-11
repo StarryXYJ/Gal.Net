@@ -12,8 +12,8 @@ public class NullGameView : IGameView
     public virtual void MoveLayer(string handleId, LayerTransform transform, float z, float durationSec) { }
     public virtual async Task<AnimationOutcome> AnimateAsync(AnimationRequest request, CancellationToken ct)
     {
-        if (request.LoopMode == AnimationLoopMode.Loop)
-            await Task.Delay(TimeSpan.FromSeconds(request.DurationSeconds), ct);
+        if (request.LoopMode != AnimationLoopMode.Once)
+            await Task.Delay(TimeSpan.FromSeconds(request.DurationSeconds * (request.LoopMode == AnimationLoopMode.PingPong ? 2 : 1)), ct);
         return AnimationOutcome.Completed;
     }
     public virtual async Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken ct)

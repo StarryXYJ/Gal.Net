@@ -18,9 +18,11 @@ effects, variables and the selected route.
 
 Before the first choice, the normal portrait runs one blocking, skippable keyframe
 `animation.play` clip. Its parallel tracks cover `Step`, `Linear`, and `CubicHermite`
-interpolation. It then starts a non-blocking looping rotation on the same portrait; after
-three dialogue lines, `animation.stop` with `AfterIteration` lets the active rotation finish
-naturally. The second choice runs a non-blocking, skippable 48-frame cross-fade Plan:
+interpolation. It then starts a non-blocking looping rotation plus faster additive PingPong position
+and opacity loops on the same portrait; the relative loops are composed over the ordinary rotation
+without replacing it. After five dialogue lines, `animation.stop` with `AfterIteration` lets all
+active loops complete their return to the base pose. The second choice runs a non-blocking,
+skippable 48-frame cross-fade Plan:
 it shows the Filled background at opacity 0, fades the two backgrounds together, then hides
 the old one. This keeps the shared fixture useful for validating both timeline events and
 property tracks in the headless and Avalonia hosts.

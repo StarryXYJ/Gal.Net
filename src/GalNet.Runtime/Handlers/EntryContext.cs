@@ -58,25 +58,31 @@ public sealed class EntryContext
         if (string.IsNullOrWhiteSpace(playbackHandleId)) throw new InvalidDataException("Animation playbackHandleId is required.");
         var property = GetString("property");
         if (string.IsNullOrWhiteSpace(property)) throw new InvalidDataException("Animation property is required.");
-        if (!float.TryParse(GetString("to"), out var to)) throw new InvalidDataException("Animation target value is required.");
+        if (!float.TryParse(GetString("to"), out var to) || !float.IsFinite(to)) throw new InvalidDataException("Animation target value is required.");
         if (GetFloat("duration", .25f) < 0) throw new InvalidDataException("Animation duration must not be negative.");
         if (!Enum.TryParse<BuiltinAnimationCurve>(GetString("curve", "Linear"), true, out var curve) || !Enum.IsDefined(curve))
             throw new InvalidDataException($"Unknown built-in animation curve '{GetString("curve")}'.");
         if (!Enum.TryParse<AnimationLoopMode>(GetString("loopMode", "Once"), true, out var loopMode) || !Enum.IsDefined(loopMode))
             throw new InvalidDataException($"Unknown animation loopMode '{GetString("loopMode")}'.");
+        if (!Enum.TryParse<AnimationBlendMode>(GetString("blendMode", "Replace"), true, out var blendMode) || !Enum.IsDefined(blendMode))
+            throw new InvalidDataException($"Unknown animation blendMode '{GetString("blendMode")}'.");
         var blocking = GetBool("blocking");
         var skippable = GetBool("skippable");
-        if (loopMode == AnimationLoopMode.Loop && (blocking || skippable))
-            throw new InvalidDataException("Loop animations must be non-blocking and non-skippable.");
-        if (loopMode == AnimationLoopMode.Loop && GetFloat("duration", .25f) <= 0)
-            throw new InvalidDataException("Loop animations require a positive duration.");
+        if (loopMode != AnimationLoopMode.Once && (blocking || skippable))
+            throw new InvalidDataException("Loop and PingPong animations must be non-blocking and non-skippable.");
+        if (loopMode != AnimationLoopMode.Once && GetFloat("duration", .25f) <= 0)
+            throw new InvalidDataException("Loop and PingPong animations require a positive duration.");
+
+        var from = GetOptionalFloat("from");
+        if (from is { } start && !float.IsFinite(start)) throw new InvalidDataException("Animation start value must be finite.");
 
         return new AnimationRequest
         {
             PlaybackHandleId = playbackHandleId, HandleId = GetString("handleId"), Property = property,
-            From = GetOptionalFloat("from"),
+            From = from,
             To = to, DurationSeconds = GetFloat("duration", .25f), Curve = AnimationCurves.Create(curve),
-            Blocking = blocking, Skippable = skippable, BatchId = NullIfWhiteSpace(GetString("batchId")), LoopMode = loopMode
+            Blocking = blocking, Skippable = skippable, BatchId = NullIfWhiteSpace(GetString("batchId")), LoopMode = loopMode,
+            BlendMode = blendMode
         };
     }
 
@@ -108,6 +114,8 @@ public sealed class EntryContext
         if (plan.DurationFrames < 0) throw new InvalidDataException("Animation plan durationFrames must not be negative.");
         if (plan.Tracks is null || plan.Events is null) throw new InvalidDataException("Animation plan tracks and events must be arrays.");
         if (!Enum.IsDefined(plan.LoopMode)) throw new InvalidDataException("Animation plan loopMode is invalid.");
+        if (plan.LoopMode == AnimationLoopMode.PingPong)
+            throw new InvalidDataException("PingPong is supported by animate but not animation plans.");
         if (plan.LoopMode == AnimationLoopMode.Loop && (plan.Blocking || plan.Skippable))
             throw new InvalidDataException("Loop animation plans must be non-blocking and non-skippable.");
         if (plan.LoopMode == AnimationLoopMode.Loop && plan.DurationFrames == 0)
@@ -118,6 +126,8 @@ public sealed class EntryContext
         {
             if (string.IsNullOrWhiteSpace(track.HandleId) || string.IsNullOrWhiteSpace(track.Property))
                 throw new InvalidDataException("Every animation track requires handleId and property.");
+            if (!Enum.IsDefined(track.BlendMode))
+                throw new InvalidDataException($"Animation track '{track.HandleId}:{track.Property}' has an invalid blendMode.");
             if (!properties.Add($"{track.HandleId}:{track.Property}"))
                 throw new InvalidDataException($"Animation plan has duplicate track '{track.HandleId}:{track.Property}'.");
             if (track.Keys is null || track.Keys.Count == 0 || track.Keys[0].Frame != 0)

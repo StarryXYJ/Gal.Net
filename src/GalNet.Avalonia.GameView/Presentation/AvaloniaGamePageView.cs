@@ -29,6 +29,9 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
     private readonly Lock _animationGate = new();
     private readonly Dictionary<string, ActiveAnimation> _activeAnimations = new(StringComparer.Ordinal);
     private readonly Dictionary<string, ActivePlanTrack> _activePlanTracks = new(StringComparer.Ordinal);
+    private readonly List<ActiveAnimation> _activeAdditiveAnimations = [];
+    private readonly List<ActivePlanTrack> _activeAdditivePlanTracks = [];
+    private readonly Dictionary<string, double> _additiveBaseValues = new(StringComparer.Ordinal);
     private readonly List<ActivePlan> _activePlans = [];
     private readonly Dictionary<string, ICompletablePlayback> _activePlaybacks = new(StringComparer.Ordinal);
     private long _animationSequence;
@@ -67,35 +70,61 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
         lock (_animationGate)
         {
             if (_activePlaybacks.ContainsKey(request.PlaybackHandleId)) return AnimationOutcome.Replaced;
-            if (_activePlanTracks.Remove(key, out var planTrack)) planTrack.Complete(AnimationOutcome.Replaced);
-            if (_activeAnimations.Remove(key, out var replaced)) replaced.Complete(AnimationOutcome.Replaced);
-            _activeAnimations.Add(key, active);
+            if (request.BlendMode == AnimationBlendMode.Additive)
+                _activeAdditiveAnimations.Add(active);
+            else
+            {
+                if (_activePlanTracks.Remove(key, out var planTrack)) planTrack.Complete(AnimationOutcome.Replaced);
+                if (_activeAnimations.Remove(key, out var replaced)) replaced.Complete(AnimationOutcome.Replaced);
+                _activeAnimations.Add(key, active);
+            }
             _activePlaybacks.Add(request.PlaybackHandleId, active);
         }
 
         try
         {
-            var from = request.From ?? (float)await OnUiAsync(() =>
-                Task.FromResult(_state.TryGetLayerAnimationValue(request.HandleId, request.Property, out var value) ? value : double.NaN));
+            var from = request.From ?? (request.BlendMode == AnimationBlendMode.Additive
+                ? 0f
+                : (float)await OnUiAsync(() =>
+                    Task.FromResult(_state.TryGetLayerAnimationValue(request.HandleId, request.Property, out var value) ? value : double.NaN)));
             if (double.IsNaN(from)) return AnimationOutcome.Replaced;
-            if (request.From.HasValue) await SetAnimationValueAsync(request, from);
+            if (request.From.HasValue || request.BlendMode == AnimationBlendMode.Additive)
+                await SetAnimationValueAsync(request, active, from);
 
             var stopwatch = Stopwatch.StartNew();
             while (true)
             {
                 ct.ThrowIfCancellationRequested();
-                if (active.Outcome.Task.IsCompleted) return await active.Outcome.Task;
-                var progress = request.DurationSeconds <= 0 ? 1 : Math.Min(1, stopwatch.Elapsed.TotalSeconds / request.DurationSeconds);
-                await SetAnimationValueAsync(request, Lerp(from, request.To, request.Curve.Evaluate((float)progress)));
-                if (progress >= 1) return AnimationOutcome.Completed;
+                if (active.Outcome.Task.IsCompleted)
+                {
+                    var outcome = await active.Outcome.Task;
+                    if (outcome == AnimationOutcome.Skipped)
+                        await SetAnimationValueAsync(request, active, request.To);
+                    return outcome;
+                }
+                var cycleLength = request.LoopMode == AnimationLoopMode.PingPong ? 2d : 1d;
+                var progress = request.DurationSeconds <= 0 ? cycleLength : Math.Min(cycleLength, stopwatch.Elapsed.TotalSeconds / request.DurationSeconds);
+                var sampleProgress = request.LoopMode == AnimationLoopMode.PingPong && progress > 1 ? 2 - progress : progress;
+                await SetAnimationValueAsync(request, active, Lerp(from, request.To, request.Curve.Evaluate((float)sampleProgress)));
+                if (progress >= cycleLength) return AnimationOutcome.Completed;
                 await Task.WhenAny(Task.Delay(TimeSpan.FromMilliseconds(16), ct), active.Outcome.Task);
             }
         }
         finally
         {
+            if (request.BlendMode == AnimationBlendMode.Additive)
+                await OnUiAsync(() =>
+                {
+                    if (request.LoopMode != AnimationLoopMode.Once)
+                        RemoveAdditiveValue(active, request.HandleId, request.Property);
+                    else
+                        BakeAdditiveValue(active, request.HandleId, request.Property);
+                    return Task.CompletedTask;
+                });
             lock (_animationGate)
             {
                 if (_activeAnimations.TryGetValue(key, out var current) && ReferenceEquals(current, active)) _activeAnimations.Remove(key);
+                _activeAdditiveAnimations.Remove(active);
                 if (_activePlaybacks.TryGetValue(request.PlaybackHandleId, out var playback) && ReferenceEquals(playback, active)) _activePlaybacks.Remove(request.PlaybackHandleId);
             }
         }
@@ -137,7 +166,10 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
                 _activePlans.Remove(active);
                 if (_activePlaybacks.TryGetValue(plan.PlaybackHandleId, out var playback) && ReferenceEquals(playback, active)) _activePlaybacks.Remove(plan.PlaybackHandleId);
                 foreach (var track in active.Tracks)
+                {
                     if (_activePlanTracks.TryGetValue(track.Key, out var current) && ReferenceEquals(current, track)) _activePlanTracks.Remove(track.Key);
+                    _activeAdditivePlanTracks.Remove(track);
+                }
             }
         }
     }
@@ -158,6 +190,7 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
         {
             var candidate = _activePlans.Where(plan => plan.Plan.Skippable).Cast<ISkippableAnimation>()
                 .Concat(_activeAnimations.Values.Where(animation => animation.Request.Skippable))
+                .Concat(_activeAdditiveAnimations.Where(animation => animation.Request.Skippable))
                 .OrderBy(animation => animation.Sequence)
                 .FirstOrDefault();
             if (candidate is null) return false;
@@ -166,6 +199,8 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
             foreach (var plan in _activePlans.Where(plan => plan.Plan.Skippable && plan.BatchKey == batch).ToArray())
                 plan.Complete(AnimationOutcome.Skipped);
             foreach (var animation in _activeAnimations.Values.Where(animation => animation.Request.Skippable && animation.BatchKey == batch).ToArray())
+                animation.Complete(AnimationOutcome.Skipped);
+            foreach (var animation in _activeAdditiveAnimations.Where(animation => animation.Request.Skippable && animation.BatchKey == batch).ToArray())
                 animation.Complete(AnimationOutcome.Skipped);
             return true;
         }
@@ -213,10 +248,13 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
 
     public void Dispose() => _state.AdvanceRequested -= Advance;
 
-    private Task SetAnimationValueAsync(AnimationRequest request, double value) =>
+    private Task SetAnimationValueAsync(AnimationRequest request, ActiveAnimation active, double value) =>
         OnUiAsync(() =>
         {
-            _state.SetLayerAnimationValue(request.HandleId, request.Property, value);
+            if (request.BlendMode == AnimationBlendMode.Additive)
+                ApplyAdditiveValue(active, request.HandleId, request.Property, value);
+            else
+                ApplyReplaceValue(request.HandleId, request.Property, value);
             return Task.CompletedTask;
         });
 
@@ -227,9 +265,14 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
         var activeTrack = new ActivePlanTrack(track);
         lock (_animationGate)
         {
-            if (_activeAnimations.Remove(activeTrack.Key, out var animation)) animation.Complete(AnimationOutcome.Replaced);
-            if (_activePlanTracks.Remove(activeTrack.Key, out var replaced)) replaced.Complete(AnimationOutcome.Replaced);
-            _activePlanTracks.Add(activeTrack.Key, activeTrack);
+            if (track.BlendMode == AnimationBlendMode.Additive)
+                _activeAdditivePlanTracks.Add(activeTrack);
+            else
+            {
+                if (_activeAnimations.Remove(activeTrack.Key, out var animation)) animation.Complete(AnimationOutcome.Replaced);
+                if (_activePlanTracks.Remove(activeTrack.Key, out var replaced)) replaced.Complete(AnimationOutcome.Replaced);
+                _activePlanTracks.Add(activeTrack.Key, activeTrack);
+            }
             plan.Tracks.Add(activeTrack);
         }
 
@@ -243,29 +286,107 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
                 {
                     var outcome = await plan.Completion.Task;
                     if (outcome == AnimationOutcome.Skipped)
-                        await SetAnimationValueAsync(track.HandleId, track.Property, AnimationTrackSampler.Evaluate(track, plan.Plan.DurationFrames));
+                        await SetAnimationValueAsync(activeTrack, AnimationTrackSampler.Evaluate(track, plan.Plan.DurationFrames));
                     return outcome;
                 }
 
                 var frame = Math.Min(plan.Plan.DurationFrames, clock.Elapsed.TotalSeconds * plan.Plan.FrameRate);
-                await SetAnimationValueAsync(track.HandleId, track.Property, AnimationTrackSampler.Evaluate(track, frame));
+                await SetAnimationValueAsync(activeTrack, AnimationTrackSampler.Evaluate(track, frame));
                 if (frame >= plan.Plan.DurationFrames) return AnimationOutcome.Completed;
                 await Task.WhenAny(Task.Delay(TimeSpan.FromMilliseconds(16), ct), activeTrack.Completion.Task, plan.Completion.Task);
             }
         }
         finally
         {
+            if (track.BlendMode == AnimationBlendMode.Additive)
+                await OnUiAsync(() =>
+                {
+                    if (plan.Plan.LoopMode == AnimationLoopMode.Loop)
+                        RemoveAdditiveValue(activeTrack, track.HandleId, track.Property);
+                    else
+                        BakeAdditiveValue(activeTrack, track.HandleId, track.Property);
+                    return Task.CompletedTask;
+                });
             lock (_animationGate)
+            {
                 if (_activePlanTracks.TryGetValue(activeTrack.Key, out var current) && ReferenceEquals(current, activeTrack)) _activePlanTracks.Remove(activeTrack.Key);
+                _activeAdditivePlanTracks.Remove(activeTrack);
+            }
         }
     }
 
-    private Task SetAnimationValueAsync(string handleId, string property, double value) =>
+    private Task SetAnimationValueAsync(ActivePlanTrack track, double value) =>
         OnUiAsync(() =>
         {
-            _state.SetLayerAnimationValue(handleId, property, value);
+            if (track.Track.BlendMode == AnimationBlendMode.Additive)
+                ApplyAdditiveValue(track, track.Track.HandleId, track.Track.Property, value);
+            else
+                ApplyReplaceValue(track.Track.HandleId, track.Track.Property, value);
             return Task.CompletedTask;
         });
+
+    private void ApplyReplaceValue(string handleId, string property, double value)
+    {
+        _additiveBaseValues[PropertyKey(handleId, property)] = value;
+        ApplyActiveAdditiveValues(handleId, property);
+    }
+
+    private void ApplyAdditiveValue(IAdditiveAnimation animation, string handleId, string property, double value)
+    {
+        var key = PropertyKey(handleId, property);
+        if (!TryGetAdditiveBaseValue(key, handleId, property, out var baseValue)) return;
+        animation.CurrentValue = value;
+        _state.SetLayerAnimationValue(handleId, property, ClampLayerValue(property, baseValue + GetAdditiveContribution(handleId, property)));
+    }
+
+    private void ApplyActiveAdditiveValues(string handleId, string property)
+    {
+        var key = PropertyKey(handleId, property);
+        if (TryGetAdditiveBaseValue(key, handleId, property, out var baseValue))
+            _state.SetLayerAnimationValue(handleId, property, ClampLayerValue(property, baseValue + GetAdditiveContribution(handleId, property)));
+    }
+
+    private void BakeAdditiveValue(IAdditiveAnimation animation, string handleId, string property)
+    {
+        var key = PropertyKey(handleId, property);
+        if (_additiveBaseValues.TryGetValue(key, out var baseValue))
+            _additiveBaseValues[key] = baseValue + animation.CurrentValue;
+        animation.CurrentValue = 0;
+    }
+
+    private void RemoveAdditiveValue(IAdditiveAnimation animation, string handleId, string property)
+    {
+        animation.CurrentValue = 0;
+        ApplyActiveAdditiveValues(handleId, property);
+    }
+
+    private bool TryGetAdditiveBaseValue(string key, string handleId, string property, out double value)
+    {
+        if (_additiveBaseValues.TryGetValue(key, out value)) return true;
+        if (!_state.TryGetLayerAnimationValue(handleId, property, out value)) return false;
+        _additiveBaseValues.Add(key, value);
+        return true;
+    }
+
+    private double GetAdditiveContribution(string handleId, string property)
+    {
+        lock (_animationGate)
+            return _activeAdditiveAnimations
+                .Where(animation => animation.Request.HandleId == handleId && animation.Request.Property == property)
+                .Sum(animation => animation.CurrentValue) +
+                _activeAdditivePlanTracks
+                .Where(track => track.Track.HandleId == handleId && track.Track.Property == property)
+                .Sum(track => track.CurrentValue);
+    }
+
+    private static string PropertyKey(string handleId, string property) => $"{handleId}:{property}";
+
+    private static double ClampLayerValue(string property, double value) => property switch
+    {
+        "opacity" => Math.Clamp(value, 0, 1),
+        "transform.scaleX" or "transform.scaleY" => Math.Max(.001, value),
+        _ => value
+    };
 
     private interface ISkippableAnimation
     {
@@ -278,11 +399,17 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
         void Complete(AnimationOutcome outcome);
     }
 
-    private sealed class ActiveAnimation(AnimationRequest request, long sequence) : ISkippableAnimation, ICompletablePlayback
+    private interface IAdditiveAnimation
+    {
+        double CurrentValue { get; set; }
+    }
+
+    private sealed class ActiveAnimation(AnimationRequest request, long sequence) : ISkippableAnimation, ICompletablePlayback, IAdditiveAnimation
     {
         public AnimationRequest Request { get; } = request;
         public long Sequence { get; } = sequence;
         public string BatchKey { get; } = request.BatchId ?? Guid.NewGuid().ToString("N");
+        public double CurrentValue { get; set; }
         public TaskCompletionSource<AnimationOutcome> Outcome { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public void Complete(AnimationOutcome outcome) => Outcome.TrySetResult(outcome);
     }
@@ -297,9 +424,11 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
         public void Complete(AnimationOutcome outcome) => Completion.TrySetResult(outcome);
     }
 
-    private sealed class ActivePlanTrack(AnimationTrackDefinition track)
+    private sealed class ActivePlanTrack(AnimationTrackDefinition track) : IAdditiveAnimation
     {
+        public AnimationTrackDefinition Track { get; } = track;
         public string Key { get; } = $"{track.HandleId}:{track.Property}";
+        public double CurrentValue { get; set; }
         public TaskCompletionSource<AnimationOutcome> Completion { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public void Complete(AnimationOutcome outcome) => Completion.TrySetResult(outcome);
     }

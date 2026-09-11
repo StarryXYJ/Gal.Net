@@ -28,7 +28,7 @@
 | 场景实例 | `ISceneInstance` | 由稳定句柄定位的活跃场景对象。 |
 | 图层 | `Layer` | 背景与立绘的统一资源图层，拥有 transform、z、显示模式和 opacity。 |
 | 场景句柄 | `handleId` | 作者内容中用于定位场上实例的稳定字符串，不是显示名称。 |
-| 动画请求 | `AnimationRequest` | 对单一可动画属性的一次 Replace 模式插值请求。 |
+| 动画请求 | `AnimationRequest` | 对单一可动画属性的一次 Replace（绝对值）或 Additive（相对增量）插值请求。 |
 | 动画曲线 | `IAnimationCurve` | 归一化时间到进度值的函数；支持内置、三次贝塞尔与 LUT。 |
 
 ## 页面与 UI

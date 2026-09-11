@@ -150,7 +150,8 @@ public class DefaultGameView : Grid, IGameView, IDisposable
         => MoveLayer(handleId, transform, z, durationSec);
     async Task<AnimationOutcome> IAnimationView.AnimateAsync(AnimationRequest request, CancellationToken ct)
     {
-        if (request.LoopMode == AnimationLoopMode.Loop) await Task.Delay(TimeSpan.FromSeconds(request.DurationSeconds), ct);
+        if (request.LoopMode != AnimationLoopMode.Once)
+            await Task.Delay(TimeSpan.FromSeconds(request.DurationSeconds * (request.LoopMode == AnimationLoopMode.PingPong ? 2 : 1)), ct);
         return AnimationOutcome.Completed;
     }
     async Task<AnimationPlanPlayResult> IAnimationView.PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken ct)
