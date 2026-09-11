@@ -132,6 +132,10 @@
 
 仅可出现在 `.rawgalgroup`。它接收旧/新 Layer 句柄、新资源与 Layer 显示参数、帧率和持续帧数，编译成一个 `animation.play`：第 0 帧显示透明新 Layer、两条 opacity 轨道交叉淡化、结束帧隐藏旧 Layer。该类型没有 Handler。
 
+### transition.slide（非原语）
+
+仅可出现在 `.rawgalgroup`。新 Layer 从 `direction` 指定方向的画面外滑向 `toTransform`，旧 Layer 同时以反方向的 `Additive` 位移滑出并在结束帧隐藏。`Left` 表示画面内容向左移动（新 Layer 从右侧进入）；`Right`、`Up`、`Down` 同理。`distance` 为逻辑画布像素，默认 1920；`frameRate` 和 `durationFrames` 分别默认 60 和 30。它接受与 `transition.crossFade` 等价的播放、目标 Layer 与显示参数，以及 `direction`（`Left|Right|Up|Down`）和正数 `distance`。
+
 ### transition.fadeBlack / transition.fadeWhite / transition.fadeColor（非原语）
 
 三个场过渡共享同一组参数 schema，分别使用黑色、白色或 `color` 指定的纯色 Overlay。它们都编译为一个 `animation.play`：第 0 帧显示透明 Overlay，先淡入至不透明；随后隐藏旧 Layer 并显示新 Layer；全遮挡保持指定时长后淡出 Overlay，结束帧删除其临时句柄。整个过程同时只保留旧/新目标 Layer 与内部 Overlay，不复制图像或 Layer 状态。
@@ -250,18 +254,20 @@
 
 | 参数 | 类型 | 说明 |
 |---|---|---|
-| type | string | 特效类型名称 |
-| parameters | MultilineText | JSON 格式的特效参数，如 `{"intensity":5,"frequency":10}` |
+| id | string | Effect 类型名称，例如 `particle.emitter` 或 `mask.blinds` |
+| instanceId | string | 稳定的 Effect 实例句柄；后续动画和停止均使用它 |
+| targetHandleId | string | 可选目标 Layer 句柄；Overlay Effect 留空，Layer Effect 必须指向活跃 Layer |
+| parameters | JSON | Effect 的结构化启动参数，例如 `{"bladeCount":12,"orientation":"Vertical"}` |
 
-> Handler: `ApplyEffectHandler`（非阻塞）。调用 `IEffectView.ApplyEffect()`。
+> Handler: `ApplyEffectHandler`。创建可动画的 `EffectInstance`，维护 Layer 双向关联，并调用 `IEffectView.StartEffectAsync()`。Effect 本身没有时长；时间和跳过由普通动画 Plan 描述。
 
 ### effect.stop
 
 | 参数 | 类型 | 说明 |
 |---|---|---|
-| id | string | 特效实例 ID |
+| instanceId | string | 要停止的 Effect 实例句柄 |
 
-> Handler: `StopEffectHandler`（非阻塞）。调用 `IEffectView.StopEffect()`。
+> Handler: `StopEffectHandler`。调用 `IEffectView.StopEffectAsync()`；Effect 自行决定立即释放或如粒子般 drain 后释放视觉。
 
 ---
 
@@ -326,6 +332,7 @@
 | `animation.play` | 由 Plan 的 `blocking` 决定 | 多轨关键帧时间轴 |
 | `animation.stop` | 否 | 请求停止 Loop 动画播放 |
 | `transition.crossFade` | — | 非原语；编译为 `animation.play` |
+| `transition.slide` | — | 非原语；新旧 Layer 相向滑动，编译为 `animation.play` |
 | `transition.fadeBlack` | — | 非原语；黑场过渡，编译为 `animation.play` |
 | `transition.fadeWhite` | — | 非原语；白场过渡，编译为 `animation.play` |
 | `transition.fadeColor` | — | 非原语；自定义颜色场过渡，编译为 `animation.play` |

@@ -6,6 +6,5 @@ namespace GalNet.Core.View;
 public sealed record EffectRequest(
     string Id,
     string InstanceId,
-    TimeSpan? Duration,
-    bool IsBlocking,
+    string TargetHandleId = "",
     string Parameters = "");

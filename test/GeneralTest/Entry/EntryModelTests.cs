@@ -7,7 +7,7 @@ public class EntryModelTests
     [Test]
     public void Registry_Should_Create_All_BuiltIn_Entries()
     {
-        Assert.That(EntryRegistry.Definitions, Has.Count.EqualTo(27));
+        Assert.That(EntryRegistry.Definitions, Has.Count.EqualTo(29));
         foreach (var definition in EntryRegistry.Definitions)
             Assert.That(EntryRegistry.Create(definition.Type).Type, Is.EqualTo(definition.Type));
     }
@@ -103,5 +103,25 @@ public class EntryModelTests
             Assert.That(definition.Parameters.Keys, Does.Contain("fadeOutDuration"));
         }
         Assert.That(EntryRegistry.Get(ColorFadeTransitionEntry.TypeId).Parameters.Keys, Does.Contain("color"));
+    }
+
+    [Test]
+    public void Slide_Transition_Is_A_NonPrimitive_Entry_With_Direction_And_Distance()
+    {
+        var definition = EntryRegistry.Get(SlideTransitionEntry.TypeId);
+        Assert.That(definition.Kind, Is.EqualTo(EntryKind.NonPrimitive));
+        Assert.That(definition.Parameters["direction"], Is.EqualTo(EntryParameterType.Select));
+        Assert.That(definition.Parameters["distance"], Is.EqualTo(EntryParameterType.Float));
+        Assert.That(definition.Options["direction"], Is.EquivalentTo(new[] { "Left", "Right", "Up", "Down" }));
+    }
+
+    [Test]
+    public void Blinds_Transition_Is_A_NonPrimitive_Entry_With_Mask_Parameters()
+    {
+        var definition = EntryRegistry.Get(BlindsTransitionEntry.TypeId);
+        Assert.That(definition.Kind, Is.EqualTo(EntryKind.NonPrimitive));
+        Assert.That(definition.Parameters["bladeCount"], Is.EqualTo(EntryParameterType.Integer));
+        Assert.That(definition.Parameters["orientation"], Is.EqualTo(EntryParameterType.Select));
+        Assert.That(definition.Options["orientation"], Is.EquivalentTo(new[] { "Vertical", "Horizontal" }));
     }
 }

@@ -51,7 +51,7 @@ Project/
 - `.rawgalgroup` 是编辑源，`kind` 必须为 `Raw`。其中可包含原语和非原语。
 - `.galgroup` 是编译产物，`kind` 必须为 `Compiled`。其中只能包含原语；Runtime 会拒绝 Raw 文档和任何非原语。
 
-原语是有对应 `EntryHandler`、可由 Runtime 直接执行的条目，例如 `layer.show`、`layer.showColor`、`animate` 和 `animation.play`。非原语没有 Handler，而是根据自身声明的参数列表编译为有序原语；例如 `transition.crossFade` 编译为一个带 Layer 显示/隐藏事件和两条 opacity 轨道的 `animation.play`，而 `transition.fadeBlack`、`transition.fadeWhite` 与 `transition.fadeColor` 会额外产生临时纯色 Overlay Layer。
+原语是有对应 `EntryHandler`、可由 Runtime 直接执行的条目，例如 `layer.show`、`layer.showColor`、`animate`、`animation.play` 和 `effect.apply`。非原语没有 Handler，而是根据自身声明的参数列表编译为有序原语；例如 `transition.crossFade` 编译为一个带 Layer 显示/隐藏事件和两条 opacity 轨道的 `animation.play`，`transition.slide` 编译为新 Layer 的绝对位移轨道与旧 Layer 的相对位移轨道，`transition.blinds` 则在第 0 帧创建 Layer-attached `mask.blinds` 并用其 `progress` 轨道揭示新 Layer；`transition.fadeBlack`、`transition.fadeWhite` 与 `transition.fadeColor` 会额外产生临时纯色 Overlay Layer。
 
 `.rawgalgroup` 示例：
 

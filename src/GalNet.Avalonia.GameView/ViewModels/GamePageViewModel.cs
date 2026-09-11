@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Avalonia.Controls;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
@@ -13,6 +14,7 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     private readonly IGameNavigationService _navigation;
     private TaskCompletionSource? _advanceWaiter;
     private TaskCompletionSource<int>? _choiceWaiter;
+    private readonly Dictionary<string, EffectAnimationBinding> _effectAnimations = new(StringComparer.Ordinal);
 
     public GamePageViewModel(IGameNavigationService navigation) => _navigation = navigation;
 
@@ -20,6 +22,8 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     public ObservableCollection<string> Choices { get; } = [];
     public ObservableCollection<NvlLine> NvlLines { get; } = [];
     public ObservableCollection<string> ActiveEffects { get; } = [];
+    /// <summary>Host-owned overlay visuals rendered above scene layers and below dialogue UI.</summary>
+    public ObservableCollection<Control> OverlayEffects { get; } = [];
 
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isDialogueVisible;
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isChoiceVisible;
@@ -195,6 +199,33 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         }
     }
 
+    /// <summary>Registers the presentation-side property sink for a live animatable effect.</summary>
+    public void RegisterEffectProgress(string instanceId, Action<double> apply)
+    {
+        _effectAnimations[instanceId] = new EffectAnimationBinding(apply);
+    }
+
+    public void UnregisterEffectAnimation(string instanceId) => _effectAnimations.Remove(instanceId);
+
+    public bool TryGetEffectAnimationValue(string id, string property, out double value)
+    {
+        if (property == "progress" && _effectAnimations.TryGetValue(id, out var binding))
+        {
+            value = binding.Value;
+            return true;
+        }
+        value = 0;
+        return false;
+    }
+
+    public bool SetEffectAnimationValue(string id, string property, double value)
+    {
+        if (property != "progress" || !_effectAnimations.TryGetValue(id, out var binding)) return false;
+        binding.Value = value;
+        binding.Apply(value);
+        return true;
+    }
+
     public async Task PlayTransitionAsync(IBrush brush, TimeSpan duration, CancellationToken cancellationToken, double peakOpacity = 1d)
     {
         TransitionBrush = brush;
@@ -214,5 +245,11 @@ public sealed partial class GamePageViewModel : PageViewModelBase
             IsChoiceVisible = false;
             Choices.Clear();
         }
+    }
+
+    private sealed class EffectAnimationBinding(Action<double> apply)
+    {
+        public Action<double> Apply { get; } = apply;
+        public double Value { get; set; }
     }
 }

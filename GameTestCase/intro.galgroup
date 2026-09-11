@@ -6,7 +6,7 @@
     { "id": "10000000000000000000000000000002", "type": "layer.show", "parameters": { "handleId": "20000000000000000000000000000002", "assetId": "xy  (17).png", "transform": { "x": 680, "y": 230, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 }, "z": 10, "displayMode": "Native" } },
     { "id": "10000000000000000000000000000006", "type": "layer.show", "parameters": { "handleId": "20000000000000000000000000000004", "assetId": "portraits/missing-fallback.png", "transform": { "x": 460, "y": 180, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 }, "z": 20, "displayMode": "Native" } },
     { "id": "10000000000000000000000000000007", "type": "audio.play", "parameters": { "channel": "bgm", "asset": "assets/audio/station-loop.ogg", "volume": 0.5, "mode": "loop", "times": 1 } },
-    { "id": "10000000000000000000000000000008", "type": "effect.apply", "parameters": { "id": "weather.rain", "instanceId": "platform-rain", "duration": -1, "blocking": false, "parameters": "intensity=low" } },
+    { "id": "10000000000000000000000000000008", "type": "effect.apply", "parameters": { "id": "weather.rain", "instanceId": "platform-rain", "parameters": {} } },
     { "id": "10000000000000000000000000000009", "type": "dialogue.show", "parameters": {} },
     { "id": "10000000000000000000000000000010", "type": "variable.set", "parameters": { "target": "player.simulation_completed", "expression": "true" } },
     { "id": "10000000000000000000000000000011", "type": "variable.set", "parameters": { "target": "save.simulation_slot_marker", "expression": "7" } },

@@ -111,6 +111,85 @@ public class GalgroupLoaderTests
     }
 
     [Test]
+    public void Compile_ExpandsSlideIntoIncomingReplaceAndOutgoingAdditiveTracks()
+    {
+        var raw = new GroupDocument
+        {
+            Kind = GroupDocumentKind.Raw,
+            Entries =
+            [
+                new GroupEntryDocument
+                {
+                    Id = "slide",
+                    Type = SlideTransitionEntry.TypeId,
+                    Parameters = new Dictionary<string, JsonElement>
+                    {
+                        ["playbackHandleId"] = JsonSerializer.SerializeToElement("slide-playback"),
+                        ["fromLayerHandleId"] = JsonSerializer.SerializeToElement("old-background"),
+                        ["toLayerHandleId"] = JsonSerializer.SerializeToElement("new-background"),
+                        ["toAssetId"] = JsonSerializer.SerializeToElement("new-background.png"),
+                        ["direction"] = JsonSerializer.SerializeToElement("Left"),
+                        ["distance"] = JsonSerializer.SerializeToElement(1280f)
+                    }
+                }
+            ]
+        };
+
+        var plan = GalgroupCompiler.Compile(raw).Document.Entries.Single().Parameters["plan"];
+        var tracks = plan.GetProperty("tracks");
+
+        Assert.That(tracks.GetArrayLength(), Is.EqualTo(2));
+        Assert.That(tracks[0].GetProperty("property").GetString(), Is.EqualTo("transform.x"));
+        Assert.That(tracks[0].GetProperty("blendMode").GetString(), Is.EqualTo("Additive"));
+        Assert.That(tracks[0].GetProperty("keys")[1].GetProperty("value").GetSingle(), Is.EqualTo(-1280f));
+        Assert.That(tracks[1].GetProperty("blendMode").GetString(), Is.EqualTo("Replace"));
+        Assert.That(tracks[1].GetProperty("keys")[0].GetProperty("value").GetSingle(), Is.EqualTo(1280f));
+        Assert.That(plan.GetProperty("events")[1].GetProperty("type").GetString(), Is.EqualTo(HideLayerEntry.TypeId));
+    }
+
+    [Test]
+    public void Compile_ExpandsBlindsIntoAnAnimatableMaskEffect()
+    {
+        var raw = new GroupDocument
+        {
+            Kind = GroupDocumentKind.Raw,
+            Entries =
+            [
+                new GroupEntryDocument
+                {
+                    Id = "blinds",
+                    Type = BlindsTransitionEntry.TypeId,
+                    Parameters = new Dictionary<string, JsonElement>
+                    {
+                        ["playbackHandleId"] = JsonSerializer.SerializeToElement("blinds-playback"),
+                        ["oldHandleId"] = JsonSerializer.SerializeToElement("old-background"),
+                        ["newHandleId"] = JsonSerializer.SerializeToElement("new-background"),
+                        ["assetId"] = JsonSerializer.SerializeToElement("new-background.png"),
+                        ["bladeCount"] = JsonSerializer.SerializeToElement(9),
+                        ["orientation"] = JsonSerializer.SerializeToElement("Horizontal")
+                    }
+                }
+            ]
+        };
+
+        var plan = GalgroupCompiler.Compile(raw).Document.Entries.Single().Parameters["plan"];
+        var track = plan.GetProperty("tracks")[0];
+        var events = plan.GetProperty("events");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(track.GetProperty("handleId").GetString(), Is.EqualTo("blinds:blinds-mask"));
+            Assert.That(track.GetProperty("property").GetString(), Is.EqualTo("progress"));
+            Assert.That(events[0].GetProperty("type").GetString(), Is.EqualTo(ShowLayerEntry.TypeId));
+            Assert.That(events[1].GetProperty("type").GetString(), Is.EqualTo(ApplyEffectEntry.TypeId));
+            Assert.That(events[1].GetProperty("parameters").GetProperty("targetHandleId").GetString(), Is.EqualTo("new-background"));
+            Assert.That(events[1].GetProperty("parameters").GetProperty("parameters").GetProperty("bladeCount").GetInt32(), Is.EqualTo(9));
+            Assert.That(events[2].GetProperty("type").GetString(), Is.EqualTo(StopEffectEntry.TypeId));
+            Assert.That(events[3].GetProperty("type").GetString(), Is.EqualTo(HideLayerEntry.TypeId));
+        });
+    }
+
+    [Test]
     public void Compile_ExpandsCustomColorFadeIntoTransientOverlayPlan()
     {
         var raw = new GroupDocument

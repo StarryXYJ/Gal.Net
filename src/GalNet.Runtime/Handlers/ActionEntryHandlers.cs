@@ -155,6 +155,8 @@ public sealed class AnimateHandler : EntryHandler
             return;
         }
 
+        PersistLoop(context, AnimateEntry.TypeId, request.PlaybackHandleId, request.LoopMode);
+
         async Task RunAsync()
         {
             try
@@ -176,6 +178,7 @@ public sealed class AnimateHandler : EntryHandler
             }
             finally
             {
+                RemovePersistedLoop(context.Runtime, request.PlaybackHandleId);
                 context.Runtime.SceneInstances.Remove<AnimationPlaybackInstance>(request.PlaybackHandleId, out _);
             }
         }
@@ -211,6 +214,21 @@ public sealed class AnimateHandler : EntryHandler
             : property.Maximum is { } maximum && value > maximum ? maximum
             : value;
     }
+
+    private static void PersistLoop(EntryContext context, string entryType, string playbackHandleId, AnimationLoopMode loopMode)
+    {
+        if (loopMode != AnimationLoopMode.Loop) return;
+        context.Runtime.SceneState.ActiveAnimations.RemoveAll(animation => animation.PlaybackHandleId == playbackHandleId);
+        context.Runtime.SceneState.ActiveAnimations.Add(new ActiveAnimationState
+        {
+            EntryType = entryType,
+            PlaybackHandleId = playbackHandleId,
+            Parameters = context.Entry.Values.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
+        });
+    }
+
+    private static void RemovePersistedLoop(IGameRuntime runtime, string playbackHandleId) =>
+        runtime.SceneState.ActiveAnimations.RemoveAll(animation => animation.PlaybackHandleId == playbackHandleId);
 }
 
 public sealed class StopAnimationHandler : EntryHandler
@@ -259,6 +277,8 @@ public sealed class PlayAnimationPlanHandler : EntryHandler
             return;
         }
 
+        PersistLoop(context, PlayAnimationPlanEntry.TypeId, plan.PlaybackHandleId, plan.LoopMode);
+
         async Task RunAsync()
         {
             try
@@ -271,8 +291,8 @@ public sealed class PlayAnimationPlanHandler : EntryHandler
                         : null;
                     var iterationPlan = scope?.Bind(plan) ?? plan;
                     var events = new TimelineEventDispatcher(context, timeProvider, ct);
-                    events.Start(iterationPlan);
-                    if (!ValidateTracks(context.Runtime, iterationPlan, scope?.Handles))
+                    await events.StartAsync(iterationPlan);
+                    if (!ValidateTracks(context.Runtime, iterationPlan))
                     {
                         events.Complete(iterationPlan, AnimationOutcome.Replaced);
                         return;
@@ -290,6 +310,7 @@ public sealed class PlayAnimationPlanHandler : EntryHandler
             }
             finally
             {
+                RemovePersistedLoop(context.Runtime, plan.PlaybackHandleId);
                 context.Runtime.SceneInstances.Remove<AnimationPlaybackInstance>(plan.PlaybackHandleId, out _);
             }
         }
@@ -307,17 +328,12 @@ public sealed class PlayAnimationPlanHandler : EntryHandler
             TaskScheduler.Default);
     }
 
-    private static bool ValidateTracks(IGameRuntime runtime, AnimationPlanDefinition plan, IReadOnlySet<string>? deferredLayerHandles = null)
+    private static bool ValidateTracks(IGameRuntime runtime, AnimationPlanDefinition plan)
     {
         foreach (var track in plan.Tracks)
         {
             if (!runtime.SceneInstances.TryGet<AnimatableSceneInstance>(track.HandleId, out var instance))
             {
-                if (deferredLayerHandles?.Contains(track.HandleId) == true)
-                {
-                    var layerProperty = Layer.AnimationProperties.FirstOrDefault(candidate => candidate.Name == track.Property);
-                    if (layerProperty is not null && track.Keys.All(key => layerProperty.Accepts(key.Value))) continue;
-                }
                 GameLog.Logger.Warning("Animation plan ignored because handle '{HandleId}' is not active.", track.HandleId);
                 return false;
             }
@@ -365,6 +381,21 @@ public sealed class PlayAnimationPlanHandler : EntryHandler
             : property.Maximum is { } maximum && value > maximum ? maximum
             : value;
     }
+
+    private static void PersistLoop(EntryContext context, string entryType, string playbackHandleId, AnimationLoopMode loopMode)
+    {
+        if (loopMode != AnimationLoopMode.Loop) return;
+        context.Runtime.SceneState.ActiveAnimations.RemoveAll(animation => animation.PlaybackHandleId == playbackHandleId);
+        context.Runtime.SceneState.ActiveAnimations.Add(new ActiveAnimationState
+        {
+            EntryType = entryType,
+            PlaybackHandleId = playbackHandleId,
+            Parameters = context.Entry.Values.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
+        });
+    }
+
+    private static void RemovePersistedLoop(IGameRuntime runtime, string playbackHandleId) =>
+        runtime.SceneState.ActiveAnimations.RemoveAll(animation => animation.PlaybackHandleId == playbackHandleId);
 
     /// <summary>Translates Loop Plan handles into one-iteration-only internal scene handles.</summary>
     private sealed class AnimationIterationScope(string playbackHandleId, int iteration)
@@ -453,9 +484,9 @@ public sealed class PlayAnimationPlanHandler : EntryHandler
     {
         private readonly CancellationTokenSource _cancellation = CancellationTokenSource.CreateLinkedTokenSource(outerCancellation);
         private readonly HashSet<AnimationPlanEventDefinition> _triggered = [];
-        public void Start(AnimationPlanDefinition plan)
+        public async Task StartAsync(AnimationPlanDefinition plan)
         {
-            foreach (var timelineEvent in plan.Events.Where(item => item.Frame == 0)) Trigger(timelineEvent);
+            foreach (var timelineEvent in plan.Events.Where(item => item.Frame == 0)) await TriggerAsync(timelineEvent);
             _ = DispatchAsync(plan);
         }
 
@@ -488,7 +519,7 @@ public sealed class PlayAnimationPlanHandler : EntryHandler
             catch (OperationCanceledException) when (_cancellation.IsCancellationRequested) { }
         }
 
-        private void Trigger(AnimationPlanEventDefinition timelineEvent)
+        private async Task TriggerAsync(AnimationPlanEventDefinition timelineEvent)
         {
             lock (_triggered)
                 if (!_triggered.Add(timelineEvent)) return;
@@ -517,12 +548,14 @@ public sealed class PlayAnimationPlanHandler : EntryHandler
 
             // Timeline events are detached from the Plan's lifetime. In particular, an end
             // event must still be able to hide an instance after the Plan has been cancelled.
-            _ = context.DispatchTimelineEventAsync(entry, CancellationToken.None).ContinueWith(
+            await context.DispatchTimelineEventAsync(entry, CancellationToken.None);
+        }
+
+        private void Trigger(AnimationPlanEventDefinition timelineEvent) => _ = TriggerAsync(timelineEvent).ContinueWith(
                 task => GameLog.Logger.Error(task.Exception, "Animation plan event '{EntryType}' failed", timelineEvent.Type),
                 CancellationToken.None,
                 TaskContinuationOptions.OnlyOnFaulted,
                 TaskScheduler.Default);
-        }
 
         private static string ToValue(JsonElement value) => value.ValueKind switch
         {
@@ -633,22 +666,45 @@ public sealed class ApplyEffectHandler : EntryHandler
         var request = new EffectRequest(
             context.GetString("id"),
             context.GetString("instanceId"),
-            PresentationRequests.GetOptionalDuration(context),
-            context.GetBool("blocking"),
+            context.GetString("targetHandleId"),
             context.GetString("parameters"));
 
-        if (!string.IsNullOrWhiteSpace(request.InstanceId) && !context.Runtime.SceneState.ActiveEffectIds.Contains(request.InstanceId))
-            context.Runtime.SceneState.ActiveEffectIds.Add(request.InstanceId);
-
-        if (request.Duration is { } duration)
+        if (!string.IsNullOrWhiteSpace(request.InstanceId))
         {
-            var lifetime = PresentationRequests.CompleteEffectAfterDurationAsync(
-                context.Runtime, view, request, duration, timeProvider, ct);
-            await PresentationRequests.AwaitIfBlockingAsync(lifetime, request.IsBlocking);
-            return;
+            Layer? targetLayer = null;
+            if (!string.IsNullOrWhiteSpace(request.TargetHandleId))
+            {
+                if (!context.Runtime.SceneInstances.TryGet<Layer>(request.TargetHandleId, out targetLayer))
+                    throw new InvalidDataException($"Effect '{request.Id}' targets inactive layer '{request.TargetHandleId}'.");
+            }
+
+            if (context.Runtime.SceneInstances.TryGet<EffectInstance>(request.InstanceId, out var existing) &&
+                (!string.Equals(existing.EffectId, request.Id, StringComparison.Ordinal) ||
+                 !string.Equals(existing.TargetHandleId, request.TargetHandleId, StringComparison.Ordinal)))
+                throw new InvalidDataException($"Effect instance '{request.InstanceId}' is already active with a different definition.");
+
+            context.Runtime.SceneInstances.GetOrAdd<EffectInstance>(request.InstanceId, id => new EffectInstance
+            {
+                Id = id, EffectId = request.Id, TargetHandleId = request.TargetHandleId, Parameters = request.Parameters
+            });
+            if (targetLayer is not null)
+            {
+                if (!targetLayer.EffectInstanceIds.Contains(request.InstanceId, StringComparer.Ordinal))
+                    targetLayer.EffectInstanceIds.Add(request.InstanceId);
+            }
+            if (!context.Runtime.SceneState.ActiveEffectIds.Contains(request.InstanceId))
+                context.Runtime.SceneState.ActiveEffectIds.Add(request.InstanceId);
+            context.Runtime.SceneState.ActiveEffects.RemoveAll(effect => effect.InstanceId == request.InstanceId);
+            context.Runtime.SceneState.ActiveEffects.Add(new ActiveEffectState
+            {
+                Id = request.Id,
+                InstanceId = request.InstanceId,
+                TargetHandleId = request.TargetHandleId,
+                Parameters = request.Parameters
+            });
         }
 
-        await PresentationRequests.AwaitIfBlockingAsync(view.StartEffectAsync(request, ct), request.IsBlocking);
+        await view.StartEffectAsync(request, ct);
     }
 }
 
@@ -658,8 +714,14 @@ public sealed class StopEffectHandler : EntryHandler
     public override async Task ExecuteAsync(EntryContext context, IGameView view, TimeProvider timeProvider, CancellationToken ct)
     {
         var instanceId = context.GetString("instanceId");
+        if (context.Runtime.SceneInstances.TryGet<EffectInstance>(instanceId, out var effect) &&
+            !string.IsNullOrWhiteSpace(effect.TargetHandleId) &&
+            context.Runtime.SceneInstances.TryGet<Layer>(effect.TargetHandleId, out var layer))
+            layer.EffectInstanceIds.Remove(instanceId);
         context.Runtime.SceneState.ActiveEffectIds.Remove(instanceId);
+        context.Runtime.SceneState.ActiveEffects.RemoveAll(effect => effect.InstanceId == instanceId);
         await view.StopEffectAsync(instanceId, ct);
+        context.Runtime.SceneInstances.Remove<EffectInstance>(instanceId, out _);
     }
 }
 
@@ -712,26 +774,6 @@ internal static class PresentationRequests
 
         context.Runtime.SceneState.ActiveTransition = request.Id;
         await AwaitIfBlockingAsync(view.PlayTransitionAsync(request, ct), request.IsBlocking);
-    }
-
-    public static TimeSpan? GetOptionalDuration(EntryContext context)
-    {
-        var duration = context.GetFloat("duration", -1);
-        return duration < 0 ? null : TimeSpan.FromSeconds(duration);
-    }
-
-    public static async Task CompleteEffectAfterDurationAsync(
-        IGameRuntime runtime,
-        IGameView view,
-        EffectRequest request,
-        TimeSpan duration,
-        TimeProvider timeProvider,
-        CancellationToken ct)
-    {
-        await view.StartEffectAsync(request, ct);
-        await Task.Delay(duration, timeProvider, ct);
-        runtime.SceneState.ActiveEffectIds.Remove(request.InstanceId);
-        await view.StopEffectAsync(request.InstanceId, ct);
     }
 
     public static async Task AwaitIfBlockingAsync(Task task, bool isBlocking)

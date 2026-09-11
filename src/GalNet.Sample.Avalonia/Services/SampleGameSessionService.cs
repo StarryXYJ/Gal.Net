@@ -35,6 +35,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private GameEngine? _engine;
     private AvaloniaGamePageView? _pageView;
     private SampleMediaViews? _media;
+    private AvaloniaParticleEffectView? _effects;
     private string? _gameDirectory;
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private readonly GameRunCoordinator _run = new();
@@ -154,6 +155,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             DisposeEngine();
             await EnsureEngineAsync(cancellationToken);
             _engine!.RestoreFrom(snapshot);
+            await RestorePersistentEffectsAsync(cancellationToken);
             StartRun();
             _gameplay.StatusMessage = $"Loaded slot {slotIndex}.";
         }
@@ -180,7 +182,11 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             await StopCurrentRunAsync();
             DisposeEngine();
             await EnsureEngineAsync(cancellationToken);
-            if (snapshot is not null) _engine!.RestoreFrom(snapshot);
+            if (snapshot is not null)
+            {
+                _engine!.RestoreFrom(snapshot);
+                await RestorePersistentEffectsAsync(cancellationToken);
+            }
             StartRun();
         }
         finally { _lifecycle.Release(); }
@@ -236,6 +242,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         _pageView = null;
         _media?.Dispose();
         _media = null;
+        _effects?.Dispose();
+        _effects = null;
         _engine = null;
     }
 
@@ -245,15 +253,17 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         if (!IsReady || _contentProvider is null || _variables is null || _progress is null || _settings is null || _gameDirectory is null)
             throw new InvalidOperationException("The game session is not initialized.");
 
-        _pageView = new AvaloniaGamePageView(_gameplay, _page, new SampleLayerFactory(_gameDirectory));
+        var layerFactory = new SampleLayerFactory(_gameDirectory);
+        _pageView = new AvaloniaGamePageView(_gameplay, _page, layerFactory);
         _media = new SampleMediaViews(_gameplay);
+        _effects = new AvaloniaParticleEffectView(_gameplay, layerFactory);
         var transitions = new AvaloniaTransitionView(new Dictionary<string, Func<TransitionRequest, CancellationToken, Task>>(StringComparer.OrdinalIgnoreCase)
         {
             ["black"] = (request, ct) => InvokeOnUiAsync(() => _gameplay.PlayTransitionAsync(Brushes.Black, request.Duration, ct)),
             ["white"] = (request, ct) => InvokeOnUiAsync(() => _gameplay.PlayTransitionAsync(Brushes.White, request.Duration, ct)),
             ["cross"] = (request, ct) => InvokeOnUiAsync(() => _gameplay.PlayTransitionAsync(Brushes.Black, request.Duration, ct, 0.35d))
         });
-        var gameView = new CompositeGameView(_pageView, _pageView, _pageView, _media, _media, transitions, new SampleEffectView(_gameplay), _pageView, _pageView);
+        var gameView = new CompositeGameView(_pageView, _pageView, _pageView, _media, _media, transitions, _effects, _pageView, _pageView);
         var content = await _contentProvider.LoadAsync(cancellationToken);
         var settings = new SettingsContainer();
         settings.Set(_settings);
@@ -276,6 +286,13 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
                 slot.IsCorrupt));
         }
         CanContinue = _saveSlots.Any(slot => !slot.IsEmpty && !slot.IsCorrupt);
+    }
+
+    private async Task RestorePersistentEffectsAsync(CancellationToken cancellationToken)
+    {
+        if (_engine is null || _effects is null) return;
+        foreach (var effect in _engine.Runtime.SceneState.ActiveEffects)
+            await _effects.StartEffectAsync(new EffectRequest(effect.Id, effect.InstanceId, effect.TargetHandleId, effect.Parameters), cancellationToken);
     }
 
     private static Task InvokeOnUiAsync(Func<Task> action)

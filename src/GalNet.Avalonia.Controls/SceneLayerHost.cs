@@ -123,6 +123,9 @@ public sealed class SceneLayerItem : INotifyPropertyChanged
     private LayerDisplayMode _displayMode;
     private double _opacity = 1;
     private bool _isVisible = true;
+    private double _blindsProgress = 1;
+    private int _blindsBladeCount;
+    private bool _blindsHorizontal;
 
     public string HandleId { get => _handleId; set => SetField(ref _handleId, value); }
     public IImage? Image { get => _image; set => SetField(ref _image, value); }
@@ -136,6 +139,11 @@ public sealed class SceneLayerItem : INotifyPropertyChanged
     public LayerDisplayMode DisplayMode { get => _displayMode; set => SetField(ref _displayMode, value); }
     public double Opacity { get => _opacity; set => SetField(ref _opacity, value); }
     public bool IsVisible { get => _isVisible; set => SetField(ref _isVisible, value); }
+    /// <summary>0 hides a blinds-masked layer and 1 reveals it fully.</summary>
+    public double BlindsProgress { get => _blindsProgress; set => SetField(ref _blindsProgress, Math.Clamp(value, 0, 1)); }
+    /// <summary>Zero means no blinds mask.</summary>
+    public int BlindsBladeCount { get => _blindsBladeCount; set => SetField(ref _blindsBladeCount, Math.Max(0, value)); }
+    public bool BlindsHorizontal { get => _blindsHorizontal; set => SetField(ref _blindsHorizontal, value); }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -154,6 +162,7 @@ internal sealed class LayerPresenter : Border
         Width = Math.Max(0, surface.Width);
         Height = Math.Max(0, surface.Height);
         ClipToBounds = true;
+        Clip = CreateBlindsClip(item, surface);
         RenderTransformOrigin = RelativePoint.Center;
 
         if (!string.IsNullOrWhiteSpace(item.Color))
@@ -221,6 +230,27 @@ internal sealed class LayerPresenter : Border
                 Child = image;
                 break;
         }
+    }
+
+    private static Geometry? CreateBlindsClip(SceneLayerItem item, Size surface)
+    {
+        if (item.BlindsBladeCount <= 0) return null;
+        var blades = Math.Max(1, item.BlindsBladeCount);
+        var progress = Math.Clamp(item.BlindsProgress, 0, 1);
+        var group = new GeometryGroup();
+        if (item.BlindsHorizontal)
+        {
+            var height = surface.Height / blades;
+            for (var index = 0; index < blades; index++)
+                group.Children.Add(new RectangleGeometry(new Rect(0, index * height, surface.Width, height * progress)));
+        }
+        else
+        {
+            var width = surface.Width / blades;
+            for (var index = 0; index < blades; index++)
+                group.Children.Add(new RectangleGeometry(new Rect(index * width, 0, width * progress, surface.Height)));
+        }
+        return group;
     }
 
     private static void SetContainedSize(Image image, double width, double height, Size surface, bool fill)

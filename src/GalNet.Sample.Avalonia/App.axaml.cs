@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
@@ -42,6 +43,26 @@ public partial class App : Application
             var mainWindow = scopedServices.GetRequiredService<MainWindow>();
             desktop.MainWindow = mainWindow;
             mainWindow.Opened += async (_, _) => await scopedServices.GetRequiredService<SampleGameSessionService>().InitializeAsync(LaunchOptions);
+            var closingInProgress = false;
+            var allowClose = false;
+            mainWindow.Closing += async (_, eventArgs) =>
+            {
+                if (allowClose) return;
+
+                eventArgs.Cancel = true;
+                if (closingInProgress) return;
+
+                closingInProgress = true;
+                try
+                {
+                    await scopedServices.GetRequiredService<SampleGameSessionService>().StopAsync();
+                }
+                finally
+                {
+                    allowClose = true;
+                    mainWindow.Close();
+                }
+            };
             mainWindow.Closed += (_, _) =>
             {
                 _gameScope?.Dispose();

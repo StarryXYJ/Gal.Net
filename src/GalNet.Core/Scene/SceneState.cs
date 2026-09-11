@@ -14,6 +14,12 @@ public sealed class SceneState
     /// <summary>当前活跃的特效实例 ID 列表</summary>
     public List<string> ActiveEffectIds { get; init; } = [];
 
+    /// <summary>Replayable state for effects that remain active across a stable save.</summary>
+    public List<ActiveEffectState> ActiveEffects { get; init; } = [];
+
+    /// <summary>Looping primitive animations that are active but do not prevent a stable save.</summary>
+    public List<ActiveAnimationState> ActiveAnimations { get; init; } = [];
+
     /// <summary>当前活跃的转场名称（null = 无）</summary>
     public string? ActiveTransition { get; set; }
 }

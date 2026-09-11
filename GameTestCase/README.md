@@ -22,15 +22,17 @@ interpolation. It then starts a non-blocking looping rotation plus faster additi
 and opacity loops on the same portrait; the relative loops are composed over the ordinary rotation
 without replacing it. After five dialogue lines, `animation.stop` with `AfterIteration` lets all
 active loops complete their return to the base pose. The second choice runs a non-blocking,
-skippable 48-frame cross-fade Plan:
-it shows the Filled background at opacity 0, fades the two backgrounds together, then hides
-the old one. This keeps the shared fixture useful for validating both timeline events and
-property tracks in the headless and Avalonia hosts.
+skippable 48-frame blinds Plan: it shows the Filled background through a layer-attached
+`mask.blinds` Effect, animates that Effect's `progress`, then stops the mask and hides the old
+background. This keeps the shared fixture useful for validating timeline events and generic
+animatable-instance property tracks in both hosts.
 
 The first choice starts a non-blocking, skippable 54-frame black-field fade: a transient
 pure-black Overlay covers the opening background, swaps to tiled `bg.png` at full black,
 then fades away. The second choice keeps the comparison background in `Fill` mode and
-uses the cross-fade Plan.
+uses the blinds Plan, then starts the handle-controlled `particle.emitter` Overlay with
+`Snow.png`. After two dialogue lines the story stops emission; already spawned flakes drain
+naturally while two final lines play before the game ends.
 
 - Headless: `powershell -File scripts/run-headless-sample.ps1`
 - Avalonia: `powershell -File scripts/run-avalonia-sample.ps1`

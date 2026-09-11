@@ -141,13 +141,43 @@ public sealed class GameRuntime : IGameRuntime
             Z = layer.Z,
             DisplayMode = layer.DisplayMode,
             Visible = layer.Visible,
-            Opacity = layer.Opacity
+            Opacity = layer.Opacity,
+            EffectInstanceIds = [.. layer.EffectInstanceIds]
         }));
         SceneState.ActiveControlIds.Clear();
         SceneState.ActiveControlIds.AddRange(snapshot.SceneState.ActiveControlIds);
         SceneState.ActiveEffectIds.Clear();
         SceneState.ActiveEffectIds.AddRange(snapshot.SceneState.ActiveEffectIds);
+        SceneState.ActiveEffects.Clear();
+        SceneState.ActiveEffects.AddRange(snapshot.SceneState.ActiveEffects.Select(effect => new ActiveEffectState
+        {
+            Id = effect.Id,
+            InstanceId = effect.InstanceId,
+            TargetHandleId = effect.TargetHandleId,
+            Parameters = effect.Parameters
+        }));
+        SceneState.ActiveAnimations.Clear();
+        SceneState.ActiveAnimations.AddRange(snapshot.SceneState.ActiveAnimations.Select(animation => new ActiveAnimationState
+        {
+            EntryType = animation.EntryType,
+            PlaybackHandleId = animation.PlaybackHandleId,
+            Parameters = animation.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
+        }));
+        // Effect is the canonical owner of its target. Rebuild the Layer-side index so
+        // older saves and malformed duplicate lists cannot leave a dangling association.
+        foreach (var layer in SceneState.Layers) layer.EffectInstanceIds.Clear();
+        foreach (var effect in SceneState.ActiveEffects.Where(effect => !string.IsNullOrWhiteSpace(effect.TargetHandleId)))
+        {
+            var target = SceneState.Layers.FirstOrDefault(layer => layer.Id == effect.TargetHandleId);
+            if (target is not null) target.EffectInstanceIds.Add(effect.InstanceId);
+        }
         SceneState.ActiveTransition = snapshot.SceneState.ActiveTransition;
-        SceneInstances.Rebuild(SceneState.Layers);
+        SceneInstances.Rebuild(SceneState.Layers.Cast<ISceneInstance>().Concat(SceneState.ActiveEffects.Select(effect => new EffectInstance
+        {
+            Id = effect.InstanceId,
+            EffectId = effect.Id,
+            TargetHandleId = effect.TargetHandleId,
+            Parameters = effect.Parameters
+        })));
     }
 }

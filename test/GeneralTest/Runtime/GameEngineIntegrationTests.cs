@@ -4,7 +4,10 @@ using GalNet.Runtime.Loader;
 using GalNet.Runtime.SaveLoad;
 using GalNet.Presentation.Defaults;
 using GalNet.Core.Entry;
+using GalNet.Core.Scene;
 using GalNet.Core.View;
+using GalNet.Runtime.Handlers;
+using GalNet.Runtime.Runtime;
 
 namespace GeneralTest.Runtime;
 
@@ -408,6 +411,67 @@ public class GameEngineIntegrationTests
         Assert.That(engine.CreateSaveData().SceneState.Layers, Is.Empty);
     }
 
+    [Test]
+    public async Task Layer_effect_state_round_trips_with_its_target_association()
+    {
+        var runtime = new GameRuntime(null, "group_main");
+        runtime.SceneInstances.GetOrAdd<Layer>("background", id => new Layer { Id = id, AssetId = "background.png" });
+        var entry = EntryRegistry.Create(ApplyEffectEntry.TypeId, values: new Dictionary<string, string>
+        {
+            ["id"] = "mask.blinds",
+            ["instanceId"] = "blinds-mask",
+            ["targetHandleId"] = "background",
+            ["parameters"] = "{\"bladeCount\":12}"
+        });
+        var context = new EntryContext { Entry = entry, Runtime = runtime };
+
+        await new ApplyEffectHandler().ExecuteAsync(context, new NullGameView(), TimeProvider.System, CancellationToken.None);
+
+        var snapshot = runtime.CreateSnapshot();
+        var restored = new GameRuntime(null, "other");
+        restored.RestoreFrom(snapshot);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(snapshot.SceneState.ActiveEffects.Single().TargetHandleId, Is.EqualTo("background"));
+            Assert.That(restored.SceneInstances.TryGet<EffectInstance>("blinds-mask", out var effect), Is.True);
+            Assert.That(effect!.TargetHandleId, Is.EqualTo("background"));
+            Assert.That(restored.SceneInstances.GetAll<Layer>().Single().EffectInstanceIds, Is.EqualTo(new[] { "blinds-mask" }));
+        });
+    }
+
+    [Test]
+    public async Task Restoring_a_saved_loop_restarts_its_original_animation_entry()
+    {
+        var runtime = new GameRuntime(null, "group_main");
+        runtime.SceneInstances.GetOrAdd<Layer>("hero", id => new Layer { Id = id, AssetId = "hero.png" });
+        runtime.SceneState.ActiveAnimations.Add(new ActiveAnimationState
+        {
+            EntryType = AnimateEntry.TypeId,
+            PlaybackHandleId = "hero-loop",
+            Parameters = new Dictionary<string, string>
+            {
+                ["playbackHandleId"] = "hero-loop",
+                ["handleId"] = "hero",
+                ["property"] = "transform.rotationDegrees",
+                ["to"] = "8",
+                ["duration"] = "1",
+                ["blocking"] = "false",
+                ["loopMode"] = "Loop"
+            }
+        });
+        var snapshot = runtime.CreateSnapshot();
+        var restored = new GameRuntime(null, "group_main");
+        var view = new LoopRestoringView();
+        var engine = new GameEngine(new GalNet.Core.Graph.Graph { RootNodeId = "group_main" }, restored, view);
+
+        engine.RestoreFrom(snapshot);
+        await view.Started.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+        Assert.That(restored.SceneInstances.TryGet<AnimationPlaybackInstance>("hero-loop", out _), Is.True);
+        view.Complete();
+    }
+
     private static GalNet.Core.Entry.Entry Create(string type, int id, params (string Key, string Value)[] values) =>
         EntryRegistry.Create(type, id, values: values.ToDictionary(x => x.Key, x => x.Value));
 
@@ -419,5 +483,17 @@ public class GameEngineIntegrationTests
             LastTransition = request;
             return Task.CompletedTask;
         }
+    }
+
+    private sealed class LoopRestoringView : NullGameView
+    {
+        private readonly TaskCompletionSource<AnimationOutcome> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public override Task<AnimationOutcome> AnimateAsync(AnimationRequest request, CancellationToken ct)
+        {
+            Started.TrySetResult();
+            return _completion.Task;
+        }
+        public void Complete() => _completion.TrySetResult(AnimationOutcome.Skipped);
     }
 }

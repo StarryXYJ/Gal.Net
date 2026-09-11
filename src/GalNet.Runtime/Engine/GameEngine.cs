@@ -259,6 +259,21 @@ public sealed class GameEngine
         _runtime.RestoreFrom(data);
         foreach (var layer in _runtime.SceneState.Layers.Where(layer => layer.Visible))
             _view.ShowLayer(new LayerRenderRequest(layer.Id, layer.AssetId, layer.Transform.Clone(), layer.Z, layer.DisplayMode, layer.Opacity, layer.Color));
+        foreach (var animation in _runtime.SceneState.ActiveAnimations.ToArray())
+            _ = ResumeLoopAsync(animation);
         IsRunning = true;
+    }
+
+    private async Task ResumeLoopAsync(ActiveAnimationState animation)
+    {
+        try
+        {
+            var entry = EntryRegistry.Create(animation.EntryType, values: animation.Parameters);
+            await DispatchTimelineEventAsync(entry, CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            GameLog.Logger.Error(exception, "Could not restore looping animation '{PlaybackHandleId}'.", animation.PlaybackHandleId);
+        }
     }
 }

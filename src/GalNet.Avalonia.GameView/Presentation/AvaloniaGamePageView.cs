@@ -86,7 +86,7 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
             var from = request.From ?? (request.BlendMode == AnimationBlendMode.Additive
                 ? 0f
                 : (float)await OnUiAsync(() =>
-                    Task.FromResult(_state.TryGetLayerAnimationValue(request.HandleId, request.Property, out var value) ? value : double.NaN)));
+                    Task.FromResult(TryGetAnimationValue(request.HandleId, request.Property, out var value) ? value : double.NaN)));
             if (double.IsNaN(from)) return AnimationOutcome.Replaced;
             if (request.From.HasValue || request.BlendMode == AnimationBlendMode.Additive)
                 await SetAnimationValueAsync(request, active, from);
@@ -336,14 +336,14 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
         var key = PropertyKey(handleId, property);
         if (!TryGetAdditiveBaseValue(key, handleId, property, out var baseValue)) return;
         animation.CurrentValue = value;
-        _state.SetLayerAnimationValue(handleId, property, ClampLayerValue(property, baseValue + GetAdditiveContribution(handleId, property)));
+        SetAnimationValue(handleId, property, ClampPresentationValue(handleId, property, baseValue + GetAdditiveContribution(handleId, property)));
     }
 
     private void ApplyActiveAdditiveValues(string handleId, string property)
     {
         var key = PropertyKey(handleId, property);
         if (TryGetAdditiveBaseValue(key, handleId, property, out var baseValue))
-            _state.SetLayerAnimationValue(handleId, property, ClampLayerValue(property, baseValue + GetAdditiveContribution(handleId, property)));
+            SetAnimationValue(handleId, property, ClampPresentationValue(handleId, property, baseValue + GetAdditiveContribution(handleId, property)));
     }
 
     private void BakeAdditiveValue(IAdditiveAnimation animation, string handleId, string property)
@@ -363,7 +363,7 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
     private bool TryGetAdditiveBaseValue(string key, string handleId, string property, out double value)
     {
         if (_additiveBaseValues.TryGetValue(key, out value)) return true;
-        if (!_state.TryGetLayerAnimationValue(handleId, property, out value)) return false;
+        if (!TryGetAnimationValue(handleId, property, out value)) return false;
         _additiveBaseValues.Add(key, value);
         return true;
     }
@@ -380,6 +380,18 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
     }
 
     private static string PropertyKey(string handleId, string property) => $"{handleId}:{property}";
+
+    private bool TryGetAnimationValue(string handleId, string property, out double value) =>
+        _state.TryGetLayerAnimationValue(handleId, property, out value) ||
+        _state.TryGetEffectAnimationValue(handleId, property, out value);
+
+    private bool SetAnimationValue(string handleId, string property, double value) =>
+        _state.SetLayerAnimationValue(handleId, property, value) ||
+        _state.SetEffectAnimationValue(handleId, property, value);
+
+    private bool IsLayerAnimationValue(string handleId, string property) => _state.TryGetLayerAnimationValue(handleId, property, out _);
+
+    private double ClampPresentationValue(string handleId, string property, double value) => IsLayerAnimationValue(handleId, property) ? ClampLayerValue(property, value) : value;
 
     private static double ClampLayerValue(string property, double value) => property switch
     {
