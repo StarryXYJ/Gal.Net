@@ -299,7 +299,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     {
         if (_engine is null || _effects is null) return;
         foreach (var effect in _engine.Runtime.SceneState.ActiveEffects)
-            await _effects.StartEffectAsync(new EffectRequest(effect.Id, effect.InstanceId, effect.TargetHandleId, effect.Parameters)
+            await _effects.StartEffectAsync(new EffectRequest(effect.Id, effect.InstanceId, effect.TargetHandleId, effect.Order, effect.Parameters)
             {
                 AnimationValues = effect.AnimationValues
             }, cancellationToken);

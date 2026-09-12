@@ -257,10 +257,11 @@
 |---|---|---|
 | id | string | Effect 类型名称，例如 `particle.emitter` 或 `mask.blinds` |
 | instanceId | string | 稳定的 Effect 实例句柄；后续动画和停止均使用它 |
-| targetHandleId | string | 可选目标 Layer 句柄；Overlay Effect 留空，Layer Effect 必须指向活跃 Layer |
+| targetHandleId | string | `Layer` 阶段必须指定的目标 Layer 句柄；场景阶段必须留空 |
+| order | integer? | 同一固定渲染阶段内的执行顺序，默认 0；相同值按添加顺序稳定执行 |
 | parameters | JSON | Effect 的结构化启动参数，例如 `{"bladeCount":12,"orientation":"Vertical"}` |
 
-> Handler: `ApplyEffectHandler`。创建可动画的 `EffectInstance`，维护 Layer 双向关联，并调用 `IEffectView.StartEffectAsync()`。Effect 本身没有时长；时间和跳过由普通动画 Plan 描述。
+> Effect definition 固定声明 `Layer`、`SceneBeforeUi` 或 `SceneAfterUi` 阶段。三个阶段共享同一个纹理输入/输出契约；阶段只决定输入是 Layer、场景合成结果还是 UI 合成结果。Handler 创建可动画的 `EffectInstance`，维护 Layer 双向关联，并调用 `IEffectView.StartEffectAsync()`。Effect 本身没有时长；时间和跳过由普通动画 Plan 描述。
 
 ### effect.stop
 

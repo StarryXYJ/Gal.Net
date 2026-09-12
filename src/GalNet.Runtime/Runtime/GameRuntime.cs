@@ -155,6 +155,7 @@ public sealed class GameRuntime : IGameRuntime
             Id = effect.Id,
             InstanceId = effect.InstanceId,
             TargetHandleId = effect.TargetHandleId,
+            Order = effect.Order,
             Parameters = effect.Parameters,
             AnimationValues = effect.AnimationValues.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
         }));
@@ -184,6 +185,7 @@ public sealed class GameRuntime : IGameRuntime
             Id = effect.InstanceId,
             EffectId = effect.Id,
             TargetHandleId = effect.TargetHandleId,
+            Order = effect.Order,
             Parameters = effect.Parameters
         };
         instance.RestoreAnimationValues(effect.AnimationValues);

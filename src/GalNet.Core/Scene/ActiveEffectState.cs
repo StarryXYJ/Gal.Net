@@ -5,8 +5,10 @@ public sealed class ActiveEffectState
 {
     public string Id { get; init; } = "";
     public string InstanceId { get; init; } = "";
-    /// <summary>Empty for an overlay effect; otherwise the layer handle it affects.</summary>
+    /// <summary>Required for Layer-stage effects; empty for scene-stage effects.</summary>
     public string TargetHandleId { get; init; } = "";
+    /// <summary>Stable order within the definition-selected render stage.</summary>
+    public int Order { get; init; }
     public string Parameters { get; init; } = "{}";
     /// <summary>
     /// Last stable values written by the common animation system. Effect parameters stay

@@ -28,7 +28,7 @@ flowchart LR
 | `Layer` | 一个 Layer 的当前帧 | 调色、溶解、局部发光、扭曲 | 否 |
 | `SceneBeforeUi` | 已合成的场景纹理 | LUT、暗角、bloom、景深 | 否 |
 | `SceneAfterUi` | 场景与游戏 UI 的合成纹理 | 闪白、全屏淡出、故障 | 是 |
-| `Overlay` | 无纹理输入，独立绘制 | 粒子、装饰控件 | 由 Overlay 的层级决定 |
+所有阶段都使用同一个纹理流接口：取上一个 pass 的输出纹理，写出下一张纹理。`SceneBeforeUi` 与 `SceneAfterUi` 不是两种 effect 数据结构，只是固定管线中的两个插槽。
 
 同一阶段的 effect 必须按显式 `order` 升序稳定执行；相同 `order` 时按添加顺序执行。效果顺序是作者可见的数据，因为调色和 bloom 的顺序会改变结果。
 
@@ -65,27 +65,23 @@ interface IImageEffect
 
 `EffectRenderContext` 提供当前时间、尺寸、动画参数、辅助输入（mask/LUT/noise）及受控的临时纹理申请接口。Effect 不直接访问其他 Layer、页面 ViewModel 或全局状态。
 
-### 非像素 effect
+### 固定像素管线
 
-并非每个效果都应被强制离屏渲染。
+渲染管线只接受 `Texture → Texture` 的像素 effect；粒子、独立控件和几何裁剪不属于该管线。纹理 mask、溶解和边缘燃烧由具体 `IImageEffect` 以辅助输入实现，不单独设 `MaskEffect` 运行时类别。
 
-- 规则几何裁剪（如百叶窗）可继续使用 Clip/Geometry，以避免无意义的纹理分配；
-- 粒子和其他独立视觉对象继续作为 `Overlay` effect；
-- 纹理 mask、溶解和边缘燃烧由具体 `IImageEffect` 以辅助输入实现。
+现有 `particle.emitter` 和 `mask.blinds` 是离屏渲染后端落地前的 Avalonia 视觉实现。进入 Phase 2 时，应将前者迁出 effect 管线或改写为像素效果，将后者改为 shader mask；不为它们保留第二条渲染分支。
 
-因此不单独设通用 `MaskEffect` 运行时类别。Mask 是 effect 的一种输入；只有纯几何裁剪保留为专用的轻量实现。
+## 数据模型
 
-## 数据模型与兼容策略
-
-现有 `EffectScope.Overlay / Layer` 逐步演进为阶段语义，建议在兼容窗口内保留旧字段的反序列化支持：
+直接使用阶段语义，不保留 `EffectScope` 或旧内容兼容层：
 
 ```csharp
-enum EffectStage { Layer, SceneBeforeUi, SceneAfterUi, Overlay }
+enum EffectStage { Layer, SceneBeforeUi, SceneAfterUi }
 ```
 
 - `Layer` 阶段必须有 `targetHandleId`。
 - 两个 Scene 阶段不得指定 `targetHandleId`。
-- `Overlay` 不要求输入纹理；其视觉层级由 effect 定义固定，避免内容作者用参数绕过 UI 层次。
+- 所有阶段都由同一个 `IImageEffect.Render(input, context)` 执行契约处理；阶段只决定 input 是 Layer、场景合成结果还是 UI 合成结果。
 - `EffectDefinition` 继续是编辑器下拉、参数检查和动画属性提示的唯一元数据来源。
 - `EffectInstance` 继续保存静态参数和已提交动画值；新增 `stage`、`order` 等字段时，同步更新快照、恢复、导出和兼容测试。
 
@@ -93,14 +89,11 @@ Layer source 的 authoring 数据优先采用显式 `source` 对象；旧 `asset
 
 ## 实施阶段
 
-### Phase 1：渲染抽象与数据契约
+### Phase 1：渲染抽象与数据契约（已完成）
 
-- 定义 `EffectStage`、阶段验证规则及稳定排序规则。
-- 为 Layer 引入可序列化的 source 描述；实现旧 `assetId` 到静态 source 的兼容映射。
-- 将 effect factory 的元数据从旧 Scope 扩展到 Stage，编辑器展示阶段、参数和可动画属性。
-- 不改变现有 `mask.blinds`、粒子和静态 Layer 的视觉行为。
+已完成：定义 `EffectStage`，将 factory 元数据与编辑器提示切换到 Stage；`Layer` stage 强制要求目标 Layer，两个 Scene stage 禁止目标 Layer；effect 实例及存档状态保存同阶段的 `order`。Layer 的 source 已抽出当前帧选择，静态图与 Flipbook 使用同一路径。
 
-验收：旧游戏内容、存档恢复和编辑器 effect 参数提示保持可用；非法目标/阶段组合能显示诊断。
+验收：非法目标/阶段组合能显示诊断；Layer、Effect 和快照测试覆盖配置及恢复。
 
 ### Phase 2：离屏场景与 effect render graph
 
@@ -153,4 +146,3 @@ Layer source 的 authoring 数据优先采用显式 `source` 对象；旧 `asset
 - 不把每个 effect 的参数写入 `SceneLayerHost` 或 ViewModel 的专用字段。
 - 不将所有视觉对象强制转换为像素 effect；粒子、几何裁剪等应继续走更轻的实现路径。
 - 不让内容作者以任意参数改变 UI 前后层级；阶段属于 effect 定义和受验证的实例数据。
-

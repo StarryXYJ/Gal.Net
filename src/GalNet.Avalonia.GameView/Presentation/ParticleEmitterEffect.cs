@@ -8,7 +8,7 @@ public sealed class ParticleEmitterEffectFactory : IAvaloniaEffectFactory
 {
     public EffectDefinition Definition { get; } = new(
         "particle.emitter",
-        EffectScope.Overlay,
+        EffectStage.SceneBeforeUi,
         [
             new("particleTexture", EffectParameterKind.ImageAsset), new("emissionRate", EffectParameterKind.Float, Minimum: 0),
             new("maxParticles", EffectParameterKind.Integer, Minimum: 1), new("initialVelocityX", EffectParameterKind.Float),

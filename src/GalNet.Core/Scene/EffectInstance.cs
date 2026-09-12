@@ -9,6 +9,7 @@ public sealed class EffectInstance : AnimatableSceneInstance
     public override string Id { get; init; } = "";
     public string EffectId { get; init; } = "";
     public string TargetHandleId { get; init; } = "";
+    public int Order { get; init; }
     public string Parameters { get; init; } = "{}";
     public override IReadOnlyList<AnimatableProperty> AnimatableProperties => _properties;
     public IReadOnlyDictionary<string, float> AnimationValues => _values;

@@ -9,7 +9,7 @@ public sealed class BlindsMaskEffectFactory : IAvaloniaEffectFactory
 {
     public EffectDefinition Definition { get; } = new(
         "mask.blinds",
-        EffectScope.Layer,
+        EffectStage.Layer,
         [new("bladeCount", EffectParameterKind.Integer, Minimum: 1), new("orientation", EffectParameterKind.Select, Options: ["Vertical", "Horizontal"])],
         [new("progress", AnimationValueKind.Float, 0, 1)]);
     public IAvaloniaEffect Create() => new BlindsMaskEffect();

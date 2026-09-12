@@ -2,8 +2,8 @@ using System.Text.Json;
 
 namespace GalNet.Core.Scene;
 
-/// <summary>Where an effect obtains its visual input.</summary>
-public enum EffectScope { Overlay, Layer }
+/// <summary>Fixed slots in the game render pipeline. Every pixel effect consumes and produces the same image stream.</summary>
+public enum EffectStage { Layer, SceneBeforeUi, SceneAfterUi }
 
 /// <summary>Editor-facing JSON value kinds for an effect's static start parameters.</summary>
 public enum EffectParameterKind { Text, Integer, Float, Boolean, ImageAsset, Select }
@@ -20,7 +20,7 @@ public sealed record EffectParameterDefinition(
 /// <summary>Platform-neutral authoring metadata emitted by an effect factory.</summary>
 public sealed record EffectDefinition(
     string Id,
-    EffectScope Scope,
+    EffectStage Stage,
     IReadOnlyList<EffectParameterDefinition> Parameters,
     IReadOnlyList<AnimatableProperty> AnimatableProperties);
 
@@ -57,10 +57,10 @@ public sealed class EffectCatalog : IEffectCatalog
     {
         if (!TryGet(id, out var definition)) return [$"Unknown effect '{id}'."];
         var diagnostics = new List<string>();
-        if (definition.Scope == EffectScope.Overlay && !string.IsNullOrWhiteSpace(targetHandleId))
-            diagnostics.Add($"Overlay effect '{id}' must not target a Layer.");
-        if (definition.Scope == EffectScope.Layer && string.IsNullOrWhiteSpace(targetHandleId))
+        if (definition.Stage == EffectStage.Layer && string.IsNullOrWhiteSpace(targetHandleId))
             diagnostics.Add($"Layer effect '{id}' requires targetHandleId.");
+        if (definition.Stage != EffectStage.Layer && !string.IsNullOrWhiteSpace(targetHandleId))
+            diagnostics.Add($"{definition.Stage} effect '{id}' must not target a Layer.");
 
         JsonDocument document;
         try { document = JsonDocument.Parse(string.IsNullOrWhiteSpace(parameters) ? "{}" : parameters); }

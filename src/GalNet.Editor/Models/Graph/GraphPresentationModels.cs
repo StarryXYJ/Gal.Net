@@ -330,7 +330,7 @@ public partial class EntryEditorItemViewModel : ObservableObject
             EffectDiagnostic = string.IsNullOrWhiteSpace(id) ? "Select an effect type." : $"Unknown effect '{id}'.";
             return;
         }
-        EffectHint = $"{effect.Scope} · static: {string.Join(", ", effect.Parameters.Select(parameter => parameter.Name))} · animatable: {string.Join(", ", effect.AnimatableProperties.Select(property => property.Name))}";
+        EffectHint = $"{effect.Stage} · static: {string.Join(", ", effect.Parameters.Select(parameter => parameter.Name))} · animatable: {string.Join(", ", effect.AnimatableProperties.Select(property => property.Name))}";
         EffectDiagnostic = string.Join(" ", _effectCatalog.Validate(id, Parameters.GetValueOrDefault("targetHandleId", ""), Parameters.GetValueOrDefault("parameters", "{}")));
     }
 }
