@@ -13,7 +13,6 @@ public sealed class CompositeGameView : IGameView
     private readonly IControlView _controls;
     private readonly IAudioView _audio;
     private readonly IVideoView _video;
-    private readonly ITransitionView _transitions;
     private readonly IEffectView _effects;
     private readonly ITypewriterView _typewriter;
     private readonly IInteractionView _interaction;
@@ -24,7 +23,6 @@ public sealed class CompositeGameView : IGameView
         IControlView controls,
         IAudioView audio,
         IVideoView video,
-        ITransitionView transitions,
         IEffectView effects,
         ITypewriterView typewriter,
         IInteractionView interaction)
@@ -34,7 +32,6 @@ public sealed class CompositeGameView : IGameView
         _controls = controls;
         _audio = audio;
         _video = video;
-        _transitions = transitions;
         _effects = effects;
         _typewriter = typewriter;
         _interaction = interaction;
@@ -58,7 +55,6 @@ public sealed class CompositeGameView : IGameView
     public void ConfigureAudioQueue(string channel, string onEnd, string onEmpty) => _audio.ConfigureAudioQueue(channel, onEnd, onEmpty);
     public void PlayVideo(string assetId) => _video.PlayVideo(assetId);
     public void StopVideo() => _video.StopVideo();
-    public Task PlayTransitionAsync(TransitionRequest request, CancellationToken ct) => _transitions.PlayTransitionAsync(request, ct);
     public Task StartEffectAsync(EffectRequest request, CancellationToken ct) => _effects.StartEffectAsync(request, ct);
     public Task StopEffectAsync(string instanceId, CancellationToken ct) => _effects.StopEffectAsync(instanceId, ct);
     public Task StartTypewriter(string widgetInstanceId, string speaker, string text, CancellationToken ct) => _typewriter.StartTypewriter(widgetInstanceId, speaker, text, ct);

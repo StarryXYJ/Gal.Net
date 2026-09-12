@@ -66,7 +66,6 @@ public class SceneStateTests
         Assert.That(scene.Layers, Is.Empty);
         Assert.That(scene.ActiveControlIds, Is.Empty);
         Assert.That(scene.ActiveEffectIds, Is.Empty);
-        Assert.That(scene.ActiveTransition, Is.Null);
     }
 
     [Test]
@@ -80,13 +79,11 @@ public class SceneStateTests
                 new Layer { Id = "alice", AssetId = "alice_smile", Z = 10 }
             },
             ActiveControlIds = { "default_dialogue" },
-            ActiveEffectIds = { "shake" },
-            ActiveTransition = "fade"
+            ActiveEffectIds = { "shake" }
         };
 
         Assert.That(scene.Layers, Has.Count.EqualTo(2));
         Assert.That(scene.ActiveControlIds[0], Is.EqualTo("default_dialogue"));
         Assert.That(scene.ActiveEffectIds[0], Is.EqualTo("shake"));
-        Assert.That(scene.ActiveTransition, Is.EqualTo("fade"));
     }
 }

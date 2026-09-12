@@ -1,7 +1,7 @@
 using System.Text.Json;
 using GalNet.Core.Scene;
 using GalNet.Core.View;
-using GalNet.Game.Controls;
+using GalNet.Game.Controls.Scene;
 
 namespace GalNet.Avalonia.GameView.Presentation;
 

@@ -291,32 +291,6 @@ public class DefaultGameView : Grid, IGameView, IDisposable
         _videoController.Stop();
     }
 
-    // ── ITransitionView ──
-
-    Task ITransitionView.PlayTransitionAsync(TransitionRequest request, CancellationToken ct) =>
-        RunOnUiThreadAsync(() =>
-        {
-            switch (request.Id.Trim().ToLowerInvariant())
-            {
-                case "black":
-                case "blackout":
-                case "transition.black":
-                case "white":
-                case "whiteout":
-                case "transition.white":
-                case "cross":
-                case "crossfade":
-                case "dissolve":
-                case "transition.cross":
-                    Log.Debug("Transition '{Id}' is recognized but has no editor-preview animation yet", request.Id);
-                    break;
-                default:
-                    Log.Information("Transition '{Id}' has no editor-preview implementation", request.Id);
-                    break;
-            }
-            return Task.CompletedTask;
-        }, ct);
-
     // ── IEffectView ──
 
     Task IEffectView.StartEffectAsync(EffectRequest request, CancellationToken ct) =>

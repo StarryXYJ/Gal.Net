@@ -32,7 +32,6 @@ try
         consoleServices,
         consoleServices,
         consoleServices,
-        consoleServices,
         consoleServices);
 
     var runtime = new GameRuntime(null, content.Graph.RootNodeId, settings, variables);

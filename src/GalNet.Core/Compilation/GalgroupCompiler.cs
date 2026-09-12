@@ -69,6 +69,7 @@ public static class GalgroupCompiler
     private static Entry.Entry CreateEntry(GroupEntryDocument source, int index)
     {
         if (string.IsNullOrWhiteSpace(source.Type)) throw new InvalidDataException("Source entry type is required.");
+        RejectLegacyLayerTransitionParameters(source);
         try
         {
             return EntryRegistry.Create(
@@ -81,6 +82,14 @@ public static class GalgroupCompiler
         {
             throw new InvalidDataException($"Invalid source entry '{source.Id}' ({source.Type}): {exception.Message}", exception);
         }
+    }
+
+    private static void RejectLegacyLayerTransitionParameters(GroupEntryDocument source)
+    {
+        if (source.Type is not (ShowLayerEntry.TypeId or HideLayerEntry.TypeId)) return;
+        var legacy = source.Parameters.Keys.FirstOrDefault(name => name is "transitionId" or "transitionDuration" or "transitionBlocking" or "transitionParameters");
+        if (legacy is not null)
+            throw new InvalidDataException($"'{source.Type}.{legacy}' is no longer supported. Use a transition.* entry, which compiles into Layer and animation primitives.");
     }
 
     private static GroupEntryDocument SerializeEntry(string generatedId, PrimitiveEntry entry)

@@ -48,7 +48,7 @@ public static class EntryRegistry
             Define(HideDialogueEntry.TypeId, "Dialogue", () => new HideDialogueEntry(), HideDialogueEntry.ParameterTypes),
             Define(ShowLayerEntry.TypeId, "Layer", () => new ShowLayerEntry(), ShowLayerEntry.ParameterTypes, ShowLayerEntry.DefaultValues, ShowLayerEntry.ParameterOptions),
             Define(ShowColorLayerEntry.TypeId, "Layer", () => new ShowColorLayerEntry(), ShowColorLayerEntry.ParameterTypes, ShowColorLayerEntry.DefaultValues),
-            Define(HideLayerEntry.TypeId, "Layer", () => new HideLayerEntry(), HideLayerEntry.ParameterTypes, HideLayerEntry.DefaultValues, HideLayerEntry.ParameterOptions),
+            Define(HideLayerEntry.TypeId, "Layer", () => new HideLayerEntry(), HideLayerEntry.ParameterTypes),
             Define(MoveLayerEntry.TypeId, "Layer", () => new MoveLayerEntry(), MoveLayerEntry.ParameterTypes, MoveLayerEntry.DefaultValues),
             Define(ReplaceLayerEntry.TypeId, "Layer", () => new ReplaceLayerEntry(), ReplaceLayerEntry.ParameterTypes),
             Define(AnimateEntry.TypeId, "Animation", () => new AnimateEntry(), AnimateEntry.ParameterTypes, AnimateEntry.DefaultValues, AnimateEntry.ParameterOptions),

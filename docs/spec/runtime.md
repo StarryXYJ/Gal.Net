@@ -56,7 +56,7 @@ public void RestoreFrom(GameSnapshot data);
 - `ITypewriterView`：开始与跳过文本逐字显示；
 - `IInteractionView`：等待玩家推进与选择；
 - `ILayerView`：显示、移动、替换、隐藏及动画图层；
-- `IAudioView`、`IVideoView`、`ITransitionView`、`IEffectView` 与 `IControlView`：其他可见/可听请求。
+- `IAudioView`、`IVideoView`、`IEffectView` 与 `IControlView`：其他可见/可听请求。转场是 `transition.*` 作者条目，在 Runtime 前已展开为这些原语。
 
 `CompositeGameView` 可把各端口组合为一个 View。`NullGameView` 立即完成异步请求，适用于测试与无界面宿主；实际 Avalonia 游戏页由宿主实现端口并负责 UI 线程切换。
 

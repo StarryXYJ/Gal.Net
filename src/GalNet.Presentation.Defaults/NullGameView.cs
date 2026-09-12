@@ -34,7 +34,6 @@ public class NullGameView : IGameView
     public virtual void ConfigureAudioQueue(string channel, string onEnd, string onEmpty) { }
     public virtual void PlayVideo(string assetId) { }
     public virtual void StopVideo() { }
-    public virtual Task PlayTransitionAsync(TransitionRequest request, CancellationToken ct) => Task.CompletedTask;
     public virtual Task StartEffectAsync(EffectRequest request, CancellationToken ct) => Task.CompletedTask;
     public virtual Task StopEffectAsync(string instanceId, CancellationToken ct) => Task.CompletedTask;
     public virtual Task StartTypewriter(string widgetInstanceId, string speaker, string text, CancellationToken ct) => Task.CompletedTask;

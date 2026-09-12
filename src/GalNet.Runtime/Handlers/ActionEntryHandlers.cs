@@ -10,12 +10,11 @@ namespace GalNet.Runtime.Handlers;
 public sealed class ShowLayerHandler : EntryHandler
 {
     public override string EntryType => ShowLayerEntry.TypeId;
-    public override async Task ExecuteAsync(EntryContext context, IGameView view, TimeProvider timeProvider, CancellationToken ct)
+    public override Task ExecuteAsync(EntryContext context, IGameView view, TimeProvider timeProvider, CancellationToken ct)
     {
         var id = context.GetString("handleId");
         var asset = context.GetString("assetId");
         var layer = context.Runtime.SceneInstances.TryGet<Layer>(id, out var existing) ? existing : null;
-        var previousAsset = layer?.AssetId;
         layer ??= context.GetBool("transient")
             ? context.Runtime.SceneInstances.GetOrAddTransient(id, handleId => new Layer { Id = handleId })
             : context.Runtime.SceneInstances.GetOrAdd(id, handleId => new Layer { Id = handleId });
@@ -32,7 +31,7 @@ public sealed class ShowLayerHandler : EntryHandler
         layer.Visible = true;
 
         view.ShowLayer(new LayerRenderRequest(layer.Id, layer.AssetId, layer.Transform.Clone(), layer.Z, layer.DisplayMode, layer.Opacity, layer.Color, layer.Flipbook?.Clone()));
-        await PresentationRequests.PlayTransitionAsync(context, view, previousAsset, asset, ct);
+        return Task.CompletedTask;
     }
 
     private static FlipbookDefinition? ReadFlipbook(string raw)
@@ -74,17 +73,17 @@ public sealed class ShowColorLayerHandler : EntryHandler
 public sealed class HideLayerHandler : EntryHandler
 {
     public override string EntryType => HideLayerEntry.TypeId;
-    public override async Task ExecuteAsync(EntryContext context, IGameView view, TimeProvider timeProvider, CancellationToken ct)
+    public override Task ExecuteAsync(EntryContext context, IGameView view, TimeProvider timeProvider, CancellationToken ct)
     {
         var id = context.GetString("handleId");
-        if (!context.Runtime.SceneInstances.Remove<Layer>(id, out var removed))
+        if (!context.Runtime.SceneInstances.Remove<Layer>(id, out _))
         {
             GameLog.Logger.Warning("Layer hide ignored because handle '{HandleId}' is not active.", id);
-            return;
+            return Task.CompletedTask;
         }
 
-        await PresentationRequests.PlayTransitionAsync(context, view, removed!.AssetId, null, ct);
         view.HideLayer(id);
+        return Task.CompletedTask;
     }
 }
 
@@ -797,40 +796,5 @@ public sealed class SetVariableHandler : EntryHandler
         }
 
         return Task.CompletedTask;
-    }
-}
-
-internal static class PresentationRequests
-{
-    public static async Task PlayTransitionAsync(EntryContext context, IGameView view, string? fromImageId, string? toImageId, CancellationToken ct)
-    {
-        var id = context.GetString("transitionId");
-        if (string.IsNullOrWhiteSpace(id)) return;
-
-        var request = new TransitionRequest(
-            id,
-            fromImageId,
-            toImageId,
-            TimeSpan.FromSeconds(Math.Max(0, context.GetFloat("transitionDuration", 0.5f))),
-            context.GetBool("transitionBlocking"),
-            context.GetString("transitionParameters"));
-
-        context.Runtime.SceneState.ActiveTransition = request.Id;
-        await AwaitIfBlockingAsync(view.PlayTransitionAsync(request, ct), request.IsBlocking);
-    }
-
-    public static async Task AwaitIfBlockingAsync(Task task, bool isBlocking)
-    {
-        if (isBlocking)
-        {
-            await task;
-            return;
-        }
-
-        _ = task.ContinueWith(
-            completed => Serilog.Log.ForContext("LogChannel", "Game").Error(completed.Exception, "Non-blocking presentation operation failed"),
-            CancellationToken.None,
-            TaskContinuationOptions.OnlyOnFaulted,
-            TaskScheduler.Default);
     }
 }

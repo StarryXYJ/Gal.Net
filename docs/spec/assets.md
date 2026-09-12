@@ -206,8 +206,7 @@ GalNet.Assets/             ← 实现
 SceneState (可序列化的状态数据)
 ├── Layers (图层列表：图片资源、位置等)
 ├── ActiveControlIds (活跃控件 ID 列表)
-├── ActiveEffectIds (活跃特效 ID 列表)
-└── ActiveTransition (当前活跃转场)
+└── ActiveEffectIds (活跃特效 ID 列表)
 ```
 
 SceneState 持有场景运行中需要持久化的数据字段（图层信息、控件/特效状态等），通过 `SaveManager` 序列化为存档。

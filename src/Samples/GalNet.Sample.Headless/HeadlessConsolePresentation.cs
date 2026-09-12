@@ -12,7 +12,6 @@ internal sealed class ConsolePresentation :
     IControlView,
     IAudioView,
     IVideoView,
-    ITransitionView,
     IEffectView,
     ITypewriterView,
     IInteractionView
@@ -55,12 +54,6 @@ internal sealed class ConsolePresentation :
     public void ConfigureAudioQueue(string channel, string onEnd, string onEmpty) { }
     public void PlayVideo(string assetId) => Console.WriteLine($"[Video] play {assetId}");
     public void StopVideo() => Console.WriteLine("[Video] stop");
-    public Task PlayTransitionAsync(TransitionRequest request, CancellationToken ct)
-    {
-        Console.WriteLine($"[Transition] {request.Id}: {request.FromImageId} -> {request.ToImageId}, {request.Duration.TotalSeconds}s");
-        return Task.CompletedTask;
-    }
-
     public Task StartEffectAsync(EffectRequest request, CancellationToken ct)
     {
         Console.WriteLine($"[Effect] start {request.Id} ({request.InstanceId})");

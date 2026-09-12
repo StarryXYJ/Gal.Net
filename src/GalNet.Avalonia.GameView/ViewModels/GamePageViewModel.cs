@@ -4,6 +4,7 @@ using Avalonia.Media;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Game.Controls;
+using GalNet.Game.Controls.Scene;
 using GalNet.Core.Scene;
 
 namespace GalNet.Avalonia.GameView.ViewModels;
@@ -28,8 +29,6 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isDialogueVisible;
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isChoiceVisible;
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isNvlMode;
-    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private double _transitionOpacity;
-    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private IBrush _transitionBrush = Brushes.Black;
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private double _textSpeed = 30d;
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private string _statusMessage = string.Empty;
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isUiHidden;
@@ -153,7 +152,6 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         Layers.Clear();
         SceneVisuals.Clear();
         _effectAnimations.Clear();
-        TransitionOpacity = 0;
         IsDialogueVisible = false;
         IsChoiceVisible = false;
         NvlLines.Clear();
@@ -245,15 +243,6 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         binding.Value = value;
         binding.Apply(value);
         return true;
-    }
-
-    public async Task PlayTransitionAsync(IBrush brush, TimeSpan duration, CancellationToken cancellationToken, double peakOpacity = 1d)
-    {
-        TransitionBrush = brush;
-        TransitionOpacity = peakOpacity;
-        await Task.Delay(TimeSpan.FromTicks(duration.Ticks / 2), cancellationToken);
-        TransitionOpacity = 0;
-        await Task.Delay(TimeSpan.FromTicks(duration.Ticks / 2), cancellationToken);
     }
 
     private async Task<int> AwaitChoiceAsync(TaskCompletionSource<int> choice, CancellationToken cancellationToken)

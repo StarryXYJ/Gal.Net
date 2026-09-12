@@ -10,7 +10,6 @@ public interface IGameView :
     IControlView,
     IAudioView,
     IVideoView,
-    ITransitionView,
     IEffectView,
     ITypewriterView,
     IInteractionView

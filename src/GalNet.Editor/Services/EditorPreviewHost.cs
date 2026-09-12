@@ -246,7 +246,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
         if (_engine is not null) return;
         _pageView = new AvaloniaGamePageView(_gameplay, _page, new EditorPreviewLayerFactory(_context.AssetRoot));
         var view = new CompositeGameView(
-            _pageView, _pageView, _pageView, _fallback, _fallback, _fallback, _fallback, _pageView, _pageView);
+            _pageView, _pageView, _pageView, _fallback, _fallback, _fallback, _pageView, _pageView);
         var content = await _context.Content.LoadAsync(cancellationToken);
         var runtime = new GameRuntime(null, content.Graph.RootNodeId, new SettingsContainer(), _context.Variables);
         _engine = new GameEngine(

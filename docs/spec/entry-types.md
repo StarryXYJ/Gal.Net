@@ -42,10 +42,6 @@
 | transform | object? | `{ x, y, rotationDegrees, scaleX, scaleY }`；原点为游戏画布中心，缩放必须大于 0 |
 | z | float? | 默认 0（背景），立绘建议 5~20 |
 | displayMode | select? | `Native`、`Tile`、`Fill`、`Uniform`、`UniformToFill`，默认 `Native` |
-| transitionId | string? | 交给宿主呈现层解析的过渡效果 ID；留空则不播放过渡 |
-| transitionDuration | float? | 过渡持续时间（秒），默认 0.5 |
-| transitionBlocking | bool? | 是否等待过渡结束，默认 `false` |
-| transitionParameters | MultilineText? | 传给过渡实现的自定义参数 |
 
 > Handler: `ShowLayerHandler`（非阻塞）。创建或更新句柄对应的 Layer，再调用 `ILayerView.ShowLayer()`。
 
@@ -68,12 +64,8 @@
 | 参数 | 类型 | 说明 |
 |---|---|---|
 | handleId | SceneHandle | 要移除的 Layer 实例句柄 |
-| transitionId | string? | 交给宿主呈现层解析的过渡效果 ID；留空则不播放过渡 |
-| transitionDuration | float? | 过渡持续时间（秒），默认 0.5 |
-| transitionBlocking | bool? | 是否等待过渡结束，默认 `false` |
-| transitionParameters | MultilineText? | 传给过渡实现的自定义参数 |
 
-> Handler: `HideLayerHandler`（非阻塞）。从动态实例管理器和场景状态中删除 Layer；句柄随即失效。后续使用失效句柄的操作会记录诊断并安全跳过。
+> Handler: `HideLayerHandler`（非阻塞）。从动态实例管理器和场景状态中删除 Layer；句柄随即失效。后续使用失效句柄的操作会记录诊断并安全跳过。转场只能使用 `transition.*` 非原语，由编译器展开为 Layer、effect 和动画原语。
 
 ### layer.move
 

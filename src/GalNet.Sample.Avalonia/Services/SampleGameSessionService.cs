@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Avalonia.GameView;
@@ -264,13 +263,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         _pageView = new AvaloniaGamePageView(_gameplay, _page, layerFactory);
         _media = new SampleMediaViews(_gameplay);
         _effects = new AvaloniaEffectRuntime(_gameplay, layerFactory);
-        var transitions = new AvaloniaTransitionView(new Dictionary<string, Func<TransitionRequest, CancellationToken, Task>>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["black"] = (request, ct) => InvokeOnUiAsync(() => _gameplay.PlayTransitionAsync(Brushes.Black, request.Duration, ct)),
-            ["white"] = (request, ct) => InvokeOnUiAsync(() => _gameplay.PlayTransitionAsync(Brushes.White, request.Duration, ct)),
-            ["cross"] = (request, ct) => InvokeOnUiAsync(() => _gameplay.PlayTransitionAsync(Brushes.Black, request.Duration, ct, 0.35d))
-        });
-        var gameView = new CompositeGameView(_pageView, _pageView, _pageView, _media, _media, transitions, _effects, _pageView, _pageView);
+        var gameView = new CompositeGameView(_pageView, _pageView, _pageView, _media, _media, _effects, _pageView, _pageView);
         var content = await _contentProvider.LoadAsync(cancellationToken);
         var settings = new SettingsContainer();
         settings.Set(_settings);
@@ -303,18 +296,6 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             {
                 AnimationValues = effect.AnimationValues
             }, cancellationToken);
-    }
-
-    private static Task InvokeOnUiAsync(Func<Task> action)
-    {
-        if (Dispatcher.UIThread.CheckAccess()) return action();
-        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        Dispatcher.UIThread.Post(async () =>
-        {
-            try { await action(); completion.TrySetResult(); }
-            catch (Exception exception) { completion.TrySetException(exception); }
-        });
-        return completion.Task;
     }
 
     private static void OnInteractionObserved(string interaction) =>

@@ -89,7 +89,7 @@ public static class GalgroupLoader
     private static IReadOnlyDictionary<string, string> CompileParameters(GroupEntryDocument source)
     {
         if (source.Type == ShowLayerEntry.TypeId) return CompileLayerShow(source.Parameters);
-        if (source.Type == HideLayerEntry.TypeId) return Rename(source.Parameters, ("handleId", "handleId"));
+        if (source.Type == HideLayerEntry.TypeId) return CompileLayerHide(source.Parameters);
         if (source.Type == MoveLayerEntry.TypeId) return CompileLayerMove(source.Parameters);
         if (source.Type == ReplaceLayerEntry.TypeId) return Rename(source.Parameters, ("handleId", "handleId"), ("assetId", "assetId"));
         return source.Parameters.ToDictionary(pair => pair.Key, pair => ToValue(pair.Value), StringComparer.Ordinal);
@@ -97,10 +97,9 @@ public static class GalgroupLoader
 
     private static IReadOnlyDictionary<string, string> CompileLayerShow(IReadOnlyDictionary<string, JsonElement> parameters)
     {
+        RejectLegacyLayerTransitionParameters(ShowLayerEntry.TypeId, parameters);
         var compiled = Rename(parameters,
-            ("handleId", "handleId"), ("assetId", "assetId"), ("flipbook", "flipbook"), ("z", "z"), ("opacity", "opacity"), ("displayMode", "displayMode"),
-            ("transitionId", "transitionId"), ("transitionDuration", "transitionDuration"), ("transitionBlocking", "transitionBlocking"),
-            ("transitionParameters", "transitionParameters"));
+            ("handleId", "handleId"), ("assetId", "assetId"), ("flipbook", "flipbook"), ("z", "z"), ("opacity", "opacity"), ("displayMode", "displayMode"));
         compiled["transform"] = ReadTransform(parameters);
         Require(compiled, "handleId");
         Require(compiled, "assetId");
@@ -108,6 +107,19 @@ public static class GalgroupLoader
             !Enum.TryParse<LayerDisplayMode>(displayMode, true, out _))
             throw new InvalidDataException($"Unknown layer displayMode '{displayMode}'.");
         return compiled;
+    }
+
+    private static IReadOnlyDictionary<string, string> CompileLayerHide(IReadOnlyDictionary<string, JsonElement> parameters)
+    {
+        RejectLegacyLayerTransitionParameters(HideLayerEntry.TypeId, parameters);
+        return Rename(parameters, ("handleId", "handleId"));
+    }
+
+    private static void RejectLegacyLayerTransitionParameters(string entryType, IReadOnlyDictionary<string, JsonElement> parameters)
+    {
+        var legacy = parameters.Keys.FirstOrDefault(name => name is "transitionId" or "transitionDuration" or "transitionBlocking" or "transitionParameters");
+        if (legacy is not null)
+            throw new InvalidDataException($"'{entryType}.{legacy}' is not valid in compiled content. Compile a transition.* entry instead.");
     }
 
     private static IReadOnlyDictionary<string, string> CompileLayerMove(IReadOnlyDictionary<string, JsonElement> parameters)

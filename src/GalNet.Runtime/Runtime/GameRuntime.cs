@@ -174,7 +174,6 @@ public sealed class GameRuntime : IGameRuntime
             var target = SceneState.Layers.FirstOrDefault(layer => layer.Id == effect.TargetHandleId);
             if (target is not null) target.EffectInstanceIds.Add(effect.InstanceId);
         }
-        SceneState.ActiveTransition = snapshot.SceneState.ActiveTransition;
         SceneInstances.Rebuild(SceneState.Layers.Cast<ISceneInstance>().Concat(SceneState.ActiveEffects.Select(CreateEffectInstance)));
     }
 

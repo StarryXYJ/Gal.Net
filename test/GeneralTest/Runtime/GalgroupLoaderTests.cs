@@ -73,6 +73,28 @@ public class GalgroupLoaderTests
             """), Throws.TypeOf<InvalidDataException>().With.Message.Contains("compiled"));
     }
 
+    [TestCase(ShowLayerEntry.TypeId)]
+    [TestCase(HideLayerEntry.TypeId)]
+    public void Load_rejects_legacy_layer_transition_parameters(string entryType)
+    {
+        var parameters = new Dictionary<string, JsonElement>
+        {
+            ["handleId"] = JsonSerializer.SerializeToElement("layer"),
+            ["transitionId"] = JsonSerializer.SerializeToElement("black")
+        };
+        if (entryType == ShowLayerEntry.TypeId)
+            parameters["assetId"] = JsonSerializer.SerializeToElement("background.png");
+        var document = new GroupDocument
+        {
+            Kind = GroupDocumentKind.Compiled,
+            Entries = [new GroupEntryDocument { Id = "legacy-transition", Type = entryType, Parameters = parameters }]
+        };
+        var group = new Group { Id = "test" };
+
+        Assert.That(() => GalgroupLoader.LoadIntoGroupFromContent(group, JsonSerializer.Serialize(document)),
+            Throws.TypeOf<InvalidDataException>().With.Message.Contains("transitionId"));
+    }
+
     [Test]
     public void Compile_ExpandsCrossFadeIntoPrimitiveAnimationPlan()
     {

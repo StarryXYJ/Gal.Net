@@ -4,7 +4,7 @@ using Avalonia.Threading;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Scene;
 using GalNet.Core.View;
-using GalNet.Game.Controls;
+using GalNet.Game.Controls.Scene;
 
 namespace GalNet.Avalonia.GameView.Presentation;
 

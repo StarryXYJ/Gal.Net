@@ -174,7 +174,7 @@ public class GameEngineIntegrationTests
     }
 
     [Test]
-    public async Task Layer_Transition_Should_Update_SceneState_And_Use_Injected_Facade()
+    public async Task Layer_show_updates_scene_state_without_a_transition_presentation_request()
     {
         var graph = new GalNet.Core.Graph.Graph
         {
@@ -187,17 +187,13 @@ public class GameEngineIntegrationTests
                     Entries =
                     {
                         Create(ShowLayerEntry.TypeId, 1,
-                            ("handleId", "background"), ("assetId", "school"), ("transform", "{}"),
-                            ("transitionId", "custom.fade"), ("transitionDuration", "1.25"),
-                            ("transitionBlocking", "true"), ("transitionParameters", "{\"curve\":\"easeIn\"}"))
+                            ("handleId", "background"), ("assetId", "school"), ("transform", "{}"))
                     }
                 }
             }
         };
 
-        var services = new RecordingGameView();
-        IGameView facade = new CompositeGameView(services, services, services, services, services, services, services, services, services);
-        var engine = new GameEngine(graph, facade);
+        var engine = new GameEngine(graph, new NullGameView());
 
         await engine.StepAsync();
 
@@ -205,8 +201,6 @@ public class GameEngineIntegrationTests
         Assert.That(layer.Id, Is.EqualTo("background"));
         Assert.That(layer.AssetId, Is.EqualTo("school"));
         Assert.That(engine.Runtime.SceneInstances.TryGet<GalNet.Core.Scene.Layer>("background", out _), Is.True);
-        Assert.That(services.LastTransition, Is.EqualTo(new TransitionRequest(
-            "custom.fade", null, "school", TimeSpan.FromSeconds(1.25), true, "{\"curve\":\"easeIn\"}")));
     }
 
     [Test]
@@ -510,16 +504,6 @@ public class GameEngineIntegrationTests
 
     private static GalNet.Core.Entry.Entry Create(string type, int id, params (string Key, string Value)[] values) =>
         EntryRegistry.Create(type, id, values: values.ToDictionary(x => x.Key, x => x.Value));
-
-    private sealed class RecordingGameView : NullGameView
-    {
-        public TransitionRequest? LastTransition { get; private set; }
-        public override Task PlayTransitionAsync(TransitionRequest request, CancellationToken ct)
-        {
-            LastTransition = request;
-            return Task.CompletedTask;
-        }
-    }
 
     private sealed class LoopRestoringView : NullGameView
     {

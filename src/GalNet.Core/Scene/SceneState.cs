@@ -19,7 +19,4 @@ public sealed class SceneState
 
     /// <summary>Looping primitive animations that are active but do not prevent a stable save.</summary>
     public List<ActiveAnimationState> ActiveAnimations { get; init; } = [];
-
-    /// <summary>当前活跃的转场名称（null = 无）</summary>
-    public string? ActiveTransition { get; set; }
 }

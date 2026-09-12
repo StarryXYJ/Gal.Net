@@ -5,7 +5,7 @@ using System.Diagnostics;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Core.View;
 using GalNet.Core.Scene;
-using GalNet.Game.Controls;
+using GalNet.Game.Controls.Scene;
 using GalNet.Avalonia.GameView.ViewModels;
 
 namespace GalNet.Avalonia.GameView.Presentation;
