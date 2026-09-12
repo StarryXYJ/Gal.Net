@@ -105,7 +105,9 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
                 var sampleProgress = request.LoopMode == AnimationLoopMode.PingPong && progress > 1 ? 2 - progress : progress;
                 await SetAnimationValueAsync(request, active, Lerp(from, request.To, request.Curve.Evaluate((float)sampleProgress)));
                 if (progress >= cycleLength) return AnimationOutcome.Completed;
-                await Task.WhenAny(Task.Delay(TimeSpan.FromMilliseconds(16), ct), active.Outcome.Task);
+                // Keep the sampler ahead of the compositor: a 16ms task timer plus dispatcher
+                // latency commonly turned a nominal 60fps movement into a 30fps cadence.
+                await Task.WhenAny(Task.Delay(TimeSpan.FromMilliseconds(8), ct), active.Outcome.Task);
             }
         }
         finally
@@ -143,13 +145,35 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
         try
         {
             var started = Stopwatch.StartNew();
-            var tracks = plan.Tracks.Select(track => RunPlanTrackAsync(active, track, started, ct)).ToArray();
-            var duration = Task.Delay(TimeSpan.FromSeconds(plan.DurationFrames / (double)plan.FrameRate), ct);
-            await Task.WhenAny(duration, active.Completion.Task);
-            var outcomes = await Task.WhenAll(tracks);
-            var outcome = active.Completion.Task.IsCompleted
-                ? await active.Completion.Task
-                : AnimationOutcome.Completed;
+            var tracks = RegisterPlanTracks(active, plan.Tracks);
+            AnimationOutcome outcome;
+            while (true)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (active.Completion.Task.IsCompleted)
+                {
+                    outcome = await active.Completion.Task;
+                    if (outcome == AnimationOutcome.Skipped)
+                        await ApplyPlanFrameAsync(tracks, plan.DurationFrames);
+                    break;
+                }
+
+                var frame = Math.Min(plan.DurationFrames, started.Elapsed.TotalSeconds * plan.FrameRate);
+                await ApplyPlanFrameAsync(tracks, frame);
+                if (frame >= plan.DurationFrames)
+                {
+                    outcome = AnimationOutcome.Completed;
+                    break;
+                }
+
+                // A Plan samples all tracks from one clock and submits them in one UI dispatch.
+                // The former per-track timers visibly jittered multi-track transitions.
+                await Task.WhenAny(Task.Delay(TimeSpan.FromMilliseconds(8), ct), active.Completion.Task);
+            }
+
+            var outcomes = tracks.Select(track => track.Completion.Task.IsCompleted
+                ? track.Completion.Task.GetAwaiter().GetResult()
+                : outcome).ToArray();
             return new AnimationPlanPlayResult
             {
                 Outcome = outcome,
@@ -159,16 +183,7 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
         }
         finally
         {
-            lock (_animationGate)
-            {
-                _activePlans.Remove(active);
-                if (_activePlaybacks.TryGetValue(plan.PlaybackHandleId, out var playback) && ReferenceEquals(playback, active)) _activePlaybacks.Remove(plan.PlaybackHandleId);
-                foreach (var track in active.Tracks)
-                {
-                    if (_activePlanTracks.TryGetValue(track.Key, out var current) && ReferenceEquals(current, track)) _activePlanTracks.Remove(track.Key);
-                    _activeAdditivePlanTracks.Remove(track);
-                }
-            }
+            await CleanupPlanTracksAsync(active);
         }
     }
 
@@ -258,70 +273,68 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
 
     private static double Lerp(double from, double to, double amount) => from + ((to - from) * amount);
 
-    private async Task<AnimationOutcome> RunPlanTrackAsync(ActivePlan plan, AnimationTrackDefinition track, Stopwatch clock, CancellationToken ct)
+    private IReadOnlyList<ActivePlanTrack> RegisterPlanTracks(ActivePlan plan, IEnumerable<AnimationTrackDefinition> tracks)
     {
-        var activeTrack = new ActivePlanTrack(track);
+        var registered = new List<ActivePlanTrack>();
         lock (_animationGate)
         {
-            if (track.BlendMode == AnimationBlendMode.Additive)
-                _activeAdditivePlanTracks.Add(activeTrack);
-            else
+            foreach (var track in tracks)
             {
-                if (_activeAnimations.Remove(activeTrack.Key, out var animation)) animation.Complete(AnimationOutcome.Replaced);
-                if (_activePlanTracks.Remove(activeTrack.Key, out var replaced)) replaced.Complete(AnimationOutcome.Replaced);
-                _activePlanTracks.Add(activeTrack.Key, activeTrack);
-            }
-            plan.Tracks.Add(activeTrack);
-        }
-
-        try
-        {
-            while (true)
-            {
-                ct.ThrowIfCancellationRequested();
-                if (activeTrack.Completion.Task.IsCompleted) return await activeTrack.Completion.Task;
-                if (plan.Completion.Task.IsCompleted)
+                var activeTrack = new ActivePlanTrack(track);
+                if (track.BlendMode == AnimationBlendMode.Additive)
+                    _activeAdditivePlanTracks.Add(activeTrack);
+                else
                 {
-                    var outcome = await plan.Completion.Task;
-                    if (outcome == AnimationOutcome.Skipped)
-                        await SetAnimationValueAsync(activeTrack, AnimationTrackSampler.Evaluate(track, plan.Plan.DurationFrames));
-                    return outcome;
+                    if (_activeAnimations.Remove(activeTrack.Key, out var animation)) animation.Complete(AnimationOutcome.Replaced);
+                    if (_activePlanTracks.Remove(activeTrack.Key, out var replaced)) replaced.Complete(AnimationOutcome.Replaced);
+                    _activePlanTracks.Add(activeTrack.Key, activeTrack);
                 }
-
-                var frame = Math.Min(plan.Plan.DurationFrames, clock.Elapsed.TotalSeconds * plan.Plan.FrameRate);
-                await SetAnimationValueAsync(activeTrack, AnimationTrackSampler.Evaluate(track, frame));
-                if (frame >= plan.Plan.DurationFrames) return AnimationOutcome.Completed;
-                await Task.WhenAny(Task.Delay(TimeSpan.FromMilliseconds(16), ct), activeTrack.Completion.Task, plan.Completion.Task);
+                plan.Tracks.Add(activeTrack);
+                registered.Add(activeTrack);
             }
         }
-        finally
+        return registered;
+    }
+
+    private Task ApplyPlanFrameAsync(IReadOnlyList<ActivePlanTrack> tracks, double frame) =>
+        OnUiAsync(() =>
         {
-            if (track.BlendMode == AnimationBlendMode.Additive)
-                await OnUiAsync(() =>
-                {
-                    if (plan.Plan.LoopMode == AnimationLoopMode.Loop)
-                        RemoveAdditiveValue(activeTrack, track.HandleId, track.Property);
-                    else
-                        BakeAdditiveValue(activeTrack, track.HandleId, track.Property);
-                    return Task.CompletedTask;
-                });
-            lock (_animationGate)
+            foreach (var activeTrack in tracks)
             {
-                if (_activePlanTracks.TryGetValue(activeTrack.Key, out var current) && ReferenceEquals(current, activeTrack)) _activePlanTracks.Remove(activeTrack.Key);
-                _activeAdditivePlanTracks.Remove(activeTrack);
+                if (activeTrack.Completion.Task.IsCompleted) continue;
+                var value = AnimationTrackSampler.Evaluate(activeTrack.Track, frame);
+                if (activeTrack.Track.BlendMode == AnimationBlendMode.Additive)
+                    ApplyAdditiveValue(activeTrack, activeTrack.Track.HandleId, activeTrack.Track.Property, value);
+                else
+                    ApplyReplaceValue(activeTrack.Track.HandleId, activeTrack.Track.Property, value);
+            }
+            return Task.CompletedTask;
+        });
+
+    private async Task CleanupPlanTracksAsync(ActivePlan plan)
+    {
+        await OnUiAsync(() =>
+        {
+            foreach (var activeTrack in plan.Tracks.Where(track => track.Track.BlendMode == AnimationBlendMode.Additive))
+            {
+                if (plan.Plan.LoopMode == AnimationLoopMode.Loop)
+                    RemoveAdditiveValue(activeTrack, activeTrack.Track.HandleId, activeTrack.Track.Property);
+                else
+                    BakeAdditiveValue(activeTrack, activeTrack.Track.HandleId, activeTrack.Track.Property);
+            }
+            return Task.CompletedTask;
+        });
+        lock (_animationGate)
+        {
+            _activePlans.Remove(plan);
+            if (_activePlaybacks.TryGetValue(plan.Plan.PlaybackHandleId, out var playback) && ReferenceEquals(playback, plan)) _activePlaybacks.Remove(plan.Plan.PlaybackHandleId);
+            foreach (var track in plan.Tracks)
+            {
+                if (_activePlanTracks.TryGetValue(track.Key, out var current) && ReferenceEquals(current, track)) _activePlanTracks.Remove(track.Key);
+                _activeAdditivePlanTracks.Remove(track);
             }
         }
     }
-
-    private Task SetAnimationValueAsync(ActivePlanTrack track, double value) =>
-        OnUiAsync(() =>
-        {
-            if (track.Track.BlendMode == AnimationBlendMode.Additive)
-                ApplyAdditiveValue(track, track.Track.HandleId, track.Track.Property, value);
-            else
-                ApplyReplaceValue(track.Track.HandleId, track.Track.Property, value);
-            return Task.CompletedTask;
-        });
 
     private void ApplyReplaceValue(string handleId, string property, double value)
     {

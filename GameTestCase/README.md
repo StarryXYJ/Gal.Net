@@ -23,13 +23,13 @@ Before the first choice, the normal portrait runs one blocking, skippable keyfra
 interpolation. It then starts a non-blocking looping rotation plus faster additive PingPong position
 and opacity loops on the same portrait; the relative loops are composed over the ordinary rotation
 without replacing it. After five dialogue lines, `animation.stop` with `AfterIteration` lets all
-active loops complete their return to the base pose. The second choice runs a non-blocking,
+active loops complete their return to the base pose. The second choice runs a blocking,
 skippable 48-frame blinds Plan: it shows the Filled background through a layer-attached
 `mask.blinds` Effect, animates that Effect's `progress`, then stops the mask and hides the old
 background. This keeps the shared fixture useful for validating timeline events and generic
 animatable-instance property tracks in both hosts.
 
-The first choice starts a non-blocking, skippable 54-frame black-field fade: a transient
+The first choice starts a blocking, skippable 54-frame black-field fade: a transient
 pure-black Overlay covers the opening background, swaps to tiled `bg.png` at full black,
 then fades away. The second choice keeps the comparison background in `Fill` mode and
 uses the blinds Plan, then starts the handle-controlled `particle.emitter` Overlay with

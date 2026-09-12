@@ -313,12 +313,12 @@ public sealed class PlayAnimationPlanHandler : EntryHandler
                     await events.StartAsync(iterationPlan);
                     if (!ValidateTracks(context.Runtime, iterationPlan))
                     {
-                        events.Complete(iterationPlan, AnimationOutcome.Replaced);
+                        await events.CompleteAsync(iterationPlan, AnimationOutcome.Replaced);
                         return;
                     }
 
                     var result = await view.PlayAnimationPlanAsync(iterationPlan, ct);
-                    events.Complete(iterationPlan, result.Outcome);
+                    await events.CompleteAsync(iterationPlan, result.Outcome);
                     CommitStableTracks(context.Runtime, iterationPlan, result);
                     scope?.Cleanup(context.Runtime, view);
 
@@ -508,14 +508,14 @@ public sealed class PlayAnimationPlanHandler : EntryHandler
     private sealed class TimelineEventDispatcher(EntryContext context, TimeProvider timeProvider, CancellationToken outerCancellation)
     {
         private readonly CancellationTokenSource _cancellation = CancellationTokenSource.CreateLinkedTokenSource(outerCancellation);
-        private readonly HashSet<AnimationPlanEventDefinition> _triggered = [];
+        private readonly Dictionary<AnimationPlanEventDefinition, Task> _dispatches = [];
         public async Task StartAsync(AnimationPlanDefinition plan)
         {
             foreach (var timelineEvent in plan.Events.Where(item => item.Frame == 0)) await TriggerAsync(timelineEvent);
             _ = DispatchAsync(plan);
         }
 
-        public void Complete(AnimationPlanDefinition plan, AnimationOutcome outcome)
+        public async Task CompleteAsync(AnimationPlanDefinition plan, AnimationOutcome outcome)
         {
             _cancellation.Cancel();
             if (outcome is AnimationOutcome.Completed or AnimationOutcome.Skipped)
@@ -523,8 +523,9 @@ public sealed class PlayAnimationPlanHandler : EntryHandler
                 // A playback implementation may report completion before this independent
                 // scheduler wakes for its final frame (the headless view intentionally does).
                 // Skipping deliberately uses the same rule: one input completes the whole
-                // clip, including its cleanup.
-                foreach (var timelineEvent in plan.Events.OrderBy(item => item.Frame)) Trigger(timelineEvent);
+                // clip, including its cleanup. Await this so a blocking transition cannot
+                // advance to a dialogue/UI entry before its final scene events are applied.
+                await Task.WhenAll(plan.Events.OrderBy(item => item.Frame).Select(TriggerAsync));
             }
         }
 
@@ -544,11 +545,19 @@ public sealed class PlayAnimationPlanHandler : EntryHandler
             catch (OperationCanceledException) when (_cancellation.IsCancellationRequested) { }
         }
 
-        private async Task TriggerAsync(AnimationPlanEventDefinition timelineEvent)
+        private Task TriggerAsync(AnimationPlanEventDefinition timelineEvent)
         {
-            lock (_triggered)
-                if (!_triggered.Add(timelineEvent)) return;
+            lock (_dispatches)
+            {
+                if (_dispatches.TryGetValue(timelineEvent, out var existing)) return existing;
+                var dispatch = DispatchAsync(timelineEvent);
+                _dispatches.Add(timelineEvent, dispatch);
+                return dispatch;
+            }
+        }
 
+        private async Task DispatchAsync(AnimationPlanEventDefinition timelineEvent)
+        {
             if (context.DispatchTimelineEventAsync is null)
             {
                 GameLog.Logger.Warning("Animation plan event '{EntryType}' cannot dispatch without an engine context.", timelineEvent.Type);

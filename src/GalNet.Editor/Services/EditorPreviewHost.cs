@@ -275,27 +275,27 @@ internal sealed class EditorPreviewLayerFactory(string assetRoot) : IGamePageLay
     public SceneTexture ResolveTexture(string assetId)
     {
         if (_textures.TryGetValue(assetId, out var texture)) return texture;
-        texture = new SceneTexture(LoadImage(assetId));
+        texture = LoadTexture(assetId);
         _textures.Add(assetId, texture);
         return texture;
     }
 
-    private IImage LoadImage(string assetId)
+    private SceneTexture LoadTexture(string assetId)
     {
         var path = Path.IsPathRooted(assetId) ? assetId : Path.Combine(assetRoot, assetId);
         try
         {
             if (File.Exists(path))
-                return new Bitmap(path);
+                return SceneTexture.FromFile(path);
         }
         catch (Exception exception)
         {
             ReportMissing(assetId, exception);
-            return LayerImageFallback.MissingImage;
+            return new SceneTexture(LayerImageFallback.MissingImage);
         }
 
         ReportMissing(assetId, null);
-        return LayerImageFallback.MissingImage;
+        return new SceneTexture(LayerImageFallback.MissingImage);
     }
 
     private static void ReportMissing(string assetId, Exception? exception)

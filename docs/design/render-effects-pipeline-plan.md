@@ -112,7 +112,9 @@ Layer source 的 authoring 数据优先采用显式 `source` 对象；现阶段 
 - `GalNet.Avalonia.Rendering` 承载 `SceneTexture`、`SceneLayerHost`、稳定 `SceneRenderPlan` 和 `ISceneRenderable`；通用 Controls 不再保存场景渲染状态。
 - 每个 Layer 先渲染为完整场景尺寸的 Skia 纹理，按 `order` 运行 Layer pass，再合成并运行唯一的 ScenePost pass；UI 保持在 Host 外。
 - `ITextureEffect` 是唯一像素效果契约。`mask.blinds` 为 SkSL shader，转场宏仅动画其 `progress` uniform；`layer.colorGrade` 与 `scene.colorGrade` 复用一份 SkSL 调色实现。
-- 缺失资源与 Flipbook 均通过 `SceneTexture` 入口解析；scene-only 截图复用同一管线输出。Skia 失败时回退为无 effect 的 Avalonia 绘制并记录一次诊断。
+- 缺失资源与 Flipbook 均通过 `SceneTexture` 入口解析；scene-only 截图复用同一管线输出。最终场景帧以 Avalonia custom draw 直接提交到其 Skia canvas，不经过逐帧 PNG 编码、解码或 `Avalonia Bitmap` 构造；未提供 Skia canvas 的后端跳过场景并记录一次诊断。
+- 桌面 GPU 上，Layer 合成、`mask.blinds` 与调色 pass 使用 `SKSurface` / `SKImage` 完成 GPU 纹理 ping-pong；静态资产保留稳定 image 身份以供 Skia 跨帧缓存。CPU `SKBitmap` 路径只用于截图、测试和无 GPU texture context 的降级，并记录一次诊断。
+- 转场是编译期宏，固定编译为可跳过的阻塞 `animation.play` 原语；动画计划以单一时钟采样所有 track，并以一次 UI 提交更新，最终的 Layer / Effect 清理完成后才允许后续 UI 或剧情指令执行。
 - `ISceneRenderable` 已暴露给 Host；粒子仍是临时 Avalonia overlay，明确不进入 ScenePost，等待 Phase 4 迁移。
 
 验收：两种无副作用的测试 Shader 可串联到同一 Layer；一个测试 renderable 可与 Layer 按 order 合成；ScenePost 能改变合成场景而不影响 GameShell UI。
@@ -146,6 +148,52 @@ Layer source 的 authoring 数据优先采用显式 `source` 对象；现阶段 
 
 验收：效果失败不会破坏场景渲染；资源不足或不支持时有可理解的编辑器与运行时诊断。
 
+### Phase 6：注释驱动的通用 Shader Effect（下一阶段）
+
+目标是从“按 effect ID 发现 factory”过渡到“目标 + shader 资源 + 参数”的通用 attachment。`EffectInstance` 的 Runtime handle 继续存在，用于生命周期、动画和存档恢复；它是编译器/Runtime 的内部资源，内容作者不需要命名或操作它。
+
+作者侧不通过 handle 查找已有 effect。effect 在其目标的声明作用域内创建，初始参数与参数动画一起声明；编译器将动画属性引用解析为内部 `EffectInstanceId + parameter`。Layer 被隐藏或替换时，其附属 effect 的清理同样由 Runtime 生命周期完成。需要整体变更效果链时，使用对目标 effect chain 的原子替换，而不是按 shader 名称查找“第一个实例”。
+
+#### 资源格式
+
+每个 effect program 资源以注释块声明平台无关 metadata。第一版约定仅解析下列固定语法，避免让 Core 解析或编译任何 shader 语言：
+
+```glsl
+/*
+@gal.effect v=1
+@input source
+@targets layer,scenePost
+
+@param progress
+  uniform: uProgress
+  type: float
+  default: 0
+  range: 0..1
+  animatable: true
+
+@texture noise
+  uniform: uNoise
+  required: false
+*/
+```
+
+- `source` 是唯一强制输入纹理；Layer 当前帧与 ScenePost 合成图只是它的不同来源。
+- `@targets` 是资源的可用范围；attachment 的 target 决定实际 stage，不由 shader 运行时猜测。
+- `@param` 支持 `float`、`int`、`bool`、`color`、`vec2`、`vec4`、`enum`；`@texture` 声明额外资源槽。`default`、`range`、`step`、`animatable`、`required`、`options`、`displayName`、`group` 与 `tooltip` 是可选 metadata。
+- 注释 metadata 是编辑器和 Runtime 的参数协议；Avalonia Rendering 仍必须用 SkSL reflection 验证其中的 uniform/child 名称和类型，不能只相信注释。
+
+Core 中的 `EffectProgramResource` 只是稳定 asset reference，不包含文件路径语义、SkSL、`SKRuntimeEffect` 或 GPU 纹理。`ShaderEffectAttachment` 保存内部 Runtime handle、目标、program reference、order 和原始参数值；它可按 descriptor 枚举 program 本身以及静态 texture 参数作为预加载依赖。资源的文件读取、解码、SkSL 编译、reflection、纹理上传和缓存全部属于 Avalonia Rendering。
+
+第一步只落地平台无关的注释 parser、descriptor、attachment 和 metadata resolver 接口，与现有 factory 型 effect 并行存在，不改变已有渲染结果。随后按以下顺序迁移：
+
+1. Avalonia Rendering 读取 effect resource、缓存编译结果并交叉校验 metadata。
+2. 用通用 texture pass 替代 `ITextureEffectFactory` 的按 ID 分支。
+3. 将百叶窗和调色迁为首批 `.sksl` 资源，转场宏继续只生成通用 attachment 与动画原语。
+4. 编辑器复用同一 metadata parser 动态生成参数面板。
+5. 在资源预热阶段编译即将使用的 program 并预解码静态 texture 参数，避免首次转场卡顿。
+
+一个 attachment 在作者模型中对应一个 shader program；渲染后端的内部契约不应排除未来将一个 program 扩展为多个 pass，例如 bloom 或双向模糊。动态性体现在动态创建 attachment、设置参数、绑定动画和切换已加载资源，而不是在游戏帧内传入任意 shader 文本并即时编译。
+
 ## 测试策略
 
 - Core/Runtime：阶段、目标、排序、序列化、旧内容和快照恢复的纯逻辑测试。
@@ -153,6 +201,7 @@ Layer source 的 authoring 数据优先采用显式 `source` 对象；现阶段 
 - 动态 source：使用可预测时钟验证 Flipbook 取帧、循环、暂停和 effect 链输入。
 - 集成：Sample 中分别展示人物 dissolve、场景 LUT/暗角和场景闪白；对话框始终不受影响。
 - 性能：多 Layer、多 effect、长时 Flipbook 的纹理池复用与分配计数测试。
+- Shader metadata：合法资源、缺失 `@input source`、未知类型、重复参数、范围错误、非法 targets，以及 program/texture 资源依赖枚举。
 
 ## 非目标
 

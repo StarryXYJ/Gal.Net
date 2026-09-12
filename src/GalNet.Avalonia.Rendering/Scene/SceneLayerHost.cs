@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.Rendering.SceneGraph;
+using Avalonia.Skia;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using SkiaSharp;
@@ -22,7 +24,6 @@ public sealed class SceneLayerHost : Control
     private INotifyCollectionChanged? _layersCollection;
     private INotifyCollectionChanged? _effectsCollection;
     private long _nextInsertionOrder;
-    private bool _renderFailureReported;
     private SceneRenderPlan _renderPlan = SceneRenderPlan.Empty;
 
     static SceneLayerHost()
@@ -50,21 +51,9 @@ public sealed class SceneLayerHost : Control
     {
         base.Render(context);
         if (Bounds.Width <= 0 || Bounds.Height <= 0) return;
-        try
-        {
-            using var scene = SceneRenderPipeline.Render(_renderPlan, EffectsSource ?? [], RenderablesSource, Bounds.Size);
-            using var image = SceneRenderPipeline.ToAvaloniaBitmap(scene);
-            context.DrawImage(image, new Rect(image.Size), new Rect(Bounds.Size));
-        }
-        catch (Exception error)
-        {
-            if (!_renderFailureReported)
-            {
-                _renderFailureReported = true;
-                System.Diagnostics.Trace.TraceWarning("Skia scene pipeline unavailable; rendering without texture effects. {0}", error.Message);
-            }
-            SceneLayerFallbackRenderer.Render(context, _renderPlan, Bounds.Size);
-        }
+        // The operation receives Avalonia's live Skia canvas. Do not encode a PNG or create an
+        // Avalonia Bitmap here: animation must be a texture draw, not a per-frame image round trip.
+        context.Custom(new SkiaSceneDrawOperation(Bounds, _renderPlan, EffectsSource?.ToArray() ?? [], RenderablesSource?.ToArray()));
     }
 
     private void ResetLayers()
@@ -132,18 +121,48 @@ public sealed class SceneLayerHost : Control
     }
 }
 
-/// <summary>Only used when a platform cannot execute the Skia texture graph.</summary>
-internal static class SceneLayerFallbackRenderer
+/// <summary>Desktop scene presenter. Avalonia.Skia owns the destination canvas and GPU context.</summary>
+internal sealed class SkiaSceneDrawOperation(
+    Rect bounds,
+    SceneRenderPlan plan,
+    IReadOnlyList<SceneEffectInstance> effects,
+    IReadOnlyList<ISceneRenderable>? renderables) : ICustomDrawOperation
 {
-    public static void Render(DrawingContext context, SceneRenderPlan plan, Size surface)
+    private static int _missingSkiaReported;
+    private static int _gpuActiveReported;
+    private static int _cpuFallbackReported;
+    public Rect Bounds { get; } = bounds;
+
+    public void Render(ImmediateDrawingContext context)
     {
-        foreach (var entry in plan.Items)
+        var feature = context.TryGetFeature(typeof(ISkiaSharpApiLeaseFeature)) as ISkiaSharpApiLeaseFeature;
+        if (feature is null)
         {
-            var item = entry.Layer;
-            if (!item.IsVisible || item.Opacity <= 0) continue;
-            using var opacity = context.PushOpacity(Math.Clamp(item.Opacity, 0, 1));
-            if (!string.IsNullOrWhiteSpace(item.Color)) context.DrawRectangle(new SolidColorBrush(Color.Parse(item.Color)), null, new Rect(surface));
-            else if (item.Texture is not null) context.DrawImage(item.Texture.AvaloniaImage, new Rect(item.Texture.Size), new Rect(surface));
+            if (Interlocked.Exchange(ref _missingSkiaReported, 1) == 0)
+                System.Diagnostics.Trace.TraceWarning("Scene texture effects require the Avalonia Skia renderer; scene output was skipped.");
+            return;
         }
+
+        using var lease = feature.Lease();
+        lease.SkCanvas.Save();
+        lease.SkCanvas.ClipRect(new SKRect((float)Bounds.X, (float)Bounds.Y, (float)Bounds.Right, (float)Bounds.Bottom));
+        lease.SkCanvas.Translate((float)Bounds.X, (float)Bounds.Y);
+        if (SceneRenderPipeline.TryRenderGpu(lease.SkCanvas, lease.GrContext, plan, effects, renderables, Bounds.Size))
+        {
+            if (Interlocked.Exchange(ref _gpuActiveReported, 1) == 0)
+                System.Diagnostics.Trace.TraceInformation("Scene pipeline is using GPU textures and shader passes.");
+        }
+        else
+        {
+            if (Interlocked.Exchange(ref _cpuFallbackReported, 1) == 0)
+                System.Diagnostics.Trace.TraceWarning("Scene pipeline has no GPU texture path; using the slower CPU snapshot fallback.");
+            using var scene = SceneRenderPipeline.Render(plan, effects, renderables, Bounds.Size);
+            lease.SkCanvas.DrawBitmap(scene, 0, 0);
+        }
+        lease.SkCanvas.Restore();
     }
+
+    public bool HitTest(Point point) => Bounds.Contains(point);
+    public bool Equals(ICustomDrawOperation? other) => false;
+    public void Dispose() { }
 }

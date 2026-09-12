@@ -16,19 +16,18 @@ internal sealed class SampleLayerFactory(string assetRoot) : IGamePageLayerFacto
     public SceneTexture ResolveTexture(string assetId)
     {
         if (_textures.TryGetValue(assetId, out var texture)) return texture;
-        var image = LoadImage(assetId);
-        texture = new SceneTexture(image);
+        texture = LoadTexture(assetId);
         _textures.Add(assetId, texture);
         return texture;
     }
 
-    private IImage LoadImage(string assetId)
+    private SceneTexture LoadTexture(string assetId)
     {
         var path = Path.IsPathRooted(assetId) ? assetId : Path.Combine(assetRoot, assetId);
         try
         {
             if (File.Exists(path))
-                return new Bitmap(path);
+                return SceneTexture.FromFile(path);
 
             ReportMissing(assetId, null);
         }
@@ -37,7 +36,7 @@ internal sealed class SampleLayerFactory(string assetRoot) : IGamePageLayerFacto
             ReportMissing(assetId, exception);
         }
 
-        return LayerImageFallback.MissingImage;
+        return new SceneTexture(LayerImageFallback.MissingImage);
     }
 
     public void Dispose()

@@ -61,9 +61,9 @@ public sealed class CrossFadeTransitionEntry : NonPrimitiveEntry
 {
     public const string TypeId = "transition.crossFade";
     public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("playbackHandleId", EntryParameterType.Text), ("oldHandleId", EntryParameterType.Text), ("newHandleId", EntryParameterType.Text), ("assetId", EntryParameterType.ImageAsset), ("transform", EntryParameterType.Json), ("z", EntryParameterType.Float), ("displayMode", EntryParameterType.Select), ("frameRate", EntryParameterType.Integer), ("durationFrames", EntryParameterType.Integer), ("blocking", EntryParameterType.Select), ("skippable", EntryParameterType.Select), ("batchId", EntryParameterType.Text));
-    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("transform", "{}"), ("z", "0"), ("displayMode", "Fill"), ("frameRate", "60"), ("durationFrames", "48"), ("blocking", "false"), ("skippable", "true"));
-    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(("displayMode", ["Native", "Tile", "Fill", "Uniform", "UniformToFill"]), ("blocking", ["false", "true"]), ("skippable", ["false", "true"]));
+    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("playbackHandleId", EntryParameterType.Text), ("oldHandleId", EntryParameterType.Text), ("newHandleId", EntryParameterType.Text), ("assetId", EntryParameterType.ImageAsset), ("transform", EntryParameterType.Json), ("z", EntryParameterType.Float), ("displayMode", EntryParameterType.Select), ("frameRate", EntryParameterType.Integer), ("durationFrames", EntryParameterType.Integer), ("batchId", EntryParameterType.Text));
+    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("transform", "{}"), ("z", "0"), ("displayMode", "Fill"), ("frameRate", "60"), ("durationFrames", "48"));
+    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(("displayMode", ["Native", "Tile", "Fill", "Uniform", "UniformToFill"]));
 
     public override IReadOnlyList<PrimitiveEntry> Compile(EntryCompileContext context)
     {
@@ -75,7 +75,7 @@ public sealed class CrossFadeTransitionEntry : NonPrimitiveEntry
         var plan = new AnimationPlanDefinition
         {
             PlaybackHandleId = playback, FrameRate = TransitionEntrySupport.PositiveInt(this, "frameRate"), DurationFrames = frames,
-            Blocking = TransitionEntrySupport.Bool(this, "blocking"), Skippable = TransitionEntrySupport.Bool(this, "skippable"), BatchId = TransitionEntrySupport.NullIfWhiteSpace(TransitionEntrySupport.Get(this, "batchId", "")),
+            Blocking = true, Skippable = true, BatchId = TransitionEntrySupport.NullIfWhiteSpace(TransitionEntrySupport.Get(this, "batchId", "")),
             Tracks = [OpacityTrack(oldHandle, 1, 0, frames), OpacityTrack(newHandle, 0, 1, frames)],
             Events = [ShowLayer(newHandle, asset, TransitionEntrySupport.Json(this, "transform", "{}"), TransitionEntrySupport.Float(this, "z"), 0, TransitionEntrySupport.DisplayMode(this, "displayMode", "Fill")), HideLayer(oldHandle, frames)]
         };
@@ -106,9 +106,9 @@ public sealed class SlideTransitionEntry : NonPrimitiveEntry
 
     public const string TypeId = "transition.slide";
     public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("playbackHandleId", EntryParameterType.Text), ("fromLayerHandleId", EntryParameterType.Text), ("toLayerHandleId", EntryParameterType.Text), ("toAssetId", EntryParameterType.ImageAsset), ("toTransform", EntryParameterType.Json), ("toZ", EntryParameterType.Float), ("toDisplayMode", EntryParameterType.Select), ("direction", EntryParameterType.Select), ("distance", EntryParameterType.Float), ("frameRate", EntryParameterType.Integer), ("durationFrames", EntryParameterType.Integer), ("blocking", EntryParameterType.Select), ("skippable", EntryParameterType.Select), ("batchId", EntryParameterType.Text));
-    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("toTransform", "{}"), ("toZ", "0"), ("toDisplayMode", "Fill"), ("direction", "Left"), ("distance", "1920"), ("frameRate", "60"), ("durationFrames", "30"), ("blocking", "false"), ("skippable", "true"));
-    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(("toDisplayMode", ["Native", "Tile", "Fill", "Uniform", "UniformToFill"]), ("direction", ["Left", "Right", "Up", "Down"]), ("blocking", ["false", "true"]), ("skippable", ["false", "true"]));
+    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("playbackHandleId", EntryParameterType.Text), ("fromLayerHandleId", EntryParameterType.Text), ("toLayerHandleId", EntryParameterType.Text), ("toAssetId", EntryParameterType.ImageAsset), ("toTransform", EntryParameterType.Json), ("toZ", EntryParameterType.Float), ("toDisplayMode", EntryParameterType.Select), ("direction", EntryParameterType.Select), ("distance", EntryParameterType.Float), ("frameRate", EntryParameterType.Integer), ("durationFrames", EntryParameterType.Integer), ("batchId", EntryParameterType.Text));
+    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("toTransform", "{}"), ("toZ", "0"), ("toDisplayMode", "Fill"), ("direction", "Left"), ("distance", "1920"), ("frameRate", "60"), ("durationFrames", "30"));
+    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(("toDisplayMode", ["Native", "Tile", "Fill", "Uniform", "UniformToFill"]), ("direction", ["Left", "Right", "Up", "Down"]));
 
     public override IReadOnlyList<PrimitiveEntry> Compile(EntryCompileContext context)
     {
@@ -127,7 +127,7 @@ public sealed class SlideTransitionEntry : NonPrimitiveEntry
         var plan = new AnimationPlanDefinition
         {
             PlaybackHandleId = playback, FrameRate = TransitionEntrySupport.PositiveInt(this, "frameRate"), DurationFrames = frames,
-            Blocking = TransitionEntrySupport.Bool(this, "blocking"), Skippable = TransitionEntrySupport.Bool(this, "skippable"), BatchId = TransitionEntrySupport.NullIfWhiteSpace(TransitionEntrySupport.Get(this, "batchId", "")),
+            Blocking = true, Skippable = true, BatchId = TransitionEntrySupport.NullIfWhiteSpace(TransitionEntrySupport.Get(this, "batchId", "")),
             Tracks = [Track(oldHandle, property, 0, -incomingX - incomingY, frames, AnimationBlendMode.Additive), Track(newHandle, property, incomingX != 0 ? initial.X : initial.Y, incomingX != 0 ? destination.X : destination.Y, frames, AnimationBlendMode.Replace)],
             Events = [CrossFadeTransitionEntry.ShowLayer(newHandle, TransitionEntrySupport.Require(this, "toAssetId"), JsonSerializer.SerializeToElement(initial, TransitionEntrySupport.PlanJsonOptions), TransitionEntrySupport.Float(this, "toZ"), 1, TransitionEntrySupport.DisplayMode(this, "toDisplayMode", "Fill")), CrossFadeTransitionEntry.HideLayer(oldHandle, frames)]
         };
@@ -149,9 +149,9 @@ public sealed class BlindsTransitionEntry : NonPrimitiveEntry
 {
     public const string TypeId = "transition.blinds";
     public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("playbackHandleId", EntryParameterType.Text), ("oldHandleId", EntryParameterType.Text), ("newHandleId", EntryParameterType.Text), ("assetId", EntryParameterType.ImageAsset), ("transform", EntryParameterType.Json), ("z", EntryParameterType.Float), ("displayMode", EntryParameterType.Select), ("bladeCount", EntryParameterType.Integer), ("orientation", EntryParameterType.Select), ("frameRate", EntryParameterType.Integer), ("durationFrames", EntryParameterType.Integer), ("blocking", EntryParameterType.Select), ("skippable", EntryParameterType.Select), ("batchId", EntryParameterType.Text));
-    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("transform", "{}"), ("z", "0"), ("displayMode", "Fill"), ("bladeCount", "12"), ("orientation", "Vertical"), ("frameRate", "60"), ("durationFrames", "48"), ("blocking", "false"), ("skippable", "true"));
-    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(("displayMode", ["Native", "Tile", "Fill", "Uniform", "UniformToFill"]), ("orientation", ["Vertical", "Horizontal"]), ("blocking", ["false", "true"]), ("skippable", ["false", "true"]));
+    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("playbackHandleId", EntryParameterType.Text), ("oldHandleId", EntryParameterType.Text), ("newHandleId", EntryParameterType.Text), ("assetId", EntryParameterType.ImageAsset), ("transform", EntryParameterType.Json), ("z", EntryParameterType.Float), ("displayMode", EntryParameterType.Select), ("bladeCount", EntryParameterType.Integer), ("orientation", EntryParameterType.Select), ("frameRate", EntryParameterType.Integer), ("durationFrames", EntryParameterType.Integer), ("batchId", EntryParameterType.Text));
+    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("transform", "{}"), ("z", "0"), ("displayMode", "Fill"), ("bladeCount", "12"), ("orientation", "Vertical"), ("frameRate", "60"), ("durationFrames", "48"));
+    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(("displayMode", ["Native", "Tile", "Fill", "Uniform", "UniformToFill"]), ("orientation", ["Vertical", "Horizontal"]));
 
     public override IReadOnlyList<PrimitiveEntry> Compile(EntryCompileContext context)
     {
@@ -170,8 +170,8 @@ public sealed class BlindsTransitionEntry : NonPrimitiveEntry
             PlaybackHandleId = playback,
             FrameRate = TransitionEntrySupport.PositiveInt(this, "frameRate"),
             DurationFrames = frames,
-            Blocking = TransitionEntrySupport.Bool(this, "blocking"),
-            Skippable = TransitionEntrySupport.Bool(this, "skippable"),
+            Blocking = true,
+            Skippable = true,
             BatchId = TransitionEntrySupport.NullIfWhiteSpace(TransitionEntrySupport.Get(this, "batchId", "")),
             Tracks = [new AnimationTrackDefinition
             {
@@ -218,9 +218,9 @@ public sealed class BlindsTransitionEntry : NonPrimitiveEntry
 public abstract class ColorFieldTransitionEntryBase : NonPrimitiveEntry
 {
     private const int TimelineFrameRate = 60;
-    protected static IReadOnlyDictionary<string, EntryParameterType> BaseParameterTypes { get; } = EntrySchema.Parameters(("playbackHandleId", EntryParameterType.Text), ("fromLayerHandleId", EntryParameterType.Text), ("toLayerHandleId", EntryParameterType.Text), ("toAssetId", EntryParameterType.ImageAsset), ("toTransform", EntryParameterType.Json), ("toZ", EntryParameterType.Float), ("toDisplayMode", EntryParameterType.Select), ("overlayZ", EntryParameterType.Float), ("fadeInDuration", EntryParameterType.Float), ("holdDuration", EntryParameterType.Float), ("fadeOutDuration", EntryParameterType.Float), ("blocking", EntryParameterType.Select), ("skippable", EntryParameterType.Select), ("batchId", EntryParameterType.Text));
-    protected static IReadOnlyDictionary<string, string> BaseDefaultValues { get; } = EntrySchema.Defaults(("toTransform", "{}"), ("toZ", "0"), ("toDisplayMode", "Fill"), ("overlayZ", "1000"), ("fadeInDuration", "0.4"), ("holdDuration", "0.1"), ("fadeOutDuration", "0.4"), ("blocking", "false"), ("skippable", "true"));
-    protected static IReadOnlyDictionary<string, IReadOnlyList<string>> BaseParameterOptions { get; } = EntrySchema.Options(("toDisplayMode", ["Native", "Tile", "Fill", "Uniform", "UniformToFill"]), ("blocking", ["false", "true"]), ("skippable", ["false", "true"]));
+    protected static IReadOnlyDictionary<string, EntryParameterType> BaseParameterTypes { get; } = EntrySchema.Parameters(("playbackHandleId", EntryParameterType.Text), ("fromLayerHandleId", EntryParameterType.Text), ("toLayerHandleId", EntryParameterType.Text), ("toAssetId", EntryParameterType.ImageAsset), ("toTransform", EntryParameterType.Json), ("toZ", EntryParameterType.Float), ("toDisplayMode", EntryParameterType.Select), ("overlayZ", EntryParameterType.Float), ("fadeInDuration", EntryParameterType.Float), ("holdDuration", EntryParameterType.Float), ("fadeOutDuration", EntryParameterType.Float), ("batchId", EntryParameterType.Text));
+    protected static IReadOnlyDictionary<string, string> BaseDefaultValues { get; } = EntrySchema.Defaults(("toTransform", "{}"), ("toZ", "0"), ("toDisplayMode", "Fill"), ("overlayZ", "1000"), ("fadeInDuration", "0.4"), ("holdDuration", "0.1"), ("fadeOutDuration", "0.4"));
+    protected static IReadOnlyDictionary<string, IReadOnlyList<string>> BaseParameterOptions { get; } = EntrySchema.Options(("toDisplayMode", ["Native", "Tile", "Fill", "Uniform", "UniformToFill"]));
     protected abstract string OverlayColor { get; }
 
     public override IReadOnlyList<PrimitiveEntry> Compile(EntryCompileContext context)
@@ -236,7 +236,7 @@ public abstract class ColorFieldTransitionEntryBase : NonPrimitiveEntry
         var plan = new AnimationPlanDefinition
         {
             PlaybackHandleId = TransitionEntrySupport.Require(this, "playbackHandleId"), FrameRate = TimelineFrameRate, DurationFrames = duration,
-            Blocking = TransitionEntrySupport.Bool(this, "blocking"), Skippable = TransitionEntrySupport.Bool(this, "skippable"), BatchId = TransitionEntrySupport.NullIfWhiteSpace(TransitionEntrySupport.Get(this, "batchId", "")),
+            Blocking = true, Skippable = true, BatchId = TransitionEntrySupport.NullIfWhiteSpace(TransitionEntrySupport.Get(this, "batchId", "")),
             Tracks = [new AnimationTrackDefinition { HandleId = overlay, Property = "opacity", Keys = keys }],
             Events = [ShowColor(overlay), CrossFadeTransitionEntry.HideLayer(oldHandle, swapFrame), ShowAt(newHandle, swapFrame), CrossFadeTransitionEntry.HideLayer(overlay, duration)]
         };

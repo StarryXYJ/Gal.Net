@@ -128,6 +128,8 @@ public class GalgroupLoaderTests
         Assert.That(result.SourceMap["cross-fade"], Is.EqualTo(new[] { "cross-fade#1" }));
 
         var plan = result.Document.Entries[0].Parameters["plan"];
+        Assert.That(plan.GetProperty("blocking").GetBoolean(), Is.True);
+        Assert.That(plan.GetProperty("skippable").GetBoolean(), Is.True);
         Assert.That(plan.GetProperty("tracks").GetArrayLength(), Is.EqualTo(2));
         Assert.That(plan.GetProperty("events").GetArrayLength(), Is.EqualTo(2));
         Assert.That(plan.GetProperty("events")[0].GetProperty("type").GetString(), Is.EqualTo(ShowLayerEntry.TypeId));
@@ -162,6 +164,8 @@ public class GalgroupLoaderTests
         var plan = GalgroupCompiler.Compile(raw).Document.Entries.Single().Parameters["plan"];
         var tracks = plan.GetProperty("tracks");
 
+        Assert.That(plan.GetProperty("blocking").GetBoolean(), Is.True);
+        Assert.That(plan.GetProperty("skippable").GetBoolean(), Is.True);
         Assert.That(tracks.GetArrayLength(), Is.EqualTo(2));
         Assert.That(tracks[0].GetProperty("property").GetString(), Is.EqualTo("transform.x"));
         Assert.That(tracks[0].GetProperty("blendMode").GetString(), Is.EqualTo("Additive"));
@@ -202,6 +206,8 @@ public class GalgroupLoaderTests
 
         Assert.Multiple(() =>
         {
+            Assert.That(plan.GetProperty("blocking").GetBoolean(), Is.True);
+            Assert.That(plan.GetProperty("skippable").GetBoolean(), Is.True);
             Assert.That(track.GetProperty("handleId").GetString(), Is.EqualTo("blinds:blinds-mask"));
             Assert.That(track.GetProperty("property").GetString(), Is.EqualTo("progress"));
             Assert.That(events[0].GetProperty("type").GetString(), Is.EqualTo(ShowLayerEntry.TypeId));
@@ -244,6 +250,8 @@ public class GalgroupLoaderTests
         var plan = result.Document.Entries.Single().Parameters["plan"];
         var events = plan.GetProperty("events");
 
+        Assert.That(plan.GetProperty("blocking").GetBoolean(), Is.True);
+        Assert.That(plan.GetProperty("skippable").GetBoolean(), Is.True);
         Assert.That(events.GetArrayLength(), Is.EqualTo(4));
         Assert.That(events[0].GetProperty("type").GetString(), Is.EqualTo(ShowColorLayerEntry.TypeId));
         Assert.That(events[0].GetProperty("parameters").GetProperty("color").GetString(), Is.EqualTo("#336699"));
