@@ -1,4 +1,5 @@
 using GalNet.Core.Scene;
+using GalNet.Core.Assets;
 using SkiaSharp;
 
 namespace GalNet.Rendering.Scene;
@@ -58,29 +59,37 @@ public static class SkiaShaderEffectProgramLoader
     }
 }
 
-/// <summary>
-/// Built-in Avalonia implementations cached for the process lifetime. Project-provided program loading
-/// will use the same <see cref="SkiaShaderEffectProgramLoader"/> in a later phase.
-/// </summary>
-public sealed class BuiltinSkiaEffectProgramCatalog : IShaderEffectMetadataResolver
+/// <summary>Reads project-owned shader source. The resource key is an asset path, not a built-in name.</summary>
+public interface IShaderEffectProgramSource
 {
-    public static readonly EffectProgramResource Blinds = new("builtin/blinds");
-    public static readonly EffectProgramResource ColorGrade = new("builtin/color-grade");
+    Task<string?> ReadAsync(EffectProgramResource resource, CancellationToken cancellationToken = default);
+}
 
-    private static readonly IReadOnlyDictionary<EffectProgramResource, string> ResourceNames = new Dictionary<EffectProgramResource, string>
+/// <summary>
+/// Caches renderer-specific compiled programs. It has no fallback catalog: a missing project resource
+/// produces an unusable result, allowing the caller to retain the unmodified input texture.
+/// </summary>
+public sealed class SkiaShaderEffectProgramResolver(IShaderEffectProgramSource source) : IShaderEffectMetadataResolver, IDisposable
+{
+    private readonly IShaderEffectProgramSource _source = source ?? throw new ArgumentNullException(nameof(source));
+    private readonly Dictionary<EffectProgramResource, SkiaShaderEffectProgramLoadResult> _programs = [];
+    private readonly SemaphoreSlim _gate = new(1, 1);
+
+    public async Task<SkiaShaderEffectProgramLoadResult> ResolveAsync(EffectProgramResource resource, CancellationToken cancellationToken = default)
     {
-        [Blinds] = "GalNet.Avalonia.Rendering.Scene.Effects.Blinds.sksl",
-        [ColorGrade] = "GalNet.Avalonia.Rendering.Scene.Effects.ColorGrade.sksl"
-    };
-
-    private readonly Dictionary<EffectProgramResource, SkiaShaderEffectProgramLoadResult> _programs;
-
-    public BuiltinSkiaEffectProgramCatalog()
-    {
-        _programs = ResourceNames.ToDictionary(pair => pair.Key, pair => LoadEmbedded(pair.Key, pair.Value));
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            if (_programs.TryGetValue(resource, out var cached)) return cached;
+            var source = await _source.ReadAsync(resource, cancellationToken);
+            var program = source is null
+                ? new SkiaShaderEffectProgramLoadResult(null, null, [$"Shader resource '{resource}' was not found."])
+                : SkiaShaderEffectProgramLoader.Load(resource, source);
+            _programs.Add(resource, program);
+            return program;
+        }
+        finally { _gate.Release(); }
     }
-
-    public static BuiltinSkiaEffectProgramCatalog Default { get; } = new();
 
     public bool TryGetDescriptor(EffectProgramResource resource, out ShaderEffectDescriptor descriptor)
     {
@@ -93,18 +102,39 @@ public sealed class BuiltinSkiaEffectProgramCatalog : IShaderEffectMetadataResol
         return false;
     }
 
-    public bool TryGetProgram(EffectProgramResource resource, out SkiaShaderEffectProgramLoadResult program) =>
-        _programs.TryGetValue(resource, out program!);
-
-    public SKRuntimeEffect? GetRuntimeEffect(EffectProgramResource resource) =>
-        _programs.TryGetValue(resource, out var program) ? program.RuntimeEffect : null;
-
-    private static SkiaShaderEffectProgramLoadResult LoadEmbedded(EffectProgramResource resource, string resourceName)
+    public void Dispose()
     {
-        var assembly = typeof(BuiltinSkiaEffectProgramCatalog).Assembly;
-        using var stream = assembly.GetManifestResourceStream(resourceName);
-        if (stream is null) return new SkiaShaderEffectProgramLoadResult(null, null, [$"Embedded shader resource '{resourceName}' was not found."]);
-        using var reader = new StreamReader(stream);
-        return SkiaShaderEffectProgramLoader.Load(resource, reader.ReadToEnd());
+        foreach (var program in _programs.Values) program.RuntimeEffect?.Dispose();
+        _programs.Clear();
+        _gate.Dispose();
+    }
+}
+
+/// <summary>Development/sample source that resolves a project-relative shader path under one asset root.</summary>
+public sealed class FileShaderEffectProgramSource(string assetRoot) : IShaderEffectProgramSource
+{
+    private readonly string _root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(assetRoot));
+
+    public async Task<string?> ReadAsync(EffectProgramResource resource, CancellationToken cancellationToken = default)
+    {
+        if (Path.IsPathRooted(resource.Value)) return null;
+        var path = Path.GetFullPath(Path.Combine(_root, resource.Value.Replace('/', Path.DirectorySeparatorChar)));
+        if (!path.StartsWith(_root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) return null;
+        if (!string.Equals(Path.GetExtension(path), ".sksl", StringComparison.OrdinalIgnoreCase) || !File.Exists(path)) return null;
+        return await File.ReadAllTextAsync(path, cancellationToken);
+    }
+}
+
+/// <summary>Standard project-resource source: program locators are AssetManager GUIDs.</summary>
+public sealed class AssetManagerShaderEffectProgramSource(IAssetManager assets) : IShaderEffectProgramSource
+{
+    private readonly IAssetManager _assets = assets ?? throw new ArgumentNullException(nameof(assets));
+
+    public async Task<string?> ReadAsync(EffectProgramResource resource, CancellationToken cancellationToken = default)
+    {
+        var source = await _assets.LoadAsync<string>(resource.Value, cancellationToken);
+        if (source is null) return null;
+        try { return source; }
+        finally { _assets.Release<string>(resource.Value); }
     }
 }

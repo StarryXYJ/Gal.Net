@@ -355,7 +355,8 @@
         "dependencies": {
           "Avalonia": "[12.0.5, )",
           "Avalonia.Skia": "[12.0.5, )",
-          "GalNet.Core": "[1.0.0, )"
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Storage.Abstractions": "[1.0.0, )"
         }
       },
       "galnet.core": {

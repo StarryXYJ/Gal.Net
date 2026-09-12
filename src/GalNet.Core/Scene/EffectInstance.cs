@@ -8,6 +8,8 @@ public sealed class EffectInstance : AnimatableSceneInstance
 
     public override string Id { get; init; } = "";
     public string EffectId { get; init; } = "";
+    /// <summary>Optional renderer program resource. Empty identifies a legacy host-owned effect.</summary>
+    public string ProgramResource { get; init; } = "";
     public string TargetHandleId { get; init; } = "";
     public int Order { get; init; }
     public string Parameters { get; init; } = "{}";

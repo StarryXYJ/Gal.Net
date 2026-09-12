@@ -412,7 +412,7 @@ public class GameEngineIntegrationTests
         runtime.SceneInstances.GetOrAdd<Layer>("background", id => new Layer { Id = id, AssetId = "background.png" });
         var entry = EntryRegistry.Create(ApplyEffectEntry.TypeId, values: new Dictionary<string, string>
         {
-            ["id"] = "mask.blinds",
+            ["program"] = "a1000000000000000000000000000008",
             ["instanceId"] = "blinds-mask",
             ["targetHandleId"] = "background",
             ["parameters"] = "{\"bladeCount\":12}"
@@ -428,8 +428,12 @@ public class GameEngineIntegrationTests
         Assert.Multiple(() =>
         {
             Assert.That(snapshot.SceneState.ActiveEffects.Single().TargetHandleId, Is.EqualTo("background"));
+            Assert.That(snapshot.SceneState.ActiveEffects.Single().ProgramResource, Is.EqualTo("a1000000000000000000000000000008"));
+            Assert.That(snapshot.SceneState.ActiveEffects.Single().Parameters, Is.EqualTo("{\"bladeCount\":12}"));
             Assert.That(restored.SceneInstances.TryGet<EffectInstance>("blinds-mask", out var effect), Is.True);
             Assert.That(effect!.TargetHandleId, Is.EqualTo("background"));
+            Assert.That(effect.ProgramResource, Is.EqualTo("a1000000000000000000000000000008"));
+            Assert.That(effect.Parameters, Is.EqualTo("{\"bladeCount\":12}"));
             Assert.That(restored.SceneInstances.GetAll<Layer>().Single().EffectInstanceIds, Is.EqualTo(new[] { "blinds-mask" }));
         });
     }

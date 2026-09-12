@@ -17,10 +17,11 @@ namespace GalNet.Assets;
 public sealed class AssetManager : IAssetManager
 {
     private readonly List<IAssetProvider> _providers = [];
-    private readonly Dictionary<string, CacheEntry> _cache = new();
+    private readonly Dictionary<CacheKey, CacheEntry> _cache = new();
+    private readonly Dictionary<Type, object> _decoders = new();
     private readonly Dictionary<string, string> _pathToId = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
-    private readonly Dictionary<string, Task<object?>> _inFlight = new();
+    private readonly Dictionary<CacheKey, Task<object?>> _inFlight = new();
     private bool _disposed;
 
     public AssetManager()
@@ -44,10 +45,32 @@ public sealed class AssetManager : IAssetManager
             _providers.Add(provider);
     }
 
+    public void RegisterDecoder<T>(IAssetDecoder<T> decoder) where T : class
+    {
+        ArgumentNullException.ThrowIfNull(decoder);
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        lock (_lock) _decoders[typeof(T)] = decoder;
+    }
+
+    public bool TryGetLoaded<T>(string assetId, out T asset) where T : class
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        lock (_lock)
+        {
+            if (_cache.TryGetValue(new CacheKey(assetId, typeof(T)), out var entry) && entry.Data is T typed)
+            {
+                asset = typed;
+                return true;
+            }
+        }
+        asset = null!;
+        return false;
+    }
+
     public bool IsLoaded(string assetId)
     {
         lock (_lock)
-            return _cache.ContainsKey(assetId);
+            return _cache.Keys.Any(key => string.Equals(key.AssetId, assetId, StringComparison.OrdinalIgnoreCase));
     }
 
     public Task<IGameFile?> GetFileAsync(string assetId, CancellationToken ct = default)
@@ -92,20 +115,21 @@ public sealed class AssetManager : IAssetManager
         ArgumentException.ThrowIfNullOrEmpty(assetId);
 
         // 1. 检查缓存
-        var cached = CheckCache<T>(assetId);
+        var key = new CacheKey(assetId, typeof(T));
+        var cached = CheckCache<T>(key);
         if (cached != null) return cached;
 
         // 2. 检查是否有 in-flight 任务
         Task<object?>? waitTask;
         lock (_lock)
         {
-            _inFlight.TryGetValue(assetId, out waitTask);
+            _inFlight.TryGetValue(key, out waitTask);
         }
 
         if (waitTask != null)
         {
             await waitTask;
-            return CheckCache<T>(assetId);
+            return CheckCache<T>(key);
         }
 
         // 3. 作为发起者启动加载任务并存入 in-flight 字典中
@@ -113,20 +137,20 @@ public sealed class AssetManager : IAssetManager
         lock (_lock)
         {
             // 防并发竞争下已经有其他线程写入
-            if (_inFlight.TryGetValue(assetId, out waitTask))
+            if (_inFlight.TryGetValue(key, out waitTask))
             {
                 tcs.TrySetResult(null); // 释放当前无用 tcs
             }
             else
             {
-                _inFlight[assetId] = tcs.Task;
+                _inFlight[key] = tcs.Task;
             }
         }
 
         if (waitTask != null)
         {
             await waitTask;
-            return CheckCache<T>(assetId);
+            return CheckCache<T>(key);
         }
 
         try
@@ -152,7 +176,7 @@ public sealed class AssetManager : IAssetManager
         {
             lock (_lock)
             {
-                _inFlight.Remove(assetId);
+                _inFlight.Remove(key);
             }
         }
     }
@@ -197,23 +221,25 @@ public sealed class AssetManager : IAssetManager
         ObjectDisposedException.ThrowIf(_disposed, this);
 
         lock (_lock)
-        {
-            if (!_cache.TryGetValue(assetId, out var entry))
-                return;
+            foreach (var key in _cache.Keys.Where(key => string.Equals(key.AssetId, assetId, StringComparison.OrdinalIgnoreCase)).ToArray())
+                ReleaseCore(key);
+    }
 
-            entry.RefCount--;
-            if (entry.RefCount <= 0)
-                _cache.Remove(assetId);
-        }
+    public void Release<T>(string assetId) where T : class
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        lock (_lock) ReleaseCore(new CacheKey(assetId, typeof(T)));
     }
 
     public void ClearCache()
     {
         lock (_lock)
         {
+            DisposeCachedAssets();
             _cache.Clear();
             _pathToId.Clear();
             _inFlight.Clear();
+            _decoders.Clear();
         }
     }
 
@@ -223,6 +249,7 @@ public sealed class AssetManager : IAssetManager
         _disposed = true;
         lock (_lock)
         {
+            DisposeCachedAssets();
             _cache.Clear();
             _pathToId.Clear();
             _inFlight.Clear();
@@ -233,11 +260,11 @@ public sealed class AssetManager : IAssetManager
     // ── 内部实现 ──
 
     /// <summary>检查缓存并增加引用计数。</summary>
-    private T? CheckCache<T>(string assetId) where T : class
+    private T? CheckCache<T>(CacheKey key) where T : class
     {
         lock (_lock)
         {
-            if (_cache.TryGetValue(assetId, out var entry))
+            if (_cache.TryGetValue(key, out var entry))
             {
                 entry.RefCount++;
                 return entry.Data as T;
@@ -297,19 +324,20 @@ public sealed class AssetManager : IAssetManager
             return null;
         }
 
-        var result = ConvertTo<T>(rawData, gameFile);
+        var result = await ConvertToAsync<T>(rawData, gameFile, ct);
         if (result == null)
             return null;
 
         lock (_lock)
         {
-            if (_cache.TryGetValue(assetId, out var existing))
+            var key = new CacheKey(assetId, typeof(T));
+            if (_cache.TryGetValue(key, out var existing))
             {
                 existing.RefCount++;
                 return existing.Data as T;
             }
 
-            _cache[assetId] = new CacheEntry
+            _cache[key] = new CacheEntry
             {
                 Data = result,
                 RawData = rawData,
@@ -328,7 +356,7 @@ public sealed class AssetManager : IAssetManager
     ///   - byte[] → string (UTF-8)
     ///   扩展点：后续可注册自定义转换器（如 texture → ImageSource）
     /// </summary>
-    private static T? ConvertTo<T>(byte[] data, IGameFile file) where T : class
+    private async ValueTask<T?> ConvertToAsync<T>(byte[] data, IGameFile file, CancellationToken ct) where T : class
     {
         if (typeof(T) == typeof(byte[]))
             return data as T;
@@ -339,8 +367,29 @@ public sealed class AssetManager : IAssetManager
         if (typeof(T) == typeof(IGameFile))
             return file as T;
 
+        IAssetDecoder<T>? decoder;
+        lock (_lock) decoder = _decoders.TryGetValue(typeof(T), out var registered) ? registered as IAssetDecoder<T> : null;
+        if (decoder is not null) return await decoder.DecodeAsync(file, data, ct);
+
         return null;
     }
+
+    private void ReleaseCore(CacheKey key)
+    {
+        if (!_cache.TryGetValue(key, out var entry)) return;
+        entry.RefCount--;
+        if (entry.RefCount > 0) return;
+        _cache.Remove(key);
+        if (entry.Data is IDisposable disposable) disposable.Dispose();
+    }
+
+    private void DisposeCachedAssets()
+    {
+        foreach (var entry in _cache.Values)
+            if (entry.Data is IDisposable disposable) disposable.Dispose();
+    }
+
+    private readonly record struct CacheKey(string AssetId, Type Type);
 
     private class CacheEntry
     {

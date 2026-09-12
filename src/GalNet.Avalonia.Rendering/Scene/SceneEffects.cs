@@ -68,6 +68,15 @@ public sealed class SceneEffectInstance : INotifyPropertyChanged
     {
         return _staticValues.Value.TryGetValue(name, out var value) ? value.GetString() ?? fallback : fallback;
     }
+    public bool GetBoolean(string name, bool fallback)
+    {
+        return _staticValues.Value.TryGetValue(name, out var value) && value.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? value.GetBoolean()
+            : fallback;
+    }
+
+    /// <summary>Exposes the raw static JSON value for renderer-specific typed parameter binding.</summary>
+    public bool TryGetStaticValue(string name, out JsonElement value) => _staticValues.Value.TryGetValue(name, out value);
 
     public float GetSelectValue(string name, string fallback, IReadOnlyDictionary<string, float> options) =>
         options.TryGetValue(GetString(name, fallback), out var value) ? value : options[fallback];

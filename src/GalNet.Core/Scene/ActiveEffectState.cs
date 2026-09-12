@@ -4,6 +4,8 @@ namespace GalNet.Core.Scene;
 public sealed class ActiveEffectState
 {
     public string Id { get; init; } = "";
+    /// <summary>Optional shader program locator. Empty preserves the temporary legacy overlay effect path.</summary>
+    public string ProgramResource { get; init; } = "";
     public string InstanceId { get; init; } = "";
     /// <summary>Required for Layer-stage effects; empty for scene-stage effects.</summary>
     public string TargetHandleId { get; init; } = "";

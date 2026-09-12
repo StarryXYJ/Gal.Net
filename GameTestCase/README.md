@@ -3,7 +3,8 @@
 This data-only game is the shared smoke-test fixture for both official sample hosts. Its
 `.galgroup` files are compiled Runtime content; editor source uses the `.rawgalgroup` suffix.
 
-`bg*` files are used as backgrounds and the `xy*` PNG files as portrait resources.
+`bg*` files are used as backgrounds and the `xy*` PNG files as portrait resources. Every runtime-used
+asset and shader has a sibling `.meta`; compiled content references its GUID rather than its path.
 `FLipBook 2x2.png` is a four-frame sprite sheet for validating the `layer.show` `flipbook`
 configuration and animation-driven `flipbook.index` playback.
 The opening scene intentionally also references the non-existent
@@ -25,7 +26,7 @@ and opacity loops on the same portrait; the relative loops are composed over the
 without replacing it. After five dialogue lines, `animation.stop` with `AfterIteration` lets all
 active loops complete their return to the base pose. The second choice runs a blocking,
 skippable 48-frame blinds Plan: it shows the Filled background through a layer-attached
-`mask.blinds` Effect, animates that Effect's `progress`, then stops the mask and hides the old
+Blinds shader Effect, animates that Effect's `progress`, then stops the mask and hides the old
 background. This keeps the shared fixture useful for validating timeline events and generic
 animatable-instance property tracks in both hosts.
 

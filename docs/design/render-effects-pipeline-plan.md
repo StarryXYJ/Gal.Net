@@ -196,13 +196,17 @@ Layer source 的 authoring 数据优先采用显式 `source` 对象；现阶段 
 
 不写 `range` 表示不执行范围钳制；不写 `required` 视为 `false`；不写 `displayName` 时使用参数名。默认值在 descriptor 中完成标准化，编辑器和所有渲染后端不得自行推断另一套默认规则。
 
+`animatable` 只表示参数具备被动画驱动的能力，不表示当前 attachment 正在播放该参数的动画。Runtime 可以预先为可动画参数准备绑定，以支持 effect 创建之后才开始的动画轨道，但没有动画值时必须使用 attachment 的静态参数或 descriptor 默认值；每条动画轨道仍以一个 effect instance 的一个参数为最小绑定单位。
+
 Core 中的 `EffectProgramResource` 只是稳定 asset reference，不包含文件路径语义、SkSL、`SKRuntimeEffect` 或 GPU 纹理。`ShaderEffectAttachment` 保存内部 Runtime handle、目标、program reference、order 和原始参数值；它可按 descriptor 枚举 program 本身以及静态 texture 参数作为预加载依赖。资源的文件读取、解码、SkSL 编译、reflection、纹理上传和缓存全部属于 Avalonia Rendering。
 
-已完成：平台无关的注释 parser、descriptor、attachment 和 metadata resolver；Avalonia 的内置 program loader 已将 `builtin/blinds`、`builtin/color-grade` 作为嵌入 `.sksl` 资源读取、缓存、编译，并验证 source/uniform/texture child 绑定名。现有 factory 型 effect 继续兼容调用这两份已缓存 program，因此不改变已有画面。随后按以下顺序迁移：
+已完成：平台无关的注释 parser、descriptor、attachment 和 metadata resolver；Avalonia 的 program resolver 只从宿主配置的项目资源 source 读取 `.sksl`、缓存、编译，并验证 source/uniform/texture child 绑定名。不存在 `builtin/*` 或嵌入 shader 的运行时分支；找不到资源时保留输入纹理并只记录诊断。Sample 已使用 `IAssetManager` 以 GUID 读取 Layer 和 shader；发布/编辑器宿主接入同一 source 的工作仍见杂项待办。随后按以下顺序迁移：
+
+`effect.apply` 现可带 `program` resource locator；Runtime 仍只管理不向作者暴露的 `instanceId`，并将 locator 连同参数与动画值存档。Avalonia 根据 target 推导 `Layer` / `ScenePost`，从 program metadata 自动产生当前 catalog 所需参数 schema，再用同一套 `ShaderProgramTextureEffect` 绑定 scalar、enum、color、vec2 和 vec4 参数。旧 `id` 保留仅供尚未迁移的 overlay 粒子使用，不再是新 texture effect 的创作入口。
 
 1. Avalonia Rendering 读取 effect resource、缓存编译结果并交叉校验 metadata。
 2. 用通用 texture pass 替代 `ITextureEffectFactory` 的按 ID 分支。
-3. 将百叶窗和调色迁为首批 `.sksl` 资源，转场宏继续只生成通用 attachment 与动画原语。
+3. 将百叶窗和调色迁为首批 `.sksl` 资源；百叶窗转场由其 `maskProgram` 参数引用项目资源，并只生成通用 attachment 与动画原语。
 4. 编辑器复用同一 metadata parser 动态生成参数面板。
 5. 在资源预热阶段编译即将使用的 program 并预解码静态 texture 参数，避免首次转场卡顿。
 

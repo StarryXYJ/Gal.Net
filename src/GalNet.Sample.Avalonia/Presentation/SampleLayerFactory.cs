@@ -3,14 +3,16 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using GalNet.Avalonia.GameView.Presentation;
+using GalNet.Core.Assets;
 using GalNet.Rendering.Scene;
 using GalNet.Runtime.Logging;
 
 namespace GalNet.Sample.Avalonia.Presentation;
 
 /// <summary>Resolves sample game assets into Avalonia controls for the shared game page.</summary>
-internal sealed class SampleLayerFactory(string assetRoot) : IGamePageLayerFactory, IDisposable
+internal sealed class SampleLayerFactory(IAssetManager assets) : IGamePageLayerFactory, IDisposable
 {
+    private readonly IAssetManager _assets = assets ?? throw new ArgumentNullException(nameof(assets));
     private readonly Dictionary<string, SceneTexture> _textures = new(StringComparer.OrdinalIgnoreCase);
 
     public SceneTexture ResolveTexture(string assetId)
@@ -23,11 +25,10 @@ internal sealed class SampleLayerFactory(string assetRoot) : IGamePageLayerFacto
 
     private SceneTexture LoadTexture(string assetId)
     {
-        var path = Path.IsPathRooted(assetId) ? assetId : Path.Combine(assetRoot, assetId);
         try
         {
-            if (File.Exists(path))
-                return SceneTexture.FromFile(path);
+            if (_assets.TryGetLoaded<SceneTexture>(assetId, out var texture))
+                return texture;
 
             ReportMissing(assetId, null);
         }
@@ -41,7 +42,6 @@ internal sealed class SampleLayerFactory(string assetRoot) : IGamePageLayerFacto
 
     public void Dispose()
     {
-        foreach (var texture in _textures.Values) texture.Dispose();
         _textures.Clear();
     }
 

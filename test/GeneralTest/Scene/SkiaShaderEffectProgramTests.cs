@@ -5,22 +5,48 @@ namespace GeneralTest.Scene;
 
 public sealed class SkiaShaderEffectProgramTests
 {
-    [TestCase("builtin/blinds", "progress", EffectStage.Layer)]
-    [TestCase("builtin/color-grade", "hue", EffectStage.ScenePost)]
-    public void Builtin_programs_load_compile_and_publish_metadata(string resourceId, string parameterName, EffectStage stage)
+    [Test]
+    public async Task Project_program_resolves_compiles_and_publishes_metadata()
     {
-        var resource = new EffectProgramResource(resourceId);
-        var catalog = BuiltinSkiaEffectProgramCatalog.Default;
+        var resource = new EffectProgramResource("Effects/test.sksl");
+        using var resolver = new SkiaShaderEffectProgramResolver(new StaticSource("""
+            /*
+            @gal.effect v=1
+            @input source
+            @targets layer,scenePost
+            @param intensity
+              uniform: intensity
+              type: float
+            */
+            uniform shader source;
+            uniform float intensity;
+            half4 main(float2 p) { return source.eval(p) * intensity; }
+            """));
+        var program = await resolver.ResolveAsync(resource);
 
-        Assert.That(catalog.TryGetProgram(resource, out var program), Is.True);
         Assert.Multiple(() =>
         {
             Assert.That(program.IsUsable, Is.True, string.Join(Environment.NewLine, program.Diagnostics));
             Assert.That(program.Descriptor, Is.Not.Null);
-            Assert.That(program.Descriptor!.Supports(stage), Is.True);
-            Assert.That(program.Descriptor.Parameters.Select(parameter => parameter.Name), Does.Contain(parameterName));
-            Assert.That(catalog.TryGetDescriptor(resource, out var descriptor), Is.True);
+            Assert.That(program.Descriptor!.Supports(EffectStage.Layer), Is.True);
+            Assert.That(program.Descriptor.Supports(EffectStage.ScenePost), Is.True);
+            Assert.That(program.Descriptor.Parameters.Select(parameter => parameter.Name), Does.Contain("intensity"));
+            Assert.That(resolver.TryGetDescriptor(resource, out var descriptor), Is.True);
             Assert.That(descriptor, Is.SameAs(program.Descriptor));
+        });
+    }
+
+    [Test]
+    public async Task Missing_project_program_has_no_implicit_fallback()
+    {
+        using var resolver = new SkiaShaderEffectProgramResolver(new StaticSource(null));
+        var result = await resolver.ResolveAsync(new EffectProgramResource("Effects/missing.sksl"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.IsUsable, Is.False);
+            Assert.That(result.RuntimeEffect, Is.Null);
+            Assert.That(result.Diagnostics, Has.Some.Contains("was not found"));
         });
     }
 
@@ -46,5 +72,10 @@ public sealed class SkiaShaderEffectProgramTests
             Assert.That(result.RuntimeEffect, Is.Null);
             Assert.That(result.Diagnostics, Has.Some.Contains("missing uniform 'uIntensity'"));
         });
+    }
+
+    private sealed class StaticSource(string? source) : IShaderEffectProgramSource
+    {
+        public Task<string?> ReadAsync(EffectProgramResource resource, CancellationToken cancellationToken = default) => Task.FromResult(source);
     }
 }

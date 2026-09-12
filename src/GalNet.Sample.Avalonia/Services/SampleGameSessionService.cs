@@ -9,6 +9,10 @@ using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Runtime;
 using GalNet.Core.Settings;
 using GalNet.Core.View;
+using GalNet.Rendering.Scene;
+using GalNet.Assets;
+using GalNet.Assets.Provider;
+using GalNet.Core.Assets;
 using GalNet.Presentation.Abstractions.Runtime;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Handlers;
@@ -27,12 +31,14 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private readonly ObservableCollection<GameSaveSlot> _saveSlots = [];
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySaveSlots;
     private DirectoryGameContentProvider? _contentProvider;
+    private IAssetManager? _assets;
     private FileSaveService? _saves;
     private FileVariableService? _variables;
     private FileGameProgressService? _progress;
     private GameSettings? _settings;
     private GameEngine? _engine;
     private AvaloniaGamePageView? _pageView;
+    private SampleLayerFactory? _layers;
     private SampleMediaViews? _media;
     private AvaloniaEffectRuntime? _effects;
     private string? _gameDirectory;
@@ -69,6 +75,12 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _gameDirectory = options.GameDirectory;
             var profileDirectory = options.ProfileDirectory ?? Path.Combine(_gameDirectory, ".galnet");
             _contentProvider = new DirectoryGameContentProvider(_gameDirectory);
+            _assets = new AssetManager([new LocalFileProvider(_gameDirectory)]);
+            _assets.RegisterDecoder(new SceneTextureAssetDecoder());
+            foreach (var file in await _assets.GetFilesAsync(ResourceType.Sprite, cancellationToken))
+            {
+                await _assets.LoadAsync<SceneTexture>(file.Id, cancellationToken);
+            }
             _saves = new FileSaveService(profileDirectory);
             _variables = await FileVariableService.CreateAsync(new FilePlayerVariableStore(profileDirectory), cancellationToken);
             _progress = new FileGameProgressService(profileDirectory);
@@ -170,6 +182,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _disposed = true;
             _gameplay.InteractionObserved -= OnInteractionObserved;
             DisposeEngine();
+            _assets?.Dispose();
+            _assets = null;
         }
     }
 
@@ -239,6 +253,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     {
         _pageView?.Dispose();
         _pageView = null;
+        _layers?.Dispose();
+        _layers = null;
         _media?.Dispose();
         _media = null;
         _effects?.Dispose();
@@ -256,13 +272,16 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private async Task EnsureEngineAsync(CancellationToken cancellationToken)
     {
         if (_engine is not null) return;
-        if (!IsReady || _contentProvider is null || _variables is null || _progress is null || _settings is null || _gameDirectory is null)
+        if (!IsReady || _contentProvider is null || _assets is null || _variables is null || _progress is null || _settings is null || _gameDirectory is null)
             throw new InvalidOperationException("The game session is not initialized.");
 
-        var layerFactory = new SampleLayerFactory(_gameDirectory);
-        _pageView = new AvaloniaGamePageView(_gameplay, _page, layerFactory);
+        _layers = new SampleLayerFactory(_assets);
+        _pageView = new AvaloniaGamePageView(_gameplay, _page, _layers);
         _media = new SampleMediaViews(_gameplay);
-        _effects = new AvaloniaEffectRuntime(_gameplay, layerFactory);
+        _effects = new AvaloniaEffectRuntime(
+            _gameplay,
+            _layers,
+            programs: new SkiaShaderEffectProgramResolver(new AssetManagerShaderEffectProgramSource(_assets)));
         var gameView = new CompositeGameView(_pageView, _pageView, _pageView, _media, _media, _effects, _pageView, _pageView);
         var content = await _contentProvider.LoadAsync(cancellationToken);
         var settings = new SettingsContainer();
@@ -292,7 +311,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     {
         if (_engine is null || _effects is null) return;
         foreach (var effect in _engine.Runtime.SceneState.ActiveEffects)
-            await _effects.StartEffectAsync(new EffectRequest(effect.Id, effect.InstanceId, effect.TargetHandleId, effect.Order, effect.Parameters)
+            await _effects.StartEffectAsync(new EffectRequest(effect.Id, effect.InstanceId, effect.TargetHandleId, effect.Order, effect.Parameters, effect.ProgramResource)
             {
                 AnimationValues = effect.AnimationValues
             }, cancellationToken);

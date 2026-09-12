@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using GalNet.Core.Assets;
 using SkiaSharp;
 
 namespace GalNet.Rendering.Scene;
@@ -37,6 +38,25 @@ public sealed class SceneTexture : IDisposable
         }
     }
 
+    /// <summary>Creates both render representations from encoded project-asset bytes.</summary>
+    public static SceneTexture FromEncodedData(byte[] data)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        using var stream = new MemoryStream(data, writable: false);
+        var image = new Bitmap(stream);
+        try
+        {
+            var bitmap = SKBitmap.Decode(data);
+            if (bitmap is null) throw new InvalidDataException("The image asset could not be decoded.");
+            return new SceneTexture(image, bitmap);
+        }
+        catch
+        {
+            image.Dispose();
+            throw;
+        }
+    }
+
     public IImage AvaloniaImage { get; }
     public Size Size => AvaloniaImage.Size;
     public SKBitmap? SkBitmap => _skBitmap.Value;
@@ -63,4 +83,11 @@ public sealed class SceneTexture : IDisposable
 public interface ISceneTextureResolver
 {
     SceneTexture ResolveTexture(string assetId);
+}
+
+/// <summary>Renderer-owned decoder registered with the platform-neutral AssetManager.</summary>
+public sealed class SceneTextureAssetDecoder : IAssetDecoder<SceneTexture>
+{
+    public ValueTask<SceneTexture?> DecodeAsync(IGameFile file, ReadOnlyMemory<byte> data, CancellationToken ct = default) =>
+        ValueTask.FromResult<SceneTexture?>(SceneTexture.FromEncodedData(data.ToArray()));
 }

@@ -8,7 +8,8 @@ public sealed record EffectRequest(
     string InstanceId,
     string TargetHandleId = "",
     int Order = 0,
-    string Parameters = "")
+    string Parameters = "",
+    string ProgramResource = "")
 {
     /// <summary>Stable animation values to apply after an active effect is recreated.</summary>
     public IReadOnlyDictionary<string, float> AnimationValues { get; init; } = new Dictionary<string, float>(StringComparer.Ordinal);

@@ -702,7 +702,11 @@ public sealed class ApplyEffectHandler : EntryHandler
             context.GetString("instanceId"),
             context.GetString("targetHandleId"),
             context.GetInt("order"),
-            context.GetString("parameters"));
+            context.GetString("parameters"),
+            context.GetString("program"));
+
+        if (string.IsNullOrWhiteSpace(request.Id) && string.IsNullOrWhiteSpace(request.ProgramResource))
+            throw new InvalidDataException("Effect requires either an id or a program resource.");
 
         if (!string.IsNullOrWhiteSpace(request.InstanceId))
         {
@@ -715,13 +719,14 @@ public sealed class ApplyEffectHandler : EntryHandler
 
             if (context.Runtime.SceneInstances.TryGet<EffectInstance>(request.InstanceId, out var existing) &&
                 (!string.Equals(existing.EffectId, request.Id, StringComparison.Ordinal) ||
+                 !string.Equals(existing.ProgramResource, request.ProgramResource, StringComparison.Ordinal) ||
                  !string.Equals(existing.TargetHandleId, request.TargetHandleId, StringComparison.Ordinal) ||
                  existing.Order != request.Order))
                 throw new InvalidDataException($"Effect instance '{request.InstanceId}' is already active with a different definition.");
 
             var instance = context.Runtime.SceneInstances.GetOrAdd<EffectInstance>(request.InstanceId, id => new EffectInstance
             {
-                Id = id, EffectId = request.Id, TargetHandleId = request.TargetHandleId, Order = request.Order, Parameters = request.Parameters
+                Id = id, EffectId = request.Id, ProgramResource = request.ProgramResource, TargetHandleId = request.TargetHandleId, Order = request.Order, Parameters = request.Parameters
             });
             if (targetLayer is not null)
             {
@@ -734,6 +739,7 @@ public sealed class ApplyEffectHandler : EntryHandler
             context.Runtime.SceneState.ActiveEffects.Add(new ActiveEffectState
             {
                 Id = request.Id,
+                ProgramResource = request.ProgramResource,
                 InstanceId = request.InstanceId,
             TargetHandleId = request.TargetHandleId,
             Order = request.Order,

@@ -153,6 +153,7 @@ public sealed class GameRuntime : IGameRuntime
         SceneState.ActiveEffects.AddRange(snapshot.SceneState.ActiveEffects.Select(effect => new ActiveEffectState
         {
             Id = effect.Id,
+            ProgramResource = effect.ProgramResource,
             InstanceId = effect.InstanceId,
             TargetHandleId = effect.TargetHandleId,
             Order = effect.Order,
@@ -183,6 +184,7 @@ public sealed class GameRuntime : IGameRuntime
         {
             Id = effect.InstanceId,
             EffectId = effect.Id,
+            ProgramResource = effect.ProgramResource,
             TargetHandleId = effect.TargetHandleId,
             Order = effect.Order,
             Parameters = effect.Parameters

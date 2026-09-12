@@ -38,24 +38,28 @@ public interface IAvaloniaEffectHost
 public sealed class AvaloniaEffectRuntime : IEffectView, IDisposable
 {
     private readonly Dictionary<string, ITextureEffectFactory> _textureFactories;
+    private readonly Dictionary<string, ITextureEffectFactory> _programFactories = new(StringComparer.Ordinal);
+    private readonly SkiaShaderEffectProgramResolver? _programs;
     private readonly Dictionary<string, IAvaloniaEffectFactory> _legacyFactories;
     private readonly Dictionary<string, SceneEffectInstance> _textureInstances = new(StringComparer.Ordinal);
     private readonly Dictionary<string, IAvaloniaEffect> _legacyInstances = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _reportedProgramFailures = new(StringComparer.Ordinal);
     private readonly GamePageViewModel _page;
     private readonly Host _host;
     private long _nextTextureEffectInsertionOrder;
     public IEffectCatalog Catalog { get; }
 
-    public AvaloniaEffectRuntime(GamePageViewModel page, IGamePageLayerFactory layers, IEnumerable<IAvaloniaEffectFactory>? factories = null)
+    public AvaloniaEffectRuntime(GamePageViewModel page, IGamePageLayerFactory layers, IEnumerable<IAvaloniaEffectFactory>? factories = null, SkiaShaderEffectProgramResolver? programs = null)
     {
         _page = page;
         _textureFactories = DiscoverTextureFactories().ToDictionary(factory => factory.Definition.Id, StringComparer.OrdinalIgnoreCase);
         _legacyFactories = (factories ?? DiscoverLegacyFactories()).ToDictionary(factory => factory.EffectId, StringComparer.OrdinalIgnoreCase);
+        _programs = programs;
         Catalog = new EffectCatalog(_textureFactories.Values.Select(factory => factory.Definition).Concat(_legacyFactories.Values.Select(factory => factory.Definition)));
         _host = new Host(page, layers, CompleteLegacy);
     }
 
-    public static IEffectCatalog CreateDefaultCatalog() => new EffectCatalog(DiscoverTextureFactories().Select(factory => factory.Definition).Concat(DiscoverLegacyFactories().Select(factory => factory.Definition)));
+    public static IEffectCatalog CreateDefaultCatalog() => new EffectCatalog(DiscoverLegacyFactories().Select(factory => factory.Definition));
     public static IEnumerable<IAvaloniaEffectFactory> DiscoverFactories() => DiscoverLegacyFactories();
     public static IEnumerable<ITextureEffectFactory> DiscoverTextureFactories() => typeof(SceneLayerHost).Assembly
         .GetTypes().Where(type => !type.IsAbstract && typeof(ITextureEffectFactory).IsAssignableFrom(type) && type.GetConstructor(Type.EmptyTypes) is not null)
@@ -67,6 +71,21 @@ public sealed class AvaloniaEffectRuntime : IEffectView, IDisposable
     public async Task StartEffectAsync(EffectRequest request, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.InstanceId)) return;
+        if (!string.IsNullOrWhiteSpace(request.ProgramResource))
+        {
+            try
+            {
+                var stage = string.IsNullOrWhiteSpace(request.TargetHandleId) ? EffectStage.ScenePost : EffectStage.Layer;
+                var factory = await GetProgramFactoryAsync(request.ProgramResource, stage, ct);
+                await _host.InvokeAsync(() => StartTextureEffect(request, factory));
+            }
+            catch (Exception error)
+            {
+                if (_reportedProgramFailures.Add(request.ProgramResource))
+                    System.Diagnostics.Trace.TraceWarning("Shader program '{0}' could not be applied; using identity rendering. {1}", request.ProgramResource, error.Message);
+            }
+            return;
+        }
         foreach (var diagnostic in Catalog.Validate(request.Id, request.TargetHandleId, request.Parameters))
             System.Diagnostics.Trace.TraceWarning("Effect diagnostic: {0}", diagnostic);
         if (_textureFactories.TryGetValue(request.Id, out var textureFactory))
@@ -97,6 +116,7 @@ public sealed class AvaloniaEffectRuntime : IEffectView, IDisposable
         foreach (var id in _textureInstances.Keys.ToArray()) StopTextureEffect(id);
         foreach (var effect in _legacyInstances.Values) effect.Dispose();
         _legacyInstances.Clear();
+        _programs?.Dispose();
     }
 
     private void StartTextureEffect(EffectRequest request, ITextureEffectFactory factory)
@@ -107,9 +127,29 @@ public sealed class AvaloniaEffectRuntime : IEffectView, IDisposable
         _page.TextureEffects.Add(instance);
         foreach (var property in factory.Definition.AnimatableProperties)
         {
-            var initial = request.AnimationValues.TryGetValue(property.Name, out var value) ? value : 0f;
+            // Keep a sink ready for a track that starts after effect.apply, but do not
+            // manufacture an animated zero. Static shader parameters must remain the
+            // initial value until a real animation writes this property.
+            var initial = request.AnimationValues.TryGetValue(property.Name, out var value)
+                ? value
+                : instance.GetFloat(
+                    property.Name,
+                    property.DefaultValue ?? 0f,
+                    property.Minimum ?? float.NegativeInfinity,
+                    property.Maximum ?? float.PositiveInfinity);
             _page.RegisterEffectAnimation(instance.InstanceId, property.Name, value => instance.SetAnimatedValue(property.Name, (float)value), initial);
         }
+    }
+
+    private async Task<ITextureEffectFactory> GetProgramFactoryAsync(string resource, EffectStage stage, CancellationToken cancellationToken)
+    {
+        var key = $"{stage}:{resource}";
+        if (_programFactories.TryGetValue(key, out var existing)) return existing;
+        if (_programs is null) throw new InvalidOperationException("No shader project-resource source is configured for this game view.");
+        var program = await _programs.ResolveAsync(new EffectProgramResource(resource), cancellationToken);
+        var factory = new ShaderProgramTextureEffectFactory(resource, stage, new EffectProgramResource(resource), program);
+        _programFactories.Add(key, factory);
+        return factory;
     }
 
     private void StopTextureEffect(string instanceId)

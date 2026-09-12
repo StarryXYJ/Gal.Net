@@ -7,11 +7,13 @@ public enum AnimationValueKind
 }
 
 /// <summary>Immutable metadata for one property an editor or runtime may animate.</summary>
+/// <param name="DefaultValue">The static or metadata default used until an animation writes the property.</param>
 public sealed record AnimatableProperty(
     string Name,
     AnimationValueKind ValueKind,
     float? Minimum = null,
-    float? Maximum = null)
+    float? Maximum = null,
+    float? DefaultValue = null)
 {
     public bool Accepts(float value) =>
         float.IsFinite(value) &&

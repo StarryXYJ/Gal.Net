@@ -33,7 +33,8 @@ half4 main(float2 p) {
     float luma = dot(rgb, float3(0.2126, 0.7152, 0.0722));
     rgb = mix(float3(luma), rgb, max(0.0, 1.0 + saturation));
     float3 axis = float3(0.577350269, 0.577350269, 0.577350269);
-    rgb = rgb * cos(hue) + cross(axis, rgb) * sin(hue) + axis * dot(axis, rgb) * (1.0 - cos(hue));
+    float hueRadians = hue * 0.01745329252;
+    rgb = rgb * cos(hueRadians) + cross(axis, rgb) * sin(hueRadians) + axis * dot(axis, rgb) * (1.0 - cos(hueRadians));
     rgb = clamp(rgb + brightness, 0.0, 1.0);
     return half4(half3(rgb * c.a), c.a);
 }

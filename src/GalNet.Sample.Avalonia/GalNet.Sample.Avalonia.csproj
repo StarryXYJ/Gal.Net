@@ -36,6 +36,7 @@
   <ItemGroup>
     <ProjectReference Include="..\GalNet.Avalonia.Controls\GalNet.Avalonia.Controls.csproj" />
     <ProjectReference Include="..\GalNet.Avalonia.GameView\GalNet.Avalonia.GameView.csproj" />
+    <ProjectReference Include="..\GalNet.Assets\GalNet.Assets.csproj" />
     <ProjectReference Include="..\GalNet.Core\GalNet.Core.csproj" />
     <ProjectReference Include="..\GalNet.Presentation.Abstractions\GalNet.Presentation.Abstractions.csproj" />
     <ProjectReference Include="..\GalNet.Presentation.Defaults\GalNet.Presentation.Defaults.csproj" />

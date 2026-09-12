@@ -12,9 +12,11 @@
 
 @param bladeCount
   uniform: bladeCount
-  type: int
+  type: float
   default: 12
   range: 1..512
+  step: 1
+  animatable: false
 
 @param orientation
   uniform: horizontal
@@ -29,7 +31,12 @@ uniform float horizontal;
 uniform float2 size;
 
 half4 main(float2 p) {
-    float axis = horizontal > 0.5 ? p.y / size.y : p.x / size.x;
-    float reveal = step(fract(axis * bladeCount), progress);
+    float count = max(1.0, floor(bladeCount + 0.5));
+    float span = horizontal > 0.5 ? size.y : size.x;
+    float coordinate = horizontal > 0.5 ? p.y : p.x;
+    // Work in each blade's physical pixel span. This avoids relying on a backend's
+    // normalized-fract optimization and makes every blade reveal independently.
+    float positionInBlade = mod(coordinate, span / count);
+    float reveal = step(positionInBlade, (span / count) * progress);
     return source.eval(p) * reveal;
 }

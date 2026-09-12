@@ -149,7 +149,7 @@ public sealed class BlindsTransitionEntry : NonPrimitiveEntry
 {
     public const string TypeId = "transition.blinds";
     public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("playbackHandleId", EntryParameterType.Text), ("oldHandleId", EntryParameterType.Text), ("newHandleId", EntryParameterType.Text), ("assetId", EntryParameterType.ImageAsset), ("transform", EntryParameterType.Json), ("z", EntryParameterType.Float), ("displayMode", EntryParameterType.Select), ("bladeCount", EntryParameterType.Integer), ("orientation", EntryParameterType.Select), ("frameRate", EntryParameterType.Integer), ("durationFrames", EntryParameterType.Integer), ("batchId", EntryParameterType.Text));
+    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("playbackHandleId", EntryParameterType.Text), ("oldHandleId", EntryParameterType.Text), ("newHandleId", EntryParameterType.Text), ("assetId", EntryParameterType.ImageAsset), ("maskProgram", EntryParameterType.Text), ("transform", EntryParameterType.Json), ("z", EntryParameterType.Float), ("displayMode", EntryParameterType.Select), ("bladeCount", EntryParameterType.Integer), ("orientation", EntryParameterType.Select), ("frameRate", EntryParameterType.Integer), ("durationFrames", EntryParameterType.Integer), ("batchId", EntryParameterType.Text));
     public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("transform", "{}"), ("z", "0"), ("displayMode", "Fill"), ("bladeCount", "12"), ("orientation", "Vertical"), ("frameRate", "60"), ("durationFrames", "48"));
     public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(("displayMode", ["Native", "Tile", "Fill", "Uniform", "UniformToFill"]), ("orientation", ["Vertical", "Horizontal"]));
 
@@ -158,6 +158,7 @@ public sealed class BlindsTransitionEntry : NonPrimitiveEntry
         var playback = TransitionEntrySupport.Require(this, "playbackHandleId");
         var oldHandle = TransitionEntrySupport.Require(this, "oldHandleId");
         var newHandle = TransitionEntrySupport.Require(this, "newHandleId");
+        var maskProgram = TransitionEntrySupport.Require(this, "maskProgram");
         var frames = TransitionEntrySupport.PositiveInt(this, "durationFrames");
         var bladeCount = TransitionEntrySupport.PositiveInt(this, "bladeCount");
         var orientation = TransitionEntrySupport.Get(this, "orientation", "Vertical");
@@ -182,7 +183,7 @@ public sealed class BlindsTransitionEntry : NonPrimitiveEntry
             Events =
             [
                 CrossFadeTransitionEntry.ShowLayer(newHandle, TransitionEntrySupport.Require(this, "assetId"), TransitionEntrySupport.Json(this, "transform", "{}"), TransitionEntrySupport.Float(this, "z"), 1, TransitionEntrySupport.DisplayMode(this, "displayMode", "Fill")),
-                ApplyMask(mask, newHandle, maskParameters),
+                ApplyMask(mask, newHandle, maskProgram, maskParameters),
                 StopMask(mask, frames),
                 CrossFadeTransitionEntry.HideLayer(oldHandle, frames)
             ]
@@ -190,13 +191,13 @@ public sealed class BlindsTransitionEntry : NonPrimitiveEntry
         return [TransitionEntrySupport.PlanEntry(context, plan)];
     }
 
-    private static AnimationPlanEventDefinition ApplyMask(string instanceId, string targetHandleId, JsonElement parameters) => new()
+    private static AnimationPlanEventDefinition ApplyMask(string instanceId, string targetHandleId, string program, JsonElement parameters) => new()
     {
         Frame = 0,
         Type = ApplyEffectEntry.TypeId,
         Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
         {
-            ["id"] = JsonSerializer.SerializeToElement("mask.blinds"),
+            ["program"] = JsonSerializer.SerializeToElement(program),
             ["instanceId"] = JsonSerializer.SerializeToElement(instanceId),
             ["targetHandleId"] = JsonSerializer.SerializeToElement(targetHandleId),
             ["parameters"] = parameters

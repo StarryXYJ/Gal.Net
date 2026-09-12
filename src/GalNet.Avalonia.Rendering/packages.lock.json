@@ -103,6 +103,12 @@
       },
       "galnet.core": {
         "type": "Project"
+      },
+      "galnet.storage.abstractions": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Core": "[1.0.0, )"
+        }
       }
     }
   }

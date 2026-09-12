@@ -133,6 +133,30 @@ public sealed class AssetManagerTests
     }
 
     [Test]
+    public async Task LoadAsync_CustomDecoder_IsTypedCachedAndReleasedByType()
+    {
+        using var manager = new AssetManager();
+        manager.RegisterProvider(new MockProvider("test", new GameFile("id-1", "sprite.bin", ResourceType.Sprite, "data"u8.ToArray())));
+        var decoder = new DisposableAssetDecoder();
+        manager.RegisterDecoder(decoder);
+
+        var first = await manager.LoadAsync<DisposableAsset>("id-1");
+        var second = await manager.LoadAsync<DisposableAsset>("id-1");
+
+        Assert.That(first, Is.Not.Null);
+        Assert.That(second, Is.SameAs(first));
+        Assert.That(decoder.DecodeCount, Is.EqualTo(1));
+        Assert.That(manager.TryGetLoaded<DisposableAsset>("id-1", out var loaded), Is.True);
+        Assert.That(loaded, Is.SameAs(first));
+
+        manager.Release<DisposableAsset>("id-1");
+        Assert.That(first!.Disposed, Is.False);
+        manager.Release<DisposableAsset>("id-1");
+        Assert.That(first.Disposed, Is.True);
+        Assert.That(manager.TryGetLoaded<DisposableAsset>("id-1", out _), Is.False);
+    }
+
+    [Test]
     public async Task ClearCache_RemovesAllEntries()
     {
         using var manager = new AssetManager();
@@ -272,6 +296,23 @@ public sealed class AssetManagerTests
             public IGameFile? GetAssetByPath(string path) =>
                 string.Equals(path.Replace('\\', '/'), file.Path.Replace('\\', '/'), StringComparison.OrdinalIgnoreCase) ? file : null;
             public void Dispose() { }
+        }
+    }
+
+    private sealed class DisposableAsset : IDisposable
+    {
+        public bool Disposed { get; private set; }
+        public void Dispose() => Disposed = true;
+    }
+
+    private sealed class DisposableAssetDecoder : IAssetDecoder<DisposableAsset>
+    {
+        public int DecodeCount { get; private set; }
+
+        public ValueTask<DisposableAsset?> DecodeAsync(IGameFile file, ReadOnlyMemory<byte> data, CancellationToken ct = default)
+        {
+            DecodeCount++;
+            return ValueTask.FromResult<DisposableAsset?>(new DisposableAsset());
         }
     }
 }
