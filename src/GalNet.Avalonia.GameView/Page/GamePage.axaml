@@ -1,7 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="using:GalNet.Game.Controls"
-             xmlns:scene="using:GalNet.Game.Controls.Scene"
+             xmlns:scene="using:GalNet.Rendering.Scene"
              xmlns:local="using:GalNet.Avalonia.GameView.Page"
              xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
              x:Class="GalNet.Avalonia.GameView.Page.GamePage"
@@ -9,7 +9,7 @@
   <Grid Background="#0B0C15">
     <!-- The whole scene pipeline is contained here. Everything below is GameShell UI. -->
     <Grid x:Name="SceneSurface" ClipToBounds="True">
-      <scene:SceneLayerHost ItemsSource="{Binding Layers}" />
+      <scene:SceneLayerHost x:Name="SceneHostControl" ItemsSource="{Binding Layers}" EffectsSource="{Binding TextureEffects}" RenderablesSource="{Binding SceneRenderables}" />
       <ItemsControl ItemsSource="{Binding SceneVisuals}" IsHitTestVisible="False">
         <ItemsControl.ItemsPanel><ItemsPanelTemplate><Grid /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
       </ItemsControl>

@@ -1,15 +1,14 @@
-using Avalonia.Media;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using GalNet.Core.Scene;
 
-namespace GalNet.Game.Controls.Scene;
+namespace GalNet.Rendering.Scene;
 
-/// <summary>Bindable Layer render data passed from the shared game page to <see cref="SceneLayerHost"/>.</summary>
+/// <summary>Bindable Layer render data consumed by the fixed scene pipeline.</summary>
 public sealed class SceneLayerItem : INotifyPropertyChanged
 {
     private string _handleId = string.Empty;
-    private IImage? _image;
+    private SceneTexture? _texture;
     private string? _color;
     private double _x;
     private double _y;
@@ -20,13 +19,10 @@ public sealed class SceneLayerItem : INotifyPropertyChanged
     private LayerDisplayMode _displayMode;
     private double _opacity = 1;
     private bool _isVisible = true;
-    private double _blindsProgress = 1;
-    private int _blindsBladeCount;
-    private bool _blindsHorizontal;
     private FlipbookDefinition? _flipbook;
 
     public string HandleId { get => _handleId; set => SetField(ref _handleId, value); }
-    public IImage? Image { get => _image; set => SetField(ref _image, value); }
+    public SceneTexture? Texture { get => _texture; set => SetField(ref _texture, value); }
     public string? Color { get => _color; set => SetField(ref _color, value); }
     public double X { get => _x; set => SetField(ref _x, value); }
     public double Y { get => _y; set => SetField(ref _y, value); }
@@ -37,7 +33,6 @@ public sealed class SceneLayerItem : INotifyPropertyChanged
     public LayerDisplayMode DisplayMode { get => _displayMode; set => SetField(ref _displayMode, value); }
     public double Opacity { get => _opacity; set => SetField(ref _opacity, value); }
     public bool IsVisible { get => _isVisible; set => SetField(ref _isVisible, value); }
-    /// <summary>Optional sprite-sheet layout for <see cref="Image"/>. The source remains one image while index selects its current frame.</summary>
     public FlipbookDefinition? Flipbook { get => _flipbook; set => SetField(ref _flipbook, value); }
     public double FlipbookIndex
     {
@@ -49,14 +44,8 @@ public sealed class SceneLayerItem : INotifyPropertyChanged
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FlipbookIndex)));
         }
     }
-    /// <summary>0 hides a blinds-masked layer and 1 reveals it fully.</summary>
-    public double BlindsProgress { get => _blindsProgress; set => SetField(ref _blindsProgress, Math.Clamp(value, 0, 1)); }
-    /// <summary>Zero means no blinds mask.</summary>
-    public int BlindsBladeCount { get => _blindsBladeCount; set => SetField(ref _blindsBladeCount, Math.Max(0, value)); }
-    public bool BlindsHorizontal { get => _blindsHorizontal; set => SetField(ref _blindsHorizontal, value); }
 
     public event PropertyChangedEventHandler? PropertyChanged;
-
     private void SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value)) return;

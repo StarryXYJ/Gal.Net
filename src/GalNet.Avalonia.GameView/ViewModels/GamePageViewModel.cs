@@ -4,7 +4,7 @@ using Avalonia.Media;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Game.Controls;
-using GalNet.Game.Controls.Scene;
+using GalNet.Rendering.Scene;
 using GalNet.Core.Scene;
 
 namespace GalNet.Avalonia.GameView.ViewModels;
@@ -20,6 +20,9 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     public GamePageViewModel(IGameNavigationService navigation) => _navigation = navigation;
 
     public ObservableCollection<SceneLayerItem> Layers { get; } = [];
+    public ObservableCollection<SceneEffectInstance> TextureEffects { get; } = [];
+    /// <summary>Reserved GPU scene objects; particles remain on the transitional overlay for now.</summary>
+    public ObservableCollection<ISceneRenderable> SceneRenderables { get; } = [];
     public ObservableCollection<string> Choices { get; } = [];
     public ObservableCollection<NvlLine> NvlLines { get; } = [];
     /// <summary>Transitional host-owned visuals rendered inside the scene surface, before GameShell UI.</summary>
@@ -125,7 +128,7 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         if (existing is null) Layers.Add(item);
         else
         {
-            existing.Image = item.Image;
+            existing.Texture = item.Texture;
             existing.Color = item.Color;
             existing.Flipbook = item.Flipbook?.Clone();
             existing.X = item.X;
@@ -150,6 +153,8 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     public void ResetScenePresentation()
     {
         Layers.Clear();
+        TextureEffects.Clear();
+        SceneRenderables.Clear();
         SceneVisuals.Clear();
         _effectAnimations.Clear();
         IsDialogueVisible = false;
@@ -157,11 +162,11 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         NvlLines.Clear();
     }
 
-    public void ReplaceLayer(string id, IImage? image)
+    public void ReplaceLayer(string id, SceneTexture? texture)
     {
         var layer = Layers.FirstOrDefault(candidate => candidate.HandleId == id);
         if (layer is null) return;
-        layer.Image = image;
+        layer.Texture = texture;
         layer.Color = null;
     }
 

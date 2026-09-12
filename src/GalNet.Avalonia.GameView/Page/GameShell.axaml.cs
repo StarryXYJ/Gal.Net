@@ -102,7 +102,7 @@ public partial class GameShell : UserControl, IDisposable
         await _screenshots.CaptureAsync(new GameScreenshotRequest(
             _session.GameTitle,
             owner,
-            includeUi => Task.FromResult(CapturePng(includeUi ? this : page.Scene))));
+            includeUi => Task.FromResult(includeUi ? CapturePng(this) : page.CaptureScenePng())));
     }
 
     private async void OnReturnToTitleRequested()

@@ -1,22 +1,19 @@
 using Avalonia.Controls;
-using Avalonia.Media;
 using Avalonia.Threading;
 using System.Diagnostics;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Core.View;
 using GalNet.Core.Scene;
-using GalNet.Game.Controls.Scene;
+using GalNet.Rendering.Scene;
 using GalNet.Avalonia.GameView.ViewModels;
 
 namespace GalNet.Avalonia.GameView.Presentation;
 
 /// <summary>Host-provided creation of layer visuals; the shared page never resolves files itself.</summary>
-public interface IGamePageLayerFactory
+public interface IGamePageLayerFactory : ISceneTextureResolver
 {
-    /// <summary>Resolves a content asset ID to the Avalonia image displayed for a layer.</summary>
+    /// <summary>Resolves a content asset ID to the immutable image texture displayed for a layer.</summary>
     /// <param name="assetId">Host-defined asset identifier from a Layer request.</param>
-    /// <returns>The image to display, or <see langword="null"/> when the host cannot resolve the asset.</returns>
-    IImage ResolveLayerImage(string assetId);
 }
 
 /// <summary>Maps runtime layer, dialogue and interaction ports onto a shared <see cref="GamePage"/>.</summary>
@@ -48,7 +45,7 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
         _state.SetLayer(request.HandleId, new SceneLayerItem
         {
             HandleId = request.HandleId,
-            Image = request.Color is null ? _layers.ResolveLayerImage(request.AssetId) : null,
+            Texture = request.Color is null ? _layers.ResolveTexture(request.AssetId) : null,
             Color = request.Color,
             Flipbook = request.Flipbook?.Clone(),
             X = request.Transform.X,
@@ -61,7 +58,7 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
             Opacity = request.Opacity
         }));
 
-    public void ReplaceLayer(string handleId, string assetId) => OnUi(() => _state.ReplaceLayer(handleId, _layers.ResolveLayerImage(assetId)));
+    public void ReplaceLayer(string handleId, string assetId) => OnUi(() => _state.ReplaceLayer(handleId, _layers.ResolveTexture(assetId)));
     public void HideLayer(string handleId) => OnUi(() => _state.HideLayer(handleId));
     public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSec) => OnUi(() => _state.MoveLayer(handleId, transform, z));
     public async Task<AnimationOutcome> AnimateAsync(AnimationRequest request, CancellationToken ct)

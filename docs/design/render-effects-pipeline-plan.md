@@ -107,20 +107,19 @@ Layer source 的 authoring 数据优先采用显式 `source` 对象；现阶段 
 
 验收：非法目标/阶段组合能显示诊断；Layer、Effect 和快照测试覆盖配置及恢复。
 
-### Phase 2：离屏场景与 effect render graph（进行中）
+### Phase 2：离屏场景与 effect render graph（已完成首版）
 
-- 已完成首个切片：`SceneLayerHost` 已从每 Layer 一个 Avalonia 子控件收缩为单一绘制面，并公开稳定的 `SceneRenderPlan`（`z`、再按插入顺序）。
-- 建立渲染后端专属的 `RenderGraph` / `EffectRenderer`，管理 source、临时纹理、Layer effect 链和场景 render target。
-- 建立 `SceneRenderer` 的 renderable 收集与排序入口；Layer 与 `ISceneRenderable` 一起写入同一个场景 render target。
-- 将 `SceneLayerHost` 收缩为最终画面承载与输入布局宿主，不承担具体 effect 分支。
-- 实现 ping-pong 临时纹理池，确保每个 effect 不持有上一帧临时输出。
-- 定义资源失效、窗口缩放、设备重建和 effect 停止时的释放策略。
+- `GalNet.Avalonia.Rendering` 承载 `SceneTexture`、`SceneLayerHost`、稳定 `SceneRenderPlan` 和 `ISceneRenderable`；通用 Controls 不再保存场景渲染状态。
+- 每个 Layer 先渲染为完整场景尺寸的 Skia 纹理，按 `order` 运行 Layer pass，再合成并运行唯一的 ScenePost pass；UI 保持在 Host 外。
+- `ITextureEffect` 是唯一像素效果契约。`mask.blinds` 为 SkSL shader，转场宏仅动画其 `progress` uniform；`layer.colorGrade` 与 `scene.colorGrade` 复用一份 SkSL 调色实现。
+- 缺失资源与 Flipbook 均通过 `SceneTexture` 入口解析；scene-only 截图复用同一管线输出。Skia 失败时回退为无 effect 的 Avalonia 绘制并记录一次诊断。
+- `ISceneRenderable` 已暴露给 Host；粒子仍是临时 Avalonia overlay，明确不进入 ScenePost，等待 Phase 4 迁移。
 
 验收：两种无副作用的测试 Shader 可串联到同一 Layer；一个测试 renderable 可与 Layer 按 order 合成；ScenePost 能改变合成场景而不影响 GameShell UI。
 
 ### Phase 3：首批 Shader 效果
 
-- `layer.colorGrade`：亮度、对比度、饱和度、色相或简单 LUT。
+- 已完成 `layer.colorGrade` / `scene.colorGrade`：亮度、饱和度、色相共享一份 shader；参数范围分别为 `[-1,1]`、`[-1,1]`、`[-180,180]`。
 - `layer.dissolve`：原图、mask、`progress`、边缘宽度和边缘色。
 - `layer.glow`：阈值、颜色、半径和强度。
 - `scene.vignette` 与 `scene.colorGrade`：验证全屏场景后处理。

@@ -3,14 +3,26 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using GalNet.Avalonia.GameView.Presentation;
+using GalNet.Rendering.Scene;
 using GalNet.Runtime.Logging;
 
 namespace GalNet.Sample.Avalonia.Presentation;
 
 /// <summary>Resolves sample game assets into Avalonia controls for the shared game page.</summary>
-internal sealed class SampleLayerFactory(string assetRoot) : IGamePageLayerFactory
+internal sealed class SampleLayerFactory(string assetRoot) : IGamePageLayerFactory, IDisposable
 {
-    public IImage ResolveLayerImage(string assetId)
+    private readonly Dictionary<string, SceneTexture> _textures = new(StringComparer.OrdinalIgnoreCase);
+
+    public SceneTexture ResolveTexture(string assetId)
+    {
+        if (_textures.TryGetValue(assetId, out var texture)) return texture;
+        var image = LoadImage(assetId);
+        texture = new SceneTexture(image);
+        _textures.Add(assetId, texture);
+        return texture;
+    }
+
+    private IImage LoadImage(string assetId)
     {
         var path = Path.IsPathRooted(assetId) ? assetId : Path.Combine(assetRoot, assetId);
         try
@@ -26,6 +38,12 @@ internal sealed class SampleLayerFactory(string assetRoot) : IGamePageLayerFacto
         }
 
         return LayerImageFallback.MissingImage;
+    }
+
+    public void Dispose()
+    {
+        foreach (var texture in _textures.Values) texture.Dispose();
+        _textures.Clear();
     }
 
     private static void ReportMissing(string assetId, Exception? exception)

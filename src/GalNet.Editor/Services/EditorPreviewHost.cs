@@ -12,6 +12,7 @@ using GameViewAssembly::GalNet.Avalonia.GameView.Page;
 using GameViewAssembly::GalNet.Avalonia.GameView.Presentation;
 using GameViewAssembly::GalNet.Avalonia.GameView.Services;
 using GameViewAssembly::GalNet.Avalonia.GameView.ViewModels;
+using GalNet.Rendering.Scene;
 using GalNet.Core.Runtime;
 using GalNet.Core.Services;
 using GalNet.Core.Settings;
@@ -269,7 +270,17 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
 
 internal sealed class EditorPreviewLayerFactory(string assetRoot) : IGamePageLayerFactory
 {
-    public IImage ResolveLayerImage(string assetId)
+    private readonly Dictionary<string, SceneTexture> _textures = new(StringComparer.OrdinalIgnoreCase);
+
+    public SceneTexture ResolveTexture(string assetId)
+    {
+        if (_textures.TryGetValue(assetId, out var texture)) return texture;
+        texture = new SceneTexture(LoadImage(assetId));
+        _textures.Add(assetId, texture);
+        return texture;
+    }
+
+    private IImage LoadImage(string assetId)
     {
         var path = Path.IsPathRooted(assetId) ? assetId : Path.Combine(assetRoot, assetId);
         try

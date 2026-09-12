@@ -23,6 +23,7 @@
   </Folder>
   <Folder Name="/src/Presentation/">
     <Project Path="src/GalNet.Avalonia.Controls/GalNet.Avalonia.Controls.csproj" />
+    <Project Path="src/GalNet.Avalonia.Rendering/GalNet.Avalonia.Rendering.csproj" />
     <Project Path="src/GalNet.Avalonia.GameView/GalNet.Avalonia.GameView.csproj" />
     <Project Path="src/GalNet.Presentation.Defaults/GalNet.Presentation.Defaults.csproj" />
   </Folder>

@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Core.Scene;
-using GalNet.Game.Controls.Scene;
+using GalNet.Rendering.Scene;
 
 namespace GeneralTest.Presentation;
 
