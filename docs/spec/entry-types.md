@@ -261,7 +261,7 @@
 | order | integer? | 同一固定渲染阶段内的执行顺序，默认 0；相同值按添加顺序稳定执行 |
 | parameters | JSON | Effect 的结构化启动参数，例如 `{"bladeCount":12,"orientation":"Vertical"}` |
 
-> Effect definition 固定声明 `Layer`、`SceneBeforeUi` 或 `SceneAfterUi` 阶段。三个阶段共享同一个纹理输入/输出契约；阶段只决定输入是 Layer、场景合成结果还是 UI 合成结果。Handler 创建可动画的 `EffectInstance`，维护 Layer 双向关联，并调用 `IEffectView.StartEffectAsync()`。Effect 本身没有时长；时间和跳过由普通动画 Plan 描述。
+> Effect definition 固定声明 `Layer` 或 `ScenePost` 阶段。两个阶段共享同一个纹理输入/输出契约；阶段只决定输入是 Layer 或 Layer 全部合成后的场景纹理。GameShell 的 Avalonia UI 在 ScenePost 之后叠加，不受 Effect 影响。Handler 创建可动画的 `EffectInstance`，维护 Layer 双向关联，并调用 `IEffectView.StartEffectAsync()`。Effect 本身没有时长；时间和跳过由普通动画 Plan 描述。
 
 ### effect.stop
 

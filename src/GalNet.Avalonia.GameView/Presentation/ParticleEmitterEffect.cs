@@ -8,7 +8,7 @@ public sealed class ParticleEmitterEffectFactory : IAvaloniaEffectFactory
 {
     public EffectDefinition Definition { get; } = new(
         "particle.emitter",
-        EffectStage.SceneBeforeUi,
+        EffectStage.ScenePost,
         [
             new("particleTexture", EffectParameterKind.ImageAsset), new("emissionRate", EffectParameterKind.Float, Minimum: 0),
             new("maxParticles", EffectParameterKind.Integer, Minimum: 1), new("initialVelocityX", EffectParameterKind.Float),
@@ -33,7 +33,7 @@ public sealed class ParticleEmitterEffect : IAvaloniaEffect
         {
             _emitter = new ParticleEmitterControl(host.ResolveImage(ReadTexture(request.Parameters)), request.Parameters);
             _emitter.Drained += OnDrained;
-            host.AddOverlay(_emitter);
+            host.AddSceneVisual(_emitter);
             host.RegisterAnimationSink(request.InstanceId, "emissionRate", value => _emitter.EmissionRate = value, _emitter.EmissionRate);
             host.RegisterAnimationSink(request.InstanceId, "initialVelocityX", value => _emitter.InitialVelocityX = value, _emitter.InitialVelocityX);
             host.RegisterAnimationSink(request.InstanceId, "initialVelocityY", value => _emitter.InitialVelocityY = value, _emitter.InitialVelocityY);
@@ -48,7 +48,7 @@ public sealed class ParticleEmitterEffect : IAvaloniaEffect
     {
         if (_emitter is null || _host is null) return;
         _emitter.Drained -= OnDrained;
-        _host.RemoveOverlay(_emitter);
+        _host.RemoveSceneVisual(_emitter);
         _emitter.Dispose();
         _emitter = null;
     }

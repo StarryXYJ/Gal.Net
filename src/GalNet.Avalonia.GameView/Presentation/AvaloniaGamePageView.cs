@@ -16,7 +16,7 @@ public interface IGamePageLayerFactory
     /// <summary>Resolves a content asset ID to the Avalonia image displayed for a layer.</summary>
     /// <param name="assetId">Host-defined asset identifier from a Layer request.</param>
     /// <returns>The image to display, or <see langword="null"/> when the host cannot resolve the asset.</returns>
-    IImage? ResolveLayerImage(string assetId);
+    IImage ResolveLayerImage(string assetId);
 }
 
 /// <summary>Maps runtime layer, dialogue and interaction ports onto a shared <see cref="GamePage"/>.</summary>

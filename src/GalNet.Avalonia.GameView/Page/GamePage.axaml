@@ -6,9 +6,10 @@
              x:Class="GalNet.Avalonia.GameView.Page.GamePage"
              x:DataType="vm:GamePageViewModel">
   <Grid Background="#0B0C15">
+    <!-- The whole scene pipeline is contained here. Everything below is GameShell UI. -->
     <Grid x:Name="SceneSurface" ClipToBounds="True">
       <controls:SceneLayerHost ItemsSource="{Binding Layers}" />
-      <ItemsControl ItemsSource="{Binding OverlayEffects}" IsHitTestVisible="False">
+      <ItemsControl ItemsSource="{Binding SceneVisuals}" IsHitTestVisible="False">
         <ItemsControl.ItemsPanel><ItemsPanelTemplate><Grid /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
       </ItemsControl>
       <Border Background="{Binding TransitionBrush}" Opacity="{Binding TransitionOpacity}"

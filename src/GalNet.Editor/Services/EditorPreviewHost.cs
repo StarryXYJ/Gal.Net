@@ -22,6 +22,7 @@ using GalNet.Runtime.Runtime;
 using GalNet.Presentation.Defaults;
 using GalNet.Presentation.Abstractions.Runtime;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 
 namespace GalNet.Editor.Services;
 
@@ -268,7 +269,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
 
 internal sealed class EditorPreviewLayerFactory(string assetRoot) : IGamePageLayerFactory
 {
-    public IImage? ResolveLayerImage(string assetId)
+    public IImage ResolveLayerImage(string assetId)
     {
         var path = Path.IsPathRooted(assetId) ? assetId : Path.Combine(assetRoot, assetId);
         try
@@ -276,11 +277,22 @@ internal sealed class EditorPreviewLayerFactory(string assetRoot) : IGamePageLay
             if (File.Exists(path))
                 return new Bitmap(path);
         }
-        catch
+        catch (Exception exception)
         {
-            // Preview intentionally falls back to a visible placeholder.
+            ReportMissing(assetId, exception);
+            return LayerImageFallback.MissingImage;
         }
 
-        return null;
+        ReportMissing(assetId, null);
+        return LayerImageFallback.MissingImage;
+    }
+
+    private static void ReportMissing(string assetId, Exception? exception)
+    {
+        if (!LayerImageFallback.ShouldReport(assetId)) return;
+        if (exception is null)
+            Log.Warning("Layer asset was not found; rendering built-in fallback: {AssetId}", assetId);
+        else
+            Log.Warning(exception, "Layer asset could not be read; rendering built-in fallback: {AssetId}", assetId);
     }
 }

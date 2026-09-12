@@ -28,8 +28,8 @@ public interface IAvaloniaEffectHost
 {
     IImage? ResolveImage(string assetId);
     SceneLayerItem? FindLayer(string handleId);
-    void AddOverlay(Control visual);
-    void RemoveOverlay(Control visual);
+    void AddSceneVisual(Control visual);
+    void RemoveSceneVisual(Control visual);
     void RegisterAnimationSink(string instanceId, string propertyName, Action<double> apply, double initialValue = 0);
     void UnregisterAnimationSinks(string instanceId);
     void CompleteEffect(string instanceId);
@@ -93,8 +93,8 @@ public sealed class AvaloniaEffectRuntime : IEffectView, IDisposable
     {
         public IImage? ResolveImage(string assetId) => layers.ResolveLayerImage(assetId);
         public SceneLayerItem? FindLayer(string handleId) => page.Layers.FirstOrDefault(layer => layer.HandleId == handleId);
-        public void AddOverlay(Control visual) => page.OverlayEffects.Add(visual);
-        public void RemoveOverlay(Control visual) => page.OverlayEffects.Remove(visual);
+        public void AddSceneVisual(Control visual) => page.SceneVisuals.Add(visual);
+        public void RemoveSceneVisual(Control visual) => page.SceneVisuals.Remove(visual);
         public void RegisterAnimationSink(string instanceId, string propertyName, Action<double> apply, double initialValue = 0) => page.RegisterEffectAnimation(instanceId, propertyName, apply, initialValue);
         public void UnregisterAnimationSinks(string instanceId) => page.UnregisterEffectAnimations(instanceId);
         public void CompleteEffect(string instanceId) => complete(instanceId);

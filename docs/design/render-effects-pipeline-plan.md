@@ -7,7 +7,6 @@
 - 单个 Layer 串联局部效果；
 - 静态图片、Flipbook 和未来视频等动态 Layer 源；
 - 场景合成后、游戏 UI 合成前的全屏后处理；
-- UI 合成后、输出到屏幕前的最终后处理；
 - 每个具体效果由自己的模块负责，不在场景宿主中加入按 effect ID 分支；
 - 保持 Core / Runtime 不依赖 Avalonia、Skia 或 GPU 类型。
 
@@ -17,18 +16,16 @@
 flowchart LR
   Source[Layer Source\n静态图 / Flipbook / 视频] --> LE[LayerEffect 链]
   LE --> Scene[Scene Render Target\n按 z 合成]
-  Scene --> Before[SceneBeforeUi 后处理链]
-  Before --> UI[合成游戏 UI\n对话 / 选项 / HUD]
-  UI --> After[SceneAfterUi 后处理链]
-  After --> Output[屏幕输出]
+  Scene --> Post[ScenePost 后处理链]
+  Post --> Output[场景输出]
+  Output --> UI[GameShell Avalonia UI\n对话 / 选项 / HUD]
 ```
 
 | 阶段 | 输入 | 典型效果 | 是否影响游戏 UI |
 | --- | --- | --- | --- |
 | `Layer` | 一个 Layer 的当前帧 | 调色、溶解、局部发光、扭曲 | 否 |
-| `SceneBeforeUi` | 已合成的场景纹理 | LUT、暗角、bloom、景深 | 否 |
-| `SceneAfterUi` | 场景与游戏 UI 的合成纹理 | 闪白、全屏淡出、故障 | 是 |
-所有阶段都使用同一个纹理流接口：取上一个 pass 的输出纹理，写出下一张纹理。`SceneBeforeUi` 与 `SceneAfterUi` 不是两种 effect 数据结构，只是固定管线中的两个插槽。
+| `ScenePost` | 已合成的场景纹理 | LUT、暗角、bloom、景深、场景闪白 | 否 |
+所有阶段都使用同一个纹理流接口：取上一个 pass 的输出纹理，写出下一张纹理。`ScenePost` 是 Layer 全部完成并合成后唯一的全局后处理插槽。
 
 同一阶段的 effect 必须按显式 `order` 升序稳定执行；相同 `order` 时按添加顺序执行。效果顺序是作者可见的数据，因为调色和 bloom 的顺序会改变结果。
 
@@ -65,44 +62,61 @@ interface IImageEffect
 
 `EffectRenderContext` 提供当前时间、尺寸、动画参数、辅助输入（mask/LUT/noise）及受控的临时纹理申请接口。Effect 不直接访问其他 Layer、页面 ViewModel 或全局状态。
 
+### Scene object
+
+粒子不是“处理一张已有纹理”的 effect，而是独立更新并参与场景合成的渲染对象。它与 Layer 使用同一个 GPU 场景目标、坐标系和排序规则，但不进入 `IImageEffect`。
+
+```csharp
+interface ISceneRenderable
+{
+    int Order { get; }
+    void Update(in RenderFrameContext frame);
+    void Render(in SceneRenderContext context);
+}
+```
+
+`ParticleEmitter` 实现此接口：负责粒子出生、生命周期和运动状态；渲染端将存活粒子批量提交为 sprite/quad instance。雨、雪、花瓣、火星等也复用这一类场景对象能力。
+
 ### 固定像素管线
 
-渲染管线只接受 `Texture → Texture` 的像素 effect；粒子、独立控件和几何裁剪不属于该管线。纹理 mask、溶解和边缘燃烧由具体 `IImageEffect` 以辅助输入实现，不单独设 `MaskEffect` 运行时类别。
+effect 管线只接受 `Texture → Texture` 的像素 effect；粒子、独立控件和几何裁剪不属于该管线。纹理 mask、溶解和边缘燃烧由具体 `IImageEffect` 以辅助输入实现，不单独设 `MaskEffect` 运行时类别。
 
-现有 `particle.emitter` 和 `mask.blinds` 是离屏渲染后端落地前的 Avalonia 视觉实现。进入 Phase 2 时，应将前者迁出 effect 管线或改写为像素效果，将后者改为 shader mask；不为它们保留第二条渲染分支。
+现有 `particle.emitter` 和 `mask.blinds` 是离屏渲染后端落地前的 Avalonia 视觉实现。进入 Phase 2 时，前者迁为 `ISceneRenderable`，后者改为 shader mask；不为它们保留第二条 Avalonia 视觉分支。
 
 ## 数据模型
 
 直接使用阶段语义，不保留 `EffectScope` 或旧内容兼容层：
 
 ```csharp
-enum EffectStage { Layer, SceneBeforeUi, SceneAfterUi }
+enum EffectStage { Layer, ScenePost }
 ```
 
 - `Layer` 阶段必须有 `targetHandleId`。
-- 两个 Scene 阶段不得指定 `targetHandleId`。
-- 所有阶段都由同一个 `IImageEffect.Render(input, context)` 执行契约处理；阶段只决定 input 是 Layer、场景合成结果还是 UI 合成结果。
+- `ScenePost` 不得指定 `targetHandleId`。
+- 所有阶段都由同一个 `IImageEffect.Render(input, context)` 执行契约处理；阶段只决定 input 是单个 Layer 还是已合成场景。
 - `EffectDefinition` 继续是编辑器下拉、参数检查和动画属性提示的唯一元数据来源。
-- `EffectInstance` 继续保存静态参数和已提交动画值；新增 `stage`、`order` 等字段时，同步更新快照、恢复、导出和兼容测试。
+- `EffectInstance` 继续保存静态参数和已提交动画值；新增 `stage`、`order` 等字段时，同步更新快照、恢复、导出和测试。
 
-Layer source 的 authoring 数据优先采用显式 `source` 对象；旧 `assetId` 加载时映射为 `StaticImageSource`，导出时可按兼容版本选择保留简写或写出对象。
+Layer source 的 authoring 数据优先采用显式 `source` 对象；现阶段 `assetId` 与可选 `flipbook` 已足够表示静态图和精灵表，后续再统一写入 `source` 对象。
 
 ## 实施阶段
 
 ### Phase 1：渲染抽象与数据契约（已完成）
 
-已完成：定义 `EffectStage`，将 factory 元数据与编辑器提示切换到 Stage；`Layer` stage 强制要求目标 Layer，两个 Scene stage 禁止目标 Layer；effect 实例及存档状态保存同阶段的 `order`。Layer 的 source 已抽出当前帧选择，静态图与 Flipbook 使用同一路径。
+已完成：定义 `EffectStage`，将 factory 元数据与编辑器提示切换到 Stage；`Layer` stage 强制要求目标 Layer，`ScenePost` 禁止目标 Layer；effect 实例及存档状态保存同阶段的 `order`。Layer 的 source 已抽出当前帧选择，静态图与 Flipbook 使用同一路径。
 
 验收：非法目标/阶段组合能显示诊断；Layer、Effect 和快照测试覆盖配置及恢复。
 
-### Phase 2：离屏场景与 effect render graph
+### Phase 2：离屏场景与 effect render graph（进行中）
 
+- 已完成首个切片：`SceneLayerHost` 已从每 Layer 一个 Avalonia 子控件收缩为单一绘制面，并公开稳定的 `SceneRenderPlan`（`z`、再按插入顺序）。
 - 建立渲染后端专属的 `RenderGraph` / `EffectRenderer`，管理 source、临时纹理、Layer effect 链和场景 render target。
+- 建立 `SceneRenderer` 的 renderable 收集与排序入口；Layer 与 `ISceneRenderable` 一起写入同一个场景 render target。
 - 将 `SceneLayerHost` 收缩为最终画面承载与输入布局宿主，不承担具体 effect 分支。
 - 实现 ping-pong 临时纹理池，确保每个 effect 不持有上一帧临时输出。
 - 定义资源失效、窗口缩放、设备重建和 effect 停止时的释放策略。
 
-验收：两种无副作用的测试 Shader 可串联到同一 Layer；SceneBeforeUi 与 SceneAfterUi 各能改变正确的画面范围。
+验收：两种无副作用的测试 Shader 可串联到同一 Layer；一个测试 renderable 可与 Layer 按 order 合成；ScenePost 能改变合成场景而不影响 GameShell UI。
 
 ### Phase 3：首批 Shader 效果
 
@@ -110,18 +124,19 @@ Layer source 的 authoring 数据优先采用显式 `source` 对象；旧 `asset
 - `layer.dissolve`：原图、mask、`progress`、边缘宽度和边缘色。
 - `layer.glow`：阈值、颜色、半径和强度。
 - `scene.vignette` 与 `scene.colorGrade`：验证全屏场景后处理。
-- `scene.flash`：作为 `SceneAfterUi` 的最小验证效果。
+- `scene.flash`：作为 `ScenePost` 的最小验证效果。
 
 验收：每种 effect 只有自身 factory/Shader/参数解析模块知晓其参数；动画计划可驱动 `progress`、`intensity` 等属性并在存档恢复后保持状态。
 
-### Phase 4：Flipbook source
 
-- 实现 `FlipbookSource`：帧列表、FPS、循环模式、起始时间偏移与可选暂停。
-- 使用统一 `RenderFrameContext.Time` 取帧，避免 source 自行启动计时器。
-- 明确动态 source 的缓存规则：可缓存 source 纹理和不依赖时间的辅助资源，不能缓存动态帧经过 effect 后的最终输出。
-- 在动态 source 上验证溶解、调色和发光。
+### Phase 4：GPU 粒子与其他场景对象
 
-验收：flipbook 在 Layer effect 运行和参数动画期间持续正常播放；暂停、恢复和存档行为有确定规则并经测试覆盖。
+- 将 `particle.emitter` 从 `IEffectView` / Avalonia `Control` 迁为 `ParticleEmitter : ISceneRenderable`。
+- 定义粒子 emitter 的 authoring 数据：贴图、发射率、最大数量、初速度、重力、生命周期、尺寸与颜色曲线。
+- 采用 instance buffer / 批量 sprite draw 绘制存活粒子；不为每颗粒子创建 Layer、Control 或独立 draw target。
+- 保持与 Layer 一致的 `order`、世界/屏幕坐标及场景裁剪语义；明确粒子在 Layer effect 之前或之后的 authoring 规则。
+
+验收：高数量粒子不创建 Avalonia 控件；粒子位于 `ScenePost` 之前且不影响 GameShell UI；停止、存档恢复和资源释放有确定行为。
 
 ### Phase 5：性能、降级与创作体验
 
@@ -135,14 +150,14 @@ Layer source 的 authoring 数据优先采用显式 `source` 对象；旧 `asset
 ## 测试策略
 
 - Core/Runtime：阶段、目标、排序、序列化、旧内容和快照恢复的纯逻辑测试。
-- 渲染后端：固定输入纹理的像素/快照测试，验证局部效果与两个全屏阶段的范围。
+- 渲染后端：固定输入纹理的像素/快照测试，验证局部效果与唯一 `ScenePost` 的范围。
 - 动态 source：使用可预测时钟验证 Flipbook 取帧、循环、暂停和 effect 链输入。
-- 集成：Sample 中分别展示人物 dissolve、场景 LUT/暗角、对话框不受影响，以及全屏闪白同时影响 UI。
+- 集成：Sample 中分别展示人物 dissolve、场景 LUT/暗角和场景闪白；对话框始终不受影响。
 - 性能：多 Layer、多 effect、长时 Flipbook 的纹理池复用与分配计数测试。
 
 ## 非目标
 
 - 不在 Core 或 Runtime 中引入 Avalonia、Skia、Shader 字节码或 GPU 资源。
 - 不把每个 effect 的参数写入 `SceneLayerHost` 或 ViewModel 的专用字段。
-- 不将所有视觉对象强制转换为像素 effect；粒子、几何裁剪等应继续走更轻的实现路径。
+- 在 Phase 2 之后不为粒子、几何裁剪等保留第二条 Avalonia 视觉分支；粒子迁为场景对象，几何裁剪改写为像素 effect 或渲染状态。
 - 不让内容作者以任意参数改变 UI 前后层级；阶段属于 effect 定义和受验证的实例数据。

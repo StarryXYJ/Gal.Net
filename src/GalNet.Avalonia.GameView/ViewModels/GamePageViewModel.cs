@@ -21,8 +21,9 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     public ObservableCollection<SceneLayerItem> Layers { get; } = [];
     public ObservableCollection<string> Choices { get; } = [];
     public ObservableCollection<NvlLine> NvlLines { get; } = [];
-    /// <summary>Host-owned overlay visuals rendered above scene layers and below dialogue UI.</summary>
-    public ObservableCollection<Control> OverlayEffects { get; } = [];
+    /// <summary>Transitional host-owned visuals rendered inside the scene surface, before GameShell UI.</summary>
+    // The render-graph migration will replace these with texture-to-texture effects.
+    public ObservableCollection<Control> SceneVisuals { get; } = [];
 
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isDialogueVisible;
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isChoiceVisible;
@@ -150,7 +151,7 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     public void ResetScenePresentation()
     {
         Layers.Clear();
-        OverlayEffects.Clear();
+        SceneVisuals.Clear();
         _effectAnimations.Clear();
         TransitionOpacity = 0;
         IsDialogueVisible = false;

@@ -8,16 +8,21 @@ using GalNet.Core.Scene;
 
 namespace GalNet.Game.Controls;
 
-/// <summary>Logical game canvas that renders resource-backed scene layers in stable z order.</summary>
-public class SceneLayerHost : Canvas
+/// <summary>
+/// The single presentation surface for the game scene. Layers are render data, not
+/// child controls: this host builds a stable render plan and submits it to one drawing
+/// context. A future GPU render graph consumes the same plan before this control
+/// presents the final scene texture.
+/// </summary>
+public sealed class SceneLayerHost : Control
 {
     public static readonly StyledProperty<IEnumerable<SceneLayerItem>?> ItemsSourceProperty =
         AvaloniaProperty.Register<SceneLayerHost, IEnumerable<SceneLayerItem>?>(nameof(ItemsSource));
 
-    private readonly Dictionary<SceneLayerItem, LayerPresenter> _presenters = [];
     private readonly Dictionary<SceneLayerItem, long> _insertionOrder = [];
     private INotifyCollectionChanged? _collection;
     private long _nextInsertionOrder;
+    private SceneRenderPlan _renderPlan = SceneRenderPlan.Empty;
 
     static SceneLayerHost()
     {
@@ -30,22 +35,27 @@ public class SceneLayerHost : Canvas
         set => SetValue(ItemsSourceProperty, value);
     }
 
-    protected override Size ArrangeOverride(Size finalSize)
+    /// <summary>Stable scene ordering consumed by the current presenter and the future GPU backend.</summary>
+    public SceneRenderPlan RenderPlan => _renderPlan;
+
+    public override void Render(DrawingContext context)
     {
-        var result = base.ArrangeOverride(finalSize);
-        foreach (var (item, presenter) in _presenters) Apply(item, presenter);
-        return result;
+        base.Render(context);
+        foreach (var item in _renderPlan.Items)
+            SceneLayerRenderer.Render(context, item.Layer, Bounds.Size);
     }
 
     private void ResetItems()
     {
         if (_collection is not null) _collection.CollectionChanged -= OnCollectionChanged;
-        foreach (var item in _presenters.Keys.ToArray()) RemoveItem(item);
+        foreach (var item in _insertionOrder.Keys) item.PropertyChanged -= OnItemPropertyChanged;
+        _insertionOrder.Clear();
 
         _collection = ItemsSource as INotifyCollectionChanged;
         if (_collection is not null) _collection.CollectionChanged += OnCollectionChanged;
-        if (ItemsSource is null) return;
-        foreach (var item in ItemsSource) AddItem(item);
+        if (ItemsSource is not null)
+            foreach (var item in ItemsSource) AddItem(item);
+        RebuildRenderPlan();
     }
 
     private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs eventArgs)
@@ -55,72 +65,177 @@ public class SceneLayerHost : Canvas
             foreach (var item in eventArgs.OldItems.OfType<SceneLayerItem>()) RemoveItem(item);
         if (eventArgs.NewItems is not null)
             foreach (var item in eventArgs.NewItems.OfType<SceneLayerItem>()) AddItem(item);
+        RebuildRenderPlan();
     }
 
     private void AddItem(SceneLayerItem item)
     {
-        if (_presenters.ContainsKey(item)) return;
-        var presenter = new LayerPresenter();
-        _presenters.Add(item, presenter);
-        _insertionOrder.Add(item, _nextInsertionOrder++);
+        if (!_insertionOrder.TryAdd(item, _nextInsertionOrder++)) return;
         item.PropertyChanged += OnItemPropertyChanged;
-        Apply(item, presenter);
-        Children.Add(presenter);
-        ReorderPresenters();
-    }
-
-    private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
-    {
-        if (sender is SceneLayerItem item && _presenters.TryGetValue(item, out var presenter))
-        {
-            if (eventArgs.PropertyName == nameof(SceneLayerItem.BlindsProgress))
-            {
-                // This changes every animation frame. Rebuilding the Image child here caused
-                // avoidable allocations and a visible hitch when a blinds transition began.
-                presenter.UpdateBlindsClip(item, Bounds.Size);
-                return;
-            }
-            if (eventArgs.PropertyName == nameof(SceneLayerItem.FlipbookIndex))
-            {
-                presenter.UpdateFlipbookFrame(item);
-                return;
-            }
-            Apply(item, presenter);
-            ReorderPresenters();
-        }
     }
 
     private void RemoveItem(SceneLayerItem item)
     {
-        if (!_presenters.Remove(item, out var presenter)) return;
-        _insertionOrder.Remove(item);
+        if (!_insertionOrder.Remove(item)) return;
         item.PropertyChanged -= OnItemPropertyChanged;
-        Children.Remove(presenter);
     }
 
-    private void Apply(SceneLayerItem item, LayerPresenter presenter)
+    private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {
-        presenter.Update(item, Bounds.Size);
-        presenter.IsVisible = item.IsVisible;
-        presenter.Opacity = item.Opacity;
-        SetLeft(presenter, 0);
-        SetTop(presenter, 0);
-        presenter.SetValue(ZIndexProperty, (int)item.Z);
+        if (sender is not SceneLayerItem item || !_insertionOrder.ContainsKey(item)) return;
+        if (eventArgs.PropertyName == nameof(SceneLayerItem.Z)) RebuildRenderPlan();
+        else InvalidateVisual();
     }
 
-    private void ReorderPresenters()
+    private void RebuildRenderPlan()
     {
-        var ordered = _presenters
-            .OrderBy(pair => pair.Key.Z)
-            .ThenBy(pair => _insertionOrder[pair.Key])
-            .Select(pair => pair.Value)
-            .ToArray();
-        Children.Clear();
-        foreach (var presenter in ordered) Children.Add(presenter);
+        _renderPlan = SceneRenderPlan.Create(_insertionOrder.Select(pair => new SceneRenderEntry(pair.Key, pair.Value)));
+        InvalidateVisual();
     }
 }
 
-/// <summary>Bindable state passed from the shared game page to <see cref="SceneLayerHost"/>.</summary>
+/// <summary>One stable, backend-agnostic scene draw entry.</summary>
+public sealed record SceneRenderEntry(SceneLayerItem Layer, long InsertionOrder)
+{
+    public double Order => Layer.Z;
+}
+
+/// <summary>Ordered Layer input to scene composition. Scene objects join this plan in Phase 2's next slice.</summary>
+public sealed class SceneRenderPlan
+{
+    public static SceneRenderPlan Empty { get; } = new([]);
+    public IReadOnlyList<SceneRenderEntry> Items { get; }
+
+    private SceneRenderPlan(IReadOnlyList<SceneRenderEntry> items) => Items = items;
+
+    public static SceneRenderPlan Create(IEnumerable<SceneRenderEntry> entries) => new(entries
+        .OrderBy(entry => entry.Order)
+        .ThenBy(entry => entry.InsertionOrder)
+        .ToArray());
+}
+
+/// <summary>Temporary Avalonia draw backend. It is intentionally the only location that knows Avalonia drawing APIs.</summary>
+internal static class SceneLayerRenderer
+{
+    private static readonly IBrush MissingLayerBrush = new SolidColorBrush(Color.Parse("#662A2D42"));
+
+    public static void Render(DrawingContext context, SceneLayerItem item, Size surface)
+    {
+        if (!item.IsVisible || item.Opacity <= 0 || surface.Width <= 0 || surface.Height <= 0) return;
+        using var opacity = context.PushOpacity(Math.Clamp(item.Opacity, 0, 1));
+        if (!string.IsNullOrWhiteSpace(item.Color))
+        {
+            using var colorTransform = context.PushTransform(CreateTransform(item, surface, item.ScaleX, item.ScaleY));
+            context.DrawRectangle(new SolidColorBrush(Color.Parse(item.Color)), null, new Rect(surface));
+            return;
+        }
+
+        if (item.Image is null)
+        {
+            context.DrawRectangle(MissingLayerBrush, null, new Rect(surface));
+            return;
+        }
+
+        var (source, sourceSize) = GetSource(item.Image, item.Flipbook);
+        var (destination, transformScaleX, transformScaleY) = GetDestination(item, sourceSize, surface);
+        using var transform = context.PushTransform(CreateTransform(item, surface, transformScaleX, transformScaleY));
+
+        if (item.DisplayMode == LayerDisplayMode.Tile)
+        {
+            DrawTiled(context, item, source, sourceSize, surface);
+            return;
+        }
+
+        DrawMasked(context, item, source, destination, surface);
+    }
+
+    private static (Rect Source, Size Size) GetSource(IImage image, FlipbookDefinition? flipbook)
+    {
+        if (flipbook is not { IsValid: true }) return (new Rect(image.Size), image.Size);
+        var width = image.Size.Width / flipbook.Columns;
+        var height = image.Size.Height / flipbook.Rows;
+        var index = flipbook.CurrentFrameIndex;
+        return (new Rect((index % flipbook.Columns) * width, (index / flipbook.Columns) * height, width, height), new Size(width, height));
+    }
+
+    private static (Rect Destination, double TransformScaleX, double TransformScaleY) GetDestination(SceneLayerItem item, Size source, Size surface)
+    {
+        var native = new Size(Math.Max(1, source.Width * item.ScaleX), Math.Max(1, source.Height * item.ScaleY));
+        return item.DisplayMode switch
+        {
+            LayerDisplayMode.Native => (Center(native, surface), 1, 1),
+            LayerDisplayMode.Fill => (new Rect(surface), item.ScaleX, item.ScaleY),
+            LayerDisplayMode.Uniform => (Contain(native, surface, false), 1, 1),
+            LayerDisplayMode.UniformToFill => (Contain(native, surface, true), 1, 1),
+            LayerDisplayMode.Tile => (new Rect(surface), 1, 1),
+            _ => (new Rect(surface), 1, 1)
+        };
+    }
+
+    private static Rect Center(Size size, Size surface) => new((surface.Width - size.Width) / 2, (surface.Height - size.Height) / 2, size.Width, size.Height);
+
+    private static Rect Contain(Size source, Size surface, bool fill)
+    {
+        var scale = fill
+            ? Math.Max(surface.Width / source.Width, surface.Height / source.Height)
+            : Math.Min(surface.Width / source.Width, surface.Height / source.Height);
+        return Center(new Size(source.Width * scale, source.Height * scale), surface);
+    }
+
+    private static void DrawTiled(DrawingContext context, SceneLayerItem item, Rect source, Size sourceSize, Size surface)
+    {
+        var width = Math.Max(1, sourceSize.Width * item.ScaleX);
+        var height = Math.Max(1, sourceSize.Height * item.ScaleY);
+        for (var y = 0d; y < surface.Height; y += height)
+            for (var x = 0d; x < surface.Width; x += width)
+                context.DrawImage(item.Image!, source, new Rect(x, y, width, height));
+    }
+
+    private static void DrawMasked(DrawingContext context, SceneLayerItem item, Rect source, Rect destination, Size surface)
+    {
+        if (item.BlindsBladeCount <= 0)
+        {
+            context.DrawImage(item.Image!, source, destination);
+            return;
+        }
+
+        var blades = Math.Max(1, item.BlindsBladeCount);
+        var progress = Math.Clamp(item.BlindsProgress, 0, 1);
+        for (var index = 0; index < blades; index++)
+        {
+            Rect clip;
+            if (item.BlindsHorizontal)
+            {
+                var height = surface.Height / blades;
+                clip = new Rect(0, index * height, surface.Width, height * progress);
+            }
+            else
+            {
+                var width = surface.Width / blades;
+                clip = new Rect(index * width, 0, width * progress, surface.Height);
+            }
+            using (context.PushClip(clip)) context.DrawImage(item.Image!, source, destination);
+        }
+    }
+
+    private static Matrix CreateTransform(SceneLayerItem item, Size surface, double scaleX, double scaleY)
+    {
+        var radians = item.RotationDegrees * Math.PI / 180;
+        var cosine = Math.Cos(radians);
+        var sine = Math.Sin(radians);
+        var m11 = scaleX * cosine;
+        var m12 = scaleX * sine;
+        var m21 = -scaleY * sine;
+        var m22 = scaleY * cosine;
+        var centerX = surface.Width / 2;
+        var centerY = surface.Height / 2;
+        return new Matrix(m11, m12, m21, m22,
+            centerX + item.X - ((centerX * m11) + (centerY * m21)),
+            centerY + item.Y - ((centerX * m12) + (centerY * m22)));
+    }
+}
+
+/// <summary>Bindable Layer render data passed from the shared game page to <see cref="SceneLayerHost"/>.</summary>
 public sealed class SceneLayerItem : INotifyPropertyChanged
 {
     private string _handleId = string.Empty;
@@ -177,184 +292,5 @@ public sealed class SceneLayerItem : INotifyPropertyChanged
         if (EqualityComparer<T>.Default.Equals(field, value)) return;
         field = value;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
-}
-
-internal sealed class LayerPresenter : Border
-{
-    private GeometryGroup? _blindsClip;
-    private int _blindsBladeCount;
-    private bool _blindsHorizontal;
-    private SpriteSheetImage? _flipbookImage;
-
-    public void Update(SceneLayerItem item, Size surface)
-    {
-        _flipbookImage = null;
-        Width = Math.Max(0, surface.Width);
-        Height = Math.Max(0, surface.Height);
-        ClipToBounds = true;
-        UpdateBlindsClip(item, surface);
-        RenderTransformOrigin = RelativePoint.Center;
-
-        if (!string.IsNullOrWhiteSpace(item.Color))
-        {
-            Background = new SolidColorBrush(Color.Parse(item.Color));
-            Child = null;
-            RenderTransform = CreateTransform(item, item.ScaleX, item.ScaleY);
-            return;
-        }
-
-        var source = item.Image;
-        if (source is null)
-        {
-            Background = new SolidColorBrush(Color.Parse("#662A2D42"));
-            Child = new TextBlock { Text = "Missing layer", HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Center, VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center };
-            RenderTransform = CreateTransform(item, 1, 1);
-            return;
-        }
-
-        Background = null;
-        var flipbook = item.Flipbook is { IsValid: true } definition ? definition : null;
-        Control image = flipbook is null
-            ? new Image { Source = source, HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Center, VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center, Stretch = Stretch.Fill }
-            : new SpriteSheetImage(source, flipbook.CurrentFrameIndex, flipbook.Columns, flipbook.Rows)
-            {
-                HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Center,
-                VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center
-            };
-        _flipbookImage = image as SpriteSheetImage;
-        var sourceWidth = Math.Max(1, (source.Size.Width / (flipbook?.Columns ?? 1)) * item.ScaleX);
-        var sourceHeight = Math.Max(1, (source.Size.Height / (flipbook?.Rows ?? 1)) * item.ScaleY);
-
-        switch (item.DisplayMode)
-        {
-            case LayerDisplayMode.Native:
-                image.Width = sourceWidth;
-                image.Height = sourceHeight;
-                RenderTransform = CreateTransform(item, 1, 1);
-                Child = image;
-                break;
-            case LayerDisplayMode.Tile:
-                Child = null;
-                Background = source is IImageBrushSource brushSource
-                    ? new ImageBrush
-                    {
-                        Source = brushSource,
-                        // The default destination rect is the whole surface, which produces one
-                        // image plus letterboxing. A native-size absolute tile rect makes TileMode
-                        // repeat the image over the complete layer surface.
-                        DestinationRect = new RelativeRect(new Rect(0, 0, sourceWidth, sourceHeight), RelativeUnit.Absolute),
-                        Stretch = Stretch.Fill,
-                        TileMode = TileMode.Tile
-                    }
-                    : new SolidColorBrush(Color.Parse("#662A2D42"));
-                RenderTransform = CreateTransform(item, 1, 1);
-                break;
-            case LayerDisplayMode.Fill:
-                image.Width = surface.Width;
-                image.Height = surface.Height;
-                RenderTransform = CreateTransform(item, item.ScaleX, item.ScaleY);
-                Child = image;
-                break;
-            case LayerDisplayMode.Uniform:
-                SetContainedSize(image, sourceWidth, sourceHeight, surface, false);
-                RenderTransform = CreateTransform(item, 1, 1);
-                Child = image;
-                break;
-            case LayerDisplayMode.UniformToFill:
-                SetContainedSize(image, sourceWidth, sourceHeight, surface, true);
-                RenderTransform = CreateTransform(item, 1, 1);
-                Child = image;
-                break;
-        }
-    }
-
-    public void UpdateBlindsClip(SceneLayerItem item, Size surface)
-    {
-        if (item.BlindsBladeCount <= 0)
-        {
-            _blindsClip = null;
-            Clip = null;
-            return;
-        }
-        var blades = Math.Max(1, item.BlindsBladeCount);
-        if (_blindsClip is null || _blindsBladeCount != blades || _blindsHorizontal != item.BlindsHorizontal)
-        {
-            _blindsClip = new GeometryGroup();
-            for (var index = 0; index < blades; index++) _blindsClip.Children.Add(new RectangleGeometry());
-            _blindsBladeCount = blades;
-            _blindsHorizontal = item.BlindsHorizontal;
-        }
-        var progress = Math.Clamp(item.BlindsProgress, 0, 1);
-        if (item.BlindsHorizontal)
-        {
-            var height = surface.Height / blades;
-            for (var index = 0; index < blades; index++)
-                ((RectangleGeometry)_blindsClip.Children[index]).Rect = new Rect(0, index * height, surface.Width, height * progress);
-        }
-        else
-        {
-            var width = surface.Width / blades;
-            for (var index = 0; index < blades; index++)
-                ((RectangleGeometry)_blindsClip.Children[index]).Rect = new Rect(index * width, 0, width * progress, surface.Height);
-        }
-        Clip = _blindsClip;
-    }
-
-    public void UpdateFlipbookFrame(SceneLayerItem item)
-    {
-        if (_flipbookImage is not null && item.Flipbook is { IsValid: true } flipbook)
-        {
-            _flipbookImage.Index = flipbook.CurrentFrameIndex;
-            return;
-        }
-        Update(item, Bounds.Size);
-    }
-
-    private static void SetContainedSize(Control image, double width, double height, Size surface, bool fill)
-    {
-        var scale = fill
-            ? Math.Max(surface.Width / width, surface.Height / height)
-            : Math.Min(surface.Width / width, surface.Height / height);
-        image.Width = width * scale;
-        image.Height = height * scale;
-    }
-
-    private static TransformGroup CreateTransform(SceneLayerItem item, double scaleX, double scaleY) => new()
-    {
-        Children = [
-            new ScaleTransform(scaleX, scaleY),
-            new RotateTransform(item.RotationDegrees),
-            new TranslateTransform(item.X, item.Y)
-        ]
-    };
-}
-
-/// <summary>Draws one row-major frame from a sprite sheet without allocating a cropped bitmap each frame.</summary>
-internal sealed class SpriteSheetImage(IImage source, int index, int columns, int rows) : Control
-{
-    private readonly IImage _source = source;
-    private readonly int _columns = columns;
-    private readonly int _rows = rows;
-    private int _index = index;
-
-    public int Index
-    {
-        get => _index;
-        set
-        {
-            if (_index == value) return;
-            _index = value;
-            InvalidateVisual();
-        }
-    }
-
-    public override void Render(DrawingContext context)
-    {
-        base.Render(context);
-        var frameWidth = _source.Size.Width / _columns;
-        var frameHeight = _source.Size.Height / _rows;
-        var frame = new Rect((_index % _columns) * frameWidth, (_index / _columns) * frameHeight, frameWidth, frameHeight);
-        context.DrawImage(_source, frame, new Rect(Bounds.Size));
     }
 }

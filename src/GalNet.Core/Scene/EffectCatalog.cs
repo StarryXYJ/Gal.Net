@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace GalNet.Core.Scene;
 
 /// <summary>Fixed slots in the game render pipeline. Every pixel effect consumes and produces the same image stream.</summary>
-public enum EffectStage { Layer, SceneBeforeUi, SceneAfterUi }
+public enum EffectStage { Layer, ScenePost }
 
 /// <summary>Editor-facing JSON value kinds for an effect's static start parameters.</summary>
 public enum EffectParameterKind { Text, Integer, Float, Boolean, ImageAsset, Select }

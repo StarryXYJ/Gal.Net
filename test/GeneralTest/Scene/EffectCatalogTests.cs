@@ -34,7 +34,7 @@ public class EffectCatalogTests
     {
         var catalog = new EffectCatalog(
         [
-            new EffectDefinition("test.scene", EffectStage.SceneBeforeUi, [], [])
+            new EffectDefinition("test.scene", EffectStage.ScenePost, [], [])
         ]);
 
         Assert.That(catalog.Validate("test.scene", "portrait", "{}"), Has.Some.Contains("must not target"));
