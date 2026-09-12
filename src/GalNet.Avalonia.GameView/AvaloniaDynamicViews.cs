@@ -13,23 +13,3 @@ public sealed class AvaloniaTransitionView : ITransitionView
     public Task PlayTransitionAsync(TransitionRequest request, CancellationToken ct) =>
         _handlers.TryGetValue(request.Id, out var handler) ? handler(request, ct) : Task.CompletedTask;
 }
-
-/// <summary>Dynamic effect dispatch point for an Avalonia game host.</summary>
-public sealed class AvaloniaEffectView : IEffectView
-{
-    private readonly IReadOnlyDictionary<string, Func<EffectRequest, CancellationToken, Task>> _startHandlers;
-    private readonly Func<string, CancellationToken, Task> _stop;
-
-    public AvaloniaEffectView(
-        IReadOnlyDictionary<string, Func<EffectRequest, CancellationToken, Task>>? startHandlers = null,
-        Func<string, CancellationToken, Task>? stop = null)
-    {
-        _startHandlers = startHandlers ?? new Dictionary<string, Func<EffectRequest, CancellationToken, Task>>(StringComparer.OrdinalIgnoreCase);
-        _stop = stop ?? ((_, _) => Task.CompletedTask);
-    }
-
-    public Task StartEffectAsync(EffectRequest request, CancellationToken ct) =>
-        _startHandlers.TryGetValue(request.Id, out var handler) ? handler(request, ct) : Task.CompletedTask;
-
-    public Task StopEffectAsync(string instanceId, CancellationToken ct) => _stop(instanceId, ct);
-}

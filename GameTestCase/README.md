@@ -4,6 +4,8 @@ This data-only game is the shared smoke-test fixture for both official sample ho
 `.galgroup` files are compiled Runtime content; editor source uses the `.rawgalgroup` suffix.
 
 `bg*` files are used as backgrounds and the `xy*` PNG files as portrait resources.
+`FLipBook 2x2.png` is a four-frame sprite sheet for validating the `layer.show` `flipbook`
+configuration and animation-driven `flipbook.index` playback.
 The opening scene intentionally also references the non-existent
 `portraits/missing-fallback.png` as one portrait, so the Avalonia fallback rendering
 remains covered. Layer coordinates are design-pixel values (the Avalonia sample hosts

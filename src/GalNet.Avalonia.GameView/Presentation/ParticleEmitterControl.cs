@@ -17,12 +17,12 @@ public sealed class ParticleEmitterControl : Control, IDisposable
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private readonly Random _random;
     private readonly IImage? _texture;
-    private readonly double _rate;
-    private readonly double _speedX;
-    private readonly double _speedY;
-    private readonly double _noise;
-    private readonly double _scale;
-    private readonly double _life;
+    private double _rate;
+    private double _speedX;
+    private double _speedY;
+    private double _noise;
+    private double _scale;
+    private double _life;
     private readonly int _maximum;
     private double _lastSeconds;
     private double _emissionCarry;
@@ -30,9 +30,24 @@ public sealed class ParticleEmitterControl : Control, IDisposable
 
     public event Action<ParticleEmitterControl>? Drained;
 
+    /// <summary>Parameters sampled when the next particle is emitted; each accepts common Effect animation input.</summary>
+    public double EmissionRate { get => _rate; set => _rate = Math.Max(0, value); }
+    public double InitialVelocityX { get => _speedX; set => _speedX = value; }
+    public double InitialVelocityY { get => _speedY; set => _speedY = value; }
+    public double Noise { get => _noise; set => _noise = Math.Max(0, value); }
+    public double ParticleScale { get => _scale; set => _scale = Math.Max(.001, value); }
+    public double ParticleLifetime { get => _life; set => _life = Math.Max(.01, value); }
+
     public ParticleEmitterControl(IImage? texture, string parameters)
     {
-        (_rate, _maximum, _speedX, _speedY, _noise, _scale, _life, var seed) = ReadSettings(parameters);
+        var (rate, maximum, speedX, speedY, noise, scale, life, seed) = ReadSettings(parameters);
+        EmissionRate = rate;
+        _maximum = Math.Max(1, maximum);
+        InitialVelocityX = speedX;
+        InitialVelocityY = speedY;
+        Noise = noise;
+        ParticleScale = scale;
+        ParticleLifetime = life;
         _texture = texture;
         _random = new Random(seed);
         HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Stretch;
@@ -42,7 +57,7 @@ public sealed class ParticleEmitterControl : Control, IDisposable
     }
 
     /// <summary>Stops creating particles; existing particles remain until their configured lifetime elapses.</summary>
-    public void StopEmission() => _stopping = true;
+    public void StopEmission() { _stopping = true; EmissionRate = 0; }
 
     private void Tick()
     {

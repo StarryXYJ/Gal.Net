@@ -22,12 +22,38 @@ public class LayerTests
         var layer = new Layer { Id = "portrait" };
 
         Assert.That(layer.AnimatableProperties.Select(property => property.Name),
-            Is.EquivalentTo(["transform.x", "transform.y", "transform.rotationDegrees", "transform.scaleX", "transform.scaleY", "opacity"]));
+            Is.EquivalentTo(["transform.x", "transform.y", "transform.rotationDegrees", "transform.scaleX", "transform.scaleY", "opacity", "flipbook.index"]));
         Assert.That(layer.TrySetAnimationValue("transform.x", 42, out var setError), Is.True, setError);
         Assert.That(layer.TryGetAnimationValue("transform.x", out var x), Is.True);
         Assert.That(x, Is.EqualTo(42));
         Assert.That(layer.TrySetAnimationValue("opacity", 2, out var invalidError), Is.False);
         Assert.That(invalidError, Does.Contain("does not accept"));
+    }
+
+    [Test]
+    public void Layer_Flipbook_ProvidesAClampedCurrentFrame_AndCanBeAnimated()
+    {
+        var layer = new Layer
+        {
+            Id = "sprite",
+            AssetId = "sheet.png",
+            Flipbook = new FlipbookDefinition { Columns = 4, Rows = 4, FrameCount = 14, Index = 13.8f }
+        };
+
+        Assert.That(layer.GetCurrentFrame(), Is.EqualTo(new LayerFrame("sheet.png", 13, 4, 4)));
+        Assert.That(layer.TrySetAnimationValue("flipbook.index", 99, out var error), Is.True, error);
+        Assert.That(layer.GetCurrentFrame(), Is.EqualTo(new LayerFrame("sheet.png", 13, 4, 4)));
+        Assert.That(layer.TryGetAnimationValue("flipbook.index", out var index), Is.True);
+        Assert.That(index, Is.EqualTo(99));
+    }
+
+    [Test]
+    public void Layer_StaticSource_DoesNotAcceptFlipbookIndexAnimation()
+    {
+        var layer = new Layer { Id = "static", AssetId = "image.png" };
+
+        Assert.That(layer.GetCurrentFrame(), Is.EqualTo(new LayerFrame("image.png", 0, 1, 1)));
+        Assert.That(layer.TrySetAnimationValue("flipbook.index", 1, out _), Is.False);
     }
 }
 

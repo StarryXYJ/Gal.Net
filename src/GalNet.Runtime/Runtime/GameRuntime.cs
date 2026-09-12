@@ -136,6 +136,7 @@ public sealed class GameRuntime : IGameRuntime
         {
             Id = layer.Id,
             AssetId = layer.AssetId,
+            Flipbook = layer.Flipbook?.Clone(),
             Color = layer.Color,
             Transform = layer.Transform?.Clone() ?? new LayerTransform(),
             Z = layer.Z,
@@ -154,7 +155,8 @@ public sealed class GameRuntime : IGameRuntime
             Id = effect.Id,
             InstanceId = effect.InstanceId,
             TargetHandleId = effect.TargetHandleId,
-            Parameters = effect.Parameters
+            Parameters = effect.Parameters,
+            AnimationValues = effect.AnimationValues.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
         }));
         SceneState.ActiveAnimations.Clear();
         SceneState.ActiveAnimations.AddRange(snapshot.SceneState.ActiveAnimations.Select(animation => new ActiveAnimationState
@@ -172,12 +174,19 @@ public sealed class GameRuntime : IGameRuntime
             if (target is not null) target.EffectInstanceIds.Add(effect.InstanceId);
         }
         SceneState.ActiveTransition = snapshot.SceneState.ActiveTransition;
-        SceneInstances.Rebuild(SceneState.Layers.Cast<ISceneInstance>().Concat(SceneState.ActiveEffects.Select(effect => new EffectInstance
+        SceneInstances.Rebuild(SceneState.Layers.Cast<ISceneInstance>().Concat(SceneState.ActiveEffects.Select(CreateEffectInstance)));
+    }
+
+    private static EffectInstance CreateEffectInstance(ActiveEffectState effect)
+    {
+        var instance = new EffectInstance
         {
             Id = effect.InstanceId,
             EffectId = effect.Id,
             TargetHandleId = effect.TargetHandleId,
             Parameters = effect.Parameters
-        })));
+        };
+        instance.RestoreAnimationValues(effect.AnimationValues);
+        return instance;
     }
 }

@@ -35,7 +35,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private GameEngine? _engine;
     private AvaloniaGamePageView? _pageView;
     private SampleMediaViews? _media;
-    private AvaloniaParticleEffectView? _effects;
+    private AvaloniaEffectRuntime? _effects;
     private string? _gameDirectory;
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private readonly GameRunCoordinator _run = new();
@@ -263,7 +263,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         var layerFactory = new SampleLayerFactory(_gameDirectory);
         _pageView = new AvaloniaGamePageView(_gameplay, _page, layerFactory);
         _media = new SampleMediaViews(_gameplay);
-        _effects = new AvaloniaParticleEffectView(_gameplay, layerFactory);
+        _effects = new AvaloniaEffectRuntime(_gameplay, layerFactory);
         var transitions = new AvaloniaTransitionView(new Dictionary<string, Func<TransitionRequest, CancellationToken, Task>>(StringComparer.OrdinalIgnoreCase)
         {
             ["black"] = (request, ct) => InvokeOnUiAsync(() => _gameplay.PlayTransitionAsync(Brushes.Black, request.Duration, ct)),
@@ -299,7 +299,10 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     {
         if (_engine is null || _effects is null) return;
         foreach (var effect in _engine.Runtime.SceneState.ActiveEffects)
-            await _effects.StartEffectAsync(new EffectRequest(effect.Id, effect.InstanceId, effect.TargetHandleId, effect.Parameters), cancellationToken);
+            await _effects.StartEffectAsync(new EffectRequest(effect.Id, effect.InstanceId, effect.TargetHandleId, effect.Parameters)
+            {
+                AnimationValues = effect.AnimationValues
+            }, cancellationToken);
     }
 
     private static Task InvokeOnUiAsync(Func<Task> action)

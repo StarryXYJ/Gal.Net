@@ -441,6 +441,42 @@ public class GameEngineIntegrationTests
     }
 
     [Test]
+    public async Task Active_effect_animation_values_round_trip_and_rehydrate_the_instance()
+    {
+        var runtime = new GameRuntime(null, "group_main");
+        var apply = EntryRegistry.Create(ApplyEffectEntry.TypeId, values: new Dictionary<string, string>
+        {
+            ["id"] = "particle.emitter",
+            ["instanceId"] = "snow",
+            ["parameters"] = "{}"
+        });
+        await new ApplyEffectHandler().ExecuteAsync(new EntryContext { Entry = apply, Runtime = runtime }, new NullGameView(), TimeProvider.System, CancellationToken.None);
+
+        var animate = EntryRegistry.Create(AnimateEntry.TypeId, values: new Dictionary<string, string>
+        {
+            ["playbackHandleId"] = "snow-rate-change",
+            ["handleId"] = "snow",
+            ["property"] = "emissionRate",
+            ["to"] = "48",
+            ["duration"] = "0",
+            ["blocking"] = "true"
+        });
+        await new AnimateHandler().ExecuteAsync(new EntryContext { Entry = animate, Runtime = runtime }, new NullGameView(), TimeProvider.System, CancellationToken.None);
+
+        var snapshot = runtime.CreateSnapshot();
+        var restored = new GameRuntime(null, "other");
+        restored.RestoreFrom(snapshot);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(snapshot.SceneState.ActiveEffects.Single().AnimationValues["emissionRate"], Is.EqualTo(48));
+            Assert.That(restored.SceneInstances.TryGet<EffectInstance>("snow", out var effect), Is.True);
+            Assert.That(effect!.TryGetAnimationValue("emissionRate", out var value), Is.True);
+            Assert.That(value, Is.EqualTo(48));
+        });
+    }
+
+    [Test]
     public async Task Restoring_a_saved_loop_restarts_its_original_animation_entry()
     {
         var runtime = new GameRuntime(null, "group_main");

@@ -10,4 +10,5 @@ public sealed record LayerRenderRequest(
     float Z,
     LayerDisplayMode DisplayMode,
     float Opacity,
-    string? Color = null);
+    string? Color = null,
+    FlipbookDefinition? Flipbook = null);

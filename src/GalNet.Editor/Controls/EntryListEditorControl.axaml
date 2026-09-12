@@ -89,6 +89,8 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                            <TextBlock Text="{Binding EffectHint}" Opacity="0.72" TextWrapping="Wrap" IsVisible="{Binding !HasEffectDiagnostic}" />
+                            <TextBlock Text="{Binding EffectDiagnostic}" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" TextWrapping="Wrap" IsVisible="{Binding HasEffectDiagnostic}" />
                         </StackPanel>
                         </StackPanel>
                     </Border>

@@ -258,7 +258,7 @@ public sealed class GameEngine
     {
         _runtime.RestoreFrom(data);
         foreach (var layer in _runtime.SceneState.Layers.Where(layer => layer.Visible))
-            _view.ShowLayer(new LayerRenderRequest(layer.Id, layer.AssetId, layer.Transform.Clone(), layer.Z, layer.DisplayMode, layer.Opacity, layer.Color));
+            _view.ShowLayer(new LayerRenderRequest(layer.Id, layer.AssetId, layer.Transform.Clone(), layer.Z, layer.DisplayMode, layer.Opacity, layer.Color, layer.Flipbook?.Clone()));
         foreach (var animation in _runtime.SceneState.ActiveAnimations.ToArray())
             _ = ResumeLoopAsync(animation);
         IsRunning = true;

@@ -50,6 +50,7 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
             HandleId = request.HandleId,
             Image = request.Color is null ? _layers.ResolveLayerImage(request.AssetId) : null,
             Color = request.Color,
+            Flipbook = request.Flipbook?.Clone(),
             X = request.Transform.X,
             Y = request.Transform.Y,
             RotationDegrees = request.Transform.RotationDegrees,

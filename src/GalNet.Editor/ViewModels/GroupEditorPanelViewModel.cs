@@ -11,6 +11,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using GalNet.Core.Entry;
+using GalNet.Core.Scene;
 using GalNet.Editor.Commands;
 
 namespace GalNet.Editor.ViewModels;
@@ -19,6 +20,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
 {
     private readonly IGraphEditingService _graphEditingService;
     private readonly IProjectService _projects;
+    private readonly IEffectCatalog _effects;
 
     public EditorWorkspaceViewModel Workspace { get; }
     public GraphNode GroupNode { get; }
@@ -39,12 +41,13 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     [ObservableProperty]
     private decimal _batchAddCount = 1;
 
-    public GroupEditorPanelViewModel(EditorWorkspaceViewModel workspace, GraphNode groupNode, IGraphEditingService graphEditingService, IProjectService projects, IAssetManager assetManager, EditorShortcutService shortcutService)
+    public GroupEditorPanelViewModel(EditorWorkspaceViewModel workspace, GraphNode groupNode, IGraphEditingService graphEditingService, IProjectService projects, IAssetManager assetManager, EditorShortcutService shortcutService, IEffectCatalog effects)
     {
         Workspace = workspace;
         GroupNode = groupNode;
         _graphEditingService = graphEditingService;
         _projects = projects;
+        _effects = effects;
         AssetManager = assetManager;
         ShortcutService = shortcutService;
         Workspace.VariableDefinitionsChanged += OnVariableDefinitionsChanged;
@@ -147,7 +150,8 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     private void Configure(EntryEditorItemViewModel entry, bool resetValues = false) => entry.ConfigureParameterFields(
         _projects.Current?.Settings.Speakers ?? [],
         Workspace.AllProjectVariableDefinitions.Select(variable => variable.Name).ToArray(),
-        resetValues);
+        resetValues,
+        _effects);
 
     public void CommitSpeaker(string value)
     {

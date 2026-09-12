@@ -38,6 +38,7 @@
 |---|---|---|
 | handleId | SceneHandle | 场上 Layer 实例的内部句柄；编辑器通过同类型句柄定位器写入 |
 | assetId | ImageAsset | 图像资源 |
+| flipbook | object? | 精灵表配置：`{ columns, rows, frameCount, index }`。按从左至右、从上至下取帧；`frameCount` 可小于 `columns × rows`，`index` 为从 0 开始的当前帧 |
 | transform | object? | `{ x, y, rotationDegrees, scaleX, scaleY }`；原点为游戏画布中心，缩放必须大于 0 |
 | z | float? | 默认 0（背景），立绘建议 5~20 |
 | displayMode | select? | `Native`、`Tile`、`Fill`、`Uniform`、`UniformToFill`，默认 `Native` |
@@ -102,7 +103,7 @@
 |---|---|---|
 | playbackHandleId | SceneHandle | 本次动画播放实例的句柄；活动期间必须唯一，可由 `animation.stop` 定位 |
 | handleId | SceneHandle | 场上可动画实例的内部句柄 |
-| property | select | 目标属性。Layer 支持 `transform.x`、`transform.y`、`transform.rotationDegrees`、`transform.scaleX`、`transform.scaleY`、`opacity` |
+| property | select | 目标属性。Layer 支持 `transform.x`、`transform.y`、`transform.rotationDegrees`、`transform.scaleX`、`transform.scaleY`、`opacity`；配置了 `flipbook` 的 Layer 还支持 `flipbook.index`。用 Loop 或 `animation.play` 的轨道驱动该属性即可播放精灵表 |
 | from | float? | 起始值；省略时在动画实际开始时读取当前显示值 |
 | to | float | 目标值 |
 | duration | float? | 持续时间（秒），默认 0.25，不能小于 0 |

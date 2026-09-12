@@ -14,7 +14,8 @@ public sealed class Layer : AnimatableSceneInstance
         new("transform.rotationDegrees", AnimationValueKind.Float),
         new("transform.scaleX", AnimationValueKind.Float, Minimum: 0.001f),
         new("transform.scaleY", AnimationValueKind.Float, Minimum: 0.001f),
-        new("opacity", AnimationValueKind.Float, Minimum: 0, Maximum: 1)
+        new("opacity", AnimationValueKind.Float, Minimum: 0, Maximum: 1),
+        new("flipbook.index", AnimationValueKind.Float, Minimum: 0)
     ];
 
     /// <summary>Stable scene-instance handle. Editors generate this as an opaque GUID.</summary>
@@ -22,6 +23,9 @@ public sealed class Layer : AnimatableSceneInstance
 
     /// <summary>资源 ID 引用</summary>
     public string AssetId { get; set; } = "";
+
+    /// <summary>Optional sprite-sheet source. When absent, <see cref="AssetId"/> represents one static image.</summary>
+    public FlipbookDefinition? Flipbook { get; set; }
 
     /// <summary>Optional #RRGGBB or #AARRGGBB solid color used instead of an image asset.</summary>
     public string? Color { get; set; }
@@ -45,6 +49,13 @@ public sealed class Layer : AnimatableSceneInstance
 
     public override IReadOnlyList<AnimatableProperty> AnimatableProperties => AnimationProperties;
 
+    /// <summary>Returns the image region selected for the current render frame.</summary>
+    public LayerFrame GetCurrentFrame()
+    {
+        if (Flipbook is not { IsValid: true } flipbook) return new LayerFrame(AssetId, 0, 1, 1);
+        return new LayerFrame(AssetId, flipbook.CurrentFrameIndex, flipbook.Columns, flipbook.Rows);
+    }
+
     public override bool TryGetAnimationValue(string propertyName, out float value)
     {
         switch (propertyName)
@@ -55,6 +66,7 @@ public sealed class Layer : AnimatableSceneInstance
             case "transform.scaleX": value = Transform.ScaleX; return true;
             case "transform.scaleY": value = Transform.ScaleY; return true;
             case "opacity": value = Opacity; return true;
+            case "flipbook.index" when Flipbook is not null: value = Flipbook.Index; return true;
             default: value = default; return false;
         }
     }
@@ -81,6 +93,7 @@ public sealed class Layer : AnimatableSceneInstance
             case "transform.scaleX": Transform.ScaleX = value; break;
             case "transform.scaleY": Transform.ScaleY = value; break;
             case "opacity": Opacity = value; break;
+            case "flipbook.index" when Flipbook is not null: Flipbook.Index = value; break;
             default: error = $"Unknown animation property '{propertyName}'."; return false;
         }
 

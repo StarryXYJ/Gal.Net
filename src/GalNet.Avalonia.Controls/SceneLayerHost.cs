@@ -80,6 +80,11 @@ public class SceneLayerHost : Canvas
                 presenter.UpdateBlindsClip(item, Bounds.Size);
                 return;
             }
+            if (eventArgs.PropertyName == nameof(SceneLayerItem.FlipbookIndex))
+            {
+                presenter.UpdateFlipbookFrame(item);
+                return;
+            }
             Apply(item, presenter);
             ReorderPresenters();
         }
@@ -133,6 +138,7 @@ public sealed class SceneLayerItem : INotifyPropertyChanged
     private double _blindsProgress = 1;
     private int _blindsBladeCount;
     private bool _blindsHorizontal;
+    private FlipbookDefinition? _flipbook;
 
     public string HandleId { get => _handleId; set => SetField(ref _handleId, value); }
     public IImage? Image { get => _image; set => SetField(ref _image, value); }
@@ -146,6 +152,18 @@ public sealed class SceneLayerItem : INotifyPropertyChanged
     public LayerDisplayMode DisplayMode { get => _displayMode; set => SetField(ref _displayMode, value); }
     public double Opacity { get => _opacity; set => SetField(ref _opacity, value); }
     public bool IsVisible { get => _isVisible; set => SetField(ref _isVisible, value); }
+    /// <summary>Optional sprite-sheet layout for <see cref="Image"/>. The source remains one image while index selects its current frame.</summary>
+    public FlipbookDefinition? Flipbook { get => _flipbook; set => SetField(ref _flipbook, value); }
+    public double FlipbookIndex
+    {
+        get => _flipbook?.Index ?? 0;
+        set
+        {
+            if (_flipbook is null || Math.Abs(_flipbook.Index - value) < double.Epsilon) return;
+            _flipbook.Index = (float)Math.Max(0, value);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FlipbookIndex)));
+        }
+    }
     /// <summary>0 hides a blinds-masked layer and 1 reveals it fully.</summary>
     public double BlindsProgress { get => _blindsProgress; set => SetField(ref _blindsProgress, Math.Clamp(value, 0, 1)); }
     /// <summary>Zero means no blinds mask.</summary>
@@ -164,8 +182,14 @@ public sealed class SceneLayerItem : INotifyPropertyChanged
 
 internal sealed class LayerPresenter : Border
 {
+    private GeometryGroup? _blindsClip;
+    private int _blindsBladeCount;
+    private bool _blindsHorizontal;
+    private SpriteSheetImage? _flipbookImage;
+
     public void Update(SceneLayerItem item, Size surface)
     {
+        _flipbookImage = null;
         Width = Math.Max(0, surface.Width);
         Height = Math.Max(0, surface.Height);
         ClipToBounds = true;
@@ -190,16 +214,23 @@ internal sealed class LayerPresenter : Border
         }
 
         Background = null;
-        var image = new Image { Source = source, HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Center, VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center };
-        var sourceWidth = Math.Max(1, source.Size.Width * item.ScaleX);
-        var sourceHeight = Math.Max(1, source.Size.Height * item.ScaleY);
+        var flipbook = item.Flipbook is { IsValid: true } definition ? definition : null;
+        Control image = flipbook is null
+            ? new Image { Source = source, HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Center, VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center, Stretch = Stretch.Fill }
+            : new SpriteSheetImage(source, flipbook.CurrentFrameIndex, flipbook.Columns, flipbook.Rows)
+            {
+                HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Center,
+                VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center
+            };
+        _flipbookImage = image as SpriteSheetImage;
+        var sourceWidth = Math.Max(1, (source.Size.Width / (flipbook?.Columns ?? 1)) * item.ScaleX);
+        var sourceHeight = Math.Max(1, (source.Size.Height / (flipbook?.Rows ?? 1)) * item.ScaleY);
 
         switch (item.DisplayMode)
         {
             case LayerDisplayMode.Native:
                 image.Width = sourceWidth;
                 image.Height = sourceHeight;
-                image.Stretch = Stretch.Fill;
                 RenderTransform = CreateTransform(item, 1, 1);
                 Child = image;
                 break;
@@ -222,7 +253,6 @@ internal sealed class LayerPresenter : Border
             case LayerDisplayMode.Fill:
                 image.Width = surface.Width;
                 image.Height = surface.Height;
-                image.Stretch = Stretch.Fill;
                 RenderTransform = CreateTransform(item, item.ScaleX, item.ScaleY);
                 Child = image;
                 break;
@@ -239,40 +269,58 @@ internal sealed class LayerPresenter : Border
         }
     }
 
-    public void UpdateBlindsClip(SceneLayerItem item, Size surface) => Clip = CreateBlindsClip(item, surface);
-
-    private static Geometry? CreateBlindsClip(SceneLayerItem item, Size surface)
+    public void UpdateBlindsClip(SceneLayerItem item, Size surface)
     {
-        if (item.BlindsBladeCount <= 0) return null;
+        if (item.BlindsBladeCount <= 0)
+        {
+            _blindsClip = null;
+            Clip = null;
+            return;
+        }
         var blades = Math.Max(1, item.BlindsBladeCount);
+        if (_blindsClip is null || _blindsBladeCount != blades || _blindsHorizontal != item.BlindsHorizontal)
+        {
+            _blindsClip = new GeometryGroup();
+            for (var index = 0; index < blades; index++) _blindsClip.Children.Add(new RectangleGeometry());
+            _blindsBladeCount = blades;
+            _blindsHorizontal = item.BlindsHorizontal;
+        }
         var progress = Math.Clamp(item.BlindsProgress, 0, 1);
-        var group = new GeometryGroup();
         if (item.BlindsHorizontal)
         {
             var height = surface.Height / blades;
             for (var index = 0; index < blades; index++)
-                group.Children.Add(new RectangleGeometry(new Rect(0, index * height, surface.Width, height * progress)));
+                ((RectangleGeometry)_blindsClip.Children[index]).Rect = new Rect(0, index * height, surface.Width, height * progress);
         }
         else
         {
             var width = surface.Width / blades;
             for (var index = 0; index < blades; index++)
-                group.Children.Add(new RectangleGeometry(new Rect(index * width, 0, width * progress, surface.Height)));
+                ((RectangleGeometry)_blindsClip.Children[index]).Rect = new Rect(index * width, 0, width * progress, surface.Height);
         }
-        return group;
+        Clip = _blindsClip;
     }
 
-    private static void SetContainedSize(Image image, double width, double height, Size surface, bool fill)
+    public void UpdateFlipbookFrame(SceneLayerItem item)
+    {
+        if (_flipbookImage is not null && item.Flipbook is { IsValid: true } flipbook)
+        {
+            _flipbookImage.Index = flipbook.CurrentFrameIndex;
+            return;
+        }
+        Update(item, Bounds.Size);
+    }
+
+    private static void SetContainedSize(Control image, double width, double height, Size surface, bool fill)
     {
         var scale = fill
             ? Math.Max(surface.Width / width, surface.Height / height)
             : Math.Min(surface.Width / width, surface.Height / height);
         image.Width = width * scale;
         image.Height = height * scale;
-        image.Stretch = Stretch.Fill;
     }
 
-    private static Transform CreateTransform(SceneLayerItem item, double scaleX, double scaleY) => new TransformGroup
+    private static TransformGroup CreateTransform(SceneLayerItem item, double scaleX, double scaleY) => new()
     {
         Children = [
             new ScaleTransform(scaleX, scaleY),
@@ -280,4 +328,33 @@ internal sealed class LayerPresenter : Border
             new TranslateTransform(item.X, item.Y)
         ]
     };
+}
+
+/// <summary>Draws one row-major frame from a sprite sheet without allocating a cropped bitmap each frame.</summary>
+internal sealed class SpriteSheetImage(IImage source, int index, int columns, int rows) : Control
+{
+    private readonly IImage _source = source;
+    private readonly int _columns = columns;
+    private readonly int _rows = rows;
+    private int _index = index;
+
+    public int Index
+    {
+        get => _index;
+        set
+        {
+            if (_index == value) return;
+            _index = value;
+            InvalidateVisual();
+        }
+    }
+
+    public override void Render(DrawingContext context)
+    {
+        base.Render(context);
+        var frameWidth = _source.Size.Width / _columns;
+        var frameHeight = _source.Size.Height / _rows;
+        var frame = new Rect((_index % _columns) * frameWidth, (_index / _columns) * frameHeight, frameWidth, frameHeight);
+        context.DrawImage(_source, frame, new Rect(Bounds.Size));
+    }
 }

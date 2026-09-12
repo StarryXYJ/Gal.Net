@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Core.Graph;
 using GalNet.Editor.Controls;
 using GalNet.Core.Entry;
+using GalNet.Core.Scene;
 
 namespace GalNet.Editor.Models.Graph;
 public enum GraphNodeKind
@@ -254,10 +255,20 @@ public partial class EntryEditorItemViewModel : ObservableObject
     [ObservableProperty]
     private bool _isExpanded = true;
 
+    [ObservableProperty]
+    private string _effectHint = "";
+
+    [ObservableProperty]
+    private string _effectDiagnostic = "";
+
+    private IEffectCatalog? _effectCatalog;
+    public bool HasEffectDiagnostic => !string.IsNullOrWhiteSpace(EffectDiagnostic);
+
     public ObservableCollection<EntryParameterEditorItemViewModel> ParameterFields { get; } = [];
     /// <summary>Builds the editor projection from the Core registry, the single schema source.</summary>
-    public void ConfigureParameterFields(IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames, bool resetValues = false)
+    public void ConfigureParameterFields(IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames, bool resetValues = false, IEffectCatalog? effectCatalog = null)
     {
+        _effectCatalog = effectCatalog;
         var schema = EntryRegistry.Get(Type);
         var values = resetValues
             ? new Dictionary<string, string>(schema.Defaults, StringComparer.Ordinal)
@@ -271,13 +282,16 @@ public partial class EntryEditorItemViewModel : ObservableObject
         foreach (var (id, type) in schema.Parameters)
         {
             var defaultValue = schema.Defaults.GetValueOrDefault(id, "");
-            var options = schema.Options.GetValueOrDefault(id, [])
+            var options = (Type == ApplyEffectEntry.TypeId && id == "id" && effectCatalog is not null
+                    ? effectCatalog.Definitions.Select(definition => definition.Id).ToArray()
+                    : schema.Options.GetValueOrDefault(id, []))
                 .Select(value => new EntrySelectOption(value, $"Entry.Option.{(value.Length == 0 ? "None" : value)}"))
                 .ToArray();
-            var definition = new EntryParameterDefinition(id, type, $"Entry.Parameter.{id}", defaultValue, options);
+            var definition = new EntryParameterDefinition(id, Type == ApplyEffectEntry.TypeId && id == "id" && effectCatalog is not null ? EntryParameterType.Select : type, $"Entry.Parameter.{id}", defaultValue, options);
             var value = Parameters.GetValueOrDefault(id, defaultValue);
             ParameterFields.Add(CreateField(definition, value, speakers, variableNames));
         }
+        UpdateEffectHints();
     }
 
     private EntryParameterEditorItemViewModel CreateField(EntryParameterDefinition definition, string value, IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames) => definition.Type switch
@@ -296,6 +310,28 @@ public partial class EntryEditorItemViewModel : ObservableObject
     {
         var updated = new Dictionary<string, string>(Parameters, StringComparer.Ordinal) { [id] = value };
         Parameters = updated;
+    }
+
+    partial void OnParametersChanged(Dictionary<string, string> value) => UpdateEffectHints();
+    partial void OnEffectDiagnosticChanged(string value) => OnPropertyChanged(nameof(HasEffectDiagnostic));
+
+    private void UpdateEffectHints()
+    {
+        if (Type != ApplyEffectEntry.TypeId || _effectCatalog is null)
+        {
+            EffectHint = "";
+            EffectDiagnostic = "";
+            return;
+        }
+        var id = Parameters.GetValueOrDefault("id", "");
+        if (!_effectCatalog.TryGet(id, out var effect))
+        {
+            EffectHint = "";
+            EffectDiagnostic = string.IsNullOrWhiteSpace(id) ? "Select an effect type." : $"Unknown effect '{id}'.";
+            return;
+        }
+        EffectHint = $"{effect.Scope} · static: {string.Join(", ", effect.Parameters.Select(parameter => parameter.Name))} · animatable: {string.Join(", ", effect.AnimatableProperties.Select(property => property.Name))}";
+        EffectDiagnostic = string.Join(" ", _effectCatalog.Validate(id, Parameters.GetValueOrDefault("targetHandleId", ""), Parameters.GetValueOrDefault("parameters", "{}")));
     }
 }
 

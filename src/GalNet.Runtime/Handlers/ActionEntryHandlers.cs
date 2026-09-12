@@ -21,6 +21,7 @@ public sealed class ShowLayerHandler : EntryHandler
             : context.Runtime.SceneInstances.GetOrAdd(id, handleId => new Layer { Id = handleId });
 
         layer.AssetId = asset;
+        layer.Flipbook = ReadFlipbook(context.GetString("flipbook"));
         layer.Color = null;
         layer.Transform = context.GetLayerTransform();
         layer.Z = context.GetFloat("z");
@@ -30,8 +31,19 @@ public sealed class ShowLayerHandler : EntryHandler
             : LayerDisplayMode.Native;
         layer.Visible = true;
 
-        view.ShowLayer(new LayerRenderRequest(layer.Id, layer.AssetId, layer.Transform.Clone(), layer.Z, layer.DisplayMode, layer.Opacity, layer.Color));
+        view.ShowLayer(new LayerRenderRequest(layer.Id, layer.AssetId, layer.Transform.Clone(), layer.Z, layer.DisplayMode, layer.Opacity, layer.Color, layer.Flipbook?.Clone()));
         await PresentationRequests.PlayTransitionAsync(context, view, previousAsset, asset, ct);
+    }
+
+    private static FlipbookDefinition? ReadFlipbook(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw) || raw == "{}") return null;
+        try
+        {
+            var flipbook = JsonSerializer.Deserialize<FlipbookDefinition>(raw, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            return flipbook is { IsValid: true } ? flipbook : throw new InvalidDataException("Flipbook requires positive columns, rows and frameCount no greater than columns × rows.");
+        }
+        catch (JsonException exception) { throw new InvalidDataException("Invalid flipbook definition.", exception); }
     }
 }
 
@@ -47,6 +59,7 @@ public sealed class ShowColorLayerHandler : EntryHandler
 
         var layer = context.Runtime.SceneInstances.GetOrAddTransient(context.GetString("handleId"), id => new Layer { Id = id });
         layer.AssetId = "";
+        layer.Flipbook = null;
         layer.Color = color;
         layer.Transform = context.GetLayerTransform();
         layer.Z = context.GetFloat("z", 1000);
@@ -111,6 +124,7 @@ public sealed class ReplaceLayerHandler : EntryHandler
         }
 
         layer.AssetId = assetId;
+        layer.Flipbook = null;
         layer.Color = null;
         view.ReplaceLayer(handleId, assetId);
         return Task.CompletedTask;
@@ -134,7 +148,9 @@ public sealed class AnimateHandler : EntryHandler
             GameLog.Logger.Warning("Animate ignored because handle '{HandleId}' is not an active animatable instance.", request.HandleId);
             return;
         }
-        var property = instance.AnimatableProperties.FirstOrDefault(item => item.Name == request.Property);
+        var property = instance is EffectInstance effectInstance
+            ? effectInstance.EnsureAnimationProperty(request.Property)
+            : instance.AnimatableProperties.FirstOrDefault(item => item.Name == request.Property);
         if (property is null ||
             (request.BlendMode == AnimationBlendMode.Replace &&
              (!property.Accepts(request.To) || (request.From is { } from && !property.Accepts(from)))))
@@ -172,9 +188,13 @@ public sealed class AnimateHandler : EntryHandler
                 if ((outcome is AnimationOutcome.Completed or AnimationOutcome.Skipped) &&
                     !(request.LoopMode != AnimationLoopMode.Once && request.BlendMode == AnimationBlendMode.Additive) &&
                     context.Runtime.SceneInstances.TryGet<AnimatableSceneInstance>(request.HandleId, out var current) &&
-                    ReferenceEquals(current, instance) &&
-                    !instance.TrySetAnimationValue(request.Property, GetCommittedValue(instance, property, request.Property, request.To, request.BlendMode), out var error))
-                    GameLog.Logger.Warning("Animation completion could not set '{Property}' on '{HandleId}': {Error}", request.Property, request.HandleId, error);
+                    ReferenceEquals(current, instance))
+                {
+                    if (!instance.TrySetAnimationValue(request.Property, GetCommittedValue(instance, property, request.Property, request.To, request.BlendMode), out var error))
+                        GameLog.Logger.Warning("Animation completion could not set '{Property}' on '{HandleId}': {Error}", request.Property, request.HandleId, error);
+                    else if (instance is EffectInstance effect)
+                        EffectStatePersistence.PersistAnimationValues(context.Runtime, effect);
+                }
             }
             finally
             {
@@ -338,7 +358,9 @@ public sealed class PlayAnimationPlanHandler : EntryHandler
                 return false;
             }
 
-            var property = instance.AnimatableProperties.FirstOrDefault(candidate => candidate.Name == track.Property);
+            var property = instance is EffectInstance effectInstance
+                ? effectInstance.EnsureAnimationProperty(track.Property)
+                : instance.AnimatableProperties.FirstOrDefault(candidate => candidate.Name == track.Property);
             if (property is null ||
                 (track.BlendMode == AnimationBlendMode.Replace && track.Keys.Any(key => !property.Accepts(key.Value))))
             {
@@ -357,9 +379,13 @@ public sealed class PlayAnimationPlanHandler : EntryHandler
             if (!result.TrackOutcomes.TryGetValue(key, out var outcome) || outcome is not (AnimationOutcome.Completed or AnimationOutcome.Skipped) ||
                 (plan.LoopMode == AnimationLoopMode.Loop && track.BlendMode == AnimationBlendMode.Additive))
                 continue;
-            if (runtime.SceneInstances.TryGet<AnimatableSceneInstance>(track.HandleId, out var instance) &&
-                !instance.TrySetAnimationValue(track.Property, GetCommittedValue(instance, instance.AnimatableProperties.First(candidate => candidate.Name == track.Property), track.Property, track.Keys[^1].Value, track.BlendMode), out var error))
-                GameLog.Logger.Warning("Animation plan completion could not set '{HandleId}.{Property}': {Error}", track.HandleId, track.Property, error);
+            if (runtime.SceneInstances.TryGet<AnimatableSceneInstance>(track.HandleId, out var instance))
+            {
+                if (!instance.TrySetAnimationValue(track.Property, GetCommittedValue(instance, instance.AnimatableProperties.First(candidate => candidate.Name == track.Property), track.Property, track.Keys[^1].Value, track.BlendMode), out var error))
+                    GameLog.Logger.Warning("Animation plan completion could not set '{HandleId}.{Property}': {Error}", track.HandleId, track.Property, error);
+                else if (instance is EffectInstance effect)
+                    EffectStatePersistence.PersistAnimationValues(runtime, effect);
+            }
         }
     }
 
@@ -683,7 +709,7 @@ public sealed class ApplyEffectHandler : EntryHandler
                  !string.Equals(existing.TargetHandleId, request.TargetHandleId, StringComparison.Ordinal)))
                 throw new InvalidDataException($"Effect instance '{request.InstanceId}' is already active with a different definition.");
 
-            context.Runtime.SceneInstances.GetOrAdd<EffectInstance>(request.InstanceId, id => new EffectInstance
+            var instance = context.Runtime.SceneInstances.GetOrAdd<EffectInstance>(request.InstanceId, id => new EffectInstance
             {
                 Id = id, EffectId = request.Id, TargetHandleId = request.TargetHandleId, Parameters = request.Parameters
             });
@@ -700,11 +726,25 @@ public sealed class ApplyEffectHandler : EntryHandler
                 Id = request.Id,
                 InstanceId = request.InstanceId,
                 TargetHandleId = request.TargetHandleId,
-                Parameters = request.Parameters
+                Parameters = request.Parameters,
+                AnimationValues = instance.AnimationValues.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
             });
+            request = request with { AnimationValues = instance.AnimationValues };
         }
 
         await view.StartEffectAsync(request, ct);
+    }
+}
+
+internal static class EffectStatePersistence
+{
+    public static void PersistAnimationValues(IGameRuntime runtime, EffectInstance instance)
+    {
+        var state = runtime.SceneState.ActiveEffects.FirstOrDefault(effect => effect.InstanceId == instance.Id);
+        if (state is null) return;
+        state.AnimationValues.Clear();
+        foreach (var (propertyName, value) in instance.AnimationValues)
+            state.AnimationValues[propertyName] = value;
     }
 }
 

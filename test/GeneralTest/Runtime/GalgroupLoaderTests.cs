@@ -21,6 +21,7 @@ public class GalgroupLoaderTests
                 { "id": "entry-text", "type": "text", "parameters": { "speaker": "Alice", "content": "intro" } },
                 { "id": "entry-layer", "type": "layer.show", "parameters": {
                   "handleId": "layer-handle", "assetId": "background", "z": 5, "displayMode": "Uniform",
+                  "flipbook": { "columns": 4, "rows": 4, "frameCount": 14, "index": 2 },
                   "transform": { "x": 120, "y": -30, "rotationDegrees": 12, "scaleX": 2, "scaleY": 1 }
                 } },
                 { "id": "entry-animation", "type": "animation.play", "parameters": {
@@ -38,6 +39,7 @@ public class GalgroupLoaderTests
         Assert.That(group.Entries[1], Is.TypeOf<ShowLayerEntry>());
         Assert.That(group.Entries[1].Values["handleId"], Is.EqualTo("layer-handle"));
         Assert.That(group.Entries[1].Values["transform"], Does.Contain("scaleX"));
+        Assert.That(group.Entries[1].Values["flipbook"], Does.Contain("frameCount"));
         Assert.That(group.Entries[2], Is.TypeOf<PlayAnimationPlanEntry>());
         Assert.That(group.Entries[2].Values["plan"], Does.Contain("durationFrames"));
     }

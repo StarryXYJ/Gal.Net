@@ -21,7 +21,6 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     public ObservableCollection<SceneLayerItem> Layers { get; } = [];
     public ObservableCollection<string> Choices { get; } = [];
     public ObservableCollection<NvlLine> NvlLines { get; } = [];
-    public ObservableCollection<string> ActiveEffects { get; } = [];
     /// <summary>Host-owned overlay visuals rendered above scene layers and below dialogue UI.</summary>
     public ObservableCollection<Control> OverlayEffects { get; } = [];
 
@@ -128,6 +127,7 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         {
             existing.Image = item.Image;
             existing.Color = item.Color;
+            existing.Flipbook = item.Flipbook?.Clone();
             existing.X = item.X;
             existing.Y = item.Y;
             existing.RotationDegrees = item.RotationDegrees;
@@ -151,7 +151,6 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     {
         Layers.Clear();
         OverlayEffects.Clear();
-        ActiveEffects.Clear();
         _effectAnimations.Clear();
         TransitionOpacity = 0;
         IsDialogueVisible = false;
@@ -191,9 +190,11 @@ public sealed partial class GamePageViewModel : PageViewModelBase
             "transform.scaleX" => layer.ScaleX,
             "transform.scaleY" => layer.ScaleY,
             "opacity" => layer.Opacity,
+            "flipbook.index" when layer.Flipbook is not null => layer.FlipbookIndex,
             _ => 0
         };
-        return property is "transform.x" or "transform.y" or "transform.rotationDegrees" or "transform.scaleX" or "transform.scaleY" or "opacity";
+        return property is "transform.x" or "transform.y" or "transform.rotationDegrees" or "transform.scaleX" or "transform.scaleY" or "opacity" ||
+               property == "flipbook.index" && layer.Flipbook is not null;
     }
 
     public bool SetLayerAnimationValue(string id, string property, double value)
@@ -208,21 +209,27 @@ public sealed partial class GamePageViewModel : PageViewModelBase
             case "transform.scaleX": layer.ScaleX = value; return true;
             case "transform.scaleY": layer.ScaleY = value; return true;
             case "opacity": layer.Opacity = value; return true;
+            case "flipbook.index" when layer.Flipbook is not null: layer.FlipbookIndex = value; return true;
             default: return false;
         }
     }
 
     /// <summary>Registers the presentation-side property sink for a live animatable effect.</summary>
-    public void RegisterEffectProgress(string instanceId, Action<double> apply)
+    public void RegisterEffectAnimation(string instanceId, string property, Action<double> apply, double initialValue = 0)
     {
-        _effectAnimations[instanceId] = new EffectAnimationBinding(apply);
+        _effectAnimations[EffectPropertyKey(instanceId, property)] = new EffectAnimationBinding(apply) { Value = initialValue };
+        apply(initialValue);
     }
 
-    public void UnregisterEffectAnimation(string instanceId) => _effectAnimations.Remove(instanceId);
+    public void UnregisterEffectAnimation(string instanceId, string property) => _effectAnimations.Remove(EffectPropertyKey(instanceId, property));
+    public void UnregisterEffectAnimations(string instanceId)
+    {
+        foreach (var key in _effectAnimations.Keys.Where(key => key.StartsWith($"{instanceId}:", StringComparison.Ordinal)).ToArray()) _effectAnimations.Remove(key);
+    }
 
     public bool TryGetEffectAnimationValue(string id, string property, out double value)
     {
-        if (property == "progress" && _effectAnimations.TryGetValue(id, out var binding))
+        if (_effectAnimations.TryGetValue(EffectPropertyKey(id, property), out var binding))
         {
             value = binding.Value;
             return true;
@@ -233,7 +240,7 @@ public sealed partial class GamePageViewModel : PageViewModelBase
 
     public bool SetEffectAnimationValue(string id, string property, double value)
     {
-        if (property != "progress" || !_effectAnimations.TryGetValue(id, out var binding)) return false;
+        if (!_effectAnimations.TryGetValue(EffectPropertyKey(id, property), out var binding)) return false;
         binding.Value = value;
         binding.Apply(value);
         return true;
@@ -265,4 +272,6 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         public Action<double> Apply { get; } = apply;
         public double Value { get; set; }
     }
+
+    private static string EffectPropertyKey(string instanceId, string property) => $"{instanceId}:{property}";
 }
