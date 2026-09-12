@@ -296,9 +296,9 @@ public static class ShaderEffectMetadataParser
             var minimum = ParseNumber("min", diagnostics);
             var maximum = ParseNumber("max", diagnostics);
             if (_values.TryGetValue("range", out var range)) (minimum, maximum) = ParseRange(range, line, diagnostics);
-            var step = ParseNumber("step", diagnostics);
+            var step = ParseNumber("step", diagnostics) ?? DefaultStep(kind.Value);
             if (minimum is { } min && maximum is { } max && min > max) diagnostics.Add(new(line, $"Parameter '{name}' has a minimum greater than its maximum."));
-            var animatable = ParseBoolean("animatable", false, diagnostics);
+            var animatable = ParseBoolean("animatable", IsAnimatableByDefault(kind.Value), diagnostics);
             var required = ParseBoolean("required", false, diagnostics);
             var options = _values.TryGetValue("options", out var rawOptions)
                 ? rawOptions.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
@@ -306,8 +306,10 @@ public static class ShaderEffectMetadataParser
             if (kind == ShaderEffectParameterKind.Enum && options.Length == 0)
                 diagnostics.Add(new(line, $"Enum parameter '{name}' requires options."));
 
-            _values.TryGetValue("default", out var defaultValue);
-            _values.TryGetValue("displayName", out var displayName);
+            var defaultValue = _values.TryGetValue("default", out var explicitDefault)
+                ? explicitDefault
+                : DefaultValue(kind.Value, options);
+            var displayName = _values.TryGetValue("displayName", out var explicitDisplayName) ? explicitDisplayName : name;
             _values.TryGetValue("group", out var group);
             _values.TryGetValue("tooltip", out var tooltip);
             return new ShaderEffectParameterDescriptor(name, uniform, kind.Value, defaultValue, minimum, maximum, step, animatable, required, options, displayName, group, tooltip);
@@ -342,6 +344,32 @@ public static class ShaderEffectMetadataParser
             diagnostics.Add(new(line, $"Parameter '{name}' has an invalid {key} value '{value}'."));
             return defaultValue;
         }
+
+        private static double? DefaultStep(ShaderEffectParameterKind kind) => kind switch
+        {
+            ShaderEffectParameterKind.Float => 0.01,
+            ShaderEffectParameterKind.Integer => 1,
+            _ => null
+        };
+
+        private static bool IsAnimatableByDefault(ShaderEffectParameterKind kind) => kind is
+            ShaderEffectParameterKind.Float or
+            ShaderEffectParameterKind.Integer or
+            ShaderEffectParameterKind.Color or
+            ShaderEffectParameterKind.Vector2 or
+            ShaderEffectParameterKind.Vector4;
+
+        private static string? DefaultValue(ShaderEffectParameterKind kind, string[] options) => kind switch
+        {
+            ShaderEffectParameterKind.Float or ShaderEffectParameterKind.Integer => "0",
+            ShaderEffectParameterKind.Boolean => "false",
+            ShaderEffectParameterKind.Color => "#00000000",
+            ShaderEffectParameterKind.Vector2 => "[0,0]",
+            ShaderEffectParameterKind.Vector4 => "[0,0,0,0]",
+            ShaderEffectParameterKind.Texture => null,
+            ShaderEffectParameterKind.Enum => options.Length > 0 ? options[0] : null,
+            _ => null
+        };
 
         private static ShaderEffectParameterKind? ParseKind(string type) => type.ToLowerInvariant() switch
         {

@@ -182,6 +182,20 @@ Layer source 的 authoring 数据优先采用显式 `source` 对象；现阶段 
 - `@param` 支持 `float`、`int`、`bool`、`color`、`vec2`、`vec4`、`enum`；`@texture` 声明额外资源槽。`default`、`range`、`step`、`animatable`、`required`、`options`、`displayName`、`group` 与 `tooltip` 是可选 metadata。
 - 注释 metadata 是编辑器和 Runtime 的参数协议；Avalonia Rendering 仍必须用 SkSL reflection 验证其中的 uniform/child 名称和类型，不能只相信注释。
 
+除 `uniform` 与 `type`（`@texture` 自动推断 `texture`）外，参数 metadata 都可省略。parser 在 Core 中补齐稳定默认值，显式写出的字段总是覆盖默认值：
+
+| 类型 | 缺省值 | 缺省 step | 缺省 animatable |
+| --- | --- | --- | --- |
+| `float` | `0` | `0.01` | 是 |
+| `int` | `0` | `1` | 是（离散值） |
+| `bool` | `false` | — | 否 |
+| `color` | `#00000000` | — | 是 |
+| `vec2` / `vec4` | 全零向量 | — | 是 |
+| `texture` | 未绑定 | — | 否 |
+| `enum` | `options` 的第一项 | — | 否 |
+
+不写 `range` 表示不执行范围钳制；不写 `required` 视为 `false`；不写 `displayName` 时使用参数名。默认值在 descriptor 中完成标准化，编辑器和所有渲染后端不得自行推断另一套默认规则。
+
 Core 中的 `EffectProgramResource` 只是稳定 asset reference，不包含文件路径语义、SkSL、`SKRuntimeEffect` 或 GPU 纹理。`ShaderEffectAttachment` 保存内部 Runtime handle、目标、program reference、order 和原始参数值；它可按 descriptor 枚举 program 本身以及静态 texture 参数作为预加载依赖。资源的文件读取、解码、SkSL 编译、reflection、纹理上传和缓存全部属于 Avalonia Rendering。
 
 第一步只落地平台无关的注释 parser、descriptor、attachment 和 metadata resolver 接口，与现有 factory 型 effect 并行存在，不改变已有渲染结果。随后按以下顺序迁移：

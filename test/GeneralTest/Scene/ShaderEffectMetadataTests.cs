@@ -84,6 +84,47 @@ public sealed class ShaderEffectMetadataTests
     }
 
     [Test]
+    public void Parser_fills_omitted_metadata_and_explicit_values_override_defaults()
+    {
+        var result = ShaderEffectMetadataParser.Parse(Program, """
+            /*
+            @gal.effect v=1
+            @input source
+            @targets layer
+            @param amount
+              uniform: uAmount
+              type: float
+            @param enabled
+              uniform: uEnabled
+              type: bool
+              default: true
+              animatable: true
+            @param mode
+              uniform: uMode
+              type: enum
+              options: Soft,Hard
+            @texture noise
+              uniform: uNoise
+            */
+            """);
+
+        Assert.That(result.Success, Is.True, string.Join(Environment.NewLine, result.Diagnostics));
+        var parameters = result.Descriptor!.Parameters.ToDictionary(parameter => parameter.Name);
+        Assert.Multiple(() =>
+        {
+            Assert.That(parameters["amount"].DefaultValue, Is.EqualTo("0"));
+            Assert.That(parameters["amount"].Step, Is.EqualTo(0.01));
+            Assert.That(parameters["amount"].Animatable, Is.True);
+            Assert.That(parameters["amount"].DisplayName, Is.EqualTo("amount"));
+            Assert.That(parameters["enabled"].DefaultValue, Is.EqualTo("true"));
+            Assert.That(parameters["enabled"].Animatable, Is.True);
+            Assert.That(parameters["mode"].DefaultValue, Is.EqualTo("Soft"));
+            Assert.That(parameters["noise"].DefaultValue, Is.Null);
+            Assert.That(parameters["noise"].Animatable, Is.False);
+        });
+    }
+
+    [Test]
     public void Attachment_keeps_runtime_handle_internal_and_enumerates_static_resource_dependencies()
     {
         var descriptor = ShaderEffectMetadataParser.Parse(Program, """
