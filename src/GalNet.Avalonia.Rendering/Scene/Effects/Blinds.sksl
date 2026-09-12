@@ -1,0 +1,35 @@
+/*
+@gal.effect v=1
+@input source
+@targets layer
+
+@param progress
+  uniform: progress
+  type: float
+  default: 0
+  range: 0..1
+  animatable: true
+
+@param bladeCount
+  uniform: bladeCount
+  type: int
+  default: 12
+  range: 1..512
+
+@param orientation
+  uniform: horizontal
+  type: enum
+  options: Vertical,Horizontal
+  default: Vertical
+*/
+uniform shader source;
+uniform float progress;
+uniform float bladeCount;
+uniform float horizontal;
+uniform float2 size;
+
+half4 main(float2 p) {
+    float axis = horizontal > 0.5 ? p.y / size.y : p.x / size.x;
+    float reveal = step(fract(axis * bladeCount), progress);
+    return source.eval(p) * reveal;
+}

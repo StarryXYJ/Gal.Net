@@ -9,4 +9,7 @@
     <PackageReference Include="Avalonia.Skia" />
     <ProjectReference Include="..\GalNet.Core\GalNet.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Scene\Effects\*.sksl" />
+  </ItemGroup>
 </Project>

@@ -148,7 +148,7 @@ Layer source 的 authoring 数据优先采用显式 `source` 对象；现阶段 
 
 验收：效果失败不会破坏场景渲染；资源不足或不支持时有可理解的编辑器与运行时诊断。
 
-### Phase 6：注释驱动的通用 Shader Effect（下一阶段）
+### Phase 6：注释驱动的通用 Shader Effect（进行中）
 
 目标是从“按 effect ID 发现 factory”过渡到“目标 + shader 资源 + 参数”的通用 attachment。`EffectInstance` 的 Runtime handle 继续存在，用于生命周期、动画和存档恢复；它是编译器/Runtime 的内部资源，内容作者不需要命名或操作它。
 
@@ -180,7 +180,7 @@ Layer source 的 authoring 数据优先采用显式 `source` 对象；现阶段 
 - `source` 是唯一强制输入纹理；Layer 当前帧与 ScenePost 合成图只是它的不同来源。
 - `@targets` 是资源的可用范围；attachment 的 target 决定实际 stage，不由 shader 运行时猜测。
 - `@param` 支持 `float`、`int`、`bool`、`color`、`vec2`、`vec4`、`enum`；`@texture` 声明额外资源槽。`default`、`range`、`step`、`animatable`、`required`、`options`、`displayName`、`group` 与 `tooltip` 是可选 metadata。
-- 注释 metadata 是编辑器和 Runtime 的参数协议；Avalonia Rendering 仍必须用 SkSL reflection 验证其中的 uniform/child 名称和类型，不能只相信注释。
+- 注释 metadata 是编辑器和 Runtime 的参数协议；Avalonia Rendering 必须用 SkSL reflection 验证其中的 uniform/child 名称。当前 SkiaSharp 版本未公开 uniform 的声明类型反射，因此类型仍由 metadata 协议约束，通用 binder 落地时会按该协议严格绑定。
 
 除 `uniform` 与 `type`（`@texture` 自动推断 `texture`）外，参数 metadata 都可省略。parser 在 Core 中补齐稳定默认值，显式写出的字段总是覆盖默认值：
 
@@ -198,7 +198,7 @@ Layer source 的 authoring 数据优先采用显式 `source` 对象；现阶段 
 
 Core 中的 `EffectProgramResource` 只是稳定 asset reference，不包含文件路径语义、SkSL、`SKRuntimeEffect` 或 GPU 纹理。`ShaderEffectAttachment` 保存内部 Runtime handle、目标、program reference、order 和原始参数值；它可按 descriptor 枚举 program 本身以及静态 texture 参数作为预加载依赖。资源的文件读取、解码、SkSL 编译、reflection、纹理上传和缓存全部属于 Avalonia Rendering。
 
-第一步只落地平台无关的注释 parser、descriptor、attachment 和 metadata resolver 接口，与现有 factory 型 effect 并行存在，不改变已有渲染结果。随后按以下顺序迁移：
+已完成：平台无关的注释 parser、descriptor、attachment 和 metadata resolver；Avalonia 的内置 program loader 已将 `builtin/blinds`、`builtin/color-grade` 作为嵌入 `.sksl` 资源读取、缓存、编译，并验证 source/uniform/texture child 绑定名。现有 factory 型 effect 继续兼容调用这两份已缓存 program，因此不改变已有画面。随后按以下顺序迁移：
 
 1. Avalonia Rendering 读取 effect resource、缓存编译结果并交叉校验 metadata。
 2. 用通用 texture pass 替代 `ITextureEffectFactory` 的按 ID 分支。

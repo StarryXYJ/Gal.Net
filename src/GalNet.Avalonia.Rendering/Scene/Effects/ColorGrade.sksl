@@ -1,0 +1,39 @@
+/*
+@gal.effect v=1
+@input source
+@targets layer,scenePost
+
+@param brightness
+  uniform: brightness
+  type: float
+  range: -1..1
+  animatable: true
+
+@param saturation
+  uniform: saturation
+  type: float
+  range: -1..1
+  animatable: true
+
+@param hue
+  uniform: hue
+  type: float
+  range: -180..180
+  animatable: true
+*/
+uniform shader source;
+uniform float brightness;
+uniform float saturation;
+uniform float hue;
+
+half4 main(float2 p) {
+    half4 c = source.eval(p);
+    if (c.a <= 0) return c;
+    float3 rgb = clamp(float3(c.rgb) / c.a, 0.0, 1.0);
+    float luma = dot(rgb, float3(0.2126, 0.7152, 0.0722));
+    rgb = mix(float3(luma), rgb, max(0.0, 1.0 + saturation));
+    float3 axis = float3(0.577350269, 0.577350269, 0.577350269);
+    rgb = rgb * cos(hue) + cross(axis, rgb) * sin(hue) + axis * dot(axis, rgb) * (1.0 - cos(hue));
+    rgb = clamp(rgb + brightness, 0.0, 1.0);
+    return half4(half3(rgb * c.a), c.a);
+}
