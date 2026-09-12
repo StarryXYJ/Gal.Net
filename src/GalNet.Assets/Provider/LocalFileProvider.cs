@@ -13,15 +13,18 @@ namespace GalNet.Assets.Provider;
 ///     bg/classroom.jpg.meta
 ///     ...
 /// </summary>
-public sealed class LocalFileProvider : IAssetProvider
+public sealed class LocalFileProvider : IAssetProvider, IDisposable
 {
     private readonly string _assetsRoot;
     private readonly bool _optional;
     private List<IGameFile>? _cachedFiles;
     private Dictionary<string, string>? _cachedPathToId;
+    private Task<ScanResult>? _scanTask;
     private FileSystemWatcher? _watcher;
     private readonly object _cacheLock = new();
     private bool _cacheDirty = true;
+    private int _cacheVersion;
+    private bool _disposed;
 
     /// <summary>
     /// 创建 LocalFileProvider。
@@ -43,6 +46,8 @@ public sealed class LocalFileProvider : IAssetProvider
 
     public async Task<IArchive> OpenArchiveAsync(string archiveName, CancellationToken ct = default)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ct.ThrowIfCancellationRequested();
         if (!Directory.Exists(_assetsRoot))
         {
             if (_optional)
@@ -53,25 +58,71 @@ public sealed class LocalFileProvider : IAssetProvider
 
         InitWatcher();
 
-        lock (_cacheLock)
+        while (true)
         {
-            if (!_cacheDirty && _cachedFiles != null && _cachedPathToId != null)
+            Task<ScanResult> scanTask;
+            lock (_cacheLock)
             {
-                // 用缓存的数据快速 new 新实例返回，避免多线程 Dispose 冲突，消除 IO 扫描
-                return new DevArchive(_assetsRoot, _cachedFiles, _cachedPathToId);
+                if (!_cacheDirty && _cachedFiles is not null && _cachedPathToId is not null)
+                {
+                    // 用缓存的数据快速 new 新实例返回，避免多线程 Dispose 冲突，消除 IO 扫描
+                    return new DevArchive(_assetsRoot, _cachedFiles, _cachedPathToId);
+                }
+
+                // All callers share one directory scan. Cancellation only stops the
+                // current waiter; it must not cancel a scan that other callers need.
+                scanTask = _scanTask ??= ScanAsync(_cacheVersion);
+            }
+
+            try
+            {
+                var scan = await scanTask.WaitAsync(ct);
+                lock (_cacheLock)
+                {
+                    ObjectDisposedException.ThrowIf(_disposed, this);
+                    if (!ReferenceEquals(_scanTask, scanTask)) continue;
+                    _scanTask = null;
+
+                    // A watcher event may have arrived while the scan was in progress.
+                    // Do not publish a stale index as the current cache generation.
+                    if (scan.Version != _cacheVersion)
+                    {
+                        _cacheDirty = true;
+                        continue;
+                    }
+
+                    _cachedFiles = scan.Files;
+                    _cachedPathToId = scan.PathToId;
+                    _cacheDirty = false;
+                    return new DevArchive(_assetsRoot, _cachedFiles, _cachedPathToId);
+                }
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                // WaitAsync cancellation is local to this caller. Keep the shared
+                // directory scan alive for other waiters.
+                throw;
+            }
+            catch
+            {
+                lock (_cacheLock)
+                {
+                    if (ReferenceEquals(_scanTask, scanTask)) _scanTask = null;
+                }
+                throw;
             }
         }
+    }
 
-        // Scan for meta files
+    private async Task<ScanResult> ScanAsync(int version)
+    {
         var metaFiles = Directory.GetFiles(_assetsRoot, "*.meta", SearchOption.AllDirectories);
         var files = new List<IGameFile>();
-        var pathToId = new Dictionary<string, string>();
+        var pathToId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var metaPath in metaFiles)
         {
-            ct.ThrowIfCancellationRequested();
-
-            var json = await File.ReadAllTextAsync(metaPath, ct);
+            var json = await File.ReadAllTextAsync(metaPath, CancellationToken.None);
             AssetMeta? meta;
             try
             {
@@ -82,7 +133,7 @@ public sealed class LocalFileProvider : IAssetProvider
                 continue;
             }
 
-            if (meta == null || string.IsNullOrEmpty(meta.Id) || string.IsNullOrEmpty(meta.Path))
+            if (meta is null || string.IsNullOrEmpty(meta.Id) || string.IsNullOrEmpty(meta.Path))
                 continue;
 
             // The resource file path is relative to the meta file
@@ -90,26 +141,19 @@ public sealed class LocalFileProvider : IAssetProvider
             if (!File.Exists(resourcePath))
                 continue;
 
-            var data = await File.ReadAllBytesAsync(resourcePath, ct);
+            var data = await File.ReadAllBytesAsync(resourcePath, CancellationToken.None);
             var hash = CryptoHelper.HashSHA256(data);
             var gameFile = new GameFile(meta.Id, meta.Path, meta.ParseResourceType(), data, hash);
             files.Add(gameFile);
             pathToId[AssetPathHelper.Normalize(meta.Path)] = meta.Id;
         }
 
-        lock (_cacheLock)
-        {
-            _cachedFiles = files;
-            _cachedPathToId = pathToId;
-            _cacheDirty = false;
-        }
-
-        return new DevArchive(_assetsRoot, files, pathToId);
+        return new ScanResult(version, files, pathToId);
     }
 
     private void InitWatcher()
     {
-        if (_watcher != null || !Directory.Exists(_assetsRoot)) return;
+        if (_disposed || _watcher != null || !Directory.Exists(_assetsRoot)) return;
         try
         {
             _watcher = new FileSystemWatcher(_assetsRoot)
@@ -117,16 +161,45 @@ public sealed class LocalFileProvider : IAssetProvider
                 IncludeSubdirectories = true,
                 NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.DirectoryName
             };
-            _watcher.Changed += (s, e) => { lock (_cacheLock) { _cacheDirty = true; } };
-            _watcher.Created += (s, e) => { lock (_cacheLock) { _cacheDirty = true; } };
-            _watcher.Deleted += (s, e) => { lock (_cacheLock) { _cacheDirty = true; } };
-            _watcher.Renamed += (s, e) => { lock (_cacheLock) { _cacheDirty = true; } };
+            _watcher.Changed += (_, _) => MarkCacheDirty();
+            _watcher.Created += (_, _) => MarkCacheDirty();
+            _watcher.Deleted += (_, _) => MarkCacheDirty();
+            _watcher.Renamed += (_, _) => MarkCacheDirty();
             _watcher.EnableRaisingEvents = true;
         }
         catch
         {
             // 防御权限或平台不支持
         }
+    }
+
+    private void MarkCacheDirty()
+    {
+        lock (_cacheLock)
+        {
+            if (_disposed) return;
+            _cacheDirty = true;
+            _cacheVersion++;
+        }
+    }
+
+    public void Dispose()
+    {
+        FileSystemWatcher? watcher;
+        lock (_cacheLock)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            watcher = _watcher;
+            _watcher = null;
+            _cachedFiles = null;
+            _cachedPathToId = null;
+            _scanTask = null;
+            _cacheDirty = true;
+            _cacheVersion++;
+        }
+
+        watcher?.Dispose();
     }
 
     /// <summary>
@@ -142,8 +215,8 @@ public sealed class LocalFileProvider : IAssetProvider
         public DevArchive(string name, List<IGameFile> files, Dictionary<string, string> pathToId)
         {
             _name = name;
-            _byId = files.ToDictionary(f => f.Id, f => f);
-            _pathToId = pathToId;
+            _byId = files.ToDictionary(f => f.Id, f => f, StringComparer.OrdinalIgnoreCase);
+            _pathToId = new Dictionary<string, string>(pathToId, StringComparer.OrdinalIgnoreCase);
         }
 
         public string Name => _name;
@@ -172,4 +245,6 @@ public sealed class LocalFileProvider : IAssetProvider
             _pathToId.Clear();
         }
     }
+
+    private sealed record ScanResult(int Version, List<IGameFile> Files, Dictionary<string, string> PathToId);
 }

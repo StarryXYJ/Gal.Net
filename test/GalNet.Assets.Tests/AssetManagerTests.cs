@@ -20,6 +20,85 @@ public sealed class AssetManagerTests
     }
 
     [Test]
+    public async Task LoadAsync_ConcurrentRequests_ShareOneDecodeAndOwnSeparateRefs()
+    {
+        using var manager = new AssetManager();
+        var provider = new MockProvider("test", new GameFile("id-1", "file.bin", ResourceType.Unknown, "data"u8.ToArray()));
+        var decoder = new BlockingAssetDecoder();
+        manager.RegisterProvider(provider);
+        manager.RegisterDecoder(decoder);
+
+        var firstTask = manager.LoadAsync<DisposableAsset>("id-1");
+        await decoder.Started.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        var secondTask = manager.LoadAsync<DisposableAsset>("id-1");
+
+        decoder.Release();
+        var results = await Task.WhenAll(firstTask, secondTask);
+
+        var firstResult = results[0]!;
+        Assert.Multiple(() =>
+        {
+            Assert.That(results[1], Is.SameAs(firstResult));
+            Assert.That(provider.LoadCount, Is.EqualTo(1));
+            Assert.That(decoder.DecodeCount, Is.EqualTo(1));
+        });
+
+        manager.Release<DisposableAsset>("id-1");
+        Assert.That(firstResult.Disposed, Is.False);
+        manager.Release<DisposableAsset>("id-1");
+        Assert.That(firstResult.Disposed, Is.True);
+    }
+
+    [Test]
+    public async Task LoadAsync_CancellingOneWaiter_DoesNotCancelOtherWaiters()
+    {
+        using var manager = new AssetManager();
+        var provider = new MockProvider("test", new GameFile("id-1", "file.bin", ResourceType.Unknown, "data"u8.ToArray()));
+        var decoder = new BlockingAssetDecoder();
+        manager.RegisterProvider(provider);
+        manager.RegisterDecoder(decoder);
+
+        using var firstCancellation = new CancellationTokenSource();
+        var firstTask = manager.LoadAsync<DisposableAsset>("id-1", firstCancellation.Token);
+        await decoder.Started.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        var secondTask = manager.LoadAsync<DisposableAsset>("id-1");
+
+        firstCancellation.Cancel();
+        Assert.That(async () => await firstTask, Throws.InstanceOf<OperationCanceledException>());
+
+        decoder.Release();
+        var second = await secondTask;
+        Assert.That(second, Is.Not.Null);
+        Assert.That(provider.LoadCount, Is.EqualTo(1));
+        manager.Release<DisposableAsset>("id-1");
+    }
+
+    [Test]
+    public async Task ClearCache_InvalidatesAnInFlightResultInsteadOfRepopulatingCache()
+    {
+        using var manager = new AssetManager();
+        var provider = new MockProvider("test", new GameFile("id-1", "file.bin", ResourceType.Unknown, "data"u8.ToArray()));
+        var decoder = new NonCooperativeBlockingAssetDecoder();
+        manager.RegisterProvider(provider);
+        manager.RegisterDecoder(decoder);
+
+        var loadTask = manager.LoadAsync<DisposableAsset>("id-1");
+        await decoder.Started.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        manager.ClearCache();
+
+        decoder.Release();
+        Assert.That(async () => await loadTask, Throws.InstanceOf<OperationCanceledException>());
+        await decoder.Completed.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.That(SpinWait.SpinUntil(() => decoder.Result?.Disposed == true, TimeSpan.FromSeconds(2)), Is.True);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(manager.CachedCount, Is.EqualTo(0));
+            Assert.That(decoder.Result!.Disposed, Is.True);
+        });
+    }
+
+    [Test]
     public async Task LoadAsync_Release_RefCountDecays()
     {
         using var manager = new AssetManager();
@@ -133,6 +212,24 @@ public sealed class AssetManagerTests
     }
 
     [Test]
+    public async Task LoadAsync_WithResolvedFile_SkipsProviderLookup()
+    {
+        using var manager = new AssetManager();
+        var file = new GameFile("id-1", "file.txt", ResourceType.Unknown, "data"u8.ToArray());
+        var provider = new MockProvider("test-archive", file);
+        manager.RegisterProvider(provider);
+
+        var result = await manager.LoadAsync<byte[]>(file);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo("data"u8.ToArray()));
+            Assert.That(provider.LoadCount, Is.Zero);
+            Assert.That(manager.CachedCount, Is.EqualTo(1));
+        });
+    }
+
+    [Test]
     public async Task LoadAsync_CustomDecoder_IsTypedCachedAndReleasedByType()
     {
         using var manager = new AssetManager();
@@ -154,6 +251,23 @@ public sealed class AssetManagerTests
         manager.Release<DisposableAsset>("id-1");
         Assert.That(first.Disposed, Is.True);
         Assert.That(manager.TryGetLoaded<DisposableAsset>("id-1", out _), Is.False);
+    }
+
+    [Test]
+    public async Task ClearCache_PreservesRegisteredDecoder()
+    {
+        using var manager = new AssetManager();
+        manager.RegisterProvider(new MockProvider("test", new GameFile("id-1", "file.bin", ResourceType.Unknown, "data"u8.ToArray())));
+        var decoder = new DisposableAssetDecoder();
+        manager.RegisterDecoder(decoder);
+
+        var first = await manager.LoadAsync<DisposableAsset>("id-1");
+        manager.ClearCache();
+        var second = await manager.LoadAsync<DisposableAsset>("id-1");
+
+        Assert.That(first, Is.Not.SameAs(second));
+        Assert.That(decoder.DecodeCount, Is.EqualTo(2));
+        manager.Release<DisposableAsset>("id-1");
     }
 
     [Test]
@@ -269,6 +383,22 @@ public sealed class AssetManagerTests
         Assert.That(result, Is.EqualTo("png-data"u8.ToArray()));
     }
 
+    [Test]
+    public async Task LoadAsync_IdCaseDoesNotCreateAnotherCacheEntry()
+    {
+        using var manager = new AssetManager();
+        var provider = new MockProvider("test", new GameFile("id-1", "file.txt", ResourceType.Unknown, "data"u8.ToArray()));
+        manager.RegisterProvider(provider);
+
+        var first = await manager.LoadAsync<byte[]>("id-1");
+        var second = await manager.LoadAsync<byte[]>("ID-1");
+
+        Assert.That(second, Is.SameAs(first));
+        Assert.That(provider.LoadCount, Is.EqualTo(1));
+        manager.Release<byte[]>("id-1");
+        manager.Release<byte[]>("ID-1");
+    }
+
     // ── Mock Provider ──
 
     private sealed class MockProvider(string name, IGameFile file) : IAssetProvider
@@ -314,5 +444,41 @@ public sealed class AssetManagerTests
             DecodeCount++;
             return ValueTask.FromResult<DisposableAsset?>(new DisposableAsset());
         }
+    }
+
+    private sealed class BlockingAssetDecoder : IAssetDecoder<DisposableAsset>
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource ReleaseSignal { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public int DecodeCount { get; private set; }
+
+        public async ValueTask<DisposableAsset?> DecodeAsync(IGameFile file, ReadOnlyMemory<byte> data, CancellationToken ct = default)
+        {
+            DecodeCount++;
+            Started.TrySetResult();
+            await ReleaseSignal.Task.WaitAsync(ct);
+            return new DisposableAsset();
+        }
+
+        public void Release() => ReleaseSignal.TrySetResult();
+    }
+
+    private sealed class NonCooperativeBlockingAssetDecoder : IAssetDecoder<DisposableAsset>
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource ReleaseSignal { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Completed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public DisposableAsset? Result { get; private set; }
+
+        public async ValueTask<DisposableAsset?> DecodeAsync(IGameFile file, ReadOnlyMemory<byte> data, CancellationToken ct = default)
+        {
+            Started.TrySetResult();
+            await ReleaseSignal.Task;
+            Result = new DisposableAsset();
+            Completed.TrySetResult();
+            return Result;
+        }
+
+        public void Release() => ReleaseSignal.TrySetResult();
     }
 }

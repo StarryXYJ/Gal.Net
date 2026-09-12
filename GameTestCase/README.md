@@ -19,6 +19,10 @@ z-order and resource fallback, plus a typewriter wait with
 `\d{...}` delays, `\n`, `<b>`, `<i>`, and `<color>` rich text, choice input, transitions,
 effects, variables and the selected route.
 
+The three opening layers are submitted before the short black flash starts. This keeps the
+first scene commit atomic from the player's perspective: the background, normal portrait and
+missing-resource fallback are already ready when the opening transition reveals the scene.
+
 Before the first choice, the normal portrait runs one blocking, skippable keyframe
 `animation.play` clip. Its parallel tracks cover `Step`, `Linear`, and `CubicHermite`
 interpolation. It then starts a non-blocking looping rotation plus faster additive PingPong position

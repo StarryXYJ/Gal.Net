@@ -1,6 +1,9 @@
 using Avalonia.Controls;
+using Avalonia.Media;
 using GalNet.Avalonia.GameView.Navigation;
+using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.ViewModels;
+using GalNet.Rendering.Scene;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GeneralTest.Presentation;
@@ -97,6 +100,30 @@ public sealed class GameNavigationTests
 
         page.AdvanceCommand.Execute(null);
         Assert.That(advances, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Dialogue_overlay_remains_available_with_a_missing_layer_fallback()
+    {
+        var page = new GamePageViewModel(new NoOpGameNavigationService());
+        using var fallback = new SceneTexture(new DrawingImage());
+        page.SetLayer("missing-layer-demo", new SceneLayerItem
+        {
+            HandleId = "missing-layer-demo",
+            Texture = fallback,
+            Z = 5
+        });
+
+        page.IsDialogueVisible = true;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(page.Layers.Single().Texture, Is.SameAs(fallback));
+            Assert.That(page.IsDialogueOverlayVisible, Is.True);
+        });
+
+        page.IsUiHidden = true;
+        Assert.That(page.IsDialogueOverlayVisible, Is.False);
     }
 
     [Test]

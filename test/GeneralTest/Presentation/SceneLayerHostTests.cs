@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Avalonia.Media;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Core.Scene;
 using GalNet.Rendering.Scene;
@@ -14,6 +15,30 @@ public sealed class SceneLayerHostTests
 
         Assert.That(LayerImageFallback.ShouldReport(assetId), Is.True);
         Assert.That(LayerImageFallback.ShouldReport(assetId), Is.False);
+    }
+
+    [Test]
+    public void Missing_resource_fallback_is_a_renderable_scene_layer()
+    {
+        // DrawingImage is the platform-neutral test stand-in for the embedded
+        // fallback bitmap; Bitmap construction requires an Avalonia render backend.
+        using var fallback = new SceneTexture(new DrawingImage());
+        var item = new SceneLayerItem
+        {
+            HandleId = "missing-layer-demo",
+            Texture = fallback,
+            DisplayMode = LayerDisplayMode.Native,
+            ScaleX = 0.18,
+            ScaleY = 0.18,
+            Z = 5
+        };
+        var host = new SceneLayerHost { ItemsSource = new[] { item } };
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(fallback.AvaloniaImage, Is.TypeOf<DrawingImage>());
+            Assert.That(host.RenderPlan.Items.Select(entry => entry.Layer.Texture), Is.EqualTo(new[] { fallback }));
+        });
     }
 
     [Test]

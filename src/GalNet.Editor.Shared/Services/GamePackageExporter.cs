@@ -51,7 +51,7 @@ public static class GamePackageExporter
 
     private static async Task<byte[]> BuildAssetsAsync(string assetsPath, CancellationToken ct)
     {
-        var provider = new LocalFileProvider(assetsPath, optional: true);
+        using var provider = new LocalFileProvider(assetsPath, optional: true);
         using var archive = await provider.OpenArchiveAsync("assets", ct);
         var files = archive.AssetIds.OrderBy(id => id, StringComparer.Ordinal).Select(id => archive.GetAsset(id)!).ToArray();
         return PakBuilder.Build("assets", files, GalNet.Core.Assets.CompressionMode.Brotli);

@@ -65,8 +65,9 @@ interface IAssetManager : IDisposable
 {
     int CachedCount { get; }
 
-    void RegisterProvider(IAssetProvider provider);
+    void RegisterProvider(IAssetProvider provider); // AssetManager 负责回收实现了 IDisposable 的 Provider
     Task<T?> LoadAsync<T>(string assetId, CancellationToken ct = default) where T : class;
+    Task<T?> LoadAsync<T>(IGameFile file, CancellationToken ct = default) where T : class;
     Task<T?> LoadByPathAsync<T>(string path, CancellationToken ct = default) where T : class;
     void Release(string assetId);
     bool IsLoaded(string assetId);
@@ -159,13 +160,13 @@ AssetManager 通过注册不同 Provider 切换数据源：
 
 ### 资源缓存与引用计数
 
-AssetManager 内部使用 `Dictionary<string, CacheEntry>`，每个 CacheEntry 包含：
-- **Data**：已转换类型的资源对象
-- **RawData**：原始字节
-- **GameFile**：元数据引用
-- **RefCount**：引用计数
+AssetManager 内部使用 `(AssetId, TargetType)` 作为缓存键，每个 CacheEntry 只持有已转换类型的资源对象和引用计数；原始字节只在解码期间存在，避免同一资源被缓存两份。已经由 `GetFilesAsync()` 枚举得到的 `IGameFile` 可直接传给 `LoadAsync<T>(file)`，预热时不再重复查找 Provider。
 
-加载时 RefCount++，释放时 RefCount--，归零时从缓存移除。
+加载时 RefCount++，释放时 RefCount--，归零时从缓存移除并释放 `IDisposable` 资源。资源 ID 比较不区分大小写，避免同一 GUID 因大小写产生重复缓存。
+
+同一缓存键的并发请求使用 single-flight：只执行一次 Provider 查找和 Decoder，所有调用者共享结果，但各自拥有独立的等待取消和引用。调用者取消不会误取消其他调用者；当所有等待者都取消时，底层生产任务才会被取消。`ClearCache()` 会使进行中的旧任务失效，迟到的解码结果不会重新写入缓存，并会被及时释放；已注册的 Provider/Decoder 在 `ClearCache()` 后仍然有效。
+
+按路径加载只负责解析一次 `path → assetId` 映射，随后汇入同一 ID 缓存和 single-flight 任务。正式内容仍应优先使用 GUID。
 
 ### PakBuilder
 

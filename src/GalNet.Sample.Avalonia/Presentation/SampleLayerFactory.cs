@@ -14,6 +14,7 @@ internal sealed class SampleLayerFactory(IAssetManager assets) : IGamePageLayerF
 {
     private readonly IAssetManager _assets = assets ?? throw new ArgumentNullException(nameof(assets));
     private readonly Dictionary<string, SceneTexture> _textures = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<SceneTexture> _ownedFallbacks = [];
 
     public SceneTexture ResolveTexture(string assetId)
     {
@@ -37,11 +38,16 @@ internal sealed class SampleLayerFactory(IAssetManager assets) : IGamePageLayerF
             ReportMissing(assetId, exception);
         }
 
-        return new SceneTexture(LayerImageFallback.MissingImage);
+        var fallback = new SceneTexture(LayerImageFallback.MissingImage);
+        _ownedFallbacks.Add(fallback);
+        return fallback;
     }
 
     public void Dispose()
     {
+        foreach (var fallback in _ownedFallbacks)
+            fallback.Dispose();
+        _ownedFallbacks.Clear();
         _textures.Clear();
     }
 

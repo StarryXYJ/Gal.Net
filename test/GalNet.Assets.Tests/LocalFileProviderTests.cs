@@ -20,6 +20,7 @@ public sealed class LocalFileProviderTests
     [TearDown]
     public void Cleanup()
     {
+        _provider.Dispose();
         if (Directory.Exists(_tempDir))
             Directory.Delete(_tempDir, recursive: true);
     }

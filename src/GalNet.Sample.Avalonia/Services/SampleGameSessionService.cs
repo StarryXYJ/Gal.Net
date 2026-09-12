@@ -77,10 +77,12 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _contentProvider = new DirectoryGameContentProvider(_gameDirectory);
             _assets = new AssetManager([new LocalFileProvider(_gameDirectory)]);
             _assets.RegisterDecoder(new SceneTextureAssetDecoder());
-            foreach (var file in await _assets.GetFilesAsync(ResourceType.Sprite, cancellationToken))
-            {
-                await _assets.LoadAsync<SceneTexture>(file.Id, cancellationToken);
-            }
+            var spriteFiles = await _assets.GetFilesAsync(ResourceType.Sprite, cancellationToken);
+            var preloadResults = await Task.WhenAll(
+                spriteFiles.Select(file => _assets.LoadAsync<SceneTexture>(file, cancellationToken)));
+            var preloadFailures = preloadResults.Count(texture => texture is null);
+            GameLog.Logger.Information("Preloaded {SpriteCount} sprite assets ({FailureCount} deferred to fallback)",
+                spriteFiles.Count, preloadFailures);
             _saves = new FileSaveService(profileDirectory);
             _variables = await FileVariableService.CreateAsync(new FilePlayerVariableStore(profileDirectory), cancellationToken);
             _progress = new FileGameProgressService(profileDirectory);
