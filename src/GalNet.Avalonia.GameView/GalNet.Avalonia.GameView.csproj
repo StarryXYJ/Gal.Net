@@ -20,5 +20,8 @@
     <Compile Update="Page\GalleryPage.axaml.cs">
       <DependentUpon>GalleryPage.axaml</DependentUpon>
     </Compile>
+    <Compile Update="Page\LoadingPage.axaml.cs">
+      <DependentUpon>LoadingPage.axaml</DependentUpon>
+    </Compile>
   </ItemGroup>
 </Project>

@@ -37,8 +37,9 @@ public sealed partial class SaveSlotsPageViewModel : PageViewModelBase, IActivat
     [RelayCommand]
     private async Task LoadSlotAsync(int slotIndex)
     {
-        await _session.LoadAsync(slotIndex);
-        _navigation.ResetTo<GamePageViewModel>();
+        await _navigation.ResetToAsync<GamePageViewModel>(
+            NavigationTransition.Loading,
+            cancellationToken => _session.LoadAsync(slotIndex, cancellationToken));
     }
 
     [RelayCommand] private void Back() => _navigation.GoBack();

@@ -1,4 +1,5 @@
 using GalNet.Avalonia.GameView.ViewModels;
+using Avalonia.Threading;
 using GalNet.Core.View;
 
 namespace GalNet.Sample.Avalonia.Presentation;
@@ -8,16 +9,22 @@ internal sealed class SampleMediaViews(GamePageViewModel page) : IAudioView, IVi
 {
     public void PlayAudio(string channel, string assetId, float volume, string mode, int times)
     {
-        page.StatusMessage = $"Audio unavailable in this sample build ({channel}: {assetId}).";
+        SetStatus($"Audio unavailable in this sample build ({channel}: {assetId}).");
     }
 
-    public void StopAudio(string channel) => page.StatusMessage = $"Audio unavailable in this sample build ({channel}).";
-    public void PauseAudio(string channel) => page.StatusMessage = $"Audio unavailable in this sample build ({channel}).";
-    public void ResumeAudio(string channel) => page.StatusMessage = $"Audio unavailable in this sample build ({channel}).";
+    public void StopAudio(string channel) => SetStatus($"Audio unavailable in this sample build ({channel}).");
+    public void PauseAudio(string channel) => SetStatus($"Audio unavailable in this sample build ({channel}).");
+    public void ResumeAudio(string channel) => SetStatus($"Audio unavailable in this sample build ({channel}).");
     public void EnqueueAudio(string channel, string assetId, int times) =>
-        page.StatusMessage = $"Audio queue unavailable in this sample build ({channel}: {assetId}).";
+        SetStatus($"Audio queue unavailable in this sample build ({channel}: {assetId}).");
     public void ConfigureAudioQueue(string channel, string onEnd, string onEmpty) { }
-    public void PlayVideo(string assetId) => page.StatusMessage = $"Video requested: {assetId}";
-    public void StopVideo() => page.StatusMessage = "Video stopped.";
+    public void PlayVideo(string assetId) => SetStatus($"Video requested: {assetId}");
+    public void StopVideo() => SetStatus("Video stopped.");
     public void Dispose() { }
+
+    private void SetStatus(string message)
+    {
+        if (Dispatcher.UIThread.CheckAccess()) page.StatusMessage = message;
+        else Dispatcher.UIThread.Post(() => page.StatusMessage = message);
+    }
 }

@@ -46,6 +46,84 @@ public sealed class GameNavigationTests
     }
 
     [Test]
+    public void Navigation_reports_the_requested_transition_policy()
+    {
+        using var provider = CreateServices().BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        var navigation = scope.ServiceProvider.GetRequiredService<IGameNavigationService>();
+        GameNavigationChangedEventArgs? observed = null;
+        navigation.Navigated += (_, args) => observed = args;
+
+        navigation.ResetTo<FirstPage>(NavigationTransition.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(observed, Is.Not.Null);
+            Assert.That(observed!.Transition, Is.EqualTo(NavigationTransition.None));
+            Assert.That(observed.Current, Is.TypeOf<FirstPage>());
+        });
+    }
+
+    [Test]
+    public async Task Loading_navigation_waits_for_preparation_before_replacing_the_page()
+    {
+        using var provider = CreateServices().BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        var navigation = scope.ServiceProvider.GetRequiredService<IGameNavigationService>();
+        navigation.ResetTo<FirstPage>(NavigationTransition.None);
+        var preparation = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var change = navigation.ResetToAsync<SecondPage>(
+            NavigationTransition.Loading,
+            _ => preparation.Task);
+
+        Assert.That(navigation.CurrentViewModel, Is.TypeOf<FirstPage>());
+        preparation.SetResult();
+        await change;
+        Assert.That(navigation.CurrentViewModel, Is.TypeOf<SecondPage>());
+    }
+
+    [Test]
+    public async Task Loading_navigation_uses_a_second_fade_after_preparation()
+    {
+        var transitions = new RecordingTransitionCoordinator();
+        using var provider = CreateServices(transitions).BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        var navigation = scope.ServiceProvider.GetRequiredService<IGameNavigationService>();
+
+        navigation.ResetTo<FirstPage>(NavigationTransition.None);
+        transitions.Events.Clear();
+
+        await navigation.ResetToAsync<SecondPage>(NavigationTransition.Loading, _ => Task.CompletedTask);
+
+        Assert.That(transitions.Events, Is.EqualTo([
+            "show-loading",
+            "present:SecondPage:CrossFade"
+        ]));
+    }
+
+    [Test]
+    public async Task Loading_navigation_can_be_repeated_after_returning_to_the_previous_page()
+    {
+        var transitions = new RecordingTransitionCoordinator();
+        using var provider = CreateServices(transitions).BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        var navigation = scope.ServiceProvider.GetRequiredService<IGameNavigationService>();
+
+        navigation.ResetTo<FirstPage>(NavigationTransition.None);
+        await navigation.ResetToAsync<SecondPage>(NavigationTransition.Loading, _ => Task.CompletedTask);
+        navigation.ResetTo<FirstPage>(NavigationTransition.CrossFade);
+        transitions.Events.Clear();
+
+        await navigation.ResetToAsync<SecondPage>(NavigationTransition.Loading, _ => Task.CompletedTask);
+
+        Assert.That(transitions.Events, Is.EqualTo([
+            "show-loading",
+            "present:SecondPage:CrossFade"
+        ]));
+    }
+
+    [Test]
     public void Registry_override_controls_the_view_mapping_and_scope_reuses_the_view()
     {
         var registry = new PageViewRegistryBuilder();
@@ -168,9 +246,16 @@ public sealed class GameNavigationTests
         Assert.That(DisposablePage.DisposeCount, Is.EqualTo(1));
     }
 
-    private static ServiceCollection CreateServices()
+    private static ServiceCollection CreateServices(IGameNavigationTransitionCoordinator? transitions = null)
     {
         var services = new ServiceCollection();
+        if (transitions is null)
+        {
+            services.AddScoped<GameNavigationTransitionCoordinator>();
+            services.AddScoped<IGameNavigationTransitionCoordinator>(provider =>
+                provider.GetRequiredService<GameNavigationTransitionCoordinator>());
+        }
+        else services.AddSingleton<IGameNavigationTransitionCoordinator>(transitions);
         services.AddScoped<IGameNavigationService, GameNavigationService>();
         services.AddScoped<FirstPage>();
         services.AddScoped<SecondPage>();
@@ -198,15 +283,36 @@ public sealed class GameNavigationTests
     private sealed class FirstView : Control;
     private sealed class ReplacementView : Control;
 
+    private sealed class RecordingTransitionCoordinator : IGameNavigationTransitionCoordinator
+    {
+        public List<string> Events { get; } = [];
+
+        public Task PresentPageAsync(PageViewModelBase? viewModel, NavigationTransition transition, CancellationToken cancellationToken = default)
+        {
+            Events.Add($"present:{viewModel?.GetType().Name ?? "null"}:{transition}");
+            return Task.CompletedTask;
+        }
+
+        public Task ShowLoadingAsync(CancellationToken cancellationToken = default)
+        {
+            Events.Add("show-loading");
+            return Task.CompletedTask;
+        }
+
+    }
+
     private sealed class NoOpGameNavigationService : IGameNavigationService
     {
         public PageViewModelBase? CurrentViewModel => null;
         public bool CanGoBack => false;
         public event EventHandler? CurrentViewModelChanged { add { } remove { } }
-        public void Navigate<TViewModel>() where TViewModel : PageViewModelBase { }
-        public Task NavigateAsync<TViewModel, TArgs>(TArgs args, CancellationToken cancellationToken = default)
+        public event EventHandler<GameNavigationChangedEventArgs>? Navigated { add { } remove { } }
+        public void Navigate<TViewModel>(NavigationTransition transition = NavigationTransition.CrossFade) where TViewModel : PageViewModelBase { }
+        public Task NavigateAsync<TViewModel, TArgs>(TArgs args, NavigationTransition transition = NavigationTransition.CrossFade, CancellationToken cancellationToken = default)
             where TViewModel : PageViewModelBase, IActivatablePageViewModel<TArgs> => Task.CompletedTask;
-        public void ResetTo<TViewModel>() where TViewModel : PageViewModelBase { }
-        public void GoBack() { }
+        public void ResetTo<TViewModel>(NavigationTransition transition = NavigationTransition.CrossFade) where TViewModel : PageViewModelBase { }
+        public Task ResetToAsync<TViewModel>(NavigationTransition transition, Func<CancellationToken, Task> loadAsync, CancellationToken cancellationToken = default)
+            where TViewModel : PageViewModelBase => Task.CompletedTask;
+        public void GoBack(NavigationTransition transition = NavigationTransition.CrossFade) { }
     }
 }

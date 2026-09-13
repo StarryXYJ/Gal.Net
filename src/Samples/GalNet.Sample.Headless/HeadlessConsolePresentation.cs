@@ -13,6 +13,7 @@ internal sealed class ConsolePresentation :
     IAudioView,
     IVideoView,
     IEffectView,
+    IParticleEmitterView,
     ITypewriterView,
     IInteractionView
 {
@@ -63,6 +64,18 @@ internal sealed class ConsolePresentation :
     public Task StopEffectAsync(string instanceId, CancellationToken ct)
     {
         Console.WriteLine($"[Effect] stop {instanceId}");
+        return Task.CompletedTask;
+    }
+
+    public Task StartParticleEmitterAsync(ParticleEmitterRequest request, CancellationToken ct)
+    {
+        Console.WriteLine($"[Particle] start {request.Definition.ParticleTexture} ({request.InstanceId})");
+        return Task.CompletedTask;
+    }
+
+    public Task StopParticleEmitterAsync(string instanceId, CancellationToken ct)
+    {
+        Console.WriteLine($"[Particle] stop {instanceId}");
         return Task.CompletedTask;
     }
 

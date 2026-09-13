@@ -53,6 +53,8 @@
     </Style>
   </UserControl.Styles>
   <Grid Background="#101018">
-    <ContentControl x:Name="PageHost" />
+    <TransitioningContentControl x:Name="PageHost"
+                                 HorizontalContentAlignment="Stretch"
+                                 VerticalContentAlignment="Stretch" />
   </Grid>
 </UserControl>

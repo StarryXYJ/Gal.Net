@@ -165,7 +165,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             }
 
             await StopCurrentRunAsync();
-            DisposeEngine();
+            await DisposeEngineAsync();
             await EnsureEngineAsync(cancellationToken);
             _engine!.RestoreFrom(snapshot);
             await RestorePersistentEffectsAsync(cancellationToken);
@@ -183,7 +183,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         {
             _disposed = true;
             _gameplay.InteractionObserved -= OnInteractionObserved;
-            DisposeEngine();
+            DisposeEngineAsync().GetAwaiter().GetResult();
             _assets?.Dispose();
             _assets = null;
         }
@@ -195,7 +195,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         try
         {
             await StopCurrentRunAsync();
-            DisposeEngine();
+            await DisposeEngineAsync();
             await EnsureEngineAsync(cancellationToken);
             if (snapshot is not null)
             {
@@ -205,12 +205,15 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             StartRun();
         }
         finally { _lifecycle.Release(); }
-        await AwaitCurrentRunAsync(cancellationToken);
     }
 
     private void StartRun()
     {
-        _run.Start(cancellationToken => RunEngineAsync(_engine!, cancellationToken));
+        var engine = _engine ?? throw new InvalidOperationException("The game engine has not been initialized.");
+        // Start synchronously until the first asynchronous engine wait. This lets the load
+        // callback return only after the initial scene/dialogue has been submitted to the UI,
+        // so the destination page does not begin its fade while its first frame is still being built.
+        _run.Start(cancellationToken => RunEngineAsync(engine, cancellationToken));
         GameLog.Logger.Debug("Game engine run task created");
     }
 
@@ -218,26 +221,29 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     {
         try
         {
-            IsPlaying = true;
-            _gameplay.StatusMessage = "Playing";
+            await OnUiAsync(() =>
+            {
+                IsPlaying = true;
+                _gameplay.StatusMessage = "Playing";
+            });
             GameLog.Logger.Information("Game engine flow started");
             await engine.StepAsync(cancellationToken);
-            _gameplay.StatusMessage = "Game flow completed.";
+            await OnUiAsync(() => _gameplay.StatusMessage = "Game flow completed.");
             GameLog.Logger.Information("Game engine flow completed");
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            _gameplay.StatusMessage = "Game flow was cancelled.";
+            await OnUiAsync(() => _gameplay.StatusMessage = "Game flow was cancelled.");
             GameLog.Logger.Information("Game engine flow cancelled");
         }
         catch (Exception exception)
         {
-            _gameplay.StatusMessage = $"Game flow failed: {exception.Message}";
+            await OnUiAsync(() => _gameplay.StatusMessage = $"Game flow failed: {exception.Message}");
             GameLog.Logger.Error(exception, "Game engine flow failed");
         }
         finally
         {
-            IsPlaying = false;
+            await OnUiAsync(() => IsPlaying = false);
             await RefreshSlotsAsync(CancellationToken.None);
         }
     }
@@ -248,10 +254,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         await _run.StopAsync();
     }
 
-    private Task AwaitCurrentRunAsync(CancellationToken cancellationToken) =>
-        _run.WaitAsync(cancellationToken);
-
-    private void DisposeEngine()
+    private async Task DisposeEngineAsync()
     {
         _pageView?.Dispose();
         _pageView = null;
@@ -262,13 +265,30 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         _effects?.Dispose();
         _effects = null;
         _engine = null;
-        ResetScenePresentation();
+        GameLog.Logger.Debug("Resetting scene presentation before creating the next game engine");
+        await ResetScenePresentationAsync();
+        GameLog.Logger.Debug("Scene presentation reset completed");
     }
 
-    private void ResetScenePresentation()
+    private Task ResetScenePresentationAsync()
     {
-        if (Dispatcher.UIThread.CheckAccess()) _gameplay.ResetScenePresentation();
-        else Dispatcher.UIThread.Post(_gameplay.ResetScenePresentation);
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            _gameplay.ResetScenePresentation();
+            return Task.CompletedTask;
+        }
+
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Dispatcher.UIThread.Post(() =>
+        {
+            try
+            {
+                _gameplay.ResetScenePresentation();
+                completion.TrySetResult();
+            }
+            catch (Exception exception) { completion.TrySetException(exception); }
+        });
+        return completion.Task;
     }
 
     private async Task EnsureEngineAsync(CancellationToken cancellationToken)
@@ -296,17 +316,20 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     {
         if (_saves is null) return;
         var slots = await _saves.ListSlotsAsync(cancellationToken);
-        _saveSlots.Clear();
-        foreach (var slot in slots.Take(12))
+        await OnUiAsync(() =>
         {
-            _saveSlots.Add(new GameSaveSlot(
-                slot.SlotIndex,
-                slot.Timestamp,
-                slot.IsCorrupt ? "Corrupt save" : slot.Timestamp == default ? "Empty" : "Saved game",
-                slot.Timestamp == default && !slot.IsCorrupt,
-                slot.IsCorrupt));
-        }
-        CanContinue = _saveSlots.Any(slot => !slot.IsEmpty && !slot.IsCorrupt);
+            _saveSlots.Clear();
+            foreach (var slot in slots.Take(12))
+            {
+                _saveSlots.Add(new GameSaveSlot(
+                    slot.SlotIndex,
+                    slot.Timestamp,
+                    slot.IsCorrupt ? "Corrupt save" : slot.Timestamp == default ? "Empty" : "Saved game",
+                    slot.Timestamp == default && !slot.IsCorrupt,
+                    slot.IsCorrupt));
+            }
+            CanContinue = _saveSlots.Any(slot => !slot.IsEmpty && !slot.IsCorrupt);
+        });
     }
 
     private async Task RestorePersistentEffectsAsync(CancellationToken cancellationToken)
@@ -321,4 +344,21 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
 
     private static void OnInteractionObserved(string interaction) =>
         GameLog.Logger.Information("Player interaction: {Interaction}", interaction);
+
+    private static Task OnUiAsync(Action action)
+    {
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            action();
+            return Task.CompletedTask;
+        }
+
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Dispatcher.UIThread.Post(() =>
+        {
+            try { action(); completion.SetResult(); }
+            catch (Exception exception) { completion.SetException(exception); }
+        });
+        return completion.Task;
+    }
 }

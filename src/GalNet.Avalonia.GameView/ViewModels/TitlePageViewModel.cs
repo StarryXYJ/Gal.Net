@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Services;
@@ -21,21 +22,40 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
     public string StatusMessage => _session.StatusMessage;
     public bool IsReady => _session.IsReady;
     public bool CanContinue => _session.CanContinue;
+    public bool IsNavigationEnabled => !IsLoading;
+    public bool CanStartNewGame => IsReady && !IsLoading;
+    public bool CanContinueGame => CanContinue && !IsLoading;
+
+    [ObservableProperty] private bool _isLoading;
 
     [RelayCommand]
     private async Task StartNewGameAsync(CancellationToken cancellationToken)
     {
-        if (!IsReady) return;
-        _navigation.ResetTo<GamePageViewModel>();
-        await _session.StartNewGameAsync(cancellationToken);
+        if (!CanStartNewGame) return;
+        IsLoading = true;
+        try
+        {
+            await _navigation.ResetToAsync<GamePageViewModel>(
+                NavigationTransition.Loading,
+                _session.StartNewGameAsync,
+                cancellationToken);
+        }
+        finally { IsLoading = false; }
     }
 
     [RelayCommand]
     private async Task ContinueAsync(CancellationToken cancellationToken)
     {
-        if (!CanContinue) return;
-        _navigation.ResetTo<GamePageViewModel>();
-        await _session.ContinueAsync(cancellationToken);
+        if (!CanContinueGame) return;
+        IsLoading = true;
+        try
+        {
+            await _navigation.ResetToAsync<GamePageViewModel>(
+                NavigationTransition.Loading,
+                _session.ContinueAsync,
+                cancellationToken);
+        }
+        finally { IsLoading = false; }
     }
 
     [RelayCommand]
@@ -52,7 +72,22 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
     {
         if (e.PropertyName is nameof(IGameSessionService.GameTitle)) OnPropertyChanged(nameof(GameTitle));
         if (e.PropertyName is nameof(IGameSessionService.StatusMessage)) OnPropertyChanged(nameof(StatusMessage));
-        if (e.PropertyName is nameof(IGameSessionService.IsReady)) OnPropertyChanged(nameof(IsReady));
-        if (e.PropertyName is nameof(IGameSessionService.CanContinue)) OnPropertyChanged(nameof(CanContinue));
+        if (e.PropertyName is nameof(IGameSessionService.IsReady))
+        {
+            OnPropertyChanged(nameof(IsReady));
+            OnPropertyChanged(nameof(CanStartNewGame));
+        }
+        if (e.PropertyName is nameof(IGameSessionService.CanContinue))
+        {
+            OnPropertyChanged(nameof(CanContinue));
+            OnPropertyChanged(nameof(CanContinueGame));
+        }
+    }
+
+    partial void OnIsLoadingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsNavigationEnabled));
+        OnPropertyChanged(nameof(CanStartNewGame));
+        OnPropertyChanged(nameof(CanContinueGame));
     }
 }

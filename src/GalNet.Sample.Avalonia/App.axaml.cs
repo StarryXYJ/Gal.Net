@@ -39,7 +39,7 @@ public partial class App : Application
             _rootServices = services.BuildServiceProvider();
             _gameScope = _rootServices.CreateScope();
             var scopedServices = _gameScope.ServiceProvider;
-            scopedServices.GetRequiredService<IGameNavigationService>().ResetTo<TitlePageViewModel>();
+            scopedServices.GetRequiredService<IGameNavigationService>().ResetTo<TitlePageViewModel>(NavigationTransition.None);
             var mainWindow = scopedServices.GetRequiredService<MainWindow>();
             desktop.MainWindow = mainWindow;
             mainWindow.Opened += async (_, _) => await scopedServices.GetRequiredService<SampleGameSessionService>().InitializeAsync(LaunchOptions);

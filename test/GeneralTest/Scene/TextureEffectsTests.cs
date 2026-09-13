@@ -256,11 +256,14 @@ public sealed class TextureEffectsTests
         public PageViewModelBase? CurrentViewModel => null;
         public bool CanGoBack => false;
         public event EventHandler? CurrentViewModelChanged { add { } remove { } }
-        public void Navigate<TViewModel>() where TViewModel : PageViewModelBase { }
-        public Task NavigateAsync<TViewModel, TArgs>(TArgs args, CancellationToken cancellationToken = default)
+        public event EventHandler<GameNavigationChangedEventArgs>? Navigated { add { } remove { } }
+        public void Navigate<TViewModel>(NavigationTransition transition = NavigationTransition.CrossFade) where TViewModel : PageViewModelBase { }
+        public Task NavigateAsync<TViewModel, TArgs>(TArgs args, NavigationTransition transition = NavigationTransition.CrossFade, CancellationToken cancellationToken = default)
             where TViewModel : PageViewModelBase, IActivatablePageViewModel<TArgs> => Task.CompletedTask;
-        public void ResetTo<TViewModel>() where TViewModel : PageViewModelBase { }
-        public void GoBack() { }
+        public void ResetTo<TViewModel>(NavigationTransition transition = NavigationTransition.CrossFade) where TViewModel : PageViewModelBase { }
+        public Task ResetToAsync<TViewModel>(NavigationTransition transition, Func<CancellationToken, Task> loadAsync, CancellationToken cancellationToken = default)
+            where TViewModel : PageViewModelBase => Task.CompletedTask;
+        public void GoBack(NavigationTransition transition = NavigationTransition.CrossFade) { }
     }
 
     private const string ColorGradeSource = """

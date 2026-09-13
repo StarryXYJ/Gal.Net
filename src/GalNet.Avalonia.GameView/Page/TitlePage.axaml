@@ -14,13 +14,17 @@
                  Margin="0,2,0,40" />
       
       <Button Classes="player-menu" Content="New Game" Command="{Binding StartNewGameCommand}"
-              IsEnabled="{Binding IsReady}" />
+              IsEnabled="{Binding CanStartNewGame}" />
       <Button Classes="player-menu" Content="Continue" Command="{Binding ContinueCommand}"
-              IsEnabled="{Binding CanContinue}" IsVisible="{Binding CanContinue}" />
-      <Button Classes="player-menu" Content="Load" Command="{Binding OpenLoadSlotsCommand}" />
-      <Button Classes="player-menu" Content="Settings" Command="{Binding OpenSettingsCommand}" />
-      <Button Classes="player-menu" Content="Gallery" Command="{Binding OpenGalleryCommand}" />
-      <Button Classes="player-menu" Content="About" Command="{Binding OpenAboutCommand}" />
+              IsEnabled="{Binding CanContinueGame}" IsVisible="{Binding CanContinue}" />
+      <Button Classes="player-menu" Content="Load" Command="{Binding OpenLoadSlotsCommand}"
+              IsEnabled="{Binding IsNavigationEnabled}" />
+      <Button Classes="player-menu" Content="Settings" Command="{Binding OpenSettingsCommand}"
+              IsEnabled="{Binding IsNavigationEnabled}" />
+      <Button Classes="player-menu" Content="Gallery" Command="{Binding OpenGalleryCommand}"
+              IsEnabled="{Binding IsNavigationEnabled}" />
+      <Button Classes="player-menu" Content="About" Command="{Binding OpenAboutCommand}"
+              IsEnabled="{Binding IsNavigationEnabled}" />
     </StackPanel>
     <TextBlock Text="GALNET PLAYER" Opacity="0.35" FontSize="12" LetterSpacing="2"
                HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,30" />

@@ -20,9 +20,13 @@ public static class AvaloniaGameViewServiceCollectionExtensions
         views.Register<SettingsPageViewModel, SettingsPage>();
         views.Register<GalleryPageViewModel, GalleryPage>();
         views.Register<AboutPageViewModel, AboutPage>();
+        views.Register<LoadingPageViewModel, LoadingPage>();
         configureViews?.Invoke(views);
 
         services.AddSingleton(views.Build());
+        services.AddScoped<GameNavigationTransitionCoordinator>();
+        services.AddScoped<IGameNavigationTransitionCoordinator>(provider =>
+            provider.GetRequiredService<GameNavigationTransitionCoordinator>());
         services.AddScoped<IGameNavigationService, GameNavigationService>();
         services.AddScoped<IPageViewFactory, PageViewFactory>();
         services.AddScoped<IGameScreenshotService, AvaloniaGameScreenshotService>();
@@ -33,6 +37,7 @@ public static class AvaloniaGameViewServiceCollectionExtensions
         services.AddScoped<SettingsPageViewModel>();
         services.AddScoped<GalleryPageViewModel>();
         services.AddScoped<AboutPageViewModel>();
+        services.AddScoped<LoadingPageViewModel>();
 
         services.AddScoped<GameShell>();
         services.AddScoped<TitlePage>();
@@ -41,6 +46,7 @@ public static class AvaloniaGameViewServiceCollectionExtensions
         services.AddScoped<SettingsPage>();
         services.AddScoped<GalleryPage>();
         services.AddScoped<AboutPage>();
+        services.AddScoped<LoadingPage>();
         return services;
     }
 }
