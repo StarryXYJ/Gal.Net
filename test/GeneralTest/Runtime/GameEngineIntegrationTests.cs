@@ -439,16 +439,15 @@ public class GameEngineIntegrationTests
     }
 
     [Test]
-    public async Task Active_effect_animation_values_round_trip_and_rehydrate_the_instance()
+    public async Task Active_particle_emitter_animation_values_round_trip_without_saving_live_particles()
     {
         var runtime = new GameRuntime(null, "group_main");
-        var apply = EntryRegistry.Create(ApplyEffectEntry.TypeId, values: new Dictionary<string, string>
+        var apply = EntryRegistry.Create(PlayParticleEmitterEntry.TypeId, values: new Dictionary<string, string>
         {
-            ["id"] = "particle.emitter",
             ["instanceId"] = "snow",
-            ["parameters"] = "{}"
+            ["parameters"] = "{\"particleTexture\":\"snow.png\"}"
         });
-        await new ApplyEffectHandler().ExecuteAsync(new EntryContext { Entry = apply, Runtime = runtime }, new NullGameView(), TimeProvider.System, CancellationToken.None);
+        await new PlayParticleEmitterHandler().ExecuteAsync(new EntryContext { Entry = apply, Runtime = runtime }, new NullGameView(), TimeProvider.System, CancellationToken.None);
 
         var animate = EntryRegistry.Create(AnimateEntry.TypeId, values: new Dictionary<string, string>
         {
@@ -467,10 +466,32 @@ public class GameEngineIntegrationTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(snapshot.SceneState.ActiveEffects.Single().AnimationValues["emissionRate"], Is.EqualTo(48));
-            Assert.That(restored.SceneInstances.TryGet<EffectInstance>("snow", out var effect), Is.True);
+            Assert.That(snapshot.SceneState.ActiveParticleEmitters.Single().AnimationValues["emissionRate"], Is.EqualTo(48));
+            Assert.That(restored.SceneInstances.TryGet<ParticleEmitterInstance>("snow", out var effect), Is.True);
             Assert.That(effect!.TryGetAnimationValue("emissionRate", out var value), Is.True);
             Assert.That(value, Is.EqualTo(48));
+        });
+    }
+
+    [Test]
+    public async Task Stopped_particle_emitter_is_not_restored_from_a_save()
+    {
+        var runtime = new GameRuntime(null, "group_main");
+        var play = EntryRegistry.Create(PlayParticleEmitterEntry.TypeId, values: new Dictionary<string, string>
+        {
+            ["instanceId"] = "snow", ["parameters"] = "{\"particleTexture\":\"snow.png\"}"
+        });
+        await new PlayParticleEmitterHandler().ExecuteAsync(new EntryContext { Entry = play, Runtime = runtime }, new NullGameView(), TimeProvider.System, CancellationToken.None);
+        var stop = EntryRegistry.Create(StopParticleEmitterEntry.TypeId, values: new Dictionary<string, string> { ["instanceId"] = "snow" });
+        await new StopParticleEmitterHandler().ExecuteAsync(new EntryContext { Entry = stop, Runtime = runtime }, new NullGameView(), TimeProvider.System, CancellationToken.None);
+
+        var restored = new GameRuntime(null, "other");
+        restored.RestoreFrom(runtime.CreateSnapshot());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(runtime.SceneState.ActiveParticleEmitters, Is.Empty);
+            Assert.That(restored.SceneInstances.TryGet<ParticleEmitterInstance>("snow", out _), Is.False);
         });
     }
 

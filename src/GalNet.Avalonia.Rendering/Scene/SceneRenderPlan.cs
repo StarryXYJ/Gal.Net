@@ -1,8 +1,10 @@
 namespace GalNet.Rendering.Scene;
 
-public sealed record SceneRenderEntry(SceneLayerItem Layer, long InsertionOrder)
+public sealed record SceneRenderEntry(ISceneRenderable Renderable, long InsertionOrder)
 {
-    public double Order => Layer.Z;
+    /// <summary>Compatibility accessor for Layer-specific tests and diagnostics.</summary>
+    public SceneLayerItem? Layer => Renderable as SceneLayerItem;
+    public double Order => Renderable.Z;
 }
 
 /// <summary>Stable composition order shared by every scene backend.</summary>

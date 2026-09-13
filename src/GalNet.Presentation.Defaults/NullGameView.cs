@@ -36,6 +36,8 @@ public class NullGameView : IGameView
     public virtual void StopVideo() { }
     public virtual Task StartEffectAsync(EffectRequest request, CancellationToken ct) => Task.CompletedTask;
     public virtual Task StopEffectAsync(string instanceId, CancellationToken ct) => Task.CompletedTask;
+    public virtual Task StartParticleEmitterAsync(ParticleEmitterRequest request, CancellationToken ct) => Task.CompletedTask;
+    public virtual Task StopParticleEmitterAsync(string instanceId, CancellationToken ct) => Task.CompletedTask;
     public virtual Task StartTypewriter(string widgetInstanceId, string speaker, string text, CancellationToken ct) => Task.CompletedTask;
     public virtual void SkipTypewriter(string widgetInstanceId) { }
     public virtual void SetVoice(string assetId) { }

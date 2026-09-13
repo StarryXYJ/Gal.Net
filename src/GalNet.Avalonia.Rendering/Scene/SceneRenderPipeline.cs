@@ -59,28 +59,29 @@ public static class SceneRenderPipeline
         sceneCanvas.Clear(SKColors.Transparent);
         var allEffects = effects.ToArray();
 
-        foreach (var entry in plan.Items)
+        foreach (var entry in OrderedEntries(plan, renderables))
         {
+            if (entry.Renderable is not ILayerEffectTarget target)
+            {
+                entry.Renderable.Render(new SceneRenderContext(sceneCanvas, new SKSize(width, height), false));
+                continue;
+            }
             var layerEffects = allEffects
-                .Where(effect => effect.Definition.Stage == EffectStage.Layer && effect.TargetHandleId == entry.Layer.HandleId)
+                .Where(effect => effect.Definition.Stage == EffectStage.Layer && effect.TargetHandleId == target.EffectTargetHandleId)
                 .ToArray();
             if (layerEffects.Length == 0)
             {
                 // An empty texture-to-texture chain is an identity pass. Keep the fixed logical
                 // pipeline, but do not allocate a full-scene intermediate just to copy it.
-                RenderLayer(sceneCanvas, entry.Layer, width, height);
+                entry.Renderable.Render(new SceneRenderContext(sceneCanvas, new SKSize(width, height), false));
                 continue;
             }
 
             using var layer = NewBitmap(width, height);
-            using (var layerCanvas = new SKCanvas(layer)) RenderLayer(layerCanvas, entry.Layer, width, height);
+            using (var layerCanvas = new SKCanvas(layer)) entry.Renderable.Render(new SceneRenderContext(layerCanvas, new SKSize(width, height), false));
             using var output = ApplyEffects(layer, layerEffects);
             sceneCanvas.DrawBitmap(output, 0, 0);
         }
-
-        if (renderables is not null)
-            foreach (var renderable in renderables.OrderBy(renderable => renderable.Z))
-                renderable.Render(new SceneRenderContext(sceneCanvas, new SKSize(width, height)));
 
         var sceneEffects = allEffects.Where(effect => effect.Definition.Stage == EffectStage.ScenePost).ToArray();
         if (sceneEffects.Length == 0) return scene;
@@ -104,30 +105,39 @@ public static class SceneRenderPipeline
 
     private static void RenderEntriesGpu(SKCanvas canvas, GRContext gpuContext, SceneRenderPlan plan, IReadOnlyList<SceneEffectInstance> allEffects, IEnumerable<ISceneRenderable>? renderables, int width, int height)
     {
-        foreach (var entry in plan.Items)
+        foreach (var entry in OrderedEntries(plan, renderables))
         {
+            if (entry.Renderable is not ILayerEffectTarget target)
+            {
+                entry.Renderable.Render(new SceneRenderContext(canvas, new SKSize(width, height), true));
+                continue;
+            }
             var layerEffects = allEffects
-                .Where(effect => effect.Definition.Stage == EffectStage.Layer && effect.TargetHandleId == entry.Layer.HandleId)
+                .Where(effect => effect.Definition.Stage == EffectStage.Layer && effect.TargetHandleId == target.EffectTargetHandleId)
                 .ToArray();
             if (layerEffects.Length == 0)
             {
-                RenderLayerGpu(canvas, entry.Layer, width, height);
+                entry.Renderable.Render(new SceneRenderContext(canvas, new SKSize(width, height), true));
                 continue;
             }
 
             using var layerSurface = NewGpuSurface(gpuContext, width, height);
             if (layerSurface is null) throw new InvalidOperationException("Unable to allocate a GPU layer surface.");
             layerSurface.Canvas.Clear(SKColors.Transparent);
-            RenderLayerGpu(layerSurface.Canvas, entry.Layer, width, height);
+            entry.Renderable.Render(new SceneRenderContext(layerSurface.Canvas, new SKSize(width, height), true));
             layerSurface.Flush();
             using var input = layerSurface.Snapshot();
             using var output = ApplyGpuEffects(gpuContext, input, layerEffects, width, height);
             canvas.DrawImage(output, 0, 0);
         }
 
-        if (renderables is not null)
-            foreach (var renderable in renderables.OrderBy(renderable => renderable.Z))
-                renderable.Render(new SceneRenderContext(canvas, new SKSize(width, height)));
+    }
+
+    private static IEnumerable<SceneRenderEntry> OrderedEntries(SceneRenderPlan plan, IEnumerable<ISceneRenderable>? renderables)
+    {
+        var next = plan.Items.Count == 0 ? 0 : plan.Items.Max(entry => entry.InsertionOrder) + 1;
+        return plan.Items.Concat((renderables ?? []).Select(renderable => new SceneRenderEntry(renderable, next++)))
+            .OrderBy(entry => entry.Order).ThenBy(entry => entry.InsertionOrder);
     }
 
     private static SKImage ApplyGpuEffects(GRContext gpuContext, SKImage source, IEnumerable<SceneEffectInstance> effects, int width, int height)
@@ -150,6 +160,14 @@ public static class SceneRenderPipeline
         SKSurface.Create(context, true, new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul), 0, GRSurfaceOrigin.TopLeft);
 
     private static SKBitmap NewBitmap(int width, int height) => new(new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul));
+
+    internal static void RenderLayer(SceneRenderContext context, SceneLayerItem item)
+    {
+        var width = Math.Max(1, (int)Math.Ceiling(context.Size.Width));
+        var height = Math.Max(1, (int)Math.Ceiling(context.Size.Height));
+        if (context.IsGpu) RenderLayerGpu(context.Canvas, item, width, height);
+        else RenderLayer(context.Canvas, item, width, height);
+    }
 
     private static void RenderLayer(SKCanvas canvas, SceneLayerItem item, int width, int height)
     {

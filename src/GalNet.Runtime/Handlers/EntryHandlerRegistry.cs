@@ -38,6 +38,7 @@ public sealed class EntryHandlerRegistry
         registry.Register(new PlayVideoHandler()); registry.Register(new StopVideoHandler());
         registry.Register(new ShowDialogueHandler()); registry.Register(new HideDialogueHandler());
         registry.Register(new ApplyEffectHandler()); registry.Register(new StopEffectHandler());
+        registry.Register(new PlayParticleEmitterHandler()); registry.Register(new StopParticleEmitterHandler());
         registry.Register(new WaitHandler()); registry.Register(new SetVariableHandler());
         return registry;
     }

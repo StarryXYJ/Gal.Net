@@ -37,7 +37,7 @@ animatable-instance property tracks in both hosts.
 The first choice starts a blocking, skippable 54-frame black-field fade: a transient
 pure-black Overlay covers the opening background, swaps to tiled `bg.png` at full black,
 then fades away. The second choice keeps the comparison background in `Fill` mode and
-uses the blinds Plan, then starts the handle-controlled `particle.emitter` Overlay with
+uses the blinds Plan, then starts the handle-controlled `particle.play` scene emitter with
 `Snow.png`. After two dialogue lines the story stops emission; already spawned flakes drain
 naturally while two final lines play before the game ends.
 

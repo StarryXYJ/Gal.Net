@@ -10,9 +10,6 @@
     <!-- The whole scene pipeline is contained here. Everything below is GameShell UI. -->
     <Grid x:Name="SceneSurface" ClipToBounds="True">
       <scene:SceneLayerHost x:Name="SceneHostControl" ItemsSource="{Binding Layers}" EffectsSource="{Binding TextureEffects}" RenderablesSource="{Binding SceneRenderables}" />
-      <ItemsControl ItemsSource="{Binding SceneVisuals}" IsHitTestVisible="False">
-        <ItemsControl.ItemsPanel><ItemsPanelTemplate><Grid /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-      </ItemsControl>
     </Grid>
 
     <controls:NvlPresenter ItemsSource="{Binding NvlLines}" IsVisible="{Binding IsNvlOverlayVisible}"

@@ -130,14 +130,14 @@ Layer source 的 authoring 数据优先采用显式 `source` 对象；现阶段 
 验收：每种 effect 只有自身 factory/Shader/参数解析模块知晓其参数；动画计划可驱动 `progress`、`intensity` 等属性并在存档恢复后保持状态。
 
 
-### Phase 4：GPU 粒子与其他场景对象
+### Phase 4：GPU 粒子与其他场景对象（已完成）
 
-- 将 `particle.emitter` 从 `IEffectView` / Avalonia `Control` 迁为 `ParticleEmitter : ISceneRenderable`。
+- 已将 `particle.emitter` 替换为独立 `particle.play` / `particle.stop` 原语；`ParticleEmitter : IFrameUpdatableSceneRenderable` 不再创建 Avalonia `Control`。
 - 定义粒子 emitter 的 authoring 数据：贴图、发射率、最大数量、初速度、重力、生命周期、尺寸与颜色曲线。
-- 采用 instance buffer / 批量 sprite draw 绘制存活粒子；不为每颗粒子创建 Layer、Control 或独立 draw target。
-- 保持与 Layer 一致的 `order`、世界/屏幕坐标及场景裁剪语义；明确粒子在 Layer effect 之前或之后的 authoring 规则。
+- 使用 Skia atlas 批量 sprite draw 绘制存活粒子；不为每颗粒子创建 Layer、Control 或独立 draw target。
+- Layer 与粒子统一实现 `ISceneRenderable`，按 `z` 与稳定插入顺序合成。Layer 先完成其局部 effect 链，粒子随后以同一场景画布坐标参与合成，最后统一进入 ScenePost。
 
-验收：高数量粒子不创建 Avalonia 控件；粒子位于 `ScenePost` 之前且不影响 GameShell UI；停止、存档恢复和资源释放有确定行为。
+验收：高数量粒子不创建 Avalonia 控件；粒子位于 `ScenePost` 之前且不影响 GameShell UI；停止、确定性重启式存档恢复和资源释放有确定行为。
 
 ### Phase 5：性能、降级与创作体验
 

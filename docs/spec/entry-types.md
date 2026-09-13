@@ -247,7 +247,7 @@
 
 | 参数 | 类型 | 说明 |
 |---|---|---|
-| id | string | Effect 类型名称，例如 `particle.emitter` 或 `mask.blinds` |
+| id | string | Texture Effect 类型名称，例如 `mask.blinds` |
 | instanceId | string | 稳定的 Effect 实例句柄；后续动画和停止均使用它 |
 | targetHandleId | string | `Layer` 阶段必须指定的目标 Layer 句柄；场景阶段必须留空 |
 | order | integer? | 同一固定渲染阶段内的执行顺序，默认 0；相同值按添加顺序稳定执行 |
@@ -261,7 +261,29 @@
 |---|---|---|
 | instanceId | string | 要停止的 Effect 实例句柄 |
 
-> Handler: `StopEffectHandler`。调用 `IEffectView.StopEffectAsync()`；Effect 自行决定立即释放或如粒子般 drain 后释放视觉。
+> Handler: `StopEffectHandler`。调用 `IEffectView.StopEffectAsync()`；texture effect 的资源随实例停止释放。
+
+---
+
+## 粒子类
+
+### particle.play
+
+| 参数 | 类型 | 说明 |
+|---|---|---|
+| instanceId | string | 稳定的 emitter 句柄；动画和停止均使用它 |
+| z | float | 与 Layer 共用的场景排序值，默认 100 |
+| parameters | JSON | 贴图、发射率、最大数量、初速度、noise、寿命、尺寸、seed 与可选 gravity |
+
+> Handler: `PlayParticleEmitterHandler`。粒子是场景对象，不是 texture effect：它在所有 Layer 本地 effect 完成后，按 `z` 参与场景合成，并在 ScenePost 之前输出。
+
+### particle.stop
+
+| 参数 | 类型 | 说明 |
+|---|---|---|
+| instanceId | string | 要停止发射的 emitter 句柄 |
+
+> 停止后已有粒子继续 drain；它们不写入存档。存档只保存仍在发射的 emitter 配置与动画值，读取时从空粒子集合重新开始发射。
 
 ---
 

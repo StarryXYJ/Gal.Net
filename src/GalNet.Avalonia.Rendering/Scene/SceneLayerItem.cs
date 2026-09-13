@@ -5,7 +5,7 @@ using GalNet.Core.Scene;
 namespace GalNet.Rendering.Scene;
 
 /// <summary>Bindable Layer render data consumed by the fixed scene pipeline.</summary>
-public sealed class SceneLayerItem : INotifyPropertyChanged
+public sealed class SceneLayerItem : ILayerEffectTarget, INotifyPropertyChanged
 {
     private string _handleId = string.Empty;
     private SceneTexture? _texture;
@@ -30,6 +30,7 @@ public sealed class SceneLayerItem : INotifyPropertyChanged
     public double ScaleX { get => _scaleX; set => SetField(ref _scaleX, value); }
     public double ScaleY { get => _scaleY; set => SetField(ref _scaleY, value); }
     public double Z { get => _z; set => SetField(ref _z, value); }
+    public string EffectTargetHandleId => HandleId;
     public LayerDisplayMode DisplayMode { get => _displayMode; set => SetField(ref _displayMode, value); }
     public double Opacity { get => _opacity; set => SetField(ref _opacity, value); }
     public bool IsVisible { get => _isVisible; set => SetField(ref _isVisible, value); }
@@ -46,6 +47,7 @@ public sealed class SceneLayerItem : INotifyPropertyChanged
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+    public void Render(SceneRenderContext context) => SceneRenderPipeline.RenderLayer(context, this);
     private void SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value)) return;

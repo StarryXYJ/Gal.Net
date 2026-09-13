@@ -160,6 +160,12 @@ public sealed class GameRuntime : IGameRuntime
             Parameters = effect.Parameters,
             AnimationValues = effect.AnimationValues.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
         }));
+        SceneState.ActiveParticleEmitters.Clear();
+        SceneState.ActiveParticleEmitters.AddRange(snapshot.SceneState.ActiveParticleEmitters.Select(emitter => new ActiveParticleEmitterState
+        {
+            InstanceId = emitter.InstanceId, Definition = emitter.Definition, Z = emitter.Z,
+            AnimationValues = emitter.AnimationValues.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
+        }));
         SceneState.ActiveAnimations.Clear();
         SceneState.ActiveAnimations.AddRange(snapshot.SceneState.ActiveAnimations.Select(animation => new ActiveAnimationState
         {
@@ -175,7 +181,9 @@ public sealed class GameRuntime : IGameRuntime
             var target = SceneState.Layers.FirstOrDefault(layer => layer.Id == effect.TargetHandleId);
             if (target is not null) target.EffectInstanceIds.Add(effect.InstanceId);
         }
-        SceneInstances.Rebuild(SceneState.Layers.Cast<ISceneInstance>().Concat(SceneState.ActiveEffects.Select(CreateEffectInstance)));
+        SceneInstances.Rebuild(SceneState.Layers.Cast<ISceneInstance>()
+            .Concat(SceneState.ActiveEffects.Select(CreateEffectInstance))
+            .Concat(SceneState.ActiveParticleEmitters.Select(CreateParticleEmitterInstance)));
     }
 
     private static EffectInstance CreateEffectInstance(ActiveEffectState effect)
@@ -190,6 +198,13 @@ public sealed class GameRuntime : IGameRuntime
             Parameters = effect.Parameters
         };
         instance.RestoreAnimationValues(effect.AnimationValues);
+        return instance;
+    }
+
+    private static ParticleEmitterInstance CreateParticleEmitterInstance(ActiveParticleEmitterState emitter)
+    {
+        var instance = new ParticleEmitterInstance(emitter.InstanceId, emitter.Definition, emitter.Z);
+        instance.RestoreAnimationValues(emitter.AnimationValues);
         return instance;
     }
 }

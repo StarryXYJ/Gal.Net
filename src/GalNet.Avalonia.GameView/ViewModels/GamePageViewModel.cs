@@ -16,18 +16,16 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     private TaskCompletionSource? _advanceWaiter;
     private TaskCompletionSource<int>? _choiceWaiter;
     private readonly Dictionary<string, EffectAnimationBinding> _effectAnimations = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, EffectAnimationBinding> _particleAnimations = new(StringComparer.Ordinal);
 
     public GamePageViewModel(IGameNavigationService navigation) => _navigation = navigation;
 
     public ObservableCollection<SceneLayerItem> Layers { get; } = [];
     public ObservableCollection<SceneEffectInstance> TextureEffects { get; } = [];
-    /// <summary>Reserved GPU scene objects; particles remain on the transitional overlay for now.</summary>
+    /// <summary>GPU scene objects composited with Layers before ScenePost and GameShell UI.</summary>
     public ObservableCollection<ISceneRenderable> SceneRenderables { get; } = [];
     public ObservableCollection<string> Choices { get; } = [];
     public ObservableCollection<NvlLine> NvlLines { get; } = [];
-    /// <summary>Transitional host-owned visuals rendered inside the scene surface, before GameShell UI.</summary>
-    // The render-graph migration will replace these with texture-to-texture effects.
-    public ObservableCollection<Control> SceneVisuals { get; } = [];
 
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isDialogueVisible;
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isChoiceVisible;
@@ -154,9 +152,10 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     {
         Layers.Clear();
         TextureEffects.Clear();
+        foreach (var renderable in SceneRenderables.OfType<IDisposable>()) renderable.Dispose();
         SceneRenderables.Clear();
-        SceneVisuals.Clear();
         _effectAnimations.Clear();
+        _particleAnimations.Clear();
         IsDialogueVisible = false;
         IsChoiceVisible = false;
         NvlLines.Clear();
@@ -248,6 +247,26 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         binding.Value = value;
         binding.Apply(value);
         return true;
+    }
+
+    public void RegisterParticleAnimation(string instanceId, string property, Action<double> apply, double initialValue = 0)
+    {
+        _particleAnimations[EffectPropertyKey(instanceId, property)] = new EffectAnimationBinding(apply) { Value = initialValue };
+        apply(initialValue);
+    }
+    public void UnregisterParticleAnimations(string instanceId)
+    {
+        foreach (var key in _particleAnimations.Keys.Where(key => key.StartsWith($"{instanceId}:", StringComparison.Ordinal)).ToArray()) _particleAnimations.Remove(key);
+    }
+    public bool TryGetParticleAnimationValue(string id, string property, out double value)
+    {
+        if (_particleAnimations.TryGetValue(EffectPropertyKey(id, property), out var binding)) { value = binding.Value; return true; }
+        value = 0; return false;
+    }
+    public bool SetParticleAnimationValue(string id, string property, double value)
+    {
+        if (!_particleAnimations.TryGetValue(EffectPropertyKey(id, property), out var binding)) return false;
+        binding.Value = value; binding.Apply(value); return true;
     }
 
     private async Task<int> AwaitChoiceAsync(TaskCompletionSource<int> choice, CancellationToken cancellationToken)

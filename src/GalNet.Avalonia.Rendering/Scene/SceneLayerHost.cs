@@ -3,8 +3,10 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Rendering.SceneGraph;
 using Avalonia.Skia;
+using Avalonia.Threading;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Diagnostics;
 using SkiaSharp;
 
 namespace GalNet.Rendering.Scene;
@@ -20,17 +22,23 @@ public sealed class SceneLayerHost : Control
         AvaloniaProperty.Register<SceneLayerHost, IEnumerable<ISceneRenderable>?>(nameof(RenderablesSource));
 
     private readonly Dictionary<SceneLayerItem, long> _insertionOrder = [];
+    private readonly Dictionary<ISceneRenderable, long> _renderableInsertionOrder = [];
     private readonly HashSet<SceneEffectInstance> _effectSubscriptions = [];
     private INotifyCollectionChanged? _layersCollection;
     private INotifyCollectionChanged? _effectsCollection;
+    private INotifyCollectionChanged? _renderablesCollection;
+    private readonly HashSet<INotifyPropertyChanged> _renderableSubscriptions = [];
+    private readonly Stopwatch _frameClock = Stopwatch.StartNew();
+    private TimeSpan _lastFrame;
     private long _nextInsertionOrder;
+    private bool _frameInvalidationPending;
     private SceneRenderPlan _renderPlan = SceneRenderPlan.Empty;
 
     static SceneLayerHost()
     {
         ItemsSourceProperty.Changed.AddClassHandler<SceneLayerHost>((host, _) => host.ResetLayers());
         EffectsSourceProperty.Changed.AddClassHandler<SceneLayerHost>((host, _) => host.ResetEffects());
-        RenderablesSourceProperty.Changed.AddClassHandler<SceneLayerHost>((host, _) => host.InvalidateVisual());
+        RenderablesSourceProperty.Changed.AddClassHandler<SceneLayerHost>((host, _) => host.ResetRenderables());
     }
 
     public IEnumerable<SceneLayerItem>? ItemsSource { get => GetValue(ItemsSourceProperty); set => SetValue(ItemsSourceProperty, value); }
@@ -41,7 +49,7 @@ public sealed class SceneLayerHost : Control
     /// <summary>Exports the exact scene graph used by the renderer, without GameShell UI.</summary>
     public byte[] CapturePng()
     {
-        using var scene = SceneRenderPipeline.Render(_renderPlan, EffectsSource ?? [], RenderablesSource, Bounds.Size);
+        using var scene = SceneRenderPipeline.Render(_renderPlan, EffectsSource ?? [], null, Bounds.Size);
         using var image = SKImage.FromBitmap(scene);
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
         return data.ToArray();
@@ -51,9 +59,10 @@ public sealed class SceneLayerHost : Control
     {
         base.Render(context);
         if (Bounds.Width <= 0 || Bounds.Height <= 0) return;
+        AdvanceRenderables();
         // The operation receives Avalonia's live Skia canvas. Do not encode a PNG or create an
         // Avalonia Bitmap here: animation must be a texture draw, not a per-frame image round trip.
-        context.Custom(new SkiaSceneDrawOperation(Bounds, _renderPlan, EffectsSource?.ToArray() ?? [], RenderablesSource?.ToArray()));
+        context.Custom(new SkiaSceneDrawOperation(Bounds, _renderPlan, EffectsSource?.ToArray() ?? [], null));
     }
 
     private void ResetLayers()
@@ -76,6 +85,17 @@ public sealed class SceneLayerHost : Control
         if (EffectsSource is not null) foreach (var effect in EffectsSource) AddEffect(effect);
         InvalidateVisual();
     }
+    private void ResetRenderables()
+    {
+        if (_renderablesCollection is not null) _renderablesCollection.CollectionChanged -= OnRenderablesChanged;
+        foreach (var renderable in _renderableSubscriptions) renderable.PropertyChanged -= OnRenderableChanged;
+        _renderableSubscriptions.Clear();
+        _renderableInsertionOrder.Clear();
+        _renderablesCollection = RenderablesSource as INotifyCollectionChanged;
+        if (_renderablesCollection is not null) _renderablesCollection.CollectionChanged += OnRenderablesChanged;
+        if (RenderablesSource is not null) foreach (var renderable in RenderablesSource) AddRenderable(renderable);
+        RebuildPlan();
+    }
     private void OnLayersChanged(object? sender, NotifyCollectionChangedEventArgs args)
     {
         if (args.Action == NotifyCollectionChangedAction.Reset) { ResetLayers(); return; }
@@ -88,7 +108,14 @@ public sealed class SceneLayerHost : Control
         if (args.Action == NotifyCollectionChangedAction.Reset) { ResetEffects(); return; }
         if (args.OldItems is not null) foreach (var effect in args.OldItems.OfType<SceneEffectInstance>()) RemoveEffect(effect);
         if (args.NewItems is not null) foreach (var effect in args.NewItems.OfType<SceneEffectInstance>()) AddEffect(effect);
-        InvalidateVisual();
+        RebuildPlan();
+    }
+    private void OnRenderablesChanged(object? sender, NotifyCollectionChangedEventArgs args)
+    {
+        if (args.Action == NotifyCollectionChangedAction.Reset) { ResetRenderables(); return; }
+        if (args.OldItems is not null) foreach (var renderable in args.OldItems.OfType<ISceneRenderable>()) RemoveRenderable(renderable);
+        if (args.NewItems is not null) foreach (var renderable in args.NewItems.OfType<ISceneRenderable>()) AddRenderable(renderable);
+        RebuildPlan();
     }
     private void AddEffect(SceneEffectInstance effect)
     {
@@ -99,6 +126,20 @@ public sealed class SceneLayerHost : Control
         if (_effectSubscriptions.Remove(effect)) effect.PropertyChanged -= OnEffectChanged;
     }
     private void OnEffectChanged(object? sender, PropertyChangedEventArgs args) => InvalidateVisual();
+    private void AddRenderable(ISceneRenderable renderable)
+    {
+        _renderableInsertionOrder.TryAdd(renderable, _nextInsertionOrder++);
+        if (renderable is INotifyPropertyChanged notify && _renderableSubscriptions.Add(notify)) notify.PropertyChanged += OnRenderableChanged;
+    }
+    private void RemoveRenderable(ISceneRenderable renderable)
+    {
+        _renderableInsertionOrder.Remove(renderable);
+        if (renderable is INotifyPropertyChanged notify && _renderableSubscriptions.Remove(notify)) notify.PropertyChanged -= OnRenderableChanged;
+    }
+    private void OnRenderableChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(ISceneRenderable.Z)) RebuildPlan(); else InvalidateVisual();
+    }
     private void AddLayer(SceneLayerItem item)
     {
         if (!_insertionOrder.TryAdd(item, _nextInsertionOrder++)) return;
@@ -116,8 +157,31 @@ public sealed class SceneLayerHost : Control
     }
     private void RebuildPlan()
     {
-        _renderPlan = SceneRenderPlan.Create(_insertionOrder.Select(pair => new SceneRenderEntry(pair.Key, pair.Value)));
+        _renderPlan = SceneRenderPlan.Create(_insertionOrder.Select(pair => new SceneRenderEntry(pair.Key, pair.Value))
+            .Concat(_renderableInsertionOrder.Select(pair => new SceneRenderEntry(pair.Key, pair.Value))));
         InvalidateVisual();
+    }
+    private void AdvanceRenderables()
+    {
+        var now = _frameClock.Elapsed;
+        var delta = TimeSpan.FromSeconds(Math.Clamp((now - _lastFrame).TotalSeconds, 0, .05));
+        _lastFrame = now;
+        var frame = new SceneFrameContext(now, delta, new SKSize((float)Bounds.Width, (float)Bounds.Height));
+        if (RenderablesSource?.OfType<IFrameUpdatableSceneRenderable>().Any(renderable => renderable.Update(frame)) == true)
+            RequestNextFrame();
+    }
+
+    // Avalonia forbids invalidating a visual from inside its own render pass. Frame-updated
+    // renderables still need another pass, so enqueue one after the current pass completes.
+    private void RequestNextFrame()
+    {
+        if (_frameInvalidationPending) return;
+        _frameInvalidationPending = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _frameInvalidationPending = false;
+            InvalidateVisual();
+        }, DispatcherPriority.Render);
     }
 }
 

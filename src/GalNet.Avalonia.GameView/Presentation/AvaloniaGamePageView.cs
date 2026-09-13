@@ -17,7 +17,7 @@ public interface IGamePageLayerFactory : ISceneTextureResolver
 }
 
 /// <summary>Maps runtime layer, dialogue and interaction ports onto a shared <see cref="GamePage"/>.</summary>
-public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlView, ITypewriterView, IInteractionView, IDisposable
+public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlView, ITypewriterView, IInteractionView, IParticleEmitterView, IDisposable
 {
     private readonly GamePageViewModel _state;
     private readonly GamePage _page;
@@ -32,6 +32,7 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
     private readonly List<ActivePlan> _activePlans = [];
     private readonly Dictionary<string, ICompletablePlayback> _activePlaybacks = new(StringComparer.Ordinal);
     private long _animationSequence;
+    private readonly Dictionary<string, ParticleEmitter> _particleEmitters = new(StringComparer.Ordinal);
 
     public AvaloniaGamePageView(GamePageViewModel state, GamePage page, IGamePageLayerFactory layers)
     {
@@ -61,6 +62,22 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
     public void ReplaceLayer(string handleId, string assetId) => OnUi(() => _state.ReplaceLayer(handleId, _layers.ResolveTexture(assetId)));
     public void HideLayer(string handleId) => OnUi(() => _state.HideLayer(handleId));
     public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSec) => OnUi(() => _state.MoveLayer(handleId, transform, z));
+    public Task StartParticleEmitterAsync(ParticleEmitterRequest request, CancellationToken ct) => OnUiAsync(() =>
+    {
+        StopParticleEmitter(request.InstanceId);
+        var emitter = new ParticleEmitter(request.InstanceId, _layers.ResolveTexture(request.Definition.ParticleTexture), request.Definition, request.Z);
+        emitter.Drained += OnParticleDrained;
+        _particleEmitters.Add(request.InstanceId, emitter);
+        _state.SceneRenderables.Add(emitter);
+        RegisterParticleAnimation(request, "emissionRate", value => emitter.EmissionRate = (float)value, emitter.EmissionRate);
+        RegisterParticleAnimation(request, "initialVelocityX", value => emitter.InitialVelocityX = (float)value, emitter.InitialVelocityX);
+        RegisterParticleAnimation(request, "initialVelocityY", value => emitter.InitialVelocityY = (float)value, emitter.InitialVelocityY);
+        RegisterParticleAnimation(request, "noise", value => emitter.Noise = (float)value, emitter.Noise);
+        RegisterParticleAnimation(request, "particleScale", value => emitter.ParticleScale = (float)value, emitter.ParticleScale);
+        RegisterParticleAnimation(request, "particleLifetime", value => emitter.ParticleLifetime = (float)value, emitter.ParticleLifetime);
+        return Task.CompletedTask;
+    });
+    public Task StopParticleEmitterAsync(string instanceId, CancellationToken ct) => OnUiAsync(() => { if (_particleEmitters.TryGetValue(instanceId, out var emitter)) emitter.StopEmission(); return Task.CompletedTask; });
     public async Task<AnimationOutcome> AnimateAsync(AnimationRequest request, CancellationToken ct)
     {
         var key = $"{request.HandleId}:{request.Property}";
@@ -259,7 +276,11 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
         _state.CompleteAdvance();
     }
 
-    public void Dispose() => _state.AdvanceRequested -= Advance;
+    public void Dispose()
+    {
+        _state.AdvanceRequested -= Advance;
+        foreach (var id in _particleEmitters.Keys.ToArray()) StopParticleEmitter(id);
+    }
 
     private Task SetAnimationValueAsync(AnimationRequest request, ActiveAnimation active, double value) =>
         OnUiAsync(() =>
@@ -394,11 +415,30 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
 
     private bool TryGetAnimationValue(string handleId, string property, out double value) =>
         _state.TryGetLayerAnimationValue(handleId, property, out value) ||
-        _state.TryGetEffectAnimationValue(handleId, property, out value);
+        _state.TryGetEffectAnimationValue(handleId, property, out value) ||
+        _state.TryGetParticleAnimationValue(handleId, property, out value);
 
     private bool SetAnimationValue(string handleId, string property, double value) =>
         _state.SetLayerAnimationValue(handleId, property, value) ||
-        _state.SetEffectAnimationValue(handleId, property, value);
+        _state.SetEffectAnimationValue(handleId, property, value) ||
+        _state.SetParticleAnimationValue(handleId, property, value);
+
+    private void RegisterParticleAnimation(ParticleEmitterRequest request, string property, Action<double> apply, double fallback)
+    {
+        var initial = request.AnimationValues.TryGetValue(property, out var value) ? value : fallback;
+        _state.RegisterParticleAnimation(request.InstanceId, property, apply, initial);
+    }
+    // The frame host may be enumerating SceneRenderables when drain completes; remove on the
+    // following UI turn so collection mutation cannot invalidate that enumeration.
+    private void OnParticleDrained(ParticleEmitter emitter) => Dispatcher.UIThread.Post(() => StopParticleEmitter(emitter.HandleId));
+    private void StopParticleEmitter(string instanceId)
+    {
+        if (!_particleEmitters.Remove(instanceId, out var emitter)) return;
+        emitter.Drained -= OnParticleDrained;
+        _state.UnregisterParticleAnimations(instanceId);
+        _state.SceneRenderables.Remove(emitter);
+        emitter.Dispose();
+    }
 
     private bool IsLayerAnimationValue(string handleId, string property) => _state.TryGetLayerAnimationValue(handleId, property, out _);
 

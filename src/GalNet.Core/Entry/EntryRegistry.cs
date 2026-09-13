@@ -69,6 +69,8 @@ public static class EntryRegistry
             Define(StopVideoEntry.TypeId, "Video", () => new StopVideoEntry(), StopVideoEntry.ParameterTypes),
             Define(ApplyEffectEntry.TypeId, "Effect", () => new ApplyEffectEntry(), ApplyEffectEntry.ParameterTypes, ApplyEffectEntry.DefaultValues),
             Define(StopEffectEntry.TypeId, "Effect", () => new StopEffectEntry(), StopEffectEntry.ParameterTypes),
+            Define(PlayParticleEmitterEntry.TypeId, "Particle", () => new PlayParticleEmitterEntry(), PlayParticleEmitterEntry.ParameterTypes, PlayParticleEmitterEntry.DefaultValues),
+            Define(StopParticleEmitterEntry.TypeId, "Particle", () => new StopParticleEmitterEntry(), StopParticleEmitterEntry.ParameterTypes),
             Define(WaitEntry.TypeId, "Flow", () => new WaitEntry(), WaitEntry.ParameterTypes, WaitEntry.DefaultValues),
             Define(SetVariableEntry.TypeId, "Variable", () => new SetVariableEntry(), SetVariableEntry.ParameterTypes),
             Define(UnlockGalleryEntry.TypeId, "Gallery", () => new UnlockGalleryEntry(), UnlockGalleryEntry.ParameterTypes, options: UnlockGalleryEntry.ParameterOptions)

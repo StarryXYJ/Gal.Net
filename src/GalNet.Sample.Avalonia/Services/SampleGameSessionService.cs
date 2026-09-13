@@ -284,7 +284,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _gameplay,
             _layers,
             programs: new SkiaShaderEffectProgramResolver(new AssetManagerShaderEffectProgramSource(_assets)));
-        var gameView = new CompositeGameView(_pageView, _pageView, _pageView, _media, _media, _effects, _pageView, _pageView);
+        var gameView = new CompositeGameView(_pageView, _pageView, _pageView, _media, _media, _effects, _pageView, _pageView, _pageView);
         var content = await _contentProvider.LoadAsync(cancellationToken);
         var settings = new SettingsContainer();
         settings.Set(_settings);

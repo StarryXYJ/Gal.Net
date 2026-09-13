@@ -95,15 +95,32 @@ public sealed class SceneEffectInstance : INotifyPropertyChanged
     private static IReadOnlyDictionary<string, JsonElement> EmptyParameters { get; } = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
 }
 
-/// <summary>Future scene objects (for example GPU particle batches) render before ScenePost passes.</summary>
+/// <summary>A composited scene object. Layers and particles share this ordering contract.</summary>
 public interface ISceneRenderable
 {
+    string HandleId { get; }
     double Z { get; }
     void Render(SceneRenderContext context);
 }
 
-public sealed class SceneRenderContext(SKCanvas canvas, SKSize size)
+/// <summary>Optional per-frame simulation hook. Static Layers intentionally do not implement it.</summary>
+public interface IFrameUpdatableSceneRenderable : ISceneRenderable
+{
+    /// <returns><see langword="true"/> while the host should request another frame.</returns>
+    bool Update(SceneFrameContext frame);
+}
+
+/// <summary>Layers are the only scene objects that accept local texture-effect attachments.</summary>
+public interface ILayerEffectTarget : ISceneRenderable
+{
+    string EffectTargetHandleId { get; }
+}
+
+public readonly record struct SceneFrameContext(TimeSpan Elapsed, TimeSpan Delta, SKSize Size);
+
+public sealed class SceneRenderContext(SKCanvas canvas, SKSize size, bool isGpu)
 {
     public SKCanvas Canvas { get; } = canvas;
     public SKSize Size { get; } = size;
+    public bool IsGpu { get; } = isGpu;
 }

@@ -17,6 +17,9 @@ public sealed class SceneState
     /// <summary>Replayable state for effects that remain active across a stable save.</summary>
     public List<ActiveEffectState> ActiveEffects { get; init; } = [];
 
+    /// <summary>Emitters that were still producing particles at a stable save. Individual particles are never saved.</summary>
+    public List<ActiveParticleEmitterState> ActiveParticleEmitters { get; init; } = [];
+
     /// <summary>Looping primitive animations that are active but do not prevent a stable save.</summary>
     public List<ActiveAnimationState> ActiveAnimations { get; init; } = [];
 }

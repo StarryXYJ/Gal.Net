@@ -14,6 +14,7 @@ public sealed class CompositeGameView : IGameView
     private readonly IAudioView _audio;
     private readonly IVideoView _video;
     private readonly IEffectView _effects;
+    private readonly IParticleEmitterView _particles;
     private readonly ITypewriterView _typewriter;
     private readonly IInteractionView _interaction;
 
@@ -24,6 +25,7 @@ public sealed class CompositeGameView : IGameView
         IAudioView audio,
         IVideoView video,
         IEffectView effects,
+        IParticleEmitterView particles,
         ITypewriterView typewriter,
         IInteractionView interaction)
     {
@@ -33,6 +35,7 @@ public sealed class CompositeGameView : IGameView
         _audio = audio;
         _video = video;
         _effects = effects;
+        _particles = particles;
         _typewriter = typewriter;
         _interaction = interaction;
     }
@@ -57,6 +60,8 @@ public sealed class CompositeGameView : IGameView
     public void StopVideo() => _video.StopVideo();
     public Task StartEffectAsync(EffectRequest request, CancellationToken ct) => _effects.StartEffectAsync(request, ct);
     public Task StopEffectAsync(string instanceId, CancellationToken ct) => _effects.StopEffectAsync(instanceId, ct);
+    public Task StartParticleEmitterAsync(ParticleEmitterRequest request, CancellationToken ct) => _particles.StartParticleEmitterAsync(request, ct);
+    public Task StopParticleEmitterAsync(string instanceId, CancellationToken ct) => _particles.StopParticleEmitterAsync(instanceId, ct);
     public Task StartTypewriter(string widgetInstanceId, string speaker, string text, CancellationToken ct) => _typewriter.StartTypewriter(widgetInstanceId, speaker, text, ct);
     public void SkipTypewriter(string widgetInstanceId) => _typewriter.SkipTypewriter(widgetInstanceId);
     public void SetVoice(string assetId) => _typewriter.SetVoice(assetId);

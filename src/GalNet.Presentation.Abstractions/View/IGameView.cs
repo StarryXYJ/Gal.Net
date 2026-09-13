@@ -11,6 +11,7 @@ public interface IGameView :
     IAudioView,
     IVideoView,
     IEffectView,
+    IParticleEmitterView,
     ITypewriterView,
     IInteractionView
 {

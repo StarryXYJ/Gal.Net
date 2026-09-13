@@ -193,6 +193,8 @@ public sealed class AnimateHandler : EntryHandler
                         GameLog.Logger.Warning("Animation completion could not set '{Property}' on '{HandleId}': {Error}", request.Property, request.HandleId, error);
                     else if (instance is EffectInstance effect)
                         EffectStatePersistence.PersistAnimationValues(context.Runtime, effect);
+                    else if (instance is ParticleEmitterInstance emitter)
+                        ParticleEmitterStatePersistence.PersistAnimationValues(context.Runtime, emitter);
                 }
             }
             finally
@@ -384,6 +386,8 @@ public sealed class PlayAnimationPlanHandler : EntryHandler
                     GameLog.Logger.Warning("Animation plan completion could not set '{HandleId}.{Property}': {Error}", track.HandleId, track.Property, error);
                 else if (instance is EffectInstance effect)
                     EffectStatePersistence.PersistAnimationValues(runtime, effect);
+                else if (instance is ParticleEmitterInstance emitter)
+                    ParticleEmitterStatePersistence.PersistAnimationValues(runtime, emitter);
             }
         }
     }

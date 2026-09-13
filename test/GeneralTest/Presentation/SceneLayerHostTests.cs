@@ -3,6 +3,7 @@ using Avalonia.Media;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Core.Scene;
 using GalNet.Rendering.Scene;
+using SkiaSharp;
 
 namespace GeneralTest.Presentation;
 
@@ -68,5 +69,30 @@ public sealed class SceneLayerHostTests
 
         Assert.That(host.RenderPlan.Items, Has.Count.EqualTo(1));
         Assert.That(item.DisplayMode, Is.EqualTo(displayMode));
+    }
+
+    [Test]
+    public void Scene_renderables_are_interleaved_with_layers_by_the_shared_z_order()
+    {
+        var layer = new SceneLayerItem { HandleId = "red-layer", Color = "#ff0000", Z = 10, DisplayMode = LayerDisplayMode.Fill };
+        var plan = SceneRenderPlan.Create([new SceneRenderEntry(layer, 0)]);
+        var blueBehind = new SolidRenderable("blue-behind", 0, SKColors.Blue);
+        var blueAhead = new SolidRenderable("blue-ahead", 20, SKColors.Blue);
+
+        using var behind = SceneRenderPipeline.Render(plan, [], [blueBehind], new Avalonia.Size(8, 8));
+        using var ahead = SceneRenderPipeline.Render(plan, [], [blueAhead], new Avalonia.Size(8, 8));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(behind.GetPixel(4, 4), Is.EqualTo(SKColors.Red));
+            Assert.That(ahead.GetPixel(4, 4), Is.EqualTo(SKColors.Blue));
+        });
+    }
+
+    private sealed class SolidRenderable(string handleId, double z, SKColor color) : ISceneRenderable
+    {
+        public string HandleId { get; } = handleId;
+        public double Z { get; } = z;
+        public void Render(SceneRenderContext context) => context.Canvas.DrawColor(color);
     }
 }
