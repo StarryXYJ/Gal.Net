@@ -13,13 +13,22 @@ public static class SceneRenderPipeline
     /// Renders directly into Avalonia's active GPU context. Snapshot rendering remains below for
     /// screenshots, tests and backends without a GPU context.
     /// </summary>
-    public static bool TryRenderGpu(SKCanvas destination, GRContext? gpuContext, SceneRenderPlan plan, IEnumerable<SceneEffectInstance> effects, IEnumerable<ISceneRenderable>? renderables, Size logicalSize)
+    public static bool TryRenderGpu(SKCanvas destination, GRContext? gpuContext, SceneRenderPlan plan, IEnumerable<SceneEffectInstance> effects, IEnumerable<ISceneRenderable>? renderables, Size logicalSize, SceneRenderOptions? options = null)
     {
-        if (gpuContext is null) return false;
+        using var budget = new SceneRenderBudgetGuard(options, isGpu: gpuContext is not null);
+        if (gpuContext is null)
+        {
+            budget.Report("renderer.gpu-unavailable", "The active Skia canvas has no GPU context; using the snapshot renderer.");
+            return false;
+        }
         var width = Math.Max(1, (int)Math.Ceiling(logicalSize.Width));
         var height = Math.Max(1, (int)Math.Ceiling(logicalSize.Height));
         var allEffects = effects.ToArray();
-        if (allEffects.Any(effect => effect.Effect is not IGpuTextureEffect)) return false;
+        if (allEffects.Any(effect => effect.Effect is not IGpuTextureEffect))
+        {
+            budget.Report("renderer.gpu-effect-unsupported", "At least one effect does not support GPU rendering; using the snapshot renderer.");
+            return false;
+        }
 
         try
         {
@@ -27,19 +36,19 @@ public static class SceneRenderPipeline
             if (sceneEffects.Length == 0)
             {
                 destination.Clear(SKColors.Transparent);
-                RenderEntriesGpu(destination, gpuContext, plan, allEffects, renderables, width, height);
+                RenderEntriesGpu(destination, gpuContext, plan, allEffects, renderables, width, height, budget);
                 return true;
             }
 
             using var sceneSurface = NewGpuSurface(gpuContext, width, height);
             if (sceneSurface is null) return false;
             sceneSurface.Canvas.Clear(SKColors.Transparent);
-            RenderEntriesGpu(sceneSurface.Canvas, gpuContext, plan, allEffects, renderables, width, height);
+            RenderEntriesGpu(sceneSurface.Canvas, gpuContext, plan, allEffects, renderables, width, height, budget);
             sceneSurface.Flush();
             using var input = sceneSurface.Snapshot();
-            using var output = ApplyGpuEffects(gpuContext, input, sceneEffects, width, height);
+            using var output = ApplyGpuEffects(gpuContext, input, sceneEffects, width, height, budget);
             destination.Clear(SKColors.Transparent);
-            destination.DrawImage(output, 0, 0);
+            destination.DrawImage(output ?? input, 0, 0);
             return true;
         }
         catch (Exception error)
@@ -50,8 +59,9 @@ public static class SceneRenderPipeline
         }
     }
 
-    public static SKBitmap Render(SceneRenderPlan plan, IEnumerable<SceneEffectInstance> effects, IEnumerable<ISceneRenderable>? renderables, Size logicalSize)
+    public static SKBitmap Render(SceneRenderPlan plan, IEnumerable<SceneEffectInstance> effects, IEnumerable<ISceneRenderable>? renderables, Size logicalSize, SceneRenderOptions? options = null)
     {
+        using var budget = new SceneRenderBudgetGuard(options, isGpu: false);
         var width = Math.Max(1, (int)Math.Ceiling(logicalSize.Width));
         var height = Math.Max(1, (int)Math.Ceiling(logicalSize.Height));
         var scene = NewBitmap(width, height);
@@ -79,31 +89,41 @@ public static class SceneRenderPipeline
 
             using var layer = NewBitmap(width, height);
             using (var layerCanvas = new SKCanvas(layer)) entry.Renderable.Render(new SceneRenderContext(layerCanvas, new SKSize(width, height), false));
-            using var output = ApplyEffects(layer, layerEffects);
-            sceneCanvas.DrawBitmap(output, 0, 0);
+            using var output = ApplyEffects(layer, layerEffects, budget);
+            sceneCanvas.DrawBitmap(output ?? layer, 0, 0);
         }
 
         var sceneEffects = allEffects.Where(effect => effect.Definition.Stage == EffectStage.ScenePost).ToArray();
         if (sceneEffects.Length == 0) return scene;
-        var result = ApplyEffects(scene, sceneEffects);
+        var result = ApplyEffects(scene, sceneEffects, budget);
+        if (result is null) return scene;
         scene.Dispose();
         return result;
     }
 
-    private static SKBitmap ApplyEffects(SKBitmap source, IEnumerable<SceneEffectInstance> effects)
+    private static SKBitmap? ApplyEffects(SKBitmap source, IEnumerable<SceneEffectInstance> effects, SceneRenderBudgetGuard budget)
     {
-        SKBitmap current = source.Copy();
+        SKBitmap? current = null;
         foreach (var effect in effects.OrderBy(effect => effect.Order).ThenBy(effect => effect.InsertionOrder))
         {
+            if (!budget.TryAcquireEffectPass(effect, source.Width, source.Height)) continue;
             var next = NewBitmap(source.Width, source.Height);
-            using (var canvas = new SKCanvas(next)) effect.Effect.Render(canvas, current, effect);
-            current.Dispose();
+            using (var canvas = new SKCanvas(next))
+            {
+                try { effect.Effect.Render(canvas, current ?? source, effect); }
+                catch (Exception error)
+                {
+                    budget.ReportEffectFailure(effect, error);
+                    canvas.DrawBitmap(current ?? source, 0, 0);
+                }
+            }
+            current?.Dispose();
             current = next;
         }
         return current;
     }
 
-    private static void RenderEntriesGpu(SKCanvas canvas, GRContext gpuContext, SceneRenderPlan plan, IReadOnlyList<SceneEffectInstance> allEffects, IEnumerable<ISceneRenderable>? renderables, int width, int height)
+    private static void RenderEntriesGpu(SKCanvas canvas, GRContext gpuContext, SceneRenderPlan plan, IReadOnlyList<SceneEffectInstance> allEffects, IEnumerable<ISceneRenderable>? renderables, int width, int height, SceneRenderBudgetGuard budget)
     {
         foreach (var entry in OrderedEntries(plan, renderables))
         {
@@ -127,8 +147,8 @@ public static class SceneRenderPipeline
             entry.Renderable.Render(new SceneRenderContext(layerSurface.Canvas, new SKSize(width, height), true));
             layerSurface.Flush();
             using var input = layerSurface.Snapshot();
-            using var output = ApplyGpuEffects(gpuContext, input, layerEffects, width, height);
-            canvas.DrawImage(output, 0, 0);
+            using var output = ApplyGpuEffects(gpuContext, input, layerEffects, width, height, budget);
+            canvas.DrawImage(output ?? input, 0, 0);
         }
 
     }
@@ -140,17 +160,23 @@ public static class SceneRenderPipeline
             .OrderBy(entry => entry.Order).ThenBy(entry => entry.InsertionOrder);
     }
 
-    private static SKImage ApplyGpuEffects(GRContext gpuContext, SKImage source, IEnumerable<SceneEffectInstance> effects, int width, int height)
+    private static SKImage? ApplyGpuEffects(GRContext gpuContext, SKImage source, IEnumerable<SceneEffectInstance> effects, int width, int height, SceneRenderBudgetGuard budget)
     {
-        var current = source;
+        SKImage? current = null;
         foreach (var effect in effects.OrderBy(effect => effect.Order).ThenBy(effect => effect.InsertionOrder))
         {
+            if (!budget.TryAcquireEffectPass(effect, width, height)) continue;
             using var nextSurface = NewGpuSurface(gpuContext, width, height)
                 ?? throw new InvalidOperationException("Unable to allocate a GPU effect surface.");
-            effect.Effect.Render(nextSurface.Canvas, current, effect);
+            try { effect.Effect.Render(nextSurface.Canvas, current ?? source, effect); }
+            catch (Exception error)
+            {
+                budget.ReportEffectFailure(effect, error);
+                nextSurface.Canvas.DrawImage(current ?? source, 0, 0);
+            }
             nextSurface.Flush();
             var next = nextSurface.Snapshot();
-            current.Dispose();
+            current?.Dispose();
             current = next;
         }
         return current;

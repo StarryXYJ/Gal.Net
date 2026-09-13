@@ -20,6 +20,8 @@ public sealed class SceneLayerHost : Control
         AvaloniaProperty.Register<SceneLayerHost, IEnumerable<SceneEffectInstance>?>(nameof(EffectsSource));
     public static readonly StyledProperty<IEnumerable<ISceneRenderable>?> RenderablesSourceProperty =
         AvaloniaProperty.Register<SceneLayerHost, IEnumerable<ISceneRenderable>?>(nameof(RenderablesSource));
+    public static readonly StyledProperty<SceneRenderBudget> RenderBudgetProperty =
+        AvaloniaProperty.Register<SceneLayerHost, SceneRenderBudget>(nameof(RenderBudget), SceneRenderBudget.Default);
 
     private readonly Dictionary<SceneLayerItem, long> _insertionOrder = [];
     private readonly Dictionary<ISceneRenderable, long> _renderableInsertionOrder = [];
@@ -39,17 +41,20 @@ public sealed class SceneLayerHost : Control
         ItemsSourceProperty.Changed.AddClassHandler<SceneLayerHost>((host, _) => host.ResetLayers());
         EffectsSourceProperty.Changed.AddClassHandler<SceneLayerHost>((host, _) => host.ResetEffects());
         RenderablesSourceProperty.Changed.AddClassHandler<SceneLayerHost>((host, _) => host.ResetRenderables());
+        RenderBudgetProperty.Changed.AddClassHandler<SceneLayerHost>((host, _) => host.InvalidateVisual());
     }
 
     public IEnumerable<SceneLayerItem>? ItemsSource { get => GetValue(ItemsSourceProperty); set => SetValue(ItemsSourceProperty, value); }
     public IEnumerable<SceneEffectInstance>? EffectsSource { get => GetValue(EffectsSourceProperty); set => SetValue(EffectsSourceProperty, value); }
     public IEnumerable<ISceneRenderable>? RenderablesSource { get => GetValue(RenderablesSourceProperty); set => SetValue(RenderablesSourceProperty, value); }
+    public SceneRenderBudget RenderBudget { get => GetValue(RenderBudgetProperty); set => SetValue(RenderBudgetProperty, value); }
+    public SceneRenderDiagnostics RenderDiagnostics { get; } = new();
     public SceneRenderPlan RenderPlan => _renderPlan;
 
     /// <summary>Exports the exact scene graph used by the renderer, without GameShell UI.</summary>
     public byte[] CapturePng()
     {
-        using var scene = SceneRenderPipeline.Render(_renderPlan, EffectsSource ?? [], null, Bounds.Size);
+        using var scene = SceneRenderPipeline.Render(_renderPlan, EffectsSource ?? [], null, Bounds.Size, CreateRenderOptions());
         using var image = SKImage.FromBitmap(scene);
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
         return data.ToArray();
@@ -62,7 +67,7 @@ public sealed class SceneLayerHost : Control
         AdvanceRenderables();
         // The operation receives Avalonia's live Skia canvas. Do not encode a PNG or create an
         // Avalonia Bitmap here: animation must be a texture draw, not a per-frame image round trip.
-        context.Custom(new SkiaSceneDrawOperation(Bounds, _renderPlan, EffectsSource?.ToArray() ?? [], null));
+        context.Custom(new SkiaSceneDrawOperation(Bounds, _renderPlan, EffectsSource?.ToArray() ?? [], null, CreateRenderOptions()));
     }
 
     private void ResetLayers()
@@ -183,6 +188,8 @@ public sealed class SceneLayerHost : Control
             InvalidateVisual();
         }, DispatcherPriority.Render);
     }
+
+    private SceneRenderOptions CreateRenderOptions() => new(RenderBudget, RenderDiagnostics);
 }
 
 /// <summary>Desktop scene presenter. Avalonia.Skia owns the destination canvas and GPU context.</summary>
@@ -190,7 +197,8 @@ internal sealed class SkiaSceneDrawOperation(
     Rect bounds,
     SceneRenderPlan plan,
     IReadOnlyList<SceneEffectInstance> effects,
-    IReadOnlyList<ISceneRenderable>? renderables) : ICustomDrawOperation
+    IReadOnlyList<ISceneRenderable>? renderables,
+    SceneRenderOptions renderOptions) : ICustomDrawOperation
 {
     private static int _missingSkiaReported;
     private static int _gpuActiveReported;
@@ -211,7 +219,7 @@ internal sealed class SkiaSceneDrawOperation(
         lease.SkCanvas.Save();
         lease.SkCanvas.ClipRect(new SKRect((float)Bounds.X, (float)Bounds.Y, (float)Bounds.Right, (float)Bounds.Bottom));
         lease.SkCanvas.Translate((float)Bounds.X, (float)Bounds.Y);
-        if (SceneRenderPipeline.TryRenderGpu(lease.SkCanvas, lease.GrContext, plan, effects, renderables, Bounds.Size))
+        if (SceneRenderPipeline.TryRenderGpu(lease.SkCanvas, lease.GrContext, plan, effects, renderables, Bounds.Size, renderOptions))
         {
             if (Interlocked.Exchange(ref _gpuActiveReported, 1) == 0)
                 System.Diagnostics.Trace.TraceInformation("Scene pipeline is using GPU textures and shader passes.");
@@ -220,7 +228,7 @@ internal sealed class SkiaSceneDrawOperation(
         {
             if (Interlocked.Exchange(ref _cpuFallbackReported, 1) == 0)
                 System.Diagnostics.Trace.TraceWarning("Scene pipeline has no GPU texture path; using the slower CPU snapshot fallback.");
-            using var scene = SceneRenderPipeline.Render(plan, effects, renderables, Bounds.Size);
+            using var scene = SceneRenderPipeline.Render(plan, effects, renderables, Bounds.Size, renderOptions);
             lease.SkCanvas.DrawBitmap(scene, 0, 0);
         }
         lease.SkCanvas.Restore();

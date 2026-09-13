@@ -89,10 +89,63 @@ public sealed class SceneLayerHostTests
         });
     }
 
+    [Test]
+    public void Effect_pass_budget_preserves_the_unmodified_scene_and_records_a_diagnostic()
+    {
+        var diagnostics = new SceneRenderDiagnostics();
+        var effect = new SceneEffectInstance("over-budget", new TestEffectFactory("fill", (canvas, _, _) => canvas.DrawColor(SKColors.Blue)), "", 0, "{}");
+        var plan = SceneRenderPlan.Create([new SceneRenderEntry(new SolidRenderable("base", 0, SKColors.Red), 0)]);
+
+        using var scene = SceneRenderPipeline.Render(
+            plan,
+            [effect],
+            null,
+            new Avalonia.Size(8, 8),
+            new SceneRenderOptions(new SceneRenderBudget(MaxEffectPasses: 0), diagnostics));
+
+        var snapshot = diagnostics.Snapshot();
+        Assert.Multiple(() =>
+        {
+            Assert.That(scene.GetPixel(4, 4), Is.EqualTo(SKColors.Red));
+            Assert.That(snapshot.LastEffectPassCount, Is.EqualTo(0));
+            Assert.That(snapshot.Events.Select(@event => @event.Code), Does.Contain("effect.skipped.pass-budget"));
+        });
+    }
+
+    [Test]
+    public void Failed_effect_uses_identity_output_and_reports_the_failure()
+    {
+        var diagnostics = new SceneRenderDiagnostics();
+        var effect = new SceneEffectInstance("broken", new TestEffectFactory("broken", (_, _, _) => throw new InvalidOperationException("intentional")), "", 0, "{}");
+        var plan = SceneRenderPlan.Create([new SceneRenderEntry(new SolidRenderable("base", 0, SKColors.Red), 0)]);
+
+        using var scene = SceneRenderPipeline.Render(plan, [effect], null, new Avalonia.Size(8, 8), new SceneRenderOptions(SceneRenderBudget.Default, diagnostics));
+
+        var snapshot = diagnostics.Snapshot();
+        Assert.Multiple(() =>
+        {
+            Assert.That(scene.GetPixel(4, 4), Is.EqualTo(SKColors.Red));
+            Assert.That(snapshot.LastEffectPassCount, Is.EqualTo(1));
+            Assert.That(snapshot.LastPeakIntermediateTextureBytes, Is.EqualTo(8 * 8 * 4));
+            Assert.That(snapshot.Events.Select(@event => @event.Code), Does.Contain("effect.identity-on-failure"));
+        });
+    }
+
     private sealed class SolidRenderable(string handleId, double z, SKColor color) : ISceneRenderable
     {
         public string HandleId { get; } = handleId;
         public double Z { get; } = z;
         public void Render(SceneRenderContext context) => context.Canvas.DrawColor(color);
+    }
+
+    private sealed class TestEffectFactory(string id, Action<SKCanvas, SKBitmap, SceneEffectInstance> render) : ITextureEffectFactory
+    {
+        public EffectDefinition Definition { get; } = new(id, EffectStage.ScenePost, [], []);
+        public ITextureEffect Create() => new TestEffect(render);
+    }
+
+    private sealed class TestEffect(Action<SKCanvas, SKBitmap, SceneEffectInstance> render) : ITextureEffect
+    {
+        public void Render(SKCanvas target, SKBitmap source, SceneEffectInstance instance) => render(target, source, instance);
     }
 }

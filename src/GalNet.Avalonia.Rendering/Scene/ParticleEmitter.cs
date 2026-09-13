@@ -18,6 +18,10 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
     private readonly float _gravityY;
     private readonly IReadOnlyList<ParticleCurveKey> _sizeCurve;
     private readonly IReadOnlyList<ParticleColorCurveKey> _colorCurve;
+    private SKRect[] _sprites = [];
+    private SKRotationScaleMatrix[] _transforms = [];
+    private SKColor[] _colors = [];
+    private int _lastRenderedParticleCount;
     private float _rate;
     private float _speedX;
     private float _speedY;
@@ -83,14 +87,19 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
 
     public void Render(SceneRenderContext context)
     {
-        if (_active.Count == 0) return;
+        if (_active.Count == 0)
+        {
+            if (_lastRenderedParticleCount > 0) Array.Clear(_colors, 0, _lastRenderedParticleCount);
+            _lastRenderedParticleCount = 0;
+            return;
+        }
         var image = _texture?.SkImage;
         if (image is null) { RenderFallback(context); return; }
 
         // One atlas submission batches all living sprites into the active CPU or GPU Skia canvas.
-        var sprites = new SKRect[_active.Count];
-        var transforms = new SKRotationScaleMatrix[_active.Count];
-        var colors = new SKColor[_active.Count];
+        EnsureAtlasCapacity(_active.Count);
+        if (_lastRenderedParticleCount > _active.Count)
+            Array.Clear(_colors, _active.Count, _lastRenderedParticleCount - _active.Count);
         var source = new SKRect(0, 0, image.Width, image.Height);
         for (var index = 0; index < _active.Count; index++)
         {
@@ -98,13 +107,16 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
             var progress = Math.Clamp(particle.Age / particle.Life, 0, 1);
             var size = 28f * particle.Scale * SampleSize(progress);
             var scale = size / Math.Max(1, image.Width);
-            sprites[index] = source;
-            transforms[index] = new SKRotationScaleMatrix(scale, 0, particle.X - size / 2, particle.Y - size / 2);
+            _sprites[index] = source;
+            _transforms[index] = new SKRotationScaleMatrix(scale, 0, particle.X - size / 2, particle.Y - size / 2);
             var color = SampleColor(progress);
-            colors[index] = color.WithAlpha((byte)Math.Clamp(Math.Round(color.Alpha * (1 - progress)), 0, 255));
+            _colors[index] = color.WithAlpha((byte)Math.Clamp(Math.Round(color.Alpha * (1 - progress)), 0, 255));
         }
         using var paint = new SKPaint { IsAntialias = true };
-        context.Canvas.DrawAtlas(image, sprites, transforms, colors, SKBlendMode.Modulate, paint);
+        // DrawAtlas in the pinned SkiaSharp version accepts arrays rather than spans. Unused
+        // cache entries keep their zero-sized source and transparent color, so they are inert.
+        context.Canvas.DrawAtlas(image, _sprites, _transforms, _colors, SKBlendMode.Modulate, paint);
+        _lastRenderedParticleCount = _active.Count;
     }
 
     private void Spawn(SKSize size)
@@ -130,7 +142,15 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
         }
     }
 
-    public void Dispose() { _active.Clear(); _pool.Clear(); Drained = null; }
+    public void Dispose() { _active.Clear(); _pool.Clear(); _sprites = []; _transforms = []; _colors = []; _lastRenderedParticleCount = 0; Drained = null; }
+    private void EnsureAtlasCapacity(int count)
+    {
+        if (_sprites.Length >= count) return;
+        var capacity = Math.Max(count, Math.Max(16, _sprites.Length * 2));
+        Array.Resize(ref _sprites, capacity);
+        Array.Resize(ref _transforms, capacity);
+        Array.Resize(ref _colors, capacity);
+    }
     private float SampleSize(float progress) => Sample(_sizeCurve, progress, 1, static key => key.Value);
     private SKColor SampleColor(float progress)
     {
