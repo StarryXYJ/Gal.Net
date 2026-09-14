@@ -9,8 +9,12 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $gameDirectory = Join-Path $repositoryRoot 'GameTestCase'
 $sampleProject = Join-Path $repositoryRoot 'src\GalNet.Sample.Avalonia\GalNet.Sample.Avalonia.csproj'
-$Profile = if ($Profile) { [System.IO.Path]::GetFullPath($Profile) } else { Join-Path $repositoryRoot 'artifacts\sample-profiles\avalonia' }
+$sampleArguments = @($gameDirectory)
+if ($Profile)
+{
+    $sampleArguments += '--profile', [System.IO.Path]::GetFullPath($Profile)
+}
 
 Write-Host "Launching Avalonia sample: $gameDirectory" -ForegroundColor Cyan
-& dotnet run --project $sampleProject -- $gameDirectory --profile $Profile
+& dotnet run --project $sampleProject -- @sampleArguments
 exit $LASTEXITCODE
