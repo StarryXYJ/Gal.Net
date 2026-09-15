@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Services;
+using Serilog;
 
 namespace GalNet.Avalonia.GameView.ViewModels;
 
@@ -10,11 +11,16 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
 {
     private readonly IGameSessionService _session;
     private readonly IGameNavigationService _navigation;
+    private readonly GameLaunchFlow _launchFlow;
 
-    public TitlePageViewModel(IGameSessionService session, IGameNavigationService navigation)
+    public TitlePageViewModel(
+        IGameSessionService session,
+        IGameNavigationService navigation,
+        GameLaunchFlow launchFlow)
     {
         _session = session;
         _navigation = navigation;
+        _launchFlow = launchFlow;
         session.PropertyChanged += OnSessionPropertyChanged;
     }
 
@@ -35,10 +41,10 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
         IsLoading = true;
         try
         {
-            await _navigation.ResetToAsync<GamePageViewModel>(
-                NavigationTransition.Loading,
-                _session.StartNewGameAsync,
-                cancellationToken);
+            Func<CancellationToken, Task> prepare = _session is IPreparedGameSessionService prepared
+                ? prepared.PrepareNewGameAsync
+                : _session.StartNewGameAsync;
+            await LaunchGameAsync(prepare, cancellationToken);
         }
         finally { IsLoading = false; }
     }
@@ -50,12 +56,21 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
         IsLoading = true;
         try
         {
-            await _navigation.ResetToAsync<GamePageViewModel>(
-                NavigationTransition.Loading,
-                _session.ContinueAsync,
-                cancellationToken);
+            Func<CancellationToken, Task> prepare = _session is IPreparedGameSessionService prepared
+                ? prepared.PrepareContinueAsync
+                : _session.ContinueAsync;
+            await LaunchGameAsync(prepare, cancellationToken);
         }
         finally { IsLoading = false; }
+    }
+
+    private Task LaunchGameAsync(Func<CancellationToken, Task> prepare, CancellationToken cancellationToken)
+    {
+        Func<CancellationToken, Task>? begin = null;
+        if (_session is IPreparedGameSessionService prepared)
+            begin = prepared.BeginPreparedGameAsync;
+
+        return _launchFlow.RunAsync(prepare, begin, cancellationToken);
     }
 
     [RelayCommand]

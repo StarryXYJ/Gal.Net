@@ -35,19 +35,19 @@ public static class SceneRenderPipeline
             var sceneEffects = allEffects.Where(effect => effect.Definition.Stage == EffectStage.ScenePost).ToArray();
             if (sceneEffects.Length == 0)
             {
-                destination.Clear(SKColors.Transparent);
+                destination.Clear(SKColors.Black);
                 RenderEntriesGpu(destination, gpuContext, plan, allEffects, renderables, width, height, budget);
                 return true;
             }
 
             using var sceneSurface = NewGpuSurface(gpuContext, width, height);
             if (sceneSurface is null) return false;
-            sceneSurface.Canvas.Clear(SKColors.Transparent);
+            sceneSurface.Canvas.Clear(SKColors.Black);
             RenderEntriesGpu(sceneSurface.Canvas, gpuContext, plan, allEffects, renderables, width, height, budget);
             sceneSurface.Flush();
             using var input = sceneSurface.Snapshot();
             using var output = ApplyGpuEffects(gpuContext, input, sceneEffects, width, height, budget);
-            destination.Clear(SKColors.Transparent);
+            destination.Clear(SKColors.Black);
             destination.DrawImage(output ?? input, 0, 0);
             return true;
         }
@@ -66,7 +66,7 @@ public static class SceneRenderPipeline
         var height = Math.Max(1, (int)Math.Ceiling(logicalSize.Height));
         var scene = NewBitmap(width, height);
         using var sceneCanvas = new SKCanvas(scene);
-        sceneCanvas.Clear(SKColors.Transparent);
+        sceneCanvas.Clear(SKColors.Black);
         var allEffects = effects.ToArray();
 
         foreach (var entry in OrderedEntries(plan, renderables))

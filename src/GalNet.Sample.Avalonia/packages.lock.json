@@ -319,7 +319,9 @@
           "GalNet.Avalonia.Rendering": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "GalNet.Presentation.Defaults": "[1.0.0, )",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.0-preview.1.25080.5, )"
+          "Irihi.Ursa": "[2.1.0, )",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.0-preview.1.25080.5, )",
+          "Serilog": "[4.2.0, )"
         }
       },
       "galnet.avalonia.rendering": {

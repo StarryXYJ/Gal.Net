@@ -8,7 +8,9 @@
   <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Irihi.Ursa" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Serilog" />
     <ProjectReference Include="..\GalNet.Avalonia.Controls\GalNet.Avalonia.Controls.csproj" />
     <ProjectReference Include="..\GalNet.Avalonia.Rendering\GalNet.Avalonia.Rendering.csproj" />
     <ProjectReference Include="..\GalNet.Presentation.Abstractions\GalNet.Presentation.Abstractions.csproj" />

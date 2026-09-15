@@ -33,7 +33,8 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private double _textSpeed = 30d;
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private string _statusMessage = string.Empty;
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isUiHidden;
-    public bool IsGameUiVisible => !IsUiHidden;
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isGameUiReady;
+    public bool IsGameUiVisible => IsGameUiReady && !IsUiHidden;
     public bool IsDialogueOverlayVisible => IsDialogueVisible && !IsUiHidden;
     public bool IsNvlOverlayVisible => IsNvlMode && !IsUiHidden;
     public bool IsChoiceOverlayVisible => IsChoiceVisible && !IsUiHidden;
@@ -82,6 +83,8 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         OnPropertyChanged(nameof(IsNvlOverlayVisible));
         OnPropertyChanged(nameof(IsChoiceOverlayVisible));
     }
+
+    partial void OnIsGameUiReadyChanged(bool value) => OnPropertyChanged(nameof(IsGameUiVisible));
 
     partial void OnIsDialogueVisibleChanged(bool value) => OnPropertyChanged(nameof(IsDialogueOverlayVisible));
     partial void OnIsNvlModeChanged(bool value) => OnPropertyChanged(nameof(IsNvlOverlayVisible));
@@ -158,8 +161,12 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         _particleAnimations.Clear();
         IsDialogueVisible = false;
         IsChoiceVisible = false;
+        IsGameUiReady = false;
         NvlLines.Clear();
     }
+
+    /// <summary>Shows game chrome after the engine reaches its first interactive boundary.</summary>
+    public void CompleteOpeningPresentation() => IsGameUiReady = true;
 
     public void ReplaceLayer(string id, SceneTexture? texture)
     {

@@ -24,7 +24,7 @@ using GalNet.Storage.FileSystem;
 namespace GalNet.Sample.Avalonia.Services;
 
 /// <summary>Sample host implementation; all game/file-system work stays outside page VMs.</summary>
-internal sealed partial class SampleGameSessionService : ObservableObject, IGameSessionService, IDisposable
+internal sealed partial class SampleGameSessionService : ObservableObject, IGameSessionService, IPreparedGameSessionService, IDisposable
 {
     private readonly GamePageViewModel _gameplay;
     private readonly GamePage _page;
@@ -44,6 +44,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private string? _gameDirectory;
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private readonly GameRunCoordinator _run = new();
+    private bool _hasPreparedGame;
     private bool _disposed;
 
     public SampleGameSessionService(GamePageViewModel gameplay, GamePage page)
@@ -101,13 +102,25 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         }
     }
 
-    public Task StartNewGameAsync(CancellationToken cancellationToken = default)
+    public async Task StartNewGameAsync(CancellationToken cancellationToken = default)
     {
-        GameLog.Logger.Information("Starting a new game");
-        return RestartAsync(null, cancellationToken);
+        await PrepareNewGameAsync(cancellationToken);
+        await BeginPreparedGameAsync(cancellationToken);
     }
 
     public async Task ContinueAsync(CancellationToken cancellationToken = default)
+    {
+        await PrepareContinueAsync(cancellationToken);
+        await BeginPreparedGameAsync(cancellationToken);
+    }
+
+    public Task PrepareNewGameAsync(CancellationToken cancellationToken = default)
+    {
+        GameLog.Logger.Information("Preparing a new game");
+        return PrepareGameAsync(null, cancellationToken);
+    }
+
+    public async Task PrepareContinueAsync(CancellationToken cancellationToken = default)
     {
         var slot = _saveSlots
             .Where(candidate => !candidate.IsEmpty && !candidate.IsCorrupt)
@@ -117,11 +130,11 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         {
             StatusMessage = "There is no valid save to continue.";
             GameLog.Logger.Warning("Continue requested but no valid slot exists");
-            return;
+            throw new InvalidOperationException("There is no valid save to continue.");
         }
 
-        GameLog.Logger.Information("Continuing from slot {SlotIndex} at {Timestamp}", slot.SlotIndex, slot.Timestamp);
-        await LoadAsync(slot.SlotIndex, cancellationToken);
+        GameLog.Logger.Information("Preparing continuation from slot {SlotIndex} at {Timestamp}", slot.SlotIndex, slot.Timestamp);
+        await PrepareLoadAsync(slot.SlotIndex, cancellationToken);
     }
 
     public async Task StopAsync(CancellationToken cancellationToken = default)
@@ -151,28 +164,25 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
 
     public async Task LoadAsync(int slotIndex, CancellationToken cancellationToken = default)
     {
+        await PrepareLoadAsync(slotIndex, cancellationToken);
+        await BeginPreparedGameAsync(cancellationToken);
+        _gameplay.StatusMessage = $"Loaded slot {slotIndex}.";
+    }
+
+    public async Task PrepareLoadAsync(int slotIndex, CancellationToken cancellationToken = default)
+    {
         GameLog.Logger.Information("Loading slot {SlotIndex}", slotIndex);
         GameSnapshot? snapshot;
-        await _lifecycle.WaitAsync(cancellationToken);
-        try
+        snapshot = await _saves!.LoadAsync(slotIndex);
+        if (snapshot is null)
         {
-            snapshot = await _saves!.LoadAsync(slotIndex);
-            if (snapshot is null)
-            {
-                _gameplay.StatusMessage = $"Slot {slotIndex} is empty or invalid.";
-                GameLog.Logger.Warning("Slot {SlotIndex} contained no valid snapshot", slotIndex);
-                return;
-            }
-
-            await StopCurrentRunAsync();
-            await DisposeEngineAsync();
-            await EnsureEngineAsync(cancellationToken);
-            _engine!.RestoreFrom(snapshot);
-            await RestorePersistentEffectsAsync(cancellationToken);
-            StartRun();
-            _gameplay.StatusMessage = $"Loaded slot {slotIndex}.";
+            _gameplay.StatusMessage = $"Slot {slotIndex} is empty or invalid.";
+            GameLog.Logger.Warning("Slot {SlotIndex} contained no valid snapshot", slotIndex);
+            throw new InvalidOperationException($"Slot {slotIndex} is empty or invalid.");
         }
-        finally { _lifecycle.Release(); }
+
+        await PrepareGameAsync(snapshot, cancellationToken);
+        _gameplay.StatusMessage = $"Loaded slot {slotIndex}.";
     }
 
     public void Dispose()
@@ -189,7 +199,21 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         }
     }
 
-    private async Task RestartAsync(GameSnapshot? snapshot, CancellationToken cancellationToken)
+    public async Task BeginPreparedGameAsync(CancellationToken cancellationToken = default)
+    {
+        await _lifecycle.WaitAsync(cancellationToken);
+        try
+        {
+            if (!_hasPreparedGame || _engine is null)
+                throw new InvalidOperationException("No prepared game is available to start.");
+
+            _hasPreparedGame = false;
+            StartPreparedRun();
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    private async Task PrepareGameAsync(GameSnapshot? snapshot, CancellationToken cancellationToken)
     {
         await _lifecycle.WaitAsync(cancellationToken);
         try
@@ -202,19 +226,36 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
                 _engine!.RestoreFrom(snapshot);
                 await RestorePersistentEffectsAsync(cancellationToken);
             }
-            StartRun();
+            _hasPreparedGame = true;
+            GameLog.Logger.Debug("Game runtime prepared; waiting for page transition before starting the engine flow");
         }
         finally { _lifecycle.Release(); }
     }
 
-    private void StartRun()
+    private void StartPreparedRun()
     {
         var engine = _engine ?? throw new InvalidOperationException("The game engine has not been initialized.");
-        // Start synchronously until the first asynchronous engine wait. This lets the load
-        // callback return only after the initial scene/dialogue has been submitted to the UI,
-        // so the destination page does not begin its fade while its first frame is still being built.
+        var pageView = _pageView ?? throw new InvalidOperationException("The game page has not been initialized.");
         _run.Start(cancellationToken => RunEngineAsync(engine, cancellationToken));
+        _ = CompleteOpeningPresentationAsync(pageView);
         GameLog.Logger.Debug("Game engine run task created");
+    }
+
+    private async Task CompleteOpeningPresentationAsync(AvaloniaGamePageView pageView)
+    {
+        try
+        {
+            await pageView.InitialPresentationReady;
+            await OnUiAsync(() =>
+            {
+                if (ReferenceEquals(_pageView, pageView))
+                    _gameplay.CompleteOpeningPresentation();
+            });
+        }
+        catch (Exception exception)
+        {
+            GameLog.Logger.Debug(exception, "Opening presentation did not reach an interactive boundary");
+        }
     }
 
     private async Task RunEngineAsync(GameEngine engine, CancellationToken cancellationToken)
@@ -233,16 +274,19 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            _pageView?.CompleteInitialPresentation();
             await OnUiAsync(() => _gameplay.StatusMessage = "Game flow was cancelled.");
             GameLog.Logger.Information("Game engine flow cancelled");
         }
         catch (Exception exception)
         {
+            _pageView?.FailInitialPresentation(exception);
             await OnUiAsync(() => _gameplay.StatusMessage = $"Game flow failed: {exception.Message}");
             GameLog.Logger.Error(exception, "Game engine flow failed");
         }
         finally
         {
+            _pageView?.CompleteInitialPresentation();
             await OnUiAsync(() => IsPlaying = false);
             await RefreshSlotsAsync(CancellationToken.None);
         }
@@ -265,6 +309,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         _effects?.Dispose();
         _effects = null;
         _engine = null;
+        _hasPreparedGame = false;
         GameLog.Logger.Debug("Resetting scene presentation before creating the next game engine");
         await ResetScenePresentationAsync();
         GameLog.Logger.Debug("Scene presentation reset completed");

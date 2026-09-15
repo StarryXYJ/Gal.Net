@@ -23,6 +23,19 @@ public interface IGameSessionService : INotifyPropertyChanged
     Task LoadAsync(int slotIndex, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Optional two-phase startup contract for hosts that need a page transition to finish before
+/// the game view begins presenting the first script entry. Preparation may perform I/O and
+/// construct a runtime, but it must not start the engine flow.
+/// </summary>
+public interface IPreparedGameSessionService
+{
+    Task PrepareNewGameAsync(CancellationToken cancellationToken = default);
+    Task PrepareContinueAsync(CancellationToken cancellationToken = default);
+    Task PrepareLoadAsync(int slotIndex, CancellationToken cancellationToken = default);
+    Task BeginPreparedGameAsync(CancellationToken cancellationToken = default);
+}
+
 /// <summary>Presentation-safe save slot data. The host owns loading, writing and preview bytes.</summary>
 public sealed record GameSaveSlot(int SlotIndex, DateTime Timestamp, string Description, bool IsEmpty, bool IsCorrupt)
 {

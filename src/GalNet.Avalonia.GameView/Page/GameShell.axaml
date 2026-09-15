@@ -3,7 +3,8 @@
              xmlns:local="using:GalNet.Avalonia.GameView.Page"
              xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
              x:Class="GalNet.Avalonia.GameView.Page.GameShell"
-             x:DataType="vm:GameShellViewModel">
+             x:DataType="vm:GameShellViewModel"
+             Background="Black">
   <UserControl.Styles>
     <!-- Player defaults live with the shell so embedding it in the editor never imports editor resources. -->
     <Style Selector="TextBlock">
@@ -52,8 +53,9 @@
       <Setter Property="BorderBrush" Value="#C1BDEB" />
     </Style>
   </UserControl.Styles>
-  <Grid Background="#101018">
+  <Grid Background="Black">
     <TransitioningContentControl x:Name="PageHost"
+                                 Background="Black"
                                  HorizontalContentAlignment="Stretch"
                                  VerticalContentAlignment="Stretch" />
   </Grid>

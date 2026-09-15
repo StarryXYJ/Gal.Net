@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.DependencyInjection;
 using GalNet.Presentation.Abstractions.Navigation;
 using GalNet.Avalonia.GameView.ViewModels;
+using Serilog;
 
 namespace GalNet.Avalonia.GameView.Navigation;
 
@@ -15,8 +16,8 @@ public interface IActivatablePageViewModel<in TArgs>
     Task ActivateAsync(TArgs args, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Visual policy for a logical page change. Loading is a temporary page, never a history entry.</summary>
-public enum NavigationTransition { None, CrossFade, Loading }
+/// <summary>Visual policy for a logical page change.</summary>
+public enum NavigationTransition { None, CrossFade }
 
 public sealed class GameNavigationChangedEventArgs(
     PageViewModelBase? previous,
@@ -28,7 +29,7 @@ public sealed class GameNavigationChangedEventArgs(
     public NavigationTransition Transition { get; } = transition;
 }
 
-/// <summary>UI bridge used for the two-step loading page transition.</summary>
+/// <summary>UI bridge used to present a page after navigation state changes.</summary>
 public interface IGameNavigationTransitionCoordinator
 {
     /// <summary>Completes after the requested page has been presented by the visual host.</summary>
@@ -37,27 +38,21 @@ public interface IGameNavigationTransitionCoordinator
         NavigationTransition transition,
         CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-    Task ShowLoadingAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>Attached by GameShell after construction; remains a harmless no-op for headless hosts and tests.</summary>
 public sealed class GameNavigationTransitionCoordinator : IGameNavigationTransitionCoordinator
 {
     private Func<PageViewModelBase?, NavigationTransition, Task>? _presentPage;
-    private Func<CancellationToken, Task>? _showLoading;
 
-    public void Attach(
-        Func<PageViewModelBase?, NavigationTransition, Task> presentPage,
-        Func<CancellationToken, Task> showLoading)
+    public void Attach(Func<PageViewModelBase?, NavigationTransition, Task> presentPage)
     {
         _presentPage = presentPage;
-        _showLoading = showLoading;
     }
 
     public void Detach()
     {
         _presentPage = null;
-        _showLoading = null;
     }
 
     public Task PresentPageAsync(
@@ -69,8 +64,6 @@ public sealed class GameNavigationTransitionCoordinator : IGameNavigationTransit
         return _presentPage?.Invoke(viewModel, transition) ?? Task.CompletedTask;
     }
 
-    public Task ShowLoadingAsync(CancellationToken cancellationToken = default) =>
-        _showLoading?.Invoke(cancellationToken) ?? Task.CompletedTask;
 }
 
 public interface IGameNavigationService
@@ -87,7 +80,7 @@ public interface IGameNavigationService
     Task NavigateAsync<TViewModel, TArgs>(TArgs args, NavigationTransition transition = NavigationTransition.CrossFade, CancellationToken cancellationToken = default)
         where TViewModel : PageViewModelBase, IActivatablePageViewModel<TArgs>;
     void ResetTo<TViewModel>(NavigationTransition transition = NavigationTransition.CrossFade) where TViewModel : PageViewModelBase;
-    Task ResetToAsync<TViewModel>(NavigationTransition transition, Func<CancellationToken, Task> loadAsync, CancellationToken cancellationToken = default)
+    Task ResetToAsync<TViewModel>(NavigationTransition transition = NavigationTransition.CrossFade, CancellationToken cancellationToken = default)
         where TViewModel : PageViewModelBase;
     void GoBack(NavigationTransition transition = NavigationTransition.CrossFade);
 }
@@ -121,77 +114,13 @@ public sealed class GameNavigationService(IServiceProvider services, IGameNaviga
     public void ResetTo<TViewModel>(NavigationTransition transition = NavigationTransition.CrossFade) where TViewModel : PageViewModelBase =>
         Replace(services.GetRequiredService<TViewModel>(), transition);
 
-    public async Task ResetToAsync<TViewModel>(NavigationTransition transition, Func<CancellationToken, Task> loadAsync, CancellationToken cancellationToken = default)
+    public async Task ResetToAsync<TViewModel>(NavigationTransition transition = NavigationTransition.CrossFade, CancellationToken cancellationToken = default)
         where TViewModel : PageViewModelBase
     {
-        ArgumentNullException.ThrowIfNull(loadAsync);
         var viewModel = services.GetRequiredService<TViewModel>();
-        if (transition != NavigationTransition.Loading)
-        {
-            await loadAsync(cancellationToken);
-            await ReplaceAndPresentAsync(viewModel, transition, cancellationToken);
-            return;
-        }
-
-        using var operationCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var loading = transitions.ShowLoadingAsync(operationCancellation.Token);
-        var preparation = Task.Run(() => loadAsync(operationCancellation.Token), operationCancellation.Token);
-
-        try
-        {
-            await WaitForBothAsync(loading, preparation, operationCancellation.Token);
-            await ReplaceAndPresentAsync(viewModel, NavigationTransition.CrossFade, cancellationToken);
-        }
-        catch
-        {
-            operationCancellation.Cancel();
-            try
-            {
-                var title = services.GetRequiredService<TitlePageViewModel>();
-                await ReplaceAndPresentAsync(title, NavigationTransition.CrossFade, CancellationToken.None);
-            }
-            catch (Exception recoveryException)
-            {
-                System.Diagnostics.Debug.WriteLine(recoveryException);
-            }
-
-            throw;
-        }
-    }
-
-    private static Task WaitForBothAsync(Task first, Task second, CancellationToken cancellationToken)
-    {
-        var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var gate = new object();
-        var oneCompleted = false;
-
-        void Observe(Task task)
-        {
-            if (task.IsCanceled)
-            {
-                completed.TrySetCanceled(CancellationToken.None);
-                return;
-            }
-
-            if (task.IsFaulted)
-            {
-                completed.TrySetException(task.Exception!.InnerExceptions);
-                return;
-            }
-
-            var bothCompleted = false;
-            lock (gate)
-            {
-                if (oneCompleted) bothCompleted = true;
-                else oneCompleted = true;
-            }
-
-            if (bothCompleted) completed.TrySetResult();
-        }
-
-        _ = first.ContinueWith(Observe, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-        _ = second.ContinueWith(Observe, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-        return completed.Task.WaitAsync(cancellationToken);
+        Log.Logger.Debug("Navigation reset: from={From}, to={To}, transition={Transition}",
+            Current?.GetType().Name ?? "null", viewModel.GetType().Name, transition);
+        await ReplaceAndPresentAsync(viewModel, transition, cancellationToken);
     }
 
     public void GoBack(NavigationTransition transition = NavigationTransition.CrossFade)
@@ -241,6 +170,8 @@ public sealed class GameNavigationService(IServiceProvider services, IGameNaviga
         CancellationToken cancellationToken)
         where TViewModel : PageViewModelBase
     {
+        Log.Logger.Debug("Navigation presenting: from={From}, to={To}, transition={Transition}",
+            Current?.GetType().Name ?? "null", viewModel.GetType().Name, transition);
         _previous = Current;
         _pendingTransition = transition;
         base.Replace(viewModel);

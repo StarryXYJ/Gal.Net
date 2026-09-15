@@ -261,7 +261,7 @@ public sealed class TextureEffectsTests
         public Task NavigateAsync<TViewModel, TArgs>(TArgs args, NavigationTransition transition = NavigationTransition.CrossFade, CancellationToken cancellationToken = default)
             where TViewModel : PageViewModelBase, IActivatablePageViewModel<TArgs> => Task.CompletedTask;
         public void ResetTo<TViewModel>(NavigationTransition transition = NavigationTransition.CrossFade) where TViewModel : PageViewModelBase { }
-        public Task ResetToAsync<TViewModel>(NavigationTransition transition, Func<CancellationToken, Task> loadAsync, CancellationToken cancellationToken = default)
+        public Task ResetToAsync<TViewModel>(NavigationTransition transition = NavigationTransition.CrossFade, CancellationToken cancellationToken = default)
             where TViewModel : PageViewModelBase => Task.CompletedTask;
         public void GoBack(NavigationTransition transition = NavigationTransition.CrossFade) { }
     }

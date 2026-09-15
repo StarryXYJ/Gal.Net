@@ -72,6 +72,14 @@ public sealed class SceneLayerHostTests
     }
 
     [Test]
+    public void Empty_scene_renders_an_opaque_black_fallback()
+    {
+        using var scene = SceneRenderPipeline.Render(SceneRenderPlan.Create([]), [], null, new Avalonia.Size(8, 8));
+
+        Assert.That(scene.GetPixel(4, 4), Is.EqualTo(SKColors.Black));
+    }
+
+    [Test]
     public void Scene_renderables_are_interleaved_with_layers_by_the_shared_z_order()
     {
         var layer = new SceneLayerItem { HandleId = "red-layer", Color = "#ff0000", Z = 10, DisplayMode = LayerDisplayMode.Fill };

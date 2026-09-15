@@ -19,6 +19,7 @@ public interface IGamePageLayerFactory : ISceneTextureResolver
 /// <summary>Maps runtime layer, dialogue and interaction ports onto a shared <see cref="GamePage"/>.</summary>
 public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlView, ITypewriterView, IInteractionView, IParticleEmitterView, IDisposable
 {
+    private readonly TaskCompletionSource _initialPresentationReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly GamePageViewModel _state;
     private readonly GamePage _page;
     private readonly IGamePageLayerFactory _layers;
@@ -41,6 +42,13 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
         _layers = layers;
         _state.AdvanceRequested += Advance;
     }
+
+    /// <summary>Completes when the first scene has reached its initial interaction boundary.</summary>
+    public Task InitialPresentationReady => _initialPresentationReady.Task;
+
+    public void CompleteInitialPresentation() => _initialPresentationReady.TrySetResult();
+
+    public void FailInitialPresentation(Exception exception) => _initialPresentationReady.TrySetException(exception);
 
     public void ShowLayer(LayerRenderRequest request) => OnUi(() =>
         _state.SetLayer(request.HandleId, new SceneLayerItem
@@ -260,8 +268,19 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
 
     public void SkipTypewriter(string widgetInstanceId) => OnUi(() => _page.Dialogue.Skip());
     public void SetVoice(string assetId) => OnUi(() => _state.StatusMessage = $"Voice requested: {assetId}");
-    public Task WaitForClickAsync(CancellationToken ct) => OnUiAsync(() => _state.WaitForAdvanceAsync(ct));
-    public Task<int> WaitForChoiceAsync(string widgetInstanceId, string[] options, CancellationToken ct) => OnUiAsync(() => _state.WaitForChoiceAsync(options, ct));
+    public Task WaitForClickAsync(CancellationToken ct) => OnUiAsync(() =>
+    {
+        var wait = _state.WaitForAdvanceAsync(ct);
+        _initialPresentationReady.TrySetResult();
+        return wait;
+    });
+
+    public Task<int> WaitForChoiceAsync(string widgetInstanceId, string[] options, CancellationToken ct) => OnUiAsync(() =>
+    {
+        var wait = _state.WaitForChoiceAsync(options, ct);
+        _initialPresentationReady.TrySetResult();
+        return wait;
+    });
 
     private void Advance()
     {
@@ -496,33 +515,50 @@ public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlV
         public void Complete(AnimationOutcome outcome) => Completion.TrySetResult(outcome);
     }
 
-    private static void OnUi(Action action)
+    private void OnUi(Action action)
     {
-        if (Dispatcher.UIThread.CheckAccess()) action();
-        else Dispatcher.UIThread.Post(action);
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            action();
+            return;
+        }
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            action();
+        });
     }
 
-    private static Task OnUiAsync(Func<Task> action)
+    private Task OnUiAsync(Func<Task> action)
     {
-        if (Dispatcher.UIThread.CheckAccess()) return action();
+        if (Dispatcher.UIThread.CheckAccess())
+            return action();
 
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         Dispatcher.UIThread.Post(async () =>
         {
-            try { await action(); completion.TrySetResult(); }
+            try
+            {
+                await action();
+                completion.TrySetResult();
+            }
             catch (Exception exception) { completion.TrySetException(exception); }
         });
         return completion.Task;
     }
 
-    private static Task<T> OnUiAsync<T>(Func<Task<T>> action)
+    private Task<T> OnUiAsync<T>(Func<Task<T>> action)
     {
-        if (Dispatcher.UIThread.CheckAccess()) return action();
+        if (Dispatcher.UIThread.CheckAccess())
+            return action();
 
         var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
         Dispatcher.UIThread.Post(async () =>
         {
-            try { completion.TrySetResult(await action()); }
+            try
+            {
+                completion.TrySetResult(await action());
+            }
             catch (Exception exception) { completion.TrySetException(exception); }
         });
         return completion.Task;
