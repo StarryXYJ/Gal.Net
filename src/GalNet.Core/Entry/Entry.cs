@@ -49,6 +49,7 @@ public enum EntryParameterType
     ImageAsset,
     AudioAsset,
     VideoAsset,
+    EffectProgramAsset,
     Select,
     VariableName,
     Expression,

@@ -33,6 +33,7 @@ public partial class EntryParameterEditorItemViewModel : ObservableObject
         EntryParameterType.ImageAsset => AssetPickerFilter.Image,
         EntryParameterType.AudioAsset => AssetPickerFilter.Audio,
         EntryParameterType.VideoAsset => AssetPickerFilter.Video,
+        EntryParameterType.EffectProgramAsset => AssetPickerFilter.EffectProgram,
         _ => AssetPickerFilter.All
     };
 

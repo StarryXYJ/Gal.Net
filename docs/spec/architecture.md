@@ -12,11 +12,15 @@ flowchart BT
   Runtime --> Presentation
   Defaults["GalNet.Presentation.Defaults\nNullGameView"] --> Presentation
   Assets["GalNet.Assets\n目录与 pak 资源实现"] --> Core
-  ControlAbs["GalNet.Control.Abstraction\nUI 预设与导航契约"] --> Core
-  Control["GalNet.Control\n默认页面流和 DefaultGameView"] --> Runtime
-  Control --> Presentation
-  Control --> ControlAbs
-  GameView["GalNet.Avalonia.GameView\n独立游戏页面与 Avalonia 呈现"] --> Presentation
+  StorageAbs["GalNet.Storage.Abstractions\n内容、存档与玩家数据端口"] --> Core
+  StorageFs["GalNet.Storage.FileSystem\n默认文件系统实现"] --> StorageAbs
+  StorageFs --> Runtime
+  AvaloniaControls["GalNet.Avalonia.Controls\n可复用 Avalonia 控件"] --> Presentation
+  AvaloniaRendering["GalNet.Avalonia.Rendering\nAvalonia 场景渲染实现"] --> Core
+  AvaloniaRendering --> StorageAbs
+  GameView["GalNet.Avalonia.GameView\n共享游戏页面与 Avalonia 呈现"] --> AvaloniaControls
+  GameView --> AvaloniaRendering
+  GameView --> Presentation
   EditorShared["GalNet.Editor.Shared\n项目读写、命令与导出"] --> Runtime
   EditorShared --> Assets
   Editor["GalNet.Editor\n组合根、Dock、预览"] --> EditorShared
@@ -31,7 +35,10 @@ flowchart BT
 | `GalNet.Runtime` | Graph / 已编译 `.galgroup` 加载、`GameEngine`、原语条目处理器、运行态和存档 |
 | `GalNet.Presentation.Defaults` | 无界面/默认呈现实现，供测试与简单宿主使用 |
 | `GalNet.Assets` | 本地目录、pak、资源索引、压缩与缓存 |
-| `GalNet.Control(.Abstraction)` | 固定默认页面流、UI 预设 schema、默认 Avalonia 游戏 View |
+| `GalNet.Storage.Abstractions` | 内容、资源、存档、玩家变量和游戏进度端口 |
+| `GalNet.Storage.FileSystem` | 默认目录内容、存档、玩家变量和进度实现 |
+| `GalNet.Avalonia.Controls` | 无样式/默认样式的可复用 Avalonia 游戏控件 |
+| `GalNet.Avalonia.Rendering` | Avalonia 场景图层、纹理效果和粒子渲染实现 |
 | `GalNet.Avalonia.GameView` | 页面导航、页面 View/VM 映射和 Avalonia 游戏画布呈现 |
 | `GalNet.Editor.Abstraction` | 编辑器 DTO、命令和扩展契约 |
 | `GalNet.Editor.Shared` | 项目读写、命令执行、变量/保存服务与导出 |

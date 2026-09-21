@@ -64,7 +64,7 @@ GalNet.Sample.Headless            --> Runtime + Presentation.Abstractions
 GalNet.Editor                     --> Runtime + Assets + Storage.FileSystem + Avalonia.GameView
 ```
 
-`GalNet.Control` 与 `GalNet.Control.Abstraction` 在迁移期间保留；所有调用方完成迁移、测试通过后再删除。
+`GalNet.Control` 与 `GalNet.Control.Abstraction` 已完成迁移清理并从仓库删除。当前 Avalonia 游戏页面唯一入口是 `GalNet.Avalonia.GameView`。
 
 ## 3. 核心契约设计
 
@@ -164,11 +164,10 @@ public sealed record EffectRequest(
 - `NullGameView` 已切换到新契约；`GalNet.Player.Console` 可运行真实游戏目录并演示组合根注入。旧的硬编码 `GalNet.Headless` 已删除。
 - 已将无平台差异的 `NullGameView` 与 LibVLC 音频控制器移入 `GalNet.Presentation.Defaults`；新增 `GalNet.Avalonia.GameView` 作为 Avalonia 动态展示服务的唯一入口。编辑器与官方 Avalonia 示例均引用 `GalNet.Avalonia.Controls`，Headless 示例已改名为 `GalNet.Sample.Headless` 并移入 `Samples`。
 - `GalNet.Control.Tests` 已合并到 `GeneralTest`，保留项目生命周期测试；旧 UI 配置测试已删除。
-- `GalNet.Control` 仅保留现有预览的适配维护：效果接口为空实现；转场按动态 ID 识别 `black`、`white`、`cross` 等入口，暂不承载动画实现。
 
-验证：`GeneralTest` 127 项通过；命令行 Player、Runtime、Control 和 Editor（隔离输出）均已构建通过。
+验证：`GeneralTest`、命令行 Sample、Runtime、Avalonia Sample 和 Editor 的验证不再包含旧 Control 项目。
 
-`AssetPickerFilter` 暂不移动：`GalNet.Editor.Abstraction` 当前反向依赖 `GalNet.Control.Abstraction`，直接迁移会形成项目循环。它随 Phase 5 删除旧 UI 定制链后自然消失，而非引入错误依赖。
+`AssetPickerFilter` 现由 `GalNet.Editor.Models` 持有；旧 UI 预设 schema 删除后，不再需要 `GalNet.Control.Abstraction` 作为编辑器依赖。
 
 项目取舍：
 
@@ -237,7 +236,7 @@ public sealed record EffectRequest(
 2. 固化新字段与校验规则；不提供旧字段兼容读取。
 3. 更新导出器：只导出游戏数据和资源，不导出编辑器 UI 配置。
 4. 更新架构、运行时、条目、文件格式与控件库文档。
-5. 所有调用方迁移后，删除旧 `GalNet.Control`、`GalNet.Control.Abstraction` 及遗留 UI 定制链。
+5. [本次清理完成] 删除旧 `GalNet.Control`、`GalNet.Control.Abstraction` 及遗留 UI 定制链。
 
 验收：新格式项目可由 CLI 和示例 Avalonia 客户端运行；最终依赖图无反向引用，完整测试通过。
 

@@ -29,6 +29,7 @@ public sealed class AssetMeta
         "audio" => ResourceType.Audio,
         "video" => ResourceType.Video,
         "font" => ResourceType.Font,
+        "effectprogram" or "effect-program" or "shader" => ResourceType.EffectProgram,
         _ => ResourceType.Unknown,
     };
 

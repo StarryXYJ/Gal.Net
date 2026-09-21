@@ -301,7 +301,7 @@ public partial class EntryEditorItemViewModel : ObservableObject
         EntryParameterType.Expression => new ExpressionEntryParameterEditorItemViewModel(definition, value, variableNames, SetParameter),
         EntryParameterType.Integer => new IntegerEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
         EntryParameterType.Float => new FloatEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
-        EntryParameterType.ImageAsset or EntryParameterType.AudioAsset or EntryParameterType.VideoAsset => new AssetEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
+        EntryParameterType.ImageAsset or EntryParameterType.AudioAsset or EntryParameterType.VideoAsset or EntryParameterType.EffectProgramAsset => new AssetEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
         EntryParameterType.Select => new SelectEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
         _ => new TextEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter)
     };

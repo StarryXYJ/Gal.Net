@@ -233,7 +233,7 @@ public sealed class AssetCatalogService : IAssetCatalogService
         if (!full.StartsWith(Path.GetFullPath(root) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) && !string.Equals(full, Path.GetFullPath(root), StringComparison.OrdinalIgnoreCase)) throw new UnauthorizedAccessException("Asset path escapes Assets."); return full;
     }
     private string Relative(string full) => Path.GetRelativePath(RootOrNull()!, full).Replace('\\', '/');
-    private static string InferType(string path) { var ext = Path.GetExtension(path); return ImageExtensions.Contains(ext) ? "sprite" : AudioExtensions.Contains(ext) ? "audio" : VideoExtensions.Contains(ext) ? "video" : "unknown"; }
+    private static string InferType(string path) { var ext = Path.GetExtension(path); return ImageExtensions.Contains(ext) ? "sprite" : AudioExtensions.Contains(ext) ? "audio" : VideoExtensions.Contains(ext) ? "video" : string.Equals(ext, ".sksl", StringComparison.OrdinalIgnoreCase) ? "effectProgram" : "unknown"; }
     private static string UniquePath(string path) { var dir = Path.GetDirectoryName(path)!; var stem = Path.GetFileNameWithoutExtension(path); var ext = Path.GetExtension(path); var candidate = path; var index = 1; while (File.Exists(candidate) || Directory.Exists(candidate)) candidate = Path.Combine(dir, $"{stem} {index++}{ext}"); return candidate; }
     public void Dispose()
     {

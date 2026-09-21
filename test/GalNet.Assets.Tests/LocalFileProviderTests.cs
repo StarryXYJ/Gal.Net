@@ -60,6 +60,18 @@ public sealed class LocalFileProviderTests
     }
 
     [Test]
+    public async Task EffectProgram_metadata_preserves_shader_resource_type()
+    {
+        CreateAsset("Effects/grade.sksl", "id-effect-1", ResourceType.EffectProgram, "shader-source"u8.ToArray());
+
+        using var archive = await _provider.OpenArchiveAsync("assets");
+        var file = archive.GetAsset("id-effect-1");
+
+        Assert.That(file, Is.Not.Null);
+        Assert.That(file!.Type, Is.EqualTo(ResourceType.EffectProgram));
+    }
+
+    [Test]
     public async Task GetAsset_ByPath_Works()
     {
         CreateAsset("characters/alice.png", "id-alice", ResourceType.Sprite, "alice-png"u8.ToArray());

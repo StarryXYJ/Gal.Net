@@ -13,6 +13,7 @@
 - 解决方案入口是 `GalNet.slnx`。
 - `G:\program\GalDotNet\docs\spec\` 描述已经实现的稳定事实；`G:\program\GalDotNet\docs\design\` 描述设计和分阶段计划。
 - Runtime/Core 应保持与 Avalonia、WPF、Skia、具体文件系统和其他平台实现解耦。
+- 旧的 `GalNet.Control` 与 `GalNet.Control.Abstraction` 已完成迁移并删除；当前共享 Avalonia 游戏页面唯一入口是 `GalNet.Avalonia.GameView`，页面架构见 `docs/spec/control.md`。
 - 会影响场景的运行时条目应先更新 `SceneState`，再通知展示层；读取存档后由 Engine 根据状态重放展示。
 - 视觉扩展应通过展示抽象和渲染端口接入；不要把平台类型或渲染资源泄漏进 Core/Runtime。
 - 当前已有大型阶段计划：[runtime-presentation-decoupling-phase-plan.md](G:\program\GalDotNet\docs\design\runtime-presentation-decoupling-phase-plan.md) 和 [render-effects-pipeline-plan.md](G:\program\GalDotNet\docs\design\render-effects-pipeline-plan.md)。新增 feature 应链接它们，不要复制其中的长期设计。

@@ -120,8 +120,17 @@ public class EntryModelTests
     {
         var definition = EntryRegistry.Get(BlindsTransitionEntry.TypeId);
         Assert.That(definition.Kind, Is.EqualTo(EntryKind.NonPrimitive));
+        Assert.That(definition.Parameters["maskProgram"], Is.EqualTo(EntryParameterType.EffectProgramAsset));
         Assert.That(definition.Parameters["bladeCount"], Is.EqualTo(EntryParameterType.Integer));
         Assert.That(definition.Parameters["orientation"], Is.EqualTo(EntryParameterType.Select));
         Assert.That(definition.Options["orientation"], Is.EquivalentTo(new[] { "Vertical", "Horizontal" }));
+    }
+
+    [Test]
+    public void Effect_apply_uses_a_typed_program_resource()
+    {
+        var definition = EntryRegistry.Get(ApplyEffectEntry.TypeId);
+
+        Assert.That(definition.Parameters["program"], Is.EqualTo(EntryParameterType.EffectProgramAsset));
     }
 }

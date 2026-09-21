@@ -15,4 +15,6 @@ public enum ResourceType
     Video,
     /// <summary>字体</summary>
     Font,
+    /// <summary>注释驱动的纹理 Effect program（例如 SkSL）</summary>
+    EffectProgram,
 }

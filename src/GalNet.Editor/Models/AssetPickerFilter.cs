@@ -6,6 +6,7 @@ public enum AssetPickerFilter
     Image,
     Audio,
     Video,
+    EffectProgram,
     Text
 }
 

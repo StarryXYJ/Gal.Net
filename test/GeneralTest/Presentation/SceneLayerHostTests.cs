@@ -134,9 +134,23 @@ public sealed class SceneLayerHostTests
         {
             Assert.That(scene.GetPixel(4, 4), Is.EqualTo(SKColors.Red));
             Assert.That(snapshot.LastEffectPassCount, Is.EqualTo(1));
-            Assert.That(snapshot.LastPeakIntermediateTextureBytes, Is.EqualTo(8 * 8 * 4));
+            Assert.That(snapshot.LastPeakIntermediateTextureBytes, Is.EqualTo(8 * 8 * 4 * 2));
             Assert.That(snapshot.Events.Select(@event => @event.Code), Does.Contain("effect.identity-on-failure"));
         });
+    }
+
+    [Test]
+    public void Repeated_render_diagnostics_are_deduplicated()
+    {
+        var diagnostics = new SceneRenderDiagnostics();
+        var effect = new SceneEffectInstance("over-budget", new TestEffectFactory("fill", (canvas, _, _) => canvas.DrawColor(SKColors.Blue)), "", 0, "{}");
+        var plan = SceneRenderPlan.Create([new SceneRenderEntry(new SolidRenderable("base", 0, SKColors.Red), 0)]);
+        var options = new SceneRenderOptions(new SceneRenderBudget(MaxEffectPasses: 0), diagnostics);
+
+        using var first = SceneRenderPipeline.Render(plan, [effect], null, new Avalonia.Size(8, 8), options);
+        using var second = SceneRenderPipeline.Render(plan, [effect], null, new Avalonia.Size(8, 8), options);
+
+        Assert.That(diagnostics.Snapshot().Events.Count(@event => @event.Code == "effect.skipped.pass-budget"), Is.EqualTo(1));
     }
 
     private sealed class SolidRenderable(string handleId, double z, SKColor color) : ISceneRenderable

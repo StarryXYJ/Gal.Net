@@ -23,8 +23,8 @@ public static class SceneRenderPipeline
         }
         var width = Math.Max(1, (int)Math.Ceiling(logicalSize.Width));
         var height = Math.Max(1, (int)Math.Ceiling(logicalSize.Height));
-        var allEffects = effects.ToArray();
-        if (allEffects.Any(effect => effect.Effect is not IGpuTextureEffect))
+        var effectPlan = EffectFramePlan.Create(effects);
+        if (effectPlan.All.Any(effect => effect.Effect is not IGpuTextureEffect))
         {
             budget.Report("renderer.gpu-effect-unsupported", "At least one effect does not support GPU rendering; using the snapshot renderer.");
             return false;
@@ -32,18 +32,18 @@ public static class SceneRenderPipeline
 
         try
         {
-            var sceneEffects = allEffects.Where(effect => effect.Definition.Stage == EffectStage.ScenePost).ToArray();
+            var sceneEffects = effectPlan.ScenePost;
             if (sceneEffects.Length == 0)
             {
                 destination.Clear(SKColors.Black);
-                RenderEntriesGpu(destination, gpuContext, plan, allEffects, renderables, width, height, budget);
+                RenderEntriesGpu(destination, gpuContext, plan, effectPlan, renderables, width, height, budget);
                 return true;
             }
 
             using var sceneSurface = NewGpuSurface(gpuContext, width, height);
             if (sceneSurface is null) return false;
             sceneSurface.Canvas.Clear(SKColors.Black);
-            RenderEntriesGpu(sceneSurface.Canvas, gpuContext, plan, allEffects, renderables, width, height, budget);
+            RenderEntriesGpu(sceneSurface.Canvas, gpuContext, plan, effectPlan, renderables, width, height, budget);
             sceneSurface.Flush();
             using var input = sceneSurface.Snapshot();
             using var output = ApplyGpuEffects(gpuContext, input, sceneEffects, width, height, budget);
@@ -67,7 +67,7 @@ public static class SceneRenderPipeline
         var scene = NewBitmap(width, height);
         using var sceneCanvas = new SKCanvas(scene);
         sceneCanvas.Clear(SKColors.Black);
-        var allEffects = effects.ToArray();
+        var effectPlan = EffectFramePlan.Create(effects);
 
         foreach (var entry in OrderedEntries(plan, renderables))
         {
@@ -76,9 +76,7 @@ public static class SceneRenderPipeline
                 entry.Renderable.Render(new SceneRenderContext(sceneCanvas, new SKSize(width, height), false));
                 continue;
             }
-            var layerEffects = allEffects
-                .Where(effect => effect.Definition.Stage == EffectStage.Layer && effect.TargetHandleId == target.EffectTargetHandleId)
-                .ToArray();
+            var layerEffects = effectPlan.GetLayer(target.EffectTargetHandleId);
             if (layerEffects.Length == 0)
             {
                 // An empty texture-to-texture chain is an identity pass. Keep the fixed logical
@@ -93,7 +91,7 @@ public static class SceneRenderPipeline
             sceneCanvas.DrawBitmap(output ?? layer, 0, 0);
         }
 
-        var sceneEffects = allEffects.Where(effect => effect.Definition.Stage == EffectStage.ScenePost).ToArray();
+        var sceneEffects = effectPlan.ScenePost;
         if (sceneEffects.Length == 0) return scene;
         var result = ApplyEffects(scene, sceneEffects, budget);
         if (result is null) return scene;
@@ -104,7 +102,7 @@ public static class SceneRenderPipeline
     private static SKBitmap? ApplyEffects(SKBitmap source, IEnumerable<SceneEffectInstance> effects, SceneRenderBudgetGuard budget)
     {
         SKBitmap? current = null;
-        foreach (var effect in effects.OrderBy(effect => effect.Order).ThenBy(effect => effect.InsertionOrder))
+        foreach (var effect in effects)
         {
             if (!budget.TryAcquireEffectPass(effect, source.Width, source.Height)) continue;
             var next = NewBitmap(source.Width, source.Height);
@@ -123,7 +121,7 @@ public static class SceneRenderPipeline
         return current;
     }
 
-    private static void RenderEntriesGpu(SKCanvas canvas, GRContext gpuContext, SceneRenderPlan plan, IReadOnlyList<SceneEffectInstance> allEffects, IEnumerable<ISceneRenderable>? renderables, int width, int height, SceneRenderBudgetGuard budget)
+    private static void RenderEntriesGpu(SKCanvas canvas, GRContext gpuContext, SceneRenderPlan plan, EffectFramePlan effectPlan, IEnumerable<ISceneRenderable>? renderables, int width, int height, SceneRenderBudgetGuard budget)
     {
         foreach (var entry in OrderedEntries(plan, renderables))
         {
@@ -132,9 +130,7 @@ public static class SceneRenderPipeline
                 entry.Renderable.Render(new SceneRenderContext(canvas, new SKSize(width, height), true));
                 continue;
             }
-            var layerEffects = allEffects
-                .Where(effect => effect.Definition.Stage == EffectStage.Layer && effect.TargetHandleId == target.EffectTargetHandleId)
-                .ToArray();
+            var layerEffects = effectPlan.GetLayer(target.EffectTargetHandleId);
             if (layerEffects.Length == 0)
             {
                 entry.Renderable.Render(new SceneRenderContext(canvas, new SKSize(width, height), true));
@@ -163,7 +159,7 @@ public static class SceneRenderPipeline
     private static SKImage? ApplyGpuEffects(GRContext gpuContext, SKImage source, IEnumerable<SceneEffectInstance> effects, int width, int height, SceneRenderBudgetGuard budget)
     {
         SKImage? current = null;
-        foreach (var effect in effects.OrderBy(effect => effect.Order).ThenBy(effect => effect.InsertionOrder))
+        foreach (var effect in effects)
         {
             if (!budget.TryAcquireEffectPass(effect, width, height)) continue;
             using var nextSurface = NewGpuSurface(gpuContext, width, height)
@@ -186,6 +182,36 @@ public static class SceneRenderPipeline
         SKSurface.Create(context, true, new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul), 0, GRSurfaceOrigin.TopLeft);
 
     private static SKBitmap NewBitmap(int width, int height) => new(new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul));
+
+    private sealed class EffectFramePlan
+    {
+        private static readonly SceneEffectInstance[] Empty = [];
+        private readonly IReadOnlyDictionary<string, SceneEffectInstance[]> _layerEffects;
+
+        private EffectFramePlan(SceneEffectInstance[] all, SceneEffectInstance[] scenePost, IReadOnlyDictionary<string, SceneEffectInstance[]> layerEffects)
+        {
+            All = all;
+            ScenePost = scenePost;
+            _layerEffects = layerEffects;
+        }
+
+        public SceneEffectInstance[] All { get; }
+        public SceneEffectInstance[] ScenePost { get; }
+
+        public SceneEffectInstance[] GetLayer(string targetHandleId) =>
+            _layerEffects.TryGetValue(targetHandleId, out var effects) ? effects : Empty;
+
+        public static EffectFramePlan Create(IEnumerable<SceneEffectInstance> effects)
+        {
+            var all = effects.OrderBy(effect => effect.Order).ThenBy(effect => effect.InsertionOrder).ToArray();
+            var scenePost = all.Where(effect => effect.Definition.Stage == EffectStage.ScenePost).ToArray();
+            var layerEffects = all
+                .Where(effect => effect.Definition.Stage == EffectStage.Layer)
+                .GroupBy(effect => effect.TargetHandleId, StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
+            return new EffectFramePlan(all, scenePost, layerEffects);
+        }
+    }
 
     internal static void RenderLayer(SceneRenderContext context, SceneLayerItem item)
     {

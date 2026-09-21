@@ -3,6 +3,8 @@
 > 游戏运行所需的服务清单、职责边界、依赖关系。
 > 
 > **更新于 2026-07-11**：Editor 服务已拆分至 Abstraction（接口/模型，插件可用）和 Shared（实现，Headless + Editor 共用）。
+>
+> **历史说明**：本文记录旧版 `GalNet.Control` 迁移前的设计分析，不是当前实现清单。旧 Control 项目已删除；当前 Avalonia 游戏页面宿主是 `GalNet.Avalonia.GameView`，当前架构事实以 `docs/spec/architecture.md` 和 `docs/spec/control.md` 为准。
 
 ---
 
@@ -24,7 +26,7 @@ GalNet.Core                ← 领域模型 & 共享协议
 |---|----------|---------|---------|------|--------|
 | 1 | **GameEngine** | 无接口（sealed） | Runtime | ✅ 已实现 | Launcher / Editor |
 | 2 | **IGameRuntime** | 已有 | Runtime/GameRuntime | ✅ 已实现 | EntryHandler / GameEngine |
-| 3 | **IGameView** | 已有 | Control/DefaultGameView | ⚠️ 需重构 | EntryHandler |
+| 3 | **IGameView** | 已有 | Presentation.Abstractions / AvaloniaGamePageView | ✅ 已实现 | EntryHandler / Avalonia 宿主 |
 | 4 | **I18n** | `ICultureService`（外部） | DynamicLocalization | ✅ 已集成 | EntryHandler / UI |
 | 5 | **INavigationHost** | 🆕 Core | GameHostView (Control) | 🆕 新建 | 所有 Screen ViewModel |
 | 6 | **ISettingsService** | 🆕 Core | Control/Services | 🆕 新建 | SettingsScreen / DefaultGameView |
@@ -57,31 +59,11 @@ GalNet.Core                ← 领域模型 & 共享协议
 
 ---
 
-### 3. IGameView — 视图抽象（需重构）
+### 3. IGameView — 当前呈现端口
 
-**状态：** ⚠️ 需要清理 `DefaultGameView`。
+**状态：** ✅ 已实现。
 
-**当前问题：** `DefaultGameView` 额外承担了页面切换（`ShowScreenOverlay`）、按钮扫描（`FindAllButtons`）、导航逻辑。
-
-**重构方向：**
-
-```csharp
-public class DefaultGameView : UserControl, IGameView
-{
-    // ── IGameView 保留（游戏内渲染） ──
-    // ShowLayer / HideLayer / MoveLayer
-    // ShowControl / HideControl / SetControlProperty
-    // StartTypewriter / SkipTypewriter / SetVoice
-    // WaitForClickAsync / WaitForChoiceAsync
-    // PlayAudio / StopAudio / ... (委托给 IAudioService)
-    // PlayVideo / StopVideo
-
-    // ── 外部通知（委托给 GameHostView） ──
-    public event Action? SettingsRequested;
-}
-```
-
-**`ShowPageAsync`** 保留在接口中，实现改为 `return screenInstanceId`（不自动处理页面切换）。
+`IGameView` 位于 `GalNet.Presentation.Abstractions`，Runtime 通过它发送游戏内呈现请求。`AvaloniaGamePageView` 提供官方 Avalonia 页面实现；`NullGameView` 为测试和无界面宿主提供空实现。页面导航由 `IGameNavigationService` 独立负责，不再由游戏 View 承担。
 
 ---
 

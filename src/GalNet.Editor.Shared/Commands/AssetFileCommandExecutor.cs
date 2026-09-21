@@ -247,6 +247,7 @@ public sealed class AssetFileCommandExecutor : IProjectFileCommandExecutor
         ".png" or ".jpg" or ".jpeg" or ".webp" or ".bmp" or ".gif" => "sprite",
         ".mp3" or ".wav" or ".ogg" or ".flac" or ".m4a" => "audio",
         ".mp4" or ".webm" or ".mkv" or ".avi" or ".mov" => "video",
+        ".sksl" => "effectProgram",
         _ => "unknown"
     };
     private static FileCommandResult Success(string transactionId, string description, IEnumerable<string> resources) =>

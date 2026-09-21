@@ -5,7 +5,7 @@
 - [条目类型](spec/entry-types.md)：内置条目及参数。
 - [文件格式](spec/file-formats.md)：项目目录、图、条目组和当前 `.galpak` 发布布局。
 - [资源](spec/assets.md)：资源提供者、归档和包格式。
-- [Control](spec/control.md)：固定默认页面流、UI 预设与 Avalonia 呈现边界。
+- [Avalonia 游戏页面](spec/control.md)：共享游戏页面、导航、组合和 Avalonia 呈现边界。
 - [国际化](spec/i18n.md)：编辑器本地化、运行时文本解析器和项目语言设置。
 - [术语表](glossary.md)：项目术语。
 - [杂项待办](design/misc-todo.md)：与游戏本体解耦的工程性后续工作。

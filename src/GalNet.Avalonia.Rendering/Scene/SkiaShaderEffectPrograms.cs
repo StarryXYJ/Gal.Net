@@ -1,6 +1,7 @@
 using GalNet.Core.Scene;
 using GalNet.Core.Assets;
 using SkiaSharp;
+using System.Diagnostics;
 
 namespace GalNet.Rendering.Scene;
 
@@ -12,6 +13,18 @@ public sealed record SkiaShaderEffectProgramLoadResult(
 {
     public bool IsUsable => Descriptor is not null && RuntimeEffect is not null && Diagnostics.Count == 0;
 }
+
+public sealed record ShaderEffectProgramCacheSnapshot(
+    int CachedProgramCount,
+    long CacheHits,
+    long CacheMisses,
+    TimeSpan TotalLoadTime);
+
+public sealed record ShaderEffectProgramPreloadResult(
+    int RequestedProgramCount,
+    int UsableProgramCount,
+    int FailedProgramCount,
+    ShaderEffectProgramCacheSnapshot Cache);
 
 /// <summary>
 /// Skia-side loader for an effect program resource. Core parses the resource's annotation contract;
@@ -74,22 +87,54 @@ public sealed class SkiaShaderEffectProgramResolver(IShaderEffectProgramSource s
     private readonly IShaderEffectProgramSource _source = source ?? throw new ArgumentNullException(nameof(source));
     private readonly Dictionary<EffectProgramResource, SkiaShaderEffectProgramLoadResult> _programs = [];
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private long _cacheHits;
+    private long _cacheMisses;
+    private long _totalLoadTicks;
+    private int _cachedProgramCount;
 
     public async Task<SkiaShaderEffectProgramLoadResult> ResolveAsync(EffectProgramResource resource, CancellationToken cancellationToken = default)
     {
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (_programs.TryGetValue(resource, out var cached)) return cached;
+            if (_programs.TryGetValue(resource, out var cached))
+            {
+                Interlocked.Increment(ref _cacheHits);
+                return cached;
+            }
+            Interlocked.Increment(ref _cacheMisses);
+            var clock = Stopwatch.StartNew();
             var source = await _source.ReadAsync(resource, cancellationToken);
             var program = source is null
                 ? new SkiaShaderEffectProgramLoadResult(null, null, [$"Shader resource '{resource}' was not found."])
                 : SkiaShaderEffectProgramLoader.Load(resource, source);
             _programs.Add(resource, program);
+            Volatile.Write(ref _cachedProgramCount, _programs.Count);
+            clock.Stop();
+            Interlocked.Add(ref _totalLoadTicks, clock.Elapsed.Ticks);
             return program;
         }
         finally { _gate.Release(); }
     }
+
+    public async Task<ShaderEffectProgramPreloadResult> PreloadAsync(IEnumerable<EffectProgramResource> resources, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(resources);
+        var requested = resources.Distinct().ToArray();
+        var usable = 0;
+        foreach (var resource in requested)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if ((await ResolveAsync(resource, cancellationToken)).IsUsable) usable++;
+        }
+        return new ShaderEffectProgramPreloadResult(requested.Length, usable, requested.Length - usable, Snapshot());
+    }
+
+    public ShaderEffectProgramCacheSnapshot Snapshot() => new(
+        Volatile.Read(ref _cachedProgramCount),
+        Interlocked.Read(ref _cacheHits),
+        Interlocked.Read(ref _cacheMisses),
+        TimeSpan.FromTicks(Interlocked.Read(ref _totalLoadTicks)));
 
     public bool TryGetDescriptor(EffectProgramResource resource, out ShaderEffectDescriptor descriptor)
     {
@@ -106,6 +151,7 @@ public sealed class SkiaShaderEffectProgramResolver(IShaderEffectProgramSource s
     {
         foreach (var program in _programs.Values) program.RuntimeEffect?.Dispose();
         _programs.Clear();
+        Volatile.Write(ref _cachedProgramCount, 0);
         _gate.Dispose();
     }
 }

@@ -28,6 +28,7 @@ public sealed class SceneRenderDiagnostics
     private const int MaxEvents = 64;
     private readonly object _gate = new();
     private readonly Queue<SceneRenderDiagnosticEvent> _events = [];
+    private readonly HashSet<string> _eventKeys = new(StringComparer.Ordinal);
     private long _frameCount;
     private TimeSpan _totalRenderTime;
     private TimeSpan _lastRenderTime;
@@ -67,8 +68,14 @@ public sealed class SceneRenderDiagnostics
     {
         lock (_gate)
         {
+            var key = $"{code}\n{message}";
+            if (!_eventKeys.Add(key)) return;
             _events.Enqueue(new SceneRenderDiagnosticEvent(DateTimeOffset.UtcNow, code, message));
-            while (_events.Count > MaxEvents) _events.Dequeue();
+            while (_events.Count > MaxEvents)
+            {
+                var removed = _events.Dequeue();
+                _eventKeys.Remove($"{removed.Code}\n{removed.Message}");
+            }
         }
     }
 }
@@ -90,14 +97,16 @@ internal sealed class SceneRenderBudgetGuard(SceneRenderOptions? options, bool i
     {
         var pixels = (long)width * height;
         var bytes = pixels > long.MaxValue / 4 ? long.MaxValue : pixels * 4L;
-        if (pixels > _options.Budget.MaxIntermediatePixels)
+        var pingPongPixels = pixels > long.MaxValue / 2 ? long.MaxValue : pixels * 2L;
+        var pingPongBytes = bytes > long.MaxValue / 2 ? long.MaxValue : bytes * 2L;
+        if (pingPongPixels > _options.Budget.MaxIntermediatePixels)
         {
-            Report("effect.skipped.pixel-budget", $"Effect '{effect.InstanceId}' was skipped because {pixels} intermediate pixels exceed the budget of {_options.Budget.MaxIntermediatePixels}.");
+            Report("effect.skipped.pixel-budget", $"Effect '{effect.InstanceId}' was skipped because its ping-pong surfaces require {pingPongPixels} intermediate pixels, exceeding the budget of {_options.Budget.MaxIntermediatePixels}.");
             return false;
         }
-        if (bytes > _options.Budget.MaxIntermediateTextureBytes)
+        if (pingPongBytes > _options.Budget.MaxIntermediateTextureBytes)
         {
-            Report("effect.skipped.texture-budget", $"Effect '{effect.InstanceId}' was skipped because its {bytes} byte intermediate texture exceeds the budget of {_options.Budget.MaxIntermediateTextureBytes} bytes.");
+            Report("effect.skipped.texture-budget", $"Effect '{effect.InstanceId}' was skipped because its ping-pong surfaces require {pingPongBytes} bytes, exceeding the budget of {_options.Budget.MaxIntermediateTextureBytes} bytes.");
             return false;
         }
         if (_effectPassCount >= _options.Budget.MaxEffectPasses)
@@ -107,7 +116,7 @@ internal sealed class SceneRenderBudgetGuard(SceneRenderOptions? options, bool i
         }
 
         _effectPassCount++;
-        _peakIntermediateTextureBytes = Math.Max(_peakIntermediateTextureBytes, bytes);
+        _peakIntermediateTextureBytes = Math.Max(_peakIntermediateTextureBytes, pingPongBytes);
         return true;
     }
 

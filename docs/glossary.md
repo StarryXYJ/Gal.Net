@@ -35,13 +35,13 @@
 
 | 术语 | 英文 / 类型 | 当前含义 |
 | --- | --- | --- |
-| 页面流 | `GameFlowFactory` | 创建固定的标题、游戏、设置、存读档、鉴赏和关于页面。 |
-| 页面导航器 | `IGameScreenNavigator` | Control 默认页面的当前页和回退栈。 |
-| UI 预设 | `IUiPagePreset` | 某个固定页面的设置 schema 和默认值，不含可实例化的模板 View。 |
-| UI 项目 | `UiProject` | 宿主提供的页面预设选择与设置覆盖。 |
-| 独立游戏页面宿主 | `GalNet.Avalonia.GameView` | 使用 ViewModel→View 注册表和 `GameShell` 的 Avalonia 页面实现。 |
+| 游戏页面宿主 | `GalNet.Avalonia.GameView` | 使用 `GameShell`、页面导航服务和 ViewModel→View 注册表的共享 Avalonia 页面实现。 |
+| 游戏导航服务 | `IGameNavigationService` | 管理游戏 Scope 内的当前页面、回退历史和导航转场。 |
+| 页面注册表 | `IPageViewRegistry` / `IPageViewFactory` | 在组合期建立并解析不可变的 ViewModel→View 映射。 |
+| 游戏根页面 | `GameShell` | 承载页面切换、页面内容和游戏截图入口的 Avalonia 根控件。 |
+| 游戏页面呈现 | `AvaloniaGamePageView` | 将 Runtime 的呈现端口接到 Avalonia 游戏页面和场景渲染。 |
 
-`WidgetTemplate`、`WidgetInstance`、`ScreenTemplate`、`ScreenInstance` 与调色板模板体系是历史设计术语，不是当前 Control 的实现模型。
+`WidgetTemplate`、`WidgetInstance`、`ScreenTemplate`、`ScreenInstance`、`UiProject` 与调色板模板体系是历史设计术语，不属于当前游戏页面宿主。
 
 ## 编辑器与项目
 

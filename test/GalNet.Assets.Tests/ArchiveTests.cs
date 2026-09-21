@@ -39,6 +39,16 @@ public sealed class ArchiveTests
     }
 
     [Test]
+    public void Serialize_preserves_effect_program_resource_type()
+    {
+        var shader = new GameFile("id-effect", "Effects/grade.sksl", ResourceType.EffectProgram, "shader"u8.ToArray());
+        var pak = Archive.Serialize("test", [shader]);
+        using var archive = Archive.Deserialize("test", pak);
+
+        Assert.That(archive.GetAsset("id-effect")!.Type, Is.EqualTo(ResourceType.EffectProgram));
+    }
+
+    [Test]
     public void GetAsset_ByPath_ReturnsCorrectFile()
     {
         var pak = Archive.Serialize("test", TestFiles);

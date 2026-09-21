@@ -7,6 +7,7 @@ using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Runtime;
+using GalNet.Core.Scene;
 using GalNet.Core.Settings;
 using GalNet.Core.View;
 using GalNet.Rendering.Scene;
@@ -41,6 +42,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private SampleLayerFactory? _layers;
     private SampleMediaViews? _media;
     private AvaloniaEffectRuntime? _effects;
+    private EffectProgramResource[] _effectPrograms = [];
     private string? _gameDirectory;
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private readonly GameRunCoordinator _run = new();
@@ -84,6 +86,10 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             var preloadFailures = preloadResults.Count(texture => texture is null);
             GameLog.Logger.Information("Preloaded {SpriteCount} sprite assets ({FailureCount} deferred to fallback)",
                 spriteFiles.Count, preloadFailures);
+            var effectProgramFiles = await _assets.GetFilesAsync(ResourceType.EffectProgram, cancellationToken);
+            _effectPrograms = effectProgramFiles.Select(file => new EffectProgramResource(file.Id)).ToArray();
+            GameLog.Logger.Information("Discovered {EffectProgramCount} effect program assets for session prewarming",
+                _effectPrograms.Length);
             _saves = new FileSaveService(profileDirectory);
             _variables = await FileVariableService.CreateAsync(new FilePlayerVariableStore(profileDirectory), cancellationToken);
             _progress = new FileGameProgressService(profileDirectory);
@@ -345,10 +351,17 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         _layers = new SampleLayerFactory(_assets);
         _pageView = new AvaloniaGamePageView(_gameplay, _page, _layers);
         _media = new SampleMediaViews(_gameplay);
+        var programs = new SkiaShaderEffectProgramResolver(new AssetManagerShaderEffectProgramSource(_assets));
+        var preload = await programs.PreloadAsync(_effectPrograms, cancellationToken);
+        GameLog.Logger.Information(
+            "Preloaded {UsableEffectProgramCount}/{EffectProgramCount} effect programs in {ElapsedMilliseconds} ms",
+            preload.UsableProgramCount,
+            preload.RequestedProgramCount,
+            preload.Cache.TotalLoadTime.TotalMilliseconds);
         _effects = new AvaloniaEffectRuntime(
             _gameplay,
             _layers,
-            programs: new SkiaShaderEffectProgramResolver(new AssetManagerShaderEffectProgramSource(_assets)));
+            programs: programs);
         var gameView = new CompositeGameView(_pageView, _pageView, _pageView, _media, _media, _effects, _pageView, _pageView, _pageView);
         var content = await _contentProvider.LoadAsync(cancellationToken);
         var settings = new SettingsContainer();

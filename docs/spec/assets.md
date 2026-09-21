@@ -30,7 +30,7 @@
 
 字段说明：
 - **id**：GUID，全局唯一，IGameView 中作为 `assetId` 传递
-- **type**：资源类型（`sprite` / `audio` / `video` / `font` / `unknown`）
+- **type**：资源类型（`sprite` / `audio` / `video` / `font` / `effectProgram` / `unknown`）。`.sksl` 使用 `effectProgram`，运行时通过资源 GUID 加载和预编译。
 - **path**：相对于 Assets 目录的路径
 - **filter**：滤波模式（`point` / `bilinear` / `trilinear`）
 - **compress**：压缩格式（`none` / `deflate` / `gzip` / `brotli`）

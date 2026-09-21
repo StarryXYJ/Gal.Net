@@ -146,6 +146,8 @@ Layer source 的 authoring 数据优先采用显式 `source` 对象；现阶段 
 - 在编辑器中提供 effect 排序、阶段选择、参数表单、资源选择和小型预览。
 - 为常用组合提供预设，避免作者手写 JSON。
 
+已完成运行时部分：`SceneRenderBudget` 限制每帧 effect pass、ping-pong 中间像素和纹理字节预算；超限或 effect 执行失败时保持原输入并记录去重诊断。`SceneRenderDiagnostics` 记录帧耗时、pass 数、中间纹理峰值和 GPU/CPU 路径。每帧 effect 链只排序一次，并按 Layer target 预分组，避免每个 Layer 重复扫描完整 effect 列表。编辑器预览、参数面板和预设按当前范围暂缓。
+
 验收：效果失败不会破坏场景渲染；资源不足或不支持时有可理解的编辑器与运行时诊断。
 
 ### Phase 6：注释驱动的通用 Shader Effect（进行中）
@@ -200,7 +202,7 @@ Layer source 的 authoring 数据优先采用显式 `source` 对象；现阶段 
 
 Core 中的 `EffectProgramResource` 只是稳定 asset reference，不包含文件路径语义、SkSL、`SKRuntimeEffect` 或 GPU 纹理。`ShaderEffectAttachment` 保存内部 Runtime handle、目标、program reference、order 和原始参数值；它可按 descriptor 枚举 program 本身以及静态 texture 参数作为预加载依赖。资源的文件读取、解码、SkSL 编译、reflection、纹理上传和缓存全部属于 Avalonia Rendering。
 
-已完成：平台无关的注释 parser、descriptor、attachment 和 metadata resolver；Avalonia 的 program resolver 只从宿主配置的项目资源 source 读取 `.sksl`、缓存、编译，并验证 source/uniform/texture child 绑定名。不存在 `builtin/*` 或嵌入 shader 的运行时分支；找不到资源时保留输入纹理并只记录诊断。Sample 已使用 `IAssetManager` 以 GUID 读取 Layer 和 shader；发布/编辑器宿主接入同一 source 的工作仍见杂项待办。随后按以下顺序迁移：
+已完成：平台无关的注释 parser、descriptor、attachment 和 metadata resolver；Avalonia 的 program resolver 只从宿主配置的项目资源 source 读取 `.sksl`、缓存、编译，并验证 source/uniform/texture child 绑定名。不存在 `builtin/*` 或嵌入 shader 的运行时分支；找不到资源时保留输入纹理并只记录诊断。`.sksl` 已成为正式 `EffectProgram` 资源类型，`effect.apply.program` 与 `transition.blinds.maskProgram` 使用类型化资源引用。Sample 使用 `IAssetManager` 以 GUID 枚举并预编译 EffectProgram，resolver 暴露命中、未命中和总加载耗时统计，避免首次转场现场编译。发布/编辑器宿主的严格 GUID 校验仍见杂项待办。随后按以下顺序迁移：
 
 `effect.apply` 现可带 `program` resource locator；Runtime 仍只管理不向作者暴露的 `instanceId`，并将 locator 连同参数与动画值存档。Avalonia 根据 target 推导 `Layer` / `ScenePost`，从 program metadata 自动产生当前 catalog 所需参数 schema，再用同一套 `ShaderProgramTextureEffect` 绑定 scalar、enum、color、vec2 和 vec4 参数。旧 `id` 保留仅供尚未迁移的 overlay 粒子使用，不再是新 texture effect 的创作入口。
 
@@ -208,7 +210,7 @@ Core 中的 `EffectProgramResource` 只是稳定 asset reference，不包含文�
 2. 用通用 texture pass 替代 `ITextureEffectFactory` 的按 ID 分支。
 3. 将百叶窗和调色迁为首批 `.sksl` 资源；百叶窗转场由其 `maskProgram` 参数引用项目资源，并只生成通用 attachment 与动画原语。
 4. 编辑器复用同一 metadata parser 动态生成参数面板。
-5. 在资源预热阶段编译即将使用的 program 并预解码静态 texture 参数，避免首次转场卡顿。
+5. 已在 Sample 资源预热阶段批量编译 EffectProgram；静态 texture 参数的预解码与 child shader 绑定尚未完成。
 
 一个 attachment 在作者模型中对应一个 shader program；渲染后端的内部契约不应排除未来将一个 program 扩展为多个 pass，例如 bloom 或双向模糊。动态性体现在动态创建 attachment、设置参数、绑定动画和切换已加载资源，而不是在游戏帧内传入任意 shader 文本并即时编译。
 
