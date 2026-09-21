@@ -9,4 +9,5 @@
 - [国际化](spec/i18n.md)：编辑器本地化、运行时文本解析器和项目语言设置。
 - [术语表](glossary.md)：项目术语。
 - [杂项待办](design/misc-todo.md)：与游戏本体解耦的工程性后续工作。
+- [Feature 工作流与 Agent 知识维护](design/feature-workflow.md)：推荐的 feature 记录流程，以及开发者文档、feature 历史与 agent 知识的职责边界。
 - [分阶段渲染与 Effect 管线计划](design/render-effects-pipeline-plan.md)：Layer Source、Shader 效果、UI 前后全屏后处理与 Flipbook 的实施计划。
