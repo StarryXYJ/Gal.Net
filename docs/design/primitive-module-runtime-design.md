@@ -1,0 +1,448 @@
+# 原语模块化运行时设计
+
+> 状态：Proposed，待评审。本文描述目标架构与语义，不包含 Phase Plan，也不代表当前代码已经实现。
+
+## 1. 背景
+
+当前 Runtime 通过 `EntryHandlerRegistry` 按完整条目类型解析 `EntryHandler`，Handler 再调用由 `IGameView` 聚合的 `ILayerView`、`IAudioView`、`IEffectView` 等专用呈现端口。动画的活动播放、跳过和批次管理目前主要由具体呈现实现维护。这形成了两套按原语类型扩展的接口：Runtime Handler 注册和 View 专用接口。
+
+该结构为内置功能提供了明确的静态契约，但新增原语通常需要同时扩展条目类型、Handler、呈现接口及各宿主实现。目标架构希望把所有原语执行统一为按 Game Scope 组装的模块，使内置能力和后续扩展使用同一种注册、调度、参数描述、句柄和异步执行机制。`IGameView` 保留，但职责改为顶层原语分发器，不再继承各领域的专用 View 接口。
+
+## 2. 目标
+
+- 原语使用点分隔 ID，例如 `layer.show`、`effect.apply`。
+- `IGameView` 作为唯一的顶层原语分发入口，负责拆分完整 ID、选择模块并返回本次执行结果。
+- 每个前缀对应一个 Game Scope 内的原语模块实例。
+- 模块可以持有本领域共享数据；单原语 Handler 保持无状态、可重入。
+- 除 `IGameView` 外，现有 `ILayerView`、`IAudioView`、`IVideoView`、`IEffectView`、`IAnimationView`、`IControlView`、`IParticleEmitterView`、`ITypewriterView` 和 `IInteractionView` 均由统一模块/Handler 契约取代。
+- 所有模块和命令显式注册，重复注册在启动阶段报错。
+- 未注册模块、未注册命令和不存在的目标句柄在运行时安全跳过，并产生开发诊断。
+- 具体原语不在 Core 实现；模块以 Handler 的 Descriptor 同时提供参数元数据和执行实现，供编译器、编辑器和 Runtime 使用同一注册事实。
+- Runtime 统一管理阻塞、跳过和跨原语类型的跳过合批，不要求具体呈现实现维护剧情推进语义。
+- Game Scope 内使用统一句柄管理器保存可寻址运行时对象，并通过原语完成创建、恢复、修改和删除。
+- Avalonia 等宿主提供默认模块实现；未来其他宿主可以提供自己的模块实现，但平台适配细节不在本设计范围内。
+- `PrimitiveEntry`、`NonPrimitiveEntry` 与 `GalgroupCompiler` 的编译边界继续保留；Runtime 仍只执行编译后的原语。
+
+## 3. 非目标
+
+- 本阶段不设计编辑器 UI、时间轴编辑器或完整模拟器。
+- 本阶段不增加更多 Effect 资源类型。
+- 本阶段不设计运行时程序集热加载、模块卸载或第三方不可信代码隔离。
+- 本阶段不兼容旧原语 ID、旧字符串句柄、旧 `.galgroup` 或旧存档；格式在实现时一次切换，旧数据直接拒绝。
+- 本阶段不解决任意跨模块写入；跨模块只通过全局句柄读取和操作公开实例。
+- 本阶段不保存正在执行的 Task、跳过信号或动画中间进度；存档保存可恢复的句柄形态和稳定逻辑状态。
+- 本文不规定 Unity 等未来宿主的内部命令队列、线程调度或渲染实现。
+- 本阶段不取消非原语指令，也不把非原语编译逻辑移入 `IGameView` 或原语模块。
+
+## 4. 总体结构
+
+```text
+Game Scope
+  IGameView
+    layer  -> LayerPrimitiveModule
+      show    -> ShowLayerHandler
+      hide    -> HideLayerHandler
+      replace -> ReplaceLayerHandler
+    effect -> EffectPrimitiveModule
+      apply  -> ApplyEffectHandler
+      set    -> SetEffectHandler
+      remove -> RemoveEffectHandler
+
+  HandleManager
+    Guid -> RuntimeHandle
+
+  OperationManager
+    ExecutionId -> PrimitiveOperation
+```
+
+`IGameView` 负责前缀路由和模块生命周期；模块负责命令路由及领域共享数据；Handler 只实现一个原语，不保存跨调用状态。`HandleManager` 管理原语创建出的业务实例，`OperationManager` 管理尚未完成的一次原语调用，两者使用不同的身份和生命周期。Core 只拥有这些通用契约和通用原语信封，不拥有任何具体原语的实现。
+
+这里保留 `IGameView` 名称是为了延续 Game Scope 的宿主组合入口，但它不再只是“画面接口”。包括 `variable.set`、`flow.wait`、交互等待等非视觉原语，也通过同一个分发入口执行。通用原语契约放在 Core；具体模块和宿主实现位于外层，不能要求 Core/Runtime 反向引用 Avalonia。
+
+## 5. 原语注册与路由
+
+### 5.1 顶层分发与两层路由
+
+完整原语 ID 以第一个 `.` 分成模块前缀和命令：
+
+```text
+layer.show   -> module: layer  command: show
+effect.apply -> module: effect command: apply
+```
+
+ID 使用 `StringComparer.Ordinal` 精确比较，不在运行时自动改变大小写。前缀和命令都不能为空；前缀采用小写规范名，命令允许保留现有 camelCase。若命令将来包含更多 `.`，只有第一个 `.` 参与模块拆分，其余部分属于模块内部命令名。
+
+两层结构的目的不是减少字典查询，而是让同一领域的命令共享一个按 Game Scope 创建的模块实例。模块可以持有资源缓存、领域服务和宿主适配对象；Handler 仍保持无状态。`GameEngine` 不再持有另一套 `EntryHandlerRegistry`，否则会形成两次原语路由和两套注册事实来源。
+
+`IGameView` 的目标接口形态为：
+
+```csharp
+public interface IGameView : IDisposable
+{
+    IReadOnlyCollection<PrimitiveDescriptor> Primitives { get; }
+
+    bool TryGetDescriptor(
+        string primitiveType,
+        out PrimitiveDescriptor? descriptor);
+
+    PrimitiveDispatch Dispatch(
+        PrimitiveInvocation invocation,
+        PrimitiveExecutionControl control,
+        CancellationToken cancellationToken);
+}
+```
+
+`TryGetDescriptor` 接收完整原语 ID，并由 `IGameView` 内部完成前缀拆分和模块查询。Runtime 用它在执行前取得 Checkpoint 等静态元数据；Runtime 自身不解析前缀。
+
+默认 `CompositeGameView` 可以继续保留，但构造参数改为 `IEnumerable<IPrimitiveModule>`，不再分别接收九个专用 View 接口。它在 Game Scope 创建时建立只读前缀字典，并作为 `IGameView` 的默认实现。
+
+```csharp
+public interface IPrimitiveModule : IDisposable
+{
+    string Prefix { get; }
+    IReadOnlyCollection<IPrimitiveHandler> Handlers { get; }
+
+    PrimitiveDispatch Dispatch(
+        string command,
+        PrimitiveContext context,
+        JsonElement arguments,
+        PrimitiveExecutionControl control,
+        CancellationToken cancellationToken);
+}
+```
+
+模块从 `Handlers` 派生只读命令字典和 Descriptor 列表；`IGameView.Primitives` 只是这些 Handler Descriptor 的聚合，不是第二份注册表。模块可以复用通用基类。`PrimitiveDispatch` 同步返回已经启动的 Completion Task 和本次调用的有效执行策略，使 Runtime 可以立即决定是否注册、等待或允许跳过；真正工作仍在 Task 内异步完成。
+
+### 5.2 显式注册
+
+Game Scope 初始化顺序为：
+
+1. 创建 `IGameView`、`HandleManager` 和 `OperationManager`。
+2. 创建该宿主需要的模块实例。
+3. 显式注册模块及其 Handler；从每个 Handler 取得 Descriptor。
+4. 检查空 ID、非法 ID、重复前缀和重复命令，并验证每个 Descriptor 的 `TypeId` 与模块前缀、命令一致。
+5. 冻结注册表后开始加载和执行内容。
+
+重复注册属于开发者配置错误，启动阶段直接报错，不采用覆盖或后注册优先规则。运行期间默认不修改原语注册表。
+
+### 5.3 未注册命令
+
+内容运行时遇到未注册前缀或命令时，`IGameView.Dispatch` 返回明确的 Skipped 结果：
+
+- 不创建 Operation 或业务句柄；
+- 不修改 SceneState；
+- 视为立即完成并继续执行后续内容；
+- 输出结构化开发诊断，并允许上层在开发/测试模式中提升为校验错误。
+
+宽容运行不替代资源构建和编辑器校验。未来编辑器应尽量通过注册描述生成选择器，避免开发者手写原语 ID。
+
+## 6. 原语描述与参数
+
+每个 Handler 提供不可变描述，并与 Handler 一起注册：
+
+```csharp
+public sealed record PrimitiveDescriptor(
+    string TypeId,
+    IReadOnlyList<PrimitiveParameterDescriptor> Parameters,
+    bool CreatesCheckpoint = false);
+```
+
+参数描述至少包含名称、数据类型、是否必填、默认值以及资源或句柄约束。句柄参数可以声明期望的句柄类型，使未来编辑器通过模拟当前执行位置列出已有句柄，而不是要求开发者输入字符串。
+
+路由层向模块传递尚未转换成领域对象的 `JsonElement`。Handler 负责按自身 Descriptor 将参数转换为命令模型并校验。Descriptor 中的参数默认值和约束供编辑器、构建校验及 Handler 共用；原始 JSON 文本只用于内容存储和诊断，不作为模块间调用协议。
+
+`CreatesCheckpoint` 取代当前 `EntryHandler.CreatesCheckpoint`。GameEngine 在真正 Dispatch 前读取该值并创建快照，避免交互 Handler 已经开始等待后才建立 Checkpoint。
+
+一次调用使用统一信封：
+
+```csharp
+public sealed record PrimitiveInvocation(
+    string TypeId,
+    PrimitiveContext Context,
+    JsonElement Arguments);
+```
+
+当前 `Entry.Values` 会把参数统一存成 `Dictionary<string, string>`，`GalgroupLoader` 还包含部分按原语类型硬编码的转换。目标结构应让已编译参数以 JSON 对象进入 `PrimitiveInvocation`，避免在顶层分发前丢失数字、布尔、对象和数组的原始类型。领域反序列化仍由叶子 Handler 负责。
+
+## 7. 句柄模型
+
+### 7.1 基本约束
+
+业务句柄 ID 使用编辑器创建并持久化的 GUID；内容以固定 GUID 文本格式保存，编译产物原样保留，Runtime 只负责解析和校验。所有可注册对象继承统一基类并实现 `IDisposable`：
+
+```csharp
+public abstract class RuntimeHandle : IDisposable
+{
+    public required Guid Id { get; init; }
+    public abstract string TypeId { get; }
+    public abstract void Dispose();
+}
+```
+
+`HandleManager` 是 Game Scope 内的字典与生命周期容器：
+
+```csharp
+public interface IHandleManager : IDisposable
+{
+    void Add(RuntimeHandle handle);
+    bool TryGet(Guid id, out RuntimeHandle? handle);
+    bool TryGet<THandle>(Guid id, out THandle? handle)
+        where THandle : RuntimeHandle;
+    bool Remove(Guid id);
+    IReadOnlyCollection<RuntimeHandle> GetAll();
+}
+```
+
+- GUID 重复不是正常业务分支，`Add` 必须报错，不能覆盖并 Dispose 旧对象。
+- 查询不到或类型不匹配时，原语安全跳过并记录开发诊断。
+- `Remove` 对不存在的 GUID 幂等成功；存在时从字典移除并调用 `Dispose`。
+- Game Scope 销毁时，管理器 Dispose 所有剩余句柄。
+- Handler 不把句柄保存在自身字段中，每次执行均通过 `HandleManager` 查询。
+
+### 7.2 稳定快照、存档与恢复
+
+存档保存句柄可恢复形态，而不是平台对象、Task 或委托。句柄快照至少包含 GUID、类型、创建所需资源/参数和当前稳定参数。
+
+Runtime 保存 `LastStableSnapshot`。每个可存档边界只在稳定时更新它；Save 永远持久化这份快照，不从正在推进的 Runtime 临时创建快照。稳定表示没有仍会改变可存档状态的 Operation；纯交互或纯展示等待不改变稳定状态。未稳定时可以继续使用上一个稳定快照，但不产生新的存档点。
+
+恢复是纯数据操作，不调用原语、不创建 Operation、不触发 Checkpoint 或剧情推进。它在干净的 Game Scope 中以快照直接重建 Runtime 状态和全部 Handle；所有 Handle 注册完成后，引用关系按 GUID 自然可查询，因此没有类型恢复顺序。Avalonia 等宿主在渲染时读取 Layer 状态和其 Effect ID，再从 `HandleManager` 查询 Effect；平台缓存不进入存档，也不需要恢复阶段主动应用。
+
+恢复和渲染必须避免观察到半个状态：实现要么原子替换状态快照，要么在同一渲染/调度线程完成恢复。具体快照 DTO 由后续实现设计确定，但平台对象不进入存档。
+
+## 8. Effect 原语
+
+首轮 Effect 只需要三个基于句柄的一次性操作：
+
+```text
+effect.apply   创建 EffectHandle 并关联效果
+effect.set     修改已有 EffectHandle 的参数
+effect.remove  删除并 Dispose EffectHandle
+```
+
+目标 Layer 持有其 Effect 的唯一持久化 GUID 列表；`EffectHandle` 不重复保存 Target Layer ID。`effect.apply` 先向 `HandleManager` 注册 Effect，再把其 ID 写入目标 Layer；`effect.remove` 先删除 Layer 引用，再移除并 Dispose Handle。全局后处理使用独立的全局 Effect ID 列表。目标不存在、类型不匹配或 Effect 句柄不存在时安全跳过；恢复时悬挂 ID 记录诊断并清理。
+
+`apply`、`set`、`remove` 默认立即完成、非阻塞、不可跳过；需要随时间变化的 Effect 参数由动画原语驱动，不在 Effect 原语内部引入时间轴。
+
+## 9. 异步执行、阻塞与跳过
+
+### 9.1 Handler 模型
+
+所有 Handler 使用统一的 `Task` 执行模型。立即原语返回已完成 Task，异步原语在 Task 中完成内部等待。Handler 必须无状态、可重入；每次调用的局部状态存在于该次异步调用、业务句柄或模块共享数据中。
+
+```csharp
+public interface IPrimitiveHandler
+{
+    PrimitiveDescriptor Descriptor { get; }
+
+    PrimitiveDispatch Dispatch(
+        PrimitiveContext context,
+        JsonElement arguments,
+        PrimitiveExecutionControl control,
+        CancellationToken cancellationToken);
+}
+
+public sealed record PrimitiveDispatch(
+    PrimitiveDispatchStatus Status,
+    PrimitiveExecutionPolicy Policy,
+    Task<PrimitiveResult> Completion);
+
+public enum PrimitiveDispatchStatus { Accepted, Skipped }
+public enum PrimitiveResultStatus { Succeeded, Failed }
+
+public sealed record PrimitiveResult(
+    PrimitiveResultStatus Status,
+    JsonElement? Value)
+{
+    public static PrimitiveResult Empty { get; } = new(PrimitiveResultStatus.Succeeded, null);
+}
+
+public sealed record PrimitiveExecutionPolicy(
+    bool Blocking,
+    bool Skippable,
+    string? BatchId);
+```
+
+`Dispatch` 本身同步返回，不表示工作同步执行。Handler 在方法内启动并返回一个 Task，所有实际异步等待仍发生在该 Task 中。立即原语使用 `Task.FromResult(PrimitiveResult.Empty)`；未知命令或同步参数校验失败返回 `Skipped` 状态和已完成 Task，已被 Handler 接受的调用返回 `Accepted` 状态。已接受调用的预期失败由 `PrimitiveResult.Status = Failed` 表示，而不是向 Engine 抛出异常。
+
+`PrimitiveExecutionPolicy` 只描述本次 Operation 的已解析行为：`Blocking` 决定 Engine 是否等待，`Skippable` 决定是否参与跳过，`BatchId` 决定可跳过 Operation 的合批。它不是 Descriptor 的默认值。Handler 可以固定它、从 Descriptor 暴露的参数解析它，或为自身不变量强制修正它；返回后 Policy 不再改变，Runtime 只据此创建 Operation。
+
+大多数原语返回 Empty。统一的可选结果用于当前并非 Entry 的引擎交互，例如 Choice 分支可以通过内部 `interaction.choice` 调用获得选项索引，从而不再要求 `IGameView` 同时暴露 `IInteractionView.WaitForChoiceAsync`。这些引擎内部调用使用同一分发协议，但不会被写入 `.galgroup`。
+
+`CancellationToken` 表示 Game Scope 销毁、程序终止或执行取消。用户跳过是“立即推进到最终状态”，不能与取消共用语义。
+
+内容参数、目标句柄和可预期宿主失败统一记录结构化诊断并以 `Skipped` 或 `Failed` 正常完成，Engine 继续推进；只有 Scope 取消需要传播。非阻塞 Operation 同样观察、记录并移除其失败，不遗留未观察异常。
+
+### 9.2 单次执行控制
+
+Runtime 为每次调用创建独立控制对象：
+
+```csharp
+public sealed class PrimitiveExecutionControl
+{
+    public Task SkipRequested { get; }
+    public bool RequestSkip();
+}
+```
+
+`RequestSkip` 必须线程安全且幂等，可以由 `TaskCompletionSource.TrySetResult` 实现。可跳过 Handler 等待正常完成条件或 `SkipRequested`；收到跳过后应用最终状态、完成清理并让 Completion Task 正常结束。立即完成逻辑同样必须幂等。
+
+### 9.3 OperationManager
+
+每次尚未完成的调用由 Runtime 记录为独立 Operation：
+
+```csharp
+public sealed record PrimitiveOperation(
+    Guid ExecutionId,
+    long Sequence,
+    string TypeId,
+    string BatchKey,
+    bool Blocking,
+    bool Skippable,
+    Task Completion,
+    PrimitiveExecutionControl Control);
+```
+
+`ExecutionId` 只标识一次调用，不等同于业务 `RuntimeHandle.Id`。同一个无状态 Handler 可以同时产生任意数量的独立 Operation。
+
+- `Blocking = true`：Runtime 注册 Operation 后等待 `Completion`，再执行下一条原语。
+- `Blocking = false`：Runtime 注册 Operation 后立即推进；OperationManager 继续持有该操作，直到完成或 Scope 被取消。
+- `Skippable = true`：Operation 可以响应用户跳过，无论其是否阻塞。
+- OperationManager 必须观察非阻塞 Task 的异常，并在 Task 结束后移除记录。
+- 需要结果的调用由发起方保留 `Task<PrimitiveResult>`；OperationManager 只需以基类 `Task` 跟踪其完成、跳过和异常。
+
+## 10. 跳过合批
+
+跳过合批从具体呈现实现上移到 Runtime 的 `OperationManager`，并跨原语类型生效。
+
+每个 Operation 有单调递增的 `Sequence` 和 `BatchKey`：
+
+- 显式提供 `batchId` 时，`BatchKey` 使用该值。
+- 未提供 `batchId` 时，为本次调用生成唯一值，因此默认单独成批。
+- 一次用户跳过选择 `Sequence` 最小的活动可跳过 Operation。
+- 向所有 `Skippable = true` 且 `BatchKey` 相同的活动 Operation 发出跳过请求。
+- 等待该批 Operation 的 `Completion` 全部完成，确保最终状态、时间轴末端事件和清理已提交。
+- 同一批可以包含不同模块和不同原语，例如 Layer 动画与 Effect 参数动画。
+
+```csharp
+public async Task<bool> SkipNextBatchAsync()
+{
+    var candidate = ActiveOperations
+        .Where(operation => operation.Skippable)
+        .OrderBy(operation => operation.Sequence)
+        .FirstOrDefault();
+
+    if (candidate is null)
+        return false;
+
+    var batch = ActiveOperations
+        .Where(operation => operation.Skippable &&
+                            operation.BatchKey == candidate.BatchKey)
+        .ToArray();
+
+    foreach (var operation in batch)
+        operation.Control.RequestSkip();
+
+    await Task.WhenAll(batch.Select(operation => operation.Completion));
+    return true;
+}
+```
+
+`Blocking` 只决定剧情流程是否主动等待，不影响 Operation 是否参加跳过合批。非阻塞、可跳过的多次同原语调用会分别注册 Operation，并可通过相同 `batchId` 一次完成。
+
+## 11. 编译层边界
+
+非原语指令继续保留在 Core 的编译层：
+
+```text
+.rawgalgroup
+  -> 作者指令目录创建通用 PrimitiveEntry 或 NonPrimitiveEntry
+  -> NonPrimitiveEntry.Compile 展开
+  -> GalgroupCompiler 验证所有产物均为 Primitive
+  -> .galgroup
+  -> Runtime / IGameView 只分发 Primitive
+```
+
+`transition.*` 等非原语仍可维护自己的参数、编辑语义和展开逻辑，但不能注册 Runtime Handler，也不能绕过编译器进入 Runtime。动画计划中的嵌套事件同样必须在编译/加载阶段验证为原语。
+
+具体原语不再由 Core 的静态 `EntryRegistry` 实现或注册。模块注册同时贡献 Handler Descriptor 和延迟创建 Handler 的工厂；Descriptor 目录由注册记录直接构建，不要求编辑器/编译器实例化平台 Handler。编辑器/编译器只读取该目录以生成表单、校验 JSON 并产出通用原语信封；Game Scope 用同一注册记录创建 Handler。这样新增原语只需新增模块注册，不需要修改 Core，也不存在两份原语 schema。
+
+非原语仍有独立的作者指令目录和编译器，但其产物只是携带 `TypeId + JSON Arguments` 的通用 PrimitiveEntry。编译成功不保证当前宿主加载了全部模块；运行时未注册原语仍按安全跳过处理。
+
+现有原语中 `text`、`wait`、`animate`、`unlock_gallery` 没有点分隔前缀，无法进入统一两层路由。目标命名应统一为类似：
+
+```text
+dialogue.text
+flow.wait
+animation.animate
+gallery.unlock
+```
+
+目标架构只保留带模块前缀的规范 ID；不提供旧 ID 别名或兼容读取。
+
+## 12. 执行流程
+
+```text
+读取已编译原语
+  -> GameEngine 向 IGameView 查询完整 ID 的 Descriptor
+  -> 在稳定时按 Descriptor 创建并保存 Checkpoint（如需要）
+  -> Runtime 创建 ExecutionControl
+  -> GameEngine 调用 IGameView.Dispatch
+  -> IGameView 按第一个 '.' 解析 prefix 与 command
+  -> IGameView 查找模块
+  -> 模块查找无状态 Handler 及其 Descriptor
+  -> Handler 解析参数并返回 PrimitiveDispatch
+  -> OperationManager 注册未完成调用
+  -> Blocking 时等待 Completion；否则继续剧情
+  -> 用户推进时 OperationManager 跳过最早可跳过批次
+  -> Task 完成后收敛最终状态并移除 Operation
+```
+
+业务句柄的增删改查发生在 Handler 内，并由 `HandleManager` 承担存储与释放。Operation 结束不自动删除业务句柄；只有对应 remove/stop 原语或 Game Scope 释放才结束业务句柄生命周期。任一会影响持久化状态的异步 Operation 完成后，才可产生新的稳定快照。
+
+普通 Group 条目、动画时间轴事件以及 GameEngine 发起的内部交互都必须走同一个 `IGameView.Dispatch`。时间轴事件可以禁止创建 Checkpoint，但不能再直接 Resolve 另一套 Handler Registry，否则跳过合批、诊断和 Operation 跟踪会出现旁路。
+
+## 13. 性能约束
+
+- 模块与命令字典在 Game Scope 启动后冻结，执行期只读。
+- Handler 可作为无状态实例复用，不按每条原语反射创建。
+- JSON 只解析为 DOM 一次；具体领域模型只在对应 Handler 中转换。
+- 每帧渲染和持续动画更新不经过原语字典调度；原语只负责启动、修改或停止长期对象。
+- 非阻塞 Task 必须由 OperationManager 统一观察，避免遗失异常和长期保留已完成 Operation。
+- 两次字典查询不是预期性能瓶颈；资源加载、反序列化和渲染仍应独立缓存和度量。
+
+## 14. 与当前架构的关系
+
+目标架构将当前 `EntryHandlerRegistry + IGameView 专用端口 + 呈现端活动动画表` 调整为：
+
+- `IGameView`：唯一的模块注册、完整 ID 查询与前缀路由入口；
+- `IPrimitiveModule`：Game Scope 内的领域模块和命令注册；
+- `IPrimitiveHandler`：无状态单原语实现；
+- `HandleManager`：可存档恢复的业务实例生命周期；
+- `OperationManager`：Task、阻塞、跳过和批次生命周期；
+- 宿主默认模块：Avalonia 等平台的具体呈现实现。
+
+目标状态不再保留 `EntryHandlerRegistry`、`EntryHandler` 或除 `IGameView` 外的现有专用 View 接口。非原语编译接口不属于运行时执行接口，继续保留。
+
+现有“影响场景的操作先更新稳定逻辑状态，再完成呈现”的原则继续保留。跳过必须收敛到相同最终状态，而不是简单取消 Task。
+
+## 15. 当前实现审核与迁移影响
+
+对当前代码的审核表明，目标设计不是只替换几个接口，还涉及以下现有路径：
+
+1. `GameEngine` 当前先通过 `EntryHandlerRegistry` 路由，再由 Handler 调用 `IGameView`。目标状态必须删除第一套路由，由 `GameEngine` 直接把完整原语交给 `IGameView`。
+2. `GameEngine.ProcessChoiceBranchAsync` 当前直接调用 `IInteractionView.WaitForChoiceAsync`。移除专用 View 接口后，应改走带结果的内部 `interaction.choice` 分发。
+3. 动画时间轴事件当前直接 Resolve `EntryHandlerRegistry`。目标状态必须走同一 `IGameView.Dispatch + OperationManager`，但关闭事件自身的 Checkpoint 创建。
+4. `AvaloniaGamePageView` 当前保存活动动画并实现 `SkipAnimationBatch`。目标状态由 Runtime `OperationManager` 统一跟踪和合批，Avalonia 模块只负责让单次调用立即完成到最终画面。
+5. `Entry.Values` 和 `GalgroupLoader` 当前把参数压平为字符串，并对部分 Layer 参数硬编码转换。目标调用信封使用 JSON 参数对象，这部分加载模型需要同步调整。
+6. 当前 `ISceneInstanceManager`、Layer、动画、Effect、Particle 和存档字段使用字符串句柄。迁移到 GUID 时必须同时修改内容 schema、编译产物、运行时查询、快照和恢复，不能只修改管理器键类型。
+7. `GameRuntime.RestoreFrom` 当前硬编码重建 Layer、Effect、Particle 和 Animation 状态。目标恢复路径应改为重建通用句柄快照和 Runtime 数据，不调用原语；宿主在渲染时按数据查询需要的 Handle。
+8. `GalgroupCompiler` 已经正确区分 Primitive 与 NonPrimitive，并拒绝非原语进入编译产物。这条边界应保留，不应随运行时接口重构一起删除。
+
+以上均属于后续 Phase Plan 的迁移范围；本文只确定目标职责，不规定提交拆分顺序。
+
+## 16. 剩余迁移决定
+
+1. 旧专用 View 接口采用一次替换还是迁移期适配；目标状态已经明确全部移除，过渡方式放入后续 Phase Plan。
+2. 恢复与渲染采用原子状态替换还是同一调度线程执行。两者都满足本设计，按宿主实现选择。
+
+以上项目不改变目标职责，可在后续 Phase Plan 中决定施工顺序。
