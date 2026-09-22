@@ -39,3 +39,7 @@
 2. 事实变化时更新本文件的对应条目，并注明来源。
 3. 一次性事故先写 lesson；只有可复用、重复出现或高风险的规则才晋升成独立 skill。
 4. 如果项目架构变化，检查并标记受影响的 lesson 和 skill，而不是继续沿用旧规则。
+
+## 经验索引
+
+- [受限环境中的 .NET/Avalonia 构建](lessons/L-20260922-01-dotnet-build-sandbox.md)：禁用 Roslyn shared compilation，并关闭 Avalonia build telemetry。

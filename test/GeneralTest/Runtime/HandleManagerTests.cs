@@ -61,16 +61,6 @@ public class HandleManagerTests
         Assert.That(() => handles.Add(new TestHandle(Guid.NewGuid())), Throws.TypeOf<ObjectDisposedException>());
     }
 
-    [Test]
-    public async Task SkipRequestIsIdempotentAndCompletesTheSignal()
-    {
-        var control = new PrimitiveExecutionControl();
-
-        Assert.That(control.RequestSkip(), Is.True);
-        Assert.That(control.RequestSkip(), Is.False);
-        await control.SkipRequested;
-    }
-
     private sealed class TestHandle : RuntimeHandle
     {
         [SetsRequiredMembers]

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
 using GalNet.Core.View;
 using GalNet.Runtime.Runtime;
@@ -8,82 +9,111 @@ namespace GeneralTest.Runtime;
 public class CompositeGameViewTests
 {
     [Test]
-    public void DynamicGameViewOnlyInheritsDisposal()
+    public void GameViewExposesOnlySinglePrimitiveDispatchResponsibilities()
     {
         Assert.That(typeof(IGameView).GetInterfaces(), Is.EquivalentTo(new[] { typeof(IDisposable) }));
+        Assert.That(typeof(IGameView).GetProperty("ActiveInstances"), Is.Null);
+        Assert.That(typeof(IGameView).GetMethod("Advance"), Is.Null);
     }
 
     [Test]
-    public void ScopeFreezesDescriptorLookupAndRoutesByPrefix()
+    public void DispatchNormalizesArgumentsAndBuildsTheCompleteFactoryContext()
     {
-        var module = new TestModule("layer", new PrimitiveDescriptor("layer.show", DynamicParameterTable.Empty));
-        using var view = new CompositeGameView([module]);
-        var invocation = new PrimitiveInvocation(
-            "layer.show",
-            new PrimitiveContext { Runtime = new GameRuntime(null), Origin = PrimitiveInvocationOrigin.GroupEntry },
-            JsonSerializer.SerializeToElement(new { visible = true }));
+        PrimitiveCreateContext? received = null;
+        var parameters = new DynamicParameterTable(
+        [
+            new DynamicParameterDescriptor("visible", typeof(bool), isRequired: true),
+            new DynamicParameterDescriptor("opacity", typeof(float), defaultValue: JsonSerializer.SerializeToElement(1f))
+        ]);
+        var definition = new DefaultPrimitiveEntryBase("layer.show", parameters, context =>
+        {
+            received = context;
+            return new ImmediatePrimitiveInstance(batchId: context.BatchId);
+        });
+        using var view = new CompositeGameView([new TestModule("layer", [definition])]);
+        var runtime = new GameRuntime(null);
+        var entry = Entry("layer.show", new { visible = true }, "opening");
 
-        Assert.That(view.TryGetDescriptor("layer.show", out var descriptor), Is.True);
-        Assert.That(descriptor, Is.SameAs(module.Descriptors.Single()));
+        var instance = view.Dispatch(entry, runtime, CancellationToken.None);
 
-        var dispatch = view.Dispatch(invocation, new PrimitiveExecutionControl(), CancellationToken.None);
-
-        Assert.That(dispatch.Status, Is.EqualTo(PrimitiveDispatchStatus.Accepted));
-        Assert.That(module.Command, Is.EqualTo("show"));
-        Assert.That(module.Arguments.GetProperty("visible").GetBoolean(), Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(instance, Is.Not.Null);
+            Assert.That(instance!.IsCompleted, Is.True);
+            Assert.That(instance.BatchId, Is.EqualTo("opening"));
+            Assert.That(received!.Definition, Is.SameAs(definition));
+            Assert.That(received.Entry, Is.Not.SameAs(entry));
+            Assert.That(received.Parameters, Is.SameAs(parameters));
+            Assert.That(received.Runtime, Is.SameAs(runtime));
+            Assert.That(received.Arguments.GetProperty("visible").GetBoolean(), Is.True);
+            Assert.That(received.Arguments.GetProperty("opacity").GetSingle(), Is.EqualTo(1f));
+            Assert.That(received.BatchId, Is.EqualTo("opening"));
+        });
     }
 
     [Test]
-    public void UnknownOrInvalidPrimitiveSafelySkips()
+    public void UnknownPrimitiveSafelySkips()
     {
         using var view = new CompositeGameView([]);
-        var context = new PrimitiveContext { Runtime = new GameRuntime(null), Origin = PrimitiveInvocationOrigin.GroupEntry };
-
-        foreach (var typeId in new[] { "missing.run", "missing", ".run", "run." })
-        {
-            var dispatch = view.Dispatch(
-                new PrimitiveInvocation(typeId, context, JsonSerializer.SerializeToElement(new { })),
-                new PrimitiveExecutionControl(),
-                CancellationToken.None);
-            Assert.That(dispatch.Status, Is.EqualTo(PrimitiveDispatchStatus.Skipped), typeId);
-        }
+        Assert.That(view.Dispatch(Entry("missing.run", new { }), new GameRuntime(null), CancellationToken.None), Is.Null);
     }
 
     [Test]
-    public void ScopeRejectsDuplicatePrefixesAndMismatchedDescriptors()
+    public void ScopeRejectsDuplicateModulesAndPrimitiveNames()
     {
-        var first = new TestModule("layer", new PrimitiveDescriptor("layer.show", DynamicParameterTable.Empty));
-        var duplicate = new TestModule("layer", new PrimitiveDescriptor("layer.hide", DynamicParameterTable.Empty));
-        var mismatched = new TestModule("layer", new PrimitiveDescriptor("effect.apply", DynamicParameterTable.Empty), register: false);
+        var first = new TestModule("one", [Definition("custom.run")]);
+        var duplicateModule = new TestModule("one", [Definition("custom.other")]);
+        var duplicateEntry = new TestModule("two", [Definition("custom.run")]);
 
-        Assert.That(() => new CompositeGameView([first, duplicate]), Throws.InvalidOperationException);
-        Assert.That(() => new CompositeGameView([mismatched]), Throws.InvalidOperationException);
+        Assert.That(() => new CompositeGameView([first, duplicateModule]), Throws.InvalidOperationException);
+        Assert.That(() => new CompositeGameView([first, duplicateEntry]), Throws.InvalidOperationException);
     }
 
-    private sealed class TestModule : PrimitiveModuleBase
+    [Test]
+    public void DispatchRejectsAnInstanceWhoseBatchIdDiffersFromTheEntry()
     {
-        public TestModule(string prefix, PrimitiveDescriptor descriptor, bool register = true) : base(prefix)
-        {
-            if (register) Register(descriptor, Execute);
-            else RegisterUnchecked(descriptor);
-        }
+        using var view = new CompositeGameView(
+            [new TestModule("test", [new DefaultPrimitiveEntryBase(
+                "test.run",
+                DynamicParameterTable.Empty,
+                _ => new ImmediatePrimitiveInstance(batchId: "wrong"))])]);
 
-        public string? Command { get; private set; }
-        public JsonElement Arguments { get; private set; }
+        Assert.That(
+            () => view.Dispatch(Entry("test.run", new { }, "expected"), new GameRuntime(null), CancellationToken.None),
+            Throws.InvalidOperationException.With.Message.Contains("BatchId"));
+    }
 
-        private PrimitiveDispatch Execute(PrimitiveContext context, JsonElement arguments, PrimitiveExecutionControl control, CancellationToken cancellationToken)
-        {
-            Command = "show";
-            Arguments = arguments.Clone();
-            return new PrimitiveDispatch(PrimitiveDispatchStatus.Accepted, new PrimitiveExecutionPolicy(false, false, null), Task.FromResult(PrimitiveResult.Empty));
-        }
+    [Test]
+    public void PrimitiveInstanceDispatchesOnceAndCompletionIsMonotonic()
+    {
+        var instance = new ControlledInstance(false, false, null);
+        var completed = 0;
+        instance.Completed += _ => completed++;
 
-        private void RegisterUnchecked(PrimitiveDescriptor descriptor)
-        {
-            // Force the Composite validator to inspect an externally supplied invalid descriptor.
-            var field = typeof(PrimitiveModuleBase).GetField("_commands", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
-            var commands = (Dictionary<string, (PrimitiveDescriptor Descriptor, PrimitiveCommand Command)>)field.GetValue(this)!;
-            commands.Add("show", (descriptor, Execute));
-        }
+        instance.Dispatch();
+        instance.Complete();
+        instance.Complete();
+
+        Assert.That(instance.IsCompleted, Is.True);
+        Assert.That(completed, Is.EqualTo(1));
+        Assert.That(() => instance.Dispatch(), Throws.InvalidOperationException);
+    }
+
+    private static PrimitiveEntry Entry(string type, object arguments, string? batchId = null) =>
+        new(type, JsonSerializer.SerializeToElement(arguments), batchId);
+
+    private static PrimitiveEntryBase Definition(string name) => new DefaultPrimitiveEntryBase(
+        name,
+        DynamicParameterTable.Empty,
+        context => new ImmediatePrimitiveInstance(batchId: context.BatchId));
+
+    private sealed class TestModule(string id, IEnumerable<PrimitiveEntryBase> entries) : EntryModuleBase(id, entries);
+
+    private sealed class ControlledInstance(bool blocking, bool skippable, string? batchId) : PrimitiveInstance(batchId)
+    {
+        public override bool IsBlocking { get; } = blocking;
+        public override bool IsSkippable { get; } = skippable;
+        protected override void OnDispatch() { }
+        public void Complete() => TryComplete();
     }
 }

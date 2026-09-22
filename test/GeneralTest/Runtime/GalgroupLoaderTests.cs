@@ -2,6 +2,7 @@ using System.Text.Json;
 using GalNet.Core.Compilation;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
+using GalNet.Core.Primitives;
 using GalNet.Core.Serialization;
 using GalNet.Runtime.Loader;
 using GalNet.Primitives.Builtins;
@@ -45,6 +46,50 @@ public class GalgroupLoaderTests
         Assert.That(layer.Arguments.GetProperty("visible").GetBoolean(), Is.True);
         Assert.That(layer.Arguments.GetProperty("transform").GetProperty("scaleX").GetInt32(), Is.EqualTo(2));
         Assert.That(animation.Arguments.GetProperty("plan").GetProperty("durationFrames").GetInt32(), Is.EqualTo(30));
+    }
+
+    [Test]
+    public void CompileAndLoadPromoteBatchIdOutOfPrimitiveArguments()
+    {
+        var parameters = new DynamicParameterTable(
+        [
+            new DynamicParameterDescriptor("value", typeof(int), isRequired: true),
+            new DynamicParameterDescriptor("batchId", typeof(string))
+        ]);
+        var catalog = new TargetProfileEntryCatalog(
+            [new TestEntryModule("test", [new DefaultPrimitiveEntryBase(
+                "test.run",
+                parameters,
+                context => new ImmediatePrimitiveInstance(batchId: context.BatchId))])]);
+        var source = new GroupDocument
+        {
+            Entries =
+            {
+                new GroupEntryDocument
+                {
+                    Id = "run-1",
+                    Type = "test.run",
+                    Parameters = new Dictionary<string, JsonElement>
+                    {
+                        ["value"] = JsonSerializer.SerializeToElement(7),
+                        ["batchId"] = JsonSerializer.SerializeToElement("opening")
+                    }
+                }
+            }
+        };
+
+        var compiled = GalgroupCompiler.Compile(source, catalog).Document;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(compiled.Entries[0].BatchId, Is.EqualTo("opening"));
+            Assert.That(compiled.Entries[0].Arguments.TryGetProperty("batchId", out _), Is.False);
+            Assert.That(compiled.Entries[0].Arguments.GetProperty("value").GetInt32(), Is.EqualTo(7));
+        });
+
+        var group = new Group { Id = "main" };
+        GalgroupLoader.LoadIntoGroupFromContent(group, JsonSerializer.Serialize(compiled));
+        Assert.That(((PrimitiveEntry)group.Entries.Single()).BatchId, Is.EqualTo("opening"));
     }
 
     [Test]
@@ -109,7 +154,7 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var result = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.CreateTargetProfile());
+        var result = GalgroupCompiler.Compile(raw, BuiltinEntryModules.CreateRecommendedTargetProfile());
 
         Assert.That(result.Document.Kind, Is.EqualTo(GroupDocumentKind.Compiled));
         Assert.That(result.Document.Entries, Has.Count.EqualTo(1));
@@ -151,7 +196,7 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var plan = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.CreateTargetProfile()).Document.Entries.Single().Arguments.GetProperty("plan");
+        var plan = GalgroupCompiler.Compile(raw, BuiltinEntryModules.CreateRecommendedTargetProfile()).Document.Entries.Single().Arguments.GetProperty("plan");
         var tracks = plan.GetProperty("tracks");
 
         Assert.That(plan.GetProperty("blocking").GetBoolean(), Is.True);
@@ -191,7 +236,7 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var plan = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.CreateTargetProfile()).Document.Entries.Single().Arguments.GetProperty("plan");
+        var plan = GalgroupCompiler.Compile(raw, BuiltinEntryModules.CreateRecommendedTargetProfile()).Document.Entries.Single().Arguments.GetProperty("plan");
         var track = plan.GetProperty("tracks")[0];
         var events = plan.GetProperty("events");
 
@@ -238,7 +283,7 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var result = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.CreateTargetProfile());
+        var result = GalgroupCompiler.Compile(raw, BuiltinEntryModules.CreateRecommendedTargetProfile());
         var plan = result.Document.Entries.Single().Arguments.GetProperty("plan");
         var events = plan.GetProperty("events");
 
@@ -279,7 +324,9 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var plan = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.CreateTargetProfile()).Document.Entries.Single().Arguments.GetProperty("plan");
+        var plan = GalgroupCompiler.Compile(raw, BuiltinEntryModules.CreateRecommendedTargetProfile()).Document.Entries.Single().Arguments.GetProperty("plan");
         Assert.That(plan.GetProperty("events")[0].GetProperty("parameters").GetProperty("color").GetString(), Is.EqualTo(expectedColor));
     }
 }
+
+file sealed class TestEntryModule(string id, IEnumerable<PrimitiveEntryBase> entries) : EntryModuleBase(id, entries);

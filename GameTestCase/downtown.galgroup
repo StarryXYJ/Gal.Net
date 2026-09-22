@@ -1,14 +1,32 @@
 {
-  "version": 1,
+  "version": 2,
   "kind": "Compiled",
   "entries": [
-    { "id": "30000000000000000000000000000001", "type": "animation.play", "parameters": { "plan": { "playbackHandleId": "30000000000000000000000000000002", "frameRate": 60, "durationFrames": 54, "blocking": true, "skippable": true, "batchId": "route-tiled-black-fade", "tracks": [ { "handleId": "30000000000000000000000000000011", "property": "opacity", "keys": [ { "frame": 0, "value": 0, "interpolationToNext": "Linear" }, { "frame": 24, "value": 1, "interpolationToNext": "Linear" }, { "frame": 30, "value": 1, "interpolationToNext": "Linear" }, { "frame": 54, "value": 0 } ] } ], "events": [ { "frame": 0, "type": "layer.showColor", "parameters": { "handleId": "30000000000000000000000000000011", "color": "#000000", "transform": {}, "z": 1000, "opacity": 0 } }, { "frame": 24, "type": "layer.hide", "parameters": { "handleId": "20000000000000000000000000000001" } }, { "frame": 24, "type": "layer.show", "parameters": { "handleId": "30000000000000000000000000000010", "assetId": "a1000000000000000000000000000003", "transform": { "x": 0, "y": 0, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 }, "z": 0, "opacity": 1, "displayMode": "Tile" } }, { "frame": 54, "type": "layer.hide", "parameters": { "handleId": "30000000000000000000000000000011" } } ] } } },
-    { "id": "30000000000000000000000000000003", "type": "layer.hide", "parameters": { "handleId": "20000000000000000000000000000002" } },
-    { "id": "30000000000000000000000000000005", "type": "layer.hide", "parameters": { "handleId": "20000000000000000000000000000004" } },
-    { "id": "30000000000000000000000000000006", "type": "effect.stop", "parameters": { "instanceId": "platform-rain" } },
-    { "id": "30000000000000000000000000000007", "type": "variable.set", "parameters": { "target": "save.route", "expression": "\"downtown\"" } },
-    { "id": "30000000000000000000000000000008", "type": "text", "parameters": { "speaker": "Guide", "content": "<b>Tiled background selected.</b>\\d{220} This route shows <color=#FBBF24>bg.png</color> at its native repeated size." } },
-    { "id": "30000000000000000000000000000009", "type": "audio.stop", "parameters": { "channel": "bgm" } },
-    { "id": "30000000000000000000000000000010", "type": "dialogue.hide", "parameters": {} }
+    {
+      "id": "tiled-background",
+      "typeId": "layer.show",
+      "arguments": {
+        "handleId": "background",
+        "assetId": "bg.png",
+        "transform": { "x": 0, "y": 0, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 },
+        "z": 0,
+        "opacity": 1,
+        "displayMode": "Tile"
+      }
+    },
+    {
+      "id": "tiled-unimplemented-effect",
+      "typeId": "effect.apply",
+      "arguments": { "id": "demo", "instanceId": "route-effect", "targetHandleId": "background", "order": 0, "parameters": {} }
+    },
+    {
+      "id": "tiled-line",
+      "typeId": "dialogue.text",
+      "arguments": {
+        "speaker": "Guide",
+        "content": "The tiled route was selected. The unimplemented effect entry was skipped without stopping the story.",
+        "voice": ""
+      }
+    }
   ]
 }

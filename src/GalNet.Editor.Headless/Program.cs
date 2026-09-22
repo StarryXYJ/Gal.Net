@@ -25,7 +25,7 @@ internal static class Program
             if (args.Length == 0 || args[0] is "help" or "--help" or "-h") { PrintHelp(); return 0; }
             var catalog = new EditorCommandCatalog();
             var fileCatalog = new AssetFileCommandCatalog();
-            var entryCatalog = BuiltinEntryCatalog.CreateTargetProfile();
+            var entryCatalog = BuiltinEntryModules.CreateRecommendedTargetProfile();
             if (args[0].Equals("commands", StringComparison.OrdinalIgnoreCase))
             {
                 WriteJson(catalog.GetAll().Concat(fileCatalog.GetAll()).Select(CommandSummary));

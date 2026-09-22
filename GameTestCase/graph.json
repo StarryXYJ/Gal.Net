@@ -1,25 +1,38 @@
 {
   "version": 1,
-  "name": "Headless Story and Persistence Simulation",
+  "name": "Entry instance runtime smoke test",
   "rootNodeId": "intro",
   "nodes": [
-    { "id": "intro", "type": "Group", "name": "Station Platform" },
+    { "id": "intro", "type": "Group", "name": "Classroom" },
     {
       "id": "route_choice",
       "type": "Branch",
       "name": "Choose a route",
       "branchType": "Choice",
       "options": [
-        { "text": "Show tiled background" },
-        { "text": "Show filled background" }
+        { "text": "Use the tiled background" },
+        { "text": "Use the filled background" }
       ]
     },
-    { "id": "downtown", "type": "Group", "name": "Tiled background" },
-    { "id": "harbor", "type": "Group", "name": "Filled background" }
+    { "id": "downtown", "type": "Group", "name": "Tiled route" },
+    { "id": "harbor", "type": "Group", "name": "Filled route" },
+    {
+      "id": "ending_check",
+      "type": "Branch",
+      "name": "Literal condition",
+      "branchType": "Condition",
+      "conditions": [
+        { "expression": "true" }
+      ]
+    },
+    { "id": "ending", "type": "Group", "name": "Ending" }
   ],
   "edges": [
     { "fromNodeId": "intro", "fromOutlet": 0, "toNodeId": "route_choice" },
     { "fromNodeId": "route_choice", "fromOutlet": 0, "toNodeId": "downtown" },
-    { "fromNodeId": "route_choice", "fromOutlet": 1, "toNodeId": "harbor" }
+    { "fromNodeId": "route_choice", "fromOutlet": 1, "toNodeId": "harbor" },
+    { "fromNodeId": "downtown", "fromOutlet": 0, "toNodeId": "ending_check" },
+    { "fromNodeId": "harbor", "fromOutlet": 0, "toNodeId": "ending_check" },
+    { "fromNodeId": "ending_check", "fromOutlet": 0, "toNodeId": "ending" }
   ]
 }

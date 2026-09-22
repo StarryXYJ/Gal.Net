@@ -18,6 +18,7 @@ using GalNet.Presentation.Abstractions.Runtime;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Logging;
 using GalNet.Runtime.Runtime;
+using GalNet.Primitives.Builtins;
 using GalNet.Sample.Avalonia.Presentation;
 using GalNet.Storage.FileSystem;
 
@@ -273,7 +274,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
                 _gameplay.StatusMessage = "Playing";
             });
             GameLog.Logger.Information("Game engine flow started");
-            await engine.StepAsync(cancellationToken);
+            await engine.AdvanceAsync(cancellationToken);
             await OnUiAsync(() => _gameplay.StatusMessage = "Game flow completed.");
             GameLog.Logger.Information("Game engine flow completed");
         }
@@ -305,6 +306,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
 
     private async Task DisposeEngineAsync()
     {
+        if (_pageView is not null) _pageView.AdvanceRequested -= OnAdvanceRequested;
+        _engine?.Dispose();
         _pageView?.Dispose();
         _pageView = null;
         _layers?.Dispose();
@@ -361,12 +364,25 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _gameplay,
             _layers,
             programs: programs);
-        var gameView = new CompositeGameView([]);
+        var gameView = new CompositeGameView(BuiltinEntryModules.CreateRecommended(_pageView, _pageView));
         var content = await _contentProvider.LoadAsync(cancellationToken);
         var settings = new SettingsContainer();
         settings.Set(_settings);
         var runtime = new GameRuntime(null, content.Graph.RootNodeId, settings, _variables);
-        _engine = new GameEngine(content.Graph, runtime, gameView, _progress);
+        _engine = new GameEngine(content.Graph, runtime, gameView, _progress, _pageView);
+        _pageView.AdvanceRequested += OnAdvanceRequested;
+    }
+
+    private void OnAdvanceRequested()
+    {
+        if (_engine is { } engine)
+            _ = AdvanceEngineAsync(engine);
+    }
+
+    private static async Task AdvanceEngineAsync(GameEngine engine)
+    {
+        try { await engine.AdvanceAsync(); }
+        catch (Exception exception) { GameLog.Logger.Error(exception, "Player advance failed"); }
     }
 
     private async Task RefreshSlotsAsync(CancellationToken cancellationToken)

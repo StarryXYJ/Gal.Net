@@ -11,7 +11,7 @@ public class GraphEditingServiceTests
     [Test]
     public void InsertEntries_Should_Insert_A_Batch_At_Requested_Position_And_Renumber()
     {
-        var service = new GraphEditingService(BuiltinEntryCatalog.CreateTargetProfile());
+        var service = new GraphEditingService(BuiltinEntryModules.CreateRecommendedTargetProfile());
         var node = new GraphNode(new Group { Name = "Group" }, GraphNodeKind.LinearGroup);
         var inserted = service.InsertEntries(node, 0, 3);
 
@@ -24,7 +24,7 @@ public class GraphEditingServiceTests
     [Test]
     public void InsertEntries_Should_Clamp_Index_And_Reject_Invalid_Count()
     {
-        var service = new GraphEditingService(BuiltinEntryCatalog.CreateTargetProfile());
+        var service = new GraphEditingService(BuiltinEntryModules.CreateRecommendedTargetProfile());
         var node = new GraphNode(new Group { Name = "Group" }, GraphNodeKind.LinearGroup);
 
         var appended = service.InsertEntries(node, int.MaxValue, 2);
@@ -48,7 +48,7 @@ public class GraphEditingServiceTests
             }
         };
 
-        var catalog = BuiltinEntryCatalog.CreateTargetProfile();
+        var catalog = BuiltinEntryModules.CreateRecommendedTargetProfile();
         entry.ConfigureParameterFields(catalog, [], ["first", "second"]);
         var target = entry.ParameterFields.OfType<VariableNameEntryParameterEditorItemViewModel>().Single();
 

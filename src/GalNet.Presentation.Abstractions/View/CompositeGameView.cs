@@ -1,121 +1,95 @@
+using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
+using GalNet.Core.Runtime;
 
 namespace GalNet.Core.View;
 
-/// <summary>
-/// Framework-neutral Game Scope facade. Primitive modules are validated and frozen
-/// at construction; runtime routing only performs prefix and command lookup.
-/// </summary>
+/// <summary>Default game-scope mount for primitive entry modules.</summary>
 public sealed class CompositeGameView : IGameView
 {
-    private static readonly PrimitiveDispatch Skipped = new(
-        PrimitiveDispatchStatus.Skipped,
-        new PrimitiveExecutionPolicy(false, false, null),
-        Task.FromResult(PrimitiveResult.Empty));
-
-    private readonly IReadOnlyDictionary<string, IPrimitiveModule> _modules;
-    private readonly IReadOnlyDictionary<string, PrimitiveDescriptor> _descriptors;
+    private readonly IReadOnlyList<IEntryModule> _modules;
+    private readonly IReadOnlyDictionary<string, PrimitiveEntryBase> _entries;
     private bool _disposed;
 
-    /// <summary>Creates a module-only Game Scope.</summary>
-    public CompositeGameView(IEnumerable<IPrimitiveModule> modules)
+    public CompositeGameView(IEnumerable<IEntryModule> modules)
     {
         ArgumentNullException.ThrowIfNull(modules);
-        (_modules, _descriptors) = FreezeModules(modules);
-        Primitives = _descriptors.Values.ToArray();
+        (_modules, _entries) = FreezeModules(modules);
+        Primitives = Array.AsReadOnly(_entries.Values.ToArray());
     }
 
-    public IReadOnlyCollection<PrimitiveDescriptor> Primitives { get; }
+    public IReadOnlyCollection<PrimitiveEntryBase> Primitives { get; }
 
-    public bool TryGetDescriptor(string primitiveType, out PrimitiveDescriptor? descriptor) =>
-        _descriptors.TryGetValue(primitiveType, out descriptor);
+    public bool TryGetEntry(string primitiveType, out PrimitiveEntryBase? entry) =>
+        _entries.TryGetValue(primitiveType, out entry);
 
-    public PrimitiveDispatch Dispatch(
-        PrimitiveInvocation invocation,
-        PrimitiveExecutionControl control,
+    public PrimitiveInstance? Dispatch(
+        PrimitiveEntry entry,
+        IGameRuntime runtime,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(invocation);
-        ArgumentNullException.ThrowIfNull(control);
-        if (_disposed || !TrySplit(invocation.TypeId, out var prefix, out var command) ||
-            !_modules.TryGetValue(prefix, out var module))
-            return Skipped;
+        ArgumentNullException.ThrowIfNull(entry);
+        ArgumentNullException.ThrowIfNull(runtime);
+        ThrowIfDisposed();
+        if (!_entries.TryGetValue(entry.Type, out var definition))
+            return null;
 
-        try
+        var normalizedEntry = new PrimitiveEntry(
+            entry.Type,
+            PrimitiveArgumentHelper.Normalize(definition.Parameters, entry.Arguments),
+            entry.BatchId)
         {
-            return module.Dispatch(command, invocation.Context, invocation.Arguments, control, cancellationToken) ?? Skipped;
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch
-        {
-            return Skipped;
-        }
+            Id = entry.Id,
+            Condition = entry.Condition
+        };
+        var context = new PrimitiveCreateContext(definition, normalizedEntry, runtime, cancellationToken);
+        var instance = definition.CreateInstance(context);
+        if (!string.Equals(instance.BatchId, normalizedEntry.BatchId, StringComparison.Ordinal))
+            throw new InvalidOperationException(
+                $"Primitive '{entry.Type}' created an instance with a different BatchId.");
+
+        instance.Dispatch();
+        return instance;
     }
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
         _disposed = true;
+
         List<Exception>? exceptions = null;
-        foreach (var module in _modules.Values.Reverse())
+        foreach (var module in _modules.Reverse())
         {
             try { module.Dispose(); }
             catch (Exception exception) { (exceptions ??= []).Add(exception); }
         }
-        if (exceptions is { Count: > 0 }) throw new AggregateException(exceptions);
+        if (exceptions is { Count: > 0 })
+            throw new AggregateException(exceptions);
     }
 
-    private static (IReadOnlyDictionary<string, IPrimitiveModule> Modules, IReadOnlyDictionary<string, PrimitiveDescriptor> Descriptors)
-        FreezeModules(IEnumerable<IPrimitiveModule> modules)
+    private void ThrowIfDisposed()
     {
-        var modulesByPrefix = new Dictionary<string, IPrimitiveModule>(StringComparer.Ordinal);
-        var descriptors = new Dictionary<string, PrimitiveDescriptor>(StringComparer.Ordinal);
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(CompositeGameView));
+    }
+
+    private static (IReadOnlyList<IEntryModule> Modules, IReadOnlyDictionary<string, PrimitiveEntryBase> Entries)
+        FreezeModules(IEnumerable<IEntryModule> modules)
+    {
+        var moduleList = new List<IEntryModule>();
+        var moduleIds = new HashSet<string>(StringComparer.Ordinal);
+        var entries = new Dictionary<string, PrimitiveEntryBase>(StringComparer.Ordinal);
         foreach (var module in modules)
         {
             ArgumentNullException.ThrowIfNull(module);
-            ValidatePrefix(module.Prefix);
-            if (!modulesByPrefix.TryAdd(module.Prefix, module))
-                throw new InvalidOperationException($"Primitive module prefix '{module.Prefix}' is already registered.");
-
-            foreach (var descriptor in module.Descriptors ?? throw new InvalidOperationException($"Primitive module '{module.Prefix}' has no descriptor collection."))
-            {
-                ArgumentNullException.ThrowIfNull(descriptor);
-                var command = GetCommand(module.Prefix, descriptor.TypeId);
-                if (string.IsNullOrWhiteSpace(command))
-                    throw new InvalidOperationException($"Primitive '{descriptor.TypeId}' does not belong to module '{module.Prefix}'.");
-                if (!descriptors.TryAdd(descriptor.TypeId, descriptor))
-                    throw new InvalidOperationException($"Primitive '{descriptor.TypeId}' is already registered.");
-            }
+            if (!moduleIds.Add(module.Id))
+                throw new InvalidOperationException($"Entry module '{module.Id}' is already mounted.");
+            moduleList.Add(module);
+            foreach (var entry in module.PrimitiveEntries.Values)
+                if (!entries.TryAdd(entry.Name, entry))
+                    throw new InvalidOperationException($"Primitive entry '{entry.Name}' is already mounted.");
         }
-        return (modulesByPrefix, descriptors);
+        return (moduleList.AsReadOnly(), new System.Collections.ObjectModel.ReadOnlyDictionary<string, PrimitiveEntryBase>(entries));
     }
-
-    private static bool TrySplit(string typeId, out string prefix, out string command)
-    {
-        prefix = "";
-        command = "";
-        if (string.IsNullOrWhiteSpace(typeId)) return false;
-        var separator = typeId.IndexOf('.');
-        if (separator <= 0 || separator == typeId.Length - 1) return false;
-        prefix = typeId[..separator];
-        command = typeId[(separator + 1)..];
-        return true;
-    }
-
-    private static string? GetCommand(string prefix, string typeId)
-    {
-        if (!TrySplit(typeId, out var typePrefix, out var command) || typePrefix != prefix) return null;
-        return command;
-    }
-
-    private static void ValidatePrefix(string prefix)
-    {
-        if (string.IsNullOrWhiteSpace(prefix) || prefix.Contains('.') ||
-            !string.Equals(prefix, prefix.ToLowerInvariant(), StringComparison.Ordinal))
-            throw new ArgumentException("Primitive module prefixes must be non-empty, lowercase, dot-free identifiers.", nameof(prefix));
-    }
-
 }

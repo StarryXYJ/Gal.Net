@@ -1,6 +1,3 @@
-using System.Text.Json;
-using GalNet.Core.Primitives;
-
 namespace GalNet.Core.Entry;
 
 /// <summary>
@@ -11,61 +8,40 @@ public sealed class TargetProfileEntryCatalog : IEntryCatalog
 {
     private readonly IReadOnlyDictionary<string, EntryDefinition> _definitions;
 
-    public TargetProfileEntryCatalog(
-        IEnumerable<PrimitiveDescriptor> primitiveDescriptors,
-        IEnumerable<EntryDefinition>? nonPrimitiveDefinitions = null)
-    {
-        ArgumentNullException.ThrowIfNull(primitiveDescriptors);
-
-        var definitions = new Dictionary<string, EntryDefinition>(StringComparer.Ordinal);
-        foreach (var descriptor in primitiveDescriptors)
-        {
-            ArgumentNullException.ThrowIfNull(descriptor);
-            ValidatePrimitiveDescriptor(descriptor);
-            var definition = CreatePrimitiveDefinition(descriptor);
-            if (!definitions.TryAdd(definition.Type, definition))
-                throw new InvalidOperationException($"Primitive '{definition.Type}' is already present in this target profile.");
-        }
-
-        foreach (var definition in nonPrimitiveDefinitions ?? [])
-        {
-            ArgumentNullException.ThrowIfNull(definition);
-            if (definition.Kind != EntryKind.NonPrimitive)
-                throw new ArgumentException("Target-profile extensions may only contribute non-primitive entries.", nameof(nonPrimitiveDefinitions));
-            if (!definitions.TryAdd(definition.Type, definition))
-                throw new InvalidOperationException($"Entry '{definition.Type}' is already present in this target profile.");
-        }
-
-        _definitions = definitions;
-        Definitions = definitions.Values.ToArray();
-    }
-
     /// <summary>
-    /// Builds authoring schema from the same frozen descriptor tables that a Game
-    /// Scope mounts. The modules are not dispatched or otherwise executed here.
+    /// Builds one target profile from optional authoring-module contributions.
+    /// Runtime mounting remains independent; these tables only organize editor
+    /// selection and compilation schema.
     /// </summary>
-    public static TargetProfileEntryCatalog FromModules(
-        IEnumerable<IPrimitiveModule> modules,
-        IEnumerable<EntryDefinition>? nonPrimitiveDefinitions = null)
+    public TargetProfileEntryCatalog(IEnumerable<IEntryModule> modules)
     {
         ArgumentNullException.ThrowIfNull(modules);
-        var descriptors = new List<PrimitiveDescriptor>();
-        var prefixes = new HashSet<string>(StringComparer.Ordinal);
+
+        var definitions = new Dictionary<string, EntryDefinition>(StringComparer.Ordinal);
+        var moduleIds = new HashSet<string>(StringComparer.Ordinal);
         foreach (var module in modules)
         {
             ArgumentNullException.ThrowIfNull(module);
-            ValidateModulePrefix(module.Prefix);
-            if (!prefixes.Add(module.Prefix))
-                throw new InvalidOperationException($"Primitive module prefix '{module.Prefix}' is already present in this target profile.");
-            foreach (var descriptor in module.Descriptors ?? throw new InvalidOperationException($"Primitive module '{module.Prefix}' has no descriptor collection."))
+            if (!moduleIds.Add(module.Id))
+                throw new InvalidOperationException($"Entry module catalog '{module.Id}' is already present in this target profile.");
+
+            foreach (var entry in module.PrimitiveEntries.Values)
             {
-                ArgumentNullException.ThrowIfNull(descriptor);
-                if (!descriptor.TypeId.StartsWith($"{module.Prefix}.", StringComparison.Ordinal))
-                    throw new InvalidOperationException($"Primitive '{descriptor.TypeId}' does not belong to module '{module.Prefix}'.");
-                descriptors.Add(descriptor);
+                var definition = entry.CreateDefinition();
+                if (!definitions.TryAdd(definition.Type, definition))
+                    throw new InvalidOperationException($"Primitive '{definition.Type}' is already present in this target profile.");
+            }
+
+            foreach (var entry in module.CompositeEntries.Values)
+            {
+                var definition = entry.CreateDefinition();
+                if (!definitions.TryAdd(definition.Type, definition))
+                    throw new InvalidOperationException($"Entry '{definition.Type}' is already present in this target profile.");
             }
         }
-        return new TargetProfileEntryCatalog(descriptors, nonPrimitiveDefinitions);
+
+        _definitions = definitions;
+        Definitions = Array.AsReadOnly(definitions.Values.ToArray());
     }
 
     public IReadOnlyList<EntryDefinition> Definitions { get; }
@@ -91,56 +67,4 @@ public sealed class TargetProfileEntryCatalog : IEntryCatalog
         return entry;
     }
 
-    private static EntryDefinition CreatePrimitiveDefinition(PrimitiveDescriptor descriptor)
-    {
-        var parameters = new Dictionary<string, EntryParameterType>(StringComparer.Ordinal);
-        var defaults = new Dictionary<string, string>(StringComparer.Ordinal);
-        var options = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
-        foreach (var parameter in descriptor.Parameters.Values)
-        {
-            if (!parameters.TryAdd(parameter.Name, ToEntryParameterType(parameter)))
-                throw new ArgumentException($"Primitive '{descriptor.TypeId}' declares parameter '{parameter.Name}' more than once.", nameof(descriptor));
-            if (parameter.DefaultValue is { } defaultValue)
-                defaults.Add(parameter.Name, ToPersistedValue(defaultValue));
-            if (parameter.ValueType == typeof(bool))
-                options.Add(parameter.Name, ["true", "false"]);
-        }
-
-        return new EntryDefinition(
-            descriptor.TypeId,
-            GetCategory(descriptor.TypeId),
-            () => new AuthoringPrimitiveEntry(descriptor.TypeId),
-            parameters,
-            defaults,
-            options,
-            EntryKind.Primitive,
-            descriptor,
-            descriptor.Parameters);
-    }
-
-    private static EntryParameterType ToEntryParameterType(DynamicParameterDescriptor parameter) =>
-        EntrySchema.GetEditorType(parameter);
-
-    private static string ToPersistedValue(JsonElement value) => value.ValueKind == JsonValueKind.String
-        ? value.GetString() ?? ""
-        : value.GetRawText();
-
-    private static string GetCategory(string typeId) => typeId[..typeId.IndexOf('.')];
-
-    private static void ValidatePrimitiveDescriptor(PrimitiveDescriptor descriptor)
-    {
-        var separator = descriptor.TypeId.IndexOf('.');
-        if (string.IsNullOrWhiteSpace(descriptor.TypeId) || separator <= 0 || separator == descriptor.TypeId.Length - 1 ||
-            !string.Equals(descriptor.TypeId[..separator], descriptor.TypeId[..separator].ToLowerInvariant(), StringComparison.Ordinal))
-            throw new ArgumentException("Primitive type IDs must have a lowercase module prefix and a non-empty command.", nameof(descriptor));
-        if (descriptor.Parameters is null)
-            throw new ArgumentException($"Primitive '{descriptor.TypeId}' has no parameter collection.", nameof(descriptor));
-    }
-
-    private static void ValidateModulePrefix(string prefix)
-    {
-        if (string.IsNullOrWhiteSpace(prefix) || prefix.Contains('.') ||
-            !string.Equals(prefix, prefix.ToLowerInvariant(), StringComparison.Ordinal))
-            throw new ArgumentException("Primitive module prefixes must be non-empty, lowercase, dot-free identifiers.", nameof(prefix));
-    }
 }

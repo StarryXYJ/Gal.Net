@@ -1,22 +1,19 @@
-using GalNet.Core.View;
+using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
+using GalNet.Core.Runtime;
+using GalNet.Core.View;
 
 namespace GalNet.Presentation.Defaults;
 
-/// <summary>Framework-neutral no-op game view for tests and headless hosts.</summary>
+/// <summary>A headless view with no mounted primitive capabilities.</summary>
 public class NullGameView : IGameView
 {
-    private static readonly PrimitiveDispatch Skipped = new(
-        PrimitiveDispatchStatus.Skipped,
-        new PrimitiveExecutionPolicy(false, false, null),
-        Task.FromResult(PrimitiveResult.Empty));
-
-    public IReadOnlyCollection<PrimitiveDescriptor> Primitives { get; } = [];
-    public virtual bool TryGetDescriptor(string primitiveType, out PrimitiveDescriptor? descriptor)
+    public IReadOnlyCollection<PrimitiveEntryBase> Primitives => [];
+    public bool TryGetEntry(string primitiveType, out PrimitiveEntryBase? entry)
     {
-        descriptor = null;
+        entry = null;
         return false;
     }
-    public virtual PrimitiveDispatch Dispatch(PrimitiveInvocation invocation, PrimitiveExecutionControl control, CancellationToken cancellationToken) => Skipped;
-
+    public PrimitiveInstance? Dispatch(PrimitiveEntry entry, IGameRuntime runtime, CancellationToken cancellationToken) => null;
+    public virtual void Dispose() { }
 }

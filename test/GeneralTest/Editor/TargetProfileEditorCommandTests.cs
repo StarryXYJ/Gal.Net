@@ -12,7 +12,13 @@ public class TargetProfileEditorCommandTests
     public void EntryCommandsOnlyAcceptTypesFromTheirInjectedProfile()
     {
         var catalog = new TargetProfileEntryCatalog(
-        [new PrimitiveDescriptor("custom.pulse", new DynamicParameterTable([new DynamicParameterDescriptor("count", typeof(int), isRequired: true)]))]);
+        [new DefaultEntryModule("custom",
+        [
+            new DefaultPrimitiveEntryBase(
+                "custom.pulse",
+                new DynamicParameterTable([new DynamicParameterDescriptor("count", typeof(int), isRequired: true)]),
+                static _ => new ImmediatePrimitiveInstance())
+        ])]);
         var handler = new BuiltInEditorCommandHandler(catalog);
         var document = new EditorProjectDocument
         {

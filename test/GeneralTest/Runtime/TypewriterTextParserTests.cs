@@ -37,4 +37,23 @@ public sealed class TypewriterTextParserTests
             Assert.That(tokens[4].Color, Is.EqualTo("#7DD3FC"));
         });
     }
+
+    [Test]
+    public void Skip_boundaries_and_backslash_escaping_are_shared_by_both_parsers()
+    {
+        const string source = "A\\skip<b>B</b>\\\\skip\\skipper";
+
+        var plain = TypewriterTextParser.Parse(source);
+        var rich = RichTypewriterTextParser.Parse(source);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(plain.Count(token => token.Kind == TypewriterTokenKind.SkipBoundary), Is.EqualTo(1));
+            Assert.That(plain.Where(token => token.Kind == TypewriterTokenKind.Text).Select(token => token.Text),
+                Is.EqualTo(new[] { "A", "<b>B</b>\\skip\\skipper" }));
+            Assert.That(rich.Count(token => token.Kind == RichTypewriterTokenKind.SkipBoundary), Is.EqualTo(1));
+            Assert.That(string.Concat(rich.Where(token => token.Kind == RichTypewriterTokenKind.Text).Select(token => token.Text)),
+                Is.EqualTo("AB\\skip\\skipper"));
+        });
+    }
 }

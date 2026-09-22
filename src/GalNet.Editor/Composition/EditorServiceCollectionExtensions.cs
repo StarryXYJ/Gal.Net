@@ -25,7 +25,7 @@ public static class EditorServiceCollectionExtensions
 {
     public static IServiceCollection AddEditorServices(this IServiceCollection services)
     {
-        var targetProfile = BuiltinEntryCatalog.CreateTargetProfile();
+        var targetProfile = BuiltinEntryModules.CreateRecommendedTargetProfile();
         services.AddSingleton<IEntryCatalog>(targetProfile);
         services.AddEditorCoreServices();
         services.AddEditorCommands(targetProfile);

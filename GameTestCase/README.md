@@ -1,47 +1,18 @@
-# Shared game test case
+# Entry instance runtime smoke test
 
-This data-only game is the shared smoke-test fixture for both official sample hosts. Its
-`.galgroup` files are compiled Runtime content; editor source uses the `.rawgalgroup` suffix.
+This data-only game exercises the currently implemented runtime slice:
 
-`bg*` files are used as backgrounds and the `xy*` PNG files as portrait resources. Every runtime-used
-asset and shader has a sibling `.meta`; compiled content references its GUID rather than its path.
-`FLipBook 2x2.png` is a four-frame sprite sheet for validating the `layer.show` `flipbook`
-configuration and animation-driven `flipbook.index` playback.
-The opening scene intentionally also references the non-existent
-`portraits/missing-fallback.png` as one portrait, so the Avalonia fallback rendering
-remains covered. Layer coordinates are design-pixel values (the Avalonia sample hosts
-the game at 1920×1080).
+- `layer.show`, `layer.replace`, `layer.move`, and `layer.hide` through `ILayerPresenter`;
+- blocking `dialogue.text` with typewriter directives and `\skip` boundaries;
+- Engine-owned Choice filtering/index mapping, condition evaluation, and node jumps;
+- safe continuation through registered but not-yet-implemented primitive modules.
 
-Story path: start → station dialogue → choose a tiled or filled background → route dialogue.
-The opening scene contains only one filled background, one normal portrait and one
-intentional missing-resource fallback portrait. It therefore verifies visible occlusion,
-z-order and resource fallback, plus a typewriter wait with
-`\d{...}` delays, `\n`, `<b>`, `<i>`, and `<color>` rich text, choice input, transitions,
-effects, variables and the selected route.
+The `.galgroup` files use the version 2 compiled format (`typeId` plus `arguments`).
+Both routes reuse the existing image assets. Audio, effect, and particle entries are deliberately
+present to demonstrate that their current immediate-completion instances do not block the story.
 
-The three opening layers are submitted before the short black flash starts. This keeps the
-first scene commit atomic from the player's perspective: the background, normal portrait and
-missing-resource fallback are already ready when the opening transition reveals the scene.
+Run directly from the repository root without a PowerShell script:
 
-Before the first choice, the normal portrait runs one blocking, skippable keyframe
-`animation.play` clip. Its parallel tracks cover `Step`, `Linear`, and `CubicHermite`
-interpolation. It then starts a non-blocking looping rotation plus faster additive PingPong position
-and opacity loops on the same portrait; the relative loops are composed over the ordinary rotation
-without replacing it. After five dialogue lines, `animation.stop` with `AfterIteration` lets all
-active loops complete their return to the base pose. The second choice runs a blocking,
-skippable 48-frame blinds Plan: it shows the Filled background through a layer-attached
-Blinds shader Effect, animates that Effect's `progress`, then stops the mask and hides the old
-background. This keeps the shared fixture useful for validating timeline events and generic
-animatable-instance property tracks in both hosts.
-
-The first choice starts a blocking, skippable 54-frame black-field fade: a transient
-pure-black Overlay covers the opening background, swaps to tiled `bg.png` at full black,
-then fades away. The second choice keeps the comparison background in `Fill` mode and
-uses the blinds Plan, then starts the handle-controlled `particle.play` scene emitter with
-`Snow.png`. After two dialogue lines the story stops emission; already spawned flakes drain
-naturally while two final lines play before the game ends.
-
-- Headless: `powershell -File scripts/run-headless-sample.ps1`
-- Avalonia: `powershell -File scripts/run-avalonia-sample.ps1`
-
-Each script writes saves and progress to an ignored directory under `artifacts/sample-profiles`, so running either host does not change the fixture.
+```text
+dotnet run --project src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj -- GameTestCase
+```

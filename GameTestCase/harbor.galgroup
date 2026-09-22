@@ -1,23 +1,32 @@
 {
-  "version": 1,
+  "version": 2,
   "kind": "Compiled",
   "entries": [
-    { "id": "40000000000000000000000000000001", "type": "animation.play", "parameters": { "plan": { "playbackHandleId": "30000000000000000000000000000002", "frameRate": 60, "durationFrames": 48, "blocking": true, "skippable": true, "batchId": "route-filled-background", "tracks": [ { "handleId": "40000000000000000000000000000001:blinds-mask", "property": "progress", "keys": [ { "frame": 0, "value": 0, "interpolationToNext": "Linear" }, { "frame": 48, "value": 1 } ] } ], "events": [ { "frame": 0, "type": "layer.show", "parameters": { "handleId": "40000000000000000000000000000010", "assetId": "a1000000000000000000000000000002", "transform": { "x": 0, "y": 0, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 }, "z": 0, "opacity": 1, "displayMode": "Fill" } }, { "frame": 0, "type": "effect.apply", "parameters": { "program": "a1000000000000000000000000000008", "instanceId": "40000000000000000000000000000001:blinds-mask", "targetHandleId": "40000000000000000000000000000010", "parameters": { "bladeCount": 14, "orientation": "Vertical" } } }, { "frame": 48, "type": "effect.stop", "parameters": { "instanceId": "40000000000000000000000000000001:blinds-mask" } }, { "frame": 48, "type": "layer.hide", "parameters": { "handleId": "20000000000000000000000000000001" } } ] } } },
-    { "id": "40000000000000000000000000000018", "type": "layer.show", "parameters": { "handleId": "flipbook-demo", "assetId": "a1000000000000000000000000000005", "flipbook": { "columns": 2, "rows": 2, "frameCount": 4, "index": 0 }, "transform": { "x": 650, "y": 330, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 }, "z": 30, "opacity": 1, "displayMode": "Native" } },
-    { "id": "40000000000000000000000000000019", "type": "animate", "parameters": { "playbackHandleId": "flipbook-demo-loop", "handleId": "flipbook-demo", "property": "flipbook.index", "from": 0, "to": 4, "duration": 0.5, "curve": "Linear", "blocking": false, "skippable": false, "loopMode": "Loop" } },
-    { "id": "40000000000000000000000000000003", "type": "layer.hide", "parameters": { "handleId": "20000000000000000000000000000002" } },
-    { "id": "40000000000000000000000000000005", "type": "layer.hide", "parameters": { "handleId": "20000000000000000000000000000004" } },
-    { "id": "40000000000000000000000000000006", "type": "effect.stop", "parameters": { "instanceId": "platform-rain" } },
-    { "id": "40000000000000000000000000000011", "type": "particle.play", "parameters": { "instanceId": "harbor-snow", "z": 100, "parameters": { "particleTexture": "a1000000000000000000000000000006", "emissionRate": 42, "maxParticles": 150, "initialVelocityX": -18, "initialVelocityY": 92, "noise": 22, "particleScale": 0.7, "particleLifetime": 2.6, "seed": 410 } } },
-    { "id": "40000000000000000000000000000017", "type": "animate", "parameters": { "playbackHandleId": "harbor-snow-settle", "handleId": "harbor-snow", "property": "emissionRate", "from": 42, "to": 20, "duration": 3, "curve": "EaseInOut", "blocking": false, "skippable": false } },
-    { "id": "40000000000000000000000000000007", "type": "variable.set", "parameters": { "target": "save.route", "expression": "\"harbor\"" } },
-    { "id": "40000000000000000000000000000008", "type": "text", "parameters": { "speaker": "Guide", "content": "<i>Filled background selected.</i>\\d{220} This route keeps the <color=#A7F3D0>Fill</color> display mode." } },
-    { "id": "40000000000000000000000000000012", "type": "text", "parameters": { "speaker": "Guide", "content": "Snow has begun to drift across the harbor lights." } },
-    { "id": "40000000000000000000000000000013", "type": "text", "parameters": { "speaker": "Guide", "content": "Each flake is borrowed from the emitter pool, then returned when its flight ends." } },
-    { "id": "40000000000000000000000000000014", "type": "particle.stop", "parameters": { "instanceId": "harbor-snow" } },
-    { "id": "40000000000000000000000000000015", "type": "text", "parameters": { "speaker": "Guide", "content": "The snowfall has stopped; the last flakes are still settling." } },
-    { "id": "40000000000000000000000000000016", "type": "text", "parameters": { "speaker": "Guide", "content": "And now the platform is quiet again." } },
-    { "id": "40000000000000000000000000000009", "type": "audio.stop", "parameters": { "channel": "bgm" } },
-    { "id": "40000000000000000000000000000010", "type": "dialogue.hide", "parameters": {} }
+    {
+      "id": "filled-background",
+      "typeId": "layer.show",
+      "arguments": {
+        "handleId": "background",
+        "assetId": "bg classroom speech teacher.jpeg",
+        "transform": { "x": 0, "y": 0, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 },
+        "z": 0,
+        "opacity": 1,
+        "displayMode": "Fill"
+      }
+    },
+    {
+      "id": "filled-unimplemented-particle",
+      "typeId": "particle.play",
+      "arguments": { "instanceId": "route-particles", "z": 100, "parameters": { "particleTexture": "Snow.png" } }
+    },
+    {
+      "id": "filled-line",
+      "typeId": "dialogue.text",
+      "arguments": {
+        "speaker": "Guide",
+        "content": "The filled route was selected. Particle presentation is not implemented yet, so the story simply continues.",
+        "voice": ""
+      }
+    }
   ]
 }

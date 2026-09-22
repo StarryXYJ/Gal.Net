@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "kind": "Compiled",
+  "entries": [
+    {
+      "id": "ending-line",
+      "typeId": "dialogue.text",
+      "arguments": {
+        "speaker": "Guide",
+        "content": "The literal condition branch reached the shared ending. Runtime smoke test complete.",
+        "voice": ""
+      }
+    },
+    { "id": "ending-hide-portrait", "typeId": "layer.hide", "arguments": { "handleId": "teacher" } },
+    { "id": "ending-dialogue-hide", "typeId": "dialogue.hide", "arguments": {} }
+  ]
+}

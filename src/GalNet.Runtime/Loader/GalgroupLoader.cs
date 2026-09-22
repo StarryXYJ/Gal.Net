@@ -50,7 +50,7 @@ public static class GalgroupLoader
             if (source.Arguments.ValueKind != JsonValueKind.Object)
                 throw new InvalidDataException($"Entry '{source.Id}' arguments must be a JSON object.");
 
-            entries.Add(new PrimitiveEntry(source.TypeId, source.Arguments)
+            entries.Add(new PrimitiveEntry(source.TypeId, source.Arguments, source.BatchId)
             {
                 Id = index + 1,
                 Condition = source.Condition

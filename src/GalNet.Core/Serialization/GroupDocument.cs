@@ -66,6 +66,10 @@ public sealed class PrimitiveEntryDocument
     [JsonPropertyName("typeId")]
     public string TypeId { get; set; } = "";
 
+    [JsonPropertyName("batchId")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? BatchId { get; set; }
+
     [JsonPropertyName("condition")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public string Condition { get; set; } = "";

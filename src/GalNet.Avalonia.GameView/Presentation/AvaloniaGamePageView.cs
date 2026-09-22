@@ -17,13 +17,12 @@ public interface IGamePageLayerFactory : ISceneTextureResolver
 }
 
 /// <summary>Maps runtime layer, dialogue and interaction ports onto a shared <see cref="GamePage"/>.</summary>
-public sealed class AvaloniaGamePageView : IDisposable
+public sealed class AvaloniaGamePageView : IDisposable, IDialoguePresenter, IChoicePresenter, ILayerPresenter
 {
     private readonly TaskCompletionSource _initialPresentationReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly GamePageViewModel _state;
     private readonly GamePage _page;
     private readonly IGamePageLayerFactory _layers;
-    private bool _isTyping;
     private readonly Lock _animationGate = new();
     private readonly Dictionary<string, ActiveAnimation> _activeAnimations = new(StringComparer.Ordinal);
     private readonly Dictionary<string, ActivePlanTrack> _activePlanTracks = new(StringComparer.Ordinal);
@@ -45,6 +44,7 @@ public sealed class AvaloniaGamePageView : IDisposable
 
     /// <summary>Completes when the first scene has reached its initial interaction boundary.</summary>
     public Task InitialPresentationReady => _initialPresentationReady.Task;
+    public event Action? AdvanceRequested;
 
     public void CompleteInitialPresentation() => _initialPresentationReady.TrySetResult();
 
@@ -69,7 +69,7 @@ public sealed class AvaloniaGamePageView : IDisposable
 
     public void ReplaceLayer(string handleId, string assetId) => OnUi(() => _state.ReplaceLayer(handleId, _layers.ResolveTexture(assetId)));
     public void HideLayer(string handleId) => OnUi(() => _state.HideLayer(handleId));
-    public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSec) => OnUi(() => _state.MoveLayer(handleId, transform, z));
+    public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSeconds) => OnUi(() => _state.MoveLayer(handleId, transform, z));
     public Task StartParticleEmitterAsync(ParticleEmitterRequest request, CancellationToken ct) => OnUiAsync(() =>
     {
         StopParticleEmitter(request.InstanceId);
@@ -260,9 +260,7 @@ public sealed class AvaloniaGamePageView : IDisposable
             _page.Dialogue.Speaker = speaker;
             _page.Dialogue.Text = text;
             _page.Dialogue.CharactersPerSecond = _state.TextSpeed;
-            _isTyping = true;
-            try { await _page.Dialogue.StartAsync(ct); }
-            finally { _isTyping = false; }
+            await _page.Dialogue.StartAsync(ct);
         });
     }
 
@@ -284,16 +282,16 @@ public sealed class AvaloniaGamePageView : IDisposable
 
     private void Advance()
     {
-        if (_isTyping)
-        {
-            _page.Dialogue.Skip();
-            return;
-        }
-
-        if (SkipAnimationBatch()) return;
-
-        _state.CompleteAdvance();
+        AdvanceRequested?.Invoke();
     }
+
+    Task IDialoguePresenter.PresentTextAsync(string speaker, string text, CancellationToken cancellationToken) =>
+        StartTypewriter("default_dialogue", speaker, text, cancellationToken);
+
+    void IDialoguePresenter.SkipText() => SkipTypewriter("default_dialogue");
+
+    Task<int> IChoicePresenter.ChooseAsync(IReadOnlyList<string> options, CancellationToken cancellationToken) =>
+        WaitForChoiceAsync("default_choice", options.ToArray(), cancellationToken);
 
     public void Dispose()
     {
@@ -500,7 +498,7 @@ public sealed class AvaloniaGamePageView : IDisposable
     {
         public AnimationPlanDefinition Plan { get; } = plan;
         public long Sequence { get; } = sequence;
-        public string BatchKey { get; } = plan.BatchId ?? Guid.NewGuid().ToString("N");
+        public string BatchKey { get; } = Guid.NewGuid().ToString("N");
         public List<ActivePlanTrack> Tracks { get; } = [];
         public TaskCompletionSource<AnimationOutcome> Completion { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public void Complete(AnimationOutcome outcome) => Completion.TrySetResult(outcome);

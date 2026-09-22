@@ -4,6 +4,12 @@
     "net10.0": {
       "galnet.core": {
         "type": "Project"
+      },
+      "galnet.presentation.abstractions": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Core": "[1.0.0, )"
+        }
       }
     }
   }

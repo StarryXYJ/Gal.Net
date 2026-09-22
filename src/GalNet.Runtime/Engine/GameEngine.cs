@@ -1,4 +1,3 @@
-using System.Text.Json;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
@@ -11,190 +10,495 @@ using GalNet.Runtime.Runtime;
 
 namespace GalNet.Runtime.Engine;
 
-/// <summary>Drives compiled primitive envelopes through one Game Scope dispatcher.</summary>
-public sealed class GameEngine
+/// <summary>Owns story flow and all active primitive instances for one game run.</summary>
+public sealed class GameEngine : IDisposable
 {
     private readonly Graph _graph;
     private readonly IGameRuntime _runtime;
     private readonly IGameView _view;
-    private readonly OperationManager _operations;
+    private readonly IChoicePresenter? _choicePresenter;
     private readonly IGameProgressService? _progress;
+    private readonly SemaphoreSlim _dispatchGate = new(1, 1);
+    private readonly CancellationTokenSource _scopeCancellation = new();
+    private readonly List<ActivePrimitive> _active = [];
     private GameSnapshot _lastStableSnapshot;
+    private PendingChoice? _pendingChoice;
+    private Exception? _flowError;
+    private string? _executingGroupNodeId;
+    private long _groupExecutionId;
+    private long _nextSequence;
+    private bool _disposed;
 
-    public event Action<GameSnapshot>? CheckpointCreated;
-    public IGameRuntime Runtime => _runtime;
-    public OperationManager Operations => _operations;
-    public GameSnapshot LastStableSnapshot => _lastStableSnapshot;
-    public string CurrentNodeId => _runtime.CurrentNodeId;
-    public int EntryIndex => _runtime.EntryIndex;
-    public bool IsRunning { get; private set; }
+    public GameEngine(
+        Graph graph,
+        IGameView view,
+        ITextResolver? textResolver = null,
+        SettingsContainer? settings = null,
+        IGameProgressService? progress = null,
+        IChoicePresenter? choicePresenter = null)
+        : this(
+            graph,
+            new GameRuntime(textResolver, graph?.RootNodeId ?? "", settings),
+            view,
+            progress,
+            choicePresenter)
+    { }
 
-    public GameEngine(Graph graph, IGameView view, ITextResolver? textResolver = null,
-        SettingsContainer? settings = null, IGameProgressService? progress = null, OperationManager? operations = null)
-        : this(graph, new GameRuntime(textResolver, graph.RootNodeId, settings), view, progress, operations) { }
-
-    public GameEngine(Graph graph, IGameRuntime runtime, IGameView view,
-        IGameProgressService? progress = null, OperationManager? operations = null)
+    public GameEngine(
+        Graph graph,
+        IGameRuntime runtime,
+        IGameView view,
+        IGameProgressService? progress = null,
+        IChoicePresenter? choicePresenter = null)
     {
         _graph = graph ?? throw new ArgumentNullException(nameof(graph));
         _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
         _view = view ?? throw new ArgumentNullException(nameof(view));
         _progress = progress;
-        _operations = operations ?? new OperationManager();
+        _choicePresenter = choicePresenter;
         _lastStableSnapshot = _runtime.CreateSnapshot();
     }
 
-    public async Task<bool> StepAsync(CancellationToken ct = default)
+    public event Action<GameSnapshot>? CheckpointCreated;
+    public IGameRuntime Runtime => _runtime;
+    public GameSnapshot LastStableSnapshot => _lastStableSnapshot;
+    public string CurrentNodeId => _runtime.CurrentNodeId;
+    public int EntryIndex => _runtime.EntryIndex;
+    public bool IsRunning { get; private set; }
+
+    /// <summary>Applies one player advance and runs until the next blocking boundary.</summary>
+    public async Task<bool> AdvanceAsync(CancellationToken cancellationToken = default)
     {
-        IsRunning = true;
-        while (IsRunning)
+        ThrowIfDisposed();
+        await _dispatchGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            ct.ThrowIfCancellationRequested();
-            if (_runtime.IsGameEnded) return IsRunning = false;
-            var node = _graph.Nodes.Find(node => node.Id == _runtime.CurrentNodeId);
-            if (node is null) return IsRunning = false;
-            if (node is Group group) await ProcessGroupAsync(group, ct);
-            else if (node is Branch branch) await ProcessBranchAsync(branch, ct);
+            ThrowFlowError();
+            IsRunning = !_runtime.IsGameEnded;
+            RemoveCompleted();
+            UpdateLastStableSnapshot();
+
+            if (_pendingChoice is not null || !IsRunning)
+                return IsRunning;
+
+            var blocker = EarliestBlocker();
+            if (blocker is not null)
+            {
+                foreach (var candidate in SkipCandidates(blocker).ToArray())
+                    candidate.Instance.Skip();
+
+                RemoveCompleted();
+                UpdateLastStableSnapshot();
+                if (HasBlockingInstance())
+                    return true;
+            }
+
+            ContinueUntilBlocked();
+            ThrowFlowError();
+            return IsRunning;
         }
-        return false;
+        finally
+        {
+            _dispatchGate.Release();
+        }
     }
 
-    public Task<bool> SkipNextBatchAsync() => _operations.SkipNextBatchAsync();
+    public GameSnapshot CreateSaveData() => _lastStableSnapshot;
 
-    private async Task ProcessGroupAsync(Group group, CancellationToken ct)
+    public void RestoreFrom(GameSnapshot data)
     {
-        while (_runtime.EntryIndex < group.Entries.Count)
+        ArgumentNullException.ThrowIfNull(data);
+        ThrowIfDisposed();
+        _dispatchGate.Wait();
+        try
         {
-            ct.ThrowIfCancellationRequested();
+            CancelPendingChoice();
+            ClearActive();
+            _runtime.RestoreFrom(data);
+            _lastStableSnapshot = data;
+            _executingGroupNodeId = null;
+            _flowError = null;
+            IsRunning = true;
+        }
+        finally
+        {
+            _dispatchGate.Release();
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+        _disposed = true;
+        _scopeCancellation.Cancel();
+        _dispatchGate.Wait();
+        try
+        {
+            CancelPendingChoice();
+            ClearActive();
+            IsRunning = false;
+        }
+        finally
+        {
+            _dispatchGate.Release();
+            _scopeCancellation.Dispose();
+        }
+    }
+
+    private void ContinueUntilBlocked()
+    {
+        while (IsRunning && _pendingChoice is null && !HasBlockingInstance())
+        {
+            _scopeCancellation.Token.ThrowIfCancellationRequested();
+            if (_runtime.IsGameEnded)
+            {
+                IsRunning = false;
+                break;
+            }
+
+            var node = _graph.Nodes.Find(candidate => candidate.Id == _runtime.CurrentNodeId);
+            if (node is null)
+            {
+                IsRunning = false;
+                break;
+            }
+
+            switch (node)
+            {
+                case Group group:
+                    ProcessGroup(group);
+                    break;
+                case Branch { BranchType: BranchType.Choice } choice:
+                    ProcessChoice(choice);
+                    break;
+                case Branch branch:
+                    ProcessConditionBranch(branch);
+                    UpdateLastStableSnapshot();
+                    break;
+                default:
+                    IsRunning = false;
+                    break;
+            }
+        }
+    }
+
+    private void ProcessGroup(Group group)
+    {
+        BeginGroupExecution(group);
+        while (_runtime.EntryIndex < group.Entries.Count && !HasBlockingInstance())
+        {
             var entry = group.Entries[_runtime.EntryIndex];
+            PrimitiveInstance? instance = null;
             if (_runtime.EvaluateCondition(entry.Condition) && entry is PrimitiveEntry primitive)
-                await DispatchAsync(primitive, PrimitiveInvocationOrigin.GroupEntry, entry.Id.ToString(), true, ct);
+                instance = Dispatch(group, primitive);
             else if (entry is not PrimitiveEntry)
-                GameLog.Logger.Warning("Runtime ignored non-primitive entry '{EntryType}'.", entry.Type);
+                GameLog.Logger.Warning("Runtime ignored composite entry '{EntryType}'.", entry.Type);
 
             _runtime.SetEntryIndex(_runtime.EntryIndex + 1);
+            if (instance is not null)
+                Track(instance);
+            RemoveCompleted();
             UpdateLastStableSnapshot();
         }
+
+        if (_runtime.EntryIndex < group.Entries.Count || HasBlockingInstance())
+            return;
+
         _runtime.SetEntryIndex(0);
+        _executingGroupNodeId = null;
         MoveToNext();
+        RemoveCompleted();
         UpdateLastStableSnapshot();
     }
 
-    private async Task DispatchAsync(PrimitiveEntry entry, PrimitiveInvocationOrigin origin, string sourceId, bool allowCheckpoint, CancellationToken ct)
+    private PrimitiveInstance? Dispatch(Group group, PrimitiveEntry entry)
     {
         if (!entry.IsGeneric)
         {
             GameLog.Logger.Warning("Runtime ignored non-generic primitive '{EntryType}'.", entry.Type);
-            return;
-        }
-        if (!_view.TryGetDescriptor(entry.Type, out var descriptor))
-        {
-            GameLog.Logger.Warning("Primitive '{PrimitiveType}' is not registered.", entry.Type);
-            return;
-        }
-        if (allowCheckpoint && origin == PrimitiveInvocationOrigin.GroupEntry && descriptor!.CreatesCheckpoint && IsStable())
-        {
-            if (entry.Type == "dialogue.text") _progress?.MarkRead(_runtime.CurrentNodeId, sourceId);
-            CheckpointCreated?.Invoke(_lastStableSnapshot);
+            return null;
         }
 
-        var control = new PrimitiveExecutionControl();
-        var invocation = new PrimitiveInvocation(entry.Type,
-            new PrimitiveContext { Runtime = _runtime, Origin = origin, SourceId = sourceId }, entry.Arguments);
-        var dispatch = _view.Dispatch(invocation, control, ct);
-        var operation = _operations.Track(entry.Type, dispatch, control);
-        if (dispatch.Status == PrimitiveDispatchStatus.Skipped) return;
-        if (!dispatch.Policy.Blocking)
-        {
-            _ = ObserveAndCheckpointAsync(entry.Type, dispatch.Completion);
-            return;
-        }
-        await ObserveAsync(entry.Type, dispatch.Completion, ct);
-        UpdateLastStableSnapshot();
-    }
-
-    private async Task ObserveAsync(string typeId, Task<PrimitiveResult> completion, CancellationToken? scopeCancellation = null)
-    {
+        PrimitiveInstance? instance;
         try
         {
-            var result = await completion.ConfigureAwait(false);
-            if (result.Status == PrimitiveResultStatus.Failed)
-                GameLog.Logger.Error("Primitive '{PrimitiveType}' reported an expected failure.", typeId);
+            instance = _view.Dispatch(entry, _runtime, _scopeCancellation.Token);
         }
-        catch (OperationCanceledException) when (scopeCancellation?.IsCancellationRequested == true)
+        catch (OperationCanceledException) when (_scopeCancellation.IsCancellationRequested)
         {
             throw;
         }
         catch (Exception exception)
         {
-            GameLog.Logger.Error(exception, "Primitive '{PrimitiveType}' failed and execution continued.", typeId);
+            GameLog.Logger.Error(exception, "Primitive '{PrimitiveType}' failed to dispatch and execution continued.", entry.Type);
+            return null;
         }
+
+        if (instance is null)
+        {
+            GameLog.Logger.Warning("Primitive '{PrimitiveType}' is not registered.", entry.Type);
+            return null;
+        }
+
+        if (entry.Type == "dialogue.text")
+            _progress?.MarkRead(group.Id, entry.Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        return instance;
     }
 
-    private async Task ObserveAndCheckpointAsync(string typeId, Task<PrimitiveResult> completion)
+    private void Track(PrimitiveInstance instance)
     {
-        await ObserveAsync(typeId, completion).ConfigureAwait(false);
-        UpdateLastStableSnapshot();
-    }
-
-    private async Task ProcessBranchAsync(Branch branch, CancellationToken ct)
-    {
-        if (branch.BranchType != BranchType.Choice) { ProcessConditionBranch(branch); return; }
-        var visible = branch.Options.Select((option, index) => (option, index)).Where(item => _runtime.EvaluateCondition(item.option.Condition)).ToArray();
-        if (visible.Length == 0) { MoveToNext(); return; }
-        var arguments = JsonSerializer.SerializeToElement(new { widgetId = "default_choice", options = visible.Select(item => _runtime.TextResolver.Resolve(item.option.Text)).ToArray() });
-        var choice = new PrimitiveEntry("interaction.choice", arguments);
-        if (_view.TryGetDescriptor(choice.Type, out var descriptor) && descriptor!.CreatesCheckpoint && IsStable())
-            CheckpointCreated?.Invoke(_lastStableSnapshot);
-        var control = new PrimitiveExecutionControl();
-        var dispatch = _view.Dispatch(new PrimitiveInvocation(choice.Type, new PrimitiveContext { Runtime = _runtime, Origin = PrimitiveInvocationOrigin.Internal }, choice.Arguments), control, ct);
-        _operations.Track(choice.Type, dispatch, control);
-        var result = PrimitiveResult.Empty;
-        if (dispatch.Status == PrimitiveDispatchStatus.Accepted)
-        {
-            try
-            {
-                result = await dispatch.Completion.ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception exception)
-            {
-                GameLog.Logger.Error(exception, "Choice primitive failed and execution continued.");
-            }
-        }
-        if (result.Status == PrimitiveResultStatus.Failed)
-            GameLog.Logger.Error("Choice primitive reported an expected failure.");
-        if (result.Status == PrimitiveResultStatus.Succeeded && result.Value is { } value && value.TryGetInt32(out var selected) && selected >= 0 && selected < visible.Length)
-        {
-            var edge = _graph.Edges.Find(edge => edge.FromNodeId == branch.Id && edge.FromOutlet == visible[selected].index);
-            if (edge is not null) _runtime.JumpTo(edge.ToNodeId);
-        }
-        UpdateLastStableSnapshot();
+        var active = new ActivePrimitive(_groupExecutionId, ++_nextSequence, instance);
+        _active.Add(active);
+        if (instance.IsBlocking && !instance.IsCompleted)
+            instance.Completed += OnBlockingCompleted;
     }
 
     private void ProcessConditionBranch(Branch branch)
     {
         for (var index = 0; index < branch.Conditions.Count; index++)
-            if (_runtime.EvaluateCondition(branch.Conditions[index].Expression))
-            {
-                var edge = _graph.Edges.Find(edge => edge.FromNodeId == branch.Id && edge.FromOutlet == index);
-                if (edge is not null) _runtime.JumpTo(edge.ToNodeId);
-                return;
-            }
+        {
+            if (!_runtime.EvaluateCondition(branch.Conditions[index].Expression))
+                continue;
+            JumpFrom(branch.Id, index);
+            return;
+        }
         MoveToNext();
     }
 
-    private bool IsStable() => _operations.ActiveOperations.Count == 0;
-    private void UpdateLastStableSnapshot() { if (IsStable()) _lastStableSnapshot = _runtime.CreateSnapshot(); }
-    private void MoveToNext()
+    private void ProcessChoice(Branch branch)
     {
-        var edge = _graph.Edges.Find(edge => edge.FromNodeId == _runtime.CurrentNodeId && edge.FromOutlet == 0);
-        if (edge is null) IsRunning = false;
-        else _runtime.JumpTo(edge.ToNodeId);
+        var visible = branch.Options
+            .Select((option, outlet) => new VisibleChoice(
+                outlet,
+                _runtime.TextResolver.Resolve(option.Text),
+                option.Condition))
+            .Where(option => _runtime.EvaluateCondition(option.Condition))
+            .ToArray();
+        if (visible.Length == 0)
+        {
+            MoveToNext();
+            UpdateLastStableSnapshot();
+            return;
+        }
+        if (_choicePresenter is null)
+            throw new InvalidOperationException("A choice presenter is required to execute a Choice branch.");
+
+        var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_scopeCancellation.Token);
+        var pending = new PendingChoice(branch.Id, visible, cancellation);
+        _pendingChoice = pending;
+
+        Task<int> selection;
+        try
+        {
+            selection = _choicePresenter.ChooseAsync(
+                visible.Select(option => option.Text).ToArray(),
+                cancellation.Token);
+        }
+        catch
+        {
+            _pendingChoice = null;
+            cancellation.Dispose();
+            throw;
+        }
+        _ = CompleteChoiceAsync(pending, selection);
     }
-    public GameSnapshot CreateSaveData() => _lastStableSnapshot;
-    public void RestoreFrom(GameSnapshot data) { _runtime.RestoreFrom(data); _lastStableSnapshot = data; IsRunning = true; }
+
+    private async Task CompleteChoiceAsync(PendingChoice pending, Task<int> selection)
+    {
+        int selected;
+        try
+        {
+            selected = await selection.ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (pending.Cancellation.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception)
+        {
+            await RecordFlowErrorAsync(pending, exception).ConfigureAwait(false);
+            return;
+        }
+
+        await _dispatchGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (!ReferenceEquals(_pendingChoice, pending) || _disposed)
+                return;
+            _pendingChoice = null;
+            pending.Cancellation.Dispose();
+            if (selected < 0 || selected >= pending.Options.Count)
+            {
+                _flowError = new InvalidOperationException(
+                    $"Choice presenter returned invalid visible index {selected}.");
+                IsRunning = false;
+                return;
+            }
+
+            JumpFrom(pending.BranchId, pending.Options[selected].Outlet);
+            UpdateLastStableSnapshot();
+            ContinueUntilBlocked();
+        }
+        catch (Exception exception)
+        {
+            _flowError = exception;
+            IsRunning = false;
+        }
+        finally
+        {
+            _dispatchGate.Release();
+        }
+    }
+
+    private async Task RecordFlowErrorAsync(PendingChoice pending, Exception exception)
+    {
+        await _dispatchGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (!ReferenceEquals(_pendingChoice, pending) || _disposed)
+                return;
+            _pendingChoice = null;
+            pending.Cancellation.Dispose();
+            _flowError = exception;
+            IsRunning = false;
+        }
+        finally
+        {
+            _dispatchGate.Release();
+        }
+    }
+
+    private void OnBlockingCompleted(PrimitiveInstance instance) =>
+        _ = ContinueAfterBlockingCompletionAsync(instance);
+
+    private async Task ContinueAfterBlockingCompletionAsync(PrimitiveInstance instance)
+    {
+        await _dispatchGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (_disposed || !_active.Any(item => ReferenceEquals(item.Instance, instance)))
+                return;
+            RemoveCompleted();
+            UpdateLastStableSnapshot();
+            if (_pendingChoice is null && !HasBlockingInstance())
+                ContinueUntilBlocked();
+        }
+        catch (OperationCanceledException) when (_scopeCancellation.IsCancellationRequested)
+        { }
+        catch (Exception exception)
+        {
+            _flowError = exception;
+            IsRunning = false;
+        }
+        finally
+        {
+            _dispatchGate.Release();
+        }
+    }
+
+    private IEnumerable<ActivePrimitive> SkipCandidates(ActivePrimitive blocker)
+    {
+        if (blocker.Instance.BatchId is null)
+        {
+            if (!blocker.Instance.IsCompleted && blocker.Instance.IsSkippable)
+                yield return blocker;
+            yield break;
+        }
+
+        foreach (var item in _active.OrderBy(item => item.Sequence))
+            if (item.GroupExecutionId == blocker.GroupExecutionId &&
+                string.Equals(item.Instance.BatchId, blocker.Instance.BatchId, StringComparison.Ordinal) &&
+                !item.Instance.IsCompleted && item.Instance.IsSkippable)
+                yield return item;
+    }
+
+    private ActivePrimitive? EarliestBlocker() => _active
+        .Where(item => item.Instance.IsBlocking && !item.Instance.IsCompleted)
+        .OrderBy(item => item.Sequence)
+        .FirstOrDefault();
+
+    private bool HasBlockingInstance() => _active.Any(item =>
+        item.Instance.IsBlocking && !item.Instance.IsCompleted);
+
+    private void RemoveCompleted()
+    {
+        for (var index = _active.Count - 1; index >= 0; index--)
+        {
+            var item = _active[index];
+            if (!item.Instance.IsCompleted)
+                continue;
+            item.Instance.Completed -= OnBlockingCompleted;
+            _active.RemoveAt(index);
+        }
+    }
+
+    private void ClearActive()
+    {
+        foreach (var item in _active)
+            item.Instance.Completed -= OnBlockingCompleted;
+        _active.Clear();
+    }
+
+    private void BeginGroupExecution(Group group)
+    {
+        if (string.Equals(_executingGroupNodeId, group.Id, StringComparison.Ordinal))
+            return;
+        _executingGroupNodeId = group.Id;
+        _groupExecutionId++;
+    }
+
+    private void JumpFrom(string nodeId, int outlet)
+    {
+        var edge = _graph.Edges.Find(candidate =>
+            candidate.FromNodeId == nodeId && candidate.FromOutlet == outlet);
+        if (edge is null)
+            IsRunning = false;
+        else
+            _runtime.JumpTo(edge.ToNodeId);
+    }
+
+    private void MoveToNext() => JumpFrom(_runtime.CurrentNodeId, 0);
+
+    private void UpdateLastStableSnapshot()
+    {
+        if (HasBlockingInstance() || _pendingChoice is not null)
+            return;
+        _lastStableSnapshot = _runtime.CreateSnapshot();
+        CheckpointCreated?.Invoke(_lastStableSnapshot);
+    }
+
+    private void CancelPendingChoice()
+    {
+        var pending = _pendingChoice;
+        _pendingChoice = null;
+        if (pending is null)
+            return;
+        pending.Cancellation.Cancel();
+        pending.Cancellation.Dispose();
+    }
+
+    private void ThrowFlowError()
+    {
+        if (_flowError is { } exception)
+            throw new InvalidOperationException("The game flow failed.", exception);
+    }
+
+    private void ThrowIfDisposed()
+    {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(GameEngine));
+    }
+
+    private sealed record ActivePrimitive(
+        long GroupExecutionId,
+        long Sequence,
+        PrimitiveInstance Instance);
+
+    private sealed record VisibleChoice(int Outlet, string Text, string Condition);
+
+    private sealed record PendingChoice(
+        string BranchId,
+        IReadOnlyList<VisibleChoice> Options,
+        CancellationTokenSource Cancellation);
 }

@@ -16,7 +16,7 @@ public sealed class PlayAnimationPlanEntry : PrimitiveEntry
 {
     public const string TypeId = "animation.play";
     public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("plan", EntryParameterType.Json));
+    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("plan", EntryParameterType.Json), ("batchId", EntryParameterType.Text));
 }
 
 public sealed class StopAnimationEntry : PrimitiveEntry

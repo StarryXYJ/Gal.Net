@@ -25,8 +25,6 @@ public sealed class AnimationPlanDefinition
     public int DurationFrames { get; set; }
     public bool Blocking { get; set; }
     public bool Skippable { get; set; }
-    /// <summary>Optional authoring batch identity used by the presentation's batch-skip behavior.</summary>
-    public string? BatchId { get; set; }
     /// <summary>Whether the whole timeline plays once or is restarted after its final frame.</summary>
     public AnimationLoopMode LoopMode { get; set; }
     /// <summary>Property tracks sampled in parallel during playback.</summary>

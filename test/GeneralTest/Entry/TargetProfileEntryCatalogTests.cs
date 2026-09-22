@@ -9,16 +9,14 @@ namespace GeneralTest.Entry;
 public class TargetProfileEntryCatalogTests
 {
     [Test]
-    public void ProfileExposesOnlyItsOwnPrimitiveDescriptors()
+    public void ProfileExposesOnlyItsOwnPrimitiveEntries()
     {
-        var descriptor = new PrimitiveDescriptor(
-            "custom.pulse",
-            new DynamicParameterTable(
-            [
-                new DynamicParameterDescriptor("count", typeof(int), isRequired: true),
-                new DynamicParameterDescriptor("enabled", typeof(bool), defaultValue: JsonSerializer.SerializeToElement(true))
-            ]));
-        var catalog = new TargetProfileEntryCatalog([descriptor]);
+        var parameters = new DynamicParameterTable(
+        [
+            new DynamicParameterDescriptor("count", typeof(int), isRequired: true),
+            new DynamicParameterDescriptor("enabled", typeof(bool), defaultValue: JsonSerializer.SerializeToElement(true))
+        ]);
+        var catalog = new TargetProfileEntryCatalog([new TestEntryModule("custom", [Primitive("custom.pulse", parameters)])]);
 
         Assert.That(catalog.TryGet("custom.pulse", out var definition), Is.True);
         Assert.That(definition.Kind, Is.EqualTo(EntryKind.Primitive));
@@ -33,9 +31,9 @@ public class TargetProfileEntryCatalogTests
     {
         var catalog = new TargetProfileEntryCatalog(
         [
-            new PrimitiveDescriptor(
-                "custom.pulse",
-                new DynamicParameterTable([new DynamicParameterDescriptor("payload", typeof(JsonElement), isRequired: true)]))
+            new TestEntryModule("custom",
+            [Primitive("custom.pulse", new DynamicParameterTable(
+                [new DynamicParameterDescriptor("payload", typeof(JsonElement), isRequired: true)]))])
         ]);
         var document = new GroupDocument
         {
@@ -73,7 +71,8 @@ public class TargetProfileEntryCatalogTests
     public void CompilerRejectsMissingRequiredPrimitiveParameter()
     {
         var catalog = new TargetProfileEntryCatalog(
-        [new PrimitiveDescriptor("custom.pulse", new DynamicParameterTable([new DynamicParameterDescriptor("count", typeof(int), isRequired: true)]))]);
+        [new TestEntryModule("custom", [Primitive("custom.pulse", new DynamicParameterTable(
+            [new DynamicParameterDescriptor("count", typeof(int), isRequired: true)]))])]);
         var document = new GroupDocument
         {
             Kind = GroupDocumentKind.Raw,
@@ -84,24 +83,9 @@ public class TargetProfileEntryCatalogTests
             Throws.TypeOf<InvalidDataException>().With.Message.Contains("requires parameter 'count'"));
     }
 
-    [Test]
-    public void ProfileCanReadTheSameDescriptorsMountedByModules()
-    {
-        using var module = new DescriptorOnlyModule("custom", new PrimitiveDescriptor("custom.pulse", DynamicParameterTable.Empty));
+    private static PrimitiveEntryBase Primitive(string type, DynamicParameterTable parameters) =>
+        new DefaultPrimitiveEntryBase(type, parameters, static _ => new ImmediatePrimitiveInstance());
 
-        var catalog = TargetProfileEntryCatalog.FromModules([module]);
-
-        Assert.That(catalog.TryGet("custom.pulse", out _), Is.True);
-    }
-
-    private sealed class DescriptorOnlyModule(string prefix, params PrimitiveDescriptor[] descriptors) : IPrimitiveModule
-    {
-        public string Prefix { get; } = prefix;
-        public IReadOnlyCollection<PrimitiveDescriptor> Descriptors { get; } = descriptors;
-
-        public PrimitiveDispatch Dispatch(string command, PrimitiveContext context, JsonElement arguments, PrimitiveExecutionControl control, CancellationToken cancellationToken) =>
-            new(PrimitiveDispatchStatus.Skipped, new PrimitiveExecutionPolicy(false, false, null), Task.FromResult(PrimitiveResult.Empty));
-
-        public void Dispose() { }
-    }
+    private sealed class TestEntryModule(string id, IEnumerable<PrimitiveEntryBase> entries)
+        : EntryModuleBase(id, entries);
 }

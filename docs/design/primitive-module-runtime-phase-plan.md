@@ -37,7 +37,7 @@ flowchart LR
 
 **涉及模块：** `GalNet.Core`、`GalNet.Runtime`、`GalNet.Presentation.Abstractions`、`GalNet.Editor.Shared`、`GalNet.Editor`、`GeneralTest`。
 
-**已完成：** `DynamicParameterTable` / `DynamicParameterDescriptor` 以只读 ordinal 表保存 `Type ValueType`、required、JSON 默认值和 constraints，替代 primitive 专属参数 schema；内容只保存 JSON 值。`TargetProfileEntryCatalog` 从 descriptor 生成作者/编译目录，编辑器、Headless、命令、保存和预览均经注入的 `IEntryCatalog` 使用它。空 profile、自定义 profile 与无默认内置条目的新项目都有效；编辑器新增条目只从当前 profile 选择类型。推荐 Builtins 留在外层并改为点分隔 ID（如 `dialogue.text`、`animation.animate`、`flow.wait`、`gallery.unlock`），不构成 Runtime 旁路。Core 保留仅供 NonPrimitive 展开的 `EntryRegistry`，不再拥有具体 primitive schema。具体 Layer/Effect 内容的 GUID 字段及字符串句柄删除仍属于 Phase 2。
+**已完成：** `DynamicParameterTable` / `DynamicParameterDescriptor` 以只读 ordinal 表保存 `Type ValueType`、required、JSON 默认值和 constraints，替代 primitive 专属参数 schema；内容只保存 JSON 值。模块类通过 `EntryModuleBase` 的 `IEntryModule` facet 自行持有冻结的 `PrimitiveEntries` 与 `NonPrimitiveEntries`；后者只供编辑器/编译器使用且可为空。`PrimitiveModuleBase` 同时是 Runtime/authoring 契约，游戏初始化挂载的模块实例可直接生成同一 target profile，避免独立 catalog 复制 schema；纯 authoring module 仍允许存在，不形成强制 Runtime 能力。编辑器、Headless、命令、保存和预览均经注入的 `IEntryCatalog` 使用选中的模块实例。空 profile、自定义 profile 与无默认内置条目的新项目都有效；编辑器新增条目只从当前 profile 选择类型。推荐 Builtins 只提供可选模块类及点分隔 ID（如 `dialogue.text`、`animation.animate`、`flow.wait`、`gallery.unlock`）；transition expansion 已与 `BuiltinAnimationModule` 一同移至 Builtins，Core 只保留通用 NonPrimitive 编译机制。具体 Layer/Effect 内容的 GUID 字段及字符串句柄删除仍属于 Phase 2。
 
 **验证：**
 
@@ -47,7 +47,7 @@ flowchart LR
 
 **文档：** 已更新 `docs/spec/entry-types.md`、文件格式说明与本设计稿；资源类型动态化保持在 Phase 6，不提前写入 assets spec。
 
-**风险：** `EntryRegistry` 目前同时服务编译、加载、编辑器命令和测试；本 Phase 只能替换其“具体原语”职责，不应误删非原语编译能力。
+**风险：** 组合根必须从同一组已选择模块实例同时建立 target profile 与 Runtime 挂载；authoring-only module 只能贡献编辑/编译条目，不能被误当作 Runtime dispatch 实现。缺失 Runtime 模块仍走动态诊断与跳过。
 
 **退出条件：** 已满足：新内容可由指定 target profile 的 descriptor 编译、加载和校验；冻结 schema 以 `typeof` 表达运行时类型、以 JSON 保存值且不序列化 CLR 类型；空 profile 和自定义 profile 可用；`IGameView` 是纯动态分发入口；Core 不含具体 primitive Handler、schema、Handler factory Catalog 或隐式推荐能力；推荐 Builtins/抽象模块不形成引擎旁路。
 
@@ -154,7 +154,7 @@ flowchart LR
 
 **工作项：**
 
-1. 迁移 `animation.animate/play/stop`、时间轴事件与播放 Handle；时间轴事件始终走 `IGameView.Dispatch + OperationManager`。
+1. 将 `animation.animate/play/stop` 实现为可选推荐 builtin module：Runtime 调度、timeline、播放 Handle、参数和 Policy 可以共享；可动画对象的属性语义、呈现、缓存和平台线程调度仍留在平台模块或推荐抽象基类。时间轴事件始终走 `IGameView.Dispatch + OperationManager`，不在 Core 引入强制 `IAnimatableHandle`。
 2. 迁移 particle、audio、video 和其余控制类原语为模块；需要可寻址生命周期的对象改用 GUID Handle。
 3. 模块化时删除 Avalonia 页面中遗留的活动动画表和 `SkipAnimationBatch`；宿主只执行单次调用、响应该调用的 `SkipRequested`，不再决定剧情推进或批次。
 4. 为循环、不可跳过和非阻塞 Operation 明确 Handler 强制 Policy；所有影响持久化状态的异步结束后才允许后续稳定快照。

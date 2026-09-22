@@ -27,6 +27,8 @@ public sealed class TypewriterTextBlock : TextBlock
     private bool _isRunning;
     private bool _isCompleted = true;
     private bool _skipRequested;
+    private bool _instantMode;
+    private readonly object _skipGate = new();
 
     static TypewriterTextBlock()
     {
@@ -74,6 +76,7 @@ public sealed class TypewriterTextBlock : TextBlock
         _completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _skipSignal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _skipRequested = false;
+        _instantMode = false;
         IsRunning = true;
         IsCompleted = false;
         Text = null;
@@ -82,11 +85,14 @@ public sealed class TypewriterTextBlock : TextBlock
         return _completion.Task;
     }
 
-    /// <summary>Reveals the remaining text immediately without treating it as cancellation.</summary>
+    /// <summary>Reveals through the next skip boundary, or through the text end if no boundary remains.</summary>
     public void Skip()
     {
-        _skipRequested = true;
-        _skipSignal?.TrySetResult();
+        lock (_skipGate)
+        {
+            _skipRequested = true;
+            _skipSignal?.TrySetResult();
+        }
     }
 
     private void Restart() => _ = StartAsync();
@@ -129,8 +135,20 @@ public sealed class TypewriterTextBlock : TextBlock
                         await DelayOrSkipAsync(TimeSpan.FromMilliseconds(token.DelayMilliseconds), cancellationToken, skipSignal);
                         break;
                     case RichTypewriterTokenKind.Instant:
-                        _skipRequested = true;
-                        skipSignal.TrySetResult();
+                        lock (_skipGate)
+                        {
+                            _instantMode = true;
+                            _skipSignal?.TrySetResult();
+                        }
+                        break;
+                    case RichTypewriterTokenKind.SkipBoundary:
+                        lock (_skipGate)
+                        {
+                            if (!_skipRequested || _instantMode)
+                                break;
+                            _skipRequested = false;
+                            _skipSignal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                        }
                         break;
                 }
             }
@@ -154,10 +172,15 @@ public sealed class TypewriterTextBlock : TextBlock
 
     private async Task DelayOrSkipAsync(TimeSpan duration, CancellationToken cancellationToken, TaskCompletionSource skipSignal)
     {
-        if (_skipRequested || CharactersPerSecond <= 0 || duration <= TimeSpan.Zero)
-            return;
+        Task signal;
+        lock (_skipGate)
+        {
+            if (_skipRequested || _instantMode || CharactersPerSecond <= 0 || duration <= TimeSpan.Zero)
+                return;
+            signal = (_skipSignal ?? skipSignal).Task;
+        }
 
-        await Task.WhenAny(Task.Delay(duration, cancellationToken), skipSignal.Task);
+        await Task.WhenAny(Task.Delay(duration, cancellationToken), signal);
         cancellationToken.ThrowIfCancellationRequested();
     }
 }

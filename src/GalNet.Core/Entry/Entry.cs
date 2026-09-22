@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Collections.ObjectModel;
 using GalNet.Core.Primitives;
 
 namespace GalNet.Core.Entry;
@@ -27,7 +28,7 @@ public class PrimitiveEntry : Entry
     private readonly string? _typeId;
 
     /// <summary>Creates a generic compiled primitive entry.</summary>
-    public PrimitiveEntry(string typeId, JsonElement arguments)
+    public PrimitiveEntry(string typeId, JsonElement arguments, string? batchId = null)
     {
         if (string.IsNullOrWhiteSpace(typeId))
             throw new ArgumentException("Primitive type ID is required.", nameof(typeId));
@@ -36,6 +37,7 @@ public class PrimitiveEntry : Entry
 
         _typeId = typeId;
         Arguments = arguments.Clone();
+        BatchId = NormalizeBatchId(batchId);
     }
 
     /// <summary>Creates a derived authoring primitive entry.</summary>
@@ -46,6 +48,9 @@ public class PrimitiveEntry : Entry
 
     /// <summary>Unparsed JSON arguments preserved from compiled content.</summary>
     public JsonElement Arguments { get; private set; }
+
+    /// <summary>Optional skip-batch identity scoped to one execution of the containing group.</summary>
+    public string? BatchId { get; set; }
 
     /// <summary>Whether this is the generic Runtime form rather than an authoring subtype.</summary>
     public bool IsGeneric => _typeId is not null;
@@ -60,6 +65,9 @@ public class PrimitiveEntry : Entry
             throw new ArgumentException("Primitive arguments must be a JSON object.", nameof(arguments));
         Arguments = arguments.Clone();
     }
+
+    internal static string? NormalizeBatchId(string? batchId) =>
+        string.IsNullOrWhiteSpace(batchId) ? null : batchId;
 }
 
 /// <summary>
@@ -80,8 +88,8 @@ public sealed class AuthoringPrimitiveEntry : PrimitiveEntry
     public override string Type => _typeId;
 }
 
-/// <summary>An editor-facing entry that must be expanded into Runtime primitives before execution.</summary>
-public abstract class NonPrimitiveEntry : Entry
+/// <summary>An editor-facing composite entry expanded into Runtime primitives before execution.</summary>
+public abstract class CompositeEntry : Entry
 {
     /// <summary>Builds the ordered Runtime primitives represented by this entry.</summary>
     public abstract IReadOnlyList<PrimitiveEntry> Compile(EntryCompileContext context);
@@ -121,16 +129,50 @@ public enum EntryParameterType
 
 /// <summary>Schema used to create, validate, and edit one registered entry type.</summary>
 /// <remarks>Defaults are copied into each new entry; options constrain editor choices but are not persisted separately.</remarks>
-public sealed record EntryDefinition(
-    string Type,
-    string Category,
-    Func<Entry> Factory,
-    IReadOnlyDictionary<string, EntryParameterType> Parameters,
-    IReadOnlyDictionary<string, string> Defaults,
-    IReadOnlyDictionary<string, IReadOnlyList<string>> Options,
-    EntryKind Kind,
-    PrimitiveDescriptor? Descriptor = null,
-    DynamicParameterTable? DynamicParameters = null);
+public sealed class EntryDefinition
+{
+    public EntryDefinition(
+        string type,
+        string category,
+        Func<Entry> factory,
+        IReadOnlyDictionary<string, EntryParameterType> parameters,
+        IReadOnlyDictionary<string, string> defaults,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> options,
+        EntryKind kind,
+        DynamicParameterTable? dynamicParameters = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(type);
+        ArgumentException.ThrowIfNullOrWhiteSpace(category);
+        ArgumentNullException.ThrowIfNull(factory);
+        ArgumentNullException.ThrowIfNull(parameters);
+        ArgumentNullException.ThrowIfNull(defaults);
+        ArgumentNullException.ThrowIfNull(options);
+
+        Type = type;
+        Category = category;
+        Factory = factory;
+        Parameters = Freeze(parameters);
+        Defaults = Freeze(defaults);
+        Options = new ReadOnlyDictionary<string, IReadOnlyList<string>>(options.ToDictionary(
+            pair => pair.Key,
+            pair => (IReadOnlyList<string>)Array.AsReadOnly(pair.Value.ToArray()),
+            StringComparer.Ordinal));
+        Kind = kind;
+        DynamicParameters = dynamicParameters;
+    }
+
+    public string Type { get; }
+    public string Category { get; }
+    public Func<Entry> Factory { get; }
+    public IReadOnlyDictionary<string, EntryParameterType> Parameters { get; }
+    public IReadOnlyDictionary<string, string> Defaults { get; }
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> Options { get; }
+    public EntryKind Kind { get; }
+    public DynamicParameterTable? DynamicParameters { get; }
+
+    private static IReadOnlyDictionary<TKey, TValue> Freeze<TKey, TValue>(IReadOnlyDictionary<TKey, TValue> values)
+        where TKey : notnull => new ReadOnlyDictionary<TKey, TValue>(values.ToDictionary(pair => pair.Key, pair => pair.Value));
+}
 
 /// <summary>
 /// Composition-supplied authoring catalog. It joins primitive descriptors from a
@@ -148,5 +190,5 @@ public interface IEntryCatalog
 public enum EntryKind
 {
     Primitive,
-    NonPrimitive
+    Composite
 }

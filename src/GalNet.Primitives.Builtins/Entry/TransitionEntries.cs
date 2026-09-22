@@ -1,9 +1,10 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using GalNet.Core.Entry;
 using GalNet.Core.Scene;
 
-namespace GalNet.Core.Entry;
+namespace GalNet.Primitives.Builtins;
 
 internal static class TransitionEntrySupport
 {
@@ -47,7 +48,7 @@ internal static class TransitionEntrySupport
         catch (JsonException exception) { throw new InvalidDataException($"Transition '{entry.Type}' has invalid transform '{name}'.", exception); }
         catch (InvalidDataException) { throw new InvalidDataException($"Transition '{entry.Type}' requires positive scale values in '{name}'."); }
     }
-    public static PrimitiveEntry PlanEntry(EntryCompileContext context, AnimationPlanDefinition plan)
+    public static PrimitiveEntry PlanEntry(EntryCompileContext context, AnimationPlanDefinition plan, string? batchId)
     {
         return new PrimitiveEntry(
             "animation.play",
@@ -56,14 +57,15 @@ internal static class TransitionEntrySupport
                 ["plan"] = JsonSerializer.SerializeToElement(plan, PlanJsonOptions)
             }))
         {
-            Condition = context.Condition
+            Condition = context.Condition,
+            BatchId = batchId
         };
     }
     public static string? NullIfWhiteSpace(string value) => string.IsNullOrWhiteSpace(value) ? null : value;
 }
 
 /// <summary>Non-primitive cross-fade that compiles into one keyframe animation plan.</summary>
-public sealed class CrossFadeTransitionEntry : NonPrimitiveEntry
+public sealed class CrossFadeTransitionEntry : CompositeEntry
 {
     public const string TypeId = "transition.crossFade";
     public override string Type => TypeId;
@@ -81,11 +83,11 @@ public sealed class CrossFadeTransitionEntry : NonPrimitiveEntry
         var plan = new AnimationPlanDefinition
         {
             PlaybackHandleId = playback, FrameRate = TransitionEntrySupport.PositiveInt(this, "frameRate"), DurationFrames = frames,
-            Blocking = true, Skippable = true, BatchId = TransitionEntrySupport.NullIfWhiteSpace(TransitionEntrySupport.Get(this, "batchId", "")),
+            Blocking = true, Skippable = true,
             Tracks = [OpacityTrack(oldHandle, 1, 0, frames), OpacityTrack(newHandle, 0, 1, frames)],
             Events = [ShowLayer(newHandle, asset, TransitionEntrySupport.Json(this, "transform", "{}"), TransitionEntrySupport.Float(this, "z"), 0, TransitionEntrySupport.DisplayMode(this, "displayMode", "Fill")), HideLayer(oldHandle, frames)]
         };
-        return [TransitionEntrySupport.PlanEntry(context, plan)];
+        return [TransitionEntrySupport.PlanEntry(context, plan, TransitionEntrySupport.NullIfWhiteSpace(TransitionEntrySupport.Get(this, "batchId", "")))];
     }
 
     internal static AnimationTrackDefinition OpacityTrack(string handle, float from, float to, int frames) => new()
@@ -106,7 +108,7 @@ public sealed class CrossFadeTransitionEntry : NonPrimitiveEntry
 }
 
 /// <summary>Slides in the replacement layer and moves the outgoing layer by the same distance.</summary>
-public sealed class SlideTransitionEntry : NonPrimitiveEntry
+public sealed class SlideTransitionEntry : CompositeEntry
 {
     private enum Direction { Left, Right, Up, Down }
 
@@ -133,11 +135,11 @@ public sealed class SlideTransitionEntry : NonPrimitiveEntry
         var plan = new AnimationPlanDefinition
         {
             PlaybackHandleId = playback, FrameRate = TransitionEntrySupport.PositiveInt(this, "frameRate"), DurationFrames = frames,
-            Blocking = true, Skippable = true, BatchId = TransitionEntrySupport.NullIfWhiteSpace(TransitionEntrySupport.Get(this, "batchId", "")),
+            Blocking = true, Skippable = true,
             Tracks = [Track(oldHandle, property, 0, -incomingX - incomingY, frames, AnimationBlendMode.Additive), Track(newHandle, property, incomingX != 0 ? initial.X : initial.Y, incomingX != 0 ? destination.X : destination.Y, frames, AnimationBlendMode.Replace)],
             Events = [CrossFadeTransitionEntry.ShowLayer(newHandle, TransitionEntrySupport.Require(this, "toAssetId"), JsonSerializer.SerializeToElement(initial, TransitionEntrySupport.PlanJsonOptions), TransitionEntrySupport.Float(this, "toZ"), 1, TransitionEntrySupport.DisplayMode(this, "toDisplayMode", "Fill")), CrossFadeTransitionEntry.HideLayer(oldHandle, frames)]
         };
-        return [TransitionEntrySupport.PlanEntry(context, plan)];
+        return [TransitionEntrySupport.PlanEntry(context, plan, TransitionEntrySupport.NullIfWhiteSpace(TransitionEntrySupport.Get(this, "batchId", "")))];
     }
 
     private static AnimationTrackDefinition Track(string handle, string property, float from, float to, int frames, AnimationBlendMode blendMode) => new()
@@ -151,7 +153,7 @@ public sealed class SlideTransitionEntry : NonPrimitiveEntry
 /// Reveals the incoming layer through a layer-attached blinds mask. The mask is a
 /// normal animatable Effect instance, so the generated plan has no renderer-specific tracks.
 /// </summary>
-public sealed class BlindsTransitionEntry : NonPrimitiveEntry
+public sealed class BlindsTransitionEntry : CompositeEntry
 {
     public const string TypeId = "transition.blinds";
     public override string Type => TypeId;
@@ -179,7 +181,6 @@ public sealed class BlindsTransitionEntry : NonPrimitiveEntry
             DurationFrames = frames,
             Blocking = true,
             Skippable = true,
-            BatchId = TransitionEntrySupport.NullIfWhiteSpace(TransitionEntrySupport.Get(this, "batchId", "")),
             Tracks = [new AnimationTrackDefinition
             {
                 HandleId = mask,
@@ -194,7 +195,7 @@ public sealed class BlindsTransitionEntry : NonPrimitiveEntry
                 CrossFadeTransitionEntry.HideLayer(oldHandle, frames)
             ]
         };
-        return [TransitionEntrySupport.PlanEntry(context, plan)];
+        return [TransitionEntrySupport.PlanEntry(context, plan, TransitionEntrySupport.NullIfWhiteSpace(TransitionEntrySupport.Get(this, "batchId", "")))];
     }
 
     private static AnimationPlanEventDefinition ApplyMask(string instanceId, string targetHandleId, string program, JsonElement parameters) => new()
@@ -222,7 +223,7 @@ public sealed class BlindsTransitionEntry : NonPrimitiveEntry
 }
 
 /// <summary>Base for color-field transitions that cover one outgoing Layer while replacing it with an incoming Layer.</summary>
-public abstract class ColorFieldTransitionEntryBase : NonPrimitiveEntry
+public abstract class ColorFieldTransitionEntryBase : CompositeEntry
 {
     private const int TimelineFrameRate = 60;
     protected static IReadOnlyDictionary<string, EntryParameterType> BaseParameterTypes { get; } = EntrySchema.Parameters(("playbackHandleId", EntryParameterType.Text), ("fromLayerHandleId", EntryParameterType.Text), ("toLayerHandleId", EntryParameterType.Text), ("toAssetId", EntryParameterType.ImageAsset), ("toTransform", EntryParameterType.Json), ("toZ", EntryParameterType.Float), ("toDisplayMode", EntryParameterType.Select), ("overlayZ", EntryParameterType.Float), ("fadeInDuration", EntryParameterType.Float), ("holdDuration", EntryParameterType.Float), ("fadeOutDuration", EntryParameterType.Float), ("batchId", EntryParameterType.Text));
@@ -243,11 +244,11 @@ public abstract class ColorFieldTransitionEntryBase : NonPrimitiveEntry
         var plan = new AnimationPlanDefinition
         {
             PlaybackHandleId = TransitionEntrySupport.Require(this, "playbackHandleId"), FrameRate = TimelineFrameRate, DurationFrames = duration,
-            Blocking = true, Skippable = true, BatchId = TransitionEntrySupport.NullIfWhiteSpace(TransitionEntrySupport.Get(this, "batchId", "")),
+            Blocking = true, Skippable = true,
             Tracks = [new AnimationTrackDefinition { HandleId = overlay, Property = "opacity", Keys = keys }],
             Events = [ShowColor(overlay), CrossFadeTransitionEntry.HideLayer(oldHandle, swapFrame), ShowAt(newHandle, swapFrame), CrossFadeTransitionEntry.HideLayer(overlay, duration)]
         };
-        return [TransitionEntrySupport.PlanEntry(context, plan)];
+        return [TransitionEntrySupport.PlanEntry(context, plan, TransitionEntrySupport.NullIfWhiteSpace(TransitionEntrySupport.Get(this, "batchId", "")))];
     }
 
     private AnimationPlanEventDefinition ShowColor(string handle) => new() { Frame = 0, Type = "layer.showColor", Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal) { ["handleId"] = JsonSerializer.SerializeToElement(handle), ["color"] = JsonSerializer.SerializeToElement(OverlayColor), ["transform"] = JsonSerializer.SerializeToElement(new { }), ["z"] = JsonSerializer.SerializeToElement(TransitionEntrySupport.Float(this, "overlayZ")), ["opacity"] = JsonSerializer.SerializeToElement(0f) } };

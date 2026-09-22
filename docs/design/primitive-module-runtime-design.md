@@ -356,7 +356,7 @@ public async Task<bool> SkipNextBatchAsync()
 
 ## 11. 编译层边界
 
-非原语指令继续保留在 Core 的编译层：
+非原语的通用编译机制保留在 Core；具体 authoring 条目由 target profile 的可选模块贡献：
 
 ```text
 .rawgalgroup
@@ -369,9 +369,11 @@ public async Task<bool> SkipNextBatchAsync()
 
 `transition.*` 等非原语仍可维护自己的参数、编辑语义和展开逻辑，但不能注册 Runtime Handler，也不能绕过编译器进入 Runtime。动画计划中的嵌套事件同样必须在编译/加载阶段验证为原语。
 
-具体原语不再由 Core 的静态 `EntryRegistry` 实现或注册。模块注册同时贡献 Handler Descriptor 和延迟创建 Handler 的工厂；Descriptor 目录由注册记录直接构建，不要求编辑器/编译器实例化平台 Handler。编辑器/编译器只读取该目录以生成表单、校验 JSON 并产出通用原语信封；Game Scope 用同一注册记录创建 Handler。这样新增原语只需新增模块注册，不需要修改 Core，也不存在两份原语 schema。
+每个模块类自行持有两张各自冻结的 entry 表，并实现可选的 `IEntryModule`：`PrimitiveEntries` 是 Runtime capability 的 schema 表；`NonPrimitiveEntries` 是仅供编辑器和编译器创建、展开 authoring 指令的表。两者可以独立为空。`PrimitiveModuleBase` 同时实现 `IPrimitiveModule` 与 `IEntryModule`，因此游戏初始化时挂载到 `CompositeGameView` 的具体模块实例可被同一组合根直接交给 `TargetProfileEntryCatalog`；profile 与 Runtime 不再从独立 catalog 复制 schema。`EntryModuleBase` 也允许纯 authoring 模块存在，以保留非原语不必具备 Runtime 行为的动态性。
 
-非原语仍有独立的作者指令目录和编译器，但其产物只是携带 `TypeId + JSON Arguments` 的通用 PrimitiveEntry。编译成功不保证当前宿主加载了全部模块；运行时未注册原语仍按安全跳过处理。
+具体原语不再由 Core 的静态目录实现或注册。模块注册同时贡献 Handler Descriptor 和延迟创建 Handler 的工厂；Descriptor 目录由注册记录直接构建，不要求编辑器/编译器实例化平台 Handler。编辑器/编译器只读取该目录以生成表单、校验 JSON 并产出通用原语信封；Game Scope 用同一注册记录创建 Handler。这样新增原语只需新增模块注册，不需要修改 Core，也不存在两份原语 schema。
+
+非原语仍有独立的作者指令目录和编译器，但其产物只是携带 `TypeId + JSON Arguments` 的通用 PrimitiveEntry。推荐 `BuiltinAnimationModule` 将 `transition.*` expansion 放在自身非原语表中；它不是 Runtime animation dispatch 的一部分，也不是其他模块必须仿效的规则。编译成功不保证当前宿主已挂载全部对应 Runtime 模块；运行时未注册原语仍按安全跳过处理。
 
 现有原语中 `text`、`wait`、`animate`、`unlock_gallery` 没有点分隔前缀，无法进入统一两层路由。目标命名应统一为类似：
 

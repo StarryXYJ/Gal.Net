@@ -2,6 +2,7 @@ using GalNet.Core.Settings;
 using GalNet.Core.View;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Runtime;
+using GalNet.Primitives.Builtins;
 using GalNet.Sample.Headless;
 using GalNet.Storage.FileSystem;
 
@@ -22,10 +23,11 @@ try
     var variables = await FileVariableService.CreateAsync(new FilePlayerVariableStore(options.ProfileDirectory));
     var progress = new FileGameProgressService(options.ProfileDirectory);
 
-    IGameView view = new CompositeGameView([]);
+    var presentation = new ConsolePresentation(settings.Get<GameSettings>());
+    using IGameView view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(presentation, presentation));
 
     var runtime = new GameRuntime(null, content.Graph.RootNodeId, settings, variables);
-    var engine = new GameEngine(content.Graph, runtime, view, progress);
+    using var engine = new GameEngine(content.Graph, runtime, view, progress, presentation);
 
     if (options.LoadSlot is { } loadSlot)
     {
@@ -38,11 +40,28 @@ try
     Task latestCheckpointSave = Task.CompletedTask;
     if (options.SaveSlot is { } saveSlot)
     {
-        if (saveSlot >= saves.MaxSlots) throw new ArgumentOutOfRangeException(nameof(options.SaveSlot), $"Slot must be below {saves.MaxSlots}.");
+        if (saveSlot >= saves.MaxSlots) throw new InvalidDataException($"Save slot must be below {saves.MaxSlots}.");
         engine.CheckpointCreated += snapshot => latestCheckpointSave = saves.SaveAsync(saveSlot, snapshot);
     }
 
-    await engine.StepAsync();
+    var advanceFailure = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
+    Task latestAdvance = Task.CompletedTask;
+    presentation.AdvanceRequested += () => latestAdvance = AdvanceAsync();
+
+    async Task AdvanceAsync()
+    {
+        try { await engine.AdvanceAsync(); }
+        catch (Exception exception) { advanceFailure.TrySetResult(exception); }
+    }
+
+    await engine.AdvanceAsync();
+    while (engine.IsRunning)
+    {
+        var completed = await Task.WhenAny(Task.Delay(25), advanceFailure.Task);
+        if (completed == advanceFailure.Task)
+            throw await advanceFailure.Task;
+    }
+    await latestAdvance;
     await latestCheckpointSave;
 
     if (options.SaveSlot is { } finalSaveSlot)

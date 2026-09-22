@@ -14,6 +14,8 @@
 
 `GalNet.Primitives.Builtins` 目前提供可选的推荐 authoring descriptors；编辑器的默认组合根显式选择该 profile。它不是 Runtime 的内建能力，也不代表宿主已经实现对应命令。实际执行时，宿主必须挂载拥有相同 descriptor 的模块；否则该调用按动态分发规则跳过并产生诊断。
 
+每个 module 类通过 `IEntryModule` 自己持有独立且只读的 `PrimitiveEntries` 表与 `NonPrimitiveEntries` 表。前者描述 Runtime primitive schema，后者只服务编辑器/编译器的 authoring 展开；两表没有必须一一对应的关系。`PrimitiveModuleBase` 同时是 Runtime 和 authoring 基类，因此组合根可把同一已挂载模块实例传给 `CompositeGameView` 与 `TargetProfileEntryCatalog`；纯 authoring module 也可以只参与后者。这只是方便组织和编译的推荐结构，开发者仍可定义任意动态语义。
+
 推荐 primitive ID 为：
 
 ```text
@@ -31,6 +33,6 @@ flow.wait, variable.set, gallery.unlock
 
 ## NonPrimitive 条目
 
-NonPrimitive 仅存在于 `.rawgalgroup`，并在编译时展开为通用 `PrimitiveEntry` 序列；`.galgroup` 只包含 primitive envelope。当前 Core 仍提供可选的 `transition.crossFade`、`transition.slide`、`transition.blinds`、`transition.fadeBlack`、`transition.fadeWhite` 和 `transition.fadeColor` authoring expansion。它们不是 Runtime Handler，也不绕过 target profile：展开后的每一个 primitive 都必须在所选 profile 中存在。
+NonPrimitive 仅存在于 `.rawgalgroup`，并在编译时展开为通用 `PrimitiveEntry` 序列；`.galgroup` 只包含 primitive envelope。推荐 Builtins 在 animation catalog 的非原语表中提供 `transition.crossFade`、`transition.slide`、`transition.blinds`、`transition.fadeBlack`、`transition.fadeWhite` 和 `transition.fadeColor`；它们不是 Runtime Handler，也不绕过 target profile：展开后的每一个 primitive 都必须在所选 profile 中存在。
 
 详情见[文件格式](file-formats.md)和[原语模块化运行时设计](../design/primitive-module-runtime-design.md)。

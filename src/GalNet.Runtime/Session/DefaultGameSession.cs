@@ -36,7 +36,7 @@ public sealed class DefaultGameSession : IGameSession
 
                 try
                 {
-                    await engine.StepAsync(ct);
+                    await engine.AdvanceAsync(ct);
                     Console.WriteLine("Info: Game ended normally.");
                 }
                 catch (OperationCanceledException)

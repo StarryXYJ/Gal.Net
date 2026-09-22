@@ -1,7 +1,7 @@
 namespace GalNet.Core.Text;
 
-/// <summary>Portable dialogue markup parser. Hosts may render styles or ignore them.</summary>
-public enum RichTypewriterTokenKind { Text, LineBreak, Delay, Instant }
+/// <summary>Portable rich-dialogue tokens. Hosts may render styles or ignore them.</summary>
+public enum RichTypewriterTokenKind { Text, LineBreak, Delay, Instant, SkipBoundary }
 
 public readonly record struct RichTypewriterToken(
     RichTypewriterTokenKind Kind,
@@ -12,8 +12,8 @@ public readonly record struct RichTypewriterToken(
     int DelayMilliseconds = 0);
 
 /// <summary>
-/// Parses typewriter directives plus the lightweight dialogue tags <c>b</c>, <c>i</c>,
-/// <c>color</c>, <c>span color</c>, and <c>br</c>. Unknown tags remain literal text.
+/// Parses portable typewriter directives plus lightweight dialogue tags. Unknown
+/// tags and unknown backslash directives remain literal text.
 /// </summary>
 public static class RichTypewriterTextParser
 {
@@ -36,59 +36,32 @@ public static class RichTypewriterTextParser
 
         for (var index = 0; index < source.Length; index++)
         {
-            if (source[index] == '\\' && index + 1 < source.Length)
+            if (TypewriterDirectiveReader.TryRead(source, index, out var directive))
             {
-                if (source[index + 1] == 'n')
+                switch (directive.Kind)
                 {
-                    FlushText();
-                    result.Add(new(RichTypewriterTokenKind.LineBreak));
-                    index++;
-                    continue;
-                }
-
-                if (source[index + 1] == 'd')
-                {
-                    if (index + 2 < source.Length && source[index + 2] == '-')
-                    {
+                    case TypewriterDirectiveKind.EscapedBackslash:
+                        text.Append('\\');
+                        break;
+                    case TypewriterDirectiveKind.LineBreak:
+                        FlushText();
+                        result.Add(new(RichTypewriterTokenKind.LineBreak));
+                        break;
+                    case TypewriterDirectiveKind.Delay:
+                        FlushText();
+                        result.Add(new(RichTypewriterTokenKind.Delay, DelayMilliseconds: directive.DelayMilliseconds));
+                        break;
+                    case TypewriterDirectiveKind.Instant:
                         FlushText();
                         result.Add(new(RichTypewriterTokenKind.Instant));
-                        index += 2;
-                        continue;
-                    }
-
-                    var end = index + 2;
-                    var delayText = string.Empty;
-                    if (end < source.Length && source[end] == '{')
-                    {
-                        var close = source.IndexOf('}', end + 1);
-                        if (close < 0)
-                        {
-                            text.Append(source[index]);
-                            continue;
-                        }
-                        delayText = source[(end + 1)..close];
-                        end = close + 1;
-                    }
-                    else
-                    {
-                        var digitsStart = end;
-                        while (end < source.Length && char.IsDigit(source[end])) end++;
-                        if (digitsStart == end)
-                        {
-                            text.Append(source[index]);
-                            continue;
-                        }
-                        delayText = source[digitsStart..end];
-                    }
-
-                    if (int.TryParse(delayText, out var milliseconds) && milliseconds >= 0)
-                    {
+                        break;
+                    case TypewriterDirectiveKind.SkipBoundary:
                         FlushText();
-                        result.Add(new(RichTypewriterTokenKind.Delay, DelayMilliseconds: milliseconds));
-                        index = end - 1;
-                        continue;
-                    }
+                        result.Add(new(RichTypewriterTokenKind.SkipBoundary));
+                        break;
                 }
+                index += directive.Length - 1;
+                continue;
             }
 
             if (source[index] == '<' && TryReadTag(source, index, out var length, out var tag, out var tagColor))

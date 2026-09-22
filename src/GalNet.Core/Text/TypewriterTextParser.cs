@@ -1,6 +1,6 @@
 namespace GalNet.Core.Text;
 
-public enum TypewriterTokenKind { Text, Delay, Instant }
+public enum TypewriterTokenKind { Text, Delay, Instant, SkipBoundary }
 
 public readonly record struct TypewriterToken(TypewriterTokenKind Kind, string Text, int DelayMilliseconds = 0);
 
@@ -22,64 +22,37 @@ public static class TypewriterTextParser
 
         for (var index = 0; index < source.Length; index++)
         {
-            if (source[index] != '\\' || index + 1 >= source.Length)
+            if (!TypewriterDirectiveReader.TryRead(source, index, out var directive))
             {
                 text.Append(source[index]);
                 continue;
             }
 
-            if (source[index + 1] == 'n')
+            switch (directive.Kind)
             {
-                text.Append('\n');
-                index++;
-                continue;
+                case TypewriterDirectiveKind.EscapedBackslash:
+                    text.Append('\\');
+                    break;
+                case TypewriterDirectiveKind.LineBreak:
+                    text.Append('\n');
+                    break;
+                case TypewriterDirectiveKind.Delay:
+                    FlushText();
+                    tokens.Add(new(TypewriterTokenKind.Delay, string.Empty, directive.DelayMilliseconds));
+                    break;
+                case TypewriterDirectiveKind.Instant:
+                    FlushText();
+                    tokens.Add(new(TypewriterTokenKind.Instant, string.Empty));
+                    break;
+                case TypewriterDirectiveKind.SkipBoundary:
+                    FlushText();
+                    tokens.Add(new(TypewriterTokenKind.SkipBoundary, string.Empty));
+                    break;
             }
-
-            if (source[index + 1] != 'd')
-            {
-                text.Append(source[index]);
-                continue;
-            }
-
-            if (index + 2 < source.Length && source[index + 2] == '-')
-            {
-                FlushText();
-                tokens.Add(new(TypewriterTokenKind.Instant, string.Empty));
-                index += 2;
-                continue;
-            }
-
-            var end = index + 2;
-            var body = string.Empty;
-            if (end < source.Length && source[end] == '{')
-            {
-                var close = source.IndexOf('}', end + 1);
-                if (close < 0) { text.Append(source[index]); continue; }
-                body = source[(end + 1)..close];
-                end = close + 1;
-            }
-            else
-            {
-                var digitsStart = end;
-                while (end < source.Length && char.IsDigit(source[end])) end++;
-                if (digitsStart == end) { text.Append(source[index]); continue; }
-                body = source[digitsStart..end];
-            }
-
-            var milliseconds = 0;
-            if (!int.TryParse(body, out milliseconds) || milliseconds < 0)
-            {
-                text.Append(source[index]);
-                continue;
-            }
-
-            FlushText();
-            tokens.Add(new(TypewriterTokenKind.Delay, string.Empty, milliseconds));
-            index = end - 1;
+            index += directive.Length - 1;
         }
 
         FlushText();
         return tokens;
     }
-
 }

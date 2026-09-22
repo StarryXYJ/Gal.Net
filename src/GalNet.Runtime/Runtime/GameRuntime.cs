@@ -10,7 +10,7 @@ namespace GalNet.Runtime.Runtime;
 
 /// <summary>
 /// 游戏运行时状态 —— 统一管理游戏的位置、变量、场景状态、调用栈。
-/// Primitive module 通过 PrimitiveContext.Runtime 访问此实例。
+/// Primitive module 通过 PrimitiveCreateContext.Runtime 访问此实例。
 /// </summary>
 public sealed class GameRuntime : IGameRuntime
 {
