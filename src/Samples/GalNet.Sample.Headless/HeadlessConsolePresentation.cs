@@ -6,16 +6,7 @@ using GalNet.Core.Scene;
 namespace GalNet.Sample.Headless;
 
 /// <summary>Basic interactive console adapters used by the official sample player.</summary>
-internal sealed class ConsolePresentation :
-    ILayerView,
-    IAnimationView,
-    IControlView,
-    IAudioView,
-    IVideoView,
-    IEffectView,
-    IParticleEmitterView,
-    ITypewriterView,
-    IInteractionView
+internal sealed class ConsolePresentation
 {
     private readonly GameSettings _settings;
     private TaskCompletionSource _typewriterFinished = CompletedSource();

@@ -1,11 +1,10 @@
 using GalNet.Avalonia.GameView.ViewModels;
 using Avalonia.Threading;
-using GalNet.Core.View;
 
 namespace GalNet.Sample.Avalonia.Presentation;
 
 /// <summary>Sample-specific audio/video service. Replace this in a real client to select another backend.</summary>
-internal sealed class SampleMediaViews(GamePageViewModel page) : IAudioView, IVideoView, IDisposable
+internal sealed class SampleMediaViews(GamePageViewModel page) : IDisposable
 {
     public void PlayAudio(string channel, string assetId, float volume, string mode, int times)
     {

@@ -32,7 +32,7 @@ public interface IAvaloniaEffectHost
 }
 
 /// <summary>Owns active effects. Texture effects mutate generic instance data; the renderer owns their pixels.</summary>
-public sealed class AvaloniaEffectRuntime : IEffectView, IDisposable
+public sealed class AvaloniaEffectRuntime : IDisposable
 {
     private readonly Dictionary<string, ITextureEffectFactory> _textureFactories;
     private readonly Dictionary<string, ITextureEffectFactory> _programFactories = new(StringComparer.Ordinal);

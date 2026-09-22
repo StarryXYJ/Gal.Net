@@ -23,7 +23,15 @@ public static class SaveManager
     /// <summary>从 JSON 字符串反序列化。</summary>
     public static GameSnapshot? Deserialize(string json)
     {
-        return JsonSerializer.Deserialize<GameSnapshot>(json, Options);
+        using var document = JsonDocument.Parse(json);
+        if (document.RootElement.ValueKind != JsonValueKind.Object ||
+            !document.RootElement.TryGetProperty("version", out var version) ||
+            !version.TryGetInt32(out var formatVersion) ||
+            formatVersion != GameSnapshot.CurrentFormatVersion)
+            return null;
+
+        var snapshot = JsonSerializer.Deserialize<GameSnapshot>(document.RootElement.GetRawText(), Options);
+        return snapshot?.Version == GameSnapshot.CurrentFormatVersion ? snapshot : null;
     }
 
     /// <summary>保存到文件。</summary>

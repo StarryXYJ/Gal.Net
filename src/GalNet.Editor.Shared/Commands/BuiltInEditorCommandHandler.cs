@@ -6,6 +6,7 @@ using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Shared.Services;
+using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Shared.Commands;
 
@@ -201,14 +202,14 @@ public sealed partial class BuiltInEditorCommandHandler : IEditorCommandHandler
         if (index < 0 || index > groupEntries.Count)
             return InvalidIndex("entry", index, groupEntries.Count);
         var type = string.IsNullOrWhiteSpace(command.Type) ? TextEntry.TypeId : command.Type.Trim();
-        if (!EntryRegistry.TryGet(type, out var definition))
+        if (!BuiltinEntryCatalog.TryGet(type, out var definition))
             return Error("group.entry.unknownType", $"Unknown entry type '{type}'.");
         var entry = new EditorEntryData
         {
             StableId = command.EntryId,
             Type = type,
             Condition = command.Condition ?? "",
-            Parameters = EntryRegistry.Create(type, values: command.Parameters).Values
+            Parameters = BuiltinEntryCatalog.Create(type, values: command.Parameters).Values
         };
         groupEntries.Insert(index, entry);
         Renumber(groupEntries);
@@ -245,10 +246,10 @@ public sealed partial class BuiltInEditorCommandHandler : IEditorCommandHandler
         if (string.IsNullOrWhiteSpace(command.Type))
             return Error("group.entry.typeRequired", "Entry type is required.");
         var type = command.Type.Trim();
-        if (!EntryRegistry.TryGet(type, out _))
+        if (!BuiltinEntryCatalog.TryGet(type, out _))
             return Error("group.entry.unknownType", $"Unknown entry type '{type}'.");
         entry!.Type = type;
-        entry.Parameters = new Dictionary<string, string>(EntryRegistry.Create(type).Values, StringComparer.Ordinal);
+        entry.Parameters = new Dictionary<string, string>(BuiltinEntryCatalog.Create(type).Values, StringComparer.Ordinal);
         return Success($"Set entry '{command.EntryId}' type to '{entry.Type}'.", "History.Entry.SetType", EntryResource(command.GroupId, command.EntryId), command.EntryId, entry.Type);
     }
 
@@ -264,7 +265,7 @@ public sealed partial class BuiltInEditorCommandHandler : IEditorCommandHandler
     {
         if (!TryFindEntry(document, command.GroupId, command.EntryId, out _, out var entry, out var failure))
             return failure!;
-        entry!.Parameters = new Dictionary<string, string>(EntryRegistry.Create(entry.Type, values: command.Parameters).Values, StringComparer.Ordinal);
+        entry!.Parameters = new Dictionary<string, string>(BuiltinEntryCatalog.Create(entry.Type, values: command.Parameters).Values, StringComparer.Ordinal);
         return Success($"Replaced parameters for entry '{command.EntryId}'.", "History.Entry.SetParameters", EntryResource(command.GroupId, command.EntryId), command.EntryId);
     }
 
@@ -280,7 +281,7 @@ public sealed partial class BuiltInEditorCommandHandler : IEditorCommandHandler
             if (value is null) parameters.Remove(key);
             else parameters[key] = value;
         }
-        entry.Parameters = new Dictionary<string, string>(EntryRegistry.Create(entry.Type, values: parameters).Values, StringComparer.Ordinal);
+        entry.Parameters = new Dictionary<string, string>(BuiltinEntryCatalog.Create(entry.Type, values: parameters).Values, StringComparer.Ordinal);
         return Success($"Patched parameters for entry '{command.EntryId}'.", "History.Entry.PatchParameters", EntryResource(command.GroupId, command.EntryId), command.EntryId);
     }
 

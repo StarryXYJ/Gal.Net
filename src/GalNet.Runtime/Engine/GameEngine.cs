@@ -1,296 +1,200 @@
+using System.Text.Json;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
+using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
-using GalNet.Core.Scene;
+using GalNet.Core.Services;
 using GalNet.Core.Settings;
 using GalNet.Core.View;
-using GalNet.Runtime.Handlers;
 using GalNet.Runtime.Logging;
 using GalNet.Runtime.Runtime;
-using Serilog;
-using GalNet.Core.Services;
 
 namespace GalNet.Runtime.Engine;
 
-/// <summary>
-/// Drives the graph one entry at a time, keeping runtime state authoritative while
-/// delegating all rendering and interaction to <see cref="IGameView"/>.
-/// </summary>
+/// <summary>Drives compiled primitive envelopes through one Game Scope dispatcher.</summary>
 public sealed class GameEngine
 {
     private readonly Graph _graph;
-    private readonly EntryHandlerRegistry _registry;
     private readonly IGameRuntime _runtime;
     private readonly IGameView _view;
+    private readonly OperationManager _operations;
     private readonly IGameProgressService? _progress;
-    private readonly TimeProvider _timeProvider;
+    private GameSnapshot _lastStableSnapshot;
 
-    /// <summary>Raised at interaction boundaries, before the engine waits for input.</summary>
     public event Action<GameSnapshot>? CheckpointCreated;
-
-    /// <summary>Mutable runtime state used by handlers and save/restore operations.</summary>
     public IGameRuntime Runtime => _runtime;
+    public OperationManager Operations => _operations;
+    public GameSnapshot LastStableSnapshot => _lastStableSnapshot;
     public string CurrentNodeId => _runtime.CurrentNodeId;
     public int EntryIndex => _runtime.EntryIndex;
     public bool IsRunning { get; private set; }
 
-    /// <summary>Creates an engine with a new runtime rooted at the graph's entry node.</summary>
-    /// <param name="graph">The compiled story graph to execute.</param>
-    /// <param name="view">Presentation and input adapter; it does not own game state.</param>
-    /// <param name="textResolver">Optional localization resolver for the new runtime.</param>
-    /// <param name="settings">Optional initial settings for the new runtime.</param>
-    /// <param name="registry">Optional entry-handler registry; the built-in registry is used by default.</param>
-    /// <param name="progress">Optional service notified when checkpointable content is read.</param>
-    /// <param name="timeProvider">Clock supplied to time-based handlers.</param>
-    public GameEngine(
-        Graph graph,
-        IGameView view,
-        ITextResolver? textResolver = null,
-        SettingsContainer? settings = null,
-        EntryHandlerRegistry? registry = null,
-        IGameProgressService? progress = null,
-        TimeProvider? timeProvider = null)
+    public GameEngine(Graph graph, IGameView view, ITextResolver? textResolver = null,
+        SettingsContainer? settings = null, IGameProgressService? progress = null, OperationManager? operations = null)
+        : this(graph, new GameRuntime(textResolver, graph.RootNodeId, settings), view, progress, operations) { }
+
+    public GameEngine(Graph graph, IGameRuntime runtime, IGameView view,
+        IGameProgressService? progress = null, OperationManager? operations = null)
     {
-        _graph = graph;
-        _registry = registry ?? EntryHandlerRegistry.CreateDefault();
-        _runtime = new GameRuntime(textResolver, graph.RootNodeId, settings);
-        _view = view;
+        _graph = graph ?? throw new ArgumentNullException(nameof(graph));
+        _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
+        _view = view ?? throw new ArgumentNullException(nameof(view));
         _progress = progress;
-        _timeProvider = timeProvider ?? TimeProvider.System;
+        _operations = operations ?? new OperationManager();
+        _lastStableSnapshot = _runtime.CreateSnapshot();
     }
 
-    /// <summary>Creates an engine over an existing runtime, such as one restored from a save.</summary>
-    /// <param name="graph">The graph whose identifiers must match the supplied runtime.</param>
-    /// <param name="runtime">Existing mutable game state.</param>
-    /// <param name="view">Presentation and input adapter.</param>
-    /// <param name="registry">Optional entry-handler registry; the built-in registry is used by default.</param>
-    /// <param name="progress">Optional service notified when checkpointable content is read.</param>
-    /// <param name="timeProvider">Clock supplied to time-based handlers.</param>
-    public GameEngine(
-        Graph graph,
-        IGameRuntime runtime,
-        IGameView view,
-        EntryHandlerRegistry? registry = null,
-        IGameProgressService? progress = null,
-        TimeProvider? timeProvider = null)
-    {
-        _graph = graph;
-        _registry = registry ?? EntryHandlerRegistry.CreateDefault();
-        _runtime = runtime;
-        _view = view;
-        _progress = progress;
-        _timeProvider = timeProvider ?? TimeProvider.System;
-    }
-
-    /// <summary>
-    /// Continues execution until the graph ends, has no outgoing edge, or the operation is cancelled.
-    /// Interaction entries suspend this method until the view supplies their input.
-    /// </summary>
-    /// <param name="ct">Cancels pending interaction or timed-entry work.</param>
-    /// <returns><see langword="false"/> when execution stops; cancellation is propagated.</returns>
     public async Task<bool> StepAsync(CancellationToken ct = default)
     {
         IsRunning = true;
-
         while (IsRunning)
         {
             ct.ThrowIfCancellationRequested();
-
-            if (_runtime.IsGameEnded)
-            {
-                IsRunning = false;
-                return false;
-            }
-
-            var node = _graph.Nodes.Find(n => n.Id == _runtime.CurrentNodeId);
-            if (node == null)
-                break;
-
-            switch (node)
-            {
-                case Group group:
-                    await ProcessGroupAsync(group, ct);
-                    break;
-                case Branch branch:
-                    await ProcessBranchAsync(branch, ct);
-                    break;
-            }
+            if (_runtime.IsGameEnded) return IsRunning = false;
+            var node = _graph.Nodes.Find(node => node.Id == _runtime.CurrentNodeId);
+            if (node is null) return IsRunning = false;
+            if (node is Group group) await ProcessGroupAsync(group, ct);
+            else if (node is Branch branch) await ProcessBranchAsync(branch, ct);
         }
-
         return false;
     }
 
+    public Task<bool> SkipNextBatchAsync() => _operations.SkipNextBatchAsync();
+
     private async Task ProcessGroupAsync(Group group, CancellationToken ct)
     {
-        var entries = group.Entries;
-        GameLog.Logger.Information("Engine: Processing group '{GroupId}' ({EntryCount} entries, entryIndex={EntryIndex})",
-            group.Id, entries.Count, _runtime.EntryIndex);
-
-        for (; _runtime.EntryIndex < entries.Count; _runtime.SetEntryIndex(_runtime.EntryIndex + 1))
+        while (_runtime.EntryIndex < group.Entries.Count)
         {
             ct.ThrowIfCancellationRequested();
+            var entry = group.Entries[_runtime.EntryIndex];
+            if (_runtime.EvaluateCondition(entry.Condition) && entry is PrimitiveEntry primitive)
+                await DispatchAsync(primitive, PrimitiveInvocationOrigin.GroupEntry, entry.Id.ToString(), true, ct);
+            else if (entry is not PrimitiveEntry)
+                GameLog.Logger.Warning("Runtime ignored non-primitive entry '{EntryType}'.", entry.Type);
 
-            var entry = entries[_runtime.EntryIndex];
-            if (!_runtime.EvaluateCondition(entry.Condition))
-                continue;
-            if (entry is not PrimitiveEntry)
-                throw new InvalidOperationException($"Runtime cannot execute non-primitive entry '{entry.Type}'. Compile the source group first.");
-
-            var handler = _registry.Resolve(entry.Type);
-            if (handler == null)
-                continue;
-
-            await ExecuteEntryAsync(handler, entry, ct);
+            _runtime.SetEntryIndex(_runtime.EntryIndex + 1);
+            UpdateLastStableSnapshot();
         }
-
         _runtime.SetEntryIndex(0);
         MoveToNext();
+        UpdateLastStableSnapshot();
     }
 
-    private async Task ExecuteEntryAsync(EntryHandler handler, Entry entry, CancellationToken ct)
+    private async Task DispatchAsync(PrimitiveEntry entry, PrimitiveInvocationOrigin origin, string sourceId, bool allowCheckpoint, CancellationToken ct)
     {
-        var ctx = new EntryContext { Entry = entry, Runtime = _runtime, DispatchTimelineEventAsync = DispatchTimelineEventAsync };
-
-        if (handler.CreatesCheckpoint)
+        if (!entry.IsGeneric)
         {
-            if (entry.Type == TextEntry.TypeId) _progress?.MarkRead(groupId: _runtime.CurrentNodeId, entry.Id.ToString());
-            CheckpointCreated?.Invoke(CreateSaveData());
+            GameLog.Logger.Warning("Runtime ignored non-generic primitive '{EntryType}'.", entry.Type);
+            return;
+        }
+        if (!_view.TryGetDescriptor(entry.Type, out var descriptor))
+        {
+            GameLog.Logger.Warning("Primitive '{PrimitiveType}' is not registered.", entry.Type);
+            return;
+        }
+        if (allowCheckpoint && origin == PrimitiveInvocationOrigin.GroupEntry && descriptor!.CreatesCheckpoint && IsStable())
+        {
+            if (entry.Type == "dialogue.text") _progress?.MarkRead(_runtime.CurrentNodeId, sourceId);
+            CheckpointCreated?.Invoke(_lastStableSnapshot);
         }
 
-        await handler.ExecuteAsync(ctx, _view, _timeProvider, ct);
+        var control = new PrimitiveExecutionControl();
+        var invocation = new PrimitiveInvocation(entry.Type,
+            new PrimitiveContext { Runtime = _runtime, Origin = origin, SourceId = sourceId }, entry.Arguments);
+        var dispatch = _view.Dispatch(invocation, control, ct);
+        var operation = _operations.Track(entry.Type, dispatch, control);
+        if (dispatch.Status == PrimitiveDispatchStatus.Skipped) return;
+        if (!dispatch.Policy.Blocking)
+        {
+            _ = ObserveAndCheckpointAsync(entry.Type, dispatch.Completion);
+            return;
+        }
+        await ObserveAsync(entry.Type, dispatch.Completion, ct);
+        UpdateLastStableSnapshot();
     }
 
-    private Task DispatchTimelineEventAsync(Entry entry, CancellationToken ct)
+    private async Task ObserveAsync(string typeId, Task<PrimitiveResult> completion, CancellationToken? scopeCancellation = null)
     {
-        if (entry is not PrimitiveEntry)
+        try
         {
-            GameLog.Logger.Warning("Animation plan event ignored because entry type '{EntryType}' is not a primitive.", entry.Type);
-            return Task.CompletedTask;
+            var result = await completion.ConfigureAwait(false);
+            if (result.Status == PrimitiveResultStatus.Failed)
+                GameLog.Logger.Error("Primitive '{PrimitiveType}' reported an expected failure.", typeId);
         }
-        var handler = _registry.Resolve(entry.Type);
-        if (handler is null)
+        catch (OperationCanceledException) when (scopeCancellation?.IsCancellationRequested == true)
         {
-            GameLog.Logger.Warning("Animation plan event ignored because entry type '{EntryType}' is unknown.", entry.Type);
-            return Task.CompletedTask;
+            throw;
         }
+        catch (Exception exception)
+        {
+            GameLog.Logger.Error(exception, "Primitive '{PrimitiveType}' failed and execution continued.", typeId);
+        }
+    }
 
-        var context = new EntryContext { Entry = entry, Runtime = _runtime, DispatchTimelineEventAsync = DispatchTimelineEventAsync };
-        return handler.ExecuteAsync(context, _view, _timeProvider, ct);
+    private async Task ObserveAndCheckpointAsync(string typeId, Task<PrimitiveResult> completion)
+    {
+        await ObserveAsync(typeId, completion).ConfigureAwait(false);
+        UpdateLastStableSnapshot();
     }
 
     private async Task ProcessBranchAsync(Branch branch, CancellationToken ct)
     {
-        if (branch.BranchType == BranchType.Choice)
-            await ProcessChoiceBranchAsync(branch, ct);
-        else
-            ProcessConditionBranch(branch);
-    }
-
-    private async Task ProcessChoiceBranchAsync(Branch branch, CancellationToken ct)
-    {
-        var visibleOptions = branch.Options
-            .Select((o, i) => (Option: o, Index: i))
-            .Where(x => _runtime.EvaluateCondition(x.Option.Condition))
-            .ToList();
-
-        if (visibleOptions.Count == 0)
+        if (branch.BranchType != BranchType.Choice) { ProcessConditionBranch(branch); return; }
+        var visible = branch.Options.Select((option, index) => (option, index)).Where(item => _runtime.EvaluateCondition(item.option.Condition)).ToArray();
+        if (visible.Length == 0) { MoveToNext(); return; }
+        var arguments = JsonSerializer.SerializeToElement(new { widgetId = "default_choice", options = visible.Select(item => _runtime.TextResolver.Resolve(item.option.Text)).ToArray() });
+        var choice = new PrimitiveEntry("interaction.choice", arguments);
+        if (_view.TryGetDescriptor(choice.Type, out var descriptor) && descriptor!.CreatesCheckpoint && IsStable())
+            CheckpointCreated?.Invoke(_lastStableSnapshot);
+        var control = new PrimitiveExecutionControl();
+        var dispatch = _view.Dispatch(new PrimitiveInvocation(choice.Type, new PrimitiveContext { Runtime = _runtime, Origin = PrimitiveInvocationOrigin.Internal }, choice.Arguments), control, ct);
+        _operations.Track(choice.Type, dispatch, control);
+        var result = PrimitiveResult.Empty;
+        if (dispatch.Status == PrimitiveDispatchStatus.Accepted)
         {
-            MoveToNext();
-            return;
+            try
+            {
+                result = await dispatch.Completion.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                GameLog.Logger.Error(exception, "Choice primitive failed and execution continued.");
+            }
         }
-
-        string Resolve(string key) => _runtime.TextResolver.Resolve(key);
-        var texts = visibleOptions.Select(x => Resolve(x.Option.Text)).ToArray();
-
-        CheckpointCreated?.Invoke(CreateSaveData());
-        var selected = await _view.WaitForChoiceAsync("default_choice", texts, ct);
-
-        if (selected >= 0 && selected < visibleOptions.Count)
+        if (result.Status == PrimitiveResultStatus.Failed)
+            GameLog.Logger.Error("Choice primitive reported an expected failure.");
+        if (result.Status == PrimitiveResultStatus.Succeeded && result.Value is { } value && value.TryGetInt32(out var selected) && selected >= 0 && selected < visible.Length)
         {
-            var targetEdge = _graph.Edges
-                .Find(e => e.FromNodeId == branch.Id && e.FromOutlet == visibleOptions[selected].Index);
-            if (targetEdge != null)
-                _runtime.JumpTo(targetEdge.ToNodeId);
+            var edge = _graph.Edges.Find(edge => edge.FromNodeId == branch.Id && edge.FromOutlet == visible[selected].index);
+            if (edge is not null) _runtime.JumpTo(edge.ToNodeId);
         }
+        UpdateLastStableSnapshot();
     }
 
     private void ProcessConditionBranch(Branch branch)
     {
-        for (var i = 0; i < branch.Conditions.Count; i++)
-        {
-            if (!_runtime.EvaluateCondition(branch.Conditions[i].Expression))
-                continue;
-
-            var targetEdge = _graph.Edges
-                .Find(e => e.FromNodeId == branch.Id && e.FromOutlet == i);
-            if (targetEdge != null)
-                _runtime.JumpTo(targetEdge.ToNodeId);
-
-            return;
-        }
-
+        for (var index = 0; index < branch.Conditions.Count; index++)
+            if (_runtime.EvaluateCondition(branch.Conditions[index].Expression))
+            {
+                var edge = _graph.Edges.Find(edge => edge.FromNodeId == branch.Id && edge.FromOutlet == index);
+                if (edge is not null) _runtime.JumpTo(edge.ToNodeId);
+                return;
+            }
         MoveToNext();
     }
 
+    private bool IsStable() => _operations.ActiveOperations.Count == 0;
+    private void UpdateLastStableSnapshot() { if (IsStable()) _lastStableSnapshot = _runtime.CreateSnapshot(); }
     private void MoveToNext()
     {
-        var edge = _graph.Edges.Find(e => e.FromNodeId == _runtime.CurrentNodeId && e.FromOutlet == 0);
-        if (edge != null)
-        {
-            GameLog.Logger.Information("Engine: Moving from '{FromNodeId}' -> '{ToNodeId}'",
-                _runtime.CurrentNodeId, edge.ToNodeId);
-            _runtime.JumpTo(edge.ToNodeId);
-        }
-        else
-        {
-            GameLog.Logger.Information("Engine: No outgoing edge from '{NodeId}' - stopping",
-                _runtime.CurrentNodeId);
-            IsRunning = false;
-        }
+        var edge = _graph.Edges.Find(edge => edge.FromNodeId == _runtime.CurrentNodeId && edge.FromOutlet == 0);
+        if (edge is null) IsRunning = false;
+        else _runtime.JumpTo(edge.ToNodeId);
     }
-
-    /// <summary>Captures the runtime-owned state at the current execution position.</summary>
-    public GameSnapshot CreateSaveData() => _runtime.CreateSnapshot();
-
-    /// <summary>Restores runtime state and replays every visible layer into the presentation adapter.</summary>
-    /// <param name="data">A snapshot produced for a compatible graph and runtime configuration.</param>
-    public void RestoreFrom(GameSnapshot data)
-    {
-        _runtime.RestoreFrom(data);
-        foreach (var layer in _runtime.SceneState.Layers.Where(layer => layer.Visible))
-            _view.ShowLayer(new LayerRenderRequest(layer.Id, layer.AssetId, layer.Transform.Clone(), layer.Z, layer.DisplayMode, layer.Opacity, layer.Color, layer.Flipbook?.Clone()));
-        foreach (var emitter in _runtime.SceneState.ActiveParticleEmitters)
-            _ = RestoreParticleEmitterAsync(emitter);
-        foreach (var animation in _runtime.SceneState.ActiveAnimations.ToArray())
-            _ = ResumeLoopAsync(animation);
-        IsRunning = true;
-    }
-
-    private async Task ResumeLoopAsync(ActiveAnimationState animation)
-    {
-        try
-        {
-            var entry = EntryRegistry.Create(animation.EntryType, values: animation.Parameters);
-            await DispatchTimelineEventAsync(entry, CancellationToken.None);
-        }
-        catch (Exception exception)
-        {
-            GameLog.Logger.Error(exception, "Could not restore looping animation '{PlaybackHandleId}'.", animation.PlaybackHandleId);
-        }
-    }
-
-    private async Task RestoreParticleEmitterAsync(ActiveParticleEmitterState emitter)
-    {
-        try
-        {
-            await _view.StartParticleEmitterAsync(new ParticleEmitterRequest(emitter.InstanceId, emitter.Definition, emitter.Z)
-            {
-                AnimationValues = emitter.AnimationValues
-            }, CancellationToken.None);
-        }
-        catch (Exception exception)
-        {
-            GameLog.Logger.Error(exception, "Could not restore particle emitter '{InstanceId}'.", emitter.InstanceId);
-        }
-    }
+    public GameSnapshot CreateSaveData() => _lastStableSnapshot;
+    public void RestoreFrom(GameSnapshot data) { _runtime.RestoreFrom(data); _lastStableSnapshot = data; IsRunning = true; }
 }

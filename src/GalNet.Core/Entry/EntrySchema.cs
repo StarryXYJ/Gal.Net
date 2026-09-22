@@ -1,6 +1,7 @@
 namespace GalNet.Core.Entry;
 
-internal static class EntrySchema
+/// <summary>Small immutable helpers used by outer authoring catalogs.</summary>
+public static class EntrySchema
 {
     public static IReadOnlyDictionary<string, EntryParameterType> Parameters(params (string Name, EntryParameterType Type)[] items) =>
         new Dictionary<string, EntryParameterType>(items.ToDictionary(x => x.Name, x => x.Type), StringComparer.Ordinal);

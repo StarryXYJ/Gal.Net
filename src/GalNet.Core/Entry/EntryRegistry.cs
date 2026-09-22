@@ -1,10 +1,10 @@
 namespace GalNet.Core.Entry;
 
-/// <summary>Central registry for built-in entry schemas and their concrete factories.</summary>
+/// <summary>Core-owned registry for authoring-only non-primitive expansions.</summary>
 public static class EntryRegistry
 {
     private static readonly IReadOnlyDictionary<string, EntryDefinition> DefinitionsByType = BuildDefinitions();
-    /// <summary>All registered definitions, for editor palettes and serialization tooling.</summary>
+    /// <summary>Non-primitive definitions that Core expands during compilation.</summary>
     public static IReadOnlyList<EntryDefinition> Definitions { get; } = DefinitionsByType.Values.ToArray();
 
     public static bool TryGet(string type, out EntryDefinition definition) => DefinitionsByType.TryGetValue(type, out definition!);
@@ -19,7 +19,7 @@ public static class EntryRegistry
     /// <param name="condition">Optional execution condition expression.</param>
     /// <param name="values">Persisted parameter values; unsupported names are ignored except for <c>variable.set</c>.</param>
     /// <returns>A concrete entry matching the registered schema.</returns>
-    /// <exception cref="InvalidDataException">Thrown when <paramref name="type"/> is unknown or <c>variable.set</c> contains unsupported parameters.</exception>
+    /// <exception cref="InvalidDataException">Thrown when <paramref name="type"/> is unknown.</exception>
     public static Entry Create(string type, int id = 0, string condition = "", IReadOnlyDictionary<string, string>? values = null)
     {
         var definition = Get(type);
@@ -30,8 +30,6 @@ public static class EntryRegistry
             entry.Values[name] = value;
         if (values is not null)
         {
-            if (type == SetVariableEntry.TypeId && values.Keys.Any(name => !definition.Parameters.ContainsKey(name)))
-                throw new InvalidDataException("The variable.set entry only accepts 'target' and 'expression'.");
             foreach (var (name, value) in values)
                 if (definition.Parameters.ContainsKey(name))
                     entry.Values[name] = value;
@@ -43,37 +41,12 @@ public static class EntryRegistry
     {
         var definitions = new[]
         {
-            Define(TextEntry.TypeId, "Dialogue", () => new TextEntry(), TextEntry.ParameterTypes, TextEntry.DefaultValues),
-            Define(ShowDialogueEntry.TypeId, "Dialogue", () => new ShowDialogueEntry(), ShowDialogueEntry.ParameterTypes),
-            Define(HideDialogueEntry.TypeId, "Dialogue", () => new HideDialogueEntry(), HideDialogueEntry.ParameterTypes),
-            Define(ShowLayerEntry.TypeId, "Layer", () => new ShowLayerEntry(), ShowLayerEntry.ParameterTypes, ShowLayerEntry.DefaultValues, ShowLayerEntry.ParameterOptions),
-            Define(ShowColorLayerEntry.TypeId, "Layer", () => new ShowColorLayerEntry(), ShowColorLayerEntry.ParameterTypes, ShowColorLayerEntry.DefaultValues),
-            Define(HideLayerEntry.TypeId, "Layer", () => new HideLayerEntry(), HideLayerEntry.ParameterTypes),
-            Define(MoveLayerEntry.TypeId, "Layer", () => new MoveLayerEntry(), MoveLayerEntry.ParameterTypes, MoveLayerEntry.DefaultValues),
-            Define(ReplaceLayerEntry.TypeId, "Layer", () => new ReplaceLayerEntry(), ReplaceLayerEntry.ParameterTypes),
-            Define(AnimateEntry.TypeId, "Animation", () => new AnimateEntry(), AnimateEntry.ParameterTypes, AnimateEntry.DefaultValues, AnimateEntry.ParameterOptions),
-            Define(PlayAnimationPlanEntry.TypeId, "Animation", () => new PlayAnimationPlanEntry(), PlayAnimationPlanEntry.ParameterTypes),
-            Define(StopAnimationEntry.TypeId, "Animation", () => new StopAnimationEntry(), StopAnimationEntry.ParameterTypes, StopAnimationEntry.DefaultValues, StopAnimationEntry.ParameterOptions),
             Define(CrossFadeTransitionEntry.TypeId, "Transition", () => new CrossFadeTransitionEntry(), CrossFadeTransitionEntry.ParameterTypes, CrossFadeTransitionEntry.DefaultValues, CrossFadeTransitionEntry.ParameterOptions, EntryKind.NonPrimitive),
             Define(SlideTransitionEntry.TypeId, "Transition", () => new SlideTransitionEntry(), SlideTransitionEntry.ParameterTypes, SlideTransitionEntry.DefaultValues, SlideTransitionEntry.ParameterOptions, EntryKind.NonPrimitive),
             Define(BlindsTransitionEntry.TypeId, "Transition", () => new BlindsTransitionEntry(), BlindsTransitionEntry.ParameterTypes, BlindsTransitionEntry.DefaultValues, BlindsTransitionEntry.ParameterOptions, EntryKind.NonPrimitive),
             Define(BlackFadeTransitionEntry.TypeId, "Transition", () => new BlackFadeTransitionEntry(), BlackFadeTransitionEntry.ParameterTypes, BlackFadeTransitionEntry.DefaultValues, BlackFadeTransitionEntry.ParameterOptions, EntryKind.NonPrimitive),
             Define(WhiteFadeTransitionEntry.TypeId, "Transition", () => new WhiteFadeTransitionEntry(), WhiteFadeTransitionEntry.ParameterTypes, WhiteFadeTransitionEntry.DefaultValues, WhiteFadeTransitionEntry.ParameterOptions, EntryKind.NonPrimitive),
-            Define(ColorFadeTransitionEntry.TypeId, "Transition", () => new ColorFadeTransitionEntry(), ColorFadeTransitionEntry.ParameterTypes, ColorFadeTransitionEntry.DefaultValues, ColorFadeTransitionEntry.ParameterOptions, EntryKind.NonPrimitive),
-            Define(PlayAudioEntry.TypeId, "Audio", () => new PlayAudioEntry(), PlayAudioEntry.ParameterTypes, PlayAudioEntry.DefaultValues, PlayAudioEntry.ParameterOptions),
-            Define(StopAudioEntry.TypeId, "Audio", () => new StopAudioEntry(), StopAudioEntry.ParameterTypes, StopAudioEntry.DefaultValues, StopAudioEntry.ParameterOptions),
-            Define(PauseAudioEntry.TypeId, "Audio", () => new PauseAudioEntry(), PauseAudioEntry.ParameterTypes, PauseAudioEntry.DefaultValues, PauseAudioEntry.ParameterOptions),
-            Define(ResumeAudioEntry.TypeId, "Audio", () => new ResumeAudioEntry(), ResumeAudioEntry.ParameterTypes, ResumeAudioEntry.DefaultValues, ResumeAudioEntry.ParameterOptions),
-            Define(EnqueueAudioEntry.TypeId, "Audio", () => new EnqueueAudioEntry(), EnqueueAudioEntry.ParameterTypes, EnqueueAudioEntry.DefaultValues, EnqueueAudioEntry.ParameterOptions),
-            Define(PlayVideoEntry.TypeId, "Video", () => new PlayVideoEntry(), PlayVideoEntry.ParameterTypes),
-            Define(StopVideoEntry.TypeId, "Video", () => new StopVideoEntry(), StopVideoEntry.ParameterTypes),
-            Define(ApplyEffectEntry.TypeId, "Effect", () => new ApplyEffectEntry(), ApplyEffectEntry.ParameterTypes, ApplyEffectEntry.DefaultValues),
-            Define(StopEffectEntry.TypeId, "Effect", () => new StopEffectEntry(), StopEffectEntry.ParameterTypes),
-            Define(PlayParticleEmitterEntry.TypeId, "Particle", () => new PlayParticleEmitterEntry(), PlayParticleEmitterEntry.ParameterTypes, PlayParticleEmitterEntry.DefaultValues),
-            Define(StopParticleEmitterEntry.TypeId, "Particle", () => new StopParticleEmitterEntry(), StopParticleEmitterEntry.ParameterTypes),
-            Define(WaitEntry.TypeId, "Flow", () => new WaitEntry(), WaitEntry.ParameterTypes, WaitEntry.DefaultValues),
-            Define(SetVariableEntry.TypeId, "Variable", () => new SetVariableEntry(), SetVariableEntry.ParameterTypes),
-            Define(UnlockGalleryEntry.TypeId, "Gallery", () => new UnlockGalleryEntry(), UnlockGalleryEntry.ParameterTypes, options: UnlockGalleryEntry.ParameterOptions)
+            Define(ColorFadeTransitionEntry.TypeId, "Transition", () => new ColorFadeTransitionEntry(), ColorFadeTransitionEntry.ParameterTypes, ColorFadeTransitionEntry.DefaultValues, ColorFadeTransitionEntry.ParameterOptions, EntryKind.NonPrimitive)
         };
         return new Dictionary<string, EntryDefinition>(definitions.ToDictionary(x => x.Type), StringComparer.Ordinal);
     }
@@ -85,6 +58,6 @@ public static class EntryRegistry
         IReadOnlyDictionary<string, EntryParameterType> parameters,
         IReadOnlyDictionary<string, string>? defaults = null,
         IReadOnlyDictionary<string, IReadOnlyList<string>>? options = null,
-        EntryKind kind = EntryKind.Primitive) =>
+        EntryKind kind = EntryKind.NonPrimitive) =>
         new(type, category, factory, parameters, defaults ?? new Dictionary<string, string>(), options ?? new Dictionary<string, IReadOnlyList<string>>(), kind);
 }

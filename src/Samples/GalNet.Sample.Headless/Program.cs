@@ -1,7 +1,6 @@
 using GalNet.Core.Settings;
 using GalNet.Core.View;
 using GalNet.Runtime.Engine;
-using GalNet.Runtime.Handlers;
 using GalNet.Runtime.Runtime;
 using GalNet.Sample.Headless;
 using GalNet.Storage.FileSystem;
@@ -23,25 +22,10 @@ try
     var variables = await FileVariableService.CreateAsync(new FilePlayerVariableStore(options.ProfileDirectory));
     var progress = new FileGameProgressService(options.ProfileDirectory);
 
-    var consoleServices = new ConsolePresentation(settings.Get<GameSettings>());
-    IGameView view = new CompositeGameView(
-        consoleServices,
-        consoleServices,
-        consoleServices,
-        consoleServices,
-        consoleServices,
-        consoleServices,
-        consoleServices,
-        consoleServices,
-        consoleServices);
+    IGameView view = new CompositeGameView([]);
 
     var runtime = new GameRuntime(null, content.Graph.RootNodeId, settings, variables);
-    var engine = new GameEngine(
-        content.Graph,
-        runtime,
-        view,
-        EntryHandlerRegistry.CreateDefault(progress),
-        progress);
+    var engine = new GameEngine(content.Graph, runtime, view, progress);
 
     if (options.LoadSlot is { } loadSlot)
     {

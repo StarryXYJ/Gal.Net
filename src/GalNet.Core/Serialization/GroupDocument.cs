@@ -6,8 +6,10 @@ namespace GalNet.Core.Serialization;
 /// <summary>Serialized group document. Raw documents are editor source; compiled documents are Runtime input.</summary>
 public sealed class GroupDocument
 {
+    public const int CurrentVersion = 2;
+
     [JsonPropertyName("version")]
-    public int Version { get; set; } = 1;
+    public int Version { get; set; } = CurrentVersion;
 
     [JsonPropertyName("kind")]
     [JsonConverter(typeof(JsonStringEnumConverter<GroupDocumentKind>))]
@@ -15,6 +17,20 @@ public sealed class GroupDocument
 
     [JsonPropertyName("entries")]
     public List<GroupEntryDocument> Entries { get; set; } = [];
+}
+
+/// <summary>Runtime-only compiled document containing generic primitive envelopes.</summary>
+public sealed class CompiledGroupDocument
+{
+    [JsonPropertyName("version")]
+    public int Version { get; set; } = GroupDocument.CurrentVersion;
+
+    [JsonPropertyName("kind")]
+    [JsonConverter(typeof(JsonStringEnumConverter<GroupDocumentKind>))]
+    public GroupDocumentKind Kind { get; set; } = GroupDocumentKind.Compiled;
+
+    [JsonPropertyName("entries")]
+    public List<PrimitiveEntryDocument> Entries { get; set; } = [];
 }
 
 /// <summary>The stage represented by a serialized group document.</summary>
@@ -39,4 +55,21 @@ public sealed class GroupEntryDocument
 
     [JsonPropertyName("parameters")]
     public Dictionary<string, JsonElement> Parameters { get; set; } = new(StringComparer.Ordinal);
+}
+
+/// <summary>One generic primitive envelope in a compiled <c>.galgroup</c> file.</summary>
+public sealed class PrimitiveEntryDocument
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = "";
+
+    [JsonPropertyName("typeId")]
+    public string TypeId { get; set; } = "";
+
+    [JsonPropertyName("condition")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public string Condition { get; set; } = "";
+
+    [JsonPropertyName("arguments")]
+    public JsonElement Arguments { get; set; } = JsonSerializer.SerializeToElement(new Dictionary<string, object?>());
 }

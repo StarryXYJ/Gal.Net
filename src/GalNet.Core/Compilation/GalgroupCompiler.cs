@@ -16,13 +16,14 @@ public static class GalgroupCompiler
     };
 
     /// <summary>Expands every non-primitive entry and returns a deterministic compiled document plus source mapping.</summary>
-    public static CompiledGroupDocument Compile(GroupDocument source)
+    public static CompiledGroupResult Compile(GroupDocument source, IEntryCatalog catalog)
     {
-        if (source.Version != 1) throw new InvalidDataException($"Unsupported .rawgalgroup version '{source.Version}'.");
+        ArgumentNullException.ThrowIfNull(catalog);
+        if (source.Version != GroupDocument.CurrentVersion) throw new InvalidDataException($"Unsupported .rawgalgroup version '{source.Version}'.");
         if (source.Kind != GroupDocumentKind.Raw) throw new InvalidDataException("Only raw group documents can be compiled.");
 
         var stableIds = new HashSet<string>(StringComparer.Ordinal);
-        var compiled = new GroupDocument { Version = source.Version, Kind = GroupDocumentKind.Compiled };
+        var compiled = new CompiledGroupDocument { Version = GroupDocument.CurrentVersion, Kind = GroupDocumentKind.Compiled };
         var sourceMap = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
 
         foreach (var (sourceEntry, sourceIndex) in source.Entries.Select((entry, index) => (entry, index)))
@@ -30,7 +31,7 @@ public static class GalgroupCompiler
             if (string.IsNullOrWhiteSpace(sourceEntry.Id) || !stableIds.Add(sourceEntry.Id))
                 throw new InvalidDataException($"Source entry #{sourceIndex + 1} must have a unique non-empty id.");
 
-            var entry = CreateEntry(sourceEntry, sourceIndex + 1);
+            var entry = CreateEntry(sourceEntry, sourceIndex + 1, catalog);
             IReadOnlyList<PrimitiveEntry> primitives = entry switch
             {
                 PrimitiveEntry primitive => [primitive],
@@ -46,13 +47,9 @@ public static class GalgroupCompiler
             for (var emittedIndex = 0; emittedIndex < primitives.Count; emittedIndex++)
             {
                 var primitive = primitives[emittedIndex];
-                var definition = EntryRegistry.Get(primitive.Type);
-                if (definition.Kind != EntryKind.Primitive)
-                    throw new InvalidDataException($"Entry '{sourceEntry.Id}' emitted non-primitive '{primitive.Type}'.");
-
                 primitive.Id = compiled.Entries.Count + 1;
                 primitive.Condition = CombineConditions(sourceEntry.Condition, primitive.Condition);
-                ValidateNestedPrimitives(primitive);
+                ValidateNestedPrimitives(primitive, catalog);
 
                 var generatedId = $"{sourceEntry.Id}#{emittedIndex + 1}";
                 compiled.Entries.Add(SerializeEntry(generatedId, primitive));
@@ -62,17 +59,39 @@ public static class GalgroupCompiler
             sourceMap.Add(sourceEntry.Id, emittedIds);
         }
 
-        return new CompiledGroupDocument(compiled, sourceMap);
+        return new CompiledGroupResult(compiled, sourceMap);
     }
     
     
-    private static Entry.Entry CreateEntry(GroupEntryDocument source, int index)
+    private static Entry.Entry CreateEntry(GroupEntryDocument source, int index, IEntryCatalog catalog)
     {
         if (string.IsNullOrWhiteSpace(source.Type)) throw new InvalidDataException("Source entry type is required.");
         RejectLegacyLayerTransitionParameters(source);
         try
         {
-            return EntryRegistry.Create(
+            var definition = catalog.Get(source.Type);
+            if (definition.Kind == EntryKind.Primitive)
+            {
+                if (definition.Descriptor is null)
+                    throw new InvalidDataException($"Primitive '{source.Type}' has no descriptor.");
+                var unknown = source.Parameters.Keys.FirstOrDefault(name => !definition.Parameters.ContainsKey(name));
+                if (unknown is not null)
+                    throw new InvalidDataException($"Primitive '{source.Type}' does not accept parameter '{unknown}'.");
+                var missing = definition.Descriptor.Parameters.FirstOrDefault(parameter =>
+                    parameter.IsRequired && !source.Parameters.ContainsKey(parameter.Name) && !definition.Defaults.ContainsKey(parameter.Name));
+                if (missing is not null)
+                    throw new InvalidDataException($"Primitive '{source.Type}' requires parameter '{missing.Name}'.");
+                var primitive = new AuthoringPrimitiveEntry(source.Type) { Id = index, Condition = source.Condition };
+                var arguments = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+                foreach (var (name, value) in definition.Defaults)
+                    arguments[name] = ToJsonElement(value, definition.Parameters[name]);
+                foreach (var (name, value) in source.Parameters)
+                    arguments[name] = value.Clone();
+                primitive.SetArguments(JsonSerializer.SerializeToElement(arguments));
+                return primitive;
+            }
+
+            return catalog.Create(
                 source.Type,
                 index,
                 source.Condition,
@@ -86,35 +105,50 @@ public static class GalgroupCompiler
 
     private static void RejectLegacyLayerTransitionParameters(GroupEntryDocument source)
     {
-        if (source.Type is not (ShowLayerEntry.TypeId or HideLayerEntry.TypeId)) return;
+        if (source.Type is not ("layer.show" or "layer.hide")) return;
         var legacy = source.Parameters.Keys.FirstOrDefault(name => name is "transitionId" or "transitionDuration" or "transitionBlocking" or "transitionParameters");
         if (legacy is not null)
             throw new InvalidDataException($"'{source.Type}.{legacy}' is no longer supported. Use a transition.* entry, which compiles into Layer and animation primitives.");
     }
 
-    private static GroupEntryDocument SerializeEntry(string generatedId, PrimitiveEntry entry)
+    private static PrimitiveEntryDocument SerializeEntry(string generatedId, PrimitiveEntry entry)
     {
-        var definition = EntryRegistry.Get(entry.Type);
-        return new GroupEntryDocument
+        return new PrimitiveEntryDocument
         {
             Id = generatedId,
-            Type = entry.Type,
+            TypeId = entry.Type,
             Condition = entry.Condition,
-            Parameters = entry.Values.ToDictionary(
-                pair => pair.Key,
-                pair => ToJsonElement(pair.Value, definition.Parameters[pair.Key]),
-                StringComparer.Ordinal)
+            Arguments = entry.IsGeneric || entry is AuthoringPrimitiveEntry
+                ? entry.Arguments.Clone()
+                : SerializeArguments(entry, catalog: null)
         };
     }
 
-    private static void ValidateNestedPrimitives(PrimitiveEntry entry)
+    private static JsonElement SerializeArguments(PrimitiveEntry entry, IEntryCatalog? catalog)
     {
-        if (entry is not PlayAnimationPlanEntry || !entry.Values.TryGetValue("plan", out var planJson)) return;
+        if (catalog is null)
+            throw new InvalidOperationException("Only generic primitives may be emitted without a catalog.");
+        var definition = catalog.Get(entry.Type);
+        var arguments = entry.Values.ToDictionary(
+            pair => pair.Key,
+            pair => ToJsonElement(pair.Value, definition.Parameters[pair.Key]),
+            StringComparer.Ordinal);
+        return JsonSerializer.SerializeToElement(arguments);
+    }
 
-        AnimationPlanDefinition plan;
+    private static void ValidateNestedPrimitives(PrimitiveEntry entry, IEntryCatalog catalog)
+    {
+        if (entry.Type != "animation.play") return;
+
+        var planJson = entry.IsGeneric
+            ? entry.Arguments.TryGetProperty("plan", out var planElement) ? planElement.GetRawText() : null
+            : entry.Values.TryGetValue("plan", out var legacyPlan) ? legacyPlan : null;
+        if (string.IsNullOrWhiteSpace(planJson)) return;
+
+        AnimationPlanDefinition animationPlan;
         try
         {
-            plan = JsonSerializer.Deserialize<AnimationPlanDefinition>(planJson, JsonOptions)
+            animationPlan = JsonSerializer.Deserialize<AnimationPlanDefinition>(planJson, JsonOptions)
                 ?? throw new InvalidDataException("Animation plan is empty.");
         }
         catch (JsonException exception)
@@ -122,9 +156,9 @@ public static class GalgroupCompiler
             throw new InvalidDataException("Animation plan is invalid JSON.", exception);
         }
 
-        foreach (var timelineEvent in plan.Events)
+        foreach (var timelineEvent in animationPlan.Events)
         {
-            var definition = EntryRegistry.Get(timelineEvent.Type);
+            var definition = catalog.Get(timelineEvent.Type);
             if (definition.Kind != EntryKind.Primitive)
                 throw new InvalidDataException($"Animation plan event '{timelineEvent.Type}' must be a primitive entry.");
         }
@@ -132,8 +166,24 @@ public static class GalgroupCompiler
 
     private static JsonElement ToJsonElement(string value, EntryParameterType type)
     {
-        if (type != EntryParameterType.Json) return JsonSerializer.SerializeToElement(value);
+        try
+        {
+            return type switch
+            {
+                EntryParameterType.Integer => JsonSerializer.SerializeToElement(int.Parse(value, System.Globalization.CultureInfo.InvariantCulture)),
+                EntryParameterType.Float => JsonSerializer.SerializeToElement(float.Parse(value, System.Globalization.CultureInfo.InvariantCulture)),
+                EntryParameterType.Json => ParseJson(value),
+                _ => JsonSerializer.SerializeToElement(value)
+            };
+        }
+        catch (FormatException exception)
+        {
+            throw new InvalidDataException($"Expected a valid {type} parameter value, but received '{value}'.", exception);
+        }
+    }
 
+    private static JsonElement ParseJson(string value)
+    {
         try
         {
             using var document = JsonDocument.Parse(value);
@@ -163,6 +213,6 @@ public static class GalgroupCompiler
 }
 
 /// <summary>Compiled group plus stable source-to-generated entry mapping for diagnostics and editor navigation.</summary>
-public sealed record CompiledGroupDocument(
-    GroupDocument Document,
+public sealed record CompiledGroupResult(
+    CompiledGroupDocument Document,
     IReadOnlyDictionary<string, IReadOnlyList<string>> SourceMap);

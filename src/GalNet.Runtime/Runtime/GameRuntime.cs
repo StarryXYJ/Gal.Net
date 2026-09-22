@@ -10,7 +10,7 @@ namespace GalNet.Runtime.Runtime;
 
 /// <summary>
 /// 游戏运行时状态 —— 统一管理游戏的位置、变量、场景状态、调用栈。
-/// Handler 通过 EntryContext.Runtime 访问此实例。
+/// Primitive module 通过 PrimitiveContext.Runtime 访问此实例。
 /// </summary>
 public sealed class GameRuntime : IGameRuntime
 {
@@ -118,15 +118,19 @@ public sealed class GameRuntime : IGameRuntime
     {
         return new GameSnapshot
         {
+            Version = GameSnapshot.CurrentFormatVersion,
             NodeId = CurrentNodeId,
             EntryIndex = EntryIndex,
-            Variables = _variables.SaveSnapshot.ToDictionary(kv => kv.Key, kv => kv.Value),
-            SceneState = SceneState
+            Variables = _variables.SaveSnapshot.ToDictionary(pair => pair.Key, pair => CloneVariable(pair.Value)),
+            SceneState = CloneSceneState(SceneState)
         };
     }
 
     public void RestoreFrom(GameSnapshot snapshot)
     {
+        if (snapshot.Version != GameSnapshot.CurrentFormatVersion)
+            throw new InvalidDataException($"Unsupported save version '{snapshot.Version}'.");
+
         CurrentNodeId = snapshot.NodeId;
         EntryIndex = snapshot.EntryIndex;
 
@@ -207,4 +211,59 @@ public sealed class GameRuntime : IGameRuntime
         instance.RestoreAnimationValues(emitter.AnimationValues);
         return instance;
     }
+
+    private static GalVariable CloneVariable(GalVariable variable)
+    {
+        var copy = new GalVariable { Uid = variable.Uid, Name = variable.Name };
+        switch (variable.Type)
+        {
+            case VariableType.Bool: copy.SetValue(variable.AsBool()); break;
+            case VariableType.Int: copy.SetValue(variable.AsInt()); break;
+            case VariableType.Float: copy.SetValue(variable.AsFloat()); break;
+            default: copy.SetValue(variable.AsString()); break;
+        }
+        return copy;
+    }
+
+    private static SceneState CloneSceneState(SceneState source) => new()
+    {
+        Layers = source.Layers.Select(layer => new Layer
+        {
+            Id = layer.Id,
+            AssetId = layer.AssetId,
+            Flipbook = layer.Flipbook?.Clone(),
+            Color = layer.Color,
+            Transform = layer.Transform.Clone(),
+            Z = layer.Z,
+            DisplayMode = layer.DisplayMode,
+            Visible = layer.Visible,
+            Opacity = layer.Opacity,
+            EffectInstanceIds = [.. layer.EffectInstanceIds]
+        }).ToList(),
+        ActiveControlIds = [.. source.ActiveControlIds],
+        ActiveEffectIds = [.. source.ActiveEffectIds],
+        ActiveEffects = source.ActiveEffects.Select(effect => new ActiveEffectState
+        {
+            Id = effect.Id,
+            ProgramResource = effect.ProgramResource,
+            InstanceId = effect.InstanceId,
+            TargetHandleId = effect.TargetHandleId,
+            Order = effect.Order,
+            Parameters = effect.Parameters,
+            AnimationValues = effect.AnimationValues.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
+        }).ToList(),
+        ActiveParticleEmitters = source.ActiveParticleEmitters.Select(emitter => new ActiveParticleEmitterState
+        {
+            InstanceId = emitter.InstanceId,
+            Definition = emitter.Definition,
+            Z = emitter.Z,
+            AnimationValues = emitter.AnimationValues.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
+        }).ToList(),
+        ActiveAnimations = source.ActiveAnimations.Select(animation => new ActiveAnimationState
+        {
+            EntryType = animation.EntryType,
+            PlaybackHandleId = animation.PlaybackHandleId,
+            Parameters = animation.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
+        }).ToList()
+    };
 }

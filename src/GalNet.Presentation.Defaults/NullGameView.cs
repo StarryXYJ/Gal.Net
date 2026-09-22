@@ -1,46 +1,22 @@
 using GalNet.Core.View;
-using GalNet.Core.Scene;
+using GalNet.Core.Primitives;
 
 namespace GalNet.Presentation.Defaults;
 
 /// <summary>Framework-neutral no-op game view for tests and headless hosts.</summary>
 public class NullGameView : IGameView
 {
-    public virtual void ShowLayer(LayerRenderRequest request) { }
-    public virtual void ReplaceLayer(string handleId, string assetId) { }
-    public virtual void HideLayer(string handleId) { }
-    public virtual void MoveLayer(string handleId, LayerTransform transform, float z, float durationSec) { }
-    public virtual async Task<AnimationOutcome> AnimateAsync(AnimationRequest request, CancellationToken ct)
+    private static readonly PrimitiveDispatch Skipped = new(
+        PrimitiveDispatchStatus.Skipped,
+        new PrimitiveExecutionPolicy(false, false, null),
+        Task.FromResult(PrimitiveResult.Empty));
+
+    public IReadOnlyCollection<PrimitiveDescriptor> Primitives { get; } = [];
+    public virtual bool TryGetDescriptor(string primitiveType, out PrimitiveDescriptor? descriptor)
     {
-        if (request.LoopMode != AnimationLoopMode.Once)
-            await Task.Delay(TimeSpan.FromSeconds(request.DurationSeconds * (request.LoopMode == AnimationLoopMode.PingPong ? 2 : 1)), ct);
-        return AnimationOutcome.Completed;
+        descriptor = null;
+        return false;
     }
-    public virtual async Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken ct)
-    {
-        if (plan.LoopMode == AnimationLoopMode.Loop)
-            await Task.Delay(TimeSpan.FromSeconds(plan.DurationFrames / (double)plan.FrameRate), ct);
-        return new AnimationPlanPlayResult { Outcome = AnimationOutcome.Completed, TrackOutcomes = plan.Tracks.ToDictionary(track => $"{track.HandleId}:{track.Property}", _ => AnimationOutcome.Completed) };
-    }
-    public virtual bool CompleteAnimationImmediately(string playbackHandleId) => false;
-    public virtual bool SkipAnimationBatch() => false;
-    public virtual void ShowDialogue() { }
-    public virtual void HideDialogue() { }
-    public virtual void PlayAudio(string channel, string assetId, float volume, string mode, int times) { }
-    public virtual void StopAudio(string channel) { }
-    public virtual void PauseAudio(string channel) { }
-    public virtual void ResumeAudio(string channel) { }
-    public virtual void EnqueueAudio(string channel, string assetId, int times) { }
-    public virtual void ConfigureAudioQueue(string channel, string onEnd, string onEmpty) { }
-    public virtual void PlayVideo(string assetId) { }
-    public virtual void StopVideo() { }
-    public virtual Task StartEffectAsync(EffectRequest request, CancellationToken ct) => Task.CompletedTask;
-    public virtual Task StopEffectAsync(string instanceId, CancellationToken ct) => Task.CompletedTask;
-    public virtual Task StartParticleEmitterAsync(ParticleEmitterRequest request, CancellationToken ct) => Task.CompletedTask;
-    public virtual Task StopParticleEmitterAsync(string instanceId, CancellationToken ct) => Task.CompletedTask;
-    public virtual Task StartTypewriter(string widgetInstanceId, string speaker, string text, CancellationToken ct) => Task.CompletedTask;
-    public virtual void SkipTypewriter(string widgetInstanceId) { }
-    public virtual void SetVoice(string assetId) { }
-    public virtual Task WaitForClickAsync(CancellationToken ct) => Task.CompletedTask;
-    public virtual Task<int> WaitForChoiceAsync(string widgetInstanceId, string[] options, CancellationToken ct) => Task.FromResult(0);
+    public virtual PrimitiveDispatch Dispatch(PrimitiveInvocation invocation, PrimitiveExecutionControl control, CancellationToken cancellationToken) => Skipped;
+
 }

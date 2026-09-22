@@ -31,6 +31,12 @@
           "GalNet.Core": "[1.0.0, )"
         }
       },
+      "galnet.primitives.builtins": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Core": "[1.0.0, )"
+        }
+      },
       "galnet.storage.abstractions": {
         "type": "Project",
         "dependencies": {

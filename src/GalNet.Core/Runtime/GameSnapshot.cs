@@ -5,6 +5,11 @@ namespace GalNet.Core.Runtime;
 /// <summary>Persisted runtime state needed to resume a game and rebuild its visible scene.</summary>
 public sealed class GameSnapshot
 {
+    public const int CurrentFormatVersion = 2;
+
+    /// <summary>Persisted save format version. Older formats are intentionally rejected.</summary>
+    public int Version { get; init; } = CurrentFormatVersion;
+
     /// <summary>Graph node that should execute after restoration.</summary>
     public string NodeId { get; init; } = "";
 

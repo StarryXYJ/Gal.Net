@@ -7,7 +7,7 @@ namespace GalNet.Storage.FileSystem;
 /// <summary>File-backed slot and quick-save store.</summary>
 public sealed class FileSaveService : ISaveService
 {
-    private const int FormatVersion = 1;
+    private const int FormatVersion = GameSnapshot.CurrentFormatVersion;
     private readonly string _root;
     private readonly SemaphoreSlim _gate = new(1, 1);
 

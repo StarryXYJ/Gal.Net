@@ -7,7 +7,7 @@ namespace GalNet.Core.Runtime;
 
 /// <summary>
 /// 游戏运行时状态接口 —— 统一管理游戏当前的位置、变量、场景状态等。
-/// 由 GameRuntime 实现，通过 EntryContext 注入 Handler。
+/// 由 GameRuntime 实现，并通过动态 PrimitiveInvocation 提供运行时状态。
 ///
 /// 设计原则：
 ///   - 位置/结束标志仅暴露只读属性，防止 Handler 意外修改控制流。

@@ -16,6 +16,7 @@ using GalNet.Editor.Inspector.Views;
 using GalNet.Core.Assets;
 using GalNet.Editor.Views;
 using Microsoft.Extensions.DependencyInjection;
+using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Composition;
 
@@ -85,7 +86,7 @@ public static class EditorServiceCollectionExtensions
         services.AddScoped<RedoEditorCommand>();
         services.AddScoped<IEditorShortcutCommandDefinition>(sp => sp.GetRequiredService<UndoEditorCommand>());
         services.AddScoped<IEditorShortcutCommandDefinition>(sp => sp.GetRequiredService<RedoEditorCommand>());
-        foreach (var definition in GalNet.Core.Entry.EntryRegistry.Definitions)
+        foreach (var definition in BuiltinEntryCatalog.Definitions)
         {
             services.AddScoped<IEditorShortcutCommandDefinition>(_ => new EntryTypeShortcutCommand(definition));
         }

@@ -18,7 +18,6 @@ using GalNet.Core.Services;
 using GalNet.Core.Settings;
 using GalNet.Core.View;
 using GalNet.Runtime.Engine;
-using GalNet.Runtime.Handlers;
 using GalNet.Runtime.Runtime;
 using GalNet.Presentation.Defaults;
 using GalNet.Presentation.Abstractions.Runtime;
@@ -246,12 +245,10 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
     {
         if (_engine is not null) return;
         _pageView = new AvaloniaGamePageView(_gameplay, _page, new EditorPreviewLayerFactory(_context.AssetRoot));
-        var view = new CompositeGameView(
-            _pageView, _pageView, _pageView, _fallback, _fallback, _fallback, _pageView, _pageView, _pageView);
+        var view = new CompositeGameView([]);
         var content = await _context.Content.LoadAsync(cancellationToken);
         var runtime = new GameRuntime(null, content.Graph.RootNodeId, new SettingsContainer(), _context.Variables);
-        _engine = new GameEngine(
-            content.Graph, runtime, view, EntryHandlerRegistry.CreateDefault(_context.Progress), _context.Progress);
+        _engine = new GameEngine(content.Graph, runtime, view, _context.Progress);
         _context.RuntimeCreated(runtime);
         await RefreshSlotsAsync(cancellationToken);
     }

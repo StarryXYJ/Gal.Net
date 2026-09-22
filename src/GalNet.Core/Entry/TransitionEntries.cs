@@ -49,9 +49,15 @@ internal static class TransitionEntrySupport
     }
     public static PrimitiveEntry PlanEntry(EntryCompileContext context, AnimationPlanDefinition plan)
     {
-        var primitive = context.CreatePrimitive<PlayAnimationPlanEntry>();
-        primitive.Values["plan"] = JsonSerializer.Serialize(plan, PlanJsonOptions);
-        return primitive;
+        return new PrimitiveEntry(
+            "animation.play",
+            JsonSerializer.SerializeToElement(new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+            {
+                ["plan"] = JsonSerializer.SerializeToElement(plan, PlanJsonOptions)
+            }))
+        {
+            Condition = context.Condition
+        };
     }
     public static string? NullIfWhiteSpace(string value) => string.IsNullOrWhiteSpace(value) ? null : value;
 }
@@ -89,12 +95,12 @@ public sealed class CrossFadeTransitionEntry : NonPrimitiveEntry
     };
     internal static AnimationPlanEventDefinition ShowLayer(string handle, string asset, JsonElement transform, float z, float opacity, LayerDisplayMode displayMode) => new()
     {
-        Frame = 0, Type = ShowLayerEntry.TypeId,
+        Frame = 0, Type = "layer.show",
         Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal) { ["handleId"] = JsonSerializer.SerializeToElement(handle), ["assetId"] = JsonSerializer.SerializeToElement(asset), ["transform"] = transform, ["z"] = JsonSerializer.SerializeToElement(z), ["opacity"] = JsonSerializer.SerializeToElement(opacity), ["displayMode"] = JsonSerializer.SerializeToElement(displayMode.ToString()) }
     };
     internal static AnimationPlanEventDefinition HideLayer(string handle, int frame) => new()
     {
-        Frame = frame, Type = HideLayerEntry.TypeId,
+        Frame = frame, Type = "layer.hide",
         Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal) { ["handleId"] = JsonSerializer.SerializeToElement(handle) }
     };
 }
@@ -194,7 +200,7 @@ public sealed class BlindsTransitionEntry : NonPrimitiveEntry
     private static AnimationPlanEventDefinition ApplyMask(string instanceId, string targetHandleId, string program, JsonElement parameters) => new()
     {
         Frame = 0,
-        Type = ApplyEffectEntry.TypeId,
+        Type = "effect.apply",
         Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
         {
             ["program"] = JsonSerializer.SerializeToElement(program),
@@ -207,7 +213,7 @@ public sealed class BlindsTransitionEntry : NonPrimitiveEntry
     private static AnimationPlanEventDefinition StopMask(string instanceId, int frame) => new()
     {
         Frame = frame,
-        Type = StopEffectEntry.TypeId,
+        Type = "effect.stop",
         Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
         {
             ["instanceId"] = JsonSerializer.SerializeToElement(instanceId)
@@ -244,8 +250,8 @@ public abstract class ColorFieldTransitionEntryBase : NonPrimitiveEntry
         return [TransitionEntrySupport.PlanEntry(context, plan)];
     }
 
-    private AnimationPlanEventDefinition ShowColor(string handle) => new() { Frame = 0, Type = ShowColorLayerEntry.TypeId, Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal) { ["handleId"] = JsonSerializer.SerializeToElement(handle), ["color"] = JsonSerializer.SerializeToElement(OverlayColor), ["transform"] = JsonSerializer.SerializeToElement(new { }), ["z"] = JsonSerializer.SerializeToElement(TransitionEntrySupport.Float(this, "overlayZ")), ["opacity"] = JsonSerializer.SerializeToElement(0f) } };
-    private AnimationPlanEventDefinition ShowAt(string handle, int frame) => new() { Frame = frame, Type = ShowLayerEntry.TypeId, Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal) { ["handleId"] = JsonSerializer.SerializeToElement(handle), ["assetId"] = JsonSerializer.SerializeToElement(TransitionEntrySupport.Require(this, "toAssetId")), ["transform"] = TransitionEntrySupport.Json(this, "toTransform", "{}"), ["z"] = JsonSerializer.SerializeToElement(TransitionEntrySupport.Float(this, "toZ")), ["opacity"] = JsonSerializer.SerializeToElement(1f), ["displayMode"] = JsonSerializer.SerializeToElement(TransitionEntrySupport.DisplayMode(this, "toDisplayMode", "Fill").ToString()) } };
+    private AnimationPlanEventDefinition ShowColor(string handle) => new() { Frame = 0, Type = "layer.showColor", Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal) { ["handleId"] = JsonSerializer.SerializeToElement(handle), ["color"] = JsonSerializer.SerializeToElement(OverlayColor), ["transform"] = JsonSerializer.SerializeToElement(new { }), ["z"] = JsonSerializer.SerializeToElement(TransitionEntrySupport.Float(this, "overlayZ")), ["opacity"] = JsonSerializer.SerializeToElement(0f) } };
+    private AnimationPlanEventDefinition ShowAt(string handle, int frame) => new() { Frame = frame, Type = "layer.show", Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal) { ["handleId"] = JsonSerializer.SerializeToElement(handle), ["assetId"] = JsonSerializer.SerializeToElement(TransitionEntrySupport.Require(this, "toAssetId")), ["transform"] = TransitionEntrySupport.Json(this, "toTransform", "{}"), ["z"] = JsonSerializer.SerializeToElement(TransitionEntrySupport.Float(this, "toZ")), ["opacity"] = JsonSerializer.SerializeToElement(1f), ["displayMode"] = JsonSerializer.SerializeToElement(TransitionEntrySupport.DisplayMode(this, "toDisplayMode", "Fill").ToString()) } };
     private int Frames(string name, bool positive)
     {
         var seconds = TransitionEntrySupport.Float(this, name);

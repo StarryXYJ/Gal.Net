@@ -1,70 +1,121 @@
-using GalNet.Core.Scene;
+using GalNet.Core.Primitives;
 
 namespace GalNet.Core.View;
 
 /// <summary>
-/// Framework-neutral <see cref="IGameView"/> implementation that composes focused
-/// presentation services supplied by the host composition root.
+/// Framework-neutral Game Scope facade. Primitive modules are validated and frozen
+/// at construction; runtime routing only performs prefix and command lookup.
 /// </summary>
 public sealed class CompositeGameView : IGameView
 {
-    private readonly ILayerView _layers;
-    private readonly IAnimationView _animations;
-    private readonly IControlView _controls;
-    private readonly IAudioView _audio;
-    private readonly IVideoView _video;
-    private readonly IEffectView _effects;
-    private readonly IParticleEmitterView _particles;
-    private readonly ITypewriterView _typewriter;
-    private readonly IInteractionView _interaction;
+    private static readonly PrimitiveDispatch Skipped = new(
+        PrimitiveDispatchStatus.Skipped,
+        new PrimitiveExecutionPolicy(false, false, null),
+        Task.FromResult(PrimitiveResult.Empty));
 
-    public CompositeGameView(
-        ILayerView layers,
-        IAnimationView animations,
-        IControlView controls,
-        IAudioView audio,
-        IVideoView video,
-        IEffectView effects,
-        IParticleEmitterView particles,
-        ITypewriterView typewriter,
-        IInteractionView interaction)
+    private readonly IReadOnlyDictionary<string, IPrimitiveModule> _modules;
+    private readonly IReadOnlyDictionary<string, PrimitiveDescriptor> _descriptors;
+    private bool _disposed;
+
+    /// <summary>Creates a module-only Game Scope.</summary>
+    public CompositeGameView(IEnumerable<IPrimitiveModule> modules)
     {
-        _layers = layers;
-        _animations = animations;
-        _controls = controls;
-        _audio = audio;
-        _video = video;
-        _effects = effects;
-        _particles = particles;
-        _typewriter = typewriter;
-        _interaction = interaction;
+        ArgumentNullException.ThrowIfNull(modules);
+        (_modules, _descriptors) = FreezeModules(modules);
+        Primitives = _descriptors.Values.ToArray();
     }
 
-    public void ShowLayer(LayerRenderRequest request) => _layers.ShowLayer(request);
-    public void ReplaceLayer(string handleId, string assetId) => _layers.ReplaceLayer(handleId, assetId);
-    public void HideLayer(string handleId) => _layers.HideLayer(handleId);
-    public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSec) => _layers.MoveLayer(handleId, transform, z, durationSec);
-    public Task<AnimationOutcome> AnimateAsync(AnimationRequest request, CancellationToken ct) => _animations.AnimateAsync(request, ct);
-    public Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken ct) => _animations.PlayAnimationPlanAsync(plan, ct);
-    public bool CompleteAnimationImmediately(string playbackHandleId) => _animations.CompleteAnimationImmediately(playbackHandleId);
-    public bool SkipAnimationBatch() => _animations.SkipAnimationBatch();
-    public void ShowDialogue() => _controls.ShowDialogue();
-    public void HideDialogue() => _controls.HideDialogue();
-    public void PlayAudio(string channel, string assetId, float volume, string mode, int times) => _audio.PlayAudio(channel, assetId, volume, mode, times);
-    public void StopAudio(string channel) => _audio.StopAudio(channel);
-    public void PauseAudio(string channel) => _audio.PauseAudio(channel);
-    public void ResumeAudio(string channel) => _audio.ResumeAudio(channel);
-    public void EnqueueAudio(string channel, string assetId, int times) => _audio.EnqueueAudio(channel, assetId, times);
-    public void ConfigureAudioQueue(string channel, string onEnd, string onEmpty) => _audio.ConfigureAudioQueue(channel, onEnd, onEmpty);
-    public void PlayVideo(string assetId) => _video.PlayVideo(assetId);
-    public void StopVideo() => _video.StopVideo();
-    public Task StartEffectAsync(EffectRequest request, CancellationToken ct) => _effects.StartEffectAsync(request, ct);
-    public Task StopEffectAsync(string instanceId, CancellationToken ct) => _effects.StopEffectAsync(instanceId, ct);
-    public Task StartParticleEmitterAsync(ParticleEmitterRequest request, CancellationToken ct) => _particles.StartParticleEmitterAsync(request, ct);
-    public Task StopParticleEmitterAsync(string instanceId, CancellationToken ct) => _particles.StopParticleEmitterAsync(instanceId, ct);
-    public Task StartTypewriter(string widgetInstanceId, string speaker, string text, CancellationToken ct) => _typewriter.StartTypewriter(widgetInstanceId, speaker, text, ct);
-    public void SkipTypewriter(string widgetInstanceId) => _typewriter.SkipTypewriter(widgetInstanceId);
-    public void SetVoice(string assetId) => _typewriter.SetVoice(assetId);
-    public Task WaitForClickAsync(CancellationToken ct) => _interaction.WaitForClickAsync(ct);
-    public Task<int> WaitForChoiceAsync(string widgetInstanceId, string[] options, CancellationToken ct) => _interaction.WaitForChoiceAsync(widgetInstanceId, options, ct);
+    public IReadOnlyCollection<PrimitiveDescriptor> Primitives { get; }
+
+    public bool TryGetDescriptor(string primitiveType, out PrimitiveDescriptor? descriptor) =>
+        _descriptors.TryGetValue(primitiveType, out descriptor);
+
+    public PrimitiveDispatch Dispatch(
+        PrimitiveInvocation invocation,
+        PrimitiveExecutionControl control,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(invocation);
+        ArgumentNullException.ThrowIfNull(control);
+        if (_disposed || !TrySplit(invocation.TypeId, out var prefix, out var command) ||
+            !_modules.TryGetValue(prefix, out var module))
+            return Skipped;
+
+        try
+        {
+            return module.Dispatch(command, invocation.Context, invocation.Arguments, control, cancellationToken) ?? Skipped;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            return Skipped;
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        List<Exception>? exceptions = null;
+        foreach (var module in _modules.Values.Reverse())
+        {
+            try { module.Dispose(); }
+            catch (Exception exception) { (exceptions ??= []).Add(exception); }
+        }
+        if (exceptions is { Count: > 0 }) throw new AggregateException(exceptions);
+    }
+
+    private static (IReadOnlyDictionary<string, IPrimitiveModule> Modules, IReadOnlyDictionary<string, PrimitiveDescriptor> Descriptors)
+        FreezeModules(IEnumerable<IPrimitiveModule> modules)
+    {
+        var modulesByPrefix = new Dictionary<string, IPrimitiveModule>(StringComparer.Ordinal);
+        var descriptors = new Dictionary<string, PrimitiveDescriptor>(StringComparer.Ordinal);
+        foreach (var module in modules)
+        {
+            ArgumentNullException.ThrowIfNull(module);
+            ValidatePrefix(module.Prefix);
+            if (!modulesByPrefix.TryAdd(module.Prefix, module))
+                throw new InvalidOperationException($"Primitive module prefix '{module.Prefix}' is already registered.");
+
+            foreach (var descriptor in module.Descriptors ?? throw new InvalidOperationException($"Primitive module '{module.Prefix}' has no descriptor collection."))
+            {
+                ArgumentNullException.ThrowIfNull(descriptor);
+                var command = GetCommand(module.Prefix, descriptor.TypeId);
+                if (string.IsNullOrWhiteSpace(command))
+                    throw new InvalidOperationException($"Primitive '{descriptor.TypeId}' does not belong to module '{module.Prefix}'.");
+                if (!descriptors.TryAdd(descriptor.TypeId, descriptor))
+                    throw new InvalidOperationException($"Primitive '{descriptor.TypeId}' is already registered.");
+            }
+        }
+        return (modulesByPrefix, descriptors);
+    }
+
+    private static bool TrySplit(string typeId, out string prefix, out string command)
+    {
+        prefix = "";
+        command = "";
+        if (string.IsNullOrWhiteSpace(typeId)) return false;
+        var separator = typeId.IndexOf('.');
+        if (separator <= 0 || separator == typeId.Length - 1) return false;
+        prefix = typeId[..separator];
+        command = typeId[(separator + 1)..];
+        return true;
+    }
+
+    private static string? GetCommand(string prefix, string typeId)
+    {
+        if (!TrySplit(typeId, out var typePrefix, out var command) || typePrefix != prefix) return null;
+        return command;
+    }
+
+    private static void ValidatePrefix(string prefix)
+    {
+        if (string.IsNullOrWhiteSpace(prefix) || prefix.Contains('.') ||
+            !string.Equals(prefix, prefix.ToLowerInvariant(), StringComparison.Ordinal))
+            throw new ArgumentException("Primitive module prefixes must be non-empty, lowercase, dot-free identifiers.", nameof(prefix));
+    }
+
 }

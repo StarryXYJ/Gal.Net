@@ -13,6 +13,7 @@ using System.Linq;
 using GalNet.Core.Entry;
 using GalNet.Core.Scene;
 using GalNet.Editor.Commands;
+using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.ViewModels;
 
@@ -31,7 +32,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     public IReadOnlyList<GalNet.Core.Variable.ProjectVariableDefinition> ValidationVariables => Workspace.AllProjectVariableDefinitions;
     public IAssetManager AssetManager { get; }
     public EditorShortcutService ShortcutService { get; }
-    public IReadOnlyList<EntryTypeOption> EntryTypes { get; } = EntryRegistry.Definitions
+    public IReadOnlyList<EntryTypeOption> EntryTypes { get; } = BuiltinEntryCatalog.Definitions
         .Select(definition => new EntryTypeOption(definition.Type, definition.Category, $"Entry.Type.{definition.Type}"))
         .ToArray();
 

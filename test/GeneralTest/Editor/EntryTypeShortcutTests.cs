@@ -3,6 +3,7 @@ using GalNet.Core.Entry;
 using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Commands;
+using GalNet.Primitives.Builtins;
 
 namespace GeneralTest.Editor;
 
@@ -11,7 +12,7 @@ public class EntryTypeShortcutTests
     [Test]
     public void Defaults_Should_Only_Assign_The_Four_Documented_Gestures()
     {
-        var commands = EntryRegistry.Definitions.Select(definition => new EntryTypeShortcutCommand(definition)).ToList();
+        var commands = BuiltinEntryCatalog.Definitions.Select(definition => new EntryTypeShortcutCommand(definition)).ToList();
         var assigned = commands.Where(command => command.DefaultGesture is not null).ToDictionary(command => command.EntryType);
 
         Assert.That(assigned, Has.Count.EqualTo(4));
@@ -26,7 +27,7 @@ public class EntryTypeShortcutTests
     public void Service_Should_Persist_Disable_Reset_And_Detect_Context_Conflicts()
     {
         var settings = new TestSettingsService();
-        var commands = EntryRegistry.Definitions.Select(definition => new EntryTypeShortcutCommand(definition)).ToList();
+        var commands = BuiltinEntryCatalog.Definitions.Select(definition => new EntryTypeShortcutCommand(definition)).ToList();
         var service = new EditorShortcutService(commands, settings);
         var video = commands.Single(command => command.EntryType == PlayVideoEntry.TypeId);
 

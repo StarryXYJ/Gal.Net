@@ -9,6 +9,7 @@ using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
+using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -138,14 +139,14 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
 
         var document = JsonSerializer.Deserialize<GroupDocument>(File.ReadAllText(file), JsonOptions)
             ?? throw new InvalidDataException($"The .galgroup file '{relativeFile}' is empty.");
-        if (document.Version != 1)
+        if (document.Version != GroupDocument.CurrentVersion)
             throw new InvalidDataException($"Unsupported .galgroup version '{document.Version}'.");
         if (document.Kind != GroupDocumentKind.Raw)
             throw new InvalidDataException($"The editor source file '{relativeFile}' must be a .rawgalgroup document.");
 
         foreach (var entry in document.Entries)
         {
-            var definition = EntryRegistry.Get(entry.Type);
+            var definition = BuiltinEntryCatalog.Get(entry.Type);
             var parameters = entry.Parameters
                 .Where(p => definition.Parameters.ContainsKey(p.Key))
                 .ToDictionary(pair => pair.Key, pair => ToEditorValue(pair.Value), StringComparer.Ordinal);
@@ -165,7 +166,7 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
 
     private static GroupEntryDocument SerializeEntry(EditorEntryData entry)
     {
-        var definition = EntryRegistry.Get(entry.Type);
+        var definition = BuiltinEntryCatalog.Get(entry.Type);
         var parameters = entry.Parameters
             .Where(pair => definition.Parameters.ContainsKey(pair.Key) && pair.Value.Length > 0)
             .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
@@ -178,7 +179,7 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
             Id = entry.StableId,
             Type = entry.Type,
             Condition = entry.Condition,
-            Parameters = parameters.ToDictionary(pair => pair.Key, pair => ToJsonValue(pair.Key, pair.Value), StringComparer.Ordinal)
+            Parameters = parameters.ToDictionary(pair => pair.Key, pair => ToJsonValue(definition.Parameters[pair.Key], pair.Value), StringComparer.Ordinal)
         };
     }
 
@@ -186,14 +187,19 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
         ? value.GetString() ?? ""
         : value.GetRawText();
 
-    private static JsonElement ToJsonValue(string name, string value)
+    private static JsonElement ToJsonValue(EntryParameterType type, string value)
     {
-        if (name == "transform")
+        if (type == EntryParameterType.Json)
         {
             using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(value) ? "{}" : value);
             return document.RootElement.Clone();
         }
-        return JsonSerializer.SerializeToElement(value);
+        return type switch
+        {
+            EntryParameterType.Integer => JsonSerializer.SerializeToElement(int.Parse(value, System.Globalization.CultureInfo.InvariantCulture)),
+            EntryParameterType.Float => JsonSerializer.SerializeToElement(float.Parse(value, System.Globalization.CultureInfo.InvariantCulture)),
+            _ => JsonSerializer.SerializeToElement(value)
+        };
     }
 
     private static void EnsureStableIds(EditorGraphDocument document)

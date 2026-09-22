@@ -16,7 +16,6 @@ using GalNet.Assets.Provider;
 using GalNet.Core.Assets;
 using GalNet.Presentation.Abstractions.Runtime;
 using GalNet.Runtime.Engine;
-using GalNet.Runtime.Handlers;
 using GalNet.Runtime.Logging;
 using GalNet.Runtime.Runtime;
 using GalNet.Sample.Avalonia.Presentation;
@@ -362,12 +361,12 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _gameplay,
             _layers,
             programs: programs);
-        var gameView = new CompositeGameView(_pageView, _pageView, _pageView, _media, _media, _effects, _pageView, _pageView, _pageView);
+        var gameView = new CompositeGameView([]);
         var content = await _contentProvider.LoadAsync(cancellationToken);
         var settings = new SettingsContainer();
         settings.Set(_settings);
         var runtime = new GameRuntime(null, content.Graph.RootNodeId, settings, _variables);
-        _engine = new GameEngine(content.Graph, runtime, gameView, EntryHandlerRegistry.CreateDefault(_progress), _progress);
+        _engine = new GameEngine(content.Graph, runtime, gameView, _progress);
     }
 
     private async Task RefreshSlotsAsync(CancellationToken cancellationToken)

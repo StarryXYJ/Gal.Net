@@ -4,27 +4,28 @@ using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.Serialization;
 using GalNet.Runtime.Loader;
+using GalNet.Primitives.Builtins;
 
 namespace GeneralTest.Runtime;
 
 public class GalgroupLoaderTests
 {
     [Test]
-    public void LoadIntoGroup_CompilesJsonEntriesAndStructuredLayerParameters()
+    public void LoadIntoGroup_PreservesGenericPrimitiveArguments()
     {
         var group = new Group { Id = "test_group" };
         GalgroupLoader.LoadIntoGroupFromContent(group, """
             {
-              "version": 1,
+              "version": 2,
               "kind": "Compiled",
               "entries": [
-                { "id": "entry-text", "type": "text", "parameters": { "speaker": "Alice", "content": "intro" } },
-                { "id": "entry-layer", "type": "layer.show", "parameters": {
-                  "handleId": "layer-handle", "assetId": "background", "z": 5, "displayMode": "Uniform",
+                { "id": "entry-text", "typeId": "dialogue.text", "arguments": { "speaker": "Alice", "content": "intro" } },
+                { "id": "entry-layer", "typeId": "layer.show", "arguments": {
+                  "handleId": "layer-handle", "assetId": "background", "z": 5, "visible": true,
                   "flipbook": { "columns": 4, "rows": 4, "frameCount": 14, "index": 2 },
                   "transform": { "x": 120, "y": -30, "rotationDegrees": 12, "scaleX": 2, "scaleY": 1 }
                 } },
-                { "id": "entry-animation", "type": "animation.play", "parameters": {
+                { "id": "entry-animation", "typeId": "animation.play", "arguments": {
                   "plan": { "playbackHandleId": "intro-clip", "frameRate": 60, "durationFrames": 30, "blocking": true,
                     "tracks": [ { "handleId": "layer-handle", "property": "opacity", "keys": [
                       { "frame": 0, "value": 0, "interpolationToNext": "Linear" },
@@ -35,13 +36,15 @@ public class GalgroupLoaderTests
             }
             """);
 
-        Assert.That(group.Entries[0], Is.TypeOf<TextEntry>());
-        Assert.That(group.Entries[1], Is.TypeOf<ShowLayerEntry>());
-        Assert.That(group.Entries[1].Values["handleId"], Is.EqualTo("layer-handle"));
-        Assert.That(group.Entries[1].Values["transform"], Does.Contain("scaleX"));
-        Assert.That(group.Entries[1].Values["flipbook"], Does.Contain("frameCount"));
-        Assert.That(group.Entries[2], Is.TypeOf<PlayAnimationPlanEntry>());
-        Assert.That(group.Entries[2].Values["plan"], Does.Contain("durationFrames"));
+        Assert.That(group.Entries, Has.Count.EqualTo(3));
+        var text = (PrimitiveEntry)group.Entries[0];
+        var layer = (PrimitiveEntry)group.Entries[1];
+        var animation = (PrimitiveEntry)group.Entries[2];
+        Assert.That(text.Type, Is.EqualTo("dialogue.text"));
+        Assert.That(layer.Arguments.GetProperty("z").GetInt32(), Is.EqualTo(5));
+        Assert.That(layer.Arguments.GetProperty("visible").GetBoolean(), Is.True);
+        Assert.That(layer.Arguments.GetProperty("transform").GetProperty("scaleX").GetInt32(), Is.EqualTo(2));
+        Assert.That(animation.Arguments.GetProperty("plan").GetProperty("durationFrames").GetInt32(), Is.EqualTo(30));
     }
 
     [Test]
@@ -49,7 +52,7 @@ public class GalgroupLoaderTests
     {
         var group = new Group { Id = "test" };
         Assert.That(() => GalgroupLoader.LoadIntoGroupFromContent(group, "text : content:legacy"),
-            Throws.TypeOf<InvalidDataException>().With.Message.Contains("JSON"));
+            Throws.TypeOf<InvalidDataException>().With.Message.Contains("primitive-envelope"));
     }
 
     [Test]
@@ -57,9 +60,9 @@ public class GalgroupLoaderTests
     {
         var group = new Group { Id = "test" };
         Assert.That(() => GalgroupLoader.LoadIntoGroupFromContent(group, """
-            { "version": 1, "kind": "Compiled", "entries": [
-              { "id": "duplicate", "type": "text", "parameters": { "content": "a" } },
-              { "id": "duplicate", "type": "text", "parameters": { "content": "b" } }
+            { "version": 2, "kind": "Compiled", "entries": [
+              { "id": "duplicate", "typeId": "dialogue.text", "arguments": { "content": "a" } },
+              { "id": "duplicate", "typeId": "dialogue.text", "arguments": { "content": "b" } }
             ] }
             """), Throws.TypeOf<InvalidDataException>().With.Message.Contains("unique"));
     }
@@ -69,30 +72,17 @@ public class GalgroupLoaderTests
     {
         var group = new Group { Id = "test" };
         Assert.That(() => GalgroupLoader.LoadIntoGroupFromContent(group, """
-            { "version": 1, "kind": "Raw", "entries": [] }
+            { "version": 2, "kind": "Raw", "entries": [] }
             """), Throws.TypeOf<InvalidDataException>().With.Message.Contains("compiled"));
     }
 
-    [TestCase(ShowLayerEntry.TypeId)]
-    [TestCase(HideLayerEntry.TypeId)]
-    public void Load_rejects_legacy_layer_transition_parameters(string entryType)
+    public void Load_RejectsPreviousFormatVersion()
     {
-        var parameters = new Dictionary<string, JsonElement>
-        {
-            ["handleId"] = JsonSerializer.SerializeToElement("layer"),
-            ["transitionId"] = JsonSerializer.SerializeToElement("black")
-        };
-        if (entryType == ShowLayerEntry.TypeId)
-            parameters["assetId"] = JsonSerializer.SerializeToElement("background.png");
-        var document = new GroupDocument
-        {
-            Kind = GroupDocumentKind.Compiled,
-            Entries = [new GroupEntryDocument { Id = "legacy-transition", Type = entryType, Parameters = parameters }]
-        };
         var group = new Group { Id = "test" };
 
-        Assert.That(() => GalgroupLoader.LoadIntoGroupFromContent(group, JsonSerializer.Serialize(document)),
-            Throws.TypeOf<InvalidDataException>().With.Message.Contains("transitionId"));
+        Assert.That(() => GalgroupLoader.LoadIntoGroupFromContent(group, """
+            { "version": 1, "kind": "Compiled", "entries": [] }
+            """), Throws.TypeOf<InvalidDataException>().With.Message.Contains("version"));
     }
 
     [Test]
@@ -119,15 +109,15 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var result = GalgroupCompiler.Compile(raw);
+        var result = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.Instance);
 
         Assert.That(result.Document.Kind, Is.EqualTo(GroupDocumentKind.Compiled));
         Assert.That(result.Document.Entries, Has.Count.EqualTo(1));
         Assert.That(result.Document.Entries[0].Id, Is.EqualTo("cross-fade#1"));
-        Assert.That(result.Document.Entries[0].Type, Is.EqualTo(PlayAnimationPlanEntry.TypeId));
+        Assert.That(result.Document.Entries[0].TypeId, Is.EqualTo(PlayAnimationPlanEntry.TypeId));
         Assert.That(result.SourceMap["cross-fade"], Is.EqualTo(new[] { "cross-fade#1" }));
 
-        var plan = result.Document.Entries[0].Parameters["plan"];
+        var plan = result.Document.Entries[0].Arguments.GetProperty("plan");
         Assert.That(plan.GetProperty("blocking").GetBoolean(), Is.True);
         Assert.That(plan.GetProperty("skippable").GetBoolean(), Is.True);
         Assert.That(plan.GetProperty("tracks").GetArrayLength(), Is.EqualTo(2));
@@ -161,7 +151,7 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var plan = GalgroupCompiler.Compile(raw).Document.Entries.Single().Parameters["plan"];
+        var plan = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.Instance).Document.Entries.Single().Arguments.GetProperty("plan");
         var tracks = plan.GetProperty("tracks");
 
         Assert.That(plan.GetProperty("blocking").GetBoolean(), Is.True);
@@ -201,7 +191,7 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var plan = GalgroupCompiler.Compile(raw).Document.Entries.Single().Parameters["plan"];
+        var plan = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.Instance).Document.Entries.Single().Arguments.GetProperty("plan");
         var track = plan.GetProperty("tracks")[0];
         var events = plan.GetProperty("events");
 
@@ -248,8 +238,8 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var result = GalgroupCompiler.Compile(raw);
-        var plan = result.Document.Entries.Single().Parameters["plan"];
+        var result = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.Instance);
+        var plan = result.Document.Entries.Single().Arguments.GetProperty("plan");
         var events = plan.GetProperty("events");
 
         Assert.That(plan.GetProperty("blocking").GetBoolean(), Is.True);
@@ -289,7 +279,7 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var plan = GalgroupCompiler.Compile(raw).Document.Entries.Single().Parameters["plan"];
+        var plan = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.Instance).Document.Entries.Single().Arguments.GetProperty("plan");
         Assert.That(plan.GetProperty("events")[0].GetProperty("parameters").GetProperty("color").GetString(), Is.EqualTo(expectedColor));
     }
 }

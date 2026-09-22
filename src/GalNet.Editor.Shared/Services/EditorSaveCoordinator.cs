@@ -8,6 +8,7 @@ using GalNet.Editor.Abstraction.Services;
 using GalNet.Core.Entry;
 using GalNet.Core.Compilation;
 using GalNet.Core.Serialization;
+using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -77,7 +78,7 @@ public sealed class EditorSaveCoordinator : IEditorSaveCoordinator
         foreach (var (groupId, entries) in groupEntries)
         {
             var raw = new GroupDocument { Kind = GroupDocumentKind.Raw, Entries = entries.Select(SerializeEntry).ToList() };
-            var compiled = GalgroupCompiler.Compile(raw).Document;
+            var compiled = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.Instance).Document;
             File.WriteAllText(Path.Combine(previewPath, $"{groupId}.galgroup"), JsonSerializer.Serialize(compiled, JsonOptions));
         }
 
@@ -86,7 +87,7 @@ public sealed class EditorSaveCoordinator : IEditorSaveCoordinator
 
     private static GroupEntryDocument SerializeEntry(EditorEntryData entry)
     {
-        var definition = EntryRegistry.Get(entry.Type);
+        var definition = BuiltinEntryCatalog.Get(entry.Type);
         var parameters = entry.Parameters
             .Where(pair => definition.Parameters.ContainsKey(pair.Key) && pair.Value.Length > 0)
             .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
@@ -97,17 +98,22 @@ public sealed class EditorSaveCoordinator : IEditorSaveCoordinator
             Id = entry.StableId,
             Type = entry.Type,
             Condition = entry.Condition,
-            Parameters = parameters.ToDictionary(pair => pair.Key, pair => ToJsonValue(pair.Key, pair.Value), StringComparer.Ordinal)
+            Parameters = parameters.ToDictionary(pair => pair.Key, pair => ToJsonValue(definition.Parameters[pair.Key], pair.Value), StringComparer.Ordinal)
         };
     }
 
-    private static JsonElement ToJsonValue(string name, string value)
+    private static JsonElement ToJsonValue(EntryParameterType type, string value)
     {
-        if (name == "transform")
+        if (type == EntryParameterType.Json)
         {
             using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(value) ? "{}" : value);
             return document.RootElement.Clone();
         }
-        return JsonSerializer.SerializeToElement(value);
+        return type switch
+        {
+            EntryParameterType.Integer => JsonSerializer.SerializeToElement(int.Parse(value, System.Globalization.CultureInfo.InvariantCulture)),
+            EntryParameterType.Float => JsonSerializer.SerializeToElement(float.Parse(value, System.Globalization.CultureInfo.InvariantCulture)),
+            _ => JsonSerializer.SerializeToElement(value)
+        };
     }
 }

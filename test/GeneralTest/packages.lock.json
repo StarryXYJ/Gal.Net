@@ -389,6 +389,7 @@
           "GalNet.Editor.Abstraction": "[1.0.0, )",
           "GalNet.Editor.Shared": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "GalNet.Primitives.Builtins": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )",
           "GalNet.Storage.Abstractions": "[1.0.0, )",
           "GalNet.Storage.FileSystem": "[1.0.0, )",
@@ -417,6 +418,7 @@
           "GalNet.Assets": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
           "GalNet.Editor.Abstraction": "[1.0.0, )",
+          "GalNet.Primitives.Builtins": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )",
           "GalNet.Storage.Abstractions": "[1.0.0, )",
           "Serilog": "[4.2.0, )"
@@ -435,12 +437,19 @@
           "LibVLCSharp": "[3.10.0, )"
         }
       },
+      "galnet.primitives.builtins": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Core": "[1.0.0, )"
+        }
+      },
       "galnet.runtime": {
         "type": "Project",
         "dependencies": {
           "CoreCLR-NCalc": "[3.1.253, )",
           "GalNet.Core": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "GalNet.Primitives.Builtins": "[1.0.0, )",
           "GalNet.Storage.Abstractions": "[1.0.0, )",
           "Serilog": "[4.2.0, )"
         }

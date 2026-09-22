@@ -35,6 +35,7 @@
     <Project Path="src/GalNet.Assets/GalNet.Assets.csproj" />
     <Project Path="src/GalNet.Core/GalNet.Core.csproj" />
     <Project Path="src/GalNet.Presentation.Abstractions/GalNet.Presentation.Abstractions.csproj" />
+    <Project Path="src/GalNet.Primitives.Builtins/GalNet.Primitives.Builtins.csproj" />
     <Project Path="src/GalNet.Runtime/GalNet.Runtime.csproj" />
     <Project Path="src/GalNet.Storage.Abstractions/GalNet.Storage.Abstractions.csproj" />
   </Folder>

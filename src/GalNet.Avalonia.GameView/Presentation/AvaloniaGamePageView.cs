@@ -17,7 +17,7 @@ public interface IGamePageLayerFactory : ISceneTextureResolver
 }
 
 /// <summary>Maps runtime layer, dialogue and interaction ports onto a shared <see cref="GamePage"/>.</summary>
-public sealed class AvaloniaGamePageView : ILayerView, IAnimationView, IControlView, ITypewriterView, IInteractionView, IParticleEmitterView, IDisposable
+public sealed class AvaloniaGamePageView : IDisposable
 {
     private readonly TaskCompletionSource _initialPresentationReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly GamePageViewModel _state;

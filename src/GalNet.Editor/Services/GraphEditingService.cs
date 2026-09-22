@@ -91,7 +91,7 @@ public sealed class GraphEditingService : IGraphEditingService
                 StableId = Guid.NewGuid().ToString("N"),
                 Type = GalNet.Core.Entry.TextEntry.TypeId,
                 Parameters = new Dictionary<string, string>(
-                    GalNet.Core.Entry.EntryRegistry.Create(GalNet.Core.Entry.TextEntry.TypeId).Values,
+                    GalNet.Primitives.Builtins.BuiltinEntryCatalog.Create(GalNet.Core.Entry.TextEntry.TypeId).Values,
                     StringComparer.Ordinal)
             };
             groupNode.Entries.Insert(index + offset, entry);

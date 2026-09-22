@@ -49,7 +49,7 @@ public class EditorDocumentRepositoryTests
             JsonSerializer.Serialize(document, new JsonSerializerOptions { WriteIndented = true }));
         File.WriteAllText(
             Path.Combine(_tempDir, "Graph", "groups", $"{groupId}.rawgalgroup"),
-            """{ "version": 1, "entries": [ { "id": "entry-1", "type": "text", "parameters": { "content": "hello", "obsolete": "discard" } } ] }""");
+            """{ "version": 2, "kind": "Raw", "entries": [ { "id": "entry-1", "type": "text", "parameters": { "content": "hello", "obsolete": "discard" } } ] }""");
 
         var settings = new ProjectSettings
         {

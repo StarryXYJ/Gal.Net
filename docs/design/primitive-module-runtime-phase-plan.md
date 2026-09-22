@@ -1,6 +1,6 @@
 # 原语模块化运行时：分阶段实施计划
 
-> 状态：planned。依据 [原语模块化运行时设计](primitive-module-runtime-design.md)。这是跨 Runtime、Core、编辑器与宿主的设计计划，尚未建立对应 feature 目录。
+> 状态：in-progress。依据 [原语模块化运行时设计](primitive-module-runtime-design.md)。这是跨 Runtime、Core、编辑器与宿主的实施计划；只有标为“已完成”且附有验证证据的工作项可视为已交付。
 
 ## 1. 已确认边界
 
@@ -23,13 +23,13 @@ flowchart LR
   P1 --> P3 --> P5
 ```
 
-每个 Phase 合入时都保持新格式的测试通过；过渡分支可以暂时缺少未迁移模块，但不得添加旧格式读取、旧 ID 别名或字符串句柄适配层。
+每个 Phase 合入时都保持新格式的测试通过；未实现模块可缺席，但不得添加旧格式读取、旧 ID 别名、字符串句柄适配层或旧执行入口。
 
 ## 2. Phase 0：格式与通用契约
 
-**状态：planned**
+**状态：in-progress**
 
-**目标：** 先建立不依赖具体宿主的原语数据模型、注册目录和 GUID 内容格式，使后续模块都遵守同一份契约。
+**目标：** 建立不依赖具体宿主的原语数据模型、动态模块注册目录和 GUID 内容格式。推荐模块仅是外层可选实现，Core/Runtime 不要求任何具体原语存在。
 
 **前置条件：** 本计划和设计稿已评审；通用原语契约置于 `GalNet.Core`，且依赖图无 Core/Runtime → Avalonia 反向引用。
 
@@ -37,27 +37,32 @@ flowchart LR
 
 **工作项：**
 
-1. 将编译产物改为通用 PrimitiveEntry 信封：规范 `TypeId`、JSON `Arguments`、条件和条目位置的序列化方式；发布新的 `.galgroup` / 存档格式版本，并拒绝旧版本。
-2. 定义 `PrimitiveDescriptor`、参数描述、`PrimitiveInvocation`、`RuntimeHandle`、`IHandleManager` 和模块注册记录；注册记录能在不实例化平台 Handler 的情况下导出 Descriptor，也能在 Game Scope 中创建 Handler。
-3. 把具体原语从 Core 静态 `EntryRegistry` 移出；非原语继续保留作者侧编译入口，但只能产出通用 PrimitiveEntry。
-4. 统一 GUID 的编辑器生成、JSON 表示和 Runtime 校验；删除字符串句柄的新增入口。
-5. 让编辑器的条目表单和编译校验读取 Descriptor 目录，而不是具体原语类型的静态 Core 表。
+**本大步骤已完成（2026-09-22）：** Core 已提供通用 primitive 契约、执行控制和 GUID `HandleManager`；`.galgroup`、快照与存档统一为 v2 JSON primitive envelope，旧版本直接拒绝。`IPrimitiveModule` 的内部 command + descriptor 表是唯一注册事实，`CompositeGameView` 只按完整 ID 动态路由模块；空 profile 与自定义 profile 都有效。`IGameView` 仅保留 descriptor 查询与通用 `Dispatch`。旧专用 View 接口、Runtime Handler/Registry、全局 `PrimitiveCatalog` 和 Runtime 对 Builtins 的引用均已删除。Samples 与编辑器预览暂以空模块集合运行，直到各平台模块在后续 Phase 注册。
+
+**剩余工作：**
+
+**剩余工作：**
+
+1. 将具体原语 schema 从 Core 静态 `EntryRegistry` 移出，并使编辑器的 Builtins 调用点改为组合期注入的 target profile。`TargetProfileEntryCatalog` 已能由模块 descriptor 建立 profile 专属的作者/编译目录；下一步是接通实际编辑器组合根。
+2. 统一 GUID 的编辑器生成、JSON 表示和 Runtime 校验，并删除字符串句柄的新增入口。
 
 **验证：**
 
-- Core 测试覆盖新格式读写、原始 JSON 类型保留、GUID 格式、Descriptor 参数默认值/约束和重复注册拒绝。
-- 编译器测试覆盖 NonPrimitive 只输出通用 PrimitiveEntry，以及未知/旧格式被拒绝。
+- Core 测试覆盖新格式读写、原始 JSON 类型保留、GUID 格式、Descriptor 参数默认值/约束、空模块集合、重复注册拒绝，以及 `IGameView` 没有领域方法。
+- 编译器/编辑器测试覆盖 target profile 只暴露已挂载模块的 descriptor、开发者自定义 primitive、NonPrimitive 只输出通用 PrimitiveEntry，以及未知/旧格式被拒绝。
 - 运行 `dotnet test test/GeneralTest/GeneralTest.csproj`。
 
 **文档：** 更新 `docs/spec/entry-types.md` 和文件格式说明，使其只列新点分隔 ID 与 GUID 字段。
 
 **风险：** `EntryRegistry` 目前同时服务编译、加载、编辑器命令和测试；本 Phase 只能替换其“具体原语”职责，不应误删非原语编译能力。
 
-**退出条件：** 新内容能被编译、加载并由测试用 Descriptor 目录校验；Core 不含具体原语 Handler 或具体原语 schema 实现。
+**退出条件：** 新内容能由指定 target profile 的模块 descriptor 编译、加载并校验；空 profile 和自定义 profile 都可用；`IGameView` 是纯动态分发入口；Core 不含具体原语 Handler、schema、Handler factory Catalog 或隐式推荐能力；推荐 Builtins/抽象模块不形成引擎旁路。
+
+**本轮验证（2026-09-22）：** `dotnet test test/GeneralTest/GeneralTest.csproj --no-restore --disable-build-servers -p:BuildInParallel=false -v minimal` 通过 197/197。静态搜索确认 `src` 与 `test` 中不存在旧专用 View 接口、`EntryHandlerRegistry`、`EntryHandler`、`EntryContext` 或 `PrimitiveCatalog`。
 
 ## 3. Phase 1：统一调度、Operation 与稳定快照
 
-**状态：planned**
+**状态：in-progress**
 
 **目标：** 让 `GameEngine` 只通过 `IGameView.Dispatch` 执行通用原语，并由 Runtime 统一决定阻塞、跳过、失败处理和可保存状态。
 
@@ -67,11 +72,12 @@ flowchart LR
 
 **工作项：**
 
-1. 实现按前缀路由的 `CompositeGameView` / `IPrimitiveModule`，在 Scope 创建时冻结模块与 Handler 字典，并拒绝空、重复或 Descriptor 不一致的注册。
-2. 实现 `PrimitiveExecutionControl`、`OperationManager` 和 `SkipNextBatchAsync`；Policy 只从 Handler 的本次 Dispatch 取得，默认无 `batchId` 时生成唯一批次键。
-3. 改造 `GameEngine`：移除 `EntryHandlerRegistry` 路由，Dispatch 前查询 Descriptor 并在稳定的可存档边界更新 `LastStableSnapshot`。
-4. 将预期内容/宿主失败转为诊断和 `PrimitiveResult.Failed`；未注册或参数不合法的调用安全跳过；仅 Scope 取消向上传播。
-5. 用测试模块覆盖普通 Group、时间轴事件和内部调用的相同 Dispatch 入口，且时间轴事件不创建 Checkpoint。
+**已完成：** `OperationManager` 跟踪已接受调用的 Sequence、批次和完成回收；`GameEngine` 的普通 Group 与内部 Choice 均以 `PrimitiveInvocation` 经 `IGameView.Dispatch` 执行，Descriptor 决定 Checkpoint。`CreateSaveData` 使用最近稳定快照，`RestoreFrom` 只恢复 Runtime 数据。旧 Handler 路径与专用呈现端口均不存在。
+
+**剩余工作：**
+
+1. 将预期内容/宿主失败转为诊断和 `PrimitiveResult.Failed`；未注册或参数不合法的调用安全跳过；仅 Scope 取消向上传播。
+2. 用测试模块覆盖时间轴事件的相同 Dispatch 入口且不创建 Checkpoint，并将内置模块接入各宿主。
 
 **验证：**
 
@@ -79,11 +85,11 @@ flowchart LR
 - 集成测试覆盖 Checkpoint 只来自稳定状态，Save 始终返回最近稳定快照。
 - 运行 `dotnet test test/GeneralTest/GeneralTest.csproj`。
 
-**文档：** 更新 `docs/spec/runtime.md` 的执行流程和存档描述；不要在 spec 中保留 `EntryHandlerRegistry` 为当前实现事实。
+**文档：** 更新 `docs/spec/runtime.md` 的执行流程和存档描述。
 
 **风险：** 此 Phase 不应依赖 Avalonia；先以 Null/测试模块证明调度正确，避免把 UI 生命周期问题带入 Engine。
 
-**退出条件：** `GameEngine` 不再引用 `EntryHandlerRegistry`；测试模块可完整证明路由、跳过和稳定快照语义。
+**退出条件：** 测试模块可完整证明路由、跳过和稳定快照语义。
 
 ## 4. Phase 2：Layer、Effect 与纯数据恢复
 
@@ -99,8 +105,8 @@ flowchart LR
 
 1. 用 `HandleManager` 替换 `ISceneInstanceManager` 的字符串键路径；将 Layer 和 Effect 的持久化 ID 切为编辑器生成 GUID。
 2. 实现 `layer.*` 与 `effect.apply/set/remove` 模块及 Descriptor；`effect.apply` 注册 Effect 后写入 Layer 的 Effect ID 列表，`remove` 反向清理后释放 Handle。
-3. 将 Avalonia 渲染改为从 Layer 读取 Effect ID、再查询 `HandleManager`；Effect 平台缓存按 Handle/参数失效，绝不进入快照。
-4. 用干净 Scope 上的纯数据重建替换 `GameRuntime.RestoreFrom` 的原语或直接 View 重放；恢复必须在同一调度线程或经原子状态替换完成。
+3. 将 Avalonia 渲染改为从 Layer 的有序 Effect ID 列表查询 `HandleManager`；Effect 平台缓存按 Handle/参数失效，绝不进入快照，也不保存目标 Layer 或目标顺序。
+4. 将 `LastStableSnapshot` 做成深拷贝数据边界：每一步位置更新后及非阻塞 Operation 结束后，仅在稳定时替换。用干净 Scope 上的纯数据重建替换 `GameRuntime.RestoreFrom` 的原语或直接 View 重放；恢复必须在同一调度线程或经原子状态替换完成。
 5. 删除 Layer/Effect 的字符串句柄和重复目标关系；悬挂 Effect ID 在恢复时诊断并清理。
 
 **验证：**
@@ -157,7 +163,7 @@ flowchart LR
 
 1. 迁移 `animation.animate/play/stop`、时间轴事件与播放 Handle；时间轴事件始终走 `IGameView.Dispatch + OperationManager`。
 2. 迁移 particle、audio、video 和其余控制类原语为模块；需要可寻址生命周期的对象改用 GUID Handle。
-3. 删除 Avalonia 页面中的活动动画表和 `SkipAnimationBatch`；宿主只执行单次调用、响应该调用的 `SkipRequested`，不再决定剧情推进或批次。
+3. 模块化时删除 Avalonia 页面中遗留的活动动画表和 `SkipAnimationBatch`；宿主只执行单次调用、响应该调用的 `SkipRequested`，不再决定剧情推进或批次。
 4. 为循环、不可跳过和非阻塞 Operation 明确 Handler 强制 Policy；所有影响持久化状态的异步结束后才允许后续稳定快照。
 
 **验证：**
@@ -185,7 +191,7 @@ flowchart LR
 **工作项：**
 
 1. 更新 Sample Headless、Sample Avalonia、Editor Preview、`DefaultGameSession` 和组合根，按 Game Scope 创建模块、HandleManager 与 OperationManager。
-2. 删除 `EntryHandlerRegistry`、旧 `EntryHandler`、`CompositeGameView` 专用端口构造、旧字符串句柄/快照字段和所有旧内容格式读取路径。
+2. 静态确认没有重新引入旧 View/Handler 路径、旧字符串句柄/快照字段或旧内容格式读取路径。
 3. 重写 Sample、测试夹具和编辑器模板为新点分隔 ID 与 GUID；旧格式测试改为断言明确拒绝。
 4. 同步 `architecture.md`、`runtime.md`、`entry-types.md`、场景/存档/效果说明和本设计的实施状态；记录实际偏差与验证结果。
 

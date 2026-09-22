@@ -9,6 +9,7 @@ using GalNet.Core.Graph;
 using GalNet.Editor.Controls;
 using GalNet.Core.Entry;
 using GalNet.Core.Scene;
+using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Models.Graph;
 public enum GraphNodeKind
@@ -269,7 +270,7 @@ public partial class EntryEditorItemViewModel : ObservableObject
     public void ConfigureParameterFields(IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames, bool resetValues = false, IEffectCatalog? effectCatalog = null)
     {
         _effectCatalog = effectCatalog;
-        var schema = EntryRegistry.Get(Type);
+        var schema = BuiltinEntryCatalog.Get(Type);
         var values = resetValues
             ? new Dictionary<string, string>(schema.Defaults, StringComparer.Ordinal)
             : Parameters.Where(pair => schema.Parameters.ContainsKey(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
