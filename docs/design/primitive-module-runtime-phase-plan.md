@@ -18,9 +18,11 @@ flowchart LR
   P3[Phase 3\n剧情与流程模块]
   P4[Phase 4\n时间与媒体模块]
   P5[Phase 5\n组合根、清理与文档]
+  P6[后续 Phase 6\n资源类型模块与动态参数]
   P0 --> P1
   P1 --> P2 --> P4 --> P5
   P1 --> P3 --> P5
+  P5 --> P6
 ```
 
 每个 Phase 合入时都保持新格式的测试通过；未实现模块可缺席，但不得添加旧格式读取、旧 ID 别名、字符串句柄适配层或旧执行入口。
@@ -207,7 +209,36 @@ flowchart LR
 
 **退出条件：** 新架构是唯一执行与内容路径；所有宿主通过新模块组合运行，完整测试和端到端冒烟通过，旧架构代码已删除。
 
-## 8. 实施纪律
+## 8. 后续 Phase 6：资源类型模块与动态参数目录
+
+**状态：planned（未开始，不阻塞当前原语模块化阶段）**
+
+**目标：** 让资源类型与 primitive 一样在宿主组合期动态注册；每个资源类型模块拥有冻结的参数 schema 和加载实现，资源系统按稳定字符串 `typeId` 查找模块。
+
+**前置条件：** 当前 Phase 0–5 的原语模块化已完成并完成正式验证；资源格式的破坏性切换范围已单独确认。
+
+**涉及模块：** `GalNet.Core`、`GalNet.Storage.Abstractions`、`GalNet.Assets`、资源 Provider/Archive、`GalNet.Editor`、平台资源模块、资源测试。
+
+**工作项：**
+
+1. 定义通用、只读的 `DynamicParameterTable` 与 descriptor；参数包含类型 ID、必填性、默认 JSON 值和约束，并让 primitive descriptor 与资源 metadata schema 复用它。
+2. 定义 `IResourceModule` 和 `CompositeResourceCatalog`；一个稳定 `typeId` 对应一个模块，组合根冻结路由并拒绝重复注册。
+3. 让 `AssetManager` 通过资源目录解析 metadata 的 `typeId`；迁移现有 `ResourceType`、硬编码字符串映射和 CLR 类型 decoder 表，资源 metadata 改为 `typeId + parameters` JSON。
+4. 更新 Provider、Archive、缓存键和编辑器资源筛选/校验；内置资源类型成为可选模块，支持仅挂载自定义模块的 profile。
+
+**验证：**
+
+- 单元测试覆盖空 catalog、重复 type ID 拒绝、自定义资源模块、冻结参数表、未知类型和参数错误诊断。
+- Provider/Archive/AssetManager 测试覆盖按字符串 type ID 路由、缓存和取消语义；不允许回退到 `unknown` 或隐式内置类型。
+- 编辑器测试确认资源列表与参数校验只来自当前 target profile 的模块 schema；本 Phase 不要求动态生成编辑控件。
+
+**文档：** 将已验证的格式与 API 事实同步至 `docs/spec/assets.md`；当前 spec 在实现前不得宣称资源类型已经动态化。
+
+**风险：** 资源 metadata、pak 索引、缓存键与 decoder 路径必须作为一次破坏性切换处理；不得为旧 `ResourceType` 或类型别名保留双读、双写或回退逻辑。
+
+**退出条件：** 宿主可只注册自定义资源模块并以其字符串 `typeId` 加载、校验和缓存资源；Core/AssetManager 不含资源类型枚举、静态映射或隐式内置资源能力；动态参数 schema 可同时服务 primitive 和资源 metadata。
+
+## 9. 实施纪律
 
 - 每个 Phase 开始前确认前序退出条件，而非依赖未验证的局部重构。
 - 每个 Phase 完成后记录实际变更、验证命令和已知偏差；若设计改变，先修订设计稿和本计划，再推进后续 Phase。

@@ -451,3 +451,40 @@ gallery.unlock
 1. 恢复与渲染采用原子状态替换还是同一调度线程执行。两者都满足本设计，按宿主实现选择。
 
 以上项目不改变目标职责，可在后续 Phase Plan 中决定施工顺序。
+
+## 17. 后续资源类型模块化与动态参数目录
+
+本节是当前原语模块化完成后的独立后续设计，不属于本轮 Phase 的实现范围。当前 `ResourceType` 枚举、`AssetMeta.ParseResourceType()` 的字符串映射以及 `IAssetManager` 按 CLR 泛型类型查找 decoder，均是现有事实；后续会一次替换，不保留枚举/字符串映射的兼容路径。
+
+### 17.1 通用、冻结的参数 schema
+
+原语 descriptor、资源 metadata 以及未来其他可配置对象都应复用同一套只读参数描述表，而不是各自维护参数定义。目标模型至少包含：
+
+```text
+DynamicParameterTable
+  name (ordinal key) -> DynamicParameterDescriptor
+    valueTypeId       // 例如 text、boolean、number、json、resourceRef
+    isRequired
+    defaultValue      // JSON 值；可为空
+    constraints       // 可选的范围、枚举值、资源类型等声明
+```
+
+`DynamicParameterTable` 在模块注册完成后冻结，只向消费者暴露只读集合。它描述的是 schema；某份内容或某项资源的实际参数仍保存为独立的 JSON 对象。这样 descriptor 的 `defaultValue` 可以表达用户所说的“类型和值”，但加载、编辑或并发访问都不会改写全局定义。原语的 `PrimitiveParameterDescriptor` 将在该后续阶段收敛到这套公共模型，而不是永久保留平行的参数类型枚举。
+
+本设计只规定 metadata 和校验契约。编辑器基于 `valueTypeId` 自动生成控件、复杂约束的呈现方式和自定义 UI 扩展点均不在本阶段范围。
+
+### 17.2 资源模块与资源组合根
+
+一个资源类型对应一个 `IResourceModule` 实例，例如 `sprite`、`audio`、`video` 或开发者自定义的 `spine`. 模块拥有：稳定的 `TypeId`、冻结的 `DynamicParameterTable`，以及把原始资源字节和 metadata 转换为该资源类型运行时对象的私有加载实现。
+
+```text
+AssetManager
+  CompositeResourceCatalog
+    sprite -> SpriteResourceModule (只读参数表 + loader)
+    audio  -> AudioResourceModule  (只读参数表 + loader)
+    spine  -> CustomResourceModule (只读参数表 + loader)
+```
+
+`CompositeResourceCatalog(IEnumerable<IResourceModule>)` 是资源系统对应 `CompositeGameView` 的组合根：宿主在组合期显式传入模块，目录以 `StringComparer.Ordinal` 冻结 `TypeId → module/descriptor` 路由，拒绝空 ID 和重复类型。`AssetManager` 保留 Provider、缓存、引用计数和取消语义，但通过该目录按 metadata 的完整 `typeId` 动态查询模块；它不再包含资源类型枚举、静态 decoder 表或别名映射。空资源模块集合和只含自定义资源模块的 profile 均有效。
+
+资源 metadata 目标形态为稳定 GUID、`typeId` 与 `parameters` JSON 对象。未注册类型、参数校验失败或 loader 的预期资源错误必须产生诊断并安全失败，不得回退到隐式 `unknown` 或另一个内置类型。资源模块同样不支持运行期热注册；动态性只发生在宿主组合期。
