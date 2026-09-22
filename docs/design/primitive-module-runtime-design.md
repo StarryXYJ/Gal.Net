@@ -145,18 +145,18 @@ Game Scope 初始化顺序为：
 
 ## 6. 原语描述与参数
 
-每个 Handler 提供不可变描述，并与 Handler 一起注册：
+每个 Handler 提供不可变描述，并与 Handler 一起注册。Phase 0 将先抽取共享的 `DynamicParameterTable`；`PrimitiveDescriptor.Parameters` 使用该表，而不是长期保留 primitive 专属参数模型：
 
 ```csharp
 public sealed record PrimitiveDescriptor(
     string TypeId,
-    IReadOnlyList<PrimitiveParameterDescriptor> Parameters,
+    DynamicParameterTable Parameters,
     bool CreatesCheckpoint = false);
 ```
 
-参数描述至少包含名称、数据类型、是否必填、默认值以及资源或句柄约束。句柄参数可以声明期望的句柄类型，使未来编辑器通过模拟当前执行位置列出已有句柄，而不是要求开发者输入字符串。
+`DynamicParameterTable` 是以参数名为 Ordinal key 的只读、冻结集合。每个 `DynamicParameterDescriptor` 至少有名称、运行时 `Type ValueType`、必填性、JSON 序列化的默认值和可选约束（例如资源或句柄约束）。`ValueType` 由注册模块以 `typeof(T)` 提供，方便模块内校验和未来编辑器按 CLR 类型生成 UI；它绝不写入内容、资源 metadata、存档或 pak 格式。句柄参数可以声明期望的句柄类型，使未来编辑器通过模拟当前执行位置列出已有句柄，而不是要求开发者输入字符串。
 
-路由层向模块传递尚未转换成领域对象的 `JsonElement`。Handler 负责按自身 Descriptor 将参数转换为命令模型并校验。Descriptor 中的参数默认值和约束供编辑器、构建校验及 Handler 共用；原始 JSON 文本只用于内容存储和诊断，不作为模块间调用协议。
+路由层向模块传递尚未转换成领域对象的 `JsonElement`。内容只保存各参数的 JSON 值；Handler 根据当前模块的 `ValueType` 将它们反序列化为领域模型并校验。descriptor 的 JSON 默认值和约束供编辑器、构建校验及 Handler 共用，但 descriptor 和某次调用的参数值是不同对象，任何运行期路径都不能改写已冻结 schema。
 
 `CreatesCheckpoint` 取代当前 `EntryHandler.CreatesCheckpoint`。GameEngine 在真正 Dispatch 前读取该值并创建快照，避免交互 Handler 已经开始等待后才建立 Checkpoint。
 
@@ -458,20 +458,20 @@ gallery.unlock
 
 ### 17.1 通用、冻结的参数 schema
 
-原语 descriptor、资源 metadata 以及未来其他可配置对象都应复用同一套只读参数描述表，而不是各自维护参数定义。目标模型至少包含：
+原语 descriptor、资源 metadata 以及未来其他可配置对象都应复用同一套只读参数描述表，而不是各自维护参数定义。该基础设施在当前 Phase 0 实现，资源模块在后续 Phase 6 消费它。目标模型至少包含：
 
 ```text
 DynamicParameterTable
   name (ordinal key) -> DynamicParameterDescriptor
-    valueTypeId       // 例如 text、boolean、number、json、resourceRef
+    valueType         // 模块注册时的 typeof(T)，不序列化
     isRequired
     defaultValue      // JSON 值；可为空
     constraints       // 可选的范围、枚举值、资源类型等声明
 ```
 
-`DynamicParameterTable` 在模块注册完成后冻结，只向消费者暴露只读集合。它描述的是 schema；某份内容或某项资源的实际参数仍保存为独立的 JSON 对象。这样 descriptor 的 `defaultValue` 可以表达用户所说的“类型和值”，但加载、编辑或并发访问都不会改写全局定义。原语的 `PrimitiveParameterDescriptor` 将在该后续阶段收敛到这套公共模型，而不是永久保留平行的参数类型枚举。
+`DynamicParameterTable` 在模块注册完成后冻结，只向消费者暴露只读集合。它描述的是 schema；某份内容或某项资源的实际参数仍保存为独立的 JSON 对象。这样 descriptor 的 `defaultValue` 可以表达用户所说的“类型和值”，但加载、编辑或并发访问都不会改写全局定义。模块使用 `typeof(T)` 作为本进程的运行时契约；数据文件永远只存 JSON 值，由已挂载模块将它解释为 `T`，不把 CLR 类型名、程序集名或 `Type` 序列化为长期协议。现有 `PrimitiveParameterDescriptor` 和其参数类型枚举会在 Phase 0 一次收敛到公共模型，不保留平行定义。
 
-本设计只规定 metadata 和校验契约。编辑器基于 `valueTypeId` 自动生成控件、复杂约束的呈现方式和自定义 UI 扩展点均不在本阶段范围。
+本设计只规定 metadata 和校验契约。编辑器基于 `ValueType` 自动生成控件、复杂约束的呈现方式和自定义 UI 扩展点均不在本阶段范围。
 
 ### 17.2 资源模块与资源组合根
 

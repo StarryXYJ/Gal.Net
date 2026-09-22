@@ -31,7 +31,7 @@ flowchart LR
 
 **状态：in-progress**
 
-**目标：** 建立不依赖具体宿主的原语数据模型、动态模块注册目录和 GUID 内容格式。推荐模块仅是外层可选实现，Core/Runtime 不要求任何具体原语存在。
+**目标：** 建立不依赖具体宿主的原语数据模型、共享的冻结参数 schema、动态模块注册目录和 GUID 内容格式。推荐模块仅是外层可选实现，Core/Runtime 不要求任何具体原语存在。
 
 **前置条件：** 本计划和设计稿已评审；通用原语契约置于 `GalNet.Core`，且依赖图无 Core/Runtime → Avalonia 反向引用。
 
@@ -43,14 +43,13 @@ flowchart LR
 
 **剩余工作：**
 
-**剩余工作：**
-
-1. 将具体原语 schema 从 Core 静态 `EntryRegistry` 移出，并使编辑器的 Builtins 调用点改为组合期注入的 target profile。`TargetProfileEntryCatalog` 已能由模块 descriptor 建立 profile 专属的作者/编译目录；下一步是接通实际编辑器组合根。
-2. 统一 GUID 的编辑器生成、JSON 表示和 Runtime 校验，并删除字符串句柄的新增入口。
+1. 抽取 `DynamicParameterTable` 与 `DynamicParameterDescriptor`，以 `Type ValueType`、必填性、JSON 默认值和约束替换 primitive 专属参数类型/descriptor；表在模块注册后只读冻结，内容文件只保存 JSON 参数值，不序列化 CLR 类型。
+2. 将具体原语 schema 从 Core 静态 `EntryRegistry` 移出，并使编辑器的 Builtins 调用点改为组合期注入的 target profile。`TargetProfileEntryCatalog` 已能由模块 descriptor 建立 profile 专属的作者/编译目录；下一步是接通实际编辑器组合根。
+3. 统一 GUID 的编辑器生成、JSON 表示和 Runtime 校验，并删除字符串句柄的新增入口。
 
 **验证：**
 
-- Core 测试覆盖新格式读写、原始 JSON 类型保留、GUID 格式、Descriptor 参数默认值/约束、空模块集合、重复注册拒绝，以及 `IGameView` 没有领域方法。
+- Core 测试覆盖新格式读写、原始 JSON 类型保留、GUID 格式、冻结参数表、`typeof` 校验、JSON 默认值/约束、空模块集合、重复注册拒绝，以及 `IGameView` 没有领域方法。
 - 编译器/编辑器测试覆盖 target profile 只暴露已挂载模块的 descriptor、开发者自定义 primitive、NonPrimitive 只输出通用 PrimitiveEntry，以及未知/旧格式被拒绝。
 - 运行 `dotnet test test/GeneralTest/GeneralTest.csproj`。
 
@@ -58,7 +57,7 @@ flowchart LR
 
 **风险：** `EntryRegistry` 目前同时服务编译、加载、编辑器命令和测试；本 Phase 只能替换其“具体原语”职责，不应误删非原语编译能力。
 
-**退出条件：** 新内容能由指定 target profile 的模块 descriptor 编译、加载并校验；空 profile 和自定义 profile 都可用；`IGameView` 是纯动态分发入口；Core 不含具体原语 Handler、schema、Handler factory Catalog 或隐式推荐能力；推荐 Builtins/抽象模块不形成引擎旁路。
+**退出条件：** 新内容能由指定 target profile 的模块 descriptor 编译、加载并校验；冻结参数 schema 以 `typeof` 表达运行时类型、以 JSON 保存值且不序列化 CLR 类型；空 profile 和自定义 profile 都可用；`IGameView` 是纯动态分发入口；Core 不含具体原语 Handler、schema、Handler factory Catalog 或隐式推荐能力；推荐 Builtins/抽象模块不形成引擎旁路。
 
 **本轮验证（2026-09-22）：** `dotnet test test/GeneralTest/GeneralTest.csproj --no-restore --disable-build-servers -p:BuildInParallel=false -v minimal` 通过 197/197。静态搜索确认 `src` 与 `test` 中不存在旧专用 View 接口、`EntryHandlerRegistry`、`EntryHandler`、`EntryContext` 或 `PrimitiveCatalog`。
 
@@ -221,7 +220,7 @@ flowchart LR
 
 **工作项：**
 
-1. 定义通用、只读的 `DynamicParameterTable` 与 descriptor；参数包含类型 ID、必填性、默认 JSON 值和约束，并让 primitive descriptor 与资源 metadata schema 复用它。
+1. 复用 Phase 0 的 `DynamicParameterTable` 作为资源 metadata schema；资源实例只保存 JSON 参数值，由当前模块的 `typeof` 契约校验和反序列化。
 2. 定义 `IResourceModule` 和 `CompositeResourceCatalog`；一个稳定 `typeId` 对应一个模块，组合根冻结路由并拒绝重复注册。
 3. 让 `AssetManager` 通过资源目录解析 metadata 的 `typeId`；迁移现有 `ResourceType`、硬编码字符串映射和 CLR 类型 decoder 表，资源 metadata 改为 `typeId + parameters` JSON。
 4. 更新 Provider、Archive、缓存键和编辑器资源筛选/校验；内置资源类型成为可选模块，支持仅挂载自定义模块的 profile。
@@ -236,7 +235,7 @@ flowchart LR
 
 **风险：** 资源 metadata、pak 索引、缓存键与 decoder 路径必须作为一次破坏性切换处理；不得为旧 `ResourceType` 或类型别名保留双读、双写或回退逻辑。
 
-**退出条件：** 宿主可只注册自定义资源模块并以其字符串 `typeId` 加载、校验和缓存资源；Core/AssetManager 不含资源类型枚举、静态映射或隐式内置资源能力；动态参数 schema 可同时服务 primitive 和资源 metadata。
+**退出条件：** 宿主可只注册自定义资源模块并以其字符串 `typeId` 加载、校验和缓存资源；Core/AssetManager 不含资源类型枚举、静态映射或隐式内置资源能力；Phase 0 的动态参数 schema 可同时服务 primitive 和资源 metadata。
 
 ## 9. 实施纪律
 
