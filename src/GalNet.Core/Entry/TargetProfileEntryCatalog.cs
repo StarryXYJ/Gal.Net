@@ -96,13 +96,13 @@ public sealed class TargetProfileEntryCatalog : IEntryCatalog
         var parameters = new Dictionary<string, EntryParameterType>(StringComparer.Ordinal);
         var defaults = new Dictionary<string, string>(StringComparer.Ordinal);
         var options = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
-        foreach (var parameter in descriptor.Parameters)
+        foreach (var parameter in descriptor.Parameters.Values)
         {
             if (!parameters.TryAdd(parameter.Name, ToEntryParameterType(parameter)))
                 throw new ArgumentException($"Primitive '{descriptor.TypeId}' declares parameter '{parameter.Name}' more than once.", nameof(descriptor));
             if (parameter.DefaultValue is { } defaultValue)
                 defaults.Add(parameter.Name, ToPersistedValue(defaultValue));
-            if (parameter.Kind == PrimitiveParameterKind.Flag)
+            if (parameter.ValueType == typeof(bool))
                 options.Add(parameter.Name, ["true", "false"]);
         }
 
@@ -114,25 +114,12 @@ public sealed class TargetProfileEntryCatalog : IEntryCatalog
             defaults,
             options,
             EntryKind.Primitive,
-            descriptor);
+            descriptor,
+            descriptor.Parameters);
     }
 
-    private static EntryParameterType ToEntryParameterType(PrimitiveParameterDescriptor parameter) =>
-        parameter.ResourceType switch
-        {
-            "image" => EntryParameterType.ImageAsset,
-            "audio" => EntryParameterType.AudioAsset,
-            "video" => EntryParameterType.VideoAsset,
-            "effect-program" => EntryParameterType.EffectProgramAsset,
-            _ => parameter.Kind switch
-            {
-                PrimitiveParameterKind.WholeNumber => EntryParameterType.Integer,
-                PrimitiveParameterKind.DecimalNumber => EntryParameterType.Float,
-                PrimitiveParameterKind.JsonObject or PrimitiveParameterKind.JsonArray => EntryParameterType.Json,
-                PrimitiveParameterKind.Flag => EntryParameterType.Select,
-                _ => EntryParameterType.Text
-            }
-        };
+    private static EntryParameterType ToEntryParameterType(DynamicParameterDescriptor parameter) =>
+        EntrySchema.GetEditorType(parameter);
 
     private static string ToPersistedValue(JsonElement value) => value.ValueKind == JsonValueKind.String
         ? value.GetString() ?? ""

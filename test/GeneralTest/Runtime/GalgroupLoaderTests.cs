@@ -109,7 +109,7 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var result = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.Instance);
+        var result = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.CreateTargetProfile());
 
         Assert.That(result.Document.Kind, Is.EqualTo(GroupDocumentKind.Compiled));
         Assert.That(result.Document.Entries, Has.Count.EqualTo(1));
@@ -151,7 +151,7 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var plan = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.Instance).Document.Entries.Single().Arguments.GetProperty("plan");
+        var plan = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.CreateTargetProfile()).Document.Entries.Single().Arguments.GetProperty("plan");
         var tracks = plan.GetProperty("tracks");
 
         Assert.That(plan.GetProperty("blocking").GetBoolean(), Is.True);
@@ -191,7 +191,7 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var plan = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.Instance).Document.Entries.Single().Arguments.GetProperty("plan");
+        var plan = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.CreateTargetProfile()).Document.Entries.Single().Arguments.GetProperty("plan");
         var track = plan.GetProperty("tracks")[0];
         var events = plan.GetProperty("events");
 
@@ -238,7 +238,7 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var result = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.Instance);
+        var result = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.CreateTargetProfile());
         var plan = result.Document.Entries.Single().Arguments.GetProperty("plan");
         var events = plan.GetProperty("events");
 
@@ -279,7 +279,7 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var plan = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.Instance).Document.Entries.Single().Arguments.GetProperty("plan");
+        var plan = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.CreateTargetProfile()).Document.Entries.Single().Arguments.GetProperty("plan");
         Assert.That(plan.GetProperty("events")[0].GetProperty("parameters").GetProperty("color").GetString(), Is.EqualTo(expectedColor));
     }
 }

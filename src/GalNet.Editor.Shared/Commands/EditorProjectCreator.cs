@@ -2,6 +2,7 @@ using System.Text.Json;
 using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Shared.Services;
+using GalNet.Core.Entry;
 
 namespace GalNet.Editor.Shared.Commands;
 
@@ -9,9 +10,11 @@ public static class EditorProjectCreator
 {
     public static async Task CreateAsync(
         string projectPath,
+        IEntryCatalog catalog,
         string? projectName = null,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(catalog);
         projectPath = Path.GetFullPath(projectPath);
         projectName = string.IsNullOrWhiteSpace(projectName)
             ? Path.GetFileName(Path.TrimEndingDirectorySeparator(projectPath))
@@ -52,22 +55,10 @@ public static class EditorProjectCreator
                     }
                 ]
             },
-            GroupEntries =
-            {
-                [groupId] =
-                [
-                    new EditorEntryData
-                    {
-                        StableId = Guid.NewGuid().ToString("N"),
-                        Id = 1,
-                        Type = "text",
-                        Parameters = new Dictionary<string, string> { ["speaker"] = "Alice", ["content"] = "Hello GalNet" }
-                    }
-                ]
-            }
+            GroupEntries = { [groupId] = [] }
         };
 
-        var repository = new EditorDocumentRepository();
+        var repository = new EditorDocumentRepository(catalog);
         await new DirectProjectPersistence(projectPath, repository).SaveAsync(document, cancellationToken);
         await File.WriteAllTextAsync(
             Path.Combine(projectPath, ".galnet", "editor-state.json"),

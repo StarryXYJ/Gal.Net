@@ -7,7 +7,7 @@ using GalNet.Editor.Shared.Services;
 
 namespace GalNet.Editor.Shared.Commands;
 
-public sealed class DirectProjectPersistence(string projectPath, IEditorDocumentRepository? repository = null)
+public sealed class DirectProjectPersistence(string projectPath, IEditorDocumentRepository repository)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -15,7 +15,7 @@ public sealed class DirectProjectPersistence(string projectPath, IEditorDocument
         Converters = { new JsonStringEnumConverter() }
     };
     private readonly string _projectPath = Path.GetFullPath(projectPath);
-    private readonly IEditorDocumentRepository _repository = repository ?? new EditorDocumentRepository();
+    private readonly IEditorDocumentRepository _repository = repository ?? throw new ArgumentNullException(nameof(repository));
 
     public EditorProjectDocument Load()
     {

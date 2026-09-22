@@ -12,7 +12,7 @@ public class GameEnginePrimitiveDispatchTests
     [Test]
     public async Task GroupEntriesUseTheSingleDispatcherAndCheckpointStableSnapshot()
     {
-        var descriptor = new PrimitiveDescriptor("flow.mark", [], CreatesCheckpoint: true);
+        var descriptor = new PrimitiveDescriptor("flow.mark", DynamicParameterTable.Empty, CreatesCheckpoint: true);
         var view = new RecordingView(descriptor);
         var graph = new GalNet.Core.Graph.Graph { RootNodeId = "main", Nodes = { new Group { Id = "main", Entries = { Primitive("flow.mark"), Primitive("flow.mark") } } } };
         var engine = new GameEngine(graph, view);
@@ -29,7 +29,7 @@ public class GameEnginePrimitiveDispatchTests
     [Test]
     public async Task UnknownPrimitiveIsSkippedAndExpectedFailuresContinue()
     {
-        var view = new RecordingView(new PrimitiveDescriptor("flow.fail", [])) { Fail = true };
+        var view = new RecordingView(new PrimitiveDescriptor("flow.fail", DynamicParameterTable.Empty)) { Fail = true };
         var graph = new GalNet.Core.Graph.Graph { RootNodeId = "main", Nodes = { new Group { Id = "main", Entries = { Primitive("missing.run"), Primitive("flow.fail"), Primitive("flow.fail") } } } };
 
         var engine = new GameEngine(graph, view);
@@ -43,7 +43,7 @@ public class GameEnginePrimitiveDispatchTests
     public async Task NonBlockingOperationKeepsThePreviousSaveUntilTheRuntimeIsStable()
     {
         var completed = new TaskCompletionSource<PrimitiveResult>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var view = new RecordingView(new PrimitiveDescriptor("flow.async", [])) { Completion = completed.Task, Policy = new(false, false, null) };
+        var view = new RecordingView(new PrimitiveDescriptor("flow.async", DynamicParameterTable.Empty)) { Completion = completed.Task, Policy = new(false, false, null) };
         var graph = new GalNet.Core.Graph.Graph
         {
             RootNodeId = "main",

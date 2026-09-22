@@ -13,7 +13,6 @@ using System.Linq;
 using GalNet.Core.Entry;
 using GalNet.Core.Scene;
 using GalNet.Editor.Commands;
-using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.ViewModels;
 
@@ -22,6 +21,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     private readonly IGraphEditingService _graphEditingService;
     private readonly IProjectService _projects;
     private readonly IEffectCatalog _effects;
+    private readonly IEntryCatalog _catalog;
 
     public EditorWorkspaceViewModel Workspace { get; }
     public GraphNode GroupNode { get; }
@@ -32,9 +32,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     public IReadOnlyList<GalNet.Core.Variable.ProjectVariableDefinition> ValidationVariables => Workspace.AllProjectVariableDefinitions;
     public IAssetManager AssetManager { get; }
     public EditorShortcutService ShortcutService { get; }
-    public IReadOnlyList<EntryTypeOption> EntryTypes { get; } = BuiltinEntryCatalog.Definitions
-        .Select(definition => new EntryTypeOption(definition.Type, definition.Category, $"Entry.Type.{definition.Type}"))
-        .ToArray();
+    public IReadOnlyList<EntryTypeOption> EntryTypes { get; }
 
     [ObservableProperty]
     private EntryEditorItemViewModel? _selectedEntry;
@@ -42,15 +40,17 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     [ObservableProperty]
     private decimal _batchAddCount = 1;
 
-    public GroupEditorPanelViewModel(EditorWorkspaceViewModel workspace, GraphNode groupNode, IGraphEditingService graphEditingService, IProjectService projects, IAssetManager assetManager, EditorShortcutService shortcutService, IEffectCatalog effects)
+    public GroupEditorPanelViewModel(EditorWorkspaceViewModel workspace, GraphNode groupNode, IGraphEditingService graphEditingService, IProjectService projects, IAssetManager assetManager, EditorShortcutService shortcutService, IEffectCatalog effects, IEntryCatalog catalog)
     {
         Workspace = workspace;
         GroupNode = groupNode;
         _graphEditingService = graphEditingService;
         _projects = projects;
         _effects = effects;
+        _catalog = catalog;
         AssetManager = assetManager;
         ShortcutService = shortcutService;
+        EntryTypes = catalog.Definitions.Select(definition => new EntryTypeOption(definition.Type, definition.Category, $"Entry.Type.{definition.Type}")).ToArray();
         Workspace.VariableDefinitionsChanged += OnVariableDefinitionsChanged;
         GroupNode.Entries.CollectionChanged += OnEntriesChanged;
         foreach (var entry in GroupNode.Entries) Attach(entry);
@@ -149,6 +149,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     }
 
     private void Configure(EntryEditorItemViewModel entry, bool resetValues = false) => entry.ConfigureParameterFields(
+        _catalog,
         _projects.Current?.Settings.Speakers ?? [],
         Workspace.AllProjectVariableDefinitions.Select(variable => variable.Name).ToArray(),
         resetValues,

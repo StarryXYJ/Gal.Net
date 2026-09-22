@@ -13,6 +13,7 @@ public class GraphChangeTrackerTests
         var changes = 0;
         using var tracker = new GraphChangeTracker(() => changes++, () => false);
         var node = new GraphNode(new Group { Name = "Start" }, GraphNodeKind.LinearGroup);
+        node.Entries.Add(new EntryEditorItemViewModel { Type = "test.entry" });
         tracker.Track(node);
 
         node.Name = "Renamed";

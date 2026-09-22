@@ -59,5 +59,6 @@ public static class EntryRegistry
         IReadOnlyDictionary<string, string>? defaults = null,
         IReadOnlyDictionary<string, IReadOnlyList<string>>? options = null,
         EntryKind kind = EntryKind.NonPrimitive) =>
-        new(type, category, factory, parameters, defaults ?? new Dictionary<string, string>(), options ?? new Dictionary<string, IReadOnlyList<string>>(), kind);
+        new(type, category, factory, parameters, defaults ?? new Dictionary<string, string>(), options ?? new Dictionary<string, IReadOnlyList<string>>(), kind,
+            DynamicParameters: EntrySchema.DynamicParameters(parameters, defaults, options));
 }

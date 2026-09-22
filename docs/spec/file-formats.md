@@ -46,41 +46,35 @@ Project/
 
 ## .rawgalgroup 与 .galgroup
 
-两种文件均使用版本 1 的 JSON `GroupDocument`，不再支持旧的分号文本格式。条目数组顺序就是执行顺序；每个条目必须拥有在本文件内唯一、非空的稳定 `id`，`type` 必须在 `EntryRegistry` 中注册。
+两种文件均使用版本 2 的 JSON `GroupDocument`，不支持旧的分号文本格式或旧版本。条目数组顺序就是执行顺序；每个条目必须拥有在本文件内唯一、非空的稳定 `id`。Raw 条目的 `type`、参数名、必填性、默认值和 JSON 类型由当前 target profile 的 `PrimitiveDescriptor` 或显式注册的 NonPrimitive schema 校验，而不是全局 `EntryRegistry`。
 
 - `.rawgalgroup` 是编辑源，`kind` 必须为 `Raw`。其中可包含原语和非原语。
 - `.galgroup` 是编译产物，`kind` 必须为 `Compiled`。其中只能包含原语；Runtime 会拒绝 Raw 文档和任何非原语。
 
-原语是有对应 `EntryHandler`、可由 Runtime 直接执行的条目，例如 `layer.show`、`layer.showColor`、`animate`、`animation.play` 和 `effect.apply`。非原语没有 Handler，而是根据自身声明的参数列表编译为有序原语；例如 `transition.crossFade` 编译为一个带 Layer 显示/隐藏事件和两条 opacity 轨道的 `animation.play`，`transition.slide` 编译为新 Layer 的绝对位移轨道与旧 Layer 的相对位移轨道，`transition.blinds` 则在第 0 帧创建 Layer-attached `mask.blinds` 并用其 `progress` 轨道揭示新 Layer；`transition.fadeBlack`、`transition.fadeWhite` 与 `transition.fadeColor` 会额外产生临时纯色 Overlay Layer。
+原语在 Compiled 文档中是 `{ id, typeId, condition, arguments }` 的通用信封，Runtime 通过 `IGameView.Dispatch` 按完整 `typeId` 动态路由。`arguments` 只保存 JSON 值，不保存 CLR 类型名；当前 profile 的冻结 `DynamicParameterTable` 负责解释和校验这些值。NonPrimitive 没有 Runtime 执行入口，而是根据自身 schema 编译为有序 primitive；展开后每个 primitive 都必须由所选 profile 支持。
 
 `.rawgalgroup` 示例：
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "kind": "Raw",
   "entries": [
     {
       "id": "entry-id",
-      "type": "transition.crossFade",
+      "type": "custom.pulse",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "cross-fade-1",
-        "oldHandleId": "layer-id",
-        "newHandleId": "layer-id-2",
-        "assetId": "Layer/classroom.png",
-        "transform": { "x": 0, "y": 0, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 },
-        "z": 0,
-        "displayMode": "Fill",
-        "frameRate": 60,
-        "durationFrames": 48
+        "count": 3,
+        "enabled": true,
+        "payload": { "source": "intro" }
       }
     }
   ]
 }
 ```
 
-`GalgroupCompiler` 会在编辑器预览前将 Raw 文档编译为 Compiled 文档，并返回原始稳定 ID 到生成稳定 ID 的 source map。当前生成 ID 采用 `<source-id>#<ordinal>` 形式。输出仍保留结构化 JSON 参数；`GalgroupLoader` 只做 Runtime 参数规范化与验证。`animation.play.events` 在编译产物中同样只能包含原语。条目参数的权威清单见 [条目类型](entry-types.md)。
+`GalgroupCompiler` 会在编辑器预览前将 Raw 文档编译为 Compiled 文档，并返回原始稳定 ID 到生成稳定 ID 的 source map。当前生成 ID 采用 `<source-id>#<ordinal>` 形式。输出保留结构化 JSON 参数；`GalgroupLoader` 验证 envelope，而模块按其 descriptor 解释 arguments。条目参数的权威来源是所选 target profile，见[条目类型](entry-types.md)。
 
 ## 导出 .galpak
 

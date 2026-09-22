@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GalNet.Core.Entry;
+using GalNet.Core.Primitives;
 using GalNet.Core.Scene;
 using GalNet.Core.Serialization;
 
@@ -74,19 +75,23 @@ public static class GalgroupCompiler
             {
                 if (definition.Descriptor is null)
                     throw new InvalidDataException($"Primitive '{source.Type}' has no descriptor.");
-                var unknown = source.Parameters.Keys.FirstOrDefault(name => !definition.Parameters.ContainsKey(name));
+                var parameters = definition.DynamicParameters ?? throw new InvalidDataException($"Primitive '{source.Type}' has no dynamic parameter schema.");
+                var unknown = source.Parameters.Keys.FirstOrDefault(name => !parameters.ContainsKey(name));
                 if (unknown is not null)
                     throw new InvalidDataException($"Primitive '{source.Type}' does not accept parameter '{unknown}'.");
-                var missing = definition.Descriptor.Parameters.FirstOrDefault(parameter =>
-                    parameter.IsRequired && !source.Parameters.ContainsKey(parameter.Name) && !definition.Defaults.ContainsKey(parameter.Name));
+                var missing = parameters.Values.FirstOrDefault(parameter =>
+                    parameter.IsRequired && !source.Parameters.ContainsKey(parameter.Name) && parameter.DefaultValue is null);
                 if (missing is not null)
                     throw new InvalidDataException($"Primitive '{source.Type}' requires parameter '{missing.Name}'.");
                 var primitive = new AuthoringPrimitiveEntry(source.Type) { Id = index, Condition = source.Condition };
                 var arguments = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
-                foreach (var (name, value) in definition.Defaults)
-                    arguments[name] = ToJsonElement(value, definition.Parameters[name]);
+                foreach (var parameter in parameters.Values.Where(parameter => parameter.DefaultValue is not null))
+                    arguments[parameter.Name] = parameter.DefaultValue!.Value.Clone();
                 foreach (var (name, value) in source.Parameters)
+                {
+                    DynamicParameterValue.Validate(value, parameters[name].ValueType, name);
                     arguments[name] = value.Clone();
+                }
                 primitive.SetArguments(JsonSerializer.SerializeToElement(arguments));
                 return primitive;
             }
@@ -131,7 +136,7 @@ public static class GalgroupCompiler
         var definition = catalog.Get(entry.Type);
         var arguments = entry.Values.ToDictionary(
             pair => pair.Key,
-            pair => ToJsonElement(pair.Value, definition.Parameters[pair.Key]),
+            pair => ToJsonElement(pair.Value, (definition.DynamicParameters ?? throw new InvalidDataException($"Entry '{entry.Type}' has no dynamic parameter schema."))[pair.Key].ValueType),
             StringComparer.Ordinal);
         return JsonSerializer.SerializeToElement(arguments);
     }
@@ -164,36 +169,8 @@ public static class GalgroupCompiler
         }
     }
 
-    private static JsonElement ToJsonElement(string value, EntryParameterType type)
-    {
-        try
-        {
-            return type switch
-            {
-                EntryParameterType.Integer => JsonSerializer.SerializeToElement(int.Parse(value, System.Globalization.CultureInfo.InvariantCulture)),
-                EntryParameterType.Float => JsonSerializer.SerializeToElement(float.Parse(value, System.Globalization.CultureInfo.InvariantCulture)),
-                EntryParameterType.Json => ParseJson(value),
-                _ => JsonSerializer.SerializeToElement(value)
-            };
-        }
-        catch (FormatException exception)
-        {
-            throw new InvalidDataException($"Expected a valid {type} parameter value, but received '{value}'.", exception);
-        }
-    }
-
-    private static JsonElement ParseJson(string value)
-    {
-        try
-        {
-            using var document = JsonDocument.Parse(value);
-            return document.RootElement.Clone();
-        }
-        catch (JsonException exception)
-        {
-            throw new InvalidDataException($"Expected JSON parameter value, but received '{value}'.", exception);
-        }
-    }
+    private static JsonElement ToJsonElement(string value, Type valueType) =>
+        DynamicParameterValue.FromEditorValue(value, valueType);
 
     private static string ToValue(JsonElement value) => value.ValueKind switch
     {

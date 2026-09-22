@@ -2,6 +2,7 @@ using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Services;
+using GalNet.Primitives.Builtins;
 
 namespace GeneralTest.Editor;
 
@@ -10,24 +11,20 @@ public class GraphEditingServiceTests
     [Test]
     public void InsertEntries_Should_Insert_A_Batch_At_Requested_Position_And_Renumber()
     {
-        var service = new GraphEditingService();
+        var service = new GraphEditingService(BuiltinEntryCatalog.CreateTargetProfile());
         var node = new GraphNode(new Group { Name = "Group" }, GraphNodeKind.LinearGroup);
-        var original = node.Entries.Single();
-
         var inserted = service.InsertEntries(node, 0, 3);
 
         Assert.That(inserted, Has.Count.EqualTo(3));
-        Assert.That(node.Entries, Has.Count.EqualTo(4));
-        Assert.That(node.Entries.Take(3), Is.EqualTo(inserted));
-        Assert.That(node.Entries[3], Is.SameAs(original));
-        Assert.That(node.Entries.Select(entry => entry.Id), Is.EqualTo(new[] { 1, 2, 3, 4 }));
+        Assert.That(node.Entries, Is.EqualTo(inserted));
+        Assert.That(node.Entries.Select(entry => entry.Id), Is.EqualTo(new[] { 1, 2, 3 }));
         Assert.That(inserted.All(entry => entry.Type == TextEntry.TypeId), Is.True);
     }
 
     [Test]
     public void InsertEntries_Should_Clamp_Index_And_Reject_Invalid_Count()
     {
-        var service = new GraphEditingService();
+        var service = new GraphEditingService(BuiltinEntryCatalog.CreateTargetProfile());
         var node = new GraphNode(new Group { Name = "Group" }, GraphNodeKind.LinearGroup);
 
         var appended = service.InsertEntries(node, int.MaxValue, 2);
@@ -35,7 +32,7 @@ public class GraphEditingServiceTests
 
         Assert.That(node.Entries.TakeLast(2), Is.EqualTo(appended));
         Assert.That(rejected, Is.Empty);
-        Assert.That(node.Entries.Select(entry => entry.Id), Is.EqualTo(new[] { 1, 2, 3 }));
+        Assert.That(node.Entries.Select(entry => entry.Id), Is.EqualTo(new[] { 1, 2 }));
     }
 
     [Test]
@@ -51,7 +48,8 @@ public class GraphEditingServiceTests
             }
         };
 
-        entry.ConfigureParameterFields([], ["first", "second"]);
+        var catalog = BuiltinEntryCatalog.CreateTargetProfile();
+        entry.ConfigureParameterFields(catalog, [], ["first", "second"]);
         var target = entry.ParameterFields.OfType<VariableNameEntryParameterEditorItemViewModel>().Single();
 
         Assert.That(target.Suggestions, Is.EqualTo(new[] { "first", "second" }));
@@ -60,7 +58,7 @@ public class GraphEditingServiceTests
         target.StringValue = "second";
         Assert.That(entry.Parameters["target"], Is.EqualTo("second"));
 
-        entry.ConfigureParameterFields([], ["second", "third"]);
+        entry.ConfigureParameterFields(catalog, [], ["second", "third"]);
         Assert.That(entry.ParameterFields.Single(field => field.Id == "target").Suggestions,
             Is.EqualTo(new[] { "second", "third" }));
     }

@@ -129,7 +129,8 @@ public sealed record EntryDefinition(
     IReadOnlyDictionary<string, string> Defaults,
     IReadOnlyDictionary<string, IReadOnlyList<string>> Options,
     EntryKind Kind,
-    PrimitiveDescriptor? Descriptor = null);
+    PrimitiveDescriptor? Descriptor = null,
+    DynamicParameterTable? DynamicParameters = null);
 
 /// <summary>
 /// Composition-supplied authoring catalog. It joins primitive descriptors from a

@@ -3,30 +3,10 @@ using GalNet.Core.Runtime;
 
 namespace GalNet.Core.Primitives;
 
-/// <summary>Serializable shape of one primitive parameter for authoring and validation.</summary>
-public sealed record PrimitiveParameterDescriptor(
-    string Name,
-    PrimitiveParameterKind Kind,
-    bool IsRequired = false,
-    JsonElement? DefaultValue = null,
-    string? ResourceType = null,
-    string? HandleTypeId = null);
-
-/// <summary>Supported JSON shapes for primitive parameters.</summary>
-public enum PrimitiveParameterKind
-{
-    Text,
-    Flag,
-    WholeNumber,
-    DecimalNumber,
-    JsonObject,
-    JsonArray
-}
-
 /// <summary>Static metadata owned by a primitive handler.</summary>
 public sealed record PrimitiveDescriptor(
     string TypeId,
-    IReadOnlyList<PrimitiveParameterDescriptor> Parameters,
+    DynamicParameterTable Parameters,
     bool CreatesCheckpoint = false);
 
 /// <summary>Where an invocation originated. Timeline events never create checkpoints.</summary>

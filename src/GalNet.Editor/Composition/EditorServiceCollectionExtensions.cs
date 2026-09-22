@@ -17,6 +17,7 @@ using GalNet.Core.Assets;
 using GalNet.Editor.Views;
 using Microsoft.Extensions.DependencyInjection;
 using GalNet.Primitives.Builtins;
+using GalNet.Core.Entry;
 
 namespace GalNet.Editor.Composition;
 
@@ -24,8 +25,10 @@ public static class EditorServiceCollectionExtensions
 {
     public static IServiceCollection AddEditorServices(this IServiceCollection services)
     {
+        var targetProfile = BuiltinEntryCatalog.CreateTargetProfile();
+        services.AddSingleton<IEntryCatalog>(targetProfile);
         services.AddEditorCoreServices();
-        services.AddEditorCommands();
+        services.AddEditorCommands(targetProfile);
         services.AddEditorNavigation();
         services.AddEditorViews();
         services.AddEditorViewModels();
@@ -76,7 +79,7 @@ public static class EditorServiceCollectionExtensions
         return services;
     }
 
-    private static IServiceCollection AddEditorCommands(this IServiceCollection services)
+    private static IServiceCollection AddEditorCommands(this IServiceCollection services, IEntryCatalog targetProfile)
     {
         services.AddSingleton<SaveProjectCommand>();
         services.AddSingleton<CloseProjectCommand>();
@@ -86,7 +89,7 @@ public static class EditorServiceCollectionExtensions
         services.AddScoped<RedoEditorCommand>();
         services.AddScoped<IEditorShortcutCommandDefinition>(sp => sp.GetRequiredService<UndoEditorCommand>());
         services.AddScoped<IEditorShortcutCommandDefinition>(sp => sp.GetRequiredService<RedoEditorCommand>());
-        foreach (var definition in BuiltinEntryCatalog.Definitions)
+        foreach (var definition in targetProfile.Definitions)
         {
             services.AddScoped<IEditorShortcutCommandDefinition>(_ => new EntryTypeShortcutCommand(definition));
         }

@@ -65,7 +65,7 @@ public sealed record AddEntryCommand(
     string GroupId,
     string EntryId,
     int? Index = null,
-    string Type = "text",
+    string Type = "",
     string Condition = "",
     IReadOnlyDictionary<string, string>? Parameters = null) : IProjectEditCommand
 {

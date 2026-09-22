@@ -4,6 +4,8 @@ using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
+using GalNet.Core.Entry;
+using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Headless;
 
@@ -23,6 +25,7 @@ internal static class Program
             if (args.Length == 0 || args[0] is "help" or "--help" or "-h") { PrintHelp(); return 0; }
             var catalog = new EditorCommandCatalog();
             var fileCatalog = new AssetFileCommandCatalog();
+            var entryCatalog = BuiltinEntryCatalog.CreateTargetProfile();
             if (args[0].Equals("commands", StringComparison.OrdinalIgnoreCase))
             {
                 WriteJson(catalog.GetAll().Concat(fileCatalog.GetAll()).Select(CommandSummary));
@@ -33,7 +36,7 @@ internal static class Program
                 if (args.Length < 2) return Fail("create requires a project path.");
                 var nameIndex = Array.IndexOf(args, "--name");
                 var name = nameIndex >= 0 && nameIndex + 1 < args.Length ? args[nameIndex + 1] : null;
-                await EditorProjectCreator.CreateAsync(args[1], name);
+                await EditorProjectCreator.CreateAsync(args[1], entryCatalog, name);
                 WriteJson(new { success = true, projectPath = Path.GetFullPath(args[1]), name });
                 return 0;
             }
@@ -42,7 +45,7 @@ internal static class Program
             var verb = args[0].ToLowerInvariant();
             var projectPath = Path.GetFullPath(args[1]);
             if (verb == "export") return await ExportAsync(projectPath, args);
-            var document = Load(projectPath);
+            var document = Load(projectPath, entryCatalog);
             switch (verb)
             {
                 case "summary": WriteJson(CreateSummary(projectPath, document)); return 0;
@@ -57,7 +60,7 @@ internal static class Program
                 case "execute":
                     if (args.Length < 3) return Fail("execute requires a JSON file path or '-'.");
                     var json = args[2] == "-" ? await Console.In.ReadToEndAsync() : await File.ReadAllTextAsync(args[2]);
-                    return await ExecuteAsync(projectPath, document, catalog, fileCatalog, json);
+                    return await ExecuteAsync(projectPath, document, catalog, fileCatalog, entryCatalog, json);
                 default: return Fail($"Unknown command '{args[0]}'.");
             }
         }
@@ -66,7 +69,7 @@ internal static class Program
     }
 
     private static async Task<int> ExecuteAsync(string projectPath, EditorProjectDocument original,
-        IEditorCommandCatalog catalog, IProjectFileCommandCatalog fileCatalog, string json)
+        IEditorCommandCatalog catalog, IProjectFileCommandCatalog fileCatalog, IEntryCatalog entryCatalog, string json)
     {
         using var parsed = JsonDocument.Parse(json);
         var root = parsed.RootElement;
@@ -79,12 +82,12 @@ internal static class Program
         {
             if (elements.Count != 1 || !isFile[0]) return Fail("File commands cannot be mixed with document commands.", 5);
             var command = fileCatalog.Deserialize(GetCommandId(elements[0]), elements[0], JsonOptions);
-            var result = await new AssetFileCommandExecutor().ExecuteAsync(projectPath, command);
+            var result = await new AssetFileCommandExecutor(entryCatalog).ExecuteAsync(projectPath, command);
             WriteJson(result); return result.Success ? 0 : 5;
         }
 
         var working = GalNet.Editor.Abstraction.Changes.EditorDocumentCloner.Clone(original);
-        var handler = new BuiltInEditorCommandHandler();
+        var handler = new BuiltInEditorCommandHandler(entryCatalog);
         var changed = new List<string>();
         var descriptions = new List<string>();
         foreach (var element in elements)
@@ -99,15 +102,15 @@ internal static class Program
         var validation = new EditorDocumentValidator().Validate(working);
         if (!validation.IsValid) { WriteJson(new { success = false, diagnostics = validation.Diagnostics }); return 5; }
         var dryRun = root.TryGetProperty("dryRun", out var dryRunElement) && dryRunElement.GetBoolean();
-        if (!dryRun) await new DirectProjectPersistence(projectPath).SaveAsync(working);
+        if (!dryRun) await new DirectProjectPersistence(projectPath, new EditorDocumentRepository(entryCatalog)).SaveAsync(working);
         WriteJson(new { success = true, dryRun, description = string.Join("; ", descriptions), changedResources = changed.Distinct(), diagnostics = validation.Diagnostics });
         return 0;
     }
 
-    private static EditorProjectDocument Load(string projectPath)
+    private static EditorProjectDocument Load(string projectPath, IEntryCatalog entryCatalog)
     {
         if (!Directory.Exists(projectPath)) throw new DirectoryNotFoundException($"Project directory not found: {projectPath}");
-        return new DirectProjectPersistence(projectPath).Load();
+        return new DirectProjectPersistence(projectPath, new EditorDocumentRepository(entryCatalog)).Load();
     }
 
     private static async Task<int> ExportAsync(string projectPath, string[] args)

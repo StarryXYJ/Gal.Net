@@ -3,12 +3,19 @@ using System.Collections.ObjectModel;
 using System.Collections.Generic;
 using System.Linq;
 using GalNet.Core.Graph;
+using GalNet.Core.Entry;
 using GalNet.Editor.ViewModels;
 
 namespace GalNet.Editor.Services;
 
 public sealed class GraphEditingService : IGraphEditingService
 {
+    private readonly IEntryCatalog _catalog;
+
+    public GraphEditingService(IEntryCatalog catalog)
+    {
+        _catalog = catalog;
+    }
     public GraphNode CreateNode(ObservableCollection<GraphNode> nodes, GraphNodeKind kind, double x, double y, string? id = null)
     {
         var index = nodes.Count(node => node.NodeKind == kind) + 1;
@@ -20,11 +27,14 @@ public sealed class GraphEditingService : IGraphEditingService
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
         };
 
-        return new GraphNode(node, kind)
+        var graphNode = new GraphNode(node, kind)
         {
             X = x,
             Y = y
         };
+        if (kind == GraphNodeKind.LinearGroup)
+            InsertEntries(graphNode, 0, 1);
+        return graphNode;
     }
 
     public bool DeleteEdge(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphEdge edge)
@@ -82,6 +92,10 @@ public sealed class GraphEditingService : IGraphEditingService
         if (groupNode.NodeKind != GraphNodeKind.LinearGroup || count < 1)
             return [];
 
+        var definition = _catalog.Definitions.FirstOrDefault();
+        if (definition is null)
+            return [];
+
         index = Math.Clamp(index, 0, groupNode.Entries.Count);
         var inserted = new List<EntryEditorItemViewModel>(count);
         for (var offset = 0; offset < count; offset++)
@@ -89,9 +103,9 @@ public sealed class GraphEditingService : IGraphEditingService
             var entry = new EntryEditorItemViewModel
             {
                 StableId = Guid.NewGuid().ToString("N"),
-                Type = GalNet.Core.Entry.TextEntry.TypeId,
+                Type = definition.Type,
                 Parameters = new Dictionary<string, string>(
-                    GalNet.Primitives.Builtins.BuiltinEntryCatalog.Create(GalNet.Core.Entry.TextEntry.TypeId).Values,
+                    _catalog.Create(definition.Type).Values,
                     StringComparer.Ordinal)
             };
             groupNode.Entries.Insert(index + offset, entry);

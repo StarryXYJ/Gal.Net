@@ -5,7 +5,7 @@ namespace GalNet.Core.Entry;
 /// <summary>Plays one interpolated property animation on an active scene instance.</summary>
 public sealed class AnimateEntry : PrimitiveEntry
 {
-    public const string TypeId = "animate";
+    public const string TypeId = "animation.animate";
     public override string Type => TypeId;
     public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("playbackHandleId", EntryParameterType.Text), ("handleId", EntryParameterType.Text), ("property", EntryParameterType.Select), ("from", EntryParameterType.Float), ("to", EntryParameterType.Float), ("duration", EntryParameterType.Float), ("curve", EntryParameterType.Select), ("blocking", EntryParameterType.Select), ("skippable", EntryParameterType.Select), ("batchId", EntryParameterType.Text), ("loopMode", EntryParameterType.Select), ("blendMode", EntryParameterType.Select));
     public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("duration", "0.25"), ("curve", "Linear"), ("blocking", "false"), ("skippable", "false"), ("loopMode", "Once"), ("blendMode", "Replace"));

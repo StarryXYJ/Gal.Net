@@ -29,37 +29,29 @@ flowchart LR
 
 ## 2. Phase 0：格式与通用契约
 
-**状态：in-progress**
+**状态：verified（2026-09-22）**
 
-**目标：** 建立不依赖具体宿主的原语数据模型、共享的冻结参数 schema、动态模块注册目录和 GUID 内容格式。推荐模块仅是外层可选实现，Core/Runtime 不要求任何具体原语存在。
+**目标：** 建立不依赖具体宿主的原语数据模型、共享的冻结参数 schema、动态模块注册目录和 GUID `RuntimeHandle` 契约。推荐模块仅是外层可选实现，Core/Runtime 不要求任何具体原语存在。
 
 **前置条件：** 本计划和设计稿已评审；通用原语契约置于 `GalNet.Core`，且依赖图无 Core/Runtime → Avalonia 反向引用。
 
 **涉及模块：** `GalNet.Core`、`GalNet.Runtime`、`GalNet.Presentation.Abstractions`、`GalNet.Editor.Shared`、`GalNet.Editor`、`GeneralTest`。
 
-**工作项：**
-
-**本大步骤已完成（2026-09-22）：** Core 已提供通用 primitive 契约、执行控制和 GUID `HandleManager`；`.galgroup`、快照与存档统一为 v2 JSON primitive envelope，旧版本直接拒绝。`IPrimitiveModule` 的内部 command + descriptor 表是唯一注册事实，`CompositeGameView` 只按完整 ID 动态路由模块；空 profile 与自定义 profile 都有效。`IGameView` 仅保留 descriptor 查询与通用 `Dispatch`。旧专用 View 接口、Runtime Handler/Registry、全局 `PrimitiveCatalog` 和 Runtime 对 Builtins 的引用均已删除。Samples 与编辑器预览暂以空模块集合运行，直到各平台模块在后续 Phase 注册。
-
-**剩余工作：**
-
-1. 抽取 `DynamicParameterTable` 与 `DynamicParameterDescriptor`，以 `Type ValueType`、必填性、JSON 默认值和约束替换 primitive 专属参数类型/descriptor；表在模块注册后只读冻结，内容文件只保存 JSON 参数值，不序列化 CLR 类型。
-2. 将具体原语 schema 从 Core 静态 `EntryRegistry` 移出，并使编辑器的 Builtins 调用点改为组合期注入的 target profile。`TargetProfileEntryCatalog` 已能由模块 descriptor 建立 profile 专属的作者/编译目录；下一步是接通实际编辑器组合根。
-3. 统一 GUID 的编辑器生成、JSON 表示和 Runtime 校验，并删除字符串句柄的新增入口。
+**已完成：** `DynamicParameterTable` / `DynamicParameterDescriptor` 以只读 ordinal 表保存 `Type ValueType`、required、JSON 默认值和 constraints，替代 primitive 专属参数 schema；内容只保存 JSON 值。`TargetProfileEntryCatalog` 从 descriptor 生成作者/编译目录，编辑器、Headless、命令、保存和预览均经注入的 `IEntryCatalog` 使用它。空 profile、自定义 profile 与无默认内置条目的新项目都有效；编辑器新增条目只从当前 profile 选择类型。推荐 Builtins 留在外层并改为点分隔 ID（如 `dialogue.text`、`animation.animate`、`flow.wait`、`gallery.unlock`），不构成 Runtime 旁路。Core 保留仅供 NonPrimitive 展开的 `EntryRegistry`，不再拥有具体 primitive schema。具体 Layer/Effect 内容的 GUID 字段及字符串句柄删除仍属于 Phase 2。
 
 **验证：**
 
-- Core 测试覆盖新格式读写、原始 JSON 类型保留、GUID 格式、冻结参数表、`typeof` 校验、JSON 默认值/约束、空模块集合、重复注册拒绝，以及 `IGameView` 没有领域方法。
-- 编译器/编辑器测试覆盖 target profile 只暴露已挂载模块的 descriptor、开发者自定义 primitive、NonPrimitive 只输出通用 PrimitiveEntry，以及未知/旧格式被拒绝。
-- 运行 `dotnet test test/GeneralTest/GeneralTest.csproj`。
+- 测试覆盖冻结表、重复参数拒绝、`typeof`、JSON 默认值/值类型、JSON 原始类型保留、空/自定义 profile、模块 descriptor 路由和无领域方法的 `IGameView`。
+- 编译器/编辑器测试覆盖自定义 primitive 的编译、加载、保存和命令；未知类型被拒绝，且编译产物不含 CLR 类型名。
+- `dotnet test test/GeneralTest/GeneralTest.csproj --no-restore --disable-build-servers -p:BuildInParallel=false -v minimal`：202/202 通过。
 
-**文档：** 更新 `docs/spec/entry-types.md` 和文件格式说明，使其只列新点分隔 ID 与 GUID 字段。
+**文档：** 已更新 `docs/spec/entry-types.md`、文件格式说明与本设计稿；资源类型动态化保持在 Phase 6，不提前写入 assets spec。
 
 **风险：** `EntryRegistry` 目前同时服务编译、加载、编辑器命令和测试；本 Phase 只能替换其“具体原语”职责，不应误删非原语编译能力。
 
-**退出条件：** 新内容能由指定 target profile 的模块 descriptor 编译、加载并校验；冻结参数 schema 以 `typeof` 表达运行时类型、以 JSON 保存值且不序列化 CLR 类型；空 profile 和自定义 profile 都可用；`IGameView` 是纯动态分发入口；Core 不含具体原语 Handler、schema、Handler factory Catalog 或隐式推荐能力；推荐 Builtins/抽象模块不形成引擎旁路。
+**退出条件：** 已满足：新内容可由指定 target profile 的 descriptor 编译、加载和校验；冻结 schema 以 `typeof` 表达运行时类型、以 JSON 保存值且不序列化 CLR 类型；空 profile 和自定义 profile 可用；`IGameView` 是纯动态分发入口；Core 不含具体 primitive Handler、schema、Handler factory Catalog 或隐式推荐能力；推荐 Builtins/抽象模块不形成引擎旁路。
 
-**本轮验证（2026-09-22）：** `dotnet test test/GeneralTest/GeneralTest.csproj --no-restore --disable-build-servers -p:BuildInParallel=false -v minimal` 通过 197/197。静态搜索确认 `src` 与 `test` 中不存在旧专用 View 接口、`EntryHandlerRegistry`、`EntryHandler`、`EntryContext` 或 `PrimitiveCatalog`。
+**静态验证（2026-09-22）：** `PrimitiveParameterDescriptor` / `PrimitiveParameterKind` 已无引用；`GalNet.Editor*` 的 Builtins 只在组合根出现；旧专用 View、`EntryHandlerRegistry`、`EntryHandler`、`EntryContext` 与 `PrimitiveCatalog` 均无引用。
 
 ## 3. Phase 1：统一调度、Operation 与稳定快照
 

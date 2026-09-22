@@ -8,18 +8,20 @@ using GalNet.Editor.Abstraction.Services;
 using GalNet.Core.Entry;
 using GalNet.Core.Compilation;
 using GalNet.Core.Serialization;
-using GalNet.Primitives.Builtins;
+using GalNet.Core.Primitives;
 
 namespace GalNet.Editor.Shared.Services;
 
 public sealed class EditorSaveCoordinator : IEditorSaveCoordinator
 {
     private readonly IEditorDocumentRepository _repository;
+    private readonly IEntryCatalog _catalog;
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
-    public EditorSaveCoordinator(IEditorDocumentRepository repository)
+    public EditorSaveCoordinator(IEditorDocumentRepository repository, IEntryCatalog catalog)
     {
         _repository = repository;
+        _catalog = catalog;
     }
 
     public void SaveProjectDocument(
@@ -78,16 +80,16 @@ public sealed class EditorSaveCoordinator : IEditorSaveCoordinator
         foreach (var (groupId, entries) in groupEntries)
         {
             var raw = new GroupDocument { Kind = GroupDocumentKind.Raw, Entries = entries.Select(SerializeEntry).ToList() };
-            var compiled = GalgroupCompiler.Compile(raw, BuiltinEntryCatalog.Instance).Document;
+            var compiled = GalgroupCompiler.Compile(raw, _catalog).Document;
             File.WriteAllText(Path.Combine(previewPath, $"{groupId}.galgroup"), JsonSerializer.Serialize(compiled, JsonOptions));
         }
 
         return previewPath;
     }
 
-    private static GroupEntryDocument SerializeEntry(EditorEntryData entry)
+    private GroupEntryDocument SerializeEntry(EditorEntryData entry)
     {
-        var definition = BuiltinEntryCatalog.Get(entry.Type);
+        var definition = _catalog.Get(entry.Type);
         var parameters = entry.Parameters
             .Where(pair => definition.Parameters.ContainsKey(pair.Key) && pair.Value.Length > 0)
             .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
@@ -98,22 +100,10 @@ public sealed class EditorSaveCoordinator : IEditorSaveCoordinator
             Id = entry.StableId,
             Type = entry.Type,
             Condition = entry.Condition,
-            Parameters = parameters.ToDictionary(pair => pair.Key, pair => ToJsonValue(definition.Parameters[pair.Key], pair.Value), StringComparer.Ordinal)
+            Parameters = parameters.ToDictionary(pair => pair.Key, pair => ToJsonValue(definition.DynamicParameters![pair.Key].ValueType, pair.Value), StringComparer.Ordinal)
         };
     }
 
-    private static JsonElement ToJsonValue(EntryParameterType type, string value)
-    {
-        if (type == EntryParameterType.Json)
-        {
-            using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(value) ? "{}" : value);
-            return document.RootElement.Clone();
-        }
-        return type switch
-        {
-            EntryParameterType.Integer => JsonSerializer.SerializeToElement(int.Parse(value, System.Globalization.CultureInfo.InvariantCulture)),
-            EntryParameterType.Float => JsonSerializer.SerializeToElement(float.Parse(value, System.Globalization.CultureInfo.InvariantCulture)),
-            _ => JsonSerializer.SerializeToElement(value)
-        };
-    }
+    private static JsonElement ToJsonValue(Type valueType, string value) =>
+        DynamicParameterValue.FromEditorValue(value, valueType);
 }

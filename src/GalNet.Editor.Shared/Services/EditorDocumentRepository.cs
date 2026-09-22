@@ -9,13 +9,19 @@ using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
-using GalNet.Primitives.Builtins;
+using GalNet.Core.Primitives;
 
 namespace GalNet.Editor.Shared.Services;
 
 public sealed class EditorDocumentRepository : IEditorDocumentRepository
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private readonly IEntryCatalog _catalog;
+
+    public EditorDocumentRepository(IEntryCatalog catalog)
+    {
+        _catalog = catalog;
+    }
 
     public LoadedEditorProjectDocument Load(string projectPath, string projectName, ProjectSettings settings)
     {
@@ -127,7 +133,7 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
         VariableNameRules.Normalize(document.PlayerVariables, document.SaveVariables);
     }
 
-    private static List<EditorEntryData> LoadGroupEntries(string graphPath, string? relativeFile)
+    private List<EditorEntryData> LoadGroupEntries(string graphPath, string? relativeFile)
     {
         var entries = new List<EditorEntryData>();
         if (string.IsNullOrWhiteSpace(relativeFile))
@@ -146,10 +152,10 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
 
         foreach (var entry in document.Entries)
         {
-            var definition = BuiltinEntryCatalog.Get(entry.Type);
+            var definition = _catalog.Get(entry.Type);
             var parameters = entry.Parameters
                 .Where(p => definition.Parameters.ContainsKey(p.Key))
-                .ToDictionary(pair => pair.Key, pair => ToEditorValue(pair.Value), StringComparer.Ordinal);
+                .ToDictionary(pair => pair.Key, pair => DynamicParameterValue.ToEditorValue(pair.Value), StringComparer.Ordinal);
 
             entries.Add(new EditorEntryData
             {
@@ -164,9 +170,9 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
         return entries;
     }
 
-    private static GroupEntryDocument SerializeEntry(EditorEntryData entry)
+    private GroupEntryDocument SerializeEntry(EditorEntryData entry)
     {
-        var definition = BuiltinEntryCatalog.Get(entry.Type);
+        var definition = _catalog.Get(entry.Type);
         var parameters = entry.Parameters
             .Where(pair => definition.Parameters.ContainsKey(pair.Key) && pair.Value.Length > 0)
             .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
@@ -179,28 +185,12 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
             Id = entry.StableId,
             Type = entry.Type,
             Condition = entry.Condition,
-            Parameters = parameters.ToDictionary(pair => pair.Key, pair => ToJsonValue(definition.Parameters[pair.Key], pair.Value), StringComparer.Ordinal)
+            Parameters = parameters.ToDictionary(pair => pair.Key, pair => ToJsonValue(definition.DynamicParameters![pair.Key].ValueType, pair.Value), StringComparer.Ordinal)
         };
     }
 
-    private static string ToEditorValue(JsonElement value) => value.ValueKind == JsonValueKind.String
-        ? value.GetString() ?? ""
-        : value.GetRawText();
-
-    private static JsonElement ToJsonValue(EntryParameterType type, string value)
-    {
-        if (type == EntryParameterType.Json)
-        {
-            using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(value) ? "{}" : value);
-            return document.RootElement.Clone();
-        }
-        return type switch
-        {
-            EntryParameterType.Integer => JsonSerializer.SerializeToElement(int.Parse(value, System.Globalization.CultureInfo.InvariantCulture)),
-            EntryParameterType.Float => JsonSerializer.SerializeToElement(float.Parse(value, System.Globalization.CultureInfo.InvariantCulture)),
-            _ => JsonSerializer.SerializeToElement(value)
-        };
-    }
+    private static JsonElement ToJsonValue(Type valueType, string value) =>
+        DynamicParameterValue.FromEditorValue(value, valueType);
 
     private static void EnsureStableIds(EditorGraphDocument document)
     {

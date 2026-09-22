@@ -3,8 +3,11 @@ using System.Linq;
 using System.Text.Json;
 using GalNet.Core.Settings;
 using GalNet.Core.Variable;
+using GalNet.Core.Entry;
+using GalNet.Core.Primitives;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Shared.Services;
+using GalNet.Primitives.Builtins;
 
 namespace GeneralTest.Editor;
 
@@ -49,7 +52,7 @@ public class EditorDocumentRepositoryTests
             JsonSerializer.Serialize(document, new JsonSerializerOptions { WriteIndented = true }));
         File.WriteAllText(
             Path.Combine(_tempDir, "Graph", "groups", $"{groupId}.rawgalgroup"),
-            """{ "version": 2, "kind": "Raw", "entries": [ { "id": "entry-1", "type": "text", "parameters": { "content": "hello", "obsolete": "discard" } } ] }""");
+            """{ "version": 2, "kind": "Raw", "entries": [ { "id": "entry-1", "type": "dialogue.text", "parameters": { "content": "hello", "obsolete": "discard" } } ] }""");
 
         var settings = new ProjectSettings
         {
@@ -63,13 +66,13 @@ public class EditorDocumentRepositoryTests
             ]
         };
 
-        var repository = new EditorDocumentRepository();
+        var repository = new EditorDocumentRepository(BuiltinEntryCatalog.CreateTargetProfile());
         var loaded = repository.Load(_tempDir, "Demo", settings);
 
         Assert.That(loaded.Document.PlayerVariables.Select(v => v.Name), Is.EqualTo(new[] { "player_flag" }));
         Assert.That(loaded.Document.SaveVariables.Select(v => v.Name), Is.EqualTo(new[] { "save_count" }));
         Assert.That(loaded.GroupEntries[groupId], Has.Count.EqualTo(1));
-        Assert.That(loaded.GroupEntries[groupId][0].Type, Is.EqualTo("text"));
+        Assert.That(loaded.GroupEntries[groupId][0].Type, Is.EqualTo("dialogue.text"));
         Assert.That(loaded.GroupEntries[groupId][0].Parameters, Does.ContainKey("content").WithValue("hello"));
         Assert.That(loaded.GroupEntries[groupId][0].Parameters, Does.Not.ContainKey("obsolete"));
     }
@@ -77,7 +80,7 @@ public class EditorDocumentRepositoryTests
     [Test]
     public void Save_WritesVariablesAndGroupEntriesIntoProjectFiles()
     {
-        var repository = new EditorDocumentRepository();
+        var repository = new EditorDocumentRepository(BuiltinEntryCatalog.CreateTargetProfile());
         var document = new EditorGraphDocument
         {
             Name = "Demo",
@@ -102,7 +105,7 @@ public class EditorDocumentRepositoryTests
                     new EditorEntryData
                     {
                         Id = 1,
-                        Type = "text",
+                        Type = "dialogue.text",
                         Condition = "player_name==Alice",
                         Parameters = new Dictionary<string, string> { ["speaker"] = "Alice", ["content"] = "Hello" }
                     }
@@ -122,6 +125,31 @@ public class EditorDocumentRepositoryTests
         Assert.That(entry.GetProperty("condition").GetString(), Is.EqualTo("player_name==Alice"));
         Assert.That(entry.GetProperty("parameters").GetProperty("speaker").GetString(), Is.EqualTo("Alice"));
         Assert.That(entry.GetProperty("parameters").GetProperty("content").GetString(), Is.EqualTo("Hello"));
+    }
+
+    [Test]
+    public void RepositoryUsesOnlyTheInjectedTargetProfile()
+    {
+        const string groupId = "group_1";
+        var catalog = new TargetProfileEntryCatalog(
+        [new PrimitiveDescriptor("custom.pulse", new DynamicParameterTable([new DynamicParameterDescriptor("count", typeof(int), isRequired: true)]))]);
+        var graph = new EditorGraphDocument
+        {
+            Name = "Custom",
+            Nodes = [new EditorGraphNodeDto { Id = groupId, Type = "Group", File = $"groups/{groupId}.rawgalgroup" }]
+        };
+        File.WriteAllText(Path.Combine(_tempDir, "Graph", "graph.json"), JsonSerializer.Serialize(graph));
+        File.WriteAllText(
+            Path.Combine(_tempDir, "Graph", "groups", $"{groupId}.rawgalgroup"),
+            """{ "version": 2, "kind": "Raw", "entries": [ { "id": "pulse-1", "type": "custom.pulse", "parameters": { "count": 3 } } ] }""");
+
+        var repository = new EditorDocumentRepository(catalog);
+        var loaded = repository.Load(_tempDir, "Custom", new ProjectSettings());
+        repository.Save(_tempDir, loaded.Document, loaded.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value));
+
+        Assert.That(loaded.GroupEntries[groupId].Single().Parameters["count"], Is.EqualTo("3"));
+        using var saved = JsonDocument.Parse(File.ReadAllText(Path.Combine(_tempDir, "Graph", "groups", $"{groupId}.rawgalgroup")));
+        Assert.That(saved.RootElement.GetProperty("entries")[0].GetProperty("parameters").GetProperty("count").GetInt32(), Is.EqualTo(3));
     }
 
     private static ProjectVariableDefinition CreateDefinition(string name, object value)

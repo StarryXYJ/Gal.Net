@@ -283,19 +283,7 @@ public sealed class ProjectService : IProjectService
             JsonSerializer.Serialize(new GroupDocument
             {
                 Kind = GroupDocumentKind.Raw,
-                Entries =
-                [
-                    new GroupEntryDocument
-                    {
-                        Id = Guid.NewGuid().ToString("N"),
-                        Type = "text",
-                        Parameters = new Dictionary<string, JsonElement>
-                        {
-                            ["speaker"] = JsonSerializer.SerializeToElement("Alice"),
-                            ["content"] = JsonSerializer.SerializeToElement("Hello GalNet")
-                        }
-                    }
-                ]
+                Entries = []
             }, JsonOptions));
     }
 

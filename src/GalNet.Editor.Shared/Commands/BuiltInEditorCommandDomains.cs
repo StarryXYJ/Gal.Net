@@ -1,5 +1,6 @@
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Documents;
+using GalNet.Core.Entry;
 
 namespace GalNet.Editor.Shared.Commands;
 
@@ -11,7 +12,13 @@ public sealed partial class BuiltInEditorCommandHandler
         CommandExecution Execute(EditorProjectDocument document, IProjectEditCommand command, EditorCommandContext context);
     }
 
-    private static readonly ICommandDomain[] Domains = [new GraphDomain(), new EntryDomain(), new VariableDomain(), new ProjectDomain()];
+    private readonly ICommandDomain[] Domains;
+
+    public BuiltInEditorCommandHandler(IEntryCatalog catalog)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        Domains = [new GraphDomain(), new EntryDomain(catalog), new VariableDomain(), new ProjectDomain()];
+    }
 
     private sealed class GraphDomain : ICommandDomain
     {
@@ -23,10 +30,14 @@ public sealed partial class BuiltInEditorCommandHandler
     }
     private sealed class EntryDomain : ICommandDomain
     {
+        private readonly IEntryCatalog _catalog;
+
+        public EntryDomain(IEntryCatalog catalog) => _catalog = catalog;
+
         public bool CanHandle(IProjectEditCommand command) => command is AddEntryCommand or DeleteEntryCommand or MoveEntryCommand or SetEntryTypeCommand or SetEntryConditionCommand or SetEntryParametersCommand or PatchEntryParametersCommand or AddChoiceOptionCommand or DeleteChoiceOptionCommand or MoveChoiceOptionCommand or SetChoiceOptionTextCommand or SetChoiceOptionConditionCommand or AddBranchConditionCommand or DeleteBranchConditionCommand or MoveBranchConditionCommand or SetBranchConditionExpressionCommand;
         public CommandExecution Execute(EditorProjectDocument d, IProjectEditCommand c, EditorCommandContext _) => c switch
         {
-            AddEntryCommand v => AddEntry(d, v), DeleteEntryCommand v => DeleteEntry(d, v), MoveEntryCommand v => MoveEntry(d, v), SetEntryTypeCommand v => SetEntryType(d, v), SetEntryConditionCommand v => SetEntryCondition(d, v), SetEntryParametersCommand v => SetEntryParameters(d, v), PatchEntryParametersCommand v => PatchEntryParameters(d, v), AddChoiceOptionCommand v => AddOption(d, v), DeleteChoiceOptionCommand v => DeleteOption(d, v), MoveChoiceOptionCommand v => MoveOption(d, v), SetChoiceOptionTextCommand v => SetOptionText(d, v), SetChoiceOptionConditionCommand v => SetOptionCondition(d, v), AddBranchConditionCommand v => AddCondition(d, v), DeleteBranchConditionCommand v => DeleteCondition(d, v), MoveBranchConditionCommand v => MoveCondition(d, v), SetBranchConditionExpressionCommand v => SetConditionExpression(d, v), _ => throw new InvalidOperationException()
+            AddEntryCommand v => AddEntry(d, v, _catalog), DeleteEntryCommand v => DeleteEntry(d, v), MoveEntryCommand v => MoveEntry(d, v), SetEntryTypeCommand v => SetEntryType(d, v, _catalog), SetEntryConditionCommand v => SetEntryCondition(d, v), SetEntryParametersCommand v => SetEntryParameters(d, v, _catalog), PatchEntryParametersCommand v => PatchEntryParameters(d, v, _catalog), AddChoiceOptionCommand v => AddOption(d, v), DeleteChoiceOptionCommand v => DeleteOption(d, v), MoveChoiceOptionCommand v => MoveOption(d, v), SetChoiceOptionTextCommand v => SetOptionText(d, v), SetChoiceOptionConditionCommand v => SetOptionCondition(d, v), AddBranchConditionCommand v => AddCondition(d, v), DeleteBranchConditionCommand v => DeleteCondition(d, v), MoveBranchConditionCommand v => MoveCondition(d, v), SetBranchConditionExpressionCommand v => SetConditionExpression(d, v), _ => throw new InvalidOperationException()
         };
     }
     private sealed class VariableDomain : ICommandDomain

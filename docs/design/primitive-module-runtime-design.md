@@ -1,6 +1,6 @@
 # 原语模块化运行时设计
 
-> 状态：Proposed，待评审。本文描述目标架构与语义，不包含 Phase Plan，也不代表当前代码已经实现。
+> 状态：in-progress。Phase 0 的通用契约、动态 profile 与参数 schema 已实现；具体平台模块、Layer/Effect GUID 内容迁移及资源模块仍按 [实施计划](primitive-module-runtime-phase-plan.md) 推进。
 
 ## 1. 背景
 
@@ -82,8 +82,6 @@ ID 使用 `StringComparer.Ordinal` 精确比较，不在运行时自动改变大
 ```csharp
 public interface IGameView : IDisposable
 {
-    IReadOnlyCollection<PrimitiveDescriptor> Primitives { get; }
-
     bool TryGetDescriptor(
         string primitiveType,
         out PrimitiveDescriptor? descriptor);
@@ -103,7 +101,7 @@ public interface IGameView : IDisposable
 public interface IPrimitiveModule : IDisposable
 {
     string Prefix { get; }
-    IReadOnlyCollection<IPrimitiveHandler> Handlers { get; }
+    IReadOnlyCollection<PrimitiveDescriptor> Descriptors { get; }
 
     PrimitiveDispatch Dispatch(
         string command,
@@ -145,7 +143,7 @@ Game Scope 初始化顺序为：
 
 ## 6. 原语描述与参数
 
-每个 Handler 提供不可变描述，并与 Handler 一起注册。Phase 0 将先抽取共享的 `DynamicParameterTable`；`PrimitiveDescriptor.Parameters` 使用该表，而不是长期保留 primitive 专属参数模型：
+模块的内部命令表导出不可变描述。Phase 0 已抽取共享的 `DynamicParameterTable`；`PrimitiveDescriptor.Parameters` 使用该表，而不是 primitive 专属参数模型：
 
 ```csharp
 public sealed record PrimitiveDescriptor(
@@ -169,7 +167,7 @@ public sealed record PrimitiveInvocation(
     JsonElement Arguments);
 ```
 
-当前 `Entry.Values` 会把参数统一存成 `Dictionary<string, string>`，`GalgroupLoader` 还包含部分按原语类型硬编码的转换。目标结构应让已编译参数以 JSON 对象进入 `PrimitiveInvocation`，避免在顶层分发前丢失数字、布尔、对象和数组的原始类型。领域反序列化仍由叶子 Handler 负责。
+编辑器表单暂以 `Entry.Values` 的字符串表示交互，但其转换边界由 descriptor 的 `ValueType` 决定。已编译参数以 JSON 对象进入 `PrimitiveInvocation`，不会在顶层分发前丢失数字、布尔、对象和数组的原始类型。领域反序列化仍由叶子命令负责。
 
 ## 7. 句柄模型
 

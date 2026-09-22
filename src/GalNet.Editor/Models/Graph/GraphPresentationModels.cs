@@ -9,7 +9,6 @@ using GalNet.Core.Graph;
 using GalNet.Editor.Controls;
 using GalNet.Core.Entry;
 using GalNet.Core.Scene;
-using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Models.Graph;
 public enum GraphNodeKind
@@ -87,19 +86,6 @@ public partial class GraphNode : ObservableObject
         Node = node;
         NodeKind = nodeKind;
         Name = string.IsNullOrWhiteSpace(node.Name) ? KindLabel : node.Name;
-
-        if (NodeKind == GraphNodeKind.LinearGroup)
-        {
-            Entries.Add(new EntryEditorItemViewModel
-            {
-                Id = 1,
-                Type = "text",
-                Parameters = new Dictionary<string, string>(StringComparer.Ordinal)
-                {
-                    ["speaker"] = "Alice", ["content"] = "Hello GalNet"
-                }
-            });
-        }
 
         if (NodeKind == GraphNodeKind.ConditionBranch)
             Conditions.Add(new BranchConditionEditorItemViewModel { Expression = "true" });
@@ -267,10 +253,10 @@ public partial class EntryEditorItemViewModel : ObservableObject
 
     public ObservableCollection<EntryParameterEditorItemViewModel> ParameterFields { get; } = [];
     /// <summary>Builds the editor projection from the Core registry, the single schema source.</summary>
-    public void ConfigureParameterFields(IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames, bool resetValues = false, IEffectCatalog? effectCatalog = null)
+    public void ConfigureParameterFields(IEntryCatalog catalog, IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames, bool resetValues = false, IEffectCatalog? effectCatalog = null)
     {
         _effectCatalog = effectCatalog;
-        var schema = BuiltinEntryCatalog.Get(Type);
+        var schema = catalog.Get(Type);
         var values = resetValues
             ? new Dictionary<string, string>(schema.Defaults, StringComparer.Ordinal)
             : Parameters.Where(pair => schema.Parameters.ContainsKey(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);

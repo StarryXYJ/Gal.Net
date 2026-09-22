@@ -1,4 +1,3 @@
-using System.Text.Json;
 using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
 
@@ -13,7 +12,10 @@ public static class BuiltinEntryCatalog
     private static readonly IReadOnlyDictionary<string, EntryDefinition> DefinitionsByType = BuildDefinitions();
 
     public static IReadOnlyList<EntryDefinition> Definitions { get; } = DefinitionsByType.Values.ToArray();
-    public static IEntryCatalog Instance { get; } = new Catalog();
+    /// <summary>Builds the optional recommended authoring profile at the composition root.</summary>
+    public static TargetProfileEntryCatalog CreateTargetProfile() => new(
+        Definitions.Where(definition => definition.Kind == EntryKind.Primitive).Select(definition => definition.Descriptor!),
+        EntryRegistry.Definitions);
 
     public static bool TryGet(string type, out EntryDefinition definition) =>
         DefinitionsByType.TryGetValue(type, out definition!);
@@ -81,15 +83,8 @@ public static class BuiltinEntryCatalog
     {
         var typeId = new TEntry().Type;
         var resolvedDefaults = defaults ?? new Dictionary<string, string>(StringComparer.Ordinal);
-        var descriptor = new PrimitiveDescriptor(
-            typeId,
-            parameters.Select(pair => new PrimitiveParameterDescriptor(
-                pair.Key,
-                ToPrimitiveKind(pair.Value),
-                DefaultValue: resolvedDefaults.TryGetValue(pair.Key, out var value)
-                    ? ToDefaultValue(value, pair.Value)
-                    : null)).ToArray(),
-            CreatesCheckpoint: typeId == TextEntry.TypeId);
+        var dynamicParameters = EntrySchema.DynamicParameters(parameters, resolvedDefaults, options);
+        var descriptor = new PrimitiveDescriptor(typeId, dynamicParameters, CreatesCheckpoint: typeId == TextEntry.TypeId);
         return new EntryDefinition(
             typeId,
             category,
@@ -98,38 +93,7 @@ public static class BuiltinEntryCatalog
             resolvedDefaults,
             options ?? new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal),
             EntryKind.Primitive,
-            descriptor);
-    }
-
-    private static PrimitiveParameterKind ToPrimitiveKind(EntryParameterType type) => type switch
-    {
-        EntryParameterType.Integer => PrimitiveParameterKind.WholeNumber,
-        EntryParameterType.Float => PrimitiveParameterKind.DecimalNumber,
-        EntryParameterType.Json => PrimitiveParameterKind.JsonObject,
-        _ => PrimitiveParameterKind.Text
-    };
-
-    private static JsonElement ToDefaultValue(string value, EntryParameterType type)
-    {
-        if (type == EntryParameterType.Json)
-        {
-            using var document = JsonDocument.Parse(value);
-            return document.RootElement.Clone();
-        }
-        return type switch
-        {
-            EntryParameterType.Integer => JsonSerializer.SerializeToElement(int.Parse(value, System.Globalization.CultureInfo.InvariantCulture)),
-            EntryParameterType.Float => JsonSerializer.SerializeToElement(float.Parse(value, System.Globalization.CultureInfo.InvariantCulture)),
-            _ => JsonSerializer.SerializeToElement(value)
-        };
-    }
-
-    private sealed class Catalog : IEntryCatalog
-    {
-        public IReadOnlyList<EntryDefinition> Definitions => BuiltinEntryCatalog.Definitions;
-        public bool TryGet(string type, out EntryDefinition definition) => BuiltinEntryCatalog.TryGet(type, out definition);
-        public EntryDefinition Get(string type) => BuiltinEntryCatalog.Get(type);
-        public Entry Create(string type, int id = 0, string condition = "", IReadOnlyDictionary<string, string>? values = null) =>
-            BuiltinEntryCatalog.Create(type, id, condition, values);
+            descriptor,
+            dynamicParameters);
     }
 }

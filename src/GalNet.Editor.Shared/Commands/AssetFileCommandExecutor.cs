@@ -1,11 +1,19 @@
 using System.Text.Json;
+using GalNet.Core.Entry;
 using GalNet.Editor.Abstraction.Commands;
+using GalNet.Editor.Shared.Services;
 
 namespace GalNet.Editor.Shared.Commands;
 
 /// <summary>Sandboxed filesystem dispatcher for project asset commands.</summary>
 public sealed class AssetFileCommandExecutor : IProjectFileCommandExecutor
 {
+    private readonly IEntryCatalog _catalog;
+
+    public AssetFileCommandExecutor(IEntryCatalog catalog)
+    {
+        _catalog = catalog;
+    }
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
     public async Task<FileCommandResult> ExecuteAsync(
@@ -123,7 +131,7 @@ public sealed class AssetFileCommandExecutor : IProjectFileCommandExecutor
         return Success(NewId(), $"Renamed asset '{command.RelativePath}' to '{command.NewName}'.", [Resource(root, source), Resource(root, destination)]);
     }
 
-    private static FileCommandResult Delete(string projectPath, string root, DeleteAssetCommand command)
+    private FileCommandResult Delete(string projectPath, string root, DeleteAssetCommand command)
     {
         var source = ResolveExisting(root, command.RelativePath);
         var references = FindReferences(projectPath, source, command.RelativePath);
@@ -140,7 +148,7 @@ public sealed class AssetFileCommandExecutor : IProjectFileCommandExecutor
         return Success(transactionId, $"Moved asset '{command.RelativePath}' to the project recovery area.", [Resource(root, source)]);
     }
 
-    private static IReadOnlyList<string> FindReferences(string projectPath, string assetPath, string relativePath)
+    private IReadOnlyList<string> FindReferences(string projectPath, string assetPath, string relativePath)
     {
         var values = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -160,7 +168,7 @@ public sealed class AssetFileCommandExecutor : IProjectFileCommandExecutor
         catch (JsonException) { }
 
         var references = new List<string>();
-        var document = new DirectProjectPersistence(projectPath).Load();
+        var document = new DirectProjectPersistence(projectPath, new EditorDocumentRepository(_catalog)).Load();
         foreach (var node in document.Graph.Nodes)
             if (values.Any(value => string.Equals(node.File, value, StringComparison.OrdinalIgnoreCase)))
                 references.Add($"graph/nodes/{node.Id}");

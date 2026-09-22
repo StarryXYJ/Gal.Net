@@ -13,15 +13,17 @@ public class TargetProfileEntryCatalogTests
     {
         var descriptor = new PrimitiveDescriptor(
             "custom.pulse",
+            new DynamicParameterTable(
             [
-                new PrimitiveParameterDescriptor("count", PrimitiveParameterKind.WholeNumber, IsRequired: true),
-                new PrimitiveParameterDescriptor("enabled", PrimitiveParameterKind.Flag, DefaultValue: JsonSerializer.SerializeToElement(true))
-            ]);
+                new DynamicParameterDescriptor("count", typeof(int), isRequired: true),
+                new DynamicParameterDescriptor("enabled", typeof(bool), defaultValue: JsonSerializer.SerializeToElement(true))
+            ]));
         var catalog = new TargetProfileEntryCatalog([descriptor]);
 
         Assert.That(catalog.TryGet("custom.pulse", out var definition), Is.True);
         Assert.That(definition.Kind, Is.EqualTo(EntryKind.Primitive));
         Assert.That(definition.Parameters["count"], Is.EqualTo(EntryParameterType.Integer));
+        Assert.That(definition.DynamicParameters!["count"].ValueType, Is.EqualTo(typeof(int)));
         Assert.That(definition.Defaults["enabled"], Is.EqualTo("true"));
         Assert.That(catalog.TryGet("layer.show", out _), Is.False);
     }
@@ -33,7 +35,7 @@ public class TargetProfileEntryCatalogTests
         [
             new PrimitiveDescriptor(
                 "custom.pulse",
-                [new PrimitiveParameterDescriptor("payload", PrimitiveParameterKind.JsonObject, IsRequired: true)])
+                new DynamicParameterTable([new DynamicParameterDescriptor("payload", typeof(JsonElement), isRequired: true)]))
         ]);
         var document = new GroupDocument
         {
@@ -57,6 +59,7 @@ public class TargetProfileEntryCatalogTests
         Assert.That(compiled.Entries.Single().TypeId, Is.EqualTo("custom.pulse"));
         Assert.That(compiled.Entries.Single().Arguments.GetProperty("payload").GetProperty("enabled").GetBoolean(), Is.True);
         Assert.That(compiled.Entries.Single().Arguments.GetProperty("payload").GetProperty("count").GetInt32(), Is.EqualTo(3));
+        Assert.That(compiled.Entries.Single().Arguments.GetRawText(), Does.Not.Contain("System.Text.Json.JsonElement"));
         var disabledDocument = new GroupDocument
         {
             Kind = GroupDocumentKind.Raw,
@@ -70,7 +73,7 @@ public class TargetProfileEntryCatalogTests
     public void CompilerRejectsMissingRequiredPrimitiveParameter()
     {
         var catalog = new TargetProfileEntryCatalog(
-        [new PrimitiveDescriptor("custom.pulse", [new PrimitiveParameterDescriptor("count", PrimitiveParameterKind.WholeNumber, IsRequired: true)])]);
+        [new PrimitiveDescriptor("custom.pulse", new DynamicParameterTable([new DynamicParameterDescriptor("count", typeof(int), isRequired: true)]))]);
         var document = new GroupDocument
         {
             Kind = GroupDocumentKind.Raw,
@@ -84,7 +87,7 @@ public class TargetProfileEntryCatalogTests
     [Test]
     public void ProfileCanReadTheSameDescriptorsMountedByModules()
     {
-        using var module = new DescriptorOnlyModule("custom", new PrimitiveDescriptor("custom.pulse", []));
+        using var module = new DescriptorOnlyModule("custom", new PrimitiveDescriptor("custom.pulse", DynamicParameterTable.Empty));
 
         var catalog = TargetProfileEntryCatalog.FromModules([module]);
 

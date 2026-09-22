@@ -16,7 +16,7 @@ public class CompositeGameViewTests
     [Test]
     public void ScopeFreezesDescriptorLookupAndRoutesByPrefix()
     {
-        var module = new TestModule("layer", new PrimitiveDescriptor("layer.show", []));
+        var module = new TestModule("layer", new PrimitiveDescriptor("layer.show", DynamicParameterTable.Empty));
         using var view = new CompositeGameView([module]);
         var invocation = new PrimitiveInvocation(
             "layer.show",
@@ -52,9 +52,9 @@ public class CompositeGameViewTests
     [Test]
     public void ScopeRejectsDuplicatePrefixesAndMismatchedDescriptors()
     {
-        var first = new TestModule("layer", new PrimitiveDescriptor("layer.show", []));
-        var duplicate = new TestModule("layer", new PrimitiveDescriptor("layer.hide", []));
-        var mismatched = new TestModule("layer", new PrimitiveDescriptor("effect.apply", []), register: false);
+        var first = new TestModule("layer", new PrimitiveDescriptor("layer.show", DynamicParameterTable.Empty));
+        var duplicate = new TestModule("layer", new PrimitiveDescriptor("layer.hide", DynamicParameterTable.Empty));
+        var mismatched = new TestModule("layer", new PrimitiveDescriptor("effect.apply", DynamicParameterTable.Empty), register: false);
 
         Assert.That(() => new CompositeGameView([first, duplicate]), Throws.InvalidOperationException);
         Assert.That(() => new CompositeGameView([mismatched]), Throws.InvalidOperationException);
