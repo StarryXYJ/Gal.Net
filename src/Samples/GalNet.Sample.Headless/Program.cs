@@ -24,7 +24,7 @@ try
     var progress = new FileGameProgressService(options.ProfileDirectory);
 
     var presentation = new ConsolePresentation(settings.Get<GameSettings>());
-    using IGameView view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(presentation, presentation));
+    using IGameView view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(presentation, presentation, presentation, presentation));
 
     var runtime = new GameRuntime(null, content.Graph.RootNodeId, settings, variables);
     using var engine = new GameEngine(content.Graph, runtime, view, progress, presentation);

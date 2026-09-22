@@ -1,236 +1,121 @@
-# 原语模块化运行时：分阶段实施计划
+# Entry Module 与 PrimitiveInstance 运行时：分阶段计划
 
-> 状态：in-progress。依据 [原语模块化运行时设计](primitive-module-runtime-design.md)。这是跨 Runtime、Core、编辑器与宿主的实施计划；只有标为“已完成”且附有验证证据的工作项可视为已交付。
+> 状态：当前 Entry Module + PrimitiveInstance 主路径已实现。本文保留跨 feature 的长期迁移边界，具体本轮实现记录见 `features/F-20260922-01-entry-instance-runtime/`。
 
-## 1. 已确认边界
+## 已确认边界
 
-- 不兼容旧原语 ID、字符串句柄、`.galgroup` 和存档；新格式一次切换，旧数据直接拒绝。
-- Core 只拥有通用原语、Descriptor、句柄、快照和执行契约；具体原语由模块提供 Handler 与 Descriptor。
-- Handler 返回本次调用已解析的执行 Policy；Runtime 只创建、等待、跳过和观察 Operation。
-- Save 只写 `LastStableSnapshot`；恢复只重建 Runtime 数据和 Handle，不执行原语或主动驱动 Avalonia 呈现。
-- Layer 持久化 Effect GUID；渲染时查询 `HandleManager`，不维护第二份 Effect 目标关系。
+- 不保留旧 Handler、Descriptor、OperationManager、ExecutionControl 或 Result 模型。
+- Core/Runtime 不引用 Avalonia 或其他平台实现。
+- Runtime 只执行编译后的 `PrimitiveEntry`；Composite 仅供 authoring/编译。
+- GameView 只分发单条 primitive；活动队列、Batch skip、Choice、节点跳转和快照由 Engine 管理。
+- 对玩家只暴露 `GameEngine.AdvanceAsync`。
+- 快照由 Engine 在稳定边界统一更新，不由 primitive 元数据决定。
+- 影响存档事实的 non-blocking primitive 必须在 `Dispatch()` 返回前提交最终逻辑状态。
 
 ```mermaid
 flowchart LR
-  P0[Phase 0\n格式与通用契约]
-  P1[Phase 1\n统一调度与稳定快照]
-  P2[Phase 2\nLayer / Effect 状态切片]
-  P3[Phase 3\n剧情与流程模块]
-  P4[Phase 4\n时间与媒体模块]
-  P5[Phase 5\n组合根、清理与文档]
-  P6[后续 Phase 6\n资源类型模块与动态参数]
-  P0 --> P1
-  P1 --> P2 --> P4 --> P5
-  P1 --> P3 --> P5
-  P5 --> P6
+  P1[Phase 1\nEntry 与 Instance 契约]
+  P2[Phase 2\nEngine 队列与 Advance]
+  P3[Phase 3\n快照与 Dialogue]
+  P4[Phase 4\n推荐模块与宿主接入]
+  P5[Phase 5\n后续媒体/资源扩展]
+  P1 --> P2 --> P3 --> P4 --> P5
 ```
 
-每个 Phase 合入时都保持新格式的测试通过；未实现模块可缺席，但不得添加旧格式读取、旧 ID 别名、字符串句柄适配层或旧执行入口。
+## Phase 1：Entry 与 Instance 契约
 
-## 2. Phase 0：格式与通用契约
+**状态：verified**
 
-**状态：verified（2026-09-22）**
+已完成：
 
-**目标：** 建立不依赖具体宿主的原语数据模型、共享的冻结参数 schema、动态模块注册目录和 GUID `RuntimeHandle` 契约。推荐模块仅是外层可选实现，Core/Runtime 不要求任何具体原语存在。
+- `EntryBase`、`PrimitiveEntryBase`、`DefaultPrimitiveEntryBase`、`CompositeEntryBase`、`DefaultCompositeEntryBase` 和 `PrimitiveInstance`。
+- `IEntryModule` 的 `PrimitiveEntries` / `CompositeEntries` 两张冻结表。
+- `DynamicParameterTable` 作为唯一参数 schema 来源。
+- `PrimitiveCreateContext` 暴露 definition、entry、runtime、scope cancellation、parameters、arguments 和 BatchId。
+- `PrimitiveEntry` / `PrimitiveEntryDocument` 持有通用 `BatchId`。
+- 旧 Handler/Descriptor/ExecutionControl 契约从代码路径移除。
 
-**前置条件：** 本计划和设计稿已评审；通用原语契约置于 `GalNet.Core`，且依赖图无 Core/Runtime → Avalonia 反向引用。
+验证：
 
-**涉及模块：** `GalNet.Core`、`GalNet.Runtime`、`GalNet.Presentation.Abstractions`、`GalNet.Editor.Shared`、`GalNet.Editor`、`GeneralTest`。
+- 模块冻结、重复项、默认工厂、共享参数 helper、工厂上下文字段、BatchId 原样传递和实例单次 dispatch 测试。
 
-**已完成：** `DynamicParameterTable` / `DynamicParameterDescriptor` 以只读 ordinal 表保存 `Type ValueType`、required、JSON 默认值和 constraints，替代 primitive 专属参数 schema；内容只保存 JSON 值。模块类通过 `EntryModuleBase` 的 `IEntryModule` facet 自行持有冻结的 `PrimitiveEntries` 与 `NonPrimitiveEntries`；后者只供编辑器/编译器使用且可为空。`PrimitiveModuleBase` 同时是 Runtime/authoring 契约，游戏初始化挂载的模块实例可直接生成同一 target profile，避免独立 catalog 复制 schema；纯 authoring module 仍允许存在，不形成强制 Runtime 能力。编辑器、Headless、命令、保存和预览均经注入的 `IEntryCatalog` 使用选中的模块实例。空 profile、自定义 profile 与无默认内置条目的新项目都有效；编辑器新增条目只从当前 profile 选择类型。推荐 Builtins 只提供可选模块类及点分隔 ID（如 `dialogue.text`、`animation.animate`、`flow.wait`、`gallery.unlock`）；transition expansion 已与 `BuiltinAnimationModule` 一同移至 Builtins，Core 只保留通用 NonPrimitive 编译机制。具体 Layer/Effect 内容的 GUID 字段及字符串句柄删除仍属于 Phase 2。
+## Phase 2：Engine 队列与 Advance 调度
 
-**验证：**
+**状态：verified**
 
-- 测试覆盖冻结表、重复参数拒绝、`typeof`、JSON 默认值/值类型、JSON 原始类型保留、空/自定义 profile、模块 descriptor 路由和无领域方法的 `IGameView`。
-- 编译器/编辑器测试覆盖自定义 primitive 的编译、加载、保存和命令；未知类型被拒绝，且编译产物不含 CLR 类型名。
-- `dotnet test test/GeneralTest/GeneralTest.csproj --no-restore --disable-build-servers -p:BuildInParallel=false -v minimal`：202/202 通过。
+已完成：
 
-**文档：** 已更新 `docs/spec/entry-types.md`、文件格式说明与本设计稿；资源类型动态化保持在 Phase 6，不提前写入 assets spec。
+- `CompositeGameView` 只解析并 dispatch 一条 primitive，不保存活动队列。
+- `GameEngine` 拥有活动 instance 队列、sequence 和 group execution id。
+- `AdvanceAsync` 按最早 blocking batch 选择 skip 候选。
+- 同 group 同 batch 的已分发 non-blocking/skippable instance 会一起收到 skip。
+- Blocking 自然完成触发无 skip 权限的内部 continue。
+- Choice、条件、edge 映射和节点跳转由 Engine 内置处理。
+- `CreateSaveData()` 返回最后稳定快照。
 
-**风险：** 组合根必须从同一组已选择模块实例同时建立 target profile 与 Runtime 挂载；authoring-only module 只能贡献编辑/编译条目，不能被误当作 Runtime dispatch 实现。缺失 Runtime 模块仍走动态诊断与跳过。
+验证：
 
-**退出条件：** 已满足：新内容可由指定 target profile 的 descriptor 编译、加载和校验；冻结 schema 以 `typeof` 表达运行时类型、以 JSON 保存值且不序列化 CLR 类型；空 profile 和自定义 profile 可用；`IGameView` 是纯动态分发入口；Core 不含具体 primitive Handler、schema、Handler factory Catalog 或隐式推荐能力；推荐 Builtins/抽象模块不形成引擎旁路。
+- 局部 batch、跨 group 同名 batch 隔离、不可跳过 blocker、自然完成、Choice 可见索引、未知 primitive 安全跳过、non-blocking 快照边界等测试。
 
-**静态验证（2026-09-22）：** `PrimitiveParameterDescriptor` / `PrimitiveParameterKind` 已无引用；`GalNet.Editor*` 的 Builtins 只在组合根出现；旧专用 View、`EntryHandlerRegistry`、`EntryHandler`、`EntryContext` 与 `PrimitiveCatalog` 均无引用。
+## Phase 3：快照边界与 Dialogue `\skip`
 
-## 3. Phase 1：统一调度、Operation 与稳定快照
+**状态：verified**
 
-**状态：in-progress**
+已完成：
 
-**目标：** 让 `GameEngine` 只通过 `IGameView.Dispatch` 执行通用原语，并由 Runtime 统一决定阻塞、跳过、失败处理和可保存状态。
+- 稳定快照条件改为“无未完成 blocking instance 且无 pending Choice”，不要求活动队列为空。
+- 普通文本和富文本共享反斜杠指令识别。
+- `dialogue.text` 使用 `DialoguePrimitiveInstance` 管理 Typing 与 WaitingAdvance。
+- `\skip` 每次 Advance 至多跨一个边界；全文显示后下一次 Advance 才完成对话。
+- Avalonia 和 Headless 对话路径迁移到新 presenter 端口。
 
-**前置条件：** Phase 0 的通用 PrimitiveEntry、Descriptor 目录和契约已可用。
+验证：
 
-**涉及模块：** 契约所在程序集、`GalNet.Runtime`、`GalNet.Presentation.Defaults`、`GeneralTest`。
+- 普通/富文本解析、转义、连续 skip、自然完成等待、Advance 完成语义和稳定快照测试。
 
-**工作项：**
+## Phase 4：推荐模块与宿主接入
 
-**已完成：** `OperationManager` 跟踪已接受调用的 Sequence、批次和完成回收；`GameEngine` 的普通 Group 与内部 Choice 均以 `PrimitiveInvocation` 经 `IGameView.Dispatch` 执行，Descriptor 决定 Checkpoint。`CreateSaveData` 使用最近稳定快照，`RestoreFrom` 只恢复 Runtime 数据。旧 Handler 路径与专用呈现端口均不存在。
+**状态：partially verified**
 
-**剩余工作：**
+已完成：
 
-1. 将预期内容/宿主失败转为诊断和 `PrimitiveResult.Failed`；未注册或参数不合法的调用安全跳过；仅 Scope 取消向上传播。
-2. 用测试模块覆盖时间轴事件的相同 Dispatch 入口且不创建 Checkpoint，并将内置模块接入各宿主。
+- `layer.*`：更新 runtime `SceneState`，再通知 `ILayerPresenter`。
+- `animation.animate`：创建 `AnimationPrimitiveInstance`，先提交最终逻辑状态，再调用 `IAnimationPresenter`。
+- `animation.play`：一个 plan 对应一个 `AnimationPlanPrimitiveInstance`；内部 layer/effect 事件作为 animation 模块私有事件处理，不重新进入通用 Entry 分发。
+- `animation.stop`：请求已保存的播放句柄停止，`CompleteImmediately` 可要求 presenter 立即完成。
+- `effect.apply` / `effect.stop`：维护 `ActiveEffects`、目标 Layer 的 effect id 列表和 `IEffectPresenter`。
+- `flow.wait`：blocking、skippable 的等待 instance。
+- `variable.set`：求值后写入 Runtime 变量。
+- Avalonia Sample、Editor Preview 和 Headless Sample 的组合根已传入 animation/effect presenter。
+- Avalonia 页面级 `SkipAnimationBatch` 已移除；批次由 Engine 管理。
 
-**验证：**
+验证：
 
-- 单元测试覆盖模块/命令重复注册、未知原语、有效 Policy、阻塞与非阻塞推进、跨模块跳过合批、预期失败继续、取消和非阻塞异常观察。
-- 集成测试覆盖 Checkpoint 只来自稳定状态，Save 始终返回最近稳定快照。
-- 运行 `dotnet test test/GeneralTest/GeneralTest.csproj`。
+- `dotnet build test/GeneralTest/GeneralTest.csproj --no-restore -m:1 -v:minimal -p:UseSharedCompilation=false`，需设置 `AVALONIA_TELEMETRY_OPTOUT=1`。
+- `dotnet test test/GeneralTest/GeneralTest.csproj --no-restore -m:1 -v:minimal -p:UseSharedCompilation=false`：219/219 通过（2026-09-22）。
+- 新增测试覆盖 animation/effect runtime state、presenter 调用、plan final state 和 `flow.wait` skip。
 
-**文档：** 更新 `docs/spec/runtime.md` 的执行流程和存档描述。
+仍未完成：
 
-**风险：** 此 Phase 不应依赖 Avalonia；先以 Null/测试模块证明调度正确，避免把 UI 生命周期问题带入 Engine。
+- 音频、视频、粒子和画廊只保留推荐 schema，完整产品行为留给后续 feature。
+- Animation timeline 内部事件目前是模块私有 layer/effect 事件；更完整的 authoring 事件能力需要单独设计。
+- 资源类型模块化仍是独立后续工作。
 
-**退出条件：** 测试模块可完整证明路由、跳过和稳定快照语义。
-
-## 4. Phase 2：Layer、Effect 与纯数据恢复
-
-**状态：planned**
-
-**目标：** 以最小可见场景切片验证 GUID Handle、Layer → Effect 关联、渲染时查询和无顺序恢复。
-
-**前置条件：** Phase 1 的 Dispatcher、OperationManager 和稳定快照可用。
-
-**涉及模块：** `GalNet.Core`、`GalNet.Runtime`、`GalNet.Avalonia.Rendering`、`GalNet.Avalonia.GameView`、`GalNet.Presentation.Defaults`、`GeneralTest`。
-
-**工作项：**
-
-1. 用 `HandleManager` 替换 `ISceneInstanceManager` 的字符串键路径；将 Layer 和 Effect 的持久化 ID 切为编辑器生成 GUID。
-2. 实现 `layer.*` 与 `effect.apply/set/remove` 模块及 Descriptor；`effect.apply` 注册 Effect 后写入 Layer 的 Effect ID 列表，`remove` 反向清理后释放 Handle。
-3. 将 Avalonia 渲染改为从 Layer 的有序 Effect ID 列表查询 `HandleManager`；Effect 平台缓存按 Handle/参数失效，绝不进入快照，也不保存目标 Layer 或目标顺序。
-4. 将 `LastStableSnapshot` 做成深拷贝数据边界：每一步位置更新后及非阻塞 Operation 结束后，仅在稳定时替换。用干净 Scope 上的纯数据重建替换 `GameRuntime.RestoreFrom` 的原语或直接 View 重放；恢复必须在同一调度线程或经原子状态替换完成。
-5. 删除 Layer/Effect 的字符串句柄和重复目标关系；悬挂 Effect ID 在恢复时诊断并清理。
-
-**验证：**
-
-- Core/Runtime 测试覆盖 GUID 句柄、重复拒绝、Effect 附着/移除、全局 Effect、悬挂引用清理和任意顺序快照重建。
-- Avalonia 渲染测试覆盖 Layer 按 ID 查询 Effect，且恢复过程不产生 Dispatch、Operation 或 UI 命令。
-- 使用新格式 Sample 内容完成 Layer + Effect 冒烟运行。
-
-**文档：** 更新场景、Effect 与存档 spec；移除“Effect 保存目标 Layer ID”及“恢复按类型重放 View”的旧描述。
-
-**风险：** 同一关系不得同时由 Layer 和 Effect 持久化；只允许 Layer 的 Effect ID 列表成为目标关联权威。
-
-**退出条件：** Layer 和 Effect 在新格式 Sample 中可创建、修改、删除、存档并无顺序恢复；Avalonia 下一帧按恢复状态渲染正确结果。
-
-## 5. Phase 3：剧情、流程与交互模块
+## Phase 5：后续扩展
 
 **状态：planned**
 
-**目标：** 迁移驱动故事推进的文字、选择、等待和变量原语，并使 Checkpoint/内部交互完全经过统一调度。
+后续 feature 可在当前模型上继续推进：
 
-**前置条件：** Phase 1 完成；Phase 2 不要求完成，但其稳定快照语义必须可复用。
+- 完整音频系统与媒体模块。
+- 粒子模块与粒子状态恢复。
+- 画廊解锁与进度服务整合。
+- 资源类型模块化和资源 metadata 动态参数 schema。
+- 更完整的 animation authoring、timeline event 校验和平台优化。
 
-**涉及模块：** `GalNet.Runtime`、契约所在程序集、`GalNet.Avalonia.GameView`、`GalNet.Presentation.Defaults`、`GalNet.Editor`、`GeneralTest`。
+## 实施纪律
 
-**工作项：**
-
-1. 实现 `dialogue.text`、对话显示/隐藏、`interaction.choice`、`flow.wait`、`variable.set` 与画廊解锁模块；去除无前缀旧原语。
-2. 将 `ProcessChoiceBranchAsync` 改为等待 `interaction.choice` 的 `PrimitiveResult.Value`，不再调用专用 Interaction View 接口。
-3. 让文本和选择的 Checkpoint 使用 Phase 1 的稳定快照规则；Choice 的内部 Invocation 不写入 `.galgroup`。
-4. 更新编辑器 palette、快捷命令和验证，使其只显示 Descriptor 目录中当前配置的原语。
-
-**验证：**
-
-- Engine 集成测试覆盖文字、条件、选择分支、等待、变量、取消、交互返回值和稳定 Checkpoint。
-- Null 模块与 Avalonia 模块都覆盖一次完整新格式剧情流程。
-
-**文档：** 更新 `entry-types.md`、`runtime.md` 和编辑器作者说明中的原语名称、参数与 Checkpoint 语义。
-
-**风险：** 内部交互的结果类型必须经 Descriptor/Result 明确约束，不能重新暴露专用 View 旁路。
-
-**退出条件：** 一段含文本、选择、等待和变量的新格式剧情可在 Headless、Sample 与编辑器预览中运行，且不依赖旧专用交互接口。
-
-## 6. Phase 4：动画、粒子、音视频与剩余模块
-
-**状态：planned**
-
-**目标：** 把所有长生命周期和媒体行为迁入模块体系，彻底收回呈现层的跳过批次和 Runtime 旁路。
-
-**前置条件：** Phase 1 完成；Phase 2 的 GUID Handle 机制可供动画、粒子和 Effect 使用。
-
-**涉及模块：** `GalNet.Runtime`、`GalNet.Avalonia.GameView`、`GalNet.Avalonia.Rendering`、`GalNet.Presentation.Defaults`、Samples、Editor Preview、`GeneralTest`。
-
-**工作项：**
-
-1. 将 `animation.animate/play/stop` 实现为可选推荐 builtin module：Runtime 调度、timeline、播放 Handle、参数和 Policy 可以共享；可动画对象的属性语义、呈现、缓存和平台线程调度仍留在平台模块或推荐抽象基类。时间轴事件始终走 `IGameView.Dispatch + OperationManager`，不在 Core 引入强制 `IAnimatableHandle`。
-2. 迁移 particle、audio、video 和其余控制类原语为模块；需要可寻址生命周期的对象改用 GUID Handle。
-3. 模块化时删除 Avalonia 页面中遗留的活动动画表和 `SkipAnimationBatch`；宿主只执行单次调用、响应该调用的 `SkipRequested`，不再决定剧情推进或批次。
-4. 为循环、不可跳过和非阻塞 Operation 明确 Handler 强制 Policy；所有影响持久化状态的异步结束后才允许后续稳定快照。
-
-**验证：**
-
-- 测试同批跨模块动画/Effect 跳过、默认单独批次、跳过幂等、时间轴事件诊断和非阻塞失败回收。
-- 覆盖粒子、循环动画和媒体的 Handle 清理、Scope 取消和纯数据恢复。
-- Sample 与 Editor Preview 的长时间运行冒烟测试，不保留完成的 Operation。
-
-**文档：** 更新原语目录、动画/粒子/媒体行为和性能约束；删除呈现层拥有跳过批次的说明。
-
-**风险：** 不要将宿主内部线程模型泄漏到 Core；只要求宿主对单次调用的 Cancellation/Skip 契约负责。
-
-**退出条件：** 所有内置原语均以模块执行；不存在 HandlerRegistry、专用 View 路由或呈现端跳过批次旁路。
-
-## 7. Phase 5：组合根、清理与正式验证
-
-**状态：planned**
-
-**目标：** 让各宿主、编辑器和测试只使用新模块组合方式，并删除旧架构及不兼容格式的残留。
-
-**前置条件：** Phase 2–4 完成，所有内置原语已迁移。
-
-**涉及模块：** 全部 Runtime、Core、Presentation、Avalonia、Sample、Editor、Storage 和测试项目。
-
-**工作项：**
-
-1. 更新 Sample Headless、Sample Avalonia、Editor Preview、`DefaultGameSession` 和组合根，按 Game Scope 创建模块、HandleManager 与 OperationManager。
-2. 静态确认没有重新引入旧 View/Handler 路径、旧字符串句柄/快照字段或旧内容格式读取路径。
-3. 重写 Sample、测试夹具和编辑器模板为新点分隔 ID 与 GUID；旧格式测试改为断言明确拒绝。
-4. 同步 `architecture.md`、`runtime.md`、`entry-types.md`、场景/存档/效果说明和本设计的实施状态；记录实际偏差与验证结果。
-
-**验证：**
-
-- `dotnet test GalNet.slnx`。
-- 构建 Headless Sample、Avalonia Sample、Editor 和 Editor.Headless；以新格式内容完成加载、流程、跳过、存档、关闭、恢复的端到端冒烟。
-- 静态搜索确认不存在 `EntryHandlerRegistry`、旧专用 View 接口、旧无前缀原语定义或字符串 Handle 新增路径。
-
-**文档：** 将已实现事实从 design 同步到对应 `docs/spec/`；设计稿仅保留目标和已验证的迁移结论。
-
-**风险：** 这是有意破坏性切换。发行说明必须明确旧项目和旧存档不可读取，避免任何“自动修复”暗中形成兼容层。
-
-**退出条件：** 新架构是唯一执行与内容路径；所有宿主通过新模块组合运行，完整测试和端到端冒烟通过，旧架构代码已删除。
-
-## 8. 后续 Phase 6：资源类型模块与动态参数目录
-
-**状态：planned（未开始，不阻塞当前原语模块化阶段）**
-
-**目标：** 让资源类型与 primitive 一样在宿主组合期动态注册；每个资源类型模块拥有冻结的参数 schema 和加载实现，资源系统按稳定字符串 `typeId` 查找模块。
-
-**前置条件：** 当前 Phase 0–5 的原语模块化已完成并完成正式验证；资源格式的破坏性切换范围已单独确认。
-
-**涉及模块：** `GalNet.Core`、`GalNet.Storage.Abstractions`、`GalNet.Assets`、资源 Provider/Archive、`GalNet.Editor`、平台资源模块、资源测试。
-
-**工作项：**
-
-1. 复用 Phase 0 的 `DynamicParameterTable` 作为资源 metadata schema；资源实例只保存 JSON 参数值，由当前模块的 `typeof` 契约校验和反序列化。
-2. 定义 `IResourceModule` 和 `CompositeResourceCatalog`；一个稳定 `typeId` 对应一个模块，组合根冻结路由并拒绝重复注册。
-3. 让 `AssetManager` 通过资源目录解析 metadata 的 `typeId`；迁移现有 `ResourceType`、硬编码字符串映射和 CLR 类型 decoder 表，资源 metadata 改为 `typeId + parameters` JSON。
-4. 更新 Provider、Archive、缓存键和编辑器资源筛选/校验；内置资源类型成为可选模块，支持仅挂载自定义模块的 profile。
-
-**验证：**
-
-- 单元测试覆盖空 catalog、重复 type ID 拒绝、自定义资源模块、冻结参数表、未知类型和参数错误诊断。
-- Provider/Archive/AssetManager 测试覆盖按字符串 type ID 路由、缓存和取消语义；不允许回退到 `unknown` 或隐式内置类型。
-- 编辑器测试确认资源列表与参数校验只来自当前 target profile 的模块 schema；本 Phase 不要求动态生成编辑控件。
-
-**文档：** 将已验证的格式与 API 事实同步至 `docs/spec/assets.md`；当前 spec 在实现前不得宣称资源类型已经动态化。
-
-**风险：** 资源 metadata、pak 索引、缓存键与 decoder 路径必须作为一次破坏性切换处理；不得为旧 `ResourceType` 或类型别名保留双读、双写或回退逻辑。
-
-**退出条件：** 宿主可只注册自定义资源模块并以其字符串 `typeId` 加载、校验和缓存资源；Core/AssetManager 不含资源类型枚举、静态映射或隐式内置资源能力；Phase 0 的动态参数 schema 可同时服务 primitive 和资源 metadata。
-
-## 9. 实施纪律
-
-- 每个 Phase 开始前确认前序退出条件，而非依赖未验证的局部重构。
-- 每个 Phase 完成后记录实际变更、验证命令和已知偏差；若设计改变，先修订设计稿和本计划，再推进后续 Phase。
-- 不为过渡便利增加兼容读取、别名、双写快照或双注册表；这会直接违反已确认边界。
+- 每个 Phase 完成后记录验证命令和已知偏差。
+- 正式 `docs/spec/` 只写当前已经实现的事实。
+- `docs/design/` 可以记录路线，但不得要求恢复旧 Handler/Operation 模型。
+- 不为过渡便利增加兼容读取、旧 ID 别名、双写快照或双注册表。

@@ -6,7 +6,7 @@ using GalNet.Core.Scene;
 namespace GalNet.Sample.Headless;
 
 /// <summary>Basic interactive console adapters used by the official sample player.</summary>
-internal sealed class ConsolePresentation : IDialoguePresenter, IChoicePresenter, ILayerPresenter
+internal sealed class ConsolePresentation : IDialoguePresenter, IChoicePresenter, ILayerPresenter, IAnimationPresenter, IEffectPresenter
 {
     private readonly GameSettings _settings;
     private volatile bool _skipCurrentTypewriter;
@@ -23,6 +23,31 @@ internal sealed class ConsolePresentation : IDialoguePresenter, IChoicePresenter
     public void HideLayer(string handleId) => Console.WriteLine($"[Layer] hide {handleId}");
     public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSec) =>
         Console.WriteLine($"[Layer] move {handleId}: ({transform.X}, {transform.Y}, {z}) in {durationSec}s");
+    public Task<AnimationOutcome> AnimateAsync(AnimationRequest request, CancellationToken cancellationToken)
+    {
+        Console.WriteLine($"[Animation] {request.PlaybackHandleId}: {request.HandleId}.{request.Property} -> {request.To}");
+        return Task.FromResult(AnimationOutcome.Completed);
+    }
+    public Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken cancellationToken)
+    {
+        Console.WriteLine($"[Animation] plan {plan.PlaybackHandleId}: {plan.Tracks.Count} track(s), {plan.DurationFrames} frame(s)");
+        return Task.FromResult(new AnimationPlanPlayResult { Outcome = AnimationOutcome.Completed });
+    }
+    public bool CompleteAnimationImmediately(string playbackHandleId)
+    {
+        Console.WriteLine($"[Animation] complete {playbackHandleId}");
+        return true;
+    }
+    public Task StartEffectAsync(EffectRequest request, CancellationToken cancellationToken)
+    {
+        Console.WriteLine($"[Effect] start {request.InstanceId}: {request.Id}{request.ProgramResource}");
+        return Task.CompletedTask;
+    }
+    public Task StopEffectAsync(string instanceId, CancellationToken cancellationToken)
+    {
+        Console.WriteLine($"[Effect] stop {instanceId}");
+        return Task.CompletedTask;
+    }
     public void ShowDialogue() => Console.WriteLine("[Dialogue] show");
     public void HideDialogue() => Console.WriteLine("[Dialogue] hide");
 

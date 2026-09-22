@@ -2,21 +2,55 @@
 
 ## 当前格式契约
 
-- 原语 ID 必须是点分隔的稳定字符串，例如 `dialogue.text`、`layer.show` 或开发者定义的 `custom.pulse`。
+- Primitive ID 必须是点分隔的稳定字符串，例如 `dialogue.text`、`layer.show` 或开发者定义的 `custom.pulse`。
 - `.rawgalgroup` 的 `parameters` 与编译后 `.galgroup` 的 `arguments` 都是 JSON 对象；数字、布尔值、对象和数组不被压平为字符串。
-- 某个原语是否可编辑、可编译，完全由当前 target profile 中挂载模块导出的 `PrimitiveDescriptor` 决定。未挂载的类型被拒绝，不会回退到全局内置目录。
-- Descriptor 的 `DynamicParameterTable` 是只读 schema：每个参数以 `typeof(T)` 指定进程内运行时类型，并包含 required、JSON 默认值和 JSON constraints。`Type`/CLR 类型名绝不写入内容、metadata、存档或 pak；内容只保存 JSON 值。
-- Runtime 只接收通用 `PrimitiveEntry` 信封，并通过 `IGameView.Dispatch` 动态路由。Core/Runtime 不内置或要求任何原语实现。
+- 某个 entry 是否可编辑、可编译，完全由当前 target profile 中挂载模块导出的 entry schema 决定。未挂载的类型被拒绝，不会回退到全局内置目录。
+- 每个 entry 定义的 `DynamicParameterTable` 是只读 schema：每个参数以 `typeof(T)` 指定进程内运行时类型，并包含 required、JSON 默认值和 JSON constraints。CLR 类型名绝不写入内容、metadata、存档或 pak；内容只保存 JSON 值。
+- Runtime 只接收通用 `PrimitiveEntry`，并通过 `IGameView.Dispatch` 动态路由。Core/Runtime 不内置或要求任何推荐 primitive 实现。
 
-`EntryParameterType` 仍是当前编辑器的 UI hint。它由 descriptor 的 constraints 生成，不是执行协议；自动生成编辑控件不属于当前阶段。
+`EntryParameterType` 是当前编辑器的 UI hint。它由参数 constraints 生成，不是执行协议。
 
-## 可选推荐 authoring profile
+## Entry Module
 
-`GalNet.Primitives.Builtins` 目前提供可选的推荐 authoring descriptors；编辑器的默认组合根显式选择该 profile。它不是 Runtime 的内建能力，也不代表宿主已经实现对应命令。实际执行时，宿主必须挂载拥有相同 descriptor 的模块；否则该调用按动态分发规则跳过并产生诊断。
+每个 `IEntryModule` 持有两张冻结表：
 
-每个 module 类通过 `IEntryModule` 自己持有独立且只读的 `PrimitiveEntries` 表与 `NonPrimitiveEntries` 表。前者描述 Runtime primitive schema，后者只服务编辑器/编译器的 authoring 展开；两表没有必须一一对应的关系。`PrimitiveModuleBase` 同时是 Runtime 和 authoring 基类，因此组合根可把同一已挂载模块实例传给 `CompositeGameView` 与 `TargetProfileEntryCatalog`；纯 authoring module 也可以只参与后者。这只是方便组织和编译的推荐结构，开发者仍可定义任意动态语义。
+- `PrimitiveEntries`：Runtime 可执行 primitive schema 与 instance 工厂。
+- `CompositeEntries`：只服务编辑器和编译器的 authoring 展开。
 
-推荐 primitive ID 为：
+同一模块内 primitive/composite 不得重名；多个挂载模块之间 primitive 名称也不得重复。组合根可以把同一组模块用于 `TargetProfileEntryCatalog` 和 `CompositeGameView`，使编辑器 schema 与 Runtime 工厂来自同一事实来源。
+
+## Primitive Entry
+
+编译后的 primitive envelope 包含：
+
+- `typeId`
+- `arguments`
+- `batchId`
+- `condition`
+- 稳定 `id`
+
+`batchId` 是可选局部分组字段。编译器会把 authoring 参数中的 `batchId` 提升到 envelope 顶层；GameView 创建 instance 时再把它原样传入 `PrimitiveCreateContext.BatchId` 和 `PrimitiveInstance.BatchId`。
+
+## Composite Entry
+
+Composite 仅存在于 `.rawgalgroup`，并在编译时展开为通用 `PrimitiveEntry` 序列；`.galgroup` 只包含 primitive envelope。Composite 自己决定展开结果的 batch 划分，框架不规定“一个 Composite 等于一个 Batch”。
+
+推荐 Builtins 在 animation module 的 composite 表中提供：
+
+```text
+transition.crossFade
+transition.slide
+transition.blinds
+transition.fadeBlack
+transition.fadeWhite
+transition.fadeColor
+```
+
+这些 entry 不是 Runtime primitive，也不绕过 target profile：展开后的每一个 primitive 都必须在所选 profile 中存在。
+
+## 推荐 primitive ID
+
+`GalNet.Primitives.Builtins` 提供可选推荐 authoring profile 与运行时模块。当前推荐 ID 为：
 
 ```text
 dialogue.text, dialogue.show, dialogue.hide
@@ -31,8 +65,4 @@ flow.wait, variable.set, gallery.unlock
 
 这些名称和参数只是推荐语义。开发者可以只注册自定义模块，或在自己的 target profile 中定义完全不同的前缀、参数与语义；编辑器不会凭名称假定 `dialogue`、`layer` 或任何其他模块存在。
 
-## NonPrimitive 条目
-
-NonPrimitive 仅存在于 `.rawgalgroup`，并在编译时展开为通用 `PrimitiveEntry` 序列；`.galgroup` 只包含 primitive envelope。推荐 Builtins 在 animation catalog 的非原语表中提供 `transition.crossFade`、`transition.slide`、`transition.blinds`、`transition.fadeBlack`、`transition.fadeWhite` 和 `transition.fadeColor`；它们不是 Runtime Handler，也不绕过 target profile：展开后的每一个 primitive 都必须在所选 profile 中存在。
-
-详情见[文件格式](file-formats.md)和[原语模块化运行时设计](../design/primitive-module-runtime-design.md)。
+当前已实现 Runtime 行为的推荐能力见 [runtime.md](runtime.md)。

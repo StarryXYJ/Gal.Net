@@ -2,31 +2,61 @@
 
 ## 职责边界
 
-`GalNet.Runtime` 负责读取 Graph 与已编译 `.galgroup`、驱动故事流程、维护运行时状态、执行原语条目和创建存档。具体 UI 由 `IGameView` 提供；Runtime 不引用 Avalonia 或文件选择器。
+`GalNet.Runtime` 负责读取 Graph 与已编译 `.galgroup`、驱动故事流程、维护运行时状态、调度 primitive instance 和创建存档。具体 UI、渲染资源、平台线程和文件系统由宿主组合根提供；Runtime 不引用 Avalonia、Skia 或具体存储实现。
 
-```
+```text
 Graph + .galgroup
-  → GraphLoader / GalgroupLoader
-  → GameEngine
-  → EntryHandlerRegistry
-  → IGameView（宿主呈现）
+  -> GraphLoader / GalgroupLoader
+  -> GameEngine
+  -> IGameView.Dispatch
+  -> PrimitiveInstance
 ```
 
-`.galgroup` 必须声明 `kind: "Compiled"`，且仅含有原语条目；`GalgroupLoader` 会拒绝 `.rawgalgroup` 的 `Raw` 文档和非原语。`GameEngine` 也会拒绝被程序直接注入的非原语，保证 Runtime 不承担内容编译职责。
+Runtime 只执行 primitive entry。Composite entry 只能存在于 `.rawgalgroup`，必须在编译阶段展开为 primitive envelope。
 
 ## GameEngine
 
-`GameEngine` 持有 Graph、`IGameRuntime`、`IGameView`、`EntryHandlerRegistry` 与 `TimeProvider`。标准构造函数从 Graph、View 和可选的 `ITextResolver` 创建 `GameRuntime`；恢复场景可传入已有 Runtime 与 View。
+`GameEngine` 持有 Graph、`IGameRuntime`、`IGameView`、可选 `IChoicePresenter`，以及当前活动的 `PrimitiveInstance` 队列。对玩家或 UI 只暴露一个推进入口：
 
 ```csharp
-public Task<bool> StepAsync(CancellationToken ct = default);
+public Task<bool> AdvanceAsync(CancellationToken cancellationToken = default);
 public GameSnapshot CreateSaveData();
 public void RestoreFrom(GameSnapshot data);
 ```
 
-`StepAsync()` 从当前位置继续执行，直到游戏结束或到达需要玩家交互的边界。返回 `false` 表示已结束或等待交互；引擎在交互边界触发 `CheckpointCreated(GameSnapshot)`。宿主应保留该快照用于存档，而不是从 View 读取状态。
+一次 `AdvanceAsync()` 的顺序是：
 
-执行顺序为：找到当前节点 → Group 中按顺序执行满足 `condition` 的条目 → 经边转移 → 处理 Choice/Condition Branch → 重复。每个条目由 `EntryHandler.ExecuteAsync(context, view, timeProvider, ct)` 执行；阻塞行为由 Handler 和条目参数决定。
+1. 清理已完成实例。
+2. 在稳定边界更新最后稳定快照。
+3. 如果存在 pending Choice，直接返回。
+4. 如果调用开始时已有未完成 blocking instance，选择 sequence 最早者所属 batch，只 skip 该 batch 中当前已分发且可跳过的实例。
+5. 如果当前 blocking 已解除，继续按顺序消费剧情，直到遇到新的 blocking instance、Choice 等待或剧情结束。
+
+Blocking instance 自然完成时，Engine 只执行无 skip 权限的内部 continue；它不是第二个玩家入口，也不能跳过下一个新遇到的 batch。
+
+## Batch 与活动实例
+
+`PrimitiveEntry.BatchId` 是编译后的可选局部分组字段。GameView 创建实例时把它原样传入 `PrimitiveInstance.BatchId`，Engine 实际按 `(GroupExecutionId, BatchId)` 匹配 skip 批次：
+
+- 同一次 Group 执行内，同 batch 的 blocking 与 non-blocking 实例可以一起 skip。
+- 不同 Group 或同一 Group 的下一次进入即使复用相同字符串，也不会互相合批。
+- 空 `BatchId` 表示实例独立成批。
+- skip 只发送给当前 `IsSkippable == true` 且尚未完成的实例；实例自己的 `Skip()` 仍必须幂等并重新判断阶段。
+
+`IGameView` 不保存活动队列，不选择 skip batch，也不推进剧情。活动队列、sequence、完成事件订阅、清理与内部 continue 都由 Engine 管理。
+
+## Choice 与控制流
+
+条件分支、Choice、edge 映射和节点跳转是 Engine 内置控制流，不注册为 primitive。
+
+Choice 节点由 Engine 求值并过滤可见选项，再通过 `IChoicePresenter.ChooseAsync()` 显示文本并取得“可见选项索引”。Choice 等待期间：
+
+- 不创建 `PrimitiveInstance`。
+- 不拥有 BatchId。
+- 不响应 Advance skip。
+- 不持有 Engine 调度门等待 UI。
+
+选择完成后，Engine 在同一个调度门内校验索引、映射回原 outlet、跳转并继续到下一个边界。
 
 ## GameRuntime 与存档
 
@@ -41,27 +71,66 @@ public void RestoreFrom(GameSnapshot data);
 | `SceneState` / `SceneInstances` | 可存档场景快照与按句柄管理的活跃实例 |
 | 变量存储 | Player / Save 作用域变量与表达式求值 |
 
-`GameSnapshot` 包含 `NodeId`、`EntryIndex`、变量字典与 `SceneState`。`SaveManager` 使用缩进的 camelCase JSON 序列化或反序列化快照。`RestoreFrom()` 会恢复这些状态并重新开始运行；呈现层的恢复由宿主/运行流程按场景状态完成。
+`GameSnapshot` 包含 `NodeId`、`EntryIndex`、变量字典与 `SceneState`。`CreateSaveData()` 返回 Engine 保存的最后稳定快照，而不是即时抓取可能仍在异步变化的状态。
 
-## 场景实例与动画
+稳定快照的更新条件：
 
-图层由 `SceneInstanceManager` 按稳定 `handleId` 管理。`layer.show` 创建或更新 Layer，`layer.hide` 删除它并使句柄立即失效，`layer.replace` 保留 transform、z 和 display mode。
+- 当前剧情游标已经提交到明确边界。
+- 不存在未完成 blocking instance。
+- 不存在 pending Choice。
 
-`animate` 目标是 `AnimatableSceneInstance` 的一个浮点属性。当前 Layer 支持位置、旋转、双轴缩放和不透明度。`Replace` 轨道写入绝对值；`Additive` 轨道贡献相对增量，呈现层将全部活动增量叠加在 Replace 基值之上。一次性动画完成或跳过时，Additive 的末值会归并到稳定场景状态；Additive Loop 在每轮后回到基值，停止时不留下累计偏移。`PingPong` 以起点→目标→起点为一轮，因此 `AfterIteration` 能在平滑回到基值后停止。`opacity` 和缩放的最终合成值会被限制在有效范围内。曲线由内容 JSON 的 `AnimationCurveDefinition` 解析为 `IAnimationCurve`，再通过 `AnimationRequest` 发给 `ILayerView.AnimateAsync()`；详细参数及曲线格式见 [条目类型](entry-types.md)。
+未完成的纯 non-blocking 呈现实例不会单独阻止快照；因此 non-blocking primitive 必须在 `Dispatch()` 返回前先提交最终可存档逻辑状态。读档不恢复 Task、CancellationToken、平台控件或活动 `PrimitiveInstance`；宿主根据恢复后的 `SceneState` 重建画面。
 
-## 呈现端口
+## PrimitiveInstance
 
-`IGameView` 聚合以下能力：
+每次 primitive 调用都会创建独立的 `PrimitiveInstance`：
 
-- `ITypewriterView`：开始与跳过文本逐字显示；
-- `IInteractionView`：等待玩家推进与选择；
-- `ILayerView`：显示、移动、替换、隐藏及动画图层；
-- `IAudioView`、`IVideoView`、`IEffectView` 与 `IControlView`：其他可见/可听请求。转场是 `transition.*` 作者条目，在 Runtime 前已展开为这些原语。
+```csharp
+public abstract bool IsBlocking { get; }
+public abstract bool IsSkippable { get; }
+public string? BatchId { get; }
+public bool IsCompleted { get; }
+public void Dispatch();
+public void Skip();
+```
 
-`CompositeGameView` 可把各端口组合为一个 View。`NullGameView` 立即完成异步请求，适用于测试与无界面宿主；实际 Avalonia 游戏页由宿主实现端口并负责 UI 线程切换。
+约束：
 
-## 内置处理器
+- `Dispatch()` 对同一实例只执行一次。
+- `IsCompleted` 只从 `false` 变为 `true`。
+- `IsBlocking` 和 `BatchId` 在实例创建后不改变。
+- `IsSkippable` 可以随实例阶段改变。
+- `Skip()` 不保证完成，但必须幂等。
 
-`EntryHandlerRegistry.CreateDefault()` 注册文本、图层、动画、音频、视频、对话框、效果、等待和变量原语的处理器。`CreateDefault(IGameProgressService?)` 在提供进度服务时还注册 `unlock_gallery`。非原语不会注册 Handler；它们必须在进入 Runtime 前由 `GalgroupCompiler` 展开。条目定义、参数和默认值的权威参考在 [条目类型](entry-types.md)。
+实例可以内部持有 Task、取消源、动画游标或文本游标；这些都是运行期状态，不进入内容或存档格式。
 
-Handler 处理无效句柄、无法解析的参数或无法执行的呈现请求时应记录诊断并安全失败；宿主不应依赖异常来处理普通内容错误。
+## Entry Module 与 GameView
+
+宿主把一个或多个 `IEntryModule` 挂到 `CompositeGameView`。每个模块持有两张冻结表：
+
+- `PrimitiveEntries`：Runtime 可执行 primitive schema 与 instance 工厂。
+- `CompositeEntries`：只服务编辑器和编译器的 authoring 展开。
+
+`CompositeGameView.Dispatch()` 负责：
+
+1. 按 `PrimitiveEntry.Type` 查找 `PrimitiveEntryBase`。
+2. 使用该 entry 的 `DynamicParameterTable` 规范化参数和默认值。
+3. 构造 `PrimitiveCreateContext`，其中包含 definition、规范化后的 entry、runtime、scope cancellation、arguments 与 BatchId。
+4. 调用工厂创建 instance。
+5. 验证 instance BatchId 与 entry BatchId 一致。
+6. 调用一次 `Dispatch()` 并把 instance 返回给 Engine。
+
+未知 primitive 返回 `null`，由 Engine 记录诊断并继续执行。
+
+## 当前推荐模块
+
+`GalNet.Primitives.Builtins` 提供可选推荐模块。当前已实现运行时行为的能力包括：
+
+- `dialogue.text`：对话与打字机阶段，支持 `\skip` 分段跳过；`dialogue.show` / `dialogue.hide` 控制显示状态。
+- `layer.*`：show/showColor/hide/move/replace，先更新 `SceneState` 再通知 `ILayerPresenter`。
+- `animation.animate` / `animation.play` / `animation.stop`：创建 animation primitive instance，先提交最终逻辑状态，再启动呈现动画；plan 是单个 instance，内部事件只作为 animation 模块私有 layer/effect 事件处理，不重新进入通用 Entry 分发。
+- `effect.apply` / `effect.stop`：维护 `SceneState.ActiveEffects`、目标 Layer 的 effect 索引和 `IEffectPresenter` 调用。
+- `flow.wait`：blocking、skippable 的等待实例。
+- `variable.set`：求值后写入 Runtime 变量。
+
+音频、视频、粒子和画廊仍保留推荐 schema；完整产品级行为由后续 feature 或宿主自定义模块补齐。

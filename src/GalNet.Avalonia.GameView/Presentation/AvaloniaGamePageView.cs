@@ -16,8 +16,8 @@ public interface IGamePageLayerFactory : ISceneTextureResolver
     /// <param name="assetId">Host-defined asset identifier from a Layer request.</param>
 }
 
-/// <summary>Maps runtime layer, dialogue and interaction ports onto a shared <see cref="GamePage"/>.</summary>
-public sealed class AvaloniaGamePageView : IDisposable, IDialoguePresenter, IChoicePresenter, ILayerPresenter
+/// <summary>Maps runtime layer, dialogue, animation and interaction ports onto a shared <see cref="GamePage"/>.</summary>
+public sealed class AvaloniaGamePageView : IDisposable, IDialoguePresenter, IChoicePresenter, ILayerPresenter, IAnimationPresenter
 {
     private readonly TaskCompletionSource _initialPresentationReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly GamePageViewModel _state;
@@ -222,27 +222,6 @@ public sealed class AvaloniaGamePageView : IDisposable, IDialoguePresenter, ICho
         }
     }
 
-    public bool SkipAnimationBatch()
-    {
-        lock (_animationGate)
-        {
-            var candidate = _activePlans.Where(plan => plan.Plan.Skippable).Cast<ISkippableAnimation>()
-                .Concat(_activeAnimations.Values.Where(animation => animation.Request.Skippable))
-                .Concat(_activeAdditiveAnimations.Where(animation => animation.Request.Skippable))
-                .OrderBy(animation => animation.Sequence)
-                .FirstOrDefault();
-            if (candidate is null) return false;
-
-            var batch = candidate.BatchKey;
-            foreach (var plan in _activePlans.Where(plan => plan.Plan.Skippable && plan.BatchKey == batch).ToArray())
-                plan.Complete(AnimationOutcome.Skipped);
-            foreach (var animation in _activeAnimations.Values.Where(animation => animation.Request.Skippable && animation.BatchKey == batch).ToArray())
-                animation.Complete(AnimationOutcome.Skipped);
-            foreach (var animation in _activeAdditiveAnimations.Where(animation => animation.Request.Skippable && animation.BatchKey == batch).ToArray())
-                animation.Complete(AnimationOutcome.Skipped);
-            return true;
-        }
-    }
     public void ShowDialogue() => OnUi(() => _state.IsDialogueVisible = true);
     public void HideDialogue() => OnUi(() => _state.IsDialogueVisible = false);
 
@@ -468,12 +447,6 @@ public sealed class AvaloniaGamePageView : IDisposable, IDialoguePresenter, ICho
         _ => value
     };
 
-    private interface ISkippableAnimation
-    {
-        long Sequence { get; }
-        string BatchKey { get; }
-    }
-
     private interface ICompletablePlayback
     {
         void Complete(AnimationOutcome outcome);
@@ -484,21 +457,19 @@ public sealed class AvaloniaGamePageView : IDisposable, IDialoguePresenter, ICho
         double CurrentValue { get; set; }
     }
 
-    private sealed class ActiveAnimation(AnimationRequest request, long sequence) : ISkippableAnimation, ICompletablePlayback, IAdditiveAnimation
+    private sealed class ActiveAnimation(AnimationRequest request, long sequence) : ICompletablePlayback, IAdditiveAnimation
     {
         public AnimationRequest Request { get; } = request;
         public long Sequence { get; } = sequence;
-        public string BatchKey { get; } = request.BatchId ?? Guid.NewGuid().ToString("N");
         public double CurrentValue { get; set; }
         public TaskCompletionSource<AnimationOutcome> Outcome { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public void Complete(AnimationOutcome outcome) => Outcome.TrySetResult(outcome);
     }
 
-    private sealed class ActivePlan(AnimationPlanDefinition plan, long sequence) : ISkippableAnimation, ICompletablePlayback
+    private sealed class ActivePlan(AnimationPlanDefinition plan, long sequence) : ICompletablePlayback
     {
         public AnimationPlanDefinition Plan { get; } = plan;
         public long Sequence { get; } = sequence;
-        public string BatchKey { get; } = Guid.NewGuid().ToString("N");
         public List<ActivePlanTrack> Tracks { get; } = [];
         public TaskCompletionSource<AnimationOutcome> Completion { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public void Complete(AnimationOutcome outcome) => Completion.TrySetResult(outcome);

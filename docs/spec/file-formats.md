@@ -46,12 +46,12 @@ Project/
 
 ## .rawgalgroup 与 .galgroup
 
-两种文件均使用版本 2 的 JSON `GroupDocument`，不支持旧的分号文本格式或旧版本。条目数组顺序就是执行顺序；每个条目必须拥有在本文件内唯一、非空的稳定 `id`。Raw 条目的 `type`、参数名、必填性、默认值和 JSON 类型由当前 target profile 的 `PrimitiveDescriptor` 或显式注册的 NonPrimitive schema 校验，而不是全局 `EntryRegistry`。
+两种文件均使用版本 2 的 JSON `GroupDocument`，不支持旧的分号文本格式或旧版本。条目数组顺序就是执行顺序；每个条目必须拥有在本文件内唯一、非空的稳定 `id`。Raw 条目的 `type`、参数名、必填性、默认值和 JSON 类型由当前 target profile 的 primitive/composite entry schema 校验，而不是全局 `EntryRegistry`。
 
 - `.rawgalgroup` 是编辑源，`kind` 必须为 `Raw`。其中可包含原语和非原语。
 - `.galgroup` 是编译产物，`kind` 必须为 `Compiled`。其中只能包含原语；Runtime 会拒绝 Raw 文档和任何非原语。
 
-原语在 Compiled 文档中是 `{ id, typeId, condition, arguments }` 的通用信封，Runtime 通过 `IGameView.Dispatch` 按完整 `typeId` 动态路由。`arguments` 只保存 JSON 值，不保存 CLR 类型名；当前 profile 的冻结 `DynamicParameterTable` 负责解释和校验这些值。NonPrimitive 没有 Runtime 执行入口，而是根据自身 schema 编译为有序 primitive；展开后每个 primitive 都必须由所选 profile 支持。
+原语在 Compiled 文档中是 `{ id, typeId, batchId, condition, arguments }` 的通用信封，Runtime 通过 `IGameView.Dispatch` 按完整 `typeId` 动态路由。`arguments` 只保存 JSON 值，不保存 CLR 类型名；当前 profile 的冻结 `DynamicParameterTable` 负责解释和校验这些值。`batchId` 是可选局部分组字段，由编译器从 authoring 参数中提升出来，运行时只在一次 Group 执行内用它匹配 skip 批次。Composite 没有 Runtime 执行入口，而是根据自身 schema 编译为有序 primitive；展开后每个 primitive 都必须由所选 profile 支持。
 
 `.rawgalgroup` 示例：
 

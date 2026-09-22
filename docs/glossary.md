@@ -8,28 +8,32 @@
 | 入口节点 | `Entry` | 图的起始节点；Runtime 将其视为不含条目的 Group。 |
 | 组 | `Group` | 线性执行一组 Entry；编辑源条目放在单独的 `.rawgalgroup`。 |
 | 分支 | `Branch` | `Choice`（玩家选择）或 `Condition`（条件匹配）节点。 |
-| 条目 | `Entry` | 剧情动作的数据载体；可为原语或非原语。 |
-| 原语条目 | `PrimitiveEntry` | 有 Runtime Handler、可直接执行的条目；编译 `.galgroup` 只允许这一类。 |
-| 非原语条目 | `NonPrimitiveEntry` | 没有 Handler，通过 `Compile(EntryCompileContext)` 展开为有序原语。 |
-| 条目定义 | `EntryDefinition` | 条目类型、分类、参数 schema、默认值、可选值与原语分类的注册信息。 |
-| 条目处理器 | `EntryHandler` | Runtime 中执行一个原语条目类型的实现。 |
-| 原始组文件 | `.rawgalgroup` | 编辑器保存的 Group 源文件，可含原语和非原语，`kind` 为 `Raw`。 |
-| 编译组文件 | `.galgroup` | 仅供 Runtime 加载的 Group 产物，只含原语，`kind` 为 `Compiled`。 |
+| 条目 | `Entry` | 剧情动作的数据载体；可为 primitive 或 composite。 |
+| Primitive 条目 | `PrimitiveEntry` | 编译后 Runtime 可直接分发的通用 primitive envelope。 |
+| Composite 条目 | `CompositeEntry` | 只存在于 authoring/编译期，通过 `Compile(EntryCompileContext)` 展开为有序 primitive。 |
+| 条目定义 | `EntryDefinition` | 条目类型、分类、参数 schema、默认值、可选值与 primitive/composite 分类的注册信息。 |
+| Entry 模块 | `IEntryModule` | 持有冻结 `PrimitiveEntries` 与 `CompositeEntries` 的模块。 |
+| Primitive 定义 | `PrimitiveEntryBase` | 一个 primitive 的参数 schema 与 instance 工厂。 |
+| Primitive 实例 | `PrimitiveInstance` | 一次 primitive 调用产生的运行状态，暴露 blocking、skippable、completed、BatchId、dispatch 和 skip。 |
+| 原始组文件 | `.rawgalgroup` | 编辑器保存的 Group 源文件，可含 primitive 和 composite，`kind` 为 `Raw`。 |
+| 编译组文件 | `.galgroup` | 仅供 Runtime 加载的 Group 产物，只含 primitive，`kind` 为 `Compiled`。 |
 | 运行时 | `IGameRuntime` / `GameRuntime` | 当前节点、条目位置、变量、场景实例和文本解析器的唯一状态源。 |
-| 游戏引擎 | `GameEngine` | 驱动节点转移与条目执行，产生 checkpoint 和存档快照。 |
-| 呈现接口 | `IGameView` | Runtime 向具体 UI/无界面宿主发送画面和交互请求的端口。 |
+| 游戏引擎 | `GameEngine` | 驱动节点转移、活动 primitive 队列、batch skip、Choice 和稳定快照。 |
+| 游戏视图 | `IGameView` | 单条 primitive 的定义解析、参数规范化、实例创建和 dispatch 入口。 |
+| 呈现端口 | presenter interfaces | 宿主提供的窄端口，例如 dialogue、choice、layer、animation、effect。 |
 | 快照 | `GameSnapshot` | 可保存和恢复的运行时位置、变量与场景状态。 |
 
 ## 场景与动画
 
 | 术语 | 英文 / 类型 | 当前含义 |
 | --- | --- | --- |
-| 场景状态 | `SceneState` | 可存档的图层、激活控件/效果和转场标识。 |
+| 场景状态 | `SceneState` | 可存档的图层、效果、粒子和长期动画状态。 |
 | 场景实例 | `ISceneInstance` | 由稳定句柄定位的活跃场景对象。 |
 | 图层 | `Layer` | 背景与立绘的统一资源图层，拥有 transform、z、显示模式和 opacity。 |
 | 场景句柄 | `handleId` | 作者内容中用于定位场上实例的稳定字符串，不是显示名称。 |
 | 动画请求 | `AnimationRequest` | 对单一可动画属性的一次 Replace（绝对值）或 Additive（相对增量）插值请求。 |
-| 动画曲线 | `IAnimationCurve` | 归一化时间到进度值的函数；支持内置、三次贝塞尔与 LUT。 |
+| 动画计划 | `AnimationPlanDefinition` | 多 track 时间线；当前作为单个 primitive instance 执行。 |
+| 效果状态 | `ActiveEffectState` | 可存档的活跃效果描述，包含 effect id、program、instance id、目标、顺序和参数。 |
 
 ## 页面与 UI
 
@@ -39,7 +43,7 @@
 | 游戏导航服务 | `IGameNavigationService` | 管理游戏 Scope 内的当前页面、回退历史和导航转场。 |
 | 页面注册表 | `IPageViewRegistry` / `IPageViewFactory` | 在组合期建立并解析不可变的 ViewModel→View 映射。 |
 | 游戏根页面 | `GameShell` | 承载页面切换、页面内容和游戏截图入口的 Avalonia 根控件。 |
-| 游戏页面呈现 | `AvaloniaGamePageView` | 将 Runtime 的呈现端口接到 Avalonia 游戏页面和场景渲染。 |
+| 游戏页面呈现 | `AvaloniaGamePageView` | 将 presenter 端口接到 Avalonia 游戏页面和场景渲染。 |
 
 `WidgetTemplate`、`WidgetInstance`、`ScreenTemplate`、`ScreenInstance`、`UiProject` 与调色板模板体系是历史设计术语，不属于当前游戏页面宿主。
 

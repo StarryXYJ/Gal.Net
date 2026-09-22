@@ -85,7 +85,7 @@
 
 ## Phase 4：推荐模块迁移与清理
 
-状态：deferred
+状态：partially verified
 
 **目标：** 迁移其余推荐原语并删除旧执行路径和矛盾文档。
 
@@ -106,6 +106,6 @@
 
 **退出条件：** 新模型是唯一 Entry 执行路径，旧契约无引用，相关文档与实现一致，全量验证通过。
 
-**当前范围（2026-09-22）：** 按用户确认，本轮只实现 layer、dialogue/typewriter、Engine 内置流程跳转及 Headless Console。其余推荐 primitive 保留参数 schema，并在运行时创建立即完成实例以安全跳过；animation、media、effect、particle、flow.wait、variable 和 gallery 的真实行为留待后续 feature。
+**当前范围（2026-09-22）：** 本轮已在新 instance 模型下实现 layer、dialogue/typewriter、Engine 内置流程跳转、animation、effect、flow.wait 和 variable.set，并接入 Avalonia Sample、Editor Preview 与 Headless Sample 的组合根。Animation plan 整体作为一个 `AnimationPlanPrimitiveInstance`；内部 layer/effect 事件仅作为 animation 模块私有事件处理，不重新进入通用 Entry 分发。Audio、video、particle 和 gallery 仍保留推荐 schema，完整产品行为留给后续 feature。
 
-**验证证据（2026-09-22）：** `GeneralTest` 全量 215 项通过（包括从磁盘加载 `GameTestCase`）；Headless sample 项目构建通过。解决方案全量构建仅被受限环境中的 Android keystore 目录权限与 WebAssembly task host 阻止，桌面、编辑器、Sample 和测试项目在错误出现前均成功构建。
+**验证证据（2026-09-22）：** `GeneralTest` 全量 219 项通过；新增测试覆盖 animation/effect runtime state、presenter 调用、plan final state 和 `flow.wait` skip。受限环境中构建/测试需设置 `AVALONIA_TELEMETRY_OPTOUT=1` 并传入 `-p:UseSharedCompilation=false`。文档已重写 `docs/spec/runtime.md`、`docs/spec/entry-types.md`、`docs/spec/architecture.md`、`docs/glossary.md`、`docs/design/primitive-module-runtime-design.md` 和长期 phase plan。

@@ -91,6 +91,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySlots;
     private readonly NullGameView _fallback = new();
     private AvaloniaGamePageView? _pageView;
+    private AvaloniaEffectRuntime? _effects;
     private GameEngine? _engine;
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private readonly GameRunCoordinator _run = new();
@@ -240,15 +241,19 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
         if (_pageView is not null) _pageView.AdvanceRequested -= OnAdvanceRequested;
         _engine?.Dispose();
         _pageView?.Dispose();
+        _effects?.Dispose();
         _pageView = null;
+        _effects = null;
         _engine = null;
     }
 
     private async Task EnsureEngineAsync(CancellationToken cancellationToken)
     {
         if (_engine is not null) return;
-        _pageView = new AvaloniaGamePageView(_gameplay, _page, new EditorPreviewLayerFactory(_context.AssetRoot));
-        var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(_pageView, _pageView));
+        var layers = new EditorPreviewLayerFactory(_context.AssetRoot);
+        _pageView = new AvaloniaGamePageView(_gameplay, _page, layers);
+        _effects = new AvaloniaEffectRuntime(_gameplay, layers);
+        var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(_pageView, _pageView, _pageView, _effects));
         var content = await _context.Content.LoadAsync(cancellationToken);
         var runtime = new GameRuntime(null, content.Graph.RootNodeId, new SettingsContainer(), _context.Variables);
         _engine = new GameEngine(content.Graph, runtime, view, _context.Progress, _pageView);
