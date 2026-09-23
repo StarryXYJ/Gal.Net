@@ -20,7 +20,6 @@ internal static class BuiltinRuntimeActions
         Curve = AnimationCurves.Create(Arguments.Enum(context, "curve", BuiltinAnimationCurve.Linear)),
         Blocking = Arguments.Bool(context, "blocking"),
         Skippable = Arguments.Bool(context, "skippable"),
-        BatchId = context.BatchId,
         LoopMode = Arguments.Enum(context, "loopMode", AnimationLoopMode.Once),
         BlendMode = Arguments.Enum(context, "blendMode", AnimationBlendMode.Replace)
     };

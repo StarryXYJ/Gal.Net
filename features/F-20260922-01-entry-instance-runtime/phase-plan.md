@@ -108,4 +108,6 @@
 
 **当前范围（2026-09-22）：** 本轮已在新 instance 模型下实现 layer、dialogue/typewriter、Engine 内置流程跳转、animation、effect、flow.wait 和 variable.set，并接入 Avalonia Sample、Editor Preview 与 Headless Sample 的组合根。Animation plan 整体作为一个 `AnimationPlanPrimitiveInstance`；内部 layer/effect 事件仅作为 animation 模块私有事件处理，不重新进入通用 Entry 分发。Audio、video、particle 和 gallery 仍保留推荐 schema，完整产品行为留给后续 feature。
 
+**当前子阶段（2026-09-23，设计待确认）：** 已实现的 `gallery.unlock` 临时通过 `IGameProgressService` 写入玩家级进度。现正评估将每个 Gallery item 生成保留的 Player bool，使 Gallery 和其他原语共享变量操作；该方案需要 Gallery catalog 进入内容加载链，并让 Editor 的 player-variable store 保留系统变量。确认前不继续扩大 gallery 行为，也不与临时 progress 集合双写。Audio、video 与 particle 仍保留 schema，等待各自行为范围确认。
+
 **验证证据（2026-09-22）：** `GeneralTest` 全量 219 项通过；新增测试覆盖 animation/effect runtime state、presenter 调用、plan final state 和 `flow.wait` skip。受限环境中构建/测试需设置 `AVALONIA_TELEMETRY_OPTOUT=1` 并传入 `-p:UseSharedCompilation=false`。文档已重写 `docs/spec/runtime.md`、`docs/spec/entry-types.md`、`docs/spec/architecture.md`、`docs/glossary.md`、`docs/design/primitive-module-runtime-design.md` 和长期 phase plan。

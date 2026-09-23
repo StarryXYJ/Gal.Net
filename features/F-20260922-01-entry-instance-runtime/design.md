@@ -348,6 +348,36 @@ Engine 分发一条 primitive 后立即提交“已消费该条目”的剧情�
 
 队列为空仍然是稳定状态，但不是更新快照的必要条件。
 
+### 10.1 Gallery 解锁（当前已实施的临时方案）
+
+`gallery.unlock` 是内置 gallery 模块的同步、NonBlocking primitive。它只将参数中的 `GalleryCategory` 和零基 sequence ID 提交给 `IGameProgressService.UnlockGallery()`，随后完成；不需要 presenter、平台控件或活动异步任务。
+
+Gallery 进度属于玩家级长期进度，而不是单个存档槽的剧情快照。因此 `IGameProgressService` 作为模块构造时注入的 Core 抽象，和 `GameEngine` 用于阅读进度的同一服务实例保持一致；`GameSnapshot` 不复制或恢复 gallery 解锁状态。缺少该服务的 runtime 组合根在实际分发时必须明确失败并记录诊断，不能静默把解锁指令当作成功。
+
+### 10.2 Gallery 解锁变量化（候选设计，待确认）
+
+用户提出将每个 Gallery item 映射为内置 Player bool，使 `gallery.unlock` 和任意其他 primitive 都能通过同一个变量机制改变解锁状态。此方案优于继续扩充 `IGameProgressService` 的专用 gallery API：它让条件、脚本、成就或未来的场景解锁共享一个可检查、可写入、且不随存档槽回滚的状态面。
+
+推荐的真源是**保留命名空间的 Player 变量**，而不是第二套 Gallery progress 集合。每一个 Gallery item 以其稳定身份生成一个有效变量名，例如：
+
+```text
+gallery_Cg_3_unlocked
+```
+
+Runtime 对该变量的写入必须使用 Player scope（例如 `player.gallery_Cg_3_unlocked`）；最终持久化键由现有 variable service 规范化。名称必须只包含字母、数字和下划线，不能以路径、资源文件名或展示标题作为身份。当前模型已保证 `(GalleryCategory, SequenceId)` 是稳定身份；若以后允许重排或跨分类移动 item，应先增加不可变的 string `GalleryItem.Id`，再从该 ID 派生变量名。
+
+`gallery.unlock(category, id)` 只需调用 `Runtime.SetVariable(PlayerGalleryUnlockName(category, id), true)` 并同步完成。于是 `variable.set`、条件或其他自定义 primitive 可以用同一名字设置 `true` 或 `false`，无需依赖 Gallery 模块或平台 UI。`GameSnapshot` 继续只保存 Save scope，Player variable service 负责跨存档持久化。
+
+但“为每个 item 生成 bool”不能只依赖缺失变量默认为 `false`：GalleryConfiguration 必须成为一个静态 catalog，并生成有效的系统 Player 变量目录。该目录至少承担：
+
+- 向 Editor 的有效变量定义投影提供不可删除、默认 `false` 的 bool；这样 `EditorPlayerVariableStore` 不会在重载时清理它们。
+- 为 Runtime/编译器提供保留名称集合，拒绝用户手工定义同名变量，并让 FileVariableService 将这些无 `player.` 前缀的保留名仍解析为 Player scope。
+- 让 Gallery UI 根据同一 catalog 枚举项目、读取对应 bool；UI 只消费数据，不拥有解锁事实。
+
+建议按两步迁移：先引入 Core 的 `GalleryUnlockVariable` 命名与 catalog 投影，随后将 `gallery.unlock` 切换至 `Runtime.SetVariable` 并从 `IGameProgressService` 删除 gallery 专用 API/持久化字段（保留阅读进度 API）。当前 10.1 的 service 注入实现应视为过渡代码，不能与变量集合长期双写。
+
+此命名算法可服务 `Portrait`、`Cg` 和 `Scene` 三类 Gallery 内容；未来的新 Gallery category 只需新建 catalog item。不要现在把它泛化成任意资源的“全局解锁框架”：其他领域只有在确实需要同样的 Player-bool、静态 catalog 与 UI 查询语义时，才复用该模式。
+
 ## 11. 明确不引入的公共抽象
 
 本设计不需要下列公共运行时概念：

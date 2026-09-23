@@ -27,8 +27,6 @@ public sealed class AnimationRequest
     public bool Blocking { get; set; }
     /// <summary>Whether an advance request may complete this playback or its batch early.</summary>
     public bool Skippable { get; set; }
-    /// <summary>Optional authoring batch identity used to skip related eligible playbacks together.</summary>
-    public string? BatchId { get; set; }
     /// <summary>Whether the request plays once or repeats until an explicit stop is requested.</summary>
     public AnimationLoopMode LoopMode { get; set; }
 }

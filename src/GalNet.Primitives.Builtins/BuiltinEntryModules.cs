@@ -1,8 +1,10 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GalNet.Core.Entry;
+using GalNet.Core.Gallery;
 using GalNet.Core.Primitives;
 using GalNet.Core.Scene;
+using GalNet.Core.Services;
 using GalNet.Core.View;
 
 namespace GalNet.Primitives.Builtins;
@@ -14,7 +16,8 @@ public static class BuiltinEntryModules
         IDialoguePresenter? dialoguePresenter = null,
         ILayerPresenter? layerPresenter = null,
         IAnimationPresenter? animationPresenter = null,
-        IEffectPresenter? effectPresenter = null) => Array.AsReadOnly<IEntryModule>(
+        IEffectPresenter? effectPresenter = null,
+        IGameProgressService? progress = null) => Array.AsReadOnly<IEntryModule>(
     [
         new BuiltinDialogueModule(dialoguePresenter),
         new BuiltinLayerModule(layerPresenter),
@@ -25,7 +28,7 @@ public static class BuiltinEntryModules
         new BuiltinParticleModule(),
         new BuiltinFlowModule(),
         new BuiltinVariableModule(),
-        new BuiltinGalleryModule()
+        new BuiltinGalleryModule(progress)
     ]);
 
     public static TargetProfileEntryCatalog CreateRecommendedTargetProfile() => new(CreateRecommended());
@@ -244,7 +247,21 @@ public sealed class BuiltinVariableModule : EntryModuleBase
 
 public sealed class BuiltinGalleryModule : EntryModuleBase
 {
-    public BuiltinGalleryModule() : base("gallery", [BuiltinEntrySchemas.Primitive<UnlockGalleryEntry>(UnlockGalleryEntry.ParameterTypes, options: UnlockGalleryEntry.ParameterOptions)]) { }
+    public BuiltinGalleryModule(IGameProgressService? progress = null) : base("gallery",
+    [
+        BuiltinEntrySchemas.Primitive<UnlockGalleryEntry>(
+            UnlockGalleryEntry.ParameterTypes,
+            options: UnlockGalleryEntry.ParameterOptions,
+            factory: context => new ImmediatePrimitiveInstance(() =>
+            {
+                var sequenceId = Arguments.Int(context, "id");
+                if (sequenceId < 0)
+                    throw new InvalidDataException("Gallery sequence ID must be zero or greater.");
+                (progress ?? throw new InvalidOperationException(
+                    "The gallery module requires an IGameProgressService."))
+                    .UnlockGallery(Arguments.Enum(context, "category", GalleryCategory.Portrait), sequenceId);
+            }, batchId: context.BatchId))
+    ]) { }
 }
 
 internal static class BuiltinEntrySchemas

@@ -364,7 +364,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _gameplay,
             _layers,
             programs: programs);
-        var gameView = new CompositeGameView(BuiltinEntryModules.CreateRecommended(_pageView, _pageView, _pageView, _effects));
+        var gameView = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
+            _pageView, _pageView, _pageView, _effects, _progress));
         var content = await _contentProvider.LoadAsync(cancellationToken);
         var settings = new SettingsContainer();
         settings.Set(_settings);

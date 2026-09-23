@@ -1,7 +1,9 @@
 using System.Text.Json;
 using GalNet.Core.Entry;
+using GalNet.Core.Gallery;
 using GalNet.Core.Primitives;
 using GalNet.Core.Scene;
+using GalNet.Core.Services;
 using GalNet.Core.View;
 using GalNet.Primitives.Builtins;
 using GalNet.Runtime.Runtime;
@@ -39,7 +41,6 @@ public class BuiltinPrimitiveInstanceTests
             Assert.That(instance!.IsBlocking, Is.True);
             Assert.That(instance.IsSkippable, Is.True);
             Assert.That(instance.BatchId, Is.EqualTo("scene"));
-            Assert.That(presenter.Animations.Single().BatchId, Is.EqualTo("scene"));
             Assert.That(instance.IsCompleted, Is.False);
         });
 
@@ -174,6 +175,38 @@ public class BuiltinPrimitiveInstanceTests
         Assert.That(instance.IsSkippable, Is.False);
     }
 
+    [Test]
+    public void GalleryUnlockWritesPlayerProgressWithoutAPlatformPresenter()
+    {
+        var progress = new RecordingProgressService();
+        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(progress: progress));
+        var instance = view.Dispatch(
+            Primitive(UnlockGalleryEntry.TypeId, new { category = "Cg", id = 3 }),
+            new GameRuntime(null),
+            CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(instance, Is.TypeOf<ImmediatePrimitiveInstance>());
+            Assert.That(instance!.IsBlocking, Is.False);
+            Assert.That(instance.IsCompleted, Is.True);
+            Assert.That(progress.IsGalleryUnlocked(GalleryCategory.Cg, 3), Is.True);
+        });
+    }
+
+    [Test]
+    public void GalleryUnlockRejectsMissingProgressServiceInsteadOfSilentlySucceeding()
+    {
+        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended());
+
+        Assert.That(
+            () => view.Dispatch(
+                Primitive(UnlockGalleryEntry.TypeId, new { category = "Portrait", id = 0 }),
+                new GameRuntime(null),
+                CancellationToken.None),
+            Throws.InvalidOperationException.With.Message.Contains("IGameProgressService"));
+    }
+
     private static PrimitiveEntry Primitive(string type, object arguments, string? batchId = null) =>
         new(type, JsonSerializer.SerializeToElement(arguments), batchId);
 
@@ -252,5 +285,15 @@ public class BuiltinPrimitiveInstanceTests
         public void ReplaceLayer(string handleId, string assetId) { }
         public void HideLayer(string handleId) { }
         public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSeconds) { }
+    }
+
+    private sealed class RecordingProgressService : IGameProgressService
+    {
+        private readonly HashSet<(GalleryCategory Category, int SequenceId)> _unlocked = [];
+
+        public bool IsRead(string groupId, string entryId) => false;
+        public void MarkRead(string groupId, string entryId) { }
+        public bool IsGalleryUnlocked(GalleryCategory category, int sequenceId) => _unlocked.Contains((category, sequenceId));
+        public void UnlockGallery(GalleryCategory category, int sequenceId) => _unlocked.Add((category, sequenceId));
     }
 }
