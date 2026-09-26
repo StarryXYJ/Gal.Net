@@ -295,6 +295,7 @@ public sealed class GameNavigationTests
         public event EventHandler? CurrentViewModelChanged { add { } remove { } }
         public event EventHandler<GameNavigationChangedEventArgs>? Navigated { add { } remove { } }
         public void Navigate<TViewModel>(NavigationTransition transition = NavigationTransition.CrossFade) where TViewModel : PageViewModelBase { }
+        public Task NavigateAsync(PageViewModelBase viewModel, NavigationTransition transition = NavigationTransition.CrossFade, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task NavigateAsync<TViewModel, TArgs>(TArgs args, NavigationTransition transition = NavigationTransition.CrossFade, CancellationToken cancellationToken = default)
             where TViewModel : PageViewModelBase, IActivatablePageViewModel<TArgs> => Task.CompletedTask;
         public void ResetTo<TViewModel>(NavigationTransition transition = NavigationTransition.CrossFade) where TViewModel : PageViewModelBase { }

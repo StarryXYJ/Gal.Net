@@ -17,17 +17,23 @@ public sealed class GalleryMediaService(IGameSessionService session) : IDisposab
 
     public event Action? PlaybackChanged;
 
-    public string? ActiveAudioItemId { get; private set; }
+    public int? ActiveAudioItemId { get; private set; }
     public bool IsAudioPlaying => _audioPlayer?.IsPlaying == true;
     public long AudioPosition => _audioPlayer?.Time ?? 0;
     public long AudioDuration => Math.Max(0, _audioPlayer?.Length ?? 0);
     public MediaPlayer? VideoPlayer => _videoPlayer;
     public string? LastError { get; private set; }
 
-    public async Task<Bitmap?> LoadThumbnailAsync(
+    public Task<Bitmap?> LoadImageThumbnailAsync(GalleryItemData item, CancellationToken cancellationToken = default) =>
+        LoadThumbnailAsync(item, false, cancellationToken);
+
+    public Task<Bitmap?> LoadVideoThumbnailAsync(GalleryItemData item, CancellationToken cancellationToken = default) =>
+        LoadThumbnailAsync(item, true, cancellationToken);
+
+    private async Task<Bitmap?> LoadThumbnailAsync(
         GalleryItemData item,
-        string resourceTypeName,
-        CancellationToken cancellationToken = default)
+        bool video,
+        CancellationToken cancellationToken)
     {
         if (!item.IsUnlocked) return null;
         var path = ResolvePath(item.Item.ResourceId);
@@ -35,15 +41,12 @@ public sealed class GalleryMediaService(IGameSessionService session) : IDisposab
 
         try
         {
-            if (string.Equals(resourceTypeName, "sprite", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(resourceTypeName, "image", StringComparison.OrdinalIgnoreCase))
-                return await Task.Run(() => new Bitmap(path), cancellationToken);
-
-            if (string.Equals(resourceTypeName, "video", StringComparison.OrdinalIgnoreCase))
+            if (video)
             {
                 var thumbnailPath = await EnsureVideoThumbnailAsync(path, cancellationToken);
                 return thumbnailPath is null ? null : await Task.Run(() => new Bitmap(thumbnailPath), cancellationToken);
             }
+            return await Task.Run(() => new Bitmap(path), cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -67,7 +70,7 @@ public sealed class GalleryMediaService(IGameSessionService session) : IDisposab
         try
         {
             var player = GetAudioPlayer();
-            if (string.Equals(ActiveAudioItemId, item.Item.Id, StringComparison.Ordinal))
+            if (ActiveAudioItemId == item.Item.Id)
             {
                 player.SetPause(player.IsPlaying);
             }

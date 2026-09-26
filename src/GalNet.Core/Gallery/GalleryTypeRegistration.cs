@@ -9,5 +9,5 @@ public sealed record GalleryTypeRegistration
     public string TypeId { get; init; } = "";
 
     [JsonPropertyName("resourceType")]
-    public string ResourceTypeName { get; init; } = "";
+    public string ResourceTypeId { get; init; } = "";
 }

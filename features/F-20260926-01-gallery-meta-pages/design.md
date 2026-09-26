@@ -408,3 +408,25 @@ OpenGallery
 - CG、视频和音频独立 MVVM 页面完成现有功能；
 - 当前 solution 在删除 `ResourceType` enum 后全部编译，Editor 只做必要适配而不扩张 authoring UI。
 
+## 13. 待确认：统一资源会话与发布包安装模型
+
+> 2026-09-27 提案；尚未接受，不改变当前实现事实。
+
+当前 `IAssetManager` 向调用方暴露了 `IGameFile`、Provider 注册以及按资源 ID 的全局 `Release`。这允许调用方绕过加载会话并可能释放其他调用方正在使用的同一资源。建议把目录与发行包统一为一个由资源管理器拥有的只读 mount，并把资源使用权表达为可释放的 handle。
+
+```text
+GameLocation (项目目录 | .galpak)
+  -> GamePackageInstaller（仅 .galpak：校验、原子解压、复用安装目录）
+  -> GameContentMount（manifest、content.pak、assets.pak、冻结 registries）
+  -> AssetManager（唯一资源索引、GUID/path 查询、decoder、缓存）
+  -> AssetHandle<T>（单次 acquire 的引用；Dispose/DisposeAsync 后释放）
+```
+
+`AssetHandle<T>` 应只在成功加载后持有一次引用，暴露稳定 GUID、类型和 `Value`；其 `Dispose` 必须幂等。缓存键仍是 `(assetGuid, target CLR type)`，但引用计数只能由 handle 递增/递减，删除 `Release(id)`、`Release<T>(id)`、`LoadAsync(IGameFile)` 和外部 `IGameFile` 枚举。编辑器 picker 或 Gallery compiler 改为查询只读 `AssetDescriptor`（GUID、逻辑路径、type ID、可安全公开的 metadata 摘要），不取得原始字节或 stream。
+
+`AssetManager.OpenAsync(GameLocation, composedRegistries)` 应完成一次索引建立。目录 mount 扫描并严格校验 `.meta`；包 mount 读取 manifest 与两个 PAK。两者向 manager 提供同一种内部 `AssetRecord`，故调用者只用 GUID 获取 handle，路径只用于 authoring/debug 的 GUID 解析。任何无效/未知 metadata、重复 GUID、manifest hash 或 registry snapshot 不匹配都使 open 失败，不允许静默跳过。
+
+导出保持 `.galpak` ZIP 容器；内部 `assets.pak` 和 `content.pak` 仍适合随机访问和完整性校验。若产品要求“传入压缩包即解压为文件夹”，该职责应属于 `GamePackageInstaller`，而非 `AssetManager`：先校验 zip 路径、manifest 和 hash，解压到相邻的受控安装目录（临时目录完成后原子 rename），记录版本/hash 和 lock，防 Zip Slip、半解压与多进程竞争。安装后才以目录 mount 打开。直接从 ZIP/PAK mount 可作为后续优化，但不是首轮必要路径。
+
+这会让 Gallery compiler 从 manager 的 descriptor snapshot 编译 catalog；发行运行从安装后的 `content.pak` 读取 generated `gallery.json`，并用同一 registry 验证 snapshot。这样资源加载、引用计数、目录/包来源和 Gallery 的资源可达性都在同一个会话闭环内。
+

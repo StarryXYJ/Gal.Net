@@ -32,11 +32,11 @@ public sealed class EditorAssetManager : IAssetManager
         previous.Dispose();
     }
     public Task<IGameFile?> GetFileAsync(string assetId, CancellationToken ct = default) => _inner.GetFileAsync(assetId, ct);
-    public Task<IReadOnlyList<IGameFile>> GetFilesAsync(ResourceType? type = null, CancellationToken ct = default) => _inner.GetFilesAsync(type, ct);
+    public Task<IReadOnlyList<IGameFile>> GetFilesAsync(string? typeId = null, CancellationToken ct = default) => _inner.GetFilesAsync(typeId, ct);
     public Task<T?> LoadAsync<T>(string assetId, CancellationToken ct = default) where T : class => _inner.LoadAsync<T>(assetId, ct);
     public Task<T?> LoadAsync<T>(IGameFile file, CancellationToken ct = default) where T : class => _inner.LoadAsync<T>(file, ct);
     public Task<T?> LoadByPathAsync<T>(string path, CancellationToken ct = default) where T : class => _inner.LoadByPathAsync<T>(path, ct);
-    public void RegisterDecoder<T>(IAssetDecoder<T> decoder) where T : class => _inner.RegisterDecoder(decoder);
+    public void RegisterDecoder<T>(string resourceTypeId, IAssetDecoder<T> decoder) where T : class => _inner.RegisterDecoder(resourceTypeId, decoder);
     public bool TryGetLoaded<T>(string assetId, out T asset) where T : class => _inner.TryGetLoaded(assetId, out asset);
     public void Release(string assetId) => _inner.Release(assetId);
     public void Release<T>(string assetId) where T : class => _inner.Release<T>(assetId);

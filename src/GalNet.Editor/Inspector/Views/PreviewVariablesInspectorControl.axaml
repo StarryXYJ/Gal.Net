@@ -4,10 +4,5 @@
   <ScrollViewer><StackPanel Margin="12" Spacing="10">
     <Expander Header="{loc:Localize Inspector.Preview.PlayerVariables}" IsExpanded="True"><controls:VariableListEditorControl DataContext="{Binding Preview.PlayerVariables}" /></Expander>
     <Expander Header="{loc:Localize Inspector.Preview.SaveVariables}" IsExpanded="True"><controls:VariableListEditorControl DataContext="{Binding Preview.SaveVariables}" /></Expander>
-    <Expander Header="{loc:Localize Inspector.Preview.SystemVariables}" IsExpanded="False">
-      <ItemsControl ItemsSource="{Binding Preview.GallerySystemVariableNames}">
-        <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" FontFamily="Consolas" Opacity="0.75" /></DataTemplate></ItemsControl.ItemTemplate>
-      </ItemsControl>
-    </Expander>
   </StackPanel></ScrollViewer>
 </UserControl>

@@ -9,11 +9,13 @@ public sealed class PakFileProvider : IAssetProvider
 {
     private readonly string _pakDirectory;
     private readonly bool _optional;
+    private readonly IResourceTypeCatalog _resourceTypes;
 
-    public PakFileProvider(string pakDirectory, bool optional = false)
+    public PakFileProvider(string pakDirectory, IResourceTypeCatalog? resourceTypes = null, bool optional = false)
     {
         _pakDirectory = pakDirectory.Replace('\\', '/').TrimEnd('/');
         _optional = optional;
+        _resourceTypes = resourceTypes ?? BuiltinResourceTypes.CreateCatalog();
     }
 
     public string Name => $"PakFile({_pakDirectory})";
@@ -35,7 +37,7 @@ public sealed class PakFileProvider : IAssetProvider
         }
 
         var data = File.ReadAllBytes(path);
-        return Archive.Deserialize(archiveName, data);
+        return Archive.Deserialize(archiveName, data, _resourceTypes);
     }
 
     public async Task<IArchive> OpenArchiveAsync(string archiveName, CancellationToken ct = default)
@@ -49,7 +51,7 @@ public sealed class PakFileProvider : IAssetProvider
         }
 
         var data = await File.ReadAllBytesAsync(path, ct);
-        return Archive.Deserialize(archiveName, data);
+        return Archive.Deserialize(archiveName, data, _resourceTypes);
     }
 
     private string GetPakPath(string archiveName)

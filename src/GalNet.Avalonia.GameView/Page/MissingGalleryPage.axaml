@@ -1,0 +1,7 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
+             x:Class="GalNet.Avalonia.GameView.Page.MissingGalleryPage"
+             x:DataType="vm:MissingGalleryPageViewModel">
+  <Grid Background="#0B0C15" Margin="44" RowDefinitions="Auto,*"><Grid ColumnDefinitions="*,Auto"><TextBlock Text="Gallery page unavailable" FontSize="32" FontWeight="SemiBold"/><Button Grid.Column="1" Classes="player-link" Content="Back" Command="{Binding BackCommand}"/></Grid><Border Grid.Row="1" Margin="0,24,0,0" Padding="28" Background="#48181A2A" BorderBrush="#4D5F6075" BorderThickness="1" CornerRadius="10"><TextBlock Text="{Binding Message}" TextWrapping="Wrap" VerticalAlignment="Center" HorizontalAlignment="Center" TextAlignment="Center"/></Border></Grid>
+</UserControl>

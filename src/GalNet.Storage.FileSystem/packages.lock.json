@@ -7,16 +7,17 @@
         "resolved": "4.13.1",
         "contentHash": "Da5+i4kFHUseJRZGcBG5fmZGpA/Ns180ibrQMxgZzjpQOnENVvSL5gi5HZ8Ncz8/AR2WsKbOg2lMBzjz0HUQcA=="
       },
+      "galnet.assets": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Storage.Abstractions": "[1.0.0, )"
+        }
+      },
       "galnet.core": {
         "type": "Project"
       },
       "galnet.presentation.abstractions": {
-        "type": "Project",
-        "dependencies": {
-          "GalNet.Core": "[1.0.0, )"
-        }
-      },
-      "galnet.primitives.builtins": {
         "type": "Project",
         "dependencies": {
           "GalNet.Core": "[1.0.0, )"
@@ -28,7 +29,6 @@
           "CoreCLR-NCalc": "[3.1.253, )",
           "GalNet.Core": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
-          "GalNet.Primitives.Builtins": "[1.0.0, )",
           "GalNet.Storage.Abstractions": "[1.0.0, )",
           "Serilog": "[4.2.0, )"
         }

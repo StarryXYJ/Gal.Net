@@ -16,18 +16,18 @@ public static class PakBuilder
     /// <param name="compression">压缩模式（默认 Brotli）</param>
     /// <returns>.pak 文件字节数组</returns>
     public static byte[] Build(string archiveName, IReadOnlyList<IGameFile> files,
-        CompressionMode compression = CompressionMode.Brotli)
+        CompressionMode compression = CompressionMode.Brotli, IResourceTypeCatalog? resourceTypes = null)
     {
-        return Archive.Serialize(archiveName, files, compression);
+        return Archive.Serialize(archiveName, files, compression, resourceTypes);
     }
 
     /// <summary>
     /// 将一组资源文件打包并写入磁盘。
     /// </summary>
     public static void BuildToFile(string pakPath, IReadOnlyList<IGameFile> files,
-        CompressionMode compression = CompressionMode.Brotli)
+        CompressionMode compression = CompressionMode.Brotli, IResourceTypeCatalog? resourceTypes = null)
     {
-        var data = Build(Path.GetFileNameWithoutExtension(pakPath), files, compression);
+        var data = Build(Path.GetFileNameWithoutExtension(pakPath), files, compression, resourceTypes);
         File.WriteAllBytes(pakPath, data);
     }
 }

@@ -16,7 +16,10 @@ namespace GalNet.Assets;
 ///   [Id      ] IdLen     UTF-8
 ///   [PathLen ] 4 bytes   int32
 ///   [Path    ] PathLen   UTF-8
-///   [Type    ] 4 bytes   int32
+///   [TypeLen ] 4 bytes   int32
+///   [TypeId  ] TypeLen   UTF-8
+///   [MetaLen ] 4 bytes   int32
+///   [Meta    ] MetaLen   UTF-8 canonical registered metadata JSON
 ///   [Offset  ] 8 bytes   int64   数据段起始偏移
 ///   [OrigLen ] 8 bytes   int64   原始大小(未压缩)
 ///   [StoredLen] 8 bytes  int64   存储大小(压缩后)
@@ -30,7 +33,7 @@ namespace GalNet.Assets;
 public sealed class Archive : IArchive
 {
     private const string Magic = "GPAK";
-    private const int CurrentVersion = 1;
+    private const int CurrentVersion = 2;
 
     private readonly string _name;
     private readonly Dictionary<string, EntryDescriptor> _entries = new();
@@ -64,7 +67,7 @@ public sealed class Archive : IArchive
             ? CompressionHelper.Decompress(raw, desc.Compression)
             : raw;
 
-        return new GameFile(assetId, desc.Path, desc.Type, data, desc.Hash);
+        return new GameFile(assetId, desc.Path, desc.TypeId, desc.Metadata, data, desc.Hash);
     }
 
     public IGameFile? GetAssetByPath(string path)
@@ -84,8 +87,9 @@ public sealed class Archive : IArchive
     // ── 序列化/反序列化 ──
 
     /// <summary>将二进制数据反序列化为 Archive。</summary>
-    public static Archive Deserialize(string name, byte[] pakData)
+    public static Archive Deserialize(string name, byte[] pakData, IResourceTypeCatalog? resourceTypes = null)
     {
+        var metaCodec = new AssetMetaCodec(resourceTypes ?? BuiltinResourceTypes.CreateCatalog());
         var span = new ReadOnlySpan<byte>(pakData);
         var offset = 0;
 
@@ -97,7 +101,7 @@ public sealed class Archive : IArchive
         // Version
         var version = BinaryPrimitives.ReadInt32LittleEndian(span[offset..]);
         offset += 4;
-        if (version > CurrentVersion)
+        if (version != CurrentVersion)
             throw new InvalidDataException($"Unsupported .pak version: {version}");
 
         // Entry count
@@ -119,8 +123,20 @@ public sealed class Archive : IArchive
             var path = Encoding.UTF8.GetString(span[offset..(offset + pathLen)]);
             offset += pathLen;
 
-            var type = (ResourceType)BinaryPrimitives.ReadInt32LittleEndian(span[offset..]);
+            var typeLength = BinaryPrimitives.ReadInt32LittleEndian(span[offset..]);
             offset += 4;
+            var typeId = Encoding.UTF8.GetString(span[offset..(offset + typeLength)]);
+            offset += typeLength;
+
+            var metadataLength = BinaryPrimitives.ReadInt32LittleEndian(span[offset..]);
+            offset += 4;
+            var metadataJson = Encoding.UTF8.GetString(span[offset..(offset + metadataLength)]);
+            offset += metadataLength;
+            var metadata = metaCodec.Deserialize(metadataJson);
+            if (!string.Equals(id, metadata.Id, StringComparison.Ordinal)
+                || !string.Equals(path, metadata.Path, StringComparison.Ordinal)
+                || !string.Equals(typeId, metadata.TypeId, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("Pak entry identity does not match its typed metadata.");
 
             var dataOffset = BinaryPrimitives.ReadInt64LittleEndian(span[offset..]);
             offset += 8;
@@ -139,7 +155,8 @@ public sealed class Archive : IArchive
             entries[id] = new EntryDescriptor
             {
                 Path = path,
-                Type = type,
+                TypeId = typeId,
+                Metadata = metadata,
                 Offset = dataOffset,
                 OriginalLength = origLen,
                 StoredLength = storedLen,
@@ -158,10 +175,11 @@ public sealed class Archive : IArchive
 
     /// <summary>将 Archive 序列化为二进制数据（.pak 格式）。</summary>
     public static byte[] Serialize(string name, IReadOnlyList<IGameFile> files,
-        CompressionMode compression = CompressionMode.Brotli)
+        CompressionMode compression = CompressionMode.Brotli, IResourceTypeCatalog? resourceTypes = null)
     {
+        var metaCodec = new AssetMetaCodec(resourceTypes ?? BuiltinResourceTypes.CreateCatalog());
         // Build entry descriptors (compress if needed)
-        var entryList = new List<(IGameFile file, byte[] storedData, CompressionMode actualCompression, string hash)>();
+        var entryList = new List<(IGameFile file, byte[] storedData, CompressionMode actualCompression, string hash, byte[] typeBytes, byte[] metadataBytes)>();
         foreach (var file in files)
         {
             var data = file.ReadAllBytes();
@@ -170,20 +188,22 @@ public sealed class Archive : IArchive
                 : file.Hash;
             var useCompression = compression != CompressionMode.None && data.Length > 256;
             var stored = useCompression ? CompressionHelper.Compress(data, compression) : data;
-            entryList.Add((file, stored, useCompression ? compression : CompressionMode.None, hash));
+            var typeBytes = Encoding.UTF8.GetBytes(file.TypeId);
+            var metadataBytes = Encoding.UTF8.GetBytes(metaCodec.Serialize(file.Metadata));
+            entryList.Add((file, stored, useCompression ? compression : CompressionMode.None, hash, typeBytes, metadataBytes));
         }
 
         // Calculate sizes
         var headerSize = 4 + 4 + 4; // magic + version + count
-        foreach (var (file, storedData, _, _) in entryList)
+        foreach (var (file, storedData, _, _, typeBytes, metadataBytes) in entryList)
         {
             headerSize += 4 + Encoding.UTF8.GetByteCount(file.Id); // id
             headerSize += 4 + Encoding.UTF8.GetByteCount(file.Path); // path
-            headerSize += 4 + 8 + 8 + 8 + 4 + 64; // type + offset + origLen + storedLen + compress + hash
+            headerSize += 4 + typeBytes.Length + 4 + metadataBytes.Length + 8 + 8 + 8 + 4 + 64;
         }
 
         var pakSize = headerSize;
-        foreach (var (_, storedData, _, _) in entryList)
+        foreach (var (_, storedData, _, _, _, _) in entryList)
             pakSize += storedData.Length;
 
         var pak = new byte[pakSize];
@@ -204,7 +224,7 @@ public sealed class Archive : IArchive
 
         // Entry table
         var dataRelativeOffset = 0L;
-        foreach (var (file, storedData, actualCompression, hash) in entryList)
+        foreach (var (file, storedData, actualCompression, hash, typeBytes, metadataBytes) in entryList)
         {
             // Id
             var idBytes = Encoding.UTF8.GetBytes(file.Id);
@@ -220,9 +240,15 @@ public sealed class Archive : IArchive
             pathBytes.CopyTo(span[pos..]);
             pos += pathBytes.Length;
 
-            // Type
-            BinaryPrimitives.WriteInt32LittleEndian(span[pos..], (int)file.Type);
+            BinaryPrimitives.WriteInt32LittleEndian(span[pos..], typeBytes.Length);
             pos += 4;
+            typeBytes.CopyTo(span[pos..]);
+            pos += typeBytes.Length;
+
+            BinaryPrimitives.WriteInt32LittleEndian(span[pos..], metadataBytes.Length);
+            pos += 4;
+            metadataBytes.CopyTo(span[pos..]);
+            pos += metadataBytes.Length;
 
             // Offset (relative to data section start)
             BinaryPrimitives.WriteInt64LittleEndian(span[pos..], dataRelativeOffset);
@@ -249,7 +275,7 @@ public sealed class Archive : IArchive
         }
 
         // Data section
-        foreach (var (_, storedData, _, _) in entryList)
+        foreach (var (_, storedData, _, _, _, _) in entryList)
         {
             storedData.CopyTo(span[pos..]);
             pos += storedData.Length;
@@ -261,7 +287,8 @@ public sealed class Archive : IArchive
     private struct EntryDescriptor
     {
         public string Path;
-        public ResourceType Type;
+        public string TypeId;
+        public AssetMeta Metadata;
         public long Offset;
         public long OriginalLength;
         public long StoredLength;

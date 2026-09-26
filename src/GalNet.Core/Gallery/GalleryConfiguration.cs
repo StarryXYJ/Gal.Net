@@ -5,7 +5,7 @@ namespace GalNet.Core.Gallery;
 /// <summary>Serializable Gallery content stored in <c>gallery.json</c>.</summary>
 public sealed class GalleryConfiguration
 {
-    public const int CurrentVersion = 1;
+    public const int CurrentVersion = 2;
 
     [JsonPropertyName("version")]
     public int Version { get; set; } = CurrentVersion;

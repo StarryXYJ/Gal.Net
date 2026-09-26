@@ -100,7 +100,6 @@
   "Inspector.Asset.Pause": "Pause",
   "Inspector.Asset.Gallery": "Gallery",
   "Inspector.Asset.GalleryTitle": "Gallery title",
-  "Inspector.Asset.GallerySortOrder": "Sort order",
   "Dock.Panel.UiCustomization": "UI Customization",
   "UiCustomization.Title": "Built-in game UI",
   "UiCustomization.Description": "Configure the built-in title, dialogue, and choice controls.",

@@ -1,66 +1,60 @@
 ---
 feature: F-20260926-01-gallery-meta-pages
 reviewed: 2026-09-26
-scope: feature-and-design
-result: pass
+scope: implementation-and-design
+result: blocked
 ---
 
-# Gallery 元数据聚合与可扩展页面注册设计审核
+# Gallery 元数据聚合与可扩展页面注册实现审核
 
 ## 结论
 
-**pass**。
+**blocked**。当前改动已完成新 Meta DTO、PAK v2、Gallery 编译和 Avalonia 页面注册的主要骨架，相关 Assets 与 Avalonia 项目能构建，Assets 测试也通过；但尚未达到 Phase 6 的退出条件，不能作为完成的 feature 提交。
 
-最新确认已经消除了此前的需求分叉：Gallery 使用全局唯一正整数 ID 并按 ID 排序；Editor authoring、Undo/Redo 和旧数据迁移后移；资源类型完整注册包含 type ID、Meta DTO 类型和扩展名，同时允许只向既有类型追加扩展名；当前阶段明确不承担格式兼容。
+## Findings
 
-设计可以进入 Phase Plan。没有发现阻止实施的架构问题。
+### [P1] 内容组合根没有接收共享 registry，插件类型无法贯通目录运行和导出
 
-最终复核补充：需求中“运行时不扫描 `.meta`”已经收敛为“目录开发运行启动时聚合一次、会话建立后不再扫描；发行运行只读生成内容”，与设计的数据流一致。未发现新的 Blocker、P1 或 P2 问题。
+`DirectoryGameContentProvider` 与 `GamePackageExporter` 都在方法内部调用 `BuiltinResourceTypes.CreateCatalog()` 和 `BuiltinGalleryTypes.CreateCatalog(...)`。调用方无法把组合后的 `IResourceTypeCatalog` / `IGalleryTypeCatalog` 注入进来，因此已注册的插件 Meta DTO 或 Gallery type 会在目录运行、Preview 和导出时变成未知类型。该行为直接违背 design 的“宿主注入冻结 registry”和 Phase 6 的“所有组合根使用共享 registry”要求。
 
-## 审核结果
+建议：将两个 composition root 改为接收同一组已冻结 registry，并为一个自定义资源类型和一个自定义 Gallery 页面走完目录加载与导出测试。
 
-### 1. 资源类型注册边界清楚
+### [P1] 损坏或未知 `.meta` 被静默跳过，导致 Gallery 和导出结果不完整
 
-- `Add<TMeta>(typeId, extensions...)` 是完整注册。
-- `AddExtensions(typeId, extensions...)` 只扩展已有类型，冻结时统一校验，因此不依赖插件调用顺序。
-- Meta DTO 通过文件中的稳定 type ID 选择，文件不保存 CLR 类型名。
-- decoder 使用 `(resourceTypeId, target CLR type)` 注册，解决多个格式解码为同一运行时对象时的覆盖问题。
-- `Compress` 属于通用存储策略，留在公共 Meta 基类；渲染专属字段进入具体 DTO。
+`LocalFileProvider.ScanAsync` 对 `AssetMetaCodec.Deserialize` 的所有异常执行 `continue`。因此未知 type ID、无效 JSON 或无效 DTO 不会在 Preview、目录运行或导出中报告；资产会从 archive 消失，相关 Gallery annotation 也随之消失。设计要求三条路径使用一致、可诊断的错误，导出尤其不能把损坏输入变成成功但缺资源的包。
 
-### 2. 开发目录与发行包语义一致
+建议：保留 source `.meta` 路径并抛出带路径的 `InvalidDataException`（或汇总所有损坏 metadata 后失败），同时补充 invalid JSON、未知 type ID 和缺资源文件的测试。
 
-Local provider 和 pak reader 都通过同一资源 registry 取得 DTO 类型。Pak 保存字符串 type ID 和 canonical metadata JSON，自定义字段不会只在开发目录有效。Gallery JSON、typed metadata 和代码 registry 之间都有一致性校验。
+### [P1] 发行包生成的 `gallery.json` 没有实际加载和 registry 快照校验路径
 
-### 3. Gallery 数字 ID 方案自洽
+`GamePackageExporter.BuildContent` 会把生成的 `gallery.json` 写入 `content.pak`，`GalleryFileLoader.LoadGenerated` 也实现了快照校验，但仓库搜索不到该方法的调用方；`PakFileProvider` 只负责资产 PAK，目录内容提供者则重新扫描 `.meta`。所以发行运行尚未读取生成内容，也没有执行 required snapshot validation。
 
-正 `Int32` ID 在全项目唯一，因而可以同时作为：
+建议：提供包内容加载器，从 `content.pak` 读取 `gallery.json` 并调用 `GalleryFileLoader`（或抽取同等的 stream-based API）；添加 “Meta → assets.pak / generated gallery.json → 发行加载” 的端到端测试。
 
-- `gallery_<id>_unlocked` 的稳定中间值；
-- `gallery.unlock(id)` 的参数；
-- 类型页面内的升序键。
+### [P1] 核心行为测试被删除而未等价替换
 
-导出内容是静态的，因此不需要额外重排模型：ID 就是最终顺序和稳定解锁身份，修改 ID 等同于替换该 Gallery item。
+本次删除了 `ArchiveTests`、`AssetManagerTests`、`LocalFileProviderTests`、`PakBuilderTests`、`PakFileProviderTests`、`GalleryPresentationTests` 和 `GalleryContentLoadingTests`，新增的 `AssetPipelineTests` 只有三项测试。新测试没有覆盖 registry 的 Add/Replace/extension 冲突、无效 metadata、PAK header/边界、AssetManager 缓存/取消/释放、生成 Gallery snapshot、页面 Add/Replace/缺页诊断，以及 Phase 5 要求的零/单/多类型导航行为。
 
-### 4. Avalonia 扩展不再经过 renderer enum
+建议：以新 API 更新这些测试，而不是降低覆盖面；至少覆盖 phase plan 列出的边界和上述三个缺陷后再提交。
 
-Gallery type ID 到 ViewModel、ViewModel 到 View 是两张独立表。精确 type ID 注册、显式页面复用、显式覆盖和缺页诊断均有明确行为；零类型、单类型直达和多类型选择页共享同一个导航服务。
+### [P1] 正式文档仍描述已删除的旧模型
 
-### 5. 首轮范围足够克制
+`docs/spec/file-formats.md`、`architecture.md`、`entry-types.md` 与 `docs/glossary.md` 仍把根目录手写 `gallery.json`、字符串 Gallery ID、`ResourceTypeName` 和 renderer fallback 描述为当前事实。Phase 6 明确要求同步这些文档及 `assets.md`、`runtime.md`、`control.md`；当前 diff 未更新它们。feature 文档中的“当前正式文档”链接也仍指向已删除的 source 文件。
 
-Editor 只承担删除 `ResourceType` enum 后必要的编译适配。Gallery Inspector、数字分配 UI、metadata Undo/Redo、旧 `gallery.json` 迁移和兼容 reader 均不进入首轮，避免底层 registry 与 Editor 产品交互同时展开。
+建议：在上述运行时行为真正完成并验证后，同步正式文档并将 Phase 6 状态/验证记录回写为实际结果。
 
-## 实施时必须保持的检查点
+## 已验证内容
 
-- 自定义 Meta DTO 字段必须通过 LocalFileProvider 与 pak round-trip，不能只验证 type ID。
-- pak table 的 Id/Path/TypeId 必须与反序列化 Metadata 一致。
-- 数字 Gallery ID 冲突必须报告两个来源 `.meta`，不能只报告第二个值。
-- `AddExtensions` 的未知目标和后缀冲突必须在 registry 冻结时失败。
-- 删除 `ResourceType` enum 后要全 solution 搜索残留 switch、picker filter 和 sample decoder 注册。
-- 页面注册 Builder 必须同时验证 Gallery page mapping、VM-to-View mapping 和 DI registration。
+- `dotnet build src/GalNet.Assets/GalNet.Assets.csproj --no-restore -m:1 -p:UseSharedCompilation=false -v:q` 通过。
+- `dotnet build src/GalNet.Core/GalNet.Core.csproj --no-restore -m:1 -p:UseSharedCompilation=false -v:q` 通过。
+- `dotnet build src/GalNet.Primitives.Builtins/GalNet.Primitives.Builtins.csproj --no-restore -m:1 -p:UseSharedCompilation=false -v:q` 通过。
+- `dotnet build src/GalNet.Storage.FileSystem/GalNet.Storage.FileSystem.csproj --no-restore -m:1 -p:UseSharedCompilation=false -v:q` 通过。
+- `dotnet build src/GalNet.Editor.Shared/GalNet.Editor.Shared.csproj --no-restore -m:1 -p:UseSharedCompilation=false -v:q` 通过。
+- `dotnet build src/GalNet.Avalonia.GameView/GalNet.Avalonia.GameView.csproj --no-restore -m:1 -p:UseSharedCompilation=false -p:AVALONIA_TELEMETRY_OPTOUT=1 -v:q` 通过（仅既有/非阻断 warning）。
+- `dotnet test test/GalNet.Assets.Tests/GalNet.Assets.Tests.csproj --no-restore -m:1 -p:UseSharedCompilation=false`：28/28 通过。
+- `git diff --check` 通过；只报告仓库现有的 CRLF 工作区提示。
+- `GeneralTest` 为 228/229：`EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString` 因 JSON 行尾/缩进差异失败，与本 feature 无关，但仍意味着不能将其报告为全绿。
 
-## 验证记录
+## 审核范围
 
-- 审核了 feature、修订后的 Proposed design，以及当前 Assets、Storage、Editor、Gallery 和 Avalonia navigation 实现。
-- 核对了当前 `ResourceType` enum、pak int32 类型字段、单目标类型 decoder 字典、重复扩展名推断和 renderer enum 的实际传播路径。
-- 本轮仅修改 feature 文档，没有业务代码可执行测试；未运行构建或测试。
-
+审阅了 feature、design、phase plan、当前实现 diff、测试替换情况，以及目录、导出和 PAK 的运行时调用关系。本次审核未修改业务代码。

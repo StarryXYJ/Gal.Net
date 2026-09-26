@@ -23,9 +23,12 @@ public static class GamePackageExporter
             var packagePath = Path.Combine(outputDirectory, $"{SafeFileName(projectName)}.galpak");
             temporaryPath = packagePath + ".tmp";
             if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
-            ValidateGalleryResources(projectRoot);
-            var assetsPak = await BuildAssetsAsync(Path.Combine(projectRoot, "Assets"), cancellationToken);
-            var contentPak = BuildContent(projectRoot, cancellationToken);
+            var resourceTypes = BuiltinResourceTypes.CreateCatalog();
+            var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
+            var assets = await LoadAssetsAsync(Path.Combine(projectRoot, "Assets"), resourceTypes, cancellationToken);
+            var gallery = new GalleryCatalogCompiler(resourceTypes, galleryTypes).Compile(assets.Select(asset => asset.Metadata));
+            var assetsPak = PakBuilder.Build("assets", assets, GalNet.Core.Assets.CompressionMode.Brotli, resourceTypes);
+            var contentPak = BuildContent(projectRoot, gallery, cancellationToken);
             var packages = new[] { new PackageEntry(AssetsPakPath, Hash(assetsPak), assetsPak.Length), new PackageEntry(ContentPakPath, Hash(contentPak), contentPak.Length) };
             await using (var file = File.Create(temporaryPath))
             using (var zip = new ZipArchive(file, ZipArchiveMode.Create, leaveOpen: false))
@@ -51,63 +54,26 @@ public static class GamePackageExporter
         }
     }
 
-    private static async Task<byte[]> BuildAssetsAsync(string assetsPath, CancellationToken ct)
+    private static async Task<IReadOnlyList<IGameFile>> LoadAssetsAsync(string assetsPath, IResourceTypeCatalog resourceTypes, CancellationToken ct)
     {
-        using var provider = new LocalFileProvider(assetsPath, optional: true);
+        using var provider = new LocalFileProvider(assetsPath, resourceTypes, optional: true);
         using var archive = await provider.OpenArchiveAsync("assets", ct);
-        var files = archive.AssetIds.OrderBy(id => id, StringComparer.Ordinal).Select(id => archive.GetAsset(id)!).ToArray();
-        return PakBuilder.Build("assets", files, GalNet.Core.Assets.CompressionMode.Brotli);
+        return archive.AssetIds.OrderBy(id => id, StringComparer.Ordinal).Select(id => archive.GetAsset(id)!).ToArray();
     }
 
-    private static void ValidateGalleryResources(string projectRoot)
-    {
-        var galleryPath = Path.Combine(projectRoot, "gallery.json");
-        if (!File.Exists(galleryPath)) return;
-
-        var configuration = JsonSerializer.Deserialize<GalleryConfiguration>(File.ReadAllText(galleryPath), JsonOptions)
-            ?? throw new InvalidDataException("gallery.json is empty.");
-        var catalog = GalleryCatalog.Create(configuration);
-        var validatedTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "sprite", "audio", "video", "effectprogram", "effect-program", "shader"
-        };
-        var assetsPath = Path.Combine(projectRoot, "Assets");
-        var assets = Directory.Exists(assetsPath)
-            ? Directory.EnumerateFiles(assetsPath, "*.meta", SearchOption.AllDirectories)
-                .Select(path =>
-                {
-                    try { return JsonSerializer.Deserialize<AssetMeta>(File.ReadAllText(path), JsonOptions); }
-                    catch (JsonException exception) { throw new InvalidDataException($"Asset metadata '{path}' is invalid.", exception); }
-                })
-                .Where(meta => meta is not null && !string.IsNullOrWhiteSpace(meta.Id))
-                .ToDictionary(meta => meta!.Id, meta => meta!, StringComparer.Ordinal)
-            : new Dictionary<string, AssetMeta>(StringComparer.Ordinal);
-
-        foreach (var item in catalog.Items)
-        {
-            var type = catalog.Types.Single(candidate => candidate.TypeId == item.TypeId);
-            if (!validatedTypes.Contains(type.ResourceTypeName)) continue;
-            if (!assets.TryGetValue(item.ResourceId, out var asset))
-                throw new InvalidDataException(
-                    $"Gallery item '{item.Id}' references missing asset '{item.ResourceId}'.");
-            if (!string.Equals(asset.Type, type.ResourceTypeName, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException(
-                    $"Gallery item '{item.Id}' expects resource type '{type.ResourceTypeName}', but asset '{item.ResourceId}' is '{asset.Type}'.");
-        }
-    }
-
-    private static byte[] BuildContent(string projectRoot, CancellationToken ct)
+    private static byte[] BuildContent(string projectRoot, GalleryCatalog gallery, CancellationToken ct)
     {
         var files = Directory.EnumerateFiles(projectRoot, "*", SearchOption.AllDirectories)
             .Select(path => Path.GetRelativePath(projectRoot, path).Replace('\\', '/'))
-            .Where(path => path is "settings.json" or "gallery.json" || path.StartsWith("Graph/", StringComparison.OrdinalIgnoreCase) || path.StartsWith("I18n/", StringComparison.OrdinalIgnoreCase))
+            .Where(path => path is "settings.json" || path.StartsWith("Graph/", StringComparison.OrdinalIgnoreCase) || path.StartsWith("I18n/", StringComparison.OrdinalIgnoreCase))
             .Where(path => !path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase) && !path.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase))
             .OrderBy(path => path, StringComparer.Ordinal)
             .Select(path =>
             {
                 ct.ThrowIfCancellationRequested();
-                return (IGameFile)new GameFile(DeterministicId(path), path, ResourceType.Unknown, File.ReadAllBytes(Path.Combine(projectRoot, path.Replace('/', Path.DirectorySeparatorChar))));
-            }).ToArray();
+                var id = DeterministicId(path);
+                return (IGameFile)new GameFile(id, path, "data", new BinaryAssetMeta { Id = id, Path = path, TypeId = "data" }, File.ReadAllBytes(Path.Combine(projectRoot, path.Replace('/', Path.DirectorySeparatorChar))));
+            }).Append((IGameFile)new GameFile("generated-gallery", "gallery.json", "data", new BinaryAssetMeta { Id = "generated-gallery", Path = "gallery.json", TypeId = "data" }, JsonSerializer.SerializeToUtf8Bytes(new GalleryConfiguration { Types = gallery.Types.ToList(), Items = gallery.Items.ToList() }, JsonOptions))).ToArray();
         return PakBuilder.Build("content", files, GalNet.Core.Assets.CompressionMode.Brotli);
     }
 

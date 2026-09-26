@@ -432,7 +432,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         {
             var document = _graphDocumentMapper.CreateDocument(project.Name, _documentService.CurrentDocument.Version, Nodes, Edges,
                 _documentService.CurrentDocument.PlayerVariables, _documentService.CurrentDocument.SaveVariables);
-            document.Gallery = CloneGallery(_documentService.CurrentDocument.Gallery);
             _saveCoordinator.SaveProjectDocument(project.RootPath, document, _graphDocumentMapper.CreateGroupEntriesSnapshot(Nodes));
             await _projectService.SaveAsync();
             _documentService.MarkSaved();

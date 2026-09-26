@@ -25,7 +25,7 @@
                     Command="{Binding #TypeList.DataContext.OpenTypeCommand}" CommandParameter="{Binding}">
               <StackPanel Spacing="6">
                 <TextBlock Text="{Binding Type.TypeId}" FontSize="22" FontWeight="SemiBold" />
-                <TextBlock Text="{Binding Type.ResourceTypeName}" Opacity="0.6" />
+                <TextBlock Text="{Binding Type.ResourceTypeId}" Opacity="0.6" />
               </StackPanel>
             </Button>
           </DataTemplate>

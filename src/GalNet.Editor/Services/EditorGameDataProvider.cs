@@ -8,6 +8,9 @@ using GalNet.Runtime.Loader;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.ViewModels;
 using GalNet.Storage.FileSystem;
+using GalNet.Assets.Provider;
+using GalNet.Core.Assets;
+using GalNet.Core.Gallery;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Editor.Services;
@@ -35,7 +38,11 @@ public sealed class EditorGameDataProvider : IGameContentProvider
             var file = Path.Combine(directory, $"{group.Id}.galgroup");
             if (File.Exists(file)) GalgroupLoader.LoadIntoGroup(group, file);
         }
-        var gallery = GalleryFileLoader.LoadOptional(Path.Combine(directory, "gallery.json"));
+        var resourceTypes = BuiltinResourceTypes.CreateCatalog();
+        var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
+        using var assets = new LocalFileProvider(project.AssetsPath, resourceTypes, optional: true);
+        using var archive = assets.OpenArchive("assets");
+        var gallery = new GalleryCatalogCompiler(resourceTypes, galleryTypes).Compile(archive.AssetIds.Select(id => archive.GetAsset(id)!.Metadata));
         return Task.FromResult(new GameContent { Graph = graph, AssetRoot = project.AssetsPath, Gallery = gallery });
     }
 }

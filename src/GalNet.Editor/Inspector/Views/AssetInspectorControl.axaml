@@ -42,21 +42,6 @@
     <ComboBox ItemsSource="{Binding CompressionOptions}" SelectedItem="{Binding AssetCompression}" />
    </StackPanel>
 
-   <StackPanel IsVisible="{Binding CanEditGallery}" Spacing="8" Margin="0,8,0,0">
-    <TextBlock Text="{loc:Localize Inspector.Asset.Gallery}" FontWeight="SemiBold" Foreground="{DynamicResource SemiColorText2}" />
-    <ItemsControl ItemsSource="{Binding GalleryAnnotations}">
-     <ItemsControl.ItemTemplate>
-      <DataTemplate DataType="vm:GalleryTypeAnnotationViewModel">
-       <StackPanel Spacing="5" Margin="0,0,0,8">
-        <CheckBox Content="{Binding TypeId}" IsChecked="{Binding IsIncluded}" />
-        <TextBox Text="{Binding Title}" IsEnabled="{Binding IsIncluded}" PlaceholderText="{loc:Localize Inspector.Asset.GalleryTitle}" />
-        <NumericUpDown Value="{Binding SortOrder}" IsEnabled="{Binding IsIncluded}" PlaceholderText="{loc:Localize Inspector.Asset.GallerySortOrder}" />
-       </StackPanel>
-      </DataTemplate>
-     </ItemsControl.ItemTemplate>
-    </ItemsControl>
-   </StackPanel>
-   
   </StackPanel>
  </StackPanel>
  </ScrollViewer>

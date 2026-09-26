@@ -1,4 +1,3 @@
-using System.Text.Json;
 using GalNet.Core.Assets;
 
 namespace GalNet.Assets.Provider;
@@ -17,6 +16,7 @@ public sealed class LocalFileProvider : IAssetProvider, IDisposable
 {
     private readonly string _assetsRoot;
     private readonly bool _optional;
+    private readonly AssetMetaCodec _metaCodec;
     private List<IGameFile>? _cachedFiles;
     private Dictionary<string, string>? _cachedPathToId;
     private Task<ScanResult>? _scanTask;
@@ -31,10 +31,11 @@ public sealed class LocalFileProvider : IAssetProvider, IDisposable
     /// </summary>
     /// <param name="assetsRoot">Assets 目录的绝对路径</param>
     /// <param name="optional">若目录不存在是否静默返回空归档</param>
-    public LocalFileProvider(string assetsRoot, bool optional = false)
+    public LocalFileProvider(string assetsRoot, IResourceTypeCatalog? resourceTypes = null, bool optional = false)
     {
         _assetsRoot = assetsRoot.Replace('\\', '/').TrimEnd('/');
         _optional = optional;
+        _metaCodec = new AssetMetaCodec(resourceTypes ?? BuiltinResourceTypes.CreateCatalog());
     }
 
     public string Name => $"LocalFile({_assetsRoot})";
@@ -123,18 +124,15 @@ public sealed class LocalFileProvider : IAssetProvider, IDisposable
         foreach (var metaPath in metaFiles)
         {
             var json = await File.ReadAllTextAsync(metaPath, CancellationToken.None);
-            AssetMeta? meta;
+            AssetMeta meta;
             try
             {
-                meta = JsonSerializer.Deserialize<AssetMeta>(json);
+                meta = _metaCodec.Deserialize(json);
             }
             catch
             {
                 continue;
             }
-
-            if (meta is null || string.IsNullOrEmpty(meta.Id) || string.IsNullOrEmpty(meta.Path))
-                continue;
 
             // The resource file path is relative to the meta file
             var resourcePath = metaPath[..^5]; // remove ".meta"
@@ -143,7 +141,7 @@ public sealed class LocalFileProvider : IAssetProvider, IDisposable
 
             var data = await File.ReadAllBytesAsync(resourcePath, CancellationToken.None);
             var hash = CryptoHelper.HashSHA256(data);
-            var gameFile = new GameFile(meta.Id, meta.Path, meta.ParseResourceType(), data, hash);
+            var gameFile = new GameFile(meta.Id, meta.Path, meta.TypeId, meta, data, hash);
             files.Add(gameFile);
             pathToId[AssetPathHelper.Normalize(meta.Path)] = meta.Id;
         }

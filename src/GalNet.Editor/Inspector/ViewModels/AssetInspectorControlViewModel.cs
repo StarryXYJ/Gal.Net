@@ -38,9 +38,6 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
     public bool IsSelectedAssetImage => InspectedAsset?.IsImage == true;
     public bool IsSelectedAssetAudio => InspectedAsset?.IsAudio == true;
     public bool IsSelectedAssetVideo => InspectedAsset?.IsVideo == true;
-    public bool CanEditGallery => InspectedAsset is { IsDirectory: false, Id: not null }
-        && GalleryAnnotations.Count > 0;
-    public ObservableCollection<GalleryTypeAnnotationViewModel> GalleryAnnotations { get; } = [];
     public IReadOnlyList<string> FilterOptions { get; } = ["point", "bilinear"];
     public IReadOnlyList<string> CompressionOptions { get; } = ["none", "deflate", "gzip", "brotli"];
     public string AudioPreviewActionText => _localization[IsAudioPreviewPlaying ? "Inspector.Asset.Pause" : "Inspector.Asset.Play"];
@@ -64,7 +61,6 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
         _localization = localization;
         SyncAsset();
         Workspace.PropertyChanged += OnWorkspacePropertyChanged;
-        Workspace.GalleryChanged += OnGalleryChanged;
         _localization.PropertyChanged += OnLocalizationPropertyChanged;
     }
 
@@ -86,7 +82,6 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
         OnPropertyChanged(nameof(IsSelectedAssetImage));
         OnPropertyChanged(nameof(IsSelectedAssetAudio));
         OnPropertyChanged(nameof(IsSelectedAssetVideo));
-        SyncGalleryAnnotations();
     }
 
     private void Load()
@@ -169,36 +164,6 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
         if (!_isLocked && e.PropertyName == nameof(EditorWorkspaceViewModel.SelectedAsset)) SyncAsset();
     }
 
-    private void OnGalleryChanged() => SyncGalleryAnnotations();
-
-    private void SyncGalleryAnnotations()
-    {
-        GalleryAnnotations.Clear();
-        if (InspectedAsset is not { IsDirectory: false, Id: { Length: > 0 } resourceId } asset)
-        {
-            OnPropertyChanged(nameof(CanEditGallery));
-            return;
-        }
-
-        foreach (var type in Workspace.GetGalleryTypesForResource(asset.Type))
-        {
-            var item = Workspace.GetGalleryItem(resourceId, type.TypeId);
-            GalleryAnnotations.Add(new GalleryTypeAnnotationViewModel(
-                type.TypeId,
-                item is not null,
-                item?.Title ?? Path.GetFileNameWithoutExtension(asset.Name),
-                item?.SortOrder,
-                annotation => Workspace.SetGalleryAnnotation(
-                    resourceId,
-                    annotation.TypeId,
-                    annotation.IsIncluded,
-                    annotation.Title,
-                    annotation.SortOrder)));
-        }
-
-        OnPropertyChanged(nameof(CanEditGallery));
-    }
-
     private void OnLocalizationPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(IEditorLocalizationService.CurrentCulture) or "Item[]") OnPropertyChanged(nameof(AudioPreviewActionText));
@@ -226,7 +191,6 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
     public void Dispose()
     {
         Workspace.PropertyChanged -= OnWorkspacePropertyChanged;
-        Workspace.GalleryChanged -= OnGalleryChanged;
         _localization.PropertyChanged -= OnLocalizationPropertyChanged;
         ImagePreview?.Dispose();
         _player?.Stop();

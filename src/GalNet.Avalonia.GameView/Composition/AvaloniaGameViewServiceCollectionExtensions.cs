@@ -11,7 +11,8 @@ public static class AvaloniaGameViewServiceCollectionExtensions
 {
     public static IServiceCollection AddAvaloniaGameViewPages(
         this IServiceCollection services,
-        Action<IPageViewRegistryBuilder>? configureViews = null)
+        Action<IPageViewRegistryBuilder>? configureViews = null,
+        Action<IGalleryPageRegistryBuilder>? configureGalleryPages = null)
     {
         var views = new PageViewRegistryBuilder();
         views.Register<TitlePageViewModel, TitlePage>();
@@ -19,17 +20,26 @@ public static class AvaloniaGameViewServiceCollectionExtensions
         views.Register<SaveSlotsPageViewModel, SaveSlotsPage>();
         views.Register<SettingsPageViewModel, SettingsPage>();
         views.Register<GalleryPageViewModel, GalleryPage>();
-        views.Register<GalleryContentPageViewModel, GalleryContentPage>();
-        views.Register<GalleryMediaPageViewModel, GalleryMediaPage>();
+        views.Register<CgGalleryImagePageViewModel, CgGalleryImagePage>();
+        views.Register<VideoGalleryPlayerPageViewModel, VideoGalleryPlayerPage>();
+        views.Register<MissingGalleryPageViewModel, MissingGalleryPage>();
         views.Register<AboutPageViewModel, AboutPage>();
         views.Register<LoadingPageViewModel, LoadingPage>();
         configureViews?.Invoke(views);
 
+        var galleryPages = new GalleryPageRegistryBuilder(views, services);
+        galleryPages.Add<CgGalleryPageViewModel, CgGalleryPage>("cg");
+        galleryPages.Add<VideoGalleryPageViewModel, VideoGalleryPage>("video");
+        galleryPages.Add<AudioGalleryPageViewModel, AudioGalleryPage>("audio");
+        configureGalleryPages?.Invoke(galleryPages);
+
         services.AddSingleton(views.Build());
+        services.AddSingleton(galleryPages.Build());
         services.AddScoped<GameNavigationTransitionCoordinator>();
         services.AddScoped<IGameNavigationTransitionCoordinator>(provider =>
             provider.GetRequiredService<GameNavigationTransitionCoordinator>());
         services.AddScoped<IGameNavigationService, GameNavigationService>();
+        services.AddScoped<GalleryNavigationService>();
         services.AddScoped<GameLaunchFlow>();
         services.AddScoped<IPageViewFactory, PageViewFactory>();
         services.AddScoped<IGameScreenshotService, AvaloniaGameScreenshotService>();
@@ -40,8 +50,9 @@ public static class AvaloniaGameViewServiceCollectionExtensions
         services.AddScoped<SaveSlotsPageViewModel>();
         services.AddScoped<SettingsPageViewModel>();
         services.AddScoped<GalleryPageViewModel>();
-        services.AddScoped<GalleryContentPageViewModel>();
-        services.AddScoped<GalleryMediaPageViewModel>();
+        services.AddScoped<CgGalleryImagePageViewModel>();
+        services.AddScoped<VideoGalleryPlayerPageViewModel>();
+        services.AddScoped<MissingGalleryPageViewModel>();
         services.AddScoped<AboutPageViewModel>();
         services.AddScoped<LoadingPageViewModel>();
 
@@ -51,8 +62,9 @@ public static class AvaloniaGameViewServiceCollectionExtensions
         services.AddScoped<SaveSlotsPage>();
         services.AddScoped<SettingsPage>();
         services.AddScoped<GalleryPage>();
-        services.AddScoped<GalleryContentPage>();
-        services.AddScoped<GalleryMediaPage>();
+        services.AddScoped<CgGalleryImagePage>();
+        services.AddScoped<VideoGalleryPlayerPage>();
+        services.AddScoped<MissingGalleryPage>();
         services.AddScoped<AboutPage>();
         services.AddScoped<LoadingPage>();
         return services;

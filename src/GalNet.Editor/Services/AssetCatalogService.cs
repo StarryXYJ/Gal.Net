@@ -1,4 +1,3 @@
-using System.Text.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,11 +14,9 @@ namespace GalNet.Editor.Services;
 /// <summary>Owns editor-side Assets file operations and keeps sidecar JSON metadata in lockstep.</summary>
 public sealed class AssetCatalogService : IAssetCatalogService
 {
-    private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase) { ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif" };
-    private static readonly HashSet<string> AudioExtensions = new(StringComparer.OrdinalIgnoreCase) { ".mp3", ".wav", ".ogg", ".flac", ".m4a" };
-    private static readonly HashSet<string> VideoExtensions = new(StringComparer.OrdinalIgnoreCase) { ".mp4", ".webm", ".mkv", ".avi", ".mov" };
     private readonly IProjectService _projects;
-    private readonly JsonSerializerOptions _json = new() { WriteIndented = true };
+    private readonly IResourceTypeCatalog _resourceTypes = BuiltinResourceTypes.CreateCatalog();
+    private readonly AssetMetaCodec _metaCodec;
     private readonly Action<GalNet.Editor.Abstraction.Project.GalProject?> _projectChangedHandler;
     private FileSystemWatcher? _watcher;
     private CancellationTokenSource? _watchDebounce;
@@ -29,6 +26,7 @@ public sealed class AssetCatalogService : IAssetCatalogService
     public AssetCatalogService(IProjectService projects)
     {
         _projects = projects;
+        _metaCodec = new AssetMetaCodec(_resourceTypes);
         _projectChangedHandler = _ => StartWatching();
         _projects.CurrentChanged += _projectChangedHandler;
         StartWatching();
@@ -184,7 +182,8 @@ public sealed class AssetCatalogService : IAssetCatalogService
     public async Task UpdateMetaAsync(AssetEntry entry, string? filter, string? compress, CancellationToken cancellationToken = default)
     {
         var meta = await ReadMetaAsync(entry.FullPath, cancellationToken) ?? CreateMeta(entry.FullPath);
-        meta.Filter = entry.IsImage ? filter : null; meta.Compress = entry.IsImage || entry.IsVideo ? compress : null;
+        if (meta is SpriteAssetMeta sprite) sprite.Filter = filter;
+        meta.Compress = entry.IsImage || entry.IsVideo ? compress : null;
         await WriteMetaAsync(entry.FullPath, meta, cancellationToken); Changed?.Invoke();
     }
 
@@ -202,12 +201,20 @@ public sealed class AssetCatalogService : IAssetCatalogService
     private AssetEntry CreateFile(string fullPath)
     {
         var meta = ReadMeta(fullPath);
-        return new() { FullPath = fullPath, RelativePath = Relative(fullPath), Name = Path.GetFileName(fullPath), Type = meta?.Type ?? InferType(fullPath), Id = meta?.Id, Filter = meta?.Filter, Compress = meta?.Compress, HasValidMeta = meta is not null };
+        return new() { FullPath = fullPath, RelativePath = Relative(fullPath), Name = Path.GetFileName(fullPath), Type = meta?.TypeId ?? InferType(fullPath), Id = meta?.Id, Filter = (meta as SpriteAssetMeta)?.Filter, Compress = meta?.Compress, HasValidMeta = meta is not null };
     }
     private async Task EnsureMetaAsync(string fullPath, CancellationToken ct) { if (!File.Exists(fullPath + ".meta")) await WriteMetaAsync(fullPath, CreateMeta(fullPath), ct); }
     private AssetMeta CreateMeta(string fullPath)
     {
-        var type = InferType(fullPath); return new AssetMeta { Id = Guid.NewGuid().ToString("N"), Type = type, Path = Relative(fullPath), Filter = type == "sprite" ? "bilinear" : null, Compress = type is "sprite" or "video" ? "none" : null };
+        var type = InferType(fullPath);
+        var registration = _resourceTypes.Get(type);
+        var meta = (AssetMeta)Activator.CreateInstance(registration.MetaDtoType)!;
+        meta.Id = Guid.NewGuid().ToString("N");
+        meta.TypeId = type;
+        meta.Path = Relative(fullPath);
+        meta.Compress = type is "sprite" or "video" ? "none" : null;
+        if (meta is SpriteAssetMeta sprite) sprite.Filter = "bilinear";
+        return meta;
     }
     private async Task RewriteMetaPathAsync(string path, CancellationToken ct) { var meta = await ReadMetaAsync(path, ct) ?? CreateMeta(path); meta.Path = Relative(path); await WriteMetaAsync(path, meta, ct); }
     private async Task RewriteMetaPathsTreeAsync(string directory, CancellationToken ct)
@@ -215,17 +222,17 @@ public sealed class AssetCatalogService : IAssetCatalogService
         foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories).Where(p => !p.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)))
             await RewriteMetaPathAsync(file, ct);
     }
-    private async Task<AssetMeta?> ReadMetaAsync(string file, CancellationToken ct) { try { return File.Exists(file + ".meta") ? JsonSerializer.Deserialize<AssetMeta>(await File.ReadAllTextAsync(file + ".meta", ct)) : null; } catch { return null; } }
+    private async Task<AssetMeta?> ReadMetaAsync(string file, CancellationToken ct) { try { return File.Exists(file + ".meta") ? _metaCodec.Deserialize(await File.ReadAllTextAsync(file + ".meta", ct)) : null; } catch { return null; } }
     private AssetMeta? ReadMeta(string file)
     {
         try
         {
             var metaPath = file + ".meta";
-            return File.Exists(metaPath) ? JsonSerializer.Deserialize<AssetMeta>(File.ReadAllText(metaPath)) : null;
+            return File.Exists(metaPath) ? _metaCodec.Deserialize(File.ReadAllText(metaPath)) : null;
         }
         catch { return null; }
     }
-    private Task WriteMetaAsync(string file, AssetMeta meta, CancellationToken ct) => File.WriteAllTextAsync(file + ".meta", JsonSerializer.Serialize(meta, _json), ct);
+    private Task WriteMetaAsync(string file, AssetMeta meta, CancellationToken ct) => File.WriteAllTextAsync(file + ".meta", _metaCodec.Serialize(meta), ct);
     private string? RootOrNull() => _projects.Current?.AssetsPath;
     private string Resolve(string relative)
     {
@@ -233,7 +240,7 @@ public sealed class AssetCatalogService : IAssetCatalogService
         if (!full.StartsWith(Path.GetFullPath(root) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) && !string.Equals(full, Path.GetFullPath(root), StringComparison.OrdinalIgnoreCase)) throw new UnauthorizedAccessException("Asset path escapes Assets."); return full;
     }
     private string Relative(string full) => Path.GetRelativePath(RootOrNull()!, full).Replace('\\', '/');
-    private static string InferType(string path) { var ext = Path.GetExtension(path); return ImageExtensions.Contains(ext) ? "sprite" : AudioExtensions.Contains(ext) ? "audio" : VideoExtensions.Contains(ext) ? "video" : string.Equals(ext, ".sksl", StringComparison.OrdinalIgnoreCase) ? "effectProgram" : "unknown"; }
+    private string InferType(string path) => _resourceTypes.TryGetByExtension(Path.GetExtension(path), out var registration) ? registration.TypeId : "data";
     private static string UniquePath(string path) { var dir = Path.GetDirectoryName(path)!; var stem = Path.GetFileNameWithoutExtension(path); var ext = Path.GetExtension(path); var candidate = path; var index = 1; while (File.Exists(candidate) || Directory.Exists(candidate)) candidate = Path.Combine(dir, $"{stem} {index++}{ext}"); return candidate; }
     public void Dispose()
     {

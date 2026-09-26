@@ -10,18 +10,20 @@ public sealed class GameFile : IGameFile
 {
     private readonly byte[] _data;
 
-    public GameFile(string id, string path, ResourceType type, byte[] data, string? hash = null)
+    public GameFile(string id, string path, string typeId, AssetMeta metadata, byte[] data, string? hash = null)
     {
         Id = id;
         Path = path;
-        Type = type;
+        TypeId = typeId.Trim().ToLowerInvariant();
+        Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
         _data = data;
         Hash = hash;
     }
 
     public string Id { get; }
     public string Path { get; }
-    public ResourceType Type { get; }
+    public string TypeId { get; }
+    public AssetMeta Metadata { get; }
     public long Length => _data.Length;
     public string? Hash { get; }
 
@@ -31,4 +33,5 @@ public sealed class GameFile : IGameFile
 
     public Task<byte[]> ReadAllBytesAsync(CancellationToken ct = default) =>
         Task.FromResult(_data);
+
 }

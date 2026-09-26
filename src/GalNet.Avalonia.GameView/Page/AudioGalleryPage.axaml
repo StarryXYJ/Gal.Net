@@ -1,0 +1,10 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
+             x:Class="GalNet.Avalonia.GameView.Page.AudioGalleryPage"
+             x:DataType="vm:AudioGalleryPageViewModel">
+  <Grid Background="#0B0C15" Margin="44" RowDefinitions="Auto,*">
+    <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{Binding Title}" FontSize="32" FontWeight="SemiBold" /><Button Grid.Column="1" Classes="player-link" Content="Back" Command="{Binding BackCommand}" /></Grid>
+    <ScrollViewer Grid.Row="1" Margin="0,24,0,0"><ItemsControl x:Name="Items" ItemsSource="{Binding Items}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:GalleryEntryViewModel"><Border Margin="0,0,0,8" Padding="14" Background="#48181A2A" CornerRadius="8" BorderBrush="#4D5F6075" BorderThickness="1"><Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto"><TextBlock Text="{Binding Title}" FontSize="17"/><TextBlock Grid.Column="1" Text="Locked" IsVisible="{Binding IsLocked}" Opacity="0.7"/><ProgressBar Grid.Row="1" Margin="0,10,12,0" Minimum="0" Maximum="100" Value="{Binding Progress}" Height="5" IsVisible="{Binding IsUnlocked}"/><StackPanel Grid.Row="1" Grid.Column="1" Margin="0,6,0,0" Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsUnlocked}"><TextBlock Text="{Binding TimeText}" Opacity="0.65"/><Button Content="Play / Pause" Command="{Binding #Items.DataContext.ToggleAudioCommand}" CommandParameter="{Binding}"/></StackPanel></Grid></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></ScrollViewer>
+  </Grid>
+</UserControl>

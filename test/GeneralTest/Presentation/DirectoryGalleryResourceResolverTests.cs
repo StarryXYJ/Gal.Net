@@ -26,10 +26,10 @@ public sealed class DirectoryGalleryResourceResolverTests
     {
         var assetPath = Path.Combine(_directory, "nested", "opening.png");
         File.WriteAllBytes(assetPath, [1, 2, 3]);
-        File.WriteAllText(assetPath + ".meta", JsonSerializer.Serialize(new AssetMeta
+        File.WriteAllText(assetPath + ".meta", JsonSerializer.Serialize(new SpriteAssetMeta
         {
             Id = "asset-opening",
-            Type = "sprite"
+            TypeId = "sprite"
         }));
 
         var resolver = new DirectoryGalleryResourceResolver(_directory);

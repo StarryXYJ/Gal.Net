@@ -1,0 +1,8 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
+             xmlns:vlc="clr-namespace:LibVLCSharp.Avalonia;assembly=LibVLCSharp.Avalonia"
+             x:Class="GalNet.Avalonia.GameView.Page.VideoGalleryPlayerPage"
+             x:DataType="vm:VideoGalleryPlayerPageViewModel">
+  <Grid Background="#05060A" RowDefinitions="Auto,*"><Grid Margin="24" ColumnDefinitions="*,Auto"><TextBlock Text="{Binding Title}" FontSize="24" FontWeight="SemiBold"/><Button Grid.Column="1" Classes="player-link" Content="Back" Command="{Binding BackCommand}"/></Grid><vlc:VideoView Grid.Row="1" Margin="24" MediaPlayer="{Binding VideoPlayer}"/><TextBlock Grid.Row="1" Margin="40" Text="{Binding ErrorMessage}" TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FFE0A0"/></Grid>
+</UserControl>

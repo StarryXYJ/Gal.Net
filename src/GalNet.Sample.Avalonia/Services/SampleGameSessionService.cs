@@ -86,13 +86,13 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _content = await _contentProvider.LoadAsync(cancellationToken);
             _assets = new AssetManager([new LocalFileProvider(_gameDirectory)]);
             _assets.RegisterDecoder(new SceneTextureAssetDecoder());
-            var spriteFiles = await _assets.GetFilesAsync(ResourceType.Sprite, cancellationToken);
+            var spriteFiles = await _assets.GetFilesAsync("sprite", cancellationToken);
             var preloadResults = await Task.WhenAll(
                 spriteFiles.Select(file => _assets.LoadAsync<SceneTexture>(file, cancellationToken)));
             var preloadFailures = preloadResults.Count(texture => texture is null);
             GameLog.Logger.Information("Preloaded {SpriteCount} sprite assets ({FailureCount} deferred to fallback)",
                 spriteFiles.Count, preloadFailures);
-            var effectProgramFiles = await _assets.GetFilesAsync(ResourceType.EffectProgram, cancellationToken);
+            var effectProgramFiles = await _assets.GetFilesAsync("effect-program", cancellationToken);
             _effectPrograms = effectProgramFiles.Select(file => new EffectProgramResource(file.Id)).ToArray();
             GameLog.Logger.Information("Discovered {EffectProgramCount} effect program assets for session prewarming",
                 _effectPrograms.Length);

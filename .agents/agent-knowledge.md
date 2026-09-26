@@ -45,3 +45,4 @@
 - [受限环境中的 .NET/Avalonia 构建](lessons/L-20260922-01-dotnet-build-sandbox.md)：禁用 Roslyn shared compilation，并关闭 Avalonia build telemetry。
 - [平台无关的进度契约归属](lessons/L-20260922-02-core-progress-contract.md)：被 Core、Runtime 或 Builtins 消费的玩家进度接口必须由 Core 提供，不能仅因某个实现位于存储层就放进 Storage.Abstractions 程序集。
 - [受限环境中的平台 SDK 枚举](lessons/L-20260925-01-platform-sdk-sandbox.md)：全解决方案构建可能只因 Android/Browser/iOS 的 SDK 探测读取用户目录失败；应区分平台环境限制和业务项目编译结果。
+- [受限环境中的 Avalonia licensing 枚举](lessons/L-20260926-01-avalonia-license-sandbox.md)：Avalonia BuildServices 即使关闭 telemetry 仍可能读取用户级 licensing tickets；应与业务编译失败区分。

@@ -3,7 +3,7 @@ using GalNet.Core.Gallery;
 
 namespace GalNet.Storage.FileSystem;
 
-/// <summary>Loads and validates an optional <c>gallery.json</c> file.</summary>
+/// <summary>Loads generated Gallery content and verifies its type snapshot against the composed registry.</summary>
 public static class GalleryFileLoader
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
@@ -11,17 +11,22 @@ public static class GalleryFileLoader
         PropertyNameCaseInsensitive = true
     };
 
-    public static GalleryCatalog LoadOptional(string path)
+    public static GalleryCatalog LoadGenerated(string path, IGalleryTypeCatalog expectedTypes)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        if (!File.Exists(path))
-            return GalleryCatalog.Empty;
+        ArgumentNullException.ThrowIfNull(expectedTypes);
+        if (!File.Exists(path)) throw new FileNotFoundException("Generated Gallery content was not found.", path);
 
         try
         {
             var configuration = JsonSerializer.Deserialize<GalleryConfiguration>(File.ReadAllText(path), JsonOptions)
                 ?? throw new InvalidDataException($"The Gallery file '{path}' is empty.");
-            return GalleryCatalog.Create(configuration);
+            var catalog = GalleryCatalog.Create(configuration);
+            if (catalog.Types.Count != expectedTypes.Types.Count || catalog.Types.Any(type =>
+                    !expectedTypes.TryGet(type.TypeId, out var expected) ||
+                    !string.Equals(expected.ResourceTypeId, type.ResourceTypeId, StringComparison.Ordinal)))
+                throw new InvalidDataException("Generated Gallery type snapshot does not match the composed Gallery registry.");
+            return catalog;
         }
         catch (JsonException exception)
         {

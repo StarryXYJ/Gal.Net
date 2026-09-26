@@ -7,8 +7,8 @@ namespace GalNet.Avalonia.GameView.ViewModels;
 public sealed partial class GalleryEntryViewModel(GalleryItemData data) : ObservableObject, IDisposable
 {
     public GalleryItemData Data { get; } = data;
-    public string Id => Data.Item.Id;
-    public string Title => string.IsNullOrWhiteSpace(Data.Item.Title) ? Data.Item.Id : Data.Item.Title;
+    public int Id => Data.Item.Id;
+    public string Title => string.IsNullOrWhiteSpace(Data.Item.Title) ? Data.Item.Id.ToString() : Data.Item.Title;
     public bool IsUnlocked => Data.IsUnlocked;
     public bool IsLocked => !IsUnlocked;
 

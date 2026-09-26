@@ -85,9 +85,9 @@ public partial class AssetPicker : UserControl
     {
         var assetManager = AssetManager;
         if (assetManager is null) { _allItems = []; ApplyFilter(null); return; }
-        var type = Filter switch { AssetPickerFilter.Image => ResourceType.Sprite, AssetPickerFilter.Audio => ResourceType.Audio, AssetPickerFilter.Video => ResourceType.Video, AssetPickerFilter.EffectProgram => ResourceType.EffectProgram, _ => (ResourceType?)null };
+        var type = Filter switch { AssetPickerFilter.Image => "sprite", AssetPickerFilter.Audio => "audio", AssetPickerFilter.Video => "video", AssetPickerFilter.EffectProgram => "effect-program", _ => null };
         var files = await assetManager.GetFilesAsync(type);
-        if (Filter == AssetPickerFilter.All) files = files.Where(x => x.Type is ResourceType.Sprite or ResourceType.Audio or ResourceType.Video or ResourceType.EffectProgram).ToArray();
+        if (Filter == AssetPickerFilter.All) files = files.Where(x => x.TypeId is "sprite" or "audio" or "video" or "effect-program").ToArray();
         else if (Filter == AssetPickerFilter.Text) files = files.Where(x => IsTextPath(x.Path)).ToArray();
         _allItems = await Task.WhenAll(files.Select(AssetPickerItem.CreateAsync));
         ApplyFilter(SearchBox?.Text);
@@ -123,10 +123,10 @@ public sealed class AssetPickerItem
     public static async Task<AssetPickerItem> CreateAsync(IGameFile file)
     {
         Bitmap? bitmap = null;
-        if (file.Type == ResourceType.Sprite)
+        if (file.TypeId == "sprite")
         {
             try { var bytes = await file.ReadAllBytesAsync(); using var stream = new MemoryStream(bytes); bitmap = new Bitmap(stream); } catch { }
         }
-        return new(file, System.IO.Path.GetFileName(file.Path), file.Path, file.Type switch { ResourceType.Audio => "♪", ResourceType.Video => "▶", _ => "▣" }, bitmap);
+        return new(file, System.IO.Path.GetFileName(file.Path), file.Path, file.TypeId switch { "audio" => "♪", "video" => "▶", _ => "▣" }, bitmap);
     }
 }

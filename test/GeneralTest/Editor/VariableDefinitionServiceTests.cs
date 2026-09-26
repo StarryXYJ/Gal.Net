@@ -48,9 +48,9 @@ public class VariableDefinitionServiceTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(service.IsNameAvailable("gallery_opening_unlocked", VariableScope.Player), Is.False);
+            Assert.That(service.IsNameAvailable("gallery_100_unlocked", VariableScope.Player), Is.False);
             Assert.That(
-                service.RenameDefinition(VariableScope.Player, definition, "gallery_opening_unlocked"),
+                service.RenameDefinition(VariableScope.Player, definition, "gallery_100_unlocked"),
                 Is.False);
         });
     }

@@ -61,7 +61,6 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
     public int DesignHeight => _projectService.Current?.Settings.DefaultHeight ?? 1080;
 
     public ObservableCollection<string> OutputLines { get; } = [];
-    public IReadOnlyList<string> GallerySystemVariableNames => _workspace.GallerySystemVariableNames;
 
     public GamePreviewPanelViewModel(
         EditorWorkspaceViewModel workspace,
@@ -78,7 +77,6 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
         _documentService = documentService;
         _contentProvider = contentProvider;
         _workspace.ActivePreview = this;
-        _workspace.GalleryChanged += OnGalleryChanged;
         _projectClosingRegistration = _projectService.Current?.RegisterClosingCallback(DisposePreviewForProjectCloseAsync);
 
         _projectService.CurrentChanged += OnProjectChanged;
@@ -87,8 +85,6 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
         ReloadEditors();
         _ = RestartPreviewAsync();
     }
-
-    private void OnGalleryChanged() => OnPropertyChanged(nameof(GallerySystemVariableNames));
 
     [RelayCommand]
     private async Task RestartPreviewAsync()
@@ -344,7 +340,6 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
             _projectClosingRegistration = null;
             _projectService.CurrentChanged -= OnProjectChanged;
             _variableService.VariableChanged -= OnVariableServiceChanged;
-            _workspace.GalleryChanged -= OnGalleryChanged;
             if (ReferenceEquals(_workspace.ActivePreview, this)) _workspace.ActivePreview = null;
             await StopPreviewAsync();
         }

@@ -181,13 +181,13 @@ public class BuiltinPrimitiveInstanceTests
     {
         var gallery = GalleryCatalog.Create(new GalleryConfiguration
         {
-            Types = [new GalleryTypeRegistration { TypeId = "cg", ResourceTypeName = "sprite" }],
-            Items = [new GalleryItem { Id = "cg_3", TypeId = "cg", ResourceId = "asset-cg-3" }]
+            Types = [new GalleryTypeRegistration { TypeId = "cg", ResourceTypeId = "sprite" }],
+            Items = [new GalleryItem { Id = 3, TypeId = "cg", ResourceId = "asset-cg-3" }]
         });
         using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(gallery: gallery));
         var runtime = new GameRuntime(null);
         var instance = view.Dispatch(
-            Primitive(UnlockGalleryEntry.TypeId, new { id = "cg_3" }),
+            Primitive(UnlockGalleryEntry.TypeId, new { id = 3 }),
             runtime,
             CancellationToken.None);
 
@@ -196,7 +196,7 @@ public class BuiltinPrimitiveInstanceTests
             Assert.That(instance, Is.TypeOf<ImmediatePrimitiveInstance>());
             Assert.That(instance!.IsBlocking, Is.False);
             Assert.That(instance.IsCompleted, Is.True);
-            Assert.That(runtime.GetVariables(VariableScope.Player)["gallery_cg_3_unlocked"].AsBool(), Is.True);
+            Assert.That(runtime.GetVariables(VariableScope.Player)["gallery_3_unlocked"].AsBool(), Is.True);
         });
     }
 
@@ -207,7 +207,7 @@ public class BuiltinPrimitiveInstanceTests
 
         Assert.That(
             () => view.Dispatch(
-                Primitive(UnlockGalleryEntry.TypeId, new { id = "portrait_0" }),
+                Primitive(UnlockGalleryEntry.TypeId, new { id = 100 }),
                 new GameRuntime(null),
                 CancellationToken.None),
             Throws.InvalidOperationException.With.Message.Contains("GalleryCatalog"));
@@ -220,10 +220,10 @@ public class BuiltinPrimitiveInstanceTests
 
         Assert.That(
             () => view.Dispatch(
-                Primitive(UnlockGalleryEntry.TypeId, new { id = "missing" }),
+                Primitive(UnlockGalleryEntry.TypeId, new { id = 100 }),
                 new GameRuntime(null),
                 CancellationToken.None),
-            Throws.TypeOf<InvalidDataException>().With.Message.Contains("missing"));
+            Throws.TypeOf<InvalidDataException>().With.Message.Contains("100"));
     }
 
     private static PrimitiveEntry Primitive(string type, object arguments, string? batchId = null) =>

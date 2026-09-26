@@ -7,6 +7,13 @@
         "resolved": "4.13.1",
         "contentHash": "Da5+i4kFHUseJRZGcBG5fmZGpA/Ns180ibrQMxgZzjpQOnENVvSL5gi5HZ8Ncz8/AR2WsKbOg2lMBzjz0HUQcA=="
       },
+      "galnet.assets": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Storage.Abstractions": "[1.0.0, )"
+        }
+      },
       "galnet.core": {
         "type": "Project"
       },
@@ -42,6 +49,7 @@
       "galnet.storage.filesystem": {
         "type": "Project",
         "dependencies": {
+          "GalNet.Assets": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )",
           "GalNet.Storage.Abstractions": "[1.0.0, )"

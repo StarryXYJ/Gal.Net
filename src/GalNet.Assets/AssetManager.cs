@@ -16,7 +16,7 @@ public sealed class AssetManager : IAssetManager
 {
     private readonly List<IAssetProvider> _providers = [];
     private readonly Dictionary<CacheKey, CacheEntry> _cache = new(CacheKeyComparer.Instance);
-    private readonly Dictionary<Type, object> _decoders = new();
+    private readonly Dictionary<(string TypeId, Type TargetType), object> _decoders = new();
     private readonly Dictionary<string, string> _pathToId = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
     private readonly Dictionary<CacheKey, InFlightLoad> _inFlight = new(CacheKeyComparer.Instance);
@@ -51,13 +51,14 @@ public sealed class AssetManager : IAssetManager
         }
     }
 
-    public void RegisterDecoder<T>(IAssetDecoder<T> decoder) where T : class
+    public void RegisterDecoder<T>(string resourceTypeId, IAssetDecoder<T> decoder) where T : class
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(resourceTypeId);
         ArgumentNullException.ThrowIfNull(decoder);
         lock (_lock)
         {
             ThrowIfDisposedLocked();
-            _decoders[typeof(T)] = decoder;
+            _decoders[(resourceTypeId.Trim().ToLowerInvariant(), typeof(T))] = decoder;
         }
     }
 
@@ -104,7 +105,7 @@ public sealed class AssetManager : IAssetManager
             : FindInProvidersAsync(NormalizeAssetId(assetId), findById: true, ct);
     }
 
-    public async Task<IReadOnlyList<IGameFile>> GetFilesAsync(ResourceType? type = null, CancellationToken ct = default)
+    public async Task<IReadOnlyList<IGameFile>> GetFilesAsync(string? typeId = null, CancellationToken ct = default)
     {
         List<IAssetProvider> providers;
         lock (_lock)
@@ -127,7 +128,7 @@ public sealed class AssetManager : IAssetManager
                     ct.ThrowIfCancellationRequested();
                     if (files.ContainsKey(id)) continue;
                     var file = archive.GetAsset(id);
-                    if (file is not null && (type is null || file.Type == type))
+                    if (file is not null && (typeId is null || string.Equals(file.TypeId, typeId.Trim(), StringComparison.OrdinalIgnoreCase)))
                         files[id] = file;
                 }
             }
@@ -356,7 +357,7 @@ public sealed class AssetManager : IAssetManager
         IAssetDecoder<T>? decoder;
         lock (_lock)
         {
-            decoder = _decoders.TryGetValue(typeof(T), out var registered)
+            decoder = _decoders.TryGetValue((file.TypeId, typeof(T)), out var registered)
                 ? registered as IAssetDecoder<T>
                 : null;
         }

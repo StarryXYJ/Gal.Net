@@ -6,7 +6,7 @@ namespace GalNet.Core.Gallery;
 public sealed record GalleryItem
 {
     [JsonPropertyName("id")]
-    public string Id { get; init; } = "";
+    public int Id { get; init; }
 
     [JsonPropertyName("typeId")]
     public string TypeId { get; init; } = "";
@@ -18,7 +18,4 @@ public sealed record GalleryItem
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Title { get; init; }
 
-    [JsonPropertyName("sortOrder")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public int? SortOrder { get; init; }
 }

@@ -5,7 +5,8 @@ public interface IGameFile
 {
     string Id { get; }
     string Path { get; }
-    ResourceType Type { get; }
+    string TypeId { get; }
+    AssetMeta Metadata { get; }
     long Length { get; }
     string? Hash { get; }
     Stream OpenRead();

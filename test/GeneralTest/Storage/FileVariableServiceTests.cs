@@ -53,23 +53,23 @@ public sealed class FileVariableServiceTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(service.ResolveScope("gallery_opening_unlocked"), Is.EqualTo(VariableScope.Player));
-            Assert.That(service.GetSnapshot(VariableScope.Player)["gallery_opening_unlocked"].AsBool(), Is.False);
+            Assert.That(service.ResolveScope("gallery_100_unlocked"), Is.EqualTo(VariableScope.Player));
+            Assert.That(service.GetSnapshot(VariableScope.Player)["gallery_100_unlocked"].AsBool(), Is.False);
         });
 
         var runtime = new GameRuntime(null, variableService: service);
         var snapshotBeforeUnlock = runtime.CreateSnapshot();
-        runtime.SetVariable(GalleryUnlockVariable.GetRuntimeName("opening"), true);
+        runtime.SetVariable(GalleryUnlockVariable.GetRuntimeName(100), true);
         runtime.RestoreFrom(snapshotBeforeUnlock);
 
-        Assert.That(service.GetSnapshot(VariableScope.Player)["gallery_opening_unlocked"].AsBool(), Is.True,
+        Assert.That(service.GetSnapshot(VariableScope.Player)["gallery_100_unlocked"].AsBool(), Is.True,
             "restoring a save-slot snapshot must not roll back Player-scoped Gallery state");
 
         await service.FlushPlayerVariablesAsync();
         var reloaded = await FileVariableService.CreateAsync(new FilePlayerVariableStore(_profileDirectory));
         reloaded.ConfigureSystemVariables(definitions);
 
-        Assert.That(reloaded.GetSnapshot(VariableScope.Player)["gallery_opening_unlocked"].AsBool(), Is.True);
+        Assert.That(reloaded.GetSnapshot(VariableScope.Player)["gallery_100_unlocked"].AsBool(), Is.True);
     }
 
     [Test]
@@ -82,7 +82,7 @@ public sealed class FileVariableServiceTests
 
         Assert.That(source.GetTypes().Single().Items.Single().IsUnlocked, Is.False);
 
-        var unlocked = new GalVariable { Name = GalleryUnlockVariable.GetName("opening") };
+        var unlocked = new GalVariable { Name = GalleryUnlockVariable.GetName(100) };
         unlocked.SetValue(true);
         service.NotifyVariableChanged(VariableScope.Player, unlocked.Name, unlocked);
 
@@ -90,7 +90,7 @@ public sealed class FileVariableServiceTests
         Assert.Multiple(() =>
         {
             Assert.That(data.Type.TypeId, Is.EqualTo("cg"));
-            Assert.That(data.Type.ResourceTypeName, Is.EqualTo("sprite"));
+            Assert.That(data.Type.ResourceTypeId, Is.EqualTo("sprite"));
             Assert.That(data.Items.Single().Item.ResourceId, Is.EqualTo("asset-opening"));
             Assert.That(data.Items.Single().IsUnlocked, Is.True);
         });
@@ -103,10 +103,10 @@ public sealed class FileVariableServiceTests
         {
             Types =
             [
-                new GalleryTypeRegistration { TypeId = "cg", ResourceTypeName = "sprite" },
-                new GalleryTypeRegistration { TypeId = "audio", ResourceTypeName = "audio" }
+                new GalleryTypeRegistration { TypeId = "cg", ResourceTypeId = "sprite" },
+                new GalleryTypeRegistration { TypeId = "audio", ResourceTypeId = "audio" }
             ],
-            Items = [new GalleryItem { Id = "opening", TypeId = "cg", ResourceId = "asset-opening" }]
+            Items = [new GalleryItem { Id = 100, TypeId = "cg", ResourceId = "asset-opening" }]
         });
         var service = await FileVariableService.CreateAsync(new FilePlayerVariableStore(_profileDirectory));
         service.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(catalog));
@@ -118,7 +118,7 @@ public sealed class FileVariableServiceTests
 
     private static GalleryCatalog CreateGallery() => GalleryCatalog.Create(new GalleryConfiguration
     {
-        Types = [new GalleryTypeRegistration { TypeId = "cg", ResourceTypeName = "sprite" }],
-        Items = [new GalleryItem { Id = "opening", TypeId = "cg", ResourceId = "asset-opening" }]
+        Types = [new GalleryTypeRegistration { TypeId = "cg", ResourceTypeId = "sprite" }],
+        Items = [new GalleryItem { Id = 100, TypeId = "cg", ResourceId = "asset-opening" }]
     });
 }

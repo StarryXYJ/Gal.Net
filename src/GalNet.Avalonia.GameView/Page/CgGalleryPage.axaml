@@ -1,0 +1,10 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
+             x:Class="GalNet.Avalonia.GameView.Page.CgGalleryPage"
+             x:DataType="vm:CgGalleryPageViewModel">
+  <Grid Background="#0B0C15" Margin="44" RowDefinitions="Auto,*">
+    <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{Binding Title}" FontSize="32" FontWeight="SemiBold" /><Button Grid.Column="1" Classes="player-link" Content="Back" Command="{Binding BackCommand}" /></Grid>
+    <ScrollViewer Grid.Row="1" Margin="0,24,0,0"><ItemsControl x:Name="Items" ItemsSource="{Binding Items}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemWidth="260" ItemHeight="190" /></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:GalleryEntryViewModel"><Button Margin="6" Padding="0" IsEnabled="{Binding IsUnlocked}" Command="{Binding #Items.DataContext.OpenItemCommand}" CommandParameter="{Binding}"><Grid RowDefinitions="*,Auto" Background="#171927"><Image Source="{Binding Thumbnail}" Stretch="UniformToFill" IsVisible="{Binding IsUnlocked}"/><Border Background="#333647" IsVisible="{Binding IsLocked}"><TextBlock Text="Locked" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" Opacity="0.7" /></Border><Border Grid.Row="1" Background="#CC11131E" Padding="10,7"><TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" /></Border></Grid></Button></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></ScrollViewer>
+  </Grid>
+</UserControl>

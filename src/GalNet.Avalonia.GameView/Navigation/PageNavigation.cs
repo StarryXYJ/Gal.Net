@@ -74,6 +74,10 @@ public interface IGameNavigationService
     event EventHandler<GameNavigationChangedEventArgs>? Navigated;
 
     void Navigate<TViewModel>(NavigationTransition transition = NavigationTransition.CrossFade) where TViewModel : PageViewModelBase;
+    Task NavigateAsync(
+        PageViewModelBase viewModel,
+        NavigationTransition transition = NavigationTransition.CrossFade,
+        CancellationToken cancellationToken = default);
     Task NavigateAsync<TViewModel, TArgs>(TArgs args, CancellationToken cancellationToken)
         where TViewModel : PageViewModelBase, IActivatablePageViewModel<TArgs> =>
         NavigateAsync<TViewModel, TArgs>(args, NavigationTransition.CrossFade, cancellationToken);
@@ -98,6 +102,15 @@ public sealed class GameNavigationService(IServiceProvider services, IGameNaviga
 
     public void Navigate<TViewModel>(NavigationTransition transition = NavigationTransition.CrossFade) where TViewModel : PageViewModelBase =>
         Navigate(services.GetRequiredService<TViewModel>(), transition);
+
+    public Task NavigateAsync(
+        PageViewModelBase viewModel,
+        NavigationTransition transition = NavigationTransition.CrossFade,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(viewModel);
+        return NavigateAndPresentAsync(viewModel, transition, cancellationToken);
+    }
 
     public async Task NavigateAsync<TViewModel, TArgs>(TArgs args, NavigationTransition transition = NavigationTransition.CrossFade, CancellationToken cancellationToken = default)
         where TViewModel : PageViewModelBase, IActivatablePageViewModel<TArgs>

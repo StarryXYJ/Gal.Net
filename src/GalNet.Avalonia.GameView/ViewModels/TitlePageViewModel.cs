@@ -12,16 +12,19 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
 {
     private readonly IGameSessionService _session;
     private readonly IGameNavigationService _navigation;
+    private readonly GalleryNavigationService _galleryNavigation;
     private readonly GameLaunchFlow _launchFlow;
 
     public TitlePageViewModel(
         IGameSessionService session,
         IGameNavigationService navigation,
-        GameLaunchFlow launchFlow)
+        GameLaunchFlow launchFlow,
+        GalleryNavigationService galleryNavigation)
     {
         _session = session;
         _navigation = navigation;
         _launchFlow = launchFlow;
+        _galleryNavigation = galleryNavigation;
         session.PropertyChanged += OnSessionPropertyChanged;
     }
 
@@ -88,7 +91,7 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
         if (types.Count == 0) return;
         if (types.Count == 1)
         {
-            await _navigation.NavigateAsync<GalleryContentPageViewModel, GalleryTypeData>(types[0], cancellationToken);
+            await _galleryNavigation.OpenTypeAsync(types[0], cancellationToken);
             return;
         }
         await _navigation.NavigateAsync<GalleryPageViewModel, IReadOnlyList<GalleryTypeData>>(types, cancellationToken);

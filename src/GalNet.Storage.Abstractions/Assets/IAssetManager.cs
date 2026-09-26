@@ -4,12 +4,12 @@ namespace GalNet.Core.Assets;
 public interface IAssetManager : IDisposable
 {
     Task<IGameFile?> GetFileAsync(string assetId, CancellationToken ct = default);
-    Task<IReadOnlyList<IGameFile>> GetFilesAsync(ResourceType? type = null, CancellationToken ct = default);
+    Task<IReadOnlyList<IGameFile>> GetFilesAsync(string? typeId = null, CancellationToken ct = default);
     Task<T?> LoadAsync<T>(string assetId, CancellationToken ct = default) where T : class;
     /// <summary>Loads a file that has already been resolved from an archive, avoiding a second provider lookup.</summary>
     Task<T?> LoadAsync<T>(IGameFile file, CancellationToken ct = default) where T : class;
     Task<T?> LoadByPathAsync<T>(string path, CancellationToken ct = default) where T : class;
-    void RegisterDecoder<T>(IAssetDecoder<T> decoder) where T : class;
+    void RegisterDecoder<T>(string resourceTypeId, IAssetDecoder<T> decoder) where T : class;
     bool TryGetLoaded<T>(string assetId, out T asset) where T : class;
     void Release(string assetId);
     void Release<T>(string assetId) where T : class;

@@ -3,177 +3,48 @@ using System.Collections.ObjectModel;
 
 namespace GalNet.Core.Gallery;
 
-/// <summary>Validated, immutable Gallery type and item index.</summary>
 public sealed class GalleryCatalog
 {
     private readonly FrozenDictionary<string, GalleryTypeRegistration> _typesById;
-    private readonly FrozenDictionary<string, GalleryItem> _itemsById;
+    private readonly FrozenDictionary<int, GalleryItem> _itemsById;
     private readonly FrozenDictionary<string, IReadOnlyList<GalleryItem>> _itemsByType;
-
-    private GalleryCatalog(
-        IReadOnlyList<GalleryTypeRegistration> types,
-        IReadOnlyList<GalleryItem> items,
-        FrozenDictionary<string, GalleryTypeRegistration> typesById,
-        FrozenDictionary<string, GalleryItem> itemsById,
-        FrozenDictionary<string, IReadOnlyList<GalleryItem>> itemsByType)
+    private GalleryCatalog(IReadOnlyList<GalleryTypeRegistration> types, IReadOnlyList<GalleryItem> items)
     {
-        Types = types;
-        Items = items;
-        _typesById = typesById;
-        _itemsById = itemsById;
-        _itemsByType = itemsByType;
+        Types = types; Items = items;
+        _typesById = types.ToFrozenDictionary(type => type.TypeId, StringComparer.Ordinal);
+        _itemsById = items.ToFrozenDictionary(item => item.Id);
+        _itemsByType = types.ToFrozenDictionary(type => type.TypeId, type => (IReadOnlyList<GalleryItem>)new ReadOnlyCollection<GalleryItem>(items.Where(item => item.TypeId == type.TypeId).OrderBy(item => item.Id).ToList()), StringComparer.Ordinal);
     }
-
-    public static GalleryCatalog Empty { get; } = Create(new GalleryConfiguration());
-
+    public static GalleryCatalog Empty { get; } = new([], []);
     public IReadOnlyList<GalleryTypeRegistration> Types { get; }
-
     public IReadOnlyList<GalleryItem> Items { get; }
-
     public static GalleryCatalog Create(GalleryConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
-        if (configuration.Version != GalleryConfiguration.CurrentVersion)
-            throw new InvalidDataException($"Unsupported gallery.json version '{configuration.Version}'.");
-
-        var sourceTypes = configuration.Types
-            ?? throw new InvalidDataException("gallery.json must contain a types array.");
-        var sourceItems = configuration.Items
-            ?? throw new InvalidDataException("gallery.json must contain an items array.");
-
-        var types = new List<GalleryTypeRegistration>(sourceTypes.Count);
-        var typesById = new Dictionary<string, GalleryTypeRegistration>(StringComparer.Ordinal);
-        foreach (var source in sourceTypes)
+        if (configuration.Version != GalleryConfiguration.CurrentVersion) throw new InvalidDataException($"Unsupported generated gallery.json version '{configuration.Version}'.");
+        var types = (configuration.Types ?? throw new InvalidDataException("gallery.json must contain types.")).Select(NormalizeType).OrderBy(type => type.TypeId, StringComparer.Ordinal).ToList();
+        if (types.Select(type => type.TypeId).Distinct(StringComparer.Ordinal).Count() != types.Count) throw new InvalidDataException("Gallery types must have unique type IDs.");
+        var knownTypes = types.ToDictionary(type => type.TypeId, StringComparer.Ordinal);
+        var items = new List<GalleryItem>();
+        foreach (var item in configuration.Items ?? throw new InvalidDataException("gallery.json must contain items."))
         {
-            if (source is null)
-                throw new InvalidDataException("Gallery types cannot contain null entries.");
-
-            var typeId = NormalizeTypeId(source.TypeId);
-            var resourceTypeName = NormalizeResourceTypeName(source.ResourceTypeName);
-            var registration = source with { TypeId = typeId, ResourceTypeName = resourceTypeName };
-            if (!typesById.TryAdd(typeId, registration))
-                throw new InvalidDataException($"Gallery type '{typeId}' is registered more than once.");
-            types.Add(registration);
+            if (item.Id <= 0) throw new InvalidDataException("Gallery item IDs must be positive integers.");
+            var typeId = NormalizeTypeId(item.TypeId);
+            if (!knownTypes.ContainsKey(typeId)) throw new InvalidDataException($"Gallery item '{item.Id}' references unknown type '{typeId}'.");
+            if (string.IsNullOrWhiteSpace(item.ResourceId)) throw new InvalidDataException($"Gallery item '{item.Id}' must reference a resource.");
+            items.Add(item with { TypeId = typeId, ResourceId = item.ResourceId.Trim(), Title = string.IsNullOrWhiteSpace(item.Title) ? null : item.Title.Trim() });
         }
-
-        var items = new List<GalleryItem>(sourceItems.Count);
-        var itemsById = new Dictionary<string, GalleryItem>(StringComparer.Ordinal);
-        var itemsByType = types.ToDictionary(
-            type => type.TypeId,
-            _ => new List<GalleryItem>(),
-            StringComparer.Ordinal);
-
-        foreach (var source in sourceItems)
-        {
-            if (source is null)
-                throw new InvalidDataException("Gallery items cannot contain null entries.");
-
-            var itemId = NormalizeItemId(source.Id);
-            var typeId = NormalizeTypeId(source.TypeId);
-            if (!typesById.ContainsKey(typeId))
-                throw new InvalidDataException($"Gallery item '{itemId}' references unknown type '{typeId}'.");
-            if (string.IsNullOrWhiteSpace(source.ResourceId))
-                throw new InvalidDataException($"Gallery item '{itemId}' must reference a resource.");
-
-            var item = source with
-            {
-                Id = itemId,
-                TypeId = typeId,
-                ResourceId = source.ResourceId.Trim(),
-                Title = string.IsNullOrWhiteSpace(source.Title) ? null : source.Title.Trim()
-            };
-            if (!itemsById.TryAdd(itemId, item))
-                throw new InvalidDataException($"Gallery item '{itemId}' is declared more than once.");
-
-            items.Add(item);
-            itemsByType[typeId].Add(item);
-        }
-
-        var frozenItemsByType = itemsByType.ToFrozenDictionary(
-            pair => pair.Key,
-            pair => (IReadOnlyList<GalleryItem>)new ReadOnlyCollection<GalleryItem>(pair.Value),
-            StringComparer.Ordinal);
-
-        return new GalleryCatalog(
-            new ReadOnlyCollection<GalleryTypeRegistration>(types),
-            new ReadOnlyCollection<GalleryItem>(items),
-            typesById.ToFrozenDictionary(StringComparer.Ordinal),
-            itemsById.ToFrozenDictionary(StringComparer.Ordinal),
-            frozenItemsByType);
+        if (items.Select(item => item.Id).Distinct().Count() != items.Count) throw new InvalidDataException("Gallery item IDs must be globally unique.");
+        return new GalleryCatalog(new ReadOnlyCollection<GalleryTypeRegistration>(types), new ReadOnlyCollection<GalleryItem>(items.OrderBy(item => item.TypeId, StringComparer.Ordinal).ThenBy(item => item.Id).ToList()));
     }
-
-    public bool TryGetType(string typeId, out GalleryTypeRegistration registration)
+    public bool TryGetType(string typeId, out GalleryTypeRegistration registration) => _typesById.TryGetValue(NormalizeTypeId(typeId), out registration!);
+    public bool TryGetItem(int itemId, out GalleryItem item) => _itemsById.TryGetValue(itemId, out item!);
+    public IReadOnlyList<GalleryItem> GetItems(string typeId) => _itemsByType.TryGetValue(NormalizeTypeId(typeId), out var items) ? items : throw new KeyNotFoundException($"Gallery type '{typeId}' is not registered.");
+    internal static GalleryTypeRegistration NormalizeType(GalleryTypeRegistration source) => source with { TypeId = NormalizeTypeId(source.TypeId), ResourceTypeId = NormalizeTypeId(source.ResourceTypeId) };
+    internal static string NormalizeTypeId(string? value)
     {
-        if (!TryNormalizeTypeId(typeId, out var normalized))
-        {
-            registration = null!;
-            return false;
-        }
-
-        return _typesById.TryGetValue(normalized, out registration!);
-    }
-
-    public bool TryGetItem(string itemId, out GalleryItem item)
-    {
-        if (!TryNormalizeItemId(itemId, out var normalized))
-        {
-            item = null!;
-            return false;
-        }
-
-        return _itemsById.TryGetValue(normalized, out item!);
-    }
-
-    public IReadOnlyList<GalleryItem> GetItems(string typeId)
-    {
-        var normalized = NormalizeTypeId(typeId);
-        if (!_itemsByType.TryGetValue(normalized, out var items))
-            throw new KeyNotFoundException($"Gallery type '{normalized}' is not registered.");
-        return items;
-    }
-
-    private static string NormalizeTypeId(string? value)
-    {
-        if (!TryNormalizeTypeId(value, out var normalized))
-            throw new InvalidDataException("Gallery type IDs must contain only letters, digits, '_', '-' or '.'.");
+        var normalized = (value ?? "").Trim().ToLowerInvariant();
+        if (normalized.Length == 0 || normalized.Any(c => c is not (>= 'a' and <= 'z') and not (>= '0' and <= '9') and not '_' and not '-' and not '.')) throw new InvalidDataException("Type IDs must contain only letters, digits, '_', '-' or '.'.");
         return normalized;
-    }
-
-    private static bool TryNormalizeTypeId(string? value, out string normalized) =>
-        TryNormalize(value, allowDashAndDot: true, out normalized);
-
-    private static string NormalizeItemId(string? value)
-    {
-        if (!TryNormalizeItemId(value, out var normalized))
-            throw new InvalidDataException("Gallery item IDs must contain only letters, digits or '_'.");
-        return normalized;
-    }
-
-    private static bool TryNormalizeItemId(string? value, out string normalized) =>
-        TryNormalize(value, allowDashAndDot: false, out normalized);
-
-    private static string NormalizeResourceTypeName(string? value)
-    {
-        if (!TryNormalize(value, allowDashAndDot: true, out var normalized))
-            throw new InvalidDataException("Gallery resource type names must contain only letters, digits, '_', '-' or '.'.");
-        return normalized;
-    }
-
-    private static bool TryNormalize(string? value, bool allowDashAndDot, out string normalized)
-    {
-        normalized = (value ?? "").Trim().ToLowerInvariant();
-        if (normalized.Length == 0)
-            return false;
-
-        foreach (var character in normalized)
-        {
-            if (character is >= 'a' and <= 'z' or >= '0' and <= '9' or '_')
-                continue;
-            if (allowDashAndDot && character is '-' or '.')
-                continue;
-            return false;
-        }
-
-        return true;
     }
 }
