@@ -373,7 +373,6 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             preload.Cache.TotalLoadTime.TotalMilliseconds);
         _effects = new AvaloniaEffectRuntime(
             _gameplay,
-            _layers,
             programs: programs);
         var gameView = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
             _pageView, _pageView, _pageView, _effects, _content.Gallery));

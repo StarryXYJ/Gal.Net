@@ -261,7 +261,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
         OnPropertyChanged(nameof(GalleryResources));
         var layers = new EditorPreviewLayerFactory(_context.AssetRoot);
         _pageView = new AvaloniaGamePageView(_gameplay, _page, layers);
-        _effects = new AvaloniaEffectRuntime(_gameplay, layers);
+        _effects = new AvaloniaEffectRuntime(_gameplay);
         var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
             _pageView, _pageView, _pageView, _effects, content.Gallery));
         var runtime = new GameRuntime(null, content.Graph.RootNodeId, new SettingsContainer(), _context.Variables);

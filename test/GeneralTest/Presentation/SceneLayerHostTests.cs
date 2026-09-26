@@ -38,7 +38,7 @@ public sealed class SceneLayerHostTests
         Assert.Multiple(() =>
         {
             Assert.That(fallback.AvaloniaImage, Is.TypeOf<DrawingImage>());
-            Assert.That(host.RenderPlan.Items.Select(entry => entry.Layer.Texture), Is.EqualTo(new[] { fallback }));
+            Assert.That(host.RenderPlan.Items.Select(entry => ((SceneLayerItem)entry.Renderable).Texture), Is.EqualTo(new[] { fallback }));
         });
     }
 
@@ -49,11 +49,11 @@ public sealed class SceneLayerHostTests
         var character = new SceneLayerItem { HandleId = "character", X = 700, Y = 250, Z = 20, ScaleX = 1.2, ScaleY = 1 };
         var host = new SceneLayerHost { ItemsSource = new ObservableCollection<SceneLayerItem> { background, character } };
 
-        Assert.That(host.RenderPlan.Items.Select(entry => entry.Layer.HandleId), Is.EqualTo(["background", "character"]));
+        Assert.That(host.RenderPlan.Items.Select(entry => ((SceneLayerItem)entry.Renderable).HandleId), Is.EqualTo(["background", "character"]));
         Assert.That(host.RenderPlan.Items.Select(entry => entry.Order), Is.EqualTo([0, 20]));
 
         character.Z = -1;
-        Assert.That(host.RenderPlan.Items.Select(entry => entry.Layer.HandleId), Is.EqualTo(["character", "background"]));
+        Assert.That(host.RenderPlan.Items.Select(entry => ((SceneLayerItem)entry.Renderable).HandleId), Is.EqualTo(["character", "background"]));
         Assert.That(host.RenderPlan.Items.Select(entry => entry.Order), Is.EqualTo([-1, 0]));
     }
 

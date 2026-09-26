@@ -156,7 +156,7 @@ public sealed class ShaderProgramTextureEffect : IGpuTextureEffect
     private static bool ParseBoolean(string? value) => bool.TryParse(value, out var parsed) && parsed;
 }
 
-/// <summary>Compatibility bridge from the current factory/catalog API to a shader program resource.</summary>
+/// <summary>Builds a texture-effect factory from a validated shader program resource.</summary>
 public class ShaderProgramTextureEffectFactory : ITextureEffectFactory
 {
     private readonly SkiaShaderEffectProgramLoadResult _program;

@@ -2,8 +2,6 @@ namespace GalNet.Rendering.Scene;
 
 public sealed record SceneRenderEntry(ISceneRenderable Renderable, long InsertionOrder)
 {
-    /// <summary>Compatibility accessor for Layer-specific tests and diagnostics.</summary>
-    public SceneLayerItem? Layer => Renderable as SceneLayerItem;
     public double Order => Renderable.Z;
 }
 

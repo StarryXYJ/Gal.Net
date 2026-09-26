@@ -30,7 +30,7 @@ public sealed class TextureEffectsTests
     {
         var page = new GamePageViewModel(new NoOpGameNavigationService());
         using var resolver = new SkiaShaderEffectProgramResolver(new StaticShaderSource(ColorGradeSource));
-        using var runtime = new AvaloniaEffectRuntime(page, new NoOpLayerFactory(), programs: resolver);
+        using var runtime = new AvaloniaEffectRuntime(page, programs: resolver);
         var request = new EffectRequest(
             "",
             "grade",
@@ -58,7 +58,7 @@ public sealed class TextureEffectsTests
     {
         var page = new GamePageViewModel(new NoOpGameNavigationService());
         using var resolver = new SkiaShaderEffectProgramResolver(new StaticShaderSource(BlindsSource));
-        using var runtime = new AvaloniaEffectRuntime(page, new NoOpLayerFactory(), programs: resolver);
+        using var runtime = new AvaloniaEffectRuntime(page, programs: resolver);
         var request = new EffectRequest(
             "",
             "blinds",
@@ -244,11 +244,6 @@ public sealed class TextureEffectsTests
     private sealed class StaticShaderSource(string source) : IShaderEffectProgramSource
     {
         public Task<string?> ReadAsync(EffectProgramResource resource, CancellationToken cancellationToken = default) => Task.FromResult<string?>(source);
-    }
-
-    private sealed class NoOpLayerFactory : IGamePageLayerFactory
-    {
-        public SceneTexture ResolveTexture(string assetId) => throw new NotSupportedException();
     }
 
     private sealed class NoOpGameNavigationService : IGameNavigationService

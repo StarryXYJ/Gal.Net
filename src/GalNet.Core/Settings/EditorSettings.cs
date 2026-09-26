@@ -18,9 +18,8 @@ public sealed class EditorSettings : SettingsSection
     /// <summary>Avalonia 主题</summary>
     public string Theme { get; set; } = "Violet";
 
-    /// <summary>Dock 布局序列化数据（保存窗口面板布局）</summary>
     /// <summary>Last automatically saved editor dock view.</summary>
-    [JsonConverter(typeof(RawJsonStringConverter))]
+    [JsonConverter(typeof(EmbeddedJsonStringConverter))]
     public string? LastDockLayout { get; set; }
 
     /// <summary>User-named dock layouts. Default is code-defined and not stored here.</summary>
