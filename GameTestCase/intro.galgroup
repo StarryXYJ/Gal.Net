@@ -8,7 +8,7 @@
       "typeId": "layer.show",
       "arguments": {
         "handleId": "background",
-        "assetId": "bg classroom.jpeg",
+        "assetId": "a1000000000000000000000000000001",
         "transform": { "x": 0, "y": 0, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 },
         "z": 0,
         "opacity": 1,
@@ -20,7 +20,7 @@
       "typeId": "layer.show",
       "arguments": {
         "handleId": "teacher",
-        "assetId": "xy  (17).png",
+        "assetId": "a1000000000000000000000000000004",
         "transform": { "x": 420, "y": 80, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 },
         "z": 10,
         "opacity": 1,
@@ -28,9 +28,9 @@
       }
     },
     {
-      "id": "intro-unimplemented-audio",
+      "id": "intro-bgm",
       "typeId": "audio.play",
-      "arguments": { "channel": "bgm", "asset": "bgm.mp3", "volume": 0.5, "mode": "loop", "times": 1 }
+      "arguments": { "channel": "bgm", "asset": "a1000000000000000000000000000009", "volume": 0.5, "mode": "loop", "times": 1 }
     },
     {
       "id": "intro-line-1",

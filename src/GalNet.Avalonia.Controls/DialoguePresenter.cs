@@ -35,8 +35,17 @@ public class DialoguePresenter : TemplatedControl
         set => SetValue(CharactersPerSecondProperty, value);
     }
 
-    public Task StartAsync(CancellationToken cancellationToken = default) =>
-        _typewriter?.StartAsync(cancellationToken) ?? Task.CompletedTask;
+    public Task StartAsync(CancellationToken cancellationToken = default)
+    {
+        // The first dialogue is dispatched immediately after navigating to GamePage.
+        // Ensure the visual template has created its typewriter part before treating
+        // the line as presented; silently returning a completed task would make the
+        // blocking dialogue instance finish and let the engine run to the ending.
+        ApplyTemplate();
+        return (_typewriter ?? throw new InvalidOperationException(
+            "DialoguePresenter requires the PART_Typewriter template part."))
+            .StartAsync(cancellationToken);
+    }
 
     public void Skip() => _typewriter?.Skip();
 

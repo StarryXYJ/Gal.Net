@@ -10,9 +10,9 @@ using GalNet.Runtime.Logging;
 namespace GalNet.Sample.Avalonia.Presentation;
 
 /// <summary>Resolves sample game assets into Avalonia controls for the shared game page.</summary>
-internal sealed class SampleLayerFactory(IAssetManager assets) : IGamePageLayerFactory, IDisposable
+internal sealed class SampleLayerFactory(IReadOnlyDictionary<string, AssetHandle<SceneTexture>> textures) : IGamePageLayerFactory, IDisposable
 {
-    private readonly IAssetManager _assets = assets ?? throw new ArgumentNullException(nameof(assets));
+    private readonly IReadOnlyDictionary<string, AssetHandle<SceneTexture>> _texturesById = textures ?? throw new ArgumentNullException(nameof(textures));
     private readonly Dictionary<string, SceneTexture> _textures = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<SceneTexture> _ownedFallbacks = [];
 
@@ -28,8 +28,8 @@ internal sealed class SampleLayerFactory(IAssetManager assets) : IGamePageLayerF
     {
         try
         {
-            if (_assets.TryGetLoaded<SceneTexture>(assetId, out var texture))
-                return texture;
+            if (_texturesById.TryGetValue(assetId, out var handle) && !handle.IsReleased)
+                return handle.Value;
 
             ReportMissing(assetId, null);
         }

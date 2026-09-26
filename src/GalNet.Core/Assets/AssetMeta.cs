@@ -23,6 +23,10 @@ public class AssetMeta
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public List<GalleryAnnotation>? Gallery { get; set; }
 
+    /// <summary>Fields not understood by the current DTO are retained when metadata is rewritten.</summary>
+    [System.Text.Json.Serialization.JsonExtensionData]
+    public Dictionary<string, System.Text.Json.JsonElement>? ExtensionData { get; set; }
+
     /// <summary>从字符串解析压缩模式</summary>
     public CompressionMode ParseCompression() => (Compress ?? "none").ToLowerInvariant() switch
     {

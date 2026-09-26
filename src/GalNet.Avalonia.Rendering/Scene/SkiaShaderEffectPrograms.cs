@@ -178,9 +178,7 @@ public sealed class AssetManagerShaderEffectProgramSource(IAssetManager assets) 
 
     public async Task<string?> ReadAsync(EffectProgramResource resource, CancellationToken cancellationToken = default)
     {
-        var source = await _assets.LoadAsync<string>(resource.Value, cancellationToken);
-        if (source is null) return null;
-        try { return source; }
-        finally { _assets.Release<string>(resource.Value); }
+        using var source = await _assets.AcquireAsync<string>(resource.Value, cancellationToken);
+        return source?.Value;
     }
 }

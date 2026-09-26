@@ -46,6 +46,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private SampleMediaViews? _media;
     private AvaloniaEffectRuntime? _effects;
     private EffectProgramResource[] _effectPrograms = [];
+    private readonly Dictionary<string, AssetHandle<SceneTexture>> _preloadedTextures = new(StringComparer.OrdinalIgnoreCase);
     private string? _gameDirectory;
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private readonly GameRunCoordinator _run = new();
@@ -85,11 +86,13 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _contentProvider = new DirectoryGameContentProvider(_gameDirectory);
             _content = await _contentProvider.LoadAsync(cancellationToken);
             _assets = new AssetManager([new LocalFileProvider(_gameDirectory)]);
-            _assets.RegisterDecoder(new SceneTextureAssetDecoder());
+            _assets.RegisterDecoder<SceneTexture>("sprite", new SceneTextureAssetDecoder());
             var spriteFiles = await _assets.GetFilesAsync("sprite", cancellationToken);
             var preloadResults = await Task.WhenAll(
-                spriteFiles.Select(file => _assets.LoadAsync<SceneTexture>(file, cancellationToken)));
-            var preloadFailures = preloadResults.Count(texture => texture is null);
+                spriteFiles.Select(file => _assets.AcquireAsync<SceneTexture>(file.Id, cancellationToken)));
+            foreach (var handle in preloadResults.OfType<AssetHandle<SceneTexture>>())
+                _preloadedTextures.Add(handle.AssetId, handle);
+            var preloadFailures = preloadResults.Count(handle => handle is null);
             GameLog.Logger.Information("Preloaded {SpriteCount} sprite assets ({FailureCount} deferred to fallback)",
                 spriteFiles.Count, preloadFailures);
             var effectProgramFiles = await _assets.GetFilesAsync("effect-program", cancellationToken);
@@ -211,6 +214,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _disposed = true;
             _gameplay.InteractionObserved -= OnInteractionObserved;
             DisposeEngineAsync().GetAwaiter().GetResult();
+            foreach (var handle in _preloadedTextures.Values) handle.Dispose();
+            _preloadedTextures.Clear();
             _assets?.Dispose();
             _assets = null;
         }
@@ -277,6 +282,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
 
     private async Task RunEngineAsync(GameEngine engine, CancellationToken cancellationToken)
     {
+        var finished = false;
         try
         {
             await OnUiAsync(() =>
@@ -285,18 +291,27 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
                 _gameplay.StatusMessage = "Playing";
             });
             GameLog.Logger.Information("Game engine flow started");
-            await engine.AdvanceAsync(cancellationToken);
-            await OnUiAsync(() => _gameplay.StatusMessage = "Game flow completed.");
-            GameLog.Logger.Information("Game engine flow completed");
+            finished = !await engine.AdvanceAsync(cancellationToken);
+            if (finished)
+            {
+                await OnUiAsync(() => _gameplay.StatusMessage = "Game flow completed.");
+                GameLog.Logger.Information("Game engine flow completed");
+            }
+            else
+            {
+                GameLog.Logger.Debug("Game engine flow reached an interactive boundary");
+            }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            finished = true;
             _pageView?.CompleteInitialPresentation();
             await OnUiAsync(() => _gameplay.StatusMessage = "Game flow was cancelled.");
             GameLog.Logger.Information("Game engine flow cancelled");
         }
         catch (Exception exception)
         {
+            finished = true;
             _pageView?.FailInitialPresentation(exception);
             await OnUiAsync(() => _gameplay.StatusMessage = $"Game flow failed: {exception.Message}");
             GameLog.Logger.Error(exception, "Game engine flow failed");
@@ -304,8 +319,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         finally
         {
             _pageView?.CompleteInitialPresentation();
-            await OnUiAsync(() => IsPlaying = false);
-            await RefreshSlotsAsync(CancellationToken.None);
+            if (finished)
+                await CompleteRunAsync(engine);
         }
     }
 
@@ -361,7 +376,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         if (!IsReady || _content is null || _assets is null || _variables is null || _progress is null || _settings is null || _gameDirectory is null)
             throw new InvalidOperationException("The game session is not initialized.");
 
-        _layers = new SampleLayerFactory(_assets);
+        _layers = new SampleLayerFactory(_preloadedTextures);
         _pageView = new AvaloniaGamePageView(_gameplay, _page, _layers);
         _media = new SampleMediaViews(_gameplay);
         var programs = new SkiaShaderEffectProgramResolver(new AssetManagerShaderEffectProgramSource(_assets));
@@ -389,10 +404,32 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _ = AdvanceEngineAsync(engine);
     }
 
-    private static async Task AdvanceEngineAsync(GameEngine engine)
+    private async Task AdvanceEngineAsync(GameEngine engine)
     {
-        try { await engine.AdvanceAsync(); }
-        catch (Exception exception) { GameLog.Logger.Error(exception, "Player advance failed"); }
+        try
+        {
+            if (!await engine.AdvanceAsync())
+            {
+                await OnUiAsync(() => _gameplay.StatusMessage = "Game flow completed.");
+                GameLog.Logger.Information("Game engine flow completed");
+                await CompleteRunAsync(engine);
+            }
+        }
+        catch (Exception exception)
+        {
+            _pageView?.FailInitialPresentation(exception);
+            await OnUiAsync(() => _gameplay.StatusMessage = $"Game flow failed: {exception.Message}");
+            GameLog.Logger.Error(exception, "Player advance failed");
+            await CompleteRunAsync(engine);
+        }
+    }
+
+    private async Task CompleteRunAsync(GameEngine engine)
+    {
+        if (!ReferenceEquals(_engine, engine)) return;
+        _pageView?.CompleteInitialPresentation();
+        await OnUiAsync(() => IsPlaying = false);
+        await RefreshSlotsAsync(CancellationToken.None);
     }
 
     private async Task RefreshSlotsAsync(CancellationToken cancellationToken)

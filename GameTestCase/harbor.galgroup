@@ -7,7 +7,7 @@
       "typeId": "layer.show",
       "arguments": {
         "handleId": "background",
-        "assetId": "bg classroom speech teacher.jpeg",
+        "assetId": "a1000000000000000000000000000002",
         "transform": { "x": 0, "y": 0, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 },
         "z": 0,
         "opacity": 1,
@@ -15,9 +15,9 @@
       }
     },
     {
-      "id": "filled-unimplemented-particle",
+      "id": "filled-particle",
       "typeId": "particle.play",
-      "arguments": { "instanceId": "route-particles", "z": 100, "parameters": { "particleTexture": "Snow.png" } }
+      "arguments": { "instanceId": "route-particles", "z": 100, "parameters": { "particleTexture": "a1000000000000000000000000000006" } }
     },
     {
       "id": "filled-line",

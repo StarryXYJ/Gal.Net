@@ -7,7 +7,7 @@
       "typeId": "layer.show",
       "arguments": {
         "handleId": "background",
-        "assetId": "bg.png",
+        "assetId": "a1000000000000000000000000000003",
         "transform": { "x": 0, "y": 0, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 },
         "z": 0,
         "opacity": 1,
@@ -15,16 +15,16 @@
       }
     },
     {
-      "id": "tiled-unimplemented-effect",
+      "id": "tiled-color-grade",
       "typeId": "effect.apply",
-      "arguments": { "id": "demo", "instanceId": "route-effect", "targetHandleId": "background", "order": 0, "parameters": {} }
+      "arguments": { "id": "demo", "program": "a1000000000000000000000000000007", "instanceId": "route-effect", "targetHandleId": "background", "order": 0, "parameters": { "brightness": 0.03, "saturation": 0.1 } }
     },
     {
       "id": "tiled-line",
       "typeId": "dialogue.text",
       "arguments": {
         "speaker": "Guide",
-        "content": "The tiled route was selected. The unimplemented effect entry was skipped without stopping the story.",
+        "content": "The tiled route was selected. Its Color Grade program is resolved by GUID and applied to the background.",
         "voice": ""
       }
     }

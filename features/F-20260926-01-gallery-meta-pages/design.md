@@ -408,25 +408,47 @@ OpenGallery
 - CG、视频和音频独立 MVVM 页面完成现有功能；
 - 当前 solution 在删除 `ResourceType` enum 后全部编译，Editor 只做必要适配而不扩张 authoring UI。
 
-## 13. 待确认：统一资源会话与发布包安装模型
+## 13. 资源定位与 Meta 容错细化（2026-09-27）
 
-> 2026-09-27 提案；尚未接受，不改变当前实现事实。
+这不是 Addressables 式的整体资源会话重构。当前 `AssetManager` 的缓存和引用计数保留；本 feature 只把“在哪里找到资源”与“怎样解释资源”分开，避免 Provider、registry 和 decoder 互相知道对方的细节。
 
-当前 `IAssetManager` 向调用方暴露了 `IGameFile`、Provider 注册以及按资源 ID 的全局 `Release`。这允许调用方绕过加载会话并可能释放其他调用方正在使用的同一资源。建议把目录与发行包统一为一个由资源管理器拥有的只读 mount，并把资源使用权表达为可释放的 handle。
+### 13.1 Provider 保持来源边界，Manager 拥有 handle
+
+`IAssetProvider -> IArchive -> IGameFile` 保持为资源来源抽象：它负责从目录、PAK 或未来的补丁 PAK 按 GUID/path 找到源文件、metadata 和原始 bytes。Provider 可缓存不可变的位置索引，避免重复遍历文件树或 PAK table；不缓存解码对象，也不参与引用计数。
+
+`IGameFile` 不是 handle。它是可重复读取的源描述，既不包含某个目标 CLR 对象，也不知道一次调用者获取了多少引用。将其当作 handle 会使 source 生命周期、decoder 生命周期和 UI 使用权混在一起。
+
+引用计数和释放语义完全归 `AssetManager`：
 
 ```text
-GameLocation (项目目录 | .galpak)
-  -> GamePackageInstaller（仅 .galpak：校验、原子解压、复用安装目录）
-  -> GameContentMount（manifest、content.pak、assets.pak、冻结 registries）
-  -> AssetManager（唯一资源索引、GUID/path 查询、decoder、缓存）
-  -> AssetHandle<T>（单次 acquire 的引用；Dispose/DisposeAsync 后释放）
+IAssetProvider / IArchive / IGameFile
+  -> AssetManager: 解析、按 (GUID, target CLR type) 缓存、decoder 分派
+  -> AssetHandle<T>: 一次成功 acquire 的独立引用
+       Dispose -> Manager 对同一 cache key release 一次
 ```
 
-`AssetHandle<T>` 应只在成功加载后持有一次引用，暴露稳定 GUID、类型和 `Value`；其 `Dispose` 必须幂等。缓存键仍是 `(assetGuid, target CLR type)`，但引用计数只能由 handle 递增/递减，删除 `Release(id)`、`Release<T>(id)`、`LoadAsync(IGameFile)` 和外部 `IGameFile` 枚举。编辑器 picker 或 Gallery compiler 改为查询只读 `AssetDescriptor`（GUID、逻辑路径、type ID、可安全公开的 metadata 摘要），不取得原始字节或 stream。
+`AssetHandle<T>` 暴露 `Value`、GUID 和 type ID；它的 dispose 必须幂等。多个 handle 可共享同一个已解码对象，但每个 handle 只释放自己那一次 acquire。缓存计数归零时 Manager 移除条目并释放 `IDisposable` 资源。Provider、PAK、decoder 和 Gallery 页面均不直接递减计数。
 
-`AssetManager.OpenAsync(GameLocation, composedRegistries)` 应完成一次索引建立。目录 mount 扫描并严格校验 `.meta`；包 mount 读取 manifest 与两个 PAK。两者向 manager 提供同一种内部 `AssetRecord`，故调用者只用 GUID 获取 handle，路径只用于 authoring/debug 的 GUID 解析。任何无效/未知 metadata、重复 GUID、manifest hash 或 registry snapshot 不匹配都使 open 失败，不允许静默跳过。
+首轮保留现有 Provider API 和有序 provider 列表，未来安装目录增加补丁 PAK 时只需以明确优先级加入新的 Provider；同一优先级的重复 GUID 失败，不隐式覆盖。`LoadAsync`/`Release` 迁移到 `AcquireAsync`/`AssetHandle<T>` 时必须原子完成，不长期同时保留两套资源所有权 API。
 
-导出保持 `.galpak` ZIP 容器；内部 `assets.pak` 和 `content.pak` 仍适合随机访问和完整性校验。若产品要求“传入压缩包即解压为文件夹”，该职责应属于 `GamePackageInstaller`，而非 `AssetManager`：先校验 zip 路径、manifest 和 hash，解压到相邻的受控安装目录（临时目录完成后原子 rename），记录版本/hash 和 lock，防 Zip Slip、半解压与多进程竞争。安装后才以目录 mount 打开。直接从 ZIP/PAK mount 可作为后续优化，但不是首轮必要路径。
+### 13.2 Meta 的宽容读取与严格身份
 
-这会让 Gallery compiler 从 manager 的 descriptor snapshot 编译 catalog；发行运行从安装后的 `content.pak` 读取 generated `gallery.json`，并用同一 registry 验证 snapshot。这样资源加载、引用计数、目录/包来源和 Gallery 的资源可达性都在同一个会话闭环内。
+目标是接近 Unity 的序列化体验：新增字段、已删除字段和缺失的可选字段不应阻止资源加载。已知 DTO 的对象初始化器提供默认值；未知字段保留为 extension data（Editor 重写 metadata 时不丢弃），缺失或格式无效的可选字段回退到该 DTO 的默认值并产生结构化 diagnostic。
+
+但以下不能静默 fallback：
+
+- GUID 缺失、不是合法 GUID 或与 PAK entry GUID 不同；资源无法拥有稳定身份。
+- 显式给出但当前 registry 未注册的 type ID；这代表缺少插件或内容与代码不匹配，不能伪装成 binary。
+- JSON 根本无效，或资源文件不存在。
+- Gallery annotation 的正整数 ID、type ID 或资源类型匹配无效；Editor/目录加载可保留 diagnostic，Preview/导出必须失败，不能悄悄少一个可解锁内容。
+
+只有 `type` 缺失时，Manager 可以按资源逻辑路径的扩展名从冻结 registry 推断；无法唯一推断时使用 `data`/`BinaryAssetMeta`。`path` 以 Provider 的实际逻辑路径为准，metadata 中缺失或过时的 path 由此修正。`compress` 的未知值回退到 `none`。这些回退都要进入 diagnostic，供 Editor/导出报告。
+
+这不需要一个泛化的“吞掉任意 JSON 异常”框架：公共 header 与 optional 公共字段由 codec 容错读取；资源类型专属字段如将来需要逐字段迁移，则由该 type 的注册项提供小型 `MetaNormalizer`。因此插件自己的字段语义仍属于插件，不会再次耦合进 Provider 或 Manager。
+
+### 13.3 发行包和媒体
+
+`.galpak` 继续是 ZIP 分发容器，内部 PAK 用 GUID 定位资源。若宿主传入 `.galpak`，Package installer 负责校验后解压到包旁受控目录；随后 PAK provider 与目录项目使用同一 GUID 查询路径。installer 不是 AssetManager 的一部分。
+
+图像 decoder 可直接读取 PAK bytes；需要操作系统文件路径的媒体库（例如 LibVLC）则通过窄的按 GUID materializer 将该单个资源写入受控临时缓存并返回路径。不得在导出包中重复保存所有原始资源，也不得让 Gallery 页面自行理解目录/PAK 布局。
 

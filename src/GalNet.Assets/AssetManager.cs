@@ -4,11 +4,11 @@ using GalNet.Core.Assets;
 namespace GalNet.Assets;
 
 /// <summary>
-/// 资源管理器 —— 统一加载、缓存（引用计数）和释放。
+/// 资源管理器 —— 统一 acquire、缓存（引用计数）和释放。
 ///
 /// 支持两种查找方式，共享同一缓存：
-///   - LoadAsync(id)         按资源 ID（GUID）查找
-///   - LoadByPathAsync(path) 按资源路径查找（如 "bg/classroom.png"）
+///   - AcquireAsync(id)         按资源 ID（GUID）查找
+///   - AcquireByPathAsync(path) 按资源路径查找（如 "bg/classroom.png"）
 ///
 /// 同一资源的并发请求共享一次底层加载，但每个调用者仍拥有独立的等待取消和引用。
 /// </summary>
@@ -36,11 +36,6 @@ public sealed class AssetManager : IAssetManager
         }
     }
 
-    public int CachedCount
-    {
-        get { lock (_lock) return _cache.Count; }
-    }
-
     public void RegisterProvider(IAssetProvider provider)
     {
         ArgumentNullException.ThrowIfNull(provider);
@@ -59,41 +54,6 @@ public sealed class AssetManager : IAssetManager
         {
             ThrowIfDisposedLocked();
             _decoders[(resourceTypeId.Trim().ToLowerInvariant(), typeof(T))] = decoder;
-        }
-    }
-
-    public bool TryGetLoaded<T>(string assetId, out T asset) where T : class
-    {
-        if (string.IsNullOrWhiteSpace(assetId))
-        {
-            asset = null!;
-            return false;
-        }
-
-        var key = new CacheKey(NormalizeAssetId(assetId), typeof(T));
-        lock (_lock)
-        {
-            ThrowIfDisposedLocked();
-            if (_cache.TryGetValue(key, out var entry) && entry.Data is T typed)
-            {
-                // This is a non-owning peek. It deliberately does not increment RefCount.
-                asset = typed;
-                return true;
-            }
-        }
-
-        asset = null!;
-        return false;
-    }
-
-    public bool IsLoaded(string assetId)
-    {
-        if (string.IsNullOrWhiteSpace(assetId)) return false;
-        var normalizedId = NormalizeAssetId(assetId);
-        lock (_lock)
-        {
-            ThrowIfDisposedLocked();
-            return _cache.Keys.Any(key => StringComparer.OrdinalIgnoreCase.Equals(key.AssetId, normalizedId));
         }
     }
 
@@ -149,16 +109,10 @@ public sealed class AssetManager : IAssetManager
         return files.Values.OrderBy(x => x.Path, StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
-    public Task<T?> LoadAsync<T>(string assetId, CancellationToken ct = default) where T : class =>
-        LoadAsyncCore<T>(assetId, knownFile: null, ct);
+    public Task<AssetHandle<T>?> AcquireAsync<T>(string assetId, CancellationToken ct = default) where T : class =>
+        AcquireAsyncCore<T>(assetId, knownFile: null, ct);
 
-    public Task<T?> LoadAsync<T>(IGameFile file, CancellationToken ct = default) where T : class
-    {
-        ArgumentNullException.ThrowIfNull(file);
-        return LoadAsyncCore<T>(file.Id, file, ct);
-    }
-
-    private async Task<T?> LoadAsyncCore<T>(string assetId, IGameFile? knownFile, CancellationToken ct) where T : class
+    private async Task<AssetHandle<T>?> AcquireAsyncCore<T>(string assetId, IGameFile? knownFile, CancellationToken ct) where T : class
     {
         var normalizedId = NormalizeAssetId(assetId);
         var key = new CacheKey(normalizedId, typeof(T));
@@ -168,7 +122,7 @@ public sealed class AssetManager : IAssetManager
         lock (_lock)
         {
             ThrowIfDisposedLocked();
-            if (TryAcquireCacheLocked(key, out T? cached)) return cached;
+            if (TryAcquireCacheLocked(key, out T? cached, out var cachedTypeId)) return CreateHandle(key, cachedTypeId, cached!);
 
             if (!_inFlight.TryGetValue(key, out load!))
             {
@@ -189,7 +143,8 @@ public sealed class AssetManager : IAssetManager
         {
             // The producer is shared, but cancellation remains request-local.
             await load.Completion.Task.WaitAsync(ct);
-            return TakeLoadedReference<T>(key, load);
+            var asset = TakeLoadedReference<T>(key, load, out var typeId);
+            return asset is null ? null : CreateHandle(key, typeId!, asset);
         }
         catch
         {
@@ -198,7 +153,7 @@ public sealed class AssetManager : IAssetManager
         }
     }
 
-    public async Task<T?> LoadByPathAsync<T>(string path, CancellationToken ct = default) where T : class
+    public async Task<AssetHandle<T>?> AcquireByPathAsync<T>(string path, CancellationToken ct = default) where T : class
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
         var normalizedPath = AssetPathHelper.Normalize(path);
@@ -212,7 +167,7 @@ public sealed class AssetManager : IAssetManager
 
         if (assetId is not null)
         {
-            var cached = await LoadAsync<T>(assetId, ct);
+            var cached = await AcquireAsync<T>(assetId, ct);
             if (cached is not null) return cached;
 
             // A development provider may have invalidated a file after its watcher fired.
@@ -237,57 +192,7 @@ public sealed class AssetManager : IAssetManager
 
         // Path requests join the same ID single-flight task, so two callers cannot
         // decode the same image and leak the losing IDisposable result.
-        return await LoadAsyncCore<T>(resolvedId, gameFile, ct);
-    }
-
-    public void Release(string assetId)
-    {
-        if (string.IsNullOrWhiteSpace(assetId)) return;
-        var normalizedId = NormalizeAssetId(assetId);
-        List<IDisposable> disposables = [];
-        lock (_lock)
-        {
-            ThrowIfDisposedLocked();
-            foreach (var key in _cache.Keys
-                         .Where(key => StringComparer.OrdinalIgnoreCase.Equals(key.AssetId, normalizedId))
-                         .ToArray())
-            {
-                if (ReleaseCoreLocked(key) is { } disposable)
-                    disposables.Add(disposable);
-            }
-        }
-        DisposeAssets(disposables);
-    }
-
-    public void Release<T>(string assetId) where T : class
-    {
-        if (string.IsNullOrWhiteSpace(assetId)) return;
-        var key = new CacheKey(NormalizeAssetId(assetId), typeof(T));
-        IDisposable? disposable;
-        lock (_lock)
-        {
-            ThrowIfDisposedLocked();
-            disposable = ReleaseCoreLocked(key);
-        }
-        disposable?.Dispose();
-    }
-
-    public void ClearCache()
-    {
-        List<IDisposable> disposables;
-        InFlightLoad[] loads;
-        lock (_lock)
-        {
-            ThrowIfDisposedLocked();
-            disposables = DetachCachedAssetsLocked();
-            _pathToId.Clear();
-            loads = _inFlight.Values.Distinct().ToArray();
-            _inFlight.Clear();
-            foreach (var load in loads) load.Invalidated = true;
-        }
-
-        CancelLoads(loads);
-        DisposeAssets(disposables);
+        return await AcquireAsyncCore<T>(resolvedId, gameFile, ct);
     }
 
     public void Dispose()
@@ -317,16 +222,18 @@ public sealed class AssetManager : IAssetManager
     private async Task ProduceLoadAsync<T>(CacheKey key, InFlightLoad load, IGameFile? knownFile) where T : class
     {
         object? result = null;
+        string? typeId = null;
         try
         {
             var gameFile = knownFile ?? await FindInProvidersAsync(load.AssetId, findById: true, load.Cancellation.Token);
             if (gameFile is not null)
             {
+                typeId = gameFile.TypeId;
                 var rawData = await gameFile.ReadAllBytesAsync(load.Cancellation.Token);
                 result = await ConvertToAsync<T>(rawData, gameFile, load.Cancellation.Token);
             }
 
-            CompleteLoad(key, load, result);
+            CompleteLoad(key, load, result, typeId);
             result = null; // ownership transferred to the cache, or intentionally discarded there
         }
         catch (OperationCanceledException)
@@ -338,7 +245,7 @@ public sealed class AssetManager : IAssetManager
             // A missing/invalid asset is a recoverable presentation failure. Keep the
             // fallback path usable, but leave a diagnostic with the provider-independent key.
             Trace.TraceWarning("Asset load failed for '{0}' as '{1}': {2}", load.AssetId, load.Type, exception);
-            CompleteLoad(key, load, null);
+            CompleteLoad(key, load, null, null);
         }
         finally
         {
@@ -398,9 +305,10 @@ public sealed class AssetManager : IAssetManager
         return null;
     }
 
-    private T? TakeLoadedReference<T>(CacheKey key, InFlightLoad load) where T : class
+    private T? TakeLoadedReference<T>(CacheKey key, InFlightLoad load, out string? typeId) where T : class
     {
         T? result = null;
+        typeId = null;
         CancellationTokenSource? cancellationToDispose;
         var invalidated = false;
         lock (_lock)
@@ -411,6 +319,7 @@ public sealed class AssetManager : IAssetManager
             {
                 entry.RefCount++;
                 result = typed;
+                typeId = entry.TypeId;
             }
 
             if (load.PendingWaiters == 0 && _inFlight.TryGetValue(key, out var current) && ReferenceEquals(current, load))
@@ -466,7 +375,7 @@ public sealed class AssetManager : IAssetManager
         assetToDispose?.Dispose();
     }
 
-    private void CompleteLoad(CacheKey key, InFlightLoad load, object? result)
+    private void CompleteLoad(CacheKey key, InFlightLoad load, object? result, string? typeId)
     {
         var accepted = false;
         object? resultToDispose = null;
@@ -479,7 +388,7 @@ public sealed class AssetManager : IAssetManager
                 if (_cache.ContainsKey(key))
                     resultToDispose = result;
                 else if (result is not null)
-                    _cache[key] = new CacheEntry { Data = result, Owner = load };
+                    _cache[key] = new CacheEntry { Data = result, Owner = load, TypeId = typeId ?? "unknown" };
 
                 load.Completed = true;
             }
@@ -533,16 +442,18 @@ public sealed class AssetManager : IAssetManager
             _inFlight.Remove(key);
     }
 
-    private bool TryAcquireCacheLocked<T>(CacheKey key, out T? result) where T : class
+    private bool TryAcquireCacheLocked<T>(CacheKey key, out T? result, out string typeId) where T : class
     {
         if (_cache.TryGetValue(key, out var entry) && entry.Data is T typed)
         {
             entry.RefCount++;
             result = typed;
+            typeId = entry.TypeId;
             return true;
         }
 
         result = null;
+        typeId = null!;
         return false;
     }
 
@@ -553,6 +464,20 @@ public sealed class AssetManager : IAssetManager
         if (entry.RefCount > 0) return null;
         _cache.Remove(key);
         return entry.Data as IDisposable;
+    }
+
+    private AssetHandle<T> CreateHandle<T>(CacheKey key, string typeId, T asset) where T : class =>
+        new(key.AssetId, typeId, asset, () => ReleaseHandle(key));
+
+    private void ReleaseHandle(CacheKey key)
+    {
+        IDisposable? disposable;
+        lock (_lock)
+        {
+            if (_disposed) return;
+            disposable = ReleaseCoreLocked(key);
+        }
+        disposable?.Dispose();
     }
 
     private List<IDisposable> DetachCachedAssetsLocked()
@@ -610,6 +535,7 @@ public sealed class AssetManager : IAssetManager
     {
         public object Data = default!;
         public InFlightLoad? Owner;
+        public string TypeId = "unknown";
         public int RefCount;
     }
 
