@@ -13,6 +13,7 @@ public sealed class FileVariableService : IVariableService
     private readonly IPlayerVariableStore _playerStore;
     private readonly Dictionary<string, GalVariable> _playerVariables;
     private readonly Dictionary<string, GalVariable> _saveVariables = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, SystemVariableDefinition> _systemVariables = new(StringComparer.Ordinal);
 
     private FileVariableService(IPlayerVariableStore playerStore, IReadOnlyDictionary<string, GalVariable> playerVariables)
     {
@@ -25,11 +26,35 @@ public sealed class FileVariableService : IVariableService
     public static async Task<FileVariableService> CreateAsync(IPlayerVariableStore playerStore, CancellationToken ct = default) =>
         new(playerStore, await playerStore.LoadAsync(ct));
 
+    public void ConfigureSystemVariables(IReadOnlyCollection<SystemVariableDefinition> definitions)
+    {
+        ArgumentNullException.ThrowIfNull(definitions);
+        var configured = new Dictionary<string, SystemVariableDefinition>(StringComparer.Ordinal);
+        foreach (var definition in definitions)
+        {
+            if (string.IsNullOrWhiteSpace(definition.Name))
+                throw new InvalidDataException("System variable names cannot be empty.");
+            if (!configured.TryAdd(definition.Name, definition))
+                throw new InvalidDataException($"System variable '{definition.Name}' is declared more than once.");
+        }
+
+        _systemVariables.Clear();
+        foreach (var pair in configured)
+        {
+            _systemVariables.Add(pair.Key, pair.Value);
+            var target = pair.Value.Scope == VariableScope.Player ? _playerVariables : _saveVariables;
+            if (!target.TryGetValue(pair.Key, out var current) || current.Type != pair.Value.DefaultValue.Type)
+                target[pair.Key] = Clone(pair.Key, pair.Value.DefaultValue);
+        }
+    }
+
     public IReadOnlyDictionary<string, GalVariable> GetSnapshot(VariableScope scope) =>
         scope == VariableScope.Player ? _playerVariables : _saveVariables;
 
     public VariableScope ResolveScope(string name) =>
-        name.StartsWith("player.", StringComparison.Ordinal) ? VariableScope.Player : VariableScope.Save;
+        _systemVariables.TryGetValue(name, out var definition)
+            ? definition.Scope
+            : name.StartsWith("player.", StringComparison.Ordinal) ? VariableScope.Player : VariableScope.Save;
 
     public void NotifyVariableChanged(VariableScope scope, string name, GalVariable variable)
     {

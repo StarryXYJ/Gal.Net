@@ -1,4 +1,5 @@
 using GalNet.Core.Settings;
+using GalNet.Core.Gallery;
 using GalNet.Core.View;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Runtime;
@@ -21,11 +22,12 @@ try
 
     var saves = new FileSaveService(options.ProfileDirectory);
     var variables = await FileVariableService.CreateAsync(new FilePlayerVariableStore(options.ProfileDirectory));
+    variables.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(content.Gallery));
     var progress = new FileGameProgressService(options.ProfileDirectory);
 
     var presentation = new ConsolePresentation(settings.Get<GameSettings>());
     using IGameView view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
-        presentation, presentation, presentation, presentation, progress));
+        presentation, presentation, presentation, presentation, content.Gallery));
 
     var runtime = new GameRuntime(null, content.Graph.RootNodeId, settings, variables);
     using var engine = new GameEngine(content.Graph, runtime, view, progress, presentation);

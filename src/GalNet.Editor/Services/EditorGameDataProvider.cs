@@ -7,6 +7,7 @@ using GalNet.Core.Services;
 using GalNet.Runtime.Loader;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.ViewModels;
+using GalNet.Storage.FileSystem;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Editor.Services;
@@ -34,6 +35,7 @@ public sealed class EditorGameDataProvider : IGameContentProvider
             var file = Path.Combine(directory, $"{group.Id}.galgroup");
             if (File.Exists(file)) GalgroupLoader.LoadIntoGroup(group, file);
         }
-        return Task.FromResult(new GameContent { Graph = graph, AssetRoot = project.AssetsPath });
+        var gallery = GalleryFileLoader.LoadOptional(Path.Combine(directory, "gallery.json"));
+        return Task.FromResult(new GameContent { Graph = graph, AssetRoot = project.AssetsPath, Gallery = gallery });
     }
 }

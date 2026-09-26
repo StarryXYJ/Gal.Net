@@ -63,6 +63,8 @@ particle.play, particle.stop
 flow.wait, variable.set, gallery.unlock
 ```
 
+`gallery.unlock` 的参数只有字符串 `id`，其值必须是当前 `gallery.json` 中存在的稳定 Gallery item ID。执行时写入 `player.gallery_<id>_unlocked = true`；旧的 category/sequence 参数不再受支持。
+
 这些名称和参数只是推荐语义。开发者可以只注册自定义模块，或在自己的 target profile 中定义完全不同的前缀、参数与语义；编辑器不会凭名称假定 `dialogue`、`layer` 或任何其他模块存在。
 
 当前已实现 Runtime 行为的推荐能力见 [runtime.md](runtime.md)。

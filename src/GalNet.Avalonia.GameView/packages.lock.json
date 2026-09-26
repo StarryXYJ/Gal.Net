@@ -30,6 +30,22 @@
           "Irihi.Avalonia.Shared.Contracts": "0.4.0"
         }
       },
+      "LibVLCSharp": {
+        "type": "Direct",
+        "requested": "[3.10.0, )",
+        "resolved": "3.10.0",
+        "contentHash": "VHuOfq8Xtb/lNz0asvCm5qDjgTmfB3m3lC40Dz9iH9oL3DM0fSXHjZaLxdtYVr5nsldJoh5BTeG8MtODprhC9Q=="
+      },
+      "LibVLCSharp.Avalonia": {
+        "type": "Direct",
+        "requested": "[3.10.0, )",
+        "resolved": "3.10.0",
+        "contentHash": "juoBLjh37+07kWDblbHLaWTQx1HsXOIJHU7aeH5/95xjN6dXfZMVE8ltg8NyaNL6vr2B4QgR3EiRBsEa+fPvlQ==",
+        "dependencies": {
+          "Avalonia": "11.3.13",
+          "LibVLCSharp": "3.10.0"
+        }
+      },
       "Microsoft.Extensions.DependencyInjection.Abstractions": {
         "type": "Direct",
         "requested": "[10.0.0-preview.1.25080.5, )",
@@ -180,12 +196,6 @@
           "SkiaSharp.NativeAssets.Linux": "3.119.4",
           "SkiaSharp.NativeAssets.WebAssembly": "3.119.4"
         }
-      },
-      "LibVLCSharp": {
-        "type": "CentralTransitive",
-        "requested": "[3.10.0, )",
-        "resolved": "3.10.0",
-        "contentHash": "VHuOfq8Xtb/lNz0asvCm5qDjgTmfB3m3lC40Dz9iH9oL3DM0fSXHjZaLxdtYVr5nsldJoh5BTeG8MtODprhC9Q=="
       }
     }
   }

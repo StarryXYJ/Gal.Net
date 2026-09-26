@@ -227,6 +227,12 @@
           "Serilog": "4.0.0"
         }
       },
+      "VideoLAN.LibVLC.Windows": {
+        "type": "Direct",
+        "requested": "[3.0.23.1, )",
+        "resolved": "3.0.23.1",
+        "contentHash": "yTGNrzj+Q/t72VNKK0d64jZ+8BGu5Vcp2nxpZ2ll350LkRWKSwqShGpZWcVxXVP8TiMbeGML09+Jzz3hNsIcqA=="
+      },
       "Antlr4.Runtime.Standard": {
         "type": "Transitive",
         "resolved": "4.13.1",
@@ -464,6 +470,8 @@
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "GalNet.Presentation.Defaults": "[1.0.0, )",
           "Irihi.Ursa": "[2.1.0, )",
+          "LibVLCSharp": "[3.10.0, )",
+          "LibVLCSharp.Avalonia": "[3.10.0, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.0-preview.1.25080.5, )",
           "Serilog": "[4.2.0, )"
         }
@@ -573,6 +581,16 @@
         "requested": "[3.10.0, )",
         "resolved": "3.10.0",
         "contentHash": "VHuOfq8Xtb/lNz0asvCm5qDjgTmfB3m3lC40Dz9iH9oL3DM0fSXHjZaLxdtYVr5nsldJoh5BTeG8MtODprhC9Q=="
+      },
+      "LibVLCSharp.Avalonia": {
+        "type": "CentralTransitive",
+        "requested": "[3.10.0, )",
+        "resolved": "3.10.0",
+        "contentHash": "juoBLjh37+07kWDblbHLaWTQx1HsXOIJHU7aeH5/95xjN6dXfZMVE8ltg8NyaNL6vr2B4QgR3EiRBsEa+fPvlQ==",
+        "dependencies": {
+          "Avalonia": "11.3.13",
+          "LibVLCSharp": "3.10.0"
+        }
       },
       "Semi.Avalonia": {
         "type": "CentralTransitive",

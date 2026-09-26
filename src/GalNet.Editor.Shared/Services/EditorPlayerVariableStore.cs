@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using GalNet.Core.Gallery;
 using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
@@ -15,6 +16,7 @@ public sealed class EditorPlayerVariableStore : IEditorPlayerVariableStore
     private readonly IProjectService _projectService;
     private readonly IVariableDefinitionService _variableDefinitions;
     private readonly Dictionary<string, Variable> _variables = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, SystemVariableDefinition> _systemVariables = new(StringComparer.Ordinal);
 
     public event Action? Changed;
 
@@ -27,6 +29,21 @@ public sealed class EditorPlayerVariableStore : IEditorPlayerVariableStore
         _projectService.CurrentChanged += _ => Reload();
         _variableDefinitions.DefinitionsChanged += OnDefinitionsChanged;
         Reload();
+    }
+
+    public void ConfigureSystemVariables(IReadOnlyCollection<SystemVariableDefinition> definitions)
+    {
+        ArgumentNullException.ThrowIfNull(definitions);
+        var configured = definitions
+            .Where(definition => definition.Scope == VariableScope.Player)
+            .ToDictionary(definition => definition.Name, StringComparer.Ordinal);
+
+        _systemVariables.Clear();
+        foreach (var pair in configured)
+            _systemVariables.Add(pair.Key, pair.Value);
+
+        EnsureInitialized();
+        Changed?.Invoke();
     }
 
     public void Reload()
@@ -46,9 +63,12 @@ public sealed class EditorPlayerVariableStore : IEditorPlayerVariableStore
             {
                 var json = File.ReadAllText(path);
                 var restored = JsonSerializer.Deserialize<Dictionary<string, Variable>>(json) ?? [];
-                foreach (var definition in _variableDefinitions.GetDefinitions(VariableScope.Player))
+                foreach (var pair in restored.Where(pair => GalleryUnlockVariable.IsReservedName(pair.Key)))
+                    _variables[pair.Key] = CloneVariable(pair.Key, pair.Value);
+                foreach (var definition in GetDefinitions())
                 {
-                    if (restored.TryGetValue(definition.Name, out var variable))
+                    if (restored.TryGetValue(definition.Name, out var variable)
+                        && variable.Type == definition.DefaultValue.Type)
                         _variables[definition.Name] = CloneVariable(definition.Name, variable);
                     else
                         _variables[definition.Name] = CloneVariable(definition.Name, definition.DefaultValue);
@@ -66,15 +86,19 @@ public sealed class EditorPlayerVariableStore : IEditorPlayerVariableStore
 
     public IReadOnlyDictionary<string, Variable> EnsureInitialized()
     {
-        var definitions = _variableDefinitions.GetDefinitions(VariableScope.Player);
+        var definitions = GetDefinitions();
 
-        var staleNames = _variables.Keys.Except(definitions.Select(v => v.Name), StringComparer.Ordinal).ToList();
+        var staleNames = _variables.Keys
+            .Except(definitions.Select(v => v.Name), StringComparer.Ordinal)
+            .Where(name => !GalleryUnlockVariable.IsReservedName(name))
+            .ToList();
         foreach (var staleName in staleNames)
             _variables.Remove(staleName);
 
         foreach (var definition in definitions)
         {
-            if (_variables.TryGetValue(definition.Name, out var variable) && variable.Type == definition.Type)
+            if (_variables.TryGetValue(definition.Name, out var variable)
+                && variable.Type == definition.DefaultValue.Type)
                 continue;
 
             _variables[definition.Name] = CloneVariable(definition.Name, definition.DefaultValue);
@@ -87,7 +111,7 @@ public sealed class EditorPlayerVariableStore : IEditorPlayerVariableStore
     public void Reset()
     {
         _variables.Clear();
-        foreach (var definition in _variableDefinitions.GetDefinitions(VariableScope.Player))
+        foreach (var definition in GetDefinitions())
             _variables[definition.Name] = CloneVariable(definition.Name, definition.DefaultValue);
 
         Save();
@@ -153,6 +177,16 @@ public sealed class EditorPlayerVariableStore : IEditorPlayerVariableStore
 
         EnsureInitialized();
         Changed?.Invoke();
+    }
+
+    private IReadOnlyList<(string Name, Variable DefaultValue)> GetDefinitions()
+    {
+        var definitions = new Dictionary<string, Variable>(StringComparer.Ordinal);
+        foreach (var definition in _systemVariables.Values)
+            definitions[definition.Name] = definition.DefaultValue;
+        foreach (var definition in _variableDefinitions.GetDefinitions(VariableScope.Player))
+            definitions.TryAdd(definition.Name, definition.DefaultValue);
+        return definitions.Select(pair => (pair.Key, pair.Value)).ToList();
     }
 
     private static Variable CloneVariable(string name, Variable source)

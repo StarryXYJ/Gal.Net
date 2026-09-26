@@ -17,7 +17,7 @@ public static class BuiltinEntryModules
         ILayerPresenter? layerPresenter = null,
         IAnimationPresenter? animationPresenter = null,
         IEffectPresenter? effectPresenter = null,
-        IGameProgressService? progress = null) => Array.AsReadOnly<IEntryModule>(
+        GalleryCatalog? gallery = null) => Array.AsReadOnly<IEntryModule>(
     [
         new BuiltinDialogueModule(dialoguePresenter),
         new BuiltinLayerModule(layerPresenter),
@@ -28,7 +28,7 @@ public static class BuiltinEntryModules
         new BuiltinParticleModule(),
         new BuiltinFlowModule(),
         new BuiltinVariableModule(),
-        new BuiltinGalleryModule(progress)
+        new BuiltinGalleryModule(gallery)
     ]);
 
     public static TargetProfileEntryCatalog CreateRecommendedTargetProfile() => new(CreateRecommended());
@@ -247,19 +247,18 @@ public sealed class BuiltinVariableModule : EntryModuleBase
 
 public sealed class BuiltinGalleryModule : EntryModuleBase
 {
-    public BuiltinGalleryModule(IGameProgressService? progress = null) : base("gallery",
+    public BuiltinGalleryModule(GalleryCatalog? gallery = null) : base("gallery",
     [
         BuiltinEntrySchemas.Primitive<UnlockGalleryEntry>(
             UnlockGalleryEntry.ParameterTypes,
-            options: UnlockGalleryEntry.ParameterOptions,
             factory: context => new ImmediatePrimitiveInstance(() =>
             {
-                var sequenceId = Arguments.Int(context, "id");
-                if (sequenceId < 0)
-                    throw new InvalidDataException("Gallery sequence ID must be zero or greater.");
-                (progress ?? throw new InvalidOperationException(
-                    "The gallery module requires an IGameProgressService."))
-                    .UnlockGallery(Arguments.Enum(context, "category", GalleryCategory.Portrait), sequenceId);
+                var itemId = Arguments.String(context, "id");
+                var catalog = gallery ?? throw new InvalidOperationException(
+                    "The gallery module requires a GalleryCatalog.");
+                if (!catalog.TryGetItem(itemId, out var item))
+                    throw new InvalidDataException($"Gallery item '{itemId}' is not declared in gallery.json.");
+                context.Runtime.SetVariable(GalleryUnlockVariable.GetRuntimeName(item.Id), true);
             }, batchId: context.BatchId))
     ]) { }
 }

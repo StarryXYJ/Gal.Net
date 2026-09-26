@@ -1,4 +1,5 @@
 using GameGraph = GalNet.Core.Graph.Graph;
+using GalNet.Core.Gallery;
 
 namespace GalNet.Core.Services;
 
@@ -12,4 +13,5 @@ public sealed class GameContent
 {
     public required GameGraph Graph { get; init; }
     public string? AssetRoot { get; init; }
+    public GalleryCatalog Gallery { get; init; } = GalleryCatalog.Empty;
 }

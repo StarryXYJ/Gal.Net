@@ -13,6 +13,7 @@ using GameViewAssembly::GalNet.Avalonia.GameView.Presentation;
 using GameViewAssembly::GalNet.Avalonia.GameView.Services;
 using GameViewAssembly::GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Rendering.Scene;
+using GalNet.Core.Gallery;
 using GalNet.Core.Runtime;
 using GalNet.Core.Services;
 using GalNet.Core.Settings;
@@ -82,7 +83,7 @@ public sealed record EditorPreviewContext(
     Action GameEnded,
     Action<Exception> GameFailed);
 
-internal sealed partial class EditorPreviewSessionService : ObservableObject, IGameSessionService, IDisposable
+internal sealed partial class EditorPreviewSessionService : ObservableObject, IGameSessionService, IGameGallerySession, IDisposable
 {
     private readonly EditorPreviewContext _context;
     private readonly GamePageViewModel _gameplay;
@@ -106,6 +107,8 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
     }
 
     public IGameRuntime? Runtime => _engine?.Runtime;
+    public IGalleryDataSource? GalleryDataSource { get; private set; }
+    public IGalleryResourceResolver? GalleryResources { get; private set; }
     public string GameTitle => _context.Title;
     public bool IsReady => true;
     public ReadOnlyObservableCollection<GameSaveSlot> SaveSlots => _readOnlySlots;
@@ -250,12 +253,17 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
     private async Task EnsureEngineAsync(CancellationToken cancellationToken)
     {
         if (_engine is not null) return;
+        var content = await _context.Content.LoadAsync(cancellationToken);
+        _context.Variables.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(content.Gallery));
+        GalleryDataSource = new GalleryDataSource(content.Gallery, _context.Variables);
+        GalleryResources = new DirectoryGalleryResourceResolver(_context.AssetRoot);
+        OnPropertyChanged(nameof(GalleryDataSource));
+        OnPropertyChanged(nameof(GalleryResources));
         var layers = new EditorPreviewLayerFactory(_context.AssetRoot);
         _pageView = new AvaloniaGamePageView(_gameplay, _page, layers);
         _effects = new AvaloniaEffectRuntime(_gameplay, layers);
         var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
-            _pageView, _pageView, _pageView, _effects, _context.Progress));
-        var content = await _context.Content.LoadAsync(cancellationToken);
+            _pageView, _pageView, _pageView, _effects, content.Gallery));
         var runtime = new GameRuntime(null, content.Graph.RootNodeId, new SettingsContainer(), _context.Variables);
         _engine = new GameEngine(content.Graph, runtime, view, _context.Progress, _pageView);
         _pageView.AdvanceRequested += OnAdvanceRequested;

@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:GalNet.Avalonia.GameView.Page"
              xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
+             xmlns:gallery="using:GalNet.Core.Gallery"
              x:Class="GalNet.Avalonia.GameView.Page.GalleryPage"
              x:DataType="vm:GalleryPageViewModel">
   <Grid Background="#0B0C15" Margin="44" RowDefinitions="Auto,*">
@@ -13,11 +14,23 @@
       <Button Grid.Column="1" Classes="player-link" Content="Back" Command="{Binding BackCommand}"
               VerticalAlignment="Center" />
     </Grid>
-    <Border Grid.Row="1" Margin="0,24,0,0" Background="#48181A2A" BorderBrush="#4D5F6075"
-            BorderThickness="1" CornerRadius="10" Padding="28">
-      <TextBlock Text="The host's progress service supplies unlocked entries. A game can replace this default page with its own gallery view."
-                 TextWrapping="Wrap" Opacity="0.72" VerticalAlignment="Center" HorizontalAlignment="Center"
-                 TextAlignment="Center" MaxWidth="440" />
-    </Border>
+    <ScrollViewer Grid.Row="1" Margin="0,24,0,0">
+      <ItemsControl x:Name="TypeList" ItemsSource="{Binding Types}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><WrapPanel ItemWidth="260" ItemHeight="120" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="gallery:GalleryTypeData">
+            <Button Margin="6" Padding="20" HorizontalContentAlignment="Stretch"
+                    Command="{Binding #TypeList.DataContext.OpenTypeCommand}" CommandParameter="{Binding}">
+              <StackPanel Spacing="6">
+                <TextBlock Text="{Binding Type.TypeId}" FontSize="22" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding Type.ResourceTypeName}" Opacity="0.6" />
+              </StackPanel>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
   </Grid>
 </UserControl>

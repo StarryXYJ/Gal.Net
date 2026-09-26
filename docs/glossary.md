@@ -22,6 +22,10 @@
 | 游戏视图 | `IGameView` | 单条 primitive 的定义解析、参数规范化、实例创建和 dispatch 入口。 |
 | 呈现端口 | presenter interfaces | 宿主提供的窄端口，例如 dialogue、choice、layer、animation、effect。 |
 | 快照 | `GameSnapshot` | 可保存和恢复的运行时位置、变量与场景状态。 |
+| Gallery 目录 | `GalleryCatalog` | 从可选 `gallery.json` 验证并冻结的类型与资源条目索引，通过 `GameContent.Gallery` 交给宿主。 |
+| Gallery 类型 | `GalleryTypeRegistration` | 一个稳定 Gallery type ID 与资源类型字符串的关联；不等同于 Entry 模块或资源 decoder。 |
+| Gallery 条目 | `GalleryItem` | 使用全局稳定 item ID、Gallery type ID 和资源 ID 描述的一项静态 Gallery 内容。 |
+| Gallery 解锁变量 | `gallery_<item-id>_unlocked` | 每个 Gallery item 自动生成、默认 `false`、跨存档槽持久化的系统 Player bool；是 Gallery 解锁的唯一真源。 |
 
 ## 场景与动画
 

@@ -10,6 +10,7 @@ using GalNet.Editor.Abstraction.Services;
 using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
 using GalNet.Core.Primitives;
+using GalNet.Core.Gallery;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -40,6 +41,7 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
         }
 
         document.Name = string.IsNullOrWhiteSpace(document.Name) ? projectName : document.Name;
+        document.Gallery = LoadGallery(projectPath);
         MigrateVariableDefinitions(document, settings);
         EnsureStableIds(document);
 
@@ -80,6 +82,12 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
         var graphTemporary = graphFile + ".tmp";
         File.WriteAllText(graphTemporary, JsonSerializer.Serialize(document, JsonOptions));
         File.Move(graphTemporary, graphFile, true);
+
+        var gallery = NormalizeGallery(document.Gallery);
+        var galleryFile = Path.Combine(projectPath, "gallery.json");
+        var galleryTemporary = galleryFile + ".tmp";
+        File.WriteAllText(galleryTemporary, JsonSerializer.Serialize(gallery, JsonOptions));
+        File.Move(galleryTemporary, galleryFile, true);
     }
 
     private static EditorGraphDocument CreateDefaultDocument(string projectName)
@@ -119,6 +127,34 @@ public sealed class EditorDocumentRepository : IEditorDocumentRepository
                     ToNodeId = groupId
                 }
             ]
+        };
+    }
+
+    private static GalleryConfiguration LoadGallery(string projectPath)
+    {
+        var path = Path.Combine(projectPath, "gallery.json");
+        if (!File.Exists(path))
+            return BuiltinGalleryTypes.CreateConfiguration();
+
+        try
+        {
+            var configuration = JsonSerializer.Deserialize<GalleryConfiguration>(File.ReadAllText(path), JsonOptions)
+                ?? throw new InvalidDataException("gallery.json is empty.");
+            return NormalizeGallery(configuration);
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidDataException($"gallery.json is invalid: {exception.Message}", exception);
+        }
+    }
+
+    private static GalleryConfiguration NormalizeGallery(GalleryConfiguration configuration)
+    {
+        var catalog = GalleryCatalog.Create(configuration);
+        return new GalleryConfiguration
+        {
+            Types = catalog.Types.ToList(),
+            Items = catalog.Items.ToList()
         };
     }
 

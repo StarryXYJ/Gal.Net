@@ -17,7 +17,7 @@ public sealed partial class BuiltInEditorCommandHandler
     public BuiltInEditorCommandHandler(IEntryCatalog catalog)
     {
         ArgumentNullException.ThrowIfNull(catalog);
-        Domains = [new GraphDomain(), new EntryDomain(catalog), new VariableDomain(), new ProjectDomain()];
+        Domains = [new GraphDomain(), new EntryDomain(catalog), new VariableDomain(), new GalleryDomain(), new ProjectDomain()];
     }
 
     private sealed class GraphDomain : ICommandDomain
@@ -52,5 +52,21 @@ public sealed partial class BuiltInEditorCommandHandler
     {
         public bool CanHandle(IProjectEditCommand command) => command is RenameProjectCommand or PatchProjectSettingsCommand;
         public CommandExecution Execute(EditorProjectDocument d, IProjectEditCommand c, EditorCommandContext _) => c switch { RenameProjectCommand v => RenameProject(d, v), PatchProjectSettingsCommand v => PatchSettings(d, v), _ => throw new InvalidOperationException() };
+    }
+
+    private sealed class GalleryDomain : ICommandDomain
+    {
+        public bool CanHandle(IProjectEditCommand command) => command is
+            RegisterGalleryTypeCommand or RemoveGalleryTypeCommand or
+            SetGalleryItemCommand or RemoveGalleryItemCommand;
+
+        public CommandExecution Execute(EditorProjectDocument d, IProjectEditCommand c, EditorCommandContext _) => c switch
+        {
+            RegisterGalleryTypeCommand v => RegisterGalleryType(d, v),
+            RemoveGalleryTypeCommand v => RemoveGalleryType(d, v),
+            SetGalleryItemCommand v => SetGalleryItem(d, v),
+            RemoveGalleryItemCommand v => RemoveGalleryItem(d, v),
+            _ => throw new InvalidOperationException()
+        };
     }
 }

@@ -21,6 +21,8 @@ public class GameTestCaseTests
             Assert.That(groups, Has.Length.EqualTo(4));
             Assert.That(groups, Has.All.Matches<Group>(group => group.Entries.Count > 0));
             Assert.That(groups.SelectMany(group => group.Entries), Has.All.TypeOf<PrimitiveEntry>());
+            Assert.That(content.Gallery.Types.Select(type => type.TypeId), Is.EqualTo(new[] { "cg" }));
+            Assert.That(content.Gallery.GetItems("cg").Single().Id, Is.EqualTo("classroom_background"));
         });
     }
 

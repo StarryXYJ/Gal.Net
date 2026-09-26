@@ -10,6 +10,8 @@ public interface IEditorPlayerVariableStore
 
     IReadOnlyDictionary<string, Variable> Snapshot { get; }
 
+    void ConfigureSystemVariables(IReadOnlyCollection<SystemVariableDefinition> definitions);
+
     void Reload();
 
     IReadOnlyDictionary<string, Variable> EnsureInitialized();

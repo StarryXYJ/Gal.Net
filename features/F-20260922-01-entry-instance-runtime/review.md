@@ -27,7 +27,13 @@
 
 ## P2：未实现媒体 schema 当前会静默成为 no-op
 
-`BuiltinAudioModule`、`BuiltinVideoModule`、`BuiltinParticleModule` 和 `BuiltinGalleryModule` 仍经 `BuiltinEntrySchemas.Primitive` 的默认工厂创建 `ImmediatePrimitiveInstance`。这符合本 feature 暂不扩展音频、视频、粒子和 gallery 产品行为的范围，但运行时挂载这些 schema 时会静默完成而非报告“尚未实现”。在对应能力 feature 落地前，需明确是否将它们仅保留在 editor target profile，或改为显式诊断；不应借本 feature 擅自定义媒体行为。
+`BuiltinAudioModule`、`BuiltinVideoModule` 和 `BuiltinParticleModule` 仍经 `BuiltinEntrySchemas.Primitive` 的默认工厂创建 `ImmediatePrimitiveInstance`。这符合本 feature 暂不扩展音频、视频和粒子产品行为的范围，但运行时挂载这些 schema 时会静默完成而非报告“尚未实现”。在对应能力 feature 落地前，需明确是否将它们仅保留在 editor target profile，或改为显式诊断；不应借本 feature 擅自定义媒体行为。
+
+## 补充（2026-09-24）：Gallery 已有显式过渡行为
+
+`BuiltinGalleryModule` 已不再是静默 no-op：当前实现校验非负 sequence ID，通过注入的 `IGameProgressService` 写入玩家级 Gallery 进度，缺少服务时明确抛出错误。该行为满足现阶段 primitive instance 的可观察执行要求。
+
+后续已确认的 Gallery 目标设计不继续扩充这套专用 progress 集合，而是引入字符串类型 catalog、稳定 item ID 与系统 Player bool，并由 Avalonia 自主消费 Gallery 数据。该目标现已在 Phase 5-8 实现：旧 progress Gallery 集合已删除，Editor authoring、预览/导出和默认 CG/视频/音频 Avalonia 页面已接入。此处保留原审核记录作为时间线事实，最新验证证据以 phase plan 为准。
 
 ## P2：AnimationPlan 的取消源生命周期需要单独收敛
 

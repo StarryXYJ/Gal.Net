@@ -34,4 +34,35 @@ public class TargetProfileEditorCommandTests
         Assert.That(rejected.Success, Is.False);
         Assert.That(rejected.Diagnostics.Single().Code, Is.EqualTo("group.entry.unknownType"));
     }
+
+    [Test]
+    public void GalleryCommandsRegisterTypesAndPreserveStableItemIdsOnUpdate()
+    {
+        var handler = new BuiltInEditorCommandHandler(new TargetProfileEntryCatalog([]));
+        var document = new EditorProjectDocument { Graph = new EditorGraphDocument() };
+
+        var registered = handler.Execute(
+            document,
+            new RegisterGalleryTypeCommand("wallpaper", "sprite"),
+            new EditorCommandContext(0, false));
+        var added = handler.Execute(
+            document,
+            new SetGalleryItemCommand("stable_item", "wallpaper", "asset-1", "First", 2),
+            new EditorCommandContext(1, false));
+        var updated = handler.Execute(
+            document,
+            new SetGalleryItemCommand("stable_item", "wallpaper", "asset-1", "Updated", 1),
+            new EditorCommandContext(2, false));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(registered.Success, Is.True);
+            Assert.That(added.Success, Is.True);
+            Assert.That(updated.Success, Is.True);
+            Assert.That(document.Graph.Gallery.Items, Has.Count.EqualTo(1));
+            Assert.That(document.Graph.Gallery.Items.Single().Id, Is.EqualTo("stable_item"));
+            Assert.That(document.Graph.Gallery.Items.Single().Title, Is.EqualTo("Updated"));
+            Assert.That(document.Graph.Gallery.Items.Single().SortOrder, Is.EqualTo(1));
+        });
+    }
 }

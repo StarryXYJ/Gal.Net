@@ -7,7 +7,9 @@ using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Runtime;
+using GalNet.Core.Gallery;
 using GalNet.Core.Scene;
+using GalNet.Core.Services;
 using GalNet.Core.Settings;
 using GalNet.Core.View;
 using GalNet.Rendering.Scene;
@@ -25,13 +27,14 @@ using GalNet.Storage.FileSystem;
 namespace GalNet.Sample.Avalonia.Services;
 
 /// <summary>Sample host implementation; all game/file-system work stays outside page VMs.</summary>
-internal sealed partial class SampleGameSessionService : ObservableObject, IGameSessionService, IPreparedGameSessionService, IDisposable
+internal sealed partial class SampleGameSessionService : ObservableObject, IGameSessionService, IPreparedGameSessionService, IGameGallerySession, IDisposable
 {
     private readonly GamePageViewModel _gameplay;
     private readonly GamePage _page;
     private readonly ObservableCollection<GameSaveSlot> _saveSlots = [];
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySaveSlots;
     private DirectoryGameContentProvider? _contentProvider;
+    private GameContent? _content;
     private IAssetManager? _assets;
     private FileSaveService? _saves;
     private FileVariableService? _variables;
@@ -58,6 +61,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     }
 
     public ReadOnlyObservableCollection<GameSaveSlot> SaveSlots => _readOnlySaveSlots;
+    public IGalleryDataSource? GalleryDataSource { get; private set; }
+    public IGalleryResourceResolver? GalleryResources { get; private set; }
     [ObservableProperty] private string _gameTitle = "GalNet Avalonia Sample";
     [ObservableProperty] private string _statusMessage = "Pass a published game directory when launching the sample.";
     [ObservableProperty] private bool _isReady;
@@ -78,6 +83,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _gameDirectory = options.GameDirectory;
             var profileDirectory = options.ProfileDirectory ?? Path.Combine(_gameDirectory, ".galnet");
             _contentProvider = new DirectoryGameContentProvider(_gameDirectory);
+            _content = await _contentProvider.LoadAsync(cancellationToken);
             _assets = new AssetManager([new LocalFileProvider(_gameDirectory)]);
             _assets.RegisterDecoder(new SceneTextureAssetDecoder());
             var spriteFiles = await _assets.GetFilesAsync(ResourceType.Sprite, cancellationToken);
@@ -92,6 +98,11 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
                 _effectPrograms.Length);
             _saves = new FileSaveService(profileDirectory);
             _variables = await FileVariableService.CreateAsync(new FilePlayerVariableStore(profileDirectory), cancellationToken);
+            _variables.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(_content.Gallery));
+            GalleryDataSource = new GalleryDataSource(_content.Gallery, _variables);
+            GalleryResources = new DirectoryGalleryResourceResolver(_content.AssetRoot ?? _gameDirectory);
+            OnPropertyChanged(nameof(GalleryDataSource));
+            OnPropertyChanged(nameof(GalleryResources));
             _progress = new FileGameProgressService(profileDirectory);
             _settings = new GameSettings();
             await RefreshSlotsAsync(cancellationToken);
@@ -347,7 +358,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private async Task EnsureEngineAsync(CancellationToken cancellationToken)
     {
         if (_engine is not null) return;
-        if (!IsReady || _contentProvider is null || _assets is null || _variables is null || _progress is null || _settings is null || _gameDirectory is null)
+        if (!IsReady || _content is null || _assets is null || _variables is null || _progress is null || _settings is null || _gameDirectory is null)
             throw new InvalidOperationException("The game session is not initialized.");
 
         _layers = new SampleLayerFactory(_assets);
@@ -365,12 +376,11 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _layers,
             programs: programs);
         var gameView = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
-            _pageView, _pageView, _pageView, _effects, _progress));
-        var content = await _contentProvider.LoadAsync(cancellationToken);
+            _pageView, _pageView, _pageView, _effects, _content.Gallery));
         var settings = new SettingsContainer();
         settings.Set(_settings);
-        var runtime = new GameRuntime(null, content.Graph.RootNodeId, settings, _variables);
-        _engine = new GameEngine(content.Graph, runtime, gameView, _progress, _pageView);
+        var runtime = new GameRuntime(null, _content.Graph.RootNodeId, settings, _variables);
+        _engine = new GameEngine(_content.Graph, runtime, gameView, _progress, _pageView);
         _pageView.AdvanceRequested += OnAdvanceRequested;
     }
 

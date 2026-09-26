@@ -5,6 +5,7 @@ using GalNet.Core.Settings;
 using GalNet.Core.Variable;
 using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
+using GalNet.Core.Gallery;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Shared.Services;
 using GalNet.Primitives.Builtins;
@@ -94,6 +95,11 @@ public class EditorDocumentRepositoryTests
             PlayerVariables = [CreateDefinition("player_name", "Alice")],
             SaveVariables = [CreateDefinition("save_slot", 3)]
         };
+        document.Gallery = new GalleryConfiguration
+        {
+            Types = [new GalleryTypeRegistration { TypeId = "cg", ResourceTypeName = "sprite" }],
+            Items = [new GalleryItem { Id = "opening", TypeId = "cg", ResourceId = "image-id", Title = "Opening" }]
+        };
 
         repository.Save(
             _tempDir,
@@ -119,12 +125,27 @@ public class EditorDocumentRepositoryTests
         Assert.That(savedDocument, Is.Not.Null);
         Assert.That(savedDocument!.PlayerVariables.Select(v => v.Name), Is.EqualTo(new[] { "player_name" }));
         Assert.That(savedDocument.SaveVariables.Select(v => v.Name), Is.EqualTo(new[] { "save_slot" }));
+        var reloaded = repository.Load(_tempDir, "Demo", new ProjectSettings());
+        Assert.That(reloaded.Document.Gallery.Items.Single().Id, Is.EqualTo("opening"));
+        Assert.That(reloaded.Document.Gallery.Items.Single().ResourceId, Is.EqualTo("image-id"));
         var savedGroupDocument = JsonDocument.Parse(savedGroup);
         Assert.That(savedGroupDocument.RootElement.GetProperty("kind").GetString(), Is.EqualTo("Raw"));
         var entry = savedGroupDocument.RootElement.GetProperty("entries")[0];
         Assert.That(entry.GetProperty("condition").GetString(), Is.EqualTo("player_name==Alice"));
         Assert.That(entry.GetProperty("parameters").GetProperty("speaker").GetString(), Is.EqualTo("Alice"));
         Assert.That(entry.GetProperty("parameters").GetProperty("content").GetString(), Is.EqualTo("Hello"));
+    }
+
+    [Test]
+    public void LoadUsesBuiltInGalleryTypesWhenLegacyProjectHasNoGalleryFile()
+    {
+        var repository = new EditorDocumentRepository(BuiltinEntryModules.CreateRecommendedTargetProfile());
+
+        var loaded = repository.Load(_tempDir, "Legacy", new ProjectSettings());
+
+        Assert.That(
+            loaded.Document.Gallery.Types.Select(type => (type.TypeId, type.ResourceTypeName)),
+            Is.EquivalentTo(new[] { ("cg", "sprite"), ("video", "video"), ("audio", "audio") }));
     }
 
     [Test]

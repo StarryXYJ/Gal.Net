@@ -220,3 +220,28 @@ public sealed record PatchProjectSettingsCommand(IReadOnlyDictionary<string, Jso
 {
     public string CommandId => "project.settings.patch";
 }
+
+public sealed record RegisterGalleryTypeCommand(string TypeId, string ResourceTypeName) : IProjectEditCommand
+{
+    public string CommandId => "gallery.type.register";
+}
+
+public sealed record RemoveGalleryTypeCommand(string TypeId, bool RemoveItems = false) : IProjectEditCommand
+{
+    public string CommandId => "gallery.type.remove";
+}
+
+public sealed record SetGalleryItemCommand(
+    string ItemId,
+    string TypeId,
+    string ResourceId,
+    string? Title = null,
+    int? SortOrder = null) : IProjectEditCommand
+{
+    public string CommandId => "gallery.item.set";
+}
+
+public sealed record RemoveGalleryItemCommand(string ItemId) : IProjectEditCommand
+{
+    public string CommandId => "gallery.item.remove";
+}

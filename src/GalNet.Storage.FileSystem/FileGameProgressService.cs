@@ -1,10 +1,9 @@
 using System.Text.Json;
-using GalNet.Core.Gallery;
 using GalNet.Core.Services;
 
 namespace GalNet.Storage.FileSystem;
 
-/// <summary>File-backed, per-player read and gallery progress.</summary>
+/// <summary>File-backed, per-player read progress.</summary>
 public sealed class FileGameProgressService : IGameProgressService
 {
     private readonly string _path;
@@ -20,8 +19,6 @@ public sealed class FileGameProgressService : IGameProgressService
 
     public bool IsRead(string groupId, string entryId) { lock (_sync) return _data.ReadEntries.Contains(Key(groupId, entryId)); }
     public void MarkRead(string groupId, string entryId) { lock (_sync) { if (_data.ReadEntries.Add(Key(groupId, entryId))) Save(); } }
-    public bool IsGalleryUnlocked(GalleryCategory category, int sequenceId) { lock (_sync) return _data.GalleryEntries.Contains($"{(int)category}:{sequenceId}"); }
-    public void UnlockGallery(GalleryCategory category, int sequenceId) { lock (_sync) { if (_data.GalleryEntries.Add($"{(int)category}:{sequenceId}")) Save(); } }
 
     private void Save()
     {
@@ -34,6 +31,5 @@ public sealed class FileGameProgressService : IGameProgressService
     private sealed class ProgressData
     {
         public HashSet<string> ReadEntries { get; set; } = [];
-        public HashSet<string> GalleryEntries { get; set; } = [];
     }
 }

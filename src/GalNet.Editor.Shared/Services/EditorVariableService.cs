@@ -16,6 +16,7 @@ public sealed class EditorVariableService : IVariableService
     private readonly IEditorPlayerVariableStore _playerStore;
     private readonly IVariableDefinitionService _variableDefinitions;
     private readonly Dictionary<string, Variable> _saveVariables = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, SystemVariableDefinition> _systemVariables = new(StringComparer.Ordinal);
 
     public event Action<VariableScope, string, Variable>? VariableChanged;
 
@@ -26,6 +27,32 @@ public sealed class EditorVariableService : IVariableService
         _playerStore = playerStore;
         _variableDefinitions = variableDefinitions;
         _variableDefinitions.DefinitionsChanged += OnDefinitionsChanged;
+    }
+
+    public void ConfigureSystemVariables(IReadOnlyCollection<SystemVariableDefinition> definitions)
+    {
+        ArgumentNullException.ThrowIfNull(definitions);
+        var configured = definitions.ToDictionary(definition => definition.Name, StringComparer.Ordinal);
+        var userNames = _variableDefinitions.GetDefinitions(VariableScope.Player)
+            .Concat(_variableDefinitions.GetDefinitions(VariableScope.Save))
+            .Select(definition => definition.Name)
+            .ToHashSet(StringComparer.Ordinal);
+        var conflict = configured.Keys.FirstOrDefault(userNames.Contains);
+        if (conflict is not null)
+            throw new InvalidDataException(
+                $"User variable '{conflict}' conflicts with a generated system variable.");
+
+        _systemVariables.Clear();
+        foreach (var pair in configured)
+            _systemVariables.Add(pair.Key, pair.Value);
+
+        _playerStore.ConfigureSystemVariables(definitions);
+        foreach (var definition in definitions.Where(definition => definition.Scope == VariableScope.Save))
+        {
+            if (!_saveVariables.TryGetValue(definition.Name, out var current)
+                || current.Type != definition.DefaultValue.Type)
+                _saveVariables[definition.Name] = CloneVariable(definition.DefaultValue, definition.Name);
+        }
     }
 
     public IReadOnlyDictionary<string, Variable> GetSnapshot(VariableScope scope)
@@ -47,6 +74,9 @@ public sealed class EditorVariableService : IVariableService
 
     public VariableScope ResolveScope(string name)
     {
+        if (_systemVariables.TryGetValue(name, out var systemVariable))
+            return systemVariable.Scope;
+
         return _variableDefinitions.GetDefinitions(VariableScope.Save)
             .Any(v => string.Equals(v.Name, name, StringComparison.Ordinal))
             ? VariableScope.Save

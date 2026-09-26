@@ -9,6 +9,7 @@ using GalNet.Core.Entry;
 using GalNet.Core.Compilation;
 using GalNet.Core.Serialization;
 using GalNet.Core.Primitives;
+using GalNet.Core.Gallery;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -77,6 +78,8 @@ public sealed class EditorSaveCoordinator : IEditorSaveCoordinator
         };
 
         File.WriteAllText(Path.Combine(previewPath, "graph.json"), JsonSerializer.Serialize(previewDocument, JsonOptions));
+        GalleryCatalog.Create(document.Gallery);
+        File.WriteAllText(Path.Combine(previewPath, "gallery.json"), JsonSerializer.Serialize(document.Gallery, JsonOptions));
         foreach (var (groupId, entries) in groupEntries)
         {
             var raw = new GroupDocument { Kind = GroupDocumentKind.Raw, Entries = entries.Select(SerializeEntry).ToList() };

@@ -22,6 +22,7 @@ public sealed class DirectoryGameContentProvider : IGameContentProvider
                 if (File.Exists(path)) GalgroupLoader.LoadIntoGroup(group, path);
             }
 
-            return new GameContent { Graph = graph, AssetRoot = _directory };
+            var gallery = GalleryFileLoader.LoadOptional(Path.Combine(_directory, "gallery.json"));
+            return new GameContent { Graph = graph, AssetRoot = _directory, Gallery = gallery };
         }, cancellationToken);
 }

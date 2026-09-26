@@ -34,4 +34,24 @@ public class VariableDefinitionServiceTests
         Assert.That(documentService.IsDirty, Is.True);
         Assert.That(service.GetDefinitions(VariableScope.Player), Has.Count.EqualTo(2));
     }
+
+    [Test]
+    public void GeneratedGalleryVariableNamesAreReservedForBuiltInState()
+    {
+        var documentService = new EditorDocumentService();
+        documentService.Load(new LoadedEditorProjectDocument
+        {
+            Document = new EditorGraphDocument()
+        });
+        var service = new VariableDefinitionService(documentService);
+        var definition = service.AddDefinition(VariableScope.Player);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(service.IsNameAvailable("gallery_opening_unlocked", VariableScope.Player), Is.False);
+            Assert.That(
+                service.RenameDefinition(VariableScope.Player, definition, "gallery_opening_unlocked"),
+                Is.False);
+        });
+    }
 }

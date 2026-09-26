@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Services;
+using GalNet.Core.Gallery;
 using Serilog;
 
 namespace GalNet.Avalonia.GameView.ViewModels;
@@ -31,6 +32,8 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
     public bool IsNavigationEnabled => !IsLoading;
     public bool CanStartNewGame => IsReady && !IsLoading;
     public bool CanContinueGame => CanContinue && !IsLoading;
+    public bool HasGallery => GetGalleryTypes().Count > 0;
+    public bool CanOpenGallery => HasGallery && IsNavigationEnabled;
 
     [ObservableProperty] private bool _isLoading;
 
@@ -78,7 +81,18 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
         _navigation.NavigateAsync<SaveSlotsPageViewModel, SaveSlotsMode>(SaveSlotsMode.Load, cancellationToken);
 
     [RelayCommand] private void OpenSettings() => _navigation.Navigate<SettingsPageViewModel>();
-    [RelayCommand] private void OpenGallery() => _navigation.Navigate<GalleryPageViewModel>();
+    [RelayCommand]
+    private async Task OpenGalleryAsync(CancellationToken cancellationToken)
+    {
+        var types = GetGalleryTypes();
+        if (types.Count == 0) return;
+        if (types.Count == 1)
+        {
+            await _navigation.NavigateAsync<GalleryContentPageViewModel, GalleryTypeData>(types[0], cancellationToken);
+            return;
+        }
+        await _navigation.NavigateAsync<GalleryPageViewModel, IReadOnlyList<GalleryTypeData>>(types, cancellationToken);
+    }
     [RelayCommand] private void OpenAbout() => _navigation.Navigate<AboutPageViewModel>();
 
     public void Dispose() => _session.PropertyChanged -= OnSessionPropertyChanged;
@@ -97,6 +111,11 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
             OnPropertyChanged(nameof(CanContinue));
             OnPropertyChanged(nameof(CanContinueGame));
         }
+        if (e.PropertyName is nameof(IGameGallerySession.GalleryDataSource))
+        {
+            OnPropertyChanged(nameof(HasGallery));
+            OnPropertyChanged(nameof(CanOpenGallery));
+        }
     }
 
     partial void OnIsLoadingChanged(bool value)
@@ -104,5 +123,9 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
         OnPropertyChanged(nameof(IsNavigationEnabled));
         OnPropertyChanged(nameof(CanStartNewGame));
         OnPropertyChanged(nameof(CanContinueGame));
+        OnPropertyChanged(nameof(CanOpenGallery));
     }
+
+    private IReadOnlyList<GalleryTypeData> GetGalleryTypes() =>
+        (_session as IGameGallerySession)?.GalleryDataSource?.GetTypes() ?? [];
 }

@@ -22,7 +22,7 @@
       <Button Classes="player-menu" Content="Settings" Command="{Binding OpenSettingsCommand}"
               IsEnabled="{Binding IsNavigationEnabled}" />
       <Button Classes="player-menu" Content="Gallery" Command="{Binding OpenGalleryCommand}"
-              IsEnabled="{Binding IsNavigationEnabled}" />
+              IsEnabled="{Binding CanOpenGallery}" IsVisible="{Binding HasGallery}" />
       <Button Classes="player-menu" Content="About" Command="{Binding OpenAboutCommand}"
               IsEnabled="{Binding IsNavigationEnabled}" />
     </StackPanel>

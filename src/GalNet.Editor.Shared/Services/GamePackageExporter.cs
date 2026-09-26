@@ -5,6 +5,7 @@ using System.Text.Json;
 using GalNet.Assets;
 using GalNet.Assets.Provider;
 using GalNet.Core.Assets;
+using GalNet.Core.Gallery;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -22,6 +23,7 @@ public static class GamePackageExporter
             var packagePath = Path.Combine(outputDirectory, $"{SafeFileName(projectName)}.galpak");
             temporaryPath = packagePath + ".tmp";
             if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+            ValidateGalleryResources(projectRoot);
             var assetsPak = await BuildAssetsAsync(Path.Combine(projectRoot, "Assets"), cancellationToken);
             var contentPak = BuildContent(projectRoot, cancellationToken);
             var packages = new[] { new PackageEntry(AssetsPakPath, Hash(assetsPak), assetsPak.Length), new PackageEntry(ContentPakPath, Hash(contentPak), contentPak.Length) };
@@ -57,11 +59,48 @@ public static class GamePackageExporter
         return PakBuilder.Build("assets", files, GalNet.Core.Assets.CompressionMode.Brotli);
     }
 
+    private static void ValidateGalleryResources(string projectRoot)
+    {
+        var galleryPath = Path.Combine(projectRoot, "gallery.json");
+        if (!File.Exists(galleryPath)) return;
+
+        var configuration = JsonSerializer.Deserialize<GalleryConfiguration>(File.ReadAllText(galleryPath), JsonOptions)
+            ?? throw new InvalidDataException("gallery.json is empty.");
+        var catalog = GalleryCatalog.Create(configuration);
+        var validatedTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "sprite", "audio", "video", "effectprogram", "effect-program", "shader"
+        };
+        var assetsPath = Path.Combine(projectRoot, "Assets");
+        var assets = Directory.Exists(assetsPath)
+            ? Directory.EnumerateFiles(assetsPath, "*.meta", SearchOption.AllDirectories)
+                .Select(path =>
+                {
+                    try { return JsonSerializer.Deserialize<AssetMeta>(File.ReadAllText(path), JsonOptions); }
+                    catch (JsonException exception) { throw new InvalidDataException($"Asset metadata '{path}' is invalid.", exception); }
+                })
+                .Where(meta => meta is not null && !string.IsNullOrWhiteSpace(meta.Id))
+                .ToDictionary(meta => meta!.Id, meta => meta!, StringComparer.Ordinal)
+            : new Dictionary<string, AssetMeta>(StringComparer.Ordinal);
+
+        foreach (var item in catalog.Items)
+        {
+            var type = catalog.Types.Single(candidate => candidate.TypeId == item.TypeId);
+            if (!validatedTypes.Contains(type.ResourceTypeName)) continue;
+            if (!assets.TryGetValue(item.ResourceId, out var asset))
+                throw new InvalidDataException(
+                    $"Gallery item '{item.Id}' references missing asset '{item.ResourceId}'.");
+            if (!string.Equals(asset.Type, type.ResourceTypeName, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException(
+                    $"Gallery item '{item.Id}' expects resource type '{type.ResourceTypeName}', but asset '{item.ResourceId}' is '{asset.Type}'.");
+        }
+    }
+
     private static byte[] BuildContent(string projectRoot, CancellationToken ct)
     {
         var files = Directory.EnumerateFiles(projectRoot, "*", SearchOption.AllDirectories)
             .Select(path => Path.GetRelativePath(projectRoot, path).Replace('\\', '/'))
-            .Where(path => path is "settings.json" || path.StartsWith("Graph/", StringComparison.OrdinalIgnoreCase) || path.StartsWith("I18n/", StringComparison.OrdinalIgnoreCase))
+            .Where(path => path is "settings.json" or "gallery.json" || path.StartsWith("Graph/", StringComparison.OrdinalIgnoreCase) || path.StartsWith("I18n/", StringComparison.OrdinalIgnoreCase))
             .Where(path => !path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase) && !path.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase))
             .OrderBy(path => path, StringComparer.Ordinal)
             .Select(path =>

@@ -348,35 +348,112 @@ Engine 分发一条 primitive 后立即提交“已消费该条目”的剧情�
 
 队列为空仍然是稳定状态，但不是更新快照的必要条件。
 
-### 10.1 Gallery 解锁（当前已实施的临时方案）
+### 10.1 Gallery 当前实现与迁移边界
 
-`gallery.unlock` 是内置 gallery 模块的同步、NonBlocking primitive。它只将参数中的 `GalleryCategory` 和零基 sequence ID 提交给 `IGameProgressService.UnlockGallery()`，随后完成；不需要 presenter、平台控件或活动异步任务。
+`gallery.unlock` 已是同步、NonBlocking primitive，接收稳定 Gallery item ID，经 `GalleryCatalog` 校验后写入生成的 Player bool。旧 `GalleryCategory`、零基 sequence ID、`IGameProgressService` Gallery API 与 progress JSON 的 `GalleryEntries` 已删除，不存在双写真源。
 
-Gallery 进度属于玩家级长期进度，而不是单个存档槽的剧情快照。因此 `IGameProgressService` 作为模块构造时注入的 Core 抽象，和 `GameEngine` 用于阅读进度的同一服务实例保持一致；`GameSnapshot` 不复制或恢复 gallery 解锁状态。缺少该服务的 runtime 组合根在实际分发时必须明确失败并记录诊断，不能静默把解锁指令当作成功。
+目标实现中 Gallery 仍是 GalNet 的内置能力，但不发展成拥有内容、UI、存储和生命周期的通用模块系统。Entry 模块只负责提供 `gallery.unlock` 的 authoring schema 与 primitive instance；Gallery catalog、玩家变量和 Avalonia 页面遵循各自已有的层级。`GameEngine` 不注册 Gallery 类型，也不认识图片、视频、音频或页面。
 
-### 10.2 Gallery 解锁变量化（候选设计，待确认）
+### 10.2 Gallery 数据契约（已确认）
 
-用户提出将每个 Gallery item 映射为内置 Player bool，使 `gallery.unlock` 和任意其他 primitive 都能通过同一个变量机制改变解锁状态。此方案优于继续扩充 `IGameProgressService` 的专用 gallery API：它让条件、脚本、成就或未来的场景解锁共享一个可检查、可写入、且不随存档槽回滚的状态面。
-
-推荐的真源是**保留命名空间的 Player 变量**，而不是第二套 Gallery progress 集合。每一个 Gallery item 以其稳定身份生成一个有效变量名，例如：
+Gallery Core 是平台无关的纯数据索引与状态查询。类型注册的最小语义只有 Gallery type ID 和适用的资源类型字符串：
 
 ```text
-gallery_Cg_3_unlocked
+GalleryTypeRegistration
+├─ TypeId            : string
+└─ ResourceTypeName  : string
 ```
 
-Runtime 对该变量的写入必须使用 Player scope（例如 `player.gallery_Cg_3_unlocked`）；最终持久化键由现有 variable service 规范化。名称必须只包含字母、数字和下划线，不能以路径、资源文件名或展示标题作为身份。当前模型已保证 `(GalleryCategory, SequenceId)` 是稳定身份；若以后允许重排或跨分类移动 item，应先增加不可变的 string `GalleryItem.Id`，再从该 ID 派生变量名。
+首轮内置注册预计包括：
 
-`gallery.unlock(category, id)` 只需调用 `Runtime.SetVariable(PlayerGalleryUnlockName(category, id), true)` 并同步完成。于是 `variable.set`、条件或其他自定义 primitive 可以用同一名字设置 `true` 或 `false`，无需依赖 Gallery 模块或平台 UI。`GameSnapshot` 继续只保存 Save scope，Player variable service 负责跨存档持久化。
+```text
+cg     -> sprite
+video  -> video
+audio  -> audio
+```
 
-但“为每个 item 生成 bool”不能只依赖缺失变量默认为 `false`：GalleryConfiguration 必须成为一个静态 catalog，并生成有效的系统 Player 变量目录。该目录至少承担：
+未来可以注册 `scene -> galgroup`，但 galgroup 场景回放不属于首轮 UI。`ResourceTypeName` 是 Gallery 保存和传递的普通稳定字符串；Gallery 不负责动态注册资源类型、解析扩展名、选择 decoder 或验证 pak 的类型编码。当前资源系统仍以封闭的 `ResourceType` enum、`.meta` 中的字符串和编辑器硬编码扩展名推断共同工作，本 feature 只由宿主适配出字符串名称，不把资源系统整体模块化。
 
-- 向 Editor 的有效变量定义投影提供不可删除、默认 `false` 的 bool；这样 `EditorPlayerVariableStore` 不会在重载时清理它们。
-- 为 Runtime/编译器提供保留名称集合，拒绝用户手工定义同名变量，并让 FileVariableService 将这些无 `player.` 前缀的保留名仍解析为 Player scope。
-- 让 Gallery UI 根据同一 catalog 枚举项目、读取对应 bool；UI 只消费数据，不拥有解锁事实。
+同一 Gallery type ID 只能注册一次。Gallery 不要求一个全局 `IGameModule`、模块生命周期或热加载；宿主只需在组合时聚合一组不可变的 registration。自定义 Gallery 类型可以使用已有资源类型字符串，也可以保留宿主认识而 Gallery 本身不理解的新字符串。
 
-建议按两步迁移：先引入 Core 的 `GalleryUnlockVariable` 命名与 catalog 投影，随后将 `gallery.unlock` 切换至 `Runtime.SetVariable` 并从 `IGameProgressService` 删除 gallery 专用 API/持久化字段（保留阅读进度 API）。当前 10.1 的 service 注入实现应视为过渡代码，不能与变量集合长期双写。
+项目内容保存集中式 Gallery catalog，而不是把标注写回图片、音频、视频或 galgroup 源文件：
 
-此命名算法可服务 `Portrait`、`Cg` 和 `Scene` 三类 Gallery 内容；未来的新 Gallery category 只需新建 catalog item。不要现在把它泛化成任意资源的“全局解锁框架”：其他领域只有在确实需要同样的 Player-bool、静态 catalog 与 UI 查询语义时，才复用该模式。
+```text
+GalleryItem
+├─ Id          : string   // 全局唯一、创建后不可变
+├─ TypeId      : string
+├─ ResourceId  : string
+├─ Title       : string?
+└─ SortOrder   : int?
+```
+
+`GalleryCategory` enum、零基 `SequenceId` 和 `IsVideo` 不能作为目标身份或展示分派依据：封闭 enum 阻止自定义类型，序号会因重排改变，`IsVideo` 又把 UI 知识复制进 item。目标 catalog 使用字符串 `TypeId` 聚合，资源类型由对应 registration 给出，item 的 `Id` 承担唯一稳定身份。
+
+Gallery 对外提供只读查询，返回所有有内容的类型，以及每种类型下的资源和当前解锁状态。接口形态可以是查询方法或不可变 snapshot，但必须表达等价数据：
+
+```text
+GalleryTypeData
+├─ TypeId
+├─ ResourceTypeName
+└─ Items[]
+   ├─ Id
+   ├─ ResourceId
+   ├─ Title
+   ├─ SortOrder
+   └─ IsUnlocked
+```
+
+数据层负责 type/item 唯一性、item 对注册类型的引用、资源类型字符串规范化和解锁状态合并；它不负责网格、列表、导航、缩略图、播放器或全屏页面。
+
+### 10.3 Gallery 解锁变量（已确认）
+
+每个 Gallery item 映射为一个保留的 Player bool，使 `gallery.unlock`、条件、脚本和其他 primitive 共享同一个状态面。变量名由不可变 item ID 确定性生成：
+
+```text
+item ID:       opening_movie
+variable name: gallery_opening_movie_unlocked
+runtime name:  player.gallery_opening_movie_unlocked
+```
+
+变量名不包含 `TypeId`，因此 item 从一种 Gallery 类型移动到另一种类型时不会丢失已解锁状态；也不能使用资源路径、标题或排序生成变量名。Item ID 必须符合可逆、无碰撞的变量名约束，创建后不得随资源改名而改变。
+
+`gallery.unlock(itemId)` 先验证 item 存在，再通过 `IGameRuntime.SetVariable()` 把对应 Player bool 设为 `true` 并同步完成。通用变量 primitive 可以操作同一个规范名称。`GameSnapshot` 继续只保存 Save scope；Player variable store 负责跨存档槽持久化。
+
+Gallery catalog 同时生成系统 Player 变量目录：每项是不可删除、默认 `false` 的 bool。Editor 的有效变量投影必须保留这些系统变量并拒绝用户定义冲突名称；文件变量服务必须把这些名称解析为 Player scope。Gallery 数据查询读取这组变量并只向 UI 暴露 `IsUnlocked`，UI 不需要拼接变量名或访问底层变量存储。
+
+迁移时先建立 catalog 与系统变量投影，再把 `gallery.unlock` 从 `IGameProgressService` 切换到变量。随后移除 `IGameProgressService` 的 Gallery 专用 API 和 progress JSON 中的 `GalleryEntries`；若已有发行数据需要兼容，只允许进行一次旧集合到 Player bool 的导入，不长期双写两套真源。
+
+### 10.4 Editor 资源标注与聚合
+
+Editor 根据当前所选资源的类型字符串，反查所有匹配的 `GalleryTypeRegistration`，向用户提供“标记为 Gallery”及可选类型。例如 image/sprite 资源可以标记为 `cg`，同一资源类型以后也可以同时出现 `wallpaper` 等自定义 Gallery 类型。
+
+确认标注后，Editor 只在集中 catalog 中创建或更新 `GalleryItem`。资源重命名由现有资源身份/路径维护机制更新引用；原始媒体文件不嵌入 GalNet 元数据。预览内容提供者与导出链必须把同一 catalog 放进 `GameContent`，保证 Editor Preview、目录运行和发行包观察到相同数据。
+
+本阶段不要求资源类型本身动态模块化。对于当前 enum 中已有类型，适配器输出规范字符串；对于 `.galgroup` 这类不经过 `IAssetManager` 的内容，可以由 Editor/内容提供者在未来显式提供 `galgroup` 字符串。字符串未知时 Gallery 保留数据并产生诊断，不擅自把它解释成某种媒体。
+
+### 10.5 Avalonia Gallery 前端
+
+Avalonia 只依赖 Gallery 的只读数据结果，自主决定导航与展示：
+
+- 没有任何有内容的 Gallery 类型时，标题页入口隐藏或禁用。
+- 只有一种有内容的类型时，直接进入对应内容页面，不把一个不可见的选择页留在返回历史中。
+- 有多种类型时，先进入 Gallery 类型选择页，再进入选中的内容页面。
+
+前端首先按 Gallery `TypeId` 查找可选的专用 UI；没有专用 UI 时可按 `ResourceTypeName` 使用默认 UI。因此 `wallpaper -> sprite` 可以直接复用图片 Gallery，而真正不同的自定义类型才需要宿主手工提供 Avalonia UI。这个解析规则完全属于前端，不需要把 `RendererId`、ViewModel 类型或页面路由写入 Gallery Core。
+
+首轮默认 UI：
+
+- 图片：类似存档槽的网格；未解锁项显示纯色/弱化占位和右下角“未解锁”，已解锁项显示缩略图，点击后进入完整图片查看页。
+- 视频：使用相同的卡片式网格；已解锁项显示预生成或缓存的首帧缩略图，点击后进入完整视频播放页。
+- 音频：使用逐行列表，显示曲名、播放/暂停、时间和进度；同一前端会话只维护一个活动音频播放项。
+
+UI 可以接收完整 `GalleryTypeData` 集合或通过 data source 查询。媒体播放进度、当前选中项、缩略图缓存和全屏状态都是短期呈现状态，不写入 Gallery catalog、Player variable 或 `GameSnapshot`。锁定状态不能只靠灰度颜色表达，必须同时有文本或图标。
+
+### 10.6 延后能力与风险
+
+场景 Gallery 最终可以使用 `scene -> galgroup` registration，但点击场景不能直接在当前游戏会话中 Jump：回放剧情可能修改变量、存档位置和解锁状态。它需要隔离的 replay session、明确的退出返回和存档策略，因此作为后续独立切片，不阻塞图片、视频和音频 Gallery。
+
+资源类型字符串降低了 Gallery 与现有 enum 的耦合，但也引入拼写、大小写和未知值风险。组合时必须规范化并拒绝重复 Gallery type ID；Editor 应对当前宿主不认识的资源类型给出诊断。是否将整个资源类型系统改造成动态 registry，待出现 Gallery 之外的第二个明确消费者后再设计。
 
 ## 11. 明确不引入的公共抽象
 

@@ -71,6 +71,10 @@ public sealed class EditorCommandCatalog : IEditorCommandCatalog
         Define<RenameVariableDefinitionCommand>("variable.definition.rename", "Renames a variable definition and optionally updates all references."),
         Define<SetVariableDefinitionTypeCommand>("variable.definition.setType", "Changes a variable type and converts or resets its default value."),
         Define<SetVariableDefaultValueCommand>("variable.definition.setDefault", "Changes the default value of a project variable."),
+        Define<RegisterGalleryTypeCommand>("gallery.type.register", "Registers a Gallery type for a resource type name."),
+        Define<RemoveGalleryTypeCommand>("gallery.type.remove", "Removes a Gallery type and optionally its items."),
+        Define<SetGalleryItemCommand>("gallery.item.set", "Creates or updates a Gallery item while preserving its stable ID."),
+        Define<RemoveGalleryItemCommand>("gallery.item.remove", "Removes a Gallery item by stable ID."),
         Define<RenameProjectCommand>("project.rename", "Changes the project display name without moving its directory."),
         Define<PatchProjectSettingsCommand>("project.settings.patch", "Updates selected project settings after validating each supported field.")
     ];

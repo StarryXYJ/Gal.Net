@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using GalNet.Core.Gallery;
 using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Services;
 
@@ -23,6 +24,8 @@ public sealed class VariableDefinitionService : IVariableDefinitionService
     public bool IsNameAvailable(string name, VariableScope scope, ProjectVariableDefinition? current = null)
     {
         var sanitized = VariableNameRules.Sanitize(name, current?.Name ?? $"var_{scope.ToString().ToLowerInvariant()}");
+        if (GalleryUnlockVariable.IsReservedName(sanitized))
+            return false;
         return GetAllDefinitions()
             .Where(def => !ReferenceEquals(def, current))
             .All(def => !string.Equals(def.Name, sanitized, StringComparison.Ordinal));

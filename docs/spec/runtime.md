@@ -73,6 +73,8 @@ Choice 节点由 Engine 求值并过滤可见选项，再通过 `IChoicePresente
 
 `GameSnapshot` 包含 `NodeId`、`EntryIndex`、变量字典与 `SceneState`。`CreateSaveData()` 返回 Engine 保存的最后稳定快照，而不是即时抓取可能仍在异步变化的状态。
 
+Save scope 随存档槽保存和恢复；Player scope 由宿主变量服务独立持久化，普通读档不得回滚。内置系统可以通过 `SystemVariableDefinition` 注册生成变量。Gallery 为每个 item 注册默认 `false` 的 Player bool `gallery_<item-id>_unlocked`；`gallery.unlock` 校验 item ID 后把该变量设为 `true`。
+
 稳定快照的更新条件：
 
 - 当前剧情游标已经提交到明确边界。
@@ -132,5 +134,6 @@ public void Skip();
 - `effect.apply` / `effect.stop`：维护 `SceneState.ActiveEffects`、目标 Layer 的 effect 索引和 `IEffectPresenter` 调用。
 - `flow.wait`：blocking、skippable 的等待实例。
 - `variable.set`：求值后写入 Runtime 变量。
+- `gallery.unlock`：按稳定 item ID 解锁 Gallery，写入对应的系统 Player bool。
 
-音频、视频、粒子和画廊仍保留推荐 schema；完整产品级行为由后续 feature 或宿主自定义模块补齐。
+音频、视频和粒子仍保留推荐 schema；完整产品级剧情原语行为由后续 feature 或宿主自定义模块补齐。Gallery 的平台无关 catalog 与解锁数据层由 Core/Storage 提供；默认 Avalonia 前端通过宿主提供的 `IGameGallerySession` 浏览 CG、视频和音频，不把页面或媒体状态写入 Runtime。

@@ -108,6 +108,120 @@
 
 **当前范围（2026-09-22）：** 本轮已在新 instance 模型下实现 layer、dialogue/typewriter、Engine 内置流程跳转、animation、effect、flow.wait 和 variable.set，并接入 Avalonia Sample、Editor Preview 与 Headless Sample 的组合根。Animation plan 整体作为一个 `AnimationPlanPrimitiveInstance`；内部 layer/effect 事件仅作为 animation 模块私有事件处理，不重新进入通用 Entry 分发。Audio、video、particle 和 gallery 仍保留推荐 schema，完整产品行为留给后续 feature。
 
-**当前子阶段（2026-09-23，设计待确认）：** 已实现的 `gallery.unlock` 临时通过 `IGameProgressService` 写入玩家级进度。现正评估将每个 Gallery item 生成保留的 Player bool，使 Gallery 和其他原语共享变量操作；该方案需要 Gallery catalog 进入内容加载链，并让 Editor 的 player-variable store 保留系统变量。确认前不继续扩大 gallery 行为，也不与临时 progress 集合双写。Audio、video 与 particle 仍保留 schema，等待各自行为范围确认。
+**计划变更（2026-09-24，设计已确认）：** 已实现的 `gallery.unlock` 仍临时通过 `IGameProgressService` 写入玩家级进度；Gallery 的最终方向已确认为内置、平台无关的数据层，而不是通用功能模块。Gallery 类型只登记 `(typeId, resourceTypeName)`，item 使用稳定字符串 ID 并生成 Player bool，Avalonia 自主消费类型、资源和解锁状态。完整 Gallery 产品切片移到 Phase 5-8；Phase 4 只负责确认现有 primitive 已进入新 instance 执行路径。Audio、video 与 particle 的剧情 primitive 产品行为仍等待各自范围确认。
 
 **验证证据（2026-09-22）：** `GeneralTest` 全量 219 项通过；新增测试覆盖 animation/effect runtime state、presenter 调用、plan final state 和 `flow.wait` skip。受限环境中构建/测试需设置 `AVALONIA_TELEMETRY_OPTOUT=1` 并传入 `-p:UseSharedCompilation=false`。文档已重写 `docs/spec/runtime.md`、`docs/spec/entry-types.md`、`docs/spec/architecture.md`、`docs/glossary.md`、`docs/design/primitive-module-runtime-design.md` 和长期 phase plan。
+
+## Phase 5：Gallery 数据契约与内容加载
+
+状态：verified
+
+**目标：** 用字符串类型注册和稳定 item ID 建立平台无关的 Gallery catalog，并让所有内容提供路径交付同一份数据。
+
+**前置条件：** Phase 4 的 Entry instance 路径保持可用；当前临时 Gallery progress 行为暂不删除。
+
+**涉及模块：** `GalNet.Core`、`GalNet.Storage.Abstractions`、`GalNet.Storage.FileSystem`、`GalNet.Editor.Shared`、Sample/Editor Preview 内容提供者、相关测试。
+
+**任务：**
+
+1. 将目标模型从 `GalleryCategory`、`SequenceId`、`IsVideo` 收敛为 `GalleryTypeRegistration(TypeId, ResourceTypeName)` 与稳定字符串 ID 的 `GalleryItem`。
+2. 建立冻结的 Gallery 类型集合，拒绝空 ID、重复 type ID、无效资源类型字符串和 item 对未知类型的引用。
+3. 定义只读 Gallery catalog/data source，能够按类型返回资源条目；UI 所需的 `IsUnlocked` 在 Phase 6 接入，当前接口应预留而不引入 UI 类型。
+4. 将 Gallery catalog 放入 `GameContent`，同时接通目录加载、Editor Preview 和导出输入；不把标注写入媒体源文件。
+5. 为当前 `ResourceType` enum 和 `.galgroup` 内容提供名称适配，但不改造资源类型系统或 pak 编码。
+
+**测试：** 类型规范化、重复注册、稳定 item ID、未知类型引用、按类型聚合、资源类型字符串保留，以及 FileSystem/Editor Preview 内容等价性。
+
+**文档：** 在实现验证后同步 Gallery catalog 文件格式和 `GameContent` 当前事实；实现前不改 `docs/spec`。
+
+**风险：** 当前 `ResourceType` 是封闭 enum，而 `.galgroup` 不走 `IAssetManager`；适配层必须显式产生稳定字符串，不能假装资源系统已经模块化。
+
+**验证（2026-09-25）：** 已实现版本 1 的 `gallery.json` DTO、验证后冻结的 `GalleryCatalog`、稳定字符串 type/item ID、按类型和 item 查询，以及 `GameContent.Gallery`。目录内容提供者与 Editor Preview 均读取项目根目录的可选 `gallery.json`，导出器会把该文件收入 `Assets/content.pak`；共享 `GameTestCase` 已包含一个真实 CG 条目。旧 `GalleryCategory` 仅为 Phase 6 前的 progress-backed primitive 单独保留，新 catalog 不使用它。`GeneralTest` 228/228 通过。全解决方案构建中 Core、Storage、Editor、Desktop Sample、Headless Sample 和测试项目均编译成功；Android、Browser、iOS 仅因受限环境无权枚举 `C:\Users\Starry\AppData\Local\Microsoft SDKs` 而未完成平台 target 验证，已记录为 agent lesson。
+
+**退出条件：** Headless、Avalonia Sample 和 Editor Preview 都能读取相同 Gallery 类型与 item 集合，Core/Runtime 中没有 Avalonia 类型或页面信息。
+
+## Phase 6：系统 Player bool 与 `gallery.unlock`
+
+状态：verified
+
+**目标：** 让 Gallery 解锁以生成的 Player bool 为唯一真源，并移除长期双写风险。
+
+**前置条件：** Phase 5 catalog 能稳定枚举 item ID。
+
+**涉及模块：** `GalNet.Core`、`GalNet.Runtime`、`GalNet.Primitives.Builtins`、变量服务、`GalNet.Storage.FileSystem`、Editor player-variable store、相关测试。
+
+**任务：**
+
+1. 定义 `gallery_<item-id>_unlocked` 的规范化、验证和无碰撞生成规则；名称不包含 Gallery type ID、资源路径或标题。
+2. 从 Gallery catalog 投影不可删除、默认 `false` 的系统 Player bool，并与用户变量定义进行冲突检查。
+3. 让文件与 Editor 变量服务将生成名称稳定解析为 Player scope，重载时不得清理系统变量。
+4. 把 `gallery.unlock` 参数收敛为稳定 item ID，经 catalog 校验后调用 `IGameRuntime.SetVariable()`；保持同步 NonBlocking instance。
+5. 删除 `IGameProgressService` 的 Gallery 专用方法和 `GalleryEntries` 持久化；如果确认存在已发行旧数据，则增加一次性导入，不保留双写。
+6. 让 Gallery data source 合并 catalog 与 player variables，对 UI 只返回 `IsUnlocked`。
+
+**测试：** 默认未解锁、primitive 解锁、通用变量操作解锁、跨存档槽保留、普通读档不回滚、Editor 重载保留、名称冲突、未知 item 拒绝，以及旧 progress 迁移策略（若需要）。
+
+**文档：** 实现验证后更新变量 scope、Gallery 解锁和 progress 存储事实。
+
+**风险：** `EditorPlayerVariableStore` 当前会清理不在项目声明中的 player 变量；系统变量投影必须先落地，再切换 primitive 真源。
+
+**验证（2026-09-25）：** Gallery item 现在确定性生成 `gallery_<item-id>_unlocked` 系统 Player bool；文件变量服务和 Editor 变量服务均接受通用系统变量定义并初始化默认值，Editor store 会在 catalog 尚未配置前保留符合保留规则的已有 Gallery 变量。`gallery.unlock` 已收敛为稳定 item ID、先经 catalog 校验，再通过 `IGameRuntime.SetVariable("player....", true)` 写入唯一真源。`IGameProgressService` 的 Gallery API、`GalleryEntries` 与旧 `GalleryCategory` 已删除。`GalleryDataSource` 合并 catalog 与 Player snapshot，只向 UI 投影 `IsUnlocked`。自动化测试覆盖默认值、primitive、未知 ID、跨重载持久化、读档不回滚、查询投影与用户变量名称冲突；`GeneralTest` 232/232 通过。
+
+**退出条件：** Gallery 解锁只有 Player bool 一个真源，旧 progress 集合已移除或仅作为一次性迁移输入，UI 查询与剧情条件观察到相同状态。
+
+## Phase 7：Editor Gallery 标注与聚合
+
+状态：verified
+
+**目标：** 让资源编辑入口根据资源类型字符串创建集中式 Gallery item，并覆盖预览和导出工作流。
+
+**前置条件：** Phase 5 catalog 契约稳定；Phase 6 的 item ID/变量规则可用于即时校验。
+
+**涉及模块：** `GalNet.Editor.Abstraction`、`GalNet.Editor.Shared`、`GalNet.Editor`、项目命令/撤销保存、预览与导出、相关测试。
+
+**任务：**
+
+1. 在资源选择或检查器中，根据所选资源的类型字符串筛选全部匹配 Gallery type registration。
+2. 提供新增、修改、移除 Gallery 标注的项目命令，生成不可变 item ID，并支持标题与排序等内容元数据。
+3. 将集中 catalog 纳入 EditorProjectDocument、保存调度、撤销/重做、项目重开和导出。
+4. 检查资源删除/移动后的引用诊断；不修改图片、音频、视频或 galgroup 源文件。
+5. 在 Editor 中显示生成的系统变量为只读定义，并阻止用户声明同名变量。
+
+**测试：** 同一资源类型对应多个 Gallery 类型、标注增删改与撤销重做、项目重开、资源引用失效诊断、预览/导出一致性和系统变量只读冲突。
+
+**文档：** 实现验证后记录 Gallery authoring 文件位置、标注流程与导出行为。
+
+**风险：** 资源移动的身份更新能力在现有资源系统中可能不完整；首轮必须至少保留稳定 asset ID 或产生明确的断链诊断。
+
+**验证（2026-09-25）：** Editor 聚合中的 `GalleryConfiguration` 以 `[JsonIgnore]` 留在图文档内存模型、由 repository 单独读写项目根 `gallery.json`；新建或旧项目缺省获得 `cg -> sprite`、`video -> video`、`audio -> audio` 三个内置 registration。资源检查器按 `.meta` 的资源类型字符串反查全部匹配类型，可对同一资源分别标注，创建时生成稳定 GUID item ID，后续标题/排序修改保持 ID；改动进入 Graph undo/redo 与保存调度。Preview 会把当前内存 catalog 写入临时目录再加载，导出会验证已知媒体类型的 asset ID 与类型，删除资源后明确失败。Headless editor 命令已增加 Gallery type/item 的注册、更新与删除；生成变量在条件建议与 Preview Inspector 中以只读名称显示。持久化、命令稳定 ID、内置类型、导出断链测试均通过；`GeneralTest` 235/235 通过。
+
+**退出条件：** 用户无需手写 JSON 即可把图片、音频和视频加入 Gallery，保存、重开、预览和导出均得到同一 catalog。
+
+## Phase 8：Avalonia Gallery 导航与默认 UI
+
+状态：verified
+
+**目标：** 由 Avalonia 完全消费 Gallery 数据，完成零/单/多类型导航以及图片、视频、音频默认展示。
+
+**前置条件：** Phase 5-7 能提供带 `IsUnlocked` 的稳定 Gallery 数据；媒体资源读取服务可由宿主注入。
+
+**涉及模块：** `GalNet.Avalonia.GameView`、必要的 Avalonia 媒体适配、Sample/Editor Preview 组合根、相关测试。
+
+**任务：**
+
+1. 增加前端 Gallery launch coordinator：零个有内容类型时隐藏/禁用入口，一个类型时直达内容页，多个类型时进入类型选择页，并保持正确返回历史。
+2. 让前端优先按 Gallery type ID 选择专用 UI，未命中时按资源类型字符串选择默认 UI；该映射不写入 Core catalog。
+3. 实现图片网格：锁定占位与文字/图标、已解锁缩略图、完整图片查看和已解锁项切换。
+4. 实现视频网格：锁定占位、首帧缩略图缓存和完整播放页。
+5. 实现音频列表：曲名、播放/暂停、时间与进度，并保证同一会话只有一个活动播放项。
+6. 对没有可用 UI 的类型给出可诊断的前端状态；自定义类型可复用资源类型默认 UI或由宿主提供专用 UI。
+
+**测试：** 零/单/多类型导航、返回栈、类型专用 UI 优先级、资源类型 fallback、锁定资源不展示内容、图片全屏、视频播放入口、音频单播放会话和无 UI 诊断。
+
+**文档：** 实现验证后同步 Avalonia Gallery 页面与宿主扩展点；场景回放仍标为未实现。
+
+**风险：** 视频首帧若在每次页面进入时实时解码会造成明显延迟；应使用导入/构建产物或受控缓存。锁定状态不能只使用灰度颜色表达。
+
+**验证（2026-09-26）：** `IGameGallerySession` 作为可选宿主能力向 Avalonia 暴露 `IGalleryDataSource` 与资源 ID 解析器，Core/Runtime 未引入 UI 依赖。标题页只消费有内容类型：零类型隐藏入口，单类型直接激活内容页，多类型进入类型选择页；返回历史由现有 navigation service 保持。前端先按 `typeId` 选择 `cg`/`video`/`audio` 专用 renderer，未命中再按 `sprite|image`、`video`、`audio` 资源类型 fallback，未知类型显示诊断。图片和视频使用带 `Locked` 文本的纯色锁定卡片；解锁图片可完整查看，视频首帧写入临时 SHA-256 缓存并进入 LibVLC 播放页；音频列表显示曲名、播放/暂停、时间与进度，整个 game scope 共享一个播放器。缩略图后台加载，不阻塞页面导航；Sample 复用 `GameContent.AssetRoot`，Editor Preview 使用项目 `Assets` 根，目录解析器对嵌套 `.meta` 有定向测试。Windows Sample 与 Editor 条件性携带原生 LibVLC runtime。导航分派、renderer fallback 与资源 ID 解析测试已覆盖，`GeneralTest` 245/245 通过，Sample Avalonia 与 Editor 构建通过。
+
+**退出条件：** 默认 Avalonia 宿主可完整浏览 CG、视频和音频 Gallery；Core/Runtime 未新增 UI 依赖，未知自定义类型不会导致导航崩溃。

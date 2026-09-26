@@ -4,7 +4,7 @@ title: Entry 模块与 PrimitiveInstance 运行时收敛
 type: runtime
 status: implementation
 created: 2026-09-22
-updated: 2026-09-22
+updated: 2026-09-26
 ---
 
 # Entry 模块与 PrimitiveInstance 运行时收敛
@@ -34,6 +34,10 @@ updated: 2026-09-22
 - 对话与打字机属于 dialogue 模块；`\skip` 表示一次文本跳过的边界。
 - 快照以可恢复逻辑边界为准；活动 NonBlocking 呈现实例不应仅因仍在队列中阻止快照。
 - 稳定快照由 Engine 在所有稳定边界统一更新，不使用 `CreatesCheckpoint` 等 primitive 元数据。
+- Gallery 作为内置、平台无关的数据能力实现，不扩张成通用功能模块系统；Entry 模块中只保留 `gallery.unlock` 这类剧情指令入口。
+- Gallery 类型注册只声明稳定的 Gallery type ID 与适用的资源类型字符串；本 feature 不把现有资源类型系统改造成动态模块。
+- Gallery item 使用不可变字符串 ID，通过固定格式 `gallery_<item-id>_unlocked` 映射为 Player bool；Gallery 数据查询向 UI 返回类型、资源和 `IsUnlocked`，UI 不直接拥有或推导解锁事实。
+- Avalonia 自主决定 Gallery 导航和展示：无内容时隐藏或禁用入口，只有一种有内容类型时直接进入，多种类型时先进入类型选择页；内置图片、视频和音频展示，类型专用 UI 与按资源类型复用的默认 UI 均属于前端。
 
 ## 范围
 
@@ -42,6 +46,7 @@ updated: 2026-09-22
 - 重构 `GameEngine` 的推进和快照协作。
 - 将推荐 dialogue/typewriter 路径迁移到新实例模型并加入 `\skip`。
 - 迁移现有推荐模块和测试，删除被新模型替代的 Handler/Operation 抽象。
+- 以 Gallery 作为后续垂直切片，补齐类型/条目 catalog、Player bool 解锁、编辑器资源标注与 Avalonia 查询展示。
 - 同步设计、运行时和 Entry 规范文档。
 
 ## 非目标
@@ -50,6 +55,9 @@ updated: 2026-09-22
 - 不序列化 Task、CancellationToken、平台控件或活动 `PrimitiveInstance`。
 - 不引入运行期模块热加载。
 - 不在本 feature 中重做资源模块或完整音频系统。
+- 不在本 feature 中把 `ResourceType`、资源解码器或资源编辑器改造成动态插件系统；Gallery 暂时只消费宿主能够提供的资源类型字符串。
+- 不在首轮 Gallery UI 中实现 galgroup 场景回放；场景回放需要隔离运行会话，作为后续独立切片。
+- 不把 Gallery 的页面、导航、缩略图或媒体播放策略放进 Core、Runtime 或 `GameEngine`。
 - 不设计动画时间线内的通用嵌套 Entry；整个动画计划只对应一个 primitive instance。
 
 ## 验收标准
@@ -66,6 +74,11 @@ updated: 2026-09-22
 - Choice 等待不进入 PrimitiveInstance 队列、不响应 Advance Skip；选择完成后由 Engine 内部继续到下一阻塞点。
 - GameView 不保存活动实例；已完成 NonBlocking 实例由 Engine 在后续步进、Group 结束或 Dispose 时清理。
 - 快照不会被纯 NonBlocking 呈现实例无限阻塞。
+- Gallery 类型能够以 `(typeId, resourceTypeName)` 注册，重复 type ID 明确失败；item 能按类型聚合并保留资源类型字符串，不依赖封闭 enum 扩展。
+- Gallery item 的稳定 ID 对应唯一 Player bool；`gallery.unlock(itemId)` 与通用变量操作观察到同一状态，旧 Gallery progress 集合不与变量长期双写。
+- Editor 能从所选资源的类型字符串筛选可用 Gallery 类型，并把标注写入集中 catalog；改动不写入图片、音频、视频或 galgroup 源文件。
+- Avalonia 能取得所有有内容的 Gallery 类型及其 item/解锁状态，覆盖零类型、单类型直达和多类型二级导航。
+- 默认图片与视频 Gallery 提供锁定占位、已解锁缩略图和完整查看页面；默认音频 Gallery 提供列表、曲名、播放状态和进度展示。
 - 解决方案构建及相关测试通过。
 
 ## 约束

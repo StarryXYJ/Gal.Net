@@ -4,6 +4,7 @@ using GalNet.Core.Gallery;
 using GalNet.Core.Primitives;
 using GalNet.Core.Scene;
 using GalNet.Core.Services;
+using GalNet.Core.Variable;
 using GalNet.Core.View;
 using GalNet.Primitives.Builtins;
 using GalNet.Runtime.Runtime;
@@ -176,13 +177,18 @@ public class BuiltinPrimitiveInstanceTests
     }
 
     [Test]
-    public void GalleryUnlockWritesPlayerProgressWithoutAPlatformPresenter()
+    public void GalleryUnlockWritesGeneratedPlayerVariableWithoutAPlatformPresenter()
     {
-        var progress = new RecordingProgressService();
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(progress: progress));
+        var gallery = GalleryCatalog.Create(new GalleryConfiguration
+        {
+            Types = [new GalleryTypeRegistration { TypeId = "cg", ResourceTypeName = "sprite" }],
+            Items = [new GalleryItem { Id = "cg_3", TypeId = "cg", ResourceId = "asset-cg-3" }]
+        });
+        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(gallery: gallery));
+        var runtime = new GameRuntime(null);
         var instance = view.Dispatch(
-            Primitive(UnlockGalleryEntry.TypeId, new { category = "Cg", id = 3 }),
-            new GameRuntime(null),
+            Primitive(UnlockGalleryEntry.TypeId, new { id = "cg_3" }),
+            runtime,
             CancellationToken.None);
 
         Assert.Multiple(() =>
@@ -190,21 +196,34 @@ public class BuiltinPrimitiveInstanceTests
             Assert.That(instance, Is.TypeOf<ImmediatePrimitiveInstance>());
             Assert.That(instance!.IsBlocking, Is.False);
             Assert.That(instance.IsCompleted, Is.True);
-            Assert.That(progress.IsGalleryUnlocked(GalleryCategory.Cg, 3), Is.True);
+            Assert.That(runtime.GetVariables(VariableScope.Player)["gallery_cg_3_unlocked"].AsBool(), Is.True);
         });
     }
 
     [Test]
-    public void GalleryUnlockRejectsMissingProgressServiceInsteadOfSilentlySucceeding()
+    public void GalleryUnlockRejectsMissingCatalogInsteadOfSilentlySucceeding()
     {
         using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended());
 
         Assert.That(
             () => view.Dispatch(
-                Primitive(UnlockGalleryEntry.TypeId, new { category = "Portrait", id = 0 }),
+                Primitive(UnlockGalleryEntry.TypeId, new { id = "portrait_0" }),
                 new GameRuntime(null),
                 CancellationToken.None),
-            Throws.InvalidOperationException.With.Message.Contains("IGameProgressService"));
+            Throws.InvalidOperationException.With.Message.Contains("GalleryCatalog"));
+    }
+
+    [Test]
+    public void GalleryUnlockRejectsUnknownItemId()
+    {
+        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(gallery: GalleryCatalog.Empty));
+
+        Assert.That(
+            () => view.Dispatch(
+                Primitive(UnlockGalleryEntry.TypeId, new { id = "missing" }),
+                new GameRuntime(null),
+                CancellationToken.None),
+            Throws.TypeOf<InvalidDataException>().With.Message.Contains("missing"));
     }
 
     private static PrimitiveEntry Primitive(string type, object arguments, string? batchId = null) =>
@@ -287,13 +306,4 @@ public class BuiltinPrimitiveInstanceTests
         public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSeconds) { }
     }
 
-    private sealed class RecordingProgressService : IGameProgressService
-    {
-        private readonly HashSet<(GalleryCategory Category, int SequenceId)> _unlocked = [];
-
-        public bool IsRead(string groupId, string entryId) => false;
-        public void MarkRead(string groupId, string entryId) { }
-        public bool IsGalleryUnlocked(GalleryCategory category, int sequenceId) => _unlocked.Contains((category, sequenceId));
-        public void UnlockGallery(GalleryCategory category, int sequenceId) => _unlocked.Add((category, sequenceId));
-    }
 }

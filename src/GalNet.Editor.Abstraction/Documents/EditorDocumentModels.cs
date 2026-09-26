@@ -2,11 +2,15 @@ using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using GalNet.Core.Settings;
 using GalNet.Core.Variable;
+using GalNet.Core.Gallery;
 
 namespace GalNet.Editor.Abstraction.Documents;
 
 public sealed class EditorGraphDocument
 {
+    [JsonIgnore]
+    public GalleryConfiguration Gallery { get; set; } = BuiltinGalleryTypes.CreateConfiguration();
+
     [JsonPropertyName("version")]
     public int Version { get; set; } = 2;
 

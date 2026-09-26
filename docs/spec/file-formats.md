@@ -7,6 +7,7 @@
 ```text
 Project/
   settings.json
+  gallery.json              optional
   Graph/
     graph.json
     groups/*.rawgalgroup
@@ -18,7 +19,42 @@ Project/
   .galnet/editor-state.json
 ```
 
-`settings.json` 存放项目设置；`graph.json` 是节点图和变量定义；每个 Group 的编辑源存放在单独的 `.rawgalgroup`。编辑器状态（例如项目级编辑器信息）写入 `.galnet/editor-state.json`，不应作为运行时内容处理。
+`settings.json` 存放项目设置；可选的 `gallery.json` 存放 Gallery 类型与资源条目；`graph.json` 是节点图和变量定义；每个 Group 的编辑源存放在单独的 `.rawgalgroup`。编辑器状态（例如项目级编辑器信息）写入 `.galnet/editor-state.json`，不应作为运行时内容处理。
+
+## gallery.json
+
+当前 Gallery authoring 格式版本为 1。`types` 把 Gallery type ID 关联到一个资源类型字符串；`items` 使用稳定 item ID 引用某个已注册类型和资源 ID。Gallery catalog 加载后不可变，类型和 item ID 会规范化为小写。
+
+```json
+{
+  "version": 1,
+  "types": [
+    { "typeId": "cg", "resourceType": "sprite" },
+    { "typeId": "audio", "resourceType": "audio" }
+  ],
+  "items": [
+    {
+      "id": "opening_cg",
+      "typeId": "cg",
+      "resourceId": "asset-guid",
+      "title": "Opening",
+      "sortOrder": 10
+    }
+  ]
+}
+```
+
+约束：
+
+- `typeId` 只能使用字母、数字、下划线、短横线和点，忽略首尾空白并规范化为小写；规范化后不能重复。
+- `resourceType` 是非空字符串名称，使用同一字符规则并规范化为小写。Gallery 不把它解析成 `ResourceType` enum，也不注册 decoder。
+- item `id` 只能使用字母、数字和下划线，规范化为小写并在整个 catalog 内唯一；它不从资源路径、标题或排序生成。
+- item 的 `typeId` 必须引用已注册类型，`resourceId` 不能为空；`title` 与 `sortOrder` 可省略。
+- 文件不存在时内容提供者使用空 Gallery catalog；文件存在但版本、JSON 或引用无效时加载明确失败。
+
+`DirectoryGameContentProvider` 从内容根目录读取 `gallery.json`；Editor Preview 先把当前内存 catalog 写入预览临时目录，再由 `EditorGameDataProvider` 读取同一格式。结果均通过 `GameContent.Gallery` 暴露。Gallery catalog 只包含静态类型和资源条目；每个 item 在加载后生成一个默认 `false` 的 Player bool `gallery_<item-id>_unlocked`，解锁值保存在 Player variable store 中，不回写 `gallery.json`，也不进入存档槽快照。
+
+Editor 新项目默认注册 `cg -> sprite`、`video -> video` 与 `audio -> audio`。资源检查器按资源 `.meta` 的 `type` 列出全部匹配 registration，标注只修改集中式 `gallery.json`；item 的 `resourceId` 使用 `.meta` 的稳定 asset ID。导出对当前内置媒体类型验证资源存在且类型匹配。
 
 ## graph.json
 
@@ -83,7 +119,7 @@ Project/
 ```text
 <Project>.galpak
   <Project>.galnet       JSON manifest（格式版本 1）
-  Assets/content.pak     settings.json、Graph/**、I18n/**
+  Assets/content.pak     settings.json、gallery.json（若存在）、Graph/**、I18n/**
   Assets/assets.pak      Assets/**
 ```
 
