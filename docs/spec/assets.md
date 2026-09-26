@@ -8,11 +8,11 @@
 
 | 格式 | 说明 |
 |---|---|
-| `.galpak` | 游戏分发 ZIP；当前含 JSON manifest、`Assets/content.pak` 与 `Assets/assets.pak` |
+| `.galpak` | 游戏分发 ZIP；当前含 JSON manifest、`Assets/content.pak` 与 `Assets/Paks/000-base.pak` |
 | `.galnet` | 当前 `.galpak` 内 manifest 的文件名，不是独立逻辑二进制 |
 | `.pak` | 资源归档文件，内部包含寻址表和资源数据块 |
 
-当前导出器将 `Assets/**` 打为 `Assets/assets.pak`，并将 `settings.json`、`Graph/**`、`I18n/**` 打为 `Assets/content.pak`；完整发布布局见[文件格式](file-formats.md)。
+当前导出器将 `Assets/**` 打为 `Assets/Paks/000-base.pak`，并将 `settings.json`、`Graph/**`、`I18n/**` 打为 `Assets/content.pak`；完整发布布局、manifest 校验与安装规则见[文件格式](file-formats.md)。`content.pak` 和 manifest 是内容加载器的特殊输入，不注册为 `IAssetProvider`。安装运行时仅从 `Assets/Paks/**/*.pak` 创建资源 provider，并按相对路径降序决定覆盖优先级；因此补丁 PAK 可覆盖基础资源包。
 
 ## 资源描述文件
 

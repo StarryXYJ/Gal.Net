@@ -120,11 +120,18 @@ Editor 新项目默认注册 `cg -> sprite`、`video -> video` 与 `audio -> aud
 <Project>.galpak
   <Project>.galnet       JSON manifest（格式版本 1）
   Assets/content.pak     settings.json、gallery.json（若存在）、Graph/**、I18n/**
-  Assets/assets.pak      Assets/**
+  Assets/Paks/000-base.pak
+                         Assets/** 的基础资源包
 ```
 
 两个 `.pak` 均由 `PakBuilder` 构造，默认使用 Brotli；manifest 记录项目 ID、项目名称、导出时间、内容包入口及每个包的 SHA-256 和大小。导出在临时文件中完成，随后重新读取 ZIP、校验每个包哈希并验证 pak 可反序列化，最后才替换目标文件。
 
 `.galnet` 在当前发布格式中只是 manifest 的文件名，不能假定它包含可直接运行的图数据。加密的 `.galnet`、单独 `.galnet` 逻辑包以及旧版 `.galpak` 布局均不是当前导出器承诺的格式。
+
+### 安装与加载
+
+宿主可将项目目录或 `.galpak` 文件交给 `GameInstallation.OpenAsync`。对于 `.galpak`，安装器会先读取唯一位于 ZIP 根目录的 `.galnet` manifest，校验格式版本、每个声明路径和 ZIP 条目大小；解压时逐项校验 SHA-256 与大小。默认安装位置是包文件旁、与包同名但不带扩展名的目录。已存在且每个声明包均与 manifest 匹配的安装目录可复用；不同内容或损坏内容占用该目录时明确失败，不会覆盖。
+
+安装后的 `Assets/content.pak` 是宿主专用内容包，提供图、编译组和生成的 Gallery JSON；根 manifest 也不参与资源查询。资源只从 `Assets/Paks/**/*.pak` 加载：每个 PAK 都是一个独立 provider，按相对路径降序注册，因此相对路径更靠后的补丁包优先于 `000-base.pak`。这使安装目录可以加入补丁 PAK，而无需更改 `AssetManager`。
 
 编辑器预览已经执行 Raw→Compiled 编译；正式 `.galpak` 导出接入编译仍是待办，见 [杂项待办](../design/misc-todo.md)。

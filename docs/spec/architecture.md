@@ -39,7 +39,7 @@ flowchart BT
 | `GalNet.Presentation.Defaults` | 无界面/默认呈现实现，供测试与简单宿主使用 |
 | `GalNet.Assets` | 本地目录、pak、资源索引、压缩与缓存 |
 | `GalNet.Storage.Abstractions` | 内容、资源、存档、玩家变量和游戏进度端口 |
-| `GalNet.Storage.FileSystem` | 默认目录内容（含可选 `gallery.json`）、存档、玩家变量和进度实现 |
+| `GalNet.Storage.FileSystem` | 默认目录与已安装 `.galpak` 内容、资源 provider 组合、存档、玩家变量和进度实现 |
 | `GalNet.Avalonia.Controls` | 无样式/默认样式的可复用 Avalonia 游戏控件 |
 | `GalNet.Avalonia.Rendering` | Avalonia 场景图层、纹理效果和粒子渲染实现 |
 | `GalNet.Avalonia.GameView` | 页面导航、页面 View/VM 映射和 Avalonia 游戏画布呈现 |
@@ -56,7 +56,7 @@ sequenceDiagram
   participant Engine as GameEngine
   participant View as IGameView
   participant Presenter as Presenter / Avalonia Page
-  Host->>Content: 提供 Graph、编译组、Gallery catalog、资源根与文本解析器
+  Host->>Content: 解析项目目录或安装 `.galpak`，提供 Graph、编译组、Gallery catalog、资源根与文本解析器
   Host->>View: 挂载 Entry modules
   Host->>Engine: 创建或恢复一次游戏会话
   Engine->>View: Dispatch(PrimitiveEntry, Runtime)
@@ -67,7 +67,7 @@ sequenceDiagram
 
 `GameEngine` 保有 `IGameRuntime`，解释图的节点与条目；它不认识 Avalonia 控件。`IGameView` 只负责单条 primitive 的定义解析、参数规范化、实例创建和 dispatch。活动队列、skip batch、Choice、节点跳转和稳定快照都在 Engine 内。
 
-`GameContent.Gallery` 是验证后冻结的静态内容目录：类型注册只包含 Gallery type ID 和资源类型字符串，item 只包含稳定 ID、类型引用、资源引用及可选展示元数据。目录内容提供者和 Editor Preview 从项目根目录的可选 `gallery.json` 建立该 catalog；缺少文件时使用空目录。Gallery catalog 不注册资源 decoder，也不包含 Avalonia 页面或导航信息。
+`GameInstallation` 统一解析开发项目目录与发行 `.galpak`：后者经 manifest 校验后安装到受控目录，由已安装内容 provider 加载，并只把 `Assets/Paks/**/*.pak` 加入资源 provider。Gallery catalog 不注册资源 decoder，也不包含 Avalonia 页面或导航信息。
 
 每个 Gallery item 生成一个 `gallery_<item-id>_unlocked` 系统 Player bool。宿主在创建 Runtime 前把生成定义交给 `IVariableService`；`GalleryDataSource` 将静态 catalog 与当前 Player snapshot 合并为带 `IsUnlocked` 的只读结果。Gallery 解锁不存放在 `IGameProgressService`，因此剧情 primitive、条件表达式和 UI 查询观察同一变量真源。
 

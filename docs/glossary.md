@@ -69,5 +69,6 @@
 | 归档 | `IArchive` | 按资源 ID 或路径寻址的一组 `IGameFile`。 |
 | 资源管理器 | `IAssetManager` | 注册提供者、加载、缓存和释放已解析资源。 |
 | pak | `.pak` | `PakBuilder` 构建的资源归档，含资源索引和数据。 |
-| 分发包 | `.galpak` | 当前为 ZIP，含 `Assets/content.pak`、`Assets/assets.pak` 与 JSON manifest。 |
-| manifest | `<项目名>.galnet` | 当前 `.galpak` 内描述项目与两个 pak 哈希的 JSON 文件；不是独立逻辑二进制。 |
+| 分发包 | `.galpak` | 当前为 ZIP，含 `Assets/content.pak`、`Assets/Paks/000-base.pak` 与 JSON manifest；可验证后安装。 |
+| manifest | `<项目名>.galnet` | 当前 `.galpak` ZIP 根目录中唯一的 JSON manifest，描述项目与所有包的 SHA-256/大小；不是独立逻辑二进制。 |
+| 游戏安装 | `GameInstallation` | 将开发目录或验证并安装后的 `.galpak` 统一为内容 provider 与有序资源 provider 的宿主输入。 |
