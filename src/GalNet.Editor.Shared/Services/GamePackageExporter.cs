@@ -1,20 +1,26 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using GalNet.Assets;
 using GalNet.Assets.Provider;
 using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Editor.Shared.Services;
 
 public static class GamePackageExporter
 {
-    private const string AssetsPakPath = "Assets/assets.pak";
-    private const string ContentPakPath = "Assets/content.pak";
+    private const string AssetsPakPath = "Assets/Paks/000-base.pak";
 
-    public static async Task<GamePackageExportResult> ExportAsync(string projectId, string projectName, string projectRoot, string outputDirectory, CancellationToken cancellationToken = default)
+    public static async Task<GamePackageExportResult> ExportAsync(
+        string projectId,
+        string projectName,
+        string projectRoot,
+        string outputDirectory,
+        IResourceTypeCatalog? resourceTypes = null,
+        IGalleryTypeCatalog? galleryTypes = null,
+        CancellationToken cancellationToken = default)
     {
         string? temporaryPath = null;
         try
@@ -23,19 +29,20 @@ public static class GamePackageExporter
             var packagePath = Path.Combine(outputDirectory, $"{SafeFileName(projectName)}.galpak");
             temporaryPath = packagePath + ".tmp";
             if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
-            var resourceTypes = BuiltinResourceTypes.CreateCatalog();
-            var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
-            var assets = await LoadAssetsAsync(Path.Combine(projectRoot, "Assets"), resourceTypes, cancellationToken);
-            var gallery = new GalleryCatalogCompiler(resourceTypes, galleryTypes).Compile(assets.Select(asset => asset.Metadata));
-            var assetsPak = PakBuilder.Build("assets", assets, GalNet.Core.Assets.CompressionMode.Brotli, resourceTypes);
-            var contentPak = BuildContent(projectRoot, gallery, cancellationToken);
-            var packages = new[] { new PackageEntry(AssetsPakPath, Hash(assetsPak), assetsPak.Length), new PackageEntry(ContentPakPath, Hash(contentPak), contentPak.Length) };
+            var resolvedResourceTypes = resourceTypes ?? BuiltinResourceTypes.CreateCatalog();
+            var resolvedGalleryTypes = galleryTypes ?? BuiltinGalleryTypes.CreateCatalog(resolvedResourceTypes);
+            var assets = await LoadAssetsAsync(Path.Combine(projectRoot, "Assets"), resolvedResourceTypes, cancellationToken);
+            var gallery = new GalleryCatalogCompiler(resolvedResourceTypes, resolvedGalleryTypes).Compile(assets.Select(asset => asset.Metadata));
+            var assetsPak = PakBuilder.Build("assets", assets, GalNet.Core.Assets.CompressionMode.Brotli, resolvedResourceTypes);
+            var contentFiles = BuildContentFiles(projectRoot, gallery, cancellationToken);
+            var packageFiles = new[] { (AssetsPakPath, assetsPak) }.Concat(contentFiles).ToArray();
+            var packages = packageFiles.Select(file => new GalpakFileEntry(file.Item1, Hash(file.Item2), file.Item2.Length)).ToArray();
             await using (var file = File.Create(temporaryPath))
             using (var zip = new ZipArchive(file, ZipArchiveMode.Create, leaveOpen: false))
             {
-                await WriteEntryAsync(zip, AssetsPakPath, assetsPak, cancellationToken);
-                await WriteEntryAsync(zip, ContentPakPath, contentPak, cancellationToken);
-                var manifest = new GalpakManifest(1, projectId, projectName, DateTimeOffset.UtcNow, ContentPakPath, packages);
+                foreach (var packageFile in packageFiles)
+                    await WriteEntryAsync(zip, packageFile.Item1, packageFile.Item2, cancellationToken);
+                var manifest = new GalpakManifest(1, projectId, projectName, DateTimeOffset.UtcNow, packages);
                 await WriteEntryAsync(zip, $"{SafeFileName(projectName)}.galnet", JsonSerializer.SerializeToUtf8Bytes(manifest, JsonOptions), cancellationToken);
             }
             await VerifyAsync(temporaryPath, packages, cancellationToken);
@@ -61,9 +68,9 @@ public static class GamePackageExporter
         return archive.AssetIds.OrderBy(id => id, StringComparer.Ordinal).Select(id => archive.GetAsset(id)!).ToArray();
     }
 
-    private static byte[] BuildContent(string projectRoot, GalleryCatalog gallery, CancellationToken ct)
+    private static IReadOnlyList<(string Path, byte[] Data)> BuildContentFiles(string projectRoot, GalleryCatalog gallery, CancellationToken ct)
     {
-        var files = Directory.EnumerateFiles(projectRoot, "*", SearchOption.AllDirectories)
+        return Directory.EnumerateFiles(projectRoot, "*", SearchOption.AllDirectories)
             .Select(path => Path.GetRelativePath(projectRoot, path).Replace('\\', '/'))
             .Where(path => path is "settings.json" || path.StartsWith("Graph/", StringComparison.OrdinalIgnoreCase) || path.StartsWith("I18n/", StringComparison.OrdinalIgnoreCase))
             .Where(path => !path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase) && !path.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase))
@@ -71,10 +78,10 @@ public static class GamePackageExporter
             .Select(path =>
             {
                 ct.ThrowIfCancellationRequested();
-                var id = DeterministicId(path);
-                return (IGameFile)new GameFile(id, path, "data", new BinaryAssetMeta { Id = id, Path = path, TypeId = "data" }, File.ReadAllBytes(Path.Combine(projectRoot, path.Replace('/', Path.DirectorySeparatorChar))));
-            }).Append((IGameFile)new GameFile("generated-gallery", "gallery.json", "data", new BinaryAssetMeta { Id = "generated-gallery", Path = "gallery.json", TypeId = "data" }, JsonSerializer.SerializeToUtf8Bytes(new GalleryConfiguration { Types = gallery.Types.ToList(), Items = gallery.Items.ToList() }, JsonOptions))).ToArray();
-        return PakBuilder.Build("content", files, GalNet.Core.Assets.CompressionMode.Brotli);
+                return (path, File.ReadAllBytes(Path.Combine(projectRoot, path.Replace('/', Path.DirectorySeparatorChar))));
+            })
+            .Append(("gallery.json", JsonSerializer.SerializeToUtf8Bytes(new GalleryConfiguration { Types = gallery.Types.ToList(), Items = gallery.Items.ToList() }, JsonOptions)))
+            .ToArray();
     }
 
     private static async Task WriteEntryAsync(ZipArchive zip, string path, byte[] data, CancellationToken ct)
@@ -84,7 +91,7 @@ public static class GamePackageExporter
         await stream.WriteAsync(data, ct);
     }
 
-    private static async Task VerifyAsync(string path, IReadOnlyList<PackageEntry> packages, CancellationToken ct)
+    private static async Task VerifyAsync(string path, IReadOnlyList<GalpakFileEntry> packages, CancellationToken ct)
     {
         await using var file = File.OpenRead(path);
         using var zip = new ZipArchive(file, ZipArchiveMode.Read);
@@ -96,17 +103,17 @@ public static class GamePackageExporter
             await stream.CopyToAsync(memory, ct);
             var data = memory.ToArray();
             if (!string.Equals(Hash(data), package.Sha256, StringComparison.Ordinal)) throw new InvalidDataException($"Checksum mismatch for '{package.Path}'.");
-            using var archive = Archive.Deserialize(Path.GetFileNameWithoutExtension(package.Path), data);
+            if (package.Path.EndsWith(".pak", StringComparison.OrdinalIgnoreCase))
+            {
+                using var archive = Archive.Deserialize(Path.GetFileNameWithoutExtension(package.Path), data);
+            }
         }
     }
 
     private static void DeleteTemporary(string? path) { if (path is not null && File.Exists(path)) File.Delete(path); }
-    private static string DeterministicId(string path) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(path))).ToLowerInvariant();
     private static string Hash(byte[] data) => Convert.ToHexString(SHA256.HashData(data)).ToLowerInvariant();
     private static string SafeFileName(string name) => string.Concat(name.Select(ch => Path.GetInvalidFileNameChars().Contains(ch) ? '_' : ch));
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
-    private sealed record PackageEntry(string Path, string Sha256, long Size);
-    private sealed record GalpakManifest(int Version, string ProjectId, string ProjectName, DateTimeOffset ExportedAt, string EntryPackage, IReadOnlyList<PackageEntry> Packages);
 }
 
 public sealed record GamePackageExportResult(bool Success, string? PackagePath, string? Error)

@@ -8,6 +8,8 @@ namespace GalNet.Assets.Provider;
 public sealed class PakFileProvider : IAssetProvider
 {
     private readonly string _pakDirectory;
+    private readonly string? _pakPath;
+    private readonly string? _archiveName;
     private readonly bool _optional;
     private readonly IResourceTypeCatalog _resourceTypes;
 
@@ -18,18 +20,28 @@ public sealed class PakFileProvider : IAssetProvider
         _resourceTypes = resourceTypes ?? BuiltinResourceTypes.CreateCatalog();
     }
 
-    public string Name => $"PakFile({_pakDirectory})";
+    /// <summary>Maps one explicitly named archive to a PAK file, for example a patch PAK.</summary>
+    public PakFileProvider(string pakPath, string archiveName, IResourceTypeCatalog? resourceTypes = null, bool optional = false)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(pakPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(archiveName);
+        _pakDirectory = string.Empty;
+        _pakPath = Path.GetFullPath(pakPath);
+        _archiveName = NormalizeArchiveName(archiveName);
+        _optional = optional;
+        _resourceTypes = resourceTypes ?? BuiltinResourceTypes.CreateCatalog();
+    }
+
+    public string Name => $"PakFile({_pakPath ?? _pakDirectory})";
 
     public bool Exists(string archiveName)
     {
-        var path = GetPakPath(archiveName);
-        return File.Exists(path);
+        return TryGetPakPath(archiveName, out var path) && File.Exists(path);
     }
 
     public IArchive OpenArchive(string archiveName)
     {
-        var path = GetPakPath(archiveName);
-        if (!File.Exists(path))
+        if (!TryGetPakPath(archiveName, out var path) || !File.Exists(path))
         {
             if (_optional)
                 return new EmptyArchive(archiveName);
@@ -42,8 +54,7 @@ public sealed class PakFileProvider : IAssetProvider
 
     public async Task<IArchive> OpenArchiveAsync(string archiveName, CancellationToken ct = default)
     {
-        var path = GetPakPath(archiveName);
-        if (!File.Exists(path))
+        if (!TryGetPakPath(archiveName, out var path) || !File.Exists(path))
         {
             if (_optional)
                 return new EmptyArchive(archiveName);
@@ -54,13 +65,22 @@ public sealed class PakFileProvider : IAssetProvider
         return Archive.Deserialize(archiveName, data, _resourceTypes);
     }
 
-    private string GetPakPath(string archiveName)
+    private bool TryGetPakPath(string archiveName, out string path)
     {
+        if (_pakPath is not null)
+        {
+            path = _pakPath;
+            return string.Equals(_archiveName, NormalizeArchiveName(archiveName), StringComparison.OrdinalIgnoreCase);
+        }
         var name = archiveName.EndsWith(".pak", StringComparison.OrdinalIgnoreCase)
             ? archiveName
             : $"{archiveName}.pak";
-        return $"{_pakDirectory}/{name}";
+        path = $"{_pakDirectory}/{name}";
+        return true;
     }
+
+    private static string NormalizeArchiveName(string archiveName) =>
+        archiveName.EndsWith(".pak", StringComparison.OrdinalIgnoreCase) ? archiveName[..^4] : archiveName;
 
     /// <summary>空归档 —— 当提供者为 optional 时使用。</summary>
     private sealed class EmptyArchive : IArchive

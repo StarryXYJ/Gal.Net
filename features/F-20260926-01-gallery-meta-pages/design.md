@@ -2,7 +2,7 @@
 feature: F-20260926-01-gallery-meta-pages
 status: proposed
 created: 2026-09-26
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 
 # Gallery 元数据聚合与可扩展页面注册设计
@@ -277,8 +277,8 @@ GalleryCatalogCompiler
 
 - **目录开发运行**：启动时扫描 `.meta` 一次，完成类型化反序列化和 Gallery 聚合，直接把冻结 catalog 交给 `GameContent`。首轮不写持久缓存。
 - **Editor Preview**：在 Editor 基础设施完成必要适配后使用同一个 compiler；本轮不实现 Gallery inspector。
-- **导出**：从 `.meta` 编译后把生成 `gallery.json` 写入 `content.pak`，把带 typed metadata 的资源写入 `assets.pak`。
-- **发行运行**：读取包内生成 JSON 和 typed asset metadata，不扫描 sidecar。
+- **导出**：从 `.meta` 编译后把生成 `gallery.json` 作为根目录特殊内容写入安装包；资源写入 `Assets/Paks/000-base.pak`。
+- **发行运行**：解压 `.galpak` 后，特殊内容由安装内容加载器直接读取；资源只从 `Assets/Paks/**/*.pak` 查询，不扫描 sidecar。
 
 包内 Gallery 类型快照不是注册来源。加载时逐项与冻结 `IGalleryTypeCatalog` 比对；缺少 Gallery/资源类型插件或映射改变时内容加载失败。
 
@@ -429,7 +429,7 @@ IAssetProvider / IArchive / IGameFile
 
 `AssetHandle<T>` 暴露 `Value`、GUID 和 type ID；它的 dispose 必须幂等。多个 handle 可共享同一个已解码对象，但每个 handle 只释放自己那一次 acquire。缓存计数归零时 Manager 移除条目并释放 `IDisposable` 资源。Provider、PAK、decoder 和 Gallery 页面均不直接递减计数。
 
-首轮保留现有 Provider API 和有序 provider 列表，未来安装目录增加补丁 PAK 时只需以明确优先级加入新的 Provider；同一优先级的重复 GUID 失败，不隐式覆盖。`LoadAsync`/`Release` 迁移到 `AcquireAsync`/`AssetHandle<T>` 时必须原子完成，不长期同时保留两套资源所有权 API。
+首轮保留现有 Provider API 和有序 provider 列表。已安装目录的 `Assets/Paks/**/*.pak` 是唯一的资源 PAK 搜索根：每个 PAK 都作为独立 provider，按相对路径倒序加入列表（因此 `000-base.pak` 为最低优先级，较大的前缀或较后的路径可覆盖它）。根 `.galnet` manifest、`Graph/`、`I18n/`、`settings.json` 和生成的 `gallery.json` 是宿主单独加载的特殊内容，不参与资源 GUID 查询。`LoadAsync`/`Release` 迁移到 `AcquireAsync`/`AssetHandle<T>` 时必须原子完成，不长期同时保留两套资源所有权 API。
 
 ### 13.2 Meta 的宽容读取与严格身份
 
@@ -448,7 +448,7 @@ IAssetProvider / IArchive / IGameFile
 
 ### 13.3 发行包和媒体
 
-`.galpak` 继续是 ZIP 分发容器，内部 PAK 用 GUID 定位资源。若宿主传入 `.galpak`，Package installer 负责校验后解压到包旁受控目录；随后 PAK provider 与目录项目使用同一 GUID 查询路径。installer 不是 AssetManager 的一部分。
+`.galpak` 继续是 ZIP 分发容器，内部 PAK 用 GUID 定位资源。若宿主传入 `.galpak`，Package installer 负责校验后解压到包旁受控目录；随后运行时扫描 `Assets/Paks/**/*.pak` 作为有序资源 provider。`graph.json`、`.galgroup`、`I18n/`、`settings.json`、生成的 `gallery.json` 和根 manifest 都是解压后的受控特殊文件，由对应宿主 loader 单独读取，不混入资源 provider。installer 不是 AssetManager 的一部分。
 
 图像 decoder 可直接读取 PAK bytes；需要操作系统文件路径的媒体库（例如 LibVLC）则通过窄的按 GUID materializer 将该单个资源写入受控临时缓存并返回路径。不得在导出包中重复保存所有原始资源，也不得让 Gallery 页面自行理解目录/PAK 布局。
 

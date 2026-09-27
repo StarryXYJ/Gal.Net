@@ -17,10 +17,18 @@ public static class GalleryFileLoader
         ArgumentNullException.ThrowIfNull(expectedTypes);
         if (!File.Exists(path)) throw new FileNotFoundException("Generated Gallery content was not found.", path);
 
+        return LoadGeneratedJson(File.ReadAllText(path), expectedTypes, path);
+    }
+
+    /// <summary>Loads generated Gallery JSON supplied by a package instead of a directory file.</summary>
+    public static GalleryCatalog LoadGeneratedJson(string json, IGalleryTypeCatalog expectedTypes, string sourceName = "gallery.json")
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(json);
+        ArgumentNullException.ThrowIfNull(expectedTypes);
         try
         {
-            var configuration = JsonSerializer.Deserialize<GalleryConfiguration>(File.ReadAllText(path), JsonOptions)
-                ?? throw new InvalidDataException($"The Gallery file '{path}' is empty.");
+            var configuration = JsonSerializer.Deserialize<GalleryConfiguration>(json, JsonOptions)
+                ?? throw new InvalidDataException($"The Gallery file '{sourceName}' is empty.");
             var catalog = GalleryCatalog.Create(configuration);
             if (catalog.Types.Count != expectedTypes.Types.Count || catalog.Types.Any(type =>
                     !expectedTypes.TryGet(type.TypeId, out var expected) ||
@@ -30,7 +38,7 @@ public static class GalleryFileLoader
         }
         catch (JsonException exception)
         {
-            throw new InvalidDataException($"The Gallery file '{path}' is not valid JSON.", exception);
+            throw new InvalidDataException($"The Gallery file '{sourceName}' is not valid JSON.", exception);
         }
     }
 }

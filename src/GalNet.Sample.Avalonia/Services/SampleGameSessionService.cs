@@ -33,7 +33,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private readonly GamePage _page;
     private readonly ObservableCollection<GameSaveSlot> _saveSlots = [];
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySaveSlots;
-    private DirectoryGameContentProvider? _contentProvider;
+    private IGameContentProvider? _contentProvider;
     private GameContent? _content;
     private IAssetManager? _assets;
     private FileSaveService? _saves;
@@ -81,11 +81,12 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
 
         try
         {
-            _gameDirectory = options.GameDirectory;
+            var installation = await GameInstallation.OpenAsync(options.GameDirectory, cancellationToken);
+            _gameDirectory = installation.RootDirectory;
             var profileDirectory = options.ProfileDirectory ?? Path.Combine(_gameDirectory, ".galnet");
-            _contentProvider = new DirectoryGameContentProvider(_gameDirectory);
+            _contentProvider = installation.CreateContentProvider();
             _content = await _contentProvider.LoadAsync(cancellationToken);
-            _assets = new AssetManager([new LocalFileProvider(_gameDirectory)]);
+            _assets = new AssetManager(installation.CreateAssetProviders());
             _assets.RegisterDecoder<SceneTexture>("sprite", new SceneTextureAssetDecoder());
             var spriteFiles = await _assets.GetFilesAsync("sprite", cancellationToken);
             var preloadResults = await Task.WhenAll(
@@ -103,7 +104,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _variables = await FileVariableService.CreateAsync(new FilePlayerVariableStore(profileDirectory), cancellationToken);
             _variables.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(_content.Gallery));
             GalleryDataSource = new GalleryDataSource(_content.Gallery, _variables);
-            GalleryResources = new DirectoryGalleryResourceResolver(_content.AssetRoot ?? _gameDirectory);
+            GalleryResources = await AssetGalleryResourceResolver.CreateAsync(_assets, _content.Gallery, cancellationToken);
             OnPropertyChanged(nameof(GalleryDataSource));
             OnPropertyChanged(nameof(GalleryResources));
             _progress = new FileGameProgressService(profileDirectory);
@@ -214,6 +215,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _disposed = true;
             _gameplay.InteractionObserved -= OnInteractionObserved;
             DisposeEngineAsync().GetAwaiter().GetResult();
+            (GalleryResources as IDisposable)?.Dispose();
+            GalleryResources = null;
             foreach (var handle in _preloadedTextures.Values) handle.Dispose();
             _preloadedTextures.Clear();
             _assets?.Dispose();

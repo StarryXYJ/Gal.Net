@@ -16,7 +16,8 @@ if (!HeadlessOptions.TryParse(args, out var options, out var error))
 
 try
 {
-    var content = await new DirectoryGameContentProvider(options!.GameDirectory).LoadAsync();
+    var installation = await GameInstallation.OpenAsync(options!.GameDirectory);
+    var content = await installation.CreateContentProvider().LoadAsync();
     var settings = new SettingsContainer();
     settings.Set(new GameSettings());
 

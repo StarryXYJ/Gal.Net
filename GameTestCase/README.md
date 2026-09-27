@@ -11,6 +11,10 @@ The `.galgroup` files use the version 2 compiled format (`typeId` plus `argument
 reference is its stable GUID; human-readable paths occur only in adjacent `.meta` files. The tiled
 route uses ColorGrade, and the filled route uses the Snow sprite for its particle definition.
 
+The fixture follows the editable project layout: `Graph/graph.json`, `Graph/groups/*.galgroup`, and
+`Assets/` with each resource's `.meta`. Gallery data is derived from the metadata rather than stored
+as an editable root `gallery.json`.
+
 Run directly from the repository root without a PowerShell script:
 
 ```text

@@ -12,7 +12,7 @@ public sealed class GameExportService(IProjectService projects) : IGameExportSer
     {
         var project = projects.Current;
         if (project is null) return GameExportResult.Failed("Open a project before exporting.");
-        var result = await GamePackageExporter.ExportAsync(project.Id, project.Name, project.RootPath, outputDirectory, cancellationToken);
+        var result = await GamePackageExporter.ExportAsync(project.Id, project.Name, project.RootPath, outputDirectory, cancellationToken: cancellationToken);
         return new GameExportResult(result.Success, result.PackagePath, result.Error);
     }
 }

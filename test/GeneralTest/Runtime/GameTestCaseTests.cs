@@ -11,7 +11,7 @@ public class GameTestCaseTests
     {
         var directory = FindRepositoryDirectory();
 
-        var content = await new DirectoryGameContentProvider(
+        var content = await new ProjectGameContentProvider(
             Path.Combine(directory, "GameTestCase")).LoadAsync();
 
         var groups = content.Graph.Nodes.OfType<Group>().ToArray();

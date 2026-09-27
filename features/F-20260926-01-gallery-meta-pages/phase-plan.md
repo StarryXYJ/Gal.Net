@@ -2,7 +2,7 @@
 feature: F-20260926-01-gallery-meta-pages
 status: planned
 created: 2026-09-26
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 
 # Gallery 元数据聚合与可扩展页面注册实施计划
@@ -81,6 +81,7 @@ Phase 6 清理、全量验证与正式文档
 6. 直接切换 pak 格式版本；删除旧 int32 enum reader 和所有兼容分支。
 7. 删除 `ResourceType` enum、`ParseResourceType()` 以及所有硬编码扩展名 switch/集合；Editor 的文件类型推断和 AssetPicker 只使用 registry/type ID。
 8. 更新 Sample、Editor adapter 和 decoder 注册点，确保同一目标 CLR 类型可由不同资源类型分别注册 decoder。
+9. 定义 `.galpak` 的安装边界：ZIP 只负责分发，安装器校验 manifest 后解压到同级受控目录；运行时扫描规定的 `Assets/Paks/**/*.pak` 作为全部资源来源，按相对路径倒序确定覆盖优先级。`graph.json`、`.galgroup`、`I18n/`、`settings.json`、生成的 `gallery.json` 和 manifest 作为解压后的特殊文件由对应 loader 单独读取，不进入资源 provider。安装器与内容 provider 不进入 `AssetManager`。
 
 **测试：**
 
@@ -90,12 +91,16 @@ Phase 6 清理、全量验证与正式文档
 - 两种资源类型到同一目标 CLR 类型的 decoder 分派互不覆盖。
 - 字符串 type filter、缓存、并发 single-flight 和释放行为保持现有语义。
 - registry 未注册类型、缺少 decoder 和扩展名冲突均给出可定位诊断。
+- `.galpak` 解压前验证 manifest 的条目大小和 SHA-256；同一包重复安装可复用，损坏包或不同包覆盖既有安装目录必须明确失败。
+- 解压目录中的补丁 PAK 可按文档化优先级加入资源 provider 列表，且无需修改 `AssetManager`。
 
 **文档：** 在 plan 中记录新 pak 验证证据；正式格式文档留到 Phase 6 一次性替换，不保留 v1 兼容说明。
 
 **风险：** 这是传播范围最大的编译切换。禁止在同一 Phase 顺手重构缓存、provider 优先级或压缩算法，以便失败能归因到类型/metadata 迁移。
 
 **退出条件：** 仓库中不再存在业务 `ResourceType` enum 使用；LocalFileProvider 和新 pak 对同一 asset 返回等价 `TypeId` 与具体 Metadata；Core、Assets、Editor、Samples 和 GeneralTest 串行构建通过。
+
+**资源包输入验证（2026-09-27）：** `.galpak` 已作为仅分发 ZIP：`GalpakInstaller` 先校验 manifest 的安全相对路径、文件大小和 SHA-256，再原子解压到同级安装目录。开发项目由 `ProjectGameContentProvider` 按 `Graph/` 和 `Assets/` 加载，并以 `LocalFileProvider` 扫描 `.meta`；安装目录仅扫描 `Assets/Paks/**/*.pak`，按相对路径倒序覆盖，`Graph/`、`I18n/`、`settings.json` 与生成的 `gallery.json` 由 `InstalledGameContentProvider` 直接读取。安装入口与导出器可接收同一对冻结资源/Gallery catalog，避免扩展类型被内部 built-in 表覆盖。`GameTestCase` 已迁移至上述工程布局，旧根目录内容 provider 已删除。`GalNet.Assets.Tests` 的工程→导出→安装→Graph/Gallery→资源查询及补丁优先级测试共 34/34 通过，迁移后的 GameTestCase 冒烟测试通过；Headless、Editor.Shared、Editor 与 Avalonia Sample 均构建通过。`GeneralTest` 全量仍为 228/229：`EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString` 的换行/缩进快照失败，未触及相关代码。
 
 ## Phase 3：数字 Gallery catalog、类型 registry 与解锁状态
 
@@ -148,7 +153,7 @@ Phase 6 清理、全量验证与正式文档
 1. 给目录内容加载入口注入冻结资源/Gallery registries 和统一 Meta codec；启动时枚举 `.meta` 一次并建立 `GameContent.Gallery`。
 2. 会话建立后不再监听或扫描 `.meta`；目录开发运行首轮不实现持久 cache。
 3. 把 `GalleryFileLoader` 定位为生成内容 loader：加载 JSON 后与当前代码 Gallery registry 快照逐项比对，不让 JSON 反向注册类型。
-4. 调整导出链，从 typed Meta 编译 Gallery JSON并直接加入 `content.pak`；`assets.pak` 写入 Phase 2 的 typed metadata。
+4. 调整导出链，从 typed Meta 编译 Gallery JSON并作为根目录特殊内容直接加入 `.galpak`；资源 PAK 写入 `Assets/Paks/000-base.pak`。
 5. 让 Editor Preview 基础设施使用同一个 compiler 和当前 Assets metadata；不实现新的 Gallery Inspector。
 6. 移除/禁用当前集中式 `gallery.json` authoring 状态、Gallery type/item 编辑命令和旧 Inspector 入口，避免继续产生第二真源；不提供迁移工具。
 7. 更新 Sample 的 `.meta`，用数字 ID 提供 CG、视频和音频内容；所有组合根使用同一内置资源/Gallery 注册入口。
@@ -158,7 +163,7 @@ Phase 6 清理、全量验证与正式文档
 
 - 目录内容从嵌套 Assets `.meta` 聚合 Gallery，且一次会话只构建一次 catalog。
 - 相同 Meta/registry 输入生成字节稳定的 Gallery JSON。
-- 导出包的 `content.pak` 含生成 Gallery JSON，`assets.pak` 含 typed metadata；重新读取后语义等价。
+- 导出包的根 `gallery.json` 含生成 Gallery JSON，`Assets/Paks/000-base.pak` 含 typed metadata；重新读取后语义等价。
 - 包内 Gallery type 快照与代码 registry 不一致时加载失败。
 - 缺少资源、重复 asset ID、缺少 Gallery/资源插件时 Preview 与导出给出一致错误。
 - 项目根手写 `gallery.json` 不再参与 authoring 或覆盖 Meta 结果。
