@@ -102,6 +102,8 @@ Phase 6 清理、全量验证与正式文档
 
 **资源包输入验证（2026-09-27）：** `.galpak` 已作为仅分发 ZIP：`GalpakInstaller` 先校验 manifest 的安全相对路径、文件大小和 SHA-256，再原子解压到同级安装目录。开发项目由 `ProjectGameContentProvider` 按 `Graph/` 和 `Assets/` 加载，并以 `LocalFileProvider` 扫描 `.meta`；安装目录仅扫描 `Assets/Paks/**/*.pak`，按相对路径倒序覆盖，`Graph/`、`I18n/`、`settings.json` 与生成的 `gallery.json` 由 `InstalledGameContentProvider` 直接读取。安装入口与导出器可接收同一对冻结资源/Gallery catalog，避免扩展类型被内部 built-in 表覆盖。`GameTestCase` 已迁移至上述工程布局，旧根目录内容 provider 已删除。`GalNet.Assets.Tests` 的工程→导出→安装→Graph/Gallery→资源查询及补丁优先级测试共 34/34 通过，迁移后的 GameTestCase 冒烟测试通过；Headless、Editor.Shared、Editor 与 Avalonia Sample 均构建通过。`GeneralTest` 全量仍为 228/229：`EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString` 的换行/缩进快照失败，未触及相关代码。
 
+**资源闭环复核（2026-09-27）：** Avalonia Gallery 仅从 `IAssetManager` 获取 GUID 对应的 bytes；若平台媒体库必须使用 OS 路径，`AssetGalleryResourceResolver` 才将该 handle 的内容写入会话临时目录，并随 resolver 释放。Editor Preview 的场景贴图预先以 `AssetHandle<SceneTexture>` 保留，在会话结束时统一释放；不再根据项目路径直接读取资源文件。对应 materializer 测试通过。
+
 ## Phase 3：数字 Gallery catalog、类型 registry 与解锁状态
 
 **状态：** `planned`

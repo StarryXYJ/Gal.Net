@@ -31,6 +31,7 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
     private readonly IVariableDefinitionService _variableDefinitions;
     private readonly IEditorDocumentService _documentService;
     private readonly IGameContentProvider _contentProvider;
+    private readonly IAssetManager _assets;
 
     private IGameRuntime? _runtime;
     private EditorPreviewHost? _previewHost;
@@ -68,7 +69,8 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
         EditorVariableService variableService,
         IVariableDefinitionService variableDefinitions,
         IEditorDocumentService documentService,
-        IGameContentProvider contentProvider)
+        IGameContentProvider contentProvider,
+        IAssetManager assets)
     {
         _workspace = workspace;
         _projectService = projectService;
@@ -76,6 +78,7 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
         _variableDefinitions = variableDefinitions;
         _documentService = documentService;
         _contentProvider = contentProvider;
+        _assets = assets;
         _workspace.ActivePreview = this;
         _projectClosingRegistration = _projectService.Current?.RegisterClosingCallback(DisposePreviewForProjectCloseAsync);
 
@@ -107,7 +110,7 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
             var profileDirectory = Path.Combine(project.EditorStateDirectory, "player");
             var context = new EditorPreviewContext(
                 project.Name,
-                project.AssetsPath,
+                _assets,
                 _contentProvider,
                 _variableService,
                 new FileSaveService(profileDirectory, project.Settings.SaveSlotCount),

@@ -1,13 +1,12 @@
 using System.Security.Cryptography;
 using System.Text;
-using GalNet.Avalonia.GameView.Services;
 using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
 
-namespace GalNet.Sample.Avalonia.Services;
+namespace GalNet.Avalonia.GameView.Services;
 
-/// <summary>Materializes Gallery media from the asset manager only when a platform path is required.</summary>
-internal sealed class AssetGalleryResourceResolver : IGalleryResourceResolver, IDisposable
+/// <summary>Materializes Gallery media acquired from the asset manager when a platform path is required.</summary>
+public sealed class AssetGalleryResourceResolver : IGalleryResourceResolver, IDisposable
 {
     private readonly string _directory;
     private readonly Dictionary<string, string> _paths = new(StringComparer.OrdinalIgnoreCase);
@@ -15,7 +14,7 @@ internal sealed class AssetGalleryResourceResolver : IGalleryResourceResolver, I
 
     private AssetGalleryResourceResolver(string directory) => _directory = directory;
 
-    public static async Task<AssetGalleryResourceResolver> CreateAsync(IAssetManager assets, GalleryCatalog gallery, CancellationToken ct)
+    public static async Task<AssetGalleryResourceResolver> CreateAsync(IAssetManager assets, GalleryCatalog gallery, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(assets);
         ArgumentNullException.ThrowIfNull(gallery);

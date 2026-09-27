@@ -13,6 +13,7 @@ using GameViewAssembly::GalNet.Avalonia.GameView.Presentation;
 using GameViewAssembly::GalNet.Avalonia.GameView.Services;
 using GameViewAssembly::GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Rendering.Scene;
+using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
 using GalNet.Core.Runtime;
 using GalNet.Core.Services;
@@ -73,7 +74,7 @@ public sealed class EditorPreviewHost : IAsyncDisposable
 
 public sealed record EditorPreviewContext(
     string Title,
-    string AssetRoot,
+    IAssetManager Assets,
     IGameContentProvider Content,
     IVariableService Variables,
     ISaveService Saves,
@@ -92,8 +93,10 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySlots;
     private readonly NullGameView _fallback = new();
     private AvaloniaGamePageView? _pageView;
+    private EditorPreviewLayerFactory? _layers;
     private AvaloniaEffectRuntime? _effects;
     private GameEngine? _engine;
+    private readonly Dictionary<string, AssetHandle<SceneTexture>> _preloadedTextures = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private readonly GameRunCoordinator _run = new();
     private bool _disposed;
@@ -241,11 +244,17 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
 
     private void DisposeEngine()
     {
+        (GalleryResources as IDisposable)?.Dispose();
+        GalleryResources = null;
         if (_pageView is not null) _pageView.AdvanceRequested -= OnAdvanceRequested;
         _engine?.Dispose();
         _pageView?.Dispose();
+        _layers?.Dispose();
         _effects?.Dispose();
+        foreach (var handle in _preloadedTextures.Values) handle.Dispose();
+        _preloadedTextures.Clear();
         _pageView = null;
+        _layers = null;
         _effects = null;
         _engine = null;
     }
@@ -254,13 +263,17 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
     {
         if (_engine is not null) return;
         var content = await _context.Content.LoadAsync(cancellationToken);
+        _context.Assets.RegisterDecoder<SceneTexture>("sprite", new SceneTextureAssetDecoder());
+        var spriteFiles = await _context.Assets.GetFilesAsync("sprite", cancellationToken);
+        var textures = await Task.WhenAll(spriteFiles.Select(file => _context.Assets.AcquireAsync<SceneTexture>(file.Id, cancellationToken)));
+        foreach (var handle in textures.OfType<AssetHandle<SceneTexture>>()) _preloadedTextures.Add(handle.AssetId, handle);
         _context.Variables.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(content.Gallery));
         GalleryDataSource = new GalleryDataSource(content.Gallery, _context.Variables);
-        GalleryResources = new DirectoryGalleryResourceResolver(_context.AssetRoot);
+        GalleryResources = await AssetGalleryResourceResolver.CreateAsync(_context.Assets, content.Gallery, cancellationToken);
         OnPropertyChanged(nameof(GalleryDataSource));
         OnPropertyChanged(nameof(GalleryResources));
-        var layers = new EditorPreviewLayerFactory(_context.AssetRoot);
-        _pageView = new AvaloniaGamePageView(_gameplay, _page, layers);
+        _layers = new EditorPreviewLayerFactory(_preloadedTextures);
+        _pageView = new AvaloniaGamePageView(_gameplay, _page, _layers);
         _effects = new AvaloniaEffectRuntime(_gameplay);
         var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
             _pageView, _pageView, _pageView, _effects, content.Gallery));
@@ -295,9 +308,11 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
     }
 }
 
-internal sealed class EditorPreviewLayerFactory(string assetRoot) : IGamePageLayerFactory
+internal sealed class EditorPreviewLayerFactory(IReadOnlyDictionary<string, AssetHandle<SceneTexture>> textures) : IGamePageLayerFactory, IDisposable
 {
+    private readonly IReadOnlyDictionary<string, AssetHandle<SceneTexture>> _texturesById = textures;
     private readonly Dictionary<string, SceneTexture> _textures = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<SceneTexture> _fallbacks = [];
 
     public SceneTexture ResolveTexture(string assetId)
     {
@@ -309,20 +324,33 @@ internal sealed class EditorPreviewLayerFactory(string assetRoot) : IGamePageLay
 
     private SceneTexture LoadTexture(string assetId)
     {
-        var path = Path.IsPathRooted(assetId) ? assetId : Path.Combine(assetRoot, assetId);
         try
         {
-            if (File.Exists(path))
-                return SceneTexture.FromFile(path);
+            if (_texturesById.TryGetValue(assetId, out var handle) && !handle.IsReleased)
+                return handle.Value;
         }
         catch (Exception exception)
         {
             ReportMissing(assetId, exception);
-            return new SceneTexture(LayerImageFallback.MissingImage);
+            return CreateFallback();
         }
 
         ReportMissing(assetId, null);
-        return new SceneTexture(LayerImageFallback.MissingImage);
+        return CreateFallback();
+    }
+
+    private SceneTexture CreateFallback()
+    {
+        var fallback = new SceneTexture(LayerImageFallback.MissingImage);
+        _fallbacks.Add(fallback);
+        return fallback;
+    }
+
+    public void Dispose()
+    {
+        foreach (var fallback in _fallbacks) fallback.Dispose();
+        _fallbacks.Clear();
+        _textures.Clear();
     }
 
     private static void ReportMissing(string assetId, Exception? exception)
