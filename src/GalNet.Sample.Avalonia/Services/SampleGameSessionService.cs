@@ -174,6 +174,25 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         finally { _lifecycle.Release(); }
     }
 
+    internal async Task ClearPlayerStateAsync(CancellationToken cancellationToken = default)
+    {
+        GameLog.Logger.Information("Clearing all sample player state");
+        await _lifecycle.WaitAsync(cancellationToken);
+        try
+        {
+            await StopCurrentRunAsync();
+            await DisposeEngineAsync();
+            if (_saves is not null)
+                await _saves.ClearAsync(cancellationToken);
+            if (_variables is not null)
+                await _variables.ResetPlayerVariablesAsync(cancellationToken);
+            _progress?.Clear();
+            await RefreshSlotsAsync(cancellationToken);
+            await OnUiAsync(() => _gameplay.StatusMessage = "Player state cleared.");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
     public async Task SaveAsync(int slotIndex, CancellationToken cancellationToken = default)
     {
         await _lifecycle.WaitAsync(cancellationToken);

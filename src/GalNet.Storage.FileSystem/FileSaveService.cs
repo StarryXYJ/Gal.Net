@@ -61,6 +61,19 @@ public sealed class FileSaveService : ISaveService
         try { DeleteFiles(-1, true); } finally { _gate.Release(); }
     }
 
+    /// <summary>Removes every normal slot and the quick-save for a fresh player profile.</summary>
+    public async Task ClearAsync(CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            for (var slot = 0; slot < MaxSlots; slot++)
+                DeleteFiles(slot, false);
+            DeleteFiles(-1, true);
+        }
+        finally { _gate.Release(); }
+    }
+
     private async Task WriteAsync(int slot, bool quick, SaveRequest request, CancellationToken ct)
     {
         if (!quick && (slot < 0 || slot >= MaxSlots)) throw new ArgumentOutOfRangeException(nameof(slot));

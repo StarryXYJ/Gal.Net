@@ -65,6 +65,18 @@ public sealed class FileVariableService : IVariableService
 
     public Task FlushPlayerVariablesAsync(CancellationToken ct = default) => _playerStore.SaveAsync(_playerVariables, ct);
 
+    /// <summary>Restores all persisted player variables to their configured defaults.</summary>
+    public async Task ResetPlayerVariablesAsync(CancellationToken ct = default)
+    {
+        _playerVariables.Clear();
+        foreach (var definition in _systemVariables.Values.Where(definition => definition.Scope == VariableScope.Player))
+            _playerVariables[definition.Name] = Clone(definition.Name, definition.DefaultValue);
+
+        await _playerStore.SaveAsync(_playerVariables, ct);
+        foreach (var pair in _playerVariables)
+            VariableChanged?.Invoke(VariableScope.Player, pair.Key, pair.Value);
+    }
+
     private static GalVariable Clone(string name, GalVariable source)
     {
         var clone = new GalVariable { Name = name };

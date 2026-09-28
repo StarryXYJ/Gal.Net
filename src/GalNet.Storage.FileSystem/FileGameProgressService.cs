@@ -20,6 +20,17 @@ public sealed class FileGameProgressService : IGameProgressService
     public bool IsRead(string groupId, string entryId) { lock (_sync) return _data.ReadEntries.Contains(Key(groupId, entryId)); }
     public void MarkRead(string groupId, string entryId) { lock (_sync) { if (_data.ReadEntries.Add(Key(groupId, entryId))) Save(); } }
 
+    /// <summary>Clears all persisted read progress for a fresh player profile.</summary>
+    public void Clear()
+    {
+        lock (_sync)
+        {
+            _data = new ProgressData();
+            if (File.Exists(_path))
+                File.Delete(_path);
+        }
+    }
+
     private void Save()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_path)!);

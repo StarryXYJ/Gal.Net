@@ -31,6 +31,7 @@
         <ProjectReference Include="..\..\src\GalNet.Avalonia.Controls\GalNet.Avalonia.Controls.csproj" />
         <ProjectReference Include="..\..\src\GalNet.Avalonia.Rendering\GalNet.Avalonia.Rendering.csproj" />
         <ProjectReference Include="..\..\src\GalNet.Avalonia.GameView\GalNet.Avalonia.GameView.csproj" />
+        <ProjectReference Include="..\..\src\GalNet.Sample.Avalonia\GalNet.Sample.Avalonia.csproj" />
         <ProjectReference Include="..\..\src\GalNet.Storage.FileSystem\GalNet.Storage.FileSystem.csproj" />
     </ItemGroup>
 

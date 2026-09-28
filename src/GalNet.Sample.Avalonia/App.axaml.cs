@@ -10,6 +10,7 @@ using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
+using GalNet.Sample.Avalonia.Debug;
 using GalNet.Sample.Avalonia.Services;
 using GalNet.Sample.Avalonia.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,6 +36,7 @@ public partial class App : Application
             services.AddAvaloniaGameViewPages();
             services.AddScoped<SampleGameSessionService>();
             services.AddScoped<IGameSessionService>(sp => sp.GetRequiredService<SampleGameSessionService>());
+            services.AddSampleDebug();
             services.AddTransient<MainWindow>();
             _rootServices = services.BuildServiceProvider();
             _gameScope = _rootServices.CreateScope();

@@ -73,6 +73,29 @@ public sealed class FileVariableServiceTests
     }
 
     [Test]
+    public async Task ResetPlayerVariablesAsync_restores_system_defaults_and_removes_custom_values()
+    {
+        var catalog = CreateGallery();
+        var service = await FileVariableService.CreateAsync(new FilePlayerVariableStore(_profileDirectory));
+        service.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(catalog));
+        var unlocked = new GalVariable { Name = GalleryUnlockVariable.GetName(100) };
+        unlocked.SetValue(true);
+        var custom = new GalVariable { Name = "score" };
+        custom.SetValue(42);
+        service.NotifyVariableChanged(VariableScope.Player, unlocked.Name, unlocked);
+        service.NotifyVariableChanged(VariableScope.Player, custom.Name, custom);
+
+        await service.ResetPlayerVariablesAsync();
+
+        var playerVariables = service.GetSnapshot(VariableScope.Player);
+        Assert.Multiple(() =>
+        {
+            Assert.That(playerVariables[unlocked.Name].AsBool(), Is.False);
+            Assert.That(playerVariables, Does.Not.ContainKey(custom.Name));
+        });
+    }
+
+    [Test]
     public async Task GalleryDataSourceProjectsCatalogAndCurrentUnlockState()
     {
         var catalog = CreateGallery();

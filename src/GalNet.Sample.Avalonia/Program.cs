@@ -1,5 +1,6 @@
 using Avalonia;
 using GalNet.Runtime.Logging;
+using GalNet.Sample.Avalonia.Debug;
 using Serilog;
 
 namespace GalNet.Sample.Avalonia;
@@ -22,6 +23,7 @@ sealed class Program
                 retainedFileCountLimit: 14,
                 shared: true,
                 outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3} {LogChannel}] {Message:lj}{NewLine}{Exception}")
+            .WriteTo.Sink(SampleDebugLogStore.Shared)
             .CreateLogger();
 
         try
