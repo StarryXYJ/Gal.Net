@@ -416,7 +416,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _gameplay,
             programs: programs);
         var gameView = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
-            _pageView, _pageView, _pageView, _effects, _content.Gallery));
+            _pageView, _pageView, _pageView, _effects, _content.Gallery, _pageView));
         var settings = new SettingsContainer();
         settings.Set(_settings);
         var runtime = new GameRuntime(null, _content.Graph.RootNodeId, settings, _variables);

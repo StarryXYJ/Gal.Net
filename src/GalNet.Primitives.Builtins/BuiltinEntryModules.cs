@@ -17,7 +17,8 @@ public static class BuiltinEntryModules
         ILayerPresenter? layerPresenter = null,
         IAnimationPresenter? animationPresenter = null,
         IEffectPresenter? effectPresenter = null,
-        GalleryCatalog? gallery = null) => Array.AsReadOnly<IEntryModule>(
+        GalleryCatalog? gallery = null,
+        IParticlePresenter? particlePresenter = null) => Array.AsReadOnly<IEntryModule>(
     [
         new BuiltinDialogueModule(dialoguePresenter),
         new BuiltinLayerModule(layerPresenter),
@@ -25,7 +26,7 @@ public static class BuiltinEntryModules
         new BuiltinAudioModule(),
         new BuiltinVideoModule(),
         new BuiltinEffectModule(effectPresenter),
-        new BuiltinParticleModule(),
+        new BuiltinParticleModule(particlePresenter),
         new BuiltinFlowModule(),
         new BuiltinVariableModule(),
         new BuiltinGalleryModule(gallery)
@@ -209,10 +210,12 @@ public sealed class BuiltinEffectModule : EntryModuleBase
 
 public sealed class BuiltinParticleModule : EntryModuleBase
 {
-    public BuiltinParticleModule() : base("particle",
+    public BuiltinParticleModule(IParticlePresenter? presenter = null) : base("particle",
     [
-        BuiltinEntrySchemas.Primitive<PlayParticleEmitterEntry>(PlayParticleEmitterEntry.ParameterTypes, PlayParticleEmitterEntry.DefaultValues),
-        BuiltinEntrySchemas.Primitive<StopParticleEmitterEntry>(StopParticleEmitterEntry.ParameterTypes)
+        BuiltinEntrySchemas.Primitive<PlayParticleEmitterEntry>(PlayParticleEmitterEntry.ParameterTypes, PlayParticleEmitterEntry.DefaultValues,
+            factory: context => new PlayParticlePrimitiveInstance(context.Runtime, presenter, BuiltinRuntimeActions.CreateParticleRequest(context), context.BatchId, context.ScopeCancellation)),
+        BuiltinEntrySchemas.Primitive<StopParticleEmitterEntry>(StopParticleEmitterEntry.ParameterTypes,
+            factory: context => new StopParticlePrimitiveInstance(context.Runtime, presenter, Arguments.String(context, "instanceId"), context.BatchId, context.ScopeCancellation))
     ]) { }
 }
 

@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "kind": "Raw",
+  "entries": [
+    { "id": "dialogue-show", "type": "dialogue.show", "parameters": {} },
+    { "id": "background", "type": "layer.show", "parameters": { "handleId": "background", "assetId": "a1000000000000000000000000000001", "transform": { "x": 0, "y": 0, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 }, "z": 0, "opacity": 1, "displayMode": "Fill" } },
+    { "id": "unlock-gallery", "type": "gallery.unlock", "parameters": { "id": 100 } },
+    { "id": "portrait", "type": "layer.show", "parameters": { "handleId": "teacher", "assetId": "a1000000000000000000000000000004", "transform": { "x": 420, "y": 80, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 }, "z": 10, "opacity": 1, "displayMode": "Native" } },
+    { "id": "intro-line-1", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "The Runtime sample now builds from Raw authoring content.", "voice": "" } },
+    { "id": "portrait-jitter", "type": "animation.animate", "parameters": { "playbackHandleId": "portrait-jitter", "handleId": "teacher", "property": "transform.y", "from": 0, "to": 12, "duration": 0.06, "curve": "EaseInOut", "blocking": "false", "skippable": "false", "loopMode": "PingPong", "blendMode": "Additive" } },
+    { "id": "intro-line-2", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "The portrait is rapidly bobbing through a non-blocking additive loop.", "voice": "" } },
+    { "id": "portrait-spin", "type": "animation.animate", "parameters": { "playbackHandleId": "portrait-spin", "handleId": "teacher", "property": "transform.rotationDegrees", "from": 0, "to": 360, "duration": 0.7, "curve": "EaseInOut", "blocking": "true", "skippable": "true", "loopMode": "Once", "blendMode": "Replace" } },
+    { "id": "intro-line-3", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "The blocking rotation has completed before this line is shown.", "voice": "" } },
+    { "id": "intro-line-4", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "Now the non-blocking portrait loop is stopped explicitly.", "voice": "" } },
+    { "id": "stop-portrait-jitter", "type": "animation.stop", "parameters": { "playbackHandleId": "portrait-jitter", "mode": "CompleteImmediately" } },
+    { "id": "intro-line-5", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "Choose a route to see a transition and particles.", "voice": "" } }
+  ]
+}

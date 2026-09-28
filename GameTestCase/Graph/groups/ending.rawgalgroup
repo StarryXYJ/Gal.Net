@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "kind": "Raw",
+  "entries": [
+    { "id": "stop-snow", "type": "particle.stop", "parameters": { "instanceId": "route-particles" } },
+    { "id": "hide-portrait", "type": "layer.hide", "parameters": { "handleId": "teacher" } },
+    { "id": "line", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "Runtime smoke test complete.", "voice": "" } }
+  ]
+}

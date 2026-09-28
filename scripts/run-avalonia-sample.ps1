@@ -1,5 +1,8 @@
 [CmdletBinding()]
 param(
+    [string]$Project,
+    [string]$BuildOutput,
+    [switch]$SkipBuild,
     [string]$Profile
 )
 
@@ -7,8 +10,16 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
-$gameDirectory = Join-Path $repositoryRoot 'GameTestCase'
+$Project = if ($Project) { [System.IO.Path]::GetFullPath($Project) } else { Join-Path $repositoryRoot 'GameTestCase' }
+$gameDirectory = if ($BuildOutput) { [System.IO.Path]::GetFullPath($BuildOutput) } else { Join-Path $Project 'Output' }
 $sampleProject = Join-Path $repositoryRoot 'src\GalNet.Sample.Avalonia\GalNet.Sample.Avalonia.csproj'
+$editorProject = Join-Path $repositoryRoot 'src\GalNet.Editor.Headless\GalNet.Editor.Headless.csproj'
+
+if (-not $SkipBuild)
+{
+    & dotnet run --project $editorProject -- build $Project --output $gameDirectory
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
 $sampleArguments = @($gameDirectory)
 if ($Profile)
 {

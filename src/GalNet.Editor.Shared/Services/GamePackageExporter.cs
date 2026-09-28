@@ -6,6 +6,7 @@ using GalNet.Assets.Provider;
 using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
 using GalNet.Core.Serialization;
+using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -23,6 +24,7 @@ public static class GamePackageExporter
         CancellationToken cancellationToken = default)
     {
         string? temporaryPath = null;
+        string? stagingRoot = null;
         try
         {
             Directory.CreateDirectory(outputDirectory);
@@ -31,10 +33,14 @@ public static class GamePackageExporter
             if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
             ArgumentNullException.ThrowIfNull(resourceTypes);
             ArgumentNullException.ThrowIfNull(galleryTypes);
-            var assets = await LoadAssetsAsync(Path.Combine(projectRoot, "Assets"), resourceTypes, cancellationToken);
+            stagingRoot = Path.Combine(Path.GetTempPath(), $"galnet-export-{Guid.NewGuid():N}");
+            await new ProjectContentBuilder(BuiltinEntryModules.CreateRecommendedTargetProfile())
+                .BuildAsync(projectRoot, stagingRoot, cancellationToken)
+                .ConfigureAwait(false);
+            var assets = await LoadAssetsAsync(Path.Combine(stagingRoot, "Assets"), resourceTypes, cancellationToken);
             var gallery = new GalleryCatalogCompiler(resourceTypes, galleryTypes).Compile(assets.Select(asset => asset.Metadata));
             var assetsPak = PakBuilder.Build("assets", assets, GalNet.Core.Assets.CompressionMode.Brotli, resourceTypes);
-            var contentFiles = BuildContentFiles(projectRoot, gallery, cancellationToken);
+            var contentFiles = BuildContentFiles(stagingRoot, gallery, cancellationToken);
             var packageFiles = new[] { (AssetsPakPath, assetsPak) }.Concat(contentFiles).ToArray();
             var packages = packageFiles.Select(file => new GalpakFileEntry(file.Item1, Hash(file.Item2), file.Item2.Length)).ToArray();
             await using (var file = File.Create(temporaryPath))
@@ -58,6 +64,10 @@ public static class GamePackageExporter
         {
             DeleteTemporary(temporaryPath);
             return GamePackageExportResult.Failed(ex.Message);
+        }
+        finally
+        {
+            if (stagingRoot is not null && Directory.Exists(stagingRoot)) Directory.Delete(stagingRoot, recursive: true);
         }
     }
 

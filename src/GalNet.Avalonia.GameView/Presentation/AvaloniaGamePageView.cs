@@ -17,7 +17,7 @@ public interface IGamePageLayerFactory : ISceneTextureResolver
 }
 
 /// <summary>Maps runtime layer, dialogue, animation and interaction ports onto a shared <see cref="GamePage"/>.</summary>
-public sealed class AvaloniaGamePageView : IDisposable, IDialoguePresenter, IChoicePresenter, ILayerPresenter, IAnimationPresenter
+public sealed class AvaloniaGamePageView : IDisposable, IDialoguePresenter, IChoicePresenter, ILayerPresenter, IAnimationPresenter, IParticlePresenter
 {
     private readonly TaskCompletionSource _initialPresentationReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly GamePageViewModel _state;
@@ -126,10 +126,13 @@ public sealed class AvaloniaGamePageView : IDisposable, IDialoguePresenter, ICho
                     return outcome;
                 }
                 var cycleLength = request.LoopMode == AnimationLoopMode.PingPong ? 2d : 1d;
-                var progress = request.DurationSeconds <= 0 ? cycleLength : Math.Min(cycleLength, stopwatch.Elapsed.TotalSeconds / request.DurationSeconds);
+                var elapsedCycles = request.DurationSeconds <= 0 ? cycleLength : stopwatch.Elapsed.TotalSeconds / request.DurationSeconds;
+                var progress = request.LoopMode == AnimationLoopMode.Once
+                    ? Math.Min(cycleLength, elapsedCycles)
+                    : elapsedCycles % cycleLength;
                 var sampleProgress = request.LoopMode == AnimationLoopMode.PingPong && progress > 1 ? 2 - progress : progress;
                 await SetAnimationValueAsync(request, active, Lerp(from, request.To, request.Curve.Evaluate((float)sampleProgress)));
-                if (progress >= cycleLength) return AnimationOutcome.Completed;
+                if (request.LoopMode == AnimationLoopMode.Once && progress >= cycleLength) return AnimationOutcome.Completed;
                 // Keep the sampler ahead of the compositor: a 16ms task timer plus dispatcher
                 // latency commonly turned a nominal 60fps movement into a 30fps cadence.
                 await Task.WhenAny(Task.Delay(TimeSpan.FromMilliseconds(8), ct), active.Outcome.Task);

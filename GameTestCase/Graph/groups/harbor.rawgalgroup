@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "kind": "Raw",
+  "entries": [
+    { "id": "route-blinds", "type": "transition.blinds", "parameters": { "playbackHandleId": "route-blinds", "oldHandleId": "background", "newHandleId": "route-background", "assetId": "a1000000000000000000000000000002", "maskProgram": "a1000000000000000000000000000008", "transform": { "x": 0, "y": 0, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 }, "z": 0, "displayMode": "Fill", "bladeCount": 14, "orientation": "Vertical", "durationFrames": 42 } },
+    { "id": "snow", "type": "particle.play", "parameters": { "instanceId": "route-particles", "z": 100, "parameters": { "particleTexture": "a1000000000000000000000000000006", "emissionRate": 72, "maxParticles": 240, "initialVelocityX": -22, "initialVelocityY": 80, "noise": 24, "particleScale": 0.75, "particleLifetime": 3.5, "seed": 20260929, "gravityY": 12 } } },
+    { "id": "line", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "The filled route starts a Runtime-backed particle emitter.", "voice": "" } }
+  ]
+}

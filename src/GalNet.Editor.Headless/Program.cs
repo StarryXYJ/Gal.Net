@@ -46,6 +46,7 @@ internal static class Program
 
             var verb = args[0].ToLowerInvariant();
             var projectPath = Path.GetFullPath(args[1]);
+            if (verb == "build") return await BuildAsync(projectPath, args, entryCatalog);
             if (verb == "export") return await ExportAsync(projectPath, args);
             var document = Load(projectPath, entryCatalog);
             switch (verb)
@@ -131,6 +132,17 @@ internal static class Program
         return result.Success ? 0 : 5;
     }
 
+    private static async Task<int> BuildAsync(string projectPath, string[] args, IEntryCatalog entryCatalog)
+    {
+        if (!Directory.Exists(projectPath)) throw new DirectoryNotFoundException($"Project directory not found: {projectPath}");
+        var outputIndex = Array.IndexOf(args, "--output");
+        if (outputIndex >= 0 && outputIndex + 1 >= args.Length) return Fail("--output requires a directory path.");
+        var outputDirectory = outputIndex >= 0 ? Path.GetFullPath(args[outputIndex + 1]) : null;
+        var result = await new ProjectContentBuilder(entryCatalog).BuildAsync(projectPath, outputDirectory);
+        WriteJson(new { success = true, outputPath = result.OutputPath, compiledGroupCount = result.CompiledGroupCount });
+        return 0;
+    }
+
     private static string GetCommandId(JsonElement element) =>
         element.TryGetProperty("commandId", out var id) && !string.IsNullOrWhiteSpace(id.GetString())
             ? id.GetString()! : throw new JsonException("Every command requires a non-empty commandId.");
@@ -181,6 +193,7 @@ internal static class Program
           galnet-editor-headless summary|nodes|variables|validate <project>
           galnet-editor-headless node <project> <node-id>
           galnet-editor-headless entries <project> <group-id>
+          galnet-editor-headless build <project> [--output <directory>]
           galnet-editor-headless export <project> [--output <directory>]
           galnet-editor-headless execute <project> <command-file|->
 

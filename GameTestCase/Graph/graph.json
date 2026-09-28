@@ -1,9 +1,9 @@
 {
-  "version": 1,
+  "version": 2,
   "name": "Entry instance runtime smoke test",
   "rootNodeId": "intro",
   "nodes": [
-    { "id": "intro", "type": "Group", "name": "Classroom" },
+    { "id": "intro", "type": "Group", "name": "Classroom", "file": "groups/intro.rawgalgroup" },
     {
       "id": "route_choice",
       "type": "Branch",
@@ -14,8 +14,8 @@
         { "text": "Use the filled background" }
       ]
     },
-    { "id": "downtown", "type": "Group", "name": "Tiled route" },
-    { "id": "harbor", "type": "Group", "name": "Filled route" },
+    { "id": "downtown", "type": "Group", "name": "Tiled route", "file": "groups/downtown.rawgalgroup" },
+    { "id": "harbor", "type": "Group", "name": "Filled route", "file": "groups/harbor.rawgalgroup" },
     {
       "id": "ending_check",
       "type": "Branch",
@@ -25,7 +25,7 @@
         { "expression": "true" }
       ]
     },
-    { "id": "ending", "type": "Group", "name": "Ending" }
+    { "id": "ending", "type": "Group", "name": "Ending", "file": "groups/ending.rawgalgroup" }
   ],
   "edges": [
     { "fromNodeId": "intro", "fromOutlet": 0, "toNodeId": "route_choice" },

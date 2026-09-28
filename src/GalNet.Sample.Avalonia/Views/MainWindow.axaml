@@ -7,16 +7,15 @@
         Background="Black"
         Icon="/Assets/avalonia-logo.ico"
         Title="GalNet Avalonia Sample Player">
-  <Grid RowDefinitions="Auto,*">
+  <ursa:UrsaWindow.LeftContent>
     <Menu x:Name="DebugMenu" IsVisible="False">
       <MenuItem Header="调试">
         <MenuItem Header="清空游戏数据..." Click="OnClearPlayerStateClick" />
         <MenuItem Header="日志面板 (L)" Click="OnShowDebugLogClick" />
       </MenuItem>
     </Menu>
-    <controls:GameCanvasHost x:Name="GameCanvas"
-                             Grid.Row="1"
-                             DesignWidth="1920"
-                             DesignHeight="1080" />
-  </Grid>
+  </ursa:UrsaWindow.LeftContent>
+  <controls:GameCanvasHost x:Name="GameCanvas"
+                           DesignWidth="1920"
+                           DesignHeight="1080" />
 </ursa:UrsaWindow>
