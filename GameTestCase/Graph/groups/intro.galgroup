@@ -16,6 +16,11 @@
       }
     },
     {
+      "id": "intro-unlock-classroom-gallery",
+      "typeId": "gallery.unlock",
+      "arguments": { "id": 100 }
+    },
+    {
       "id": "intro-portrait",
       "typeId": "layer.show",
       "arguments": {

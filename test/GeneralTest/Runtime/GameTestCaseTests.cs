@@ -25,6 +25,9 @@ public class GameTestCaseTests
             Assert.That(groups, Has.Length.EqualTo(4));
             Assert.That(groups, Has.All.Matches<Group>(group => group.Entries.Count > 0));
             Assert.That(groups.SelectMany(group => group.Entries), Has.All.TypeOf<PrimitiveEntry>());
+            Assert.That(groups.Single(group => group.Id == "intro").Entries.OfType<PrimitiveEntry>(),
+                Has.One.Matches<PrimitiveEntry>(entry =>
+                    entry.Type == "gallery.unlock" && entry.Arguments.GetProperty("id").GetInt32() == 100));
             Assert.That(content.Gallery.GetItems("cg"), Has.One.Matches<GalNet.Core.Gallery.GalleryItem>(item =>
                 item.Id == 100 && item.ResourceId == "a1000000000000000000000000000001"));
         });

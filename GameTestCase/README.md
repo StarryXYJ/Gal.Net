@@ -14,7 +14,8 @@ route uses ColorGrade, and the filled route uses the Snow sprite for its particl
 The fixture follows the editable project layout: `Graph/graph.json`, `Graph/groups/*.galgroup`, and
 `Assets/` with each resource's `.meta`. Gallery data is derived from the metadata rather than stored
 as an editable root `gallery.json`. The classroom background is also a `cg` Gallery item (ID `100`),
-so a host that supplies the standard Gallery pages shows the Gallery button on its title page.
+so a host that supplies the standard Gallery pages shows the Gallery button on its title page. The
+intro group executes `gallery.unlock(100)`, making that item viewable after the game starts.
 
 Run directly from the repository root without a PowerShell script:
 
