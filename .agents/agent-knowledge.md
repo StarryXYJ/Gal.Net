@@ -30,6 +30,7 @@
 
 ## 当前工作
 
+- `F-20260926-01-gallery-meta-pages` 的实现、正式文档与示例 Gallery 解锁 smoke test 已完成；2026-09-28 的全量 `GeneralTest` 仍有一项非本 feature 的 `EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString` 失败，因此该 feature 维持 `implementation`，等待修复或正式豁免后关闭。
 - 当前 discovery feature：[F-20260916-02-audio-system](G:\program\GalDotNet\features\F-20260916-02-audio-system\feature.md)，用于澄清音频系统的首个可交付范围、后端能力和迁移语义。
 - 后续 feature、验证命令和新经验在实际工作中补充，并保留来源链接或 feature ID。
 

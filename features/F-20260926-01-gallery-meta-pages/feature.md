@@ -4,7 +4,7 @@ title: Gallery 元数据聚合与可扩展页面注册
 type: feature
 status: implementation
 created: 2026-09-26
-updated: 2026-09-27
+updated: 2026-09-28
 ---
 
 # Gallery 元数据聚合与可扩展页面注册

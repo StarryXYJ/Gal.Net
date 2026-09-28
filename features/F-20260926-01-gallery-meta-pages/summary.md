@@ -1,7 +1,7 @@
 ---
 feature: F-20260926-01-gallery-meta-pages
 status: implementation
-updated: 2026-09-27
+updated: 2026-09-28
 ---
 
 # Gallery 元数据聚合与可扩展页面注册：实现总结
@@ -32,10 +32,11 @@ Feature 的 Gallery、资源 metadata、PAK、发行安装、Preview 与 Avaloni
 - `dotnet build src/GalNet.Editor/GalNet.Editor.csproj --no-restore -m:1 -p:UseSharedCompilation=false -p:AVALONIA_TELEMETRY_OPTOUT=1 -v:q`：通过。
 - `dotnet build src/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj --no-restore -m:1 -p:UseSharedCompilation=false -p:AVALONIA_TELEMETRY_OPTOUT=1 -v:q`：通过。
 - Headless Sample、Editor Headless 与 Gallery resolver 定向测试通过。
+- `GameTestCaseTests` 定向 smoke test 通过；示例的教室资源以 `.meta.gallery[]` 提供 CG 条目 `100`，`intro` group 在游戏开始时执行 `gallery.unlock(100)`。
 
 ## 当前限制与后续工作
 
-- `GeneralTest` 全量仍有一项既有失败：`EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString` 的 JSON 换行/缩进快照差异。本 feature 未修改该路径，因此 feature 维持 `implementation`，不宣称全量验证完成。
+- 2026-09-28 复跑 `GeneralTest` 全量仍有一项既有失败：`EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString` 的 JSON 换行/缩进快照差异（228/229）。本 feature 未修改该路径，因此 feature 维持 `implementation`，不宣称全量验证完成。
 - `.galgroup` 仍是 Graph 特殊内容，不以 GUID 资源查询。将 Group 资源化、定义缺失语义和增量剧情补丁是后续独立 feature。
 
 ## 同步的正式文档

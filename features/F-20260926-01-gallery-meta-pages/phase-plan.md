@@ -243,5 +243,5 @@ Phase 6 清理、全量验证与正式文档
 
 **退出条件：** 所有验收标准有测试或可重复验证证据；相关项目构建通过；正式 spec 与实现一致；feature 可进入独立代码 review 和 closeout。
 
-**Closeout 记录（2026-09-28）：** 已删除组合入口中的隐式 catalog fallback；Editor、Sample、Headless、导出与内容 provider 均显式使用各自宿主的一对冻结 resource/Gallery catalog。正式 `docs/spec` 与 glossary 已同步，并新增开发者 summary、review 与资源临时实体化 lesson。`GalNet.Assets.Tests` 34/34、Editor、Avalonia Sample、Headless Sample 与 Editor Headless 构建通过；全量 GeneralTest 保持 228/229，唯一失败是未触及的 `EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString`。因此 Phase 6 维持 `in-progress`，待该全量测试基线由其负责范围修复或正式豁免后才可标记 verified。
+**Closeout 记录（2026-09-28）：** 已删除组合入口中的隐式 catalog fallback；Editor、Sample、Headless、导出与内容 provider 均显式使用各自宿主的一对冻结 resource/Gallery catalog。正式 `docs/spec` 与 glossary 已同步，并新增开发者 summary、review 与资源临时实体化 lesson。`GameTestCase` 现含 metadata Gallery 条目和首个 Group 的 `gallery.unlock(100)`，定向 smoke test 通过，覆盖标题入口出现和进入剧情后解锁的示例路径。`GalNet.Assets.Tests` 34/34、Editor、Avalonia Sample、Headless Sample 与 Editor Headless 构建通过；2026-09-28 复跑全量 GeneralTest 仍为 228/229，唯一失败是未触及的 `EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString`。因此 Phase 6 维持 `in-progress`，待该全量测试基线由其负责范围修复或正式豁免后才可标记 verified。
 
