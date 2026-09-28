@@ -189,8 +189,11 @@ public sealed class BlindsTransitionEntry : CompositeEntry
             }],
             Events =
             [
-                CrossFadeTransitionEntry.ShowLayer(newHandle, TransitionEntrySupport.Require(this, "assetId"), TransitionEntrySupport.Json(this, "transform", "{}"), TransitionEntrySupport.Float(this, "z"), 1, TransitionEntrySupport.DisplayMode(this, "displayMode", "Fill")),
                 ApplyMask(mask, newHandle, maskProgram, maskParameters),
+                // A program effect is created asynchronously by presentation hosts.  Attach the
+                // closed mask before queuing the incoming layer, otherwise the compositor can
+                // draw one unmasked frame while the program factory is initialized.
+                CrossFadeTransitionEntry.ShowLayer(newHandle, TransitionEntrySupport.Require(this, "assetId"), TransitionEntrySupport.Json(this, "transform", "{}"), TransitionEntrySupport.Float(this, "z"), 1, TransitionEntrySupport.DisplayMode(this, "displayMode", "Fill")),
                 StopMask(mask, frames),
                 CrossFadeTransitionEntry.HideLayer(oldHandle, frames)
             ]

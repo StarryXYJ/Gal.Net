@@ -11,6 +11,7 @@
     <Menu x:Name="DebugMenu" IsVisible="False">
       <MenuItem Header="调试">
         <MenuItem Header="清空游戏数据..." Click="OnClearPlayerStateClick" />
+        <MenuItem Header="重新加载游戏资源" Click="OnReloadGameResourcesClick" />
         <MenuItem Header="日志面板 (L)" Click="OnShowDebugLogClick" />
       </MenuItem>
     </Menu>

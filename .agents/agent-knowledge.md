@@ -52,3 +52,4 @@
 - [平台媒体路径必须从资源句柄实体化](lessons/L-20260927-03-asset-handle-materialization.md)：页面不能绕过 `AssetManager` 扫描资源目录；文件路径只能由 acquire 的内容临时生成。
 - [粒子 presenter 尚未接入 Builtins](lessons/L-20260929-01-particle-presenter-unwired.md)：schema 和平台 presenter 存在不代表剧情 primitive 已可执行；必须验证 Runtime 状态和 presenter 桥接。
 - [Sample 调试清空的语义](lessons/L-20260929-01-sample-debug-reset-scope.md)：顶层“清空游戏数据”重置玩家状态；日志清空仅属于日志面板。
+- [Sample 调试会话销毁的导航顺序](lessons/L-20260929-02-sample-debug-navigate-before-teardown.md)：先切换到标题页，再停止引擎或释放场景展示，避免重置/重载期间黑屏。

@@ -49,6 +49,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private AvaloniaEffectRuntime? _effects;
     private EffectProgramResource[] _effectPrograms = [];
     private readonly Dictionary<string, AssetHandle<SceneTexture>> _preloadedTextures = new(StringComparer.OrdinalIgnoreCase);
+    private GameLaunchOptions? _launchOptions;
     private string? _gameDirectory;
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private readonly GameRunCoordinator _run = new();
@@ -75,6 +76,34 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     [ObservableProperty] private bool _canContinue;
 
     public async Task InitializeAsync(GameLaunchOptions options, CancellationToken cancellationToken = default)
+    {
+        _launchOptions = options;
+        await _lifecycle.WaitAsync(cancellationToken);
+        try
+        {
+            await InitializeGameResourcesAsync(options, cancellationToken);
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    internal async Task ReloadGameResourcesAsync(CancellationToken cancellationToken = default)
+    {
+        if (_launchOptions is null)
+            throw new InvalidOperationException("The game session has not been initialized.");
+
+        GameLog.Logger.Information("Reloading sample game resources");
+        await _lifecycle.WaitAsync(cancellationToken);
+        try
+        {
+            await StopCurrentRunAsync();
+            await DisposeEngineAsync();
+            await DisposeGameResourcesAsync();
+            await InitializeGameResourcesAsync(_launchOptions, cancellationToken);
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    private async Task InitializeGameResourcesAsync(GameLaunchOptions options, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(options.GameDirectory))
         {
@@ -187,8 +216,15 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             if (_variables is not null)
                 await _variables.ResetPlayerVariablesAsync(cancellationToken);
             _progress?.Clear();
+            _settings = new GameSettings();
             await RefreshSlotsAsync(cancellationToken);
-            await OnUiAsync(() => _gameplay.StatusMessage = "Player state cleared.");
+            await OnUiAsync(() =>
+            {
+                _gameplay.TextSpeed = _settings.TextSpeed;
+                _gameplay.IsNvlMode = false;
+                _gameplay.IsUiHidden = false;
+                _gameplay.StatusMessage = "Player state cleared.";
+            });
         }
         finally { _lifecycle.Release(); }
     }
@@ -373,6 +409,39 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         GameLog.Logger.Debug("Resetting scene presentation before creating the next game engine");
         await ResetScenePresentationAsync();
         GameLog.Logger.Debug("Scene presentation reset completed");
+    }
+
+    private async Task DisposeGameResourcesAsync()
+    {
+        (GalleryResources as IDisposable)?.Dispose();
+        GalleryResources = null;
+        GalleryDataSource = null;
+        OnPropertyChanged(nameof(GalleryResources));
+        OnPropertyChanged(nameof(GalleryDataSource));
+
+        foreach (var handle in _preloadedTextures.Values)
+            handle.Dispose();
+        _preloadedTextures.Clear();
+        _assets?.Dispose();
+        _assets = null;
+        _content = null;
+        _contentProvider = null;
+        _effectPrograms = [];
+        _saves = null;
+        _variables = null;
+        _progress = null;
+        _settings = null;
+        _gameDirectory = null;
+
+        await OnUiAsync(() =>
+        {
+            _saveSlots.Clear();
+            IsReady = false;
+            IsPlaying = false;
+            CanContinue = false;
+            StatusMessage = "Reloading game resources...";
+            _gameplay.StatusMessage = "Reloading game resources...";
+        });
     }
 
     private Task ResetScenePresentationAsync()

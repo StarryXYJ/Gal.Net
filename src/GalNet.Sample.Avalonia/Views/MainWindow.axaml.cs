@@ -13,8 +13,9 @@ public partial class MainWindow : UrsaWindow
     private readonly IServiceProvider _services;
     private readonly SampleDebugLogStore? _debugLogStore;
     private readonly SampleDebugActions? _debugActions;
-    private bool _isDebugLogOpen;
+    private DebugLogWindow? _debugLogWindow;
     private bool _isClearingPlayerState;
+    private bool _isReloadingGameResources;
 
     public MainWindow(GameShell shell, IServiceProvider services)
     {
@@ -57,6 +58,26 @@ public partial class MainWindow : UrsaWindow
 
     private async void OnShowDebugLogClick(object? sender, RoutedEventArgs e) => await ShowDebugLogAsync();
 
+    private async void OnReloadGameResourcesClick(object? sender, RoutedEventArgs e)
+    {
+        if (_debugActions is null || _isReloadingGameResources)
+            return;
+
+        _isReloadingGameResources = true;
+        try
+        {
+            await _debugActions.ReloadGameResourcesAsync();
+        }
+        catch (Exception exception)
+        {
+            await MessageBox.ShowAsync(this, exception.Message, "重新加载游戏资源失败", button: MessageBoxButton.OK);
+        }
+        finally
+        {
+            _isReloadingGameResources = false;
+        }
+    }
+
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
         if (_debugLogStore is null || e.Key != Key.L || e.KeyModifiers != KeyModifiers.None)
@@ -66,20 +87,25 @@ public partial class MainWindow : UrsaWindow
         _ = ShowDebugLogAsync();
     }
 
-    private async Task ShowDebugLogAsync()
+    private Task ShowDebugLogAsync()
     {
-        if (_debugLogStore is null || _isDebugLogOpen)
-            return;
+        if (_debugLogStore is null)
+            return Task.CompletedTask;
 
-        _isDebugLogOpen = true;
-        try
+        if (_debugLogWindow is { IsVisible: true })
         {
-            var window = _services.GetRequiredService<DebugLogWindow>();
-            await window.ShowDialog(this);
+            _debugLogWindow.Activate();
+            return Task.CompletedTask;
         }
-        finally
+
+        var window = _services.GetRequiredService<DebugLogWindow>();
+        _debugLogWindow = window;
+        window.Closed += (_, _) =>
         {
-            _isDebugLogOpen = false;
-        }
+            if (ReferenceEquals(_debugLogWindow, window))
+                _debugLogWindow = null;
+        };
+        window.Show(this);
+        return Task.CompletedTask;
     }
 }

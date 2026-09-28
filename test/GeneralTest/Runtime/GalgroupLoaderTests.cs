@@ -246,11 +246,11 @@ public class GalgroupLoaderTests
             Assert.That(plan.GetProperty("skippable").GetBoolean(), Is.True);
             Assert.That(track.GetProperty("handleId").GetString(), Is.EqualTo("blinds:blinds-mask"));
             Assert.That(track.GetProperty("property").GetString(), Is.EqualTo("progress"));
-            Assert.That(events[0].GetProperty("type").GetString(), Is.EqualTo(ShowLayerEntry.TypeId));
-            Assert.That(events[1].GetProperty("type").GetString(), Is.EqualTo(ApplyEffectEntry.TypeId));
-            Assert.That(events[1].GetProperty("parameters").GetProperty("program").GetString(), Is.EqualTo("a1000000000000000000000000000008"));
-            Assert.That(events[1].GetProperty("parameters").GetProperty("targetHandleId").GetString(), Is.EqualTo("new-background"));
-            Assert.That(events[1].GetProperty("parameters").GetProperty("parameters").GetProperty("bladeCount").GetInt32(), Is.EqualTo(9));
+            Assert.That(events[0].GetProperty("type").GetString(), Is.EqualTo(ApplyEffectEntry.TypeId));
+            Assert.That(events[0].GetProperty("parameters").GetProperty("program").GetString(), Is.EqualTo("a1000000000000000000000000000008"));
+            Assert.That(events[0].GetProperty("parameters").GetProperty("targetHandleId").GetString(), Is.EqualTo("new-background"));
+            Assert.That(events[0].GetProperty("parameters").GetProperty("parameters").GetProperty("bladeCount").GetInt32(), Is.EqualTo(9));
+            Assert.That(events[1].GetProperty("type").GetString(), Is.EqualTo(ShowLayerEntry.TypeId));
             Assert.That(events[2].GetProperty("type").GetString(), Is.EqualTo(StopEffectEntry.TypeId));
             Assert.That(events[3].GetProperty("type").GetString(), Is.EqualTo(HideLayerEntry.TypeId));
         });

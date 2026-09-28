@@ -32,7 +32,16 @@ internal sealed class SampleDebugActions(
 {
     public async Task ClearPlayerStateAsync(CancellationToken cancellationToken = default)
     {
+        await ReturnToTitleAsync(cancellationToken);
         await session.ClearPlayerStateAsync(cancellationToken);
-        navigation.ResetTo<TitlePageViewModel>(NavigationTransition.None);
     }
+
+    public async Task ReloadGameResourcesAsync(CancellationToken cancellationToken = default)
+    {
+        await ReturnToTitleAsync(cancellationToken);
+        await session.ReloadGameResourcesAsync(cancellationToken);
+    }
+
+    private Task ReturnToTitleAsync(CancellationToken cancellationToken) =>
+        navigation.ResetToAsync<TitlePageViewModel>(NavigationTransition.None, cancellationToken);
 }
