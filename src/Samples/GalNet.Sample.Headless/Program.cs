@@ -1,4 +1,5 @@
 using GalNet.Core.Settings;
+using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
 using GalNet.Core.View;
 using GalNet.Runtime.Engine;
@@ -17,7 +18,9 @@ if (!HeadlessOptions.TryParse(args, out var options, out var error))
 try
 {
     var installation = await GameInstallation.OpenAsync(options!.GameDirectory);
-    var content = await installation.CreateContentProvider().LoadAsync();
+    var resourceTypes = BuiltinResourceTypes.CreateCatalog();
+    var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
+    var content = await installation.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync();
     var settings = new SettingsContainer();
     settings.Set(new GameSettings());
 

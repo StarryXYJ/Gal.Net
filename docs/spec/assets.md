@@ -1,227 +1,55 @@
 # 资源文件管理
 
-参考 Unity，每个资源文件都有对应描述文件（同名 `.meta` 文件），包含元数据及唯一 ID（GUID）。
+每个项目资源位于 `Assets/`，由相邻的 `.meta` 描述稳定资源 ID（项目通常使用 GUID）、类型和类型专属数据。资源的作者引用、PAK 索引和运行时查询均以该 ID 为正式身份；路径只用于导入、编辑和诊断。
 
-## 核心概念
-
-### 三种包格式
-
-| 格式 | 说明 |
-|---|---|
-| `.galpak` | 游戏分发 ZIP；当前含 JSON manifest、`Assets/content.pak` 与 `Assets/Paks/000-base.pak` |
-| `.galnet` | 当前 `.galpak` 内 manifest 的文件名，不是独立逻辑二进制 |
-| `.pak` | 资源归档文件，内部包含寻址表和资源数据块 |
-
-当前导出器将 `Assets/**` 打为 `Assets/Paks/000-base.pak`，并将 `settings.json`、`Graph/**`、`I18n/**` 打为 `Assets/content.pak`；完整发布布局、manifest 校验与安装规则见[文件格式](file-formats.md)。`content.pak` 和 manifest 是内容加载器的特殊输入，不注册为 `IAssetProvider`。安装运行时仅从 `Assets/Paks/**/*.pak` 创建资源 provider，并按相对路径降序决定覆盖优先级；因此补丁 PAK 可覆盖基础资源包。
-
-## 资源描述文件
-
-每个资源配同名 `.meta` 文件（JSON），示例：
+## Metadata 与类型
 
 ```json
 {
-    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "type": "sprite",
-    "path": "characters/alice.png",
-    "filter": "bilinear",
-    "compress": "brotli"
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "type": "sprite",
+  "path": "characters/alice.png",
+  "filter": "bilinear",
+  "compress": "brotli",
+  "gallery": [{ "id": 100, "typeId": "cg", "title": "Alice" }]
 }
 ```
 
-字段说明：
-- **id**：GUID，全局唯一，IGameView 中作为 `assetId` 传递
-- **type**：资源类型（`sprite` / `audio` / `video` / `font` / `effectProgram` / `unknown`）。`.sksl` 使用 `effectProgram`，运行时通过资源 GUID 加载和预编译。
-- **path**：相对于 Assets 目录的路径
-- **filter**：滤波模式（`point` / `bilinear` / `trilinear`）
-- **compress**：压缩格式（`none` / `deflate` / `gzip` / `brotli`）
+- `id` 是非空、全项目唯一的稳定资源 ID；推荐使用 GUID，但当前 codec 不限制其字符串形态。
+- `type` 是资源类型 ID；组合根通过冻结的 `IResourceTypeCatalog` 将其映射到具体 `AssetMeta` DTO。内置类型为 `sprite`、`audio`、`video`、`font`、`effect-program` 和 `data`。
+- `path` 相对 `Assets/`；provider 会以实际逻辑路径校正缺失或过时的值。
+- 可选字段缺失时使用 DTO 默认值；未知字段保存在 extension data，供 Editor 重写时保留。未知 `type`、无效 JSON、缺失 GUID 或缺失源文件是加载错误，不能静默跳过。
+- `gallery` 是 Gallery 的唯一作者真源。每项使用全局唯一正整数 ID；没有 `sortOrder` 或项目根可编辑 `gallery.json`。
 
-## 架构分层
+资源类型只负责识别、保存、枚举和打包；它不注册 decoder、Editor inspector 或 Avalonia 页面。decoder 以 `(typeId, target CLR type)` 另行注册。
 
-所有层均为接口化设计，方便替换实现。
+## 查询、解码与生命周期
 
-```
-IGameFile          资源文件 + 元数据（包含 ID / 路径 / 类型 / 压缩 / Hash）
-    ↓
-IArchive          一组可寻址文件，支持 id 和路径加载
-                   结构：寻址表 | 资源数据1(元数据+内容)、资源数据2、...
-                   （实际打包为 .pak 文件）
-    ↓
-IAssetProvider    负责提供 Archive 实例
-                   目前实现：
-                     - LocalFileProvider（开发模式：读原始文件 + .meta）
-                     - PakFileProvider（打包模式：从 .pak 解析读取）
-                   未来可扩展 HTTP 等
-    ↓
-IAssetManager      资源管理器：加载/缓存（引用计数）/释放
-                    支持两种查找方式（共享缓存）：
-                      按 ID 加载：  LoadAsync<T>(assetId)
-                      按路径加载：  LoadByPathAsync<T>(path)
+```text
+IAssetProvider / IArchive / IGameFile
+  -> AssetManager（GUID 查询、decoder、缓存）
+  -> AssetHandle<T>（一次成功 Acquire 的独立引用）
 ```
 
-### 接口定义（GalNet.Core/Assets）
+`IGameFile` 是可重复读取的源描述，不是资源句柄。`IAssetManager.AcquireAsync<T>(guid)` 以 `(GUID, T)` 缓存已解码对象，并返回独立 `AssetHandle<T>`；每个 handle 的幂等 `Dispose` 只释放自己的一次引用。引用计数归零时 manager 删除缓存，并释放缓存对象（若其实现 `IDisposable`）。
 
-```csharp
-interface IAssetManager : IDisposable
-{
-    int CachedCount { get; }
+`GetFileAsync`、`GetFilesAsync` 及按路径查找只用于定位/枚举；正式剧情和运行时引用优先使用 GUID。Provider 可缓存目录或 PAK 的位置索引，但不缓存已解码对象，也不管理引用计数。
 
-    void RegisterProvider(IAssetProvider provider); // AssetManager 负责回收实现了 IDisposable 的 Provider
-    Task<T?> LoadAsync<T>(string assetId, CancellationToken ct = default) where T : class;
-    Task<T?> LoadAsync<T>(IGameFile file, CancellationToken ct = default) where T : class;
-    Task<T?> LoadByPathAsync<T>(string path, CancellationToken ct = default) where T : class;
-    void Release(string assetId);
-    bool IsLoaded(string assetId);
-    void ClearCache();
-}
+需要系统文件路径的媒体后端不能自行扫描项目或 PAK。它先从 manager acquire bytes，再在受控的会话临时目录实体化；该目录随使用它的 resolver 释放。图层贴图等可直接解码的资源保留 `AssetHandle<T>`。
 
-interface IAssetProvider
-{
-    string Name { get; }
-    bool Exists(string name);
-    IArchive OpenArchive(string archiveName);
-    Task<IArchive> OpenArchiveAsync(string name, CancellationToken ct = default);
-}
+## 来源与发布边界
 
-interface IArchive : IDisposable
-{
-    string Name { get; }
-    IEnumerable<string> AssetIds { get; }
-    bool Contains(string assetId);
-    IGameFile? GetAsset(string assetId);
-    IGameFile? GetAssetByPath(string path);
-}
+| 输入 | 内容 provider | 资源 provider |
+| --- | --- | --- |
+| 开发项目目录 | `ProjectGameContentProvider` 读取 `Graph/`、`settings.json`、`I18n/`，并从 `Assets/**/*.meta` 编译 Gallery | `LocalFileProvider(Assets/)` |
+| 已安装包目录 | `InstalledGameContentProvider` 读取 `Graph/`、`settings.json`、`I18n/` 和生成的 `gallery.json` | 所有 `Assets/Paks/**/*.pak` |
 
-interface IGameFile
-{
-    string Id { get; }
-    string Path { get; }
-    ResourceType Type { get; }
-    long Length { get; }
-    string? Hash { get; }
-    Stream OpenRead();
-    byte[] ReadAllBytes();
-    Task<byte[]> ReadAllBytesAsync(CancellationToken ct = default);
-}
-```
+同一宿主在创建内容 provider、资源 provider、Preview 与导出器时必须传入同一对冻结 `IResourceTypeCatalog` / `IGalleryTypeCatalog`。不能在下游入口重新创建 built-in catalog，否则插件注册无法贯穿完整路径。
 
-`GalNet.Assets` 项目负责所有实现。
+安装内容的 PAK 按相对路径倒序注册；更靠后的路径优先，因此 `100-extra.pak` 可覆盖 `000-base.pak`。`Graph/`、`I18n/`、`settings.json`、生成的 `gallery.json` 和 manifest 是特殊内容，永不注册为资源 provider。
 
-### 双加载模式
+## PAK
 
-AssetManager 通过注册不同 Provider 切换数据源：
+`.pak` 当前版本为 2，使用 `GPAK` magic。每个表项保存 UTF-8 GUID、逻辑路径、字符串 type ID、注册 DTO 序列化的 metadata JSON、数据偏移、原始/存储长度、压缩模式与 SHA-256。读取时 metadata 的 GUID、路径和 type ID 必须与表项一致，否则包无效。
 
-- **开发模式**：注册 `LocalFileProvider`，直接从 Assets 目录读取原始资源 + .meta 描述文件
-- **打包模式**：注册 `PakFileProvider`，从 .pak 文件解析寻址表，按 ID 加载资源数据块
-- **混合使用**：两者可同时注册，优先遍历先注册的 Provider
-
-## 实现层（GalNet.Assets）
-
-### .pak 二进制格式
-
-```
-┌─────────────────────────────────────┐
-│ Magic: "GPAK" (4 bytes)            │
-│ Version: int32                      │
-│ EntryCount: int32                   │
-├─────────────────────────────────────┤
-│ Entry Table (EntryCount 项)         │
-│ ┌─────────────────────────────────┐ │
-│ │ IdLen     (int32)              │ │
-│ │ Id        (UTF-8, IdLen bytes) │ │
-│ │ PathLen   (int32)              │ │
-│ │ Path      (UTF-8, PathLen)     │ │
-│ │ Type      (int32)              │ │
-│ │ Offset    (int64, 数据段偏移)   │ │
-│ │ OrigLength(int64, 未压缩大小)   │ │
-│ │ StoredLen (int64, 存储大小)     │ │
-│ │ Compress  (int32)              │ │
-│ │ Hash      (32 bytes, SHA256)   │ │
-│ └─────────────────────────────────┘ │
-├─────────────────────────────────────┤
-│ Data Section                        │
-│ 压缩或原始数据块，按 Offset 定位    │
-└─────────────────────────────────────┘
-```
-
-### 压缩（CompressionHelper）
-
-| 模式 | 说明 |
-|---|---|
-| `None` | 不压缩，直接存储 |
-| `Deflate` | System.IO.Compression.DeflateStream |
-| `GZip` | System.IO.Compression.GZipStream |
-| `Brotli` | System.IO.Compression.BrotliStream（.NET 内置，默认） |
-
-提供同步/异步压缩解压，流式 API 和字节数组 API。
-
-### 加密
-
-当前 `GamePackageExporter` 不对 `.galpak` 或其内部 `.pak` 加密；它使用 SHA-256 校验导出包中的两个 pak。任何 `CryptoHelper` 能力均不构成当前发布格式的兼容性承诺。
-
-### 资源缓存与引用计数
-
-AssetManager 内部使用 `(AssetId, TargetType)` 作为缓存键，每个 CacheEntry 只持有已转换类型的资源对象和引用计数；原始字节只在解码期间存在，避免同一资源被缓存两份。已经由 `GetFilesAsync()` 枚举得到的 `IGameFile` 可直接传给 `LoadAsync<T>(file)`，预热时不再重复查找 Provider。
-
-加载时 RefCount++，释放时 RefCount--，归零时从缓存移除并释放 `IDisposable` 资源。资源 ID 比较不区分大小写，避免同一 GUID 因大小写产生重复缓存。
-
-同一缓存键的并发请求使用 single-flight：只执行一次 Provider 查找和 Decoder，所有调用者共享结果，但各自拥有独立的等待取消和引用。调用者取消不会误取消其他调用者；当所有等待者都取消时，底层生产任务才会被取消。`ClearCache()` 会使进行中的旧任务失效，迟到的解码结果不会重新写入缓存，并会被及时释放；已注册的 Provider/Decoder 在 `ClearCache()` 后仍然有效。
-
-按路径加载只负责解析一次 `path → assetId` 映射，随后汇入同一 ID 缓存和 single-flight 任务。正式内容仍应优先使用 GUID。
-
-### PakBuilder
-
-提供将文件列表打包为 .pak 的工具：
-- 自动读取文件内容
-- 可选压缩（指定压缩模式）
-- 自动计算 SHA256 Hash
-- 支持从元数据字典设置压缩模式
-
-### 目录结构
-
-```
-GalNet.Core/Assets/        ← 接口定义
-├── ResourceType.cs
-├── CompressionMode.cs
-├── AssetMeta.cs
-├── IGameFile.cs
-├── IArchive.cs
-├── IAssetProvider.cs
-└── IAssetManager.cs
-
-GalNet.Assets/             ← 实现
-├── GameFile.cs
-├── Archive.cs
-├── LocalFileProvider.cs
-├── PakFileProvider.cs
-├── PakBuilder.cs
-├── AssetManager.cs
-├── CompressionHelper.cs
-└── CryptoHelper.cs
-```
-
-## Scene 场景状态
-
-`SceneState` 是 `GameRuntime` 拥有的可序列化场景快照；`SceneInstanceManager` 以它为基础维护活跃实例。`IGameView` 只呈现 Handler 发出的请求，不是场景状态的唯一来源。
-
-```
-SceneState (可序列化的状态数据)
-├── Layers (图层列表：图片资源、位置等)
-├── ActiveControlIds (活跃控件 ID 列表)
-└── ActiveEffectIds (活跃特效 ID 列表)
-```
-
-SceneState 持有场景运行中需要持久化的数据字段（图层信息、控件/特效状态等），通过 `SaveManager` 序列化为存档。
-
-游戏运行时，Handler 先更新 Runtime 的场景实例/状态，再向 `IGameView` 发送呈现请求。无头测试使用 `NullGameView`。
-
-### 存档数据结构
-
-SaveManager 统一调度存档：
-
-```
-GameSnapshot
-├── NodeId
-├── EntryIndex
-├── Variables (VariableStore 快照)
-└── SceneState
-```
+数据块可使用 `none`、`deflate`、`gzip` 或 `brotli`；`PakBuilder` 默认选择 Brotli，并会跳过过小数据的压缩。旧 enum PAK 格式不受支持。

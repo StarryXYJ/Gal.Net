@@ -33,16 +33,16 @@ public sealed class GameInstallation
         return new GameInstallation(fullPath, Directory.EnumerateFiles(fullPath, "*.galnet", SearchOption.TopDirectoryOnly).Any());
     }
 
-    public IGameContentProvider CreateContentProvider(IResourceTypeCatalog? resourceTypes = null, IGalleryTypeCatalog? galleryTypes = null) => IsPackaged
+    public IGameContentProvider CreateContentProvider(IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes) => IsPackaged
         ? new InstalledGameContentProvider(RootDirectory, resourceTypes, galleryTypes)
         : new ProjectGameContentProvider(RootDirectory, resourceTypes, galleryTypes);
 
     /// <summary>Returns every resource PAK in descending relative-path priority, or the source directory.</summary>
-    public IReadOnlyList<IAssetProvider> CreateAssetProviders(IResourceTypeCatalog? resourceTypes = null)
+    public IReadOnlyList<IAssetProvider> CreateAssetProviders(IResourceTypeCatalog resourceTypes)
     {
-        var types = resourceTypes ?? BuiltinResourceTypes.CreateCatalog();
+        ArgumentNullException.ThrowIfNull(resourceTypes);
         var assetsDirectory = Path.Combine(RootDirectory, "Assets");
-        if (!IsPackaged) return [new LocalFileProvider(assetsDirectory, types, optional: true)];
+        if (!IsPackaged) return [new LocalFileProvider(assetsDirectory, resourceTypes, optional: true)];
 
         var providers = new List<IAssetProvider>();
         var resourcePaksDirectory = Path.Combine(assetsDirectory, "Paks");
@@ -50,7 +50,7 @@ public sealed class GameInstallation
         {
             foreach (var pakPath in Directory.EnumerateFiles(resourcePaksDirectory, "*.pak", SearchOption.AllDirectories)
                          .OrderByDescending(path => Path.GetRelativePath(resourcePaksDirectory, path), StringComparer.OrdinalIgnoreCase))
-                providers.Add(new PakFileProvider(pakPath, "assets", types));
+                providers.Add(new PakFileProvider(pakPath, "assets", resourceTypes));
         }
         return providers;
     }

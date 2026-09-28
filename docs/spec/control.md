@@ -33,6 +33,12 @@
 
 宿主可以在 `AddAvaloniaGameViewPages()` 的注册回调中覆盖默认 View，或者追加自定义页面。注册表构建后不可修改。
 
+### Gallery 页面
+
+Gallery 使用独立的 `IGalleryPageRegistry`，以精确 Gallery `typeId` 映射到页面 ViewModel 和 View。`Add<TViewModel, TView>` 注册新类型，`Replace<TViewModel, TView>` 显式覆盖既有类型；多个 type ID 可以映射到同一页面。该注册同时写入普通 ViewModel→View registry 和 DI，构建后不可修改。
+
+`GalleryNavigationService` 不按资源类型推断页面：没有有内容类型时入口不可用，只有一个时直接打开该页，多个时先进入类型选择页；未注册页面会显示诊断页。CG、视频和音频是独立页面/媒体状态，不使用 renderer enum 或单一多媒体 ViewModel。
+
 ## 运行期呈现边界
 
 Runtime 只依赖 `GalNet.Presentation.Abstractions` 中的 `IGameView` 与细分接口（文本、交互、图层、转场、音频、视频、效果）。`AvaloniaGamePageView` 是页面侧的 Avalonia 呈现实现；`NullGameView` 供测试和无界面宿主使用。

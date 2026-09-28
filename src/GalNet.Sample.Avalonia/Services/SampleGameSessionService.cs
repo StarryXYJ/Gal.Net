@@ -31,6 +31,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
 {
     private readonly GamePageViewModel _gameplay;
     private readonly GamePage _page;
+    private readonly IResourceTypeCatalog _resourceTypes;
+    private readonly IGalleryTypeCatalog _galleryTypes;
     private readonly ObservableCollection<GameSaveSlot> _saveSlots = [];
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySaveSlots;
     private IGameContentProvider? _contentProvider;
@@ -57,6 +59,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     {
         _gameplay = gameplay;
         _page = page;
+        _resourceTypes = BuiltinResourceTypes.CreateCatalog();
+        _galleryTypes = BuiltinGalleryTypes.CreateCatalog(_resourceTypes);
         _readOnlySaveSlots = new ReadOnlyObservableCollection<GameSaveSlot>(_saveSlots);
         _gameplay.InteractionObserved += OnInteractionObserved;
     }
@@ -84,9 +88,9 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             var installation = await GameInstallation.OpenAsync(options.GameDirectory, cancellationToken);
             _gameDirectory = installation.RootDirectory;
             var profileDirectory = options.ProfileDirectory ?? Path.Combine(_gameDirectory, ".galnet");
-            _contentProvider = installation.CreateContentProvider();
+            _contentProvider = installation.CreateContentProvider(_resourceTypes, _galleryTypes);
             _content = await _contentProvider.LoadAsync(cancellationToken);
-            _assets = new AssetManager(installation.CreateAssetProviders());
+            _assets = new AssetManager(installation.CreateAssetProviders(_resourceTypes));
             _assets.RegisterDecoder<SceneTexture>("sprite", new SceneTextureAssetDecoder());
             var spriteFiles = await _assets.GetFilesAsync("sprite", cancellationToken);
             var preloadResults = await Task.WhenAll(

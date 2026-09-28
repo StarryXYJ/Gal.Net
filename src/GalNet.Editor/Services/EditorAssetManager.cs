@@ -15,11 +15,13 @@ public sealed class EditorAssetManager : IAssetManager
 {
     private readonly IProjectService _projects;
     private readonly IAssetCatalogService _catalog;
+    private readonly IResourceTypeCatalog _resourceTypes;
     private AssetManager _inner = new();
-    public EditorAssetManager(IProjectService projects, IAssetCatalogService catalog)
+    public EditorAssetManager(IProjectService projects, IAssetCatalogService catalog, IResourceTypeCatalog resourceTypes)
     {
         _projects = projects;
         _catalog = catalog;
+        _resourceTypes = resourceTypes;
         _projects.CurrentChanged += OnProjectChanged;
         _catalog.Changed += OnCatalogChanged;
         Rebuild(_projects.Current);
@@ -28,7 +30,7 @@ public sealed class EditorAssetManager : IAssetManager
     private void OnCatalogChanged() => Rebuild(_projects.Current);
     private void Rebuild(Abstraction.Project.GalProject? project)
     {
-        var previous = Interlocked.Exchange(ref _inner, project is null ? new AssetManager() : new AssetManager([new LocalFileProvider(project.AssetsPath, optional: true)]));
+        var previous = Interlocked.Exchange(ref _inner, project is null ? new AssetManager() : new AssetManager([new LocalFileProvider(project.AssetsPath, _resourceTypes, optional: true)]));
         previous.Dispose();
     }
     public Task<IGameFile?> GetFileAsync(string assetId, CancellationToken ct = default) => _inner.GetFileAsync(assetId, ct);

@@ -1,6 +1,6 @@
 ---
 feature: F-20260926-01-gallery-meta-pages
-status: planned
+status: implementation
 created: 2026-09-26
 updated: 2026-09-27
 ---
@@ -29,7 +29,7 @@ Phase 6 清理、全量验证与正式文档
 
 ## Phase 1：资源类型 registry 与类型化 Meta DTO
 
-**状态：** `planned`
+**状态：** `verified`
 
 **目标：** 在不先改动资源加载管线的前提下，建立可冻结、可验证的资源类型 registry，以及按 type ID 解析具体 `.meta` DTO 的公共模型和 codec。
 
@@ -63,7 +63,7 @@ Phase 6 清理、全量验证与正式文档
 
 ## Phase 2：资源运行时契约、decoder 与 pak 切换
 
-**状态：** `planned`
+**状态：** `verified`
 
 **目标：** 将资源系统从封闭 `ResourceType` enum 完整切换到字符串 type ID 和类型化 metadata，并让开发目录与 pak 对插件 DTO 观察一致。
 
@@ -106,7 +106,7 @@ Phase 6 清理、全量验证与正式文档
 
 ## Phase 3：数字 Gallery catalog、类型 registry 与解锁状态
 
-**状态：** `planned`
+**状态：** `verified`
 
 **目标：** 建立由代码注册 Gallery 类型、由 `.meta.gallery[]` 提供 item 的平台无关 catalog，并把数字 ID 贯穿排序、系统变量和 `gallery.unlock`。
 
@@ -142,7 +142,7 @@ Phase 6 清理、全量验证与正式文档
 
 ## Phase 4：目录运行、Preview 与导出聚合
 
-**状态：** `planned`
+**状态：** `verified`
 
 **目标：** 让实际宿主从 `.meta` 建立同一 Gallery 内容：目录开发运行启动时聚合一次，Preview/导出生成 JSON，发行运行只读生成内容。
 
@@ -178,7 +178,7 @@ Phase 6 清理、全量验证与正式文档
 
 ## Phase 5：Avalonia 页面 registry 与独立默认页面
 
-**状态：** `planned`
+**状态：** `verified`
 
 **目标：** 删除 renderer enum 和单一多媒体 ViewModel，以精确 type ID 注册独立 MVVM 页面并完成零/单/多类型导航。
 
@@ -215,7 +215,7 @@ Phase 6 清理、全量验证与正式文档
 
 ## Phase 6：清理、验证与正式文档
 
-**状态：** `planned`
+**状态：** `in-progress`
 
 **目标：** 删除所有被新模型替代的路径，完成跨项目验证，并只把已实现事实同步到正式文档。
 
@@ -242,4 +242,6 @@ Phase 6 清理、全量验证与正式文档
 **风险：** 全解决方案构建可能因未安装 Android/Browser/iOS SDK 而失败。必须区分平台 SDK 探测限制和本 feature 引入的业务编译错误，并以相关桌面/测试项目的串行构建作为主要证据。
 
 **退出条件：** 所有验收标准有测试或可重复验证证据；相关项目构建通过；正式 spec 与实现一致；feature 可进入独立代码 review 和 closeout。
+
+**Closeout 记录（2026-09-28）：** 已删除组合入口中的隐式 catalog fallback；Editor、Sample、Headless、导出与内容 provider 均显式使用各自宿主的一对冻结 resource/Gallery catalog。正式 `docs/spec` 与 glossary 已同步，并新增开发者 summary、review 与资源临时实体化 lesson。`GalNet.Assets.Tests` 34/34、Editor、Avalonia Sample、Headless Sample 与 Editor Headless 构建通过；全量 GeneralTest 保持 228/229，唯一失败是未触及的 `EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString`。因此 Phase 6 维持 `in-progress`，待该全量测试基线由其负责范围修复或正式豁免后才可标记 verified。
 

@@ -12,11 +12,11 @@ public sealed class ProjectGameContentProvider : IGameContentProvider
     private readonly IResourceTypeCatalog _resourceTypes;
     private readonly IGalleryTypeCatalog _galleryTypes;
 
-    public ProjectGameContentProvider(string directory, IResourceTypeCatalog? resourceTypes = null, IGalleryTypeCatalog? galleryTypes = null)
+    public ProjectGameContentProvider(string directory, IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes)
     {
         _directory = Path.GetFullPath(directory);
-        _resourceTypes = resourceTypes ?? BuiltinResourceTypes.CreateCatalog();
-        _galleryTypes = galleryTypes ?? BuiltinGalleryTypes.CreateCatalog(_resourceTypes);
+        _resourceTypes = resourceTypes ?? throw new ArgumentNullException(nameof(resourceTypes));
+        _galleryTypes = galleryTypes ?? throw new ArgumentNullException(nameof(galleryTypes));
     }
 
     public Task<GameContent> LoadAsync(CancellationToken cancellationToken = default) => Task.Run(() =>

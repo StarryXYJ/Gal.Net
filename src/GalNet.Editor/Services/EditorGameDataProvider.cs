@@ -22,10 +22,14 @@ namespace GalNet.Editor.Services;
 public sealed class EditorGameDataProvider : IGameContentProvider
 {
     private readonly IProjectService _projectService;
+    private readonly IResourceTypeCatalog _resourceTypes;
+    private readonly IGalleryTypeCatalog _galleryTypes;
 
-    public EditorGameDataProvider(IProjectService projectService)
+    public EditorGameDataProvider(IProjectService projectService, IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes)
     {
         _projectService = projectService;
+        _resourceTypes = resourceTypes;
+        _galleryTypes = galleryTypes;
     }
 
     public Task<GameContent> LoadAsync(CancellationToken cancellationToken = default)
@@ -38,11 +42,9 @@ public sealed class EditorGameDataProvider : IGameContentProvider
             var file = Path.Combine(directory, $"{group.Id}.galgroup");
             if (File.Exists(file)) GalgroupLoader.LoadIntoGroup(group, file);
         }
-        var resourceTypes = BuiltinResourceTypes.CreateCatalog();
-        var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
-        using var assets = new LocalFileProvider(project.AssetsPath, resourceTypes, optional: true);
+        using var assets = new LocalFileProvider(project.AssetsPath, _resourceTypes, optional: true);
         using var archive = assets.OpenArchive("assets");
-        var gallery = new GalleryCatalogCompiler(resourceTypes, galleryTypes).Compile(archive.AssetIds.Select(id => archive.GetAsset(id)!.Metadata));
+        var gallery = new GalleryCatalogCompiler(_resourceTypes, _galleryTypes).Compile(archive.AssetIds.Select(id => archive.GetAsset(id)!.Metadata));
         return Task.FromResult(new GameContent { Graph = graph, AssetRoot = project.AssetsPath, Gallery = gallery });
     }
 }

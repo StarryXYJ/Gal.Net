@@ -22,9 +22,9 @@
 | 游戏视图 | `IGameView` | 单条 primitive 的定义解析、参数规范化、实例创建和 dispatch 入口。 |
 | 呈现端口 | presenter interfaces | 宿主提供的窄端口，例如 dialogue、choice、layer、animation、effect。 |
 | 快照 | `GameSnapshot` | 可保存和恢复的运行时位置、变量与场景状态。 |
-| Gallery 目录 | `GalleryCatalog` | 从可选 `gallery.json` 验证并冻结的类型与资源条目索引，通过 `GameContent.Gallery` 交给宿主。 |
+| Gallery 目录 | `GalleryCatalog` | 由资源 `.meta.gallery[]` 与冻结类型注册聚合、在发行包中生成快照的不可变类型与资源条目索引，通过 `GameContent.Gallery` 交给宿主。 |
 | Gallery 类型 | `GalleryTypeRegistration` | 一个稳定 Gallery type ID 与资源类型字符串的关联；不等同于 Entry 模块或资源 decoder。 |
-| Gallery 条目 | `GalleryItem` | 使用全局稳定 item ID、Gallery type ID 和资源 ID 描述的一项静态 Gallery 内容。 |
+| Gallery 条目 | `GalleryItem` | 使用全局唯一正整数 ID、Gallery type ID 和资源 GUID 描述的一项静态 Gallery 内容。 |
 | Gallery 解锁变量 | `gallery_<item-id>_unlocked` | 每个 Gallery item 自动生成、默认 `false`、跨存档槽持久化的系统 Player bool；是 Gallery 解锁的唯一真源。 |
 
 ## 场景与动画
@@ -67,8 +67,9 @@
 | --- | --- | --- |
 | 资源提供者 | `IAssetProvider` | 打开命名资源归档的来源，例如本地目录或 pak。 |
 | 归档 | `IArchive` | 按资源 ID 或路径寻址的一组 `IGameFile`。 |
-| 资源管理器 | `IAssetManager` | 注册提供者、加载、缓存和释放已解析资源。 |
+| 资源管理器 | `IAssetManager` | 从 provider 按 GUID 定位资源，按 `(GUID, CLR 类型)` 解码/缓存，并以 `AssetHandle<T>` 引用计数释放已解析资源。 |
+| 资源句柄 | `AssetHandle<T>` | 一次成功 acquire 的独立资源引用；幂等 Dispose 只释放该次引用。 |
 | pak | `.pak` | `PakBuilder` 构建的资源归档，含资源索引和数据。 |
-| 分发包 | `.galpak` | 当前为 ZIP，含 `Assets/content.pak`、`Assets/Paks/000-base.pak` 与 JSON manifest；可验证后安装。 |
+| 分发包 | `.galpak` | ZIP 分发容器，含根特殊内容、生成的 Gallery JSON、`Assets/Paks/000-base.pak` 与 JSON manifest；可验证后解压安装。 |
 | manifest | `<项目名>.galnet` | 当前 `.galpak` ZIP 根目录中唯一的 JSON manifest，描述项目与所有包的 SHA-256/大小；不是独立逻辑二进制。 |
 | 游戏安装 | `GameInstallation` | 将开发目录或验证并安装后的 `.galpak` 统一为内容 provider 与有序资源 provider 的宿主输入。 |

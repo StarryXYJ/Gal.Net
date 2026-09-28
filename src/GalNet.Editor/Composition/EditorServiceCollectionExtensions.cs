@@ -14,6 +14,7 @@ using GalNet.Editor.ViewModels;
 using GalNet.Editor.Inspector.ViewModels;
 using GalNet.Editor.Inspector.Views;
 using GalNet.Core.Assets;
+using GalNet.Core.Gallery;
 using GalNet.Editor.Views;
 using Microsoft.Extensions.DependencyInjection;
 using GalNet.Primitives.Builtins;
@@ -39,6 +40,9 @@ public static class EditorServiceCollectionExtensions
 
     private static IServiceCollection AddEditorCoreServices(this IServiceCollection services)
     {
+        var resourceTypes = BuiltinResourceTypes.CreateCatalog();
+        services.AddSingleton<IResourceTypeCatalog>(resourceTypes);
+        services.AddSingleton<IGalleryTypeCatalog>(BuiltinGalleryTypes.CreateCatalog(resourceTypes));
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IProjectService, ProjectService>();
         services.AddSingleton<IFileDialogService, FileDialogService>();

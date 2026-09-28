@@ -31,3 +31,10 @@ result: pass-with-follow-up
 1. Phase 6 尚未将已验证的格式和运行时行为同步到正式 `docs/`；closeout 时应处理，不能把旧文档当作当前格式说明。
 2. 未来的剧情补丁可把 `.galgroup` 也纳入 GUID 资源体系；当前 Graph/Group 仍是特殊内容文件，缺失 group 的语义按本 feature 的延后决定处理。
 3. `GeneralTest` 全量仍有一项既有失败：`EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString` 的 JSON 换行/缩进快照差异。它不涉及本 feature；本轮没有改动该路径。
+
+## Closeout 补充审核（2026-09-28）
+
+- 已审阅所有宿主组合根。此前 Editor、Sample、Headless、内容 provider 和 exporter 分别创建 built-in resource/Gallery catalog；虽然默认值相同，却会让未来插件注册在 Preview、导出或发行加载中断裂。现在每个宿主只创建一对冻结 catalog，并显式传给这些入口；未发现其他会导致资源所有权或类型注册重复的设计。
+- 已搜索并确认业务代码与正式文档不再包含旧 `ResourceType`、`ParseResourceType`、`GalleryRendererKind`、renderer resolver、集中式 Gallery authoring 或 `SortOrder`。
+- 已同步 `assets.md`、`file-formats.md`、`architecture.md`、`control.md`、`entry-types.md` 与 glossary。它们描述的是当前 PAK v2、安装、handle 生命周期和精确页面注册，而非未来 Group GUID 化方案。
+- 本次再次运行全量 GeneralTest，结果仍是 228/229；唯一失败仍为上列无关的 Editor 设置序列化快照。故结论保持 **pass-with-follow-up**，feature 文档保持 `implementation`，不伪称全量验证通过。

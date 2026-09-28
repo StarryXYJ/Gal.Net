@@ -2,136 +2,57 @@
 
 ## 项目目录
 
-编辑器新建项目时创建如下目录；`Output`、`Temp` 和 `.galnet` 是工作目录，不是游戏内容源。
-
 ```text
 Project/
   settings.json
-  gallery.json              optional
   Graph/
     graph.json
     groups/*.rawgalgroup
   Assets/
-    Layer/ Audio/ Video/ ...
+    **/*                 原始资源
+    **/*.meta            资源 metadata 与 Gallery 标注
   I18n/
-  Output/
-  Temp/
-  .galnet/editor-state.json
+  Output/ Temp/ .galnet/  工作文件，不是游戏内容
 ```
 
-`settings.json` 存放项目设置；可选的 `gallery.json` 存放 Gallery 类型与资源条目；`graph.json` 是节点图和变量定义；每个 Group 的编辑源存放在单独的 `.rawgalgroup`。编辑器状态（例如项目级编辑器信息）写入 `.galnet/editor-state.json`，不应作为运行时内容处理。
+项目根不存在可编辑 `gallery.json`。Gallery 从 `Assets/**/*.meta` 的 `gallery[]` 聚合：类型由宿主代码/插件注册，item ID 为全局唯一正整数，资源 ID 是父 metadata 的 GUID。开发运行在内容加载时聚合一次；发行运行只读取导出生成的 `gallery.json`。
 
-## gallery.json
+## Graph 与 Group
 
-当前 Gallery authoring 格式版本为 1。`types` 把 Gallery type ID 关联到一个资源类型字符串；`items` 使用稳定 item ID 引用某个已注册类型和资源 ID。Gallery catalog 加载后不可变，类型和 item ID 会规范化为小写。
+`Graph/graph.json` 是版本 2 的编辑图，包含稳定节点/边 ID、坐标、变量和 Group 的 `groups/<id>.rawgalgroup` 文件引用。`.rawgalgroup` 是版本 2、`kind: Raw` 的编辑源，可包含 primitive 和 composite；`.galgroup` 是 `kind: Compiled` 的运行产物，只能包含 primitive。旧分号文本、旧版本 Group 格式和运行时加载 Raw 文档均不受支持。
 
-```json
-{
-  "version": 1,
-  "types": [
-    { "typeId": "cg", "resourceType": "sprite" },
-    { "typeId": "audio", "resourceType": "audio" }
-  ],
-  "items": [
-    {
-      "id": "opening_cg",
-      "typeId": "cg",
-      "resourceId": "asset-guid",
-      "title": "Opening",
-      "sortOrder": 10
-    }
-  ]
-}
-```
+Compiled primitive 使用 `{ id, typeId, batchId, condition, arguments }` 信封。`arguments` 保存 JSON 值，不保存 CLR 类型名；当前 target profile 的冻结 schema 负责校验。Graph 与 Group 目前是特殊内容文件，不通过资源 GUID provider 查询。
 
-约束：
+## `.galpak` 导出与安装
 
-- `typeId` 只能使用字母、数字、下划线、短横线和点，忽略首尾空白并规范化为小写；规范化后不能重复。
-- `resourceType` 是非空字符串名称，使用同一字符规则并规范化为小写。Gallery 不把它解析成 `ResourceType` enum，也不注册 decoder。
-- item `id` 只能使用字母、数字和下划线，规范化为小写并在整个 catalog 内唯一；它不从资源路径、标题或排序生成。
-- item 的 `typeId` 必须引用已注册类型，`resourceId` 不能为空；`title` 与 `sortOrder` 可省略。
-- 文件不存在时内容提供者使用空 Gallery catalog；文件存在但版本、JSON 或引用无效时加载明确失败。
-
-`DirectoryGameContentProvider` 从内容根目录读取 `gallery.json`；Editor Preview 先把当前内存 catalog 写入预览临时目录，再由 `EditorGameDataProvider` 读取同一格式。结果均通过 `GameContent.Gallery` 暴露。Gallery catalog 只包含静态类型和资源条目；每个 item 在加载后生成一个默认 `false` 的 Player bool `gallery_<item-id>_unlocked`，解锁值保存在 Player variable store 中，不回写 `gallery.json`，也不进入存档槽快照。
-
-Editor 新项目默认注册 `cg -> sprite`、`video -> video` 与 `audio -> audio`。资源检查器按资源 `.meta` 的 `type` 列出全部匹配 registration，标注只修改集中式 `gallery.json`；item 的 `resourceId` 使用 `.meta` 的稳定 asset ID。导出对当前内置媒体类型验证资源存在且类型匹配。
-
-## graph.json
-
-当前作者格式的版本为 2。节点有稳定字符串 ID、类型、名称和编辑器坐标；`Group` 节点以 `file` 指向 Group 条目文件，`Entry` 是图入口节点，`Branch` 节点携带 `branchType` 与 options 或 conditions。边包含稳定 ID、起点、出口索引与终点。
-
-```json
-{
-  "version": 2,
-  "name": "MyGame",
-  "rootNodeId": "entry-id",
-  "nodes": [
-    { "id": "entry-id", "type": "Entry", "name": "Entry", "x": 100, "y": 100 },
-    { "id": "group-id", "type": "Group", "name": "Opening", "x": 360, "y": 100,
-      "file": "groups/group-id.rawgalgroup" }
-  ],
-  "edges": [
-    { "id": "edge-id", "fromNodeId": "entry-id", "fromOutlet": 0, "toNodeId": "group-id" }
-  ],
-  "playerVariables": [],
-  "saveVariables": []
-}
-```
-
-编辑器图的 `file` 始终指向 `.rawgalgroup` 源文件。Runtime 的 `GraphLoader` 会将 `Entry` 和 `Group` 都转换为运行时 Group；实际条目仅由编译后的 `.galgroup` 另行加载。运行时图不保留编辑器坐标、节点/边稳定 ID 或 Group 文件路径。
-
-## .rawgalgroup 与 .galgroup
-
-两种文件均使用版本 2 的 JSON `GroupDocument`，不支持旧的分号文本格式或旧版本。条目数组顺序就是执行顺序；每个条目必须拥有在本文件内唯一、非空的稳定 `id`。Raw 条目的 `type`、参数名、必填性、默认值和 JSON 类型由当前 target profile 的 primitive/composite entry schema 校验，而不是全局 `EntryRegistry`。
-
-- `.rawgalgroup` 是编辑源，`kind` 必须为 `Raw`。其中可包含原语和非原语。
-- `.galgroup` 是编译产物，`kind` 必须为 `Compiled`。其中只能包含原语；Runtime 会拒绝 Raw 文档和任何非原语。
-
-原语在 Compiled 文档中是 `{ id, typeId, batchId, condition, arguments }` 的通用信封，Runtime 通过 `IGameView.Dispatch` 按完整 `typeId` 动态路由。`arguments` 只保存 JSON 值，不保存 CLR 类型名；当前 profile 的冻结 `DynamicParameterTable` 负责解释和校验这些值。`batchId` 是可选局部分组字段，由编译器从 authoring 参数中提升出来，运行时只在一次 Group 执行内用它匹配 skip 批次。Composite 没有 Runtime 执行入口，而是根据自身 schema 编译为有序 primitive；展开后每个 primitive 都必须由所选 profile 支持。
-
-`.rawgalgroup` 示例：
-
-```json
-{
-  "version": 2,
-  "kind": "Raw",
-  "entries": [
-    {
-      "id": "entry-id",
-      "type": "custom.pulse",
-      "condition": "",
-      "parameters": {
-        "count": 3,
-        "enabled": true,
-        "payload": { "source": "intro" }
-      }
-    }
-  ]
-}
-```
-
-`GalgroupCompiler` 会在编辑器预览前将 Raw 文档编译为 Compiled 文档，并返回原始稳定 ID 到生成稳定 ID 的 source map。当前生成 ID 采用 `<source-id>#<ordinal>` 形式。输出保留结构化 JSON 参数；`GalgroupLoader` 验证 envelope，而模块按其 descriptor 解释 arguments。条目参数的权威来源是所选 target profile，见[条目类型](entry-types.md)。
-
-## 导出 .galpak
-
-当前 `.galpak` 是 ZIP 容器，而非历史文档中描述的单一二进制 `.galnet` blob。导出器会创建：
+`.galpak` 是 ZIP 分发容器：
 
 ```text
 <Project>.galpak
-  <Project>.galnet       JSON manifest（格式版本 1）
-  Assets/content.pak     settings.json、gallery.json（若存在）、Graph/**、I18n/**
-  Assets/Paks/000-base.pak
-                         Assets/** 的基础资源包
+  <Project>.galnet          JSON manifest，版本 1
+  settings.json
+  Graph/**
+  I18n/**
+  gallery.json              从 metadata 派生
+  Assets/Paks/000-base.pak  资源 PAK
 ```
 
-两个 `.pak` 均由 `PakBuilder` 构造，默认使用 Brotli；manifest 记录项目 ID、项目名称、导出时间、内容包入口及每个包的 SHA-256 和大小。导出在临时文件中完成，随后重新读取 ZIP、校验每个包哈希并验证 pak 可反序列化，最后才替换目标文件。
+manifest 列出每个 ZIP 条目的路径、大小和 SHA-256。导出在临时文件中创建，重新验证 ZIP 条目与 PAK 后才替换目标文件。
 
-`.galnet` 在当前发布格式中只是 manifest 的文件名，不能假定它包含可直接运行的图数据。加密的 `.galnet`、单独 `.galnet` 逻辑包以及旧版 `.galpak` 布局均不是当前导出器承诺的格式。
+传入 `.galpak` 时，`GameInstallation.OpenAsync` 先校验 ZIP 根目录唯一 manifest、声明路径、条目大小与 SHA-256，再原子解压到包文件旁的同名目录。已存在且与 manifest 一致的安装目录可复用；不同或损坏内容不会覆盖现有目录。
 
-### 安装与加载
+运行时从解压目录读取特殊内容，并且只扫描 `Assets/Paks/**/*.pak` 作为资源源。PAK 按相对路径倒序覆盖：`000-base.pak` 是基础包，后续/更高排序路径的包可作为补丁覆盖同 GUID 资源。ZIP、manifest、Graph、I18n、settings 和 gallery 不进入 `IAssetProvider`。
 
-宿主可将项目目录或 `.galpak` 文件交给 `GameInstallation.OpenAsync`。对于 `.galpak`，安装器会先读取唯一位于 ZIP 根目录的 `.galnet` manifest，校验格式版本、每个声明路径和 ZIP 条目大小；解压时逐项校验 SHA-256 与大小。默认安装位置是包文件旁、与包同名但不带扩展名的目录。已存在且每个声明包均与 manifest 匹配的安装目录可复用；不同内容或损坏内容占用该目录时明确失败，不会覆盖。
+## 生成的 `gallery.json`
 
-安装后的 `Assets/content.pak` 是宿主专用内容包，提供图、编译组和生成的 Gallery JSON；根 manifest 也不参与资源查询。资源只从 `Assets/Paks/**/*.pak` 加载：每个 PAK 都是一个独立 provider，按相对路径降序注册，因此相对路径更靠后的补丁包优先于 `000-base.pak`。这使安装目录可以加入补丁 PAK，而无需更改 `AssetManager`。
+生成文件是版本 2 的只读运行时数据，含冻结的 Gallery type 快照和聚合后的 item：
 
-编辑器预览已经执行 Raw→Compiled 编译；正式 `.galpak` 导出接入编译仍是待办，见 [杂项待办](../design/misc-todo.md)。
+```json
+{
+  "version": 2,
+  "types": [{ "typeId": "cg", "resourceType": "sprite" }],
+  "items": [{ "id": 100, "typeId": "cg", "resourceId": "asset-guid", "title": "Opening" }]
+}
+```
+
+加载时会与当前冻结 `IGalleryTypeCatalog` 校验；生成文件不会反向注册类型。每项对应 Player bool `gallery_<id>_unlocked`，解锁状态不写回 metadata 或该 JSON。

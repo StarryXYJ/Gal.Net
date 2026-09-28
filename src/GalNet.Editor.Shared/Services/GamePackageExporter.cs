@@ -18,8 +18,8 @@ public static class GamePackageExporter
         string projectName,
         string projectRoot,
         string outputDirectory,
-        IResourceTypeCatalog? resourceTypes = null,
-        IGalleryTypeCatalog? galleryTypes = null,
+        IResourceTypeCatalog resourceTypes,
+        IGalleryTypeCatalog galleryTypes,
         CancellationToken cancellationToken = default)
     {
         string? temporaryPath = null;
@@ -29,11 +29,11 @@ public static class GamePackageExporter
             var packagePath = Path.Combine(outputDirectory, $"{SafeFileName(projectName)}.galpak");
             temporaryPath = packagePath + ".tmp";
             if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
-            var resolvedResourceTypes = resourceTypes ?? BuiltinResourceTypes.CreateCatalog();
-            var resolvedGalleryTypes = galleryTypes ?? BuiltinGalleryTypes.CreateCatalog(resolvedResourceTypes);
-            var assets = await LoadAssetsAsync(Path.Combine(projectRoot, "Assets"), resolvedResourceTypes, cancellationToken);
-            var gallery = new GalleryCatalogCompiler(resolvedResourceTypes, resolvedGalleryTypes).Compile(assets.Select(asset => asset.Metadata));
-            var assetsPak = PakBuilder.Build("assets", assets, GalNet.Core.Assets.CompressionMode.Brotli, resolvedResourceTypes);
+            ArgumentNullException.ThrowIfNull(resourceTypes);
+            ArgumentNullException.ThrowIfNull(galleryTypes);
+            var assets = await LoadAssetsAsync(Path.Combine(projectRoot, "Assets"), resourceTypes, cancellationToken);
+            var gallery = new GalleryCatalogCompiler(resourceTypes, galleryTypes).Compile(assets.Select(asset => asset.Metadata));
+            var assetsPak = PakBuilder.Build("assets", assets, GalNet.Core.Assets.CompressionMode.Brotli, resourceTypes);
             var contentFiles = BuildContentFiles(projectRoot, gallery, cancellationToken);
             var packageFiles = new[] { (AssetsPakPath, assetsPak) }.Concat(contentFiles).ToArray();
             var packages = packageFiles.Select(file => new GalpakFileEntry(file.Item1, Hash(file.Item2), file.Item2.Length)).ToArray();

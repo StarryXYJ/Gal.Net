@@ -23,6 +23,8 @@ public sealed class GameInstallationTests
         Directory.CreateDirectory(Path.Combine(project, "Graph"));
         try
         {
+            var resourceTypes = BuiltinResourceTypes.CreateCatalog();
+            var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
             await File.WriteAllBytesAsync(Path.Combine(project, "Assets", "hero.png"), "hero"u8.ToArray());
             await File.WriteAllTextAsync(Path.Combine(project, "Assets", "hero.png.meta"), """{"id":"hero","type":"sprite","path":"hero.png","filter":"bilinear","compress":"none"}""");
             await File.WriteAllTextAsync(Path.Combine(project, "Graph", "graph.json"), """{"name":"export-test","rootNodeId":"","nodes":[],"edges":[]}""");
@@ -30,20 +32,20 @@ public sealed class GameInstallationTests
 
             var development = await GameInstallation.OpenAsync(project);
             Assert.That(development.IsPackaged, Is.False);
-            Assert.That((await development.CreateContentProvider().LoadAsync()).Graph.Name, Is.EqualTo("export-test"));
-            using (var sourceAssets = new AssetManager(development.CreateAssetProviders()))
+            Assert.That((await development.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync()).Graph.Name, Is.EqualTo("export-test"));
+            using (var sourceAssets = new AssetManager(development.CreateAssetProviders(resourceTypes)))
                 Assert.That((await sourceAssets.GetFileAsync("hero"))?.Path, Is.EqualTo("hero.png"));
 
-            var export = await GamePackageExporter.ExportAsync("project", "Sample", project, output);
+            var export = await GamePackageExporter.ExportAsync("project", "Sample", project, output, resourceTypes, galleryTypes);
             Assert.That(export.Success, Is.True, export.Error);
 
             var installation = await GameInstallation.OpenAsync(export.PackagePath!);
             Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "gallery.json")), Is.True);
             Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "Graph", "graph.json")), Is.True);
             Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "Assets", "Paks", "000-base.pak")), Is.True);
-            Assert.That((await installation.CreateContentProvider().LoadAsync()).Graph.Name, Is.EqualTo("export-test"));
+            Assert.That((await installation.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync()).Graph.Name, Is.EqualTo("export-test"));
 
-            using var assets = new AssetManager(installation.CreateAssetProviders());
+            using var assets = new AssetManager(installation.CreateAssetProviders(resourceTypes));
             Assert.That((await assets.GetFileAsync("hero"))?.Path, Is.EqualTo("hero.png"));
         }
         finally
@@ -60,6 +62,7 @@ public sealed class GameInstallationTests
         try
         {
             var types = BuiltinResourceTypes.CreateCatalog();
+            var galleryTypes = BuiltinGalleryTypes.CreateCatalog(types);
             var baseAssets = PakBuilder.Build("assets", [Asset("hero", "base")], AssetCompressionMode.None, types);
             var contentFiles = BuildContentFiles(types);
             var packagePath = Path.Combine(root, "sample.galpak");
@@ -72,7 +75,7 @@ public sealed class GameInstallationTests
             var installation = await GameInstallation.OpenAsync(packagePath);
             Assert.That(installation.IsPackaged, Is.True);
             Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "Assets", "Paks", "000-base.pak")), Is.True);
-            Assert.That((await installation.CreateContentProvider().LoadAsync()).Graph.Name, Is.EqualTo("package-test"));
+            Assert.That((await installation.CreateContentProvider(types, galleryTypes).LoadAsync()).Graph.Name, Is.EqualTo("package-test"));
 
             var resourcePaks = Path.Combine(installation.RootDirectory, "Assets", "Paks");
             await File.WriteAllBytesAsync(Path.Combine(resourcePaks, "100-extra.pak"), PakBuilder.Build("assets", [Asset("hero", "patch")], AssetCompressionMode.None, types));

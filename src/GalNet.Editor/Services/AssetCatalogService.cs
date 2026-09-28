@@ -15,7 +15,7 @@ namespace GalNet.Editor.Services;
 public sealed class AssetCatalogService : IAssetCatalogService
 {
     private readonly IProjectService _projects;
-    private readonly IResourceTypeCatalog _resourceTypes = BuiltinResourceTypes.CreateCatalog();
+    private readonly IResourceTypeCatalog _resourceTypes;
     private readonly AssetMetaCodec _metaCodec;
     private readonly Action<GalNet.Editor.Abstraction.Project.GalProject?> _projectChangedHandler;
     private FileSystemWatcher? _watcher;
@@ -23,9 +23,10 @@ public sealed class AssetCatalogService : IAssetCatalogService
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
 
     public event Action? Changed;
-    public AssetCatalogService(IProjectService projects)
+    public AssetCatalogService(IProjectService projects, IResourceTypeCatalog resourceTypes)
     {
         _projects = projects;
+        _resourceTypes = resourceTypes;
         _metaCodec = new AssetMetaCodec(_resourceTypes);
         _projectChangedHandler = _ => StartWatching();
         _projects.CurrentChanged += _projectChangedHandler;

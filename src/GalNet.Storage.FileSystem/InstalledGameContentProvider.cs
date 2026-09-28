@@ -10,10 +10,11 @@ public sealed class InstalledGameContentProvider : IGameContentProvider
     private readonly string _directory;
     private readonly IGalleryTypeCatalog _galleryTypes;
 
-    public InstalledGameContentProvider(string directory, IResourceTypeCatalog? resourceTypes = null, IGalleryTypeCatalog? galleryTypes = null)
+    public InstalledGameContentProvider(string directory, IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes)
     {
         _directory = Path.GetFullPath(directory);
-        _galleryTypes = galleryTypes ?? BuiltinGalleryTypes.CreateCatalog(resourceTypes ?? BuiltinResourceTypes.CreateCatalog());
+        ArgumentNullException.ThrowIfNull(resourceTypes);
+        _galleryTypes = galleryTypes ?? throw new ArgumentNullException(nameof(galleryTypes));
     }
 
     public Task<GameContent> LoadAsync(CancellationToken cancellationToken = default) => Task.Run(() =>

@@ -5,6 +5,8 @@ using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
 using GalNet.Core.Entry;
+using GalNet.Core.Assets;
+using GalNet.Core.Gallery;
 using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Headless;
@@ -122,7 +124,9 @@ internal static class Program
             ? Path.GetFullPath(args[outputIndex + 1])
             : Path.Combine(projectPath, "Output");
         var projectName = Path.GetFileName(Path.TrimEndingDirectorySeparator(projectPath));
-        var result = await GamePackageExporter.ExportAsync(projectName, projectName, projectPath, outputDirectory);
+        var resourceTypes = BuiltinResourceTypes.CreateCatalog();
+        var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
+        var result = await GamePackageExporter.ExportAsync(projectName, projectName, projectPath, outputDirectory, resourceTypes, galleryTypes);
         WriteJson(new { success = result.Success, packagePath = result.PackagePath, error = result.Error });
         return result.Success ? 0 : 5;
     }

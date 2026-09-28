@@ -1,5 +1,7 @@
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
+using GalNet.Core.Assets;
+using GalNet.Core.Gallery;
 using GalNet.Storage.FileSystem;
 
 namespace GeneralTest.Runtime;
@@ -11,8 +13,10 @@ public class GameTestCaseTests
     {
         var directory = FindRepositoryDirectory();
 
+        var resourceTypes = BuiltinResourceTypes.CreateCatalog();
+        var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
         var content = await new ProjectGameContentProvider(
-            Path.Combine(directory, "GameTestCase")).LoadAsync();
+            Path.Combine(directory, "GameTestCase"), resourceTypes, galleryTypes).LoadAsync();
 
         var groups = content.Graph.Nodes.OfType<Group>().ToArray();
         Assert.Multiple(() =>
