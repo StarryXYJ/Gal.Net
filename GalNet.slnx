@@ -1,25 +1,24 @@
 <Solution>
   <Folder Name="/src/" />
   <Folder Name="/src/Editor/">
-    <Project Path="src/GalNet.Editor.Abstraction/GalNet.Editor.Abstraction.csproj" />
-    <Project Path="src/GalNet.Editor.Shared/GalNet.Editor.Shared.csproj" />
-    <Project Path="src/GalNet.Editor/GalNet.Editor.csproj" />
-    <Project Path="src/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj" />
+    <Project Path="src/Editor/GalNet.Editor.Abstraction/GalNet.Editor.Abstraction.csproj" />
+    <Project Path="src/Editor/GalNet.Editor.Shared/GalNet.Editor.Shared.csproj" />
+    <Project Path="src/Editor/GalNet.Editor/GalNet.Editor.csproj" />
+    <Project Path="src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj" />
   </Folder>
   <Folder Name="/src/Infrastructure/">
     <Project Path="src/Infrastructure/GalNet.Storage.FileSystem/GalNet.Storage.FileSystem.csproj" />
   </Folder>
-  <Folder Name="/src/Launcher/" />
-  <Folder Name="/src/Launcher/Launcher/">
-    <Project Path="src/Launcher/GalNet.Launcher/GalNet.Launcher.Android/GalNet.Launcher.Android.csproj">
+  <Folder Name="/src/Launcher/">
+    <Project Path="src/Launcher/GalNet.Launcher.Android/GalNet.Launcher.Android.csproj">
       <Deploy />
     </Project>
-    <Project Path="src/Launcher/GalNet.Launcher/GalNet.Launcher.Browser/GalNet.Launcher.Browser.csproj" />
-    <Project Path="src/Launcher/GalNet.Launcher/GalNet.Launcher.Desktop/GalNet.Launcher.Desktop.csproj" />
-    <Project Path="src/Launcher/GalNet.Launcher/GalNet.Launcher.iOS/GalNet.Launcher.iOS.csproj">
+    <Project Path="src/Launcher/GalNet.Launcher.Browser/GalNet.Launcher.Browser.csproj" />
+    <Project Path="src/Launcher/GalNet.Launcher.Desktop/GalNet.Launcher.Desktop.csproj" />
+    <Project Path="src/Launcher/GalNet.Launcher.iOS/GalNet.Launcher.iOS.csproj">
       <Deploy />
     </Project>
-    <Project Path="src/Launcher/GalNet.Launcher/GalNet.Launcher/GalNet.Launcher.csproj" />
+    <Project Path="src/Launcher/GalNet.Launcher/GalNet.Launcher.csproj" />
   </Folder>
   <Folder Name="/src/Presentation/">
     <Project Path="src/Presentation/GalNet.Avalonia.Controls/GalNet.Avalonia.Controls.csproj" />
@@ -28,7 +27,7 @@
     <Project Path="src/Presentation/GalNet.Presentation.Defaults/GalNet.Presentation.Defaults.csproj" />
   </Folder>
   <Folder Name="/src/Samples/">
-    <Project Path="src/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj" />
+    <Project Path="src/Samples/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj" />
     <Project Path="src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj" />
   </Folder>
   <Folder Name="/src/Shared/">

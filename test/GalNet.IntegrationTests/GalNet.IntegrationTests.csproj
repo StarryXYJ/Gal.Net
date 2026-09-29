@@ -6,12 +6,12 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Shared\GalNet.Assets\GalNet.Assets.csproj" />
     <ProjectReference Include="..\..\src\Shared\GalNet.Core\GalNet.Core.csproj" />
-    <ProjectReference Include="..\..\src\GalNet.Editor.Abstraction\GalNet.Editor.Abstraction.csproj" />
-    <ProjectReference Include="..\..\src\GalNet.Editor.Shared\GalNet.Editor.Shared.csproj" />
+    <ProjectReference Include="..\..\src\Editor\GalNet.Editor.Abstraction\GalNet.Editor.Abstraction.csproj" />
+    <ProjectReference Include="..\..\src\Editor\GalNet.Editor.Shared\GalNet.Editor.Shared.csproj" />
     <ProjectReference Include="..\..\src\Shared\GalNet.Presentation.Abstractions\GalNet.Presentation.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\Shared\GalNet.Primitives.Builtins\GalNet.Primitives.Builtins.csproj" />
     <ProjectReference Include="..\..\src\Shared\GalNet.Runtime\GalNet.Runtime.csproj" />
-    <ProjectReference Include="..\..\src\GalNet.Sample.Avalonia\GalNet.Sample.Avalonia.csproj" />
+    <ProjectReference Include="..\..\src\Samples\GalNet.Sample.Avalonia\GalNet.Sample.Avalonia.csproj" />
     <ProjectReference Include="..\..\src\Infrastructure\GalNet.Storage.FileSystem\GalNet.Storage.FileSystem.csproj" />
   </ItemGroup>
 </Project>

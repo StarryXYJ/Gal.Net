@@ -12,8 +12,8 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $Project = if ($Project) { [System.IO.Path]::GetFullPath($Project) } else { Join-Path $repositoryRoot 'GameTestCase' }
 $gameDirectory = if ($BuildOutput) { [System.IO.Path]::GetFullPath($BuildOutput) } else { Join-Path $Project 'Output' }
-$sampleProject = Join-Path $repositoryRoot 'src\GalNet.Sample.Avalonia\GalNet.Sample.Avalonia.csproj'
-$editorProject = Join-Path $repositoryRoot 'src\GalNet.Editor.Headless\GalNet.Editor.Headless.csproj'
+$sampleProject = Join-Path $repositoryRoot 'src\Samples\GalNet.Sample.Avalonia\GalNet.Sample.Avalonia.csproj'
+$editorProject = Join-Path $repositoryRoot 'src\Editor\GalNet.Editor.Headless\GalNet.Editor.Headless.csproj'
 
 if (-not $SkipBuild)
 {

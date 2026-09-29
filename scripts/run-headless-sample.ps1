@@ -15,7 +15,7 @@ $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $Project = if ($Project) { [System.IO.Path]::GetFullPath($Project) } else { Join-Path $repositoryRoot 'GameTestCase' }
 $gameDirectory = if ($BuildOutput) { [System.IO.Path]::GetFullPath($BuildOutput) } else { Join-Path $Project 'Output' }
 $playerProject = Join-Path $repositoryRoot 'src\Samples\GalNet.Sample.Headless\GalNet.Sample.Headless.csproj'
-$editorProject = Join-Path $repositoryRoot 'src\GalNet.Editor.Headless\GalNet.Editor.Headless.csproj'
+$editorProject = Join-Path $repositoryRoot 'src\Editor\GalNet.Editor.Headless\GalNet.Editor.Headless.csproj'
 
 if (-not $SkipBuild)
 {

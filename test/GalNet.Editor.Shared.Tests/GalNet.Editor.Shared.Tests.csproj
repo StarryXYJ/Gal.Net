@@ -5,8 +5,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Shared\GalNet.Core\GalNet.Core.csproj" />
-    <ProjectReference Include="..\..\src\GalNet.Editor.Abstraction\GalNet.Editor.Abstraction.csproj" />
-    <ProjectReference Include="..\..\src\GalNet.Editor.Shared\GalNet.Editor.Shared.csproj" />
+    <ProjectReference Include="..\..\src\Editor\GalNet.Editor.Abstraction\GalNet.Editor.Abstraction.csproj" />
+    <ProjectReference Include="..\..\src\Editor\GalNet.Editor.Shared\GalNet.Editor.Shared.csproj" />
     <ProjectReference Include="..\..\src\Shared\GalNet.Primitives.Builtins\GalNet.Primitives.Builtins.csproj" />
   </ItemGroup>
 </Project>

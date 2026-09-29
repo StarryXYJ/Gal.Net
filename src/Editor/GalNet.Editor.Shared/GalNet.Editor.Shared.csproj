@@ -11,11 +11,11 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Shared\GalNet.Core\GalNet.Core.csproj" />
-        <ProjectReference Include="..\Shared\GalNet.Primitives.Builtins\GalNet.Primitives.Builtins.csproj" />
-        <ProjectReference Include="..\Shared\GalNet.Assets\GalNet.Assets.csproj" />
+        <ProjectReference Include="..\..\Shared\GalNet.Core\GalNet.Core.csproj" />
+        <ProjectReference Include="..\..\Shared\GalNet.Primitives.Builtins\GalNet.Primitives.Builtins.csproj" />
+        <ProjectReference Include="..\..\Shared\GalNet.Assets\GalNet.Assets.csproj" />
         <ProjectReference Include="..\GalNet.Editor.Abstraction\GalNet.Editor.Abstraction.csproj" />
-        <ProjectReference Include="..\Shared\GalNet.Runtime\GalNet.Runtime.csproj" />
+        <ProjectReference Include="..\..\Shared\GalNet.Runtime\GalNet.Runtime.csproj" />
     </ItemGroup>
 
 </Project>

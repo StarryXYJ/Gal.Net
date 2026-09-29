@@ -22,6 +22,6 @@ intro group executes `gallery.unlock(100)`, making that item viewable after the 
 Build and run from the repository root:
 
 ```text
-dotnet run --project src/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj -- build GameTestCase --output artifacts/sample-build
+dotnet run --project src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj -- build GameTestCase --output artifacts/sample-build
 dotnet run --project src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj -- artifacts/sample-build
 ```

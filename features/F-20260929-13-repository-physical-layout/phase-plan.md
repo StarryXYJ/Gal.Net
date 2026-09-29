@@ -20,11 +20,13 @@ updated: 2026-09-29
 
 ## Phase 2 - Editor、Samples 与 Launcher 物理归位
 
-**状态：planned**
+**状态：verified**
 
 **任务：** 移动 Editor、Samples 和 Launcher 项目；更新主/Launcher solution、CI、sample 脚本和 GameTestCase 命令。
 
 **验证：** Editor.Shared、Editor、Integration 测试；Editor.Headless、Sample.Headless、Sample.Avalonia、Launcher.Desktop build；两个 sample 脚本。
+
+**证据：** Editor、Samples 和 Launcher 项目已移动到对应物理分组，Launcher 旧的重复容器层已移除；主 solution 可列出 31 个项目，Launcher solution 可列出 5 个项目，所有 `ProjectReference` 均可解析。Editor.Shared、Editor、Integration 测试顺序执行并以 75/75 通过；Editor.Headless、Sample.Headless、Sample.Avalonia 和 Launcher.Desktop 的 Release build 均通过。Headless sample 脚本完成编译、运行、选择分支和退出的交互冒烟，Avalonia sample 脚本通过 PowerShell 语法解析且对应项目已完成 Release build。CI、sample 脚本和 GameTestCase 命令均已切换到新路径，旧宿主目录未被 restore 重建。
 
 **退出条件：** 所有宿主项目与 solution 分组一致，自动化入口不引用旧路径，创建独立 Git 提交。
 

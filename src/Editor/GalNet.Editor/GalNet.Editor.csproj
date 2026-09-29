@@ -49,16 +49,16 @@
 
     <ItemGroup>
       <ProjectReference Include="..\GalNet.Editor.Abstraction\GalNet.Editor.Abstraction.csproj" />
-      <ProjectReference Include="..\Shared\GalNet.Assets\GalNet.Assets.csproj" />
-      <ProjectReference Include="..\Presentation\GalNet.Avalonia.Controls\GalNet.Avalonia.Controls.csproj" />
-      <ProjectReference Include="..\Presentation\GalNet.Avalonia.Rendering\GalNet.Avalonia.Rendering.csproj" />
-      <ProjectReference Include="..\Presentation\GalNet.Avalonia.GameView\GalNet.Avalonia.GameView.csproj" Aliases="GameViewAssembly" />
-      <ProjectReference Include="..\Shared\GalNet.Core\GalNet.Core.csproj" />
-      <ProjectReference Include="..\Shared\GalNet.Primitives.Builtins\GalNet.Primitives.Builtins.csproj" />
+      <ProjectReference Include="..\..\Shared\GalNet.Assets\GalNet.Assets.csproj" />
+      <ProjectReference Include="..\..\Presentation\GalNet.Avalonia.Controls\GalNet.Avalonia.Controls.csproj" />
+      <ProjectReference Include="..\..\Presentation\GalNet.Avalonia.Rendering\GalNet.Avalonia.Rendering.csproj" />
+      <ProjectReference Include="..\..\Presentation\GalNet.Avalonia.GameView\GalNet.Avalonia.GameView.csproj" Aliases="GameViewAssembly" />
+      <ProjectReference Include="..\..\Shared\GalNet.Core\GalNet.Core.csproj" />
+      <ProjectReference Include="..\..\Shared\GalNet.Primitives.Builtins\GalNet.Primitives.Builtins.csproj" />
       <ProjectReference Include="..\GalNet.Editor.Shared\GalNet.Editor.Shared.csproj" />
-      <ProjectReference Include="..\Shared\GalNet.Presentation.Abstractions\GalNet.Presentation.Abstractions.csproj" />
-      <ProjectReference Include="..\Shared\GalNet.Runtime\GalNet.Runtime.csproj" />
-      <ProjectReference Include="..\Infrastructure\GalNet.Storage.FileSystem\GalNet.Storage.FileSystem.csproj" />
+      <ProjectReference Include="..\..\Shared\GalNet.Presentation.Abstractions\GalNet.Presentation.Abstractions.csproj" />
+      <ProjectReference Include="..\..\Shared\GalNet.Runtime\GalNet.Runtime.csproj" />
+      <ProjectReference Include="..\..\Infrastructure\GalNet.Storage.FileSystem\GalNet.Storage.FileSystem.csproj" />
     </ItemGroup>
 
     <ItemGroup>
