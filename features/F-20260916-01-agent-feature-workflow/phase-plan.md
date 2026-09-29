@@ -39,3 +39,13 @@
 
 退出条件：仓库结构和用户级 skill 副本一致，没有业务代码改动。
 
+## Phase 5：快速通道编排 Skill
+
+状态：verified
+
+- 新增 `galnet-feature-fast-track`，把边界清晰的小到中等 feature 压缩成设计规划、实现验证和总结收尾三段。
+- 明确快速通道的降级条件，避免绕过普通 feature 流程中的架构、验证和授权边界。
+- 更新 skill index 和长期 feature workflow 文档。
+
+退出条件：快速通道 skill 有合法 `SKILL.md`，正式流程文档记录其适用范围和边界。
+

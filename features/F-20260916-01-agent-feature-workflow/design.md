@@ -19,6 +19,14 @@ create → design → phase-plan → implement → review → closeout
 
 这个顺序是推荐路径，不是每个 skill 的硬性依赖；review、lesson capture、docs sync 等能力可以单独调用。
 
+对于边界清晰的小到中等改动，新增快速通道：
+
+```text
+设计规划 → 实现验证 → 总结收尾
+```
+
+快速通道由 `galnet-feature-fast-track` 编排，仍然复用 feature、design、phase-plan 和 summary 文档，只是允许内容更聚焦。遇到需求不清、需要 ADR、大范围迁移、核心分层风险、工作树冲突或无法定义可信验证时，快速通道应退回普通流程。
+
 ## 目录边界
 
 - `features/<id>/` 保存一次 feature 的需求、设计、计划、审核和总结。

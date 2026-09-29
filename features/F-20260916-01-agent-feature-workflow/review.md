@@ -16,9 +16,11 @@
 
 ## 验证限制
 
-skill-creator 的 `quick_validate.py` 未能执行，因为当前环境没有可用的 Python。已使用人工 frontmatter、目录、占位符和源/目标哈希检查替代；后续环境具备 Python 时应再次运行官方校验器。
+2026-09-16：skill-creator 的 `quick_validate.py` 未能执行，因为当时环境没有可用的 Python。已使用人工 frontmatter、目录、占位符和源/目标哈希检查替代。
+
+2026-09-29 增量：环境已有 Python，但缺少 `PyYAML`，`quick_validate.py` 仍不能执行。已使用 PowerShell 检查 12 个仓库源 skill package 的 `SKILL.md`、frontmatter、名称一致性和占位符。
 
 ## 结论
 
-`pass-with-follow-up`：设计和文件结构没有发现阻塞问题；后续应在具备 Python 的环境中补跑 skill-creator 校验器，并在实际 feature 中验证自动触发质量。
+`pass-with-follow-up`：设计和文件结构没有发现阻塞问题；后续应在具备 `quick_validate.py` 依赖的环境中补跑 skill-creator 校验器，并在实际 feature 中验证自动触发质量。
 

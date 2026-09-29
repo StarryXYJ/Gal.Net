@@ -4,6 +4,7 @@
 
 ## Feature
 
+- `galnet-feature-fast-track`：为边界清晰的小到中等改动压缩设计规划、实现验证和总结收尾。
 - `galnet-feature-create`：新建 feature 并澄清需求。
 - `galnet-feature-design`：形成设计文档。
 - `galnet-feature-phase-plan`：拆分可验证的 Phase。

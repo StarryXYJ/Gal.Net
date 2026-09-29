@@ -4,7 +4,7 @@ title: GalNet Feature 工作流与 Agent 知识系统
 type: tooling
 status: done
 created: 2026-09-16
-updated: 2026-09-16
+updated: 2026-09-29
 ---
 
 # GalNet Feature 工作流与 Agent 知识系统
@@ -18,6 +18,7 @@ updated: 2026-09-16
 - 建立推荐的 feature 文档结构。
 - 建立 agent 专用上下文和 lesson 目录。
 - 建立 feature 阶段 skill、知识维护 skill 和 skill 同步 skill。
+- 补充小到中等改动使用的快速 feature 通道。
 - 安装当前项目 skill 到 Codex 用户级发现目录。
 
 ## 非目标
@@ -32,4 +33,5 @@ updated: 2026-09-16
 - lesson 可以在开发过程中即时记录，并可晋升为独立 skill。
 - 仓库 skill 源文件和 Codex 用户级副本可以被检查和同步。
 - 推荐工作流、agent 文档和开发者文档的职责边界明确。
+- 边界清晰的小到中等 feature 可以走设计规划、实现验证、总结收尾三段快速通道，并在复杂或不清晰时退回普通流程。
 

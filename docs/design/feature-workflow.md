@@ -24,6 +24,16 @@ Review
 总结与知识沉淀
 ```
 
+## 快速通道
+
+边界清晰的小到中等 feature 可以使用 `galnet-feature-fast-track`，把流程压缩成三段：
+
+```text
+设计规划 → 实现验证 → 总结收尾
+```
+
+快速通道仍然保留 `feature.md`、`design.md`、`phase-plan.md` 和 `summary.md`，但内容可以只覆盖会影响实现和验证的事实。它不是质量门禁的豁免：如果需求不清、需要 ADR、大范围迁移、影响核心分层或无法定义可信验证，应退回普通 feature 流程。
+
 ## Feature 产物
 
 每次采用此工作流的实现创建一个新的 `G:\program\GalDotNet\features\F-YYYYMMDD-NN-short-slug\` 目录。
