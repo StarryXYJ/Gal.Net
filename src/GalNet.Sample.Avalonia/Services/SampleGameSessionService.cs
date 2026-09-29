@@ -9,7 +9,6 @@ using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Runtime;
 using GalNet.Core.Gallery;
 using GalNet.Core.Scene;
-using GalNet.Core.Services;
 using GalNet.Core.Settings;
 using GalNet.Core.View;
 using GalNet.Rendering.Scene;
@@ -21,6 +20,7 @@ using GalNet.Runtime.Content;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Gallery;
 using GalNet.Runtime.Logging;
+using GalNet.Runtime.Persistence;
 using GalNet.Runtime.Runtime;
 using GalNet.Primitives.Builtins;
 using GalNet.Sample.Avalonia.Presentation;
@@ -237,7 +237,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         try
         {
             await EnsureEngineAsync(cancellationToken);
-            await _saves!.SaveAsync(slotIndex, _engine!.CreateSaveData());
+            await _saves!.SaveAsync(slotIndex, new SaveRequest { Snapshot = _engine!.CreateSaveData() }, cancellationToken);
             _gameplay.StatusMessage = $"Saved to slot {slotIndex}.";
             await RefreshSlotsAsync(cancellationToken);
         }
@@ -255,7 +255,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     {
         GameLog.Logger.Information("Loading slot {SlotIndex}", slotIndex);
         GameSnapshot? snapshot;
-        snapshot = await _saves!.LoadAsync(slotIndex);
+        snapshot = await _saves!.LoadAsync(slotIndex, cancellationToken);
         if (snapshot is null)
         {
             _gameplay.StatusMessage = $"Slot {slotIndex} is empty or invalid.";

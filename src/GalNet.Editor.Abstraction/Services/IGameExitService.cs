@@ -1,4 +1,4 @@
-namespace GalNet.Core.Services;
+namespace GalNet.Editor.Abstraction.Services;
 
 /// <summary>
 /// Controls what happens when the game requests to exit / quit.

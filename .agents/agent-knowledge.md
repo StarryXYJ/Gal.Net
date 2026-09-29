@@ -33,7 +33,7 @@
 - `F-20260926-01-gallery-meta-pages` 的实现、正式文档与示例 Gallery 解锁 smoke test 已完成；其外部阻塞项 `EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString` 已由 `F-20260929-04-quality-baseline` 修复，Gallery feature 可按自身流程收尾。
 - 当前 discovery feature：[F-20260916-02-audio-system](../features/F-20260916-02-audio-system/feature.md)，用于澄清音频系统的首个可交付范围、后端能力和迁移语义。
 - `F-20260929-01-compiled-content-pipeline` 正在实施；粒子 Primitive、Runtime 状态与 Presenter 桥接及存档后的 effect/particle 展示重放已经验证，完整 Sample/Headless smoke 与 Phase 4 收尾仍待完成。
-- `F-20260929-03-maintainability-roadmap` 的 Phase 0 与 Phase 1 已完成。`F-20260929-06` 已将资源契约归入 Core.Assets、内容/保存/变量端口和 Gallery 组合实现归入 Runtime，并删除 `GalNet.Storage.Abstractions`；Phase 2a 还需清理 Core 历史宿主契约并收敛 `ISaveService` API。
+- `F-20260929-03-maintainability-roadmap` 的 Phase 0、1、2a 已完成。资源协议归 Core.Assets；内容、保存、变量、Gallery 组合和进度端口归 Runtime；Editor 设置/退出协议归 Editor.Abstraction；`GalNet.Storage.Abstractions` 与无消费者历史接口已删除，`ISaveService` 已统一为异步可取消 API。下一步是 Phase 2b 的 Presentation/Builtins 命名空间归位。
 - 后续 feature、验证命令和新经验在实际工作中补充，并保留来源链接或 feature ID。
 
 ## 维护规则

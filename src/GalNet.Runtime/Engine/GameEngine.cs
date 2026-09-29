@@ -6,6 +6,7 @@ using GalNet.Core.Services;
 using GalNet.Core.Settings;
 using GalNet.Core.View;
 using GalNet.Runtime.Logging;
+using GalNet.Runtime.Progress;
 using GalNet.Runtime.Runtime;
 
 namespace GalNet.Runtime.Engine;

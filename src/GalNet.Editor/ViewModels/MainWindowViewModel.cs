@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
-using GalNet.Core.Services;
 using GalNet.Editor.Models;
 using GalNet.Editor.Abstraction.Services;
 

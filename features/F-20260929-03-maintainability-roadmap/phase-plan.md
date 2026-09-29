@@ -59,11 +59,11 @@ updated: 2026-09-29
 
 ## Phase 2a - 存储与运行时契约迁移
 
-**状态：in-progress**
+**状态：verified**
 
 已完成切片：[F-20260929-06-storage-runtime-contract-migration](../F-20260929-06-storage-runtime-contract-migration/feature.md)，完成资源与 Runtime 端口迁移并删除 `GalNet.Storage.Abstractions`。
 
-剩余切片：清理 Core 历史宿主服务契约，收敛 `ISaveService` 重复 API，并补对应 characterization tests。
+完成切片：[F-20260929-07-runtime-port-cleanup](../F-20260929-07-runtime-port-cleanup/feature.md)，完成 Core 历史宿主服务清理、Editor/Runtime 端口归位和 `ISaveService` API 收敛。
 
 **依赖：** Phase 1 ADR accepted。
 

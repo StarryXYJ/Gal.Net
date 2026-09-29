@@ -16,13 +16,13 @@ using GalNet.Rendering.Scene;
 using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
 using GalNet.Core.Runtime;
-using GalNet.Core.Services;
 using GalNet.Core.Settings;
 using GalNet.Core.View;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Content;
 using GalNet.Runtime.Gallery;
 using GalNet.Runtime.Persistence;
+using GalNet.Runtime.Progress;
 using GalNet.Runtime.Runtime;
 using GalNet.Runtime.Variables;
 using GalNet.Presentation.Defaults;
@@ -163,7 +163,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
         await _lifecycle.WaitAsync(cancellationToken);
         try
         {
-            var snapshot = await _context.Saves.LoadAsync(slotIndex);
+            var snapshot = await _context.Saves.LoadAsync(slotIndex, cancellationToken);
             if (snapshot is null)
             {
                 StatusMessage = $"Slot {slotIndex} is empty or invalid.";

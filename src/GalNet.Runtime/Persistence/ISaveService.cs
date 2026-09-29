@@ -25,18 +25,13 @@ public sealed class SaveRequest
 public interface ISaveService
 {
     int MaxSlots { get; }
-    IReadOnlyList<SaveSlotInfo> ListSlots();
-    Task SaveAsync(int slot, GameSnapshot snapshot);
-    Task<GameSnapshot?> LoadAsync(int slot);
-    Task DeleteAsync(int slot);
-    Task QuickSaveAsync(GameSnapshot snapshot);
-    Task<GameSnapshot?> QuickLoadAsync();
     Task<IReadOnlyList<SaveSlotInfo>> ListSlotsAsync(CancellationToken ct = default);
+    Task SaveAsync(int slot, SaveRequest request, CancellationToken ct = default);
+    Task<GameSnapshot?> LoadAsync(int slot, CancellationToken ct = default);
+    Task DeleteAsync(int slot, CancellationToken ct = default);
+    Task QuickSaveAsync(SaveRequest request, CancellationToken ct = default);
+    Task<GameSnapshot?> QuickLoadAsync(CancellationToken ct = default);
     Task<SaveSlotInfo?> GetQuickSaveInfoAsync(CancellationToken ct = default);
     Task<bool> HasQuickSaveAsync(CancellationToken ct = default);
     Task DeleteQuickSaveAsync(CancellationToken ct = default);
-    /// <summary>Saves a slot with optional preview and user-facing description.</summary>
-    Task SaveAsync(int slot, SaveRequest request, CancellationToken ct = default);
-    /// <summary>Updates the host's dedicated quick-save using optional presentation metadata.</summary>
-    Task QuickSaveAsync(SaveRequest request, CancellationToken ct = default);
 }

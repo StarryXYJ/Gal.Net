@@ -9,7 +9,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Avalonia.Controls;
 using GalNet.Core.Runtime;
-using GalNet.Core.Services;
 using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;

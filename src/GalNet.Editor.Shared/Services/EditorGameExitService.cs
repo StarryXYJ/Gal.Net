@@ -3,7 +3,7 @@ namespace GalNet.Editor.Shared.Services;
 /// <summary>
 /// Editor implementation: Quit does nothing — the embedded game stays on its page.
 /// </summary>
-public class EditorGameExitService : GalNet.Core.Services.IGameExitService
+public class EditorGameExitService : GalNet.Editor.Abstraction.Services.IGameExitService
 {
     public void Exit()
     {

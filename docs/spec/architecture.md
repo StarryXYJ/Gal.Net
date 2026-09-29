@@ -7,7 +7,7 @@
 ```text
 Core ───────────────────── 领域模型、资源/Gallery registry、服务契约
 Presentation.Abstractions ─ IGameView 与细分 presenter 端口
-Runtime ────────────────── Graph、Compiled Group、Engine、存档状态
+Runtime ────────────────── Graph、Compiled Group、Engine、存档状态与宿主端口
 Assets ─────────────────── Local/PAK provider、Archive、AssetManager
 Storage.FileSystem ─────── 项目/安装内容、保存、变量与进度实现
 Avalonia.GameView ──────── 共享页面、导航、Gallery page registry、呈现
@@ -49,6 +49,8 @@ Avalonia GameView 通过精确 Gallery `typeId` 的 `IGalleryPageRegistry` 选�
 
 - 不让 Core、Runtime 或 Editor.Shared 反向引用具体 Avalonia 实现。
 - `GeneralTest/Architecture/ProjectDependencyTests` 检查内层与共享项目的直接依赖 allowlist，并要求 `GalNet.Storage.Abstractions` 项目及引用保持不存在；依赖边界变化必须同步更新 ADR 或设计依据。
+- 内容、保存、玩家变量、变量桥接和进度协议由 Runtime 拥有；资源访问协议由 Core.Assets 拥有；Editor 设置和退出协议由 Editor.Abstraction 拥有。
+- `ISaveService` 只提供异步、可取消的 I/O API，保存请求统一使用 `SaveRequest` 携带 snapshot 与可选展示 metadata。
 - Provider 不管理解码对象或引用计数；页面/媒体实现不理解目录与 PAK 布局。
 - 新资源类型、Gallery 类型、decoder 与页面各自注册在所属层；不要合并为一个跨层“资源模块”。
 - 新持久化字段要同时检查作者 JSON、加载器、导出包、安装加载和验证测试。

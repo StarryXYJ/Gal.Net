@@ -1,6 +1,6 @@
 using GalNet.Core.Settings;
 
-namespace GalNet.Core.Services;
+namespace GalNet.Editor.Abstraction.Services;
 
 /// <summary>
 /// Game settings service — reads/writes player preferences (volume, text speed, fullscreen).

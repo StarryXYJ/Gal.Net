@@ -19,8 +19,6 @@ public sealed class FileSaveService : ISaveService
         MaxSlots = Math.Max(1, maxSlots);
     }
 
-    public IReadOnlyList<SaveSlotInfo> ListSlots() => ListSlotsAsync().GetAwaiter().GetResult();
-
     public async Task<IReadOnlyList<SaveSlotInfo>> ListSlotsAsync(CancellationToken ct = default)
     {
         var result = new List<SaveSlotInfo>(MaxSlots);
@@ -28,29 +26,30 @@ public sealed class FileSaveService : ISaveService
         return result;
     }
 
-    public Task SaveAsync(int slot, GameSnapshot snapshot) => SaveAsync(slot, new SaveRequest { Snapshot = snapshot });
     public Task SaveAsync(int slot, SaveRequest request, CancellationToken ct = default) => WriteAsync(slot, false, request, ct);
 
-    public async Task<GameSnapshot?> LoadAsync(int slot)
+    public async Task<GameSnapshot?> LoadAsync(int slot, CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
         if (slot < 0 || slot >= MaxSlots) return null;
-        return await ReadAsync(GetPath(slot, false));
+        return await ReadAsync(GetPath(slot, false), ct);
     }
 
-    public async Task DeleteAsync(int slot)
+    public async Task DeleteAsync(int slot, CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
         if (slot < 0 || slot >= MaxSlots) return;
-        await _gate.WaitAsync();
+        await _gate.WaitAsync(ct);
         try { DeleteFiles(slot, false); } finally { _gate.Release(); }
     }
 
-    public Task QuickSaveAsync(GameSnapshot snapshot) => QuickSaveAsync(new SaveRequest { Snapshot = snapshot });
     public Task QuickSaveAsync(SaveRequest request, CancellationToken ct = default) => WriteAsync(-1, true, request, ct);
-    public Task<GameSnapshot?> QuickLoadAsync() => ReadAsync(GetPath(-1, true));
+    public Task<GameSnapshot?> QuickLoadAsync(CancellationToken ct = default) => ReadAsync(GetPath(-1, true), ct);
     public async Task<bool> HasQuickSaveAsync(CancellationToken ct = default) => (await GetQuickSaveInfoAsync(ct)) is { IsCorrupt: false };
 
     public async Task<SaveSlotInfo?> GetQuickSaveInfoAsync(CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
         var path = GetPath(-1, true);
         return File.Exists(path) ? await GetInfoAsync(-1, true, ct) : null;
     }
@@ -103,17 +102,19 @@ public sealed class FileSaveService : ISaveService
             var preview = GetPreviewPath(slot, quick);
             return new SaveSlotInfo { SlotIndex = slot, IsQuickSave = quick, Timestamp = stored.Timestamp.LocalDateTime, Description = stored.Description, PreviewImage = File.Exists(preview) ? preview : null };
         }
+        catch (OperationCanceledException) { throw; }
         catch { return new SaveSlotInfo { SlotIndex = slot, IsQuickSave = quick, IsCorrupt = true }; }
     }
 
-    private async Task<GameSnapshot?> ReadAsync(string path)
+    private async Task<GameSnapshot?> ReadAsync(string path, CancellationToken ct)
     {
         if (!File.Exists(path)) return null;
         try
         {
-            var stored = JsonSerializer.Deserialize<StoredSave>(await File.ReadAllTextAsync(path));
+            var stored = JsonSerializer.Deserialize<StoredSave>(await File.ReadAllTextAsync(path, ct));
             return stored?.Version == FormatVersion ? stored.Snapshot : null;
         }
+        catch (OperationCanceledException) { throw; }
         catch { return null; }
     }
 

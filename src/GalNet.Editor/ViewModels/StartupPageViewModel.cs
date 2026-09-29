@@ -4,7 +4,6 @@ using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GalNet.Core.Services;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Services;

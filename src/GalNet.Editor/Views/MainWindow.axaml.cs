@@ -1,6 +1,5 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Notifications;
-using GalNet.Core.Services;
 using GalNet.Editor.Services;
 using GalNet.Editor.ViewModels;
 using Serilog;

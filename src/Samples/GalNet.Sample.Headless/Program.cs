@@ -3,6 +3,7 @@ using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
 using GalNet.Core.View;
 using GalNet.Runtime.Engine;
+using GalNet.Runtime.Persistence;
 using GalNet.Runtime.Runtime;
 using GalNet.Primitives.Builtins;
 using GalNet.Sample.Headless;
@@ -48,7 +49,7 @@ try
     if (options.SaveSlot is { } saveSlot)
     {
         if (saveSlot >= saves.MaxSlots) throw new InvalidDataException($"Save slot must be below {saves.MaxSlots}.");
-        engine.CheckpointCreated += snapshot => latestCheckpointSave = saves.SaveAsync(saveSlot, snapshot);
+        engine.CheckpointCreated += snapshot => latestCheckpointSave = saves.SaveAsync(saveSlot, new SaveRequest { Snapshot = snapshot });
     }
 
     var advanceFailure = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -73,7 +74,7 @@ try
 
     if (options.SaveSlot is { } finalSaveSlot)
     {
-        await saves.SaveAsync(finalSaveSlot, engine.CreateSaveData());
+        await saves.SaveAsync(finalSaveSlot, new SaveRequest { Snapshot = engine.CreateSaveData() });
         Console.WriteLine($"[Save] wrote slot {finalSaveSlot}");
     }
 

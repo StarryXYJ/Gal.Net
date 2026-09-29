@@ -4,7 +4,7 @@ using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using GalNet.Core.Services;
+using GalNet.Editor.Abstraction.Services;
 using GalNet.Core.Scene;
 using GameViewAssembly::GalNet.Avalonia.GameView.Presentation;
 using GalNet.Editor.Abstraction.Services;

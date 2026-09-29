@@ -1,5 +1,5 @@
 using System.Text.Json;
-using GalNet.Core.Services;
+using GalNet.Runtime.Progress;
 
 namespace GalNet.Storage.FileSystem;
 

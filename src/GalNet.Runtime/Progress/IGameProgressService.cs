@@ -1,4 +1,4 @@
-namespace GalNet.Core.Services;
+namespace GalNet.Runtime.Progress;
 
 /// <summary>Per-player progress that must not be restored by a save slot.</summary>
 public interface IGameProgressService
