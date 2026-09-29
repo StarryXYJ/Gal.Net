@@ -22,7 +22,7 @@ updated: 2026-09-29
 
 ## Phase 2 - Editor、Presentation 与 Integration 拆分
 
-**状态：planned**
+**状态：verified**
 
 - 新建 Editor.Shared、Editor、Presentation 与 Integration 测试项目。
 - 从 GeneralTest 和 Assets Tests 迁移剩余测试，删除空的 GeneralTest。
@@ -31,6 +31,8 @@ updated: 2026-09-29
 测试：所有项目通过；总测试数与 311 基线一致；GeneralTest 不存在。
 
 退出条件：测试项目边界完整，solution 无聚合测试项目；创建独立 Git 提交。
+
+**验证（2026-09-29）：** Architecture 14、Core 55、Runtime 32、Builtins 40、Assets 30、Storage 12、Editor.Shared 16、Editor 18、Presentation 65、Integration 29，合计 311/311 通过。`GeneralTest` 已删除；Assets.Tests 只引用 Assets/Core，Presentation 测试显式声明其 DI 测试依赖。
 
 ## Phase 3 - CI、文档与全量验证
 
