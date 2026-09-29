@@ -37,6 +37,8 @@ Editor / Samples ───────── 组合根与平台宿主
 
 `GameEngine` 持有 `IGameRuntime`，解释图、条目、Choice、skip batch 和快照；它不认识具体 UI。`IGameView` 解析 entry schema、创建 primitive instance 并调用 presenter 端口。影响场景的 primitive 先写入 `SceneState`，再通知呈现端；读取快照后由 Engine 根据状态重放。
 
+Avalonia 展示按领域拆为 dialogue/choice、layer、animation 和 particle presenter；`AvaloniaGamePageView` 只创建并暴露这些 presenter，`CompositeGameView` 仍只负责把内置 entry module 组合为 Runtime 使用的 `IGameView`。官方 Avalonia Sample 的页面会话只串行化公开命令和顶层 UI 状态：`SampleGameResourceScope` 管理安装内容与资源，`SampleSaveSession` 管理玩家持久化与 Gallery 数据，`SampleGameRunner` 管理 engine 和页面展示生命周期，`PersistentSceneRestorer` 在 Runtime 快照恢复后重放 renderer-owned 场景对象。runner 必须先于资源 scope 释放。
+
 Gallery catalog 是平台无关的静态内容。宿主把其自动生成的 `gallery_<item-id>_unlocked` Player bool 注册到变量服务；`GalleryDataSource` 合并 catalog 与当前 Player 值。Gallery 解锁不存于独立 UI 状态或存档槽。
 
 Avalonia GameView 通过精确 Gallery `typeId` 的 `IGalleryPageRegistry` 选择页面。零个有内容类型时入口不可用，一个类型直达，多类型显示选择页；没有页面映射时进入诊断页，绝不按资源类型 fallback。Gallery 媒体的路径适配由宿主 resolver 完成，并且必须以 `AssetManager` acquire 的内容为来源。

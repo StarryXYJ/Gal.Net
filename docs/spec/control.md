@@ -12,7 +12,8 @@
        ├─ IGameNavigationService
        ├─ 标题、加载、存读档、设置、鉴赏、关于页面
        └─ GamePage + AvaloniaGamePageView
-            └─ Runtime.GameEngine
+            ├─ Dialogue / Layer / Animation / Particle presenter
+            └─ CompositeGameView ── Runtime.GameEngine
 ```
 
 `IGameNavigationService` 只管理一个游戏 Scope 内的页面状态和回退历史。`IPageViewRegistry` 在组合期建立不可变的 ViewModel→View 映射，`IPageViewFactory` 从同一 Scope 解析页面并设置 `DataContext`。页面导航参数通过 `IActivatablePageViewModel<TArgs>` 传递，不注册到 DI。
@@ -41,9 +42,11 @@ Gallery 使用独立的 `IGalleryPageRegistry`，以精确 Gallery `typeId` 映�
 
 ## 运行期呈现边界
 
-Runtime 只依赖 `GalNet.Presentation.Abstractions` 中的 `IGameView` 与细分接口（文本、交互、图层、转场、音频、视频、效果）。`AvaloniaGamePageView` 是页面侧的 Avalonia 呈现实现；`NullGameView` 供测试和无界面宿主使用。
+Runtime 只依赖 `GalNet.Presentation.Abstractions` 中的 `IGameView` 与细分接口（文本、交互、图层、转场、音频、视频、效果）。`AvaloniaGamePageView` 是页面侧 presenter 的组合器，分别暴露 dialogue/choice、layer、animation 和 particle 端口；宿主通过 `CompositeGameView` 把这些端口组合成 Runtime 使用的 `IGameView`。`NullGameView` 供测试和无界面宿主使用。
 
-`AvaloniaGamePageView` 通过宿主提供的 `IGamePageLayerFactory` 解析图层图像，因而共享页面不会自行推断资源路径。动画逐帧更新由呈现实现完成；Runtime 只维护可存档的场景状态和动画结束后的稳定属性。
+各 presenter 共享 `IAvaloniaUiDispatcher`，但分别拥有自己的等待、动画和粒子生命周期。`AvaloniaGamePageView` 通过宿主提供的 `IGamePageLayerFactory` 解析图层图像，因而共享页面不会自行推断资源路径。动画逐帧更新由呈现实现完成；Runtime 只维护可存档的场景状态和动画结束后的稳定属性。
+
+官方 Sample 使用 `SampleGameResourceScope`、`SampleSaveSession`、`SampleGameRunner` 和 `PersistentSceneRestorer` 分离资源、玩家持久化、运行编排与读档展示重放。读档顺序固定为恢复 Runtime snapshot、重放持久展示、页面切换后启动 prepared run；reload 和清空玩家状态必须先停止并释放 runner，再释放资源或重建持久化状态。
 
 ## 宿主接入约束
 

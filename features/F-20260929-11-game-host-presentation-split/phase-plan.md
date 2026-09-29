@@ -1,6 +1,6 @@
 ---
 feature: F-20260929-11-game-host-presentation-split
-status: implementing
+status: done
 updated: 2026-09-29
 ---
 
@@ -64,10 +64,12 @@ updated: 2026-09-29
 
 ## Phase 5 - 全量验证与收尾
 
-**状态：planned**
+**状态：verified**
 
 **目标：** 同步稳定架构事实和路线图状态，记录计划偏差与剩余风险。
 
 **验证：** 全部 10 个测试项目、Editor Headless、Sample Headless、Sample Avalonia 和完整 solution Release build；diff check。
 
 **退出条件：** Phase 4b 有完整证据、feature summary 与正式文档，创建独立 Git 提交。
+
+**验证（2026-09-29）：** 10 个测试项目顺序执行共 324/324 通过；Editor Headless、Sample Headless 与 Sample Avalonia Release 构建通过。完整 `GalNet.slnx` 在沙箱内仅因 Android `ComputeManagedAssemblies` 与 Browser `ComputeWasmBuildAssets` task host 受限失败，在沙箱外以 0 错误通过，并保留一个既有 WebAssembly native-reference 警告。`git diff --check` 通过，架构与页面 spec、路线图、agent knowledge 和 feature summary 已同步。

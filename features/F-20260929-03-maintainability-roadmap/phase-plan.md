@@ -153,7 +153,11 @@ updated: 2026-09-29
 
 ## Phase 4b - 游戏宿主与展示职责拆分
 
-**状态：planned**
+**状态：verified**
+
+实施 feature：[F-20260929-11-game-host-presentation-split](../F-20260929-11-game-host-presentation-split/feature.md)
+
+完成证据：[F-20260929-11 实现总结](../F-20260929-11-game-host-presentation-split/summary.md)。Avalonia presenter 已按领域拆分，Sample 的资源、存档、runner 和持久场景恢复已有独立协作者；`CompositeGameView` 边界保持不变。
 
 **依赖：** Phase 3；避开粒子、动画和音频功能 feature 正在修改的文件。
 

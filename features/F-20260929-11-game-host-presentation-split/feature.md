@@ -2,7 +2,7 @@
 id: F-20260929-11-game-host-presentation-split
 title: 游戏宿主与 Avalonia 展示职责拆分
 type: refactor
-status: implementing
+status: done
 created: 2026-09-29
 updated: 2026-09-29
 parent: F-20260929-03-maintainability-roadmap
@@ -49,4 +49,3 @@ parent: F-20260929-03-maintainability-roadmap
 - [设计](design.md)
 - [实施计划](phase-plan.md)
 - [路线图 Phase 4b](../F-20260929-03-maintainability-roadmap/phase-plan.md)
-
