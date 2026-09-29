@@ -75,7 +75,7 @@ updated: 2026-09-29
 
 - [Runtime 规范](../../docs/spec/runtime.md)
 - [架构规范](../../docs/spec/architecture.md)
-- [原语模块 Runtime 设计](../../docs/design/primitive-module-runtime-design.md)
+- [运行时参考](../../docs/spec/runtime.md)
 - [编译内容管线](../F-20260929-01-compiled-content-pipeline/feature.md)
 - [GameSnapshot](../../src/Shared/GalNet.Core/Runtime/GameSnapshot.cs)
 - [GameEngine](../../src/Shared/GalNet.Runtime/Engine/GameEngine.cs)

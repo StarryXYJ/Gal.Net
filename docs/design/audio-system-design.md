@@ -1,6 +1,6 @@
 # GalNet 音频系统设计
 
-> 状态：设计稿。对应 [Avalonia 游戏页面与内容对接计划](avalonia-game-page-integration-plan.md) 的 Phase 4；本文不代表已实现的接口或行为。
+> 状态：设计稿。本文不代表已实现的接口或行为；当前已实现的行为以 Runtime、Entry 和对应测试为准。
 
 ## 目标与边界
 
@@ -26,7 +26,7 @@
 | **播放项（item）** | 队列中的一次播放请求，引用一个音频资源并携带本次音量、循环和完成策略。 |
 | **放置策略（placement）** | 新播放项如何进入轨道：入队、下一首、替换当前或替换全部。 |
 | **选择模式（selection mode）** | 队列在需要下一项时按顺序取出还是随机取出。 |
-| **音频 Effect** | 对 PCM/采样流或混音节点施加的处理器，如低通、声像、均衡、空间化。与图像 Effect 同为可配置实例，但不进入图像渲染管线。 |
+| **SEffect** | 对 PCM/采样流或混音节点施加的处理器，如低通、声像、均衡、空间化。与图像 Effect 同为可配置实例，但不进入图像渲染管线。 |
 
 `sfx` 不应被理解为“只允许一个声音的音效轨道”。默认 `sfx` 是一个可多声部的逻辑轨道；需要严格排他的音效时，作者可另建 `ui_sfx`、`ambience` 等轨道并设置 `maxVoices: 1`。
 
@@ -37,7 +37,7 @@ flowchart LR
   Entry[剧情原语\naudio.play / next / pause] --> Runtime[AudioRuntime\n队列、状态、诊断、快照]
   Project[项目轨道定义] --> Runtime
   Settings[玩家设置\nMaster + Bus/Track 音量] --> Mixer
-  Runtime --> Request[IAudioView / IAudioPlaybackHost]
+  Runtime --> Request[IAudioPlaybackHost]
   Request --> Backend[宿主音频后端\n解码、时钟、结束事件]
   Backend --> ItemFx[播放项 Effect 链]
   ItemFx --> TrackFx[轨道 Effect 链]
@@ -65,6 +65,8 @@ Core 保存可序列化的定义、原语数据、状态和 Effect 元数据；R
         "defaultVolume": 0.8,
         "selectionMode": "sequential",
         "maxVoices": 1,
+        "maxQueuedItems": 64,
+        "queueOverflowPolicy": "dropNewest",
         "overflowPolicy": "stopOldest"
       },
       {
@@ -74,6 +76,8 @@ Core 保存可序列化的定义、原语数据、状态和 Effect 元数据；R
         "defaultVolume": 1.0,
         "selectionMode": "sequential",
         "maxVoices": 8,
+        "maxQueuedItems": 0,
+        "queueOverflowPolicy": "dropNewest",
         "overflowPolicy": "dropNewest"
       },
       {
@@ -83,6 +87,8 @@ Core 保存可序列化的定义、原语数据、状态和 Effect 元数据；R
         "defaultVolume": 1.0,
         "selectionMode": "sequential",
         "maxVoices": 1,
+        "maxQueuedItems": 64,
+        "queueOverflowPolicy": "dropNewest",
         "overflowPolicy": "stopOldest"
       }
     ]
@@ -96,11 +102,13 @@ Core 保存可序列化的定义、原语数据、状态和 Effect 元数据；R
 | --- | --- |
 | `id` | 项目内唯一、非空、建议小写 kebab-case。它是剧情和玩家设置的稳定键；创建后不支持直接编辑。重命名通过编辑器的“重命名并更新引用”重构操作完成。 |
 | `name` | 仅编辑器显示名，可随时修改，不参与运行时查找。 |
-| `bus` | 初版限定 `bgm`、`sfx`、`vocal` 三个内置 bus；自定义 bus 留给后续，不阻止创建自定义轨道。 |
+| `bus` | 初版限定并内置 `bgm`、`sfx`、`vocal` 三个 bus；轨道可选择其中之一。本 feature 不提供 bus CRUD；自定义 bus 留给后续。 |
 | `defaultVolume` | 作者的轨道基础增益，范围 `[0, 1]`。不是玩家偏好。 |
 | `selectionMode` | `sequential` 或 `shuffle`，只影响从待播队列取下一项的顺序。 |
 | `maxVoices` | 正整数。`1` 表示单声部的“当前项”；大于 `1` 时允许同时播放多个项。 |
-| `overflowPolicy` | 超过声部上限时的策略。初版支持 `dropNewest`、`stopOldest`；`stopQuietest` 可后续添加。 |
+| `maxQueuedItems` | 非负整数，限制待播项数量。`0` 禁止排队：声部饱和时直接按 `overflowPolicy` 处理，避免短 SFX 延迟播放。 |
+| `queueOverflowPolicy` | 队列已满时的策略。初版支持 `dropNewest`、`dropOldest`。 |
+| `overflowPolicy` | 尝试立即启动但超过活动声部上限时的策略。初版支持 `dropNewest`、`stopOldest`；`stopQuietest` 可后续添加。 |
 
 删除被剧情条目、轨道 Effect 或玩家设置引用的轨道时，编辑器应显示引用清单并要求作者先迁移引用或确认删除。Runtime 遇到不存在的轨道仅记录诊断并安全跳过。
 
@@ -118,7 +126,7 @@ effectiveGain = masterGain × playerBusGain × playerTrackGain × trackDefaultGa
 - `trackDefaultGain`：项目作者在轨道定义中设定的基础增益。
 - `itemGain`：一次 `audio.play` 的相对增益，默认 `1`，不写入玩家设置。
 
-静音是对应层增益为 `0` 的明确状态，不能通过停止音频实现；静音期间队列、结束事件和剧情流程仍正常运行。Phase 4 不需展示所有自定义轨道的设置滑块，但 `GameSettings` 的持久化模型应从固定 `BgmVolume/SfxVolume/VoiceVolume` 演进为 `master`、按 bus 的映射和按 track ID 的映射，并兼容迁移现有三个字段。
+静音是对应层增益为 `0` 的明确状态，不能通过停止音频实现；静音期间队列、结束事件和剧情流程仍正常运行。首期只实现作者轨道基础增益和播放项局部增益；master、按 bus/track 的玩家音量以及 UI 留给后续 feature，旧 `BgmVolume/SfxVolume/VoiceVolume` 不迁移。
 
 ## 队列与播放项
 
@@ -133,7 +141,7 @@ effectiveGain = masterGain × playerBusGain × playerTrackGain × trackDefaultGa
   "fadeIn": { "duration": 0.8, "curve": "equalPower" },
   "fadeOut": { "duration": 0.8, "curve": "equalPower" },
   "effects": [
-    { "id": "audio.lowPass", "parameters": { "cutoffHz": 2400 } }
+    { "id": "seffect.lowPass", "parameters": { "cutoffHz": 2400 } }
   ]
 }
 ```
@@ -146,7 +154,7 @@ effectiveGain = masterGain × playerBusGain × playerTrackGain × trackDefaultGa
 | `completion` | `discard`：完成后移除；`requeueTail`：完成后放回待播队尾。它服务于歌单/轮播逻辑，不保证无缝。 |
 | `fadeIn` | 可选的启动包络，含非负 `duration`（秒）和 `curve`。不存在或 `duration: 0` 表示立即到达目标增益。 |
 | `fadeOut` | 可选的结束包络，含非负 `duration` 和 `curve`。它只用于播放项离开轨道且没有后继项接管切换时。 |
-| `effects` | 可选的单播放项 Effect attachment 列表；与资源同时创建，按列表顺序执行，且输出仍会经过轨道 Effect 链。 |
+| `effects` | 可选的单播放项 SEffect attachment 列表；与资源同时创建，按列表顺序执行，且输出仍会经过轨道 SEffect 链。 |
 
 `loopCount` 和 `completion` 不能互相替代：无限 BGM 循环应使用 `loopCount: infinite`，A/B 两首歌轮播应使用 `completion: requeueTail`。后者的重新入队可能有解码/调度间隙。
 
@@ -172,12 +180,12 @@ effectiveGain = masterGain × playerBusGain × playerTrackGain × trackDefaultGa
 
 | `placement` | 语义 |
 | --- | --- |
-| `enqueue` | 加到待播队列尾部；轨道无活动声部时立即按选择模式启动一个项。 |
-| `next` | 插入当前播放项之后；若轨道没有活动项，等价于立即播放。单声部轨道只有一个“之后”；多声部轨道中插入到此轨道的优先待播区。 |
+| `enqueue` | 有空闲声部时立即启动；否则若允许排队则加到待播队列尾部。`maxQueuedItems: 0` 时直接按 `overflowPolicy` 处理；允许排队但队列满时按 `queueOverflowPolicy` 处理。Runtime 在每次声部释放后 pump 队列，因此多声部轨道在未满时会立即叠加播放。 |
+| `next` | 插入单声部轨道当前项之后；若无活动项，等价于立即播放。多声部轨道没有唯一“下一首”，初版调用必须诊断并安全完成。 |
 | `replace` | 立即停止当前活动项并启动新项，保留既有待播队列。多声部轨道停止所有活动声部。 |
 | `replaceAll` | 立即停止活动项、清空待播队列，再启动新项。BGM/语音切换通常使用它。 |
 
-`audio.next` 丢弃当前活动项，并从优先待播区/普通队列按选择规则启动后继项；队列为空则使轨道停止。暂停轨道执行 `next` 后应进入播放状态，避免“下一首已选中却无声音”的隐式状态。
+`audio.next` 仅适用于 `maxVoices: 1`：它丢弃唯一活动项，并从优先待播区/普通队列按选择规则启动后继项；队列为空则使轨道停止。暂停轨道执行 `next` 后应进入播放状态，避免“下一首已选中却无声音”的隐式状态。
 
 `audio.stop` 需显式接受 `clearQueue`（默认 `true`）。需要仅终止当前项而保留歌单时使用 `clearQueue: false`；也可提供等价且更易发现的 `audio.clear` 原语清空待播项。不能让 `stop` 的清队行为含糊。
 
@@ -208,11 +216,11 @@ effectiveGain = masterGain × playerBusGain × playerTrackGain × trackDefaultGa
 
 ```json
 { "type": "audio.play", "trackId": "bgm", "asset": "audio/bgm/forest.ogg", "placement": "replaceAll", "loopCount": "infinite", "fadeIn": { "duration": 0.8, "curve": "equalPower" } }
-{ "type": "audio.play", "trackId": "sfx", "asset": "audio/sfx/door.ogg", "placement": "enqueue", "gain": 0.9, "effects": [{ "id": "audio.pan", "parameters": { "pan": -0.4 } }] }
+{ "type": "audio.play", "trackId": "sfx", "asset": "audio/sfx/door.ogg", "placement": "enqueue", "gain": 0.9, "effects": [{ "id": "seffect.pan", "parameters": { "pan": -0.4 } }] }
 { "type": "audio.play", "trackId": "vocal", "asset": "audio/voice/a_001.ogg", "placement": "replaceAll" }
 ```
 
-当前 `text.voice` 应在编译/运行时转换为等价的 `audio.play(trackId: "vocal", placement: "replaceAll")`，而非继续通过 `ITypewriterView.SetVoice` 建立第二条播放路径。需要定义点击推进时的策略：初版建议默认不停止配音，由下一个 `text.voice` 或场景/作者明确的 `audio.stop` 控制；项目级设置可后续增加“推进时停止语音”。
+`dialogue.text` 不再拥有 `voice` 参数，`nvl.append` 保持纯文本。新增 composite `dialogue.textVoice` 与 `nvl.appendVoice`，分别编译为音频播放加文本 primitive；它们的音频附加参数只有 `gain` 与 `trackId`，后者默认 `vocal`。播放使用 `replaceIfDifferent`：同一轨道正在播放相同资源时不重放，仅更新局部 gain；不同资源才替换。它们不再通过 `IDialoguePresenter.SetVoice` 建立第二条路径。点击推进默认不停止配音，由下一个 voice entry、明确的 `audio.stop` 或 scope disposal 控制。
 
 所有原语都应对无效轨道、非音频资源、无效枚举/数值产生诊断并安全完成。若剧情确实需要等待声音结束，应以后续单独设计的 `audio.wait` 或一个等待型语义实现；不要把普通 `audio.play` 改成隐式阻塞，也不要把完成回调直接变成任意剧情跳转。
 
@@ -233,73 +241,73 @@ AudioRuntimeState
 
 每次启动一个后端播放项都生成单调递增的 `generation`。后端报告 `Ended(trackId, generation)` 或 `Failed(trackId, generation, reason)` 时，Runtime 仅处理仍匹配当前活动项的事件。这样旧 BGM 被 `replaceAll` 停止后迟到的结束回调不会错误推进新队列。
 
-存档应保存项目可恢复的逻辑状态：队列、优先队列、活动资源、暂停状态、运行时轨道覆盖音量、随机状态和 Effect attachment。第一版可采用“重启式恢复”：恢复后从活动资源开头重新播放，且不承诺毫秒级位置；文档和 UI 必须说明此限制。后续若后端稳定支持 seek，可扩展保存位置（毫秒）和循环轮次，但恢复失败仍应降级为从头播放并记录诊断。
+后续存档若实现，应保存项目可恢复的逻辑状态：队列、优先队列、活动资源、暂停状态、运行时轨道覆盖音量、随机状态和 SEffect attachment；本 feature 不改存档格式。可采用“重启式恢复”：恢复后从活动资源开头重新播放，且不承诺毫秒级位置；文档和 UI 必须说明此限制。后端稳定支持 seek 后，才可扩展保存位置（毫秒）和循环轮次，恢复失败仍应降级为从头播放并记录诊断。
 
 退出游戏页、切换项目或释放宿主时必须先使 Runtime 停止并取消所有活动 generation，再释放后端 player/媒体资源。资源加载失败、设备不可用、解码异常不会使游戏流程抛出；它们通过统一诊断/日志向作者和宿主暴露。
 
 ## 宿主端口与资源定位
 
-现有 `IAudioView` 的字符串 `mode`、`times`、`ConfigureAudioQueue` 无法表达完整队列状态，也使运行时/后端的职责不清。Phase 4 应以强类型请求替换为一个独立端口，例如：
+当前 `BuiltinAudioModule` 的音频条目只注册静态 schema，创建的是空的即时原语；仓库不存在可替换的 `IAudioView`。历史 `AudioChannelManager`、`IAudioService` 和 `LibVlcAudioController` 的字符串 `mode`、`times` 与每 channel 单 player 模型也无法表达完整队列状态。Phase 4 应新建独立的强类型宿主端口，并在 Builtin 模块中创建实际的非阻塞音频原语，例如：
 
 ```csharp
-public interface IAudioView
+public interface IAudioPlaybackHost
 {
     Task ApplyAudioCommandAsync(AudioCommand command, CancellationToken ct);
 }
 ```
 
-`AudioCommand` 是 Core 中的可判别、强类型数据（播放、暂停、继续、下一首、停止、清队、设置运行时音量、恢复快照），其中只含 `trackId`、资源 ID、增益和枚举。宿主以项目的资源提供器把资源 ID 解析为可播放流或临时 URI；Runtime 不传 `FileInfo`、磁盘路径或 LibVLC 类型。
+`AudioCommand` 是 Core 中的可判别、强类型数据（播放、暂停、继续、下一首、停止、清队、设置运行时音量、恢复快照），其中只含 `trackId`、资源 ID、增益和枚举。Runtime 负责队列并将其降为带 `(trackId, voiceId, generation)` 的声部级宿主请求；宿主不得自行排队。宿主以项目的资源提供器把资源 ID 解析为可播放流或临时 URI；Runtime 不传 `FileInfo`、磁盘路径或 LibVLC 类型。
 
-需要后端事件时，宿主以一个受控事件/回调接口上报 `Started`、`Ended`、`Failed`，并回传 command/item generation。事件转回引擎线程或由 AudioRuntime 串行化处理，不能在后端回调线程直接修改 UI 或游戏状态。
+需要后端事件时，宿主以一个受控事件/回调接口上报 `Started`、`Ended`、`Failed`，并回传 `trackId`、`voiceId` 和 generation。事件转回引擎线程或由 AudioRuntime 串行化处理，不能在后端回调线程直接修改 UI 或游戏状态。宿主还必须声明 duration、scheduled start、seek、DSP 等能力；无间隙循环和自然结束前的交叉淡化只在对应能力可验证时启用。
 
 `LibVlcAudioController` 可以作为初期宿主适配器，但其当前“一轨道一个 `MediaPlayer`、`Enqueue` 立即 `Play`”的实现不能满足真实队列、并发 SFX、循环和结束事件语义。后端选型不应锁死在 LibVLC；只要适配相同端口即可替换。
 
-## 音频 Effect 设计
+## SEffect 后处理设计
 
 ### 为什么独立于图像 Effect
 
-图像 Effect 处理的是 `Texture → Texture` 的画面 pass，并挂在 Layer/ScenePost。音频 Effect 处理的是音频流或混音节点，拓扑是 `PCM/voice → item effects → track effects → bus → master`。二者共享“独立实例、声明式 descriptor、参数校验、生命周期和可动画参数”的架构思想，但不能复用 `EffectStage`、`IImageEffect`、SkSL 或 Layer handle。
+图像 Effect 处理的是 `Texture → Texture` 的画面 pass，并挂在 Layer/ScenePost。SEffect 处理的是音频流或混音节点，拓扑是 `PCM/voice → item SEffects → track SEffects → bus → master`。二者共享“独立实例、声明式 descriptor、参数校验、生命周期和可动画参数”的架构思想，但不能复用 `EffectStage`、`IImageEffect`、SkSL 或 Layer handle。
 
-音频 Effect 是统一的 descriptor、参数和生命周期模型；作者只选择 attachment 的目标。scope 只有以下两种：
+SEffect 是统一的 descriptor、参数和生命周期模型；作者只选择 attachment 的目标。scope 只有以下两种：
 
 | Scope | 挂载点 | 适合的效果 | 生命周期 |
 | --- | --- | --- | --- |
 | `item` | 一次播放项/声部 | 一句电话滤镜、一次性方位、音高变化 | 播放项结束、被替换或停止时自动释放。 |
 | `track` | 轨道的混音节点 | BGM 低通、Vocal 压缩、整条轨道声像 | 显式停止、轨道删除/释放时结束；可被存档恢复。 |
 
-同一声音的拓扑固定为 `item Effect 链 → track Effect 链 → bus`。因此单播放项 Effect 是**叠加并先行处理**轨道声音，而不是绕过或隐式替换轨道 Effect。例如一段语音的 `audio.lowPass` 仍会继续经过轨道上的 `audio.gain`；两个低通串联的听感会更强，这不是参数覆盖。若未来确有“暂时替换轨道某个 Effect”的叙事需求，应引入带稳定 attachment ID 的显式 enable/disable 或参数动画，不能依据相同 `effectId` 偷偷合并。
+同一声音的拓扑固定为 `item SEffect 链 → track SEffect 链 → bus`。因此单播放项 SEffect 是**叠加并先行处理**轨道声音，而不是绕过或隐式替换轨道 SEffect。例如一段语音的 `seffect.lowPass` 仍会继续经过轨道上的 `seffect.gain`；两个低通串联的听感会更强，这不是参数覆盖。若未来确有“暂时替换轨道某个 SEffect”的叙事需求，应引入带稳定 attachment ID 的显式 enable/disable 或参数动画，不能依据相同 `effectId` 偷偷合并。
 
 Bus/master 级 Effect（例如总线限制器）是未来扩展，不放进 Phase 4 作者原语；它们更接近项目混音配置，不能由任意剧情条目随意附着到全局输出。
 
 ### Effect 数据与目录
 
-每个具体 Effect 由后端模块提供一个平台无关的 `AudioEffectDefinition`，承担编辑器下拉、参数表单、范围验证、可动画属性提示和宿主能力声明的唯一来源。结构应和视觉 `EffectCatalog` 对齐，但单独定义类型：
+每个具体后处理由后端模块提供一个平台无关的 `SEffectDefinition`，承担编辑器下拉、参数表单、范围验证、可动画属性提示和宿主能力声明的唯一来源。结构应和视觉 `EffectCatalog` 对齐，但单独定义类型：
 
 ```csharp
-enum AudioEffectScope { Item, Track }
+enum SEffectScope { Item, Track }
 
-record AudioEffectDefinition(
+record SEffectDefinition(
     string Id,
-    IReadOnlySet<AudioEffectScope> SupportedScopes,
-    IReadOnlyList<AudioEffectParameterDefinition> Parameters,
+    IReadOnlySet<SEffectScope> SupportedScopes,
+    IReadOnlyList<SEffectParameterDefinition> Parameters,
     IReadOnlyList<AnimatableProperty> AnimatableProperties,
     bool RequiresRealtimeDsp = true);
 ```
 
-`AnimatableProperties` 表示某个参数**具备**连续动画能力，而不是每一个 attachment 必然存在动画。初版中 `audio.lowPass.cutoffHz`、`audio.lowPass.resonance`、`audio.pan.pan`、`audio.gain.gain`、`audio.pitch.semitones` 和 `audio.spatial` 的坐标/距离参数均可声明为可动画；布尔开关、枚举、资源引用等仍为静态参数。
+`AnimatableProperties` 表示某个参数**具备**连续动画能力，而不是每一个 attachment 必然存在动画。初版中 `seffect.lowPass.cutoffHz`、`seffect.lowPass.resonance`、`seffect.pan.pan`、`seffect.gain.gain`、`seffect.pitch.semitones` 和 `seffect.spatial` 的坐标/距离参数均可声明为可动画；布尔开关、枚举、资源引用等仍为静态参数。
 
 初始内置 descriptor 建议如下：
 
 | ID | Scope | 参数 | 说明 |
 | --- | --- | --- | --- |
-| `audio.lowPass` | item、track | `cutoffHz`、`resonance` | 低通滤波，适合隔墙、收音机、远景。 |
-| `audio.highPass` | item、track | `cutoffHz`、`resonance` | 高通滤波，适合电话/去低频。 |
-| `audio.pan` | item、track | `pan` (`-1..1`) | 立体声声像；不等同于三维空间化。 |
-| `audio.gain` | item、track | `gain` | 额外动态增益；应与持久音量层区分。 |
-| `audio.pitch` | item | `semitones` | 音高/速度处理取决于后端能力，初版可不实现。 |
-| `audio.spatial` | item | `x`、`y`、`z`、`minDistance`、`maxDistance` | 预留三维方位/衰减；要求后端提供位置与听者模型。 |
+| `seffect.lowPass` | item、track | `cutoffHz`、`resonance` | 低通滤波，适合隔墙、收音机、远景。 |
+| `seffect.highPass` | item、track | `cutoffHz`、`resonance` | 高通滤波，适合电话/去低频。 |
+| `seffect.pan` | item、track | `pan` (`-1..1`) | 立体声声像；不等同于三维空间化。 |
+| `seffect.gain` | item、track | `gain` | 额外动态增益；应与持久音量层区分。 |
+| `seffect.pitch` | item | `semitones` | 音高/速度处理取决于后端能力，初版可不实现。 |
+| `seffect.spatial` | item | `x`、`y`、`z`、`minDistance`、`maxDistance` | 预留三维方位/衰减；要求后端提供位置与听者模型。 |
 
-`audio.lowPass` 等是稳定作者 ID，而不是作者传入任意 DSP/shader 文本。每个宿主后端可以声明它支持的 ID；不支持的 Effect 必须保持干声通过、记录一次诊断，而不能使资源静音或崩溃。
+`seffect.lowPass` 等是稳定作者 ID，而不是作者传入任意 DSP/shader 文本。每个宿主后端可以声明它支持的 ID；不支持的 SEffect 必须保持干声通过、记录一次诊断，而不能使资源静音或崩溃。
 
 ### Attachment 入口与顺序
 
@@ -328,20 +336,20 @@ audio.effect.stop(instanceId)
 
 轨道提供稳定的运行时存在期：它在项目配置中有 `trackId`，持续的轨道 Effect 又有 `instanceId`。因此 Runtime 可以将轨道 Effect 暴露为通用动画系统的目标，形式为 `AudioTrackEffectInstance(instanceId) + parameter`。编辑器把“动画此轨道 Effect 参数”的声明编译为该内部目标；作者不需要手写临时播放器句柄。
 
-`audio.play.effects` 的 item attachment 虽然使用同一个 `AudioEffectDefinition`，其可动画参数也仍在 descriptor 中声明，但该 attachment 随播放项创建和销毁，尤其在多声部 SFX 下不存在可供后续条目可靠寻址的唯一句柄。因此它只接受播放时给定的静态参数，**不能成为 `animate` 的目标**。这不是人为削减 Effect 能力，而是音频资源播放没有类似 Layer 的稳定、可寻址实例句柄所导致的边界。
+`audio.play.effects` 的 item attachment 虽然使用同一个 `SEffectDefinition`，其可动画参数也仍在 descriptor 中声明，但该 attachment 随播放项创建和销毁，尤其在多声部 SFX 下不存在可供后续条目可靠寻址的唯一句柄。因此它只接受播放时给定的静态参数，**不能成为 `animate` 的目标**。这不是人为削减 SEffect 能力，而是音频资源播放没有类似 Layer 的稳定、可寻址实例句柄所导致的边界。
 
-若某段声音确实需要被剧情持续动画化（例如 BGM 的低通扫频、持续环境音的声像移动），作者应把它放在专用的单声部轨道上，并将 Effect 附着到该轨道；不要试图对一次性 SFX 播放项补造公开句柄。实时 DSP 参数更新应使用平滑 ramp（例如 5–20 ms 或由后端决定），防止低通截止频率或 gain 突变造成 click/pop。音频 Effect 动画默认不阻塞剧情；需要叙事同步时由独立等待能力表达。
+若某段声音确实需要被剧情持续动画化（例如 BGM 的低通扫频、持续环境音的声像移动），作者应把它放在专用的单声部轨道上，并将 SEffect 附着到该轨道；不要试图对一次性 SFX 播放项补造公开句柄。实时 DSP 参数更新应使用平滑 ramp（例如 5–20 ms 或由后端决定），防止低通截止频率或 gain 突变造成 click/pop。SEffect 动画默认不阻塞剧情；需要叙事同步时由独立等待能力表达。
 
 ### 方位与空间化的取舍
 
-`pan` 是廉价、确定的立体声左右平衡，推荐 Phase 4 或紧随其后的实现。`spatial` 是三维声源模型，必须先定义：听者坐标从何而来、世界坐标和屏幕坐标是否关联、距离衰减曲线、立体声资源如何处理、耳机/HRTF 是否可用。因此只保留 descriptor 和后端能力协商，不在 Phase 4 承诺实现。对于视觉小说常见的“从左侧说话”，`audio.pan` 已足够。
+`pan` 是廉价、确定的立体声左右平衡，推荐后续 SEffect feature 实现。`spatial` 是三维声源模型，必须先定义：听者坐标从何而来、世界坐标和屏幕坐标是否关联、距离衰减曲线、立体声资源如何处理、耳机/HRTF 是否可用。因此只保留 descriptor 和后端能力协商，不在本 feature 承诺实现。对于视觉小说常见的“从左侧说话”，`seffect.pan` 已足够。
 
 ## 编辑器、验证与诊断
 
 - 项目设置页应提供轨道表格：ID、名称、bus、默认音量、顺序/随机、最大声部、溢出策略。ID 创建后锁定，提供安全重构入口。
 - 剧情条目的 `trackId` 使用项目轨道下拉，而非写死 `bgm/sfx/voice`；资源选择器只显示音频资源。
 - `audio.play` 根据轨道 `maxVoices` 显示策略提示：多声部 SFX 的 `replaceAll` 会停止全部活动音效，应当明显标注。
-- Effect 面板通过 `AudioEffectCatalog` 动态生成 scope、参数、范围、单位和能力诊断，不能在编辑器中为每个 Effect 写一套表单。
+- SEffect 面板通过 `SEffectCatalog` 动态生成 scope、参数、范围、单位和能力诊断，不能在编辑器中为每个 SEffect 写一套表单。
 - 编辑器预览使用隔离的 preview track，不污染游戏运行时队列和玩家音量偏好；预览停止时释放所有试听声部和 Effect。
 - 运行时至少记录：未知轨道、轨道 ID 重复、资源类型不符、资源解析/解码失败、无可用音频设备、后端不支持的 Effect、无效 Effect 参数、过期 generation 事件、声部溢出和存档 seek 降级。
 
@@ -351,42 +359,42 @@ audio.effect.stop(instanceId)
 
 1. 定义项目 `AudioTrackDefinition`、默认三轨及编辑器 CRUD/引用验证。
 2. 以 `trackId` 和强类型 `AudioCommand` 替换当前硬编码 channel、字符串 `mode/times` 和空的 `ConfigureAudioQueue`。
-3. 实现单声部 BGM/Vocal、可配置多声部 SFX、入队/下一首/替换/替换全部、淡入淡出与后继项接管的交叉淡化、暂停/继续/停止/清队和结束 generation 防护。
+3. 实现单声部 BGM/Vocal、可配置多声部 SFX、有界入队、单声部下一首、替换/替换全部、暂停/继续/停止/清队和结束 generation 防护；命令触发的交叉淡化仅在后端支持时完成，否则记录诊断并停止后开始。自然结束前交叉淡化和无间隙循环留给具备预加载/调度能力的后续阶段。
 4. 接通资源 ID 定位、音量分层、Sample 的 BGM 切换与 SFX/Vocal 播放。
 
-验收：Sample 能按流程切换循环 BGM，同时叠加音效，播放/替换语音；错误资源或轨道不终止流程。
+验收：Windows Avalonia Sample 能按流程切换循环 BGM，同时叠加音效，播放/替换语音；错误资源、轨道、设备或不支持的淡化能力均不终止流程并产生诊断。Headless fake host 覆盖队列、声部溢出和 generation 语义。
 
-### Phase 4B：持久化与播放器设置
+### 后续：持久化与播放器设置
 
 1. 将轨道逻辑状态加入 `GameSnapshot`，完成重启式恢复。
-2. 迁移现有 BGM/SFX/Voice 设置到按 bus/track 的音量映射。
+2. 单独决定是否引入按 bus/track 的玩家音量映射；当前固定 BGM/SFX/Voice 设置不迁移。
 3. 保存 shuffle 状态、队列和暂停状态；实现资源失败和 seek 不可用的降级诊断。
 
 验收：读档后 BGM/队列/暂停和玩家音量语义一致，随机歌单不无故重排。
 
-### Phase 4C：音频 Effect 基础
+### 后续：SEffect 基础
 
-1. 建立统一的 `AudioEffectDefinition` / catalog、scope/order、校验、生命周期和后端能力声明。
-2. 接入 `audio.lowPass`、`audio.pan`、`audio.gain` 的 track attachment 与 `audio.play.effects` item attachment；不支持后端干声降级。
+1. 建立统一的 `SEffectDefinition` / catalog、scope/order、校验、生命周期和后端能力声明。
+2. 接入 `seffect.lowPass`、`seffect.pan`、`seffect.gain` 的 track attachment 与 `audio.play.effects` item attachment；不支持后端干声降级。
 3. 将可动画的轨道 Effect 映射为通用动画目标；明确拒绝动画 item attachment。
-4. 将 Effect attachments 和已提交的轨道动画值纳入快照；提供最小编辑器表单和 Sample 验证场景。
+4. 将 SEffect attachments 和已提交的轨道动画值纳入快照；提供最小编辑器表单和 Sample 验证场景。
 
-验收：BGM 轨道可持续低通，单句语音可向左/右声像，停止或替换播放项时 item Effect 无泄漏。
+验收：BGM 轨道可持续低通，单句语音可向左/右声像，停止或替换播放项时 item SEffect 无泄漏。
 
 ### 后续阶段
 
-ducking、精确播放位置恢复、`audio.wait`、`shuffleCycle`、高通/压缩/混响、动态 range 和三维 `audio.spatial` 按需求逐项设计和实现。它们不得通过改变本文件中已定义的队列、音量、淡入淡出、可动画边界或生命周期语义来“补丁式”加入。
+ducking、精确播放位置恢复、`audio.wait`、`shuffleCycle`、高通/压缩/混响、动态 range 和三维 `seffect.spatial` 按需求逐项设计和实现。它们不得通过改变本文件中已定义的队列、音量、淡入淡出、可动画边界或生命周期语义来“补丁式”加入。
 
 ## 测试策略
 
-- **Core/Runtime 单元测试**：轨道 ID 验证、默认轨道、音量合成、各放置策略、停止是否清队、顺序/随机、completion/loop 区分、后继项淡入接管交叉淡化、队尾/停止时淡出、轨道 Effect 参数动画、拒绝 item Effect 动画目标、声部溢出、过期 generation 事件。
-- **序列化测试**：轨道配置、音频运行时快照、随机状态、Effect attachment、旧 `BgmVolume/SfxVolume/VoiceVolume` 迁移。
+- **Core/Runtime 单元测试**：轨道 ID 验证、默认轨道、音量合成、各放置策略、停止是否清队、顺序/随机、completion/loop 区分、后继项淡入接管交叉淡化、队尾/停止时淡出、轨道 SEffect 参数动画、拒绝 item SEffect 动画目标、声部溢出、过期 generation 事件。
+- **序列化测试**：轨道配置、音频运行时快照、随机状态和 SEffect attachment。旧 `BgmVolume/SfxVolume/VoiceVolume` 不兼容且不迁移。
 - **后端契约测试**：资源定位、结束/失败事件、暂停恢复、释放后不再上报有效事件、Effect 不支持时干声降级。
-- **集成测试**：剧情条目驱动 BGM 切换、SFX 重叠、`text.voice` 的 Vocal 路由、读档恢复、页面离开释放资源。
+- **集成测试**：剧情条目驱动 BGM 切换、SFX 重叠、`dialogue.textVoice`/`nvl.appendVoice` 的 Vocal 路由、页面离开释放资源。
 - **听感/手动验收**：低通和声像参数变化无爆音；多 SFX 不异常截断；BGM 的 equal-power 交叉淡化无明显响度下陷；无限循环在目标后端不产生可察觉间隙。
 
 ## 与现有实现的迁移决策
 
-当前 `AudioChannelManager`、`IAudioService`、`IAudioView` 和 `LibVlcAudioController` 使用预置 channel、单个 `CurrentAsset`、字符串 `mode/times` 与不具备真实队列语义的 `Enqueue`。它们可作为 Phase 4 前的占位实现和测试基线，但不能直接扩展为本设计的核心模型。
+当前 `AudioChannelManager`、`IAudioService` 和 `LibVlcAudioController` 使用预置 channel、单个 `CurrentAsset`、字符串 `mode/times` 与不具备真实队列语义的 `Enqueue`；`BuiltinAudioModule` 则只提供空的 schema 原语。它们可作为 Phase 4 前的占位实现和测试基线，但不能直接扩展为本设计的核心模型。
 
-迁移时应以新设计取代旧 channel 约定，而非将 `bgm2`、`sfx1` 等命名作为兼容层永久固化。旧项目内容可映射为：`bgm → bgm`、`voice → vocal`、`sfx`/`sfxN → sfx`；无法确定的 channel 记录迁移诊断并要求作者选择目标轨道。
+本设计以新模型取代旧 channel 约定，而非将 `bgm2`、`sfx1` 等命名作为兼容层永久固化。旧项目内容和已编译内容不做迁移：遇到旧 schema/format 应明确拒绝并要求按新 schema 重编译。

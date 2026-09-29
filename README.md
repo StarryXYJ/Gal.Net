@@ -27,7 +27,7 @@ scripts/           可直接运行的样例脚本
 GameTestCase/      示例工程与 smoke test 内容
 ```
 
-程序集边界、依赖方向和测试职责见[架构文档](docs/spec/architecture.md)。
+从[引擎使用手册](docs/engine.md)了解内容与运行期；基于本项目制作客户端或添加玩法能力时，请从[二次开发手册](docs/development.md)开始。程序集边界、依赖方向和测试职责见[架构文档](docs/spec/architecture.md)。
 
 ## 构建与测试
 

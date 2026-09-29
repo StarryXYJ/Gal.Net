@@ -41,7 +41,7 @@
 
 ## P2：历史服务分析文档仍提及旧执行模型
 
-`docs/design/services-analysis.md` 仍描述 `EntryHandler` 和 `GameEngine.StepAsync`。它不作为本 feature 的实现依据，但在 Phase 4 收尾时应更新或标记为历史，避免读者重新引入已移除的术语。
+当时的旧服务分析仍描述 `EntryHandler` 和 `GameEngine.StepAsync`。它不作为本 feature 的实现依据；该历史文档后来已删除，以免读者重新引入已移除的术语。
 
 ## 不构成问题的项
 

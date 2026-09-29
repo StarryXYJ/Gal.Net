@@ -98,7 +98,7 @@
 1. 迁移 layer、animation、effect、particle、flow、variable、gallery 及现有媒体模块；animation plan 整体作为一个 instance，不迁移通用嵌套 Entry 分发。
 2. 长期行为使用可序列化 Handle，启动实例及时完成。
 3. 删除 Avalonia 页面旧活动动画批次决策和 Runtime Handler 残留。
-4. 同步 `primitive-module-runtime-design.md`、长期 phase plan、runtime 和 entry spec。
+4. 同步运行时和 entry 的正式规范，并更新当时的长期计划。
 
 **测试：** 解决方案构建、全量单元测试、Editor/Headless 组合根测试及关键运行路径冒烟。
 
@@ -110,7 +110,7 @@
 
 **计划变更（2026-09-24，设计已确认）：** 已实现的 `gallery.unlock` 仍临时通过 `IGameProgressService` 写入玩家级进度；Gallery 的最终方向已确认为内置、平台无关的数据层，而不是通用功能模块。Gallery 类型只登记 `(typeId, resourceTypeName)`，item 使用稳定字符串 ID 并生成 Player bool，Avalonia 自主消费类型、资源和解锁状态。完整 Gallery 产品切片移到 Phase 5-8；Phase 4 只负责确认现有 primitive 已进入新 instance 执行路径。Audio、video 与 particle 的剧情 primitive 产品行为仍等待各自范围确认。
 
-**验证证据（2026-09-22）：** `GeneralTest` 全量 219 项通过；新增测试覆盖 animation/effect runtime state、presenter 调用、plan final state 和 `flow.wait` skip。受限环境中构建/测试需设置 `AVALONIA_TELEMETRY_OPTOUT=1` 并传入 `-p:UseSharedCompilation=false`。文档已重写 `docs/spec/runtime.md`、`docs/spec/entry-types.md`、`docs/spec/architecture.md`、`docs/glossary.md`、`docs/design/primitive-module-runtime-design.md` 和长期 phase plan。
+**验证证据（2026-09-22）：** `GeneralTest` 全量 219 项通过；新增测试覆盖 animation/effect runtime state、presenter 调用、plan final state 和 `flow.wait` skip。受限环境中构建/测试需设置 `AVALONIA_TELEMETRY_OPTOUT=1` 并传入 `-p:UseSharedCompilation=false`。当时已更新运行时、条目、架构和术语规范，以及阶段计划；阶段计划后来收敛并删除，当前事实见正式规范。
 
 ## Phase 5：Gallery 数据契约与内容加载
 

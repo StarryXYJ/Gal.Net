@@ -62,7 +62,7 @@ updated: 2026-09-29
 - [实施计划](phase-plan.md)
 - [文件格式规范](../../docs/spec/file-formats.md)
 - [Runtime 规范](../../docs/spec/runtime.md)
-- [运行时与呈现计划](../../docs/design/runtime-presentation-decoupling-phase-plan.md)
+- [运行时参考](../../docs/spec/runtime.md)
 - [渲染/粒子计划](../../docs/design/render-effects-pipeline-plan.md)
 - [GalgroupCompiler](../../src/GalNet.Core/Compilation/GalgroupCompiler.cs)
 - [Headless CLI](../../src/GalNet.Editor.Headless/Program.cs)
