@@ -8,11 +8,13 @@ updated: 2026-09-29
 
 ## Phase 1 - API 行为保护与强类型 bridge
 
-**状态：planned**
+**状态：verified**
 
 **任务：** 为 registry 与现有 contribution bridge 补测试；在 Editor.Abstraction 新增无参数、带参数和 inspector 泛型基类；验证错误类型与 null 参数诊断。
 
 **验证：** Editor.Tests、Architecture.Tests、Editor.Abstraction build。
+
+**证据：** `GalNet.Editor.Tests` 27/27、`GalNet.Architecture.Tests` 14/14 通过；`GalNet.Editor.Abstraction` Release 构建成功。Editor 测试因 Avalonia BuildServices 需要写入用户目录而在沙箱外执行；`--no-restore` 构建仅报告离线 NuGet 漏洞源 `NU1900`，没有新增编译或分析器警告。
 
 **退出条件：** 旧接口不变，泛型 bridge 有正常和失败测试，创建独立 Git 提交。
 

@@ -66,6 +66,95 @@ public abstract class DockPanelContributionBase : IDockPanelContribution
     public abstract object CreateView(IServiceProvider services, object viewModel);
 }
 
+/// <summary>Strongly typed contribution base for panels that do not accept an instance parameter.</summary>
+public abstract class DockPanelContributionBase<TViewModel> : DockPanelContributionBase
+    where TViewModel : class
+{
+    public sealed override object CreateViewModel(IServiceProvider services, object? parameter = null)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        if (parameter is not null)
+            throw ContributionTypeGuard.UnexpectedParameter(GetType(), parameter);
+        return CreateViewModel(services);
+    }
+
+    public sealed override object CreateView(IServiceProvider services, object viewModel)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        return CreateView(services, ContributionTypeGuard.Require<TViewModel>(GetType(), viewModel, nameof(viewModel)));
+    }
+
+    protected abstract TViewModel CreateViewModel(IServiceProvider services);
+    protected abstract object CreateView(IServiceProvider services, TViewModel viewModel);
+}
+
+/// <summary>Strongly typed contribution base for panels that require an instance parameter.</summary>
+public abstract class DockPanelContributionBase<TViewModel, TParameter> : DockPanelContributionBase
+    where TViewModel : class
+    where TParameter : class
+{
+    public sealed override object CreateViewModel(IServiceProvider services, object? parameter = null)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        return CreateViewModel(
+            services,
+            ContributionTypeGuard.Require<TParameter>(GetType(), parameter, nameof(parameter)));
+    }
+
+    public sealed override object CreateView(IServiceProvider services, object viewModel)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        return CreateView(services, ContributionTypeGuard.Require<TViewModel>(GetType(), viewModel, nameof(viewModel)));
+    }
+
+    protected abstract TViewModel CreateViewModel(IServiceProvider services, TParameter parameter);
+    protected abstract object CreateView(IServiceProvider services, TViewModel viewModel);
+}
+
+/// <summary>Strongly typed bridge between one dock ViewModel and its inspector.</summary>
+public abstract class InspectorControlContributionBase<TDockViewModel, TInspectorViewModel> : IInspectorControlContribution
+    where TDockViewModel : class
+    where TInspectorViewModel : class, IInspectorControlViewModel
+{
+    public IInspectorControlViewModel CreateViewModel(IServiceProvider services, object dockViewModel)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        return CreateViewModel(
+            services,
+            ContributionTypeGuard.Require<TDockViewModel>(GetType(), dockViewModel, nameof(dockViewModel)));
+    }
+
+    public object CreateView(IServiceProvider services, IInspectorControlViewModel viewModel)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        return CreateView(
+            services,
+            ContributionTypeGuard.Require<TInspectorViewModel>(GetType(), viewModel, nameof(viewModel)));
+    }
+
+    protected abstract TInspectorViewModel CreateViewModel(IServiceProvider services, TDockViewModel dockViewModel);
+    protected abstract object CreateView(IServiceProvider services, TInspectorViewModel viewModel);
+}
+
+internal static class ContributionTypeGuard
+{
+    public static T Require<T>(Type contributionType, object? value, string parameterName) where T : class
+    {
+        if (value is T typed)
+            return typed;
+
+        var actual = value?.GetType().FullName ?? "null";
+        throw new ArgumentException(
+            $"Contribution '{contributionType.FullName}' requires {parameterName} of type '{typeof(T).FullName}', but received '{actual}'.",
+            parameterName);
+    }
+
+    public static ArgumentException UnexpectedParameter(Type contributionType, object parameter) =>
+        new(
+            $"Contribution '{contributionType.FullName}' does not accept a parameter, but received '{parameter.GetType().FullName}'.",
+            nameof(parameter));
+}
+
 public interface IEditorExtensionRegistry
 {
     IEnumerable<IDockPanelContribution> DockPanelContributions { get; }
