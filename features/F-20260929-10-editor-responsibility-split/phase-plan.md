@@ -36,7 +36,7 @@ updated: 2026-09-29
 
 ## Phase 3 - Workspace 选择与持久化协作者
 
-**状态：in-progress**
+**状态：verified**
 
 **目标：** 从 ViewModel 移出可独立验证的选择集合管理和项目图读写。
 
@@ -46,9 +46,11 @@ updated: 2026-09-29
 
 **退出条件：** ViewModel 不再直接维护选择一致性或调用 repository/save coordinator 细节，创建独立 Git 提交。
 
+**验证（2026-09-29）：** `GraphSelectionState` 与 `EditorWorkspacePersistence` 已按 scoped lifetime 注册，并有不经 Workspace 的直接测试。Workspace 不再直接引用 repository、mapper 或 save coordinator。Editor 23/23 通过，Editor Headless 与完整 solution Release 构建 0 错误。
+
 ## Phase 4 - 文档与收尾
 
-**状态：planned**
+**状态：in-progress**
 
 **目标：** 同步稳定架构事实、路线图状态和实现总结。
 

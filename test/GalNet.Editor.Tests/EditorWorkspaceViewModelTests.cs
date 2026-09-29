@@ -104,6 +104,65 @@ public sealed class EditorWorkspaceViewModelTests
         });
     }
 
+    [Test]
+    public void GraphSelectionState_ManagesSelectionWithoutAWorkspace()
+    {
+        var selection = new GraphSelectionState();
+        var first = new GraphNode(new GalNet.Core.Graph.Group { Name = "First" }, GraphNodeKind.LinearGroup);
+        var second = new GraphNode(new GalNet.Core.Graph.Group { Name = "Second" }, GraphNodeKind.LinearGroup);
+
+        selection.SelectNodes([first, second]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(selection.SelectedNodes, Is.EqualTo(new[] { first, second }));
+            Assert.That(selection.SelectedNode, Is.Null);
+            Assert.That(selection.HasMultipleNodes, Is.True);
+            Assert.That(first.IsSelected, Is.True);
+            Assert.That(second.IsSelected, Is.True);
+        });
+
+        selection.Clear();
+        Assert.That(selection.SelectedNodes, Is.Empty);
+        Assert.That(first.IsSelected, Is.False);
+        Assert.That(second.IsSelected, Is.False);
+    }
+
+    [Test]
+    public async Task EditorWorkspacePersistence_LoadsAndSavesWithoutAWorkspace()
+    {
+        var projects = new FakeProjectService();
+        projects.SetCurrent(new GalProject(
+            "test",
+            "Test Project",
+            "C:\\test-project",
+            new ProjectSettings(),
+            new EditorProjectState(),
+            new FakeScope()));
+        var documents = new EditorDocumentService();
+        var saveCoordinator = new CapturingSaveCoordinator();
+        var persistence = new EditorWorkspacePersistence(
+            projects,
+            new FakeDocumentRepository(WorkspaceFixture.CreateLoadedDocument()),
+            documents,
+            saveCoordinator,
+            new GraphDocumentMapper());
+
+        var graph = persistence.LoadCurrentProject();
+        var saved = await persistence.SaveCurrentProjectAsync(graph!.Nodes, graph.Edges);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(graph.Nodes, Has.Count.EqualTo(2));
+            Assert.That(documents.CurrentDocument.Name, Is.EqualTo("Test Project"));
+            Assert.That(saved, Is.True);
+            Assert.That(saveCoordinator.SavedDocument, Is.Not.Null);
+            Assert.That(projects.SaveCount, Is.EqualTo(1));
+        });
+
+        projects.Current!.Dispose();
+    }
+
     private sealed class WorkspaceFixture : IDisposable
     {
         public FakeProjectService ProjectService { get; } = new();
@@ -134,20 +193,27 @@ public sealed class EditorWorkspaceViewModelTests
                 localization);
             var catalog = BuiltinEntryModules.CreateRecommendedTargetProfile();
             var variableDefinitions = new VariableDefinitionService(DocumentService);
+            var repository = new FakeDocumentRepository(loaded);
+            var mapper = new GraphDocumentMapper();
+            var persistence = new EditorWorkspacePersistence(
+                ProjectService,
+                repository,
+                DocumentService,
+                SaveCoordinator,
+                mapper);
 
             Workspace = new EditorWorkspaceViewModel(
                 ProjectService,
-                new FakeDocumentRepository(loaded),
                 new EditorHistories(),
                 dockFactory,
                 DocumentService,
-                SaveCoordinator,
                 variableDefinitions,
                 new GraphEditingService(catalog),
                 new FakeEditorSettingsService(),
                 localization,
                 SaveScheduler,
-                new GraphDocumentMapper());
+                new GraphSelectionState(),
+                persistence);
         }
 
         public void Dispose()
@@ -156,7 +222,7 @@ public sealed class EditorWorkspaceViewModelTests
             ProjectService.Current?.Dispose();
         }
 
-        private static LoadedEditorProjectDocument CreateLoadedDocument() => new()
+        public static LoadedEditorProjectDocument CreateLoadedDocument() => new()
         {
             Document = new EditorGraphDocument
             {

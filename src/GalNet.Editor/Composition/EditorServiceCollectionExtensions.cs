@@ -54,6 +54,8 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<IGameExitService, EditorGameExitService>();
         services.AddSingleton<IEditorPlayerVariableStore, EditorPlayerVariableStore>();
         services.AddSingleton<IGraphEditingService, GraphEditingService>();
+        services.AddScoped<GraphSelectionState>();
+        services.AddScoped<EditorWorkspacePersistence>();
         services.AddSingleton<IProjectFileCommandCatalog, AssetFileCommandCatalog>();
         services.AddSingleton<IProjectFileCommandExecutor, AssetFileCommandExecutor>();
         services.AddScoped<EditorHistories>();

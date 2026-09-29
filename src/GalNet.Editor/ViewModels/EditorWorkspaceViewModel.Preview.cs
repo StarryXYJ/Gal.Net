@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using GalNet.Core.Variable;
-using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 
 namespace GalNet.Editor.ViewModels;
@@ -11,8 +10,6 @@ namespace GalNet.Editor.ViewModels;
 public partial class EditorWorkspaceViewModel
 {
     private readonly IEditorDocumentService _documentService;
-    private readonly IEditorSaveCoordinator _saveCoordinator;
-
     public IReadOnlyList<ProjectVariableDefinition> AllProjectVariableDefinitions =>
         [.. _documentService.CurrentDocument.PlayerVariables, .. _documentService.CurrentDocument.SaveVariables];
 
@@ -30,13 +27,6 @@ public partial class EditorWorkspaceViewModel
             throw new InvalidOperationException("No project is currently open.");
 
         var previewPath = Path.Combine(project.TempPath, "preview");
-        var document = _graphDocumentMapper.CreateDocument(
-            project.Name,
-            _documentService.CurrentDocument.Version,
-            Nodes,
-            Edges,
-            _documentService.CurrentDocument.PlayerVariables,
-            _documentService.CurrentDocument.SaveVariables);
-        return _saveCoordinator.BuildPreviewData(previewPath, document, _graphDocumentMapper.CreateGroupEntriesSnapshot(Nodes));
+        return _persistence.BuildPreviewData(previewPath, Nodes, Edges);
     }
 }

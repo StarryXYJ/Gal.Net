@@ -27,11 +27,11 @@ namespace GalNet.Editor.ViewModels;
 public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, IUndoRedoTarget
 {
     private readonly IProjectService _projectService;
-    private readonly IEditorDocumentRepository _documentRepository;
     private readonly EditorHistories _histories;
     private readonly EditorDockFactory _dockFactory;
     private readonly IGraphEditingService _graphEditingService;
-    private readonly GraphDocumentMapper _graphDocumentMapper;
+    private readonly GraphSelectionState _selection;
+    private readonly EditorWorkspacePersistence _persistence;
     private readonly IEditorSettingsService _editorSettings;
     private readonly IEditorLocalizationService _localization;
     private readonly IVariableDefinitionService _variableDefinitionService;
@@ -65,38 +65,36 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
 
     public ObservableCollection<GraphNode> Nodes { get; } = [];
     public ObservableCollection<GraphEdge> Edges { get; } = [];
-    public ObservableCollection<GraphNode> SelectedNodes { get; } = [];
+    public ObservableCollection<GraphNode> SelectedNodes => _selection.SelectedNodes;
     public GraphViewportState GraphViewport => _projectService.Current?.EditorState.GraphViewport ?? _fallbackViewport;
-    public bool HasMultipleNodeSelection => SelectedNodes.Count > 1;
+    public bool HasMultipleNodeSelection => _selection.HasMultipleNodes;
 
     private readonly GraphViewportState _fallbackViewport = new();
     private bool _isLoadingGraph;
 
     public EditorWorkspaceViewModel(
         IProjectService projectService,
-        IEditorDocumentRepository documentRepository,
         EditorHistories histories,
         EditorDockFactory dockFactory,
         IEditorDocumentService documentService,
-        IEditorSaveCoordinator saveCoordinator,
         IVariableDefinitionService variableDefinitionService,
         IGraphEditingService graphEditingService,
         IEditorSettingsService editorSettings,
         IEditorLocalizationService localization,
         IProjectSaveScheduler saveScheduler,
-        GraphDocumentMapper graphDocumentMapper)
+        GraphSelectionState selection,
+        EditorWorkspacePersistence persistence)
     {
         _projectService = projectService;
-        _documentRepository = documentRepository;
         _histories = histories;
         _dockFactory = dockFactory;
         _documentService = documentService;
-        _saveCoordinator = saveCoordinator;
         _graphEditingService = graphEditingService;
         _editorSettings = editorSettings;
         _localization = localization;
         _saveScheduler = saveScheduler;
-        _graphDocumentMapper = graphDocumentMapper;
+        _selection = selection;
+        _persistence = persistence;
         _variableDefinitionService = variableDefinitionService;
         _projectChangedHandler = _ => LoadCurrentProjectGraph();
         _definitionsChangedHandler = _ =>
@@ -131,56 +129,32 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
 
     public void SelectNode(GraphNode? node, bool additive = false)
     {
-        if (!additive)
-            ClearSelection();
-
-        if (node is not null && !SelectedNodes.Contains(node))
-            SelectedNodes.Add(node);
-
-        foreach (var selected in SelectedNodes)
-            selected.IsSelected = true;
-
-        SelectedNode = SelectedNodes.Count == 1 ? SelectedNodes[0] : null;
-        OnPropertyChanged(nameof(HasMultipleNodeSelection));
+        _selection.SelectNode(node, additive);
+        SyncSelectionProperties();
     }
 
     public void SelectNodes(IEnumerable<GraphNode> nodes)
     {
-        ClearSelection();
-
-        foreach (var node in nodes)
-        {
-            if (SelectedNodes.Contains(node))
-                continue;
-
-            SelectedNodes.Add(node);
-            node.IsSelected = true;
-        }
-
-        SelectedNode = SelectedNodes.Count == 1 ? SelectedNodes[0] : null;
-        OnPropertyChanged(nameof(HasMultipleNodeSelection));
+        _selection.SelectNodes(nodes);
+        SyncSelectionProperties();
     }
 
     public void SelectEdge(GraphEdge? edge)
     {
-        ClearSelection();
-        SelectedEdge = edge;
-        if (SelectedEdge is not null)
-            SelectedEdge.IsSelected = true;
+        _selection.SelectEdge(edge);
+        SyncSelectionProperties();
     }
 
     public void ClearSelection()
     {
-        foreach (var node in SelectedNodes)
-            node.IsSelected = false;
+        _selection.Clear();
+        SyncSelectionProperties();
+    }
 
-        SelectedNodes.Clear();
-
-        if (SelectedEdge is not null)
-            SelectedEdge.IsSelected = false;
-
-        SelectedNode = null;
-        SelectedEdge = null;
+    private void SyncSelectionProperties()
+    {
+        SelectedNode = _selection.SelectedNode;
+        SelectedEdge = _selection.SelectedEdge;
         OnPropertyChanged(nameof(HasMultipleNodeSelection));
     }
 
@@ -427,13 +401,12 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
     {
         if (_projectService.Current is not { } project)
             return;
+
         _isSaving = true;
         try
         {
-            var document = _graphDocumentMapper.CreateDocument(project.Name, _documentService.CurrentDocument.Version, Nodes, Edges,
-                _documentService.CurrentDocument.PlayerVariables, _documentService.CurrentDocument.SaveVariables);
-            _saveCoordinator.SaveProjectDocument(project.RootPath, document, _graphDocumentMapper.CreateGroupEntriesSnapshot(Nodes));
-            await _projectService.SaveAsync();
+            if (!await _persistence.SaveCurrentProjectAsync(Nodes, Edges))
+                return;
             _documentService.MarkSaved();
             _histories.MarkSaved();
             project.IsDirty = false;
@@ -490,29 +463,18 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         Nodes.Clear();
         Edges.Clear();
 
-        if (_projectService.Current is not { } project)
-        {
-            _documentService.Unload();
-            BuildSampleGraph();
-            return;
-        }
-
         try
         {
             _isLoadingGraph = true;
-            var loaded = _documentRepository.Load(project.RootPath, project.Name, project.Settings);
-            var document = loaded.Document;
-            if (document is null || document.Nodes.Count == 0)
+            var graph = _persistence.LoadCurrentProject();
+            if (graph is null)
             {
-                _documentService.Unload();
                 BuildSampleGraph();
                 return;
             }
 
-            _documentService.Load(loaded);
             _savedPositions.Clear();
             _propertyValues.Clear();
-            var graph = _graphDocumentMapper.Load(loaded);
             foreach (var node in graph.Nodes)
             {
                 node.IsRoot = node.NodeKind == GraphNodeKind.Entry;
