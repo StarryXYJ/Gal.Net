@@ -7,8 +7,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Core.I18n;
 using GalNet.Editor.Abstraction.Services;
-using GalNet.Editor.Services;
 using GalNet.Editor.Commands;
+using GalNet.Editor.Services;
 using Serilog;
 
 namespace GalNet.Editor.ViewModels;
@@ -60,7 +60,7 @@ public partial class EditorSettingsPanelViewModel : ObservableObject
             if (e.PropertyName == "Item[]")
                 ReloadDisplayNames();
         };
-        
+
 
         LoadFromSettings();
         ReloadShortcuts();

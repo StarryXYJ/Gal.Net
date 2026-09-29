@@ -5,8 +5,8 @@ using Avalonia.Controls.Presenters;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
-using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.Navigation;
+using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
 using Serilog;
 

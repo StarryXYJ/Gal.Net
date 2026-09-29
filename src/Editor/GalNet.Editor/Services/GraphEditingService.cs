@@ -1,9 +1,9 @@
 using System;
-using System.Collections.ObjectModel;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
-using GalNet.Core.Graph;
 using GalNet.Core.Entry;
+using GalNet.Core.Graph;
 using GalNet.Editor.ViewModels;
 
 namespace GalNet.Editor.Services;

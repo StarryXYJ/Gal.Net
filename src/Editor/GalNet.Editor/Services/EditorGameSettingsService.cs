@@ -1,5 +1,5 @@
-using GalNet.Editor.Abstraction.Services;
 using GalNet.Core.Settings;
+using GalNet.Editor.Abstraction.Services;
 
 namespace GalNet.Editor.Services;
 
@@ -14,8 +14,11 @@ public sealed class SettingsService : ISettingsService
     public bool Fullscreen { get => _settings.Fullscreen; set { _settings.Fullscreen = value; Changed?.Invoke(); } }
     public GameSettings GetSnapshot() => new()
     {
-        BgmVolume = BgmVolume, SfxVolume = SfxVolume, VoiceVolume = VoiceVolume,
-        TextSpeed = TextSpeed, Fullscreen = Fullscreen
+        BgmVolume = BgmVolume,
+        SfxVolume = SfxVolume,
+        VoiceVolume = VoiceVolume,
+        TextSpeed = TextSpeed,
+        Fullscreen = Fullscreen
     };
     public void ApplySnapshot(GameSettings settings)
     {

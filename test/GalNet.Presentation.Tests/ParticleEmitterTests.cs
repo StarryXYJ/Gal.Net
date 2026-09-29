@@ -379,12 +379,12 @@ public class ParticleEmitterSimulationTests
     {
         var left = bitmap.Width; var top = bitmap.Height; var right = -1; var bottom = -1;
         for (var y = 0; y < bitmap.Height; y++)
-        for (var x = 0; x < bitmap.Width; x++)
-        {
-            var color = bitmap.GetPixel(x, y);
-            if (color.Red == 0 && color.Green == 0 && color.Blue == 0) continue;
-            left = Math.Min(left, x); top = Math.Min(top, y); right = Math.Max(right, x); bottom = Math.Max(bottom, y);
-        }
+            for (var x = 0; x < bitmap.Width; x++)
+            {
+                var color = bitmap.GetPixel(x, y);
+                if (color.Red == 0 && color.Green == 0 && color.Blue == 0) continue;
+                left = Math.Min(left, x); top = Math.Min(top, y); right = Math.Max(right, x); bottom = Math.Max(bottom, y);
+            }
         Assert.That(right, Is.GreaterThanOrEqualTo(left));
         return (left, top, right, bottom, right - left + 1, (left + right) / 2f, (top + bottom) / 2f);
     }

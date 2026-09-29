@@ -60,8 +60,8 @@ public static class GalgroupCompiler
 
         return new CompiledGroupResult(compiled, sourceMap);
     }
-    
-    
+
+
     private static Entry.Entry CreateEntry(GroupEntryDocument source, int index, IEntryCatalog catalog)
     {
         if (string.IsNullOrWhiteSpace(source.Type)) throw new InvalidDataException("Source entry type is required.");

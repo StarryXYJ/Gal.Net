@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using GalNet.Editor.Inspector.ViewModels;
 
 namespace GalNet.Editor.Inspector.Views;
+
 public partial class InspectorHostView : UserControl
 {
     public InspectorHostView()

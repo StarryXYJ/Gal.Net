@@ -1,18 +1,18 @@
-using System.Collections.ObjectModel;
-using System.Collections.Generic;
-using System.Linq;
 using System;
-using System.Threading.Tasks;
-using System.Threading;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GalNet.Editor.Abstraction.Commands;
+using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Models;
 using GalNet.Editor.Services.Interfaces;
-using GalNet.Editor.Abstraction.Services;
-using GalNet.Editor.Abstraction.Commands;
-using System.Diagnostics;
-using Avalonia.Media.Imaging;
 
 namespace GalNet.Editor.ViewModels;
 
@@ -53,7 +53,8 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         try { ErrorText = ""; await _catalog.RefreshAsync(); LoadEntries(); }
         catch (Exception ex) { ErrorText = ex.Message; }
     }
-    [RelayCommand] private void Open(AssetEntry? entry)
+    [RelayCommand]
+    private void Open(AssetEntry? entry)
     {
         if (entry is null) return;
         if (!entry.IsDirectory)
@@ -64,12 +65,14 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         }
         CurrentDirectory = entry.RelativePath; SelectedEntry = null; LoadEntries();
     }
-    [RelayCommand] private void Back()
+    [RelayCommand]
+    private void Back()
     {
         if (!CanGoBack) return;
         var slash = CurrentDirectory.LastIndexOf('/'); CurrentDirectory = slash < 0 ? "" : CurrentDirectory[..slash]; SelectedEntry = null; LoadEntries();
     }
-    [RelayCommand] private void NavigatePath(string? input)
+    [RelayCommand]
+    private void NavigatePath(string? input)
     {
         var original = CurrentDirectory;
         var path = (input ?? "").Trim().Replace('\\', '/').Trim('/');
@@ -79,7 +82,8 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         if (!_catalog.DirectoryExists(path)) { PathText = string.IsNullOrEmpty(original) ? "Assets" : "Assets/" + original; ErrorText = "Folder does not exist"; return; }
         ErrorText = ""; CurrentDirectory = path; SelectedEntry = null; LoadEntries();
     }
-    [RelayCommand] private async Task ImportAsync()
+    [RelayCommand]
+    private async Task ImportAsync()
     {
         var files = await _fileDialogs.OpenFilePickerAsync("Import Assets");
         if (files.Count == 0) return;
@@ -93,17 +97,20 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         try { ErrorText = ""; await ExecuteFileCommandAsync(new ImportAssetsCommand(paths.ToList(), CurrentDirectory)); }
         catch (Exception ex) { ErrorText = ex.Message; }
     }
-    [RelayCommand] private void CopySelected()
+    [RelayCommand]
+    private void CopySelected()
     {
         _clipboardEntry = SelectedEntry;
         _isCut = false;
     }
-    [RelayCommand] private void CutSelected()
+    [RelayCommand]
+    private void CutSelected()
     {
         _clipboardEntry = SelectedEntry;
         _isCut = true;
     }
-    [RelayCommand] private async Task PasteAsync()
+    [RelayCommand]
+    private async Task PasteAsync()
     {
         if (_clipboardEntry is null) return;
         try
@@ -114,12 +121,14 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex) { ErrorText = ex.Message; }
     }
-    [RelayCommand] private async Task NewFolderAsync()
+    [RelayCommand]
+    private async Task NewFolderAsync()
     {
         try { await ExecuteFileCommandAsync(new CreateAssetDirectoryCommand(CurrentDirectory, "New Folder")); }
         catch (Exception ex) { ErrorText = ex.Message; }
     }
-    [RelayCommand] private void BeginRename(AssetEntry? entry)
+    [RelayCommand]
+    private void BeginRename(AssetEntry? entry)
     {
         if (entry is null) return;
         CancelRename();
@@ -128,7 +137,8 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         RenameText = entry.Name;
         entry.IsRenaming = true;
     }
-    [RelayCommand] private async Task CommitRenameAsync(AssetEntry? entry)
+    [RelayCommand]
+    private async Task CommitRenameAsync(AssetEntry? entry)
     {
         entry ??= RenamingEntry;
         if (entry is null || !ReferenceEquals(entry, RenamingEntry)) return;
@@ -144,20 +154,23 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         catch (ArgumentException) { ErrorText = _localization["Asset.Error.InvalidName"]; }
         catch (Exception) { ErrorText = _localization["Asset.Error.RenameFailed"]; }
     }
-    [RelayCommand] private void CancelRename()
+    [RelayCommand]
+    private void CancelRename()
     {
         if (RenamingEntry is not null) RenamingEntry.IsRenaming = false;
         RenamingEntry = null;
         RenameText = "";
     }
-    [RelayCommand] private void ShowInExplorer(AssetEntry? entry)
+    [RelayCommand]
+    private void ShowInExplorer(AssetEntry? entry)
     {
         var path = entry?.FullPath;
         if (string.IsNullOrWhiteSpace(path)) return;
         try { Process.Start(new ProcessStartInfo("explorer.exe", entry!.IsDirectory ? $"\"{path}\"" : $"/select,\"{path}\"") { UseShellExecute = true }); }
         catch (Exception ex) { ErrorText = ex.Message; }
     }
-    [RelayCommand] private void ShowCurrentDirectoryInExplorer()
+    [RelayCommand]
+    private void ShowCurrentDirectoryInExplorer()
     {
         try
         {

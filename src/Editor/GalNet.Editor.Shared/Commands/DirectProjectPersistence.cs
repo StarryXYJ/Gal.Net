@@ -11,7 +11,8 @@ public sealed class DirectProjectPersistence(string projectPath, IEditorDocument
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
-        WriteIndented = true, PropertyNameCaseInsensitive = true,
+        WriteIndented = true,
+        PropertyNameCaseInsensitive = true,
         Converters = { new JsonStringEnumConverter() }
     };
     private readonly string _projectPath = Path.GetFullPath(projectPath);

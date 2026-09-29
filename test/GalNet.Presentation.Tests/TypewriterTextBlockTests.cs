@@ -1,6 +1,6 @@
-using GalNet.Game.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Media;
+using GalNet.Game.Controls;
 
 namespace GeneralTest.Presentation;
 

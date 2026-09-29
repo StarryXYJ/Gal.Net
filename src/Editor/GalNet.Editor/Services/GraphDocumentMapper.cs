@@ -58,7 +58,11 @@ public sealed class GraphDocumentMapper
                 node => node.Id,
                 node => (IReadOnlyList<EditorEntryData>)node.Entries.Select(entry => new EditorEntryData
                 {
-                    StableId = entry.StableId, Id = entry.Id, Type = entry.Type, Condition = entry.Condition, Parameters = new Dictionary<string, string>(entry.Parameters)
+                    StableId = entry.StableId,
+                    Id = entry.Id,
+                    Type = entry.Type,
+                    Condition = entry.Condition,
+                    Parameters = new Dictionary<string, string>(entry.Parameters)
                 }).ToList());
 
     private static EditorGraphNodeDto ToDto(GraphNode node)
@@ -132,7 +136,9 @@ public sealed class GraphDocumentMapper
             ? rootNode : nodes.FirstOrDefault();
         var entry = new GraphNode(new Group { Name = "Entry" }, GraphNodeKind.Entry)
         {
-            X = root is null ? 4420 : Math.Max(0, root.X - 280), Y = root?.Y ?? 4900, IsRoot = true
+            X = root is null ? 4420 : Math.Max(0, root.X - 280),
+            Y = root?.Y ?? 4900,
+            IsRoot = true
         };
         nodes.Insert(0, entry);
         nodeMap[entry.Id] = entry;

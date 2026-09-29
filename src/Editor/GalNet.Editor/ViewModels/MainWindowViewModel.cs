@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
-using GalNet.Editor.Models;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Models;
 
 namespace GalNet.Editor.ViewModels;
 

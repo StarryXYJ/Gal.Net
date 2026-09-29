@@ -8,13 +8,13 @@ using Dock.Model.Core;
 using Dock.Model.Mvvm;
 using Dock.Model.Mvvm.Controls;
 using Dock.Settings;
+using GalNet.Editor.Abstraction.Extensibility;
+using GalNet.Editor.Abstraction.Project;
+using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.History;
+using GalNet.Editor.Inspector.ViewModels;
 using GalNet.Editor.Services;
 using GalNet.Editor.ViewModels;
-using GalNet.Editor.Inspector.ViewModels;
-using GalNet.Editor.Abstraction.Extensibility;
-using GalNet.Editor.Abstraction.Services;
-using GalNet.Editor.Abstraction.Project;
-using GalNet.Editor.History;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -71,7 +71,9 @@ public sealed class EditorDockFactory : Factory
 
         _documentDock = new DocumentDock
         {
-            Id = "Documents", Title = "Documents", IsCollapsable = false,
+            Id = "Documents",
+            Title = "Documents",
+            IsCollapsable = false,
             ActiveDockable = nodeGraphDocument,
             VisibleDockables = CreateList<IDockable>(CreateDefaultPanels(DockPanelPlacement.MainDocument, nodeGraphDocument, previewDocument).ToArray()),
             EnableGlobalDocking = true
@@ -79,7 +81,9 @@ public sealed class EditorDockFactory : Factory
 
         var inspectorDock = new DocumentDock
         {
-            Id = "InspectorDocuments", Title = "Inspector", Proportion = 0.32,
+            Id = "InspectorDocuments",
+            Title = "Inspector",
+            Proportion = 0.32,
             ActiveDockable = inspectorDocument,
             VisibleDockables = CreateList<IDockable>([inspectorDocument]),
             EnableGlobalDocking = true
@@ -87,7 +91,10 @@ public sealed class EditorDockFactory : Factory
 
         var centerDock = new ProportionalDock
         {
-            Id = "Center", Title = "Center", Proportion = 0.68, Orientation = Orientation.Vertical,
+            Id = "Center",
+            Title = "Center",
+            Proportion = 0.68,
+            Orientation = Orientation.Vertical,
             ActiveDockable = _documentDock,
             VisibleDockables = CreateList<IDockable>(
             [
@@ -105,7 +112,9 @@ public sealed class EditorDockFactory : Factory
 
         var mainDock = new ProportionalDock
         {
-            Id = "Main", Title = "Main", Orientation = Orientation.Horizontal,
+            Id = "Main",
+            Title = "Main",
+            Orientation = Orientation.Horizontal,
             ActiveDockable = centerDock,
             VisibleDockables = CreateList<IDockable>([centerDock, new ProportionalDockSplitter(), inspectorDock])
         };

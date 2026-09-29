@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 namespace GalNet.Core.Gallery;
+
 public sealed record GalleryAnnotation
 {
     [JsonPropertyName("id")] public int Id { get; init; }

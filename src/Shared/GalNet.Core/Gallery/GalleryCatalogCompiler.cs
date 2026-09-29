@@ -1,5 +1,6 @@
 using GalNet.Core.Assets;
 namespace GalNet.Core.Gallery;
+
 public sealed class GalleryCatalogCompiler(IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes)
 {
     public GalleryCatalog Compile(IEnumerable<AssetMeta> metadata)

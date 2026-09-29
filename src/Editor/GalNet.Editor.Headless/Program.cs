@@ -1,12 +1,12 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using GalNet.Core.Assets;
+using GalNet.Core.Entry;
+using GalNet.Core.Gallery;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
-using GalNet.Core.Entry;
-using GalNet.Core.Assets;
-using GalNet.Core.Gallery;
 using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Headless;
@@ -149,7 +149,9 @@ internal static class Program
 
     private static object CommandSummary(IEditorCommandDefinition definition) => new
     {
-        id = definition.Id, definition.Description, displayNameKey = definition.DisplayNameKey.Key,
+        id = definition.Id,
+        definition.Description,
+        displayNameKey = definition.DisplayNameKey.Key,
         parameters = definition is IProjectCommandDefinition project ? project.Schema.Parameters : null
     };
 

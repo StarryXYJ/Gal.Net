@@ -7,8 +7,8 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Core.Variable;
-using GalNet.Editor.Models;
 using GalNet.Editor.Controls;
+using GalNet.Editor.Models;
 using GalNet.Editor.Shared.Services;
 
 namespace GalNet.Editor.ViewModels;

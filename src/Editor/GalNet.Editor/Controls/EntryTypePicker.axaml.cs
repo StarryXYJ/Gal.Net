@@ -1,8 +1,8 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Data;
@@ -10,9 +10,9 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using GalNet.Core.Entry;
-using GalNet.Primitives.Builtins;
 using GalNet.Editor.Commands;
 using GalNet.Editor.Models.Graph;
+using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Controls;
 

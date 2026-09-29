@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using GalNet.Core.Compilation;
+using GalNet.Core.Entry;
+using GalNet.Core.Primitives;
+using GalNet.Core.Serialization;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
-using GalNet.Core.Entry;
-using GalNet.Core.Compilation;
-using GalNet.Core.Serialization;
-using GalNet.Core.Primitives;
 
 namespace GalNet.Editor.Shared.Services;
 

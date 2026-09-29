@@ -3,6 +3,7 @@ using GalNet.Editor.Abstraction.Extensibility;
 using GalNet.Editor.ViewModels;
 
 namespace GalNet.Editor.Inspector.ViewModels;
+
 public sealed class PreviewVariablesInspectorControlViewModel : ObservableObject, IInspectorControlViewModel
 {
     public GamePreviewPanelViewModel Preview { get; }

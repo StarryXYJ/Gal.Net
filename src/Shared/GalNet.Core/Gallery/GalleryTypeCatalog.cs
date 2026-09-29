@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using GalNet.Core.Assets;
 namespace GalNet.Core.Gallery;
+
 public interface IGalleryTypeCatalog { IReadOnlyList<GalleryTypeRegistration> Types { get; } GalleryTypeRegistration Get(string typeId); bool TryGet(string typeId, out GalleryTypeRegistration registration); }
 public sealed class GalleryTypeCatalogBuilder
 {

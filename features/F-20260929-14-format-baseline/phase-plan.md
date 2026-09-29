@@ -18,9 +18,11 @@ updated: 2026-09-29
 
 ## Phase 2 - 机械格式基线
 
-**状态：planned**
+**状态：verified**
 
 执行已确认的格式命令，审查 diff 只含空白、行尾和 using 机械变化，顺序运行 10 个测试项目并构建完整 solution。
+
+**证据：** 两条格式命令共修改 129 个 `.cs` 文件，diff 只包含 whitespace、最终换行、UTF-8 编码与 import 排序/清理；随后两条 `--verify-no-changes` 命令均通过。10 个测试项目顺序执行并以 340/340 通过；完整 `GalNet.slnx` Release build 覆盖 Desktop、Browser、Android 和 iOS，结果为 157 个既有分析器、XAML 与平台告警、0 个错误。`git diff --check` 通过。
 
 **退出条件：** 格式命令二次验证无差异，测试和构建通过，创建独立 Git 提交。
 

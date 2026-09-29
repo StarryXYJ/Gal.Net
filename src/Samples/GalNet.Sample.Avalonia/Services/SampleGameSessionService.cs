@@ -7,8 +7,8 @@ using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
 using GalNet.Core.Runtime;
-using GalNet.Runtime.Logging;
 using GalNet.Primitives.Builtins;
+using GalNet.Runtime.Logging;
 
 namespace GalNet.Sample.Avalonia.Services;
 

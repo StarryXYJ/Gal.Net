@@ -54,7 +54,7 @@ public sealed class CompressionHelperTests
     }
 
     [Test]
-    public void Compress_SmallData_Skipped([Values]CompressionMode mode)
+    public void Compress_SmallData_Skipped([Values] CompressionMode mode)
     {
         if (mode == CompressionMode.None) return;
 

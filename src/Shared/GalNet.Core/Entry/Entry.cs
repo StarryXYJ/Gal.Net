@@ -1,5 +1,5 @@
-using System.Text.Json;
 using System.Collections.ObjectModel;
+using System.Text.Json;
 using GalNet.Core.Primitives;
 
 namespace GalNet.Core.Entry;

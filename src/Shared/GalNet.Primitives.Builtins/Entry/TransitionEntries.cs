@@ -82,8 +82,11 @@ public sealed class CrossFadeTransitionEntry : CompositeEntry
         var frames = TransitionEntrySupport.PositiveInt(this, "durationFrames");
         var plan = new AnimationPlanDefinition
         {
-            PlaybackHandleId = playback, FrameRate = TransitionEntrySupport.PositiveInt(this, "frameRate"), DurationFrames = frames,
-            Blocking = true, Skippable = true,
+            PlaybackHandleId = playback,
+            FrameRate = TransitionEntrySupport.PositiveInt(this, "frameRate"),
+            DurationFrames = frames,
+            Blocking = true,
+            Skippable = true,
             Tracks = [OpacityTrack(oldHandle, 1, 0, frames), OpacityTrack(newHandle, 0, 1, frames)],
             Events = [ShowLayer(newHandle, asset, TransitionEntrySupport.Json(this, "transform", "{}"), TransitionEntrySupport.Float(this, "z"), 0, TransitionEntrySupport.DisplayMode(this, "displayMode", "Fill")), HideLayer(oldHandle, frames)]
         };
@@ -92,17 +95,20 @@ public sealed class CrossFadeTransitionEntry : CompositeEntry
 
     internal static AnimationTrackDefinition OpacityTrack(string handle, float from, float to, int frames) => new()
     {
-        HandleId = handle, Property = "opacity",
+        HandleId = handle,
+        Property = "opacity",
         Keys = [new AnimationKeyframeDefinition { Frame = 0, Value = from, InterpolationToNext = AnimationInterpolation.Linear }, new AnimationKeyframeDefinition { Frame = frames, Value = to }]
     };
     internal static AnimationPlanEventDefinition ShowLayer(string handle, string asset, JsonElement transform, float z, float opacity, LayerDisplayMode displayMode) => new()
     {
-        Frame = 0, Type = "layer.show",
+        Frame = 0,
+        Type = "layer.show",
         Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal) { ["handleId"] = JsonSerializer.SerializeToElement(handle), ["assetId"] = JsonSerializer.SerializeToElement(asset), ["transform"] = transform, ["z"] = JsonSerializer.SerializeToElement(z), ["opacity"] = JsonSerializer.SerializeToElement(opacity), ["displayMode"] = JsonSerializer.SerializeToElement(displayMode.ToString()) }
     };
     internal static AnimationPlanEventDefinition HideLayer(string handle, int frame) => new()
     {
-        Frame = frame, Type = "layer.hide",
+        Frame = frame,
+        Type = "layer.hide",
         Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal) { ["handleId"] = JsonSerializer.SerializeToElement(handle) }
     };
 }
@@ -134,8 +140,11 @@ public sealed class SlideTransitionEntry : CompositeEntry
         var property = incomingX != 0 ? "transform.x" : "transform.y";
         var plan = new AnimationPlanDefinition
         {
-            PlaybackHandleId = playback, FrameRate = TransitionEntrySupport.PositiveInt(this, "frameRate"), DurationFrames = frames,
-            Blocking = true, Skippable = true,
+            PlaybackHandleId = playback,
+            FrameRate = TransitionEntrySupport.PositiveInt(this, "frameRate"),
+            DurationFrames = frames,
+            Blocking = true,
+            Skippable = true,
             Tracks = [Track(oldHandle, property, 0, -incomingX - incomingY, frames, AnimationBlendMode.Additive), Track(newHandle, property, incomingX != 0 ? initial.X : initial.Y, incomingX != 0 ? destination.X : destination.Y, frames, AnimationBlendMode.Replace)],
             Events = [CrossFadeTransitionEntry.ShowLayer(newHandle, TransitionEntrySupport.Require(this, "toAssetId"), JsonSerializer.SerializeToElement(initial, TransitionEntrySupport.PlanJsonOptions), TransitionEntrySupport.Float(this, "toZ"), 1, TransitionEntrySupport.DisplayMode(this, "toDisplayMode", "Fill")), CrossFadeTransitionEntry.HideLayer(oldHandle, frames)]
         };
@@ -144,7 +153,9 @@ public sealed class SlideTransitionEntry : CompositeEntry
 
     private static AnimationTrackDefinition Track(string handle, string property, float from, float to, int frames, AnimationBlendMode blendMode) => new()
     {
-        HandleId = handle, Property = property, BlendMode = blendMode,
+        HandleId = handle,
+        Property = property,
+        BlendMode = blendMode,
         Keys = [new AnimationKeyframeDefinition { Frame = 0, Value = from, InterpolationToNext = AnimationInterpolation.Linear }, new AnimationKeyframeDefinition { Frame = frames, Value = to }]
     };
 }
@@ -246,8 +257,11 @@ public abstract class ColorFieldTransitionEntryBase : CompositeEntry
         keys.Add(new AnimationKeyframeDefinition { Frame = duration, Value = 0 });
         var plan = new AnimationPlanDefinition
         {
-            PlaybackHandleId = TransitionEntrySupport.Require(this, "playbackHandleId"), FrameRate = TimelineFrameRate, DurationFrames = duration,
-            Blocking = true, Skippable = true,
+            PlaybackHandleId = TransitionEntrySupport.Require(this, "playbackHandleId"),
+            FrameRate = TimelineFrameRate,
+            DurationFrames = duration,
+            Blocking = true,
+            Skippable = true,
             Tracks = [new AnimationTrackDefinition { HandleId = overlay, Property = "opacity", Keys = keys }],
             Events = [ShowColor(overlay), CrossFadeTransitionEntry.HideLayer(oldHandle, swapFrame), ShowAt(newHandle, swapFrame), CrossFadeTransitionEntry.HideLayer(overlay, duration)]
         };

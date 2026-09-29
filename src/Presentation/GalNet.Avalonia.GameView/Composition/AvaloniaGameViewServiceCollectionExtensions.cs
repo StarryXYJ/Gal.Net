@@ -1,7 +1,7 @@
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Page;
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Avalonia.GameView.Services;
+using GalNet.Avalonia.GameView.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Avalonia.GameView.Composition;

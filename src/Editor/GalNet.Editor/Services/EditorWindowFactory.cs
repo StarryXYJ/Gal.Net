@@ -1,7 +1,7 @@
 using System;
+using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.ViewModels;
 using GalNet.Editor.Views;
-using GalNet.Editor.Abstraction.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Editor.Services;

@@ -1,9 +1,9 @@
 using System;
 using System.Threading.Tasks;
 using Avalonia.Input;
+using GalNet.Core.I18n;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.ViewModels;
-using GalNet.Core.I18n;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 

@@ -1,9 +1,9 @@
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
-using System.Linq;
 using Avalonia.Markup.Xaml;
 using GalNet.Avalonia.GameView.Composition;
 using GalNet.Avalonia.GameView.Navigation;

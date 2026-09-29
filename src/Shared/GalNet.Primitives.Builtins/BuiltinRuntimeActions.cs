@@ -98,7 +98,9 @@ internal static class BuiltinRuntimeActions
         emitter.RestoreAnimationValues(request.AnimationValues);
         runtime.SceneState.ActiveParticleEmitters.Add(new ActiveParticleEmitterState
         {
-            InstanceId = request.InstanceId, Definition = request.Definition, Z = request.Z,
+            InstanceId = request.InstanceId,
+            Definition = request.Definition,
+            Z = request.Z,
             AnimationValues = emitter.AnimationValues.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
         });
     }

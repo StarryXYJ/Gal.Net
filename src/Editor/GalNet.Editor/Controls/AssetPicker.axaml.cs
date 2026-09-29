@@ -9,8 +9,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
-using GalNet.Editor.Models;
 using GalNet.Core.Assets;
+using GalNet.Editor.Models;
 
 namespace GalNet.Editor.Controls;
 

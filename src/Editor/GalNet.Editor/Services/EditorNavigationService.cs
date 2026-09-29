@@ -1,5 +1,5 @@
-using Microsoft.Extensions.DependencyInjection;
 using GalNet.Presentation.Abstractions.Navigation;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Editor.Services;
 

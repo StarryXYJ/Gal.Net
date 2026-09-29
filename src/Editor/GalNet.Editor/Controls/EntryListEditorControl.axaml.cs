@@ -1,9 +1,9 @@
+using System.Linq;
 using Avalonia.Controls;
-using Avalonia.Interactivity;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
-using System.Linq;
 using GalNet.Editor.Models.Graph;
 using GalNet.Editor.ViewModels;
 

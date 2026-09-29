@@ -1,7 +1,7 @@
+using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
-using System.Windows.Input;
 
 namespace GalNet.Game.Controls;
 

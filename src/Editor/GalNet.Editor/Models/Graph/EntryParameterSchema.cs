@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
-using GalNet.Editor.Models;
 using GalNet.Core.Entry;
+using GalNet.Editor.Models;
 
 namespace GalNet.Editor.Models.Graph;
 

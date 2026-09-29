@@ -1,12 +1,12 @@
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Rendering.SceneGraph;
 using Avalonia.Skia;
 using Avalonia.Threading;
-using System.Collections.Specialized;
-using System.ComponentModel;
-using System.Diagnostics;
 using SkiaSharp;
 
 namespace GalNet.Rendering.Scene;

@@ -7,9 +7,9 @@ using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Extensibility;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Controls;
+using GalNet.Editor.History;
 using GalNet.Editor.Models.Graph;
 using GalNet.Editor.ViewModels;
-using GalNet.Editor.History;
 
 namespace GalNet.Editor.Inspector.ViewModels;
 
@@ -59,7 +59,8 @@ public sealed partial class NodeInspectorControlViewModel : ObservableObject, II
 
     [RelayCommand] private void AddChoiceOption() => Workspace.AddChoiceOptionTo(InspectedNode);
     [RelayCommand] private void RemoveChoiceOption(BranchOptionEditorItemViewModel? option) => Workspace.RemoveChoiceOptionFrom(InspectedNode, option);
-    [RelayCommand] private void ReorderChoiceOption(ReorderRequest? request)
+    [RelayCommand]
+    private void ReorderChoiceOption(ReorderRequest? request)
     {
         if (request?.Item is BranchOptionEditorItemViewModel option)
             Workspace.MoveChoiceOptionTo(InspectedNode, option, request.NewIndex);
@@ -67,7 +68,8 @@ public sealed partial class NodeInspectorControlViewModel : ObservableObject, II
 
     [RelayCommand] private void AddCondition() => Workspace.AddConditionTo(InspectedNode);
     [RelayCommand] private void RemoveCondition(BranchConditionEditorItemViewModel? condition) => Workspace.RemoveConditionFrom(InspectedNode, condition);
-    [RelayCommand] private void ReorderCondition(ReorderRequest? request)
+    [RelayCommand]
+    private void ReorderCondition(ReorderRequest? request)
     {
         if (request?.Item is BranchConditionEditorItemViewModel condition)
             Workspace.MoveConditionTo(InspectedNode, condition, request.NewIndex);

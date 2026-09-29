@@ -1,8 +1,8 @@
 using Avalonia.Threading;
 using GalNet.Avalonia.GameView.ViewModels;
-using GalNet.Rendering.Scene;
 using GalNet.Core.Scene;
 using GalNet.Presentation.Abstractions.View;
+using GalNet.Rendering.Scene;
 
 namespace GalNet.Avalonia.GameView.Presentation;
 

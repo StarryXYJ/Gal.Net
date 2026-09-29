@@ -1,9 +1,9 @@
+using System;
 using Avalonia;
 using Dock.Model.Core;
 using Dock.Settings;
 using GalNet.Editor.Services;
 using Serilog;
-using System;
 
 namespace GalNet.Editor;
 

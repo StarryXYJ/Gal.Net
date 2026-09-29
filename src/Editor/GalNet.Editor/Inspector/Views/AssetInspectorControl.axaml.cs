@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using GalNet.Editor.Inspector.ViewModels;
 namespace GalNet.Editor.Inspector.Views;
+
 public partial class AssetInspectorControl : UserControl
 {
     public AssetInspectorControl() => InitializeComponent();

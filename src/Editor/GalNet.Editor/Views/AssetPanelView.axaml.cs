@@ -1,14 +1,15 @@
+using System;
+using System.Linq;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
-using Avalonia;
-using System.Linq;
-using System;
 using GalNet.Editor.Models;
 using GalNet.Editor.ViewModels;
 
 namespace GalNet.Editor.Views;
+
 public partial class AssetPanelView : UserControl
 {
     private static readonly DataFormat<string> InternalAssetFormat = DataFormat.CreateStringApplicationFormat("galnet.asset-relative-path");

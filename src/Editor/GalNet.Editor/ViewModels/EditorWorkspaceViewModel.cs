@@ -16,10 +16,10 @@ using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Controls;
 using GalNet.Editor.Dock;
+using GalNet.Editor.History;
+using GalNet.Editor.Models;
 using GalNet.Editor.Services;
 using GalNet.Editor.Services.Interfaces;
-using GalNet.Editor.Models;
-using GalNet.Editor.History;
 using Serilog;
 
 namespace GalNet.Editor.ViewModels;

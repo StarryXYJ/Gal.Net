@@ -20,7 +20,8 @@ public class EntryModelTests
     {
         var entry = Catalog.Create(ShowLayerEntry.TypeId, 3, "flag", new Dictionary<string, string>
         {
-            ["handleId"] = "hero", ["unknown"] = "discard"
+            ["handleId"] = "hero",
+            ["unknown"] = "discard"
         });
 
         Assert.That(entry, Is.TypeOf<AuthoringPrimitiveEntry>());

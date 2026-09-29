@@ -41,7 +41,8 @@ public sealed class BuiltinDialogueModule : EntryModuleBase
         Text(presenter),
         Visibility<ShowDialogueEntry>(presenter, true),
         Visibility<HideDialogueEntry>(presenter, false)
-    ]) { }
+    ])
+    { }
 
     private static PrimitiveEntryBase Text(IDialoguePresenter? presenter) => new DefaultPrimitiveEntryBase(
         TextEntry.TypeId,
@@ -87,7 +88,8 @@ public sealed class BuiltinLayerModule : EntryModuleBase
                 presenter,
                 Arguments.String(context, "handleId"),
                 Arguments.String(context, "assetId"))))
-    ]) { }
+    ])
+    { }
 
     private static PrimitiveInstance Show(PrimitiveCreateContext context, ILayerPresenter? presenter, string? color) =>
         Immediate(context, () =>
@@ -161,7 +163,8 @@ public sealed class BuiltinAnimationModule : EntryModuleBase
                     BuiltinRuntimeActions.StopAnimationState(context.Runtime, playbackHandleId);
                 }
             }, batchId: context.BatchId))
-    ], BuiltinTransitionEntries.Definitions) { }
+    ], BuiltinTransitionEntries.Definitions)
+    { }
 }
 
 public sealed class BuiltinAudioModule : EntryModuleBase
@@ -173,7 +176,8 @@ public sealed class BuiltinAudioModule : EntryModuleBase
         BuiltinEntrySchemas.Primitive<PauseAudioEntry>(PauseAudioEntry.ParameterTypes, PauseAudioEntry.DefaultValues, PauseAudioEntry.ParameterOptions),
         BuiltinEntrySchemas.Primitive<ResumeAudioEntry>(ResumeAudioEntry.ParameterTypes, ResumeAudioEntry.DefaultValues, ResumeAudioEntry.ParameterOptions),
         BuiltinEntrySchemas.Primitive<EnqueueAudioEntry>(EnqueueAudioEntry.ParameterTypes, EnqueueAudioEntry.DefaultValues, EnqueueAudioEntry.ParameterOptions)
-    ]) { }
+    ])
+    { }
 }
 
 public sealed class BuiltinVideoModule : EntryModuleBase
@@ -182,7 +186,8 @@ public sealed class BuiltinVideoModule : EntryModuleBase
     [
         BuiltinEntrySchemas.Primitive<PlayVideoEntry>(PlayVideoEntry.ParameterTypes),
         BuiltinEntrySchemas.Primitive<StopVideoEntry>(StopVideoEntry.ParameterTypes)
-    ]) { }
+    ])
+    { }
 }
 
 public sealed class BuiltinEffectModule : EntryModuleBase
@@ -206,7 +211,8 @@ public sealed class BuiltinEffectModule : EntryModuleBase
                 Arguments.String(context, "instanceId"),
                 context.BatchId,
                 context.ScopeCancellation))
-    ]) { }
+    ])
+    { }
 }
 
 public sealed class BuiltinParticleModule : EntryModuleBase
@@ -219,7 +225,8 @@ public sealed class BuiltinParticleModule : EntryModuleBase
             factory: context => new BurstParticlePrimitiveInstance(presenter, BuiltinRuntimeActions.CreateParticleBurstRequest(context), context.BatchId, context.ScopeCancellation)),
         BuiltinEntrySchemas.Primitive<StopParticleEmitterEntry>(StopParticleEmitterEntry.ParameterTypes,
             factory: context => new StopParticlePrimitiveInstance(context.Runtime, presenter, Arguments.String(context, "instanceId"), context.BatchId, context.ScopeCancellation))
-    ]) { }
+    ])
+    { }
 }
 
 public sealed class BuiltinFlowModule : EntryModuleBase
@@ -233,7 +240,8 @@ public sealed class BuiltinFlowModule : EntryModuleBase
                 TimeSpan.FromSeconds(Arguments.Float(context, "duration", 1)),
                 context.BatchId,
                 context.ScopeCancellation))
-    ]) { }
+    ])
+    { }
 }
 
 public sealed class BuiltinVariableModule : EntryModuleBase
@@ -248,7 +256,8 @@ public sealed class BuiltinVariableModule : EntryModuleBase
                 if (!string.IsNullOrWhiteSpace(target))
                     context.Runtime.SetVariable(target, context.Runtime.EvaluateExpression(Arguments.String(context, "expression")) ?? "");
             }, batchId: context.BatchId))
-    ]) { }
+    ])
+    { }
 }
 
 public sealed class BuiltinGalleryModule : EntryModuleBase
@@ -267,7 +276,8 @@ public sealed class BuiltinGalleryModule : EntryModuleBase
                     throw new InvalidDataException($"Gallery item '{itemId}' is not declared in the generated Gallery catalog.");
                 context.Runtime.SetVariable(GalleryUnlockVariable.GetRuntimeName(item.Id), true);
             }, batchId: context.BatchId))
-    ]) { }
+    ])
+    { }
 }
 
 internal static class BuiltinEntrySchemas

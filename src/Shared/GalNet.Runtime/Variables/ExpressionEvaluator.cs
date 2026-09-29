@@ -1,5 +1,5 @@
-using NCalc;
 using GalNet.Core.Variable;
+using NCalc;
 
 namespace GalNet.Runtime.Variables;
 

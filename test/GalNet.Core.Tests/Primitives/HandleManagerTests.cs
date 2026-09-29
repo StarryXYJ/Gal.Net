@@ -1,5 +1,5 @@
-using GalNet.Core.Primitives;
 using System.Diagnostics.CodeAnalysis;
+using GalNet.Core.Primitives;
 
 namespace GeneralTest.Runtime;
 

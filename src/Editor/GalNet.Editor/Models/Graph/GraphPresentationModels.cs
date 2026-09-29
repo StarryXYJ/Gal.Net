@@ -1,17 +1,18 @@
 using System;
-using System.Collections.ObjectModel;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
-using GalNet.Core.Graph;
-using GalNet.Editor.Controls;
 using GalNet.Core.Entry;
-using GalNet.Primitives.Builtins;
+using GalNet.Core.Graph;
 using GalNet.Core.Scene;
+using GalNet.Editor.Controls;
+using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Models.Graph;
+
 public enum GraphNodeKind
 {
     Entry,

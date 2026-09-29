@@ -4,8 +4,8 @@ using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
 using GalNet.Core.Serialization;
-using GalNet.Runtime.Loader;
 using GalNet.Primitives.Builtins;
+using GalNet.Runtime.Loader;
 
 namespace GeneralTest.Runtime;
 

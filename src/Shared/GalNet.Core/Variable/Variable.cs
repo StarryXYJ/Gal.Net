@@ -50,7 +50,7 @@ public sealed class VariableJsonConverter : JsonConverter<Variable>
 
         var uid = root.TryGetProperty("Uid", out var propUid) ? (propUid.GetString() ?? Guid.NewGuid().ToString("N")) : Guid.NewGuid().ToString("N");
         var name = root.TryGetProperty("Name", out var propName) ? (propName.GetString() ?? "") : "";
-        
+
         var typeVal = VariableType.String;
         if (root.TryGetProperty("Type", out var propType))
         {

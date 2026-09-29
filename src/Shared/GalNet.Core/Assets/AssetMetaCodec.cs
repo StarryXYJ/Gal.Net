@@ -14,17 +14,17 @@ public sealed class AssetMetaCodec(IResourceTypeCatalog resourceTypes, JsonSeria
 
         using (document)
         {
-        if (document.RootElement.ValueKind is not JsonValueKind.Object) throw new InvalidDataException("Asset metadata must be a JSON object.");
-        var typeId = ReadTypeId(document.RootElement, pathHint);
-        var registration = resourceTypes.Get(typeId);
-        var meta = DeserializeOrDefault(json, registration, typeId);
-        var id = ReadRequiredString(document.RootElement, "id");
-        var path = ReadOptionalString(document.RootElement, "path") ?? pathHint;
-        if (string.IsNullOrWhiteSpace(path)) throw new InvalidDataException("Asset metadata requires a non-empty 'path' or a provider path hint.");
-        meta.TypeId = typeId;
-        meta.Id = id.Trim();
-        meta.Path = path.Trim().Replace('\\', '/');
-        return meta;
+            if (document.RootElement.ValueKind is not JsonValueKind.Object) throw new InvalidDataException("Asset metadata must be a JSON object.");
+            var typeId = ReadTypeId(document.RootElement, pathHint);
+            var registration = resourceTypes.Get(typeId);
+            var meta = DeserializeOrDefault(json, registration, typeId);
+            var id = ReadRequiredString(document.RootElement, "id");
+            var path = ReadOptionalString(document.RootElement, "path") ?? pathHint;
+            if (string.IsNullOrWhiteSpace(path)) throw new InvalidDataException("Asset metadata requires a non-empty 'path' or a provider path hint.");
+            meta.TypeId = typeId;
+            meta.Id = id.Trim();
+            meta.Path = path.Trim().Replace('\\', '/');
+            return meta;
         }
     }
     public string Serialize(AssetMeta meta)

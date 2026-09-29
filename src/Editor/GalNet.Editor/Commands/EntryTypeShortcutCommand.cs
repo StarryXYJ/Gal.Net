@@ -2,8 +2,8 @@ using System.Windows.Input;
 using Avalonia.Input;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Core.Entry;
-using GalNet.Primitives.Builtins;
 using GalNet.Core.I18n;
+using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Commands;
 

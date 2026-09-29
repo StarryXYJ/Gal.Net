@@ -1,17 +1,16 @@
 extern alias GameViewAssembly;
-
 using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using GalNet.Editor.Abstraction.Services;
 using GalNet.Core.Scene;
-using GameViewAssembly::GalNet.Avalonia.GameView.Presentation;
+using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Composition;
 using GalNet.Editor.Services;
 using GalNet.Editor.ViewModels;
 using GalNet.Editor.Views;
+using GameViewAssembly::GalNet.Avalonia.GameView.Presentation;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Editor;

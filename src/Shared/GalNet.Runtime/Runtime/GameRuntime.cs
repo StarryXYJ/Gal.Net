@@ -2,9 +2,9 @@ using GalNet.Core.Runtime;
 using GalNet.Core.Scene;
 using GalNet.Core.Services;
 using GalNet.Core.Settings;
+using GalNet.Core.Variable;
 using GalNet.Runtime.Variables;
 using GalVariable = GalNet.Core.Variable.Variable;
-using GalNet.Core.Variable;
 
 namespace GalNet.Runtime.Runtime;
 
@@ -167,7 +167,9 @@ public sealed class GameRuntime : IGameRuntime
         SceneState.ActiveParticleEmitters.Clear();
         SceneState.ActiveParticleEmitters.AddRange(snapshot.SceneState.ActiveParticleEmitters.Select(emitter => new ActiveParticleEmitterState
         {
-            InstanceId = emitter.InstanceId, Definition = emitter.Definition, Z = emitter.Z,
+            InstanceId = emitter.InstanceId,
+            Definition = emitter.Definition,
+            Z = emitter.Z,
             AnimationValues = emitter.AnimationValues.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
         }));
         SceneState.ActiveAnimations.Clear();

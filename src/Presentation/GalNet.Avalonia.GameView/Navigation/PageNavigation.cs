@@ -1,8 +1,8 @@
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Microsoft.Extensions.DependencyInjection;
-using GalNet.Presentation.Abstractions.Navigation;
 using GalNet.Avalonia.GameView.ViewModels;
+using GalNet.Presentation.Abstractions.Navigation;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
 namespace GalNet.Avalonia.GameView.Navigation;

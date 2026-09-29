@@ -1,5 +1,5 @@
-using GalNet.Avalonia.GameView.ViewModels;
 using Avalonia.Threading;
+using GalNet.Avalonia.GameView.ViewModels;
 
 namespace GalNet.Sample.Avalonia.Presentation;
 

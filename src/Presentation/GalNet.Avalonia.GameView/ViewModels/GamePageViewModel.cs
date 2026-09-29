@@ -3,9 +3,9 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
+using GalNet.Core.Scene;
 using GalNet.Game.Controls;
 using GalNet.Rendering.Scene;
-using GalNet.Core.Scene;
 
 namespace GalNet.Avalonia.GameView.ViewModels;
 

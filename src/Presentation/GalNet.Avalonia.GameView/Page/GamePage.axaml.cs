@@ -1,11 +1,11 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
-using Avalonia.Controls;
+using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Game.Controls;
 using GalNet.Rendering.Scene;
-using GalNet.Avalonia.GameView.ViewModels;
 
 namespace GalNet.Avalonia.GameView.Page;
 
