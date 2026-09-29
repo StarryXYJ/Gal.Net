@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace GalNet.Core.Scene;
 
@@ -16,8 +17,14 @@ public sealed record ParticleEmitterDefinition(
     float GravityX = 0,
     float GravityY = 0,
     IReadOnlyList<ParticleCurveKey>? SizeCurve = null,
-    IReadOnlyList<ParticleColorCurveKey>? ColorCurve = null)
+    IReadOnlyList<ParticleColorCurveKey>? ColorCurve = null,
+    int Version = 1,
+    ParticleEmissionDefinition? Emission = null,
+    ParticleShapeDefinition? Shape = null)
 {
+    [JsonIgnore]
+    public ParticleEmissionDefinition EffectiveEmission => Emission ?? new ParticleEmissionDefinition(EmissionRate);
+
     public static ParticleEmitterDefinition FromJson(string parameters)
     {
         try
@@ -27,18 +34,58 @@ public sealed record ParticleEmitterDefinition(
             static float Number(JsonElement root, string name, float fallback) => root.TryGetProperty(name, out var value) && value.TryGetSingle(out var result) ? result : fallback;
             static int Integer(JsonElement root, string name, int fallback) => root.TryGetProperty(name, out var value) && value.TryGetInt32(out var result) ? result : fallback;
             static string Text(JsonElement root, string name) => root.TryGetProperty(name, out var value) ? value.GetString() ?? "" : "";
+            var flatEmissionRate = Math.Max(0, Number(root, "emissionRate", 36));
+            var emission = EmissionModule(root, flatEmissionRate);
+            var shape = ShapeModule(root);
+            var version = Math.Max(1, Integer(root, "version", emission is not null || shape is not null ? 2 : 1));
             return new ParticleEmitterDefinition(
                 Text(root, "particleTexture"),
-                Math.Max(0, Number(root, "emissionRate", 36)),
+                emission?.RateOverTime ?? flatEmissionRate,
                 Math.Max(1, Integer(root, "maxParticles", 160)),
                 Number(root, "initialVelocityX", -14), Number(root, "initialVelocityY", 96),
                 Math.Max(0, Number(root, "noise", 18)), Math.Max(.001f, Number(root, "particleScale", 1)),
                 Math.Max(.01f, Number(root, "particleLifetime", 3)), Integer(root, "seed", 20260911),
                 Number(root, "gravityX", 0), Number(root, "gravityY", 0),
                 Curve(root, "sizeCurve", static value => new ParticleCurveKey(Number(value, "time", 0), Number(value, "value", 1))),
-                Curve(root, "colorCurve", static value => new ParticleColorCurveKey(Number(value, "time", 0), Text(value, "color"))));
+                Curve(root, "colorCurve", static value => new ParticleColorCurveKey(Number(value, "time", 0), Text(value, "color"))),
+                version, emission, shape);
         }
         catch (JsonException exception) { throw new InvalidDataException("Particle emitter parameters must be a JSON object.", exception); }
+    }
+
+    private static ParticleEmissionDefinition? EmissionModule(JsonElement root, float fallbackRate)
+    {
+        if (!root.TryGetProperty("emission", out var value) || value.ValueKind != JsonValueKind.Object) return null;
+        var rate = Math.Max(0, Number(value, "rateOverTime", fallbackRate));
+        var bursts = Curve(value, "bursts", static burst => new ParticleBurst(
+            Math.Max(0, Number(burst, "time", 0)),
+            Math.Max(0, Integer(burst, "count", 0))))?
+            .Where(burst => burst.Count > 0)
+            .OrderBy(burst => burst.Time)
+            .ToArray();
+        return new ParticleEmissionDefinition(rate, bursts);
+    }
+
+    private static ParticleShapeDefinition? ShapeModule(JsonElement root)
+    {
+        if (!root.TryGetProperty("shape", out var value) || value.ValueKind != JsonValueKind.Object) return null;
+        var type = Text(value, "type").ToLowerInvariant() switch
+        {
+            "point" => ParticleShapeKind.Point,
+            "box" => ParticleShapeKind.Box,
+            "circle" => ParticleShapeKind.Circle,
+            "line" => ParticleShapeKind.Line,
+            var invalid => throw new InvalidDataException($"Unsupported particle shape type '{invalid}'.")
+        };
+        return new ParticleShapeDefinition(
+            type,
+            Number(value, "x", 0),
+            Number(value, "y", 0),
+            Math.Max(0, Number(value, "width", 0)),
+            Math.Max(0, Number(value, "height", 0)),
+            Math.Max(0, Number(value, "radius", 0)),
+            Number(value, "endX", 0),
+            Number(value, "endY", 0));
     }
 
     private static IReadOnlyList<T>? Curve<T>(JsonElement root, string name, Func<JsonElement, T> read)
@@ -46,10 +93,29 @@ public sealed record ParticleEmitterDefinition(
         if (!root.TryGetProperty(name, out var values) || values.ValueKind != JsonValueKind.Array) return null;
         return values.EnumerateArray().Where(value => value.ValueKind == JsonValueKind.Object).Select(read).ToArray();
     }
+
+    private static float Number(JsonElement root, string name, float fallback) => root.TryGetProperty(name, out var value) && value.TryGetSingle(out var result) ? result : fallback;
+    private static int Integer(JsonElement root, string name, int fallback) => root.TryGetProperty(name, out var value) && value.TryGetInt32(out var result) ? result : fallback;
+    private static string Text(JsonElement root, string name) => root.TryGetProperty(name, out var value) ? value.GetString() ?? "" : "";
 }
 
 public sealed record ParticleCurveKey(float Time, float Value);
 public sealed record ParticleColorCurveKey(float Time, string Color);
+public sealed record ParticleBurst(float Time, int Count);
+public sealed record ParticleEmissionDefinition(float RateOverTime = 36, IReadOnlyList<ParticleBurst>? Bursts = null);
+
+public enum ParticleShapeKind { Point, Box, Circle, Line }
+
+/// <summary>Pixel-space spawn shape. X/Y is the center except for Line, where it is the start point.</summary>
+public sealed record ParticleShapeDefinition(
+    ParticleShapeKind Type = ParticleShapeKind.Point,
+    float X = 0,
+    float Y = 0,
+    float Width = 0,
+    float Height = 0,
+    float Radius = 0,
+    float EndX = 0,
+    float EndY = 0);
 
 /// <summary>Runtime-owned, animatable emitter handle. Live particles remain renderer-owned.</summary>
 public sealed class ParticleEmitterInstance : AnimatableSceneInstance
@@ -94,7 +160,7 @@ public sealed class ParticleEmitterInstance : AnimatableSceneInstance
 
     private static Dictionary<string, float> CreateValues(ParticleEmitterDefinition definition) => new(StringComparer.Ordinal)
     {
-        ["emissionRate"] = definition.EmissionRate, ["initialVelocityX"] = definition.InitialVelocityX,
+        ["emissionRate"] = definition.EffectiveEmission.RateOverTime, ["initialVelocityX"] = definition.InitialVelocityX,
         ["initialVelocityY"] = definition.InitialVelocityY, ["noise"] = definition.Noise,
         ["particleScale"] = definition.ParticleScale, ["particleLifetime"] = definition.ParticleLifetime
     };

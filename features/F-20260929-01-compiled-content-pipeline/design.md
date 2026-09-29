@@ -70,6 +70,16 @@ Both sample PowerShell scripts accept `-Project` and `-BuildOutput`. Their defau
 - Directory copying can be expensive for large assets; correctness and isolation come first. Incremental builds are explicitly deferred.
 - Raw source filenames need not equal node IDs, but the output remains node-ID-based. This preserves the production loader without conflating authoring organization with runtime addressing.
 
+## Animation snapshot clarification
+
+Persistent particle/effect replay exposes a pre-existing ambiguity in non-blocking animation saves. This feature adopts stable-state semantics instead of serializing presentation cursors:
+
+- a non-blocking `Once` animation commits its final logical value before the next stable snapshot;
+- a `Loop` or `PingPong` animation keeps its frame-zero logical state, saves its complete request or plan, and restarts from frame zero after load;
+- a blocking animation continues to use the stable snapshot from before the blocking boundary, so no in-flight cursor is saved.
+
+This is a scoped correction to the existing Runtime/presentation contract required for replayable particle property loops. Exact frame continuation remains out of scope; it would require an explicit opt-in restore policy and more state than a frame number.
+
 ## Alternatives rejected
 
 1. **Teach Runtime to accept Raw Groups**: rejected because it gives Runtime Editor/compiler responsibilities, permits composite entries at execution time, and makes target-profile errors launch-time failures.

@@ -16,6 +16,8 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
     private readonly int _maximum;
     private readonly float _gravityX;
     private readonly float _gravityY;
+    private readonly ParticleShapeDefinition? _shape;
+    private readonly ParticleBurst[] _bursts;
     private readonly IReadOnlyList<ParticleCurveKey> _sizeCurve;
     private readonly IReadOnlyList<ParticleColorCurveKey> _colorCurve;
     private SKRect[] _sprites = [];
@@ -29,6 +31,8 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
     private float _scale;
     private float _life;
     private float _emissionCarry;
+    private float _elapsed;
+    private int _nextBurstIndex;
     private bool _stopping;
     private bool _drained;
     private double _z;
@@ -37,9 +41,11 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
     {
         HandleId = handleId; _texture = texture; _maximum = definition.MaxParticles; _random = new Random(definition.Seed);
         _gravityX = definition.GravityX; _gravityY = definition.GravityY; _z = z;
+        _shape = definition.Shape;
+        _bursts = definition.EffectiveEmission.Bursts?.OrderBy(burst => burst.Time).ToArray() ?? [];
         _sizeCurve = definition.SizeCurve?.OrderBy(key => key.Time).ToArray() ?? [];
         _colorCurve = definition.ColorCurve?.OrderBy(key => key.Time).ToArray() ?? [];
-        EmissionRate = definition.EmissionRate; InitialVelocityX = definition.InitialVelocityX; InitialVelocityY = definition.InitialVelocityY;
+        EmissionRate = definition.EffectiveEmission.RateOverTime; InitialVelocityX = definition.InitialVelocityX; InitialVelocityY = definition.InitialVelocityY;
         Noise = definition.Noise; ParticleScale = definition.ParticleScale; ParticleLifetime = definition.ParticleLifetime;
     }
 
@@ -47,6 +53,7 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
     public double Z { get => _z; set => SetField(ref _z, value); }
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<ParticleEmitter>? Drained;
+    public int ActiveParticleCount => _active.Count;
     public float EmissionRate { get => _rate; set => _rate = Math.Max(0, value); }
     public float InitialVelocityX { get => _speedX; set => _speedX = value; }
     public float InitialVelocityY { get => _speedY; set => _speedY = value; }
@@ -59,11 +66,22 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
 
     public bool Update(SceneFrameContext frame)
     {
-        var delta = (float)frame.Delta.TotalSeconds;
+        var delta = Math.Max(0, (float)frame.Delta.TotalSeconds);
         if (!_stopping)
         {
+            _elapsed += delta;
+            while (_nextBurstIndex < _bursts.Length && _bursts[_nextBurstIndex].Time <= _elapsed)
+            {
+                Spawn(frame.Size, _bursts[_nextBurstIndex].Count);
+                _nextBurstIndex++;
+            }
             _emissionCarry += _rate * delta;
-            while (_emissionCarry >= 1 && _active.Count < _maximum) { _emissionCarry--; Spawn(frame.Size); }
+            var continuousCount = Math.Min((int)Math.Floor(_emissionCarry), _maximum - _active.Count);
+            if (continuousCount > 0)
+            {
+                _emissionCarry -= continuousCount;
+                Spawn(frame.Size, continuousCount);
+            }
         }
         for (var index = _active.Count - 1; index >= 0; index--)
         {
@@ -119,14 +137,47 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
         _lastRenderedParticleCount = _active.Count;
     }
 
-    private void Spawn(SKSize size)
+    private void Spawn(SKSize size, int count)
+    {
+        for (var index = 0; index < count && _active.Count < _maximum; index++) SpawnOne(size);
+    }
+
+    private void SpawnOne(SKSize size)
     {
         var particle = _pool.TryPop(out var reused) ? reused : new Particle();
-        particle.X = (float)_random.NextDouble() * Math.Max(1, size.Width); particle.Y = -12;
+        (particle.X, particle.Y) = SampleSpawnPosition(size);
         particle.Vx = _speedX + ((float)_random.NextDouble() - .5f) * _noise;
         particle.Vy = _speedY + ((float)_random.NextDouble() - .5f) * _noise;
         particle.Age = 0; particle.Life = _life * (.75f + (float)_random.NextDouble() * .5f); particle.Scale = _scale * (.75f + (float)_random.NextDouble() * .5f);
         _active.Add(particle);
+    }
+
+    private (float X, float Y) SampleSpawnPosition(SKSize size)
+    {
+        if (_shape is null) return ((float)_random.NextDouble() * Math.Max(1, size.Width), -12);
+        return _shape.Type switch
+        {
+            ParticleShapeKind.Point => (_shape.X, _shape.Y),
+            ParticleShapeKind.Box => (
+                _shape.X + ((float)_random.NextDouble() - .5f) * _shape.Width,
+                _shape.Y + ((float)_random.NextDouble() - .5f) * _shape.Height),
+            ParticleShapeKind.Circle => SampleCircle(_shape),
+            ParticleShapeKind.Line => SampleLine(_shape),
+            _ => (_shape.X, _shape.Y)
+        };
+    }
+
+    private (float X, float Y) SampleCircle(ParticleShapeDefinition shape)
+    {
+        var angle = (float)(_random.NextDouble() * Math.PI * 2);
+        var radius = MathF.Sqrt((float)_random.NextDouble()) * shape.Radius;
+        return (shape.X + MathF.Cos(angle) * radius, shape.Y + MathF.Sin(angle) * radius);
+    }
+
+    private (float X, float Y) SampleLine(ParticleShapeDefinition shape)
+    {
+        var amount = (float)_random.NextDouble();
+        return (shape.X + (shape.EndX - shape.X) * amount, shape.Y + (shape.EndY - shape.Y) * amount);
     }
 
     private void RenderFallback(SceneRenderContext context)

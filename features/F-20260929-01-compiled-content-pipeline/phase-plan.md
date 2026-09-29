@@ -38,10 +38,13 @@ updated: 2026-09-29
 
 - 更新两个 PowerShell 脚本的项目、输出与跳过构建参数。
 - 为 `particle.play` / `particle.stop` 实现 Runtime 状态、呈现调用和存档恢复语义，并加入模块级测试。
+- 固化动画稳定快照语义：一次性非阻塞动画保存末值，循环动画保存第 0 帧状态与完整定义并在读档后从头重播。
 - 将 `GameTestCase` 改为 Raw source，加入 transition、animation 与完整 particle 定义。
 - 更新 fixture README；通过编译产物运行 Headless smoke，并为 Avalonia 路径保留可手工验证说明。
 
 退出条件：脚本不再把 authoring root 直接传给 Sample，且 fixture 编译、内容加载与 Headless 执行通过。
+
+**验证进展（2026-09-29）：** `particle.play` / `particle.stop` 已通过专用 Primitive 同步 Runtime 状态与 `IParticlePresenter`；`BuiltinPresentationReplay` 现按 effect → particle emitter → looping animation 的顺序重建展示。一次性非阻塞动画保存末值，循环 `animate` / plan 保存第 0 帧状态与完整定义并从头重播，Avalonia plan 也会按 `Loop` / `PingPong` 持续采样。Runtime/Engine 定向测试 24/24 通过，Headless Sample 独立构建为 0 warning / 0 error；全量 `GeneralTest` 为 240/241，唯一失败仍是未触及的 `EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString`。本 Phase 仍等待完整交互式 Sample smoke 后再标记 verified。
 
 ## Phase 4 — 回归、文档与收尾
 
