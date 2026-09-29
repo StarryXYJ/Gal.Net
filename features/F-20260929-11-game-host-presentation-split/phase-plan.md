@@ -36,7 +36,7 @@ updated: 2026-09-29
 
 ## Phase 3 - Sample 资源与存档协作者
 
-**状态：planned**
+**状态：verified**
 
 **目标：** 从 session 移出安装资源和玩家持久化的生命周期细节。
 
@@ -45,6 +45,8 @@ updated: 2026-09-29
 **验证：** 协作者测试、Integration 与 Storage/Assets 测试、Sample smoke/build。
 
 **退出条件：** Session 不再直接拥有 asset handles、file save/variable/progress 服务或 Gallery resolver 释放细节，创建独立 Git 提交。
+
+**验证（2026-09-29）：** 新增 `SampleGameResourceScope` 统一拥有安装内容、AssetManager、预加载纹理和 effect program 资源，并在失败初始化与重复释放路径中清理资源；新增 `SampleSaveSession` 统一拥有存档、玩家变量、阅读进度、设置与 Gallery resolver。`SampleGameSessionService` 不再直接持有上述文件服务和资源 handle。新增集成测试固定清空玩家状态会同时清除槽位、变量与阅读进度并重建设置；Integration 30/30、Storage 12/12、Assets 32/32 通过，Sample Avalonia Release 构建 0 错误。
 
 ## Phase 4 - Sample runner 与持久场景恢复
 

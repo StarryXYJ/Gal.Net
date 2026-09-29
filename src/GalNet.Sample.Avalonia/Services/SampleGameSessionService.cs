@@ -6,25 +6,19 @@ using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
-using GalNet.Core.Runtime;
+using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
-using GalNet.Core.Scene;
+using GalNet.Core.Runtime;
 using GalNet.Core.Settings;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Rendering.Scene;
 using GalNet.Assets;
-using GalNet.Assets.Provider;
-using GalNet.Core.Assets;
 using GalNet.Presentation.Abstractions.Runtime;
-using GalNet.Runtime.Content;
 using GalNet.Runtime.Engine;
-using GalNet.Runtime.Gallery;
 using GalNet.Runtime.Logging;
-using GalNet.Runtime.Persistence;
 using GalNet.Runtime.Runtime;
 using GalNet.Primitives.Builtins;
 using GalNet.Sample.Avalonia.Presentation;
-using GalNet.Storage.FileSystem;
 
 namespace GalNet.Sample.Avalonia.Services;
 
@@ -37,22 +31,14 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private readonly IGalleryTypeCatalog _galleryTypes;
     private readonly ObservableCollection<GameSaveSlot> _saveSlots = [];
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySaveSlots;
-    private IGameContentProvider? _contentProvider;
-    private GameContent? _content;
-    private IAssetManager? _assets;
-    private FileSaveService? _saves;
-    private FileVariableService? _variables;
-    private FileGameProgressService? _progress;
-    private GameSettings? _settings;
+    private SampleGameResourceScope? _resources;
+    private SampleSaveSession? _saveSession;
     private GameEngine? _engine;
     private AvaloniaGamePageView? _pageView;
     private SampleLayerFactory? _layers;
     private SampleMediaViews? _media;
     private AvaloniaEffectRuntime? _effects;
-    private EffectProgramResource[] _effectPrograms = [];
-    private readonly Dictionary<string, AssetHandle<SceneTexture>> _preloadedTextures = new(StringComparer.OrdinalIgnoreCase);
     private GameLaunchOptions? _launchOptions;
-    private string? _gameDirectory;
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private readonly GameRunCoordinator _run = new();
     private bool _hasPreparedGame;
@@ -116,37 +102,41 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
 
         try
         {
-            var installation = await GameInstallation.OpenAsync(options.GameDirectory, cancellationToken);
-            _gameDirectory = installation.RootDirectory;
-            var profileDirectory = options.ProfileDirectory ?? Path.Combine(_gameDirectory, ".galnet");
-            _contentProvider = installation.CreateContentProvider(_resourceTypes, _galleryTypes);
-            _content = await _contentProvider.LoadAsync(cancellationToken);
-            _assets = new AssetManager(installation.CreateAssetProviders(_resourceTypes));
-            _assets.RegisterDecoder<SceneTexture>("sprite", new SceneTextureAssetDecoder());
-            var spriteFiles = await _assets.GetFilesAsync("sprite", cancellationToken);
-            var preloadResults = await Task.WhenAll(
-                spriteFiles.Select(file => _assets.AcquireAsync<SceneTexture>(file.Id, cancellationToken)));
-            foreach (var handle in preloadResults.OfType<AssetHandle<SceneTexture>>())
-                _preloadedTextures.Add(handle.AssetId, handle);
-            var preloadFailures = preloadResults.Count(handle => handle is null);
+            var resources = await SampleGameResourceScope.OpenAsync(
+                options.GameDirectory,
+                _resourceTypes,
+                _galleryTypes,
+                cancellationToken);
+            var profileDirectory = options.ProfileDirectory ?? Path.Combine(resources.GameDirectory, ".galnet");
+            SampleSaveSession? saveSession = null;
+            try
+            {
+                saveSession = await SampleSaveSession.CreateAsync(
+                    profileDirectory,
+                    resources.Content,
+                    resources.Assets,
+                    cancellationToken);
+            }
+            catch
+            {
+                resources.Dispose();
+                throw;
+            }
+
+            _resources = resources;
+            _saveSession = saveSession;
+            var preloadFailures = resources.SpriteFileCount - resources.PreloadedTextures.Count;
             GameLog.Logger.Information("Preloaded {SpriteCount} sprite assets ({FailureCount} deferred to fallback)",
-                spriteFiles.Count, preloadFailures);
-            var effectProgramFiles = await _assets.GetFilesAsync("effect-program", cancellationToken);
-            _effectPrograms = effectProgramFiles.Select(file => new EffectProgramResource(file.Id)).ToArray();
+                resources.SpriteFileCount, preloadFailures);
             GameLog.Logger.Information("Discovered {EffectProgramCount} effect program assets for session prewarming",
-                _effectPrograms.Length);
-            _saves = new FileSaveService(profileDirectory);
-            _variables = await FileVariableService.CreateAsync(new FilePlayerVariableStore(profileDirectory), cancellationToken);
-            _variables.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(_content.Gallery));
-            GalleryDataSource = new GalleryDataSource(_content.Gallery, _variables);
-            GalleryResources = await AssetGalleryResourceResolver.CreateAsync(_assets, _content.Gallery, cancellationToken);
+                resources.EffectPrograms.Count);
+            GalleryDataSource = saveSession.GalleryDataSource;
+            GalleryResources = saveSession.GalleryResources;
             OnPropertyChanged(nameof(GalleryDataSource));
             OnPropertyChanged(nameof(GalleryResources));
-            _progress = new FileGameProgressService(profileDirectory);
-            _settings = new GameSettings();
             await RefreshSlotsAsync(cancellationToken);
             IsReady = true;
-            StatusMessage = $"Loaded game data: {_gameDirectory}";
+            StatusMessage = $"Loaded game data: {resources.GameDirectory}";
             _gameplay.StatusMessage = "Ready";
             GameLog.Logger.Information("Session initialized. SaveSlots={SaveSlotCount}, CanContinue={CanContinue}",
                 _saveSlots.Count, CanContinue);
@@ -213,16 +203,13 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         {
             await StopCurrentRunAsync();
             await DisposeEngineAsync();
-            if (_saves is not null)
-                await _saves.ClearAsync(cancellationToken);
-            if (_variables is not null)
-                await _variables.ResetPlayerVariablesAsync(cancellationToken);
-            _progress?.Clear();
-            _settings = new GameSettings();
+            var saveSession = _saveSession;
+            if (saveSession is not null)
+                await saveSession.ClearAsync(cancellationToken);
             await RefreshSlotsAsync(cancellationToken);
             await OnUiAsync(() =>
             {
-                _gameplay.TextSpeed = _settings.TextSpeed;
+                _gameplay.TextSpeed = saveSession?.Settings.TextSpeed ?? _gameplay.TextSpeed;
                 _gameplay.IsNvlMode = false;
                 _gameplay.IsUiHidden = false;
                 _gameplay.StatusMessage = "Player state cleared.";
@@ -237,7 +224,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         try
         {
             await EnsureEngineAsync(cancellationToken);
-            await _saves!.SaveAsync(slotIndex, new SaveRequest { Snapshot = _engine!.CreateSaveData() }, cancellationToken);
+            await _saveSession!.SaveAsync(slotIndex, _engine!.CreateSaveData(), cancellationToken);
             _gameplay.StatusMessage = $"Saved to slot {slotIndex}.";
             await RefreshSlotsAsync(cancellationToken);
         }
@@ -255,7 +242,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     {
         GameLog.Logger.Information("Loading slot {SlotIndex}", slotIndex);
         GameSnapshot? snapshot;
-        snapshot = await _saves!.LoadAsync(slotIndex, cancellationToken);
+        snapshot = await _saveSession!.LoadAsync(slotIndex, cancellationToken);
         if (snapshot is null)
         {
             _gameplay.StatusMessage = $"Slot {slotIndex} is empty or invalid.";
@@ -276,12 +263,12 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _disposed = true;
             _gameplay.InteractionObserved -= OnInteractionObserved;
             DisposeEngineAsync().GetAwaiter().GetResult();
-            (GalleryResources as IDisposable)?.Dispose();
+            _saveSession?.Dispose();
+            _saveSession = null;
             GalleryResources = null;
-            foreach (var handle in _preloadedTextures.Values) handle.Dispose();
-            _preloadedTextures.Clear();
-            _assets?.Dispose();
-            _assets = null;
+            GalleryDataSource = null;
+            _resources?.Dispose();
+            _resources = null;
         }
     }
 
@@ -415,25 +402,15 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
 
     private async Task DisposeGameResourcesAsync()
     {
-        (GalleryResources as IDisposable)?.Dispose();
+        _saveSession?.Dispose();
+        _saveSession = null;
         GalleryResources = null;
         GalleryDataSource = null;
         OnPropertyChanged(nameof(GalleryResources));
         OnPropertyChanged(nameof(GalleryDataSource));
 
-        foreach (var handle in _preloadedTextures.Values)
-            handle.Dispose();
-        _preloadedTextures.Clear();
-        _assets?.Dispose();
-        _assets = null;
-        _content = null;
-        _contentProvider = null;
-        _effectPrograms = [];
-        _saves = null;
-        _variables = null;
-        _progress = null;
-        _settings = null;
-        _gameDirectory = null;
+        _resources?.Dispose();
+        _resources = null;
 
         await OnUiAsync(() =>
         {
@@ -470,14 +447,17 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private async Task EnsureEngineAsync(CancellationToken cancellationToken)
     {
         if (_engine is not null) return;
-        if (!IsReady || _content is null || _assets is null || _variables is null || _progress is null || _settings is null || _gameDirectory is null)
+        var resources = _resources;
+        var saveSession = _saveSession;
+        if (!IsReady || resources is null || saveSession is null)
             throw new InvalidOperationException("The game session is not initialized.");
 
-        _layers = new SampleLayerFactory(_preloadedTextures);
+        _layers = new SampleLayerFactory(resources.PreloadedTextures);
         _pageView = new AvaloniaGamePageView(_gameplay, _page, _layers);
         _media = new SampleMediaViews(_gameplay);
-        var programs = new SkiaShaderEffectProgramResolver(new AssetManagerShaderEffectProgramSource(_assets));
-        var preload = await programs.PreloadAsync(_effectPrograms, cancellationToken);
+        var programs = new SkiaShaderEffectProgramResolver(
+            new AssetManagerShaderEffectProgramSource(resources.Assets));
+        var preload = await programs.PreloadAsync(resources.EffectPrograms, cancellationToken);
         GameLog.Logger.Information(
             "Preloaded {UsableEffectProgramCount}/{EffectProgramCount} effect programs in {ElapsedMilliseconds} ms",
             preload.UsableProgramCount,
@@ -491,12 +471,21 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _pageView.LayerPresenter,
             _pageView.AnimationPresenter,
             _effects,
-            _content.Gallery,
+            resources.Content.Gallery,
             _pageView.ParticlePresenter));
         var settings = new SettingsContainer();
-        settings.Set(_settings);
-        var runtime = new GameRuntime(null, _content.Graph.RootNodeId, settings, _variables);
-        _engine = new GameEngine(_content.Graph, runtime, gameView, _progress, _pageView.ChoicePresenter);
+        settings.Set(saveSession.Settings);
+        var runtime = new GameRuntime(
+            null,
+            resources.Content.Graph.RootNodeId,
+            settings,
+            saveSession.Variables);
+        _engine = new GameEngine(
+            resources.Content.Graph,
+            runtime,
+            gameView,
+            saveSession.Progress,
+            _pageView.ChoicePresenter);
         _pageView.AdvanceRequested += OnAdvanceRequested;
     }
 
@@ -536,8 +525,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
 
     private async Task RefreshSlotsAsync(CancellationToken cancellationToken)
     {
-        if (_saves is null) return;
-        var slots = await _saves.ListSlotsAsync(cancellationToken);
+        if (_saveSession is null) return;
+        var slots = await _saveSession.ListSlotsAsync(cancellationToken);
         await OnUiAsync(() =>
         {
             _saveSlots.Clear();
