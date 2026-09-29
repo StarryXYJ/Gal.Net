@@ -30,7 +30,7 @@ public class GameRuntimeSnapshotTests
                 "snowflake",
                 EmissionRate: 72,
                 MaxParticles: 240,
-                Flipbook: new ParticleFlipbookDefinition(4, 2, 7, FramesPerSecond: 12, Loop: true)),
+                Flipbook: new ParticleFlipbookDefinition(4, 2, 7, FramesPerSecond: new ParticleFloatRange(12, 12), Loop: true)),
             Z = 42,
             AnimationValues = new Dictionary<string, float>(StringComparer.Ordinal)
             {
@@ -48,7 +48,7 @@ public class GameRuntimeSnapshotTests
             Assert.That(restored.SceneState.ActiveParticleEmitters.Single().InstanceId, Is.EqualTo("snow"));
             Assert.That(restored.SceneInstances.TryGet<ParticleEmitterInstance>("snow", out var emitter), Is.True);
             Assert.That(emitter.Definition.ParticleTexture, Is.EqualTo("snowflake"));
-            Assert.That(emitter.Definition.Flipbook, Is.EqualTo(new ParticleFlipbookDefinition(4, 2, 7, FramesPerSecond: 12, Loop: true)));
+            Assert.That(emitter.Definition.Flipbook, Is.EqualTo(new ParticleFlipbookDefinition(4, 2, 7, FramesPerSecond: new ParticleFloatRange(12, 12), Loop: true)));
             Assert.That(emitter.Z, Is.EqualTo(42));
             Assert.That(emitter.AnimationValues["emissionRate"], Is.EqualTo(18));
             Assert.That(emitter.AnimationValues["particleScale"], Is.EqualTo(1.5f));

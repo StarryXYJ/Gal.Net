@@ -133,8 +133,8 @@ Layer source 的 authoring 数据优先采用显式 `source` 对象；现阶段 
 ### Phase 4：GPU 粒子与其他场景对象（已完成）
 
 - 已将 `particle.emitter` 替换为独立 `particle.play` / `particle.stop` 原语；`ParticleEmitter : IFrameUpdatableSceneRenderable` 不再创建 Avalonia `Control`。
-- 定义粒子 authoring 数据：贴图、最大数量、初速度、重力、生命周期、尺寸与颜色曲线，并支持 Point、Box、Circle、Line 发射形状。`particle.play` 用 rate 创建可停止、可存档的持续 emitter；`particle.burst` 用 count 创建不进 Runtime 状态的一次性效果。持续时间和重复 burst 由流程或 animation plan 编排，不在 emitter 内维护另一套时间线。
-- 粒子 Renderer 支持 row-major sprite-sheet flipbook；每颗粒子按自身年龄以固定 FPS 或生命周期循环次数独立选帧，可选 seed 驱动的随机起始帧，仍保持单次 Skia atlas batch。
+- 粒子 authoring 已按 Initial、Motion、Lifetime 模块拆分：出生范围覆盖 lifetime、velocity、size、rotation、angular velocity、color；运动支持 gravity、noise、drag、radial、orbit、attractor；生命周期线性插值 size、opacity、velocity、rotation、color。Point、Box、Circle、Line 共用 seed 确定性采样。`particle.play` 用 rate 创建可停止、可存档的持续 emitter；`particle.burst` 用 count 创建不进 Runtime 状态的一次性效果。持续时间和重复 burst 由流程或 animation plan 编排，不在 emitter 内维护另一套时间线。
+- 粒子 Renderer 支持 row-major sprite-sheet flipbook；每颗粒子按自身年龄以固定 FPS 或生命周期循环次数独立选帧，播放速度和起始帧均可使用 seed 驱动的范围，仍保持单次 Skia atlas batch。
 - 使用 Skia atlas 批量 sprite draw 绘制存活粒子；不为每颗粒子创建 Layer、Control 或独立 draw target。
 - Layer 与粒子统一实现 `ISceneRenderable`，按 `z` 与稳定插入顺序合成。Layer 先完成其局部 effect 链，粒子随后以同一场景画布坐标参与合成，最后统一进入 ScenePost。
 

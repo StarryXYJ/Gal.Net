@@ -44,13 +44,21 @@ updated: 2026-09-29
 
 ## Phase 2 — Initial、Motion 与 Lifetime
 
-**状态：planned**
+**状态：verified**
 
-- 增加可版本化随机范围类型。
-- 支持 lifetime、velocity、size、rotation 初始范围。
-- 支持 drag、rotation、opacity 与更多 lifetime curves。
+- 增加 float、int、color 随机范围，并覆盖 lifetime、velocity、size、rotation、angular velocity、color 与 flipbook 速度/起始帧。
+- 支持 gravity、noise、drag、radial、orbit、attractor 运动。
+- 支持线性插值的 size、opacity、velocity、rotation 与 color 生命周期曲线，并可配置淡入淡出。
+- 更新 Sample、snapshot 与 renderer 自动化测试。
 
 退出条件：常见雪、雨、火花、烟雾、爆炸无需自定义 shader 即可表达。
+
+验证证据（2026-09-29）：
+
+- `GeneralTest` 与其引用的 Core、Rendering、GameView 构建通过。
+- 粒子解析、snapshot、primitive 和实际 Skia 渲染定向测试 21/21 通过；覆盖 seed 确定性范围、flipbook 速度/起始帧、曲线插值、淡入淡出、drag、radial、orbit、attractor、angular/lifetime rotation。
+- GeneralTest 全量 257/258 通过；唯一失败仍为既有的 `LastDockLayout_RoundTripsAsAString` CRLF/缩进差异。
+- `GalNet.Sample.Headless` 构建通过，0 warning / 0 error；Sample 雪与 burst 已迁移到 Initial / Motion / Lifetime 新参数。
 
 ## Phase 3 — Renderer 与高级模块
 

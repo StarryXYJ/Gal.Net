@@ -54,5 +54,6 @@
 - [粒子端到端桥接验证](lessons/L-20260929-01-particle-presenter-unwired.md)：schema 和平台 presenter 存在不代表剧情 primitive 已可执行；必须验证 Runtime 状态和 presenter 桥接。该问题已在 `F-20260929-01` 解决。
 - [持久场景状态必须显式重放展示](lessons/L-20260929-03-persistent-scene-presentation-replay.md)：Runtime 快照恢复不会自动重建渲染端对象；每种持久场景对象都必须覆盖状态到 Presenter 的重放路径。
 - [动画存档保存稳定语义而非播放游标](lessons/L-20260929-04-animation-save-semantics.md)：一次性非阻塞动画保存末值，循环动画保存第 0 帧状态与完整定义并从头重播，阻塞动画沿用此前稳定快照。
+- [Skia atlas 变换使用 source 局部坐标](lessons/L-20260929-05-skia-atlas-local-transform.md)：`DrawAtlas` 的旋转缩放中心应使用 source rect 的宽高，不能重复带入 atlas 偏移。
 - [Sample 调试清空的语义](lessons/L-20260929-01-sample-debug-reset-scope.md)：顶层“清空游戏数据”重置玩家状态；日志清空仅属于日志面板。
 - [Sample 调试会话销毁的导航顺序](lessons/L-20260929-02-sample-debug-navigate-before-teardown.md)：先切换到标题页，再停止引擎或释放场景展示，避免重置/重载期间黑屏。

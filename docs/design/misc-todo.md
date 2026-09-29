@@ -1,6 +1,10 @@
 # 杂项待办
 
-本文件记录与游戏页面和游戏本体功能无直接耦合的工程性工作项。完成后移除对应条目，并在相关规范中留下最终行为。
+本文件是跨 feature 的简洁待办索引；详细设计留在对应 feature。完成后移除对应条目，并在相关规范中留下最终行为。
+
+## 功能后续
+
+- 粒子 Renderer：补 blend mode、alignment；trail、collision、mask、sub-emitter、GPU simulation 按实际效果需求再评估。详见 [F-20260929-02 Phase 3](../../features/F-20260929-02-particle-system-v2/phase-plan.md#phase-3--renderer-与高级模块)。
 
 ## 条目编译层
 

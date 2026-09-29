@@ -59,9 +59,18 @@ Flipbook 是粒子 Renderer 配置，不新增原语；`particle.play` 与 `part
 - 发射 `rate` 与 flipbook 播放速率没有共享语义；后者显式命名为 `framesPerSecond`，避免歧义。
 - snapshot 只保存完整 emitter definition；不保存单颗粒子的年龄、当前帧或随机状态，读档仍从 seed 与第 0 时刻重建。
 
+## Phase 2 决策：Initial、Motion 与 Lifetime
+
+Phase 2 将出生随机量、出生后运动和归一化生命周期表现拆开；authoring JSON 直接采用嵌套模块，不保留 Phase 1 的平铺参数兼容层。
+
+- `initial` 的 lifetime、velocityX/Y、size、rotation、angularVelocity、color 均使用 min/max 范围；每颗粒子出生时由 emitter seed 确定性采样一次。
+- flipbook 的 `framesPerSecond` / `cyclesOverLifetime` 与 `startFrame` 同样按粒子采样范围；固定 FPS 存在且大于 0 时优先，否则使用生命周期循环次数。
+- `motion.drag` 使用与帧率无关的指数阻尼；gravity、noise 与 attractor 作为加速度，radialVelocity 在出生时沿发射中心向外叠加，orbitDegreesPerSecond 绕发射中心旋转位置。
+- `lifetime.size`、`opacity`、`velocity`、`rotationDegrees` 与 `color` 都按归一化年龄在线性插值。velocity 是位移倍率，不反复乘入速度，避免指数累积；rotation 是叠加到出生角度和 angular velocity 的角度值。
+- opacity 曲线显式表达淡入淡出；缺省仍为从 1 淡出到 0。初始颜色与生命周期颜色逐通道相乘。
+- emitter 动画继续修改 range 中心并保留半宽；存档仍只保存 emitter 定义和动画值，不保存单颗粒子。
+
 ## 后续阶段
 
-1. 引入通用 `FloatRange` / `ColorRange` 和 Initial 模块。
-2. 增加 drag、angular velocity、opacity/rotation/velocity lifetime curves。
-3. 增加 blend mode 与 alignment；保持 Skia atlas 批量提交。
-4. 再评估 collision、attractor/vortex、trail、mask emission、sub-emitter 与 GPU simulation。
+1. 增加 blend mode 与 alignment；保持 Skia atlas 批量提交。
+2. 再按真实效果需求评估 collision、trail、mask emission、sub-emitter 与 GPU simulation。
