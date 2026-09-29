@@ -2,10 +2,6 @@
 
 本文件是跨 feature 的简洁待办索引；详细设计留在对应 feature。完成后移除对应条目，并在相关规范中留下最终行为。
 
-## 工程质量
-
-- 清理既有空白、using 与行尾格式债务，并在 CI 启用与清理范围一致的阻断式 `dotnet format` 门禁。详见 [F-20260929-14](../../features/F-20260929-14-format-baseline/feature.md)。
-
 ## 功能后续
 
 - 粒子 Renderer：补 blend mode、alignment；trail、collision、mask、sub-emitter、GPU simulation 按实际效果需求再评估。详见 [F-20260929-02 Phase 3](../../features/F-20260929-02-particle-system-v2/phase-plan.md#phase-3--renderer-与高级模块)。

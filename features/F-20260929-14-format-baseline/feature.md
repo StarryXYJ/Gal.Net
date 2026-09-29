@@ -2,7 +2,7 @@
 id: F-20260929-14-format-baseline
 title: 全仓机械格式基线与 CI 门禁
 type: maintenance
-status: planned
+status: done
 created: 2026-09-29
 updated: 2026-09-29
 parent: F-20260929-03-maintainability-roadmap

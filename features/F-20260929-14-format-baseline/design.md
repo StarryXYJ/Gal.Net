@@ -1,6 +1,6 @@
 ---
 feature: F-20260929-14-format-baseline
-status: proposed
+status: implemented
 updated: 2026-09-29
 ---
 

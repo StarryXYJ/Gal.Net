@@ -47,6 +47,13 @@ Get-ChildItem test -Filter *.csproj -Recurse | ForEach-Object {
 }
 ```
 
+提交前可使用与 CI 相同的格式门禁：
+
+```powershell
+dotnet format whitespace GalNet.slnx --no-restore --verify-no-changes
+dotnet format style GalNet.slnx --no-restore --verify-no-changes --diagnostics IDE0005
+```
+
 完整 solution 包含 Android、Browser 和 iOS 平台宿主。如果本机没有对应 workload，先验证 Desktop、Headless 和测试项目，再在具备平台 SDK 的环境执行完整构建。受限沙箱中 Avalonia BuildServices 也可能因无法访问用户目录而失败，这类环境错误应与源码编译错误分开判断。
 
 ## 运行示例

@@ -1,6 +1,6 @@
 ---
 feature: F-20260929-14-format-baseline
-status: planned
+status: done
 updated: 2026-09-29
 ---
 
@@ -28,8 +28,10 @@ updated: 2026-09-29
 
 ## Phase 3 - CI 门禁与收尾
 
-**状态：planned**
+**状态：verified**
 
 将同一验证命令加入 Desktop CI，生成 summary 并同步工程待办和 agent knowledge。
+
+**证据：** CI 新增独立 `format` job，在 Windows 上恢复 solution workload 与 locked dependencies 后运行与本地基线完全一致的 whitespace 和 `IDE0005` import 验证；根 README 已公开本地命令，工程待办和 agent knowledge 已同步。两条本地门禁在机械基线提交后再次执行并通过。
 
 **退出条件：** 本地门禁通过，workflow 与本地命令一致，创建独立 Git 提交。
