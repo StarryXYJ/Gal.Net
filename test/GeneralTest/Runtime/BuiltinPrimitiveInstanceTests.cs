@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
 using GalNet.Core.Primitives;
@@ -13,6 +14,12 @@ namespace GeneralTest.Runtime;
 
 public class BuiltinPrimitiveInstanceTests
 {
+    private static readonly JsonSerializerOptions AnimationJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter() }
+    };
+
     [Test]
     public void AnimationAnimateCommitsFinalStateAndCanBeSkippedThroughPresenter()
     {
@@ -92,6 +99,291 @@ public class BuiltinPrimitiveInstanceTests
             Assert.That(runtime.SceneState.ActiveEffects, Is.Empty);
             Assert.That(layer.EffectInstanceIds, Is.Empty);
             Assert.That(presenter.Stopped, Is.EqualTo(new[] { "blur-1" }));
+        });
+    }
+
+    [Test]
+    public async Task ParticlePlayAndStopUpdateRuntimeStateAndPresenter()
+    {
+        var presenter = new RecordingParticlePresenter();
+        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(particlePresenter: presenter));
+        var runtime = new GameRuntime(null);
+
+        var play = view.Dispatch(Primitive(PlayParticleEmitterEntry.TypeId, new
+        {
+            instanceId = "snow",
+            z = 42,
+            parameters = new
+            {
+                particleTexture = "snowflake",
+                emissionRate = 72,
+                maxParticles = 240,
+                initialVelocityX = -22,
+                initialVelocityY = 80,
+                noise = 24,
+                particleScale = 0.75,
+                particleLifetime = 3.5,
+                seed = 20260929,
+                gravityY = 12
+            }
+        }), runtime, CancellationToken.None);
+
+        await WaitUntilAsync(() => play!.IsCompleted);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(runtime.SceneState.ActiveParticleEmitters, Has.Count.EqualTo(1));
+            Assert.That(runtime.SceneState.ActiveParticleEmitters[0].Definition.ParticleTexture, Is.EqualTo("snowflake"));
+            Assert.That(runtime.SceneState.ActiveParticleEmitters[0].Definition.GravityY, Is.EqualTo(12));
+            Assert.That(runtime.SceneInstances.TryGet<ParticleEmitterInstance>("snow", out _), Is.True);
+            Assert.That(presenter.Started.Single().InstanceId, Is.EqualTo("snow"));
+            Assert.That(presenter.Started.Single().Z, Is.EqualTo(42));
+        });
+
+        var animate = view.Dispatch(Primitive(AnimateEntry.TypeId, new
+        {
+            playbackHandleId = "snow-rate",
+            handleId = "snow",
+            property = "emissionRate",
+            to = 18,
+            duration = 0.5,
+            curve = "Linear",
+            blocking = "false",
+            skippable = "false",
+            loopMode = "Once",
+            blendMode = "Replace"
+        }), runtime, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(animate!.IsCompleted, Is.True);
+            Assert.That(runtime.SceneState.ActiveParticleEmitters[0].AnimationValues["emissionRate"], Is.EqualTo(18));
+        });
+
+        var stop = view.Dispatch(
+            Primitive(StopParticleEmitterEntry.TypeId, new { instanceId = "snow" }),
+            runtime,
+            CancellationToken.None);
+
+        await WaitUntilAsync(() => stop!.IsCompleted);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(runtime.SceneState.ActiveParticleEmitters, Is.Empty);
+            Assert.That(runtime.SceneInstances.TryGet<ParticleEmitterInstance>("snow", out _), Is.False);
+            Assert.That(presenter.Stopped, Is.EqualTo(new[] { "snow" }));
+        });
+    }
+
+    [Test]
+    public async Task PersistentPresentationReplayRestartsEffectsAndParticlesWithSavedAnimationValues()
+    {
+        var runtime = new GameRuntime(null);
+        var state = runtime.SceneState;
+        state.ActiveEffects.Add(
+            new ActiveEffectState
+            {
+                Id = "color-grade",
+                ProgramResource = "grade-program",
+                InstanceId = "grade",
+                TargetHandleId = "background",
+                Order = 3,
+                Parameters = "{\"brightness\":0.25}",
+                AnimationValues = new Dictionary<string, float>(StringComparer.Ordinal)
+                {
+                    ["brightness"] = 0.5f
+                }
+            });
+        state.ActiveParticleEmitters.Add(
+            new ActiveParticleEmitterState
+            {
+                InstanceId = "snow",
+                Definition = new ParticleEmitterDefinition(
+                    "snowflake",
+                    EmissionRate: 72,
+                    MaxParticles: 240,
+                    GravityY: 12),
+                Z = 42,
+                AnimationValues = new Dictionary<string, float>(StringComparer.Ordinal)
+                {
+                    ["emissionRate"] = 18,
+                    ["particleScale"] = 1.5f
+                }
+            });
+        state.ActiveAnimations.Add(
+            new ActiveAnimationState
+            {
+                EntryType = AnimateEntry.TypeId,
+                PlaybackHandleId = "snow-pulse",
+                LoopMode = AnimationLoopMode.PingPong,
+                Parameters = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["handleId"] = "snow",
+                    ["property"] = "particleScale",
+                    ["from"] = "1.5",
+                    ["to"] = "2",
+                    ["duration"] = "0.75",
+                    ["curve"] = "EaseInOut",
+                    ["blocking"] = "false",
+                    ["skippable"] = "false",
+                    ["blendMode"] = "Replace"
+                }
+            });
+        var effectPresenter = new RecordingEffectPresenter();
+        var particlePresenter = new RecordingParticlePresenter();
+        var animationPresenter = new RecordingAnimationPresenter();
+        var layerPresenter = new RecordingLayerPresenter();
+        state.ActiveAnimations.Add(new ActiveAnimationState
+        {
+            EntryType = PlayAnimationPlanEntry.TypeId,
+            PlaybackHandleId = "snow-plan",
+            LoopMode = AnimationLoopMode.Loop,
+            Parameters = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["plan"] = JsonSerializer.Serialize(new AnimationPlanDefinition
+                {
+                    PlaybackHandleId = "snow-plan",
+                    DurationFrames = 24,
+                    LoopMode = AnimationLoopMode.Loop,
+                    Tracks = { Track("snow", "emissionRate", 18, 36, 24) },
+                    Events =
+                    {
+                        new AnimationPlanEventDefinition
+                        {
+                            Frame = 0,
+                            Type = ShowLayerEntry.TypeId,
+                            Parameters = Parameters(
+                                ("handleId", "ambient-overlay"),
+                                ("assetId", "overlay.png"),
+                                ("transform", new { }),
+                                ("opacity", 1),
+                                ("displayMode", "Native"))
+                        }
+                    }
+                }, AnimationJsonOptions)
+            }
+        });
+
+        await BuiltinPresentationReplay.ReplayPersistentSceneObjectsAsync(
+            runtime,
+            effectPresenter,
+            particlePresenter,
+            animationPresenter,
+            layerPresenter,
+            CancellationToken.None);
+
+        var effectRequest = effectPresenter.Started.Single();
+        var particleRequest = particlePresenter.Started.Single();
+        var animationRequest = animationPresenter.Animations.Single();
+        var animationPlan = animationPresenter.Plans.Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(effectRequest.InstanceId, Is.EqualTo("grade"));
+            Assert.That(effectRequest.ProgramResource, Is.EqualTo("grade-program"));
+            Assert.That(effectRequest.AnimationValues["brightness"], Is.EqualTo(0.5f));
+            Assert.That(particleRequest.InstanceId, Is.EqualTo("snow"));
+            Assert.That(particleRequest.Definition.ParticleTexture, Is.EqualTo("snowflake"));
+            Assert.That(particleRequest.Definition.MaxParticles, Is.EqualTo(240));
+            Assert.That(particleRequest.Z, Is.EqualTo(42));
+            Assert.That(particleRequest.AnimationValues["emissionRate"], Is.EqualTo(18));
+            Assert.That(particleRequest.AnimationValues["particleScale"], Is.EqualTo(1.5f));
+            Assert.That(animationRequest.PlaybackHandleId, Is.EqualTo("snow-pulse"));
+            Assert.That(animationRequest.HandleId, Is.EqualTo("snow"));
+            Assert.That(animationRequest.Property, Is.EqualTo("particleScale"));
+            Assert.That(animationRequest.From, Is.EqualTo(1.5f));
+            Assert.That(animationRequest.To, Is.EqualTo(2));
+            Assert.That(animationRequest.DurationSeconds, Is.EqualTo(0.75));
+            Assert.That(animationRequest.CurveKind, Is.EqualTo(BuiltinAnimationCurve.EaseInOut));
+            Assert.That(animationRequest.LoopMode, Is.EqualTo(AnimationLoopMode.PingPong));
+            Assert.That(animationPlan.PlaybackHandleId, Is.EqualTo("snow-plan"));
+            Assert.That(animationPlan.LoopMode, Is.EqualTo(AnimationLoopMode.Loop));
+            Assert.That(animationPlan.Tracks.Single().Keys[0].Value, Is.EqualTo(18));
+            Assert.That(layerPresenter.Shown.Single().HandleId, Is.EqualTo("ambient-overlay"));
+        });
+    }
+
+    [Test]
+    public async Task LoopingParticleAnimationKeepsFrameZeroValueAndCompleteReplayDefinition()
+    {
+        var particles = new RecordingParticlePresenter();
+        var animations = new RecordingAnimationPresenter();
+        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
+            animationPresenter: animations,
+            particlePresenter: particles));
+        var runtime = new GameRuntime(null);
+
+        var play = view.Dispatch(Primitive(PlayParticleEmitterEntry.TypeId, new
+        {
+            instanceId = "snow",
+            parameters = new { particleTexture = "snowflake", emissionRate = 72 }
+        }), runtime, CancellationToken.None);
+        await WaitUntilAsync(() => play!.IsCompleted);
+
+        var loop = view.Dispatch(Primitive(AnimateEntry.TypeId, new
+        {
+            playbackHandleId = "snow-rate-loop",
+            handleId = "snow",
+            property = "emissionRate",
+            to = 18,
+            duration = 1.25,
+            curve = "EaseInOut",
+            blocking = "false",
+            skippable = "false",
+            loopMode = "PingPong",
+            blendMode = "Replace"
+        }), runtime, CancellationToken.None);
+
+        var active = runtime.SceneState.ActiveAnimations.Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(loop!.IsBlocking, Is.False);
+            Assert.That(loop.IsCompleted, Is.False);
+            Assert.That(runtime.SceneState.ActiveParticleEmitters.Single().AnimationValues["emissionRate"], Is.EqualTo(72));
+            Assert.That(active.EntryType, Is.EqualTo(AnimateEntry.TypeId));
+            Assert.That(active.LoopMode, Is.EqualTo(AnimationLoopMode.PingPong));
+            Assert.That(active.Parameters["from"], Is.EqualTo("72"));
+            Assert.That(active.Parameters["to"], Is.EqualTo("18"));
+            Assert.That(active.Parameters["duration"], Is.EqualTo("1.25"));
+            Assert.That(active.Parameters["curve"], Is.EqualTo("EaseInOut"));
+            Assert.That(active.Parameters["blendMode"], Is.EqualTo("Replace"));
+        });
+    }
+
+    [Test]
+    public void LoopingAnimationPlanCommitsOnlyFrameZeroStateAndSavesCompletePlan()
+    {
+        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended());
+        var runtime = new GameRuntime(null);
+        runtime.SceneInstances.GetOrAdd("old", id => new Layer { Id = id, AssetId = "old.png", Opacity = 1 });
+        var plan = new AnimationPlanDefinition
+        {
+            PlaybackHandleId = "ambient-loop",
+            DurationFrames = 30,
+            LoopMode = AnimationLoopMode.Loop,
+            Tracks = { Track("old", "opacity", 0.25f, 0.75f, 30) },
+            Events =
+            {
+                new AnimationPlanEventDefinition
+                {
+                    Frame = 30,
+                    Type = HideLayerEntry.TypeId,
+                    Parameters = Parameters(("handleId", "old"))
+                }
+            }
+        };
+
+        view.Dispatch(Primitive(PlayAnimationPlanEntry.TypeId, new { plan }), runtime, CancellationToken.None);
+
+        var active = runtime.SceneState.ActiveAnimations.Single();
+        var replayedPlan = JsonSerializer.Deserialize<AnimationPlanDefinition>(active.Parameters["plan"], AnimationJsonOptions)!;
+        Assert.Multiple(() =>
+        {
+            Assert.That(runtime.SceneInstances.TryGet<Layer>("old", out var old), Is.True);
+            Assert.That(old.Opacity, Is.EqualTo(0.25f));
+            Assert.That(active.LoopMode, Is.EqualTo(AnimationLoopMode.Loop));
+            Assert.That(replayedPlan.PlaybackHandleId, Is.EqualTo("ambient-loop"));
+            Assert.That(replayedPlan.Tracks.Single().Keys.Last().Value, Is.EqualTo(0.75f));
+            Assert.That(replayedPlan.Events.Single().Type, Is.EqualTo(HideLayerEntry.TypeId));
         });
     }
 
@@ -298,9 +590,28 @@ public class BuiltinPrimitiveInstanceTests
         }
     }
 
+    private sealed class RecordingParticlePresenter : IParticlePresenter
+    {
+        public List<ParticleEmitterRequest> Started { get; } = [];
+        public List<string> Stopped { get; } = [];
+
+        public Task StartParticleEmitterAsync(ParticleEmitterRequest request, CancellationToken cancellationToken)
+        {
+            Started.Add(request);
+            return Task.CompletedTask;
+        }
+
+        public Task StopParticleEmitterAsync(string instanceId, CancellationToken cancellationToken)
+        {
+            Stopped.Add(instanceId);
+            return Task.CompletedTask;
+        }
+    }
+
     private sealed class RecordingLayerPresenter : ILayerPresenter
     {
-        public void ShowLayer(LayerRenderRequest request) { }
+        public List<LayerRenderRequest> Shown { get; } = [];
+        public void ShowLayer(LayerRenderRequest request) => Shown.Add(request);
         public void ReplaceLayer(string handleId, string assetId) { }
         public void HideLayer(string handleId) { }
         public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSeconds) { }

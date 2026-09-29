@@ -308,7 +308,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             if (snapshot is not null)
             {
                 _engine!.RestoreFrom(snapshot);
-                await RestorePersistentEffectsAsync(cancellationToken);
+                await RestorePersistentSceneObjectsAsync(cancellationToken);
             }
             _hasPreparedGame = true;
             GameLog.Logger.Debug("Game runtime prepared; waiting for page transition before starting the engine flow");
@@ -547,14 +547,18 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         });
     }
 
-    private async Task RestorePersistentEffectsAsync(CancellationToken cancellationToken)
+    private Task RestorePersistentSceneObjectsAsync(CancellationToken cancellationToken)
     {
-        if (_engine is null || _effects is null) return;
-        foreach (var effect in _engine.Runtime.SceneState.ActiveEffects)
-            await _effects.StartEffectAsync(new EffectRequest(effect.Id, effect.InstanceId, effect.TargetHandleId, effect.Order, effect.Parameters, effect.ProgramResource)
-            {
-                AnimationValues = effect.AnimationValues
-            }, cancellationToken);
+        if (_engine is null)
+            return Task.CompletedTask;
+
+        return BuiltinPresentationReplay.ReplayPersistentSceneObjectsAsync(
+            _engine.Runtime,
+            _effects,
+            _pageView,
+            _pageView,
+            _pageView,
+            cancellationToken);
     }
 
     private static void OnInteractionObserved(string interaction) =>

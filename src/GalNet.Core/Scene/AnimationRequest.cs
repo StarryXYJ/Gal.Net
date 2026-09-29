@@ -23,6 +23,8 @@ public sealed class AnimationRequest
     /// <summary>Validated value written to Runtime state after a completed or skipped playback.</summary>
     public float To { get; set; }
     public double DurationSeconds { get; set; }
+    /// <summary>Serializable identity of the built-in curve used to recreate persistent loops.</summary>
+    public BuiltinAnimationCurve CurveKind { get; set; }
     public IAnimationCurve Curve { get; set; } = AnimationCurves.Linear;
     public bool Blocking { get; set; }
     /// <summary>Whether an advance request may complete this playback or its batch early.</summary>

@@ -83,6 +83,13 @@ Save scope 随存档槽保存和恢复；Player scope 由宿主变量服务独�
 
 未完成的纯 non-blocking 呈现实例不会单独阻止快照；因此 non-blocking primitive 必须在 `Dispatch()` 返回前先提交最终可存档逻辑状态。读档不恢复 Task、CancellationToken、平台控件或活动 `PrimitiveInstance`；宿主根据恢复后的 `SceneState` 重建画面。
 
+动画按稳定语义存档，而不是保存展示层播放游标：
+
+- `Once` 的 non-blocking 动画在分发时提交末值，读档直接显示末值；
+- `Loop` / `PingPong` 保持第 0 帧逻辑状态，并在 `ActiveAnimations` 保存完整 request 或 plan，读档后从第 0 帧重新播放；
+- blocking 动画运行期间不会产生新的稳定快照，因此不保存其中间帧；
+- 循环粒子属性动画保存 emitter、初始属性值与动画定义，不保存单颗粒子、渲染资源或时钟。
+
 ## PrimitiveInstance
 
 每次 primitive 调用都会创建独立的 `PrimitiveInstance`：
@@ -130,10 +137,11 @@ public void Skip();
 
 - `dialogue.text`：对话与打字机阶段，支持 `\skip` 分段跳过；`dialogue.show` / `dialogue.hide` 控制显示状态。
 - `layer.*`：show/showColor/hide/move/replace，先更新 `SceneState` 再通知 `ILayerPresenter`。
-- `animation.animate` / `animation.play` / `animation.stop`：创建 animation primitive instance，先提交最终逻辑状态，再启动呈现动画；plan 是单个 instance，内部事件只作为 animation 模块私有 layer/effect 事件处理，不重新进入通用 Entry 分发。
+- `animation.animate` / `animation.play` / `animation.stop`：创建 animation primitive instance；一次性动画先提交最终逻辑状态，循环动画提交第 0 帧状态并保存完整重放定义，再启动呈现动画。plan 是单个 instance，内部事件只作为 animation 模块私有 layer/effect 事件处理，不重新进入通用 Entry 分发。
 - `effect.apply` / `effect.stop`：维护 `SceneState.ActiveEffects`、目标 Layer 的 effect 索引和 `IEffectPresenter` 调用。
+- `particle.play` / `particle.stop`：维护 `SceneState.ActiveParticleEmitters` 与 Runtime emitter instance，并调用 `IParticlePresenter` 创建或停止渲染端 emitter。存档只保存 emitter 定义、排序与动画值；宿主读档后通过 `BuiltinPresentationReplay` 重建渲染端 emitter，不保存单颗粒子。
 - `flow.wait`：blocking、skippable 的等待实例。
 - `variable.set`：求值后写入 Runtime 变量。
 - `gallery.unlock`：按稳定 item ID 解锁 Gallery，写入对应的系统 Player bool。
 
-音频、视频和粒子仍保留推荐 schema；完整产品级剧情原语行为由后续 feature 或宿主自定义模块补齐。Gallery 的平台无关 catalog 与解锁数据层由 Core/Storage 提供；默认 Avalonia 前端通过宿主提供的 `IGameGallerySession` 浏览 CG、视频和音频，不把页面或媒体状态写入 Runtime。
+音频和视频仍保留推荐 schema；完整产品级剧情原语行为由后续 feature 或宿主自定义模块补齐。Gallery 的平台无关 catalog 与解锁数据层由 Core/Storage 提供；默认 Avalonia 前端通过宿主提供的 `IGameGallerySession` 浏览 CG、视频和音频，不把页面或媒体状态写入 Runtime。

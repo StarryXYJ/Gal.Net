@@ -32,6 +32,7 @@
 
 - `F-20260926-01-gallery-meta-pages` 的实现、正式文档与示例 Gallery 解锁 smoke test 已完成；2026-09-28 的全量 `GeneralTest` 仍有一项非本 feature 的 `EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString` 失败，因此该 feature 维持 `implementation`，等待修复或正式豁免后关闭。
 - 当前 discovery feature：[F-20260916-02-audio-system](G:\program\GalDotNet\features\F-20260916-02-audio-system\feature.md)，用于澄清音频系统的首个可交付范围、后端能力和迁移语义。
+- `F-20260929-01-compiled-content-pipeline` 正在实施；粒子 Primitive、Runtime 状态与 Presenter 桥接及存档后的 effect/particle 展示重放已经验证，完整 Sample/Headless smoke 与 Phase 4 收尾仍待完成。
 - 后续 feature、验证命令和新经验在实际工作中补充，并保留来源链接或 feature ID。
 
 ## 维护规则
@@ -50,6 +51,8 @@
 - [首次对话的 Avalonia 模板就绪](lessons/L-20260927-01-dialogue-template-startup.md)：阻塞对话不能因模板部件尚未就绪而静默完成，否则引擎会错误地跑完整个流程。
 - [样例资源元数据必须随内容版本化](lessons/L-20260927-02-version-sample-meta.md)：被 `.galgroup` 使用的 `.meta` 映射不可被通用忽略规则吞掉。
 - [平台媒体路径必须从资源句柄实体化](lessons/L-20260927-03-asset-handle-materialization.md)：页面不能绕过 `AssetManager` 扫描资源目录；文件路径只能由 acquire 的内容临时生成。
-- [粒子 presenter 尚未接入 Builtins](lessons/L-20260929-01-particle-presenter-unwired.md)：schema 和平台 presenter 存在不代表剧情 primitive 已可执行；必须验证 Runtime 状态和 presenter 桥接。
+- [粒子端到端桥接验证](lessons/L-20260929-01-particle-presenter-unwired.md)：schema 和平台 presenter 存在不代表剧情 primitive 已可执行；必须验证 Runtime 状态和 presenter 桥接。该问题已在 `F-20260929-01` 解决。
+- [持久场景状态必须显式重放展示](lessons/L-20260929-03-persistent-scene-presentation-replay.md)：Runtime 快照恢复不会自动重建渲染端对象；每种持久场景对象都必须覆盖状态到 Presenter 的重放路径。
+- [动画存档保存稳定语义而非播放游标](lessons/L-20260929-04-animation-save-semantics.md)：一次性非阻塞动画保存末值，循环动画保存第 0 帧状态与完整定义并从头重播，阻塞动画沿用此前稳定快照。
 - [Sample 调试清空的语义](lessons/L-20260929-01-sample-debug-reset-scope.md)：顶层“清空游戏数据”重置玩家状态；日志清空仅属于日志面板。
 - [Sample 调试会话销毁的导航顺序](lessons/L-20260929-02-sample-debug-navigate-before-teardown.md)：先切换到标题页，再停止引擎或释放场景展示，避免重置/重载期间黑屏。

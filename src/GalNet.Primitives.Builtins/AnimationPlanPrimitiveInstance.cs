@@ -56,7 +56,7 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance
 
     protected override void OnDispatch()
     {
-        BuiltinRuntimeActions.ApplyPlanFinalState(_runtime, _plan);
+        BuiltinRuntimeActions.ApplyPlanStableState(_runtime, _plan);
         if (_animationPresenter is null)
         {
             TryComplete();
@@ -77,6 +77,7 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance
 
         _presentationCancellation.Cancel();
         _animationPresenter?.CompleteAnimationImmediately(_plan.PlaybackHandleId);
+        BuiltinRuntimeActions.ApplyPlanTerminalState(_runtime, _plan);
         _ = NotifyRemainingEventsAsync(CancellationToken.None);
         TryComplete();
     }
@@ -92,6 +93,8 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance
             var animation = _animationPresenter!.PlayAnimationPlanAsync(_plan, linked.Token);
             var events = NotifyFutureEventsAsync(linked.Token);
             await animation.ConfigureAwait(false);
+            if (_plan.LoopMode != AnimationLoopMode.Once)
+                _presentationCancellation.Cancel();
             await events.ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (_scopeCancellation.IsCancellationRequested || _presentationCancellation.IsCancellationRequested)
@@ -116,14 +119,37 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance
 
     private async Task NotifyFutureEventsAsync(CancellationToken cancellationToken)
     {
-        var started = DateTimeOffset.UtcNow;
-        foreach (var item in _events.Where(item => item.Event.Frame > 0))
+        while (true)
         {
-            var delay = TimeSpan.FromSeconds(item.Event.Frame / (double)Math.Max(1, _plan.FrameRate)) -
-                        (DateTimeOffset.UtcNow - started);
-            if (delay > TimeSpan.Zero)
-                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-            await NotifyEventAsync(item, cancellationToken).ConfigureAwait(false);
+            var started = DateTimeOffset.UtcNow;
+            foreach (var item in _events.Where(item => item.Event.Frame > 0))
+            {
+                var delay = TimeSpan.FromSeconds(item.Event.Frame / (double)Math.Max(1, _plan.FrameRate)) -
+                            (DateTimeOffset.UtcNow - started);
+                if (delay > TimeSpan.Zero)
+                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                await NotifyEventAsync(item, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (_plan.LoopMode == AnimationLoopMode.Once)
+                return;
+            if (_plan.DurationFrames <= 0)
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
+                return;
+            }
+
+            var cycleFrames = _plan.LoopMode == AnimationLoopMode.PingPong
+                ? _plan.DurationFrames * 2d
+                : _plan.DurationFrames;
+            var remainder = TimeSpan.FromSeconds(cycleFrames / Math.Max(1, _plan.FrameRate)) -
+                            (DateTimeOffset.UtcNow - started);
+            if (remainder > TimeSpan.Zero)
+                await Task.Delay(remainder, cancellationToken).ConfigureAwait(false);
+
+            lock (_gate)
+                Array.Clear(_notifiedEvents);
+            await NotifyEventsThroughFrameAsync(0, cancellationToken).ConfigureAwait(false);
         }
     }
 

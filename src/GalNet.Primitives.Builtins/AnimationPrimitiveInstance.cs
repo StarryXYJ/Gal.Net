@@ -41,7 +41,7 @@ public sealed class AnimationPrimitiveInstance : PrimitiveInstance
 
     protected override void OnDispatch()
     {
-        BuiltinRuntimeActions.ApplyAnimationFinalValue(_runtime, _request);
+        BuiltinRuntimeActions.ApplyAnimationStableState(_runtime, _request);
         if (_presenter is null)
         {
             TryComplete();
@@ -61,7 +61,7 @@ public sealed class AnimationPrimitiveInstance : PrimitiveInstance
         }
 
         _presenter?.CompleteAnimationImmediately(_request.PlaybackHandleId);
-        BuiltinRuntimeActions.ApplyAnimationFinalValue(_runtime, _request);
+        BuiltinRuntimeActions.ApplyAnimationTerminalValue(_runtime, _request);
         TryComplete();
     }
 

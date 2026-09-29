@@ -18,4 +18,67 @@ public class GameRuntimeSnapshotTests
         Assert.That(snapshot.SceneState.Layers.Single().AssetId, Is.EqualTo("before"));
         Assert.That(snapshot.SceneState.Layers.Single().EffectInstanceIds, Is.EqualTo(new[] { "effect" }));
     }
+
+    [Test]
+    public void RestoreFromRebuildsParticleRuntimeInstanceWithSavedAnimationValues()
+    {
+        var source = new GameRuntime(null, "start");
+        source.SceneState.ActiveParticleEmitters.Add(new ActiveParticleEmitterState
+        {
+            InstanceId = "snow",
+            Definition = new ParticleEmitterDefinition("snowflake", EmissionRate: 72, MaxParticles: 240),
+            Z = 42,
+            AnimationValues = new Dictionary<string, float>(StringComparer.Ordinal)
+            {
+                ["emissionRate"] = 18,
+                ["particleScale"] = 1.5f
+            }
+        });
+        var snapshot = source.CreateSnapshot();
+        var restored = new GameRuntime(null, "other");
+
+        restored.RestoreFrom(snapshot);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(restored.SceneState.ActiveParticleEmitters.Single().InstanceId, Is.EqualTo("snow"));
+            Assert.That(restored.SceneInstances.TryGet<ParticleEmitterInstance>("snow", out var emitter), Is.True);
+            Assert.That(emitter.Definition.ParticleTexture, Is.EqualTo("snowflake"));
+            Assert.That(emitter.Z, Is.EqualTo(42));
+            Assert.That(emitter.AnimationValues["emissionRate"], Is.EqualTo(18));
+            Assert.That(emitter.AnimationValues["particleScale"], Is.EqualTo(1.5f));
+        });
+    }
+
+    [Test]
+    public void RestoreFromRebuildsLoopPlaybackAndPreservesReplayDefinition()
+    {
+        var source = new GameRuntime(null, "start");
+        source.SceneState.ActiveAnimations.Add(new ActiveAnimationState
+        {
+            EntryType = "animation.animate",
+            PlaybackHandleId = "snow-rate-loop",
+            LoopMode = AnimationLoopMode.PingPong,
+            Parameters = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["handleId"] = "snow",
+                ["property"] = "emissionRate",
+                ["from"] = "72",
+                ["to"] = "18",
+                ["duration"] = "1.25"
+            }
+        });
+        var snapshot = source.CreateSnapshot();
+        source.SceneState.ActiveAnimations[0].Parameters["to"] = "999";
+        var restored = new GameRuntime(null, "other");
+
+        restored.RestoreFrom(snapshot);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(restored.SceneState.ActiveAnimations.Single().Parameters["to"], Is.EqualTo("18"));
+            Assert.That(restored.SceneInstances.TryGet<AnimationPlaybackInstance>("snow-rate-loop", out var playback), Is.True);
+            Assert.That(playback.LoopMode, Is.EqualTo(AnimationLoopMode.PingPong));
+        });
+    }
 }

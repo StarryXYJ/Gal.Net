@@ -175,6 +175,7 @@ public sealed class GameRuntime : IGameRuntime
         {
             EntryType = animation.EntryType,
             PlaybackHandleId = animation.PlaybackHandleId,
+            LoopMode = animation.LoopMode,
             Parameters = animation.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
         }));
         // Effect is the canonical owner of its target. Rebuild the Layer-side index so
@@ -187,7 +188,8 @@ public sealed class GameRuntime : IGameRuntime
         }
         SceneInstances.Rebuild(SceneState.Layers.Cast<ISceneInstance>()
             .Concat(SceneState.ActiveEffects.Select(CreateEffectInstance))
-            .Concat(SceneState.ActiveParticleEmitters.Select(CreateParticleEmitterInstance)));
+            .Concat(SceneState.ActiveParticleEmitters.Select(CreateParticleEmitterInstance))
+            .Concat(SceneState.ActiveAnimations.Select(CreateAnimationPlaybackInstance)));
     }
 
     private static EffectInstance CreateEffectInstance(ActiveEffectState effect)
@@ -211,6 +213,12 @@ public sealed class GameRuntime : IGameRuntime
         instance.RestoreAnimationValues(emitter.AnimationValues);
         return instance;
     }
+
+    private static AnimationPlaybackInstance CreateAnimationPlaybackInstance(ActiveAnimationState animation) => new()
+    {
+        Id = animation.PlaybackHandleId,
+        LoopMode = animation.LoopMode
+    };
 
     private static GalVariable CloneVariable(GalVariable variable)
     {
@@ -263,6 +271,7 @@ public sealed class GameRuntime : IGameRuntime
         {
             EntryType = animation.EntryType,
             PlaybackHandleId = animation.PlaybackHandleId,
+            LoopMode = animation.LoopMode,
             Parameters = animation.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
         }).ToList()
     };

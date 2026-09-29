@@ -9,7 +9,17 @@ public sealed class AnimateEntry : PrimitiveEntry
     public override string Type => TypeId;
     public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("playbackHandleId", EntryParameterType.Text), ("handleId", EntryParameterType.Text), ("property", EntryParameterType.Select), ("from", EntryParameterType.Float), ("to", EntryParameterType.Float), ("duration", EntryParameterType.Float), ("curve", EntryParameterType.Select), ("blocking", EntryParameterType.Select), ("skippable", EntryParameterType.Select), ("batchId", EntryParameterType.Text), ("loopMode", EntryParameterType.Select), ("blendMode", EntryParameterType.Select));
     public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("duration", "0.25"), ("curve", "Linear"), ("blocking", "false"), ("skippable", "false"), ("loopMode", "Once"), ("blendMode", "Replace"));
-    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(("property", Layer.AnimationProperties.Select(property => property.Name).ToArray()), ("curve", ["Linear", "Step", "EaseIn", "EaseOut", "EaseInOut"]), ("blocking", ["false", "true"]), ("skippable", ["false", "true"]), ("loopMode", ["Once", "Loop", "PingPong"]), ("blendMode", ["Replace", "Additive"]));
+    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(
+        ("property", Layer.AnimationProperties
+            .Concat(ParticleEmitterInstance.AnimationProperties)
+            .Select(property => property.Name)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray()),
+        ("curve", ["Linear", "Step", "EaseIn", "EaseOut", "EaseInOut"]),
+        ("blocking", ["false", "true"]),
+        ("skippable", ["false", "true"]),
+        ("loopMode", ["Once", "Loop", "PingPong"]),
+        ("blendMode", ["Replace", "Additive"]));
 }
 
 public sealed class PlayAnimationPlanEntry : PrimitiveEntry

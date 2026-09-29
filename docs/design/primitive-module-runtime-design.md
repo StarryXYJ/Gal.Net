@@ -98,7 +98,7 @@ runtime batch key = (GroupExecutionId, PrimitiveInstance.BatchId)
 - `Dispatch()` 只执行一次。
 - `Skip()` 幂等，并在实例内部重新检查当前阶段。
 - 自然完成和 skip 都最终收敛到 `TryComplete()`。
-- Non-blocking 实例在 `Dispatch()` 返回前必须提交最终可存档逻辑状态。
+- Non-blocking 一次性实例在 `Dispatch()` 返回前必须提交最终可存档逻辑状态；没有终态的循环展示提交第 0 帧稳定状态与完整重放定义。
 - 异步呈现失败不得遗留未观察异常或长期活动引用。
 
 ## 7. GameView 与 Engine
@@ -159,7 +159,7 @@ Animation 是普通 primitive instance，不再由 Avalonia 页面决定剧情�
 
 - 以一个 `AnimationRequest` 表示单属性动画。
 - `Blocking` 与 `Skippable` 来自参数。
-- `Dispatch()` 先把最终值写入可存档 runtime state，再启动 presenter 动画。
+- `Once` 在 `Dispatch()` 时把最终值写入可存档 runtime state；`Loop` / `PingPong` 保持第 0 帧值并记录完整重放定义，再启动 presenter 动画。
 - `Skip()` 请求 presenter 立即完成并完成 instance。
 
 `animation.play`：
@@ -167,7 +167,7 @@ Animation 是普通 primitive instance，不再由 Avalonia 页面决定剧情�
 - 一个 plan 对应一个 `AnimationPlanPrimitiveInstance`。
 - 整个 timeline 是一个 instance 和一个 BatchId。
 - plan 内部事件只支持模块私有的 layer/effect 事件处理，不作为嵌套 Entry 重新分发。
-- `Dispatch()` 先提交最终 runtime state，再按时间通知 presenter。
+- `Once` 在 `Dispatch()` 时提交最终 runtime state；循环 plan 只提交第 0 帧状态并保存完整 plan，再按时间通知 presenter。
 
 `effect.apply` / `effect.stop`：
 
@@ -185,6 +185,8 @@ Animation 是普通 primitive instance，不再由 Avalonia 页面决定剧情�
 3. 当前没有 pending Choice。
 
 未完成的 non-blocking 呈现实例不会阻止快照；它们的异步部分只能更新可重建的展示状态。读档只恢复数据，不恢复活动 Task 或 instance。
+
+循环动画属于可重建展示状态：存档不保存当前帧、循环次数或 ping-pong 方向，而是恢复第 0 帧逻辑状态后从头播放。Blocking 动画仍使用进入该阻塞边界前的最后稳定快照。
 
 ## 12. 明确不引入的公共抽象
 

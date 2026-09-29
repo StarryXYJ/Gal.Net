@@ -55,7 +55,7 @@ public sealed record ParticleColorCurveKey(float Time, string Color);
 public sealed class ParticleEmitterInstance : AnimatableSceneInstance
 {
     private readonly Dictionary<string, float> _values;
-    private static readonly IReadOnlyList<AnimatableProperty> Properties =
+    public static IReadOnlyList<AnimatableProperty> AnimationProperties { get; } =
     [
         new("emissionRate", AnimationValueKind.Float, 0), new("initialVelocityX", AnimationValueKind.Float),
         new("initialVelocityY", AnimationValueKind.Float), new("noise", AnimationValueKind.Float, 0),
@@ -77,12 +77,12 @@ public sealed class ParticleEmitterInstance : AnimatableSceneInstance
     public ParticleEmitterDefinition Definition { get; init; }
     public float Z { get; init; }
     public bool IsEmitting { get; set; } = true;
-    public override IReadOnlyList<AnimatableProperty> AnimatableProperties => Properties;
+    public override IReadOnlyList<AnimatableProperty> AnimatableProperties => AnimationProperties;
     public IReadOnlyDictionary<string, float> AnimationValues => _values;
     public override bool TryGetAnimationValue(string propertyName, out float value) => _values.TryGetValue(propertyName, out value);
     public override bool TrySetAnimationValue(string propertyName, float value, out string? error)
     {
-        var property = Properties.FirstOrDefault(candidate => candidate.Name == propertyName);
+        var property = AnimationProperties.FirstOrDefault(candidate => candidate.Name == propertyName);
         if (property is null || !property.Accepts(value)) { error = $"Invalid particle emitter animation property '{propertyName}'."; return false; }
         _values[propertyName] = value; error = null; return true;
     }

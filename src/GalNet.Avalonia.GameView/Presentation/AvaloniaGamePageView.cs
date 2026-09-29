@@ -186,9 +186,10 @@ public sealed class AvaloniaGamePageView : IDisposable, IDialoguePresenter, ICho
                     break;
                 }
 
-                var frame = Math.Min(plan.DurationFrames, started.Elapsed.TotalSeconds * plan.FrameRate);
+                var elapsedFrames = started.Elapsed.TotalSeconds * plan.FrameRate;
+                var frame = GetPlanFrame(plan, elapsedFrames);
                 await ApplyPlanFrameAsync(tracks, frame);
-                if (frame >= plan.DurationFrames)
+                if (plan.LoopMode == AnimationLoopMode.Once && elapsedFrames >= plan.DurationFrames)
                 {
                     outcome = AnimationOutcome.Completed;
                     break;
@@ -278,6 +279,9 @@ public sealed class AvaloniaGamePageView : IDisposable, IDialoguePresenter, ICho
     public void Dispose()
     {
         _state.AdvanceRequested -= Advance;
+        lock (_animationGate)
+            foreach (var playback in _activePlaybacks.Values.ToArray())
+                playback.Complete(AnimationOutcome.Replaced);
         foreach (var id in _particleEmitters.Keys.ToArray()) StopParticleEmitter(id);
     }
 
@@ -331,13 +335,29 @@ public sealed class AvaloniaGamePageView : IDisposable, IDialoguePresenter, ICho
             return Task.CompletedTask;
         });
 
+    private static double GetPlanFrame(AnimationPlanDefinition plan, double elapsedFrames)
+    {
+        if (plan.LoopMode == AnimationLoopMode.Once)
+            return Math.Min(plan.DurationFrames, elapsedFrames);
+        if (plan.DurationFrames <= 0)
+            return 0;
+        if (plan.LoopMode == AnimationLoopMode.PingPong)
+        {
+            var position = elapsedFrames % (plan.DurationFrames * 2d);
+            return position <= plan.DurationFrames
+                ? position
+                : (plan.DurationFrames * 2d) - position;
+        }
+        return elapsedFrames % plan.DurationFrames;
+    }
+
     private async Task CleanupPlanTracksAsync(ActivePlan plan)
     {
         await OnUiAsync(() =>
         {
             foreach (var activeTrack in plan.Tracks.Where(track => track.Track.BlendMode == AnimationBlendMode.Additive))
             {
-                if (plan.Plan.LoopMode == AnimationLoopMode.Loop)
+                if (plan.Plan.LoopMode != AnimationLoopMode.Once)
                     RemoveAdditiveValue(activeTrack, activeTrack.Track.HandleId, activeTrack.Track.Property);
                 else
                     BakeAdditiveValue(activeTrack, activeTrack.Track.HandleId, activeTrack.Track.Property);

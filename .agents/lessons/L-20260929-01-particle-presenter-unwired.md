@@ -18,3 +18,7 @@ Treat an entry schema and a platform presenter as incomplete until a primitive i
 ## Scope
 
 Any new Builtins capability that has a Core schema and a platform presenter.
+
+## Resolution
+
+Resolved in `F-20260929-01-compiled-content-pipeline`: `particle.play` / `particle.stop` now use dedicated Primitive instances, update Runtime state, and invoke `IParticlePresenter`. Module-level tests cover the bridge. Persistent save restoration is handled by `BuiltinPresentationReplay`; see `L-20260929-03-persistent-scene-presentation-replay.md`.

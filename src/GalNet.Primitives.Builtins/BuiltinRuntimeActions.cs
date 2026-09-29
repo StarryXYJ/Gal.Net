@@ -9,20 +9,45 @@ namespace GalNet.Primitives.Builtins;
 
 internal static class BuiltinRuntimeActions
 {
-    public static AnimationRequest CreateAnimationRequest(PrimitiveCreateContext context) => new()
+    public static AnimationRequest CreateAnimationRequest(PrimitiveCreateContext context)
     {
-        PlaybackHandleId = Arguments.String(context, "playbackHandleId"),
-        HandleId = Arguments.String(context, "handleId"),
-        Property = Arguments.String(context, "property"),
-        From = Arguments.TryFloat(context, "from", out var from) ? from : null,
-        To = Arguments.Float(context, "to"),
-        DurationSeconds = Math.Max(0, Arguments.Float(context, "duration", 0.25f)),
-        Curve = AnimationCurves.Create(Arguments.Enum(context, "curve", BuiltinAnimationCurve.Linear)),
-        Blocking = Arguments.Bool(context, "blocking"),
-        Skippable = Arguments.Bool(context, "skippable"),
-        LoopMode = Arguments.Enum(context, "loopMode", AnimationLoopMode.Once),
-        BlendMode = Arguments.Enum(context, "blendMode", AnimationBlendMode.Replace)
-    };
+        var curve = Arguments.Enum(context, "curve", BuiltinAnimationCurve.Linear);
+        return new AnimationRequest
+        {
+            PlaybackHandleId = Arguments.String(context, "playbackHandleId"),
+            HandleId = Arguments.String(context, "handleId"),
+            Property = Arguments.String(context, "property"),
+            From = Arguments.TryFloat(context, "from", out var from) ? from : null,
+            To = Arguments.Float(context, "to"),
+            DurationSeconds = Math.Max(0, Arguments.Float(context, "duration", 0.25f)),
+            CurveKind = curve,
+            Curve = AnimationCurves.Create(curve),
+            Blocking = Arguments.Bool(context, "blocking"),
+            Skippable = Arguments.Bool(context, "skippable"),
+            LoopMode = Arguments.Enum(context, "loopMode", AnimationLoopMode.Once),
+            BlendMode = Arguments.Enum(context, "blendMode", AnimationBlendMode.Replace)
+        };
+    }
+
+    public static AnimationRequest CreateAnimationRequest(ActiveAnimationState state)
+    {
+        var curve = ParseEnum(Get(state.Parameters, "curve"), BuiltinAnimationCurve.Linear);
+        return new AnimationRequest
+        {
+            PlaybackHandleId = state.PlaybackHandleId,
+            HandleId = Get(state.Parameters, "handleId"),
+            Property = Get(state.Parameters, "property"),
+            From = TryParseFloat(Get(state.Parameters, "from"), out var from) ? from : null,
+            To = ParseFloat(Get(state.Parameters, "to")),
+            DurationSeconds = Math.Max(0, ParseDouble(Get(state.Parameters, "duration"), 0.25)),
+            CurveKind = curve,
+            Curve = AnimationCurves.Create(curve),
+            Blocking = ParseBool(Get(state.Parameters, "blocking")),
+            Skippable = ParseBool(Get(state.Parameters, "skippable")),
+            LoopMode = state.LoopMode,
+            BlendMode = ParseEnum(Get(state.Parameters, "blendMode"), AnimationBlendMode.Replace)
+        };
+    }
 
     public static AnimationPlanDefinition CreateAnimationPlan(PrimitiveCreateContext context)
     {
@@ -32,6 +57,14 @@ internal static class BuiltinRuntimeActions
         if (plan.DurationFrames < 0)
             plan.DurationFrames = 0;
         return plan;
+    }
+
+    public static AnimationPlanDefinition CreateAnimationPlan(ActiveAnimationState state)
+    {
+        if (!state.Parameters.TryGetValue("plan", out var json) || string.IsNullOrWhiteSpace(json))
+            throw new InvalidDataException($"Persistent animation plan '{state.PlaybackHandleId}' has no replay definition.");
+        return JsonSerializer.Deserialize<AnimationPlanDefinition>(json, Arguments.JsonOptions)
+            ?? throw new InvalidDataException($"Persistent animation plan '{state.PlaybackHandleId}' is invalid.");
     }
 
     public static EffectRequest CreateEffectRequest(PrimitiveCreateContext context) => new(
@@ -117,25 +150,66 @@ internal static class BuiltinRuntimeActions
             layer.EffectInstanceIds.RemoveAll(id => string.Equals(id, instanceId, StringComparison.Ordinal));
     }
 
-    public static void ApplyAnimationFinalValue(IGameRuntime runtime, AnimationRequest request)
+    public static void ApplyAnimationStableState(IGameRuntime runtime, AnimationRequest request)
     {
-        if (request.LoopMode != AnimationLoopMode.Once)
-            TrackLoopingAnimation(runtime, AnimateEntry.TypeId, request.PlaybackHandleId, new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["playbackHandleId"] = request.PlaybackHandleId,
-                ["handleId"] = request.HandleId,
-                ["property"] = request.Property,
-                ["to"] = request.To.ToString(System.Globalization.CultureInfo.InvariantCulture)
-            });
+        if (request.LoopMode == AnimationLoopMode.Once)
+        {
+            ApplyAnimationTerminalValue(runtime, request);
+            return;
+        }
 
-        ApplyAnimationValue(runtime, request.HandleId, request.Property, request.To, request.BlendMode);
+        // Replace loops own a stable frame-zero value. Additive loops retain their underlying
+        // base value; the presenter reapplies the authored frame-zero offset on every replay.
+        if (request.BlendMode == AnimationBlendMode.Replace &&
+            TryResolveAnimationStartValue(runtime, request, out var initialValue))
+        {
+            request.From ??= initialValue;
+            ApplyAnimationValue(runtime, request.HandleId, request.Property, initialValue, AnimationBlendMode.Replace);
+        }
+
+        TrackLoopingAnimation(
+            runtime,
+            AnimateEntry.TypeId,
+            request.PlaybackHandleId,
+            request.LoopMode,
+            ToReplayParameters(request));
     }
 
-    public static void ApplyPlanFinalState(IGameRuntime runtime, AnimationPlanDefinition plan)
+    public static void ApplyAnimationTerminalValue(IGameRuntime runtime, AnimationRequest request) =>
+        ApplyAnimationValue(runtime, request.HandleId, request.Property, request.To, request.BlendMode);
+
+    public static void ApplyPlanStableState(IGameRuntime runtime, AnimationPlanDefinition plan)
     {
         if (plan.LoopMode != AnimationLoopMode.Once)
-            TrackLoopingAnimation(runtime, PlayAnimationPlanEntry.TypeId, plan.PlaybackHandleId, new Dictionary<string, string>(StringComparer.Ordinal));
+        {
+            foreach (var item in plan.Events.Where(item => item.Frame <= 0).OrderBy(item => item.Frame))
+                ApplyPlanEventToRuntime(runtime, item);
 
+            foreach (var track in plan.Tracks.Where(track => track.Keys.Count > 0 && track.BlendMode == AnimationBlendMode.Replace))
+                ApplyAnimationValue(
+                    runtime,
+                    track.HandleId,
+                    track.Property,
+                    AnimationTrackSampler.Evaluate(track, 0),
+                    AnimationBlendMode.Replace);
+
+            TrackLoopingAnimation(
+                runtime,
+                PlayAnimationPlanEntry.TypeId,
+                plan.PlaybackHandleId,
+                plan.LoopMode,
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["plan"] = JsonSerializer.Serialize(plan, Arguments.JsonOptions)
+                });
+            return;
+        }
+
+        ApplyPlanTerminalState(runtime, plan);
+    }
+
+    public static void ApplyPlanTerminalState(IGameRuntime runtime, AnimationPlanDefinition plan)
+    {
         foreach (var item in plan.Events.OrderBy(item => item.Frame))
             ApplyPlanEventToRuntime(runtime, item);
 
@@ -297,14 +371,24 @@ internal static class BuiltinRuntimeActions
             finalValue = current + authoredValue;
 
         if (target.TrySetAnimationValue(property, finalValue, out _))
-            SyncEffectAnimationState(runtime, target);
+            SyncAnimationState(runtime, target);
     }
 
-    private static void SyncEffectAnimationState(IGameRuntime runtime, AnimatableSceneInstance target)
+    private static void SyncAnimationState(IGameRuntime runtime, AnimatableSceneInstance target)
     {
-        if (target is not EffectInstance effect)
-            return;
+        switch (target)
+        {
+            case EffectInstance effect:
+                SyncEffectAnimationState(runtime, effect);
+                break;
+            case ParticleEmitterInstance emitter:
+                SyncParticleAnimationState(runtime, emitter);
+                break;
+        }
+    }
 
+    private static void SyncEffectAnimationState(IGameRuntime runtime, EffectInstance effect)
+    {
         var state = runtime.SceneState.ActiveEffects.FirstOrDefault(item =>
             string.Equals(item.InstanceId, effect.Id, StringComparison.Ordinal));
         if (state is null)
@@ -315,10 +399,23 @@ internal static class BuiltinRuntimeActions
             state.AnimationValues[property] = value;
     }
 
+    private static void SyncParticleAnimationState(IGameRuntime runtime, ParticleEmitterInstance emitter)
+    {
+        var state = runtime.SceneState.ActiveParticleEmitters.FirstOrDefault(item =>
+            string.Equals(item.InstanceId, emitter.Id, StringComparison.Ordinal));
+        if (state is null)
+            return;
+
+        state.AnimationValues.Clear();
+        foreach (var (property, value) in emitter.AnimationValues)
+            state.AnimationValues[property] = value;
+    }
+
     private static void TrackLoopingAnimation(
         IGameRuntime runtime,
         string entryType,
         string playbackHandleId,
+        AnimationLoopMode loopMode,
         Dictionary<string, string> parameters)
     {
         if (string.IsNullOrWhiteSpace(playbackHandleId))
@@ -327,7 +424,7 @@ internal static class BuiltinRuntimeActions
         runtime.SceneInstances.GetOrAddTransient(playbackHandleId, id => new AnimationPlaybackInstance
         {
             Id = id,
-            LoopMode = AnimationLoopMode.Loop
+            LoopMode = loopMode
         });
         runtime.SceneState.ActiveAnimations.RemoveAll(animation =>
             string.Equals(animation.PlaybackHandleId, playbackHandleId, StringComparison.Ordinal));
@@ -335,9 +432,68 @@ internal static class BuiltinRuntimeActions
         {
             EntryType = entryType,
             PlaybackHandleId = playbackHandleId,
+            LoopMode = loopMode,
             Parameters = parameters
         });
     }
+
+    private static Dictionary<string, string> ToReplayParameters(AnimationRequest request)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["handleId"] = request.HandleId,
+            ["property"] = request.Property,
+            ["to"] = Invariant(request.To),
+            ["duration"] = Invariant(request.DurationSeconds),
+            ["curve"] = request.CurveKind.ToString(),
+            ["blocking"] = request.Blocking.ToString(),
+            ["skippable"] = request.Skippable.ToString(),
+            ["blendMode"] = request.BlendMode.ToString()
+        };
+        if (request.From.HasValue)
+            result["from"] = Invariant(request.From.Value);
+        return result;
+    }
+
+    private static bool TryResolveAnimationStartValue(IGameRuntime runtime, AnimationRequest request, out float value)
+    {
+        if (request.From.HasValue)
+        {
+            value = request.From.Value;
+            return true;
+        }
+
+        if (runtime.SceneInstances.TryGet<AnimatableSceneInstance>(request.HandleId, out var target) &&
+            target.TryGetAnimationValue(request.Property, out value))
+            return true;
+
+        value = default;
+        return false;
+    }
+
+    private static string Get(IReadOnlyDictionary<string, string> parameters, string name, string fallback = "") =>
+        parameters.TryGetValue(name, out var value) ? value : fallback;
+
+    private static bool TryParseFloat(string value, out float result) =>
+        float.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out result);
+
+    private static float ParseFloat(string value, float fallback = 0) =>
+        TryParseFloat(value, out var result) ? result : fallback;
+
+    private static double ParseDouble(string value, double fallback = 0) =>
+        double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var result)
+            ? result
+            : fallback;
+
+    private static bool ParseBool(string value, bool fallback = false) =>
+        bool.TryParse(value, out var result) ? result : fallback;
+
+    private static TEnum ParseEnum<TEnum>(string value, TEnum fallback)
+        where TEnum : struct, Enum =>
+        System.Enum.TryParse<TEnum>(value, true, out var result) ? result : fallback;
+
+    private static string Invariant(float value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    private static string Invariant(double value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     private static LayerRenderRequest ToLayerRenderRequest(
         IReadOnlyDictionary<string, JsonElement> parameters,
