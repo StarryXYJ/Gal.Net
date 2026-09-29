@@ -47,9 +47,21 @@ ParticleEmitterDefinition v2
 - 所有采样共享 emitter 的 seed RNG，故相同 definition 从头重放时结果一致。
 - stop 后不再持续发射，已有粒子自然耗尽。
 
+## Phase 1.5 决策：粒子 Flipbook
+
+Flipbook 是粒子 Renderer 配置，不新增原语；`particle.play` 与 `particle.burst` 共用 `parameters.flipbook`。每颗粒子根据自身年龄独立选择 sprite-sheet source rect，继续通过同一个 atlas batch 提交。
+
+- `columns`、`rows`、`frameCount` 描述 row-major sprite sheet，帧下标从 0 开始。
+- `framesPerSecond > 0` 时使用固定速率：`floor(age * framesPerSecond)`。
+- 否则使用 `cyclesOverLifetime`：`floor(normalizedAge * cyclesOverLifetime * frameCount)`。
+- `loop = true` 时按 `frameCount` 取模；否则钳制到最后一帧。
+- `randomStartFrame = true` 时，出生时使用 emitter seed RNG 生成确定性的起始帧。
+- 发射 `rate` 与 flipbook 播放速率没有共享语义；后者显式命名为 `framesPerSecond`，避免歧义。
+- snapshot 只保存完整 emitter definition；不保存单颗粒子的年龄、当前帧或随机状态，读档仍从 seed 与第 0 时刻重建。
+
 ## 后续阶段
 
 1. 引入通用 `FloatRange` / `ColorRange` 和 Initial 模块。
 2. 增加 drag、angular velocity、opacity/rotation/velocity lifetime curves。
-3. 增加 blend mode 与 flipbook；保持 Skia atlas 批量提交。
+3. 增加 blend mode 与 alignment；保持 Skia atlas 批量提交。
 4. 再评估 collision、attractor/vortex、trail、mask emission、sub-emitter 与 GPU simulation。

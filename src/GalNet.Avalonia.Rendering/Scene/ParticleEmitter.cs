@@ -8,7 +8,7 @@ namespace GalNet.Rendering.Scene;
 /// <summary>Renderer-owned particle batch. It never creates Avalonia controls or per-particle render targets.</summary>
 public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPropertyChanged, IDisposable
 {
-    private sealed class Particle { public float X; public float Y; public float Vx; public float Vy; public float Age; public float Life; public float Scale; }
+    private sealed class Particle { public float X; public float Y; public float Vx; public float Vy; public float Age; public float Life; public float Scale; public int StartFrame; }
     private readonly List<Particle> _active = [];
     private readonly Stack<Particle> _pool = [];
     private readonly SceneTexture? _texture;
@@ -17,6 +17,7 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
     private readonly float _gravityX;
     private readonly float _gravityY;
     private readonly ParticleShapeDefinition? _shape;
+    private readonly ParticleFlipbookDefinition? _flipbook;
     private readonly IReadOnlyList<ParticleCurveKey> _sizeCurve;
     private readonly IReadOnlyList<ParticleColorCurveKey> _colorCurve;
     private SKRect[] _sprites = [];
@@ -40,6 +41,7 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
         HandleId = handleId; _texture = texture; _maximum = definition.MaxParticles; _random = new Random(definition.Seed);
         _gravityX = definition.GravityX; _gravityY = definition.GravityY; _z = z;
         _shape = definition.Shape;
+        _flipbook = definition.Flipbook is { IsValid: true } ? definition.Flipbook : null;
         _pendingBurstCount = Math.Max(0, initialBurstCount);
         _sizeCurve = definition.SizeCurve?.OrderBy(key => key.Time).ToArray() ?? [];
         _colorCurve = definition.ColorCurve?.OrderBy(key => key.Time).ToArray() ?? [];
@@ -116,15 +118,16 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
         EnsureAtlasCapacity(_active.Count);
         if (_lastRenderedParticleCount > _active.Count)
             Array.Clear(_colors, _active.Count, _lastRenderedParticleCount - _active.Count);
-        var source = new SKRect(0, 0, image.Width, image.Height);
         for (var index = 0; index < _active.Count; index++)
         {
             var particle = _active[index];
             var progress = Math.Clamp(particle.Age / particle.Life, 0, 1);
             var size = 28f * particle.Scale * SampleSize(progress);
-            var scale = size / Math.Max(1, image.Width);
+            var source = GetSource(image, particle);
+            var scale = size / Math.Max(1, source.Width);
+            var height = source.Height * scale;
             _sprites[index] = source;
-            _transforms[index] = new SKRotationScaleMatrix(scale, 0, particle.X - size / 2, particle.Y - size / 2);
+            _transforms[index] = new SKRotationScaleMatrix(scale, 0, particle.X - size / 2, particle.Y - height / 2);
             var color = SampleColor(progress);
             _colors[index] = color.WithAlpha((byte)Math.Clamp(Math.Round(color.Alpha * (1 - progress)), 0, 255));
         }
@@ -147,7 +150,20 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
         particle.Vx = _speedX + ((float)_random.NextDouble() - .5f) * _noise;
         particle.Vy = _speedY + ((float)_random.NextDouble() - .5f) * _noise;
         particle.Age = 0; particle.Life = _life * (.75f + (float)_random.NextDouble() * .5f); particle.Scale = _scale * (.75f + (float)_random.NextDouble() * .5f);
+        particle.StartFrame = _flipbook is { RandomStartFrame: true } flipbook ? _random.Next(flipbook.FrameCount) : 0;
         _active.Add(particle);
+    }
+
+    private SKRect GetSource(SKImage image, Particle particle)
+    {
+        if (_flipbook is not { IsValid: true } flipbook)
+            return new SKRect(0, 0, image.Width, image.Height);
+        var frame = flipbook.GetFrameIndex(particle.Age, particle.Life, particle.StartFrame);
+        var cellWidth = image.Width / (float)flipbook.Columns;
+        var cellHeight = image.Height / (float)flipbook.Rows;
+        var column = frame % flipbook.Columns;
+        var row = frame / flipbook.Columns;
+        return new SKRect(column * cellWidth, row * cellHeight, (column + 1) * cellWidth, (row + 1) * cellHeight);
     }
 
     private (float X, float Y) SampleSpawnPosition(SKSize size)

@@ -17,7 +17,8 @@ public sealed record ParticleEmitterDefinition(
     float GravityY = 0,
     IReadOnlyList<ParticleCurveKey>? SizeCurve = null,
     IReadOnlyList<ParticleColorCurveKey>? ColorCurve = null,
-    ParticleShapeDefinition? Shape = null)
+    ParticleShapeDefinition? Shape = null,
+    ParticleFlipbookDefinition? Flipbook = null)
 {
     public static ParticleEmitterDefinition FromJson(string parameters)
     {
@@ -29,6 +30,7 @@ public sealed record ParticleEmitterDefinition(
             static int Integer(JsonElement root, string name, int fallback) => root.TryGetProperty(name, out var value) && value.TryGetInt32(out var result) ? result : fallback;
             static string Text(JsonElement root, string name) => root.TryGetProperty(name, out var value) ? value.GetString() ?? "" : "";
             var shape = ShapeModule(root);
+            var flipbook = FlipbookModule(root);
             return new ParticleEmitterDefinition(
                 Text(root, "particleTexture"),
                 Math.Max(0, Number(root, "rate", 36)),
@@ -39,7 +41,8 @@ public sealed record ParticleEmitterDefinition(
                 Number(root, "gravityX", 0), Number(root, "gravityY", 0),
                 Curve(root, "sizeCurve", static value => new ParticleCurveKey(Number(value, "time", 0), Number(value, "value", 1))),
                 Curve(root, "colorCurve", static value => new ParticleColorCurveKey(Number(value, "time", 0), Text(value, "color"))),
-                shape);
+                shape,
+                flipbook);
         }
         catch (JsonException exception) { throw new InvalidDataException("Particle emitter parameters must be a JSON object.", exception); }
     }
@@ -66,6 +69,31 @@ public sealed record ParticleEmitterDefinition(
             Number(value, "endY", 0));
     }
 
+    private static ParticleFlipbookDefinition? FlipbookModule(JsonElement root)
+    {
+        if (!root.TryGetProperty("flipbook", out var value)) return null;
+        if (value.ValueKind != JsonValueKind.Object)
+            throw new InvalidDataException("Particle flipbook must be a JSON object.");
+
+        var columns = Math.Max(1, Integer(value, "columns", 1));
+        var rows = Math.Max(1, Integer(value, "rows", 1));
+        var capacity = (long)columns * rows;
+        if (capacity > int.MaxValue)
+            throw new InvalidDataException("Particle flipbook grid is too large.");
+        var frameCount = Math.Max(1, Integer(value, "frameCount", (int)capacity));
+        if (frameCount > capacity)
+            throw new InvalidDataException("Particle flipbook frameCount cannot exceed columns * rows.");
+
+        return new ParticleFlipbookDefinition(
+            columns,
+            rows,
+            frameCount,
+            Math.Max(0, Number(value, "framesPerSecond", 0)),
+            Math.Max(0, Number(value, "cyclesOverLifetime", 1)),
+            Boolean(value, "loop", false),
+            Boolean(value, "randomStartFrame", false));
+    }
+
     private static IReadOnlyList<T>? Curve<T>(JsonElement root, string name, Func<JsonElement, T> read)
     {
         if (!root.TryGetProperty(name, out var values) || values.ValueKind != JsonValueKind.Array) return null;
@@ -75,10 +103,35 @@ public sealed record ParticleEmitterDefinition(
     private static float Number(JsonElement root, string name, float fallback) => root.TryGetProperty(name, out var value) && value.TryGetSingle(out var result) ? result : fallback;
     private static int Integer(JsonElement root, string name, int fallback) => root.TryGetProperty(name, out var value) && value.TryGetInt32(out var result) ? result : fallback;
     private static string Text(JsonElement root, string name) => root.TryGetProperty(name, out var value) ? value.GetString() ?? "" : "";
+    private static bool Boolean(JsonElement root, string name, bool fallback) => root.TryGetProperty(name, out var value) && value.ValueKind is JsonValueKind.True or JsonValueKind.False ? value.GetBoolean() : fallback;
 }
 
 public sealed record ParticleCurveKey(float Time, float Value);
 public sealed record ParticleColorCurveKey(float Time, string Color);
+
+/// <summary>Per-particle row-major sprite-sheet playback driven by particle age.</summary>
+public sealed record ParticleFlipbookDefinition(
+    int Columns = 1,
+    int Rows = 1,
+    int FrameCount = 1,
+    float FramesPerSecond = 0,
+    float CyclesOverLifetime = 1,
+    bool Loop = false,
+    bool RandomStartFrame = false)
+{
+    public long Capacity => (long)Columns * Rows;
+    public bool IsValid => Columns > 0 && Rows > 0 && FrameCount is > 0 && FrameCount <= Capacity;
+
+    public int GetFrameIndex(float age, float lifetime, int startFrame = 0)
+    {
+        if (!IsValid) return 0;
+        var elapsedFrames = FramesPerSecond > 0
+            ? Math.Max(0, age) * FramesPerSecond
+            : Math.Clamp(age / Math.Max(.0001f, lifetime), 0, 1) * Math.Max(0, CyclesOverLifetime) * FrameCount;
+        var frame = Math.Max(0, startFrame) + (int)MathF.Floor(elapsedFrames);
+        return Loop ? frame % FrameCount : Math.Clamp(frame, 0, FrameCount - 1);
+    }
+}
 
 public enum ParticleShapeKind { Point, Box, Circle, Line }
 

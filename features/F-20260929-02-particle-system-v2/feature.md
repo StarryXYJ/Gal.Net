@@ -20,6 +20,7 @@ updated: 2026-09-29
 - 持续时间由流程或 animation plan 编排 `play` / `stop`，不是粒子参数或可动画属性。
 - animation plan 可在指定帧触发 `particle.burst`，循环 plan 自然形成连续 burst。
 - 支持 Point、Box、Circle、Line 四种发射形状。
+- 支持每颗粒子独立播放 sprite-sheet flipbook，可按固定 FPS 或生命周期循环次数推进。
 - 保持 emitter 级存档：只保存定义、动画值和排序，读档后确定性重启 emitter，不保存单颗粒子。
 - 为解析兼容、burst 时序、上限和形状渲染添加测试。
 
@@ -27,7 +28,7 @@ updated: 2026-09-29
 
 - 本阶段不实现碰撞、子发射器、轨迹、mask emission、GPU simulation。
 - 本阶段不保存单颗粒子的年龄、位置或随机数状态；burst 中途存档后按一次性非阻塞视觉的最终状态处理，不恢复。
-- 本阶段不一次性实现所有随机范围、生命周期曲线、flipbook 和混合模式。
+- 本阶段不一次性实现所有随机范围、生命周期曲线和混合模式。
 
 ## 验收标准
 
@@ -36,6 +37,7 @@ updated: 2026-09-29
 - animation plan 的 burst 事件可随循环重复；跳过 plan 不补发尚未发生的 burst。
 - 四种 Shape 的采样由 emitter seed 驱动，重放结果可确定复现。
 - Runtime snapshot 往返后保留持续 emitter 定义；burst 不参与往返。
+- flipbook 帧由每颗粒子的年龄确定，固定 FPS 与生命周期循环模式都可验证，且不降低 atlas batch 粒度。
 - 受影响测试与构建通过，已知无关失败单独记录。
 
 ## 相关链接

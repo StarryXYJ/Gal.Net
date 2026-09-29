@@ -124,7 +124,8 @@ public class BuiltinPrimitiveInstanceTests
                 particleScale = 0.75,
                 particleLifetime = 3.5,
                 seed = 20260929,
-                gravityY = 12
+                gravityY = 12,
+                flipbook = new { columns = 4, rows = 2, frameCount = 7, framesPerSecond = 12, loop = true }
             }
         }), runtime, CancellationToken.None);
 
@@ -135,6 +136,7 @@ public class BuiltinPrimitiveInstanceTests
             Assert.That(runtime.SceneState.ActiveParticleEmitters, Has.Count.EqualTo(1));
             Assert.That(runtime.SceneState.ActiveParticleEmitters[0].Definition.ParticleTexture, Is.EqualTo("snowflake"));
             Assert.That(runtime.SceneState.ActiveParticleEmitters[0].Definition.GravityY, Is.EqualTo(12));
+            Assert.That(runtime.SceneState.ActiveParticleEmitters[0].Definition.Flipbook?.FramesPerSecond, Is.EqualTo(12));
             Assert.That(runtime.SceneInstances.TryGet<ParticleEmitterInstance>("snow", out _), Is.True);
             Assert.That(presenter.Started.Single().InstanceId, Is.EqualTo("snow"));
             Assert.That(presenter.Started.Single().Z, Is.EqualTo(42));
@@ -191,6 +193,7 @@ public class BuiltinPrimitiveInstanceTests
                 particleTexture = "spark",
                 maxParticles = 24,
                 seed = 7,
+                flipbook = new { columns = 2, rows = 2, frameCount = 4, cyclesOverLifetime = 1 },
                 shape = new { type = "circle", x = 320, y = 180, radius = 16 }
             }
         }), runtime, CancellationToken.None);
@@ -204,6 +207,7 @@ public class BuiltinPrimitiveInstanceTests
             Assert.That(presenter.Bursts.Single().Z, Is.EqualTo(110));
             Assert.That(presenter.Bursts.Single().Definition.EmissionRate, Is.Zero);
             Assert.That(presenter.Bursts.Single().Definition.Shape?.Type, Is.EqualTo(ParticleShapeKind.Circle));
+            Assert.That(presenter.Bursts.Single().Definition.Flipbook?.CyclesOverLifetime, Is.EqualTo(1));
         });
     }
 

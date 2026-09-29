@@ -139,7 +139,7 @@ public void Skip();
 - `layer.*`：show/showColor/hide/move/replace，先更新 `SceneState` 再通知 `ILayerPresenter`。
 - `animation.animate` / `animation.play` / `animation.stop`：创建 animation primitive instance；一次性动画先提交最终逻辑状态，循环动画提交第 0 帧状态并保存完整重放定义，再启动呈现动画。plan 是单个 instance，内部事件只作为 animation 模块私有 layer/effect 事件处理，不重新进入通用 Entry 分发。
 - `effect.apply` / `effect.stop`：维护 `SceneState.ActiveEffects`、目标 Layer 的 effect 索引和 `IEffectPresenter` 调用。
-- `particle.play` / `particle.stop`：用 `rate` 创建和停止持续 emitter，维护 `SceneState.ActiveParticleEmitters` 与 Runtime emitter instance。存档只保存 emitter 定义、排序与动画值；宿主读档后通过 `BuiltinPresentationReplay` 以相同 seed 从头重建，不保存单颗粒子。
+- `particle.play` / `particle.stop`：用 `rate` 创建和停止持续 emitter，维护 `SceneState.ActiveParticleEmitters` 与 Runtime emitter instance。存档只保存 emitter 定义、排序与动画值；宿主读档后通过 `BuiltinPresentationReplay` 以相同 seed 从头重建，不保存单颗粒子。可选 `flipbook` 由每颗粒子自身年龄驱动，支持 `framesPerSecond` 或 `cyclesOverLifetime`，当前帧不单独存档。
 - `particle.burst`：用 `count` 向 `IParticlePresenter` 发出一次性 burst，不创建 Runtime scene state，也不参与存档恢复。有限持续效果由流程或 animation plan 编排 play/stop；重复 burst 由 animation plan 事件表达，跳过 plan 时不补发未来 burst。
 - `flow.wait`：blocking、skippable 的等待实例。
 - `variable.set`：求值后写入 Runtime 变量。
