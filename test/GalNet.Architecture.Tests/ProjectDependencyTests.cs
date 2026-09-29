@@ -29,6 +29,66 @@ public class ProjectDependencyTests
             ["GalNet.Presentation.Defaults"] = ["GalNet.Presentation.Abstractions"]
         };
 
+    private static readonly IReadOnlyDictionary<string, string[]> AllowedTestDependencies =
+        new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            ["GalNet.Architecture.Tests"] = [],
+            ["GalNet.Core.Tests"] = ["GalNet.Core"],
+            ["GalNet.Runtime.Tests"] = ["GalNet.Core", "GalNet.Presentation.Abstractions", "GalNet.Runtime"],
+            ["GalNet.Primitives.Builtins.Tests"] =
+            [
+                "GalNet.Core",
+                "GalNet.Presentation.Abstractions",
+                "GalNet.Primitives.Builtins",
+                "GalNet.Runtime"
+            ],
+            ["GalNet.Assets.Tests"] = ["GalNet.Assets", "GalNet.Core"],
+            ["GalNet.Storage.FileSystem.Tests"] =
+            [
+                "GalNet.Assets",
+                "GalNet.Core",
+                "GalNet.Runtime",
+                "GalNet.Storage.FileSystem"
+            ],
+            ["GalNet.Editor.Shared.Tests"] =
+            [
+                "GalNet.Core",
+                "GalNet.Editor.Abstraction",
+                "GalNet.Editor.Shared",
+                "GalNet.Primitives.Builtins"
+            ],
+            ["GalNet.Editor.Tests"] =
+            [
+                "GalNet.Core",
+                "GalNet.Editor",
+                "GalNet.Editor.Abstraction",
+                "GalNet.Editor.Shared",
+                "GalNet.Primitives.Builtins"
+            ],
+            ["GalNet.Presentation.Tests"] =
+            [
+                "GalNet.Assets",
+                "GalNet.Avalonia.Controls",
+                "GalNet.Avalonia.GameView",
+                "GalNet.Avalonia.Rendering",
+                "GalNet.Core",
+                "GalNet.Presentation.Abstractions",
+                "GalNet.Runtime"
+            ],
+            ["GalNet.IntegrationTests"] =
+            [
+                "GalNet.Assets",
+                "GalNet.Core",
+                "GalNet.Editor.Abstraction",
+                "GalNet.Editor.Shared",
+                "GalNet.Presentation.Abstractions",
+                "GalNet.Primitives.Builtins",
+                "GalNet.Runtime",
+                "GalNet.Sample.Avalonia",
+                "GalNet.Storage.FileSystem"
+            ]
+        };
+
     public static IEnumerable<TestCaseData> InnerProjectCases() =>
         AllowedDependencies.Keys.Select(project => new TestCaseData(project).SetName($"{project}_UsesOnlyAllowedProjectDependencies"));
 
@@ -42,6 +102,36 @@ public class ProjectDependencyTests
             unexpected,
             Is.Empty,
             $"{projectName} has forbidden direct project dependencies: {string.Join(", ", unexpected)}");
+    }
+
+    public static IEnumerable<TestCaseData> TestProjectCases() =>
+        AllowedTestDependencies.Keys.Select(project => new TestCaseData(project).SetName($"{project}_UsesOnlyAllowedProjectDependencies"));
+
+    [TestCaseSource(nameof(TestProjectCases))]
+    public void TestProject_UsesOnlyAllowedProjectDependencies(string projectName)
+    {
+        var actual = ReadProjectReferences(FindTestProjectFile(projectName));
+        var unexpected = actual.Except(AllowedTestDependencies[projectName], StringComparer.Ordinal).Order().ToArray();
+
+        Assert.That(
+            unexpected,
+            Is.Empty,
+            $"{projectName} has forbidden direct project dependencies: {string.Join(", ", unexpected)}");
+    }
+
+    [Test]
+    public void TestProjects_DoNotReferenceOtherTestProjects()
+    {
+        var testProjectNames = AllowedTestDependencies.Keys.ToHashSet(StringComparer.Ordinal);
+        var consumers = AllowedTestDependencies.Keys
+            .Select(project => (Project: project, References: ReadProjectReferences(FindTestProjectFile(project))))
+            .SelectMany(item => item.References
+                .Where(testProjectNames.Contains)
+                .Select(reference => $"{item.Project} -> {reference}"))
+            .Order()
+            .ToArray();
+
+        Assert.That(consumers, Is.Empty, $"Test projects reference other test projects: {string.Join(", ", consumers)}");
     }
 
     [Test]
@@ -88,6 +178,13 @@ public class ProjectDependencyTests
     {
         var matches = Directory.EnumerateFiles(Path.Combine(RepositoryRoot, "src"), $"{projectName}.csproj", SearchOption.AllDirectories).ToArray();
         Assert.That(matches, Has.Length.EqualTo(1), $"Expected one project file for {projectName}.");
+        return matches[0];
+    }
+
+    private static string FindTestProjectFile(string projectName)
+    {
+        var matches = Directory.EnumerateFiles(Path.Combine(RepositoryRoot, "test"), $"{projectName}.csproj", SearchOption.AllDirectories).ToArray();
+        Assert.That(matches, Has.Length.EqualTo(1), $"Expected one test project file for {projectName}.");
         return matches[0];
     }
 

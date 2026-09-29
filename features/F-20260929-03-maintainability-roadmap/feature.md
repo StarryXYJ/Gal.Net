@@ -2,7 +2,7 @@
 id: F-20260929-03-maintainability-roadmap
 title: 项目结构与可维护性治理路线图
 type: refactor-roadmap
-status: planning
+status: done
 created: 2026-09-29
 updated: 2026-09-29
 ---
@@ -76,4 +76,3 @@ updated: 2026-09-29
 - [运行时与呈现解耦计划](../../docs/design/runtime-presentation-decoupling-phase-plan.md)
 - [Feature 工作流](../../docs/design/feature-workflow.md)
 - [杂项待办](../../docs/design/misc-todo.md)
-

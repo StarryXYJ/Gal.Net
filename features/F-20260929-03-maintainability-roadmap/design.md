@@ -1,6 +1,6 @@
 ---
 feature: F-20260929-03-maintainability-roadmap
-status: proposed
+status: implemented
 updated: 2026-09-29
 ---
 
@@ -182,4 +182,3 @@ src/
 ## ADR 候选
 
 实施前至少提出一个 ADR：运行时/存储端口归属与 `GalNet.Storage.Abstractions` 的去留。若 Editor 插件 API 将从 `IServiceProvider + object` 改为强类型上下文，再单独提出一个 ADR；其余拆分类重构不需要 ADR。
-
