@@ -1,24 +1,14 @@
 using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
-using GalNet.Avalonia.GameView;
 using GalNet.Avalonia.GameView.Page;
-using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
 using GalNet.Core.Runtime;
-using GalNet.Core.Settings;
-using GalNet.Presentation.Abstractions.View;
-using GalNet.Rendering.Scene;
-using GalNet.Assets;
-using GalNet.Presentation.Abstractions.Runtime;
-using GalNet.Runtime.Engine;
 using GalNet.Runtime.Logging;
-using GalNet.Runtime.Runtime;
 using GalNet.Primitives.Builtins;
-using GalNet.Sample.Avalonia.Presentation;
 
 namespace GalNet.Sample.Avalonia.Services;
 
@@ -33,15 +23,9 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySaveSlots;
     private SampleGameResourceScope? _resources;
     private SampleSaveSession? _saveSession;
-    private GameEngine? _engine;
-    private AvaloniaGamePageView? _pageView;
-    private SampleLayerFactory? _layers;
-    private SampleMediaViews? _media;
-    private AvaloniaEffectRuntime? _effects;
+    private SampleGameRunner? _runner;
     private GameLaunchOptions? _launchOptions;
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
-    private readonly GameRunCoordinator _run = new();
-    private bool _hasPreparedGame;
     private bool _disposed;
 
     public SampleGameSessionService(GamePageViewModel gameplay, GamePage page)
@@ -84,7 +68,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         try
         {
             await StopCurrentRunAsync();
-            await DisposeEngineAsync();
+            await DisposeRunnerAsync();
             await DisposeGameResourcesAsync();
             await InitializeGameResourcesAsync(_launchOptions, cancellationToken);
         }
@@ -202,7 +186,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         try
         {
             await StopCurrentRunAsync();
-            await DisposeEngineAsync();
+            await DisposeRunnerAsync();
             var saveSession = _saveSession;
             if (saveSession is not null)
                 await saveSession.ClearAsync(cancellationToken);
@@ -223,8 +207,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         await _lifecycle.WaitAsync(cancellationToken);
         try
         {
-            await EnsureEngineAsync(cancellationToken);
-            await _saveSession!.SaveAsync(slotIndex, _engine!.CreateSaveData(), cancellationToken);
+            await EnsureRunnerAsync(cancellationToken);
+            await _saveSession!.SaveAsync(slotIndex, _runner!.CreateSaveData(), cancellationToken);
             _gameplay.StatusMessage = $"Saved to slot {slotIndex}.";
             await RefreshSlotsAsync(cancellationToken);
         }
@@ -262,7 +246,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         {
             _disposed = true;
             _gameplay.InteractionObserved -= OnInteractionObserved;
-            DisposeEngineAsync().GetAwaiter().GetResult();
+            DisposeRunnerAsync().GetAwaiter().GetResult();
             _saveSession?.Dispose();
             _saveSession = null;
             GalleryResources = null;
@@ -277,11 +261,10 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         await _lifecycle.WaitAsync(cancellationToken);
         try
         {
-            if (!_hasPreparedGame || _engine is null)
+            if (_runner is null)
                 throw new InvalidOperationException("No prepared game is available to start.");
 
-            _hasPreparedGame = false;
-            StartPreparedRun();
+            _runner.StartPrepared();
         }
         finally { _lifecycle.Release(); }
     }
@@ -292,112 +275,25 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         try
         {
             await StopCurrentRunAsync();
-            await DisposeEngineAsync();
-            await EnsureEngineAsync(cancellationToken);
-            if (snapshot is not null)
-            {
-                _engine!.RestoreFrom(snapshot);
-                await RestorePersistentSceneObjectsAsync(cancellationToken);
-            }
-            _hasPreparedGame = true;
-            GameLog.Logger.Debug("Game runtime prepared; waiting for page transition before starting the engine flow");
+            await DisposeRunnerAsync();
+            await EnsureRunnerAsync(cancellationToken);
+            await _runner!.PrepareAsync(snapshot, cancellationToken);
         }
         finally { _lifecycle.Release(); }
     }
 
-    private void StartPreparedRun()
-    {
-        var engine = _engine ?? throw new InvalidOperationException("The game engine has not been initialized.");
-        var pageView = _pageView ?? throw new InvalidOperationException("The game page has not been initialized.");
-        _run.Start(cancellationToken => RunEngineAsync(engine, cancellationToken));
-        _ = CompleteOpeningPresentationAsync(pageView);
-        GameLog.Logger.Debug("Game engine run task created");
-    }
-
-    private async Task CompleteOpeningPresentationAsync(AvaloniaGamePageView pageView)
-    {
-        try
-        {
-            await pageView.InitialPresentationReady;
-            await OnUiAsync(() =>
-            {
-                if (ReferenceEquals(_pageView, pageView))
-                    _gameplay.CompleteOpeningPresentation();
-            });
-        }
-        catch (Exception exception)
-        {
-            GameLog.Logger.Debug(exception, "Opening presentation did not reach an interactive boundary");
-        }
-    }
-
-    private async Task RunEngineAsync(GameEngine engine, CancellationToken cancellationToken)
-    {
-        var finished = false;
-        try
-        {
-            await OnUiAsync(() =>
-            {
-                IsPlaying = true;
-                _gameplay.StatusMessage = "Playing";
-            });
-            GameLog.Logger.Information("Game engine flow started");
-            finished = !await engine.AdvanceAsync(cancellationToken);
-            if (finished)
-            {
-                await OnUiAsync(() => _gameplay.StatusMessage = "Game flow completed.");
-                GameLog.Logger.Information("Game engine flow completed");
-            }
-            else
-            {
-                GameLog.Logger.Debug("Game engine flow reached an interactive boundary");
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            finished = true;
-            _pageView?.CompleteInitialPresentation();
-            await OnUiAsync(() => _gameplay.StatusMessage = "Game flow was cancelled.");
-            GameLog.Logger.Information("Game engine flow cancelled");
-        }
-        catch (Exception exception)
-        {
-            finished = true;
-            _pageView?.FailInitialPresentation(exception);
-            await OnUiAsync(() => _gameplay.StatusMessage = $"Game flow failed: {exception.Message}");
-            GameLog.Logger.Error(exception, "Game engine flow failed");
-        }
-        finally
-        {
-            _pageView?.CompleteInitialPresentation();
-            if (finished)
-                await CompleteRunAsync(engine);
-        }
-    }
-
     private async Task StopCurrentRunAsync()
     {
-        GameLog.Logger.Debug("Cancellation requested for the active engine flow");
-        await _run.StopAsync();
+        if (_runner is not null)
+            await _runner.StopAsync();
     }
 
-    private async Task DisposeEngineAsync()
+    private async Task DisposeRunnerAsync()
     {
-        if (_pageView is not null) _pageView.AdvanceRequested -= OnAdvanceRequested;
-        _engine?.Dispose();
-        _pageView?.Dispose();
-        _pageView = null;
-        _layers?.Dispose();
-        _layers = null;
-        _media?.Dispose();
-        _media = null;
-        _effects?.Dispose();
-        _effects = null;
-        _engine = null;
-        _hasPreparedGame = false;
-        GameLog.Logger.Debug("Resetting scene presentation before creating the next game engine");
-        await ResetScenePresentationAsync();
-        GameLog.Logger.Debug("Scene presentation reset completed");
+        var runner = _runner;
+        _runner = null;
+        if (runner is not null)
+            await runner.DisposeAsync();
     }
 
     private async Task DisposeGameResourcesAsync()
@@ -444,83 +340,24 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         return completion.Task;
     }
 
-    private async Task EnsureEngineAsync(CancellationToken cancellationToken)
+    private async Task EnsureRunnerAsync(CancellationToken cancellationToken)
     {
-        if (_engine is not null) return;
+        if (_runner is not null) return;
         var resources = _resources;
         var saveSession = _saveSession;
         if (!IsReady || resources is null || saveSession is null)
             throw new InvalidOperationException("The game session is not initialized.");
 
-        _layers = new SampleLayerFactory(resources.PreloadedTextures);
-        _pageView = new AvaloniaGamePageView(_gameplay, _page, _layers);
-        _media = new SampleMediaViews(_gameplay);
-        var programs = new SkiaShaderEffectProgramResolver(
-            new AssetManagerShaderEffectProgramSource(resources.Assets));
-        var preload = await programs.PreloadAsync(resources.EffectPrograms, cancellationToken);
-        GameLog.Logger.Information(
-            "Preloaded {UsableEffectProgramCount}/{EffectProgramCount} effect programs in {ElapsedMilliseconds} ms",
-            preload.UsableProgramCount,
-            preload.RequestedProgramCount,
-            preload.Cache.TotalLoadTime.TotalMilliseconds);
-        _effects = new AvaloniaEffectRuntime(
+        _runner = await SampleGameRunner.CreateAsync(
             _gameplay,
-            programs: programs);
-        var gameView = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
-            _pageView.DialoguePresenter,
-            _pageView.LayerPresenter,
-            _pageView.AnimationPresenter,
-            _effects,
-            resources.Content.Gallery,
-            _pageView.ParticlePresenter));
-        var settings = new SettingsContainer();
-        settings.Set(saveSession.Settings);
-        var runtime = new GameRuntime(
-            null,
-            resources.Content.Graph.RootNodeId,
-            settings,
-            saveSession.Variables);
-        _engine = new GameEngine(
-            resources.Content.Graph,
-            runtime,
-            gameView,
-            saveSession.Progress,
-            _pageView.ChoicePresenter);
-        _pageView.AdvanceRequested += OnAdvanceRequested;
-    }
-
-    private void OnAdvanceRequested()
-    {
-        if (_engine is { } engine)
-            _ = AdvanceEngineAsync(engine);
-    }
-
-    private async Task AdvanceEngineAsync(GameEngine engine)
-    {
-        try
-        {
-            if (!await engine.AdvanceAsync())
-            {
-                await OnUiAsync(() => _gameplay.StatusMessage = "Game flow completed.");
-                GameLog.Logger.Information("Game engine flow completed");
-                await CompleteRunAsync(engine);
-            }
-        }
-        catch (Exception exception)
-        {
-            _pageView?.FailInitialPresentation(exception);
-            await OnUiAsync(() => _gameplay.StatusMessage = $"Game flow failed: {exception.Message}");
-            GameLog.Logger.Error(exception, "Player advance failed");
-            await CompleteRunAsync(engine);
-        }
-    }
-
-    private async Task CompleteRunAsync(GameEngine engine)
-    {
-        if (!ReferenceEquals(_engine, engine)) return;
-        _pageView?.CompleteInitialPresentation();
-        await OnUiAsync(() => IsPlaying = false);
-        await RefreshSlotsAsync(CancellationToken.None);
+            _page,
+            resources,
+            saveSession,
+            UpdateRunnerStateAsync,
+            () => RefreshSlotsAsync(CancellationToken.None),
+            ResetScenePresentationAsync,
+            OnUiAsync,
+            cancellationToken);
     }
 
     private async Task RefreshSlotsAsync(CancellationToken cancellationToken)
@@ -543,20 +380,14 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         });
     }
 
-    private Task RestorePersistentSceneObjectsAsync(CancellationToken cancellationToken)
+    private Task UpdateRunnerStateAsync(bool isPlaying, string? statusMessage)
     {
-        var engine = _engine;
-        var pageView = _pageView;
-        if (engine is null || pageView is null)
-            return Task.CompletedTask;
-
-        return BuiltinPresentationReplay.ReplayPersistentSceneObjectsAsync(
-            engine.Runtime,
-            _effects,
-            pageView.ParticlePresenter,
-            pageView.AnimationPresenter,
-            pageView.LayerPresenter,
-            cancellationToken);
+        return OnUiAsync(() =>
+        {
+            IsPlaying = isPlaying;
+            if (statusMessage is not null)
+                _gameplay.StatusMessage = statusMessage;
+        });
     }
 
     private static void OnInteractionObserved(string interaction) =>

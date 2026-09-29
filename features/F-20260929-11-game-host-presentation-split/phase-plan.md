@@ -50,7 +50,7 @@ updated: 2026-09-29
 
 ## Phase 4 - Sample runner 与持久场景恢复
 
-**状态：planned**
+**状态：verified**
 
 **目标：** 将 engine run lifecycle 与读档展示重放从页面会话命令中分离。
 
@@ -59,6 +59,8 @@ updated: 2026-09-29
 **验证：** runner/restorer 测试、Runtime replay、Builtins、Integration、Sample smoke/build。
 
 **退出条件：** Session 主要负责公开命令与生命周期串行化，runner/restorer 可独立测试，创建独立 Git 提交。
+
+**验证（2026-09-29）：** 新增 `SampleGameRunner` 独占 engine、Avalonia page view、layer/media/effect 展示对象和 `GameRunCoordinator`，统一 prepare/start/advance/stop、opening presentation、完成状态与逆序释放；新增 `PersistentSceneRestorer` 封装 Runtime 状态到 effect/particle/animation/layer presenter 的重放。`SampleGameSessionService` 从 587 行降至 412 行，不再引用具体 engine 或 presenter 实现。新增 restorer 集成测试，现有 `GameRunCoordinator` 测试继续保护停止等待与重启边界；Integration 31/31、Builtins 40/40、Presentation 69/69 通过，Sample Avalonia 与 Sample Headless Release 构建 0 错误。
 
 ## Phase 5 - 全量验证与收尾
 
