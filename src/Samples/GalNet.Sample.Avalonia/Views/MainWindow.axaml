@@ -1,6 +1,7 @@
 <ursa:UrsaWindow xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="using:GalNet.Game.Controls"
+        xmlns:debug="using:GalNet.Sample.Avalonia.Debug"
         xmlns:ursa="https://irihi.tech/ursa"
         x:Class="GalNet.Sample.Avalonia.Views.MainWindow"
         Width="1280" Height="720" MinWidth="800" MinHeight="500"
@@ -8,11 +9,18 @@
         Icon="/Assets/avalonia-logo.ico"
         Title="GalNet Avalonia Sample Player">
   <ursa:UrsaWindow.LeftContent>
-    <Menu x:Name="DebugMenu" IsVisible="False">
+    <Menu x:Name="DebugMenu" IsVisible="False" x:DataType="debug:SampleDebugViewModel">
       <MenuItem Header="调试">
-        <MenuItem Header="清空游戏数据..." Click="OnClearPlayerStateClick" />
-        <MenuItem Header="重新加载游戏资源" Click="OnReloadGameResourcesClick" />
-        <MenuItem Header="日志面板 (L)" Click="OnShowDebugLogClick" />
+        <MenuItem Header="清空游戏数据..." Command="{Binding ClearPlayerStateCommand}" />
+        <MenuItem Header="重新加载游戏资源并重启" Command="{Binding ReloadGameResourcesCommand}" />
+        <Separator />
+        <MenuItem Header="存档">
+          <MenuItem Header="仅进度存档" Command="{Binding SaveProgressOnlyCommand}" />
+          <MenuItem Header="galgroup 存档" Command="{Binding SaveGalGroupStartCommand}" />
+        </MenuItem>
+        <Separator />
+        <MenuItem Header="日志面板 (L)" Command="{Binding ShowLogCommand}" />
+        <MenuItem Header="打开日志目录" Command="{Binding OpenLogDirectoryCommand}" />
       </MenuItem>
     </Menu>
   </ursa:UrsaWindow.LeftContent>

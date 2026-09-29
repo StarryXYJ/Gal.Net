@@ -25,7 +25,6 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     /// <summary>GPU scene objects composited with Layers before ScenePost and GameShell UI.</summary>
     public ObservableCollection<ISceneRenderable> SceneRenderables { get; } = [];
     public ObservableCollection<string> Choices { get; } = [];
-    public ObservableCollection<NvlLine> NvlLines { get; } = [];
 
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isDialogueVisible;
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isChoiceVisible;
@@ -40,6 +39,7 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     public bool IsChoiceOverlayVisible => IsChoiceVisible && !IsUiHidden;
 
     public event Action? AdvanceRequested;
+    public event Action? NvlClearRequested;
     public event Action? ScreenshotRequested;
     public event Action? ReturnToTitleRequested;
     /// <summary>Host-observable player actions, kept logger-free so the shared view remains reusable.</summary>
@@ -121,8 +121,6 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         InteractionObserved?.Invoke($"choice.selected:{selectedIndex}");
         _choiceWaiter?.TrySetResult(selectedIndex);
     }
-    public void PresentNvlLine(string speaker, string text) => NvlLines.Add(new NvlLine(speaker, text));
-
     public void SetLayer(string id, SceneLayerItem item)
     {
         var existing = Layers.FirstOrDefault(layer => layer.HandleId == id);
@@ -162,7 +160,7 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         IsDialogueVisible = false;
         IsChoiceVisible = false;
         IsGameUiReady = false;
-        NvlLines.Clear();
+        NvlClearRequested?.Invoke();
     }
 
     /// <summary>Shows game chrome after the engine reaches its first interactive boundary.</summary>

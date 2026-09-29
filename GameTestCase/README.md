@@ -4,6 +4,7 @@ This Raw-authoring game exercises the compiled runtime slice:
 
 - `layer.show`, `layer.replace`, `layer.move`, and `layer.hide` through `ILayerPresenter`;
 - blocking `dialogue.text` with typewriter directives and `\skip` boundaries;
+- explicit `nvl.show`, `nvl.append`, `nvl.clear`, and `nvl.hide`, including rich-text and typewriter NVL history;
 - Engine-owned Choice filtering/index mapping, condition evaluation, and node jumps;
 - a composite `transition.crossFade` compiled into an animation plan;
 - authored layer and particle-property animations;

@@ -100,7 +100,8 @@ internal sealed class SampleGameRunner : IAsyncDisposable
                 pageView.AnimationPresenter,
                 effects,
                 resources.Content.Gallery,
-                pageView.ParticlePresenter));
+                pageView.ParticlePresenter,
+                pageView.NvlPresenter));
             var settings = new SettingsContainer();
             settings.Set(saveSession.Settings);
             var runtime = new GameRuntime(

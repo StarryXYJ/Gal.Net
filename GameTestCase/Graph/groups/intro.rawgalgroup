@@ -13,6 +13,14 @@
     { "id": "intro-line-3", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "The blocking rotation has completed before this line is shown.", "voice": "" } },
     { "id": "intro-line-4", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "Now the non-blocking portrait loop is stopped explicitly.", "voice": "" } },
     { "id": "stop-portrait-jitter", "type": "animation.stop", "parameters": { "playbackHandleId": "portrait-jitter", "mode": "CompleteImmediately" } },
+    { "id": "dialogue-hide-for-nvl", "type": "dialogue.hide", "parameters": {} },
+    { "id": "nvl-show", "type": "nvl.show", "parameters": {} },
+    { "id": "nvl-append-rich", "type": "nvl.append", "parameters": { "content": "<b>NVL is visible.</b>\\skip <color=#8E8AB8>Rich text</color> and typewriter skip boundaries are active." } },
+    { "id": "nvl-append-history", "type": "nvl.append", "parameters": { "content": "This is the second paragraph in the scrollable NVL history." } },
+    { "id": "nvl-clear", "type": "nvl.clear", "parameters": {} },
+    { "id": "nvl-append-after-clear", "type": "nvl.append", "parameters": { "content": "The prior NVL history was cleared, then this paragraph was appended." } },
+    { "id": "nvl-hide", "type": "nvl.hide", "parameters": {} },
+    { "id": "dialogue-show-after-nvl", "type": "dialogue.show", "parameters": {} },
     { "id": "intro-line-5", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "Choose a route to see a transition and particles.", "voice": "" } }
   ]
 }

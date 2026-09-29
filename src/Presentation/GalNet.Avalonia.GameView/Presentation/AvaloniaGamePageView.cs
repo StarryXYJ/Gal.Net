@@ -28,6 +28,7 @@ public sealed class AvaloniaGamePageView : IDisposable
         _animation = new AvaloniaAnimationPresenter(state, dispatcher);
         _particles = new AvaloniaParticlePresenter(state, layers, dispatcher);
         DialoguePresenter = _dialogue;
+        NvlPresenter = _dialogue;
         ChoicePresenter = _dialogue;
         LayerPresenter = new AvaloniaLayerPresenter(state, layers, dispatcher);
         AnimationPresenter = _animation;
@@ -35,6 +36,7 @@ public sealed class AvaloniaGamePageView : IDisposable
     }
 
     public IDialoguePresenter DialoguePresenter { get; }
+    public INvlPresenter NvlPresenter { get; }
     public IChoicePresenter ChoicePresenter { get; }
     public ILayerPresenter LayerPresenter { get; }
     public IAnimationPresenter AnimationPresenter { get; }

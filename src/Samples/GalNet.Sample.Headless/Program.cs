@@ -32,7 +32,7 @@ try
 
     var presentation = new ConsolePresentation(settings.Get<GameSettings>());
     using IGameView view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
-        presentation, presentation, presentation, presentation, content.Gallery));
+        presentation, presentation, presentation, presentation, content.Gallery, nvlPresenter: presentation));
 
     var runtime = new GameRuntime(null, content.Graph.RootNodeId, settings, variables);
     using var engine = new GameEngine(content.Graph, runtime, view, progress, presentation);

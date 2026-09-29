@@ -9,6 +9,7 @@ using GalNet.Core.Gallery;
 using GalNet.Core.Runtime;
 using GalNet.Primitives.Builtins;
 using GalNet.Runtime.Logging;
+using GalNet.Sample.Avalonia.Debug;
 
 namespace GalNet.Sample.Avalonia.Services;
 
@@ -24,7 +25,6 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private SampleGameResourceScope? _resources;
     private SampleSaveSession? _saveSession;
     private SampleGameRunner? _runner;
-    private GameLaunchOptions? _launchOptions;
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private bool _disposed;
 
@@ -49,28 +49,10 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
 
     public async Task InitializeAsync(GameLaunchOptions options, CancellationToken cancellationToken = default)
     {
-        _launchOptions = options;
         await _lifecycle.WaitAsync(cancellationToken);
         try
         {
             await InitializeGameResourcesAsync(options, cancellationToken);
-        }
-        finally { _lifecycle.Release(); }
-    }
-
-    internal async Task ReloadGameResourcesAsync(CancellationToken cancellationToken = default)
-    {
-        if (_launchOptions is null)
-            throw new InvalidOperationException("The game session has not been initialized.");
-
-        GameLog.Logger.Information("Reloading sample game resources");
-        await _lifecycle.WaitAsync(cancellationToken);
-        try
-        {
-            await StopCurrentRunAsync();
-            await DisposeRunnerAsync();
-            await DisposeGameResourcesAsync();
-            await InitializeGameResourcesAsync(_launchOptions, cancellationToken);
         }
         finally { _lifecycle.Release(); }
     }
@@ -186,17 +168,15 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         try
         {
             await StopCurrentRunAsync();
-            await DisposeRunnerAsync();
             var saveSession = _saveSession;
             if (saveSession is not null)
                 await saveSession.ClearAsync(cancellationToken);
-            await RefreshSlotsAsync(cancellationToken);
             await OnUiAsync(() =>
             {
                 _gameplay.TextSpeed = saveSession?.Settings.TextSpeed ?? _gameplay.TextSpeed;
                 _gameplay.IsNvlMode = false;
                 _gameplay.IsUiHidden = false;
-                _gameplay.StatusMessage = "Player state cleared.";
+                _gameplay.StatusMessage = "Player state cleared. Restarting...";
             });
         }
         finally { _lifecycle.Release(); }
@@ -211,6 +191,37 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             await _saveSession!.SaveAsync(slotIndex, _runner!.CreateSaveData(), cancellationToken);
             _gameplay.StatusMessage = $"Saved to slot {slotIndex}.";
             await RefreshSlotsAsync(cancellationToken);
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    internal async Task<SampleDebugSaveResult> SaveDebugSnapshotAsync(
+        SampleDebugSaveKind kind,
+        bool overwriteWhenAllVisibleSlotsAreOccupied,
+        CancellationToken cancellationToken = default)
+    {
+        await _lifecycle.WaitAsync(cancellationToken);
+        try
+        {
+            if (_runner is null || _saveSession is null)
+                throw new InvalidOperationException("没有进行中的游戏可供存档。");
+
+            var firstEmptySlot = _saveSlots
+                .Where(slot => slot.IsEmpty)
+                .OrderBy(slot => slot.SlotIndex)
+                .FirstOrDefault();
+            if (firstEmptySlot is null && !overwriteWhenAllVisibleSlotsAreOccupied)
+                return SampleDebugSaveResult.RequiresOverwrite();
+
+            var targetSlot = firstEmptySlot?.SlotIndex
+                ?? _saveSlots.OrderBy(slot => slot.SlotIndex).FirstOrDefault()?.SlotIndex
+                ?? throw new InvalidOperationException("没有可用的存档槽。");
+            var snapshot = SampleDebugSnapshotFactory.Create(_runner.CreateSaveData(), kind);
+            await _saveSession.SaveAsync(targetSlot, snapshot, cancellationToken);
+            await RefreshSlotsAsync(cancellationToken);
+            await OnUiAsync(() => _gameplay.StatusMessage = $"Debug saved to slot {targetSlot}.");
+            GameLog.Logger.Information("Created {DebugSaveKind} debug save in slot {SlotIndex}", kind, targetSlot);
+            return SampleDebugSaveResult.Saved(targetSlot);
         }
         finally { _lifecycle.Release(); }
     }
@@ -294,29 +305,6 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         _runner = null;
         if (runner is not null)
             await runner.DisposeAsync();
-    }
-
-    private async Task DisposeGameResourcesAsync()
-    {
-        _saveSession?.Dispose();
-        _saveSession = null;
-        GalleryResources = null;
-        GalleryDataSource = null;
-        OnPropertyChanged(nameof(GalleryResources));
-        OnPropertyChanged(nameof(GalleryDataSource));
-
-        _resources?.Dispose();
-        _resources = null;
-
-        await OnUiAsync(() =>
-        {
-            _saveSlots.Clear();
-            IsReady = false;
-            IsPlaying = false;
-            CanContinue = false;
-            StatusMessage = "Reloading game resources...";
-            _gameplay.StatusMessage = "Reloading game resources...";
-        });
     }
 
     private Task ResetScenePresentationAsync()

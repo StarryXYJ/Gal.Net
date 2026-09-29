@@ -284,7 +284,8 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
             _pageView.AnimationPresenter,
             _effects,
             content.Gallery,
-            _pageView.ParticlePresenter));
+            _pageView.ParticlePresenter,
+            _pageView.NvlPresenter));
         var runtime = new GameRuntime(null, content.Graph.RootNodeId, new SettingsContainer(), _context.Variables);
         _engine = new GameEngine(content.Graph, runtime, view, _context.Progress, _pageView.ChoicePresenter);
         _pageView.AdvanceRequested += OnAdvanceRequested;

@@ -10,7 +10,7 @@ public class EntryModelTests
     [Test]
     public void Registry_Should_Create_All_BuiltIn_Entries()
     {
-        Assert.That(Catalog.Definitions, Has.Count.EqualTo(32));
+        Assert.That(Catalog.Definitions, Has.Count.EqualTo(36));
         foreach (var definition in Catalog.Definitions)
             Assert.That(Catalog.Create(definition.Type).Type, Is.EqualTo(definition.Type));
     }
@@ -69,6 +69,18 @@ public class EntryModelTests
     {
         Assert.That(Catalog.Get(ShowDialogueEntry.TypeId).Parameters, Is.Empty);
         Assert.That(Catalog.Get(HideDialogueEntry.TypeId).Parameters, Is.Empty);
+    }
+
+    [Test]
+    public void Nvl_Entries_Expose_Explicit_Visibility_Clear_And_Append_Schemas()
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.That(Catalog.Get(ShowNvlEntry.TypeId).Parameters, Is.Empty);
+            Assert.That(Catalog.Get(HideNvlEntry.TypeId).Parameters, Is.Empty);
+            Assert.That(Catalog.Get(ClearNvlEntry.TypeId).Parameters, Is.Empty);
+            Assert.That(Catalog.Get(AppendNvlEntry.TypeId).Parameters.Keys, Is.EquivalentTo(["content"]));
+        });
     }
 
     [Test]

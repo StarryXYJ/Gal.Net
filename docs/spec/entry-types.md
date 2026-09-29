@@ -56,6 +56,7 @@ transition.fadeColor
 
 ```text
 dialogue.text, dialogue.show, dialogue.hide
+nvl.show, nvl.hide, nvl.clear, nvl.append
 layer.show, layer.showColor, layer.hide, layer.move, layer.replace
 animation.animate, animation.play, animation.stop
 audio.play, audio.stop, audio.pause, audio.resume, audio.enqueue
@@ -67,6 +68,8 @@ flow.wait, variable.set, gallery.unlock
 
 `gallery.unlock` 的参数是正整数 `id`，其值必须是当前 `GalleryCatalog` 中存在的稳定 Gallery item ID。执行时写入 `player.gallery_<id>_unlocked = true`；Gallery item 从资源 `.meta.gallery[]` 聚合，发行运行读取其生成快照。旧的 category/sequence 参数不受支持。
 
-这些名称和参数只是推荐语义。开发者可以只注册自定义模块，或在自己的 target profile 中定义完全不同的前缀、参数与语义；编辑器不会凭名称假定 `dialogue`、`layer` 或任何其他模块存在。
+`nvl.show` 和 `nvl.hide` 只改变 NVL 覆盖层的可见性；`nvl.clear` 移除已累积的历史行；`nvl.append` 只接收长文本 `content`，以与 `dialogue.text` 相同的富文本和打字机语义追加一段，并在文字完成后等待一次玩家推进。它不会自动显示 NVL，剧情应显式调用 `nvl.show`。
+
+这些名称和参数只是推荐语义。开发者可以只注册自定义模块，或在自己的 target profile 中定义完全不同的前缀、参数与语义；编辑器不会凭名称假定 `dialogue`、`nvl`、`layer` 或任何其他模块存在。
 
 当前已实现 Runtime 行为的推荐能力见 [runtime.md](runtime.md)。

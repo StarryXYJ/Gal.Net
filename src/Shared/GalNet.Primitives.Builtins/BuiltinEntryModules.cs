@@ -17,9 +17,11 @@ public static class BuiltinEntryModules
         IAnimationPresenter? animationPresenter = null,
         IEffectPresenter? effectPresenter = null,
         GalleryCatalog? gallery = null,
-        IParticlePresenter? particlePresenter = null) => Array.AsReadOnly<IEntryModule>(
+        IParticlePresenter? particlePresenter = null,
+        INvlPresenter? nvlPresenter = null) => Array.AsReadOnly<IEntryModule>(
     [
         new BuiltinDialogueModule(dialoguePresenter),
+        new BuiltinNvlModule(nvlPresenter),
         new BuiltinLayerModule(layerPresenter),
         new BuiltinAnimationModule(animationPresenter, layerPresenter, effectPresenter, particlePresenter),
         new BuiltinAudioModule(),
@@ -64,6 +66,32 @@ public sealed class BuiltinDialogueModule : EntryModuleBase
             var target = presenter ?? throw new InvalidOperationException("The dialogue module has no presenter.");
             if (visible) target.ShowDialogue(); else target.HideDialogue();
         }, batchId: context.BatchId));
+}
+
+public sealed class BuiltinNvlModule : EntryModuleBase
+{
+    public BuiltinNvlModule(INvlPresenter? presenter = null) : base("nvl",
+    [
+        Visibility<ShowNvlEntry>(presenter, static target => target.ShowNvl()),
+        Visibility<HideNvlEntry>(presenter, static target => target.HideNvl()),
+        Visibility<ClearNvlEntry>(presenter, static target => target.ClearNvl()),
+        new DefaultPrimitiveEntryBase(
+            AppendNvlEntry.TypeId,
+            EntrySchema.DynamicParameters(AppendNvlEntry.ParameterTypes),
+            context => new NvlAppendPrimitiveInstance(
+                presenter ?? throw new InvalidOperationException("The NVL module has no presenter."),
+                Arguments.String(context, "content"),
+                context.BatchId,
+                context.ScopeCancellation))
+    ])
+    { }
+
+    private static PrimitiveEntryBase Visibility<TEntry>(INvlPresenter? presenter, Action<INvlPresenter> operation)
+        where TEntry : PrimitiveEntry, new() => new DefaultPrimitiveEntryBase(
+        new TEntry().Type,
+        DynamicParameterTable.Empty,
+        context => new ImmediatePrimitiveInstance(() => operation(
+            presenter ?? throw new InvalidOperationException("The NVL module has no presenter.")), batchId: context.BatchId));
 }
 
 public sealed class BuiltinLayerModule : EntryModuleBase

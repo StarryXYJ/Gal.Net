@@ -4,7 +4,7 @@ using GalNet.Presentation.Abstractions.View;
 
 namespace GalNet.Avalonia.GameView.Presentation;
 
-public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, IChoicePresenter, IDisposable
+public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresenter, IChoicePresenter, IDisposable
 {
     private readonly TaskCompletionSource _initialPresentationReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly GamePageViewModel _state;
@@ -17,6 +17,7 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, IChoicePrese
         _page = page;
         _dispatcher = dispatcher;
         _state.AdvanceRequested += OnAdvanceRequested;
+        _state.NvlClearRequested += OnNvlClearRequested;
     }
 
     public Task InitialPresentationReady => _initialPresentationReady.Task;
@@ -27,15 +28,16 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, IChoicePrese
     public void ShowDialogue() => _dispatcher.Dispatch(() => _state.IsDialogueVisible = true);
     public void HideDialogue() => _dispatcher.Dispatch(() => _state.IsDialogueVisible = false);
 
+    public void ShowNvl() => _dispatcher.Dispatch(() => _state.IsNvlMode = true);
+    public void HideNvl() => _dispatcher.Dispatch(() => _state.IsNvlMode = false);
+    public void ClearNvl() => _dispatcher.Dispatch(_page.Nvl.Clear);
+    public Task AppendNvlTextAsync(string text, CancellationToken cancellationToken) =>
+        _dispatcher.InvokeAsync(() => _page.Nvl.AppendAsync(text, _state.TextSpeed, cancellationToken));
+    public void SkipNvlText() => _dispatcher.Dispatch(_page.Nvl.SkipText);
+
     public Task StartTypewriter(string widgetInstanceId, string speaker, string text, CancellationToken cancellationToken) =>
         _dispatcher.InvokeAsync(async () =>
         {
-            if (_state.IsNvlMode)
-            {
-                _state.PresentNvlLine(speaker, text);
-                return;
-            }
-
             _state.IsDialogueVisible = true;
             _page.Dialogue.Speaker = speaker;
             _page.Dialogue.Text = text;
@@ -70,7 +72,12 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, IChoicePrese
     Task<int> IChoicePresenter.ChooseAsync(IReadOnlyList<string> options, CancellationToken cancellationToken) =>
         WaitForChoiceAsync("default_choice", options.ToArray(), cancellationToken);
 
-    public void Dispose() => _state.AdvanceRequested -= OnAdvanceRequested;
+    public void Dispose()
+    {
+        _state.AdvanceRequested -= OnAdvanceRequested;
+        _state.NvlClearRequested -= OnNvlClearRequested;
+    }
 
     private void OnAdvanceRequested() => AdvanceRequested?.Invoke();
+    private void OnNvlClearRequested() => _dispatcher.Dispatch(_page.Nvl.Clear);
 }
