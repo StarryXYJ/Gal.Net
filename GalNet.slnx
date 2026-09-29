@@ -39,7 +39,12 @@
     <Project Path="src/GalNet.Runtime/GalNet.Runtime.csproj" />
   </Folder>
   <Folder Name="/test/">
+    <Project Path="test/GalNet.Architecture.Tests/GalNet.Architecture.Tests.csproj" />
     <Project Path="test/GalNet.Assets.Tests/GalNet.Assets.Tests.csproj" />
+    <Project Path="test/GalNet.Core.Tests/GalNet.Core.Tests.csproj" />
+    <Project Path="test/GalNet.Primitives.Builtins.Tests/GalNet.Primitives.Builtins.Tests.csproj" />
+    <Project Path="test/GalNet.Runtime.Tests/GalNet.Runtime.Tests.csproj" />
+    <Project Path="test/GalNet.Storage.FileSystem.Tests/GalNet.Storage.FileSystem.Tests.csproj" />
     <Project Path="test/GeneralTest/GeneralTest.csproj" />
   </Folder>
 </Solution>
