@@ -1,6 +1,6 @@
 ---
 feature: F-20260929-09-test-suite-boundaries
-status: implementing
+status: done
 updated: 2026-09-29
 ---
 
@@ -36,10 +36,12 @@ updated: 2026-09-29
 
 ## Phase 3 - CI、文档与全量验证
 
-**状态：planned**
+**状态：verified**
 
 - CI 分组 restore/test 并保留 trx 与 coverage artifacts。
 - 更新架构 spec、路线图、agent knowledge 和 feature summary。
 - 运行全部测试、Headless、完整 solution 与 diff 检查。
 
 退出条件：路线图 Phase 3 的全部退出条件有验证证据；创建独立 Git 提交。
+
+**验证（2026-09-29）：** CI 已对全部 10 个测试项目执行 locked restore，并按纯逻辑/架构、Editor/Presentation 和 Integration 分组产生独立 TRX 与 coverage。311/311 项测试、Editor Headless、Sample Headless 和完整 solution 构建通过。

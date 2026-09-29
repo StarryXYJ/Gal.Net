@@ -47,10 +47,27 @@ Avalonia GameView 通过精确 Gallery `typeId` 的 `IGalleryPageRegistry` 选�
 
 `EditorAssetManager`、`EditorGameDataProvider`、`AssetCatalogService` 与 `GameExportService` 共享 Editor 组合根的 catalog。导出把资源写入基础 PAK，把 Graph/settings/I18n 和派生 Gallery JSON 写入 `.galpak`。
 
+## 测试边界
+
+| 项目 | 职责 |
+| --- | --- |
+| `GalNet.Architecture.Tests` | 项目引用、命名空间与仓库结构门禁 |
+| `GalNet.Core.Tests` | Core 领域模型与纯逻辑 |
+| `GalNet.Runtime.Tests` | Runtime 状态、加载、表达式与存档序列化 |
+| `GalNet.Primitives.Builtins.Tests` | 内置 entry module 与 primitive 行为 |
+| `GalNet.Assets.Tests` | 资源 provider、压缩与加密 |
+| `GalNet.Storage.FileSystem.Tests` | 文件系统存档、变量与进度实现 |
+| `GalNet.Editor.Shared.Tests` | Editor 协议、命令、文档与持久化协作者 |
+| `GalNet.Editor.Tests` | Editor UI、ViewModel 与交互逻辑 |
+| `GalNet.Presentation.Tests` | 展示抽象、Avalonia 展示与渲染逻辑 |
+| `GalNet.IntegrationTests` | 跨 Assets、Storage、Editor、Runtime 和 Sample 的端到端场景 |
+
+Integration 测试只承载必须联合多个外层实现的场景；单一生产边界的测试留在对应项目，不通过引用其他测试项目共享实现。CI 分别执行纯逻辑与架构、Editor/Presentation 以及 Integration 三组测试。
+
 ## 维护规则
 
 - 不让 Core、Runtime 或 Editor.Shared 反向引用具体 Avalonia 实现。
-- `GeneralTest/Architecture/ProjectDependencyTests` 检查内层与共享项目的直接依赖 allowlist，并要求 `GalNet.Storage.Abstractions` 项目及引用保持不存在；依赖边界变化必须同步更新 ADR 或设计依据。
+- `GalNet.Architecture.Tests/ProjectDependencyTests` 检查内层与共享项目的直接依赖 allowlist，并要求 `GalNet.Storage.Abstractions` 项目及引用保持不存在；依赖边界变化必须同步更新 ADR 或设计依据。
 - 内容、保存、玩家变量、变量桥接和进度协议由 Runtime 拥有；资源访问协议由 Core.Assets 拥有；Editor 设置和退出协议由 Editor.Abstraction 拥有。
 - `ISaveService` 只提供异步、可取消的 I/O API，保存请求统一使用 `SaveRequest` 携带 snapshot 与可选展示 metadata。
 - Provider 不管理解码对象或引用计数；页面/媒体实现不理解目录与 PAK 布局。

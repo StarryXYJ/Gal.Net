@@ -106,7 +106,11 @@ updated: 2026-09-29
 
 ## Phase 3 - 测试套件按边界重组
 
-**状态：planned**
+**状态：verified**
+
+实施 feature：[F-20260929-09-test-suite-boundaries](../F-20260929-09-test-suite-boundaries/feature.md)
+
+完成证据：[F-20260929-09 实现总结](../F-20260929-09-test-suite-boundaries/summary.md)。原有 311 项测试已对账迁移到 10 个边界清晰的项目，CI 按纯逻辑/架构、Editor/Presentation 和 Integration 分组执行。
 
 **依赖：** Phase 2a 和 2b，避免测试文件重复搬迁。
 

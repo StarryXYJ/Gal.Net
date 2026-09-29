@@ -2,7 +2,7 @@
 id: F-20260929-09-test-suite-boundaries
 title: 测试套件按生产边界重组
 type: refactor
-status: implementing
+status: done
 created: 2026-09-29
 updated: 2026-09-29
 parent: F-20260929-03-maintainability-roadmap
@@ -39,4 +39,5 @@ parent: F-20260929-03-maintainability-roadmap
 
 - [设计](design.md)
 - [实施计划](phase-plan.md)
+- [实现总结](summary.md)
 - [路线图 Phase 3](../F-20260929-03-maintainability-roadmap/phase-plan.md)
