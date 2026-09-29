@@ -55,3 +55,27 @@ public sealed class StopParticlePrimitiveInstance : PrimitiveInstance
         finally { TryComplete(); }
     }
 }
+
+public sealed class BurstParticlePrimitiveInstance : PrimitiveInstance
+{
+    private readonly IParticlePresenter? _presenter;
+    private readonly ParticleBurstRequest _request;
+    private readonly CancellationToken _scopeCancellation;
+
+    public BurstParticlePrimitiveInstance(IParticlePresenter? presenter, ParticleBurstRequest request, string? batchId, CancellationToken scopeCancellation) : base(batchId)
+    { _presenter = presenter; _request = request; _scopeCancellation = scopeCancellation; }
+    public override bool IsBlocking => false;
+    public override bool IsSkippable => false;
+    protected override void OnDispatch()
+    {
+        if (_presenter is null) { TryComplete(); return; }
+        _ = ObserveAsync();
+    }
+    private async Task ObserveAsync()
+    {
+        try { await _presenter!.BurstParticlesAsync(_request, _scopeCancellation).ConfigureAwait(false); }
+        catch (OperationCanceledException) when (_scopeCancellation.IsCancellationRequested) { }
+        catch { }
+        finally { TryComplete(); }
+    }
+}

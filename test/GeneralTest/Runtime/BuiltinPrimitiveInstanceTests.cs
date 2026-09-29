@@ -116,7 +116,7 @@ public class BuiltinPrimitiveInstanceTests
             parameters = new
             {
                 particleTexture = "snowflake",
-                emissionRate = 72,
+                rate = 72,
                 maxParticles = 240,
                 initialVelocityX = -22,
                 initialVelocityY = 80,
@@ -173,6 +173,161 @@ public class BuiltinPrimitiveInstanceTests
             Assert.That(runtime.SceneInstances.TryGet<ParticleEmitterInstance>("snow", out _), Is.False);
             Assert.That(presenter.Stopped, Is.EqualTo(new[] { "snow" }));
         });
+    }
+
+    [Test]
+    public async Task ParticleBurstIsFireAndForgetAndDoesNotCreateRuntimeState()
+    {
+        var presenter = new RecordingParticlePresenter();
+        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(particlePresenter: presenter));
+        var runtime = new GameRuntime(null);
+
+        var burst = view.Dispatch(Primitive(BurstParticlesEntry.TypeId, new
+        {
+            count = 24,
+            z = 110,
+            parameters = new
+            {
+                particleTexture = "spark",
+                maxParticles = 24,
+                seed = 7,
+                shape = new { type = "circle", x = 320, y = 180, radius = 16 }
+            }
+        }), runtime, CancellationToken.None);
+
+        await WaitUntilAsync(() => burst!.IsCompleted);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(runtime.SceneState.ActiveParticleEmitters, Is.Empty);
+            Assert.That(presenter.Bursts.Single().Count, Is.EqualTo(24));
+            Assert.That(presenter.Bursts.Single().Z, Is.EqualTo(110));
+            Assert.That(presenter.Bursts.Single().Definition.EmissionRate, Is.Zero);
+            Assert.That(presenter.Bursts.Single().Definition.Shape?.Type, Is.EqualTo(ParticleShapeKind.Circle));
+        });
+    }
+
+    [Test]
+    public async Task AnimationPlanCanScheduleParticleLifetimeAndMultipleBursts()
+    {
+        var particles = new RecordingParticlePresenter();
+        var animations = new RecordingAnimationPresenter();
+        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
+            animationPresenter: animations,
+            particlePresenter: particles));
+        var runtime = new GameRuntime(null);
+        var burstParameters = new
+        {
+            particleTexture = "spark",
+            maxParticles = 12,
+            shape = new { type = "point", x = 100, y = 120 }
+        };
+        var plan = new AnimationPlanDefinition
+        {
+            PlaybackHandleId = "burst-sequence",
+            FrameRate = 100,
+            DurationFrames = 1,
+            Blocking = true,
+            Events =
+            {
+                new AnimationPlanEventDefinition
+                {
+                    Frame = 0,
+                    Type = PlayParticleEmitterEntry.TypeId,
+                    Parameters = Parameters(
+                        ("instanceId", "timed-snow"),
+                        ("z", 80),
+                        ("parameters", new { particleTexture = "snow", rate = 20, shape = new { type = "box", x = 320, y = 0, width = 640 } }))
+                },
+                new AnimationPlanEventDefinition { Frame = 0, Type = BurstParticlesEntry.TypeId, Parameters = Parameters(("count", 8), ("z", 90), ("parameters", burstParameters)) },
+                new AnimationPlanEventDefinition { Frame = 1, Type = BurstParticlesEntry.TypeId, Parameters = Parameters(("count", 12), ("z", 95), ("parameters", burstParameters)) },
+                new AnimationPlanEventDefinition { Frame = 1, Type = StopParticleEmitterEntry.TypeId, Parameters = Parameters(("instanceId", "timed-snow")) }
+            }
+        };
+
+        var instance = view.Dispatch(Primitive(PlayAnimationPlanEntry.TypeId, new { plan }), runtime, CancellationToken.None);
+        await WaitUntilAsync(() => instance!.IsCompleted);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(particles.Started.Single().InstanceId, Is.EqualTo("timed-snow"));
+            Assert.That(particles.Bursts.Select(request => request.Count), Is.EqualTo(new[] { 8, 12 }));
+            Assert.That(particles.Stopped, Is.EqualTo(new[] { "timed-snow" }));
+            Assert.That(runtime.SceneState.ActiveParticleEmitters, Is.Empty);
+        });
+    }
+
+    [Test]
+    public async Task SkippingAnimationPlanDoesNotBackfillFutureParticleBurst()
+    {
+        var runtime = new GameRuntime(null);
+        var particles = new RecordingParticlePresenter();
+        var animations = new RecordingAnimationPresenter();
+        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
+            animationPresenter: animations,
+            particlePresenter: particles));
+        var plan = new AnimationPlanDefinition
+        {
+            PlaybackHandleId = "skipped-burst",
+            FrameRate = 1,
+            DurationFrames = 10,
+            Blocking = true,
+            Skippable = true,
+            Events =
+            {
+                new AnimationPlanEventDefinition
+                {
+                    Frame = 10,
+                    Type = BurstParticlesEntry.TypeId,
+                    Parameters = Parameters(
+                        ("count", 8),
+                        ("parameters", new { particleTexture = "spark", shape = new { type = "point", x = 0, y = 0 } }))
+                }
+            }
+        };
+
+        var instance = view.Dispatch(Primitive(PlayAnimationPlanEntry.TypeId, new { plan }), runtime, CancellationToken.None)!;
+        instance.Skip();
+        await WaitUntilAsync(() => instance.IsCompleted);
+
+        Assert.That(particles.Bursts, Is.Empty);
+    }
+
+    [Test]
+    public async Task LoopingAnimationPlanRetriggersParticleBurstEachCycle()
+    {
+        var runtime = new GameRuntime(null);
+        var particles = new RecordingParticlePresenter();
+        var animations = new LoopingAnimationPresenter();
+        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
+            animationPresenter: animations,
+            particlePresenter: particles));
+        using var scope = new CancellationTokenSource();
+        var plan = new AnimationPlanDefinition
+        {
+            PlaybackHandleId = "repeating-burst",
+            FrameRate = 100,
+            DurationFrames = 2,
+            LoopMode = AnimationLoopMode.Loop,
+            Events =
+            {
+                new AnimationPlanEventDefinition
+                {
+                    Frame = 1,
+                    Type = BurstParticlesEntry.TypeId,
+                    Parameters = Parameters(
+                        ("count", 4),
+                        ("parameters", new { particleTexture = "spark", shape = new { type = "point", x = 0, y = 0 } }))
+                }
+            }
+        };
+
+        var instance = view.Dispatch(Primitive(PlayAnimationPlanEntry.TypeId, new { plan }), runtime, scope.Token)!;
+        await WaitUntilAsync(() => particles.Bursts.Count >= 2);
+        scope.Cancel();
+        await WaitUntilAsync(() => instance.IsCompleted);
+
+        Assert.That(particles.Bursts.Count, Is.GreaterThanOrEqualTo(2));
     }
 
     [Test]
@@ -315,7 +470,7 @@ public class BuiltinPrimitiveInstanceTests
         var play = view.Dispatch(Primitive(PlayParticleEmitterEntry.TypeId, new
         {
             instanceId = "snow",
-            parameters = new { particleTexture = "snowflake", emissionRate = 72 }
+            parameters = new { particleTexture = "snowflake", rate = 72 }
         }), runtime, CancellationToken.None);
         await WaitUntilAsync(() => play!.IsCompleted);
 
@@ -572,6 +727,20 @@ public class BuiltinPrimitiveInstanceTests
         }
     }
 
+    private sealed class LoopingAnimationPresenter : IAnimationPresenter
+    {
+        public Task<AnimationOutcome> AnimateAsync(AnimationRequest request, CancellationToken cancellationToken) =>
+            Task.FromResult(AnimationOutcome.Completed);
+
+        public async Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return new AnimationPlanPlayResult { Outcome = AnimationOutcome.Completed };
+        }
+
+        public bool CompleteAnimationImmediately(string playbackHandleId) => false;
+    }
+
     private sealed class RecordingEffectPresenter : IEffectPresenter
     {
         public List<EffectRequest> Started { get; } = [];
@@ -593,11 +762,18 @@ public class BuiltinPrimitiveInstanceTests
     private sealed class RecordingParticlePresenter : IParticlePresenter
     {
         public List<ParticleEmitterRequest> Started { get; } = [];
+        public List<ParticleBurstRequest> Bursts { get; } = [];
         public List<string> Stopped { get; } = [];
 
         public Task StartParticleEmitterAsync(ParticleEmitterRequest request, CancellationToken cancellationToken)
         {
             Started.Add(request);
+            return Task.CompletedTask;
+        }
+
+        public Task BurstParticlesAsync(ParticleBurstRequest request, CancellationToken cancellationToken)
+        {
+            Bursts.Add(request);
             return Task.CompletedTask;
         }
 

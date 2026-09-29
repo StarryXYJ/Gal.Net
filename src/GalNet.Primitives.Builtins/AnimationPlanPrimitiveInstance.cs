@@ -2,6 +2,7 @@ using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
 using GalNet.Core.Scene;
 using GalNet.Core.View;
+using GalNet.Core.Entry;
 
 namespace GalNet.Primitives.Builtins;
 
@@ -12,6 +13,7 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance
     private readonly IAnimationPresenter? _animationPresenter;
     private readonly ILayerPresenter? _layerPresenter;
     private readonly IEffectPresenter? _effectPresenter;
+    private readonly IParticlePresenter? _particlePresenter;
     private readonly AnimationPlanDefinition _plan;
     private readonly CancellationToken _scopeCancellation;
     private readonly IndexedPlanEvent[] _events;
@@ -24,6 +26,7 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance
         IAnimationPresenter? animationPresenter,
         ILayerPresenter? layerPresenter,
         IEffectPresenter? effectPresenter,
+        IParticlePresenter? particlePresenter,
         AnimationPlanDefinition plan,
         string? batchId,
         CancellationToken scopeCancellation)
@@ -33,6 +36,7 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance
         _animationPresenter = animationPresenter;
         _layerPresenter = layerPresenter;
         _effectPresenter = effectPresenter;
+        _particlePresenter = particlePresenter;
         _plan = plan;
         _scopeCancellation = scopeCancellation;
         _skippable = plan.Skippable;
@@ -156,7 +160,11 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance
     private async Task NotifyRemainingEventsAsync(CancellationToken cancellationToken)
     {
         foreach (var item in _events)
+        {
+            if (item.Event.Type == BurstParticlesEntry.TypeId)
+                continue;
             await NotifyEventAsync(item, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     private async Task NotifyEventAsync(IndexedPlanEvent item, CancellationToken cancellationToken)
@@ -174,6 +182,7 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance
                 item.Event,
                 _layerPresenter,
                 _effectPresenter,
+                _particlePresenter,
                 cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

@@ -5,18 +5,24 @@ updated: 2026-09-29
 
 # 实施计划
 
-## Phase 1 — 兼容模型、Emission 与 Shape
+## Phase 1 — Play/Burst 原语与 Shape
 
 **状态：verified**
 
-- 扩展 Core definition，解析 v1 平铺 JSON 与 v2 模块 JSON。
-- 在 Avalonia CPU simulation 中实现 bursts 与 Point/Box/Circle/Line 采样。
+- `particle.play` 只承载 rate，`particle.burst` 只承载一次 count；不保留旧 JSON 兼容层。
+- 在 Avalonia CPU simulation 中实现一次 burst 与 Point/Box/Circle/Line 采样。
+- animation plan 支持 burst 帧事件和循环重触发，跳过不补发瞬时事件。
 - 固化 stop、maxParticles、seed 确定性和 emitter 级重放边界。
-- 添加 Core 解析、snapshot 往返与渲染模拟测试。
+- 更新 Sample，并添加 Core 解析、snapshot、Primitive、timeline 与渲染模拟测试。
 
-退出条件：旧内容视觉起点不变，v2 模块测试通过，受影响项目可构建。
+退出条件：两个原语的 Runtime/Presenter/存档边界清晰，timeline 重复 burst 可验证，Sample 使用新 API，受影响项目可构建。
 
-**验证（2026-09-29）：** 新增解析、JSON 往返、burst 时序/上限与 Point 渲染测试 5/5 通过；粒子 Runtime、Presenter 与 snapshot 定向回归 19/19 通过；Headless Sample 构建 0 warning / 0 error；全量 `GeneralTest` 245/246，通过项包含全部新增测试，唯一失败仍为未触及的 `EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString` 换行/缩进差异。
+验证证据（2026-09-29）：
+
+- `GalNet.Primitives.Builtins`、`GalNet.Avalonia.GameView`、`GeneralTest` 构建通过。
+- 粒子、Runtime snapshot、entry catalog 与 primitive/timeline 定向测试 40/40 通过，其中包含循环 plan 每轮重触发 burst。
+- GeneralTest 全量 249/250 通过；唯一失败为既有的 `LastDockLayout_RoundTripsAsAString` CRLF/缩进差异，与本 feature 无关。
+- `GalNet.Sample.Headless` 构建通过，0 warning / 0 error。
 
 ## Phase 2 — Initial、Motion 与 Lifetime
 

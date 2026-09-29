@@ -79,9 +79,16 @@ internal static class BuiltinRuntimeActions
     {
         var instanceId = Arguments.String(context, "instanceId");
         if (string.IsNullOrWhiteSpace(instanceId)) throw new InvalidDataException("particle.play requires 'instanceId'.");
-        var definition = ParticleEmitterDefinition.FromJson(Arguments.RawJson(context, "parameters", "{}"));
-        if (string.IsNullOrWhiteSpace(definition.ParticleTexture)) throw new InvalidDataException("particle.play requires 'parameters.particleTexture'.");
+        var definition = ReadParticleDefinition(Arguments.RawJson(context, "parameters", "{}"), PlayParticleEmitterEntry.TypeId);
         return new ParticleEmitterRequest(instanceId, definition, Arguments.Float(context, "z", 100));
+    }
+
+    public static ParticleBurstRequest CreateParticleBurstRequest(PrimitiveCreateContext context)
+    {
+        var count = Arguments.Int(context, "count", 1);
+        if (count <= 0) throw new InvalidDataException("particle.burst requires a positive 'count'.");
+        var definition = ReadParticleDefinition(Arguments.RawJson(context, "parameters", "{}"), BurstParticlesEntry.TypeId) with { EmissionRate = 0 };
+        return new ParticleBurstRequest(definition, count, Arguments.Float(context, "z", 100));
     }
 
     public static void ApplyParticleState(IGameRuntime runtime, ParticleEmitterRequest request)
@@ -265,6 +272,12 @@ internal static class BuiltinRuntimeActions
             case StopEffectEntry.TypeId:
                 RemoveEffectState(runtime, Get(planEvent.Parameters, "instanceId"));
                 break;
+            case PlayParticleEmitterEntry.TypeId:
+                ApplyParticleState(runtime, ToParticleEmitterRequest(planEvent.Parameters));
+                break;
+            case StopParticleEmitterEntry.TypeId:
+                RemoveParticleState(runtime, Get(planEvent.Parameters, "instanceId"));
+                break;
         }
     }
 
@@ -272,6 +285,7 @@ internal static class BuiltinRuntimeActions
         AnimationPlanEventDefinition planEvent,
         ILayerPresenter? layerPresenter,
         IEffectPresenter? effectPresenter,
+        IParticlePresenter? particlePresenter,
         CancellationToken cancellationToken)
     {
         switch (planEvent.Type)
@@ -299,6 +313,12 @@ internal static class BuiltinRuntimeActions
                 return effectPresenter.StartEffectAsync(ToEffectRequest(planEvent.Parameters), cancellationToken);
             case StopEffectEntry.TypeId when effectPresenter is not null:
                 return effectPresenter.StopEffectAsync(Get(planEvent.Parameters, "instanceId"), cancellationToken);
+            case PlayParticleEmitterEntry.TypeId when particlePresenter is not null:
+                return particlePresenter.StartParticleEmitterAsync(ToParticleEmitterRequest(planEvent.Parameters), cancellationToken);
+            case StopParticleEmitterEntry.TypeId when particlePresenter is not null:
+                return particlePresenter.StopParticleEmitterAsync(Get(planEvent.Parameters, "instanceId"), cancellationToken);
+            case BurstParticlesEntry.TypeId when particlePresenter is not null:
+                return particlePresenter.BurstParticlesAsync(ToParticleBurstRequest(planEvent.Parameters), cancellationToken);
         }
 
         return Task.CompletedTask;
@@ -514,6 +534,30 @@ internal static class BuiltinRuntimeActions
         Int(parameters, "order"),
         RawJson(parameters, "parameters", "{}"),
         Get(parameters, "program"));
+
+    private static ParticleBurstRequest ToParticleBurstRequest(IReadOnlyDictionary<string, JsonElement> parameters)
+    {
+        var count = Int(parameters, "count", 1);
+        if (count <= 0) throw new InvalidDataException("particle.burst requires a positive 'count'.");
+        var definition = ReadParticleDefinition(RawJson(parameters, "parameters", "{}"), BurstParticlesEntry.TypeId) with { EmissionRate = 0 };
+        return new ParticleBurstRequest(definition, count, Float(parameters, "z", 100));
+    }
+
+    private static ParticleEmitterRequest ToParticleEmitterRequest(IReadOnlyDictionary<string, JsonElement> parameters)
+    {
+        var instanceId = Get(parameters, "instanceId");
+        if (string.IsNullOrWhiteSpace(instanceId)) throw new InvalidDataException("particle.play requires 'instanceId'.");
+        var definition = ReadParticleDefinition(RawJson(parameters, "parameters", "{}"), PlayParticleEmitterEntry.TypeId);
+        return new ParticleEmitterRequest(instanceId, definition, Float(parameters, "z", 100));
+    }
+
+    private static ParticleEmitterDefinition ReadParticleDefinition(string json, string entryType)
+    {
+        var definition = ParticleEmitterDefinition.FromJson(json);
+        if (string.IsNullOrWhiteSpace(definition.ParticleTexture))
+            throw new InvalidDataException($"{entryType} requires 'parameters.particleTexture'.");
+        return definition;
+    }
 
     private static string Get(IReadOnlyDictionary<string, JsonElement> parameters, string name, string fallback = "") =>
         parameters.TryGetValue(name, out var value) && value.ValueKind == JsonValueKind.String

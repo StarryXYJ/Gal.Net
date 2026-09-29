@@ -17,7 +17,6 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
     private readonly float _gravityX;
     private readonly float _gravityY;
     private readonly ParticleShapeDefinition? _shape;
-    private readonly ParticleBurst[] _bursts;
     private readonly IReadOnlyList<ParticleCurveKey> _sizeCurve;
     private readonly IReadOnlyList<ParticleColorCurveKey> _colorCurve;
     private SKRect[] _sprites = [];
@@ -31,21 +30,20 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
     private float _scale;
     private float _life;
     private float _emissionCarry;
-    private float _elapsed;
-    private int _nextBurstIndex;
+    private int _pendingBurstCount;
     private bool _stopping;
     private bool _drained;
     private double _z;
 
-    public ParticleEmitter(string handleId, SceneTexture? texture, ParticleEmitterDefinition definition, float z)
+    public ParticleEmitter(string handleId, SceneTexture? texture, ParticleEmitterDefinition definition, float z, int initialBurstCount = 0)
     {
         HandleId = handleId; _texture = texture; _maximum = definition.MaxParticles; _random = new Random(definition.Seed);
         _gravityX = definition.GravityX; _gravityY = definition.GravityY; _z = z;
         _shape = definition.Shape;
-        _bursts = definition.EffectiveEmission.Bursts?.OrderBy(burst => burst.Time).ToArray() ?? [];
+        _pendingBurstCount = Math.Max(0, initialBurstCount);
         _sizeCurve = definition.SizeCurve?.OrderBy(key => key.Time).ToArray() ?? [];
         _colorCurve = definition.ColorCurve?.OrderBy(key => key.Time).ToArray() ?? [];
-        EmissionRate = definition.EffectiveEmission.RateOverTime; InitialVelocityX = definition.InitialVelocityX; InitialVelocityY = definition.InitialVelocityY;
+        EmissionRate = definition.EmissionRate; InitialVelocityX = definition.InitialVelocityX; InitialVelocityY = definition.InitialVelocityY;
         Noise = definition.Noise; ParticleScale = definition.ParticleScale; ParticleLifetime = definition.ParticleLifetime;
     }
 
@@ -67,14 +65,14 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
     public bool Update(SceneFrameContext frame)
     {
         var delta = Math.Max(0, (float)frame.Delta.TotalSeconds);
+        if (_pendingBurstCount > 0)
+        {
+            Spawn(frame.Size, _pendingBurstCount);
+            _pendingBurstCount = 0;
+            _stopping = true;
+        }
         if (!_stopping)
         {
-            _elapsed += delta;
-            while (_nextBurstIndex < _bursts.Length && _bursts[_nextBurstIndex].Time <= _elapsed)
-            {
-                Spawn(frame.Size, _bursts[_nextBurstIndex].Count);
-                _nextBurstIndex++;
-            }
             _emissionCarry += _rate * delta;
             var continuousCount = Math.Min((int)Math.Floor(_emissionCarry), _maximum - _active.Count);
             if (continuousCount > 0)
@@ -154,7 +152,7 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
 
     private (float X, float Y) SampleSpawnPosition(SKSize size)
     {
-        if (_shape is null) return ((float)_random.NextDouble() * Math.Max(1, size.Width), -12);
+        if (_shape is null) return (0, 0);
         return _shape.Type switch
         {
             ParticleShapeKind.Point => (_shape.X, _shape.Y),

@@ -85,6 +85,7 @@ public static class BuiltinPresentationReplay
                     animationPresenter,
                     layerPresenter,
                     effectPresenter,
+                    particlePresenter,
                     BuiltinRuntimeActions.CreateAnimationPlan(animation),
                     batchId: null,
                     cancellationToken),

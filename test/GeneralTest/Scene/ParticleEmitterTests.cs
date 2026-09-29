@@ -10,41 +10,32 @@ namespace GeneralTest.Scene;
 public class ParticleEmitterDefinitionTests
 {
     [Test]
-    public void LegacyJsonKeepsFlatValuesAndLegacyShape()
+    public void PlayJsonUsesRateAndExplicitShape()
     {
         var definition = ParticleEmitterDefinition.FromJson("""
         {
           "particleTexture": "snowflake",
-          "emissionRate": 72,
-          "maxParticles": 240
+          "rate": 72,
+          "maxParticles": 240,
+          "shape": { "type": "box", "x": 640, "y": -12, "width": 1280 }
         }
         """);
 
         Assert.Multiple(() =>
         {
-            Assert.That(definition.Version, Is.EqualTo(1));
             Assert.That(definition.EmissionRate, Is.EqualTo(72));
-            Assert.That(definition.EffectiveEmission.RateOverTime, Is.EqualTo(72));
-            Assert.That(definition.Emission, Is.Null);
-            Assert.That(definition.Shape, Is.Null);
+            Assert.That(definition.Shape, Is.EqualTo(new ParticleShapeDefinition(ParticleShapeKind.Box, 640, -12, 1280)));
         });
     }
 
     [Test]
-    public void VersionTwoJsonParsesEmissionBurstsAndShape()
+    public void JsonParsesLineShape()
     {
         var definition = ParticleEmitterDefinition.FromJson("""
         {
-          "version": 2,
           "particleTexture": "spark",
           "maxParticles": 80,
-          "emission": {
-            "rateOverTime": 12,
-            "bursts": [
-              { "time": 0.5, "count": 20 },
-              { "time": 0, "count": 8 }
-            ]
-          },
+          "rate": 12,
           "shape": {
             "type": "line",
             "x": 10,
@@ -57,20 +48,17 @@ public class ParticleEmitterDefinitionTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(definition.Version, Is.EqualTo(2));
             Assert.That(definition.EmissionRate, Is.EqualTo(12));
-            Assert.That(definition.Emission!.Bursts, Is.EqualTo(new[] { new ParticleBurst(0, 8), new ParticleBurst(.5f, 20) }));
             Assert.That(definition.Shape, Is.EqualTo(new ParticleShapeDefinition(ParticleShapeKind.Line, 10, 20, EndX: 90, EndY: 40)));
         });
     }
 
     [Test]
-    public void VersionTwoDefinitionRoundTripsThroughSnapshotJson()
+    public void DefinitionRoundTripsThroughSnapshotJson()
     {
         var source = new ParticleEmitterDefinition(
             "spark",
-            Version: 2,
-            Emission: new ParticleEmissionDefinition(0, [new ParticleBurst(0, 24)]),
+            EmissionRate: 0,
             Shape: new ParticleShapeDefinition(ParticleShapeKind.Circle, 50, 60, Radius: 32));
 
         var restored = JsonSerializer.Deserialize<ParticleEmitterDefinition>(JsonSerializer.Serialize(source));
@@ -78,9 +66,7 @@ public class ParticleEmitterDefinitionTests
         Assert.Multiple(() =>
         {
             Assert.That(restored!.ParticleTexture, Is.EqualTo(source.ParticleTexture));
-            Assert.That(restored.Version, Is.EqualTo(2));
-            Assert.That(restored.EffectiveEmission.RateOverTime, Is.Zero);
-            Assert.That(restored.EffectiveEmission.Bursts, Is.EqualTo(source.EffectiveEmission.Bursts));
+            Assert.That(restored.EmissionRate, Is.Zero);
             Assert.That(restored.Shape, Is.EqualTo(source.Shape));
         });
     }
@@ -89,7 +75,7 @@ public class ParticleEmitterDefinitionTests
 public class ParticleEmitterSimulationTests
 {
     [Test]
-    public void BurstFiresOnceWhenItsTimeIsCrossedAndHonorsMaximum()
+    public void BurstFiresOnceOnFirstUpdateAndHonorsMaximum()
     {
         using var emitter = new RenderParticleEmitter("burst", null, new ParticleEmitterDefinition(
             "",
@@ -98,15 +84,10 @@ public class ParticleEmitterSimulationTests
             InitialVelocityY: 0,
             Noise: 0,
             ParticleLifetime: 10,
-            Version: 2,
-            Emission: new ParticleEmissionDefinition(0, [new ParticleBurst(.5f, 8)]),
-            Shape: new ParticleShapeDefinition(ParticleShapeKind.Point, 20, 30)), 0);
+            Shape: new ParticleShapeDefinition(ParticleShapeKind.Point, 20, 30)), 0, initialBurstCount: 8);
         var size = new SKSize(100, 100);
 
-        emitter.Update(new SceneFrameContext(TimeSpan.FromSeconds(.49), TimeSpan.FromSeconds(.49), size));
-        Assert.That(emitter.ActiveParticleCount, Is.Zero);
-
-        emitter.Update(new SceneFrameContext(TimeSpan.FromSeconds(.51), TimeSpan.FromSeconds(.02), size));
+        emitter.Update(new SceneFrameContext(TimeSpan.FromSeconds(.02), TimeSpan.FromSeconds(.02), size));
         emitter.Update(new SceneFrameContext(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(.49), size));
 
         Assert.That(emitter.ActiveParticleCount, Is.EqualTo(2));
@@ -121,9 +102,7 @@ public class ParticleEmitterSimulationTests
             InitialVelocityY: 0,
             Noise: 0,
             ParticleLifetime: 10,
-            Version: 2,
-            Emission: new ParticleEmissionDefinition(0, [new ParticleBurst(0, 1)]),
-            Shape: new ParticleShapeDefinition(ParticleShapeKind.Point, 20, 30)), 0);
+            Shape: new ParticleShapeDefinition(ParticleShapeKind.Point, 20, 30)), 0, initialBurstCount: 1);
         emitter.Update(new SceneFrameContext(TimeSpan.FromMilliseconds(1), TimeSpan.FromMilliseconds(1), new SKSize(100, 100)));
 
         using var frame = SceneRenderPipeline.Render(SceneRenderPlan.Empty, [], [emitter], new Size(100, 100));

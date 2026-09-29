@@ -10,3 +10,6 @@ public sealed record ParticleEmitterRequest(string InstanceId, ParticleEmitterDe
 {
     public IReadOnlyDictionary<string, float> AnimationValues { get; init; } = new Dictionary<string, float>(StringComparer.Ordinal);
 }
+
+/// <summary>Fire-and-forget particles that never become Runtime scene state.</summary>
+public sealed record ParticleBurstRequest(ParticleEmitterDefinition Definition, int Count, float Z);

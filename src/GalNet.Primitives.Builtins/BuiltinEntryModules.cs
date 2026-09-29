@@ -22,7 +22,7 @@ public static class BuiltinEntryModules
     [
         new BuiltinDialogueModule(dialoguePresenter),
         new BuiltinLayerModule(layerPresenter),
-        new BuiltinAnimationModule(animationPresenter, layerPresenter, effectPresenter),
+        new BuiltinAnimationModule(animationPresenter, layerPresenter, effectPresenter, particlePresenter),
         new BuiltinAudioModule(),
         new BuiltinVideoModule(),
         new BuiltinEffectModule(effectPresenter),
@@ -122,7 +122,8 @@ public sealed class BuiltinAnimationModule : EntryModuleBase
     public BuiltinAnimationModule(
         IAnimationPresenter? animationPresenter = null,
         ILayerPresenter? layerPresenter = null,
-        IEffectPresenter? effectPresenter = null) : base("animation",
+        IEffectPresenter? effectPresenter = null,
+        IParticlePresenter? particlePresenter = null) : base("animation",
     [
         BuiltinEntrySchemas.Primitive<AnimateEntry>(
             AnimateEntry.ParameterTypes,
@@ -141,6 +142,7 @@ public sealed class BuiltinAnimationModule : EntryModuleBase
                 animationPresenter,
                 layerPresenter,
                 effectPresenter,
+                particlePresenter,
                 BuiltinRuntimeActions.CreateAnimationPlan(context),
                 context.BatchId,
                 context.ScopeCancellation)),
@@ -214,6 +216,8 @@ public sealed class BuiltinParticleModule : EntryModuleBase
     [
         BuiltinEntrySchemas.Primitive<PlayParticleEmitterEntry>(PlayParticleEmitterEntry.ParameterTypes, PlayParticleEmitterEntry.DefaultValues,
             factory: context => new PlayParticlePrimitiveInstance(context.Runtime, presenter, BuiltinRuntimeActions.CreateParticleRequest(context), context.BatchId, context.ScopeCancellation)),
+        BuiltinEntrySchemas.Primitive<BurstParticlesEntry>(BurstParticlesEntry.ParameterTypes, BurstParticlesEntry.DefaultValues,
+            factory: context => new BurstParticlePrimitiveInstance(presenter, BuiltinRuntimeActions.CreateParticleBurstRequest(context), context.BatchId, context.ScopeCancellation)),
         BuiltinEntrySchemas.Primitive<StopParticleEmitterEntry>(StopParticleEmitterEntry.ParameterTypes,
             factory: context => new StopParticlePrimitiveInstance(context.Runtime, presenter, Arguments.String(context, "instanceId"), context.BatchId, context.ScopeCancellation))
     ]) { }

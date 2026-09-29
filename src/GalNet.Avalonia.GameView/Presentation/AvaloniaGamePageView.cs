@@ -32,6 +32,7 @@ public sealed class AvaloniaGamePageView : IDisposable, IDialoguePresenter, ICho
     private readonly List<ActivePlan> _activePlans = [];
     private readonly Dictionary<string, ICompletablePlayback> _activePlaybacks = new(StringComparer.Ordinal);
     private long _animationSequence;
+    private long _particleBurstSequence;
     private readonly Dictionary<string, ParticleEmitter> _particleEmitters = new(StringComparer.Ordinal);
 
     public AvaloniaGamePageView(GamePageViewModel state, GamePage page, IGamePageLayerFactory layers)
@@ -83,6 +84,15 @@ public sealed class AvaloniaGamePageView : IDisposable, IDialoguePresenter, ICho
         RegisterParticleAnimation(request, "noise", value => emitter.Noise = (float)value, emitter.Noise);
         RegisterParticleAnimation(request, "particleScale", value => emitter.ParticleScale = (float)value, emitter.ParticleScale);
         RegisterParticleAnimation(request, "particleLifetime", value => emitter.ParticleLifetime = (float)value, emitter.ParticleLifetime);
+        return Task.CompletedTask;
+    });
+    public Task BurstParticlesAsync(ParticleBurstRequest request, CancellationToken cancellationToken) => OnUiAsync(() =>
+    {
+        var handleId = $"__particle-burst:{Interlocked.Increment(ref _particleBurstSequence)}";
+        var emitter = new ParticleEmitter(handleId, _layers.ResolveTexture(request.Definition.ParticleTexture), request.Definition, request.Z, request.Count);
+        emitter.Drained += OnParticleDrained;
+        _particleEmitters.Add(handleId, emitter);
+        _state.SceneRenderables.Add(emitter);
         return Task.CompletedTask;
     });
     public Task StopParticleEmitterAsync(string instanceId, CancellationToken ct) => OnUiAsync(() => { if (_particleEmitters.TryGetValue(instanceId, out var emitter)) emitter.StopEmission(); return Task.CompletedTask; });

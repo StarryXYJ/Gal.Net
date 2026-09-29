@@ -133,7 +133,7 @@ Layer source 的 authoring 数据优先采用显式 `source` 对象；现阶段 
 ### Phase 4：GPU 粒子与其他场景对象（已完成）
 
 - 已将 `particle.emitter` 替换为独立 `particle.play` / `particle.stop` 原语；`ParticleEmitter : IFrameUpdatableSceneRenderable` 不再创建 Avalonia `Control`。
-- 定义粒子 emitter 的 authoring 数据：贴图、发射率、最大数量、初速度、重力、生命周期、尺寸与颜色曲线；v2 在保留旧平铺字段兼容的同时加入独立 Emission / Shape 模块，现支持定时 burst 与 Point、Box、Circle、Line 发射形状。
+- 定义粒子 authoring 数据：贴图、最大数量、初速度、重力、生命周期、尺寸与颜色曲线，并支持 Point、Box、Circle、Line 发射形状。`particle.play` 用 rate 创建可停止、可存档的持续 emitter；`particle.burst` 用 count 创建不进 Runtime 状态的一次性效果。持续时间和重复 burst 由流程或 animation plan 编排，不在 emitter 内维护另一套时间线。
 - 使用 Skia atlas 批量 sprite draw 绘制存活粒子；不为每颗粒子创建 Layer、Control 或独立 draw target。
 - Layer 与粒子统一实现 `ISceneRenderable`，按 `z` 与稳定插入顺序合成。Layer 先完成其局部 effect 链，粒子随后以同一场景画布坐标参与合成，最后统一进入 ScenePost。
 

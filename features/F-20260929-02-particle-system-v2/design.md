@@ -13,23 +13,23 @@ updated: 2026-09-29
 
 三者的共同点不是具体参数名，而是将发射时机、出生位置、初始状态、生命周期运动和渲染表现解耦。GalNet 因而采用 Main / Emission / Shape / Initial / Motion / Lifetime / Renderer 的模块边界。
 
-## 兼容策略
+## 快速迭代策略
 
-`ParticleEmitterDefinition` 暂时保留 v1 平铺字段，避免破坏已有内容、动画属性和 snapshot。v2 模块作为可选数据追加：
+不保留 v1 JSON 迁移层。Sample、测试和正式文档与实现同步更新，避免在尚未发布的 API 上积累双重语义。
 
-- 未声明 `emission` 时，连续发射率继续读取 `emissionRate`。
-- 未声明 `shape` 时，继续使用历史的屏幕顶部随机 X 发射。
-- 声明模块后，渲染器读取模块的有效值；`emissionRate` 动画仍控制运行时连续发射率。
-- snapshot 继续保存完整 emitter definition，因此 v2 模块自然参与存档往返；活粒子仍不进入 Runtime 状态。
+- `particle.play`：持续 rate emitter，具有 `instanceId`，写入 Runtime scene state，可动画 `emissionRate`，由 `particle.stop` 结束。
+- `particle.burst`：一次性 count 命令，无 `instanceId`、无 stop、无 Runtime scene state；展示端在粒子耗尽后自动释放。
+- `duration` 不属于粒子定义。有限持续效果由普通流程或 animation plan 表达 `play → stop`。
+- 重复 burst 由 animation plan 在多个帧触发，循环 plan 会在每轮重新触发事件；跳过时不补发未来 burst。
 
-这是一段有意保留的迁移期。等编辑器和内容全部输出 v2 后，再决定是否废弃平铺字段，不能在读取路径中静默改变旧内容视觉结果。
+这样把持久状态与瞬时视觉明确分开：读档只重建仍在持续播放的 emitter，一次 burst 的稳定终态就是“已经结束”。
 
 ## 模块路线
 
 ```text
 ParticleEmitterDefinition v2
-├─ Main: duration / looping / seed / maxParticles / simulationSpace
-├─ Emission: rateOverTime / bursts[]
+├─ Main: seed / maxParticles / simulationSpace
+├─ Emission: particle.play(rate) / particle.burst(count)
 ├─ Shape: point / box / circle / line / mask
 ├─ Initial: lifetime / velocity / size / rotation / color ranges
 ├─ Motion: gravity / drag / noise / radial / orbit / attractor
@@ -39,12 +39,13 @@ ParticleEmitterDefinition v2
 
 ## Phase 1 决策
 
-首阶段只实现 Emission + Shape。它们能覆盖爆炸、火花、喷泉、区域飘落和路径发射，又不要求改变现有 atlas batch 或 Runtime 动画协议。
+首阶段实现两个原语与共享 Shape。它们能覆盖爆炸、火花、喷泉、区域飘落和路径发射，又不要求保存单颗粒子。
 
-- burst 以 emitter 启动后的秒数触发，按时间排序，每项只触发一次。
+- 持续 emitter 由 play/stop 明确管理；有限时长由上层编排，不在 renderer 内维护第二套计时器。
+- burst 在命令到达时一次发射，遵守 `maxParticles`，耗尽后自动释放。
 - Point 使用固定坐标；Box 在中心矩形内均匀采样；Circle 按面积均匀采样；Line 在线段上均匀采样。
 - 所有采样共享 emitter 的 seed RNG，故相同 definition 从头重放时结果一致。
-- stop 后不再触发连续发射或未来 burst，已有粒子自然耗尽。
+- stop 后不再持续发射，已有粒子自然耗尽。
 
 ## 后续阶段
 
@@ -52,4 +53,3 @@ ParticleEmitterDefinition v2
 2. 增加 drag、angular velocity、opacity/rotation/velocity lifetime curves。
 3. 增加 blend mode 与 flipbook；保持 Skia atlas 批量提交。
 4. 再评估 collision、attractor/vortex、trail、mask emission、sub-emitter 与 GPU simulation。
-

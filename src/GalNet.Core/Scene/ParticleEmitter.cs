@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace GalNet.Core.Scene;
 
@@ -18,13 +17,8 @@ public sealed record ParticleEmitterDefinition(
     float GravityY = 0,
     IReadOnlyList<ParticleCurveKey>? SizeCurve = null,
     IReadOnlyList<ParticleColorCurveKey>? ColorCurve = null,
-    int Version = 1,
-    ParticleEmissionDefinition? Emission = null,
     ParticleShapeDefinition? Shape = null)
 {
-    [JsonIgnore]
-    public ParticleEmissionDefinition EffectiveEmission => Emission ?? new ParticleEmissionDefinition(EmissionRate);
-
     public static ParticleEmitterDefinition FromJson(string parameters)
     {
         try
@@ -34,13 +28,10 @@ public sealed record ParticleEmitterDefinition(
             static float Number(JsonElement root, string name, float fallback) => root.TryGetProperty(name, out var value) && value.TryGetSingle(out var result) ? result : fallback;
             static int Integer(JsonElement root, string name, int fallback) => root.TryGetProperty(name, out var value) && value.TryGetInt32(out var result) ? result : fallback;
             static string Text(JsonElement root, string name) => root.TryGetProperty(name, out var value) ? value.GetString() ?? "" : "";
-            var flatEmissionRate = Math.Max(0, Number(root, "emissionRate", 36));
-            var emission = EmissionModule(root, flatEmissionRate);
             var shape = ShapeModule(root);
-            var version = Math.Max(1, Integer(root, "version", emission is not null || shape is not null ? 2 : 1));
             return new ParticleEmitterDefinition(
                 Text(root, "particleTexture"),
-                emission?.RateOverTime ?? flatEmissionRate,
+                Math.Max(0, Number(root, "rate", 36)),
                 Math.Max(1, Integer(root, "maxParticles", 160)),
                 Number(root, "initialVelocityX", -14), Number(root, "initialVelocityY", 96),
                 Math.Max(0, Number(root, "noise", 18)), Math.Max(.001f, Number(root, "particleScale", 1)),
@@ -48,22 +39,9 @@ public sealed record ParticleEmitterDefinition(
                 Number(root, "gravityX", 0), Number(root, "gravityY", 0),
                 Curve(root, "sizeCurve", static value => new ParticleCurveKey(Number(value, "time", 0), Number(value, "value", 1))),
                 Curve(root, "colorCurve", static value => new ParticleColorCurveKey(Number(value, "time", 0), Text(value, "color"))),
-                version, emission, shape);
+                shape);
         }
         catch (JsonException exception) { throw new InvalidDataException("Particle emitter parameters must be a JSON object.", exception); }
-    }
-
-    private static ParticleEmissionDefinition? EmissionModule(JsonElement root, float fallbackRate)
-    {
-        if (!root.TryGetProperty("emission", out var value) || value.ValueKind != JsonValueKind.Object) return null;
-        var rate = Math.Max(0, Number(value, "rateOverTime", fallbackRate));
-        var bursts = Curve(value, "bursts", static burst => new ParticleBurst(
-            Math.Max(0, Number(burst, "time", 0)),
-            Math.Max(0, Integer(burst, "count", 0))))?
-            .Where(burst => burst.Count > 0)
-            .OrderBy(burst => burst.Time)
-            .ToArray();
-        return new ParticleEmissionDefinition(rate, bursts);
     }
 
     private static ParticleShapeDefinition? ShapeModule(JsonElement root)
@@ -101,8 +79,6 @@ public sealed record ParticleEmitterDefinition(
 
 public sealed record ParticleCurveKey(float Time, float Value);
 public sealed record ParticleColorCurveKey(float Time, string Color);
-public sealed record ParticleBurst(float Time, int Count);
-public sealed record ParticleEmissionDefinition(float RateOverTime = 36, IReadOnlyList<ParticleBurst>? Bursts = null);
 
 public enum ParticleShapeKind { Point, Box, Circle, Line }
 
@@ -160,7 +136,7 @@ public sealed class ParticleEmitterInstance : AnimatableSceneInstance
 
     private static Dictionary<string, float> CreateValues(ParticleEmitterDefinition definition) => new(StringComparer.Ordinal)
     {
-        ["emissionRate"] = definition.EffectiveEmission.RateOverTime, ["initialVelocityX"] = definition.InitialVelocityX,
+        ["emissionRate"] = definition.EmissionRate, ["initialVelocityX"] = definition.InitialVelocityX,
         ["initialVelocityY"] = definition.InitialVelocityY, ["noise"] = definition.Noise,
         ["particleScale"] = definition.ParticleScale, ["particleLifetime"] = definition.ParticleLifetime
     };
