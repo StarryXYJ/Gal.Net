@@ -1,18 +1,60 @@
 name: CI
 
 on:
+  pull_request:
+  push:
+    branches:
+      - master
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  build-and-test:
+  desktop-build-and-test:
     runs-on: windows-latest
     timeout-minutes: 30
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: '1'
       DOTNET_NOLOGO: '1'
+      AVALONIA_TELEMETRY_OPTOUT: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.401
+      - name: Restore GeneralTest
+        run: dotnet restore test/GeneralTest/GeneralTest.csproj --locked-mode
+      - name: Restore assets tests
+        run: dotnet restore test/GalNet.Assets.Tests/GalNet.Assets.Tests.csproj --locked-mode
+      - name: Restore editor CLI
+        run: dotnet restore src/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj --locked-mode
+      - name: Restore headless sample
+        run: dotnet restore src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj --locked-mode
+      - name: Build editor CLI
+        run: dotnet build src/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj --no-restore --configuration Release -p:ContinuousIntegrationBuild=true
+      - name: Build headless sample
+        run: dotnet build src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj --no-restore --configuration Release -p:ContinuousIntegrationBuild=true
+      - name: Test GeneralTest with coverage
+        run: dotnet test test/GeneralTest/GeneralTest.csproj --no-restore --configuration Release --logger "trx;LogFileName=general-test.trx" --results-directory artifacts/test-results --collect:"XPlat Code Coverage"
+      - name: Test assets with coverage
+        run: dotnet test test/GalNet.Assets.Tests/GalNet.Assets.Tests.csproj --no-restore --configuration Release --logger "trx;LogFileName=assets-test.trx" --results-directory artifacts/test-results --collect:"XPlat Code Coverage"
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-test-results
+          path: artifacts/test-results
+          if-no-files-found: warn
+
+  platform-solution-build:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+      AVALONIA_TELEMETRY_OPTOUT: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v5
@@ -22,14 +64,5 @@ jobs:
         run: dotnet workload restore GalNet.slnx
       - name: Restore locked dependencies
         run: dotnet restore GalNet.slnx --locked-mode
-      - name: Build
+      - name: Build full solution
         run: dotnet build GalNet.slnx --no-restore --configuration Release -p:ContinuousIntegrationBuild=true
-      - name: Test with coverage
-        run: dotnet test GalNet.slnx --no-restore --configuration Release --logger "trx;LogFileName=test-results.trx" --results-directory artifacts/test-results --collect:"XPlat Code Coverage"
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: artifacts/test-results
-          if-no-files-found: warn

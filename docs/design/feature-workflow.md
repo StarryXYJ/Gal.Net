@@ -36,7 +36,7 @@ Review
 
 ## Feature 产物
 
-每次采用此工作流的实现创建一个新的 `G:\program\GalDotNet\features\F-YYYYMMDD-NN-short-slug\` 目录。
+每次采用此工作流的实现创建一个新的 `features/F-YYYYMMDD-NN-short-slug/` 目录。
 
 ### `feature.md`
 
@@ -44,7 +44,7 @@ Review
 
 ### `design.md`
 
-记录系统应该如何变化、候选方案、取舍、接口/数据边界、迁移和风险。它回答“为什么这样设计”。重要且难以逆转的决定另建 `G:\program\GalDotNet\docs\adr\` 下的 ADR。
+记录系统应该如何变化、候选方案、取舍、接口/数据边界、迁移和风险。它回答“为什么这样设计”。重要且难以逆转的决定另建 `docs/adr/` 下的 ADR。
 
 ### `phase-plan.md`
 
@@ -68,14 +68,14 @@ Review
 - 发现可能在多个 feature 重复出现的边界或陷阱。
 - 重复一次会造成较大返工、数据损坏或错误架构方向的问题。
 
-lesson 先保存在 `G:\program\GalDotNet\.agents\lessons\`。经过重复验证、风险评估或跨 feature 复用确认后，再使用 `galnet-promote-lesson` 生成独立 skill。独立 skill 应写规则和检查方式，不应复制完整事故流水账。
+lesson 先保存在 `.agents/lessons/`。经过重复验证、风险评估或跨 feature 复用确认后，再使用 `galnet-promote-lesson` 生成独立 skill。独立 skill 应写规则和检查方式，不应复制完整事故流水账。
 
 ## 文档分层
 
-- `G:\program\GalDotNet\.agents\`：只给 agent 使用的上下文、lesson 和 skill 源文件。
-- `G:\program\GalDotNet\features\`：一次 feature 的过程和人类可读总结。
-- `G:\program\GalDotNet\docs\spec\`：当前已经实现的系统事实。
-- `G:\program\GalDotNet\docs\design\`：跨 feature 设计和长期计划。
-- `G:\program\GalDotNet\docs\adr\`：重要架构决定。
+- `.agents/`：只给 agent 使用的上下文、lesson 和 skill 源文件。
+- `features/`：一次 feature 的过程和人类可读总结。
+- `docs/spec/`：当前已经实现的系统事实。
+- `docs/design/`：跨 feature 设计和长期计划。
+- `docs/adr/`：重要架构决定。
 
 不要把 agent 的临时经验直接写进 `docs/spec`；只有已经验证并属于系统公共约定的内容才同步到正式文档。

@@ -158,19 +158,12 @@
           "GalNet.Core": "[1.0.0, )"
         }
       },
-      "galnet.primitives.builtins": {
-        "type": "Project",
-        "dependencies": {
-          "GalNet.Core": "[1.0.0, )"
-        }
-      },
       "galnet.runtime": {
         "type": "Project",
         "dependencies": {
           "CoreCLR-NCalc": "[3.1.253, )",
           "GalNet.Core": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
-          "GalNet.Primitives.Builtins": "[1.0.0, )",
           "GalNet.Storage.Abstractions": "[1.0.0, )",
           "Serilog": "[4.2.0, )"
         }
@@ -252,7 +245,7 @@
       },
       "Microsoft.Extensions.DependencyInjection.Abstractions": {
         "type": "CentralTransitive",
-        "requested": "[10.0.0-preview.1.25080.5, )",
+        "requested": "[10.0.0, )",
         "resolved": "8.0.0",
         "contentHash": "cjWrLkJXK0rs4zofsK4bSdg+jhDLTaxrkXu4gS6Y7MAlCvRyNNgwY/lJi5RDlQOnSZweHqoyvgvbdvQsRIW+hg=="
       },

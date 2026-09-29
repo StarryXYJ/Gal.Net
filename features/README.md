@@ -19,5 +19,5 @@ create → design → phase-plan → implement → review → closeout
 
 这只是推荐工作流，不是所有任务的强制前置条件。任何单个 skill 都可以在没有完整 feature 记录时独立运行，但已有 feature 时应优先使用它作为上下文和产物归属。
 
-`summary.md` 面向开发者，记录实现结果和可读的历史；agent 专用的详细踩坑记录放在 `G:\program\GalDotNet\.agents\lessons\`。
+`summary.md` 面向开发者，记录实现结果和可读的历史；agent 专用的详细踩坑记录放在仓库 `.agents/lessons/`。
 

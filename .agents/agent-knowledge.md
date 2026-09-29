@@ -4,35 +4,36 @@
 
 ## 使用方式
 
-开始工作时先读取本文件，再按当前任务读取 `G:\program\GalDotNet\.agents\lessons\` 中相关的经验和 `G:\program\GalDotNet\.agents\skills\` 中匹配的 skill。细节以 `G:\program\GalDotNet\docs\` 下的正式文档为准。
+开始工作时先读取本文件，再按当前任务读取仓库 `.agents/lessons/` 中相关的经验和 `.agents/skills/` 中匹配的 skill。细节以仓库 `docs/` 下的正式文档为准。
 
 经验在发现时立即记录，feature 结束时再整理和晋升；不要等到上下文结束才回忆。
 
 ## 项目事实（已从仓库文档确认）
 
 - 解决方案入口是 `GalNet.slnx`。
-- `G:\program\GalDotNet\docs\spec\` 描述已经实现的稳定事实；`G:\program\GalDotNet\docs\design\` 描述设计和分阶段计划。
+- `docs/spec/` 描述已经实现的稳定事实；`docs/design/` 描述设计和分阶段计划。
 - Runtime/Core 应保持与 Avalonia、WPF、Skia、具体文件系统和其他平台实现解耦。
 - 旧的 `GalNet.Control` 与 `GalNet.Control.Abstraction` 已完成迁移并删除；当前共享 Avalonia 游戏页面唯一入口是 `GalNet.Avalonia.GameView`，页面架构见 `docs/spec/control.md`。
 - 会影响场景的运行时条目应先更新 `SceneState`，再通知展示层；读取存档后由 Engine 根据状态重放展示。
 - 视觉扩展应通过展示抽象和渲染端口接入；不要把平台类型或渲染资源泄漏进 Core/Runtime。
-- 当前已有大型阶段计划：[runtime-presentation-decoupling-phase-plan.md](G:\program\GalDotNet\docs\design\runtime-presentation-decoupling-phase-plan.md) 和 [render-effects-pipeline-plan.md](G:\program\GalDotNet\docs\design\render-effects-pipeline-plan.md)。新增 feature 应链接它们，不要复制其中的长期设计。
+- 当前已有大型阶段计划：[runtime-presentation-decoupling-phase-plan.md](../docs/design/runtime-presentation-decoupling-phase-plan.md) 和 [render-effects-pipeline-plan.md](../docs/design/render-effects-pipeline-plan.md)。新增 feature 应链接它们，不要复制其中的长期设计。
 
 ## 文档分层
 
-- `G:\program\GalDotNet\features\<feature-id>\`：一次实现的需求、设计、阶段计划、审核和人类可读总结。
-- `G:\program\GalDotNet\.agents\lessons\`：agent 专用的踩坑记录。
-- `G:\program\GalDotNet\.agents\skills\`：项目 skill 的可版本化源文件；可复用经验晋升后在这里形成独立 skill。
-- 当前 Codex 的运行时副本位于 `C:\Users\Starry\.codex\skills\galnet-*`；源文件变化后使用 `galnet-sync-skills` 同步，避免 agent 使用旧版本。
-- `G:\program\GalDotNet\docs\spec\`：当前系统事实。
-- `G:\program\GalDotNet\docs\design\`：跨 feature 设计和推荐工作流。
-- `G:\program\GalDotNet\docs\adr\`：重要架构决定；接受后的 ADR 不直接改写。
+- `features/<feature-id>/`：一次实现的需求、设计、阶段计划、审核和人类可读总结。
+- `.agents/lessons/`：agent 专用的踩坑记录。
+- `.agents/skills/`：项目 skill 的可版本化源文件；可复用经验晋升后在这里形成独立 skill。
+- Codex 的用户级 skill 发现目录保存运行时副本；源文件变化后使用 `galnet-sync-skills` 同步，避免 agent 使用旧版本。
+- `docs/spec/`：当前系统事实。
+- `docs/design/`：跨 feature 设计和推荐工作流。
+- `docs/adr/`：重要架构决定；接受后的 ADR 不直接改写。
 
 ## 当前工作
 
-- `F-20260926-01-gallery-meta-pages` 的实现、正式文档与示例 Gallery 解锁 smoke test 已完成；2026-09-28 的全量 `GeneralTest` 仍有一项非本 feature 的 `EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString` 失败，因此该 feature 维持 `implementation`，等待修复或正式豁免后关闭。
-- 当前 discovery feature：[F-20260916-02-audio-system](G:\program\GalDotNet\features\F-20260916-02-audio-system\feature.md)，用于澄清音频系统的首个可交付范围、后端能力和迁移语义。
+- `F-20260926-01-gallery-meta-pages` 的实现、正式文档与示例 Gallery 解锁 smoke test 已完成；其外部阻塞项 `EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString` 已由 `F-20260929-04-quality-baseline` 修复，Gallery feature 可按自身流程收尾。
+- 当前 discovery feature：[F-20260916-02-audio-system](../features/F-20260916-02-audio-system/feature.md)，用于澄清音频系统的首个可交付范围、后端能力和迁移语义。
 - `F-20260929-01-compiled-content-pipeline` 正在实施；粒子 Primitive、Runtime 状态与 Presenter 桥接及存档后的 effect/particle 展示重放已经验证，完整 Sample/Headless smoke 与 Phase 4 收尾仍待完成。
+- `F-20260929-03-maintainability-roadmap` 已完成规划；`F-20260929-04-quality-baseline` 已完成 Phase 0，下一步是 Phase 1 的契约归属 ADR 与依赖规则，需要用户确认架构选择后再迁移生产契约。
 - 后续 feature、验证命令和新经验在实际工作中补充，并保留来源链接或 feature ID。
 
 ## 维护规则
@@ -57,3 +58,4 @@
 - [Skia atlas 变换使用 source 局部坐标](lessons/L-20260929-05-skia-atlas-local-transform.md)：`DrawAtlas` 的旋转缩放中心应使用 source rect 的宽高，不能重复带入 atlas 偏移。
 - [Sample 调试清空的语义](lessons/L-20260929-01-sample-debug-reset-scope.md)：顶层“清空游戏数据”重置玩家状态；日志清空仅属于日志面板。
 - [Sample 调试会话销毁的导航顺序](lessons/L-20260929-02-sample-debug-navigate-before-teardown.md)：先切换到标题页，再停止引擎或释放场景展示，避免重置/重载期间黑屏。
+- [格式门禁必须建立在干净基线上](lessons/L-20260929-06-format-gate-clean-baseline.md)：Windows 仓库在统一行尾前直接启用 `dotnet format` 会把既有行尾、using 和空白债务混入功能改动；先做独立机械格式化，再启用阻断式门禁。
