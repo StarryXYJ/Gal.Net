@@ -177,7 +177,11 @@ updated: 2026-09-29
 
 ## Phase 5 - Editor 扩展 API 类型安全评估
 
-**状态：planned**
+**状态：verified**
+
+实施 feature：[F-20260929-12-editor-extension-type-safety](../F-20260929-12-editor-extension-type-safety/feature.md)
+
+完成证据：[F-20260929-12 实现总结](../F-20260929-12-editor-extension-type-safety/summary.md)。异构 registry 和 `IServiceProvider` 生命周期边界保持兼容，泛型 contribution 基类集中处理类型校验，内置 panel/inspector 已迁移并通过注册到 ViewModel 创建测试。
 
 **依赖：** Phase 4a 后能看清真实扩展边界。
 

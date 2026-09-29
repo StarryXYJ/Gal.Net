@@ -1,6 +1,6 @@
 ---
 feature: F-20260929-12-editor-extension-type-safety
-status: planned
+status: done
 updated: 2026-09-29
 ---
 
@@ -32,10 +32,12 @@ updated: 2026-09-29
 
 ## Phase 3 - 文档与路线图收尾
 
-**状态：planned**
+**状态：verified**
 
 **任务：** 同步扩展 API 约束、路线图状态、feature summary 与 agent knowledge。
 
 **验证：** 10 个测试项目、完整 solution Release build、`git diff --check`。
+
+**证据：** 10 个测试项目按顺序执行并以 329/329 通过；完整 `GalNet.slnx` Release 构建覆盖 Desktop、Android、Browser、iOS、Sample、Editor 和测试项目，0 错误。构建在沙箱外执行，仅保留既有分析器告警、离线 NuGet 漏洞源 `NU1900` 和 Wasm native-reference 提示；正式架构文档、路线图和 agent knowledge 已同步。
 
 **退出条件：** Phase 5 有完成证据且没有未记录的兼容性风险，创建独立 Git 提交。

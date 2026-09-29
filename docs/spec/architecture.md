@@ -51,6 +51,8 @@ Avalonia GameView 通过精确 Gallery `typeId` 的 `IGalleryPageRegistry` 选�
 
 `EditorWorkspaceViewModel` 保留可观察 UI 状态、命令编排、history checkpoint 和自动保存触发。`GraphSelectionState` 维护节点/边选择与 `IsSelected` 一致性；`EditorWorkspacePersistence` 组合 repository、document service、mapper、save coordinator 与 project service 完成图的加载、保存和 Preview 数据构建。内置 Editor 命令由单一 handler 入口分派，Graph、Entry、Variable 和 Project 实现按领域分文件维护。
 
+Editor 扩展 registry 通过非泛型 `IDockPanelContribution` 和 `IInspectorControlContribution` 保存异构贡献，`object` 只存在于该类型擦除边界。新 contribution 应优先继承 `DockPanelContributionBase<TViewModel>`、`DockPanelContributionBase<TViewModel, TParameter>` 或 `InspectorControlContributionBase<TDockViewModel, TInspectorViewModel>`，由 bridge 集中校验 parameter、dock ViewModel 和 inspector ViewModel 类型；错误类型会在贡献边界报告预期与实际类型。`IServiceProvider` 继续表示全局或当前项目 scope，view 继续返回 `object` 以避免 Editor.Abstraction 引用 Avalonia。内置 panel 和 inspector contribution 均使用这些强类型入口。
+
 ## 测试边界
 
 | 项目 | 职责 |
