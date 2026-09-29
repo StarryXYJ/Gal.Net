@@ -22,7 +22,7 @@ updated: 2026-09-29
 
 ## Phase 2 - 内置命令按领域分文件
 
-**状态：in-progress**
+**状态：verified**
 
 **目标：** 让 Graph、Entry、Variable 和 Project 命令的实现与物理文件一致。
 
@@ -32,9 +32,11 @@ updated: 2026-09-29
 
 **退出条件：** 原 800 行实现文件仅保留入口/共享部分，四个领域可独立定位，创建独立 Git 提交。
 
+**验证（2026-09-29）：** handler 入口/共享文件由 800 行降至 47 行，Graph、Entry、Variable 和 Project 实现迁入独立 partial 文件。Editor.Shared 16/16、Editor 21/21 通过，Editor Headless Release 构建通过。
+
 ## Phase 3 - Workspace 选择与持久化协作者
 
-**状态：planned**
+**状态：in-progress**
 
 **目标：** 从 ViewModel 移出可独立验证的选择集合管理和项目图读写。
 
