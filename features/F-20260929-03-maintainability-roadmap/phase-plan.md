@@ -130,7 +130,11 @@ updated: 2026-09-29
 
 ## Phase 4a - Editor 职责拆分
 
-**状态：planned**
+**状态：verified**
+
+实施 feature：[F-20260929-10-editor-responsibility-split](../F-20260929-10-editor-responsibility-split/feature.md)
+
+完成证据：[F-20260929-10 实现总结](../F-20260929-10-editor-responsibility-split/summary.md)。Workspace 的选择与持久化细节已抽入可独立测试的协作者，内置命令已按四个领域分文件维护。
 
 **依赖：** Phase 3 提供 Editor.Shared 与 Editor 测试边界。
 

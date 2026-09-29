@@ -1,6 +1,6 @@
 ---
 feature: F-20260929-10-editor-responsibility-split
-status: implementing
+status: done
 updated: 2026-09-29
 ---
 
@@ -50,10 +50,12 @@ updated: 2026-09-29
 
 ## Phase 4 - 文档与收尾
 
-**状态：in-progress**
+**状态：verified**
 
 **目标：** 同步稳定架构事实、路线图状态和实现总结。
 
 **验证：** 全部 Editor/Editor.Shared 测试、Headless 与完整 solution；diff check。
 
 **退出条件：** Phase 4a 有完整证据并创建独立 Git 提交。
+
+**验证（2026-09-29）：** 架构 spec、维护性路线图、agent knowledge 和 feature summary 已同步。全部 10 个测试项目合计 316/316 通过，Editor Headless 与完整 solution Release 构建 0 错误。

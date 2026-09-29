@@ -2,7 +2,7 @@
 id: F-20260929-10-editor-responsibility-split
 title: Editor 工作区与命令职责拆分
 type: refactor
-status: implementing
+status: done
 created: 2026-09-29
 updated: 2026-09-29
 parent: F-20260929-03-maintainability-roadmap
@@ -44,4 +44,5 @@ parent: F-20260929-03-maintainability-roadmap
 
 - [设计](design.md)
 - [实施计划](phase-plan.md)
+- [实现总结](summary.md)
 - [路线图 Phase 4a](../F-20260929-03-maintainability-roadmap/phase-plan.md)
