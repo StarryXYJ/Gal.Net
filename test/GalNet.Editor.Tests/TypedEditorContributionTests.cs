@@ -1,6 +1,9 @@
 using System.ComponentModel;
 using GalNet.Editor.Abstraction.Extensibility;
+using GalNet.Editor.Dock;
 using GalNet.Editor.Services;
+using GalNet.Editor.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Editor.Tests;
 
@@ -18,6 +21,27 @@ public sealed class TypedEditorContributionTests
             () => registry.RegisterDockPanel(new UnparameterizedContribution()),
             Throws.InvalidOperationException.With.Message.Contains("typed-panel"));
         Assert.That(registry.FindDockPanel("typed-panel"), Is.Not.Null);
+    }
+
+    [Test]
+    public void Built_in_log_panel_resolves_its_typed_view_model_from_the_registry()
+    {
+        var registry = new EditorExtensionRegistry();
+        BuiltInDockContributions.Register(registry);
+        using var services = new ServiceCollection()
+            .AddTransient<LogPanelViewModel>()
+            .BuildServiceProvider();
+
+        var contribution = registry.FindDockPanel(EditorDockPanelIds.Log);
+        var viewModel = contribution?.CreateViewModel(services);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(contribution, Is.Not.Null);
+            Assert.That(contribution!.Placement, Is.EqualTo(DockPanelPlacement.BottomDocument));
+            Assert.That(contribution.IsGlobal, Is.True);
+            Assert.That(viewModel, Is.TypeOf<LogPanelViewModel>());
+        });
     }
 
     [Test]

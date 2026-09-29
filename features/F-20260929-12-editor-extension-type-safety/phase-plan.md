@@ -20,11 +20,13 @@ updated: 2026-09-29
 
 ## Phase 2 - 内置 contribution 迁移
 
-**状态：planned**
+**状态：verified**
 
 **任务：** 将 6 个内置 dock panel 与 3 个 inspector contribution 迁移到泛型 delegate 实现；补一个从 registry 查找到内置 ViewModel 创建的组合测试。
 
 **验证：** Editor.Tests、Editor.Shared.Tests、Editor 与 Editor.Headless Release build。
+
+**证据：** 6 个内置 panel 与 3 个 inspector contribution 已迁移到泛型 delegate；注册 lambda 中不再包含 parameter/dock ViewModel 强转。`GalNet.Editor.Tests` 28/28、`GalNet.Editor.Shared.Tests` 16/16 通过；Editor 与 Editor.Headless Release 构建成功，只有既有分析器告警和离线 NuGet 漏洞源 `NU1900`。
 
 **退出条件：** 内置注册 lambda 不再直接强转 parameter/dock ViewModel，创建独立 Git 提交。
 
