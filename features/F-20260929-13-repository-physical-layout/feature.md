@@ -2,7 +2,7 @@
 id: F-20260929-13-repository-physical-layout
 title: 仓库物理目录与开发者文档整理
 type: refactor
-status: planned
+status: done
 created: 2026-09-29
 updated: 2026-09-29
 parent: F-20260929-03-maintainability-roadmap

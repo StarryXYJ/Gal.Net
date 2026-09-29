@@ -199,7 +199,11 @@ updated: 2026-09-29
 
 ## Phase 6 - 物理目录与开发者文档整理
 
-**状态：planned**
+**状态：verified**
+
+实施 feature：[F-20260929-13-repository-physical-layout](../F-20260929-13-repository-physical-layout/feature.md)
+
+完成证据：[F-20260929-13 实现总结](../F-20260929-13-repository-physical-layout/summary.md)。21 个生产项目已按 Shared、Presentation、Infrastructure、Editor、Samples 和 Launcher 分组，Launcher 多余容器层与旧 Storage.Abstractions 本地残留已清理；README、架构 spec、CI 和 sample 入口已同步，并通过 locked restore、329 项测试和完整 solution Release build。
 
 **依赖：** Phase 2-5 完成，工作树干净，避免 rename 与逻辑修改混杂。
 

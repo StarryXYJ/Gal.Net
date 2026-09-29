@@ -1,6 +1,6 @@
 ---
 feature: F-20260929-13-repository-physical-layout
-status: planned
+status: done
 updated: 2026-09-29
 ---
 
@@ -32,10 +32,12 @@ updated: 2026-09-29
 
 ## Phase 3 - 仓库地图、清理与全量收尾
 
-**状态：planned**
+**状态：verified**
 
 **任务：** 更新根 README、架构 spec、路线图和 agent knowledge；清理确认无源码的旧目录；生成 summary。
 
 **验证：** 10 个测试项目、完整 solution Release build、locked restore、活动路径搜索、`git diff --check`。
+
+**证据：** 根 README 已补充环境要求、仓库地图、构建测试命令、sample 入口、平台限制和 feature 工作流，架构 spec 已记录六个 `src` 物理分组；无追踪文件的旧 `src/GalNet.Storage.Abstractions` 本地残留已删除。`dotnet restore GalNet.slnx --locked-mode` 成功，全量 10 个测试项目顺序执行并以 329/329 通过；完整 solution 在设置 Avalonia 遥测退出、禁用共享编译并使用单 MSBuild worker 后完成 Release build，结果为 70 个既有告警、0 个错误。活动文件无旧项目路径，`git diff --check` 通过。
 
 **退出条件：** 文档与物理结构一致、无活动旧路径或未记录限制，创建独立 Git 提交。
