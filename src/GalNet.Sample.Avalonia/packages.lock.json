@@ -305,8 +305,7 @@
       "galnet.assets": {
         "type": "Project",
         "dependencies": {
-          "GalNet.Core": "[1.0.0, )",
-          "GalNet.Storage.Abstractions": "[1.0.0, )"
+          "GalNet.Core": "[1.0.0, )"
         }
       },
       "galnet.avalonia.controls": {
@@ -337,8 +336,7 @@
         "dependencies": {
           "Avalonia": "[12.0.5, )",
           "Avalonia.Skia": "[12.0.5, )",
-          "GalNet.Core": "[1.0.0, )",
-          "GalNet.Storage.Abstractions": "[1.0.0, )"
+          "GalNet.Core": "[1.0.0, )"
         }
       },
       "galnet.core": {
@@ -370,14 +368,7 @@
           "CoreCLR-NCalc": "[3.1.253, )",
           "GalNet.Core": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
-          "GalNet.Storage.Abstractions": "[1.0.0, )",
           "Serilog": "[4.2.0, )"
-        }
-      },
-      "galnet.storage.abstractions": {
-        "type": "Project",
-        "dependencies": {
-          "GalNet.Core": "[1.0.0, )"
         }
       },
       "galnet.storage.filesystem": {
@@ -385,8 +376,7 @@
         "dependencies": {
           "GalNet.Assets": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
-          "GalNet.Runtime": "[1.0.0, )",
-          "GalNet.Storage.Abstractions": "[1.0.0, )"
+          "GalNet.Runtime": "[1.0.0, )"
         }
       },
       "Avalonia.Skia": {

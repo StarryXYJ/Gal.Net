@@ -1,7 +1,7 @@
 using GalNet.Core.Variable;
 using GalVariable = GalNet.Core.Variable.Variable;
 
-namespace GalNet.Core.Services;
+namespace GalNet.Runtime.Persistence;
 
 /// <summary>
 /// Persists player-scope variables independently from individual save slots.

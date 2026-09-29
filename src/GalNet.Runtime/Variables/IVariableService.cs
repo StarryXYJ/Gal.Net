@@ -1,7 +1,7 @@
 using GalNet.Core.Variable;
 using GalVariable = GalNet.Core.Variable.Variable;
 
-namespace GalNet.Core.Services;
+namespace GalNet.Runtime.Variables;
 
 /// <summary>Bridges runtime variable state to a host-owned store or editor.</summary>
 public interface IVariableService

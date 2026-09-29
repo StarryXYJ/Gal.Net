@@ -1,5 +1,6 @@
-using GalNet.Core.Services;
 using GalNet.Core.Variable;
+using GalNet.Runtime.Persistence;
+using GalNet.Runtime.Variables;
 using GalVariable = GalNet.Core.Variable.Variable;
 
 namespace GalNet.Storage.FileSystem;

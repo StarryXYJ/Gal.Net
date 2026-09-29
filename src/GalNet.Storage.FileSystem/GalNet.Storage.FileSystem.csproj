@@ -9,7 +9,6 @@
   <ItemGroup>
     <ProjectReference Include="..\GalNet.Core\GalNet.Core.csproj" />
     <ProjectReference Include="..\GalNet.Runtime\GalNet.Runtime.csproj" />
-    <ProjectReference Include="..\GalNet.Storage.Abstractions\GalNet.Storage.Abstractions.csproj" />
     <ProjectReference Include="..\GalNet.Assets\GalNet.Assets.csproj" />
   </ItemGroup>
 

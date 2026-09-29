@@ -1,9 +1,10 @@
 using System.Collections.ObjectModel;
-using GalNet.Core.Services;
+using GalNet.Core.Gallery;
 using GalNet.Core.Variable;
+using GalNet.Runtime.Variables;
 using GalVariable = GalNet.Core.Variable.Variable;
 
-namespace GalNet.Core.Gallery;
+namespace GalNet.Runtime.Gallery;
 
 /// <summary>Merges the immutable Gallery catalog with current Player variables.</summary>
 public sealed class GalleryDataSource(GalleryCatalog catalog, IVariableService variables) : IGalleryDataSource

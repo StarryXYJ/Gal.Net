@@ -8,6 +8,5 @@
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Skia" />
     <ProjectReference Include="..\GalNet.Core\GalNet.Core.csproj" />
-    <ProjectReference Include="..\GalNet.Storage.Abstractions\GalNet.Storage.Abstractions.csproj" />
   </ItemGroup>
 </Project>

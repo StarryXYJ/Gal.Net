@@ -19,6 +19,8 @@ using GalNet.Editor.Views;
 using Microsoft.Extensions.DependencyInjection;
 using GalNet.Primitives.Builtins;
 using GalNet.Core.Entry;
+using GalNet.Runtime.Content;
+using GalNet.Runtime.Variables;
 
 namespace GalNet.Editor.Composition;
 

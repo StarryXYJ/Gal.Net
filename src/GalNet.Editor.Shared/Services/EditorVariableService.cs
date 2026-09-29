@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using GalNet.Core.Services;
 using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Runtime.Variables;
 
 namespace GalNet.Editor.Shared.Services;
 

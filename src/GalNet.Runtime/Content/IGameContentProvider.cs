@@ -1,7 +1,7 @@
-using GameGraph = GalNet.Core.Graph.Graph;
 using GalNet.Core.Gallery;
+using GameGraph = GalNet.Core.Graph.Graph;
 
-namespace GalNet.Core.Services;
+namespace GalNet.Runtime.Content;
 
 /// <summary>Host supplied game content, loaded from a package or built in memory.</summary>
 public interface IGameContentProvider

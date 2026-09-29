@@ -1,5 +1,6 @@
 using GalNet.Core.Gallery;
 using GalNet.Core.Variable;
+using GalNet.Runtime.Gallery;
 using GalNet.Runtime.Runtime;
 using GalNet.Storage.FileSystem;
 using GalVariable = GalNet.Core.Variable.Variable;

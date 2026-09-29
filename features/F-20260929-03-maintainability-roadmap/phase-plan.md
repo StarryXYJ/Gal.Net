@@ -35,7 +35,11 @@ updated: 2026-09-29
 
 ## Phase 1 - 契约归属 ADR 与依赖规则
 
-**状态：planned**
+**状态：verified**
+
+实施 feature：[F-20260929-05-contract-ownership](../F-20260929-05-contract-ownership/feature.md)
+
+完成证据：[F-20260929-05 实现总结](../F-20260929-05-contract-ownership/summary.md)；用户已接受 ADR-0001 的方案 C，首批项目依赖架构测试已建立。
 
 **依赖：** Phase 0。
 
@@ -55,7 +59,11 @@ updated: 2026-09-29
 
 ## Phase 2a - 存储与运行时契约迁移
 
-**状态：planned**
+**状态：in-progress**
+
+已完成切片：[F-20260929-06-storage-runtime-contract-migration](../F-20260929-06-storage-runtime-contract-migration/feature.md)，完成资源与 Runtime 端口迁移并删除 `GalNet.Storage.Abstractions`。
+
+剩余切片：清理 Core 历史宿主服务契约，收敛 `ISaveService` 重复 API，并补对应 characterization tests。
 
 **依赖：** Phase 1 ADR accepted。
 

@@ -2,7 +2,7 @@
 id: F-20260929-05-contract-ownership
 title: 契约归属 ADR 与依赖规则
 type: architecture
-status: discovery
+status: done
 created: 2026-09-29
 updated: 2026-09-29
 parent: F-20260929-03-maintainability-roadmap
@@ -52,6 +52,10 @@ parent: F-20260929-03-maintainability-roadmap
 
 ## 相关链接
 
+- [设计](design.md)
+- [实施计划](phase-plan.md)
+- [实现总结](summary.md)
+- [ADR-0001：运行时与存储契约归属](../../docs/adr/0001-runtime-storage-contract-ownership.md)
 - [维护性路线图](../F-20260929-03-maintainability-roadmap/feature.md)
 - [路线图设计](../F-20260929-03-maintainability-roadmap/design.md)
 - [当前架构](../../docs/spec/architecture.md)

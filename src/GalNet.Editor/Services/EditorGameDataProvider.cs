@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using GalNet.Core.Services;
+using GalNet.Runtime.Content;
 using GalNet.Runtime.Loader;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.ViewModels;
@@ -16,7 +16,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace GalNet.Editor.Services;
 
 /// <summary>
-/// Editor implementation of IGameDataProvider.
+/// Editor implementation of IGameContentProvider.
 /// Generates preview data from the current editor workspace state.
 /// </summary>
 public sealed class EditorGameDataProvider : IGameContentProvider

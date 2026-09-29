@@ -1,6 +1,6 @@
 using GalNet.Core.Runtime;
 
-namespace GalNet.Core.Services;
+namespace GalNet.Runtime.Persistence;
 
 /// <summary>Metadata for one normal or quick-save slot without loading its full snapshot.</summary>
 public sealed class SaveSlotInfo

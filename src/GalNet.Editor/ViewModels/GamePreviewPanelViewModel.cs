@@ -20,6 +20,7 @@ using GalNet.Core.Assets;
 using Serilog;
 using Serilog.Context;
 using Microsoft.Extensions.DependencyInjection;
+using GalNet.Runtime.Content;
 
 namespace GalNet.Editor.ViewModels;
 

@@ -2,7 +2,7 @@
 
 ## 分层
 
-`Core` 不依赖 UI、文件系统或 DI。Runtime 只依赖 Core 与呈现抽象；宿主组装文件系统、资源、媒体和页面实现。
+`Core` 不依赖 UI、文件系统或 DI。Runtime 只依赖 Core 与呈现抽象；宿主组装文件系统、资源、媒体和页面实现。[ADR-0001](../adr/0001-runtime-storage-contract-ownership.md) 已完成落地，旧 `GalNet.Storage.Abstractions` 项目已删除。
 
 ```text
 Core ───────────────────── 领域模型、资源/Gallery registry、服务契约
@@ -48,6 +48,7 @@ Avalonia GameView 通过精确 Gallery `typeId` 的 `IGalleryPageRegistry` 选�
 ## 维护规则
 
 - 不让 Core、Runtime 或 Editor.Shared 反向引用具体 Avalonia 实现。
+- `GeneralTest/Architecture/ProjectDependencyTests` 检查内层与共享项目的直接依赖 allowlist，并要求 `GalNet.Storage.Abstractions` 项目及引用保持不存在；依赖边界变化必须同步更新 ADR 或设计依据。
 - Provider 不管理解码对象或引用计数；页面/媒体实现不理解目录与 PAK 布局。
 - 新资源类型、Gallery 类型、decoder 与页面各自注册在所属层；不要合并为一个跨层“资源模块”。
 - 新持久化字段要同时检查作者 JSON、加载器、导出包、安装加载和验证测试。
