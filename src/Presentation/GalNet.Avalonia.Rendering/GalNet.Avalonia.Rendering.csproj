@@ -1,14 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="Avalonia" />
-    <ProjectReference Include="..\GalNet.Core\GalNet.Core.csproj" />
+    <PackageReference Include="Avalonia.Skia" />
+    <ProjectReference Include="..\..\Shared\GalNet.Core\GalNet.Core.csproj" />
   </ItemGroup>
-
 </Project>

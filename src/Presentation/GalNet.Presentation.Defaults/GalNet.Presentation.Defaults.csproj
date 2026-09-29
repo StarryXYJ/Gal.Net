@@ -7,6 +7,6 @@
 
   <ItemGroup>
     <PackageReference Include="LibVLCSharp" />
-    <ProjectReference Include="..\GalNet.Presentation.Abstractions\GalNet.Presentation.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Shared\GalNet.Presentation.Abstractions\GalNet.Presentation.Abstractions.csproj" />
   </ItemGroup>
 </Project>

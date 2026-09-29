@@ -4,6 +4,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\GalNet.Core\GalNet.Core.csproj" />
+    <ProjectReference Include="..\..\src\Shared\GalNet.Core\GalNet.Core.csproj" />
   </ItemGroup>
 </Project>

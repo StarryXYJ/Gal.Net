@@ -7,7 +7,7 @@
     <Project Path="src/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj" />
   </Folder>
   <Folder Name="/src/Infrastructure/">
-    <Project Path="src/GalNet.Storage.FileSystem/GalNet.Storage.FileSystem.csproj" />
+    <Project Path="src/Infrastructure/GalNet.Storage.FileSystem/GalNet.Storage.FileSystem.csproj" />
   </Folder>
   <Folder Name="/src/Launcher/" />
   <Folder Name="/src/Launcher/Launcher/">
@@ -22,21 +22,21 @@
     <Project Path="src/Launcher/GalNet.Launcher/GalNet.Launcher/GalNet.Launcher.csproj" />
   </Folder>
   <Folder Name="/src/Presentation/">
-    <Project Path="src/GalNet.Avalonia.Controls/GalNet.Avalonia.Controls.csproj" />
-    <Project Path="src/GalNet.Avalonia.Rendering/GalNet.Avalonia.Rendering.csproj" />
-    <Project Path="src/GalNet.Avalonia.GameView/GalNet.Avalonia.GameView.csproj" />
-    <Project Path="src/GalNet.Presentation.Defaults/GalNet.Presentation.Defaults.csproj" />
+    <Project Path="src/Presentation/GalNet.Avalonia.Controls/GalNet.Avalonia.Controls.csproj" />
+    <Project Path="src/Presentation/GalNet.Avalonia.Rendering/GalNet.Avalonia.Rendering.csproj" />
+    <Project Path="src/Presentation/GalNet.Avalonia.GameView/GalNet.Avalonia.GameView.csproj" />
+    <Project Path="src/Presentation/GalNet.Presentation.Defaults/GalNet.Presentation.Defaults.csproj" />
   </Folder>
   <Folder Name="/src/Samples/">
     <Project Path="src/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj" />
     <Project Path="src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj" />
   </Folder>
   <Folder Name="/src/Shared/">
-    <Project Path="src/GalNet.Assets/GalNet.Assets.csproj" />
-    <Project Path="src/GalNet.Core/GalNet.Core.csproj" />
-    <Project Path="src/GalNet.Presentation.Abstractions/GalNet.Presentation.Abstractions.csproj" />
-    <Project Path="src/GalNet.Primitives.Builtins/GalNet.Primitives.Builtins.csproj" />
-    <Project Path="src/GalNet.Runtime/GalNet.Runtime.csproj" />
+    <Project Path="src/Shared/GalNet.Assets/GalNet.Assets.csproj" />
+    <Project Path="src/Shared/GalNet.Core/GalNet.Core.csproj" />
+    <Project Path="src/Shared/GalNet.Presentation.Abstractions/GalNet.Presentation.Abstractions.csproj" />
+    <Project Path="src/Shared/GalNet.Primitives.Builtins/GalNet.Primitives.Builtins.csproj" />
+    <Project Path="src/Shared/GalNet.Runtime/GalNet.Runtime.csproj" />
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/GalNet.Architecture.Tests/GalNet.Architecture.Tests.csproj" />

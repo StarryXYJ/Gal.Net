@@ -4,9 +4,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\GalNet.Assets\GalNet.Assets.csproj" />
-    <ProjectReference Include="..\..\src\GalNet.Core\GalNet.Core.csproj" />
-    <ProjectReference Include="..\..\src\GalNet.Runtime\GalNet.Runtime.csproj" />
-    <ProjectReference Include="..\..\src\GalNet.Storage.FileSystem\GalNet.Storage.FileSystem.csproj" />
+    <ProjectReference Include="..\..\src\Shared\GalNet.Assets\GalNet.Assets.csproj" />
+    <ProjectReference Include="..\..\src\Shared\GalNet.Core\GalNet.Core.csproj" />
+    <ProjectReference Include="..\..\src\Shared\GalNet.Runtime\GalNet.Runtime.csproj" />
+    <ProjectReference Include="..\..\src\Infrastructure\GalNet.Storage.FileSystem\GalNet.Storage.FileSystem.csproj" />
   </ItemGroup>
 </Project>

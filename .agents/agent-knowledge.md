@@ -60,3 +60,4 @@
 - [Sample 调试会话销毁的导航顺序](lessons/L-20260929-02-sample-debug-navigate-before-teardown.md)：先切换到标题页，再停止引擎或释放场景展示，避免重置/重载期间黑屏。
 - [格式门禁必须建立在干净基线上](lessons/L-20260929-06-format-gate-clean-baseline.md)：Windows 仓库在统一行尾前直接启用 `dotnet format` 会把既有行尾、using 和空白债务混入功能改动；先做独立机械格式化，再启用阻断式门禁。
 - [测试项目不要用独立 MSBuild 进程并行构建共享依赖](lessons/L-20260929-07-parallel-test-shared-obj-lock.md)：多个 `dotnet test` 进程会争用共享生产项目的 `obj` 输出；全仓测试应顺序执行或由单一 MSBuild graph 调度。
+- [项目移动后必须清理旧构建中间产物](lessons/L-20260929-08-project-move-stale-restore-path.md)：移动 .NET 项目后先删除随项目移动的 `bin/obj`，再从新路径 locked restore，避免旧绝对路径缓存重建旧目录和 lock 文件。

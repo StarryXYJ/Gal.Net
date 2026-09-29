@@ -15,7 +15,7 @@
     <PackageReference Include="Serilog" />
     <ProjectReference Include="..\GalNet.Avalonia.Controls\GalNet.Avalonia.Controls.csproj" />
     <ProjectReference Include="..\GalNet.Avalonia.Rendering\GalNet.Avalonia.Rendering.csproj" />
-    <ProjectReference Include="..\GalNet.Presentation.Abstractions\GalNet.Presentation.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Shared\GalNet.Presentation.Abstractions\GalNet.Presentation.Abstractions.csproj" />
     <ProjectReference Include="..\GalNet.Presentation.Defaults\GalNet.Presentation.Defaults.csproj" />
   </ItemGroup>
 

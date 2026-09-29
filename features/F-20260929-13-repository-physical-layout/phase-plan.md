@@ -8,11 +8,13 @@ updated: 2026-09-29
 
 ## Phase 1 - 共享层与基础设施物理归位
 
-**状态：planned**
+**状态：verified**
 
 **任务：** 移动 Shared、Presentation、Infrastructure 项目；更新全仓 ProjectReference 与主 solution 路径；保持依赖图不变。
 
 **验证：** Architecture、Core、Runtime、Builtins、Assets、Storage、Presentation 测试；相关 Release build；旧路径搜索。
+
+**证据：** Shared、Presentation 和 Infrastructure 共 10 个项目已移动，全部 `ProjectReference` 静态解析成功，主 solution 可列出 31 个项目；Architecture、Core、Runtime、Builtins、Assets、Storage、Presentation 测试顺序执行并以 254/254 通过。活动文件中不再存在这些项目的旧 `src/GalNet.*` 根路径；仅保留既有分析器与 Avalonia XAML 告警。
 
 **退出条件：** 内层项目位于对应物理分组，引用解析唯一且测试通过，创建独立 Git 提交。
 

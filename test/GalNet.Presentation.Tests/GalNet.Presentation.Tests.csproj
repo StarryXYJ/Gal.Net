@@ -8,12 +8,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\GalNet.Assets\GalNet.Assets.csproj" />
-    <ProjectReference Include="..\..\src\GalNet.Avalonia.Controls\GalNet.Avalonia.Controls.csproj" />
-    <ProjectReference Include="..\..\src\GalNet.Avalonia.GameView\GalNet.Avalonia.GameView.csproj" />
-    <ProjectReference Include="..\..\src\GalNet.Avalonia.Rendering\GalNet.Avalonia.Rendering.csproj" />
-    <ProjectReference Include="..\..\src\GalNet.Core\GalNet.Core.csproj" />
-    <ProjectReference Include="..\..\src\GalNet.Presentation.Abstractions\GalNet.Presentation.Abstractions.csproj" />
-    <ProjectReference Include="..\..\src\GalNet.Runtime\GalNet.Runtime.csproj" />
+    <ProjectReference Include="..\..\src\Shared\GalNet.Assets\GalNet.Assets.csproj" />
+    <ProjectReference Include="..\..\src\Presentation\GalNet.Avalonia.Controls\GalNet.Avalonia.Controls.csproj" />
+    <ProjectReference Include="..\..\src\Presentation\GalNet.Avalonia.GameView\GalNet.Avalonia.GameView.csproj" />
+    <ProjectReference Include="..\..\src\Presentation\GalNet.Avalonia.Rendering\GalNet.Avalonia.Rendering.csproj" />
+    <ProjectReference Include="..\..\src\Shared\GalNet.Core\GalNet.Core.csproj" />
+    <ProjectReference Include="..\..\src\Shared\GalNet.Presentation.Abstractions\GalNet.Presentation.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Shared\GalNet.Runtime\GalNet.Runtime.csproj" />
   </ItemGroup>
 </Project>
