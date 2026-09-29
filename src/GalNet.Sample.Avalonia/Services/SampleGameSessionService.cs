@@ -487,11 +487,16 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _gameplay,
             programs: programs);
         var gameView = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
-            _pageView, _pageView, _pageView, _effects, _content.Gallery, _pageView));
+            _pageView.DialoguePresenter,
+            _pageView.LayerPresenter,
+            _pageView.AnimationPresenter,
+            _effects,
+            _content.Gallery,
+            _pageView.ParticlePresenter));
         var settings = new SettingsContainer();
         settings.Set(_settings);
         var runtime = new GameRuntime(null, _content.Graph.RootNodeId, settings, _variables);
-        _engine = new GameEngine(_content.Graph, runtime, gameView, _progress, _pageView);
+        _engine = new GameEngine(_content.Graph, runtime, gameView, _progress, _pageView.ChoicePresenter);
         _pageView.AdvanceRequested += OnAdvanceRequested;
     }
 
@@ -551,15 +556,17 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
 
     private Task RestorePersistentSceneObjectsAsync(CancellationToken cancellationToken)
     {
-        if (_engine is null)
+        var engine = _engine;
+        var pageView = _pageView;
+        if (engine is null || pageView is null)
             return Task.CompletedTask;
 
         return BuiltinPresentationReplay.ReplayPersistentSceneObjectsAsync(
-            _engine.Runtime,
+            engine.Runtime,
             _effects,
-            _pageView,
-            _pageView,
-            _pageView,
+            pageView.ParticlePresenter,
+            pageView.AnimationPresenter,
+            pageView.LayerPresenter,
             cancellationToken);
     }
 

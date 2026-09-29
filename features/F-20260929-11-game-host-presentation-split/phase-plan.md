@@ -22,7 +22,7 @@ updated: 2026-09-29
 
 ## Phase 2 - Avalonia presenter 拆分
 
-**状态：planned**
+**状态：verified**
 
 **目标：** 让对话/选择、图层、动画与粒子展示可独立定位和验证。
 
@@ -31,6 +31,8 @@ updated: 2026-09-29
 **验证：** presenter 单元测试、Presentation 与 Integration 测试、Editor Preview/Editor Headless/Sample build。
 
 **退出条件：** PageView 不再实现细分 presenter 接口，动画/粒子释放和 initial-presentation 行为保持，创建独立 Git 提交。
+
+**验证（2026-09-29）：** 新增共享 `IAvaloniaUiDispatcher`，对话/选择、图层、动画和粒子分别由独立 presenter 实现；`AvaloniaGamePageView` 从约 568 行缩为 60 行组合器。Sample 与 Editor Preview 显式组合 presenter，持久场景 replay 使用对应端口。新增组合、dispatcher 使用和动画最终值测试；Presentation 69/69、Builtins 40/40、Integration 29/29 通过，Editor 与 Sample Avalonia Release 构建 0 错误。
 
 ## Phase 3 - Sample 资源与存档协作者
 
