@@ -8,6 +8,9 @@ namespace GeneralTest.Runtime;
 
 public class CompositeGameViewTests
 {
+    private static readonly string[] ExpectedDisposalOrder = ["third", "second", "first"];
+    private static readonly string[] ExpectedDisposalErrors = ["third failed", "second failed"];
+
     [Test]
     public void GameViewExposesOnlySinglePrimitiveDispatchResponsibilities()
     {
@@ -84,6 +87,30 @@ public class CompositeGameViewTests
     }
 
     [Test]
+    public void DisposeReleasesModulesInReverseOrderAndAggregatesFailures()
+    {
+        var disposalOrder = new List<string>();
+        var first = new DisposableModule("first", disposalOrder);
+        var second = new DisposableModule("second", disposalOrder, new InvalidOperationException("second failed"));
+        var third = new DisposableModule("third", disposalOrder, new IOException("third failed"));
+        var view = new CompositeGameView([first, second, third]);
+
+        var exception = Assert.Throws<AggregateException>(view.Dispose);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(disposalOrder, Is.EqualTo(ExpectedDisposalOrder));
+            Assert.That(exception!.InnerExceptions, Has.Count.EqualTo(2));
+            Assert.That(exception.InnerExceptions.Select(error => error.Message),
+                Is.EquivalentTo(ExpectedDisposalErrors));
+            Assert.That(() => view.Dispatch(Entry("missing.run", new { }), new GameRuntime(null), CancellationToken.None),
+                Throws.TypeOf<ObjectDisposedException>());
+        });
+
+        Assert.DoesNotThrow(view.Dispose);
+    }
+
+    [Test]
     public void PrimitiveInstanceDispatchesOnceAndCompletionIsMonotonic()
     {
         var instance = new ControlledInstance(false, false, null);
@@ -108,6 +135,28 @@ public class CompositeGameViewTests
         context => new ImmediatePrimitiveInstance(batchId: context.BatchId));
 
     private sealed class TestModule(string id, IEnumerable<PrimitiveEntryBase> entries) : EntryModuleBase(id, entries);
+
+    private sealed class DisposableModule : EntryModuleBase
+    {
+        private readonly string _id;
+        private readonly ICollection<string> _disposalOrder;
+        private readonly Exception? _disposalError;
+
+        public DisposableModule(string id, ICollection<string> disposalOrder, Exception? disposalError = null)
+            : base(id, [])
+        {
+            _id = id;
+            _disposalOrder = disposalOrder;
+            _disposalError = disposalError;
+        }
+
+        public override void Dispose()
+        {
+            base.Dispose();
+            _disposalOrder.Add(_id);
+            if (_disposalError is not null) throw _disposalError;
+        }
+    }
 
     private sealed class ControlledInstance(bool blocking, bool skippable, string? batchId) : PrimitiveInstance(batchId)
     {

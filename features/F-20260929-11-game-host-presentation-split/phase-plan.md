@@ -8,7 +8,7 @@ updated: 2026-09-29
 
 ## Phase 1 - 行为保护与展示边界
 
-**状态：planned**
+**状态：verified**
 
 **目标：** 固定当前 dispatcher、展示组合和资源一致性语义，并建立拆分后的目标接口。
 
@@ -17,6 +17,8 @@ updated: 2026-09-29
 **验证：** Presentation、Assets、Integration 测试；Avalonia GameView 与 Sample build。
 
 **退出条件：** 高风险行为有可重复断言，无生产行为变化，创建独立 Git 提交。
+
+**验证（2026-09-29）：** 新增 `CompositeGameView` 逆序释放、异常聚合与 disposed dispatch 测试；新增 `AssetManager` 并发单飞、等待者局部取消、引用释放和 in-flight dispose 测试。Assets 32/32、Presentation 66/66、Integration 29/29 通过，Sample Avalonia Release 构建 0 错误。测试确认 `AssetManager` 的缓存、取消和释放仍属于同一一致性边界，本 feature 不拆其生产实现。
 
 ## Phase 2 - Avalonia presenter 拆分
 
@@ -63,4 +65,3 @@ updated: 2026-09-29
 **验证：** 全部 10 个测试项目、Editor Headless、Sample Headless、Sample Avalonia 和完整 solution Release build；diff check。
 
 **退出条件：** Phase 4b 有完整证据、feature summary 与正式文档，创建独立 Git 提交。
-

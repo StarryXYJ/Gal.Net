@@ -130,6 +130,52 @@ public sealed class AssetPipelineTests
         Assert.That(first.Value.Disposed, Is.True);
     }
 
+    [Test]
+    public async Task Concurrent_acquires_share_one_load_and_waiter_cancellation_is_local()
+    {
+        var file = new GameFile("sprite", "a.png", "sprite", new SpriteAssetMeta { Id = "sprite", TypeId = "sprite", Path = "a.png" }, "sprite"u8.ToArray());
+        using var manager = new AssetManager([new InlineProvider(file)]);
+        var decoder = new ControlledDecoder();
+        manager.RegisterDecoder<DisposableAsset>("sprite", decoder);
+        using var cancellation = new CancellationTokenSource();
+
+        var cancelledAcquire = manager.AcquireAsync<DisposableAsset>("sprite", cancellation.Token);
+        await decoder.Started.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        var successfulAcquire = manager.AcquireAsync<DisposableAsset>("sprite");
+        cancellation.Cancel();
+        decoder.Release.TrySetResult();
+
+        Assert.That(async () => await cancelledAcquire, Throws.InstanceOf<OperationCanceledException>());
+        using var handle = await successfulAcquire;
+        Assert.Multiple(() =>
+        {
+            Assert.That(handle, Is.Not.Null);
+            Assert.That(decoder.DecodeCount, Is.EqualTo(1));
+            Assert.That(handle!.Value.Disposed, Is.False);
+        });
+
+        var asset = handle!.Value;
+        handle.Dispose();
+        Assert.That(asset.Disposed, Is.True);
+    }
+
+    [Test]
+    public async Task Dispose_cancels_an_in_flight_load_and_rejects_future_acquires()
+    {
+        var file = new GameFile("sprite", "a.png", "sprite", new SpriteAssetMeta { Id = "sprite", TypeId = "sprite", Path = "a.png" }, "sprite"u8.ToArray());
+        var manager = new AssetManager([new InlineProvider(file)]);
+        var decoder = new CancellationAwareDecoder();
+        manager.RegisterDecoder<DisposableAsset>("sprite", decoder);
+        var acquire = manager.AcquireAsync<DisposableAsset>("sprite");
+        await decoder.Started.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+        manager.Dispose();
+
+        Assert.That(async () => await acquire, Throws.InstanceOf<OperationCanceledException>());
+        await decoder.Cancelled.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        Assert.ThrowsAsync<ObjectDisposedException>(async () => await manager.AcquireAsync<DisposableAsset>("sprite"));
+    }
+
     private sealed record Decoded(string Value);
 
     private sealed class DisposableAsset : IDisposable
@@ -148,6 +194,50 @@ public sealed class AssetPipelineTests
     {
         public ValueTask<DisposableAsset?> DecodeAsync(IGameFile file, ReadOnlyMemory<byte> data, CancellationToken ct = default) =>
             ValueTask.FromResult<DisposableAsset?>(new DisposableAsset());
+    }
+
+    private sealed class ControlledDecoder : IAssetDecoder<DisposableAsset>
+    {
+        private int _decodeCount;
+
+        public int DecodeCount => _decodeCount;
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async ValueTask<DisposableAsset?> DecodeAsync(
+            IGameFile file,
+            ReadOnlyMemory<byte> data,
+            CancellationToken ct = default)
+        {
+            Interlocked.Increment(ref _decodeCount);
+            Started.TrySetResult();
+            await Release.Task.WaitAsync(ct);
+            return new DisposableAsset();
+        }
+    }
+
+    private sealed class CancellationAwareDecoder : IAssetDecoder<DisposableAsset>
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Cancelled { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async ValueTask<DisposableAsset?> DecodeAsync(
+            IGameFile file,
+            ReadOnlyMemory<byte> data,
+            CancellationToken ct = default)
+        {
+            Started.TrySetResult();
+            try
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, ct);
+                return new DisposableAsset();
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                Cancelled.TrySetResult();
+                throw;
+            }
+        }
     }
 
     private sealed class InlineProvider(params IGameFile[] files) : IAssetProvider
