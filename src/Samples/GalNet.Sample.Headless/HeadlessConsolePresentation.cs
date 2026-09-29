@@ -1,6 +1,6 @@
 using GalNet.Core.Settings;
 using GalNet.Core.Text;
-using GalNet.Core.View;
+using GalNet.Presentation.Abstractions.View;
 using GalNet.Core.Scene;
 
 namespace GalNet.Sample.Headless;

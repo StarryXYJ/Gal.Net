@@ -10,6 +10,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using GalNet.Core.Entry;
+using GalNet.Primitives.Builtins;
 using GalNet.Editor.Commands;
 using GalNet.Editor.Models.Graph;
 

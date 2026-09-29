@@ -83,7 +83,11 @@ updated: 2026-09-29
 
 ## Phase 2b - Presentation 与 Builtins 命名空间归位
 
-**状态：planned**
+**状态：verified**
+
+实施 feature：[F-20260929-08-presentation-builtins-namespaces](../F-20260929-08-presentation-builtins-namespaces/feature.md)
+
+完成证据：[F-20260929-08 实现总结](../F-20260929-08-presentation-builtins-namespaces/summary.md)。Presentation view 契约与 Builtins entry 类型已归入程序集所有的根命名空间，并增加源码 namespace ownership 门禁。
 
 **依赖：** Phase 1；可在不与 Phase 2a 修改同一文件时并行。
 

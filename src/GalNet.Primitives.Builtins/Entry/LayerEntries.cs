@@ -1,6 +1,7 @@
+using GalNet.Core.Entry;
 using GalNet.Core.Scene;
 
-namespace GalNet.Core.Entry;
+namespace GalNet.Primitives.Builtins;
 
 public sealed class ShowLayerEntry : PrimitiveEntry
 {

@@ -1,7 +1,7 @@
 using GalNet.Core.Settings;
 using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
-using GalNet.Core.View;
+using GalNet.Presentation.Abstractions.View;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Persistence;
 using GalNet.Runtime.Runtime;

@@ -2,7 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Threading;
 using System.Diagnostics;
 using GalNet.Avalonia.GameView.Page;
-using GalNet.Core.View;
+using GalNet.Presentation.Abstractions.View;
 using GalNet.Core.Scene;
 using GalNet.Rendering.Scene;
 using GalNet.Avalonia.GameView.ViewModels;

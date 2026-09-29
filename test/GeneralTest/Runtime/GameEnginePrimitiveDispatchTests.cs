@@ -3,7 +3,7 @@ using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
 using GalNet.Core.Scene;
-using GalNet.Core.View;
+using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
 using GalNet.Runtime.Engine;
 using GraphModel = GalNet.Core.Graph.Graph;

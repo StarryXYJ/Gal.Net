@@ -5,7 +5,7 @@ using GalNet.Core.Gallery;
 using GalNet.Core.Primitives;
 using GalNet.Core.Scene;
 using GalNet.Core.Variable;
-using GalNet.Core.View;
+using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
 using GalNet.Runtime.Runtime;
 

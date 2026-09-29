@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Core.Graph;
 using GalNet.Editor.Controls;
 using GalNet.Core.Entry;
+using GalNet.Primitives.Builtins;
 using GalNet.Core.Scene;
 
 namespace GalNet.Editor.Models.Graph;

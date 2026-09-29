@@ -1,4 +1,4 @@
-namespace GalNet.Core.View;
+namespace GalNet.Presentation.Abstractions.View;
 
 /// <summary>
 /// A host-defined effect request. Parameters are intentionally opaque to the runtime.

@@ -15,6 +15,8 @@ Editor.Shared ──────────── 项目读写、命令、导�
 Editor / Samples ───────── 组合根与平台宿主
 ```
 
+程序集拥有自己的根命名空间：展示端口位于 `GalNet.Presentation.Abstractions.*`，推荐内置 entry、primitive 和 module 位于 `GalNet.Primitives.Builtins`。扩展程序集不得在 `GalNet.Core.*` 下声明类型；Core 只保留领域基础类型和扩展协议。
+
 资源层只向上暴露 `IAssetProvider`、`IArchive`、`IGameFile` 和 `IAssetManager`。provider 定位源文件；manager 负责 GUID 查询、decoder 分派、缓存和 `AssetHandle<T>` 生命周期。Core、Runtime 与 Editor.Shared 不引用 Avalonia。
 
 ## 内容、资源与宿主组合

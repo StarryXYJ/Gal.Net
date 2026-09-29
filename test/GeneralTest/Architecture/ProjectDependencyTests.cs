@@ -60,6 +60,30 @@ public class ProjectDependencyTests
         });
     }
 
+    [TestCase("GalNet.Presentation.Abstractions", "GalNet.Presentation.Abstractions")]
+    [TestCase("GalNet.Primitives.Builtins", "GalNet.Primitives.Builtins")]
+    public void ExtensionProject_DeclaresOnlyOwnedNamespaces(string projectName, string namespaceRoot)
+    {
+        var projectDirectory = Path.GetDirectoryName(FindProjectFile(projectName))!;
+        var unexpected = Directory.EnumerateFiles(projectDirectory, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !IsBuildOutput(path, projectDirectory))
+            .SelectMany(path => File.ReadLines(path)
+                .Select(line => line.Trim())
+                .Where(line => line.StartsWith("namespace ", StringComparison.Ordinal))
+                .Select(line => (Path: path, Namespace: ReadNamespace(line))))
+            .Where(declaration =>
+                !string.Equals(declaration.Namespace, namespaceRoot, StringComparison.Ordinal) &&
+                !declaration.Namespace.StartsWith($"{namespaceRoot}.", StringComparison.Ordinal))
+            .Select(declaration => $"{Path.GetRelativePath(RepositoryRoot, declaration.Path)}: {declaration.Namespace}")
+            .Order()
+            .ToArray();
+
+        Assert.That(
+            unexpected,
+            Is.Empty,
+            $"{projectName} declares namespaces outside its owned root: {string.Join(", ", unexpected)}");
+    }
+
     private static string FindProjectFile(string projectName)
     {
         var matches = Directory.EnumerateFiles(Path.Combine(RepositoryRoot, "src"), $"{projectName}.csproj", SearchOption.AllDirectories).ToArray();
@@ -80,6 +104,16 @@ public class ProjectDependencyTests
             .Order()
             .ToArray();
     }
+
+    private static bool IsBuildOutput(string path, string projectDirectory)
+    {
+        var relativePath = Path.GetRelativePath(projectDirectory, path);
+        return relativePath.StartsWith($"bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase) ||
+               relativePath.StartsWith($"obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string ReadNamespace(string declaration) =>
+        declaration["namespace ".Length..].TrimEnd(';', '{').Trim();
 
     private static string FindRepositoryRoot()
     {

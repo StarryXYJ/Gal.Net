@@ -1,4 +1,6 @@
-namespace GalNet.Core.Entry;
+using GalNet.Core.Entry;
+
+namespace GalNet.Primitives.Builtins;
 
 public sealed class TextEntry : PrimitiveEntry
 {

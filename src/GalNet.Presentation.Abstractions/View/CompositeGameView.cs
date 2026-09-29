@@ -2,7 +2,7 @@ using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
 
-namespace GalNet.Core.View;
+namespace GalNet.Presentation.Abstractions.View;
 
 /// <summary>Default game-scope mount for primitive entry modules.</summary>
 public sealed class CompositeGameView : IGameView

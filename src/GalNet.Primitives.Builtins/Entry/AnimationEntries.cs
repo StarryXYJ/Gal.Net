@@ -1,6 +1,7 @@
+using GalNet.Core.Entry;
 using GalNet.Core.Scene;
 
-namespace GalNet.Core.Entry;
+namespace GalNet.Primitives.Builtins;
 
 /// <summary>Plays one interpolated property animation on an active scene instance.</summary>
 public sealed class AnimateEntry : PrimitiveEntry

@@ -17,7 +17,7 @@ using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
 using GalNet.Core.Runtime;
 using GalNet.Core.Settings;
-using GalNet.Core.View;
+using GalNet.Presentation.Abstractions.View;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Content;
 using GalNet.Runtime.Gallery;

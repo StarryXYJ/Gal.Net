@@ -10,7 +10,7 @@ using GalNet.Core.Runtime;
 using GalNet.Core.Gallery;
 using GalNet.Core.Scene;
 using GalNet.Core.Settings;
-using GalNet.Core.View;
+using GalNet.Presentation.Abstractions.View;
 using GalNet.Rendering.Scene;
 using GalNet.Assets;
 using GalNet.Assets.Provider;

@@ -1,6 +1,6 @@
 using GalNet.Core.Scene;
 
-namespace GalNet.Core.View;
+namespace GalNet.Presentation.Abstractions.View;
 
 /// <summary>Presentation operations used by animation primitive instances.</summary>
 public interface IAnimationPresenter

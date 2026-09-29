@@ -52,6 +52,8 @@ transition.fadeColor
 
 `GalNet.Primitives.Builtins` 提供可选推荐 authoring profile 与运行时模块。当前推荐 ID 为：
 
+内置 entry DTO、primitive instance 和 module 都使用 `GalNet.Primitives.Builtins` 命名空间；`GalNet.Core.Entry` 只包含通用 entry 基类、schema 和 catalog 基础设施。内容格式只保存下列稳定 `TypeId`，不保存 CLR 类型名。
+
 ```text
 dialogue.text, dialogue.show, dialogue.hide
 layer.show, layer.showColor, layer.hide, layer.move, layer.replace

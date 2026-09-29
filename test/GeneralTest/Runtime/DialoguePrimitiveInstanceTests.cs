@@ -1,4 +1,4 @@
-using GalNet.Core.View;
+using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
 
 namespace GeneralTest.Runtime;

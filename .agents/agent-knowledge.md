@@ -33,7 +33,7 @@
 - `F-20260926-01-gallery-meta-pages` 的实现、正式文档与示例 Gallery 解锁 smoke test 已完成；其外部阻塞项 `EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString` 已由 `F-20260929-04-quality-baseline` 修复，Gallery feature 可按自身流程收尾。
 - 当前 discovery feature：[F-20260916-02-audio-system](../features/F-20260916-02-audio-system/feature.md)，用于澄清音频系统的首个可交付范围、后端能力和迁移语义。
 - `F-20260929-01-compiled-content-pipeline` 正在实施；粒子 Primitive、Runtime 状态与 Presenter 桥接及存档后的 effect/particle 展示重放已经验证，完整 Sample/Headless smoke 与 Phase 4 收尾仍待完成。
-- `F-20260929-03-maintainability-roadmap` 的 Phase 0、1、2a 已完成。资源协议归 Core.Assets；内容、保存、变量、Gallery 组合和进度端口归 Runtime；Editor 设置/退出协议归 Editor.Abstraction；`GalNet.Storage.Abstractions` 与无消费者历史接口已删除，`ISaveService` 已统一为异步可取消 API。下一步是 Phase 2b 的 Presentation/Builtins 命名空间归位。
+- `F-20260929-03-maintainability-roadmap` 的 Phase 0、1、2a、2b 已完成。资源协议归 Core.Assets；内容、保存、变量、Gallery 组合和进度端口归 Runtime；Editor 设置/退出协议归 Editor.Abstraction；展示端口使用 `GalNet.Presentation.Abstractions.*`，推荐内置类型使用 `GalNet.Primitives.Builtins`。`GalNet.Storage.Abstractions` 与无消费者历史接口已删除，`ISaveService` 已统一为异步可取消 API。下一步是 Phase 3 的测试套件边界重组。
 - 后续 feature、验证命令和新经验在实际工作中补充，并保留来源链接或 feature ID。
 
 ## 维护规则
@@ -46,7 +46,7 @@
 ## 经验索引
 
 - [受限环境中的 .NET/Avalonia 构建](lessons/L-20260922-01-dotnet-build-sandbox.md)：禁用 Roslyn shared compilation，并关闭 Avalonia build telemetry。
-- [平台无关的进度契约归属](lessons/L-20260922-02-core-progress-contract.md)：被 Core、Runtime 或 Builtins 消费的玩家进度接口必须由 Core 提供，不能仅因某个实现位于存储层就放进 Storage.Abstractions 程序集。
+- [平台无关的进度契约归属](lessons/L-20260922-02-core-progress-contract.md)：已被 ADR-0001 和 F-20260929-07 取代；当前进度端口由实际消费者 Runtime 拥有。
 - [受限环境中的平台 SDK 枚举](lessons/L-20260925-01-platform-sdk-sandbox.md)：全解决方案构建可能只因 Android/Browser/iOS 的 SDK 探测读取用户目录失败；应区分平台环境限制和业务项目编译结果。
 - [受限环境中的 Avalonia licensing 枚举](lessons/L-20260926-01-avalonia-license-sandbox.md)：Avalonia BuildServices 即使关闭 telemetry 仍可能读取用户级 licensing tickets；应与业务编译失败区分。
 - [首次对话的 Avalonia 模板就绪](lessons/L-20260927-01-dialogue-template-startup.md)：阻塞对话不能因模板部件尚未就绪而静默完成，否则引擎会错误地跑完整个流程。

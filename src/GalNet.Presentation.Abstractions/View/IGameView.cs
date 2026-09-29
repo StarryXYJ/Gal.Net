@@ -2,7 +2,7 @@ using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
 
-namespace GalNet.Core.View;
+namespace GalNet.Presentation.Abstractions.View;
 
 /// <summary>Resolves and dispatches one compiled primitive call.</summary>
 public interface IGameView : IDisposable

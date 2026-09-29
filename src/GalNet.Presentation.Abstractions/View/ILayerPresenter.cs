@@ -1,6 +1,6 @@
 using GalNet.Core.Scene;
 
-namespace GalNet.Core.View;
+namespace GalNet.Presentation.Abstractions.View;
 
 public interface ILayerPresenter
 {

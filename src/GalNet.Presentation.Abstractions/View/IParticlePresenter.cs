@@ -1,4 +1,4 @@
-namespace GalNet.Core.View;
+namespace GalNet.Presentation.Abstractions.View;
 
 /// <summary>Presentation operations used by particle primitive instances.</summary>
 public interface IParticlePresenter

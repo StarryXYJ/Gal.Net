@@ -1,6 +1,6 @@
 using GalNet.Core.Scene;
 
-namespace GalNet.Core.View;
+namespace GalNet.Presentation.Abstractions.View;
 
 /// <summary>
 /// Data passed to a platform particle-module implementation for one emitter.

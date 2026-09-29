@@ -1,7 +1,7 @@
 using System.Text.Json;
 using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
-using GalNet.Core.View;
+using GalNet.Presentation.Abstractions.View;
 using GalNet.Runtime.Runtime;
 
 namespace GeneralTest.Runtime;

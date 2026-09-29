@@ -1,7 +1,8 @@
 # 平台无关的玩家进度契约应归属 Core
 
-状态：candidate
+状态：superseded
 来源 Feature：F-20260922-01-entry-instance-runtime
+取代依据：ADR-0001、F-20260929-07-runtime-port-cleanup
 
 ## 现象
 
@@ -17,7 +18,7 @@
 
 ## 正确做法
 
-凡是由 Core、Runtime 或仅引用 Core 的 Builtins 消费，且 API 不泄漏文件、数据库或平台类型的进度契约，都应定义在 Core。具体文件存储服务在 Storage.FileSystem 等外层实现该契约；即使 Runtime 仍因变量服务等其他接口引用 Storage.Abstractions，也不应把进度契约留在其中。
+本节原结论已失效。当前规则是按实际消费者拥有端口：`IGameProgressService` 由 Runtime 的 `GameEngine` 消费，因此位于 `GalNet.Runtime.Progress`；具体文件实现仍位于 Storage.FileSystem。Core 不应仅因协议平台无关就承担没有 Core 消费者的宿主端口。
 
 ## 适用范围
 
