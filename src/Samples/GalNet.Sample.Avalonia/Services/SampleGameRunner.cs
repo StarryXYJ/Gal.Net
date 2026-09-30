@@ -1,6 +1,7 @@
 using GalNet.Assets;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Presentation;
+using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Runtime;
 using GalNet.Core.Settings;
@@ -23,6 +24,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
     private readonly SampleLayerFactory _layers;
     private readonly SampleMediaViews _media;
     private readonly AvaloniaEffectRuntime _effects;
+    private readonly AvaloniaAudioPlaybackHost _audio;
     private readonly PersistentSceneRestorer _restorer;
     private readonly Func<bool, string?, Task> _updateStateAsync;
     private readonly Func<Task> _runCompletedAsync;
@@ -39,6 +41,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
         SampleLayerFactory layers,
         SampleMediaViews media,
         AvaloniaEffectRuntime effects,
+        AvaloniaAudioPlaybackHost audio,
         Func<bool, string?, Task> updateStateAsync,
         Func<Task> runCompletedAsync,
         Func<Task> resetPresentationAsync,
@@ -50,6 +53,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
         _layers = layers;
         _media = media;
         _effects = effects;
+        _audio = audio;
         _restorer = new PersistentSceneRestorer(
             effects,
             pageView.ParticlePresenter,
@@ -78,6 +82,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
         SampleMediaViews? media = null;
         SkiaShaderEffectProgramResolver? programs = null;
         AvaloniaEffectRuntime? effects = null;
+        AvaloniaAudioPlaybackHost? audio = null;
         CompositeGameView? gameView = null;
         GameEngine? engine = null;
         try
@@ -94,6 +99,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
                 preload.RequestedProgramCount,
                 preload.Cache.TotalLoadTime.TotalMilliseconds);
             effects = new AvaloniaEffectRuntime(gameplay, programs: programs);
+            audio = new AvaloniaAudioPlaybackHost(resources.Assets);
             gameView = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
                 pageView.DialoguePresenter,
                 pageView.LayerPresenter,
@@ -101,7 +107,8 @@ internal sealed class SampleGameRunner : IAsyncDisposable
                 effects,
                 resources.Content.Gallery,
                 pageView.ParticlePresenter,
-                pageView.NvlPresenter));
+                pageView.NvlPresenter,
+                audio));
             var settings = new SettingsContainer();
             settings.Set(saveSession.Settings);
             var runtime = new GameRuntime(
@@ -122,6 +129,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
                 layers,
                 media,
                 effects,
+                audio,
                 updateStateAsync,
                 runCompletedAsync,
                 resetPresentationAsync,
@@ -136,6 +144,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
             layers?.Dispose();
             media?.Dispose();
             effects?.Dispose();
+            audio?.Dispose();
             if (effects is null)
                 programs?.Dispose();
             throw;
@@ -187,6 +196,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
         _layers.Dispose();
         _media.Dispose();
         _effects.Dispose();
+        _audio.Dispose();
         _prepared = false;
         GameLog.Logger.Debug("Resetting scene presentation before creating the next game engine");
         await _resetPresentationAsync();

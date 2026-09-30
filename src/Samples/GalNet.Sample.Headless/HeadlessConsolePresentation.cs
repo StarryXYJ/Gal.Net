@@ -105,7 +105,6 @@ internal sealed class ConsolePresentation : IDialoguePresenter, INvlPresenter, I
     }
 
     public void SkipTypewriter(string widgetInstanceId) => _skipCurrentTypewriter = true;
-    public void SetVoice(string assetId) => Console.WriteLine($"[Voice] {assetId}");
 
     public static async Task<int> WaitForChoiceAsync(string widgetInstanceId, string[] options, CancellationToken ct)
     {

@@ -6,7 +6,7 @@ public sealed class TextEntry : PrimitiveEntry
 {
     public const string TypeId = "dialogue.text";
     public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("speaker", EntryParameterType.Autocomplete), ("content", EntryParameterType.MultilineText), ("voice", EntryParameterType.AudioAsset));
+    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("speaker", EntryParameterType.Autocomplete), ("content", EntryParameterType.MultilineText));
     public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults();
 }
 

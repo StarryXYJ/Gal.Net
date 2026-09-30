@@ -1,10 +1,14 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using GalNet.Core.Audio;
 using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
 using GalNet.Core.Primitives;
 using GalNet.Core.Scene;
+using GalNet.Core.Settings;
+using GalNet.Presentation.Abstractions.Audio;
 using GalNet.Presentation.Abstractions.View;
+using GalNet.Runtime.Audio;
 
 namespace GalNet.Primitives.Builtins;
 
@@ -18,13 +22,14 @@ public static class BuiltinEntryModules
         IEffectPresenter? effectPresenter = null,
         GalleryCatalog? gallery = null,
         IParticlePresenter? particlePresenter = null,
-        INvlPresenter? nvlPresenter = null) => Array.AsReadOnly<IEntryModule>(
+        INvlPresenter? nvlPresenter = null,
+        IAudioPlaybackHost? audioHost = null) => Array.AsReadOnly<IEntryModule>(
     [
         new BuiltinDialogueModule(dialoguePresenter),
         new BuiltinNvlModule(nvlPresenter),
         new BuiltinLayerModule(layerPresenter),
         new BuiltinAnimationModule(animationPresenter, layerPresenter, effectPresenter, particlePresenter),
-        new BuiltinAudioModule(),
+        new BuiltinAudioModule(audioHost),
         new BuiltinVideoModule(),
         new BuiltinEffectModule(effectPresenter),
         new BuiltinParticleModule(particlePresenter),
@@ -53,7 +58,6 @@ public sealed class BuiltinDialogueModule : EntryModuleBase
             presenter ?? throw new InvalidOperationException("The dialogue module has no presenter."),
             Arguments.String(context, "speaker"),
             Arguments.String(context, "content"),
-            Arguments.String(context, "voice"),
             context.BatchId,
             context.ScopeCancellation));
 
@@ -197,15 +201,40 @@ public sealed class BuiltinAnimationModule : EntryModuleBase
 
 public sealed class BuiltinAudioModule : EntryModuleBase
 {
-    public BuiltinAudioModule() : base("audio",
+    private readonly AudioRuntime _runtime;
+
+    public BuiltinAudioModule(IAudioPlaybackHost? host = null) : this(new AudioRuntime(host)) { }
+
+    private BuiltinAudioModule(AudioRuntime runtime) : base("audio", CreatePrimitives(runtime), CreateComposites()) => _runtime = runtime;
+
+    public override void Dispose()
+    {
+        _runtime.Dispose();
+        base.Dispose();
+    }
+
+    private static IReadOnlyList<AudioTrackDefinition> Tracks(PrimitiveCreateContext context) => context.Runtime.Settings.Get<ProjectSettings>().AudioTracks;
+
+    private static IReadOnlyList<PrimitiveEntryBase> CreatePrimitives(AudioRuntime runtime) =>
     [
-        BuiltinEntrySchemas.Primitive<PlayAudioEntry>(PlayAudioEntry.ParameterTypes, PlayAudioEntry.DefaultValues, PlayAudioEntry.ParameterOptions),
-        BuiltinEntrySchemas.Primitive<StopAudioEntry>(StopAudioEntry.ParameterTypes, StopAudioEntry.DefaultValues, StopAudioEntry.ParameterOptions),
-        BuiltinEntrySchemas.Primitive<PauseAudioEntry>(PauseAudioEntry.ParameterTypes, PauseAudioEntry.DefaultValues, PauseAudioEntry.ParameterOptions),
-        BuiltinEntrySchemas.Primitive<ResumeAudioEntry>(ResumeAudioEntry.ParameterTypes, ResumeAudioEntry.DefaultValues, ResumeAudioEntry.ParameterOptions),
-        BuiltinEntrySchemas.Primitive<EnqueueAudioEntry>(EnqueueAudioEntry.ParameterTypes, EnqueueAudioEntry.DefaultValues, EnqueueAudioEntry.ParameterOptions)
-    ])
-    { }
+        BuiltinEntrySchemas.Primitive<PlayAudioEntry>(PlayAudioEntry.ParameterTypes, PlayAudioEntry.DefaultValues, PlayAudioEntry.ParameterOptions, context => Audio(context, () => runtime.Play(Tracks(context), new AudioPlayRequest(Arguments.String(context, "trackId"), Arguments.String(context, "asset"), Arguments.Enum(context, "placement", AudioPlacement.Enqueue), Arguments.Float(context, "gain", 1), Arguments.Float(context, "fadeIn"))))),
+        BuiltinEntrySchemas.Primitive<StopAudioEntry>(StopAudioEntry.ParameterTypes, StopAudioEntry.DefaultValues, StopAudioEntry.ParameterOptions, context => Audio(context, () => runtime.Stop(Tracks(context), new AudioStopRequest(Arguments.String(context, "trackId"), Arguments.Bool(context, "clearQueue", true), Arguments.Float(context, "fadeOut"))))),
+        BuiltinEntrySchemas.Primitive<PauseAudioEntry>(PauseAudioEntry.ParameterTypes, PauseAudioEntry.DefaultValues, factory: context => Audio(context, () => runtime.Pause(Tracks(context), Arguments.String(context, "trackId")))),
+        BuiltinEntrySchemas.Primitive<ResumeAudioEntry>(ResumeAudioEntry.ParameterTypes, ResumeAudioEntry.DefaultValues, factory: context => Audio(context, () => runtime.Resume(Tracks(context), Arguments.String(context, "trackId")))),
+        BuiltinEntrySchemas.Primitive<NextAudioEntry>(NextAudioEntry.ParameterTypes, NextAudioEntry.DefaultValues, factory: context => Audio(context, () => runtime.Next(Tracks(context), Arguments.String(context, "trackId")))),
+        BuiltinEntrySchemas.Primitive<ClearAudioEntry>(ClearAudioEntry.ParameterTypes, ClearAudioEntry.DefaultValues, factory: context => Audio(context, () => runtime.Clear(Tracks(context), Arguments.String(context, "trackId")))),
+        BuiltinEntrySchemas.Primitive<EnqueueAudioEntry>(EnqueueAudioEntry.ParameterTypes, EnqueueAudioEntry.DefaultValues, EnqueueAudioEntry.ParameterOptions, context => Audio(context, () => runtime.Play(Tracks(context), new AudioPlayRequest(Arguments.String(context, "trackId"), Arguments.String(context, "asset"), AudioPlacement.Enqueue, Arguments.Float(context, "gain", 1), Arguments.Float(context, "fadeIn"))))),
+        BuiltinEntrySchemas.Primitive<ApplyAudioSEffectEntry>(ApplyAudioSEffectEntry.ParameterTypes, ApplyAudioSEffectEntry.DefaultValues, factory: context => Audio(context, () => runtime.ApplySEffect(Tracks(context), new AudioSEffectRequest(Arguments.String(context, "trackId"), Arguments.String(context, "instanceId"), Arguments.String(context, "id"), Arguments.Json<System.Text.Json.JsonElement>(context, "parameters"))))),
+        BuiltinEntrySchemas.Primitive<StopAudioSEffectEntry>(StopAudioSEffectEntry.ParameterTypes, StopAudioSEffectEntry.DefaultValues, factory: context => Audio(context, () => runtime.StopSEffect(Tracks(context), Arguments.String(context, "trackId"), Arguments.String(context, "instanceId"))))
+    ];
+
+    private static IReadOnlyList<CompositeEntryBase> CreateComposites() =>
+    [
+        new DefaultCompositeEntryBase(TextVoiceEntry.TypeId, EntrySchema.DynamicParameters(TextVoiceEntry.ParameterTypes, TextVoiceEntry.DefaultValues), static () => new TextVoiceEntry()),
+        new DefaultCompositeEntryBase(AppendVoiceNvlEntry.TypeId, EntrySchema.DynamicParameters(AppendVoiceNvlEntry.ParameterTypes, AppendVoiceNvlEntry.DefaultValues), static () => new AppendVoiceNvlEntry())
+    ];
+
+    private static ImmediatePrimitiveInstance Audio(PrimitiveCreateContext context, Action action) => new(action, batchId: context.BatchId);
 }
 
 public sealed class BuiltinVideoModule : EntryModuleBase

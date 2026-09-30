@@ -3,15 +3,20 @@
   "kind": "Raw",
   "entries": [
     { "id": "dialogue-show", "type": "dialogue.show", "parameters": {} },
+    { "id": "bgm-fade-in", "type": "audio.play", "parameters": { "trackId": "bgm", "asset": "a1000000000000000000000000000010", "gain": 1, "placement": "replace", "fadeIn": 2 } },
     { "id": "background", "type": "layer.show", "parameters": { "handleId": "background", "assetId": "a1000000000000000000000000000001", "transform": { "x": 0, "y": 0, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 }, "z": 0, "opacity": 1, "displayMode": "Fill" } },
     { "id": "unlock-gallery", "type": "gallery.unlock", "parameters": { "id": 100 } },
     { "id": "portrait", "type": "layer.show", "parameters": { "handleId": "teacher", "assetId": "a1000000000000000000000000000004", "transform": { "x": 420, "y": 80, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 }, "z": 10, "opacity": 1, "displayMode": "Native" } },
-    { "id": "intro-line-1", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "The Runtime sample now builds from Raw authoring content.", "voice": "" } },
+    { "id": "intro-line-1", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "The Runtime sample now builds from Raw authoring content. The test BGM is fading in on the bgm track." } },
+    { "id": "bgm-duck", "type": "audio.seffect.apply", "parameters": { "trackId": "bgm", "instanceId": "sample-bgm-duck", "id": "seffect.gain", "parameters": { "gain": 0.35 } } },
+    { "id": "intro-line-effect-on", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "A seffect.gain effect is now active, ducking this BGM track while the scene continues." } },
+    { "id": "bgm-unduck", "type": "audio.seffect.stop", "parameters": { "trackId": "bgm", "instanceId": "sample-bgm-duck" } },
+    { "id": "intro-line-effect-off", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "The track effect has been removed and the BGM volume is restored." } },
     { "id": "portrait-jitter", "type": "animation.animate", "parameters": { "playbackHandleId": "portrait-jitter", "handleId": "teacher", "property": "transform.y", "from": 0, "to": 12, "duration": 0.06, "curve": "EaseInOut", "blocking": "false", "skippable": "false", "loopMode": "PingPong", "blendMode": "Additive" } },
-    { "id": "intro-line-2", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "The portrait is rapidly bobbing through a non-blocking additive loop.", "voice": "" } },
+    { "id": "intro-line-2", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "The portrait is rapidly bobbing through a non-blocking additive loop." } },
     { "id": "portrait-spin", "type": "animation.animate", "parameters": { "playbackHandleId": "portrait-spin", "handleId": "teacher", "property": "transform.rotationDegrees", "from": 0, "to": 360, "duration": 0.7, "curve": "EaseInOut", "blocking": "true", "skippable": "true", "loopMode": "Once", "blendMode": "Replace" } },
-    { "id": "intro-line-3", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "The blocking rotation has completed before this line is shown.", "voice": "" } },
-    { "id": "intro-line-4", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "Now the non-blocking portrait loop is stopped explicitly.", "voice": "" } },
+    { "id": "intro-line-3", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "The blocking rotation has completed before this line is shown." } },
+    { "id": "intro-line-4", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "Now the non-blocking portrait loop is stopped explicitly." } },
     { "id": "stop-portrait-jitter", "type": "animation.stop", "parameters": { "playbackHandleId": "portrait-jitter", "mode": "CompleteImmediately" } },
     { "id": "dialogue-hide-for-nvl", "type": "dialogue.hide", "parameters": {} },
     { "id": "nvl-show", "type": "nvl.show", "parameters": {} },
@@ -21,6 +26,7 @@
     { "id": "nvl-append-after-clear", "type": "nvl.append", "parameters": { "content": "The prior NVL history was cleared, then this paragraph was appended." } },
     { "id": "nvl-hide", "type": "nvl.hide", "parameters": {} },
     { "id": "dialogue-show-after-nvl", "type": "dialogue.show", "parameters": {} },
-    { "id": "intro-line-5", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "Choose a route to see a transition and particles.", "voice": "" } }
+    { "id": "bgm-fade-out", "type": "audio.stop", "parameters": { "trackId": "bgm", "clearQueue": "true", "fadeOut": 2 } },
+    { "id": "intro-line-5", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "The BGM is now fading out mid-track. Choose a route to see a transition and particles." } }
   ]
 }

@@ -2,6 +2,8 @@
 
 > 状态：设计稿。本文不代表已实现的接口或行为；当前已实现的行为以 Runtime、Entry 和对应测试为准。
 
+> 2026-09-30 已实现首期基线：`AudioRuntime`、`IAudioPlaybackHost`、固定 bus 上的项目轨道、Avalonia LibVLC host、`audio.*` 原语、轨道 `seffect.gain` 及语音文本 composite。本文其余未标注为基线的队列扩展、DSP catalog、存档与精确调度仍为设计，不应当作现有承诺。
+
 ## 目标与边界
 
 音频系统让项目作者在编辑器中定义任意数量的逻辑轨道，并由剧情原语以轨道为单位控制音频资源的播放、队列和音量。默认项目创建三个轨道：`bgm`、`sfx`、`vocal`。它必须同时满足：

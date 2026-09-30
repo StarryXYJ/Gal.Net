@@ -2,7 +2,7 @@
 id: F-20260916-02-audio-system
 title: GalNet 音频系统
 type: feature
-status: planned
+status: completed
 created: 2026-09-16
 updated: 2026-09-30
 ---
@@ -13,7 +13,7 @@ updated: 2026-09-30
 
 音频的轨道、bus、Runtime 与宿主后端分层可继续推进，但原始设计不能原样进入实现：多声部队列/`next`、有界排队、后端能力和真实原语接入点此前未形成可执行契约。复核后的建议、当前代码事实、迁移边界和已确认的产品决策见 [设计复核](design.md)。
 
-本 feature 已完成设计并进入实施计划；尚未开始业务实现。首期由 Avalonia 提供真实后端，项目只配置轨道，旧音频内容不做兼容；Vocal 不参与读档重播。2026-09-30 新增用户确认的验收：`GameTestCase` 使用 `Assets/心.mp3` 演示播放中淡入/淡出，以及轨道 SEffect 的开启和关闭。
+本 feature 已实现首期：Avalonia 提供真实后端，项目只配置轨道，旧音频内容不做兼容；Vocal 不参与读档重播。`GameTestCase` 使用 `Assets/心.mp3` 演示播放中淡入/淡出，以及轨道 SEffect 的开启和关闭。实现范围、验证与后续项见 [实现总结](summary.md)。
 
 ## 原始目标
 
@@ -21,10 +21,10 @@ updated: 2026-09-30
 
 ## 当前事实
 
-- 音频设计文档是设计稿，尚未成为实现契约。
-- 当前 `audio.play` / `audio.stop` / `audio.pause` / `audio.resume` / `audio.enqueue` 仅支持固定的 `channel`、字符串 `mode` 和 `times`；它们在 `BuiltinAudioModule` 中还只是空的即时原语，没有 `trackId`、播放项、队列状态或后端事件模型。
-- 仓库当前不存在 `IAudioView`；`LibVlcAudioController` 是占位适配器，以每 channel 一个 `MediaPlayer` 播放，`Enqueue` 直接调用 `Play`，不具备真实队列、并发 SFX、结束事件或 DSP 语义。
-- Avalonia Sample 的 `SampleMediaViews` 目前只显示“Audio unavailable”，还没有可验收的实际音频后端。
+- `ProjectSettings.AudioTracks` 提供默认 `bgm`、`sfx`、`vocal` 轨道；编辑器设置页可添加、删除和编辑轨道配置，并在保存时校验 ID、bus、增益与声部/队列上限。
+- `AudioRuntime` 持有 logical voice、queue 与 generation；`IAudioPlaybackHost` 负责实际播放并按能力声明淡化与轨道 SEffect 支持。
+- `AvaloniaAudioPlaybackHost` 通过 `IAssetManager` 实体化会话临时文件并为每个 voice 创建 LibVLC player；Sample 与 Editor Preview 均已装配此 host。
+- `dialogue.text` 是纯文本，`dialogue.textVoice` 与 `nvl.appendVoice` composite 会编译为 `audio.play(replaceIfDifferent)` 与原文本 entry。
 - `GameSnapshot` 尚未保存音频状态；玩家设置目前固定为 `BgmVolume`、`SfxVolume`、`VoiceVolume`。
 
 ## 初步合理性结论

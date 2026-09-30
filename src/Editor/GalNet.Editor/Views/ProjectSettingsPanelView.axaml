@@ -37,6 +37,26 @@
                                Minimum="1" Maximum="16" Increment="1"
                                Foreground="{DynamicResource SemiColorText0}" />
 
+                <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+                    <TextBlock Text="Audio tracks" Foreground="{DynamicResource SemiColorText2}" FontSize="12" />
+                    <Button Grid.Column="1" Content="Add track" Command="{Binding AddAudioTrackCommand}" />
+                </Grid>
+                <ItemsControl ItemsSource="{Binding AudioTracks}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:AudioTrackEditorItem">
+                            <Grid ColumnDefinitions="*,*,110,80,70,70,Auto" ColumnSpacing="6" Margin="0,2">
+                                <TextBox Grid.Column="0" Text="{Binding Id}" PlaceholderText="id" />
+                                <TextBox Grid.Column="1" Text="{Binding Name}" PlaceholderText="name" />
+                                <TextBox Grid.Column="2" Text="{Binding Bus}" PlaceholderText="bgm / sfx / vocal" />
+                                <NumericUpDown Grid.Column="3" Value="{Binding DefaultGain}" Minimum="0" Maximum="1" Increment="0.05" />
+                                <NumericUpDown Grid.Column="4" Value="{Binding MaxVoices}" Minimum="1" Maximum="32" Increment="1" />
+                                <NumericUpDown Grid.Column="5" Value="{Binding MaxQueuedItems}" Minimum="0" Maximum="256" Increment="1" />
+                                <Button Grid.Column="6" Content="×" Command="{Binding RemoveCommand}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
                 <TextBlock Text="{loc:Localize Settings.Project.TargetLanguage}"
                            Foreground="{DynamicResource SemiColorText2}"
                            FontSize="12"

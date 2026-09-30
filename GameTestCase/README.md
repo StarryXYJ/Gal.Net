@@ -9,6 +9,7 @@ This Raw-authoring game exercises the compiled runtime slice:
 - a composite `transition.crossFade` compiled into an animation plan;
 - authored layer and particle-property animations;
 - Runtime-backed particle start/stop with GUID-backed texture resources.
+- Configurable `bgm`, `sfx`, and `vocal` tracks: the intro uses `心.mp3` to demonstrate in-progress BGM fade-in, `seffect.gain` apply/stop, and in-progress fade-out.
 
 The `.rawgalgroup` files are the sole authoring source. Build them with `GalNet.Editor.Headless`;
 the generated `.galgroup` files use the version 2 compiled format (`typeId` plus `arguments`). Every

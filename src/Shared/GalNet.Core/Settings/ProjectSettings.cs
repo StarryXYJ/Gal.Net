@@ -15,6 +15,9 @@ public sealed class ProjectSettings : SettingsSection
 
     public int SfxChannelCount { get; set; } = 4;
 
+    /// <summary>Author-controlled logical audio routes. Bus CRUD is intentionally not part of this version.</summary>
+    public List<GalNet.Core.Audio.AudioTrackDefinition> AudioTracks { get; set; } = GalNet.Core.Audio.AudioTrackDefinition.CreateDefaults();
+
     public int DefaultWidth { get; set; } = 1920;
 
     public int DefaultHeight { get; set; } = 1080;

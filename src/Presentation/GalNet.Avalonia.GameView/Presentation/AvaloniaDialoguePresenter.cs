@@ -46,9 +46,6 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresente
         });
 
     public void SkipTypewriter(string widgetInstanceId) => _dispatcher.Dispatch(_page.Dialogue.Skip);
-    public void SetVoice(string assetId) =>
-        _dispatcher.Dispatch(() => _state.StatusMessage = $"Voice requested: {assetId}");
-
     public Task WaitForClickAsync(CancellationToken cancellationToken) => _dispatcher.InvokeAsync(() =>
     {
         var wait = _state.WaitForAdvanceAsync(cancellationToken);

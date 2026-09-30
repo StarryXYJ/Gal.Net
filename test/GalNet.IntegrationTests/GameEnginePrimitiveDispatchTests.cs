@@ -220,7 +220,7 @@ public class GameEnginePrimitiveDispatchTests
                             opacity = 1,
                             displayMode = "Native"
                         }),
-                        Primitive(TextEntry.TypeId, new { speaker = "Alice", content = "Continue?", voice = "" }),
+                        Primitive(TextEntry.TypeId, new { speaker = "Alice", content = "Continue?" }),
                         Primitive("unsupported.demo")
                     }
                 },
@@ -380,7 +380,6 @@ public class GameEnginePrimitiveDispatchTests
 
         public void ShowDialogue() { }
         public void HideDialogue() { }
-        public void SetVoice(string assetId) { }
         public Task PresentTextAsync(string speaker, string text, CancellationToken cancellationToken)
         {
             Dialogue = (speaker, text);

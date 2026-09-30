@@ -13,7 +13,7 @@ updated: 2026-09-30
 
 ## Phase 1 — 轨道模型与作者入口
 
-**状态：planned**
+**状态：completed（静态 schema 的 trackId 仍为文本字段；未实现 project-context 下拉）**
 
 目标：将项目设置、authoring schema 和编译输出切换到唯一的新音频模型，并消除对 `IDialoguePresenter.SetVoice` 的依赖。
 
@@ -38,7 +38,7 @@ updated: 2026-09-30
 
 ## Phase 2 — Runtime 状态机与无设备契约
 
-**状态：planned**
+**状态：completed**
 
 目标：实现平台无关的队列、voice identity、淡化意图和错误降级，并在 fake host 中确定性验证。
 
@@ -64,7 +64,7 @@ updated: 2026-09-30
 
 ## Phase 3 — Avalonia 播放 host 与示例验收
 
-**状态：planned**
+**状态：completed（已完成编译/集成验证；实际听感仍需目标设备人工验收）**
 
 目标：让 Avalonia 游戏 scope 将 Runtime 声部请求转为实际 LibVLC 播放，并验证资源与生命周期边界。
 

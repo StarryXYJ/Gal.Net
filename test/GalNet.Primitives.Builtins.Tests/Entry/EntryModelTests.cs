@@ -10,7 +10,7 @@ public class EntryModelTests
     [Test]
     public void Registry_Should_Create_All_BuiltIn_Entries()
     {
-        Assert.That(Catalog.Definitions, Has.Count.EqualTo(36));
+        Assert.That(Catalog.Definitions, Has.Count.EqualTo(42));
         foreach (var definition in Catalog.Definitions)
             Assert.That(Catalog.Create(definition.Type).Type, Is.EqualTo(definition.Type));
     }
@@ -60,7 +60,7 @@ public class EntryModelTests
     public void TextEntry_Should_Not_Expose_Widget_Parameter()
     {
         var definition = Catalog.Get(TextEntry.TypeId);
-        Assert.That(definition.Parameters.Keys, Is.EquivalentTo(new[] { "speaker", "content", "voice" }));
+        Assert.That(definition.Parameters.Keys, Is.EquivalentTo(new[] { "speaker", "content" }));
         Assert.That(Catalog.Create(TextEntry.TypeId).Values, Does.Not.ContainKey("widget"));
     }
 

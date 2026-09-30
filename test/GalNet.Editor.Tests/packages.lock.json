@@ -350,6 +350,7 @@
           "CommunityToolkit.Mvvm": "[8.4.1, )",
           "GalNet.Avalonia.Controls": "[1.0.0, )",
           "GalNet.Avalonia.Rendering": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "GalNet.Presentation.Defaults": "[1.0.0, )",
           "Irihi.Ursa": "[2.1.0, )",
@@ -445,7 +446,8 @@
         "type": "Project",
         "dependencies": {
           "GalNet.Core": "[1.0.0, )",
-          "GalNet.Presentation.Abstractions": "[1.0.0, )"
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "GalNet.Runtime": "[1.0.0, )"
         }
       },
       "galnet.runtime": {
