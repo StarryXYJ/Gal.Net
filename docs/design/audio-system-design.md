@@ -2,7 +2,7 @@
 
 > 状态：设计稿。本文不代表已实现的接口或行为；当前已实现的行为以 Runtime、Entry 和对应测试为准。
 
-> 2026-09-30 已实现首期基线：`AudioRuntime`、`IAudioPlaybackHost`、固定 bus 上的项目轨道、Avalonia LibVLC host、`audio.*` 原语、轨道 `seffect.gain` 及语音文本 composite。本文其余未标注为基线的队列扩展、DSP catalog、存档与精确调度仍为设计，不应当作现有承诺。
+> 2026-10-09 已实现基线：`AudioRuntime`、`IAudioPlaybackHost`、固定 bus 上的项目轨道、Avalonia LibVLC host、`audio.*` 原语、语音文本 composite，以及 host 注册的轨道 `seffect.gain`、`seffect.lowPass` 和 `seffect.highPass`。其中低/高通由 LibVLC 10 段 equalizer 近似实现；item scope、参数动画、编辑器表单、其他 DSP、存档与精确调度仍为设计，不应当作现有承诺。
 
 ## 目标与边界
 
@@ -295,6 +295,8 @@ record SEffectDefinition(
     IReadOnlyList<AnimatableProperty> AnimatableProperties,
     bool RequiresRealtimeDsp = true);
 ```
+
+当前基线已经实现 `SEffectCatalog`，但它只描述并校验 host 已注册的轨道 effect。Avalonia host 在创建时收集 `IAudioSEffectProcessor`，由注册项形成不可变 catalog；Runtime 在保存 attachment 前校验 ID、scope 和参数。当前注册 `seffect.gain`（`gain: 0..1`）以及 `seffect.lowPass` / `seffect.highPass`（必填 `cutoffHz: 20..20000`、可选 `attenuationDb: -20..0`）。未知、未注册或非法参数会保留干声并产生诊断。低/高通的频段近似不支持 `resonance`。
 
 `AnimatableProperties` 表示某个参数**具备**连续动画能力，而不是每一个 attachment 必然存在动画。初版中 `seffect.lowPass.cutoffHz`、`seffect.lowPass.resonance`、`seffect.pan.pan`、`seffect.gain.gain`、`seffect.pitch.semitones` 和 `seffect.spatial` 的坐标/距离参数均可声明为可动画；布尔开关、枚举、资源引用等仍为静态参数。
 

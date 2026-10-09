@@ -55,11 +55,12 @@ transition.fadeColor
 内置 entry DTO、primitive instance 和 module 都使用 `GalNet.Primitives.Builtins` 命名空间；`GalNet.Core.Entry` 只包含通用 entry 基类、schema 和 catalog 基础设施。内容格式只保存下列稳定 `TypeId`，不保存 CLR 类型名。
 
 ```text
-dialogue.text, dialogue.show, dialogue.hide
-nvl.show, nvl.hide, nvl.clear, nvl.append
+dialogue.text, dialogue.textVoice, dialogue.show, dialogue.hide
+nvl.show, nvl.hide, nvl.clear, nvl.append, nvl.appendVoice
 layer.show, layer.showColor, layer.hide, layer.move, layer.replace
 animation.animate, animation.play, animation.stop
-audio.play, audio.stop, audio.pause, audio.resume, audio.enqueue
+audio.play, audio.stop, audio.pause, audio.resume, audio.enqueue, audio.next, audio.clear
+audio.seffect.apply, audio.seffect.stop
 video.play, video.stop
 effect.apply, effect.stop
 particle.play, particle.stop

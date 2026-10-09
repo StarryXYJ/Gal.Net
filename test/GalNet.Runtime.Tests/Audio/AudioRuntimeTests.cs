@@ -43,9 +43,28 @@ public class AudioRuntimeTests
         Assert.That(host.Requests[1].SEffectInstanceId, Is.EqualTo("duck"));
     }
 
+    [Test]
+    public void Unsupported_seffect_is_diagnosed_without_attaching_to_the_track()
+    {
+        var host = new RecordingHost();
+        using var runtime = new AudioRuntime(host);
+        var diagnostics = new List<string>();
+        runtime.Diagnostic += diagnostics.Add;
+        using var document = JsonDocument.Parse("{\"cutoffHz\":800}");
+
+        runtime.ApplySEffect(Tracks, new("bgm", "filter", "seffect.lowPass", document.RootElement.Clone()));
+
+        Assert.That(host.Requests, Is.Empty);
+        Assert.That(diagnostics, Does.Contain("Unsupported SEffect 'seffect.lowPass'."));
+    }
+
     private sealed class RecordingHost : IAudioPlaybackHost
     {
         public AudioBackendCapabilities Capabilities { get; } = new(true, true, true);
+        public ISEffectCatalog SEffects { get; } = new SEffectCatalog(
+        [
+            new("seffect.gain", new HashSet<SEffectScope> { SEffectScope.Track }, [new("gain", Required: true, Minimum: 0, Maximum: 1)])
+        ]);
         public List<AudioBackendRequest> Requests { get; } = [];
         public event Action<AudioBackendEvent>? EventReceived;
         public Task ApplyAsync(AudioBackendRequest request, CancellationToken cancellationToken = default)

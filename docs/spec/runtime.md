@@ -140,10 +140,12 @@ public void Skip();
 - `layer.*`：show/showColor/hide/move/replace，先更新 `SceneState` 再通知 `ILayerPresenter`。
 - `animation.animate` / `animation.play` / `animation.stop`：创建 animation primitive instance；一次性动画先提交最终逻辑状态，循环动画提交第 0 帧状态并保存完整重放定义，再启动呈现动画。plan 是单个 instance，内部事件只作为 animation 模块私有 layer/effect 事件处理，不重新进入通用 Entry 分发。
 - `effect.apply` / `effect.stop`：维护 `SceneState.ActiveEffects`、目标 Layer 的 effect 索引和 `IEffectPresenter` 调用。
+- `audio.play` / `audio.stop` / `audio.pause` / `audio.resume` / `audio.enqueue` / `audio.next` / `audio.clear`：`AudioRuntime` 持有轨道队列与 voice 生命周期，`IAudioPlaybackHost` 只执行平台播放请求。`dialogue.textVoice` 与 `nvl.appendVoice` 会先发出非阻塞的 `audio.play(replaceIfDifferent)`，默认使用 `vocal` 轨道，再按正常文本语义阻塞。
+- `audio.seffect.apply` / `audio.seffect.stop`：以 `trackId` 和 `instanceId` 附着或移除宿主 catalog 已注册的轨道 SEffect；当前 Avalonia host 支持 `seffect.gain`、基于 equalizer 频段近似的 `seffect.lowPass` 与 `seffect.highPass`。未知 ID、非法参数或不支持 scope 只记录诊断，不会静默附着。
 - `particle.play` / `particle.stop`：用 `rate` 创建和停止持续 emitter，维护 `SceneState.ActiveParticleEmitters` 与 Runtime emitter instance。存档只保存 emitter 定义、排序与动画值；宿主读档后通过 `BuiltinPresentationReplay` 以相同 seed 从头重建，不保存单颗粒子。`initial` 的 lifetime、velocity、size、rotation、angular velocity、color 以及 `flipbook` 的播放速度与起始帧都按粒子确定性采样；`motion` 提供 gravity、noise、drag、radial、orbit、attractor，`lifetime` 曲线线性插值 size、opacity、velocity、rotation、color。当前粒子年龄、位置和 flipbook 帧不单独存档。
 - `particle.burst`：用 `count` 向 `IParticlePresenter` 发出一次性 burst，不创建 Runtime scene state，也不参与存档恢复。有限持续效果由流程或 animation plan 编排 play/stop；重复 burst 由 animation plan 事件表达，跳过 plan 时不补发未来 burst。
 - `flow.wait`：blocking、skippable 的等待实例。
 - `variable.set`：求值后写入 Runtime 变量。
 - `gallery.unlock`：按稳定 item ID 解锁 Gallery，写入对应的系统 Player bool。
 
-音频和视频仍保留推荐 schema；完整产品级剧情原语行为由后续 feature 或宿主自定义模块补齐。Gallery 的平台无关 catalog 与解锁数据层由 Core/Storage 提供；默认 Avalonia 前端通过宿主提供的 `IGameGallerySession` 浏览 CG、视频和音频，不把页面或媒体状态写入 Runtime。
+视频仍保留推荐 schema；音频的轨道播放、淡化、队列和当前轨道 SEffect 行为由推荐模块实现。bus/master 处理、item effect、参数动画、存档恢复和玩家音量设置仍由后续 feature 补齐。Gallery 的平台无关 catalog 与解锁数据层由 Core/Storage 提供；默认 Avalonia 前端通过宿主提供的 `IGameGallerySession` 浏览 CG、视频和音频，不把页面或媒体状态写入 Runtime。

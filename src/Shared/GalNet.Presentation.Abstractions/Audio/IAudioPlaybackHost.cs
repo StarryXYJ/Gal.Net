@@ -6,6 +6,7 @@ namespace GalNet.Presentation.Abstractions.Audio;
 public interface IAudioPlaybackHost : IDisposable
 {
     AudioBackendCapabilities Capabilities { get; }
+    ISEffectCatalog SEffects { get; }
     event Action<AudioBackendEvent>? EventReceived;
     Task ApplyAsync(AudioBackendRequest request, CancellationToken cancellationToken = default);
 }

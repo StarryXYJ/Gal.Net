@@ -109,6 +109,17 @@ public sealed class AudioRuntime : IDisposable
         {
             var track = GetTrack(definitions, request.TrackId);
             if (track is null || string.IsNullOrWhiteSpace(request.InstanceId) || string.IsNullOrWhiteSpace(request.SEffectId)) return;
+            if (_host is null)
+            {
+                Report($"No audio playback host is available for '{request.TrackId}'.");
+                return;
+            }
+            var diagnostics = _host.SEffects.Validate(request.SEffectId, SEffectScope.Track, request.Parameters);
+            if (diagnostics.Count > 0)
+            {
+                foreach (var diagnostic in diagnostics) Report(diagnostic);
+                return;
+            }
             track.SEffects[request.InstanceId] = request;
             foreach (var voice in track.Active)
                 Send(new(AudioBackendAction.ApplySEffect, track.Definition.Id, voice.Id, voice.Generation, SEffectId: request.SEffectId, SEffectInstanceId: request.InstanceId, SEffectParameters: request.Parameters));

@@ -16,27 +16,32 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "GalNet", "Audio", Guid.NewGuid().ToString("N"));
     private readonly Dictionary<string, Voice> _voices = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _paths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly AvaloniaAudioSEffectRegistry _effects;
     private readonly LibVLC? _libVlc;
     private bool _disposed;
 
-    public AvaloniaAudioPlaybackHost(IAssetManager assets)
+    public AvaloniaAudioPlaybackHost(IAssetManager assets, IEnumerable<IAudioSEffectProcessor>? effectProcessors = null)
     {
         _assets = assets;
+        _effects = new AvaloniaAudioSEffectRegistry(AvaloniaAudioSEffectRegistry.DefaultProcessors.Concat(effectProcessors ?? []));
         Directory.CreateDirectory(_directory);
         try
         {
             LibVLCSharp.Shared.Core.Initialize();
             _libVlc = new LibVLC("--no-video-title-show");
             Capabilities = new(true, true, true);
+            SEffects = _effects.Catalog;
         }
         catch (Exception exception)
         {
             InitializationError = exception.Message;
             Capabilities = AudioBackendCapabilities.None;
+            SEffects = SEffectCatalog.Empty;
         }
     }
 
     public AudioBackendCapabilities Capabilities { get; }
+    public ISEffectCatalog SEffects { get; }
     public string? InitializationError { get; }
     public event Action<AudioBackendEvent>? EventReceived;
 
@@ -111,12 +116,13 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost
             player.EncounteredError += (_, _) => Failed(voice, "LibVLC could not play the audio asset.");
             _voices.Add(request.VoiceId, voice);
             voice.BaseGain = request.Gain;
-            player.Volume = request.FadeSeconds > 0 ? 0 : ToVolume(request.Gain);
+            voice.FadeGain = request.FadeSeconds > 0 ? 0 : 1;
+            ReapplySEffects(voice);
             using var media = new LibVlcMedia(_libVlc, path);
             player.Play(media);
         }
         Raise(new(AudioBackendEventKind.Started, request.TrackId, request.VoiceId, request.Generation));
-        if (request.FadeSeconds > 0) _ = FadeAsync(voice, 0, request.Gain, request.FadeSeconds, stopWhenDone: false);
+        if (request.FadeSeconds > 0) _ = FadeAsync(voice, 0, 1, request.FadeSeconds, stopWhenDone: false);
     }
 
     private async Task<string> MaterializeAsync(string assetId, CancellationToken cancellationToken)
@@ -146,21 +152,19 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost
             RemoveVoice(voice.Request.VoiceId);
             return;
         }
-        _ = FadeAsync(voice, CurrentGain(voice), 0, fadeSeconds, stopWhenDone: true);
+        _ = FadeAsync(voice, voice.FadeGain, 0, fadeSeconds, stopWhenDone: true);
     });
 
     private void ApplySEffect(AudioBackendRequest request) => WithVoice(request, voice =>
     {
-        if (!string.Equals(request.SEffectId, "seffect.gain", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(request.SEffectInstanceId)) return;
-        var gain = request.SEffectParameters is { } parameters && parameters.TryGetProperty("gain", out var value) && value.TryGetSingle(out var result)
-            ? Math.Clamp(result, 0f, 1f) : 1f;
-        voice.EffectGains[request.SEffectInstanceId] = gain;
-        SetVolume(voice);
+        if (string.IsNullOrWhiteSpace(request.SEffectId) || string.IsNullOrWhiteSpace(request.SEffectInstanceId) || request.SEffectParameters is not { } parameters || !_effects.TryGet(request.SEffectId, out _)) return;
+        voice.Effects[request.SEffectInstanceId] = new(request.SEffectId, parameters);
+        ReapplySEffects(voice);
     });
 
     private void StopSEffect(AudioBackendRequest request) => WithVoice(request, voice =>
     {
-        if (!string.IsNullOrWhiteSpace(request.SEffectInstanceId) && voice.EffectGains.Remove(request.SEffectInstanceId)) SetVolume(voice);
+        if (!string.IsNullOrWhiteSpace(request.SEffectInstanceId) && voice.Effects.Remove(request.SEffectInstanceId)) ReapplySEffects(voice);
     });
 
     private async Task FadeAsync(Voice voice, float from, float to, float seconds, bool stopWhenDone)
@@ -174,7 +178,8 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost
                 lock (_gate)
                 {
                     if (_disposed || !_voices.TryGetValue(voice.Request.VoiceId, out var current) || !ReferenceEquals(current, voice)) return;
-                    voice.Player.Volume = ToVolume(from + (to - from) * index / steps);
+                    voice.FadeGain = from + (to - from) * index / steps;
+                    SetVolume(voice);
                 }
             }
             if (stopWhenDone)
@@ -215,7 +220,23 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost
         if (_voices.Remove(voiceId, out var voice)) voice.Dispose();
     }
 
-    private static float CurrentGain(Voice voice) => voice.BaseGain * voice.EffectGains.Values.Aggregate(1f, (gain, effect) => gain * effect);
+    private void ReapplySEffects(Voice voice)
+    {
+        using var equalizer = new Equalizer();
+        var state = new AvaloniaAudioSEffectState(Enumerable.Range(0, (int)equalizer.BandCount).Select(index => equalizer.BandFrequency((uint)index)).ToArray());
+        foreach (var effect in voice.Effects.Values)
+            if (_effects.TryGet(effect.Id, out var processor)) processor.Apply(effect.Parameters, state);
+        voice.EffectGain = state.Gain;
+        if (state.HasEqualizerAdjustment)
+        {
+            for (var index = 0; index < state.EqualizerBandFrequencies.Count; index++) equalizer.SetAmp(state.BandGain(index), (uint)index);
+            voice.Player.SetEqualizer(equalizer);
+        }
+        else voice.Player.UnsetEqualizer();
+        SetVolume(voice);
+    }
+
+    private static float CurrentGain(Voice voice) => voice.BaseGain * voice.FadeGain * voice.EffectGain;
     private static int ToVolume(float gain) => (int)Math.Round(Math.Clamp(gain, 0f, 1f) * 100);
     private static void SetVolume(Voice voice) => voice.Player.Volume = ToVolume(CurrentGain(voice));
     private void Raise(AudioBackendEvent @event) => EventReceived?.Invoke(@event);
@@ -225,7 +246,9 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost
         public AudioBackendRequest Request { get; } = request;
         public MediaPlayer Player { get; } = player;
         public float BaseGain { get; set; }
-        public Dictionary<string, float> EffectGains { get; } = new(StringComparer.Ordinal);
+        public float FadeGain { get; set; } = 1;
+        public float EffectGain { get; set; } = 1;
+        public Dictionary<string, ActiveSEffect> Effects { get; } = new(StringComparer.Ordinal);
         public CancellationTokenSource FadeCancellation { get; } = new();
         public void Dispose()
         {
@@ -234,4 +257,6 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost
             Player.Dispose();
         }
     }
+
+    private sealed record ActiveSEffect(string Id, System.Text.Json.JsonElement Parameters);
 }
