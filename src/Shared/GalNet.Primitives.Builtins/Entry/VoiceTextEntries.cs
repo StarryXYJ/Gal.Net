@@ -44,7 +44,8 @@ internal static class VoiceTextEntrySupport
             ["gain"] = Float(source, "gain", 1),
             ["placement"] = "replaceIfDifferent",
             ["fadeIn"] = 0
-        })) { Condition = context.Condition };
+        }))
+    { Condition = context.Condition };
 
     public static PrimitiveEntry Text(EntryCompileContext context, Entry source) => new(
         TextEntry.TypeId,
@@ -52,11 +53,13 @@ internal static class VoiceTextEntrySupport
         {
             ["speaker"] = Get(source, "speaker", ""),
             ["content"] = Get(source, "content", "")
-        })) { Condition = context.Condition };
+        }))
+    { Condition = context.Condition };
 
     public static PrimitiveEntry Nvl(EntryCompileContext context, Entry source) => new(
         AppendNvlEntry.TypeId,
-        JsonSerializer.SerializeToElement(new Dictionary<string, object?> { ["content"] = Get(source, "content", "") })) { Condition = context.Condition };
+        JsonSerializer.SerializeToElement(new Dictionary<string, object?> { ["content"] = Get(source, "content", "") }))
+    { Condition = context.Condition };
 
     private static string Get(Entry source, string key, string fallback) => source.Values.GetValueOrDefault(key, fallback);
     private static string Required(Entry source, string key) => !string.IsNullOrWhiteSpace(Get(source, key, "")) ? Get(source, key, "") : throw new InvalidDataException($"'{source.Type}' requires '{key}'.");

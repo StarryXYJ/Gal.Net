@@ -4,9 +4,9 @@ using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GalNet.Core.Audio;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
-using GalNet.Core.Audio;
 using Serilog;
 
 namespace GalNet.Editor.ViewModels;
@@ -206,8 +206,14 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
             left.OverflowPolicy == right.OverflowPolicy && left.QueueOverflowPolicy == right.QueueOverflowPolicy;
         private static AudioTrackDefinition CopyTrack(AudioTrackDefinition track) => new()
         {
-            Id = track.Id, Name = track.Name, Bus = track.Bus, DefaultGain = track.DefaultGain, MaxVoices = track.MaxVoices,
-            MaxQueuedItems = track.MaxQueuedItems, OverflowPolicy = track.OverflowPolicy, QueueOverflowPolicy = track.QueueOverflowPolicy
+            Id = track.Id,
+            Name = track.Name,
+            Bus = track.Bus,
+            DefaultGain = track.DefaultGain,
+            MaxVoices = track.MaxVoices,
+            MaxQueuedItems = track.MaxQueuedItems,
+            OverflowPolicy = track.OverflowPolicy,
+            QueueOverflowPolicy = track.QueueOverflowPolicy
         };
     }
 }
@@ -225,13 +231,23 @@ public sealed partial class AudioTrackEditorItem : ObservableObject
 
     public static AudioTrackEditorItem From(AudioTrackDefinition track) => new()
     {
-        Id = track.Id, Name = track.Name, Bus = track.Bus, DefaultGain = track.DefaultGain,
-        MaxVoices = track.MaxVoices, MaxQueuedItems = track.MaxQueuedItems
+        Id = track.Id,
+        Name = track.Name,
+        Bus = track.Bus,
+        DefaultGain = track.DefaultGain,
+        MaxVoices = track.MaxVoices,
+        MaxQueuedItems = track.MaxQueuedItems
     };
     public AudioTrackDefinition ToDefinition() => new()
     {
-        Id = Id, Name = Name, Bus = Bus, DefaultGain = (float)DefaultGain, MaxVoices = MaxVoices, MaxQueuedItems = MaxQueuedItems,
-        OverflowPolicy = AudioOverflowPolicy.StopOldest, QueueOverflowPolicy = AudioQueueOverflowPolicy.DropNewest
+        Id = Id,
+        Name = Name,
+        Bus = Bus,
+        DefaultGain = (float)DefaultGain,
+        MaxVoices = MaxVoices,
+        MaxQueuedItems = MaxQueuedItems,
+        OverflowPolicy = AudioOverflowPolicy.StopOldest,
+        QueueOverflowPolicy = AudioQueueOverflowPolicy.DropNewest
     };
 
     [RelayCommand]
