@@ -50,5 +50,26 @@ public sealed class StopAudioSEffectEntry : PrimitiveEntry
     public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("trackId", "bgm"));
 }
 
-public sealed class PlayVideoEntry : PrimitiveEntry { public const string TypeId = "video.play"; public override string Type => TypeId; public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("asset", EntryParameterType.VideoAsset)); }
-public sealed class StopVideoEntry : PrimitiveEntry { public const string TypeId = "video.stop"; public override string Type => TypeId; public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(); }
+public sealed class PlayVideoEntry : PrimitiveEntry
+{
+    public const string TypeId = "video.play";
+    public override string Type => TypeId;
+    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(
+        ("asset", EntryParameterType.VideoAsset), ("handleId", EntryParameterType.Text),
+        ("blocking", EntryParameterType.Select), ("skipPoints", EntryParameterType.Json),
+        ("transform", EntryParameterType.Json), ("z", EntryParameterType.Float),
+        ("opacity", EntryParameterType.Float), ("displayMode", EntryParameterType.Select));
+    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(
+        ("handleId", "video"), ("blocking", "true"), ("skipPoints", "[]"), ("transform", "{}"),
+        ("z", "0"), ("opacity", "1"), ("displayMode", "Uniform"));
+    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(
+        ("blocking", ["true", "false"]), ("displayMode", ["Native", "Tile", "Fill", "Uniform", "UniformToFill"]));
+}
+
+public sealed class StopVideoEntry : PrimitiveEntry
+{
+    public const string TypeId = "video.stop";
+    public override string Type => TypeId;
+    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("handleId", EntryParameterType.Text));
+    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("handleId", "video"));
+}

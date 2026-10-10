@@ -18,10 +18,24 @@ public static class BuiltinPresentationReplay
         IParticlePresenter? particlePresenter,
         IAnimationPresenter? animationPresenter,
         ILayerPresenter? layerPresenter,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IVideoPresenter? videoPresenter = null)
     {
         ArgumentNullException.ThrowIfNull(runtime);
         var sceneState = runtime.SceneState;
+
+        foreach (var layer in sceneState.Layers.ToArray())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var request = new LayerRenderRequest(layer.Id, layer.AssetId, layer.Transform.Clone(), layer.Z,
+                layer.DisplayMode, layer.Opacity, layer.Color, layer.Flipbook?.Clone());
+            if (layer.IsVideo)
+            {
+                new VideoPrimitiveInstance(runtime, videoPresenter,
+                    new VideoRenderRequest(Guid.NewGuid().ToString("N"), request, []), false, null, cancellationToken).Dispatch();
+            }
+            else if (layer.Visible) layerPresenter?.ShowLayer(request);
+        }
 
         if (effectPresenter is not null)
         {

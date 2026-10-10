@@ -20,9 +20,12 @@ public sealed class SceneLayerItem : ILayerEffectTarget, INotifyPropertyChanged
     private double _opacity = 1;
     private bool _isVisible = true;
     private FlipbookDefinition? _flipbook;
+    private SceneFrameSource? _frameSource;
 
     public string HandleId { get => _handleId; set => SetField(ref _handleId, value); }
     public SceneTexture? Texture { get => _texture; set => SetField(ref _texture, value); }
+    public SceneFrameSource? FrameSource { get => _frameSource; set => SetField(ref _frameSource, value); }
+    public void NotifyFrameChanged() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FrameSource)));
     public string? Color { get => _color; set => SetField(ref _color, value); }
     public double X { get => _x; set => SetField(ref _x, value); }
     public double Y { get => _y; set => SetField(ref _y, value); }

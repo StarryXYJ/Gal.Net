@@ -3,6 +3,7 @@
 This Raw-authoring game exercises the compiled runtime slice:
 
 - `layer.show`, `layer.replace`, `layer.move`, and `layer.hide` through `ILayerPresenter`;
+- `niko.mp4` as a real scene layer: blocking `video.play` with `[3, 6, 9, 999999]` second skip points, then transformed non-blocking playback and explicit `video.stop`; the portrait stays above it by z order;
 - blocking `dialogue.text` with typewriter directives and `\skip` boundaries;
 - explicit `nvl.show`, `nvl.append`, `nvl.clear`, and `nvl.hide`, including rich-text and typewriter NVL history;
 - Engine-owned Choice filtering/index mapping, condition evaluation, and node jumps;
@@ -27,3 +28,7 @@ Build and run from the repository root:
 dotnet run --project src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj -- build GameTestCase --output artifacts/sample-build
 dotnet run --project src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj -- artifacts/sample-build
 ```
+
+Video smoke: advance the first dialogue to reach blocking playback. Each left click seeks to the next point after the current position; the oversized final point ends playback. The following non-blocking playback uses rotation, scale and opacity below the portrait, then stops on dialogue advance. Headless has no video presenter and completes these entries immediately.
+
+Native decode tests are opt-in: set `GALNET_VIDEO_ASSETS` to the absolute `GameTestCase/Assets` directory and `GALNET_VIDEO_LIBVLC` to the native LibVLC directory, then run Presentation tests with `--filter FullyQualifiedName~VideoNativeSmokeTests`. `GALNET_VIDEO_CAPTURE` optionally exports a composed scene PNG. The tests check actual decoded pixels, sequential seeks, natural completion and cancellation of loading during hide/replace.

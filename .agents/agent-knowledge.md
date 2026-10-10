@@ -30,6 +30,8 @@
 
 ## 当前工作
 
+- [F-20261009-02-video-entries](../features/F-20261009-02-video-entries/feature.md) 已实现剧情视频图层、阻塞分段 seek、停止/替换清理和非阻塞视频定义恢复。平台视频必须经 AssetManager 获取，解码帧通过租约进入场景管线；播放游标不入存档。验证见 feature summary。
+
 - `F-20260926-01-gallery-meta-pages` 的实现、正式文档与示例 Gallery 解锁 smoke test 已完成；其外部阻塞项 `EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString` 已由 `F-20260929-04-quality-baseline` 修复，Gallery feature 可按自身流程收尾。
 - [F-20260916-02-audio-system](../features/F-20260916-02-audio-system/feature.md) 已完成首期：轨道逻辑、`AudioRuntime`、`IAudioPlaybackHost`、Avalonia LibVLC host、语音文本 composite 和 Sample 验收已落地。Runtime 只能传 asset ID；平台 host 必须经 `IAssetManager` 实体化临时媒体文件。后续 [F-20261009-01-track-seffects](../features/F-20261009-01-track-seffects/feature.md) 增加 host 注册的 `SEffectCatalog`、`seffect.gain` 与基于 LibVLC equalizer 的 `seffect.lowPass` / `seffect.highPass`；item scope、动画、存档、玩家音量和角色默认轨道均未实现。
 - `F-20260929-01-compiled-content-pipeline` 正在实施；粒子 Primitive、Runtime 状态与 Presenter 桥接及存档后的 effect/particle 展示重放已经验证，完整 Sample/Headless smoke 与 Phase 4 收尾仍待完成。
@@ -65,3 +67,5 @@
 - [格式门禁必须建立在干净基线上](lessons/L-20260929-06-format-gate-clean-baseline.md)：Windows 仓库在统一行尾前直接启用 `dotnet format` 会把既有行尾、using 和空白债务混入功能改动；先做独立机械格式化，再启用阻断式门禁。
 - [测试项目不要用独立 MSBuild 进程并行构建共享依赖](lessons/L-20260929-07-parallel-test-shared-obj-lock.md)：多个 `dotnet test` 进程会争用共享生产项目的 `obj` 输出；全仓测试应顺序执行或由单一 MSBuild graph 调度。
 - [项目移动后必须清理旧构建中间产物](lessons/L-20260929-08-project-move-stale-restore-path.md)：移动 .NET 项目后先删除随项目移动的 `bin/obj`，再从新路径 locked restore，避免旧绝对路径缓存重建旧目录和 lock 文件。
+
+- [动态视频图层的加载与帧生命周期](lessons/L-20261010-01-video-layer-lifetime.md)：待加载源先登记，hide/replace 取消加载；帧租约与独立播放 identity 防止晚发布和旧完成误清理。

@@ -140,6 +140,7 @@ public sealed class GameRuntime : IGameRuntime
         {
             Id = layer.Id,
             AssetId = layer.AssetId,
+            IsVideo = layer.IsVideo,
             Flipbook = layer.Flipbook?.Clone(),
             Color = layer.Color,
             Transform = layer.Transform?.Clone() ?? new LayerTransform(),
@@ -241,6 +242,7 @@ public sealed class GameRuntime : IGameRuntime
         {
             Id = layer.Id,
             AssetId = layer.AssetId,
+            IsVideo = layer.IsVideo,
             Flipbook = layer.Flipbook?.Clone(),
             Color = layer.Color,
             Transform = layer.Transform.Clone(),

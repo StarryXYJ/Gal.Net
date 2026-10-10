@@ -232,7 +232,8 @@ public static class SceneRenderPipeline
             DrawWithTransform(canvas, item, width, height, item.ScaleX, item.ScaleY, () => canvas.DrawRect(0, 0, width, height, paint));
             return;
         }
-        var source = item.Texture?.SkBitmap;
+        using var frame = item.FrameSource?.AcquireFrame();
+        var source = (frame?.Texture ?? item.Texture)?.SkBitmap;
         if (source is null) return;
         var sourceRect = GetSource(source, item.Flipbook);
         var sourceSize = new SKSize(sourceRect.Width, sourceRect.Height);
@@ -262,7 +263,8 @@ public static class SceneRenderPipeline
             DrawWithTransform(canvas, item, width, height, item.ScaleX, item.ScaleY, () => canvas.DrawRect(0, 0, width, height, paint));
             return;
         }
-        var source = item.Texture?.SkImage;
+        using var frame = item.FrameSource?.AcquireFrame();
+        var source = (frame?.Texture ?? item.Texture)?.SkImage;
         if (source is null) return;
         var sourceRect = GetSource(source.Width, source.Height, item.Flipbook);
         var sourceSize = new SKSize(sourceRect.Width, sourceRect.Height);

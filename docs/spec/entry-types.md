@@ -74,3 +74,24 @@ flow.wait, variable.set, gallery.unlock
 这些名称和参数只是推荐语义。开发者可以只注册自定义模块，或在自己的 target profile 中定义完全不同的前缀、参数与语义；编辑器不会凭名称假定 `dialogue`、`nvl`、`layer` 或任何其他模块存在。
 
 当前已实现 Runtime 行为的推荐能力见 [runtime.md](runtime.md)。
+
+## 视频图层 entry
+
+`video.play`：
+
+| 参数 | 默认值 | 含义 |
+| --- | --- | --- |
+| `asset` | 必填 | video 资源 ID |
+| `handleId` | `video` | 场景图层 handle；同 handle 新播放替换旧播放 |
+| `blocking` | `true` | 是否等待视频结束；沿用推荐 entry 的 true/false 选项 |
+| `skipPoints` | `[]` | 以秒为单位的 JSON 数字数组，运行时校验为非负、有限、严格递增 |
+| `transform` | `{}` | 与 Layer 相同的位置、旋转和缩放 |
+| `z` | `0` | 场景排序 |
+| `opacity` | `1` | 图层透明度 |
+| `displayMode` | `Uniform` | `Native` / `Tile` / `Fill` / `Uniform` / `UniformToFill` |
+
+阻塞时，推进取严格大于当前实际播放位置与上次请求跳转位置的较大值的下一个时间戳；无下一个或目标达到/超过已知时长即结束。空列表点击直接结束。加载未就绪时不执行 seek；非阻塞播放不消费推进输入。自然播完也解除阻塞。
+
+`video.stop` 接收 `handleId`（默认 `video`），停止对应视频并移除其图层。不同 handle 可独立播放。`layer.hide`、`layer.show`、`layer.replace` 对视频源同样执行释放，旧播放的延迟完成不会清理替换后的图层。停止与自然结束不保留末帧；视频自带声音由视频后端直接输出，尚未接入音频轨道。
+
+视频图层可使用普通 Layer 的变换/透明度动画与纹理效果。阻塞视频存档采用此前稳定快照；非阻塞视频保存源定义并在读档时从头播放，无 presenter 的 Headless 安全完成视频 entry。

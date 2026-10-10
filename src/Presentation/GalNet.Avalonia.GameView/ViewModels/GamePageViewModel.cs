@@ -127,6 +127,8 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         if (existing is null) Layers.Add(item);
         else
         {
+            if (!ReferenceEquals(existing.FrameSource, item.FrameSource)) existing.FrameSource?.Dispose();
+            existing.FrameSource = item.FrameSource;
             existing.Texture = item.Texture;
             existing.Color = item.Color;
             existing.Flipbook = item.Flipbook?.Clone();
@@ -145,12 +147,17 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     public void HideLayer(string id)
     {
         var layer = Layers.FirstOrDefault(candidate => candidate.HandleId == id);
-        if (layer is not null) Layers.Remove(layer);
+        if (layer is not null)
+        {
+            layer.FrameSource?.Dispose();
+            Layers.Remove(layer);
+        }
     }
 
     /// <summary>Removes all host-owned visuals before a new game session is constructed.</summary>
     public void ResetScenePresentation()
     {
+        foreach (var layer in Layers) layer.FrameSource?.Dispose();
         Layers.Clear();
         TextureEffects.Clear();
         foreach (var renderable in SceneRenderables.OfType<IDisposable>()) renderable.Dispose();
@@ -170,6 +177,8 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     {
         var layer = Layers.FirstOrDefault(candidate => candidate.HandleId == id);
         if (layer is null) return;
+        layer.FrameSource?.Dispose();
+        layer.FrameSource = null;
         layer.Texture = texture;
         layer.Color = null;
     }

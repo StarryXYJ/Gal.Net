@@ -25,6 +25,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
     private readonly SampleMediaViews _media;
     private readonly AvaloniaEffectRuntime _effects;
     private readonly AvaloniaAudioPlaybackHost _audio;
+    private readonly AvaloniaVideoPresenter _video;
     private readonly PersistentSceneRestorer _restorer;
     private readonly Func<bool, string?, Task> _updateStateAsync;
     private readonly Func<Task> _runCompletedAsync;
@@ -42,6 +43,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
         SampleMediaViews media,
         AvaloniaEffectRuntime effects,
         AvaloniaAudioPlaybackHost audio,
+        AvaloniaVideoPresenter video,
         Func<bool, string?, Task> updateStateAsync,
         Func<Task> runCompletedAsync,
         Func<Task> resetPresentationAsync,
@@ -54,11 +56,13 @@ internal sealed class SampleGameRunner : IAsyncDisposable
         _media = media;
         _effects = effects;
         _audio = audio;
+        _video = video;
         _restorer = new PersistentSceneRestorer(
             effects,
             pageView.ParticlePresenter,
             pageView.AnimationPresenter,
-            pageView.LayerPresenter);
+            pageView.LayerPresenter,
+            video);
         _updateStateAsync = updateStateAsync;
         _runCompletedAsync = runCompletedAsync;
         _resetPresentationAsync = resetPresentationAsync;
@@ -83,6 +87,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
         SkiaShaderEffectProgramResolver? programs = null;
         AvaloniaEffectRuntime? effects = null;
         AvaloniaAudioPlaybackHost? audio = null;
+        AvaloniaVideoPresenter? video = null;
         CompositeGameView? gameView = null;
         GameEngine? engine = null;
         try
@@ -100,6 +105,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
                 preload.Cache.TotalLoadTime.TotalMilliseconds);
             effects = new AvaloniaEffectRuntime(gameplay, programs: programs);
             audio = new AvaloniaAudioPlaybackHost(resources.Assets);
+            video = new AvaloniaVideoPresenter(resources.Assets, gameplay);
             gameView = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
                 pageView.DialoguePresenter,
                 pageView.LayerPresenter,
@@ -108,7 +114,8 @@ internal sealed class SampleGameRunner : IAsyncDisposable
                 resources.Content.Gallery,
                 pageView.ParticlePresenter,
                 pageView.NvlPresenter,
-                audio));
+                audio,
+                video));
             var settings = new SettingsContainer();
             settings.Set(saveSession.Settings);
             var runtime = new GameRuntime(
@@ -130,6 +137,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
                 media,
                 effects,
                 audio,
+                video,
                 updateStateAsync,
                 runCompletedAsync,
                 resetPresentationAsync,
@@ -145,6 +153,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
             media?.Dispose();
             effects?.Dispose();
             audio?.Dispose();
+            if (video is not null) await video.DisposeAsync();
             if (effects is null)
                 programs?.Dispose();
             throw;
@@ -197,6 +206,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
         _media.Dispose();
         _effects.Dispose();
         _audio.Dispose();
+        await _video.DisposeAsync();
         _prepared = false;
         GameLog.Logger.Debug("Resetting scene presentation before creating the next game engine");
         await _resetPresentationAsync();

@@ -13,6 +13,32 @@ namespace GeneralTest.Runtime;
 public class GameEnginePrimitiveDispatchTests
 {
     [Test]
+    public async Task Video_segment_advances_hold_engine_and_previous_snapshot_until_natural_completion()
+    {
+        var video = new SegmentedVideoPresenter();
+        var markers = 0;
+        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(videoPresenter: video).Concat(
+            [new DefaultEntryModule("test", [Entry("test.mark", context =>
+                new ImmediatePrimitiveInstance(() => markers++, batchId: context.BatchId))])]));
+        using var engine = new GameEngine(GraphWithGroup(
+            Primitive("video.play", new { asset = "clip", skipPoints = new[] { 5, 12 } }),
+            Primitive("test.mark")), view);
+        await engine.AdvanceAsync();
+        Assert.That(engine.CreateSaveData().EntryIndex, Is.Zero);
+        await engine.AdvanceAsync();
+        await engine.AdvanceAsync();
+        Assert.Multiple(() =>
+        {
+            Assert.That(video.Advances, Is.EqualTo(2));
+            Assert.That(markers, Is.Zero);
+            Assert.That(engine.CreateSaveData().SceneState.Layers, Is.Empty);
+        });
+        video.End.TrySetResult();
+        await WaitUntilAsync(() => markers == 1);
+        Assert.That(engine.Runtime.SceneState.Layers, Is.Empty);
+    }
+
+    [Test]
     public async Task AdvanceRunsSynchronousContentUntilTheFirstUnfinishedBlocker()
     {
         var dispatched = new List<string>();
@@ -315,6 +341,15 @@ public class GameEnginePrimitiveDispatchTests
     }
 
     private sealed class TestModule(string id, IEnumerable<PrimitiveEntryBase> entries) : EntryModuleBase(id, entries);
+
+    private sealed class SegmentedVideoPresenter : IVideoPresenter
+    {
+        public TaskCompletionSource End { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public int Advances { get; private set; }
+        public Task PlayVideoAsync(VideoRenderRequest request, CancellationToken cancellationToken) => End.Task.WaitAsync(cancellationToken);
+        public void AdvanceVideo(string playbackId) => Advances++;
+        public void StopVideo(string handleId) => End.TrySetResult();
+    }
 
     private sealed class ControlledInstance : PrimitiveInstance
     {

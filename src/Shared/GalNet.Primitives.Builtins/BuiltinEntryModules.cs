@@ -23,14 +23,15 @@ public static class BuiltinEntryModules
         GalleryCatalog? gallery = null,
         IParticlePresenter? particlePresenter = null,
         INvlPresenter? nvlPresenter = null,
-        IAudioPlaybackHost? audioHost = null) => Array.AsReadOnly<IEntryModule>(
+        IAudioPlaybackHost? audioHost = null,
+        IVideoPresenter? videoPresenter = null) => Array.AsReadOnly<IEntryModule>(
     [
         new BuiltinDialogueModule(dialoguePresenter),
         new BuiltinNvlModule(nvlPresenter),
         new BuiltinLayerModule(layerPresenter),
         new BuiltinAnimationModule(animationPresenter, layerPresenter, effectPresenter, particlePresenter),
         new BuiltinAudioModule(audioHost),
-        new BuiltinVideoModule(),
+        new BuiltinVideoModule(videoPresenter),
         new BuiltinEffectModule(effectPresenter),
         new BuiltinParticleModule(particlePresenter),
         new BuiltinFlowModule(),
@@ -239,12 +240,39 @@ public sealed class BuiltinAudioModule : EntryModuleBase
 
 public sealed class BuiltinVideoModule : EntryModuleBase
 {
-    public BuiltinVideoModule() : base("video",
+    public BuiltinVideoModule(IVideoPresenter? presenter = null) : base("video",
     [
-        BuiltinEntrySchemas.Primitive<PlayVideoEntry>(PlayVideoEntry.ParameterTypes),
-        BuiltinEntrySchemas.Primitive<StopVideoEntry>(StopVideoEntry.ParameterTypes)
+        BuiltinEntrySchemas.Primitive<PlayVideoEntry>(PlayVideoEntry.ParameterTypes, PlayVideoEntry.DefaultValues,
+            PlayVideoEntry.ParameterOptions, context => CreatePlay(context, presenter)),
+        BuiltinEntrySchemas.Primitive<StopVideoEntry>(StopVideoEntry.ParameterTypes, StopVideoEntry.DefaultValues,
+            factory: context => new ImmediatePrimitiveInstance(() =>
+            {
+                var handleId = Arguments.String(context, "handleId");
+                if (context.Runtime.SceneInstances.TryGet<Layer>(handleId, out var layer) && layer.IsVideo)
+                    context.Runtime.SceneInstances.Remove<Layer>(handleId, out _);
+                presenter?.StopVideo(handleId);
+            }, batchId: context.BatchId))
     ])
     { }
+
+    private static PrimitiveInstance CreatePlay(PrimitiveCreateContext context, IVideoPresenter? presenter)
+    {
+        var points = Arguments.Json<double[]>(context, "skipPoints") ?? [];
+        if (points.Any(point => !double.IsFinite(point) || point < 0) ||
+            points.Zip(points.Skip(1), (left, right) => right > left).Any(valid => !valid))
+            throw new InvalidDataException("video.play skipPoints must be finite, non-negative and strictly increasing seconds.");
+        var handleId = Arguments.String(context, "handleId");
+        var asset = Arguments.String(context, "asset");
+        if (string.IsNullOrWhiteSpace(handleId) || string.IsNullOrWhiteSpace(asset))
+            throw new InvalidDataException("video.play requires a handleId and video asset.");
+        var layer = new LayerRenderRequest(handleId, asset,
+            Arguments.Json<LayerTransform>(context, "transform") ?? new LayerTransform(),
+            Arguments.Float(context, "z"), Arguments.Enum(context, "displayMode", LayerDisplayMode.Uniform),
+            Arguments.Float(context, "opacity", 1));
+        return new VideoPrimitiveInstance(context.Runtime, presenter,
+            new VideoRenderRequest(Guid.NewGuid().ToString("N"), layer, points),
+            Arguments.Bool(context, "blocking"), context.BatchId, context.ScopeCancellation);
+    }
 }
 
 public sealed class BuiltinEffectModule : EntryModuleBase
