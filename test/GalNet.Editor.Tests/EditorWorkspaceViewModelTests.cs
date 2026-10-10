@@ -191,7 +191,7 @@ public sealed class EditorWorkspaceViewModelTests
                 new NullServiceProvider(),
                 new EditorExtensionRegistry(),
                 localization);
-            var catalog = BuiltinEntryModules.CreateRecommendedTargetProfile();
+            var catalog = BuiltinSchemas.CreateCatalog();
             var variableDefinitions = new VariableDefinitionService(DocumentService);
             var repository = new FakeDocumentRepository(loaded);
             var mapper = new GraphDocumentMapper();

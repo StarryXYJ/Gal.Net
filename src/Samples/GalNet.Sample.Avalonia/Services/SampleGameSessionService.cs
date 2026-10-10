@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
-using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Avalonia.GameView.Page;
+using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Assets;
@@ -14,7 +14,7 @@ using GalNet.Sample.Avalonia.Debug;
 namespace GalNet.Sample.Avalonia.Services;
 
 /// <summary>Sample host implementation; all game/file-system work stays outside page VMs.</summary>
-internal sealed partial class SampleGameSessionService : ObservableObject, IGameSessionService, IPreparedGameSessionService, IGameGallerySession, IDisposable
+internal sealed partial class SampleGameSessionService : ObservableObject, IGameSessionService, IPreparedGameSessionService, IGameGallerySession, IAsyncDisposable
 {
     private readonly GamePageViewModel _gameplay;
     private readonly GamePage _page;
@@ -249,15 +249,15 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         _gameplay.StatusMessage = $"Loaded slot {slotIndex}.";
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         if (_disposed) return;
-        try { StopAsync().GetAwaiter().GetResult(); }
+        try { await StopAsync(); }
         finally
         {
             _disposed = true;
             _gameplay.InteractionObserved -= OnInteractionObserved;
-            DisposeRunnerAsync().GetAwaiter().GetResult();
+            await DisposeRunnerAsync();
             _saveSession?.Dispose();
             _saveSession = null;
             GalleryResources = null;
@@ -307,26 +307,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             await runner.DisposeAsync();
     }
 
-    private Task ResetScenePresentationAsync()
-    {
-        if (Dispatcher.UIThread.CheckAccess())
-        {
-            _gameplay.ResetScenePresentation();
-            return Task.CompletedTask;
-        }
-
-        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        Dispatcher.UIThread.Post(() =>
-        {
-            try
-            {
-                _gameplay.ResetScenePresentation();
-                completion.TrySetResult();
-            }
-            catch (Exception exception) { completion.TrySetException(exception); }
-        });
-        return completion.Task;
-    }
+    private Task ResetScenePresentationAsync() => OnUiAsync(_gameplay.ResetScenePresentation);
 
     private async Task EnsureRunnerAsync(CancellationToken cancellationToken)
     {
@@ -381,20 +362,9 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private static void OnInteractionObserved(string interaction) =>
         GameLog.Logger.Information("Player interaction: {Interaction}", interaction);
 
-    private static Task OnUiAsync(Action action)
+    private static Task OnUiAsync(Action action) => AvaloniaUiDispatcher.Instance.InvokeAsync(() =>
     {
-        if (Dispatcher.UIThread.CheckAccess())
-        {
-            action();
-            return Task.CompletedTask;
-        }
-
-        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        Dispatcher.UIThread.Post(() =>
-        {
-            try { action(); completion.SetResult(); }
-            catch (Exception exception) { completion.SetException(exception); }
-        });
-        return completion.Task;
-    }
+        action();
+        return Task.CompletedTask;
+    });
 }

@@ -1,91 +1,81 @@
 using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
+using GalNet.Presentation.Abstractions.Execution;
 
 namespace GalNet.Presentation.Abstractions.View;
 
-/// <summary>Default game-scope mount for primitive entry modules.</summary>
+/// <summary>Dispatches validated instructions to independently registered execution modules.</summary>
 public sealed class CompositeGameView : IGameView
 {
-    private readonly IReadOnlyList<IEntryModule> _modules;
-    private readonly IReadOnlyDictionary<string, PrimitiveEntryBase> _entries;
+    private readonly IEntryCatalog _catalog;
+    private readonly IReadOnlyList<IPrimitiveModule> _modules;
+    private readonly Dictionary<string, PrimitiveImplementation> _instructions = new(StringComparer.Ordinal);
     private bool _disposed;
 
-    public CompositeGameView(IEnumerable<IEntryModule> modules)
+    public CompositeGameView(IEntryCatalog catalog, IEnumerable<IPrimitiveModule> modules)
     {
+        ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(modules);
-        (_modules, _entries) = FreezeModules(modules);
-        Primitives = Array.AsReadOnly(_entries.Values.ToArray());
+        _catalog = catalog;
+        _modules = modules.ToArray();
+        foreach (var module in _modules)
+            foreach (var instruction in module.Instructions.Values)
+            {
+                if (!catalog.TryGet(instruction.Type, out var schema) || schema.Kind != EntryKind.Primitive)
+                    throw new InvalidOperationException($"Instruction '{instruction.Type}' has no primitive schema.");
+                if (!_instructions.TryAdd(instruction.Type, instruction))
+                    throw new InvalidOperationException($"Instruction '{instruction.Type}' is already registered.");
+            }
+        Primitives = Array.AsReadOnly(catalog.Definitions.Where(definition => definition.Kind == EntryKind.Primitive).ToArray());
     }
 
-    public IReadOnlyCollection<PrimitiveEntryBase> Primitives { get; }
+    public IReadOnlyCollection<EntryDefinition> Primitives { get; }
+    public bool TryGetEntry(string primitiveType, out EntryDefinition? entry) => _catalog.TryGet(primitiveType, out entry!);
+    public bool CanExecute(string primitiveType) => !_disposed && _instructions.ContainsKey(primitiveType);
 
-    public bool TryGetEntry(string primitiveType, out PrimitiveEntryBase? entry) =>
-        _entries.TryGetValue(primitiveType, out entry);
-
-    public PrimitiveInstance? Dispatch(
-        PrimitiveEntry entry,
-        IGameRuntime runtime,
-        CancellationToken cancellationToken)
+    public PrimitiveInstance Dispatch(PrimitiveEntry entry, IGameRuntime runtime, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(entry);
         ArgumentNullException.ThrowIfNull(runtime);
-        ThrowIfDisposed();
-        if (!_entries.TryGetValue(entry.Type, out var definition))
-            return null;
-
-        var normalizedEntry = new PrimitiveEntry(
-            entry.Type,
-            PrimitiveArgumentHelper.Normalize(definition.Parameters, entry.Arguments),
-            entry.BatchId)
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (!entry.IsGeneric)
+            throw new InvalidOperationException($"Instruction '{entry.Type}' must be compiled before dispatch.");
+        if (!_instructions.TryGetValue(entry.Type, out var implementation))
+            throw new InvalidOperationException($"Instruction '{entry.Type}' has no registered implementation.");
+        var definition = _catalog.Get(entry.Type);
+        var normalized = new PrimitiveEntry(entry.Type,
+            PrimitiveArgumentHelper.Normalize(definition.DynamicParameters!, entry.Arguments), entry.BatchId)
         {
             Id = entry.Id,
             Condition = entry.Condition
         };
-        var context = new PrimitiveCreateContext(definition, normalizedEntry, runtime, cancellationToken);
-        var instance = definition.CreateInstance(context);
-        if (!string.Equals(instance.BatchId, normalizedEntry.BatchId, StringComparison.Ordinal))
-            throw new InvalidOperationException(
-                $"Primitive '{entry.Type}' created an instance with a different BatchId.");
-
+        var instance = implementation.CreateInstance(new PrimitiveCreateContext(definition, normalized, runtime, cancellationToken));
+        if (!string.Equals(instance.BatchId, normalized.BatchId, StringComparison.Ordinal))
+            throw new InvalidOperationException($"Instruction '{entry.Type}' created an instance with a different BatchId.");
         instance.Dispatch();
         return instance;
     }
 
     public void Dispose()
     {
-        if (_disposed)
-            return;
+        if (_disposed) return;
         _disposed = true;
-
-        List<Exception>? exceptions = null;
+        List<Exception>? errors = null;
         foreach (var module in _modules.Reverse())
-        {
             try { module.Dispose(); }
-            catch (Exception exception) { (exceptions ??= []).Add(exception); }
-        }
-        if (exceptions is { Count: > 0 })
-            throw new AggregateException(exceptions);
+            catch (Exception error) { (errors ??= []).Add(error); }
+        if (errors is not null) throw new AggregateException(errors);
     }
 
-    private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
-
-    private static (IReadOnlyList<IEntryModule> Modules, IReadOnlyDictionary<string, PrimitiveEntryBase> Entries)
-        FreezeModules(IEnumerable<IEntryModule> modules)
+    public async ValueTask DisposeAsync()
     {
-        var moduleList = new List<IEntryModule>();
-        var moduleIds = new HashSet<string>(StringComparer.Ordinal);
-        var entries = new Dictionary<string, PrimitiveEntryBase>(StringComparer.Ordinal);
-        foreach (var module in modules)
-        {
-            ArgumentNullException.ThrowIfNull(module);
-            if (!moduleIds.Add(module.Id))
-                throw new InvalidOperationException($"Entry module '{module.Id}' is already mounted.");
-            moduleList.Add(module);
-            foreach (var entry in module.PrimitiveEntries.Values)
-                if (!entries.TryAdd(entry.Name, entry))
-                    throw new InvalidOperationException($"Primitive entry '{entry.Name}' is already mounted.");
-        }
-        return (moduleList.AsReadOnly(), new System.Collections.ObjectModel.ReadOnlyDictionary<string, PrimitiveEntryBase>(entries));
+        if (_disposed) return;
+        _disposed = true;
+        List<Exception>? errors = null;
+        foreach (var module in _modules.Reverse())
+            try { await module.DisposeAsync().ConfigureAwait(false); }
+            catch (Exception error) { (errors ??= []).Add(error); }
+        if (errors is not null) throw new AggregateException(errors);
     }
 }

@@ -47,12 +47,6 @@ public sealed class Layer : AnimatableSceneInstance
 
     public float Opacity { get; set; } = 1;
 
-    /// <summary>
-    /// Effect instance handles attached to this layer. The effect itself remains the
-    /// canonical owner of its target; this list is the layer-local rendering index.
-    /// </summary>
-    public List<string> EffectInstanceIds { get; set; } = [];
-
     public override IReadOnlyList<AnimatableProperty> AnimatableProperties => AnimationProperties;
 
     /// <summary>Returns the image region selected for the current render frame.</summary>

@@ -28,6 +28,6 @@ public sealed class ProjectGameContentProvider : IGameContentProvider
         using var archive = assets.OpenArchive("assets");
         var gallery = new GalleryCatalogCompiler(_resourceTypes, _galleryTypes)
             .Compile(archive.AssetIds.Select(id => archive.GetAsset(id)!.Metadata));
-        return new GameContent { Graph = graph, AssetRoot = assetsDirectory, Gallery = gallery };
+        return new GameContent { Graph = graph, AssetRoot = assetsDirectory, Gallery = gallery, Settings = GameProjectSettingsLoader.Load(_directory) };
     }, cancellationToken);
 }

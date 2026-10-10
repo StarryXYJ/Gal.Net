@@ -5,7 +5,6 @@ using GalNet.Core.Runtime;
 using GalNet.Core.Services;
 using GalNet.Core.Settings;
 using GalNet.Presentation.Abstractions.View;
-using GalNet.Runtime.Logging;
 using GalNet.Runtime.Progress;
 using GalNet.Runtime.Runtime;
 
@@ -20,7 +19,8 @@ public sealed class GameEngine : IDisposable
     private readonly IChoicePresenter? _choicePresenter;
     private readonly IGameProgressService? _progress;
     private readonly SemaphoreSlim _dispatchGate = new(1, 1);
-    private readonly CancellationTokenSource _scopeCancellation = new();
+    private CancellationTokenSource _scopeCancellation = new();
+    private IGameRuntime _dispatchRuntime;
     private readonly List<ActivePrimitive> _active = [];
     private GameSnapshot _lastStableSnapshot;
     private PendingChoice? _pendingChoice;
@@ -55,6 +55,14 @@ public sealed class GameEngine : IDisposable
         _graph = graph ?? throw new ArgumentNullException(nameof(graph));
         _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
         _view = view ?? throw new ArgumentNullException(nameof(view));
+        _dispatchRuntime = new RunScopedRuntime(_runtime, _scopeCancellation.Token);
+        var entries = graph.Nodes.OfType<Group>().SelectMany(group => group.Entries).ToArray();
+        if (entries.Any(entry => entry is not PrimitiveEntry { IsGeneric: true }))
+            throw new InvalidOperationException("The game graph must contain compiled generic primitives, not authoring entries.");
+        var missing = entries.OfType<PrimitiveEntry>()
+            .Where(entry => !_view.CanExecute(entry.Type)).Select(entry => entry.Type).Distinct().ToArray();
+        if (missing.Length > 0)
+            throw new InvalidOperationException($"Game instructions have no implementation: {string.Join(", ", missing)}.");
         _progress = progress;
         _choicePresenter = choicePresenter;
         _lastStableSnapshot = _runtime.CreateSnapshot();
@@ -62,7 +70,7 @@ public sealed class GameEngine : IDisposable
 
     public event Action<GameSnapshot>? CheckpointCreated;
     public IGameRuntime Runtime => _runtime;
-    public GameSnapshot LastStableSnapshot => _lastStableSnapshot;
+    public GameSnapshot LastStableSnapshot => SnapshotCopy.Clone(_lastStableSnapshot);
     public string CurrentNodeId => _runtime.CurrentNodeId;
     public int EntryIndex => _runtime.EntryIndex;
     public bool IsRunning { get; private set; }
@@ -104,19 +112,27 @@ public sealed class GameEngine : IDisposable
         }
     }
 
-    public GameSnapshot CreateSaveData() => _lastStableSnapshot;
+    public GameSnapshot CreateSaveData() => SnapshotCopy.Clone(_lastStableSnapshot);
 
     public void RestoreFrom(GameSnapshot data)
     {
         ArgumentNullException.ThrowIfNull(data);
         ThrowIfDisposed();
+        if (data.Version != GameSnapshot.CurrentFormatVersion)
+            throw new InvalidDataException($"Unsupported save version '{data.Version}'.");
+        data = SnapshotCopy.Clone(data);
         _dispatchGate.Wait();
         try
         {
             CancelPendingChoice();
             ClearActive();
+            var previousScope = _scopeCancellation;
+            previousScope.Cancel();
+            previousScope.Dispose();
             _runtime.RestoreFrom(data);
-            _lastStableSnapshot = data;
+            _scopeCancellation = new CancellationTokenSource();
+            _dispatchRuntime = new RunScopedRuntime(_runtime, _scopeCancellation.Token);
+            _lastStableSnapshot = _runtime.CreateSnapshot();
             _executingGroupNodeId = null;
             _flowError = null;
             IsRunning = true;
@@ -194,7 +210,7 @@ public sealed class GameEngine : IDisposable
             if (_runtime.EvaluateCondition(entry.Condition) && entry is PrimitiveEntry primitive)
                 instance = Dispatch(group, primitive);
             else if (entry is not PrimitiveEntry)
-                GameLog.Logger.Warning("Runtime ignored composite entry '{EntryType}'.", entry.Type);
+                throw new InvalidOperationException($"Runtime cannot execute authoring entry '{entry.Type}'.");
 
             _runtime.SetEntryIndex(_runtime.EntryIndex + 1);
             if (instance is not null)
@@ -213,33 +229,16 @@ public sealed class GameEngine : IDisposable
         UpdateLastStableSnapshot();
     }
 
-    private PrimitiveInstance? Dispatch(Group group, PrimitiveEntry entry)
+    private PrimitiveInstance Dispatch(Group group, PrimitiveEntry entry)
     {
         if (!entry.IsGeneric)
-        {
-            GameLog.Logger.Warning("Runtime ignored non-generic primitive '{EntryType}'.", entry.Type);
-            return null;
-        }
+            throw new InvalidOperationException($"Runtime cannot execute authoring entry '{entry.Type}'.");
 
-        PrimitiveInstance? instance;
-        try
-        {
-            instance = _view.Dispatch(entry, _runtime, _scopeCancellation.Token);
-        }
-        catch (OperationCanceledException) when (_scopeCancellation.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            GameLog.Logger.Error(exception, "Primitive '{PrimitiveType}' failed to dispatch and execution continued.", entry.Type);
-            return null;
-        }
+        var instance = _view.Dispatch(entry, _dispatchRuntime, _scopeCancellation.Token);
 
         if (instance is null)
         {
-            GameLog.Logger.Warning("Primitive '{PrimitiveType}' is not registered.", entry.Type);
-            return null;
+            throw new InvalidOperationException($"Instruction '{entry.Type}' returned no instance.");
         }
 
         if (entry.Type == "dialogue.text")
@@ -466,7 +465,7 @@ public sealed class GameEngine : IDisposable
         if (HasBlockingInstance() || _pendingChoice is not null)
             return;
         _lastStableSnapshot = _runtime.CreateSnapshot();
-        CheckpointCreated?.Invoke(_lastStableSnapshot);
+        CheckpointCreated?.Invoke(SnapshotCopy.Clone(_lastStableSnapshot));
     }
 
     private void CancelPendingChoice()

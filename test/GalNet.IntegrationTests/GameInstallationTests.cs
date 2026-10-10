@@ -28,11 +28,15 @@ public sealed class GameInstallationTests
             await File.WriteAllBytesAsync(Path.Combine(project, "Assets", "hero.png"), "hero"u8.ToArray());
             await File.WriteAllTextAsync(Path.Combine(project, "Assets", "hero.png.meta"), """{"id":"hero","type":"sprite","path":"hero.png","filter":"bilinear","compress":"none"}""");
             await File.WriteAllTextAsync(Path.Combine(project, "Graph", "graph.json"), """{"name":"export-test","rootNodeId":"","nodes":[],"edges":[]}""");
-            await File.WriteAllTextAsync(Path.Combine(project, "settings.json"), "{}");
+            await File.WriteAllTextAsync(Path.Combine(project, "settings.json"), """
+                { "audioTracks": [ { "id": "ambient", "bus": "bgm", "defaultGain": 0.3, "maxVoices": 2, "overflowPolicy": "StopOldest" } ] }
+                """);
 
             var development = await GameInstallation.OpenAsync(project);
             Assert.That(development.IsPackaged, Is.False);
-            Assert.That((await development.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync()).Graph.Name, Is.EqualTo("export-test"));
+            var developmentContent = await development.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync();
+            Assert.That(developmentContent.Graph.Name, Is.EqualTo("export-test"));
+            Assert.That(developmentContent.Settings.AudioTracks.Single().Id, Is.EqualTo("ambient"));
             using (var sourceAssets = new AssetManager(development.CreateAssetProviders(resourceTypes)))
                 Assert.That((await sourceAssets.GetFileAsync("hero"))?.Path, Is.EqualTo("hero.png"));
 
@@ -43,7 +47,10 @@ public sealed class GameInstallationTests
             Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "gallery.json")), Is.True);
             Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "Graph", "graph.json")), Is.True);
             Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "Assets", "Paks", "000-base.pak")), Is.True);
-            Assert.That((await installation.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync()).Graph.Name, Is.EqualTo("export-test"));
+            var installedContent = await installation.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync();
+            Assert.That(installedContent.Graph.Name, Is.EqualTo("export-test"));
+            Assert.That(installedContent.Settings.AudioTracks.Single().DefaultGain, Is.EqualTo(.3f));
+            Assert.That(installedContent.Settings.AudioTracks.Single().OverflowPolicy, Is.EqualTo(GalNet.Core.Audio.AudioOverflowPolicy.StopOldest));
 
             using var assets = new AssetManager(installation.CreateAssetProviders(resourceTypes));
             Assert.That((await assets.GetFileAsync("hero"))?.Path, Is.EqualTo("hero.png"));

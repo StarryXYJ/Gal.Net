@@ -303,7 +303,6 @@
           "GalNet.Avalonia.Rendering": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
-          "GalNet.Presentation.Defaults": "[1.0.0, )",
           "Irihi.Ursa": "[2.1.0, )",
           "LibVLCSharp": "[3.10.0, )",
           "LibVLCSharp.Avalonia": "[3.10.0, )",
@@ -346,13 +345,6 @@
           "GalNet.Core": "[1.0.0, )"
         }
       },
-      "galnet.presentation.defaults": {
-        "type": "Project",
-        "dependencies": {
-          "GalNet.Presentation.Abstractions": "[1.0.0, )",
-          "LibVLCSharp": "[3.10.0, )"
-        }
-      },
       "galnet.primitives.builtins": {
         "type": "Project",
         "dependencies": {
@@ -384,7 +376,6 @@
           "GalNet.Avalonia.GameView": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
-          "GalNet.Presentation.Defaults": "[1.0.0, )",
           "GalNet.Primitives.Builtins": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )",
           "GalNet.Storage.FileSystem": "[1.0.0, )",

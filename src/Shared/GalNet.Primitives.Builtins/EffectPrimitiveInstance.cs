@@ -1,6 +1,7 @@
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
 using GalNet.Presentation.Abstractions.View;
+using GalNet.Runtime.Logging;
 
 namespace GalNet.Primitives.Builtins;
 
@@ -47,8 +48,7 @@ public sealed class ApplyEffectPrimitiveInstance : PrimitiveInstance
         }
         catch (OperationCanceledException) when (_scopeCancellation.IsCancellationRequested)
         { }
-        catch
-        { }
+        catch (Exception error) { GameLog.Logger.Warning(error, "Primitive presentation failed"); }
         finally
         {
             TryComplete();
@@ -99,8 +99,7 @@ public sealed class StopEffectPrimitiveInstance : PrimitiveInstance
         }
         catch (OperationCanceledException) when (_scopeCancellation.IsCancellationRequested)
         { }
-        catch
-        { }
+        catch (Exception error) { GameLog.Logger.Warning(error, "Primitive presentation failed"); }
         finally
         {
             TryComplete();

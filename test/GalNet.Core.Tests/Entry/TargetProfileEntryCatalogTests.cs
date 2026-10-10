@@ -84,7 +84,7 @@ public class TargetProfileEntryCatalogTests
     }
 
     private static DefaultPrimitiveEntryBase Primitive(string type, DynamicParameterTable parameters) =>
-        new DefaultPrimitiveEntryBase(type, parameters, static _ => new ImmediatePrimitiveInstance());
+        new DefaultPrimitiveEntryBase(type, parameters);
 
     private sealed class TestEntryModule(string id, IEnumerable<PrimitiveEntryBase> entries)
         : EntryModuleBase(id, entries);

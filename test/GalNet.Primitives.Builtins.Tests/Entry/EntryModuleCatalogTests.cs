@@ -1,125 +1,95 @@
+using System.Text.Json;
 using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
+using GalNet.Runtime.Runtime;
 
 namespace GeneralTest.Entry;
 
 public class EntryModuleTests
 {
     [Test]
-    public void ModuleFreezesBothIndependentTables()
+    public void BuiltinContractsValidateCustomImplementationsBeforeFactoryInvocation()
     {
-        var primitives = new List<PrimitiveEntryBase> { Primitive("custom.first") };
-        var composites = new List<CompositeEntryBase> { Composite("authoring.first") };
+        var called = false;
+        using var view = new GameRegistration().AddBuiltinSchemas()
+            .RegisterInstruction("video.play", context =>
+            {
+                called = true;
+                return new ImmediatePrimitiveInstance(() => { }, batchId: context.BatchId);
+            }).BuildView();
+        Assert.Throws<InvalidDataException>(() => view.Dispatch(new PrimitiveEntry("video.play",
+            JsonSerializer.SerializeToElement(new { asset = "clip", skipPoints = new[] { 4, 2 } })),
+            new GameRuntime(null), CancellationToken.None));
+        Assert.That(called, Is.False);
+    }
 
-        var module = new TestEntryModule("authoring", primitives, composites);
-        primitives.Add(Primitive("custom.second"));
-        composites.Add(Composite("authoring.second"));
+    [Test]
+    public void AnimationContractRejectsUnknownEmbeddedEvents()
+    {
+        var schema = BuiltinSchemas.CreateCatalog().Get("animation.play");
+        Assert.Throws<InvalidDataException>(() => PrimitiveArgumentHelper.Normalize(schema.DynamicParameters!,
+            JsonSerializer.SerializeToElement(new
+            {
+                plan = new { durationFrames = 1, events = new[] { new { frame = 0, type = "custom.unsupported", parameters = new { } } } }
+            })));
+    }
+    [Test]
+    public void SchemaOnlyContainsAllBuiltinContractsAndNoRuntimeFactories()
+    {
+        using var registration = new GameRegistration().AddBuiltinSchemas();
+        var catalog = registration.BuildCatalog();
+        Assert.That(catalog.TryGet("audio.play", out _), Is.True);
+        Assert.That(catalog.TryGet("video.play", out _), Is.True);
+        Assert.That(catalog.Get("transition.crossFade").Kind, Is.EqualTo(EntryKind.Composite));
+        Assert.That(typeof(PrimitiveEntryBase).GetMethod("CreateInstance"), Is.Null);
+        Assert.That(typeof(IEntryModule).GetInterfaces(), Does.Not.Contain(typeof(IDisposable)));
+        using var view = registration.BuildView();
+        Assert.That(view.CanExecute("variable.set"), Is.False);
+    }
 
-        Assert.That(module.PrimitiveEntries.Keys, Is.EqualTo(["custom.first"]));
-        Assert.That(module.CompositeEntries.Keys, Is.EqualTo(["authoring.first"]));
+    [Test]
+    public void PartialBuiltinImplementationDoesNotRegisterOtherDomains()
+    {
+        using var registration = new GameRegistration().AddBuiltinSchemas().AddBuiltinVariables();
+        using var view = registration.BuildView();
+        var runtime = new GameRuntime(null);
+        view.Dispatch(new PrimitiveEntry("variable.set", JsonSerializer.SerializeToElement(new { target = "score", expression = "3" })),
+            runtime, CancellationToken.None);
+        Assert.That(runtime.GetVariable("score")!.AsInt(), Is.EqualTo(3));
+        Assert.That(view.CanExecute("audio.play"), Is.False);
+    }
+
+    [Test]
+    public void CustomImplementationCanUseBuiltinSchemaWithoutBuiltinExecution()
+    {
+        var calls = 0;
+        using var registration = new GameRegistration().AddBuiltinSchemas()
+            .RegisterInstruction("audio.play", context => new ImmediatePrimitiveInstance(() => calls++, batchId: context.BatchId));
+        using var view = registration.BuildView();
+        view.Dispatch(new PrimitiveEntry("audio.play", JsonSerializer.SerializeToElement(new { asset = "clip" })), new GameRuntime(null), CancellationToken.None);
+        Assert.That(calls, Is.EqualTo(1));
+        Assert.That(view.CanExecute("variable.set"), Is.False);
+    }
+
+    [Test]
+    public void MainBuiltinRegistrationAndSeparateRegistrationExposeTheSameInstructions()
+    {
+        using var main = new GameRegistration().AddBuiltins().BuildView();
+        using var separate = new GameRegistration().AddBuiltinSchemas().AddBuiltinImplementations().BuildView();
+        Assert.That(main.Primitives.Select(entry => entry.Type), Is.EquivalentTo(separate.Primitives.Select(entry => entry.Type)));
+        Assert.That(main.Primitives.All(entry => main.CanExecute(entry.Type)), Is.True);
+    }
+
+    [Test]
+    public void SchemaModuleFreezesItsTablesAndRejectsDuplicateFullIds()
+    {
+        var entries = new List<PrimitiveEntryBase> { new DefaultPrimitiveEntryBase("custom.first", DynamicParameterTable.Empty) };
+        var module = new DefaultEntryModule("custom", entries);
+        entries.Clear();
+        Assert.That(module.PrimitiveEntries, Has.Count.EqualTo(1));
         Assert.That(() => ((IDictionary<string, PrimitiveEntryBase>)module.PrimitiveEntries).Clear(), Throws.TypeOf<NotSupportedException>());
-        Assert.That(() => ((IDictionary<string, CompositeEntryBase>)module.CompositeEntries).Clear(), Throws.TypeOf<NotSupportedException>());
+        Assert.That(() => new TargetProfileEntryCatalog([module, module]), Throws.InvalidOperationException);
     }
-
-    [Test]
-    public void ModuleRejectsDuplicateOrCrossKindDefinitions()
-    {
-        Assert.That(
-            () => new TestEntryModule("test", [Primitive("custom.duplicate"), Primitive("custom.duplicate")]),
-            Throws.ArgumentException.With.Message.Contains("more than once"));
-        Assert.That(
-            () => new TestEntryModule("test", [Primitive("custom.same")], [Composite("custom.same")]),
-            Throws.ArgumentException.With.Message.Contains("both primitive and composite"));
-    }
-
-    [Test]
-    public void DefaultPrimitiveDefinitionCallsItsFactoryForEveryInvocation()
-    {
-        var created = 0;
-        var entry = new DefaultPrimitiveEntryBase(
-            "custom.pulse",
-            DynamicParameterTable.Empty,
-            _ => { created++; return new ImmediatePrimitiveInstance(); });
-        var compiled = new PrimitiveEntry(
-            "custom.pulse",
-            System.Text.Json.JsonSerializer.SerializeToElement(new { }),
-            "batch");
-        var context = new PrimitiveCreateContext(
-            entry,
-            compiled,
-            new GalNet.Runtime.Runtime.GameRuntime(null),
-            CancellationToken.None);
-
-        Assert.That(entry.CreateInstance(context), Is.Not.Null);
-        Assert.That(entry.CreateInstance(context), Is.Not.Null);
-        Assert.That(created, Is.EqualTo(2));
-    }
-
-    [Test]
-    public void ProfileMergesModuleTablesAndRejectsCrossModuleTypeCollisions()
-    {
-        var profile = new TargetProfileEntryCatalog(
-        [
-            new TestEntryModule("runtime", [Primitive("custom.pulse")]),
-            new TestEntryModule("authoring", compositeEntries: [Composite("authoring.expand")])
-        ]);
-
-        Assert.That(profile.Definitions.Select(item => item.Type), Is.EquivalentTo(["custom.pulse", "authoring.expand"]));
-        Assert.That(
-            () => new TargetProfileEntryCatalog(
-            [
-                new TestEntryModule("one", [Primitive("custom.pulse")]),
-                new TestEntryModule("two", [Primitive("custom.pulse")])
-            ]),
-            Throws.InvalidOperationException.With.Message.Contains("already present"));
-    }
-
-    [Test]
-    public void RecommendedAnimationModuleContainsPrimitiveAndCompositeTables()
-    {
-        var modules = BuiltinEntryModules.CreateRecommended();
-        var animation = modules.Single(module => module.Id == "animation");
-
-        Assert.That(animation.PrimitiveEntries.Keys, Is.EquivalentTo(["animation.animate", "animation.play", "animation.stop"]));
-        Assert.That(animation.CompositeEntries, Is.Not.Empty);
-        Assert.That(animation.CompositeEntries.Keys, Does.Contain("transition.crossFade"));
-        Assert.That(() => ((IList<IEntryModule>)modules).Clear(), Throws.TypeOf<NotSupportedException>());
-    }
-
-    [Test]
-    public void MountedViewAndTargetProfileUseTheSamePrimitiveDefinition()
-    {
-        using var module = new TestEntryModule("runtime", [Primitive("runtime.pulse")], [Composite("authoring.expand")]);
-        using var view = new CompositeGameView([module]);
-        var profile = new TargetProfileEntryCatalog([module]);
-
-        Assert.That(view.TryGetEntry("runtime.pulse", out var runtimeEntry), Is.True);
-        Assert.That(runtimeEntry, Is.SameAs(module.PrimitiveEntries["runtime.pulse"]));
-        Assert.That(profile.Get("runtime.pulse").DynamicParameters, Is.SameAs(runtimeEntry!.Parameters));
-        Assert.That(profile.Get("authoring.expand").Kind, Is.EqualTo(EntryKind.Composite));
-    }
-
-    private static PrimitiveEntryBase Primitive(string type) => new DefaultPrimitiveEntryBase(
-        type,
-        DynamicParameterTable.Empty,
-        static _ => new ImmediatePrimitiveInstance());
-
-    private static CompositeEntryBase Composite(string type) => new DefaultCompositeEntryBase(
-        type,
-        DynamicParameterTable.Empty,
-        () => new TestCompositeEntry(type));
-
-    private sealed class TestCompositeEntry(string type) : CompositeEntry
-    {
-        public override string Type => type;
-        public override IReadOnlyList<PrimitiveEntry> Compile(EntryCompileContext context) => [];
-    }
-
-    private sealed class TestEntryModule(
-        string id,
-        IEnumerable<PrimitiveEntryBase>? primitiveEntries = null,
-        IEnumerable<CompositeEntryBase>? compositeEntries = null)
-        : EntryModuleBase(id, primitiveEntries, compositeEntries);
 }

@@ -11,7 +11,6 @@ using GalNet.Core.Runtime;
 using GalNet.Core.Settings;
 using GalNet.Presentation.Abstractions.Runtime;
 using GalNet.Presentation.Abstractions.View;
-using GalNet.Presentation.Defaults;
 using GalNet.Primitives.Builtins;
 using GalNet.Rendering.Scene;
 using GalNet.Runtime.Content;
@@ -282,7 +281,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
         _pageView = new AvaloniaGamePageView(_gameplay, _page, _layers);
         _effects = new AvaloniaEffectRuntime(_gameplay);
         _audio = new AvaloniaAudioPlaybackHost(_context.Assets);
-        var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
+        var view = new GameRegistration().AddBuiltins(
             _pageView.DialoguePresenter,
             _pageView.LayerPresenter,
             _pageView.AnimationPresenter,
@@ -290,7 +289,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
             content.Gallery,
             _pageView.ParticlePresenter,
             _pageView.NvlPresenter,
-            _audio));
+            _audio).BuildView();
         var runtime = new GameRuntime(null, content.Graph.RootNodeId, new SettingsContainer(), _context.Variables);
         _engine = new GameEngine(content.Graph, runtime, view, _context.Progress, _pageView.ChoicePresenter);
         _pageView.AdvanceRequested += OnAdvanceRequested;

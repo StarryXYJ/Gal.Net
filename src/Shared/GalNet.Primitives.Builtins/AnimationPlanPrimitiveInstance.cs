@@ -3,6 +3,7 @@ using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
 using GalNet.Core.Scene;
 using GalNet.Presentation.Abstractions.View;
+using GalNet.Runtime.Logging;
 
 namespace GalNet.Primitives.Builtins;
 
@@ -19,7 +20,11 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance
     private readonly IndexedPlanEvent[] _events;
     private readonly bool[] _notifiedEvents;
     private readonly CancellationTokenSource _presentationCancellation = new();
+    private readonly SemaphoreSlim _notificationGate = new(1, 1);
+    private bool _skipRequested;
     private bool _skippable;
+    private AnimationPlaybackInstance? _playback;
+    private long _eventCycle;
 
     public AnimationPlanPrimitiveInstance(
         IGameRuntime runtime,
@@ -61,8 +66,10 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance
     protected override void OnDispatch()
     {
         BuiltinRuntimeActions.ApplyPlanStableState(_runtime, _plan);
+        _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_plan.PlaybackHandleId, out _playback!);
         if (_animationPresenter is null)
         {
+            _presentationCancellation.Dispose();
             TryComplete();
             return;
         }
@@ -77,13 +84,13 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance
             if (!_skippable || IsCompleted)
                 return;
             _skippable = false;
+            _skipRequested = true;
+            _presentationCancellation.Cancel();
         }
 
-        _presentationCancellation.Cancel();
         _animationPresenter?.CompleteAnimationImmediately(_plan.PlaybackHandleId);
         BuiltinRuntimeActions.ApplyPlanTerminalState(_runtime, _plan);
-        _ = NotifyRemainingEventsAsync(CancellationToken.None);
-        TryComplete();
+        _ = CompleteSkipAsync();
     }
 
     private async Task ObservePresentationAsync()
@@ -94,24 +101,23 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance
                 _scopeCancellation,
                 _presentationCancellation.Token);
             await NotifyEventsThroughFrameAsync(0, linked.Token).ConfigureAwait(false);
-            var animation = _animationPresenter!.PlayAnimationPlanAsync(_plan, linked.Token);
-            var events = NotifyFutureEventsAsync(linked.Token);
-            await animation.ConfigureAwait(false);
-            if (_plan.LoopMode != AnimationLoopMode.Once)
-                _presentationCancellation.Cancel();
-            await events.ConfigureAwait(false);
+            await _animationPresenter!.PlayAnimationPlanAsync(
+                _plan, linked.Token, elapsedFrames => NotifyPlaybackEventsAsync(elapsedFrames, linked.Token)).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (_scopeCancellation.IsCancellationRequested || _presentationCancellation.IsCancellationRequested)
         { }
-        catch
-        { }
+        catch (Exception error)
+        { GameLog.Logger.Warning(error, "Animation plan {PlaybackId} presentation failed", _plan.PlaybackHandleId); }
         finally
         {
-            BuiltinRuntimeActions.StopAnimationState(_runtime, _plan.PlaybackHandleId);
+            if (_playback is not null && _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_plan.PlaybackHandleId, out var current) && ReferenceEquals(current, _playback))
+                BuiltinRuntimeActions.StopAnimationState(_runtime, _plan.PlaybackHandleId);
             lock (_gate)
+            {
                 _skippable = false;
-            TryComplete();
-            _presentationCancellation.Dispose();
+                _presentationCancellation.Dispose();
+            }
+            if (!_skipRequested) TryComplete();
         }
     }
 
@@ -121,40 +127,29 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance
             await NotifyEventAsync(item, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task NotifyFutureEventsAsync(CancellationToken cancellationToken)
+    private async Task CompleteSkipAsync()
     {
-        while (true)
+        try { await NotifyRemainingEventsAsync(_scopeCancellation).ConfigureAwait(false); }
+        catch (OperationCanceledException) when (_scopeCancellation.IsCancellationRequested) { }
+        finally { TryComplete(); }
+    }
+
+    // The presenter supplies its own elapsed frame count before sampling tracks.
+    // Events and values therefore share one monotonic playback clock, including stalls.
+    private async Task NotifyPlaybackEventsAsync(double elapsedFrames, CancellationToken cancellationToken)
+    {
+        var cycleFrames = _plan.LoopMode == AnimationLoopMode.PingPong
+            ? _plan.DurationFrames * 2d : _plan.DurationFrames;
+        var cycle = _plan.LoopMode == AnimationLoopMode.Once || cycleFrames <= 0
+            ? 0 : (long)(elapsedFrames / cycleFrames);
+        for (; _eventCycle < cycle; _eventCycle++)
         {
-            var started = DateTimeOffset.UtcNow;
-            foreach (var item in _events.Where(item => item.Event.Frame > 0))
-            {
-                var delay = TimeSpan.FromSeconds(item.Event.Frame / (double)Math.Max(1, _plan.FrameRate)) -
-                            (DateTimeOffset.UtcNow - started);
-                if (delay > TimeSpan.Zero)
-                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-                await NotifyEventAsync(item, cancellationToken).ConfigureAwait(false);
-            }
-
-            if (_plan.LoopMode == AnimationLoopMode.Once)
-                return;
-            if (_plan.DurationFrames <= 0)
-            {
-                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
-                return;
-            }
-
-            var cycleFrames = _plan.LoopMode == AnimationLoopMode.PingPong
-                ? _plan.DurationFrames * 2d
-                : _plan.DurationFrames;
-            var remainder = TimeSpan.FromSeconds(cycleFrames / Math.Max(1, _plan.FrameRate)) -
-                            (DateTimeOffset.UtcNow - started);
-            if (remainder > TimeSpan.Zero)
-                await Task.Delay(remainder, cancellationToken).ConfigureAwait(false);
-
-            lock (_gate)
-                Array.Clear(_notifiedEvents);
-            await NotifyEventsThroughFrameAsync(0, cancellationToken).ConfigureAwait(false);
+            await NotifyEventsThroughFrameAsync(_plan.DurationFrames, cancellationToken).ConfigureAwait(false);
+            lock (_gate) Array.Clear(_notifiedEvents);
         }
+        var frame = _plan.LoopMode == AnimationLoopMode.Once || cycleFrames <= 0
+            ? elapsedFrames : elapsedFrames % cycleFrames;
+        await NotifyEventsThroughFrameAsync((int)Math.Min(_plan.DurationFrames, frame), cancellationToken).ConfigureAwait(false);
     }
 
     private async Task NotifyRemainingEventsAsync(CancellationToken cancellationToken)
@@ -169,28 +164,32 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance
 
     private async Task NotifyEventAsync(IndexedPlanEvent item, CancellationToken cancellationToken)
     {
-        lock (_gate)
-        {
-            if (_notifiedEvents[item.Index])
-                return;
-            _notifiedEvents[item.Index] = true;
-        }
-
+        await _notificationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            await BuiltinRuntimeActions.NotifyPlanEventAsync(
-                item.Event,
-                _layerPresenter,
-                _effectPresenter,
-                _particlePresenter,
-                cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            lock (_gate)
+            {
+                if (_notifiedEvents[item.Index]) return;
+                _notifiedEvents[item.Index] = true;
+            }
+            try
+            {
+                await BuiltinRuntimeActions.NotifyPlanEventAsync(
+                    item.Event, _layerPresenter, _effectPresenter, _particlePresenter,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                lock (_gate) _notifiedEvents[item.Index] = false;
+                throw;
+            }
+            catch (Exception error)
+            {
+                GameLog.Logger.Warning(error, "Animation plan event {EntryType} presentation failed", item.Event.Type);
+            }
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch
-        { }
+        finally { _notificationGate.Release(); }
     }
 
     private sealed record IndexedPlanEvent(int Index, AnimationPlanEventDefinition Event);

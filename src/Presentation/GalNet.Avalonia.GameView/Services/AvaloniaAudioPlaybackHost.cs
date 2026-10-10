@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Channels;
 using GalNet.Core.Assets;
 using GalNet.Core.Audio;
 using GalNet.Presentation.Abstractions.Audio;
@@ -9,13 +10,21 @@ using LibVlcMedia = LibVLCSharp.Shared.Media;
 namespace GalNet.Avalonia.GameView.Services;
 
 /// <summary>LibVLC-backed audio host. Logical queue and track ownership remains in AudioRuntime.</summary>
-public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost
+public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost, IAsyncDisposable
 {
     private readonly object _gate = new();
     private readonly IAssetManager _assets;
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "GalNet", "Audio", Guid.NewGuid().ToString("N"));
     private readonly Dictionary<string, Voice> _voices = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _paths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, PendingLoad> _pending = new(StringComparer.Ordinal);
+    private readonly List<Task> _loads = [];
+    private readonly CancellationTokenSource _shutdown = new();
+    private readonly SemaphoreSlim _materialization = new(1, 1);
+    private readonly Channel<(Voice Voice, AudioBackendEventKind Kind, string? Message)> _terminalEvents =
+        Channel.CreateUnbounded<(Voice, AudioBackendEventKind, string?)>(new UnboundedChannelOptions { SingleReader = true });
+    private readonly Task _terminalWorker;
+    private Task? _disposeTask;
     private readonly AvaloniaAudioSEffectRegistry _effects;
     private readonly LibVLC? _libVlc;
     private bool _disposed;
@@ -38,6 +47,7 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost
             Capabilities = AudioBackendCapabilities.None;
             SEffects = SEffectCatalog.Empty;
         }
+        _terminalWorker = Task.Run(DrainTerminalEventsAsync);
     }
 
     public AudioBackendCapabilities Capabilities { get; }
@@ -51,7 +61,7 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost
         switch (request.Action)
         {
             case AudioBackendAction.Start:
-                await StartAsync(request, cancellationToken).ConfigureAwait(false);
+                await StartTrackedAsync(request, cancellationToken).ConfigureAwait(false);
                 break;
             case AudioBackendAction.Stop:
                 Stop(request, request.FadeSeconds);
@@ -74,18 +84,65 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost
         }
     }
 
-    public void Dispose()
+    public void Dispose() => _ = DisposeAsync().AsTask();
+
+    public ValueTask DisposeAsync()
     {
         lock (_gate)
         {
-            if (_disposed) return;
+            if (_disposeTask is not null) return new ValueTask(_disposeTask);
             _disposed = true;
+            _shutdown.Cancel();
             foreach (var voice in _voices.Values) voice.Dispose();
             _voices.Clear();
+            _terminalEvents.Writer.TryComplete();
+            _disposeTask = FinishDisposalAsync(_loads.ToArray());
+            return new ValueTask(_disposeTask);
+        }
+    }
+
+    private async Task FinishDisposalAsync(Task[] loads)
+    {
+        // Ensure cancellation callbacks have left the disposal lock before cleanup.
+        await Task.Yield();
+        try { await Task.WhenAll(loads.Append(_terminalWorker)).ConfigureAwait(false); }
+        finally
+        {
             _paths.Clear();
             _libVlc?.Dispose();
+            _materialization.Dispose();
+            _shutdown.Dispose();
+            if (Directory.Exists(_directory)) Directory.Delete(_directory, recursive: true);
         }
-        if (Directory.Exists(_directory)) Directory.Delete(_directory, recursive: true);
+    }
+
+    private Task StartTrackedAsync(AudioBackendRequest request, CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_pending.TryGetValue(request.VoiceId, out var previous)) previous.Cancellation.Cancel();
+            var pending = new PendingLoad(request.Generation,
+                CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdown.Token));
+            _pending[request.VoiceId] = pending;
+            var task = ObserveStartAsync(request, pending);
+            _loads.RemoveAll(load => load.IsCompleted);
+            _loads.Add(task);
+            return task;
+        }
+    }
+
+    private async Task ObserveStartAsync(AudioBackendRequest request, PendingLoad pending)
+    {
+        try { await StartAsync(request, pending.Cancellation.Token).ConfigureAwait(false); }
+        catch (OperationCanceledException) when (pending.Cancellation.IsCancellationRequested) { }
+        finally
+        {
+            lock (_gate)
+                if (_pending.TryGetValue(request.VoiceId, out var current) && ReferenceEquals(current, pending))
+                    _pending.Remove(request.VoiceId);
+            pending.Cancellation.Dispose();
+        }
     }
 
     private async Task StartAsync(AudioBackendRequest request, CancellationToken cancellationToken)
@@ -99,6 +156,7 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost
 
         string path;
         try { path = await MaterializeAsync(request.AssetId, cancellationToken).ConfigureAwait(false); }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception exception)
         {
             Raise(new(AudioBackendEventKind.Failed, request.TrackId, request.VoiceId, request.Generation, exception.Message));
@@ -108,6 +166,7 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost
         Voice voice;
         lock (_gate)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (_disposed) return;
             RemoveVoice(request.VoiceId);
             var player = new MediaPlayer(_libVlc);
@@ -127,33 +186,44 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost
 
     private async Task<string> MaterializeAsync(string assetId, CancellationToken cancellationToken)
     {
-        lock (_gate)
-            if (_paths.TryGetValue(assetId, out var existing)) return existing;
-        var file = await _assets.GetFileAsync(assetId, cancellationToken).ConfigureAwait(false)
-            ?? throw new FileNotFoundException($"Audio asset '{assetId}' was not found.");
-        using var handle = await _assets.AcquireAsync<byte[]>(assetId, cancellationToken).ConfigureAwait(false)
-            ?? throw new InvalidDataException($"Audio asset '{assetId}' could not be decoded as bytes.");
-        var name = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(assetId))).ToLowerInvariant();
-        var path = Path.Combine(_directory, name + Path.GetExtension(file.Path));
-        await File.WriteAllBytesAsync(path, handle.Value, cancellationToken).ConfigureAwait(false);
-        lock (_gate)
+        await _materialization.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            if (_disposed) throw new ObjectDisposedException(nameof(AvaloniaAudioPlaybackHost));
-            _paths.TryAdd(assetId, path);
-            return _paths[assetId];
+            lock (_gate)
+                if (_paths.TryGetValue(assetId, out var existing)) return existing;
+            var file = await _assets.GetFileAsync(assetId, cancellationToken).ConfigureAwait(false)
+                ?? throw new FileNotFoundException($"Audio asset '{assetId}' was not found.");
+            using var handle = await _assets.AcquireAsync<byte[]>(assetId, cancellationToken).ConfigureAwait(false)
+                ?? throw new InvalidDataException($"Audio asset '{assetId}' could not be decoded as bytes.");
+            var name = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(assetId))).ToLowerInvariant();
+            var path = Path.Combine(_directory, name + Path.GetExtension(file.Path));
+            await File.WriteAllBytesAsync(path, handle.Value, cancellationToken).ConfigureAwait(false);
+            lock (_gate)
+            {
+                if (_disposed) throw new ObjectDisposedException(nameof(AvaloniaAudioPlaybackHost));
+                _paths.TryAdd(assetId, path);
+                return _paths[assetId];
+            }
         }
+        finally { _materialization.Release(); }
     }
 
-    private void Stop(AudioBackendRequest request, float fadeSeconds) => WithVoice(request, voice =>
+    private void Stop(AudioBackendRequest request, float fadeSeconds)
     {
-        if (fadeSeconds <= 0)
+        lock (_gate)
+            if (_pending.TryGetValue(request.VoiceId, out var pending) && pending.Generation == request.Generation)
+                pending.Cancellation.Cancel();
+        WithVoice(request, voice =>
         {
-            voice.Player.Stop();
-            RemoveVoice(voice.Request.VoiceId);
-            return;
-        }
-        _ = FadeAsync(voice, voice.FadeGain, 0, fadeSeconds, stopWhenDone: true);
-    });
+            if (fadeSeconds <= 0)
+            {
+                voice.Player.Stop();
+                RemoveVoice(voice.Request.VoiceId);
+                return;
+            }
+            _ = FadeAsync(voice, voice.FadeGain, 0, fadeSeconds, stopWhenDone: true);
+        });
+    }
 
     private void ApplySEffect(AudioBackendRequest request) => WithVoice(request, voice =>
     {
@@ -170,11 +240,17 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost
     private async Task FadeAsync(Voice voice, float from, float to, float seconds, bool stopWhenDone)
     {
         const int steps = 20;
+        CancellationToken cancellation;
+        lock (_gate)
+        {
+            if (_disposed || !_voices.TryGetValue(voice.Request.VoiceId, out var current) || !ReferenceEquals(current, voice)) return;
+            cancellation = voice.BeginFade();
+        }
         try
         {
             for (var index = 1; index <= steps; index++)
             {
-                await Task.Delay(TimeSpan.FromSeconds(seconds / steps), voice.FadeCancellation.Token).ConfigureAwait(false);
+                await Task.Delay(TimeSpan.FromSeconds(seconds / steps), cancellation).ConfigureAwait(false);
                 lock (_gate)
                 {
                     if (_disposed || !_voices.TryGetValue(voice.Request.VoiceId, out var current) || !ReferenceEquals(current, voice)) return;
@@ -205,14 +281,29 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost
 
     private void Ended(Voice voice)
     {
-        lock (_gate) RemoveVoice(voice.Request.VoiceId);
-        Raise(new(AudioBackendEventKind.Ended, voice.Request.TrackId, voice.Request.VoiceId, voice.Request.Generation));
+        _terminalEvents.Writer.TryWrite((voice, AudioBackendEventKind.Ended, null));
     }
 
     private void Failed(Voice voice, string message)
     {
-        lock (_gate) RemoveVoice(voice.Request.VoiceId);
-        Raise(new(AudioBackendEventKind.Failed, voice.Request.TrackId, voice.Request.VoiceId, voice.Request.Generation, message));
+        _terminalEvents.Writer.TryWrite((voice, AudioBackendEventKind.Failed, message));
+    }
+
+    private async Task DrainTerminalEventsAsync()
+    {
+        // LibVLC callbacks must not Stop/Dispose a player or wait for our gate:
+        // player disposal can itself wait for the native callback to return.
+        await foreach (var item in _terminalEvents.Reader.ReadAllAsync().ConfigureAwait(false))
+        {
+            lock (_gate)
+            {
+                if (_disposed || !_voices.TryGetValue(item.Voice.Request.VoiceId, out var current) ||
+                    !ReferenceEquals(current, item.Voice)) continue;
+                RemoveVoice(item.Voice.Request.VoiceId);
+            }
+            Raise(new(item.Kind, item.Voice.Request.TrackId, item.Voice.Request.VoiceId,
+                item.Voice.Request.Generation, item.Message));
+        }
     }
 
     private void RemoveVoice(string voiceId)
@@ -249,7 +340,14 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost
         public float FadeGain { get; set; } = 1;
         public float EffectGain { get; set; } = 1;
         public Dictionary<string, ActiveSEffect> Effects { get; } = new(StringComparer.Ordinal);
-        public CancellationTokenSource FadeCancellation { get; } = new();
+        private CancellationTokenSource FadeCancellation { get; set; } = new();
+        public CancellationToken BeginFade()
+        {
+            FadeCancellation.Cancel();
+            FadeCancellation.Dispose();
+            FadeCancellation = new CancellationTokenSource();
+            return FadeCancellation.Token;
+        }
         public void Dispose()
         {
             FadeCancellation.Cancel();
@@ -259,4 +357,5 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost
     }
 
     private sealed record ActiveSEffect(string Id, System.Text.Json.JsonElement Parameters);
+    private sealed record PendingLoad(long Generation, CancellationTokenSource Cancellation);
 }

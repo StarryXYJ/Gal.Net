@@ -48,10 +48,12 @@ public sealed class DynamicParameterDescriptor
 public sealed class DynamicParameterTable : IReadOnlyDictionary<string, DynamicParameterDescriptor>
 {
     private readonly IReadOnlyDictionary<string, DynamicParameterDescriptor> _parameters;
+    private readonly Action<JsonElement>? _validateArguments;
 
-    public DynamicParameterTable(IEnumerable<DynamicParameterDescriptor> parameters)
+    public DynamicParameterTable(IEnumerable<DynamicParameterDescriptor> parameters, Action<JsonElement>? validateArguments = null)
     {
         ArgumentNullException.ThrowIfNull(parameters);
+        _validateArguments = validateArguments;
         var copy = new Dictionary<string, DynamicParameterDescriptor>(StringComparer.Ordinal);
         foreach (var parameter in parameters)
         {
@@ -68,6 +70,7 @@ public sealed class DynamicParameterTable : IReadOnlyDictionary<string, DynamicP
     public int Count => _parameters.Count;
     public DynamicParameterDescriptor this[string key] => _parameters[key];
     public bool ContainsKey(string key) => _parameters.ContainsKey(key);
+    public void ValidateArguments(JsonElement arguments) => _validateArguments?.Invoke(arguments);
     public bool TryGetValue(string key, out DynamicParameterDescriptor value) => _parameters.TryGetValue(key, out value!);
     public IEnumerator<KeyValuePair<string, DynamicParameterDescriptor>> GetEnumerator() => _parameters.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

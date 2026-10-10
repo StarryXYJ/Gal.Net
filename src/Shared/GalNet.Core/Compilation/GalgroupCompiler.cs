@@ -51,6 +51,8 @@ public static class GalgroupCompiler
                 primitive.Id = compiled.Entries.Count + 1;
                 primitive.Condition = CombineConditions(sourceEntry.Condition, primitive.Condition);
                 var generatedId = $"{sourceEntry.Id}#{emittedIndex + 1}";
+                var schema = catalog.Get(primitive.Type);
+                primitive.SetArguments(PrimitiveArgumentHelper.Normalize(schema.DynamicParameters!, primitive.Arguments));
                 compiled.Entries.Add(SerializeEntry(generatedId, primitive));
                 emittedIds.Add(generatedId);
             }

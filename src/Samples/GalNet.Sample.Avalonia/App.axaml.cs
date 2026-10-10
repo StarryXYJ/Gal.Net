@@ -10,6 +10,7 @@ using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
+using GalNet.Runtime.Logging;
 using GalNet.Sample.Avalonia.Debug;
 using GalNet.Sample.Avalonia.Services;
 using GalNet.Sample.Avalonia.Views;
@@ -21,7 +22,7 @@ public partial class App : Application
 {
     internal static GameLaunchOptions LaunchOptions { get; set; } = new(null, null);
     private ServiceProvider? _rootServices;
-    private IServiceScope? _gameScope;
+    private AsyncServiceScope? _gameScope;
 
     public override void Initialize()
     {
@@ -40,8 +41,8 @@ public partial class App : Application
                 .AddTransient<MainWindow>();
 
             _rootServices = services.BuildServiceProvider();
-            _gameScope = _rootServices.CreateScope();
-            var scopedServices = _gameScope.ServiceProvider;
+            _gameScope = _rootServices.CreateAsyncScope();
+            var scopedServices = _gameScope.Value.ServiceProvider;
 
             scopedServices.GetRequiredService<IGameNavigationService>().ResetTo<TitlePageViewModel>(NavigationTransition.None);
 
@@ -60,20 +61,27 @@ public partial class App : Application
                 closingInProgress = true;
                 try
                 {
-                    await scopedServices.GetRequiredService<SampleGameSessionService>().StopAsync();
+                    try
+                    {
+                        await scopedServices.GetRequiredService<SampleGameSessionService>().StopAsync();
+                    }
+                    finally
+                    {
+                        try { if (_gameScope is { } scope) await scope.DisposeAsync(); }
+                        finally
+                        {
+                            _gameScope = null;
+                            if (_rootServices is not null) await _rootServices.DisposeAsync();
+                            _rootServices = null;
+                        }
+                    }
                 }
+                catch (Exception error) { GameLog.Logger.Error(error, "Game host shutdown failed"); }
                 finally
                 {
                     allowClose = true;
                     mainWindow.Close();
                 }
-            };
-            mainWindow.Closed += (_, _) =>
-            {
-                _gameScope?.Dispose();
-                _rootServices?.Dispose();
-                _gameScope = null;
-                _rootServices = null;
             };
         }
 

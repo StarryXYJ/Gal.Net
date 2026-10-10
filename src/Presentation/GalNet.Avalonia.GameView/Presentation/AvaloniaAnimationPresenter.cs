@@ -116,7 +116,7 @@ public sealed class AvaloniaAnimationPresenter : IAnimationPresenter, IDisposabl
 
     public async Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(
         AnimationPlanDefinition plan,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, Func<double, Task>? beforeFrame = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var active = new ActivePlan(plan, Interlocked.Increment(ref _sequence));
@@ -145,6 +145,7 @@ public sealed class AvaloniaAnimationPresenter : IAnimationPresenter, IDisposabl
                 }
 
                 var elapsedFrames = started.Elapsed.TotalSeconds * plan.FrameRate;
+                if (beforeFrame is not null) await beforeFrame(elapsedFrames);
                 var frame = GetPlanFrame(plan, elapsedFrames);
                 await ApplyPlanFrameAsync(tracks, frame);
                 if (plan.LoopMode == AnimationLoopMode.Once && elapsedFrames >= plan.DurationFrames)

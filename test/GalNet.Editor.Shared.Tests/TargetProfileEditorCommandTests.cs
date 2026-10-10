@@ -14,10 +14,7 @@ public class TargetProfileEditorCommandTests
         var catalog = new TargetProfileEntryCatalog(
         [new DefaultEntryModule("custom",
         [
-            new DefaultPrimitiveEntryBase(
-                "custom.pulse",
-                new DynamicParameterTable([new DynamicParameterDescriptor("count", typeof(int), isRequired: true)]),
-                static _ => new ImmediatePrimitiveInstance())
+            new DefaultPrimitiveEntryBase("custom.pulse", new DynamicParameterTable([new DynamicParameterDescriptor("count", typeof(int), isRequired: true)]))
         ])]);
         var handler = new BuiltInEditorCommandHandler(catalog);
         var document = new EditorProjectDocument

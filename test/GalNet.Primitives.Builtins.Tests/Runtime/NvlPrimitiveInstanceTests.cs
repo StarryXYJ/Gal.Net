@@ -36,9 +36,9 @@ public class NvlPrimitiveInstanceTests
 
         foreach (var entry in new[] { ShowNvlEntry.TypeId, HideNvlEntry.TypeId, ClearNvlEntry.TypeId })
         {
-            var primitive = module.PrimitiveEntries[entry];
+            var primitive = module.Instructions[entry];
             primitive.CreateInstance(new GalNet.Core.Primitives.PrimitiveCreateContext(
-                primitive,
+                BuiltinSchemas.CreateCatalog().Get(entry),
                 new GalNet.Core.Entry.PrimitiveEntry(entry, System.Text.Json.JsonSerializer.SerializeToElement(new { })),
                 new GalNet.Runtime.Runtime.GameRuntime(null),
                 CancellationToken.None)).Dispatch();

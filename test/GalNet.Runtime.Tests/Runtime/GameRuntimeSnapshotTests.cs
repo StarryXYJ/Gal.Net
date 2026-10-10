@@ -5,20 +5,41 @@ namespace GeneralTest.Runtime;
 
 public class GameRuntimeSnapshotTests
 {
-    private static readonly string[] ExpectedEffectInstanceIds = ["effect"];
+    [Test]
+    public void RestoreDetachesOldSceneAndResetsEndedState()
+    {
+        var runtime = new GameRuntime(null, "start");
+        runtime.SceneState.Layers.Add(new Layer { Id = "layer", AssetId = "saved" });
+        var snapshot = runtime.CreateSnapshot();
+        var oldScene = runtime.SceneState;
+        var oldInstances = runtime.SceneInstances;
+        runtime.EndGame();
+
+        runtime.RestoreFrom(snapshot);
+        oldScene.Layers.Clear();
+        snapshot.SceneState.Layers[0].AssetId = "caller-mutated";
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(runtime.IsGameEnded, Is.False);
+            Assert.That(runtime.SceneState, Is.Not.SameAs(oldScene));
+            Assert.That(runtime.SceneInstances, Is.Not.SameAs(oldInstances));
+            Assert.That(runtime.SceneState.Layers.Single().AssetId, Is.EqualTo("saved"));
+        });
+    }
 
     [Test]
     public void CreateSnapshotDoesNotShareMutableSceneState()
     {
         var runtime = new GameRuntime(null, "start");
-        runtime.SceneState.Layers.Add(new Layer { Id = "layer", AssetId = "before", EffectInstanceIds = ["effect"] });
+        runtime.SceneState.Layers.Add(new Layer { Id = "layer", AssetId = "before" });
 
         var snapshot = runtime.CreateSnapshot();
         runtime.SceneState.Layers[0].AssetId = "after";
-        runtime.SceneState.Layers[0].EffectInstanceIds.Add("another");
+        runtime.SceneState.Layers[0].Transform.X = 42;
 
         Assert.That(snapshot.SceneState.Layers.Single().AssetId, Is.EqualTo("before"));
-        Assert.That(snapshot.SceneState.Layers.Single().EffectInstanceIds, Is.EqualTo(ExpectedEffectInstanceIds));
+        Assert.That(snapshot.SceneState.Layers.Single().Transform.X, Is.Zero);
     }
 
     [Test]

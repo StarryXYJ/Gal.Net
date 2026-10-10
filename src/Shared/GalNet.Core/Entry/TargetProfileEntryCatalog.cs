@@ -18,13 +18,9 @@ public sealed class TargetProfileEntryCatalog : IEntryCatalog
         ArgumentNullException.ThrowIfNull(modules);
 
         var definitions = new Dictionary<string, EntryDefinition>(StringComparer.Ordinal);
-        var moduleIds = new HashSet<string>(StringComparer.Ordinal);
         foreach (var module in modules)
         {
             ArgumentNullException.ThrowIfNull(module);
-            if (!moduleIds.Add(module.Id))
-                throw new InvalidOperationException($"Entry module catalog '{module.Id}' is already present in this target profile.");
-
             foreach (var entry in module.PrimitiveEntries.Values)
             {
                 var definition = entry.CreateDefinition();

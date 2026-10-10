@@ -23,6 +23,7 @@ try
     var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
     var content = await installation.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync();
     var settings = new SettingsContainer();
+    settings.Set(content.Settings);
     settings.Set(new GameSettings());
 
     var saves = new FileSaveService(options.ProfileDirectory);
@@ -31,8 +32,8 @@ try
     var progress = new FileGameProgressService(options.ProfileDirectory);
 
     var presentation = new ConsolePresentation(settings.Get<GameSettings>());
-    using IGameView view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
-        presentation, presentation, presentation, presentation, content.Gallery, nvlPresenter: presentation));
+    await using var view = new GameRegistration().AddBuiltins(
+        presentation, presentation, presentation, presentation, content.Gallery, nvlPresenter: presentation).BuildView();
 
     var runtime = new GameRuntime(null, content.Graph.RootNodeId, settings, variables);
     using var engine = new GameEngine(content.Graph, runtime, view, progress, presentation);

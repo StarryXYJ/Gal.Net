@@ -22,6 +22,6 @@ public sealed class InstalledGameContentProvider : IGameContentProvider
         cancellationToken.ThrowIfCancellationRequested();
         var graph = GameGraphContentLoader.Load(_directory, Path.Combine("Graph", "graph.json"), Path.Combine("Graph", "groups"), cancellationToken);
         var gallery = GalleryFileLoader.LoadGenerated(Path.Combine(_directory, "gallery.json"), _galleryTypes);
-        return new GameContent { Graph = graph, Gallery = gallery };
+        return new GameContent { Graph = graph, Gallery = gallery, Settings = GameProjectSettingsLoader.Load(_directory) };
     }, cancellationToken);
 }

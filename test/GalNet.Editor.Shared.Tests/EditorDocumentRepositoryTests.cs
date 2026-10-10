@@ -72,7 +72,7 @@ public class EditorDocumentRepositoryTests
             ]
         };
 
-        var repository = new EditorDocumentRepository(BuiltinEntryModules.CreateRecommendedTargetProfile());
+        var repository = new EditorDocumentRepository(BuiltinSchemas.CreateCatalog());
         var loaded = repository.Load(_tempDir, "Demo", settings);
 
         Assert.That(loaded.Document.PlayerVariables.Select(v => v.Name), Is.EqualTo(ExpectedPlayerFlag));
@@ -86,7 +86,7 @@ public class EditorDocumentRepositoryTests
     [Test]
     public void Save_WritesVariablesAndGroupEntriesIntoProjectFiles()
     {
-        var repository = new EditorDocumentRepository(BuiltinEntryModules.CreateRecommendedTargetProfile());
+        var repository = new EditorDocumentRepository(BuiltinSchemas.CreateCatalog());
         var document = new EditorGraphDocument
         {
             Name = "Demo",
@@ -140,10 +140,7 @@ public class EditorDocumentRepositoryTests
         var catalog = new TargetProfileEntryCatalog(
         [new DefaultEntryModule("custom",
         [
-            new DefaultPrimitiveEntryBase(
-                "custom.pulse",
-                new DynamicParameterTable([new DynamicParameterDescriptor("count", typeof(int), isRequired: true)]),
-                static _ => new ImmediatePrimitiveInstance())
+            new DefaultPrimitiveEntryBase("custom.pulse", new DynamicParameterTable([new DynamicParameterDescriptor("count", typeof(int), isRequired: true)]))
         ])]);
         var graph = new EditorGraphDocument
         {

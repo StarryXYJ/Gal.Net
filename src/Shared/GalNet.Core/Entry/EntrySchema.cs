@@ -18,7 +18,8 @@ public static class EntrySchema
     public static DynamicParameterTable DynamicParameters(
         IReadOnlyDictionary<string, EntryParameterType> parameters,
         IReadOnlyDictionary<string, string>? defaults = null,
-        IReadOnlyDictionary<string, IReadOnlyList<string>>? options = null)
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? options = null,
+        Action<JsonElement>? validateArguments = null)
     {
         ArgumentNullException.ThrowIfNull(parameters);
         return new DynamicParameterTable(parameters.Select(pair =>
@@ -31,7 +32,7 @@ public static class EntrySchema
                     ? DynamicParameterValue.FromEditorValue(value, GetValueType(pair.Value))
                     : null,
                 constraints: constraints);
-        }));
+        }), validateArguments);
     }
 
     public static EntryParameterType GetEditorType(DynamicParameterDescriptor parameter)

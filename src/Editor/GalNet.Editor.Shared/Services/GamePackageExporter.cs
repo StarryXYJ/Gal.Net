@@ -34,7 +34,7 @@ public static class GamePackageExporter
             ArgumentNullException.ThrowIfNull(resourceTypes);
             ArgumentNullException.ThrowIfNull(galleryTypes);
             stagingRoot = Path.Combine(Path.GetTempPath(), $"galnet-export-{Guid.NewGuid():N}");
-            await new ProjectContentBuilder(BuiltinEntryModules.CreateRecommendedTargetProfile())
+            await new ProjectContentBuilder(BuiltinSchemas.CreateCatalog())
                 .BuildAsync(projectRoot, stagingRoot, cancellationToken)
                 .ConfigureAwait(false);
             var assets = await LoadAssetsAsync(Path.Combine(stagingRoot, "Assets"), resourceTypes, cancellationToken);

@@ -20,6 +20,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
 {
     private readonly GamePageViewModel _gameplay;
     private readonly GameEngine _engine;
+    private readonly CompositeGameView _gameView;
     private readonly AvaloniaGamePageView _pageView;
     private readonly SampleLayerFactory _layers;
     private readonly SampleMediaViews _media;
@@ -38,6 +39,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
     private SampleGameRunner(
         GamePageViewModel gameplay,
         GameEngine engine,
+        CompositeGameView gameView,
         AvaloniaGamePageView pageView,
         SampleLayerFactory layers,
         SampleMediaViews media,
@@ -51,6 +53,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
     {
         _gameplay = gameplay;
         _engine = engine;
+        _gameView = gameView;
         _pageView = pageView;
         _layers = layers;
         _media = media;
@@ -106,7 +109,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
             effects = new AvaloniaEffectRuntime(gameplay, programs: programs);
             audio = new AvaloniaAudioPlaybackHost(resources.Assets);
             video = new AvaloniaVideoPresenter(resources.Assets, gameplay);
-            gameView = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
+            gameView = new GameRegistration().AddBuiltins(
                 pageView.DialoguePresenter,
                 pageView.LayerPresenter,
                 pageView.AnimationPresenter,
@@ -115,8 +118,9 @@ internal sealed class SampleGameRunner : IAsyncDisposable
                 pageView.ParticlePresenter,
                 pageView.NvlPresenter,
                 audio,
-                video));
+                video).BuildView();
             var settings = new SettingsContainer();
+            settings.Set(resources.Content.Settings);
             settings.Set(saveSession.Settings);
             var runtime = new GameRuntime(
                 null,
@@ -132,6 +136,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
             return new SampleGameRunner(
                 gameplay,
                 engine,
+                gameView,
                 pageView,
                 layers,
                 media,
@@ -146,13 +151,12 @@ internal sealed class SampleGameRunner : IAsyncDisposable
         catch
         {
             engine?.Dispose();
-            if (engine is null)
-                gameView?.Dispose();
+            if (gameView is not null) await gameView.DisposeAsync();
             pageView?.Dispose();
             layers?.Dispose();
             media?.Dispose();
             effects?.Dispose();
-            audio?.Dispose();
+            if (audio is not null) await audio.DisposeAsync();
             if (video is not null) await video.DisposeAsync();
             if (effects is null)
                 programs?.Dispose();
@@ -201,11 +205,12 @@ internal sealed class SampleGameRunner : IAsyncDisposable
         await _updateStateAsync(false, null);
         _pageView.AdvanceRequested -= OnAdvanceRequested;
         _engine.Dispose();
+        await _gameView.DisposeAsync();
         _pageView.Dispose();
         _layers.Dispose();
         _media.Dispose();
         _effects.Dispose();
-        _audio.Dispose();
+        await _audio.DisposeAsync();
         await _video.DisposeAsync();
         _prepared = false;
         GameLog.Logger.Debug("Resetting scene presentation before creating the next game engine");

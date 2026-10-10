@@ -5,7 +5,7 @@ namespace GeneralTest.Entry;
 
 public class EntryModelTests
 {
-    private static TargetProfileEntryCatalog Catalog => BuiltinEntryModules.CreateRecommendedTargetProfile();
+    private static TargetProfileEntryCatalog Catalog => BuiltinSchemas.CreateCatalog();
 
     [Test]
     public void Registry_Should_Create_All_BuiltIn_Entries()
