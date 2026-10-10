@@ -119,6 +119,8 @@ public sealed class VideoNativeSmokeTests
             action();
         }
 
+        public void Post(Action action) => action();
+
         public Task InvokeAsync(Func<Task> action) => action();
         public Task<T> InvokeAsync<T>(Func<Task<T>> action) => action();
     }

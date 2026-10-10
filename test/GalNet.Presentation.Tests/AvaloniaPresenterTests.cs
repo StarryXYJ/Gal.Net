@@ -95,6 +95,33 @@ public sealed class AvaloniaPresenterTests
         });
     }
 
+    [Test]
+    public async Task DrainedParticleRemovalIsPostedUntilAfterTheRenderPass()
+    {
+        var state = new GamePageViewModel(new NoOpGameNavigationService());
+        var dispatcher = new QueuedDispatcher();
+        using var presenter = new AvaloniaParticlePresenter(state, new NullTextureLayerFactory(), dispatcher);
+        var request = new ParticleEmitterRequest("ending-particles", new ParticleEmitterDefinition("spark"), 0);
+
+        await presenter.StartParticleEmitterAsync(request, CancellationToken.None);
+        await presenter.StopParticleEmitterAsync(request.InstanceId, CancellationToken.None);
+        var drained = state.SceneRenderables.OfType<ParticleEmitter>().Single();
+
+        drained.Update(new SceneFrameContext(TimeSpan.Zero, TimeSpan.Zero, new SkiaSharp.SKSize(1, 1)));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(state.SceneRenderables, Has.Count.EqualTo(1), "The render pass must not mutate its renderable collection.");
+            Assert.That(dispatcher.PostedCount, Is.EqualTo(1));
+        });
+
+        await presenter.StartParticleEmitterAsync(request, CancellationToken.None);
+        dispatcher.RunPosted();
+
+        Assert.That(state.SceneRenderables.OfType<ParticleEmitter>().Select(emitter => emitter.HandleId),
+            Is.EquivalentTo(new[] { request.InstanceId }), "A late drain must not remove a replacement emitter with the same ID.");
+    }
+
     private sealed class ImmediateDispatcher : IAvaloniaUiDispatcher
     {
         public int DispatchCount { get; private set; }
@@ -105,8 +132,32 @@ public sealed class AvaloniaPresenterTests
             action();
         }
 
+        public void Post(Action action) => action();
+
         public Task InvokeAsync(Func<Task> action) => action();
         public Task<T> InvokeAsync<T>(Func<Task<T>> action) => action();
+    }
+
+    private sealed class QueuedDispatcher : IAvaloniaUiDispatcher
+    {
+        private readonly Queue<Action> _posted = [];
+
+        public int PostedCount => _posted.Count;
+
+        public void Dispatch(Action action) => action();
+        public void Post(Action action) => _posted.Enqueue(action);
+        public Task InvokeAsync(Func<Task> action) => action();
+        public Task<T> InvokeAsync<T>(Func<Task<T>> action) => action();
+
+        public void RunPosted()
+        {
+            while (_posted.TryDequeue(out var action)) action();
+        }
+    }
+
+    private sealed class NullTextureLayerFactory : IGamePageLayerFactory
+    {
+        public SceneTexture ResolveTexture(string assetId) => null!;
     }
 
     private sealed class NoTextureLayerFactory : IGamePageLayerFactory

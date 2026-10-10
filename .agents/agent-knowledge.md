@@ -78,3 +78,4 @@
 - [动态视频图层的加载与帧生命周期](lessons/L-20261010-01-video-layer-lifetime.md)：待加载源先登记，hide/replace 取消加载；帧租约与独立播放 identity 防止晚发布和旧完成误清理。
 - [DynamicLocalization Avalonia 主版本兼容性](lessons/L-20261010-05-dynamiclocalization-avalonia-version.md)：2.1.0 与 2.1.2 的 Avalonia extension 都不适用于当前 Avalonia 12 Sample；后者虽能编译仍在启动时调用已移除的 Binding 构造函数。Sample 使用 Core + 自有 `ReflectionBinding` 适配层。
 - [JSON provider 的整 culture 替换](lessons/L-20261010-07-json-provider-replaces-culture.md)：2.1.2 的 LoadJsonString 不增量合并，也不做父 culture 回退；分文件需独立 provider 与宿主有序查询。
+- [Render 内的粒子耗尽清理](lessons/L-20261010-08-render-pass-particle-drain.md)：confirmed；UI Dispatch 在 UI 线程同步执行，不能作为渲染回调清理的延迟队列；使用保证异步的 `Post`，并以 emitter identity 防止旧回调删除替换实例。

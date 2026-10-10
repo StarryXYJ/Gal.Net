@@ -79,7 +79,13 @@ public sealed class AvaloniaParticlePresenter : IParticlePresenter, IDisposable
 
     // Drain can occur while the frame host enumerates renderables, so removal is deferred.
     private void OnParticleDrained(ParticleEmitter emitter) =>
-        _dispatcher.Dispatch(() => StopParticleEmitter(emitter.HandleId));
+        _dispatcher.Post(() => StopParticleEmitter(emitter));
+
+    private void StopParticleEmitter(ParticleEmitter emitter)
+    {
+        if (!_emitters.TryGetValue(emitter.HandleId, out var current) || !ReferenceEquals(current, emitter)) return;
+        StopParticleEmitter(emitter.HandleId);
+    }
 
     private void StopParticleEmitter(string instanceId)
     {
