@@ -2,7 +2,7 @@
 
 **Status:** implementation in progress
 
-Phase 1–3 已有构建/测试证据。人物 catalog、包内递归文本加载、Sample/Headless resolver 接线及中英文 GameTestCase 已完成；Phase 4 外部覆盖、Phase 5 首次选择仍未实现。
+Phase 1–4 已有构建/测试证据。人物 catalog、包内递归文本加载、Sample/Headless resolver 接线、中英文 GameTestCase 和外部覆盖已完成；Phase 5 首次选择仍待实现。
 
 **Selected package:** [DynamicLocalization.Core](https://github.com/StarryXYJ/DynamicLocalization) 2.1.2, MIT-licensed. The Sample uses its JSON provider, culture service, and `LocalizedString`; an Avalonia 12 binding adapter replaces the incompatible platform extension.
 

@@ -48,7 +48,8 @@ public static class GameLocalizationLoader
                 cancellationToken.ThrowIfCancellationRequested();
                 var relative = Path.GetRelativePath(root, path).Replace('\\', '/');
                 var cultureDirectory = relative.Split('/')[0];
-                if (cultureDirectory is "catalog" or "External") continue;
+                if (cultureDirectory.Equals("catalog", StringComparison.OrdinalIgnoreCase)
+                    || cultureDirectory.Equals("External", StringComparison.OrdinalIgnoreCase)) continue;
                 if (!relative.Contains('/')) throw new InvalidDataException($"Localization file '{relative}' must be below a culture directory.");
                 var culture = CultureInfo.GetCultureInfo(cultureDirectory);
                 var json = File.ReadAllText(path);
@@ -69,7 +70,51 @@ public static class GameLocalizationLoader
         }
 
         ValidateRequiredKeys(graph, characters, defaultKeys, settings.TargetLocale.Code);
-        return new GameLocalizationContent { Characters = characters, Sources = sources.AsReadOnly() };
+        var diagnostics = new List<GameLocalizationDiagnostic>();
+        var externalSources = LoadExternal(Path.Combine(root, "External"), diagnostics, cancellationToken);
+        return new GameLocalizationContent
+        {
+            Characters = characters,
+            Sources = sources.AsReadOnly(),
+            ExternalSources = externalSources,
+            Diagnostics = diagnostics.AsReadOnly()
+        };
+    }
+
+    private static IReadOnlyList<GameLocalizationSource> LoadExternal(string root,
+        List<GameLocalizationDiagnostic> diagnostics, CancellationToken cancellationToken)
+    {
+        var sources = new List<GameLocalizationSource>();
+        if (!Directory.Exists(root)) return sources;
+        try
+        {
+            RejectLink(root);
+            var options = new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = FileAttributes.ReparsePoint, IgnoreInaccessible = true };
+            foreach (var path in Directory.EnumerateFiles(root, "*.json", options)
+                         .OrderBy(path => Path.GetRelativePath(root, path).Replace('\\', '/'), StringComparer.Ordinal))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var relative = Path.GetRelativePath(root, path).Replace('\\', '/');
+                try
+                {
+                    if (!relative.Contains('/')) throw new InvalidDataException("External JSON must be below a culture directory.");
+                    var culture = CultureInfo.GetCultureInfo(relative.Split('/')[0]);
+                    var json = File.ReadAllText(path);
+                    using var document = JsonDocument.Parse(json);
+                    ReadKeys(document.RootElement, "", new(StringComparer.Ordinal));
+                    sources.Add(new(culture.Name, $"External/{relative}", json));
+                }
+                catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException)
+                {
+                    diagnostics.Add(new($"External/{relative}", error.Message));
+                }
+            }
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            diagnostics.Add(new("External", error.Message));
+        }
+        return sources.AsReadOnly();
     }
 
     private static void ReadKeys(JsonElement element, string prefix, HashSet<string> keys)

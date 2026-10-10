@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using DynamicLocalization.Core;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
@@ -15,6 +16,7 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
     private readonly SampleLocalizationService _localization;
     private readonly GamePageViewModel _gameplay;
     private readonly ChoicePlayerSetting _language;
+    private readonly ObservableCollection<SettingOption> _languages = [];
     private FileVariableService? _variables;
     private Task _pendingSave = Task.CompletedTask;
     private bool _restoring;
@@ -23,8 +25,9 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
     {
         _localization = localization;
         _gameplay = gameplay;
+        RefreshLanguages();
         _language = new ChoicePlayerSetting("locale", localization.GetString("Settings.Language"),
-            [new("en-US", "English"), new("zh-CN", "简体中文")],
+            _languages,
             () => localization.CultureService.CurrentCulture.Name, localization.ApplyCulture);
         Items = [_language, new RangePlayerSetting("textSpeed", localization.GetString("Settings.TextSpeed"),
             0, 120, () => gameplay.TextSpeed, value =>
@@ -33,6 +36,7 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
                 Save(TextSpeedVariable, value);
             })];
         localization.CultureService.CultureChanged += OnCultureChanged;
+        localization.CultureService.ProvidersChanged += OnProvidersChanged;
     }
 
     public IReadOnlyList<PlayerSetting> Items { get; }
@@ -67,6 +71,19 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
         Save(LocaleVariable, args.NewCulture.Name);
     }
 
+    private void OnProvidersChanged(object? sender, EventArgs args)
+    {
+        RefreshLanguages();
+        _language.Refresh();
+    }
+
+    private void RefreshLanguages()
+    {
+        _languages.Clear();
+        foreach (var culture in _localization.CultureService.AvailableCultures.OrderBy(culture => culture.Name, StringComparer.Ordinal))
+            _languages.Add(new(culture.Name, culture.NativeName));
+    }
+
     private void Save(string name, object value)
     {
         if (_restoring || _variables is not { } variables) return;
@@ -83,5 +100,9 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
         catch (Exception error) { GameLog.Logger.Error(error, "Unable to save player settings"); }
     }
 
-    public void Dispose() => _localization.CultureService.CultureChanged -= OnCultureChanged;
+    public void Dispose()
+    {
+        _localization.CultureService.CultureChanged -= OnCultureChanged;
+        _localization.CultureService.ProvidersChanged -= OnProvidersChanged;
+    }
 }

@@ -9,6 +9,13 @@ character names, choice text and each group's text live in separate per-culture 
 files. Change the language in the Avalonia Sample settings to localize subsequent
 dialogue, NVL paragraphs and choices using the same culture as the UI.
 
+Third-party translations go in `<game-directory>/I18n/External/<culture>/**/*.json`.
+They override built-in game and UI keys (for example `App.Title`); files are applied
+in ordinal relative-path order, last file wins. Invalid files are logged and skipped.
+New languages appear in settings. Restart to load edited files; currently displayed
+dialogue and NVL history do not change when selecting a language. External files are
+excluded from exported packages and preserved when reopening an existing installation.
+
 - `layer.show`, `layer.replace`, `layer.move`, and `layer.hide` through `ILayerPresenter`;
 - `niko.mp4` as a real scene layer: blocking `video.play` with `[3, 6, 9, 999999]` second skip points, then transformed non-blocking playback and explicit `video.stop`; the portrait stays above it by z order;
 - blocking `dialogue.text` with typewriter directives and `\skip` boundaries;

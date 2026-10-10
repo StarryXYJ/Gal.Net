@@ -96,6 +96,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _resources = resources;
             _saveSession = saveSession;
             _localization.AttachGame(resources.Content);
+            foreach (var diagnostic in resources.Content.Localization.Diagnostics)
+                GameLog.Logger.Warning("Skipped localization source {Path}: {Reason}", diagnostic.RelativePath, diagnostic.Message);
             _settings.Attach(saveSession.Variables);
             var preloadFailures = resources.SpriteFileCount - resources.PreloadedTextures.Count;
             GameLog.Logger.Information("Preloaded {SpriteCount} sprite assets ({FailureCount} deferred to fallback)",

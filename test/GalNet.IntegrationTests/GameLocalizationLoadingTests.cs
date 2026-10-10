@@ -59,6 +59,25 @@ public sealed class GameLocalizationLoadingTests
     }
 
     [Test]
+    public void ExternalSourcesAreSortedAndInvalidFilesDoNotPreventLoading()
+    {
+        var external = Path.Combine(_root, "I18n", "External", "en-US");
+        Directory.CreateDirectory(Path.Combine(external, "nested"));
+        File.WriteAllText(Path.Combine(external, "a.json"), """{"line":"first"}""");
+        File.WriteAllText(Path.Combine(external, "b.json"), "{broken");
+        File.WriteAllText(Path.Combine(external, "c.json"), """{"line":1}""");
+        File.WriteAllText(Path.Combine(external, "nested", "z.json"), """{"line":"last"}""");
+        var loaded = GameLocalizationLoader.Load(_root, new(), new());
+        Assert.That(loaded.ExternalSources.Select(source => source.RelativePath),
+            Is.EqualTo(new[] { "External/en-US/a.json", "External/en-US/nested/z.json" }));
+        Assert.That(loaded.Diagnostics, Has.Count.EqualTo(2));
+        using var resolver = new SampleLocalizationService(new CultureService());
+        resolver.AttachGame(new GameContent { Graph = new(), Localization = loaded });
+        resolver.ApplyCulture("en-US");
+        Assert.That(resolver.Resolve("line"), Is.EqualTo("last"));
+    }
+
+    [Test]
     public void SpecificCultureWinsOverLaterParentFileAndInvalidJsonIsRejected()
     {
         Directory.CreateDirectory(Path.Combine(_root, "I18n", "zh-CN"));

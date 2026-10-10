@@ -31,7 +31,11 @@ public static class GalpakInstaller
 
         if (Directory.Exists(targetDirectory))
         {
-            if (await MatchesInstalledPackageAsync(targetDirectory, manifest, ct)) return targetDirectory;
+            if (await MatchesInstalledPackageAsync(targetDirectory, manifest, ct))
+            {
+                EnsureExternalDirectory(targetDirectory);
+                return targetDirectory;
+            }
             throw new InvalidOperationException($"Installation directory '{targetDirectory}' already contains a different package. Choose a new directory or remove it explicitly.");
         }
         if (File.Exists(targetDirectory)) throw new InvalidOperationException($"Installation path '{targetDirectory}' is a file.");
@@ -55,6 +59,7 @@ public static class GalpakInstaller
             await using (var manifestDestination = File.Create(installedManifest))
                 await manifestSource.CopyToAsync(manifestDestination, ct);
 
+            EnsureExternalDirectory(stagingDirectory);
             Directory.Move(stagingDirectory, targetDirectory);
             return targetDirectory;
         }
@@ -62,6 +67,16 @@ public static class GalpakInstaller
         {
             if (Directory.Exists(stagingDirectory)) Directory.Delete(stagingDirectory, recursive: true);
             throw;
+        }
+    }
+
+    private static void EnsureExternalDirectory(string root)
+    {
+        foreach (var directory in new[] { Path.Combine(root, "I18n"), Path.Combine(root, "I18n", "External") })
+        {
+            Directory.CreateDirectory(directory);
+            if ((File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0)
+                throw new InvalidDataException($"External translation directory cannot be a symbolic link: '{directory}'.");
         }
     }
 
@@ -93,6 +108,8 @@ public static class GalpakInstaller
             if (package.Size < 0 || string.IsNullOrWhiteSpace(package.Sha256) || package.Sha256.Length != 64 || !package.Sha256.All(char.IsAsciiHexDigit))
                 throw new InvalidDataException($"Package manifest entry '{package.Path}' has an invalid checksum or size.");
             ValidateRelativePath(package.Path);
+            if (package.Path.StartsWith("I18n/External/", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("I18n/External is reserved for player-installed translations, not package payloads.");
             if (package.Path.EndsWith(".galnet", StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("The package manifest cannot also be a payload file.");
             if (!paths.Add(package.Path)) throw new InvalidDataException($"Package manifest repeats '{package.Path}'.");

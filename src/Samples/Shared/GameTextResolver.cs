@@ -8,15 +8,20 @@ namespace GalNet.Sample.Localization;
 /// <summary>Ordered, immutable JSON sources with explicit game-language fallback.</summary>
 public sealed class GameTextResolver : ITextResolver, ILocalizationProvider
 {
-    private readonly List<(CultureInfo Culture, JsonLocalizationProvider Provider)> _sources = [];
+    private readonly List<(CultureInfo Culture, ILocalizationProvider Provider)> _sources = [];
     private readonly CultureInfo _defaultCulture;
     private readonly Func<CultureInfo> _currentCulture;
 
-    public GameTextResolver(GameContent content, Func<CultureInfo> currentCulture)
+    public GameTextResolver(GameContent content, Func<CultureInfo> currentCulture,
+        IEnumerable<ILocalizationProvider>? bootstrapProviders = null,
+        IEnumerable<GameLocalizationSource>? additionalSources = null)
     {
         _defaultCulture = content.Settings.TargetLocale.ToCultureInfo();
         _currentCulture = currentCulture;
-        foreach (var source in content.Localization.Sources)
+        foreach (var provider in bootstrapProviders ?? [])
+            foreach (var culture in provider.GetAvailableCultures())
+                _sources.Add((culture, provider));
+        foreach (var source in content.Localization.Sources.Concat(content.Localization.ExternalSources).Concat(additionalSources ?? []))
         {
             // LoadJsonString replaces a culture's dictionary, so each file needs its own provider.
             var provider = new JsonLocalizationProvider();

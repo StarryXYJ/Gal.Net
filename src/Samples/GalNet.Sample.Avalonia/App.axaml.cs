@@ -108,6 +108,6 @@ public partial class App : Application
         cultureService.RegisterProvider(provider);
         cultureService.SetCulture("en-US");
         LocalizationService.Initialize(cultureService);
-        return SampleLocalizationService.Create(cultureService);
+        return SampleLocalizationService.Create(cultureService, [provider]);
     }
 }
