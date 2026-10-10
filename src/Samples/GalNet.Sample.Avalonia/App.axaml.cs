@@ -33,15 +33,18 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var services = new ServiceCollection();
-            services.AddAvaloniaGameViewPages();
-            services.AddScoped<SampleGameSessionService>();
-            services.AddScoped<IGameSessionService>(sp => sp.GetRequiredService<SampleGameSessionService>());
-            services.AddSampleDebug();
-            services.AddTransient<MainWindow>();
+            services.AddAvaloniaGameViewPages()
+                .AddScoped<SampleGameSessionService>()
+                .AddScoped<IGameSessionService>(sp => sp.GetRequiredService<SampleGameSessionService>())
+                .AddSampleDebug()
+                .AddTransient<MainWindow>();
+
             _rootServices = services.BuildServiceProvider();
             _gameScope = _rootServices.CreateScope();
             var scopedServices = _gameScope.ServiceProvider;
+
             scopedServices.GetRequiredService<IGameNavigationService>().ResetTo<TitlePageViewModel>(NavigationTransition.None);
+
             var mainWindow = scopedServices.GetRequiredService<MainWindow>();
             desktop.MainWindow = mainWindow;
             mainWindow.Opened += async (_, _) => await scopedServices.GetRequiredService<SampleGameSessionService>().InitializeAsync(LaunchOptions);
