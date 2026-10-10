@@ -20,6 +20,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private readonly GamePage _page;
     private readonly SamplePlayerSettingsService _settings;
     private readonly SampleLocalizationService _localization;
+    private readonly SampleStartupService _startup;
     private readonly IResourceTypeCatalog _resourceTypes;
     private readonly IGalleryTypeCatalog _galleryTypes;
     private readonly ObservableCollection<GameSaveSlot> _saveSlots = [];
@@ -30,12 +31,14 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private bool _disposed;
 
-    public SampleGameSessionService(GamePageViewModel gameplay, GamePage page, SamplePlayerSettingsService settings, SampleLocalizationService localization)
+    public SampleGameSessionService(GamePageViewModel gameplay, GamePage page, SamplePlayerSettingsService settings,
+        SampleLocalizationService localization, SampleStartupService startup)
     {
         _gameplay = gameplay;
         _page = page;
         _settings = settings;
         _localization = localization;
+        _startup = startup;
         _resourceTypes = BuiltinResourceTypes.CreateCatalog();
         _galleryTypes = BuiltinGalleryTypes.CreateCatalog(_resourceTypes);
         _readOnlySaveSlots = new ReadOnlyObservableCollection<GameSaveSlot>(_saveSlots);
@@ -51,23 +54,25 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     [ObservableProperty] private bool _isPlaying;
     [ObservableProperty] private bool _canContinue;
 
-    public async Task InitializeAsync(GameLaunchOptions options, CancellationToken cancellationToken = default)
+    public async Task<bool> InitializeAsync(GameLaunchOptions options,
+        Func<string, CancellationToken, Task<string?>> selectLanguage, CancellationToken cancellationToken = default)
     {
         await _lifecycle.WaitAsync(cancellationToken);
         try
         {
-            await InitializeGameResourcesAsync(options, cancellationToken);
+            return await InitializeGameResourcesAsync(options, selectLanguage, cancellationToken);
         }
         finally { _lifecycle.Release(); }
     }
 
-    private async Task InitializeGameResourcesAsync(GameLaunchOptions options, CancellationToken cancellationToken)
+    private async Task<bool> InitializeGameResourcesAsync(GameLaunchOptions options,
+        Func<string, CancellationToken, Task<string?>> selectLanguage, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(options.GameDirectory))
         {
             StatusMessage = "Usage: GalNet.Sample.Avalonia <game-data-directory> [--profile <directory>]";
             GameLog.Logger.Warning("Session initialized without a game directory");
-            return;
+            return true;
         }
 
         try
@@ -98,7 +103,6 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _localization.AttachGame(resources.Content);
             foreach (var diagnostic in resources.Content.Localization.Diagnostics)
                 GameLog.Logger.Warning("Skipped localization source {Path}: {Reason}", diagnostic.RelativePath, diagnostic.Message);
-            _settings.Attach(saveSession.Variables);
             var preloadFailures = resources.SpriteFileCount - resources.PreloadedTextures.Count;
             GameLog.Logger.Information("Preloaded {SpriteCount} sprite assets ({FailureCount} deferred to fallback)",
                 resources.SpriteFileCount, preloadFailures);
@@ -109,16 +113,23 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             OnPropertyChanged(nameof(GalleryDataSource));
             OnPropertyChanged(nameof(GalleryResources));
             await RefreshSlotsAsync(cancellationToken);
+            if (!await _startup.InitializeAsync(saveSession.Variables,
+                    resources.Content.Settings.TargetLocale.Code, selectLanguage, cancellationToken))
+                throw new OperationCanceledException("Language selection was cancelled.", cancellationToken);
+            _settings.Attach(saveSession.Variables);
             IsReady = true;
             StatusMessage = $"Loaded game data: {resources.GameDirectory}";
             _gameplay.StatusMessage = "Ready";
             GameLog.Logger.Information("Session initialized. SaveSlots={SaveSlotCount}, CanContinue={CanContinue}",
                 _saveSlots.Count, CanContinue);
+            return true;
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception exception)
         {
             StatusMessage = $"Unable to load game: {exception.Message}";
             GameLog.Logger.Error(exception, "Session initialization failed");
+            return false;
         }
     }
 

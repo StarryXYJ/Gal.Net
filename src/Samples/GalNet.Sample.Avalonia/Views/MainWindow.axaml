@@ -3,6 +3,7 @@
         xmlns:controls="using:GalNet.Game.Controls"
         xmlns:debug="using:GalNet.Sample.Avalonia.Debug"
         xmlns:loc="clr-namespace:GalNet.Sample.Avalonia.MarkupExtensions"
+        xmlns:views="using:GalNet.Sample.Avalonia.Views"
         xmlns:ursa="https://irihi.tech/ursa"
         x:Class="GalNet.Sample.Avalonia.Views.MainWindow"
         Width="1280" Height="720" MinWidth="800" MinHeight="500"
@@ -25,7 +26,12 @@
       </MenuItem>
     </Menu>
   </ursa:UrsaWindow.LeftContent>
-  <controls:GameCanvasHost x:Name="GameCanvas"
-                           DesignWidth="1920"
-                           DesignHeight="1080" />
+  <Grid>
+    <controls:GameCanvasHost x:Name="GameCanvas" IsVisible="False"
+                             DesignWidth="1920"
+                             DesignHeight="1080" />
+    <views:LanguageSelectionView x:Name="LanguageSelection" IsVisible="False" />
+    <TextBlock x:Name="StartupStatus" HorizontalAlignment="Center" VerticalAlignment="Center"
+               Foreground="White" Text="{loc:Localize Onboarding.Loading}" TextWrapping="Wrap" MaxWidth="600" />
+  </Grid>
 </ursa:UrsaWindow>

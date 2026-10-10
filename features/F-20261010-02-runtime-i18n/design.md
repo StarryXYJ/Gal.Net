@@ -1,10 +1,10 @@
 # F-20261010-02 设计：游戏文本国际化与 DynamicLocalization
 
-**状态：Proposed**
+**状态：实现完成（保留设计取舍；当前事实见 i18n spec）**
 
 ## 结论
 
-首期不按 galgroup 动态装卸翻译，也不为每个 group 增加 i18n 文件 ID 列表或独立 i18n 包元数据。游戏启动时一次性、递归读取包内 `I18n/` 的 JSON，并按确定性顺序逐个交给独立的 DynamicLocalization JSON provider 解析；宿主适配器按 culture 优先、同 culture 内后文件优先查询。外部目录在后续 Phase 加载，覆盖同 culture、同 key 的内置值。
+首期不按 galgroup 动态装卸翻译，也不为每个 group 增加 i18n 文件 ID 列表或独立 i18n 包元数据。游戏启动时一次性、递归读取包内 `I18n/` 的 JSON，并按确定性顺序逐个交给独立的 DynamicLocalization JSON provider 解析；宿主适配器按 culture 优先、同 culture 内后文件优先查询。外部目录在 Phase 4 已加载，覆盖同 culture、同 key 的内置值。
 
 这让 `ITextResolver` 始终能按照当前 culture 解出任意已加载 group 的 key，避免进入 group 时异步加载、离开 group 后丢失已显示文本、以及保存/读档时 catalog 状态不一致的问题。文本 JSON 很小，按 group 拆文件只服务于作者组织和 diff，不影响运行时载入策略。
 
@@ -112,7 +112,7 @@ embedded Sample UI JSON
 2. 包内游戏 JSON；
 3. 外部 JSON。
 
-同一层内部按相对路径的 ordinal 顺序加载，后加载者覆盖先加载者；后一层覆盖前一层。这使外部 JSON 能覆盖 UI 和游戏 key。包内无效 JSON 是内容错误，拒绝启动；后续外部源加载会逐文件诊断并跳过错误文件。
+同一层内部按相对路径的 ordinal 顺序加载，后加载者覆盖先加载者；后一层覆盖前一层。这使外部 JSON 能覆盖 UI 和游戏 key。包内无效 JSON 是内容错误，拒绝启动；外部源加载会逐文件诊断并跳过错误文件。
 
 文本解析顺序固定：请求 culture → 父 culture → `ProjectSettings.TargetLocale` → 原 key。默认语言必须包含所有运行时必需的游戏 key；内容构建/验证应检查该不变量。Runtime 不承担 culture 查找或文件 I/O，adapter 负责这一逻辑。
 
@@ -130,13 +130,13 @@ embedded Sample UI JSON
 
 ## 包、更新与元数据
 
-现有 `.galpak` 导出已对 `I18n/**` 逐文件打包，安装过程已有包 manifest 的文件完整性职责。因此首期不创建“这是 i18n 包”的额外元数据文件，也不创建独立 i18n PAK。
+现有 `.galpak` 导出对包内 `I18n/**` 逐文件打包，但排除保留的 `I18n/External/**`，安装过程已有包 manifest 的文件完整性职责。因此首期不创建“这是 i18n 包”的额外元数据文件，也不创建独立 i18n PAK。
 
 未来热更新或补丁若确实需要独立下载、版本协商或卸载翻译层，可在那个 feature 中引入版本化 localization manifest。其触发条件应是实际的补丁/网络分发需求，而不是为静态本地 JSON 提前增加协议。
 
 ## 首次语言选择
 
-Sample 读取本机 profile 的玩家变量：首次启动计数为零时，以嵌入 UI 的 bootstrap culture 显示语言选择页。用户确认后在同一操作中持久化所选 locale，再增加启动计数。取消或异常不增加计数，因此下次仍显示选择页。后续启动读取所选 locale 并在创建 GameEngine 前设置 catalog/current culture；重置玩家变量会重新触发该流程。
+Sample 读取本机 profile 的玩家变量：首次启动计数为零时，以嵌入 UI 的 bootstrap culture 显示语言选择页。用户确认后将所选 locale 与启动计数一起持久化，写盘成功后才发布内存更新。取消或异常不增加计数，因此下次仍显示选择页。后续启动读取所选 locale 并在创建 GameEngine 前设置 catalog/current culture；重置玩家变量会重新触发该流程。
 
 ## 验收影响
 

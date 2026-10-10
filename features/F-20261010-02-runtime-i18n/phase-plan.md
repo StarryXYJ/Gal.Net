@@ -2,7 +2,7 @@
 
 **设计依据：** [design.md](design.md)
 
-**状态：** implementation in progress
+**状态：** implementation complete
 
 ## Phase 1 — Avalonia Sample UI 本地化基础
 
@@ -141,9 +141,9 @@
 
 ## Phase 5 — 首次语言选择与持久化
 
-**状态：** partially implemented（2026-10-10）
+**状态：** verified（2026-10-11）
 
-用户调整顺序，先完成设置页：共享页使用通用 `IPlayerSettingsService` 与选择/范围项模板，Sample 注册语言和文字速度。语言绑定参照官方 Avalonia JSON demo 使用 `LocalizedString.Value`；直接更改 culture 会刷新当前绑定。两项偏好写入 session 的 player variables 并在下次 session 初始化时恢复；首次启动选择、启动计数与游戏文本 resolver 同步仍待后续 Phase。
+用户调整顺序，先完成设置页；Phase 5 现已接通首次语言页与启动计数，候选语言来自实际加载来源。正常 UI 在初始化/确认完成后才显示；设置变更的剧情文本从下一条起生效，不强制重启。
 
 验证：Sample 构建成功；`SampleLocalizationTests` 3/3 通过，包括已建立的 Avalonia TextBlock binding 在直接 SetCulture 后更新，以及偏好保存/恢复且保留其他玩家变量。
 
@@ -169,6 +169,8 @@
 **风险：** language picker 在游戏内容未准备好时仍需有可用 bootstrap UI；不要让失败的内容加载永久写入 onboarding 完成状态。
 
 **退出条件：** Sample 首次启动可选语言、后续可持久化并从设置切换，重置后可重复验收。
+
+**验证证据：** Integration 60/60 通过（新增五项 startup/control 测试），覆盖首次确认、取消/关闭 token、写盘失败、重复启动计数、重置、profile 隔离、外部新增语言和选择控件按钮。启动事务在 settings attach/Engine 建立前写盘；取消或内容初始化失败不提交计数。真实 Avalonia 空 profile 启动等待选择时正常关闭，进程退出且没有创建玩家变量文件；没有进行完整 GUI 确认后剧情全程的人工验收。Core 61、Runtime 49、Builtins 52、Storage 12、Presentation 77、Architecture 24 均通过；原生影音 opt-in 测试未启用。Headless 构建成功。
 
 ## 跨 Phase 文档与完成条件
 

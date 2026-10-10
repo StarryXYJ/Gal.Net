@@ -39,6 +39,7 @@ public partial class App : Application
             services.AddAvaloniaGameViewPages()
                 .AddSingleton(_ => CreateLocalizationService())
                 .AddScoped<SamplePlayerSettingsService>()
+                .AddScoped<SampleStartupService>()
                 .AddScoped<IPlayerSettingsService>(provider => provider.GetRequiredService<SamplePlayerSettingsService>())
                 .AddScoped<SampleGameSessionService>()
                 .AddScoped<IGameSessionService>(sp => sp.GetRequiredService<SampleGameSessionService>())
@@ -55,7 +56,26 @@ public partial class App : Application
 
             var mainWindow = scopedServices.GetRequiredService<MainWindow>();
             desktop.MainWindow = mainWindow;
-            mainWindow.Opened += async (_, _) => await scopedServices.GetRequiredService<SampleGameSessionService>().InitializeAsync(LaunchOptions);
+            var startupCancellation = new CancellationTokenSource();
+            mainWindow.Opened += async (_, _) =>
+            {
+                try
+                {
+                    var session = scopedServices.GetRequiredService<SampleGameSessionService>();
+                    var ready = await session.InitializeAsync(LaunchOptions, mainWindow.SelectLanguageAsync, startupCancellation.Token);
+                    if (!startupCancellation.IsCancellationRequested)
+                        mainWindow.CompleteStartup(ready ? null : session.StatusMessage);
+                }
+                catch (OperationCanceledException)
+                {
+                    if (!startupCancellation.IsCancellationRequested) mainWindow.Close();
+                }
+                catch (Exception error)
+                {
+                    GameLog.Logger.Error(error, "Startup flow failed");
+                    if (!startupCancellation.IsCancellationRequested) mainWindow.CompleteStartup(error.Message);
+                }
+            };
             var closingInProgress = false;
             var allowClose = false;
             mainWindow.Closing += async (_, eventArgs) =>
@@ -66,6 +86,7 @@ public partial class App : Application
                 if (closingInProgress) return;
 
                 closingInProgress = true;
+                startupCancellation.Cancel();
                 try
                 {
                     try
@@ -88,6 +109,7 @@ public partial class App : Application
                 {
                     allowClose = true;
                     mainWindow.Close();
+                    startupCancellation.Dispose();
                 }
             };
         }

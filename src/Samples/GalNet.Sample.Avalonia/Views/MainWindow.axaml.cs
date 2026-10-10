@@ -2,7 +2,9 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using GalNet.Avalonia.GameView.Page;
+using GalNet.Avalonia.GameView.Services;
 using GalNet.Sample.Avalonia.Debug;
+using GalNet.Sample.Avalonia.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Ursa.Controls;
 
@@ -22,7 +24,7 @@ public partial class MainWindow : UrsaWindow
         _debugViewModel = services.GetService<SampleDebugViewModel>();
         InitializeComponent();
         GameCanvas.GameContent = shell;
-        DebugMenu.IsVisible = _debugLogStore is not null && _debugViewModel is not null;
+        DebugMenu.IsVisible = false;
         DebugMenu.DataContext = _debugViewModel;
         if (_debugViewModel is not null)
         {
@@ -32,6 +34,25 @@ public partial class MainWindow : UrsaWindow
         }
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
         Closed += OnClosed;
+    }
+
+    public async Task<string?> SelectLanguageAsync(string preferred, CancellationToken cancellationToken)
+    {
+        StartupStatus.IsVisible = false;
+        LanguageSelection.IsVisible = true;
+        var localization = _services.GetRequiredService<SampleLocalizationService>();
+        var options = localization.CultureService.AvailableCultures.OrderBy(culture => culture.Name, StringComparer.Ordinal)
+            .Select(culture => new SettingOption(culture.Name, culture.NativeName)).ToArray();
+        try { return await LanguageSelection.ChooseAsync(options, preferred, cancellationToken); }
+        finally { LanguageSelection.IsVisible = false; }
+    }
+
+    public void CompleteStartup(string? error = null)
+    {
+        StartupStatus.IsVisible = error is not null;
+        if (error is not null) StartupStatus.Text = error;
+        GameCanvas.IsVisible = error is null;
+        DebugMenu.IsVisible = error is null && _debugLogStore is not null && _debugViewModel is not null;
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)

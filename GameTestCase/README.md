@@ -16,6 +16,12 @@ New languages appear in settings. Restart to load edited files; currently displa
 dialogue and NVL history do not change when selecting a language. External files are
 excluded from exported packages and preserved when reopening an existing installation.
 
+On the Avalonia Sample's first successful launch for a profile, a language-selection
+page appears before the title. Confirm to persist the choice and increment the startup
+count; cancel exits without completing onboarding. Later launches restore the language
+and increment the count. Debug **Clear game data** resets player variables and restarts,
+so the picker reappears. Use `--profile <directory>` for an isolated test profile.
+
 - `layer.show`, `layer.replace`, `layer.move`, and `layer.hide` through `ILayerPresenter`;
 - `niko.mp4` as a real scene layer: blocking `video.play` with `[3, 6, 9, 999999]` second skip points, then transformed non-blocking playback and explicit `video.stop`; the portrait stays above it by z order;
 - blocking `dialogue.text` with typewriter directives and `\skip` boundaries;

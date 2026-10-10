@@ -1,8 +1,8 @@
 # F-20261010-02 Runtime i18n with DynamicLocalization
 
-**Status:** implementation in progress
+**Status:** complete
 
-Phase 1–4 已有构建/测试证据。人物 catalog、包内递归文本加载、Sample/Headless resolver 接线、中英文 GameTestCase 和外部覆盖已完成；Phase 5 首次选择仍待实现。
+Phase 1–5 已完成并验证；外部覆盖、首次选择、按游戏保存语言与启动计数均已接通。实现总结与测试边界见 [summary.md](summary.md)。
 
 **Selected package:** [DynamicLocalization.Core](https://github.com/StarryXYJ/DynamicLocalization) 2.1.2, MIT-licensed. The Sample uses its JSON provider, culture service, and `LocalizedString`; an Avalonia 12 binding adapter replaces the incompatible platform extension.
 
@@ -73,7 +73,7 @@ The current repository has only the two boundary contracts documented in `docs/s
 ## Assumptions to validate
 
 - “UI” means the Avalonia Sample/player UI; the existing Editor UI localization service is outside this feature.
-- Built-in game translations are distributed inside the game package under `I18n/`; third-party translations reside outside the extracted package so game updates do not overwrite them.
+- Built-in game translations are distributed inside the game package under `I18n/`; third-party translations reside in the installed game's reserved I18n/External directory, outside manifest-managed package payloads.
 - Third-party language sources are data-only JSON packs, not code or arbitrary resource archives.
 - External language sources may add new languages and override built-in text for an existing language. They apply to both UI and game text, and do not supply localized binary assets.
 - The selected locale and onboarding counter are local to the machine's player-variable storage. They are intentionally excluded from a game save and have no cross-game or cross-machine synchronization requirement.
@@ -102,7 +102,7 @@ The proposed architecture, file layout, provider/adapter boundary, eager game-te
 
 The dependency-ordered, independently verifiable implementation plan is in [phase-plan.md](phase-plan.md).
 
-**Implementation progress:** Phases 1–3 are verified. Sample uses `DynamicLocalization.Core` 2.1.2, `LocalizedString.Value` and an Avalonia 12 `ReflectionBinding` adapter. Character/text contracts and built-in recursive loading are connected to both Samples. Per-file providers preserve distinct keys; the host adapter applies deterministic overrides and parent/default fallback without merging files. GameTestCase has English/Chinese translations, with both routes covered by execution tests, a real Headless run, and successful Avalonia session initialization. Settings from Phase 5 were brought forward: language and text speed persist in player variables and restore on session initialization. Phase 4 overlays and Phase 5 first-run picker/counter remain unfinished. `DynamicLocalization.Avalonia` 2.1.2 failed at startup against Avalonia 12 and is not used. Evidence is in [phase-plan.md](phase-plan.md); current contracts are in [i18n spec](../../docs/spec/i18n.md).
+**Implementation progress:** Phases 1–5 are verified. Embedded UI, character/game keys, recursive built-in/external JSON loading, deterministic culture-first overlays and fallback, persisted settings, first-run selection and successful-startup counting are implemented. Editor authoring tools, binary localization and live retranslating displayed story text remain out of scope. Verification, deviations and limitations are recorded in [summary.md](summary.md) and [review.md](review.md).
 
 ## Required design decisions created by the confirmed scope
 

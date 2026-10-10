@@ -36,6 +36,8 @@
 
 - [F-20261009-02-video-entries](../features/F-20261009-02-video-entries/feature.md) 已实现剧情视频图层、阻塞分段 seek、停止/替换清理和非阻塞视频定义恢复。平台视频必须经 AssetManager 获取，解码帧通过租约进入场景管线；播放游标不入存档。验证见 feature summary。
 
+- [F-20261010-02-runtime-i18n](../features/F-20261010-02-runtime-i18n/summary.md) Phase 1–5 已实现。Sample 用 Core 2.1.2 + ReflectionBinding；每 JSON 独立 provider，culture-first 查询内嵌/包内/External/额外源；首次选择在 Engine 前原子保存 locale/count。设置切换不重译当前剧情。安装器保留 External 并拒绝覆盖不同包，导出不包含第三方文件。当前契约见 `docs/spec/i18n.md`，人工 GUI 全程与原生媒体 opt-in 验证限制见 summary。
+
 - `F-20260926-01-gallery-meta-pages` 的实现、正式文档与示例 Gallery 解锁 smoke test 已完成；其外部阻塞项 `EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString` 已由 `F-20260929-04-quality-baseline` 修复，Gallery feature 可按自身流程收尾。
 - [F-20260916-02-audio-system](../features/F-20260916-02-audio-system/feature.md) 已完成首期：轨道逻辑、`AudioRuntime`、`IAudioPlaybackHost`、Avalonia LibVLC host、语音文本 composite 和 Sample 验收已落地。Runtime 只能传 asset ID；平台 host 必须经 `IAssetManager` 实体化临时媒体文件。后续 [F-20261009-01-track-seffects](../features/F-20261009-01-track-seffects/feature.md) 增加 host 注册的 `SEffectCatalog`、`seffect.gain` 与基于 LibVLC equalizer 的 `seffect.lowPass` / `seffect.highPass`；item scope、动画、存档、玩家音量和角色默认轨道均未实现。
 - `F-20260929-01-compiled-content-pipeline` 正在实施；粒子 Primitive、Runtime 状态与 Presenter 桥接及存档后的 effect/particle 展示重放已经验证，完整 Sample/Headless smoke 与 Phase 4 收尾仍待完成。

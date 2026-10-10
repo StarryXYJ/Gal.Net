@@ -1,29 +1,36 @@
-# Runtime i18n 阶段总结
+# Runtime i18n 实现总结
 
-日期：2026-10-10。状态：阶段性提交，Feature 仍在实现中。
+日期：2026-10-11
 
-## 已实现
+原 [2026-10-10 阶段性总结](history/summary-20261010.md) 保留为历史；其中未完成事项描述的是当时状态，并非当前结论。
 
-- Sample 使用 DynamicLocalization.Core 2.1.2 的嵌入 JSON、CultureService 与 LocalizedString.Value。自有 Avalonia 12 ReflectionBinding 适配层替代不兼容的平台扩展；直接修改 CultureService 也更新已有绑定。
-- 共享页面提供通用 IPlayerSettingsService 和选择/数值设置项，Sample 提供语言与文本速度。设置标签、常用静态页面文本及调试窗口使用动态本地化绑定。
-- 设置复用会话的 Player 变量存储，不覆盖其他玩家变量；会话初始化后恢复，修改时排队写入，清空玩家状态及销毁会话前等待写入。
-- Core 提供人物 ID/name-key catalog；内置 dialogue/NVL 通过角色 ID 和 ITextResolver 解析文本。raw content 中已有的 key 原样通过编译和运行期，不按执行位置重写。
-- Sample 启动脚本将默认 profile 放在项目 .galnet 中，避免把玩家数据放入可替换的构建输出。
+Phase 1–5 已完成；[阶段证据](phase-plan.md)、[交付自查](review.md) 和 [当前国际化契约](../../docs/spec/i18n.md) 是具体依据。
+
+## 实现结果
+
+- Sample UI 嵌入中英文资源；同一个 culture service 驱动 UI 与游戏文本 resolver。
+- 人物 catalog 保存 ID/姓名 key；dialogue、NVL 和选项从 raw 起保存 key，编译展开不生成或改写它。
+- FileSystem 递归加载包内文本，校验默认语言、人物引用和 JSON 结构；外部目录递归覆盖 UI/game，损坏文件独立诊断跳过。
+- 宿主可传入额外 JSON source；第三方新增语言进入设置和首次选择列表。
+- 首次选择确认后原子保存语言/count，后续启动恢复语言并增加 count；取消/失败不计数，清空玩家变量后再次选择。
+- 语言切换保持 UI 即时刷新、剧情从下一条起生效；不强制重启，不重译已显示对话/选项/NVL 历史。
+
+## 模块与关键取舍
+
+Core/Builtins 定义人物/key 和展示前解析契约。Runtime.Content 只持有来源描述与诊断。FileSystem 加载/验证，安装器保留 External；Editor 仅在导出时排除第三方文件。Sample composition 和共享源码 adapter 使用 DynamicLocalization，未新增生产项目或让 Headless 依赖 Avalonia。
+
+DynamicLocalization.Avalonia 2.1.2 与 Avalonia 12 的运行时 Binding API 不兼容，改用 Core + Sample ReflectionBinding。JSON provider 同 culture 是整字典替换且无父语言回退，采用每文件独立 provider、culture-first 有序查询；不合并文件或重写 JSON 展平算法。人物自动补全和模板工具留给 Editor 后续功能；默认 key 检查发生在内容加载，而非构建器。
+
+External 不随包发布。安装器仍拒绝覆盖不同/损坏安装，复用已有安装不删除第三方文件；没有新增包更新协议。文件修改后重新启动加载。
 
 ## 验证
 
-本次提交前执行代码空白格式化、IDE0005 无用 using 清理及 git diff --check。
-测试通过：Core 61、Builtins 52、Presentation 76、Integration 43、Architecture 24，共 256 项，0 失败。Presentation 输出另有真实媒体场景跳过提示，不能据此声称本机媒体验收完成。集成测试包含真实 Avalonia TextBlock 绑定的直接 culture 更新、设置持久化/恢复及其他 Player 变量保留、嵌入资源与 JSON 同 key 覆盖。
+Integration 60/60；Core 61/61；Runtime 49/49；Builtins 52/52；Storage 12/12；Presentation 77/77；Architecture 24/24。Headless 构建 0 warning/0 error。此前已验证中英文 × 两条逻辑路线到结尾及真实 Headless 运行；本期补充真实 Avalonia 首次选择期间正常关闭、无计数写入。
 
-## 未完成与边界
+未执行完整 GUI 确认后剧情的人工全程验收；原生影音 opt-in 测试未启用。现有 analyzer/XAML warning 不在本期清理范围。
 
-- Phase 3 的游戏人物文件加载、游戏翻译加载和 Sample resolver 接线未完成。因此旧 Sample 剧情的 Guide 尚未提供角色记录，点击启动游戏的 Unknown character ID 异常仍是已知问题，不是本阶段完成的验收项。
-- Phase 4 的外部翻译目录发现、验证及确定性覆盖未完成。provider 单元级 JSON 覆盖测试不等于完整外部包加载已实现。
-- Phase 5 首次语言选择与启动计数未完成。设置存储仅在游戏会话成功初始化后接入，不能声称无游戏/初始化失败时的设置已持久化。
-- 任意 ViewModel 业务字符串及已显示剧情不会因 culture 自动翻译；只有接入 LocalizedString 的动态绑定具备当前刷新行为。
-- 未完成完整 GUI 游戏流程验收；已有分析器和 AVLN3001 构建警告仍保留。
-- 原 Output 目录替换失败的访问拒绝未确认最终根因；独立 Output-new 可重复构建不代表原目录问题已修复。生成输出和官方参考仓库不进入提交。
+## 提交与后续
 
-## 文档与经验
+按用户要求按 Phase 提交：Phase 4 为 `2ac4d03`，Phase 5 随本总结独立提交。粒子结尾崩溃已由用户在本轮前修复，没有混入这两次提交。
 
-实现事实同步至 docs/spec/i18n.md 与 docs/spec/control.md。经验记录见 L-20261010-05（平台扩展二进制兼容与官方动态绑定机制）及 L-20261010-06（已存储 key 的作者边界）。后续继续按 phase-plan.md 推进，不将阶段性提交标记为整个 Feature 完成。
+Editor 模板/自动生成 key/人物自动补全、非文本本地化、热更新协议与当前文本实时刷新另行规划。相关包兼容/逐文件行为/渲染回调 lesson 保留在 agent 知识索引，不复制到正式 spec。

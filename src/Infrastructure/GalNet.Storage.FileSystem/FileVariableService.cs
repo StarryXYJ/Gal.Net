@@ -66,6 +66,16 @@ public sealed class FileVariableService : IVariableService, IDisposable
 
     public Task FlushPlayerVariablesAsync(CancellationToken ct = default) => _playerStore.SaveAsync(_playerVariables, ct);
 
+    /// <summary>Commits related startup preferences together before publishing their in-memory values.</summary>
+    public async Task UpdatePlayerVariablesAsync(IReadOnlyDictionary<string, GalVariable> updates, CancellationToken ct = default)
+    {
+        var committed = updates.ToDictionary(pair => pair.Key, pair => Clone(pair.Key, pair.Value), StringComparer.Ordinal);
+        var next = _playerVariables.ToDictionary(pair => pair.Key, pair => Clone(pair.Key, pair.Value), StringComparer.Ordinal);
+        foreach (var pair in committed) next[pair.Key] = Clone(pair.Key, pair.Value);
+        await _playerStore.SaveAsync(next, ct);
+        foreach (var pair in committed) NotifyVariableChanged(VariableScope.Player, pair.Key, pair.Value);
+    }
+
     /// <summary>Restores all persisted player variables to their configured defaults.</summary>
     public async Task ResetPlayerVariablesAsync(CancellationToken ct = default)
     {
