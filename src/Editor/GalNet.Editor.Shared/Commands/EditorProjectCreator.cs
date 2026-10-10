@@ -8,6 +8,8 @@ namespace GalNet.Editor.Shared.Commands;
 
 public static class EditorProjectCreator
 {
+    private static readonly JsonSerializerOptions IndentedJsonOptions = new() { WriteIndented = true };
+
     public static async Task CreateAsync(
         string projectPath,
         IEntryCatalog catalog,
@@ -62,7 +64,7 @@ public static class EditorProjectCreator
         await new DirectProjectPersistence(projectPath, repository).SaveAsync(document, cancellationToken);
         await File.WriteAllTextAsync(
             Path.Combine(projectPath, ".galnet", "editor-state.json"),
-            JsonSerializer.Serialize(new GalNet.Editor.Abstraction.Project.EditorProjectState(), new JsonSerializerOptions { WriteIndented = true }),
+            JsonSerializer.Serialize(new GalNet.Editor.Abstraction.Project.EditorProjectState(), IndentedJsonOptions),
             cancellationToken);
     }
 }

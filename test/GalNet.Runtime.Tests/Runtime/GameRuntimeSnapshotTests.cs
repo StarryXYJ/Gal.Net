@@ -5,6 +5,8 @@ namespace GeneralTest.Runtime;
 
 public class GameRuntimeSnapshotTests
 {
+    private static readonly string[] ExpectedEffectInstanceIds = ["effect"];
+
     [Test]
     public void CreateSnapshotDoesNotShareMutableSceneState()
     {
@@ -16,7 +18,7 @@ public class GameRuntimeSnapshotTests
         runtime.SceneState.Layers[0].EffectInstanceIds.Add("another");
 
         Assert.That(snapshot.SceneState.Layers.Single().AssetId, Is.EqualTo("before"));
-        Assert.That(snapshot.SceneState.Layers.Single().EffectInstanceIds, Is.EqualTo(new[] { "effect" }));
+        Assert.That(snapshot.SceneState.Layers.Single().EffectInstanceIds, Is.EqualTo(ExpectedEffectInstanceIds));
     }
 
     [Test]

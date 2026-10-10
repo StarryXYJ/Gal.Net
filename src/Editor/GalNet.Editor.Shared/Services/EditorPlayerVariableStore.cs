@@ -13,6 +13,7 @@ namespace GalNet.Editor.Shared.Services;
 
 public sealed class EditorPlayerVariableStore : IEditorPlayerVariableStore
 {
+    private static readonly JsonSerializerOptions IndentedJsonOptions = new() { WriteIndented = true };
     private readonly IProjectService _projectService;
     private readonly IVariableDefinitionService _variableDefinitions;
     private readonly Dictionary<string, Variable> _variables = new(StringComparer.Ordinal);
@@ -158,7 +159,7 @@ public sealed class EditorPlayerVariableStore : IEditorPlayerVariableStore
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(GetStoragePath(project))!);
-            var json = JsonSerializer.Serialize(_variables, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(_variables, IndentedJsonOptions);
             File.WriteAllText(GetStoragePath(project), json);
         }
         catch (Exception ex)

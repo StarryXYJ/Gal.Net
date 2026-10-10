@@ -6,6 +6,7 @@ namespace GeneralTest.Scene;
 public sealed class ShaderEffectMetadataTests
 {
     private static readonly EffectProgramResource Program = new("effects/dissolve");
+    private static readonly string[] ExpectedResourceDependencies = ["effects/dissolve", "textures/cloud-noise"];
 
     [Test]
     public void Parser_reads_platform_neutral_parameter_schema()
@@ -150,7 +151,7 @@ public sealed class ShaderEffectMetadataTests
         {
             Assert.That(attachment.RuntimeHandleId, Is.EqualTo("runtime:effect:1"));
             Assert.That(attachment.Stage, Is.EqualTo(EffectStage.Layer));
-            Assert.That(attachment.EnumerateResourceDependencies(descriptor).Select(resource => resource.Value), Is.EqualTo(new[] { "effects/dissolve", "textures/cloud-noise" }));
+            Assert.That(attachment.EnumerateResourceDependencies(descriptor).Select(resource => resource.Value), Is.EqualTo(ExpectedResourceDependencies));
         });
     }
 }

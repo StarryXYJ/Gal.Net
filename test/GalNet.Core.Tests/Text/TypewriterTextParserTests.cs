@@ -4,6 +4,14 @@ namespace GeneralTest.Runtime;
 
 public sealed class TypewriterTextParserTests
 {
+    private static readonly RichTypewriterTokenKind[] ExpectedRichTokenKinds =
+    [
+        RichTypewriterTokenKind.Text, RichTypewriterTokenKind.Text, RichTypewriterTokenKind.Text,
+        RichTypewriterTokenKind.Text, RichTypewriterTokenKind.Text, RichTypewriterTokenKind.Delay,
+        RichTypewriterTokenKind.Text, RichTypewriterTokenKind.LineBreak, RichTypewriterTokenKind.Text
+    ];
+    private static readonly string[] ExpectedPlainText = ["A", "<b>B</b>\\skip\\skipper"];
+
     [Test]
     public void Parse_Recognizes_Delay_Instant_And_Newline()
     {
@@ -25,12 +33,7 @@ public sealed class TypewriterTextParserTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(tokens.Select(token => token.Kind), Is.EqualTo(new[]
-            {
-                RichTypewriterTokenKind.Text, RichTypewriterTokenKind.Text, RichTypewriterTokenKind.Text,
-                RichTypewriterTokenKind.Text, RichTypewriterTokenKind.Text, RichTypewriterTokenKind.Delay,
-                RichTypewriterTokenKind.Text, RichTypewriterTokenKind.LineBreak, RichTypewriterTokenKind.Text
-            }));
+            Assert.That(tokens.Select(token => token.Kind), Is.EqualTo(ExpectedRichTokenKinds));
             Assert.That(tokens[0], Is.EqualTo(new RichTypewriterToken(RichTypewriterTokenKind.Text, "Bold", IsBold: true)));
             Assert.That(tokens[2], Is.EqualTo(new RichTypewriterToken(RichTypewriterTokenKind.Text, "italic", IsItalic: true)));
             Assert.That(tokens[5].DelayMilliseconds, Is.EqualTo(120));
@@ -50,7 +53,7 @@ public sealed class TypewriterTextParserTests
         {
             Assert.That(plain.Count(token => token.Kind == TypewriterTokenKind.SkipBoundary), Is.EqualTo(1));
             Assert.That(plain.Where(token => token.Kind == TypewriterTokenKind.Text).Select(token => token.Text),
-                Is.EqualTo(new[] { "A", "<b>B</b>\\skip\\skipper" }));
+                Is.EqualTo(ExpectedPlainText));
             Assert.That(rich.Count(token => token.Kind == RichTypewriterTokenKind.SkipBoundary), Is.EqualTo(1));
             Assert.That(string.Concat(rich.Where(token => token.Kind == RichTypewriterTokenKind.Text).Select(token => token.Text)),
                 Is.EqualTo("AB\\skip\\skipper"));

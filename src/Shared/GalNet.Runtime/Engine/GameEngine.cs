@@ -485,11 +485,7 @@ public sealed class GameEngine : IDisposable
             throw new InvalidOperationException("The game flow failed.", exception);
     }
 
-    private void ThrowIfDisposed()
-    {
-        if (_disposed)
-            throw new ObjectDisposedException(nameof(GameEngine));
-    }
+    private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
 
     private sealed record ActivePrimitive(
         long GroupExecutionId,

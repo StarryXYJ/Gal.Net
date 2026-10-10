@@ -68,11 +68,7 @@ public sealed class CompositeGameView : IGameView
             throw new AggregateException(exceptions);
     }
 
-    private void ThrowIfDisposed()
-    {
-        if (_disposed)
-            throw new ObjectDisposedException(nameof(CompositeGameView));
-    }
+    private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
 
     private static (IReadOnlyList<IEntryModule> Modules, IReadOnlyDictionary<string, PrimitiveEntryBase> Entries)
         FreezeModules(IEnumerable<IEntryModule> modules)

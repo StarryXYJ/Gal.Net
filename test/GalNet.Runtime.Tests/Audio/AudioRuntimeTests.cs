@@ -66,7 +66,11 @@ public class AudioRuntimeTests
             new("seffect.gain", new HashSet<SEffectScope> { SEffectScope.Track }, [new("gain", Required: true, Minimum: 0, Maximum: 1)])
         ]);
         public List<AudioBackendRequest> Requests { get; } = [];
-        public event Action<AudioBackendEvent>? EventReceived;
+        public event Action<AudioBackendEvent>? EventReceived
+        {
+            add { }
+            remove { }
+        }
         public Task ApplyAsync(AudioBackendRequest request, CancellationToken cancellationToken = default)
         {
             lock (Requests) Requests.Add(request);

@@ -32,9 +32,9 @@ public abstract class VariableValue
         public override bool AsBool() => Value != 0;
         public override int AsInt() => Value;
         public override float AsFloat() => Value;
-        public override string AsString() => Value.ToString();
-        public override string Serialize() => Value.ToString();
-        public override string ToString() => Value.ToString();
+        public override string AsString() => Value.ToString(CultureInfo.InvariantCulture);
+        public override string Serialize() => Value.ToString(CultureInfo.InvariantCulture);
+        public override string ToString() => Value.ToString(CultureInfo.InvariantCulture);
     }
 
     public sealed class Float : VariableValue
