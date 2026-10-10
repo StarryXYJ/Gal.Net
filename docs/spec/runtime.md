@@ -22,6 +22,8 @@ Runtime 只执行 primitive entry。Composite entry 只能存在于 `.rawgalgrou
 public Task<bool> AdvanceAsync(CancellationToken cancellationToken = default);
 public GameSnapshot CreateSaveData();
 public void RestoreFrom(GameSnapshot data);
+public Task StopAsync();
+public ValueTask DisposeAsync();
 ```
 
 一次 `AdvanceAsync()` 的顺序是：
@@ -33,6 +35,14 @@ public void RestoreFrom(GameSnapshot data);
 5. 如果当前 blocking 已解除，继续按顺序消费剧情，直到遇到新的 blocking instance、Choice 等待或剧情结束。
 
 Blocking instance 自然完成时，Engine 只执行无 skip 权限的内部 continue；它不是第二个玩家入口，也不能跳过下一个新遇到的 batch。
+
+### 状态通知和停止
+
+`State` 和 `StateChanged(GameEngineStateChange)` 统一报告 `Ready`、`Running`、`Completed`、`Faulted`、`Stopped`；失败通知附带原始异常。自然阻塞完成、Choice 结果/异常和玩家推进都经过同一状态机制，宿主不需要分别推断终态。通知在执行锁外按发生顺序发布，重复状态不重复通知；订阅者异常只诊断，不改变剧情状态。事件处理器不应同步等待 Engine 的异步操作；UI 线程切换、日志文案和存档槽刷新由宿主处理。
+
+`StopAsync()` 是该 Engine 的终态操作：立即拒绝新推进，取消执行 scope，清理活动实例和 pending Choice，并等待内部 continuation 退出后报告 `Stopped`。Choice 后端即使没有协作取消，Engine 的等待也能退出；平台资源本身仍由宿主释放。停止后推进返回 `false`，不能恢复该 Engine；重开使用新 Engine。正常完成后再次推进不会重放已经结束的内容。未停止时 `RestoreFrom()` 取消旧 scope 并重新进入 `Ready`。
+
+Engine 同时支持同步和异步释放；异步宿主优先使用 `await using`。释放 Engine 不释放借用的 `IGameView`：先停止/释放 Engine，再异步释放执行 view，最后释放 presenters、媒体后端及资源。不新增通用 Runner 或要求平台实现继承宿主基类。
 
 ## Batch 与活动实例
 

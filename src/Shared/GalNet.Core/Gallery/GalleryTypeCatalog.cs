@@ -22,7 +22,7 @@ public sealed class GalleryTypeCatalogBuilder
 }
 public sealed class GalleryTypeCatalog(IReadOnlyList<GalleryTypeRegistration> types) : IGalleryTypeCatalog
 {
-    private readonly IReadOnlyDictionary<string, GalleryTypeRegistration> _byId = types.ToDictionary(item => item.TypeId, StringComparer.Ordinal);
+    private readonly Dictionary<string, GalleryTypeRegistration> _byId = types.ToDictionary(item => item.TypeId, StringComparer.Ordinal);
     public IReadOnlyList<GalleryTypeRegistration> Types { get; } = new ReadOnlyCollection<GalleryTypeRegistration>(types.ToList());
     public GalleryTypeRegistration Get(string typeId) => TryGet(typeId, out var result) ? result : throw new KeyNotFoundException($"Gallery type '{typeId}' is not registered.");
     public bool TryGet(string typeId, out GalleryTypeRegistration registration) => _byId.TryGetValue(GalleryCatalog.NormalizeTypeId(typeId), out registration!);

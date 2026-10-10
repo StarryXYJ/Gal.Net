@@ -9,6 +9,8 @@ namespace GeneralTest.Runtime;
 
 public class CompositeGameViewTests
 {
+    private static readonly int[] DisposalOrder = [2, 1];
+
     [Test]
     public async Task AsyncDisposalThroughGameViewInterfaceUsesModuleAsyncCleanup()
     {
@@ -105,11 +107,11 @@ public class CompositeGameViewTests
         var view = registration.BuildView();
         Assert.That(() => registration.RegisterSchema(Schema("test", "test.run")), Throws.TypeOf<ObjectDisposedException>());
         Assert.That(view.Dispose, Throws.TypeOf<AggregateException>());
-        Assert.That(order, Is.EqualTo(new[] { 2, 1 }));
+        Assert.That(order, Is.EqualTo(DisposalOrder));
         Assert.DoesNotThrow(view.Dispose);
     }
 
-    private static IEntryModule Schema(string module, params string[] types) =>
+    private static DefaultEntryModule Schema(string module, params string[] types) =>
         new DefaultEntryModule(module, types.Select(type => new DefaultPrimitiveEntryBase(type, DynamicParameterTable.Empty)));
 
     private static PrimitiveEntry Entry(string type, object arguments, string? batch = null) =>

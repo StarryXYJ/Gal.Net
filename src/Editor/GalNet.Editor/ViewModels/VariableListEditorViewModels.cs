@@ -15,7 +15,7 @@ namespace GalNet.Editor.ViewModels;
 
 public sealed partial class VariableListEditorViewModel : ObservableObject
 {
-    private readonly VariableDefinitionCollection _definitions;
+    private readonly VariableDefinitions _definitions;
     private readonly VariableScope _scope;
     private readonly Action _persistDefinitions;
     private readonly Func<string, Variable?> _getCurrentValue;
@@ -46,7 +46,7 @@ public sealed partial class VariableListEditorViewModel : ObservableObject
         Action persistDefinitions,
         Action<string>? onNameConflict = null)
     {
-        _definitions = new VariableDefinitionCollection(source);
+        _definitions = new VariableDefinitions(source);
         _scope = scope;
         _persistDefinitions = persistDefinitions;
         _getCurrentValue = getCurrentValue;

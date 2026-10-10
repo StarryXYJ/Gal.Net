@@ -20,7 +20,7 @@ public partial class App : Application
     /// <summary>DI container for application-level services.</summary>
     public static IServiceProvider? ServiceProvider { get; private set; }
 
-    public ISettingsService GetSettingsService() =>
+    public static ISettingsService GetSettingsService() =>
         ServiceProvider!.GetRequiredService<ISettingsService>();
 
     public override void Initialize()

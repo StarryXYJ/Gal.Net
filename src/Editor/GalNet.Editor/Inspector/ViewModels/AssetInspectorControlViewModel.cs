@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -187,7 +188,7 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
         catch (Exception ex) { ImagePreviewError = ex.Message; }
     }
 
-    private static string FormatTime(double milliseconds) => TimeSpan.FromMilliseconds(Math.Max(0, milliseconds)).ToString(@"m\:ss");
+    private static string FormatTime(double milliseconds) => TimeSpan.FromMilliseconds(Math.Max(0, milliseconds)).ToString(@"m\:ss", CultureInfo.CurrentCulture);
     public void Dispose()
     {
         Workspace.PropertyChanged -= OnWorkspacePropertyChanged;

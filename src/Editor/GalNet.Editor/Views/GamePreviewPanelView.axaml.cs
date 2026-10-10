@@ -17,10 +17,10 @@ public partial class GamePreviewPanelView : UserControl
         DetachedFromVisualTree += OnDetachedFromVisualTree;
     }
 
-    private void OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
+    private async void OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
     {
         if (_vm is not null)
-            _ = _vm.DisposeAsync();
+            await _vm.DisposeAsync();
     }
 
     protected override void OnDataContextChanged(EventArgs e)

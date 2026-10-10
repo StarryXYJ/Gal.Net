@@ -18,7 +18,7 @@ internal static class BuiltinTransitionEntries
         Define(ColorFadeTransitionEntry.TypeId, () => new ColorFadeTransitionEntry(), ColorFadeTransitionEntry.ParameterTypes, ColorFadeTransitionEntry.DefaultValues, ColorFadeTransitionEntry.ParameterOptions)
     ];
 
-    private static CompositeEntryBase Define(
+    private static DefaultCompositeEntryBase Define(
         string type,
         Func<CompositeEntry> factory,
         IReadOnlyDictionary<string, EntryParameterType> parameters,

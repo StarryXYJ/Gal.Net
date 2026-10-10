@@ -314,7 +314,7 @@ public sealed class EditorDockFactory : Factory
         return document;
     }
 
-    private IEnumerable<IDockable> CreateDefaultPanels(DockPanelPlacement placement, params Document[] builtIns)
+    private List<IDockable> CreateDefaultPanels(DockPanelPlacement placement, params Document[] builtIns)
     {
         var documents = builtIns.Cast<IDockable>().ToList();
         foreach (var panel in _extensions.DockPanelContributions.Where(panel => panel.IsDefaultPanel && panel.Placement == placement && builtIns.All(document => document.Id != panel.PanelId)))

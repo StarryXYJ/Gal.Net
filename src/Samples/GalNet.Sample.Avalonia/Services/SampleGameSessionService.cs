@@ -275,7 +275,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             if (_runner is null)
                 throw new InvalidOperationException("No prepared game is available to start.");
 
-            _runner.StartPrepared();
+            await _runner.StartPreparedAsync(cancellationToken);
         }
         finally { _lifecycle.Release(); }
     }

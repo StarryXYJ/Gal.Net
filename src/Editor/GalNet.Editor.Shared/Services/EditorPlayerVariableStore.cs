@@ -180,7 +180,7 @@ public sealed class EditorPlayerVariableStore : IEditorPlayerVariableStore
         Changed?.Invoke();
     }
 
-    private IReadOnlyList<(string Name, Variable DefaultValue)> GetDefinitions()
+    private List<(string Name, Variable DefaultValue)> GetDefinitions()
     {
         var definitions = new Dictionary<string, Variable>(StringComparer.Ordinal);
         foreach (var definition in _systemVariables.Values)

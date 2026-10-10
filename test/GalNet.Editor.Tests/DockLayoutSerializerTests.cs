@@ -13,6 +13,6 @@ public class DockLayoutSerializerTests
         var serialized = new DockLayoutSerializer().Serialize(layout);
 
         Assert.That(serialized, Does.Contain("\"NaN\""));
-        Assert.That(new DockLayoutSerializer().Deserialize(serialized), Is.Not.Null);
+        Assert.That(DockLayoutSerializer.Deserialize(serialized), Is.Not.Null);
     }
 }

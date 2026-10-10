@@ -78,7 +78,7 @@ public static class GamePackageExporter
         return archive.AssetIds.OrderBy(id => id, StringComparer.Ordinal).Select(id => archive.GetAsset(id)!).ToArray();
     }
 
-    private static IReadOnlyList<(string Path, byte[] Data)> BuildContentFiles(string projectRoot, GalleryCatalog gallery, CancellationToken ct)
+    private static (string Path, byte[] Data)[] BuildContentFiles(string projectRoot, GalleryCatalog gallery, CancellationToken ct)
     {
         return Directory.EnumerateFiles(projectRoot, "*", SearchOption.AllDirectories)
             .Select(path => Path.GetRelativePath(projectRoot, path).Replace('\\', '/'))

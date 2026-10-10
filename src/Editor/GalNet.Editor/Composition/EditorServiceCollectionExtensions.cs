@@ -60,7 +60,6 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<IProjectFileCommandExecutor, AssetFileCommandExecutor>();
         services.AddScoped<EditorHistories>();
         services.AddScoped<UndoRedoRouter>();
-        services.AddSingleton<GraphDocumentMapper>();
         services.AddSingleton<IEditorDocumentRepository, EditorDocumentRepository>();
         services.AddSingleton<IEditorDocumentService, EditorDocumentService>();
         services.AddSingleton<IEditorSaveCoordinator, EditorSaveCoordinator>();
@@ -86,7 +85,7 @@ public static class EditorServiceCollectionExtensions
         return services;
     }
 
-    private static IServiceCollection AddEditorCommands(this IServiceCollection services, IEntryCatalog targetProfile)
+    private static IServiceCollection AddEditorCommands(this IServiceCollection services, TargetProfileEntryCatalog targetProfile)
     {
         services.AddSingleton<SaveProjectCommand>();
         services.AddSingleton<CloseProjectCommand>();

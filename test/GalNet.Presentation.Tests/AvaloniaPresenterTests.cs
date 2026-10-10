@@ -10,9 +10,9 @@ namespace GeneralTest.Presentation;
 public sealed class AvaloniaPresenterTests
 {
     [Test]
-    public void PageViewComposesRatherThanImplementsPresenterPorts()
+    public void PresenterCollectionComposesRatherThanImplementsPresenterPorts()
     {
-        var pageViewType = typeof(AvaloniaGamePageView);
+        var pageViewType = typeof(AvaloniaGamePresenters);
         var presenterTypes = new[]
         {
             typeof(IDialoguePresenter),
@@ -24,6 +24,8 @@ public sealed class AvaloniaPresenterTests
 
         Assert.Multiple(() =>
         {
+            Assert.That(pageViewType.GetEvent("AdvanceRequested"), Is.Null);
+            Assert.That(typeof(AvaloniaDialoguePresenter).GetEvent("AdvanceRequested"), Is.Null);
             Assert.That(pageViewType.GetInterfaces(), Does.Not.Contain(typeof(IDialoguePresenter)));
             Assert.That(pageViewType.GetInterfaces(), Does.Not.Contain(typeof(IChoicePresenter)));
             Assert.That(pageViewType.GetInterfaces(), Does.Not.Contain(typeof(ILayerPresenter)));

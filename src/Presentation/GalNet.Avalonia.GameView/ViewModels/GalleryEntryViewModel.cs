@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Core.Gallery;
@@ -8,7 +9,7 @@ public sealed partial class GalleryEntryViewModel(GalleryItemData data) : Observ
 {
     public GalleryItemData Data { get; } = data;
     public int Id => Data.Item.Id;
-    public string Title => string.IsNullOrWhiteSpace(Data.Item.Title) ? Data.Item.Id.ToString() : Data.Item.Title;
+    public string Title => string.IsNullOrWhiteSpace(Data.Item.Title) ? Data.Item.Id.ToString(CultureInfo.InvariantCulture) : Data.Item.Title;
     public bool IsUnlocked => Data.IsUnlocked;
     public bool IsLocked => !IsUnlocked;
 

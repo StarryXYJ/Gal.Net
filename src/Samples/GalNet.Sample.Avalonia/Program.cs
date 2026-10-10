@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia;
 using GalNet.Runtime.Logging;
 using GalNet.Sample.Avalonia.Debug;
@@ -16,9 +17,11 @@ sealed class Program
             .MinimumLevel.Debug()
             .Enrich.WithProperty("LogChannel", "Game")
             .WriteTo.Console(
+                formatProvider: CultureInfo.InvariantCulture,
                 outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3} {LogChannel}] {Message:lj}{NewLine}{Exception}")
             .WriteTo.File(
                 Path.Combine(launchOptions.LogDirectory, "game-.log"),
+                formatProvider: CultureInfo.InvariantCulture,
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 14,
                 shared: true,

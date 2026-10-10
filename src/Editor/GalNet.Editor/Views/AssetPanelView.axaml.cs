@@ -53,7 +53,17 @@ public partial class AssetPanelView : UserControl
             return;
         }
         var files = e.DataTransfer.TryGetFiles();
-        e.DragEffects = files?.Any() == true ? DragDropEffects.Copy : DragDropEffects.None;
+        var fileEnumerator = files?.GetEnumerator();
+        try
+        {
+            e.DragEffects = fileEnumerator?.MoveNext() == true
+                ? DragDropEffects.Copy
+                : DragDropEffects.None;
+        }
+        finally
+        {
+            (fileEnumerator as IDisposable)?.Dispose();
+        }
         if (DataContext is AssetPanelViewModel vm) vm.SetExternalDropActive(e.DragEffects == DragDropEffects.Copy);
         e.Handled = true;
     }
@@ -93,7 +103,7 @@ public partial class AssetPanelView : UserControl
     {
         if (sender is not Avalonia.Controls.Control { DataContext: AssetEntry target } || DataContext is not AssetPanelViewModel vm || !e.DataTransfer.Formats.Contains(InternalAssetFormat)) return;
         var sourcePath = e.DataTransfer.TryGetValue(InternalAssetFormat);
-        var allowed = sourcePath is not null && vm.CanMoveTo(target, sourcePath);
+        var allowed = sourcePath is not null && AssetPanelViewModel.CanMoveTo(target, sourcePath);
         e.DragEffects = allowed ? DragDropEffects.Move : DragDropEffects.None;
         vm.SetDropTarget(allowed ? target : null);
         e.Handled = true;

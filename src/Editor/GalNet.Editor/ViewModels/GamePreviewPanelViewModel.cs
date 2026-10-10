@@ -324,13 +324,18 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
     public async ValueTask DisposeAsync()
     {
         await DisposePreviewForProjectCloseAsync();
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>
     /// Dock.Model disposes document contexts synchronously. Start the same idempotent
     /// cleanup path without blocking the UI thread that owns the document close.
     /// </summary>
-    public void Dispose() => _ = DisposeAsync();
+    public void Dispose()
+    {
+        _ = DisposeAsync().AsTask();
+        GC.SuppressFinalize(this);
+    }
 
     private async Task DisposePreviewForProjectCloseAsync()
     {

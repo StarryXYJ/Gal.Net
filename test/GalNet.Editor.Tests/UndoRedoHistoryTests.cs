@@ -6,6 +6,8 @@ namespace GeneralTest.Editor;
 [TestFixture]
 public sealed class UndoRedoHistoryTests
 {
+    private static readonly string[] PairItems = ["A", "B"];
+
     [Test]
     public void ExecuteUndoRedo_PreservesObjectIdentity()
     {
@@ -64,7 +66,7 @@ public sealed class UndoRedoHistoryTests
         history.Undo();
         Assert.That(items, Is.Empty);
         history.Redo();
-        Assert.That(items, Is.EqualTo(new[] { "A", "B" }));
+        Assert.That(items, Is.EqualTo(PairItems));
     }
 
     [Test]

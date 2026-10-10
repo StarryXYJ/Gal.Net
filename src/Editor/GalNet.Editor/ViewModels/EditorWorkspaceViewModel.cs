@@ -125,6 +125,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         _variableDefinitionService.DefinitionsChanged -= _definitionsChangedHandler;
         _histories.Changed -= OnHistoryChanged;
         _graphChangeTracker.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     public void SelectNode(GraphNode? node, bool additive = false)
@@ -388,7 +389,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         if (edits.Count > 0) PushGraphEdit(new CompositeEdit("Move nodes", edits));
     }
 
-    public void PersistGraphDocument()
+    public static void PersistGraphDocument()
     {
         // The live ViewModels are the canonical GUI state. SaveCoreAsync maps them to files.
     }
@@ -758,7 +759,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
 
     private void RefreshGraphNode(GraphNode node) { node.RefreshConnectors(); UpdateConnectorStates(); }
 
-    private IUndoableEdit CreateBranchMoveEdit<T>(string description, GraphNode node, ObservableCollection<T> items,
+    private DelegateEdit CreateBranchMoveEdit<T>(string description, GraphNode node, ObservableCollection<T> items,
         int before, int after, IReadOnlyDictionary<GraphEdge, int> oldOutlets, IReadOnlyDictionary<GraphEdge, int> newOutlets)
     {
         void Apply(int from, int to, IReadOnlyDictionary<GraphEdge, int> outlets)

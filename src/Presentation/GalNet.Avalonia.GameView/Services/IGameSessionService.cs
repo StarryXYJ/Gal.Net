@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 
@@ -39,5 +40,5 @@ public interface IPreparedGameSessionService
 /// <summary>Presentation-safe save slot data. The host owns loading, writing and preview bytes.</summary>
 public sealed record GameSaveSlot(int SlotIndex, DateTime Timestamp, string Description, bool IsEmpty, bool IsCorrupt)
 {
-    public string DisplayTimestamp => Timestamp == default ? string.Empty : Timestamp.ToString("g");
+    public string DisplayTimestamp => Timestamp == default ? string.Empty : Timestamp.ToString("g", CultureInfo.CurrentCulture);
 }

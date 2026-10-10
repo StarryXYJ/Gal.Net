@@ -16,6 +16,8 @@ Graph + 已编译 .galgroup
 
 `IGameRuntime` 是运行事实的唯一来源，保存当前节点、条目位置、变量和 `SceneState`。呈现端口负责显示，不反过来拥有剧情或可存档状态。
 
+Engine 的 `StateChanged` 统一报告开始运行、完成、失败和停止，覆盖选择结果和阻塞实例自然完成；宿主无需在多个推进入口重复判断结束。关闭会话使用 `await engine.StopAsync()` 或异步释放，随后释放执行 view 与平台后端。停止是 Engine 终态，重开创建新实例。详细契约见[运行时参考](spec/runtime.md#状态通知和停止)。
+
 ## 内容项目与发布
 
 开发项目的最小布局如下：

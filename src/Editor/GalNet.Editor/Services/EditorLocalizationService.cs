@@ -47,7 +47,7 @@ public sealed class EditorLocalizationService : IEditorLocalizationService
     public string Format(string key, params object[] args)
     {
         var template = this[key];
-        return string.Format(CultureInfo.CurrentUICulture, template, args);
+        return string.Format(CultureInfo.CurrentCulture, template, args);
     }
 
     public void ApplyLocale(string localeCode)

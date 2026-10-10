@@ -200,7 +200,7 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost, IAsyncDispos
             await File.WriteAllBytesAsync(path, handle.Value, cancellationToken).ConfigureAwait(false);
             lock (_gate)
             {
-                if (_disposed) throw new ObjectDisposedException(nameof(AvaloniaAudioPlaybackHost));
+                ObjectDisposedException.ThrowIf(_disposed, this);
                 _paths.TryAdd(assetId, path);
                 return _paths[assetId];
             }

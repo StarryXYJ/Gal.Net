@@ -94,7 +94,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
     private readonly ObservableCollection<GameSaveSlot> _slots = [];
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySlots;
     private readonly NullGameView _fallback = new();
-    private AvaloniaGamePageView? _pageView;
+    private AvaloniaGamePresenters? _pageView;
     private EditorPreviewLayerFactory? _layers;
     private AvaloniaEffectRuntime? _effects;
     private AvaloniaAudioPlaybackHost? _audio;
@@ -187,6 +187,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
         {
             _disposed = true;
             DisposeEngine();
+            (_context.Saves as IDisposable)?.Dispose();
         }
     }
 
@@ -249,7 +250,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
     {
         (GalleryResources as IDisposable)?.Dispose();
         GalleryResources = null;
-        if (_pageView is not null) _pageView.AdvanceRequested -= OnAdvanceRequested;
+        _gameplay.AdvanceRequested -= OnAdvanceRequested;
         _engine?.Dispose();
         _pageView?.Dispose();
         _layers?.Dispose();
@@ -278,7 +279,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
         OnPropertyChanged(nameof(GalleryDataSource));
         OnPropertyChanged(nameof(GalleryResources));
         _layers = new EditorPreviewLayerFactory(_preloadedTextures);
-        _pageView = new AvaloniaGamePageView(_gameplay, _page, _layers);
+        _pageView = new AvaloniaGamePresenters(_gameplay, _page, _layers);
         _effects = new AvaloniaEffectRuntime(_gameplay);
         _audio = new AvaloniaAudioPlaybackHost(_context.Assets);
         var view = new GameRegistration().AddBuiltins(
@@ -292,7 +293,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
             _audio).BuildView();
         var runtime = new GameRuntime(null, content.Graph.RootNodeId, new SettingsContainer(), _context.Variables);
         _engine = new GameEngine(content.Graph, runtime, view, _context.Progress, _pageView.ChoicePresenter);
-        _pageView.AdvanceRequested += OnAdvanceRequested;
+        _gameplay.AdvanceRequested += OnAdvanceRequested;
         _context.RuntimeCreated(runtime);
         await RefreshSlotsAsync(cancellationToken);
     }

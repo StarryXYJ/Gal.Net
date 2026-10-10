@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using Avalonia;
 using Dock.Model.Core;
 using Dock.Settings;
@@ -18,8 +19,10 @@ sealed class Program
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
             .WriteTo.Console(
+                formatProvider: CultureInfo.InvariantCulture,
                 outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
             .WriteTo.Debug(
+                formatProvider: CultureInfo.InvariantCulture,
                 outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
             .WriteTo.Sink(EditorLogSink.Instance)
             .CreateLogger();

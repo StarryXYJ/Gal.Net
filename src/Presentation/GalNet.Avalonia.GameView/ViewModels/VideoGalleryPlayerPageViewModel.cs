@@ -1,3 +1,4 @@
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
@@ -18,7 +19,7 @@ public sealed partial class VideoGalleryPlayerPageViewModel(
     public Task ActivateAsync(GalleryItemData item, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Title = string.IsNullOrWhiteSpace(item.Item.Title) ? item.Item.Id.ToString() : item.Item.Title;
+        Title = string.IsNullOrWhiteSpace(item.Item.Title) ? item.Item.Id.ToString(CultureInfo.InvariantCulture) : item.Item.Title;
         ErrorMessage = null;
         if (!item.IsUnlocked) ErrorMessage = "This Gallery item is locked.";
         else { media.PlayVideo(item); ErrorMessage = media.LastError; }

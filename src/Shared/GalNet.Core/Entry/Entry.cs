@@ -170,7 +170,7 @@ public sealed class EntryDefinition
     public EntryKind Kind { get; }
     public DynamicParameterTable? DynamicParameters { get; }
 
-    private static IReadOnlyDictionary<TKey, TValue> Freeze<TKey, TValue>(IReadOnlyDictionary<TKey, TValue> values)
+    private static ReadOnlyDictionary<TKey, TValue> Freeze<TKey, TValue>(IReadOnlyDictionary<TKey, TValue> values)
         where TKey : notnull => new ReadOnlyDictionary<TKey, TValue>(values.ToDictionary(pair => pair.Key, pair => pair.Value));
 }
 

@@ -48,7 +48,7 @@ public partial class MainWindow : UrsaWindow
     private async Task<bool> ConfirmAsync(SampleDebugPrompt prompt) =>
         await MessageBox.ShowAsync(this, prompt.Message, prompt.Title, button: MessageBoxButton.OKCancel) == MessageBoxResult.OK;
 
-    private Task NotifyAsync(SampleDebugNotification notification) =>
+    private Task<MessageBoxResult> NotifyAsync(SampleDebugNotification notification) =>
         MessageBox.ShowAsync(this, notification.Message, notification.Title, button: MessageBoxButton.OK);
 
     private Task ShowDebugLogAsync()

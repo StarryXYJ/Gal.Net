@@ -11,6 +11,8 @@ namespace GeneralTest.Runtime;
 
 public class GalgroupLoaderTests
 {
+    private static readonly string[] CrossFadeSourceMap = ["cross-fade#1"];
+
     [Test]
     public void LoadIntoGroup_PreservesGenericPrimitiveArguments()
     {
@@ -118,7 +120,7 @@ public class GalgroupLoaderTests
             """), Throws.TypeOf<InvalidDataException>().With.Message.Contains("compiled"));
     }
 
-    public void Load_RejectsPreviousFormatVersion()
+    public static void Load_RejectsPreviousFormatVersion()
     {
         var group = new Group { Id = "test" };
 
@@ -157,7 +159,7 @@ public class GalgroupLoaderTests
         Assert.That(result.Document.Entries, Has.Count.EqualTo(1));
         Assert.That(result.Document.Entries[0].Id, Is.EqualTo("cross-fade#1"));
         Assert.That(result.Document.Entries[0].TypeId, Is.EqualTo(PlayAnimationPlanEntry.TypeId));
-        Assert.That(result.SourceMap["cross-fade"], Is.EqualTo(new[] { "cross-fade#1" }));
+        Assert.That(result.SourceMap["cross-fade"], Is.EqualTo(CrossFadeSourceMap));
 
         var plan = result.Document.Entries[0].Arguments.GetProperty("plan");
         Assert.That(plan.GetProperty("blocking").GetBoolean(), Is.True);

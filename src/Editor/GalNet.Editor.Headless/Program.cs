@@ -57,7 +57,7 @@ internal static class Program
                 case "entries": return WriteEntries(document, args);
                 case "variables": WriteJson(new { player = document.Graph.PlayerVariables, save = document.Graph.SaveVariables }); return 0;
                 case "validate":
-                    var validation = new EditorDocumentValidator().Validate(document);
+                    var validation = EditorDocumentValidator.Validate(document);
                     WriteJson(new { success = validation.IsValid, diagnostics = validation.Diagnostics });
                     return validation.IsValid ? 0 : 4;
                 case "execute":
@@ -72,7 +72,7 @@ internal static class Program
     }
 
     private static async Task<int> ExecuteAsync(string projectPath, EditorProjectDocument original,
-        IEditorCommandCatalog catalog, IProjectFileCommandCatalog fileCatalog, IEntryCatalog entryCatalog, string json)
+        EditorCommandCatalog catalog, AssetFileCommandCatalog fileCatalog, IEntryCatalog entryCatalog, string json)
     {
         using var parsed = JsonDocument.Parse(json);
         var root = parsed.RootElement;
@@ -102,7 +102,7 @@ internal static class Program
             changed.AddRange(execution.ChangedResources);
             if (execution.Description is not null) descriptions.Add(execution.Description.Description);
         }
-        var validation = new EditorDocumentValidator().Validate(working);
+        var validation = EditorDocumentValidator.Validate(working);
         if (!validation.IsValid) { WriteJson(new { success = false, diagnostics = validation.Diagnostics }); return 5; }
         var dryRun = root.TryGetProperty("dryRun", out var dryRunElement) && dryRunElement.GetBoolean();
         if (!dryRun) await new DirectProjectPersistence(projectPath, new EditorDocumentRepository(entryCatalog)).SaveAsync(working);
@@ -173,7 +173,7 @@ internal static class Program
 
     private static object CreateSummary(string projectPath, EditorProjectDocument document)
     {
-        var validation = new EditorDocumentValidator().Validate(document);
+        var validation = EditorDocumentValidator.Validate(document);
         return new
         {
             project = new { name = document.Graph.Name, path = projectPath },

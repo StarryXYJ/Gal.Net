@@ -13,6 +13,10 @@ namespace GeneralTest.Runtime;
 
 public class GameEnginePrimitiveDispatchTests
 {
+    private static readonly int[] VideoSkipPoints = [5, 12];
+    private static readonly string[] MarkDispatch = ["mark"];
+    private static readonly string[] VisibleOptions = ["visible"];
+
     [Test]
     public void UncompiledAuthoringEntriesAreRejectedInsteadOfSilentlySkipped()
     {
@@ -73,7 +77,7 @@ public class GameEnginePrimitiveDispatchTests
             .RegisterInstruction("test.mark", context => new ImmediatePrimitiveInstance(() => markers++, batchId: context.BatchId))
             .BuildView();
         using var engine = new GameEngine(GraphWithGroup(
-            Primitive("video.play", new { asset = "clip", skipPoints = new[] { 5, 12 } }),
+            Primitive("video.play", new { asset = "clip", skipPoints = VideoSkipPoints }),
             Primitive("test.mark")), view);
         await engine.AdvanceAsync();
         Assert.That(engine.CreateSaveData().EntryIndex, Is.Zero);
@@ -107,7 +111,7 @@ public class GameEnginePrimitiveDispatchTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(dispatched, Is.EqualTo(new[] { "mark" }));
+            Assert.That(dispatched, Is.EqualTo(MarkDispatch));
             Assert.That(engine.EntryIndex, Is.EqualTo(2));
             Assert.That(blocker.SkipCount, Is.Zero);
         });
@@ -338,7 +342,7 @@ public class GameEnginePrimitiveDispatchTests
         });
 
         await engine.AdvanceAsync();
-        Assert.That(presenter.Options, Is.EqualTo(new[] { "visible" }));
+        Assert.That(presenter.Options, Is.EqualTo(VisibleOptions));
 
         presenter.Select(0);
         await WaitUntilAsync(() => runtime.SceneState.Layers.Single().AssetId == "hero-b.png");

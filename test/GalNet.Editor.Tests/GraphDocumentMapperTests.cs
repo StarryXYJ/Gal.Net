@@ -18,7 +18,7 @@ public class GraphDocumentMapperTests
             }
         };
 
-        var graph = new GraphDocumentMapper().Load(loaded);
+        var graph = GraphDocumentMapper.Load(loaded);
 
         Assert.That(graph.Nodes, Has.Count.EqualTo(2));
         Assert.That(graph.Nodes[0].IsEntryNode, Is.True);
@@ -30,7 +30,6 @@ public class GraphDocumentMapperTests
     [Test]
     public void CreateDocument_RoundTripsBranchAndGroupData()
     {
-        var mapper = new GraphDocumentMapper();
         var loaded = new LoadedEditorProjectDocument
         {
             Document = new EditorGraphDocument
@@ -49,8 +48,8 @@ public class GraphDocumentMapperTests
             }
         };
 
-        var graph = mapper.Load(loaded);
-        var document = mapper.CreateDocument("Demo", 2, graph.Nodes, graph.Edges, [], []);
+        var graph = GraphDocumentMapper.Load(loaded);
+        var document = GraphDocumentMapper.CreateDocument("Demo", 2, graph.Nodes, graph.Edges, [], []);
 
         Assert.That(document.RootNodeId, Is.EqualTo("entry"));
         Assert.That(document.Nodes.Single(node => node.Id == "choice").Options![0].Text, Is.EqualTo("Continue"));

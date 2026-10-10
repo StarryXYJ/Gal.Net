@@ -6,7 +6,7 @@ using GalVariable = GalNet.Core.Variable.Variable;
 namespace GalNet.Storage.FileSystem;
 
 /// <summary>File-backed store for player variables that survive individual save slots.</summary>
-public sealed class FilePlayerVariableStore : IPlayerVariableStore
+public sealed class FilePlayerVariableStore : IPlayerVariableStore, IDisposable
 {
     private readonly string _path;
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -43,6 +43,12 @@ public sealed class FilePlayerVariableStore : IPlayerVariableStore
             File.Move(temporaryPath, _path, true);
         }
         finally { _gate.Release(); }
+    }
+
+    public void Dispose()
+    {
+        _gate.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     private static GalVariable Clone(string name, GalVariable source)

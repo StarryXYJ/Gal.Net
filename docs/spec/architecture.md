@@ -51,9 +51,9 @@ src/
 
 ## 游戏运行
 
-`GameEngine` 持有 `IGameRuntime`，解释图、条目、Choice、skip batch 和快照；它不认识具体 UI。`IGameView` 解析 entry schema、创建 primitive instance 并调用 presenter 端口。影响场景的 primitive 先写入 `SceneState`，再通知呈现端；读取快照后由 Engine 根据状态重放。
+`GameEngine` 持有 `IGameRuntime`，解释图、条目、Choice、skip batch 和快照；它不认识具体 UI。Engine 统一报告运行状态，负责停止、取消执行 scope 和等待内部 continuation 退出，不拥有执行 view 或平台后端。`IGameView` 解析 entry schema、创建 primitive instance 并调用 presenter 端口。影响场景的 primitive 先写入 `SceneState`，再通知呈现端；读取快照后由宿主调用 Builtins 的场景重放入口。
 
-Avalonia 展示按领域拆为 dialogue/choice、layer、animation 和 particle presenter；`AvaloniaGamePageView` 只创建并暴露这些 presenter，`CompositeGameView` 组合独立的 schema catalog 与执行模块，提供 Runtime 使用的 `IGameView`。官方 Avalonia Sample 的页面会话只串行化公开命令和顶层 UI 状态：`SampleGameResourceScope` 管理安装内容与资源，`SampleSaveSession` 管理玩家持久化与 Gallery 数据，`SampleGameRunner` 管理 engine、执行 view 和页面展示生命周期，`PersistentSceneRestorer` 在 Runtime 快照恢复后重放 renderer-owned 场景对象。runner 必须先于资源 scope 异步释放。
+Avalonia 展示按领域拆为 dialogue/choice、layer、animation 和 particle presenter；`AvaloniaGamePresenters` 只创建并暴露这些 presenter，`CompositeGameView` 组合独立的 schema catalog 与执行模块，提供 Runtime 使用的 `IGameView`。官方 Avalonia Sample 的页面会话只串行化公开命令和顶层 UI 状态：`SampleGameResourceScope` 管理安装内容与资源，`SampleSaveSession` 管理玩家持久化与 Gallery 数据，`SampleGameRunner` 绑定 Engine 与页面、准备读档及首次推进，`SampleGamePresentation` 管理执行 view 和平台展示资源，`PersistentSceneRestorer` 复用 Builtins 重放 renderer-owned 场景对象。没有通用 Runner 抽象或必须继承的宿主基类。runner 必须先于资源 scope 异步释放。
 
 Gallery catalog 是平台无关的静态内容。宿主把其自动生成的 `gallery_<item-id>_unlocked` Player bool 注册到变量服务；`GalleryDataSource` 合并 catalog 与当前 Player 值。Gallery 解锁不存于独立 UI 状态或存档槽。
 

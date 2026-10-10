@@ -152,7 +152,7 @@ public abstract class EntryModuleBase : IEntryModule
     public IReadOnlyDictionary<string, PrimitiveEntryBase> PrimitiveEntries { get; }
     public IReadOnlyDictionary<string, CompositeEntryBase> CompositeEntries { get; }
 
-    private static IReadOnlyDictionary<string, TEntry> Freeze<TEntry>(IEnumerable<TEntry> entries, string argumentName)
+    private static ReadOnlyDictionary<string, TEntry> Freeze<TEntry>(IEnumerable<TEntry> entries, string argumentName)
         where TEntry : EntryBase
     {
         var result = new Dictionary<string, TEntry>(StringComparer.Ordinal);

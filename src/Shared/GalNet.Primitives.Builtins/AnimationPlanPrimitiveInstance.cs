@@ -7,7 +7,7 @@ using GalNet.Runtime.Logging;
 
 namespace GalNet.Primitives.Builtins;
 
-public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance
+public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposable
 {
     private readonly object _gate = new();
     private readonly IGameRuntime _runtime;
@@ -21,6 +21,7 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance
     private readonly bool[] _notifiedEvents;
     private readonly CancellationTokenSource _presentationCancellation = new();
     private readonly SemaphoreSlim _notificationGate = new(1, 1);
+    private int _resourcesDisposed;
     private bool _skipRequested;
     private bool _skippable;
     private AnimationPlaybackInstance? _playback;
@@ -69,7 +70,7 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance
         _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_plan.PlaybackHandleId, out _playback!);
         if (_animationPresenter is null)
         {
-            _presentationCancellation.Dispose();
+            Dispose();
             TryComplete();
             return;
         }
@@ -112,12 +113,17 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance
         {
             if (_playback is not null && _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_plan.PlaybackHandleId, out var current) && ReferenceEquals(current, _playback))
                 BuiltinRuntimeActions.StopAnimationState(_runtime, _plan.PlaybackHandleId);
+            bool skipRequested;
             lock (_gate)
             {
                 _skippable = false;
-                _presentationCancellation.Dispose();
+                skipRequested = _skipRequested;
             }
-            if (!_skipRequested) TryComplete();
+            if (!skipRequested)
+            {
+                Dispose();
+                TryComplete();
+            }
         }
     }
 
@@ -131,7 +137,11 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance
     {
         try { await NotifyRemainingEventsAsync(_scopeCancellation).ConfigureAwait(false); }
         catch (OperationCanceledException) when (_scopeCancellation.IsCancellationRequested) { }
-        finally { TryComplete(); }
+        finally
+        {
+            Dispose();
+            TryComplete();
+        }
     }
 
     // The presenter supplies its own elapsed frame count before sampling tracks.
@@ -190,6 +200,25 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance
             }
         }
         finally { _notificationGate.Release(); }
+    }
+
+    public void Dispose()
+    {
+        lock (_gate)
+        {
+            _skippable = false;
+            _skipRequested = true;
+        }
+
+        lock (_gate)
+        {
+            if (_resourcesDisposed != 0) return;
+            _resourcesDisposed = 1;
+            _presentationCancellation.Cancel();
+            _presentationCancellation.Dispose();
+            _notificationGate.Dispose();
+        }
+        GC.SuppressFinalize(this);
     }
 
     private sealed record IndexedPlanEvent(int Index, AnimationPlanEventDefinition Event);

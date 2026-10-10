@@ -23,7 +23,7 @@ internal sealed record GameLaunchOptions(string? GameDirectory, string? ProfileD
                 continue;
             }
 
-            if (!args[index].StartsWith("-", StringComparison.Ordinal) && gameDirectory is null)
+            if (!args[index].StartsWith('-') && gameDirectory is null)
                 gameDirectory = Path.GetFullPath(args[index]);
         }
 

@@ -64,6 +64,7 @@ public abstract partial class GalleryVisualPageViewModelBase(
         _thumbnailCancellation = null;
         foreach (var item in Items) item.Dispose();
         Items.Clear();
+        GC.SuppressFinalize(this);
     }
 
     protected IGameNavigationService Navigation => navigation;

@@ -11,13 +11,13 @@ public interface IGamePageLayerFactory : ISceneTextureResolver
 }
 
 /// <summary>Composes the presentation ports used by one shared game page.</summary>
-public sealed class AvaloniaGamePageView : IDisposable
+public sealed class AvaloniaGamePresenters : IDisposable
 {
     private readonly AvaloniaDialoguePresenter _dialogue;
     private readonly AvaloniaAnimationPresenter _animation;
     private readonly AvaloniaParticlePresenter _particles;
 
-    public AvaloniaGamePageView(
+    public AvaloniaGamePresenters(
         GamePageViewModel state,
         GamePage page,
         IGamePageLayerFactory layers,
@@ -42,12 +42,6 @@ public sealed class AvaloniaGamePageView : IDisposable
     public IAnimationPresenter AnimationPresenter { get; }
     public IParticlePresenter ParticlePresenter { get; }
     public Task InitialPresentationReady => _dialogue.InitialPresentationReady;
-
-    public event Action? AdvanceRequested
-    {
-        add => _dialogue.AdvanceRequested += value;
-        remove => _dialogue.AdvanceRequested -= value;
-    }
 
     public void CompleteInitialPresentation() => _dialogue.CompleteInitialPresentation();
 

@@ -73,7 +73,7 @@ public sealed class GalleryPageRegistryBuilder(IPageViewRegistryBuilder pageView
 
 public sealed class GalleryPageRegistry(IReadOnlyDictionary<string, Type> pages) : IGalleryPageRegistry
 {
-    private readonly IReadOnlyDictionary<string, Type> _pages = new Dictionary<string, Type>(pages, StringComparer.Ordinal);
+    private readonly Dictionary<string, Type> _pages = new(pages, StringComparer.Ordinal);
 
     public Type GetViewModelType(string galleryTypeId) =>
         TryGetViewModelType(galleryTypeId, out var viewModelType)

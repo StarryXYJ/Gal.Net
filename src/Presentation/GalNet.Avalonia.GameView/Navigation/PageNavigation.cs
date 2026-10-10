@@ -259,7 +259,7 @@ public sealed class PageViewRegistryBuilder : IPageViewRegistryBuilder
 /// <summary>Immutable runtime page mapping.</summary>
 public sealed class PageViewRegistry : IPageViewRegistry
 {
-    private readonly IReadOnlyDictionary<Type, Type> _views;
+    private readonly Dictionary<Type, Type> _views;
 
     internal PageViewRegistry(IReadOnlyDictionary<Type, Type> views) =>
         _views = new Dictionary<Type, Type>(views);

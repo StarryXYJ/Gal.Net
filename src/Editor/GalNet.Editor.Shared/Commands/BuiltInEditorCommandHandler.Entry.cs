@@ -338,7 +338,7 @@ public sealed partial class BuiltInEditorCommandHandler
         }
     }
 
-    private static void Renumber(IReadOnlyList<EditorEntryData> entries)
+    private static void Renumber(List<EditorEntryData> entries)
     {
         for (var index = 0; index < entries.Count; index++)
             entries[index].Id = index + 1;

@@ -109,6 +109,8 @@ await using var view = registration.BuildView();
 
 编译期 target profile 和运行期 view 使用等价的 schema；执行模块只在运行期创建。宿主先停止/释放 Engine，再异步释放 view，最后释放它借用的 presenter 和平台资源。注册失败时释放 registration，避免遗留已创建的执行模块。
 
+平台实现只需要提供 presenter/后端，不需要实现 Runner、跟踪 Engine continuation 或自行推断剧情结束。宿主调用 `AdvanceAsync()`，通过 `StateChanged` 接收统一运行状态，关闭时调用 `StopAsync()` 或异步释放 Engine。选择或阻塞实例自然完成后的推进与终态通知由 Engine 负责。页面切换前的快照恢复及 Builtins 展示重放仍由宿主编排。
+
 ### 4. 自由选择内置能力
 
 ```csharp

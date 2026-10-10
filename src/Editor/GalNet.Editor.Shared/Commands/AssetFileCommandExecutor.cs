@@ -149,7 +149,7 @@ public sealed class AssetFileCommandExecutor : IProjectFileCommandExecutor
         return Success(transactionId, $"Moved asset '{command.RelativePath}' to the project recovery area.", [Resource(root, source)]);
     }
 
-    private IReadOnlyList<string> FindReferences(string projectPath, string assetPath, string relativePath)
+    private List<string> FindReferences(string projectPath, string assetPath, string relativePath)
     {
         var values = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {

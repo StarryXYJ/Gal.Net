@@ -15,7 +15,7 @@ public sealed class EditorCommandCatalog : IEditorCommandCatalog
     };
 
     private readonly IReadOnlyList<IProjectCommandDefinition> _definitions;
-    private readonly IReadOnlyDictionary<string, IProjectCommandDefinition> _byId;
+    private readonly Dictionary<string, IProjectCommandDefinition> _byId;
 
     public EditorCommandCatalog()
     {
@@ -75,7 +75,7 @@ public sealed class EditorCommandCatalog : IEditorCommandCatalog
         Define<PatchProjectSettingsCommand>("project.settings.patch", "Updates selected project settings after validating each supported field.")
     ];
 
-    private static IProjectCommandDefinition Define<TCommand>(string id, string description)
+    private static ProjectCommandDefinition Define<TCommand>(string id, string description)
         where TCommand : IProjectEditCommand =>
         new ProjectCommandDefinition(
             id,

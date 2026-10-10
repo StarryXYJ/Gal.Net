@@ -186,7 +186,7 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         try { await ExecuteFileCommandAsync(new DeleteAssetCommand(SelectedEntry.RelativePath)); SelectedEntry = null; LoadEntries(); }
         catch (Exception ex) { ErrorText = ex.Message; }
     }
-    public bool CanMoveTo(AssetEntry target, string sourceRelativePath)
+    public static bool CanMoveTo(AssetEntry target, string sourceRelativePath)
     {
         if (!target.IsDirectory || string.IsNullOrWhiteSpace(sourceRelativePath)) return false;
         return CanMoveToDirectory(target.RelativePath, sourceRelativePath);

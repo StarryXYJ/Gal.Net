@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Threading.Tasks;
@@ -57,7 +58,7 @@ public partial class StartupPageViewModel : PageViewModelBase
                     ? Path.GetFileName(Path.TrimEndingDirectorySeparator(info.Path))
                     : info.Name,
                 Path = info.Path,
-                LastOpened = info.LastOpened.ToString("yyyy-MM-dd HH:mm")
+                LastOpened = info.LastOpened.ToString("yyyy-MM-dd HH:mm", CultureInfo.CurrentCulture)
             });
         }
     }

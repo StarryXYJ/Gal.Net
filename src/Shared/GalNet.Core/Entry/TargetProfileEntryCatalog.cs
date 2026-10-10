@@ -6,7 +6,7 @@ namespace GalNet.Core.Entry;
 /// </summary>
 public sealed class TargetProfileEntryCatalog : IEntryCatalog
 {
-    private readonly IReadOnlyDictionary<string, EntryDefinition> _definitions;
+    private readonly Dictionary<string, EntryDefinition> _definitions;
 
     /// <summary>
     /// Builds one target profile from optional authoring-module contributions.

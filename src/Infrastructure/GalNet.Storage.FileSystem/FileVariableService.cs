@@ -9,7 +9,7 @@ namespace GalNet.Storage.FileSystem;
 /// Platform-neutral runtime variable bridge backed by an <see cref="IPlayerVariableStore"/>.
 /// Variables prefixed with <c>player.</c> persist globally; all other variables remain in the active save.
 /// </summary>
-public sealed class FileVariableService : IVariableService
+public sealed class FileVariableService : IVariableService, IDisposable
 {
     private readonly IPlayerVariableStore _playerStore;
     private readonly Dictionary<string, GalVariable> _playerVariables;
@@ -76,6 +76,12 @@ public sealed class FileVariableService : IVariableService
         await _playerStore.SaveAsync(_playerVariables, ct);
         foreach (var pair in _playerVariables)
             VariableChanged?.Invoke(VariableScope.Player, pair.Key, pair.Value);
+    }
+
+    public void Dispose()
+    {
+        (_playerStore as IDisposable)?.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     private static GalVariable Clone(string name, GalVariable source)

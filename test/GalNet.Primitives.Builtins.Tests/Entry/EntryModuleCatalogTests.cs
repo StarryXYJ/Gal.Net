@@ -9,6 +9,8 @@ namespace GeneralTest.Entry;
 
 public class EntryModuleTests
 {
+    private static readonly int[] InvalidSkipPoints = [4, 2];
+
     [Test]
     public void BuiltinContractsValidateCustomImplementationsBeforeFactoryInvocation()
     {
@@ -20,7 +22,7 @@ public class EntryModuleTests
                 return new ImmediatePrimitiveInstance(() => { }, batchId: context.BatchId);
             }).BuildView();
         Assert.Throws<InvalidDataException>(() => view.Dispatch(new PrimitiveEntry("video.play",
-            JsonSerializer.SerializeToElement(new { asset = "clip", skipPoints = new[] { 4, 2 } })),
+            JsonSerializer.SerializeToElement(new { asset = "clip", skipPoints = InvalidSkipPoints })),
             new GameRuntime(null), CancellationToken.None));
         Assert.That(called, Is.False);
     }

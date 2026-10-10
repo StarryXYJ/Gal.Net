@@ -13,6 +13,13 @@ namespace GeneralTest.Runtime;
 
 public class BuiltinPrimitiveInstanceTests
 {
+    private static readonly string[] FadeCompleted = ["fade"];
+    private static readonly string[] BlurStopped = ["blur-1"];
+    private static readonly string[] SnowStopped = ["snow"];
+    private static readonly int[] TimedBurstCounts = [8, 12];
+    private static readonly string[] TimedSnowStopped = ["timed-snow"];
+    private static readonly string[] NewLayerIds = ["new"];
+
     private static readonly JsonSerializerOptions AnimationJsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -55,7 +62,7 @@ public class BuiltinPrimitiveInstanceTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(presenter.CompletedImmediately, Is.EqualTo(new[] { "fade" }));
+            Assert.That(presenter.CompletedImmediately, Is.EqualTo(FadeCompleted));
             Assert.That(instance.IsCompleted, Is.True);
         });
     }
@@ -93,7 +100,7 @@ public class BuiltinPrimitiveInstanceTests
         Assert.Multiple(() =>
         {
             Assert.That(runtime.SceneState.ActiveEffects, Is.Empty);
-            Assert.That(presenter.Stopped, Is.EqualTo(new[] { "blur-1" }));
+            Assert.That(presenter.Stopped, Is.EqualTo(BlurStopped));
         });
     }
 
@@ -171,7 +178,7 @@ public class BuiltinPrimitiveInstanceTests
         {
             Assert.That(runtime.SceneState.ActiveParticleEmitters, Is.Empty);
             Assert.That(runtime.SceneInstances.TryGet<ParticleEmitterInstance>("snow", out _), Is.False);
-            Assert.That(presenter.Stopped, Is.EqualTo(new[] { "snow" }));
+            Assert.That(presenter.Stopped, Is.EqualTo(SnowStopped));
         });
     }
 
@@ -253,8 +260,8 @@ public class BuiltinPrimitiveInstanceTests
         Assert.Multiple(() =>
         {
             Assert.That(particles.Started.Single().InstanceId, Is.EqualTo("timed-snow"));
-            Assert.That(particles.Bursts.Select(request => request.Count), Is.EqualTo(new[] { 8, 12 }));
-            Assert.That(particles.Stopped, Is.EqualTo(new[] { "timed-snow" }));
+            Assert.That(particles.Bursts.Select(request => request.Count), Is.EqualTo(TimedBurstCounts));
+            Assert.That(particles.Stopped, Is.EqualTo(TimedSnowStopped));
             Assert.That(runtime.SceneState.ActiveParticleEmitters, Is.Empty);
         });
     }
@@ -432,7 +439,7 @@ public class BuiltinPrimitiveInstanceTests
             particlePresenter,
             animationPresenter,
             layerPresenter,
-            CancellationToken.None);
+            cancellationToken: CancellationToken.None);
 
         var effectRequest = effectPresenter.Started.Single();
         var particleRequest = particlePresenter.Started.Single();
@@ -602,7 +609,7 @@ public class BuiltinPrimitiveInstanceTests
             Assert.That(runtime.SceneInstances.TryGet<Layer>("old", out _), Is.False);
             Assert.That(runtime.SceneInstances.TryGet<Layer>("new", out var newLayer), Is.True);
             Assert.That(newLayer.Opacity, Is.EqualTo(1));
-            Assert.That(runtime.SceneState.Layers.Select(layer => layer.Id), Is.EqualTo(new[] { "new" }));
+            Assert.That(runtime.SceneState.Layers.Select(layer => layer.Id), Is.EqualTo(NewLayerIds));
             Assert.That(instance, Is.TypeOf<AnimationPlanPrimitiveInstance>());
             Assert.That(animation.Plans.Single().PlaybackHandleId, Is.EqualTo("crossfade"));
             Assert.That(oldLayer.Opacity, Is.EqualTo(1));

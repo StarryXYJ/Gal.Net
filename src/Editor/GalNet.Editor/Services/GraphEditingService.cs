@@ -92,7 +92,7 @@ public sealed class GraphEditingService : IGraphEditingService
         if (groupNode.NodeKind != GraphNodeKind.LinearGroup || count < 1)
             return [];
 
-        var definition = _catalog.Definitions.FirstOrDefault();
+        var definition = _catalog.Definitions.Count > 0 ? _catalog.Definitions[0] : null;
         if (definition is null)
             return [];
 
@@ -150,9 +150,9 @@ public sealed class GraphEditingService : IGraphEditingService
         return true;
     }
 
-    public bool RemoveChoiceOption(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphNode node, BranchOptionEditorItemViewModel option)
+    public bool RemoveChoiceOption(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphNode node, BranchOptionEditorItemViewModel choiceOption)
     {
-        if (node.NodeKind != GraphNodeKind.ChoiceBranch || !node.Options.Remove(option))
+        if (node.NodeKind != GraphNodeKind.ChoiceBranch || !node.Options.Remove(choiceOption))
             return false;
 
         node.RefreshConnectors();
@@ -161,12 +161,12 @@ public sealed class GraphEditingService : IGraphEditingService
         return true;
     }
 
-    public bool MoveChoiceOption(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphNode node, BranchOptionEditorItemViewModel option, int newIndex)
+    public bool MoveChoiceOption(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphNode node, BranchOptionEditorItemViewModel choiceOption, int newIndex)
     {
         if (node.NodeKind != GraphNodeKind.ChoiceBranch)
             return false;
 
-        return MoveBranchItemWithEdges(nodes, edges, node, node.Options, option, newIndex);
+        return MoveBranchItemWithEdges(nodes, edges, node, node.Options, choiceOption, newIndex);
     }
 
     public bool AddCondition(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphNode node)

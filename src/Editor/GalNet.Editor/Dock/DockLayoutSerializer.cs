@@ -52,7 +52,7 @@ public sealed class DockLayoutSerializer
         return JsonSerializer.Serialize(new LayoutData { Version = FormatVersion, Root = root, Windows = windows }, JsonOptions);
     }
 
-    public IRootDock? Deserialize(string serialized)
+    public static IRootDock? Deserialize(string serialized)
     {
         if (string.IsNullOrWhiteSpace(serialized))
             return null;
