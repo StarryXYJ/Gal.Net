@@ -39,6 +39,7 @@ public static class AvaloniaGameViewServiceCollectionExtensions
         services.AddScoped<IGameNavigationTransitionCoordinator>(provider =>
             provider.GetRequiredService<GameNavigationTransitionCoordinator>());
         services.AddScoped<IGameNavigationService, GameNavigationService>();
+        services.AddScoped<IPlayerSettingsService, DefaultPlayerSettingsService>();
         services.AddScoped<GalleryNavigationService>();
         services.AddScoped<GameLaunchFlow>();
         services.AddScoped<IPageViewFactory, PageViewFactory>();

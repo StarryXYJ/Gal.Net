@@ -38,6 +38,14 @@
 
 Gallery 使用独立的 `IGalleryPageRegistry`，以精确 Gallery `typeId` 映射到页面 ViewModel 和 View。`Add<TViewModel, TView>` 注册新类型，`Replace<TViewModel, TView>` 显式覆盖既有类型；多个 type ID 可以映射到同一页面。该注册同时写入普通 ViewModel→View registry 和 DI，构建后不可修改。
 
+### 设置与界面文本
+
+`SettingsPageViewModel` 通过通用的 `IPlayerSettingsService.Items` 获取设置项，不绑定语言专用服务。页面支持 `ChoicePlayerSetting` 和 `RangePlayerSetting`；默认服务提供文本速度，宿主可在 DI 中替换服务并提供其他设置。设置应用、恢复和持久化由宿主负责，共享页面不读取配置文件。
+
+共享页面的静态文案使用 `PlayerTextExtension`，未接入宿主本地化时显示默认英文。官方 Sample 提供 `LocalizedString` 并绑定其 `Value`，沿用 DynamicLocalization 的 Culture/Provider 变更通知机制；宿主设置标签也可以使用同样的动态对象。该绑定不会自动翻译任意业务字符串或剧情内容。
+
+Sample 在游戏会话初始化成功后，把设置接入现有 Player 变量存储，恢复语言与文本速度。语言变更（包括直接调用 CultureService）立即刷新绑定并排队持久化；清空玩家状态和销毁会话前等待写入完成。
+
 `GalleryNavigationService` 不按资源类型推断页面：没有有内容类型时入口不可用，只有一个时直接打开该页，多个时先进入类型选择页；未注册页面会显示诊断页。CG、视频和音频是独立页面/媒体状态，不使用 renderer enum 或单一多媒体 ViewModel。
 
 ## 运行期呈现边界

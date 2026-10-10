@@ -18,6 +18,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
 {
     private readonly GamePageViewModel _gameplay;
     private readonly GamePage _page;
+    private readonly SamplePlayerSettingsService _settings;
     private readonly IResourceTypeCatalog _resourceTypes;
     private readonly IGalleryTypeCatalog _galleryTypes;
     private readonly ObservableCollection<GameSaveSlot> _saveSlots = [];
@@ -28,10 +29,11 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private bool _disposed;
 
-    public SampleGameSessionService(GamePageViewModel gameplay, GamePage page)
+    public SampleGameSessionService(GamePageViewModel gameplay, GamePage page, SamplePlayerSettingsService settings)
     {
         _gameplay = gameplay;
         _page = page;
+        _settings = settings;
         _resourceTypes = BuiltinResourceTypes.CreateCatalog();
         _galleryTypes = BuiltinGalleryTypes.CreateCatalog(_resourceTypes);
         _readOnlySaveSlots = new ReadOnlyObservableCollection<GameSaveSlot>(_saveSlots);
@@ -91,6 +93,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
 
             _resources = resources;
             _saveSession = saveSession;
+            _settings.Attach(saveSession.Variables);
             var preloadFailures = resources.SpriteFileCount - resources.PreloadedTextures.Count;
             GameLog.Logger.Information("Preloaded {SpriteCount} sprite assets ({FailureCount} deferred to fallback)",
                 resources.SpriteFileCount, preloadFailures);
@@ -169,6 +172,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         {
             await StopCurrentRunAsync();
             var saveSession = _saveSession;
+            await _settings.FlushAsync();
             if (saveSession is not null)
                 await saveSession.ClearAsync(cancellationToken);
             await OnUiAsync(() =>
@@ -258,6 +262,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _disposed = true;
             _gameplay.InteractionObserved -= OnInteractionObserved;
             await DisposeRunnerAsync();
+            await _settings.FlushAsync();
             _saveSession?.Dispose();
             _saveSession = null;
             GalleryResources = null;

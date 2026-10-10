@@ -14,7 +14,7 @@ public sealed class BuiltinNvlModule : PrimitiveModule
         Visibility<ClearNvlEntry>(presenter, static target => target.ClearNvl()),
         new PrimitiveImplementation(AppendNvlEntry.TypeId, context => new NvlAppendPrimitiveInstance(
                 presenter ?? throw new InvalidOperationException("The NVL module has no presenter."),
-                Arguments.String(context, "content"),
+                context.Runtime.TextResolver.Resolve(Arguments.String(context, "content")),
                 context.BatchId,
                 context.ScopeCancellation))
     ])

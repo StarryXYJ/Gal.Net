@@ -2,25 +2,43 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:GalNet.Avalonia.GameView.Page"
              xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
+             xmlns:settings="using:GalNet.Avalonia.GameView.Services"
+             xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
              x:Class="GalNet.Avalonia.GameView.Page.SettingsPage"
              x:DataType="vm:SettingsPageViewModel">
   <Grid Background="#0B0C15">
     <Border Width="560" Padding="36" Background="#A8181A2A" BorderBrush="#665F6075" BorderThickness="1"
             CornerRadius="10" HorizontalAlignment="Center" VerticalAlignment="Center">
-      <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="26">
+      <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="26">
         <Grid ColumnDefinitions="*,Auto">
           <StackPanel Spacing="3">
-            <TextBlock Text="Settings" FontSize="32" FontWeight="SemiBold" />
-            <TextBlock Text="Playback preferences" Opacity="0.64" />
+            <TextBlock Text="{text:PlayerText Settings.Title, Settings}" FontSize="32" FontWeight="SemiBold" />
+            <TextBlock Text="{text:PlayerText Settings.Description, 'Playback preferences'}" Opacity="0.64" />
           </StackPanel>
-          <Button Grid.Column="1" Classes="player-link" Content="Back" Command="{Binding BackCommand}"
+          <Button Grid.Column="1" Classes="player-link" Content="{text:PlayerText Common.Back, Back}" Command="{Binding BackCommand}"
                   VerticalAlignment="Center" />
         </Grid>
-        <Grid Grid.Row="1" ColumnDefinitions="150,*" ColumnSpacing="22">
-          <TextBlock Text="Text speed" VerticalAlignment="Center" />
-          <Slider Grid.Column="1" Minimum="0" Maximum="120" Value="{Binding TextSpeed, Mode=TwoWay}" />
-        </Grid>
-        <TextBlock Grid.Row="2" Text="Changes apply to the active player session." Opacity="0.48" FontSize="12" />
+        <ItemsControl Grid.Row="1" ItemsSource="{Binding Items}">
+          <ItemsControl.DataTemplates>
+            <DataTemplate DataType="settings:ChoicePlayerSetting" x:DataType="settings:ChoicePlayerSetting">
+              <Grid ColumnDefinitions="150,*" ColumnSpacing="22" Margin="0,0,0,24">
+                <ContentControl Content="{Binding Label}" VerticalAlignment="Center" />
+                <ComboBox Grid.Column="1" ItemsSource="{Binding Options}" SelectedItem="{Binding SelectedOption, Mode=TwoWay}">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="settings:SettingOption"><TextBlock Text="{Binding DisplayName}" /></DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+              </Grid>
+            </DataTemplate>
+            <DataTemplate DataType="settings:RangePlayerSetting" x:DataType="settings:RangePlayerSetting">
+              <Grid ColumnDefinitions="150,*" ColumnSpacing="22">
+                <ContentControl Content="{Binding Label}" VerticalAlignment="Center" />
+                <Slider Grid.Column="1" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value, Mode=TwoWay}" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.DataTemplates>
+        </ItemsControl>
+        <TextBlock Grid.Row="2" Text="{text:PlayerText Settings.Hint, 'Changes apply immediately.'}" Opacity="0.48" FontSize="12" />
       </Grid>
     </Border>
   </Grid>

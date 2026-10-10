@@ -1,4 +1,5 @@
 using GalNet.Core.Gallery;
+using GalNet.Core.I18n;
 using GalNet.Presentation.Abstractions.Audio;
 using GalNet.Presentation.Abstractions.View;
 
@@ -20,9 +21,10 @@ public static class BuiltinRegistration
         IParticlePresenter? particlePresenter = null,
         INvlPresenter? nvlPresenter = null,
         IAudioPlaybackHost? audioHost = null,
-        IVideoPresenter? videoPresenter = null) => registration.AddBuiltinSchemas().AddBuiltinImplementations(
+        IVideoPresenter? videoPresenter = null,
+        CharacterCatalog? characters = null) => registration.AddBuiltinSchemas().AddBuiltinImplementations(
             dialoguePresenter, layerPresenter, animationPresenter, effectPresenter, gallery,
-            particlePresenter, nvlPresenter, audioHost, videoPresenter);
+            particlePresenter, nvlPresenter, audioHost, videoPresenter, characters);
 
     /// <summary>Registers logical implementations. Optional presenters select state-only/headless operation.</summary>
     public static GameRegistration AddBuiltinImplementations(
@@ -35,8 +37,9 @@ public static class BuiltinRegistration
         IParticlePresenter? particlePresenter = null,
         INvlPresenter? nvlPresenter = null,
         IAudioPlaybackHost? audioHost = null,
-        IVideoPresenter? videoPresenter = null) => registration
-            .AddBuiltinDialogue(dialoguePresenter)
+        IVideoPresenter? videoPresenter = null,
+        CharacterCatalog? characters = null) => registration
+            .AddBuiltinDialogue(dialoguePresenter, characters)
             .AddBuiltinNvl(nvlPresenter)
             .AddBuiltinLayers(layerPresenter)
             .AddBuiltinAnimations(animationPresenter, layerPresenter, effectPresenter, particlePresenter)
@@ -52,7 +55,7 @@ public static class BuiltinRegistration
     public static GameRegistration AddBuiltinFlow(this GameRegistration registration) => registration.RegisterImplementation(new BuiltinFlowModule());
     public static GameRegistration AddBuiltinAudio(this GameRegistration registration, IAudioPlaybackHost? host = null) => registration.RegisterImplementation(new BuiltinAudioModule(host));
     public static GameRegistration AddBuiltinGallery(this GameRegistration registration, GalleryCatalog? gallery = null) => registration.RegisterImplementation(new BuiltinGalleryModule(gallery));
-    public static GameRegistration AddBuiltinDialogue(this GameRegistration registration, IDialoguePresenter? presenter = null) => registration.RegisterImplementation(new BuiltinDialogueModule(presenter));
+    public static GameRegistration AddBuiltinDialogue(this GameRegistration registration, IDialoguePresenter? presenter = null, CharacterCatalog? characters = null) => registration.RegisterImplementation(new BuiltinDialogueModule(presenter, characters));
     public static GameRegistration AddBuiltinNvl(this GameRegistration registration, INvlPresenter? presenter = null) => registration.RegisterImplementation(new BuiltinNvlModule(presenter));
     public static GameRegistration AddBuiltinLayers(this GameRegistration registration, ILayerPresenter? presenter = null) => registration.RegisterImplementation(new BuiltinLayerModule(presenter));
     public static GameRegistration AddBuiltinEffects(this GameRegistration registration, IEffectPresenter? presenter = null) => registration.RegisterImplementation(new BuiltinEffectModule(presenter));

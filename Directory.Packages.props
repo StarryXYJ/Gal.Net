@@ -22,8 +22,7 @@
     <PackageVersion Include="Dock.Model.Avalonia" Version="12.0.0.2" />
     <PackageVersion Include="Dock.Model.Mvvm" Version="12.0.0.2" />
     <PackageVersion Include="Dock.Settings" Version="12.0.0.2" />
-    <PackageVersion Include="DynamicLocalization.Avalonia" Version="2.1.0" />
-    <PackageVersion Include="DynamicLocalization.Core" Version="2.1.0" />
+    <PackageVersion Include="DynamicLocalization.Core" Version="2.1.2" />
     <PackageVersion Include="Irihi.Ursa" Version="2.1.0" />
     <PackageVersion Include="Irihi.Ursa.Themes.Semi" Version="2.1.0" />
     <PackageVersion Include="LibVLCSharp" Version="3.10.0" />

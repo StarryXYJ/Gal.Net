@@ -282,7 +282,8 @@ public class GameEnginePrimitiveDispatchTests
     public async Task RecommendedLayerDialogueAndChoiceRunThroughTheNewRuntimeBoundary()
     {
         var presenter = new StoryPresenter();
-        using var view = new GameRegistration().AddBuiltins(presenter, presenter).BuildView();
+        using var view = new GameRegistration().AddBuiltins(presenter, presenter,
+            characters: new GalNet.Core.I18n.CharacterCatalog([new("Alice", "character.alice.name")])).BuildView();
         var graph = new GraphModel
         {
             RootNodeId = "scene",
@@ -302,7 +303,7 @@ public class GameEnginePrimitiveDispatchTests
                             opacity = 1,
                             displayMode = "Native"
                         }),
-                        Primitive(TextEntry.TypeId, new { speaker = "Alice", content = "Continue?" })
+                        Primitive(TextEntry.TypeId, new { speaker = "Alice", content = "story.continue" })
                     }
                 },
                 new Branch
@@ -312,7 +313,7 @@ public class GameEnginePrimitiveDispatchTests
                     Options =
                     {
                         new BranchOption { Text = "hidden", Condition = "false" },
-                        new BranchOption { Text = "visible" }
+                        new BranchOption { Text = "choice.visible" }
                     }
                 },
                 new Group { Id = "hidden" },
@@ -329,7 +330,7 @@ public class GameEnginePrimitiveDispatchTests
                 new Edge { FromNodeId = "choice", FromOutlet = 1, ToNodeId = "visible" }
             }
         };
-        var runtime = new GalNet.Runtime.Runtime.GameRuntime(null, graph.RootNodeId);
+        var runtime = new GalNet.Runtime.Runtime.GameRuntime(new StoryTextResolver(), graph.RootNodeId);
         using var engine = new GameEngine(graph, runtime, view, choicePresenter: presenter);
 
         await engine.AdvanceAsync();
@@ -483,5 +484,16 @@ public class GameEnginePrimitiveDispatchTests
         public void ReplaceLayer(string handleId, string assetId) => ReplacedLayers.Add((handleId, assetId));
         public void HideLayer(string handleId) { }
         public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSeconds) { }
+    }
+
+    private sealed class StoryTextResolver : GalNet.Core.Services.ITextResolver
+    {
+        public string Resolve(string key) => key switch
+        {
+            "character.alice.name" => "Alice",
+            "story.continue" => "Continue?",
+            "choice.visible" => "visible",
+            _ => key
+        };
     }
 }

@@ -5,6 +5,8 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
+using DynamicLocalization.Core;
+using DynamicLocalization.Core.Providers;
 using GalNet.Avalonia.GameView.Composition;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Page;
@@ -35,6 +37,9 @@ public partial class App : Application
         {
             var services = new ServiceCollection();
             services.AddAvaloniaGameViewPages()
+                .AddSingleton(_ => CreateLocalizationService())
+                .AddScoped<SamplePlayerSettingsService>()
+                .AddScoped<IPlayerSettingsService>(provider => provider.GetRequiredService<SamplePlayerSettingsService>())
                 .AddScoped<SampleGameSessionService>()
                 .AddScoped<IGameSessionService>(sp => sp.GetRequiredService<SampleGameSessionService>())
                 .AddSampleDebug()
@@ -43,6 +48,8 @@ public partial class App : Application
             _rootServices = services.BuildServiceProvider();
             _gameScope = _rootServices.CreateAsyncScope();
             var scopedServices = _gameScope.Value.ServiceProvider;
+            var localization = scopedServices.GetRequiredService<SampleLocalizationService>();
+            GalNet.Avalonia.GameView.MarkupExtensions.PlayerTextExtension.Resolve = localization.GetString;
 
             scopedServices.GetRequiredService<IGameNavigationService>().ResetTo<TitlePageViewModel>(NavigationTransition.None);
 
@@ -86,5 +93,21 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private static SampleLocalizationService CreateLocalizationService()
+    {
+        var cultureService = new CultureService();
+        var provider = new JsonLocalizationProvider();
+        provider.Initialize(new JsonLocalizationProviderOptions
+        {
+            BasePath = "Localization",
+            UseEmbeddedResources = true,
+            Assembly = typeof(App).Assembly
+        });
+        cultureService.RegisterProvider(provider);
+        cultureService.SetCulture("en-US");
+        LocalizationService.Initialize(cultureService);
+        return SampleLocalizationService.Create(cultureService);
     }
 }
