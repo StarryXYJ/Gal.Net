@@ -10,7 +10,6 @@ public sealed class DialoguePrimitiveInstance : PrimitiveInstance
     private readonly IDialoguePresenter _presenter;
     private readonly string _speaker;
     private readonly string _text;
-    private readonly string _voice;
     private readonly CancellationToken _cancellationToken;
     private DialoguePhase _phase;
 
@@ -18,7 +17,6 @@ public sealed class DialoguePrimitiveInstance : PrimitiveInstance
         IDialoguePresenter presenter,
         string speaker,
         string text,
-        string voice,
         string? batchId,
         CancellationToken cancellationToken)
         : base(batchId)
@@ -26,7 +24,6 @@ public sealed class DialoguePrimitiveInstance : PrimitiveInstance
         _presenter = presenter ?? throw new ArgumentNullException(nameof(presenter));
         _speaker = speaker;
         _text = text;
-        _voice = voice;
         _cancellationToken = cancellationToken;
     }
 
@@ -51,8 +48,6 @@ public sealed class DialoguePrimitiveInstance : PrimitiveInstance
         }
 
         _presenter.ShowDialogue();
-        if (!string.IsNullOrWhiteSpace(_voice))
-            _presenter.SetVoice(_voice);
         _ = ObservePresentationAsync();
     }
 

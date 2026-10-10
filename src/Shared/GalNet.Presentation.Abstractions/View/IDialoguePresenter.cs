@@ -5,7 +5,6 @@ public interface IDialoguePresenter
 {
     void ShowDialogue();
     void HideDialogue();
-    void SetVoice(string assetId);
     Task PresentTextAsync(string speaker, string text, CancellationToken cancellationToken);
     void SkipText();
 }

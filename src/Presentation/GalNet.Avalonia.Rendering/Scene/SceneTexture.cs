@@ -14,10 +14,12 @@ public sealed class SceneTexture : IDisposable
 {
     private readonly Lazy<SKBitmap?> _skBitmap;
     private readonly Lazy<SKImage?> _skImage;
+    private readonly SKBitmap? _sourceBitmap;
 
     public SceneTexture(IImage image, SKBitmap? sourceBitmap = null)
     {
         AvaloniaImage = image ?? throw new ArgumentNullException(nameof(image));
+        _sourceBitmap = sourceBitmap;
         _skBitmap = new Lazy<SKBitmap?>(() => sourceBitmap ?? Decode(), LazyThreadSafetyMode.ExecutionAndPublication);
         _skImage = new Lazy<SKImage?>(() => SkBitmap is { } bitmap ? SKImage.FromBitmap(bitmap) : null, LazyThreadSafetyMode.ExecutionAndPublication);
     }
@@ -67,6 +69,7 @@ public sealed class SceneTexture : IDisposable
     {
         if (_skImage.IsValueCreated) _skImage.Value?.Dispose();
         if (_skBitmap.IsValueCreated) _skBitmap.Value?.Dispose();
+        else _sourceBitmap?.Dispose();
     }
 
     private SKBitmap? Decode()

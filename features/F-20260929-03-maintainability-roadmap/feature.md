@@ -73,6 +73,6 @@ updated: 2026-09-29
 - [设计](design.md)
 - [实施计划](phase-plan.md)
 - [当前架构](../../docs/spec/architecture.md)
-- [运行时与呈现解耦计划](../../docs/design/runtime-presentation-decoupling-phase-plan.md)
+- [架构](../../docs/spec/architecture.md)
 - [Feature 工作流](../../docs/design/feature-workflow.md)
 - [杂项待办](../../docs/design/misc-todo.md)

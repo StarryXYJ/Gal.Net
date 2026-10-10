@@ -12,8 +12,9 @@
       <scene:SceneLayerHost x:Name="SceneHostControl" ItemsSource="{Binding Layers}" EffectsSource="{Binding TextureEffects}" RenderablesSource="{Binding SceneRenderables}" />
     </Grid>
 
-    <controls:NvlPresenter ItemsSource="{Binding NvlLines}" IsVisible="{Binding IsNvlOverlayVisible}"
-                           Margin="72,56,72,144" ZIndex="12" />
+    <controls:NvlPresenter x:Name="Nvl" IsVisible="{Binding IsNvlOverlayVisible}"
+                           Width="760" MinHeight="260" MaxHeight="480"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="12" />
     <controls:DialoguePresenter x:Name="DialogueControl" IsVisible="{Binding IsDialogueOverlayVisible}"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Bottom" Margin="72,0,72,42" ZIndex="13" />

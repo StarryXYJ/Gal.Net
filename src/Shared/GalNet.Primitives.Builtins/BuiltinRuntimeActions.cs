@@ -330,6 +330,8 @@ internal static class BuiltinRuntimeActions
     {
         var layer = runtime.SceneInstances.GetOrAdd(request.HandleId, id => new Layer { Id = id });
         layer.AssetId = request.AssetId;
+        layer.IsVideo = false;
+        layer.VideoPlaybackId = null;
         layer.Color = request.Color;
         layer.Flipbook = request.Flipbook?.Clone();
         layer.Transform = request.Transform.Clone();
@@ -371,6 +373,8 @@ internal static class BuiltinRuntimeActions
         if (runtime.SceneInstances.TryGet<Layer>(handleId, out var layer))
         {
             layer.AssetId = assetId;
+            layer.IsVideo = false;
+            layer.VideoPlaybackId = null;
             layer.Color = null;
         }
         if (notify)

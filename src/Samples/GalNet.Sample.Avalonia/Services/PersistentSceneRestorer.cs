@@ -8,7 +8,8 @@ internal sealed class PersistentSceneRestorer(
     IEffectPresenter? effects,
     IParticlePresenter particles,
     IAnimationPresenter animations,
-    ILayerPresenter layers)
+    ILayerPresenter layers,
+    IVideoPresenter? videos = null)
 {
     public Task RestoreAsync(IGameRuntime runtime, CancellationToken cancellationToken) =>
         BuiltinPresentationReplay.ReplayPersistentSceneObjectsAsync(
@@ -17,5 +18,6 @@ internal sealed class PersistentSceneRestorer(
             particles,
             animations,
             layers,
-            cancellationToken);
+            cancellationToken,
+            videos);
 }

@@ -82,7 +82,7 @@ public sealed class ProjectContentBuilderTests
           "version": 2,
           "kind": "Raw",
           "entries": [
-            { "id": "line", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "Built from Raw.", "voice": "" } }
+            { "id": "line", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "Built from Raw." } }
           ]
         }
         """);

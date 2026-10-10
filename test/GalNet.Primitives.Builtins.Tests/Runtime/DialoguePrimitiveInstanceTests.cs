@@ -13,7 +13,6 @@ public class DialoguePrimitiveInstanceTests
             presenter,
             "Alice",
             "one\\skip two\\skip three",
-            "voice.ogg",
             "dialogue",
             CancellationToken.None);
 
@@ -26,7 +25,6 @@ public class DialoguePrimitiveInstanceTests
             Assert.That(instance.IsCompleted, Is.False);
             Assert.That(presenter.SkipCount, Is.EqualTo(2));
             Assert.That(presenter.Speaker, Is.EqualTo("Alice"));
-            Assert.That(presenter.Voice, Is.EqualTo("voice.ogg"));
             Assert.That(instance.BatchId, Is.EqualTo("dialogue"));
         });
 
@@ -45,7 +43,6 @@ public class DialoguePrimitiveInstanceTests
             presenter,
             "",
             "complete line",
-            "",
             null,
             CancellationToken.None);
 
@@ -62,12 +59,10 @@ public class DialoguePrimitiveInstanceTests
     {
         private readonly TaskCompletionSource _typing = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public string Speaker { get; private set; } = "";
-        public string Voice { get; private set; } = "";
         public int SkipCount { get; private set; }
 
         public void ShowDialogue() { }
         public void HideDialogue() { }
-        public void SetVoice(string assetId) => Voice = assetId;
 
         public Task PresentTextAsync(string speaker, string text, CancellationToken cancellationToken)
         {

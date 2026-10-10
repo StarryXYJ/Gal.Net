@@ -24,7 +24,7 @@ jobs:
         with:
           dotnet-version: 10.0.401
       - name: Restore workloads
-        run: dotnet workload restore GalNet.slnx
+        run: dotnet workload restore GalNet.slnx --version 10.0.401.1
       - name: Restore locked dependencies
         run: dotnet restore GalNet.slnx --locked-mode
       - name: Verify whitespace
@@ -110,7 +110,7 @@ jobs:
         with:
           dotnet-version: 10.0.401
       - name: Restore workloads
-        run: dotnet workload restore GalNet.slnx
+        run: dotnet workload restore GalNet.slnx --version 10.0.401.1
       - name: Restore locked dependencies
         run: dotnet restore GalNet.slnx --locked-mode
       - name: Build full solution

@@ -24,6 +24,12 @@ public sealed class Layer : AnimatableSceneInstance
     /// <summary>资源 ID 引用</summary>
     public string AssetId { get; set; } = "";
 
+    /// <summary>Video sources restart from zero when a stable scene is restored.</summary>
+    public bool IsVideo { get; set; }
+
+    [JsonIgnore]
+    public string? VideoPlaybackId { get; set; }
+
     /// <summary>Optional sprite-sheet source. When absent, <see cref="AssetId"/> represents one static image.</summary>
     public FlipbookDefinition? Flipbook { get; set; }
 

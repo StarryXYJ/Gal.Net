@@ -1,5 +1,3 @@
-using GalNet.Avalonia.GameView.Navigation;
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Sample.Avalonia.Services;
 using GalNet.Sample.Avalonia.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,7 +17,9 @@ public static class SampleDebugServiceCollectionExtensions
         logStore ??= SampleDebugLogStore.Shared;
         logStore.Enable();
         services.TryAddSingleton<SampleDebugLogStore>(logStore);
+        services.TryAddSingleton<SampleDebugLogDirectory>();
         services.TryAddScoped<SampleDebugActions>();
+        services.TryAddScoped<SampleDebugViewModel>();
         services.TryAddTransient<DebugLogWindow>();
         return services;
     }
@@ -28,20 +28,25 @@ public static class SampleDebugServiceCollectionExtensions
 /// <summary>Debug-only orchestration kept outside the reusable game pages.</summary>
 internal sealed class SampleDebugActions(
     SampleGameSessionService session,
-    IGameNavigationService navigation)
+    SampleDebugLogDirectory logDirectory)
 {
     public async Task ClearPlayerStateAsync(CancellationToken cancellationToken = default)
     {
-        await ReturnToTitleAsync(cancellationToken);
         await session.ClearPlayerStateAsync(cancellationToken);
+        SampleApplicationRestarter.Restart();
     }
 
     public async Task ReloadGameResourcesAsync(CancellationToken cancellationToken = default)
     {
-        await ReturnToTitleAsync(cancellationToken);
-        await session.ReloadGameResourcesAsync(cancellationToken);
+        await session.StopAsync(cancellationToken);
+        SampleApplicationRestarter.Restart();
     }
 
-    private Task ReturnToTitleAsync(CancellationToken cancellationToken) =>
-        navigation.ResetToAsync<TitlePageViewModel>(NavigationTransition.None, cancellationToken);
+    public Task<SampleDebugSaveResult> SaveDebugSnapshotAsync(
+        SampleDebugSaveKind kind,
+        bool overwriteWhenAllVisibleSlotsAreOccupied = false,
+        CancellationToken cancellationToken = default) =>
+        session.SaveDebugSnapshotAsync(kind, overwriteWhenAllVisibleSlotsAreOccupied, cancellationToken);
+
+    public void OpenLogDirectory() => logDirectory.Open();
 }

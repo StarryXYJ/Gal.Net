@@ -87,20 +87,25 @@
   </Style>
 
   <Style Selector="local|NvlPresenter">
-    <Setter Property="ItemsPanel">
-      <ItemsPanelTemplate><StackPanel Spacing="14" /></ItemsPanelTemplate>
-    </Setter>
-    <Setter Property="ItemTemplate">
-      <DataTemplate DataType="local:NvlLine">
-        <StackPanel Spacing="3">
-          <TextBlock Text="{Binding Speaker}" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
-        </StackPanel>
-      </DataTemplate>
-    </Setter>
     <Setter Property="Template">
       <ControlTemplate>
-        <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsPresenter /></ScrollViewer>
+        <Border Background="#B81B1C27" BorderBrush="#805F6075" BorderThickness="1" CornerRadius="8" Padding="26">
+          <ScrollViewer Name="PART_ScrollViewer" VerticalScrollBarVisibility="Auto">
+            <StackPanel Name="PART_Lines" Spacing="14" />
+          </ScrollViewer>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+
+  <Style Selector="local|NvlLinePresenter">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <StackPanel Spacing="3">
+          <local:TypewriterTextBlock Name="PART_Typewriter"
+                                     SourceText="{TemplateBinding Text}"
+                                     CharactersPerSecond="{TemplateBinding CharactersPerSecond}" />
+        </StackPanel>
       </ControlTemplate>
     </Setter>
   </Style>

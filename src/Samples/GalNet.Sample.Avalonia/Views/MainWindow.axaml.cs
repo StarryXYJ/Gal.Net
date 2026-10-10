@@ -12,70 +12,26 @@ public partial class MainWindow : UrsaWindow
 {
     private readonly IServiceProvider _services;
     private readonly SampleDebugLogStore? _debugLogStore;
-    private readonly SampleDebugActions? _debugActions;
+    private readonly SampleDebugViewModel? _debugViewModel;
     private DebugLogWindow? _debugLogWindow;
-    private bool _isClearingPlayerState;
-    private bool _isReloadingGameResources;
 
     public MainWindow(GameShell shell, IServiceProvider services)
     {
         _services = services;
         _debugLogStore = services.GetService<SampleDebugLogStore>();
-        _debugActions = services.GetService<SampleDebugActions>();
+        _debugViewModel = services.GetService<SampleDebugViewModel>();
         InitializeComponent();
         GameCanvas.GameContent = shell;
-        DebugMenu.IsVisible = _debugLogStore is not null;
+        DebugMenu.IsVisible = _debugLogStore is not null && _debugViewModel is not null;
+        DebugMenu.DataContext = _debugViewModel;
+        if (_debugViewModel is not null)
+        {
+            _debugViewModel.LogRequested += OnLogRequested;
+            _debugViewModel.ConfirmationRequested += ConfirmAsync;
+            _debugViewModel.NotificationRequested += NotifyAsync;
+        }
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
-    }
-
-    private async void OnClearPlayerStateClick(object? sender, RoutedEventArgs e)
-    {
-        if (_debugActions is null || _isClearingPlayerState)
-            return;
-
-        var confirmation = await MessageBox.ShowAsync(
-            this,
-            "这会停止当前游戏，删除所有存档和阅读进度，并将所有玩家变量还原为默认值。此操作无法撤销。",
-            "清空游戏数据",
-            button: MessageBoxButton.OKCancel);
-        if (confirmation != MessageBoxResult.OK)
-            return;
-
-        _isClearingPlayerState = true;
-        try
-        {
-            await _debugActions.ClearPlayerStateAsync();
-        }
-        catch (Exception exception)
-        {
-            await MessageBox.ShowAsync(this, exception.Message, "清空游戏数据失败", button: MessageBoxButton.OK);
-        }
-        finally
-        {
-            _isClearingPlayerState = false;
-        }
-    }
-
-    private async void OnShowDebugLogClick(object? sender, RoutedEventArgs e) => await ShowDebugLogAsync();
-
-    private async void OnReloadGameResourcesClick(object? sender, RoutedEventArgs e)
-    {
-        if (_debugActions is null || _isReloadingGameResources)
-            return;
-
-        _isReloadingGameResources = true;
-        try
-        {
-            await _debugActions.ReloadGameResourcesAsync();
-        }
-        catch (Exception exception)
-        {
-            await MessageBox.ShowAsync(this, exception.Message, "重新加载游戏资源失败", button: MessageBoxButton.OK);
-        }
-        finally
-        {
-            _isReloadingGameResources = false;
-        }
+        Closed += OnClosed;
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
@@ -84,8 +40,16 @@ public partial class MainWindow : UrsaWindow
             return;
 
         e.Handled = true;
-        _ = ShowDebugLogAsync();
+        _debugViewModel?.ShowLogCommand.Execute(null);
     }
+
+    private void OnLogRequested() => _ = ShowDebugLogAsync();
+
+    private async Task<bool> ConfirmAsync(SampleDebugPrompt prompt) =>
+        await MessageBox.ShowAsync(this, prompt.Message, prompt.Title, button: MessageBoxButton.OKCancel) == MessageBoxResult.OK;
+
+    private Task NotifyAsync(SampleDebugNotification notification) =>
+        MessageBox.ShowAsync(this, notification.Message, notification.Title, button: MessageBoxButton.OK);
 
     private Task ShowDebugLogAsync()
     {
@@ -107,5 +71,15 @@ public partial class MainWindow : UrsaWindow
         };
         window.Show(this);
         return Task.CompletedTask;
+    }
+
+    private void OnClosed(object? sender, EventArgs e)
+    {
+        if (_debugViewModel is null)
+            return;
+
+        _debugViewModel.LogRequested -= OnLogRequested;
+        _debugViewModel.ConfirmationRequested -= ConfirmAsync;
+        _debugViewModel.NotificationRequested -= NotifyAsync;
     }
 }

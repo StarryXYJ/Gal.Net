@@ -44,7 +44,8 @@
         "type": "Project",
         "dependencies": {
           "GalNet.Core": "[1.0.0, )",
-          "GalNet.Presentation.Abstractions": "[1.0.0, )"
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "GalNet.Runtime": "[1.0.0, )"
         }
       },
       "galnet.runtime": {

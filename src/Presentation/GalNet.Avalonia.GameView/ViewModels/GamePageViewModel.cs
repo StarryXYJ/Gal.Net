@@ -25,7 +25,6 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     /// <summary>GPU scene objects composited with Layers before ScenePost and GameShell UI.</summary>
     public ObservableCollection<ISceneRenderable> SceneRenderables { get; } = [];
     public ObservableCollection<string> Choices { get; } = [];
-    public ObservableCollection<NvlLine> NvlLines { get; } = [];
 
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isDialogueVisible;
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isChoiceVisible;
@@ -40,6 +39,7 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     public bool IsChoiceOverlayVisible => IsChoiceVisible && !IsUiHidden;
 
     public event Action? AdvanceRequested;
+    public event Action? NvlClearRequested;
     public event Action? ScreenshotRequested;
     public event Action? ReturnToTitleRequested;
     /// <summary>Host-observable player actions, kept logger-free so the shared view remains reusable.</summary>
@@ -121,14 +121,14 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         InteractionObserved?.Invoke($"choice.selected:{selectedIndex}");
         _choiceWaiter?.TrySetResult(selectedIndex);
     }
-    public void PresentNvlLine(string speaker, string text) => NvlLines.Add(new NvlLine(speaker, text));
-
     public void SetLayer(string id, SceneLayerItem item)
     {
         var existing = Layers.FirstOrDefault(layer => layer.HandleId == id);
         if (existing is null) Layers.Add(item);
         else
         {
+            if (!ReferenceEquals(existing.FrameSource, item.FrameSource)) existing.FrameSource?.Dispose();
+            existing.FrameSource = item.FrameSource;
             existing.Texture = item.Texture;
             existing.Color = item.Color;
             existing.Flipbook = item.Flipbook?.Clone();
@@ -147,12 +147,17 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     public void HideLayer(string id)
     {
         var layer = Layers.FirstOrDefault(candidate => candidate.HandleId == id);
-        if (layer is not null) Layers.Remove(layer);
+        if (layer is not null)
+        {
+            layer.FrameSource?.Dispose();
+            Layers.Remove(layer);
+        }
     }
 
     /// <summary>Removes all host-owned visuals before a new game session is constructed.</summary>
     public void ResetScenePresentation()
     {
+        foreach (var layer in Layers) layer.FrameSource?.Dispose();
         Layers.Clear();
         TextureEffects.Clear();
         foreach (var renderable in SceneRenderables.OfType<IDisposable>()) renderable.Dispose();
@@ -162,7 +167,7 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         IsDialogueVisible = false;
         IsChoiceVisible = false;
         IsGameUiReady = false;
-        NvlLines.Clear();
+        NvlClearRequested?.Invoke();
     }
 
     /// <summary>Shows game chrome after the engine reaches its first interactive boundary.</summary>
@@ -172,6 +177,8 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     {
         var layer = Layers.FirstOrDefault(candidate => candidate.HandleId == id);
         if (layer is null) return;
+        layer.FrameSource?.Dispose();
+        layer.FrameSource = null;
         layer.Texture = texture;
         layer.Color = null;
     }

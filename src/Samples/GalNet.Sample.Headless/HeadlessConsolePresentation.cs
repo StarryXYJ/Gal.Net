@@ -6,7 +6,7 @@ using GalNet.Presentation.Abstractions.View;
 namespace GalNet.Sample.Headless;
 
 /// <summary>Basic interactive console adapters used by the official sample player.</summary>
-internal sealed class ConsolePresentation : IDialoguePresenter, IChoicePresenter, ILayerPresenter, IAnimationPresenter, IEffectPresenter
+internal sealed class ConsolePresentation : IDialoguePresenter, INvlPresenter, IChoicePresenter, ILayerPresenter, IAnimationPresenter, IEffectPresenter
 {
     private readonly GameSettings _settings;
     private volatile bool _skipCurrentTypewriter;
@@ -50,6 +50,17 @@ internal sealed class ConsolePresentation : IDialoguePresenter, IChoicePresenter
     }
     public void ShowDialogue() => Console.WriteLine("[Dialogue] show");
     public void HideDialogue() => Console.WriteLine("[Dialogue] hide");
+    public void ShowNvl() => Console.WriteLine("[NVL] show");
+    public void HideNvl() => Console.WriteLine("[NVL] hide");
+    public void ClearNvl() => Console.WriteLine("[NVL] clear");
+
+    public async Task AppendNvlTextAsync(string text, CancellationToken cancellationToken)
+    {
+        await StartTypewriter("nvl", "", text, cancellationToken);
+        _ = RequestAdvanceAsync(cancellationToken);
+    }
+
+    public void SkipNvlText() => SkipTypewriter("nvl");
 
     public async Task StartTypewriter(string widgetInstanceId, string speaker, string text, CancellationToken ct)
     {
@@ -94,7 +105,6 @@ internal sealed class ConsolePresentation : IDialoguePresenter, IChoicePresenter
     }
 
     public void SkipTypewriter(string widgetInstanceId) => _skipCurrentTypewriter = true;
-    public void SetVoice(string assetId) => Console.WriteLine($"[Voice] {assetId}");
 
     public static async Task<int> WaitForChoiceAsync(string widgetInstanceId, string[] options, CancellationToken ct)
     {

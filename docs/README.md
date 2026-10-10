@@ -1,13 +1,16 @@
 # GalNet 文档
 
+- [引擎使用手册](engine.md)：内容、编译、Runtime、推进、存档和宿主的总览入口。
+- [二次开发手册](development.md)：不修改 Shared 层时，如何添加项目自有原语、模块、页面和资源能力。
 - [架构](spec/architecture.md)：当前程序集边界、游戏运行、编辑器工作流与维护规则。
-- [运行时](spec/runtime.md)：游戏引擎、变量、快照与条目执行。
-- [条目类型](spec/entry-types.md)：内置条目及参数。
+- [运行时](spec/runtime.md)：游戏引擎、变量、快照与条目执行的精确契约。
+- [条目类型](spec/entry-types.md)：primitive/composite、模块和内置条目的精确契约。
 - [文件格式](spec/file-formats.md)：项目目录、图、条目组和当前 `.galpak` 发布布局。
 - [资源](spec/assets.md)：资源提供者、归档和包格式。
 - [Avalonia 游戏页面](spec/control.md)：共享游戏页面、导航、组合和 Avalonia 呈现边界。
 - [国际化](spec/i18n.md)：编辑器本地化、运行时文本解析器和项目语言设置。
 - [术语表](glossary.md)：项目术语。
-- [杂项待办](design/misc-todo.md)：与游戏本体解耦的工程性后续工作。
+- [杂项待办](design/misc-todo.md)：尚未实现的工程性后续工作。
 - [Feature 工作流与 Agent 知识维护](design/feature-workflow.md)：推荐的 feature 记录流程，以及开发者文档、feature 历史与 agent 知识的职责边界。
 - [分阶段渲染与 Effect 管线计划](design/render-effects-pipeline-plan.md)：Layer Source、Shader 效果、UI 前后全屏后处理与 Flipbook 的实施计划。
+- [音频系统设计](design/audio-system-design.md)：尚未实施的音频能力设计。

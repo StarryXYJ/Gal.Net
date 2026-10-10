@@ -91,6 +91,6 @@ updated: 2026-09-26
 
 - [设计](design.md)
 - [实施计划](phase-plan.md)
-- `docs/design/primitive-module-runtime-design.md`
-- `docs/design/primitive-module-runtime-phase-plan.md`
+- `docs/engine.md`
+- `docs/development.md`
 - `docs/spec/entry-types.md`

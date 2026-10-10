@@ -18,6 +18,8 @@ mono_crash.*
 
 # Build results
 [Dd]ebug/
+!src/Samples/GalNet.Sample.Avalonia/Debug/
+!src/Samples/GalNet.Sample.Avalonia/Debug/*.cs
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
