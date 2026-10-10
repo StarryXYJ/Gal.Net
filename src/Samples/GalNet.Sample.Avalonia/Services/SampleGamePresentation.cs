@@ -49,7 +49,7 @@ internal sealed class SampleGamePresentation : IAsyncDisposable
             registration.AddBuiltins(
                 presenters.DialoguePresenter, presenters.LayerPresenter, presenters.AnimationPresenter,
                 presentation.Effects, resources.Content.Gallery, presenters.ParticlePresenter,
-                presenters.NvlPresenter, presentation.Audio, presentation.Video);
+                presenters.NvlPresenter, presentation.Audio, presentation.Video, resources.Content.Localization.Characters);
             presentation.View = registration.BuildView();
             return presentation;
         }

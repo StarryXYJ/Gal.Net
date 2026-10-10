@@ -2,7 +2,7 @@
 
 **Status:** implementation in progress
 
-Phase 1 和 Phase 2 已有构建/测试证据。Phase 2 完成人物 catalog 与内置文本解析；Phase 3 的文件加载和 Sample 接线、Phase 4 外部覆盖、Phase 5 首次选择仍未实现。
+Phase 1–3 已有构建/测试证据。人物 catalog、包内递归文本加载、Sample/Headless resolver 接线及中英文 GameTestCase 已完成；Phase 4 外部覆盖、Phase 5 首次选择仍未实现。
 
 **Selected package:** [DynamicLocalization.Core](https://github.com/StarryXYJ/DynamicLocalization) 2.1.2, MIT-licensed. The Sample uses its JSON provider, culture service, and `LocalizedString`; an Avalonia 12 binding adapter replaces the incompatible platform extension.
 
@@ -102,7 +102,7 @@ The proposed architecture, file layout, provider/adapter boundary, eager game-te
 
 The dependency-ordered, independently verifiable implementation plan is in [phase-plan.md](phase-plan.md).
 
-**Implementation progress:** Phase 1 uses `DynamicLocalization.Core` 2.1.2 and the official demo's `LocalizedString.Value` binding with an Avalonia 12 `ReflectionBinding` adapter. Embedded JSON, later JSON overrides, and live binding updates have test evidence. Phase 2's character/text contracts are implemented. Settings from Phase 5 were brought forward: a general host settings service renders language and text speed, persists both in player variables, and restores them on session initialization. Phase 3 game loading/resolver, Phase 4 overlays, and Phase 5 first-run picker/counter remain unfinished. `DynamicLocalization.Avalonia` 2.1.2 failed at startup against Avalonia 12 and is not used.
+**Implementation progress:** Phases 1–3 are verified. Sample uses `DynamicLocalization.Core` 2.1.2, `LocalizedString.Value` and an Avalonia 12 `ReflectionBinding` adapter. Character/text contracts and built-in recursive loading are connected to both Samples. Per-file providers preserve distinct keys; the host adapter applies deterministic overrides and parent/default fallback without merging files. GameTestCase has English/Chinese translations, with both routes covered by execution tests, a real Headless run, and successful Avalonia session initialization. Settings from Phase 5 were brought forward: language and text speed persist in player variables and restore on session initialization. Phase 4 overlays and Phase 5 first-run picker/counter remain unfinished. `DynamicLocalization.Avalonia` 2.1.2 failed at startup against Avalonia 12 and is not used. Evidence is in [phase-plan.md](phase-plan.md); current contracts are in [i18n spec](../../docs/spec/i18n.md).
 
 ## Required design decisions created by the confirmed scope
 

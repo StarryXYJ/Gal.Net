@@ -79,6 +79,18 @@ public sealed class SampleLocalizationTests
     }
 
     [Test]
+    public void ReplacingGameSourcesPreservesEmbeddedUiProviderAndBinding()
+    {
+        using var localization = CreateLocalization();
+        using var title = new LocalizedString(localization.CultureService, "App.Title");
+        localization.AttachGame(new GalNet.Runtime.Content.GameContent { Graph = new() });
+        localization.AttachGame(new GalNet.Runtime.Content.GameContent { Graph = new() });
+        Assert.That(title.Value, Is.EqualTo("GalNet Avalonia Sample Player"));
+        localization.CultureService.SetCulture("zh-CN");
+        Assert.That(localization["Debug.Menu"], Is.EqualTo("调试"));
+    }
+
+    [Test]
     public void EmbeddedResourcesResolveAndLaterJsonOverridesTheSameKey()
     {
         var provider = new JsonLocalizationProvider();

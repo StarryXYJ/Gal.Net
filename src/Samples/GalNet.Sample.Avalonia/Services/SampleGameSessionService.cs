@@ -19,6 +19,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private readonly GamePageViewModel _gameplay;
     private readonly GamePage _page;
     private readonly SamplePlayerSettingsService _settings;
+    private readonly SampleLocalizationService _localization;
     private readonly IResourceTypeCatalog _resourceTypes;
     private readonly IGalleryTypeCatalog _galleryTypes;
     private readonly ObservableCollection<GameSaveSlot> _saveSlots = [];
@@ -29,11 +30,12 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private bool _disposed;
 
-    public SampleGameSessionService(GamePageViewModel gameplay, GamePage page, SamplePlayerSettingsService settings)
+    public SampleGameSessionService(GamePageViewModel gameplay, GamePage page, SamplePlayerSettingsService settings, SampleLocalizationService localization)
     {
         _gameplay = gameplay;
         _page = page;
         _settings = settings;
+        _localization = localization;
         _resourceTypes = BuiltinResourceTypes.CreateCatalog();
         _galleryTypes = BuiltinGalleryTypes.CreateCatalog(_resourceTypes);
         _readOnlySaveSlots = new ReadOnlyObservableCollection<GameSaveSlot>(_saveSlots);
@@ -93,6 +95,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
 
             _resources = resources;
             _saveSession = saveSession;
+            _localization.AttachGame(resources.Content);
             _settings.Attach(saveSession.Variables);
             var preloadFailures = resources.SpriteFileCount - resources.PreloadedTextures.Count;
             GameLog.Logger.Information("Preloaded {SpriteCount} sprite assets ({FailureCount} deferred to fallback)",
@@ -327,6 +330,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _page,
             resources,
             saveSession,
+            _localization,
             UpdateRunnerStateAsync,
             () => RefreshSlotsAsync(CancellationToken.None),
             ResetScenePresentationAsync,

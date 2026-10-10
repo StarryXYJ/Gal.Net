@@ -12,6 +12,7 @@
     <Folder Include="Models\" />
     <AvaloniaResource Include="Assets\**" />
     <EmbeddedResource Include="Localization\*.json" />
+    <Compile Include="..\Shared\GameTextResolver.cs" Link="Localization\GameTextResolver.cs" />
     <Folder Include="ViewModels\" />
   </ItemGroup>
 

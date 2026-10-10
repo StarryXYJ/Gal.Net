@@ -1,6 +1,7 @@
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Runtime;
+using GalNet.Core.Services;
 using GalNet.Core.Settings;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Logging;
@@ -44,7 +45,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
 
     public static async Task<SampleGameRunner> CreateAsync(
         GamePageViewModel gameplay, GamePage page, SampleGameResourceScope resources,
-        SampleSaveSession saveSession, Func<bool, string?, Task> updateStateAsync,
+        SampleSaveSession saveSession, ITextResolver textResolver, Func<bool, string?, Task> updateStateAsync,
         Func<Task> runCompletedAsync, Func<Task> resetPresentationAsync,
         Func<Action, Task> onUiAsync, CancellationToken cancellationToken)
     {
@@ -55,7 +56,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
             var settings = new SettingsContainer();
             settings.Set(resources.Content.Settings);
             settings.Set(saveSession.Settings);
-            var runtime = new GameRuntime(null, resources.Content.Graph.RootNodeId, settings, saveSession.Variables);
+            var runtime = new GameRuntime(textResolver, resources.Content.Graph.RootNodeId, settings, saveSession.Variables);
             engine = new GameEngine(resources.Content.Graph, runtime, presentation.View,
                 saveSession.Progress, presentation.Presenters.ChoicePresenter);
             return new SampleGameRunner(gameplay, engine, presentation,

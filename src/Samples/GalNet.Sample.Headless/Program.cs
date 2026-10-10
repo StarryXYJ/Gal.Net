@@ -7,6 +7,7 @@ using GalNet.Runtime.Engine;
 using GalNet.Runtime.Persistence;
 using GalNet.Runtime.Runtime;
 using GalNet.Sample.Headless;
+using GalNet.Sample.Localization;
 using GalNet.Storage.FileSystem;
 
 if (!HeadlessOptions.TryParse(args, out var options, out var error))
@@ -22,6 +23,7 @@ try
     var resourceTypes = BuiltinResourceTypes.CreateCatalog();
     var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
     var content = await installation.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync();
+    var textResolver = new GameTextResolver(content, () => content.Settings.TargetLocale.ToCultureInfo());
     var settings = new SettingsContainer();
     settings.Set(content.Settings);
     settings.Set(new GameSettings());
@@ -33,9 +35,10 @@ try
 
     var presentation = new ConsolePresentation(settings.Get<GameSettings>());
     await using var view = new GameRegistration().AddBuiltins(
-        presentation, presentation, presentation, presentation, content.Gallery, nvlPresenter: presentation).BuildView();
+        presentation, presentation, presentation, presentation, content.Gallery, nvlPresenter: presentation,
+        characters: content.Localization.Characters).BuildView();
 
-    var runtime = new GameRuntime(null, content.Graph.RootNodeId, settings, variables);
+    var runtime = new GameRuntime(textResolver, content.Graph.RootNodeId, settings, variables);
     using var engine = new GameEngine(content.Graph, runtime, view, progress, presentation);
 
     if (options.LoadSlot is { } loadSlot)

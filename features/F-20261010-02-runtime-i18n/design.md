@@ -4,7 +4,7 @@
 
 ## 结论
 
-首期不按 galgroup 动态装卸翻译，也不为每个 group 增加 i18n 文件 ID 列表或独立 i18n 包元数据。游戏启动时一次性、递归读取包内 `I18n/` 的 JSON，并按确定性顺序逐个交给 DynamicLocalization 动态加载；外部目录的 JSON 在其后加载，以库的覆盖语义覆盖同 culture、同 key 的内置值。
+首期不按 galgroup 动态装卸翻译，也不为每个 group 增加 i18n 文件 ID 列表或独立 i18n 包元数据。游戏启动时一次性、递归读取包内 `I18n/` 的 JSON，并按确定性顺序逐个交给独立的 DynamicLocalization JSON provider 解析；宿主适配器按 culture 优先、同 culture 内后文件优先查询。外部目录在后续 Phase 加载，覆盖同 culture、同 key 的内置值。
 
 这让 `ITextResolver` 始终能按照当前 culture 解出任意已加载 group 的 key，避免进入 group 时异步加载、离开 group 后丢失已显示文本、以及保存/读档时 catalog 状态不一致的问题。文本 JSON 很小，按 group 拆文件只服务于作者组织和 diff，不影响运行时载入策略。
 
@@ -13,7 +13,7 @@ DynamicLocalization 仅在 Sample 的宿主层使用：它拥有 culture 切换�
 ## 当前事实
 
 - Runtime 已有 `ITextResolver.Resolve(string)`；未提供实现时会回显输入 key。
-- `GameContent` 目前只有 Graph、Assets、Gallery 与 ProjectSettings；两个内容 provider 尚未读取 `I18n/`。
+- `GameContent.Localization` 包含人物 catalog 和平台无关的 JSON 来源描述；两个内容 provider 已读取包内 `I18n/` 并验证默认语言完整性。
 - 导出器与内容构建器已递归复制 `I18n/`，并把它作为非资源的特殊内容随 `.galpak` 分发。
 - `ProjectSettings.Speakers` 是 Editor 自动补全用的显示名字符串列表，不是人物表；当前 `dialogue.text` 的 `speaker` 参数也是字符串。
 - Sample 的玩家变量独立于存档槽，保存到 profile 目录的 `player-variables.json`；有游戏目录时默认 profile 为 `<game>/.galnet`。
@@ -80,7 +80,7 @@ DisplayNameKey    必填，例如 character.alice.name
 
 `dialogue.text`、`dialogue.textVoice` 等文本条目的 `speaker` 参数存储 `CharacterId`。Runtime 或 built-in dialogue 模块在调用 presenter 前解析人物 ID 到 DisplayNameKey，再经 `ITextResolver` 解析成显示名。缺失人物 ID 应为内容验证错误，而不是把 ID 当名称静默显示。
 
-旧内容的 speaker 显示名需要由作者显式迁移成人物 ID，并建立姓名 key；不自动把显示字符串当人物记录。内置对话实现拒绝未知非空人物 ID。人物 catalog 在内容层加载并由宿主传入模块，文件读取留在 Phase 3；Editor 自动补全的接线在内容加载完成后处理。
+旧内容的 speaker 显示名需要由作者显式迁移成人物 ID，并建立姓名 key；不自动把显示字符串当人物记录。内置对话实现拒绝未知非空人物 ID。人物 catalog 在内容层加载并由宿主传入模块；GameTestCase 已迁移。Editor 自动补全接线与翻译作者工具一并后续处理，不属于本期 Sample/game 范围。
 
 ## 条目 key 的稳定性
 
@@ -112,11 +112,11 @@ embedded Sample UI JSON
 2. 包内游戏 JSON；
 3. 外部 JSON。
 
-同一层内部按相对路径的 ordinal 顺序加载，后加载者覆盖先加载者；后一层覆盖前一层。这使外部 JSON 自然可以覆盖 `ui.*` 和游戏 key。加载错误的 JSON 不加入文化服务，宿主可以记录诊断但继续以其余来源启动。
+同一层内部按相对路径的 ordinal 顺序加载，后加载者覆盖先加载者；后一层覆盖前一层。这使外部 JSON 能覆盖 UI 和游戏 key。包内无效 JSON 是内容错误，拒绝启动；后续外部源加载会逐文件诊断并跳过错误文件。
 
 文本解析顺序固定：请求 culture → 父 culture → `ProjectSettings.TargetLocale` → 原 key。默认语言必须包含所有运行时必需的游戏 key；内容构建/验证应检查该不变量。Runtime 不承担 culture 查找或文件 I/O，adapter 负责这一逻辑。
 
-DynamicLocalization 的逐文件动态加载与重复 key 的覆盖语义必须在引入选定 NuGet 版本时以 characterization test 确认。首期不在 GalNet 侧预合并 JSON，也不依赖未定义的 provider 注册或文件系统枚举顺序；加载协调器显式排序并逐个调用该库的加载 API。若该库版本不能表达后加载覆盖语义，才退回一个内部聚合 adapter。
+实测 2.1.2 的 `LoadJsonString` 会替换同 culture 的整个字典，且 JSON provider 不查询父 culture。因此采用设计中的宿主聚合 adapter 退路：每份文件使用独立 provider，由 `GameTextResolver` 查询当前/父/默认语言，每个 culture 内倒序查源。这样保留独有 key 和后文件覆盖语义；不预合并 JSON，不重写库的 JSON 展平算法。两个 Sample 以 linked source 共享纯宿主适配器，避免为示例新增生产项目或让 Headless 依赖 Avalonia。内容加载验证默认语言必需 key，构建器本身仍只编译/复制；Editor 构建时诊断后续处理。
 
 ## 为什么不在载入 galgroup 时动态载入
 

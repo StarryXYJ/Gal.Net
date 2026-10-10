@@ -2,6 +2,13 @@
 
 This Raw-authoring game exercises the compiled runtime slice:
 
+The game includes English (`en-US`, its configured default) and Simplified Chinese
+(`zh-CN`). All raw dialogue/NVL content and choice text are localization keys.
+`speaker` references the `guide` character in `I18n/catalog/characters.json`;
+character names, choice text and each group's text live in separate per-culture JSON
+files. Change the language in the Avalonia Sample settings to localize subsequent
+dialogue, NVL paragraphs and choices using the same culture as the UI.
+
 - `layer.show`, `layer.replace`, `layer.move`, and `layer.hide` through `ILayerPresenter`;
 - `niko.mp4` as a real scene layer: blocking `video.play` with `[3, 6, 9, 999999]` second skip points, then transformed non-blocking playback and explicit `video.stop`; the portrait stays above it by z order;
 - blocking `dialogue.text` with typewriter directives and `\skip` boundaries;
@@ -16,7 +23,7 @@ The `.rawgalgroup` files are the sole authoring source. Build them with `GalNet.
 the generated `.galgroup` files use the version 2 compiled format (`typeId` plus `arguments`). Every
 resource reference is its stable GUID; human-readable paths occur only in adjacent `.meta` files.
 
-The fixture follows the editable project layout: `Graph/graph.json`, `Graph/groups/*.galgroup`, and
+The fixture follows the editable project layout: `Graph/graph.json`, `Graph/groups/*.rawgalgroup`, and
 `Assets/` with each resource's `.meta`. Gallery data is derived from the metadata rather than stored
 as an editable root `gallery.json`. The classroom background is also a `cg` Gallery item (ID `100`),
 so a host that supplies the standard Gallery pages shows the Gallery button on its title page. The
@@ -27,6 +34,7 @@ Build and run from the repository root:
 ```text
 dotnet run --project src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj -- build GameTestCase --output artifacts/sample-build
 dotnet run --project src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj -- artifacts/sample-build
+dotnet run --project src/Samples/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj -- artifacts/sample-build
 ```
 
 Video smoke: advance the first dialogue to reach blocking playback. Each left click seeks to the next point after the current position; the oversized final point ends playback. The following non-blocking playback uses rotation, scale and opacity below the portrait, then stops on dialogue advance. Headless has no video presenter and completes these entries immediately.

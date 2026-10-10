@@ -38,7 +38,7 @@ public sealed class ProjectContentBuilderTests
         var content = await new ProjectGameContentProvider(output, resourceTypes, galleryTypes).LoadAsync();
         var entry = (PrimitiveEntry)((Group)content.Graph.Nodes.Single()).Entries.Single();
         Assert.That(entry.Type, Is.EqualTo("dialogue.text"));
-        Assert.That(entry.Arguments.GetProperty("content").GetString(), Is.EqualTo("Built from Raw."));
+        Assert.That(entry.Arguments.GetProperty("content").GetString(), Is.EqualTo("group.opening.entry.line.content"));
     }
 
     [Test]
@@ -75,6 +75,12 @@ public sealed class ProjectContentBuilderTests
         };
         await File.WriteAllTextAsync(Path.Combine(graphDirectory, "graph.json"), JsonSerializer.Serialize(graph));
         await WriteRawGroupAsync(rawPath);
+        Directory.CreateDirectory(Path.Combine(_root, "I18n", "catalog"));
+        Directory.CreateDirectory(Path.Combine(_root, "I18n", "zh-CN"));
+        await File.WriteAllTextAsync(Path.Combine(_root, "I18n", "catalog", "characters.json"),
+            """[{"id":"guide","displayNameKey":"character.guide.name"}]""");
+        await File.WriteAllTextAsync(Path.Combine(_root, "I18n", "zh-CN", "opening.json"),
+            """{"character.guide.name":"向导","group.opening.entry.line.content":"由 raw 编译。"}""");
     }
 
     private static Task WriteRawGroupAsync(string path) => File.WriteAllTextAsync(path, """
@@ -82,7 +88,7 @@ public sealed class ProjectContentBuilderTests
           "version": 2,
           "kind": "Raw",
           "entries": [
-            { "id": "line", "type": "dialogue.text", "parameters": { "speaker": "Guide", "content": "Built from Raw." } }
+            { "id": "line", "type": "dialogue.text", "parameters": { "speaker": "guide", "content": "group.opening.entry.line.content" } }
           ]
         }
         """);

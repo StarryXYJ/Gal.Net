@@ -16,4 +16,5 @@ public sealed class GameContent
     public string? AssetRoot { get; init; }
     public GalleryCatalog Gallery { get; init; } = GalleryCatalog.Empty;
     public ProjectSettings Settings { get; init; } = new();
+    public GameLocalizationContent Localization { get; init; } = new();
 }

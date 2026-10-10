@@ -10,8 +10,8 @@
       "name": "Choose a route",
       "branchType": "Choice",
       "options": [
-        { "text": "Use the tiled background" },
-        { "text": "Use the filled background" }
+        { "text": "branch.route_choice.option.0.text" },
+        { "text": "branch.route_choice.option.1.text" }
       ]
     },
     { "id": "downtown", "type": "Group", "name": "Tiled route", "file": "groups/downtown.rawgalgroup" },

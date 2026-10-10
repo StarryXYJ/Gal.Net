@@ -47,7 +47,7 @@
 
 **任务：**
 
-1. 定义 character catalog DTO/验证：唯一 CharacterId、必填 DisplayNameKey；以模块参数接收 catalog。文件加载与 Editor 自动补全接线留在 Phase 3。
+1. 定义 character catalog DTO/验证：唯一 CharacterId、必填 DisplayNameKey；以模块参数接收 catalog。文件加载留在 Phase 3；Editor 自动补全随后续作者工具处理。
 2. 编译前后继续用 `Entry.Id` 表示顺序位置，不增加 SourceEntryId 持久化字段。key 由未来 Editor 根据 raw 阶段的 ID 生成一次并保存为 content；本期 compiler 原样传递。
 3. 将内置 `speaker` 统一解释为 CharacterId；内置 content/NVL/choice 文本统一解释为 key。未知人物 ID 是内容错误；默认语言必需 key 校验归 Phase 3。
 4. 保持自定义 entry 不受通用字符串推断影响；其实现自行决定参数的本地化语义。
@@ -72,7 +72,7 @@
 
 ## Phase 3 — 包内游戏 i18n 加载与 Runtime resolver
 
-**状态：** planned
+**状态：** verified（2026-10-10）
 
 **目标：** 从项目/安装内容的 `I18n/` 递归加载人物 catalog 与 per-culture JSON，并把同一 culture service 适配为 Runtime `ITextResolver`。
 
@@ -88,6 +88,8 @@
 4. 实现 `ITextResolver` adapter：请求 culture → 父 culture → `ProjectSettings.TargetLocale` → key；Core/Runtime 不引用第三方包类型。
 5. 对默认语言做完整性验证，至少覆盖人物、group entry 与 branch key。
 
+**实施调整：** 2.1.2 的 `LoadJsonString` 替换整 culture 字典、JSON provider 不做父语言回退。采用每文件独立 provider + 宿主有序查询的 adapter，不合并 JSON 文件。两个 Sample 以 linked source 共享 `GameTextResolver`，无新增生产项目，Core/Runtime 无第三方依赖。默认必需 key 在内容加载时验证；构建时诊断与 Editor 人物自动补全仍属后续作者工具。
+
 **测试与验证：**
 
 - Project 与 installed content 对相同 i18n tree 得到等价解析结果。
@@ -98,6 +100,15 @@
 **风险：** 载入时机必须先于 GameEngine 建立；包内 UI/game key 的命名空间冲突应由 `ui.` 保留前缀防止。
 
 **退出条件：** 仅靠包内内容，Sample 能以所选 culture 运行 key 化剧情和人物名，并保持 Runtime 无第三方包依赖。
+
+**验证证据：**
+
+- GameTestCase 补齐人物表、游戏默认语言与 en-US/zh-CN 的人物、分支、四个 group 文本；所有 raw content 保持为 key。
+- Integration 全组 52/52 通过，包括中英文 × 两条路线运行到 Completed，dialogue/NVL/choice/人物名解析，以及 Project/Installed 等价、逐文件保留/覆盖、父/默认回退、默认 key 缺失与未知人物拒绝、内嵌 UI provider 保留。
+- Architecture 24/24 通过；Headless 构建 0 warning/0 error。
+- Editor.Headless 构建 `artifacts/sample-i18n-build` 成功（4 groups）；Headless 实际运行 tiled 路线到 `Runtime smoke test complete.`，exit 0。
+- Avalonia 实际启动使用独立测试 profile，日志确认 `Session initialized`、6 个 sprite 预载成功、无初始化异常；验证后关闭了测试进程。未手工验收 GUI 全程点击、视频/音频效果；逻辑双路线由自动化测试覆盖。
+- 当前事实同步到 `docs/spec/i18n.md`、`docs/spec/file-formats.md` 和 GameTestCase README。外置覆盖、首次语言页不在本阶段完成范围。
 
 ## Phase 4 — 外部 JSON 覆盖源
 
