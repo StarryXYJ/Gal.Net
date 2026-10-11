@@ -2,7 +2,6 @@ using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
-using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -38,7 +37,7 @@ public partial class GameShell : UserControl, IDisposable
         IGameSessionService session,
         IGameNavigationService navigation,
         GameNavigationTransitionCoordinator transitions,
-        IGameLayoutTheme? theme = null)
+        IGameLayoutTheme theme)
     {
         _viewModel = viewModel;
         _views = views;
@@ -47,10 +46,7 @@ public partial class GameShell : UserControl, IDisposable
         _navigation = navigation;
         _transitions = transitions;
         InitializeComponent();
-        Styles.Add(theme?.CreateStyles() ?? new StyleInclude(new Uri("avares://GalNet.Avalonia.GameView/"))
-        {
-            Source = new Uri("avares://GalNet.Avalonia.GameView/Styles/Generic.axaml")
-        });
+        Styles.Add(theme.CreateStyles());
         DataContext = viewModel;
         session.PropertyChanged += OnSessionPropertyChanged;
         _transitions.Attach(ShowPageAsync);

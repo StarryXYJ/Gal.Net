@@ -45,7 +45,7 @@ services.AddAvaloniaGameViewPages(
     configureViews: views => views.Register<TitlePageViewModel, MyTitlePage>());
 ```
 
-顺序为默认页面 → 主题页面 → 宿主 Gallery 注册 → 宿主普通页面覆盖。最后一种普通页面覆盖优先级最高；映射在组合完成后不可变。最终 View 类型自动补充 Scoped DI 注册，可在构造函数注入宿主服务。新增 ViewModel 及其服务仍由开发者注册。页面使用共享 ViewModel 的命令和本地化绑定，不必复制业务逻辑或实现一个新主题。
+顺序为共享 GamePage 宿主 → 主题页面 → 宿主 Gallery 注册 → 宿主 View 覆盖 → 完整性校验。最后一种普通页面覆盖优先级最高；映射在组合完成后不可变。普通 View 类型自动补充 Scoped DI 注册，可在构造函数注入宿主服务。新增 ViewModel 及其服务仍由开发者注册。页面使用共享 ViewModel 的命令和本地化绑定，不必复制业务逻辑或实现一个新主题。
 
 GamePageViewModel 的自定义 View 必须继承 GamePage；运行 presenter 和页面工厂使用同一 Scoped 实例。仅改变游戏布局通常只需替换 GamePage 的 ControlTheme。
 
@@ -77,7 +77,7 @@ GamePageViewModel 的自定义 View 必须继承 GamePage；运行 presenter 和
 </ControlTheme>
 ```
 
-实际布局应设置每个承载点的尺寸和位置；这是最小契约示例。内容不能重复挂载。共享 GameToolbar 可绑定 GamePageViewModel，新增可交互区域设置 `page:GamePage.IsPlayerInteraction="True"`，防止操作同时推进剧情。按钮、选择列表、文本框和 RangeBase 控件已有默认排除。
+实际布局应设置每个承载点的尺寸和位置；这是最小契约示例。内容不能重复挂载。Themes/Common 的 GameToolbar 可绑定 GamePageViewModel，新增可交互区域设置 `page:GamePage.IsPlayerInteraction="True"`，防止操作同时推进剧情。按钮、选择列表、文本框和 RangeBase 控件已有默认排除。
 
 DialoguePresenter 保留 PART_Typewriter，NvlPresenter 保留 PART_Lines 和 PART_ScrollViewer；这些内部部件承担运行状态，不能在播放过程中任意重建。GamePage 在首条对白、NVL 和选项前检查布局承载点，缺失时明确报错。
 
@@ -92,10 +92,16 @@ services.AddAvaloniaGameViewPages(theme: new MinimalTheme(palette));
 
 字典须提供 GamePalette.RequiredBrushes 列出的 21 个 `GalNet.Brush.*` 语义画刷。官方 Fluent 桥接还需要相应 `GalNet.Palette.*Color` 颜色资源；参考内置字典保留完整 Color/Brush 配对。基础 Colors 是原始色表，Palette 负责语义映射，布局资源使用 DynamicResource 引用画刷。内置布局不重新定义公共语义颜色。
 
-外部完整主题实现 IGameLayoutTheme：CreateStyles 加载自己的样式与资源，RegisterViews 只覆盖所需页面。GameLayoutTheme 基类用于本程序集内置目录布局；外部主题不必继承它。未覆盖的页面沿用 GameView 默认页面。未选择主题时 GameShell 加载 GameView/Styles/Generic.axaml 中的中性基础布局。
+外部主题实现 IGameLayoutTheme：CreateStyles 加载自己的样式与资源，RegisterViews 提供全部内置页面以及 ScreenshotDialogViewModel 的映射。GameLayoutTheme 基类用于本程序集内置目录布局；外部主题不必继承它。主题参数必需；GameView 没有默认普通页面或样式回退，最终映射缺失会在注册时列出并拒绝初始化。外部主题可以先调用某个内置主题的 RegisterViews，再覆盖部分映射，以复用页面。
 
 ## 验证与范围
 
 GameThemeTests 覆盖九种组合的页面加载、Skia headless 渲染、配色隔离、宿主覆盖、对白、NVL、选择输入及场景截图。设置 `GALNET_THEME_CAPTURE_DIR` 可导出检查图片。
 
 主题覆盖共享玩家页面、Sample 启动与语言选择、截图弹窗；调试窗口、调试确认/通知、编辑器自身 UI 和系统文件选择器由宿主负责。headless 页面渲染不会验证实际 LibVLC 播放或系统对话框。Sample 使用 1920×1080 设计画布缩放游戏界面；自定义宿主应按自己的画布尺寸检查布局，Paper 的侧栏适用于宽屏布局。
+
+## 截图布局与共享行为
+
+三套布局分别提供 ScreenshotDialog 派生 View，共享基类在 GameView；主题只维护布局。XAML 加载后调用 InitializeDialog，需提供具名控件 Preview(Image)、DirectoryBox/TextBox、FileNameBox/TextBox、IncludeUiBox(CheckBox)、BrowseButton/CancelButton/SaveButton(Button)、ErrorBlock(TextBlock)。缺少控件会明确报错。宿主可注册 `views.Register<ScreenshotDialogViewModel, MyScreenshotDialog>()` 覆盖单个对话框。
+
+对话框每次通过 DI 构造独立实例，并由截图服务释放；普通页面保持 Scoped。通用玩家样式与工具栏位于 Common，GameView 的 Page 目录仅保留 GameShell 导航宿主、GamePage 行为控件和 ScreenshotDialog 行为基类。

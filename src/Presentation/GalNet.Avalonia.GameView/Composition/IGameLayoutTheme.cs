@@ -9,6 +9,6 @@ public interface IGameLayoutTheme
     /// <summary>Creates a fresh set of player styles, including the configured palette.</summary>
     IStyle CreateStyles();
 
-    /// <summary>Overrides default page views before the host applies its own overrides.</summary>
+    /// <summary>Registers all player page and screenshot dialog views before host overrides.</summary>
     void RegisterViews(IPageViewRegistryBuilder views);
 }

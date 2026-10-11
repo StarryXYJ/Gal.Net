@@ -1,4 +1,5 @@
 extern alias GameViewAssembly;
+extern alias ThemesAssembly;
 using System.Collections.ObjectModel;
 using Avalonia;
 using Avalonia.Controls;
@@ -46,7 +47,7 @@ public sealed class EditorPreviewHost : IAsyncDisposable
     {
         var services = new ServiceCollection();
         services.AddSingleton(context);
-        services.AddAvaloniaGameViewPages();
+        services.AddAvaloniaGameViewPages(new ThemesAssembly::GalNet.Avalonia.Themes.ClassicTheme());
         services.AddScoped<EditorPreviewSessionService>();
         services.AddScoped<IGameSessionService>(provider => provider.GetRequiredService<EditorPreviewSessionService>());
         _services = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });

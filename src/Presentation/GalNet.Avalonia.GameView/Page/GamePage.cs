@@ -60,7 +60,7 @@ public class GamePage : TemplatedControl
     {
         ApplyTemplate();
         if (Template is null)
-            throw new InvalidOperationException("GamePage requires a layout theme. Include GalNet.Avalonia.GameView/Styles/Generic.axaml or a game layout theme.");
+            throw new InvalidOperationException("GamePage requires a layout theme. Apply the selected game layout theme to the player root.");
     }
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)

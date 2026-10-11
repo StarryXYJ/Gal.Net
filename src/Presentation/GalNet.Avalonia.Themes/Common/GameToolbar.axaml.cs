@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace GalNet.Avalonia.GameView.Page;
+namespace GalNet.Avalonia.Themes.Common;
 
 public partial class GameToolbar : UserControl
 {

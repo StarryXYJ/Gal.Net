@@ -2,7 +2,7 @@
 
 ## 当前范围
 
-`GalNet.Avalonia.GameView` 是官方共享的 Avalonia 游戏页面宿主。它提供可替换的 `GameShell`、标题、加载、游戏、存读档、设置、鉴赏、关于和截图页面，并通过组合期注册表完成 ViewModel 到 View 的映射。
+`GalNet.Avalonia.GameView` 是官方共享的 Avalonia 游戏页面宿主。它提供 GameShell、GamePage、截图对话框行为基类及共享 ViewModel/服务；普通页面布局由主题提供，通过组合期注册表完成 ViewModel 到 View 的映射。
 
 页面宿主不读取游戏文件，也不持有项目目录。宿主负责提供游戏内容、资源、存档、玩家变量、进度和媒体实现；编辑器预览与官方 Avalonia Sample 在各自的组合根中装配这些服务。
 
@@ -20,29 +20,29 @@
 
 ## 页面与组合
 
-默认页面由 `AddAvaloniaGameViewPages()` 注册：
+共享 ViewModel 由 `AddAvaloniaGameViewPages(theme)` 注册，普通 View 由所选主题提供：
 
 | 页面 | 作用 |
 | --- | --- |
-| `TitlePage` / `TitlePageViewModel` | 开始、继续和进入其他页面 |
-| `LoadingPage` / `LoadingPageViewModel` | 游戏会话加载状态 |
+| `TitlePageViewModel` | 开始、继续和进入其他页面 |
+| `LoadingPageViewModel` | 游戏会话加载状态 |
 | `GamePage` / `GamePageViewModel` | 游戏场景、对话、选择和交互 |
-| `SaveSlotsPage` / `SaveSlotsPageViewModel` | 存档槽和读写操作 |
-| `SettingsPage` / `SettingsPageViewModel` | 运行期设置 |
-| `GalleryPage` / `GalleryPageViewModel` | 已解锁内容 |
-| `AboutPage` / `AboutPageViewModel` | 宿主提供的关于内容 |
+| `SaveSlotsPageViewModel` | 存档槽和读写操作 |
+| `SettingsPageViewModel` | 运行期设置 |
+| `GalleryPageViewModel` | 已解锁内容 |
+| `AboutPageViewModel` | 宿主提供的关于内容 |
 
-宿主可以在 `AddAvaloniaGameViewPages()` 的注册回调中覆盖默认 View，或者追加自定义页面。注册表构建后不可修改。
+宿主可以在 `AddAvaloniaGameViewPages(theme)` 的注册回调中覆盖主题 View，或者追加自定义页面。注册表构建后不可修改。
 
 ### 布局主题与独立配色
 
-`IGameLayoutTheme` 位于 GameView.Composition，提供 `CreateStyles()` 和 `RegisterViews(IPageViewRegistryBuilder)`。`AddAvaloniaGameViewPages(theme: theme)` 按默认页面、主题覆盖、宿主 Gallery 回调、宿主普通 View 回调顺序注册；最终 View 自动补充 Scoped DI 注册。共享 ViewModel 与业务服务继续由 GameView/宿主注册。
+`IGameLayoutTheme` 位于 GameView.Composition，提供 `CreateStyles()` 和 `RegisterViews(IPageViewRegistryBuilder)`。`AddAvaloniaGameViewPages(theme: theme)` 主题参数必需，按共享 GamePage 宿主、主题页面、宿主 Gallery 回调、宿主 View 回调顺序注册，随后检查全部必需映射及 GamePage/ScreenshotDialog 基类契约；缺失时列出诊断并拒绝初始化。普通 View 自动补充 Scoped DI 注册，截图对话框每次新建并释放。共享 ViewModel 与业务服务继续由 GameView/宿主注册。
 
-可选 `GalNet.Avalonia.Themes` 集合提供 Classic、Minimal、Paper 布局和 Ocean、Rose、Mono 配色，布局与配色任意组合。配置由开发者在启动代码决定，运行期固定。GameShell 获取 DI 中的主题，并把资源与样式加载到游戏根；无主题时加载 GameView 的中性 Generic。独立语言选择与截图弹窗接入同一主题资源。官方布局使用玩家根内的 Fluent 模板和所选配色，宿主 Semi、编辑器、调试 UI 与系统文件选择器保持各自作用域。
+可选 `GalNet.Avalonia.Themes` 集合提供 Classic、Minimal、Paper 布局和 Ocean、Rose、Mono 配色，布局与配色任意组合。配置由开发者在启动代码决定，运行期固定。GameShell 获取 DI 中的主题，并把资源与样式加载到游戏根；Sample 和 Editor 预览均显式选择 Classic；GameView 不再提供默认页面或玩家样式。独立语言选择与截图弹窗接入同一主题资源。官方布局使用玩家根内的 Fluent 模板和所选配色，宿主 Semi、编辑器、调试 UI 与系统文件选择器保持各自作用域。
 
 资源分为 `GalNet.Color.*` 基础色、`GalNet.Palette.*Color` 语义色、`GalNet.Brush.*` 语义画刷和 `GalNet.Theme.*` 布局尺寸。Controls 提供中性画刷回退；Palette 提供完整配色；内置布局不重定义公共语义色，宿主可通过玩家根 Resources 覆盖。GamePalette 检查 21 个必需画刷；官方 Fluent 桥接需对应 Color 资源或可解析的纯色画刷。
 
-普通页保持 UserControl + 共享 ViewModel。三套内置布局分别提供全部普通页面的 XAML View，包含标题、设置、存档、关于、加载、Gallery 入口/列表/详情和诊断页；共享层的页面供无主题宿主及未覆盖页面回退使用。替换单页无需实现完整主题。配置和扩展示例见 [Themes README](../../src/Presentation/GalNet.Avalonia.Themes/README.md)。
+普通页保持 UserControl + 共享 ViewModel。三套内置布局分别提供全部普通页面的 XAML View，包含标题、设置、存档、关于、加载、Gallery 入口/列表/详情和诊断页；GameView 不保留普通页面回退；最终映射必须包含全部内置页面与 ScreenshotDialogViewModel。替换单页无需实现完整主题。配置和扩展示例见 [Themes README](../../src/Presentation/GalNet.Avalonia.Themes/README.md)。
 
 页面容器不绘制外框。同一主题内保持一致的返回位置：Classic 顶部页头右侧、Minimal 侧栏底部、Paper 居中标题左侧。图片按比例缩放至独立内容区，不覆盖返回操作。`GalNet.Theme.PageMaxWidth`、`PageHeaderMinHeight`、`BackMinWidth`、`BackMinHeight` 可调整整体宽度与返回点击区域；这些尺寸属于玩家设计画布，实际显示受宿主缩放影响。
 
@@ -55,6 +55,10 @@
 GamePageViewModel 的自定义 View 必须继承 GamePage；DI 中的 GamePage 别名与页面工厂解析同一 Scoped 实例。只变更布局推荐覆盖 ControlTheme。模板重建及运行期主题切换不在当前契约内，NVL/打字机内部部件仍保存呈现状态。
 
 页面识别按钮、SelectingItemsControl、TextBox 和 RangeBase 的交互；自定义交互区域设置 `GamePage.IsPlayerInteraction=true`，避免点击操作同时推进剧情。非交互区域继续调用共享 ViewModel 的推进逻辑。
+
+### 截图对话框契约
+
+主题把 ScreenshotDialogViewModel 映射到 ScreenshotDialog 派生 View。XAML 加载后调用受保护的 InitializeDialog，布局必须提供 Preview(Image)、DirectoryBox/TextBox、FileNameBox/TextBox、IncludeUiBox(CheckBox)、BrowseButton/CancelButton/SaveButton(Button)、ErrorBlock(TextBlock)。缺失控件明确报错。基类管理选择目录、预览更新、保存、取消和 Bitmap 释放；服务通过 DI 创建独立实例，并加载当前主题样式。宿主可在 configureViews 中覆盖截图 View，构造参数可注入宿主服务。
 
 ### Gallery 页面
 

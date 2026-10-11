@@ -5,18 +5,58 @@ using GalNet.Avalonia.GameView.Services;
 
 namespace GalNet.Avalonia.GameView.Page;
 
-public partial class ScreenshotDialog : UserControl, IDisposable
+/// <summary>Shared screenshot behavior. Layouts supply the named controls and initialize after loading XAML.</summary>
+public abstract class ScreenshotDialog : UserControl, IDisposable
 {
     private ScreenshotDialogViewModel? _viewModel;
     private Bitmap? _previewBitmap;
+    private int _previewVersion;
 
-    public ScreenshotDialog() => InitializeComponent();
+    private Image Preview = null!;
+    private TextBox DirectoryBox = null!;
+    private TextBox FileNameBox = null!;
+    private CheckBox IncludeUiBox = null!;
+    private Button BrowseButton = null!;
+    private Button CancelButton = null!;
+    private Button SaveButton = null!;
+    private TextBlock ErrorBlock = null!;
+    private bool _initialized;
+
+    protected void InitializeDialog()
+    {
+        if (_initialized) throw new InvalidOperationException("Screenshot dialog behavior is already initialized.");
+        Preview = Require<Image>(nameof(Preview));
+        DirectoryBox = Require<TextBox>(nameof(DirectoryBox));
+        FileNameBox = Require<TextBox>(nameof(FileNameBox));
+        IncludeUiBox = Require<CheckBox>(nameof(IncludeUiBox));
+        BrowseButton = Require<Button>(nameof(BrowseButton));
+        CancelButton = Require<Button>(nameof(CancelButton));
+        SaveButton = Require<Button>(nameof(SaveButton));
+        ErrorBlock = Require<TextBlock>(nameof(ErrorBlock));
+        _initialized = true;
+        OnDataContextChanged(EventArgs.Empty);
+    }
+
+    private T Require<T>(string name) where T : Control
+    {
+        var message = $"Screenshot dialog layout requires '{name}' ({typeof(T).Name}) after loading XAML.";
+        try
+        {
+            return this.FindControl<T>(name) ?? throw new InvalidOperationException(message);
+        }
+        catch (InvalidOperationException exception)
+        {
+            throw new InvalidOperationException(message, exception);
+        }
+    }
 
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
+        if (!_initialized) return;
         DetachHandlers();
         _viewModel = null;
+        _previewVersion++;
         if (DataContext is not ScreenshotDialogViewModel viewModel) return;
 
         _viewModel = viewModel;
@@ -33,8 +73,10 @@ public partial class ScreenshotDialog : UserControl, IDisposable
 
     public void Dispose()
     {
+        if (!_initialized) return;
         DetachHandlers();
         _viewModel = null;
+        _previewVersion++;
         Preview.Source = null;
         _previewBitmap?.Dispose();
         _previewBitmap = null;
@@ -53,6 +95,8 @@ public partial class ScreenshotDialog : UserControl, IDisposable
 
     private async void OnBrowseClicked(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
     {
+        var viewModel = _viewModel;
+        if (viewModel is null) return;
         var topLevel = TopLevel.GetTopLevel(this);
         if (topLevel?.StorageProvider is null) return;
 
@@ -61,7 +105,7 @@ public partial class ScreenshotDialog : UserControl, IDisposable
             Title = "Choose screenshot folder",
             AllowMultiple = false
         });
-        if (folders.Count > 0)
+        if (ReferenceEquals(_viewModel, viewModel) && folders.Count > 0)
             DirectoryBox.Text = folders[0].TryGetLocalPath() ?? DirectoryBox.Text;
     }
 
@@ -76,21 +120,23 @@ public partial class ScreenshotDialog : UserControl, IDisposable
 
     private async void OnSaveClicked(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
     {
-        if (_viewModel is null) return;
+        var viewModel = _viewModel;
+        if (viewModel is null) return;
 
-        _viewModel.DirectoryPath = DirectoryBox.Text?.Trim() ?? string.Empty;
-        _viewModel.FileName = FileNameBox.Text?.Trim() ?? string.Empty;
-        _viewModel.IncludeUi = IncludeUiBox.IsChecked == true;
-        await _viewModel.SaveAsync();
-        ErrorBlock.Text = _viewModel.Error;
+        viewModel.DirectoryPath = DirectoryBox.Text?.Trim() ?? string.Empty;
+        viewModel.FileName = FileNameBox.Text?.Trim() ?? string.Empty;
+        viewModel.IncludeUi = IncludeUiBox.IsChecked == true;
+        await viewModel.SaveAsync();
+        if (ReferenceEquals(_viewModel, viewModel)) ErrorBlock.Text = viewModel.Error;
     }
 
     private async Task RefreshPreviewAsync(ScreenshotDialogViewModel viewModel)
     {
+        var version = ++_previewVersion;
         try
         {
             var bytes = await viewModel.CapturePreviewAsync();
-            if (!ReferenceEquals(_viewModel, viewModel)) return;
+            if (!ReferenceEquals(_viewModel, viewModel) || version != _previewVersion) return;
             await using var stream = new MemoryStream(bytes);
             var bitmap = new Bitmap(stream);
             var previous = _previewBitmap;
@@ -101,6 +147,7 @@ public partial class ScreenshotDialog : UserControl, IDisposable
         }
         catch (Exception exception)
         {
+            if (!ReferenceEquals(_viewModel, viewModel) || version != _previewVersion) return;
             ErrorBlock.Text = $"Could not capture screenshot: {exception.Message}";
         }
     }

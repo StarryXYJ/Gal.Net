@@ -1,4 +1,5 @@
 using GalNet.Avalonia.GameView.Navigation;
+using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Avalonia.Themes.Layouts.Paper;
 
@@ -9,6 +10,7 @@ public sealed class PaperTheme(GamePalette? palette = null) : GameLayoutTheme(pa
     protected override string LayoutName => "Paper";
     public override void RegisterViews(IPageViewRegistryBuilder views)
     {
+        views.Register<ScreenshotDialogViewModel, PaperScreenshotDialog>();
         views.Register<TitlePageViewModel, PaperTitlePage>();
         views.Register<SettingsPageViewModel, PaperSettingsPage>();
         views.Register<GalleryPageViewModel, PaperGalleryPage>();

@@ -1,4 +1,5 @@
 using GalNet.Avalonia.GameView.Navigation;
+using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Avalonia.Themes.Layouts.Minimal;
 
@@ -9,6 +10,7 @@ public sealed class MinimalTheme(GamePalette? palette = null) : GameLayoutTheme(
     protected override string LayoutName => "Minimal";
     public override void RegisterViews(IPageViewRegistryBuilder views)
     {
+        views.Register<ScreenshotDialogViewModel, MinimalScreenshotDialog>();
         views.Register<TitlePageViewModel, MinimalTitlePage>();
         views.Register<SettingsPageViewModel, MinimalSettingsPage>();
         views.Register<GalleryPageViewModel, MinimalGalleryPage>();

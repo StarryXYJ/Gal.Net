@@ -50,6 +50,7 @@
     <ItemGroup>
       <ProjectReference Include="..\GalNet.Editor.Abstraction\GalNet.Editor.Abstraction.csproj" />
       <ProjectReference Include="..\..\Shared\GalNet.Assets\GalNet.Assets.csproj" />
+      <ProjectReference Include="..\..\Presentation\GalNet.Avalonia.Themes\GalNet.Avalonia.Themes.csproj" Aliases="ThemesAssembly" />
       <ProjectReference Include="..\..\Presentation\GalNet.Avalonia.Controls\GalNet.Avalonia.Controls.csproj" />
       <ProjectReference Include="..\..\Presentation\GalNet.Avalonia.Rendering\GalNet.Avalonia.Rendering.csproj" />
       <ProjectReference Include="..\..\Presentation\GalNet.Avalonia.GameView\GalNet.Avalonia.GameView.csproj" Aliases="GameViewAssembly" />

@@ -1,4 +1,5 @@
 using GalNet.Avalonia.GameView.Navigation;
+using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Avalonia.Themes.Layouts.Classic;
 
@@ -9,6 +10,7 @@ public sealed class ClassicTheme(GamePalette? palette = null) : GameLayoutTheme(
     protected override string LayoutName => "Classic";
     public override void RegisterViews(IPageViewRegistryBuilder views)
     {
+        views.Register<ScreenshotDialogViewModel, ClassicScreenshotDialog>();
         views.Register<TitlePageViewModel, ClassicTitlePage>();
         views.Register<SettingsPageViewModel, ClassicSettingsPage>();
         views.Register<GalleryPageViewModel, ClassicGalleryPage>();

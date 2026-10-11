@@ -1,8 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:page="using:GalNet.Avalonia.GameView.Page"
-        xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
-        xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions">
+        xmlns:page="using:GalNet.Avalonia.GameView.Page">
   <Styles.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
@@ -19,35 +17,12 @@
       <x:Double x:Key="GalNet.Theme.TitleSize">48</x:Double>
       <x:Int32 x:Key="GalNet.Theme.SaveColumns">4</x:Int32>
       <FontFamily x:Key="GalNet.Theme.FontFamily">Segoe UI, Noto Sans CJK SC, Microsoft YaHei, Default</FontFamily>
-      <ControlTheme x:Key="{x:Type page:GamePage}" TargetType="page:GamePage">
-        <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Background}" />
-        <Setter Property="Template">
-          <ControlTemplate>
-            <Grid x:DataType="vm:GamePageViewModel" Background="{TemplateBinding Background}">
-              <ContentPresenter Name="PART_Scene" Content="{TemplateBinding Scene}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
-              <ContentPresenter Name="PART_Nvl" Content="{TemplateBinding Nvl}" Width="760" MaxHeight="480"
-                                HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="12" />
-              <ContentPresenter Name="PART_Dialogue" Content="{TemplateBinding Dialogue}" Margin="72,0,72,60"
-                                HorizontalAlignment="Stretch" VerticalAlignment="Bottom" HorizontalContentAlignment="Stretch" ZIndex="13" />
-              <ContentPresenter Name="PART_Choice" Content="{TemplateBinding Choice}" Width="560"
-                                HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="50" />
-              <StackPanel IsVisible="{Binding IsGameUiVisible}" HorizontalAlignment="Center" VerticalAlignment="Bottom"
-                          Orientation="Horizontal" Spacing="18" Margin="16" ZIndex="40"
-                          page:GamePage.IsPlayerInteraction="True">
-                <Button Classes="player-link" Content="{text:PlayerText Common.Save, Save}" Command="{Binding OpenSaveSlotsCommand}" />
-                <Button Classes="player-link" Content="{text:PlayerText Title.Load, Load}" Command="{Binding OpenLoadSlotsCommand}" />
-                <Button Classes="player-link" Content="{text:PlayerText Settings.Title, Settings}" Command="{Binding OpenSettingsCommand}" />
-                <Button Classes="player-link" Content="{text:PlayerText Common.Title, Title}" Command="{Binding ReturnToTitleCommand}" />
-                <Button Classes="player-link" Content="{text:PlayerText Common.Screenshot, Screenshot}" Command="{Binding RequestScreenshotCommand}" />
-                <Button Classes="player-link" Content="{text:PlayerText Common.HideUi, 'Hide UI'}" Command="{Binding HideUiCommand}" />
-              </StackPanel>
-            </Grid>
-          </ControlTemplate>
-        </Setter>
-      </ControlTheme>
     </ResourceDictionary>
   </Styles.Resources>
   <StyleInclude Source="avares://GalNet.Avalonia.Controls/Styles/Generic.axaml" />
+  <Style Selector="page|GameShell">
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Background}" />
+  </Style>
   <Style Selector=":is(Control).galnet-player">
     <Setter Property="(TextElement.Foreground)" Value="{DynamicResource GalNet.Brush.TextPrimary}" />
     <Setter Property="(TextElement.FontFamily)" Value="{DynamicResource GalNet.Theme.FontFamily}" />

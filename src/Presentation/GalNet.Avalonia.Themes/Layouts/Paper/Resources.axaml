@@ -1,5 +1,5 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:page="using:GalNet.Avalonia.GameView.Page"
+                    xmlns:page="using:GalNet.Avalonia.GameView.Page" xmlns:common="using:GalNet.Avalonia.Themes.Common"
                     xmlns:controls="using:GalNet.Game.Controls">
   <CornerRadius x:Key="GalNet.Theme.CornerRadius">0</CornerRadius>
   <Thickness x:Key="GalNet.Theme.PageMargin">56</Thickness>
@@ -62,7 +62,7 @@
                 <ContentPresenter Name="PART_Choice" Content="{TemplateBinding Choice}" HorizontalContentAlignment="Stretch" />
               </StackPanel>
               <ContentPresenter Name="PART_Nvl" Content="{TemplateBinding Nvl}" Grid.ColumnSpan="2" Width="900" MaxHeight="580" HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="12" />
-              <page:GameToolbar Grid.Row="1" Grid.ColumnSpan="2" HorizontalAlignment="Center" Margin="0,20,0,0" />
+              <common:GameToolbar Grid.Row="1" Grid.ColumnSpan="2" HorizontalAlignment="Center" Margin="0,20,0,0" />
              </Grid>
             </Grid>
       </ControlTemplate>

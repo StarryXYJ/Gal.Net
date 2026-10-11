@@ -1,5 +1,5 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:page="using:GalNet.Avalonia.GameView.Page">
+                    xmlns:page="using:GalNet.Avalonia.GameView.Page" xmlns:common="using:GalNet.Avalonia.Themes.Common">
   <CornerRadius x:Key="GalNet.Theme.CornerRadius">10</CornerRadius>
   <Thickness x:Key="GalNet.Theme.PageMargin">48</Thickness>
   <Thickness x:Key="GalNet.Theme.PanelPadding">36</Thickness>
@@ -23,7 +23,7 @@
               <ContentPresenter Name="PART_Nvl" Content="{TemplateBinding Nvl}" Width="840" MaxHeight="540" HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="12" />
               <ContentPresenter Name="PART_Dialogue" Content="{TemplateBinding Dialogue}" Margin="64,0,64,70" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" HorizontalContentAlignment="Stretch" ZIndex="13" />
               <ContentPresenter Name="PART_Choice" Content="{TemplateBinding Choice}" Width="620" HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="50" />
-              <page:GameToolbar HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="20" ZIndex="40" />
+              <common:GameToolbar HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="20" ZIndex="40" />
             </Grid>
       </ControlTemplate>
     </Setter>

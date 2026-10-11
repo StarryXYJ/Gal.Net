@@ -6,8 +6,8 @@
 
 - 单一可选 GalNet.Avalonia.Themes 项目，Classic/Minimal/Paper 布局和 Ocean/Rose/Mono 独立配色；Sample 默认 Classic + Ocean。
 - 启动代码通过 IGameLayoutTheme 同时提供 Styles 与页面注册，GameShell 自动加载资源；未提供直接的主题 XAML 元素、运行期选择器或继承/ID 注册系统。
-- 普通页保留 View + ViewModel；内置布局各自提供全部普通页面 XAML，复用共享业务 ViewModel，默认页面仅作为回退。页面外框取消，各主题内的导航位置保持一致。GamePage 成为稳定 TemplatedControl，以 Scene/Dialogue/Nvl/Choice 四个内容属性和 PART_* ContentPresenter 安排布局。
-- 注册顺序为默认→主题→宿主 Gallery 回调→宿主普通回调，最终 View 自动补充 Scoped 注册。游戏页自定义类型须继承 GamePage，确保 Runtime 与页面工厂使用同一实例。
+- 普通页保留 View + ViewModel；内置布局各自提供全部普通页面 XAML，复用共享业务 ViewModel，F-20261011-03 已移除默认页面回退；主题参数必需，缺失映射在注册时拒绝。页面外框取消，各主题内的导航位置保持一致。GamePage 成为稳定 TemplatedControl，以 Scene/Dialogue/Nvl/Choice 四个内容属性和 PART_* ContentPresenter 安排布局。
+- 注册顺序为共享 GamePage→主题→宿主 Gallery 回调→宿主 View 回调→完整性校验，普通 View 自动补充 Scoped 注册。截图行为基类留在 GameView，布局、工具栏和通用玩家样式归 Themes。游戏页自定义类型须继承 GamePage，确保 Runtime 与页面工厂使用同一实例。
 - 玩家根内使用 Fluent，基础色桥接至所选语义配色；宿主 Semi 与编辑器隔离。截图弹窗显式引入相同主题。当前 Sample 的确认/通知属于调试功能，沿用宿主外观。
 - 固定美术可以保留；Paper 标题的原创矢量纹理使用固定棕色，交互与文本跟随配色。
 - 配色目前包含 21 个必需画刷，未实现下述所有扩展状态键。九种组合在 1280×720 headless Skia 渲染并验证输入及截图；原生媒体、系统对话框、全 DPI/字体环境未纳入该测试。

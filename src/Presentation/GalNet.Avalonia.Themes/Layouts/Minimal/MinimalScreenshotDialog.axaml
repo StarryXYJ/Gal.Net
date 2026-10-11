@@ -1,9 +1,9 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<page:ScreenshotDialog xmlns:page="using:GalNet.Avalonia.GameView.Page" xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
-             x:Class="GalNet.Avalonia.GameView.Page.ScreenshotDialog" Classes="galnet-player">
-  <Border MaxWidth="720"
-          Padding="24"
+             x:Class="GalNet.Avalonia.Themes.Layouts.Minimal.MinimalScreenshotDialog" Classes="galnet-player">
+  <Border MaxWidth="800"
+          Padding="20"
           Background="{DynamicResource GalNet.Brush.Surface}"
           CornerRadius="{DynamicResource GalNet.Theme.CornerRadius}">
     <Grid RowDefinitions="Auto,300,Auto,Auto,Auto,Auto"
@@ -61,4 +61,4 @@
       </StackPanel>
     </Grid>
   </Border>
-</UserControl>
+</page:ScreenshotDialog>

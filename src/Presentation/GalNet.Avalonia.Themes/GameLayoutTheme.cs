@@ -24,9 +24,9 @@ public abstract class GameLayoutTheme(GamePalette palette) : IGameLayoutTheme
         {
             // Apply to the player root, not Application, to keep host/editor themes isolated.
             fluent,
-            new StyleInclude(new Uri("avares://GalNet.Avalonia.GameView/"))
+            new StyleInclude(new Uri("avares://GalNet.Avalonia.Themes/"))
             {
-                Source = new Uri("avares://GalNet.Avalonia.GameView/Styles/Generic.axaml")
+                Source = new Uri("avares://GalNet.Avalonia.Themes/Common/Styles.axaml")
             }
         };
         styles.Resources.MergedDictionaries.Add(paletteResources);

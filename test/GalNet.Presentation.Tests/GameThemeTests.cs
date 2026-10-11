@@ -179,7 +179,9 @@ public sealed class GameThemeTests
                     Capture(window, $"{layout}-{paletteName}-{viewModelType.Name}");
                 }
 
-                root.Child = new ScreenshotDialog();
+                using var screenshotDialog = (ScreenshotDialog)ActivatorUtilities.CreateInstance(services,
+                    services.GetRequiredService<IPageViewRegistry>().GetViewType(typeof(ScreenshotDialogViewModel)));
+                root.Child = screenshotDialog;
                 window.UpdateLayout();
                 Capture(window, $"{layout}-{paletteName}-screenshot-dialog");
             }
@@ -258,7 +260,7 @@ public sealed class GameThemeTests
             Assert.That(registry.GetViewType(typeof(TitlePageViewModel)), Is.EqualTo(typeof(HostTitle)));
             Assert.That(factory.Create(state), Is.TypeOf<HostTitle>());
             Assert.That(secondView, Is.SameAs(firstView));
-            Assert.That(registry.GetViewType(typeof(SettingsPageViewModel)), Is.EqualTo(typeof(SettingsPage)));
+            Assert.That(registry.GetViewType(typeof(SettingsPageViewModel)), Is.EqualTo(typeof(global::GalNet.Avalonia.Themes.Layouts.Classic.ClassicSettingsPage)));
         });
     }
 
@@ -280,34 +282,126 @@ public sealed class GameThemeTests
             views => views.Register<GamePageViewModel, HostTitle>()));
     }
 
-    [Test]
-    public async Task The_default_layout_remains_usable_without_the_optional_themes_project()
+    [TestCase("Classic")]
+    [TestCase("Minimal")]
+    [TestCase("Paper")]
+    public async Task The_shared_shell_resolves_the_theme_and_navigates_to_theme_owned_pages(string layout)
     {
         await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
-        await session.Dispatch(() =>
+        await session.Dispatch(async () =>
         {
-            var page = new GamePage();
-            var root = new Border { Classes = { "galnet-player" }, Child = page };
-            root.Styles.Add(new global::Avalonia.Themes.Fluent.FluentTheme());
-            root.Styles.Add(new global::Avalonia.Markup.Xaml.Styling.StyleInclude(new Uri("avares://GalNet.Avalonia.GameView/"))
-            {
-                Source = new Uri("avares://GalNet.Avalonia.GameView/Styles/Generic.axaml")
-            });
-            var window = new Window { Width = 1280, Height = 720, Content = root };
+            using var provider = CreateServices(CreateTheme(layout, "Ocean")).BuildServiceProvider(
+                new ServiceProviderOptions { ValidateScopes = true });
+            using var scope = provider.CreateScope();
+            var services = scope.ServiceProvider;
+            var navigation = services.GetRequiredService<IGameNavigationService>();
+            navigation.ResetTo<TitlePageViewModel>();
+            var shell = services.GetRequiredService<GameShell>();
+            var window = new Window { Width = 1280, Height = 720, Content = shell };
             window.Show();
             try
             {
                 window.UpdateLayout();
-                page.EnsureLayout();
-                Assert.That(page.SceneHost.Bounds.Width, Is.EqualTo(1280));
-                Assert.That(page.SceneHost.Bounds.Height, Is.EqualTo(720));
-                Assert.That(root.TryFindResource("GalNet.Brush.TextPrimary", out _), Is.True);
-                Capture(window, "default-layout");
+                var host = shell.FindControl<TransitioningContentControl>("PageHost")!;
+                Assert.That(host.Content!.GetType().Namespace, Is.EqualTo($"GalNet.Avalonia.Themes.Layouts.{layout}"));
+                Assert.That(shell.Background, Is.Not.Null);
+                await navigation.NavigateAsync(services.GetRequiredService<SettingsPageViewModel>(), NavigationTransition.None);
+                window.UpdateLayout();
+                Assert.That(host.Content, Is.SameAs(services.GetRequiredService<IPageViewFactory>()
+                    .Create(services.GetRequiredService<SettingsPageViewModel>())));
+                Assert.That(((Control)host.Content!).FindControl<Button>("PageBackButton"), Is.Not.Null);
             }
             finally { window.Close(); }
         }, TestContext.CurrentContext.CancellationToken);
     }
 
+    [Test]
+    public void An_incomplete_theme_reports_all_missing_views_during_registration()
+    {
+        var exception = Assert.Throws<InvalidOperationException>(() => CreateServices(new IncompleteTheme()));
+        Assert.That(exception!.Message, Does.Contain(nameof(SettingsPageViewModel)));
+        Assert.That(exception.Message, Does.Contain(nameof(ScreenshotDialogViewModel)));
+    }
+
+    [Test]
+    public void A_screenshot_view_without_the_behavior_contract_is_rejected()
+    {
+        Assert.Throws<InvalidOperationException>(() => CreateServices(new ClassicTheme(),
+            views => views.Register<ScreenshotDialogViewModel, HostTitle>()));
+    }
+
+    [TestCase("Classic")]
+    [TestCase("Minimal")]
+    [TestCase("Paper")]
+    public async Task Screenshot_layouts_preserve_preview_save_errors_cancel_and_cleanup(string layout)
+    {
+        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        await session.Dispatch(() =>
+        {
+            var theme = CreateTheme(layout, "Ocean");
+            using var provider = CreateServices(theme).BuildServiceProvider();
+            var type = provider.GetRequiredService<IPageViewRegistry>().GetViewType(typeof(ScreenshotDialogViewModel));
+            using var dialog = (ScreenshotDialog)ActivatorUtilities.CreateInstance(provider, type);
+            dialog.Styles.Add(theme.CreateStyles());
+            using var artwork = CreateGalleryArtwork();
+            using var stream = new MemoryStream();
+            artwork.Save(stream);
+            var bytes = stream.ToArray();
+            var captureFlags = new List<bool>();
+            var saves = new List<(string Directory, string File, bool IncludeUi)>();
+            var outcomes = new List<object?>();
+            var model = new ScreenshotDialogViewModel("original", "original.png", includeUi =>
+            {
+                captureFlags.Add(includeUi);
+                return Task.FromResult(bytes);
+            }, (directory, file, includeUi) =>
+            {
+                saves.Add((directory, file, includeUi));
+                return Task.FromResult<string?>(saves.Count == 1 ? "destination unavailable" : null);
+            });
+            model.RequestClose += (_, outcome) => outcomes.Add(outcome);
+            dialog.DataContext = model;
+            var window = new Window { Width = 1000, Height = 850, Content = dialog };
+            window.Show();
+            try
+            {
+                window.UpdateLayout();
+                var preview = dialog.FindControl<Image>("Preview")!;
+                Assert.That(preview.Source, Is.Not.Null);
+                Click(window, dialog.FindControl<Button>("CancelButton")!);
+                Assert.That(outcomes.Single(), Is.EqualTo(false));
+                outcomes.Clear();
+                Click(window, dialog.FindControl<CheckBox>("IncludeUiBox")!);
+                Assert.That(captureFlags, Has.Count.EqualTo(2));
+                Assert.That(captureFlags[0], Is.False);
+                Assert.That(captureFlags[1], Is.True);
+                dialog.FindControl<TextBox>("DirectoryBox")!.Text = "chosen";
+                dialog.FindControl<TextBox>("FileNameBox")!.Text = "chosen.png";
+                Click(window, dialog.FindControl<Button>("SaveButton")!);
+                Assert.That(saves[0], Is.EqualTo(("chosen", "chosen.png", true)));
+                Assert.That(dialog.FindControl<TextBlock>("ErrorBlock")!.Text, Is.EqualTo("destination unavailable"));
+                Assert.That(outcomes, Is.Empty);
+                model.RequestClose += (_, outcome) => { if (Equals(outcome, true)) dialog.Dispose(); };
+                Click(window, dialog.FindControl<Button>("SaveButton")!);
+                Assert.That(outcomes.Single(), Is.EqualTo(true));
+                Assert.That(preview.Source, Is.Null);
+                Click(window, dialog.FindControl<Button>("CancelButton")!);
+                Assert.That(outcomes.Count, Is.EqualTo(1));
+            }
+            finally { window.Close(); }
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
+    [Test]
+    public async Task A_screenshot_layout_missing_required_controls_fails_clearly()
+    {
+        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        await session.Dispatch(() =>
+        {
+            var exception = Assert.Throws<InvalidOperationException>(() => new IncompleteScreenshotDialog());
+            Assert.That(exception!.Message, Does.Contain("Preview"));
+        }, TestContext.CurrentContext.CancellationToken);
+    }
     [Test]
     public async Task Missing_game_layout_parts_fail_instead_of_completing_a_blocking_dialogue()
     {
@@ -423,7 +517,7 @@ public sealed class GameThemeTests
     private static ServiceCollection CreateServices(IGameLayoutTheme theme, Action<IPageViewRegistryBuilder>? overrides = null)
     {
         var services = new ServiceCollection();
-        services.AddAvaloniaGameViewPages(overrides, theme: theme);
+        services.AddAvaloniaGameViewPages(theme, configureViews: overrides);
         services.AddScoped<IGameSessionService, TestSession>();
         return services;
     }
@@ -434,11 +528,22 @@ public sealed class GameThemeTests
         public void RegisterViews(IPageViewRegistryBuilder views)
         {
             order.Add("theme");
+            new ClassicTheme().RegisterViews(views);
             views.Register<TitlePageViewModel, ThemeTitle>();
         }
     }
 
+    private sealed class IncompleteTheme : IGameLayoutTheme
+    {
+        public IStyle CreateStyles() => new Styles();
+        public void RegisterViews(IPageViewRegistryBuilder views) => views.Register<TitlePageViewModel, ThemeTitle>();
+    }
+
     private sealed class ThemeTitle : Control;
+    private sealed class IncompleteScreenshotDialog : ScreenshotDialog
+    {
+        public IncompleteScreenshotDialog() => InitializeDialog();
+    }
     private sealed class HostTitle : Control;
     private sealed class HostGamePage : GamePage;
 
