@@ -18,6 +18,6 @@ internal sealed class PersistentSceneRestorer(
             particles,
             animations,
             layers,
-            cancellationToken,
-            videos);
+            videos,
+            cancellationToken);
 }

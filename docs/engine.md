@@ -16,6 +16,8 @@ Graph + 已编译 .galgroup
 
 `IGameRuntime` 是运行事实的唯一来源，保存当前节点、条目位置、变量和 `SceneState`。呈现端口负责显示，不反过来拥有剧情或可存档状态。
 
+Engine 的 `StateChanged` 统一报告开始运行、完成、失败和停止，覆盖选择结果和阻塞实例自然完成；宿主无需在多个推进入口重复判断结束。关闭会话使用 `await engine.StopAsync()` 或异步释放，随后释放执行 view 与平台后端。停止是 Engine 终态，重开创建新实例。详细契约见[运行时参考](spec/runtime.md#状态通知和停止)。
+
 ## 内容项目与发布
 
 开发项目的最小布局如下：
@@ -66,7 +68,7 @@ Project/
 
 ## 默认能力与宿主
 
-`GalNet.Primitives.Builtins` 是可选的推荐模块集合，提供对话、NVL、图层、动画、效果、粒子、音频、视频、等待、变量和 Gallery 等 schema 与相应的已实现能力。具体媒体后端能力由所选宿主提供；宿主可以只挂载自定义模块，或在内置模块之外追加能力。
+`GalNet.Primitives.Builtins` 提供对话、NVL、图层、动画、效果、粒子、音频、视频、等待、变量和 Gallery 等 schema 与执行模块。`GameRegistration.AddBuiltins` 是主内置注册入口；也可只注册 `AddBuiltinSchemas`，再选择部分内置实现或全部自定义实现。媒体后端通过平台端口组合，不要求继承播放器基类；多个领域模块可共享指令前缀，但完整 ID 必须唯一。示例见[二次开发手册](development.md)。
 
 官方 Avalonia 宿主 `GalNet.Avalonia.GameView` 提供 `GameShell`、导航、页面和默认 presenter。它不读取项目目录，也不决定媒体或存档实现；这些由游戏宿主在组合根提供。页面集成见[Avalonia 游戏页面](spec/control.md)。
 

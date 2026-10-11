@@ -34,7 +34,7 @@ public sealed class AssetFileCommandCatalog : IProjectFileCommandCatalog
             ?? throw new JsonException($"Asset command '{commandId}' deserialized to null.");
     }
 
-    private static IProjectCommandDefinition Define<T>(string id, string description) where T : IProjectFileCommand
+    private static Definition Define<T>(string id, string description) where T : IProjectFileCommand
     {
         var parameters = typeof(T).GetConstructors().OrderByDescending(item => item.GetParameters().Length).First().GetParameters()
             .Select(parameter => new EditorCommandParameter(

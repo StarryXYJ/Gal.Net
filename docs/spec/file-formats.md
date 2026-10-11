@@ -12,10 +12,14 @@ Project/
     **/*                 原始资源
     **/*.meta            资源 metadata 与 Gallery 标注
   I18n/
+    catalog/characters.json 人物 ID 与姓名 key
+    <culture>/**/*.json     游戏文本
   Output/ Temp/ .galnet/  工作文件，不是游戏内容
 ```
 
 项目根不存在可编辑 `gallery.json`。Gallery 从 `Assets/**/*.meta` 的 `gallery[]` 聚合：类型由宿主代码/插件注册，item ID 为全局唯一正整数，资源 ID 是父 metadata 的 GUID。开发运行在内容加载时聚合一次；发行运行只读取导出生成的 `gallery.json`。
+
+`I18n/` 的人物表、文本源与默认语言完整性检查见 [国际化](i18n.md)。它是特殊内容，不是资源 provider 输入。
 
 ## Graph 与 Group
 

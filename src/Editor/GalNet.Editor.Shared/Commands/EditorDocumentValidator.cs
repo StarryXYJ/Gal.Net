@@ -5,7 +5,7 @@ namespace GalNet.Editor.Shared.Commands;
 
 public sealed class EditorDocumentValidator
 {
-    public ValidationResult Validate(EditorProjectDocument document)
+    public static ValidationResult Validate(EditorProjectDocument document)
     {
         var diagnostics = new List<EditorDiagnostic>();
         AddDuplicateDiagnostics(document.Graph.Nodes.Select(node => node.Id), "graph.node.duplicateId", "node", diagnostics);
@@ -57,7 +57,7 @@ public sealed class EditorDocumentValidator
         IEnumerable<string> values,
         string code,
         string kind,
-        ICollection<EditorDiagnostic> diagnostics)
+        List<EditorDiagnostic> diagnostics)
     {
         foreach (var value in values.Where(value => !string.IsNullOrWhiteSpace(value)).GroupBy(value => value, StringComparer.Ordinal).Where(group => group.Count() > 1))
             diagnostics.Add(EditorDiagnostic.Error(code, $"Duplicate {kind} identifier '{value.Key}'."));

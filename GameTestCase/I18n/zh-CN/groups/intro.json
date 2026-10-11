@@ -1,0 +1,15 @@
+{
+  "group.intro.entry.intro-line-1.content": "运行时示例由 raw 作者内容编译而成。测试背景音乐正在 bgm 轨道上淡入。",
+  "group.intro.entry.intro-video-background.content": "niko.mp4 是位于立绘下方的场景图层，带有旋转、缩放和透明度。非阻塞视频允许对话继续推进；推进后将停止视频。",
+  "group.intro.entry.intro-line-effect-on.content": "seffect.gain 轨道效果已启用，场景继续时背景音乐音量会降低。",
+  "group.intro.entry.intro-line-effect-off.content": "轨道效果已移除，背景音乐音量已恢复。",
+  "group.intro.entry.intro-line-low-pass.content": "低通 SEffect 正在滤除背景音乐的高频。推进以移除效果。",
+  "group.intro.entry.intro-line-high-pass.content": "高通 SEffect 正在滤除背景音乐的低频。推进以恢复完整音频。",
+  "group.intro.entry.intro-line-2.content": "立绘正在通过非阻塞的叠加循环快速上下浮动。",
+  "group.intro.entry.intro-line-3.content": "这句话显示之前，阻塞旋转动画已完成。",
+  "group.intro.entry.intro-line-4.content": "现在将显式停止立绘的非阻塞循环。",
+  "group.intro.entry.nvl-append-rich.content": "<b>NVL 已显示。</b>\\skip <color=#8E8AB8>富文本</color>和打字机跳过边界均已启用。",
+  "group.intro.entry.nvl-append-history.content": "这是可滚动 NVL 历史中的第二段。",
+  "group.intro.entry.nvl-append-after-clear.content": "之前的 NVL 历史已清空，随后追加了这一段。",
+  "group.intro.entry.intro-line-5.content": "背景音乐正在播放途中淡出。选择路线以查看转场和粒子效果。"
+}

@@ -18,8 +18,8 @@ public static class BuiltinPresentationReplay
         IParticlePresenter? particlePresenter,
         IAnimationPresenter? animationPresenter,
         ILayerPresenter? layerPresenter,
-        CancellationToken cancellationToken = default,
-        IVideoPresenter? videoPresenter = null)
+        IVideoPresenter? videoPresenter = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(runtime);
         var sceneState = runtime.SceneState;

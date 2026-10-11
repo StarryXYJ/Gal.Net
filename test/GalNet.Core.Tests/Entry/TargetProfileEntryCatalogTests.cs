@@ -83,8 +83,8 @@ public class TargetProfileEntryCatalogTests
             Throws.TypeOf<InvalidDataException>().With.Message.Contains("requires parameter 'count'"));
     }
 
-    private static PrimitiveEntryBase Primitive(string type, DynamicParameterTable parameters) =>
-        new DefaultPrimitiveEntryBase(type, parameters, static _ => new ImmediatePrimitiveInstance());
+    private static DefaultPrimitiveEntryBase Primitive(string type, DynamicParameterTable parameters) =>
+        new DefaultPrimitiveEntryBase(type, parameters);
 
     private sealed class TestEntryModule(string id, IEnumerable<PrimitiveEntryBase> entries)
         : EntryModuleBase(id, entries);

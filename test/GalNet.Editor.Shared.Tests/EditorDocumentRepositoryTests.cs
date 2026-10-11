@@ -15,6 +15,11 @@ namespace GeneralTest.Editor;
 [TestFixture]
 public class EditorDocumentRepositoryTests
 {
+    private static readonly JsonSerializerOptions IndentedJsonOptions = new() { WriteIndented = true };
+    private static readonly string[] ExpectedPlayerFlag = ["player_flag"];
+    private static readonly string[] ExpectedSaveCount = ["save_count"];
+    private static readonly string[] ExpectedPlayerName = ["player_name"];
+    private static readonly string[] ExpectedSaveSlot = ["save_slot"];
     private string _tempDir = null!;
 
     [SetUp]
@@ -50,7 +55,7 @@ public class EditorDocumentRepositoryTests
 
         File.WriteAllText(
             Path.Combine(_tempDir, "Graph", "graph.json"),
-            JsonSerializer.Serialize(document, new JsonSerializerOptions { WriteIndented = true }));
+            JsonSerializer.Serialize(document, IndentedJsonOptions));
         File.WriteAllText(
             Path.Combine(_tempDir, "Graph", "groups", $"{groupId}.rawgalgroup"),
             """{ "version": 2, "kind": "Raw", "entries": [ { "id": "entry-1", "type": "dialogue.text", "parameters": { "content": "hello", "obsolete": "discard" } } ] }""");
@@ -67,11 +72,11 @@ public class EditorDocumentRepositoryTests
             ]
         };
 
-        var repository = new EditorDocumentRepository(BuiltinEntryModules.CreateRecommendedTargetProfile());
+        var repository = new EditorDocumentRepository(BuiltinSchemas.CreateCatalog());
         var loaded = repository.Load(_tempDir, "Demo", settings);
 
-        Assert.That(loaded.Document.PlayerVariables.Select(v => v.Name), Is.EqualTo(new[] { "player_flag" }));
-        Assert.That(loaded.Document.SaveVariables.Select(v => v.Name), Is.EqualTo(new[] { "save_count" }));
+        Assert.That(loaded.Document.PlayerVariables.Select(v => v.Name), Is.EqualTo(ExpectedPlayerFlag));
+        Assert.That(loaded.Document.SaveVariables.Select(v => v.Name), Is.EqualTo(ExpectedSaveCount));
         Assert.That(loaded.GroupEntries[groupId], Has.Count.EqualTo(1));
         Assert.That(loaded.GroupEntries[groupId][0].Type, Is.EqualTo("dialogue.text"));
         Assert.That(loaded.GroupEntries[groupId][0].Parameters, Does.ContainKey("content").WithValue("hello"));
@@ -81,7 +86,7 @@ public class EditorDocumentRepositoryTests
     [Test]
     public void Save_WritesVariablesAndGroupEntriesIntoProjectFiles()
     {
-        var repository = new EditorDocumentRepository(BuiltinEntryModules.CreateRecommendedTargetProfile());
+        var repository = new EditorDocumentRepository(BuiltinSchemas.CreateCatalog());
         var document = new EditorGraphDocument
         {
             Name = "Demo",
@@ -117,8 +122,8 @@ public class EditorDocumentRepositoryTests
         var savedGroup = File.ReadAllText(Path.Combine(_tempDir, "Graph", "groups", "group_1.rawgalgroup"));
 
         Assert.That(savedDocument, Is.Not.Null);
-        Assert.That(savedDocument!.PlayerVariables.Select(v => v.Name), Is.EqualTo(new[] { "player_name" }));
-        Assert.That(savedDocument.SaveVariables.Select(v => v.Name), Is.EqualTo(new[] { "save_slot" }));
+        Assert.That(savedDocument!.PlayerVariables.Select(v => v.Name), Is.EqualTo(ExpectedPlayerName));
+        Assert.That(savedDocument.SaveVariables.Select(v => v.Name), Is.EqualTo(ExpectedSaveSlot));
         var reloaded = repository.Load(_tempDir, "Demo", new ProjectSettings());
         var savedGroupDocument = JsonDocument.Parse(savedGroup);
         Assert.That(savedGroupDocument.RootElement.GetProperty("kind").GetString(), Is.EqualTo("Raw"));
@@ -135,10 +140,7 @@ public class EditorDocumentRepositoryTests
         var catalog = new TargetProfileEntryCatalog(
         [new DefaultEntryModule("custom",
         [
-            new DefaultPrimitiveEntryBase(
-                "custom.pulse",
-                new DynamicParameterTable([new DynamicParameterDescriptor("count", typeof(int), isRequired: true)]),
-                static _ => new ImmediatePrimitiveInstance())
+            new DefaultPrimitiveEntryBase("custom.pulse", new DynamicParameterTable([new DynamicParameterDescriptor("count", typeof(int), isRequired: true)]))
         ])]);
         var graph = new EditorGraphDocument
         {

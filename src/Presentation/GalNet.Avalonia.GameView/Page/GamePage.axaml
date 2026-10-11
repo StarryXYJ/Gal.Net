@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
              xmlns:controls="using:GalNet.Game.Controls"
              xmlns:scene="using:GalNet.Rendering.Scene"
              xmlns:local="using:GalNet.Avalonia.GameView.Page"
@@ -25,12 +26,12 @@
     <Border IsVisible="{Binding IsGameUiVisible}" Background="Transparent" Padding="4,2"
             HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,22" ZIndex="40">
       <StackPanel HorizontalAlignment="Center" Orientation="Horizontal" Spacing="22">
-        <Button Content="Save" Command="{Binding OpenSaveSlotsCommand}" Classes="quick" />
-        <Button Content="Load" Command="{Binding OpenLoadSlotsCommand}" Classes="quick" />
-        <Button Content="Settings" Command="{Binding OpenSettingsCommand}" Classes="quick" />
-        <Button Content="Title" Command="{Binding ReturnToTitleCommand}" Classes="quick" />
-        <Button Content="Screenshot" Command="{Binding RequestScreenshotCommand}" Classes="quick" />
-        <Button Content="Hide UI" Command="{Binding HideUiCommand}" Classes="quick" />
+        <Button Content="{text:PlayerText Common.Save, 'Save'}" Command="{Binding OpenSaveSlotsCommand}" Classes="quick" />
+        <Button Content="{text:PlayerText Title.Load, 'Load'}" Command="{Binding OpenLoadSlotsCommand}" Classes="quick" />
+        <Button Content="{text:PlayerText Settings.Title, 'Settings'}" Command="{Binding OpenSettingsCommand}" Classes="quick" />
+        <Button Content="{text:PlayerText Common.Title, 'Title'}" Command="{Binding ReturnToTitleCommand}" Classes="quick" />
+        <Button Content="{text:PlayerText Common.Screenshot, 'Screenshot'}" Command="{Binding RequestScreenshotCommand}" Classes="quick" />
+        <Button Content="{text:PlayerText Common.HideUi, 'Hide UI'}" Command="{Binding HideUiCommand}" Classes="quick" />
       </StackPanel>
     </Border>
   </Grid>

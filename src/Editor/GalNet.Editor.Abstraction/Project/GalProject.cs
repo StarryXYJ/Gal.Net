@@ -85,8 +85,7 @@ public sealed class GalProject : IDisposable, IAsyncDisposable
     public IDisposable RegisterClosingCallback(Func<Task> callback)
     {
         ArgumentNullException.ThrowIfNull(callback);
-        if (_disposed)
-            throw new ObjectDisposedException(nameof(GalProject));
+        ObjectDisposedException.ThrowIf(_disposed, this);
 
         _closingCallbacks.Add(callback);
         return new CallbackRegistration(_closingCallbacks, callback);

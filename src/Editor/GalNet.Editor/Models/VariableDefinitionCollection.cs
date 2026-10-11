@@ -4,10 +4,10 @@ using GalNet.Core.Variable;
 namespace GalNet.Editor.Models;
 
 /// <summary>Owns ordered editor variable definitions and their collection invariants.</summary>
-public sealed class VariableDefinitionCollection
+public sealed class VariableDefinitions
 {
     private readonly List<ProjectVariableDefinition> _definitions;
-    public VariableDefinitionCollection(List<ProjectVariableDefinition> definitions) => _definitions = definitions;
+    public VariableDefinitions(List<ProjectVariableDefinition> definitions) => _definitions = definitions;
     public int Count => _definitions.Count;
     public IEnumerable<ProjectVariableDefinition> Items => _definitions;
     public ProjectVariableDefinition Add(string name)

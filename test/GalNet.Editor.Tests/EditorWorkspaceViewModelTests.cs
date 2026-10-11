@@ -145,8 +145,7 @@ public sealed class EditorWorkspaceViewModelTests
             projects,
             new FakeDocumentRepository(WorkspaceFixture.CreateLoadedDocument()),
             documents,
-            saveCoordinator,
-            new GraphDocumentMapper());
+            saveCoordinator);
 
         var graph = persistence.LoadCurrentProject();
         var saved = await persistence.SaveCurrentProjectAsync(graph!.Nodes, graph.Edges);
@@ -191,16 +190,14 @@ public sealed class EditorWorkspaceViewModelTests
                 new NullServiceProvider(),
                 new EditorExtensionRegistry(),
                 localization);
-            var catalog = BuiltinEntryModules.CreateRecommendedTargetProfile();
+            var catalog = BuiltinSchemas.CreateCatalog();
             var variableDefinitions = new VariableDefinitionService(DocumentService);
             var repository = new FakeDocumentRepository(loaded);
-            var mapper = new GraphDocumentMapper();
             var persistence = new EditorWorkspacePersistence(
                 ProjectService,
                 repository,
                 DocumentService,
-                SaveCoordinator,
-                mapper);
+                SaveCoordinator);
 
             Workspace = new EditorWorkspaceViewModel(
                 ProjectService,

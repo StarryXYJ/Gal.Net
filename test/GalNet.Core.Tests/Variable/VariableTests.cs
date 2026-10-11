@@ -61,12 +61,14 @@ public class VariableTests
 
 public class VariableRouteTests
 {
+    private static readonly string[] PlayerAffectionAlice = ["player", "affection", "alice"];
+
     [Test]
     public void Route_Should_Parse_Segments()
     {
         var route = new VariableRoute("player.affection.alice");
         Assert.That(route.Path, Is.EqualTo("player.affection.alice"));
-        Assert.That(route.Segments, Is.EquivalentTo(new[] { "player", "affection", "alice" }));
+        Assert.That(route.Segments, Is.EquivalentTo(PlayerAffectionAlice));
     }
 
     [Test]

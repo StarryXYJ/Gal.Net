@@ -43,10 +43,6 @@ public interface IGameRuntime
     /// <summary>标记游戏结束。</summary>
     void EndGame();
 
-    // ── 调用栈（call/return）──
-    void PushCallStack(string nodeId);
-    (string nodeId, int entryIndex)? PopCallStack();
-
     // ── 变量操作 ──
     void SetVariable(string name, object value);
     GalNet.Core.Variable.Variable? GetVariable(string name);

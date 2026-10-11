@@ -16,12 +16,10 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresente
         _state = state;
         _page = page;
         _dispatcher = dispatcher;
-        _state.AdvanceRequested += OnAdvanceRequested;
         _state.NvlClearRequested += OnNvlClearRequested;
     }
 
     public Task InitialPresentationReady => _initialPresentationReady.Task;
-    public event Action? AdvanceRequested;
 
     public void CompleteInitialPresentation() => _initialPresentationReady.TrySetResult();
     public void FailInitialPresentation(Exception exception) => _initialPresentationReady.TrySetException(exception);
@@ -71,10 +69,8 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresente
 
     public void Dispose()
     {
-        _state.AdvanceRequested -= OnAdvanceRequested;
         _state.NvlClearRequested -= OnNvlClearRequested;
     }
 
-    private void OnAdvanceRequested() => AdvanceRequested?.Invoke();
     private void OnNvlClearRequested() => _dispatcher.Dispatch(_page.Nvl.Clear);
 }

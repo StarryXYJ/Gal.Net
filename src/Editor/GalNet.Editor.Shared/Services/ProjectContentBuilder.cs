@@ -18,7 +18,7 @@ public sealed class ProjectContentBuilder(IEntryCatalog? entryCatalog = null)
         Converters = { new JsonStringEnumConverter() }
     };
 
-    private readonly IEntryCatalog _entryCatalog = entryCatalog ?? BuiltinEntryModules.CreateRecommendedTargetProfile();
+    private readonly IEntryCatalog _entryCatalog = entryCatalog ?? BuiltinSchemas.CreateCatalog();
 
     public async Task<ProjectContentBuildResult> BuildAsync(
         string projectRoot,

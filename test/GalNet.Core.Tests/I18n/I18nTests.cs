@@ -20,8 +20,8 @@ public class I18nKeyTests
     [Test]
     public void ForEntry_Should_Generate_Expected_Format()
     {
-        var key = I18nKey.ForEntry("group_abc", 3, "content");
-        Assert.That(key.Key, Is.EqualTo("group_abc.entry_3.content"));
+        var key = I18nKey.ForEntry("group_abc", "entry-3", "content");
+        Assert.That(key.Key, Is.EqualTo("group.group_abc.entry.entry-3.content"));
     }
 
     [Test]

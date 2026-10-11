@@ -8,23 +8,28 @@ namespace GeneralTest.Editor;
 
 public class GraphEditingServiceTests
 {
+    private static readonly int[] ThreeEntryIds = [1, 2, 3];
+    private static readonly int[] TwoEntryIds = [1, 2];
+    private static readonly string[] FirstSuggestions = ["first", "second"];
+    private static readonly string[] SecondSuggestions = ["second", "third"];
+
     [Test]
     public void InsertEntries_Should_Insert_A_Batch_At_Requested_Position_And_Renumber()
     {
-        var service = new GraphEditingService(BuiltinEntryModules.CreateRecommendedTargetProfile());
+        var service = new GraphEditingService(BuiltinSchemas.CreateCatalog());
         var node = new GraphNode(new Group { Name = "Group" }, GraphNodeKind.LinearGroup);
         var inserted = service.InsertEntries(node, 0, 3);
 
         Assert.That(inserted, Has.Count.EqualTo(3));
         Assert.That(node.Entries, Is.EqualTo(inserted));
-        Assert.That(node.Entries.Select(entry => entry.Id), Is.EqualTo(new[] { 1, 2, 3 }));
+        Assert.That(node.Entries.Select(entry => entry.Id), Is.EqualTo(ThreeEntryIds));
         Assert.That(inserted.All(entry => entry.Type == TextEntry.TypeId), Is.True);
     }
 
     [Test]
     public void InsertEntries_Should_Clamp_Index_And_Reject_Invalid_Count()
     {
-        var service = new GraphEditingService(BuiltinEntryModules.CreateRecommendedTargetProfile());
+        var service = new GraphEditingService(BuiltinSchemas.CreateCatalog());
         var node = new GraphNode(new Group { Name = "Group" }, GraphNodeKind.LinearGroup);
 
         var appended = service.InsertEntries(node, int.MaxValue, 2);
@@ -32,7 +37,7 @@ public class GraphEditingServiceTests
 
         Assert.That(node.Entries.TakeLast(2), Is.EqualTo(appended));
         Assert.That(rejected, Is.Empty);
-        Assert.That(node.Entries.Select(entry => entry.Id), Is.EqualTo(new[] { 1, 2 }));
+        Assert.That(node.Entries.Select(entry => entry.Id), Is.EqualTo(TwoEntryIds));
     }
 
     [Test]
@@ -48,11 +53,11 @@ public class GraphEditingServiceTests
             }
         };
 
-        var catalog = BuiltinEntryModules.CreateRecommendedTargetProfile();
+        var catalog = BuiltinSchemas.CreateCatalog();
         entry.ConfigureParameterFields(catalog, [], ["first", "second"]);
         var target = entry.ParameterFields.OfType<VariableNameEntryParameterEditorItemViewModel>().Single();
 
-        Assert.That(target.Suggestions, Is.EqualTo(new[] { "first", "second" }));
+        Assert.That(target.Suggestions, Is.EqualTo(FirstSuggestions));
         Assert.That(target.StringValue, Is.EqualTo("first"));
 
         target.StringValue = "second";
@@ -60,6 +65,6 @@ public class GraphEditingServiceTests
 
         entry.ConfigureParameterFields(catalog, [], ["second", "third"]);
         Assert.That(entry.ParameterFields.Single(field => field.Id == "target").Suggestions,
-            Is.EqualTo(new[] { "second", "third" }));
+            Is.EqualTo(SecondSuggestions));
     }
 }

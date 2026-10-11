@@ -5,7 +5,12 @@ namespace GeneralTest.Entry;
 
 public class EntryModelTests
 {
-    private static TargetProfileEntryCatalog Catalog => BuiltinEntryModules.CreateRecommendedTargetProfile();
+    private static readonly string[] TextParameters = ["speaker", "content"];
+    private static readonly string[] VariableParameters = ["target", "expression"];
+    private static readonly string[] SlideDirections = ["Left", "Right", "Up", "Down"];
+    private static readonly string[] BlindOrientations = ["Vertical", "Horizontal"];
+
+    private static TargetProfileEntryCatalog Catalog => BuiltinSchemas.CreateCatalog();
 
     [Test]
     public void Registry_Should_Create_All_BuiltIn_Entries()
@@ -60,7 +65,7 @@ public class EntryModelTests
     public void TextEntry_Should_Not_Expose_Widget_Parameter()
     {
         var definition = Catalog.Get(TextEntry.TypeId);
-        Assert.That(definition.Parameters.Keys, Is.EquivalentTo(new[] { "speaker", "content" }));
+        Assert.That(definition.Parameters.Keys, Is.EquivalentTo(TextParameters));
         Assert.That(Catalog.Create(TextEntry.TypeId).Values, Does.Not.ContainKey("widget"));
     }
 
@@ -87,7 +92,7 @@ public class EntryModelTests
     public void SetVariable_Should_Only_Expose_Target_And_Expression()
     {
         var definition = Catalog.Get(SetVariableEntry.TypeId);
-        Assert.That(definition.Parameters.Keys, Is.EquivalentTo(new[] { "target", "expression" }));
+        Assert.That(definition.Parameters.Keys, Is.EquivalentTo(VariableParameters));
         Assert.That(definition.Parameters["target"], Is.EqualTo(EntryParameterType.VariableName));
         Assert.That(definition.Parameters["expression"], Is.EqualTo(EntryParameterType.Expression));
     }
@@ -119,7 +124,7 @@ public class EntryModelTests
         Assert.That(definition.Kind, Is.EqualTo(EntryKind.Composite));
         Assert.That(definition.Parameters["direction"], Is.EqualTo(EntryParameterType.Select));
         Assert.That(definition.Parameters["distance"], Is.EqualTo(EntryParameterType.Float));
-        Assert.That(definition.Options["direction"], Is.EquivalentTo(new[] { "Left", "Right", "Up", "Down" }));
+        Assert.That(definition.Options["direction"], Is.EquivalentTo(SlideDirections));
     }
 
     [Test]
@@ -130,7 +135,7 @@ public class EntryModelTests
         Assert.That(definition.Parameters["maskProgram"], Is.EqualTo(EntryParameterType.EffectProgramAsset));
         Assert.That(definition.Parameters["bladeCount"], Is.EqualTo(EntryParameterType.Integer));
         Assert.That(definition.Parameters["orientation"], Is.EqualTo(EntryParameterType.Select));
-        Assert.That(definition.Options["orientation"], Is.EquivalentTo(new[] { "Vertical", "Horizontal" }));
+        Assert.That(definition.Options["orientation"], Is.EquivalentTo(BlindOrientations));
     }
 
     [Test]

@@ -4,11 +4,13 @@ using GalNet.Presentation.Abstractions.Audio;
 namespace GalNet.Runtime.Audio;
 
 /// <summary>Game-scope logical audio state. It serializes queues and protects against late backend events.</summary>
-public sealed class AudioRuntime : IDisposable
+public sealed class AudioRuntime : IDisposable, IAsyncDisposable
 {
     private readonly object _gate = new();
     private readonly IAudioPlaybackHost? _host;
     private readonly Dictionary<string, TrackState> _tracks = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, BackendQueue> _backendQueues = new(StringComparer.Ordinal);
+    private readonly List<Task> _pendingRequests = [];
     private long _nextGeneration;
     private bool _disposed;
 
@@ -19,6 +21,16 @@ public sealed class AudioRuntime : IDisposable
     }
 
     public event Action<string>? Diagnostic;
+
+    public void Reset()
+    {
+        lock (_gate)
+        {
+            if (_disposed) return;
+            foreach (var track in _tracks.Values) StopActive(track, 0);
+            _tracks.Clear();
+        }
+    }
 
     public void Play(IReadOnlyList<AudioTrackDefinition> definitions, AudioPlayRequest request)
     {
@@ -149,6 +161,15 @@ public sealed class AudioRuntime : IDisposable
         }
     }
 
+    /// <summary>Stops voices and waits for all backend commands before the host is released.</summary>
+    public async ValueTask DisposeAsync()
+    {
+        Dispose();
+        Task[] requests;
+        lock (_gate) requests = _pendingRequests.ToArray();
+        await Task.WhenAll(requests).ConfigureAwait(false);
+    }
+
     private void ApplyActive(IReadOnlyList<AudioTrackDefinition> definitions, string trackId, AudioBackendAction action)
     {
         lock (_gate)
@@ -255,6 +276,11 @@ public sealed class AudioRuntime : IDisposable
             if (backendEvent.Kind is AudioBackendEventKind.Ended or AudioBackendEventKind.Failed)
             {
                 track.Active.Remove(voice);
+                if (_backendQueues.Remove(voice.Id, out var queue))
+                {
+                    queue.StartCancellation.Cancel();
+                    _ = ReleaseQueueAsync(queue);
+                }
                 if (backendEvent.Kind == AudioBackendEventKind.Failed) Report(backendEvent.Message ?? $"Audio backend failed for '{voice.AssetId}'.");
                 Pump(track);
             }
@@ -278,13 +304,53 @@ public sealed class AudioRuntime : IDisposable
             Report($"Audio backend does not support fades on '{request.TrackId}'; applying immediately.");
             request = request with { FadeSeconds = 0 };
         }
-        _ = SendAsync(request);
+        if (!_backendQueues.TryGetValue(request.VoiceId, out var queue))
+        {
+            queue = new BackendQueue();
+            _backendQueues.Add(request.VoiceId, queue);
+        }
+        // Stop invalidates an in-flight asset load immediately; subsequent commands
+        // for this voice still run in order after the producer has observed cancellation.
+        if (request.Action == AudioBackendAction.Stop) queue.StartCancellation.Cancel();
+        queue.Tail = SendAsync(queue.Tail, queue, request);
+        _pendingRequests.RemoveAll(task => task.IsCompleted);
+        _pendingRequests.Add(queue.Tail);
     }
 
-    private async Task SendAsync(AudioBackendRequest request)
+    private async Task SendAsync(Task previous, BackendQueue queue, AudioBackendRequest request)
     {
-        try { await _host!.ApplyAsync(request).ConfigureAwait(false); }
+        try
+        {
+            await previous.ConfigureAwait(false);
+            var cancellation = request.Action == AudioBackendAction.Start ? queue.StartCancellation.Token : CancellationToken.None;
+            cancellation.ThrowIfCancellationRequested();
+            await _host!.ApplyAsync(request, cancellation).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (queue.StartCancellation.IsCancellationRequested) { }
         catch (Exception exception) { Report($"Audio backend request failed: {exception.Message}"); }
+        finally
+        {
+            if (request.Action == AudioBackendAction.Stop)
+            {
+                lock (_gate) _backendQueues.Remove(request.VoiceId);
+                queue.StartCancellation.Dispose();
+            }
+        }
+    }
+
+    private sealed class BackendQueue
+    {
+        public Task Tail { get; set; } = Task.CompletedTask;
+        public CancellationTokenSource StartCancellation { get; } = new();
+    }
+
+    private static async Task ReleaseQueueAsync(BackendQueue queue)
+    {
+        // Backend events may arrive synchronously inside ApplyAsync, before Send
+        // has assigned its returned task. Wait for that assignment before cleanup.
+        await Task.Yield();
+        await queue.Tail.ConfigureAwait(false);
+        queue.StartCancellation.Dispose();
     }
 
     private void Report(string message) => Diagnostic?.Invoke(message);

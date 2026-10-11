@@ -12,7 +12,7 @@ public class ProjectDependencyTests
             ["GalNet.Core"] = [],
             ["GalNet.Presentation.Abstractions"] = ["GalNet.Core"],
             ["GalNet.Runtime"] = ["GalNet.Core", "GalNet.Presentation.Abstractions"],
-            ["GalNet.Primitives.Builtins"] = ["GalNet.Core", "GalNet.Presentation.Abstractions"],
+            ["GalNet.Primitives.Builtins"] = ["GalNet.Core", "GalNet.Presentation.Abstractions", "GalNet.Runtime"],
             ["GalNet.Assets"] = ["GalNet.Core"],
             ["GalNet.Storage.FileSystem"] = ["GalNet.Core", "GalNet.Runtime", "GalNet.Assets"],
             ["GalNet.Editor.Abstraction"] = ["GalNet.Core"],
@@ -25,8 +25,7 @@ public class ProjectDependencyTests
                 "GalNet.Assets"
             ],
             ["GalNet.Avalonia.Controls"] = ["GalNet.Core"],
-            ["GalNet.Avalonia.Rendering"] = ["GalNet.Core"],
-            ["GalNet.Presentation.Defaults"] = ["GalNet.Presentation.Abstractions"]
+            ["GalNet.Avalonia.Rendering"] = ["GalNet.Core"]
         };
 
     private static readonly IReadOnlyDictionary<string, string[]> AllowedTestDependencies =

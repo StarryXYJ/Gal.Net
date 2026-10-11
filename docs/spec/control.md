@@ -11,7 +11,7 @@
   └─ GameShell
        ├─ IGameNavigationService
        ├─ 标题、加载、存读档、设置、鉴赏、关于页面
-       └─ GamePage + AvaloniaGamePageView
+       └─ GamePage + AvaloniaGamePresenters
             ├─ Dialogue / Layer / Animation / Particle presenter
             └─ CompositeGameView ── Runtime.GameEngine
 ```
@@ -38,15 +38,23 @@
 
 Gallery 使用独立的 `IGalleryPageRegistry`，以精确 Gallery `typeId` 映射到页面 ViewModel 和 View。`Add<TViewModel, TView>` 注册新类型，`Replace<TViewModel, TView>` 显式覆盖既有类型；多个 type ID 可以映射到同一页面。该注册同时写入普通 ViewModel→View registry 和 DI，构建后不可修改。
 
+### 设置与界面文本
+
+`SettingsPageViewModel` 通过通用的 `IPlayerSettingsService.Items` 获取设置项，不绑定语言专用服务。页面支持 `ChoicePlayerSetting` 和 `RangePlayerSetting`；默认服务提供文本速度，宿主可在 DI 中替换服务并提供其他设置。设置应用、恢复和持久化由宿主负责，共享页面不读取配置文件。
+
+共享页面的静态文案使用 `PlayerTextExtension`，未接入宿主本地化时显示默认英文。官方 Sample 提供 `LocalizedString` 并绑定其 `Value`，沿用 DynamicLocalization 的 Culture/Provider 变更通知机制；宿主设置标签也可以使用同样的动态对象。该绑定不会自动翻译任意业务字符串或剧情内容。
+
+Sample 在游戏会话初始化成功后，把设置接入现有 Player 变量存储，恢复语言与文本速度。语言变更（包括直接调用 CultureService）立即刷新绑定并排队持久化；清空玩家状态和销毁会话前等待写入完成。
+
 `GalleryNavigationService` 不按资源类型推断页面：没有有内容类型时入口不可用，只有一个时直接打开该页，多个时先进入类型选择页；未注册页面会显示诊断页。CG、视频和音频是独立页面/媒体状态，不使用 renderer enum 或单一多媒体 ViewModel。
 
 ## 运行期呈现边界
 
-Runtime 只依赖 `GalNet.Presentation.Abstractions` 中的 `IGameView` 与细分接口（文本、NVL、交互、图层、转场、音频、视频、效果）。`AvaloniaGamePageView` 是页面侧 presenter 的组合器，分别暴露 dialogue/NVL/choice、layer、animation 和 particle 端口；宿主通过 `CompositeGameView` 把这些端口组合成 Runtime 使用的 `IGameView`。`NullGameView` 供测试和无界面宿主使用。
+Runtime 只依赖 `GalNet.Presentation.Abstractions` 中的 `IGameView` 与细分接口（文本、NVL、交互、图层、转场、音频、视频、效果）。`AvaloniaGamePresenters` 是页面侧 presenter 的组合器，分别暴露 dialogue/NVL/choice、layer、animation 和 particle 端口；它不是页面或执行 view。宿主通过 `CompositeGameView` 把这些端口组合成 Runtime 使用的 `IGameView`。`NullGameView` 供测试和无界面宿主使用。
 
-各 presenter 共享 `IAvaloniaUiDispatcher`，但分别拥有自己的等待、动画和粒子生命周期。`AvaloniaGamePageView` 通过宿主提供的 `IGamePageLayerFactory` 解析图层图像，因而共享页面不会自行推断资源路径。动画逐帧更新由呈现实现完成；Runtime 只维护可存档的场景状态和动画结束后的稳定属性。
+各 presenter 共享 `IAvaloniaUiDispatcher`，但分别拥有自己的等待、动画和粒子生命周期。`AvaloniaGamePresenters` 通过宿主提供的 `IGamePageLayerFactory` 解析图层图像，因而共享页面不会自行推断资源路径。玩家推进从 `GamePageViewModel.AdvanceRequested` 直接连接宿主，不经过 dialogue presenter 或 presenter 集合转发。动画逐帧更新由呈现实现完成；Runtime 只维护可存档的场景状态和动画结束后的稳定属性。
 
-官方 Sample 使用 `SampleGameResourceScope`、`SampleSaveSession`、`SampleGameRunner` 和 `PersistentSceneRestorer` 分离资源、玩家持久化、运行编排与读档展示重放。读档顺序固定为恢复 Runtime snapshot、重放持久展示、页面切换后启动 prepared run；reload 和清空玩家状态必须先停止并释放 runner，再释放资源或重建持久化状态。
+官方 Sample 使用 `SampleGameResourceScope`、`SampleSaveSession`、`SampleGameRunner` 和 `PersistentSceneRestorer` 分离资源、玩家持久化、页面运行编排与读档展示重放。`SampleGamePresentation` 集中创建和释放执行 view 与平台后端，创建失败与正常销毁使用同一条清理路径；单个对象释放失败仍继续释放其他对象。Runner 只绑定页面操作、处理 Engine 状态通知和宿主反馈，不重复推断剧情终态。读档顺序固定为恢复 Runtime snapshot、重放持久展示、页面切换后首次调用 `AdvanceAsync`；reload 和清空玩家状态必须先停止并释放 runner，再释放资源或重建持久化状态。
 
 ## 宿主接入约束
 

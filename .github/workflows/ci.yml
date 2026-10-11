@@ -23,14 +23,36 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.401
-      - name: Restore workloads
-        run: dotnet workload restore GalNet.slnx --version 10.0.401.1
-      - name: Restore locked dependencies
-        run: dotnet restore GalNet.slnx --locked-mode
+      - name: Restore locked dependencies (excluding launcher)
+        shell: pwsh
+        run: |
+          $projects = Get-ChildItem src, test -Filter *.csproj -Recurse |
+            Where-Object { $_.FullName -notmatch '[\\/]src[\\/]Launcher[\\/]' } |
+            Sort-Object FullName
+          foreach ($project in $projects) {
+            dotnet restore $project.FullName --locked-mode
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
       - name: Verify whitespace
-        run: dotnet format whitespace GalNet.slnx --no-restore --verify-no-changes --verbosity quiet
+        shell: pwsh
+        run: |
+          $projects = Get-ChildItem src, test -Filter *.csproj -Recurse |
+            Where-Object { $_.FullName -notmatch '[\\/]src[\\/]Launcher[\\/]' } |
+            Sort-Object FullName
+          foreach ($project in $projects) {
+            dotnet format whitespace $project.FullName --no-restore --verify-no-changes --verbosity quiet
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
       - name: Verify imports
-        run: dotnet format style GalNet.slnx --no-restore --verify-no-changes --diagnostics IDE0005 --verbosity quiet
+        shell: pwsh
+        run: |
+          $projects = Get-ChildItem src, test -Filter *.csproj -Recurse |
+            Where-Object { $_.FullName -notmatch '[\\/]src[\\/]Launcher[\\/]' } |
+            Sort-Object FullName
+          foreach ($project in $projects) {
+            dotnet format style $project.FullName --no-restore --verify-no-changes --diagnostics IDE0005 --verbosity quiet
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
 
   desktop-build-and-test:
     runs-on: windows-latest

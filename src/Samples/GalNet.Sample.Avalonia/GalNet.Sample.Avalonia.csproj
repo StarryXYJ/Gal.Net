@@ -11,6 +11,8 @@
   <ItemGroup>
     <Folder Include="Models\" />
     <AvaloniaResource Include="Assets\**" />
+    <EmbeddedResource Include="Localization\*.json" />
+    <Compile Include="..\Shared\GameTextResolver.cs" Link="Localization\GameTextResolver.cs" />
     <Folder Include="ViewModels\" />
   </ItemGroup>
 
@@ -24,6 +26,7 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="DynamicLocalization.Core" />
     <PackageReference Include="Irihi.Ursa" />
     <PackageReference Include="Irihi.Ursa.Themes.Semi" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
@@ -40,7 +43,6 @@
     <ProjectReference Include="..\..\Shared\GalNet.Assets\GalNet.Assets.csproj" />
     <ProjectReference Include="..\..\Shared\GalNet.Core\GalNet.Core.csproj" />
     <ProjectReference Include="..\..\Shared\GalNet.Presentation.Abstractions\GalNet.Presentation.Abstractions.csproj" />
-    <ProjectReference Include="..\..\Presentation\GalNet.Presentation.Defaults\GalNet.Presentation.Defaults.csproj" />
     <ProjectReference Include="..\..\Shared\GalNet.Primitives.Builtins\GalNet.Primitives.Builtins.csproj" />
     <ProjectReference Include="..\..\Shared\GalNet.Runtime\GalNet.Runtime.csproj" />
     <ProjectReference Include="..\..\Infrastructure\GalNet.Storage.FileSystem\GalNet.Storage.FileSystem.csproj" />

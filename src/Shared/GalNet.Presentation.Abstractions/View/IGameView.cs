@@ -5,16 +5,24 @@ using GalNet.Core.Runtime;
 namespace GalNet.Presentation.Abstractions.View;
 
 /// <summary>Resolves and dispatches one compiled primitive call.</summary>
-public interface IGameView : IDisposable
+public interface IGameView : IDisposable, IAsyncDisposable
 {
-    IReadOnlyCollection<PrimitiveEntryBase> Primitives { get; }
+    IReadOnlyCollection<EntryDefinition> Primitives { get; }
 
-    bool TryGetEntry(string primitiveType, out PrimitiveEntryBase? entry);
+    bool TryGetEntry(string primitiveType, out EntryDefinition? entry);
 
-    PrimitiveInstance? Dispatch(
+    bool CanExecute(string primitiveType);
+
+    PrimitiveInstance Dispatch(
         PrimitiveEntry entry,
         IGameRuntime runtime,
         CancellationToken cancellationToken);
 
-    void IDisposable.Dispose() { }
+    void IDisposable.Dispose() => GC.SuppressFinalize(this);
+    ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        Dispose();
+        GC.SuppressFinalize(this);
+        return ValueTask.CompletedTask;
+    }
 }

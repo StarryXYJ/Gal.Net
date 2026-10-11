@@ -31,7 +31,9 @@ public static class PrimitiveArgumentHelper
                 throw new InvalidDataException($"Primitive requires parameter '{parameter.Name}'.");
         }
 
-        return JsonSerializer.SerializeToElement(normalized);
+        var result = JsonSerializer.SerializeToElement(normalized);
+        parameters.ValidateArguments(result);
+        return result;
     }
 
     public static (JsonElement Arguments, string? BatchId) NormalizeCompiledArguments(

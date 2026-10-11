@@ -220,7 +220,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
         if (string.IsNullOrWhiteSpace(serialized)) return null;
         try
         {
-            var layout = _dockLayoutSerializer.Deserialize(serialized);
+            var layout = DockLayoutSerializer.Deserialize(serialized);
             if (layout is null)
                 return null;
 
@@ -394,9 +394,10 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
         _dockFactory.LayoutChanged -= OnDockLayoutChanged;
         _projectService.CurrentChanged -= OnCurrentProjectChanged;
         L.PropertyChanged -= _localizationChangedHandler;
+        GC.SuppressFinalize(this);
     }
 
-    private IList<MenuData> BuildViewMenuItems() => new AvaloniaList<MenuData>(
+    private AvaloniaList<MenuData> BuildViewMenuItems() => new(
         _dockFactory.ViewMenuPanels.Select(panel => new MenuData
         {
             HeaderKey = panel.TitleKey,
@@ -406,7 +407,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
             IsChecked = panel.IsGlobal && _dockFactory.HasGlobalPanel(panel.PanelId)
         }));
 
-    private IList<MenuData> BuildLoadLayoutItems()
+    private AvaloniaList<MenuData> BuildLoadLayoutItems()
     {
         var items = new AvaloniaList<MenuData> { new() { Header = "Default", Command = LoadLayoutCommand, CommandParameter = "Default" } };
         foreach (var name in _editorSettingsService.GetSettings().DockLayouts.Keys.OrderBy(name => name, StringComparer.OrdinalIgnoreCase))
@@ -414,7 +415,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
         return items;
     }
 
-    private IList<MenuData> BuildDeleteLayoutItems() => new AvaloniaList<MenuData>(
+    private AvaloniaList<MenuData> BuildDeleteLayoutItems() => new(
         _editorSettingsService.GetSettings().DockLayouts.Keys
             .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
             .Select(name => new MenuData { Header = name, Command = new RelayCommand<string>(DeleteLayout), CommandParameter = name }));
@@ -430,7 +431,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
         }
     }
 
-    private async Task<string?> RequestLayoutNameAsync()
+    private static async Task<string?> RequestLayoutNameAsync()
     {
         var owner = GetMainWindow();
         if (owner is null) return null;

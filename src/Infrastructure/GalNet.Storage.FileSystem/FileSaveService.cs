@@ -5,7 +5,7 @@ using GalNet.Runtime.Persistence;
 namespace GalNet.Storage.FileSystem;
 
 /// <summary>File-backed slot and quick-save store.</summary>
-public sealed class FileSaveService : ISaveService
+public sealed class FileSaveService : ISaveService, IDisposable
 {
     private const int FormatVersion = GameSnapshot.CurrentFormatVersion;
     private readonly string _root;
@@ -106,7 +106,7 @@ public sealed class FileSaveService : ISaveService
         catch { return new SaveSlotInfo { SlotIndex = slot, IsQuickSave = quick, IsCorrupt = true }; }
     }
 
-    private async Task<GameSnapshot?> ReadAsync(string path, CancellationToken ct)
+    private static async Task<GameSnapshot?> ReadAsync(string path, CancellationToken ct)
     {
         if (!File.Exists(path)) return null;
         try
@@ -125,6 +125,12 @@ public sealed class FileSaveService : ISaveService
     {
         foreach (var path in new[] { GetPath(slot, quick), GetPreviewPath(slot, quick) })
             if (File.Exists(path)) File.Delete(path);
+    }
+
+    public void Dispose()
+    {
+        _gate.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     private sealed class StoredSave

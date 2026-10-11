@@ -8,6 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="DynamicLocalization.Core" />
+    <Compile Include="..\Shared\GameTextResolver.cs" Link="Localization\GameTextResolver.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\Shared\GalNet.Core\GalNet.Core.csproj" />
     <ProjectReference Include="..\..\Shared\GalNet.Presentation.Abstractions\GalNet.Presentation.Abstractions.csproj" />
     <ProjectReference Include="..\..\Shared\GalNet.Primitives.Builtins\GalNet.Primitives.Builtins.csproj" />

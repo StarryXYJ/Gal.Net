@@ -107,7 +107,7 @@ public partial class EntryTypePicker : UserControl
         RaiseSelectedProperties();
     }
 
-    private IReadOnlyList<EntryTypeOption> GetOptions() => Options?.Cast<EntryTypeOption>().ToArray() ?? [];
+    private EntryTypeOption[] GetOptions() => Options?.Cast<EntryTypeOption>().ToArray() ?? [];
     private EntryTypeShortcutCommand? FindTypeCommand(string type) =>
         ShortcutService?.Commands.OfType<EntryTypeShortcutCommand>().FirstOrDefault(command => command.EntryType == type);
 

@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
-using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Avalonia.GameView.Page;
+using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Assets;
@@ -14,10 +14,13 @@ using GalNet.Sample.Avalonia.Debug;
 namespace GalNet.Sample.Avalonia.Services;
 
 /// <summary>Sample host implementation; all game/file-system work stays outside page VMs.</summary>
-internal sealed partial class SampleGameSessionService : ObservableObject, IGameSessionService, IPreparedGameSessionService, IGameGallerySession, IDisposable
+internal sealed partial class SampleGameSessionService : ObservableObject, IGameSessionService, IPreparedGameSessionService, IGameGallerySession, IAsyncDisposable
 {
     private readonly GamePageViewModel _gameplay;
     private readonly GamePage _page;
+    private readonly SamplePlayerSettingsService _settings;
+    private readonly SampleLocalizationService _localization;
+    private readonly SampleStartupService _startup;
     private readonly IResourceTypeCatalog _resourceTypes;
     private readonly IGalleryTypeCatalog _galleryTypes;
     private readonly ObservableCollection<GameSaveSlot> _saveSlots = [];
@@ -28,10 +31,14 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private bool _disposed;
 
-    public SampleGameSessionService(GamePageViewModel gameplay, GamePage page)
+    public SampleGameSessionService(GamePageViewModel gameplay, GamePage page, SamplePlayerSettingsService settings,
+        SampleLocalizationService localization, SampleStartupService startup)
     {
         _gameplay = gameplay;
         _page = page;
+        _settings = settings;
+        _localization = localization;
+        _startup = startup;
         _resourceTypes = BuiltinResourceTypes.CreateCatalog();
         _galleryTypes = BuiltinGalleryTypes.CreateCatalog(_resourceTypes);
         _readOnlySaveSlots = new ReadOnlyObservableCollection<GameSaveSlot>(_saveSlots);
@@ -47,23 +54,25 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     [ObservableProperty] private bool _isPlaying;
     [ObservableProperty] private bool _canContinue;
 
-    public async Task InitializeAsync(GameLaunchOptions options, CancellationToken cancellationToken = default)
+    public async Task<bool> InitializeAsync(GameLaunchOptions options,
+        Func<string, CancellationToken, Task<string?>> selectLanguage, CancellationToken cancellationToken = default)
     {
         await _lifecycle.WaitAsync(cancellationToken);
         try
         {
-            await InitializeGameResourcesAsync(options, cancellationToken);
+            return await InitializeGameResourcesAsync(options, selectLanguage, cancellationToken);
         }
         finally { _lifecycle.Release(); }
     }
 
-    private async Task InitializeGameResourcesAsync(GameLaunchOptions options, CancellationToken cancellationToken)
+    private async Task<bool> InitializeGameResourcesAsync(GameLaunchOptions options,
+        Func<string, CancellationToken, Task<string?>> selectLanguage, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(options.GameDirectory))
         {
             StatusMessage = "Usage: GalNet.Sample.Avalonia <game-data-directory> [--profile <directory>]";
             GameLog.Logger.Warning("Session initialized without a game directory");
-            return;
+            return true;
         }
 
         try
@@ -91,6 +100,9 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
 
             _resources = resources;
             _saveSession = saveSession;
+            _localization.AttachGame(resources.Content);
+            foreach (var diagnostic in resources.Content.Localization.Diagnostics)
+                GameLog.Logger.Warning("Skipped localization source {Path}: {Reason}", diagnostic.RelativePath, diagnostic.Message);
             var preloadFailures = resources.SpriteFileCount - resources.PreloadedTextures.Count;
             GameLog.Logger.Information("Preloaded {SpriteCount} sprite assets ({FailureCount} deferred to fallback)",
                 resources.SpriteFileCount, preloadFailures);
@@ -101,16 +113,23 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             OnPropertyChanged(nameof(GalleryDataSource));
             OnPropertyChanged(nameof(GalleryResources));
             await RefreshSlotsAsync(cancellationToken);
+            if (!await _startup.InitializeAsync(saveSession.Variables,
+                    resources.Content.Settings.TargetLocale.Code, selectLanguage, cancellationToken))
+                throw new OperationCanceledException("Language selection was cancelled.", cancellationToken);
+            _settings.Attach(saveSession.Variables);
             IsReady = true;
             StatusMessage = $"Loaded game data: {resources.GameDirectory}";
             _gameplay.StatusMessage = "Ready";
             GameLog.Logger.Information("Session initialized. SaveSlots={SaveSlotCount}, CanContinue={CanContinue}",
                 _saveSlots.Count, CanContinue);
+            return true;
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception exception)
         {
             StatusMessage = $"Unable to load game: {exception.Message}";
             GameLog.Logger.Error(exception, "Session initialization failed");
+            return false;
         }
     }
 
@@ -169,6 +188,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         {
             await StopCurrentRunAsync();
             var saveSession = _saveSession;
+            await _settings.FlushAsync();
             if (saveSession is not null)
                 await saveSession.ClearAsync(cancellationToken);
             await OnUiAsync(() =>
@@ -249,15 +269,16 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         _gameplay.StatusMessage = $"Loaded slot {slotIndex}.";
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         if (_disposed) return;
-        try { StopAsync().GetAwaiter().GetResult(); }
+        try { await StopAsync(); }
         finally
         {
             _disposed = true;
             _gameplay.InteractionObserved -= OnInteractionObserved;
-            DisposeRunnerAsync().GetAwaiter().GetResult();
+            await DisposeRunnerAsync();
+            await _settings.FlushAsync();
             _saveSession?.Dispose();
             _saveSession = null;
             GalleryResources = null;
@@ -275,7 +296,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             if (_runner is null)
                 throw new InvalidOperationException("No prepared game is available to start.");
 
-            _runner.StartPrepared();
+            await _runner.StartPreparedAsync(cancellationToken);
         }
         finally { _lifecycle.Release(); }
     }
@@ -307,26 +328,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             await runner.DisposeAsync();
     }
 
-    private Task ResetScenePresentationAsync()
-    {
-        if (Dispatcher.UIThread.CheckAccess())
-        {
-            _gameplay.ResetScenePresentation();
-            return Task.CompletedTask;
-        }
-
-        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        Dispatcher.UIThread.Post(() =>
-        {
-            try
-            {
-                _gameplay.ResetScenePresentation();
-                completion.TrySetResult();
-            }
-            catch (Exception exception) { completion.TrySetException(exception); }
-        });
-        return completion.Task;
-    }
+    private Task ResetScenePresentationAsync() => OnUiAsync(_gameplay.ResetScenePresentation);
 
     private async Task EnsureRunnerAsync(CancellationToken cancellationToken)
     {
@@ -341,6 +343,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _page,
             resources,
             saveSession,
+            _localization,
             UpdateRunnerStateAsync,
             () => RefreshSlotsAsync(CancellationToken.None),
             ResetScenePresentationAsync,
@@ -381,20 +384,9 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private static void OnInteractionObserved(string interaction) =>
         GameLog.Logger.Information("Player interaction: {Interaction}", interaction);
 
-    private static Task OnUiAsync(Action action)
+    private static Task OnUiAsync(Action action) => AvaloniaUiDispatcher.Instance.InvokeAsync(() =>
     {
-        if (Dispatcher.UIThread.CheckAccess())
-        {
-            action();
-            return Task.CompletedTask;
-        }
-
-        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        Dispatcher.UIThread.Post(() =>
-        {
-            try { action(); completion.SetResult(); }
-            catch (Exception exception) { completion.SetException(exception); }
-        });
-        return completion.Task;
-    }
+        action();
+        return Task.CompletedTask;
+    });
 }

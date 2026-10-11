@@ -12,6 +12,7 @@ namespace GalNet.Editor.Shared.Services;
 /// </summary>
 public sealed class EditorSettingsService : IEditorSettingsService
 {
+    private static readonly JsonSerializerOptions IndentedJsonOptions = new() { WriteIndented = true };
     private readonly string _settingsPath;
     private EditorSettings? _settings;
 
@@ -60,7 +61,7 @@ public sealed class EditorSettingsService : IEditorSettingsService
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
 
-            var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(settings, IndentedJsonOptions);
             File.WriteAllText(_settingsPath, json);
         }
         catch (Exception ex)

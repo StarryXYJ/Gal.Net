@@ -95,7 +95,6 @@ public sealed class ProjectSaveScheduler : IProjectSaveScheduler, IDisposable
 
     private void ThrowIfDisposed()
     {
-        if (_disposed)
-            throw new ObjectDisposedException(nameof(ProjectSaveScheduler));
+        ObjectDisposedException.ThrowIf(_disposed, this);
     }
 }

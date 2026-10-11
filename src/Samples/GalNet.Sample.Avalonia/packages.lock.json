@@ -61,6 +61,16 @@
         "resolved": "8.4.1",
         "contentHash": "BTRteP8SvFyd/4KAreIFJBcxD2O9trLxLDD/p8YkSDDrfFOzy2U8cHyz6r+5Eh4kDhJdzAVglei6a+Bh4jCpUA=="
       },
+      "DynamicLocalization.Core": {
+        "type": "Direct",
+        "requested": "[2.1.2, )",
+        "resolved": "2.1.2",
+        "contentHash": "UdDvJeBnNoif/bi73CBDi7GiOhGUB9EkKl3v0JTNdVcPhCqWY+Jy9qr4IqNS9bQ5Xwn6uTYimYLDqGNxEEDjqw==",
+        "dependencies": {
+          "System.Text.Json": "[6.0.10, 10.0.0)",
+          "YamlDotNet": "[11.0.1, 19.0.0)"
+        }
+      },
       "Irihi.Ursa": {
         "type": "Direct",
         "requested": "[2.1.0, )",
@@ -297,10 +307,20 @@
         "resolved": "3.119.4",
         "contentHash": "XOpbx/4CReO2wYsq2s6rbvdauc6dntG4Zv499sHGTJ87bwZaFXszFkwql3+FIZMc8kUPeaj3Mx2ezIJmo8a1Kg=="
       },
+      "System.Text.Json": {
+        "type": "Transitive",
+        "resolved": "6.0.10",
+        "contentHash": "NSB0kDipxn2ychp88NXWfFRFlmi1bst/xynOutbnpEfRCT9JZkZ7KOmF/I/hNKo2dILiMGnqblm+j1sggdLB9g=="
+      },
       "Tmds.DBus.Protocol": {
         "type": "Transitive",
         "resolved": "0.92.0",
         "contentHash": "h7IMakm0PF2jxiagoysoAjrzzLQ0UBdnSXQL5kb17YW0Fvyo12Tg96A99QkzwktWRrd7H+Uw9EzjasNLUfGYlA=="
+      },
+      "YamlDotNet": {
+        "type": "Transitive",
+        "resolved": "11.0.1",
+        "contentHash": "UvICfSN4gJfAmOsuY/go0hb5SFfr3ZYCXb7jg66yT7kh+wSJEt7tUiwuoCNMpt8ScEXLDwXttpFoWKWeirYU1A=="
       },
       "galnet.assets": {
         "type": "Project",
@@ -324,7 +344,6 @@
           "GalNet.Avalonia.Rendering": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
-          "GalNet.Presentation.Defaults": "[1.0.0, )",
           "Irihi.Ursa": "[2.1.0, )",
           "LibVLCSharp": "[3.10.0, )",
           "LibVLCSharp.Avalonia": "[3.10.0, )",
@@ -347,13 +366,6 @@
         "type": "Project",
         "dependencies": {
           "GalNet.Core": "[1.0.0, )"
-        }
-      },
-      "galnet.presentation.defaults": {
-        "type": "Project",
-        "dependencies": {
-          "GalNet.Presentation.Abstractions": "[1.0.0, )",
-          "LibVLCSharp": "[3.10.0, )"
         }
       },
       "galnet.primitives.builtins": {

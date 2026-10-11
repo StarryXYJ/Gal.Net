@@ -12,20 +12,17 @@ public sealed class EditorWorkspacePersistence
     private readonly IEditorDocumentRepository _repository;
     private readonly IEditorDocumentService _documents;
     private readonly IEditorSaveCoordinator _saveCoordinator;
-    private readonly GraphDocumentMapper _mapper;
 
     public EditorWorkspacePersistence(
         IProjectService projects,
         IEditorDocumentRepository repository,
         IEditorDocumentService documents,
-        IEditorSaveCoordinator saveCoordinator,
-        GraphDocumentMapper mapper)
+        IEditorSaveCoordinator saveCoordinator)
     {
         _projects = projects;
         _repository = repository;
         _documents = documents;
         _saveCoordinator = saveCoordinator;
-        _mapper = mapper;
     }
 
     public GraphDocumentLoadResult? LoadCurrentProject()
@@ -44,7 +41,7 @@ public sealed class EditorWorkspacePersistence
         }
 
         _documents.Load(loaded);
-        return _mapper.Load(loaded);
+        return GraphDocumentMapper.Load(loaded);
     }
 
     public async Task<bool> SaveCurrentProjectAsync(
@@ -58,7 +55,7 @@ public sealed class EditorWorkspacePersistence
         _saveCoordinator.SaveProjectDocument(
             project.RootPath,
             document,
-            _mapper.CreateGroupEntriesSnapshot(nodes));
+            GraphDocumentMapper.CreateGroupEntriesSnapshot(nodes));
         await _projects.SaveAsync();
         return true;
     }
@@ -75,14 +72,14 @@ public sealed class EditorWorkspacePersistence
         return _saveCoordinator.BuildPreviewData(
             previewPath,
             document,
-            _mapper.CreateGroupEntriesSnapshot(nodes));
+            GraphDocumentMapper.CreateGroupEntriesSnapshot(nodes));
     }
 
     private EditorGraphDocument CreateDocument(
         string projectName,
         IEnumerable<GraphNode> nodes,
         IEnumerable<GraphEdge> edges) =>
-        _mapper.CreateDocument(
+        GraphDocumentMapper.CreateDocument(
             projectName,
             _documents.CurrentDocument.Version,
             nodes,

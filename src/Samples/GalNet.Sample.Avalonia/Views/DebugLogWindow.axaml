@@ -1,17 +1,18 @@
 <ursa:UrsaWindow xmlns="https://github.com/avaloniaui"
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:debug="using:GalNet.Sample.Avalonia.Debug"
+                 xmlns:loc="clr-namespace:GalNet.Sample.Avalonia.MarkupExtensions"
                  xmlns:views="using:GalNet.Sample.Avalonia.Views"
                  xmlns:ursa="https://irihi.tech/ursa"
                  x:Class="GalNet.Sample.Avalonia.Views.DebugLogWindow"
                  x:DataType="views:DebugLogWindow"
                  Width="960" Height="600" MinWidth="600" MinHeight="360"
-                 Title="Debug log"
+                 Title="{loc:Localize DebugLog.Title}"
                  WindowStartupLocation="CenterOwner">
   <Grid RowDefinitions="Auto,*" Margin="12">
     <StackPanel Orientation="Horizontal" Spacing="8">
-      <Button Content="清空日志" Click="OnClearLogsClick" />
-      <Button Content="打开日志目录" Click="OnOpenLogDirectoryClick" />
+      <Button Content="{loc:Localize DebugLog.Clear}" Click="OnClearLogsClick" />
+      <Button Content="{loc:Localize DebugLog.OpenDirectory}" Click="OnOpenLogDirectoryClick" />
     </StackPanel>
 
     <ListBox x:Name="LogListBox"

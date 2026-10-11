@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using Serilog.Core;
@@ -24,7 +25,7 @@ public sealed class EditorLogSink : ILogEventSink
         {
             Timestamp = logEvent.Timestamp,
             Level = logEvent.Level,
-            Message = logEvent.RenderMessage(),
+            Message = logEvent.RenderMessage(CultureInfo.InvariantCulture),
             Exception = logEvent.Exception?.ToString(),
             Source = GetSource(logEvent),
             Channel = GetChannel(logEvent)

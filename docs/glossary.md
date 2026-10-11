@@ -49,7 +49,7 @@
 | 游戏导航服务 | `IGameNavigationService` | 管理游戏 Scope 内的当前页面、回退历史和导航转场。 |
 | 页面注册表 | `IPageViewRegistry` / `IPageViewFactory` | 在组合期建立并解析不可变的 ViewModel→View 映射。 |
 | 游戏根页面 | `GameShell` | 承载页面切换、页面内容和游戏截图入口的 Avalonia 根控件。 |
-| 游戏页面呈现 | `AvaloniaGamePageView` | 将 presenter 端口接到 Avalonia 游戏页面和场景渲染。 |
+| 游戏页面呈现 | `AvaloniaGamePresenters` | 将 presenter 端口接到 Avalonia 游戏页面和场景渲染，不负责 Engine 运行编排。 |
 | Gallery 页面注册表 | `IGalleryPageRegistry` | 将精确 Gallery `typeId` 映射到页面 ViewModel 和 View 的组合期注册表；不按资源类型推断或 fallback。 |
 
 `WidgetTemplate`、`WidgetInstance`、`ScreenTemplate`、`ScreenInstance`、`UiProject` 与调色板模板体系是历史设计术语，不属于当前游戏页面宿主。

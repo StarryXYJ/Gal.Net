@@ -2,6 +2,7 @@ using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
 using GalNet.Core.Scene;
 using GalNet.Presentation.Abstractions.View;
+using GalNet.Runtime.Logging;
 
 namespace GalNet.Primitives.Builtins;
 
@@ -13,6 +14,7 @@ public sealed class AnimationPrimitiveInstance : PrimitiveInstance
     private readonly AnimationRequest _request;
     private readonly CancellationToken _scopeCancellation;
     private bool _skippable;
+    private AnimationPlaybackInstance? _playback;
 
     public AnimationPrimitiveInstance(
         IGameRuntime runtime,
@@ -42,6 +44,7 @@ public sealed class AnimationPrimitiveInstance : PrimitiveInstance
     protected override void OnDispatch()
     {
         BuiltinRuntimeActions.ApplyAnimationStableState(_runtime, _request);
+        _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_request.PlaybackHandleId, out _playback!);
         if (_presenter is null)
         {
             TryComplete();
@@ -73,11 +76,11 @@ public sealed class AnimationPrimitiveInstance : PrimitiveInstance
         }
         catch (OperationCanceledException) when (_scopeCancellation.IsCancellationRequested)
         { }
-        catch
-        { }
+        catch (Exception error) { GameLog.Logger.Warning(error, "Primitive presentation failed"); }
         finally
         {
-            BuiltinRuntimeActions.StopAnimationState(_runtime, _request.PlaybackHandleId);
+            if (_playback is not null && _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_request.PlaybackHandleId, out var current) && ReferenceEquals(current, _playback))
+                BuiltinRuntimeActions.StopAnimationState(_runtime, _request.PlaybackHandleId);
             lock (_gate)
                 _skippable = false;
             TryComplete();

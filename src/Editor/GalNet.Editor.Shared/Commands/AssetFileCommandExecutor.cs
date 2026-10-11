@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using GalNet.Core.Entry;
 using GalNet.Editor.Abstraction.Commands;
@@ -70,7 +71,7 @@ public sealed class AssetFileCommandExecutor : IProjectFileCommandExecutor
             for (var index = 0; index < sources.Count; index++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var staged = Path.Combine(staging, index.ToString("D4") + Path.GetExtension(sources[index]));
+                var staged = Path.Combine(staging, index.ToString("D4", CultureInfo.InvariantCulture) + Path.GetExtension(sources[index]));
                 File.Copy(sources[index], staged, false);
                 File.Move(staged, destinations[index]);
                 moved.Add(destinations[index]);
@@ -148,7 +149,7 @@ public sealed class AssetFileCommandExecutor : IProjectFileCommandExecutor
         return Success(transactionId, $"Moved asset '{command.RelativePath}' to the project recovery area.", [Resource(root, source)]);
     }
 
-    private IReadOnlyList<string> FindReferences(string projectPath, string assetPath, string relativePath)
+    private List<string> FindReferences(string projectPath, string assetPath, string relativePath)
     {
         var values = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {

@@ -13,7 +13,7 @@ namespace GalNet.Editor.ViewModels;
 
 public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposable, IUndoRedoTarget
 {
-    public IReadOnlyList<string> ResolutionPresets => NewProjectPanelViewModel.ResolutionPresets;
+    public IReadOnlyList<string> ResolutionPresets { get; } = NewProjectPanelViewModel.ResolutionPresets;
     public IReadOnlyList<string> AudioBuses { get; } = [GalNet.Core.Audio.AudioBuses.Bgm, GalNet.Core.Audio.AudioBuses.Sfx, GalNet.Core.Audio.AudioBuses.Vocal];
     public ObservableCollection<AudioTrackEditorItem> AudioTracks { get; } = [];
     private readonly IProjectService _projectService;
@@ -70,6 +70,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
     {
         _projectService.CurrentChanged -= OnProjectChanged;
         _histories.Settings.Changed -= UpdateDirtyText;
+        GC.SuppressFinalize(this);
     }
 
     private void LoadFromProject()

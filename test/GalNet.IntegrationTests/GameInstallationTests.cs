@@ -28,22 +28,33 @@ public sealed class GameInstallationTests
             await File.WriteAllBytesAsync(Path.Combine(project, "Assets", "hero.png"), "hero"u8.ToArray());
             await File.WriteAllTextAsync(Path.Combine(project, "Assets", "hero.png.meta"), """{"id":"hero","type":"sprite","path":"hero.png","filter":"bilinear","compress":"none"}""");
             await File.WriteAllTextAsync(Path.Combine(project, "Graph", "graph.json"), """{"name":"export-test","rootNodeId":"","nodes":[],"edges":[]}""");
-            await File.WriteAllTextAsync(Path.Combine(project, "settings.json"), "{}");
+            await File.WriteAllTextAsync(Path.Combine(project, "settings.json"), """
+                { "audioTracks": [ { "id": "ambient", "bus": "bgm", "defaultGain": 0.3, "maxVoices": 2, "overflowPolicy": "StopOldest" } ] }
+                """);
 
             var development = await GameInstallation.OpenAsync(project);
             Assert.That(development.IsPackaged, Is.False);
-            Assert.That((await development.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync()).Graph.Name, Is.EqualTo("export-test"));
+            var developmentContent = await development.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync();
+            Assert.That(developmentContent.Graph.Name, Is.EqualTo("export-test"));
+            Assert.That(developmentContent.Settings.AudioTracks.Single().Id, Is.EqualTo("ambient"));
             using (var sourceAssets = new AssetManager(development.CreateAssetProviders(resourceTypes)))
                 Assert.That((await sourceAssets.GetFileAsync("hero"))?.Path, Is.EqualTo("hero.png"));
 
+            Directory.CreateDirectory(Path.Combine(project, "I18n", "External", "en-US"));
+            await File.WriteAllTextAsync(Path.Combine(project, "I18n", "External", "en-US", "private.json"), "{}");
             var export = await GamePackageExporter.ExportAsync("project", "Sample", project, output, resourceTypes, galleryTypes);
             Assert.That(export.Success, Is.True, export.Error);
+            using (var packageZip = ZipFile.OpenRead(export.PackagePath!))
+                Assert.That(packageZip.Entries.Any(entry => entry.FullName.StartsWith("I18n/External/", StringComparison.OrdinalIgnoreCase)), Is.False);
 
             var installation = await GameInstallation.OpenAsync(export.PackagePath!);
             Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "gallery.json")), Is.True);
             Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "Graph", "graph.json")), Is.True);
             Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "Assets", "Paks", "000-base.pak")), Is.True);
-            Assert.That((await installation.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync()).Graph.Name, Is.EqualTo("export-test"));
+            var installedContent = await installation.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync();
+            Assert.That(installedContent.Graph.Name, Is.EqualTo("export-test"));
+            Assert.That(installedContent.Settings.AudioTracks.Single().DefaultGain, Is.EqualTo(.3f));
+            Assert.That(installedContent.Settings.AudioTracks.Single().OverflowPolicy, Is.EqualTo(GalNet.Core.Audio.AudioOverflowPolicy.StopOldest));
 
             using var assets = new AssetManager(installation.CreateAssetProviders(resourceTypes));
             Assert.That((await assets.GetFileAsync("hero"))?.Path, Is.EqualTo("hero.png"));
@@ -88,6 +99,30 @@ public sealed class GameInstallationTests
         {
             if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
         }
+    }
+
+    [Test]
+    public async Task ReinstallAndRejectedUpdatePreserveExternalTranslations()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "galnet-external-install-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var package = Path.Combine(root, "sample.galpak");
+            var files = BuildContentFiles(BuiltinResourceTypes.CreateCatalog());
+            await CreatePackageAsync(package, files);
+            var installed = await GalpakInstaller.InstallAsync(package);
+            var external = Path.Combine(installed, "I18n", "External", "en-US");
+            Assert.That(Directory.Exists(Path.GetDirectoryName(external)), Is.True);
+            Directory.CreateDirectory(external);
+            var translation = Path.Combine(external, "third-party.json");
+            await File.WriteAllTextAsync(translation, """{"line":"preserved"}""");
+            Assert.That(await GalpakInstaller.InstallAsync(package), Is.EqualTo(installed));
+            await CreatePackageAsync(package, files.Append(("settings.json", "{}"u8.ToArray())).ToArray());
+            Assert.ThrowsAsync<InvalidOperationException>(() => GalpakInstaller.InstallAsync(package));
+            Assert.That(await File.ReadAllTextAsync(translation), Does.Contain("preserved"));
+        }
+        finally { Directory.Delete(root, true); }
     }
 
     [Test]

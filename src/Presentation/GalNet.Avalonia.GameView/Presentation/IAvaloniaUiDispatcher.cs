@@ -4,7 +4,10 @@ namespace GalNet.Avalonia.GameView.Presentation;
 
 public interface IAvaloniaUiDispatcher
 {
+    /// <summary>Runs immediately when the caller already owns the UI thread.</summary>
     void Dispatch(Action action);
+    /// <summary>Always queues work after the current UI callback returns.</summary>
+    void Post(Action action);
     Task InvokeAsync(Func<Task> action);
     Task<T> InvokeAsync<T>(Func<Task<T>> action);
 }
@@ -26,6 +29,12 @@ public sealed class AvaloniaUiDispatcher : IAvaloniaUiDispatcher
             return;
         }
 
+        Dispatcher.UIThread.Post(action);
+    }
+
+    public void Post(Action action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
         Dispatcher.UIThread.Post(action);
     }
 

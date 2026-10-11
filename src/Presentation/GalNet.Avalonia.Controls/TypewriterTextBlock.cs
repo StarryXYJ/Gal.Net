@@ -81,7 +81,7 @@ public sealed class TypewriterTextBlock : TextBlock
         IsCompleted = false;
         Text = null;
         (Inlines ?? throw new InvalidOperationException("TextBlock did not provide an inline collection.")).Clear();
-        _ = RenderAsync(SourceText, _runCancellation.Token, _completion, _skipSignal);
+        _ = RenderAsync(SourceText, _completion, _skipSignal, _runCancellation.Token);
         return _completion.Task;
     }
 
@@ -99,9 +99,9 @@ public sealed class TypewriterTextBlock : TextBlock
 
     private async Task RenderAsync(
         string? source,
-        CancellationToken cancellationToken,
         TaskCompletionSource completion,
-        TaskCompletionSource skipSignal)
+        TaskCompletionSource skipSignal,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -125,14 +125,14 @@ public sealed class TypewriterTextBlock : TextBlock
                             cancellationToken.ThrowIfCancellationRequested();
                             run.Text += character;
                             if (CharactersPerSecond > 0)
-                                await DelayOrSkipAsync(TimeSpan.FromSeconds(1d / CharactersPerSecond), cancellationToken, skipSignal);
+                                await DelayOrSkipAsync(TimeSpan.FromSeconds(1d / CharactersPerSecond), skipSignal, cancellationToken);
                         }
                         break;
                     case RichTypewriterTokenKind.LineBreak:
                         inlines.Add(new LineBreak());
                         break;
                     case RichTypewriterTokenKind.Delay:
-                        await DelayOrSkipAsync(TimeSpan.FromMilliseconds(token.DelayMilliseconds), cancellationToken, skipSignal);
+                        await DelayOrSkipAsync(TimeSpan.FromMilliseconds(token.DelayMilliseconds), skipSignal, cancellationToken);
                         break;
                     case RichTypewriterTokenKind.Instant:
                         lock (_skipGate)
@@ -170,7 +170,7 @@ public sealed class TypewriterTextBlock : TextBlock
         }
     }
 
-    private async Task DelayOrSkipAsync(TimeSpan duration, CancellationToken cancellationToken, TaskCompletionSource skipSignal)
+    private async Task DelayOrSkipAsync(TimeSpan duration, TaskCompletionSource skipSignal, CancellationToken cancellationToken)
     {
         Task signal;
         lock (_skipGate)

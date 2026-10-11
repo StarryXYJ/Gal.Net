@@ -34,7 +34,7 @@ public static class GamePackageExporter
             ArgumentNullException.ThrowIfNull(resourceTypes);
             ArgumentNullException.ThrowIfNull(galleryTypes);
             stagingRoot = Path.Combine(Path.GetTempPath(), $"galnet-export-{Guid.NewGuid():N}");
-            await new ProjectContentBuilder(BuiltinEntryModules.CreateRecommendedTargetProfile())
+            await new ProjectContentBuilder(BuiltinSchemas.CreateCatalog())
                 .BuildAsync(projectRoot, stagingRoot, cancellationToken)
                 .ConfigureAwait(false);
             var assets = await LoadAssetsAsync(Path.Combine(stagingRoot, "Assets"), resourceTypes, cancellationToken);
@@ -78,11 +78,12 @@ public static class GamePackageExporter
         return archive.AssetIds.OrderBy(id => id, StringComparer.Ordinal).Select(id => archive.GetAsset(id)!).ToArray();
     }
 
-    private static IReadOnlyList<(string Path, byte[] Data)> BuildContentFiles(string projectRoot, GalleryCatalog gallery, CancellationToken ct)
+    private static (string Path, byte[] Data)[] BuildContentFiles(string projectRoot, GalleryCatalog gallery, CancellationToken ct)
     {
         return Directory.EnumerateFiles(projectRoot, "*", SearchOption.AllDirectories)
             .Select(path => Path.GetRelativePath(projectRoot, path).Replace('\\', '/'))
             .Where(path => path is "settings.json" || path.StartsWith("Graph/", StringComparison.OrdinalIgnoreCase) || path.StartsWith("I18n/", StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.StartsWith("I18n/External/", StringComparison.OrdinalIgnoreCase))
             .Where(path => !path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase) && !path.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase))
             .OrderBy(path => path, StringComparer.Ordinal)
             .Select(path =>

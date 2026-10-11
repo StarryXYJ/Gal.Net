@@ -11,6 +11,8 @@ namespace GeneralTest.Runtime;
 
 public class GalgroupLoaderTests
 {
+    private static readonly string[] CrossFadeSourceMap = ["cross-fade#1"];
+
     [Test]
     public void LoadIntoGroup_PreservesGenericPrimitiveArguments()
     {
@@ -57,10 +59,7 @@ public class GalgroupLoaderTests
             new DynamicParameterDescriptor("batchId", typeof(string))
         ]);
         var catalog = new TargetProfileEntryCatalog(
-            [new TestEntryModule("test", [new DefaultPrimitiveEntryBase(
-                "test.run",
-                parameters,
-                context => new ImmediatePrimitiveInstance(batchId: context.BatchId))])]);
+            [new TestEntryModule("test", [new DefaultPrimitiveEntryBase("test.run", parameters)])]);
         var source = new GroupDocument
         {
             Entries =
@@ -121,7 +120,7 @@ public class GalgroupLoaderTests
             """), Throws.TypeOf<InvalidDataException>().With.Message.Contains("compiled"));
     }
 
-    public void Load_RejectsPreviousFormatVersion()
+    public static void Load_RejectsPreviousFormatVersion()
     {
         var group = new Group { Id = "test" };
 
@@ -154,13 +153,13 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var result = GalgroupCompiler.Compile(raw, BuiltinEntryModules.CreateRecommendedTargetProfile());
+        var result = GalgroupCompiler.Compile(raw, BuiltinSchemas.CreateCatalog());
 
         Assert.That(result.Document.Kind, Is.EqualTo(GroupDocumentKind.Compiled));
         Assert.That(result.Document.Entries, Has.Count.EqualTo(1));
         Assert.That(result.Document.Entries[0].Id, Is.EqualTo("cross-fade#1"));
         Assert.That(result.Document.Entries[0].TypeId, Is.EqualTo(PlayAnimationPlanEntry.TypeId));
-        Assert.That(result.SourceMap["cross-fade"], Is.EqualTo(new[] { "cross-fade#1" }));
+        Assert.That(result.SourceMap["cross-fade"], Is.EqualTo(CrossFadeSourceMap));
 
         var plan = result.Document.Entries[0].Arguments.GetProperty("plan");
         Assert.That(plan.GetProperty("blocking").GetBoolean(), Is.True);
@@ -196,7 +195,7 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var plan = GalgroupCompiler.Compile(raw, BuiltinEntryModules.CreateRecommendedTargetProfile()).Document.Entries.Single().Arguments.GetProperty("plan");
+        var plan = GalgroupCompiler.Compile(raw, BuiltinSchemas.CreateCatalog()).Document.Entries.Single().Arguments.GetProperty("plan");
         var tracks = plan.GetProperty("tracks");
 
         Assert.That(plan.GetProperty("blocking").GetBoolean(), Is.True);
@@ -236,7 +235,7 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var plan = GalgroupCompiler.Compile(raw, BuiltinEntryModules.CreateRecommendedTargetProfile()).Document.Entries.Single().Arguments.GetProperty("plan");
+        var plan = GalgroupCompiler.Compile(raw, BuiltinSchemas.CreateCatalog()).Document.Entries.Single().Arguments.GetProperty("plan");
         var track = plan.GetProperty("tracks")[0];
         var events = plan.GetProperty("events");
 
@@ -283,7 +282,7 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var result = GalgroupCompiler.Compile(raw, BuiltinEntryModules.CreateRecommendedTargetProfile());
+        var result = GalgroupCompiler.Compile(raw, BuiltinSchemas.CreateCatalog());
         var plan = result.Document.Entries.Single().Arguments.GetProperty("plan");
         var events = plan.GetProperty("events");
 
@@ -324,7 +323,7 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var plan = GalgroupCompiler.Compile(raw, BuiltinEntryModules.CreateRecommendedTargetProfile()).Document.Entries.Single().Arguments.GetProperty("plan");
+        var plan = GalgroupCompiler.Compile(raw, BuiltinSchemas.CreateCatalog()).Document.Entries.Single().Arguments.GetProperty("plan");
         Assert.That(plan.GetProperty("events")[0].GetProperty("parameters").GetProperty("color").GetString(), Is.EqualTo(expectedColor));
     }
 }

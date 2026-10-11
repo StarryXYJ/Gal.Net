@@ -1,0 +1,13 @@
+{
+  "targetLocale": {
+    "code": "en-US"
+  },
+  "availableLocales": [
+    {
+      "code": "en-US"
+    },
+    {
+      "code": "zh-CN"
+    }
+  ]
+}

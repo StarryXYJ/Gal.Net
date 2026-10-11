@@ -88,5 +88,7 @@ internal sealed class SampleSaveSession : IDisposable
         if (_disposed) return;
         _disposed = true;
         (GalleryResources as IDisposable)?.Dispose();
+        Variables.Dispose();
+        _saves.Dispose();
     }
 }

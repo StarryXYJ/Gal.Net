@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:GalNet.Sample.Avalonia.MarkupExtensions"
+             xmlns:locSetting="using:GalNet.Avalonia.GameView.Services"
+             xmlns:vm="using:GalNet.Sample.Avalonia.ViewModels"
+             x:Class="GalNet.Sample.Avalonia.Views.LanguageSelectionView"
+             x:DataType="vm:LanguageSelectionViewModel"
+             Background="#18181E">
+  <StackPanel Width="420" Spacing="20" HorizontalAlignment="Center" VerticalAlignment="Center">
+    <TextBlock Text="{loc:Localize Onboarding.Title}" FontSize="28" Foreground="White" />
+    <TextBlock Text="{loc:Localize Onboarding.Description}" TextWrapping="Wrap" Foreground="#DDDDE5" />
+    <ComboBox x:Name="LanguagePicker" HorizontalAlignment="Stretch"
+              ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage, Mode=TwoWay}">
+      <ComboBox.ItemTemplate>
+        <DataTemplate x:DataType="locSetting:SettingOption">
+          <TextBlock Text="{Binding DisplayName}" />
+        </DataTemplate>
+      </ComboBox.ItemTemplate>
+    </ComboBox>
+    <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
+      <Button x:Name="CancelButton" Content="{loc:Localize Common.Cancel}" Command="{Binding CancelCommand}" />
+      <Button x:Name="ConfirmButton" Content="{loc:Localize Onboarding.Confirm}" Command="{Binding ConfirmCommand}" />
+    </StackPanel>
+  </StackPanel>
+</UserControl>

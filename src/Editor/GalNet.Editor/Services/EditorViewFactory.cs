@@ -12,7 +12,7 @@ namespace GalNet.Editor.Services;
 public sealed class EditorViewFactory : IEditorViewFactory
 {
     private readonly IServiceProvider _serviceProvider;
-    private static readonly IReadOnlyDictionary<Type, Type> ViewModelToViewMap = new Dictionary<Type, Type>
+    private static readonly Dictionary<Type, Type> ViewModelToViewMap = new()
     {
         [typeof(ProjectSettingsPanelViewModel)] = typeof(ProjectSettingsPanelView),
         [typeof(EditorSettingsPanelViewModel)] = typeof(EditorSettingsPanelView),

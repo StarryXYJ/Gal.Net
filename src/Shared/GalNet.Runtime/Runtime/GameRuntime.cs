@@ -9,7 +9,7 @@ using GalVariable = GalNet.Core.Variable.Variable;
 namespace GalNet.Runtime.Runtime;
 
 /// <summary>
-/// 游戏运行时状态 —— 统一管理游戏的位置、变量、场景状态、调用栈。
+/// 游戏运行时状态 —— 统一管理游戏的位置、变量和场景状态。
 /// Primitive module 通过 PrimitiveCreateContext.Runtime 访问此实例。
 /// </summary>
 public sealed class GameRuntime : IGameRuntime
@@ -28,13 +28,12 @@ public sealed class GameRuntime : IGameRuntime
     public SettingsContainer Settings { get; }
 
     // ── 场景状态 ──
-    public SceneState SceneState { get; } = new();
-    public ISceneInstanceManager SceneInstances { get; }
+    public SceneState SceneState { get; private set; } = new();
+    public ISceneInstanceManager SceneInstances { get; private set; }
 
     // ── 内部状态 ──
     private readonly VariableStore _variables;
     private readonly ExpressionEvaluator _evaluator;
-    private readonly Stack<(string NodeId, int EntryIndex)> _callStack = new();
     private readonly IVariableService? _variableService;
 
     public GameRuntime(ITextResolver? textResolver, string rootNodeId = "",
@@ -101,17 +100,6 @@ public sealed class GameRuntime : IGameRuntime
 
     public object? EvaluateExpression(string expression) => _evaluator.Evaluate(expression);
 
-    // ── 调用栈 ──
-
-    public void PushCallStack(string nodeId) => _callStack.Push((nodeId, 0));
-
-    public (string nodeId, int entryIndex)? PopCallStack()
-    {
-        if (_callStack.Count == 0) return null;
-        var saved = _callStack.Pop();
-        return saved;
-    }
-
     // ── 存档快照 ──
 
     public GameSnapshot CreateSnapshot()
@@ -121,8 +109,8 @@ public sealed class GameRuntime : IGameRuntime
             Version = GameSnapshot.CurrentFormatVersion,
             NodeId = CurrentNodeId,
             EntryIndex = EntryIndex,
-            Variables = _variables.SaveSnapshot.ToDictionary(pair => pair.Key, pair => CloneVariable(pair.Value)),
-            SceneState = CloneSceneState(SceneState)
+            Variables = _variables.SaveSnapshot.ToDictionary(pair => pair.Key, pair => SnapshotCopy.CloneVariable(pair.Value)),
+            SceneState = SnapshotCopy.CloneSceneState(SceneState)
         };
     }
 
@@ -135,60 +123,9 @@ public sealed class GameRuntime : IGameRuntime
         EntryIndex = snapshot.EntryIndex;
 
         _variables.RestoreSaveFrom(snapshot.Variables);
-        SceneState.Layers.Clear();
-        SceneState.Layers.AddRange(snapshot.SceneState.Layers.Select(layer => new Layer
-        {
-            Id = layer.Id,
-            AssetId = layer.AssetId,
-            IsVideo = layer.IsVideo,
-            Flipbook = layer.Flipbook?.Clone(),
-            Color = layer.Color,
-            Transform = layer.Transform?.Clone() ?? new LayerTransform(),
-            Z = layer.Z,
-            DisplayMode = layer.DisplayMode,
-            Visible = layer.Visible,
-            Opacity = layer.Opacity,
-            EffectInstanceIds = [.. layer.EffectInstanceIds]
-        }));
-        SceneState.ActiveControlIds.Clear();
-        SceneState.ActiveControlIds.AddRange(snapshot.SceneState.ActiveControlIds);
-        SceneState.ActiveEffectIds.Clear();
-        SceneState.ActiveEffectIds.AddRange(snapshot.SceneState.ActiveEffectIds);
-        SceneState.ActiveEffects.Clear();
-        SceneState.ActiveEffects.AddRange(snapshot.SceneState.ActiveEffects.Select(effect => new ActiveEffectState
-        {
-            Id = effect.Id,
-            ProgramResource = effect.ProgramResource,
-            InstanceId = effect.InstanceId,
-            TargetHandleId = effect.TargetHandleId,
-            Order = effect.Order,
-            Parameters = effect.Parameters,
-            AnimationValues = effect.AnimationValues.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
-        }));
-        SceneState.ActiveParticleEmitters.Clear();
-        SceneState.ActiveParticleEmitters.AddRange(snapshot.SceneState.ActiveParticleEmitters.Select(emitter => new ActiveParticleEmitterState
-        {
-            InstanceId = emitter.InstanceId,
-            Definition = emitter.Definition,
-            Z = emitter.Z,
-            AnimationValues = emitter.AnimationValues.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
-        }));
-        SceneState.ActiveAnimations.Clear();
-        SceneState.ActiveAnimations.AddRange(snapshot.SceneState.ActiveAnimations.Select(animation => new ActiveAnimationState
-        {
-            EntryType = animation.EntryType,
-            PlaybackHandleId = animation.PlaybackHandleId,
-            LoopMode = animation.LoopMode,
-            Parameters = animation.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
-        }));
-        // Effect is the canonical owner of its target. Rebuild the Layer-side index so
-        // older saves and malformed duplicate lists cannot leave a dangling association.
-        foreach (var layer in SceneState.Layers) layer.EffectInstanceIds.Clear();
-        foreach (var effect in SceneState.ActiveEffects.Where(effect => !string.IsNullOrWhiteSpace(effect.TargetHandleId)))
-        {
-            var target = SceneState.Layers.FirstOrDefault(layer => layer.Id == effect.TargetHandleId);
-            if (target is not null) target.EffectInstanceIds.Add(effect.InstanceId);
-        }
+        IsGameEnded = false;
+        SceneState = SnapshotCopy.CloneSceneState(snapshot.SceneState);
+        SceneInstances = new SceneInstanceManager(SceneState);
         SceneInstances.Rebuild(SceneState.Layers.Cast<ISceneInstance>()
             .Concat(SceneState.ActiveEffects.Select(CreateEffectInstance))
             .Concat(SceneState.ActiveParticleEmitters.Select(CreateParticleEmitterInstance))
@@ -223,60 +160,4 @@ public sealed class GameRuntime : IGameRuntime
         LoopMode = animation.LoopMode
     };
 
-    private static GalVariable CloneVariable(GalVariable variable)
-    {
-        var copy = new GalVariable { Uid = variable.Uid, Name = variable.Name };
-        switch (variable.Type)
-        {
-            case VariableType.Bool: copy.SetValue(variable.AsBool()); break;
-            case VariableType.Int: copy.SetValue(variable.AsInt()); break;
-            case VariableType.Float: copy.SetValue(variable.AsFloat()); break;
-            default: copy.SetValue(variable.AsString()); break;
-        }
-        return copy;
-    }
-
-    private static SceneState CloneSceneState(SceneState source) => new()
-    {
-        Layers = source.Layers.Select(layer => new Layer
-        {
-            Id = layer.Id,
-            AssetId = layer.AssetId,
-            IsVideo = layer.IsVideo,
-            Flipbook = layer.Flipbook?.Clone(),
-            Color = layer.Color,
-            Transform = layer.Transform.Clone(),
-            Z = layer.Z,
-            DisplayMode = layer.DisplayMode,
-            Visible = layer.Visible,
-            Opacity = layer.Opacity,
-            EffectInstanceIds = [.. layer.EffectInstanceIds]
-        }).ToList(),
-        ActiveControlIds = [.. source.ActiveControlIds],
-        ActiveEffectIds = [.. source.ActiveEffectIds],
-        ActiveEffects = source.ActiveEffects.Select(effect => new ActiveEffectState
-        {
-            Id = effect.Id,
-            ProgramResource = effect.ProgramResource,
-            InstanceId = effect.InstanceId,
-            TargetHandleId = effect.TargetHandleId,
-            Order = effect.Order,
-            Parameters = effect.Parameters,
-            AnimationValues = effect.AnimationValues.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
-        }).ToList(),
-        ActiveParticleEmitters = source.ActiveParticleEmitters.Select(emitter => new ActiveParticleEmitterState
-        {
-            InstanceId = emitter.InstanceId,
-            Definition = emitter.Definition,
-            Z = emitter.Z,
-            AnimationValues = emitter.AnimationValues.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
-        }).ToList(),
-        ActiveAnimations = source.ActiveAnimations.Select(animation => new ActiveAnimationState
-        {
-            EntryType = animation.EntryType,
-            PlaybackHandleId = animation.PlaybackHandleId,
-            LoopMode = animation.LoopMode,
-            Parameters = animation.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
-        }).ToList()
-    };
 }

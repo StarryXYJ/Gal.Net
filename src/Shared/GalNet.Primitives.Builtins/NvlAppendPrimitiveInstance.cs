@@ -1,5 +1,6 @@
 using GalNet.Core.Primitives;
 using GalNet.Presentation.Abstractions.View;
+using GalNet.Runtime.Logging;
 
 namespace GalNet.Primitives.Builtins;
 
@@ -82,8 +83,9 @@ public sealed class NvlAppendPrimitiveInstance : PrimitiveInstance
         {
             CompleteAfterPresentationFailure();
         }
-        catch
+        catch (Exception error)
         {
+            GameLog.Logger.Warning(error, "NVL presentation failed");
             CompleteAfterPresentationFailure();
         }
     }

@@ -13,8 +13,12 @@
 - 解决方案入口是 `GalNet.slnx`。
 - `docs/spec/` 描述已经实现的稳定事实；`docs/design/` 描述设计和分阶段计划。
 - Runtime/Core 应保持与 Avalonia、WPF、Skia、具体文件系统和其他平台实现解耦。
+- Entry 契约与执行已分离：IEntryModule 只含 schema/composite，IPrimitiveModule 按领域共享状态并贡献完整指令 ID；GameRegistration 独立注册，AddBuiltins 为主内置入口。可选 schema、部分内置实现或全自定义；仅完整 ID 排他。同前缀和 schema 模块名可重复。音频用 AudioRuntime + IAudioPlaybackHost 组合，不强制继承。见 docs/adr/0002-entry-schema-execution-registration.md 和 docs/development.md。
+- 当前 GameSnapshot 版本为 3，不兼容旧版；读档取消旧运行 scope 并替换场景对象。Engine 不拥有执行 view，宿主先释放 Engine，再异步释放 view 与后端。
+- Engine 提供终态 StopAsync 和 StateChanged，覆盖玩家推进、Choice 与阻塞实例自然完成；不新增通用 Runner。AvaloniaGamePresenters 只组合端口，SampleGamePresentation 管理平台资源。见 docs/design/game-runner-refactor.md 和 docs/spec/runtime.md。
+- Presentation.Defaults 已删除，空 NullGameView 位于展示抽象的 View 命名空间；当前 20 个生产项目。GameContent.Settings 包含项目设置，项目/安装加载器与两个 Sample 已接通自定义音频轨道配置。
 - 旧的 `GalNet.Control` 与 `GalNet.Control.Abstraction` 已完成迁移并删除；当前共享 Avalonia 游戏页面唯一入口是 `GalNet.Avalonia.GameView`，页面架构见 `docs/spec/control.md`。
-- 会影响场景的运行时条目应先更新 `SceneState`，再通知展示层；读取存档后由 Engine 根据状态重放展示。
+- 会影响场景的运行时条目应先更新 `SceneState`，再通知展示层；读取存档后由宿主通过 PersistentSceneRestorer 根据状态重放展示。
 - 视觉扩展应通过展示抽象和渲染端口接入；不要把平台类型或渲染资源泄漏进 Core/Runtime。
 - 当前已有大型阶段计划：[runtime-presentation-decoupling-phase-plan.md](../docs/design/runtime-presentation-decoupling-phase-plan.md) 和 [render-effects-pipeline-plan.md](../docs/design/render-effects-pipeline-plan.md)。新增 feature 应链接它们，不要复制其中的长期设计。
 
@@ -31,6 +35,8 @@
 ## 当前工作
 
 - [F-20261009-02-video-entries](../features/F-20261009-02-video-entries/feature.md) 已实现剧情视频图层、阻塞分段 seek、停止/替换清理和非阻塞视频定义恢复。平台视频必须经 AssetManager 获取，解码帧通过租约进入场景管线；播放游标不入存档。验证见 feature summary。
+
+- [F-20261010-02-runtime-i18n](../features/F-20261010-02-runtime-i18n/summary.md) Phase 1–5 已实现。Sample 用 Core 2.1.2 + ReflectionBinding；每 JSON 独立 provider，culture-first 查询内嵌/包内/External/额外源；首次选择在 Engine 前原子保存 locale/count。设置切换不重译当前剧情。安装器保留 External 并拒绝覆盖不同包，导出不包含第三方文件。当前契约见 `docs/spec/i18n.md`，人工 GUI 全程与原生媒体 opt-in 验证限制见 summary。
 
 - `F-20260926-01-gallery-meta-pages` 的实现、正式文档与示例 Gallery 解锁 smoke test 已完成；其外部阻塞项 `EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString` 已由 `F-20260929-04-quality-baseline` 修复，Gallery feature 可按自身流程收尾。
 - [F-20260916-02-audio-system](../features/F-20260916-02-audio-system/feature.md) 已完成首期：轨道逻辑、`AudioRuntime`、`IAudioPlaybackHost`、Avalonia LibVLC host、语音文本 composite 和 Sample 验收已落地。Runtime 只能传 asset ID；平台 host 必须经 `IAssetManager` 实体化临时媒体文件。后续 [F-20261009-01-track-seffects](../features/F-20261009-01-track-seffects/feature.md) 增加 host 注册的 `SEffectCatalog`、`seffect.gain` 与基于 LibVLC equalizer 的 `seffect.lowPass` / `seffect.highPass`；item scope、动画、存档、玩家音量和角色默认轨道均未实现。
@@ -49,6 +55,9 @@
 ## 经验索引
 
 - [受限环境中的 .NET/Avalonia 构建](lessons/L-20260922-01-dotnet-build-sandbox.md)：禁用 Roslyn shared compilation，并关闭 Avalonia build telemetry。
+- [读档必须隔离旧运行实例](lessons/L-20261010-02-restore-run-scope.md)：取消与场景对象隔离同时使用；句柄复用的清理需校验实例 identity；快照不能共享 mutable 对象。
+- [删除项目后检查依赖锁图](lessons/L-20261010-03-lock-graph-after-project-removal.md)：检查 lock 内容；缓存可能保留旧项目，需要对受影响 roots 强制重算再 locked restore。
+- [Engine 停止覆盖所有续跑](lessons/L-20261010-04-engine-stop-continuations.md)：首次推进返回不等于运行结束；停止须取消 scope、等待内部 continuation，统一发布终态。
 - [平台无关的进度契约归属](lessons/L-20260922-02-core-progress-contract.md)：已被 ADR-0001 和 F-20260929-07 取代；当前进度端口由实际消费者 Runtime 拥有。
 - [受限环境中的平台 SDK 枚举](lessons/L-20260925-01-platform-sdk-sandbox.md)：全解决方案构建可能只因 Android/Browser/iOS 的 SDK 探测读取用户目录失败；应区分平台环境限制和业务项目编译结果。
 - [受限环境中的 Avalonia licensing 枚举](lessons/L-20260926-01-avalonia-license-sandbox.md)：Avalonia BuildServices 即使关闭 telemetry 仍可能读取用户级 licensing tickets；应与业务编译失败区分。
@@ -69,3 +78,6 @@
 - [项目移动后必须清理旧构建中间产物](lessons/L-20260929-08-project-move-stale-restore-path.md)：移动 .NET 项目后先删除随项目移动的 `bin/obj`，再从新路径 locked restore，避免旧绝对路径缓存重建旧目录和 lock 文件。
 
 - [动态视频图层的加载与帧生命周期](lessons/L-20261010-01-video-layer-lifetime.md)：待加载源先登记，hide/replace 取消加载；帧租约与独立播放 identity 防止晚发布和旧完成误清理。
+- [DynamicLocalization Avalonia 主版本兼容性](lessons/L-20261010-05-dynamiclocalization-avalonia-version.md)：2.1.0 与 2.1.2 的 Avalonia extension 都不适用于当前 Avalonia 12 Sample；后者虽能编译仍在启动时调用已移除的 Binding 构造函数。Sample 使用 Core + 自有 `ReflectionBinding` 适配层。
+- [JSON provider 的整 culture 替换](lessons/L-20261010-07-json-provider-replaces-culture.md)：2.1.2 的 LoadJsonString 不增量合并，也不做父 culture 回退；分文件需独立 provider 与宿主有序查询。
+- [Render 内的粒子耗尽清理](lessons/L-20261010-08-render-pass-particle-drain.md)：confirmed；UI Dispatch 在 UI 线程同步执行，不能作为渲染回调清理的延迟队列；使用保证异步的 `Post`，并以 emitter identity 防止旧回调删除替换实例。

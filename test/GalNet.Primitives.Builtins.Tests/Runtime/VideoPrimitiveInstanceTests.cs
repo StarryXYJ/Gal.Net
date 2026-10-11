@@ -14,7 +14,7 @@ public sealed class VideoPrimitiveInstanceTests
     {
         var presenter = new ControlledVideoPresenter();
         var runtime = new GameRuntime(null);
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(videoPresenter: presenter));
+        using var view = new GameRegistration().AddBuiltins(videoPresenter: presenter).BuildView();
         var instance = view.Dispatch(Play(), runtime, CancellationToken.None)!;
         instance.Skip();
         Assert.Multiple(() =>
@@ -34,7 +34,7 @@ public sealed class VideoPrimitiveInstanceTests
     {
         var presenter = new ControlledVideoPresenter();
         var runtime = new GameRuntime(null);
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(videoPresenter: presenter));
+        using var view = new GameRegistration().AddBuiltins(videoPresenter: presenter).BuildView();
         var first = view.Dispatch(Play(false), runtime, CancellationToken.None)!;
         var second = view.Dispatch(Play(false), runtime, CancellationToken.None)!;
         var other = view.Dispatch(Play(false, "other"), runtime, CancellationToken.None)!;
@@ -58,7 +58,7 @@ public sealed class VideoPrimitiveInstanceTests
             using var cancellation = new CancellationTokenSource();
             var presenter = new ControlledVideoPresenter();
             var runtime = new GameRuntime(null);
-            using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(videoPresenter: presenter));
+            using var view = new GameRegistration().AddBuiltins(videoPresenter: presenter).BuildView();
             var instance = view.Dispatch(Play(), runtime, cancellation.Token)!;
             if (fail) presenter.Ends[0].SetException(new InvalidDataException("decode failure"));
             else cancellation.Cancel();
@@ -72,7 +72,7 @@ public sealed class VideoPrimitiveInstanceTests
     {
         var presenter = new ControlledVideoPresenter();
         var runtime = new GameRuntime(null);
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(videoPresenter: presenter));
+        using var view = new GameRegistration().AddBuiltins(videoPresenter: presenter).BuildView();
         var first = view.Dispatch(Play(false), runtime, CancellationToken.None)!;
         var snapshot = runtime.CreateSnapshot();
         Assert.That(snapshot.SceneState.Layers.Single().VideoPlaybackId, Is.Null);
@@ -95,7 +95,7 @@ public sealed class VideoPrimitiveInstanceTests
     [TestCase("[2,2]")]
     public void Invalid_skip_points_are_rejected(string json)
     {
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended());
+        using var view = new GameRegistration().AddBuiltins().BuildView();
         Assert.Throws<InvalidDataException>(() => view.Dispatch(new PrimitiveEntry("video.play",
             JsonSerializer.SerializeToElement(new { asset = "clip", skipPoints = JsonSerializer.Deserialize<JsonElement>(json) })),
             new GameRuntime(null), CancellationToken.None));
@@ -105,7 +105,7 @@ public sealed class VideoPrimitiveInstanceTests
     public void Headless_video_completes_without_leaving_a_layer()
     {
         var runtime = new GameRuntime(null);
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended());
+        using var view = new GameRegistration().AddBuiltins().BuildView();
         Assert.That(view.Dispatch(Play(), runtime, CancellationToken.None)!.IsCompleted, Is.True);
         Assert.That(runtime.SceneState.Layers, Is.Empty);
     }

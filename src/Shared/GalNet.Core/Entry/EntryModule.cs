@@ -62,7 +62,7 @@ public abstract class EntryBase
         : value.GetRawText();
 }
 
-/// <summary>A Runtime-ready primitive definition with a per-invocation instance factory.</summary>
+/// <summary>A primitive parameter contract. Execution is registered independently.</summary>
 public abstract class PrimitiveEntryBase : EntryBase
 {
     protected PrimitiveEntryBase(
@@ -72,31 +72,20 @@ public abstract class PrimitiveEntryBase : EntryBase
         : base(name, parameters, category)
     { }
 
-    public abstract PrimitiveInstance CreateInstance(PrimitiveCreateContext context);
-
     internal override EntryDefinition CreateDefinition() => BuildDefinition(
         () => new AuthoringPrimitiveEntry(Name),
         EntryKind.Primitive);
 }
 
-/// <summary>Default primitive definition backed directly by a factory delegate.</summary>
+/// <summary>A data-only primitive definition.</summary>
 public sealed class DefaultPrimitiveEntryBase : PrimitiveEntryBase
 {
-    private readonly Func<PrimitiveCreateContext, PrimitiveInstance> _factory;
-
     public DefaultPrimitiveEntryBase(
         string name,
         DynamicParameterTable parameters,
-        Func<PrimitiveCreateContext, PrimitiveInstance> factory,
         string? category = null)
         : base(name, parameters, category)
-    {
-        ArgumentNullException.ThrowIfNull(factory);
-        _factory = factory;
-    }
-
-    public override PrimitiveInstance CreateInstance(PrimitiveCreateContext context) =>
-        _factory(context) ?? throw new InvalidOperationException($"Primitive '{Name}' returned no runtime instance.");
+    { }
 }
 
 /// <summary>An editor/compiler-only entry that expands into one or more primitives.</summary>
@@ -133,13 +122,12 @@ public sealed class DefaultCompositeEntryBase : CompositeEntryBase
 }
 
 /// <summary>A module owns independent frozen primitive and composite entry tables.</summary>
-public interface IEntryModule : IDisposable
+public interface IEntryModule
 {
     string Id { get; }
     IReadOnlyDictionary<string, PrimitiveEntryBase> PrimitiveEntries { get; }
     IReadOnlyDictionary<string, CompositeEntryBase> CompositeEntries { get; }
 
-    void IDisposable.Dispose() { }
 }
 
 /// <summary>Core helper that validates and freezes a module's two entry tables.</summary>
@@ -164,9 +152,7 @@ public abstract class EntryModuleBase : IEntryModule
     public IReadOnlyDictionary<string, PrimitiveEntryBase> PrimitiveEntries { get; }
     public IReadOnlyDictionary<string, CompositeEntryBase> CompositeEntries { get; }
 
-    public virtual void Dispose() { }
-
-    private static IReadOnlyDictionary<string, TEntry> Freeze<TEntry>(IEnumerable<TEntry> entries, string argumentName)
+    private static ReadOnlyDictionary<string, TEntry> Freeze<TEntry>(IEnumerable<TEntry> entries, string argumentName)
         where TEntry : EntryBase
     {
         var result = new Dictionary<string, TEntry>(StringComparer.Ordinal);

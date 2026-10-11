@@ -22,6 +22,8 @@ Runtime 只执行 primitive entry。Composite entry 只能存在于 `.rawgalgrou
 public Task<bool> AdvanceAsync(CancellationToken cancellationToken = default);
 public GameSnapshot CreateSaveData();
 public void RestoreFrom(GameSnapshot data);
+public Task StopAsync();
+public ValueTask DisposeAsync();
 ```
 
 一次 `AdvanceAsync()` 的顺序是：
@@ -33,6 +35,14 @@ public void RestoreFrom(GameSnapshot data);
 5. 如果当前 blocking 已解除，继续按顺序消费剧情，直到遇到新的 blocking instance、Choice 等待或剧情结束。
 
 Blocking instance 自然完成时，Engine 只执行无 skip 权限的内部 continue；它不是第二个玩家入口，也不能跳过下一个新遇到的 batch。
+
+### 状态通知和停止
+
+`State` 和 `StateChanged(GameEngineStateChange)` 统一报告 `Ready`、`Running`、`Completed`、`Faulted`、`Stopped`；失败通知附带原始异常。自然阻塞完成、Choice 结果/异常和玩家推进都经过同一状态机制，宿主不需要分别推断终态。通知在执行锁外按发生顺序发布，重复状态不重复通知；订阅者异常只诊断，不改变剧情状态。事件处理器不应同步等待 Engine 的异步操作；UI 线程切换、日志文案和存档槽刷新由宿主处理。
+
+`StopAsync()` 是该 Engine 的终态操作：立即拒绝新推进，取消执行 scope，清理活动实例和 pending Choice，并等待内部 continuation 退出后报告 `Stopped`。Choice 后端即使没有协作取消，Engine 的等待也能退出；平台资源本身仍由宿主释放。停止后推进返回 `false`，不能恢复该 Engine；重开使用新 Engine。正常完成后再次推进不会重放已经结束的内容。未停止时 `RestoreFrom()` 取消旧 scope 并重新进入 `Ready`。
+
+Engine 同时支持同步和异步释放；异步宿主优先使用 `await using`。释放 Engine 不释放借用的 `IGameView`：先停止/释放 Engine，再异步释放执行 view，最后释放 presenters、媒体后端及资源。不新增通用 Runner 或要求平台实现继承宿主基类。
 
 ## Batch 与活动实例
 
@@ -62,6 +72,8 @@ Choice 节点由 Engine 求值并过滤可见选项，再通过 `IChoicePresente
 
 `GameRuntime` 是游戏事实的唯一来源：
 
+内容 provider 将项目与安装目录的 `settings.json` 解析为 `GameContent.Settings`；两个 Sample 都把它注入 Runtime 的 `SettingsContainer`，自定义音频轨道不会退回默认轨道。缺少文件使用默认设置，非法 JSON 明确拒绝。
+
 | 状态 | 说明 |
 | --- | --- |
 | `CurrentNodeId` / `EntryIndex` | 当前流程位置 |
@@ -71,7 +83,7 @@ Choice 节点由 Engine 求值并过滤可见选项，再通过 `IChoicePresente
 | `SceneState` / `SceneInstances` | 可存档场景快照与按句柄管理的活跃实例 |
 | 变量存储 | Player / Save 作用域变量与表达式求值 |
 
-`GameSnapshot` 包含 `NodeId`、`EntryIndex`、变量字典与 `SceneState`。`CreateSaveData()` 返回 Engine 保存的最后稳定快照，而不是即时抓取可能仍在异步变化的状态。
+`GameSnapshot` 当前版本为 3，旧版本直接拒绝，不提供迁移兼容。它包含 `NodeId`、`EntryIndex`、变量字典与 `SceneState`。`CreateSaveData()` 返回 Engine 保存的最后稳定快照，而不是即时抓取可能仍在异步变化的状态。所有对外快照均深复制；调用者修改保存数据或事件参数不会影响 Engine。读档取消旧 scope，并替换 SceneState/SceneInstances；旧实例保留旧场景，不能更改新运行的变量与流程，恢复时重置结束标记。
 
 Save scope 随存档槽保存和恢复；Player scope 由宿主变量服务独立持久化，普通读档不得回滚。内置系统可以通过 `SystemVariableDefinition` 注册生成变量。Gallery 为每个 item 注册默认 `false` 的 Player bool `gallery_<item-id>_unlocked`；`gallery.unlock` 校验 item ID 后把该变量设为 `true`。
 
@@ -115,31 +127,27 @@ public void Skip();
 
 ## Entry Module 与 GameView
 
-宿主把一个或多个 `IEntryModule` 挂到 `CompositeGameView`。每个模块持有两张冻结表：
+契约和执行独立注册：
 
-- `PrimitiveEntries`：Runtime 可执行 primitive schema 与 instance 工厂。
-- `CompositeEntries`：只服务编辑器和编译器的 authoring 展开。
+- `IEntryModule` 导出 primitive 参数 schema 和编译期 composite，不创建执行服务。
+- `IPrimitiveModule` 导出完整指令 ID 到 `PrimitiveImplementation` 的表，持有游戏会话共享状态。
+- `GameRegistration` 组合两者；`BuildCatalog` 提供编译契约，`BuildView` 冻结注册并转移执行模块所有权。
+- 同前缀可多次注册不同指令；重复完整 ID、实现无对应 schema 都会报错。
+- `AddBuiltins` 是主内置入口；`AddBuiltinSchemas` 和各领域 `AddBuiltin*` 可独立选择。注册不等于提供平台能力，具体 presenter/host 由宿主传入。
 
-`CompositeGameView.Dispatch()` 负责：
+`CompositeGameView.Dispatch()` 查找完整 ID，按 schema 规范化参数并执行语义验证，构造 `PrimitiveCreateContext`，调用工厂、验证 BatchId，最后分发实例。缺失实现抛错，不返回 null；Engine 初始化时检查 Graph 所需的全部 primitive 实现。普通分发失败也不会被忽略或推进该条目的游标。
 
-1. 按 `PrimitiveEntry.Type` 查找 `PrimitiveEntryBase`。
-2. 使用该 entry 的 `DynamicParameterTable` 规范化参数和默认值。
-3. 构造 `PrimitiveCreateContext`，其中包含 definition、规范化后的 entry、runtime、scope cancellation、arguments 与 BatchId。
-4. 调用工厂创建 instance。
-5. 验证 instance BatchId 与 entry BatchId 一致。
-6. 调用一次 `Dispatch()` 并把 instance 返回给 Engine。
+Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`，最后释放借用的 presenter 和后端；view 逆序释放全部执行模块并汇总错误。未转移的模块由 registration 释放。
 
-未知 primitive 返回 `null`，由 Engine 记录诊断并继续执行。
+## 当前内置模块
 
-## 当前推荐模块
-
-`GalNet.Primitives.Builtins` 提供可选推荐模块。当前已实现运行时行为的能力包括：
+`GalNet.Primitives.Builtins` 提供可选内置模块。当前已实现运行时行为的能力包括：
 
 - `dialogue.text`：对话与打字机阶段，支持 `\skip` 分段跳过；`dialogue.show` / `dialogue.hide` 控制显示状态。
 - `nvl.show` / `nvl.hide` / `nvl.clear`：分别显示、隐藏和清空 NVL 历史；`nvl.append` 以相同的富文本和打字机语义追加一行，完成打字后等待玩家推进。NVL 不会因 append 自动显示。
 - `layer.*`：show/showColor/hide/move/replace，先更新 `SceneState` 再通知 `ILayerPresenter`。
 - `animation.animate` / `animation.play` / `animation.stop`：创建 animation primitive instance；一次性动画先提交最终逻辑状态，循环动画提交第 0 帧状态并保存完整重放定义，再启动呈现动画。plan 是单个 instance，内部事件只作为 animation 模块私有 layer/effect 事件处理，不重新进入通用 Entry 分发。
-- `effect.apply` / `effect.stop`：维护 `SceneState.ActiveEffects`、目标 Layer 的 effect 索引和 `IEffectPresenter` 调用。
+- `effect.apply` / `effect.stop`：维护 `SceneState.ActiveEffects` 和 `IEffectPresenter` 调用，不另存冗余的 effect ID 索引。
 - `audio.play` / `audio.stop` / `audio.pause` / `audio.resume` / `audio.enqueue` / `audio.next` / `audio.clear`：`AudioRuntime` 持有轨道队列与 voice 生命周期，`IAudioPlaybackHost` 只执行平台播放请求。`dialogue.textVoice` 与 `nvl.appendVoice` 会先发出非阻塞的 `audio.play(replaceIfDifferent)`，默认使用 `vocal` 轨道，再按正常文本语义阻塞。
 - `audio.seffect.apply` / `audio.seffect.stop`：以 `trackId` 和 `instanceId` 附着或移除宿主 catalog 已注册的轨道 SEffect；当前 Avalonia host 支持 `seffect.gain`、基于 equalizer 频段近似的 `seffect.lowPass` 与 `seffect.highPass`。未知 ID、非法参数或不支持 scope 只记录诊断，不会静默附着。
 - `particle.play` / `particle.stop`：用 `rate` 创建和停止持续 emitter，维护 `SceneState.ActiveParticleEmitters` 与 Runtime emitter instance。存档只保存 emitter 定义、排序与动画值；宿主读档后通过 `BuiltinPresentationReplay` 以相同 seed 从头重建，不保存单颗粒子。`initial` 的 lifetime、velocity、size、rotation、angular velocity、color 以及 `flipbook` 的播放速度与起始帧都按粒子确定性采样；`motion` 提供 gravity、noise、drag、radial、orbit、attractor，`lifetime` 曲线线性插值 size、opacity、velocity、rotation、color。当前粒子年龄、位置和 flipbook 帧不单独存档。
@@ -149,4 +157,8 @@ public void Skip();
 - `variable.set`：求值后写入 Runtime 变量。
 - `gallery.unlock`：按稳定 item ID 解锁 Gallery，写入对应的系统 Player bool。
 
-视频图层与音频的轨道播放、淡化、队列和当前轨道 SEffect 行为由推荐模块实现。bus/master 处理、item effect、参数动画、存档恢复和玩家音量设置仍由后续 feature 补齐。Gallery 的平台无关 catalog 与解锁数据层由 Core/Storage 提供；默认 Avalonia 前端通过宿主提供的 `IGameGallerySession` 浏览 CG、视频和音频，不把页面或媒体状态写入 Runtime。
+视频图层与音频的轨道播放、淡化、队列和当前轨道 SEffect 行为由内置模块实现。bus/master 处理、item effect、参数动画、存档恢复和玩家音量设置仍由后续 feature 补齐。Gallery 的平台无关 catalog 与解锁数据层由 Core/Storage 提供；默认 Avalonia 前端通过宿主提供的 `IGameGallerySession` 浏览 CG、视频和音频，不把页面或媒体状态写入 Runtime。
+
+动画 plan 的事件与轨道共用 presenter 的播放时间源。`PlayAnimationPlanAsync` 必须在采样前 await `beforeFrame(elapsedFrames)`，正常完成前提供末帧；Loop/PingPong 的 elapsedFrames 单调增加，不在循环时归零。跳过不补发未来 particle burst。
+
+音频后端请求按 voice 顺序提交，Stop 即刻取消尚未完成的 Start；异步销毁等待排队请求结束。Avalonia host 先登记待加载音频，停止/销毁取消加载，等待加载结束后释放 LibVLC 与临时目录。音频轨道状态不进入当前存档；读档会停止旧 scope 音频。

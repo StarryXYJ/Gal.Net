@@ -6,7 +6,7 @@
 - `.rawgalgroup` 的 `parameters` 与编译后 `.galgroup` 的 `arguments` 都是 JSON 对象；数字、布尔值、对象和数组不被压平为字符串。
 - 某个 entry 是否可编辑、可编译，完全由当前 target profile 中挂载模块导出的 entry schema 决定。未挂载的类型被拒绝，不会回退到全局内置目录。
 - 每个 entry 定义的 `DynamicParameterTable` 是只读 schema：每个参数以 `typeof(T)` 指定进程内运行时类型，并包含 required、JSON 默认值和 JSON constraints。CLR 类型名绝不写入内容、metadata、存档或 pak；内容只保存 JSON 值。
-- Runtime 只接收通用 `PrimitiveEntry`，并通过 `IGameView.Dispatch` 动态路由。Core/Runtime 不内置或要求任何推荐 primitive 实现。
+- Runtime 只接收通用 `PrimitiveEntry`，并通过 `IGameView.Dispatch` 动态路由。Core/Runtime 不要求任何内置 primitive 实现。
 
 `EntryParameterType` 是当前编辑器的 UI hint。它由参数 constraints 生成，不是执行协议。
 
@@ -14,10 +14,10 @@
 
 每个 `IEntryModule` 持有两张冻结表：
 
-- `PrimitiveEntries`：Runtime 可执行 primitive schema 与 instance 工厂。
+- `PrimitiveEntries`：primitive 参数契约，不含执行工厂或平台依赖。
 - `CompositeEntries`：只服务编辑器和编译器的 authoring 展开。
 
-同一模块内 primitive/composite 不得重名；多个挂载模块之间 primitive 名称也不得重复。组合根可以把同一组模块用于 `TargetProfileEntryCatalog` 和 `CompositeGameView`，使编辑器 schema 与 Runtime 工厂来自同一事实来源。
+同一模块内 primitive/composite 不得重名；跨模块仅完整 type ID 不得重复，模块名称和指令前缀可重复。`TargetProfileEntryCatalog` 只依赖 schema；运行时通过 `GameRegistration` 独立注册 `IPrimitiveModule` 执行模块，再构建 `CompositeGameView`。一个执行模块可以共享服务与状态，并贡献多个指令；每个实现必须有 primitive schema。
 
 ## Primitive Entry
 
@@ -35,7 +35,7 @@
 
 Composite 仅存在于 `.rawgalgroup`，并在编译时展开为通用 `PrimitiveEntry` 序列；`.galgroup` 只包含 primitive envelope。Composite 自己决定展开结果的 batch 划分，框架不规定“一个 Composite 等于一个 Batch”。
 
-推荐 Builtins 在 animation module 的 composite 表中提供：
+内置 schema 模块的 composite 表提供：
 
 ```text
 transition.crossFade
@@ -48,9 +48,9 @@ transition.fadeColor
 
 这些 entry 不是 Runtime primitive，也不绕过 target profile：展开后的每一个 primitive 都必须在所选 profile 中存在。
 
-## 推荐 primitive ID
+## 内置 primitive ID
 
-`GalNet.Primitives.Builtins` 提供可选推荐 authoring profile 与运行时模块。当前推荐 ID 为：
+`GalNet.Primitives.Builtins` 提供独立可选的 schema 与运行时领域模块。主入口是 `GameRegistration.AddBuiltins`，也可单独调用 `AddBuiltinSchemas`，并组合部分内置或自定义执行模块。当前内置 ID 为：
 
 内置 entry DTO、primitive instance 和 module 都使用 `GalNet.Primitives.Builtins` 命名空间；`GalNet.Core.Entry` 只包含通用 entry 基类、schema 和 catalog 基础设施。内容格式只保存下列稳定 `TypeId`，不保存 CLR 类型名。
 
@@ -71,9 +71,9 @@ flow.wait, variable.set, gallery.unlock
 
 `nvl.show` 和 `nvl.hide` 只改变 NVL 覆盖层的可见性；`nvl.clear` 移除已累积的历史行；`nvl.append` 只接收长文本 `content`，以与 `dialogue.text` 相同的富文本和打字机语义追加一段，并在文字完成后等待一次玩家推进。它不会自动显示 NVL，剧情应显式调用 `nvl.show`。
 
-这些名称和参数只是推荐语义。开发者可以只注册自定义模块，或在自己的 target profile 中定义完全不同的前缀、参数与语义；编辑器不会凭名称假定 `dialogue`、`nvl`、`layer` 或任何其他模块存在。
+这些名称和参数属于可选内置契约。开发者可以只注册自定义模块，或在自己的 target profile 中定义完全不同的前缀、参数与语义；编辑器不会凭名称假定 `dialogue`、`nvl`、`layer` 或任何其他模块存在。
 
-当前已实现 Runtime 行为的推荐能力见 [runtime.md](runtime.md)。
+当前已实现 Runtime 行为的内置能力见 [runtime.md](runtime.md)。
 
 ## 视频图层 entry
 

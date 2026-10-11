@@ -3,10 +3,16 @@
              x:Class="GalNet.Sample.Avalonia.App"
              xmlns:semi="https://irihi.tech/semi"            
              xmlns:usemi="https://irihi.tech/ursa/themes/semi"
+             xmlns:loc="using:DynamicLocalization.Core"
 
              RequestedThemeVariant="Default">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
+    <Application.DataTemplates>
+        <DataTemplate DataType="loc:LocalizedString" x:DataType="loc:LocalizedString">
+            <TextBlock Text="{Binding Value}" />
+        </DataTemplate>
+    </Application.DataTemplates>
     <Application.Styles>
         <semi:SemiTheme></semi:SemiTheme>
         <semi:UrsaSemiTheme></semi:UrsaSemiTheme>

@@ -3,6 +3,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Sample.Avalonia.Debug;
+using GalNet.Sample.Avalonia.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Ursa.Controls;
 
@@ -13,6 +14,7 @@ public partial class MainWindow : UrsaWindow
     private readonly IServiceProvider _services;
     private readonly SampleDebugLogStore? _debugLogStore;
     private readonly SampleDebugViewModel? _debugViewModel;
+    private readonly LanguageSelectionViewModel _languageSelectionViewModel;
     private DebugLogWindow? _debugLogWindow;
 
     public MainWindow(GameShell shell, IServiceProvider services)
@@ -20,9 +22,11 @@ public partial class MainWindow : UrsaWindow
         _services = services;
         _debugLogStore = services.GetService<SampleDebugLogStore>();
         _debugViewModel = services.GetService<SampleDebugViewModel>();
+        _languageSelectionViewModel = services.GetRequiredService<LanguageSelectionViewModel>();
         InitializeComponent();
+        LanguageSelection.DataContext = _languageSelectionViewModel;
         GameCanvas.GameContent = shell;
-        DebugMenu.IsVisible = _debugLogStore is not null && _debugViewModel is not null;
+        DebugMenu.IsVisible = false;
         DebugMenu.DataContext = _debugViewModel;
         if (_debugViewModel is not null)
         {
@@ -32,6 +36,22 @@ public partial class MainWindow : UrsaWindow
         }
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
         Closed += OnClosed;
+    }
+
+    public async Task<string?> SelectLanguageAsync(string preferred, CancellationToken cancellationToken)
+    {
+        StartupStatus.IsVisible = false;
+        LanguageSelection.IsVisible = true;
+        try { return await _languageSelectionViewModel.ChooseAsync(preferred, cancellationToken); }
+        finally { LanguageSelection.IsVisible = false; }
+    }
+
+    public void CompleteStartup(string? error = null)
+    {
+        StartupStatus.IsVisible = error is not null;
+        if (error is not null) StartupStatus.Text = error;
+        GameCanvas.IsVisible = error is null;
+        DebugMenu.IsVisible = error is null && _debugLogStore is not null && _debugViewModel is not null;
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
@@ -48,7 +68,7 @@ public partial class MainWindow : UrsaWindow
     private async Task<bool> ConfirmAsync(SampleDebugPrompt prompt) =>
         await MessageBox.ShowAsync(this, prompt.Message, prompt.Title, button: MessageBoxButton.OKCancel) == MessageBoxResult.OK;
 
-    private Task NotifyAsync(SampleDebugNotification notification) =>
+    private Task<MessageBoxResult> NotifyAsync(SampleDebugNotification notification) =>
         MessageBox.ShowAsync(this, notification.Message, notification.Title, button: MessageBoxButton.OK);
 
     private Task ShowDebugLogAsync()

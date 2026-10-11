@@ -13,6 +13,13 @@ namespace GeneralTest.Runtime;
 
 public class BuiltinPrimitiveInstanceTests
 {
+    private static readonly string[] FadeCompleted = ["fade"];
+    private static readonly string[] BlurStopped = ["blur-1"];
+    private static readonly string[] SnowStopped = ["snow"];
+    private static readonly int[] TimedBurstCounts = [8, 12];
+    private static readonly string[] TimedSnowStopped = ["timed-snow"];
+    private static readonly string[] NewLayerIds = ["new"];
+
     private static readonly JsonSerializerOptions AnimationJsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -23,7 +30,7 @@ public class BuiltinPrimitiveInstanceTests
     public void AnimationAnimateCommitsFinalStateAndCanBeSkippedThroughPresenter()
     {
         var presenter = new RecordingAnimationPresenter();
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(animationPresenter: presenter));
+        using var view = new GameRegistration().AddBuiltins(animationPresenter: presenter).BuildView();
         var runtime = new GameRuntime(null);
         var layer = runtime.SceneInstances.GetOrAdd("hero", id => new Layer { Id = id, Opacity = 0 });
 
@@ -55,7 +62,7 @@ public class BuiltinPrimitiveInstanceTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(presenter.CompletedImmediately, Is.EqualTo(new[] { "fade" }));
+            Assert.That(presenter.CompletedImmediately, Is.EqualTo(FadeCompleted));
             Assert.That(instance.IsCompleted, Is.True);
         });
     }
@@ -64,7 +71,7 @@ public class BuiltinPrimitiveInstanceTests
     public async Task EffectApplyAndStopUpdateRuntimeStateAndPresenter()
     {
         var presenter = new RecordingEffectPresenter();
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(effectPresenter: presenter));
+        using var view = new GameRegistration().AddBuiltins(effectPresenter: presenter).BuildView();
         var runtime = new GameRuntime(null);
         var layer = runtime.SceneInstances.GetOrAdd("hero", id => new Layer { Id = id });
 
@@ -82,9 +89,7 @@ public class BuiltinPrimitiveInstanceTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(runtime.SceneState.ActiveEffectIds, Is.EqualTo(new[] { "blur-1" }));
             Assert.That(runtime.SceneState.ActiveEffects.Single().Parameters, Does.Contain("radius"));
-            Assert.That(layer.EffectInstanceIds, Is.EqualTo(new[] { "blur-1" }));
             Assert.That(presenter.Started.Single().InstanceId, Is.EqualTo("blur-1"));
         });
 
@@ -94,10 +99,8 @@ public class BuiltinPrimitiveInstanceTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(runtime.SceneState.ActiveEffectIds, Is.Empty);
             Assert.That(runtime.SceneState.ActiveEffects, Is.Empty);
-            Assert.That(layer.EffectInstanceIds, Is.Empty);
-            Assert.That(presenter.Stopped, Is.EqualTo(new[] { "blur-1" }));
+            Assert.That(presenter.Stopped, Is.EqualTo(BlurStopped));
         });
     }
 
@@ -105,7 +108,7 @@ public class BuiltinPrimitiveInstanceTests
     public async Task ParticlePlayAndStopUpdateRuntimeStateAndPresenter()
     {
         var presenter = new RecordingParticlePresenter();
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(particlePresenter: presenter));
+        using var view = new GameRegistration().AddBuiltins(particlePresenter: presenter).BuildView();
         var runtime = new GameRuntime(null);
 
         var play = view.Dispatch(Primitive(PlayParticleEmitterEntry.TypeId, new
@@ -175,7 +178,7 @@ public class BuiltinPrimitiveInstanceTests
         {
             Assert.That(runtime.SceneState.ActiveParticleEmitters, Is.Empty);
             Assert.That(runtime.SceneInstances.TryGet<ParticleEmitterInstance>("snow", out _), Is.False);
-            Assert.That(presenter.Stopped, Is.EqualTo(new[] { "snow" }));
+            Assert.That(presenter.Stopped, Is.EqualTo(SnowStopped));
         });
     }
 
@@ -183,7 +186,7 @@ public class BuiltinPrimitiveInstanceTests
     public async Task ParticleBurstIsFireAndForgetAndDoesNotCreateRuntimeState()
     {
         var presenter = new RecordingParticlePresenter();
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(particlePresenter: presenter));
+        using var view = new GameRegistration().AddBuiltins(particlePresenter: presenter).BuildView();
         var runtime = new GameRuntime(null);
 
         var burst = view.Dispatch(Primitive(BurstParticlesEntry.TypeId, new
@@ -218,9 +221,9 @@ public class BuiltinPrimitiveInstanceTests
     {
         var particles = new RecordingParticlePresenter();
         var animations = new RecordingAnimationPresenter();
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
+        using var view = new GameRegistration().AddBuiltins(
             animationPresenter: animations,
-            particlePresenter: particles));
+            particlePresenter: particles).BuildView();
         var runtime = new GameRuntime(null);
         var burstParameters = new
         {
@@ -257,8 +260,8 @@ public class BuiltinPrimitiveInstanceTests
         Assert.Multiple(() =>
         {
             Assert.That(particles.Started.Single().InstanceId, Is.EqualTo("timed-snow"));
-            Assert.That(particles.Bursts.Select(request => request.Count), Is.EqualTo(new[] { 8, 12 }));
-            Assert.That(particles.Stopped, Is.EqualTo(new[] { "timed-snow" }));
+            Assert.That(particles.Bursts.Select(request => request.Count), Is.EqualTo(TimedBurstCounts));
+            Assert.That(particles.Stopped, Is.EqualTo(TimedSnowStopped));
             Assert.That(runtime.SceneState.ActiveParticleEmitters, Is.Empty);
         });
     }
@@ -268,10 +271,10 @@ public class BuiltinPrimitiveInstanceTests
     {
         var runtime = new GameRuntime(null);
         var particles = new RecordingParticlePresenter();
-        var animations = new RecordingAnimationPresenter();
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
+        var animations = new LoopingAnimationPresenter();
+        using var view = new GameRegistration().AddBuiltins(
             animationPresenter: animations,
-            particlePresenter: particles));
+            particlePresenter: particles).BuildView();
         var plan = new AnimationPlanDefinition
         {
             PlaybackHandleId = "skipped-burst",
@@ -305,9 +308,9 @@ public class BuiltinPrimitiveInstanceTests
         var runtime = new GameRuntime(null);
         var particles = new RecordingParticlePresenter();
         var animations = new LoopingAnimationPresenter();
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
+        using var view = new GameRegistration().AddBuiltins(
             animationPresenter: animations,
-            particlePresenter: particles));
+            particlePresenter: particles).BuildView();
         using var scope = new CancellationTokenSource();
         var plan = new AnimationPlanDefinition
         {
@@ -329,7 +332,12 @@ public class BuiltinPrimitiveInstanceTests
         };
 
         var instance = view.Dispatch(Primitive(PlayAnimationPlanEntry.TypeId, new { plan }), runtime, scope.Token)!;
-        await WaitUntilAsync(() => particles.Bursts.Count >= 2);
+        await Task.Delay(50);
+        Assert.That(particles.Bursts, Is.Empty, "Events must not run ahead of a stalled presentation clock.");
+        await animations.AdvanceFrameAsync(1);
+        Assert.That(particles.Bursts.Count, Is.EqualTo(1));
+        await animations.AdvanceFrameAsync(3);
+        Assert.That(particles.Bursts.Count, Is.EqualTo(2));
         scope.Cancel();
         await WaitUntilAsync(() => instance.IsCompleted);
 
@@ -431,7 +439,7 @@ public class BuiltinPrimitiveInstanceTests
             particlePresenter,
             animationPresenter,
             layerPresenter,
-            CancellationToken.None);
+            cancellationToken: CancellationToken.None);
 
         var effectRequest = effectPresenter.Started.Single();
         var particleRequest = particlePresenter.Started.Single();
@@ -468,9 +476,9 @@ public class BuiltinPrimitiveInstanceTests
     {
         var particles = new RecordingParticlePresenter();
         var animations = new RecordingAnimationPresenter();
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
+        using var view = new GameRegistration().AddBuiltins(
             animationPresenter: animations,
-            particlePresenter: particles));
+            particlePresenter: particles).BuildView();
         var runtime = new GameRuntime(null);
 
         var play = view.Dispatch(Primitive(PlayParticleEmitterEntry.TypeId, new
@@ -513,7 +521,7 @@ public class BuiltinPrimitiveInstanceTests
     [Test]
     public void LoopingAnimationPlanCommitsOnlyFrameZeroStateAndSavesCompletePlan()
     {
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended());
+        using var view = new GameRegistration().AddBuiltins().BuildView();
         var runtime = new GameRuntime(null);
         runtime.SceneInstances.GetOrAdd("old", id => new Layer { Id = id, AssetId = "old.png", Opacity = 1 });
         var plan = new AnimationPlanDefinition
@@ -553,9 +561,9 @@ public class BuiltinPrimitiveInstanceTests
     {
         var animation = new RecordingAnimationPresenter();
         var layers = new RecordingLayerPresenter();
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
+        using var view = new GameRegistration().AddBuiltins(
             layerPresenter: layers,
-            animationPresenter: animation));
+            animationPresenter: animation).BuildView();
         var runtime = new GameRuntime(null);
         var oldLayer = runtime.SceneInstances.GetOrAdd("old", id => new Layer { Id = id, AssetId = "old.png", Opacity = 1 });
         var plan = new AnimationPlanDefinition
@@ -601,7 +609,7 @@ public class BuiltinPrimitiveInstanceTests
             Assert.That(runtime.SceneInstances.TryGet<Layer>("old", out _), Is.False);
             Assert.That(runtime.SceneInstances.TryGet<Layer>("new", out var newLayer), Is.True);
             Assert.That(newLayer.Opacity, Is.EqualTo(1));
-            Assert.That(runtime.SceneState.Layers.Select(layer => layer.Id), Is.EqualTo(new[] { "new" }));
+            Assert.That(runtime.SceneState.Layers.Select(layer => layer.Id), Is.EqualTo(NewLayerIds));
             Assert.That(instance, Is.TypeOf<AnimationPlanPrimitiveInstance>());
             Assert.That(animation.Plans.Single().PlaybackHandleId, Is.EqualTo("crossfade"));
             Assert.That(oldLayer.Opacity, Is.EqualTo(1));
@@ -611,7 +619,7 @@ public class BuiltinPrimitiveInstanceTests
     [Test]
     public async Task FlowWaitBlocksUntilSkippedOrElapsed()
     {
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended());
+        using var view = new GameRegistration().AddBuiltins().BuildView();
         var runtime = new GameRuntime(null);
 
         var instance = view.Dispatch(Primitive(WaitEntry.TypeId, new { duration = 10 }, "wait"), runtime, CancellationToken.None);
@@ -637,7 +645,7 @@ public class BuiltinPrimitiveInstanceTests
             Types = [new GalleryTypeRegistration { TypeId = "cg", ResourceTypeId = "sprite" }],
             Items = [new GalleryItem { Id = 3, TypeId = "cg", ResourceId = "asset-cg-3" }]
         });
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(gallery: gallery));
+        using var view = new GameRegistration().AddBuiltins(gallery: gallery).BuildView();
         var runtime = new GameRuntime(null);
         var instance = view.Dispatch(
             Primitive(UnlockGalleryEntry.TypeId, new { id = 3 }),
@@ -656,7 +664,7 @@ public class BuiltinPrimitiveInstanceTests
     [Test]
     public void GalleryUnlockRejectsMissingCatalogInsteadOfSilentlySucceeding()
     {
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended());
+        using var view = new GameRegistration().AddBuiltins().BuildView();
 
         Assert.That(
             () => view.Dispatch(
@@ -669,7 +677,7 @@ public class BuiltinPrimitiveInstanceTests
     [Test]
     public void GalleryUnlockRejectsUnknownItemId()
     {
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(gallery: GalleryCatalog.Empty));
+        using var view = new GameRegistration().AddBuiltins(gallery: GalleryCatalog.Empty).BuildView();
 
         Assert.That(
             () => view.Dispatch(
@@ -719,10 +727,12 @@ public class BuiltinPrimitiveInstanceTests
             return _animation.Task.WaitAsync(cancellationToken);
         }
 
-        public Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken cancellationToken)
+        public async Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken cancellationToken, Func<double, Task>? beforeFrame = null)
         {
             Plans.Add(plan);
-            return Task.FromResult(new AnimationPlanPlayResult { Outcome = AnimationOutcome.Completed });
+            if (beforeFrame is not null && plan.LoopMode == AnimationLoopMode.Once)
+                await beforeFrame(plan.DurationFrames);
+            return new AnimationPlanPlayResult { Outcome = AnimationOutcome.Completed };
         }
 
         public bool CompleteAnimationImmediately(string playbackHandleId)
@@ -735,11 +745,14 @@ public class BuiltinPrimitiveInstanceTests
 
     private sealed class LoopingAnimationPresenter : IAnimationPresenter
     {
+        private Func<double, Task>? _beforeFrame;
+        public Task AdvanceFrameAsync(double frame) => _beforeFrame!(frame);
         public Task<AnimationOutcome> AnimateAsync(AnimationRequest request, CancellationToken cancellationToken) =>
             Task.FromResult(AnimationOutcome.Completed);
 
-        public async Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken cancellationToken)
+        public async Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken cancellationToken, Func<double, Task>? beforeFrame = null)
         {
+            _beforeFrame = beforeFrame;
             await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
             return new AnimationPlanPlayResult { Outcome = AnimationOutcome.Completed };
         }

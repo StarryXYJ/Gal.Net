@@ -58,6 +58,72 @@ public class AudioRuntimeTests
         Assert.That(diagnostics, Does.Contain("Unsupported SEffect 'seffect.lowPass'."));
     }
 
+    [Test]
+    public async Task Stop_cancels_pending_start_and_async_disposal_drains_backend_commands()
+    {
+        var host = new DelayedStartHost();
+        var runtime = new AudioRuntime(host);
+        runtime.Play(Tracks, new("bgm", "pending", AudioPlacement.Replace));
+        await host.StartEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        runtime.Stop(Tracks, new("bgm", true));
+        await runtime.DisposeAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(host.StartCancelled, Is.True);
+            Assert.That(host.StartCompleted, Is.False);
+            Assert.That(host.Actions, Is.EqualTo(new[] { AudioBackendAction.Start, AudioBackendAction.Stop }));
+        });
+    }
+
+    [Test]
+    public async Task Commands_for_one_voice_wait_for_asset_start_in_submission_order()
+    {
+        var host = new DelayedStartHost();
+        await using var runtime = new AudioRuntime(host);
+        runtime.Play(Tracks, new("bgm", "pending", AudioPlacement.Replace));
+        await host.StartEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        runtime.Pause(Tracks, "bgm");
+        runtime.Resume(Tracks, "bgm");
+        Assert.That(host.Actions, Is.EqualTo(new[] { AudioBackendAction.Start }));
+
+        host.AllowStart.TrySetResult();
+        await host.Resumed.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.That(host.Actions, Is.EqualTo(new[] { AudioBackendAction.Start, AudioBackendAction.Pause, AudioBackendAction.Resume }));
+    }
+
+    private sealed class DelayedStartHost : IAudioPlaybackHost
+    {
+        public AudioBackendCapabilities Capabilities { get; } = new(true, true, true);
+        public ISEffectCatalog SEffects { get; } = new SEffectCatalog([]);
+        public TaskCompletionSource StartEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource AllowStart { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Resumed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public List<AudioBackendAction> Actions { get; } = [];
+        public bool StartCompleted { get; private set; }
+        public bool StartCancelled { get; private set; }
+        public event Action<AudioBackendEvent>? EventReceived { add { } remove { } }
+
+        public async Task ApplyAsync(AudioBackendRequest request, CancellationToken cancellationToken = default)
+        {
+            Actions.Add(request.Action);
+            if (request.Action == AudioBackendAction.Start)
+            {
+                StartEntered.TrySetResult();
+                try
+                {
+                    await AllowStart.Task.WaitAsync(cancellationToken);
+                    StartCompleted = true;
+                }
+                catch (OperationCanceledException) { StartCancelled = true; throw; }
+            }
+            if (request.Action == AudioBackendAction.Resume) Resumed.TrySetResult();
+        }
+        public void Dispose() { }
+    }
+
     private sealed class RecordingHost : IAudioPlaybackHost
     {
         public AudioBackendCapabilities Capabilities { get; } = new(true, true, true);
@@ -66,7 +132,11 @@ public class AudioRuntimeTests
             new("seffect.gain", new HashSet<SEffectScope> { SEffectScope.Track }, [new("gain", Required: true, Minimum: 0, Maximum: 1)])
         ]);
         public List<AudioBackendRequest> Requests { get; } = [];
-        public event Action<AudioBackendEvent>? EventReceived;
+        public event Action<AudioBackendEvent>? EventReceived
+        {
+            add { }
+            remove { }
+        }
         public Task ApplyAsync(AudioBackendRequest request, CancellationToken cancellationToken = default)
         {
             lock (Requests) Requests.Add(request);

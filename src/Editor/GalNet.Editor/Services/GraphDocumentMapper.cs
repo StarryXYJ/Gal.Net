@@ -12,7 +12,7 @@ namespace GalNet.Editor.Services;
 /// <summary>Maps persisted graph data to the editor presentation model and back.</summary>
 public sealed class GraphDocumentMapper
 {
-    public GraphDocumentLoadResult Load(LoadedEditorProjectDocument loaded)
+    public static GraphDocumentLoadResult Load(LoadedEditorProjectDocument loaded)
     {
         var nodes = loaded.Document.Nodes
             .Select(dto => CreateNode(dto, loaded.GroupEntries))
@@ -34,7 +34,7 @@ public sealed class GraphDocumentMapper
         return new GraphDocumentLoadResult(nodes, edges);
     }
 
-    public EditorGraphDocument CreateDocument(
+    public static EditorGraphDocument CreateDocument(
         string projectName,
         int version,
         IEnumerable<GraphNode> nodes,
@@ -52,7 +52,7 @@ public sealed class GraphDocumentMapper
             SaveVariables = saveVariables.Select(variable => variable.Clone()).ToList()
         };
 
-    public IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> CreateGroupEntriesSnapshot(IEnumerable<GraphNode> nodes) =>
+    public static IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> CreateGroupEntriesSnapshot(IEnumerable<GraphNode> nodes) =>
         nodes.Where(node => node.NodeKind == GraphNodeKind.LinearGroup)
             .ToDictionary(
                 node => node.Id,
@@ -90,7 +90,7 @@ public sealed class GraphDocumentMapper
         return dto;
     }
 
-    private static GraphNode CreateNode(EditorGraphNodeDto dto, IReadOnlyDictionary<string, List<EditorEntryData>> groupEntries)
+    private static GraphNode CreateNode(EditorGraphNodeDto dto, Dictionary<string, List<EditorEntryData>> groupEntries)
     {
         var kind = dto.Type.Equals("Entry", StringComparison.OrdinalIgnoreCase) ? GraphNodeKind.Entry
             : dto.Type.Equals("Group", StringComparison.OrdinalIgnoreCase) ? GraphNodeKind.LinearGroup
@@ -102,7 +102,7 @@ public sealed class GraphDocumentMapper
             GraphNodeKind.LinearGroup => new Group { Id = dto.Id, Name = dto.Name },
             GraphNodeKind.ChoiceBranch => new Branch { Id = dto.Id, Name = dto.Name, BranchType = BranchType.Choice },
             GraphNodeKind.ConditionBranch => new Branch { Id = dto.Id, Name = dto.Name, BranchType = BranchType.Condition },
-            _ => throw new ArgumentOutOfRangeException()
+            _ => throw new ArgumentOutOfRangeException(nameof(dto), dto, null)
         };
         var graphNode = new GraphNode(node, kind) { X = dto.X, Y = dto.Y };
         if (kind == GraphNodeKind.LinearGroup)

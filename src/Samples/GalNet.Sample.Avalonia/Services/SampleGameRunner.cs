@@ -1,161 +1,75 @@
-using GalNet.Assets;
 using GalNet.Avalonia.GameView.Page;
-using GalNet.Avalonia.GameView.Presentation;
-using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Runtime;
+using GalNet.Core.Services;
 using GalNet.Core.Settings;
-using GalNet.Presentation.Abstractions.Runtime;
-using GalNet.Presentation.Abstractions.View;
-using GalNet.Primitives.Builtins;
-using GalNet.Rendering.Scene;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Logging;
 using GalNet.Runtime.Runtime;
-using GalNet.Sample.Avalonia.Presentation;
 
 namespace GalNet.Sample.Avalonia.Services;
 
+/// <summary>Sample page binding and run ownership; the engine owns execution and terminal states.</summary>
 internal sealed class SampleGameRunner : IAsyncDisposable
 {
     private readonly GamePageViewModel _gameplay;
     private readonly GameEngine _engine;
-    private readonly AvaloniaGamePageView _pageView;
-    private readonly SampleLayerFactory _layers;
-    private readonly SampleMediaViews _media;
-    private readonly AvaloniaEffectRuntime _effects;
-    private readonly AvaloniaAudioPlaybackHost _audio;
-    private readonly AvaloniaVideoPresenter _video;
+    private readonly SampleGamePresentation _presentation;
     private readonly PersistentSceneRestorer _restorer;
     private readonly Func<bool, string?, Task> _updateStateAsync;
     private readonly Func<Task> _runCompletedAsync;
     private readonly Func<Task> _resetPresentationAsync;
     private readonly Func<Action, Task> _onUiAsync;
-    private readonly GameRunCoordinator _run = new();
+    private Task _stateUpdate = Task.CompletedTask;
     private bool _prepared;
     private bool _disposed;
 
     private SampleGameRunner(
-        GamePageViewModel gameplay,
-        GameEngine engine,
-        AvaloniaGamePageView pageView,
-        SampleLayerFactory layers,
-        SampleMediaViews media,
-        AvaloniaEffectRuntime effects,
-        AvaloniaAudioPlaybackHost audio,
-        AvaloniaVideoPresenter video,
-        Func<bool, string?, Task> updateStateAsync,
-        Func<Task> runCompletedAsync,
-        Func<Task> resetPresentationAsync,
-        Func<Action, Task> onUiAsync)
+        GamePageViewModel gameplay, GameEngine engine, SampleGamePresentation presentation,
+        Func<bool, string?, Task> updateStateAsync, Func<Task> runCompletedAsync,
+        Func<Task> resetPresentationAsync, Func<Action, Task> onUiAsync)
     {
         _gameplay = gameplay;
         _engine = engine;
-        _pageView = pageView;
-        _layers = layers;
-        _media = media;
-        _effects = effects;
-        _audio = audio;
-        _video = video;
-        _restorer = new PersistentSceneRestorer(
-            effects,
-            pageView.ParticlePresenter,
-            pageView.AnimationPresenter,
-            pageView.LayerPresenter,
-            video);
+        _presentation = presentation;
+        var presenters = presentation.Presenters;
+        _restorer = new PersistentSceneRestorer(presentation.Effects, presenters.ParticlePresenter,
+            presenters.AnimationPresenter, presenters.LayerPresenter, presentation.Video);
         _updateStateAsync = updateStateAsync;
         _runCompletedAsync = runCompletedAsync;
         _resetPresentationAsync = resetPresentationAsync;
         _onUiAsync = onUiAsync;
-        _pageView.AdvanceRequested += OnAdvanceRequested;
+        _gameplay.AdvanceRequested += OnAdvanceRequested;
+        _engine.StateChanged += OnEngineStateChanged;
     }
 
     public static async Task<SampleGameRunner> CreateAsync(
-        GamePageViewModel gameplay,
-        GamePage page,
-        SampleGameResourceScope resources,
-        SampleSaveSession saveSession,
-        Func<bool, string?, Task> updateStateAsync,
-        Func<Task> runCompletedAsync,
-        Func<Task> resetPresentationAsync,
-        Func<Action, Task> onUiAsync,
-        CancellationToken cancellationToken)
+        GamePageViewModel gameplay, GamePage page, SampleGameResourceScope resources,
+        SampleSaveSession saveSession, ITextResolver textResolver, Func<bool, string?, Task> updateStateAsync,
+        Func<Task> runCompletedAsync, Func<Task> resetPresentationAsync,
+        Func<Action, Task> onUiAsync, CancellationToken cancellationToken)
     {
-        SampleLayerFactory? layers = null;
-        AvaloniaGamePageView? pageView = null;
-        SampleMediaViews? media = null;
-        SkiaShaderEffectProgramResolver? programs = null;
-        AvaloniaEffectRuntime? effects = null;
-        AvaloniaAudioPlaybackHost? audio = null;
-        AvaloniaVideoPresenter? video = null;
-        CompositeGameView? gameView = null;
+        var presentation = await SampleGamePresentation.CreateAsync(gameplay, page, resources, cancellationToken);
         GameEngine? engine = null;
         try
         {
-            layers = new SampleLayerFactory(resources.PreloadedTextures);
-            pageView = new AvaloniaGamePageView(gameplay, page, layers);
-            media = new SampleMediaViews(gameplay);
-            programs = new SkiaShaderEffectProgramResolver(
-                new AssetManagerShaderEffectProgramSource(resources.Assets));
-            var preload = await programs.PreloadAsync(resources.EffectPrograms, cancellationToken);
-            GameLog.Logger.Information(
-                "Preloaded {UsableEffectProgramCount}/{EffectProgramCount} effect programs in {ElapsedMilliseconds} ms",
-                preload.UsableProgramCount,
-                preload.RequestedProgramCount,
-                preload.Cache.TotalLoadTime.TotalMilliseconds);
-            effects = new AvaloniaEffectRuntime(gameplay, programs: programs);
-            audio = new AvaloniaAudioPlaybackHost(resources.Assets);
-            video = new AvaloniaVideoPresenter(resources.Assets, gameplay);
-            gameView = new CompositeGameView(BuiltinEntryModules.CreateRecommended(
-                pageView.DialoguePresenter,
-                pageView.LayerPresenter,
-                pageView.AnimationPresenter,
-                effects,
-                resources.Content.Gallery,
-                pageView.ParticlePresenter,
-                pageView.NvlPresenter,
-                audio,
-                video));
             var settings = new SettingsContainer();
+            settings.Set(resources.Content.Settings);
             settings.Set(saveSession.Settings);
-            var runtime = new GameRuntime(
-                null,
-                resources.Content.Graph.RootNodeId,
-                settings,
-                saveSession.Variables);
-            engine = new GameEngine(
-                resources.Content.Graph,
-                runtime,
-                gameView,
-                saveSession.Progress,
-                pageView.ChoicePresenter);
-            return new SampleGameRunner(
-                gameplay,
-                engine,
-                pageView,
-                layers,
-                media,
-                effects,
-                audio,
-                video,
-                updateStateAsync,
-                runCompletedAsync,
-                resetPresentationAsync,
-                onUiAsync);
+            var runtime = new GameRuntime(textResolver, resources.Content.Graph.RootNodeId, settings, saveSession.Variables);
+            engine = new GameEngine(resources.Content.Graph, runtime, presentation.View,
+                saveSession.Progress, presentation.Presenters.ChoicePresenter);
+            return new SampleGameRunner(gameplay, engine, presentation,
+                updateStateAsync, runCompletedAsync, resetPresentationAsync, onUiAsync);
         }
-        catch
+        catch (Exception error)
         {
-            engine?.Dispose();
-            if (engine is null)
-                gameView?.Dispose();
-            pageView?.Dispose();
-            layers?.Dispose();
-            media?.Dispose();
-            effects?.Dispose();
-            audio?.Dispose();
-            if (video is not null) await video.DisposeAsync();
-            if (effects is null)
-                programs?.Dispose();
+            List<Exception> errors = [error];
+            try { if (engine is not null) await engine.DisposeAsync(); }
+            catch (Exception cleanupError) { errors.Add(cleanupError); }
+            try { await presentation.DisposeAsync(); }
+            catch (Exception cleanupError) { errors.Add(cleanupError); }
+            if (errors.Count > 1) throw new AggregateException(errors);
             throw;
         }
     }
@@ -170,130 +84,100 @@ internal sealed class SampleGameRunner : IAsyncDisposable
             _engine.RestoreFrom(snapshot);
             await _restorer.RestoreAsync(_engine.Runtime, cancellationToken);
         }
-
         _prepared = true;
-        GameLog.Logger.Debug("Game runtime prepared; waiting for page transition before starting the engine flow");
     }
 
-    public void StartPrepared()
+    public async Task StartPreparedAsync(CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (!_prepared)
-            throw new InvalidOperationException("No prepared game is available to start.");
-
+        if (!_prepared) throw new InvalidOperationException("No prepared game is available to start.");
         _prepared = false;
-        _run.Start(cancellationToken => RunEngineAsync(cancellationToken));
         _ = CompleteOpeningPresentationAsync();
-        GameLog.Logger.Debug("Game engine run task created");
+        try { await _engine.AdvanceAsync(cancellationToken); }
+        finally { _presentation.Presenters.CompleteInitialPresentation(); }
     }
 
     public async Task StopAsync()
     {
-        GameLog.Logger.Debug("Cancellation requested for the active engine flow");
-        await _run.StopAsync();
+        await _engine.StopAsync();
+        _presentation.Presenters.CompleteInitialPresentation();
+        await _stateUpdate;
     }
 
     public async ValueTask DisposeAsync()
     {
         if (_disposed) return;
         _disposed = true;
-        await StopAsync();
-        await _updateStateAsync(false, null);
-        _pageView.AdvanceRequested -= OnAdvanceRequested;
-        _engine.Dispose();
-        _pageView.Dispose();
-        _layers.Dispose();
-        _media.Dispose();
-        _effects.Dispose();
-        _audio.Dispose();
-        await _video.DisposeAsync();
-        _prepared = false;
-        GameLog.Logger.Debug("Resetting scene presentation before creating the next game engine");
-        await _resetPresentationAsync();
-        GameLog.Logger.Debug("Scene presentation reset completed");
+        _gameplay.AdvanceRequested -= OnAdvanceRequested;
+        _engine.StateChanged -= OnEngineStateChanged;
+        _presentation.Presenters.CompleteInitialPresentation();
+        List<Exception>? errors = null;
+        await ReleaseAsync(() => _engine.DisposeAsync().AsTask());
+        await ReleaseAsync(() => _stateUpdate);
+        await ReleaseAsync(() => _presentation.DisposeAsync().AsTask());
+        await ReleaseAsync(() => _updateStateAsync(false, null));
+        await ReleaseAsync(_resetPresentationAsync);
+        if (errors is not null) throw new AggregateException(errors);
+
+        async Task ReleaseAsync(Func<Task> release)
+        {
+            try { await release(); }
+            catch (Exception error) { (errors ??= []).Add(error); }
+        }
     }
 
     private async Task CompleteOpeningPresentationAsync()
     {
         try
         {
-            await _pageView.InitialPresentationReady;
-            if (!_disposed)
-                await _onUiAsync(_gameplay.CompleteOpeningPresentation);
+            await _presentation.Presenters.InitialPresentationReady;
+            await _onUiAsync(() =>
+            {
+                if (!_disposed && _engine.State != GameEngineState.Stopped)
+                    _gameplay.CompleteOpeningPresentation();
+            });
         }
-        catch (Exception exception)
-        {
-            GameLog.Logger.Debug(exception, "Opening presentation did not reach an interactive boundary");
-        }
+        catch (Exception error) { GameLog.Logger.Debug(error, "Opening presentation did not become interactive"); }
     }
 
-    private async Task RunEngineAsync(CancellationToken cancellationToken)
+    private void OnAdvanceRequested() => _ = AdvanceAsync();
+
+    private async Task AdvanceAsync()
     {
-        var finished = false;
-        try
-        {
-            await _updateStateAsync(true, "Playing");
-            GameLog.Logger.Information("Game engine flow started");
-            finished = !await _engine.AdvanceAsync(cancellationToken);
-            if (finished)
-            {
-                await _updateStateAsync(true, "Game flow completed.");
-                GameLog.Logger.Information("Game engine flow completed");
-            }
-            else
-            {
-                GameLog.Logger.Debug("Game engine flow reached an interactive boundary");
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            finished = true;
-            _pageView.CompleteInitialPresentation();
-            await _updateStateAsync(true, "Game flow was cancelled.");
-            GameLog.Logger.Information("Game engine flow cancelled");
-        }
-        catch (Exception exception)
-        {
-            finished = true;
-            _pageView.FailInitialPresentation(exception);
-            await _updateStateAsync(true, $"Game flow failed: {exception.Message}");
-            GameLog.Logger.Error(exception, "Game engine flow failed");
-        }
-        finally
-        {
-            _pageView.CompleteInitialPresentation();
-            if (finished)
-                await CompleteRunAsync();
-        }
+        try { await _engine.AdvanceAsync(); }
+        catch (Exception error) { GameLog.Logger.Error(error, "Player advance failed"); }
     }
 
-    private void OnAdvanceRequested() => _ = AdvanceEngineAsync();
+    private void OnEngineStateChanged(GameEngineStateChange change) =>
+        _stateUpdate = ApplyStateAsync(_stateUpdate, change);
 
-    private async Task AdvanceEngineAsync()
+    private async Task ApplyStateAsync(Task previous, GameEngineStateChange change)
     {
-        try
-        {
-            if (!await _engine.AdvanceAsync())
-            {
-                await _updateStateAsync(true, "Game flow completed.");
-                GameLog.Logger.Information("Game engine flow completed");
-                await CompleteRunAsync();
-            }
-        }
-        catch (Exception exception)
-        {
-            _pageView.FailInitialPresentation(exception);
-            await _updateStateAsync(true, $"Game flow failed: {exception.Message}");
-            GameLog.Logger.Error(exception, "Player advance failed");
-            await CompleteRunAsync();
-        }
-    }
-
-    private async Task CompleteRunAsync()
-    {
+        await previous;
         if (_disposed) return;
-        _pageView.CompleteInitialPresentation();
-        await _updateStateAsync(false, null);
-        await _runCompletedAsync();
+        try
+        {
+            var message = change.State switch
+            {
+                GameEngineState.Running => "Playing",
+                GameEngineState.Completed => "Game flow completed.",
+                GameEngineState.Faulted => $"Game flow failed: {change.Error?.Message}",
+                GameEngineState.Stopped => "Game flow was cancelled.",
+                _ => null
+            };
+            GameLog.Logger.Information("Game engine state changed to {State}", change.State);
+            if (change.Error is { } error)
+            {
+                _presentation.Presenters.FailInitialPresentation(error);
+                GameLog.Logger.Error(error, "Game engine flow failed");
+            }
+            await _updateStateAsync(change.State == GameEngineState.Running, message);
+            if (change.State is GameEngineState.Completed or GameEngineState.Faulted)
+            {
+                _presentation.Presenters.CompleteInitialPresentation();
+                await _runCompletedAsync();
+            }
+        }
+        catch (Exception error) { GameLog.Logger.Error(error, "Game state UI update failed"); }
     }
 }

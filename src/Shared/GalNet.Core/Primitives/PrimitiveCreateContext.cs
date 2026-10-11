@@ -8,7 +8,7 @@ namespace GalNet.Core.Primitives;
 public sealed class PrimitiveCreateContext
 {
     public PrimitiveCreateContext(
-        PrimitiveEntryBase definition,
+        EntryDefinition definition,
         PrimitiveEntry entry,
         IGameRuntime runtime,
         CancellationToken scopeCancellation)
@@ -22,11 +22,11 @@ public sealed class PrimitiveCreateContext
         ScopeCancellation = scopeCancellation;
     }
 
-    public PrimitiveEntryBase Definition { get; }
+    public EntryDefinition Definition { get; }
     public PrimitiveEntry Entry { get; }
     public IGameRuntime Runtime { get; }
     public CancellationToken ScopeCancellation { get; }
-    public DynamicParameterTable Parameters => Definition.Parameters;
+    public DynamicParameterTable Parameters => Definition.DynamicParameters!;
     public JsonElement Arguments => Entry.Arguments;
     public string? BatchId => Entry.BatchId;
 }

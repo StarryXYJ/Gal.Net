@@ -12,7 +12,7 @@ using GalNet.Runtime.Runtime;
 namespace GalNet.Runtime.Engine;
 
 /// <summary>Owns story flow and all active primitive instances for one game run.</summary>
-public sealed class GameEngine : IDisposable
+public sealed class GameEngine : IDisposable, IAsyncDisposable
 {
     private readonly Graph _graph;
     private readonly IGameRuntime _runtime;
@@ -20,7 +20,8 @@ public sealed class GameEngine : IDisposable
     private readonly IChoicePresenter? _choicePresenter;
     private readonly IGameProgressService? _progress;
     private readonly SemaphoreSlim _dispatchGate = new(1, 1);
-    private readonly CancellationTokenSource _scopeCancellation = new();
+    private CancellationTokenSource _scopeCancellation = new();
+    private IGameRuntime _dispatchRuntime;
     private readonly List<ActivePrimitive> _active = [];
     private GameSnapshot _lastStableSnapshot;
     private PendingChoice? _pendingChoice;
@@ -28,7 +29,18 @@ public sealed class GameEngine : IDisposable
     private string? _executingGroupNodeId;
     private long _groupExecutionId;
     private long _nextSequence;
-    private bool _disposed;
+    private readonly object _lifecycleSync = new();
+    private readonly List<Task> _backgroundTasks = [];
+    private readonly Queue<GameEngineStateChange> _stateChanges = new();
+    private readonly object _notificationSync = new();
+    private GameEngineState _reportedState = GameEngineState.Ready;
+    private Task? _stopTask;
+    private Task? _disposeTask;
+    private int _stopRequested;
+    private bool _started;
+    private bool _stopped;
+    private bool _publishingState;
+    private volatile bool _disposed;
 
     public GameEngine(
         Graph graph,
@@ -55,17 +67,32 @@ public sealed class GameEngine : IDisposable
         _graph = graph ?? throw new ArgumentNullException(nameof(graph));
         _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
         _view = view ?? throw new ArgumentNullException(nameof(view));
+        _dispatchRuntime = new RunScopedRuntime(_runtime, _scopeCancellation.Token);
+        var entries = graph.Nodes.OfType<Group>().SelectMany(group => group.Entries).ToArray();
+        if (entries.Any(entry => entry is not PrimitiveEntry { IsGeneric: true }))
+            throw new InvalidOperationException("The game graph must contain compiled generic primitives, not authoring entries.");
+        var missing = entries.OfType<PrimitiveEntry>()
+            .Where(entry => !_view.CanExecute(entry.Type)).Select(entry => entry.Type).Distinct().ToArray();
+        if (missing.Length > 0)
+            throw new InvalidOperationException($"Game instructions have no implementation: {string.Join(", ", missing)}.");
         _progress = progress;
         _choicePresenter = choicePresenter;
         _lastStableSnapshot = _runtime.CreateSnapshot();
     }
 
     public event Action<GameSnapshot>? CheckpointCreated;
+    /// <summary>Published outside the execution lock. Handlers must not synchronously wait for engine tasks.</summary>
+    public event Action<GameEngineStateChange>? StateChanged;
     public IGameRuntime Runtime => _runtime;
-    public GameSnapshot LastStableSnapshot => _lastStableSnapshot;
+    public GameSnapshot LastStableSnapshot => SnapshotCopy.Clone(_lastStableSnapshot);
     public string CurrentNodeId => _runtime.CurrentNodeId;
     public int EntryIndex => _runtime.EntryIndex;
     public bool IsRunning { get; private set; }
+    public GameEngineState State => _stopped ? GameEngineState.Stopped
+        : Volatile.Read(ref _stopRequested) != 0 ? _reportedState
+        : _flowError is not null ? GameEngineState.Faulted
+        : !_started ? GameEngineState.Ready
+        : IsRunning ? GameEngineState.Running : GameEngineState.Completed;
 
     /// <summary>Applies one player advance and runs until the next blocking boundary.</summary>
     public async Task<bool> AdvanceAsync(CancellationToken cancellationToken = default)
@@ -74,8 +101,13 @@ public sealed class GameEngine : IDisposable
         await _dispatchGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            if (Volatile.Read(ref _stopRequested) != 0) return false;
+            ThrowIfDisposed();
             ThrowFlowError();
+            if (_started && !IsRunning) return false;
+            _started = true;
             IsRunning = !_runtime.IsGameEnded;
+            CaptureStateChange();
             RemoveCompleted();
             UpdateLastStableSnapshot();
 
@@ -98,53 +130,125 @@ public sealed class GameEngine : IDisposable
             ThrowFlowError();
             return IsRunning;
         }
+        catch (OperationCanceledException) when (_scopeCancellation.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch (Exception exception)
+        {
+            _flowError ??= exception;
+            IsRunning = false;
+            throw;
+        }
         finally
         {
+            CaptureStateChange();
             _dispatchGate.Release();
+            PublishStateChanges();
         }
     }
 
-    public GameSnapshot CreateSaveData() => _lastStableSnapshot;
+    public GameSnapshot CreateSaveData() => SnapshotCopy.Clone(_lastStableSnapshot);
 
     public void RestoreFrom(GameSnapshot data)
     {
         ArgumentNullException.ThrowIfNull(data);
         ThrowIfDisposed();
+        if (data.Version != GameSnapshot.CurrentFormatVersion)
+            throw new InvalidDataException($"Unsupported save version '{data.Version}'.");
+        data = SnapshotCopy.Clone(data);
         _dispatchGate.Wait();
         try
         {
+            ThrowIfDisposed();
+            if (Volatile.Read(ref _stopRequested) != 0)
+                throw new InvalidOperationException("A stopped engine cannot be restored. Create a new engine.");
             CancelPendingChoice();
             ClearActive();
+            var previousScope = _scopeCancellation;
+            previousScope.Cancel();
+            previousScope.Dispose();
             _runtime.RestoreFrom(data);
-            _lastStableSnapshot = data;
+            _scopeCancellation = new CancellationTokenSource();
+            _dispatchRuntime = new RunScopedRuntime(_runtime, _scopeCancellation.Token);
+            _lastStableSnapshot = _runtime.CreateSnapshot();
             _executingGroupNodeId = null;
             _flowError = null;
             IsRunning = true;
+            _started = false;
         }
         finally
         {
+            CaptureStateChange();
             _dispatchGate.Release();
+            PublishStateChanges();
         }
     }
 
-    public void Dispose()
+    /// <summary>Terminal stop: cancel execution and drain internal continuations without owning the view.</summary>
+    public Task StopAsync()
     {
-        if (_disposed)
-            return;
-        _disposed = true;
-        _scopeCancellation.Cancel();
-        _dispatchGate.Wait();
+        lock (_lifecycleSync)
+        {
+            Interlocked.Exchange(ref _stopRequested, 1);
+            return _stopTask ??= Task.Run(StopCoreAsync);
+        }
+    }
+
+    public void Dispose() => DisposeAsync().AsTask().GetAwaiter().GetResult();
+
+    public ValueTask DisposeAsync()
+    {
+        lock (_lifecycleSync)
+        {
+            _disposed = true;
+            return new ValueTask(_disposeTask ??= DisposeCoreAsync());
+        }
+    }
+
+    private async Task DisposeCoreAsync()
+    {
+        try { await StopAsync().ConfigureAwait(false); }
+        finally { _scopeCancellation.Dispose(); }
+    }
+
+    private async Task StopCoreAsync()
+    {
+        Exception? cancellationError = null;
+        var scope = _scopeCancellation;
+        try { scope.Cancel(); }
+        catch (ObjectDisposedException) { }
+        catch (Exception exception) { cancellationError = exception; }
+        await _dispatchGate.WaitAsync().ConfigureAwait(false);
         try
         {
-            CancelPendingChoice();
+            // Restore may have replaced the scope while stop was waiting for the gate.
+            try
+            {
+                if (!ReferenceEquals(scope, _scopeCancellation)) _scopeCancellation.Cancel();
+                CancelPendingChoice();
+            }
+            catch (Exception exception) { cancellationError = exception; }
             ClearActive();
             IsRunning = false;
         }
         finally
         {
             _dispatchGate.Release();
-            _scopeCancellation.Dispose();
         }
+        Task[] background;
+        lock (_lifecycleSync) background = _backgroundTasks.ToArray();
+        await Task.WhenAll(background).ConfigureAwait(false);
+        await _dispatchGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            _stopped = true;
+            CaptureStateChange();
+        }
+        finally { _dispatchGate.Release(); }
+        PublishStateChanges();
+        if (cancellationError is not null)
+            throw new AggregateException("Game scope cancellation failed.", cancellationError);
     }
 
     private void ContinueUntilBlocked()
@@ -189,12 +293,13 @@ public sealed class GameEngine : IDisposable
         BeginGroupExecution(group);
         while (_runtime.EntryIndex < group.Entries.Count && !HasBlockingInstance())
         {
+            _scopeCancellation.Token.ThrowIfCancellationRequested();
             var entry = group.Entries[_runtime.EntryIndex];
             PrimitiveInstance? instance = null;
             if (_runtime.EvaluateCondition(entry.Condition) && entry is PrimitiveEntry primitive)
                 instance = Dispatch(group, primitive);
             else if (entry is not PrimitiveEntry)
-                GameLog.Logger.Warning("Runtime ignored composite entry '{EntryType}'.", entry.Type);
+                throw new InvalidOperationException($"Runtime cannot execute authoring entry '{entry.Type}'.");
 
             _runtime.SetEntryIndex(_runtime.EntryIndex + 1);
             if (instance is not null)
@@ -213,33 +318,16 @@ public sealed class GameEngine : IDisposable
         UpdateLastStableSnapshot();
     }
 
-    private PrimitiveInstance? Dispatch(Group group, PrimitiveEntry entry)
+    private PrimitiveInstance Dispatch(Group group, PrimitiveEntry entry)
     {
         if (!entry.IsGeneric)
-        {
-            GameLog.Logger.Warning("Runtime ignored non-generic primitive '{EntryType}'.", entry.Type);
-            return null;
-        }
+            throw new InvalidOperationException($"Runtime cannot execute authoring entry '{entry.Type}'.");
 
-        PrimitiveInstance? instance;
-        try
-        {
-            instance = _view.Dispatch(entry, _runtime, _scopeCancellation.Token);
-        }
-        catch (OperationCanceledException) when (_scopeCancellation.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            GameLog.Logger.Error(exception, "Primitive '{PrimitiveType}' failed to dispatch and execution continued.", entry.Type);
-            return null;
-        }
+        var instance = _view.Dispatch(entry, _dispatchRuntime, _scopeCancellation.Token);
 
         if (instance is null)
         {
-            GameLog.Logger.Warning("Primitive '{PrimitiveType}' is not registered.", entry.Type);
-            return null;
+            throw new InvalidOperationException($"Instruction '{entry.Type}' returned no instance.");
         }
 
         if (entry.Type == "dialogue.text")
@@ -302,7 +390,7 @@ public sealed class GameEngine : IDisposable
             cancellation.Dispose();
             throw;
         }
-        _ = CompleteChoiceAsync(pending, selection);
+        StartBackground(() => CompleteChoiceAsync(pending, selection));
     }
 
     private async Task CompleteChoiceAsync(PendingChoice pending, Task<int> selection)
@@ -310,7 +398,7 @@ public sealed class GameEngine : IDisposable
         int selected;
         try
         {
-            selected = await selection.ConfigureAwait(false);
+            selected = await selection.WaitAsync(pending.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (pending.Cancellation.IsCancellationRequested)
         {
@@ -325,7 +413,7 @@ public sealed class GameEngine : IDisposable
         await _dispatchGate.WaitAsync().ConfigureAwait(false);
         try
         {
-            if (!ReferenceEquals(_pendingChoice, pending) || _disposed)
+            if (!ReferenceEquals(_pendingChoice, pending) || _disposed || Volatile.Read(ref _stopRequested) != 0)
                 return;
             _pendingChoice = null;
             pending.Cancellation.Dispose();
@@ -348,7 +436,9 @@ public sealed class GameEngine : IDisposable
         }
         finally
         {
+            CaptureStateChange();
             _dispatchGate.Release();
+            PublishStateChanges();
         }
     }
 
@@ -357,7 +447,7 @@ public sealed class GameEngine : IDisposable
         await _dispatchGate.WaitAsync().ConfigureAwait(false);
         try
         {
-            if (!ReferenceEquals(_pendingChoice, pending) || _disposed)
+            if (!ReferenceEquals(_pendingChoice, pending) || _disposed || Volatile.Read(ref _stopRequested) != 0)
                 return;
             _pendingChoice = null;
             pending.Cancellation.Dispose();
@@ -366,19 +456,21 @@ public sealed class GameEngine : IDisposable
         }
         finally
         {
+            CaptureStateChange();
             _dispatchGate.Release();
+            PublishStateChanges();
         }
     }
 
     private void OnBlockingCompleted(PrimitiveInstance instance) =>
-        _ = ContinueAfterBlockingCompletionAsync(instance);
+        StartBackground(() => ContinueAfterBlockingCompletionAsync(instance));
 
     private async Task ContinueAfterBlockingCompletionAsync(PrimitiveInstance instance)
     {
         await _dispatchGate.WaitAsync().ConfigureAwait(false);
         try
         {
-            if (_disposed || !_active.Any(item => ReferenceEquals(item.Instance, instance)))
+            if (_disposed || Volatile.Read(ref _stopRequested) != 0 || !_active.Any(item => ReferenceEquals(item.Instance, instance)))
                 return;
             RemoveCompleted();
             UpdateLastStableSnapshot();
@@ -394,7 +486,54 @@ public sealed class GameEngine : IDisposable
         }
         finally
         {
+            CaptureStateChange();
             _dispatchGate.Release();
+            PublishStateChanges();
+        }
+    }
+
+    private void StartBackground(Func<Task> work)
+    {
+        lock (_lifecycleSync)
+        {
+            if (_disposed || Volatile.Read(ref _stopRequested) != 0) return;
+            _backgroundTasks.RemoveAll(task => task.IsCompleted);
+            _backgroundTasks.Add(Task.Run(work));
+        }
+    }
+
+    // Called under the execution lock; delivery is deferred until after it is released.
+    private void CaptureStateChange()
+    {
+        if (Volatile.Read(ref _stopRequested) != 0 && !_stopped) return;
+        var state = State;
+        if (state == _reportedState) return;
+        _reportedState = state;
+        lock (_notificationSync)
+            _stateChanges.Enqueue(new GameEngineStateChange(state, state == GameEngineState.Faulted ? _flowError : null));
+    }
+
+    private void PublishStateChanges()
+    {
+        lock (_notificationSync)
+        {
+            if (_publishingState) return;
+            _publishingState = true;
+        }
+        while (true)
+        {
+            GameEngineStateChange change;
+            lock (_notificationSync)
+            {
+                if (!_stateChanges.TryDequeue(out change!))
+                {
+                    _publishingState = false;
+                    return;
+                }
+            }
+            foreach (var handler in StateChanged?.GetInvocationList() ?? [])
+                try { ((Action<GameEngineStateChange>)handler)(change); }
+                catch (Exception exception) { GameLog.Logger.Error(exception, "Game state observer failed"); }
         }
     }
 
@@ -466,7 +605,7 @@ public sealed class GameEngine : IDisposable
         if (HasBlockingInstance() || _pendingChoice is not null)
             return;
         _lastStableSnapshot = _runtime.CreateSnapshot();
-        CheckpointCreated?.Invoke(_lastStableSnapshot);
+        CheckpointCreated?.Invoke(SnapshotCopy.Clone(_lastStableSnapshot));
     }
 
     private void CancelPendingChoice()
@@ -475,8 +614,8 @@ public sealed class GameEngine : IDisposable
         _pendingChoice = null;
         if (pending is null)
             return;
-        pending.Cancellation.Cancel();
-        pending.Cancellation.Dispose();
+        try { pending.Cancellation.Cancel(); }
+        finally { pending.Cancellation.Dispose(); }
     }
 
     private void ThrowFlowError()
@@ -485,11 +624,7 @@ public sealed class GameEngine : IDisposable
             throw new InvalidOperationException("The game flow failed.", exception);
     }
 
-    private void ThrowIfDisposed()
-    {
-        if (_disposed)
-            throw new ObjectDisposedException(nameof(GameEngine));
-    }
+    private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
 
     private sealed record ActivePrimitive(
         long GroupExecutionId,
@@ -501,5 +636,8 @@ public sealed class GameEngine : IDisposable
     private sealed record PendingChoice(
         string BranchId,
         IReadOnlyList<VisibleChoice> Options,
-        CancellationTokenSource Cancellation);
+        CancellationTokenSource Cancellation)
+    {
+        public CancellationToken Token { get; } = Cancellation.Token;
+    }
 }

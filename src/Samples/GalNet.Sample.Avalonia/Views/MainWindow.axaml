@@ -2,29 +2,36 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="using:GalNet.Game.Controls"
         xmlns:debug="using:GalNet.Sample.Avalonia.Debug"
+        xmlns:loc="clr-namespace:GalNet.Sample.Avalonia.MarkupExtensions"
+        xmlns:views="using:GalNet.Sample.Avalonia.Views"
         xmlns:ursa="https://irihi.tech/ursa"
         x:Class="GalNet.Sample.Avalonia.Views.MainWindow"
         Width="1280" Height="720" MinWidth="800" MinHeight="500"
         Background="Black"
         Icon="/Assets/avalonia-logo.ico"
-        Title="GalNet Avalonia Sample Player">
+        Title="{loc:Localize App.Title}">
   <ursa:UrsaWindow.LeftContent>
     <Menu x:Name="DebugMenu" IsVisible="False" x:DataType="debug:SampleDebugViewModel">
-      <MenuItem Header="调试">
-        <MenuItem Header="清空游戏数据..." Command="{Binding ClearPlayerStateCommand}" />
-        <MenuItem Header="重新加载游戏资源并重启" Command="{Binding ReloadGameResourcesCommand}" />
+      <MenuItem Header="{loc:Localize Debug.Menu}">
+        <MenuItem Header="{loc:Localize Debug.ClearPlayerState}" Command="{Binding ClearPlayerStateCommand}" />
+        <MenuItem Header="{loc:Localize Debug.ReloadGameResources}" Command="{Binding ReloadGameResourcesCommand}" />
         <Separator />
-        <MenuItem Header="存档">
-          <MenuItem Header="仅进度存档" Command="{Binding SaveProgressOnlyCommand}" />
-          <MenuItem Header="galgroup 存档" Command="{Binding SaveGalGroupStartCommand}" />
+        <MenuItem Header="{loc:Localize Debug.Save}">
+          <MenuItem Header="{loc:Localize Debug.SaveProgressOnly}" Command="{Binding SaveProgressOnlyCommand}" />
+          <MenuItem Header="{loc:Localize Debug.SaveGalgroup}" Command="{Binding SaveGalGroupStartCommand}" />
         </MenuItem>
         <Separator />
-        <MenuItem Header="日志面板 (L)" Command="{Binding ShowLogCommand}" />
-        <MenuItem Header="打开日志目录" Command="{Binding OpenLogDirectoryCommand}" />
+        <MenuItem Header="{loc:Localize Debug.ShowLog}" Command="{Binding ShowLogCommand}" />
+        <MenuItem Header="{loc:Localize Debug.OpenLogDirectory}" Command="{Binding OpenLogDirectoryCommand}" />
       </MenuItem>
     </Menu>
   </ursa:UrsaWindow.LeftContent>
-  <controls:GameCanvasHost x:Name="GameCanvas"
-                           DesignWidth="1920"
-                           DesignHeight="1080" />
+  <Grid>
+    <controls:GameCanvasHost x:Name="GameCanvas" IsVisible="False"
+                             DesignWidth="1920"
+                             DesignHeight="1080" />
+    <views:LanguageSelectionView x:Name="LanguageSelection" IsVisible="False" />
+    <TextBlock x:Name="StartupStatus" HorizontalAlignment="Center" VerticalAlignment="Center"
+               Foreground="White" Text="{loc:Localize Onboarding.Loading}" TextWrapping="Wrap" MaxWidth="600" />
+  </Grid>
 </ursa:UrsaWindow>

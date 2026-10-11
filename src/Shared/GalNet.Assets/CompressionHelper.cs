@@ -33,7 +33,7 @@ public static class CompressionHelper
         using var output = new MemoryStream();
         using (var compressor = CreateCompressor(output, mode))
         {
-            await compressor.WriteAsync(data, 0, data.Length, ct);
+            await compressor.WriteAsync(data, ct);
         }
         return output.ToArray();
     }

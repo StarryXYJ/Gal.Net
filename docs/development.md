@@ -47,83 +47,37 @@ var reputationParameters = new DynamicParameterTable(
 
 `DynamicParameterDescriptor` 可声明 required、JSON 默认值与 JSON constraints。若主要目的是提供编辑器控件提示，也可用 `EntrySchema.DynamicParameters(...)` 由 `EntryParameterType` 构建 schema。
 
-### 2. 选择原语的生命周期
+### 2. 分别定义契约和执行模块
 
-同步且立即结束的逻辑使用 `ImmediatePrimitiveInstance`：
-
-```csharp
-new DefaultPrimitiveEntryBase(
-    "mygame.reputation.add",
-    reputationParameters,
-    context => new ImmediatePrimitiveInstance(() =>
-    {
-        var faction = context.Arguments.GetProperty("faction").GetString()!;
-        var amount = context.Arguments.GetProperty("amount").GetInt32();
-        reputationService.Add(faction, amount);
-    }, batchId: context.BatchId));
-```
-
-有等待、动画或用户跳过语义时，继承 `PrimitiveInstance`：
+schema 不引用游戏服务或平台对象。执行模块持有共享数据和服务，贡献完整指令 ID 与实例工厂：
 
 ```csharp
-public sealed class WaitForSignalInstance : PrimitiveInstance
+using GalNet.Presentation.Abstractions.Execution;
+
+public sealed class MyGameSchemas : EntryModuleBase
 {
-    private readonly IMySignalService _signals;
-    private readonly string _signal;
-    private CancellationTokenSource? _cancellation;
-
-    public WaitForSignalInstance(IMySignalService signals, string signal,
-        string? batchId, CancellationToken scopeCancellation) : base(batchId)
-    {
-        _signals = signals;
-        _signal = signal;
-        ScopeCancellation = scopeCancellation;
-    }
-
-    private CancellationToken ScopeCancellation { get; }
-    public override bool IsBlocking => true;
-    public override bool IsSkippable => true;
-
-    protected override async void OnDispatch()
-    {
-        _cancellation = CancellationTokenSource.CreateLinkedTokenSource(ScopeCancellation);
-        try { await _signals.WaitAsync(_signal, _cancellation.Token); }
-        catch (OperationCanceledException) { }
-        finally { TryComplete(); }
-    }
-
-    protected override void OnSkip() => _cancellation?.Cancel();
-}
-```
-
-原语实现必须遵守以下规则：
-
-- 让基类调用 `Dispatch()`；只在 `OnDispatch()` 启动一次行为。
-- 成功、取消或错误路径最终都只调用一次 `TryComplete()`。
-- 创建实例时原样传入 `context.BatchId`；不要生成不同的 batch ID。
-- `OnSkip()` 必须幂等，且只处理本实例自己的资源。
-- non-blocking 原语在返回前提交可存档状态；平台 Task、控件和播放游标不属于存档。
-
-### 3. 将定义组成模块
-
-```csharp
-public sealed class MyGameModule : EntryModuleBase
-{
-    private static readonly DynamicParameterTable ReputationParameters = new(
-    [
-        new DynamicParameterDescriptor("faction", typeof(string), isRequired: true),
-        new DynamicParameterDescriptor(
-            "amount", typeof(int),
-            defaultValue: JsonSerializer.SerializeToElement(1))
-    ]);
-
-    public MyGameModule(IReputationService reputationService)
+    public MyGameSchemas()
         : base("mygame",
         [
             new DefaultPrimitiveEntryBase(
                 "mygame.reputation.add",
-                ReputationParameters,
-                context => new ImmediatePrimitiveInstance(() =>
+                new DynamicParameterTable(
+                [
+                    new DynamicParameterDescriptor("faction", typeof(string), isRequired: true),
+                    new DynamicParameterDescriptor("amount", typeof(int),
+                        defaultValue: JsonSerializer.SerializeToElement(1))
+                ]))
+        ])
+    { }
+}
+
+public sealed class MyGameModule : PrimitiveModule
+{
+    public MyGameModule(IReputationService reputationService)
+        : base(
+        [
+            new PrimitiveImplementation("mygame.reputation.add", context =>
+                new ImmediatePrimitiveInstance(() =>
                 {
                     var faction = context.Arguments.GetProperty("faction").GetString()!;
                     var amount = context.Arguments.GetProperty("amount").GetInt32();
@@ -134,28 +88,50 @@ public sealed class MyGameModule : EntryModuleBase
 }
 ```
 
-模块构造时会冻结 primitive 与 composite 两张表，并拒绝模块内或跨模块的重复 type ID。模块有资源时覆写 `Dispose()`；`CompositeGameView` 会按相反顺序释放已挂载模块。
+不必逐条在组合根注册。一个领域模块可以贡献多个指令，并在实例间共享轨道、缓存或服务；也可用 `RegisterInstruction` 单独贡献指令。同前缀可以由多个模块贡献不同指令，只有完整 type ID 重复才冲突。schema 模块无资源生命周期；执行模块可覆写 `Dispose` / `DisposeAsync`。
 
-### 4. 同时接入作者期与运行期
+异步或可跳过行为继承 `PrimitiveInstance`，在 `OnDispatch` 启动受 scope cancellation 控制的任务；成功、取消和失败都应完成实例，失败需明确诊断。不要用未经观察异常的 `async void`。创建实例时原样传入 `context.BatchId`，`OnSkip` 必须幂等且只处理自己的资源。non-blocking 原语应先提交可存档状态，再启动展示。
 
-必须让编辑器/编译器的 target profile 与运行时 view 使用**等价的模块集合和 schema**。实际宿主可以各自创建模块实例（例如编辑器没有 renderer，游戏有 renderer），但 type ID、参数和 composite 展开契约必须一致。
+### 3. 在游戏组合根独立注册
 
 ```csharp
-// 编辑器或导出器：决定允许作者使用哪些 entry。
-var authoringModules = new IEntryModule[]
-{
-    new MyGameModule(editorReputationService)
-};
-var profile = new TargetProfileEntryCatalog(authoringModules);
+using GalNet.Presentation.Abstractions.View;
 
-// 游戏会话：提供同一批 primitive 的实际工厂和平台依赖。
-using IGameView view = new CompositeGameView(
-[
-    new MyGameModule(runtimeReputationService)
-]);
+// 编译器只需契约，不构造执行服务。
+using var registration = new GameRegistration()
+    .RegisterSchema(new MyGameSchemas())
+    .RegisterImplementation(new MyGameModule(reputationService));
+var profile = registration.BuildCatalog();
+
+// BuildView 冻结注册并将执行模块所有权转移给 view。
+await using var view = registration.BuildView();
 ```
 
-只把模块挂到 `CompositeGameView` 会使 Runtime 能执行、编辑器却不能作者化/编译；只挂到 `TargetProfileEntryCatalog` 则相反。不要依赖全局内置目录作为回退。
+编译期 target profile 和运行期 view 使用等价的 schema；执行模块只在运行期创建。宿主先停止/释放 Engine，再异步释放 view，最后释放它借用的 presenter 和平台资源。注册失败时释放 registration，避免遗留已创建的执行模块。
+
+平台实现只需要提供 presenter/后端，不需要实现 Runner、跟踪 Engine continuation 或自行推断剧情结束。宿主调用 `AdvanceAsync()`，通过 `StateChanged` 接收统一运行状态，关闭时调用 `StopAsync()` 或异步释放 Engine。选择或阻塞实例自然完成后的推进与终态通知由 Engine 负责。页面切换前的快照恢复及 Builtins 展示重放仍由宿主编排。
+
+### 4. 自由选择内置能力
+
+```csharp
+// 主入口：所有内置 schema 与实现，平台能力通过端口提供。
+await using var full = new GameRegistration()
+    .AddBuiltins(dialoguePresenter: dialogue, audioHost: audioHost)
+    .BuildView();
+
+// 内置 schema + 部分内置逻辑 + 自己的实现。
+await using var custom = new GameRegistration()
+    .AddBuiltinSchemas()
+    .AddBuiltinVariables()
+    .RegisterImplementation(new MyPlatformModule())
+    .BuildView();
+```
+
+`AddBuiltinSchemas` 不创建播放器或运行期状态；`AddBuiltinImplementations` 注册全部内置实现；`AddBuiltinAudio`、`AddBuiltinAnimations`、`AddBuiltinVariables` 等按领域选择实现。也可以完全不使用内置契约。
+
+只注册 schema 的 view 可以构建，但不能执行尚未提供实现的指令。Engine 创建时检查 Graph 引用的所有 primitive；缺失实现直接报错，不静默跳过。没有 presenter 的内置模块不等于具备平台播放能力：部分模块可只提交状态，对话等需要交互的能力仍要求对应 presenter。
+
+音频用组合而非强制继承：`BuiltinAudioModule`/`AudioRuntime` 管理轨道与 voice，`IAudioPlaybackHost` 管理平台播放。Avalonia 可提供 LibVLC host，Unity 可提供原生音频 host；若轨道语义也需替换，只注册内置 schema 和自己的音频执行模块。
 
 ## 创建 composite（可选）
 
@@ -200,7 +176,7 @@ public sealed class AlertCompositeEntry : CompositeEntry
 
 - 自定义 type ID 在目标 profile 中存在，且无重复。
 - Raw Group 可编译为只含 primitive 的 `.galgroup`。
-- Runtime 的 `CompositeGameView` 挂载等价模块集合。
+- Runtime 的 view 使用等价 schema，且 Graph 所需指令都有实现。
 - 参数默认值、必填项和 JSON 类型有测试。
 - blocking、skip、取消和完成事件分别有测试。
 - 任何影响长期画面的状态先写入可恢复的状态模型，再调用平台呈现。

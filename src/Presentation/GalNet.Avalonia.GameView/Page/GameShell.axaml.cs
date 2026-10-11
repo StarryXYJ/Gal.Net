@@ -60,6 +60,7 @@ public partial class GameShell : UserControl, IDisposable
             _gameplay.ScreenshotRequested -= OnScreenshotRequested;
             _gameplay.ReturnToTitleRequested -= OnReturnToTitleRequested;
         }
+        GC.SuppressFinalize(this);
     }
 
     private void OnSessionPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs eventArgs)

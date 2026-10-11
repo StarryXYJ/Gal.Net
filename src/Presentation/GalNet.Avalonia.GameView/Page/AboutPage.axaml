@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
              xmlns:local="using:GalNet.Avalonia.GameView.Page"
              xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
              x:Class="GalNet.Avalonia.GameView.Page.AboutPage"
@@ -9,13 +10,13 @@
             CornerRadius="10" HorizontalAlignment="Center" VerticalAlignment="Center">
       <Grid RowDefinitions="Auto,*" RowSpacing="26">
         <Grid ColumnDefinitions="*,Auto">
-          <TextBlock Text="About" FontSize="32" FontWeight="SemiBold" VerticalAlignment="Center" />
-          <Button Grid.Column="1" Classes="player-link" Content="Back" Command="{Binding BackCommand}"
+          <TextBlock Text="{text:PlayerText Title.About, 'About'}" FontSize="32" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Classes="player-link" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}"
                   VerticalAlignment="Center" />
         </Grid>
         <StackPanel Grid.Row="1" Spacing="12">
           <TextBlock Text="{Binding GameTitle}" FontSize="20" FontWeight="SemiBold" />
-          <TextBlock Text="This default player shell is fully replaceable by a game client without changing its runtime or game data."
+          <TextBlock Text="{text:PlayerText About.Description, 'This default player shell is fully replaceable by a game client without changing its runtime or game data.'}"
                      TextWrapping="Wrap" Opacity="0.72" />
         </StackPanel>
       </Grid>

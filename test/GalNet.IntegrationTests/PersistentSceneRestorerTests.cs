@@ -81,7 +81,7 @@ public sealed class PersistentSceneRestorerTests
 
         public Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(
             AnimationPlanDefinition plan,
-            CancellationToken cancellationToken) =>
+            CancellationToken cancellationToken, Func<double, Task>? beforeFrame = null) =>
             Task.FromResult(new AnimationPlanPlayResult { Outcome = AnimationOutcome.Completed });
 
         public bool CompleteAnimationImmediately(string playbackHandleId) => false;

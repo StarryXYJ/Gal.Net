@@ -1,0 +1,15 @@
+{
+  "group.intro.entry.intro-line-1.content": "The Runtime sample now builds from Raw authoring content. The test BGM is fading in on the bgm track.",
+  "group.intro.entry.intro-video-background.content": "niko.mp4 is a scene layer below the portrait, with rotation, scale and opacity. This non-blocking video lets dialogue advance. Advance to stop it.",
+  "group.intro.entry.intro-line-effect-on.content": "A seffect.gain effect is now active, ducking this BGM track while the scene continues.",
+  "group.intro.entry.intro-line-effect-off.content": "The track effect has been removed and the BGM volume is restored.",
+  "group.intro.entry.intro-line-low-pass.content": "A low-pass SEffect now removes the BGM's higher bands. Advance to remove it.",
+  "group.intro.entry.intro-line-high-pass.content": "A high-pass SEffect now removes the BGM's lower bands. Advance to restore the full track.",
+  "group.intro.entry.intro-line-2.content": "The portrait is rapidly bobbing through a non-blocking additive loop.",
+  "group.intro.entry.intro-line-3.content": "The blocking rotation has completed before this line is shown.",
+  "group.intro.entry.intro-line-4.content": "Now the non-blocking portrait loop is stopped explicitly.",
+  "group.intro.entry.nvl-append-rich.content": "<b>NVL is visible.</b>\\skip <color=#8E8AB8>Rich text</color> and typewriter skip boundaries are active.",
+  "group.intro.entry.nvl-append-history.content": "This is the second paragraph in the scrollable NVL history.",
+  "group.intro.entry.nvl-append-after-clear.content": "The prior NVL history was cleared, then this paragraph was appended.",
+  "group.intro.entry.intro-line-5.content": "The BGM is now fading out mid-track. Choose a route to see a transition and particles."
+}

@@ -21,6 +21,7 @@ public class SaveManagerTests
     public void Deserialize_RejectsPreviousSnapshotVersions()
     {
         Assert.That(SaveManager.Deserialize("""{ "version": 1, "nodeId": "intro" }"""), Is.Null);
+        Assert.That(SaveManager.Deserialize("""{ "version": 2, "nodeId": "intro" }"""), Is.Null);
         Assert.That(SaveManager.Deserialize("""{ "nodeId": "intro" }"""), Is.Null);
     }
 }

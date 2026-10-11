@@ -2,6 +2,7 @@ using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
 using GalNet.Core.Scene;
 using GalNet.Presentation.Abstractions.View;
+using GalNet.Runtime.Logging;
 
 namespace GalNet.Primitives.Builtins;
 
@@ -26,7 +27,7 @@ public sealed class PlayParticlePrimitiveInstance : PrimitiveInstance
     {
         try { await _presenter!.StartParticleEmitterAsync(_request, _scopeCancellation).ConfigureAwait(false); }
         catch (OperationCanceledException) when (_scopeCancellation.IsCancellationRequested) { }
-        catch { }
+        catch (Exception error) { GameLog.Logger.Warning(error, "Primitive presentation failed"); }
         finally { TryComplete(); }
     }
 }
@@ -51,7 +52,7 @@ public sealed class StopParticlePrimitiveInstance : PrimitiveInstance
     {
         try { await _presenter!.StopParticleEmitterAsync(_instanceId, _scopeCancellation).ConfigureAwait(false); }
         catch (OperationCanceledException) when (_scopeCancellation.IsCancellationRequested) { }
-        catch { }
+        catch (Exception error) { GameLog.Logger.Warning(error, "Primitive presentation failed"); }
         finally { TryComplete(); }
     }
 }
@@ -75,7 +76,7 @@ public sealed class BurstParticlePrimitiveInstance : PrimitiveInstance
     {
         try { await _presenter!.BurstParticlesAsync(_request, _scopeCancellation).ConfigureAwait(false); }
         catch (OperationCanceledException) when (_scopeCancellation.IsCancellationRequested) { }
-        catch { }
+        catch (Exception error) { GameLog.Logger.Warning(error, "Primitive presentation failed"); }
         finally { TryComplete(); }
     }
 }

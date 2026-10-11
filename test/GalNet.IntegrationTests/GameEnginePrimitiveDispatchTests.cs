@@ -3,6 +3,7 @@ using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
 using GalNet.Core.Scene;
+using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
 using GalNet.Runtime.Engine;
@@ -12,16 +13,71 @@ namespace GeneralTest.Runtime;
 
 public class GameEnginePrimitiveDispatchTests
 {
+    private static readonly int[] VideoSkipPoints = [5, 12];
+    private static readonly string[] MarkDispatch = ["mark"];
+    private static readonly string[] VisibleOptions = ["visible"];
+
+    [Test]
+    public void UncompiledAuthoringEntriesAreRejectedInsteadOfSilentlySkipped()
+    {
+        using var view = new GameRegistration().AddBuiltins().BuildView();
+        Assert.Throws<InvalidOperationException>(() => new GameEngine(GraphWithGroup(new WaitEntry()), view));
+    }
+    [Test]
+    public async Task RestoreCancelsOldScopeAndIsolatesSceneAndSnapshots()
+    {
+        PrimitiveCreateContext? oldContext = null;
+        using var view = View(Entry("test.wait", context =>
+        {
+            oldContext = context;
+            return new ControlledInstance(true, false, null);
+        }));
+        using var engine = new GameEngine(GraphWithGroup(Primitive("test.wait")), view);
+        var snapshot = engine.CreateSaveData();
+        snapshot.SceneState.Layers.Add(new Layer { Id = "restored", AssetId = "saved" });
+        await engine.AdvanceAsync();
+
+        engine.RestoreFrom(snapshot);
+        oldContext!.Runtime.SceneState.Layers.Clear();
+        snapshot.SceneState.Layers.Clear();
+        var returned = engine.LastStableSnapshot;
+        returned.SceneState.Layers.Clear();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(oldContext.ScopeCancellation.IsCancellationRequested, Is.True);
+            Assert.Throws<OperationCanceledException>(() => oldContext.Runtime.EndGame());
+            Assert.That(engine.Runtime.SceneState.Layers.Single().AssetId, Is.EqualTo("saved"));
+            Assert.That(engine.CreateSaveData().SceneState.Layers.Single().AssetId, Is.EqualTo("saved"));
+        });
+    }
+
+    [Test]
+    public async Task InvalidSaveVersionDoesNotCancelTheCurrentRun()
+    {
+        PrimitiveCreateContext? context = null;
+        using var view = View(Entry("test.wait", value =>
+        {
+            context = value;
+            return new ControlledInstance(true, false, null);
+        }));
+        using var engine = new GameEngine(GraphWithGroup(Primitive("test.wait")), view);
+        await engine.AdvanceAsync();
+
+        Assert.Throws<InvalidDataException>(() => engine.RestoreFrom(new GalNet.Core.Runtime.GameSnapshot { Version = -1 }));
+        Assert.That(context!.ScopeCancellation.IsCancellationRequested, Is.False);
+    }
     [Test]
     public async Task Video_segment_advances_hold_engine_and_previous_snapshot_until_natural_completion()
     {
         var video = new SegmentedVideoPresenter();
         var markers = 0;
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(videoPresenter: video).Concat(
-            [new DefaultEntryModule("test", [Entry("test.mark", context =>
-                new ImmediatePrimitiveInstance(() => markers++, batchId: context.BatchId))])]));
+        using var view = new GameRegistration().AddBuiltins(videoPresenter: video)
+            .RegisterSchema(new DefaultEntryModule("test", [new DefaultPrimitiveEntryBase("test.mark", DynamicParameterTable.Empty)]))
+            .RegisterInstruction("test.mark", context => new ImmediatePrimitiveInstance(() => markers++, batchId: context.BatchId))
+            .BuildView();
         using var engine = new GameEngine(GraphWithGroup(
-            Primitive("video.play", new { asset = "clip", skipPoints = new[] { 5, 12 } }),
+            Primitive("video.play", new { asset = "clip", skipPoints = VideoSkipPoints }),
             Primitive("test.mark")), view);
         await engine.AdvanceAsync();
         Assert.That(engine.CreateSaveData().EntryIndex, Is.Zero);
@@ -55,7 +111,7 @@ public class GameEnginePrimitiveDispatchTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(dispatched, Is.EqualTo(new[] { "mark" }));
+            Assert.That(dispatched, Is.EqualTo(MarkDispatch));
             Assert.That(engine.EntryIndex, Is.EqualTo(2));
             Assert.That(blocker.SkipCount, Is.Zero);
         });
@@ -226,7 +282,8 @@ public class GameEnginePrimitiveDispatchTests
     public async Task RecommendedLayerDialogueAndChoiceRunThroughTheNewRuntimeBoundary()
     {
         var presenter = new StoryPresenter();
-        using var view = new CompositeGameView(BuiltinEntryModules.CreateRecommended(presenter, presenter));
+        using var view = new GameRegistration().AddBuiltins(presenter, presenter,
+            characters: new GalNet.Core.I18n.CharacterCatalog([new("Alice", "character.alice.name")])).BuildView();
         var graph = new GraphModel
         {
             RootNodeId = "scene",
@@ -246,8 +303,7 @@ public class GameEnginePrimitiveDispatchTests
                             opacity = 1,
                             displayMode = "Native"
                         }),
-                        Primitive(TextEntry.TypeId, new { speaker = "Alice", content = "Continue?" }),
-                        Primitive("unsupported.demo")
+                        Primitive(TextEntry.TypeId, new { speaker = "Alice", content = "story.continue" })
                     }
                 },
                 new Branch
@@ -257,7 +313,7 @@ public class GameEnginePrimitiveDispatchTests
                     Options =
                     {
                         new BranchOption { Text = "hidden", Condition = "false" },
-                        new BranchOption { Text = "visible" }
+                        new BranchOption { Text = "choice.visible" }
                     }
                 },
                 new Group { Id = "hidden" },
@@ -274,7 +330,7 @@ public class GameEnginePrimitiveDispatchTests
                 new Edge { FromNodeId = "choice", FromOutlet = 1, ToNodeId = "visible" }
             }
         };
-        var runtime = new GalNet.Runtime.Runtime.GameRuntime(null, graph.RootNodeId);
+        var runtime = new GalNet.Runtime.Runtime.GameRuntime(new StoryTextResolver(), graph.RootNodeId);
         using var engine = new GameEngine(graph, runtime, view, choicePresenter: presenter);
 
         await engine.AdvanceAsync();
@@ -287,7 +343,7 @@ public class GameEnginePrimitiveDispatchTests
         });
 
         await engine.AdvanceAsync();
-        Assert.That(presenter.Options, Is.EqualTo(new[] { "visible" }));
+        Assert.That(presenter.Options, Is.EqualTo(VisibleOptions));
 
         presenter.Select(0);
         await WaitUntilAsync(() => runtime.SceneState.Layers.Single().AssetId == "hero-b.png");
@@ -296,20 +352,20 @@ public class GameEnginePrimitiveDispatchTests
     }
 
     [Test]
-    public async Task UnknownPrimitiveAndDispatchFailureDoNotStopLaterEntries()
+    public void MissingInstructionFailsBeforeStoryExecution()
     {
-        var completed = 0;
-        using var view = View(
-            Entry("test.fail", _ => throw new InvalidOperationException("expected")),
-            Entry("test.mark", context => new ImmediatePrimitiveInstance(() => completed++, batchId: context.BatchId)));
-        using var engine = new GameEngine(GraphWithGroup(
-            Primitive("missing.run"),
-            Primitive("test.fail"),
-            Primitive("test.mark")), view);
+        using var view = View(Entry("test.mark", context => new ImmediatePrimitiveInstance(batchId: context.BatchId)));
+        Assert.That(() => new GameEngine(GraphWithGroup(Primitive("missing.run")), view),
+            Throws.InvalidOperationException.With.Message.Contains("missing.run"));
+    }
 
-        await engine.AdvanceAsync();
-
-        Assert.That(completed, Is.EqualTo(1));
+    [Test]
+    public void DispatchFailureIsReportedWithoutSilentlyAdvancing()
+    {
+        using var view = View(Entry("test.fail", _ => throw new InvalidOperationException("expected")));
+        using var engine = new GameEngine(GraphWithGroup(Primitive("test.fail")), view);
+        Assert.That(async () => await engine.AdvanceAsync(), Throws.InvalidOperationException.With.Message.Contains("expected"));
+        Assert.That(engine.EntryIndex, Is.Zero);
     }
 
     private static GraphModel GraphWithGroup(params PrimitiveEntry[] entries)
@@ -325,13 +381,16 @@ public class GameEnginePrimitiveDispatchTests
     private static PrimitiveEntry Primitive(string typeId, object arguments, string? batchId = null) =>
         new(typeId, JsonSerializer.SerializeToElement(arguments), batchId);
 
-    private static DefaultPrimitiveEntryBase Entry(
+    private static PrimitiveImplementation Entry(
         string name,
         Func<PrimitiveCreateContext, PrimitiveInstance> factory) =>
-        new(name, DynamicParameterTable.Empty, factory);
+        new(name, factory);
 
-    private static CompositeGameView View(params PrimitiveEntryBase[] entries) =>
-        new([new TestModule("test", entries)]);
+    private static CompositeGameView View(params PrimitiveImplementation[] entries) =>
+        new GameRegistration()
+            .RegisterSchema(new DefaultEntryModule("test", entries.Select(entry => new DefaultPrimitiveEntryBase(entry.Type, DynamicParameterTable.Empty))))
+            .RegisterImplementation(new PrimitiveModule(entries))
+            .BuildView();
 
     private static async Task WaitUntilAsync(Func<bool> condition)
     {
@@ -340,7 +399,6 @@ public class GameEnginePrimitiveDispatchTests
             await Task.Delay(10, timeout.Token);
     }
 
-    private sealed class TestModule(string id, IEnumerable<PrimitiveEntryBase> entries) : EntryModuleBase(id, entries);
 
     private sealed class SegmentedVideoPresenter : IVideoPresenter
     {
@@ -426,5 +484,16 @@ public class GameEnginePrimitiveDispatchTests
         public void ReplaceLayer(string handleId, string assetId) => ReplacedLayers.Add((handleId, assetId));
         public void HideLayer(string handleId) { }
         public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSeconds) { }
+    }
+
+    private sealed class StoryTextResolver : GalNet.Core.Services.ITextResolver
+    {
+        public string Resolve(string key) => key switch
+        {
+            "character.alice.name" => "Alice",
+            "story.continue" => "Continue?",
+            "choice.visible" => "visible",
+            _ => key
+        };
     }
 }

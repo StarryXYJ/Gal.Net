@@ -64,8 +64,8 @@ public class SceneStateTests
     {
         var scene = new SceneState();
         Assert.That(scene.Layers, Is.Empty);
-        Assert.That(scene.ActiveControlIds, Is.Empty);
-        Assert.That(scene.ActiveEffectIds, Is.Empty);
+        Assert.That(scene.ActiveEffects, Is.Empty);
+        Assert.That(scene.ActiveAnimations, Is.Empty);
     }
 
     [Test]
@@ -78,12 +78,10 @@ public class SceneStateTests
                 new Layer { Id = "bg", AssetId = "bg_classroom", Z = 0 },
                 new Layer { Id = "alice", AssetId = "alice_smile", Z = 10 }
             },
-            ActiveControlIds = { "default_dialogue" },
-            ActiveEffectIds = { "shake" }
+            ActiveEffects = { new ActiveEffectState { InstanceId = "shake" } }
         };
 
         Assert.That(scene.Layers, Has.Count.EqualTo(2));
-        Assert.That(scene.ActiveControlIds[0], Is.EqualTo("default_dialogue"));
-        Assert.That(scene.ActiveEffectIds[0], Is.EqualTo("shake"));
+        Assert.That(scene.ActiveEffects[0].InstanceId, Is.EqualTo("shake"));
     }
 }
