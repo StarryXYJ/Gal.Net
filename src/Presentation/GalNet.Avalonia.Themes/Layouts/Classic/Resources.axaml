@@ -1,0 +1,30 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:page="using:GalNet.Avalonia.GameView.Page">
+  <CornerRadius x:Key="GalNet.Theme.CornerRadius">10</CornerRadius>
+  <Thickness x:Key="GalNet.Theme.PageMargin">48</Thickness>
+  <Thickness x:Key="GalNet.Theme.PanelPadding">36</Thickness>
+  <x:Double x:Key="GalNet.Theme.PanelWidth">720</x:Double>
+  <x:Double x:Key="GalNet.Theme.HeadingSize">34</x:Double>
+  <x:Double x:Key="GalNet.Theme.TitleSize">64</x:Double>
+  <x:Double x:Key="GalNet.Theme.DialogueHeight">210</x:Double>
+  <x:Double x:Key="GalNet.Theme.DialogueFontSize">24</x:Double>
+  <Thickness x:Key="GalNet.Theme.DialoguePadding">28</Thickness>
+  <Thickness x:Key="GalNet.Theme.ChoicePadding">24,16</Thickness>
+  <Thickness x:Key="GalNet.Theme.ChoiceMargin">0,7</Thickness>
+  <x:Int32 x:Key="GalNet.Theme.SaveColumns">4</x:Int32>
+  <FontFamily x:Key="GalNet.Theme.FontFamily">Segoe UI, Noto Sans CJK SC, Microsoft YaHei, Default</FontFamily>
+  <ControlTheme x:Key="{x:Type page:GamePage}" TargetType="page:GamePage">
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Background}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+            <Grid Background="{TemplateBinding Background}">
+              <ContentPresenter Name="PART_Scene" Content="{TemplateBinding Scene}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+              <ContentPresenter Name="PART_Nvl" Content="{TemplateBinding Nvl}" Width="840" MaxHeight="540" HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="12" />
+              <ContentPresenter Name="PART_Dialogue" Content="{TemplateBinding Dialogue}" Margin="64,0,64,70" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" HorizontalContentAlignment="Stretch" ZIndex="13" />
+              <ContentPresenter Name="PART_Choice" Content="{TemplateBinding Choice}" Width="620" HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="50" />
+              <page:GameToolbar HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="20" ZIndex="40" />
+            </Grid>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+</ResourceDictionary>

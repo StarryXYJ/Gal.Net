@@ -6,13 +6,13 @@
              xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
              x:Class="GalNet.Avalonia.GameView.Page.SettingsPage"
              x:DataType="vm:SettingsPageViewModel">
-  <Grid Background="#0B0C15">
-    <Border Width="560" Padding="36" Background="#A8181A2A" BorderBrush="#665F6075" BorderThickness="1"
-            CornerRadius="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+  <Grid Background="{DynamicResource GalNet.Brush.Background}">
+    <Border MaxWidth="{DynamicResource GalNet.Theme.PanelWidth}" Margin="24" Padding="{DynamicResource GalNet.Theme.PanelPadding}" Background="{DynamicResource GalNet.Brush.Surface}" BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1"
+            CornerRadius="{DynamicResource GalNet.Theme.CornerRadius}" HorizontalAlignment="Stretch" VerticalAlignment="Center">
       <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="26">
         <Grid ColumnDefinitions="*,Auto">
           <StackPanel Spacing="3">
-            <TextBlock Text="{text:PlayerText Settings.Title, Settings}" FontSize="32" FontWeight="SemiBold" />
+            <TextBlock Text="{text:PlayerText Settings.Title, Settings}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" />
             <TextBlock Text="{text:PlayerText Settings.Description, 'Playback preferences'}" Opacity="0.64" />
           </StackPanel>
           <Button Grid.Column="1" Classes="player-link" Content="{text:PlayerText Common.Back, Back}" Command="{Binding BackCommand}"

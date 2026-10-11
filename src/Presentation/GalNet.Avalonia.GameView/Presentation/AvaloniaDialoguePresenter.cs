@@ -30,12 +30,17 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresente
     public void HideNvl() => _dispatcher.Dispatch(() => _state.IsNvlMode = false);
     public void ClearNvl() => _dispatcher.Dispatch(_page.Nvl.Clear);
     public Task AppendNvlTextAsync(string text, CancellationToken cancellationToken) =>
-        _dispatcher.InvokeAsync(() => _page.Nvl.AppendAsync(text, _state.TextSpeed, cancellationToken));
+        _dispatcher.InvokeAsync(() =>
+        {
+            _page.EnsureLayout();
+            return _page.Nvl.AppendAsync(text, _state.TextSpeed, cancellationToken);
+        });
     public void SkipNvlText() => _dispatcher.Dispatch(_page.Nvl.SkipText);
 
     public Task StartTypewriter(string widgetInstanceId, string speaker, string text, CancellationToken cancellationToken) =>
         _dispatcher.InvokeAsync(async () =>
         {
+            _page.EnsureLayout();
             _state.IsDialogueVisible = true;
             _page.Dialogue.Speaker = speaker;
             _page.Dialogue.Text = text;
@@ -54,6 +59,7 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresente
     public Task<int> WaitForChoiceAsync(string widgetInstanceId, string[] options, CancellationToken cancellationToken) =>
         _dispatcher.InvokeAsync(() =>
         {
+            _page.EnsureLayout();
             var wait = _state.WaitForChoiceAsync(options, cancellationToken);
             _initialPresentationReady.TrySetResult();
             return wait;

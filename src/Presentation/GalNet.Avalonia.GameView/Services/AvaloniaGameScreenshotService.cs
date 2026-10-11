@@ -1,11 +1,13 @@
 using Avalonia.Controls;
+using Avalonia.Markup.Xaml.Styling;
+using GalNet.Avalonia.GameView.Composition;
 using GalNet.Avalonia.GameView.Page;
 using Ursa.Controls;
 
 namespace GalNet.Avalonia.GameView.Services;
 
 /// <summary>Default Ursa overlay prompt with preview, destination and UI inclusion.</summary>
-public sealed class AvaloniaGameScreenshotService : IGameScreenshotService
+public sealed class AvaloniaGameScreenshotService(IGameLayoutTheme? theme = null) : IGameScreenshotService
 {
     public async Task CaptureAsync(GameScreenshotRequest request, CancellationToken cancellationToken = default)
     {
@@ -41,7 +43,12 @@ public sealed class AvaloniaGameScreenshotService : IGameScreenshotService
                 }
             });
 
-        await OverlayDialog.ShowCustomAsync<ScreenshotDialog, ScreenshotDialogViewModel, bool>(viewModel);
+        using var dialog = new ScreenshotDialog();
+        dialog.Styles.Add(theme?.CreateStyles() ?? new StyleInclude(new Uri("avares://GalNet.Avalonia.GameView/"))
+        {
+            Source = new Uri("avares://GalNet.Avalonia.GameView/Styles/Generic.axaml")
+        });
+        await OverlayDialog.ShowCustomAsync<bool>(dialog, viewModel, null, null, cancellationToken);
     }
 
     private static string SanitizeFileName(string value)

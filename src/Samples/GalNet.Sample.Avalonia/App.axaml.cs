@@ -12,6 +12,7 @@ using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
+using GalNet.Avalonia.Themes;
 using GalNet.Runtime.Logging;
 using GalNet.Sample.Avalonia.Debug;
 using GalNet.Sample.Avalonia.Services;
@@ -24,6 +25,8 @@ namespace GalNet.Sample.Avalonia;
 public partial class App : Application
 {
     internal static GameLaunchOptions LaunchOptions { get; set; } = new(null, null);
+    // Startup configuration: layout and palette are independent. No runtime theme switching.
+    internal static IGameLayoutTheme PlayerTheme { get; } = new ClassicTheme(GamePalette.Ocean);
     private ServiceProvider? _rootServices;
     private AsyncServiceScope? _gameScope;
 
@@ -37,7 +40,7 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var services = new ServiceCollection();
-            services.AddAvaloniaGameViewPages()
+            services.AddAvaloniaGameViewPages(theme: PlayerTheme)
                 .AddSingleton(_ => CreateLocalizationService())
                 .AddScoped<SamplePlayerSettingsService>()
                 .AddScoped<SampleStartupService>()

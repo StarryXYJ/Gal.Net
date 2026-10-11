@@ -25,6 +25,20 @@ MyGame/
 
 `MyGame.Gameplay` 可以依赖 Core、Runtime 所需的公开协议和 Presentation.Abstractions；`MyGame.View` 才依赖 Avalonia 或其他具体渲染技术。项目自有类型不要声明在 `GalNet.Core.*` 命名空间下。
 
+## 配置玩家界面主题
+
+引用可选 `GalNet.Avalonia.Themes`，在创建游戏 Scope 前配置布局和配色：
+
+```csharp
+services.AddAvaloniaGameViewPages(
+    theme: new ClassicTheme(GamePalette.Ocean),
+    configureViews: views => views.Register<TitlePageViewModel, MyTitlePage>());
+```
+
+主题注册先于宿主覆盖；仅替换一个页面不需要另写主题。GameShell 自动加载对应玩家样式，其他玩家根用同一主题的 CreateStyles 加载。普通页保持 View + 共享 ViewModel；GamePage 通过 ControlTheme 安排稳定场景/对白/选项内容。当前配置在运行期固定。
+
+三套布局、三套配色和模板扩展示例见 [Themes README](../src/Presentation/GalNet.Avalonia.Themes/README.md)，契约见 [游戏页面规范](spec/control.md)。Sample 的 App.PlayerTheme 是实际启动配置入口。
+
 ## 创建一个自定义原语
 
 ### 1. 选定稳定 type ID 与参数

@@ -1,0 +1,35 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
+             xmlns:shared="using:GalNet.Avalonia.Themes.Base"
+             x:Class="GalNet.Avalonia.Themes.Layouts.Paper.PaperTitlePage"
+             x:DataType="vm:TitlePageViewModel">
+  <Grid Background="{DynamicResource GalNet.Brush.Background}">
+    <!-- Original vector artwork; the image is independent of the selected palette. -->
+    <Image Stretch="UniformToFill" Opacity="0.12" IsHitTestVisible="False">
+      <Image.Source>
+        <DrawingImage>
+          <DrawingImage.Drawing>
+            <DrawingGroup>
+              <GeometryDrawing Brush="#C6A77A" Geometry="M 0,0 L 1600,0 1600,900 0,900 Z" />
+              <GeometryDrawing Brush="#78603F" Geometry="M 70,0 L 73,0 73,900 70,900 Z M 0,140 L 1600,140 1600,142 0,142 Z M 0,360 L 1600,360 1600,362 0,362 Z M 0,580 L 1600,580 1600,582 0,582 Z M 0,800 L 1600,800 1600,802 0,802 Z" />
+            </DrawingGroup>
+          </DrawingImage.Drawing>
+        </DrawingImage>
+      </Image.Source>
+    </Image>
+    <Border MaxWidth="1120" Margin="80,56" Padding="56" Background="{DynamicResource GalNet.Brush.Surface}"
+            BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1">
+      <Grid ColumnDefinitions="*,360" ColumnSpacing="56">
+        <StackPanel VerticalAlignment="Center" Spacing="24">
+          <TextBlock Text="{Binding GameTitle}" FontSize="{DynamicResource GalNet.Theme.TitleSize}" TextWrapping="Wrap" />
+          <Border Height="1" Background="{DynamicResource GalNet.Brush.Primary}" />
+          <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" TextWrapping="Wrap" />
+        </StackPanel>
+        <ScrollViewer Grid.Column="1" VerticalAlignment="Center" HorizontalScrollBarVisibility="Disabled">
+          <shared:TitleMenu />
+        </ScrollViewer>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

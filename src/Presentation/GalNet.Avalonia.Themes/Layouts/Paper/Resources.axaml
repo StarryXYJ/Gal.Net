@@ -1,0 +1,69 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:page="using:GalNet.Avalonia.GameView.Page"
+                    xmlns:controls="using:GalNet.Game.Controls">
+  <CornerRadius x:Key="GalNet.Theme.CornerRadius">0</CornerRadius>
+  <Thickness x:Key="GalNet.Theme.PageMargin">56</Thickness>
+  <Thickness x:Key="GalNet.Theme.PanelPadding">40</Thickness>
+  <x:Double x:Key="GalNet.Theme.PanelWidth">800</x:Double>
+  <x:Double x:Key="GalNet.Theme.HeadingSize">36</x:Double>
+  <x:Double x:Key="GalNet.Theme.TitleSize">56</x:Double>
+  <x:Double x:Key="GalNet.Theme.DialogueHeight">240</x:Double>
+  <x:Double x:Key="GalNet.Theme.DialogueFontSize">24</x:Double>
+  <Thickness x:Key="GalNet.Theme.DialoguePadding">32</Thickness>
+  <Thickness x:Key="GalNet.Theme.ChoicePadding">24,18</Thickness>
+  <Thickness x:Key="GalNet.Theme.ChoiceMargin">0,8</Thickness>
+  <x:Int32 x:Key="GalNet.Theme.SaveColumns">3</x:Int32>
+  <FontFamily x:Key="GalNet.Theme.FontFamily">Georgia, Noto Serif CJK SC, Microsoft YaHei, Default</FontFamily>
+  <ControlTheme x:Key="{x:Type controls:DialoguePresenter}" TargetType="controls:DialoguePresenter">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border MinHeight="{DynamicResource GalNet.Theme.DialogueHeight}" Padding="{DynamicResource GalNet.Theme.DialoguePadding}"
+                Background="{DynamicResource GalNet.Brush.Overlay}" BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1">
+          <StackPanel Spacing="20">
+            <TextBlock Text="{TemplateBinding Speaker}" FontSize="{DynamicResource GalNet.Theme.SpeakerFontSize}"
+                       Foreground="{DynamicResource GalNet.Brush.Primary}" FontStyle="Italic" />
+            <Border Height="1" Background="{DynamicResource GalNet.Brush.Divider}" />
+            <controls:TypewriterTextBlock Name="PART_Typewriter" SourceText="{TemplateBinding Text}"
+                                         CharactersPerSecond="{TemplateBinding CharactersPerSecond}"
+                                         Foreground="{DynamicResource GalNet.Brush.TextPrimary}" FontSize="{DynamicResource GalNet.Theme.DialogueFontSize}" />
+          </StackPanel>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+  <ControlTheme x:Key="{x:Type controls:NvlPresenter}" TargetType="controls:NvlPresenter">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Padding="40" Background="{DynamicResource GalNet.Brush.Overlay}" BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1">
+          <Grid RowDefinitions="Auto,*" RowSpacing="24">
+            <Border Height="2" Width="80" HorizontalAlignment="Center" Background="{DynamicResource GalNet.Brush.Primary}" />
+            <ScrollViewer Name="PART_ScrollViewer" Grid.Row="1" VerticalScrollBarVisibility="Auto">
+              <StackPanel Name="PART_Lines" Spacing="24" />
+            </ScrollViewer>
+          </Grid>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+  <ControlTheme x:Key="{x:Type page:GamePage}" TargetType="page:GamePage">
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Background}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+            <Grid Background="{TemplateBinding Background}">
+             <Grid ColumnDefinitions="*,560" RowDefinitions="*,Auto" Margin="36">
+              <Border Background="{DynamicResource GalNet.Brush.Surface}" BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1" Margin="0,0,24,0">
+                <ContentPresenter Name="PART_Scene" Content="{TemplateBinding Scene}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+              </Border>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="20">
+                <Border Height="2" Background="{DynamicResource GalNet.Brush.Primary}" />
+                <ContentPresenter Name="PART_Dialogue" Content="{TemplateBinding Dialogue}" HorizontalContentAlignment="Stretch" />
+                <ContentPresenter Name="PART_Choice" Content="{TemplateBinding Choice}" HorizontalContentAlignment="Stretch" />
+              </StackPanel>
+              <ContentPresenter Name="PART_Nvl" Content="{TemplateBinding Nvl}" Grid.ColumnSpan="2" Width="900" MaxHeight="580" HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="12" />
+              <page:GameToolbar Grid.Row="1" Grid.ColumnSpan="2" HorizontalAlignment="Center" Margin="0,20,0,0" />
+             </Grid>
+            </Grid>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+</ResourceDictionary>

@@ -3,6 +3,7 @@ using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace GalNet.Avalonia.GameView.Composition;
 
@@ -12,9 +13,11 @@ public static class AvaloniaGameViewServiceCollectionExtensions
     public static IServiceCollection AddAvaloniaGameViewPages(
         this IServiceCollection services,
         Action<IPageViewRegistryBuilder>? configureViews = null,
-        Action<IGalleryPageRegistryBuilder>? configureGalleryPages = null)
+        Action<IGalleryPageRegistryBuilder>? configureGalleryPages = null,
+        IGameLayoutTheme? theme = null)
     {
         var views = new PageViewRegistryBuilder();
+        if (theme is not null) services.AddSingleton(theme);
         views.Register<TitlePageViewModel, TitlePage>();
         views.Register<GamePageViewModel, GamePage>();
         views.Register<SaveSlotsPageViewModel, SaveSlotsPage>();
@@ -25,15 +28,22 @@ public static class AvaloniaGameViewServiceCollectionExtensions
         views.Register<MissingGalleryPageViewModel, MissingGalleryPage>();
         views.Register<AboutPageViewModel, AboutPage>();
         views.Register<LoadingPageViewModel, LoadingPage>();
-        configureViews?.Invoke(views);
-
         var galleryPages = new GalleryPageRegistryBuilder(views, services);
         galleryPages.Add<CgGalleryPageViewModel, CgGalleryPage>("cg");
         galleryPages.Add<VideoGalleryPageViewModel, VideoGalleryPage>("video");
         galleryPages.Add<AudioGalleryPageViewModel, AudioGalleryPage>("audio");
+        theme?.RegisterViews(views);
         configureGalleryPages?.Invoke(galleryPages);
+        configureViews?.Invoke(views);
 
-        services.AddSingleton(views.Build());
+        foreach (var viewType in views.ViewTypes)
+            services.TryAddScoped(viewType);
+
+        var viewRegistry = views.Build();
+        var gamePageType = viewRegistry.GetViewType(typeof(GamePageViewModel));
+        if (!typeof(GamePage).IsAssignableFrom(gamePageType))
+            throw new InvalidOperationException("GamePageViewModel requires a GamePage-derived view. Customize its ControlTheme to replace the layout.");
+        services.AddSingleton(viewRegistry);
         services.AddSingleton(galleryPages.Build());
         services.AddScoped<GameNavigationTransitionCoordinator>();
         services.AddScoped<IGameNavigationTransitionCoordinator>(provider =>
@@ -59,7 +69,8 @@ public static class AvaloniaGameViewServiceCollectionExtensions
 
         services.AddScoped<GameShell>();
         services.AddScoped<TitlePage>();
-        services.AddScoped<GamePage>();
+        if (gamePageType == typeof(GamePage)) services.AddScoped<GamePage>();
+        else services.AddScoped<GamePage>(provider => (GamePage)provider.GetRequiredService(gamePageType));
         services.AddScoped<SaveSlotsPage>();
         services.AddScoped<SettingsPage>();
         services.AddScoped<GalleryPage>();

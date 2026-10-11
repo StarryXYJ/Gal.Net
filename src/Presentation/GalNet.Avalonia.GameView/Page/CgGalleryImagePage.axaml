@@ -4,5 +4,5 @@
              xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
              x:Class="GalNet.Avalonia.GameView.Page.CgGalleryImagePage"
              x:DataType="vm:CgGalleryImagePageViewModel">
-  <Grid Background="#05060A" RowDefinitions="Auto,*"><Grid Margin="24" ColumnDefinitions="*,Auto"><TextBlock Text="{Binding Title}" FontSize="24" FontWeight="SemiBold"/><Button Grid.Column="1" Classes="player-link" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}"/></Grid><Image Grid.Row="1" Margin="24" Source="{Binding Image}" Stretch="Uniform"/><TextBlock Grid.Row="1" Margin="40" Text="{Binding ErrorMessage}" TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FFE0A0"/></Grid>
+  <Grid Background="{DynamicResource GalNet.Brush.Background}" RowDefinitions="Auto,*"><Grid Margin="24" ColumnDefinitions="*,Auto"><TextBlock Text="{Binding Title}" FontSize="24" FontWeight="SemiBold"/><Button Grid.Column="1" Classes="player-link" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}"/></Grid><Image Grid.Row="1" Margin="24" Source="{Binding Image}" Stretch="Uniform"/><TextBlock Grid.Row="1" Margin="40" Text="{Binding ErrorMessage}" TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource GalNet.Brush.Warning}"/></Grid>
 </UserControl>

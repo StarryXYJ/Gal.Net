@@ -7,19 +7,19 @@
              x:Class="GalNet.Avalonia.GameView.Page.SaveSlotsPage"
              x:DataType="vm:SaveSlotsPageViewModel"
              x:CompileBindings="True">
-  <Grid Background="#0B0C15" Margin="44" RowDefinitions="Auto,*,Auto" RowSpacing="18">
+  <Grid Background="{DynamicResource GalNet.Brush.Background}" Margin="{DynamicResource GalNet.Theme.PageMargin}" RowDefinitions="Auto,*,Auto" RowSpacing="18">
     <Grid ColumnDefinitions="*,Auto">
       <StackPanel Spacing="3">
-        <TextBlock Text="{Binding Heading}" FontSize="32" FontWeight="SemiBold" />
+        <TextBlock Text="{Binding Heading}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" />
         <TextBlock Text="{text:PlayerText SaveSlots.Choose, 'Choose a slot'}" Opacity="0.64" />
       </StackPanel>
       <Button Grid.Column="1" Classes="player-link" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}"
               VerticalAlignment="Center" />
     </Grid>
     <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
-      <ItemsControl ItemsSource="{Binding Slots}">
+      <ItemsControl ItemsSource="{Binding Slots}" VerticalAlignment="Top">
         <ItemsControl.ItemsPanel>
-          <ItemsPanelTemplate><UniformGrid Columns="4" ColumnSpacing="6" RowSpacing="8"/></ItemsPanelTemplate>
+          <ItemsPanelTemplate><UniformGrid Columns="{DynamicResource GalNet.Theme.SaveColumns}" ColumnSpacing="6" RowSpacing="8" VerticalAlignment="Top" /></ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:GameSaveSlotRowViewModel">

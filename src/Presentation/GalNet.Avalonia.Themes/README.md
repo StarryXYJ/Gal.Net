@@ -1,0 +1,97 @@
+# 玩家界面主题
+
+此可选项目集中提供 Classic、Minimal、Paper 三套布局，以及独立的 Ocean、Rose、Mono 配色。布局和配色可以任意组合。Core、Runtime 和 GameView 不依赖此项目。
+
+## 启动配置
+
+```csharp
+using GalNet.Avalonia.GameView.Composition;
+using GalNet.Avalonia.Themes;
+
+IGameLayoutTheme theme = new PaperTheme(GamePalette.Ocean);
+services.AddAvaloniaGameViewPages(theme: theme);
+```
+
+GameShell 自动从 DI 获取主题并在自己的视觉根加载样式。首次语言选择等位于 GameShell 外的玩家界面，应使用同一个主题对象：
+
+```csharp
+playerRoot.Classes.Add("galnet-player");
+playerRoot.Styles.Add(theme.CreateStyles());
+```
+
+每次 CreateStyles 创建独立资源实例；不要把同一个 Styles 实例挂到多个根。官方主题在玩家根使用 Fluent 基础控件模板，并把 Fluent 颜色映射到所选配色；宿主或编辑器可以继续使用 Semi。截图弹窗会显式引入同一套资源。
+
+配置在启动期固定，没有运行期主题或配色切换 API。主题配置对象通过代码使用，不能直接写成 `<themes:PaperTheme/>` 样式元素。资源字典和 ControlTheme 仍可在 XAML 中开发。
+
+## 内置示例
+
+| 布局 | 默认配色 | 页面与控件布局 |
+| --- | --- | --- |
+| Classic | Ocean | 左侧标题菜单、装饰圆形、底部宽对白、底部工具栏 |
+| Minimal | Mono | 分栏标题、右下对白、左侧选项、顶部工具栏 |
+| Paper | Rose | 纸张纹理标题、带边框的场景与右侧对白栏、衬线字体 |
+
+每套布局提供自己的 TitlePage 和 GamePage ControlTheme；设置、存档、鉴赏等共享页面通过语义配色和布局尺寸资源变化，继续复用同一业务 ViewModel。Paper 的标题纹理由项目内手绘矢量实现，固定棕色属于装饰美术；其文字、面板和交互控件跟随配色。
+
+## 只替换一个页面
+
+```csharp
+services.AddAvaloniaGameViewPages(
+    theme: new ClassicTheme(GamePalette.Rose),
+    configureViews: views => views.Register<TitlePageViewModel, MyTitlePage>());
+```
+
+顺序为默认页面 → 主题页面 → 宿主 Gallery 注册 → 宿主普通页面覆盖。最后一种普通页面覆盖优先级最高；映射在组合完成后不可变。最终 View 类型自动补充 Scoped DI 注册，可在构造函数注入宿主服务。新增 ViewModel 及其服务仍由开发者注册。页面使用共享 ViewModel 的命令和本地化绑定，不必复制业务逻辑或实现一个新主题。
+
+GamePageViewModel 的自定义 View 必须继承 GamePage；运行 presenter 和页面工厂使用同一 Scoped 实例。仅改变游戏布局通常只需替换 GamePage 的 ControlTheme。
+
+## 自定义控件与游戏布局
+
+在玩家根的 Resources 放置资源可覆盖主题默认值：
+
+```xml
+<Grid.Resources>
+  <Thickness x:Key="GalNet.Theme.PageMargin">60</Thickness>
+  <SolidColorBrush x:Key="GalNet.Brush.Surface" Color="#242A36" />
+</Grid.Resources>
+```
+
+控件模板参考 Controls/Styles/Generic.axaml 和本项目 Layouts 下的 Resources.axaml。GamePage 必须保留四个 ContentPresenter，并呈现运行实例拥有的内容：
+
+```xml
+<ControlTheme x:Key="{x:Type page:GamePage}" TargetType="page:GamePage">
+  <Setter Property="Template">
+    <ControlTemplate>
+      <Grid>
+        <ContentPresenter Name="PART_Scene" Content="{TemplateBinding Scene}" />
+        <ContentPresenter Name="PART_Dialogue" Content="{TemplateBinding Dialogue}" />
+        <ContentPresenter Name="PART_Nvl" Content="{TemplateBinding Nvl}" />
+        <ContentPresenter Name="PART_Choice" Content="{TemplateBinding Choice}" />
+      </Grid>
+    </ControlTemplate>
+  </Setter>
+</ControlTheme>
+```
+
+实际布局应设置每个承载点的尺寸和位置；这是最小契约示例。内容不能重复挂载。共享 GameToolbar 可绑定 GamePageViewModel，新增可交互区域设置 `page:GamePage.IsPlayerInteraction="True"`，防止操作同时推进剧情。按钮、选择列表、文本框和 RangeBase 控件已有默认排除。
+
+DialoguePresenter 保留 PART_Typewriter，NvlPresenter 保留 PART_Lines 和 PART_ScrollViewer；这些内部部件承担运行状态，不能在播放过程中任意重建。GamePage 在首条对白、NVL 和选项前检查布局承载点，缺失时明确报错。
+
+## 自定义配色和主题
+
+复制 Palettes 中一个完整字典到自己的程序集：
+
+```csharp
+var palette = new GamePalette(new Uri("avares://MyGame.View/Palettes/Night.axaml"));
+services.AddAvaloniaGameViewPages(theme: new MinimalTheme(palette));
+```
+
+字典须提供 GamePalette.RequiredBrushes 列出的 21 个 `GalNet.Brush.*` 语义画刷。官方 Fluent 桥接还需要相应 `GalNet.Palette.*Color` 颜色资源；参考内置字典保留完整 Color/Brush 配对。基础 Colors 是原始色表，Palette 负责语义映射，布局资源使用 DynamicResource 引用画刷。内置布局不重新定义公共语义颜色。
+
+外部完整主题实现 IGameLayoutTheme：CreateStyles 加载自己的样式与资源，RegisterViews 只覆盖所需页面。GameLayoutTheme 基类用于本程序集内置目录布局；外部主题不必继承它。未覆盖的页面沿用 GameView 默认页面。未选择主题时 GameShell 加载 GameView/Styles/Generic.axaml 中的中性基础布局。
+
+## 验证与范围
+
+GameThemeTests 覆盖九种组合的页面加载、Skia headless 渲染、配色隔离、宿主覆盖、对白、NVL、选择输入及场景截图。设置 `GALNET_THEME_CAPTURE_DIR` 可导出检查图片。
+
+主题覆盖共享玩家页面、Sample 启动与语言选择、截图弹窗；调试窗口、调试确认/通知、编辑器自身 UI 和系统文件选择器由宿主负责。headless 页面渲染不会验证实际 LibVLC 播放或系统对话框。Sample 使用 1920×1080 设计画布缩放游戏界面；自定义宿主应按自己的画布尺寸检查布局，Paper 的侧栏适用于宽屏布局。

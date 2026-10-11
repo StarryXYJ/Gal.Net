@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:page="using:GalNet.Avalonia.GameView.Page"
+             xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
+             xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
+             x:Class="GalNet.Avalonia.GameView.Page.GameToolbar"
+             x:DataType="vm:GamePageViewModel"
+             FontSize="18"
+             IsVisible="{Binding IsGameUiVisible}"
+             page:GamePage.IsPlayerInteraction="True">
+  <WrapPanel Orientation="Horizontal">
+    <Button Classes="player-link" Margin="4" Content="{text:PlayerText Common.Save, Save}" Command="{Binding OpenSaveSlotsCommand}" />
+    <Button Classes="player-link" Margin="4" Content="{text:PlayerText Title.Load, Load}" Command="{Binding OpenLoadSlotsCommand}" />
+    <Button Classes="player-link" Margin="4" Content="{text:PlayerText Settings.Title, Settings}" Command="{Binding OpenSettingsCommand}" />
+    <Button Classes="player-link" Margin="4" Content="{text:PlayerText Common.Title, Title}" Command="{Binding ReturnToTitleCommand}" />
+    <Button Classes="player-link" Margin="4" Content="{text:PlayerText Common.Screenshot, Screenshot}" Command="{Binding RequestScreenshotCommand}" />
+    <Button Classes="player-link" Margin="4" Content="{text:PlayerText Common.HideUi, 'Hide UI'}" Command="{Binding HideUiCommand}" />
+  </WrapPanel>
+</UserControl>

@@ -5,12 +5,12 @@
              xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
              x:Class="GalNet.Avalonia.GameView.Page.AboutPage"
              x:DataType="vm:AboutPageViewModel">
-  <Grid Background="#0B0C15">
-    <Border Width="560" Padding="36" Background="#A8181A2A" BorderBrush="#665F6075" BorderThickness="1"
-            CornerRadius="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+  <Grid Background="{DynamicResource GalNet.Brush.Background}">
+    <Border MaxWidth="{DynamicResource GalNet.Theme.PanelWidth}" Margin="24" Padding="{DynamicResource GalNet.Theme.PanelPadding}" Background="{DynamicResource GalNet.Brush.Surface}" BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1"
+            CornerRadius="{DynamicResource GalNet.Theme.CornerRadius}" HorizontalAlignment="Stretch" VerticalAlignment="Center">
       <Grid RowDefinitions="Auto,*" RowSpacing="26">
         <Grid ColumnDefinitions="*,Auto">
-          <TextBlock Text="{text:PlayerText Title.About, 'About'}" FontSize="32" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <TextBlock Text="{text:PlayerText Title.About, 'About'}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" VerticalAlignment="Center" />
           <Button Grid.Column="1" Classes="player-link" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}"
                   VerticalAlignment="Center" />
         </Grid>

@@ -3,12 +3,12 @@
              xmlns:loc="clr-namespace:GalNet.Sample.Avalonia.MarkupExtensions"
              xmlns:locSetting="using:GalNet.Avalonia.GameView.Services"
              xmlns:vm="using:GalNet.Sample.Avalonia.ViewModels"
-             x:Class="GalNet.Sample.Avalonia.Views.LanguageSelectionView"
+             x:Class="GalNet.Sample.Avalonia.Views.LanguageSelectionView" Classes="galnet-player"
              x:DataType="vm:LanguageSelectionViewModel"
-             Background="#18181E">
+             Background="{DynamicResource GalNet.Brush.Background}">
   <StackPanel Width="420" Spacing="20" HorizontalAlignment="Center" VerticalAlignment="Center">
-    <TextBlock Text="{loc:Localize Onboarding.Title}" FontSize="28" Foreground="White" />
-    <TextBlock Text="{loc:Localize Onboarding.Description}" TextWrapping="Wrap" Foreground="#DDDDE5" />
+    <TextBlock Text="{loc:Localize Onboarding.Title}" FontSize="28" Foreground="{DynamicResource GalNet.Brush.TextPrimary}" />
+    <TextBlock Text="{loc:Localize Onboarding.Description}" TextWrapping="Wrap" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" />
     <ComboBox x:Name="LanguagePicker" HorizontalAlignment="Stretch"
               ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage, Mode=TwoWay}">
       <ComboBox.ItemTemplate>

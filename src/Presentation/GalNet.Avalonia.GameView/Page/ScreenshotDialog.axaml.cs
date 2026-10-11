@@ -5,7 +5,7 @@ using GalNet.Avalonia.GameView.Services;
 
 namespace GalNet.Avalonia.GameView.Page;
 
-public partial class ScreenshotDialog : UserControl
+public partial class ScreenshotDialog : UserControl, IDisposable
 {
     private ScreenshotDialogViewModel? _viewModel;
     private Bitmap? _previewBitmap;
@@ -15,6 +15,8 @@ public partial class ScreenshotDialog : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
+        DetachHandlers();
+        _viewModel = null;
         if (DataContext is not ScreenshotDialogViewModel viewModel) return;
 
         _viewModel = viewModel;
@@ -23,11 +25,31 @@ public partial class ScreenshotDialog : UserControl
         IncludeUiBox.IsChecked = viewModel.IncludeUi;
 
         BrowseButton.Click += OnBrowseClicked;
-        CancelButton.Click += (_, _) => viewModel.Cancel();
+        CancelButton.Click += OnCancelClicked;
         SaveButton.Click += OnSaveClicked;
         IncludeUiBox.IsCheckedChanged += OnIncludeUiChanged;
         _ = RefreshPreviewAsync(viewModel);
     }
+
+    public void Dispose()
+    {
+        DetachHandlers();
+        _viewModel = null;
+        Preview.Source = null;
+        _previewBitmap?.Dispose();
+        _previewBitmap = null;
+        GC.SuppressFinalize(this);
+    }
+
+    private void DetachHandlers()
+    {
+        BrowseButton.Click -= OnBrowseClicked;
+        CancelButton.Click -= OnCancelClicked;
+        SaveButton.Click -= OnSaveClicked;
+        IncludeUiBox.IsCheckedChanged -= OnIncludeUiChanged;
+    }
+
+    private void OnCancelClicked(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e) => _viewModel?.Cancel();
 
     private async void OnBrowseClicked(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
     {
@@ -68,6 +90,7 @@ public partial class ScreenshotDialog : UserControl
         try
         {
             var bytes = await viewModel.CapturePreviewAsync();
+            if (!ReferenceEquals(_viewModel, viewModel)) return;
             await using var stream = new MemoryStream(bytes);
             var bitmap = new Bitmap(stream);
             var previous = _previewBitmap;

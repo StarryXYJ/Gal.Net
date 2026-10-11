@@ -241,6 +241,8 @@ public sealed class PageViewRegistryBuilder : IPageViewRegistryBuilder
     private readonly Dictionary<Type, Type> _views = [];
     private bool _built;
 
+    internal IEnumerable<Type> ViewTypes => _views.Values.Distinct();
+
     public void Register<TViewModel, TView>()
         where TViewModel : PageViewModelBase
         where TView : Control

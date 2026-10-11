@@ -25,6 +25,7 @@ public class ProjectDependencyTests
                 "GalNet.Assets"
             ],
             ["GalNet.Avalonia.Controls"] = ["GalNet.Core"],
+            ["GalNet.Avalonia.Themes"] = ["GalNet.Avalonia.Controls", "GalNet.Avalonia.GameView"],
             ["GalNet.Avalonia.Rendering"] = ["GalNet.Core"]
         };
 
@@ -69,6 +70,7 @@ public class ProjectDependencyTests
                 "GalNet.Assets",
                 "GalNet.Avalonia.Controls",
                 "GalNet.Avalonia.GameView",
+                "GalNet.Avalonia.Themes",
                 "GalNet.Avalonia.Rendering",
                 "GalNet.Core",
                 "GalNet.Presentation.Abstractions",

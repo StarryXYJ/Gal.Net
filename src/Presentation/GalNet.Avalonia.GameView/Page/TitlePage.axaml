@@ -5,10 +5,10 @@
              xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
              x:Class="GalNet.Avalonia.GameView.Page.TitlePage"
              x:DataType="vm:TitlePageViewModel">
-  <Grid Background="#0B0C15">
-    <Border Margin="44" BorderBrush="#335F6075" BorderThickness="1" CornerRadius="10" IsHitTestVisible="False" />
+  <Grid Background="{DynamicResource GalNet.Brush.Background}">
+    <Border Margin="{DynamicResource GalNet.Theme.PageMargin}" BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1" CornerRadius="{DynamicResource GalNet.Theme.CornerRadius}" IsHitTestVisible="False" />
     <StackPanel Width="380" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
-      <TextBlock Text="{Binding GameTitle}" FontSize="48" FontWeight="Bold"
+      <TextBlock Text="{Binding GameTitle}" FontSize="{DynamicResource GalNet.Theme.TitleSize}" FontWeight="Bold"
                  HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
       <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" HorizontalAlignment="Center"
                  TextAlignment="Center" Opacity="0.68" 

@@ -3,11 +3,11 @@
              xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
              x:Class="GalNet.Avalonia.GameView.Page.LoadingPage"
              x:DataType="vm:LoadingPageViewModel">
-  <Grid Background="Black" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+  <Grid Background="{DynamicResource GalNet.Brush.Background}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
     <TextBlock Margin="16" Text="{Binding Message}"
                HorizontalAlignment="Right"
                VerticalAlignment="Bottom"
-               Foreground="#D9D9E2"
+               Foreground="{DynamicResource GalNet.Brush.TextSecondary}"
                FontSize="16" />
   </Grid>
 </UserControl>

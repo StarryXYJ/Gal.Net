@@ -1,0 +1,22 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Color x:Key="GalNet.Color.Blue.400">#86C9F4</Color>
+  <Color x:Key="GalNet.Color.Blue.500">#57AFE8</Color>
+  <Color x:Key="GalNet.Color.Blue.600">#328FD0</Color>
+  <Color x:Key="GalNet.Color.Blue.900">#123149</Color>
+  <Color x:Key="GalNet.Color.Rose.400">#F5BFCA</Color>
+  <Color x:Key="GalNet.Color.Rose.500">#DA7B96</Color>
+  <Color x:Key="GalNet.Color.Rose.600">#C96A86</Color>
+  <Color x:Key="GalNet.Color.Rose.900">#4F2636</Color>
+  <Color x:Key="GalNet.Color.Neutral.50">#F7F6F2</Color>
+  <Color x:Key="GalNet.Color.Neutral.100">#EAE8E1</Color>
+  <Color x:Key="GalNet.Color.Neutral.200">#D7D3C9</Color>
+  <Color x:Key="GalNet.Color.Neutral.400">#9B9D9F</Color>
+  <Color x:Key="GalNet.Color.Neutral.600">#60646B</Color>
+  <Color x:Key="GalNet.Color.Neutral.800">#2D3138</Color>
+  <Color x:Key="GalNet.Color.Neutral.900">#181D25</Color>
+  <Color x:Key="GalNet.Color.Neutral.950">#0D1118</Color>
+  <Color x:Key="GalNet.Color.Green.500">#409268</Color>
+  <Color x:Key="GalNet.Color.Amber.500">#B37925</Color>
+  <Color x:Key="GalNet.Color.Red.500">#C64848</Color>
+</ResourceDictionary>
+

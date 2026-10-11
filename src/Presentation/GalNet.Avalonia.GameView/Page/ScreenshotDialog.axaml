@@ -1,11 +1,11 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
-             x:Class="GalNet.Avalonia.GameView.Page.ScreenshotDialog">
-  <Border Width="720"
+             x:Class="GalNet.Avalonia.GameView.Page.ScreenshotDialog" Classes="galnet-player">
+  <Border MaxWidth="720"
           Padding="24"
-          Background="#2A2A34"
-          CornerRadius="8">
+          Background="{DynamicResource GalNet.Brush.Surface}"
+          CornerRadius="{DynamicResource GalNet.Theme.CornerRadius}">
     <Grid RowDefinitions="Auto,300,Auto,Auto,Auto,Auto"
           RowSpacing="14">
       <TextBlock Text="{text:PlayerText Screenshot.Title, 'Save screenshot'}"
@@ -14,7 +14,7 @@
 
       <Border Grid.Row="1"
               Padding="8"
-              Background="#15151C"
+              Background="{DynamicResource GalNet.Brush.SurfaceRaised}"
               CornerRadius="4">
         <Image Name="Preview"
                Stretch="Uniform" />
@@ -45,7 +45,7 @@
         <CheckBox Name="IncludeUiBox"
                   Content="{text:PlayerText Screenshot.IncludeUi, 'Include player UI'}" />
         <TextBlock Name="ErrorBlock"
-                   Foreground="Tomato"
+                   Foreground="{DynamicResource GalNet.Brush.Error}"
                    TextWrapping="Wrap" />
       </StackPanel>
 
