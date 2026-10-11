@@ -13,6 +13,7 @@ Phase 1–5 已完成；[阶段证据](phase-plan.md)、[交付自查](review.md
 - FileSystem 递归加载包内文本，校验默认语言、人物引用和 JSON 结构；外部目录递归覆盖 UI/game，损坏文件独立诊断跳过。
 - 宿主可传入额外 JSON source；第三方新增语言进入设置和首次选择列表。
 - 首次选择确认后原子保存语言/count，后续启动恢复语言并增加 count；取消/失败不计数，清空玩家变量后再次选择。
+- 后续整理将首次语言页统一为 DI ViewModel + 编译绑定；语言选项从已加载 CultureService 读取快照，设置页在 session attach 后更新，不动态监听语言源变化。
 - 语言切换保持 UI 即时刷新、剧情从下一条起生效；不强制重启，不重译已显示对话/选项/NVL 历史。
 
 ## 模块与关键取舍
@@ -28,6 +29,8 @@ External 不随包发布。安装器仍拒绝覆盖不同/损坏安装，复用�
 Integration 60/60；Core 61/61；Runtime 49/49；Builtins 52/52；Storage 12/12；Presentation 77/77；Architecture 24/24。Headless 构建 0 warning/0 error。此前已验证中英文 × 两条逻辑路线到结尾及真实 Headless 运行；本期补充真实 Avalonia 首次选择期间正常关闭、无计数写入。
 
 未执行完整 GUI 确认后剧情的人工全程验收；原生影音 opt-in 测试未启用。现有 analyzer/XAML warning 不在本期清理范围。
+
+MVVM 后续整理另行验证 Integration 62/62、Architecture 24/24；原 Phase 1–5 的验证记录保留。新增测试覆盖 View 命令绑定、语言快照和设置的加载后 attach。真实 Sample DI 启动及首次选择期间关闭验证通过，未创建玩家变量文件。
 
 ## 提交与后续
 

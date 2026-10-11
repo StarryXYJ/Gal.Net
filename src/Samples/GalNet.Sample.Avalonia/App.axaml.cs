@@ -15,6 +15,7 @@ using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Runtime.Logging;
 using GalNet.Sample.Avalonia.Debug;
 using GalNet.Sample.Avalonia.Services;
+using GalNet.Sample.Avalonia.ViewModels;
 using GalNet.Sample.Avalonia.Views;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -40,6 +41,7 @@ public partial class App : Application
                 .AddSingleton(_ => CreateLocalizationService())
                 .AddScoped<SamplePlayerSettingsService>()
                 .AddScoped<SampleStartupService>()
+                .AddScoped<LanguageSelectionViewModel>()
                 .AddScoped<IPlayerSettingsService>(provider => provider.GetRequiredService<SamplePlayerSettingsService>())
                 .AddScoped<SampleGameSessionService>()
                 .AddScoped<IGameSessionService>(sp => sp.GetRequiredService<SampleGameSessionService>())

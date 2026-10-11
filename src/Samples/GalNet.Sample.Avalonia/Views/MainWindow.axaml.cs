@@ -2,9 +2,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using GalNet.Avalonia.GameView.Page;
-using GalNet.Avalonia.GameView.Services;
 using GalNet.Sample.Avalonia.Debug;
-using GalNet.Sample.Avalonia.Services;
+using GalNet.Sample.Avalonia.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Ursa.Controls;
 
@@ -15,6 +14,7 @@ public partial class MainWindow : UrsaWindow
     private readonly IServiceProvider _services;
     private readonly SampleDebugLogStore? _debugLogStore;
     private readonly SampleDebugViewModel? _debugViewModel;
+    private readonly LanguageSelectionViewModel _languageSelectionViewModel;
     private DebugLogWindow? _debugLogWindow;
 
     public MainWindow(GameShell shell, IServiceProvider services)
@@ -22,7 +22,9 @@ public partial class MainWindow : UrsaWindow
         _services = services;
         _debugLogStore = services.GetService<SampleDebugLogStore>();
         _debugViewModel = services.GetService<SampleDebugViewModel>();
+        _languageSelectionViewModel = services.GetRequiredService<LanguageSelectionViewModel>();
         InitializeComponent();
+        LanguageSelection.DataContext = _languageSelectionViewModel;
         GameCanvas.GameContent = shell;
         DebugMenu.IsVisible = false;
         DebugMenu.DataContext = _debugViewModel;
@@ -40,10 +42,7 @@ public partial class MainWindow : UrsaWindow
     {
         StartupStatus.IsVisible = false;
         LanguageSelection.IsVisible = true;
-        var localization = _services.GetRequiredService<SampleLocalizationService>();
-        var options = localization.CultureService.AvailableCultures.OrderBy(culture => culture.Name, StringComparer.Ordinal)
-            .Select(culture => new SettingOption(culture.Name, culture.NativeName)).ToArray();
-        try { return await LanguageSelection.ChooseAsync(options, preferred, cancellationToken); }
+        try { return await _languageSelectionViewModel.ChooseAsync(preferred, cancellationToken); }
         finally { LanguageSelection.IsVisible = false; }
     }
 

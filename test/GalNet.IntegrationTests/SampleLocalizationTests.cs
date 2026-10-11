@@ -79,6 +79,29 @@ public sealed class SampleLocalizationTests
     }
 
     [Test]
+    public async Task SettingsSnapshotLanguagesAfterContentLoadWithoutWatchingProviders()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "galnet-language-options-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            using var localization = CreateLocalization();
+            using var settings = new SamplePlayerSettingsService(localization, new GamePageViewModel(null!));
+            localization.AttachGame(new GalNet.Runtime.Content.GameContent
+            {
+                Graph = new(),
+                Localization = new() { ExternalSources = [new("ja-JP", "external", """{"line":"日本語"}""")] }
+            });
+            using var variables = await FileVariableService.CreateAsync(new FilePlayerVariableStore(directory));
+            settings.Attach(variables);
+            var language = settings.Items.OfType<ChoicePlayerSetting>().Single();
+            Assert.That(language.Options.Select(option => option.Value), Does.Contain("ja-JP"));
+            localization.AttachGame(new GalNet.Runtime.Content.GameContent { Graph = new() });
+            Assert.That(language.Options.Select(option => option.Value), Does.Contain("ja-JP"), "No runtime provider-change refresh.");
+        }
+        finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
+    }
+
+    [Test]
     public void ReplacingGameSourcesPreservesEmbeddedUiProviderAndBinding()
     {
         using var localization = CreateLocalization();
@@ -94,7 +117,6 @@ public sealed class SampleLocalizationTests
     public void ExternalAndCustomSourcesOverrideUiAndGameWithoutLosingOtherKeys()
     {
         using var localization = CreateLocalization();
-        using var settings = new SamplePlayerSettingsService(localization, new GamePageViewModel(null!));
         using var title = new LocalizedString(localization.CultureService, "App.Title");
         var content = new GalNet.Runtime.Content.GameContent
         {
@@ -110,6 +132,7 @@ public sealed class SampleLocalizationTests
             }
         };
         localization.AttachGame(content);
+        using var settings = new SamplePlayerSettingsService(localization, new GamePageViewModel(null!));
         Assert.That(title.Value, Is.EqualTo("Translated UI"));
         Assert.That(localization.Resolve("line"), Is.EqualTo("external"));
         Assert.That(localization.Resolve("unique"), Is.EqualTo("kept"));

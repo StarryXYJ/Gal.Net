@@ -136,6 +136,8 @@ embedded Sample UI JSON
 
 ## 首次语言选择
 
+2026-10-11 后续整理采用 MVVM：ViewModel 负责选择状态、确认/取消命令和异步等待；View 使用编译绑定，窗口保留显示协调。语言列表在游戏来源完成加载后读取 `CultureService.AvailableCultures` 快照，不监听运行时 provider 变化；设置页在 session attach 时刷新一次，动态新增来源的交互扩展留给宿主二次开发。
+
 Sample 读取本机 profile 的玩家变量：首次启动计数为零时，以嵌入 UI 的 bootstrap culture 显示语言选择页。用户确认后将所选 locale 与启动计数一起持久化，写盘成功后才发布内存更新。取消或异常不增加计数，因此下次仍显示选择页。后续启动读取所选 locale 并在创建 GameEngine 前设置 catalog/current culture；重置玩家变量会重新触发该流程。
 
 ## 验收影响

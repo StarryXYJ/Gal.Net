@@ -36,7 +36,6 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
                 Save(TextSpeedVariable, value);
             })];
         localization.CultureService.CultureChanged += OnCultureChanged;
-        localization.CultureService.ProvidersChanged += OnProvidersChanged;
     }
 
     public IReadOnlyList<PlayerSetting> Items { get; }
@@ -44,6 +43,7 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
 
     public void Attach(FileVariableService variables)
     {
+        RefreshLanguages();
         _variables = variables;
         _restoring = true;
         try
@@ -69,12 +69,6 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
     {
         _language.Refresh();
         Save(LocaleVariable, args.NewCulture.Name);
-    }
-
-    private void OnProvidersChanged(object? sender, EventArgs args)
-    {
-        RefreshLanguages();
-        _language.Refresh();
     }
 
     private void RefreshLanguages()
@@ -103,6 +97,5 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
     public void Dispose()
     {
         _localization.CultureService.CultureChanged -= OnCultureChanged;
-        _localization.CultureService.ProvidersChanged -= OnProvidersChanged;
     }
 }

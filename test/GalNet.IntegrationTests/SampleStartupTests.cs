@@ -1,11 +1,10 @@
 using Avalonia.Controls;
-using Avalonia.Interactivity;
 using DynamicLocalization.Core;
 using DynamicLocalization.Core.Providers;
-using GalNet.Avalonia.GameView.Services;
 using GalNet.Core.Variable;
 using GalNet.Runtime.Persistence;
 using GalNet.Sample.Avalonia.Services;
+using GalNet.Sample.Avalonia.ViewModels;
 using GalNet.Sample.Avalonia.Views;
 using GalNet.Storage.FileSystem;
 
@@ -95,18 +94,51 @@ public sealed class SampleStartupTests
     [Test]
     public void LanguageViewConfirmsCancelsAndCancelsOnCloseToken()
     {
-        var view = new LanguageSelectionView();
-        SettingOption[] options = [new("en-US", "English"), new("zh-CN", "简体中文")];
-        var confirmed = view.ChooseAsync(options, "zh-CN", CancellationToken.None);
-        view.FindControl<Button>("ConfirmButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        using var localization = CreateLocalization();
+        var model = new LanguageSelectionViewModel(localization);
+        var view = new LanguageSelectionView { DataContext = model };
+        var confirmed = model.ChooseAsync("zh-CN", CancellationToken.None);
+        Assert.That(view.FindControl<ComboBox>("LanguagePicker")!.SelectedItem, Is.EqualTo(model.SelectedLanguage));
+        view.FindControl<Button>("ConfirmButton")!.Command!.Execute(null);
         Assert.That(confirmed.GetAwaiter().GetResult(), Is.EqualTo("zh-CN"));
-        var cancelled = view.ChooseAsync(options, "en-US", CancellationToken.None);
-        view.FindControl<Button>("CancelButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        var cancelled = model.ChooseAsync("en-US", CancellationToken.None);
+        view.FindControl<Button>("CancelButton")!.Command!.Execute(null);
         Assert.That(cancelled.GetAwaiter().GetResult(), Is.Null);
         using var closing = new CancellationTokenSource();
-        var closed = view.ChooseAsync(options, "en-US", closing.Token);
+        var closed = model.ChooseAsync("en-US", closing.Token);
         closing.Cancel();
         Assert.ThrowsAsync<TaskCanceledException>(async () => await closed);
+    }
+
+    [Test]
+    public async Task LanguageSelectionSnapshotsLoadedCulturesAndUsesCommands()
+    {
+        using var localization = CreateLocalization();
+        var model = new LanguageSelectionViewModel(localization);
+        localization.AttachGame(new GalNet.Runtime.Content.GameContent
+        {
+            Graph = new(),
+            Localization = new() { ExternalSources = [new("ja-JP", "external", """{"line":"日本語"}""")] }
+        });
+        var selection = model.ChooseAsync("JA-jp", CancellationToken.None);
+        string[] expectedCultures = ["en-US", "ja-JP", "zh-CN"];
+        Assert.That(model.Languages.Select(option => option.Value), Is.EqualTo(expectedCultures));
+        Assert.That(model.SelectedLanguage!.Value, Is.EqualTo("ja-JP"));
+        Assert.ThrowsAsync<InvalidOperationException>(() => model.ChooseAsync("en-US", CancellationToken.None));
+        localization.AttachGame(new GalNet.Runtime.Content.GameContent { Graph = new() });
+        Assert.That(model.Languages.Select(option => option.Value), Does.Contain("ja-JP"), "No provider-change subscription.");
+        model.SelectedLanguage = null;
+        Assert.That(model.ConfirmCommand.CanExecute(null), Is.False);
+        model.ConfirmCommand.Execute(null);
+        Assert.That(selection.IsCompleted, Is.False);
+        model.SelectedLanguage = model.Languages[0];
+        model.ConfirmCommand.Execute(null);
+        Assert.That(await selection, Is.EqualTo("en-US"));
+        Assert.That(model.ConfirmCommand.CanExecute(null), Is.False);
+        var fallback = model.ChooseAsync("missing", CancellationToken.None);
+        Assert.That(model.SelectedLanguage!.Value, Is.EqualTo("en-US"));
+        model.CancelCommand.Execute(null);
+        Assert.That(await fallback, Is.Null);
     }
 
     private static SampleLocalizationService CreateLocalization()

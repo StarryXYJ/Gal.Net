@@ -172,6 +172,12 @@
 
 **验证证据：** Integration 60/60 通过（新增五项 startup/control 测试），覆盖首次确认、取消/关闭 token、写盘失败、重复启动计数、重置、profile 隔离、外部新增语言和选择控件按钮。启动事务在 settings attach/Engine 建立前写盘；取消或内容初始化失败不提交计数。真实 Avalonia 空 profile 启动等待选择时正常关闭，进程退出且没有创建玩家变量文件；没有进行完整 GUI 确认后剧情全程的人工验收。Core 61、Runtime 49、Builtins 52、Storage 12、Presentation 77、Architecture 24 均通过；原生影音 opt-in 测试未启用。Headless 构建成功。
 
+## Phase 5 后续整理 — MVVM 语言选择（2026-10-11）
+
+语言选择页改为 DI ViewModel + 编译绑定，选择状态与确认/取消命令不再放在 View code-behind。首次页及设置页从已加载服务读取 culture 快照；设置在 session attach 时更新，不订阅运行时 provider 变化。验证：Integration 62/62 通过，包含命令绑定、选择状态、并发选择拒绝、取消/关闭、外部新增 culture、回退预选和语言列表快照。
+
+Architecture 24/24 通过；本次变更文件已局部格式整理，diff whitespace 检查通过。真实 Sample 用独立 profile 启动并在首次选择期间正常关闭，未写入玩家变量；未进行完整 GUI 剧情人工验收。
+
 ## 跨 Phase 文档与完成条件
 
 - 每个 Phase 落地后更新 `docs/spec/i18n.md` 与受影响的内容格式文档，只记录已验证事实。
