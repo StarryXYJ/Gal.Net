@@ -18,6 +18,7 @@ using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Avalonia.Themes;
+using GalNet.Core.Gallery;
 using GalNet.Game.Controls;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -26,6 +27,7 @@ namespace GeneralTest.Presentation;
 [NonParallelizable]
 public sealed class GameThemeTests
 {
+    private static readonly string[] GalleryTypeLabels = ["CG", "Video", "Audio"];
     [TestCase("Classic", "Ocean")]
     [TestCase("Classic", "Rose")]
     [TestCase("Classic", "Mono")]
@@ -75,7 +77,9 @@ public sealed class GameThemeTests
                 await presenter.StartTypewriter("default_dialogue", "Aster",
                     "A theme changes the layout; the story keeps its state.", TestContext.CurrentContext.CancellationToken);
                 Assert.That(page.Dialogue.GetVisualDescendants().OfType<TypewriterTextBlock>().Single().FontSize,
-                    Is.EqualTo(layout == "Classic" || layout == "Paper" ? 24 : 22));
+                    Is.EqualTo(layout == "Minimal" ? 20 : 22));
+                Assert.That(page.Dialogue.GetVisualDescendants().OfType<TextBlock>().Single(block => block.Text == "Aster").FontSize,
+                    Is.EqualTo(layout == "Minimal" ? 24 : 26));
                 Capture(window, $"{layout}-{paletteName}-game");
 
                 var advances = 0;
@@ -121,6 +125,10 @@ public sealed class GameThemeTests
 
                 root.Child = factory.Create(services.GetRequiredService<SettingsPageViewModel>());
                 window.UpdateLayout();
+                var settingsFrame = root.Child.FindControl<Border>("PageFrame")!;
+                var settingsBack = root.Child.FindControl<Button>("PageBackButton")!;
+                var frameBounds = BoundsInWindow(settingsFrame, window);
+                var backBounds = BoundsInWindow(settingsBack, window);
                 Capture(window, $"{layout}-{paletteName}-settings");
 
                 foreach (var viewModelType in new[]
@@ -132,8 +140,42 @@ public sealed class GameThemeTests
                 })
                 {
                     var viewModel = (PageViewModelBase)services.GetRequiredService(viewModelType);
+                    if (viewModel is GalleryPageViewModel galleryIndex)
+                    {
+                        foreach (var typeId in GalleryTypeLabels)
+                            galleryIndex.Types.Add(new GalleryTypeData(
+                                new GalleryTypeRegistration { TypeId = typeId, ResourceTypeId = typeId.ToLowerInvariant() }, []));
+                    }
+                    if (viewModel is AudioGalleryPageViewModel audioGallery)
+                    {
+                        audioGallery.Items.Add(new GalleryEntryViewModel(new GalleryItemData(
+                            new GalleryItem { Id = 1, Title = "Evening melody / 暮色之声" }, true)));
+                        audioGallery.Items.Add(new GalleryEntryViewModel(new GalleryItemData(
+                            new GalleryItem { Id = 2, Title = "An undiscovered melody" }, false)));
+                    }
+                    if (viewModel is GalleryVisualPageViewModelBase visualGallery)
+                    {
+                        visualGallery.Items.Add(new GalleryEntryViewModel(new GalleryItemData(
+                            new GalleryItem { Id = 1, Title = "Evening light / 暮色" }, true))
+                        { Thumbnail = CreateGalleryArtwork() });
+                        visualGallery.Items.Add(new GalleryEntryViewModel(new GalleryItemData(
+                            new GalleryItem { Id = 2, Title = "An undiscovered memory" }, false)));
+                    }
+                    if (viewModel is CgGalleryImagePageViewModel imagePage)
+                    {
+                        imagePage.Title = "Evening light / 暮色";
+                        imagePage.Image = CreateGalleryArtwork();
+                    }
                     root.Child = factory.Create(viewModel);
+                    Assert.That(root.Child.GetType().Namespace, Is.EqualTo($"GalNet.Avalonia.Themes.Layouts.{layout}"));
                     window.UpdateLayout();
+                    if (root.Child.FindControl<Border>("PageFrame") is { } frame)
+                    {
+                        Assert.That(BoundsInWindow(frame, window), Is.EqualTo(frameBounds), viewModelType.Name);
+                        Assert.That(frame.BorderThickness, Is.EqualTo(default(Thickness)), "Pages must not have an enclosing outline.");
+                        Assert.That(BoundsInWindow(root.Child.FindControl<Button>("PageBackButton")!, window),
+                            Is.EqualTo(backBounds), "The return target must stay in the same place across pages.");
+                    }
                     Capture(window, $"{layout}-{paletteName}-{viewModelType.Name}");
                 }
 
@@ -143,6 +185,52 @@ public sealed class GameThemeTests
             }
             finally { window.Close(); }
             return true;
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
+    [TestCase("Classic", 1280, 720)]
+    [TestCase("Minimal", 1280, 720)]
+    [TestCase("Paper", 1280, 720)]
+    [TestCase("Classic", 800, 500)]
+    [TestCase("Minimal", 800, 500)]
+    [TestCase("Paper", 800, 500)]
+    public async Task Large_gallery_images_keep_the_return_target_visible_and_clickable(string layout, int width, int height)
+    {
+        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        await session.Dispatch(() =>
+        {
+            var theme = CreateTheme(layout, "Ocean");
+            using var provider = CreateServices(theme).BuildServiceProvider();
+            using var scope = provider.CreateScope();
+            var services = scope.ServiceProvider;
+            var navigation = services.GetRequiredService<IGameNavigationService>();
+            var state = services.GetRequiredService<CgGalleryImagePageViewModel>();
+            state.Title = "A very long Gallery image title / 长标题也不能挤占返回按钮";
+            state.Image = CreateGalleryArtwork();
+            navigation.ResetTo<SettingsPageViewModel>(NavigationTransition.None);
+            navigation.Navigate<CgGalleryImagePageViewModel>(NavigationTransition.None);
+            var page = services.GetRequiredService<IPageViewFactory>().Create(state);
+            var root = new Border { Classes = { "galnet-player" }, Child = page };
+            root.Styles.Add(theme.CreateStyles());
+            var window = new Window { Width = width, Height = height, Content = root };
+            window.Show();
+            try
+            {
+                window.UpdateLayout();
+                var back = page.FindControl<Button>("PageBackButton")!;
+                var media = page.FindControl<Image>("PageMedia")!;
+                var backRect = BoundsInWindow(back, window);
+                var mediaRect = BoundsInWindow(media, window);
+                Assert.That(new Rect(window.ClientSize).Contains(backRect), Is.True);
+                Assert.That(new Rect(window.ClientSize).Contains(mediaRect), Is.True);
+                Assert.That(mediaRect.Intersects(backRect), Is.False, "The media must not cover the return target.");
+                Assert.That(backRect.Width, Is.GreaterThanOrEqualTo(120));
+                Assert.That(backRect.Height, Is.GreaterThanOrEqualTo(48));
+                Capture(window, $"{layout}-large-image-{width}x{height}");
+                Click(window, back);
+                Assert.That(navigation.CurrentViewModel, Is.TypeOf<SettingsPageViewModel>());
+            }
+            finally { window.Close(); }
         }, TestContext.CurrentContext.CancellationToken);
     }
 
@@ -310,6 +398,20 @@ public sealed class GameThemeTests
             ?? throw new InvalidOperationException("The interactive control is not attached to the test window.");
         window.MouseDown(point, MouseButton.Left);
         window.MouseUp(point, MouseButton.Left);
+    }
+
+    private static Rect BoundsInWindow(Control control, Window window) =>
+        new(control.TranslatePoint(default, window)!.Value, control.Bounds.Size);
+
+    private static RenderTargetBitmap CreateGalleryArtwork()
+    {
+        var bitmap = new RenderTargetBitmap(new PixelSize(3840, 2160));
+        using var drawing = bitmap.CreateDrawingContext();
+        drawing.DrawRectangle(new SolidColorBrush(Color.Parse("#213C56")), null, new Rect(0, 0, 3840, 2160));
+        drawing.DrawEllipse(new SolidColorBrush(Color.Parse("#EDCC9D")), null, new Point(2850, 650), 340, 340);
+        drawing.DrawRectangle(new SolidColorBrush(Color.Parse("#3E706C")), null, new Rect(0, 1350, 3840, 810));
+        drawing.DrawRectangle(new SolidColorBrush(Color.Parse("#254D53")), null, new Rect(0, 1650, 3840, 510));
+        return bitmap;
     }
 
     private static GameLayoutTheme CreateTheme(string layout, string paletteName)

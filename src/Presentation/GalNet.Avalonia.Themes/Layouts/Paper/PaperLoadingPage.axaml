@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
+             x:Class="GalNet.Avalonia.Themes.Layouts.Paper.PaperLoadingPage"
+             x:DataType="vm:LoadingPageViewModel">
+  <Grid Background="{DynamicResource GalNet.Brush.Background}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+    <TextBlock Margin="56" Text="{Binding Message}" HorizontalAlignment="Center" VerticalAlignment="Bottom" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" FontSize="24" />
+  </Grid>
+</UserControl>

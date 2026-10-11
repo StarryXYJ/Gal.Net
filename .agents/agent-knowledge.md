@@ -34,6 +34,8 @@
 
 ## 当前工作
 
+- [F-20261011-02-player-page-layout](../features/F-20261011-02-player-page-layout/summary.md) 已补齐三套内置主题的全部普通页面 XAML View，主题目录自行维护布局、共享 ViewModel/命令；页面无外框，主题内导航位置一致。对白名字比正文大4，Classic/Paper 26/22、Minimal 24/20；默认 GameView 页面只用于回退。
+
 - [F-20261011-01-game-ui-themes](../features/F-20261011-01-game-ui-themes/summary.md) 已完成启动期主题组合：可选 Themes 提供三布局/三配色，页面顺序默认→主题→宿主；GamePage 是稳定 TemplatedControl，四个 PART_* 承载其自有内容，派生页与 Runtime 保持同一 Scoped 实例。样式应用于玩家根，官方主题局部 Fluent 与宿主 Semi 隔离。当前无运行期切换；配置/契约见 Themes README、docs/spec/control.md、ADR 0003。
 
 - [F-20261009-02-video-entries](../features/F-20261009-02-video-entries/feature.md) 已实现剧情视频图层、阻塞分段 seek、停止/替换清理和非阻塞视频定义恢复。平台视频必须经 AssetManager 获取，解码帧通过租约进入场景管线；播放游标不入存档。验证见 feature summary。

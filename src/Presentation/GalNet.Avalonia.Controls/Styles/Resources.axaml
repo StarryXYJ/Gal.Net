@@ -25,8 +25,8 @@
   <CornerRadius x:Key="GalNet.Theme.CornerRadius">4</CornerRadius>
   <Thickness x:Key="GalNet.Theme.DialoguePadding">24</Thickness>
   <x:Double x:Key="GalNet.Theme.DialogueHeight">200</x:Double>
-  <x:Double x:Key="GalNet.Theme.DialogueFontSize">20</x:Double>
-  <x:Double x:Key="GalNet.Theme.SpeakerFontSize">18</x:Double>
+  <x:Double x:Key="GalNet.Theme.DialogueFontSize">18</x:Double>
+  <x:Double x:Key="GalNet.Theme.SpeakerFontSize">22</x:Double>
   <Thickness x:Key="GalNet.Theme.ChoicePadding">20,14</Thickness>
   <Thickness x:Key="GalNet.Theme.ChoiceMargin">0,5</Thickness>
   <x:Double x:Key="GalNet.Theme.NvlSpacing">14</x:Double>

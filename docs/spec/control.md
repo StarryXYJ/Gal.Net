@@ -42,7 +42,11 @@
 
 资源分为 `GalNet.Color.*` 基础色、`GalNet.Palette.*Color` 语义色、`GalNet.Brush.*` 语义画刷和 `GalNet.Theme.*` 布局尺寸。Controls 提供中性画刷回退；Palette 提供完整配色；内置布局不重定义公共语义色，宿主可通过玩家根 Resources 覆盖。GamePalette 检查 21 个必需画刷；官方 Fluent 桥接需对应 Color 资源或可解析的纯色画刷。
 
-普通页保持 UserControl + 共享 ViewModel，主题按需注册新 View，其余页面复用语义化的默认页面。替换单页无需实现完整主题。配置和扩展示例见 [Themes README](../../src/Presentation/GalNet.Avalonia.Themes/README.md)。
+普通页保持 UserControl + 共享 ViewModel。三套内置布局分别提供全部普通页面的 XAML View，包含标题、设置、存档、关于、加载、Gallery 入口/列表/详情和诊断页；共享层的页面供无主题宿主及未覆盖页面回退使用。替换单页无需实现完整主题。配置和扩展示例见 [Themes README](../../src/Presentation/GalNet.Avalonia.Themes/README.md)。
+
+页面容器不绘制外框。同一主题内保持一致的返回位置：Classic 顶部页头右侧、Minimal 侧栏底部、Paper 居中标题左侧。图片按比例缩放至独立内容区，不覆盖返回操作。`GalNet.Theme.PageMaxWidth`、`PageHeaderMinHeight`、`BackMinWidth`、`BackMinHeight` 可调整整体宽度与返回点击区域；这些尺寸属于玩家设计画布，实际显示受宿主缩放影响。
+
+对白 `DialogueFontSize` 与 `SpeakerFontSize` 独立配置，内置主题人物名比正文大 4 个设计单位（Classic/Paper 为 26/22，Minimal 为 24/20）；中性回退为 22/18。
 
 ### GamePage 模板契约
 

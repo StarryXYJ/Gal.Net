@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:GalNet.Avalonia.GameView.Page"
+             xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
+             xmlns:settings="using:GalNet.Avalonia.GameView.Services"
+             xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
+             x:Class="GalNet.Avalonia.Themes.Layouts.Paper.PaperSettingsPage"
+             x:DataType="vm:SettingsPageViewModel">
+  <Grid Background="{DynamicResource GalNet.Brush.Background}">
+    <Border x:Name="PageFrame" Classes="player-page-frame" BorderThickness="0" Background="Transparent">
+      <Grid RowDefinitions="Auto,Auto,*">
+        <Grid ColumnDefinitions="140,*,140" x:Name="PageHeader" MinHeight="{DynamicResource GalNet.Theme.PageHeaderMinHeight}" ColumnSpacing="24">
+          <StackPanel Spacing="3" Grid.Column="1" HorizontalAlignment="Center">
+            <TextBlock Text="{text:PlayerText Settings.Title, Settings}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            <TextBlock Text="{text:PlayerText Settings.Description, 'Playback preferences'}" Opacity="0.64" />
+          </StackPanel>
+          <Button Grid.Column="0" Classes="player-back" Content="{text:PlayerText Common.Back, Back}" Command="{Binding BackCommand}" VerticalAlignment="Center" x:Name="PageBackButton" />
+        </Grid>
+        <Border Grid.Row="1" Margin="0,20,0,0" Height="1" Background="{DynamicResource GalNet.Brush.Divider}" />
+        <ScrollViewer Grid.Row="2" Margin="0,32,0,0" HorizontalScrollBarVisibility="Disabled">
+          <Border Classes="player-settings-card" Background="Transparent" Padding="0" MaxWidth="860">
+            <StackPanel Spacing="28">
+              <ItemsControl ItemsSource="{Binding Items}">
+                <ItemsControl.DataTemplates>
+                  <DataTemplate DataType="settings:ChoicePlayerSetting" x:DataType="settings:ChoicePlayerSetting">
+                    <Grid ColumnDefinitions="150,*" ColumnSpacing="22" Margin="0,0,0,24">
+                      <ContentControl Content="{Binding Label}" VerticalAlignment="Center" />
+                      <ComboBox Grid.Column="1" ItemsSource="{Binding Options}" SelectedItem="{Binding SelectedOption, Mode=TwoWay}">
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate x:DataType="settings:SettingOption">
+                            <TextBlock Text="{Binding DisplayName}" />
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+                    </Grid>
+                  </DataTemplate>
+                  <DataTemplate DataType="settings:RangePlayerSetting" x:DataType="settings:RangePlayerSetting">
+                    <Grid ColumnDefinitions="150,*" ColumnSpacing="22">
+                      <ContentControl Content="{Binding Label}" VerticalAlignment="Center" />
+                      <Slider Grid.Column="1" Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value, Mode=TwoWay}" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.DataTemplates>
+              </ItemsControl>
+              <TextBlock Text="{text:PlayerText Settings.Hint, 'Changes apply immediately.'}" FontSize="12" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" />
+            </StackPanel>
+          </Border>
+        </ScrollViewer>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

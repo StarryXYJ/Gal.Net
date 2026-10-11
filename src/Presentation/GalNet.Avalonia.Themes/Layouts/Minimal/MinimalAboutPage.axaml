@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
+             xmlns:local="using:GalNet.Avalonia.GameView.Page"
+             xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
+             x:Class="GalNet.Avalonia.Themes.Layouts.Minimal.MinimalAboutPage"
+             x:DataType="vm:AboutPageViewModel">
+  <Grid Background="{DynamicResource GalNet.Brush.Background}">
+    <Border x:Name="PageFrame" Classes="player-page-frame" BorderThickness="0" Background="Transparent">
+      <Grid ColumnDefinitions="200,*" ColumnSpacing="36">
+        <Grid x:Name="PageHeader" RowDefinitions="Auto,*,Auto">
+          <TextBlock Text="{text:PlayerText Title.About, 'About'}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+          <Button Classes="player-back" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}" VerticalAlignment="Bottom" x:Name="PageBackButton" Grid.Row="2" HorizontalAlignment="Stretch" />
+        </Grid>
+        <ScrollViewer Margin="0" Grid.Column="1">
+          <StackPanel Spacing="12">
+            <TextBlock Text="{Binding GameTitle}" FontSize="20" FontWeight="SemiBold" />
+            <TextBlock Text="{text:PlayerText About.Description, 'This default player shell is fully replaceable by a game client without changing its runtime or game data.'}" TextWrapping="Wrap" Opacity="0.72" />
+          </StackPanel>
+        </ScrollViewer>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

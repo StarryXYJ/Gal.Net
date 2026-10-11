@@ -8,7 +8,6 @@
     <Grid IsHitTestVisible="False" Opacity="0.3">
       <Ellipse Width="1000" Height="1000" Fill="{DynamicResource GalNet.Brush.Primary}" HorizontalAlignment="Right" Margin="0,0,-240,-480" VerticalAlignment="Bottom" />
       <Ellipse Width="640" Height="640" Stroke="{DynamicResource GalNet.Brush.Primary}" StrokeThickness="2" HorizontalAlignment="Right" Margin="0,0,80,-200" VerticalAlignment="Bottom" />
-      <Border BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1" Margin="40" />
     </Grid>
     <Grid Margin="80,64" ColumnDefinitions="440,*" RowDefinitions="Auto,*">
       <StackPanel Grid.ColumnSpan="2" Spacing="12">

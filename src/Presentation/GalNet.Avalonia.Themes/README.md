@@ -27,11 +27,15 @@ playerRoot.Styles.Add(theme.CreateStyles());
 
 | 布局 | 默认配色 | 页面与控件布局 |
 | --- | --- | --- |
-| Classic | Ocean | 左侧标题菜单、装饰圆形、底部宽对白、底部工具栏 |
-| Minimal | Mono | 分栏标题、右下对白、左侧选项、顶部工具栏 |
-| Paper | Rose | 纸张纹理标题、带边框的场景与右侧对白栏、衬线字体 |
+| Classic | Ocean | 顶部页头与右侧返回、左侧标题菜单、底部宽对白 |
+| Minimal | Mono | 页面侧栏与底部返回、分栏标题、右下对白 |
+| Paper | Rose | 居中页面标题与左侧返回、纸张纹理、右侧对白栏、衬线字体 |
 
-每套布局提供自己的 TitlePage 和 GamePage ControlTheme；设置、存档、鉴赏等共享页面通过语义配色和布局尺寸资源变化，继续复用同一业务 ViewModel。Paper 的标题纹理由项目内手绘矢量实现，固定棕色属于装饰美术；其文字、面板和交互控件跟随配色。
+每套布局在 Layouts 目录提供自己的标题、设置、存档、关于、加载、Gallery 入口/CG/音频/视频列表、图片/视频详情及诊断页 XAML，并注册对应 View；只复用共享 ViewModel 和命令，不复制业务与媒体生命周期。GamePage 使用主题的 ControlTheme。页面容器无外框，主题内的返回区域保持一致。Paper 的标题纹理由项目内手绘矢量实现，固定棕色属于装饰美术；文字和交互控件跟随配色。
+
+设置和 Gallery 的列表/媒体详情采用各主题自己的页头或侧栏。图片保留比例并限定在与返回区域分离的媒体区。宿主可以覆盖 PageMaxWidth、PageHeaderMinHeight、BackMinWidth、BackMinHeight 尺寸资源；宿主使用设计画布缩放时，点击区域也随画布缩放。
+
+对白正文/人物名字号为 Classic、Paper 的 22/26 和 Minimal 的 20/24，名字比正文大 4。通过 DialogueFontSize、SpeakerFontSize 独立调整；中性回退为 18/22。
 
 ## 只替换一个页面
 

@@ -1,24 +1,19 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
-             xmlns:local="using:GalNet.Avalonia.GameView.Page"
-             xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
-             x:Class="GalNet.Avalonia.GameView.Page.AboutPage"
-             x:DataType="vm:AboutPageViewModel">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions" xmlns:local="using:GalNet.Avalonia.GameView.Page" xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels" x:Class="GalNet.Avalonia.GameView.Page.AboutPage" x:DataType="vm:AboutPageViewModel">
   <Grid Background="{DynamicResource GalNet.Brush.Background}">
-    <Border MaxWidth="{DynamicResource GalNet.Theme.PanelWidth}" Margin="24" Padding="{DynamicResource GalNet.Theme.PanelPadding}" Background="{DynamicResource GalNet.Brush.Surface}" BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1"
-            CornerRadius="{DynamicResource GalNet.Theme.CornerRadius}" HorizontalAlignment="Stretch" VerticalAlignment="Center">
-      <Grid RowDefinitions="Auto,*" RowSpacing="26">
-        <Grid ColumnDefinitions="*,Auto">
-          <TextBlock Text="{text:PlayerText Title.About, 'About'}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" VerticalAlignment="Center" />
-          <Button Grid.Column="1" Classes="player-link" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}"
-                  VerticalAlignment="Center" />
+    <Border x:Name="PageFrame" Classes="player-page-frame">
+      <Grid RowDefinitions="Auto,Auto,*">
+        <Grid ColumnDefinitions="*,Auto" x:Name="PageHeader" MinHeight="{DynamicResource GalNet.Theme.PageHeaderMinHeight}" ColumnSpacing="24">
+          <TextBlock Text="{text:PlayerText Title.About, 'About'}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+          <Button Grid.Column="1" Classes="player-back" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}" VerticalAlignment="Center" x:Name="PageBackButton" />
         </Grid>
-        <StackPanel Grid.Row="1" Spacing="12">
-          <TextBlock Text="{Binding GameTitle}" FontSize="20" FontWeight="SemiBold" />
-          <TextBlock Text="{text:PlayerText About.Description, 'This default player shell is fully replaceable by a game client without changing its runtime or game data.'}"
-                     TextWrapping="Wrap" Opacity="0.72" />
-        </StackPanel>
+        <Border Grid.Row="1" Height="1" Margin="0,20,0,0" Background="{DynamicResource GalNet.Brush.Divider}" />
+        <ScrollViewer Grid.Row="2" Margin="0,24,0,0">
+          <StackPanel Spacing="12">
+            <TextBlock Text="{Binding GameTitle}" FontSize="20" FontWeight="SemiBold" />
+            <TextBlock Text="{text:PlayerText About.Description, 'This default player shell is fully replaceable by a game client without changing its runtime or game data.'}" TextWrapping="Wrap" Opacity="0.72" />
+          </StackPanel>
+        </ScrollViewer>
       </Grid>
     </Border>
   </Grid>

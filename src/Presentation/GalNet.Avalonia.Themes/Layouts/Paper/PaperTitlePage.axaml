@@ -19,7 +19,7 @@
       </Image.Source>
     </Image>
     <Border MaxWidth="1120" Margin="80,56" Padding="56" Background="{DynamicResource GalNet.Brush.Surface}"
-            BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1">
+            BorderThickness="0">
       <Grid ColumnDefinitions="*,360" ColumnSpacing="56">
         <StackPanel VerticalAlignment="Center" Spacing="24">
           <TextBlock Text="{Binding GameTitle}" FontSize="{DynamicResource GalNet.Theme.TitleSize}" TextWrapping="Wrap" />

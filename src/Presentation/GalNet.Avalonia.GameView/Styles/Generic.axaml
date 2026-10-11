@@ -11,6 +11,10 @@
       <Thickness x:Key="GalNet.Theme.PageMargin">44</Thickness>
       <Thickness x:Key="GalNet.Theme.PanelPadding">36</Thickness>
       <x:Double x:Key="GalNet.Theme.PanelWidth">640</x:Double>
+      <x:Double x:Key="GalNet.Theme.PageMaxWidth">1640</x:Double>
+      <x:Double x:Key="GalNet.Theme.PageHeaderMinHeight">80</x:Double>
+      <x:Double x:Key="GalNet.Theme.BackMinWidth">120</x:Double>
+      <x:Double x:Key="GalNet.Theme.BackMinHeight">48</x:Double>
       <x:Double x:Key="GalNet.Theme.HeadingSize">32</x:Double>
       <x:Double x:Key="GalNet.Theme.TitleSize">48</x:Double>
       <x:Int32 x:Key="GalNet.Theme.SaveColumns">4</x:Int32>
@@ -94,5 +98,40 @@
   <Style Selector=".galnet-player ProgressBar">
     <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.Primary}" />
     <Setter Property="Background" Value="{DynamicResource GalNet.Brush.SurfaceRaised}" />
+  </Style>
+  <Style Selector=".galnet-player Border.player-page-frame">
+    <Setter Property="MaxWidth" Value="{DynamicResource GalNet.Theme.PageMaxWidth}" />
+    <Setter Property="Margin" Value="{DynamicResource GalNet.Theme.PageMargin}" />
+    <Setter Property="Padding" Value="{DynamicResource GalNet.Theme.PanelPadding}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Border}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="{DynamicResource GalNet.Theme.CornerRadius}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector=".galnet-player Button.player-back">
+    <Setter Property="MinWidth" Value="{DynamicResource GalNet.Theme.BackMinWidth}" />
+    <Setter Property="MinHeight" Value="{DynamicResource GalNet.Theme.BackMinHeight}" />
+    <Setter Property="Padding" Value="24,12" />
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.SurfaceRaised}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector=".galnet-player Border.player-settings-card">
+    <Setter Property="MaxWidth" Value="1000" />
+    <Setter Property="Padding" Value="28" />
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.SurfaceRaised}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource GalNet.Theme.CornerRadius}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+  </Style>
+  <Style Selector=".galnet-player Border.player-media-stage">
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Background}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Border}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="{DynamicResource GalNet.Theme.CornerRadius}" />
+    <Setter Property="Padding" Value="16" />
+    <Setter Property="ClipToBounds" Value="True" />
   </Style>
 </Styles>
