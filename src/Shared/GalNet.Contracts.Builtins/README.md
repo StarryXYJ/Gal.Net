@@ -1,0 +1,20 @@
+# 内置作者契约
+
+本项目只依赖 GalNet.Core，提供参数契约、纯参数校验和编译期 Composite；不创建执行模块、Engine、媒体或 UI。
+
+```csharp
+using GalNet.Contracts.Builtins;
+using GalNet.Core.Entry;
+
+var selected = new TargetProfileEntryCatalog(
+[
+    BuiltinSchemas.CreateDialogueModule(),
+    BuiltinSchemas.CreateFlowModule()
+]);
+
+var all = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
+```
+
+CreateAllModules 只返回 13 个独立模块的只读列表。各组件是 Dialogue、Nvl、Layers、Animations、Audio、Video、Effects、Particles、Flow、Variables、Gallery、Transitions 和 Voice，不存在聚合大模块。
+
+选用 Composite 时，也要选用其输出所需的 primitive；编译器验证缺失契约。游戏宿主另行注册执行实现，由 GalNet.Primitives.Builtins 或自己的平台程序集提供。完整 typeId 唯一，模块名/前缀不用于匹配执行实现。

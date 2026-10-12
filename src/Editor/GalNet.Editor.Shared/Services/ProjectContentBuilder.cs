@@ -1,10 +1,10 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Compilation;
 using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
 using GalNet.Editor.Abstraction.Documents;
-using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -18,7 +18,7 @@ public sealed class ProjectContentBuilder(IEntryCatalog? entryCatalog = null)
         Converters = { new JsonStringEnumConverter() }
     };
 
-    private readonly IEntryCatalog _entryCatalog = entryCatalog ?? BuiltinSchemas.CreateCatalog();
+    private readonly IEntryCatalog _entryCatalog = entryCatalog ?? new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
 
     public async Task<ProjectContentBuildResult> BuildAsync(
         string projectRoot,

@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.I18n;
 using GalNet.Core.Primitives;

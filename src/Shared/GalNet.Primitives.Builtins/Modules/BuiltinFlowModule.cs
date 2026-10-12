@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using GalNet.Presentation.Abstractions.Execution;
 
 namespace GalNet.Primitives.Builtins;

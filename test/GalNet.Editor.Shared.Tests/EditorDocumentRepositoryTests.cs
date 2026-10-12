@@ -1,6 +1,7 @@
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
 using GalNet.Core.Primitives;
@@ -8,7 +9,6 @@ using GalNet.Core.Settings;
 using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Shared.Services;
-using GalNet.Primitives.Builtins;
 
 namespace GeneralTest.Editor;
 
@@ -72,7 +72,7 @@ public class EditorDocumentRepositoryTests
             ]
         };
 
-        var repository = new EditorDocumentRepository(BuiltinSchemas.CreateCatalog());
+        var repository = new EditorDocumentRepository(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()));
         var loaded = repository.Load(_tempDir, "Demo", settings);
 
         Assert.That(loaded.Document.PlayerVariables.Select(v => v.Name), Is.EqualTo(ExpectedPlayerFlag));
@@ -86,7 +86,7 @@ public class EditorDocumentRepositoryTests
     [Test]
     public void Save_WritesVariablesAndGroupEntriesIntoProjectFiles()
     {
-        var repository = new EditorDocumentRepository(BuiltinSchemas.CreateCatalog());
+        var repository = new EditorDocumentRepository(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()));
         var document = new EditorGraphDocument
         {
             Name = "Demo",

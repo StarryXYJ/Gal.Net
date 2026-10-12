@@ -3,12 +3,12 @@ using System.Text.Json.Serialization;
 using GalNet.Core.Entry;
 using GalNet.Core.Scene;
 
-namespace GalNet.Primitives.Builtins;
+namespace GalNet.Contracts.Builtins;
 
 /// <summary>Portable semantic checks shared by compilation and every implementation of built-in contracts.</summary>
 internal static class BuiltinArgumentValidation
 {
-    private static readonly Lazy<IEntryCatalog> EventCatalog = new(BuiltinSchemas.CreateCatalog);
+    private static readonly Lazy<IEntryCatalog> EventCatalog = new(() => new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()));
     private static readonly HashSet<string> PlanEventTypes = new(StringComparer.Ordinal)
     {
         ShowLayerEntry.TypeId, ShowColorLayerEntry.TypeId, HideLayerEntry.TypeId,

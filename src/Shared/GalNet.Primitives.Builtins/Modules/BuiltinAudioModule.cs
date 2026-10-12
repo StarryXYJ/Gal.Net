@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Audio;
 using GalNet.Core.Primitives;
 using GalNet.Core.Settings;

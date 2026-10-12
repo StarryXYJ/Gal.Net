@@ -91,3 +91,5 @@
 - [Headless session cleanup](lessons/L-20261011-01-headless-session-cleanup.md)：async Dispatch 测试使用 await using，避免同步 Dispose 等待同一个 session worker；动态 Brush 预期值要在资源宿主中解析或比较语义 Color。
 
 - [Editor Avalonia aliases](lessons/L-20261011-02-editor-avalonia-alias.md)：Editor 引用 GalNet.Avalonia.* 时采用程序集别名，避免既有 Avalonia 限定名称被相对命名空间解析遮蔽。
+
+- [运行中的 Editor 输出文件锁](lessons/L-20261013-01-running-editor-output-lock.md)：当前运行的 .NET Host 可能锁住 bin DLL；保留用户程序，使用 feature 专用 --output 目录验证。

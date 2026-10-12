@@ -3,10 +3,11 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using GalNet.Assets;
 using GalNet.Assets.Provider;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
+using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
 using GalNet.Core.Serialization;
-using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -34,7 +35,7 @@ public static class GamePackageExporter
             ArgumentNullException.ThrowIfNull(resourceTypes);
             ArgumentNullException.ThrowIfNull(galleryTypes);
             stagingRoot = Path.Combine(Path.GetTempPath(), $"galnet-export-{Guid.NewGuid():N}");
-            await new ProjectContentBuilder(BuiltinSchemas.CreateCatalog())
+            await new ProjectContentBuilder(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()))
                 .BuildAsync(projectRoot, stagingRoot, cancellationToken)
                 .ConfigureAwait(false);
             var assets = await LoadAssetsAsync(Path.Combine(stagingRoot, "Assets"), resourceTypes, cancellationToken);

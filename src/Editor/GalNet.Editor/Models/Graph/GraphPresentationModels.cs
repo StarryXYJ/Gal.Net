@@ -5,6 +5,7 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.Scene;

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
@@ -7,7 +8,6 @@ using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
-using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Headless;
 
@@ -27,7 +27,7 @@ internal static class Program
             if (args.Length == 0 || args[0] is "help" or "--help" or "-h") { PrintHelp(); return 0; }
             var catalog = new EditorCommandCatalog();
             var fileCatalog = new AssetFileCommandCatalog();
-            var entryCatalog = BuiltinSchemas.CreateCatalog();
+            var entryCatalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
             if (args[0].Equals("commands", StringComparison.OrdinalIgnoreCase))
             {
                 WriteJson(catalog.GetAll().Concat(fileCatalog.GetAll()).Select(CommandSummary));

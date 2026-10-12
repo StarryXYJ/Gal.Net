@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Editor.Models.Graph;
@@ -16,7 +17,7 @@ public class GraphEditingServiceTests
     [Test]
     public void InsertEntries_Should_Insert_A_Batch_At_Requested_Position_And_Renumber()
     {
-        var service = new GraphEditingService(BuiltinSchemas.CreateCatalog());
+        var service = new GraphEditingService(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()));
         var node = new GraphNode(new Group { Name = "Group" }, GraphNodeKind.LinearGroup);
         var inserted = service.InsertEntries(node, 0, 3);
 
@@ -29,7 +30,7 @@ public class GraphEditingServiceTests
     [Test]
     public void InsertEntries_Should_Clamp_Index_And_Reject_Invalid_Count()
     {
-        var service = new GraphEditingService(BuiltinSchemas.CreateCatalog());
+        var service = new GraphEditingService(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()));
         var node = new GraphNode(new Group { Name = "Group" }, GraphNodeKind.LinearGroup);
 
         var appended = service.InsertEntries(node, int.MaxValue, 2);
@@ -53,7 +54,7 @@ public class GraphEditingServiceTests
             }
         };
 
-        var catalog = BuiltinSchemas.CreateCatalog();
+        var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
         entry.ConfigureParameterFields(catalog, [], ["first", "second"]);
         var target = entry.ParameterFields.OfType<VariableNameEntryParameterEditorItemViewModel>().Single();
 

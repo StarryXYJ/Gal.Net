@@ -1,6 +1,6 @@
 using GalNet.Core.Entry;
 
-namespace GalNet.Primitives.Builtins;
+namespace GalNet.Contracts.Builtins;
 
 /// <summary>
 /// Recommended authoring-only transition entries. They expand into the

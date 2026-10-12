@@ -50,9 +50,9 @@ transition.fadeColor
 
 ## 内置 primitive ID
 
-`GalNet.Primitives.Builtins` 提供独立可选的 schema 与运行时领域模块。主入口是 `GameRegistration.AddBuiltins`，也可单独调用 `AddBuiltinSchemas`，并组合部分内置或自定义执行模块。当前内置 ID 为：
+`GalNet.Contracts.Builtins` 提供只依赖 Core 的作者契约；`GalNet.Primitives.Builtins` 提供运行时领域模块。`BuiltinSchemas.CreateAllModules()` 返回 13 个独立模块的只读列表，各组件也可通过 `Create<Domain>Module()` 单独选择；没有合成全内置大模块或内置专用 catalog 工厂。消费者使用 `new TargetProfileEntryCatalog(modules)`。
 
-内置 entry DTO、primitive instance 和 module 都使用 `GalNet.Primitives.Builtins` 命名空间；`GalNet.Core.Entry` 只包含通用 entry 基类、schema 和 catalog 基础设施。内容格式只保存下列稳定 `TypeId`，不保存 CLR 类型名。
+完整运行入口是 `GameRegistration.AddBuiltins`；也可单独调用 `AddBuiltinSchemas` 注册模块列表，再组合部分内置或自定义执行模块。内置 entry DTO、纯参数校验和 Composite 位于 `GalNet.Contracts.Builtins`，primitive instance 和执行 module 位于 `GalNet.Primitives.Builtins`；`GalNet.Core.Entry` 只包含通用基础设施。内容格式只保存下列稳定 `TypeId`，不保存 CLR 类型名。
 
 ```text
 dialogue.text, dialogue.textVoice, dialogue.show, dialogue.hide

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
 using GalNet.Presentation.Abstractions.View;
@@ -30,7 +31,7 @@ public class EntryModuleTests
     [Test]
     public void AnimationContractRejectsUnknownEmbeddedEvents()
     {
-        var schema = BuiltinSchemas.CreateCatalog().Get("animation.play");
+        var schema = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()).Get("animation.play");
         Assert.Throws<InvalidDataException>(() => PrimitiveArgumentHelper.Normalize(schema.DynamicParameters!,
             JsonSerializer.SerializeToElement(new
             {

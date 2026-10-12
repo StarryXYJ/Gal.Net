@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 using GalNet.Core.Entry;
 using GalNet.Core.Scene;
 
-namespace GalNet.Primitives.Builtins;
+namespace GalNet.Contracts.Builtins;
 
 internal static class TransitionEntrySupport
 {

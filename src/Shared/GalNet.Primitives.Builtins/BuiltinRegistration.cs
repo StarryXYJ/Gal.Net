@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Gallery;
 using GalNet.Core.I18n;
 using GalNet.Presentation.Abstractions.Audio;
@@ -8,8 +9,12 @@ namespace GalNet.Primitives.Builtins;
 /// <summary>Independent schema and implementation registration for one game scope.</summary>
 public static class BuiltinRegistration
 {
-    public static GameRegistration AddBuiltinSchemas(this GameRegistration registration) =>
-        registration.RegisterSchema(BuiltinSchemas.CreateModule());
+    public static GameRegistration AddBuiltinSchemas(this GameRegistration registration)
+    {
+        foreach (var module in BuiltinSchemas.CreateAllModules())
+            registration.RegisterSchema(module);
+        return registration;
+    }
 
     public static GameRegistration AddBuiltins(
         this GameRegistration registration,

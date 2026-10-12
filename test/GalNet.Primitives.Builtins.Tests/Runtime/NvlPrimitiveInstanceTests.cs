@@ -1,3 +1,5 @@
+using GalNet.Contracts.Builtins;
+using GalNet.Core.Entry;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
 
@@ -38,7 +40,7 @@ public class NvlPrimitiveInstanceTests
         {
             var primitive = module.Instructions[entry];
             primitive.CreateInstance(new GalNet.Core.Primitives.PrimitiveCreateContext(
-                BuiltinSchemas.CreateCatalog().Get(entry),
+                new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()).Get(entry),
                 new GalNet.Core.Entry.PrimitiveEntry(entry, System.Text.Json.JsonSerializer.SerializeToElement(new { })),
                 new GalNet.Runtime.Runtime.GameRuntime(null),
                 CancellationToken.None)).Dispatch();

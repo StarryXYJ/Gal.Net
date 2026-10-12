@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
+using GalNet.Contracts.Builtins;
+using GalNet.Core.Entry;
 using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Extensibility;
@@ -190,7 +192,7 @@ public sealed class EditorWorkspaceViewModelTests
                 new NullServiceProvider(),
                 new EditorExtensionRegistry(),
                 localization);
-            var catalog = BuiltinSchemas.CreateCatalog();
+            var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
             var variableDefinitions = new VariableDefinitionService(DocumentService);
             var repository = new FakeDocumentRepository(loaded);
             var persistence = new EditorWorkspacePersistence(

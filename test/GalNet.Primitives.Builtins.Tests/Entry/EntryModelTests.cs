@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Primitives.Builtins;
 
@@ -10,7 +11,7 @@ public class EntryModelTests
     private static readonly string[] SlideDirections = ["Left", "Right", "Up", "Down"];
     private static readonly string[] BlindOrientations = ["Vertical", "Horizontal"];
 
-    private static TargetProfileEntryCatalog Catalog => BuiltinSchemas.CreateCatalog();
+    private static TargetProfileEntryCatalog Catalog => new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
 
     [Test]
     public void Registry_Should_Create_All_BuiltIn_Entries()

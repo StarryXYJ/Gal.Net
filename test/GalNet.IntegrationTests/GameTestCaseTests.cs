@@ -1,4 +1,5 @@
 using DynamicLocalization.Core;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
@@ -20,7 +21,7 @@ public class GameTestCaseTests
     public void AuthoringSamplePassesDocumentValidation()
     {
         var source = Path.Combine(FindRepositoryDirectory(), "GameTestCase");
-        var document = new DirectProjectPersistence(source, new EditorDocumentRepository(BuiltinSchemas.CreateCatalog())).Load();
+        var document = new DirectProjectPersistence(source, new EditorDocumentRepository(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()))).Load();
         var result = EditorDocumentValidator.Validate(document);
         Assert.That(result.IsValid, Is.True, string.Join(Environment.NewLine, result.Diagnostics.Select(item => item.Message)));
     }

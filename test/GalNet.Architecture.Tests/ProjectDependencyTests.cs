@@ -10,9 +10,10 @@ public class ProjectDependencyTests
         new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
             ["GalNet.Core"] = [],
+            ["GalNet.Contracts.Builtins"] = ["GalNet.Core"],
             ["GalNet.Presentation.Abstractions"] = ["GalNet.Core"],
             ["GalNet.Runtime"] = ["GalNet.Core", "GalNet.Presentation.Abstractions"],
-            ["GalNet.Primitives.Builtins"] = ["GalNet.Core", "GalNet.Presentation.Abstractions", "GalNet.Runtime"],
+            ["GalNet.Primitives.Builtins"] = ["GalNet.Core", "GalNet.Contracts.Builtins", "GalNet.Presentation.Abstractions", "GalNet.Runtime"],
             ["GalNet.Assets"] = ["GalNet.Core"],
             ["GalNet.Storage.FileSystem"] = ["GalNet.Core", "GalNet.Runtime", "GalNet.Assets"],
             ["GalNet.Editor.Abstraction"] = ["GalNet.Core"],
@@ -20,7 +21,7 @@ public class ProjectDependencyTests
             [
                 "GalNet.Core",
                 "GalNet.Editor.Abstraction",
-                "GalNet.Primitives.Builtins",
+                "GalNet.Contracts.Builtins",
                 "GalNet.Runtime",
                 "GalNet.Assets"
             ],
@@ -45,6 +46,7 @@ public class ProjectDependencyTests
                 "GalNet.Core",
                 "GalNet.Presentation.Abstractions",
                 "GalNet.Primitives.Builtins",
+                "GalNet.Contracts.Builtins",
                 "GalNet.Runtime"
             ],
             ["GalNet.Assets.Tests"] = ["GalNet.Assets", "GalNet.Core"],
@@ -60,7 +62,8 @@ public class ProjectDependencyTests
                 "GalNet.Core",
                 "GalNet.Editor.Abstraction",
                 "GalNet.Editor.Shared",
-                "GalNet.Primitives.Builtins"
+                "GalNet.Primitives.Builtins",
+                "GalNet.Contracts.Builtins"
             ],
             ["GalNet.Editor.Tests"] =
             [
@@ -68,7 +71,8 @@ public class ProjectDependencyTests
                 "GalNet.Editor",
                 "GalNet.Editor.Abstraction",
                 "GalNet.Editor.Shared",
-                "GalNet.Primitives.Builtins"
+                "GalNet.Primitives.Builtins",
+                "GalNet.Contracts.Builtins"
             ],
             ["GalNet.Presentation.Tests"] =
             [
@@ -89,6 +93,7 @@ public class ProjectDependencyTests
                 "GalNet.Editor.Shared",
                 "GalNet.Presentation.Abstractions",
                 "GalNet.Primitives.Builtins",
+                "GalNet.Contracts.Builtins",
                 "GalNet.Runtime",
                 "GalNet.Sample.Avalonia",
                 "GalNet.Storage.FileSystem"
@@ -158,6 +163,7 @@ public class ProjectDependencyTests
 
     [TestCase("GalNet.Presentation.Abstractions", "GalNet.Presentation.Abstractions")]
     [TestCase("GalNet.Primitives.Builtins", "GalNet.Primitives.Builtins")]
+    [TestCase("GalNet.Contracts.Builtins", "GalNet.Contracts.Builtins")]
     public void ExtensionProject_DeclaresOnlyOwnedNamespaces(string projectName, string namespaceRoot)
     {
         var projectDirectory = Path.GetDirectoryName(FindProjectFile(projectName))!;

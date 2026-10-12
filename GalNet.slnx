@@ -33,6 +33,7 @@
   <Folder Name="/src/Shared/">
     <Project Path="src/Shared/GalNet.Assets/GalNet.Assets.csproj" />
     <Project Path="src/Shared/GalNet.Core/GalNet.Core.csproj" />
+    <Project Path="src/Shared/GalNet.Contracts.Builtins/GalNet.Contracts.Builtins.csproj" />
     <Project Path="src/Shared/GalNet.Presentation.Abstractions/GalNet.Presentation.Abstractions.csproj" />
     <Project Path="src/Shared/GalNet.Primitives.Builtins/GalNet.Primitives.Builtins.csproj" />
     <Project Path="src/Shared/GalNet.Runtime/GalNet.Runtime.csproj" />

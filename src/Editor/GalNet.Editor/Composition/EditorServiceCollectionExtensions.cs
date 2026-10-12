@@ -1,4 +1,5 @@
 using System;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
@@ -27,7 +28,7 @@ public static class EditorServiceCollectionExtensions
 {
     public static IServiceCollection AddEditorServices(this IServiceCollection services)
     {
-        var targetProfile = BuiltinSchemas.CreateCatalog();
+        var targetProfile = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
         services.AddSingleton<IEntryCatalog>(targetProfile);
         services.AddEditorCoreServices();
         services.AddEditorCommands(targetProfile);

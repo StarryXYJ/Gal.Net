@@ -143,6 +143,8 @@ await using var custom = new GameRegistration()
 
 `AddBuiltinSchemas` 不创建播放器或运行期状态；`AddBuiltinImplementations` 注册全部内置实现；`AddBuiltinAudio`、`AddBuiltinAnimations`、`AddBuiltinVariables` 等按领域选择实现。也可以完全不使用内置契约。
 
+作者契约位于独立的 `GalNet.Contracts.Builtins` 项目，只依赖 Core。`BuiltinSchemas.CreateAllModules()` 返回模块列表；可单独选择 `CreateDialogueModule()`、`CreateAudioModule()` 等组件，使用 `new TargetProfileEntryCatalog(modules)` 构造通用 catalog。选择部分 schema 时应注册与之对应的执行模块，不能直接注册全部内置实现。参数类型、内置 Entry DTO 和 Composite 使用 `GalNet.Contracts.Builtins` 命名空间，执行模块仍使用 `GalNet.Primitives.Builtins`。
+
 只注册 schema 的 view 可以构建，但不能执行尚未提供实现的指令。Engine 创建时检查 Graph 引用的所有 primitive；缺失实现直接报错，不静默跳过。没有 presenter 的内置模块不等于具备平台播放能力：部分模块可只提交状态，对话等需要交互的能力仍要求对应 presenter。
 
 音频用组合而非强制继承：`BuiltinAudioModule`/`AudioRuntime` 管理轨道与 voice，`IAudioPlaybackHost` 管理平台播放。Avalonia 可提供 LibVLC host，Unity 可提供原生音频 host；若轨道语义也需替换，只注册内置 schema 和自己的音频执行模块。

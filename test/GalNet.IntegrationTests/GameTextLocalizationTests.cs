@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Compilation;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
@@ -33,7 +34,7 @@ public class GameTextLocalizationTests
                 }
             ]
         };
-        var catalog = BuiltinSchemas.CreateCatalog();
+        var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
         var first = GalgroupCompiler.Compile(raw, catalog).Document;
         raw.Entries.Insert(0, new GroupEntryDocument { Id = "1", Type = ShowDialogueEntry.TypeId });
         var second = GalgroupCompiler.Compile(raw, catalog).Document;

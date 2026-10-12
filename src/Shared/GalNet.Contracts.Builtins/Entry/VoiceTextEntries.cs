@@ -1,7 +1,7 @@
 using System.Text.Json;
 using GalNet.Core.Entry;
 
-namespace GalNet.Primitives.Builtins;
+namespace GalNet.Contracts.Builtins;
 
 /// <summary>Authoring-only dialogue entry that expands to audio followed by a normal blocking text primitive.</summary>
 public sealed class TextVoiceEntry : CompositeEntry
