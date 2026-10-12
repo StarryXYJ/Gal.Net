@@ -14,6 +14,60 @@ namespace GeneralTest.Runtime;
 
 public class PlaybackModeTests
 {
+    [TestCase(PlaybackMode.Auto)]
+    [TestCase(PlaybackMode.Quick)]
+    public async Task CancelledCatchUpOnExistingUnskippableBlockerPreservesPlaybackBoundary(PlaybackMode mode)
+    {
+        var blocker = new UnskippableWait();
+        using var view = Registration().RegisterInstruction("test.voice", _ => blocker).BuildView();
+        await using var engine = new GameEngine(GraphOf("test.voice"), view, settings: Settings(0));
+        var completed = Terminal(engine);
+        await engine.AdvanceAsync();
+        var skip = engine.SkipToUnreadAsync();
+        await blocker.CatchUpEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        engine.CancelCatchUp();
+        await skip.WaitAsync(TimeSpan.FromSeconds(2));
+        await engine.SetPlaybackModeAsync(mode);
+        Assert.That(blocker.IsCompleted, Is.False);
+        blocker.Finish();
+        await completed.WaitAsync(TimeSpan.FromSeconds(2));
+    }
+
+    [TestCase(PlaybackMode.Auto)]
+    [TestCase(PlaybackMode.Quick)]
+    public async Task ManualRevealPreservesBoundaryForPlayback(PlaybackMode mode)
+    {
+        var line = new ReadingWait(skipCompletes: false);
+        var settings = Settings(0);
+        settings.Get<GameSettings>().QuickReadOnly = false;
+        using var view = Registration().RegisterInstruction("test.text", _ => line).BuildView();
+        await using var engine = new GameEngine(GraphOf("test.text"), view, settings: settings);
+        var completed = Terminal(engine);
+        await engine.AdvanceAsync();
+        await engine.AdvanceAsync();
+        Assert.That(line.IsWaitingForAdvance, Is.True);
+        await engine.SetPlaybackModeAsync(mode);
+        await completed.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.That(line.IsCompleted, Is.True);
+    }
+
+    [TestCase(PlaybackMode.Auto)]
+    [TestCase(PlaybackMode.Quick)]
+    public async Task ManualClickOnUnskippableBlockerPreservesBoundaryForPlayback(PlaybackMode mode)
+    {
+        var blocker = new UnskippableWait();
+        using var view = Registration().RegisterInstruction("test.voice", _ => blocker).BuildView();
+        await using var engine = new GameEngine(GraphOf("test.voice"), view, settings: Settings(0));
+        var completed = Terminal(engine);
+        await engine.AdvanceAsync();
+        await engine.AdvanceAsync();
+        await engine.SetPlaybackModeAsync(mode);
+        Assert.That(blocker.IsCompleted, Is.False);
+        Assert.That(engine.IsRunning, Is.True);
+        blocker.Finish();
+        await completed.WaitAsync(TimeSpan.FromSeconds(2));
+    }
+
     [Test]
     public async Task PresentationSynchronizationUsesAnIsolatedRunScopeThatRestoreAndStopCancel()
     {
@@ -437,13 +491,18 @@ public class PlaybackModeTests
 
     private sealed class UnskippableWait : PrimitiveInstance
     {
+        public TaskCompletionSource CatchUpEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public override bool IsBlocking => true;
         public override bool IsSkippable => false;
         protected override void OnDispatch() { }
+        protected override void OnPlaybackModeChanged(PrimitiveInvocationMode mode)
+        {
+            if (mode == PrimitiveInvocationMode.CatchUp) CatchUpEntered.TrySetResult();
+        }
         public void Finish() => TryComplete();
     }
 
-    private sealed class ReadingWait : PrimitiveInstance, IAdvanceWaitInstance
+    private sealed class ReadingWait(bool skipCompletes = true) : PrimitiveInstance, IAdvanceWaitInstance
     {
         public override bool IsBlocking => true;
         public override bool IsSkippable => true;
@@ -453,7 +512,11 @@ public class PlaybackModeTests
         protected override void OnDispatch() => HasBeenDispatched = true;
         public void Presented() { IsTextPresented = true; SetAutoBlocking(false); }
         public void CompleteAdvance() => TryComplete();
-        protected override void OnSkip() => CompleteAdvance();
+        protected override void OnSkip()
+        {
+            if (skipCompletes) CompleteAdvance();
+            else Presented();
+        }
         protected override void OnPlaybackModeChanged(PrimitiveInvocationMode mode)
         {
             if (mode == PrimitiveInvocationMode.CatchUp) CompleteAdvance();

@@ -22,11 +22,15 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Sample.Avalonia;
 
+
 public partial class App : Application
 {
     internal static GameLaunchOptions LaunchOptions { get; set; } = new(null, null);
     // Startup configuration: layout and palette are independent. No runtime theme switching.
-    internal static IGameLayoutTheme PlayerTheme { get; } = new ClassicTheme(GamePalette.Ocean);
+    internal static IGameLayoutTheme PlayerTheme { get; } = //new ClassicTheme(GamePalette.Ocean)
+        new ClassicTheme(GamePalette.Mono)
+    ;
+
     private ServiceProvider? _rootServices;
     private AsyncServiceScope? _gameScope;
 

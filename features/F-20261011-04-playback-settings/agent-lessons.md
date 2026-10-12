@@ -4,6 +4,16 @@
 
 状态：confirmed，2026-10-12。自定义 Button 模板若沿用 PART_ContentPresenter 名称，Fluent 的 pointerover/pressed 模板子选择器仍会直接覆写该 presenter.Background，导致 Button.Background 正确而实际呈现错误。游戏工具栏使用自己的 ToolbarContentPresenter 名称和 TemplateBinding，避开默认模板子选择器，保留命令、内容及焦点行为。九组布局×配色测试先复现 presenter 与按钮画刷不一致，调整后通过。验证自定义按钮时需检查实际模板背景，不能仅断言外层 Background。来源：F-20261011-04-playback-settings。
 
+## 玩家点击不等于消费推进边界
+
+状态：confirmed，2026-10-12。来源：F-20261011-04-playback-settings；PlaybackModeTests、GameEnginePrimitiveDispatchTests、BuiltinAutoPlaybackTests。
+
+现象：视频分段 seek 后开启快速，视频完成并移除，但 Engine 不启动下一句计时，左键才恢复；手动文本 reveal 和点击不可跳过 blocker 后开启 Auto/Quick 同样受影响。根因为 AdvanceAsync 在调用 Skip 之前清空 _advanceBoundary，而 Skip 不保证逻辑完成。修正为只有确实释放 blocker、进入后续剧情时才消费边界，不通过重新枚举已移除实例来推断是否曾达到过边界。
+
+同类路径：进入追帧时提前清空边界，现有自定义 blocker 回退正常执行且没有完成；取消追帧再切 Auto/Quick 后无法续跑。压缩和清理之后按剩余 blocker 恢复边界。恢复/停止/Choice 等真正的生命周期边界仍明确清空，不能全局取消清理。
+
+验证：手动路径四例、视频六例（有手动点击的四例先失败）、取消追帧两例先复现；修复后加上真实 ADV/NVL 四例，共新增 16 项测试通过。禁止用“只从首次 Dispatch 开启模式”的测试代替“中途手动操作后再开启模式”的验证。`.agents` 当前只读，本条暂存 feature，待可写时整理索引。
+
 ## 即时文字速度不能代替全文快速完成
 
 状态：confirmed，2026-10-12。TypewriterTextBlock 的 CharactersPerSecond=0 仅省略逐字符延迟，显式 `\\d{...}` 仍会等待；最终追帧重建也会受影响。Avalonia 即时 ADV/NVL 路径在 Start/Append 后显式 RevealAll，跨越 delay 与 skip 分段。三布局×三配色用 60 秒 delay 验证最终同步在 2 秒内完成，Presentation 125 项通过。适用快速全文和最终展示重建；禁止仅设速度 0 就承诺忽略所有等待。来源：F-20261011-04-playback-settings。

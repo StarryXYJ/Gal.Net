@@ -68,7 +68,6 @@ public sealed partial class GameEngine
                 if (!IsRunning || _pendingChoice is not null || _active.Any(item => item.IsReading && !item.WasRead)) return;
                 scopedRuntime = _dispatchRuntime;
                 SetPlaybackModeCore(PlaybackMode.Manual);
-                _advanceBoundary = false;
                 _catchUpActive = true;
                 _catchUpStopAtBoundary = false;
                 if (_catchUpPresentation is not null)
@@ -83,6 +82,9 @@ public sealed partial class GameEngine
                 await Task.WhenAll(entering.Select(item => item.Instance.PresentationCompletion))
                     .WaitAsync(_scopeCancellation.Token).ConfigureAwait(false);
                 RemoveCompleted();
+                // An extension may retain its normal blocker during catch-up. If
+                // catch-up is cancelled here, playback must still own that boundary.
+                _advanceBoundary = HasBlockingInstance();
             }
             finally { _dispatchGate.Release(); PublishStateChanges(); }
 

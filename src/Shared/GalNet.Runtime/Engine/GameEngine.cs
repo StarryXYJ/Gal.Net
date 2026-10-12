@@ -115,7 +115,6 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             _catchUpActive = false;
             _catchUpStopAtBoundary = false;
             SetPlaybackModeCore(PlaybackMode.Manual);
-            _advanceBoundary = false;
             IsRunning = !_runtime.IsGameEnded;
             CaptureStateChange();
             RemoveCompleted();
@@ -136,6 +135,9 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
                     return true;
             }
 
+            // A manual skip may only reveal text or seek a video segment. Keep the
+            // existing boundary until its blocker is actually released.
+            _advanceBoundary = false;
             ContinueUntilBlocked();
             ThrowFlowError();
             return IsRunning;
