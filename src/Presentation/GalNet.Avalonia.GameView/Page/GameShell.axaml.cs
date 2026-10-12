@@ -5,6 +5,7 @@ using Avalonia.Controls.Presenters;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using GalNet.Avalonia.GameView.Composition;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
@@ -35,7 +36,8 @@ public partial class GameShell : UserControl, IDisposable
         IGameScreenshotService screenshots,
         IGameSessionService session,
         IGameNavigationService navigation,
-        GameNavigationTransitionCoordinator transitions)
+        GameNavigationTransitionCoordinator transitions,
+        IGameLayoutTheme theme)
     {
         _viewModel = viewModel;
         _views = views;
@@ -44,6 +46,7 @@ public partial class GameShell : UserControl, IDisposable
         _navigation = navigation;
         _transitions = transitions;
         InitializeComponent();
+        Styles.Add(theme.CreateStyles());
         DataContext = viewModel;
         session.PropertyChanged += OnSessionPropertyChanged;
         _transitions.Attach(ShowPageAsync);
@@ -57,6 +60,8 @@ public partial class GameShell : UserControl, IDisposable
         _session.PropertyChanged -= OnSessionPropertyChanged;
         if (_gameplay is not null)
         {
+            _gameplay.CancelPlayback();
+            _gameplay.CancelSkipCommand.Execute(null);
             _gameplay.ScreenshotRequested -= OnScreenshotRequested;
             _gameplay.ReturnToTitleRequested -= OnReturnToTitleRequested;
         }
@@ -217,10 +222,13 @@ public partial class GameShell : UserControl, IDisposable
         {
             if (_gameplay is not null)
             {
+                _gameplay.CancelPlayback();
+                _gameplay.CancelSkipCommand.Execute(null);
                 _gameplay.ScreenshotRequested -= OnScreenshotRequested;
                 _gameplay.ReturnToTitleRequested -= OnReturnToTitleRequested;
             }
             _gameplay = viewModel as GamePageViewModel;
+            SkipPrompt.DataContext = _gameplay;
             if (_gameplay is not null)
             {
                 _gameplay.ScreenshotRequested += OnScreenshotRequested;
@@ -231,6 +239,7 @@ public partial class GameShell : UserControl, IDisposable
 
     private async void OnScreenshotRequested()
     {
+        _gameplay?.CancelPlayback();
         var page = PageHost.Content as GamePage;
         if (page is null) return;
         var owner = TopLevel.GetTopLevel(this);

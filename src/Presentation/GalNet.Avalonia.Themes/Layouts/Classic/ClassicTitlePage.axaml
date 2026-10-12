@@ -1,0 +1,22 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
+             xmlns:shared="using:GalNet.Avalonia.Themes.Base"
+             x:Class="GalNet.Avalonia.Themes.Layouts.Classic.ClassicTitlePage"
+             x:DataType="vm:TitlePageViewModel">
+  <Grid Background="{DynamicResource GalNet.Brush.Background}">
+    <Grid IsHitTestVisible="False" Opacity="0.3">
+      <Ellipse Width="1000" Height="1000" Fill="{DynamicResource GalNet.Brush.Primary}" HorizontalAlignment="Right" Margin="0,0,-240,-480" VerticalAlignment="Bottom" />
+      <Ellipse Width="640" Height="640" Stroke="{DynamicResource GalNet.Brush.Primary}" StrokeThickness="2" HorizontalAlignment="Right" Margin="0,0,80,-200" VerticalAlignment="Bottom" />
+    </Grid>
+    <Grid Margin="80,64" ColumnDefinitions="440,*" RowDefinitions="Auto,*">
+      <StackPanel Grid.ColumnSpan="2" Spacing="12">
+        <TextBlock Text="{Binding GameTitle}" FontSize="{DynamicResource GalNet.Theme.TitleSize}" FontWeight="Bold" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" TextWrapping="Wrap" MaxWidth="840" HorizontalAlignment="Left" />
+      </StackPanel>
+      <ScrollViewer Grid.Row="1" VerticalAlignment="Bottom" HorizontalScrollBarVisibility="Disabled" Margin="0,32,0,0">
+        <shared:TitleMenu Margin="0,0,40,0" />
+      </ScrollViewer>
+    </Grid>
+  </Grid>
+</UserControl>

@@ -1,0 +1,64 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:page="using:GalNet.Avalonia.GameView.Page"
+             xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
+             xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
+             x:Class="GalNet.Avalonia.Themes.Common.GameToolbar"
+             x:DataType="vm:GamePageViewModel"
+             FontSize="18"
+             IsVisible="{Binding IsGameUiVisible}"
+             page:GamePage.IsPlayerInteraction="True">
+  <UserControl.Resources>
+    <SolidColorBrush x:Key="Toolbar.Hover" Color="{DynamicResource GalNet.Palette.PrimaryColor}" Opacity="0.08" />
+    <SolidColorBrush x:Key="Toolbar.Pressed" Color="{DynamicResource GalNet.Palette.PrimaryColor}" Opacity="0.18" />
+    <SolidColorBrush x:Key="Toolbar.Selected" Color="{DynamicResource GalNet.Palette.PrimaryColor}" Opacity="0.24" />
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <Style Selector=":is(Button).player-link">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextPrimary}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="12,7" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <ContentPresenter Name="ToolbarContentPresenter"
+                            Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}"
+                            BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                            Padding="{TemplateBinding Padding}" Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center" />
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="Button.player-link:pointerover">
+      <Setter Property="Background" Value="{StaticResource Toolbar.Hover}" />
+      <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextPrimary}" />
+    </Style>
+    <Style Selector="Button.player-link:pressed">
+      <Setter Property="Background" Value="{StaticResource Toolbar.Pressed}" />
+      <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextPrimary}" />
+    </Style>
+    <Style Selector="ToggleButton.player-link:checked">
+      <Setter Property="Background" Value="{StaticResource Toolbar.Selected}" />
+      <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.PrimaryHover}" />
+    </Style>
+    <Style Selector=":is(Button).player-link:focus-visible">
+      <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Focus}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+  </UserControl.Styles>
+  <WrapPanel Orientation="Horizontal">
+    <ToggleButton Classes="player-link" Margin="4" Content="{text:PlayerText Playback.Quick, Quick}"
+                  IsChecked="{Binding IsQuickMode, Mode=OneWay}" Command="{Binding ToggleQuickCommand}" page:GamePage.PlaybackToggle="Quick" />
+    <ToggleButton Classes="player-link" Margin="4" Content="{text:PlayerText Playback.Auto, Auto}"
+                  IsChecked="{Binding IsAutoMode, Mode=OneWay}" Command="{Binding ToggleAutoCommand}" page:GamePage.PlaybackToggle="Auto" />
+    <Button Classes="player-link" Margin="4" Content="{text:PlayerText Playback.Skip, Skip}" Command="{Binding RequestSkipCommand}" />
+    <Button Classes="player-link" Margin="4" Content="{text:PlayerText Common.Save, Save}" Command="{Binding OpenSaveSlotsCommand}" />
+    <Button Classes="player-link" Margin="4" Content="{text:PlayerText Title.Load, Load}" Command="{Binding OpenLoadSlotsCommand}" />
+    <Button Classes="player-link" Margin="4" Content="{text:PlayerText Settings.Title, Settings}" Command="{Binding OpenSettingsCommand}" />
+    <Button Classes="player-link" Margin="4" Content="{text:PlayerText Common.Title, Title}" Command="{Binding ReturnToTitleCommand}" />
+    <Button Classes="player-link" Margin="4" Content="{text:PlayerText Common.Screenshot, Screenshot}" Command="{Binding RequestScreenshotCommand}" />
+    <Button Classes="player-link" Margin="4" Content="{text:PlayerText Common.HideUi, 'Hide UI'}" Command="{Binding HideUiCommand}" />
+  </WrapPanel>
+</UserControl>

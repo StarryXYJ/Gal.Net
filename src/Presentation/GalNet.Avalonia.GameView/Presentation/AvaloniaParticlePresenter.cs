@@ -66,10 +66,11 @@ public sealed class AvaloniaParticlePresenter : IParticlePresenter, IDisposable
             return Task.CompletedTask;
         });
 
-    public void Dispose()
+    public void Clear()
     {
         foreach (var id in _emitters.Keys.ToArray()) StopParticleEmitter(id);
     }
+    public void Dispose() => Clear();
 
     private void RegisterAnimation(ParticleEmitterRequest request, string property, Action<double> apply, double fallback)
     {

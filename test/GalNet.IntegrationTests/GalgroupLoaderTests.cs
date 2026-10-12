@@ -19,7 +19,7 @@ public class GalgroupLoaderTests
         var group = new Group { Id = "test_group" };
         GalgroupLoader.LoadIntoGroupFromContent(group, """
             {
-              "version": 2,
+              "version": 3,
               "kind": "Compiled",
               "entries": [
                 { "id": "entry-text", "typeId": "dialogue.text", "arguments": { "speaker": "Alice", "content": "intro" } },
@@ -104,7 +104,7 @@ public class GalgroupLoaderTests
     {
         var group = new Group { Id = "test" };
         Assert.That(() => GalgroupLoader.LoadIntoGroupFromContent(group, """
-            { "version": 2, "kind": "Compiled", "entries": [
+            { "version": 3, "kind": "Compiled", "entries": [
               { "id": "duplicate", "typeId": "dialogue.text", "arguments": { "content": "a" } },
               { "id": "duplicate", "typeId": "dialogue.text", "arguments": { "content": "b" } }
             ] }
@@ -120,12 +120,13 @@ public class GalgroupLoaderTests
             """), Throws.TypeOf<InvalidDataException>().With.Message.Contains("compiled"));
     }
 
+    [Test]
     public static void Load_RejectsPreviousFormatVersion()
     {
         var group = new Group { Id = "test" };
 
         Assert.That(() => GalgroupLoader.LoadIntoGroupFromContent(group, """
-            { "version": 1, "kind": "Compiled", "entries": [] }
+            { "version": 2, "kind": "Compiled", "entries": [] }
             """), Throws.TypeOf<InvalidDataException>().With.Message.Contains("version"));
     }
 

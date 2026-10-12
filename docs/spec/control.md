@@ -2,7 +2,7 @@
 
 ## 当前范围
 
-`GalNet.Avalonia.GameView` 是官方共享的 Avalonia 游戏页面宿主。它提供可替换的 `GameShell`、标题、加载、游戏、存读档、设置、鉴赏、关于和截图页面，并通过组合期注册表完成 ViewModel 到 View 的映射。
+`GalNet.Avalonia.GameView` 是官方共享的 Avalonia 游戏页面宿主。它提供 GameShell、GamePage、截图对话框行为基类及共享 ViewModel/服务；普通页面布局由主题提供，通过组合期注册表完成 ViewModel 到 View 的映射。
 
 页面宿主不读取游戏文件，也不持有项目目录。宿主负责提供游戏内容、资源、存档、玩家变量、进度和媒体实现；编辑器预览与官方 Avalonia Sample 在各自的组合根中装配这些服务。
 
@@ -20,19 +20,45 @@
 
 ## 页面与组合
 
-默认页面由 `AddAvaloniaGameViewPages()` 注册：
+共享 ViewModel 由 `AddAvaloniaGameViewPages(theme)` 注册，普通 View 由所选主题提供：
 
 | 页面 | 作用 |
 | --- | --- |
-| `TitlePage` / `TitlePageViewModel` | 开始、继续和进入其他页面 |
-| `LoadingPage` / `LoadingPageViewModel` | 游戏会话加载状态 |
+| `TitlePageViewModel` | 开始、继续和进入其他页面 |
+| `LoadingPageViewModel` | 游戏会话加载状态 |
 | `GamePage` / `GamePageViewModel` | 游戏场景、对话、选择和交互 |
-| `SaveSlotsPage` / `SaveSlotsPageViewModel` | 存档槽和读写操作 |
-| `SettingsPage` / `SettingsPageViewModel` | 运行期设置 |
-| `GalleryPage` / `GalleryPageViewModel` | 已解锁内容 |
-| `AboutPage` / `AboutPageViewModel` | 宿主提供的关于内容 |
+| `SaveSlotsPageViewModel` | 存档槽和读写操作 |
+| `SettingsPageViewModel` | 运行期设置 |
+| `GalleryPageViewModel` | 已解锁内容 |
+| `AboutPageViewModel` | 宿主提供的关于内容 |
 
-宿主可以在 `AddAvaloniaGameViewPages()` 的注册回调中覆盖默认 View，或者追加自定义页面。注册表构建后不可修改。
+宿主可以在 `AddAvaloniaGameViewPages(theme)` 的注册回调中覆盖主题 View，或者追加自定义页面。注册表构建后不可修改。
+
+### 布局主题与独立配色
+
+`IGameLayoutTheme` 位于 GameView.Composition，提供 `CreateStyles()` 和 `RegisterViews(IPageViewRegistryBuilder)`。`AddAvaloniaGameViewPages(theme: theme)` 主题参数必需，按共享 GamePage 宿主、主题页面、宿主 Gallery 回调、宿主 View 回调顺序注册，随后检查全部必需映射及 GamePage/ScreenshotDialog 基类契约；缺失时列出诊断并拒绝初始化。普通 View 自动补充 Scoped DI 注册，截图对话框每次新建并释放。共享 ViewModel 与业务服务继续由 GameView/宿主注册。
+
+可选 `GalNet.Avalonia.Themes` 集合提供 Classic、Minimal、Paper 布局和 Ocean、Rose、Mono 配色，布局与配色任意组合。配置由开发者在启动代码决定，运行期固定。GameShell 获取 DI 中的主题，并把资源与样式加载到游戏根；Sample 和 Editor 预览均显式选择 Classic；GameView 不再提供默认页面或玩家样式。独立语言选择与截图弹窗接入同一主题资源。官方布局使用玩家根内的 Fluent 模板和所选配色，宿主 Semi、编辑器、调试 UI 与系统文件选择器保持各自作用域。
+
+资源分为 `GalNet.Color.*` 基础色、`GalNet.Palette.*Color` 语义色、`GalNet.Brush.*` 语义画刷和 `GalNet.Theme.*` 布局尺寸。Controls 提供中性画刷回退；Palette 提供完整配色；内置布局不重定义公共语义色，宿主可通过玩家根 Resources 覆盖。GamePalette 检查 21 个必需画刷；官方 Fluent 桥接需对应 Color 资源或可解析的纯色画刷。
+
+普通页保持 UserControl + 共享 ViewModel。三套内置布局分别提供全部普通页面的 XAML View，包含标题、设置、存档、关于、加载、Gallery 入口/列表/详情和诊断页；GameView 不保留普通页面回退；最终映射必须包含全部内置页面与 ScreenshotDialogViewModel。替换单页无需实现完整主题。配置和扩展示例见 [Themes README](../../src/Presentation/GalNet.Avalonia.Themes/README.md)。
+
+页面容器不绘制外框。同一主题内保持一致的返回位置：Classic 顶部页头右侧、Minimal 侧栏底部、Paper 居中标题左侧。图片按比例缩放至独立内容区，不覆盖返回操作。`GalNet.Theme.PageMaxWidth`、`PageHeaderMinHeight`、`BackMinWidth`、`BackMinHeight` 可调整整体宽度与返回点击区域；这些尺寸属于玩家设计画布，实际显示受宿主缩放影响。
+
+对白 `DialogueFontSize` 与 `SpeakerFontSize` 独立配置，内置主题人物名比正文大 4 个设计单位（Classic/Paper 为 26/22，Minimal 为 24/20）；中性回退为 22/18。
+
+### GamePage 模板契约
+
+`GamePage` 是稳定的 TemplatedControl，拥有 `Scene`、`SceneHost`、`Dialogue`、`Nvl`、`Choice` 内容及输入行为。其 ControlTheme 必须包含 `PART_Scene`、`PART_Dialogue`、`PART_Nvl`、`PART_Choice` 四个 ContentPresenter，并用 TemplateBinding 呈现对应内容。不得创建第二套核心 presenter 或重复挂载内容；缺失或错误承载点在模板应用时明确报错，阻塞呈现前调用 EnsureLayout。
+
+GamePageViewModel 的自定义 View 必须继承 GamePage；DI 中的 GamePage 别名与页面工厂解析同一 Scoped 实例。只变更布局推荐覆盖 ControlTheme。模板重建及运行期主题切换不在当前契约内，NVL/打字机内部部件仍保存呈现状态。
+
+页面识别按钮、SelectingItemsControl、TextBox 和 RangeBase 的交互；自定义交互区域设置 `GamePage.IsPlayerInteraction=true`，避免点击操作同时推进剧情。非交互区域继续调用共享 ViewModel 的推进逻辑。
+
+### 截图对话框契约
+
+主题把 ScreenshotDialogViewModel 映射到 ScreenshotDialog 派生 View。XAML 加载后调用受保护的 InitializeDialog，布局必须提供 Preview(Image)、DirectoryBox/TextBox、FileNameBox/TextBox、IncludeUiBox(CheckBox)、BrowseButton/CancelButton/SaveButton(Button)、ErrorBlock(TextBlock)。缺失控件明确报错。基类管理选择目录、预览更新、保存、取消和 Bitmap 释放；服务通过 DI 创建独立实例，并加载当前主题样式。宿主可在 configureViews 中覆盖截图 View，构造参数可注入宿主服务。
 
 ### Gallery 页面
 
@@ -40,21 +66,27 @@ Gallery 使用独立的 `IGalleryPageRegistry`，以精确 Gallery `typeId` 映�
 
 ### 设置与界面文本
 
-`SettingsPageViewModel` 通过通用的 `IPlayerSettingsService.Items` 获取设置项，不绑定语言专用服务。页面支持 `ChoicePlayerSetting` 和 `RangePlayerSetting`；默认服务提供文本速度，宿主可在 DI 中替换服务并提供其他设置。设置应用、恢复和持久化由宿主负责，共享页面不读取配置文件。
+`SettingsPageViewModel` 通过 `IPlayerSettingsService.Categories` 获取只读分类及类型化设置项，分类使用局部 TabControl，不创建导航子页面。支持整数/浮点（Slider 或 NumericUpDown）、Bool、String、Choice、Action 与自定义编辑器。Step 仅改变操作步长，不参与校验；动态可见性、可用性和原因 key 驱动界面更新。应用/保存由 SettingsCoordinator 串行协调，保存失败可重试而不重复应用。共享页面不读取配置文件。
+
+内置主题的 `Common.SettingsCategories.EditorTemplates` 接收按顺序匹配的 `IDataTemplate` 列表，先匹配宿主/主题覆盖，再回退内置编辑器；只替换匹配类型，保留统一设置行的标签、说明、可用性与错误。自定义设置通过 `CustomSettingEditor` 创建独立控件租约并在 detach 时释放。
 
 共享页面的静态文案使用 `PlayerTextExtension`，未接入宿主本地化时显示默认英文。官方 Sample 提供 `LocalizedString` 并绑定其 `Value`，沿用 DynamicLocalization 的 Culture/Provider 变更通知机制；宿主设置标签也可以使用同样的动态对象。该绑定不会自动翻译任意业务字符串或剧情内容。
 
-Sample 在游戏会话初始化成功后，把设置接入现有 Player 变量存储，恢复语言与文本速度。语言变更（包括直接调用 CultureService）立即刷新绑定并排队持久化；清空玩家状态和销毁会话前等待写入完成。
+Sample 在会话初始化后将设置接入 Player 变量存储，恢复语言、文本速度、快速已读限制、快速/自动间隔、音量/静音及显示偏好。等待时间使用整数毫秒：快速默认 50、范围 0–5000、步长 10；自动默认 2000、范围 0–30000、步长 100；旧浮点秒值视为类型无效，回退默认值，不迁移。画面能力由宿主提供，桌面 Sample 支持窗口/无边框全屏与预设窗口尺寸，非独占全屏；全屏时禁用窗口尺寸。语言变更立即刷新绑定并排队持久化；清空玩家状态和销毁会话前等待写入完成。
 
 `GalleryNavigationService` 不按资源类型推断页面：没有有内容类型时入口不可用，只有一个时直接打开该页，多个时先进入类型选择页；未注册页面会显示诊断页。CG、视频和音频是独立页面/媒体状态，不使用 renderer enum 或单一多媒体 ViewModel。
 
 ## 运行期呈现边界
+
+游戏工具栏的快速/自动模式互斥且允许均关闭，再次点击已选模式可取消。两模式未选中时保持透明，仅选中时显示主题色背景；其他工具栏按钮平时透明，悬浮使用淡色背景，按下加深。左键取消旧模式后，模式按钮按点击前状态决定开启/关闭，并从权威播放状态刷新选中绑定；工具栏操作不同时推进剧情。
 
 Runtime 只依赖 `GalNet.Presentation.Abstractions` 中的 `IGameView` 与细分接口（文本、NVL、交互、图层、转场、音频、视频、效果）。`AvaloniaGamePresenters` 是页面侧 presenter 的组合器，分别暴露 dialogue/NVL/choice、layer、animation 和 particle 端口；它不是页面或执行 view。宿主通过 `CompositeGameView` 把这些端口组合成 Runtime 使用的 `IGameView`。`NullGameView` 供测试和无界面宿主使用。
 
 各 presenter 共享 `IAvaloniaUiDispatcher`，但分别拥有自己的等待、动画和粒子生命周期。`AvaloniaGamePresenters` 通过宿主提供的 `IGamePageLayerFactory` 解析图层图像，因而共享页面不会自行推断资源路径。玩家推进从 `GamePageViewModel.AdvanceRequested` 直接连接宿主，不经过 dialogue presenter 或 presenter 集合转发。动画逐帧更新由呈现实现完成；Runtime 只维护可存档的场景状态和动画结束后的稳定属性。
 
 官方 Sample 使用 `SampleGameResourceScope`、`SampleSaveSession`、`SampleGameRunner` 和 `PersistentSceneRestorer` 分离资源、玩家持久化、页面运行编排与读档展示重放。`SampleGamePresentation` 集中创建和释放执行 view 与平台后端，创建失败与正常销毁使用同一条清理路径；单个对象释放失败仍继续释放其他对象。Runner 只绑定页面操作、处理 Engine 状态通知和宿主反馈，不重复推断剧情终态。读档顺序固定为恢复 Runtime snapshot、重放持久展示、页面切换后首次调用 `AdvanceAsync`；reload 和清空玩家状态必须先停止并释放 runner，再释放资源或重建持久化状态。
+
+Sample 将 `SampleGamePresentation` 作为 Engine 的 `ICatchUpPresentation` 接入：开始时切入音频投影、缓存文本状态，并暂停/排空恢复出来的展示续跑；结束时清理旧 visual 资源，通过该代 scoped runtime/token 重建最终持久场景，再提交对白/NVL 历史及音频。`ICatchUpTextRecorder` 是可选的无中间渲染文本投影端口，已读文本的追帧调用不会被视为一次正常成功阅读。可见性及 NVL clear 同样延迟到最终同步。追帧不扩展存档格式，不保存 NVL 展示历史或媒体游标。
 
 ## 宿主接入约束
 

@@ -26,6 +26,10 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
     private bool _skippable;
     private AnimationPlaybackInstance? _playback;
     private long _eventCycle;
+    private bool _catchUpDetached;
+    private Task _presentationTask = Task.CompletedTask;
+    private Task _skipTask = Task.CompletedTask;
+    public override Task PresentationCompletion => Task.WhenAll(_presentationTask, _skipTask);
 
     public AnimationPlanPrimitiveInstance(
         IGameRuntime runtime,
@@ -75,7 +79,7 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
             return;
         }
 
-        _ = ObservePresentationAsync();
+        _presentationTask = ObservePresentationAsync();
     }
 
     protected override void OnSkip()
@@ -90,8 +94,29 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
         }
 
         _animationPresenter?.CompleteAnimationImmediately(_plan.PlaybackHandleId);
-        BuiltinRuntimeActions.ApplyPlanTerminalState(_runtime, _plan);
-        _ = CompleteSkipAsync();
+        if (_plan.LoopMode != AnimationLoopMode.Once)
+            BuiltinRuntimeActions.ApplyPlanTerminalState(_runtime, _plan);
+        _skipTask = CompleteSkipAsync();
+    }
+
+    protected override void OnPlaybackModeChanged(PrimitiveInvocationMode mode)
+    {
+        if (mode == PrimitiveInvocationMode.CatchUp && !_plan.Blocking && _plan.LoopMode != AnimationLoopMode.Once)
+        {
+            _catchUpDetached = true;
+            _presentationCancellation.Cancel();
+            _animationPresenter?.CompleteAnimationImmediately(_plan.PlaybackHandleId);
+            return;
+        }
+        if (mode != PrimitiveInvocationMode.Normal && (_plan.Blocking || _plan.LoopMode == AnimationLoopMode.Once)) Skip();
+    }
+
+    protected override void OnCatchUpDispatch()
+    {
+        if (!_plan.Skippable && _plan.Blocking) { OnDispatch(); return; }
+        BuiltinRuntimeActions.ApplyPlanStableState(_runtime, _plan);
+        Dispose();
+        TryComplete();
     }
 
     private async Task ObservePresentationAsync()
@@ -111,7 +136,7 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
         { GameLog.Logger.Warning(error, "Animation plan {PlaybackId} presentation failed", _plan.PlaybackHandleId); }
         finally
         {
-            if (_playback is not null && _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_plan.PlaybackHandleId, out var current) && ReferenceEquals(current, _playback))
+            if (!_catchUpDetached && _playback is not null && _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_plan.PlaybackHandleId, out var current) && ReferenceEquals(current, _playback))
                 BuiltinRuntimeActions.StopAnimationState(_runtime, _plan.PlaybackHandleId);
             bool skipRequested;
             lock (_gate)

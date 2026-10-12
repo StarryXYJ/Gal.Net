@@ -34,6 +34,14 @@ public sealed class GalleryPageRegistryBuilder(IPageViewRegistryBuilder pageView
     private readonly Dictionary<string, Type> _pages = new(StringComparer.Ordinal);
     private bool _built;
 
+    internal void Add<TViewModel>(string galleryTypeId)
+        where TViewModel : PageViewModelBase, IGalleryPageViewModel
+    {
+        if (_built) throw new InvalidOperationException("Gallery page mappings are immutable after composition.");
+        _pages.Add(NormalizeTypeId(galleryTypeId), typeof(TViewModel));
+        services.AddScoped<TViewModel>();
+    }
+
     public void Add<TViewModel, TView>(string galleryTypeId)
         where TViewModel : PageViewModelBase, IGalleryPageViewModel
         where TView : Control => Register<TViewModel, TView>(galleryTypeId, replace: false);

@@ -19,6 +19,7 @@ public abstract class EntryBase
     public string Name { get; }
     public string Category { get; }
     public DynamicParameterTable Parameters { get; }
+    public bool IsReading { get; init; }
 
     internal abstract EntryDefinition CreateDefinition();
 
@@ -48,7 +49,8 @@ public abstract class EntryBase
             defaults,
             options,
             kind,
-            Parameters);
+            Parameters)
+        { IsReading = IsReading };
     }
 
     private static string GetDefaultCategory(string name)

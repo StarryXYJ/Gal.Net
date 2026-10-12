@@ -226,11 +226,11 @@ public interface IPageViewRegistry
     Type GetViewType(Type viewModelType);
 }
 
-/// <summary>Composition-time registry builder. Later registrations intentionally replace defaults.</summary>
+/// <summary>Composition-time page and dialog registry. Later registrations replace theme mappings.</summary>
 public interface IPageViewRegistryBuilder
 {
     void Register<TViewModel, TView>()
-        where TViewModel : PageViewModelBase
+        where TViewModel : class
         where TView : Control;
 
     IPageViewRegistry Build();
@@ -241,8 +241,10 @@ public sealed class PageViewRegistryBuilder : IPageViewRegistryBuilder
     private readonly Dictionary<Type, Type> _views = [];
     private bool _built;
 
+    internal IEnumerable<Type> ViewTypes => _views.Values.Distinct();
+
     public void Register<TViewModel, TView>()
-        where TViewModel : PageViewModelBase
+        where TViewModel : class
         where TView : Control
     {
         if (_built) throw new InvalidOperationException("Page view mappings are immutable after composition.");

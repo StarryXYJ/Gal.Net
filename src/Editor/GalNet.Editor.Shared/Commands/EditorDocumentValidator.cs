@@ -32,10 +32,13 @@ public sealed class EditorDocumentValidator
                 diagnostics.Add(EditorDiagnostic.Error("graph.edge.invalidOutlet", $"Edge '{edge.Id}' references invalid outlet {edge.FromOutlet} on '{from.Id}'.", $"graph/edges/{edge.Id}"));
         }
 
-        var entryIds = document.GroupEntries.Values.SelectMany(entries => entries).Select(entry => entry.StableId).ToList();
-        AddDuplicateDiagnostics(entryIds, "group.entry.duplicateId", "entry", diagnostics);
-        if (entryIds.Any(string.IsNullOrWhiteSpace))
-            diagnostics.Add(EditorDiagnostic.Error("group.entry.idRequired", "Every group entry must have a stable ID."));
+        foreach (var (groupId, entries) in document.GroupEntries)
+        {
+            var entryIds = entries.Select(entry => entry.StableId).ToList();
+            AddDuplicateDiagnostics(entryIds, "group.entry.duplicateId", $"entry in group '{groupId}'", diagnostics);
+            if (entryIds.Any(string.IsNullOrWhiteSpace))
+                diagnostics.Add(EditorDiagnostic.Error("group.entry.idRequired", "Every group entry must have a stable ID.", $"groups/{groupId}"));
+        }
 
         var optionIds = document.Graph.Nodes.SelectMany(node => node.Options ?? []).Select(option => option.Id).ToList();
         AddDuplicateDiagnostics(optionIds, "branch.option.duplicateId", "choice option", diagnostics);

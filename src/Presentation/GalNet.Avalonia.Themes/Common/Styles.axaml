@@ -1,0 +1,132 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:page="using:GalNet.Avalonia.GameView.Page"
+        xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions">
+  <Style Selector="page|SkipConfirmation">
+    <Setter Property="Template">
+      <ControlTemplate x:CompileBindings="False">
+        <Grid Background="#80000000">
+          <Border MaxWidth="520" Padding="28" CornerRadius="8" Background="{DynamicResource GalNet.Brush.Surface}"
+                  BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <StackPanel Spacing="20">
+              <TextBlock Text="{text:PlayerText Playback.SkipTitle, 'Skip read text?'}" FontSize="24" />
+              <TextBlock Text="{text:PlayerText Playback.SkipMessage, 'Continue along the current story until unread text or the next choice.'}" TextWrapping="Wrap" />
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
+                <Button Content="{text:PlayerText Common.Cancel, Cancel}" Command="{Binding CancelSkipCommand}" />
+                <Button Content="{text:PlayerText Common.Confirm, Confirm}" Command="{Binding ConfirmSkipCommand}" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Styles.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://GalNet.Avalonia.Controls/Styles/Resources.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+      <Thickness x:Key="GalNet.Theme.PageMargin">44</Thickness>
+      <Thickness x:Key="GalNet.Theme.PanelPadding">36</Thickness>
+      <x:Double x:Key="GalNet.Theme.PanelWidth">640</x:Double>
+      <x:Double x:Key="GalNet.Theme.PageMaxWidth">1640</x:Double>
+      <x:Double x:Key="GalNet.Theme.PageHeaderMinHeight">80</x:Double>
+      <x:Double x:Key="GalNet.Theme.BackMinWidth">120</x:Double>
+      <x:Double x:Key="GalNet.Theme.BackMinHeight">48</x:Double>
+      <x:Double x:Key="GalNet.Theme.HeadingSize">32</x:Double>
+      <x:Double x:Key="GalNet.Theme.TitleSize">48</x:Double>
+      <x:Int32 x:Key="GalNet.Theme.SaveColumns">4</x:Int32>
+      <FontFamily x:Key="GalNet.Theme.FontFamily">Segoe UI, Noto Sans CJK SC, Microsoft YaHei, Default</FontFamily>
+    </ResourceDictionary>
+  </Styles.Resources>
+  <StyleInclude Source="avares://GalNet.Avalonia.Controls/Styles/Generic.axaml" />
+  <Style Selector="page|GameShell">
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Background}" />
+  </Style>
+  <Style Selector=":is(Control).galnet-player">
+    <Setter Property="(TextElement.Foreground)" Value="{DynamicResource GalNet.Brush.TextPrimary}" />
+    <Setter Property="(TextElement.FontFamily)" Value="{DynamicResource GalNet.Theme.FontFamily}" />
+    <Setter Property="(TextElement.FontSize)" Value="18" />
+  </Style>
+  <Style Selector=".galnet-player Button">
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Border}" />
+    <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextPrimary}" />
+    <Setter Property="Padding" Value="14,9" />
+    <Setter Property="CornerRadius" Value="{DynamicResource GalNet.Theme.CornerRadius}" />
+  </Style>
+  <Style Selector=".galnet-player Button:pointerover">
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Selection}" />
+  </Style>
+  <Style Selector=".galnet-player Button:pressed">
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.PrimaryPressed}" />
+    <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.OnPrimary}" />
+  </Style>
+  <Style Selector=".galnet-player Button:focus-visible">
+    <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Focus}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector=".galnet-player Button:disabled">
+    <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextDisabled}" />
+  </Style>
+  <Style Selector=".galnet-player Button.player-menu">
+    <Setter Property="FontSize" Value="20" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector=".galnet-player Button.player-link">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="8,4" />
+  </Style>
+  <Style Selector=".galnet-player Button.player-link:pointerover">
+    <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.PrimaryHover}" />
+  </Style>
+  <Style Selector=".galnet-player TextBox, .galnet-player ComboBox">
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Surface}" />
+    <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextPrimary}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Border}" />
+  </Style>
+  <Style Selector=".galnet-player CheckBox">
+    <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextPrimary}" />
+  </Style>
+  <Style Selector=".galnet-player ProgressBar">
+    <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.Primary}" />
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.SurfaceRaised}" />
+  </Style>
+  <Style Selector=".galnet-player Border.player-page-frame">
+    <Setter Property="MaxWidth" Value="{DynamicResource GalNet.Theme.PageMaxWidth}" />
+    <Setter Property="Margin" Value="{DynamicResource GalNet.Theme.PageMargin}" />
+    <Setter Property="Padding" Value="{DynamicResource GalNet.Theme.PanelPadding}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Border}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="{DynamicResource GalNet.Theme.CornerRadius}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector=".galnet-player Button.player-back">
+    <Setter Property="MinWidth" Value="{DynamicResource GalNet.Theme.BackMinWidth}" />
+    <Setter Property="MinHeight" Value="{DynamicResource GalNet.Theme.BackMinHeight}" />
+    <Setter Property="Padding" Value="24,12" />
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.SurfaceRaised}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector=".galnet-player Border.player-settings-card">
+    <Setter Property="MaxWidth" Value="1000" />
+    <Setter Property="Padding" Value="28" />
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.SurfaceRaised}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource GalNet.Theme.CornerRadius}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+  </Style>
+  <Style Selector=".galnet-player Border.player-media-stage">
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Background}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Border}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="{DynamicResource GalNet.Theme.CornerRadius}" />
+    <Setter Property="Padding" Value="16" />
+    <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+</Styles>

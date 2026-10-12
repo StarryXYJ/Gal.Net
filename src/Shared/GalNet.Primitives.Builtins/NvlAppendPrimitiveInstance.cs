@@ -5,13 +5,18 @@ using GalNet.Runtime.Logging;
 namespace GalNet.Primitives.Builtins;
 
 /// <summary>Owns the typewriter and advance phases for one appended NVL line.</summary>
-public sealed class NvlAppendPrimitiveInstance : PrimitiveInstance
+public sealed class NvlAppendPrimitiveInstance : PrimitiveInstance, IAdvanceWaitInstance
 {
     private readonly object _gate = new();
     private readonly INvlPresenter _presenter;
     private readonly string _text;
     private readonly CancellationToken _cancellationToken;
     private NvlAppendPhase _phase;
+    private Task _presentationTask = Task.CompletedTask;
+    public override Task PresentationCompletion => _presentationTask;
+    public bool IsTextPresented { get; private set; }
+    public bool IsWaitingForAdvance { get { lock (_gate) return _phase == NvlAppendPhase.WaitingAdvance; } }
+    public void CompleteAdvance() { if (IsWaitingForAdvance) OnSkip(); }
 
     public NvlAppendPrimitiveInstance(
         INvlPresenter presenter,
@@ -45,7 +50,7 @@ public sealed class NvlAppendPrimitiveInstance : PrimitiveInstance
             _phase = NvlAppendPhase.Typing;
         }
 
-        _ = ObservePresentationAsync();
+        _presentationTask = ObservePresentationAsync();
     }
 
     protected override void OnSkip()
@@ -68,16 +73,32 @@ public sealed class NvlAppendPrimitiveInstance : PrimitiveInstance
             TryComplete();
     }
 
+    protected override void OnCatchUpDispatch()
+    {
+        if (_presenter is ICatchUpTextRecorder recorder) recorder.RecordNvlParagraph(_text);
+        TryComplete();
+    }
+    protected override void OnPlaybackModeChanged(PrimitiveInvocationMode mode)
+    {
+        if (mode is PrimitiveInvocationMode.Quick or PrimitiveInvocationMode.CatchUp) _presenter.RevealAllNvlText();
+        if (mode == PrimitiveInvocationMode.CatchUp && IsWaitingForAdvance) CompleteAdvance();
+    }
+
     private async Task ObservePresentationAsync()
     {
         try
         {
-            await _presenter.AppendNvlTextAsync(_text, _cancellationToken).ConfigureAwait(false);
+            await (InvocationMode == PrimitiveInvocationMode.Quick
+                ? _presenter.AppendNvlTextImmediatelyAsync(_text, _cancellationToken)
+                : _presenter.AppendNvlTextAsync(_text, _cancellationToken)).ConfigureAwait(false);
             lock (_gate)
             {
                 if (_phase == NvlAppendPhase.Typing)
                     _phase = NvlAppendPhase.WaitingAdvance;
+                IsTextPresented = true;
             }
+            SetAutoBlocking(false);
+            if (InvocationMode == PrimitiveInvocationMode.CatchUp) CompleteAdvance();
         }
         catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested)
         {

@@ -3,37 +3,63 @@ using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace GalNet.Avalonia.GameView.Composition;
 
-/// <summary>Registers default page VMs and their stateful views in one game scope.</summary>
+/// <summary>Registers shared behavior and theme-owned views in one game scope.</summary>
 public static class AvaloniaGameViewServiceCollectionExtensions
 {
     public static IServiceCollection AddAvaloniaGameViewPages(
         this IServiceCollection services,
+        IGameLayoutTheme theme,
         Action<IPageViewRegistryBuilder>? configureViews = null,
         Action<IGalleryPageRegistryBuilder>? configureGalleryPages = null)
     {
         var views = new PageViewRegistryBuilder();
-        views.Register<TitlePageViewModel, TitlePage>();
+        ArgumentNullException.ThrowIfNull(theme);
+        services.AddSingleton(theme);
         views.Register<GamePageViewModel, GamePage>();
-        views.Register<SaveSlotsPageViewModel, SaveSlotsPage>();
-        views.Register<SettingsPageViewModel, SettingsPage>();
-        views.Register<GalleryPageViewModel, GalleryPage>();
-        views.Register<CgGalleryImagePageViewModel, CgGalleryImagePage>();
-        views.Register<VideoGalleryPlayerPageViewModel, VideoGalleryPlayerPage>();
-        views.Register<MissingGalleryPageViewModel, MissingGalleryPage>();
-        views.Register<AboutPageViewModel, AboutPage>();
-        views.Register<LoadingPageViewModel, LoadingPage>();
+        var galleryPages = new GalleryPageRegistryBuilder(views, services);
+
+        galleryPages.Add<CgGalleryPageViewModel>("cg");
+        galleryPages.Add<VideoGalleryPageViewModel>("video");
+        galleryPages.Add<AudioGalleryPageViewModel>("audio");
+
+        theme.RegisterViews(views);
+        configureGalleryPages?.Invoke(galleryPages);
         configureViews?.Invoke(views);
 
-        var galleryPages = new GalleryPageRegistryBuilder(views, services);
-        galleryPages.Add<CgGalleryPageViewModel, CgGalleryPage>("cg");
-        galleryPages.Add<VideoGalleryPageViewModel, VideoGalleryPage>("video");
-        galleryPages.Add<AudioGalleryPageViewModel, AudioGalleryPage>("audio");
-        configureGalleryPages?.Invoke(galleryPages);
+        var viewRegistry = views.Build();
+        var requiredViewModels = new[]
+        {
+            typeof(TitlePageViewModel), typeof(GamePageViewModel), typeof(SettingsPageViewModel),
+            typeof(SaveSlotsPageViewModel), typeof(GalleryPageViewModel), typeof(CgGalleryPageViewModel),
+            typeof(CgGalleryImagePageViewModel), typeof(AudioGalleryPageViewModel), typeof(VideoGalleryPageViewModel),
+            typeof(VideoGalleryPlayerPageViewModel), typeof(MissingGalleryPageViewModel), typeof(AboutPageViewModel),
+            typeof(LoadingPageViewModel), typeof(ScreenshotDialogViewModel)
+        };
+        var missing = new List<string>();
+        foreach (var viewModelType in requiredViewModels)
+        {
+            try { viewRegistry.GetViewType(viewModelType); }
+            catch (InvalidOperationException) { missing.Add(viewModelType.Name); }
+        }
 
-        services.AddSingleton(views.Build());
+        if (missing.Count > 0)
+            throw new InvalidOperationException($"The layout theme and host must register all required views. Missing: {string.Join(", ", missing)}.");
+        if (!typeof(ScreenshotDialog).IsAssignableFrom(viewRegistry.GetViewType(typeof(ScreenshotDialogViewModel))))
+            throw new InvalidOperationException("ScreenshotDialogViewModel requires a ScreenshotDialog-derived view.");
+        var gamePageType = viewRegistry.GetViewType(typeof(GamePageViewModel));
+        if (!typeof(GamePage).IsAssignableFrom(gamePageType))
+            throw new InvalidOperationException("GamePageViewModel requires a GamePage-derived view. Customize its ControlTheme to replace the layout.");
+
+        foreach (var viewType in views.ViewTypes)
+        {
+            if (typeof(ScreenshotDialog).IsAssignableFrom(viewType)) continue;
+            services.TryAddScoped(viewType);
+        }
+        services.AddSingleton(viewRegistry);
         services.AddSingleton(galleryPages.Build());
         services.AddScoped<GameNavigationTransitionCoordinator>();
         services.AddScoped<IGameNavigationTransitionCoordinator>(provider =>
@@ -56,18 +82,10 @@ public static class AvaloniaGameViewServiceCollectionExtensions
         services.AddScoped<MissingGalleryPageViewModel>();
         services.AddScoped<AboutPageViewModel>();
         services.AddScoped<LoadingPageViewModel>();
-
         services.AddScoped<GameShell>();
-        services.AddScoped<TitlePage>();
-        services.AddScoped<GamePage>();
-        services.AddScoped<SaveSlotsPage>();
-        services.AddScoped<SettingsPage>();
-        services.AddScoped<GalleryPage>();
-        services.AddScoped<CgGalleryImagePage>();
-        services.AddScoped<VideoGalleryPlayerPage>();
-        services.AddScoped<MissingGalleryPage>();
-        services.AddScoped<AboutPage>();
-        services.AddScoped<LoadingPage>();
+
+        if (gamePageType == typeof(GamePage)) services.AddScoped<GamePage>();
+        else services.AddScoped<GamePage>(provider => (GamePage)provider.GetRequiredService(gamePageType));
         return services;
     }
 }

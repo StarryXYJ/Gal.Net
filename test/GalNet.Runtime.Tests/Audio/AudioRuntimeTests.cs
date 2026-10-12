@@ -7,6 +7,84 @@ namespace GeneralTest.Runtime;
 
 public class AudioRuntimeTests
 {
+    [Test]
+    public async Task BackendStartExceptionReleasesLogicalPlayback()
+    {
+        await using var runtime = new AudioRuntime(new ThrowingHost());
+        var ticket = runtime.Play(Tracks, new("bgm", "failed", AudioPlacement.Replace));
+        await ticket.Completion.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.That(ticket.IsCompleted, Is.True);
+    }
+
+    [Test]
+    public void CatchUpDoesNotStartIntermediateBackgroundMusic()
+    {
+        var host = new RecordingHost();
+        using var runtime = new AudioRuntime(host);
+        runtime.Play(Tracks, new("bgm", "opening", AudioPlacement.Replace));
+        runtime.BeginCatchUp();
+        runtime.Play(Tracks, new("bgm", "intermediate", AudioPlacement.Replace));
+        runtime.Play(Tracks, new("bgm", "final", AudioPlacement.Replace));
+        Assert.That(host.Requests.Count(request => request.Action == AudioBackendAction.Start), Is.EqualTo(1));
+        runtime.EndCatchUp();
+        Assert.That(host.Requests.Where(request => request.Action == AudioBackendAction.Start).Select(request => request.AssetId),
+            Is.EqualTo(new[] { "opening", "final" }));
+    }
+
+    [Test]
+    public void LiveGainUsesPlayerMasterBusAndMuteWithoutChangingContentGain()
+    {
+        var host = new RecordingHost();
+        using var runtime = new AudioRuntime(host);
+        var settings = new GalNet.Core.Settings.GameSettings { MasterVolume = .5f, BgmVolume = .5f };
+        runtime.ApplyPlayerSettings(settings);
+        runtime.Play(Tracks, new("bgm", "music", AudioPlacement.Replace, .5f));
+        Assert.That(host.Requests[0].Gain, Is.EqualTo(.1f));
+        settings.BgmMuted = true;
+        runtime.ApplyPlayerSettings(settings);
+        Assert.That(host.Requests.Last().Gain, Is.Zero);
+        settings.BgmMuted = false;
+        runtime.ApplyPlayerSettings(settings);
+        Assert.That(host.Requests.Last().Gain, Is.EqualTo(.1f));
+    }
+
+    [Test]
+    public void MissingBackendCompletesTicketImmediately()
+    {
+        using var runtime = new AudioRuntime();
+        Assert.That(runtime.Play(Tracks, new("bgm", "voice", AudioPlacement.Enqueue)).IsCompleted, Is.True);
+    }
+
+    [Test]
+    public void ReplacementAndQueueClearCompleteTheirExactTickets()
+    {
+        using var runtime = new AudioRuntime(new RecordingHost());
+        var first = runtime.Play(Tracks, new("bgm", "first", AudioPlacement.Enqueue));
+        var queued = runtime.Play(Tracks, new("bgm", "queued", AudioPlacement.Enqueue));
+        var replacement = runtime.Play(Tracks, new("bgm", "replacement", AudioPlacement.Replace));
+        Assert.That(first.IsCompleted, Is.True);
+        Assert.That(queued.IsCompleted, Is.False);
+        runtime.Clear(Tracks, "bgm");
+        Assert.That(queued.IsCompleted, Is.True);
+        Assert.That(replacement.IsCompleted, Is.False);
+        first.Stop();
+        Assert.That(replacement.IsCompleted, Is.False, "Late cancellation cannot stop the replacement voice.");
+        replacement.Stop();
+        Assert.That(replacement.IsCompleted, Is.True);
+    }
+
+    [Test]
+    public void NaturalEndCompletesTicketsAttachedByReplaceIfDifferent()
+    {
+        var host = new RecordingHost();
+        using var runtime = new AudioRuntime(host);
+        var first = runtime.Play(Tracks, new("bgm", "first", AudioPlacement.Enqueue));
+        var attached = runtime.Play(Tracks, new("bgm", "first", AudioPlacement.ReplaceIfDifferent));
+        var start = host.Requests[0];
+        host.End(start);
+        Assert.That(first.IsCompleted && attached.IsCompleted, Is.True);
+    }
+
     private static readonly IReadOnlyList<AudioTrackDefinition> Tracks =
     [new() { Id = "bgm", Bus = AudioBuses.Bgm, MaxVoices = 1, MaxQueuedItems = 2, DefaultGain = 0.8f }];
 
@@ -124,6 +202,16 @@ public class AudioRuntimeTests
         public void Dispose() { }
     }
 
+    private sealed class ThrowingHost : IAudioPlaybackHost
+    {
+        public AudioBackendCapabilities Capabilities { get; } = new(true, true, true);
+        public ISEffectCatalog SEffects { get; } = new SEffectCatalog([]);
+        public event Action<AudioBackendEvent>? EventReceived { add { } remove { } }
+        public Task ApplyAsync(AudioBackendRequest request, CancellationToken cancellationToken = default) =>
+            request.Action == AudioBackendAction.Start ? Task.FromException(new InvalidOperationException("start failed")) : Task.CompletedTask;
+        public void Dispose() { }
+    }
+
     private sealed class RecordingHost : IAudioPlaybackHost
     {
         public AudioBackendCapabilities Capabilities { get; } = new(true, true, true);
@@ -132,11 +220,9 @@ public class AudioRuntimeTests
             new("seffect.gain", new HashSet<SEffectScope> { SEffectScope.Track }, [new("gain", Required: true, Minimum: 0, Maximum: 1)])
         ]);
         public List<AudioBackendRequest> Requests { get; } = [];
-        public event Action<AudioBackendEvent>? EventReceived
-        {
-            add { }
-            remove { }
-        }
+        public event Action<AudioBackendEvent>? EventReceived;
+        public void End(AudioBackendRequest request) => EventReceived?.Invoke(new(AudioBackendEventKind.Ended,
+            request.TrackId, request.VoiceId, request.Generation));
         public Task ApplyAsync(AudioBackendRequest request, CancellationToken cancellationToken = default)
         {
             lock (Requests) Requests.Add(request);

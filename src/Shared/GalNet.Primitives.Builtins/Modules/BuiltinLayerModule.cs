@@ -11,27 +11,27 @@ public sealed class BuiltinLayerModule : PrimitiveModule
     [
         BuiltinInstructionFactory.Create<ShowLayerEntry>(context => Show(context, presenter, null)),
         BuiltinInstructionFactory.Create<ShowColorLayerEntry>(context => Show(context, presenter, Arguments.String(context, "color"))),
-        BuiltinInstructionFactory.Create<HideLayerEntry>(context => Immediate(context, () =>
-            BuiltinRuntimeActions.HideLayer(context.Runtime, presenter, Arguments.String(context, "handleId")))),
-        BuiltinInstructionFactory.Create<MoveLayerEntry>(context => Immediate(context, () =>
+        BuiltinInstructionFactory.Create<HideLayerEntry>(context => Immediate(context, presenter, target =>
+            BuiltinRuntimeActions.HideLayer(context.Runtime, target, Arguments.String(context, "handleId")))),
+        BuiltinInstructionFactory.Create<MoveLayerEntry>(context => Immediate(context, presenter, target =>
             BuiltinRuntimeActions.MoveLayer(
                 context.Runtime,
-                presenter,
+                target,
                 Arguments.String(context, "handleId"),
                 Arguments.Json<LayerTransform>(context, "transform") ?? new LayerTransform(),
                 Arguments.Float(context, "z"),
                 Arguments.Float(context, "duration")))),
-        BuiltinInstructionFactory.Create<ReplaceLayerEntry>(context => Immediate(context, () =>
+        BuiltinInstructionFactory.Create<ReplaceLayerEntry>(context => Immediate(context, presenter, target =>
             BuiltinRuntimeActions.ReplaceLayer(
                 context.Runtime,
-                presenter,
+                target,
                 Arguments.String(context, "handleId"),
                 Arguments.String(context, "assetId"))))
     ])
     { }
 
     private static ImmediatePrimitiveInstance Show(PrimitiveCreateContext context, ILayerPresenter? presenter, string? color) =>
-        Immediate(context, () =>
+        Immediate(context, presenter, target =>
         {
             var request = new LayerRenderRequest(
                 Arguments.String(context, "handleId"),
@@ -42,9 +42,9 @@ public sealed class BuiltinLayerModule : PrimitiveModule
                 Arguments.Float(context, "opacity", 1),
                 color,
                 Arguments.Json<FlipbookDefinition>(context, "flipbook")?.Clone());
-            BuiltinRuntimeActions.ShowLayer(context.Runtime, presenter, request);
+            BuiltinRuntimeActions.ShowLayer(context.Runtime, target, request);
         });
 
-    private static ImmediatePrimitiveInstance Immediate(PrimitiveCreateContext context, Action action) =>
-        new(action, batchId: context.BatchId);
+    private static ImmediatePrimitiveInstance Immediate(PrimitiveCreateContext context, ILayerPresenter? presenter,
+        Action<ILayerPresenter?> action) => new(() => action(presenter), batchId: context.BatchId, catchUp: () => action(null));
 }

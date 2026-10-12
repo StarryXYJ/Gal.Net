@@ -1,4 +1,5 @@
 extern alias GameViewAssembly;
+extern alias ThemesAssembly;
 using System.Collections.ObjectModel;
 using Avalonia;
 using Avalonia.Controls;
@@ -46,7 +47,7 @@ public sealed class EditorPreviewHost : IAsyncDisposable
     {
         var services = new ServiceCollection();
         services.AddSingleton(context);
-        services.AddAvaloniaGameViewPages();
+        services.AddAvaloniaGameViewPages(new ThemesAssembly::GalNet.Avalonia.Themes.ClassicTheme());
         services.AddScoped<EditorPreviewSessionService>();
         services.AddScoped<IGameSessionService>(provider => provider.GetRequiredService<EditorPreviewSessionService>());
         _services = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
@@ -251,6 +252,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
         (GalleryResources as IDisposable)?.Dispose();
         GalleryResources = null;
         _gameplay.AdvanceRequested -= OnAdvanceRequested;
+        _gameplay.BindPlayback(null);
         _engine?.Dispose();
         _pageView?.Dispose();
         _layers?.Dispose();
@@ -293,6 +295,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
             _audio).BuildView();
         var runtime = new GameRuntime(null, content.Graph.RootNodeId, new SettingsContainer(), _context.Variables);
         _engine = new GameEngine(content.Graph, runtime, view, _context.Progress, _pageView.ChoicePresenter);
+        _gameplay.BindPlayback(_engine);
         _gameplay.AdvanceRequested += OnAdvanceRequested;
         _context.RuntimeCreated(runtime);
         await RefreshSlotsAsync(cancellationToken);

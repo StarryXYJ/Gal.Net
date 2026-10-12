@@ -16,7 +16,5 @@
     <Application.Styles>
         <semi:SemiTheme></semi:SemiTheme>
         <semi:UrsaSemiTheme></semi:UrsaSemiTheme>
-        <FluentTheme />
-        <StyleInclude Source="avares://GalNet.Avalonia.Controls/Styles/Generic.axaml" />
     </Application.Styles>
 </Application>

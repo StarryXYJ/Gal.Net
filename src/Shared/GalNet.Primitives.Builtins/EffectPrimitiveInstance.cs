@@ -7,6 +7,8 @@ namespace GalNet.Primitives.Builtins;
 
 public sealed class ApplyEffectPrimitiveInstance : PrimitiveInstance
 {
+    private Task _presentationTask = Task.CompletedTask;
+    public override Task PresentationCompletion => _presentationTask;
     private readonly IGameRuntime _runtime;
     private readonly IEffectPresenter? _presenter;
     private readonly EffectRequest _request;
@@ -32,12 +34,12 @@ public sealed class ApplyEffectPrimitiveInstance : PrimitiveInstance
     protected override void OnDispatch()
     {
         BuiltinRuntimeActions.ApplyEffectState(_runtime, _request);
-        if (_presenter is null)
+        if (_presenter is null || InvocationMode == PrimitiveInvocationMode.CatchUp)
         {
             TryComplete();
             return;
         }
-        _ = ObservePresentationAsync();
+        _presentationTask = ObservePresentationAsync();
     }
 
     private async Task ObservePresentationAsync()
@@ -58,6 +60,8 @@ public sealed class ApplyEffectPrimitiveInstance : PrimitiveInstance
 
 public sealed class StopEffectPrimitiveInstance : PrimitiveInstance
 {
+    private Task _presentationTask = Task.CompletedTask;
+    public override Task PresentationCompletion => _presentationTask;
     private readonly IGameRuntime _runtime;
     private readonly IEffectPresenter? _presenter;
     private readonly string _instanceId;
@@ -83,12 +87,12 @@ public sealed class StopEffectPrimitiveInstance : PrimitiveInstance
     protected override void OnDispatch()
     {
         BuiltinRuntimeActions.RemoveEffectState(_runtime, _instanceId);
-        if (_presenter is null)
+        if (_presenter is null || InvocationMode == PrimitiveInvocationMode.CatchUp)
         {
             TryComplete();
             return;
         }
-        _ = ObservePresentationAsync();
+        _presentationTask = ObservePresentationAsync();
     }
 
     private async Task ObservePresentationAsync()

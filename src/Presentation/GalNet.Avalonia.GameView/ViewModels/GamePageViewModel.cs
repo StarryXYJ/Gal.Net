@@ -48,6 +48,7 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     [RelayCommand]
     private void Advance()
     {
+        if (IsSkipConfirmationOpen) return;
         if (IsUiHidden)
         {
             InteractionObserved?.Invoke("advance.restore-ui");
@@ -157,6 +158,16 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     /// <summary>Removes all host-owned visuals before a new game session is constructed.</summary>
     public void ResetScenePresentation()
     {
+        ResetSceneVisuals();
+        IsDialogueVisible = false;
+        IsChoiceVisible = false;
+        IsGameUiReady = false;
+        NvlClearRequested?.Invoke();
+    }
+
+    /// <summary>Clears visual resources without discarding dialogue, NVL or interaction state.</summary>
+    public void ResetSceneVisuals()
+    {
         foreach (var layer in Layers) layer.FrameSource?.Dispose();
         Layers.Clear();
         TextureEffects.Clear();
@@ -164,10 +175,6 @@ public sealed partial class GamePageViewModel : PageViewModelBase
         SceneRenderables.Clear();
         _effectAnimations.Clear();
         _particleAnimations.Clear();
-        IsDialogueVisible = false;
-        IsChoiceVisible = false;
-        IsGameUiReady = false;
-        NvlClearRequested?.Invoke();
     }
 
     /// <summary>Shows game chrome after the engine reaches its first interactive boundary.</summary>

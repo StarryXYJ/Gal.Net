@@ -51,6 +51,12 @@ public sealed class WaitPrimitiveInstance : PrimitiveInstance
         _delayCancellation?.Cancel();
         Complete();
     }
+    protected override void OnQuickDispatch() => TryComplete();
+    protected override void OnCatchUpDispatch() => TryComplete();
+    protected override void OnPlaybackModeChanged(PrimitiveInvocationMode mode)
+    {
+        if (mode != PrimitiveInvocationMode.Normal) Skip();
+    }
 
     private async Task RunDelayAsync(CancellationToken cancellationToken)
     {

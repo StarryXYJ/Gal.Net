@@ -46,6 +46,9 @@ public sealed class AvaloniaGamePresenters : IDisposable
     public void CompleteInitialPresentation() => _dialogue.CompleteInitialPresentation();
 
     public void FailInitialPresentation(Exception exception) => _dialogue.FailInitialPresentation(exception);
+    public Task BeginCatchUpAsync() => _dialogue.BeginCatchUpAsync();
+    public Task EndCatchUpAsync(CancellationToken cancellationToken) => _dialogue.EndCatchUpAsync(cancellationToken);
+    public void ClearSceneObjects() => _particles.Clear();
 
     public void Dispose()
     {

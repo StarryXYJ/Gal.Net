@@ -1,112 +1,115 @@
-<Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="using:GalNet.Game.Controls">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="using:GalNet.Game.Controls">
+  <Styles.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://GalNet.Avalonia.Controls/Styles/Resources.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+      <ControlTheme x:Key="{x:Type local:DialoguePresenter}" TargetType="local:DialoguePresenter">
+        <Setter Property="Template">
+          <ControlTemplate>
+            <Border MinHeight="{DynamicResource GalNet.Theme.DialogueHeight}" Background="{DynamicResource GalNet.Brush.Overlay}" BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1" CornerRadius="{DynamicResource GalNet.Theme.CornerRadius}" Padding="{DynamicResource GalNet.Theme.DialoguePadding}">
+              <StackPanel Spacing="8">
+                <TextBlock Text="{TemplateBinding Speaker}" FontWeight="SemiBold" FontSize="{DynamicResource GalNet.Theme.SpeakerFontSize}" Foreground="{DynamicResource GalNet.Brush.Primary}" />
+                <local:TypewriterTextBlock Name="PART_Typewriter" SourceText="{TemplateBinding Text}" CharactersPerSecond="{TemplateBinding CharactersPerSecond}" FontSize="{DynamicResource GalNet.Theme.DialogueFontSize}" Foreground="{DynamicResource GalNet.Brush.TextPrimary}" />
+              </StackPanel>
+            </Border>
+          </ControlTemplate>
+        </Setter>
+      </ControlTheme>
+      <ControlTheme x:Key="{x:Type local:ChoiceList}" TargetType="local:ChoiceList">
+        <Setter Property="ItemContainerTheme" Value="{DynamicResource GalNet.Theme.ChoiceItem}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Template">
+          <ControlTemplate>
+            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+              <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <ItemsPresenter />
+              </ScrollViewer>
+            </Border>
+          </ControlTemplate>
+        </Setter>
+      </ControlTheme>
+      <ControlTheme x:Key="GalNet.Theme.ChoiceItem" TargetType="ListBoxItem">
+        <Setter Property="Margin" Value="{DynamicResource GalNet.Theme.ChoiceMargin}" />
+        <Setter Property="Padding" Value="{DynamicResource GalNet.Theme.ChoicePadding}" />
+        <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Surface}" />
+        <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Border}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+          <ControlTemplate>
+            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}" CornerRadius="{DynamicResource GalNet.Theme.CornerRadius}">
+              <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+            </Border>
+          </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pointerover">
+          <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Selection}" />
+        </Style>
+        <Style Selector="^:selected">
+          <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Primary}" />
+          <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.OnPrimary}" />
+        </Style>
+        <Style Selector="^:focus-visible">
+          <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Focus}" />
+          <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <Style Selector="^:disabled">
+          <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextDisabled}" />
+          <Setter Property="Opacity" Value="0.6" />
+        </Style>
+      </ControlTheme>
+      <ControlTheme x:Key="{x:Type local:SaveSlotCard}" TargetType="local:SaveSlotCard">
+        <Setter Property="Template">
+          <ControlTemplate>
+            <Button HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Command="{TemplateBinding Command}" CommandParameter="{TemplateBinding CommandParameter}" Padding="0" Background="Transparent" BorderBrush="Transparent" BorderThickness="0" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+              <Border MinHeight="{DynamicResource GalNet.Theme.SaveMinHeight}" Padding="16" Background="{DynamicResource GalNet.Brush.Surface}" BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1" CornerRadius="{DynamicResource GalNet.Theme.CornerRadius}">
+                <Grid RowDefinitions="*,Auto" RowSpacing="12">
+                  <StackPanel Spacing="4" VerticalAlignment="Top">
+                    <TextBlock FontWeight="SemiBold" FontSize="16" Foreground="{DynamicResource GalNet.Brush.TextPrimary}">
+                      <Run Text="Slot " />
+                      <Run Text="{TemplateBinding SlotIndex}" />
+                    </TextBlock>
+                    <TextBlock Text="{TemplateBinding Description}" TextWrapping="Wrap" Opacity="0.75" />
+                  </StackPanel>
+                  <StackPanel Grid.Row="1" Spacing="2">
+                    <TextBlock Text="{TemplateBinding Timestamp}" FontSize="12" Opacity="0.74" />
+                    <TextBlock Text="Empty" IsVisible="{TemplateBinding IsEmpty}" FontSize="12" Opacity="0.56" />
+                    <TextBlock Text="Corrupt save" IsVisible="{TemplateBinding IsCorrupt}" FontSize="12" Foreground="{DynamicResource GalNet.Brush.Error}" />
+                  </StackPanel>
+                </Grid>
+              </Border>
+            </Button>
+          </ControlTemplate>
+        </Setter>
+      </ControlTheme>
+      <ControlTheme x:Key="{x:Type local:NvlPresenter}" TargetType="local:NvlPresenter">
+        <Setter Property="Template">
+          <ControlTemplate>
+            <Border Background="{DynamicResource GalNet.Brush.Overlay}" BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1" CornerRadius="{DynamicResource GalNet.Theme.CornerRadius}" Padding="{DynamicResource GalNet.Theme.DialoguePadding}">
+              <ScrollViewer Name="PART_ScrollViewer" VerticalScrollBarVisibility="Auto">
+                <StackPanel Name="PART_Lines" Spacing="{DynamicResource GalNet.Theme.NvlSpacing}" />
+              </ScrollViewer>
+            </Border>
+          </ControlTemplate>
+        </Setter>
+      </ControlTheme>
+      <ControlTheme x:Key="{x:Type local:NvlLinePresenter}" TargetType="local:NvlLinePresenter">
+        <Setter Property="Template">
+          <ControlTemplate>
+            <StackPanel Spacing="3">
+              <local:TypewriterTextBlock Name="PART_Typewriter" SourceText="{TemplateBinding Text}" CharactersPerSecond="{TemplateBinding CharactersPerSecond}" FontSize="{DynamicResource GalNet.Theme.DialogueFontSize}" Foreground="{DynamicResource GalNet.Brush.TextPrimary}" />
+            </StackPanel>
+          </ControlTemplate>
+        </Setter>
+      </ControlTheme>
+    </ResourceDictionary>
+  </Styles.Resources>
   <Style Selector="local|TypewriterTextBlock">
     <Setter Property="TextWrapping" Value="Wrap" />
-  </Style>
-
-  <Style Selector="local|DialoguePresenter">
-    <Setter Property="Template">
-      <ControlTemplate>
-        <Border Height="200" Background="#D91B1C27" BorderBrush="#805F6075" BorderThickness="1" CornerRadius="8" Padding="20">
-          <StackPanel Spacing="8">
-            <TextBlock Text="{TemplateBinding Speaker}" FontWeight="SemiBold" FontSize="18" />
-            <local:TypewriterTextBlock Name="PART_Typewriter"
-                                       SourceText="{TemplateBinding Text}"
-                                       CharactersPerSecond="{TemplateBinding CharactersPerSecond}" />
-          </StackPanel>
-        </Border>
-      </ControlTemplate>
-    </Setter>
-  </Style>
-
-  <Style Selector="local|ChoiceList">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderBrush" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="Template">
-      <ControlTemplate>
-        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                BorderThickness="{TemplateBinding BorderThickness}">
-          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <ItemsPresenter />
-          </ScrollViewer>
-        </Border>
-      </ControlTemplate>
-    </Setter>
-  </Style>
-  <Style Selector="local|ChoiceList ListBoxItem">
-    <Setter Property="Margin" Value="0,3" />
-    <Setter Property="Padding" Value="16,10" />
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderBrush" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="HorizontalContentAlignment" Value="Center" />
-    <Setter Property="Template">
-      <ControlTemplate>
-        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
-          <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
-                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
-        </Border>
-      </ControlTemplate>
-    </Setter>
-  </Style>
-  <Style Selector="local|ChoiceList ListBoxItem:pointerover">
-    <Setter Property="Background" Value="#2E8E8AB8" />
-  </Style>
-  <Style Selector="local|ChoiceList ListBoxItem:selected">
-    <Setter Property="Background" Value="#4B8E8AB8" />
-  </Style>
-
-  <Style Selector="local|SaveSlotCard">
-    <Setter Property="Template">
-      <ControlTemplate>
-        <Button
-          HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-          Command="{TemplateBinding Command}" CommandParameter="{TemplateBinding CommandParameter}"
-                Padding="0" Background="Transparent" BorderBrush="Transparent" BorderThickness="0"
-                HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
-          <Border MinHeight="136" Padding="16" Background="#B81B1C27" BorderBrush="#665F6075" BorderThickness="1" CornerRadius="8">
-            <Grid RowDefinitions="*,Auto" RowSpacing="12">
-              <StackPanel Spacing="4" VerticalAlignment="Top">
-                <TextBlock FontWeight="SemiBold" FontSize="16"><Run Text="Slot " /><Run Text="{TemplateBinding SlotIndex}" /></TextBlock>
-                <TextBlock Text="{TemplateBinding Description}" TextWrapping="Wrap" Opacity="0.75" />
-              </StackPanel>
-              <StackPanel Grid.Row="1" Spacing="2">
-                <TextBlock Text="{TemplateBinding Timestamp}" FontSize="12" Opacity="0.74" />
-                <TextBlock Text="Empty" IsVisible="{TemplateBinding IsEmpty}" FontSize="12" Opacity="0.56" />
-                <TextBlock Text="Corrupt save" IsVisible="{TemplateBinding IsCorrupt}" FontSize="12" Foreground="IndianRed" />
-              </StackPanel>
-            </Grid>
-          </Border>
-        </Button>
-      </ControlTemplate>
-    </Setter>
-  </Style>
-
-  <Style Selector="local|NvlPresenter">
-    <Setter Property="Template">
-      <ControlTemplate>
-        <Border Background="#B81B1C27" BorderBrush="#805F6075" BorderThickness="1" CornerRadius="8" Padding="26">
-          <ScrollViewer Name="PART_ScrollViewer" VerticalScrollBarVisibility="Auto">
-            <StackPanel Name="PART_Lines" Spacing="14" />
-          </ScrollViewer>
-        </Border>
-      </ControlTemplate>
-    </Setter>
-  </Style>
-
-  <Style Selector="local|NvlLinePresenter">
-    <Setter Property="Template">
-      <ControlTemplate>
-        <StackPanel Spacing="3">
-          <local:TypewriterTextBlock Name="PART_Typewriter"
-                                     SourceText="{TemplateBinding Text}"
-                                     CharactersPerSecond="{TemplateBinding CharactersPerSecond}" />
-        </StackPanel>
-      </ControlTemplate>
-    </Setter>
   </Style>
 </Styles>

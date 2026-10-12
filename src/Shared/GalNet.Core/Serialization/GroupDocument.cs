@@ -22,8 +22,10 @@ public sealed class GroupDocument
 /// <summary>Runtime-only compiled document containing generic primitive envelopes.</summary>
 public sealed class CompiledGroupDocument
 {
+    public const int CurrentVersion = 3;
+
     [JsonPropertyName("version")]
-    public int Version { get; set; } = GroupDocument.CurrentVersion;
+    public int Version { get; set; } = CurrentVersion;
 
     [JsonPropertyName("kind")]
     [JsonConverter(typeof(JsonStringEnumConverter<GroupDocumentKind>))]
@@ -60,6 +62,10 @@ public sealed class GroupEntryDocument
 /// <summary>One generic primitive envelope in a compiled <c>.galgroup</c> file.</summary>
 public sealed class PrimitiveEntryDocument
 {
+    [JsonPropertyName("readingBoundaryId")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ReadingBoundaryId { get; set; }
+
     [JsonPropertyName("id")]
     public string Id { get; set; } = "";
 

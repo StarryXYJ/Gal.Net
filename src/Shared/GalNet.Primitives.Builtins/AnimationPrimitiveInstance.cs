@@ -15,6 +15,9 @@ public sealed class AnimationPrimitiveInstance : PrimitiveInstance
     private readonly CancellationToken _scopeCancellation;
     private bool _skippable;
     private AnimationPlaybackInstance? _playback;
+    private bool _catchUpDetached;
+    private Task _presentationTask = Task.CompletedTask;
+    public override Task PresentationCompletion => _presentationTask;
 
     public AnimationPrimitiveInstance(
         IGameRuntime runtime,
@@ -51,7 +54,7 @@ public sealed class AnimationPrimitiveInstance : PrimitiveInstance
             return;
         }
 
-        _ = ObservePresentationAsync();
+        _presentationTask = ObservePresentationAsync();
     }
 
     protected override void OnSkip()
@@ -64,7 +67,28 @@ public sealed class AnimationPrimitiveInstance : PrimitiveInstance
         }
 
         _presenter?.CompleteAnimationImmediately(_request.PlaybackHandleId);
-        BuiltinRuntimeActions.ApplyAnimationTerminalValue(_runtime, _request);
+        if (_request.LoopMode != AnimationLoopMode.Once)
+            BuiltinRuntimeActions.ApplyAnimationTerminalValue(_runtime, _request);
+        BuiltinRuntimeActions.StopAnimationState(_runtime, _request.PlaybackHandleId);
+        TryComplete();
+    }
+
+    protected override void OnPlaybackModeChanged(PrimitiveInvocationMode mode)
+    {
+        if (mode == PrimitiveInvocationMode.CatchUp && !_request.Blocking && _request.LoopMode != AnimationLoopMode.Once)
+        {
+            _catchUpDetached = true;
+            _presenter?.CompleteAnimationImmediately(_request.PlaybackHandleId);
+            TryComplete();
+            return;
+        }
+        if (mode != PrimitiveInvocationMode.Normal && (_request.Blocking || _request.LoopMode == AnimationLoopMode.Once)) Skip();
+    }
+
+    protected override void OnCatchUpDispatch()
+    {
+        if (!_request.Skippable && _request.Blocking) { OnDispatch(); return; }
+        BuiltinRuntimeActions.ApplyAnimationStableState(_runtime, _request);
         TryComplete();
     }
 
@@ -79,7 +103,7 @@ public sealed class AnimationPrimitiveInstance : PrimitiveInstance
         catch (Exception error) { GameLog.Logger.Warning(error, "Primitive presentation failed"); }
         finally
         {
-            if (_playback is not null && _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_request.PlaybackHandleId, out var current) && ReferenceEquals(current, _playback))
+            if (!_catchUpDetached && _playback is not null && _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_request.PlaybackHandleId, out var current) && ReferenceEquals(current, _playback))
                 BuiltinRuntimeActions.StopAnimationState(_runtime, _request.PlaybackHandleId);
             lock (_gate)
                 _skippable = false;

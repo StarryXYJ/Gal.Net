@@ -6,9 +6,9 @@ public sealed class PlayAudioEntry : PrimitiveEntry
 {
     public const string TypeId = "audio.play";
     public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("trackId", EntryParameterType.Text), ("asset", EntryParameterType.AudioAsset), ("gain", EntryParameterType.Float), ("placement", EntryParameterType.Select), ("fadeIn", EntryParameterType.Float));
-    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("trackId", "bgm"), ("gain", "1"), ("placement", "enqueue"), ("fadeIn", "0"));
-    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(("placement", ["enqueue", "next", "replace", "replaceAll", "replaceIfDifferent"]));
+    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("trackId", EntryParameterType.Text), ("asset", EntryParameterType.AudioAsset), ("gain", EntryParameterType.Float), ("placement", EntryParameterType.Select), ("fadeIn", EntryParameterType.Float), ("autoBlocking", EntryParameterType.Select));
+    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("trackId", "bgm"), ("gain", "1"), ("placement", "enqueue"), ("fadeIn", "0"), ("autoBlocking", "false"));
+    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(("placement", ["enqueue", "next", "replace", "replaceAll", "replaceIfDifferent"]), ("autoBlocking", ["true", "false"]));
 }
 
 public sealed class StopAudioEntry : PrimitiveEntry

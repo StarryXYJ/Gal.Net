@@ -9,7 +9,7 @@
 | 自定义剧情指令 | 自己的 Entry Module | 往 Core 写某个项目专属 primitive |
 | 自定义即时或异步玩法逻辑 | 自己的 `PrimitiveInstance` | 让 Engine 知道项目的指令名 |
 | 高级作者指令 | 自己的 composite，编译为 primitive | 让 Runtime 直接执行 composite |
-| 新页面、主题、窗口或媒体后端 | `MyGame.View` / 客户端宿主 | 修改 `GalNet.Avalonia.GameView` 默认页面 |
+| 新页面、主题、窗口或媒体后端 | `MyGame.View` / 客户端宿主 | 把项目布局写入 `GalNet.Avalonia.GameView` |
 | 新资源类型、decoder、Gallery 页面 | 外层注册和平台程序集 | 让 Core 引用 Avalonia/Skia |
 | 项目存档位置、账户、平台服务 | 客户端宿主基础设施 | 修改 Runtime 的状态机 |
 
@@ -24,6 +24,20 @@ MyGame/
 ```
 
 `MyGame.Gameplay` 可以依赖 Core、Runtime 所需的公开协议和 Presentation.Abstractions；`MyGame.View` 才依赖 Avalonia 或其他具体渲染技术。项目自有类型不要声明在 `GalNet.Core.*` 命名空间下。
+
+## 配置玩家界面主题
+
+引用可选 `GalNet.Avalonia.Themes`，在创建游戏 Scope 前配置布局和配色：
+
+```csharp
+services.AddAvaloniaGameViewPages(
+    theme: new ClassicTheme(GamePalette.Ocean),
+    configureViews: views => views.Register<TitlePageViewModel, MyTitlePage>());
+```
+
+主题参数必需，普通页面没有默认回退；也可实现自己的 IGameLayoutTheme 而不引用内置 Themes。主题注册先于宿主覆盖；仅替换一个页面不需要另写主题。GameShell 自动加载对应玩家样式，其他玩家根用同一主题的 CreateStyles 加载。普通页保持 View + 共享 ViewModel；GamePage 通过 ControlTheme 安排稳定场景/对白/选项内容。当前配置在运行期固定。
+
+三套布局、三套配色和模板扩展示例见 [Themes README](../src/Presentation/GalNet.Avalonia.Themes/README.md)，契约见 [游戏页面规范](spec/control.md)。Sample 的 App.PlayerTheme 是实际启动配置入口。
 
 ## 创建一个自定义原语
 
@@ -164,7 +178,7 @@ public sealed class AlertCompositeEntry : CompositeEntry
 
 ## 扩展页面、资源和宿主
 
-- 在 `MyGame.View` 使用 `AddAvaloniaGameViewPages()` 的注册回调替换默认 View，或追加页面；运行期 registry 构建后不可修改。
+- 在 `MyGame.View` 使用 `AddAvaloniaGameViewPages(theme)` 的注册回调替换主题 View，或追加页面；运行期 registry 构建后不可修改。
 - 新 Gallery 类型通过 `IGalleryPageRegistry` 按精确 `typeId` 注册，不按资源类型推断 fallback。
 - 新资源类型要在组合期注册同一份 `IResourceTypeCatalog`；decoder 按 `(typeId, CLR 类型)` 注册到资产管理器。开发内容、导出器、安装内容和预览必须使用同一份冻结 catalog。
 - 平台媒体若需要文件路径，先通过 `IAssetManager` acquire 内容，再实体化到受控会话临时目录；不要扫描项目目录或 PAK。

@@ -14,7 +14,8 @@ public sealed class NullGameView : IGameView
         entry = null;
         return false;
     }
-    public PrimitiveInstance Dispatch(PrimitiveEntry entry, IGameRuntime runtime, CancellationToken cancellationToken) =>
+    public PrimitiveInstance Dispatch(PrimitiveEntry entry, IGameRuntime runtime, CancellationToken cancellationToken,
+        PrimitiveInvocationMode mode = PrimitiveInvocationMode.Normal) =>
         throw new InvalidOperationException($"Instruction '{entry.Type}' has no registered implementation.");
     public void Dispose() => GC.SuppressFinalize(this);
 }

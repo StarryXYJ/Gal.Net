@@ -95,6 +95,15 @@ public sealed class TypewriterTextBlock : TextBlock
         }
     }
 
+    public void RevealAll()
+    {
+        lock (_skipGate)
+        {
+            _instantMode = true;
+            _skipSignal?.TrySetResult();
+        }
+    }
+
     private void Restart() => _ = StartAsync();
 
     private async Task RenderAsync(

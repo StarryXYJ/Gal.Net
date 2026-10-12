@@ -33,10 +33,10 @@ public static class GalgroupLoader
             throw new InvalidDataException(".galgroup files must use the compiled primitive-envelope format.", exception);
         }
 
-        if (document.Version != GroupDocument.CurrentVersion)
-            throw new InvalidDataException($"Unsupported .galgroup version '{document.Version}'.");
         if (document.Kind != GroupDocumentKind.Compiled)
             throw new InvalidDataException("Runtime only accepts compiled .galgroup documents. Compile the .rawgalgroup source first.");
+        if (document.Version != CompiledGroupDocument.CurrentVersion)
+            throw new InvalidDataException($"Unsupported .galgroup version '{document.Version}'. Recompile the .rawgalgroup source.");
 
         var stableIds = new HashSet<string>(StringComparer.Ordinal);
         var entries = new List<Entry>(document.Entries.Count);
@@ -53,10 +53,19 @@ public static class GalgroupLoader
             entries.Add(new PrimitiveEntry(source.TypeId, source.Arguments, source.BatchId)
             {
                 Id = index + 1,
+                StableId = source.Id,
+                ReadingBoundaryId = source.ReadingBoundaryId,
                 Condition = source.Condition
             });
         }
 
+        foreach (var (entry, index) in entries.OfType<PrimitiveEntry>().Select((entry, index) => (entry, index)))
+        {
+            if (entry.ReadingBoundaryId is not { } boundary) continue;
+            var target = entries.OfType<PrimitiveEntry>().Skip(index).FirstOrDefault(candidate => candidate.StableId == boundary);
+            if (target is null || target.Condition != entry.Condition)
+                throw new InvalidDataException($"Invalid reading boundary '{boundary}'.");
+        }
         group.Entries.Clear();
         group.Entries.AddRange(entries);
     }

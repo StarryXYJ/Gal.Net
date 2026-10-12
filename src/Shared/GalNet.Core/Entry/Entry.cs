@@ -51,6 +51,9 @@ public class PrimitiveEntry : Entry
 
     /// <summary>Optional skip-batch identity scoped to one execution of the containing group.</summary>
     public string? BatchId { get; set; }
+    public string StableId { get; set; } = "";
+    /// <summary>Text identity checked before this instruction (including preceding voice commands).</summary>
+    public string? ReadingBoundaryId { get; set; }
 
     /// <summary>Whether this is the generic Runtime form rather than an authoring subtype.</summary>
     public bool IsGeneric => _typeId is not null;
@@ -169,6 +172,7 @@ public sealed class EntryDefinition
     public IReadOnlyDictionary<string, IReadOnlyList<string>> Options { get; }
     public EntryKind Kind { get; }
     public DynamicParameterTable? DynamicParameters { get; }
+    public bool IsReading { get; init; }
 
     private static ReadOnlyDictionary<TKey, TValue> Freeze<TKey, TValue>(IReadOnlyDictionary<TKey, TValue> values)
         where TKey : notnull => new ReadOnlyDictionary<TKey, TValue>(values.ToDictionary(pair => pair.Key, pair => pair.Value));

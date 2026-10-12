@@ -7,4 +7,6 @@ public interface IDialoguePresenter
     void HideDialogue();
     Task PresentTextAsync(string speaker, string text, CancellationToken cancellationToken);
     void SkipText();
+    Task PresentTextImmediatelyAsync(string speaker, string text, CancellationToken cancellationToken);
+    void RevealAllText();
 }

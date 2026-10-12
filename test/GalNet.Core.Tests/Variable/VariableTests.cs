@@ -5,6 +5,30 @@ namespace GeneralTest.Variable;
 
 public class VariableTests
 {
+    [TestCase(true)]
+    [TestCase(42)]
+    [TestCase(0.75f)]
+    [TestCase("Alice")]
+    public void CurrentJsonFormatRoundTripsTypedValues(object value)
+    {
+        var variable = new GalNetVar { Name = "test" };
+        variable.SetValue(value);
+        var restored = System.Text.Json.JsonSerializer.Deserialize<GalNetVar>(System.Text.Json.JsonSerializer.Serialize(variable))!;
+        Assert.Multiple(() =>
+        {
+            Assert.That(restored.Uid, Is.EqualTo(variable.Uid));
+            Assert.That(restored.Type, Is.EqualTo(variable.Type));
+            Assert.That(restored.AsString(), Is.EqualTo(variable.AsString()));
+        });
+    }
+
+    [Test]
+    public void OldStringEncodedIntegerIsRejected()
+    {
+        Assert.Throws<System.Text.Json.JsonException>(() => System.Text.Json.JsonSerializer.Deserialize<GalNetVar>(
+            "{\"Uid\":\"x\",\"Name\":\"test\",\"Type\":1,\"Value\":\"42\"}"));
+    }
+
     [Test]
     public void Variable_Should_Store_Bool()
     {

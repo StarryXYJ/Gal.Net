@@ -26,12 +26,12 @@
       </MenuItem>
     </Menu>
   </ursa:UrsaWindow.LeftContent>
-  <Grid>
+  <Grid x:Name="PlayerRoot" Classes="galnet-player" Background="{DynamicResource GalNet.Brush.Background}">
     <controls:GameCanvasHost x:Name="GameCanvas" IsVisible="False"
                              DesignWidth="1920"
                              DesignHeight="1080" />
     <views:LanguageSelectionView x:Name="LanguageSelection" IsVisible="False" />
     <TextBlock x:Name="StartupStatus" HorizontalAlignment="Center" VerticalAlignment="Center"
-               Foreground="White" Text="{loc:Localize Onboarding.Loading}" TextWrapping="Wrap" MaxWidth="600" />
+               Foreground="{DynamicResource GalNet.Brush.TextPrimary}" Text="{loc:Localize Onboarding.Loading}" TextWrapping="Wrap" MaxWidth="600" />
   </Grid>
 </ursa:UrsaWindow>

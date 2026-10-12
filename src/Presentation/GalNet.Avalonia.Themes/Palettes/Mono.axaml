@@ -1,0 +1,45 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.MergedDictionaries><ResourceInclude Source="avares://GalNet.Avalonia.Themes/Colors/Colors.axaml" /></ResourceDictionary.MergedDictionaries>
+  <StaticResource x:Key="GalNet.Palette.PrimaryColor" ResourceKey="GalNet.Color.Neutral.800" />
+  <SolidColorBrush x:Key="GalNet.Brush.Primary" Color="{DynamicResource GalNet.Palette.PrimaryColor}" />
+  <StaticResource x:Key="GalNet.Palette.PrimaryHoverColor" ResourceKey="GalNet.Color.Neutral.600" />
+  <SolidColorBrush x:Key="GalNet.Brush.PrimaryHover" Color="{DynamicResource GalNet.Palette.PrimaryHoverColor}" />
+  <StaticResource x:Key="GalNet.Palette.PrimaryPressedColor" ResourceKey="GalNet.Color.Neutral.950" />
+  <SolidColorBrush x:Key="GalNet.Brush.PrimaryPressed" Color="{DynamicResource GalNet.Palette.PrimaryPressedColor}" />
+  <StaticResource x:Key="GalNet.Palette.OnPrimaryColor" ResourceKey="GalNet.Color.Neutral.50" />
+  <SolidColorBrush x:Key="GalNet.Brush.OnPrimary" Color="{DynamicResource GalNet.Palette.OnPrimaryColor}" />
+  <StaticResource x:Key="GalNet.Palette.SecondaryColor" ResourceKey="GalNet.Color.Neutral.200" />
+  <SolidColorBrush x:Key="GalNet.Brush.Secondary" Color="{DynamicResource GalNet.Palette.SecondaryColor}" />
+  <StaticResource x:Key="GalNet.Palette.OnSecondaryColor" ResourceKey="GalNet.Color.Neutral.900" />
+  <SolidColorBrush x:Key="GalNet.Brush.OnSecondary" Color="{DynamicResource GalNet.Palette.OnSecondaryColor}" />
+  <StaticResource x:Key="GalNet.Palette.BackgroundColor" ResourceKey="GalNet.Color.Neutral.50" />
+  <SolidColorBrush x:Key="GalNet.Brush.Background" Color="{DynamicResource GalNet.Palette.BackgroundColor}" />
+  <Color x:Key="GalNet.Palette.SurfaceColor">#FFFFFF</Color>
+  <SolidColorBrush x:Key="GalNet.Brush.Surface" Color="{DynamicResource GalNet.Palette.SurfaceColor}" />
+  <StaticResource x:Key="GalNet.Palette.SurfaceRaisedColor" ResourceKey="GalNet.Color.Neutral.100" />
+  <SolidColorBrush x:Key="GalNet.Brush.SurfaceRaised" Color="{DynamicResource GalNet.Palette.SurfaceRaisedColor}" />
+  <Color x:Key="GalNet.Palette.OverlayColor">#F5FFFFFF</Color>
+  <SolidColorBrush x:Key="GalNet.Brush.Overlay" Color="{DynamicResource GalNet.Palette.OverlayColor}" />
+  <StaticResource x:Key="GalNet.Palette.TextPrimaryColor" ResourceKey="GalNet.Color.Neutral.900" />
+  <SolidColorBrush x:Key="GalNet.Brush.TextPrimary" Color="{DynamicResource GalNet.Palette.TextPrimaryColor}" />
+  <StaticResource x:Key="GalNet.Palette.TextSecondaryColor" ResourceKey="GalNet.Color.Neutral.600" />
+  <SolidColorBrush x:Key="GalNet.Brush.TextSecondary" Color="{DynamicResource GalNet.Palette.TextSecondaryColor}" />
+  <StaticResource x:Key="GalNet.Palette.TextDisabledColor" ResourceKey="GalNet.Color.Neutral.400" />
+  <SolidColorBrush x:Key="GalNet.Brush.TextDisabled" Color="{DynamicResource GalNet.Palette.TextDisabledColor}" />
+  <StaticResource x:Key="GalNet.Palette.BorderColor" ResourceKey="GalNet.Color.Neutral.200" />
+  <SolidColorBrush x:Key="GalNet.Brush.Border" Color="{DynamicResource GalNet.Palette.BorderColor}" />
+  <StaticResource x:Key="GalNet.Palette.DividerColor" ResourceKey="GalNet.Color.Neutral.100" />
+  <SolidColorBrush x:Key="GalNet.Brush.Divider" Color="{DynamicResource GalNet.Palette.DividerColor}" />
+  <StaticResource x:Key="GalNet.Palette.FocusColor" ResourceKey="GalNet.Color.Neutral.600" />
+  <SolidColorBrush x:Key="GalNet.Brush.Focus" Color="{DynamicResource GalNet.Palette.FocusColor}" />
+  <StaticResource x:Key="GalNet.Palette.SelectionColor" ResourceKey="GalNet.Color.Neutral.100" />
+  <SolidColorBrush x:Key="GalNet.Brush.Selection" Color="{DynamicResource GalNet.Palette.SelectionColor}" />
+  <StaticResource x:Key="GalNet.Palette.SuccessColor" ResourceKey="GalNet.Color.Green.500" />
+  <SolidColorBrush x:Key="GalNet.Brush.Success" Color="{DynamicResource GalNet.Palette.SuccessColor}" />
+  <StaticResource x:Key="GalNet.Palette.WarningColor" ResourceKey="GalNet.Color.Amber.500" />
+  <SolidColorBrush x:Key="GalNet.Brush.Warning" Color="{DynamicResource GalNet.Palette.WarningColor}" />
+  <StaticResource x:Key="GalNet.Palette.ErrorColor" ResourceKey="GalNet.Color.Red.500" />
+  <SolidColorBrush x:Key="GalNet.Brush.Error" Color="{DynamicResource GalNet.Palette.ErrorColor}" />
+  <StaticResource x:Key="GalNet.Palette.InfoColor" ResourceKey="GalNet.Color.Blue.600" />
+  <SolidColorBrush x:Key="GalNet.Brush.Info" Color="{DynamicResource GalNet.Palette.InfoColor}" />
+</ResourceDictionary>

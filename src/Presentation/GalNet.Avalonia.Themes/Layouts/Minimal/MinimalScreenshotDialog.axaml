@@ -1,0 +1,64 @@
+<page:ScreenshotDialog xmlns:page="using:GalNet.Avalonia.GameView.Page" xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
+             x:Class="GalNet.Avalonia.Themes.Layouts.Minimal.MinimalScreenshotDialog" Classes="galnet-player">
+  <Border MaxWidth="800"
+          Padding="20"
+          Background="{DynamicResource GalNet.Brush.Surface}"
+          CornerRadius="{DynamicResource GalNet.Theme.CornerRadius}">
+    <Grid RowDefinitions="Auto,300,Auto,Auto,Auto,Auto"
+          RowSpacing="14">
+      <TextBlock Text="{text:PlayerText Screenshot.Title, 'Save screenshot'}"
+                 FontSize="22"
+                 FontWeight="Bold" />
+
+      <Border Grid.Row="1"
+              Padding="8"
+              Background="{DynamicResource GalNet.Brush.SurfaceRaised}"
+              CornerRadius="4">
+        <Image Name="Preview"
+               Stretch="Uniform" />
+      </Border>
+
+      <Grid Grid.Row="2"
+            ColumnDefinitions="*,Auto"
+            ColumnSpacing="8">
+        <StackPanel Spacing="4">
+          <TextBlock Text="{text:PlayerText Screenshot.Folder, 'Folder'}" />
+          <TextBox Name="DirectoryBox" />
+        </StackPanel>
+        <Button Grid.Column="1"
+                Name="BrowseButton"
+                VerticalAlignment="Bottom"
+                Content="{text:PlayerText Screenshot.ChooseFolder, 'Choose folder…'}" />
+      </Grid>
+
+      <StackPanel Grid.Row="3"
+                  Spacing="4">
+        <TextBlock Text="{text:PlayerText Screenshot.FileName, 'File name'}" />
+        <TextBox Name="FileNameBox"
+                 PlaceholderText="Screenshot.png" />
+      </StackPanel>
+
+      <StackPanel Grid.Row="4"
+                  Spacing="4">
+        <CheckBox Name="IncludeUiBox"
+                  Content="{text:PlayerText Screenshot.IncludeUi, 'Include player UI'}" />
+        <TextBlock Name="ErrorBlock"
+                   Foreground="{DynamicResource GalNet.Brush.Error}"
+                   TextWrapping="Wrap" />
+      </StackPanel>
+
+      <StackPanel Grid.Row="5"
+                  HorizontalAlignment="Right"
+                  Orientation="Horizontal"
+                  Spacing="8">
+        <Button Name="CancelButton"
+                Content="{text:PlayerText Common.Cancel, 'Cancel'}" />
+        <Button Name="SaveButton"
+                IsDefault="True"
+                Content="{text:PlayerText Common.Save, 'Save'}" />
+      </StackPanel>
+    </Grid>
+  </Border>
+</page:ScreenshotDialog>

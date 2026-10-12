@@ -13,6 +13,32 @@ namespace GeneralTest.Runtime;
 
 public class BuiltinPrimitiveInstanceTests
 {
+    [TestCase(PrimitiveInvocationMode.Quick)]
+    [TestCase(PrimitiveInvocationMode.CatchUp)]
+    public void AdditiveAnimationDoesNotApplyTerminalDeltaTwice(PrimitiveInvocationMode mode)
+    {
+        var presenter = new RecordingAnimationPresenter();
+        using var view = new GameRegistration().AddBuiltins(animationPresenter: presenter).BuildView();
+        var runtime = new GameRuntime(null);
+        var layer = runtime.SceneInstances.GetOrAdd("hero", id => new Layer { Id = id, Opacity = .2f });
+        var instance = view.Dispatch(Primitive(AnimateEntry.TypeId, new
+        {
+            playbackHandleId = "fade",
+            handleId = "hero",
+            property = "opacity",
+            to = .3f,
+            duration = 3,
+            curve = "Linear",
+            blocking = "true",
+            skippable = "true",
+            loopMode = "Once",
+            blendMode = "Additive"
+        }), runtime, CancellationToken.None)!;
+        var terminal = layer.Opacity;
+        instance.ApplyPlaybackMode(mode);
+        Assert.That(instance.IsCompleted, Is.True);
+        Assert.That(layer.Opacity, Is.EqualTo(terminal));
+    }
     private static readonly string[] FadeCompleted = ["fade"];
     private static readonly string[] BlurStopped = ["blur-1"];
     private static readonly string[] SnowStopped = ["snow"];

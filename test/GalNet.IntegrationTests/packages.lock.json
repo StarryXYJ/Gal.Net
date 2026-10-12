@@ -328,6 +328,14 @@
           "GalNet.Core": "[1.0.0, )"
         }
       },
+      "galnet.avalonia.themes": {
+        "type": "Project",
+        "dependencies": {
+          "Avalonia.Themes.Fluent": "[12.0.5, )",
+          "GalNet.Avalonia.Controls": "[1.0.0, )",
+          "GalNet.Avalonia.GameView": "[1.0.0, )"
+        }
+      },
       "galnet.core": {
         "type": "Project"
       },
@@ -385,6 +393,7 @@
           "GalNet.Assets": "[1.0.0, )",
           "GalNet.Avalonia.Controls": "[1.0.0, )",
           "GalNet.Avalonia.GameView": "[1.0.0, )",
+          "GalNet.Avalonia.Themes": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "GalNet.Primitives.Builtins": "[1.0.0, )",

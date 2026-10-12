@@ -8,4 +8,6 @@ public interface INvlPresenter
     void ClearNvl();
     Task AppendNvlTextAsync(string text, CancellationToken cancellationToken);
     void SkipNvlText();
+    Task AppendNvlTextImmediatelyAsync(string text, CancellationToken cancellationToken);
+    void RevealAllNvlText();
 }

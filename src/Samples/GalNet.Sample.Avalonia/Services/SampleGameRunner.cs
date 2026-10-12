@@ -15,6 +15,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
     private readonly GamePageViewModel _gameplay;
     private readonly GameEngine _engine;
     private readonly SampleGamePresentation _presentation;
+    private readonly SamplePlayerSettingsService _playerSettings;
     private readonly PersistentSceneRestorer _restorer;
     private readonly Func<bool, string?, Task> _updateStateAsync;
     private readonly Func<Task> _runCompletedAsync;
@@ -25,27 +26,29 @@ internal sealed class SampleGameRunner : IAsyncDisposable
     private bool _disposed;
 
     private SampleGameRunner(
-        GamePageViewModel gameplay, GameEngine engine, SampleGamePresentation presentation,
+        GamePageViewModel gameplay, GameEngine engine, SampleGamePresentation presentation, SamplePlayerSettingsService playerSettings,
         Func<bool, string?, Task> updateStateAsync, Func<Task> runCompletedAsync,
         Func<Task> resetPresentationAsync, Func<Action, Task> onUiAsync)
     {
         _gameplay = gameplay;
         _engine = engine;
         _presentation = presentation;
-        var presenters = presentation.Presenters;
-        _restorer = new PersistentSceneRestorer(presentation.Effects, presenters.ParticlePresenter,
-            presenters.AnimationPresenter, presenters.LayerPresenter, presentation.Video);
+        _playerSettings = playerSettings;
+        _playerSettings.SettingsChanged += OnPlayerSettingsChanged;
+        OnPlayerSettingsChanged(playerSettings.RuntimeSettings);
+        _restorer = presentation.Restorer;
         _updateStateAsync = updateStateAsync;
         _runCompletedAsync = runCompletedAsync;
         _resetPresentationAsync = resetPresentationAsync;
         _onUiAsync = onUiAsync;
         _gameplay.AdvanceRequested += OnAdvanceRequested;
+        _gameplay.BindPlayback(engine);
         _engine.StateChanged += OnEngineStateChanged;
     }
 
     public static async Task<SampleGameRunner> CreateAsync(
         GamePageViewModel gameplay, GamePage page, SampleGameResourceScope resources,
-        SampleSaveSession saveSession, ITextResolver textResolver, Func<bool, string?, Task> updateStateAsync,
+        SampleSaveSession saveSession, SamplePlayerSettingsService playerSettings, ITextResolver textResolver, Func<bool, string?, Task> updateStateAsync,
         Func<Task> runCompletedAsync, Func<Task> resetPresentationAsync,
         Func<Action, Task> onUiAsync, CancellationToken cancellationToken)
     {
@@ -58,8 +61,8 @@ internal sealed class SampleGameRunner : IAsyncDisposable
             settings.Set(saveSession.Settings);
             var runtime = new GameRuntime(textResolver, resources.Content.Graph.RootNodeId, settings, saveSession.Variables);
             engine = new GameEngine(resources.Content.Graph, runtime, presentation.View,
-                saveSession.Progress, presentation.Presenters.ChoicePresenter);
-            return new SampleGameRunner(gameplay, engine, presentation,
+                saveSession.Progress, presentation.Presenters.ChoicePresenter, presentation);
+            return new SampleGameRunner(gameplay, engine, presentation, playerSettings,
                 updateStateAsync, runCompletedAsync, resetPresentationAsync, onUiAsync);
         }
         catch (Exception error)
@@ -82,7 +85,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
         if (snapshot is not null)
         {
             _engine.RestoreFrom(snapshot);
-            await _restorer.RestoreAsync(_engine.Runtime, cancellationToken);
+            await _engine.SynchronizePresentationAsync(_restorer.RestoreAsync, cancellationToken);
         }
         _prepared = true;
     }
@@ -100,6 +103,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
     public async Task StopAsync()
     {
         await _engine.StopAsync();
+        await _restorer.SuspendAsync(CancellationToken.None);
         _presentation.Presenters.CompleteInitialPresentation();
         await _stateUpdate;
     }
@@ -108,11 +112,14 @@ internal sealed class SampleGameRunner : IAsyncDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        _playerSettings.SettingsChanged -= OnPlayerSettingsChanged;
+        _gameplay.BindPlayback(null);
         _gameplay.AdvanceRequested -= OnAdvanceRequested;
         _engine.StateChanged -= OnEngineStateChanged;
         _presentation.Presenters.CompleteInitialPresentation();
         List<Exception>? errors = null;
         await ReleaseAsync(() => _engine.DisposeAsync().AsTask());
+        await ReleaseAsync(() => _restorer.SuspendAsync(CancellationToken.None));
         await ReleaseAsync(() => _stateUpdate);
         await ReleaseAsync(() => _presentation.DisposeAsync().AsTask());
         await ReleaseAsync(() => _updateStateAsync(false, null));
@@ -141,6 +148,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
     }
 
     private void OnAdvanceRequested() => _ = AdvanceAsync();
+    private void OnPlayerSettingsChanged(GameSettings settings) => _presentation.AudioModule.ApplyPlayerSettings(settings);
 
     private async Task AdvanceAsync()
     {

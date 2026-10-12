@@ -3,6 +3,7 @@ using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
 using GalNet.Core.Scene;
+using GalNet.Core.Settings;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
@@ -16,6 +17,39 @@ public class GameEnginePrimitiveDispatchTests
     private static readonly int[] VideoSkipPoints = [5, 12];
     private static readonly string[] MarkDispatch = ["mark"];
     private static readonly string[] VisibleOptions = ["visible"];
+
+    [TestCase(PlaybackMode.Quick, 0)]
+    [TestCase(PlaybackMode.Quick, 1)]
+    [TestCase(PlaybackMode.Quick, 2)]
+    [TestCase(PlaybackMode.Auto, 0)]
+    [TestCase(PlaybackMode.Auto, 1)]
+    [TestCase(PlaybackMode.Auto, 2)]
+    public async Task Video_segment_clicks_preserve_playback_boundary(PlaybackMode mode, int clicks)
+    {
+        var video = new SegmentedVideoPresenter();
+        var markers = 0;
+        var settings = new SettingsContainer();
+        settings.Set(new GameSettings { QuickAdvanceIntervalMilliseconds = 0, AutoAdvanceIntervalMilliseconds = 0 });
+        using var view = new GameRegistration().AddBuiltins(videoPresenter: video)
+            .RegisterSchema(new DefaultEntryModule("test", [new DefaultPrimitiveEntryBase("test.mark", DynamicParameterTable.Empty)]))
+            .RegisterInstruction("test.mark", context => new ImmediatePrimitiveInstance(() => Interlocked.Increment(ref markers), batchId: context.BatchId))
+            .BuildView();
+        await using var engine = new GameEngine(GraphWithGroup(
+            Primitive("video.play", new { asset = "clip", skipPoints = VideoSkipPoints }),
+            Primitive("test.mark")), view, settings: settings);
+        await engine.AdvanceAsync();
+        for (var index = 0; index < clicks; index++) await engine.AdvanceAsync();
+        Assert.That(video.Advances, Is.EqualTo(clicks));
+        await engine.SetPlaybackModeAsync(mode);
+        if (mode == PlaybackMode.Auto)
+        {
+            Assert.That(video.End.Task.IsCompleted, Is.False, "Auto must not interrupt video playback.");
+            Assert.That(Volatile.Read(ref markers), Is.Zero);
+            video.End.TrySetResult();
+        }
+        await WaitUntilAsync(() => Volatile.Read(ref markers) == 1);
+        Assert.That(engine.Runtime.SceneState.Layers, Is.Empty);
+    }
 
     [Test]
     public void UncompiledAuthoringEntriesAreRejectedInsteadOfSilentlySkipped()
@@ -303,7 +337,7 @@ public class GameEnginePrimitiveDispatchTests
                             opacity = 1,
                             displayMode = "Native"
                         }),
-                        Primitive(TextEntry.TypeId, new { speaker = "Alice", content = "story.continue" })
+                        new PrimitiveEntry(TextEntry.TypeId, JsonSerializer.SerializeToElement(new { speaker = "Alice", content = "story.continue" })) { StableId = "continue#1" }
                     }
                 },
                 new Branch
@@ -479,6 +513,9 @@ public class GameEnginePrimitiveDispatchTests
             return Task.CompletedTask;
         }
         public void SkipText() { }
+        public void RevealAllText() { }
+        public Task PresentTextImmediatelyAsync(string speaker, string text, CancellationToken cancellationToken) =>
+            PresentTextAsync(speaker, text, cancellationToken);
 
         public void ShowLayer(LayerRenderRequest request) => ShownLayers.Add(request);
         public void ReplaceLayer(string handleId, string assetId) => ReplacedLayers.Add((handleId, assetId));

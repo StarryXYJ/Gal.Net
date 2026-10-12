@@ -8,6 +8,8 @@ namespace GalNet.Primitives.Builtins;
 
 public sealed class PlayParticlePrimitiveInstance : PrimitiveInstance
 {
+    private Task _presentationTask = Task.CompletedTask;
+    public override Task PresentationCompletion => _presentationTask;
     private readonly IGameRuntime _runtime;
     private readonly IParticlePresenter? _presenter;
     private readonly ParticleEmitterRequest _request;
@@ -20,8 +22,8 @@ public sealed class PlayParticlePrimitiveInstance : PrimitiveInstance
     protected override void OnDispatch()
     {
         BuiltinRuntimeActions.ApplyParticleState(_runtime, _request);
-        if (_presenter is null) { TryComplete(); return; }
-        _ = ObserveAsync();
+        if (_presenter is null || InvocationMode == PrimitiveInvocationMode.CatchUp) { TryComplete(); return; }
+        _presentationTask = ObserveAsync();
     }
     private async Task ObserveAsync()
     {
@@ -34,6 +36,8 @@ public sealed class PlayParticlePrimitiveInstance : PrimitiveInstance
 
 public sealed class StopParticlePrimitiveInstance : PrimitiveInstance
 {
+    private Task _presentationTask = Task.CompletedTask;
+    public override Task PresentationCompletion => _presentationTask;
     private readonly IGameRuntime _runtime;
     private readonly IParticlePresenter? _presenter;
     private readonly string _instanceId;
@@ -45,8 +49,8 @@ public sealed class StopParticlePrimitiveInstance : PrimitiveInstance
     protected override void OnDispatch()
     {
         BuiltinRuntimeActions.RemoveParticleState(_runtime, _instanceId);
-        if (_presenter is null) { TryComplete(); return; }
-        _ = ObserveAsync();
+        if (_presenter is null || InvocationMode == PrimitiveInvocationMode.CatchUp) { TryComplete(); return; }
+        _presentationTask = ObserveAsync();
     }
     private async Task ObserveAsync()
     {
@@ -59,6 +63,8 @@ public sealed class StopParticlePrimitiveInstance : PrimitiveInstance
 
 public sealed class BurstParticlePrimitiveInstance : PrimitiveInstance
 {
+    private Task _presentationTask = Task.CompletedTask;
+    public override Task PresentationCompletion => _presentationTask;
     private readonly IParticlePresenter? _presenter;
     private readonly ParticleBurstRequest _request;
     private readonly CancellationToken _scopeCancellation;
@@ -69,8 +75,8 @@ public sealed class BurstParticlePrimitiveInstance : PrimitiveInstance
     public override bool IsSkippable => false;
     protected override void OnDispatch()
     {
-        if (_presenter is null) { TryComplete(); return; }
-        _ = ObserveAsync();
+        if (_presenter is null || InvocationMode == PrimitiveInvocationMode.CatchUp) { TryComplete(); return; }
+        _presentationTask = ObserveAsync();
     }
     private async Task ObserveAsync()
     {

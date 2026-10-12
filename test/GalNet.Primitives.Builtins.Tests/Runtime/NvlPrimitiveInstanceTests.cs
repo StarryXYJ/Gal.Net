@@ -58,6 +58,8 @@ public class NvlPrimitiveInstanceTests
         public void ClearNvl() => Operations.Add("clear");
         public Task AppendNvlTextAsync(string text, CancellationToken cancellationToken) => _typing.Task.WaitAsync(cancellationToken);
         public void SkipNvlText() => SkipCount++;
+        public void RevealAllNvlText() => FinishTyping();
+        public Task AppendNvlTextImmediatelyAsync(string text, CancellationToken cancellationToken) => Task.CompletedTask;
         public void FinishTyping() => _typing.TrySetResult();
     }
 }

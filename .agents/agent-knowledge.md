@@ -34,6 +34,12 @@
 
 ## 当前工作
 
+- [F-20261011-03-theme-owned-views](../features/F-20261011-03-theme-owned-views/summary.md) 已移除 GameView 普通页面和默认玩家样式。主题参数必需，最终映射校验完整性；Page 仅保留 GameShell/GamePage/ScreenshotDialog 行为。Themes 提供布局、通用样式与工具栏；截图独立构造/释放，普通页面 Scoped。Editor 显式 Classic 并采用 ThemesAssembly 别名。
+
+- [F-20261011-02-player-page-layout](../features/F-20261011-02-player-page-layout/summary.md) 已补齐三套内置主题的全部普通页面 XAML View，主题目录自行维护布局、共享 ViewModel/命令；页面无外框，主题内导航位置一致。对白名字比正文大4，Classic/Paper 26/22、Minimal 24/20；默认 GameView 页面回退已由 F-20261011-03 删除。
+
+- [F-20261011-01-game-ui-themes](../features/F-20261011-01-game-ui-themes/summary.md) 已完成启动期主题组合：可选 Themes 提供三布局/三配色，页面顺序已由 F-20261011-03 收敛为共享 GamePage→主题→宿主→完整性校验；GamePage 是稳定 TemplatedControl，四个 PART_* 承载其自有内容，派生页与 Runtime 保持同一 Scoped 实例。样式应用于玩家根，官方主题局部 Fluent 与宿主 Semi 隔离。当前无运行期切换；配置/契约见 Themes README、docs/spec/control.md、ADR 0003。
+
 - [F-20261009-02-video-entries](../features/F-20261009-02-video-entries/feature.md) 已实现剧情视频图层、阻塞分段 seek、停止/替换清理和非阻塞视频定义恢复。平台视频必须经 AssetManager 获取，解码帧通过租约进入场景管线；播放游标不入存档。验证见 feature summary。
 
 - [F-20261010-02-runtime-i18n](../features/F-20261010-02-runtime-i18n/summary.md) Phase 1–5 已实现。Sample 用 Core 2.1.2 + ReflectionBinding；每 JSON 独立 provider，culture-first 查询内嵌/包内/External/额外源；首次选择在 Engine 前原子保存 locale/count。设置切换不重译当前剧情。安装器保留 External 并拒绝覆盖不同包，导出不包含第三方文件。当前契约见 `docs/spec/i18n.md`，人工 GUI 全程与原生媒体 opt-in 验证限制见 summary。
@@ -81,3 +87,7 @@
 - [DynamicLocalization Avalonia 主版本兼容性](lessons/L-20261010-05-dynamiclocalization-avalonia-version.md)：2.1.0 与 2.1.2 的 Avalonia extension 都不适用于当前 Avalonia 12 Sample；后者虽能编译仍在启动时调用已移除的 Binding 构造函数。Sample 使用 Core + 自有 `ReflectionBinding` 适配层。
 - [JSON provider 的整 culture 替换](lessons/L-20261010-07-json-provider-replaces-culture.md)：2.1.2 的 LoadJsonString 不增量合并，也不做父 culture 回退；分文件需独立 provider 与宿主有序查询。
 - [Render 内的粒子耗尽清理](lessons/L-20261010-08-render-pass-particle-drain.md)：confirmed；UI Dispatch 在 UI 线程同步执行，不能作为渲染回调清理的延迟队列；使用保证异步的 `Post`，并以 emitter identity 防止旧回调删除替换实例。
+
+- [Headless session cleanup](lessons/L-20261011-01-headless-session-cleanup.md)：async Dispatch 测试使用 await using，避免同步 Dispose 等待同一个 session worker；动态 Brush 预期值要在资源宿主中解析或比较语义 Color。
+
+- [Editor Avalonia aliases](lessons/L-20261011-02-editor-avalonia-alias.md)：Editor 引用 GalNet.Avalonia.* 时采用程序集别名，避免既有 Avalonia 限定名称被相对命名空间解析遮蔽。

@@ -101,9 +101,15 @@ public class GameTextLocalizationTests
         public void ShowDialogue() { }
         public void HideDialogue() { }
         public void SkipText() { }
+        public void RevealAllText() { }
+        public Task PresentTextImmediatelyAsync(string speaker, string text, CancellationToken cancellationToken) =>
+            PresentTextAsync(speaker, text, cancellationToken);
         public void ShowNvl() { }
         public void HideNvl() { }
         public void ClearNvl() { }
         public void SkipNvlText() { }
+        public void RevealAllNvlText() { }
+        public Task AppendNvlTextImmediatelyAsync(string text, CancellationToken cancellationToken) =>
+            AppendNvlTextAsync(text, cancellationToken);
     }
 }
