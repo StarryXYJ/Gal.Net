@@ -43,6 +43,22 @@
 - 风险：复用旧 repository 导致过滤/修复数据；必须使用原始读取链路。
 - 退出：无平台依赖完成项目查询/校验；CLI 薄适配，非 CLI 消费者可调用同一服务。
 
+2026-10-13 命令复核扩展（见 cli-contract.md）：本 Phase 拆成以下可分别验证提交的子阶段，尚未实现；此前 Phase 1、2 的证据不变。
+
+- Phase 3a：统一操作描述与 help（全量/具体命令/--search/--json），commands 兼容别名；稳定 operationId、参数/输出结构、诊断、退出码、dry-run/批次能力声明。验证 help 无项目/契约可用，JSON 描述覆盖真实路由，nullable/默认值/枚举正确，未知命令与参数明确失败。
+- Phase 3b：原始读取的 files/find/graph/group/variables 查询，以及 references；确定排序、显式分页、项目路径边界、不隐式跨链接、未知数据保留和未识别引用诊断。验证缺契约基础查询可用、重复 ID 返回全部、交叉过滤/分页/无效 metadata/路径边界正确、查询不写文件。
+- Phase 3c：validate、graph validate、group validate 分层诊断及 --structure-only；单文件不要求无关 Group 合法，完整项目检查明确覆盖范围。验证未知字段/缺 ID/错误版本/引用、类型/required/约束、自定义 validator/Composite 错误，结构和语义状态明确，校验字节不变。
+
+## Phase 3d：单 GalGroup 编译
+
+状态：planned；依赖 Phase 3c，作为 Phase 4 的前置
+
+- 目标：group compile 使用项目 catalog，按 --id/--file 精确选择目标，不运行整项目 build。
+- 模块：共享单 Group 编译操作、Core 编译器复用、CLI 路由及测试。
+- 任务：无 Graph 归属的文件要求显式输出；默认 Group ID 输出到 Output/Graph/groups；源路径/输出保护；临时发布/失败保留旧产物；dry-run 返回目标与摘要。
+- 验证：自定义 Composite 正确展开，所需 primitive 缺失明确失败；无关 Group 无效不阻塞目标；成功只更新目标产物，源/Graph 字节不变；失败、取消和输出冲突不破坏旧产物；dry-run 无写入。
+- 退出：单文件与全项目编译复用同一契约/编译逻辑，并取得独立正反面证据。
+
 ## Phase 4：项目级 Editor、build/export 与运行注册一致性
 
 状态：planned；依赖 Phase 2、3
@@ -62,6 +78,7 @@
 - 目标：补齐项目创建、显示名改名、Group 生命周期工具，复用已有编辑命令与引用检查。
 - 模块：Editor.Shared/Abstraction 命令与持久化、Headless、ProjectService 引导路径。
 - 任务：创建可接收已构建契约目录，空项目生成目录/引导而非虚构可运行；Group 新建/改名/删除同步 Graph 与 Raw 文件；已有写入准确使用项目 schema，不能静默删字段。
+- 命令绑定：project/group 主入口与现有单元 operationId 共用业务实现和描述；查询/校验/编译也可被非 CLI 消费者直接调用。按 cli-contract.md 检查各写操作 dry-run/引用诊断/批次边界与帮助声明一致。
 - 项目删除：用户已确认送入系统回收站，新增共享操作与 Windows 外层适配；解析/校验确切项目根，Editor 先释放当前会话，成功回收后更新最近记录；不可用/失败明确报错，不回退永久删除。最近记录移除保持独立操作，普通目录搬迁暂不进入范围。
 - 验证：新建→独立契约部署→添加 Group/entry→校验→编译；稳定 ID 不随改名改变；Group 删除引用影响、文件/Graph 同步和失败恢复；未知数据的保存边界；dry-run 不写文件/关闭项目；项目根识别、回收适配成功/失败/不支持、当前会话释放及最近记录更新顺序。实际回收验收仅使用明确创建的临时测试项目，验证系统回收站可见与可恢复，不操作仓库或真实用户项目。
 - 文档：区分显示名/目录/身份，原始写文件和工具写入均可用；未提供直接入口的候选能力明确说明。
