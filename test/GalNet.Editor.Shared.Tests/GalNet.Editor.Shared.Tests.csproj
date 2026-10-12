@@ -4,6 +4,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../Fixtures/SchemaA/SchemaA.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../Fixtures/SchemaB/SchemaB.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../Fixtures/SchemaDuplicate/SchemaDuplicate.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../Fixtures/SchemaInvalid/SchemaInvalid.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../Fixtures/SchemaIncompatible/SchemaIncompatible.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\src\Shared\GalNet.Core\GalNet.Core.csproj" />
     <ProjectReference Include="..\..\src\Editor\GalNet.Editor.Abstraction\GalNet.Editor.Abstraction.csproj" />
     <ProjectReference Include="..\..\src\Editor\GalNet.Editor.Shared\GalNet.Editor.Shared.csproj" />

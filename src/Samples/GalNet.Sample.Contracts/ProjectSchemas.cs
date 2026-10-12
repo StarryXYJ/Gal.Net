@@ -1,0 +1,10 @@
+using GalNet.Contracts.Builtins;
+using GalNet.Core.Entry;
+
+namespace GalNet.Project.Contracts;
+
+/// <summary>Single source of authoring contracts shared by the sample game and tools.</summary>
+public static class ProjectSchemas
+{
+    public static IReadOnlyList<IEntryModule> Modules { get; } = BuiltinSchemas.CreateAllModules();
+}

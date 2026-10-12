@@ -11,6 +11,7 @@ public class ProjectDependencyTests
         {
             ["GalNet.Core"] = [],
             ["GalNet.Contracts.Builtins"] = ["GalNet.Core"],
+            ["GalNet.Sample.Contracts"] = ["GalNet.Core", "GalNet.Contracts.Builtins"],
             ["GalNet.Presentation.Abstractions"] = ["GalNet.Core"],
             ["GalNet.Runtime"] = ["GalNet.Core", "GalNet.Presentation.Abstractions"],
             ["GalNet.Primitives.Builtins"] = ["GalNet.Core", "GalNet.Contracts.Builtins", "GalNet.Presentation.Abstractions", "GalNet.Runtime"],
@@ -59,6 +60,7 @@ public class ProjectDependencyTests
             ],
             ["GalNet.Editor.Shared.Tests"] =
             [
+                "SchemaA", "SchemaB", "SchemaDuplicate", "SchemaInvalid", "SchemaIncompatible",
                 "GalNet.Core",
                 "GalNet.Editor.Abstraction",
                 "GalNet.Editor.Shared",

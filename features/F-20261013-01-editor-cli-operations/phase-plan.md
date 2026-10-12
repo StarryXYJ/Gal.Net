@@ -19,7 +19,9 @@
 
 ## Phase 2：约定契约 DLL 与独立部署
 
-状态：planned；依赖 Phase 1
+状态：verified；依赖 Phase 1
+
+验证证据：共享层 27/27（包括 9 项独立契约加载测试），架构 29/29；Sample.Contracts 独立构建与 Avalonia/Headless 项目引用构建通过。两个同名 DLL 的部分内置、自定义 primitive/Composite 集合独立；缺 DLL/依赖、错误入口、重复 typeId、不兼容 Core 版本均明确失败。流式加载允许在持有旧 catalog 时替换 DLL，新上下文读取新集合。部署脚本在专用临时内容项目中执行两次，确认完整依赖替换清除旧文件。Sample 当前只提供内置模块，截图契约与游戏运行注册改用入口在后续对应 Phase 接入。
 
 - 目标：共享层可独立加载 Contracts/GalNet.Project.Contracts.dll 的固定静态入口。
 - 模块：Editor.Abstraction/Shared 的加载结果协议与 ProjectSchemaContext、Sample 独立契约项目、构建/部署脚本。

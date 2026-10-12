@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>GalNet.Core</AssemblyName>
+    <AssemblyVersion>99.0.0.0</AssemblyVersion>
+  </PropertyGroup>
+</Project>
