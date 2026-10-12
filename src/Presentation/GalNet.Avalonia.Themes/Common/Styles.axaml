@@ -1,6 +1,26 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:page="using:GalNet.Avalonia.GameView.Page">
+        xmlns:page="using:GalNet.Avalonia.GameView.Page"
+        xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions">
+  <Style Selector="page|SkipConfirmation">
+    <Setter Property="Template">
+      <ControlTemplate x:CompileBindings="False">
+        <Grid Background="#80000000">
+          <Border MaxWidth="520" Padding="28" CornerRadius="8" Background="{DynamicResource GalNet.Brush.Surface}"
+                  BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <StackPanel Spacing="20">
+              <TextBlock Text="{text:PlayerText Playback.SkipTitle, 'Skip read text?'}" FontSize="24" />
+              <TextBlock Text="{text:PlayerText Playback.SkipMessage, 'Continue along the current story until unread text or the next choice.'}" TextWrapping="Wrap" />
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
+                <Button Content="{text:PlayerText Common.Cancel, Cancel}" Command="{Binding CancelSkipCommand}" />
+                <Button Content="{text:PlayerText Common.Confirm, Confirm}" Command="{Binding ConfirmSkipCommand}" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+  </Style>
   <Styles.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>

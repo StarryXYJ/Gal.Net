@@ -34,7 +34,8 @@ public sealed class CompositeGameView : IGameView
     public bool TryGetEntry(string primitiveType, out EntryDefinition? entry) => _catalog.TryGet(primitiveType, out entry!);
     public bool CanExecute(string primitiveType) => !_disposed && _instructions.ContainsKey(primitiveType);
 
-    public PrimitiveInstance Dispatch(PrimitiveEntry entry, IGameRuntime runtime, CancellationToken cancellationToken)
+    public PrimitiveInstance Dispatch(PrimitiveEntry entry, IGameRuntime runtime, CancellationToken cancellationToken,
+        PrimitiveInvocationMode mode = PrimitiveInvocationMode.Normal)
     {
         ArgumentNullException.ThrowIfNull(entry);
         ArgumentNullException.ThrowIfNull(runtime);
@@ -48,12 +49,14 @@ public sealed class CompositeGameView : IGameView
             PrimitiveArgumentHelper.Normalize(definition.DynamicParameters!, entry.Arguments), entry.BatchId)
         {
             Id = entry.Id,
+            StableId = entry.StableId,
+            ReadingBoundaryId = entry.ReadingBoundaryId,
             Condition = entry.Condition
         };
         var instance = implementation.CreateInstance(new PrimitiveCreateContext(definition, normalized, runtime, cancellationToken));
         if (!string.Equals(instance.BatchId, normalized.BatchId, StringComparison.Ordinal))
             throw new InvalidOperationException($"Instruction '{entry.Type}' created an instance with a different BatchId.");
-        instance.Dispatch();
+        instance.Dispatch(mode);
         return instance;
     }
 

@@ -9,6 +9,32 @@ namespace GeneralTest.Runtime;
 
 public sealed class VideoPrimitiveInstanceTests
 {
+    [TestCase(true)]
+    [TestCase(false)]
+    public void CatchUpDoesNotPlayVideoButPreservesOnlyPersistentDefinition(bool blocking)
+    {
+        var presenter = new ControlledVideoPresenter();
+        var runtime = new GameRuntime(null);
+        using var view = new GameRegistration().AddBuiltins(videoPresenter: presenter).BuildView();
+        var instance = view.Dispatch(Play(blocking), runtime, CancellationToken.None, PrimitiveInvocationMode.CatchUp)!;
+        Assert.That(instance.IsCompleted, Is.True);
+        Assert.That(presenter.Requests, Is.Empty);
+        Assert.That(runtime.SceneState.Layers.Count, Is.EqualTo(blocking ? 0 : 1));
+    }
+
+    [Test]
+    public async Task CatchUpDetachesLivePersistentVideoWithoutRemovingItsStateOnOldCompletion()
+    {
+        var presenter = new ControlledVideoPresenter();
+        var runtime = new GameRuntime(null);
+        using var view = new GameRegistration().AddBuiltins(videoPresenter: presenter).BuildView();
+        var instance = view.Dispatch(Play(false), runtime, CancellationToken.None)!;
+        instance.ApplyPlaybackMode(PrimitiveInvocationMode.CatchUp);
+        await presenter.Ends[0].Task;
+        await Task.Yield();
+        Assert.That(instance.IsCompleted, Is.True);
+        Assert.That(runtime.SceneState.Layers.Single().IsVideo, Is.True);
+    }
     [Test]
     public async Task Blocking_video_advances_without_completing_until_playback_ends()
     {

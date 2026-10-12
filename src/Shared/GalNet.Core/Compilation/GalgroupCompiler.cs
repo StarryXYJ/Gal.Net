@@ -24,7 +24,7 @@ public static class GalgroupCompiler
         if (source.Kind != GroupDocumentKind.Raw) throw new InvalidDataException("Only raw group documents can be compiled.");
 
         var stableIds = new HashSet<string>(StringComparer.Ordinal);
-        var compiled = new CompiledGroupDocument { Version = GroupDocument.CurrentVersion, Kind = GroupDocumentKind.Compiled };
+        var compiled = new CompiledGroupDocument { Version = CompiledGroupDocument.CurrentVersion, Kind = GroupDocumentKind.Compiled };
         var sourceMap = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
 
         foreach (var (sourceEntry, sourceIndex) in source.Entries.Select((entry, index) => (entry, index)))
@@ -45,6 +45,17 @@ public static class GalgroupCompiler
             };
 
             var emittedIds = new List<string>(primitives.Count);
+            var readingIndices = primitives.Select((primitive, index) => (primitive, index))
+                .Where(item => catalog.Get(item.primitive.Type).IsReading).Select(item => item.index).ToArray();
+            if (readingIndices.Length > 1)
+                throw new InvalidDataException($"Composite '{sourceEntry.Id}' contains multiple reading boundaries. Split it into separate source entries.");
+            var readingIndex = readingIndices.FirstOrDefault(-1);
+            if (readingIndex >= 0)
+            {
+                if (primitives.Take(readingIndex + 1).Any(primitive => primitive.Condition != primitives[readingIndex].Condition))
+                    throw new InvalidDataException($"Composite '{sourceEntry.Id}' has inconsistent reading-boundary conditions.");
+                primitives[0].ReadingBoundaryId = $"{sourceEntry.Id}#{readingIndex + 1}";
+            }
             for (var emittedIndex = 0; emittedIndex < primitives.Count; emittedIndex++)
             {
                 var primitive = primitives[emittedIndex];
@@ -113,6 +124,7 @@ public static class GalgroupCompiler
             Id = generatedId,
             TypeId = entry.Type,
             BatchId = entry.BatchId,
+            ReadingBoundaryId = entry.ReadingBoundaryId,
             Condition = entry.Condition,
             Arguments = entry.IsGeneric || entry is AuthoringPrimitiveEntry
                 ? entry.Arguments.Clone()

@@ -61,6 +61,9 @@ internal sealed class ConsolePresentation : IDialoguePresenter, INvlPresenter, I
     }
 
     public void SkipNvlText() => SkipTypewriter("nvl");
+    public void RevealAllNvlText() => _instantTypewriter = true;
+    public Task AppendNvlTextImmediatelyAsync(string text, CancellationToken cancellationToken) =>
+        PresentImmediatelyAsync("", text, cancellationToken);
 
     public async Task StartTypewriter(string widgetInstanceId, string speaker, string text, CancellationToken ct)
     {
@@ -129,6 +132,21 @@ internal sealed class ConsolePresentation : IDialoguePresenter, INvlPresenter, I
     }
 
     void IDialoguePresenter.SkipText() => SkipTypewriter("default_dialogue");
+    public void RevealAllText() => _instantTypewriter = true;
+    public Task PresentTextImmediatelyAsync(string speaker, string text, CancellationToken cancellationToken) =>
+        PresentImmediatelyAsync(speaker, text, cancellationToken);
+
+    private Task PresentImmediatelyAsync(string speaker, string text, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!string.IsNullOrWhiteSpace(speaker)) Console.Write($"{speaker}: ");
+        foreach (var token in RichTypewriterTextParser.Parse(text))
+            if (token.Kind == RichTypewriterTokenKind.Text) Console.Write(token.Text);
+            else if (token.Kind == RichTypewriterTokenKind.LineBreak) Console.WriteLine();
+        Console.WriteLine();
+        _ = RequestAdvanceAsync(cancellationToken);
+        return Task.CompletedTask;
+    }
 
     Task<int> IChoicePresenter.ChooseAsync(IReadOnlyList<string> options, CancellationToken cancellationToken) =>
         WaitForChoiceAsync("default_choice", options.ToArray(), cancellationToken);

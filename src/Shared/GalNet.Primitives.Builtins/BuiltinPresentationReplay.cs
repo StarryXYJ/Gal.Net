@@ -19,6 +19,7 @@ public static class BuiltinPresentationReplay
         IAnimationPresenter? animationPresenter,
         ILayerPresenter? layerPresenter,
         IVideoPresenter? videoPresenter = null,
+        Action<PrimitiveInstance>? onContinuation = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(runtime);
@@ -31,8 +32,10 @@ public static class BuiltinPresentationReplay
                 layer.DisplayMode, layer.Opacity, layer.Color, layer.Flipbook?.Clone());
             if (layer.IsVideo)
             {
-                new VideoPrimitiveInstance(runtime, videoPresenter,
-                    new VideoRenderRequest(Guid.NewGuid().ToString("N"), request, []), false, null, cancellationToken).Dispatch();
+                var instance = new VideoPrimitiveInstance(runtime, videoPresenter,
+                    new VideoRenderRequest(Guid.NewGuid().ToString("N"), request, []), false, null, cancellationToken);
+                onContinuation?.Invoke(instance);
+                instance.Dispatch();
             }
             else if (layer.Visible) layerPresenter?.ShowLayer(request);
         }
@@ -105,7 +108,11 @@ public static class BuiltinPresentationReplay
                     cancellationToken),
                 _ => null
             };
-            instance?.Dispatch();
+            if (instance is not null)
+            {
+                onContinuation?.Invoke(instance);
+                instance.Dispatch();
+            }
         }
     }
 }

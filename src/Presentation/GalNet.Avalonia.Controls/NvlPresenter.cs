@@ -30,6 +30,7 @@ public sealed class NvlPresenter : TemplatedControl
 
     /// <summary>Skips the currently appended line through its next typewriter skip boundary.</summary>
     public void SkipText() => _latestLine?.Skip();
+    public void RevealAllText() => _latestLine?.RevealAll();
 
     /// <summary>Removes all accumulated lines.</summary>
     public void Clear()
@@ -78,6 +79,7 @@ public sealed class NvlLinePresenter : TemplatedControl
     }
 
     public void Skip() => _typewriter?.Skip();
+    public void RevealAll() => _typewriter?.RevealAll();
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {

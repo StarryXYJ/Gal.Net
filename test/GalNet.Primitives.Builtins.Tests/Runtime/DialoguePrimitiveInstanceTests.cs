@@ -6,6 +6,35 @@ namespace GeneralTest.Runtime;
 public class DialoguePrimitiveInstanceTests
 {
     [Test]
+    public void QuickPresentsWholeTextWithoutCompletingAdvanceWait()
+    {
+        var presenter = new ControlledDialoguePresenter();
+        var instance = new DialoguePrimitiveInstance(presenter, "Alice", "a\\skip b", null, CancellationToken.None);
+        instance.Dispatch(GalNet.Core.Primitives.PrimitiveInvocationMode.Quick);
+        Assert.Multiple(() =>
+        {
+            Assert.That(instance.IsTextPresented, Is.True);
+            Assert.That(instance.IsAutoBlocking, Is.False);
+            Assert.That(instance.IsWaitingForAdvance, Is.True);
+            Assert.That(instance.IsCompleted, Is.False);
+            Assert.That(presenter.SkipCount, Is.Zero);
+        });
+        instance.CompleteAdvance();
+        Assert.That(instance.IsCompleted, Is.True);
+    }
+
+    [Test]
+    public void CatchUpDoesNotPresentIntermediateText()
+    {
+        var presenter = new ControlledDialoguePresenter();
+        var instance = new DialoguePrimitiveInstance(presenter, "Alice", "read", null, CancellationToken.None);
+        instance.Dispatch(GalNet.Core.Primitives.PrimitiveInvocationMode.CatchUp);
+        Assert.That(instance.IsCompleted, Is.True);
+        Assert.That(instance.IsTextPresented, Is.False);
+        Assert.That(presenter.Speaker, Is.Empty);
+    }
+
+    [Test]
     public async Task TypingSkipsDoNotCompleteDialogueAndFullTextNeedsAnotherAdvance()
     {
         var presenter = new ControlledDialoguePresenter();
@@ -71,6 +100,12 @@ public class DialoguePrimitiveInstanceTests
         }
 
         public void SkipText() => SkipCount++;
+        public void RevealAllText() => FinishTyping();
+        public Task PresentTextImmediatelyAsync(string speaker, string text, CancellationToken cancellationToken)
+        {
+            Speaker = speaker;
+            return Task.CompletedTask;
+        }
         public void FinishTyping() => _typing.TrySetResult();
     }
 }

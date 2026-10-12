@@ -1,4 +1,5 @@
 using GalNet.Assets;
+using GalNet.Core.Runtime;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
@@ -12,11 +13,12 @@ using GalNet.Sample.Avalonia.Presentation;
 namespace GalNet.Sample.Avalonia.Services;
 
 /// <summary>Sample composition and ownership of platform resources; no story execution logic.</summary>
-internal sealed class SampleGamePresentation : IAsyncDisposable
+internal sealed class SampleGamePresentation : IAsyncDisposable, ICatchUpPresentation
 {
     private SampleLayerFactory? _layers;
     private SkiaShaderEffectProgramResolver? _programs;
     private Task? _disposeTask;
+    private GamePageViewModel _gameplay = null!;
 
     private SampleGamePresentation() { }
 
@@ -25,12 +27,15 @@ internal sealed class SampleGamePresentation : IAsyncDisposable
     public AvaloniaAudioPlaybackHost Audio { get; private set; } = null!;
     public AvaloniaVideoPresenter Video { get; private set; } = null!;
     public CompositeGameView View { get; private set; } = null!;
+    public BuiltinAudioModule AudioModule { get; private set; } = null!;
+    public PersistentSceneRestorer Restorer { get; private set; } = null!;
 
     public static async Task<SampleGamePresentation> CreateAsync(
         GamePageViewModel gameplay, GamePage page, SampleGameResourceScope resources,
         CancellationToken cancellationToken)
     {
         var presentation = new SampleGamePresentation();
+        presentation._gameplay = gameplay;
         try
         {
             presentation._layers = new SampleLayerFactory(resources.PreloadedTextures);
@@ -43,14 +48,17 @@ internal sealed class SampleGamePresentation : IAsyncDisposable
                 preload.UsableProgramCount, preload.RequestedProgramCount, preload.Cache.TotalLoadTime.TotalMilliseconds);
             presentation.Effects = new AvaloniaEffectRuntime(gameplay, presentation._programs);
             presentation.Audio = new AvaloniaAudioPlaybackHost(resources.Assets);
+            presentation.AudioModule = new BuiltinAudioModule(presentation.Audio);
             presentation.Video = new AvaloniaVideoPresenter(resources.Assets, gameplay);
             var presenters = presentation.Presenters;
             using var registration = new GameRegistration();
             registration.AddBuiltins(
                 presenters.DialoguePresenter, presenters.LayerPresenter, presenters.AnimationPresenter,
                 presentation.Effects, resources.Content.Gallery, presenters.ParticlePresenter,
-                presenters.NvlPresenter, presentation.Audio, presentation.Video, resources.Content.Localization.Characters);
+                presenters.NvlPresenter, presentation.Audio, presentation.Video, resources.Content.Localization.Characters, presentation.AudioModule);
             presentation.View = registration.BuildView();
+            presentation.Restorer = new PersistentSceneRestorer(presentation.Effects, presenters.ParticlePresenter,
+                presenters.AnimationPresenter, presenters.LayerPresenter, presentation.Video);
             return presentation;
         }
         catch (Exception error)
@@ -62,6 +70,27 @@ internal sealed class SampleGamePresentation : IAsyncDisposable
     }
 
     public ValueTask DisposeAsync() => new(_disposeTask ??= DisposeCoreAsync());
+
+    public async Task BeginCatchUpAsync(CancellationToken cancellationToken)
+    {
+        AudioModule.BeginCatchUp();
+        await Presenters.BeginCatchUpAsync();
+        await Restorer.SuspendAsync(cancellationToken);
+    }
+
+    public async Task EndCatchUpAsync(IGameRuntime runtime, CancellationToken cancellationToken)
+    {
+        await AvaloniaUiDispatcher.Instance.InvokeAsync(() =>
+        {
+            Effects.Clear();
+            Presenters.ClearSceneObjects();
+            _gameplay.ResetSceneVisuals();
+            return Task.CompletedTask;
+        });
+        await Restorer.RestoreAsync(runtime, cancellationToken);
+        await Presenters.EndCatchUpAsync(cancellationToken);
+        AudioModule.EndCatchUp();
+    }
 
     private async Task DisposeCoreAsync()
     {

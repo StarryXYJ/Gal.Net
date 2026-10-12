@@ -48,6 +48,7 @@ public class DialoguePresenter : TemplatedControl
     }
 
     public void Skip() => _typewriter?.Skip();
+    public void RevealAll() => _typewriter?.RevealAll();
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {

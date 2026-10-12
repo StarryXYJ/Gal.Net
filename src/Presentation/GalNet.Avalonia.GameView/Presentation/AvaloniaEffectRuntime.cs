@@ -61,9 +61,14 @@ public sealed class AvaloniaEffectRuntime : IDisposable, IEffectPresenter
     public Task StopEffectAsync(string instanceId, CancellationToken cancellationToken) =>
         UiDispatcher.InvokeAsync(() => StopTextureEffect(instanceId));
 
-    public void Dispose()
+    public void Clear()
     {
         foreach (var id in _textureInstances.Keys.ToArray()) StopTextureEffect(id);
+    }
+
+    public void Dispose()
+    {
+        Clear();
         _programs?.Dispose();
     }
 

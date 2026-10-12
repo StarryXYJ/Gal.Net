@@ -4,6 +4,7 @@ using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
 using GalNet.Core.Graph;
 using GalNet.Core.Settings;
+using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
@@ -15,6 +16,15 @@ namespace GeneralTest.Runtime;
 
 public class GameTestCaseTests
 {
+    [Test]
+    public void AuthoringSamplePassesDocumentValidation()
+    {
+        var source = Path.Combine(FindRepositoryDirectory(), "GameTestCase");
+        var document = new DirectProjectPersistence(source, new EditorDocumentRepository(BuiltinSchemas.CreateCatalog())).Load();
+        var result = EditorDocumentValidator.Validate(document);
+        Assert.That(result.IsValid, Is.True, string.Join(Environment.NewLine, result.Diagnostics.Select(item => item.Message)));
+    }
+
     [TestCase("en-US", 0, "Guide", "Runtime smoke test complete.")]
     [TestCase("en-US", 1, "Guide", "Runtime smoke test complete.")]
     [TestCase("zh-CN", 0, "向导", "运行时冒烟测试完成。")]
@@ -128,9 +138,15 @@ public class GameTestCaseTests
         public void ShowDialogue() { }
         public void HideDialogue() { }
         public void SkipText() { }
+        public void RevealAllText() { }
+        public Task PresentTextImmediatelyAsync(string speaker, string text, CancellationToken cancellationToken) =>
+            PresentTextAsync(speaker, text, cancellationToken);
         public void ShowNvl() { }
         public void HideNvl() { }
         public void ClearNvl() { }
         public void SkipNvlText() { }
+        public void RevealAllNvlText() { }
+        public Task AppendNvlTextImmediatelyAsync(string text, CancellationToken cancellationToken) =>
+            AppendNvlTextAsync(text, cancellationToken);
     }
 }

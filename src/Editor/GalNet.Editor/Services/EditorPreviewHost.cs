@@ -252,6 +252,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
         (GalleryResources as IDisposable)?.Dispose();
         GalleryResources = null;
         _gameplay.AdvanceRequested -= OnAdvanceRequested;
+        _gameplay.BindPlayback(null);
         _engine?.Dispose();
         _pageView?.Dispose();
         _layers?.Dispose();
@@ -294,6 +295,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
             _audio).BuildView();
         var runtime = new GameRuntime(null, content.Graph.RootNodeId, new SettingsContainer(), _context.Variables);
         _engine = new GameEngine(content.Graph, runtime, view, _context.Progress, _pageView.ChoicePresenter);
+        _gameplay.BindPlayback(_engine);
         _gameplay.AdvanceRequested += OnAdvanceRequested;
         _context.RuntimeCreated(runtime);
         await RefreshSlotsAsync(cancellationToken);

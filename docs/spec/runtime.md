@@ -111,6 +111,7 @@ public abstract bool IsBlocking { get; }
 public abstract bool IsSkippable { get; }
 public string? BatchId { get; }
 public bool IsCompleted { get; }
+public virtual Task PresentationCompletion { get; }
 public void Dispatch();
 public void Skip();
 ```
@@ -124,6 +125,10 @@ public void Skip();
 - `Skip()` 不保证完成，但必须幂等。
 
 实例可以内部持有 Task、取消源、动画游标或文本游标；这些都是运行期状态，不进入内容或存档格式。
+
+`PresentationCompletion` 默认已完成；异步 presenter 原语覆写为包含 finally 清理的任务。逻辑 `IsCompleted` 不代表后端和旧回调已经清理完。Engine 进入追帧时先切换已有实例的模式并等待展示任务，再继续执行和最终重建；非 Engine 所有的恢复实例由宿主同样跟踪、压缩并等待。`BuiltinPresentationReplay` 的 `onContinuation` 在 Dispatch 前交付恢复出来的动画/视频实例，避免部分重建失败时丢失跟踪。
+
+玩家间隔配置为 `GameSettings.AutoAdvanceIntervalMilliseconds` 与 `QuickAdvanceIntervalMilliseconds`（int，默认 2000/50），Runtime 以毫秒计时并拒绝负值。Normal/Quick/CatchUp 分发与 `IsAutoBlocking`、状态事件、`IAdvanceWaitInstance` 分别表达呈现策略、自动等待和全文后推进等待；自动模式不会把对白等待下一次推进误当作仍在打字。完整阅读成功使用 group ID + 稳定编译条目 ID 记录，progress v2 与 compiled v3 拒绝旧格式，不迁移。
 
 ## Entry Module 与 GameView
 
@@ -157,7 +162,7 @@ Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`
 - `variable.set`：求值后写入 Runtime 变量。
 - `gallery.unlock`：按稳定 item ID 解锁 Gallery，写入对应的系统 Player bool。
 
-视频图层与音频的轨道播放、淡化、队列和当前轨道 SEffect 行为由内置模块实现。bus/master 处理、item effect、参数动画、存档恢复和玩家音量设置仍由后续 feature 补齐。Gallery 的平台无关 catalog 与解锁数据层由 Core/Storage 提供；默认 Avalonia 前端通过宿主提供的 `IGameGallerySession` 浏览 CG、视频和音频，不把页面或媒体状态写入 Runtime。
+视频图层与音频的轨道播放、淡化、队列和当前轨道 SEffect 行为由内置模块实现。玩家音量/静音按 master × bus × 内容 gain × 轨道默认 gain 合成并应用到当前及后续 voice；item effect、音频参数动画和音频存档恢复仍未实现，读档后不会自动续播旧音频。向前追帧的 BGM 最终投影属于会话内状态，不等于音频存档恢复。Gallery 的平台无关 catalog 与解锁数据层由 Core/Runtime 提供；默认 Avalonia 前端通过宿主提供的 `IGameGallerySession` 浏览 CG、视频和音频，不把页面或媒体状态写入 Runtime。
 
 动画 plan 的事件与轨道共用 presenter 的播放时间源。`PlayAnimationPlanAsync` 必须在采样前 await `beforeFrame(elapsedFrames)`，正常完成前提供末帧；Loop/PingPong 的 elapsedFrames 单调增加，不在循环时归零。跳过不补发未来 particle burst。
 

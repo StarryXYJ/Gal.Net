@@ -303,7 +303,7 @@ public class GameEnginePrimitiveDispatchTests
                             opacity = 1,
                             displayMode = "Native"
                         }),
-                        Primitive(TextEntry.TypeId, new { speaker = "Alice", content = "story.continue" })
+                        new PrimitiveEntry(TextEntry.TypeId, JsonSerializer.SerializeToElement(new { speaker = "Alice", content = "story.continue" })) { StableId = "continue#1" }
                     }
                 },
                 new Branch
@@ -479,6 +479,9 @@ public class GameEnginePrimitiveDispatchTests
             return Task.CompletedTask;
         }
         public void SkipText() { }
+        public void RevealAllText() { }
+        public Task PresentTextImmediatelyAsync(string speaker, string text, CancellationToken cancellationToken) =>
+            PresentTextAsync(speaker, text, cancellationToken);
 
         public void ShowLayer(LayerRenderRequest request) => ShownLayers.Add(request);
         public void ReplaceLayer(string handleId, string assetId) => ReplacedLayers.Add((handleId, assetId));

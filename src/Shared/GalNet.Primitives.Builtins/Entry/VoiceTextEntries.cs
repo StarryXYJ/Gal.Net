@@ -43,6 +43,7 @@ internal static class VoiceTextEntrySupport
             ["asset"] = Required(source, "asset"),
             ["gain"] = Float(source, "gain", 1),
             ["placement"] = "replaceIfDifferent",
+            ["autoBlocking"] = "true",
             ["fadeIn"] = 0
         }))
     { Condition = context.Condition };

@@ -33,8 +33,16 @@ so the picker reappears. Use `--profile <directory>` for an isolated test profil
 - Configurable `bgm`, `sfx`, and `vocal` tracks: the intro uses `心.mp3` to demonstrate in-progress BGM fade-in, `seffect.gain` apply/stop, `seffect.lowPass` / `seffect.highPass` apply/stop, and in-progress fade-out.
 
 The `.rawgalgroup` files are the sole authoring source. Build them with `GalNet.Editor.Headless`;
-the generated `.galgroup` files use the version 2 compiled format (`typeId` plus `arguments`). Every
+the generated `.galgroup` files use the version 3 compiled format (`typeId`, `arguments`, and reading metadata). The raw authoring format remains version 2. Every
 resource reference is its stable GUID; human-readable paths occur only in adjacent `.meta` files.
+
+Entry IDs must be unique within each group, not across groups. Read progress uses
+the group ID together with the compiled entry ID. The current `progress.json`
+format is version 2; older progress is rejected rather than migrated. For an old
+local profile, move `progress.json` aside as a backup before launching again, or
+use a new `--profile` directory. This resets read history only; retain player
+variables and saves separately. Rebuild content after changing the compiler or
+authoring source; do not use `-SkipBuild` with stale output.
 
 The fixture follows the editable project layout: `Graph/graph.json`, `Graph/groups/*.rawgalgroup`, and
 `Assets/` with each resource's `.meta`. Gallery data is derived from the metadata rather than stored

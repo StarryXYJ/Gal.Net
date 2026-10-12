@@ -104,12 +104,4 @@ public sealed class Layer : AnimatableSceneInstance
     /// <summary>Checks the portable hexadecimal color syntax supported by color layers.</summary>
     public static bool IsValidColor(string? value) => value is { Length: 7 or 9 } && value[0] == '#' && value[1..].All(Uri.IsHexDigit);
 
-    // Read-only compatibility bridge for saves written before Transform existed.
-    // [JsonPropertyName("X")]
-    // [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    // public float? LegacyX { get => null; set { if (value is { } x) Transform.X = x; } }
-    //
-    // [JsonPropertyName("Y")]
-    // [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    // public float? LegacyY { get => null; set { if (value is { } y) Transform.Y = y; } }
 }

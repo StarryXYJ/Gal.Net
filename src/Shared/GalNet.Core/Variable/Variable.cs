@@ -39,7 +39,7 @@ public sealed class Variable
 }
 
 /// <summary>
-/// Variable 自定义 JSON 转换器，用来规避抽象类反序列化限制，同时兼容新旧类型。
+/// Variable 的类型化 JSON 转换器；只接受当前序列化格式。
 /// </summary>
 public sealed class VariableJsonConverter : JsonConverter<Variable>
 {
@@ -48,33 +48,24 @@ public sealed class VariableJsonConverter : JsonConverter<Variable>
         using var doc = JsonDocument.ParseValue(ref reader);
         var root = doc.RootElement;
 
-        var uid = root.TryGetProperty("Uid", out var propUid) ? (propUid.GetString() ?? Guid.NewGuid().ToString("N")) : Guid.NewGuid().ToString("N");
-        var name = root.TryGetProperty("Name", out var propName) ? (propName.GetString() ?? "") : "";
-
-        var typeVal = VariableType.String;
-        if (root.TryGetProperty("Type", out var propType))
+        var uid = root.GetProperty("Uid").GetString() ?? throw new JsonException("Variable Uid is required.");
+        var name = root.GetProperty("Name").GetString() ?? throw new JsonException("Variable Name is required.");
+        var typeVal = (VariableType)root.GetProperty("Type").GetInt32();
+        var propVal = root.GetProperty("Value");
+        var value = typeVal switch
         {
-            typeVal = (VariableType)propType.GetInt32();
-        }
-
-        string rawValueStr = "";
-        if (root.TryGetProperty("Value", out var propVal))
-        {
-            rawValueStr = propVal.ValueKind switch
-            {
-                JsonValueKind.String => propVal.GetString() ?? "",
-                JsonValueKind.Number => propVal.GetRawText(),
-                JsonValueKind.True => "true",
-                JsonValueKind.False => "false",
-                _ => propVal.ToString()
-            };
-        }
+            VariableType.Bool => VariableValue.From(propVal.GetBoolean()),
+            VariableType.Int => VariableValue.From(propVal.GetInt32()),
+            VariableType.Float => VariableValue.From(propVal.GetSingle()),
+            VariableType.String => VariableValue.From(propVal.GetString() ?? throw new JsonException("Variable string value is required.")),
+            _ => throw new JsonException($"Unknown variable type '{typeVal}'.")
+        };
 
         return new Variable
         {
             Uid = uid,
             Name = name,
-            Value = VariableValue.Deserialize(rawValueStr, typeVal)
+            Value = value
         };
     }
 

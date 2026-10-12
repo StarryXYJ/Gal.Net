@@ -96,6 +96,10 @@ services.AddAvaloniaGameViewPages(theme: new MinimalTheme(palette));
 
 ## 验证与范围
 
+### 设置编辑器覆盖
+
+三种主题复用 `Common.SettingsCategories`。主题或宿主可为它设置 `EditorTemplates`（按顺序匹配的 `IDataTemplate` 列表），例如传入 `FuncDataTemplate<BoolSetting>` 只替换布尔编辑器；未匹配的类型继续使用内置模板。覆盖不会替换设置行的名称、说明、禁用原因及错误承载；设为 null 恢复内置编辑器。分类和设置项由 `IPlayerSettingsService.Categories` 提供，整数/浮点的 `EditorKind` 决定 Slider / NumericUpDown。Sample 的快速/自动等待项均为整数毫秒。
+
 GameThemeTests 覆盖九种组合的页面加载、Skia headless 渲染、配色隔离、宿主覆盖、对白、NVL、选择输入及场景截图。设置 `GALNET_THEME_CAPTURE_DIR` 可导出检查图片。
 
 主题覆盖共享玩家页面、Sample 启动与语言选择、截图弹窗；调试窗口、调试确认/通知、编辑器自身 UI 和系统文件选择器由宿主负责。headless 页面渲染不会验证实际 LibVLC 播放或系统对话框。Sample 使用 1920×1080 设计画布缩放游戏界面；自定义宿主应按自己的画布尺寸检查布局，Paper 的侧栏适用于宽屏布局。

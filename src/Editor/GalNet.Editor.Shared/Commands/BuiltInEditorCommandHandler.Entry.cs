@@ -12,8 +12,8 @@ public sealed partial class BuiltInEditorCommandHandler
             return failure!;
         if (string.IsNullOrWhiteSpace(command.EntryId))
             return Error("group.entry.idRequired", "Entry ID is required.");
-        if (document.GroupEntries.Values.SelectMany(value => value).Any(entry => entry.StableId == command.EntryId))
-            return Error("group.entry.duplicateId", $"Entry '{command.EntryId}' already exists.");
+        if (entries!.Any(entry => entry.StableId == command.EntryId))
+            return Error("group.entry.duplicateId", $"Entry '{command.EntryId}' already exists in group '{command.GroupId}'.");
         var groupEntries = entries!;
         var index = command.Index ?? groupEntries.Count;
         if (index < 0 || index > groupEntries.Count)

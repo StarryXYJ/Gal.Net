@@ -1,97 +1,127 @@
 using GalNet.Core.Scene;
+using GalNet.Core.Primitives;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Runtime.Runtime;
+using GalNet.Primitives.Builtins;
 using GalNet.Sample.Avalonia.Services;
 
 namespace GalNet.IntegrationTests;
 
 public sealed class PersistentSceneRestorerTests
 {
-    [Test]
-    public async Task RestoreAsync_replays_effects_and_particles_through_the_runner_presenters()
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task RestoredLoopsKeepTheirDefinitionsAndWaitForPresentationCleanup(bool plan)
     {
         var runtime = new GameRuntime(null);
-        runtime.SceneState.ActiveEffects.Add(new ActiveEffectState
-        {
-            Id = "color-grade",
-            InstanceId = "grade",
-            ProgramResource = "grade-program",
-            AnimationValues = new Dictionary<string, float>(StringComparer.Ordinal)
-            {
-                ["brightness"] = 0.5f
-            }
-        });
-        runtime.SceneState.ActiveParticleEmitters.Add(new ActiveParticleEmitterState
-        {
-            InstanceId = "snow",
-            Definition = new ParticleEmitterDefinition("snowflake", EmissionRate: 24),
-            Z = 12
-        });
-        var effects = new RecordingEffectPresenter();
-        var particles = new RecordingParticlePresenter();
-        var restorer = new PersistentSceneRestorer(
-            effects,
-            particles,
-            new NoopAnimationPresenter(),
-            new NoopLayerPresenter());
+        runtime.SceneInstances.GetOrAdd("hero", id => new Layer { Id = id, AssetId = "image" });
+        PrimitiveInstance definition = plan
+            ? new AnimationPlanPrimitiveInstance(runtime, null, null, null, null,
+                new AnimationPlanDefinition { PlaybackHandleId = "loop", DurationFrames = 60, LoopMode = AnimationLoopMode.Loop }, null, CancellationToken.None)
+            : new AnimationPrimitiveInstance(runtime, null,
+                new AnimationRequest { PlaybackHandleId = "loop", HandleId = "hero", Property = "opacity", From = .5f, To = 1, DurationSeconds = 1, LoopMode = AnimationLoopMode.Loop }, null, CancellationToken.None);
+        definition.Dispatch(PrimitiveInvocationMode.CatchUp);
+        var animations = new DelayedAnimationPresenter();
+        var restorer = new PersistentSceneRestorer(null, null!, animations, null!);
+        using var scope = new CancellationTokenSource();
+        await restorer.RestoreAsync(runtime, scope.Token);
 
-        await restorer.RestoreAsync(runtime, CancellationToken.None);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(effects.Started.Single().InstanceId, Is.EqualTo("grade"));
-            Assert.That(effects.Started.Single().AnimationValues["brightness"], Is.EqualTo(0.5f));
-            Assert.That(particles.Started.Single().InstanceId, Is.EqualTo("snow"));
-            Assert.That(particles.Started.Single().Z, Is.EqualTo(12));
-        });
+        var suspend = restorer.SuspendAsync(CancellationToken.None);
+        Assert.That(suspend.IsCompleted, Is.False);
+        Assert.That(runtime.SceneState.ActiveAnimations, Has.Count.EqualTo(1));
+        animations.Cleaned.TrySetResult();
+        await suspend.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.That(runtime.SceneState.ActiveAnimations, Has.Count.EqualTo(1));
+        await restorer.RestoreAsync(runtime, scope.Token);
+        Assert.That(animations.Starts, Is.EqualTo(2));
+        scope.Cancel();
+        await restorer.SuspendAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(2));
     }
 
-    private sealed class RecordingEffectPresenter : IEffectPresenter
+    [Test]
+    public async Task RestoredVideoIsDetachedAndDrainedBeforeReusingItsHandle()
     {
-        public List<EffectRequest> Started { get; } = [];
-        public Task StartEffectAsync(EffectRequest request, CancellationToken cancellationToken)
+        var runtime = new GameRuntime(null);
+        runtime.SceneInstances.GetOrAdd("video", id => new Layer { Id = id, AssetId = "clip", IsVideo = true });
+        var video = new DelayedVideoPresenter();
+        var restorer = new PersistentSceneRestorer(null, null!, null!, null!, video);
+        using var scope = new CancellationTokenSource();
+        await restorer.RestoreAsync(runtime, scope.Token);
+
+        var suspend = restorer.SuspendAsync(CancellationToken.None);
+        Assert.That(video.Stops, Is.EqualTo(1));
+        Assert.That(suspend.IsCompleted, Is.False, "Logical completion must not bypass presentation cleanup.");
+        Assert.That(runtime.SceneState.Layers.Single().IsVideo, Is.True);
+        video.Ends[0].TrySetResult();
+        await suspend.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.That(runtime.SceneState.Layers.Single().IsVideo, Is.True);
+
+        await restorer.RestoreAsync(runtime, scope.Token);
+        Assert.That(video.Requests, Has.Count.EqualTo(2));
+        Assert.That(video.Requests[1].PlaybackId, Is.Not.EqualTo(video.Requests[0].PlaybackId));
+        scope.Cancel();
+        await restorer.SuspendAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(2));
+    }
+
+    [Test]
+    public async Task CanceledSuspensionStillDrainsOldPlaybackBeforeTheNextRestore()
+    {
+        var runtime = new GameRuntime(null);
+        runtime.SceneInstances.GetOrAdd("video", id => new Layer { Id = id, AssetId = "clip", IsVideo = true });
+        var video = new DelayedVideoPresenter();
+        var restorer = new PersistentSceneRestorer(null, null!, null!, null!, video);
+        using var scope = new CancellationTokenSource();
+        await restorer.RestoreAsync(runtime, scope.Token);
+        using var canceled = new CancellationTokenSource();
+        canceled.Cancel();
+        Assert.That(async () => await restorer.SuspendAsync(canceled.Token), Throws.InstanceOf<OperationCanceledException>());
+
+        var rebuild = restorer.RestoreAsync(runtime, scope.Token);
+        Assert.That(video.Requests, Has.Count.EqualTo(1));
+        video.Ends[0].TrySetResult();
+        await rebuild.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.That(video.Requests, Has.Count.EqualTo(2));
+        scope.Cancel();
+        await restorer.SuspendAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(2));
+    }
+
+    private sealed class DelayedAnimationPresenter : IAnimationPresenter
+    {
+        private readonly TaskCompletionSource _stopped = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Cleaned { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public int Starts { get; private set; }
+        public async Task<AnimationOutcome> AnimateAsync(AnimationRequest request, CancellationToken cancellationToken)
         {
-            Started.Add(request);
-            return Task.CompletedTask;
+            await RunAsync(cancellationToken);
+            return AnimationOutcome.Skipped;
         }
-
-        public Task StopEffectAsync(string instanceId, CancellationToken cancellationToken) => Task.CompletedTask;
-    }
-
-    private sealed class RecordingParticlePresenter : IParticlePresenter
-    {
-        public List<ParticleEmitterRequest> Started { get; } = [];
-        public Task StartParticleEmitterAsync(ParticleEmitterRequest request, CancellationToken cancellationToken)
+        public async Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken cancellationToken, Func<double, Task>? beforeFrame = null)
         {
-            Started.Add(request);
-            return Task.CompletedTask;
+            await RunAsync(cancellationToken);
+            return new() { Outcome = AnimationOutcome.Skipped };
         }
-
-        public Task BurstParticlesAsync(ParticleBurstRequest request, CancellationToken cancellationToken) =>
-            Task.CompletedTask;
-
-        public Task StopParticleEmitterAsync(string instanceId, CancellationToken cancellationToken) =>
-            Task.CompletedTask;
+        private async Task RunAsync(CancellationToken cancellationToken)
+        {
+            Starts++;
+            try { await _stopped.Task.WaitAsync(cancellationToken); }
+            finally { await Cleaned.Task; }
+        }
+        public bool CompleteAnimationImmediately(string playbackHandleId) => _stopped.TrySetResult();
     }
 
-    private sealed class NoopAnimationPresenter : IAnimationPresenter
+    private sealed class DelayedVideoPresenter : IVideoPresenter
     {
-        public Task<AnimationOutcome> AnimateAsync(AnimationRequest request, CancellationToken cancellationToken) =>
-            Task.FromResult(AnimationOutcome.Completed);
-
-        public Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(
-            AnimationPlanDefinition plan,
-            CancellationToken cancellationToken, Func<double, Task>? beforeFrame = null) =>
-            Task.FromResult(new AnimationPlanPlayResult { Outcome = AnimationOutcome.Completed });
-
-        public bool CompleteAnimationImmediately(string playbackHandleId) => false;
-    }
-
-    private sealed class NoopLayerPresenter : ILayerPresenter
-    {
-        public void ShowLayer(LayerRenderRequest request) { }
-        public void ReplaceLayer(string handleId, string assetId) { }
-        public void HideLayer(string handleId) { }
-        public void MoveLayer(string handleId, LayerTransform transform, float z, float durationSeconds) { }
+        public List<VideoRenderRequest> Requests { get; } = [];
+        public List<TaskCompletionSource> Ends { get; } = [];
+        public int Stops { get; private set; }
+        public Task PlayVideoAsync(VideoRenderRequest request, CancellationToken cancellationToken)
+        {
+            Requests.Add(request);
+            var end = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            Ends.Add(end);
+            return end.Task.WaitAsync(cancellationToken);
+        }
+        public void AdvanceVideo(string playbackId) { }
+        public void StopVideo(string handleId) => Stops++;
     }
 }

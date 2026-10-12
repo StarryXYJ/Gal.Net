@@ -22,9 +22,10 @@ public static class BuiltinRegistration
         INvlPresenter? nvlPresenter = null,
         IAudioPlaybackHost? audioHost = null,
         IVideoPresenter? videoPresenter = null,
-        CharacterCatalog? characters = null) => registration.AddBuiltinSchemas().AddBuiltinImplementations(
+        CharacterCatalog? characters = null,
+        BuiltinAudioModule? audioModule = null) => registration.AddBuiltinSchemas().AddBuiltinImplementations(
             dialoguePresenter, layerPresenter, animationPresenter, effectPresenter, gallery,
-            particlePresenter, nvlPresenter, audioHost, videoPresenter, characters);
+            particlePresenter, nvlPresenter, audioHost, videoPresenter, characters, audioModule);
 
     /// <summary>Registers logical implementations. Optional presenters select state-only/headless operation.</summary>
     public static GameRegistration AddBuiltinImplementations(
@@ -38,12 +39,13 @@ public static class BuiltinRegistration
         INvlPresenter? nvlPresenter = null,
         IAudioPlaybackHost? audioHost = null,
         IVideoPresenter? videoPresenter = null,
-        CharacterCatalog? characters = null) => registration
+        CharacterCatalog? characters = null,
+        BuiltinAudioModule? audioModule = null) => registration
             .AddBuiltinDialogue(dialoguePresenter, characters)
             .AddBuiltinNvl(nvlPresenter)
             .AddBuiltinLayers(layerPresenter)
             .AddBuiltinAnimations(animationPresenter, layerPresenter, effectPresenter, particlePresenter)
-            .AddBuiltinAudio(audioHost)
+            .RegisterImplementation(audioModule ?? new BuiltinAudioModule(audioHost))
             .AddBuiltinVideo(videoPresenter)
             .AddBuiltinEffects(effectPresenter)
             .AddBuiltinParticles(particlePresenter)

@@ -60,6 +60,8 @@ public partial class GameShell : UserControl, IDisposable
         _session.PropertyChanged -= OnSessionPropertyChanged;
         if (_gameplay is not null)
         {
+            _gameplay.CancelPlayback();
+            _gameplay.CancelSkipCommand.Execute(null);
             _gameplay.ScreenshotRequested -= OnScreenshotRequested;
             _gameplay.ReturnToTitleRequested -= OnReturnToTitleRequested;
         }
@@ -220,10 +222,13 @@ public partial class GameShell : UserControl, IDisposable
         {
             if (_gameplay is not null)
             {
+                _gameplay.CancelPlayback();
+                _gameplay.CancelSkipCommand.Execute(null);
                 _gameplay.ScreenshotRequested -= OnScreenshotRequested;
                 _gameplay.ReturnToTitleRequested -= OnReturnToTitleRequested;
             }
             _gameplay = viewModel as GamePageViewModel;
+            SkipPrompt.DataContext = _gameplay;
             if (_gameplay is not null)
             {
                 _gameplay.ScreenshotRequested += OnScreenshotRequested;
@@ -234,6 +239,7 @@ public partial class GameShell : UserControl, IDisposable
 
     private async void OnScreenshotRequested()
     {
+        _gameplay?.CancelPlayback();
         var page = PageHost.Content as GamePage;
         if (page is null) return;
         var owner = TopLevel.GetTopLevel(this);

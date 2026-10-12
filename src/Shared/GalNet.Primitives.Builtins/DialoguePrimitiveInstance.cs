@@ -4,7 +4,7 @@ using GalNet.Presentation.Abstractions.View;
 namespace GalNet.Primitives.Builtins;
 
 /// <summary>Owns typewriter and post-text waiting phases for one dialogue line.</summary>
-public sealed class DialoguePrimitiveInstance : PrimitiveInstance
+public sealed class DialoguePrimitiveInstance : PrimitiveInstance, IAdvanceWaitInstance
 {
     private readonly object _gate = new();
     private readonly IDialoguePresenter _presenter;
@@ -12,6 +12,11 @@ public sealed class DialoguePrimitiveInstance : PrimitiveInstance
     private readonly string _text;
     private readonly CancellationToken _cancellationToken;
     private DialoguePhase _phase;
+    private Task _presentationTask = Task.CompletedTask;
+    public override Task PresentationCompletion => _presentationTask;
+    public bool IsTextPresented { get; private set; }
+    public bool IsWaitingForAdvance { get { lock (_gate) return _phase == DialoguePhase.WaitingAdvance; } }
+    public void CompleteAdvance() { if (IsWaitingForAdvance) OnSkip(); }
 
     public DialoguePrimitiveInstance(
         IDialoguePresenter presenter,
@@ -48,7 +53,7 @@ public sealed class DialoguePrimitiveInstance : PrimitiveInstance
         }
 
         _presenter.ShowDialogue();
-        _ = ObservePresentationAsync();
+        _presentationTask = ObservePresentationAsync();
     }
 
     protected override void OnSkip()
@@ -71,16 +76,32 @@ public sealed class DialoguePrimitiveInstance : PrimitiveInstance
             TryComplete();
     }
 
+    protected override void OnCatchUpDispatch()
+    {
+        if (_presenter is ICatchUpTextRecorder recorder) recorder.RecordDialogue(_speaker, _text);
+        TryComplete();
+    }
+    protected override void OnPlaybackModeChanged(PrimitiveInvocationMode mode)
+    {
+        if (mode is PrimitiveInvocationMode.Quick or PrimitiveInvocationMode.CatchUp) _presenter.RevealAllText();
+        if (mode == PrimitiveInvocationMode.CatchUp && IsWaitingForAdvance) CompleteAdvance();
+    }
+
     private async Task ObservePresentationAsync()
     {
         try
         {
-            await _presenter.PresentTextAsync(_speaker, _text, _cancellationToken).ConfigureAwait(false);
+            await (InvocationMode == PrimitiveInvocationMode.Quick
+                ? _presenter.PresentTextImmediatelyAsync(_speaker, _text, _cancellationToken)
+                : _presenter.PresentTextAsync(_speaker, _text, _cancellationToken)).ConfigureAwait(false);
             lock (_gate)
             {
                 if (_phase == DialoguePhase.Typing)
                     _phase = DialoguePhase.WaitingAdvance;
+                IsTextPresented = true;
             }
+            SetAutoBlocking(false);
+            if (InvocationMode == PrimitiveInvocationMode.CatchUp) CompleteAdvance();
         }
         catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested)
         {

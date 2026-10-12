@@ -66,11 +66,13 @@ Gallery 使用独立的 `IGalleryPageRegistry`，以精确 Gallery `typeId` 映�
 
 ### 设置与界面文本
 
-`SettingsPageViewModel` 通过通用的 `IPlayerSettingsService.Items` 获取设置项，不绑定语言专用服务。页面支持 `ChoicePlayerSetting` 和 `RangePlayerSetting`；默认服务提供文本速度，宿主可在 DI 中替换服务并提供其他设置。设置应用、恢复和持久化由宿主负责，共享页面不读取配置文件。
+`SettingsPageViewModel` 通过 `IPlayerSettingsService.Categories` 获取只读分类及类型化设置项，分类使用局部 TabControl，不创建导航子页面。支持整数/浮点（Slider 或 NumericUpDown）、Bool、String、Choice、Action 与自定义编辑器。Step 仅改变操作步长，不参与校验；动态可见性、可用性和原因 key 驱动界面更新。应用/保存由 SettingsCoordinator 串行协调，保存失败可重试而不重复应用。共享页面不读取配置文件。
+
+内置主题的 `Common.SettingsCategories.EditorTemplates` 接收按顺序匹配的 `IDataTemplate` 列表，先匹配宿主/主题覆盖，再回退内置编辑器；只替换匹配类型，保留统一设置行的标签、说明、可用性与错误。自定义设置通过 `CustomSettingEditor` 创建独立控件租约并在 detach 时释放。
 
 共享页面的静态文案使用 `PlayerTextExtension`，未接入宿主本地化时显示默认英文。官方 Sample 提供 `LocalizedString` 并绑定其 `Value`，沿用 DynamicLocalization 的 Culture/Provider 变更通知机制；宿主设置标签也可以使用同样的动态对象。该绑定不会自动翻译任意业务字符串或剧情内容。
 
-Sample 在游戏会话初始化成功后，把设置接入现有 Player 变量存储，恢复语言与文本速度。语言变更（包括直接调用 CultureService）立即刷新绑定并排队持久化；清空玩家状态和销毁会话前等待写入完成。
+Sample 在会话初始化后将设置接入 Player 变量存储，恢复语言、文本速度、快速已读限制、快速/自动间隔、音量/静音及显示偏好。等待时间使用整数毫秒：快速默认 50、范围 0–5000、步长 10；自动默认 2000、范围 0–30000、步长 100；旧浮点秒值视为类型无效，回退默认值，不迁移。画面能力由宿主提供，桌面 Sample 支持窗口/无边框全屏与预设窗口尺寸，非独占全屏；全屏时禁用窗口尺寸。语言变更立即刷新绑定并排队持久化；清空玩家状态和销毁会话前等待写入完成。
 
 `GalleryNavigationService` 不按资源类型推断页面：没有有内容类型时入口不可用，只有一个时直接打开该页，多个时先进入类型选择页；未注册页面会显示诊断页。CG、视频和音频是独立页面/媒体状态，不使用 renderer enum 或单一多媒体 ViewModel。
 
@@ -81,6 +83,8 @@ Runtime 只依赖 `GalNet.Presentation.Abstractions` 中的 `IGameView` 与细�
 各 presenter 共享 `IAvaloniaUiDispatcher`，但分别拥有自己的等待、动画和粒子生命周期。`AvaloniaGamePresenters` 通过宿主提供的 `IGamePageLayerFactory` 解析图层图像，因而共享页面不会自行推断资源路径。玩家推进从 `GamePageViewModel.AdvanceRequested` 直接连接宿主，不经过 dialogue presenter 或 presenter 集合转发。动画逐帧更新由呈现实现完成；Runtime 只维护可存档的场景状态和动画结束后的稳定属性。
 
 官方 Sample 使用 `SampleGameResourceScope`、`SampleSaveSession`、`SampleGameRunner` 和 `PersistentSceneRestorer` 分离资源、玩家持久化、页面运行编排与读档展示重放。`SampleGamePresentation` 集中创建和释放执行 view 与平台后端，创建失败与正常销毁使用同一条清理路径；单个对象释放失败仍继续释放其他对象。Runner 只绑定页面操作、处理 Engine 状态通知和宿主反馈，不重复推断剧情终态。读档顺序固定为恢复 Runtime snapshot、重放持久展示、页面切换后首次调用 `AdvanceAsync`；reload 和清空玩家状态必须先停止并释放 runner，再释放资源或重建持久化状态。
+
+Sample 将 `SampleGamePresentation` 作为 Engine 的 `ICatchUpPresentation` 接入：开始时切入音频投影、缓存文本状态，并暂停/排空恢复出来的展示续跑；结束时清理旧 visual 资源，通过该代 scoped runtime/token 重建最终持久场景，再提交对白/NVL 历史及音频。`ICatchUpTextRecorder` 是可选的无中间渲染文本投影端口，已读文本的追帧调用不会被视为一次正常成功阅读。可见性及 NVL clear 同样延迟到最终同步。追帧不扩展存档格式，不保存 NVL 展示历史或媒体游标。
 
 ## 宿主接入约束
 

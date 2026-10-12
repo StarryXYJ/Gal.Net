@@ -58,6 +58,7 @@ public static class BuiltinSchemas
     {
         var type = new TEntry().Type;
         return new DefaultPrimitiveEntryBase(type, EntrySchema.DynamicParameters(parameters, defaults, options,
-            arguments => BuiltinArgumentValidation.Validate(type, arguments)));
+            arguments => BuiltinArgumentValidation.Validate(type, arguments)))
+        { IsReading = type is TextEntry.TypeId or AppendNvlEntry.TypeId };
     }
 }

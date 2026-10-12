@@ -1,61 +1,25 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+using GalNet.Avalonia.GameView.Settings;
 
 namespace GalNet.Avalonia.GameView.Services;
 
-/// <summary>Host-defined settings rendered by the shared player settings page.</summary>
+/// <summary>Host-defined, frozen category structure with observable setting values.</summary>
 public interface IPlayerSettingsService
 {
-    IReadOnlyList<PlayerSetting> Items { get; }
+    IReadOnlyList<SettingCategory> Categories { get; }
 }
 
-public abstract class PlayerSetting(string id, object label) : ObservableObject
-{
-    public string Id { get; } = id;
-    public object Label { get; } = label;
-}
-
+// Also used by the initial language-selection flow, independently of settings editors.
 public sealed record SettingOption(string Value, string DisplayName);
 
-public sealed class ChoicePlayerSetting(string id, object label, IReadOnlyList<SettingOption> options,
-    Func<string> read, Action<string> write) : PlayerSetting(id, label)
+internal sealed class DefaultPlayerSettingsService : IPlayerSettingsService
 {
-    public IReadOnlyList<SettingOption> Options { get; } = options;
-    public SettingOption? SelectedOption
+    public DefaultPlayerSettingsService(ViewModels.GamePageViewModel gameplay)
     {
-        get => Options.FirstOrDefault(option => option.Value == read());
-        set
-        {
-            if (value is null || !Options.Contains(value) || value.Value == read()) return;
-            write(value.Value);
-            Refresh();
-        }
+        Categories = Array.AsReadOnly(new[] { new SettingCategory("game", "Settings.Game",
+            [new DoubleSetting("textSpeed", "Settings.TextSpeed", 30, 0, 120, 1,
+                () => gameplay.TextSpeed, (value, _) => { gameplay.TextSpeed = value; return Task.CompletedTask; }, "Text speed")
+                { EditorKind = NumericEditorKind.Slider }], "Game") });
+        new SettingsCoordinator().Attach(Categories);
     }
-    public void Refresh() => OnPropertyChanged(nameof(SelectedOption));
-}
-
-public sealed class RangePlayerSetting(string id, object label, double minimum, double maximum,
-    Func<double> read, Action<double> write) : PlayerSetting(id, label)
-{
-    public double Minimum { get; } = minimum;
-    public double Maximum { get; } = maximum;
-    public double Value
-    {
-        get => read();
-        set
-        {
-            if (!double.IsFinite(value)) return;
-            var next = Math.Clamp(value, Minimum, Maximum);
-            if (next == read()) return;
-            write(next);
-            Refresh();
-        }
-    }
-
-    public void Refresh() => OnPropertyChanged(nameof(Value));
-}
-
-internal sealed class DefaultPlayerSettingsService(ViewModels.GamePageViewModel gameplay) : IPlayerSettingsService
-{
-    public IReadOnlyList<PlayerSetting> Items { get; } =
-    [new RangePlayerSetting("textSpeed", "Text speed", 0, 120, () => gameplay.TextSpeed, value => gameplay.TextSpeed = value)];
+    public IReadOnlyList<SettingCategory> Categories { get; }
 }

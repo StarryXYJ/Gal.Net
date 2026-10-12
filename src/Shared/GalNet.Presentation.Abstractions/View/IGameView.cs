@@ -16,7 +16,8 @@ public interface IGameView : IDisposable, IAsyncDisposable
     PrimitiveInstance Dispatch(
         PrimitiveEntry entry,
         IGameRuntime runtime,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        PrimitiveInvocationMode mode = PrimitiveInvocationMode.Normal);
 
     void IDisposable.Dispose() => GC.SuppressFinalize(this);
     ValueTask IAsyncDisposable.DisposeAsync()

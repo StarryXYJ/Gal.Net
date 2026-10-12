@@ -3,6 +3,7 @@ using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -16,9 +17,12 @@ using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
+using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Avalonia.Themes;
 using GalNet.Core.Gallery;
+using GalNet.Core.Primitives;
+using GalNet.Presentation.Abstractions.View;
 using GalNet.Game.Controls;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -27,6 +31,234 @@ namespace GeneralTest.Presentation;
 [NonParallelizable]
 public sealed class GameThemeTests
 {
+    [TestCase("Classic")]
+    [TestCase("Minimal")]
+    [TestCase("Paper")]
+    public async Task SettingTypeTemplateOverridesKeepOtherEditorsAndSharedRows(string layout)
+    {
+        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        await session.Dispatch(() =>
+        {
+            var flag = new BoolSetting("flag", "Flag", false, () => false, (_, _) => Task.CompletedTask);
+            var interval = new IntSetting("interval", "Interval", 50, 0, 5000, 10, () => 50, (_, _) => Task.CompletedTask);
+            var control = new GalNet.Avalonia.Themes.Common.SettingsCategories { Categories = [new("game", "Game", [flag, interval])] };
+            var root = new Border { Classes = { "galnet-player" }, Child = control };
+            root.Styles.Add(CreateTheme(layout, "Ocean").CreateStyles());
+            var window = new Window { Width = 1280, Height = 720, Content = root };
+            window.Show();
+            try
+            {
+                window.UpdateLayout();
+                Assert.That(control.GetVisualDescendants().OfType<CheckBox>().Count(), Is.EqualTo(1));
+                control.EditorTemplates = [new FuncDataTemplate<BoolSetting>((_, _) => new TextBlock { Text = "Overridden boolean editor" })];
+                window.UpdateLayout();
+                Assert.That(control.GetVisualDescendants().OfType<TextBlock>().Any(text => text.Text == "Overridden boolean editor"), Is.True);
+                Assert.That(control.GetVisualDescendants().OfType<CheckBox>(), Is.Empty);
+                Assert.That(control.GetVisualDescendants().OfType<NumericUpDown>().Count(), Is.EqualTo(1));
+                control.EditorTemplates = null;
+                window.UpdateLayout();
+                Assert.That(control.GetVisualDescendants().OfType<CheckBox>().Count(), Is.EqualTo(1));
+            }
+            finally { window.Close(); }
+            return true;
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
+    [Test]
+    public async Task SettingsTabsHideEmptyCategoriesAndKeepSelectionUntilItBecomesHidden()
+    {
+        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        await session.Dispatch(() =>
+        {
+            var visible = true;
+            var item = new BoolSetting("dynamic", "Dynamic", false, () => false, (_, _) => Task.CompletedTask)
+            { EvaluateAvailability = () => new(visible) };
+            var first = new SettingCategory("first", "First", [new BoolSetting("fixed", "Fixed", false, () => false, (_, _) => Task.CompletedTask)]);
+            var second = new SettingCategory("second", "Second", [item]);
+            var control = new GalNet.Avalonia.Themes.Common.SettingsCategories { Categories = [first, second, new("empty", "Empty", [])] };
+            var window = new Window { Width = 1280, Height = 720, Content = control };
+            window.Show();
+            try
+            {
+                var tabs = control.FindControl<TabControl>("CategoryTabs")!;
+                Assert.That(control.VisibleCategories, Is.EqualTo(new[] { first, second }));
+                tabs.SelectedItem = second;
+                item.RefreshAvailability();
+                Assert.That(tabs.SelectedItem, Is.SameAs(second));
+                visible = false;
+                item.RefreshAvailability();
+                Assert.That(control.VisibleCategories, Is.EqualTo(new[] { first }));
+                Assert.That(tabs.SelectedItem, Is.SameAs(first));
+                visible = true;
+                item.RefreshAvailability();
+                Assert.That(control.VisibleCategories, Is.EqualTo(new[] { first, second }));
+                Assert.That(tabs.SelectedItem, Is.SameAs(first));
+            }
+            finally { window.Close(); }
+            return true;
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
+    [Test]
+    public async Task SkipPromptDisablesBackgroundAndEscapeClosesWithoutSkipping()
+    {
+        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        await session.Dispatch(async () =>
+        {
+            var theme = CreateTheme("Classic", "Ocean");
+            using var provider = CreateServices(theme).BuildServiceProvider();
+            using var scope = provider.CreateScope();
+            var services = scope.ServiceProvider;
+            var state = services.GetRequiredService<GamePageViewModel>();
+            var controller = new TestPlaybackController();
+            state.BindPlayback(controller);
+            var navigation = services.GetRequiredService<IGameNavigationService>();
+            await navigation.ResetToAsync<GamePageViewModel>(NavigationTransition.None);
+            using var shell = services.GetRequiredService<GameShell>();
+            var window = new Window { Width = 1280, Height = 720, Content = shell };
+            window.Show();
+            try
+            {
+                state.RequestSkipCommand.Execute(null);
+                window.UpdateLayout();
+                var prompt = shell.FindControl<SkipConfirmation>("SkipPrompt")!;
+                Assert.That(prompt.IsVisible, Is.True);
+                Assert.That(shell.FindControl<TransitioningContentControl>("PageHost")!.IsEnabled, Is.False);
+                Assert.That(prompt.GetVisualDescendants().OfType<Button>().Count(), Is.EqualTo(2));
+                window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+                Assert.That(state.IsSkipConfirmationOpen, Is.False);
+                Assert.That(controller.Skips, Is.Zero);
+                Assert.That(shell.FindControl<TransitioningContentControl>("PageHost")!.IsEnabled, Is.True);
+            }
+            finally { state.BindPlayback(null); window.Close(); }
+            return true;
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
+    [Test]
+    public async Task PlaybackTogglesPreservePointerSelectionAndSkipRequiresConfirmation([Values("Classic", "Paper", "Minimal")] string layout, [Values("Ocean", "Rose", "Mono")] string palette)
+    {
+        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        await session.Dispatch(async () =>
+        {
+            var theme = CreateTheme(layout, palette);
+            using var provider = CreateServices(theme).BuildServiceProvider();
+            using var scope = provider.CreateScope();
+            var state = scope.ServiceProvider.GetRequiredService<GamePageViewModel>();
+            var page = scope.ServiceProvider.GetRequiredService<GamePage>();
+            var controller = new TestPlaybackController();
+            state.BindPlayback(controller);
+            state.IsGameUiReady = true;
+            page.DataContext = state;
+            var root = new Border { Child = page, Classes = { "galnet-player" } };
+            root.Styles.Add(theme.CreateStyles());
+            var window = new Window { Width = 1280, Height = 720, Content = root };
+            window.Show();
+            try
+            {
+                window.UpdateLayout();
+                var quick = page.GetVisualDescendants().OfType<ToggleButton>().Single(button => button.Command == state.ToggleQuickCommand);
+                var auto = page.GetVisualDescendants().OfType<ToggleButton>().Single(button => button.Command == state.ToggleAutoCommand);
+                var skip = page.GetVisualDescendants().OfType<Button>().Single(button => button.Command == state.RequestSkipCommand);
+                Assert.That(((ISolidColorBrush)quick.Background!).Color.A, Is.Zero);
+                Assert.That(((ISolidColorBrush)auto.Background!).Color.A, Is.Zero);
+                var quickPoint = BoundsInWindow(quick, window).Center;
+                window.MouseMove(quickPoint);
+                Assert.That(((ISolidColorBrush)quick.Background!).Color.A, Is.Zero, "Unselected modes stay transparent even on hover.");
+                var skipPoint = BoundsInWindow(skip, window).Center;
+                window.MouseMove(skipPoint);
+                var hover = (ISolidColorBrush)skip.Background!;
+                Assert.That(hover.Opacity, Is.EqualTo(0.08));
+                window.MouseDown(skipPoint, MouseButton.Left);
+                Assert.That(((ISolidColorBrush)skip.Background!).Opacity, Is.GreaterThan(hover.Opacity));
+                Assert.That(skip.GetVisualDescendants().OfType<ContentPresenter>().First().Background, Is.SameAs(skip.Background));
+                window.MouseUp(skipPoint, MouseButton.Left);
+                state.CancelSkipCommand.Execute(null);
+                Click(window, quick);
+                Assert.That(state.IsQuickMode, Is.True);
+                Assert.That(quick.IsChecked, Is.True);
+                Assert.That(((ISolidColorBrush)quick.Background!).Opacity, Is.EqualTo(0.24));
+                Click(window, quick);
+                Assert.That(state.IsQuickMode, Is.False, "Tunnel cancellation must not turn an off-toggle into an on-toggle.");
+                Assert.That(quick.IsChecked, Is.False, "The button must also clear its own toggled visual state.");
+                Assert.That(((ISolidColorBrush)quick.Background!).Color.A, Is.Zero);
+                Click(window, quick);
+                Click(window, auto);
+                Assert.That(state.IsAutoMode, Is.True);
+                Assert.That(state.IsQuickMode, Is.False);
+                Assert.That(auto.IsChecked, Is.True);
+                Click(window, auto);
+                Assert.That(state.IsAutoMode, Is.False);
+                Assert.That(auto.IsChecked, Is.False);
+                Click(window, auto);
+                state.ClearPlaybackPointer();
+                await state.ToggleAutoCommand.ExecuteAsync(null);
+                Assert.That(state.IsAutoMode, Is.False, "Keyboard toggle uses current state rather than a stale pointer snapshot.");
+                state.RequestSkipCommand.Execute(null);
+                Assert.That(state.IsSkipConfirmationOpen, Is.True);
+                Assert.That(controller.Skips, Is.Zero);
+                var advances = 0;
+                state.AdvanceRequested += () => advances++;
+                state.AdvanceCommand.Execute(null);
+                Assert.That(advances, Is.Zero);
+                state.CancelSkipCommand.Execute(null);
+                Assert.That(controller.Skips, Is.Zero);
+                state.RequestSkipCommand.Execute(null);
+                await state.ConfirmSkipCommand.ExecuteAsync(null);
+                Assert.That(controller.Skips, Is.EqualTo(1));
+                Assert.That(state.IsSkipConfirmationOpen, Is.False);
+                window.MouseDown(new Point(100, 100), MouseButton.Right);
+                window.MouseUp(new Point(100, 100), MouseButton.Right);
+                Assert.That(advances, Is.Zero);
+            }
+            finally { state.BindPlayback(null); window.Close(); }
+            return true;
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
+    private sealed class TestPlaybackController : IPlayerPlaybackController
+    {
+        public PlaybackMode PlaybackMode { get; private set; }
+        public event Action<PlaybackMode>? PlaybackModeChanged;
+        public int Skips { get; private set; }
+        public void CancelPlayback() { }
+        public Task SetPlaybackModeAsync(PlaybackMode mode, CancellationToken cancellationToken = default)
+        {
+            PlaybackMode = mode;
+            PlaybackModeChanged?.Invoke(mode);
+            return Task.CompletedTask;
+        }
+        public Task SkipToUnreadAsync(CancellationToken cancellationToken = default) { Skips++; return Task.CompletedTask; }
+        public Task RefreshPlaybackSettingsAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task CustomSettingsReleaseEditorsOnReplacementAndDetach()
+    {
+        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        await session.Dispatch(() =>
+        {
+            var created = 0;
+            var released = 0;
+            var setting = new CustomSetting<string>("custom", "Custom", "", () => "", (_, _) => Task.CompletedTask,
+                _ => { created++; return new SettingEditorLease(new TextBox(), () => released++); });
+            var editor = new CustomSettingEditor { DataContext = setting };
+            var window = new Window { Content = editor };
+            window.Show();
+            window.UpdateLayout();
+            Assert.That(created, Is.EqualTo(1));
+            var original = editor.Content;
+            editor.DataContext = null;
+            Assert.That(released, Is.EqualTo(1));
+            editor.DataContext = setting;
+            Assert.That(created, Is.EqualTo(2));
+            Assert.That(editor.Content, Is.Not.SameAs(original));
+            window.Close();
+            Assert.That(released, Is.EqualTo(2));
+            return true;
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
     private static readonly string[] GalleryTypeLabels = ["CG", "Video", "Audio"];
     [TestCase("Classic", "Ocean")]
     [TestCase("Classic", "Rose")]
@@ -120,11 +352,28 @@ public sealed class GameThemeTests
                 Assert.That(nvl.GetVisualDescendants().OfType<NvlLinePresenter>().Count(), Is.EqualTo(2));
                 Capture(window, $"{layout}-{paletteName}-nvl");
 
+                await presenter.BeginCatchUpAsync();
+                presenter.RecordDialogue("Aster", "Skipped\\d{60000}\\skip text is projected without intermediate rendering.");
+                presenter.HideDialogue();
+                presenter.ShowNvl();
+                presenter.ClearNvl();
+                presenter.RecordNvlParagraph("Final\\d{60000}\\skip NVL history.");
+                Assert.That(nvl.GetVisualDescendants().OfType<NvlLinePresenter>().Count(), Is.EqualTo(2), "Catch-up must not render intermediate clears/appends.");
+                await presenter.EndCatchUpAsync(TestContext.CurrentContext.CancellationToken).WaitAsync(TimeSpan.FromSeconds(2));
+                window.UpdateLayout();
+                Assert.That(page.Dialogue.Text, Is.EqualTo("Skipped\\d{60000}\\skip text is projected without intermediate rendering."));
+                Assert.That(state.IsDialogueVisible, Is.False);
+                Assert.That(state.IsNvlMode, Is.True);
+                Assert.That(nvl.GetVisualDescendants().OfType<NvlLinePresenter>().Single().Text, Is.EqualTo("Final\\d{60000}\\skip NVL history."));
+
                 using var image = new Bitmap(new MemoryStream(page.CaptureScenePng()));
                 Assert.That(image.PixelSize.Width, Is.GreaterThan(0));
 
                 root.Child = factory.Create(services.GetRequiredService<SettingsPageViewModel>());
                 window.UpdateLayout();
+                var settingsTabs = root.Child.GetVisualDescendants().OfType<TabControl>().Single();
+                Assert.That(settingsTabs.ItemCount, Is.EqualTo(1));
+                Assert.That(root.Child.GetVisualDescendants().OfType<Slider>().Any(slider => slider.IsVisible), Is.True);
                 var settingsFrame = root.Child.FindControl<Border>("PageFrame")!;
                 var settingsBack = root.Child.FindControl<Button>("PageBackButton")!;
                 var frameBounds = BoundsInWindow(settingsFrame, window);

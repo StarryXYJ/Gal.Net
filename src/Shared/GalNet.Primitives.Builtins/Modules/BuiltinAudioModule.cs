@@ -13,6 +13,9 @@ public sealed class BuiltinAudioModule : PrimitiveModule
 {
     private readonly AudioRuntime _runtime;
     private readonly AudioScope _scope;
+    public void ApplyPlayerSettings(GameSettings settings) => _runtime.ApplyPlayerSettings(settings);
+    public void BeginCatchUp() => _runtime.BeginCatchUp();
+    public void EndCatchUp() => _runtime.EndCatchUp();
 
     public BuiltinAudioModule(IAudioPlaybackHost? host = null) : this(new AudioRuntime(host)) { }
 
@@ -48,8 +51,8 @@ public sealed class BuiltinAudioModule : PrimitiveModule
 
     private static IReadOnlyList<PrimitiveImplementation> CreatePrimitives(AudioRuntime runtime, AudioScope scope) =>
     [
-        BuiltinInstructionFactory.Create<PlayAudioEntry>(context => Audio(context, scope, () =>
-            runtime.Play(Tracks(context), PlayRequest(context, Arguments.Enum(context, "placement", AudioPlacement.Enqueue))))),
+        BuiltinInstructionFactory.Create<PlayAudioEntry>(context => Playback(context, runtime, scope,
+            Arguments.Enum(context, "placement", AudioPlacement.Enqueue))),
         BuiltinInstructionFactory.Create<StopAudioEntry>(context => Audio(context, scope, () =>
             runtime.Stop(Tracks(context), new AudioStopRequest(
                 Arguments.String(context, "trackId"), Arguments.Bool(context, "clearQueue", true),
@@ -62,8 +65,7 @@ public sealed class BuiltinAudioModule : PrimitiveModule
             runtime.Next(Tracks(context), Arguments.String(context, "trackId")))),
         BuiltinInstructionFactory.Create<ClearAudioEntry>(context => Audio(context, scope, () =>
             runtime.Clear(Tracks(context), Arguments.String(context, "trackId")))),
-        BuiltinInstructionFactory.Create<EnqueueAudioEntry>(context => Audio(context, scope, () =>
-            runtime.Play(Tracks(context), PlayRequest(context, AudioPlacement.Enqueue)))),
+        BuiltinInstructionFactory.Create<EnqueueAudioEntry>(context => Playback(context, runtime, scope, AudioPlacement.Enqueue)),
         BuiltinInstructionFactory.Create<ApplyAudioSEffectEntry>(context => Audio(context, scope, () =>
             runtime.ApplySEffect(Tracks(context), new AudioSEffectRequest(
                 Arguments.String(context, "trackId"), Arguments.String(context, "instanceId"),
@@ -75,6 +77,15 @@ public sealed class BuiltinAudioModule : PrimitiveModule
     private static AudioPlayRequest PlayRequest(PrimitiveCreateContext context, AudioPlacement placement) => new(
         Arguments.String(context, "trackId"), Arguments.String(context, "asset"), placement,
         Arguments.Float(context, "gain", 1), Arguments.Float(context, "fadeIn"));
+
+    private static AudioPlaybackPrimitiveInstance Playback(PrimitiveCreateContext context, AudioRuntime runtime,
+        AudioScope scope, AudioPlacement placement) => new(() =>
+        {
+            scope.Bind(context.ScopeCancellation);
+            context.ScopeCancellation.ThrowIfCancellationRequested();
+            runtime.ApplyPlayerSettings(context.Runtime.Settings.Get<GameSettings>());
+            return runtime.Play(Tracks(context), PlayRequest(context, placement));
+        }, Arguments.Bool(context, "autoBlocking"), context.BatchId, context.ScopeCancellation);
 
     private static void OnDiagnostic(string message) => GameLog.Logger.Warning("Audio: {Diagnostic}", message);
 

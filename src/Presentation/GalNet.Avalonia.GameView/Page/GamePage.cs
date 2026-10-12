@@ -9,6 +9,7 @@ using Avalonia.VisualTree;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Game.Controls;
 using GalNet.Rendering.Scene;
+using GalNet.Core.Primitives;
 
 namespace GalNet.Avalonia.GameView.Page;
 
@@ -29,6 +30,10 @@ public class GamePage : TemplatedControl
     /// <summary>Marks custom interactive regions that must not advance the story.</summary>
     public static readonly AttachedProperty<bool> IsPlayerInteractionProperty =
         AvaloniaProperty.RegisterAttached<GamePage, Control, bool>("IsPlayerInteraction");
+    public static readonly AttachedProperty<PlaybackMode?> PlaybackToggleProperty =
+        AvaloniaProperty.RegisterAttached<GamePage, Control, PlaybackMode?>("PlaybackToggle");
+    public static PlaybackMode? GetPlaybackToggle(Control control) => control.GetValue(PlaybackToggleProperty);
+    public static void SetPlaybackToggle(Control control, PlaybackMode? value) => control.SetValue(PlaybackToggleProperty, value);
 
     public Control Scene { get; }
     public SceneLayerHost SceneHost { get; } = new();
@@ -48,6 +53,7 @@ public class GamePage : TemplatedControl
         BindContent(Choice, ItemsControl.ItemsSourceProperty, nameof(GamePageViewModel.Choices));
         BindContent(Choice, ChoiceList.SelectionCommandProperty, nameof(GamePageViewModel.CompleteChoiceCommand));
         AddHandler(PointerPressedEvent, OnPagePointerPressed, RoutingStrategies.Tunnel);
+        AddHandler(KeyDownEvent, (_, _) => (DataContext as GamePageViewModel)?.ClearPlaybackPointer(), RoutingStrategies.Tunnel);
     }
 
     public static bool GetIsPlayerInteraction(Control control) => control.GetValue(IsPlayerInteractionProperty);
@@ -85,8 +91,14 @@ public class GamePage : TemplatedControl
 
     private void OnPagePointerPressed(object? sender, PointerPressedEventArgs eventArgs)
     {
-        if (DataContext is not GamePageViewModel viewModel || IsPlayerControl(eventArgs.Source))
+        if (DataContext is not GamePageViewModel viewModel ||
+            !eventArgs.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             return;
+
+        var toggle = (eventArgs.Source as Visual)?.GetSelfAndVisualAncestors().OfType<Control>()
+            .Select(GetPlaybackToggle).FirstOrDefault(mode => mode is not null);
+        viewModel.CancelPlaybackFromPointer(toggle);
+        if (viewModel.IsSkipConfirmationOpen || IsPlayerControl(eventArgs.Source)) return;
 
         viewModel.ObserveAdvancePointerPressed();
         if (viewModel.AdvanceCommand.CanExecute(null))

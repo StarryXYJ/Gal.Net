@@ -4,6 +4,7 @@ using Avalonia.Interactivity;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Sample.Avalonia.Debug;
 using GalNet.Sample.Avalonia.ViewModels;
+using GalNet.Sample.Avalonia.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Ursa.Controls;
 
@@ -24,6 +25,7 @@ public partial class MainWindow : UrsaWindow
         _debugViewModel = services.GetService<SampleDebugViewModel>();
         _languageSelectionViewModel = services.GetRequiredService<LanguageSelectionViewModel>();
         InitializeComponent();
+        services.GetRequiredService<SamplePlayerSettingsService>().BindWindow(this);
         PlayerRoot.Styles.Add(App.PlayerTheme.CreateStyles());
         LanguageSelection.DataContext = _languageSelectionViewModel;
         GameCanvas.GameContent = shell;
@@ -96,6 +98,7 @@ public partial class MainWindow : UrsaWindow
 
     private void OnClosed(object? sender, EventArgs e)
     {
+        _services.GetRequiredService<SamplePlayerSettingsService>().BindWindow(null);
         if (_debugViewModel is null)
             return;
 

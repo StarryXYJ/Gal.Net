@@ -116,7 +116,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             if (!await _startup.InitializeAsync(saveSession.Variables,
                     resources.Content.Settings.TargetLocale.Code, selectLanguage, cancellationToken))
                 throw new OperationCanceledException("Language selection was cancelled.", cancellationToken);
-            _settings.Attach(saveSession.Variables);
+            await _settings.AttachAsync(saveSession.Variables, saveSession.Settings, cancellationToken);
+            await _settings.RestoreDisplayAsync(cancellationToken);
             IsReady = true;
             StatusMessage = $"Loaded game data: {resources.GameDirectory}";
             _gameplay.StatusMessage = "Ready";
@@ -343,6 +344,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _page,
             resources,
             saveSession,
+            _settings,
             _localization,
             UpdateRunnerStateAsync,
             () => RefreshSlotsAsync(CancellationToken.None),
