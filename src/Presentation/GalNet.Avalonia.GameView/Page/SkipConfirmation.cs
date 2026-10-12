@@ -1,5 +1,5 @@
-using Avalonia.Controls.Primitives;
 using Avalonia;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using GalNet.Avalonia.GameView.ViewModels;
 

@@ -2,8 +2,8 @@ using DynamicLocalization.Core;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
-using GalNet.Core.Variable;
 using GalNet.Core.Settings;
+using GalNet.Core.Variable;
 using GalNet.Storage.FileSystem;
 
 namespace GalNet.Sample.Avalonia.Services;
@@ -143,7 +143,8 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
             SettingsChanged?.Invoke(RuntimeSettings);
             await _gameplay.RefreshPlaybackSettingsAsync(token);
             Store(variable, (float)value);
-        }, _localization.GetString(key)) { EditorKind = editor };
+        }, _localization.GetString(key))
+        { EditorKind = editor };
     }
 
     private IntSetting Milliseconds(string id, string key, int defaultValue, int maximum, int step, Func<int> read, Action<int> write)
@@ -160,7 +161,8 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
             SettingsChanged?.Invoke(RuntimeSettings);
             await _gameplay.RefreshPlaybackSettingsAsync(token);
             Store(variable, value);
-        }, _localization.GetString(key)) { EditorKind = NumericEditorKind.NumericUpDown, Format = "0" };
+        }, _localization.GetString(key))
+        { EditorKind = NumericEditorKind.NumericUpDown, Format = "0" };
     }
 
     private BoolSetting Boolean(string id, string key, bool defaultValue, Func<bool> read, Action<bool> write)

@@ -2,13 +2,13 @@ using Avalonia.Controls;
 using Avalonia.Data;
 using DynamicLocalization.Core;
 using DynamicLocalization.Core.Providers;
+using GalNet.Avalonia.GameView.MarkupExtensions;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
+using GalNet.Core.Settings;
 using GalNet.Sample.Avalonia;
 using GalNet.Sample.Avalonia.Services;
 using GalNet.Storage.FileSystem;
-using GalNet.Core.Settings;
-using GalNet.Avalonia.GameView.MarkupExtensions;
 
 namespace GalNet.IntegrationTests;
 

@@ -3,8 +3,8 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Sample.Avalonia.Debug;
-using GalNet.Sample.Avalonia.ViewModels;
 using GalNet.Sample.Avalonia.Services;
+using GalNet.Sample.Avalonia.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Ursa.Controls;
 

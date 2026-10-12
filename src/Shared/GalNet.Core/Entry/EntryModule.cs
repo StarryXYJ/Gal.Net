@@ -49,7 +49,8 @@ public abstract class EntryBase
             defaults,
             options,
             kind,
-            Parameters) { IsReading = IsReading };
+            Parameters)
+        { IsReading = IsReading };
     }
 
     private static string GetDefaultCategory(string name)

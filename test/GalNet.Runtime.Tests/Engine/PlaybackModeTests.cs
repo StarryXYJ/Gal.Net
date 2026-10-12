@@ -101,10 +101,18 @@ public class PlaybackModeTests
         using var view = Registration().RegisterInstruction("test.text", _ => first)
             .RegisterInstruction("test.voice", context => new ImmediatePrimitiveInstance(() => context.Runtime.SetVariable("route", true))).BuildView();
         var graph = GraphOf("test.text", "test.voice");
-        graph.Nodes.Add(new Branch { Id = "condition", BranchType = BranchType.Condition,
-            Conditions = { new BranchCondition { Expression = "route == true" }, new BranchCondition { Expression = "true" } } });
-        graph.Nodes.Add(new Branch { Id = "choice", BranchType = BranchType.Choice,
-            Options = { new BranchOption { Text = "Choose", Condition = "route == true" } } });
+        graph.Nodes.Add(new Branch
+        {
+            Id = "condition",
+            BranchType = BranchType.Condition,
+            Conditions = { new BranchCondition { Expression = "route == true" }, new BranchCondition { Expression = "true" } }
+        });
+        graph.Nodes.Add(new Branch
+        {
+            Id = "choice",
+            BranchType = BranchType.Choice,
+            Options = { new BranchOption { Text = "Choose", Condition = "route == true" } }
+        });
         graph.Nodes.Add(new Group { Id = "wrong" });
         graph.Edges.AddRange([new Edge("main", 0, "condition"), new Edge("condition", 0, "choice"), new Edge("condition", 1, "wrong")]);
         await using var engine = new GameEngine(graph, view, progress: progress, choicePresenter: choice);

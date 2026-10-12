@@ -23,8 +23,16 @@ public class BuiltinPrimitiveInstanceTests
         var layer = runtime.SceneInstances.GetOrAdd("hero", id => new Layer { Id = id, Opacity = .2f });
         var instance = view.Dispatch(Primitive(AnimateEntry.TypeId, new
         {
-            playbackHandleId = "fade", handleId = "hero", property = "opacity", to = .3f, duration = 3,
-            curve = "Linear", blocking = "true", skippable = "true", loopMode = "Once", blendMode = "Additive"
+            playbackHandleId = "fade",
+            handleId = "hero",
+            property = "opacity",
+            to = .3f,
+            duration = 3,
+            curve = "Linear",
+            blocking = "true",
+            skippable = "true",
+            loopMode = "Once",
+            blendMode = "Additive"
         }), runtime, CancellationToken.None)!;
         var terminal = layer.Opacity;
         instance.ApplyPlaybackMode(mode);

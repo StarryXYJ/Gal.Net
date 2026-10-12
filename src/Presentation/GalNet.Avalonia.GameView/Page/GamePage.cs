@@ -7,9 +7,9 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using GalNet.Avalonia.GameView.ViewModels;
+using GalNet.Core.Primitives;
 using GalNet.Game.Controls;
 using GalNet.Rendering.Scene;
-using GalNet.Core.Primitives;
 
 namespace GalNet.Avalonia.GameView.Page;
 

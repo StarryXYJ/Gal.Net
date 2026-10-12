@@ -22,8 +22,8 @@ using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Avalonia.Themes;
 using GalNet.Core.Gallery;
 using GalNet.Core.Primitives;
-using GalNet.Presentation.Abstractions.View;
 using GalNet.Game.Controls;
+using GalNet.Presentation.Abstractions.View;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GeneralTest.Presentation;

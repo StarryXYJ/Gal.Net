@@ -34,7 +34,7 @@ public ValueTask DisposeAsync();
 4. 如果调用开始时已有未完成 blocking instance，选择 sequence 最早者所属 batch，只 skip 该 batch 中当前已分发且可跳过的实例。
 5. 如果当前 blocking 已解除，继续按顺序消费剧情，直到遇到新的 blocking instance、Choice 等待或剧情结束。
 
-Blocking instance 自然完成时，Engine 只执行无 skip 权限的内部 continue；它不是第二个玩家入口，也不能跳过下一个新遇到的 batch。
+手动模式下 Blocking instance 自然完成时，Engine 只执行无 skip 权限的内部 continue；它不是第二个玩家入口，也不能跳过下一个新遇到的 batch。自动/快速模式在有效推进边界等待全部 `IsAutoBlocking` 解除，再计时推进；不会通过模拟点击执行。
 
 ### 状态通知和停止
 
@@ -127,6 +127,8 @@ public void Skip();
 实例可以内部持有 Task、取消源、动画游标或文本游标；这些都是运行期状态，不进入内容或存档格式。
 
 `PresentationCompletion` 默认已完成；异步 presenter 原语覆写为包含 finally 清理的任务。逻辑 `IsCompleted` 不代表后端和旧回调已经清理完。Engine 进入追帧时先切换已有实例的模式并等待展示任务，再继续执行和最终重建；非 Engine 所有的恢复实例由宿主同样跟踪、压缩并等待。`BuiltinPresentationReplay` 的 `onContinuation` 在 Dispatch 前交付恢复出来的动画/视频实例，避免部分重建失败时丢失跟踪。
+
+`SynchronizePresentationAsync` 与追帧展示协调在 Engine 执行门内调用；回调及其等待的清理任务不得重新进入或等待 Engine 推进/模式操作，否则会形成循环等待。同步使用该代隔离的 runtime 和 run token；调用者 token 只控制进入同步门，不作为持久播放的生命周期 token。
 
 玩家间隔配置为 `GameSettings.AutoAdvanceIntervalMilliseconds` 与 `QuickAdvanceIntervalMilliseconds`（int，默认 2000/50），Runtime 以毫秒计时并拒绝负值。Normal/Quick/CatchUp 分发与 `IsAutoBlocking`、状态事件、`IAdvanceWaitInstance` 分别表达呈现策略、自动等待和全文后推进等待；自动模式不会把对白等待下一次推进误当作仍在打字。完整阅读成功使用 group ID + 稳定编译条目 ID 记录，progress v2 与 compiled v3 拒绝旧格式，不迁移。
 

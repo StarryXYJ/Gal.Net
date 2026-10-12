@@ -81,13 +81,15 @@ public sealed partial class GamePageViewModel
         catch (Exception error) { ReportPlaybackFailure(controller, error); }
     }
 
-    [RelayCommand] private void RequestSkip()
+    [RelayCommand]
+    private void RequestSkip()
     {
         CancelPlayback();
         if (_playback is not null) IsSkipConfirmationOpen = true;
     }
     [RelayCommand] private void CancelSkip() => IsSkipConfirmationOpen = false;
-    [RelayCommand] private async Task ConfirmSkipAsync(CancellationToken cancellationToken)
+    [RelayCommand]
+    private async Task ConfirmSkipAsync(CancellationToken cancellationToken)
     {
         if (!IsSkipConfirmationOpen) return;
         var controller = _playback;

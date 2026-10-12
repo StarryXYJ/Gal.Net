@@ -1,9 +1,9 @@
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Markup.Xaml;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
 using GalNet.Avalonia.GameView.Settings;
 
 namespace GalNet.Avalonia.Themes.Common;

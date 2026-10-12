@@ -52,7 +52,9 @@ Sample 游戏分类包含语言、文本速度、仅已读快速、快速/自动
 
 原生 opt-in 已实际执行：VideoNativeSmokeTests 4 项（真实 niko.mp4 解码、seek/结束、加载时隐藏/替换），AvaloniaAudioLifetimeTests 2 项（加载时停止/销毁）通过，使用 Sample 已有 win-x64 LibVLC。这些不是完整桌面 Sample 的操作链人工验收；物理窗口全屏切换、实际音量听感及完整追帧媒体组合仍未人工验证。因此 Phase 4 暂保持 in-progress，不能将单项后端测试替代完整宿主验收。
 
-## Phase 5 — 审核、正式文档与收尾（planned）
+## Phase 5 — 审核、正式文档与收尾（in-progress）
+
+2026-10-12：主实现已提交 `43dd62f`，排除用户原有 App.axaml.cs。审核重点覆盖生命周期、读资格、计时、设置及依赖边界，结论 pass-with-follow-up，见 review.md；summary.md 记录交付与限制。Architecture 26 项通过；格式修正后的七组回归共 441 项通过（Core 70、Runtime 71、Builtins 60、Storage 14、Editor.Shared 18、Presentation 131、Integration 77）。新增 4 项真实内置音文原语联动测试，验证两种完成顺序/音频失败均在全部等待解除后开始间隔。剩余桌面组合验收未完成，Phase 4/5 不提前标 verified。
 
 2026-10-12 Phase 4 工具栏补充：自动/快速仅选中显示主题色半透明背景；普通工具栏按钮透明→8% 悬浮→18% 按下，选中模式 24%。局部模板避免 Fluent 默认 PART_ContentPresenter 状态画刷覆盖。模式应用后重新发布 OneWay 选中绑定，保证按钮原生 toggle 与左键取消后的权威模式一致。九组布局×配色交互测试通过，覆盖两模式再次点击取消、互斥、真实模板背景与确认。完整 Presentation 回归 131 项通过（本轮未运行 6 项原生 opt-in），Sample 构建成功（0 error、2 warning），git diff --check 通过。
 
