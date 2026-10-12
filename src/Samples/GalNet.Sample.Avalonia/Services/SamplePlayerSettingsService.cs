@@ -137,13 +137,8 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
             var value = stored.TryGetValue(variable, out var saved) && saved.Type == VariableType.Float ? saved.AsFloat() : defaultValue;
             write(double.IsFinite(value) && value >= 0 && value <= maximum ? value : defaultValue);
         });
-        return new DoubleSetting(id, key, defaultValue, 0, maximum, step, read, async (value, token) =>
-        {
-            write(value);
-            SettingsChanged?.Invoke(RuntimeSettings);
-            await _gameplay.RefreshPlaybackSettingsAsync(token);
-            Store(variable, (float)value);
-        }, _localization.GetString(key))
+        return new DoubleSetting(id, key, defaultValue, 0, maximum, step, read,
+            (value, token) => ApplyRuntimeSettingAsync(variable, () => write(value), (float)value, token), _localization.GetString(key))
         { EditorKind = editor };
     }
 
@@ -155,13 +150,8 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
             var value = stored.TryGetValue(variable, out var saved) && saved.Type == VariableType.Int ? saved.AsInt() : defaultValue;
             write(value >= 0 && value <= maximum ? value : defaultValue);
         });
-        return new IntSetting(id, key, defaultValue, 0, maximum, step, read, async (value, token) =>
-        {
-            write(value);
-            SettingsChanged?.Invoke(RuntimeSettings);
-            await _gameplay.RefreshPlaybackSettingsAsync(token);
-            Store(variable, value);
-        }, _localization.GetString(key))
+        return new IntSetting(id, key, defaultValue, 0, maximum, step, read,
+            (value, token) => ApplyRuntimeSettingAsync(variable, () => write(value), value, token), _localization.GetString(key))
         { EditorKind = NumericEditorKind.NumericUpDown, Format = "0" };
     }
 
@@ -169,13 +159,16 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
     {
         var variable = "player.galnet.settings." + id;
         _restoreValues.Add(stored => write(stored.TryGetValue(variable, out var saved) && saved.Type == VariableType.Bool ? saved.AsBool() : defaultValue));
-        return new BoolSetting(id, key, defaultValue, read, async (value, token) =>
-        {
-            write(value);
-            SettingsChanged?.Invoke(RuntimeSettings);
-            await _gameplay.RefreshPlaybackSettingsAsync(token);
-            Store(variable, value);
-        }, _localization.GetString(key));
+        return new BoolSetting(id, key, defaultValue, read,
+            (value, token) => ApplyRuntimeSettingAsync(variable, () => write(value), value, token), _localization.GetString(key));
+    }
+
+    private async Task ApplyRuntimeSettingAsync(string variable, Action apply, object storedValue, CancellationToken cancellationToken)
+    {
+        apply();
+        SettingsChanged?.Invoke(RuntimeSettings);
+        await _gameplay.RefreshPlaybackSettingsAsync(cancellationToken);
+        Store(variable, storedValue);
     }
 
     private void OnCultureChanged(object? sender, CultureChangedEventArgs args) => _language.Refresh();

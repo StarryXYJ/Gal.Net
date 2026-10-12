@@ -40,7 +40,7 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresente
         {
             _page.EnsureLayout();
             _nvlHistory.Add(text);
-            return _page.Nvl.AppendAsync(text, _state.TextSpeed, cancellationToken);
+            return RenderNvlParagraphAsync(text, immediately: false, cancellationToken);
         });
     public void SkipNvlText() => _dispatcher.Dispatch(_page.Nvl.SkipText);
     public void RevealAllNvlText() => _dispatcher.Dispatch(_page.Nvl.RevealAllText);
@@ -49,23 +49,21 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresente
         {
             _page.EnsureLayout();
             _nvlHistory.Add(text);
-            var completion = _page.Nvl.AppendAsync(text, 0, cancellationToken);
-            _page.Nvl.RevealAllText();
-            return completion;
+            return RenderNvlParagraphAsync(text, immediately: true, cancellationToken);
         });
 
     public Task StartTypewriter(string widgetInstanceId, string speaker, string text, CancellationToken cancellationToken) =>
-        _dispatcher.InvokeAsync(async () =>
+        PresentDialogueAsync(speaker, text, immediately: false, cancellationToken);
+
+    private Task PresentDialogueAsync(string speaker, string text, bool immediately, CancellationToken cancellationToken) =>
+        _dispatcher.InvokeAsync(() =>
         {
             _page.EnsureLayout();
             _speaker = speaker;
             _text = text;
             _dialogueVisible = true;
             _state.IsDialogueVisible = true;
-            _page.Dialogue.Speaker = speaker;
-            _page.Dialogue.Text = text;
-            _page.Dialogue.CharactersPerSecond = _state.TextSpeed;
-            await _page.Dialogue.StartAsync(cancellationToken);
+            return RenderDialogueAsync(speaker, text, immediately, cancellationToken);
         });
 
     public void SkipTypewriter(string widgetInstanceId) => _dispatcher.Dispatch(_page.Dialogue.Skip);
@@ -91,20 +89,7 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresente
     void IDialoguePresenter.SkipText() => SkipTypewriter("default_dialogue");
     public void RevealAllText() => _dispatcher.Dispatch(_page.Dialogue.RevealAll);
     public Task PresentTextImmediatelyAsync(string speaker, string text, CancellationToken cancellationToken) =>
-        _dispatcher.InvokeAsync(() =>
-        {
-            _page.EnsureLayout();
-            _speaker = speaker;
-            _text = text;
-            _dialogueVisible = true;
-            _state.IsDialogueVisible = true;
-            _page.Dialogue.Speaker = speaker;
-            _page.Dialogue.Text = text;
-            _page.Dialogue.CharactersPerSecond = 0;
-            var completion = _page.Dialogue.StartAsync(cancellationToken);
-            _page.Dialogue.RevealAll();
-            return completion;
-        });
+        PresentDialogueAsync(speaker, text, immediately: true, cancellationToken);
 
     Task<int> IChoicePresenter.ChooseAsync(IReadOnlyList<string> options, CancellationToken cancellationToken) =>
         WaitForChoiceAsync("default_choice", options.ToArray(), cancellationToken);
@@ -137,24 +122,31 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresente
         _page.EnsureLayout();
         _page.Nvl.Clear();
         foreach (var paragraph in _nvlHistory)
-        {
-            var completion = _page.Nvl.AppendAsync(paragraph, 0, cancellationToken);
-            _page.Nvl.RevealAllText();
-            await completion;
-        }
+            await RenderNvlParagraphAsync(paragraph, immediately: true, cancellationToken);
         if (_text is not null)
-        {
-            _page.Dialogue.Speaker = _speaker;
-            _page.Dialogue.Text = _text;
-            _page.Dialogue.CharactersPerSecond = 0;
-            var completion = _page.Dialogue.StartAsync(cancellationToken);
-            _page.Dialogue.RevealAll();
-            await completion;
-        }
+            await RenderDialogueAsync(_speaker, _text, immediately: true, cancellationToken);
         _state.IsDialogueVisible = _dialogueVisible;
         _state.IsNvlMode = _nvlVisible;
         _catchUp = false;
     });
+
+    // UI-thread-only rendering. Rebuilds reuse this path without re-recording history or visibility.
+    private Task RenderDialogueAsync(string speaker, string text, bool immediately, CancellationToken cancellationToken)
+    {
+        _page.Dialogue.Speaker = speaker;
+        _page.Dialogue.Text = text;
+        _page.Dialogue.CharactersPerSecond = immediately ? 0 : _state.TextSpeed;
+        var completion = _page.Dialogue.StartAsync(cancellationToken);
+        if (immediately) _page.Dialogue.RevealAll();
+        return completion;
+    }
+
+    private Task RenderNvlParagraphAsync(string text, bool immediately, CancellationToken cancellationToken)
+    {
+        var completion = _page.Nvl.AppendAsync(text, immediately ? 0 : _state.TextSpeed, cancellationToken);
+        if (immediately) _page.Nvl.RevealAllText();
+        return completion;
+    }
 
     private void OnNvlClearRequested() => ClearNvl();
 }

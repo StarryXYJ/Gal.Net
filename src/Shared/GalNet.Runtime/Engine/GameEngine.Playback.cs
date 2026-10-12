@@ -36,8 +36,7 @@ public sealed partial class GameEngine
             if (Volatile.Read(ref _stopRequested) != 0) return;
             ThrowFlowError();
             if (!IsRunning || _pendingChoice is not null) mode = PlaybackMode.Manual;
-            if (mode == PlaybackMode.Quick && _runtime.Settings.Get<GameSettings>().QuickReadOnly &&
-                _active.Any(item => item.IsReading && !item.WasRead)) mode = PlaybackMode.Manual;
+            if (mode == PlaybackMode.Quick && IsQuickBlockedByUnreadText()) mode = PlaybackMode.Manual;
             SetPlaybackModeCore(mode);
             foreach (var item in _active.ToArray())
                 item.Instance.ApplyPlaybackMode(mode == PlaybackMode.Quick
@@ -58,12 +57,14 @@ public sealed partial class GameEngine
         try
         {
             CancelPlaybackTimer();
-            if (_playbackMode == PlaybackMode.Quick && _runtime.Settings.Get<GameSettings>().QuickReadOnly &&
-                _active.Any(item => item.IsReading && !item.WasRead)) SetPlaybackModeCore(PlaybackMode.Manual);
+            if (_playbackMode == PlaybackMode.Quick && IsQuickBlockedByUnreadText()) SetPlaybackModeCore(PlaybackMode.Manual);
             ReconcilePlaybackTimer();
         }
         finally { _dispatchGate.Release(); PublishStateChanges(); }
     }
+
+    private bool IsQuickBlockedByUnreadText() => _runtime.Settings.Get<GameSettings>().QuickReadOnly &&
+        _active.Any(item => item.IsReading && !item.WasRead);
 
     private void SetPlaybackModeCore(PlaybackMode mode)
     {
