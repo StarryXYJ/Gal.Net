@@ -17,6 +17,8 @@ updated: 2026-10-13
 
 ## 用户补充与已确认需求
 
+- 最新实施约束：不考虑向后兼容；旧 commands 和旧扁平 CLI 别名移除，现有 Editor 单元 operationId 按业务复用保留。
+
 - 2026-10-13 补充：命令主要面向 agent，同时保留未来 Editor 绑定的单元操作；help 承担命令发现与具体命令详情，关键字筛选可返回完整参数/说明 JSON；需要 Graph/GalGroup 定向校验、单 GalGroup 编译和按条件列文件。复核设计见 cli-contract.md；新增 references 与统一结果/分页为本次设计选择，尚待实现验证。
 
 - GUID/稳定 ID 查询只覆盖项目内资源、节点和条目，不增加项目 GUID 或跨项目发现。

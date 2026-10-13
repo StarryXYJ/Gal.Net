@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GalNet.Core.I18n;
@@ -36,23 +35,7 @@ public sealed class AssetFileCommandCatalog : IProjectFileCommandCatalog
 
     private static Definition Define<T>(string id, string description) where T : IProjectFileCommand
     {
-        var parameters = typeof(T).GetConstructors().OrderByDescending(item => item.GetParameters().Length).First().GetParameters()
-            .Select(parameter => new EditorCommandParameter(
-                parameter.Name ?? "value",
-                FriendlyName(parameter.ParameterType),
-                !parameter.HasDefaultValue && Nullable.GetUnderlyingType(parameter.ParameterType) is null,
-                $"Value for {parameter.Name}."))
-            .ToList();
-        return new Definition(id, description, new I18nKey("Command." + id), typeof(T), new EditorCommandSchema(parameters));
-    }
-
-    private static string FriendlyName(Type type)
-    {
-        type = Nullable.GetUnderlyingType(type) ?? type;
-        if (type == typeof(string)) return "string";
-        if (type == typeof(bool)) return "boolean";
-        if (typeof(System.Collections.IEnumerable).IsAssignableFrom(type) && type != typeof(string)) return "array";
-        return type.Name;
+        return new Definition(id, description, new I18nKey("Command." + id), typeof(T), CommandSchemaBuilder.Build(typeof(T), id));
     }
 
     private sealed record Definition(

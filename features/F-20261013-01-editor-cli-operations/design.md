@@ -74,7 +74,7 @@ catalog、repository、save coordinator、持有 catalog 的编辑服务、文�
 
 ## 查询、校验与共享操作
 
-2026-10-13 用户要求复核 agent 命令面，命令主入口、help 机器描述、files/references、Graph/Group 定向校验、单 Group 编译和 Editor 单元操作边界详见 [CLI 与共享操作契约](cli-contract.md)。本节此前的扁平命令列表是既有入口，按新设计保留为兼容别名。
+2026-10-13 用户要求复核 agent 命令面，命令主入口、help 机器描述、files/references、Graph/Group 定向校验、单 Group 编译和 Editor 单元操作边界详见 [CLI 与共享操作契约](cli-contract.md)。本节此前的扁平命令列表仅记录旧入口；按用户最新要求移除兼容别名，以新结构为准。
 
 共享 ProjectTools 服务直接读取原始 JSON，保留未知类型和参数，身份查询不借用会生成 ID/筛选参数的 Editor repository。项目内 find 返回对象种类、文件、Group、稳定 ID 及内容，ID 可能跨种类/Group 出现，因此返回全部匹配并支持 kind/group 限定，不擅自猜测唯一结果。资源 GUID 根据当前 .meta 查询，节点/条目按稳定字符串 ID 查询，不新增项目 GUID。
 

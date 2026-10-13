@@ -60,6 +60,7 @@ public class ProjectDependencyTests
             ],
             ["GalNet.Editor.Shared.Tests"] =
             [
+                "GalNet.Editor.Headless",
                 "SchemaA", "SchemaB", "SchemaDuplicate", "SchemaInvalid", "SchemaIncompatible",
                 "GalNet.Core",
                 "GalNet.Editor.Abstraction",

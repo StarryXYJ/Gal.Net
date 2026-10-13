@@ -4,6 +4,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../Fixtures/SchemaA/SchemaA.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../Fixtures/SchemaB/SchemaB.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../Fixtures/SchemaDuplicate/SchemaDuplicate.csproj" ReferenceOutputAssembly="false" />

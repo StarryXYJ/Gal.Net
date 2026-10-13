@@ -19,21 +19,29 @@ internal static class Program
         PropertyNameCaseInsensitive = true,
         Converters = { new JsonStringEnumConverter() }
     };
+    private static string _operationId = "cli";
 
     public static async Task<int> Main(string[] args)
     {
         try
         {
-            if (args.Length == 0 || args[0] is "help" or "--help" or "-h") { PrintHelp(); return 0; }
+            var operations = new ToolOperationCatalog();
+            var invocation = CliInvocation.Parse(operations, args);
+            _operationId = invocation.Definition.OperationId;
+            if (_operationId == "help")
+            {
+                var definitions = ToolHelp.Select(operations, invocation);
+                if (invocation.Has("--json"))
+                    WriteJson(new { total = definitions.Count, operations = definitions });
+                else Console.Out.Write(ToolHelp.RenderText(definitions, invocation.Positionals.Count != 0));
+                return 0;
+            }
+            args = new[] { _operationId }.Concat(invocation.Positionals)
+                .Concat(invocation.Options.SelectMany(pair => new[] { pair.Key, pair.Value })).ToArray();
             var catalog = new EditorCommandCatalog();
             var fileCatalog = new AssetFileCommandCatalog();
             var entryCatalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
-            if (args[0].Equals("commands", StringComparison.OrdinalIgnoreCase))
-            {
-                WriteJson(catalog.GetAll().Concat(fileCatalog.GetAll()).Select(CommandSummary));
-                return 0;
-            }
-            if (args[0].Equals("create", StringComparison.OrdinalIgnoreCase))
+            if (args[0].Equals("project.create", StringComparison.OrdinalIgnoreCase))
             {
                 if (args.Length < 2) return Fail("create requires a project path.");
                 var nameIndex = Array.IndexOf(args, "--name");
@@ -46,17 +54,17 @@ internal static class Program
 
             var verb = args[0].ToLowerInvariant();
             var projectPath = Path.GetFullPath(args[1]);
-            if (verb == "build") return await BuildAsync(projectPath, args, entryCatalog);
-            if (verb == "export") return await ExportAsync(projectPath, args);
+            if (verb == "project.build") return await BuildAsync(projectPath, args, entryCatalog);
+            if (verb == "project.export") return await ExportAsync(projectPath, args);
             var document = Load(projectPath, entryCatalog);
             switch (verb)
             {
-                case "summary": WriteJson(CreateSummary(projectPath, document)); return 0;
-                case "nodes": WriteJson(document.Graph.Nodes.Select(NodeSummary)); return 0;
-                case "node": return WriteNode(document, args);
-                case "entries": return WriteEntries(document, args);
+                case "project.info": WriteJson(CreateSummary(projectPath, document)); return 0;
+                case "graph.nodes": WriteJson(document.Graph.Nodes.Select(NodeSummary)); return 0;
+                case "graph.node": return WriteNode(document, args);
+                case "group.entries": return WriteEntries(document, args);
                 case "variables": WriteJson(new { player = document.Graph.PlayerVariables, save = document.Graph.SaveVariables }); return 0;
-                case "validate":
+                case "project.validate":
                     var validation = EditorDocumentValidator.Validate(document);
                     WriteJson(new { success = validation.IsValid, diagnostics = validation.Diagnostics });
                     return validation.IsValid ? 0 : 4;
@@ -67,6 +75,7 @@ internal static class Program
                 default: return Fail($"Unknown command '{args[0]}'.");
             }
         }
+        catch (ArgumentException exception) { return Fail(exception.Message); }
         catch (JsonException exception) { return Fail($"Invalid JSON: {exception.Message}"); }
         catch (Exception exception) { return Fail(exception.Message, 1); }
     }
@@ -84,6 +93,8 @@ internal static class Program
         if (isFile.Any(value => value))
         {
             if (elements.Count != 1 || !isFile[0]) return Fail("File commands cannot be mixed with document commands.", 5);
+            if (root.TryGetProperty("dryRun", out var fileDryRun) && fileDryRun.GetBoolean())
+                return Fail("File operations do not support dryRun; no files were changed.", 5);
             var command = fileCatalog.Deserialize(GetCommandId(elements[0]), elements[0], JsonOptions);
             var result = await new AssetFileCommandExecutor(entryCatalog).ExecuteAsync(projectPath, command);
             WriteJson(result); return result.Success ? 0 : 5;
@@ -147,13 +158,6 @@ internal static class Program
         element.TryGetProperty("commandId", out var id) && !string.IsNullOrWhiteSpace(id.GetString())
             ? id.GetString()! : throw new JsonException("Every command requires a non-empty commandId.");
 
-    private static object CommandSummary(IEditorCommandDefinition definition) => new
-    {
-        id = definition.Id,
-        definition.Description,
-        displayNameKey = definition.DisplayNameKey.Key,
-        parameters = definition is IProjectCommandDefinition project ? project.Schema.Parameters : null
-    };
 
     private static int WriteNode(EditorProjectDocument document, string[] args)
     {
@@ -184,22 +188,30 @@ internal static class Program
     }
 
     private static object NodeSummary(EditorGraphNodeDto node) => new { node.Id, node.Type, node.BranchType, node.Name, node.X, node.Y, optionCount = node.Options?.Count ?? 0, conditionCount = node.Conditions?.Count ?? 0 };
-    private static void WriteJson(object value) => Console.Out.WriteLine(JsonSerializer.Serialize(value, JsonOptions));
-    private static int Fail(string message, int code = 2) { Console.Error.WriteLine(message); return code; }
-    private static void PrintHelp() => Console.WriteLine("""
-        GalNet Editor Headless
-
-        Usage:
-          galnet-editor-headless commands
-          galnet-editor-headless create <project> [--name <name>]
-          galnet-editor-headless summary|nodes|variables|validate <project>
-          galnet-editor-headless node <project> <node-id>
-          galnet-editor-headless entries <project> <group-id>
-          galnet-editor-headless build <project> [--output <directory>]
-          galnet-editor-headless export <project> [--output <directory>]
-          galnet-editor-headless execute <project> <command-file|->
-
-        Each invocation loads project files, applies one transaction, validates it, and writes it back.
-        There is no persistent session, revision, Undo/Redo, or JSON-lines server.
-        """);
+    private static void WriteJson(object value)
+    {
+        var data = JsonSerializer.SerializeToNode(value, JsonOptions);
+        var success = true;
+        var diagnostics = new List<ToolDiagnostic>();
+        if (data is System.Text.Json.Nodes.JsonObject obj)
+        {
+            if (obj["success"] is { } status) success = status.GetValue<bool>();
+            if (obj["diagnostics"] is System.Text.Json.Nodes.JsonArray entries)
+            {
+                foreach (var entry in entries)
+                    if (entry is not null) diagnostics.Add(new ToolDiagnostic(
+                        entry["code"]!.GetValue<string>(), entry["severity"]!.GetValue<string>().ToLowerInvariant(),
+                        entry["message"]!.GetValue<string>(), entry["resource"]?.GetValue<string>()));
+                obj.Remove("diagnostics");
+            }
+            obj.Remove("success");
+        }
+        Console.Out.WriteLine(JsonSerializer.Serialize(new ToolResult(_operationId, success, data, diagnostics), JsonOptions));
+    }
+    private static int Fail(string message, int code = 2)
+    {
+        Console.Out.WriteLine(JsonSerializer.Serialize(new ToolResult(_operationId, false, null,
+            [new ToolDiagnostic(code == 2 ? "cli.arguments" : "cli.failed", "error", message)]), JsonOptions));
+        return code;
+    }
 }

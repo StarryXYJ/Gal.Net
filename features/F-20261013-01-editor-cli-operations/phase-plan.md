@@ -33,7 +33,7 @@
 
 ## Phase 3：共享查询与无损磁盘校验、CLI 接入
 
-状态：planned；依赖 Phase 2
+状态：in-progress；依赖 Phase 2
 
 - 目标：AI 直接写文件后可通过 find/schema/validate 获取准确结果，无 UI、无写回。
 - 模块：Editor.Shared 项目工具、诊断协议、Headless 适配、相关测试。
@@ -45,9 +45,11 @@
 
 2026-10-13 命令复核扩展（见 cli-contract.md）：本 Phase 拆成以下可分别验证提交的子阶段，尚未实现；此前 Phase 1、2 的证据不变。
 
-- Phase 3a：统一操作描述与 help（全量/具体命令/--search/--json），commands 兼容别名；稳定 operationId、参数/输出结构、诊断、退出码、dry-run/批次能力声明。验证 help 无项目/契约可用，JSON 描述覆盖真实路由，nullable/默认值/枚举正确，未知命令与参数明确失败。
+- Phase 3a：统一操作描述与 help（全量/具体命令/--search/--json），移除旧 commands/扁平别名；稳定 operationId、参数/输出结构、诊断、退出码、dry-run/批次能力声明。验证 help 无项目/契约可用，JSON 描述覆盖真实路由，nullable/默认值/枚举正确，未知命令与参数明确失败。
 - Phase 3b：原始读取的 files/find/graph/group/variables 查询，以及 references；确定排序、显式分页、项目路径边界、不隐式跨链接、未知数据保留和未识别引用诊断。验证缺契约基础查询可用、重复 ID 返回全部、交叉过滤/分页/无效 metadata/路径边界正确、查询不写文件。
 - Phase 3c：validate、graph validate、group validate 分层诊断及 --structure-only；单文件不要求无关 Group 合法，完整项目检查明确覆盖范围。验证未知字段/缺 ID/错误版本/引用、类型/required/约束、自定义 validator/Composite 错误，结构和语义状态明确，校验字节不变。
+
+Phase 3a 状态：verified。共享层 52/52，架构 29/29；包括 9 项真实 CLI 子进程验收和 16 项操作描述/路由测试。help 全量、具体命令、关键字 JSON 与错误输入无需项目即可工作。操作输入 schema 描述嵌套对象、字典、枚举、默认值、可空类型；不支持的旧 commands/扁平入口返回结构化用法错误。文件 dryRun 明确拒绝且不改文件。当前输出 schema 定义统一结果信封，data 结构随后续查询/校验操作细化；现有加载式 validate 未冒充已完成的原始磁盘校验。
 
 ## Phase 3d：单 GalGroup 编译
 

@@ -20,13 +20,19 @@ public interface IProjectCommandDefinition : IEditorCommandDefinition
 }
 
 /// <summary>Serializable parameter contract for a project command.</summary>
-public sealed record EditorCommandSchema(IReadOnlyList<EditorCommandParameter> Parameters);
+public sealed record EditorCommandSchema(IReadOnlyList<EditorCommandParameter> Parameters)
+{
+    public JsonElement? JsonSchema { get; init; }
+}
 
 public sealed record EditorCommandParameter(
     string Name,
     string Type,
     bool Required,
-    string Description);
+    string Description)
+{
+    public JsonElement? JsonSchema { get; init; }
+}
 
 public interface IEditorCommand
 {
