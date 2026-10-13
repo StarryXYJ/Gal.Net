@@ -122,9 +122,9 @@ internal sealed class SampleGameRunner : IAsyncDisposable
         await ReleaseAsync(() => _engine.DisposeAsync().AsTask());
         await ReleaseAsync(() => _restorer.SuspendAsync(CancellationToken.None));
         await ReleaseAsync(() => _stateUpdate);
+        await ReleaseAsync(_resetPresentationAsync);
         await ReleaseAsync(() => _presentation.DisposeAsync().AsTask());
         await ReleaseAsync(() => _updateStateAsync(false, null));
-        await ReleaseAsync(_resetPresentationAsync);
         if (errors is not null) throw new AggregateException(errors);
 
         async Task ReleaseAsync(Func<Task> release)

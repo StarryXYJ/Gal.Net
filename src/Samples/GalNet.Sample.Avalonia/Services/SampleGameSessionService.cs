@@ -101,6 +101,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _resources = resources;
             _saveSession = saveSession;
             _localization.AttachGame(resources.Content);
+
             foreach (var diagnostic in resources.Content.Localization.Diagnostics)
                 GameLog.Logger.Warning("Skipped localization source {Path}: {Reason}", diagnostic.RelativePath, diagnostic.Message);
             var preloadFailures = resources.SpriteFileCount - resources.PreloadedTextures.Count;
@@ -108,16 +109,19 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
                 resources.SpriteFileCount, preloadFailures);
             GameLog.Logger.Information("Discovered {EffectProgramCount} effect program assets for session prewarming",
                 resources.EffectPrograms.Count);
+
             GalleryDataSource = saveSession.GalleryDataSource;
             GalleryResources = saveSession.GalleryResources;
             OnPropertyChanged(nameof(GalleryDataSource));
             OnPropertyChanged(nameof(GalleryResources));
+
             await RefreshSlotsAsync(cancellationToken);
             if (!await _startup.InitializeAsync(saveSession.Variables,
                     resources.Content.Settings.TargetLocale.Code, selectLanguage, cancellationToken))
                 throw new OperationCanceledException("Language selection was cancelled.", cancellationToken);
             await _settings.AttachAsync(saveSession.Variables, saveSession.Settings, cancellationToken);
             await _settings.RestoreDisplayAsync(cancellationToken);
+
             IsReady = true;
             StatusMessage = $"Loaded game data: {resources.GameDirectory}";
             _gameplay.StatusMessage = "Ready";

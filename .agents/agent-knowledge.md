@@ -107,3 +107,4 @@
 - [Headless 异步 Dispatch 的重载选择](lessons/L-20261013-04-headless-async-void-dispatch.md)：12.0.5 无 Func<Task> 重载，显式 Dispatch<bool> 等待 post-await 断言及实际产物，禁止 async void 隐藏失败。
 
 - [用实际 producer 生成 metadata fixture](lessons/L-20261013-05-metadata-producer-fixtures.md)：AssetMetaCodec 默认输出 id，读取规则大小写无关；查询返回原 ID 拼写并保留实际 pointer，真实 sample smoke 防止测试与实现共享错误假设。
+- [Sample 复用页面前先重置 NVL](lessons/L-20261013-06-sample-nvl-reset-order.md)：页面重置依赖仍订阅的 dialogue presenter 清理 NVL；Runner 应先重置页面再释放 presentation，并复位 NVL 可见状态。
