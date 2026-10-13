@@ -1,3 +1,4 @@
+using GalNet.Runtime.Variables;
 using Avalonia.Controls;
 using Avalonia.Data;
 using DynamicLocalization.Core;
@@ -45,7 +46,7 @@ public sealed class SampleLocalizationTests
         try
         {
             using var localization = CreateLocalization();
-            using var variables = await FileVariableService.CreateAsync(new FilePlayerVariableStore(directory));
+            using var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory));
             var badInterval = new GalNet.Core.Variable.Variable { Name = "player.galnet.settings.quickInterval" };
             badInterval.SetValue(savedInterval);
             variables.NotifyVariableChanged(GalNet.Core.Variable.VariableScope.Player, badInterval.Name, badInterval);
@@ -86,7 +87,7 @@ public sealed class SampleLocalizationTests
         try
         {
             using var localization = CreateLocalization();
-            using (var variables = await FileVariableService.CreateAsync(new FilePlayerVariableStore(directory)))
+            using (var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory)))
             using (var settings = new SamplePlayerSettingsService(localization, new GamePageViewModel(null!)))
             {
                 var other = new GalNet.Core.Variable.Variable { Name = "player.other" };
@@ -108,7 +109,7 @@ public sealed class SampleLocalizationTests
                 await settings.FlushAsync();
             }
             using var restoredLocalization = CreateLocalization();
-            using var restoredVariables = await FileVariableService.CreateAsync(new FilePlayerVariableStore(directory));
+            using var restoredVariables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory));
             using var restoredSettings = new SamplePlayerSettingsService(restoredLocalization, new GamePageViewModel(null!));
             var restoredRuntime = new GameSettings();
             await restoredSettings.AttachAsync(restoredVariables, restoredRuntime);
@@ -156,7 +157,7 @@ public sealed class SampleLocalizationTests
                 Graph = new(),
                 Localization = new() { ExternalSources = [new("ja-JP", "external", """{"line":"日本語"}""")] }
             });
-            using var variables = await FileVariableService.CreateAsync(new FilePlayerVariableStore(directory));
+            using var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory));
             await settings.AttachAsync(variables, new GameSettings());
             var language = settings.Categories.SelectMany(category => category.Items).OfType<ChoiceSetting<string>>().Single();
             Assert.That(language.Choices.Select(option => option.Value), Does.Contain("ja-JP"));

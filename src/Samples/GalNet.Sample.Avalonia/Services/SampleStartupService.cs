@@ -1,5 +1,5 @@
+using GalNet.Runtime.Variables;
 using GalNet.Core.Variable;
-using GalNet.Storage.FileSystem;
 
 namespace GalNet.Sample.Avalonia.Services;
 
@@ -8,7 +8,7 @@ public sealed class SampleStartupService(SampleLocalizationService localization)
 {
     public const string LaunchCountVariable = "player.galnet.startup.launchCount";
 
-    public async Task<bool> InitializeAsync(FileVariableService variables, string defaultCulture,
+    public async Task<bool> InitializeAsync(PlayerVariableService variables, string defaultCulture,
         Func<string, CancellationToken, Task<string?>> selectLanguage, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

@@ -1,5 +1,4 @@
 using System.Text.Json;
-using GalNet.Core.Variable;
 using GalNet.Runtime.Persistence;
 using GalVariable = GalNet.Core.Variable.Variable;
 
@@ -51,16 +50,5 @@ public sealed class FilePlayerVariableStore : IPlayerVariableStore, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private static GalVariable Clone(string name, GalVariable source)
-    {
-        var clone = new GalVariable { Name = name };
-        clone.SetValue(source.Type switch
-        {
-            VariableType.Bool => source.AsBool(),
-            VariableType.Int => source.AsInt(),
-            VariableType.Float => source.AsFloat(),
-            _ => source.AsString()
-        });
-        return clone;
-    }
+    private static GalVariable Clone(string name, GalVariable source) => source.Clone(name);
 }

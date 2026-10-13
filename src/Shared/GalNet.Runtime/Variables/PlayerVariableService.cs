@@ -1,22 +1,21 @@
 using GalNet.Core.Variable;
 using GalNet.Runtime.Persistence;
-using GalNet.Runtime.Variables;
 using GalVariable = GalNet.Core.Variable.Variable;
 
-namespace GalNet.Storage.FileSystem;
+namespace GalNet.Runtime.Variables;
 
 /// <summary>
-/// Platform-neutral runtime variable bridge backed by an <see cref="IPlayerVariableStore"/>.
+/// Runtime variable bridge backed by an <see cref="IPlayerVariableStore"/>.
 /// Variables prefixed with <c>player.</c> persist globally; all other variables remain in the active save.
 /// </summary>
-public sealed class FileVariableService : IVariableService, IDisposable
+public sealed class PlayerVariableService : IVariableService, IDisposable
 {
     private readonly IPlayerVariableStore _playerStore;
     private readonly Dictionary<string, GalVariable> _playerVariables;
     private readonly Dictionary<string, GalVariable> _saveVariables = new(StringComparer.Ordinal);
     private readonly Dictionary<string, SystemVariableDefinition> _systemVariables = new(StringComparer.Ordinal);
 
-    private FileVariableService(IPlayerVariableStore playerStore, IReadOnlyDictionary<string, GalVariable> playerVariables)
+    private PlayerVariableService(IPlayerVariableStore playerStore, IReadOnlyDictionary<string, GalVariable> playerVariables)
     {
         _playerStore = playerStore;
         _playerVariables = playerVariables.ToDictionary(pair => pair.Key, pair => Clone(pair.Key, pair.Value), StringComparer.Ordinal);
@@ -24,7 +23,7 @@ public sealed class FileVariableService : IVariableService, IDisposable
 
     public event Action<VariableScope, string, GalVariable>? VariableChanged;
 
-    public static async Task<FileVariableService> CreateAsync(IPlayerVariableStore playerStore, CancellationToken ct = default) =>
+    public static async Task<PlayerVariableService> CreateAsync(IPlayerVariableStore playerStore, CancellationToken ct = default) =>
         new(playerStore, await playerStore.LoadAsync(ct));
 
     public void ConfigureSystemVariables(IReadOnlyCollection<SystemVariableDefinition> definitions)
@@ -94,16 +93,5 @@ public sealed class FileVariableService : IVariableService, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private static GalVariable Clone(string name, GalVariable source)
-    {
-        var clone = new GalVariable { Name = name };
-        clone.SetValue(source.Type switch
-        {
-            VariableType.Bool => source.AsBool(),
-            VariableType.Int => source.AsInt(),
-            VariableType.Float => source.AsFloat(),
-            _ => source.AsString()
-        });
-        return clone;
-    }
+    private static GalVariable Clone(string name, GalVariable source) => source.Clone(name);
 }

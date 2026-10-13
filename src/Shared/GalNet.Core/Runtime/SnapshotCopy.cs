@@ -1,5 +1,4 @@
 using GalNet.Core.Scene;
-using GalNet.Core.Variable;
 using GalVariable = GalNet.Core.Variable.Variable;
 
 namespace GalNet.Core.Runtime;
@@ -16,18 +15,7 @@ public static class SnapshotCopy
         SceneState = CloneSceneState(snapshot.SceneState)
     };
 
-    public static GalVariable CloneVariable(GalVariable variable)
-    {
-        var copy = new GalVariable { Uid = variable.Uid, Name = variable.Name };
-        switch (variable.Type)
-        {
-            case VariableType.Bool: copy.SetValue(variable.AsBool()); break;
-            case VariableType.Int: copy.SetValue(variable.AsInt()); break;
-            case VariableType.Float: copy.SetValue(variable.AsFloat()); break;
-            default: copy.SetValue(variable.AsString()); break;
-        }
-        return copy;
-    }
+    public static GalVariable CloneVariable(GalVariable variable) => variable.Clone();
 
     public static SceneState CloneSceneState(SceneState source) => new()
     {

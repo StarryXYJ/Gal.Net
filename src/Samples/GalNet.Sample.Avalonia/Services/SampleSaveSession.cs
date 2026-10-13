@@ -1,3 +1,4 @@
+using GalNet.Runtime.Variables;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Core.Gallery;
 using GalNet.Core.Runtime;
@@ -16,7 +17,7 @@ internal sealed class SampleSaveSession : IDisposable
 
     private SampleSaveSession(
         FileSaveService saves,
-        FileVariableService variables,
+        PlayerVariableService variables,
         FileGameProgressService progress,
         IGalleryDataSource galleryDataSource,
         IGalleryResourceResolver galleryResources)
@@ -28,7 +29,7 @@ internal sealed class SampleSaveSession : IDisposable
         GalleryResources = galleryResources;
     }
 
-    public FileVariableService Variables { get; }
+    public PlayerVariableService Variables { get; }
     public FileGameProgressService Progress { get; }
     public GameSettings Settings { get; private set; } = new();
     public IGalleryDataSource GalleryDataSource { get; }
@@ -41,7 +42,7 @@ internal sealed class SampleSaveSession : IDisposable
         CancellationToken cancellationToken)
     {
         var saves = new FileSaveService(profileDirectory);
-        var variables = await FileVariableService.CreateAsync(
+        var variables = await PlayerVariableService.CreateAsync(
             new FilePlayerVariableStore(profileDirectory),
             cancellationToken);
         variables.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(content.Gallery));

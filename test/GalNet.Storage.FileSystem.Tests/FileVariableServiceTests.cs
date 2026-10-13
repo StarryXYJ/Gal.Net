@@ -1,3 +1,4 @@
+using GalNet.Runtime.Variables;
 using GalNet.Core.Gallery;
 using GalNet.Core.Variable;
 using GalNet.Runtime.Gallery;
@@ -7,7 +8,7 @@ using GalVariable = GalNet.Core.Variable.Variable;
 
 namespace GeneralTest.Storage;
 
-public sealed class FileVariableServiceTests
+public sealed class PlayerVariableServiceTests
 {
     private string _profileDirectory = null!;
 
@@ -28,7 +29,7 @@ public sealed class FileVariableServiceTests
     [Test]
     public async Task FlushPlayerVariablesAsync_PersistsOnlyPlayerScope()
     {
-        var service = await FileVariableService.CreateAsync(new FilePlayerVariableStore(_profileDirectory));
+        var service = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(_profileDirectory));
         var player = new GalVariable { Name = "score" };
         player.SetValue(42);
         var save = new GalVariable { Name = "health" };
@@ -38,7 +39,7 @@ public sealed class FileVariableServiceTests
         service.NotifyVariableChanged(VariableScope.Save, "health", save);
         await service.FlushPlayerVariablesAsync();
 
-        var reloaded = await FileVariableService.CreateAsync(new FilePlayerVariableStore(_profileDirectory));
+        var reloaded = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(_profileDirectory));
 
         Assert.That(reloaded.GetSnapshot(VariableScope.Player)["score"].AsInt(), Is.EqualTo(42));
         Assert.That(reloaded.GetSnapshot(VariableScope.Save), Is.Empty);
@@ -49,7 +50,7 @@ public sealed class FileVariableServiceTests
     {
         var catalog = CreateGallery();
         var definitions = GalleryUnlockVariable.CreateDefinitions(catalog);
-        var service = await FileVariableService.CreateAsync(new FilePlayerVariableStore(_profileDirectory));
+        var service = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(_profileDirectory));
         service.ConfigureSystemVariables(definitions);
 
         Assert.Multiple(() =>
@@ -67,7 +68,7 @@ public sealed class FileVariableServiceTests
             "restoring a save-slot snapshot must not roll back Player-scoped Gallery state");
 
         await service.FlushPlayerVariablesAsync();
-        var reloaded = await FileVariableService.CreateAsync(new FilePlayerVariableStore(_profileDirectory));
+        var reloaded = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(_profileDirectory));
         reloaded.ConfigureSystemVariables(definitions);
 
         Assert.That(reloaded.GetSnapshot(VariableScope.Player)["gallery_100_unlocked"].AsBool(), Is.True);
@@ -77,7 +78,7 @@ public sealed class FileVariableServiceTests
     public async Task ResetPlayerVariablesAsync_restores_system_defaults_and_removes_custom_values()
     {
         var catalog = CreateGallery();
-        var service = await FileVariableService.CreateAsync(new FilePlayerVariableStore(_profileDirectory));
+        var service = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(_profileDirectory));
         service.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(catalog));
         var unlocked = new GalVariable { Name = GalleryUnlockVariable.GetName(100) };
         unlocked.SetValue(true);
@@ -100,7 +101,7 @@ public sealed class FileVariableServiceTests
     public async Task GalleryDataSourceProjectsCatalogAndCurrentUnlockState()
     {
         var catalog = CreateGallery();
-        var service = await FileVariableService.CreateAsync(new FilePlayerVariableStore(_profileDirectory));
+        var service = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(_profileDirectory));
         service.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(catalog));
         var source = new GalleryDataSource(catalog, service);
 
@@ -132,7 +133,7 @@ public sealed class FileVariableServiceTests
             ],
             Items = [new GalleryItem { Id = 100, TypeId = "cg", ResourceId = "asset-opening" }]
         });
-        var service = await FileVariableService.CreateAsync(new FilePlayerVariableStore(_profileDirectory));
+        var service = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(_profileDirectory));
         service.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(catalog));
 
         var types = new GalleryDataSource(catalog, service).GetTypes();

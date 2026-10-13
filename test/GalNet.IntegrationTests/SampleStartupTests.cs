@@ -1,3 +1,4 @@
+using GalNet.Runtime.Variables;
 using Avalonia.Controls;
 using DynamicLocalization.Core;
 using DynamicLocalization.Core.Providers;
@@ -25,7 +26,7 @@ public sealed class SampleStartupTests
     {
         using var localization = CreateLocalization();
         var startup = new SampleStartupService(localization);
-        using (var variables = await FileVariableService.CreateAsync(new FilePlayerVariableStore(_root)))
+        using (var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(_root)))
         {
             var other = new Variable { Name = "player.other" };
             other.SetValue("retained");
@@ -39,7 +40,7 @@ public sealed class SampleStartupTests
             Assert.That(variables.GetSnapshot(VariableScope.Player)[SampleStartupService.LaunchCountVariable].AsInt(), Is.EqualTo(1));
             Assert.That(variables.GetSnapshot(VariableScope.Save), Is.Empty);
         }
-        using var restored = await FileVariableService.CreateAsync(new FilePlayerVariableStore(_root));
+        using var restored = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(_root));
         Assert.That(await startup.InitializeAsync(restored, "en-US", (_, _) => throw new AssertionException("Picker must not reappear.")), Is.True);
         Assert.That(restored.GetSnapshot(VariableScope.Player)[SampleStartupService.LaunchCountVariable].AsInt(), Is.EqualTo(2));
         Assert.That(restored.GetSnapshot(VariableScope.Player)["player.other"].AsString(), Is.EqualTo("retained"));
@@ -54,7 +55,7 @@ public sealed class SampleStartupTests
     {
         using var localization = CreateLocalization();
         var startup = new SampleStartupService(localization);
-        using var variables = await FileVariableService.CreateAsync(new FilePlayerVariableStore(_root));
+        using var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(_root));
         Assert.That(await startup.InitializeAsync(variables, "en-US", (_, _) => Task.FromResult<string?>(null)), Is.False);
         Assert.ThrowsAsync<OperationCanceledException>(() => startup.InitializeAsync(variables, "en-US",
             (_, _) => Task.FromResult<string?>("zh-CN"), new CancellationToken(true)));
@@ -66,7 +67,7 @@ public sealed class SampleStartupTests
     public async Task FailedCommitDoesNotPublishLocaleOrLaunchCount()
     {
         using var localization = CreateLocalization();
-        using var variables = await FileVariableService.CreateAsync(new FailedStore());
+        using var variables = await PlayerVariableService.CreateAsync(new FailedStore());
         Assert.ThrowsAsync<IOException>(() => new SampleStartupService(localization).InitializeAsync(variables, "en-US",
             (_, _) => Task.FromResult<string?>("zh-CN")));
         Assert.That(variables.GetSnapshot(VariableScope.Player), Is.Empty);
@@ -83,10 +84,10 @@ public sealed class SampleStartupTests
             Localization = new() { ExternalSources = [new("ja-JP", "external", """{"line":"日本語"}""")] }
         });
         var startup = new SampleStartupService(localization);
-        using var first = await FileVariableService.CreateAsync(new FilePlayerVariableStore(Path.Combine(_root, "first")));
+        using var first = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(Path.Combine(_root, "first")));
         Assert.That(await startup.InitializeAsync(first, "en-US", (_, _) => Task.FromResult<string?>("ja-JP")), Is.True);
         Assert.That(localization.Resolve("line"), Is.EqualTo("日本語"));
-        using var second = await FileVariableService.CreateAsync(new FilePlayerVariableStore(Path.Combine(_root, "second")));
+        using var second = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(Path.Combine(_root, "second")));
         Assert.That(await startup.InitializeAsync(second, "en-US", (_, _) => Task.FromResult<string?>(null)), Is.False);
         Assert.That(second.GetSnapshot(VariableScope.Player), Is.Empty);
     }

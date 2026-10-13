@@ -1,3 +1,4 @@
+using GalNet.Runtime.Variables;
 using DynamicLocalization.Core;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.Settings;
@@ -17,7 +18,7 @@ public sealed class SampleDisplaySettingsTests
         try
         {
             using var localization = new SampleLocalizationService(new CultureService());
-            using var variables = await FileVariableService.CreateAsync(new FilePlayerVariableStore(directory));
+            using var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory));
             var display = new Display();
             using (var settings = new SamplePlayerSettingsService(localization, new GamePageViewModel(null!), display))
             {

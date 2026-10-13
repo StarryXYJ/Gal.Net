@@ -99,3 +99,5 @@ Integration 测试只承载必须联合多个外层实现的场景；单一生�
 - Provider 不管理解码对象或引用计数；页面/媒体实现不理解目录与 PAK 布局。
 - 新资源类型、Gallery 类型、decoder 与页面各自注册在所属层；不要合并为一个跨层“资源模块”。
 - 新持久化字段要同时检查作者 JSON、加载器、导出包、安装加载和验证测试。
+
+变量桥接实现 `PlayerVariableService` 归 Runtime.Variables，仅通过 `IPlayerVariableStore` 持久化；文件实现为 `FilePlayerVariableStore`。变量值复制使用 Core 的 `Variable.Clone`，保留 Uid 并可显式替换名称；不可变 VariableValue 可共享。

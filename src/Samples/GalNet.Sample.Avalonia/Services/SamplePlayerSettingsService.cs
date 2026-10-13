@@ -1,10 +1,10 @@
+using GalNet.Runtime.Variables;
 using DynamicLocalization.Core;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Settings;
 using GalNet.Core.Variable;
-using GalNet.Storage.FileSystem;
 
 namespace GalNet.Sample.Avalonia.Services;
 
@@ -20,7 +20,7 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
     private readonly IPlayerDisplayService _display;
     private readonly ChoiceSetting<PlayerDisplayMode> _displayMode;
     private readonly ChoiceSetting<PlayerWindowSize> _windowSize;
-    private FileVariableService? _variables;
+    private PlayerVariableService? _variables;
     private bool _restoring;
     private readonly List<Action<IReadOnlyDictionary<string, GalNet.Core.Variable.Variable>>> _restoreValues = [];
     public GameSettings RuntimeSettings { get; private set; } = new();
@@ -105,7 +105,7 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
         _coordinator.RefreshAvailability();
     }
 
-    public async Task AttachAsync(FileVariableService variables, GameSettings runtimeSettings, CancellationToken cancellationToken = default)
+    public async Task AttachAsync(PlayerVariableService variables, GameSettings runtimeSettings, CancellationToken cancellationToken = default)
     {
         _variables = variables;
         RuntimeSettings = runtimeSettings;

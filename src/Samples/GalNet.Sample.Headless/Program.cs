@@ -1,3 +1,4 @@
+using GalNet.Runtime.Variables;
 using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
 using GalNet.Core.Settings;
@@ -31,7 +32,7 @@ try
     settings.Set(new GameSettings());
 
     var saves = new FileSaveService(options.ProfileDirectory);
-    var variables = await FileVariableService.CreateAsync(new FilePlayerVariableStore(options.ProfileDirectory));
+    var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(options.ProfileDirectory));
     variables.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(content.Gallery));
     var progress = new FileGameProgressService(options.ProfileDirectory);
 
