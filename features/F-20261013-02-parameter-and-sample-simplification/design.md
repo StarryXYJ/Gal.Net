@@ -1,6 +1,6 @@
 # 设计边界与收益判断
 
-状态：规划依据；尚未实现。来自本次用户讨论和仓库调查，不将目标状态写入正式 spec。
+状态：规划依据；尚未完成实现。Phase 1 未提交试点需按 2026-10-14 用户修订重做边界，本次只更新文档，不将目标状态写入正式 spec。
 
 ## 当前事实
 
@@ -16,6 +16,12 @@
 ## 参数基础
 
 公共能力归 Core 内明确的参数命名空间，优先演进/迁移现有类型。具体命名在试点中确定，不同时维护旧、新两套事实源。
+
+2026-10-14 修订：公共基础是中立 ValueDescriptor、ValueCodec/ValueValidation 工具和可选 EditorHints。Entry 参数、SettingItem、CLI 参数保留各自的完整模型，通过组合或工具调用使用公共能力；不让 CLI 直接持有 Entry 的 DynamicParameterDescriptor。上一版“同一参数规则”指中立的值规则，不是统一完整参数模型。未提交试点中出现的直接耦合需在 Phase 1 处理，不保留为兼容层。
+
+ValueDescriptor 描述 CLR/JSON 值类型、null 策略与通用约束；工具支持序列化/反序列化、类型检查及范围/长度/选项等校验。保留既有 CLR/JSON 能力，不新增标量值容器。必填/省略/默认值留在字段使用定义中，业务校验留在消费者；玩家/存档变量不必每个值都携带 schema。验证覆盖对象、数组、枚举及标量，不限定截图/分页。
+
+EditorHints 与合法数据约束独立。使用 string EditorId，内置编辑器提供稳定常量，null 表示根据值类型选择默认工厂。Step/Format/Unit 为编辑提示；若要求数值必须为某个步长的倍数，需另有数据约束，不能从 UI Step 自动推断。合法选项值和展示标签分开。Core 不引用控件、绑定对象或运行期业务服务。
 
 共享范围为值类型描述、默认值/必填/null 规则、通用约束、JSON 规范化和基础校验。继续用现有 JSON/CLR 类型能力表示嵌套对象，不建立新的通用值容器、DSL 或任意插件总线。
 
@@ -39,6 +45,25 @@ Entry 保留 primitive/composite、展开代码、阅读边界、资源引用和
 
 Gallery 媒体 resolver 的位置、默认 layer 适配器是否可复用，以及设置/首次启动策略的拆分，先检查实际引用与替换需求；只有能简化所有权或减少修改点才调整，不作为强制搬迁清单。
 
+## Schema 表单与编辑器工厂（2026-10-14 纳入）
+
+方案与现有依赖兼容：GalNet.Avalonia.Controls 已引用 Core，可优先在该项目承载共享字段编辑基础；不新建 UI Helper 项目。现有 SettingEditorLease/CustomSettingEditor 已有控件与释放机制，实施时优先演进而非叠加两套生命周期工具。具体类型名是建议，不是已实现 API。
+
+- Schema：提供稳定字段 ID 和有序字段列表，字段组合值描述、默认/省略规则、标签及编辑提示。手写和生成式描述使用同一结构；顺序由列表定义，生成器负责稳定产出，不依赖运行期反射枚举顺序。对象/数组可先提供 JSON 编辑器，不承诺首轮任意复杂嵌套表单。
+- SchemaForm：一个无样式表单控件，绑定 Schema、EditorRegistry 和数据 Binding。按顺序创建/挂载子控件并释放；不含具体 EditorId/业务类型的 switch，不负责存档、撤销或设置应用。优先一个具体控件，无实际替换需要时不增加多层基类。
+- EditorRegistry：内部 dictionary 保存 EditorId → FieldEditorFactory，另有默认值类型选择规则。Register/Resolve/显式 Replace 足够；不增加扫描插件、动态服务发现或 DI 容器解析。工厂验证自己支持的值类型。
+- FieldEditorContext：字段 schema、编辑草稿/诊断及读写提交适配；允许宿主明确提供动态选项等必要能力。工厂通过宿主组合期闭包捕获资源选择等依赖，不让 SchemaForm 认识业务服务。
+- FieldEditorFactory：创建一个新控件，绑定值/范围/步长/选项/可用状态，返回 FieldEditorLease（控件和幂等解绑/退订释放）。不共享控件实例，不在每个工厂重复公共校验、项目保存或撤销逻辑。
+- 默认 Avalonia 工厂：Numeric、Slider、Toggle、Choice、Text；复杂对象/数组的基础 JSON 编辑可按成本加入。Editor 与 Sample 各自组合默认集合及自定义工厂。资源选择/表达式补全/自定义编辑器由宿主扩展。
+
+Binding 提供读值、外部变更通知及提交候选值的能力。共享编辑模型持有草稿并处理类型转换/基础错误，不把 `-`、`1.` 等未完成输入写入业务值。Editor 适配作者值表示、撤销/保存与事务；设置适配 async apply、forced value、可用性及持久化队列。保留“未提供”与“显式 null”状态，不能因 DTO 或输入框空值混为一谈。ActionSetting 等无数据操作不强行当作值字段。
+
+约束优先顺序为：显式 EditorId 精确查找；没有 ID 时使用默认类型映射。重复注册报错，替换必须显式；未注册 ID/不支持值类型显示诊断，必要时提供只读或不会静默写回的基础展示。未知业务控件不被普通文本控件无提示替代。
+
+生命周期：结构/Binding/Registry 换代时取消旧编辑上下文并释放旧控件与订阅；普通值、选项、可用性更新不重建整张表单。挂载/卸载和失败构建须有完整清理路径；过期异步提交结果不得更新新字段上下文。宿主拥有数据服务，控件只释放自己的绑定/控件资源。捕获项目对象的工厂属于对应作用域，不放入进程级静态 registry；纯默认工厂可共享。
+
+无样式表示控件保留行为与模板协议，布局、颜色和视觉资源由主题/宿主提供；不代表完全没有可挂载子控件的结构模板。Editor/玩家主题可使用不同视觉呈现，但共用字段行为。首轮不顺便重做全部主题和页面。
+
 ## 异步与清理
 
 Entry 基础审查不限于 Sample 截图：检查 Core 的 PrimitiveInstance/ImmediatePrimitiveInstance、契约 Entry DTO 与参数描述、PrimitiveModule/PrimitiveImplementation、Builtins 的 Arguments/BuiltinInstructionFactory、各领域实例和 RuntimeActions 的边界。已有基础优先复用或演进，不再平行新增一套 EntryBase/ModuleBase/参数工具。
@@ -54,6 +79,8 @@ Entry 基础审查不限于 Sample 截图：检查 Core 的 PrimitiveInstance/Im
 ## 生成器
 
 参数模型稳定后，独立 incremental generator 根据显式标记生成参数描述和类型化读取。模块内 schema/工厂注册仅在可重复模式已成立时扩展。契约生成物只依赖 Core，平台生成物位于平台项目；Roslyn 不进入运行期引用图。
+
+具体声明方式：class/record DTO 以显式生成特性标记，成员类型提供结构信息，成员特性提供命名/约束/编辑提示及明确的省略/null/默认规则。生成中立的有序对象/字段描述、规范化读取和工具描述，各消费者组合使用；不分别生成三套互不共用的完整 Entry/设置/CLI 模型。优先复用 JSON 名称/忽略/converter 元数据并检查不支持声明。默认值使用明确元数据来源，不执行任意属性初始化代码；复杂校验、跨字段规则和 Composite 保留手写入口。生成器不生成具体 Avalonia 控件或控件绑定。
 
 生成器不读取项目运行期 DLL、不创建平台对象、不自动启用所有被扫描模块、不推断业务执行语义。项目继续显式选择模块，复杂校验/Composite 展开留有手写接入点。
 
