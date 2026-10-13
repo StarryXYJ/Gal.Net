@@ -34,21 +34,4 @@ public static class SaveManager
         return snapshot?.Version == GameSnapshot.CurrentFormatVersion ? snapshot : null;
     }
 
-    /// <summary>保存到文件。</summary>
-    public static void SaveToFile(GameSnapshot data, string path)
-    {
-        var json = Serialize(data);
-        var dir = Path.GetDirectoryName(path);
-        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-            Directory.CreateDirectory(dir);
-        File.WriteAllText(path, json);
-    }
-
-    /// <summary>从文件加载。</summary>
-    public static GameSnapshot? LoadFromFile(string path)
-    {
-        if (!File.Exists(path)) return null;
-        var json = File.ReadAllText(path);
-        return Deserialize(json);
-    }
 }

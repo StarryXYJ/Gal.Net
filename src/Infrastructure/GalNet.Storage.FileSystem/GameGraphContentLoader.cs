@@ -7,12 +7,12 @@ internal static class GameGraphContentLoader
 {
     public static Graph Load(string rootDirectory, string graphRelativePath, string groupsRelativeDirectory, CancellationToken cancellationToken)
     {
-        var graph = GraphLoader.LoadFromFile(Path.Combine(rootDirectory, graphRelativePath));
+        var graph = GraphLoader.LoadFromJson(File.ReadAllText(Path.Combine(rootDirectory, graphRelativePath)));
         foreach (var group in graph.Nodes.OfType<Group>())
         {
             cancellationToken.ThrowIfCancellationRequested();
             var path = Path.Combine(rootDirectory, groupsRelativeDirectory, $"{group.Id}.galgroup");
-            if (File.Exists(path)) GalgroupLoader.LoadIntoGroup(group, path);
+            if (File.Exists(path)) GalgroupLoader.LoadIntoGroupFromContent(group, File.ReadAllText(path));
         }
         return graph;
     }

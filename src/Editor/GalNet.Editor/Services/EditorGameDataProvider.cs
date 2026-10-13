@@ -36,11 +36,11 @@ public sealed class EditorGameDataProvider : IGameContentProvider
     {
         var project = _projectService.Current ?? throw new InvalidOperationException("A project must be open before preview data is requested.");
         var directory = project.Services.GetRequiredService<EditorWorkspaceViewModel>().BuildPreviewData();
-        var graph = GraphLoader.LoadFromFile(Path.Combine(directory, "graph.json"));
+        var graph = GraphLoader.LoadFromJson(File.ReadAllText(Path.Combine(directory, "graph.json")));
         foreach (var group in graph.Nodes.OfType<GalNet.Core.Graph.Group>())
         {
             var file = Path.Combine(directory, $"{group.Id}.galgroup");
-            if (File.Exists(file)) GalgroupLoader.LoadIntoGroup(group, file);
+            if (File.Exists(file)) GalgroupLoader.LoadIntoGroupFromContent(group, File.ReadAllText(file));
         }
         using var assets = new LocalFileProvider(project.AssetsPath, _resourceTypes, optional: true);
         using var archive = assets.OpenArchive("assets");

@@ -192,6 +192,18 @@ public class ProjectDependencyTests
             $"{projectName} declares namespaces outside its owned root: {string.Join(", ", unexpected)}");
     }
 
+    [Test]
+    public void Runtime_DoesNotPerformFileSystemIo()
+    {
+        var directory = Path.GetDirectoryName(FindProjectFile("GalNet.Runtime"))!;
+        var forbidden = new System.Text.RegularExpressions.Regex(@"\b(?:File|Directory)\s*\.");
+        var violations = Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !IsBuildOutput(path, directory))
+            .Where(path => forbidden.IsMatch(File.ReadAllText(path)))
+            .Select(path => Path.GetRelativePath(RepositoryRoot, path)).ToArray();
+        Assert.That(violations, Is.Empty, "Runtime must consume content and persistence ports instead of paths.");
+    }
+
     private static string FindProjectFile(string projectName)
     {
         var matches = Directory.EnumerateFiles(Path.Combine(RepositoryRoot, "src"), $"{projectName}.csproj", SearchOption.AllDirectories).ToArray();
