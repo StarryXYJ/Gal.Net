@@ -147,3 +147,11 @@ Phase 5b2 状态：verified；Editor 回归 32/32。共享层新增 12 项验收
 通过真实 CLI 创建独立临时项目，project delete --dry-run 保留目录，实际删除后从 Shell 系统回收站查到唯一同名且原目录一致的条目，InvokeVerb("undelete") 恢复，全部 5 个项目文件 SHA-256 一致。证据 Temp/F-20261013-01-recycle-proof.json 与对应 create/delete 输出；未操作现有项目，恢复后的测试项目留在专用 Temp 子目录。Windows 使用强制回收标志及 PreDeleteItem 永久删除否决，适配不调用 Directory.Delete 或永久删除 API。共享删除测试覆盖关闭/回收/最近记录顺序、失败、取消、未识别目录、缺契约骨架和 dry-run，平台回调测试覆盖永久删除候选否决。
 
 Phase 5c 状态：verified。共享层 152/152、Editor 34/34、Architecture 30/30；真实回收站可见且恢复字节一致。Editor 关闭失败会释放 scope 但拒绝回收，回收失败保留最近记录，dry-run 不改变当前会话。Phase 5 全部纳入范围的生命周期操作完成，后续进入截图样例。
+
+### Phase 6 验证记录
+
+完整 Integration 101/101（截图专项 14 项），Runtime 80/80（新增已完成异步失败传播 2 项），Sample.Headless 构建 0 警告/错误。截图专用 Headless session 显式 Dispatch<bool> 等待全部异步断言，实际 GamePage/Skia 生成 640×360 PNG；尺寸、角点深色与中心黄色像素断言通过，并已打开 PNG 视觉检查。覆盖 Normal/Quick、CatchUp 无副作用、排队捕获取消、模块异步释放 drain、冲突不覆盖、自动文件名唯一、目录绝对路径/链接拒绝、契约路径/设备名/null 参数拒绝，无效布局不生成目录，schema→编译→模块→Engine 真实执行和异步 Faulted。
+
+真实 CLI 临时项目完成 create（Sample.Contracts DLL）→schema show sample.screenshot→validate→group compile→build→export。Sample.Headless 对其安装输出返回 1，并明确 sample.screenshot 没有注册执行实现；没有伪截图实现。CLI 输出及证明位于 Temp/F-20261013-01-screenshot-cli-*.json，真实 PNG 为 Temp/F-20261013-01-screenshot-proof.png。独立示例 Raw Group 位于 Sample.Contracts/Examples，不加入共享默认剧情。
+
+Phase 6 状态：verified。最终截图专项重跑 14/14，通过后提交；完整链路、实物 PNG 与 Headless 负面行为均已验收。

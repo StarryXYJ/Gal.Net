@@ -6,5 +6,6 @@ namespace GalNet.Project.Contracts;
 /// <summary>Single source of authoring contracts shared by the sample game and tools.</summary>
 public static class ProjectSchemas
 {
-    public static IReadOnlyList<IEntryModule> Modules { get; } = BuiltinSchemas.CreateAllModules();
+    public static IReadOnlyList<IEntryModule> Modules { get; } = Array.AsReadOnly(
+        BuiltinSchemas.CreateAllModules().Append(ScreenshotSchema.CreateModule()).ToArray());
 }

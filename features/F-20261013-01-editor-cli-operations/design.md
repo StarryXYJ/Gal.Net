@@ -149,3 +149,7 @@ CLI 一次加载项目契约，向 validate/build/export 传递同一 catalog。
 项目删除由 Shared 的 ProjectDeleteService 识别当前 Graph/settings 项目根并协调回调；IProjectRecycleBin 位于 Editor.Abstraction。新增 Infrastructure/GalNet.ProjectTools.Windows，只引用该抽象，CLI 和 Editor 组合根注入适配。Core/Runtime/Shared 不引用 Windows Shell。当前仅支持 Windows 8+ 本地固定磁盘；Shell 使用 FOFX_RECYCLEONDELETE 和失败即停标志，PreDeleteItem 拒绝没有回收标志的删除，检查逐项结果和中止状态，不实现永久删除 fallback。CLI 无需契约 DLL 即可识别并回收骨架项目。
 
 接口依据：[IFileOperation flags](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ifileoperation-setoperationflags)、[PreDeleteItem](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ifileoperationprogresssink-predeleteitem)。实物验证在通过后记录。
+
+### 截图的异步失败边界
+
+实施中确认 Runtime 普通推进原先不会读取已完成 primitive 的 PresentationCompletion 失败，截图异常可能只留在未观察任务中。Phase 6 在 RemoveCompleted 对已故障的 PresentationCompletion 按既有异常路径传播到 Engine Faulted；不增加平台类型或截图专用 Runtime API。截图 promise 在发布/清理完成后再完成逻辑实例，模块负责取消并 drain 任务，避免宿主释放场景后后台截图继续访问页面。

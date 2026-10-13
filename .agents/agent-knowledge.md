@@ -96,3 +96,5 @@
 - [契约 DLL 流式加载](lessons/L-20261013-02-contract-stream-loading.md)：Unload 不保证立即解除 Windows 映射锁；项目主 DLL 和自有依赖用流式加载，保持共享框架类型身份。
 
 - [构建期间保持源码快照稳定](lessons/L-20261013-03-build-source-snapshot.md)：验证脚本结束前不修改其依赖图源码；交错后完整重跑。
+
+- [Headless 异步 Dispatch 的重载选择](lessons/L-20261013-04-headless-async-void-dispatch.md)：12.0.5 无 Func<Task> 重载，显式 Dispatch<bool> 等待 post-await 断言及实际产物，禁止 async void 隐藏失败。

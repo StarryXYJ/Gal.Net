@@ -637,6 +637,10 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             ReconcileAutoBlocker(item);
             if (!item.Instance.IsCompleted)
                 continue;
+            // Completed asynchronous work may have failed before its logical completion.
+            // Surface that failure through the same engine fault path as synchronous dispatch.
+            if (item.Instance.PresentationCompletion.IsFaulted)
+                item.Instance.PresentationCompletion.GetAwaiter().GetResult();
             item.Instance.Completed -= OnBlockingCompleted;
             item.Instance.AutoBlockingChanged -= OnAutoBlockingChanged;
             _autoBlockers.Remove(item.Instance);

@@ -57,6 +57,8 @@ internal sealed class SampleGamePresentation : IAsyncDisposable, ICatchUpPresent
                 presenters.DialoguePresenter, presenters.LayerPresenter, presenters.AnimationPresenter,
                 presentation.Effects, resources.Content.Gallery, presenters.ParticlePresenter,
                 presenters.NvlPresenter, presentation.Audio, presentation.Video, resources.Content.Localization.Characters, presentation.AudioModule);
+            registration.RegisterImplementation(new SampleScreenshotModule(page,
+                () => SampleScreenshotOutput.GetHostDirectory(resources.Content.Graph.Name)));
             presentation.View = registration.BuildView();
             presentation.View.RequireInstructions(resources.Content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>().SelectMany(group => group.Entries).Select(entry => entry.Type));
             presentation.Restorer = new PersistentSceneRestorer(presentation.Effects, presenters.ParticlePresenter,

@@ -4,6 +4,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Avalonia.Headless" />
     <ProjectReference Include="..\..\src\Shared\GalNet.Assets\GalNet.Assets.csproj" />
     <ProjectReference Include="..\..\src\Shared\GalNet.Core\GalNet.Core.csproj" />
     <ProjectReference Include="..\..\src\Editor\GalNet.Editor.Abstraction\GalNet.Editor.Abstraction.csproj" />
