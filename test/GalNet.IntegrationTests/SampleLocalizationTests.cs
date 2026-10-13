@@ -1,4 +1,3 @@
-using GalNet.Runtime.Variables;
 using Avalonia.Controls;
 using Avalonia.Data;
 using DynamicLocalization.Core;
@@ -7,6 +6,7 @@ using GalNet.Avalonia.GameView.MarkupExtensions;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Settings;
+using GalNet.Runtime.Variables;
 using GalNet.Sample.Avalonia;
 using GalNet.Sample.Avalonia.Services;
 using GalNet.Storage.FileSystem;

@@ -18,9 +18,14 @@
 - Engine 提供终态 StopAsync 和 StateChanged，覆盖玩家推进、Choice 与阻塞实例自然完成；不新增通用 Runner。AvaloniaGamePresenters 只组合端口，SampleGamePresentation 管理平台资源。见 docs/design/game-runner-refactor.md 和 docs/spec/runtime.md。
 - Presentation.Defaults 已删除，空 NullGameView 位于展示抽象的 View 命名空间；当前生产项目图已扩展到 24 个项目（见 F-20261013-01）。GameContent.Settings 包含项目设置，项目/安装加载器与两个 Sample 已接通自定义音频轨道配置。
 - 旧的 `GalNet.Control` 与 `GalNet.Control.Abstraction` 已完成迁移并删除；当前共享 Avalonia 游戏页面唯一入口是 `GalNet.Avalonia.GameView`，页面架构见 `docs/spec/control.md`。
-- 会影响场景的运行时条目应先更新 `SceneState`，再通知展示层；读取存档后由宿主通过 PersistentSceneRestorer 根据状态重放展示。
+- 会影响场景的运行时条目应先更新 `SceneState`，再通知展示层；读取存档后由宿主通过 Builtins 的 PersistentSceneReplaySession 根据状态重放展示并拥有 continuation 清理。
 - 视觉扩展应通过展示抽象和渲染端口接入；不要把平台类型或渲染资源泄漏进 Core/Runtime。
 - 当前已有大型阶段计划：[runtime-presentation-decoupling-phase-plan.md](../docs/design/runtime-presentation-decoupling-phase-plan.md) 和 [render-effects-pipeline-plan.md](../docs/design/render-effects-pipeline-plan.md)。新增 feature 应链接它们，不要复制其中的长期设计。
+
+- 玩家变量桥接实现为 Runtime.Variables.PlayerVariableService，存储通过 IPlayerVariableStore 注入；Variable.Clone 保留 Uid，VariableValue 不可变，可共享。Runtime loader/SaveManager 不执行文件 I/O。见 docs/spec/architecture.md。
+- Runtime.I18n.GameTextResolver 提供 culture-first、父文化与默认文化回退，只依赖宿主查询委托；DynamicLocalization/JSON 适配留在 Sample 的 GameLocalizationProvider。见 docs/spec/i18n.md。
+- Assets 的 AssetFileMaterializer 经 IAssetManager acquire 字节实体化媒体；Core 的 AssetFileLease 持有文件租约。Sample 将同一实例供音频/视频/Gallery 使用，最后租约释放才删除文件。见 docs/spec/assets.md。
+- 已读进度 MarkRead 只写 Runtime ReadProgressIndex；文件实现默认 2 秒批量提交，失败保留 dirty revision 并重试。Engine StopAsync、Sample 存档和进度对象销毁均等待 flush，失败向调用者传播；后台失败可读 LastPersistenceError。见 docs/spec/runtime.md。
 
 ## 文档分层
 

@@ -2,7 +2,7 @@
 
 ## 职责边界
 
-`GalNet.Runtime` 负责读取 Graph 与已编译 `.galgroup`、驱动故事流程、维护运行时状态、调度 primitive instance 和创建存档。具体 UI、渲染资源、平台线程和文件系统由宿主组合根提供；Runtime 不引用 Avalonia、Skia 或具体存储实现。
+`GalNet.Runtime` 负责解析宿主提供的 Graph 与已编译 `.galgroup` 内容、驱动故事流程、维护运行时状态、调度 primitive instance 和创建存档。具体 UI、渲染资源、平台线程和文件系统由宿主组合根提供；Runtime 不引用 Avalonia、Skia 或具体存储实现。
 
 ```text
 Graph + .galgroup
@@ -16,7 +16,7 @@ Runtime 只执行 primitive entry。Composite entry 只能存在于 `.rawgalgrou
 
 ## GameEngine
 
-`GameEngine` 持有 Graph、`IGameRuntime`、`IGameView`、可选 `IChoicePresenter`，以及当前活动的 `PrimitiveInstance` 队列。对玩家或 UI 只暴露一个推进入口：
+`GameEngine` 持有编译图索引、`IGameRuntime`、`IGameView`、可选 `IChoicePresenter`，以及当前活动的 `PrimitiveInstance` 队列。对玩家或 UI 只暴露一个推进入口：
 
 ```csharp
 public Task<bool> AdvanceAsync(CancellationToken cancellationToken = default);
@@ -40,7 +40,7 @@ public ValueTask DisposeAsync();
 
 `State` 和 `StateChanged(GameEngineStateChange)` 统一报告 `Ready`、`Running`、`Completed`、`Faulted`、`Stopped`；失败通知附带原始异常。自然阻塞完成、Choice 结果/异常和玩家推进都经过同一状态机制，宿主不需要分别推断终态。通知在执行锁外按发生顺序发布，重复状态不重复通知；订阅者异常只诊断，不改变剧情状态。事件处理器不应同步等待 Engine 的异步操作；UI 线程切换、日志文案和存档槽刷新由宿主处理。
 
-`StopAsync()` 是该 Engine 的终态操作：立即拒绝新推进，取消执行 scope，清理活动实例和 pending Choice，并等待内部 continuation 退出后报告 `Stopped`。Choice 后端即使没有协作取消，Engine 的等待也能退出；平台资源本身仍由宿主释放。停止后推进返回 `false`，不能恢复该 Engine；重开使用新 Engine。正常完成后再次推进不会重放已经结束的内容。未停止时 `RestoreFrom()` 取消旧 scope 并重新进入 `Ready`。
+`StopAsync()` 是该 Engine 的终态操作：立即拒绝新推进，取消执行 scope，清理活动实例和 pending Choice，并等待内部 continuation 退出和已读进度 FlushAsync 完成后报告 `Stopped`。Choice 后端即使没有协作取消，Engine 的等待也能退出；平台资源本身仍由宿主释放。停止后推进返回 `false`，不能恢复该 Engine；重开使用新 Engine。正常完成后再次推进不会重放已经结束的内容。未停止时 `RestoreFrom()` 取消旧 scope 并重新进入 `Ready`。
 
 Engine 同时支持同步和异步释放；异步宿主优先使用 `await using`。释放 Engine 不释放借用的 `IGameView`：先停止/释放 Engine，再异步释放执行 view，最后释放 presenters、媒体后端及资源。不新增通用 Runner 或要求平台实现继承宿主基类。
 
@@ -173,3 +173,7 @@ Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`
 ## 已读进度提交边界
 
 `ReadProgressIndex` 在 Runtime 中维护内存索引与 revision。文件实现 MarkRead 不执行磁盘 I/O，默认每 2 秒批量写入；同一个进度实例串行化 flush/clear，写入期间的新标记保留 dirty 状态。后台失败由 LastPersistenceError 暴露并在下个周期重试。Engine StopAsync 在执行与 continuation 退出后等待 FlushAsync，失败仍发布 Stopped 并向调用者传播；Sample 保存前 flush，销毁进度实例时取消定时器并完成最终提交。强制终止可能丢失自上次成功 flush 以来的标记（正常 I/O 时最多一个周期，持续失败时不保证时间上限）。存档槽恢复不回滚玩家已读进度。
+
+## 执行内部协作者
+
+Engine 保持唯一执行门禁、运行取消和终态通知。ActivePrimitiveRegistry 拥有实例顺序、group execution identity、事件订阅、完成实例清理与 skip batch；GameGraphNavigator 在启动时索引编译图，运行期间拓扑保持稳定。AudioRuntime 保留轨道、票据、队列溢出、音量和 SEffect 逻辑；AudioBackendDispatcher 负责逐 voice 命令顺序、待加载 start 取消、能力降级和异步工作 drain，并共享 AudioRuntime 的锁。同步后端终态回调的清理在提交完成后取得同一锁，且纳入销毁等待。

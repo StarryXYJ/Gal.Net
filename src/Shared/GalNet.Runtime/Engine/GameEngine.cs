@@ -14,7 +14,7 @@ namespace GalNet.Runtime.Engine;
 /// <summary>Owns story flow and all active primitive instances for one game run.</summary>
 public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerPlaybackController
 {
-    private readonly Graph _graph;
+    private readonly GameGraphNavigator _navigation;
     private readonly IGameRuntime _runtime;
     private readonly IGameView _view;
     private readonly IChoicePresenter? _choicePresenter;
@@ -23,13 +23,10 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
     private readonly SemaphoreSlim _dispatchGate = new(1, 1);
     private CancellationTokenSource _scopeCancellation = new();
     private IGameRuntime _dispatchRuntime;
-    private readonly List<ActivePrimitive> _active = [];
+    private readonly ActivePrimitiveRegistry _active;
     private GameSnapshot _lastStableSnapshot;
     private PendingChoice? _pendingChoice;
     private Exception? _flowError;
-    private string? _executingGroupNodeId;
-    private long _groupExecutionId;
-    private long _nextSequence;
     private readonly object _lifecycleSync = new();
     private readonly List<Task> _backgroundTasks = [];
     private readonly Queue<GameEngineStateChange> _stateChanges = new();
@@ -68,7 +65,9 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         IChoicePresenter? choicePresenter = null,
         ICatchUpPresentation? catchUpPresentation = null)
     {
-        _graph = graph ?? throw new ArgumentNullException(nameof(graph));
+        ArgumentNullException.ThrowIfNull(graph);
+        _navigation = new GameGraphNavigator(graph);
+        _active = new ActivePrimitiveRegistry(OnBlockingCompleted, OnAutoBlockingChanged);
         _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
         _view = view ?? throw new ArgumentNullException(nameof(view));
         _dispatchRuntime = new RunScopedRuntime(_runtime, _scopeCancellation.Token);
@@ -123,15 +122,15 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             if (_pendingChoice is not null || !IsRunning)
                 return IsRunning;
 
-            var blocker = EarliestBlocker();
+            var blocker = _active.EarliestBlocker();
             if (blocker is not null)
             {
-                foreach (var candidate in SkipCandidates(blocker).ToArray())
+                foreach (var candidate in _active.SkipCandidates(blocker).ToArray())
                     candidate.Instance.Skip();
 
                 RemoveCompleted();
                 UpdateLastStableSnapshot();
-                if (HasBlockingInstance())
+                if (_active.HasBlockingInstance())
                     return true;
             }
 
@@ -208,7 +207,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             _scopeCancellation = new CancellationTokenSource();
             _dispatchRuntime = new RunScopedRuntime(_runtime, _scopeCancellation.Token);
             _lastStableSnapshot = _runtime.CreateSnapshot();
-            _executingGroupNodeId = null;
+            _active.EndGroup();
             _flowError = null;
             IsRunning = true;
             _started = false;
@@ -297,7 +296,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
 
     private void ContinueUntilBlocked()
     {
-        while (IsRunning && _pendingChoice is null && !HasBlockingInstance() && !_catchUpStopAtBoundary)
+        while (IsRunning && _pendingChoice is null && !_active.HasBlockingInstance() && !_catchUpStopAtBoundary)
         {
             if (_catchUpActive && --_catchUpBudget < 0) break;
             _scopeCancellation.Token.ThrowIfCancellationRequested();
@@ -307,7 +306,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
                 break;
             }
 
-            var node = _graph.Nodes.Find(candidate => candidate.Id == _runtime.CurrentNodeId);
+            var node = _navigation.FindNode(_runtime.CurrentNodeId);
             if (node is null)
             {
                 IsRunning = false;
@@ -336,8 +335,8 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
 
     private void ProcessGroup(Group group)
     {
-        BeginGroupExecution(group);
-        while (_runtime.EntryIndex < group.Entries.Count && !HasBlockingInstance())
+        _active.BeginGroupExecution(group.Id);
+        while (_runtime.EntryIndex < group.Entries.Count && !_active.HasBlockingInstance())
         {
             if (_catchUpActive && --_catchUpBudget < 0) return;
             _scopeCancellation.Token.ThrowIfCancellationRequested();
@@ -359,11 +358,11 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             UpdateLastStableSnapshot();
         }
 
-        if (_runtime.EntryIndex < group.Entries.Count || HasBlockingInstance())
+        if (_runtime.EntryIndex < group.Entries.Count || _active.HasBlockingInstance())
             return;
 
         _runtime.SetEntryIndex(0);
-        _executingGroupNodeId = null;
+        _active.EndGroup();
         MoveToNext();
         RemoveCompleted();
         UpdateLastStableSnapshot();
@@ -388,11 +387,8 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
 
     private void Track(PrimitiveInstance instance, string groupId, PrimitiveEntry entry, bool wasRead)
     {
-        var active = new ActivePrimitive(_groupExecutionId, ++_nextSequence, instance, groupId, entry.StableId, wasRead,
+        var active = _active.Track(instance, groupId, entry.StableId, wasRead,
             _view.TryGetEntry(entry.Type, out var definition) && definition!.IsReading);
-        _active.Add(active);
-        instance.Completed += OnBlockingCompleted;
-        instance.AutoBlockingChanged += OnAutoBlockingChanged;
         if (instance.IsBlocking && !instance.IsCompleted) _advanceBoundary = true;
         ReconcileAutoBlocker(active);
     }
@@ -538,7 +534,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             var wasBlocking = instance.IsBlocking;
             RemoveCompleted();
             UpdateLastStableSnapshot();
-            if (_pendingChoice is null && !HasBlockingInstance() && wasBlocking && _playbackMode == PlaybackMode.Manual && !_catchUpActive)
+            if (_pendingChoice is null && !_active.HasBlockingInstance() && wasBlocking && _playbackMode == PlaybackMode.Manual && !_catchUpActive)
             {
                 _advanceBoundary = false;
                 ContinueUntilBlocked();
@@ -608,84 +604,27 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         }
     }
 
-    private IEnumerable<ActivePrimitive> SkipCandidates(ActivePrimitive blocker)
-    {
-        if (blocker.Instance.BatchId is null)
-        {
-            if (!blocker.Instance.IsCompleted && blocker.Instance.IsSkippable)
-                yield return blocker;
-            yield break;
-        }
-
-        foreach (var item in _active.OrderBy(item => item.Sequence))
-            if (item.GroupExecutionId == blocker.GroupExecutionId &&
-                string.Equals(item.Instance.BatchId, blocker.Instance.BatchId, StringComparison.Ordinal) &&
-                !item.Instance.IsCompleted && item.Instance.IsSkippable)
-                yield return item;
-    }
-
-    private ActivePrimitive? EarliestBlocker() => _active
-        .Where(item => item.Instance.IsBlocking && !item.Instance.IsCompleted)
-        .OrderBy(item => item.Sequence)
-        .FirstOrDefault();
-
-    private bool HasBlockingInstance() => _active.Any(item =>
-        item.Instance.IsBlocking && !item.Instance.IsCompleted);
-
-    private void RemoveCompleted()
-    {
-        for (var index = _active.Count - 1; index >= 0; index--)
-        {
-            var item = _active[index];
-            ReconcileAutoBlocker(item);
-            if (!item.Instance.IsCompleted)
-                continue;
-            // Completed asynchronous work may have failed before its logical completion.
-            // Surface that failure through the same engine fault path as synchronous dispatch.
-            if (item.Instance.PresentationCompletion.IsFaulted)
-                item.Instance.PresentationCompletion.GetAwaiter().GetResult();
-            item.Instance.Completed -= OnBlockingCompleted;
-            item.Instance.AutoBlockingChanged -= OnAutoBlockingChanged;
-            _autoBlockers.Remove(item.Instance);
-            _active.RemoveAt(index);
-        }
-    }
+    private void RemoveCompleted() => _active.RemoveCompleted(ReconcileAutoBlocker, instance => _autoBlockers.Remove(instance));
 
     private void ClearActive()
     {
-        foreach (var item in _active)
-        {
-            item.Instance.Completed -= OnBlockingCompleted;
-            item.Instance.AutoBlockingChanged -= OnAutoBlockingChanged;
-        }
         _active.Clear();
         _autoBlockers.Clear();
         CancelPlaybackTimer();
     }
 
-    private void BeginGroupExecution(Group group)
-    {
-        if (string.Equals(_executingGroupNodeId, group.Id, StringComparison.Ordinal))
-            return;
-        _executingGroupNodeId = group.Id;
-        _groupExecutionId++;
-    }
-
     private void JumpFrom(string nodeId, int outlet)
     {
-        var edge = _graph.Edges.Find(candidate =>
-            candidate.FromNodeId == nodeId && candidate.FromOutlet == outlet);
-        if (edge is null)
-            IsRunning = false;
-        else
-            _runtime.JumpTo(edge.ToNodeId);
+        var target = _navigation.FindTarget(nodeId, outlet);
+        if (target is null) IsRunning = false;
+        else _runtime.JumpTo(target);
     }
 
     private void MoveToNext() => JumpFrom(_runtime.CurrentNodeId, 0);
 
     private void UpdateLastStableSnapshot()
     {
-        if (HasBlockingInstance() || _pendingChoice is not null)
+        if (_active.HasBlockingInstance() || _pendingChoice is not null)
             return;
         _lastStableSnapshot = _runtime.CreateSnapshot();
         CheckpointCreated?.Invoke(SnapshotCopy.Clone(_lastStableSnapshot));
@@ -708,18 +647,6 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
     }
 
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
-
-    private sealed record ActivePrimitive(
-        long GroupExecutionId,
-        long Sequence,
-        PrimitiveInstance Instance,
-        string GroupId,
-        string StableId,
-        bool WasRead,
-        bool IsReading)
-    {
-        public bool ReadMarked { get; set; }
-    }
 
     private sealed record VisibleChoice(int Outlet, string Text, string Condition);
 

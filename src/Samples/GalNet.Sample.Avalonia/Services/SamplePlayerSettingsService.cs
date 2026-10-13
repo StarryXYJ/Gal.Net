@@ -1,10 +1,10 @@
-using GalNet.Runtime.Variables;
 using DynamicLocalization.Core;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Settings;
 using GalNet.Core.Variable;
+using GalNet.Runtime.Variables;
 
 namespace GalNet.Sample.Avalonia.Services;
 

@@ -67,6 +67,13 @@ public class FileGameProgressServiceTests
         Assert.That(restored.IsRead("chapter", "line"), Is.True);
     }
 
+    [TestCase(0d), TestCase(-1d), TestCase(.5d), TestCase(4294967295d)]
+    public void InvalidFlushIntervalsAreRejectedBeforeStartingPersistence(double milliseconds)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new FileGameProgressService(_directory, TimeSpan.FromMilliseconds(milliseconds)));
+        Assert.That(Directory.GetFiles(_directory), Is.Empty);
+    }
+
     [Test]
     public void PreviousFormatIsRejectedWithoutChangingPlayerData()
     {

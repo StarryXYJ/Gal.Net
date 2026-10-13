@@ -1,5 +1,5 @@
-using GalNet.Assets.Provider;
 using GalNet.Assets;
+using GalNet.Assets.Provider;
 
 namespace GeneralTest.Assets;
 

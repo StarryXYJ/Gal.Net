@@ -1,5 +1,5 @@
-using GalNet.Runtime.Variables;
 using GalNet.Core.Variable;
+using GalNet.Runtime.Variables;
 
 namespace GalNet.Sample.Avalonia.Services;
 

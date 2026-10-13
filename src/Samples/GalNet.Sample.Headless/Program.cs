@@ -1,4 +1,3 @@
-using GalNet.Runtime.Variables;
 using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
 using GalNet.Core.Settings;
@@ -7,6 +6,7 @@ using GalNet.Primitives.Builtins;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Persistence;
 using GalNet.Runtime.Runtime;
+using GalNet.Runtime.Variables;
 using GalNet.Sample.Headless;
 using GalNet.Sample.Localization;
 using GalNet.Storage.FileSystem;

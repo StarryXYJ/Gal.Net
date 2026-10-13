@@ -105,3 +105,5 @@ Integration 测试只承载必须联合多个外层实现的场景；单一生�
 Runtime 的 GraphLoader/GalgroupLoader/SaveManager 仅解析和序列化内容；文件路径和 I/O 由外层内容 provider、宿主和 ISaveService 实现处理。
 
 Builtins 的 PersistentSceneReplaySession 拥有重放 continuation；宿主在执行 view 和平台 presenter 释放前异步释放该会话。Suspend 等待取消后仍保留旧实例，下一次重放或释放会继续等待真实展示清理。
+
+运行与宿主资源的依赖及生命周期依据见 [runtime-resource-ownership](../design/runtime-resource-ownership.md)，包括 GameView 对 Assets 的媒体 adapter 默认实现依赖。

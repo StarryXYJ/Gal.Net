@@ -20,7 +20,8 @@ public sealed class FileGameProgressService : IGameProgressService, IDisposable,
     public FileGameProgressService(string profileDirectory, TimeSpan? flushInterval = null)
     {
         var interval = flushInterval ?? TimeSpan.FromSeconds(2);
-        if (interval <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(flushInterval));
+        if (interval.TotalMilliseconds < 1 || interval.TotalMilliseconds > uint.MaxValue - 1)
+            throw new ArgumentOutOfRangeException(nameof(flushInterval));
         _path = Path.Combine(profileDirectory, "progress.json");
         var data = File.Exists(_path)
             ? JsonSerializer.Deserialize<ProgressData>(File.ReadAllText(_path))

@@ -1,9 +1,9 @@
-using GalNet.Runtime.Variables;
 using Avalonia.Controls;
 using DynamicLocalization.Core;
 using DynamicLocalization.Core.Providers;
 using GalNet.Core.Variable;
 using GalNet.Runtime.Persistence;
+using GalNet.Runtime.Variables;
 using GalNet.Sample.Avalonia.Services;
 using GalNet.Sample.Avalonia.ViewModels;
 using GalNet.Sample.Avalonia.Views;
