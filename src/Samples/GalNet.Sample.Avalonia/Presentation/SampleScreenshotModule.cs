@@ -15,24 +15,33 @@ public sealed class SampleScreenshotModule : PrimitiveModule
     private Task? _disposeTask;
     public SampleScreenshotModule(GamePage page, Func<string> outputDirectory) : this(page, outputDirectory, new Lifetime()) { }
     private SampleScreenshotModule(GamePage page, Func<string> outputDirectory, Lifetime lifetime) : base(
-        [new PrimitiveImplementation(ScreenshotSchema.TypeId, context =>
-        {
-            ObjectDisposedException.ThrowIf(Volatile.Read(ref lifetime.Cancelled) != 0, lifetime);
-            var instance = new ScreenshotPrimitiveInstance(page, outputDirectory,
-                context.Arguments.TryGetProperty("fileName", out var name) ? name.GetString() : null, context.BatchId, context.ScopeCancellation, lifetime.Cancellation.Token);
-            lifetime.Completions.Add(instance.PresentationCompletion);
-            return instance;
-        })]) => _lifetime = lifetime;
+    [
+            new PrimitiveImplementation(ScreenshotSchema.TypeId, context =>
+            {
+                ObjectDisposedException.ThrowIf(Volatile.Read(ref lifetime.Cancelled) != 0, lifetime);
+
+                var instance = new ScreenshotPrimitiveInstance(page, outputDirectory,
+                    context.Arguments.TryGetProperty("fileName", out var name) ? name.GetString() : null,
+                    context.BatchId, context.ScopeCancellation, lifetime.Cancellation.Token);
+                lifetime.Completions.Add(instance.PresentationCompletion);
+                return instance;
+            })
+        ]
+        )
+        => _lifetime = lifetime;
+
     public override void Dispose()
     {
         if (Interlocked.Exchange(ref _lifetime.Cancelled, 1) == 0) _lifetime.Cancellation.Cancel();
         base.Dispose();
     }
+
     public override async ValueTask DisposeAsync()
     {
         await (_disposeTask ??= DisposeCoreAsync()).ConfigureAwait(false);
         await base.DisposeAsync().ConfigureAwait(false);
     }
+
     private async Task DisposeCoreAsync()
     {
         Dispose();
@@ -41,6 +50,7 @@ public sealed class SampleScreenshotModule : PrimitiveModule
         catch (Exception exception) { GameLog.Logger.Error(exception, "Screenshot presentation failed while draining the module."); }
         finally { _lifetime.Cancellation.Dispose(); }
     }
+
     private sealed class Lifetime
     {
         public CancellationTokenSource Cancellation { get; } = new();

@@ -19,6 +19,7 @@ public sealed class GameLocalizationProvider : ITextResolver, ILocalizationProvi
         foreach (var provider in bootstrapProviders ?? [])
             foreach (var culture in provider.GetAvailableCultures())
                 sources.Add(Adapt(provider, culture));
+
         foreach (var source in content.Localization.Sources.Concat(content.Localization.ExternalSources).Concat(additionalSources ?? []))
         {
             // LoadJsonString replaces a culture's dictionary, so each file needs its own provider.

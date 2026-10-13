@@ -465,3 +465,4 @@ dev/*
 .galnet/
 GameTestCase/Output/
 GameTestCase/Output-new/
+Temp/

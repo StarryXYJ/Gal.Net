@@ -7,5 +7,7 @@ namespace GalNet.Project.Contracts;
 public static class ProjectSchemas
 {
     public static IReadOnlyList<IEntryModule> Modules { get; } = Array.AsReadOnly(
-        BuiltinSchemas.CreateAllModules().Append(ScreenshotSchema.CreateModule()).ToArray());
+        BuiltinSchemas.CreateAllModules()
+            .Append(ScreenshotSchema.CreateModule())
+            .ToArray());
 }
