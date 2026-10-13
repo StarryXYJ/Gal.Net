@@ -9,6 +9,7 @@ using GalNet.Primitives.Builtins;
 using GalNet.Rendering.Scene;
 using GalNet.Runtime.Logging;
 using GalNet.Sample.Avalonia.Presentation;
+using LibVLCSharp.Shared;
 
 namespace GalNet.Sample.Avalonia.Services;
 
@@ -32,7 +33,7 @@ internal sealed class SampleGamePresentation : IAsyncDisposable, ICatchUpPresent
 
     public static async Task<SampleGamePresentation> CreateAsync(
         GamePageViewModel gameplay, GamePage page, SampleGameResourceScope resources,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, LibVLC? sharedLibVlc = null)
     {
         var presentation = new SampleGamePresentation();
         presentation._gameplay = gameplay;
@@ -47,9 +48,11 @@ internal sealed class SampleGamePresentation : IAsyncDisposable, ICatchUpPresent
                 "Preloaded {UsableEffectProgramCount}/{EffectProgramCount} effect programs in {ElapsedMilliseconds} ms",
                 preload.UsableProgramCount, preload.RequestedProgramCount, preload.Cache.TotalLoadTime.TotalMilliseconds);
             presentation.Effects = new AvaloniaEffectRuntime(gameplay, presentation._programs);
-            presentation.Audio = new AvaloniaAudioPlaybackHost(resources.Assets, files: resources.MediaFiles);
+            presentation.Audio = new AvaloniaAudioPlaybackHost(resources.Assets, files: resources.MediaFiles,
+                sharedLibVlc: sharedLibVlc);
             presentation.AudioModule = new BuiltinAudioModule(presentation.Audio);
-            presentation.Video = new AvaloniaVideoPresenter(resources.Assets, gameplay, files: resources.MediaFiles);
+            presentation.Video = new AvaloniaVideoPresenter(resources.Assets, gameplay, files: resources.MediaFiles,
+                sharedLibVlc: sharedLibVlc);
             var presenters = presentation.Presenters;
             using var registration = new GameRegistration();
             foreach (var module in GalNet.Project.Contracts.ProjectSchemas.Modules) registration.RegisterSchema(module);

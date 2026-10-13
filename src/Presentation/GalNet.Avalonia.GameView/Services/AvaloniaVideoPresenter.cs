@@ -22,6 +22,7 @@ public sealed class AvaloniaVideoPresenter : IVideoPresenter, IDisposable, IAsyn
     private readonly GamePageViewModel _state;
     private readonly IAvaloniaUiDispatcher _dispatcher;
     private readonly LibVLC? _vlc;
+    private readonly bool _ownsVlc;
     private readonly string? _initializationError;
     private readonly CancellationTokenSource _lifetime = new();
     private bool _disposed;
@@ -29,18 +30,25 @@ public sealed class AvaloniaVideoPresenter : IVideoPresenter, IDisposable, IAsyn
     private readonly TaskCompletionSource _drained = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private Task? _releaseTask;
 
-    public AvaloniaVideoPresenter(IAssetManager assets, GamePageViewModel state, IAvaloniaUiDispatcher? dispatcher = null, IAssetFileMaterializer? files = null)
+    public AvaloniaVideoPresenter(IAssetManager assets, GamePageViewModel state, IAvaloniaUiDispatcher? dispatcher = null,
+        IAssetFileMaterializer? files = null, LibVLC? sharedLibVlc = null)
     {
         _files = files ?? new AssetFileMaterializer(assets);
         _ownsFiles = files is null;
+        _ownsVlc = sharedLibVlc is null;
         _state = state;
         _dispatcher = dispatcher ?? AvaloniaUiDispatcher.Instance;
-        try
+        if (sharedLibVlc is not null)
+            _vlc = sharedLibVlc;
+        else
         {
-            LibVLCSharp.Shared.Core.Initialize();
-            _vlc = new LibVLC("--no-video-title-show", "--avcodec-hw=none");
+            try
+            {
+                LibVLCSharp.Shared.Core.Initialize();
+                _vlc = new LibVLC("--no-video-title-show", "--avcodec-hw=none");
+            }
+            catch (Exception error) { _initializationError = error.Message; }
         }
-        catch (Exception error) { _initializationError = error.Message; }
     }
 
     public async Task PlayVideoAsync(VideoRenderRequest request, CancellationToken cancellationToken)
@@ -162,7 +170,7 @@ public sealed class AvaloniaVideoPresenter : IVideoPresenter, IDisposable, IAsyn
     private async Task ReleaseAsync()
     {
         await _drained.Task.ConfigureAwait(false);
-        _vlc?.Dispose();
+        if (_ownsVlc) _vlc?.Dispose();
         _lifetime.Dispose();
         if (_ownsFiles) await _files.DisposeAsync().ConfigureAwait(false);
     }

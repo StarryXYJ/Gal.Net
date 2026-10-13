@@ -46,6 +46,7 @@ public partial class App : Application
             var services = new ServiceCollection();
             services.AddAvaloniaGameViewPages(theme: PlayerTheme)
                 .AddSingleton(_ => CreateLocalizationService())
+                .AddSingleton<SampleLibVlcRuntime>()
                 .AddScoped<SamplePlayerSettingsService>()
                 .AddScoped<SampleStartupService>()
                 .AddScoped<LanguageSelectionViewModel>()

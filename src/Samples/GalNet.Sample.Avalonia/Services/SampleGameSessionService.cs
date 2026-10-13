@@ -21,6 +21,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private readonly SamplePlayerSettingsService _settings;
     private readonly SampleLocalizationService _localization;
     private readonly SampleStartupService _startup;
+    private readonly SampleLibVlcRuntime _mediaRuntime;
     private readonly IResourceTypeCatalog _resourceTypes;
     private readonly IGalleryTypeCatalog _galleryTypes;
     private readonly ObservableCollection<GameSaveSlot> _saveSlots = [];
@@ -32,13 +33,14 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private bool _disposed;
 
     public SampleGameSessionService(GamePageViewModel gameplay, GamePage page, SamplePlayerSettingsService settings,
-        SampleLocalizationService localization, SampleStartupService startup)
+        SampleLocalizationService localization, SampleStartupService startup, SampleLibVlcRuntime mediaRuntime)
     {
         _gameplay = gameplay;
         _page = page;
         _settings = settings;
         _localization = localization;
         _startup = startup;
+        _mediaRuntime = mediaRuntime;
         _resourceTypes = BuiltinResourceTypes.CreateCatalog();
         _galleryTypes = BuiltinGalleryTypes.CreateCatalog(_resourceTypes);
         _readOnlySaveSlots = new ReadOnlyObservableCollection<GameSaveSlot>(_saveSlots);
@@ -350,6 +352,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             saveSession,
             _settings,
             _localization,
+            _mediaRuntime.Instance,
             UpdateRunnerStateAsync,
             () => RefreshSlotsAsync(CancellationToken.None),
             ResetScenePresentationAsync,

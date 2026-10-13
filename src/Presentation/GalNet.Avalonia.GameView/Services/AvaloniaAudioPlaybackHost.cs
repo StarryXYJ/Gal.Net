@@ -26,25 +26,37 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost, IAsyncDispos
     private Task? _disposeTask;
     private readonly AvaloniaAudioSEffectRegistry _effects;
     private readonly LibVLC? _libVlc;
+    private readonly bool _ownsLibVlc;
     private bool _disposed;
 
-    public AvaloniaAudioPlaybackHost(IAssetManager assets, IEnumerable<IAudioSEffectProcessor>? effectProcessors = null, IAssetFileMaterializer? files = null)
+    public AvaloniaAudioPlaybackHost(IAssetManager assets, IEnumerable<IAudioSEffectProcessor>? effectProcessors = null,
+        IAssetFileMaterializer? files = null, LibVLC? sharedLibVlc = null)
     {
         _files = files ?? new AssetFileMaterializer(assets);
         _ownsFiles = files is null;
+        _ownsLibVlc = sharedLibVlc is null;
         _effects = new AvaloniaAudioSEffectRegistry(AvaloniaAudioSEffectRegistry.DefaultProcessors.Concat(effectProcessors ?? []));
-        try
+        if (sharedLibVlc is not null)
         {
-            LibVLCSharp.Shared.Core.Initialize();
-            _libVlc = new LibVLC("--no-video-title-show");
+            _libVlc = sharedLibVlc;
             Capabilities = new(true, true, true);
             SEffects = _effects.Catalog;
         }
-        catch (Exception exception)
+        else
         {
-            InitializationError = exception.Message;
-            Capabilities = AudioBackendCapabilities.None;
-            SEffects = SEffectCatalog.Empty;
+            try
+            {
+                LibVLCSharp.Shared.Core.Initialize();
+                _libVlc = new LibVLC("--no-video-title-show");
+                Capabilities = new(true, true, true);
+                SEffects = _effects.Catalog;
+            }
+            catch (Exception exception)
+            {
+                InitializationError = exception.Message;
+                Capabilities = AudioBackendCapabilities.None;
+                SEffects = SEffectCatalog.Empty;
+            }
         }
         _terminalWorker = Task.Run(DrainTerminalEventsAsync);
     }
@@ -109,7 +121,7 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost, IAsyncDispos
         {
             foreach (var lease in _paths.Values) lease.Dispose();
             _paths.Clear();
-            _libVlc?.Dispose();
+            if (_ownsLibVlc) _libVlc?.Dispose();
             _materialization.Dispose();
             _shutdown.Dispose();
             if (_ownsFiles) await _files.DisposeAsync().ConfigureAwait(false);

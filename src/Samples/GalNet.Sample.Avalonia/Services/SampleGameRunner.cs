@@ -7,6 +7,7 @@ using GalNet.Primitives.Builtins;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Logging;
 using GalNet.Runtime.Runtime;
+using LibVLCSharp.Shared;
 
 namespace GalNet.Sample.Avalonia.Services;
 
@@ -49,11 +50,12 @@ internal sealed class SampleGameRunner : IAsyncDisposable
 
     public static async Task<SampleGameRunner> CreateAsync(
         GamePageViewModel gameplay, GamePage page, SampleGameResourceScope resources,
-        SampleSaveSession saveSession, SamplePlayerSettingsService playerSettings, ITextResolver textResolver, Func<bool, string?, Task> updateStateAsync,
+        SampleSaveSession saveSession, SamplePlayerSettingsService playerSettings, ITextResolver textResolver,
+        LibVLC? sharedLibVlc, Func<bool, string?, Task> updateStateAsync,
         Func<Task> runCompletedAsync, Func<Task> resetPresentationAsync,
         Func<Action, Task> onUiAsync, CancellationToken cancellationToken)
     {
-        var presentation = await SampleGamePresentation.CreateAsync(gameplay, page, resources, cancellationToken);
+        var presentation = await SampleGamePresentation.CreateAsync(gameplay, page, resources, cancellationToken, sharedLibVlc);
         GameEngine? engine = null;
         try
         {
