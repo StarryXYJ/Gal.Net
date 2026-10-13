@@ -1,3 +1,4 @@
+using GalNet.Primitives.Builtins;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Runtime;
@@ -16,7 +17,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
     private readonly GameEngine _engine;
     private readonly SampleGamePresentation _presentation;
     private readonly SamplePlayerSettingsService _playerSettings;
-    private readonly PersistentSceneRestorer _restorer;
+    private readonly PersistentSceneReplaySession _restorer;
     private readonly Func<bool, string?, Task> _updateStateAsync;
     private readonly Func<Task> _runCompletedAsync;
     private readonly Func<Task> _resetPresentationAsync;

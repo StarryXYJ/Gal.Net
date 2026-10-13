@@ -28,7 +28,7 @@ internal sealed class SampleGamePresentation : IAsyncDisposable, ICatchUpPresent
     public AvaloniaVideoPresenter Video { get; private set; } = null!;
     public CompositeGameView View { get; private set; } = null!;
     public BuiltinAudioModule AudioModule { get; private set; } = null!;
-    public PersistentSceneRestorer Restorer { get; private set; } = null!;
+    public PersistentSceneReplaySession Restorer { get; private set; } = null!;
 
     public static async Task<SampleGamePresentation> CreateAsync(
         GamePageViewModel gameplay, GamePage page, SampleGameResourceScope resources,
@@ -61,7 +61,7 @@ internal sealed class SampleGamePresentation : IAsyncDisposable, ICatchUpPresent
                 () => SampleScreenshotOutput.GetHostDirectory(resources.Content.Graph.Name)));
             presentation.View = registration.BuildView();
             presentation.View.RequireInstructions(resources.Content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>().SelectMany(group => group.Entries).Select(entry => entry.Type));
-            presentation.Restorer = new PersistentSceneRestorer(presentation.Effects, presenters.ParticlePresenter,
+            presentation.Restorer = new PersistentSceneReplaySession(presentation.Effects, presenters.ParticlePresenter,
                 presenters.AnimationPresenter, presenters.LayerPresenter, presentation.Video);
             return presentation;
         }
@@ -100,6 +100,7 @@ internal sealed class SampleGamePresentation : IAsyncDisposable, ICatchUpPresent
     {
         List<Exception>? errors = null;
         // Implementations borrow platform ports, so release the view first.
+        await ReleaseAsync(() => Restorer?.DisposeAsync() ?? ValueTask.CompletedTask);
         await ReleaseAsync(() => View?.DisposeAsync() ?? ValueTask.CompletedTask);
         await ReleaseAsync(() => Video?.DisposeAsync() ?? ValueTask.CompletedTask);
         await ReleaseAsync(() => Audio?.DisposeAsync() ?? ValueTask.CompletedTask);

@@ -3,11 +3,10 @@ using GalNet.Core.Scene;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
 using GalNet.Runtime.Runtime;
-using GalNet.Sample.Avalonia.Services;
 
-namespace GalNet.IntegrationTests;
+namespace GeneralTest.Runtime;
 
-public sealed class PersistentSceneRestorerTests
+public sealed class PersistentSceneReplaySessionTests
 {
     [TestCase(false)]
     [TestCase(true)]
@@ -22,7 +21,7 @@ public sealed class PersistentSceneRestorerTests
                 new AnimationRequest { PlaybackHandleId = "loop", HandleId = "hero", Property = "opacity", From = .5f, To = 1, DurationSeconds = 1, LoopMode = AnimationLoopMode.Loop }, null, CancellationToken.None);
         definition.Dispatch(PrimitiveInvocationMode.CatchUp);
         var animations = new DelayedAnimationPresenter();
-        var restorer = new PersistentSceneRestorer(null, null!, animations, null!);
+        await using var restorer = new PersistentSceneReplaySession(null, null!, animations, null!);
         using var scope = new CancellationTokenSource();
         await restorer.RestoreAsync(runtime, scope.Token);
 
@@ -44,7 +43,7 @@ public sealed class PersistentSceneRestorerTests
         var runtime = new GameRuntime(null);
         runtime.SceneInstances.GetOrAdd("video", id => new Layer { Id = id, AssetId = "clip", IsVideo = true });
         var video = new DelayedVideoPresenter();
-        var restorer = new PersistentSceneRestorer(null, null!, null!, null!, video);
+        await using var restorer = new PersistentSceneReplaySession(null, null!, null!, null!, video);
         using var scope = new CancellationTokenSource();
         await restorer.RestoreAsync(runtime, scope.Token);
 
@@ -69,7 +68,7 @@ public sealed class PersistentSceneRestorerTests
         var runtime = new GameRuntime(null);
         runtime.SceneInstances.GetOrAdd("video", id => new Layer { Id = id, AssetId = "clip", IsVideo = true });
         var video = new DelayedVideoPresenter();
-        var restorer = new PersistentSceneRestorer(null, null!, null!, null!, video);
+        await using var restorer = new PersistentSceneReplaySession(null, null!, null!, null!, video);
         using var scope = new CancellationTokenSource();
         await restorer.RestoreAsync(runtime, scope.Token);
         using var canceled = new CancellationTokenSource();
@@ -83,6 +82,23 @@ public sealed class PersistentSceneRestorerTests
         Assert.That(video.Requests, Has.Count.EqualTo(2));
         scope.Cancel();
         await restorer.SuspendAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(2));
+    }
+
+    [Test]
+    public async Task DisposalDrainsPresentationAndRejectsAnotherRestore()
+    {
+        var runtime = new GameRuntime(null);
+        runtime.SceneInstances.GetOrAdd("video", id => new Layer { Id = id, AssetId = "clip", IsVideo = true });
+        var video = new DelayedVideoPresenter();
+        var replay = new PersistentSceneReplaySession(videos: video);
+        await replay.RestoreAsync(runtime);
+        var disposal = replay.DisposeAsync().AsTask();
+        Assert.That(disposal.IsCompleted, Is.False);
+        Assert.That(video.Stops, Is.EqualTo(1));
+        video.Ends[0].TrySetResult();
+        await disposal.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.ThrowsAsync<ObjectDisposedException>(() => replay.RestoreAsync(runtime));
+        await replay.DisposeAsync();
     }
 
     private sealed class DelayedAnimationPresenter : IAnimationPresenter
