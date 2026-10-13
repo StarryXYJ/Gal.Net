@@ -16,6 +16,16 @@ help --search group --json
 
 execute 支持文档操作批次；独立资源文件操作一次只执行一条，不可与文档操作混合。文档 dry-run 在 JSON 的 `dryRun` 设置，文件操作暂不支持 dry-run，传入时在修改文件前明确拒绝。
 
+```text
+project create <directory> --name "Display Name" --contracts <built-contract-directory>
+project create <directory> --contracts <built-contract-directory> --dry-run
+project create <directory>
+```
+
+创建只生成带稳定 ID 的 Entry、空 Opening Group 和基础目录；不虚构可运行剧情。--contracts 接收已经构建好的目录，校验固定入口 DLL 和依赖，再完整复制到新项目 Contracts/。省略该选项时创建空骨架和部署说明，基础查询/结构校验可用，语义校验/编译/Editor 打开仍要求部署契约。目标必须不存在或为空，拒绝链接路径；dry-run 校验契约并返回文件清单，不创建目标或缺失的父目录。结果明确 contractReady 和契约指纹。
+
+Editor 的 CreateAsync 也调用同一创建服务，并要求显式契约目录；打开时读取 Graph 的显示名，目录名仅用于既有路径身份。当前未添加契约目录选择 UI，推荐 CLI 创建后在 Editor 打开。没有旧创建 API 重载或默认内置 DLL。
+
 原始磁盘查询已接入：`files`、`find`、`references`、`project info`、`graph show/nodes/node/edges`、`group list/show/entries` 和 `variables` 不需要契约 DLL，不补 ID、不丢未知字段、不写回。列表返回 total/offset/returned/hasMore/items/complete；可使用 --offset/--limit 显式分页。
 
 ```text

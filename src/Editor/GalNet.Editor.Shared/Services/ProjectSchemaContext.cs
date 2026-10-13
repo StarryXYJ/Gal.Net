@@ -33,9 +33,16 @@ public sealed class ProjectSchemaContext : IDisposable
     public static ProjectSchemaContext Load(string projectDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectDirectory);
-        var path = Path.GetFullPath(Path.Combine(projectDirectory, ContractsDirectory, AssemblyFileName));
+        return LoadContractsDirectory(Path.Combine(projectDirectory, ContractsDirectory));
+    }
+
+    /// <summary>Validates a built contract directory before deployment or project creation.</summary>
+    public static ProjectSchemaContext LoadContractsDirectory(string contractsDirectory)
+    {
+        var path = Path.GetFullPath(Path.Combine(contractsDirectory, AssemblyFileName));
         if (!File.Exists(path))
             throw new FileNotFoundException($"Project entry contract is missing: '{path}'. Build and deploy the project's Contracts project.", path);
+        path = new ProjectRawReader(contractsDirectory).Resolve(AssemblyFileName);
 
         var context = new SchemaLoadContext(path);
         try
@@ -123,6 +130,7 @@ public sealed class ProjectSchemaContext : IDisposable
         // Stream loading avoids locking project files until a nondeterministic GC unload.
         public Assembly LoadManagedAssembly(string path)
         {
+            path = new ProjectRawReader(_directory).Resolve(Path.GetRelativePath(_directory, path));
             using var stream = File.OpenRead(path);
             return LoadFromStream(stream);
         }

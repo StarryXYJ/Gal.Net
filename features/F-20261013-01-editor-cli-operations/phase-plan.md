@@ -95,6 +95,8 @@ Phase 4c 状态：verified。Builtins 64/64、Presentation 注册定向 7/7、Ed
 
 Phase 5a 状态：verified。共享层 124/124（新增 20 项保存/命令验收），Core 70/70、Editor 31/31、架构 29/29。移除 repository 默认图、变量迁移、补 ID 和参数过滤；当前 raw 校验用于加载和待保存 JSON。准备/发布接口由 CLI 与 Editor 共享，dry-run 校验无写入；保留空字符串和稳定 ID、拒绝未知参数/字段及 settings 重复属性。加载后外部文件改变会拒绝保存，成功保存更新基线；Editor repository 只跟踪自己拥有的 Graph/Group，独立 settings 保存不会误阻塞下一次保存，DirectPersistence 单独跟踪 settings。真实 Windows 文件锁使后续 settings 发布失败，已发布 Graph/Group 字节恢复且 temp 清除；取消与非规范路径无发布。Group 删除同步作者文件，连续保存通过。变量声明字段固定 JSON 名称；preview 共用 entry 序列化并保留边/选项/条件 ID 与编译文件引用。恢复是单进程失败恢复，未承诺崩溃安全或跨进程整体原子性。
 
+Phase 5b1 状态：verified。共享层 131/131（新增创建验收 7 项），Editor 32/32（新增真实 DI 创建→关闭→打开验收 1 项）。CLI 和 Editor 共用创建服务；只生成稳定 ID、空 Group 和引导目录，可复制已构建契约的整套文件，缺契约只生成说明并明确 semantic unavailable。真实 CLI 完成 create→添加自定义 Composite→validate→单 Group compile，部分内置未被扩充。dry-run 不创建缺失父目录，非空目标不覆盖，缺 DLL/入口与预取消不留部分项目，支持既有空目录。Editor CreateAsync 显式要求契约目录，打开在通知前校验作者文档并使用 Graph 显示名，移除 settings 变量归一化和重复创建实现。未新增契约选择 UI，推荐 CLI 创建后打开。5b2 的 project rename 与 Group 生命周期路由、5c 回收站仍待完成。
+
 - 目标：补齐项目创建、显示名改名、Group 生命周期工具，复用已有编辑命令与引用检查。
 - 模块：Editor.Shared/Abstraction 命令与持久化、Headless、ProjectService 引导路径。
 - 任务：创建可接收已构建契约目录，空项目生成目录/引导而非虚构可运行；Group 新建/改名/删除同步 Graph 与 Raw 文件；已有写入准确使用项目 schema，不能静默删字段。

@@ -246,7 +246,7 @@ public sealed class EditorWorkspaceViewModelTests
 
         public void SetCurrent(GalProject project) => Current = project;
         public Task<GalProject> OpenAsync(string projectPath) => throw new NotSupportedException();
-        public Task<GalProject> CreateAsync(string projectPath, string name, ProjectSettings settings) => throw new NotSupportedException();
+        public Task<GalProject> CreateAsync(string projectPath, string name, ProjectSettings settings, string contractsDirectory) => throw new NotSupportedException();
         public Task CloseAsync() => Task.CompletedTask;
         public Task SaveAsync() { SaveCount++; return Task.CompletedTask; }
         public IReadOnlyList<RecentProjectInfo> GetRecentProjects() => [];

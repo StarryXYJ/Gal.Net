@@ -35,6 +35,9 @@ public partial class NewProjectPanelViewModel : PageViewModelBase
     [ObservableProperty]
     private string _resolution = "1920×1080";
 
+    [ObservableProperty]
+    private string _contractsDirectory = "";
+
 
     public NewProjectPanelViewModel(
         INavigationService navigation,
@@ -66,7 +69,9 @@ public partial class NewProjectPanelViewModel : PageViewModelBase
             var projectPath = Path.Combine(ProjectRoot, ProjectName);
             if (!TryParseResolution(Resolution, out var width, out var height))
                 throw new InvalidOperationException("Resolution must be in the form width×height.");
-            await _projectService.CreateAsync(projectPath, ProjectName, new ProjectSettings { DefaultWidth = width, DefaultHeight = height });
+            if (string.IsNullOrWhiteSpace(ContractsDirectory))
+                throw new InvalidOperationException("A built project contract directory is required. Create the project with CLI project create --contracts before opening it in Editor.");
+            await _projectService.CreateAsync(projectPath, ProjectName, new ProjectSettings { DefaultWidth = width, DefaultHeight = height }, ContractsDirectory);
             _navigation.NavigateTo(_editorPageFactory.CreateEditorPage());
         }
         catch (Exception ex)

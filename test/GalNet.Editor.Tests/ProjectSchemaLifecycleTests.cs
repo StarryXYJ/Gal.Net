@@ -81,6 +81,22 @@ public sealed class ProjectSchemaLifecycleTests
         await projects.CloseAsync();
     }
 
+    [Test]
+    public async Task Create_UsesSharedCreatorAndProvidedContract_AndOpensGraphDisplayName()
+    {
+        using var services = new ServiceCollection().AddEditorServices().AddSingleton<IEditorSettingsService>(new TestSettings()).BuildServiceProvider();
+        var projects = services.GetRequiredService<IProjectService>();
+        var source = Deploy("SchemaA");
+        var path = Path.Combine(_root, "Created");
+        var project = await projects.CreateAsync(path, "Display Name", new(), Path.Combine(source, "Contracts"));
+        Assert.That(project.Name, Is.EqualTo("Display Name"));
+        Assert.That(project.Id, Is.EqualTo("Created"));
+        Assert.That(project.Services.GetRequiredService<IEntryCatalog>().TryGet("custom.bundle", out _), Is.True);
+        await projects.CloseAsync();
+        Assert.That((await projects.OpenAsync(path)).Name, Is.EqualTo("Display Name"));
+        await projects.CloseAsync();
+    }
+
     private string Deploy(string fixture)
     {
         var directory = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
@@ -94,6 +110,10 @@ public sealed class ProjectSchemaLifecycleTests
         var contracts = Directory.CreateDirectory(Path.Combine(project, "Contracts")).FullName;
         foreach (var file in Directory.GetFiles(Path.Combine(directory.FullName, "test", "Fixtures", fixture, "bin", configuration, "net10.0")))
             File.Copy(file, Path.Combine(contracts, Path.GetFileName(file)));
+        Directory.CreateDirectory(Path.Combine(project, "Graph"));
+        File.WriteAllText(Path.Combine(project, "settings.json"), "{}");
+        File.WriteAllText(Path.Combine(project, "Graph/graph.json"),
+            """{"version":2,"name":"Fixture","rootNodeId":"","nodes":[],"edges":[],"playerVariables":[],"saveVariables":[]}""");
         return project;
     }
     private sealed class TestSettings : IEditorSettingsService

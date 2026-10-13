@@ -22,7 +22,7 @@ public interface IProjectService
     Task<GalProject> OpenAsync(string projectPath);
 
     /// <summary>新建项目</summary>
-    Task<GalProject> CreateAsync(string projectPath, string name, ProjectSettings settings);
+    Task<GalProject> CreateAsync(string projectPath, string name, ProjectSettings settings, string contractsDirectory);
 
     /// <summary>关闭当前项目（含脏检查）</summary>
     Task CloseAsync();

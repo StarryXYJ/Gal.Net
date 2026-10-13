@@ -38,8 +38,9 @@ public sealed class ToolOperationCatalog
                  new("--search", "string", "Search operation ID, command path and description.")],
                 requiresProject: false),
             Route("project.info", "project info", "Shows raw project settings, graph and Group counts without modifying files.", Project()),
-            Route("project.create", "project create", "Creates an editable project using the current built-in starter content.",
-                Project(new CliParameter("--name", "string", "Project display name.")), readOnly: false),
+            Route("project.create", "project create", "Creates an empty author project, optionally deploying a validated contract directory. Without a contract, semantic operations remain unavailable.",
+                Project(new CliParameter("--name", "string", "Project display name."), new("--contracts", "string", "Built contract directory containing GalNet.Project.Contracts.dll and managed dependencies."),
+                    new("--dry-run", "boolean", "Validate inputs and report files without creating directories or files.", Default: false)), readOnly: false, requiresProject: false, dryRun: true),
             Route("files", "files", "Lists author files with intersection filters (each option once). Globs support *, ** and ? against project-relative paths; explicit --root can include Contracts/Output.",
                 Query(new CliParameter("--root", "string", "Relative directory to scan recursively."), new("--glob", "string", "Project-relative glob pattern."),
                     new("--extension", "string", "File extension, with or without dot."), new("--kind", "string", "File kind.", Enum: ["graph", "settings", "rawgroup", "compiledgroup", "metadata", "resource", "localization", "other"]))),
@@ -120,6 +121,7 @@ public sealed class ToolOperationCatalog
     {
         Type? dataType = operation.OperationId switch
         {
+            "project.create" => typeof(ProjectCreateReport),
             "files" => typeof(QueryPage<ProjectFileItem>),
             "find" or "graph.nodes" or "graph.node" or "graph.edges" or "group.entries" or "variables" => typeof(QueryPage<ProjectObjectItem>),
             "group.list" => typeof(QueryPage<ProjectGroupItem>),

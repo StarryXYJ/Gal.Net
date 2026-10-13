@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
@@ -43,11 +42,9 @@ internal static class Program
 
             if (args[0].Equals("project.create", StringComparison.OrdinalIgnoreCase))
             {
-                if (args.Length < 2) return Fail("create requires a project path.");
-                var nameIndex = Array.IndexOf(args, "--name");
-                var name = nameIndex >= 0 && nameIndex + 1 < args.Length ? args[nameIndex + 1] : null;
-                await EditorProjectCreator.CreateAsync(args[1], new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()), name);
-                WriteJson(new { success = true, projectPath = Path.GetFullPath(args[1]), name });
+                var result = await EditorProjectCreator.CreateAsync(new(invocation.Positionals[0], invocation.Get("--name"),
+                    invocation.Get("--contracts"), invocation.Has("--dry-run")));
+                WriteJson(result);
                 return 0;
             }
             if (args.Length < 2) return Fail("A project path is required.");

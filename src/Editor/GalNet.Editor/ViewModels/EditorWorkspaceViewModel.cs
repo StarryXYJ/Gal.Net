@@ -415,7 +415,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         finally { _isSaving = false; }
     }
 
-    public async Task CreateProjectAsync(string name, string path)
+    public async Task CreateProjectAsync(string name, string path, string contractsDirectory)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new InvalidOperationException("Project name is required.");
@@ -424,7 +424,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
             throw new InvalidOperationException("Project path is required.");
 
         var projectPath = Path.Combine(path, name);
-        await _projectService.CreateAsync(projectPath, name, new ProjectSettings());
+        await _projectService.CreateAsync(projectPath, name, new ProjectSettings(), contractsDirectory);
         StatusText = $"Created project {name}";
         Log.Information("Project created from startup page: {Name} at {Path}", name, projectPath);
     }
