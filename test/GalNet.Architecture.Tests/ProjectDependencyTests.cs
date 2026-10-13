@@ -32,7 +32,7 @@ public class ProjectDependencyTests
             ["GalNet.Avalonia.GameView"] =
             [
                 "GalNet.Avalonia.Controls", "GalNet.Avalonia.Rendering",
-                "GalNet.Presentation.Abstractions", "GalNet.Core"
+                "GalNet.Presentation.Abstractions", "GalNet.Core", "GalNet.Assets"
             ],
             ["GalNet.Avalonia.Rendering"] = ["GalNet.Core"]
         };

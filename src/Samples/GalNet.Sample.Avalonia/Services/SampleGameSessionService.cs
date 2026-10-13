@@ -90,7 +90,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
                     profileDirectory,
                     resources.Content,
                     resources.Assets,
-                    cancellationToken);
+                    cancellationToken, resources.MediaFiles);
             }
             catch
             {

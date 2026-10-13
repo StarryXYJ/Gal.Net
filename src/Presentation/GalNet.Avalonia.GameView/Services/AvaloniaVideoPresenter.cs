@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using Avalonia;
+using GalNet.Assets;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Assets;
@@ -16,7 +17,8 @@ public sealed class AvaloniaVideoPresenter : IVideoPresenter, IDisposable, IAsyn
 {
     private readonly object _gate = new();
     private readonly Dictionary<string, Playback> _playbacks = new(StringComparer.Ordinal);
-    private readonly IAssetManager _assets;
+    private readonly IAssetFileMaterializer _files;
+    private readonly bool _ownsFiles;
     private readonly GamePageViewModel _state;
     private readonly IAvaloniaUiDispatcher _dispatcher;
     private readonly LibVLC? _vlc;
@@ -27,9 +29,10 @@ public sealed class AvaloniaVideoPresenter : IVideoPresenter, IDisposable, IAsyn
     private readonly TaskCompletionSource _drained = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private Task? _releaseTask;
 
-    public AvaloniaVideoPresenter(IAssetManager assets, GamePageViewModel state, IAvaloniaUiDispatcher? dispatcher = null)
+    public AvaloniaVideoPresenter(IAssetManager assets, GamePageViewModel state, IAvaloniaUiDispatcher? dispatcher = null, IAssetFileMaterializer? files = null)
     {
-        _assets = assets;
+        _files = files ?? new AssetFileMaterializer(assets);
+        _ownsFiles = files is null;
         _state = state;
         _dispatcher = dispatcher ?? AvaloniaUiDispatcher.Instance;
         try
@@ -52,7 +55,7 @@ public sealed class AvaloniaVideoPresenter : IVideoPresenter, IDisposable, IAsyn
         }
         using var scope = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token, playback.StopSource.Token);
         using var cancellation = scope.Token.Register(() => playback.End.TrySetCanceled(scope.Token));
-        var directory = Path.Combine(Path.GetTempPath(), "GalNet", "VideoLayers", Guid.NewGuid().ToString("N"));
+        AssetFileLease? mediaFile = null;
         try
         {
             await _dispatcher.InvokeAsync(() =>
@@ -68,17 +71,11 @@ public sealed class AvaloniaVideoPresenter : IVideoPresenter, IDisposable, IAsyn
                 return Task.CompletedTask;
             }).ConfigureAwait(false);
             if (_vlc is null) throw new InvalidOperationException(_initializationError ?? "LibVLC video is unavailable.");
-            var file = await _assets.GetFileAsync(request.Layer.AssetId, scope.Token).ConfigureAwait(false)
-                ?? throw new FileNotFoundException($"Video asset '{request.Layer.AssetId}' was not found.");
-            if (!string.Equals(file.TypeId, "video", StringComparison.OrdinalIgnoreCase))
+            mediaFile = await _files.AcquireAsync(request.Layer.AssetId, scope.Token).ConfigureAwait(false);
+            if (!string.Equals(mediaFile.TypeId, "video", StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("video.play requires a video resource.");
-            using var handle = await _assets.AcquireAsync<byte[]>(request.Layer.AssetId, scope.Token).ConfigureAwait(false)
-                ?? throw new InvalidDataException("Video asset bytes could not be acquired.");
-            Directory.CreateDirectory(directory);
-            var path = Path.Combine(directory, "media" + Path.GetExtension(file.Path));
-            await File.WriteAllBytesAsync(path, handle.Value, scope.Token).ConfigureAwait(false);
             if (playback.End.Task.IsCompleted) return;
-            playback.Initialize(_vlc, path);
+            playback.Initialize(_vlc, mediaFile.Path);
             if (!playback.End.Task.IsCompleted && !await Task.Run(() => playback.Player!.Play(), scope.Token).ConfigureAwait(false))
                 throw new InvalidOperationException("LibVLC rejected the video.");
             await playback.End.Task.ConfigureAwait(false);
@@ -100,15 +97,18 @@ public sealed class AvaloniaVideoPresenter : IVideoPresenter, IDisposable, IAsyn
                     if (ReferenceEquals(item?.FrameSource, playback.Frames)) _state.HideLayer(request.Layer.HandleId);
                     return Task.CompletedTask;
                 }).ConfigureAwait(false);
-                if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
             }
             finally
             {
-                lock (_gate)
+                try { mediaFile?.Dispose(); }
+                finally
                 {
-                    if (_playbacks.GetValueOrDefault(request.Layer.HandleId) == playback)
-                        _playbacks.Remove(request.Layer.HandleId);
-                    if (--_activeCount == 0 && _disposed) _drained.TrySetResult();
+                    lock (_gate)
+                    {
+                        if (_playbacks.GetValueOrDefault(request.Layer.HandleId) == playback)
+                            _playbacks.Remove(request.Layer.HandleId);
+                        if (--_activeCount == 0 && _disposed) _drained.TrySetResult();
+                    }
                 }
             }
         }
@@ -164,6 +164,7 @@ public sealed class AvaloniaVideoPresenter : IVideoPresenter, IDisposable, IAsyn
         await _drained.Task.ConfigureAwait(false);
         _vlc?.Dispose();
         _lifetime.Dispose();
+        if (_ownsFiles) await _files.DisposeAsync().ConfigureAwait(false);
     }
 
     private sealed class Playback : IDisposable

@@ -1,4 +1,3 @@
-using GalNet.Runtime.Variables;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Core.Gallery;
 using GalNet.Core.Runtime;
@@ -6,6 +5,7 @@ using GalNet.Core.Settings;
 using GalNet.Runtime.Content;
 using GalNet.Runtime.Gallery;
 using GalNet.Runtime.Persistence;
+using GalNet.Runtime.Variables;
 using GalNet.Storage.FileSystem;
 
 namespace GalNet.Sample.Avalonia.Services;
@@ -39,7 +39,7 @@ internal sealed class SampleSaveSession : IDisposable
         string profileDirectory,
         GameContent content,
         GalNet.Core.Assets.IAssetManager assets,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, GalNet.Core.Assets.IAssetFileMaterializer? files = null)
     {
         var saves = new FileSaveService(profileDirectory);
         var variables = await PlayerVariableService.CreateAsync(
@@ -52,7 +52,7 @@ internal sealed class SampleSaveSession : IDisposable
             galleryResources = await AssetGalleryResourceResolver.CreateAsync(
                 assets,
                 content.Gallery,
-                cancellationToken);
+                cancellationToken, files);
             return new SampleSaveSession(
                 saves,
                 variables,

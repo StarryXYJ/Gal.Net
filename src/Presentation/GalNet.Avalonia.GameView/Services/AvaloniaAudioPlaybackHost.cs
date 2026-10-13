@@ -1,6 +1,5 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Channels;
+using GalNet.Assets;
 using GalNet.Core.Assets;
 using GalNet.Core.Audio;
 using GalNet.Presentation.Abstractions.Audio;
@@ -13,10 +12,10 @@ namespace GalNet.Avalonia.GameView.Services;
 public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost, IAsyncDisposable
 {
     private readonly object _gate = new();
-    private readonly IAssetManager _assets;
-    private readonly string _directory = Path.Combine(Path.GetTempPath(), "GalNet", "Audio", Guid.NewGuid().ToString("N"));
+    private readonly IAssetFileMaterializer _files;
+    private readonly bool _ownsFiles;
     private readonly Dictionary<string, Voice> _voices = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, string> _paths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, AssetFileLease> _paths = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, PendingLoad> _pending = new(StringComparer.Ordinal);
     private readonly List<Task> _loads = [];
     private readonly CancellationTokenSource _shutdown = new();
@@ -29,11 +28,11 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost, IAsyncDispos
     private readonly LibVLC? _libVlc;
     private bool _disposed;
 
-    public AvaloniaAudioPlaybackHost(IAssetManager assets, IEnumerable<IAudioSEffectProcessor>? effectProcessors = null)
+    public AvaloniaAudioPlaybackHost(IAssetManager assets, IEnumerable<IAudioSEffectProcessor>? effectProcessors = null, IAssetFileMaterializer? files = null)
     {
-        _assets = assets;
+        _files = files ?? new AssetFileMaterializer(assets);
+        _ownsFiles = files is null;
         _effects = new AvaloniaAudioSEffectRegistry(AvaloniaAudioSEffectRegistry.DefaultProcessors.Concat(effectProcessors ?? []));
-        Directory.CreateDirectory(_directory);
         try
         {
             LibVLCSharp.Shared.Core.Initialize();
@@ -108,11 +107,12 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost, IAsyncDispos
         try { await Task.WhenAll(loads.Append(_terminalWorker)).ConfigureAwait(false); }
         finally
         {
+            foreach (var lease in _paths.Values) lease.Dispose();
             _paths.Clear();
             _libVlc?.Dispose();
             _materialization.Dispose();
             _shutdown.Dispose();
-            if (Directory.Exists(_directory)) Directory.Delete(_directory, recursive: true);
+            if (_ownsFiles) await _files.DisposeAsync().ConfigureAwait(false);
         }
     }
 
@@ -190,19 +190,13 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost, IAsyncDispos
         try
         {
             lock (_gate)
-                if (_paths.TryGetValue(assetId, out var existing)) return existing;
-            var file = await _assets.GetFileAsync(assetId, cancellationToken).ConfigureAwait(false)
-                ?? throw new FileNotFoundException($"Audio asset '{assetId}' was not found.");
-            using var handle = await _assets.AcquireAsync<byte[]>(assetId, cancellationToken).ConfigureAwait(false)
-                ?? throw new InvalidDataException($"Audio asset '{assetId}' could not be decoded as bytes.");
-            var name = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(assetId))).ToLowerInvariant();
-            var path = Path.Combine(_directory, name + Path.GetExtension(file.Path));
-            await File.WriteAllBytesAsync(path, handle.Value, cancellationToken).ConfigureAwait(false);
+                if (_paths.TryGetValue(assetId, out var existing)) return existing.Path;
+            var lease = await _files.AcquireAsync(assetId, cancellationToken).ConfigureAwait(false);
             lock (_gate)
             {
-                ObjectDisposedException.ThrowIf(_disposed, this);
-                _paths.TryAdd(assetId, path);
-                return _paths[assetId];
+                if (_disposed) { lease.Dispose(); throw new ObjectDisposedException(nameof(AvaloniaAudioPlaybackHost)); }
+                _paths.Add(assetId, lease);
+                return lease.Path;
             }
         }
         finally { _materialization.Release(); }

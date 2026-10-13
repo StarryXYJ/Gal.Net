@@ -47,9 +47,9 @@ internal sealed class SampleGamePresentation : IAsyncDisposable, ICatchUpPresent
                 "Preloaded {UsableEffectProgramCount}/{EffectProgramCount} effect programs in {ElapsedMilliseconds} ms",
                 preload.UsableProgramCount, preload.RequestedProgramCount, preload.Cache.TotalLoadTime.TotalMilliseconds);
             presentation.Effects = new AvaloniaEffectRuntime(gameplay, presentation._programs);
-            presentation.Audio = new AvaloniaAudioPlaybackHost(resources.Assets);
+            presentation.Audio = new AvaloniaAudioPlaybackHost(resources.Assets, files: resources.MediaFiles);
             presentation.AudioModule = new BuiltinAudioModule(presentation.Audio);
-            presentation.Video = new AvaloniaVideoPresenter(resources.Assets, gameplay);
+            presentation.Video = new AvaloniaVideoPresenter(resources.Assets, gameplay, files: resources.MediaFiles);
             var presenters = presentation.Presenters;
             using var registration = new GameRegistration();
             foreach (var module in GalNet.Project.Contracts.ProjectSchemas.Modules) registration.RegisterSchema(module);

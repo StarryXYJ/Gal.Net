@@ -1,5 +1,5 @@
-using GalNet.Assets;
 using GalNet.Assets.Provider;
+using GalNet.Assets;
 using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
 using GalNet.Core.Scene;
@@ -25,6 +25,7 @@ internal sealed class SampleGameResourceScope : IDisposable
         GameDirectory = gameDirectory;
         Content = content;
         Assets = assets;
+        MediaFiles = new AssetFileMaterializer(assets);
         SpriteFileCount = spriteFileCount;
         _preloadedTextures = preloadedTextures;
         EffectPrograms = effectPrograms;
@@ -33,6 +34,7 @@ internal sealed class SampleGameResourceScope : IDisposable
     public string GameDirectory { get; }
     public GameContent Content { get; }
     public AssetManager Assets { get; }
+    public IAssetFileMaterializer MediaFiles { get; }
     public int SpriteFileCount { get; }
     public IReadOnlyDictionary<string, AssetHandle<SceneTexture>> PreloadedTextures => _preloadedTextures;
     public IReadOnlyList<EffectProgramResource> EffectPrograms { get; }
@@ -80,6 +82,7 @@ internal sealed class SampleGameResourceScope : IDisposable
         _disposed = true;
         foreach (var handle in _preloadedTextures.Values) handle.Dispose();
         _preloadedTextures.Clear();
+        MediaFiles.Dispose();
         Assets.Dispose();
     }
 }
