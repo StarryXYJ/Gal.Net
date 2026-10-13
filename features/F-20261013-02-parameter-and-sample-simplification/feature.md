@@ -2,7 +2,7 @@
 id: F-20261013-02-parameter-and-sample-simplification
 title: 参数契约共用与 Sample 扩展简化
 type: feature
-status: planned
+status: in-progress
 created: 2026-10-13
 updated: 2026-10-13
 ---
@@ -15,7 +15,7 @@ updated: 2026-10-13
 
 用户追加范围：明确纳入 Sample 各 service 的职责、转发链和重复逻辑优化，以及跨 Core、契约、执行模块和平台 Sample 分散的 Entry 实现基础；不仅整理截图或集中注册位置。先审查实际成本，再迁移有收益的部分。
 
-本次用户授权编写计划，尚未开始业务代码实施。承接已完成的 [Editor/CLI feature](../F-20261013-01-editor-cli-operations/summary.md)，不改写其历史范围和状态。
+用户已确认按本计划推进，Phase 0 调查与定向基线已验证；尚未修改业务代码。承接已完成的 [Editor/CLI feature](../F-20261013-01-editor-cli-operations/summary.md)，不改写其历史范围和状态。
 
 ## 已确认约束
 
@@ -26,6 +26,8 @@ updated: 2026-10-13
 - 不考虑向后兼容，但不借机无目的地改动内容格式、命令行为或所有公共 API。
 - 不合并游戏变量与参数的完整模型，不创建第二套重复的标量值容器。
 - 不强制跨平台接口；单平台业务实现仍可直接操作具体页面。
+- 开发者集中入口覆盖 schema 来源的读取/选择、执行 module 注册及相关 decoder/项目配置。游戏默认消费项目引用的静态契约入口；Editor/CLI 继续加载当前项目 DLL。二者使用同一声明，不增加静默 fallback 或第二份 schema。
+- 暂不实施 Core 领域去耦、Audio 迁层、Layer/SceneState 移出、通用模块快照及 animation/plan 执行体系重构；这些留待未来实际跨平台需求。
 - 每个完成且验证的实施 Phase 独立提交，仅包含本 feature 的改动。
 - 工作量大而收益不明确的步骤可缩小或 skipped，记录原因；不能静默扩大范围。
 
@@ -62,4 +64,5 @@ updated: 2026-10-13
 
 - [设计边界](design.md)
 - [Phase Plan](phase-plan.md)
+- [Phase 0 基线与收益判断](baseline.md)
 - 当前事实参考 [开发指南](../../docs/development.md)、[架构](../../docs/spec/architecture.md)、[Entry 注册 ADR](../../docs/adr/0002-entry-schema-execution-registration.md)。

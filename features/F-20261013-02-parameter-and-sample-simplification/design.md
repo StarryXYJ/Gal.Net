@@ -31,6 +31,8 @@ Entry 保留 primitive/composite、展开代码、阅读边界、资源引用和
 
 保留两个明确入口：契约项目选择 schema，平台项目选择实现及项目策略。建议以一个平台 Customization 文件和按业务组织的功能文件承载修改点，不为每个 hook/option/委托创建单独文件。
 
+集中入口必须包括 schema 来源的读取/选择与 module 注册：游戏将项目引用的 ProjectSchemas.Modules 经明确入口取得并构造 catalog，平台入口接入执行 module 和已有领域 catalog/decoder 配置。Editor/CLI 使用已有 ProjectSchemaContext 读取项目 DLL；不要求游戏读取 DLL、不新增通用 schema-source 插件体系、不复制参数事实源。保留项目作用域、失败诊断、无内置 fallback 和实际内容的执行覆盖检查。
+
 稳定宿主只消费显式、类型化的注册入口：执行模块、decoder、预加载策略、页面适配及主题/本地化配置。上下文按实际需要提供借用对象和生命周期，不暴露万能 IServiceProvider，不强制每个业务新增接口。
 
 新增业务不需要手改顶层关闭流程。模块拥有的资源由模块释放，借用的页面/平台端口由宿主在模块完成清理后释放。不新增通用 Runner 框架或改变 Engine 的所有权。
@@ -58,6 +60,8 @@ Entry 基础审查不限于 Sample 截图：检查 Core 的 PrimitiveInstance/Im
 首个试点为截图和少量有不同参数形态的内置 entry。手写与生成式定义不能同时成为维护来源；评估包含生成器本身、测试、生成物规模和调试成本，不只统计删除的业务代码行数。
 
 ## 收益检查
+
+本轮不实施 Core 的领域去耦、Audio 迁层、Layer/SceneState 移出、模块化快照或 animation/plan 调度重构。Entry 基础优化只针对现有架构内有明确收益的重复机制，不以改变领域所有权作为验收要求。
 
 记录相同代表性业务迁移前后的规则声明次数、手写参数读取、需要修改的文件/入口、生产代码差异和新增依赖。代码行数是证据之一，不采用任意百分比作为硬指标。
 

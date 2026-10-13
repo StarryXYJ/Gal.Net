@@ -1,6 +1,6 @@
 # Phase Plan
 
-状态：planned。当前仅完成计划文档，未授权或启动本计划的业务代码实施。
+状态：in-progress。用户已确认按计划推进；Phase 0 调查与定向基线已验证，业务代码尚未修改。
 
 顺序：Phase 0 → 1 → 2 → 3 → 4 → 5（条件）→ 6。Phase 1–2 的完整统一方案若收益不足，可缩小或跳过迁移；Sample 和清理阶段仍可独立推进，不被形式统一阻塞。
 
@@ -8,7 +8,7 @@
 
 ## Phase 0：工作量与代表性基线
 
-状态：planned；相对工作量：小。
+状态：verified；相对工作量：小。证据与候选处理结论见 [baseline.md](baseline.md)：参数 3、CLI/契约 21、截图 14、注册 7，合计 45 项定向测试通过；不代表全解决方案回归。试点选择截图与 files 分页，已有工作区改动保留。
 
 - 目标：确认优化针对的真实重复，给出可接受的迁移范围。
 - 前置：用户授权实施；读取当前工作区和相关最新代码。
@@ -52,8 +52,10 @@
 - 目标：开发者接入业务只修改契约和平台入口，生命周期文件不感知业务类型。
 - 模块：Sample.Contracts、Sample.Avalonia 的 App/ResourceScope/Presentation/项目配置，Headless 的契约消费。
 - 任务：保留契约选择入口；增加一个集中平台 customization 入口，接入主题/本地化/可选调试、执行注册、decoder 和预加载策略的实际修改点。截图迁移为业务实现文件，由平台入口注册。保留五个生命周期职责，不为每个 hook 新增文件/接口。
+- Schema 来源接入：入口显式取得项目引用的 ProjectSchemas.Modules 并构建游戏 catalog，统一在此选择 schema 与执行 modules；Editor/CLI 继续走项目作用域 DLL 加载入口。相关资源/Gallery catalog 在现有组合边界集中选择，不扩大为全部类型 DLL 化；缺 schema/执行仍明确诊断。
 - Service 整理：根据 Phase 0 清单合并职责重复、没有独立价值的转发包装；消除重复状态和重复创建/订阅；分离常被二次开发的启动/设置策略与稳定机制。检查 SaveSession 的 Gallery resolver、默认 layer 适配、Debug actions 与 Session 的边界以及 Headless 的重复组合，不强制迁移全部 service。小步骤分别验证，职责迁移与行为修正不混在一个提交。
 - 验证：截图经契约编译和宿主注册执行；缺实现仍明确失败；不同项目选择不串用；主题/启动/设置与退出相关回归。游戏项目引用构建、契约独立构建/部署和 CLI 读取均可用，游戏无需动态加载契约。
+- 来源验证：自定义/部分内置 schema 由集中入口取得；游戏与工具对同一契约的描述一致；没有隐式全内置 fallback，集中入口不强制游戏 DLL 加载或形成第二份 schema。
 - Service 验证：实际变动对应的本地化 provider/事件释放、玩家设置持久化与失败处理、启动取消、存档/Gallery 所有权、窗口显示及调试路径；重复初始化/关闭不残留订阅或后台工作。未改动的 service 不为形式覆盖新增镜像测试。
 - 文档：列明开发者常改入口与稳定宿主职责；给出新增 entry 操作步骤。
 - 风险：customization 成为万能 ServiceProvider；错误捕获 scoped 对象；移动代码增加更多文件却不减少修改点。
@@ -103,6 +105,7 @@
 
 ## 暂缓项
 
+- Core 领域去耦、Audio 迁层、Layer/SceneState 移出核心、通用模块快照和 animation/plan 调度体系重构。
 - 游戏变量与参数完整模型合并；已有 Variable.Clone/PlayerVariableService 不重复改造。
 - 资源/Gallery/视觉效果/音频效果全部通过一个新项目 DLL 入口注册。
 - 统一所有动态对象、创建万能 DynamicType/Helper 框架。
