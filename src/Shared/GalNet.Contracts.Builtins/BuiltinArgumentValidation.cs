@@ -42,17 +42,11 @@ internal static class BuiltinArgumentValidation
             case PlayParticleEmitterEntry.TypeId:
             case BurstParticlesEntry.TypeId:
                 if (type == PlayParticleEmitterEntry.TypeId) RequireText(type, arguments, "instanceId");
-                if (type == BurstParticlesEntry.TypeId && arguments.GetProperty("count").GetInt32() <= 0)
-                    throw new InvalidDataException("particle.burst requires a positive 'count'.");
                 var definition = ParticleEmitterDefinition.FromJson(arguments.GetProperty("parameters").GetRawText());
                 if (string.IsNullOrWhiteSpace(definition.ParticleTexture))
                     throw new InvalidDataException($"{type} requires 'parameters.particleTexture'.");
                 break;
         }
-        foreach (var name in new[] { "duration", "fadeIn", "fadeOut" })
-            if (arguments.TryGetProperty(name, out var duration) &&
-                (!duration.TryGetDouble(out var seconds) || !double.IsFinite(seconds) || seconds < 0))
-                throw new InvalidDataException($"{type}.{name} must be finite and non-negative.");
     }
 
     private static void RequireText(string type, JsonElement arguments, params string[] names)

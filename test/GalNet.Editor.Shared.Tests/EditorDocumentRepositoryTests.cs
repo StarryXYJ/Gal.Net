@@ -1,9 +1,11 @@
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
+using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
 using GalNet.Core.Settings;
 using GalNet.Core.Variable;
@@ -162,6 +164,34 @@ public class EditorDocumentRepositoryTests
         Assert.That(loaded.GroupEntries[groupId].Single().Parameters["count"], Is.EqualTo("3"));
         using var saved = JsonDocument.Parse(File.ReadAllText(Path.Combine(_tempDir, "Graph", "groups", $"{groupId}.rawgalgroup")));
         Assert.That(saved.RootElement.GetProperty("entries")[0].GetProperty("parameters").GetProperty("count").GetInt32(), Is.EqualTo(3));
+    }
+
+    [Test]
+    public void RepositoryRoundTripsStringEncodedEnumUsingProjectJsonOptions()
+    {
+        var options = new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } };
+        var catalog = new TargetProfileEntryCatalog([new DefaultEntryModule("custom",
+            [new DefaultPrimitiveEntryBase("custom.day", new DynamicParameterTable(
+                [new DynamicParameterDescriptor("day", new ValueDescriptor(typeof(DayOfWeek), jsonOptions: options))]))])]);
+        const string groupId = "days";
+        var graph = new EditorGraphDocument
+        {
+            Name = "Days",
+            RootNodeId = groupId,
+            Nodes = [new EditorGraphNodeDto { Id = groupId, Name = "Days", Type = "Group", File = "groups/days.rawgalgroup" }]
+        };
+        File.WriteAllText(Path.Combine(_tempDir, "Graph", "graph.json"), JsonSerializer.Serialize(graph));
+        var sourcePath = Path.Combine(_tempDir, "Graph", "groups", "days.rawgalgroup");
+        File.WriteAllText(sourcePath,
+            """{"version":2,"kind":"Raw","entries":[{"id":"day-1","type":"custom.day","parameters":{"day":"Monday"}}]}""");
+        var repository = new EditorDocumentRepository(catalog);
+        var loaded = repository.Load(_tempDir, "Days", new ProjectSettings());
+        Assert.That(loaded.GroupEntries[groupId][0].Parameters["day"], Is.EqualTo("\"Monday\""));
+        loaded.GroupEntries[groupId][0].Parameters["day"] = "\"Tuesday\"";
+        repository.Save(_tempDir, loaded.Document,
+            loaded.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value));
+        using var saved = JsonDocument.Parse(File.ReadAllText(sourcePath));
+        Assert.That(saved.RootElement.GetProperty("entries")[0].GetProperty("parameters").GetProperty("day").GetString(), Is.EqualTo("Tuesday"));
     }
 
     private static ProjectVariableDefinition CreateDefinition(string name, object value)

@@ -1,6 +1,6 @@
 using System.Text.Json;
 using GalNet.Core.Entry;
-using GalNet.Core.Primitives;
+using GalNet.Core.Parameters;
 using GalNet.Core.Serialization;
 using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Commands;
@@ -34,7 +34,7 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog) : IEditorDoc
             _baseline[file] = File.ReadAllBytes(reader.Resolve(file));
             foreach (var entry in group!.Entries)
                 foreach (var (key, value) in entry.Parameters)
-                    if (!JsonElement.DeepEquals(value, DynamicParameterValue.FromEditorValue(DynamicParameterValue.ToEditorValue(value), catalog.Get(entry.Type).DynamicParameters![key].ValueType)))
+                    if (!JsonElement.DeepEquals(value, ValueCodec.FromEditorText(catalog.Get(entry.Type).DynamicParameters![key].Value, ValueCodec.ToEditorText(catalog.Get(entry.Type).DynamicParameters![key].Value, value))))
                         throw new InvalidDataException($"Parameter '{key}' in '{file}' cannot round-trip through the editor value representation; edit the raw file directly.");
             loaded.GroupEntries[node.Id] = group!.Entries.Select((entry, index) => new EditorEntryData
             {
@@ -42,7 +42,7 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog) : IEditorDoc
                 Id = index + 1,
                 Type = entry.Type,
                 Condition = entry.Condition,
-                Parameters = entry.Parameters.ToDictionary(pair => pair.Key, pair => DynamicParameterValue.ToEditorValue(pair.Value), StringComparer.Ordinal)
+                Parameters = entry.Parameters.ToDictionary(pair => pair.Key, pair => ValueCodec.ToEditorText(catalog.Get(entry.Type).DynamicParameters![pair.Key].Value, pair.Value), StringComparer.Ordinal)
             }).ToList();
         }
         return loaded;
@@ -118,7 +118,7 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog) : IEditorDoc
             Type = entry.Type,
             Condition = entry.Condition,
             Parameters = entry.Parameters.ToDictionary(pair => pair.Key,
-                pair => DynamicParameterValue.FromEditorValue(pair.Value, definition.DynamicParameters![pair.Key].ValueType), StringComparer.Ordinal)
+                pair => ValueCodec.FromEditorText(definition.DynamicParameters![pair.Key].Value, pair.Value), StringComparer.Ordinal)
         };
     }
 

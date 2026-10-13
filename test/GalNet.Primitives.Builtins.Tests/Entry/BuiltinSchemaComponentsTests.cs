@@ -1,10 +1,29 @@
+using System.Text.Json;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
+using GalNet.Core.Parameters;
+using GalNet.Core.Primitives;
 
 namespace GeneralTest.Entry;
 
 public sealed class BuiltinSchemaComponentsTests
 {
+    [TestCase("flow.wait", "duration", 0)]
+    [TestCase("audio.play", "fadeIn", 0)]
+    [TestCase("audio.stop", "fadeOut", 0)]
+    [TestCase("particle.burst", "count", 1)]
+    public void BasicRangesAreDeclaredAndEnforcedBySharedValueRules(string type, string name, int minimum)
+    {
+        var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
+        var parameter = catalog.Get(type).DynamicParameters![name];
+        Assert.That(parameter.TryGetConstraint("minimum", out var bound), Is.True);
+        Assert.That(bound.GetInt32(), Is.EqualTo(minimum));
+        Assert.That(ValueValidation.Validate(parameter.Value, JsonSerializer.SerializeToElement(minimum - 1))!.Code, Is.EqualTo("value.range"));
+        Assert.Throws<InvalidDataException>(() => PrimitiveArgumentHelper.Normalize(catalog.Get(type).DynamicParameters!,
+            JsonSerializer.SerializeToElement(new Dictionary<string, object> { [name] = minimum - 1 })));
+        Assert.That(ValueCodec.Describe(parameter.Value).GetProperty("minimum").GetInt32(), Is.EqualTo(minimum));
+    }
+
     private static readonly string[] SelectedTypes = ["dialogue.text", "dialogue.show", "dialogue.hide", "flow.wait"];
     private static readonly string[] ContractDependencies = ["GalNet.Core"];
 

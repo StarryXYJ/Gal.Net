@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
 
 namespace GalNet.Core.Entry;
@@ -24,22 +25,22 @@ public static class EntrySchema
         ArgumentNullException.ThrowIfNull(parameters);
         return new DynamicParameterTable(parameters.Select(pair =>
         {
-            var constraints = CreateConstraints(pair.Value, options?.GetValueOrDefault(pair.Key));
+            var constraints = CreateConstraints(options?.GetValueOrDefault(pair.Key));
             return new DynamicParameterDescriptor(
                 pair.Key,
                 GetValueType(pair.Value),
                 defaultValue: defaults is not null && defaults.TryGetValue(pair.Key, out var value)
-                    ? DynamicParameterValue.FromEditorValue(value, GetValueType(pair.Value))
+                    ? ValueCodec.FromEditorText(new ValueDescriptor(GetValueType(pair.Value)), value)
                     : null,
-                constraints: constraints);
+                constraints: constraints, editor: new EditorHints(GetEditorId(pair.Value)));
         }), validateArguments);
     }
 
     public static EntryParameterType GetEditorType(DynamicParameterDescriptor parameter)
     {
-        if (parameter.TryGetConstraint("editorType", out var editorType) &&
-            Enum.TryParse<EntryParameterType>(editorType.GetString(), out var parsed))
-            return parsed;
+        if (parameter.Editor?.EditorId is { } editorId && editorId != ValueEditorIds.Numeric)
+            foreach (var type in Enum.GetValues<EntryParameterType>())
+                if (GetEditorId(type) == editorId) return type;
         if (parameter.ValueType == typeof(int)) return EntryParameterType.Integer;
         if (parameter.ValueType == typeof(float) || parameter.ValueType == typeof(double) || parameter.ValueType == typeof(decimal)) return EntryParameterType.Float;
         if (parameter.ValueType == typeof(JsonElement)) return EntryParameterType.Json;
@@ -55,10 +56,19 @@ public static class EntrySchema
         _ => typeof(string)
     };
 
-    private static JsonElement CreateConstraints(EntryParameterType type, IReadOnlyList<string>? options)
+    private static JsonElement CreateConstraints(IReadOnlyList<string>? options)
     {
-        var constraints = new Dictionary<string, object?> { ["editorType"] = type.ToString() };
+        var constraints = new Dictionary<string, object?>();
         if (options is not null) constraints["options"] = options;
         return JsonSerializer.SerializeToElement(constraints);
     }
+
+    private static string GetEditorId(EntryParameterType type) => type switch
+    {
+        EntryParameterType.Integer or EntryParameterType.Float => ValueEditorIds.Numeric,
+        EntryParameterType.Json => ValueEditorIds.Json,
+        EntryParameterType.Select => ValueEditorIds.Choice,
+        EntryParameterType.Text => ValueEditorIds.Text,
+        _ => "entry." + type.ToString().ToLowerInvariant()
+    };
 }

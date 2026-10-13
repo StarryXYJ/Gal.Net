@@ -1,4 +1,7 @@
+using System.Text.Json;
 using GalNet.Core.Entry;
+using GalNet.Core.Parameters;
+using GalNet.Core.Primitives;
 
 namespace GalNet.Contracts.Builtins;
 
@@ -116,8 +119,18 @@ public static class BuiltinSchemas
         where TEntry : PrimitiveEntry, new()
     {
         var type = new TEntry().Type;
-        return new DefaultPrimitiveEntryBase(type, EntrySchema.DynamicParameters(parameters, defaults, options,
-            arguments => BuiltinArgumentValidation.Validate(type, arguments)))
+        var declared = EntrySchema.DynamicParameters(parameters, defaults, options);
+        return new DefaultPrimitiveEntryBase(type, new DynamicParameterTable(declared.Values.Select(parameter =>
+        {
+            int? minimum = parameter.Name is "duration" or "fadeIn" or "fadeOut" ? 0
+                : type == BurstParticlesEntry.TypeId && parameter.Name == "count" ? 1 : null;
+            if (minimum is null) return parameter;
+            var constraints = parameter.Constraints?.Deserialize<Dictionary<string, JsonElement>>() ?? new();
+            constraints["minimum"] = JsonSerializer.SerializeToElement(minimum.Value);
+            return new DynamicParameterDescriptor(parameter.Name,
+                new ValueDescriptor(parameter.ValueType, parameter.AllowNull, JsonSerializer.SerializeToElement(constraints)),
+                parameter.IsRequired, parameter.DefaultValue, parameter.Editor);
+        }), arguments => BuiltinArgumentValidation.Validate(type, arguments)))
         { IsReading = type is TextEntry.TypeId or AppendNvlEntry.TypeId };
     }
 }

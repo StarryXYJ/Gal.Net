@@ -28,7 +28,7 @@ public static class ProjectSchemaQueryService
                 catch (Exception exception) when (exception is NotSupportedException or InvalidOperationException)
                 { diagnostics.Add(new("schema.descriptionLimited", "warning", $"Cannot fully describe '{definition.Type}.{parameter.Name}': {exception.Message}", context.AssemblyPath, definition.Type)); }
                 return new SchemaParameterDescription(parameter.Name, parameter.IsRequired, parameter.DefaultValue, parameter.Constraints,
-                    valueSchema, valueSchema is not null);
+                    valueSchema, valueSchema is not null, parameter.Editor);
             }).ToArray() ?? [];
             return new SchemaEntryDescription(definition.Type, definition.Category, definition.Kind.ToString().ToLowerInvariant(), definition.IsReading, parameters,
                 "Schema descriptions do not serialize custom C# validators or Composite expansion code; full validation/compilation uses the DLL.");
@@ -40,5 +40,5 @@ public static class ProjectSchemaQueryService
     public sealed record SchemaEntryDescription(string TypeId, string Category, string Kind, bool IsReading,
         IReadOnlyList<SchemaParameterDescription> Parameters, string ValidationNote);
     public sealed record SchemaParameterDescription(string Name, bool Required, JsonElement? Default,
-        JsonElement? Constraints, JsonElement? ValueSchema, bool DescriptionSupported);
+        JsonElement? Constraints, JsonElement? ValueSchema, bool DescriptionSupported, EditorHints? Editor);
 }

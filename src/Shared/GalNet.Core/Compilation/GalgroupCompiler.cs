@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GalNet.Core.Entry;
+using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
 using GalNet.Core.Scene;
 using GalNet.Core.Serialization;
@@ -139,13 +140,10 @@ public static class GalgroupCompiler
         var definition = catalog.Get(entry.Type);
         var arguments = entry.Values.ToDictionary(
             pair => pair.Key,
-            pair => ToJsonElement(pair.Value, (definition.DynamicParameters ?? throw new InvalidDataException($"Entry '{entry.Type}' has no dynamic parameter schema."))[pair.Key].ValueType),
+            pair => ValueCodec.FromEditorText((definition.DynamicParameters ?? throw new InvalidDataException($"Entry '{entry.Type}' has no dynamic parameter schema."))[pair.Key].Value, pair.Value),
             StringComparer.Ordinal);
         return JsonSerializer.SerializeToElement(arguments);
     }
-
-    private static JsonElement ToJsonElement(string value, Type valueType) =>
-        DynamicParameterValue.FromEditorValue(value, valueType);
 
     private static string ToValue(JsonElement value) => value.ValueKind switch
     {

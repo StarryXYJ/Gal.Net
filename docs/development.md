@@ -67,6 +67,20 @@ var reputationParameters = new DynamicParameterTable(
 
 `DynamicParameterDescriptor` 可声明 required、JSON 默认值与 JSON constraints。若主要目的是提供编辑器控件提示，也可用 `EntrySchema.DynamicParameters(...)` 由 `EntryParameterType` 构建 schema。
 
+字段可直接手写并组合进 Entry，表单顺序取 `DynamicParameterTable.Fields`：
+
+```csharp
+var amount = new FieldDescriptor("amount",
+    new ValueDescriptor(typeof(int), constraints: JsonSerializer.SerializeToElement(new { minimum = 0, maximum = 100 })),
+    defaultValue: JsonSerializer.SerializeToElement(1),
+    editor: new EditorHints(ValueEditorIds.Slider, Step: 1), labelKey: "Amount");
+var parameters = new DynamicParameterTable([new DynamicParameterDescriptor(amount)]);
+```
+
+编辑文本转换必须传完整 ValueDescriptor：`ValueCodec.FromEditorText(valueDescriptor, text)` / `ToEditorText(valueDescriptor, json)`，这样枚举 converter、约束及 JSON 配置不会丢失。真实 string 使用原始文本；其他类型（包括用 JSON string 表示的枚举）使用 JSON 文本。
+
+设置的 `SettingItem<T>.Field` 提供同一字段结构；数值设置的范围校验与字段描述共用 ValueContract，EditorHints 可显式指定自定义 ID。设置 DefaultValue 可由宿主动态修改，重置及有效性语义仍归设置，不复制进冻结字段；ActionSetting 没有值字段，ChoiceSetting 的动态选项与标签仍由宿主通知。现有 NumericEditorKind 仅供尚未迁移的主题消费，后续表单工厂使用 EditorId。
+
 ### 2. 分别定义契约和执行模块
 
 schema 不引用游戏服务或平台对象。执行模块持有共享数据和服务，贡献完整指令 ID 与实例工厂：

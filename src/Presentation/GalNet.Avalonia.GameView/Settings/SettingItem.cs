@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using GalNet.Core.Parameters;
 
 namespace GalNet.Avalonia.GameView.Settings;
 
@@ -40,6 +41,7 @@ public abstract class SettingItem : ObservableObject
     public object Label { get; }
     public string? DescriptionKey { get; init; }
     public abstract Type ValueType { get; }
+    public virtual FieldDescriptor? Field => null;
     public Func<SettingAvailability>? EvaluateAvailability { get; init; }
     public SettingAvailability Availability => _availability;
     public bool IsVisible => _availability.IsVisible;
@@ -79,6 +81,11 @@ public abstract class SettingItem<T> : SettingItem
         _forcedValue = forcedValue;
     }
     public override Type ValueType => typeof(T);
+    public ValueDescriptor ValueContract { get; protected set; } = new(typeof(T));
+    public EditorHints? Editor { get; init; }
+    public override FieldDescriptor Field => new(Id, ValueContract, isRequired: true,
+        editor: GetEditorHints(), labelKey: NameKey, descriptionKey: DescriptionKey);
+    protected virtual EditorHints? GetEditorHints() => Editor;
     public override bool IsForced => _forcedValue is not null;
     public T DefaultValue { get; set; }
     public Func<T, string?>? Validator { get; init; }

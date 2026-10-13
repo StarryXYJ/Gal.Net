@@ -7,6 +7,20 @@ public sealed record ValueIssue(string Code, string Message, string? Path = null
 /// <summary>Shared validation without command, setting or persistence-specific errors.</summary>
 public static class ValueValidation
 {
+    public static ValueIssue? ValidateValue(ValueDescriptor descriptor, object? value)
+    {
+        if (value is double number && !double.IsFinite(number) || value is float single && !float.IsFinite(single))
+            return new("value.finite", "Value must be finite.");
+        try
+        {
+            return Validate(descriptor, JsonSerializer.SerializeToElement(value, descriptor.ValueType, descriptor.JsonOptions));
+        }
+        catch (Exception exception) when (exception is JsonException or ArgumentException)
+        {
+            return new("value.type", $"Value is not compatible with '{descriptor.ValueType.Name}'.");
+        }
+    }
+
     public static ValueIssue? Validate(ValueDescriptor descriptor, JsonElement value)
     {
         _ = Read(descriptor, value, out var issue);

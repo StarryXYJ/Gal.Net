@@ -14,27 +14,28 @@ public sealed class DynamicParameterDescriptor
         bool isRequired = false,
         JsonElement? defaultValue = null,
         JsonElement? constraints = null,
-        bool? allowNull = null)
-        : this(name, new ValueDescriptor(valueType, allowNull, constraints), isRequired, defaultValue) { }
+        bool? allowNull = null,
+        EditorHints? editor = null)
+        : this(name, new ValueDescriptor(valueType, allowNull, constraints), isRequired, defaultValue, editor) { }
 
-    public DynamicParameterDescriptor(string name, ValueDescriptor value, bool isRequired = false, JsonElement? defaultValue = null)
+    public DynamicParameterDescriptor(string name, ValueDescriptor value, bool isRequired = false,
+        JsonElement? defaultValue = null, EditorHints? editor = null)
+        : this(new FieldDescriptor(name, value, isRequired, defaultValue, editor)) { }
+
+    public DynamicParameterDescriptor(FieldDescriptor field)
     {
-        if (string.IsNullOrWhiteSpace(name))
-            throw new ArgumentException("Parameter names cannot be empty.", nameof(name));
-        ArgumentNullException.ThrowIfNull(value);
-        Name = name;
-        IsRequired = isRequired;
-        DefaultValue = defaultValue?.Clone();
-        Value = value;
-        if (DefaultValue is { } json) Validate(json);
+        ArgumentNullException.ThrowIfNull(field);
+        Field = field;
     }
 
-    public string Name { get; }
+    public FieldDescriptor Field { get; }
+    public string Name => Field.Id;
     public Type ValueType => Value.ValueType;
-    public bool IsRequired { get; }
-    public ValueDescriptor Value { get; }
+    public bool IsRequired => Field.IsRequired;
+    public ValueDescriptor Value => Field.Value;
     public bool AllowNull => Value.AllowNull;
-    public JsonElement? DefaultValue { get; }
+    public JsonElement? DefaultValue => Field.DefaultValue;
+    public EditorHints? Editor => Field.Editor;
     public JsonElement? Constraints => Value.Constraints;
 
     public void Validate(JsonElement value)
@@ -57,16 +58,20 @@ public sealed class DynamicParameterTable : IReadOnlyDictionary<string, DynamicP
         ArgumentNullException.ThrowIfNull(parameters);
         _validateArguments = validateArguments;
         var copy = new Dictionary<string, DynamicParameterDescriptor>(StringComparer.Ordinal);
+        var fields = new List<FieldDescriptor>();
         foreach (var parameter in parameters)
         {
             ArgumentNullException.ThrowIfNull(parameter);
             if (!copy.TryAdd(parameter.Name, parameter))
                 throw new ArgumentException($"Parameter '{parameter.Name}' is declared more than once.", nameof(parameters));
+            fields.Add(parameter.Field);
         }
         _parameters = new ReadOnlyDictionary<string, DynamicParameterDescriptor>(copy);
+        Fields = fields.AsReadOnly();
     }
 
     public static DynamicParameterTable Empty { get; } = new([]);
+    public IReadOnlyList<FieldDescriptor> Fields { get; }
     public IEnumerable<string> Keys => _parameters.Keys;
     public IEnumerable<DynamicParameterDescriptor> Values => _parameters.Values;
     public int Count => _parameters.Count;
@@ -76,29 +81,4 @@ public sealed class DynamicParameterTable : IReadOnlyDictionary<string, DynamicP
     public bool TryGetValue(string key, out DynamicParameterDescriptor value) => _parameters.TryGetValue(key, out value!);
     public IEnumerator<KeyValuePair<string, DynamicParameterDescriptor>> GetEnumerator() => _parameters.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-}
-
-/// <summary>Converts editor text to typed JSON without serializing CLR type metadata.</summary>
-public static class DynamicParameterValue
-{
-    public static JsonElement FromEditorValue(string value, Type valueType)
-    {
-        ArgumentNullException.ThrowIfNull(valueType);
-        try
-        {
-            return ValueCodec.FromEditorText(new ValueDescriptor(valueType), value);
-        }
-        catch (JsonException exception)
-        {
-            throw new InvalidDataException($"Expected a JSON value compatible with '{valueType.Name}', but received '{value}'.", exception);
-        }
-    }
-
-    public static void Validate(JsonElement value, Type valueType, string parameterName)
-    {
-        if (ValueValidation.Validate(new ValueDescriptor(valueType), value) is { } issue)
-            throw new ArgumentException($"Parameter '{parameterName}': {issue.Message}");
-    }
-
-    public static string ToEditorValue(JsonElement value) => ValueCodec.ToEditorText(value);
 }

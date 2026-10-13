@@ -37,7 +37,9 @@ public static class ValueCodec
         return document.RootElement.Clone();
     }
 
-    public static string ToEditorText(JsonElement value) => value.ValueKind == JsonValueKind.String ? value.GetString() ?? "" : value.GetRawText();
+    public static string ToEditorText(ValueDescriptor descriptor, JsonElement value) =>
+        descriptor.ValueType == typeof(string) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()! : value.GetRawText();
 
     public static JsonElement Describe(ValueDescriptor descriptor, string? referencePrefix = null)
     {
