@@ -1,0 +1,31 @@
+using System.Text.Json;
+using GalNet.Core.Parameters;
+
+namespace GalNet.Game.Controls.Forms;
+
+/// <summary>Absent and explicit JSON null are separate values. Snapshots own their JSON.</summary>
+public readonly record struct FieldValue
+{
+    public FieldValue(JsonElement? value) => Json = value?.Clone();
+    public JsonElement? Json { get; }
+    public bool IsProvided => Json.HasValue;
+}
+
+public sealed class FieldEditorOption(string id, object label, JsonElement value)
+{
+    public string Id { get; } = id;
+    public object Label { get; } = label;
+    public JsonElement Value { get; } = value.Clone();
+}
+
+/// <summary>Borrowed host binding. Changed may come from any thread; all other calls use the UI thread.</summary>
+public interface IFieldBinding
+{
+    FieldValue Read();
+    event EventHandler? Changed;
+    Task<ValueIssue?> CommitAsync(FieldValue value, CancellationToken cancellationToken);
+    bool IsEnabled => true;
+    bool IsVisible => true;
+    object? Label => null;
+    IReadOnlyList<FieldEditorOption>? Options => null;
+}

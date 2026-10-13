@@ -88,6 +88,22 @@ Runtime 只依赖 `GalNet.Presentation.Abstractions` 中的 `IGameView` 与细�
 
 Sample 将 `SampleGamePresentation` 作为 Engine 的 `ICatchUpPresentation` 接入：开始时切入音频投影、缓存文本状态，并暂停/排空恢复出来的展示续跑；结束时清理旧 visual 资源，通过该代 scoped runtime/token 重建最终持久场景，再提交对白/NVL 历史及音频。`ICatchUpTextRecorder` 是可选的无中间渲染文本投影端口，已读文本的追帧调用不会被视为一次正常成功阅读。可见性及 NVL clear 同样延迟到最终同步。追帧不扩展存档格式，不保存 NVL 展示历史或媒体游标。
 
+## Schema 字段表单
+
+`GalNet.Game.Controls.Forms.SchemaForm` 位于 GalNet.Avalonia.Controls。宿主传入有序 Schema（FieldDescriptor 列表）、Registry 和 Binding（字段到 IFieldBinding 的函数）。控件只创建、挂载和释放字段编辑器；不选择游戏主题，不持有保存/撤销服务。结构样式位于 `avares://GalNet.Avalonia.Controls/Styles/SchemaForm.axaml`，只定义标签、编辑器与诊断的结构，没有颜色、间距或皮肤资源；宿主显式加载或提供自己的 Template/Theme。
+
+EditorRegistry 以开放 EditorId 映射到工厂，提供 Register/Replace/RegisterDefault/Resolve。显式 ID 精确匹配；省略 ID 时按合法选项、注册的值类型及 enum/JSON 默认规则选择。重复注册、未知 ID 和不支持类型均明确报错，不静默替换自定义 ID。默认集合由宿主调用 CreateDefault 创建；主题可贡献样式或工厂注册方法，由宿主显式组合，不拥有 registry/设置服务的生命周期。
+
+默认 Text/Numeric/JSON 使用 TextBox 保存草稿，Enter/失焦时只提交有编辑的文本；Numeric 不经过 double/decimal 控件值转换，以保留大整数和未完成输入。Toggle/Choice/Slider 提交选定值，复用 Core 的 codec/校验和项目 JSON 配置。Slider 需要有限 min/max、正步长；decimal、不安全整数精度/CLR 范围或非整数整数滑块配置明确诊断。Step 仅决定滑块交互，不限制业务合法值。合法选项与标签分开；binding 的动态选项更新不会重建表单。
+
+FieldValue 以未提供的 Json 和显式 JSON null 区分省略/null。Context 保留草稿和诊断；默认值只用于未提供状态的展示，未编辑的默认/null/空状态失焦不会写回。宿主可通过 CommitAsync 显式提交省略或 null，默认结构未提供统一的删除/null 操作按钮。对象/数组以 JSON 文本编辑，不承诺任意嵌套控件。
+
+IFieldBinding 是借用的宿主对象，提供 Read、Changed、CommitAsync、可用性/标签/可选选项。除 Changed 可从后台发出外，接口调用与工厂/Context 操作均在 UI 线程。binding 负责保存、撤销、异步应用和业务校验，必须捕获对应项目/服务作用域并遵守 CancellationToken；Context 只隔离过期 UI 结果，不回滚宿主已完成的业务写入。
+
+工厂返回独立、无父级的 FieldEditorLease；SchemaForm 在换 schema/registry/binding、卸载或创建失败时先取消所有 Context，再释放全部 lease，最后移除子控件；清理异常保留为 Diagnostics，不短路后续释放。控件不释放借用的 binding。工厂在返回 lease 前失败时，需自行清理尚未交出的临时资源。registry 注册更新后显式调用 RefreshEditors，普通值/选项/可用性通知不重建控件。现有 CustomSettingEditor 复用同一 FieldEditorLease，旧 SettingEditorLease 已移除。
+
+共享表单/默认工厂已验证；Editor 与 Sample 的实际宿主 binding/工厂组合仍待 Phase 2c 接入。
+
 ## 宿主接入约束
 
 - 每次独立运行必须使用独立的游戏会话与页面 Scope；切换项目或重启预览时释放旧 Scope。

@@ -1,0 +1,32 @@
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:forms="using:GalNet.Game.Controls.Forms" x:CompileBindings="False">
+  <Styles.Resources>
+    <ControlTheme x:Key="{x:Type forms:SchemaForm}" TargetType="forms:SchemaForm">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <StackPanel>
+            <ItemsControl ItemsSource="{TemplateBinding Editors}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel IsVisible="{Binding Context.IsVisible}">
+                    <ContentControl Content="{Binding Context.Label}" />
+                    <ContentControl Content="{Binding Control}" />
+                    <TextBlock Text="{Binding Context.Issue.Message}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <ItemsControl ItemsSource="{TemplateBinding Diagnostics}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate><TextBlock Text="{Binding Message}" /></DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ControlTemplate>
+      </Setter>
+    </ControlTheme>
+  </Styles.Resources>
+  <Style Selector="forms|SchemaForm">
+    <Setter Property="Theme" Value="{StaticResource {x:Type forms:SchemaForm}}" />
+  </Style>
+</Styles>

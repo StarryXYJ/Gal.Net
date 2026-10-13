@@ -15,7 +15,7 @@ updated: 2026-10-14
 
 用户追加范围：明确纳入 Sample 各 service 的职责、转发链和重复逻辑优化，以及跨 Core、契约、执行模块和平台 Sample 分散的 Entry 实现基础；不仅整理截图或集中注册位置。先审查实际成本，再迁移有收益的部分。
 
-用户已确认按本计划推进。Phase 0、1、2a 已验证；中立值工具、有序字段与开放编辑提示、选定消费者迁移已完成，Phase 2a 的 512 项回归及示例契约部署/编译通过。UI、Sample 整理与生成器阶段尚未实施。承接已完成的 [Editor/CLI feature](../F-20261013-01-editor-cli-operations/summary.md)，不改写其历史范围和状态。
+用户已确认按本计划推进。Phase 0、1、2a、2b 已验证；中立值工具、有序字段与开放编辑提示、选定消费者迁移及共享 SchemaForm/默认工厂已完成。Phase 2b 的 290 项回归与示例契约部署/编译通过；Editor/Sample 正式宿主适配、Sample 整理及作者路径优化仍待后续阶段。承接已完成的 [Editor/CLI feature](../F-20261013-01-editor-cli-operations/summary.md)，不改写其历史范围和状态。
 
 ## 已确认约束
 
@@ -73,4 +73,5 @@ updated: 2026-10-14
 - [Phase 0 基线与收益判断](baseline.md)
 - [Phase 1 实现与验证](phase-1.md)
 - [Phase 2a 实现与验证](phase-2a.md)
+- [Phase 2b 实现与验证](phase-2b.md)
 - 当前事实参考 [开发指南](../../docs/development.md)、[架构](../../docs/spec/architecture.md)、[Entry 注册 ADR](../../docs/adr/0002-entry-schema-execution-registration.md)。

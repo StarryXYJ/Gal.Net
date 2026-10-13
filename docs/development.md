@@ -43,7 +43,7 @@ services.AddAvaloniaGameViewPages(
 
 先建立独立契约项目（仅依赖 Core，以及选用的 Contracts.Builtins），程序集名为 `GalNet.Project.Contracts`，公开 `GalNet.Project.Contracts.ProjectSchemas.Modules : IReadOnlyList<IEntryModule>` 静态属性。游戏引用该项目，另行注册执行模块；内容项目在 `Contracts/` 部署 DLL 及依赖，CLI/Editor 从这里加载同一集合。无需导出第二份手写 schema，也无需启动 Engine。模块名可重复，仅完整 typeId 冲突；部署和单平台截图示例见 [Sample.Contracts README](../src/Samples/GalNet.Sample.Contracts/README.md)。
 
-可复用的值规则用 `GalNet.Core.Parameters.ValueDescriptor` 声明，Entry 参数通过 `new DynamicParameterDescriptor(name, valueDescriptor, isRequired, defaultValue)` 组合；CLI/设置等消费者也可调用 `ValueCodec` 和 `ValueValidation`，无需依赖 Entry 模型。描述允许传入 JSON 配置，构建时复制并冻结；JSON 名称和 converter 使用相同配置。必填/省略与默认值属于字段使用方，允许 null 单独指定。通用约束是值级规则，业务及跨字段校验继续手写；结构描述并非自定义代码的完整替代。生成器与共享 schema 表单尚未接入，不需要为使用这些值工具新增项目。
+可复用的值规则用 `GalNet.Core.Parameters.ValueDescriptor` 声明，Entry 参数通过 `new DynamicParameterDescriptor(name, valueDescriptor, isRequired, defaultValue)` 组合；CLI/设置等消费者也可调用 `ValueCodec` 和 `ValueValidation`，无需依赖 Entry 模型。描述允许传入 JSON 配置，构建时复制并冻结；JSON 名称和 converter 使用相同配置。必填/省略与默认值属于字段使用方，允许 null 单独指定。通用约束是值级规则，业务及跨字段校验继续手写；结构描述并非自定义代码的完整替代。公共工具与共享表单已实现，生成器尚未接入，不需要新增 Helper 项目。
 
 Agent 可以直接写作者 JSON，再使用 `help --search <keyword> --json`、`files`、`find`、`references`、`validate`、`graph/group validate` 和 `group compile` 检查。需要稳定单元操作时通过 `execute` 使用帮助中的 JSON schema。命令协议、项目/Group 生命周期和 dry-run 边界以 [CLI README](../src/Editor/GalNet.Editor.Headless/README.md) 为准；当前版本一次调用一个进程，不提供旧扁平命令兼容别名。
 
@@ -80,6 +80,28 @@ var parameters = new DynamicParameterTable([new DynamicParameterDescriptor(amoun
 编辑文本转换必须传完整 ValueDescriptor：`ValueCodec.FromEditorText(valueDescriptor, text)` / `ToEditorText(valueDescriptor, json)`，这样枚举 converter、约束及 JSON 配置不会丢失。真实 string 使用原始文本；其他类型（包括用 JSON string 表示的枚举）使用 JSON 文本。
 
 设置的 `SettingItem<T>.Field` 提供同一字段结构；数值设置的范围校验与字段描述共用 ValueContract，EditorHints 可显式指定自定义 ID。设置 DefaultValue 可由宿主动态修改，重置及有效性语义仍归设置，不复制进冻结字段；ActionSetting 没有值字段，ChoiceSetting 的动态选项与标签仍由宿主通知。现有 NumericEditorKind 仅供尚未迁移的主题消费，后续表单工厂使用 EditorId。
+
+共享 Avalonia 表单使用宿主提供的 registry 和 binding；主题可在组合入口贡献工厂和样式：
+
+```csharp
+using GalNet.Game.Controls.Forms;
+
+var registry = EditorRegistry.CreateDefault();
+registry.Register("game.nickname", context =>
+{
+    var lease = DefaultFieldEditors.CreateText(context);
+    lease.Control.Classes.Add("game-nickname");
+    return lease;
+});
+var form = new SchemaForm
+{
+    Schema = parameters.Fields,
+    Registry = registry,
+    Binding = field => bindings[field.Id] // 宿主提供的 IFieldBinding 字典
+};
+```
+
+在玩家/编辑器根加载 `avares://GalNet.Avalonia.Controls/Styles/SchemaForm.axaml`，或提供自己的表单模板。布局与视觉归主题，registry 实例和业务 binding 归宿主。binding 的 Changed 更新值/选项/可用性；CommitAsync 接收 FieldValue 与取消令牌，返回业务 ValueIssue 或 null。省略使用 default(FieldValue)，显式 null 使用包含 JSON null 的 FieldValue。Text/Numeric/JSON 工厂保留草稿，未编辑的空/null/default 不自动写回；宿主需要强制提交或删除时显式调用 Context.CommitAsync。自定义工厂返回独立控件及释放回调，借用业务服务不由 lease 释放；详见 [表单契约](spec/control.md#schema-字段表单)。Editor/Sample 的正式适配仍待 Phase 2c。
 
 ### 2. 分别定义契约和执行模块
 

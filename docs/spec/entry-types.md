@@ -10,7 +10,7 @@
 
 `EntryParameterType` 是当前编辑器的 UI hint，由独立的 `EditorHints` 适配，不是执行协议。内置描述不再把 editorType 放入值 constraints。
 
-`FieldDescriptor` 组合稳定 ID、值描述、required/默认值、标签 key 和可选编辑提示；`DynamicParameterDescriptor.Field` 是 Entry 的唯一字段元数据来源，`DynamicParameterTable.Fields` 按声明输入顺序冻结。`EditorHints.EditorId` 为开放字符串，内置值见 `ValueEditorIds`，宿主可以声明自己的 ID；Step/Format/UnitKey 仅描述展示，Step 不限制合法值。合法选项留在值约束，展示标签及动态选项留在宿主。CLI schema 查询单独输出 editor 提示，值 schema 不混入 UI 规则。共享 Avalonia 表单尚未接入。
+`FieldDescriptor` 组合稳定 ID、值描述、required/默认值、标签 key 和可选编辑提示；`DynamicParameterDescriptor.Field` 是 Entry 的唯一字段元数据来源，`DynamicParameterTable.Fields` 按声明输入顺序冻结。`EditorHints.EditorId` 为开放字符串，内置值见 `ValueEditorIds`，宿主可以声明自己的 ID；Step/Format/UnitKey 仅描述展示，Step 不限制合法值。合法选项留在值约束，展示标签及动态选项留在宿主。CLI schema 查询单独输出 editor 提示，值 schema 不混入 UI 规则。共享 Avalonia SchemaForm/默认工厂已实现，宿主接入仍待后续阶段，见 [表单契约](control.md#schema-字段表单)。
 
 参数值的公共基础位于 `GalNet.Core.Parameters`：`ValueDescriptor` 提供类型、null、约束及冻结的 JSON 配置，`ValueCodec` 负责序列化/反序列化/结构描述，`ValueValidation` 返回包含 code/path 的校验问题。Entry 的 `DynamicParameterDescriptor` 组合该描述，名称、必填和默认值仍归 Entry；CLI 可独立组合相同值描述。对象/数组通过 JSON/CLR 契约处理，不增加新的值容器。支持范围、字符长度、数组长度、enum/options；未知业务约束由契约自己的 validator 执行，结构描述不能替代完整代码校验。省略与显式 null 分开，根值规则不改变递归子类型；嵌入 schema 时需重定位其局部引用。
 

@@ -23,6 +23,7 @@ using GalNet.Avalonia.Themes;
 using GalNet.Core.Gallery;
 using GalNet.Core.Primitives;
 using GalNet.Game.Controls;
+using GalNet.Game.Controls.Forms;
 using GalNet.Presentation.Abstractions.View;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -241,7 +242,7 @@ public sealed class GameThemeTests
             var created = 0;
             var released = 0;
             var setting = new CustomSetting<string>("custom", "Custom", "", () => "", (_, _) => Task.CompletedTask,
-                _ => { created++; return new SettingEditorLease(new TextBox(), () => released++); });
+                _ => { created++; return new FieldEditorLease(new TextBox(), () => released++); });
             var editor = new CustomSettingEditor { DataContext = setting };
             var window = new Window { Content = editor };
             window.Show();

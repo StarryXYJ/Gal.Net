@@ -28,7 +28,8 @@ public static class ValueCodec
         return value;
     }
 
-    internal static JsonElement ParseEditorText(ValueDescriptor descriptor, string text) =>
+    /// <summary>Parse a draft without enforcing constraints; validate before committing it.</summary>
+    public static JsonElement ParseEditorText(ValueDescriptor descriptor, string text) =>
         descriptor.ValueType == typeof(string) ? JsonSerializer.SerializeToElement(text) : JsonDocumentValue(text);
 
     private static JsonElement JsonDocumentValue(string text)

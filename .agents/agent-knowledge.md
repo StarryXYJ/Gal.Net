@@ -39,7 +39,7 @@
 
 ## 当前工作
 
-- [F-20261013-02 参数与 Sample 简化](../features/F-20261013-02-parameter-and-sample-simplification/phase-2a.md)：Phase 0/1/2a 已验证。Core.Parameters 提供中立值工具及 FieldDescriptor/开放 EditorHints，Entry/CLI/数值设置各自组合；512 项回归及 GameTestCase 契约部署/编译通过。共享表单和生成器仍待后续阶段，Core 领域/快照重构暂缓。
+- [F-20261013-02 参数与 Sample 简化](../features/F-20261013-02-parameter-and-sample-simplification/phase-2b.md)：Phase 0/1/2a/2b 已验证。共享 SchemaForm、开放工厂 registry 与 FieldEditorLease 位于 Avalonia.Controls；宿主拥有绑定/服务，主题显式贡献模板/工厂。Phase 2b 的 290 项回归及示例契约部署/编译通过；Editor/Sample 正式适配和作者路径优化仍待后续，Core 领域/快照重构暂缓。
 
 - [F-20261013-01-editor-cli-operations](../features/F-20261013-01-editor-cli-operations/summary.md) 已实现独立内置/项目契约、项目 scope catalog、面向 agent 的 CLI 原始查询/校验/单 Group 编译、共享生命周期与无损保存、Windows 回收站和单平台截图样例；Phase 1–7 已验证并提交；审核与当前边界见 summary/review。CLI 发现使用 help --json，不保留旧别名或默认内置 fallback。契约是可信 C# 代码，动态加载不构成沙箱。
 
@@ -68,6 +68,8 @@
 4. 如果项目架构变化，检查并标记受影响的 lesson 和 skill，而不是继续沿用旧规则。
 
 ## 经验索引
+
+- [表单测试必须验证真实视觉树](lessons/L-20261014-03-form-tests-must-mount-editors.md)：工厂输出不代表模板已挂载，动态选项模板必须处理 null 中间态。
 
 - [编辑文本必须携带完整值契约](lessons/L-20261014-02-editor-text-needs-value-contract.md)：string 与字符串编码的 enum 文本表示不同，转换两端都必须使用完整 JSON 配置。
 
