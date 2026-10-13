@@ -94,7 +94,7 @@ catalog、repository、save coordinator、持有 catalog 的编辑服务、文�
 
 CLI 一次加载项目契约，向 validate/build/export 传递同一 catalog。ProjectContentBuilder 的隐式全内置默认值应移除或改成明确的外层入口选择；GamePackageExporter 接收 catalog，不在内部重新建立全内置集合。Editor export 同样使用当前项目上下文。
 
-游戏组合根调用 ProjectSchemas.Modules，独立注册执行模块并传入 presenter/后端。框架提供明确的注册覆盖校验：重复/无 schema 的实现失败，游戏启动检查项目声明 primitive 的实现覆盖；工具侧无执行模块不失败。实际 Graph 仍保留 Engine 已有执行检查。
+游戏组合根调用 ProjectSchemas.Modules，独立注册执行模块并传入 presenter/后端。框架提供明确的注册覆盖校验：重复/无 schema 的实现失败，游戏启动检查实际编译内容需要的 primitive；宿主也可要求整个声明集合的执行覆盖。工具侧无执行模块不失败。Headless 因此可使用包含平台专属 schema 的共同契约，运行不涉及这些指令的内容；实际 Graph 仍保留 Engine 已有执行检查。
 
 官方便利入口应按选定官方 schema 注册，不通过分类或前缀推断任意自定义实现。组件级手动注册是基线；若需要只选组件部分指令，路由筛选必须保留整个执行模块的共享状态和释放所有权。自定义实现或替换同 ID 的实现由宿主显式选择，重复不静默覆盖。
 

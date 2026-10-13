@@ -7,6 +7,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Core.Assets;
+using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
 using GalNet.Core.Runtime;
 using GalNet.Core.Settings;
@@ -77,6 +78,7 @@ public sealed class EditorPreviewHost : IAsyncDisposable
 
 public sealed record EditorPreviewContext(
     string Title,
+    IEntryCatalog Catalog,
     IAssetManager Assets,
     IGameContentProvider Content,
     IVariableService Variables,
@@ -284,7 +286,8 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
         _pageView = new AvaloniaGamePresenters(_gameplay, _page, _layers);
         _effects = new AvaloniaEffectRuntime(_gameplay);
         _audio = new AvaloniaAudioPlaybackHost(_context.Assets);
-        var view = new GameRegistration().AddBuiltins(
+        using var registration = new GameRegistration().UseCatalog(_context.Catalog);
+        var view = registration.AddBuiltinImplementations(_context.Catalog,
             _pageView.DialoguePresenter,
             _pageView.LayerPresenter,
             _pageView.AnimationPresenter,
@@ -293,6 +296,8 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
             _pageView.ParticlePresenter,
             _pageView.NvlPresenter,
             _audio).BuildView();
+        try { view.RequireInstructions(content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>().SelectMany(group => group.Entries).Select(entry => entry.Type)); }
+        catch { view.Dispose(); throw; }
         var runtime = new GameRuntime(null, content.Graph.RootNodeId, new SettingsContainer(), _context.Variables);
         _engine = new GameEngine(content.Graph, runtime, view, _context.Progress, _pageView.ChoicePresenter);
         _gameplay.BindPlayback(_engine);

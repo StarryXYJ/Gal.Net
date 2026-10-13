@@ -36,9 +36,12 @@ try
     var progress = new FileGameProgressService(options.ProfileDirectory);
 
     var presentation = new ConsolePresentation(settings.Get<GameSettings>());
-    await using var view = new GameRegistration().AddBuiltins(
+    using var registration = new GameRegistration();
+    foreach (var module in GalNet.Project.Contracts.ProjectSchemas.Modules) registration.RegisterSchema(module);
+    await using var view = registration.AddBuiltinImplementations(registration.BuildCatalog(),
         presentation, presentation, presentation, presentation, content.Gallery, nvlPresenter: presentation,
         characters: content.Localization.Characters).BuildView();
+    view.RequireInstructions(content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>().SelectMany(group => group.Entries).Select(entry => entry.Type));
 
     var runtime = new GameRuntime(textResolver, content.Graph.RootNodeId, settings, variables);
     using var engine = new GameEngine(content.Graph, runtime, view, progress, presentation);

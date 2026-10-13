@@ -94,3 +94,5 @@
 
 - [运行中的 Editor 输出文件锁](lessons/L-20261013-01-running-editor-output-lock.md)：当前运行的 .NET Host 可能锁住 bin DLL；保留用户程序，使用 feature 专用 --output 目录验证。
 - [契约 DLL 流式加载](lessons/L-20261013-02-contract-stream-loading.md)：Unload 不保证立即解除 Windows 映射锁；项目主 DLL 和自有依赖用流式加载，保持共享框架类型身份。
+
+- [构建期间保持源码快照稳定](lessons/L-20261013-03-build-source-snapshot.md)：验证脚本结束前不修改其依赖图源码；交错后完整重跑。

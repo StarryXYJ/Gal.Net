@@ -34,6 +34,19 @@ public sealed class CompositeGameView : IGameView
     public bool TryGetEntry(string primitiveType, out EntryDefinition? entry) => _catalog.TryGet(primitiveType, out entry!);
     public bool CanExecute(string primitiveType) => !_disposed && _instructions.ContainsKey(primitiveType);
 
+    /// <summary>Hosts can require complete execution coverage before starting a game.</summary>
+    public void RequireExecutionCoverage()
+        => RequireInstructions(Primitives.Select(definition => definition.Type));
+
+    /// <summary>Checks compiled content before a host starts executing it.</summary>
+    public void RequireInstructions(IEnumerable<string> typeIds)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(typeIds);
+        var missing = typeIds.Where(type => !_instructions.ContainsKey(type)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+        if (missing.Length != 0) throw new InvalidOperationException($"Project contract declares primitives without registered execution implementations: {string.Join(", ", missing)}.");
+    }
+
     public PrimitiveInstance Dispatch(PrimitiveEntry entry, IGameRuntime runtime, CancellationToken cancellationToken,
         PrimitiveInvocationMode mode = PrimitiveInvocationMode.Normal)
     {

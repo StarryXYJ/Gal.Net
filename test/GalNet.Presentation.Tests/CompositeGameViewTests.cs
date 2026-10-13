@@ -98,6 +98,20 @@ public class CompositeGameViewTests
     }
 
     [Test]
+    public void SuppliedCatalog_IsUsedExactly_AndCoverageReportsMissingImplementations()
+    {
+        var catalog = new TargetProfileEntryCatalog([Schema("custom", "custom.first", "custom.missing")]);
+        using var registration = new GameRegistration().UseCatalog(catalog);
+        Assert.That(registration.BuildCatalog(), Is.SameAs(catalog));
+        Assert.That(() => registration.RegisterSchema(Schema("extra", "extra.run")), Throws.InvalidOperationException);
+        registration.RegisterInstruction("custom.first", _ => new ImmediatePrimitiveInstance());
+        using var view = registration.BuildView();
+        Assert.DoesNotThrow(() => view.RequireInstructions(["custom.first"]));
+        Assert.That(() => view.RequireInstructions(["custom.missing"]), Throws.InvalidOperationException.With.Message.Contains("custom.missing"));
+        Assert.That(view.RequireExecutionCoverage, Throws.InvalidOperationException.With.Message.Contains("custom.missing"));
+    }
+
+    [Test]
     public void DisposalIsReverseOrderedIdempotentAndIncludesEveryModuleDespiteErrors()
     {
         var order = new List<int>();

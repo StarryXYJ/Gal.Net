@@ -80,9 +80,25 @@ public class EntryModuleTests
     public void MainBuiltinRegistrationAndSeparateRegistrationExposeTheSameInstructions()
     {
         using var main = new GameRegistration().AddBuiltins().BuildView();
-        using var separate = new GameRegistration().AddBuiltinSchemas().AddBuiltinImplementations().BuildView();
+        using var separateRegistration = new GameRegistration().AddBuiltinSchemas();
+        using var separate = separateRegistration.AddBuiltinImplementations(separateRegistration.BuildCatalog()).BuildView();
         Assert.That(main.Primitives.Select(entry => entry.Type), Is.EquivalentTo(separate.Primitives.Select(entry => entry.Type)));
         Assert.That(main.Primitives.All(entry => main.CanExecute(entry.Type)), Is.True);
+    }
+
+    [Test]
+    public void SelectedBuiltinExecution_DoesNotExtendPartialContract_AndStillSharesState()
+    {
+        var catalog = new TargetProfileEntryCatalog([BuiltinSchemas.CreateVariablesModule()]);
+        using var registration = new GameRegistration().UseCatalog(catalog).AddBuiltinImplementations(catalog);
+        using var view = registration.BuildView();
+        Assert.DoesNotThrow(view.RequireExecutionCoverage);
+        Assert.That(view.Primitives.Select(definition => definition.Type), Is.EquivalentTo(catalog.Definitions.Select(definition => definition.Type)));
+        Assert.That(view.CanExecute("audio.play"), Is.False);
+        var runtime = new GameRuntime(null);
+        view.Dispatch(new PrimitiveEntry("variable.set", JsonSerializer.SerializeToElement(new { target = "score", expression = "3" })), runtime, CancellationToken.None);
+        view.Dispatch(new PrimitiveEntry("variable.set", JsonSerializer.SerializeToElement(new { target = "score", expression = "[score] + 2" })), runtime, CancellationToken.None);
+        Assert.That(runtime.GetVariable("score")!.AsInt(), Is.EqualTo(5));
     }
 
     [Test]

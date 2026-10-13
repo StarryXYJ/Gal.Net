@@ -69,13 +69,15 @@ Phase 3c 状态：verified。共享层 86/86、架构 29/29；新增 22 项校�
 
 ## Phase 4：项目级 Editor、build/export 与运行注册一致性
 
-状态：in-progress；依赖 Phase 2、3
+状态：verified；依赖 Phase 2、3
 
 实施拆分：4a 将显式项目 catalog 接入 CLI build/export 与共享编译/导出服务，移除内部内置 fallback，并在编译前校验原始 Graph/Group；4b 调整 Editor 项目 scope 与消费者释放、动态快捷键；4c 调整游戏运行注册及 Editor preview 的当前项目契约/执行覆盖诊断。分别验证提交，不提供旧 API 重载或默认 catalog。
 
 Phase 4a 状态：verified。共享层 104/104；新增 4 项真实 CLI 管线验收使用同一个独立自定义契约完成 validate/build/export，并从 galpak 检查自定义输出 primitive。部分内置集合未声明 dialogue 时编译/导出失败，保留既有产物；缺 DLL 无 fallback；未知 Composite 参数在输出替换前拒绝。相关 Integration 12/12，Editor 专用输出构建通过（11 项既有分析器/Avalonia 警告、0 错误）。GameTestCase 作者 Graph 补齐稳定边/选项/条件 ID 和显式空变量集合；共享 builder/exporter 改为必需 catalog，调用方显式适配，无兼容 API。导出临时文件使用唯一名称，发布前检查取消；build/export 输出新增 Contracts/.git 与链接保护。
 
 Phase 4b 状态：verified。Editor 31/31、架构 29/29；其中 3 项真实 AddEditorServices DI 验收覆盖 A/B 动态 DLL 切换、不同 catalog/仓库/Graph 编辑器/快捷键实例、关闭后旧上下文禁止访问、缺 DLL 清理旧项目且不添加失败最近记录、打开监听器异常释放已初始化 scope。项目 catalog 禁止从 root provider 解析；ProjectSchemaSession 在通知消费者前初始化、随 scope 释放。EditorSettingsPanelViewModel 关闭项目时解除全局本地化事件订阅并清空快捷键项，防止保留旧 schema。保留运行中的用户 Editor，构建及测试输出在专用 Temp 目录；测试设置存于内存，不修改用户设置文件。运行注册/preview 仍由 4c 完成。
+
+Phase 4c 状态：verified。Builtins 64/64、Presentation 注册定向 7/7、Editor 31/31、Integration 87/87，Sample.Headless 构建 0 警告/错误。游戏使用静态 ProjectSchemas.Modules，Editor preview 使用同一项目 catalog；内置执行入口要求 catalog，只暴露选定 primitive，组件共享状态和释放所有权保留。宿主在启动前检查实际编译内容需要的指令，缺自定义实现明确失败；可选全契约覆盖检查。这样 Headless 可运行未使用平台截图的内容，不提供伪实现。旧无参数实现入口删除。验证期间曾修改构建中的依赖源码导致旧产物 CS1061，最终完整重跑通过；已记录 lesson L-20261013-03。
 
 - 目标：Editor/CLI/编译/导出均使用当前项目契约，游戏注册与契约匹配。
 - 模块：Editor composition/ProjectService/scope/快捷键/catalog 消费者、ProjectContentBuilder、GamePackageExporter、游戏注册检查。

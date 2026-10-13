@@ -1,8 +1,10 @@
 using GalNet.Contracts.Builtins;
+using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
 using GalNet.Core.I18n;
 using GalNet.Presentation.Abstractions.Audio;
 using GalNet.Presentation.Abstractions.View;
+using GalNet.Presentation.Abstractions.Execution;
 
 namespace GalNet.Primitives.Builtins;
 
@@ -28,13 +30,18 @@ public static class BuiltinRegistration
         IAudioPlaybackHost? audioHost = null,
         IVideoPresenter? videoPresenter = null,
         CharacterCatalog? characters = null,
-        BuiltinAudioModule? audioModule = null) => registration.AddBuiltinSchemas().AddBuiltinImplementations(
+        BuiltinAudioModule? audioModule = null)
+    {
+        registration.AddBuiltinSchemas();
+        return registration.AddBuiltinImplementations(registration.BuildCatalog(),
             dialoguePresenter, layerPresenter, animationPresenter, effectPresenter, gallery,
             particlePresenter, nvlPresenter, audioHost, videoPresenter, characters, audioModule);
+    }
 
     /// <summary>Registers logical implementations. Optional presenters select state-only/headless operation.</summary>
     public static GameRegistration AddBuiltinImplementations(
         this GameRegistration registration,
+        IEntryCatalog catalog,
         IDialoguePresenter? dialoguePresenter = null,
         ILayerPresenter? layerPresenter = null,
         IAnimationPresenter? animationPresenter = null,
@@ -45,18 +52,32 @@ public static class BuiltinRegistration
         IAudioPlaybackHost? audioHost = null,
         IVideoPresenter? videoPresenter = null,
         CharacterCatalog? characters = null,
-        BuiltinAudioModule? audioModule = null) => registration
-            .AddBuiltinDialogue(dialoguePresenter, characters)
-            .AddBuiltinNvl(nvlPresenter)
-            .AddBuiltinLayers(layerPresenter)
-            .AddBuiltinAnimations(animationPresenter, layerPresenter, effectPresenter, particlePresenter)
-            .RegisterImplementation(audioModule ?? new BuiltinAudioModule(audioHost))
-            .AddBuiltinVideo(videoPresenter)
-            .AddBuiltinEffects(effectPresenter)
-            .AddBuiltinParticles(particlePresenter)
-            .AddBuiltinFlow()
-            .AddBuiltinVariables()
-            .AddBuiltinGallery(gallery);
+        BuiltinAudioModule? audioModule = null)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        IPrimitiveModule[] modules =
+        [
+            new BuiltinDialogueModule(dialoguePresenter, characters), new BuiltinNvlModule(nvlPresenter),
+            new BuiltinLayerModule(layerPresenter), new BuiltinAnimationModule(animationPresenter, layerPresenter, effectPresenter, particlePresenter),
+            audioModule ?? new BuiltinAudioModule(audioHost), new BuiltinVideoModule(videoPresenter),
+            new BuiltinEffectModule(effectPresenter), new BuiltinParticleModule(particlePresenter),
+            new BuiltinFlowModule(), new BuiltinVariableModule(), new BuiltinGalleryModule(gallery)
+        ];
+        foreach (var module in modules) registration.RegisterImplementation(new SelectedBuiltinModule(module, catalog));
+        return registration;
+    }
+
+    // Selection limits exposed instructions while retaining the whole component's shared state and ownership.
+    private sealed class SelectedBuiltinModule(IPrimitiveModule inner, IEntryCatalog catalog) : IPrimitiveModule
+    {
+        public IReadOnlyDictionary<string, PrimitiveImplementation> Instructions { get; } =
+            new System.Collections.ObjectModel.ReadOnlyDictionary<string, PrimitiveImplementation>(inner.Instructions
+                .Where(pair => catalog.TryGet(pair.Key, out var schema) && schema.Kind == EntryKind.Primitive)
+                .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal));
+        private bool _disposed;
+        public void Dispose() { if (_disposed) return; _disposed = true; inner.Dispose(); }
+        public async ValueTask DisposeAsync() { if (_disposed) return; _disposed = true; await inner.DisposeAsync().ConfigureAwait(false); }
+    }
 
     public static GameRegistration AddBuiltinVariables(this GameRegistration registration) => registration.RegisterImplementation(new BuiltinVariableModule());
     public static GameRegistration AddBuiltinFlow(this GameRegistration registration) => registration.RegisterImplementation(new BuiltinFlowModule());

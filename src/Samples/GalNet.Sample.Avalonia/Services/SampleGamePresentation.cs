@@ -52,11 +52,13 @@ internal sealed class SampleGamePresentation : IAsyncDisposable, ICatchUpPresent
             presentation.Video = new AvaloniaVideoPresenter(resources.Assets, gameplay);
             var presenters = presentation.Presenters;
             using var registration = new GameRegistration();
-            registration.AddBuiltins(
+            foreach (var module in GalNet.Project.Contracts.ProjectSchemas.Modules) registration.RegisterSchema(module);
+            registration.AddBuiltinImplementations(registration.BuildCatalog(),
                 presenters.DialoguePresenter, presenters.LayerPresenter, presenters.AnimationPresenter,
                 presentation.Effects, resources.Content.Gallery, presenters.ParticlePresenter,
                 presenters.NvlPresenter, presentation.Audio, presentation.Video, resources.Content.Localization.Characters, presentation.AudioModule);
             presentation.View = registration.BuildView();
+            presentation.View.RequireInstructions(resources.Content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>().SelectMany(group => group.Entries).Select(entry => entry.Type));
             presentation.Restorer = new PersistentSceneRestorer(presentation.Effects, presenters.ParticlePresenter,
                 presenters.AnimationPresenter, presenters.LayerPresenter, presentation.Video);
             return presentation;
