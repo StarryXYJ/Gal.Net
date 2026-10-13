@@ -12,7 +12,7 @@
 
   <ItemGroup>
     <PackageReference Include="DynamicLocalization.Core" />
-    <Compile Include="..\Shared\GameTextResolver.cs" Link="Localization\GameTextResolver.cs" />
+    <Compile Include="..\Shared\GameLocalizationProvider.cs" Link="Localization\GameLocalizationProvider.cs" />
   </ItemGroup>
 
   <ItemGroup>

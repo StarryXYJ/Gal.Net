@@ -26,7 +26,7 @@ try
     var content = await installation.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync();
     foreach (var diagnostic in content.Localization.Diagnostics)
         Console.Error.WriteLine($"Skipped localization source '{diagnostic.RelativePath}': {diagnostic.Message}");
-    var textResolver = new GameTextResolver(content, () => content.Settings.TargetLocale.ToCultureInfo());
+    var textResolver = new GameLocalizationProvider(content, () => content.Settings.TargetLocale.ToCultureInfo());
     var settings = new SettingsContainer();
     settings.Set(content.Settings);
     settings.Set(new GameSettings());
