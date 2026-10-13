@@ -53,6 +53,8 @@ Phase 3a 状态：verified。共享层 52/52，架构 29/29；包括 9 项真实
 
 Phase 3b 状态：verified。共享层 64/64、架构 29/29；原始 files/find/graph/group/variables/references 查询与 schema list/show 可调用同一共享服务。真实 CLI 在无契约项目查询成功，schema 查询缺 DLL 明确失败；自定义契约查询包含主 DLL SHA256。交叉过滤、稳定排序、显式分页、重复 ID、无效 metadata、孤立 Group、路径越界与实际目录链接均通过验证，查询前后原始文件字节不变。references 明确返回候选及不完整状态，未声称静态扫描能识别任意自定义代码引用。旧扁平查询入口已删除，不提供兼容别名。
 
+Phase 3c 状态：verified。共享层 86/86、架构 29/29；新增 22 项校验验收覆盖无 DLL 结构校验、缺契约的明确失败、原始格式/未知字段/重复属性/缺 ID、参数类型/required/options/自定义 validator、自定义 Composite 和缺输出 schema、Graph 拓扑与源文件引用、变量 UID 缺失、替代 Graph 相对路径、孤立 Group 与 metadata。真实 CLI 使用独立部署的自定义 Composite DLL 校验成功，结果包含契约 SHA256。定向 Group 不检查无关源文件或 Group 路径；条件检查只解析语法，不执行默认值求值。全部操作无写回，报告明确列出文件和 checked/skipped 范围。完整项目目前检查 settings JSON、metadata GUID/相邻文件，不声称资源载荷、settings/本地化语义或自定义代码引用已被验证；这些边界在结果和 README 中显式列出。
+
 ## Phase 3d：单 GalGroup 编译
 
 状态：planned；依赖 Phase 3c，作为 Phase 4 的前置

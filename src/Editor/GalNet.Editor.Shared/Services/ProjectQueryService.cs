@@ -145,8 +145,24 @@ public sealed class ProjectQueryService(string projectDirectory)
             if (!file.EndsWith(".rawgalgroup", StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("Expected a .rawgalgroup source file.");
             return file;
         }
-        var matches = ReadGroups(diagnostics).Where(group => group.Id == selector.Id && group.Referenced).ToArray();
-        if (matches.Length == 1) return matches[0].File;
+        var graph = _reader.Read(GraphFile, diagnostics);
+        var matches = ProjectRawReader.Array(graph, "nodes", GraphFile, diagnostics)
+            .Where(node => ProjectRawReader.Text(node, "id") == selector.Id && ProjectRawReader.Text(node, "type") == "Group").ToArray();
+        if (matches.Length == 1)
+        {
+            var file = ProjectRawReader.Text(matches[0], "file");
+            if (string.IsNullOrWhiteSpace(file))
+            { diagnostics.Add(new("group.fileRequired", "error", "Group source file is required.", GraphFile, selector.Id)); return null; }
+            try
+            {
+                if (Path.IsPathRooted(file)) throw new ArgumentException("Group file must be relative to Graph/.");
+                var relative = _reader.Relative(_reader.Resolve("Graph/" + file));
+                if (!relative.EndsWith(".rawgalgroup", StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("Expected a .rawgalgroup source file.");
+                return relative;
+            }
+            catch (Exception exception) when (exception is ArgumentException or InvalidDataException)
+            { diagnostics.Add(new("group.pathInvalid", "error", exception.Message, GraphFile, selector.Id)); return null; }
+        }
         diagnostics.Add(new(matches.Length == 0 ? "object.notFound" : "group.ambiguous", "error",
             $"Group '{selector.Id}' matched {matches.Length} graph nodes; a unique match is required.", GraphFile, selector.Id));
         return null;

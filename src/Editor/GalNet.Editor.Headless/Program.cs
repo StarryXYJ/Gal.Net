@@ -70,16 +70,20 @@ internal static class Program
                 WriteJson(result);
                 return result.Success ? 0 : 3;
             }
+            if (_operationId is "project.validate" or "graph.validate" or "group.validate")
+            {
+                var scope = _operationId.Split('.')[0];
+                var result = new ProjectValidationService(projectPath, scope == "graph" ? invocation.Get("--file") ?? "Graph/graph.json" : "Graph/graph.json").Validate(scope,
+                    new GroupSelector(invocation.Get("--id"), invocation.Get("--file")), invocation.Has("--structure-only"));
+                WriteJson(result);
+                return result.Success ? 0 : result.Diagnostics.Any(item => item.Code == "contract.load") ? 1 : 4;
+            }
             var entryCatalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
             if (verb == "project.build") return await BuildAsync(projectPath, args, entryCatalog);
             if (verb == "project.export") return await ExportAsync(projectPath, args);
             var document = Load(projectPath, entryCatalog);
             switch (verb)
             {
-                case "project.validate":
-                    var validation = EditorDocumentValidator.Validate(document);
-                    WriteJson(new { success = validation.IsValid, diagnostics = validation.Diagnostics });
-                    return validation.IsValid ? 0 : 4;
                 case "execute":
                     if (args.Length < 3) return Fail("execute requires a JSON file path or '-'.");
                     var json = args[2] == "-" ? await Console.In.ReadToEndAsync() : await File.ReadAllTextAsync(args[2]);

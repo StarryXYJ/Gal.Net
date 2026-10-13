@@ -32,4 +32,12 @@ Group 目标 --id 与 --file 必须二选一。files 默认排除输出、工具
 
 references 返回静态 JSON 候选引用和位置，完整性为 false；不能据此对自定义 C# 或运行表达式声称零引用。schema 查询才加载项目 Contracts DLL，返回选定集合、参数结构、默认值、约束及主 DLL SHA-256；描述不替代自定义 validator/Composite 的执行语义。
 
-项目原始读取校验、项目契约贯穿执行路径和新增写操作按 feature 后续阶段接入，不把现有加载式 validate 当作完整磁盘校验。
+```text
+validate <project> [--structure-only]
+graph validate <project> [--file Other/graph.json] [--structure-only]
+group validate <project> (--id <group-id> | --file Graph/groups/example.rawgalgroup) [--structure-only]
+```
+
+校验直接读取原始 JSON，不补 ID、不迁移、不写回。仅接受当前 Graph v2 / Raw Group v2，未知字段、重复 JSON 属性、缺失或重复 ID 均报错。structure-only 不加载 DLL，跳过条件语法、契约语义和文件引用检查。完整 Group 校验使用项目契约执行参数类型/required/options/自定义 validator 和 Composite 展开检查；无关 Group 不阻塞定向校验。Graph 检查拓扑、变量定义和源文件引用，不校验 Group 内容；条件只检查语法，不用默认变量值执行表达式。
+
+结果列出 checkedFiles/checks/skippedChecks/semanticStatus/complete，complete 表示所请求检查是否完成，不代表所有可能的检查都执行过。全项目覆盖 Graph、所有作者 Raw Group（包括孤立文件）、资源 metadata 的 GUID/相邻文件和 settings JSON；资源载荷、settings/本地化语义、自定义代码引用和运行时表达式求值明确列为未检查。缺契约仍返回结构诊断及 contract.load，不回退内置集合。项目契约贯穿 build/export/execute 和新增写操作在后续阶段接入。
