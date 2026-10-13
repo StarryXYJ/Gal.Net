@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using GalNet.Core.Compilation;
 using GalNet.Core.Entry;
@@ -36,6 +38,9 @@ public sealed class EditorSaveCoordinator : IEditorSaveCoordinator
         EditorGraphDocument document,
         IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries)
     {
+        for (var directory = new DirectoryInfo(Path.GetFullPath(previewPath)); directory is not null; directory = directory.Parent)
+            if (directory.Exists && (directory.Attributes & FileAttributes.ReparsePoint) != 0)
+                throw new InvalidDataException("Preview output must not traverse directory links.");
         Directory.CreateDirectory(previewPath);
 
         foreach (var file in Directory.EnumerateFiles(previewPath, "*.galgroup"))
@@ -53,7 +58,7 @@ public sealed class EditorSaveCoordinator : IEditorSaveCoordinator
                 Name = node.Name,
                 X = node.X,
                 Y = node.Y,
-                File = node.Type == "Group" ? $"{node.Id}.galgroup" : null,
+                File = node.Type == "Group" ? PreviewFile(node.Id) : null,
                 BranchType = node.BranchType,
                 Options = node.Options?.Select(option => new EditorGraphBranchOptionDto
                 {
@@ -83,11 +88,12 @@ public sealed class EditorSaveCoordinator : IEditorSaveCoordinator
         {
             var raw = new GroupDocument { Kind = GroupDocumentKind.Raw, Entries = entries.Select(SerializeEntry).ToList() };
             var compiled = GalgroupCompiler.Compile(raw, _catalog).Document;
-            File.WriteAllText(Path.Combine(previewPath, $"{groupId}.galgroup"), JsonSerializer.Serialize(compiled, JsonOptions));
+            File.WriteAllText(Path.Combine(previewPath, PreviewFile(groupId)), JsonSerializer.Serialize(compiled, JsonOptions));
         }
 
         return previewPath;
     }
 
+    private static string PreviewFile(string id) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(id))) + ".galgroup";
     private GroupEntryDocument SerializeEntry(EditorEntryData entry) => new EditorDocumentRepository(_catalog).SerializeEntry(entry);
 }

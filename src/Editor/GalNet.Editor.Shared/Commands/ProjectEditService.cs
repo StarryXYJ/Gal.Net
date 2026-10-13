@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
 using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
 using GalNet.Editor.Abstraction.Commands;
@@ -30,13 +29,6 @@ public sealed class ProjectEditService(string projectPath, IEntryCatalog catalog
         }
         return ExecuteAsync([command], dryRun, operation, cancellationToken);
     }
-
-    private static readonly JsonSerializerOptions CommandJsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = false, UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
-        RespectRequiredConstructorParameters = true, RespectNullableAnnotations = true,
-        Converters = { new JsonStringEnumConverter(allowIntegerValues: false) }
-    };
 
     public async Task<ToolResult> ExecuteAsync(IReadOnlyList<IProjectEditCommand> commands, bool dryRun = false,
         string operationId = "execute", CancellationToken cancellationToken = default)
@@ -129,7 +121,7 @@ public sealed class ProjectEditService(string projectPath, IEntryCatalog catalog
                 if (elements.Length != 1 || !fileFlags[0]) throw new JsonException("File commands cannot be mixed with document commands.");
                 if (dryRun) throw new JsonException("File operations do not support dryRun; no files were changed.");
                 var payload = Payload(elements[0], !batch);
-                var command = files.Deserialize(CommandId(payload), payload, CommandJsonOptions);
+                var command = files.Deserialize(CommandId(payload), payload, CommandJson.Options);
                 var result = await new AssetFileCommandExecutor(catalog).ExecuteAsync(projectPath, command, cancellationToken);
                 return new(operationId, result.Success, result,
                     result.Diagnostics.Select(item => new ToolDiagnostic(item.Code, item.Severity.ToString().ToLowerInvariant(), item.Message, item.Resource)).ToArray());
@@ -137,7 +129,7 @@ public sealed class ProjectEditService(string projectPath, IEntryCatalog catalog
             var commands = elements.Select(element =>
             {
                 var payload = Payload(element, !batch);
-                return documents.Deserialize(CommandId(payload), payload, CommandJsonOptions);
+                return documents.Deserialize(CommandId(payload), payload, CommandJson.Options);
             }).ToArray();
             return await ExecuteAsync(commands, dryRun, cancellationToken: cancellationToken);
         }

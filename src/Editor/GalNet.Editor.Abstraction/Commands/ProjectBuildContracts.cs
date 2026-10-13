@@ -1,0 +1,4 @@
+namespace GalNet.Editor.Abstraction.Commands;
+
+public sealed record ProjectBuildReport(string OutputPath, int CompiledGroupCount);
+public sealed record ProjectExportReport(string? PackagePath);

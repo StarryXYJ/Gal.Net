@@ -152,4 +152,3 @@ public sealed class WindowsProjectRecycleBin : IProjectRecycleBin
         [PreserveSig] int ResumeTimer();
     }
 }
-

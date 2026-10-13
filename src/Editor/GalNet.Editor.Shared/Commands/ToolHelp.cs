@@ -27,6 +27,8 @@ public static class ToolHelp
             text.AppendLine(CultureInfo.InvariantCulture, $"  Project={definition.RequiresProject}; contract={definition.RequiresContract}; readOnly={definition.ReadOnly}; dryRun={definition.SupportsDryRun}")
                 .AppendLine(CultureInfo.InvariantCulture, $"  Batch: {definition.BatchMode}")
                 .AppendLine(CultureInfo.InvariantCulture, $"  Input: {definition.InputSchema.GetRawText()}");
+            if (definition.DocumentInputSchema is { } documentInput)
+                text.AppendLine(CultureInfo.InvariantCulture, $"  Document input (execute): {documentInput.GetRawText()}");
             foreach (var example in definition.Examples) text.AppendLine(CultureInfo.InvariantCulture, $"  Example: {example}");
             foreach (var exit in definition.ExitCodes) text.AppendLine(CultureInfo.InvariantCulture, $"  Exit {exit.Key}: {exit.Value}");
         }

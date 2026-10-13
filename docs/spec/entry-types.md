@@ -10,6 +10,10 @@
 
 `EntryParameterType` 是当前编辑器的 UI hint。它由参数 constraints 生成，不是执行协议。
 
+项目集合来自独立契约程序集的 `GalNet.Project.Contracts.ProjectSchemas.Modules`；CLI 每次调用加载，Editor 在打开项目时加载并由项目 scope 持有，关闭/切换释放。相同名称 DLL 可声明不同集合，模块名可重复但完整 typeId 排他。工具加载共享 Core/内置契约类型身份，拒绝缺失依赖和不兼容版本；不存在默认内置 fallback。[ADR-0004](../adr/0004-project-entry-contract-assembly.md) 记录边界，命令见 [CLI README](../../src/Editor/GalNet.Editor.Headless/README.md)。
+
+单平台执行可在外层模块直接借用具体页面；Sample 的 `sample.screenshot(fileName?)` 契约无 Avalonia 依赖，Avalonia 模块直接捕获 GamePage 场景，自动写入宿主 Pictures 目录。它不属于全内置模块，Headless 只可编译，缺执行实现时拒绝运行。Normal/Quick 生成 PNG，CatchUp 不写文件；参数、生命周期与示例见 [Sample.Contracts](../../src/Samples/GalNet.Sample.Contracts/README.md)。
+
 ## Entry Module
 
 每个 `IEntryModule` 持有两张冻结表：

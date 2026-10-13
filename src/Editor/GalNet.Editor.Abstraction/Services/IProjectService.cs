@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using GalNet.Core.Settings;
-using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Commands;
+using GalNet.Editor.Abstraction.Project;
 
 namespace GalNet.Editor.Abstraction.Services;
 

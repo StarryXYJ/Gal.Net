@@ -27,7 +27,8 @@ public sealed class ProjectSchemaContextTests
             Assert.That(first.Catalog.TryGet("custom.example", out _), Is.True);
             Assert.That(second.Catalog.TryGet("custom.example", out _), Is.False);
             Assert.That(first.Catalog.Definitions, Has.Count.EqualTo(5));
-            Assert.That(second.Catalog.Definitions, Has.Count.EqualTo(1));
+            Assert.That(second.Catalog.Definitions, Has.Count.EqualTo(2));
+            Assert.That(second.Catalog.TryGet("custom.marker", out _), Is.True);
             Assert.That(first.Fingerprint, Is.Not.EqualTo(second.Fingerprint));
             Assert.That(first.Catalog.Definitions.Where(definition => definition.Kind == EntryKind.Primitive)
                 .All(definition => definition.Factory().GetType().Assembly == typeof(Entry).Assembly), Is.True);
@@ -99,7 +100,7 @@ public sealed class ProjectSchemaContextTests
         context.Dispose();
         Assert.Throws<ObjectDisposedException>(() => _ = context.Catalog);
         using var reopened = ProjectSchemaContext.Load(project);
-        Assert.That(reopened.Catalog.Definitions, Has.Count.EqualTo(1));
+        Assert.That(reopened.Catalog.Definitions, Has.Count.EqualTo(2));
     }
 
     [Test]
@@ -142,6 +143,21 @@ public sealed class ProjectSchemaContextTests
             Assert.That(parsed.RootElement.GetProperty("data").GetProperty("result").GetProperty("items")[0].GetProperty("typeId").GetString(), Is.EqualTo("custom.bundle"));
             Assert.That(parsed.RootElement.GetProperty("data").GetProperty("contract").GetProperty("sha256").GetString(), Has.Length.EqualTo(64));
         });
+    }
+
+    [Test]
+    public void AncestorLinks_AreRejectedForRawReadsAndContractLoads()
+    {
+        var project = Deploy("SchemaA");
+        var link = Path.Combine(_directory, "link");
+        Directory.CreateSymbolicLink(link, _directory);
+        try
+        {
+            var linkedProject = Path.Combine(link, Path.GetFileName(project));
+            Assert.Throws<InvalidDataException>(() => new ProjectRawReader(linkedProject));
+            Assert.Throws<InvalidDataException>(() => ProjectSchemaContext.Load(linkedProject));
+        }
+        finally { Directory.Delete(link); }
     }
 
     private string Deploy(string fixture)

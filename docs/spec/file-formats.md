@@ -5,6 +5,8 @@
 ```text
 Project/
   settings.json
+  Contracts/
+    GalNet.Project.Contracts.dll  工具使用的项目 entry 契约及依赖
   Graph/
     graph.json
     groups/*.rawgalgroup
@@ -21,9 +23,11 @@ Project/
 
 `I18n/` 的人物表、文本源与默认语言完整性检查见 [国际化](i18n.md)。它是特殊内容，不是资源 provider 输入。
 
+`Contracts/` 不进入 galpak。游戏通过自己的契约项目引用取得同一集合；CLI/Editor 外层加载固定的 `GalNet.Project.Contracts.ProjectSchemas.Modules` 静态只读模块列表。缺少 DLL 时原始查询和结构校验仍可用，语义校验/编译/Editor 打开明确失败。项目创建可先生成缺契约骨架，也可复制完整构建目录；部署方法见 [Sample 契约](../../src/Samples/GalNet.Sample.Contracts/README.md)。项目显示名改名不移动目录，不改变节点/entry ID；整项目删除采用系统回收站。
+
 ## Graph 与 Group
 
-`Graph/graph.json` 是版本 2 的编辑图，包含稳定节点/边 ID、坐标、变量和 Group 的 `groups/<id>.rawgalgroup` 文件引用。`.rawgalgroup` 是版本 2、`kind: Raw` 的编辑源，可包含 primitive 和 composite；`.galgroup` 是 `kind: Compiled` 的运行产物，只能包含 primitive。旧分号文本、旧版本 Group 格式和运行时加载 Raw 文档均不受支持。
+`Graph/graph.json` 是版本 2 的编辑图，包含稳定节点/边 ID、坐标、变量和 Group 的 `groups/<id>.rawgalgroup` 文件引用。`.rawgalgroup` 是版本 2、`kind: Raw` 的编辑源，可包含 primitive 和 composite；`.galgroup` 是版本 3、`kind: Compiled` 的运行产物，只能包含 primitive。旧分号文本、旧版本 Group 格式和运行时加载 Raw 文档均不受支持。
 
 变量声明的字段固定为 `name`、`defaultValue`、`type`，不随 JSON serializer 的命名策略变化；`defaultValue` 使用变量 converter 的 `Uid`、`Name`、`Type`、`Value`。编辑工具只接受当前源格式，不补稳定 ID、不从 settings 迁移变量。原始查询保留未知数据，类型化保存则拒绝未知字段/参数及不能无损转换到编辑值的参数；空字符串不会作为缺失参数删除。
 

@@ -68,7 +68,8 @@ public static class EditorProjectCreator
                 Settings = settings ?? new ProjectSettings(),
                 Graph = new EditorGraphDocument
                 {
-                    Name = name, RootNodeId = entryId,
+                    Name = name,
+                    RootNodeId = entryId,
                     Nodes =
                     [
                         new EditorGraphNodeDto { Id = entryId, Type = "Entry", Name = "Entry", X = 4620, Y = 4950 },

@@ -1,6 +1,6 @@
 # ADR-0004：项目 Entry 契约程序集与平台执行独立组合
 
-状态：Proposed（2026-10-13）
+状态：Accepted（2026-10-13）
 
 ## 上下文
 
@@ -8,7 +8,7 @@ ADR-0002 已将 IEntryModule/schema/composite 与 IPrimitiveModule 执行注册�
 
 开发者需要一个独立契约项目，游戏工程直接引用它；构建产物也能独立部署给工具。AI 可以直接编辑内容文件，工具通过同一契约校验/编译。单平台执行模块允许直接操作视图。
 
-## 提议
+## 决定
 
 - 内置 schema、参数类型、纯校验及 Composite 展开抽到仅依赖 Core 的新契约项目，提供组件选择和全量组合入口；执行模块引用契约。
 - 每个内容项目在固定目录部署固定名称契约 DLL，以确定的静态只读模块集合声明项目支持范围。CLI/Editor 的外层加载器构造项目 catalog，不扫描并加入未选择能力。
@@ -25,7 +25,7 @@ ADR-0002 已将 IEntryModule/schema/composite 与 IPrimitiveModule 执行注册�
 
 schema 可声明编辑/编译契约，无法自行证明实际媒体/视觉后端可用；宿主需要检查执行覆盖和平台端口。契约版本与游戏构建应保持一致，不承诺任意旧 DLL 二进制兼容。
 
-这份 ADR 尚未作为已验证架构事实接受。实施结果、限制与验证见关联 feature，再决定是否转 Accepted。
+实施已验证独立内置模块、两个同名项目 DLL 的隔离与共享类型身份、CLI/Editor 项目 catalog 生命周期、使用相同契约的编译/导出，以及单平台截图执行。固定文件为 `Contracts/GalNet.Project.Contracts.dll`，入口为 `GalNet.Project.Contracts.ProjectSchemas.Modules`。模块 ID 可重复，仅完整 entry ID 排他。实现结果和环境边界见关联 feature；不提供旧接口或旧 DLL 的兼容 fallback。
 
 ## 关联
 

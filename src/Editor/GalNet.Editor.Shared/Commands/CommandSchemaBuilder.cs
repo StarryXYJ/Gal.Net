@@ -2,7 +2,6 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Schema;
-using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using GalNet.Editor.Abstraction.Commands;
 
@@ -11,11 +10,10 @@ namespace GalNet.Editor.Shared.Commands;
 /// <summary>Describes the JSON input actually consumed by typed editor commands.</summary>
 public static class CommandSchemaBuilder
 {
-    private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
+    private static readonly JsonSerializerOptions Options = new(CommandJson.Options)
     {
         TypeInfoResolver = new DefaultJsonTypeInfoResolver(),
-        IgnoreReadOnlyProperties = true,
-        Converters = { new JsonStringEnumConverter() }
+        IgnoreReadOnlyProperties = true
     };
 
     public static EditorCommandSchema Build(Type commandType, string commandId)
@@ -24,16 +22,13 @@ public static class CommandSchemaBuilder
         var properties = schema["properties"]!.AsObject();
         properties["commandId"] = new JsonObject { ["type"] = "string", ["const"] = commandId };
         var required = new JsonArray("commandId");
-        var nullable = new NullabilityInfoContext();
         var constructor = commandType.GetConstructors().OrderByDescending(item => item.GetParameters().Length).First();
         var parameters = new List<EditorCommandParameter>();
         foreach (var parameter in constructor.GetParameters())
         {
             var name = JsonNamingPolicy.CamelCase.ConvertName(parameter.Name!);
             if (name == "commandId") continue;
-            var isRequired = !parameter.HasDefaultValue &&
-                Nullable.GetUnderlyingType(parameter.ParameterType) is null &&
-                nullable.Create(parameter).ReadState != NullabilityState.Nullable;
+            var isRequired = !parameter.HasDefaultValue;
             var exported = properties[name]?.DeepClone();
             var parameterSchema = exported as JsonObject ?? new JsonObject();
             if (exported is JsonValue booleanSchema)

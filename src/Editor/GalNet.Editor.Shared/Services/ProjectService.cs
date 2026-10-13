@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using GalNet.Core.Settings;
+using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
-using GalNet.Editor.Abstraction.Commands;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -71,13 +71,21 @@ public sealed class ProjectService : IProjectService
         _current = program;
 
         Log.Information("Project opened: {Name} at {Path}", name, projectPath);
+        var recent = _editorSettingsService.GetSettings().RecentProjects;
+        var previousRecent = recent.ToArray();
         try
         {
             CurrentChanged?.Invoke(program);
             AddToRecentProjects(name, projectPath);
             _editorSettingsService.SaveSettings();
         }
-        catch { await CloseAsync(); throw; }
+        catch
+        {
+            recent.Clear();
+            recent.AddRange(previousRecent);
+            await CloseAsync();
+            throw;
+        }
 
         return program;
     }

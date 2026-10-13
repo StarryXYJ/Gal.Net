@@ -1,11 +1,11 @@
 using GalNet.Core.Entry;
 using GalNet.Core.Settings;
+using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Commands;
 using GalNet.Editor.Composition;
 using GalNet.Editor.Services.Interfaces;
 using GalNet.Editor.Shared.Services;
-using GalNet.Editor.Abstraction.Commands;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GeneralTest.Editor;
@@ -141,6 +141,21 @@ public sealed class ProjectSchemaLifecycleTests
         Assert.That(Directory.Exists(project.RootPath), Is.True);
     }
 
+    [Test]
+    public async Task Open_SettingsSaveFailure_DisposesScopeAndRestoresRecentList()
+    {
+        var settings = new TestSettings { FailSave = true };
+        using var services = new ServiceCollection().AddEditorServices().AddSingleton<IEditorSettingsService>(settings).BuildServiceProvider();
+        var projects = services.GetRequiredService<IProjectService>();
+        ProjectSchemaContext? context = null;
+        projects.CurrentChanged += project => { if (project is not null) context = project.Services.GetRequiredService<ProjectSchemaSession>().Context; };
+        Assert.ThrowsAsync<IOException>(() => projects.OpenAsync(Deploy("SchemaA")));
+        Assert.That(projects.Current, Is.Null);
+        Assert.That(settings.GetSettings().RecentProjects, Is.Empty);
+        Assert.That(() => context!.Catalog, Throws.TypeOf<ObjectDisposedException>());
+        await projects.CloseAsync();
+    }
+
     private sealed class TestBin : IProjectRecycleBin
     {
         public bool IsSupported => true;
@@ -171,7 +186,8 @@ public sealed class ProjectSchemaLifecycleTests
     private sealed class TestSettings : IEditorSettingsService
     {
         private readonly EditorSettings _settings = new();
+        public bool FailSave { get; init; }
         public EditorSettings GetSettings() => _settings;
-        public void SaveSettings() { }
+        public void SaveSettings() { if (FailSave) throw new IOException("settings save failed"); }
     }
 }

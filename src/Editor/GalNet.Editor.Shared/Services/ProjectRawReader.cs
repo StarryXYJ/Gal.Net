@@ -14,8 +14,9 @@ public sealed class ProjectRawReader
     {
         Root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(projectDirectory));
         if (!Directory.Exists(Root)) throw new DirectoryNotFoundException($"Project directory not found: '{Root}'.");
-        if ((File.GetAttributes(Root) & FileAttributes.ReparsePoint) != 0)
-            throw new InvalidDataException("Project root must not be a directory link.");
+        for (var directory = new DirectoryInfo(Root); directory is not null; directory = directory.Parent)
+            if (directory.Exists && (directory.Attributes & FileAttributes.ReparsePoint) != 0)
+                throw new InvalidDataException("Project root must not traverse a directory link.");
     }
 
     public string Root { get; }
@@ -91,6 +92,15 @@ public sealed class ProjectRawReader
 
     public static string? Text(JsonElement value, string name) => value.ValueKind == JsonValueKind.Object &&
         value.TryGetProperty(name, out var property) && property.ValueKind == JsonValueKind.String ? property.GetString() : null;
+
+    /// <summary>Matches the current AssetMetaCodec field rules and retains the actual diagnostic location.</summary>
+    public static (string? Id, string Pointer) MetadataIdentity(JsonElement value)
+    {
+        if (value.ValueKind != JsonValueKind.Object) return (null, "/id");
+        var properties = value.EnumerateObject().Where(property => property.Name.Equals("id", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (properties.Length != 1 || properties[0].Value.ValueKind != JsonValueKind.String) return (null, "/id");
+        return (properties[0].Value.GetString(), "/" + properties[0].Name);
+    }
 
     public static IReadOnlyList<JsonElement> Array(JsonElement? value, string name, string file, IList<ToolDiagnostic> diagnostics)
     {

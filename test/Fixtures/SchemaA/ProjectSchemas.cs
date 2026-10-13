@@ -1,7 +1,7 @@
+using System.Text.Json;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
-using System.Text.Json;
 
 namespace GalNet.Project.Contracts;
 

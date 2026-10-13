@@ -6,7 +6,7 @@ namespace GeneralTest.Editor.Shared;
 
 public sealed class ToolOperationCatalogTests
 {
-    private static readonly string[] RequiredNullableInput = ["commandId", "name"];
+    private static readonly string[] RequiredNullableInput = ["commandId", "name", "optional"];
     [Test]
     public void Metadata_DescribesActualJsonTypesDefaultsAndEnums()
     {
@@ -22,11 +22,12 @@ public sealed class ToolOperationCatalogTests
     }
 
     [Test]
-    public void NullableInputWithoutDefault_IsOptional_AndCommandIdIsConst()
+    public void NullableInputWithoutDefault_IsRequiredButAcceptsNull_AndCommandIdIsConst()
     {
         var schema = CommandSchemaBuilder.Build(typeof(NullableInputCommand), "test.nullable").JsonSchema!.Value;
         Assert.That(schema.GetProperty("required").EnumerateArray().Select(item => item.GetString()), Is.EqualTo(RequiredNullableInput));
         Assert.That(schema.GetProperty("properties").GetProperty("commandId").GetProperty("const").GetString(), Is.EqualTo("test.nullable"));
+        Assert.That(schema.GetProperty("properties").GetProperty("optional").GetProperty("type").EnumerateArray().Select(item => item.GetString()), Does.Contain("null"));
     }
 
     [Test]
@@ -69,6 +70,23 @@ public sealed class ToolOperationCatalogTests
         Assert.That(catalog.Find("asset.import")!.SupportsDryRun, Is.False);
         Assert.That(catalog.Find("group.entry.add")!.SupportsDryRun, Is.True);
         Assert.Throws<ArgumentException>(() => ToolHelp.Select(catalog, CliInvocation.Parse(catalog, ["help", "missing"])));
+    }
+
+    [Test]
+    public void RequiredFlags_AndDocumentInputs_AreVisibleInTextHelp()
+    {
+        var rename = new ToolOperationCatalog().Find("project.rename")!;
+        Assert.That(rename.Usage, Does.Contain("--name <value>").And.Not.Contain("[--name"));
+        Assert.That(ToolHelp.RenderText([rename], true), Does.Contain("Document input (execute):").And.Contain("commandId"));
+    }
+
+    [Test]
+    public void DefaultCommandDeserializer_IsStrictForEveryConsumer()
+    {
+        using var document = JsonDocument.Parse("""{"commandId":"project.rename","name":"New","future":true}""");
+        Assert.Throws<JsonException>(() => new EditorCommandCatalog().Deserialize("project.rename", document.RootElement));
+        using var file = JsonDocument.Parse("""{"commandId":"asset.directory.create","name":"New","parentDirectory":"","future":true}""");
+        Assert.Throws<JsonException>(() => new AssetFileCommandCatalog().Deserialize("asset.directory.create", file.RootElement));
     }
 
     public sealed record NullableInputCommand(string Name, string? Optional) : IProjectEditCommand

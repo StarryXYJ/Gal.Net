@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GalNet.Core.Assets;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Shared.Services;
 
@@ -25,7 +26,8 @@ public sealed class ProjectQueryServiceTests
         Put("Graph/groups/b.rawgalgroup", """{"version":2,"kind":"Raw","entries":[{"id":"same","type":"unknown.other","parameters":{}}]}""");
         Put("Graph/groups/orphan.rawgalgroup", """{"version":2,"kind":"Raw","entries":[]} """);
         Put("Assets/picture.bin", "asset");
-        Put("Assets/picture.bin.meta", """{"Id":"f2700971-d36e-4be4-94dd-a5c282861c57","type":"binary","Path":"picture.bin"} """);
+        Put("Assets/picture.bin.meta", new AssetMetaCodec(BuiltinResourceTypes.CreateCatalog()).Serialize(new BinaryAssetMeta
+        { Id = "f2700971-d36e-4be4-94dd-a5c282861c57", TypeId = "data", Path = "picture.bin" }));
         Put("Output/ignored.json", "{}");
         Put("Contracts/placeholder.txt", "not a schema");
     }
@@ -63,7 +65,35 @@ public sealed class ProjectQueryServiceTests
             Assert.That(all.Total, Is.EqualTo(2));
             Assert.That(limited.Total, Is.EqualTo(1));
             Assert.That(resource.Items.Single().File, Is.EqualTo("Assets/picture.bin.meta"));
+            Assert.That(resource.Items.Single().JsonPointer, Is.EqualTo("/id"));
         });
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void ResourceQueries_ReadActualCodecOutput_AndDoNotCountTheIdentityAsAReference(bool usePascalCase)
+    {
+        var resourceId = usePascalCase ? "f2700971-d36e-4be4-94dd-a5c282861c57" : "f2700971d36e4be494dda5c282861c57";
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web) { PropertyNamingPolicy = usePascalCase ? null : JsonNamingPolicy.CamelCase };
+        Put("Assets/picture.bin.meta", new AssetMetaCodec(BuiltinResourceTypes.CreateCatalog(), options).Serialize(new BinaryAssetMeta
+        { Id = resourceId, TypeId = "data", Path = "picture.bin" }));
+        var query = new ProjectQueryService(_root);
+        var files = query.Files(new(Kind: "resource"));
+        Assert.That(files.Success, Is.True);
+        Assert.That(((QueryPage<ProjectFileItem>)files.Data!).Items.Single().ResourceId, Is.EqualTo(resourceId));
+        var found = (QueryPage<ProjectObjectItem>)query.Find(new("f2700971d36e4be494dda5c282861c57", "resource")).Data!;
+        Assert.That(found.Items.Single().JsonPointer, Is.EqualTo(usePascalCase ? "/Id" : "/id"));
+        Assert.That(found.Items.Single().Id, Is.EqualTo(resourceId), "Preserve the provider's identifier spelling for use in authored entries.");
+        Assert.That(((QueryPage<ProjectReferenceItem>)query.References("f2700971-d36e-4be4-94dd-a5c282861c57", "resource").Data!).Items, Is.Empty);
+    }
+
+    [Test]
+    public void AmbiguousMetadataIdentities_AreDiagnosedInsteadOfSilentlySelectingOne()
+    {
+        Put("Assets/picture.bin.meta", """{"id":"f2700971-d36e-4be4-94dd-a5c282861c57","Id":"f2700971-d36e-4be4-94dd-a5c282861c57"}""");
+        var result = new ProjectQueryService(_root).Find(new("f2700971-d36e-4be4-94dd-a5c282861c57", "resource"));
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.Diagnostics.Single().Code, Is.EqualTo("asset.guidInvalid"));
     }
 
     [Test]

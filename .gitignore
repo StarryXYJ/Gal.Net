@@ -82,6 +82,7 @@ StyleCopReport.xml
 # GameTestCase is versioned sample content; its resource metadata is part of the GUID contract.
 !GameTestCase/**/*.meta
 GameTestCase/Output/
+GameTestCase/Contracts/
 *.obj
 *.iobj
 *.pch

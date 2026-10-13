@@ -6,10 +6,12 @@
 
 ```text
 Core ───────────────────── 领域模型、资源/Gallery registry、服务契约
+Contracts.Builtins ──────── 仅依赖 Core 的内置 schema、参数和 Composite
 Presentation.Abstractions ─ IGameView 与细分 presenter 端口
 Runtime ────────────────── Graph、Compiled Group、Engine、存档状态与宿主端口
 Assets ─────────────────── Local/PAK provider、Archive、AssetManager
 Storage.FileSystem ─────── 项目/安装内容、保存、变量与进度实现
+ProjectTools.Windows ───── Editor 抽象的 Windows 系统回收站适配
 Avalonia.GameView ──────── 共享页面、导航、Gallery page registry、呈现
 Editor.Shared ──────────── 项目读写、命令、导出
 Editor / Samples ───────── 组合根与平台宿主
@@ -17,21 +19,21 @@ Editor / Samples ───────── 组合根与平台宿主
 
 ## 物理布局
 
-`src` 按职责分组，目录中的项目名继续与程序集名一致：
+`src` 按职责分组，项目名默认与程序集名一致；Sample.Contracts 为工具固定契约约定输出 GalNet.Project.Contracts：
 
 ```text
 src/
-  Shared/          Core、Runtime、Assets、Presentation.Abstractions、Primitives.Builtins
-  Presentation/    Avalonia.Controls、Avalonia.Rendering、Avalonia.GameView
-  Infrastructure/  Storage.FileSystem
+  Shared/          Core、Contracts.Builtins、Runtime、Assets、Presentation.Abstractions、Primitives.Builtins
+  Presentation/    Avalonia.Controls、Avalonia.Rendering、Avalonia.GameView、Avalonia.Themes
+  Infrastructure/  Storage.FileSystem、ProjectTools.Windows
   Editor/          Editor.Abstraction、Editor.Shared、Editor、Editor.Headless
-  Samples/         Sample.Avalonia、Sample.Headless
+  Samples/         Sample.Contracts、Sample.Avalonia、Sample.Headless
   Launcher/        Launcher 共享项目与 Android、Browser、Desktop、iOS 宿主
 ```
 
 物理分组用于表达查找和所有权，不改变程序集名称、根命名空间或依赖方向。新增生产项目应放入与其职责一致的分组，并同步 `GalNet.slnx`；测试项目统一位于 `test/<Assembly>.Tests`。
 
-程序集拥有自己的根命名空间：展示与执行注册端口位于 `GalNet.Presentation.Abstractions.*`，内置 entry、primitive 和 module 位于 `GalNet.Primitives.Builtins`。Entry schema 不依赖执行工厂，执行模块按领域共享状态。Builtins 可依赖 Runtime 的平台无关逻辑（如音频轨道），Runtime 不反向依赖 Builtins。扩展程序集不得在 `GalNet.Core.*` 下声明类型；Core 只保留领域基础类型和扩展协议。注册拆分决定见 [ADR-0002](../adr/0002-entry-schema-execution-registration.md)。
+程序集拥有自己的根命名空间：展示与执行注册端口位于 `GalNet.Presentation.Abstractions.*`，内置 schema、Entry DTO 与 Composite 位于 `GalNet.Contracts.Builtins`，primitive 和执行 module 位于 `GalNet.Primitives.Builtins`。契约项目只依赖 Core，执行模块按领域共享状态，可依赖 Runtime 的平台无关逻辑（如音频轨道）；Runtime 不反向依赖 Builtins。扩展程序集不得在 `GalNet.Core.*` 下声明类型；Core 只保留领域基础类型和扩展协议。注册与程序集拆分决定见 [ADR-0002](../adr/0002-entry-schema-execution-registration.md)、[ADR-0004](../adr/0004-project-entry-contract-assembly.md)。
 
 资源层只向上暴露 `IAssetProvider`、`IArchive`、`IGameFile` 和 `IAssetManager`。provider 定位源文件；manager 负责 GUID 查询、decoder 分派、缓存和 `AssetHandle<T>` 生命周期。Core、Runtime 与 Editor.Shared 不引用 Avalonia。
 
@@ -62,6 +64,8 @@ Avalonia GameView 通过精确 Gallery `typeId` 的 `IGalleryPageRegistry` 选�
 ## 编辑器工作流
 
 `EditorProjectDocument` 是 UI 无关的图、Group、设置编辑聚合。资源 metadata 属于 `Assets/`；Gallery annotation 不进入 Editor document，也不存在集中式 Gallery authoring 文件。预览编译 Raw Group，并用当前项目的 metadata 和共享 catalog 构建 `GameContent.Gallery`。
+
+CLI 只做参数、结果协议和退出码适配；Shared 提供原始查询、无写回校验、定向编译、严格编辑/保存、项目/Group 生命周期服务。原始访问保留未知内容，不依赖 entry DLL；有语义的操作使用项目 Contracts DLL，不回退内置。Editor 的 ProjectSchemaSession、catalog 及文档消费者由项目 scope 持有。Windows 回收通过 Editor.Abstraction.IProjectRecycleBin 注入，Shared 不引用 Shell；Editor 先关闭匹配会话并等待清理，再回收，最后更新最近记录。当前接口及范围见 [CLI README](../../src/Editor/GalNet.Editor.Headless/README.md)。
 
 `EditorAssetManager`、`EditorGameDataProvider`、`AssetCatalogService` 与 `GameExportService` 共享 Editor 组合根的 catalog。导出把资源写入基础 PAK，把 Graph/settings/I18n 和派生 Gallery JSON 写入 `.galpak`。
 

@@ -38,7 +38,10 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog) : IEditorDoc
                         throw new InvalidDataException($"Parameter '{key}' in '{file}' cannot round-trip through the editor value representation; edit the raw file directly.");
             loaded.GroupEntries[node.Id] = group!.Entries.Select((entry, index) => new EditorEntryData
             {
-                StableId = entry.Id, Id = index + 1, Type = entry.Type, Condition = entry.Condition,
+                StableId = entry.Id,
+                Id = index + 1,
+                Type = entry.Type,
+                Condition = entry.Condition,
                 Parameters = entry.Parameters.ToDictionary(pair => pair.Key, pair => DynamicParameterValue.ToEditorValue(pair.Value), StringComparer.Ordinal)
             }).ToList();
         }
@@ -111,7 +114,9 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog) : IEditorDoc
         if (entry.Parameters.Values.Any(value => value is null)) throw new InvalidDataException("Editor parameter values must be strings; use patchParameters null to remove a parameter.");
         return new GroupEntryDocument
         {
-            Id = entry.StableId, Type = entry.Type, Condition = entry.Condition,
+            Id = entry.StableId,
+            Type = entry.Type,
+            Condition = entry.Condition,
             Parameters = entry.Parameters.ToDictionary(pair => pair.Key,
                 pair => DynamicParameterValue.FromEditorValue(pair.Value, definition.DynamicParameters![pair.Key].ValueType), StringComparer.Ordinal)
         };

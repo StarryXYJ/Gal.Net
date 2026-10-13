@@ -26,9 +26,10 @@ public sealed class ProjectQueryService(string projectDirectory)
             var metaFile = kind == "metadata" ? file : kind == "resource" && File.Exists(Path.Combine(_reader.Root, file + ".meta")) ? file + ".meta" : null;
             if (metaFile is not null && _reader.Read(metaFile, diagnostics) is { } meta)
             {
-                resourceId = ProjectRawReader.Text(meta, "Id");
+                var identity = ProjectRawReader.MetadataIdentity(meta);
+                resourceId = identity.Id;
                 if (!Guid.TryParse(resourceId, out _))
-                    diagnostics.Add(new("asset.guidInvalid", "error", "Metadata Id must be a resource GUID.", metaFile, JsonPointer: "/Id"));
+                    diagnostics.Add(new("asset.guidInvalid", "error", "Metadata must contain one string resource GUID id.", metaFile, JsonPointer: identity.Pointer));
             }
             items.Add(new(file, kind, new FileInfo(_reader.Resolve(file)).Length, resourceId));
         }
@@ -92,9 +93,14 @@ public sealed class ProjectQueryService(string projectDirectory)
             }
         if (query.Kind is null or "resource")
             foreach (var file in _reader.Files(null, diagnostics).Where(file => file.StartsWith("Assets/", StringComparison.Ordinal) && file.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)))
-                if (_reader.Read(file, diagnostics) is { } meta && Guid.TryParse(query.Id, out var requested) &&
-                    Guid.TryParse(ProjectRawReader.Text(meta, "Id"), out var actual) && requested == actual)
-                    matches.Add(new("resource", actual.ToString("D"), file, "/Id", meta));
+                if (_reader.Read(file, diagnostics) is { } meta)
+                {
+                    var identity = ProjectRawReader.MetadataIdentity(meta);
+                    if (!Guid.TryParse(identity.Id, out var actual))
+                        diagnostics.Add(new("asset.guidInvalid", "error", "Metadata must contain one string resource GUID id.", file, JsonPointer: identity.Pointer));
+                    else if (Guid.TryParse(query.Id, out var requested) && requested == actual)
+                        matches.Add(new("resource", identity.Id, file, identity.Pointer, meta));
+                }
         return Page("find", "project", matches.OrderBy(item => item.File, StringComparer.Ordinal).ThenBy(item => item.JsonPointer, StringComparer.Ordinal).ToArray(), diagnostics, query.Offset, query.Limit);
     }
 
@@ -196,7 +202,7 @@ public sealed class ProjectQueryService(string projectDirectory)
         if (value.ValueKind == JsonValueKind.Object)
             foreach (var property in value.EnumerateObject())
             {
-                var identity = pointer.Length == 0 && file.EndsWith(".meta", StringComparison.OrdinalIgnoreCase) && property.Name == "Id" ||
+                var identity = pointer.Length == 0 && file.EndsWith(".meta", StringComparison.OrdinalIgnoreCase) && property.Name.Equals("id", StringComparison.OrdinalIgnoreCase) ||
                     Regex.IsMatch(pointer, @"^/(nodes|edges|entries|playerVariables|saveVariables)/[0-9]+$", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1)) &&
                     property.Name is "id" or "uid" or "name";
                 if (identity) continue;
@@ -224,7 +230,8 @@ public sealed class ProjectQueryService(string projectDirectory)
 
     private static string Kind(string file) => file switch
     {
-        GraphFile => "graph", "settings.json" => "settings",
+        GraphFile => "graph",
+        "settings.json" => "settings",
         _ when file.EndsWith(".rawgalgroup", StringComparison.OrdinalIgnoreCase) => "rawgroup",
         _ when file.EndsWith(".galgroup", StringComparison.OrdinalIgnoreCase) => "compiledgroup",
         _ when file.EndsWith(".meta", StringComparison.OrdinalIgnoreCase) => "metadata",

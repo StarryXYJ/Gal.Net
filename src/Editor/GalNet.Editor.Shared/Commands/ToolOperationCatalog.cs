@@ -11,9 +11,12 @@ public sealed class ToolOperationCatalog
 {
     public static readonly IReadOnlyDictionary<int, string> ExitCodes = new Dictionary<int, string>
     {
-        [0] = "Success", [1] = "I/O, contract loading or unexpected failure",
-        [2] = "Invalid command or arguments", [3] = "Object not found",
-        [4] = "Validation failed", [5] = "Compilation, export or edit failed"
+        [0] = "Success",
+        [1] = "I/O, contract loading or unexpected failure",
+        [2] = "Invalid command or arguments",
+        [3] = "Object not found",
+        [4] = "Validation failed",
+        [5] = "Compilation, export or edit failed"
     };
 
     private static readonly JsonElement ResultSchema = JsonSerializer.SerializeToElement(new
@@ -22,8 +25,10 @@ public sealed class ToolOperationCatalog
         required = new[] { "protocolVersion", "operationId", "success", "data", "diagnostics" },
         properties = new
         {
-            protocolVersion = new { type = "integer", @const = 1 }, operationId = new { type = "string" },
-            success = new { type = "boolean" }, data = new { },
+            protocolVersion = new { type = "integer", @const = 1 },
+            operationId = new { type = "string" },
+            success = new { type = "boolean" },
+            data = new { },
             diagnostics = new { type = "array", items = new { type = "object", required = new[] { "code", "severity", "message" } } }
         }
     });
@@ -135,6 +140,8 @@ public sealed class ToolOperationCatalog
         {
             "project.create" => typeof(ProjectCreateReport),
             "project.delete" => typeof(ProjectDeleteReport),
+            "project.build" => typeof(ProjectBuildReport),
+            "project.export" => typeof(ProjectExportReport),
             "project.rename" or "group.create" or "group.rename" or "group.delete" => typeof(ProjectEditReport),
             "files" => typeof(QueryPage<ProjectFileItem>),
             "find" or "graph.nodes" or "graph.node" or "graph.edges" or "group.entries" or "variables" => typeof(QueryPage<ProjectObjectItem>),
@@ -158,7 +165,8 @@ public sealed class ToolOperationCatalog
             return Route(definition.Id, "project rename", definition.Description,
                 Project(new CliParameter("--name", "string", "New project display name.", true),
                     new("--dry-run", "boolean", "Validate and report without writing.", Default: false)),
-                readOnly: false, requiresContract: true, dryRun: true) with { DocumentInputSchema = definition.Schema.JsonSchema };
+                readOnly: false, requiresContract: true, dryRun: true) with
+            { DocumentInputSchema = definition.Schema.JsonSchema };
         return new(
         definition.Id, "execute", definition.Description, "execute <project> <command-file|->",
         definition.Schema.Parameters.Select(parameter => new CliParameter(parameter.Name, parameter.Type, parameter.Description, parameter.Required,
@@ -195,6 +203,7 @@ public sealed class ToolOperationCatalog
         var input = JsonSerializer.SerializeToElement(inputSchema);
         var usage = path + string.Concat(parameters.Select(parameter => parameter.Positional
             ? (parameter.Required ? $" <{parameter.Name}>" : $" [<{parameter.Name}>]")
+            : parameter.Required ? (parameter.Type == "boolean" ? $" {parameter.Name}" : $" {parameter.Name} <value>")
             : parameter.Type == "boolean" ? $" [{parameter.Name}]" : $" [{parameter.Name} <value>]"));
         return new(id, path, description, usage, parameters, input, ResultSchema,
             readOnly, requiresProject, requiresContract, dryRun, batchMode, [usage], ExitCodes);

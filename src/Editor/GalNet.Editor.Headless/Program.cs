@@ -116,7 +116,7 @@ internal static class Program
                     var json = args[2] == "-" ? await Console.In.ReadToEndAsync() : await File.ReadAllTextAsync(args[2]);
                     var result = await edits.ExecuteJsonAsync(json);
                     WriteJson(result);
-                    return result.Success ? 0 : 5;
+                    return result.Success ? 0 : result.Diagnostics.Any(item => item.Code is "command.arguments" or "json.propertyDuplicate") ? 2 : 5;
                 default: return Fail($"Unknown command '{args[0]}'.");
             }
         }
@@ -137,7 +137,8 @@ internal static class Program
         var resourceTypes = BuiltinResourceTypes.CreateCatalog();
         var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
         var result = await GamePackageExporter.ExportAsync(projectName, projectName, projectPath, outputDirectory, resourceTypes, galleryTypes, entryCatalog);
-        WriteJson(new { success = result.Success, packagePath = result.PackagePath, error = result.Error });
+        WriteJson(new ToolResult("project.export", result.Success, new ProjectExportReport(result.PackagePath),
+            result.Success ? [] : [new("project.exportFailed", "error", result.Error ?? "Export failed.")]));
         return result.Success ? 0 : 5;
     }
 
@@ -148,7 +149,7 @@ internal static class Program
         if (outputIndex >= 0 && outputIndex + 1 >= args.Length) return Fail("--output requires a directory path.");
         var outputDirectory = outputIndex >= 0 ? Path.GetFullPath(args[outputIndex + 1]) : null;
         var result = await new ProjectContentBuilder(entryCatalog).BuildAsync(projectPath, outputDirectory);
-        WriteJson(new { success = true, outputPath = result.OutputPath, compiledGroupCount = result.CompiledGroupCount });
+        WriteJson(new ToolResult("project.build", true, new ProjectBuildReport(result.OutputPath, result.CompiledGroupCount), []));
         return 0;
     }
 

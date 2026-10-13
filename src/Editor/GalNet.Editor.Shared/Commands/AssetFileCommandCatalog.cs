@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using GalNet.Core.I18n;
 using GalNet.Editor.Abstraction.Commands;
 
@@ -7,12 +6,6 @@ namespace GalNet.Editor.Shared.Commands;
 
 public sealed class AssetFileCommandCatalog : IProjectFileCommandCatalog
 {
-    private static readonly JsonSerializerOptions DefaultOptions = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true,
-        Converters = { new JsonStringEnumConverter() }
-    };
-
     private readonly IReadOnlyList<IProjectCommandDefinition> _definitions =
     [
         Define<ImportAssetsCommand>("asset.import", "Imports files into the project asset directory."),
@@ -27,9 +20,9 @@ public sealed class AssetFileCommandCatalog : IProjectFileCommandCatalog
 
     public IProjectFileCommand Deserialize(string commandId, JsonElement payload, JsonSerializerOptions? options = null)
     {
-        var definition = _definitions.FirstOrDefault(item => string.Equals(item.Id, commandId, StringComparison.OrdinalIgnoreCase))
+        var definition = _definitions.FirstOrDefault(item => string.Equals(item.Id, commandId, StringComparison.Ordinal))
             ?? throw new KeyNotFoundException($"Unknown asset command '{commandId}'.");
-        return (IProjectFileCommand?)payload.Deserialize(definition.CommandType, options ?? DefaultOptions)
+        return (IProjectFileCommand?)payload.Deserialize(definition.CommandType, options ?? CommandJson.Options)
             ?? throw new JsonException($"Asset command '{commandId}' deserialized to null.");
     }
 

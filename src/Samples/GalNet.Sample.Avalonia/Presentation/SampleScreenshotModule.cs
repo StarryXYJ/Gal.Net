@@ -1,9 +1,9 @@
+using System.Collections.Concurrent;
+using Avalonia.Threading;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Core.Primitives;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Project.Contracts;
-using Avalonia.Threading;
-using System.Collections.Concurrent;
 using GalNet.Runtime.Logging;
 
 namespace GalNet.Sample.Avalonia.Presentation;

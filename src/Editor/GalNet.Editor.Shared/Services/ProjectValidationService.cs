@@ -44,9 +44,10 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
                     var meta = _reader.Read(file, diagnostics);
                     if (meta is null) continue;
                     DuplicateProperties(meta.Value, file, "", diagnostics);
-                    if (!Guid.TryParse(ProjectRawReader.Text(meta.Value, "Id"), out var guid))
-                        Error(diagnostics, "asset.guidInvalid", "Metadata Id must be a resource GUID.", file, "/Id");
-                    else if (!resourceIds.Add(guid)) Error(diagnostics, "asset.guidDuplicate", "Resource GUID is duplicated.", file, "/Id", guid.ToString());
+                    var identity = ProjectRawReader.MetadataIdentity(meta.Value);
+                    if (!Guid.TryParse(identity.Id, out var guid))
+                        Error(diagnostics, "asset.guidInvalid", "Metadata must contain one string resource GUID id.", file, identity.Pointer);
+                    else if (!resourceIds.Add(guid)) Error(diagnostics, "asset.guidDuplicate", "Resource GUID is duplicated.", file, identity.Pointer, guid.ToString());
                     if (!File.Exists(_reader.Resolve(file[..^5]))) Error(diagnostics, "asset.fileMissing", "Metadata has no adjacent resource file.", file, "");
                 }
                 files.Add("settings.json");

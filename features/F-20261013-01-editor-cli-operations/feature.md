@@ -2,7 +2,7 @@
 id: F-20261013-01-editor-cli-operations
 title: 编辑器无 UI 操作层与 CLI 跟进
 type: feature
-status: implementation
+status: completed
 created: 2026-10-13
 updated: 2026-10-13
 ---
@@ -13,7 +13,7 @@ updated: 2026-10-13
 
 > 目前整个编辑器都是非常落后于项目的情况，接下来需要慢慢跟进项目。先实现命令部分，cli 对项目进行操作，不涉及 UI，操作层和 cli 分开，方便后续 ui 版本复用。操作包括但不限于新建项目、根据 guid 查找、删除项目、重命名项目、新建 galgroup 等等，你先列表。不过有个问题是没有引擎啥的好像不能得知目前有哪些 entry 支持和对应的类型，这部分打算怎么搞。
 
-最初通过 create 流程建立需求并调查现状；设计与阶段计划已形成，用户已明确授权开始实现。Phase 1、2 已验证，继续 Phase 3；逐阶段验证并提交。
+最初通过 create 流程建立需求并调查现状；设计与阶段计划已形成，用户已明确授权开始实现。Phase 1–7 已验证并按阶段提交；最终结果与边界见 summary.md，审核见 review.md。
 
 ## 用户补充与已确认需求
 

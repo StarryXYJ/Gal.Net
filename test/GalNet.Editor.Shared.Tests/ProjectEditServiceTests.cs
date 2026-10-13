@@ -114,6 +114,7 @@ public sealed class ProjectEditServiceTests
     [TestCase("{\"commandId\":\"project.rename\",\"name\":\"A\",\"name\":\"B\"}")]
     [TestCase("{\"commands\":[],\"unknown\":true}")]
     [TestCase("{\"commands\":{}}")]
+    [TestCase("{\"commandId\":\"Project.Rename\",\"name\":\"New\"}")]
     public async Task InvalidJsonArguments_AreRejectedBeforeAnyMutation(string json)
     {
         var original = Snapshot();
@@ -133,6 +134,17 @@ public sealed class ProjectEditServiceTests
         var file = await _service.ExecuteJsonAsync("""{"commandId":"asset.directory.create","parentDirectory":"","name":"Created"}""");
         Assert.That(file.Success, Is.True, JsonSerializer.Serialize(file.Diagnostics));
         Assert.That(Directory.Exists(Path.Combine(_root, "Assets/Created")), Is.True);
+    }
+
+    [Test]
+    public async Task RealCli_InvalidExecuteArguments_ReturnUsageExitCodeWithoutWrites()
+    {
+        var file = Path.Combine(_root, "command.json");
+        File.WriteAllText(file, """{"commandId":"project.rename","name":"New","unknown":true}""");
+        var original = Snapshot();
+        var result = await CliHelpTests.Invoke(["execute", _root, file]);
+        Assert.That(result.ExitCode, Is.EqualTo(2), result.Output);
+        AssertSnapshot(original);
     }
 
     [Test]

@@ -114,7 +114,7 @@ public sealed class ProjectValidationServiceTests
     public void FullProject_IncludesOrphansAndMetadata_ButIdsAreScopedToGroup()
     {
         Put("Graph/groups/orphan.rawgalgroup", File.ReadAllText(Path.Combine(_root, Source)));
-        Put("Assets/missing.bin.meta", "{\"Id\":\"not-a-guid\"}");
+        Put("Assets/missing.bin.meta", "{\"id\":\"not-a-guid\"}");
         var result = new ProjectValidationService(_root).Validate(catalog: Catalog());
         Assert.That(((ProjectValidationReport)result.Data!).CheckedFiles, Does.Contain("Graph/groups/orphan.rawgalgroup"));
         Assert.That(result.Diagnostics.Select(item => item.Code), Does.Contain("asset.guidInvalid").And.Contain("asset.fileMissing"));

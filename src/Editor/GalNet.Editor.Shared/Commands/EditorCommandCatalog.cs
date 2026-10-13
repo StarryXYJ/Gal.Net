@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using GalNet.Core.I18n;
 using GalNet.Editor.Abstraction.Commands;
 
@@ -7,19 +6,13 @@ namespace GalNet.Editor.Shared.Commands;
 
 public sealed class EditorCommandCatalog : IEditorCommandCatalog
 {
-    private static readonly JsonSerializerOptions DefaultJsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true,
-        Converters = { new JsonStringEnumConverter() }
-    };
-
     private readonly IReadOnlyList<IProjectCommandDefinition> _definitions;
     private readonly Dictionary<string, IProjectCommandDefinition> _byId;
 
     public EditorCommandCatalog()
     {
         _definitions = CreateDefinitions();
-        _byId = _definitions.ToDictionary(definition => definition.Id, StringComparer.OrdinalIgnoreCase);
+        _byId = _definitions.ToDictionary(definition => definition.Id, StringComparer.Ordinal);
     }
 
     public IReadOnlyList<IProjectCommandDefinition> GetAll() => _definitions;
@@ -35,7 +28,7 @@ public sealed class EditorCommandCatalog : IEditorCommandCatalog
         if (!(_byId.TryGetValue(commandId, out var definition)))
             throw new KeyNotFoundException($"Unknown editor command '{commandId}'.");
 
-        return (IProjectEditCommand?)payload.Deserialize(definition.CommandType, options ?? DefaultJsonOptions)
+        return (IProjectEditCommand?)payload.Deserialize(definition.CommandType, options ?? CommandJson.Options)
             ?? throw new JsonException($"Command '{commandId}' deserialized to null.");
     }
 

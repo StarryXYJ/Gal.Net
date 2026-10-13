@@ -13,10 +13,10 @@
 - 解决方案入口是 `GalNet.slnx`。
 - `docs/spec/` 描述已经实现的稳定事实；`docs/design/` 描述设计和分阶段计划。
 - Runtime/Core 应保持与 Avalonia、WPF、Skia、具体文件系统和其他平台实现解耦。
-- Entry 契约与执行已分离：IEntryModule 只含 schema/composite，IPrimitiveModule 按领域共享状态并贡献完整指令 ID；GameRegistration 独立注册，AddBuiltins 为主内置入口。可选 schema、部分内置实现或全自定义；仅完整 ID 排他。同前缀和 schema 模块名可重复。音频用 AudioRuntime + IAudioPlaybackHost 组合，不强制继承。见 docs/adr/0002-entry-schema-execution-registration.md 和 docs/development.md。
+- Entry 契约与执行已分离：IEntryModule 只含 schema/composite，IPrimitiveModule 按领域共享状态并贡献完整指令 ID；GameRegistration 独立注册，AddBuiltins 为完整内置运行入口；独立 GalNet.Contracts.Builtins 只依赖 Core，CreateAllModules 返回 13 个组件模块。可选 schema、部分内置实现或全自定义；仅完整 ID 排他。同前缀和 schema 模块名可重复。音频用 AudioRuntime + IAudioPlaybackHost 组合，不强制继承。见 docs/adr/0002-entry-schema-execution-registration.md 和 docs/development.md。
 - 当前 GameSnapshot 版本为 3，不兼容旧版；读档取消旧运行 scope 并替换场景对象。Engine 不拥有执行 view，宿主先释放 Engine，再异步释放 view 与后端。
 - Engine 提供终态 StopAsync 和 StateChanged，覆盖玩家推进、Choice 与阻塞实例自然完成；不新增通用 Runner。AvaloniaGamePresenters 只组合端口，SampleGamePresentation 管理平台资源。见 docs/design/game-runner-refactor.md 和 docs/spec/runtime.md。
-- Presentation.Defaults 已删除，空 NullGameView 位于展示抽象的 View 命名空间；当前 20 个生产项目。GameContent.Settings 包含项目设置，项目/安装加载器与两个 Sample 已接通自定义音频轨道配置。
+- Presentation.Defaults 已删除，空 NullGameView 位于展示抽象的 View 命名空间；当前生产项目图已扩展到 24 个项目（见 F-20261013-01）。GameContent.Settings 包含项目设置，项目/安装加载器与两个 Sample 已接通自定义音频轨道配置。
 - 旧的 `GalNet.Control` 与 `GalNet.Control.Abstraction` 已完成迁移并删除；当前共享 Avalonia 游戏页面唯一入口是 `GalNet.Avalonia.GameView`，页面架构见 `docs/spec/control.md`。
 - 会影响场景的运行时条目应先更新 `SceneState`，再通知展示层；读取存档后由宿主通过 PersistentSceneRestorer 根据状态重放展示。
 - 视觉扩展应通过展示抽象和渲染端口接入；不要把平台类型或渲染资源泄漏进 Core/Runtime。
@@ -34,6 +34,8 @@
 
 ## 当前工作
 
+- [F-20261013-01-editor-cli-operations](../features/F-20261013-01-editor-cli-operations/summary.md) 已实现独立内置/项目契约、项目 scope catalog、面向 agent 的 CLI 原始查询/校验/单 Group 编译、共享生命周期与无损保存、Windows 回收站和单平台截图样例；Phase 1–7 已验证并提交；审核与当前边界见 summary/review。CLI 发现使用 help --json，不保留旧别名或默认内置 fallback。契约是可信 C# 代码，动态加载不构成沙箱。
+
 - [F-20261011-03-theme-owned-views](../features/F-20261011-03-theme-owned-views/summary.md) 已移除 GameView 普通页面和默认玩家样式。主题参数必需，最终映射校验完整性；Page 仅保留 GameShell/GamePage/ScreenshotDialog 行为。Themes 提供布局、通用样式与工具栏；截图独立构造/释放，普通页面 Scoped。Editor 显式 Classic 并采用 ThemesAssembly 别名。
 
 - [F-20261011-02-player-page-layout](../features/F-20261011-02-player-page-layout/summary.md) 已补齐三套内置主题的全部普通页面 XAML View，主题目录自行维护布局、共享 ViewModel/命令；页面无外框，主题内导航位置一致。对白名字比正文大4，Classic/Paper 26/22、Minimal 24/20；默认 GameView 页面回退已由 F-20261011-03 删除。
@@ -48,7 +50,7 @@
 - [F-20260916-02-audio-system](../features/F-20260916-02-audio-system/feature.md) 已完成首期：轨道逻辑、`AudioRuntime`、`IAudioPlaybackHost`、Avalonia LibVLC host、语音文本 composite 和 Sample 验收已落地。Runtime 只能传 asset ID；平台 host 必须经 `IAssetManager` 实体化临时媒体文件。后续 [F-20261009-01-track-seffects](../features/F-20261009-01-track-seffects/feature.md) 增加 host 注册的 `SEffectCatalog`、`seffect.gain` 与基于 LibVLC equalizer 的 `seffect.lowPass` / `seffect.highPass`；item scope、动画、存档、玩家音量和角色默认轨道均未实现。
 - `F-20260929-01-compiled-content-pipeline` 正在实施；粒子 Primitive、Runtime 状态与 Presenter 桥接及存档后的 effect/particle 展示重放已经验证，完整 Sample/Headless smoke 与 Phase 4 收尾仍待完成。
 - [F-20260929-15-replay-save-format](../features/F-20260929-15-replay-save-format/feature.md) 已暂缓：正式存档继续使用完整稳定快照；后续节点解锁/快速进入能力应另立 feature。
-- `F-20260929-03-maintainability-roadmap` 及其后续 `F-20260929-14-format-baseline` 已完成。资源协议归 Core.Assets；内容、保存、变量、Gallery 组合和进度端口归 Runtime；Editor 设置/退出协议归 Editor.Abstraction；展示端口使用 `GalNet.Presentation.Abstractions.*`，推荐内置类型使用 `GalNet.Primitives.Builtins`。`GalNet.Storage.Abstractions` 与无消费者历史接口已删除，`ISaveService` 已统一为异步可取消 API。测试已按 10 个生产/运行边界拆分，跨外层场景集中在 `GalNet.IntegrationTests`，Architecture 门禁同时约束生产与测试项目引用。Editor Workspace、Avalonia presenter、Sample 会话和 Editor 扩展边界均已按路线图收敛。21 个生产项目的物理路径现按 Shared、Presentation、Infrastructure、Editor、Samples 和 Launcher 分组。CI 使用 solution 级 whitespace 与 `IDE0005` import 检查阻止格式基线回退。
+- `F-20260929-03-maintainability-roadmap` 及其后续 `F-20260929-14-format-baseline` 已完成。资源协议归 Core.Assets；内容、保存、变量、Gallery 组合和进度端口归 Runtime；Editor 设置/退出协议归 Editor.Abstraction；展示端口使用 `GalNet.Presentation.Abstractions.*`，推荐内置类型使用 `GalNet.Primitives.Builtins`。`GalNet.Storage.Abstractions` 与无消费者历史接口已删除，`ISaveService` 已统一为异步可取消 API。测试已按 10 个生产/运行边界拆分，跨外层场景集中在 `GalNet.IntegrationTests`，Architecture 门禁同时约束生产与测试项目引用。Editor Workspace、Avalonia presenter、Sample 会话和 Editor 扩展边界均已按路线图收敛。当前 24 个生产项目的物理路径按 Shared、Presentation、Infrastructure、Editor、Samples 和 Launcher 分组。CI 使用 solution 级 whitespace 与 `IDE0005` import 检查阻止格式基线回退。
 - 后续 feature、验证命令和新经验在实际工作中补充，并保留来源链接或 feature ID。
 
 ## 维护规则
@@ -98,3 +100,5 @@
 - [构建期间保持源码快照稳定](lessons/L-20261013-03-build-source-snapshot.md)：验证脚本结束前不修改其依赖图源码；交错后完整重跑。
 
 - [Headless 异步 Dispatch 的重载选择](lessons/L-20261013-04-headless-async-void-dispatch.md)：12.0.5 无 Func<Task> 重载，显式 Dispatch<bool> 等待 post-await 断言及实际产物，禁止 async void 隐藏失败。
+
+- [用实际 producer 生成 metadata fixture](lessons/L-20261013-05-metadata-producer-fixtures.md)：AssetMetaCodec 默认输出 id，读取规则大小写无关；查询返回原 ID 拼写并保留实际 pointer，真实 sample smoke 防止测试与实现共享错误假设。

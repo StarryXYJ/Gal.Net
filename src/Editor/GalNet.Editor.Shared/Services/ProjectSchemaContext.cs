@@ -62,11 +62,10 @@ public sealed class ProjectSchemaContext : IDisposable
                 throw new InvalidDataException($"Expected public static IReadOnlyList<IEntryModule> {EntryPointTypeName}.{ModulesPropertyName} {{ get; }}.");
             if (property.GetValue(null) is not IReadOnlyList<IEntryModule> modules)
                 throw new InvalidDataException($"{EntryPointTypeName}.{ModulesPropertyName} returned null.");
-            var ids = new HashSet<string>(StringComparer.Ordinal);
             foreach (var module in modules)
             {
-                if (module is null || string.IsNullOrWhiteSpace(module.Id) || !ids.Add(module.Id))
-                    throw new InvalidDataException($"Null, empty or duplicate schema module ID '{module?.Id}'.");
+                if (module is null || string.IsNullOrWhiteSpace(module.Id))
+                    throw new InvalidDataException($"Null or empty schema module ID '{module?.Id}'.");
             }
             return new ProjectSchemaContext(path, fingerprint, context, new TargetProfileEntryCatalog(modules));
         }

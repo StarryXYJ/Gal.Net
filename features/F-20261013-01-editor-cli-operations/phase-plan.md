@@ -89,7 +89,7 @@ Phase 4c 状态：verified。Builtins 64/64、Presentation 注册定向 7/7、Ed
 
 ## Phase 5：必要项目/Group 工具与已有命令对齐
 
-状态：in-progress；依赖 Phase 3、4
+状态：verified；依赖 Phase 3、4
 
 实施拆分：5a 收紧共享 repository/execute 的当前格式与无损边界，校验待保存内容并实现多文件失败恢复；5b 补齐共享项目创建和 project/group 命令，复用单元 handler；5c 系统回收站适配与 Editor 生命周期顺序。各子阶段取得独立验证后提交。未知数据仍可原始查询、由 agent 直接编辑；工具写入拒绝不认识的数据，避免静默丢弃。
 
@@ -109,7 +109,7 @@ Phase 5b1 状态：verified。共享层 131/131（新增创建验收 7 项），
 
 ## Phase 6：单平台截图 entry 样例
 
-状态：planned；依赖 Phase 1、2、4，可与 Phase 5 按依赖独立推进
+状态：verified；依赖 Phase 1、2、4
 
 - 目标：以真实场景截图证明独立 schema 可被工具消费、执行可直接调用视图层。
 - 模块：Sample 契约项目、Sample.Avalonia 执行模块/实例/组合根、独立示例 Group、Integration/Presentation 测试。
@@ -121,7 +121,7 @@ Phase 5b1 状态：verified。共享层 131/131（新增创建验收 7 项），
 
 ## Phase 7：整体验证、独立审核与收尾
 
-状态：planned；依赖所有纳入范围的前置 Phase
+状态：verified；依赖所有纳入范围的前置 Phase
 
 - 目标：验证跨工具一致性，整理正式事实和实现总结，不掩盖剩余范围。
 - 任务：适当架构/契约/工具/Editor/Presentation/Integration 测试；Sample build/export smoke；格式门禁；按当前环境顺序运行共享依赖构建，遵守已记录的受限 .NET/Avalonia 构建约定。
@@ -155,3 +155,5 @@ Phase 5c 状态：verified。共享层 152/152、Editor 34/34、Architecture 30/
 真实 CLI 临时项目完成 create（Sample.Contracts DLL）→schema show sample.screenshot→validate→group compile→build→export。Sample.Headless 对其安装输出返回 1，并明确 sample.screenshot 没有注册执行实现；没有伪截图实现。CLI 输出及证明位于 Temp/F-20261013-01-screenshot-cli-*.json，真实 PNG 为 Temp/F-20261013-01-screenshot-proof.png。独立示例 Raw Group 位于 Sample.Contracts/Examples，不加入共享默认剧情。
 
 Phase 6 状态：verified。最终截图专项重跑 14/14，通过后提交；完整链路、实物 PNG 与 Headless 负面行为均已验收。
+
+Phase 7 状态：verified。审核结论 pass-with-follow-up，所有本 feature 交付问题已修正；已有主题 Headless async Dispatch 审核单独跟进。本轮最终回归 Shared 162、Editor 35、Runtime 80、Builtins 64、Architecture 30、Integration 101（共 472），最后 metadata ID 拼写增量查询/校验 33/33。whitespace 与 IDE0005/import 门禁通过，消费者排序修正后重新编译通过。真实 GameTestCase 部署固定契约后 validate 零诊断，find 保留 N 格式 GUID；截图 CLI 链、PNG 视觉、Windows 回收恢复已有实物证据。正式 spec/development、Accepted ADR、review/summary 已同步，无 UI 布局、未提交生成 DLL，其他工作树改动保留。
