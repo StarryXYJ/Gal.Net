@@ -27,6 +27,8 @@ Entry 保留 primitive/composite、展开代码、阅读边界、资源引用和
 
 ## Sample 接入
 
+本范围包含 Sample 的 service 设计本身：会话、启动、设置、本地化、窗口显示、存档、资源、展示、调试与重启适配，以及 Headless 中对应的组合逻辑。检查业务策略是否混入基础设施、单纯转发是否有独立边界、重复状态是否可以由唯一事实源派生。允许合并职责实质重复的小 service，或把调试/项目策略移到已有业务区域；不因名字都是 service 就合并不同生命周期。优先调整现有文件，不额外建设共享宿主项目。
+
 保留两个明确入口：契约项目选择 schema，平台项目选择实现及项目策略。建议以一个平台 Customization 文件和按业务组织的功能文件承载修改点，不为每个 hook/option/委托创建单独文件。
 
 稳定宿主只消费显式、类型化的注册入口：执行模块、decoder、预加载策略、页面适配及主题/本地化配置。上下文按实际需要提供借用对象和生命周期，不暴露万能 IServiceProvider，不强制每个业务新增接口。
@@ -36,6 +38,10 @@ Entry 保留 primitive/composite、展开代码、阅读边界、资源引用和
 Gallery 媒体 resolver 的位置、默认 layer 适配器是否可复用，以及设置/首次启动策略的拆分，先检查实际引用与替换需求；只有能简化所有权或减少修改点才调整，不作为强制搬迁清单。
 
 ## 异步与清理
+
+Entry 基础审查不限于 Sample 截图：检查 Core 的 PrimitiveInstance/ImmediatePrimitiveInstance、契约 Entry DTO 与参数描述、PrimitiveModule/PrimitiveImplementation、Builtins 的 Arguments/BuiltinInstructionFactory、各领域实例和 RuntimeActions 的边界。已有基础优先复用或演进，不再平行新增一套 EntryBase/ModuleBase/参数工具。
+
+当前部分效果/视频实例记录展示错误后继续完成，截图则通过完成任务传播失败；这不是可直接消除的语法重复。先按同步立即完成、异步展示、玩家交互/可跳过和持久场景执行分类，再抽取相同机制。阻塞、skip、CatchUp、状态写入、旧实例清理身份检查及错误策略保持显式；改变错误策略必须单独记录行为变化并验证，不能夹带在机械基类迁移中。
 
 只抽取有明确共性的取消、完成任务、错误传播、运行中任务跟踪及异步释放。Normal/Quick/CatchUp、是否阻塞/可跳过、业务资源发布仍由 entry 明确选择。
 
