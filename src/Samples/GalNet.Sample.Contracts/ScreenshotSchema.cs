@@ -8,14 +8,17 @@ namespace GalNet.Project.Contracts;
 public static class ScreenshotSchema
 {
     public const string TypeId = "sample.screenshot";
+    public static DynamicParameterDescriptor FileNameParameter { get; } = new("fileName", typeof(string),
+        constraints: JsonSerializer.SerializeToElement(new { format = "png-file-name", maxLength = 120 }), allowNull: false);
     public static IEntryModule CreateModule() => new DefaultEntryModule("sample",
         [new DefaultPrimitiveEntryBase(TypeId, new DynamicParameterTable(
-            [new("fileName", typeof(string), constraints: JsonSerializer.SerializeToElement(new { format = "png-file-name", maxLength = 120 }))],
+            [FileNameParameter],
             arguments => { if (arguments.TryGetProperty("fileName", out var value)) ValidateFileName(value.GetString()); }))]);
 
     public static void ValidateFileName(string? name)
     {
-        if (string.IsNullOrWhiteSpace(name) || name.Length > 120 || name.Any(character => char.IsControl(character) || "<>:\"/\\|?*".Contains(character)) ||
+        FileNameParameter.Validate(JsonSerializer.SerializeToElement(name));
+        if (string.IsNullOrWhiteSpace(name) || name.Any(character => char.IsControl(character) || "<>:\"/\\|?*".Contains(character)) ||
             name.Trim() != name || !name.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("fileName must be one portable PNG filename, at most 120 characters, without path components.");
         var stem = name.Split('.')[0].TrimEnd(' ', '.').ToUpperInvariant();

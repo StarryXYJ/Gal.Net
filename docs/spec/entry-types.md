@@ -10,6 +10,8 @@
 
 `EntryParameterType` 是当前编辑器的 UI hint。它由参数 constraints 生成，不是执行协议。
 
+参数值的公共基础位于 `GalNet.Core.Parameters`：`ValueDescriptor` 提供类型、null、约束及冻结的 JSON 配置，`ValueCodec` 负责序列化/反序列化/结构描述，`ValueValidation` 返回包含 code/path 的校验问题。Entry 的 `DynamicParameterDescriptor` 组合该描述，名称、必填和默认值仍归 Entry；CLI 可独立组合相同值描述。对象/数组通过 JSON/CLR 契约处理，不增加新的值容器。支持范围、字符长度、数组长度、enum/options；未知业务约束由契约自己的 validator 执行，结构描述不能替代完整代码校验。省略与显式 null 分开，根值规则不改变递归子类型；嵌入 schema 时需重定位其局部引用。
+
 项目集合来自独立契约程序集的 `GalNet.Project.Contracts.ProjectSchemas.Modules`；CLI 每次调用加载，Editor 在打开项目时加载并由项目 scope 持有，关闭/切换释放。相同名称 DLL 可声明不同集合，模块名可重复但完整 typeId 排他。工具加载共享 Core/内置契约类型身份，拒绝缺失依赖和不兼容版本；不存在默认内置 fallback。[ADR-0004](../adr/0004-project-entry-contract-assembly.md) 记录边界，命令见 [CLI README](../../src/Editor/GalNet.Editor.Headless/README.md)。
 
 单平台执行可在外层模块直接借用具体页面；Sample 的 `sample.screenshot(fileName?)` 契约无 Avalonia 依赖，Avalonia 模块直接捕获 GamePage 场景，自动写入宿主 Pictures 目录。它不属于全内置模块，Headless 只可编译，缺执行实现时拒绝运行。Normal/Quick 生成 PNG，CatchUp 不写文件；参数、生命周期与示例见 [Sample.Contracts](../../src/Samples/GalNet.Sample.Contracts/README.md)。

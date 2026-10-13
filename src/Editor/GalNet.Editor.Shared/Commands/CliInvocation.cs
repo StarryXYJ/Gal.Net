@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text.Json;
+using GalNet.Core.Parameters;
 using GalNet.Editor.Abstraction.Commands;
 
 namespace GalNet.Editor.Shared.Commands;
@@ -8,6 +11,8 @@ public sealed record CliInvocation(ToolOperationDefinition Definition,
 {
     public bool Has(string option) => Options.ContainsKey(option);
     public string? Get(string option) => Options.GetValueOrDefault(option);
+    public IReadOnlyDictionary<string, JsonElement> Values { get; private init; } = new Dictionary<string, JsonElement>();
+    public JsonElement? GetValue(string option) => Values.TryGetValue(option, out var value) ? value : null;
 
     public static CliInvocation Parse(ToolOperationCatalog catalog, IReadOnlyList<string> args)
     {
@@ -51,6 +56,28 @@ public sealed record CliInvocation(ToolOperationDefinition Definition,
         }
         else if (positionals.Count > 0 && options.ContainsKey("--search"))
             throw new ArgumentException("help accepts either a command path or --search, not both.");
-        return new(definition, positionals.AsReadOnly(), options);
+        var values = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+        foreach (var parameter in definition.Parameters.Where(parameter => parameter.ValueContract is not null))
+        {
+            JsonElement? input = null;
+            if (options.TryGetValue(parameter.Name, out var text))
+            {
+                if (parameter.ValueContract!.ValueType == typeof(int))
+                {
+                    if (!int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var number))
+                        throw new ArgumentException($"{parameter.Name} must be a nonnegative integer.");
+                    input = JsonSerializer.SerializeToElement(number);
+                }
+                else input = parameter.Type == "string" ? JsonSerializer.SerializeToElement(text) : ValueCodec.FromEditorText(parameter.ValueContract, text);
+            }
+            else if (parameter.Default is not null) input = ValueCodec.Serialize(parameter.ValueContract!, parameter.Default);
+            if (input is { } value)
+            {
+                if (ValueValidation.Validate(parameter.ValueContract!, value) is { } issue)
+                    throw new ArgumentException($"{parameter.Name}: {issue.Message}");
+                values.Add(parameter.Name, value);
+            }
+        }
+        return new(definition, positionals.AsReadOnly(), options) { Values = values };
     }
 }

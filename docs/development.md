@@ -43,6 +43,8 @@ services.AddAvaloniaGameViewPages(
 
 先建立独立契约项目（仅依赖 Core，以及选用的 Contracts.Builtins），程序集名为 `GalNet.Project.Contracts`，公开 `GalNet.Project.Contracts.ProjectSchemas.Modules : IReadOnlyList<IEntryModule>` 静态属性。游戏引用该项目，另行注册执行模块；内容项目在 `Contracts/` 部署 DLL 及依赖，CLI/Editor 从这里加载同一集合。无需导出第二份手写 schema，也无需启动 Engine。模块名可重复，仅完整 typeId 冲突；部署和单平台截图示例见 [Sample.Contracts README](../src/Samples/GalNet.Sample.Contracts/README.md)。
 
+可复用的值规则用 `GalNet.Core.Parameters.ValueDescriptor` 声明，Entry 参数通过 `new DynamicParameterDescriptor(name, valueDescriptor, isRequired, defaultValue)` 组合；CLI/设置等消费者也可调用 `ValueCodec` 和 `ValueValidation`，无需依赖 Entry 模型。描述允许传入 JSON 配置，构建时复制并冻结；JSON 名称和 converter 使用相同配置。必填/省略与默认值属于字段使用方，允许 null 单独指定。通用约束是值级规则，业务及跨字段校验继续手写；结构描述并非自定义代码的完整替代。生成器与共享 schema 表单尚未接入，不需要为使用这些值工具新增项目。
+
 Agent 可以直接写作者 JSON，再使用 `help --search <keyword> --json`、`files`、`find`、`references`、`validate`、`graph/group validate` 和 `group compile` 检查。需要稳定单元操作时通过 `execute` 使用帮助中的 JSON schema。命令协议、项目/Group 生命周期和 dry-run 边界以 [CLI README](../src/Editor/GalNet.Editor.Headless/README.md) 为准；当前版本一次调用一个进程，不提供旧扁平命令兼容别名。
 
 ### 1. 选定稳定 type ID 与参数

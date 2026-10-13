@@ -39,6 +39,8 @@
 
 ## 当前工作
 
+- [F-20261013-02 参数与 Sample 简化](../features/F-20261013-02-parameter-and-sample-simplification/phase-1.md)：Phase 0/1 已验证。Core.Parameters 提供中立 ValueDescriptor/ValueCodec/ValueValidation，Entry 和 CLI 各自组合；必填/默认值与 null 分开，368 项回归通过。共享表单/编辑提示和生成器仍待后续阶段，Core 领域/快照重构暂缓。
+
 - [F-20261013-01-editor-cli-operations](../features/F-20261013-01-editor-cli-operations/summary.md) 已实现独立内置/项目契约、项目 scope catalog、面向 agent 的 CLI 原始查询/校验/单 Group 编译、共享生命周期与无损保存、Windows 回收站和单平台截图样例；Phase 1–7 已验证并提交；审核与当前边界见 summary/review。CLI 发现使用 help --json，不保留旧别名或默认内置 fallback。契约是可信 C# 代码，动态加载不构成沙箱。
 
 - [F-20261011-03-theme-owned-views](../features/F-20261011-03-theme-owned-views/summary.md) 已移除 GameView 普通页面和默认玩家样式。主题参数必需，最终映射校验完整性；Page 仅保留 GameShell/GamePage/ScreenshotDialog 行为。Themes 提供布局、通用样式与工具栏；截图独立构造/释放，普通页面 Scoped。Editor 显式 Classic 并采用 ThemesAssembly 别名。
@@ -108,3 +110,4 @@
 
 - [用实际 producer 生成 metadata fixture](lessons/L-20261013-05-metadata-producer-fixtures.md)：AssetMetaCodec 默认输出 id，读取规则大小写无关；查询返回原 ID 拼写并保留实际 pointer，真实 sample smoke 防止测试与实现共享错误假设。
 - [Sample 复用页面前先重置 NVL](lessons/L-20261013-06-sample-nvl-reset-order.md)：页面重置依赖仍订阅的 dialogue presenter 清理 NVL；Runner 应先重置页面再释放 presentation，并复位 NVL 可见状态。
+- [包装/嵌入 schema 的局部引用](lessons/L-20261014-01-schema-local-references.md)：保留 exporter 对象结构，外层值约束不能污染递归子类型；移动 schema 时按最终 JSON Pointer 重定位局部引用并实际解析验证。

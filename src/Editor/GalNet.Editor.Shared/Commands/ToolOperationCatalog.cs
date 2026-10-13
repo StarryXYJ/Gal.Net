@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Schema;
 using System.Text.Json.Serialization.Metadata;
+using GalNet.Core.Parameters;
 using GalNet.Editor.Abstraction.Commands;
 
 namespace GalNet.Editor.Shared.Commands;
@@ -129,7 +130,10 @@ public sealed class ToolOperationCatalog
         new CliParameter[] { new("project", "string", "Explicit project directory.", true, true) }.Concat(extra).ToArray();
 
     public static IReadOnlyList<CliParameter> Query(params CliParameter[] extra) => Project(extra.Concat(
-        [new CliParameter("--offset", "integer", "Nonnegative result offset.", Default: 0), new("--limit", "integer", "Nonnegative page size; absent means all results.")]).ToArray());
+        [CliParameter.FromValue("--offset", new ValueDescriptor(typeof(int), constraints: JsonSerializer.SerializeToElement(new { minimum = 0 })),
+            "Nonnegative result offset.", defaultValue: 0),
+         CliParameter.FromValue("--limit", new ValueDescriptor(typeof(int), constraints: JsonSerializer.SerializeToElement(new { minimum = 0 })),
+            "Nonnegative page size; absent means all results.")]).ToArray());
 
     public static CliParameter[] Selector() =>
         [new("--id", "string", "Unique Group node ID; mutually exclusive with --file."), new("--file", "string", "Project-relative Raw Group source path; mutually exclusive with --id.")];
@@ -188,8 +192,13 @@ public sealed class ToolOperationCatalog
         var required = new JsonArray();
         foreach (var parameter in parameters)
         {
-            var property = new JsonObject { ["type"] = parameter.Type, ["description"] = parameter.Description };
-            if (parameter.Default is not null) property["default"] = JsonSerializer.SerializeToNode(parameter.Default);
+            var property = parameter.ValueContract is { } value
+                ? JsonNode.Parse(ValueCodec.Describe(value, "#/properties/" + parameter.Name.Replace("~", "~0", StringComparison.Ordinal).Replace("/", "~1", StringComparison.Ordinal)).GetRawText())!.AsObject()
+                : new JsonObject { ["type"] = parameter.Type };
+            property["description"] = parameter.Description;
+            if (parameter.Default is not null) property["default"] = parameter.ValueContract is { } contract
+                ? JsonNode.Parse(ValueCodec.Serialize(contract, parameter.Default).GetRawText())
+                : JsonSerializer.SerializeToNode(parameter.Default);
             if (parameter.Enum is not null) property["enum"] = JsonSerializer.SerializeToNode(parameter.Enum);
             properties[parameter.Name] = property;
             if (parameter.Required) required.Add(parameter.Name);

@@ -68,8 +68,8 @@ internal static class Program
                 var result = ProjectSchemaQueryService.Describe(schema,
                     _operationId == "schema.show" ? invocation.Positionals[1] : null,
                     invocation.Get("--kind"), invocation.Get("--category"),
-                    NonnegativeInteger(invocation, "--offset", 0),
-                    invocation.Has("--limit") ? NonnegativeInteger(invocation, "--limit", 0) : null);
+                    invocation.GetValue("--offset")?.GetInt32() ?? 0,
+                    invocation.GetValue("--limit")?.GetInt32());
                 WriteJson(result);
                 return result.Success ? 0 : 3;
             }
@@ -158,8 +158,8 @@ internal static class Program
         var id = invocation.Definition.OperationId;
         if (id is not ("project.info" or "files" or "find" or "references" or "graph.show" or "graph.nodes" or "graph.edges" or "graph.node" or "group.list" or "group.show" or "group.entries" or "variables")) return null;
         var service = new ProjectQueryService(project);
-        var offset = NonnegativeInteger(invocation, "--offset", 0);
-        int? limit = invocation.Has("--limit") ? NonnegativeInteger(invocation, "--limit", 0) : null;
+        var offset = invocation.GetValue("--offset")?.GetInt32() ?? 0;
+        int? limit = invocation.GetValue("--limit")?.GetInt32();
         var selector = new GroupSelector(invocation.Get("--id"), invocation.Get("--file"));
         return id switch
         {
@@ -175,15 +175,6 @@ internal static class Program
             "variables" => service.Variables(invocation.Get("--scope"), invocation.Get("--name"), offset, limit),
             _ => null
         };
-    }
-
-    private static int NonnegativeInteger(CliInvocation invocation, string key, int fallback)
-    {
-        var text = invocation.Get(key);
-        if (text is null) return fallback;
-        if (!int.TryParse(text, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var value))
-            throw new ArgumentException($"{key} must be a nonnegative integer.");
-        return value;
     }
 
     private static double Coordinate(CliInvocation invocation, string key)

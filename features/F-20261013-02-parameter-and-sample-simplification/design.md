@@ -1,6 +1,6 @@
 # 设计边界与收益判断
 
-状态：规划依据；尚未完成实现。Phase 1 未提交试点需按 2026-10-14 用户修订重做边界，本次只更新文档，不将目标状态写入正式 spec。
+状态：设计与目标边界。Phase 1 中立值工具已验证，事实见 phase-1.md；有序字段/编辑提示、共享表单、Sample 整理及生成器仍为目标状态，不将未实现能力写入正式 spec。
 
 ## 当前事实
 
@@ -17,7 +17,7 @@
 
 公共能力归 Core 内明确的参数命名空间，优先演进/迁移现有类型。具体命名在试点中确定，不同时维护旧、新两套事实源。
 
-2026-10-14 修订：公共基础是中立 ValueDescriptor、ValueCodec/ValueValidation 工具和可选 EditorHints。Entry 参数、SettingItem、CLI 参数保留各自的完整模型，通过组合或工具调用使用公共能力；不让 CLI 直接持有 Entry 的 DynamicParameterDescriptor。上一版“同一参数规则”指中立的值规则，不是统一完整参数模型。未提交试点中出现的直接耦合需在 Phase 1 处理，不保留为兼容层。
+2026-10-14 修订：公共基础是中立 ValueDescriptor、ValueCodec/ValueValidation 工具和可选 EditorHints。Entry 参数、SettingItem、CLI 参数保留各自的完整模型，通过组合或工具调用使用公共能力；不让 CLI 直接持有 Entry 的 DynamicParameterDescriptor。上一版“同一参数规则”指中立的值规则，不是统一完整参数模型。早期试点中的直接耦合已在 Phase 1 移除，EditorHints 尚待 Phase 2a。
 
 ValueDescriptor 描述 CLR/JSON 值类型、null 策略与通用约束；工具支持序列化/反序列化、类型检查及范围/长度/选项等校验。保留既有 CLR/JSON 能力，不新增标量值容器。必填/省略/默认值留在字段使用定义中，业务校验留在消费者；玩家/存档变量不必每个值都携带 schema。验证覆盖对象、数组、枚举及标量，不限定截图/分页。
 

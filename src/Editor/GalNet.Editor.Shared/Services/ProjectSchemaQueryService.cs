@@ -1,7 +1,6 @@
 using System.Text.Json;
-using System.Text.Json.Schema;
-using System.Text.Json.Serialization.Metadata;
 using GalNet.Core.Entry;
+using GalNet.Core.Parameters;
 using GalNet.Editor.Abstraction.Commands;
 
 namespace GalNet.Editor.Shared.Services;
@@ -20,13 +19,12 @@ public static class ProjectSchemaQueryService
             (category is null || definition.Category == category)).OrderBy(definition => definition.Type, StringComparer.Ordinal).ToArray();
         if (type is not null && definitions.Length == 0)
             diagnostics.Add(new("object.notFound", "error", $"Entry schema '{type}' is not declared by this project.", context.AssemblyPath, type));
-        var options = new JsonSerializerOptions { TypeInfoResolver = new DefaultJsonTypeInfoResolver() };
         var descriptions = definitions.Select(definition =>
         {
             var parameters = definition.DynamicParameters?.Values.Select(parameter =>
             {
                 JsonElement? valueSchema = null;
-                try { valueSchema = JsonSerializer.SerializeToElement(options.GetJsonSchemaAsNode(parameter.ValueType)); }
+                try { valueSchema = ValueCodec.Describe(parameter.Value); }
                 catch (Exception exception) when (exception is NotSupportedException or InvalidOperationException)
                 { diagnostics.Add(new("schema.descriptionLimited", "warning", $"Cannot fully describe '{definition.Type}.{parameter.Name}': {exception.Message}", context.AssemblyPath, definition.Type)); }
                 return new SchemaParameterDescription(parameter.Name, parameter.IsRequired, parameter.DefaultValue, parameter.Constraints,

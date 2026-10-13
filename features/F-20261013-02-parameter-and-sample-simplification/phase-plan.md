@@ -1,6 +1,6 @@
 # Phase Plan
 
-状态：in-progress。Phase 0 已验证；Phase 1 有未验证、未提交的试点代码，按 2026-10-14 修订重新收敛，本次只更新计划，不将试点标记通过。
+状态：in-progress。Phase 0、1 已验证；Phase 1 按 2026-10-14 修订完成中立值工具及 Entry/CLI 接入，后续阶段尚未实现。
 
 顺序：Phase 0 → 1 → 2a → 2b → 2c → 3 → 4 → 5（条件）→ 6。2a 为参数消费者迁移，2b/2c 分别验证共享表单与宿主接入，可各自提交；UI 可先使用手写 schema，不依赖生成器。收益不足可缩小迁移范围；Sample 和清理阶段仍可独立推进。
 
@@ -22,7 +22,7 @@
 
 ## Phase 1：公共参数基础的垂直试点
 
-状态：in-progress（未验证试点待修订）；依赖 Phase 0；相对工作量：中。
+状态：verified；依赖 Phase 0；相对工作量：中。结果与成本见 [phase-1.md](phase-1.md)：Core 85、Shared 169、Builtins 69、截图 14、Architecture 31，共 368 项通过，改动文件格式/import 检查完成。EditorHints 与有序字段描述由 Phase 2a 继续实施，不宣称已具备 UI/生成器能力。
 
 - 目标：抽出所有动态值 schema 可用的序列化/反序列化与校验工具，验证消费者能共用中立值描述；不统一完整业务模型。
 - 模块：Core 参数基础、Entry 规范化、Editor.Shared 的 CLI 绑定、截图契约和一个代表性命令。

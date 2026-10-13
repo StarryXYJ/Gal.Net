@@ -25,10 +25,14 @@ public static class PrimitiveArgumentHelper
         {
             if (normalized.ContainsKey(parameter.Name))
                 continue;
-            if (parameter.DefaultValue is { } defaultValue)
-                normalized.Add(parameter.Name, defaultValue.Clone());
-            else if (parameter.IsRequired)
-                throw new InvalidDataException($"Primitive requires parameter '{parameter.Name}'.");
+            try
+            {
+                if (parameter.DefaultValue is { } defaultValue)
+                    normalized.Add(parameter.Name, defaultValue);
+                else if (parameter.IsRequired)
+                    throw new ArgumentException($"Primitive requires parameter '{parameter.Name}'.");
+            }
+            catch (ArgumentException exception) { throw new InvalidDataException(exception.Message, exception); }
         }
 
         var result = JsonSerializer.SerializeToElement(normalized);
@@ -63,17 +67,11 @@ public static class PrimitiveArgumentHelper
     {
         try
         {
-            DynamicParameterValue.Validate(value, parameter.ValueType, parameter.Name);
+            parameter.Validate(value);
         }
         catch (ArgumentException exception)
         {
             throw new InvalidDataException(exception.Message, exception);
         }
-
-        if (!parameter.TryGetConstraint("options", out var options) || options.ValueKind != JsonValueKind.Array)
-            return;
-        var serialized = DynamicParameterValue.ToEditorValue(value);
-        if (!options.EnumerateArray().Any(option => string.Equals(option.GetString(), serialized, StringComparison.Ordinal)))
-            throw new InvalidDataException($"Primitive parameter '{parameter.Name}' has unsupported value '{serialized}'.");
     }
 }
