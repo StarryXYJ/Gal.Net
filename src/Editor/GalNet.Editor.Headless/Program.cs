@@ -85,9 +85,10 @@ internal static class Program
                 WriteJson(result);
                 return result.Success ? 0 : result.Diagnostics.Any(item => item.Code == "contract.load") ? 1 : result.Diagnostics.Any(item => item.Code == "object.notFound") ? 3 : 5;
             }
-            var entryCatalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
+            using var projectSchema = ProjectSchemaContext.Load(projectPath);
+            var entryCatalog = projectSchema.Catalog;
             if (verb == "project.build") return await BuildAsync(projectPath, args, entryCatalog);
-            if (verb == "project.export") return await ExportAsync(projectPath, args);
+            if (verb == "project.export") return await ExportAsync(projectPath, args, entryCatalog);
             var document = Load(projectPath, entryCatalog);
             switch (verb)
             {
@@ -150,7 +151,7 @@ internal static class Program
         return new DirectProjectPersistence(projectPath, new EditorDocumentRepository(entryCatalog)).Load();
     }
 
-    private static async Task<int> ExportAsync(string projectPath, string[] args)
+    private static async Task<int> ExportAsync(string projectPath, string[] args, IEntryCatalog entryCatalog)
     {
         if (!Directory.Exists(projectPath)) throw new DirectoryNotFoundException($"Project directory not found: {projectPath}");
         var outputIndex = Array.IndexOf(args, "--output");
@@ -161,7 +162,7 @@ internal static class Program
         var projectName = Path.GetFileName(Path.TrimEndingDirectorySeparator(projectPath));
         var resourceTypes = BuiltinResourceTypes.CreateCatalog();
         var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
-        var result = await GamePackageExporter.ExportAsync(projectName, projectName, projectPath, outputDirectory, resourceTypes, galleryTypes);
+        var result = await GamePackageExporter.ExportAsync(projectName, projectName, projectPath, outputDirectory, resourceTypes, galleryTypes, entryCatalog);
         WriteJson(new { success = result.Success, packagePath = result.PackagePath, error = result.Error });
         return result.Success ? 0 : 5;
     }

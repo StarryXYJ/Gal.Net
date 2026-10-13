@@ -40,7 +40,7 @@ group validate <project> (--id <group-id> | --file Graph/groups/example.rawgalgr
 
 校验直接读取原始 JSON，不补 ID、不迁移、不写回。仅接受当前 Graph v2 / Raw Group v2，未知字段、重复 JSON 属性、缺失或重复 ID 均报错。structure-only 不加载 DLL，跳过条件语法、契约语义和文件引用检查。完整 Group 校验使用项目契约执行参数类型/required/options/自定义 validator 和 Composite 展开检查；无关 Group 不阻塞定向校验。Graph 检查拓扑、变量定义和源文件引用，不校验 Group 内容；条件只检查语法，不用默认变量值执行表达式。
 
-结果列出 checkedFiles/checks/skippedChecks/semanticStatus/complete，complete 表示所请求检查是否完成，不代表所有可能的检查都执行过。全项目覆盖 Graph、所有作者 Raw Group（包括孤立文件）、资源 metadata 的 GUID/相邻文件和 settings JSON；资源载荷、settings/本地化语义、自定义代码引用和运行时表达式求值明确列为未检查。缺契约仍返回结构诊断及 contract.load，不回退内置集合。项目契约贯穿 build/export/execute 和新增写操作在后续阶段接入。
+结果列出 checkedFiles/checks/skippedChecks/semanticStatus/complete，complete 表示所请求检查是否完成，不代表所有可能的检查都执行过。全项目覆盖 Graph、所有作者 Raw Group（包括孤立文件）、资源 metadata 的 GUID/相邻文件和 settings JSON；资源载荷、settings/本地化语义、自定义代码引用和运行时表达式求值明确列为未检查。缺契约仍返回结构诊断及 contract.load，不回退内置集合。
 
 ```text
 group compile <project> --id <group-id> [--dry-run]
@@ -48,3 +48,5 @@ group compile <project> --file Graph/groups/example.rawgalgroup --output Output/
 ```
 
 单 Group 编译加载项目 DLL，并复用原始校验和 Core 编译器；其他 Group 的错误不会阻塞目标。按 ID 默认输出 Output/Graph/groups/<id>.galgroup；按文件只有唯一 Graph Group 归属时可用该默认值，否则必须指定输出。输出参数相对项目根解析，也可为绝对路径；项目内只允许写 Output/，拒绝链接路径和非 .galgroup 后缀。dry-run 仍执行校验/展开并返回数量、sourceMap、目标及契约 SHA256，不创建目录或文件。临时文件完成后发布，失败/取消保留旧产物，Graph 与 Raw 文件不改写。
+
+build/export 使用项目 DLL 的同一 catalog，先校验原始 Graph 和目标 Group 再编译。共享 ProjectContentBuilder 和 GamePackageExporter 要求显式传入 catalog，没有内置默认值或兼容重载。缺契约或契约未声明的 entry 明确失败；部分组件不会自动补成内置全集。输出拒绝作者目录、Contracts、项目根/祖先和链接路径；导出的 galpak 包含编译内容，不包含工具 DLL。execute 已切换项目 catalog；其无损写入边界与新增生命周期命令在后续阶段完善。

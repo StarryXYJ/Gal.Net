@@ -10,8 +10,8 @@
       "name": "Choose a route",
       "branchType": "Choice",
       "options": [
-        { "text": "branch.route_choice.option.0.text" },
-        { "text": "branch.route_choice.option.1.text" }
+        { "id": "route_choice_option_0", "text": "branch.route_choice.option.0.text" },
+        { "id": "route_choice_option_1", "text": "branch.route_choice.option.1.text" }
       ]
     },
     { "id": "downtown", "type": "Group", "name": "Tiled route", "file": "groups/downtown.rawgalgroup" },
@@ -22,17 +22,19 @@
       "name": "Literal condition",
       "branchType": "Condition",
       "conditions": [
-        { "expression": "true" }
+        { "id": "ending_check_condition_0", "expression": "true" }
       ]
     },
     { "id": "ending", "type": "Group", "name": "Ending", "file": "groups/ending.rawgalgroup" }
   ],
   "edges": [
-    { "fromNodeId": "intro", "fromOutlet": 0, "toNodeId": "route_choice" },
-    { "fromNodeId": "route_choice", "fromOutlet": 0, "toNodeId": "downtown" },
-    { "fromNodeId": "route_choice", "fromOutlet": 1, "toNodeId": "harbor" },
-    { "fromNodeId": "downtown", "fromOutlet": 0, "toNodeId": "ending_check" },
-    { "fromNodeId": "harbor", "fromOutlet": 0, "toNodeId": "ending_check" },
-    { "fromNodeId": "ending_check", "fromOutlet": 0, "toNodeId": "ending" }
-  ]
+    { "id": "intro_choice", "fromNodeId": "intro", "fromOutlet": 0, "toNodeId": "route_choice" },
+    { "id": "choice_downtown", "fromNodeId": "route_choice", "fromOutlet": 0, "toNodeId": "downtown" },
+    { "id": "choice_harbor", "fromNodeId": "route_choice", "fromOutlet": 1, "toNodeId": "harbor" },
+    { "id": "downtown_check", "fromNodeId": "downtown", "fromOutlet": 0, "toNodeId": "ending_check" },
+    { "id": "harbor_check", "fromNodeId": "harbor", "fromOutlet": 0, "toNodeId": "ending_check" },
+    { "id": "check_ending", "fromNodeId": "ending_check", "fromOutlet": 0, "toNodeId": "ending" }
+  ],
+  "playerVariables": [],
+  "saveVariables": []
 }

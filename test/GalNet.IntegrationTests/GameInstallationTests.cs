@@ -1,6 +1,8 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text.Json;
+using GalNet.Contracts.Builtins;
+using GalNet.Core.Entry;
 using GalNet.Assets;
 using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
@@ -27,7 +29,7 @@ public sealed class GameInstallationTests
             var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
             await File.WriteAllBytesAsync(Path.Combine(project, "Assets", "hero.png"), "hero"u8.ToArray());
             await File.WriteAllTextAsync(Path.Combine(project, "Assets", "hero.png.meta"), """{"id":"hero","type":"sprite","path":"hero.png","filter":"bilinear","compress":"none"}""");
-            await File.WriteAllTextAsync(Path.Combine(project, "Graph", "graph.json"), """{"name":"export-test","rootNodeId":"","nodes":[],"edges":[]}""");
+            await File.WriteAllTextAsync(Path.Combine(project, "Graph", "graph.json"), """{"version":2,"name":"export-test","rootNodeId":"","nodes":[],"edges":[],"playerVariables":[],"saveVariables":[]}""");
             await File.WriteAllTextAsync(Path.Combine(project, "settings.json"), """
                 { "audioTracks": [ { "id": "ambient", "bus": "bgm", "defaultGain": 0.3, "maxVoices": 2, "overflowPolicy": "StopOldest" } ] }
                 """);
@@ -42,7 +44,7 @@ public sealed class GameInstallationTests
 
             Directory.CreateDirectory(Path.Combine(project, "I18n", "External", "en-US"));
             await File.WriteAllTextAsync(Path.Combine(project, "I18n", "External", "en-US", "private.json"), "{}");
-            var export = await GamePackageExporter.ExportAsync("project", "Sample", project, output, resourceTypes, galleryTypes);
+            var export = await GamePackageExporter.ExportAsync("project", "Sample", project, output, resourceTypes, galleryTypes, new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()));
             Assert.That(export.Success, Is.True, export.Error);
             using (var packageZip = ZipFile.OpenRead(export.PackagePath!))
                 Assert.That(packageZip.Entries.Any(entry => entry.FullName.StartsWith("I18n/External/", StringComparison.OrdinalIgnoreCase)), Is.False);

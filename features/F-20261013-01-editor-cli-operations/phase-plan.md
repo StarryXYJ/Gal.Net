@@ -69,7 +69,11 @@ Phase 3c 状态：verified。共享层 86/86、架构 29/29；新增 22 项校�
 
 ## Phase 4：项目级 Editor、build/export 与运行注册一致性
 
-状态：planned；依赖 Phase 2、3
+状态：in-progress；依赖 Phase 2、3
+
+实施拆分：4a 将显式项目 catalog 接入 CLI build/export 与共享编译/导出服务，移除内部内置 fallback，并在编译前校验原始 Graph/Group；4b 调整 Editor 项目 scope 与消费者释放、动态快捷键和游戏运行注册。分别验证提交，不提供旧 API 重载或默认 catalog。
+
+Phase 4a 状态：verified。共享层 104/104；新增 4 项真实 CLI 管线验收使用同一个独立自定义契约完成 validate/build/export，并从 galpak 检查自定义输出 primitive。部分内置集合未声明 dialogue 时编译/导出失败，保留既有产物；缺 DLL 无 fallback；未知 Composite 参数在输出替换前拒绝。相关 Integration 12/12，Editor 专用输出构建通过（11 项既有分析器/Avalonia 警告、0 错误）。GameTestCase 作者 Graph 补齐稳定边/选项/条件 ID 和显式空变量集合；共享 builder/exporter 改为必需 catalog，调用方显式适配，无兼容 API。导出临时文件使用唯一名称，发布前检查取消；build/export 输出新增 Contracts/.git 与链接保护。
 
 - 目标：Editor/CLI/编译/导出均使用当前项目契约，游戏注册与契约匹配。
 - 模块：Editor composition/ProjectService/scope/快捷键/catalog 消费者、ProjectContentBuilder、GamePackageExporter、游戏注册检查。

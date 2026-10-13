@@ -35,7 +35,7 @@ public class GameTestCaseTests
         var output = Path.Combine(Path.GetTempPath(), "galnet-localized-smoke-" + Guid.NewGuid().ToString("N"));
         try
         {
-            await new ProjectContentBuilder().BuildAsync(Path.Combine(FindRepositoryDirectory(), "GameTestCase"), output);
+            await new ProjectContentBuilder(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).BuildAsync(Path.Combine(FindRepositoryDirectory(), "GameTestCase"), output);
             var types = BuiltinResourceTypes.CreateCatalog();
             var content = await new ProjectGameContentProvider(output, types, BuiltinGalleryTypes.CreateCatalog(types)).LoadAsync();
             var cultures = new CultureService();
@@ -77,7 +77,7 @@ public class GameTestCaseTests
         var output = Path.Combine(Path.GetTempPath(), $"galnet-game-testcase-{Guid.NewGuid():N}");
         try
         {
-            await new ProjectContentBuilder().BuildAsync(Path.Combine(directory, "GameTestCase"), output);
+            await new ProjectContentBuilder(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).BuildAsync(Path.Combine(directory, "GameTestCase"), output);
 
             var resourceTypes = BuiltinResourceTypes.CreateCatalog();
             var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);

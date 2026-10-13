@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
@@ -27,7 +28,7 @@ public sealed class ProjectContentBuilderTests
         await WriteProjectAsync("story/opening.rawgalgroup", "opening");
         var output = Path.Combine(_root, "Output", "Development");
 
-        var result = await new ProjectContentBuilder().BuildAsync(_root, output);
+        var result = await new ProjectContentBuilder(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).BuildAsync(_root, output);
 
         Assert.That(result.CompiledGroupCount, Is.EqualTo(1));
         Assert.That(File.Exists(Path.Combine(output, "Graph", "groups", "opening.galgroup")), Is.True);
@@ -51,7 +52,7 @@ public sealed class ProjectContentBuilderTests
         await File.WriteAllTextAsync(sentinel, "preserve");
         await WriteRawGroupAsync(Path.Combine(_root, "Graph", "groups", "orphan.rawgalgroup"));
 
-        var exception = Assert.ThrowsAsync<InvalidDataException>(() => new ProjectContentBuilder().BuildAsync(_root, output));
+        var exception = Assert.ThrowsAsync<InvalidDataException>(() => new ProjectContentBuilder(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).BuildAsync(_root, output));
 
         Assert.Multiple(() =>
         {
@@ -71,7 +72,9 @@ public sealed class ProjectContentBuilderTests
             name = "Build test",
             rootNodeId = groupId,
             nodes = new[] { new { id = groupId, type = "Group", name = "Opening", file = groupFile } },
-            edges = Array.Empty<object>()
+            edges = Array.Empty<object>(),
+            playerVariables = Array.Empty<object>(),
+            saveVariables = Array.Empty<object>()
         };
         await File.WriteAllTextAsync(Path.Combine(graphDirectory, "graph.json"), JsonSerializer.Serialize(graph));
         await WriteRawGroupAsync(rawPath);

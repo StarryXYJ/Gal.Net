@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using GalNet.Contracts.Builtins;
 using GalNet.Core.Compilation;
 using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
@@ -9,7 +8,7 @@ using GalNet.Editor.Abstraction.Documents;
 namespace GalNet.Editor.Shared.Services;
 
 /// <summary>Builds editable project content into the compiled directory layout consumed by Runtime.</summary>
-public sealed class ProjectContentBuilder(IEntryCatalog? entryCatalog = null)
+public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -18,7 +17,7 @@ public sealed class ProjectContentBuilder(IEntryCatalog? entryCatalog = null)
         Converters = { new JsonStringEnumConverter() }
     };
 
-    private readonly IEntryCatalog _entryCatalog = entryCatalog ?? new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
+    private readonly IEntryCatalog _entryCatalog = entryCatalog ?? throw new ArgumentNullException(nameof(entryCatalog));
 
     public async Task<ProjectContentBuildResult> BuildAsync(
         string projectRoot,
@@ -32,6 +31,12 @@ public sealed class ProjectContentBuilder(IEntryCatalog? entryCatalog = null)
 
         var targetRoot = Path.GetFullPath(outputRoot ?? Path.Combine(sourceRoot, "Output"));
         ValidateOutputPath(sourceRoot, targetRoot);
+        cancellationToken.ThrowIfCancellationRequested();
+        var validation = new ProjectValidationService(sourceRoot).Validate("graph");
+        var diagnostics = validation.Diagnostics.ToList();
+        _ = new ProjectRawReader(sourceRoot).Files(null, diagnostics);
+        if (!validation.Success || diagnostics.Any(item => item.Code == "file.linkSkipped" || item.Severity == "error"))
+            throw new InvalidDataException(string.Join("; ", diagnostics.Select(item => $"{item.File}{item.JsonPointer}: {item.Message}")));
 
         var stageRoot = Path.Combine(
             Path.GetDirectoryName(targetRoot) ?? throw new InvalidOperationException("Build output must have a parent directory."),
@@ -109,8 +114,9 @@ public sealed class ProjectContentBuilder(IEntryCatalog? entryCatalog = null)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var rawPath = sources[group.Id];
-            var raw = JsonSerializer.Deserialize<GroupDocument>(await File.ReadAllTextAsync(rawPath, cancellationToken).ConfigureAwait(false), JsonOptions)
-                ?? throw new InvalidDataException($"Raw group '{DisplayPath(sourceGraphRoot, rawPath)}' is empty.");
+            var diagnostics = new List<GalNet.Editor.Abstraction.Commands.ToolDiagnostic>();
+            var raw = new ProjectValidationService(sourceRoot).ValidateGroup(DisplayPath(sourceRoot, rawPath), diagnostics, _entryCatalog)
+                ?? throw new InvalidDataException(string.Join("; ", diagnostics.Select(item => $"{item.File}{item.JsonPointer}: {item.Message}")));
             var compiled = GalgroupCompiler.Compile(raw, _entryCatalog).Document;
             var targetPath = Path.Combine(targetGroupsRoot, $"{group.Id}.galgroup");
             await File.WriteAllTextAsync(targetPath, JsonSerializer.Serialize(compiled, JsonOptions), cancellationToken).ConfigureAwait(false);
@@ -184,14 +190,21 @@ public sealed class ProjectContentBuilder(IEntryCatalog? entryCatalog = null)
         }
     }
 
-    private static void ValidateOutputPath(string sourceRoot, string targetRoot)
+    internal static void ValidateOutputPath(string sourceRoot, string targetRoot)
     {
         if (string.Equals(sourceRoot, targetRoot, StringComparison.OrdinalIgnoreCase) || IsSameOrChild(sourceRoot, targetRoot))
             throw new InvalidDataException("Build output must not be the project directory or one of its ancestors.");
 
-        foreach (var protectedDirectory in new[] { "Graph", "Assets", "I18n", ".galnet", "Temp" })
+        foreach (var protectedDirectory in new[] { "Graph", "Assets", "I18n", ".galnet", "Temp", "Contracts", ".git" })
             if (IsSameOrChild(targetRoot, Path.Combine(sourceRoot, protectedDirectory)))
                 throw new InvalidDataException($"Build output must not be inside project '{protectedDirectory}/'.");
+        var current = Path.GetPathRoot(targetRoot)!;
+        foreach (var component in targetRoot[current.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
+        {
+            current = Path.Combine(current, component);
+            if ((File.Exists(current) || Directory.Exists(current)) && (File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
+                throw new InvalidDataException("Build/export output must not traverse filesystem links.");
+        }
     }
 
     private static bool IsSameOrChild(string candidate, string parent)
