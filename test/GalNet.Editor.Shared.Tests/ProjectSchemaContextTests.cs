@@ -115,6 +115,35 @@ public sealed class ProjectSchemaContextTests
         Assert.That(reopened.Catalog.TryGet("custom.bundle", out _), Is.True);
     }
 
+    [Test]
+    public void SchemaDescriptions_UseTheProjectCollectionAndOrigin()
+    {
+        using var context = ProjectSchemaContext.Load(Deploy("SchemaA"));
+        var result = ProjectSchemaQueryService.Describe(context, kind: "composite");
+        var json = System.Text.Json.JsonSerializer.SerializeToElement(result.Data);
+        Assert.Multiple(() =>
+        {
+            Assert.That(json.GetProperty("contract").GetProperty("sha256").GetString(), Is.EqualTo(context.Fingerprint));
+            Assert.That(json.GetProperty("result").GetProperty("Items")[0].GetProperty("TypeId").GetString(), Is.EqualTo("custom.bundle"));
+            Assert.That(json.GetProperty("result").GetProperty("Total").GetInt32(), Is.EqualTo(1));
+            Assert.That(ProjectSchemaQueryService.Describe(context, "not.declared").Success, Is.False);
+        });
+    }
+
+    [Test]
+    public async Task CliSchemaQuery_LoadsCustomProjectContract()
+    {
+        var project = Deploy("SchemaA");
+        var (exit, output, error) = await GeneralTest.Editor.Shared.CliHelpTests.Invoke(["schema", "show", project, "custom.bundle"]);
+        using var parsed = System.Text.Json.JsonDocument.Parse(output);
+        Assert.Multiple(() =>
+        {
+            Assert.That(exit, Is.Zero, error);
+            Assert.That(parsed.RootElement.GetProperty("data").GetProperty("result").GetProperty("items")[0].GetProperty("typeId").GetString(), Is.EqualTo("custom.bundle"));
+            Assert.That(parsed.RootElement.GetProperty("data").GetProperty("contract").GetProperty("sha256").GetString(), Has.Length.EqualTo(64));
+        });
+    }
+
     private string Deploy(string fixture)
     {
         var root = FindRepositoryRoot();

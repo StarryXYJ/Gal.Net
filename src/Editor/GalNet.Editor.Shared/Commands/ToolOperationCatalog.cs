@@ -1,5 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Schema;
+using System.Text.Json.Serialization.Metadata;
 using GalNet.Editor.Abstraction.Commands;
 
 namespace GalNet.Editor.Shared.Commands;
@@ -35,15 +37,33 @@ public sealed class ToolOperationCatalog
                  new("--json", "boolean", "Return the complete machine contract.", Default: false),
                  new("--search", "string", "Search operation ID, command path and description.")],
                 requiresProject: false),
-            Route("project.info", "project info", "Shows project and graph counts and validation summary.", Project()),
+            Route("project.info", "project info", "Shows raw project settings, graph and Group counts without modifying files.", Project()),
             Route("project.create", "project create", "Creates an editable project using the current built-in starter content.",
                 Project(new CliParameter("--name", "string", "Project display name.")), readOnly: false),
-            Route("graph.nodes", "graph nodes", "Lists graph nodes.", Project()),
-            Route("graph.node", "graph node", "Shows a node with connections and group entries.",
-                Project(new CliParameter("node-id", "string", "Stable node ID.", true, true))),
-            Route("group.entries", "group entries", "Lists entries of a group.",
-                Project(new CliParameter("group-id", "string", "Stable Group node ID.", true, true)), requiresContract: true),
-            Route("variables", "variables", "Lists player and save variable definitions.", Project()),
+            Route("files", "files", "Lists author files with intersection filters (each option once). Globs support *, ** and ? against project-relative paths; explicit --root can include Contracts/Output.",
+                Query(new CliParameter("--root", "string", "Relative directory to scan recursively."), new("--glob", "string", "Project-relative glob pattern."),
+                    new("--extension", "string", "File extension, with or without dot."), new("--kind", "string", "File kind.", Enum: ["graph", "settings", "rawgroup", "compiledgroup", "metadata", "resource", "localization", "other"]))),
+            Route("find", "find", "Returns all matching resource GUIDs, node IDs or entry IDs, including unknown entry content.",
+                Query(new CliParameter("id", "string", "Stable object ID or resource GUID.", true, true),
+                    new("--kind", "string", "Limit identity kind.", Enum: ["resource", "node", "entry"]), new("--group", "string", "Limit entry lookup to a Group ID."))),
+            Route("references", "references", "Finds static JSON reference candidates. Reports incomplete analysis for custom C# and runtime logic.",
+                Query(new CliParameter("target", "string", "Referenced ID or variable name.", true, true),
+                    new("--kind", "string", "Reference identity kind.", true, Enum: ["resource", "node", "group", "entry", "variable"]))),
+            Route("graph.show", "graph show", "Returns the original graph JSON including unknown fields.", Project()),
+            Route("graph.nodes", "graph nodes", "Lists original graph nodes.", Query(new CliParameter("--type", "string", "Filter exact node type."))),
+            Route("graph.edges", "graph edges", "Lists original graph edges.", Query()),
+            Route("graph.node", "graph node", "Returns original node matches without inventing IDs or filtering fields.",
+                Project(new CliParameter("node-id", "string", "Stable node ID; returns all matches if duplicated.", true, true))),
+            Route("group.list", "group list", "Lists Group source files including unreferenced Raw files.", Query()),
+            Route("group.show", "group show", "Returns the original Raw Group JSON. Specify exactly one of --id/--file.", Project(Selector())),
+            Route("group.entries", "group entries", "Lists original Group entries. Specify exactly one of --id/--file.",
+                Query(Selector().Concat([new CliParameter("--type", "string", "Filter exact entry type."), new("--entry-id", "string", "Filter exact entry ID.")]).ToArray())),
+            Route("variables", "variables", "Lists original player/save variable definitions without migration.",
+                Query(new CliParameter("--scope", "string", "Variable scope.", Enum: ["player", "save"]), new("--name", "string", "Filter exact variable name."))),
+            Route("schema.list", "schema list", "Lists schemas declared by the project's Contracts DLL, with origin and parameter JSON descriptions.",
+                Query(new CliParameter("--kind", "string", "Filter schema kind.", Enum: ["primitive", "composite"]), new("--category", "string", "Filter exact schema category.")), requiresContract: true),
+            Route("schema.show", "schema show", "Describes one declared entry schema including defaults and constraints; executable validators remain in the DLL.",
+                Project(new CliParameter("type-id", "string", "Full entry type ID.", true, true)), requiresContract: true),
             Route("project.validate", "validate", "Validates the loaded editable project document (raw disk validation will follow).", Project(), requiresContract: true),
             Route("project.build", "build", "Compiles project content.", Project(new CliParameter("--output", "string", "Output directory (default: project/Output).")),
                 readOnly: false, requiresContract: true),
@@ -57,7 +77,7 @@ public sealed class ToolOperationCatalog
         var files = new AssetFileCommandCatalog();
         definitions.AddRange(document.GetAll().Select(definition => FromCommand(definition, file: false)));
         definitions.AddRange(files.GetAll().Select(definition => FromCommand(definition, file: true)));
-        Definitions = Array.AsReadOnly(definitions.OrderBy(definition => definition.OperationId, StringComparer.Ordinal).ToArray());
+        Definitions = Array.AsReadOnly(definitions.Select(DescribeOutput).OrderBy(definition => definition.OperationId, StringComparer.Ordinal).ToArray());
     }
 
     public IReadOnlyList<ToolOperationDefinition> Definitions { get; }
@@ -86,6 +106,30 @@ public sealed class ToolOperationCatalog
     public static IReadOnlyList<CliParameter> Project(params CliParameter[] extra) =>
         new CliParameter[] { new("project", "string", "Explicit project directory.", true, true) }.Concat(extra).ToArray();
 
+    public static IReadOnlyList<CliParameter> Query(params CliParameter[] extra) => Project(extra.Concat(
+        [new CliParameter("--offset", "integer", "Nonnegative result offset.", Default: 0), new("--limit", "integer", "Nonnegative page size; absent means all results.")]).ToArray());
+
+    public static CliParameter[] Selector() =>
+        [new("--id", "string", "Unique Group node ID; mutually exclusive with --file."), new("--file", "string", "Project-relative Raw Group source path; mutually exclusive with --id.")];
+
+    private static ToolOperationDefinition DescribeOutput(ToolOperationDefinition operation)
+    {
+        Type? dataType = operation.OperationId switch
+        {
+            "files" => typeof(QueryPage<ProjectFileItem>),
+            "find" or "graph.nodes" or "graph.node" or "graph.edges" or "group.entries" or "variables" => typeof(QueryPage<ProjectObjectItem>),
+            "group.list" => typeof(QueryPage<ProjectGroupItem>),
+            "references" => typeof(QueryPage<ProjectReferenceItem>),
+            "graph.show" or "group.show" => typeof(RawDocumentQuery),
+            _ => null
+        };
+        if (dataType is null) return operation;
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web) { TypeInfoResolver = new DefaultJsonTypeInfoResolver() };
+        var result = JsonNode.Parse(ResultSchema.GetRawText())!;
+        result["properties"]!["data"] = options.GetJsonSchemaAsNode(dataType);
+        return operation with { OutputSchema = JsonSerializer.SerializeToElement(result) };
+    }
+
     private static ToolOperationDefinition FromCommand(IProjectCommandDefinition definition, bool file) => new(
         definition.Id, "execute", definition.Description, "execute <project> <command-file|->",
         definition.Schema.Parameters.Select(parameter => new CliParameter(parameter.Name, parameter.Type, parameter.Description, parameter.Required,
@@ -112,8 +156,13 @@ public sealed class ToolOperationCatalog
             properties[parameter.Name] = property;
             if (parameter.Required) required.Add(parameter.Name);
         }
-        var input = JsonSerializer.SerializeToElement(new JsonObject
-        { ["type"] = "object", ["properties"] = properties, ["required"] = required, ["additionalProperties"] = false });
+        var inputSchema = new JsonObject
+        { ["type"] = "object", ["properties"] = properties, ["required"] = required, ["additionalProperties"] = false };
+        if (properties.ContainsKey("--id") && properties.ContainsKey("--file"))
+            inputSchema["oneOf"] = new JsonArray(
+                new JsonObject { ["required"] = new JsonArray("--id") },
+                new JsonObject { ["required"] = new JsonArray("--file") });
+        var input = JsonSerializer.SerializeToElement(inputSchema);
         var usage = path + string.Concat(parameters.Select(parameter => parameter.Positional
             ? (parameter.Required ? $" <{parameter.Name}>" : $" [<{parameter.Name}>]")
             : parameter.Type == "boolean" ? $" [{parameter.Name}]" : $" [{parameter.Name} <value>]"));

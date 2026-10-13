@@ -51,6 +51,8 @@
 
 Phase 3a 状态：verified。共享层 52/52，架构 29/29；包括 9 项真实 CLI 子进程验收和 16 项操作描述/路由测试。help 全量、具体命令、关键字 JSON 与错误输入无需项目即可工作。操作输入 schema 描述嵌套对象、字典、枚举、默认值、可空类型；不支持的旧 commands/扁平入口返回结构化用法错误。文件 dryRun 明确拒绝且不改文件。当前输出 schema 定义统一结果信封，data 结构随后续查询/校验操作细化；现有加载式 validate 未冒充已完成的原始磁盘校验。
 
+Phase 3b 状态：verified。共享层 64/64、架构 29/29；原始 files/find/graph/group/variables/references 查询与 schema list/show 可调用同一共享服务。真实 CLI 在无契约项目查询成功，schema 查询缺 DLL 明确失败；自定义契约查询包含主 DLL SHA256。交叉过滤、稳定排序、显式分页、重复 ID、无效 metadata、孤立 Group、路径越界与实际目录链接均通过验证，查询前后原始文件字节不变。references 明确返回候选及不完整状态，未声称静态扫描能识别任意自定义代码引用。旧扁平查询入口已删除，不提供兼容别名。
+
 ## Phase 3d：单 GalGroup 编译
 
 状态：planned；依赖 Phase 3c，作为 Phase 4 的前置

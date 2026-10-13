@@ -55,6 +55,8 @@ public sealed class ToolOperationCatalogTests
     [TestCase("summary project")]
     [TestCase("create project")]
     [TestCase("nodes project")]
+    [TestCase("group show project")]
+    [TestCase("group entries project --id a --file Graph/a.rawgalgroup")]
     public void UnknownOrConflictingArguments_FailBeforeProjectLoading(string command)
     {
         Assert.Throws<ArgumentException>(() => CliInvocation.Parse(new ToolOperationCatalog(), command.Split(' ')));

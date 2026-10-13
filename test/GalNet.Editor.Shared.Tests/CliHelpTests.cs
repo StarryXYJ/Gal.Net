@@ -48,7 +48,7 @@ public sealed class CliHelpTests
         });
     }
 
-    private static async Task<(int ExitCode, string Output, string Error)> Invoke(string[] arguments)
+    internal static async Task<(int ExitCode, string Output, string Error)> Invoke(string[] arguments)
     {
         var root = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
         while (!File.Exists(Path.Combine(root.FullName, "GalNet.slnx"))) root = root.Parent!;

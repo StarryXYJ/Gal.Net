@@ -43,6 +43,11 @@ public sealed record CliInvocation(ToolOperationDefinition Definition,
             foreach (var parameter in parameters.Select((parameter, index) => (parameter, index)))
                 if (parameter.parameter.Required && positionals.Count <= parameter.index)
                     throw new ArgumentException($"'{definition.CommandPath}' requires <{parameter.parameter.Name}>.");
+            foreach (var parameter in definition.Parameters.Where(parameter => !parameter.Positional && parameter.Required))
+                if (!options.ContainsKey(parameter.Name)) throw new ArgumentException($"'{definition.CommandPath}' requires {parameter.Name}.");
+            if (definition.Parameters.Any(parameter => parameter.Name == "--id") && definition.Parameters.Any(parameter => parameter.Name == "--file") &&
+                options.ContainsKey("--id") == options.ContainsKey("--file"))
+                throw new ArgumentException("Specify exactly one of --id and --file.");
         }
         else if (positionals.Count > 0 && options.ContainsKey("--search"))
             throw new ArgumentException("help accepts either a command path or --search, not both.");

@@ -38,15 +38,15 @@ internal static class Program
             }
             args = new[] { _operationId }.Concat(invocation.Positionals)
                 .Concat(invocation.Options.SelectMany(pair => new[] { pair.Key, pair.Value })).ToArray();
-            var catalog = new EditorCommandCatalog();
-            var fileCatalog = new AssetFileCommandCatalog();
-            var entryCatalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
+
+
+
             if (args[0].Equals("project.create", StringComparison.OrdinalIgnoreCase))
             {
                 if (args.Length < 2) return Fail("create requires a project path.");
                 var nameIndex = Array.IndexOf(args, "--name");
                 var name = nameIndex >= 0 && nameIndex + 1 < args.Length ? args[nameIndex + 1] : null;
-                await EditorProjectCreator.CreateAsync(args[1], entryCatalog, name);
+                await EditorProjectCreator.CreateAsync(args[1], new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()), name);
                 WriteJson(new { success = true, projectPath = Path.GetFullPath(args[1]), name });
                 return 0;
             }
@@ -54,16 +54,28 @@ internal static class Program
 
             var verb = args[0].ToLowerInvariant();
             var projectPath = Path.GetFullPath(args[1]);
+            if (RunQuery(projectPath, invocation) is { } queryResult)
+            {
+                WriteJson(queryResult);
+                return queryResult.Success ? 0 : queryResult.Diagnostics.Any(item => item.Code == "object.notFound") ? 3 : 4;
+            }
+            if (_operationId is "schema.list" or "schema.show")
+            {
+                using var schema = ProjectSchemaContext.Load(projectPath);
+                var result = ProjectSchemaQueryService.Describe(schema,
+                    _operationId == "schema.show" ? invocation.Positionals[1] : null,
+                    invocation.Get("--kind"), invocation.Get("--category"),
+                    NonnegativeInteger(invocation, "--offset", 0),
+                    invocation.Has("--limit") ? NonnegativeInteger(invocation, "--limit", 0) : null);
+                WriteJson(result);
+                return result.Success ? 0 : 3;
+            }
+            var entryCatalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
             if (verb == "project.build") return await BuildAsync(projectPath, args, entryCatalog);
             if (verb == "project.export") return await ExportAsync(projectPath, args);
             var document = Load(projectPath, entryCatalog);
             switch (verb)
             {
-                case "project.info": WriteJson(CreateSummary(projectPath, document)); return 0;
-                case "graph.nodes": WriteJson(document.Graph.Nodes.Select(NodeSummary)); return 0;
-                case "graph.node": return WriteNode(document, args);
-                case "group.entries": return WriteEntries(document, args);
-                case "variables": WriteJson(new { player = document.Graph.PlayerVariables, save = document.Graph.SaveVariables }); return 0;
                 case "project.validate":
                     var validation = EditorDocumentValidator.Validate(document);
                     WriteJson(new { success = validation.IsValid, diagnostics = validation.Diagnostics });
@@ -71,7 +83,7 @@ internal static class Program
                 case "execute":
                     if (args.Length < 3) return Fail("execute requires a JSON file path or '-'.");
                     var json = args[2] == "-" ? await Console.In.ReadToEndAsync() : await File.ReadAllTextAsync(args[2]);
-                    return await ExecuteAsync(projectPath, document, catalog, fileCatalog, entryCatalog, json);
+                    return await ExecuteAsync(projectPath, document, new EditorCommandCatalog(), new AssetFileCommandCatalog(), entryCatalog, json);
                 default: return Fail($"Unknown command '{args[0]}'.");
             }
         }
@@ -158,38 +170,47 @@ internal static class Program
         element.TryGetProperty("commandId", out var id) && !string.IsNullOrWhiteSpace(id.GetString())
             ? id.GetString()! : throw new JsonException("Every command requires a non-empty commandId.");
 
-
-    private static int WriteNode(EditorProjectDocument document, string[] args)
+    private static ToolResult? RunQuery(string project, CliInvocation invocation)
     {
-        if (args.Length < 3) return Fail("node requires a node ID.");
-        var node = document.Graph.Nodes.FirstOrDefault(item => item.Id == args[2]);
-        if (node is null) return Fail($"Node '{args[2]}' does not exist.", 3);
-        WriteJson(new { node, incomingEdges = document.Graph.Edges.Where(edge => edge.ToNodeId == node.Id), outgoingEdges = document.Graph.Edges.Where(edge => edge.FromNodeId == node.Id), entries = document.GroupEntries.GetValueOrDefault(node.Id) });
-        return 0;
-    }
-
-    private static int WriteEntries(EditorProjectDocument document, string[] args)
-    {
-        if (args.Length < 3) return Fail("entries requires a group ID.");
-        if (!document.GroupEntries.TryGetValue(args[2], out var entries)) return Fail($"Group '{args[2]}' does not exist or has no entries.", 3);
-        WriteJson(entries); return 0;
-    }
-
-    private static object CreateSummary(string projectPath, EditorProjectDocument document)
-    {
-        var validation = EditorDocumentValidator.Validate(document);
-        return new
+        var id = invocation.Definition.OperationId;
+        if (id is not ("project.info" or "files" or "find" or "references" or "graph.show" or "graph.nodes" or "graph.edges" or "graph.node" or "group.list" or "group.show" or "group.entries" or "variables")) return null;
+        var service = new ProjectQueryService(project);
+        var offset = NonnegativeInteger(invocation, "--offset", 0);
+        int? limit = invocation.Has("--limit") ? NonnegativeInteger(invocation, "--limit", 0) : null;
+        var selector = new GroupSelector(invocation.Get("--id"), invocation.Get("--file"));
+        return id switch
         {
-            project = new { name = document.Graph.Name, path = projectPath },
-            graph = new { nodeCount = document.Graph.Nodes.Count, edgeCount = document.Graph.Edges.Count, entryCount = document.GroupEntries.Values.Sum(entries => entries.Count), rootNodeId = document.Graph.RootNodeId },
-            variables = new { player = document.Graph.PlayerVariables.Count, save = document.Graph.SaveVariables.Count },
-            diagnostics = new { errors = validation.Diagnostics.Count(item => item.Severity == EditorDiagnosticSeverity.Error), warnings = validation.Diagnostics.Count(item => item.Severity == EditorDiagnosticSeverity.Warning) }
+            "project.info" => service.Info(),
+            "files" => service.Files(new(invocation.Get("--root"), invocation.Get("--glob"), invocation.Get("--extension"), invocation.Get("--kind"), offset, limit)),
+            "find" => service.Find(new(invocation.Positionals[1], invocation.Get("--kind"), invocation.Get("--group"), offset, limit)),
+            "references" => service.References(invocation.Positionals[1], invocation.Get("--kind")!, offset, limit),
+            "graph.show" or "graph.nodes" or "graph.edges" => service.Graph(id, type: invocation.Get("--type"), offset: offset, limit: limit),
+            "graph.node" => service.Graph(id, id: invocation.Positionals[1]),
+            "group.list" => service.Groups(offset, limit),
+            "group.show" => service.Group(selector, entries: false),
+            "group.entries" => service.Group(selector, entries: true, invocation.Get("--type"), invocation.Get("--entry-id"), offset, limit),
+            "variables" => service.Variables(invocation.Get("--scope"), invocation.Get("--name"), offset, limit),
+            _ => null
         };
     }
 
-    private static object NodeSummary(EditorGraphNodeDto node) => new { node.Id, node.Type, node.BranchType, node.Name, node.X, node.Y, optionCount = node.Options?.Count ?? 0, conditionCount = node.Conditions?.Count ?? 0 };
+    private static int NonnegativeInteger(CliInvocation invocation, string key, int fallback)
+    {
+        var text = invocation.Get(key);
+        if (text is null) return fallback;
+        if (!int.TryParse(text, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var value))
+            throw new ArgumentException($"{key} must be a nonnegative integer.");
+        return value;
+    }
+
+
     private static void WriteJson(object value)
     {
+        if (value is ToolResult result)
+        {
+            Console.Out.WriteLine(JsonSerializer.Serialize(result, JsonOptions));
+            return;
+        }
         var data = JsonSerializer.SerializeToNode(value, JsonOptions);
         var success = true;
         var diagnostics = new List<ToolDiagnostic>();
