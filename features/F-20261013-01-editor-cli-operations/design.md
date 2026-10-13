@@ -143,3 +143,9 @@ CLI 一次加载项目契约，向 validate/build/export 传递同一 catalog。
 - [阶段计划](phase-plan.md)
 - [ADR-0002](../../docs/adr/0002-entry-schema-execution-registration.md)
 - [开发文档](../../docs/development.md)
+
+### 项目回收的外层边界
+
+项目删除由 Shared 的 ProjectDeleteService 识别当前 Graph/settings 项目根并协调回调；IProjectRecycleBin 位于 Editor.Abstraction。新增 Infrastructure/GalNet.ProjectTools.Windows，只引用该抽象，CLI 和 Editor 组合根注入适配。Core/Runtime/Shared 不引用 Windows Shell。当前仅支持 Windows 8+ 本地固定磁盘；Shell 使用 FOFX_RECYCLEONDELETE 和失败即停标志，PreDeleteItem 拒绝没有回收标志的删除，检查逐项结果和中止状态，不实现永久删除 fallback。CLI 无需契约 DLL 即可识别并回收骨架项目。
+
+接口依据：[IFileOperation flags](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ifileoperation-setoperationflags)、[PreDeleteItem](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ifileoperationprogresssink-predeleteitem)。实物验证在通过后记录。

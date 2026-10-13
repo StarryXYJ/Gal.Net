@@ -141,3 +141,9 @@ Phase 5b1 状态：verified。共享层 131/131（新增创建验收 7 项），
 共享层 143/143：真实 CLI Group 创建→改名→项目显示名改名→删除→校验；生命周期 dry-run 字节不变；外部静态引用需显式确认，批次内新增引用也阻止未确认删除。项目和 Group 使用同一共享编辑服务，JSON 命令严格校验参数和重复属性，文件单元操作无需加载 Graph，失败批次不发布。project.rename 使用单一帮助描述并分别表达 CLI 与文档参数。5c 回收站删除及 Phase 6 截图仍待实现。
 
 Phase 5b2 状态：verified；Editor 回归 32/32。共享层新增 12 项验收，完整 143/143 通过。阶段提交只包含本 feature 改动。
+
+### Phase 5c 平台实物记录
+
+通过真实 CLI 创建独立临时项目，project delete --dry-run 保留目录，实际删除后从 Shell 系统回收站查到唯一同名且原目录一致的条目，InvokeVerb("undelete") 恢复，全部 5 个项目文件 SHA-256 一致。证据 Temp/F-20261013-01-recycle-proof.json 与对应 create/delete 输出；未操作现有项目，恢复后的测试项目留在专用 Temp 子目录。Windows 使用强制回收标志及 PreDeleteItem 永久删除否决，适配不调用 Directory.Delete 或永久删除 API。共享删除测试覆盖关闭/回收/最近记录顺序、失败、取消、未识别目录、缺契约骨架和 dry-run，平台回调测试覆盖永久删除候选否决。
+
+Phase 5c 状态：verified。共享层 152/152、Editor 34/34、Architecture 30/30；真实回收站可见且恢复字节一致。Editor 关闭失败会释放 scope 但拒绝回收，回收失败保留最近记录，dry-run 不改变当前会话。Phase 5 全部纳入范围的生命周期操作完成，后续进入截图样例。

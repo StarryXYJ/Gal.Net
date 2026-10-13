@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Project;
+using GalNet.Editor.Abstraction.Commands;
 
 namespace GalNet.Editor.Abstraction.Services;
 
@@ -26,6 +27,9 @@ public interface IProjectService
 
     /// <summary>关闭当前项目（含脏检查）</summary>
     Task CloseAsync();
+
+    /// <summary>Close the matching session, recycle the project, then remove its recent record.</summary>
+    Task<ToolResult> DeleteAsync(string projectPath, bool dryRun = false, System.Threading.CancellationToken cancellationToken = default);
 
     /// <summary>保存当前项目</summary>
     Task SaveAsync();

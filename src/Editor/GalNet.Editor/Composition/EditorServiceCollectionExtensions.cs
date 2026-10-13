@@ -46,6 +46,7 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<IResourceTypeCatalog>(resourceTypes);
         services.AddSingleton<IGalleryTypeCatalog>(BuiltinGalleryTypes.CreateCatalog(resourceTypes));
         services.AddSingleton<ISettingsService, SettingsService>();
+        services.AddSingleton<GalNet.Editor.Abstraction.Commands.IProjectRecycleBin, GalNet.ProjectTools.Windows.WindowsProjectRecycleBin>();
         services.AddSingleton<IProjectService, ProjectService>();
         services.AddSingleton<IFileDialogService, FileDialogService>();
         services.AddSingleton<IEditorSettingsService, EditorSettingsService>();

@@ -75,3 +75,9 @@ group delete <project> --id <group-id> [--force] [--dry-run]
 这些入口由 ProjectEditService 复用 Editor 的单元命令；project rename 只改变显示名，Group rename 保持节点 ID 和文件名。新 Group 未指定 ID 时生成稳定 ID 并在 createdNodeIds 返回。删除同步 Graph 和作者 Raw 文件；Graph 中关联边自动移除，其他静态 JSON 引用候选或扫描错误需要明确 --force，强制删除不修改这些外部引用。dry-run 返回 writtenFiles/deletedFiles/references，检查当前批次新增的引用，不发布文件；引用检查始终明确 referencesComplete=false。
 
 execute 的 JSON 必须符合当前命令参数，未知字段、重复属性、缺少必需参数及不允许的 null 都直接拒绝。project.rename 的帮助同时给出 CLI inputSchema 和 execute 使用的 documentInputSchema，同一 operationId 不重复注册。单独资源文件操作直接调用文件服务，不要求 Graph 文档可以加载；文档操作仍要求无损加载并整体校验后保存。
+
+```text
+project delete <project> [--dry-run]
+```
+
+整项目删除不需要契约 DLL，但必须是具有当前 Graph v2 和有效 settings.json 的项目根；拒绝文件系统根及链接路径。当前 Windows 8+ 适配仅支持本地固定磁盘。操作将目录送入系统回收站，失败或不支持返回错误，不回退永久删除。dry-run 只识别项目，不关闭会话、不回收、不移除最近记录。Editor DeleteAsync 在匹配当前项目时先等待关闭和预览清理，释放 scope 后回收；仅回收成功后移除最近记录。若更新最近记录失败，结果仍明确 recycled=true，以免误判文件还在原位置。CLI 不管理另一进程中已经打开的 Editor 会话。

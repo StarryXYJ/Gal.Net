@@ -18,6 +18,7 @@ public class ProjectDependencyTests
             ["GalNet.Assets"] = ["GalNet.Core"],
             ["GalNet.Storage.FileSystem"] = ["GalNet.Core", "GalNet.Runtime", "GalNet.Assets"],
             ["GalNet.Editor.Abstraction"] = ["GalNet.Core"],
+            ["GalNet.ProjectTools.Windows"] = ["GalNet.Editor.Abstraction"],
             ["GalNet.Editor.Shared"] =
             [
                 "GalNet.Core",
@@ -61,6 +62,7 @@ public class ProjectDependencyTests
             ["GalNet.Editor.Shared.Tests"] =
             [
                 "GalNet.Editor.Headless",
+                "GalNet.ProjectTools.Windows",
                 "SchemaA", "SchemaB", "SchemaDuplicate", "SchemaInvalid", "SchemaIncompatible",
                 "GalNet.Core",
                 "GalNet.Editor.Abstraction",

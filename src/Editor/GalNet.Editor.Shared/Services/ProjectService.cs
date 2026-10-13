@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Abstraction.Commands;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -20,6 +21,7 @@ public sealed class ProjectService : IProjectService
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     private readonly IServiceProvider _globalServices;
     private readonly IEditorSettingsService _editorSettingsService;
+    private readonly IProjectRecycleBin _recycleBin;
 
     private GalProject? _current;
 
@@ -27,10 +29,11 @@ public sealed class ProjectService : IProjectService
 
     public event Action<GalProject?>? CurrentChanged;
 
-    public ProjectService(IServiceProvider globalServices, IEditorSettingsService editorSettingsService)
+    public ProjectService(IServiceProvider globalServices, IEditorSettingsService editorSettingsService, IProjectRecycleBin recycleBin)
     {
         _globalServices = globalServices;
         _editorSettingsService = editorSettingsService;
+        _recycleBin = recycleBin;
         // 延迟加载，避免构造函数中执行同步 IO
     }
 
@@ -85,12 +88,22 @@ public sealed class ProjectService : IProjectService
         await Commands.EditorProjectCreator.CreateAsync(new(projectPath, name, contractsDirectory), settings);
         return await OpenAsync(projectPath);
     }
-    public async Task CloseAsync()
+    public Task CloseAsync() => CloseCoreAsync(false);
+
+    public Task<ToolResult> DeleteAsync(string projectPath, bool dryRun = false, System.Threading.CancellationToken cancellationToken = default) =>
+        new Commands.ProjectDeleteService(_recycleBin).DeleteAsync(projectPath, dryRun, async root =>
+        {
+            var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            if (_current is not null && string.Equals(_current.RootPath, root, comparison)) await CloseCoreAsync(true);
+        }, RemoveRecentProject, cancellationToken);
+
+    private async Task CloseCoreAsync(bool requireSuccess)
     {
         if (_current == null)
             return;
 
         var closingProject = _current;
+        var failures = new List<Exception>();
         Log.Information("Closing project: {Name}", closingProject.Name);
 
         // Scoped services can raise notifications while being disposed. Clear the
@@ -105,6 +118,7 @@ public sealed class ProjectService : IProjectService
         }
         catch (Exception ex)
         {
+            failures.Add(ex);
             Log.Warning(ex, "A project-change listener failed while closing {Name}", closingProject.Name);
         }
         try
@@ -113,9 +127,11 @@ public sealed class ProjectService : IProjectService
         }
         catch (Exception ex)
         {
+            failures.Add(ex);
             // Scope disposal is guaranteed by GalProject even when preview shutdown fails.
             Log.Warning(ex, "Project cleanup reported an error while closing {Name}", closingProject.Name);
         }
+        if (requireSuccess && failures.Count != 0) throw new AggregateException("Project shutdown failed; recycling was refused.", failures);
     }
 
     public Task SaveAsync()

@@ -6,6 +6,7 @@ using GalNet.Core.Gallery;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
+using GalNet.ProjectTools.Windows;
 
 namespace GalNet.Editor.Headless;
 
@@ -50,6 +51,12 @@ internal static class Program
 
             var verb = args[0].ToLowerInvariant();
             var projectPath = Path.GetFullPath(args[1]);
+            if (_operationId == "project.delete")
+            {
+                var result = await new ProjectDeleteService(new WindowsProjectRecycleBin()).DeleteAsync(projectPath, invocation.Has("--dry-run"));
+                WriteJson(result);
+                return result.Success ? 0 : 5;
+            }
             if (RunQuery(projectPath, invocation) is { } queryResult)
             {
                 WriteJson(queryResult);
