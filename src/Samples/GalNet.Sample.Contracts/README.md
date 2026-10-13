@@ -10,6 +10,8 @@
 
 脚本先完成独立构建，再替换内容项目的 `Contracts` 目录及依赖，发布失败则恢复旧目录。游戏发布仍走正常程序集依赖；不要把工具契约目录当作资源或额外打包进 galpak。
 
+Core 或内置契约的公共 API 改动后，必须重新运行部署脚本；仅构建 CLI 或游戏不会刷新内容项目的 `Contracts`。程序集版本号相同也不保证二进制 API 兼容，旧 DLL 可能报 `Method not found`。仓库示例部署时使用 `-ProjectDirectory ./GameTestCase`，之后执行 `dotnet run --project src/Editor/GalNet.Editor.Headless -- build GameTestCase` 验证。
+
 自定义项目可以将 `Modules` 初始化为 `Array.AsReadOnly<IEntryModule>([BuiltinSchemas.CreateDialogueModule(), new MyModule()])`，或展开 `BuiltinSchemas.CreateAllModules()` 后加入自定义模块。列表应稳定且只包含声明支持的能力，不持有游戏会话或平台视图。模块 ID 可重复，只有重复的完整 entry typeId 会被拒绝。
 
 工具的 `ProjectSchemaContext.Load(projectDirectory)` 加载该项目自己的依赖，共享 Core 与内置契约程序集身份，并严格检查程序集版本。契约入口/依赖缺失或不兼容时明确报错，不回退全量内置。契约为可执行 C# 代码，应部署自己项目的可信构建产物。加载器不是代码沙箱。
