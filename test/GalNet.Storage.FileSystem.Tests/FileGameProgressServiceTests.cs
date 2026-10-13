@@ -13,16 +13,58 @@ public class FileGameProgressServiceTests
     public void TearDown() => Directory.Delete(_directory, recursive: true);
 
     [Test]
-    public void StableKeysPersistWithoutSlashCollisions()
+    public async Task StableKeysPersistWithoutSlashCollisions()
     {
-        var progress = new FileGameProgressService(_directory);
+        await using var progress = new FileGameProgressService(_directory, TimeSpan.FromDays(1));
         progress.MarkRead("chapter/a", "line");
-        progress = new FileGameProgressService(_directory);
+        Assert.That(File.Exists(Path.Combine(_directory, "progress.json")), Is.False);
+        await progress.FlushAsync();
+        await using var restored = new FileGameProgressService(_directory);
         Assert.Multiple(() =>
         {
-            Assert.That(progress.IsRead("chapter/a", "line"), Is.True);
-            Assert.That(progress.IsRead("chapter", "a/line"), Is.False);
+            Assert.That(restored.IsRead("chapter/a", "line"), Is.True);
+            Assert.That(restored.IsRead("chapter", "a/line"), Is.False);
         });
+    }
+
+    [Test]
+    public async Task FailedFlushKeepsTheDirtyIndexAndCanBeRetried()
+    {
+        var profile = Path.Combine(_directory, "profile");
+        File.WriteAllText(profile, "obstruct directory creation");
+        await using var progress = new FileGameProgressService(profile, TimeSpan.FromDays(1));
+        progress.MarkRead("chapter", "line");
+        Assert.That(() => progress.FlushAsync(), Throws.InstanceOf<IOException>());
+        Assert.That(progress.LastPersistenceError, Is.Not.Null);
+        Assert.That(progress.IsRead("chapter", "line"), Is.True);
+        File.Delete(profile);
+        await progress.FlushAsync();
+        await using var restored = new FileGameProgressService(profile);
+        Assert.That(restored.IsRead("chapter", "line"), Is.True);
+        Assert.That(progress.LastPersistenceError, Is.Null);
+    }
+
+    [Test]
+    public async Task ClearAndCanceledFlushDoNotResurrectBufferedProgress()
+    {
+        await using var progress = new FileGameProgressService(_directory, TimeSpan.FromDays(1));
+        progress.MarkRead("chapter", "line");
+        Assert.That(() => progress.FlushAsync(new CancellationToken(true)), Throws.InstanceOf<OperationCanceledException>());
+        progress.Clear();
+        await progress.FlushAsync();
+        Assert.That(progress.IsRead("chapter", "line"), Is.False);
+        Assert.That(File.Exists(Path.Combine(_directory, "progress.json")), Is.False);
+    }
+
+    [Test]
+    public async Task PeriodicPersistenceCommitsWithoutBlockingMarkRead()
+    {
+        await using var progress = new FileGameProgressService(_directory, TimeSpan.FromMilliseconds(20));
+        progress.MarkRead("chapter", "line");
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        while (!File.Exists(Path.Combine(_directory, "progress.json"))) await Task.Delay(10, timeout.Token);
+        await using var restored = new FileGameProgressService(_directory);
+        Assert.That(restored.IsRead("chapter", "line"), Is.True);
     }
 
     [Test]

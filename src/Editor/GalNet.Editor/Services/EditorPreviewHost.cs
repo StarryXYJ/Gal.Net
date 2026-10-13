@@ -190,6 +190,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
         {
             _disposed = true;
             DisposeEngine();
+            (_context.Progress as IDisposable)?.Dispose();
             (_context.Saves as IDisposable)?.Dispose();
         }
     }

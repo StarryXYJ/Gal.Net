@@ -169,3 +169,7 @@ Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`
 动画 plan 的事件与轨道共用 presenter 的播放时间源。`PlayAnimationPlanAsync` 必须在采样前 await `beforeFrame(elapsedFrames)`，正常完成前提供末帧；Loop/PingPong 的 elapsedFrames 单调增加，不在循环时归零。跳过不补发未来 particle burst。
 
 音频后端请求按 voice 顺序提交，Stop 即刻取消尚未完成的 Start；异步销毁等待排队请求结束。Avalonia host 先登记待加载音频，停止/销毁取消加载，等待加载结束后释放 LibVLC 与临时目录。音频轨道状态不进入当前存档；读档会停止旧 scope 音频。
+
+## 已读进度提交边界
+
+`ReadProgressIndex` 在 Runtime 中维护内存索引与 revision。文件实现 MarkRead 不执行磁盘 I/O，默认每 2 秒批量写入；同一个进度实例串行化 flush/clear，写入期间的新标记保留 dirty 状态。后台失败由 LastPersistenceError 暴露并在下个周期重试。Engine StopAsync 在执行与 continuation 退出后等待 FlushAsync，失败仍发布 Stopped 并向调用者传播；Sample 保存前 flush，销毁进度实例时取消定时器并完成最终提交。强制终止可能丢失自上次成功 flush 以来的标记（正常 I/O 时最多一个周期，持续失败时不保证时间上限）。存档槽恢复不回滚玩家已读进度。

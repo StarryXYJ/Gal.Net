@@ -34,7 +34,7 @@ try
     var saves = new FileSaveService(options.ProfileDirectory);
     var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(options.ProfileDirectory));
     variables.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(content.Gallery));
-    var progress = new FileGameProgressService(options.ProfileDirectory);
+    await using var progress = new FileGameProgressService(options.ProfileDirectory);
 
     var presentation = new ConsolePresentation(settings.Get<GameSettings>());
     using var registration = new GameRegistration();
@@ -84,6 +84,7 @@ try
 
     if (options.SaveSlot is { } finalSaveSlot)
     {
+        await progress.FlushAsync();
         await saves.SaveAsync(finalSaveSlot, new SaveRequest { Snapshot = engine.CreateSaveData() });
         Console.WriteLine($"[Save] wrote slot {finalSaveSlot}");
     }

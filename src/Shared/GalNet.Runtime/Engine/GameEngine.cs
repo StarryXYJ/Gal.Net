@@ -280,6 +280,9 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         Task[] background;
         lock (_lifecycleSync) background = _backgroundTasks.ToArray();
         await Task.WhenAll(background).ConfigureAwait(false);
+        Exception? progressError = null;
+        try { if (_progress is not null) await _progress.FlushAsync().ConfigureAwait(false); }
+        catch (Exception exception) { progressError = exception; }
         await _dispatchGate.WaitAsync().ConfigureAwait(false);
         try
         {
@@ -288,8 +291,8 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         }
         finally { _dispatchGate.Release(); }
         PublishStateChanges();
-        if (cancellationError is not null)
-            throw new AggregateException("Game scope cancellation failed.", cancellationError);
+        var errors = new[] { cancellationError, progressError }.OfType<Exception>().ToArray();
+        if (errors.Length > 0) throw new AggregateException("Game shutdown failed.", errors);
     }
 
     private void ContinueUntilBlocked()

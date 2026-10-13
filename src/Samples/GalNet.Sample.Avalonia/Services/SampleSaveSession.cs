@@ -67,8 +67,11 @@ internal sealed class SampleSaveSession : IDisposable
         }
     }
 
-    public Task SaveAsync(int slotIndex, GameSnapshot snapshot, CancellationToken cancellationToken) =>
-        _saves.SaveAsync(slotIndex, new SaveRequest { Snapshot = snapshot }, cancellationToken);
+    public async Task SaveAsync(int slotIndex, GameSnapshot snapshot, CancellationToken cancellationToken)
+    {
+        await Progress.FlushAsync(cancellationToken);
+        await _saves.SaveAsync(slotIndex, new SaveRequest { Snapshot = snapshot }, cancellationToken);
+    }
 
     public Task<GameSnapshot?> LoadAsync(int slotIndex, CancellationToken cancellationToken) =>
         _saves.LoadAsync(slotIndex, cancellationToken);
@@ -89,7 +92,11 @@ internal sealed class SampleSaveSession : IDisposable
         if (_disposed) return;
         _disposed = true;
         (GalleryResources as IDisposable)?.Dispose();
-        Variables.Dispose();
-        _saves.Dispose();
+        try { Progress.Dispose(); }
+        finally
+        {
+            try { Variables.Dispose(); }
+            finally { _saves.Dispose(); }
+        }
     }
 }
