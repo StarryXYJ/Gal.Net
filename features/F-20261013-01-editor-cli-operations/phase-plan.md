@@ -33,7 +33,7 @@
 
 ## Phase 3：共享查询与无损磁盘校验、CLI 接入
 
-状态：in-progress；依赖 Phase 2
+状态：verified；依赖 Phase 2
 
 - 目标：AI 直接写文件后可通过 find/schema/validate 获取准确结果，无 UI、无写回。
 - 模块：Editor.Shared 项目工具、诊断协议、Headless 适配、相关测试。
@@ -57,7 +57,9 @@ Phase 3c 状态：verified。共享层 86/86、架构 29/29；新增 22 项校�
 
 ## Phase 3d：单 GalGroup 编译
 
-状态：planned；依赖 Phase 3c，作为 Phase 4 的前置
+状态：verified；依赖 Phase 3c，作为 Phase 4 的前置
+
+验证证据：共享层 100/100（新增单 Group 编译 14 项验收），架构沿用本阶段未变引用图的 29/29。实际独立契约的自定义 Composite 经 CLI 编译输出 v3 primitive 与 sourceMap；源文件及 Graph 字节保持不变，无关无效 Group 不阻塞。dry-run 无新目录/文件；孤立文件必须指定输出；缺 DLL、无效参数、作者目录输出冲突、实际目录链接均拒绝且保留文件。Windows 独占文件锁使发布失败后旧产物保留、临时文件清除；取消入口保留旧产物。共享服务无 UI/Engine，输出位于项目内时仅允许 Output/，绝对外部输出显式指定并同样拒绝链接。
 
 - 目标：group compile 使用项目 catalog，按 --id/--file 精确选择目标，不运行整项目 build。
 - 模块：共享单 Group 编译操作、Core 编译器复用、CLI 路由及测试。

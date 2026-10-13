@@ -67,6 +67,8 @@ public sealed class ToolOperationCatalog
             Route("project.validate", "validate", "Validates raw project Graph, all Raw Groups (including orphans), settings JSON and resource metadata without repair or writes. Semantic checks require the project contract; skipped checks are explicit.", Project(new CliParameter("--structure-only", "boolean", "Check raw structure without loading entry contracts.", Default: false)), requiresContract: true),
             Route("graph.validate", "graph validate", "Validates raw Graph structure, topology and variables; full mode also checks source references and condition syntax. Does not validate Group contents.", Project(new CliParameter("--file", "string", "Project-relative graph path (default Graph/graph.json)."), new("--structure-only", "boolean", "Skip source reference and condition syntax checks.", Default: false))),
             Route("group.validate", "group validate", "Validates only the selected Raw Group. Full mode validates parameters, contract validators and Composite expansion; unrelated Groups cannot block this operation.", Project(Selector().Concat([new CliParameter("--structure-only", "boolean", "Check raw structure without loading entry contracts.", Default: false)]).ToArray()), requiresContract: true),
+            Route("group.compile", "group compile", "Compiles only the selected Raw Group using its project contract. A file without a unique Group owner requires explicit output; failure preserves old output.",
+                Project(Selector().Concat([new CliParameter("--output", "string", "Compiled .galgroup path, relative to project or absolute. Inside project only Output/ is allowed."), new("--dry-run", "boolean", "Compile and report without publishing any file.", Default: false)]).ToArray()), readOnly: false, requiresContract: true, dryRun: true),
             Route("project.build", "build", "Compiles project content.", Project(new CliParameter("--output", "string", "Output directory (default: project/Output).")),
                 readOnly: false, requiresContract: true),
             Route("project.export", "export", "Exports a project to a galpak package.", Project(new CliParameter("--output", "string", "Output directory (default: project/Output).")),
@@ -124,6 +126,7 @@ public sealed class ToolOperationCatalog
             "references" => typeof(QueryPage<ProjectReferenceItem>),
             "graph.show" or "group.show" => typeof(RawDocumentQuery),
             "project.validate" or "graph.validate" or "group.validate" => typeof(ProjectValidationReport),
+            "group.compile" => typeof(GroupCompileReport),
             _ => null
         };
         if (dataType is null) return operation;

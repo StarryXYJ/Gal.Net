@@ -78,6 +78,13 @@ internal static class Program
                 WriteJson(result);
                 return result.Success ? 0 : result.Diagnostics.Any(item => item.Code == "contract.load") ? 1 : 4;
             }
+            if (_operationId == "group.compile")
+            {
+                var result = await new GroupCompileService(projectPath).CompileAsync(new(
+                    new GroupSelector(invocation.Get("--id"), invocation.Get("--file")), invocation.Get("--output"), invocation.Has("--dry-run")));
+                WriteJson(result);
+                return result.Success ? 0 : result.Diagnostics.Any(item => item.Code == "contract.load") ? 1 : result.Diagnostics.Any(item => item.Code == "object.notFound") ? 3 : 5;
+            }
             var entryCatalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
             if (verb == "project.build") return await BuildAsync(projectPath, args, entryCatalog);
             if (verb == "project.export") return await ExportAsync(projectPath, args);
