@@ -70,6 +70,7 @@ public class ProjectDependencyTests
             ],
             ["GalNet.Editor.Tests"] =
             [
+                "SchemaA", "SchemaB",
                 "GalNet.Core",
                 "GalNet.Editor",
                 "GalNet.Editor.Abstraction",

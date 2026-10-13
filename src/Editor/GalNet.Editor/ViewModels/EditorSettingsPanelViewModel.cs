@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
@@ -13,13 +14,14 @@ using Serilog;
 
 namespace GalNet.Editor.ViewModels;
 
-public partial class EditorSettingsPanelViewModel : ObservableObject
+public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposable
 {
     private readonly IEditorSettingsService _editorSettings;
     private readonly IThemeRegistry _themeRegistry;
     private readonly IThemeService _themeService;
     private readonly EditorShortcutService _shortcutService;
     private bool _loading;
+    private readonly PropertyChangedEventHandler _localizationChanged;
 
     public IEditorLocalizationService L { get; }
 
@@ -55,15 +57,23 @@ public partial class EditorSettingsPanelViewModel : ObservableObject
         _shortcutService = shortcutService;
         L = localization;
 
-        L.PropertyChanged += (_, e) =>
+        _localizationChanged = (_, e) =>
         {
             if (e.PropertyName == "Item[]")
                 ReloadDisplayNames();
         };
+        L.PropertyChanged += _localizationChanged;
 
 
         LoadFromSettings();
         ReloadShortcuts();
+    }
+
+    public void Dispose()
+    {
+        L.PropertyChanged -= _localizationChanged;
+        Shortcuts.Clear();
+        GC.SuppressFinalize(this);
     }
 
     private void LoadFromSettings()

@@ -4,6 +4,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../Fixtures/SchemaA/SchemaA.csproj" ReferenceOutputAssembly="false" GlobalPropertiesToRemove="OutputPath;OutDir" />
+    <ProjectReference Include="../Fixtures/SchemaB/SchemaB.csproj" ReferenceOutputAssembly="false" GlobalPropertiesToRemove="OutputPath;OutDir" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
 
     <ProjectReference Include="..\..\src\Shared\GalNet.Core\GalNet.Core.csproj" />

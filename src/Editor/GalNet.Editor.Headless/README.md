@@ -50,3 +50,5 @@ group compile <project> --file Graph/groups/example.rawgalgroup --output Output/
 单 Group 编译加载项目 DLL，并复用原始校验和 Core 编译器；其他 Group 的错误不会阻塞目标。按 ID 默认输出 Output/Graph/groups/<id>.galgroup；按文件只有唯一 Graph Group 归属时可用该默认值，否则必须指定输出。输出参数相对项目根解析，也可为绝对路径；项目内只允许写 Output/，拒绝链接路径和非 .galgroup 后缀。dry-run 仍执行校验/展开并返回数量、sourceMap、目标及契约 SHA256，不创建目录或文件。临时文件完成后发布，失败/取消保留旧产物，Graph 与 Raw 文件不改写。
 
 build/export 使用项目 DLL 的同一 catalog，先校验原始 Graph 和目标 Group 再编译。共享 ProjectContentBuilder 和 GamePackageExporter 要求显式传入 catalog，没有内置默认值或兼容重载。缺契约或契约未声明的 entry 明确失败；部分组件不会自动补成内置全集。输出拒绝作者目录、Contracts、项目根/祖先和链接路径；导出的 galpak 包含编译内容，不包含工具 DLL。execute 已切换项目 catalog；其无损写入边界与新增生命周期命令在后续阶段完善。
+
+Editor 打开项目时也必须加载 Contracts DLL。ProjectSchemaSession 由项目 DI scope 持有，catalog、文档仓库、Graph 编辑、文件操作和保存协调器均按项目解析，entry 快捷键从该项目集合生成。关闭/切换项目释放契约上下文；契约或打开监听器失败时清理 scope，不能继续沿用旧项目 catalog。加载不会提供自定义 entry 的平台执行实现，预览执行覆盖在后续接入。

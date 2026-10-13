@@ -1,5 +1,5 @@
 using System;
-using GalNet.Contracts.Builtins;
+using System.Linq;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
@@ -28,10 +28,10 @@ public static class EditorServiceCollectionExtensions
 {
     public static IServiceCollection AddEditorServices(this IServiceCollection services)
     {
-        var targetProfile = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
-        services.AddSingleton<IEntryCatalog>(targetProfile);
+        services.AddScoped<ProjectSchemaSession>();
+        services.AddScoped<IEntryCatalog>(sp => sp.GetRequiredService<ProjectSchemaSession>().Catalog);
         services.AddEditorCoreServices();
-        services.AddEditorCommands(targetProfile);
+        services.AddEditorCommands();
         services.AddEditorNavigation();
         services.AddEditorViews();
         services.AddEditorViewModels();
@@ -54,16 +54,16 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<IGameExitService, EditorGameExitService>();
         services.AddSingleton<IEditorPlayerVariableStore, EditorPlayerVariableStore>();
-        services.AddSingleton<IGraphEditingService, GraphEditingService>();
+        services.AddScoped<IGraphEditingService, GraphEditingService>();
         services.AddScoped<GraphSelectionState>();
         services.AddScoped<EditorWorkspacePersistence>();
         services.AddSingleton<IProjectFileCommandCatalog, AssetFileCommandCatalog>();
-        services.AddSingleton<IProjectFileCommandExecutor, AssetFileCommandExecutor>();
+        services.AddScoped<IProjectFileCommandExecutor, AssetFileCommandExecutor>();
         services.AddScoped<EditorHistories>();
         services.AddScoped<UndoRedoRouter>();
-        services.AddSingleton<IEditorDocumentRepository, EditorDocumentRepository>();
+        services.AddScoped<IEditorDocumentRepository, EditorDocumentRepository>();
         services.AddSingleton<IEditorDocumentService, EditorDocumentService>();
-        services.AddSingleton<IEditorSaveCoordinator, EditorSaveCoordinator>();
+        services.AddScoped<IEditorSaveCoordinator, EditorSaveCoordinator>();
         services.AddScoped<IProjectSaveScheduler, ProjectSaveScheduler>();
         services.AddSingleton<IVariableDefinitionService, VariableDefinitionService>();
         services.AddSingleton<EditorVariableService>();
@@ -86,7 +86,7 @@ public static class EditorServiceCollectionExtensions
         return services;
     }
 
-    private static IServiceCollection AddEditorCommands(this IServiceCollection services, TargetProfileEntryCatalog targetProfile)
+    private static IServiceCollection AddEditorCommands(this IServiceCollection services)
     {
         services.AddSingleton<SaveProjectCommand>();
         services.AddSingleton<CloseProjectCommand>();
@@ -96,11 +96,10 @@ public static class EditorServiceCollectionExtensions
         services.AddScoped<RedoEditorCommand>();
         services.AddScoped<IEditorShortcutCommandDefinition>(sp => sp.GetRequiredService<UndoEditorCommand>());
         services.AddScoped<IEditorShortcutCommandDefinition>(sp => sp.GetRequiredService<RedoEditorCommand>());
-        foreach (var definition in targetProfile.Definitions)
-        {
-            services.AddScoped<IEditorShortcutCommandDefinition>(_ => new EntryTypeShortcutCommand(definition));
-        }
-        services.AddScoped<EditorShortcutService>();
+        services.AddScoped<EditorShortcutService>(sp => new EditorShortcutService(
+            sp.GetServices<IEditorShortcutCommandDefinition>().Concat(
+                sp.GetRequiredService<IEntryCatalog>().Definitions.Select(definition => new EntryTypeShortcutCommand(definition))),
+            sp.GetRequiredService<IEditorSettingsService>()));
 
         return services;
     }

@@ -54,6 +54,8 @@ public sealed class ProjectService : IProjectService
         VariableNameRules.Normalize(settings);
         var editorState = await LoadEditorProjectStateAsync(projectPath);
         var scope = _globalServices.CreateScope();
+        try { scope.ServiceProvider.GetRequiredService<ProjectSchemaSession>().Open(projectPath); }
+        catch { scope.Dispose(); throw; }
 
         var name = Path.GetFileName(projectPath);
         var id = name;
@@ -62,11 +64,14 @@ public sealed class ProjectService : IProjectService
 
         _current = program;
 
-        AddToRecentProjects(name, projectPath);
-        _editorSettingsService.SaveSettings();
-
         Log.Information("Project opened: {Name} at {Path}", name, projectPath);
-        CurrentChanged?.Invoke(program);
+        try
+        {
+            CurrentChanged?.Invoke(program);
+            AddToRecentProjects(name, projectPath);
+            _editorSettingsService.SaveSettings();
+        }
+        catch { await CloseAsync(); throw; }
 
         return program;
     }
@@ -93,16 +98,21 @@ public sealed class ProjectService : IProjectService
         await SaveInitialGraphAsync(projectPath, name);
 
         var scope = _globalServices.CreateScope();
+        try { scope.ServiceProvider.GetRequiredService<ProjectSchemaSession>().Open(projectPath); }
+        catch { scope.Dispose(); throw; }
         var editorState = await LoadEditorProjectStateAsync(projectPath);
         var program = new GalProject(name, name, projectPath, settings, editorState, scope);
 
         _current = program;
 
-        AddToRecentProjects(name, projectPath);
-        _editorSettingsService.SaveSettings();
-
         Log.Information("Project created: {Name} at {Path}", name, projectPath);
-        CurrentChanged?.Invoke(program);
+        try
+        {
+            CurrentChanged?.Invoke(program);
+            AddToRecentProjects(name, projectPath);
+            _editorSettingsService.SaveSettings();
+        }
+        catch { await CloseAsync(); throw; }
 
         return program;
     }
