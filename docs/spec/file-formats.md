@@ -25,6 +25,10 @@ Project/
 
 `Graph/graph.json` 是版本 2 的编辑图，包含稳定节点/边 ID、坐标、变量和 Group 的 `groups/<id>.rawgalgroup` 文件引用。`.rawgalgroup` 是版本 2、`kind: Raw` 的编辑源，可包含 primitive 和 composite；`.galgroup` 是 `kind: Compiled` 的运行产物，只能包含 primitive。旧分号文本、旧版本 Group 格式和运行时加载 Raw 文档均不受支持。
 
+变量声明的字段固定为 `name`、`defaultValue`、`type`，不随 JSON serializer 的命名策略变化；`defaultValue` 使用变量 converter 的 `Uid`、`Name`、`Type`、`Value`。编辑工具只接受当前源格式，不补稳定 ID、不从 settings 迁移变量。原始查询保留未知数据，类型化保存则拒绝未知字段/参数及不能无损转换到编辑值的参数；空字符串不会作为缺失参数删除。
+
+共享保存先准备并校验 Graph/Group 写入计划，再暂存全部目标文件后发布。删除 Group 节点并删除其 entries 时同步删除该源文件；保留 entries 时源文件成为孤立作者文件。后续发布失败会恢复此前发布的文件；恢复失败明确报告。该机制只提供单进程失败恢复，不承诺进程崩溃或跨进程修改下的整体原子事务。
+
 Compiled primitive 使用 `{ id, typeId, batchId, condition, arguments }` 信封。`arguments` 保存 JSON 值，不保存 CLR 类型名；当前 target profile 的冻结 schema 负责校验。Graph 与 Group 目前是特殊内容文件，不通过资源 GUID provider 查询。
 
 ## `.galpak` 导出与安装

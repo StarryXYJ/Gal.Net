@@ -93,10 +93,14 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
     /// <summary>Checks a selected source and returns a DTO only after its raw structure is accepted.</summary>
     public GroupDocument? ValidateGroup(string file, IList<ToolDiagnostic> diagnostics, IEntryCatalog? catalog = null, bool structureOnly = false)
     {
-        var start = diagnostics.Count;
         var content = _reader.Read(file, diagnostics);
-        if (content is null || !Shape(content.Value, file, "", diagnostics, ["version", "kind", "entries"])) return null;
-        var raw = content.Value;
+        return content is null ? null : ValidateGroupDocument(content.Value, file, diagnostics, catalog, structureOnly);
+    }
+
+    public static GroupDocument? ValidateGroupDocument(JsonElement raw, string file, IList<ToolDiagnostic> diagnostics, IEntryCatalog? catalog = null, bool structureOnly = false)
+    {
+        var start = diagnostics.Count;
+        if (!Shape(raw, file, "", diagnostics, ["version", "kind", "entries"])) return null;
         DuplicateProperties(raw, file, "", diagnostics);
         Version(raw, GroupDocument.CurrentVersion, file, diagnostics);
         if (ProjectRawReader.Text(raw, "kind") != "Raw") Error(diagnostics, "group.kindInvalid", "Only current Raw source documents are accepted.", file, "/kind");
@@ -133,7 +137,7 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
         return diagnostics.Skip(start).Any(item => item.Severity == "error") ? null : document;
     }
 
-    private void ValidateGraph(JsonElement? content, List<ToolDiagnostic> diagnostics, bool structureOnly)
+    public void ValidateGraph(JsonElement? content, List<ToolDiagnostic> diagnostics, bool structureOnly = false, bool checkSourceReferences = true)
     {
         if (content is null || !Shape(content.Value, GraphFile, "", diagnostics, ["version", "name", "rootNodeId", "nodes", "edges", "playerVariables", "saveVariables"])) return;
         var graph = content.Value;
@@ -166,7 +170,7 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
             if (type == "Group")
             {
                 String(node, "file", GraphFile, pointer, diagnostics, required: true);
-                if (!structureOnly && ProjectRawReader.Text(node, "file") is { } file)
+                if (!structureOnly && checkSourceReferences && ProjectRawReader.Text(node, "file") is { } file)
                     try
                     {
                         if (Path.IsPathRooted(file)) throw new InvalidDataException("Group file must be relative to the graph directory.");
@@ -288,7 +292,7 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
         String(value, key, file, pointer, diagnostics, required: true);
         if (ProjectRawReader.Text(value, key) is { Length: > 0 } id && !seen.Add(id)) Error(diagnostics, "identity.duplicate", $"Duplicate '{key}' value '{id}'.", file, pointer + "/" + Escape(key), id);
     }
-    private static void DuplicateProperties(JsonElement value, string file, string pointer, IList<ToolDiagnostic> diagnostics)
+    public static void DuplicateProperties(JsonElement value, string file, string pointer, IList<ToolDiagnostic> diagnostics)
     {
         if (value.ValueKind == JsonValueKind.Object)
         {

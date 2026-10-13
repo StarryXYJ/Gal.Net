@@ -89,13 +89,14 @@ internal static class Program
             var entryCatalog = projectSchema.Catalog;
             if (verb == "project.build") return await BuildAsync(projectPath, args, entryCatalog);
             if (verb == "project.export") return await ExportAsync(projectPath, args, entryCatalog);
-            var document = Load(projectPath, entryCatalog);
+            var persistence = new DirectProjectPersistence(projectPath, new EditorDocumentRepository(entryCatalog));
+            var document = persistence.Load();
             switch (verb)
             {
                 case "execute":
                     if (args.Length < 3) return Fail("execute requires a JSON file path or '-'.");
                     var json = args[2] == "-" ? await Console.In.ReadToEndAsync() : await File.ReadAllTextAsync(args[2]);
-                    return await ExecuteAsync(projectPath, document, new EditorCommandCatalog(), new AssetFileCommandCatalog(), entryCatalog, json);
+                    return await ExecuteAsync(projectPath, document, new EditorCommandCatalog(), new AssetFileCommandCatalog(), entryCatalog, persistence, json);
                 default: return Fail($"Unknown command '{args[0]}'.");
             }
         }
@@ -105,7 +106,7 @@ internal static class Program
     }
 
     private static async Task<int> ExecuteAsync(string projectPath, EditorProjectDocument original,
-        EditorCommandCatalog catalog, AssetFileCommandCatalog fileCatalog, IEntryCatalog entryCatalog, string json)
+        EditorCommandCatalog catalog, AssetFileCommandCatalog fileCatalog, IEntryCatalog entryCatalog, DirectProjectPersistence persistence, string json)
     {
         using var parsed = JsonDocument.Parse(json);
         var root = parsed.RootElement;
@@ -140,15 +141,10 @@ internal static class Program
         var validation = EditorDocumentValidator.Validate(working);
         if (!validation.IsValid) { WriteJson(new { success = false, diagnostics = validation.Diagnostics }); return 5; }
         var dryRun = root.TryGetProperty("dryRun", out var dryRunElement) && dryRunElement.GetBoolean();
-        if (!dryRun) await new DirectProjectPersistence(projectPath, new EditorDocumentRepository(entryCatalog)).SaveAsync(working);
+        _ = persistence.PrepareSave(working);
+        if (!dryRun) await persistence.SaveAsync(working);
         WriteJson(new { success = true, dryRun, description = string.Join("; ", descriptions), changedResources = changed.Distinct(), diagnostics = validation.Diagnostics });
         return 0;
-    }
-
-    private static EditorProjectDocument Load(string projectPath, IEntryCatalog entryCatalog)
-    {
-        if (!Directory.Exists(projectPath)) throw new DirectoryNotFoundException($"Project directory not found: {projectPath}");
-        return new DirectProjectPersistence(projectPath, new EditorDocumentRepository(entryCatalog)).Load();
     }
 
     private static async Task<int> ExportAsync(string projectPath, string[] args, IEntryCatalog entryCatalog)

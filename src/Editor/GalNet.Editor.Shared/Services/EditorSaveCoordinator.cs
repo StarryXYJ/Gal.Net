@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text.Json;
 using GalNet.Core.Compilation;
 using GalNet.Core.Entry;
-using GalNet.Core.Primitives;
 using GalNet.Core.Serialization;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
@@ -54,20 +53,23 @@ public sealed class EditorSaveCoordinator : IEditorSaveCoordinator
                 Name = node.Name,
                 X = node.X,
                 Y = node.Y,
-                File = null,
+                File = node.Type == "Group" ? $"{node.Id}.galgroup" : null,
                 BranchType = node.BranchType,
                 Options = node.Options?.Select(option => new EditorGraphBranchOptionDto
                 {
+                    Id = option.Id,
                     Text = option.Text,
                     Condition = option.Condition
                 }).ToList(),
                 Conditions = node.Conditions?.Select(condition => new EditorGraphBranchConditionDto
                 {
+                    Id = condition.Id,
                     Expression = condition.Expression
                 }).ToList()
             }).ToList(),
             Edges = document.Edges.Select(edge => new EditorGraphEdgeDto
             {
+                Id = edge.Id,
                 FromNodeId = edge.FromNodeId,
                 FromOutlet = edge.FromOutlet,
                 ToNodeId = edge.ToNodeId
@@ -87,23 +89,5 @@ public sealed class EditorSaveCoordinator : IEditorSaveCoordinator
         return previewPath;
     }
 
-    private GroupEntryDocument SerializeEntry(EditorEntryData entry)
-    {
-        var definition = _catalog.Get(entry.Type);
-        var parameters = entry.Parameters
-            .Where(pair => definition.Parameters.ContainsKey(pair.Key) && pair.Value.Length > 0)
-            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
-
-        entry.StableId = string.IsNullOrWhiteSpace(entry.StableId) ? Guid.NewGuid().ToString("N") : entry.StableId;
-        return new GroupEntryDocument
-        {
-            Id = entry.StableId,
-            Type = entry.Type,
-            Condition = entry.Condition,
-            Parameters = parameters.ToDictionary(pair => pair.Key, pair => ToJsonValue(definition.DynamicParameters![pair.Key].ValueType, pair.Value), StringComparer.Ordinal)
-        };
-    }
-
-    private static JsonElement ToJsonValue(Type valueType, string value) =>
-        DynamicParameterValue.FromEditorValue(value, valueType);
+    private GroupEntryDocument SerializeEntry(EditorEntryData entry) => new EditorDocumentRepository(_catalog).SerializeEntry(entry);
 }

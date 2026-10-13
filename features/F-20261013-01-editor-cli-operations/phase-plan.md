@@ -89,7 +89,11 @@ Phase 4c 状态：verified。Builtins 64/64、Presentation 注册定向 7/7、Ed
 
 ## Phase 5：必要项目/Group 工具与已有命令对齐
 
-状态：planned；依赖 Phase 3、4
+状态：in-progress；依赖 Phase 3、4
+
+实施拆分：5a 收紧共享 repository/execute 的当前格式与无损边界，校验待保存内容并实现多文件失败恢复；5b 补齐共享项目创建和 project/group 命令，复用单元 handler；5c 系统回收站适配与 Editor 生命周期顺序。各子阶段取得独立验证后提交。未知数据仍可原始查询、由 agent 直接编辑；工具写入拒绝不认识的数据，避免静默丢弃。
+
+Phase 5a 状态：verified。共享层 124/124（新增 20 项保存/命令验收），Core 70/70、Editor 31/31、架构 29/29。移除 repository 默认图、变量迁移、补 ID 和参数过滤；当前 raw 校验用于加载和待保存 JSON。准备/发布接口由 CLI 与 Editor 共享，dry-run 校验无写入；保留空字符串和稳定 ID、拒绝未知参数/字段及 settings 重复属性。加载后外部文件改变会拒绝保存，成功保存更新基线；Editor repository 只跟踪自己拥有的 Graph/Group，独立 settings 保存不会误阻塞下一次保存，DirectPersistence 单独跟踪 settings。真实 Windows 文件锁使后续 settings 发布失败，已发布 Graph/Group 字节恢复且 temp 清除；取消与非规范路径无发布。Group 删除同步作者文件，连续保存通过。变量声明字段固定 JSON 名称；preview 共用 entry 序列化并保留边/选项/条件 ID 与编译文件引用。恢复是单进程失败恢复，未承诺崩溃安全或跨进程整体原子性。
 
 - 目标：补齐项目创建、显示名改名、Group 生命周期工具，复用已有编辑命令与引用检查。
 - 模块：Editor.Shared/Abstraction 命令与持久化、Headless、ProjectService 引导路径。

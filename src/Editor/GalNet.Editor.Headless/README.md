@@ -51,4 +51,6 @@ group compile <project> --file Graph/groups/example.rawgalgroup --output Output/
 
 build/export 使用项目 DLL 的同一 catalog，先校验原始 Graph 和目标 Group 再编译。共享 ProjectContentBuilder 和 GamePackageExporter 要求显式传入 catalog，没有内置默认值或兼容重载。缺契约或契约未声明的 entry 明确失败；部分组件不会自动补成内置全集。输出拒绝作者目录、Contracts、项目根/祖先和链接路径；导出的 galpak 包含编译内容，不包含工具 DLL。execute 已切换项目 catalog；其无损写入边界与新增生命周期命令在后续阶段完善。
 
+execute 的文档加载和保存只接受当前格式：不补 ID、不迁移变量，不过滤未知参数。未知 Graph/Group/settings 字段、重复属性、缺稳定 ID 或无法无损转换的参数会阻止写入；原始查询仍可用于检查这些文件。空字符串参数保留。dryRun 使用同一待保存内容校验且不创建文件；加载后源文件或 settings 改变会要求重新加载。Graph、Group 和 settings 统一暂存后发布，后续发布失败会恢复此前改动并清理临时文件；不承诺进程崩溃或跨进程整体原子性。删除 Group 并删除 entries 时同步删除作者文件，保留 entries 时保留孤立文件。资产文件操作仍是单独执行，不能混入文档批次。
+
 Editor 打开项目时也必须加载 Contracts DLL。ProjectSchemaSession 由项目 DI scope 持有，catalog、文档仓库、Graph 编辑、文件操作和保存协调器均按项目解析，entry 快捷键从该项目集合生成。关闭/切换项目释放契约上下文；契约或打开监听器失败时清理 scope，不能继续沿用旧项目 catalog。预览使用同一 catalog，按选定集合注册内置实现，并在启动前检查实际编译内容的指令。加载不会提供自定义 entry 的平台执行实现，缺少实现时明确失败。

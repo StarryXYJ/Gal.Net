@@ -257,6 +257,8 @@ public sealed class EditorWorkspaceViewModelTests
     private sealed class FakeDocumentRepository(LoadedEditorProjectDocument loaded) : IEditorDocumentRepository
     {
         public LoadedEditorProjectDocument Load(string projectPath, string projectName, ProjectSettings settings) => loaded;
+        public ProjectSavePlan PrepareSave(string projectPath, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries) => throw new NotSupportedException();
+        public void ApplySave(string projectPath, ProjectSavePlan plan, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public void Save(string projectPath, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries) => throw new NotSupportedException();
     }
 

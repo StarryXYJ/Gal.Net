@@ -21,6 +21,8 @@ public sealed partial class BuiltInEditorCommandHandler
         var type = command.Type.Trim();
         if (!catalog.TryGet(type, out var definition))
             return Error("group.entry.unknownType", $"Unknown entry type '{type}'.");
+        if (command.Parameters?.Keys.FirstOrDefault(key => !definition.Parameters.ContainsKey(key)) is { } unknown)
+            return Error("group.entry.unknownParameter", $"Unknown parameter '{unknown}' for '{type}'.");
         var entry = new EditorEntryData
         {
             StableId = command.EntryId,
@@ -82,6 +84,8 @@ public sealed partial class BuiltInEditorCommandHandler
     {
         if (!TryFindEntry(document, command.GroupId, command.EntryId, out _, out var entry, out var failure))
             return failure!;
+        if (command.Parameters.Keys.FirstOrDefault(key => !catalog.Get(entry!.Type).Parameters.ContainsKey(key)) is { } unknown)
+            return Error("group.entry.unknownParameter", $"Unknown parameter '{unknown}' for '{entry!.Type}'.");
         entry!.Parameters = new Dictionary<string, string>(catalog.Create(entry.Type, values: command.Parameters).Values, StringComparer.Ordinal);
         return Success($"Replaced parameters for entry '{command.EntryId}'.", "History.Entry.SetParameters", EntryResource(command.GroupId, command.EntryId), command.EntryId);
     }
@@ -95,6 +99,8 @@ public sealed partial class BuiltInEditorCommandHandler
         {
             if (string.IsNullOrWhiteSpace(key))
                 return Error("group.entry.parameterKeyRequired", "Entry parameter keys cannot be empty.");
+            if (!catalog.Get(entry.Type).Parameters.ContainsKey(key))
+                return Error("group.entry.unknownParameter", $"Unknown parameter '{key}' for '{entry.Type}'.");
             if (value is null) parameters.Remove(key);
             else parameters[key] = value;
         }
