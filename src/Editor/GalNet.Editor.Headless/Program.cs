@@ -4,7 +4,6 @@ using GalNet.Core.Assets;
 using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
 using GalNet.Editor.Abstraction.Commands;
-using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
 
@@ -86,62 +85,37 @@ internal static class Program
             var entryCatalog = projectSchema.Catalog;
             if (verb == "project.build") return await BuildAsync(projectPath, args, entryCatalog);
             if (verb == "project.export") return await ExportAsync(projectPath, args, entryCatalog);
-            var persistence = new DirectProjectPersistence(projectPath, new EditorDocumentRepository(entryCatalog));
-            var document = persistence.Load();
+            var edits = new ProjectEditService(projectPath, entryCatalog);
+            if (verb is "project.rename" or "group.create" or "group.rename" or "group.delete")
+            {
+                IProjectEditCommand command = verb switch
+                {
+                    "project.rename" => new RenameProjectCommand(invocation.Get("--name")!),
+                    "group.create" => new CreateNodeCommand(invocation.Get("--id") ?? Guid.NewGuid().ToString("N"), EditorNodeKind.LinearGroup,
+                        invocation.Get("--name")!, Coordinate(invocation, "--x"), Coordinate(invocation, "--y")),
+                    "group.rename" => new RenameNodeCommand(invocation.Get("--id")!, invocation.Get("--name")!),
+                    _ => new DeleteNodeCommand(invocation.Get("--id")!, ForceReferences: invocation.Has("--force"))
+                };
+                var result = verb == "project.rename"
+                    ? await edits.ExecuteAsync([command], invocation.Has("--dry-run"), verb)
+                    : await edits.ExecuteGroupAsync(command, invocation.Has("--dry-run"));
+                WriteJson(result);
+                return result.Success ? 0 : 5;
+            }
             switch (verb)
             {
                 case "execute":
                     if (args.Length < 3) return Fail("execute requires a JSON file path or '-'.");
                     var json = args[2] == "-" ? await Console.In.ReadToEndAsync() : await File.ReadAllTextAsync(args[2]);
-                    return await ExecuteAsync(projectPath, document, new EditorCommandCatalog(), new AssetFileCommandCatalog(), entryCatalog, persistence, json);
+                    var result = await edits.ExecuteJsonAsync(json);
+                    WriteJson(result);
+                    return result.Success ? 0 : 5;
                 default: return Fail($"Unknown command '{args[0]}'.");
             }
         }
         catch (ArgumentException exception) { return Fail(exception.Message); }
         catch (JsonException exception) { return Fail($"Invalid JSON: {exception.Message}"); }
         catch (Exception exception) { return Fail(exception.Message, 1); }
-    }
-
-    private static async Task<int> ExecuteAsync(string projectPath, EditorProjectDocument original,
-        EditorCommandCatalog catalog, AssetFileCommandCatalog fileCatalog, IEntryCatalog entryCatalog, DirectProjectPersistence persistence, string json)
-    {
-        using var parsed = JsonDocument.Parse(json);
-        var root = parsed.RootElement;
-        var elements = root.TryGetProperty("commands", out var array) ? array.EnumerateArray().ToList() : [root];
-        if (elements.Count == 0) return Fail("At least one command is required.", 5);
-
-        var fileIds = fileCatalog.GetAll().Select(item => item.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var isFile = elements.Select(element => GetCommandId(element)).Select(fileIds.Contains).ToList();
-        if (isFile.Any(value => value))
-        {
-            if (elements.Count != 1 || !isFile[0]) return Fail("File commands cannot be mixed with document commands.", 5);
-            if (root.TryGetProperty("dryRun", out var fileDryRun) && fileDryRun.GetBoolean())
-                return Fail("File operations do not support dryRun; no files were changed.", 5);
-            var command = fileCatalog.Deserialize(GetCommandId(elements[0]), elements[0], JsonOptions);
-            var result = await new AssetFileCommandExecutor(entryCatalog).ExecuteAsync(projectPath, command);
-            WriteJson(result); return result.Success ? 0 : 5;
-        }
-
-        var working = GalNet.Editor.Abstraction.Changes.EditorDocumentCloner.Clone(original);
-        var handler = new BuiltInEditorCommandHandler(entryCatalog);
-        var changed = new List<string>();
-        var descriptions = new List<string>();
-        foreach (var element in elements)
-        {
-            var command = catalog.Deserialize(GetCommandId(element), element, JsonOptions);
-            if (!handler.CanHandle(command)) return Fail($"Unsupported command '{command.CommandId}'.", 5);
-            var execution = handler.Execute(working, command, new EditorCommandContext(0, false));
-            if (!execution.Success) { WriteJson(new { success = false, diagnostics = execution.Diagnostics }); return 5; }
-            changed.AddRange(execution.ChangedResources);
-            if (execution.Description is not null) descriptions.Add(execution.Description.Description);
-        }
-        var validation = EditorDocumentValidator.Validate(working);
-        if (!validation.IsValid) { WriteJson(new { success = false, diagnostics = validation.Diagnostics }); return 5; }
-        var dryRun = root.TryGetProperty("dryRun", out var dryRunElement) && dryRunElement.GetBoolean();
-        _ = persistence.PrepareSave(working);
-        if (!dryRun) await persistence.SaveAsync(working);
-        WriteJson(new { success = true, dryRun, description = string.Join("; ", descriptions), changedResources = changed.Distinct(), diagnostics = validation.Diagnostics });
-        return 0;
     }
 
     private static async Task<int> ExportAsync(string projectPath, string[] args, IEntryCatalog entryCatalog)
@@ -170,10 +144,6 @@ internal static class Program
         WriteJson(new { success = true, outputPath = result.OutputPath, compiledGroupCount = result.CompiledGroupCount });
         return 0;
     }
-
-    private static string GetCommandId(JsonElement element) =>
-        element.TryGetProperty("commandId", out var id) && !string.IsNullOrWhiteSpace(id.GetString())
-            ? id.GetString()! : throw new JsonException("Every command requires a non-empty commandId.");
 
     private static ToolResult? RunQuery(string project, CliInvocation invocation)
     {
@@ -205,6 +175,15 @@ internal static class Program
         if (text is null) return fallback;
         if (!int.TryParse(text, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var value))
             throw new ArgumentException($"{key} must be a nonnegative integer.");
+        return value;
+    }
+
+    private static double Coordinate(CliInvocation invocation, string key)
+    {
+        var text = invocation.Get(key);
+        if (text is null) return 0;
+        if (!double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var value) || !double.IsFinite(value))
+            throw new ArgumentException($"{key} must be a finite number.");
         return value;
     }
 

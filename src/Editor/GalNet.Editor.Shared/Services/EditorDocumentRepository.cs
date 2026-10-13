@@ -108,6 +108,7 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog) : IEditorDoc
         if (string.IsNullOrWhiteSpace(entry.StableId)) throw new InvalidDataException("Entry stable ID is required.");
         foreach (var key in entry.Parameters.Keys)
             if (!definition.Parameters.ContainsKey(key)) throw new InvalidDataException($"Unknown parameter '{key}' for '{entry.Type}'.");
+        if (entry.Parameters.Values.Any(value => value is null)) throw new InvalidDataException("Editor parameter values must be strings; use patchParameters null to remove a parameter.");
         return new GroupEntryDocument
         {
             Id = entry.StableId, Type = entry.Type, Condition = entry.Condition,

@@ -22,4 +22,4 @@ public sealed record ToolOperationDefinition(
     bool ReadOnly, bool RequiresProject, bool RequiresContract,
     bool SupportsDryRun, string BatchMode,
     IReadOnlyList<string> Examples, IReadOnlyDictionary<int, string> ExitCodes,
-    string Transport = "cli");
+    string Transport = "cli", JsonElement? DocumentInputSchema = null);

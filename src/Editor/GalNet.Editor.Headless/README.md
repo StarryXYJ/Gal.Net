@@ -64,3 +64,14 @@ build/export 使用项目 DLL 的同一 catalog，先校验原始 Graph 和目�
 execute 的文档加载和保存只接受当前格式：不补 ID、不迁移变量，不过滤未知参数。未知 Graph/Group/settings 字段、重复属性、缺稳定 ID 或无法无损转换的参数会阻止写入；原始查询仍可用于检查这些文件。空字符串参数保留。dryRun 使用同一待保存内容校验且不创建文件；加载后源文件或 settings 改变会要求重新加载。Graph、Group 和 settings 统一暂存后发布，后续发布失败会恢复此前改动并清理临时文件；不承诺进程崩溃或跨进程整体原子性。删除 Group 并删除 entries 时同步删除作者文件，保留 entries 时保留孤立文件。资产文件操作仍是单独执行，不能混入文档批次。
 
 Editor 打开项目时也必须加载 Contracts DLL。ProjectSchemaSession 由项目 DI scope 持有，catalog、文档仓库、Graph 编辑、文件操作和保存协调器均按项目解析，entry 快捷键从该项目集合生成。关闭/切换项目释放契约上下文；契约或打开监听器失败时清理 scope，不能继续沿用旧项目 catalog。预览使用同一 catalog，按选定集合注册内置实现，并在启动前检查实际编译内容的指令。加载不会提供自定义 entry 的平台执行实现，缺少实现时明确失败。
+
+```text
+project rename <project> --name "New Display Name" [--dry-run]
+group create <project> --name "New Group" [--id stable-id] [--x 0] [--y 0] [--dry-run]
+group rename <project> --id <group-id> --name "New Name" [--dry-run]
+group delete <project> --id <group-id> [--force] [--dry-run]
+```
+
+这些入口由 ProjectEditService 复用 Editor 的单元命令；project rename 只改变显示名，Group rename 保持节点 ID 和文件名。新 Group 未指定 ID 时生成稳定 ID 并在 createdNodeIds 返回。删除同步 Graph 和作者 Raw 文件；Graph 中关联边自动移除，其他静态 JSON 引用候选或扫描错误需要明确 --force，强制删除不修改这些外部引用。dry-run 返回 writtenFiles/deletedFiles/references，检查当前批次新增的引用，不发布文件；引用检查始终明确 referencesComplete=false。
+
+execute 的 JSON 必须符合当前命令参数，未知字段、重复属性、缺少必需参数及不允许的 null 都直接拒绝。project.rename 的帮助同时给出 CLI inputSchema 和 execute 使用的 documentInputSchema，同一 operationId 不重复注册。单独资源文件操作直接调用文件服务，不要求 Graph 文档可以加载；文档操作仍要求无损加载并整体校验后保存。

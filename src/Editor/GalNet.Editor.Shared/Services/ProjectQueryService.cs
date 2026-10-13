@@ -191,7 +191,7 @@ public sealed class ProjectQueryService(string projectDirectory)
         return groups.OrderBy(group => group.File, StringComparer.Ordinal).ThenBy(group => group.Id, StringComparer.Ordinal).ToArray();
     }
 
-    private static void Scan(JsonElement value, string pointer, string file, string target, string kind, IList<ProjectReferenceItem> items)
+    public static void Scan(JsonElement value, string pointer, string file, string target, string kind, IList<ProjectReferenceItem> items)
     {
         if (value.ValueKind == JsonValueKind.Object)
             foreach (var property in value.EnumerateObject())

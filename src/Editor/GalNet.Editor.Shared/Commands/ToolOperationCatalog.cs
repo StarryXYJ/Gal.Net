@@ -56,6 +56,16 @@ public sealed class ToolOperationCatalog
             Route("graph.node", "graph node", "Returns original node matches without inventing IDs or filtering fields.",
                 Project(new CliParameter("node-id", "string", "Stable node ID; returns all matches if duplicated.", true, true))),
             Route("group.list", "group list", "Lists Group source files including unreferenced Raw files.", Query()),
+            Route("group.create", "group create", "Creates a Group node and empty Raw source using the shared graph.node.create operation.",
+                Project(new CliParameter("--id", "string", "Stable node ID; generated when absent."), new("--name", "string", "Group display name.", true),
+                    new("--x", "number", "Canvas X coordinate.", Default: 0), new("--y", "number", "Canvas Y coordinate.", Default: 0),
+                    new("--dry-run", "boolean", "Validate and report without writing.", Default: false)), readOnly: false, requiresContract: true, dryRun: true),
+            Route("group.rename", "group rename", "Renames a Group display name; stable ID and source file remain unchanged.",
+                Project(new CliParameter("--id", "string", "Existing Group node ID.", true), new("--name", "string", "New display name.", true),
+                    new("--dry-run", "boolean", "Validate and report without writing.", Default: false)), readOnly: false, requiresContract: true, dryRun: true),
+            Route("group.delete", "group delete", "Deletes a Group, its connected edges and Raw source. External reference candidates require explicit acknowledgement.",
+                Project(new CliParameter("--id", "string", "Existing Group node ID.", true), new("--force", "boolean", "Acknowledge external static reference candidates or an incomplete scan.", Default: false),
+                    new("--dry-run", "boolean", "Report planned deletion and references without writing.", Default: false)), readOnly: false, requiresContract: true, dryRun: true),
             Route("group.show", "group show", "Returns the original Raw Group JSON. Specify exactly one of --id/--file.", Project(Selector())),
             Route("group.entries", "group entries", "Lists original Group entries. Specify exactly one of --id/--file.",
                 Query(Selector().Concat([new CliParameter("--type", "string", "Filter exact entry type."), new("--entry-id", "string", "Filter exact entry ID.")]).ToArray())),
@@ -122,6 +132,7 @@ public sealed class ToolOperationCatalog
         Type? dataType = operation.OperationId switch
         {
             "project.create" => typeof(ProjectCreateReport),
+            "project.rename" or "group.create" or "group.rename" or "group.delete" => typeof(ProjectEditReport),
             "files" => typeof(QueryPage<ProjectFileItem>),
             "find" or "graph.nodes" or "graph.node" or "graph.edges" or "group.entries" or "variables" => typeof(QueryPage<ProjectObjectItem>),
             "group.list" => typeof(QueryPage<ProjectGroupItem>),
@@ -138,7 +149,14 @@ public sealed class ToolOperationCatalog
         return operation with { OutputSchema = JsonSerializer.SerializeToElement(result) };
     }
 
-    private static ToolOperationDefinition FromCommand(IProjectCommandDefinition definition, bool file) => new(
+    private static ToolOperationDefinition FromCommand(IProjectCommandDefinition definition, bool file)
+    {
+        if (definition.Id == "project.rename")
+            return Route(definition.Id, "project rename", definition.Description,
+                Project(new CliParameter("--name", "string", "New project display name.", true),
+                    new("--dry-run", "boolean", "Validate and report without writing.", Default: false)),
+                readOnly: false, requiresContract: true, dryRun: true) with { DocumentInputSchema = definition.Schema.JsonSchema };
+        return new(
         definition.Id, "execute", definition.Description, "execute <project> <command-file|->",
         definition.Schema.Parameters.Select(parameter => new CliParameter(parameter.Name, parameter.Type, parameter.Description, parameter.Required,
             Default: parameter.JsonSchema!.Value.TryGetProperty("default", out var defaultValue) ? defaultValue : null,
@@ -149,6 +167,7 @@ public sealed class ToolOperationCatalog
         file ? "Single file operation; cannot mix with document operations." : "Document-only batch; dryRun is set on the enclosing JSON payload.",
         [$"execute <project> <file containing commandId='{definition.Id}'>"], ExitCodes,
         file ? "file-operation" : "document-operation");
+    }
 
     public static ToolOperationDefinition Route(string id, string path, string description, IReadOnlyList<CliParameter> parameters,
         bool readOnly = true, bool requiresProject = true, bool requiresContract = false,

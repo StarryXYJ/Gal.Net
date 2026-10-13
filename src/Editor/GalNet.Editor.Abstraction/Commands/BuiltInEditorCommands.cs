@@ -21,7 +21,7 @@ public sealed record CreateNodeCommand(
     public string CommandId => "graph.node.create";
 }
 
-public sealed record DeleteNodeCommand(string NodeId, bool DeleteGroupEntries = true) : IProjectEditCommand
+public sealed record DeleteNodeCommand(string NodeId, bool DeleteGroupEntries = true, bool ForceReferences = false) : IProjectEditCommand
 {
     public string CommandId => "graph.node.delete";
 }
