@@ -3,21 +3,7 @@ using GalNet.Core.Parameters;
 
 namespace GalNet.Avalonia.GameView.Settings;
 
-public interface INumericSetting
-{
-    double Minimum { get; }
-    double Maximum { get; }
-    double Step { get; }
-    NumericEditorKind EditorKind { get; }
-    bool IsSlider { get; }
-    bool IsInteger { get; }
-    double EditorValue { get; set; }
-    decimal NumericValue { get; set; }
-    string? Format { get; }
-    string? UnitKey { get; }
-}
-
-public sealed class IntSetting : SettingItem<int>, INumericSetting
+public sealed class IntSetting : SettingItem<int>
 {
     public IntSetting(string id, string nameKey, int defaultValue, int minimum, int maximum, int step,
         Func<int> read, Func<int, CancellationToken, Task> apply, object? label = null, Func<int>? forcedValue = null)
@@ -32,28 +18,14 @@ public sealed class IntSetting : SettingItem<int>, INumericSetting
     public double Maximum { get; }
     public double Step { get; }
     public NumericEditorKind EditorKind { get; init; }
-    public bool IsSlider => EditorKind == NumericEditorKind.Slider;
-    public bool IsInteger => true;
     public string? Format { get; init; }
     public string? UnitKey { get; init; }
     protected override EditorHints GetEditorHints() => Editor ?? new(
-        IsSlider ? ValueEditorIds.Slider : ValueEditorIds.Numeric, Step, Format, UnitKey);
-    public double EditorValue
-    {
-        get => Value;
-        set
-        {
-            if (!double.IsFinite(value) || value < Minimum || value > Maximum || value != Math.Truncate(value))
-            { ErrorKey = "Settings.InvalidInteger"; Refresh(); return; }
-            Value = checked((int)value);
-        }
-    }
-    public decimal NumericValue { get => Value; set => EditorValue = (double)value; }
+        EditorKind == NumericEditorKind.Slider ? ValueEditorIds.Slider : ValueEditorIds.Numeric, Step, Format, UnitKey);
     protected override string? Validate(int value) => ValueValidation.ValidateValue(ValueContract, value) is not null ? "Settings.OutOfRange" : base.Validate(value);
-    public override void Refresh() { base.Refresh(); OnPropertyChanged(nameof(EditorValue)); OnPropertyChanged(nameof(NumericValue)); }
 }
 
-public sealed class DoubleSetting : SettingItem<double>, INumericSetting
+public sealed class DoubleSetting : SettingItem<double>
 {
     public DoubleSetting(string id, string nameKey, double defaultValue, double minimum, double maximum, double step,
         Func<double> read, Func<double, CancellationToken, Task> apply, object? label = null, Func<double>? forcedValue = null)
@@ -64,25 +36,18 @@ public sealed class DoubleSetting : SettingItem<double>, INumericSetting
         ValueContract = new(typeof(double), constraints: JsonSerializer.SerializeToElement(new { minimum, maximum }));
         if (ValueValidation.ValidateValue(ValueContract, defaultValue) is not null)
             throw new ArgumentException("Invalid numeric setting default.");
-        // NumericUpDown's decimal domain must be representable, regardless of selected editor.
-        _ = checked((decimal)minimum); _ = checked((decimal)maximum); _ = checked((decimal)step);
         Minimum = minimum; Maximum = maximum; Step = step;
     }
     public double Minimum { get; }
     public double Maximum { get; }
     public double Step { get; }
     public NumericEditorKind EditorKind { get; init; }
-    public bool IsSlider => EditorKind == NumericEditorKind.Slider;
-    public bool IsInteger => false;
     public string? Format { get; init; }
     public string? UnitKey { get; init; }
     protected override EditorHints GetEditorHints() => Editor ?? new(
-        IsSlider ? ValueEditorIds.Slider : ValueEditorIds.Numeric, Step, Format, UnitKey);
-    public double EditorValue { get => Value; set => Value = value; }
-    public decimal NumericValue { get => checked((decimal)Value); set => Value = (double)value; }
+        EditorKind == NumericEditorKind.Slider ? ValueEditorIds.Slider : ValueEditorIds.Numeric, Step, Format, UnitKey);
     protected override string? Validate(double value) => ValueValidation.ValidateValue(ValueContract, value) is not null
         ? "Settings.OutOfRange" : base.Validate(value);
-    public override void Refresh() { base.Refresh(); OnPropertyChanged(nameof(EditorValue)); OnPropertyChanged(nameof(NumericValue)); }
 }
 
 public sealed class BoolSetting(string id, string nameKey, bool defaultValue, Func<bool> read,

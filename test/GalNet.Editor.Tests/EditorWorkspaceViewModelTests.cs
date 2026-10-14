@@ -1,5 +1,10 @@
 using System.ComponentModel;
 using System.Globalization;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Media;
+using Avalonia.VisualTree;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.Settings;
@@ -8,6 +13,7 @@ using GalNet.Editor.Abstraction.Extensibility;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Dock;
+using GalNet.Editor.Controls;
 using GalNet.Editor.History;
 using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Services;
@@ -15,6 +21,7 @@ using GalNet.Editor.Services.Interfaces;
 using GalNet.Editor.Shared.Services;
 using GalNet.Editor.ViewModels;
 using GalNet.Primitives.Builtins;
+using GalNet.Game.Controls.Forms;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GeneralTest.Editor;
@@ -22,6 +29,64 @@ namespace GeneralTest.Editor;
 [TestFixture]
 public sealed class EditorWorkspaceViewModelTests
 {
+    [Test, NonParallelizable]
+    public async Task SchemaFieldCommitUsesWorkspaceHistoryAndSaveSnapshot()
+    {
+        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        await session.Dispatch<bool>(async () =>
+        {
+            using var fixture = new WorkspaceFixture(withProject: true);
+            var workspace = fixture.Workspace;
+            var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
+            var entry = workspace.InsertEntriesInto(group, 0, 1).Single();
+            entry.Type = WaitEntry.TypeId;
+            entry.Parameters = new() { ["duration"] = "1" };
+            var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
+            entry.ConfigureParameterFields(catalog, [], []);
+            // Supply only layout icon resources; the real parameter panel and bindings are used below.
+            foreach (var key in new[] { "AddIcon", "DeleteRegularIcon", "ChevronUpRegular", "ChevronDownRegular" })
+                Application.Current!.Resources[key] = StreamGeometry.Parse("M0,0 L8,8");
+            var panel = new GroupEditorPanelViewModel(workspace, group, new GraphEditingService(catalog), fixture.ProjectService,
+                null!, null!, null!, catalog);
+            Application.Current!.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
+            Application.Current.Styles.Add(new Semi.Avalonia.SemiTheme());
+            var view = new EntryListEditorControl { DataContext = panel };
+            var window = new Window { Width = 900, Height = 500, Content = view };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+            try
+            {
+                var forms = view.GetVisualDescendants().OfType<SchemaForm>().ToArray();
+                Assert.That(forms.Length, Is.EqualTo(1));
+                var form = forms.Single();
+                Assert.That(form.Diagnostics, Is.Empty);
+                Assert.That(form.Contexts[0].Field.Id, Is.EqualTo("duration"));
+                Assert.That(view.GetVisualDescendants(), Does.Contain(form.Editors[0].Control));
+                var field = (SchemaEntryParameterEditorItemViewModel)entry.ParameterFields.Single();
+                var changes = 0;
+                field.Changed += (_, _) => changes++;
+                workspace.UndoRedoHistory.MarkSaved();
+                ((TextBox)form.Editors[0].Control).Text = "1.5";
+                Assert.That(await form.Contexts[0].CommitTextAsync(), Is.True);
+                Assert.That(workspace.UndoRedoHistory.IsDirty, Is.True);
+                workspace.UndoRedoHistory.Undo();
+                Assert.That(field.Read().Json!.Value.GetSingle(), Is.EqualTo(1));
+                Assert.That(((TextBox)form.Editors[0].Control).Text, Is.EqualTo("1"));
+                Assert.That(workspace.UndoRedoHistory.IsDirty, Is.False);
+                workspace.UndoRedoHistory.Redo();
+                Assert.That(field.Read().Json!.Value.GetSingle(), Is.EqualTo(1.5));
+                Assert.That(changes, Is.EqualTo(3));
+                await workspace.SaveAsync();
+                var snapshot = fixture.SaveCoordinator.SavedEntries![group.Id].Single();
+                Assert.That(snapshot.Parameters["duration"], Is.EqualTo("1.5"));
+                Assert.That(workspace.UndoRedoHistory.IsDirty, Is.False);
+            }
+            finally { window.Close(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
     [Test]
     public void Selection_KeepsNodeAndEdgeFlagsConsistent()
     {
@@ -266,8 +331,13 @@ public sealed class EditorWorkspaceViewModelTests
     private sealed class CapturingSaveCoordinator : IEditorSaveCoordinator
     {
         public EditorGraphDocument? SavedDocument { get; private set; }
+        public IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>>? SavedEntries { get; private set; }
 
-        public void SaveProjectDocument(string projectPath, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries) => SavedDocument = document;
+        public void SaveProjectDocument(string projectPath, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries)
+        {
+            SavedDocument = document;
+            SavedEntries = groupEntries;
+        }
         public string BuildPreviewData(string previewPath, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries) => previewPath;
     }
 

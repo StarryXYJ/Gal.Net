@@ -13,6 +13,7 @@ using GalNet.Editor.Commands;
 using GalNet.Editor.Controls;
 using GalNet.Editor.History;
 using GalNet.Editor.Services;
+using GalNet.Game.Controls.Forms;
 
 namespace GalNet.Editor.ViewModels;
 
@@ -33,6 +34,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     public IAssetManager AssetManager { get; }
     public EditorShortcutService ShortcutService { get; }
     public IReadOnlyList<EntryTypeOption> EntryTypes { get; }
+    public EditorRegistry FieldEditors { get; } = EditorFieldEditors.CreateDefault();
 
     [ObservableProperty]
     private EntryEditorItemViewModel? _selectedEntry;

@@ -66,9 +66,9 @@ Gallery 使用独立的 `IGalleryPageRegistry`，以精确 Gallery `typeId` 映�
 
 ### 设置与界面文本
 
-`SettingsPageViewModel` 通过 `IPlayerSettingsService.Categories` 获取只读分类及类型化设置项，分类使用局部 TabControl，不创建导航子页面。支持整数/浮点（Slider 或 NumericUpDown）、Bool、String、Choice、Action 与自定义编辑器。Step 仅改变操作步长，不参与校验；动态可见性、可用性和原因 key 驱动界面更新。应用/保存由 SettingsCoordinator 串行协调，保存失败可重试而不重复应用。共享页面不读取配置文件。
+`SettingsPageViewModel` 通过 `IPlayerSettingsService.Categories` 获取只读分类及类型化设置项，通过 `Editors` 借用该宿主的字段工厂注册表，分类使用局部 TabControl，不创建导航子页面。数值/滑块、Bool、String、Choice 使用 SchemaForm 的共享默认工厂；Action 与自定义编辑器保留专属行为。Step 仅改变操作步长，不参与校验；动态可见性、可用性和原因 key 驱动界面更新。应用/保存由 SettingsCoordinator 串行协调，保存失败可重试而不重复应用。共享页面不读取配置文件。
 
-内置主题的 `Common.SettingsCategories.EditorTemplates` 接收按顺序匹配的 `IDataTemplate` 列表，先匹配宿主/主题覆盖，再回退内置编辑器；只替换匹配类型，保留统一设置行的标签、说明、可用性与错误。自定义设置通过 `CustomSettingEditor` 创建独立控件租约并在 detach 时释放。
+内置主题的 `Common.SettingsCategories.Editors` 接收宿主 EditorRegistry；普通设置通过 `SettingItem<T>` 的 IFieldBinding 调用原有 apply/save 队列，类型化选项使用 ValueCodec 编码，标签与值分开。主题提供单字段表单模板与统一设置行的标签、说明、单位、可用性及错误；工厂注册或替换由宿主组合。旧 EditorTemplates/SettingEditor 和数值/选项 UI 转换代理已移除。自定义设置通过 `CustomSettingEditor` 创建独立控件租约并在 detach 时释放。
 
 共享页面的静态文案使用 `PlayerTextExtension`，未接入宿主本地化时显示默认英文。官方 Sample 提供 `LocalizedString` 并绑定其 `Value`，沿用 DynamicLocalization 的 Culture/Provider 变更通知机制；宿主设置标签也可以使用同样的动态对象。该绑定不会自动翻译任意业务字符串或剧情内容。
 
@@ -102,7 +102,7 @@ IFieldBinding 是借用的宿主对象，提供 Read、Changed、CommitAsync、�
 
 工厂返回独立、无父级的 FieldEditorLease；SchemaForm 在换 schema/registry/binding、卸载或创建失败时先取消所有 Context，再释放全部 lease，最后移除子控件；清理异常保留为 Diagnostics，不短路后续释放。控件不释放借用的 binding。工厂在返回 lease 前失败时，需自行清理尚未交出的临时资源。registry 注册更新后显式调用 RefreshEditors，普通值/选项/可用性通知不重建控件。现有 CustomSettingEditor 复用同一 FieldEditorLease，旧 SettingEditorLease 已移除。
 
-共享表单/默认工厂已验证；Editor 与 Sample 的实际宿主 binding/工厂组合仍待 Phase 2c 接入。
+Editor 的通用数值、布尔、文本、选项与 JSON 参数通过 SchemaEntryParameterEditorItemViewModel 使用完整值契约，提交替换 Entry.Parameters，继续由 workspace 历史与保存链路观察。每个 Group 面板拥有独立 registry，EditorFieldEditors 仅扩展选项标签本地化，转换与提交复用默认工厂。多行文本、资源选择、说话人/变量补全及表达式仍使用现有专属控件。仅打开参数面板不会写入省略的默认值；字符串文档不能无损表示的值（如显式 null 字符串）明确拒绝，原始工具路径可处理。设置页和 Editor 各自提供表单模板，业务对象不进入项目 schema DLL。
 
 ## 宿主接入约束
 

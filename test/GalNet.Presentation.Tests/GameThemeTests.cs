@@ -21,11 +21,14 @@ using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Avalonia.Themes;
 using GalNet.Core.Gallery;
+using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
 using GalNet.Game.Controls;
 using GalNet.Game.Controls.Forms;
 using GalNet.Presentation.Abstractions.View;
 using Microsoft.Extensions.DependencyInjection;
+
+[assembly: AvaloniaTestApplication(typeof(GeneralTest.Presentation.ThemeTestApplication))]
 
 namespace GeneralTest.Presentation;
 
@@ -35,14 +38,14 @@ public sealed class GameThemeTests
     [TestCase("Classic")]
     [TestCase("Minimal")]
     [TestCase("Paper")]
-    public async Task SettingTypeTemplateOverridesKeepOtherEditorsAndSharedRows(string layout)
+    public async Task SettingFactoryOverridesKeepOtherEditorsAndSharedRows(string layout)
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(() =>
         {
             var flag = new BoolSetting("flag", "Flag", false, () => false, (_, _) => Task.CompletedTask);
             var interval = new IntSetting("interval", "Interval", 50, 0, 5000, 10, () => 50, (_, _) => Task.CompletedTask);
-            var control = new GalNet.Avalonia.Themes.Common.SettingsCategories { Categories = [new("game", "Game", [flag, interval])] };
+            var control = new GalNet.Avalonia.Themes.Common.SettingsCategories { Editors = EditorRegistry.CreateDefault(), Categories = [new("game", "Game", [flag, interval])] };
             var root = new Border { Classes = { "galnet-player" }, Child = control };
             root.Styles.Add(CreateTheme(layout, "Ocean").CreateStyles());
             var window = new Window { Width = 1280, Height = 720, Content = root };
@@ -51,12 +54,14 @@ public sealed class GameThemeTests
             {
                 window.UpdateLayout();
                 Assert.That(control.GetVisualDescendants().OfType<CheckBox>().Count(), Is.EqualTo(1));
-                control.EditorTemplates = [new FuncDataTemplate<BoolSetting>((_, _) => new TextBlock { Text = "Overridden boolean editor" })];
+                var overridden = EditorRegistry.CreateDefault();
+                overridden.Replace(ValueEditorIds.Toggle, _ => new FieldEditorLease(new TextBlock { Text = "Overridden boolean editor" }));
+                control.Editors = overridden;
                 window.UpdateLayout();
                 Assert.That(control.GetVisualDescendants().OfType<TextBlock>().Any(text => text.Text == "Overridden boolean editor"), Is.True);
                 Assert.That(control.GetVisualDescendants().OfType<CheckBox>(), Is.Empty);
-                Assert.That(control.GetVisualDescendants().OfType<NumericUpDown>().Count(), Is.EqualTo(1));
-                control.EditorTemplates = null;
+                Assert.That(control.GetVisualDescendants().OfType<TextBox>().Count(), Is.EqualTo(1));
+                control.Editors = EditorRegistry.CreateDefault();
                 window.UpdateLayout();
                 Assert.That(control.GetVisualDescendants().OfType<CheckBox>().Count(), Is.EqualTo(1));
             }
@@ -68,7 +73,7 @@ public sealed class GameThemeTests
     [Test]
     public async Task SettingsTabsHideEmptyCategoriesAndKeepSelectionUntilItBecomesHidden()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(() =>
         {
             var visible = true;
@@ -103,7 +108,7 @@ public sealed class GameThemeTests
     [Test]
     public async Task SkipPromptDisablesBackgroundAndEscapeClosesWithoutSkipping()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(async () =>
         {
             var theme = CreateTheme("Classic", "Ocean");
@@ -139,7 +144,7 @@ public sealed class GameThemeTests
     [Test]
     public async Task PlaybackTogglesPreservePointerSelectionAndSkipRequiresConfirmation([Values("Classic", "Paper", "Minimal")] string layout, [Values("Ocean", "Rose", "Mono")] string palette)
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(async () =>
         {
             var theme = CreateTheme(layout, palette);
@@ -236,7 +241,7 @@ public sealed class GameThemeTests
     [Test]
     public async Task CustomSettingsReleaseEditorsOnReplacementAndDetach()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(() =>
         {
             var created = 0;
@@ -272,7 +277,7 @@ public sealed class GameThemeTests
     [TestCase("Paper", "Mono")]
     public async Task Every_layout_palette_combination_renders_and_preserves_game_interaction(string layout, string paletteName)
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(async () =>
         {
             var theme = CreateTheme(layout, paletteName);
@@ -448,7 +453,7 @@ public sealed class GameThemeTests
     [TestCase("Paper", 800, 500)]
     public async Task Large_gallery_images_keep_the_return_target_visible_and_clickable(string layout, int width, int height)
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(() =>
         {
             var theme = CreateTheme(layout, "Ocean");
@@ -537,7 +542,7 @@ public sealed class GameThemeTests
     [TestCase("Paper")]
     public async Task The_shared_shell_resolves_the_theme_and_navigates_to_theme_owned_pages(string layout)
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(async () =>
         {
             using var provider = CreateServices(CreateTheme(layout, "Ocean")).BuildServiceProvider(
@@ -585,7 +590,7 @@ public sealed class GameThemeTests
     [TestCase("Paper")]
     public async Task Screenshot_layouts_preserve_preview_save_errors_cancel_and_cleanup(string layout)
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(() =>
         {
             var theme = CreateTheme(layout, "Ocean");
@@ -645,7 +650,7 @@ public sealed class GameThemeTests
     [Test]
     public async Task A_screenshot_layout_missing_required_controls_fails_clearly()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(() =>
         {
             var exception = Assert.Throws<InvalidOperationException>(() => new IncompleteScreenshotDialog());
@@ -655,7 +660,7 @@ public sealed class GameThemeTests
     [Test]
     public async Task Missing_game_layout_parts_fail_instead_of_completing_a_blocking_dialogue()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(() =>
         {
             var page = new GamePage { Template = new FuncControlTemplate<GamePage>((_, _) => new Grid()) };
@@ -666,7 +671,7 @@ public sealed class GameThemeTests
     [Test]
     public async Task Player_roots_have_independent_palettes_and_host_resources_win()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(() =>
         {
             var left = new Border { Classes = { "galnet-player" }, Child = new Button { Content = "Ocean" } };

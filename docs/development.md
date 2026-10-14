@@ -101,7 +101,25 @@ var form = new SchemaForm
 };
 ```
 
-在玩家/编辑器根加载 `avares://GalNet.Avalonia.Controls/Styles/SchemaForm.axaml`，或提供自己的表单模板。布局与视觉归主题，registry 实例和业务 binding 归宿主。binding 的 Changed 更新值/选项/可用性；CommitAsync 接收 FieldValue 与取消令牌，返回业务 ValueIssue 或 null。省略使用 default(FieldValue)，显式 null 使用包含 JSON null 的 FieldValue。Text/Numeric/JSON 工厂保留草稿，未编辑的空/null/default 不自动写回；宿主需要强制提交或删除时显式调用 Context.CommitAsync。自定义工厂返回独立控件及释放回调，借用业务服务不由 lease 释放；详见 [表单契约](spec/control.md#schema-字段表单)。Editor/Sample 的正式适配仍待 Phase 2c。
+在玩家/编辑器根加载 `avares://GalNet.Avalonia.Controls/Styles/SchemaForm.axaml`，或提供自己的表单模板。布局与视觉归主题，registry 实例和业务 binding 归宿主。binding 的 Changed 更新值/选项/可用性；CommitAsync 接收 FieldValue 与取消令牌，返回业务 ValueIssue 或 null。省略使用 default(FieldValue)，显式 null 使用包含 JSON null 的 FieldValue。Text/Numeric/JSON 工厂保留草稿，未编辑的空/null/default 不自动写回；宿主需要强制提交或删除时显式调用 Context.CommitAsync。自定义工厂返回独立控件及释放回调，借用业务服务不由 lease 释放；详见 [表单契约](spec/control.md#schema-字段表单)。Editor 和 Sample 设置已经接入：Editor 的通用参数提交经 Entry.Parameters 进入 workspace 历史/保存，专属资源/表达式等保留原控件；Sample 的 SettingItem<T> 提交继续经过 SettingsCoordinator 的异步应用与保存队列。IPlayerSettingsService.Editors 提供宿主 registry，三种主题复用同一个设置结构。
+
+设置宿主创建一次 `EditorRegistry.CreateDefault()`，在 `IPlayerSettingsService.Editors` 返回它，并显式调用主题或项目的工厂扩展方法。新增普通设置直接复用 `SettingItem<T>`；业务 read/apply/Validator 留在设置对象，不复制到工厂。动态选项继续调用 `ChoiceSetting<T>.UpdateOptionsAsync`。仅改变外观时覆写主题模板/资源；改变控件时注册/替换工厂，例如：
+
+```csharp
+// 项目或主题提供扩展方法，宿主在展示前显式调用。
+public static void RegisterProjectEditors(EditorRegistry registry)
+{
+    registry.Register("game.precise", DefaultFieldEditors.CreateNumeric);
+}
+
+var editors = EditorRegistry.CreateDefault();
+RegisterProjectEditors(editors);
+var wait = new IntSetting("wait", "Settings.Wait", 50, 0, 5000, 10,
+    () => currentWait, (value, token) => ApplyWaitAsync(value, token))
+{ Editor = new("game.precise") };
+```
+
+自定义控件工厂通过 context 读取类型化值、提交以及订阅变化，卸载时由 lease 退订控件自己的事件；不要另建保存队列。Editor 的对应扩展入口是项目作用域 Group 面板的 FieldEditors。项目 schema 只写 EditorId，不引用平台控件/工厂。当前 Editor 的字符串文档无法无损表示显式 null 字符串，适配器拒绝这类提交；需要原始 JSON 时使用 CLI。缺少自定义工厂会显示诊断，不自动替换为文本控件。
 
 ### 2. 分别定义契约和执行模块
 

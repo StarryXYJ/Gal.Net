@@ -1,6 +1,6 @@
 <controls:ReorderableListControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:controls="using:GalNet.Editor.Controls"
+             xmlns:forms="using:GalNet.Game.Controls.Forms" xmlns:controls="using:GalNet.Editor.Controls"
              xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:models="using:GalNet.Editor.Models.Graph"
              xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
              x:Class="GalNet.Editor.Controls.EntryListEditorControl"
@@ -76,12 +76,28 @@
                                     <DataTemplate x:DataType="models:EntryParameterEditorItemViewModel">
                                         <ContentControl Content="{Binding}">
                                             <ContentControl.DataTemplates>
+                                                <DataTemplate DataType="models:SchemaEntryParameterEditorItemViewModel" x:CompileBindings="False">
+                                                    <Grid ColumnDefinitions="130,*" ColumnSpacing="8">
+                                                        <TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" />
+                                                        <forms:SchemaForm Grid.Column="1" Schema="{Binding Fields}" Binding="{Binding FieldBinding}" Registry="{Binding #Root.DataContext.FieldEditors}">
+                                                            <forms:SchemaForm.Template>
+                                                                <ControlTemplate>
+                                                                    <StackPanel Spacing="4">
+                                                                        <ItemsControl ItemsSource="{TemplateBinding Editors}">
+                                                                            <ItemsControl.ItemTemplate><DataTemplate><StackPanel><ContentControl Content="{Binding Control}" /><TextBlock Text="{Binding Context.Issue.Message}" TextWrapping="Wrap" /></StackPanel></DataTemplate></ItemsControl.ItemTemplate>
+                                                                        </ItemsControl>
+                                                                        <ItemsControl ItemsSource="{TemplateBinding Diagnostics}">
+                                                                            <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding Message}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate>
+                                                                        </ItemsControl>
+                                                                    </StackPanel>
+                                                                </ControlTemplate>
+                                                            </forms:SchemaForm.Template>
+                                                        </forms:SchemaForm>
+                                                    </Grid>
+                                                </DataTemplate>
                                                 <DataTemplate DataType="models:TextEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding StringValue}" AcceptsReturn="{Binding IsMultiline}" TextWrapping="Wrap" MinHeight="30" HorizontalAlignment="Stretch" /></Grid></DataTemplate>
                                                 <DataTemplate DataType="models:AutocompleteEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><ComboBox Grid.Column="1" IsEditable="True" ItemsSource="{Binding Suggestions}" Text="{Binding StringValue}" HorizontalAlignment="Stretch" LostFocus="OnAutocompleteLostFocus" /></Grid></DataTemplate>
-                                                <DataTemplate DataType="models:IntegerEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><NumericUpDown Grid.Column="1" Value="{Binding NumericValue}" Increment="1" FormatString="0" HorizontalAlignment="Stretch" /></Grid></DataTemplate>
-                                                <DataTemplate DataType="models:FloatEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><NumericUpDown Grid.Column="1" Value="{Binding NumericValue}" Increment="0.1" FormatString="0.##" HorizontalAlignment="Stretch" /></Grid></DataTemplate>
                                                 <DataTemplate DataType="models:AssetEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><controls:AssetPicker Grid.Column="1" AssetManager="{Binding #Root.DataContext.AssetManager}" Filter="{Binding AssetFilter}" SelectedAssetId="{Binding StringValue}" HorizontalAlignment="Left" /></Grid></DataTemplate>
-                                                <DataTemplate DataType="models:SelectEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><ComboBox Grid.Column="1" ItemsSource="{Binding Options}" SelectedValue="{Binding StringValue}" SelectedValueBinding="{Binding Value}" HorizontalAlignment="Stretch"><ComboBox.ItemTemplate><DataTemplate x:DataType="models:EntrySelectOption"><TextBlock Text="{loc:Localize DisplayNameKey}" /></DataTemplate></ComboBox.ItemTemplate></ComboBox></Grid></DataTemplate>
                                                 <DataTemplate DataType="models:VariableNameEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><ComboBox Grid.Column="1" IsEditable="True" ItemsSource="{Binding Suggestions}" Text="{Binding StringValue, Mode=TwoWay}" HorizontalAlignment="Stretch" /></Grid></DataTemplate>
                                                 <DataTemplate DataType="models:ExpressionEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><controls:ConditionEditorControl Grid.Column="1" Text="{Binding StringValue}" Suggestions="{Binding #Root.DataContext.ConditionSuggestions}" ValidationVariables="{Binding #Root.DataContext.ValidationVariables}" /></Grid></DataTemplate>
                                             </ContentControl.DataTemplates>

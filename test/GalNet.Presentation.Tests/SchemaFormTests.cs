@@ -19,7 +19,7 @@ public class SchemaFormTests
     [Test]
     public async Task DefaultFactoriesMountInDeclarationOrderAndCreateIndependentControls()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(() =>
         {
             var fields = new[] { Field("z", typeof(long)), Field("text", typeof(string)), Field("bool", typeof(bool)), Field("other", typeof(JsonElement)) };
@@ -48,7 +48,7 @@ public class SchemaFormTests
     [Test]
     public async Task NumericDraftsValidateWithoutWritingAndRetainIntegerPrecisionOnCommit()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             var binding = new Binding("1");
@@ -74,7 +74,7 @@ public class SchemaFormTests
     [Test]
     public async Task RequiredMissingNullAndDefaultRemainDistinct()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             var binding = new Binding();
@@ -107,7 +107,7 @@ public class SchemaFormTests
     [Test]
     public async Task ChoiceOptionsAndHostStateUpdateWithoutRecreatingControls()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(() =>
         {
             var binding = new Binding("\"a\"") { Options = [new("a", "Alpha", Json("\"a\""))] };
@@ -134,7 +134,7 @@ public class SchemaFormTests
     [Test]
     public async Task ToggleAndSliderUseSharedValidationAndDoNotWriteOnRefresh()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             var binding = new Binding("false");
@@ -165,7 +165,7 @@ public class SchemaFormTests
     [TestCase(ValueEditorIds.Slider, typeof(decimal))]
     public async Task UnsupportedEditorsReportDiagnosticsAndReleaseBindings(string id, Type type)
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(() =>
         {
             var binding = new Binding();
@@ -181,7 +181,7 @@ public class SchemaFormTests
     [Test]
     public async Task CustomFactoriesDefaultsAndReplacementAreExplicit()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(() =>
         {
             var registry = new EditorRegistry();
@@ -207,7 +207,7 @@ public class SchemaFormTests
     [Test]
     public async Task SwitchingInputsAndRemountingDisposesEverySubscription()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(() =>
         {
             var old = new Binding("1");
@@ -240,7 +240,7 @@ public class SchemaFormTests
     [Test]
     public async Task PartialFactoryFailureContinuesCleanupAndCanRecover()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(() =>
         {
             var binding = new Binding();
@@ -270,7 +270,7 @@ public class SchemaFormTests
     [Test]
     public async Task DuplicateFieldsAndReusedControlInstancesAreRejected()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(() =>
         {
             var binding = new Binding();
@@ -296,7 +296,7 @@ public class SchemaFormTests
     [Test]
     public async Task ObsoleteAsyncResultCannotUpdateTheNewBindingOrContext()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             var completion = new TaskCompletionSource<ValueIssue?>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -325,7 +325,7 @@ public class SchemaFormTests
     [Test]
     public async Task HostFailureAndExternalUpdatesDoNotEraseDrafts()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             var completion = new TaskCompletionSource<ValueIssue?>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -355,7 +355,7 @@ public class SchemaFormTests
     [Test]
     public async Task BackgroundChangesAndInvalidOptionsAreHandledWithoutRebuilding()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             var binding = new Binding("\"a\"") { Options = [new("a", "A", Json("\"a\""))] };
@@ -381,7 +381,7 @@ public class SchemaFormTests
     [Test]
     public async Task EnumAndConstrainedStringDefaultsUseChoiceWithTypedValues()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(() =>
         {
             var options = new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } };
@@ -404,7 +404,7 @@ public class SchemaFormTests
     [TestCase("{\"minimum\":0,\"maximum\":2147483648}", typeof(int))]
     public async Task UnsafeOrMissingSliderBoundsAreDiagnosed(string constraints, Type type)
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(() =>
         {
             var binding = new Binding("0");
@@ -420,7 +420,7 @@ public class SchemaFormTests
     [Test]
     public async Task IntegerSliderDoesNotRoundAnInvalidFractionIntoAValidValue()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(() =>
         {
             var binding = new Binding("1");
@@ -437,7 +437,7 @@ public class SchemaFormTests
     [Test]
     public async Task ToggleReadsAndWritesUsingTheProjectsCustomJsonConverter()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ThemeTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(() =>
         {
             var options = new JsonSerializerOptions { Converters = { new YesNoConverter() } };

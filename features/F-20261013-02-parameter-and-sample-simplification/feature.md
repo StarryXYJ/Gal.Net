@@ -9,7 +9,7 @@ updated: 2026-10-14
 
 # 参数契约共用与 Sample 扩展简化
 
-2026-10-14 最新收敛决定：DTO 成员特性生成有序 schema 与成员访问表，公共 DTO 适配器连接表单和宿主提交；新增 Phase 2d 位于 Phase 2c 最小验证之后。源码生成器已确认为实施目标，替代下文旧的候选/条件表述。范围、通知/默认值边界及退出条件以 [DTO 收敛计划](dto-convergence-plan.md) 为准；当前 Phase 2c 为未完成、未通过全部验证的工作区实现。
+2026-10-14 最新收敛决定：DTO 成员特性生成有序 schema 与成员访问表，公共 DTO 适配器连接表单和宿主提交；新增 Phase 2d 位于 Phase 2c 最小验证之后。源码生成器已确认为实施目标，替代下文旧的候选/条件表述。范围、通知/默认值边界及退出条件以 [DTO 收敛计划](dto-convergence-plan.md) 为准；Phase 2c 最小宿主接入已验证（241 项回归），见 [阶段记录](phase-2c.md)；DTO 自动绑定仍属 Phase 2d。
 
 ## 目标
 
@@ -17,7 +17,7 @@ updated: 2026-10-14
 
 用户追加范围：明确纳入 Sample 各 service 的职责、转发链和重复逻辑优化，以及跨 Core、契约、执行模块和平台 Sample 分散的 Entry 实现基础；不仅整理截图或集中注册位置。先审查实际成本，再迁移有收益的部分。
 
-用户已确认按本计划推进。Phase 0、1、2a、2b 已验证；中立值工具、有序字段与开放编辑提示、选定消费者迁移及共享 SchemaForm/默认工厂已完成。Phase 2b 的 290 项回归与示例契约部署/编译通过；Editor/Sample 正式宿主适配、Sample 整理及作者路径优化仍待后续阶段。承接已完成的 [Editor/CLI feature](../F-20261013-01-editor-cli-operations/summary.md)，不改写其历史范围和状态。
+用户已确认按本计划推进。Phase 0、1、2a、2b、2c 已验证；中立值工具、有序字段与开放编辑提示、选定消费者迁移及共享 SchemaForm/默认工厂已完成。Phase 2b 的 290 项回归与示例契约部署/编译通过；Editor/Sample 最小宿主适配已验证；DTO 生成、Sample 整理及作者路径优化仍待后续阶段。承接已完成的 [Editor/CLI feature](../F-20261013-01-editor-cli-operations/summary.md)，不改写其历史范围和状态。
 
 ## 已确认约束
 

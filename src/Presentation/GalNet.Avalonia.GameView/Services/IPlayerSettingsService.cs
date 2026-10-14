@@ -1,4 +1,5 @@
 using GalNet.Avalonia.GameView.Settings;
+using GalNet.Game.Controls.Forms;
 
 namespace GalNet.Avalonia.GameView.Services;
 
@@ -6,6 +7,7 @@ namespace GalNet.Avalonia.GameView.Services;
 public interface IPlayerSettingsService
 {
     IReadOnlyList<SettingCategory> Categories { get; }
+    EditorRegistry Editors { get; }
 }
 
 // Also used by the initial language-selection flow, independently of settings editors.
@@ -22,4 +24,5 @@ internal sealed class DefaultPlayerSettingsService : IPlayerSettingsService
         new SettingsCoordinator().Attach(Categories);
     }
     public IReadOnlyList<SettingCategory> Categories { get; }
+    public EditorRegistry Editors { get; } = EditorRegistry.CreateDefault();
 }

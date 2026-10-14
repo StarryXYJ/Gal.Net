@@ -4,6 +4,7 @@ using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Settings;
 using GalNet.Core.Variable;
+using GalNet.Game.Controls.Forms;
 using GalNet.Runtime.Variables;
 
 namespace GalNet.Sample.Avalonia.Services;
@@ -74,6 +75,7 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
     }
 
     public IReadOnlyList<SettingCategory> Categories { get; }
+    public EditorRegistry Editors { get; } = EditorRegistry.CreateDefault();
     public Task FlushAsync() => _coordinator.FlushAsync();
 
     public void BindWindow(global::Avalonia.Controls.Window? window)

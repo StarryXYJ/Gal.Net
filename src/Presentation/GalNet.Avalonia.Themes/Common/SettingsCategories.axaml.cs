@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Templates;
+using GalNet.Game.Controls.Forms;
 using Avalonia.Markup.Xaml;
 using GalNet.Avalonia.GameView.Settings;
 
@@ -13,12 +13,12 @@ public sealed partial class SettingsCategories : UserControl
     private SettingItem[] _observedItems = [];
     private bool _attached;
     public ObservableCollection<SettingCategory> VisibleCategories { get; } = [];
-    public static readonly StyledProperty<IReadOnlyList<IDataTemplate>?> EditorTemplatesProperty =
-        AvaloniaProperty.Register<SettingsCategories, IReadOnlyList<IDataTemplate>?>(nameof(EditorTemplates));
-    public IReadOnlyList<IDataTemplate>? EditorTemplates
+    public static readonly StyledProperty<EditorRegistry?> EditorsProperty =
+        AvaloniaProperty.Register<SettingsCategories, EditorRegistry?>(nameof(Editors));
+    public EditorRegistry? Editors
     {
-        get => GetValue(EditorTemplatesProperty);
-        set => SetValue(EditorTemplatesProperty, value);
+        get => GetValue(EditorsProperty);
+        set => SetValue(EditorsProperty, value);
     }
     public static readonly StyledProperty<IReadOnlyList<SettingCategory>?> CategoriesProperty =
         AvaloniaProperty.Register<SettingsCategories, IReadOnlyList<SettingCategory>?>(nameof(Categories));

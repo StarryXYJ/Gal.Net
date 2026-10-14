@@ -98,7 +98,9 @@ services.AddAvaloniaGameViewPages(theme: new MinimalTheme(palette));
 
 ### 设置编辑器覆盖
 
-三种主题复用 `Common.SettingsCategories`。主题或宿主可为它设置 `EditorTemplates`（按顺序匹配的 `IDataTemplate` 列表），例如传入 `FuncDataTemplate<BoolSetting>` 只替换布尔编辑器；未匹配的类型继续使用内置模板。覆盖不会替换设置行的名称、说明、禁用原因及错误承载；设为 null 恢复内置编辑器。分类和设置项由 `IPlayerSettingsService.Categories` 提供，整数/浮点的 `EditorKind` 决定 Slider / NumericUpDown。Sample 的快速/自动等待项均为整数毫秒。
+三种主题复用 `Common.SettingsCategories`，通过 `IPlayerSettingsService.Editors` 借用宿主 EditorRegistry。普通设置的 Field 元数据和 IFieldBinding 接入共享 SchemaForm，保留设置行的名称、说明、单位、禁用原因及错误；Action/CustomSetting 保留专属行为。默认 Numeric 是保留草稿的 TextBox，Slider 使用范围/步长元数据；Sample 的快速/自动等待项为整数毫秒。旧 EditorTemplates 类型模板覆盖与 UI 值转换代理已移除。
+
+主题或二次开发可提供一个显式注册方法，由宿主在展示页面前调用，例如 `registry.Replace(ValueEditorIds.Toggle, context => new FieldEditorLease(...))`；新增控件使用 `Register("my.knob", factory)` 并在字段设置 `Editor = new("my.knob")`。工厂负责创建和绑定，返回独立 lease；业务提交通过 context 调用原设置队列。主题仍负责布局和资源。运行时更换 registry 实例会重建字段；修改现有注册表后需要显式 RefreshEditors。不要在每次切换主题或生成控件时重复注册全局工厂。
 
 GameThemeTests 覆盖九种组合的页面加载、Skia headless 渲染、配色隔离、宿主覆盖、对白、NVL、选择输入及场景截图。设置 `GALNET_THEME_CAPTURE_DIR` 可导出检查图片。
 

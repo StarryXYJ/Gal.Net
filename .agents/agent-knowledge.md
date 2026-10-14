@@ -39,7 +39,7 @@
 
 ## 当前工作
 
-- [F-20261013-02 参数与 Sample 简化](../features/F-20261013-02-parameter-and-sample-simplification/phase-2b.md)：Phase 0/1/2a/2b 已验证。共享 SchemaForm、开放工厂 registry 与 FieldEditorLease 位于 Avalonia.Controls；宿主拥有绑定/服务，主题显式贡献模板/工厂。Phase 2b 的 290 项回归及示例契约部署/编译通过；Editor/Sample 正式适配和作者路径优化仍待后续，Core 领域/快照重构暂缓。
+- [F-20261013-02 参数与 Sample 简化](../features/F-20261013-02-parameter-and-sample-simplification/phase-2c.md)：Phase 0/1/2a/2b/2c 已验证。共享 SchemaForm、开放工厂 registry 与 FieldEditorLease 位于 Avalonia.Controls；宿主拥有绑定/服务，主题显式贡献模板/工厂。Phase 2b 的 290 项回归及示例契约部署/编译通过；最小 Editor/Sample 正式适配经 241 项回归验证；DTO 生成/绑定与作者路径优化仍待后续，Core 领域/快照重构暂缓。
 
 - [F-20261013-01-editor-cli-operations](../features/F-20261013-01-editor-cli-operations/summary.md) 已实现独立内置/项目契约、项目 scope catalog、面向 agent 的 CLI 原始查询/校验/单 Group 编译、共享生命周期与无损保存、Windows 回收站和单平台截图样例；Phase 1–7 已验证并提交；审核与当前边界见 summary/review。CLI 发现使用 help --json，不保留旧别名或默认内置 fallback。契约是可信 C# 代码，动态加载不构成沙箱。
 
@@ -115,3 +115,6 @@
 - [用实际 producer 生成 metadata fixture](lessons/L-20261013-05-metadata-producer-fixtures.md)：AssetMetaCodec 默认输出 id，读取规则大小写无关；查询返回原 ID 拼写并保留实际 pointer，真实 sample smoke 防止测试与实现共享错误假设。
 - [Sample 复用页面前先重置 NVL](lessons/L-20261013-06-sample-nvl-reset-order.md)：页面重置依赖仍订阅的 dialogue presenter 清理 NVL；Runner 应先重置页面再释放 presentation，并复位 NVL 可见状态。
 - [包装/嵌入 schema 的局部引用](lessons/L-20261014-01-schema-local-references.md)：保留 exporter 对象结构，外层值约束不能污染递归子类型；移动 schema 时按最终 JSON Pointer 重定位局部引用并实际解析验证。
+
+- [Headless XAML 构造前加载主题](lessons/L-20261014-04-load-theme-before-xaml-controls.md)：资源事后可查不代表已初始化控件的空模板查找会刷新；实际 Editor 面板测试已复现并验证。
+- [Headless 会话发布竞态](lessons/L-20261014-05-headless-session-publication-race.md)：12.0.5 StartNew 的 task 闭包发布存在竞态；Presentation 通过官方程序集缓存会话避免逐测试释放 worker，Dispatch 保持 PerTest 隔离。

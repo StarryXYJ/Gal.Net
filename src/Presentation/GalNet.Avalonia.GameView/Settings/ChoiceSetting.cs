@@ -1,17 +1,12 @@
+using GalNet.Core.Parameters;
+using GalNet.Game.Controls.Forms;
+
 namespace GalNet.Avalonia.GameView.Settings;
 
 public sealed record SettingChoice<T>(string Id, string NameKey, T Value, object? Label = null);
-public sealed record ChoiceEditorOption(string Id, object Label);
-public interface IChoiceSetting
-{
-    IReadOnlyList<ChoiceEditorOption> Options { get; }
-    ChoiceEditorOption? SelectedOption { get; set; }
-}
-
-public sealed class ChoiceSetting<T> : SettingItem<T>, IChoiceSetting
+public sealed class ChoiceSetting<T> : SettingItem<T>
 {
     private IReadOnlyList<SettingChoice<T>> _choices = [];
-    private IReadOnlyList<ChoiceEditorOption> _options = [];
     public ChoiceSetting(string id, string nameKey, T defaultValue, IEnumerable<SettingChoice<T>> choices,
         Func<T> read, Func<T, CancellationToken, Task> apply, object? label = null, Func<T>? forcedValue = null)
         : base(id, nameKey, defaultValue, read, apply, label, forcedValue)
@@ -19,21 +14,9 @@ public sealed class ChoiceSetting<T> : SettingItem<T>, IChoiceSetting
         SetOptions(choices);
     }
     public IReadOnlyList<SettingChoice<T>> Choices => _choices;
-    public IReadOnlyList<ChoiceEditorOption> Options => _options;
-    public ChoiceEditorOption? SelectedOption
-    {
-        get
-        {
-            var index = _choices.ToList().FindIndex(choice => EqualityComparer<T>.Default.Equals(choice.Value, Value));
-            return index >= 0 ? _options[index] : null;
-        }
-        set
-        {
-            if (value is null) return;
-            var index = _options.ToList().IndexOf(value);
-            if (index >= 0) Value = _choices[index].Value;
-        }
-    }
+    protected override EditorHints GetEditorHints() => Editor ?? new(ValueEditorIds.Choice);
+    protected override IReadOnlyList<FieldEditorOption> FieldOptions => Array.AsReadOnly(_choices.Select(choice =>
+        new FieldEditorOption(choice.Id, choice.Label ?? choice.NameKey, ValueCodec.Serialize(ValueContract, choice.Value))).ToArray());
     public Task<bool> UpdateOptionsAsync(IEnumerable<SettingChoice<T>> choices, CancellationToken cancellationToken = default)
     {
         var snapshot = choices.ToArray();
@@ -63,9 +46,7 @@ public sealed class ChoiceSetting<T> : SettingItem<T>, IChoiceSetting
         if (snapshot.Select(choice => choice.Value).Distinct().Count() != snapshot.Length)
             throw new ArgumentException("Choice values must be unique.", nameof(choices));
         _choices = Array.AsReadOnly(snapshot);
-        _options = Array.AsReadOnly(snapshot.Select(choice => new ChoiceEditorOption(choice.Id, choice.Label ?? choice.NameKey)).ToArray());
         OnPropertyChanged(nameof(Choices));
-        OnPropertyChanged(nameof(Options));
     }
     protected override SettingAvailability EvaluateState()
     {
@@ -75,5 +56,4 @@ public sealed class ChoiceSetting<T> : SettingItem<T>, IChoiceSetting
     }
     protected override string? Validate(T value) => !_choices.Any(choice => EqualityComparer<T>.Default.Equals(choice.Value, value))
         ? "Settings.InvalidChoice" : base.Validate(value);
-    public override void Refresh() { base.Refresh(); OnPropertyChanged(nameof(SelectedOption)); }
 }

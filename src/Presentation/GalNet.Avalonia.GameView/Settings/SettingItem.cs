@@ -1,5 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using System.ComponentModel;
 using GalNet.Core.Parameters;
+using GalNet.Game.Controls.Forms;
 
 namespace GalNet.Avalonia.GameView.Settings;
 
@@ -42,6 +44,8 @@ public abstract class SettingItem : ObservableObject
     public string? DescriptionKey { get; init; }
     public abstract Type ValueType { get; }
     public virtual FieldDescriptor? Field => null;
+    public IReadOnlyList<FieldDescriptor> Fields => Field is { } descriptor ? [descriptor] : [];
+    public Func<FieldDescriptor, IFieldBinding> FieldBinding => _ => (IFieldBinding)this;
     public Func<SettingAvailability>? EvaluateAvailability { get; init; }
     public SettingAvailability Availability => _availability;
     public bool IsVisible => _availability.IsVisible;
@@ -66,7 +70,7 @@ public abstract class SettingItem : ObservableObject
     public abstract void Refresh();
 }
 
-public abstract class SettingItem<T> : SettingItem
+public abstract class SettingItem<T> : SettingItem, IFieldBinding
 {
     private readonly Func<T> _read;
     private readonly Func<T, CancellationToken, Task> _apply;
@@ -86,6 +90,22 @@ public abstract class SettingItem<T> : SettingItem
     public override FieldDescriptor Field => new(Id, ValueContract, isRequired: true,
         editor: GetEditorHints(), labelKey: NameKey, descriptionKey: DescriptionKey);
     protected virtual EditorHints? GetEditorHints() => Editor;
+    protected virtual IReadOnlyList<FieldEditorOption>? FieldOptions => null;
+    IReadOnlyList<FieldEditorOption>? IFieldBinding.Options => FieldOptions;
+    public event EventHandler? Changed;
+    protected override void OnPropertyChanged(PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+    FieldValue IFieldBinding.Read() => new(ValueCodec.Serialize(ValueContract, Value));
+    async Task<ValueIssue?> IFieldBinding.CommitAsync(FieldValue value, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (value.Json is not { } json) return new("setting.required", "A setting value is required.", Id);
+        var typed = (T)ValueCodec.Deserialize(ValueContract, json)!;
+        return await TrySetValueAsync(typed, cancellationToken) ? null : new("setting.apply", ErrorKey ?? "Settings.Cancelled", Id);
+    }
     public override bool IsForced => _forcedValue is not null;
     public T DefaultValue { get; set; }
     public Func<T, string?>? Validator { get; init; }

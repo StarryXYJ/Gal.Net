@@ -9,6 +9,7 @@ using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.Scene;
+using GalNet.Core.Parameters;
 using GalNet.Editor.Controls;
 using GalNet.Primitives.Builtins;
 
@@ -263,11 +264,10 @@ public partial class EntryEditorItemViewModel : ObservableObject
         var values = resetValues
             ? new Dictionary<string, string>(schema.Defaults, StringComparer.Ordinal)
             : Parameters.Where(pair => schema.Parameters.ContainsKey(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
-        foreach (var pair in schema.Defaults)
-            values.TryAdd(pair.Key, pair.Value);
         if (!Parameters.OrderBy(x => x.Key).SequenceEqual(values.OrderBy(x => x.Key)))
             Parameters = values;
         ParameterFields.Clear();
+        var parameters = schema.DynamicParameters ?? EntrySchema.DynamicParameters(schema.Parameters, schema.Defaults, schema.Options);
 
         foreach (var (id, type) in schema.Parameters)
         {
@@ -277,24 +277,29 @@ public partial class EntryEditorItemViewModel : ObservableObject
                     : schema.Options.GetValueOrDefault(id, []))
                 .Select(value => new EntrySelectOption(value, $"Entry.Option.{(value.Length == 0 ? "None" : value)}"))
                 .ToArray();
-            var definition = new EntryParameterDefinition(id, Type == ApplyEffectEntry.TypeId && id == "id" && effectCatalog is not null ? EntryParameterType.Select : type, $"Entry.Parameter.{id}", defaultValue, options);
+            var source = parameters[id].Field;
+            var field = Type == ApplyEffectEntry.TypeId && id == "id" && effectCatalog is not null
+                ? new FieldDescriptor(id, source.Value, source.IsRequired, source.DefaultValue, new(ValueEditorIds.Choice), source.LabelKey, source.DescriptionKey) : source;
+            var definition = new EntryParameterDefinition(id, type, $"Entry.Parameter.{id}", defaultValue, options, field);
             var value = Parameters.GetValueOrDefault(id, defaultValue);
             ParameterFields.Add(CreateField(definition, value, speakers, variableNames));
         }
         UpdateEffectHints();
     }
 
-    private EntryParameterEditorItemViewModel CreateField(EntryParameterDefinition definition, string value, IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames) => definition.Type switch
-    {
-        EntryParameterType.Autocomplete => new AutocompleteEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
-        EntryParameterType.VariableName => new VariableNameEntryParameterEditorItemViewModel(definition, value, variableNames, SetParameter),
-        EntryParameterType.Expression => new ExpressionEntryParameterEditorItemViewModel(definition, value, variableNames, SetParameter),
-        EntryParameterType.Integer => new IntegerEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
-        EntryParameterType.Float => new FloatEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
-        EntryParameterType.ImageAsset or EntryParameterType.AudioAsset or EntryParameterType.VideoAsset or EntryParameterType.EffectProgramAsset => new AssetEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
-        EntryParameterType.Select => new SelectEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
-        _ => new TextEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter)
-    };
+    private EntryParameterEditorItemViewModel CreateField(EntryParameterDefinition definition, string value, IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames) =>
+        definition.Field.Value.ValueType != typeof(string) || definition.Type is not (EntryParameterType.MultilineText or EntryParameterType.Autocomplete
+            or EntryParameterType.VariableName or EntryParameterType.Expression or EntryParameterType.ImageAsset or EntryParameterType.AudioAsset
+            or EntryParameterType.VideoAsset or EntryParameterType.EffectProgramAsset)
+            || definition.Field.Editor?.EditorId != "entry." + definition.Type.ToString().ToLowerInvariant()
+        ? new SchemaEntryParameterEditorItemViewModel(definition, this, SetParameter) : definition.Type switch
+        {
+            EntryParameterType.Autocomplete => new AutocompleteEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
+            EntryParameterType.VariableName => new VariableNameEntryParameterEditorItemViewModel(definition, value, variableNames, SetParameter),
+            EntryParameterType.Expression => new ExpressionEntryParameterEditorItemViewModel(definition, value, variableNames, SetParameter),
+            EntryParameterType.ImageAsset or EntryParameterType.AudioAsset or EntryParameterType.VideoAsset or EntryParameterType.EffectProgramAsset => new AssetEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
+            _ => new TextEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter)
+        };
 
     private void SetParameter(string id, string value)
     {
@@ -302,7 +307,11 @@ public partial class EntryEditorItemViewModel : ObservableObject
         Parameters = updated;
     }
 
-    partial void OnParametersChanged(Dictionary<string, string> value) => UpdateEffectHints();
+    partial void OnParametersChanged(Dictionary<string, string> value)
+    {
+        foreach (var field in ParameterFields.OfType<SchemaEntryParameterEditorItemViewModel>()) field.RefreshValue();
+        UpdateEffectHints();
+    }
     partial void OnEffectDiagnosticChanged(string value) => OnPropertyChanged(nameof(HasEffectDiagnostic));
 
     private void UpdateEffectHints()
