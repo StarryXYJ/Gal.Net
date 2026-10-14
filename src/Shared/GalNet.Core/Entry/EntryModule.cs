@@ -113,6 +113,15 @@ public abstract class CompositeEntryBase : EntryBase
 /// <summary>Default composite definition backed by an authoring-entry factory.</summary>
 public sealed class DefaultCompositeEntryBase : CompositeEntryBase
 {
+    public static DefaultCompositeEntryBase ForDto<T>(string name,
+        Func<EntryCompileContext, T, IReadOnlyList<PrimitiveEntry>> compile, Action<JsonElement>? validateArguments = null, string? category = null)
+        where T : IFieldDto, IFieldSchema<T>, new()
+    {
+        ArgumentNullException.ThrowIfNull(compile);
+        var parameters = new DynamicParameterTable(T.Schema.Select(field => new DynamicParameterDescriptor(field)), validateArguments);
+        return new(name, parameters, () => new DtoCompositeEntry<T>(name, parameters, compile), category) { FieldDataType = typeof(T) };
+    }
+
     private readonly Func<CompositeEntry> _factory;
 
     public DefaultCompositeEntryBase(
@@ -128,6 +137,21 @@ public sealed class DefaultCompositeEntryBase : CompositeEntryBase
 
     public override CompositeEntry CreateEntry() =>
         _factory() ?? throw new InvalidOperationException($"Composite entry '{Name}' returned no authoring entry.");
+
+    private sealed class DtoCompositeEntry<T>(string name, DynamicParameterTable parameters,
+        Func<EntryCompileContext, T, IReadOnlyList<PrimitiveEntry>> compile) : CompositeEntry where T : IFieldDto, new()
+    {
+        private JsonElement? _sourceArguments;
+        public override string Type => name;
+        internal override void SetSourceArguments(JsonElement arguments) => _sourceArguments = arguments.Clone();
+        public override IReadOnlyList<PrimitiveEntry> Compile(EntryCompileContext context)
+        {
+            var source = _sourceArguments ?? JsonSerializer.SerializeToElement(Values.ToDictionary(pair => pair.Key,
+                pair => ValueCodec.FromEditorText(parameters[pair.Key].Value, pair.Value), StringComparer.Ordinal));
+            var normalized = PrimitiveArgumentHelper.Normalize(parameters, source);
+            return compile(context, ValueCodec.DeserializeFields<T>(parameters.Fields, normalized));
+        }
+    }
 }
 
 /// <summary>A module owns independent frozen primitive and composite entry tables.</summary>

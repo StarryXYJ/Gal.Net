@@ -15,6 +15,20 @@ namespace GeneralTest.Entry;
 
 public sealed class TypedBuiltinAuthoringTests
 {
+    [Test]
+    public void AudioStopPreservesStringBooleanDefaultsAndExplicitNull()
+    {
+        var catalog = new TargetProfileEntryCatalog([BuiltinSchemas.CreateAudioModule()]);
+        var defaults = Compile(catalog, "audio.stop", new { }).Arguments;
+        Assert.That(defaults.GetProperty("clearQueue").GetString(), Is.EqualTo("true"));
+        var options = GalNet.Core.Parameters.ValueCodec.DeserializeFields<AudioStopOptions>(AudioStopOptions.Schema, defaults);
+        Assert.That(options.ClearQueue, Is.True);
+        var explicitNull = Compile(catalog, "audio.stop", new { clearQueue = (string?)null }).Arguments;
+        Assert.That(GalNet.Core.Parameters.ValueCodec.DeserializeFields<AudioStopOptions>(AudioStopOptions.Schema, explicitNull).ClearQueue, Is.Null);
+        Assert.That(() => Compile(catalog, "audio.stop", new { clearQueue = true }), Throws.TypeOf<InvalidDataException>());
+        Assert.That(() => Compile(catalog, "audio.stop", new { fadeOut = -1 }), Throws.TypeOf<InvalidDataException>());
+    }
+
     [TestCase("audio.pause")]
     [TestCase("audio.resume")]
     [TestCase("audio.next")]
@@ -42,6 +56,10 @@ public sealed class TypedBuiltinAuthoringTests
         Assert.That((await host.TakeAsync(AudioBackendAction.Pause)).TrackId, Is.EqualTo("bgm"));
         Dispatch("audio.resume", new { trackId = "bgm" });
         Assert.That((await host.TakeAsync(AudioBackendAction.Resume)).TrackId, Is.EqualTo("bgm"));
+        Dispatch("audio.stop", new { });
+        Assert.That((await host.TakeAsync(AudioBackendAction.Stop)).TrackId, Is.EqualTo("bgm"));
+        Dispatch("audio.play", new { asset = "second" });
+        await host.TakeAsync(AudioBackendAction.Start);
         Dispatch("audio.play", new { asset = "queued" });
         Dispatch("audio.clear", new { });
         Dispatch("audio.next", new { });

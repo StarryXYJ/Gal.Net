@@ -7,6 +7,21 @@ namespace GalNet.Core.Parameters;
 /// <summary>Typed JSON conversion shared by authoring, settings and optional command/variable consumers.</summary>
 public static class ValueCodec
 {
+    public static T DeserializeFields<T>(IReadOnlyList<FieldDescriptor> fields, JsonElement arguments) where T : IFieldDto, new()
+    {
+        var data = new T();
+        foreach (var field in fields)
+            if (arguments.TryGetProperty(field.Id, out var value))
+                data.WriteField(field.Id, Deserialize(field.Value, value));
+        return data;
+    }
+
+    public static JsonElement ParseDefault(ValueDescriptor descriptor, string json)
+    {
+        var value = JsonDocumentValue(json);
+        _ = Deserialize(descriptor, value);
+        return value;
+    }
     public static object? Deserialize(ValueDescriptor descriptor, JsonElement value)
     {
         var result = ValueValidation.Read(descriptor, value, out var issue);
@@ -30,7 +45,7 @@ public static class ValueCodec
 
     /// <summary>Parse a draft without enforcing constraints; validate before committing it.</summary>
     public static JsonElement ParseEditorText(ValueDescriptor descriptor, string text) =>
-        descriptor.ValueType == typeof(string) ? JsonSerializer.SerializeToElement(text) : JsonDocumentValue(text);
+        descriptor.IsStringEncoded ? JsonSerializer.SerializeToElement(text) : JsonDocumentValue(text);
 
     private static JsonElement JsonDocumentValue(string text)
     {
@@ -39,12 +54,12 @@ public static class ValueCodec
     }
 
     public static string ToEditorText(ValueDescriptor descriptor, JsonElement value) =>
-        descriptor.ValueType == typeof(string) && value.ValueKind == JsonValueKind.String
+        descriptor.IsStringEncoded && value.ValueKind == JsonValueKind.String
             ? value.GetString()! : value.GetRawText();
 
     public static JsonElement Describe(ValueDescriptor descriptor, string? referencePrefix = null)
     {
-        var exported = descriptor.JsonOptions.GetJsonSchemaAsNode(descriptor.ValueType);
+        var exported = descriptor.JsonOptions.GetJsonSchemaAsNode(descriptor.IsStringEncoded ? typeof(string) : descriptor.ValueType);
         var prefix = referencePrefix ?? "#";
         RebaseReferences(exported, prefix + (descriptor.AllowNull ? "/anyOf/0/allOf/0" : "/allOf/0"));
         // Root rules must not alter the nullability or constraints of recursively referenced child types.

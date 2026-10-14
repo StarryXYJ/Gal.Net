@@ -13,7 +13,7 @@ EditorDocumentRepository 原先只传 ValueType 给文本转换，忽略 schema 
 
 ## 正确做法与禁止做法
 
-ValueCodec.FromEditorText/ToEditorText 两个方向都传完整 ValueDescriptor，以 CLR 类型决定文本表示，并用描述内的冻结 JSON 配置解析、校验。只有真实 string 才去掉 JSON 引号。不从 ValueKind 推断编辑类型，不为现有描述另建只有 Type 的临时描述，不把 UI 文本直接当成内容 JSON。
+ValueCodec.FromEditorText/ToEditorText 两个方向都传完整 ValueDescriptor，以 CLR 类型决定文本表示，并用描述内的冻结 JSON 配置解析、校验。真实 string 或显式实现 IStringValueEncoding 的 converter 才去掉 JSON 引号；普通 JsonStringEnumConverter 仍保留 JSON 表示。不从 ValueKind 推断编辑类型，不为现有描述另建只有 Type 的临时描述，不把 UI 文本直接当成内容 JSON。
 
 ## 适用范围
 

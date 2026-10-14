@@ -59,7 +59,7 @@ public static class BuiltinSchemas
     public static IEntryModule CreateAudioModule() => new DefaultEntryModule("audio",
     [
         Schema<PlayAudioEntry>(PlayAudioEntry.ParameterTypes, PlayAudioEntry.DefaultValues, PlayAudioEntry.ParameterOptions),
-        Schema<StopAudioEntry>(StopAudioEntry.ParameterTypes, StopAudioEntry.DefaultValues, StopAudioEntry.ParameterOptions),
+        DefaultPrimitiveEntryBase.ForDto<AudioStopOptions>(StopAudioEntry.TypeId),
         DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(PauseAudioEntry.TypeId),
         DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(ResumeAudioEntry.TypeId),
         DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(NextAudioEntry.TypeId),

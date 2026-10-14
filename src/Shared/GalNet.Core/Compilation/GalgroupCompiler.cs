@@ -98,11 +98,14 @@ public static class GalgroupCompiler
                 return primitive;
             }
 
-            return catalog.Create(
+            var composite = catalog.Create(
                 source.Type,
                 index,
                 source.Condition,
                 source.Parameters.ToDictionary(pair => pair.Key, pair => ToValue(pair.Value), StringComparer.Ordinal));
+            if (composite is CompositeEntry typedComposite)
+                typedComposite.SetSourceArguments(JsonSerializer.SerializeToElement(source.Parameters));
+            return composite;
         }
         catch (Exception exception) when (exception is InvalidDataException or JsonException or ArgumentException)
         {

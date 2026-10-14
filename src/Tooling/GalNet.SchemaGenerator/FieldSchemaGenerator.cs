@@ -50,6 +50,11 @@ public sealed class FieldSchemaGenerator : IIncrementalGenerator
             { Error(property, "An editable field cannot also be JsonIgnore."); return; }
             string? defaultValue = null;
             var syntax = property.DeclaringSyntaxReferences.Select(reference => reference.GetSyntax()).OfType<PropertyDeclarationSyntax>().First();
+            var jsonDefault = item.Attribute!.NamedArguments.FirstOrDefault(argument => argument.Key == "DefaultJson");
+            if (jsonDefault.Key != null && jsonDefault.Value.IsNull || item.Attribute.NamedArguments.Any(argument => argument.Key == "Choices" && argument.Value.IsNull))
+            { Error(property, "DefaultJson and Choices must not be null when explicitly declared."); return; }
+            if (jsonDefault.Key != null && syntax.Initializer != null)
+            { Error(property, "Use either DefaultJson or an initializer, not two default sources."); return; }
             if (syntax.Initializer != null)
             {
                 var constant = context.SemanticModel.Compilation.GetSemanticModel(syntax.SyntaxTree).GetConstantValue(syntax.Initializer.Value);
@@ -69,8 +74,9 @@ public sealed class FieldSchemaGenerator : IIncrementalGenerator
         {
             var field = fields[i];
             var valueType = field.Member.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            var constraints = field.Attribute.NamedArguments.Where(argument => argument.Key is "Minimum" or "Maximum" or "MaxLength" or "ValueFormat")
-                .Select(argument => "[" + Quote(argument.Key == "ValueFormat" ? "format" : char.ToLowerInvariant(argument.Key[0]) + argument.Key.Substring(1)) + "] = " + argument.Value.ToCSharpString());
+            var constraints = field.Attribute.NamedArguments.Where(argument => argument.Key is "Minimum" or "Maximum" or "MaxLength" or "ValueFormat" or "Choices")
+                .Select(argument => "[" + Quote(argument.Key == "ValueFormat" ? "format" : argument.Key == "Choices" ? "options" : char.ToLowerInvariant(argument.Key[0]) + argument.Key.Substring(1)) + "] = " +
+                    (argument.Key == "Choices" ? "new string[] { " + string.Join(", ", argument.Value.Values.Select(choice => choice.ToCSharpString())) + " }" : argument.Value.ToCSharpString()));
             var converter = field.Member.GetAttributes().FirstOrDefault(attribute => attribute.AttributeClass?.ToDisplayString() == "System.Text.Json.Serialization.JsonConverterAttribute");
             var options = converter == null ? "null" : "new global::System.Text.Json.JsonSerializerOptions { Converters = { new " +
                 ((ITypeSymbol)converter.ConstructorArguments[0].Value!).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) + "() } }";
@@ -85,7 +91,9 @@ public sealed class FieldSchemaGenerator : IIncrementalGenerator
             code.Append("new(").Append(Quote(field.Id)).Append(", v").Append(i).Append(", isRequired: ")
                 .Append(field.Member.IsRequired || field.Member.GetAttributes().Any(attribute => attribute.AttributeClass?.ToDisplayString() == "System.Text.Json.Serialization.JsonRequiredAttribute")
                     ? "true" : Named(field.Attribute, "Required", "false"))
-                .Append(", defaultValue: ").Append(field.Default == null ? "null" : "global::GalNet.Core.Parameters.ValueCodec.Serialize(v" + i + ", (" + CastType(field.Member.Type) + ")" + field.Default + ")")
+                .Append(", defaultValue: ").Append(field.Attribute.NamedArguments.FirstOrDefault(argument => argument.Key == "DefaultJson") is var jsonDefault && jsonDefault.Key != null
+                    ? "global::GalNet.Core.Parameters.ValueCodec.ParseDefault(v" + i + ", " + jsonDefault.Value.ToCSharpString() + ")"
+                    : field.Default == null ? "null" : "global::GalNet.Core.Parameters.ValueCodec.Serialize(v" + i + ", (" + CastType(field.Member.Type) + ")" + field.Default + ")")
                 .Append(", editor: new global::GalNet.Core.Parameters.EditorHints(").Append(Named(field.Attribute, "EditorId", "null"))
                 .Append(", ").Append(Named(field.Attribute, "Step", "null")).Append(", ").Append(Named(field.Attribute, "Format", "null"))
                 .Append(", ").Append(Named(field.Attribute, "UnitKey", "null"))

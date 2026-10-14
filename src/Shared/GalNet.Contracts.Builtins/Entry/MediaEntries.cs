@@ -15,9 +15,6 @@ public sealed class StopAudioEntry : PrimitiveEntry
 {
     public const string TypeId = "audio.stop";
     public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("trackId", EntryParameterType.Text), ("clearQueue", EntryParameterType.Select), ("fadeOut", EntryParameterType.Float));
-    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("trackId", "bgm"), ("clearQueue", "true"), ("fadeOut", "0"));
-    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(("clearQueue", ["true", "false"]));
 }
 
 public sealed class PauseAudioEntry : PrimitiveEntry { public const string TypeId = "audio.pause"; public override string Type => TypeId; }

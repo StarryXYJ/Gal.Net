@@ -54,10 +54,9 @@ public sealed class BuiltinAudioModule : PrimitiveModule
     [
         BuiltinInstructionFactory.Create<PlayAudioEntry>(context => Playback(context, runtime, scope,
             Arguments.Enum(context, "placement", AudioPlacement.Enqueue))),
-        BuiltinInstructionFactory.Create<StopAudioEntry>(context => Audio(context, scope, () =>
+        PrimitiveImplementation.For<AudioStopOptions>(StopAudioEntry.TypeId, (context, options) => Audio(context, scope, () =>
             runtime.Stop(Tracks(context), new AudioStopRequest(
-                Arguments.String(context, "trackId"), Arguments.Bool(context, "clearQueue", true),
-                Arguments.Float(context, "fadeOut"))))),
+                options.TrackId ?? "", options.ClearQueue ?? true, options.FadeOut)))),
         Track(PauseAudioEntry.TypeId, scope, (context, track) => runtime.Pause(Tracks(context), track)),
         Track(ResumeAudioEntry.TypeId, scope, (context, track) => runtime.Resume(Tracks(context), track)),
         Track(NextAudioEntry.TypeId, scope, (context, track) => runtime.Next(Tracks(context), track)),

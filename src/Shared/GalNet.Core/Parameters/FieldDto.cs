@@ -20,6 +20,8 @@ public sealed class FieldAttribute(int order) : Attribute
     public double Maximum { get; set; } = double.NaN;
     public int MaxLength { get; set; } = -1;
     public string? ValueFormat { get; set; }
+    public string? DefaultJson { get; set; }
+    public string[]? Choices { get; set; }
 }
 
 /// <summary>Generated member access is platform independent. Notification and submission remain host concerns.</summary>

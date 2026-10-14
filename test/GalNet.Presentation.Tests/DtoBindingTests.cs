@@ -15,6 +15,30 @@ namespace GeneralTest.Presentation;
 public sealed class DtoBindingTests
 {
     [Test]
+    public async Task StringEncodedBooleanAndEnumChoicesEditTypedMembersInMountedForm()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
+        await session.Dispatch<bool>(() =>
+        {
+            var data = new GeneralTest.Runtime.ExtendedFieldOptions();
+            using var binding = new DtoBinding(data);
+            var form = Form(binding);
+            var window = Mount(form);
+            try
+            {
+                var enabled = (ComboBox)form.Editors[1].Control;
+                enabled.SelectedIndex = 1;
+                Assert.That(data.Enabled, Is.False);
+                var day = (ComboBox)form.Editors[2].Control;
+                day.SelectedIndex = 5;
+                Assert.That(data.Day, Is.EqualTo(DayOfWeek.Friday));
+            }
+            finally { window.Close(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
     public async Task GeneratedMembersBindInOrderAndObservablePropertyUpdatesAutomatically()
     {
         var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);

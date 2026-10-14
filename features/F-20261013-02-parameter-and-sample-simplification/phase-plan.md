@@ -107,6 +107,16 @@
 - 风险：为了少几行引入隐藏反射/双份描述；类型化 DTO 丢失 JSON converter、null/default 语义或开放字段规则；同步 helper 越界承载 skip/replay；将契约与平台执行重新耦合。
 - 退出：普通 Entry 的重复字段事实和手写取值胶水实质减少，维护来源唯一，开发者可从文档示例完整编译/执行；复杂行为边界依旧清晰。以手写维护点和总成本作证据，不设任意行数百分比。
 
+## 全量 DTO 实施批次（2026-10-14 用户已授权）
+
+顺序调整：Phase 4 → 5a → 5b → 5c → 5d → 4b → 后续净收益复核 → 6；不重新建立生成器或通用 Runner。每批完成验证后独立提交。
+
+- 5a（verified，456 项回归与 CLI 格式对照通过，见 phase-5a.md）：JSON 默认/选项与字符串 bool/enum 编码、公共 DTO 读取、Composite 类型化入口；以 audio.stop 和测试 Composite 验证格式与行为。退出：省略/null、默认、codec、独立实例与编译信封验证通过。
+- 5b（planned）：11 条简单 Primitive 的唯一 DTO 描述和执行读取；退出：编译/执行与原 schema、诊断回归通过。
+- 5c（planned）：其余媒体/场景/动画/效果的外层 DTO；开放 payload 保留 JsonElement，普通执行/计划/重放只共享有收益的读取与 request 构造。退出：默认/转换/场景及媒体回归通过，不改变快照。
+- 5d（planned）：8 条 Composite 的 typed options 与旧 primitive 类壳/取 ID 工厂收尾。退出：展开结果、batch/condition/reading boundary、独立契约及全部项目编译通过。
+- 4b（planned）：简单异步展示与模块任务 scope，截图/清理失败策略保持原语义；对白/NVL 状态机另做净收益检查，不把视频/动画计划强行并入。
+
 ## Phase 4b：Entry 异步生命周期与 Sample 清理收敛
 
 状态：planned；依赖 Phase 3；与 Phase 4 作者路径正交；相对工作量：中。

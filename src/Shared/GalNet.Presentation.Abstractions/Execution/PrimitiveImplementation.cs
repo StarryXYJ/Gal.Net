@@ -46,10 +46,7 @@ public sealed class PrimitiveImplementation
         ArgumentNullException.ThrowIfNull(factory);
         return new(type, context =>
         {
-            var data = new T();
-            foreach (var field in context.Parameters.Fields)
-                if (context.Arguments.TryGetProperty(field.Id, out var value))
-                    data.WriteField(field.Id, ValueCodec.Deserialize(field.Value, value));
+            var data = ValueCodec.DeserializeFields<T>(context.Parameters.Fields, context.Arguments);
             return factory(context, data);
         })
         { FieldDataType = typeof(T) };

@@ -13,6 +13,29 @@ public class CompositeGameViewTests
     private static readonly int[] DisposalOrder = [2, 1];
 
     [Test]
+    public void GeneratedJsonDefaultsChoicesAndStringEncodingsReachTypedExecution()
+    {
+        var received = new List<ExtendedFieldOptions>();
+        using var registration = new GameRegistration().RegisterSchema(new DefaultEntryModule("extended",
+            [DefaultPrimitiveEntryBase.ForDto<ExtendedFieldOptions>("extended.run")]));
+        registration.RegisterImplementation(new PrimitiveModule([
+            PrimitiveImplementation.Immediate<ExtendedFieldOptions>("extended.run", (_, options) => received.Add(options))]));
+        using var view = registration.BuildView();
+        view.Dispatch(Entry("extended.run", new { }), new GameRuntime(null), default);
+        view.Dispatch(Entry("extended.run", new { enabled = "false", day = "Friday", side = "Right" }), new GameRuntime(null), default);
+        Assert.That(received[0].Numbers, Is.EqualTo(new[] { 1, 2 }));
+        Assert.That(received[0].Enabled, Is.True);
+        Assert.That(received[0].Day, Is.EqualTo(DayOfWeek.Monday));
+        Assert.That(received[1].Enabled, Is.False);
+        Assert.That(received[1].Day, Is.EqualTo(DayOfWeek.Friday));
+        Assert.That(received[1].Side, Is.EqualTo("Right"));
+        received[0].Numbers!.Add(3);
+        Assert.That(received[1].Numbers, Has.Count.EqualTo(2));
+        Assert.That(() => view.Dispatch(Entry("extended.run", new { side = "Up" }), new GameRuntime(null), default), Throws.TypeOf<InvalidDataException>());
+        Assert.That(() => view.Dispatch(Entry("extended.run", new { enabled = true }), new GameRuntime(null), default), Throws.TypeOf<InvalidDataException>());
+    }
+
+    [Test]
     public void DocumentedNoParameterExampleCompilesAndAppliesToRuntime()
     {
         const string type = "game.mark";
@@ -283,4 +306,17 @@ public class CompositeGameViewTests
             base.Dispose();
         }
     }
+}
+
+[GalNet.Core.Parameters.GenerateFieldSchema]
+public partial class ExtendedFieldOptions
+{
+    [GalNet.Core.Parameters.Field(0, DefaultJson = "[1,2]", EditorId = "json")]
+    public List<int>? Numbers { get; set; }
+    [GalNet.Core.Parameters.Field(1, AllowNull = true, EditorId = "choice"), System.Text.Json.Serialization.JsonConverter(typeof(GalNet.Core.Parameters.StringBooleanValueConverter))]
+    public bool? Enabled { get; set; } = true;
+    [GalNet.Core.Parameters.Field(2, AllowNull = true, EditorId = "choice"), System.Text.Json.Serialization.JsonConverter(typeof(GalNet.Core.Parameters.StringEnumValueConverter<DayOfWeek>))]
+    public DayOfWeek? Day { get; set; } = DayOfWeek.Monday;
+    [GalNet.Core.Parameters.Field(3, Choices = new[] { "Left", "Right" })]
+    public string? Side { get; set; } = "Left";
 }

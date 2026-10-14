@@ -8,6 +8,24 @@ namespace GeneralTest.Schema;
 public sealed class FieldSchemaGeneratorTests
 {
     [Test]
+    public void JsonDefaultAndChoicesGenerateCompilableSingleSourceMetadata()
+    {
+        var source = """
+            using GalNet.Core.Parameters;
+            [GenerateFieldSchema] public partial class Options {
+                [Field(0, DefaultJson = "[1,2]")] public System.Collections.Generic.List<int> Numbers {get;set;}
+                [Field(1, Choices = new[] {"Left", "Right"})] public string Side {get;set;} = "Left";
+            }
+            """;
+        var driver = CSharpGeneratorDriver.Create(new FieldSchemaGenerator().AsSourceGenerator())
+            .RunGeneratorsAndUpdateCompilation(Compile(source), out var output, out var diagnostics);
+        Assert.That(diagnostics, Is.Empty);
+        Assert.That(output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error), Is.Empty);
+        var code = driver.GetRunResult().GeneratedTrees.Single().ToString();
+        Assert.That(code, Does.Contain("ValueCodec.ParseDefault").And.Contains("[1,2]").And.Contains("[\"options\"] = new string[]"));
+    }
+
+    [Test]
     public void JsonNamesAcronymsAndEscapedIdentifiersRemainCompilable()
     {
         var source = """
@@ -53,6 +71,9 @@ public sealed class FieldSchemaGeneratorTests
     [TestCase("[Field(0)] public int Number {get;set;} = System.Environment.TickCount;")]
     [TestCase("[Field(0)] public int A {get;set;} [Field(0)] public int B {get;set;}")]
     [TestCase("[Field(0), System.Text.Json.Serialization.JsonIgnore] public int Number {get;set;}")]
+    [TestCase("[Field(0, DefaultJson = \"1\")] public int Number {get;set;} = 1;")]
+    [TestCase("[Field(0, DefaultJson = null)] public int Number {get;set;}")]
+    [TestCase("[Field(0, Choices = null)] public string Side {get;set;}")]
     public void UnsupportedDeclarationsHaveLocatedDiagnostics(string members)
     {
         var input = Compile("using GalNet.Core.Parameters; [GenerateFieldSchema] public partial class Options {" + members + "}");

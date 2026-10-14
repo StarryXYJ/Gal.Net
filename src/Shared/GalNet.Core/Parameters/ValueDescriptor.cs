@@ -16,6 +16,15 @@ public sealed class ValueDescriptor
         Constraints = constraints?.Clone();
         JsonOptions = jsonOptions is null ? new JsonSerializerOptions() : new JsonSerializerOptions(jsonOptions);
         JsonOptions.MakeReadOnly(populateMissingResolver: true);
+        var encoding = JsonOptions.Converters.FirstOrDefault(converter => converter is IStringValueEncoding &&
+            converter.CanConvert(Nullable.GetUnderlyingType(valueType) ?? valueType)) as IStringValueEncoding;
+        IsStringEncoded = valueType == typeof(string) || encoding is not null;
+        if (encoding is not null && !TryGetConstraint("options", out _) && !TryGetConstraint("enum", out _))
+        {
+            var rules = Constraints?.Deserialize<Dictionary<string, JsonElement>>() ?? new();
+            rules["options"] = JsonSerializer.SerializeToElement(encoding.Choices);
+            Constraints = JsonSerializer.SerializeToElement(rules);
+        }
         foreach (var name in new[] { "minLength", "maxLength", "minItems", "maxItems" })
             if (TryGetConstraint(name, out var bound) && (bound.ValueKind != JsonValueKind.Number || !bound.TryGetInt32(out var length) || length < 0))
                 throw new ArgumentException($"'{name}' must be a nonnegative integer.", nameof(constraints));
@@ -43,6 +52,7 @@ public sealed class ValueDescriptor
     public bool AllowNull { get; }
     public JsonElement? Constraints { get; }
     public JsonSerializerOptions JsonOptions { get; }
+    public bool IsStringEncoded { get; }
     public bool TryGetConstraint(string name, out JsonElement value)
     {
         if (Constraints is { } constraints && constraints.TryGetProperty(name, out value)) return true;

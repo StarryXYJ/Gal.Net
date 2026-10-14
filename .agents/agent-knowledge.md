@@ -69,6 +69,8 @@
 
 ## 经验索引
 
+- [Entry fixture 显式选择 schema](lessons/L-20261014-04-entry-fixture-needs-explicit-schema.md)：legacy/DTO 分支不要借用会继续迁移的 builtin 作为固定测试模型。
+
 - [表单测试必须验证真实视觉树](lessons/L-20261014-03-form-tests-must-mount-editors.md)：工厂输出不代表模板已挂载，动态选项模板必须处理 null 中间态。
 
 - [编辑文本必须携带完整值契约](lessons/L-20261014-02-editor-text-needs-value-contract.md)：string 与字符串编码的 enum 文本表示不同，转换两端都必须使用完整 JSON 配置。

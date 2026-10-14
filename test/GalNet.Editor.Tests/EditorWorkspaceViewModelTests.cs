@@ -268,8 +268,12 @@ public sealed class EditorWorkspaceViewModelTests
                 new NullServiceProvider(),
                 new EditorExtensionRegistry(),
                 localization);
-            var modules = BuiltinSchemas.CreateAllModules().Where(module => !useDto || module.Id != "flow").ToList();
-            if (useDto) modules.Add(new DefaultEntryModule("flow", [DefaultPrimitiveEntryBase.ForDto<EditorWaitOptions>(WaitEntry.TypeId)]));
+            var modules = BuiltinSchemas.CreateAllModules().Where(module => module.Id != "flow").ToList();
+            var wait = useDto ? DefaultPrimitiveEntryBase.ForDto<EditorWaitOptions>(WaitEntry.TypeId)
+                : new DefaultPrimitiveEntryBase(WaitEntry.TypeId, new GalNet.Core.Primitives.DynamicParameterTable(
+                    [new GalNet.Core.Primitives.DynamicParameterDescriptor("duration", typeof(float),
+                        defaultValue: System.Text.Json.JsonSerializer.SerializeToElement(1f), editor: new(ValueEditorIds.Numeric))]));
+            modules.Add(new DefaultEntryModule("flow", [wait]));
             var catalog = new TargetProfileEntryCatalog(modules);
             Catalog = catalog;
             var variableDefinitions = new VariableDefinitionService(DocumentService);

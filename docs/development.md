@@ -143,6 +143,10 @@ var entry = DefaultPrimitiveEntryBase.ForDto<PulseOptions>("game.pulse");
 
 字段 ID 使用 JsonPropertyName，未指定时为 camelCase；支持属性 JsonConverter、JsonRequired。Field 还可声明 Required/AllowNull、范围/MaxLength/ValueFormat，以及 EditorId/Step/Format/UnitKey/标签和说明。C# nullable 注解不等于 JSON null/presence 策略；AllowNull 未指定时遵循现有 ValueDescriptor 的 CLR 类型规则。复杂业务校验继续传给 ForDto 的 validateArguments。
 
+对象/数组等默认值可用 `[Field(0, DefaultJson = "{}", EditorId = "json")]` 或 `DefaultJson = "[1,2]"` 声明，属性不再重复写默认初始化值。JSON 默认在 schema 初始化时经 ValueCodec.ParseDefault 校验，执行时独立反序列化；DefaultJson 与属性初始化值同时声明会产生 GNF001。固定合法选项用 `Choices = new[] { "Left", "Right" }`，仍与 EditorId 分开。
+
+保持旧字符串布尔/枚举内容格式时，可在 nullable bool/enum 属性上使用 `JsonConverter(typeof(StringBooleanValueConverter))` 或 `StringEnumValueConverter<TEnum>`；例如 `bool? ClearQueue = true` 对应 JSON `"true"`，显式 null 由 AllowNull 单独控制。转换器通过 IStringValueEncoding 声明字符串编辑表示和合法选项，Describe 仍输出字符串 wire schema。普通 JsonStringEnumConverter 维持既有 JSON 编辑文本规则；不能仅凭 JsonValueKind.String 去掉引号。带命名策略的枚举可以派生 StringEnumValueConverter，在构造函数显式选择 JsonNamingPolicy。
+
 UI 不必继承固定基类。普通 DTO 使用 `DtoBinding.Refresh()` 显式刷新；实现 INotifyPropertyChanged 会自动通知，ObservableObject 是一种可选实现。CommunityToolkit 的 `[ObservableProperty] public partial int Amount { get; set; }` 可同时标记 Field，两个生成器读取同一属性声明；不要求生成器读取彼此产物，首轮不支持给私有 ObservableProperty backing field 标记 Field。
 
 ```csharp
@@ -293,6 +297,8 @@ await using var custom = new GameRegistration()
 ## 创建 composite（可选）
 
 Composite 用于改善作者体验，不是另一种 Runtime 指令。继承 `CompositeEntry`，在 `Compile(EntryCompileContext)` 中返回 primitive 序列，并通过 `DefaultCompositeEntryBase` 注册到模块的 `compositeEntries`。
+
+DTO 输入也可使用 `DefaultCompositeEntryBase.ForDto<TOptions>(typeId, (context, options) => primitives)`：与 primitive 共用 TOptions.Schema 和逐字段值 codec，源 JSON 的省略/null 在编译中保留，规范化/业务校验后交给类型化展开回调。回调继续显式设置输出 primitive 的 condition、batch 等语义；已有手写 Composite 仍支持。无原始 JSON 的 catalog.Create/作者 Values 路径按 schema 解析字段文本。该入口不创建运行时执行模块。
 
 ```csharp
 public sealed class AlertCompositeEntry : CompositeEntry
