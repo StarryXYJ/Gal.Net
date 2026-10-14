@@ -9,6 +9,8 @@ updated: 2026-10-15
 
 # 参数契约共用与 Sample 扩展简化
 
+2026-10-15 后续计划已按当前代码整理，实施入口见 [Phase Plan](phase-plan.md#当前后续计划2026-10-15-整理)：先明确两项 UI Flush 验证缺口，再实施 4b2 清理不短路、4b3 文本推进状态机复用，最后 Phase 6 作者路径/收益复核与收尾。全量 DTO 和 generator 不再作为待实施工作；剩余 request/重放胶水按证据决定，不追加通用框架。本轮仅修改计划文档。
+
 2026-10-15 Phase 4b1 已完成可重载异步默认实例、Async<T> 工厂和模块任务 scope，迁移截图与五个 Effect/Particle 实例。607 个不重复用例和全解决方案编译通过；完整集成中的两项其他任务设置 UI Flush 测试挂起，限制与证据见 [phase-4b1.md](phase-4b1.md)。Phase 4b 仍在进行，后续为 Session 清理与 Dialogue/NVL 状态机。
 
 2026-10-14 Phase 4 已验证：PrimitiveImplementation.Immediate / Immediate<T> 简化同步工厂，轨道操作与 wait 使用唯一 DTO 参数声明，复杂校验/Composite/异步实例保留手写扩展。307 个不重复回归用例通过；五条指令迁移前后 CLI 描述相同，独立契约部署与实际项目编译通过。证据见 [phase-4.md](phase-4.md)。当前最新阶段为 Phase 5a：全量 DTO 基础与 audio.stop 试迁移已验证，456 项回归与 CLI 格式对照通过，见 [phase-5a.md](phase-5a.md)；Phase 5b 的 11 条简单 Primitive 也已迁移，235 项回归与 CLI 对照通过，见 [phase-5b.md](phase-5b.md)；Phase 5c 也已迁移 12 条复杂 Primitive，338 项回归与 CLI 对照通过，见 [phase-5c.md](phase-5c.md)；Phase 5d 已完成 8 条 Composite 与旧类壳清理，393 项回归和实际编译对照通过，见 [phase-5d.md](phase-5d.md)；下一阶段为 Phase 4b。

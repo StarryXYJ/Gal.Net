@@ -1,14 +1,31 @@
 # Phase Plan
 
+## 当前后续计划（2026-10-15 整理）
+
+本节为当前实施入口；下文早期阶段记录保留作历史证据。计划调整依据是 5a–5d 全量 DTO 已验证、4b1 已提交，以及当前代码仍存在的清理短路和文本状态机重复。本轮只整理计划，不开始业务实现。
+
+已完成：参数/schema/Editor 绑定、Sample 组合、全量 Primitive/Composite DTO、同步工厂、简单异步默认实例与任务 scope。当前可用作者路径为 Immediate<T>、Async<T>、For<T> 和显式 Composite 展开。生成器已落地，不再作为待选方案重复建设。
+
+| 顺序 | 状态 | 工作 | 退出条件 |
+| --- | --- | --- | --- |
+| 验证基线 | planned，独立处理并行改动 | 确认设置 UI Flush 的最终实现和两项测试运行环境 | 两项挂起已解决并有真实通过证据；未解决时保持完整回归缺口 |
+| 4b2 | planned，下一批 | Session 清理不短路，审查 Runner/Presentation 释放边界 | 故障注入证明独立清理全部尝试、顺序和所有权正确、全部错误可观察 |
+| 4b3 | planned，依赖明确的文本行为基线 | Dialogue/NVL 共用文本推进状态机 | 两个实例共用状态机，模式/skip/失败规则不变，含公共实现的整体维护成本降低 |
+| 6 | planned，完成实际实施批次后 | 作者路径/收益复核、必要回归、文档与 feature 收尾 | 已实施范围验证完整；候选明确实施或暂缓；summary/review 与事实一致 |
+
+基线处理不是重新迁移设置。两个测试分别为 SampleDisplaySettingsTests.FullscreenDisablesWindowSizeAndPreferencesRestoreWithoutWritingAgain 和 SampleLocalizationTests.SettingsPersistAndRestoreWithoutLosingOtherPlayerVariables。当前其他任务的未提交 FlushAsync 使用 UI 调度，而测试没有 UI pump；先确认并行改动最终状态，若仍要求 UI 线程则在独立验证改动中提供真实 Headless/UI pump。不得通过吞错、跳过 flush 或长期排除用例宣布全回归通过。这项缺口不阻止 4b2/4b3 的独立单元验证，但影响 Session 的 UI/持久化集成验证和最终收尾。
+
+成本口径：4b1 消费端净减 164 行、公共机制净增 193 行，生产总量净增 29 行。后续同时统计消费者与公共实现，分别记录生产/测试/生成物，结合修改点和行为复杂度评价。清理正确性不以删行作为硬指标；文本复用须实质减少重复状态机，不能只把代码搬到多层基类。每批独立验证和提交，保护当前设置、README/统计脚本和 Dialogue 的已有改动。
+
 2026-10-15 Phase 4b 拆成独立验证批次：4b1 简单异步默认实现、typed Async 工厂、截图/Effect/Particle 与任务 scope；4b2 Session 继续清理/错误聚合；4b3 Dialogue/NVL 推进状态机按净收益验证。4b1 已验证：607 个不重复用例通过、全解决方案编译 0 错误；完整集成受其他任务的两项 UI Flush 测试挂起影响，明确排除并保留证据。消费端净减 164 行，包含公共机制后生产净增 29 行。证据见 [phase-4b1.md](phase-4b1.md)；Phase 4b 整体仍 in-progress。
 
 2026-10-14 Phase 4 已验证：PrimitiveImplementation.Immediate / Immediate<T> 简化同步工厂，轨道操作与 wait 使用唯一 DTO 参数声明，复杂校验/Composite/异步实例保留手写扩展。307 个不重复回归用例通过；五条指令迁移前后 CLI 描述相同，独立契约部署与实际项目编译通过。证据见 [phase-4.md](phase-4.md)。当前无阻断项，下一阶段为 Phase 4b 的异步机制与清理。
 
 2026-10-14 最新收敛决定：DTO 成员特性生成有序 schema 与成员访问表，公共 DTO 适配器连接表单和宿主提交；新增 Phase 2d 位于 Phase 2c 最小验证之后。源码生成器已确认为实施目标，替代下文旧的候选/条件表述。范围、通知/默认值边界及退出条件以 [DTO 收敛计划](dto-convergence-plan.md) 为准；Phase 2c 最小宿主接入已验证（241 项回归），见 [阶段记录](phase-2c.md)；Phase 2d 单 Entry DTO 生成/绑定试点已验证（348 项回归、独立契约部署与实际 CLI 编译），见 [phase-2d.md](phase-2d.md)。Phase 4 已验证，下一步为 Phase 4b；全量设置 DTO 化仍暂缓，进一步作者工具化由 Phase 5 处理。
 
-状态：in-progress。Phase 0/1/2a/2b/2c/2d/2e/3/4 已验证；中立值工具、共享表单、DTO 生成/强类型执行和 Sample 组合已落地，代表作者路径已验证，异步/清理与进一步工具化仍待后续。
+状态：in-progress。Phase 0/1/2a/2b/2c/2d/2e/3/4、5a–5d、4b1 已验证；剩余为验证基线缺口、4b2 清理、4b3 文本状态机和 Phase 6 收尾。
 
-顺序：Phase 0 → 1 → 2a → 2b → 2c → 2d → 2e → 3 → 4 → 4b → 5 → 6。Phase 4 的主线是降低开发新 Entry 的手写样板，并建立端到端作者路径；Phase 4b 单独处理异步生命周期和清理；Phase 5 根据实测继续优化作者 API、参数/工厂胶水与开发工具。DTO generator 已在 Phase 2d 落地，Phase 5 从现有工具链继续评估具体改进收益。4b 若收益不足可跳过，不阻塞 Phase 5；各阶段仍可按独立验证结果缩小范围。
+实际顺序：Phase 0 → 1 → 2a → 2b → 2c → 2d → 2e → 3 → 4 → 5a → 5b → 5c → 5d → 4b1 → 4b2 → 4b3 → 6。Phase 5 的 DTO/作者工具化已通过 5a–5d 完成；不重新建立生成器或 authoring 框架。4b3 若实际收益不足可以缩小或 skipped，记录证据后进入 Phase 6；4b2 的清理正确性问题须修正或明确保留为未完成事项。
 
 每个实施 Phase 完成必要验证后单独提交；不提交其他任务的变更。记录状态 planned / in-progress / verified / skipped；跳过时写明原因及后续依赖如何调整。大规模重命名、格式化和功能行为变化不混入重构提交。
 
@@ -117,7 +134,7 @@
 - 5b（verified，235 项回归与 11 条 CLI schema 对照通过，见 phase-5b.md）：11 条简单 Primitive 的唯一 DTO 描述和执行读取；退出：编译/执行与原 schema、诊断回归通过。
 - 5c（verified，338 项回归与 12 条 CLI schema 对照通过，见 phase-5c.md）：其余媒体/场景/动画/效果的外层 DTO；开放 payload 保留 JsonElement，普通执行/计划/重放只共享有收益的读取与 request 构造。退出：默认/转换/场景及媒体回归通过，不改变快照。
 - 5d（verified，393 项回归、8 条 schema 与 16→20 编译对照通过，见 phase-5d.md）：8 条 Composite 的 typed options 与旧 primitive 类壳/取 ID 工厂收尾。退出：展开结果、batch/condition/reading boundary、独立契约及全部项目编译通过。
-- 4b（planned）：简单异步展示与模块任务 scope，截图/清理失败策略保持原语义；对白/NVL 状态机另做净收益检查，不把视频/动画计划强行并入。
+- 4b（in-progress）：4b1 已验证并提交；4b2 清理与 4b3 文本状态机仍 planned，详细退出条件见下文。不把视频/动画计划强行并入。
 
 ## Phase 4b：Entry 异步生命周期与 Sample 清理收敛
 
@@ -132,19 +149,36 @@
 - 风险：过早移除任务丢失异常；完成事件早于清理；抽象推断 CatchUp 行为；公共清理器隐藏依赖顺序。
 - 退出：截图行为不变，异步跟踪或清理逻辑确有简化；故障注入证明清理不短路。若通用抽象未减少复杂度，保留局部实现，只提交有独立价值的清理修正。Core/契约/执行/平台依赖方向不改变，不强制所有实例都产生异步状态机。
 
-## Phase 5：新 Entry 作者体验的系统性精简与工具化
+### Phase 4b2：清理失败后继续释放
 
-状态：planned；依赖 Phase 4 的代表性路径与成本数据；可参考 Phase 4b 已验证的执行边界；相对工作量：中～大。
+状态：planned；下一批。依赖 4b1 已验证的生命周期边界；涉及 SampleGameSessionService、SampleGameRunner、SampleGamePresentation 和必要的集成测试。相对工作量：小～中。
 
-- 目标：围绕“新增常见 Entry 要修改什么、重复声明了什么、需要记住哪些规则”继续降低端到端成本。源码生成只是一个候选实现机制；即使不选生成器，也要完成作者 API/复用方案评估并落实有收益的改进。
-- 候选方案逐项比较：改进现有声明 API；提供轻量 generic definition/typed reader 与同步 immediate factory；用显式 DTO/属性和 System.Text.Json 元数据派生 schema/读取；使用 IIncrementalGenerator 生成有序字段、规范化 typed arguments、描述/诊断；在生成代码之外增加针对错误声明的 analyzer/diagnostics 或 IDE quick fix；提供可复制的 Entry 模板/示例。按维护成本、运行时/构建依赖、IDE 支持、报错质量、生成物可读性和跨工具一致性选择组合，不预设单一路径。
-- 优先消除的重复：参数名在 schema 和读取代码中重复；类型/default/null/constraints 与实际 JSON 消费分离；type ID/schema/工厂映射需要多处同步；常见同步 Entry 必须写无业务价值的实例/适配 wrapper。只有代码重复且语义稳定时才自动化；业务操作本身保持手写。
-- 设计约束：手写与自动产物不得成为两份维护事实；项目显式选择生成/定义的 module，不扫描整个程序集自动启用；契约生成物只依赖 Core，平台执行保持在平台层，Roslyn（若采用）只进入构建工具依赖；保留 converter、JSON 名称、required/default/null、字段顺序、EditorHints、手写业务验证与 Composite 扩展点。UI 不生成具体控件/绑定。
-- 实施顺序：先做一个低成本 API/DTO 原型并与 Phase 4 结果比较；若仍存在成批稳定重复，再实现最小工具链原型（可能是 generator、analyzer、模板或组合）。只将不同参数形态的少数 Entry 迁移，保持复杂 Entry 对照样本。是否保留独立 generator 项目由实测收益决定。
-- 验证：用无参数同步、典型参数、枚举/嵌套对象或 converter、自定义校验/Composite，以及一个需要异步生命周期的 Entry 做端到端作者任务；校验契约展示、工具读取、规范化、执行一致。若采用生成器，验证 incremental 输入变化、可定位诊断、消费者干净构建和独立契约部署；若采用 analyzer/template/API，则验证 IDE/编译体验、错误诊断和新增项目步骤。统计手写维护点、重复事实、生成产物、测试/工具代码、依赖与调试成本，不只统计删掉的业务行数。
-- 文档：给出推荐路径、例外路径、常见诊断和最小完整示例；同步实际支持的 DTO 元数据，不把未实现能力写入 spec。
-- 风险：把样板移入不可调试生成物或更复杂 DSL；反射/生成对 System.Text.Json 语义处理不一致；分析器与生成器维护成本超过业务收益；模板过期；为了 API 简短隐藏模块生命周期或运行模式差异。
-- 退出：Phase 4 的新建流程至少在一项端到端指标上进一步减少重复维护点，并且工具/抽象总成本可接受；所有生成或派生字段只有一个源头，复杂 Entry 仍可直接表达。若 generator 不划算，可以保留 API/analyzer/template 方案并记录比较；若没有任何附加方案产生净收益，明确列出已尝试候选与证据后结束本阶段，不为“有 Phase 5”强加基础设施。
+- 现状：Session.DisposeAsync 的 finally 内串行 await DisposeRunnerAsync 和 settings.FlushAsync；任一步失败会阻止后续 save session/resource scope 释放。Runner/Presentation 已有继续清理并聚合异常的局部方法，但聚合区之前的操作仍需审查。
+- 目标/任务：保持显式顺序，确保独立清理全部尝试；完整保留 Stop、flush、backend 和 resource 失败，不由 finally 覆盖先前错误。资源引用按实际所有权摘除，重复释放不再重复释放后端。先复用已有局部模式；只有多处稳定重复且更清晰时才抽取小型清理工具，不引入通用 Runner/资源框架。
+- 前置/边界：审查正常关闭、停止后关闭、部分初始化失败；区分相互依赖的释放与独立释放。Engine 先于执行 view/backend 释放；NVL 页面重置仍在 presentation 释放之前。settings 的 UI/持久化验证需使用正确测试宿主，不夹带改变设置保存策略。
+- 验证：注入 Stop、Runner、flush 和后端失败，确认后续独立资源仍释放；多项失败全部保留；同步/异步异常、重复关闭和部分初始化均覆盖。用实际消费路径验证接入，不能只测试孤立聚合器。按改动运行相关 Integration/Presentation/Runtime 与 Sample 构建。
+- 文档：记录释放顺序、资源所有权、错误聚合及是否新增工具；不宣称生命周期正确性修复必然减少总行数。
+- 风险/退出：避免并行释放破坏顺序、重复 flush、关闭时 UI 循环等待、把单个错误替换成最后一个错误。故障注入和受影响集成验证通过后独立提交；未解决的完整回归缺口继续列出。
+
+### Phase 4b3：Dialogue/NVL 文本推进状态机复用
+
+状态：planned；4b2 后实施，技术上可独立验证。涉及 Builtins 的两个实例、其模块与文本/播放模式/阅读进度测试。当前 Dialogue 130 行、NVL 128 行，合计 258 行；相对工作量：中。
+
+- 目标/任务：共用 Created → Typing → WaitingAdvance → Completed 的阶段、同步保护、IsTextPresented/IsWaitingForAdvance、自动等待切换和完成处理。优先在 Builtins 内建立文本专用实现，具体实例重载展示、立即展示、揭示全文、记录追帧历史和错误处理等小型操作；名字与接口形态由试点确定。
+- 关键边界：展示完成只结束 PresentationCompletion，不代表这一行逻辑完成；仍需玩家推进。因此不能强行继承 4b1 单次操作结束即 TryComplete 的 AsyncPrimitiveInstance。普通原语基类保持可直接实现复杂业务。
+- 必须保留：打字中 skip 只揭示文字，等待中 skip 才完成；Quick 立即显示但保留推进等待；初始 CatchUp 记录历史并完成；运行中切换模式与自然打字完成并发时不重复推进。Dialogue 原有吞错与 NVL 记录警告的差异明确保留。已有 Dialogue Lock 改动保持语义，不顺手覆盖。
+- 验证：Normal/Quick/CatchUp、连续 skip、自然展示完成、等待阶段推进、取消/展示失败、打字时模式切换、完成竞态、事件次数、自动推进/阅读边界；同时运行原实例测试和 Engine 级消费测试。展示完成与逻辑完成分别断言，不改变快照/正文历史内容。
+- 文档/收益：给出一个文本实例通过重载业务操作接入的完整例子；统计两个实例加共用实现的总成本。只有重复状态机被消除且派生实现更清晰时保留；收益不足则记录试点结果，缩小或 skipped。
+- 风险/退出：避免文本显示结束自动推进剧情、两个实例共用可变阶段、隐藏 CatchUp/错误策略。行为回归和净收益检查通过后独立提交。
+
+## Phase 5：新 Entry 作者体验的系统性精简与工具化（已实施）
+
+状态：verified（5a–5d）；生成器基础已在 Phase 2d 落地，作者同步路径在 Phase 4 验证。实际结果见 phase-5a.md、phase-5b.md、phase-5c.md、phase-5d.md。
+
+- 已完成：唯一 DTO 字段描述/codec/默认值、强类型执行和 Composite 展开、全部内置 Entry 参数迁移、BuiltinEntryIds、旧作者类壳清理；契约与平台执行保持分层。
+- 当前 API：同步 Immediate<T>、简单异步 Async<T>、复杂实例 For<T>；业务状态、模式、skip 和错误策略通过明确扩展点实现。异步默认机制的证据归 4b1，不混入 5a–5d 的历史验证。
+- 原计划中的手写 API/DTO/generator 候选比较已经形成实际方案，不再按旧计划重新做原型、引入另一个 generator、分析器或 DSL。
+- 剩余 request 构造、重放调用和新增 Entry 修改点在 Phase 6 做局部收益复核。没有明确消费者/重复时记录保留理由；若发现值得实现的新候选，先明确范围和退出条件，再作为独立后续批次，不让可选优化无限延长本 feature。
 
 ## Phase 6：范围复核、回归与收尾
 
@@ -153,10 +187,12 @@
 - 目标：确认代码更清晰，而不是新增一层外观一致的框架。
 - 模块：实际改动的生产项目、测试与正式文档。
 - 任务：审核剩余双份声明、无消费者类型、重复工具、项目引用和 developer 修改点；整理未实施项。只检查本 feature 必要的 import/格式，不扩展为全仓库清理。
+- 作者路径/可选收益复核：用无参数同步、DTO 同步、DTO 异步、文本交互和 Composite 五种实际路径核对新增 Entry 的修改点、可重载默认行为及例外。检查 request 构造和重放胶水是否仍重复同一规则；没有净收益则保留，不预设新增基础设施。修订开发示例中过时的旧参数读取写法，避免推荐已淘汰路径。
 - 验证：根据最终 diff 运行 Core/契约/CLI/Presentation/Runtime/集成与架构中受影响的测试；Sample 与工具相关构建；独立契约加载、截图运行和 CLI 真实命令 smoke。已通过的测试仅在新变更或失败需要时重跑。
 - 文档：summary/review、当前 spec/development 示例；记录每阶段提交、证据、收益和 skipped 原因，不声称暂缓项已完成。
 - 风险：用总行数下降替代可读性评估，或忽略生成器与测试成本。
 - 退出：无阻断项，所有已实施阶段有验证和独立提交；契约/平台分层成立；开发者接入步骤明确；参数共用与生成器的收益结论可追溯。
+- 当前明确的收尾前置：两项 UI Flush 集成挂起必须解决，或将 feature 明确标为带未完成验证事项，不能以 4b1 的排除运行代表完整通过。summary 分开报告已完成、skipped/暂缓和环境限制；收益统计包含公共机制成本，不能只统计派生类删行。
 
 ## 暂缓项
 
@@ -170,6 +206,8 @@
 后续只有实际收益或新需求支持时再纳入，并记录独立范围与成本。
 
 ## 范围变更记录
+
+- 2026-10-15：用户要求先按当前情况整理后续计划。本轮不实现业务；明确剩余为 UI Flush 验证缺口、4b2 清理、4b3 文本状态机和 6 收尾。Phase 5 已由 5a–5d 完成，删除作为当前任务的旧 generator/DTO 原型候选描述；剩余胶水只做有证据的局部收益复核。
 
 - 2026-10-14：用户将共用方式收敛为值描述与序列化/校验工具，各业务模型组合使用；未提交 Phase 1 试点需修订，不认定通过。
 - 2026-10-14：纳入 DTO + 特性生成中立有序 schema、开放 EditorId、无样式 SchemaForm 和 dictionary → 工厂的服务。拆分 2a/2b/2c，以控制 UI 工作量及回归范围；Core 领域/快照重构继续暂缓。
