@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Text.Json;
+using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
 
 namespace GalNet.Core.Entry;
@@ -20,6 +21,7 @@ public abstract class EntryBase
     public string Category { get; }
     public DynamicParameterTable Parameters { get; }
     public bool IsReading { get; init; }
+    public Func<IFieldDto>? FieldDataFactory { get; init; }
 
     internal abstract EntryDefinition CreateDefinition();
 
@@ -34,7 +36,10 @@ public abstract class EntryBase
         {
             editorParameters.Add(parameter.Name, EntrySchema.GetEditorType(parameter));
             if (parameter.DefaultValue is { } defaultValue)
-                defaults.Add(parameter.Name, ToPersistedValue(defaultValue));
+            {
+                var text = ValueCodec.ToEditorText(parameter.Value, defaultValue);
+                if (JsonElement.DeepEquals(defaultValue, ValueCodec.ParseEditorText(parameter.Value, text))) defaults.Add(parameter.Name, text);
+            }
             if (parameter.TryGetConstraint("options", out var values) && values.ValueKind == JsonValueKind.Array)
                 options.Add(parameter.Name, values.EnumerateArray().Select(value => value.GetString() ?? "").ToArray());
             else if (parameter.ValueType == typeof(bool))
@@ -50,7 +55,7 @@ public abstract class EntryBase
             options,
             kind,
             Parameters)
-        { IsReading = IsReading };
+        { IsReading = IsReading, FieldDataFactory = FieldDataFactory };
     }
 
     private static string GetDefaultCategory(string name)
@@ -59,9 +64,6 @@ public abstract class EntryBase
         return separator > 0 ? name[..separator] : name;
     }
 
-    private static string ToPersistedValue(JsonElement value) => value.ValueKind == JsonValueKind.String
-        ? value.GetString() ?? ""
-        : value.GetRawText();
 }
 
 /// <summary>A primitive parameter contract. Execution is registered independently.</summary>
@@ -82,6 +84,11 @@ public abstract class PrimitiveEntryBase : EntryBase
 /// <summary>A data-only primitive definition.</summary>
 public sealed class DefaultPrimitiveEntryBase : PrimitiveEntryBase
 {
+    public static DefaultPrimitiveEntryBase ForDto<T>(string name, Action<JsonElement>? validateArguments = null, string? category = null)
+        where T : IFieldDto, IFieldSchema<T>, new() => new(name,
+            new DynamicParameterTable(T.Schema.Select(descriptor => new DynamicParameterDescriptor(descriptor)), validateArguments), category)
+        { FieldDataFactory = static () => new T() };
+
     public DefaultPrimitiveEntryBase(
         string name,
         DynamicParameterTable parameters,

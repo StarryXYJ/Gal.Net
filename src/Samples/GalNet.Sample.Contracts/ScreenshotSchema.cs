@@ -8,27 +8,15 @@ namespace GalNet.Project.Contracts;
 public static class ScreenshotSchema
 {
     public const string TypeId = "sample.screenshot";
-    public static DynamicParameterDescriptor FileNameParameter { get; } =
-        new("fileName",
-            typeof(string),
-            constraints: JsonSerializer.SerializeToElement(
-                new
-            {
-                format = "png-file-name",
-                maxLength = 120
-            }),
-            allowNull: false
-            );
+    public static DynamicParameterDescriptor FileNameParameter { get; } = new(ScreenshotOptions.Schema[0]);
 
     public static IEntryModule CreateModule() => new DefaultEntryModule("sample",
         [
-            new DefaultPrimitiveEntryBase(TypeId,
-            new DynamicParameterTable(
-            [FileNameParameter],
+            DefaultPrimitiveEntryBase.ForDto<ScreenshotOptions>(TypeId,
             arguments =>
             {
                 if (arguments.TryGetProperty("fileName", out var value)) ValidateFileName(value.GetString());
-            }))
+            })
         ]
         );
 

@@ -11,7 +11,8 @@ public class ProjectDependencyTests
         {
             ["GalNet.Core"] = [],
             ["GalNet.Contracts.Builtins"] = ["GalNet.Core"],
-            ["GalNet.Sample.Contracts"] = ["GalNet.Core", "GalNet.Contracts.Builtins"],
+            ["GalNet.Sample.Contracts"] = ["GalNet.Core", "GalNet.Contracts.Builtins", "GalNet.SchemaGenerator"],
+            ["GalNet.SchemaGenerator"] = [],
             ["GalNet.Presentation.Abstractions"] = ["GalNet.Core"],
             ["GalNet.Runtime"] = ["GalNet.Core", "GalNet.Presentation.Abstractions"],
             ["GalNet.Primitives.Builtins"] = ["GalNet.Core", "GalNet.Contracts.Builtins", "GalNet.Presentation.Abstractions", "GalNet.Runtime"],
@@ -72,6 +73,7 @@ public class ProjectDependencyTests
             ],
             ["GalNet.Editor.Tests"] =
             [
+                "GalNet.SchemaGenerator",
                 "SchemaA", "SchemaB",
                 "GalNet.Core",
                 "GalNet.Editor",
@@ -82,6 +84,7 @@ public class ProjectDependencyTests
             ],
             ["GalNet.Presentation.Tests"] =
             [
+                "GalNet.SchemaGenerator",
                 "GalNet.Assets",
                 "GalNet.Avalonia.Controls",
                 "GalNet.Avalonia.GameView",
@@ -91,6 +94,7 @@ public class ProjectDependencyTests
                 "GalNet.Presentation.Abstractions",
                 "GalNet.Runtime"
             ],
+            ["GalNet.SchemaGenerator.Tests"] = ["GalNet.SchemaGenerator", "GalNet.Core"],
             ["GalNet.IntegrationTests"] =
             [
                 "GalNet.Assets",
@@ -149,6 +153,18 @@ public class ProjectDependencyTests
             .ToArray();
 
         Assert.That(consumers, Is.Empty, $"Test projects reference other test projects: {string.Join(", ", consumers)}");
+    }
+
+    [TestCase("GalNet.Sample.Contracts", false)]
+    [TestCase("GalNet.Editor.Tests", true)]
+    [TestCase("GalNet.Presentation.Tests", true)]
+    public void SchemaGeneratorReferencesAreBuildOnly(string project, bool testProject)
+    {
+        var file = testProject ? FindTestProjectFile(project) : FindProjectFile(project);
+        var reference = XDocument.Load(file).Descendants("ProjectReference")
+            .Single(item => ((string?)item.Attribute("Include"))?.Contains("GalNet.SchemaGenerator.csproj", StringComparison.Ordinal) == true);
+        Assert.That((string?)reference.Attribute("OutputItemType"), Is.EqualTo("Analyzer"));
+        Assert.That((string?)reference.Attribute("ReferenceOutputAssembly"), Is.EqualTo("false"));
     }
 
     [Test]

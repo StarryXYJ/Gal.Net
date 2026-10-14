@@ -7,21 +7,22 @@ using Avalonia.Media;
 using Avalonia.VisualTree;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
+using GalNet.Core.Parameters;
 using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Extensibility;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
-using GalNet.Editor.Dock;
 using GalNet.Editor.Controls;
+using GalNet.Editor.Dock;
 using GalNet.Editor.History;
 using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Services;
 using GalNet.Editor.Services.Interfaces;
 using GalNet.Editor.Shared.Services;
 using GalNet.Editor.ViewModels;
-using GalNet.Primitives.Builtins;
 using GalNet.Game.Controls.Forms;
+using GalNet.Primitives.Builtins;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GeneralTest.Editor;
@@ -29,19 +30,20 @@ namespace GeneralTest.Editor;
 [TestFixture]
 public sealed class EditorWorkspaceViewModelTests
 {
-    [Test, NonParallelizable]
-    public async Task SchemaFieldCommitUsesWorkspaceHistoryAndSaveSnapshot()
+    [TestCase(false), TestCase(true), NonParallelizable]
+    public async Task SchemaFieldCommitUsesWorkspaceHistoryAndSaveSnapshot(bool useDto)
     {
         await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
         await session.Dispatch<bool>(async () =>
         {
-            using var fixture = new WorkspaceFixture(withProject: true);
+            using var fixture = new WorkspaceFixture(withProject: true, useDto: useDto);
             var workspace = fixture.Workspace;
             var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
             var entry = workspace.InsertEntriesInto(group, 0, 1).Single();
             entry.Type = WaitEntry.TypeId;
             entry.Parameters = new() { ["duration"] = "1" };
-            var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
+            if (useDto) entry.Parameters = new(entry.Parameters) { ["label"] = "wait" };
+            var catalog = fixture.Catalog;
             entry.ConfigureParameterFields(catalog, [], []);
             // Supply only layout icon resources; the real parameter panel and bindings are used below.
             foreach (var key in new[] { "AddIcon", "DeleteRegularIcon", "ChevronUpRegular", "ChevronDownRegular" })
@@ -57,13 +59,21 @@ public sealed class EditorWorkspaceViewModelTests
             window.UpdateLayout();
             try
             {
-                var forms = view.GetVisualDescendants().OfType<SchemaForm>().ToArray();
+                var forms = view.GetVisualDescendants().OfType<SchemaForm>().Where(item => item.Schema is { Count: > 0 }).ToArray();
                 Assert.That(forms.Length, Is.EqualTo(1));
                 var form = forms.Single();
+                if (useDto)
+                {
+                    entry.ConfigureParameterFields(catalog, [], []);
+                    window.UpdateLayout();
+                    form = view.GetVisualDescendants().OfType<SchemaForm>().Single(item => item.Schema is { Count: > 0 });
+                    Assert.That(form.Contexts[1].Text, Is.EqualTo("wait"));
+                }
                 Assert.That(form.Diagnostics, Is.Empty);
                 Assert.That(form.Contexts[0].Field.Id, Is.EqualTo("duration"));
                 Assert.That(view.GetVisualDescendants(), Does.Contain(form.Editors[0].Control));
-                var field = (SchemaEntryParameterEditorItemViewModel)entry.ParameterFields.Single();
+                var field = useDto ? entry.DtoBinding!.Binding(entry.DtoBinding.Fields[0]) : (IFieldBinding)entry.ParameterFields.Single();
+                if (useDto) Assert.That(entry.ParameterFields, Is.Empty, "The generated DTO replaces the old per-field projection.");
                 var changes = 0;
                 field.Changed += (_, _) => changes++;
                 workspace.UndoRedoHistory.MarkSaved();
@@ -236,8 +246,9 @@ public sealed class EditorWorkspaceViewModelTests
         public CapturingSaveCoordinator SaveCoordinator { get; } = new();
         public ImmediateSaveScheduler SaveScheduler { get; } = new();
         public EditorWorkspaceViewModel Workspace { get; }
+        public IEntryCatalog Catalog { get; }
 
-        public WorkspaceFixture(bool withProject = false)
+        public WorkspaceFixture(bool withProject = false, bool useDto = false)
         {
             var loaded = CreateLoadedDocument();
             if (withProject)
@@ -257,7 +268,10 @@ public sealed class EditorWorkspaceViewModelTests
                 new NullServiceProvider(),
                 new EditorExtensionRegistry(),
                 localization);
-            var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
+            var modules = BuiltinSchemas.CreateAllModules().Where(module => !useDto || module.Id != "flow").ToList();
+            if (useDto) modules.Add(new DefaultEntryModule("flow", [DefaultPrimitiveEntryBase.ForDto<EditorWaitOptions>(WaitEntry.TypeId)]));
+            var catalog = new TargetProfileEntryCatalog(modules);
+            Catalog = catalog;
             var variableDefinitions = new VariableDefinitionService(DocumentService);
             var repository = new FakeDocumentRepository(loaded);
             var persistence = new EditorWorkspacePersistence(

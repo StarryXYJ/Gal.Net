@@ -4,6 +4,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../src/Tooling/GalNet.SchemaGenerator/GalNet.SchemaGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" GlobalPropertiesToRemove="OutputPath;OutDir" />
     <ProjectReference Include="../Fixtures/SchemaA/SchemaA.csproj" ReferenceOutputAssembly="false" GlobalPropertiesToRemove="OutputPath;OutDir" />
     <ProjectReference Include="../Fixtures/SchemaB/SchemaB.csproj" ReferenceOutputAssembly="false" GlobalPropertiesToRemove="OutputPath;OutDir" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />

@@ -6,8 +6,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Core.Entry;
-using GalNet.Editor.Models;
 using GalNet.Core.Parameters;
+using GalNet.Editor.Models;
 using GalNet.Game.Controls.Forms;
 
 namespace GalNet.Editor.Models.Graph;
@@ -54,7 +54,6 @@ public partial class EntryParameterEditorItemViewModel : ObservableObject
     }
 
     partial void OnStringValueChanged(string value) => _setValue(Id, value ?? "");
-    protected void SetValue(string value) => _setValue(Id, value);
 
 }
 
@@ -65,6 +64,7 @@ public sealed class SchemaEntryParameterEditorItemViewModel(EntryParameterDefini
     public IReadOnlyList<FieldDescriptor> Fields { get; } = [definition.Field];
     public Func<FieldDescriptor, IFieldBinding> FieldBinding => _ => this;
     public event EventHandler? Changed;
+    object? IFieldBinding.Label => Definition.DisplayNameKey;
     public void RefreshValue() => Changed?.Invoke(this, EventArgs.Empty);
     public FieldValue Read() => owner.Parameters.TryGetValue(Id, out var text)
         ? new(ValueCodec.ParseEditorText(Definition.Field.Value, text)) : default;
@@ -76,24 +76,7 @@ public sealed class SchemaEntryParameterEditorItemViewModel(EntryParameterDefini
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (!owner.ParameterFields.Contains(this)) return Task.FromResult<ValueIssue?>(new("entry.obsolete", "Entry schema has changed.", Id));
-        if (value.Json is not { } json)
-        {
-            if (Definition.Field.IsRequired && Definition.Field.DefaultValue is null)
-                return Task.FromResult<ValueIssue?>(new("entry.required", "A value is required.", Id));
-            var updated = new Dictionary<string, string>(owner.Parameters, StringComparer.Ordinal);
-            updated.Remove(Id);
-            owner.Parameters = updated;
-        }
-        else
-        {
-            if (ValueValidation.Validate(Definition.Field.Value, json) is { } issue) return Task.FromResult<ValueIssue?>(issue);
-            var text = ValueCodec.ToEditorText(Definition.Field.Value, json);
-            // The current editor document uses strings; do not silently turn JSON null into the string "null".
-            if (!JsonElement.DeepEquals(json, ValueCodec.ParseEditorText(Definition.Field.Value, text)))
-                return Task.FromResult<ValueIssue?>(new("entry.representation", "This value cannot be represented by the editor document.", Id));
-            if (!owner.Parameters.TryGetValue(Id, out var current) || current != text) SetValue(text);
-        }
-        return Task.FromResult<ValueIssue?>(null);
+        return owner.CommitParameterAsync(Definition.Field, value, cancellationToken);
     }
 }
 

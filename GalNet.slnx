@@ -1,5 +1,11 @@
 <Solution>
   <Folder Name="/src/" />
+  <Folder Name="/src/Tooling/">
+    <Project Path="src/Tooling/GalNet.SchemaGenerator/GalNet.SchemaGenerator.csproj" />
+  </Folder>
+  <Folder Name="/test/Schema/">
+    <Project Path="test/GalNet.SchemaGenerator.Tests/GalNet.SchemaGenerator.Tests.csproj" />
+  </Folder>
   <Folder Name="/src/Editor/">
     <Project Path="src/Editor/GalNet.Editor.Abstraction/GalNet.Editor.Abstraction.csproj" />
     <Project Path="src/Editor/GalNet.Editor.Shared/GalNet.Editor.Shared.csproj" />

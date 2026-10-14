@@ -173,6 +173,7 @@ public sealed class EntryDefinition
     public EntryKind Kind { get; }
     public DynamicParameterTable? DynamicParameters { get; }
     public bool IsReading { get; init; }
+    public Func<GalNet.Core.Parameters.IFieldDto>? FieldDataFactory { get; init; }
 
     private static ReadOnlyDictionary<TKey, TValue> Freeze<TKey, TValue>(IReadOnlyDictionary<TKey, TValue> values)
         where TKey : notnull => new ReadOnlyDictionary<TKey, TValue>(values.ToDictionary(pair => pair.Key, pair => pair.Value));

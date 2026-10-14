@@ -7,6 +7,29 @@
              x:Name="Root"
              x:DataType="vm:GroupEditorPanelViewModel"
              MoveCommand="{Binding ReorderEntryCommand}">
+    <controls:ReorderableListControl.Styles>
+        <Style Selector="forms|SchemaForm" x:CompileBindings="False">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <StackPanel Spacing="6">
+                        <ItemsControl ItemsSource="{TemplateBinding Editors}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="130,*" ColumnSpacing="8">
+                                        <TextBlock DataContext="{Binding Context}" Text="{loc:Localize Label}" VerticalAlignment="Center" />
+                                        <StackPanel Grid.Column="1"><ContentControl Content="{Binding Control}" /><TextBlock Text="{Binding Context.Issue.Message}" TextWrapping="Wrap" /></StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <ItemsControl ItemsSource="{TemplateBinding Diagnostics}">
+                            <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding Message}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+    </controls:ReorderableListControl.Styles>
     <Grid RowDefinitions="Auto,*,Auto">
         <Button HorizontalAlignment="Left"
                 ToolTip.Tip="{loc:Localize Entry.Add}"
@@ -71,29 +94,14 @@
                                     CommandParameter="{Binding}"><PathIcon Width="16" Height="16" Data="{StaticResource DeleteRegularIcon}" /></Button>
                         </Grid>
                         <StackPanel Margin="0,8,0,0" Spacing="6" IsVisible="{Binding IsExpanded}">
+                            <forms:SchemaForm Schema="{Binding DtoBinding.Fields}" Binding="{Binding DtoBinding.Binding}" Registry="{Binding #Root.DataContext.FieldEditors}" IsVisible="{Binding HasDtoFields}" />
                             <ItemsControl ItemsSource="{Binding ParameterFields}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="models:EntryParameterEditorItemViewModel">
                                         <ContentControl Content="{Binding}">
                                             <ContentControl.DataTemplates>
                                                 <DataTemplate DataType="models:SchemaEntryParameterEditorItemViewModel" x:CompileBindings="False">
-                                                    <Grid ColumnDefinitions="130,*" ColumnSpacing="8">
-                                                        <TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" />
-                                                        <forms:SchemaForm Grid.Column="1" Schema="{Binding Fields}" Binding="{Binding FieldBinding}" Registry="{Binding #Root.DataContext.FieldEditors}">
-                                                            <forms:SchemaForm.Template>
-                                                                <ControlTemplate>
-                                                                    <StackPanel Spacing="4">
-                                                                        <ItemsControl ItemsSource="{TemplateBinding Editors}">
-                                                                            <ItemsControl.ItemTemplate><DataTemplate><StackPanel><ContentControl Content="{Binding Control}" /><TextBlock Text="{Binding Context.Issue.Message}" TextWrapping="Wrap" /></StackPanel></DataTemplate></ItemsControl.ItemTemplate>
-                                                                        </ItemsControl>
-                                                                        <ItemsControl ItemsSource="{TemplateBinding Diagnostics}">
-                                                                            <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding Message}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate>
-                                                                        </ItemsControl>
-                                                                    </StackPanel>
-                                                                </ControlTemplate>
-                                                            </forms:SchemaForm.Template>
-                                                        </forms:SchemaForm>
-                                                    </Grid>
+                                                    <forms:SchemaForm Schema="{Binding Fields}" Binding="{Binding FieldBinding}" Registry="{Binding #Root.DataContext.FieldEditors}" />
                                                 </DataTemplate>
                                                 <DataTemplate DataType="models:TextEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding StringValue}" AcceptsReturn="{Binding IsMultiline}" TextWrapping="Wrap" MinHeight="30" HorizontalAlignment="Stretch" /></Grid></DataTemplate>
                                                 <DataTemplate DataType="models:AutocompleteEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><ComboBox Grid.Column="1" IsEditable="True" ItemsSource="{Binding Suggestions}" Text="{Binding StringValue}" HorizontalAlignment="Stretch" LostFocus="OnAutocompleteLostFocus" /></Grid></DataTemplate>

@@ -121,6 +121,44 @@ var wait = new IntSetting("wait", "Settings.Wait", 50, 0, 5000, 10,
 
 自定义控件工厂通过 context 读取类型化值、提交以及订阅变化，卸载时由 lease 退订控件自己的事件；不要另建保存队列。Editor 的对应扩展入口是项目作用域 Group 面板的 FieldEditors。项目 schema 只写 EditorId，不引用平台控件/工厂。当前 Editor 的字符串文档无法无损表示显式 null 字符串，适配器拒绝这类提交；需要原始 JSON 时使用 CLI。缺少自定义工厂会显示诊断，不自动替换为文本控件。
 
+### DTO 字段生成与成员绑定
+
+可在契约项目通过 Analyzer ProjectReference 引用 `GalNet.SchemaGenerator`（`ReferenceOutputAssembly="false"`，`GlobalPropertiesToRemove="OutputPath;OutDir"`），Roslyn 不进入运行时依赖。DTO 声明示例：
+
+```csharp
+[GenerateFieldSchema]
+public partial class PulseOptions
+{
+    [Field(0, Required = true, AllowNull = false)]
+    public string? Faction { get; set; }
+
+    [Field(1, Minimum = 0, EditorId = "numeric")]
+    public int Amount { get; set; } = 1;
+}
+
+var entry = DefaultPrimitiveEntryBase.ForDto<PulseOptions>("game.pulse");
+```
+
+生成 `PulseOptions.Schema` 以及 `IFieldDto` 的成员访问代码。ForDto 从同一 schema 建立参数表并提供 Editor 数据工厂；不手写第二份参数描述，也不生成执行 module/保存逻辑。首轮支持顶层非泛型 partial class 上的公开可读写属性；private backing field、init-only 属性、非恒定默认表达式等报告 GNF001。字段顺序由 Field 的 order 明确指定，成员类型和常量属性初始化值来自 DTO；省略初始化值不等于声明 CLR 默认值为 schema 默认值。禁止执行任意 DTO 构造函数推断默认值。
+
+字段 ID 使用 JsonPropertyName，未指定时为 camelCase；支持属性 JsonConverter、JsonRequired。Field 还可声明 Required/AllowNull、范围/MaxLength/ValueFormat，以及 EditorId/Step/Format/UnitKey/标签和说明。C# nullable 注解不等于 JSON null/presence 策略；AllowNull 未指定时遵循现有 ValueDescriptor 的 CLR 类型规则。复杂业务校验继续传给 ForDto 的 validateArguments。
+
+UI 不必继承固定基类。普通 DTO 使用 `DtoBinding.Refresh()` 显式刷新；实现 INotifyPropertyChanged 会自动通知，ObservableObject 是一种可选实现。CommunityToolkit 的 `[ObservableProperty] public partial int Amount { get; set; }` 可同时标记 Field，两个生成器读取同一属性声明；不要求生成器读取彼此产物，首轮不支持给私有 ObservableProperty backing field 标记 Field。
+
+```csharp
+using var binding = new DtoBinding(dto);
+var form = new SchemaForm
+{
+    Schema = binding.Fields,
+    Binding = binding.Binding,
+    Registry = EditorRegistry.CreateDefault()
+};
+```
+
+面板的字段列表由绑定 DTO 提供。普通提交经值校验后写成员；撤销或 async apply/save 使用 DtoBinding 的宿主提交回调，由宿主更新数据并通知/刷新。省略不是普通 CLR 成员能独立表达的状态；作者文件适配通过 isProvided 回调保留 JSON presence。绑定借用 DTO，表单拥有草稿/控件订阅；宿主在换对象时释放 DtoBinding。对象/数组继续用 JSON 编辑器，不生成递归面板。
+
+Sample 的 ScreenshotOptions 已使用此路径；Editor 对 DTO Entry 使用整组 SchemaForm，保留原字典的历史/保存桥接，不再创建该 Entry 的逐字段旧投影。手写契约和专属资源/表达式控件仍可使用原路径；见 [阶段证据](../features/F-20261013-02-parameter-and-sample-simplification/phase-2d.md)。
+
 ### 2. 分别定义契约和执行模块
 
 schema 不引用游戏服务或平台对象。执行模块持有共享数据和服务，贡献完整指令 ID 与实例工厂：

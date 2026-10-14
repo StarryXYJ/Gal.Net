@@ -9,6 +9,18 @@ namespace GeneralTest.Entry;
 public class TargetProfileEntryCatalogTests
 {
     [Test]
+    public void EditorDefaultsPreserveStringEncodedTypesAndDoNotCoerceNullStrings()
+    {
+        var options = new JsonSerializerOptions { Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } };
+        var catalog = new TargetProfileEntryCatalog([new DefaultEntryModule("custom", [new DefaultPrimitiveEntryBase("custom.defaults", new([
+            new("day", new GalNet.Core.Parameters.ValueDescriptor(typeof(DayOfWeek), jsonOptions: options), defaultValue: JsonSerializer.SerializeToElement("Monday")),
+            new("name", typeof(string), defaultValue: JsonSerializer.SerializeToElement<string?>(null), allowNull: true)]))])]);
+        var entry = catalog.Create("custom.defaults");
+        Assert.That(entry.Values["day"], Is.EqualTo("\"Monday\""));
+        Assert.That(entry.Values.ContainsKey("name"), Is.False);
+        Assert.That(catalog.Get("custom.defaults").DynamicParameters!["name"].DefaultValue!.Value.ValueKind, Is.EqualTo(JsonValueKind.Null));
+    }
+    [Test]
     public void ProfileExposesOnlyItsOwnPrimitiveEntries()
     {
         var parameters = new DynamicParameterTable(
