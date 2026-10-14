@@ -27,6 +27,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private SampleGameRunner? _runner;
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private bool _disposed;
+    private readonly object _disposeGate = new();
+    private Task? _disposeTask;
 
     public SampleGameSessionService(GamePageViewModel gameplay, GamePage page, SamplePlayerSettingsService settings,
         SampleLocalizationService localization, SampleStartupService startup, SampleLibVlcRuntime mediaRuntime)
@@ -86,9 +88,11 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
                     resources.Assets,
                     cancellationToken, resources.MediaFiles);
             }
-            catch
+            catch (Exception error)
             {
-                resources.Dispose();
+                var cleanup = new SampleCleanup();
+                cleanup.Run(resources.Dispose);
+                cleanup.ThrowIfFailed(error);
                 throw;
             }
 
@@ -268,23 +272,28 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         _gameplay.StatusMessage = $"Loaded slot {slotIndex}.";
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
-        if (_disposed) return;
-        try { await StopAsync(); }
-        finally
-        {
-            _disposed = true;
-            _gameplay.InteractionObserved -= OnInteractionObserved;
-            await DisposeRunnerAsync();
-            await _settings.FlushAsync();
-            _saveSession?.Dispose();
-            _saveSession = null;
-            GalleryResources = null;
-            GalleryDataSource = null;
-            _resources?.Dispose();
-            _resources = null;
-        }
+        lock (_disposeGate) return new(_disposeTask ??= DisposeCoreAsync());
+    }
+
+    private async Task DisposeCoreAsync()
+    {
+        var cleanup = new SampleCleanup();
+        await cleanup.RunAsync(() => new(StopAsync()));
+        _disposed = true;
+        _gameplay.InteractionObserved -= OnInteractionObserved;
+        await cleanup.RunAsync(() => new(DisposeRunnerAsync()));
+        await cleanup.RunAsync(() => new(_settings.FlushAsync()));
+        var saves = _saveSession;
+        _saveSession = null;
+        GalleryResources = null;
+        GalleryDataSource = null;
+        cleanup.Run(() => saves?.Dispose());
+        var resources = _resources;
+        _resources = null;
+        cleanup.Run(() => resources?.Dispose());
+        cleanup.ThrowIfFailed();
     }
 
     public async Task BeginPreparedGameAsync(CancellationToken cancellationToken = default)

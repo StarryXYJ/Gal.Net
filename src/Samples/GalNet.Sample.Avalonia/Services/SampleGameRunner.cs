@@ -113,24 +113,18 @@ internal sealed class SampleGameRunner : IAsyncDisposable
         if (_disposed) return;
         _disposed = true;
         _playerSettings.SettingsChanged -= OnPlayerSettingsChanged;
-        _gameplay.BindPlayback(null);
+        var cleanup = new SampleCleanup();
+        cleanup.Run(() => _gameplay.BindPlayback(null));
         _gameplay.AdvanceRequested -= OnAdvanceRequested;
         _engine.StateChanged -= OnEngineStateChanged;
-        _presentation.Presenters.CompleteInitialPresentation();
-        List<Exception>? errors = null;
-        await ReleaseAsync(() => _engine.DisposeAsync().AsTask());
-        await ReleaseAsync(() => _presentation.Restorer.SuspendAsync(CancellationToken.None));
-        await ReleaseAsync(() => _stateUpdate);
-        await ReleaseAsync(_resetPresentationAsync);
-        await ReleaseAsync(() => _presentation.DisposeAsync().AsTask());
-        await ReleaseAsync(() => _updateStateAsync(false, null));
-        if (errors is not null) throw new AggregateException(errors);
-
-        async Task ReleaseAsync(Func<Task> release)
-        {
-            try { await release(); }
-            catch (Exception error) { (errors ??= []).Add(error); }
-        }
+        cleanup.Run(_presentation.Presenters.CompleteInitialPresentation);
+        await cleanup.RunAsync(() => _engine.DisposeAsync());
+        await cleanup.RunAsync(() => new(_presentation.Restorer.SuspendAsync(CancellationToken.None)));
+        await cleanup.RunAsync(() => new(_stateUpdate));
+        await cleanup.RunAsync(() => new(_resetPresentationAsync()));
+        await cleanup.RunAsync(() => _presentation.DisposeAsync());
+        await cleanup.RunAsync(() => new(_updateStateAsync(false, null)));
+        cleanup.ThrowIfFailed();
     }
 
     private async Task CompleteOpeningPresentationAsync()

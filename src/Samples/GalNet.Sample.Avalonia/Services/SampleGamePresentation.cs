@@ -96,26 +96,19 @@ internal sealed class SampleGamePresentation : IAsyncDisposable, ICatchUpPresent
 
     private async Task DisposeCoreAsync()
     {
-        List<Exception>? errors = null;
+        var cleanup = new SampleCleanup();
         // Implementations borrow platform ports, so release the view first.
-        await ReleaseAsync(() => Restorer?.DisposeAsync() ?? ValueTask.CompletedTask);
-        await ReleaseAsync(() => View?.DisposeAsync() ?? ValueTask.CompletedTask);
-        await ReleaseAsync(() => Video?.DisposeAsync() ?? ValueTask.CompletedTask);
-        await ReleaseAsync(() => Audio?.DisposeAsync() ?? ValueTask.CompletedTask);
-        await ReleaseAsync(() =>
+        await cleanup.RunAsync(() => Restorer?.DisposeAsync() ?? ValueTask.CompletedTask);
+        await cleanup.RunAsync(() => View?.DisposeAsync() ?? ValueTask.CompletedTask);
+        await cleanup.RunAsync(() => Video?.DisposeAsync() ?? ValueTask.CompletedTask);
+        await cleanup.RunAsync(() => Audio?.DisposeAsync() ?? ValueTask.CompletedTask);
+        cleanup.Run(() =>
         {
             if (Effects is not null) Effects.Dispose(); // owns the program resolver
             else _programs?.Dispose();
-            return ValueTask.CompletedTask;
         });
-        await ReleaseAsync(() => { Presenters?.Dispose(); return ValueTask.CompletedTask; });
-        await ReleaseAsync(() => { _layers?.Dispose(); return ValueTask.CompletedTask; });
-        if (errors is not null) throw new AggregateException(errors);
-
-        async Task ReleaseAsync(Func<ValueTask> release)
-        {
-            try { await release(); }
-            catch (Exception error) { (errors ??= []).Add(error); }
-        }
+        cleanup.Run(() => Presenters?.Dispose());
+        cleanup.Run(() => _layers?.Dispose());
+        cleanup.ThrowIfFailed();
     }
 }

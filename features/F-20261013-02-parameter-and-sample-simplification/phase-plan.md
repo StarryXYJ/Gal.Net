@@ -9,7 +9,7 @@
 | 顺序 | 状态 | 工作 | 退出条件 |
 | --- | --- | --- | --- |
 | 验证基线 | verified，见 phase-4b-baseline.md | 两项设置用例在真实 UI pump 中运行，业务断言不变 | 完整 Integration 101/101 通过，无排除用例 |
-| 4b2 | planned，下一批 | Session 清理不短路，审查 Runner/Presentation 释放边界 | 故障注入证明独立清理全部尝试、顺序和所有权正确、全部错误可观察 |
+| 4b2 | verified，见 phase-4b2.md | Session/Runner/Presentation 与下属资源不短路 | 故障注入、完整 Integration 104 和 Architecture 37 通过 |
 | 4b3 | planned，依赖明确的文本行为基线 | Dialogue/NVL 共用文本推进状态机 | 两个实例共用状态机，模式/skip/失败规则不变，含公共实现的整体维护成本降低 |
 | 6 | planned，完成实际实施批次后 | 作者路径/收益复核、必要回归、文档与 feature 收尾 | 已实施范围验证完整；候选明确实施或暂缓；summary/review 与事实一致 |
 
@@ -151,7 +151,7 @@
 
 ### Phase 4b2：清理失败后继续释放
 
-状态：planned；下一批。依赖 4b1 已验证的生命周期边界；涉及 SampleGameSessionService、SampleGameRunner、SampleGamePresentation 和必要的集成测试。相对工作量：小～中。
+状态：verified，见 [phase-4b2.md](phase-4b2.md)。依赖 4b1 已验证的生命周期边界；涉及 SampleGameSessionService、SampleGameRunner、SampleGamePresentation、SaveSession/ResourceScope 和必要的集成测试。相对工作量：小～中。
 
 - 现状：Session.DisposeAsync 的 finally 内串行 await DisposeRunnerAsync 和 settings.FlushAsync；任一步失败会阻止后续 save session/resource scope 释放。Runner/Presentation 已有继续清理并聚合异常的局部方法，但聚合区之前的操作仍需审查。
 - 目标/任务：保持显式顺序，确保独立清理全部尝试；完整保留 Stop、flush、backend 和 resource 失败，不由 finally 覆盖先前错误。资源引用按实际所有权摘除，重复释放不再重复释放后端。先复用已有局部模式；只有多处稳定重复且更清晰时才抽取小型清理工具，不引入通用 Runner/资源框架。

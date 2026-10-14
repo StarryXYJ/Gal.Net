@@ -15,7 +15,7 @@ internal sealed class SampleSaveSession : IDisposable
     private readonly FileSaveService _saves;
     private bool _disposed;
 
-    private SampleSaveSession(
+    internal SampleSaveSession(
         FileSaveService saves,
         PlayerVariableService variables,
         FileGameProgressService progress,
@@ -42,13 +42,12 @@ internal sealed class SampleSaveSession : IDisposable
         CancellationToken cancellationToken, GalNet.Core.Assets.IAssetFileMaterializer? files = null)
     {
         var saves = new FileSaveService(profileDirectory);
-        var variables = await PlayerVariableService.CreateAsync(
-            new FilePlayerVariableStore(profileDirectory),
-            cancellationToken);
-        variables.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(content.Gallery));
+        PlayerVariableService? variables = null;
         IGalleryResourceResolver? galleryResources = null;
         try
         {
+            variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(profileDirectory), cancellationToken);
+            variables.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(content.Gallery));
             galleryResources = await AssetGalleryResourceResolver.CreateAsync(
                 assets,
                 content.Gallery,
@@ -60,9 +59,13 @@ internal sealed class SampleSaveSession : IDisposable
                 new GalleryDataSource(content.Gallery, variables),
                 galleryResources);
         }
-        catch
+        catch (Exception error)
         {
-            (galleryResources as IDisposable)?.Dispose();
+            var cleanup = new SampleCleanup();
+            cleanup.Run(() => (galleryResources as IDisposable)?.Dispose());
+            cleanup.Run(() => variables?.Dispose());
+            cleanup.Run(saves.Dispose);
+            cleanup.ThrowIfFailed(error);
             throw;
         }
     }
@@ -91,12 +94,11 @@ internal sealed class SampleSaveSession : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        (GalleryResources as IDisposable)?.Dispose();
-        try { Progress.Dispose(); }
-        finally
-        {
-            try { Variables.Dispose(); }
-            finally { _saves.Dispose(); }
-        }
+        var cleanup = new SampleCleanup();
+        cleanup.Run(() => (GalleryResources as IDisposable)?.Dispose());
+        cleanup.Run(Progress.Dispose);
+        cleanup.Run(Variables.Dispose);
+        cleanup.Run(_saves.Dispose);
+        cleanup.ThrowIfFailed();
     }
 }

@@ -266,6 +266,8 @@ var export = PrimitiveImplementation.Async<ExportOptions>("project.export",
 
 模块需要拥有后台操作时可组合 `PrimitiveTaskScope`：`Run(token => operation)` 只登记已运行任务，完成即移除；Dispose 启动取消，DisposeAsync 等待操作和清理、聚合保留的错误，重复释放等待同一任务。业务需要同时遵守 Engine scope 时仍应链接两个 token；scope 不拥有 presenter 或其他平台资源。释放时传播还是记录错误由模块明确选择。截图模块是实际示例。
 
+Sample 的 Session、Runner、Presentation 与下属存档/资源 scope 按明确顺序尝试全部独立清理，最后聚合错误；某项 flush 或后端释放失败不会阻止其余资源释放。Session 重复异步关闭等待同一任务并保留失败结果。Engine 先于 view/backend 释放，页面/NVL 重置早于 presentation 释放；内部 SampleCleanup 只收集错误，不拥有资源或推断顺序。
+
 多阶段交互、视频或动画可以直接继承 `PrimitiveInstance`，保留自身推进/资源规则。不要用未经观察异常的 `async void`。创建实例时原样传入 `context.BatchId`，`OnSkip` 必须幂等且只处理自己的资源。non-blocking 原语应先提交可存档状态，再启动展示。
 
 ### 3. 在游戏组合根独立注册

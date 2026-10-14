@@ -65,10 +65,12 @@ internal sealed class SampleGameResourceScope : IDisposable
                 preloadedTextures,
                 effectPrograms);
         }
-        catch
+        catch (Exception error)
         {
-            foreach (var handle in preloadedTextures.Values) handle.Dispose();
-            assets.Dispose();
+            var cleanup = new SampleCleanup();
+            foreach (var handle in preloadedTextures.Values) cleanup.Run(handle.Dispose);
+            cleanup.Run(assets.Dispose);
+            cleanup.ThrowIfFailed(error);
             throw;
         }
     }
@@ -77,9 +79,11 @@ internal sealed class SampleGameResourceScope : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        foreach (var handle in _preloadedTextures.Values) handle.Dispose();
+        var cleanup = new SampleCleanup();
+        foreach (var handle in _preloadedTextures.Values) cleanup.Run(handle.Dispose);
         _preloadedTextures.Clear();
-        MediaFiles.Dispose();
-        Assets.Dispose();
+        cleanup.Run(MediaFiles.Dispose);
+        cleanup.Run(Assets.Dispose);
+        cleanup.ThrowIfFailed();
     }
 }
