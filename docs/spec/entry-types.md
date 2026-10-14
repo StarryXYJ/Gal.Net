@@ -22,6 +22,10 @@
 
 dialogue.text、nvl.append、layer.hide/replace、animation.stop、audio.seffect.stop、video.stop、effect.stop、particle.stop、variable.set 和 gallery.unlock 已采用 DTO 参数与强类型执行读取；effect.stop/particle.stop 共用 InstanceIdOptions。对白/NVL 保留 reading 标记与独立实例；Gallery 的正整数和 catalog 检查仍在原执行边界。Editor 含专属字符串编辑提示的 DTO 保留补全、多行文本、资源选择和表达式控件投影，普通字段仍使用共享 binding，不另维护参数表。
 
+其余带参数的内置 Primitive 也采用 DTO：layer.show/showColor/move、animation.animate/play、audio.play/enqueue/seffect.apply、video.play、effect.apply、particle.play/burst。audio.play/enqueue 共用 AudioPlayOptions，enqueue 仍显式选择 Enqueue 策略。嵌套 JSON 字段保留 JsonElement 与原解析规则；固定标量、布尔和枚举使用强类型属性。动画 from 的省略由规范化参数 presence 判断，batchId 仍由编译信封提取；快照/重放与复杂实例生命周期未改变。
+
+DynamicParameterTable 的 ValidatePartialArguments 用于尚未补默认值的局部作者参数；可选回调省略时沿用完整 validator。ForDto<T> 可显式提供 validatePartialArguments；字段自身校验照常执行，Normalize 的完整业务校验仍使用 ValidateArguments。内置视频/粒子/动画计划将完整业务规则保留在编译/执行边界，逐字段创作不要求其他尚未填写的字段。
+
 Field.DefaultJson 声明经值 codec 校验的 JSON 默认，不能与属性初始化值同时声明；Choices 提供固定合法选项。StringBooleanValueConverter / StringEnumValueConverter 通过 IStringValueEncoding 保留字符串 wire 类型、选项及编辑文本，同时提供强类型成员；普通 converter 行为不改变。audio.stop 已用 AudioStopOptions，clearQueue 保持字符串 true/false 与显式 null 的旧行为。DefaultCompositeEntryBase.ForDto<T> 提供类型化编译展开，共用 ValueCodec.DeserializeFields，源 JSON 保留 null/presence，输出仍通过目标 primitive 契约规范化。
 
 ## Entry Module

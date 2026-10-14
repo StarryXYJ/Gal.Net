@@ -52,8 +52,8 @@ public sealed class BuiltinAudioModule : PrimitiveModule
 
     private static IReadOnlyList<PrimitiveImplementation> CreatePrimitives(AudioRuntime runtime, AudioScope scope) =>
     [
-        BuiltinInstructionFactory.Create<PlayAudioEntry>(context => Playback(context, runtime, scope,
-            Arguments.Enum(context, "placement", AudioPlacement.Enqueue))),
+        PrimitiveImplementation.For<AudioPlayOptions>(PlayAudioEntry.TypeId, (context, options) => Playback(context, runtime, scope,
+            options, options.Placement ?? AudioPlacement.Enqueue)),
         PrimitiveImplementation.For<AudioStopOptions>(StopAudioEntry.TypeId, (context, options) => Audio(context, scope, () =>
             runtime.Stop(Tracks(context), new AudioStopRequest(
                 options.TrackId ?? "", options.ClearQueue ?? true, options.FadeOut)))),
@@ -61,27 +61,26 @@ public sealed class BuiltinAudioModule : PrimitiveModule
         Track(ResumeAudioEntry.TypeId, scope, (context, track) => runtime.Resume(Tracks(context), track)),
         Track(NextAudioEntry.TypeId, scope, (context, track) => runtime.Next(Tracks(context), track)),
         Track(ClearAudioEntry.TypeId, scope, (context, track) => runtime.Clear(Tracks(context), track)),
-        BuiltinInstructionFactory.Create<EnqueueAudioEntry>(context => Playback(context, runtime, scope, AudioPlacement.Enqueue)),
-        BuiltinInstructionFactory.Create<ApplyAudioSEffectEntry>(context => Audio(context, scope, () =>
+        PrimitiveImplementation.For<AudioPlayOptions>(EnqueueAudioEntry.TypeId, (context, options) => Playback(context, runtime, scope, options, AudioPlacement.Enqueue)),
+        PrimitiveImplementation.For<AudioSEffectOptions>(ApplyAudioSEffectEntry.TypeId, (context, options) => Audio(context, scope, () =>
             runtime.ApplySEffect(Tracks(context), new AudioSEffectRequest(
-                Arguments.String(context, "trackId"), Arguments.String(context, "instanceId"),
-                Arguments.String(context, "id"), Arguments.Json<JsonElement>(context, "parameters"))))),
+                options.TrackId ?? "", options.InstanceId ?? "",
+                options.Id ?? "", Arguments.Json<JsonElement>(options.Parameters))))),
         PrimitiveImplementation.For<AudioSEffectStopOptions>(StopAudioSEffectEntry.TypeId, (context, options) => Audio(context, scope, () =>
             runtime.StopSEffect(Tracks(context), options.TrackId ?? "", options.InstanceId ?? "")))
     ];
 
-    private static AudioPlayRequest PlayRequest(PrimitiveCreateContext context, AudioPlacement placement) => new(
-        Arguments.String(context, "trackId"), Arguments.String(context, "asset"), placement,
-        Arguments.Float(context, "gain", 1), Arguments.Float(context, "fadeIn"));
+    private static AudioPlayRequest PlayRequest(AudioPlayOptions options, AudioPlacement placement) => new(
+        options.TrackId ?? "", options.Asset ?? "", placement, options.Gain, options.FadeIn);
 
     private static AudioPlaybackPrimitiveInstance Playback(PrimitiveCreateContext context, AudioRuntime runtime,
-        AudioScope scope, AudioPlacement placement) => new(() =>
+        AudioScope scope, AudioPlayOptions options, AudioPlacement placement) => new(() =>
         {
             scope.Bind(context.ScopeCancellation);
             context.ScopeCancellation.ThrowIfCancellationRequested();
             runtime.ApplyPlayerSettings(context.Runtime.Settings.Get<GameSettings>());
-            return runtime.Play(Tracks(context), PlayRequest(context, placement));
-        }, Arguments.Bool(context, "autoBlocking"), context.BatchId, context.ScopeCancellation);
+            return runtime.Play(Tracks(context), PlayRequest(options, placement));
+        }, options.AutoBlocking ?? false, context.BatchId, context.ScopeCancellation);
 
     private static void OnDiagnostic(string message) => GameLog.Logger.Warning("Audio: {Diagnostic}", message);
 

@@ -8,23 +8,23 @@ namespace GalNet.Primitives.Builtins;
 
 internal static partial class BuiltinRuntimeActions
 {
-    public static AnimationRequest CreateAnimationRequest(PrimitiveCreateContext context)
+    public static AnimationRequest CreateAnimationRequest(AnimationOptions options, float? from)
     {
-        var curve = Arguments.Enum(context, "curve", BuiltinAnimationCurve.Linear);
+        var curve = options.Curve ?? BuiltinAnimationCurve.Linear;
         return new AnimationRequest
         {
-            PlaybackHandleId = Arguments.String(context, "playbackHandleId"),
-            HandleId = Arguments.String(context, "handleId"),
-            Property = Arguments.String(context, "property"),
-            From = Arguments.TryFloat(context, "from", out var from) ? from : null,
-            To = Arguments.Float(context, "to"),
-            DurationSeconds = Math.Max(0, Arguments.Float(context, "duration", 0.25f)),
+            PlaybackHandleId = options.PlaybackHandleId ?? "",
+            HandleId = options.HandleId ?? "",
+            Property = options.Property ?? "",
+            From = from,
+            To = options.To,
+            DurationSeconds = Math.Max(0, options.Duration),
             CurveKind = curve,
             Curve = AnimationCurves.Create(curve),
-            Blocking = Arguments.Bool(context, "blocking"),
-            Skippable = Arguments.Bool(context, "skippable"),
-            LoopMode = Arguments.Enum(context, "loopMode", AnimationLoopMode.Once),
-            BlendMode = Arguments.Enum(context, "blendMode", AnimationBlendMode.Replace)
+            Blocking = options.Blocking ?? false,
+            Skippable = options.Skippable ?? false,
+            LoopMode = options.LoopMode ?? AnimationLoopMode.Once,
+            BlendMode = options.BlendMode ?? AnimationBlendMode.Replace
         };
     }
 
@@ -48,9 +48,9 @@ internal static partial class BuiltinRuntimeActions
         };
     }
 
-    public static AnimationPlanDefinition CreateAnimationPlan(PrimitiveCreateContext context)
+    public static AnimationPlanDefinition CreateAnimationPlan(AnimationPlanOptions options)
     {
-        return Arguments.Json<AnimationPlanDefinition>(context, "plan")
+        return Arguments.Json<AnimationPlanDefinition>(options.Plan)
             ?? throw new InvalidDataException("animation.play requires a plan object.");
     }
 
@@ -62,25 +62,19 @@ internal static partial class BuiltinRuntimeActions
             ?? throw new InvalidDataException($"Persistent animation plan '{state.PlaybackHandleId}' is invalid.");
     }
 
-    public static EffectRequest CreateEffectRequest(PrimitiveCreateContext context) => new(
-        Arguments.String(context, "id"),
-        Arguments.String(context, "instanceId"),
-        Arguments.String(context, "targetHandleId"),
-        Arguments.Int(context, "order"),
-        Arguments.RawJson(context, "parameters", "{}"),
-        Arguments.String(context, "program"));
+    public static EffectRequest CreateEffectRequest(EffectApplyOptions options) => new(
+        options.Id ?? "", options.InstanceId ?? "", options.TargetHandleId ?? "", options.Order,
+        Arguments.RawJson(options.Parameters), options.Program ?? "");
 
-    public static ParticleEmitterRequest CreateParticleRequest(PrimitiveCreateContext context)
+    public static ParticleEmitterRequest CreateParticleRequest(ParticlePlayOptions options)
     {
-        var instanceId = Arguments.String(context, "instanceId");
-        var definition = ReadParticleDefinition(Arguments.RawJson(context, "parameters", "{}"), PlayParticleEmitterEntry.TypeId);
-        return new ParticleEmitterRequest(instanceId, definition, Arguments.Float(context, "z", 100));
+        var definition = ReadParticleDefinition(Arguments.RawJson(options.Parameters), PlayParticleEmitterEntry.TypeId);
+        return new ParticleEmitterRequest(options.InstanceId ?? "", definition, options.Z);
     }
 
-    public static ParticleBurstRequest CreateParticleBurstRequest(PrimitiveCreateContext context)
+    public static ParticleBurstRequest CreateParticleBurstRequest(ParticleBurstOptions options)
     {
-        var count = Arguments.Int(context, "count", 1);
-        var definition = ReadParticleDefinition(Arguments.RawJson(context, "parameters", "{}"), BurstParticlesEntry.TypeId) with { EmissionRate = 0 };
-        return new ParticleBurstRequest(definition, count, Arguments.Float(context, "z", 100));
+        var definition = ReadParticleDefinition(Arguments.RawJson(options.Parameters), BurstParticlesEntry.TypeId) with { EmissionRate = 0 };
+        return new ParticleBurstRequest(definition, options.Count, options.Z);
     }
 }

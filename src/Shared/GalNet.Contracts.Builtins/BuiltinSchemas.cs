@@ -42,50 +42,50 @@ public static class BuiltinSchemas
 
     public static IEntryModule CreateLayersModule() => new DefaultEntryModule("layers",
     [
-        Schema<ShowLayerEntry>(ShowLayerEntry.ParameterTypes, ShowLayerEntry.DefaultValues, ShowLayerEntry.ParameterOptions),
-        Schema<ShowColorLayerEntry>(ShowColorLayerEntry.ParameterTypes, ShowColorLayerEntry.DefaultValues),
+        DefaultPrimitiveEntryBase.ForDto<LayerShowOptions>(ShowLayerEntry.TypeId),
+        DefaultPrimitiveEntryBase.ForDto<LayerColorOptions>(ShowColorLayerEntry.TypeId),
         DefaultPrimitiveEntryBase.ForDto<LayerHandleOptions>(HideLayerEntry.TypeId),
-        Schema<MoveLayerEntry>(MoveLayerEntry.ParameterTypes, MoveLayerEntry.DefaultValues),
+        DefaultPrimitiveEntryBase.ForDto<LayerMoveOptions>(MoveLayerEntry.TypeId),
         DefaultPrimitiveEntryBase.ForDto<LayerReplaceOptions>(ReplaceLayerEntry.TypeId)
     ]);
 
     public static IEntryModule CreateAnimationsModule() => new DefaultEntryModule("animations",
     [
-        Schema<AnimateEntry>(AnimateEntry.ParameterTypes, AnimateEntry.DefaultValues, AnimateEntry.ParameterOptions),
-        Schema<PlayAnimationPlanEntry>(PlayAnimationPlanEntry.ParameterTypes, null),
+        DefaultPrimitiveEntryBase.ForDto<AnimationOptions>(AnimateEntry.TypeId),
+        DefaultPrimitiveEntryBase.ForDto<AnimationPlanOptions>(PlayAnimationPlanEntry.TypeId, arguments => BuiltinArgumentValidation.Validate(PlayAnimationPlanEntry.TypeId, arguments), validatePartialArguments: static _ => { }),
         DefaultPrimitiveEntryBase.ForDto<AnimationStopOptions>(StopAnimationEntry.TypeId)
     ]);
 
     public static IEntryModule CreateAudioModule() => new DefaultEntryModule("audio",
     [
-        Schema<PlayAudioEntry>(PlayAudioEntry.ParameterTypes, PlayAudioEntry.DefaultValues, PlayAudioEntry.ParameterOptions),
+        DefaultPrimitiveEntryBase.ForDto<AudioPlayOptions>(PlayAudioEntry.TypeId),
         DefaultPrimitiveEntryBase.ForDto<AudioStopOptions>(StopAudioEntry.TypeId),
         DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(PauseAudioEntry.TypeId),
         DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(ResumeAudioEntry.TypeId),
         DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(NextAudioEntry.TypeId),
         DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(ClearAudioEntry.TypeId),
-        Schema<EnqueueAudioEntry>(EnqueueAudioEntry.ParameterTypes, EnqueueAudioEntry.DefaultValues, EnqueueAudioEntry.ParameterOptions),
-        Schema<ApplyAudioSEffectEntry>(ApplyAudioSEffectEntry.ParameterTypes, ApplyAudioSEffectEntry.DefaultValues),
+        DefaultPrimitiveEntryBase.ForDto<AudioPlayOptions>(EnqueueAudioEntry.TypeId),
+        DefaultPrimitiveEntryBase.ForDto<AudioSEffectOptions>(ApplyAudioSEffectEntry.TypeId),
         DefaultPrimitiveEntryBase.ForDto<AudioSEffectStopOptions>(StopAudioSEffectEntry.TypeId)
     ]);
 
     public static IEntryModule CreateVideoModule() => new DefaultEntryModule("video",
     [
-        Schema<PlayVideoEntry>(PlayVideoEntry.ParameterTypes, PlayVideoEntry.DefaultValues, PlayVideoEntry.ParameterOptions),
+        DefaultPrimitiveEntryBase.ForDto<VideoPlayOptions>(PlayVideoEntry.TypeId, arguments => BuiltinArgumentValidation.Validate(PlayVideoEntry.TypeId, arguments), validatePartialArguments: static _ => { }),
         DefaultPrimitiveEntryBase.ForDto<VideoStopOptions>(StopVideoEntry.TypeId)
     ]);
 
     public static IEntryModule CreateEffectsModule() => new DefaultEntryModule("effects",
     [
-        Schema<ApplyEffectEntry>(ApplyEffectEntry.ParameterTypes, ApplyEffectEntry.DefaultValues),
+        DefaultPrimitiveEntryBase.ForDto<EffectApplyOptions>(ApplyEffectEntry.TypeId),
         DefaultPrimitiveEntryBase.ForDto<InstanceIdOptions>(StopEffectEntry.TypeId)
     ]);
 
     public static IEntryModule CreateParticlesModule() => new DefaultEntryModule("particles",
     [
-        Schema<PlayParticleEmitterEntry>(PlayParticleEmitterEntry.ParameterTypes, PlayParticleEmitterEntry.DefaultValues),
+        DefaultPrimitiveEntryBase.ForDto<ParticlePlayOptions>(PlayParticleEmitterEntry.TypeId, arguments => BuiltinArgumentValidation.Validate(PlayParticleEmitterEntry.TypeId, arguments), validatePartialArguments: static _ => { }),
         DefaultPrimitiveEntryBase.ForDto<InstanceIdOptions>(StopParticleEmitterEntry.TypeId),
-        Schema<BurstParticlesEntry>(BurstParticlesEntry.ParameterTypes, BurstParticlesEntry.DefaultValues)
+        DefaultPrimitiveEntryBase.ForDto<ParticleBurstOptions>(BurstParticlesEntry.TypeId, arguments => BuiltinArgumentValidation.Validate(BurstParticlesEntry.TypeId, arguments), validatePartialArguments: static _ => { })
     ]);
 
     public static IEntryModule CreateFlowModule() => new DefaultEntryModule("flow",

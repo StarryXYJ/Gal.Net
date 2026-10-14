@@ -11,6 +11,26 @@ namespace GeneralTest.Entry;
 public sealed class DtoExecutionTests
 {
     [Test]
+    public void ExplicitStringCodecDescribesStringTypeAndChoicesInsteadOfAnOpaqueSchema()
+    {
+        var value = new ValueDescriptor(typeof(string), allowNull: true,
+            jsonOptions: new JsonSerializerOptions { Converters = { new NamedStringConverter() } });
+        var schema = ValueCodec.Describe(value).GetProperty("anyOf")[0];
+        Assert.That(schema.GetProperty("allOf")[0].GetProperty("type").EnumerateArray().Select(item => item.GetString()),
+            Is.EquivalentTo(new[] { "string", "null" }));
+        Assert.That(schema.GetProperty("enum")[0].GetString(), Is.EqualTo("first"));
+        Assert.That(ValueCodec.Deserialize(value, JsonSerializer.SerializeToElement("first")), Is.EqualTo("first"));
+        Assert.That(ValueValidation.Validate(value, JsonSerializer.SerializeToElement(42)), Is.Not.Null);
+    }
+
+    private sealed class NamedStringConverter : JsonConverter<string>, IStringValueEncoding
+    {
+        public IReadOnlyList<string> Choices { get; } = Array.AsReadOnly(new[] { "first" });
+        public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => reader.GetString();
+        public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options) => writer.WriteStringValue(value);
+    }
+
+    [Test]
     public void StringBooleanKeepsWireChoicesAndEditorTextWhileReadingStrongType()
     {
         var value = new ValueDescriptor(typeof(bool?), allowNull: true,

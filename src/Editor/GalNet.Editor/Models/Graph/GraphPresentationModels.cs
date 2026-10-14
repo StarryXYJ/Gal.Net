@@ -353,7 +353,7 @@ public partial class EntryEditorItemViewModel : ObservableObject
         try
         {
             if (_formParameters is { } parameters)
-                parameters.ValidateArguments(JsonSerializer.SerializeToElement(updated.ToDictionary(pair => pair.Key,
+                parameters.ValidatePartialArguments(JsonSerializer.SerializeToElement(updated.ToDictionary(pair => pair.Key,
                     pair => ValueCodec.ParseEditorText(parameters[pair.Key].Value, pair.Value))));
         }
         catch (Exception exception) when (exception is ArgumentException or JsonException)

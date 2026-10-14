@@ -59,7 +59,9 @@ public static class ValueCodec
 
     public static JsonElement Describe(ValueDescriptor descriptor, string? referencePrefix = null)
     {
-        var exported = descriptor.JsonOptions.GetJsonSchemaAsNode(descriptor.IsStringEncoded ? typeof(string) : descriptor.ValueType);
+        var schemaOptions = descriptor.JsonOptions.Converters.Any(converter => converter is IStringValueEncoding && converter.CanConvert(typeof(string)))
+            ? JsonSerializerOptions.Default : descriptor.JsonOptions;
+        var exported = schemaOptions.GetJsonSchemaAsNode(descriptor.IsStringEncoded ? typeof(string) : descriptor.ValueType);
         var prefix = referencePrefix ?? "#";
         RebaseReferences(exported, prefix + (descriptor.AllowNull ? "/anyOf/0/allOf/0" : "/allOf/0"));
         // Root rules must not alter the nullability or constraints of recursively referenced child types.

@@ -84,9 +84,10 @@ public abstract class PrimitiveEntryBase : EntryBase
 /// <summary>A data-only primitive definition.</summary>
 public sealed class DefaultPrimitiveEntryBase : PrimitiveEntryBase
 {
-    public static DefaultPrimitiveEntryBase ForDto<T>(string name, Action<JsonElement>? validateArguments = null, string? category = null)
+    public static DefaultPrimitiveEntryBase ForDto<T>(string name, Action<JsonElement>? validateArguments = null, string? category = null,
+        Action<JsonElement>? validatePartialArguments = null)
         where T : IFieldDto, IFieldSchema<T>, new() => new(name,
-            new DynamicParameterTable(T.Schema.Select(descriptor => new DynamicParameterDescriptor(descriptor)), validateArguments), category)
+            new DynamicParameterTable(T.Schema.Select(descriptor => new DynamicParameterDescriptor(descriptor)), validateArguments, validatePartialArguments), category)
         { FieldDataType = typeof(T) };
 
     public DefaultPrimitiveEntryBase(

@@ -39,7 +39,7 @@
 
 ## 当前工作
 
-- [F-20261013-02 参数与 Sample 简化](../features/F-20261013-02-parameter-and-sample-simplification/phase-4.md)：Phase 0/1/2a/2b/2c/2d/2e/3/4 已验证。共享 SchemaForm、开放工厂 registry 与 FieldEditorLease 位于 Avalonia.Controls；宿主拥有绑定/服务，主题显式贡献模板/工厂。Phase 2b 的 290 项回归及示例契约部署/编译通过；最小 Editor/Sample 正式适配经 241 项回归验证；DTO 特性生成、中立成员访问、公共 DtoBinding 与截图试点经 348 项回归验证；强类型执行 For<T> 与 Editor 文档直接绑定经 344 项回归和实际 CLI 编译验证；FieldDataFactory 已由 FieldDataType 替代，不再维护 Editor DTO 副本。SampleCustomization 已集中平台服务/主题/本地化/字段工厂/资源策略/执行注册；游戏双方从唯一 ProjectSchemas.Modules 经 CreateCatalog 构造契约。Phase 3 经 97 项定向回归、独立契约部署与实际 CLI 编译验证；Sample 保留不同生命周期服务，删除初始化 catalog 状态和重复 restorer 引用。Phase 4 新增 Immediate / Immediate<T> 同步工厂，内置轨道控制共用 AudioTrackOptions，flow.wait 使用 WaitOptions；迁移字段不再维护旧 ParameterTypes/Defaults。307 个不重复用例及五条 CLI 描述迁移前后对照通过，Contracts.Builtins 的 generator 仅为构建期 Analyzer。Phase 5a 已补齐 JSON 默认、字符串 bool/enum 与 typed Composite 基础，456 项回归及 CLI 对照通过；Phase 5b 已迁移 11 条简单 Primitive，235 项回归与 11 条 CLI schema 对照通过，Editor 专属控件继续消费唯一 DTO schema；全量 Entry DTO 按 5c–5d 继续，异步/清理仍待 Phase 4b，Core 领域/快照重构暂缓。
+- [F-20261013-02 参数与 Sample 简化](../features/F-20261013-02-parameter-and-sample-simplification/phase-4.md)：Phase 0/1/2a/2b/2c/2d/2e/3/4 已验证。共享 SchemaForm、开放工厂 registry 与 FieldEditorLease 位于 Avalonia.Controls；宿主拥有绑定/服务，主题显式贡献模板/工厂。Phase 2b 的 290 项回归及示例契约部署/编译通过；最小 Editor/Sample 正式适配经 241 项回归验证；DTO 特性生成、中立成员访问、公共 DtoBinding 与截图试点经 348 项回归验证；强类型执行 For<T> 与 Editor 文档直接绑定经 344 项回归和实际 CLI 编译验证；FieldDataFactory 已由 FieldDataType 替代，不再维护 Editor DTO 副本。SampleCustomization 已集中平台服务/主题/本地化/字段工厂/资源策略/执行注册；游戏双方从唯一 ProjectSchemas.Modules 经 CreateCatalog 构造契约。Phase 3 经 97 项定向回归、独立契约部署与实际 CLI 编译验证；Sample 保留不同生命周期服务，删除初始化 catalog 状态和重复 restorer 引用。Phase 4 新增 Immediate / Immediate<T> 同步工厂，内置轨道控制共用 AudioTrackOptions，flow.wait 使用 WaitOptions；迁移字段不再维护旧 ParameterTypes/Defaults。307 个不重复用例及五条 CLI 描述迁移前后对照通过，Contracts.Builtins 的 generator 仅为构建期 Analyzer。Phase 5a 已补齐 JSON 默认、字符串 bool/enum 与 typed Composite 基础，456 项回归及 CLI 对照通过；Phase 5b 已迁移 11 条简单 Primitive，235 项回归与 11 条 CLI schema 对照通过，Editor 专属控件继续消费唯一 DTO schema；Phase 5c 已迁移剩余 12 条复杂 Primitive，338 项回归和 12 条 CLI schema 对照通过；普通执行参数 reader 已移除，嵌套 JSON 与快照保留原规则；局部作者校验通过显式 partial 回调与完整指令校验分离。剩余 8 条 Composite 和旧壳由 5d 继续，异步/清理仍待 Phase 4b，Core 领域/快照重构暂缓。
 
 - [F-20261013-01-editor-cli-operations](../features/F-20261013-01-editor-cli-operations/summary.md) 已实现独立内置/项目契约、项目 scope catalog、面向 agent 的 CLI 原始查询/校验/单 Group 编译、共享生命周期与无损保存、Windows 回收站和单平台截图样例；Phase 1–7 已验证并提交；审核与当前边界见 summary/review。CLI 发现使用 help --json，不保留旧别名或默认内置 fallback。契约是可信 C# 代码，动态加载不构成沙箱。
 
@@ -68,6 +68,10 @@
 4. 如果项目架构变化，检查并标记受影响的 lesson 和 skill，而不是继续沿用旧规则。
 
 ## 经验索引
+
+- [显式字符串 codec schema](lessons/L-20261014-08-string-codec-schema.md)：STJ 的自定义 string converter 导出不透明 schema；marker 已承诺 wire 类型时显式保留字符串描述。
+
+- [局部 Entry 校验与完整指令校验](lessons/L-20261014-07-partial-entry-validation.md)：完整 validator 依赖 Normalize 的默认/必备字段，逐字段创作使用显式 partial 回调，编译检查仍保留。
 
 - [DTO 保留专属 Entry 编辑器](lessons/L-20261014-05-dto-keeps-dedicated-entry-editors.md)：FieldDataType 不代表所有字段都有共享工厂，补全、资源及表达式控件继续消费唯一 schema。
 

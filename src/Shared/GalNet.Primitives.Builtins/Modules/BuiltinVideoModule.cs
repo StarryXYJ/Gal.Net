@@ -10,7 +10,7 @@ public sealed class BuiltinVideoModule : PrimitiveModule
 {
     public BuiltinVideoModule(IVideoPresenter? presenter = null) : base(
     [
-        BuiltinInstructionFactory.Create<PlayVideoEntry>(context => CreatePlay(context, presenter)),
+        PrimitiveImplementation.For<VideoPlayOptions>(PlayVideoEntry.TypeId, (context, options) => CreatePlay(context, presenter, options)),
         PrimitiveImplementation.Immediate<VideoStopOptions>(StopVideoEntry.TypeId, (context, options) =>
             {
                 var handleId = options.HandleId ?? "";
@@ -21,17 +21,16 @@ public sealed class BuiltinVideoModule : PrimitiveModule
     ])
     { }
 
-    private static VideoPrimitiveInstance CreatePlay(PrimitiveCreateContext context, IVideoPresenter? presenter)
+    private static VideoPrimitiveInstance CreatePlay(PrimitiveCreateContext context, IVideoPresenter? presenter, VideoPlayOptions options)
     {
-        var points = Arguments.Json<double[]>(context, "skipPoints") ?? [];
-        var handleId = Arguments.String(context, "handleId");
-        var asset = Arguments.String(context, "asset");
+        var points = Arguments.Json<double[]>(options.SkipPoints) ?? [];
+        var handleId = options.HandleId ?? "";
+        var asset = options.Asset ?? "";
         var layer = new LayerRenderRequest(handleId, asset,
-            Arguments.Json<LayerTransform>(context, "transform") ?? new LayerTransform(),
-            Arguments.Float(context, "z"), Arguments.Enum(context, "displayMode", LayerDisplayMode.Uniform),
-            Arguments.Float(context, "opacity", 1));
+            Arguments.Json<LayerTransform>(options.Transform) ?? new LayerTransform(),
+            options.Z, options.DisplayMode ?? LayerDisplayMode.Uniform, options.Opacity);
         return new VideoPrimitiveInstance(context.Runtime, presenter,
             new VideoRenderRequest(Guid.NewGuid().ToString("N"), layer, points),
-            Arguments.Bool(context, "blocking"), context.BatchId, context.ScopeCancellation);
+            options.Blocking ?? false, context.BatchId, context.ScopeCancellation);
     }
 }

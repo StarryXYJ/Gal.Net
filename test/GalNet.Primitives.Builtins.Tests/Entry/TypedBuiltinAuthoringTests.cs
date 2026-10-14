@@ -15,6 +15,29 @@ namespace GeneralTest.Entry;
 
 public sealed class TypedBuiltinAuthoringTests
 {
+    [Test]
+    public void ComplexDtoDefaultsChoicesAndOpenPayloadKeepTheirWireContract()
+    {
+        var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
+        var audio = Compile(catalog, "audio.play", new { placement = "replaceIfDifferent", autoBlocking = (string?)null }).Arguments;
+        var options = GalNet.Core.Parameters.ValueCodec.DeserializeFields<AudioPlayOptions>(AudioPlayOptions.Schema, audio);
+        Assert.That(options.Placement, Is.EqualTo(AudioPlacement.ReplaceIfDifferent));
+        Assert.That(options.AutoBlocking, Is.Null);
+        Assert.That(options.Gain, Is.EqualTo(1));
+        Assert.That(() => Compile(catalog, "audio.play", new { placement = "ReplaceIfDifferent" }), Throws.TypeOf<InvalidDataException>());
+        var effect = Compile(catalog, "effect.apply", new { parameters = new { projectData = new[] { 1, 2 }, nested = new { arbitrary = true } } }).Arguments;
+        var effectOptions = GalNet.Core.Parameters.ValueCodec.DeserializeFields<EffectApplyOptions>(EffectApplyOptions.Schema, effect);
+        Assert.That(effectOptions.Parameters.GetProperty("nested").GetProperty("arbitrary").GetBoolean(), Is.True);
+        Assert.That(Compile(catalog, "layer.show", new { }).Arguments.GetProperty("transform").GetRawText(), Is.EqualTo("{}"));
+        Assert.That(() => Compile(catalog, "layer.move", new { duration = -1 }), Throws.TypeOf<InvalidDataException>());
+        Assert.That(() => Compile(catalog, "particle.burst", new { count = 0 }), Throws.TypeOf<InvalidDataException>());
+        Assert.That(() => Compile(catalog, "video.play", new { asset = "movie", skipPoints = new[] { 2, 1 } }), Throws.TypeOf<InvalidDataException>());
+        var choices = catalog.Get("animation.animate").DynamicParameters!["property"];
+        Assert.That(choices.TryGetConstraint("options", out var properties), Is.True);
+        Assert.That(properties.EnumerateArray().Select(value => value.GetString()), Is.EqualTo(GalNet.Core.Scene.Layer.AnimationProperties
+            .Concat(GalNet.Core.Scene.ParticleEmitterInstance.AnimationProperties).Select(property => property.Name).Distinct(StringComparer.Ordinal)));
+    }
+
     [TestCase("animation.stop", "playbackHandleId")]
     [TestCase("audio.seffect.stop", "instanceId")]
     [TestCase("dialogue.text", "content")]

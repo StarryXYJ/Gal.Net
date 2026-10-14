@@ -163,6 +163,8 @@ SchemaForm 只需要字段列表和 IFieldBinding，不要求数据源是 DTO。
 
 Editor 对采用通用字段编辑器的 DTO 契约 Entry 使用整组 SchemaForm 和 EntryParameterFormBinding，直接读写作者参数字典，不实例化 DTO。省略与显式 null 保留在文档层；提交替换 Parameters，由既有 workspace 历史/保存链路观察。默认值仅用于展示，打开面板不写入文档；无效但可解析的 JSON 值仍可读取并修正。旧字符串作者文档无法无损表达的值（如显式 null 字符串）仍明确拒绝。含专属补全、多行文本、资源或表达式编辑提示的 DTO 使用已有逐字段控件投影，参数事实仍来自 DTO.Schema；手写契约继续支持。
 
+完整指令业务校验与逐字段编辑可以分开：ForDto<T> 的 validatePartialArguments 接收尚未完成、未补默认值的作者参数；不提供时沿用 validateArguments。依赖完整必备字段的校验可显式提供局部回调，字段自身类型/范围仍由 ValueValidation 验证，编译/执行始终调用完整校验。内置粒子、视频和动画计划采用此入口，避免必须同时填写多个字段才能提交第一个字段。
+
 执行模块可选择强类型入口，与契约使用相同 DTO：
 
 ```csharp

@@ -8,10 +8,10 @@ public sealed class BuiltinEffectModule : PrimitiveModule
 {
     public BuiltinEffectModule(IEffectPresenter? presenter = null) : base(
     [
-        BuiltinInstructionFactory.Create<ApplyEffectEntry>(context => new ApplyEffectPrimitiveInstance(
+        PrimitiveImplementation.For<EffectApplyOptions>(ApplyEffectEntry.TypeId, (context, options) => new ApplyEffectPrimitiveInstance(
                 context.Runtime,
                 presenter,
-                BuiltinRuntimeActions.CreateEffectRequest(context),
+                BuiltinRuntimeActions.CreateEffectRequest(options),
                 context.BatchId,
                 context.ScopeCancellation)),
         PrimitiveImplementation.For<InstanceIdOptions>(StopEffectEntry.TypeId, (context, options) => new StopEffectPrimitiveInstance(

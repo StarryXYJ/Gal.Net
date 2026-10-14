@@ -14,6 +14,54 @@ namespace GeneralTest.Runtime;
 
 public class BuiltinPrimitiveInstanceTests
 {
+    [TestCase(false)]
+    [TestCase(true)]
+    public void TypedLayerStillAcceptsObjectAndEmbeddedJsonTransform(bool embeddedJson)
+    {
+        var presenter = new RecordingLayerPresenter();
+        using var view = new GameRegistration().AddBuiltins(layerPresenter: presenter).BuildView();
+        var values = new Dictionary<string, object?>
+        {
+            ["handleId"] = "hero",
+            ["assetId"] = "portrait",
+            ["transform"] = embeddedJson ? (object)"{\"x\":12}" : new { x = 12 },
+            ["displayMode"] = null
+        };
+        var runtime = new GameRuntime(null);
+        var instance = view.Dispatch(Primitive(ShowLayerEntry.TypeId, values), runtime, default);
+        Assert.That(instance.IsCompleted, Is.True);
+        Assert.That(presenter.Shown.Single().Transform.X, Is.EqualTo(12));
+        Assert.That(presenter.Shown.Single().DisplayMode, Is.EqualTo(LayerDisplayMode.Native));
+        Assert.That(runtime.SceneState.Layers.Single().Transform.X, Is.EqualTo(12));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task TypedAnimationPreservesOmittedStartAndCompiledBatchEnvelope(bool provideStart)
+    {
+        var catalog = new TargetProfileEntryCatalog([BuiltinSchemas.CreateAnimationsModule()]);
+        var values = new Dictionary<string, JsonElement>
+        {
+            ["handleId"] = JsonSerializer.SerializeToElement("hero"),
+            ["property"] = JsonSerializer.SerializeToElement("opacity"),
+            ["to"] = JsonSerializer.SerializeToElement(.5f),
+            ["batchId"] = JsonSerializer.SerializeToElement("typed-batch")
+        };
+        if (provideStart) values["from"] = JsonSerializer.SerializeToElement(0f);
+        var compiled = GalNet.Core.Compilation.GalgroupCompiler.Compile(new GalNet.Core.Serialization.GroupDocument
+        { Entries = [new() { Id = "animate", Type = AnimateEntry.TypeId, Parameters = values }] }, catalog).Document.Entries.Single();
+        Assert.That(compiled.Arguments.TryGetProperty("batchId", out _), Is.False);
+        var presenter = new RecordingAnimationPresenter();
+        using var view = new GameRegistration().UseCatalog(catalog).AddBuiltinImplementations(catalog, animationPresenter: presenter).BuildView();
+        using var cancellation = new CancellationTokenSource();
+        var instance = view.Dispatch(new PrimitiveEntry(compiled.TypeId, compiled.Arguments, compiled.BatchId), new GameRuntime(null), cancellation.Token);
+        await WaitUntilAsync(() => presenter.Animations.Count == 1);
+        Assert.That(instance.BatchId, Is.EqualTo("typed-batch"));
+        Assert.That(presenter.Animations.Single().From, Is.EqualTo(provideStart ? 0f : (float?)null));
+        cancellation.Cancel();
+        await instance.PresentationCompletion;
+    }
+
     [TestCase(PrimitiveInvocationMode.Quick)]
     [TestCase(PrimitiveInvocationMode.CatchUp)]
     public void AdditiveAnimationDoesNotApplyTerminalDeltaTwice(PrimitiveInvocationMode mode)

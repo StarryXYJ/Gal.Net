@@ -6,9 +6,6 @@ public sealed class PlayAudioEntry : PrimitiveEntry
 {
     public const string TypeId = "audio.play";
     public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("trackId", EntryParameterType.Text), ("asset", EntryParameterType.AudioAsset), ("gain", EntryParameterType.Float), ("placement", EntryParameterType.Select), ("fadeIn", EntryParameterType.Float), ("autoBlocking", EntryParameterType.Select));
-    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("trackId", "bgm"), ("gain", "1"), ("placement", "enqueue"), ("fadeIn", "0"), ("autoBlocking", "false"));
-    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(("placement", ["enqueue", "next", "replace", "replaceAll", "replaceIfDifferent"]), ("autoBlocking", ["true", "false"]));
 }
 
 public sealed class StopAudioEntry : PrimitiveEntry
@@ -26,17 +23,12 @@ public sealed class EnqueueAudioEntry : PrimitiveEntry
 {
     public const string TypeId = "audio.enqueue";
     public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes => PlayAudioEntry.ParameterTypes;
-    public static IReadOnlyDictionary<string, string> DefaultValues => PlayAudioEntry.DefaultValues;
-    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions => PlayAudioEntry.ParameterOptions;
 }
 
 public sealed class ApplyAudioSEffectEntry : PrimitiveEntry
 {
     public const string TypeId = "audio.seffect.apply";
     public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("trackId", EntryParameterType.Text), ("instanceId", EntryParameterType.Text), ("id", EntryParameterType.Text), ("parameters", EntryParameterType.Json));
-    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("trackId", "bgm"), ("parameters", "{}"));
 }
 
 public sealed class StopAudioSEffectEntry : PrimitiveEntry
@@ -49,16 +41,6 @@ public sealed class PlayVideoEntry : PrimitiveEntry
 {
     public const string TypeId = "video.play";
     public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(
-        ("asset", EntryParameterType.VideoAsset), ("handleId", EntryParameterType.Text),
-        ("blocking", EntryParameterType.Select), ("skipPoints", EntryParameterType.Json),
-        ("transform", EntryParameterType.Json), ("z", EntryParameterType.Float),
-        ("opacity", EntryParameterType.Float), ("displayMode", EntryParameterType.Select));
-    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(
-        ("handleId", "video"), ("blocking", "true"), ("skipPoints", "[]"), ("transform", "{}"),
-        ("z", "0"), ("opacity", "1"), ("displayMode", "Uniform"));
-    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(
-        ("blocking", ["true", "false"]), ("displayMode", ["Native", "Tile", "Fill", "Uniform", "UniformToFill"]));
 }
 
 public sealed class StopVideoEntry : PrimitiveEntry

@@ -14,19 +14,19 @@ public sealed class BuiltinAnimationModule : PrimitiveModule
         IEffectPresenter? effectPresenter = null,
         IParticlePresenter? particlePresenter = null) : base(
     [
-        BuiltinInstructionFactory.Create<AnimateEntry>(context => new AnimationPrimitiveInstance(
+        PrimitiveImplementation.For<AnimationOptions>(AnimateEntry.TypeId, (context, options) => new AnimationPrimitiveInstance(
                 context.Runtime,
                 animationPresenter,
-                BuiltinRuntimeActions.CreateAnimationRequest(context),
+                BuiltinRuntimeActions.CreateAnimationRequest(options, context.Arguments.TryGetProperty("from", out _) ? options.From : null),
                 context.BatchId,
                 context.ScopeCancellation)),
-        BuiltinInstructionFactory.Create<PlayAnimationPlanEntry>(context => new AnimationPlanPrimitiveInstance(
+        PrimitiveImplementation.For<AnimationPlanOptions>(PlayAnimationPlanEntry.TypeId, (context, options) => new AnimationPlanPrimitiveInstance(
                 context.Runtime,
                 animationPresenter,
                 layerPresenter,
                 effectPresenter,
                 particlePresenter,
-                BuiltinRuntimeActions.CreateAnimationPlan(context),
+                BuiltinRuntimeActions.CreateAnimationPlan(options),
                 context.BatchId,
                 context.ScopeCancellation)),
         PrimitiveImplementation.Immediate<AnimationStopOptions>(StopAnimationEntry.TypeId, (context, options) =>

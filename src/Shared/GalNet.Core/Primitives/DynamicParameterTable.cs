@@ -52,11 +52,14 @@ public sealed class DynamicParameterTable : IReadOnlyDictionary<string, DynamicP
 {
     private readonly IReadOnlyDictionary<string, DynamicParameterDescriptor> _parameters;
     private readonly Action<JsonElement>? _validateArguments;
+    private readonly Action<JsonElement>? _validatePartialArguments;
 
-    public DynamicParameterTable(IEnumerable<DynamicParameterDescriptor> parameters, Action<JsonElement>? validateArguments = null)
+    public DynamicParameterTable(IEnumerable<DynamicParameterDescriptor> parameters, Action<JsonElement>? validateArguments = null,
+        Action<JsonElement>? validatePartialArguments = null)
     {
         ArgumentNullException.ThrowIfNull(parameters);
         _validateArguments = validateArguments;
+        _validatePartialArguments = validatePartialArguments ?? validateArguments;
         var copy = new Dictionary<string, DynamicParameterDescriptor>(StringComparer.Ordinal);
         var fields = new List<FieldDescriptor>();
         foreach (var parameter in parameters)
@@ -78,6 +81,8 @@ public sealed class DynamicParameterTable : IReadOnlyDictionary<string, DynamicP
     public DynamicParameterDescriptor this[string key] => _parameters[key];
     public bool ContainsKey(string key) => _parameters.ContainsKey(key);
     public void ValidateArguments(JsonElement arguments) => _validateArguments?.Invoke(arguments);
+    /// <summary>Authoring may omit unfinished fields and defaults; full compilation still uses ValidateArguments.</summary>
+    public void ValidatePartialArguments(JsonElement arguments) => _validatePartialArguments?.Invoke(arguments);
     public bool TryGetValue(string key, out DynamicParameterDescriptor value) => _parameters.TryGetValue(key, out value!);
     public IEnumerator<KeyValuePair<string, DynamicParameterDescriptor>> GetEnumerator() => _parameters.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

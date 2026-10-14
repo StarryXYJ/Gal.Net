@@ -7,6 +7,7 @@ using Avalonia.Input;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Themes.Fluent;
 using Avalonia.VisualTree;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
@@ -21,6 +22,27 @@ namespace GeneralTest.Editor;
 [NonParallelizable]
 public sealed class EntrySchemaFormTests
 {
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task ParticleDtoCanBeAuthoredInEitherOrderWhileFullCompilationStillRejectsIncompleteContent(bool payloadFirst)
+    {
+        var catalog = new TargetProfileEntryCatalog([BuiltinSchemas.CreateParticlesModule()]);
+        var entry = new EntryEditorItemViewModel { Type = PlayParticleEmitterEntry.TypeId };
+        entry.ConfigureParameterFields(catalog, [], []);
+        var form = entry.ParameterForm!;
+        var id = form.Binding(form.Fields.Single(field => field.Id == "instanceId"));
+        var payload = form.Binding(form.Fields.Single(field => field.Id == "parameters"));
+        var first = payloadFirst ? payload : id;
+        var second = payloadFirst ? id : payload;
+        Assert.That(await first.CommitAsync(new(payloadFirst ? Json("{\"particleTexture\":\"snow\"}") : Json("\"snow\"")), default), Is.Null);
+        var incomplete = new EditorDocumentRepository(catalog).SerializeEntry(new EditorEntryData { StableId = entry.StableId, Type = entry.Type, Parameters = entry.Parameters });
+        Assert.That(() => PrimitiveArgumentHelper.Normalize(catalog.Get(entry.Type).DynamicParameters!, JsonSerializer.SerializeToElement(incomplete.Parameters)),
+            Throws.TypeOf<InvalidDataException>());
+        Assert.That(await second.CommitAsync(new(payloadFirst ? Json("\"snow\"") : Json("{\"particleTexture\":\"snow\"}")), default), Is.Null);
+        var saved = new EditorDocumentRepository(catalog).SerializeEntry(new EditorEntryData { StableId = entry.StableId, Type = entry.Type, Parameters = entry.Parameters });
+        Assert.That(() => PrimitiveArgumentHelper.Normalize(catalog.Get(entry.Type).DynamicParameters!, JsonSerializer.SerializeToElement(saved.Parameters)), Throws.Nothing);
+    }
+
     [Test]
     public async Task GeneratedDocumentFieldsPreservePresenceAndCanRepairValuesWithoutConstructingDto()
     {
