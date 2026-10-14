@@ -8,7 +8,7 @@ public sealed class BuiltinVariableModule : PrimitiveModule
 {
     public BuiltinVariableModule() : base(
     [
-        PrimitiveImplementation.Immediate<VariableSetOptions>(SetVariableEntry.TypeId, (context, options) =>
+        PrimitiveImplementation.Immediate<VariableSetOptions>(BuiltinEntryIds.SetVariable, (context, options) =>
             {
                 var target = options.Target;
                 if (!string.IsNullOrWhiteSpace(target))

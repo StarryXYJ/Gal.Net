@@ -27,7 +27,7 @@ internal static partial class BuiltinRuntimeActions
 
         TrackLoopingAnimation(
             runtime,
-            AnimateEntry.TypeId,
+            BuiltinEntryIds.Animate,
             request.PlaybackHandleId,
             request.LoopMode,
             ToReplayParameters(request));
@@ -53,7 +53,7 @@ internal static partial class BuiltinRuntimeActions
 
             TrackLoopingAnimation(
                 runtime,
-                PlayAnimationPlanEntry.TypeId,
+                BuiltinEntryIds.PlayAnimationPlan,
                 plan.PlaybackHandleId,
                 plan.LoopMode,
                 new Dictionary<string, string>(StringComparer.Ordinal)

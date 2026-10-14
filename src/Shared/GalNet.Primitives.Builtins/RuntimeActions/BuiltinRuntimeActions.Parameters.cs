@@ -55,7 +55,7 @@ internal static partial class BuiltinRuntimeActions
     {
         var count = Int(parameters, "count", 1);
         if (count <= 0) throw new InvalidDataException("particle.burst requires a positive 'count'.");
-        var definition = ReadParticleDefinition(RawJson(parameters, "parameters", "{}"), BurstParticlesEntry.TypeId) with { EmissionRate = 0 };
+        var definition = ReadParticleDefinition(RawJson(parameters, "parameters", "{}"), BuiltinEntryIds.BurstParticles) with { EmissionRate = 0 };
         return new ParticleBurstRequest(definition, count, Float(parameters, "z", 100));
     }
 
@@ -63,7 +63,7 @@ internal static partial class BuiltinRuntimeActions
     {
         var instanceId = Get(parameters, "instanceId");
         if (string.IsNullOrWhiteSpace(instanceId)) throw new InvalidDataException("particle.play requires 'instanceId'.");
-        var definition = ReadParticleDefinition(RawJson(parameters, "parameters", "{}"), PlayParticleEmitterEntry.TypeId);
+        var definition = ReadParticleDefinition(RawJson(parameters, "parameters", "{}"), BuiltinEntryIds.PlayParticleEmitter);
         return new ParticleEmitterRequest(instanceId, definition, Float(parameters, "z", 100));
     }
 

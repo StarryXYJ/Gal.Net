@@ -192,7 +192,7 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
     {
         foreach (var item in _events)
         {
-            if (item.Event.Type == BurstParticlesEntry.TypeId)
+            if (item.Event.Type == BuiltinEntryIds.BurstParticles)
                 continue;
             await NotifyEventAsync(item, cancellationToken).ConfigureAwait(false);
         }

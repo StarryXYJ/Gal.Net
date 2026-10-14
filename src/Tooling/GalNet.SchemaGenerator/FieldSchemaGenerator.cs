@@ -30,7 +30,7 @@ public sealed class FieldSchemaGenerator : IIncrementalGenerator
         if (type.ContainingType != null || type.TypeParameters.Length != 0 || type.IsAbstract || context.TargetNode is not ClassDeclarationSyntax declaration ||
             !declaration.Modifiers.Any(SyntaxKind.PartialKeyword))
         { Error(type, "Use a top-level, non-generic, concrete partial class."); return; }
-        var members = type.GetMembers().Select(member => (Member: member,
+        var members = Hierarchy(type).SelectMany(declarationType => declarationType.GetMembers()).Select(member => (Member: member,
             Attribute: member.GetAttributes().FirstOrDefault(attribute => attribute.AttributeClass?.ToDisplayString() == FieldName)))
             .Where(item => item.Attribute != null).OrderBy(item => (int)item.Attribute!.ConstructorArguments[0].Value!).ToArray();
         var fields = new List<(IPropertySymbol Member, string Id, AttributeData Attribute, string? Default)>();
@@ -42,6 +42,9 @@ public sealed class FieldSchemaGenerator : IIncrementalGenerator
                 property.GetMethod?.DeclaredAccessibility != Accessibility.Public ||
                 property.SetMethod?.DeclaredAccessibility != Accessibility.Public || property.SetMethod.IsInitOnly)
             { Error(item.Member, "Field requires a public readable/writable property. Annotate the property, including an ObservableProperty partial property, rather than its backing field."); return; }
+            if (Hierarchy(type).TakeWhile(ancestor => !SymbolEqualityComparer.Default.Equals(ancestor, property.ContainingType))
+                .Any(ancestor => ancestor.GetMembers(property.Name).Length != 0))
+            { Error(property, "Inherited Field members must not be hidden or overridden."); return; }
             var jsonName = property.GetAttributes().FirstOrDefault(attribute => attribute.AttributeClass?.ToDisplayString() == "System.Text.Json.Serialization.JsonPropertyNameAttribute");
             var id = jsonName == null ? CamelName(property.Name) : jsonName.ConstructorArguments[0].Value as string ?? "";
             if (string.IsNullOrWhiteSpace(id) || !ids.Add(id) || !orders.Add((int)item.Attribute!.ConstructorArguments[0].Value!))
@@ -109,6 +112,11 @@ public sealed class FieldSchemaGenerator : IIncrementalGenerator
             .Append(CastType(field.Member.Type)).AppendLine(")value!; break;");
         code.AppendLine("default: throw new global::System.ArgumentException(\"Unknown DTO field.\", nameof(id)); } }\n}");
         output.AddSource(type.ToDisplayString().Replace("@", "") + ".Fields.g.cs", code.ToString());
+    }
+
+    private static IEnumerable<INamedTypeSymbol> Hierarchy(INamedTypeSymbol type)
+    {
+        for (var current = type; current != null; current = current.BaseType) yield return current;
     }
 
     private static string Quote(string value) => SymbolDisplay.FormatLiteral(value, true);

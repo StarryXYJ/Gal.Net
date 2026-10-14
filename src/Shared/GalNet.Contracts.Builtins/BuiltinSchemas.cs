@@ -27,80 +27,80 @@ public static class BuiltinSchemas
 
     public static IEntryModule CreateDialogueModule() => new DefaultEntryModule("dialogue",
     [
-        Reading<DialogueTextOptions>(TextEntry.TypeId),
-        Schema<ShowDialogueEntry>(ShowDialogueEntry.ParameterTypes, null),
-        Schema<HideDialogueEntry>(HideDialogueEntry.ParameterTypes, null)
+        Reading<DialogueTextOptions>(BuiltinEntryIds.Text),
+        new DefaultPrimitiveEntryBase(BuiltinEntryIds.ShowDialogue, DynamicParameterTable.Empty),
+        new DefaultPrimitiveEntryBase(BuiltinEntryIds.HideDialogue, DynamicParameterTable.Empty)
     ]);
 
     public static IEntryModule CreateNvlModule() => new DefaultEntryModule("nvl",
     [
-        Schema<ShowNvlEntry>(ShowNvlEntry.ParameterTypes, null),
-        Schema<HideNvlEntry>(HideNvlEntry.ParameterTypes, null),
-        Schema<ClearNvlEntry>(ClearNvlEntry.ParameterTypes, null),
-        Reading<NvlAppendOptions>(AppendNvlEntry.TypeId)
+        new DefaultPrimitiveEntryBase(BuiltinEntryIds.ShowNvl, DynamicParameterTable.Empty),
+        new DefaultPrimitiveEntryBase(BuiltinEntryIds.HideNvl, DynamicParameterTable.Empty),
+        new DefaultPrimitiveEntryBase(BuiltinEntryIds.ClearNvl, DynamicParameterTable.Empty),
+        Reading<NvlAppendOptions>(BuiltinEntryIds.AppendNvl)
     ]);
 
     public static IEntryModule CreateLayersModule() => new DefaultEntryModule("layers",
     [
-        DefaultPrimitiveEntryBase.ForDto<LayerShowOptions>(ShowLayerEntry.TypeId),
-        DefaultPrimitiveEntryBase.ForDto<LayerColorOptions>(ShowColorLayerEntry.TypeId),
-        DefaultPrimitiveEntryBase.ForDto<LayerHandleOptions>(HideLayerEntry.TypeId),
-        DefaultPrimitiveEntryBase.ForDto<LayerMoveOptions>(MoveLayerEntry.TypeId),
-        DefaultPrimitiveEntryBase.ForDto<LayerReplaceOptions>(ReplaceLayerEntry.TypeId)
+        DefaultPrimitiveEntryBase.ForDto<LayerShowOptions>(BuiltinEntryIds.ShowLayer),
+        DefaultPrimitiveEntryBase.ForDto<LayerColorOptions>(BuiltinEntryIds.ShowColorLayer),
+        DefaultPrimitiveEntryBase.ForDto<LayerHandleOptions>(BuiltinEntryIds.HideLayer),
+        DefaultPrimitiveEntryBase.ForDto<LayerMoveOptions>(BuiltinEntryIds.MoveLayer),
+        DefaultPrimitiveEntryBase.ForDto<LayerReplaceOptions>(BuiltinEntryIds.ReplaceLayer)
     ]);
 
     public static IEntryModule CreateAnimationsModule() => new DefaultEntryModule("animations",
     [
-        DefaultPrimitiveEntryBase.ForDto<AnimationOptions>(AnimateEntry.TypeId),
-        DefaultPrimitiveEntryBase.ForDto<AnimationPlanOptions>(PlayAnimationPlanEntry.TypeId, arguments => BuiltinArgumentValidation.Validate(PlayAnimationPlanEntry.TypeId, arguments), validatePartialArguments: static _ => { }),
-        DefaultPrimitiveEntryBase.ForDto<AnimationStopOptions>(StopAnimationEntry.TypeId)
+        DefaultPrimitiveEntryBase.ForDto<AnimationOptions>(BuiltinEntryIds.Animate),
+        DefaultPrimitiveEntryBase.ForDto<AnimationPlanOptions>(BuiltinEntryIds.PlayAnimationPlan, arguments => BuiltinArgumentValidation.Validate(BuiltinEntryIds.PlayAnimationPlan, arguments), validatePartialArguments: static _ => { }),
+        DefaultPrimitiveEntryBase.ForDto<AnimationStopOptions>(BuiltinEntryIds.StopAnimation)
     ]);
 
     public static IEntryModule CreateAudioModule() => new DefaultEntryModule("audio",
     [
-        DefaultPrimitiveEntryBase.ForDto<AudioPlayOptions>(PlayAudioEntry.TypeId),
-        DefaultPrimitiveEntryBase.ForDto<AudioStopOptions>(StopAudioEntry.TypeId),
-        DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(PauseAudioEntry.TypeId),
-        DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(ResumeAudioEntry.TypeId),
-        DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(NextAudioEntry.TypeId),
-        DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(ClearAudioEntry.TypeId),
-        DefaultPrimitiveEntryBase.ForDto<AudioPlayOptions>(EnqueueAudioEntry.TypeId),
-        DefaultPrimitiveEntryBase.ForDto<AudioSEffectOptions>(ApplyAudioSEffectEntry.TypeId),
-        DefaultPrimitiveEntryBase.ForDto<AudioSEffectStopOptions>(StopAudioSEffectEntry.TypeId)
+        DefaultPrimitiveEntryBase.ForDto<AudioPlayOptions>(BuiltinEntryIds.PlayAudio),
+        DefaultPrimitiveEntryBase.ForDto<AudioStopOptions>(BuiltinEntryIds.StopAudio),
+        DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(BuiltinEntryIds.PauseAudio),
+        DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(BuiltinEntryIds.ResumeAudio),
+        DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(BuiltinEntryIds.NextAudio),
+        DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(BuiltinEntryIds.ClearAudio),
+        DefaultPrimitiveEntryBase.ForDto<AudioPlayOptions>(BuiltinEntryIds.EnqueueAudio),
+        DefaultPrimitiveEntryBase.ForDto<AudioSEffectOptions>(BuiltinEntryIds.ApplyAudioSEffect),
+        DefaultPrimitiveEntryBase.ForDto<AudioSEffectStopOptions>(BuiltinEntryIds.StopAudioSEffect)
     ]);
 
     public static IEntryModule CreateVideoModule() => new DefaultEntryModule("video",
     [
-        DefaultPrimitiveEntryBase.ForDto<VideoPlayOptions>(PlayVideoEntry.TypeId, arguments => BuiltinArgumentValidation.Validate(PlayVideoEntry.TypeId, arguments), validatePartialArguments: static _ => { }),
-        DefaultPrimitiveEntryBase.ForDto<VideoStopOptions>(StopVideoEntry.TypeId)
+        DefaultPrimitiveEntryBase.ForDto<VideoPlayOptions>(BuiltinEntryIds.PlayVideo, arguments => BuiltinArgumentValidation.Validate(BuiltinEntryIds.PlayVideo, arguments), validatePartialArguments: static _ => { }),
+        DefaultPrimitiveEntryBase.ForDto<VideoStopOptions>(BuiltinEntryIds.StopVideo)
     ]);
 
     public static IEntryModule CreateEffectsModule() => new DefaultEntryModule("effects",
     [
-        DefaultPrimitiveEntryBase.ForDto<EffectApplyOptions>(ApplyEffectEntry.TypeId),
-        DefaultPrimitiveEntryBase.ForDto<InstanceIdOptions>(StopEffectEntry.TypeId)
+        DefaultPrimitiveEntryBase.ForDto<EffectApplyOptions>(BuiltinEntryIds.ApplyEffect),
+        DefaultPrimitiveEntryBase.ForDto<InstanceIdOptions>(BuiltinEntryIds.StopEffect)
     ]);
 
     public static IEntryModule CreateParticlesModule() => new DefaultEntryModule("particles",
     [
-        DefaultPrimitiveEntryBase.ForDto<ParticlePlayOptions>(PlayParticleEmitterEntry.TypeId, arguments => BuiltinArgumentValidation.Validate(PlayParticleEmitterEntry.TypeId, arguments), validatePartialArguments: static _ => { }),
-        DefaultPrimitiveEntryBase.ForDto<InstanceIdOptions>(StopParticleEmitterEntry.TypeId),
-        DefaultPrimitiveEntryBase.ForDto<ParticleBurstOptions>(BurstParticlesEntry.TypeId, arguments => BuiltinArgumentValidation.Validate(BurstParticlesEntry.TypeId, arguments), validatePartialArguments: static _ => { })
+        DefaultPrimitiveEntryBase.ForDto<ParticlePlayOptions>(BuiltinEntryIds.PlayParticleEmitter, arguments => BuiltinArgumentValidation.Validate(BuiltinEntryIds.PlayParticleEmitter, arguments), validatePartialArguments: static _ => { }),
+        DefaultPrimitiveEntryBase.ForDto<InstanceIdOptions>(BuiltinEntryIds.StopParticleEmitter),
+        DefaultPrimitiveEntryBase.ForDto<ParticleBurstOptions>(BuiltinEntryIds.BurstParticles, arguments => BuiltinArgumentValidation.Validate(BuiltinEntryIds.BurstParticles, arguments), validatePartialArguments: static _ => { })
     ]);
 
     public static IEntryModule CreateFlowModule() => new DefaultEntryModule("flow",
     [
-        DefaultPrimitiveEntryBase.ForDto<WaitOptions>(WaitEntry.TypeId)
+        DefaultPrimitiveEntryBase.ForDto<WaitOptions>(BuiltinEntryIds.Wait)
     ]);
 
     public static IEntryModule CreateVariablesModule() => new DefaultEntryModule("variables",
     [
-        DefaultPrimitiveEntryBase.ForDto<VariableSetOptions>(SetVariableEntry.TypeId)
+        DefaultPrimitiveEntryBase.ForDto<VariableSetOptions>(BuiltinEntryIds.SetVariable)
     ]);
 
     public static IEntryModule CreateGalleryModule() => new DefaultEntryModule("gallery",
     [
-        DefaultPrimitiveEntryBase.ForDto<GalleryUnlockOptions>(UnlockGalleryEntry.TypeId)
+        DefaultPrimitiveEntryBase.ForDto<GalleryUnlockOptions>(BuiltinEntryIds.UnlockGallery)
     ]);
 
     public static IEntryModule CreateTransitionsModule() =>
@@ -108,8 +108,8 @@ public static class BuiltinSchemas
 
     public static IEntryModule CreateVoiceModule() => new DefaultEntryModule("voice", compositeEntries:
     [
-        new DefaultCompositeEntryBase(TextVoiceEntry.TypeId, EntrySchema.DynamicParameters(TextVoiceEntry.ParameterTypes, TextVoiceEntry.DefaultValues), static () => new TextVoiceEntry()),
-        new DefaultCompositeEntryBase(AppendVoiceNvlEntry.TypeId, EntrySchema.DynamicParameters(AppendVoiceNvlEntry.ParameterTypes, AppendVoiceNvlEntry.DefaultValues), static () => new AppendVoiceNvlEntry())
+        DefaultCompositeEntryBase.ForDto<TextVoiceOptions>(BuiltinEntryIds.TextVoice, VoiceTextEntrySupport.Text),
+        DefaultCompositeEntryBase.ForDto<NvlVoiceOptions>(BuiltinEntryIds.AppendVoiceNvl, VoiceTextEntrySupport.Nvl)
     ]);
 
     private static DefaultPrimitiveEntryBase Reading<T>(string type)
@@ -117,25 +117,4 @@ public static class BuiltinSchemas
             new DynamicParameterTable(T.Schema.Select(field => new DynamicParameterDescriptor(field))))
         { FieldDataType = typeof(T), IsReading = true };
 
-    private static DefaultPrimitiveEntryBase Schema<TEntry>(
-        IReadOnlyDictionary<string, EntryParameterType> parameters,
-        IReadOnlyDictionary<string, string>? defaults = null,
-        IReadOnlyDictionary<string, IReadOnlyList<string>>? options = null)
-        where TEntry : PrimitiveEntry, new()
-    {
-        var type = new TEntry().Type;
-        var declared = EntrySchema.DynamicParameters(parameters, defaults, options);
-        return new DefaultPrimitiveEntryBase(type, new DynamicParameterTable(declared.Values.Select(parameter =>
-        {
-            int? minimum = parameter.Name is "duration" or "fadeIn" or "fadeOut" ? 0
-                : type == BurstParticlesEntry.TypeId && parameter.Name == "count" ? 1 : null;
-            if (minimum is null) return parameter;
-            var constraints = parameter.Constraints?.Deserialize<Dictionary<string, JsonElement>>() ?? new();
-            constraints["minimum"] = JsonSerializer.SerializeToElement(minimum.Value);
-            return new DynamicParameterDescriptor(parameter.Name,
-                new ValueDescriptor(parameter.ValueType, parameter.AllowNull, JsonSerializer.SerializeToElement(constraints)),
-                parameter.IsRequired, parameter.DefaultValue, parameter.Editor);
-        }), arguments => BuiltinArgumentValidation.Validate(type, arguments)))
-        { IsReading = type is TextEntry.TypeId or AppendNvlEntry.TypeId };
-    }
 }

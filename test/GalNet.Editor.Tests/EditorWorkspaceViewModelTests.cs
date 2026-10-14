@@ -40,7 +40,7 @@ public sealed class EditorWorkspaceViewModelTests
             var workspace = fixture.Workspace;
             var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
             var entry = workspace.InsertEntriesInto(group, 0, 1).Single();
-            entry.Type = WaitEntry.TypeId;
+            entry.Type = BuiltinEntryIds.Wait;
             entry.Parameters = new() { ["duration"] = "1" };
             if (useDto) entry.Parameters = new(entry.Parameters) { ["label"] = "wait" };
             var catalog = fixture.Catalog;
@@ -269,8 +269,8 @@ public sealed class EditorWorkspaceViewModelTests
                 new EditorExtensionRegistry(),
                 localization);
             var modules = BuiltinSchemas.CreateAllModules().Where(module => module.Id != "flow").ToList();
-            var wait = useDto ? DefaultPrimitiveEntryBase.ForDto<EditorWaitOptions>(WaitEntry.TypeId)
-                : new DefaultPrimitiveEntryBase(WaitEntry.TypeId, new GalNet.Core.Primitives.DynamicParameterTable(
+            var wait = useDto ? DefaultPrimitiveEntryBase.ForDto<EditorWaitOptions>(BuiltinEntryIds.Wait)
+                : new DefaultPrimitiveEntryBase(BuiltinEntryIds.Wait, new GalNet.Core.Primitives.DynamicParameterTable(
                     [new GalNet.Core.Primitives.DynamicParameterDescriptor("duration", typeof(float),
                         defaultValue: System.Text.Json.JsonSerializer.SerializeToElement(1f), editor: new(ValueEditorIds.Numeric))]));
             modules.Add(new DefaultEntryModule("flow", [wait]));

@@ -11,6 +11,35 @@ namespace GeneralTest.Entry;
 public sealed class DtoExecutionTests
 {
     [Test]
+    public void DtoWritingPreservesFieldCodecsExplicitNullAndOptionalJsonOmission()
+    {
+        var data = new WriteOptions();
+        var encoded = ValueCodec.SerializeFields(data);
+        Assert.That(encoded.GetProperty("flag").GetString(), Is.EqualTo("true"));
+        Assert.That(encoded.TryGetProperty("payload", out _), Is.False);
+        data.Flag = null;
+        Assert.That(ValueCodec.SerializeFields(data).GetProperty("flag").ValueKind, Is.EqualTo(JsonValueKind.Null));
+        Assert.That(ValueCodec.DeserializeFields<WriteOptions>(data.Fields, ValueCodec.SerializeFields(data)).Flag, Is.Null);
+        Assert.That(ValueCodec.SerializeFields(data, omitNullValues: true).TryGetProperty("flag", out _), Is.False);
+        data.Payload = JsonSerializer.SerializeToElement(new { value = 3 });
+        Assert.That(ValueCodec.SerializeFields(data).GetProperty("payload").GetProperty("value").GetInt32(), Is.EqualTo(3));
+    }
+
+    private sealed class WriteOptions : IFieldDto
+    {
+        public WriteOptions() { }
+        public bool? Flag { get; set; } = true;
+        public JsonElement Payload { get; set; }
+        public IReadOnlyList<FieldDescriptor> Fields { get; } =
+        [new("flag", new ValueDescriptor(typeof(bool?), allowNull: true,
+            jsonOptions: new JsonSerializerOptions { Converters = { new StringBooleanValueConverter() } })),
+         new("payload", new ValueDescriptor(typeof(JsonElement)))];
+        public object? ReadField(string id) => id == "flag" ? Flag : Payload;
+        public void WriteField(string id, object? value)
+        { if (id == "flag") Flag = (bool?)value; else Payload = (JsonElement)value!; }
+    }
+
+    [Test]
     public void ExplicitStringCodecDescribesStringTypeAndChoicesInsteadOfAnOpaqueSchema()
     {
         var value = new ValueDescriptor(typeof(string), allowNull: true,

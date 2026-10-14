@@ -92,13 +92,13 @@ public static class BuiltinPresentationReplay
             cancellationToken.ThrowIfCancellationRequested();
             var instance = animation.EntryType switch
             {
-                AnimateEntry.TypeId => (PrimitiveInstance)new AnimationPrimitiveInstance(
+                BuiltinEntryIds.Animate => (PrimitiveInstance)new AnimationPrimitiveInstance(
                     runtime,
                     animationPresenter,
                     BuiltinRuntimeActions.CreateAnimationRequest(animation),
                     batchId: null,
                     cancellationToken),
-                PlayAnimationPlanEntry.TypeId => new AnimationPlanPrimitiveInstance(
+                BuiltinEntryIds.PlayAnimationPlan => new AnimationPlanPrimitiveInstance(
                     runtime,
                     animationPresenter,
                     layerPresenter,

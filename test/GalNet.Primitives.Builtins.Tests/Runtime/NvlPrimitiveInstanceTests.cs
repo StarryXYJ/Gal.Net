@@ -36,7 +36,7 @@ public class NvlPrimitiveInstanceTests
         var presenter = new ControlledNvlPresenter();
         var module = new BuiltinNvlModule(presenter);
 
-        foreach (var entry in new[] { ShowNvlEntry.TypeId, HideNvlEntry.TypeId, ClearNvlEntry.TypeId })
+        foreach (var entry in new[] { BuiltinEntryIds.ShowNvl, BuiltinEntryIds.HideNvl, BuiltinEntryIds.ClearNvl })
         {
             var primitive = module.Instructions[entry];
             primitive.CreateInstance(new GalNet.Core.Primitives.PrimitiveCreateContext(

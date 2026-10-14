@@ -295,13 +295,13 @@ public partial class EntryEditorItemViewModel : ObservableObject
         foreach (var (id, type) in schema.Parameters)
         {
             var defaultValue = schema.Defaults.GetValueOrDefault(id, "");
-            var options = (Type == ApplyEffectEntry.TypeId && id == "id" && effectCatalog is not null
+            var options = (Type == BuiltinEntryIds.ApplyEffect && id == "id" && effectCatalog is not null
                     ? effectCatalog.Definitions.Select(definition => definition.Id).ToArray()
                     : schema.Options.GetValueOrDefault(id, []))
                 .Select(value => new EntrySelectOption(value, $"Entry.Option.{(value.Length == 0 ? "None" : value)}"))
                 .ToArray();
             var source = parameters[id].Field;
-            var field = Type == ApplyEffectEntry.TypeId && id == "id" && effectCatalog is not null
+            var field = Type == BuiltinEntryIds.ApplyEffect && id == "id" && effectCatalog is not null
                 ? new FieldDescriptor(id, source.Value, source.IsRequired, source.DefaultValue, new(ValueEditorIds.Choice), source.LabelKey, source.DescriptionKey) : source;
             var definition = new EntryParameterDefinition(id, type, $"Entry.Parameter.{id}", defaultValue, options, field);
             var value = Parameters.GetValueOrDefault(id, defaultValue);
@@ -372,7 +372,7 @@ public partial class EntryEditorItemViewModel : ObservableObject
 
     private void UpdateEffectHints()
     {
-        if (Type != ApplyEffectEntry.TypeId || _effectCatalog is null)
+        if (Type != BuiltinEntryIds.ApplyEffect || _effectCatalog is null)
         {
             EffectHint = "";
             EffectDiagnostic = "";

@@ -141,6 +141,8 @@ var entry = DefaultPrimitiveEntryBase.ForDto<PulseOptions>("game.pulse");
 
 生成 `PulseOptions.Schema` 以及 `IFieldDto` 的成员访问代码。ForDto 从同一 schema 建立参数表并记录 FieldDataType；不手写第二份参数描述，也不生成执行 module/保存逻辑。首轮支持顶层非泛型 partial class 上的公开可读写属性；private backing field、init-only 属性、非恒定默认表达式等报告 GNF001。字段顺序由 Field 的 order 明确指定，成员类型和常量属性初始化值来自 DTO；省略初始化值不等于声明 CLR 默认值为 schema 默认值。禁止执行任意 DTO 构造函数推断默认值。
 
+可将共同的 Field 属性放在当前编译中的源基类，生成器按显式 Order 合并继承字段；默认值、JSON 名称和 converter 沿用成员声明，重复 Order/ID 或隐藏、重写标记成员给出 GNF001。内置颜色过渡的 12 个公共字段只在 ColorFieldOptionsBase 声明一次。
+
 字段 ID 使用 JsonPropertyName，未指定时为 camelCase；支持属性 JsonConverter、JsonRequired。Field 还可声明 Required/AllowNull、范围/MaxLength/ValueFormat，以及 EditorId/Step/Format/UnitKey/标签和说明。C# nullable 注解不等于 JSON null/presence 策略；AllowNull 未指定时遵循现有 ValueDescriptor 的 CLR 类型规则。复杂业务校验继续传给 ForDto 的 validateArguments。
 
 对象/数组等默认值可用 `[Field(0, DefaultJson = "{}", EditorId = "json")]` 或 `DefaultJson = "[1,2]"` 声明，属性不再重复写默认初始化值。JSON 默认在 schema 初始化时经 ValueCodec.ParseDefault 校验，执行时独立反序列化；DefaultJson 与属性初始化值同时声明会产生 GNF001。固定合法选项用 `Choices = new[] { "Left", "Right" }`，仍与 EditorId 分开。
@@ -202,11 +204,11 @@ Immediate / Immediate<T> 创建非阻塞、不可跳过的同步实例，回调�
 复杂校验继续通过 ForDto 的 validateArguments 处理，例如 ScreenshotSchema.ValidateFileName 的安全文件名规则；值类型、长度、默认值等仍来自 ScreenshotOptions。异步或可跳过实例使用 For<T> 返回业务实例，显式传递 BatchId / ScopeCancellation：
 
 ```csharp
-var wait = PrimitiveImplementation.For<WaitOptions>(WaitEntry.TypeId, (context, options) =>
+var wait = PrimitiveImplementation.For<WaitOptions>(BuiltinEntryIds.Wait, (context, options) =>
     new WaitPrimitiveInstance(TimeSpan.FromSeconds(options.Duration), context.BatchId, context.ScopeCancellation));
 ```
 
-这段是内置 flow.wait 的实际路径，等待、Quick/CatchUp 和 skip 保留原实例语义。截图仍使用 For<ScreenshotOptions> 返回自己的异步实例；Composite 仍通过 Compile 显式展开成 primitive，不生成业务、生命周期或持久化。完整 Composite 示例见下文。迁移过的 WaitEntry 及四种轨道 Entry 不再暴露旧手写 ParameterTypes / DefaultValues，当前参数事实从 catalog 的 DynamicParameters 或 DTO.Schema 取得。
+这段是内置 flow.wait 的实际路径，等待、Quick/CatchUp 和 skip 保留原实例语义。截图仍使用 For<ScreenshotOptions> 返回自己的异步实例；Composite 仍通过 Compile 显式展开成 primitive，不生成业务、生命周期或持久化。完整 Composite 示例见下文。内置 Entry 不再需要一条指令一个作者 CLR 类；稳定 ID 位于 BuiltinEntryIds，参数事实从 catalog.DynamicParameters 或 DTO.Schema 取得，执行使用通用 PrimitiveEntry。
 
 ### 2. 分别定义契约和执行模块
 
@@ -299,6 +301,8 @@ await using var custom = new GameRegistration()
 ## 创建 composite（可选）
 
 Composite 用于改善作者体验，不是另一种 Runtime 指令。继承 `CompositeEntry`，在 `Compile(EntryCompileContext)` 中返回 primitive 序列，并通过 `DefaultCompositeEntryBase` 注册到模块的 `compositeEntries`。
+
+组合中的子 Primitive 参数可以用 `ValueCodec.SerializeFields(childOptions)` 序列化，按子 DTO 的逐字段 codec 写入 wire JSON；JsonElement.Undefined 字段省略，默认保留显式 null，`omitNullValues: true` 可主动省略 null。编译规范化负责补充省略字段的 schema 默认值。控制用 batchId 仍通过 PrimitiveEntry.BatchId 传递，不能把它混入计划 payload。语音 Composite 使用 AudioPlayOptions + DialogueTextOptions/NvlAppendOptions，动画计划的开放事件参数仍显式写 JSON。
 
 DTO 输入也可使用 `DefaultCompositeEntryBase.ForDto<TOptions>(typeId, (context, options) => primitives)`：与 primitive 共用 TOptions.Schema 和逐字段值 codec，源 JSON 的省略/null 在编译中保留，规范化/业务校验后交给类型化展开回调。回调继续显式设置输出 primitive 的 condition、batch 等语义；已有手写 Composite 仍支持。无原始 JSON 的 catalog.Create/作者 Values 路径按 schema 解析字段文本。该入口不创建运行时执行模块。
 

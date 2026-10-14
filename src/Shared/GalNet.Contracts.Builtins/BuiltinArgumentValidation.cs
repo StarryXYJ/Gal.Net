@@ -11,10 +11,10 @@ internal static class BuiltinArgumentValidation
     private static readonly Lazy<IEntryCatalog> EventCatalog = new(() => new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()));
     private static readonly HashSet<string> PlanEventTypes = new(StringComparer.Ordinal)
     {
-        ShowLayerEntry.TypeId, ShowColorLayerEntry.TypeId, HideLayerEntry.TypeId,
-        MoveLayerEntry.TypeId, ReplaceLayerEntry.TypeId, ApplyEffectEntry.TypeId,
-        StopEffectEntry.TypeId, PlayParticleEmitterEntry.TypeId,
-        StopParticleEmitterEntry.TypeId, BurstParticlesEntry.TypeId
+        BuiltinEntryIds.ShowLayer, BuiltinEntryIds.ShowColorLayer, BuiltinEntryIds.HideLayer,
+        BuiltinEntryIds.MoveLayer, BuiltinEntryIds.ReplaceLayer, BuiltinEntryIds.ApplyEffect,
+        BuiltinEntryIds.StopEffect, BuiltinEntryIds.PlayParticleEmitter,
+        BuiltinEntryIds.StopParticleEmitter, BuiltinEntryIds.BurstParticles
     };
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -26,7 +26,7 @@ internal static class BuiltinArgumentValidation
     {
         switch (type)
         {
-            case PlayVideoEntry.TypeId:
+            case BuiltinEntryIds.PlayVideo:
                 RequireText(type, arguments, "asset", "handleId");
                 var points = arguments.GetProperty("skipPoints").Deserialize<double[]>(JsonOptions)
                     ?? throw new InvalidDataException("video.play skipPoints must be an array.");
@@ -34,14 +34,14 @@ internal static class BuiltinArgumentValidation
                     points.Zip(points.Skip(1), (left, right) => right > left).Any(valid => !valid))
                     throw new InvalidDataException("video.play skipPoints must be finite, non-negative and strictly increasing seconds.");
                 break;
-            case PlayAnimationPlanEntry.TypeId:
+            case BuiltinEntryIds.PlayAnimationPlan:
                 if (!arguments.TryGetProperty("plan", out var value) || value.ValueKind != JsonValueKind.Object)
                     throw new InvalidDataException("animation.play requires a plan object.");
                 ValidatePlan(value.Deserialize<AnimationPlanDefinition>(JsonOptions)!);
                 break;
-            case PlayParticleEmitterEntry.TypeId:
-            case BurstParticlesEntry.TypeId:
-                if (type == PlayParticleEmitterEntry.TypeId) RequireText(type, arguments, "instanceId");
+            case BuiltinEntryIds.PlayParticleEmitter:
+            case BuiltinEntryIds.BurstParticles:
+                if (type == BuiltinEntryIds.PlayParticleEmitter) RequireText(type, arguments, "instanceId");
                 var definition = ParticleEmitterDefinition.FromJson(arguments.GetProperty("parameters").GetRawText());
                 if (string.IsNullOrWhiteSpace(definition.ParticleTexture))
                     throw new InvalidDataException($"{type} requires 'parameters.particleTexture'.");

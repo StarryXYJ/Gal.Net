@@ -15,6 +15,51 @@ namespace GeneralTest.Entry;
 
 public sealed class TypedBuiltinAuthoringTests
 {
+    [TestCase(BuiltinEntryIds.TextVoice, BuiltinEntryIds.Text)]
+    [TestCase(BuiltinEntryIds.AppendVoiceNvl, BuiltinEntryIds.AppendNvl)]
+    public void TypedVoiceExpansionKeepsConditionsReadingBoundaryNullAndSourceMap(string type, string textType)
+    {
+        var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
+        var source = new GroupDocument
+        {
+            Entries = [new() { Id = "voice", Type = type, Condition = "enabled",
+            Parameters = new() { ["asset"] = JsonSerializer.SerializeToElement("clip"),
+                ["content"] = JsonSerializer.SerializeToElement<object?>(null), ["trackId"] = JsonSerializer.SerializeToElement<object?>(null) } }]
+        };
+        var compiled = GalgroupCompiler.Compile(source, catalog);
+        var entries = compiled.Document.Entries;
+        Assert.That(entries.Select(entry => entry.TypeId), Is.EqualTo(new[] { BuiltinEntryIds.PlayAudio, textType }));
+        Assert.That(entries.All(entry => entry.Condition == "enabled" && entry.BatchId is null), Is.True);
+        Assert.That(entries[0].ReadingBoundaryId, Is.EqualTo("voice#2"));
+        Assert.That(entries[1].ReadingBoundaryId, Is.Null);
+        Assert.That(entries[0].Arguments.GetProperty("trackId").GetString(), Is.Empty);
+        Assert.That(entries[0].Arguments.GetProperty("placement").GetString(), Is.EqualTo("replaceIfDifferent"));
+        Assert.That(entries[1].Arguments.GetProperty("content").GetString(), Is.Empty);
+        Assert.That(compiled.SourceMap["voice"], Is.EqualTo(new[] { "voice#1", "voice#2" }));
+        source.Entries[0].Parameters["unexpected"] = JsonSerializer.SerializeToElement(1);
+        Assert.That(() => GalgroupCompiler.Compile(source, catalog), Throws.TypeOf<InvalidDataException>().With.Message.Contains("unexpected"));
+    }
+
+    [Test]
+    public void CompositeDtosShareColorFieldsAndStillRejectInvalidTransitionInputs()
+    {
+        var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
+        var composites = catalog.Definitions.Where(definition => definition.Kind == EntryKind.Composite).ToArray();
+        Assert.That(composites, Has.Length.EqualTo(8));
+        Assert.That(composites.All(definition => definition.FieldDataType is not null), Is.True);
+        Assert.That(catalog.Get(BuiltinEntryIds.BlackFadeTransition).FieldDataType, Is.EqualTo(typeof(ColorFieldOptions)));
+        Assert.That(catalog.Get(BuiltinEntryIds.WhiteFadeTransition).FieldDataType, Is.EqualTo(typeof(ColorFieldOptions)));
+        Assert.That(ColorFadeOptions.Schema.Select(field => field.Id), Is.EqualTo(ColorFieldOptions.Schema.Select(field => field.Id).Append("color")));
+        Assert.That(() => Compile(catalog, BuiltinEntryIds.CrossFadeTransition, new { playbackHandleId = "play", oldHandleId = "old", newHandleId = "new", assetId = "asset", durationFrames = 0 }),
+            Throws.TypeOf<InvalidDataException>().With.Message.Contains("durationFrames"));
+        Assert.That(() => Compile(catalog, BuiltinEntryIds.CrossFadeTransition, new { playbackHandleId = "play", oldHandleId = "old", newHandleId = "new", assetId = "asset", displayMode = (string?)null }),
+            Throws.TypeOf<InvalidDataException>().With.Message.Contains("displayMode"));
+        Assert.That(() => Compile(catalog, BuiltinEntryIds.SlideTransition, new { playbackHandleId = "play", fromLayerHandleId = "old", toLayerHandleId = "new", toAssetId = "asset", toTransform = new { scaleX = 0 } }),
+            Throws.TypeOf<InvalidDataException>().With.Message.Contains("scale"));
+        Assert.That(() => Compile(catalog, BuiltinEntryIds.CrossFadeTransition, new { playbackHandleId = "play", oldHandleId = "old", newHandleId = "new", assetId = "asset", transform = "{invalid}" }),
+            Throws.TypeOf<InvalidDataException>().With.Message.Contains("transform"));
+    }
+
     [Test]
     public void ComplexDtoDefaultsChoicesAndOpenPayloadKeepTheirWireContract()
     {
@@ -152,10 +197,10 @@ public sealed class TypedBuiltinAuthoringTests
     public void TypedWaitKeepsDefaultsRangesAndItsIndependentLifecycle(PrimitiveInvocationMode mode)
     {
         var catalog = new TargetProfileEntryCatalog([BuiltinSchemas.CreateFlowModule()]);
-        var compiled = Compile(catalog, WaitEntry.TypeId, new { });
+        var compiled = Compile(catalog, BuiltinEntryIds.Wait, new { });
         Assert.That(compiled.Arguments.GetProperty("duration").GetSingle(), Is.EqualTo(1f));
-        Assert.That(() => Compile(catalog, WaitEntry.TypeId, new { duration = -1 }), Throws.TypeOf<InvalidDataException>().With.Message.Contains("duration"));
-        Assert.That(() => Compile(catalog, WaitEntry.TypeId, new { duration = (float?)null }), Throws.TypeOf<InvalidDataException>().With.Message.Contains("duration"));
+        Assert.That(() => Compile(catalog, BuiltinEntryIds.Wait, new { duration = -1 }), Throws.TypeOf<InvalidDataException>().With.Message.Contains("duration"));
+        Assert.That(() => Compile(catalog, BuiltinEntryIds.Wait, new { duration = (float?)null }), Throws.TypeOf<InvalidDataException>().With.Message.Contains("duration"));
         using var view = new GameRegistration().UseCatalog(catalog).AddBuiltinImplementations(catalog).BuildView();
         var instance = view.Dispatch(new PrimitiveEntry(compiled.TypeId, compiled.Arguments, "wait"), new GameRuntime(null), default, mode);
         Assert.That(instance, Is.TypeOf<WaitPrimitiveInstance>());

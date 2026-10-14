@@ -25,7 +25,7 @@ public class GameTextLocalizationTests
             [
                 new GroupEntryDocument
                 {
-                    Id = "2", Type = TextVoiceEntry.TypeId,
+                    Id = "2", Type = BuiltinEntryIds.TextVoice,
                     Parameters = new()
                     {
                         ["content"] = JsonSerializer.SerializeToElement(key),
@@ -36,14 +36,14 @@ public class GameTextLocalizationTests
         };
         var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
         var first = GalgroupCompiler.Compile(raw, catalog).Document;
-        raw.Entries.Insert(0, new GroupEntryDocument { Id = "1", Type = ShowDialogueEntry.TypeId });
+        raw.Entries.Insert(0, new GroupEntryDocument { Id = "1", Type = BuiltinEntryIds.ShowDialogue });
         var second = GalgroupCompiler.Compile(raw, catalog).Document;
         var group = new Group();
         GalgroupLoader.LoadIntoGroupFromContent(group, JsonSerializer.Serialize(second));
 
         Assert.Multiple(() =>
         {
-            Assert.That(first.Entries.Single(entry => entry.TypeId == TextEntry.TypeId).Arguments.GetProperty("content").GetString(), Is.EqualTo(key));
+            Assert.That(first.Entries.Single(entry => entry.TypeId == BuiltinEntryIds.Text).Arguments.GetProperty("content").GetString(), Is.EqualTo(key));
             Assert.That(((PrimitiveEntry)group.Entries[2]).Arguments.GetProperty("content").GetString(), Is.EqualTo(key));
             Assert.That(group.Entries[2].Id, Is.EqualTo(3));
         });
@@ -57,9 +57,9 @@ public class GameTextLocalizationTests
         using var view = new GameRegistration().AddBuiltinSchemas()
             .AddBuiltinDialogue(presenter, characters).AddBuiltinNvl(presenter).BuildView();
         var runtime = new GameRuntime(new TestResolver());
-        view.Dispatch(new PrimitiveEntry(TextEntry.TypeId,
+        view.Dispatch(new PrimitiveEntry(BuiltinEntryIds.Text,
             JsonSerializer.SerializeToElement(new { speaker = "alice", content = "story.line" })), runtime, CancellationToken.None);
-        view.Dispatch(new PrimitiveEntry(AppendNvlEntry.TypeId,
+        view.Dispatch(new PrimitiveEntry(BuiltinEntryIds.AppendNvl,
             JsonSerializer.SerializeToElement(new { content = "story.line" })), runtime, CancellationToken.None);
 
         Assert.Multiple(() =>
@@ -68,7 +68,7 @@ public class GameTextLocalizationTests
             Assert.That(presenter.Dialogue, Is.EqualTo("你好"));
             Assert.That(presenter.Nvl, Is.EqualTo("你好"));
         });
-        Assert.That(() => view.Dispatch(new PrimitiveEntry(TextEntry.TypeId,
+        Assert.That(() => view.Dispatch(new PrimitiveEntry(BuiltinEntryIds.Text,
             JsonSerializer.SerializeToElement(new { speaker = "unknown", content = "story.line" })), runtime, CancellationToken.None),
             Throws.TypeOf<InvalidDataException>().With.Message.Contains("unknown"));
     }

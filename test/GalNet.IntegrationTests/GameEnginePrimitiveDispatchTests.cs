@@ -56,7 +56,7 @@ public class GameEnginePrimitiveDispatchTests
     public void UncompiledAuthoringEntriesAreRejectedInsteadOfSilentlySkipped()
     {
         using var view = new GameRegistration().AddBuiltins().BuildView();
-        Assert.Throws<InvalidOperationException>(() => new GameEngine(GraphWithGroup(new WaitEntry()), view));
+        Assert.Throws<InvalidOperationException>(() => new GameEngine(GraphWithGroup(new AuthoringPrimitiveEntry(BuiltinEntryIds.Wait)), view));
     }
     [Test]
     public async Task RestoreCancelsOldScopeAndIsolatesSceneAndSnapshots()
@@ -329,7 +329,7 @@ public class GameEnginePrimitiveDispatchTests
                     Id = "scene",
                     Entries =
                     {
-                        Primitive(ShowLayerEntry.TypeId, new
+                        Primitive(BuiltinEntryIds.ShowLayer, new
                         {
                             handleId = "hero",
                             assetId = "hero-a.png",
@@ -338,7 +338,7 @@ public class GameEnginePrimitiveDispatchTests
                             opacity = 1,
                             displayMode = "Native"
                         }),
-                        new PrimitiveEntry(TextEntry.TypeId, JsonSerializer.SerializeToElement(new { speaker = "Alice", content = "story.continue" })) { StableId = "continue#1" }
+                        new PrimitiveEntry(BuiltinEntryIds.Text, JsonSerializer.SerializeToElement(new { speaker = "Alice", content = "story.continue" })) { StableId = "continue#1" }
                     }
                 },
                 new Branch
@@ -355,7 +355,7 @@ public class GameEnginePrimitiveDispatchTests
                 new Group
                 {
                     Id = "visible",
-                    Entries = { Primitive(ReplaceLayerEntry.TypeId, new { handleId = "hero", assetId = "hero-b.png" }) }
+                    Entries = { Primitive(BuiltinEntryIds.ReplaceLayer, new { handleId = "hero", assetId = "hero-b.png" }) }
                 }
             },
             Edges =

@@ -26,7 +26,7 @@ public class GraphEditingServiceTests
         Assert.That(inserted, Has.Count.EqualTo(3));
         Assert.That(node.Entries, Is.EqualTo(inserted));
         Assert.That(node.Entries.Select(entry => entry.Id), Is.EqualTo(ThreeEntryIds));
-        Assert.That(inserted.All(entry => entry.Type == TextEntry.TypeId), Is.True);
+        Assert.That(inserted.All(entry => entry.Type == BuiltinEntryIds.Text), Is.True);
     }
 
     [Test]
@@ -48,7 +48,7 @@ public class GraphEditingServiceTests
     {
         var entry = new EntryEditorItemViewModel
         {
-            Type = SetVariableEntry.TypeId,
+            Type = BuiltinEntryIds.SetVariable,
             Parameters = new Dictionary<string, string>
             {
                 ["target"] = "first",
@@ -75,7 +75,7 @@ public class GraphEditingServiceTests
     public async Task MixedDtoFieldsRetainAssetPickerAndSharedBindingWithoutDuplicatingSchema()
     {
         var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
-        var entry = new EntryEditorItemViewModel { Type = ReplaceLayerEntry.TypeId };
+        var entry = new EntryEditorItemViewModel { Type = BuiltinEntryIds.ReplaceLayer };
         entry.ConfigureParameterFields(catalog, [], []);
         Assert.That(entry.ParameterForm, Is.Null);
         var asset = entry.ParameterFields.OfType<AssetEntryParameterEditorItemViewModel>().Single();
@@ -85,7 +85,7 @@ public class GraphEditingServiceTests
         asset.StringValue = "background";
         Assert.That(await handle.CommitAsync(new(JsonSerializer.SerializeToElement("scene")), default), Is.Null);
         Assert.That(entry.Parameters, Is.EquivalentTo(new Dictionary<string, string> { ["handleId"] = "scene", ["assetId"] = "background" }));
-        entry.Type = HideLayerEntry.TypeId;
+        entry.Type = BuiltinEntryIds.HideLayer;
         entry.ConfigureParameterFields(catalog, [], []);
         Assert.That(entry.ParameterFields, Is.Empty);
         Assert.That(entry.ParameterForm!.Fields.Single().Id, Is.EqualTo("handleId"));

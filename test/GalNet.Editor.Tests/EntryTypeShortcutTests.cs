@@ -17,10 +17,10 @@ public class EntryTypeShortcutTests
         var assigned = commands.Where(command => command.DefaultGesture is not null).ToDictionary(command => command.EntryType);
 
         Assert.That(assigned, Has.Count.EqualTo(4));
-        Assert.That(assigned[TextEntry.TypeId].DefaultGesture, Is.EqualTo(new KeyGesture(Key.T)));
-        Assert.That(assigned[ShowLayerEntry.TypeId].DefaultGesture, Is.EqualTo(new KeyGesture(Key.L)));
-        Assert.That(assigned[HideLayerEntry.TypeId].DefaultGesture, Is.EqualTo(new KeyGesture(Key.L, KeyModifiers.Shift)));
-        Assert.That(assigned[MoveLayerEntry.TypeId].DefaultGesture, Is.EqualTo(new KeyGesture(Key.L, KeyModifiers.Control)));
+        Assert.That(assigned[BuiltinEntryIds.Text].DefaultGesture, Is.EqualTo(new KeyGesture(Key.T)));
+        Assert.That(assigned[BuiltinEntryIds.ShowLayer].DefaultGesture, Is.EqualTo(new KeyGesture(Key.L)));
+        Assert.That(assigned[BuiltinEntryIds.HideLayer].DefaultGesture, Is.EqualTo(new KeyGesture(Key.L, KeyModifiers.Shift)));
+        Assert.That(assigned[BuiltinEntryIds.MoveLayer].DefaultGesture, Is.EqualTo(new KeyGesture(Key.L, KeyModifiers.Control)));
         Assert.That(commands.All(command => command.Context == "EntryTypePicker"), Is.True);
     }
 
@@ -30,7 +30,7 @@ public class EntryTypeShortcutTests
         var settings = new TestSettingsService();
         var commands = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()).Definitions.Select(definition => new EntryTypeShortcutCommand(definition)).ToList();
         var service = new EditorShortcutService(commands, settings);
-        var video = commands.Single(command => command.EntryType == PlayVideoEntry.TypeId);
+        var video = commands.Single(command => command.EntryType == BuiltinEntryIds.PlayVideo);
 
         Assert.That(() => service.SetGesture(video.Id, new KeyGesture(Key.T)), Throws.InvalidOperationException);
 

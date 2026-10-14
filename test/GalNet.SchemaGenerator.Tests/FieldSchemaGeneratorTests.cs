@@ -8,6 +8,42 @@ namespace GeneralTest.Schema;
 public sealed class FieldSchemaGeneratorTests
 {
     [Test]
+    public void InheritedFieldsKeepTheirDefaultCodecAndOrderWithoutRepeatingDeclarations()
+    {
+        var source = """
+            using GalNet.Core.Parameters;
+            public abstract class BaseOptions {
+                [Field(0, DefaultJson = "{}")] public System.Text.Json.JsonElement Data {get;set;}
+                [Field(1, AllowNull = true), System.Text.Json.Serialization.JsonConverter(typeof(StringBooleanValueConverter))]
+                public bool? Enabled {get;set;} = true;
+            }
+            [GenerateFieldSchema] public partial class Options : BaseOptions {
+                [Field(2)] public int Count {get;set;} = 3;
+            }
+            """;
+        var driver = CSharpGeneratorDriver.Create(new FieldSchemaGenerator().AsSourceGenerator())
+            .RunGeneratorsAndUpdateCompilation(Compile(source), out var output, out var diagnostics);
+        Assert.That(diagnostics, Is.Empty);
+        Assert.That(output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error), Is.Empty);
+        var code = driver.GetRunResult().GeneratedTrees.Single().ToString();
+        Assert.That(code, Does.Contain("this.@Data").And.Contains("this.@Enabled").And.Contains("StringBooleanValueConverter").And.Contains("ValueCodec.ParseDefault"));
+        Assert.That(code.IndexOf("new(\"enabled\"", StringComparison.Ordinal), Is.LessThan(code.IndexOf("new(\"count\"", StringComparison.Ordinal)));
+    }
+
+    [TestCase("public new int Value {get;set;}")]
+    [TestCase("[Field(0)] public int Other {get;set;}")]
+    public void HiddenInheritedFieldsAndCollidingOrdersHaveLocatedDiagnostics(string derived)
+    {
+        var source = "using GalNet.Core.Parameters; public class BaseOptions { [Field(0)] public int Value {get;set;} } " +
+            "[GenerateFieldSchema] public partial class Options : BaseOptions { " + derived + " }";
+        var driver = CSharpGeneratorDriver.Create(new FieldSchemaGenerator().AsSourceGenerator())
+            .RunGeneratorsAndUpdateCompilation(Compile(source), out _, out var diagnostics);
+        Assert.That(diagnostics.Single().Id, Is.EqualTo("GNF001"));
+        Assert.That(diagnostics[0].Location.IsInSource, Is.True);
+        Assert.That(driver.GetRunResult().GeneratedTrees, Is.Empty);
+    }
+
+    [Test]
     public void JsonDefaultAndChoicesGenerateCompilableSingleSourceMetadata()
     {
         var source = """

@@ -10,8 +10,8 @@ public sealed class BuiltinVideoModule : PrimitiveModule
 {
     public BuiltinVideoModule(IVideoPresenter? presenter = null) : base(
     [
-        PrimitiveImplementation.For<VideoPlayOptions>(PlayVideoEntry.TypeId, (context, options) => CreatePlay(context, presenter, options)),
-        PrimitiveImplementation.Immediate<VideoStopOptions>(StopVideoEntry.TypeId, (context, options) =>
+        PrimitiveImplementation.For<VideoPlayOptions>(BuiltinEntryIds.PlayVideo, (context, options) => CreatePlay(context, presenter, options)),
+        PrimitiveImplementation.Immediate<VideoStopOptions>(BuiltinEntryIds.StopVideo, (context, options) =>
             {
                 var handleId = options.HandleId ?? "";
                 if (context.Runtime.SceneInstances.TryGet<Layer>(handleId, out var layer) && layer.IsVideo)

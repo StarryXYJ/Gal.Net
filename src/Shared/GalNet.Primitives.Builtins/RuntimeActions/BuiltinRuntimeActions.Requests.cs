@@ -68,13 +68,13 @@ internal static partial class BuiltinRuntimeActions
 
     public static ParticleEmitterRequest CreateParticleRequest(ParticlePlayOptions options)
     {
-        var definition = ReadParticleDefinition(Arguments.RawJson(options.Parameters), PlayParticleEmitterEntry.TypeId);
+        var definition = ReadParticleDefinition(Arguments.RawJson(options.Parameters), BuiltinEntryIds.PlayParticleEmitter);
         return new ParticleEmitterRequest(options.InstanceId ?? "", definition, options.Z);
     }
 
     public static ParticleBurstRequest CreateParticleBurstRequest(ParticleBurstOptions options)
     {
-        var definition = ReadParticleDefinition(Arguments.RawJson(options.Parameters), BurstParticlesEntry.TypeId) with { EmissionRate = 0 };
+        var definition = ReadParticleDefinition(Arguments.RawJson(options.Parameters), BuiltinEntryIds.BurstParticles) with { EmissionRate = 0 };
         return new ParticleBurstRequest(definition, options.Count, options.Z);
     }
 }

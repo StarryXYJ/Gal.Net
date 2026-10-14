@@ -18,3 +18,5 @@ var all = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
 CreateAllModules 只返回 13 个独立模块的只读列表。各组件是 Dialogue、Nvl、Layers、Animations、Audio、Video、Effects、Particles、Flow、Variables、Gallery、Transitions 和 Voice，不存在聚合大模块。
 
 选用 Composite 时，也要选用其输出所需的 primitive；编译器验证缺失契约。游戏宿主另行注册执行实现，由 GalNet.Primitives.Builtins 或自己的平台程序集提供。完整 typeId 唯一，模块名/前缀不用于匹配执行实现。
+
+内置稳定 ID 集中在 BuiltinEntryIds；所有带参数的 Primitive 和 Composite 使用 DTO.Schema，无参数指令使用空表。参数与纯展开逻辑不再需要 Primitive 作者子类。Composite 通过 ForDto 接收类型化输入，子指令可使用 ValueCodec.SerializeFields 和子 DTO 构造；开放动画事件 payload 保持 JSON。

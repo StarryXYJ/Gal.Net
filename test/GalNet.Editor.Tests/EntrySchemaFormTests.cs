@@ -27,7 +27,7 @@ public sealed class EntrySchemaFormTests
     public async Task ParticleDtoCanBeAuthoredInEitherOrderWhileFullCompilationStillRejectsIncompleteContent(bool payloadFirst)
     {
         var catalog = new TargetProfileEntryCatalog([BuiltinSchemas.CreateParticlesModule()]);
-        var entry = new EntryEditorItemViewModel { Type = PlayParticleEmitterEntry.TypeId };
+        var entry = new EntryEditorItemViewModel { Type = BuiltinEntryIds.PlayParticleEmitter };
         entry.ConfigureParameterFields(catalog, [], []);
         var form = entry.ParameterForm!;
         var id = form.Binding(form.Fields.Single(field => field.Id == "instanceId"));

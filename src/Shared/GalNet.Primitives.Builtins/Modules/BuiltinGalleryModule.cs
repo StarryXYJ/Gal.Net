@@ -9,7 +9,7 @@ public sealed class BuiltinGalleryModule : PrimitiveModule
 {
     public BuiltinGalleryModule(GalleryCatalog? gallery = null) : base(
     [
-        PrimitiveImplementation.Immediate<GalleryUnlockOptions>(UnlockGalleryEntry.TypeId, (context, options) =>
+        PrimitiveImplementation.Immediate<GalleryUnlockOptions>(BuiltinEntryIds.UnlockGallery, (context, options) =>
             {
                 var itemId = options.Id;
                 if (itemId <= 0) throw new InvalidDataException("gallery.unlock requires a positive integer 'id'.");

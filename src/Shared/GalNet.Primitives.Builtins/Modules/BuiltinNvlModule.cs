@@ -9,10 +9,10 @@ public sealed class BuiltinNvlModule : PrimitiveModule
 {
     public BuiltinNvlModule(INvlPresenter? presenter = null) : base(
     [
-        Visibility<ShowNvlEntry>(presenter, static target => target.ShowNvl()),
-        Visibility<HideNvlEntry>(presenter, static target => target.HideNvl()),
-        Visibility<ClearNvlEntry>(presenter, static target => target.ClearNvl()),
-        PrimitiveImplementation.For<NvlAppendOptions>(AppendNvlEntry.TypeId, (context, options) => new NvlAppendPrimitiveInstance(
+        Visibility(BuiltinEntryIds.ShowNvl, presenter, static target => target.ShowNvl()),
+        Visibility(BuiltinEntryIds.HideNvl, presenter, static target => target.HideNvl()),
+        Visibility(BuiltinEntryIds.ClearNvl, presenter, static target => target.ClearNvl()),
+        PrimitiveImplementation.For<NvlAppendOptions>(BuiltinEntryIds.AppendNvl, (context, options) => new NvlAppendPrimitiveInstance(
                 presenter ?? throw new InvalidOperationException("The NVL module has no presenter."),
                 context.Runtime.TextResolver.Resolve(options.Content ?? ""),
                 context.BatchId,
@@ -20,7 +20,7 @@ public sealed class BuiltinNvlModule : PrimitiveModule
     ])
     { }
 
-    private static PrimitiveImplementation Visibility<TEntry>(INvlPresenter? presenter, Action<INvlPresenter> operation)
-        where TEntry : PrimitiveEntry, new() => PrimitiveImplementation.Immediate(new TEntry().Type, _ => operation(
+    private static PrimitiveImplementation Visibility(string type, INvlPresenter? presenter, Action<INvlPresenter> operation)
+        => PrimitiveImplementation.Immediate(type, _ => operation(
             presenter ?? throw new InvalidOperationException("The NVL module has no presenter.")));
 }
