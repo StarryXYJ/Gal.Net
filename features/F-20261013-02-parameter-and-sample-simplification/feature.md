@@ -19,6 +19,8 @@ updated: 2026-10-14
 
 用户追加范围：明确纳入 Sample 各 service 的职责、转发链和重复逻辑优化，以及跨 Core、契约、执行模块和平台 Sample 分散的 Entry 实现基础；不仅整理截图或集中注册位置。先审查实际成本，再迁移有收益的部分。
 
+目标优先级澄清（2026-10-14）：Entry 部分首先要减少开发者新增常见 Entry 时的样板步骤与重复事实，包括参数声明/读取和常见工厂接入；异步完成/清理属于并行的运行时改进。后续工具化不限于源码生成器，需比较更顺手的 authoring API、typed reader/factory、DTO/JSON 元数据、诊断/IDE 辅助与模板/示例，按端到端净收益组合采用。
+
 用户已确认按本计划推进。Phase 0、1、2a、2b、2c 已验证；中立值工具、有序字段与开放编辑提示、选定消费者迁移及共享 SchemaForm/默认工厂已完成。Phase 2b 的 290 项回归与示例契约部署/编译通过；Editor/Sample 最小宿主适配已验证；DTO 生成、Sample 整理及作者路径优化仍待后续阶段。承接已完成的 [Editor/CLI feature](../F-20261013-01-editor-cli-operations/summary.md)，不改写其历史范围和状态。
 
 ## 已确认约束

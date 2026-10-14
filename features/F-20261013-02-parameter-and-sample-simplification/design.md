@@ -4,7 +4,7 @@
 
 2026-10-14 最新收敛决定：DTO 成员特性生成有序 schema 与成员访问表，公共 DTO 适配器连接表单和宿主提交；新增 Phase 2d 位于 Phase 2c 最小验证之后。源码生成器已确认为实施目标，替代下文旧的候选/条件表述。范围、通知/默认值边界及退出条件以 [DTO 收敛计划](dto-convergence-plan.md) 为准；Phase 2c 最小宿主接入已验证（241 项回归），见 [阶段记录](phase-2c.md)；Phase 2d 单 Entry DTO 生成/绑定试点已验证（348 项回归、独立契约部署与实际 CLI 编译），见 [phase-2d.md](phase-2d.md)。下一步为 Phase 3；全量设置 DTO 化和执行作者路径尚未完成。
 
-状态：设计与目标边界。Phase 1 中立值工具、Phase 2a 有序字段/编辑提示与 Phase 2b 共享表单/工厂已验证，事实见各阶段记录；正式宿主适配、Sample 整理及生成器仍为目标状态，不将未实现能力写入正式 spec。
+状态：设计与目标边界。Phase 1 中立值工具、Phase 2a 有序字段/编辑提示与 Phase 2b 共享表单/工厂已验证，事实见各阶段记录；正式宿主适配、Sample 整理、新 Entry 作者路径与后续工具化仍为目标状态。源码生成器只是候选手段，不将未实现能力写入正式 spec。
 
 ## 当前事实
 
@@ -70,32 +70,47 @@ Binding 提供读值、外部变更通知及提交候选值的能力。共享编
 
 无样式表示控件保留行为与模板协议，布局、颜色和视觉资源由主题/宿主提供；不代表完全没有可挂载子控件的结构模板。Editor/玩家主题可使用不同视觉呈现，但共用字段行为。首轮不顺便重做全部主题和页面。
 
+## 新 Entry 作者路径
+
+主要问题是添加一条普通 Entry 时，开发者要在契约声明、参数规范化/读取、执行工厂及组合注册之间来回复制字段和类型信息。当前示例把 schema 与执行实现拆开，平台边界是必要的；schema 内同一参数名、类型、默认值或约束在多处重复维护则不是必要的。目标是降低作者在一条常见 Entry 上要维护的事实和步骤，而不是强迫所有执行类型长得相同。
+
+期望的数据流是：一份 Entry/参数声明形成 editor/compiler/tool 共用 schema；运行时将 JSON 参数规范化为类型化参数，交给手写业务处理器；项目组合根仍显式选择 schema 与实现 module。普通同步 Entry 可以使用短的工厂路径；复杂校验、跨字段规则、Composite 展开、平台依赖和异步 PrimitiveInstance 保留明确的手写扩展点。
+
+先对无参数同步、典型带参数同步、含自定义校验或 Composite 三种路径做基线，并挑一个异步 Entry 验证简单 API 不会误导生命周期。记录实际手写步骤、重复事实、改动文件，以及作者需要理解和调试的概念。用同一行为实现对照样例，确认减少的是维护点和同步事实，而非把代码移进隐蔽框架。
+
+方案候选按成本由低到高评估，不预定必须使用 generator：
+
+- 改进现有手写声明与 typed reader/factory API，减少字符串参数访问和无意义 wrapper；保留直接描述复杂语义的能力。
+- 用一份显式 DTO/成员元数据从 System.Text.Json 类型信息派生 schema、编辑提示与参数读取；比较运行期 metadata/反射与构建期派生的复杂度和兼容性。
+- 若属性/字段级声明仍有大批稳定重复，再评估 incremental generator 生成中立 schema、typed arguments、简单 module glue 和编译诊断。Analyzer、IDE quick fix、模板和可复制示例也可解决部分错误或步骤，不必与 generator 捆绑。
+- 组合小型方案，例如 typed definition API 加少量代码生成；不因工具可实现就引入额外工具链。
+
+不论采用何种方式，字段名/JSON 名称、CLR 类型、required/default/null、constraints、converter、字段顺序和 EditorHints 必须只有一个作者维护来源。自动派生结果供 Entry/Editor/CLI 使用共同模型；不分别维护完整而互不共用的 Entry、设置和 CLI 描述。允许手写业务校验、跨字段规则与 Composite。平台控件/绑定不进入契约生成物；Roslyn 若采用只进入构建工具；项目不扫描程序集自动注册或隐式启用 module。
+
+对新增同步 Entry，重点检查 schema 与 typed arguments 是否仍需重复参数名/类型、是否必须手写基础工厂适配、一个 module 如何集中多个相关实现。可以让普通路径短，同时让调用者仍看得出 type ID、业务操作和所属 module。运行时自动扫描、全局服务定位、第二套 DTO/参数容器、关闭手写扩展的封闭生成模型均不作为简化目标。
+
 ## 异步与清理
 
-Entry 基础审查不限于 Sample 截图：检查 Core 的 PrimitiveInstance/ImmediatePrimitiveInstance、契约 Entry DTO 与参数描述、PrimitiveModule/PrimitiveImplementation、Builtins 的 Arguments/BuiltinInstructionFactory、各领域实例和 RuntimeActions 的边界。已有基础优先复用或演进，不再平行新增一套 EntryBase/ModuleBase/参数工具。
+Entry 生命周期优化与新 Entry 参数样板是正交问题，不能用异步抽象完成情况代替作者体验验收。检查 Core 的 PrimitiveInstance/ImmediatePrimitiveInstance、契约 Entry DTO、PrimitiveModule/PrimitiveImplementation、Builtins 的 Arguments/BuiltinInstructionFactory、各领域实例和 RuntimeActions。优先演进已有基础，不另建平行 EntryBase/ModuleBase/参数工具。
 
 当前部分效果/视频实例记录展示错误后继续完成，截图则通过完成任务传播失败；这不是可直接消除的语法重复。先按同步立即完成、异步展示、玩家交互/可跳过和持久场景执行分类，再抽取相同机制。阻塞、skip、CatchUp、状态写入、旧实例清理身份检查及错误策略保持显式；改变错误策略必须单独记录行为变化并验证，不能夹带在机械基类迁移中。
 
-只抽取有明确共性的取消、完成任务、错误传播、运行中任务跟踪及异步释放。Normal/Quick/CatchUp、是否阻塞/可跳过、业务资源发布仍由 entry 明确选择。
-
-截图保持 Normal/Quick 保存、CatchUp 无副作用、失败可观察、文件发布前清理完成。任务跟踪器在完成任务被观察后移除，避免长期保留全部历史任务；不得因移除任务丢失错误或破坏释放等待。
+只抽取有明确共性的取消、完成任务、错误传播、运行中任务跟踪及异步释放。Normal/Quick/CatchUp、是否阻塞/可跳过、业务资源发布仍由 entry 明确选择。截图保持 Normal/Quick 保存、CatchUp 无副作用、失败可观察、文件发布前清理完成。任务跟踪器在完成任务被观察后移除，避免长期保留全部历史任务；不得因移除任务丢失错误或破坏释放等待。
 
 资源释放维持显式顺序，失败后继续清理独立资源并聚合错误。若重复量不足，可沿用局部函数；不为几行清理代码强建通用资源管理框架。
 
-## 生成器
+## 后续工具化与体验改进
 
-参数模型稳定后，独立 incremental generator 根据显式标记生成参数描述和类型化读取。模块内 schema/工厂注册仅在可重复模式已成立时扩展。契约生成物只依赖 Core，平台生成物位于平台项目；Roslyn 不进入运行期引用图。
+Phase 5 是继续改善新增 Entry 的系统性工作，不等同于“实现源码生成器”。先基于 Phase 4 的手写成本与作者反馈比较 API、typed definition、JSON metadata、代码生成、analyzer/diagnostics、quick fix 和模板/示例；各自可以独立采用，也可以小规模组合。判断标准是新 Entry 的端到端维护成本，包括生产声明、工具链和测试，而非某一种技术是否被使用。
 
-具体声明方式：class/record DTO 以显式生成特性标记，成员类型提供结构信息，成员特性提供命名/约束/编辑提示及明确的省略/null/默认规则。生成中立的有序对象/字段描述、规范化读取和工具描述，各消费者组合使用；不分别生成三套互不共用的完整 Entry/设置/CLI 模型。优先复用 JSON 名称/忽略/converter 元数据并检查不支持声明。默认值使用明确元数据来源，不执行任意属性初始化代码；复杂校验、跨字段规则和 Composite 保留手写入口。生成器不生成具体 Avalonia 控件或控件绑定。
+若采用 DTO/属性派生或代码生成，显式元数据应提供字段顺序、JSON 名称、converter、约束、EditorId、required/default/null 来源。不得执行任意属性初始化表达式推断运行时默认；C# nullable 不自动等于允许省略或允许 null。对不支持的声明提供定位准确的诊断。复杂验证、Composite、运行模式和资源所有权继续调用手写代码。
 
-生成器不读取项目运行期 DLL、不创建平台对象、不自动启用所有被扫描模块、不推断业务执行语义。项目继续显式选择模块，复杂校验/Composite 展开留有手写接入点。
-
-首个试点为截图和少量有不同参数形态的内置 entry。手写与生成式定义不能同时成为维护来源；评估包含生成器本身、测试、生成物规模和调试成本，不只统计删除的业务代码行数。
+源码生成方案需验证生成输入变化、错误诊断、输出可读性、独立 Contracts 部署及 Roslyn 依赖不进入运行时；Analyzer/quick fix 需验证提示准确且无自动改写语义；手写 API/模板需验证一页文档和真实项目可以按其新建并执行 Entry。无论路线如何，按无参数、典型参数、复杂参数及异步样例做对照，并统计新增工具/测试/依赖和排错成本。
 
 ## 收益检查
 
-本轮不实施 Core 的领域去耦、Audio 迁层、Layer/SceneState 移出、模块化快照或 animation/plan 调度重构。Entry 基础优化只针对现有架构内有明确收益的重复机制，不以改变领域所有权作为验收要求。
+本轮不实施 Core 的领域去耦、Audio 迁层、Layer/SceneState 移出、模块化快照或 animation/plan 调度重构。Entry 优化针对新建作者流程里的可验证重复，不以改变领域所有权作为验收要求。
 
-记录相同代表性业务迁移前后的规则声明次数、手写参数读取、需要修改的文件/入口、生产代码差异和新增依赖。代码行数是证据之一，不采用任意百分比作为硬指标。
+相同代表性 Entry 改造前后记录：作者手写步骤、参数事实重复次数、所需改动文件/入口、手写生产代码、生成/派生代码、工具及测试/依赖成本、错误定位体验。至少证明一个端到端维护指标下降，同时没有把成本藏到另一个项目或运行期约定；不采用任意百分比或单纯总行数作为硬指标。
 
-若新抽象需要大量适配或仍双份声明规则，缩小共用范围；若公共 API 已消除大部分机械重复，跳过生成器；若某项样板没有第二个合理消费场景，优先保留局部清晰实现。
+若轻量 API 足以消除重复，无须为了“自动化”引入 generator；若单靠 helper 仍需平行维护 schema 和读取表，则继续比较 DTO metadata、generator 或 analyzer。若没有第二个稳定消费场景，优先保留局部清晰实现；若所有候选都只转移复杂度，则记录证据并停止扩张。

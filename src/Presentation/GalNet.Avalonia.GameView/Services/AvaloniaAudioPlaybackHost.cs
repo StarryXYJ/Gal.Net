@@ -324,12 +324,26 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost, IAsyncDispos
         foreach (var effect in voice.Effects.Values)
             if (_effects.TryGet(effect.Id, out var processor)) processor.Apply(effect.Parameters, state);
         voice.EffectGain = state.Gain;
+        var bandGains = Enumerable.Range(0, state.EqualizerBandFrequencies.Count)
+            .Select(state.BandGain)
+            .ToArray();
         if (state.HasEqualizerAdjustment)
         {
-            for (var index = 0; index < state.EqualizerBandFrequencies.Count; index++) equalizer.SetAmp(state.BandGain(index), (uint)index);
-            voice.Player.SetEqualizer(equalizer);
+            if (!voice.EqualizerApplied || voice.EqualizerBandGains?.SequenceEqual(bandGains) != true)
+            {
+                for (var index = 0; index < bandGains.Length; index++) equalizer.SetAmp(bandGains[index], (uint)index);
+                if (voice.Player.SetEqualizer(equalizer))
+                {
+                    voice.EqualizerApplied = true;
+                    voice.EqualizerBandGains = bandGains;
+                }
+            }
         }
-        else voice.Player.UnsetEqualizer();
+        else if (voice.EqualizerApplied && voice.Player.UnsetEqualizer())
+        {
+            voice.EqualizerApplied = false;
+            voice.EqualizerBandGains = null;
+        }
         SetVolume(voice);
     }
 
@@ -345,6 +359,8 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost, IAsyncDispos
         public float BaseGain { get; set; }
         public float FadeGain { get; set; } = 1;
         public float EffectGain { get; set; } = 1;
+        public bool EqualizerApplied { get; set; }
+        public float[]? EqualizerBandGains { get; set; }
         public Dictionary<string, ActiveSEffect> Effects { get; } = new(StringComparer.Ordinal);
         private CancellationTokenSource FadeCancellation { get; set; } = new();
         public CancellationToken BeginFade()
