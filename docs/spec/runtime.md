@@ -130,6 +130,8 @@ public void Skip();
 
 单次异步操作可继承 Core 的 `AsyncPrimitiveInstance`：稳定完成任务在创建时存在，`OnStarting` 处理同步状态，`ExecuteAsync` 处理操作/清理，`HandleExecutionFailure` 默认传播失败，返回 true 可显式处理错误；未处理的 OperationCanceledException 发布取消任务。默认非阻塞、不可跳过；Quick/CatchUp 沿用基础分发，可由具体实例重载。异步结果先于逻辑完成通知发布，Engine 收到通知时能读取失败。Effect/Particle 共用的 Builtins 默认实现保留记录警告、scope 取消完成和 CatchUp 只更新状态的策略；截图保留错误传播和 CatchUp 无操作。
 
+Dialogue/NVL 使用 Builtins 的 `TextAdvancePrimitiveInstance` 共用打字、等待推进和完成状态机。PresentationCompletion 结束只表示正文已经处理，逻辑实例仍等待玩家推进；打字中 skip 揭示全文，等待中 skip 完成这一行。Quick 保留推进等待，初始 CatchUp 只记录历史。具体展示操作和失败诊断通过重载提供，状态与完成任务每次调用独立。
+
 `SynchronizePresentationAsync` 与追帧展示协调在 Engine 执行门内调用；回调及其等待的清理任务不得重新进入或等待 Engine 推进/模式操作，否则会形成循环等待。同步使用该代隔离的 runtime 和 run token；调用者 token 只控制进入同步门，不作为持久播放的生命周期 token。
 
 玩家间隔配置为 `GameSettings.AutoAdvanceIntervalMilliseconds` 与 `QuickAdvanceIntervalMilliseconds`（int，默认 2000/50），Runtime 以毫秒计时并拒绝负值。Normal/Quick/CatchUp 分发与 `IsAutoBlocking`、状态事件、`IAdvanceWaitInstance` 分别表达呈现策略、自动等待和全文后推进等待；自动模式不会把对白等待下一次推进误当作仍在打字。完整阅读成功使用 group ID + 稳定编译条目 ID 记录，progress v2 与 compiled v3 拒绝旧格式，不迁移。

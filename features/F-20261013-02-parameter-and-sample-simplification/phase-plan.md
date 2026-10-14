@@ -10,7 +10,7 @@
 | --- | --- | --- | --- |
 | 验证基线 | verified，见 phase-4b-baseline.md | 两项设置用例在真实 UI pump 中运行，业务断言不变 | 完整 Integration 101/101 通过，无排除用例 |
 | 4b2 | verified，见 phase-4b2.md | Session/Runner/Presentation 与下属资源不短路 | 故障注入、完整 Integration 104 和 Architecture 37 通过 |
-| 4b3 | planned，依赖明确的文本行为基线 | Dialogue/NVL 共用文本推进状态机 | 两个实例共用状态机，模式/skip/失败规则不变，含公共实现的整体维护成本降低 |
+| 4b3 | verified，见 phase-4b3.md | Dialogue/NVL 共用文本推进状态机 | 331 项回归通过，258 → 153 行，模式/skip/失败规则保留 |
 | 6 | planned，完成实际实施批次后 | 作者路径/收益复核、必要回归、文档与 feature 收尾 | 已实施范围验证完整；候选明确实施或暂缓；summary/review 与事实一致 |
 
 基线处理不是重新迁移设置。两个测试分别为 SampleDisplaySettingsTests.FullscreenDisablesWindowSizeAndPreferencesRestoreWithoutWritingAgain 和 SampleLocalizationTests.SettingsPersistAndRestoreWithoutLosingOtherPlayerVariables。当前其他任务的未提交 FlushAsync 使用 UI 调度，而测试没有 UI pump；先确认并行改动最终状态，若仍要求 UI 线程则在独立验证改动中提供真实 Headless/UI pump。不得通过吞错、跳过 flush 或长期排除用例宣布全回归通过。这项缺口不阻止 4b2/4b3 的独立单元验证，但影响 Session 的 UI/持久化集成验证和最终收尾。
@@ -162,7 +162,7 @@
 
 ### Phase 4b3：Dialogue/NVL 文本推进状态机复用
 
-状态：planned；4b2 后实施，技术上可独立验证。涉及 Builtins 的两个实例、其模块与文本/播放模式/阅读进度测试。当前 Dialogue 130 行、NVL 128 行，合计 258 行；相对工作量：中。
+状态：verified，见 [phase-4b3.md](phase-4b3.md)。涉及 Builtins 的两个实例、其模块与文本/播放模式/阅读进度测试。原 Dialogue 130 行、NVL 128 行；共用实现和两个派生实例合计 153 行，净减 105 行；相对工作量：中。
 
 - 目标/任务：共用 Created → Typing → WaitingAdvance → Completed 的阶段、同步保护、IsTextPresented/IsWaitingForAdvance、自动等待切换和完成处理。优先在 Builtins 内建立文本专用实现，具体实例重载展示、立即展示、揭示全文、记录追帧历史和错误处理等小型操作；名字与接口形态由试点确定。
 - 关键边界：展示完成只结束 PresentationCompletion，不代表这一行逻辑完成；仍需玩家推进。因此不能强行继承 4b1 单次操作结束即 TryComplete 的 AsyncPrimitiveInstance。普通原语基类保持可直接实现复杂业务。

@@ -270,6 +270,27 @@ Sample 的 Session、Runner、Presentation 与下属存档/资源 scope 按明�
 
 多阶段交互、视频或动画可以直接继承 `PrimitiveInstance`，保留自身推进/资源规则。不要用未经观察异常的 `async void`。创建实例时原样传入 `context.BatchId`，`OnSkip` 必须幂等且只处理自己的资源。non-blocking 原语应先提交可存档状态，再启动展示。
 
+文本显示后仍要等待玩家推进时，可以继承 Builtins 的 TextAdvancePrimitiveInstance，共用阶段/skip/模式机制，重载展示操作。下面是使用现有对白端口的完整实例；执行模块通过 For<T> 传入正文、BatchId 和 ScopeCancellation：
+
+```csharp
+public sealed class NarrationInstance(IDialoguePresenter presenter, string text,
+    string? batchId, CancellationToken token) : TextAdvancePrimitiveInstance(batchId, token)
+{
+    protected override void OnTextStarting() => presenter.ShowDialogue();
+    protected override Task PresentTextAsync(bool immediately, CancellationToken cancellationToken) => immediately
+        ? presenter.PresentTextImmediatelyAsync("", text, cancellationToken)
+        : presenter.PresentTextAsync("", text, cancellationToken);
+    protected override void SkipText() => presenter.SkipText();
+    protected override void RevealAllText() => presenter.RevealAllText();
+    protected override void RecordCatchUpText()
+    {
+        if (presenter is ICatchUpTextRecorder recorder) recorder.RecordDialogue("", text);
+    }
+}
+```
+
+文本默认处理展示失败并结束这一行；HandlePresentationFailure 可重载诊断（NVL 记录警告，Dialogue 沿用原处理）。该类适用于“打字后等待推进”，不替代任意多阶段交互。PresentationCompletion 和逻辑完成是两个独立阶段，不能在正文显示结束时自行提前推进剧情。
+
 ### 3. 在游戏组合根独立注册
 
 ```csharp
