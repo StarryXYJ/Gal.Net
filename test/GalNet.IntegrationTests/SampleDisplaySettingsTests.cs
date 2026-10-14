@@ -9,10 +9,14 @@ using GalNet.Storage.FileSystem;
 
 namespace GalNet.IntegrationTests;
 
+[NonParallelizable]
 public sealed class SampleDisplaySettingsTests
 {
     [Test]
     public async Task FullscreenDisablesWindowSizeAndPreferencesRestoreWithoutWritingAgain()
+        => await SampleUiTests.RunAsync(FullscreenDisablesWindowSizeAndPreferencesRestoreWithoutWritingAgainCore);
+
+    private static async Task FullscreenDisablesWindowSizeAndPreferencesRestoreWithoutWritingAgainCore()
     {
         var directory = Path.Combine(Path.GetTempPath(), "galnet-display-" + Guid.NewGuid().ToString("N"));
         try

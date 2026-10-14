@@ -14,6 +14,7 @@ using GalNet.Storage.FileSystem;
 namespace GalNet.IntegrationTests;
 
 [TestFixture]
+[NonParallelizable]
 public sealed class SampleLocalizationTests
 {
     [Test]
@@ -82,6 +83,9 @@ public sealed class SampleLocalizationTests
 
     [Test]
     public async Task SettingsPersistAndRestoreWithoutLosingOtherPlayerVariables()
+        => await SampleUiTests.RunAsync(SettingsPersistAndRestoreWithoutLosingOtherPlayerVariablesCore);
+
+    private static async Task SettingsPersistAndRestoreWithoutLosingOtherPlayerVariablesCore()
     {
         var directory = Path.Combine(Path.GetTempPath(), "galnet-settings-" + Guid.NewGuid().ToString("N"));
         try
