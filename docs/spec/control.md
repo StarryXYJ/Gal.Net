@@ -104,9 +104,9 @@ IFieldBinding 是借用的宿主对象，提供 Read、Changed、CommitAsync、�
 
 Editor 的通用数值、布尔、文本、选项与 JSON 参数通过 SchemaEntryParameterEditorItemViewModel 使用完整值契约，提交替换 Entry.Parameters，继续由 workspace 历史与保存链路观察。每个 Group 面板拥有独立 registry，EditorFieldEditors 仅扩展选项标签本地化，转换与提交复用默认工厂。多行文本、资源选择、说话人/变量补全及表达式仍使用现有专属控件。仅打开参数面板不会写入省略的默认值；字符串文档不能无损表示的值（如显式 null 字符串）明确拒绝，原始工具路径可处理。设置页和 Editor 各自提供表单模板，业务对象不进入项目 schema DLL。
 
-`DtoBinding` 从生成的 IFieldDto 取得字段列表和成员访问，提供同一 IFieldBinding 协议，不再为每种 DTO 定义字段 ViewModel。普通提交调用 ValueCodec/ValueValidation 后写成员；提供 commit 回调时由宿主承担提交与数据同步。INotifyPropertyChanged 自动刷新；无通知 DTO 显式 Refresh。字段订阅随 Context 的 Changed 订阅建立/移除，Dispose 释放自身订阅，不释放借用 DTO。isProvided 回调供作者 JSON 适配区分省略；普通 CLR 成员不被当作 presence 容器。
+`DtoBinding` 从生成的 IFieldDto 取得字段列表和成员访问，提供同一 IFieldBinding 协议，不再为每种 DTO 定义字段 ViewModel。普通提交调用 ValueCodec/ValueValidation 后写成员；提供 commit 回调时由宿主承担提交与数据同步。INotifyPropertyChanged 自动刷新；无通知 DTO 显式 Refresh。字段订阅随 Context 的 Changed 订阅建立/移除，Dispose 释放自身订阅，不释放借用 DTO。普通 CLR 成员不被当作 presence 容器。
 
-Editor 中有 FieldDataFactory 的 Entry 在 DTO 初始化完成后发布绑定，用一个 SchemaForm 承载全部字段；参数字典继续作为作者文件、历史及保存的数据源。重新配置释放旧绑定；初始化不会把非法临时值交给已挂载控件。通用表单行模板在 Editor 面板内共享，专属资源/表达式等继续保留原路径。
+Editor 中有 FieldDataType 的 Entry 用一个 SchemaForm 承载全部字段。EntryParameterFormBinding 直接读取参数字典并通过现有提交方法替换 Parameters，不创建或同步 DTO；外部修改、撤销/重做由 Parameters 变化通知刷新。省略与显式 null 保留在文档，默认值不在打开面板时写回。重新配置释放旧绑定，旧字段不能再提交。通用表单行模板在 Editor 面板内共享，专属资源/表达式等继续保留原路径。字段编辑校验当前候选及自定义跨字段规则，完整文档必填检查留在编译/执行阶段，以允许逐步修正不完整文档。
 
 ## 宿主接入约束
 

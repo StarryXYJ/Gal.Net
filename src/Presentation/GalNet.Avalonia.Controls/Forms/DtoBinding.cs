@@ -3,20 +3,17 @@ using GalNet.Core.Parameters;
 
 namespace GalNet.Game.Controls.Forms;
 
-/// <summary>Borrowed DTO members. Hosts may override submission and presence without adding per-DTO adapters.</summary>
+/// <summary>Borrowed DTO members. Hosts may override submission without adding per-DTO adapters.</summary>
 public sealed class DtoBinding : IDisposable
 {
     private readonly Dictionary<string, MemberBinding> _members;
     private readonly Func<FieldDescriptor, FieldValue, CancellationToken, Task<ValueIssue?>>? _commit;
-    private readonly Func<string, bool>? _isProvided;
     private bool _disposed;
     public DtoBinding(IFieldDto data,
-        Func<FieldDescriptor, FieldValue, CancellationToken, Task<ValueIssue?>>? commit = null,
-        Func<string, bool>? isProvided = null)
+        Func<FieldDescriptor, FieldValue, CancellationToken, Task<ValueIssue?>>? commit = null)
     {
         Data = data;
         _commit = commit;
-        _isProvided = isProvided;
         _members = data.Fields.ToDictionary(field => field.Id, field => new MemberBinding(this, field), StringComparer.Ordinal);
         Binding = field => _members[field.Id];
     }
@@ -35,13 +32,12 @@ public sealed class DtoBinding : IDisposable
     {
         private EventHandler? _changed;
         public bool IsEnabled => !owner._disposed;
-        public FieldValue Read() => owner._isProvided?.Invoke(field.Id) == false ? default :
-            new(ValueCodec.Serialize(field.Value, owner.Data.ReadField(field.Id)));
+        public FieldValue Read() => new(ValueCodec.Serialize(field.Value, owner.Data.ReadField(field.Id)));
         public event EventHandler? Changed
         {
             add
             {
-                if (owner._disposed) throw new ObjectDisposedException(nameof(DtoBinding));
+                ObjectDisposedException.ThrowIf(owner._disposed, owner);
                 if (_changed is null && owner.Data is INotifyPropertyChanged observable) observable.PropertyChanged += OnChanged;
                 _changed += value;
             }

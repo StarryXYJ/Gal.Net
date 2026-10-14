@@ -94,7 +94,7 @@
                                     CommandParameter="{Binding}"><PathIcon Width="16" Height="16" Data="{StaticResource DeleteRegularIcon}" /></Button>
                         </Grid>
                         <StackPanel Margin="0,8,0,0" Spacing="6" IsVisible="{Binding IsExpanded}">
-                            <forms:SchemaForm Schema="{Binding DtoBinding.Fields}" Binding="{Binding DtoBinding.Binding}" Registry="{Binding #Root.DataContext.FieldEditors}" IsVisible="{Binding HasDtoFields}" />
+                            <forms:SchemaForm Schema="{Binding ParameterForm.Fields}" Binding="{Binding ParameterForm.Binding}" Registry="{Binding #Root.DataContext.FieldEditors}" IsVisible="{Binding HasParameterForm}" />
                             <ItemsControl ItemsSource="{Binding ParameterFields}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="models:EntryParameterEditorItemViewModel">

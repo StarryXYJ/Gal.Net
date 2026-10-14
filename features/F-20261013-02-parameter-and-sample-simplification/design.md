@@ -1,5 +1,7 @@
 # 设计边界与收益判断
 
+2026-10-14 Phase 2e 已验证：强类型执行工厂、Editor 文档直接绑定和 DTO 副本删除，344 项回归及独立契约部署/CLI 编译通过。证据见 [phase-2e.md](phase-2e.md)，最新顺序为 2d → 2e → 3。EntryParameterType 全面替换继续暂缓；下一阶段为 Sample 组合与服务整理。
+
 2026-10-14 最新收敛决定：DTO 成员特性生成有序 schema 与成员访问表，公共 DTO 适配器连接表单和宿主提交；新增 Phase 2d 位于 Phase 2c 最小验证之后。源码生成器已确认为实施目标，替代下文旧的候选/条件表述。范围、通知/默认值边界及退出条件以 [DTO 收敛计划](dto-convergence-plan.md) 为准；Phase 2c 最小宿主接入已验证（241 项回归），见 [阶段记录](phase-2c.md)；Phase 2d 单 Entry DTO 生成/绑定试点已验证（348 项回归、独立契约部署与实际 CLI 编译），见 [phase-2d.md](phase-2d.md)。下一步为 Phase 3；全量设置 DTO 化和执行作者路径尚未完成。
 
 状态：设计与目标边界。Phase 1 中立值工具、Phase 2a 有序字段/编辑提示与 Phase 2b 共享表单/工厂已验证，事实见各阶段记录；正式宿主适配、Sample 整理及生成器仍为目标状态，不将未实现能力写入正式 spec。

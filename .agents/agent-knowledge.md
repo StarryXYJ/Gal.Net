@@ -39,7 +39,7 @@
 
 ## 当前工作
 
-- [F-20261013-02 参数与 Sample 简化](../features/F-20261013-02-parameter-and-sample-simplification/phase-2d.md)：Phase 0/1/2a/2b/2c/2d 已验证。共享 SchemaForm、开放工厂 registry 与 FieldEditorLease 位于 Avalonia.Controls；宿主拥有绑定/服务，主题显式贡献模板/工厂。Phase 2b 的 290 项回归及示例契约部署/编译通过；最小 Editor/Sample 正式适配经 241 项回归验证；DTO 特性生成、中立成员访问、公共 DtoBinding 与截图试点经 348 项回归验证；Sample 组合与执行作者路径优化仍待后续，Core 领域/快照重构暂缓。
+- [F-20261013-02 参数与 Sample 简化](../features/F-20261013-02-parameter-and-sample-simplification/phase-2e.md)：Phase 0/1/2a/2b/2c/2d/2e 已验证。共享 SchemaForm、开放工厂 registry 与 FieldEditorLease 位于 Avalonia.Controls；宿主拥有绑定/服务，主题显式贡献模板/工厂。Phase 2b 的 290 项回归及示例契约部署/编译通过；最小 Editor/Sample 正式适配经 241 项回归验证；DTO 特性生成、中立成员访问、公共 DtoBinding 与截图试点经 348 项回归验证；强类型执行 For<T> 与 Editor 文档直接绑定经 344 项回归和实际 CLI 编译验证；FieldDataFactory 已由 FieldDataType 替代，不再维护 Editor DTO 副本。Sample 组合与其余执行作者路径优化仍待后续，Core 领域/快照重构暂缓。
 
 - [F-20261013-01-editor-cli-operations](../features/F-20261013-01-editor-cli-operations/summary.md) 已实现独立内置/项目契约、项目 scope catalog、面向 agent 的 CLI 原始查询/校验/单 Group 编译、共享生命周期与无损保存、Windows 回收站和单平台截图样例；Phase 1–7 已验证并提交；审核与当前边界见 summary/review。CLI 发现使用 help --json，不保留旧别名或默认内置 fallback。契约是可信 C# 代码，动态加载不构成沙箱。
 

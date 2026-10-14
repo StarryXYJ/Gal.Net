@@ -139,7 +139,7 @@ public partial class PulseOptions
 var entry = DefaultPrimitiveEntryBase.ForDto<PulseOptions>("game.pulse");
 ```
 
-生成 `PulseOptions.Schema` 以及 `IFieldDto` 的成员访问代码。ForDto 从同一 schema 建立参数表并提供 Editor 数据工厂；不手写第二份参数描述，也不生成执行 module/保存逻辑。首轮支持顶层非泛型 partial class 上的公开可读写属性；private backing field、init-only 属性、非恒定默认表达式等报告 GNF001。字段顺序由 Field 的 order 明确指定，成员类型和常量属性初始化值来自 DTO；省略初始化值不等于声明 CLR 默认值为 schema 默认值。禁止执行任意 DTO 构造函数推断默认值。
+生成 `PulseOptions.Schema` 以及 `IFieldDto` 的成员访问代码。ForDto 从同一 schema 建立参数表并记录 FieldDataType；不手写第二份参数描述，也不生成执行 module/保存逻辑。首轮支持顶层非泛型 partial class 上的公开可读写属性；private backing field、init-only 属性、非恒定默认表达式等报告 GNF001。字段顺序由 Field 的 order 明确指定，成员类型和常量属性初始化值来自 DTO；省略初始化值不等于声明 CLR 默认值为 schema 默认值。禁止执行任意 DTO 构造函数推断默认值。
 
 字段 ID 使用 JsonPropertyName，未指定时为 camelCase；支持属性 JsonConverter、JsonRequired。Field 还可声明 Required/AllowNull、范围/MaxLength/ValueFormat，以及 EditorId/Step/Format/UnitKey/标签和说明。C# nullable 注解不等于 JSON null/presence 策略；AllowNull 未指定时遵循现有 ValueDescriptor 的 CLR 类型规则。复杂业务校验继续传给 ForDto 的 validateArguments。
 
@@ -155,9 +155,23 @@ var form = new SchemaForm
 };
 ```
 
-面板的字段列表由绑定 DTO 提供。普通提交经值校验后写成员；撤销或 async apply/save 使用 DtoBinding 的宿主提交回调，由宿主更新数据并通知/刷新。省略不是普通 CLR 成员能独立表达的状态；作者文件适配通过 isProvided 回调保留 JSON presence。绑定借用 DTO，表单拥有草稿/控件订阅；宿主在换对象时释放 DtoBinding。对象/数组继续用 JSON 编辑器，不生成递归面板。
+SchemaForm 只需要字段列表和 IFieldBinding，不要求数据源是 DTO。DtoBinding 的普通提交经值校验后写成员；async apply/save 使用其宿主提交回调，由宿主更新数据并通知/刷新。绑定借用 DTO，表单拥有草稿/控件订阅；宿主在换对象时释放 DtoBinding。对象/数组继续用 JSON 编辑器，不生成递归面板。
 
-Sample 的 ScreenshotOptions 已使用此路径；Editor 对 DTO Entry 使用整组 SchemaForm，保留原字典的历史/保存桥接，不再创建该 Entry 的逐字段旧投影。手写契约和专属资源/表达式控件仍可使用原路径；见 [阶段证据](../features/F-20261013-02-parameter-and-sample-simplification/phase-2d.md)。
+Editor 对 DTO 契约 Entry 使用整组 SchemaForm 和 EntryParameterFormBinding，直接读写作者参数字典，不实例化 DTO。省略与显式 null 保留在文档层；提交替换 Parameters，由既有 workspace 历史/保存链路观察。默认值仅用于展示，打开面板不写入文档；无效但可解析的 JSON 值仍可读取并修正。旧字符串作者文档无法无损表达的值（如显式 null 字符串）仍明确拒绝。手写契约和专属资源/表达式控件继续使用原路径。
+
+执行模块可选择强类型入口，与契约使用相同 DTO：
+
+```csharp
+var implementation = PrimitiveImplementation.For<PulseOptions>(
+    "game.pulse", (context, options) =>
+        new ImmediatePrimitiveInstance(
+            () => ApplyPulse(options.Faction!, options.Amount),
+            batchId: context.BatchId));
+```
+
+CompositeGameView 构建时检查执行工厂的 DTO 类型与契约 FieldDataType 一致。Dispatch 先用契约规范化和校验 JSON，再由工厂使用每个字段的 ValueCodec 和生成成员访问填充独立 DTO；参数默认值和属性 converter 不另写一份。Context 继续提供 Runtime、BatchId 和 ScopeCancellation，业务 DTO 不需要 ObservableObject。未提供且无 schema 默认值的字段保持新 DTO 的成员值；需要判断 presence 时查询 context.Arguments，其中包含规范化后的默认值，并非原始作者输入。普通 JSON 工厂仍可用于手写/动态契约；For<T> 不支持直接把未经规范化的参数交给工厂执行。
+
+Sample 的 ScreenshotOptions 同时作为契约定义和截图执行参数；Editor 只消费其 schema，不维护副本。见 [阶段证据](../features/F-20261013-02-parameter-and-sample-simplification/phase-2e.md)。
 
 ### 2. 分别定义契约和执行模块
 

@@ -4,12 +4,60 @@ using GalNet.Core.Primitives;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Runtime.Runtime;
+using GeneralTest.Presentation;
 
 namespace GeneralTest.Runtime;
 
 public class CompositeGameViewTests
 {
     private static readonly int[] DisposalOrder = [2, 1];
+
+    [Test]
+    public void TypedFactoryUsesNormalizedDefaultsConvertersAndIndependentDtoInstances()
+    {
+        var received = new List<PlainFormDto>();
+        PrimitiveCreateContext? receivedContext = null;
+        using var registration = new GameRegistration();
+        registration.RegisterSchema(new DefaultEntryModule("typed", [DefaultPrimitiveEntryBase.ForDto<PlainFormDto>("typed.run")]));
+        registration.RegisterImplementation(new PrimitiveModule([
+            PrimitiveImplementation.For<PlainFormDto>("typed.run", (context, options) =>
+            {
+                receivedContext = context;
+                received.Add(options);
+                return new ImmediatePrimitiveInstance(batchId: context.BatchId);
+            })]));
+        using var view = registration.BuildView();
+        var runtime = new GameRuntime(null);
+        using var cancellation = new CancellationTokenSource();
+        view.Dispatch(Entry("typed.run", new { date = "Friday", name = (string?)null }, "batch"), runtime, cancellation.Token);
+        Assert.Multiple(() =>
+        {
+            Assert.That(received[0].Count, Is.EqualTo(2));
+            Assert.That(received[0].Day, Is.EqualTo(DayOfWeek.Friday));
+            Assert.That(received[0].Name, Is.Null);
+            Assert.That(receivedContext!.Runtime, Is.SameAs(runtime));
+            Assert.That(receivedContext.ScopeCancellation, Is.EqualTo(cancellation.Token));
+            Assert.That(receivedContext.BatchId, Is.EqualTo("batch"));
+            Assert.That(receivedContext.Arguments.GetProperty("name").ValueKind, Is.EqualTo(JsonValueKind.Null));
+        });
+        received[0].Count = 9;
+        view.Dispatch(Entry("typed.run", new { }), runtime, CancellationToken.None);
+        Assert.That(received[1], Is.Not.SameAs(received[0]));
+        Assert.That(received[1].Count, Is.EqualTo(2));
+        Assert.That(received[1].Day, Is.EqualTo(DayOfWeek.Monday));
+        Assert.That(() => view.Dispatch(Entry("typed.run", new { count = 11 }), runtime, CancellationToken.None), Throws.TypeOf<InvalidDataException>());
+        Assert.That(received.Count, Is.EqualTo(2), "Invalid arguments never reach the factory.");
+    }
+
+    [Test]
+    public void TypedFactoryRejectsAnotherDtoContractBeforeExecution()
+    {
+        using var registration = new GameRegistration();
+        registration.RegisterSchema(new DefaultEntryModule("typed", [DefaultPrimitiveEntryBase.ForDto<ObservableFormDto>("typed.run")]));
+        registration.RegisterImplementation(new PrimitiveModule([
+            PrimitiveImplementation.For<PlainFormDto>("typed.run", (_, _) => throw new AssertionException("Must not execute"))]));
+        Assert.That(registration.BuildView, Throws.InvalidOperationException.With.Message.Contains("requires DTO"));
+    }
 
     [Test]
     public async Task AsyncDisposalThroughGameViewInterfaceUsesModuleAsyncCleanup()

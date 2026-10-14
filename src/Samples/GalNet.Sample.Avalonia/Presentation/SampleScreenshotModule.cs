@@ -16,12 +16,12 @@ public sealed class SampleScreenshotModule : PrimitiveModule
     public SampleScreenshotModule(GamePage page, Func<string> outputDirectory) : this(page, outputDirectory, new Lifetime()) { }
     private SampleScreenshotModule(GamePage page, Func<string> outputDirectory, Lifetime lifetime) : base(
     [
-            new PrimitiveImplementation(ScreenshotSchema.TypeId, context =>
+            PrimitiveImplementation.For<ScreenshotOptions>(ScreenshotSchema.TypeId, (context, options) =>
             {
                 ObjectDisposedException.ThrowIf(Volatile.Read(ref lifetime.Cancelled) != 0, lifetime);
 
                 var instance = new ScreenshotPrimitiveInstance(page, outputDirectory,
-                    context.Arguments.TryGetProperty("fileName", out var name) ? name.GetString() : null,
+                    options.FileName,
                     context.BatchId, context.ScopeCancellation, lifetime.Cancellation.Token);
                 lifetime.Completions.Add(instance.PresentationCompletion);
                 return instance;

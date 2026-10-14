@@ -108,4 +108,4 @@ flow.wait, variable.set, gallery.unlock
 
 ## DTO 字段声明
 
-GenerateFieldSchema + Field 属性生成中立 FieldDescriptor 列表及 IFieldDto 成员访问，不生成平台控件。DefaultPrimitiveEntryBase.ForDto<T> 使用 T.Schema 建表，并提供 FieldDataFactory；运行时仍执行通用 PrimitiveEntry。契约运行时不依赖 Roslyn，生成器仅为构建工具。默认值通过完整 ValueCodec 投影；旧字符串文档不能无损表示的默认值不填入 Defaults，仍保留在字段描述中，避免 JSON null 字符串和字符串编码枚举被改写。具体支持范围和可复制示例见 development.md 的 DTO 字段生成章节。
+GenerateFieldSchema + Field 属性生成中立 FieldDescriptor 列表及 IFieldDto 成员访问，不生成平台控件。DefaultPrimitiveEntryBase.ForDto<T> 使用 T.Schema 建表，并记录 FieldDataType，不提供 Editor DTO 工厂。运行时仍调度通用 PrimitiveEntry；执行模块可使用 PrimitiveImplementation.For<T>，注册时检查 DTO 类型，执行时用规范化参数和逐字段 ValueCodec 填充独立 DTO。契约运行时不依赖 Roslyn，生成器仅为构建工具。默认值通过完整 ValueCodec 投影；旧字符串文档不能无损表示的默认值不填入 Defaults，仍保留在字段描述中，避免 JSON null 字符串和字符串编码枚举被改写。具体支持范围和可复制示例见 development.md 的 DTO 字段生成章节。

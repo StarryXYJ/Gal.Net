@@ -24,6 +24,7 @@ public sealed class CompositeGameView : IGameView
             {
                 if (!catalog.TryGet(instruction.Type, out var schema) || schema.Kind != EntryKind.Primitive)
                     throw new InvalidOperationException($"Instruction '{instruction.Type}' has no primitive schema.");
+                instruction.ValidateDefinition(schema);
                 if (!_instructions.TryAdd(instruction.Type, instruction))
                     throw new InvalidOperationException($"Instruction '{instruction.Type}' is already registered.");
             }

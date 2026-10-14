@@ -72,7 +72,7 @@ public sealed class EditorWorkspaceViewModelTests
                 Assert.That(form.Diagnostics, Is.Empty);
                 Assert.That(form.Contexts[0].Field.Id, Is.EqualTo("duration"));
                 Assert.That(view.GetVisualDescendants(), Does.Contain(form.Editors[0].Control));
-                var field = useDto ? entry.DtoBinding!.Binding(entry.DtoBinding.Fields[0]) : (IFieldBinding)entry.ParameterFields.Single();
+                var field = useDto ? entry.ParameterForm!.Binding(entry.ParameterForm.Fields[0]) : (IFieldBinding)entry.ParameterFields.Single();
                 if (useDto) Assert.That(entry.ParameterFields, Is.Empty, "The generated DTO replaces the old per-field projection.");
                 var changes = 0;
                 field.Changed += (_, _) => changes++;

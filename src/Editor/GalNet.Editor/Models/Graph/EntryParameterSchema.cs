@@ -15,6 +15,43 @@ namespace GalNet.Editor.Models.Graph;
 public sealed record EntryTypeOption(string Value, string Category, string DisplayNameKey);
 public sealed record EntrySelectOption(string Value, string DisplayNameKey);
 
+/// <summary>Schema-driven edits read the author document directly; no DTO snapshot or synchronization is needed.</summary>
+public sealed class EntryParameterFormBinding : IDisposable
+{
+    private readonly EntryEditorItemViewModel _owner;
+    private EventHandler? _changed;
+    private bool _disposed;
+    public EntryParameterFormBinding(EntryEditorItemViewModel owner, IReadOnlyList<FieldDescriptor> fields)
+    {
+        _owner = owner;
+        Fields = fields;
+        var members = fields.ToDictionary(field => field.Id, field => (IFieldBinding)new DocumentField(this, field), StringComparer.Ordinal);
+        Binding = field => members[field.Id];
+    }
+    public IReadOnlyList<FieldDescriptor> Fields { get; }
+    public Func<FieldDescriptor, IFieldBinding> Binding { get; }
+    public void Refresh() { if (!_disposed) _changed?.Invoke(this, EventArgs.Empty); }
+    public void Dispose() { _disposed = true; _changed = null; }
+
+    private sealed class DocumentField(EntryParameterFormBinding form, FieldDescriptor field) : IFieldBinding
+    {
+        public bool IsEnabled => !form._disposed;
+        public FieldValue Read() => form._owner.Parameters.TryGetValue(field.Id, out var text)
+            ? new(ValueCodec.ParseEditorText(field.Value, text)) : default;
+        public event EventHandler? Changed
+        {
+            add { ObjectDisposedException.ThrowIf(form._disposed, form); form._changed += value; }
+            remove { form._changed -= value; }
+        }
+        public Task<ValueIssue?> CommitAsync(FieldValue value, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return form._disposed ? Task.FromResult<ValueIssue?>(new("entry.obsolete", "Entry schema has changed.", field.Id)) :
+                form._owner.CommitParameterAsync(field, value, cancellationToken);
+        }
+    }
+}
+
 public sealed record EntryParameterDefinition(
     string Id,
     EntryParameterType Type,

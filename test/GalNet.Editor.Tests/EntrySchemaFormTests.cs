@@ -22,6 +22,47 @@ namespace GeneralTest.Editor;
 public sealed class EntrySchemaFormTests
 {
     [Test]
+    public async Task GeneratedDocumentFieldsPreservePresenceAndCanRepairValuesWithoutConstructingDto()
+    {
+        var catalog = new TargetProfileEntryCatalog([new DefaultEntryModule("test", [DefaultPrimitiveEntryBase.ForDto<DocumentOptions>("test.fields", arguments =>
+        {
+            if (arguments.TryGetProperty("count", out var count) && count.ValueKind == JsonValueKind.Number && count.GetInt32() == 9)
+                throw new ArgumentException("Nine is reserved by this project.");
+        })])]);
+        var entry = new EntryEditorItemViewModel { Type = "test.fields", Parameters = new() { ["optional"] = "null", ["count"] = "true" } };
+        DocumentOptions.Constructions = 0;
+        entry.ConfigureParameterFields(catalog, [], []);
+        var binding = entry.ParameterForm!;
+        var count = binding.Binding(binding.Fields[0]);
+        var optional = binding.Binding(binding.Fields[1]);
+        var required = binding.Binding(binding.Fields[2]);
+        Assert.Multiple(() =>
+        {
+            Assert.That(DocumentOptions.Constructions, Is.Zero);
+            Assert.That(entry.ParameterFields, Is.Empty);
+            Assert.That(count.Read().Json!.Value.ValueKind, Is.EqualTo(JsonValueKind.True), "Reading must not deserialize an invalid author value into a CLR member.");
+            Assert.That(optional.Read().Json!.Value.ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(required.Read().IsProvided, Is.False);
+        });
+        Assert.That(await optional.CommitAsync(new(Json("3")), CancellationToken.None), Is.Null, "Other invalid or missing required fields must not prevent gradual document repair.");
+        Assert.That(await count.CommitAsync(new(Json("7")), CancellationToken.None), Is.Null);
+        Assert.That(await count.CommitAsync(new(Json("9")), CancellationToken.None), Is.Not.Null);
+        Assert.That(entry.Parameters["count"], Is.EqualTo("7"));
+        Assert.That(await count.CommitAsync(default, CancellationToken.None), Is.Null);
+        Assert.That(count.Read().IsProvided, Is.False, "A schema default is not an authored value.");
+        Assert.That(binding.Fields[0].DefaultValue!.Value.GetInt32(), Is.EqualTo(5));
+        Assert.That(await required.CommitAsync(default, CancellationToken.None), Is.Not.Null);
+        Assert.That(await optional.CommitAsync(default, CancellationToken.None), Is.Null);
+        Assert.That(optional.Read().IsProvided, Is.False);
+        var saved = new EditorDocumentRepository(catalog).SerializeEntry(new EditorEntryData { StableId = entry.StableId, Type = entry.Type, Parameters = entry.Parameters });
+        Assert.That(saved.Parameters, Is.Empty);
+        entry.ConfigureParameterFields(catalog, [], []);
+        Assert.That(await count.CommitAsync(new(Json("8")), CancellationToken.None), Is.Not.Null);
+        Assert.That(entry.Parameters, Is.Empty);
+        Assert.That(DocumentOptions.Constructions, Is.Zero);
+    }
+
+    [Test]
     public async Task ProjectMetadataPreservesLargeIntegersConvertersAndTypedJsonOnSave()
     {
         await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
@@ -126,6 +167,16 @@ public sealed class EntrySchemaFormTests
         public override bool Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => reader.GetString() == "yes";
         public override void Write(Utf8JsonWriter writer, bool value, JsonSerializerOptions options) => writer.WriteStringValue(value ? "yes" : "no");
     }
+}
+
+[GenerateFieldSchema]
+public partial class DocumentOptions
+{
+    public static int Constructions { get; set; }
+    public DocumentOptions() => Constructions++;
+    [Field(0)] public int Count { get; set; } = 5;
+    [Field(1, AllowNull = true)] public int? Optional { get; set; }
+    [Field(2, Required = true, AllowNull = false)] public string? Name { get; set; }
 }
 
 public static class EditorFormTestApplication

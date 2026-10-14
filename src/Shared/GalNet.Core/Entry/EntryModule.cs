@@ -21,7 +21,7 @@ public abstract class EntryBase
     public string Category { get; }
     public DynamicParameterTable Parameters { get; }
     public bool IsReading { get; init; }
-    public Func<IFieldDto>? FieldDataFactory { get; init; }
+    public Type? FieldDataType { get; init; }
 
     internal abstract EntryDefinition CreateDefinition();
 
@@ -55,7 +55,7 @@ public abstract class EntryBase
             options,
             kind,
             Parameters)
-        { IsReading = IsReading, FieldDataFactory = FieldDataFactory };
+        { IsReading = IsReading, FieldDataType = FieldDataType };
     }
 
     private static string GetDefaultCategory(string name)
@@ -87,7 +87,7 @@ public sealed class DefaultPrimitiveEntryBase : PrimitiveEntryBase
     public static DefaultPrimitiveEntryBase ForDto<T>(string name, Action<JsonElement>? validateArguments = null, string? category = null)
         where T : IFieldDto, IFieldSchema<T>, new() => new(name,
             new DynamicParameterTable(T.Schema.Select(descriptor => new DynamicParameterDescriptor(descriptor)), validateArguments), category)
-        { FieldDataFactory = static () => new T() };
+        { FieldDataType = typeof(T) };
 
     public DefaultPrimitiveEntryBase(
         string name,

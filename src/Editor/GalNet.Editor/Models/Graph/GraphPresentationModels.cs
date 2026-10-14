@@ -258,19 +258,19 @@ public partial class EntryEditorItemViewModel : ObservableObject
     private string _effectDiagnostic = "";
 
     private IEffectCatalog? _effectCatalog;
-    private DynamicParameterTable? _dtoParameters;
-    [ObservableProperty] private DtoBinding? _dtoBinding;
-    public bool HasDtoFields => DtoBinding is not null;
-    partial void OnDtoBindingChanged(DtoBinding? value) => OnPropertyChanged(nameof(HasDtoFields));
+    private DynamicParameterTable? _formParameters;
+    [ObservableProperty] private EntryParameterFormBinding? _parameterForm;
+    public bool HasParameterForm => ParameterForm is not null;
+    partial void OnParameterFormChanged(EntryParameterFormBinding? value) => OnPropertyChanged(nameof(HasParameterForm));
     public bool HasEffectDiagnostic => !string.IsNullOrWhiteSpace(EffectDiagnostic);
 
     public ObservableCollection<EntryParameterEditorItemViewModel> ParameterFields { get; } = [];
     /// <summary>Builds the editor projection from the Core registry, the single schema source.</summary>
     public void ConfigureParameterFields(IEntryCatalog catalog, IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames, bool resetValues = false, IEffectCatalog? effectCatalog = null)
     {
-        DtoBinding?.Dispose();
-        DtoBinding = null;
-        _dtoParameters = null;
+        ParameterForm?.Dispose();
+        ParameterForm = null;
+        _formParameters = null;
         _effectCatalog = effectCatalog;
         var schema = catalog.Get(Type);
         var values = resetValues
@@ -281,12 +281,10 @@ public partial class EntryEditorItemViewModel : ObservableObject
         ParameterFields.Clear();
         var parameters = schema.DynamicParameters ?? EntrySchema.DynamicParameters(schema.Parameters, schema.Defaults, schema.Options);
 
-        if (schema.FieldDataFactory is { } createData)
+        if (schema.FieldDataType is not null)
         {
-            _dtoParameters = parameters;
-            var binding = new DtoBinding(createData(), CommitParameterAsync, id => Parameters.ContainsKey(id));
-            RefreshDto(binding);
-            DtoBinding = binding;
+            _formParameters = parameters;
+            ParameterForm = new EntryParameterFormBinding(this, parameters.Fields);
             UpdateEffectHints();
             return;
         }
@@ -348,30 +346,20 @@ public partial class EntryEditorItemViewModel : ObservableObject
         }
         try
         {
-            _dtoParameters?.ValidateArguments(JsonSerializer.SerializeToElement(updated.ToDictionary(pair => pair.Key,
-                pair => ValueCodec.FromEditorText(_dtoParameters[pair.Key].Value, pair.Value))));
+            if (_formParameters is { } parameters)
+                parameters.ValidateArguments(JsonSerializer.SerializeToElement(updated.ToDictionary(pair => pair.Key,
+                    pair => ValueCodec.ParseEditorText(parameters[pair.Key].Value, pair.Value))));
         }
-        catch (ArgumentException exception) { return Task.FromResult<ValueIssue?>(new("entry.arguments", exception.Message, field.Id)); }
+        catch (Exception exception) when (exception is ArgumentException or JsonException)
+        { return Task.FromResult<ValueIssue?>(new("entry.arguments", exception.Message, field.Id)); }
         if (!Parameters.OrderBy(pair => pair.Key).SequenceEqual(updated.OrderBy(pair => pair.Key))) Parameters = updated;
         return Task.FromResult<ValueIssue?>(null);
-    }
-
-    private void RefreshDto(DtoBinding? target = null)
-    {
-        if ((target ?? DtoBinding) is not { } binding) return;
-        foreach (var field in binding.Fields)
-        {
-            var json = Parameters.TryGetValue(field.Id, out var text) ? ValueCodec.FromEditorText(field.Value, text) : field.DefaultValue;
-            binding.Data.WriteField(field.Id, json is { } provided ? ValueCodec.Deserialize(field.Value, provided) :
-                field.Value.ValueType.IsValueType ? Array.CreateInstance(field.Value.ValueType, 1).GetValue(0) : null);
-        }
-        binding.Refresh();
     }
 
     partial void OnParametersChanged(Dictionary<string, string> value)
     {
         foreach (var field in ParameterFields.OfType<SchemaEntryParameterEditorItemViewModel>()) field.RefreshValue();
-        RefreshDto();
+        ParameterForm?.Refresh();
         UpdateEffectHints();
     }
     partial void OnEffectDiagnosticChanged(string value) => OnPropertyChanged(nameof(HasEffectDiagnostic));

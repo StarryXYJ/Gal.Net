@@ -1,6 +1,6 @@
 # DTO 字段生成与绑定收敛
 
-状态：Phase 2d verified，348 项回归及实际契约部署/CLI 编译通过，见 [phase-2d.md](phase-2d.md)。2026-10-14 用户确认；本文替代此前把源码生成器仅列为候选的决定。已验证的值工具、字段描述、SchemaForm、工厂和上下文继续复用，不另建平行表单框架。
+状态：Phase 2d/2e verified。2d 的 348 项验证见 [phase-2d.md](phase-2d.md)；2e 的强类型执行与文档直接绑定经 344 项回归及实际契约部署/CLI 编译通过，见 [phase-2e.md](phase-2e.md)。2026-10-14 用户确认；本文替代此前把源码生成器仅列为候选的决定。已验证的值工具、字段描述、SchemaForm、工厂和上下文继续复用，不另建平行表单框架。
 
 ## 目标和范围
 
@@ -14,7 +14,7 @@ DTO 可为普通 class。需要自动响应外部更新时使用 INotifyProperty
 
 Phase 2c 先处理已有失败并验证最小宿主接入，不继续增加字段类型包装或扩大迁移。随后新增 Phase 2d，先以一个 Entry DTO 完成生成、面板编辑、撤销与保存，再推进 Phase 3 的组合入口和 Phase 4 的作者路径。Phase 5 依据已实现生成器优化体验，不重复从零评估是否采用生成器；Analyzer、模板和其他自动化仍按收益选择。
 
-顺序修订为：0 → 1 → 2a → 2b → 2c（最小收尾）→ 2d → 3 → 4 → 4b → 5 → 6。各实现 Phase 验证后独立提交。Phase 2c 的最小收尾已通过 241 项回归验证，见 [phase-2c.md](phase-2c.md)。Phase 2d 的单 Entry 垂直试点已验证，后续扩展仍按收益推进。
+顺序修订为：0 → 1 → 2a → 2b → 2c（最小收尾）→ 2d → 2e → 3 → 4 → 4b → 5 → 6。各实现 Phase 验证后独立提交。Phase 2c 的最小收尾已通过 241 项回归验证，见 [phase-2c.md](phase-2c.md)。Phase 2d 的单 Entry 垂直试点及 Phase 2e 的执行/文档绑定收敛已验证，后续扩展仍按收益推进。
 
 ## Phase 2d：单个 DTO 的生成与公共绑定垂直试点
 
@@ -42,6 +42,15 @@ Phase 2c 先处理已有失败并验证最小宿主接入，不继续增加字�
 文档：通过后更新正式开发示例；当前仅作为计划，不把 DTO 自动绑定写成已实现能力。
 
 ## 后续阶段调整
+
+### Phase 2e：执行强类型与文档绑定收敛（2026-10-14）
+
+状态：verified，证据见 [phase-2e.md](phase-2e.md)。用户确认整体设计后授权实施；插入 Phase 3 前，替代 Phase 2d 试点中 Editor 的 DTO 副本路径。
+
+- 执行工厂增加 `PrimitiveImplementation.For<T>`，用现有规范化结果与逐字段 ValueCodec 创建每次调用独立 DTO；注册时检查契约 DTO 类型。保留普通 JSON 工厂，不生成执行或生命周期代码。
+- 契约只记录 DTO 类型，不再提供无消费者的数据工厂；Editor 消费字段列表直接绑定 Parameters，删除 JSON 到 DTO 的同步逻辑。文档仍拥有历史/保存，SchemaForm 和 IFieldBinding 不改变。
+- 验证强类型工厂的默认值、converter、null/省略、校验失败、实例隔离、批次/取消与契约不匹配；真实编辑器验证输入、撤销/重做、保存、换 schema 后旧绑定不可提交及非法作者值可显示而不改写。
+- 本阶段不全面替换 EntryParameterType，不统一设置/变量存储，不扩展生成器、不迁移特殊控件；Sample 集中入口仍由 Phase 3 处理。
 
 - Phase 3：集中 schema/module/工厂注册入口，复用 Phase 2d 的 DTO 适配，不新增另一套成员绑定服务。
 - Phase 4：以生成后的 DTO 路径降低 Entry 作者样板，保留复杂校验/Composite/异步实现；公共 factory helper 仅在真实重复时增加。
