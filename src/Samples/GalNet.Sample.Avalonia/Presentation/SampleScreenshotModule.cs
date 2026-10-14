@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using Avalonia.Threading;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Core.Primitives;
@@ -11,73 +10,65 @@ namespace GalNet.Sample.Avalonia.Presentation;
 /// <summary>A single-platform implementation may borrow the concrete GamePage directly.</summary>
 public sealed class SampleScreenshotModule : PrimitiveModule
 {
-    private readonly Lifetime _lifetime;
-    private Task? _disposeTask;
-    public SampleScreenshotModule(GamePage page, Func<string> outputDirectory) : this(page, outputDirectory, new Lifetime()) { }
-    private SampleScreenshotModule(GamePage page, Func<string> outputDirectory, Lifetime lifetime) : base(
+    private readonly PrimitiveTaskScope _scope;
+    public SampleScreenshotModule(GamePage page, Func<string> outputDirectory) : this(page, outputDirectory, new PrimitiveTaskScope()) { }
+    private SampleScreenshotModule(GamePage page, Func<string> outputDirectory, PrimitiveTaskScope scope) : base(
     [
             PrimitiveImplementation.For<ScreenshotOptions>(ScreenshotSchema.TypeId, (context, options) =>
             {
-                ObjectDisposedException.ThrowIf(Volatile.Read(ref lifetime.Cancelled) != 0, lifetime);
-
-                var instance = new ScreenshotPrimitiveInstance(page, outputDirectory,
+                scope.ThrowIfDisposed();
+                return new ScreenshotPrimitiveInstance(scope, page, outputDirectory,
                     options.FileName,
-                    context.BatchId, context.ScopeCancellation, lifetime.Cancellation.Token);
-                lifetime.Completions.Add(instance.PresentationCompletion);
-                return instance;
+                    context.BatchId, context.ScopeCancellation, scope.CancellationToken);
             })
         ]
         )
-        => _lifetime = lifetime;
+        => _scope = scope;
 
     public override void Dispose()
     {
-        if (Interlocked.Exchange(ref _lifetime.Cancelled, 1) == 0) _lifetime.Cancellation.Cancel();
+        _scope.Dispose();
         base.Dispose();
     }
 
     public override async ValueTask DisposeAsync()
     {
-        await (_disposeTask ??= DisposeCoreAsync()).ConfigureAwait(false);
-        await base.DisposeAsync().ConfigureAwait(false);
-    }
-
-    private async Task DisposeCoreAsync()
-    {
-        Dispose();
-        try { await Task.WhenAll(_lifetime.Completions).ConfigureAwait(false); }
-        catch (OperationCanceledException) when (_lifetime.Cancellation.IsCancellationRequested) { }
+        try { await _scope.DisposeAsync().ConfigureAwait(false); }
         catch (Exception exception) { GameLog.Logger.Error(exception, "Screenshot presentation failed while draining the module."); }
-        finally { _lifetime.Cancellation.Dispose(); }
-    }
-
-    private sealed class Lifetime
-    {
-        public CancellationTokenSource Cancellation { get; } = new();
-        public int Cancelled;
-        public ConcurrentBag<Task> Completions { get; } = [];
+        finally { await base.DisposeAsync().ConfigureAwait(false); }
     }
 }
 
-public sealed class ScreenshotPrimitiveInstance(GamePage page, Func<string> outputDirectory, string? fileName,
-    string? batchId, CancellationToken cancellationToken, CancellationToken lifetimeCancellation = default) : PrimitiveInstance(batchId)
+public sealed class ScreenshotPrimitiveInstance(PrimitiveTaskScope? taskScope, GamePage page,
+    Func<string> outputDirectory, string? fileName, string? batchId, CancellationToken cancellationToken,
+    CancellationToken lifetimeCancellation = default) : AsyncPrimitiveInstance(batchId, blocking: true, cancellationToken)
 {
-    private readonly CancellationTokenSource _scope = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, lifetimeCancellation);
-    private readonly TaskCompletionSource _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    public override bool IsBlocking => true;
-    public override bool IsSkippable => false;
-    public override Task PresentationCompletion => _completion.Task;
+    public ScreenshotPrimitiveInstance(GamePage page, Func<string> outputDirectory, string? fileName,
+        string? batchId, CancellationToken cancellationToken, CancellationToken lifetimeCancellation = default)
+        : this(null, page, outputDirectory, fileName, batchId, cancellationToken, lifetimeCancellation) { }
     public string? SavedPath { get; private set; }
 
-    protected override void OnDispatch() => _ = CaptureAsync();
-    protected override void OnQuickDispatch() => OnDispatch();
-    protected override void OnCatchUpDispatch() { _scope.Dispose(); _completion.SetResult(); TryComplete(); }
-
-    private async Task CaptureAsync()
+    protected override Task ExecuteAsync(CancellationToken token)
     {
+        try { return taskScope is null ? CaptureAsync(token) : taskScope.Run(_ => CaptureAsync(token)); }
+        catch (ObjectDisposedException) when (taskScope is not null)
+        {
+            return Task.FromException(new OperationCanceledException(taskScope.CancellationToken));
+        }
+    }
+    protected override void OnCatchUpDispatch() => CompleteWithoutExecution();
+    protected override bool HandleExecutionFailure(Exception exception)
+    {
+        if (exception is not OperationCanceledException) GameLog.Logger.Error(exception, "Screenshot entry failed.");
+        return false;
+    }
+
+    private async Task CaptureAsync(CancellationToken cancellation)
+    {
+        using var scope = CancellationTokenSource.CreateLinkedTokenSource(cancellation, lifetimeCancellation);
         string? temporary = null;
         Exception? failure = null;
-        var token = _scope.Token;
+        var token = scope.Token;
         try
         {
             token.ThrowIfCancellationRequested();
@@ -114,16 +105,8 @@ public sealed class ScreenshotPrimitiveInstance(GamePage page, Func<string> outp
         {
             try { if (temporary is not null) File.Delete(temporary); }
             catch (Exception cleanup) { failure = failure is null ? cleanup : new AggregateException(failure, cleanup); }
-            _scope.Dispose();
-            if (failure is OperationCanceledException) _completion.TrySetCanceled(token);
-            else if (failure is not null)
-            {
-                GameLog.Logger.Error(failure, "Screenshot entry failed.");
-                _completion.TrySetException(failure);
-            }
-            else _completion.TrySetResult();
-            TryComplete();
         }
+        if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
     }
 
     private static void RejectLinks(string directory)

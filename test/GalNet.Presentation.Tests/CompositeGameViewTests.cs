@@ -12,6 +12,35 @@ public class CompositeGameViewTests
 {
     private static readonly int[] DisposalOrder = [2, 1];
 
+    [TestCase(PrimitiveInvocationMode.Normal)]
+    [TestCase(PrimitiveInvocationMode.Quick)]
+    [TestCase(PrimitiveInvocationMode.CatchUp)]
+    public async Task TypedAsyncFactoryPropagatesDefaultsBatchScopeAndMode(PrimitiveInvocationMode mode)
+    {
+        var calls = new List<string>();
+        using var cancellation = new CancellationTokenSource();
+        using var registration = new GameRegistration().RegisterSchema(new DefaultEntryModule("typed",
+            [DefaultPrimitiveEntryBase.ForDto<PlainFormDto>("typed.async")]));
+        var pending = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        registration.RegisterImplementation(new PrimitiveModule([
+            PrimitiveImplementation.Async<PlainFormDto>("typed.async", (_, options, token) =>
+            {
+                Assert.That(options.Count, Is.EqualTo(2));
+                Assert.That(token, Is.EqualTo(cancellation.Token));
+                calls.Add("normal");
+                return pending.Task;
+            }, blocking: true, catchUp: (_, _, _) => { calls.Add("catchup"); return Task.CompletedTask; })]));
+        using var view = registration.BuildView();
+        var instance = view.Dispatch(Entry("typed.async", new { }, "batch"), new GameRuntime(null), cancellation.Token, mode)!;
+        Assert.That(instance.BatchId, Is.EqualTo("batch"));
+        Assert.That(instance.IsBlocking, Is.True);
+        Assert.That(instance.IsSkippable, Is.False);
+        Assert.That(instance.IsCompleted, Is.EqualTo(mode == PrimitiveInvocationMode.CatchUp));
+        pending.SetResult();
+        await instance.PresentationCompletion.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.That(calls, Is.EqualTo(new[] { mode == PrimitiveInvocationMode.CatchUp ? "catchup" : "normal" }));
+    }
+
     [Test]
     public void GeneratedJsonDefaultsChoicesAndStringEncodingsReachTypedExecution()
     {

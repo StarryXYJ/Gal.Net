@@ -202,6 +202,29 @@ public sealed class ScreenshotEntryTests
         }, TestContext.CurrentContext.CancellationToken);
     }
 
+    [Test]
+    public async Task DisposingModuleDoesNotWaitForAnUndispatchedInstance()
+    {
+        await using var session = HeadlessUnitTestSession.StartNew(typeof(ScreenshotTestApplication));
+        await DispatchAsync(session, async () =>
+        {
+            await using var module = new SampleScreenshotModule(new GamePage(), () => _root);
+            var catalog = new TargetProfileEntryCatalog(ProjectSchemas.Modules);
+            var context = new PrimitiveCreateContext(catalog.Get(ScreenshotSchema.TypeId),
+                new PrimitiveEntry(ScreenshotSchema.TypeId, JsonSerializer.SerializeToElement(new { })),
+                new GalNet.Runtime.Runtime.GameRuntime(null), default);
+            var implementation = module.Instructions[ScreenshotSchema.TypeId];
+            var instance = implementation.CreateInstance(context);
+            await module.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Throws<ObjectDisposedException>(() => implementation.CreateInstance(context));
+            instance.Dispatch();
+            try { await instance.PresentationCompletion; Assert.Fail("Expected module cancellation."); }
+            catch (OperationCanceledException) { }
+            Assert.That(instance.PresentationCompletion.IsCanceled, Is.True);
+            Assert.That(Directory.GetFiles(_root), Is.Empty);
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
     [TestCase("../escape.png")]
     [TestCase("C:\\escape.png")]
     [TestCase("folder/file.png")]

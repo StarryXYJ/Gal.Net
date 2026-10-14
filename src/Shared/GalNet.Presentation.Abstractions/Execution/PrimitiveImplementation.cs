@@ -52,6 +52,27 @@ public sealed class PrimitiveImplementation
         { FieldDataType = typeof(T) };
     }
 
+    /// <summary>A single asynchronous operation. Quick executes normally; CatchUp repeats execution unless overridden.</summary>
+    public static PrimitiveImplementation Async<T>(string type,
+        Func<PrimitiveCreateContext, T, CancellationToken, Task> execute, bool blocking = false,
+        Func<PrimitiveCreateContext, T, CancellationToken, Task>? catchUp = null)
+        where T : IFieldDto, IFieldSchema<T>, new()
+    {
+        ArgumentNullException.ThrowIfNull(execute);
+        return For<T>(type, (context, data) => new OperationInstance(
+            token => execute(context, data, token),
+            catchUp is null ? null : token => catchUp(context, data, token),
+            context.BatchId, blocking, context.ScopeCancellation));
+    }
+
+    private sealed class OperationInstance(Func<CancellationToken, Task> execute,
+        Func<CancellationToken, Task>? catchUp, string? batchId, bool blocking, CancellationToken token)
+        : AsyncPrimitiveInstance(batchId, blocking, token)
+    {
+        protected override Task ExecuteAsync(CancellationToken cancellationToken) =>
+            (InvocationMode == PrimitiveInvocationMode.CatchUp ? catchUp ?? execute : execute)(cancellationToken);
+    }
+
     internal void ValidateDefinition(EntryDefinition definition)
     {
         if (FieldDataType is { } expected && definition.FieldDataType != expected)

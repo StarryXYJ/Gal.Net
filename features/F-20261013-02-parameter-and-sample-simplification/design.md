@@ -1,5 +1,7 @@
 # 设计边界与收益判断
 
+2026-10-15 Phase 4b 分批实施：4b1 建立可重载 AsyncPrimitiveInstance 与 Async<T> 回调工厂；业务同步状态写入与异步操作分开，错误策略可重载。Effect/Particle 共用窄范围展示默认实现，截图共用实例机制和组合式 PrimitiveTaskScope。完成任务从创建时稳定，错误先于逻辑完成通知发布；scope 只登记已运行任务，完成移除但保留错误供释放聚合。实现、验证与实际成本见 [phase-4b1.md](phase-4b1.md)。Session 清理与文本推进状态机另批验证。
+
 2026-10-14 Phase 5d 实施补充：颜色过渡以源基类共用 12 个字段；生成器合并源基类 Field 并拒绝 Order/ID 冲突及成员隐藏/重写，避免另写第二份 schema。新增 ValueCodec.SerializeFields 按成员 codec 写子指令，默认保留 null，省略 undefined JSON，可显式省略 null；编译 Normalize 补默认。42 个稳定内置 ID 集中到 BuiltinEntryIds，删除 Primitive 作者类壳与取 ID 工厂，Composite 用静态业务回调，开放动画事件 payload 不递归 DTO 化。
 
 2026-10-14 Phase 5c 实施补充：粒子 DTO 表单实测复现完整指令校验阻断逐字段创作。DynamicParameterTable/ForDto 新增可选 validatePartialArguments；默认沿用原 validator，依赖完整默认/必备业务字段的内置契约显式选择局部 no-op，字段类型/范围仍验证，Normalize 编译/执行仍使用完整 validator。此为维持作者逐字段编辑行为的最小入口，不吞掉编译诊断。

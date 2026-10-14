@@ -1,5 +1,7 @@
 # Phase Plan
 
+2026-10-15 Phase 4b 拆成独立验证批次：4b1 简单异步默认实现、typed Async 工厂、截图/Effect/Particle 与任务 scope；4b2 Session 继续清理/错误聚合；4b3 Dialogue/NVL 推进状态机按净收益验证。4b1 已验证：607 个不重复用例通过、全解决方案编译 0 错误；完整集成受其他任务的两项 UI Flush 测试挂起影响，明确排除并保留证据。消费端净减 164 行，包含公共机制后生产净增 29 行。证据见 [phase-4b1.md](phase-4b1.md)；Phase 4b 整体仍 in-progress。
+
 2026-10-14 Phase 4 已验证：PrimitiveImplementation.Immediate / Immediate<T> 简化同步工厂，轨道操作与 wait 使用唯一 DTO 参数声明，复杂校验/Composite/异步实例保留手写扩展。307 个不重复回归用例通过；五条指令迁移前后 CLI 描述相同，独立契约部署与实际项目编译通过。证据见 [phase-4.md](phase-4.md)。当前无阻断项，下一阶段为 Phase 4b 的异步机制与清理。
 
 2026-10-14 最新收敛决定：DTO 成员特性生成有序 schema 与成员访问表，公共 DTO 适配器连接表单和宿主提交；新增 Phase 2d 位于 Phase 2c 最小验证之后。源码生成器已确认为实施目标，替代下文旧的候选/条件表述。范围、通知/默认值边界及退出条件以 [DTO 收敛计划](dto-convergence-plan.md) 为准；Phase 2c 最小宿主接入已验证（241 项回归），见 [阶段记录](phase-2c.md)；Phase 2d 单 Entry DTO 生成/绑定试点已验证（348 项回归、独立契约部署与实际 CLI 编译），见 [phase-2d.md](phase-2d.md)。Phase 4 已验证，下一步为 Phase 4b；全量设置 DTO 化仍暂缓，进一步作者工具化由 Phase 5 处理。
@@ -119,7 +121,7 @@
 
 ## Phase 4b：Entry 异步生命周期与 Sample 清理收敛
 
-状态：planned；依赖 Phase 3；与 Phase 4 作者路径正交；相对工作量：中。
+状态：in-progress；依赖 Phase 3；与 Phase 4 作者路径正交；相对工作量：中。4b1/4b2/4b3 分批独立验证与提交，见本页最新记录。
 
 - 目标：删除截图异步样板，修正清理短路，同时保持业务行为和显式所有权；本阶段不以缩短普通新 Entry 的参数/schema 声明作为验收。
 - 模块：Core 的实例完成协议（仅必要改动）、Presentation.Abstractions 的模块工具、Sample 截图/Session/Runner/Presentation，以及按证据选取的 Builtins PrimitiveInstance、module factory、RuntimeActions 与重放消费边界。

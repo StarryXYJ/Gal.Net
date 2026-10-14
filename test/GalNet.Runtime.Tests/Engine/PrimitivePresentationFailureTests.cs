@@ -27,13 +27,11 @@ public sealed class PrimitivePresentationFailureTests
         Assert.That(engine.State, Is.EqualTo(GameEngineState.Faulted));
     }
 
-    private sealed class FailedPresentation(bool immediate) : PrimitiveInstance
+    private sealed class FailedPresentation(bool immediate) : AsyncPrimitiveInstance(blocking: true)
     {
         private readonly TaskCompletionSource _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        public override bool IsBlocking => true;
-        public override bool IsSkippable => false;
-        public override Task PresentationCompletion => _completion.Task;
-        protected override void OnDispatch() { if (immediate) Fail(); }
-        public void Fail() { _completion.SetException(new IOException("capture failed")); TryComplete(); }
+        protected override Task ExecuteAsync(CancellationToken token) =>
+            immediate ? Task.FromException(new IOException("capture failed")) : _completion.Task;
+        public void Fail() => _completion.SetException(new IOException("capture failed"));
     }
 }
