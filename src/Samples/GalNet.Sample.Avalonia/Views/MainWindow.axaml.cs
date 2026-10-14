@@ -26,7 +26,7 @@ public partial class MainWindow : UrsaWindow
         _languageSelectionViewModel = services.GetRequiredService<LanguageSelectionViewModel>();
         InitializeComponent();
         services.GetRequiredService<SamplePlayerSettingsService>().BindWindow(this);
-        PlayerRoot.Styles.Add(App.PlayerTheme.CreateStyles());
+        PlayerRoot.Styles.Add(SampleCustomization.PlayerTheme.CreateStyles());
         LanguageSelection.DataContext = _languageSelectionViewModel;
         GameCanvas.GameContent = shell;
         DebugMenu.IsVisible = false;

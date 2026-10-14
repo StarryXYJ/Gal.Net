@@ -75,7 +75,7 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
     }
 
     public IReadOnlyList<SettingCategory> Categories { get; }
-    public EditorRegistry Editors { get; } = EditorRegistry.CreateDefault();
+    public EditorRegistry Editors { get; } = SampleCustomization.CreateFieldEditors();
     public Task FlushAsync() => _coordinator.FlushAsync();
 
     public void BindWindow(global::Avalonia.Controls.Window? window)

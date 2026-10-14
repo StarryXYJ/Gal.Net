@@ -38,7 +38,7 @@ try
 
     var presentation = new ConsolePresentation(settings.Get<GameSettings>());
     using var registration = new GameRegistration();
-    foreach (var module in GalNet.Project.Contracts.ProjectSchemas.Modules) registration.RegisterSchema(module);
+    registration.UseCatalog(GalNet.Project.Contracts.ProjectSchemas.CreateCatalog());
     await using var view = registration.AddBuiltinImplementations(registration.BuildCatalog(),
         presentation, presentation, presentation, presentation, content.Gallery, nvlPresenter: presentation,
         characters: content.Localization.Characters).BuildView();

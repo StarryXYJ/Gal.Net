@@ -9,9 +9,9 @@ updated: 2026-10-14
 
 # 参数契约共用与 Sample 扩展简化
 
-2026-10-14 Phase 2e 已验证：强类型执行工厂、Editor 文档直接绑定和 DTO 副本删除，344 项回归及独立契约部署/CLI 编译通过。证据见 [phase-2e.md](phase-2e.md)，最新顺序为 2d → 2e → 3。EntryParameterType 全面替换继续暂缓；下一阶段为 Sample 组合与服务整理。
+2026-10-14 Phase 3 已验证：SampleCustomization 集中平台组合与资源策略，游戏共用 ProjectSchemas.CreateCatalog，删除 Session 初始化 catalog 状态及 Runner 重复 restorer 引用。97 项定向回归、契约独立部署、Headless 构建和 CLI 实际编译通过。证据见 [phase-3.md](phase-3.md)。当前无阻断项，下一阶段为 Phase 4 作者路径验证；清理短路与异步机制仍由 Phase 4b 处理。
 
-2026-10-14 最新收敛决定：DTO 成员特性生成有序 schema 与成员访问表，公共 DTO 适配器连接表单和宿主提交；新增 Phase 2d 位于 Phase 2c 最小验证之后。源码生成器已确认为实施目标，替代下文旧的候选/条件表述。范围、通知/默认值边界及退出条件以 [DTO 收敛计划](dto-convergence-plan.md) 为准；Phase 2c 最小宿主接入已验证（241 项回归），见 [阶段记录](phase-2c.md)；Phase 2d 单 Entry DTO 生成/绑定试点已验证（348 项回归、独立契约部署与实际 CLI 编译），见 [phase-2d.md](phase-2d.md)。下一步为 Phase 3；全量设置 DTO 化和执行作者路径尚未完成。
+2026-10-14 最新收敛决定：DTO 成员特性生成有序 schema 与成员访问表，公共 DTO 适配器连接表单和宿主提交；新增 Phase 2d 位于 Phase 2c 最小验证之后。源码生成器已确认为实施目标，替代下文旧的候选/条件表述。范围、通知/默认值边界及退出条件以 [DTO 收敛计划](dto-convergence-plan.md) 为准；Phase 2c 最小宿主接入已验证（241 项回归），见 [阶段记录](phase-2c.md)；Phase 2d 单 Entry DTO 生成/绑定试点已验证（348 项回归、独立契约部署与实际 CLI 编译），见 [phase-2d.md](phase-2d.md)。Phase 3 已验证，下一步为 Phase 4；全量设置 DTO 化和执行作者路径尚未完成。
 
 ## 目标
 
@@ -21,7 +21,7 @@ updated: 2026-10-14
 
 目标优先级澄清（2026-10-14）：Entry 部分首先要减少开发者新增常见 Entry 时的样板步骤与重复事实，包括参数声明/读取和常见工厂接入；异步完成/清理属于并行的运行时改进。后续工具化不限于源码生成器，需比较更顺手的 authoring API、typed reader/factory、DTO/JSON 元数据、诊断/IDE 辅助与模板/示例，按端到端净收益组合采用。
 
-用户已确认按本计划推进。Phase 0、1、2a、2b、2c 已验证；中立值工具、有序字段与开放编辑提示、选定消费者迁移及共享 SchemaForm/默认工厂已完成。Phase 2b 的 290 项回归与示例契约部署/编译通过；Editor/Sample 最小宿主适配已验证；DTO 生成、Sample 整理及作者路径优化仍待后续阶段。承接已完成的 [Editor/CLI feature](../F-20261013-01-editor-cli-operations/summary.md)，不改写其历史范围和状态。
+用户已确认按本计划推进。Phase 0/1/2a/2b/2c/2d/2e/3 已验证；中立值工具、有序字段与开放编辑提示、选定消费者迁移及共享 SchemaForm/默认工厂已完成。Phase 2b 的 290 项回归与示例契约部署/编译通过；Editor/Sample 最小宿主适配已验证；DTO 生成和 Sample 组合已验证，作者路径综合验证及异步/清理仍待后续阶段。承接已完成的 [Editor/CLI feature](../F-20261013-01-editor-cli-operations/summary.md)，不改写其历史范围和状态。
 
 ## 已确认约束
 

@@ -4,10 +4,8 @@ using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
-using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
 using GalNet.Core.Runtime;
-using GalNet.Primitives.Builtins;
 using GalNet.Runtime.Logging;
 using GalNet.Sample.Avalonia.Debug;
 
@@ -22,8 +20,6 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private readonly SampleLocalizationService _localization;
     private readonly SampleStartupService _startup;
     private readonly SampleLibVlcRuntime _mediaRuntime;
-    private readonly IResourceTypeCatalog _resourceTypes;
-    private readonly IGalleryTypeCatalog _galleryTypes;
     private readonly ObservableCollection<GameSaveSlot> _saveSlots = [];
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySaveSlots;
     private SampleGameResourceScope? _resources;
@@ -41,8 +37,6 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         _localization = localization;
         _startup = startup;
         _mediaRuntime = mediaRuntime;
-        _resourceTypes = BuiltinResourceTypes.CreateCatalog();
-        _galleryTypes = BuiltinGalleryTypes.CreateCatalog(_resourceTypes);
         _readOnlySaveSlots = new ReadOnlyObservableCollection<GameSaveSlot>(_saveSlots);
         _gameplay.InteractionObserved += OnInteractionObserved;
     }
@@ -81,8 +75,6 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         {
             var resources = await SampleGameResourceScope.OpenAsync(
                 options.GameDirectory,
-                _resourceTypes,
-                _galleryTypes,
                 cancellationToken);
             var profileDirectory = options.ProfileDirectory ?? Path.Combine(resources.GameDirectory, ".galnet");
             SampleSaveSession? saveSession = null;

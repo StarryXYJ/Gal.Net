@@ -37,7 +37,7 @@ services.AddAvaloniaGameViewPages(
 
 主题参数必需，普通页面没有默认回退；也可实现自己的 IGameLayoutTheme 而不引用内置 Themes。主题注册先于宿主覆盖；仅替换一个页面不需要另写主题。GameShell 自动加载对应玩家样式，其他玩家根用同一主题的 CreateStyles 加载。普通页保持 View + 共享 ViewModel；GamePage 通过 ControlTheme 安排稳定场景/对白/选项内容。当前配置在运行期固定。
 
-三套布局、三套配色和模板扩展示例见 [Themes README](../src/Presentation/GalNet.Avalonia.Themes/README.md)，契约见 [游戏页面规范](spec/control.md)。Sample 的 App.PlayerTheme 是实际启动配置入口。
+三套布局、三套配色和模板扩展示例见 [Themes README](../src/Presentation/GalNet.Avalonia.Themes/README.md)，契约见 [游戏页面规范](spec/control.md)。Sample 的 SampleCustomization.PlayerTheme 是实际启动配置入口。
 
 ## 创建一个自定义原语
 
@@ -310,3 +310,13 @@ public sealed class AlertCompositeEntry : CompositeEntry
 - 任何影响长期画面的状态先写入可恢复的状态模型，再调用平台呈现。
 - 读档后验证状态重放，而不是只验证第一次播放。
 - 项目程序集没有让 Shared/Core/Runtime 依赖具体 UI、渲染或文件系统实现。
+
+## Sample 项目组合入口
+
+Avalonia 的 `src/Samples/GalNet.Sample.Avalonia/SampleCustomization.cs` 集中项目选择：`ConfigureServices` 选择主题、本地化启动和可选调试（`enableDebug`）；`CreateFieldEditors` 创建每个设置作用域的默认/自定义字段工厂；`CreateContentCatalogs`、`ConfigureDecoders`、`SelectTexturePreloadsAsync` 和 `SelectEffectProgramsAsync` 选择资源/Gallery 类型、解码器和预加载策略；`ConfigureExecution` 选择项目契约并注册内置及自定义执行模块。业务工厂借用明确的平台对象，不通过服务定位器查找运行中的对象。
+
+契约的唯一选择源仍是 `ProjectSchemas.Modules`；游戏的 Avalonia 和 Headless 经 `ProjectSchemas.CreateCatalog()` 构造 catalog，Editor/CLI 继续加载项目 DLL 的 Modules。只选择部分内置时修改 Modules，游戏不会自动追加全量内置 schema。Headless 不注册平台截图，运行含截图的剧情时明确报告缺少实现。
+
+新增截图一类的业务时：在契约项目声明参数/schema 并加入 Modules，在平台业务文件实现 module，然后在 SampleCustomization.ConfigureExecution 注册。需要专属字段编辑器时在 CreateFieldEditors 注册工厂，需要新资源类型时在资源策略入口配置。App、Session、Runner 和关闭流程不需要认识新 module；BuildView 将执行模块所有权转交给 view，模块只释放自己的资源，借用的页面和媒体端口由 Presentation 在 view 之后释放。契约变化后重新部署 DLL 给工具使用。
+
+App 负责应用初始化/关闭；Session 协调游戏、设置和存档；Runner 拥有单次 Engine；ResourceScope 持有 assets/预加载租约；Presentation 持有平台端口；SaveSession 持有 profile 的变量、进度和 Gallery resolver。设置条目和首次启动策略分别留在 SamplePlayerSettingsService 和 SampleStartupService，二次开发者可以直接改业务策略，不需把它们合并到生命周期类。默认 layer resolver 使用预加载纹理并拥有 fallback，Gallery resolver 使用独立资源租约，两者不能共享释放逻辑。

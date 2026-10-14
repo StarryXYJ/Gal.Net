@@ -1,7 +1,5 @@
 using GalNet.Assets;
-using GalNet.Assets.Provider;
 using GalNet.Core.Assets;
-using GalNet.Core.Gallery;
 using GalNet.Core.Scene;
 using GalNet.Rendering.Scene;
 using GalNet.Runtime.Content;
@@ -41,10 +39,9 @@ internal sealed class SampleGameResourceScope : IDisposable
 
     public static async Task<SampleGameResourceScope> OpenAsync(
         string gameDirectory,
-        IResourceTypeCatalog resourceTypes,
-        IGalleryTypeCatalog galleryTypes,
         CancellationToken cancellationToken)
     {
+        var (resourceTypes, galleryTypes) = SampleCustomization.CreateContentCatalogs();
         var installation = await GameInstallation.OpenAsync(gameDirectory, cancellationToken);
         var contentProvider = installation.CreateContentProvider(resourceTypes, galleryTypes);
         var content = await contentProvider.LoadAsync(cancellationToken);
@@ -52,21 +49,21 @@ internal sealed class SampleGameResourceScope : IDisposable
         var preloadedTextures = new Dictionary<string, AssetHandle<SceneTexture>>(StringComparer.OrdinalIgnoreCase);
         try
         {
-            assets.RegisterDecoder<SceneTexture>("sprite", new SceneTextureAssetDecoder());
-            var spriteFiles = await assets.GetFilesAsync("sprite", cancellationToken);
+            SampleCustomization.ConfigureDecoders(assets);
+            var spriteFiles = await SampleCustomization.SelectTexturePreloadsAsync(assets, cancellationToken);
             var preloadResults = await Task.WhenAll(
                 spriteFiles.Select(file => assets.AcquireAsync<SceneTexture>(file.Id, cancellationToken)));
             foreach (var handle in preloadResults.OfType<AssetHandle<SceneTexture>>())
                 preloadedTextures.Add(handle.AssetId, handle);
 
-            var effectProgramFiles = await assets.GetFilesAsync("effect-program", cancellationToken);
+            var effectPrograms = await SampleCustomization.SelectEffectProgramsAsync(assets, cancellationToken);
             return new SampleGameResourceScope(
                 installation.RootDirectory,
                 content,
                 assets,
                 spriteFiles.Count,
                 preloadedTextures,
-                effectProgramFiles.Select(file => new EffectProgramResource(file.Id)).ToArray());
+                effectPrograms);
         }
         catch
         {

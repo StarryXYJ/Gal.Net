@@ -55,13 +55,8 @@ internal sealed class SampleGamePresentation : IAsyncDisposable, ICatchUpPresent
                 sharedLibVlc: sharedLibVlc);
             var presenters = presentation.Presenters;
             using var registration = new GameRegistration();
-            foreach (var module in GalNet.Project.Contracts.ProjectSchemas.Modules) registration.RegisterSchema(module);
-            registration.AddBuiltinImplementations(registration.BuildCatalog(),
-                presenters.DialoguePresenter, presenters.LayerPresenter, presenters.AnimationPresenter,
-                presentation.Effects, resources.Content.Gallery, presenters.ParticlePresenter,
-                presenters.NvlPresenter, presentation.Audio, presentation.Video, resources.Content.Localization.Characters, presentation.AudioModule);
-            registration.RegisterImplementation(new SampleScreenshotModule(page,
-                () => SampleScreenshotOutput.GetHostDirectory(resources.Content.Graph.Name)));
+            SampleCustomization.ConfigureExecution(registration, presenters, page, resources.Content,
+                presentation.Effects, presentation.Audio, presentation.Video, presentation.AudioModule);
             presentation.View = registration.BuildView();
             presentation.View.RequireInstructions(resources.Content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>().SelectMany(group => group.Entries).Select(entry => entry.Type));
             presentation.Restorer = new PersistentSceneReplaySession(presentation.Effects, presenters.ParticlePresenter,

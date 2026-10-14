@@ -3,7 +3,6 @@ using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Runtime;
 using GalNet.Core.Services;
 using GalNet.Core.Settings;
-using GalNet.Primitives.Builtins;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Logging;
 using GalNet.Runtime.Runtime;
@@ -18,7 +17,6 @@ internal sealed class SampleGameRunner : IAsyncDisposable
     private readonly GameEngine _engine;
     private readonly SampleGamePresentation _presentation;
     private readonly SamplePlayerSettingsService _playerSettings;
-    private readonly PersistentSceneReplaySession _restorer;
     private readonly Func<bool, string?, Task> _updateStateAsync;
     private readonly Func<Task> _runCompletedAsync;
     private readonly Func<Task> _resetPresentationAsync;
@@ -38,7 +36,6 @@ internal sealed class SampleGameRunner : IAsyncDisposable
         _playerSettings = playerSettings;
         _playerSettings.SettingsChanged += OnPlayerSettingsChanged;
         OnPlayerSettingsChanged(playerSettings.RuntimeSettings);
-        _restorer = presentation.Restorer;
         _updateStateAsync = updateStateAsync;
         _runCompletedAsync = runCompletedAsync;
         _resetPresentationAsync = resetPresentationAsync;
@@ -88,7 +85,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
         if (snapshot is not null)
         {
             _engine.RestoreFrom(snapshot);
-            await _engine.SynchronizePresentationAsync(_restorer.RestoreAsync, cancellationToken);
+            await _engine.SynchronizePresentationAsync(_presentation.Restorer.RestoreAsync, cancellationToken);
         }
         _prepared = true;
     }
@@ -106,7 +103,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
     public async Task StopAsync()
     {
         await _engine.StopAsync();
-        await _restorer.SuspendAsync(CancellationToken.None);
+        await _presentation.Restorer.SuspendAsync(CancellationToken.None);
         _presentation.Presenters.CompleteInitialPresentation();
         await _stateUpdate;
     }
@@ -122,7 +119,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
         _presentation.Presenters.CompleteInitialPresentation();
         List<Exception>? errors = null;
         await ReleaseAsync(() => _engine.DisposeAsync().AsTask());
-        await ReleaseAsync(() => _restorer.SuspendAsync(CancellationToken.None));
+        await ReleaseAsync(() => _presentation.Restorer.SuspendAsync(CancellationToken.None));
         await ReleaseAsync(() => _stateUpdate);
         await ReleaseAsync(_resetPresentationAsync);
         await ReleaseAsync(() => _presentation.DisposeAsync().AsTask());
