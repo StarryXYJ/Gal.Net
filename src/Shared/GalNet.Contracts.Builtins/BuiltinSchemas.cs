@@ -60,10 +60,10 @@ public static class BuiltinSchemas
     [
         Schema<PlayAudioEntry>(PlayAudioEntry.ParameterTypes, PlayAudioEntry.DefaultValues, PlayAudioEntry.ParameterOptions),
         Schema<StopAudioEntry>(StopAudioEntry.ParameterTypes, StopAudioEntry.DefaultValues, StopAudioEntry.ParameterOptions),
-        Schema<PauseAudioEntry>(PauseAudioEntry.ParameterTypes, PauseAudioEntry.DefaultValues),
-        Schema<ResumeAudioEntry>(ResumeAudioEntry.ParameterTypes, ResumeAudioEntry.DefaultValues),
-        Schema<NextAudioEntry>(NextAudioEntry.ParameterTypes, NextAudioEntry.DefaultValues),
-        Schema<ClearAudioEntry>(ClearAudioEntry.ParameterTypes, ClearAudioEntry.DefaultValues),
+        DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(PauseAudioEntry.TypeId),
+        DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(ResumeAudioEntry.TypeId),
+        DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(NextAudioEntry.TypeId),
+        DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(ClearAudioEntry.TypeId),
         Schema<EnqueueAudioEntry>(EnqueueAudioEntry.ParameterTypes, EnqueueAudioEntry.DefaultValues, EnqueueAudioEntry.ParameterOptions),
         Schema<ApplyAudioSEffectEntry>(ApplyAudioSEffectEntry.ParameterTypes, ApplyAudioSEffectEntry.DefaultValues),
         Schema<StopAudioSEffectEntry>(StopAudioSEffectEntry.ParameterTypes, StopAudioSEffectEntry.DefaultValues)
@@ -90,7 +90,7 @@ public static class BuiltinSchemas
 
     public static IEntryModule CreateFlowModule() => new DefaultEntryModule("flow",
     [
-        Schema<WaitEntry>(WaitEntry.ParameterTypes, WaitEntry.DefaultValues)
+        DefaultPrimitiveEntryBase.ForDto<WaitOptions>(WaitEntry.TypeId)
     ]);
 
     public static IEntryModule CreateVariablesModule() => new DefaultEntryModule("variables",

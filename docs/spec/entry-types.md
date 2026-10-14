@@ -18,6 +18,8 @@
 
 单平台执行可在外层模块直接借用具体页面；Sample 的 `sample.screenshot(fileName?)` 契约无 Avalonia 依赖，Avalonia 模块直接捕获 GamePage 场景，自动写入宿主 Pictures 目录。它不属于全内置模块，Headless 只可编译，缺执行实现时拒绝运行。Normal/Quick 生成 PNG，CatchUp 不写文件；参数、生命周期与示例见 [Sample.Contracts](../../src/Samples/GalNet.Sample.Contracts/README.md)。
 
+同步执行可用 PrimitiveImplementation.Immediate / Immediate<T>，自动传递批次并同步完成；实例非阻塞且不可跳过。Normal/Quick 执行 dispatch，CatchUp 默认重复 dispatch，可显式覆盖。异常按原 PrimitiveInstance 协议传播，不推断取消、平台 dispatch 或异步生命周期。带参数入口沿用 For<T> 的独立 DTO 和契约身份检查。内置 audio.pause/resume/next/clear 共用 AudioTrackOptions，flow.wait 使用 WaitOptions；旧手写参数表已删除，JSON 字段、默认值和 null 策略保持原有行为。Contracts.Builtins 通过构建期 Analyzer 引用 SchemaGenerator，运行时仍只依赖 Core 和框架程序集。
+
 ## Entry Module
 
 每个 `IEntryModule` 持有两张冻结表：

@@ -162,16 +162,45 @@ Editor 对 DTO 契约 Entry 使用整组 SchemaForm 和 EntryParameterFormBindin
 执行模块可选择强类型入口，与契约使用相同 DTO：
 
 ```csharp
-var implementation = PrimitiveImplementation.For<PulseOptions>(
-    "game.pulse", (context, options) =>
-        new ImmediatePrimitiveInstance(
-            () => ApplyPulse(options.Faction!, options.Amount),
-            batchId: context.BatchId));
+var implementation = PrimitiveImplementation.Immediate<PulseOptions>(
+    "game.pulse", (context, options) => ApplyPulse(options.Faction!, options.Amount));
 ```
 
 CompositeGameView 构建时检查执行工厂的 DTO 类型与契约 FieldDataType 一致。Dispatch 先用契约规范化和校验 JSON，再由工厂使用每个字段的 ValueCodec 和生成成员访问填充独立 DTO；参数默认值和属性 converter 不另写一份。Context 继续提供 Runtime、BatchId 和 ScopeCancellation，业务 DTO 不需要 ObservableObject。未提供且无 schema 默认值的字段保持新 DTO 的成员值；需要判断 presence 时查询 context.Arguments，其中包含规范化后的默认值，并非原始作者输入。普通 JSON 工厂仍可用于手写/动态契约；For<T> 不支持直接把未经规范化的参数交给工厂执行。
 
 Sample 的 ScreenshotOptions 同时作为契约定义和截图执行参数；Editor 只消费其 schema，不维护副本。见 [阶段证据](../features/F-20261013-02-parameter-and-sample-simplification/phase-2e.md)。
+
+### 按执行语义选择最短路径
+
+无参数同步 Entry 不需要空 DTO。声明空参数契约，并把行为注册到普通 module：
+
+```csharp
+const string type = "game.mark";
+using var registration = new GameRegistration()
+    .RegisterSchema(new DefaultEntryModule("game",
+        [new DefaultPrimitiveEntryBase(type, DynamicParameterTable.Empty)]))
+    .RegisterImplementation(new PrimitiveModule([
+        PrimitiveImplementation.Immediate(type, context => context.Runtime.SetVariable("seen", true))]));
+using var view = registration.BuildView();
+var compiled = GalgroupCompiler.Compile(new GroupDocument
+{
+    Entries = [new() { Id = "mark", Type = type }]
+}, registration.BuildCatalog()).Document.Entries.Single();
+view.Dispatch(new PrimitiveEntry(compiled.TypeId, compiled.Arguments, compiled.BatchId), new GameRuntime(null), default);
+```
+
+典型带参数同步 Entry 使用上面的 PulseOptions + ForDto + Immediate<T>：只声明一次成员类型、默认值和约束。一个 PrimitiveModule 可以包含多条相关实现，也可共用同一 DTO，例如内置 audio.pause/resume/next/clear 共用 AudioTrackOptions 的 TrackId 默认值。无需为每条 Entry 新建实例类，也无需手动传递 BatchId。
+
+Immediate / Immediate<T> 创建非阻塞、不可跳过的同步实例，回调完成后逻辑完成；Normal 和 Quick 使用 dispatch，CatchUp 默认重复同一行为。需要不同重放策略时显式传入 catchUp 回调；纯副作用可传空回调，持久状态操作应在 catchUp 中保留必要状态更新。回调异常仍传播，工厂不负责 UI dispatch、自动取消或后台任务；不能用 async lambda 向 Action 回调隐藏异步工作。
+
+复杂校验继续通过 ForDto 的 validateArguments 处理，例如 ScreenshotSchema.ValidateFileName 的安全文件名规则；值类型、长度、默认值等仍来自 ScreenshotOptions。异步或可跳过实例使用 For<T> 返回业务实例，显式传递 BatchId / ScopeCancellation：
+
+```csharp
+var wait = PrimitiveImplementation.For<WaitOptions>(WaitEntry.TypeId, (context, options) =>
+    new WaitPrimitiveInstance(TimeSpan.FromSeconds(options.Duration), context.BatchId, context.ScopeCancellation));
+```
+
+这段是内置 flow.wait 的实际路径，等待、Quick/CatchUp 和 skip 保留原实例语义。截图仍使用 For<ScreenshotOptions> 返回自己的异步实例；Composite 仍通过 Compile 显式展开成 primitive，不生成业务、生命周期或持久化。完整 Composite 示例见下文。迁移过的 WaitEntry 及四种轨道 Entry 不再暴露旧手写 ParameterTypes / DefaultValues，当前参数事实从 catalog 的 DynamicParameters 或 DTO.Schema 取得。
 
 ### 2. 分别定义契约和执行模块
 

@@ -13,6 +13,101 @@ public class CompositeGameViewTests
     private static readonly int[] DisposalOrder = [2, 1];
 
     [Test]
+    public void DocumentedNoParameterExampleCompilesAndAppliesToRuntime()
+    {
+        const string type = "game.mark";
+        using var registration = new GameRegistration()
+            .RegisterSchema(new DefaultEntryModule("game", [new DefaultPrimitiveEntryBase(type, DynamicParameterTable.Empty)]))
+            .RegisterImplementation(new PrimitiveModule([
+                PrimitiveImplementation.Immediate(type, context => context.Runtime.SetVariable("seen", true))]));
+        using var view = registration.BuildView();
+        var compiled = GalNet.Core.Compilation.GalgroupCompiler.Compile(new GalNet.Core.Serialization.GroupDocument
+        {
+            Entries = [new() { Id = "mark", Type = type }]
+        }, registration.BuildCatalog()).Document.Entries.Single();
+        var runtime = new GameRuntime(null);
+        view.Dispatch(new PrimitiveEntry(compiled.TypeId, compiled.Arguments, compiled.BatchId), runtime, default);
+        Assert.That(runtime.GetVariable("seen")!.AsBool(), Is.True);
+    }
+
+    [Test]
+    public void TypedImmediateCatchUpOverrideReceivesDecodedOptionsAndSuppressesNormalSideEffect()
+    {
+        using var registration = new GameRegistration().RegisterSchema(new DefaultEntryModule("typed",
+            [DefaultPrimitiveEntryBase.ForDto<PlainFormDto>("typed.run")]));
+        registration.RegisterImplementation(new PrimitiveModule([
+            PrimitiveImplementation.Immediate<PlainFormDto>("typed.run", (_, _) => throw new AssertionException("Normal side effect."),
+                (context, options) => context.Runtime.SetVariable("count", options.Count))]));
+        using var view = registration.BuildView();
+        var runtime = new GameRuntime(null);
+        view.Dispatch(Entry("typed.run", new { }), runtime, default, PrimitiveInvocationMode.CatchUp);
+        Assert.That(runtime.GetVariable("count")!.AsInt(), Is.EqualTo(2));
+    }
+
+    [TestCase(PrimitiveInvocationMode.Normal)]
+    [TestCase(PrimitiveInvocationMode.Quick)]
+    [TestCase(PrimitiveInvocationMode.CatchUp)]
+    public void ImmediateFactoryPropagatesBatchAndUsesExplicitCatchUpPolicy(PrimitiveInvocationMode mode)
+    {
+        var calls = new List<string>();
+        using var registration = new GameRegistration().RegisterSchema(Schema("sync", "sync.run"));
+        registration.RegisterImplementation(new PrimitiveModule([
+            PrimitiveImplementation.Immediate("sync.run", context => calls.Add("normal:" + context.BatchId),
+                context => calls.Add("catchUp:" + context.BatchId))]));
+        using var view = registration.BuildView();
+        var instance = view.Dispatch(Entry("sync.run", new { }, "batch"), new GameRuntime(null), default, mode);
+        Assert.That(calls, Is.EqualTo(new[] { (mode == PrimitiveInvocationMode.CatchUp ? "catchUp:" : "normal:") + "batch" }));
+        Assert.That(instance.IsCompleted, Is.True);
+        Assert.That(instance.IsBlocking || instance.IsSkippable, Is.False);
+        Assert.That(instance.BatchId, Is.EqualTo("batch"));
+        Assert.That(() => instance.Dispatch(), Throws.InvalidOperationException);
+    }
+
+    [TestCase(PrimitiveInvocationMode.Normal)]
+    [TestCase(PrimitiveInvocationMode.Quick)]
+    [TestCase(PrimitiveInvocationMode.CatchUp)]
+    public void TypedImmediateFactoryUsesCompilerDefaultsConverterAndCustomValidation(PrimitiveInvocationMode mode)
+    {
+        var received = new List<PlainFormDto>();
+        using var registration = new GameRegistration();
+        registration.RegisterSchema(new DefaultEntryModule("typed", [DefaultPrimitiveEntryBase.ForDto<PlainFormDto>("typed.run",
+            arguments => { if (arguments.TryGetProperty("count", out var count) && count.GetInt32() == 4) throw new ArgumentException("Reserved count."); })]));
+        registration.RegisterImplementation(new PrimitiveModule([
+            PrimitiveImplementation.Immediate<PlainFormDto>("typed.run", (_, options) => received.Add(options))]));
+        var catalog = registration.BuildCatalog();
+        var compiled = GalNet.Core.Compilation.GalgroupCompiler.Compile(new GalNet.Core.Serialization.GroupDocument
+        {
+            Entries = [new() { Id = "one", Type = "typed.run", Parameters = new() { ["date"] = JsonSerializer.SerializeToElement("Friday") } }]
+        }, catalog).Document.Entries.Single();
+        using var view = registration.BuildView();
+        var instance = view.Dispatch(new PrimitiveEntry(compiled.TypeId, compiled.Arguments, "batch"), new GameRuntime(null), default, mode);
+        Assert.That(instance.IsCompleted, Is.True);
+        Assert.That(received[0].Count, Is.EqualTo(2));
+        Assert.That(received[0].Day, Is.EqualTo(DayOfWeek.Friday));
+        received[0].Count = 10;
+        view.Dispatch(Entry("typed.run", new { }), new GameRuntime(null), default, mode);
+        Assert.That(received[1].Count, Is.EqualTo(2));
+        Assert.That(received[1], Is.Not.SameAs(received[0]));
+        Assert.That(() => view.Dispatch(Entry("typed.run", new { count = 4 }), new GameRuntime(null), default, mode), Throws.ArgumentException);
+        Assert.That(() => view.Dispatch(Entry("typed.run", new { extra = 1 }), new GameRuntime(null), default, mode), Throws.TypeOf<InvalidDataException>());
+        Assert.That(received, Has.Count.EqualTo(2));
+    }
+
+    [Test]
+    public void TypedImmediateFactoryRejectsWrongContractAndDoesNotSwallowDispatchFailure()
+    {
+        using var wrong = new GameRegistration().RegisterSchema(Schema("typed", "typed.run"));
+        wrong.RegisterImplementation(new PrimitiveModule([PrimitiveImplementation.Immediate<PlainFormDto>("typed.run", (_, _) => { })]));
+        Assert.That(wrong.BuildView, Throws.InvalidOperationException.With.Message.Contains("requires DTO"));
+        var catalog = new TargetProfileEntryCatalog([Schema("sync", "sync.fail")]);
+        var implementation = PrimitiveImplementation.Immediate("sync.fail", _ => throw new IOException("failed"));
+        var instance = implementation.CreateInstance(new PrimitiveCreateContext(catalog.Get("sync.fail"),
+            Entry("sync.fail", new { }), new GameRuntime(null), default));
+        Assert.That(() => instance.Dispatch(), Throws.TypeOf<IOException>().With.Message.EqualTo("failed"));
+        Assert.That(instance.IsCompleted, Is.True);
+    }
+
+    [Test]
     public void TypedFactoryUsesNormalizedDefaultsConvertersAndIndependentDtoInstances()
     {
         var received = new List<PlainFormDto>();

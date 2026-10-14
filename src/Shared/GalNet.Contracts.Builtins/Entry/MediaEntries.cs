@@ -20,10 +20,10 @@ public sealed class StopAudioEntry : PrimitiveEntry
     public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(("clearQueue", ["true", "false"]));
 }
 
-public sealed class PauseAudioEntry : PrimitiveEntry { public const string TypeId = "audio.pause"; public override string Type => TypeId; public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("trackId", EntryParameterType.Text)); public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("trackId", "bgm")); }
-public sealed class ResumeAudioEntry : PrimitiveEntry { public const string TypeId = "audio.resume"; public override string Type => TypeId; public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes => PauseAudioEntry.ParameterTypes; public static IReadOnlyDictionary<string, string> DefaultValues => PauseAudioEntry.DefaultValues; }
-public sealed class NextAudioEntry : PrimitiveEntry { public const string TypeId = "audio.next"; public override string Type => TypeId; public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes => PauseAudioEntry.ParameterTypes; public static IReadOnlyDictionary<string, string> DefaultValues => PauseAudioEntry.DefaultValues; }
-public sealed class ClearAudioEntry : PrimitiveEntry { public const string TypeId = "audio.clear"; public override string Type => TypeId; public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes => PauseAudioEntry.ParameterTypes; public static IReadOnlyDictionary<string, string> DefaultValues => PauseAudioEntry.DefaultValues; }
+public sealed class PauseAudioEntry : PrimitiveEntry { public const string TypeId = "audio.pause"; public override string Type => TypeId; }
+public sealed class ResumeAudioEntry : PrimitiveEntry { public const string TypeId = "audio.resume"; public override string Type => TypeId; }
+public sealed class NextAudioEntry : PrimitiveEntry { public const string TypeId = "audio.next"; public override string Type => TypeId; }
+public sealed class ClearAudioEntry : PrimitiveEntry { public const string TypeId = "audio.clear"; public override string Type => TypeId; }
 
 public sealed class EnqueueAudioEntry : PrimitiveEntry
 {

@@ -53,7 +53,7 @@ Phase 2c 先处理已有失败并验证最小宿主接入，不继续增加字�
 - 本阶段不全面替换 EntryParameterType，不统一设置/变量存储，不扩展生成器、不迁移特殊控件；Sample 集中入口仍由 Phase 3 处理。
 
 - Phase 3：集中 schema/module/工厂注册入口，复用 Phase 2d 的 DTO 适配，不新增另一套成员绑定服务。
-- Phase 4：以生成后的 DTO 路径降低 Entry 作者样板，保留复杂校验/Composite/异步实现；公共 factory helper 仅在真实重复时增加。
+- Phase 4：已验证；同步 Immediate / Immediate<T>、内置轨道/Wait DTO 与复杂路径验证见 [phase-4.md](phase-4.md)。307 个不重复用例通过，迁移前后五条指令 CLI 描述相同；后续转 Phase 4b。
 - Phase 5：完善生成器诊断、JSON 元数据覆盖、开发示例和作者体验；不预设生成 module/执行/持久化，避免把整个业务流程变成生成框架。
 
 ## 暂不扩展

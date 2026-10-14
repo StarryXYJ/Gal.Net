@@ -1,6 +1,5 @@
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
-using GalNet.Core.Primitives;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 
@@ -22,6 +21,6 @@ public sealed class BuiltinNvlModule : PrimitiveModule
     { }
 
     private static PrimitiveImplementation Visibility<TEntry>(INvlPresenter? presenter, Action<INvlPresenter> operation)
-        where TEntry : PrimitiveEntry, new() => new PrimitiveImplementation(new TEntry().Type, context => new ImmediatePrimitiveInstance(() => operation(
-            presenter ?? throw new InvalidOperationException("The NVL module has no presenter.")), batchId: context.BatchId));
+        where TEntry : PrimitiveEntry, new() => PrimitiveImplementation.Immediate(new TEntry().Type, _ => operation(
+            presenter ?? throw new InvalidOperationException("The NVL module has no presenter.")));
 }

@@ -31,9 +31,9 @@ public sealed class BuiltinDialogueModule : PrimitiveModule
     }
 
     private static PrimitiveImplementation Visibility<TEntry>(IDialoguePresenter? presenter, bool visible)
-        where TEntry : PrimitiveEntry, new() => new PrimitiveImplementation(new TEntry().Type, context => new ImmediatePrimitiveInstance(() =>
+        where TEntry : PrimitiveEntry, new() => PrimitiveImplementation.Immediate(new TEntry().Type, _ =>
         {
             var target = presenter ?? throw new InvalidOperationException("The dialogue module has no presenter.");
             if (visible) target.ShowDialogue(); else target.HideDialogue();
-        }, batchId: context.BatchId));
+        });
 }

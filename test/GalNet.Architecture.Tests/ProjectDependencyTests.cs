@@ -10,7 +10,7 @@ public class ProjectDependencyTests
         new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
             ["GalNet.Core"] = [],
-            ["GalNet.Contracts.Builtins"] = ["GalNet.Core"],
+            ["GalNet.Contracts.Builtins"] = ["GalNet.Core", "GalNet.SchemaGenerator"],
             ["GalNet.Sample.Contracts"] = ["GalNet.Core", "GalNet.Contracts.Builtins", "GalNet.SchemaGenerator"],
             ["GalNet.SchemaGenerator"] = [],
             ["GalNet.Presentation.Abstractions"] = ["GalNet.Core"],
@@ -156,6 +156,7 @@ public class ProjectDependencyTests
     }
 
     [TestCase("GalNet.Sample.Contracts", false)]
+    [TestCase("GalNet.Contracts.Builtins", false)]
     [TestCase("GalNet.Editor.Tests", true)]
     [TestCase("GalNet.Presentation.Tests", true)]
     public void SchemaGeneratorReferencesAreBuildOnly(string project, bool testProject)

@@ -58,14 +58,10 @@ public sealed class BuiltinAudioModule : PrimitiveModule
             runtime.Stop(Tracks(context), new AudioStopRequest(
                 Arguments.String(context, "trackId"), Arguments.Bool(context, "clearQueue", true),
                 Arguments.Float(context, "fadeOut"))))),
-        BuiltinInstructionFactory.Create<PauseAudioEntry>(context => Audio(context, scope, () =>
-            runtime.Pause(Tracks(context), Arguments.String(context, "trackId")))),
-        BuiltinInstructionFactory.Create<ResumeAudioEntry>(context => Audio(context, scope, () =>
-            runtime.Resume(Tracks(context), Arguments.String(context, "trackId")))),
-        BuiltinInstructionFactory.Create<NextAudioEntry>(context => Audio(context, scope, () =>
-            runtime.Next(Tracks(context), Arguments.String(context, "trackId")))),
-        BuiltinInstructionFactory.Create<ClearAudioEntry>(context => Audio(context, scope, () =>
-            runtime.Clear(Tracks(context), Arguments.String(context, "trackId")))),
+        Track(PauseAudioEntry.TypeId, scope, (context, track) => runtime.Pause(Tracks(context), track)),
+        Track(ResumeAudioEntry.TypeId, scope, (context, track) => runtime.Resume(Tracks(context), track)),
+        Track(NextAudioEntry.TypeId, scope, (context, track) => runtime.Next(Tracks(context), track)),
+        Track(ClearAudioEntry.TypeId, scope, (context, track) => runtime.Clear(Tracks(context), track)),
         BuiltinInstructionFactory.Create<EnqueueAudioEntry>(context => Playback(context, runtime, scope, AudioPlacement.Enqueue)),
         BuiltinInstructionFactory.Create<ApplyAudioSEffectEntry>(context => Audio(context, scope, () =>
             runtime.ApplySEffect(Tracks(context), new AudioSEffectRequest(
@@ -103,6 +99,14 @@ public sealed class BuiltinAudioModule : PrimitiveModule
         }
         public void Dispose() => _registration.Dispose();
     }
+
+    private static PrimitiveImplementation Track(string type, AudioScope scope, Action<PrimitiveCreateContext, string> action) =>
+        PrimitiveImplementation.Immediate<AudioTrackOptions>(type, (context, options) =>
+        {
+            scope.Bind(context.ScopeCancellation);
+            context.ScopeCancellation.ThrowIfCancellationRequested();
+            action(context, options.TrackId ?? "");
+        });
 
     private static ImmediatePrimitiveInstance Audio(PrimitiveCreateContext context, AudioScope scope, Action action) =>
         new(() =>

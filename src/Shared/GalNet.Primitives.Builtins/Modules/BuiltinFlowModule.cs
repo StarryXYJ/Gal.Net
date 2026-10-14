@@ -7,8 +7,8 @@ public sealed class BuiltinFlowModule : PrimitiveModule
 {
     public BuiltinFlowModule() : base(
     [
-        BuiltinInstructionFactory.Create<WaitEntry>(context => new WaitPrimitiveInstance(
-                TimeSpan.FromSeconds(Arguments.Float(context, "duration", 1)),
+        PrimitiveImplementation.For<WaitOptions>(WaitEntry.TypeId, (context, options) => new WaitPrimitiveInstance(
+                TimeSpan.FromSeconds(options.Duration),
                 context.BatchId,
                 context.ScopeCancellation))
     ])

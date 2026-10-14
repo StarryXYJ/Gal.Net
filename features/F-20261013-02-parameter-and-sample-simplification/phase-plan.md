@@ -1,12 +1,12 @@
 # Phase Plan
 
-2026-10-14 Phase 3 已验证：SampleCustomization 集中平台组合与资源策略，游戏共用 ProjectSchemas.CreateCatalog，删除 Session 初始化 catalog 状态及 Runner 重复 restorer 引用。97 项定向回归、契约独立部署、Headless 构建和 CLI 实际编译通过。证据见 [phase-3.md](phase-3.md)。当前无阻断项，下一阶段为 Phase 4 作者路径验证；清理短路与异步机制仍由 Phase 4b 处理。
+2026-10-14 Phase 4 已验证：PrimitiveImplementation.Immediate / Immediate<T> 简化同步工厂，轨道操作与 wait 使用唯一 DTO 参数声明，复杂校验/Composite/异步实例保留手写扩展。307 个不重复回归用例通过；五条指令迁移前后 CLI 描述相同，独立契约部署与实际项目编译通过。证据见 [phase-4.md](phase-4.md)。当前无阻断项，下一阶段为 Phase 4b 的异步机制与清理。
 
-2026-10-14 最新收敛决定：DTO 成员特性生成有序 schema 与成员访问表，公共 DTO 适配器连接表单和宿主提交；新增 Phase 2d 位于 Phase 2c 最小验证之后。源码生成器已确认为实施目标，替代下文旧的候选/条件表述。范围、通知/默认值边界及退出条件以 [DTO 收敛计划](dto-convergence-plan.md) 为准；Phase 2c 最小宿主接入已验证（241 项回归），见 [阶段记录](phase-2c.md)；Phase 2d 单 Entry DTO 生成/绑定试点已验证（348 项回归、独立契约部署与实际 CLI 编译），见 [phase-2d.md](phase-2d.md)。Phase 3 已验证，下一步为 Phase 4；全量设置 DTO 化和执行作者路径尚未完成。
+2026-10-14 最新收敛决定：DTO 成员特性生成有序 schema 与成员访问表，公共 DTO 适配器连接表单和宿主提交；新增 Phase 2d 位于 Phase 2c 最小验证之后。源码生成器已确认为实施目标，替代下文旧的候选/条件表述。范围、通知/默认值边界及退出条件以 [DTO 收敛计划](dto-convergence-plan.md) 为准；Phase 2c 最小宿主接入已验证（241 项回归），见 [阶段记录](phase-2c.md)；Phase 2d 单 Entry DTO 生成/绑定试点已验证（348 项回归、独立契约部署与实际 CLI 编译），见 [phase-2d.md](phase-2d.md)。Phase 4 已验证，下一步为 Phase 4b；全量设置 DTO 化仍暂缓，进一步作者工具化由 Phase 5 处理。
 
-状态：in-progress。Phase 0/1/2a/2b/2c/2d/2e/3 已验证；中立值工具、共享表单、DTO 生成/强类型执行和 Sample 组合已落地，作者路径综合验证与异步/清理仍待后续。
+状态：in-progress。Phase 0/1/2a/2b/2c/2d/2e/3/4 已验证；中立值工具、共享表单、DTO 生成/强类型执行和 Sample 组合已落地，代表作者路径已验证，异步/清理与进一步工具化仍待后续。
 
-顺序：Phase 0 → 1 → 2a → 2b → 2c → 2d → 2e → 3 → 4 → 4b → 5 → 6。Phase 4 的主线是降低开发新 Entry 的手写样板，并建立端到端作者路径；Phase 4b 单独处理异步生命周期和清理；Phase 5 根据实测继续优化作者 API、参数/工厂胶水与开发工具。源码生成器只是候选手段，不是 Phase 5 的预设目标。4b 若收益不足可跳过，不阻塞 Phase 5；各阶段仍可按独立验证结果缩小范围。
+顺序：Phase 0 → 1 → 2a → 2b → 2c → 2d → 2e → 3 → 4 → 4b → 5 → 6。Phase 4 的主线是降低开发新 Entry 的手写样板，并建立端到端作者路径；Phase 4b 单独处理异步生命周期和清理；Phase 5 根据实测继续优化作者 API、参数/工厂胶水与开发工具。DTO generator 已在 Phase 2d 落地，Phase 5 从现有工具链继续评估具体改进收益。4b 若收益不足可跳过，不阻塞 Phase 5；各阶段仍可按独立验证结果缩小范围。
 
 每个实施 Phase 完成必要验证后单独提交；不提交其他任务的变更。记录状态 planned / in-progress / verified / skipped；跳过时写明原因及后续依赖如何调整。大规模重命名、格式化和功能行为变化不混入重构提交。
 
@@ -95,7 +95,7 @@
 
 ## Phase 4：建立新 Entry 的低样板作者路径
 
-状态：planned；依赖 Phase 3 的 Sample 接入入口；相对工作量：中。
+状态：verified；307 个不重复回归用例、迁移前后五条指令 CLI 描述对照、独立契约部署和实际项目编译通过，结果及作者成本见 [phase-4.md](phase-4.md)。
 
 - 目标：让开发者添加常见 Entry 时少重复声明 type ID、字段名/类型/default/constraints、参数读取和工厂胶水；schema、编译校验与运行时取值继续来自同一份契约事实。
 - 模块：Core.Entry/Parameters、Contracts.Builtins、Presentation.Abstractions.Execution、Primitives.Builtins、Sample.Contracts 与 Sample.Avalonia；同步更新 `docs/development.md` 的新 Entry 路径。

@@ -19,6 +19,26 @@ public sealed class PrimitiveImplementation
     }
 
     public string Type { get; }
+
+    /// <summary>Synchronous behavior with automatic completion and batch propagation. CatchUp repeats dispatch unless overridden.</summary>
+    public static PrimitiveImplementation Immediate(string type, Action<PrimitiveCreateContext> dispatch,
+        Action<PrimitiveCreateContext>? catchUp = null)
+    {
+        ArgumentNullException.ThrowIfNull(dispatch);
+        return new(type, context => new ImmediatePrimitiveInstance(() => dispatch(context), batchId: context.BatchId,
+            catchUp: catchUp is null ? null : () => catchUp(context)));
+    }
+
+    /// <summary>Decode the contract DTO once per invocation; keep synchronous execution and CatchUp policy explicit.</summary>
+    public static PrimitiveImplementation Immediate<T>(string type, Action<PrimitiveCreateContext, T> dispatch,
+        Action<PrimitiveCreateContext, T>? catchUp = null)
+        where T : IFieldDto, IFieldSchema<T>, new()
+    {
+        ArgumentNullException.ThrowIfNull(dispatch);
+        return For<T>(type, (context, data) => new ImmediatePrimitiveInstance(() => dispatch(context, data),
+            batchId: context.BatchId, catchUp: catchUp is null ? null : () => catchUp(context, data)));
+    }
+
     /// <summary>Decode normalized arguments using the contract's per-field codecs. Each invocation owns its DTO.</summary>
     public static PrimitiveImplementation For<T>(string type, Func<PrimitiveCreateContext, T, PrimitiveInstance> factory)
         where T : IFieldDto, IFieldSchema<T>, new()
