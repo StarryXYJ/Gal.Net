@@ -12,8 +12,8 @@ public sealed class BuiltinLayerModule : PrimitiveModule
     [
         BuiltinInstructionFactory.Create<ShowLayerEntry>(context => Show(context, presenter, null)),
         BuiltinInstructionFactory.Create<ShowColorLayerEntry>(context => Show(context, presenter, Arguments.String(context, "color"))),
-        BuiltinInstructionFactory.Create<HideLayerEntry>(context => Immediate(context, presenter, target =>
-            BuiltinRuntimeActions.HideLayer(context.Runtime, target, Arguments.String(context, "handleId")))),
+        PrimitiveImplementation.For<LayerHandleOptions>(HideLayerEntry.TypeId, (context, options) => Immediate(context, presenter, target =>
+            BuiltinRuntimeActions.HideLayer(context.Runtime, target, options.HandleId ?? ""))),
         BuiltinInstructionFactory.Create<MoveLayerEntry>(context => Immediate(context, presenter, target =>
             BuiltinRuntimeActions.MoveLayer(
                 context.Runtime,
@@ -22,12 +22,12 @@ public sealed class BuiltinLayerModule : PrimitiveModule
                 Arguments.Json<LayerTransform>(context, "transform") ?? new LayerTransform(),
                 Arguments.Float(context, "z"),
                 Arguments.Float(context, "duration")))),
-        BuiltinInstructionFactory.Create<ReplaceLayerEntry>(context => Immediate(context, presenter, target =>
+        PrimitiveImplementation.For<LayerReplaceOptions>(ReplaceLayerEntry.TypeId, (context, options) => Immediate(context, presenter, target =>
             BuiltinRuntimeActions.ReplaceLayer(
                 context.Runtime,
                 target,
-                Arguments.String(context, "handleId"),
-                Arguments.String(context, "assetId"))))
+                options.HandleId ?? "",
+                options.AssetId ?? "")))
     ])
     { }
 

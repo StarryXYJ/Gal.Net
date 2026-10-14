@@ -66,8 +66,8 @@ public sealed class BuiltinAudioModule : PrimitiveModule
             runtime.ApplySEffect(Tracks(context), new AudioSEffectRequest(
                 Arguments.String(context, "trackId"), Arguments.String(context, "instanceId"),
                 Arguments.String(context, "id"), Arguments.Json<JsonElement>(context, "parameters"))))),
-        BuiltinInstructionFactory.Create<StopAudioSEffectEntry>(context => Audio(context, scope, () =>
-            runtime.StopSEffect(Tracks(context), Arguments.String(context, "trackId"), Arguments.String(context, "instanceId"))))
+        PrimitiveImplementation.For<AudioSEffectStopOptions>(StopAudioSEffectEntry.TypeId, (context, options) => Audio(context, scope, () =>
+            runtime.StopSEffect(Tracks(context), options.TrackId ?? "", options.InstanceId ?? "")))
     ];
 
     private static AudioPlayRequest PlayRequest(PrimitiveCreateContext context, AudioPlacement placement) => new(

@@ -27,7 +27,7 @@ public static class BuiltinSchemas
 
     public static IEntryModule CreateDialogueModule() => new DefaultEntryModule("dialogue",
     [
-        Schema<TextEntry>(TextEntry.ParameterTypes, TextEntry.DefaultValues),
+        Reading<DialogueTextOptions>(TextEntry.TypeId),
         Schema<ShowDialogueEntry>(ShowDialogueEntry.ParameterTypes, null),
         Schema<HideDialogueEntry>(HideDialogueEntry.ParameterTypes, null)
     ]);
@@ -37,23 +37,23 @@ public static class BuiltinSchemas
         Schema<ShowNvlEntry>(ShowNvlEntry.ParameterTypes, null),
         Schema<HideNvlEntry>(HideNvlEntry.ParameterTypes, null),
         Schema<ClearNvlEntry>(ClearNvlEntry.ParameterTypes, null),
-        Schema<AppendNvlEntry>(AppendNvlEntry.ParameterTypes, null)
+        Reading<NvlAppendOptions>(AppendNvlEntry.TypeId)
     ]);
 
     public static IEntryModule CreateLayersModule() => new DefaultEntryModule("layers",
     [
         Schema<ShowLayerEntry>(ShowLayerEntry.ParameterTypes, ShowLayerEntry.DefaultValues, ShowLayerEntry.ParameterOptions),
         Schema<ShowColorLayerEntry>(ShowColorLayerEntry.ParameterTypes, ShowColorLayerEntry.DefaultValues),
-        Schema<HideLayerEntry>(HideLayerEntry.ParameterTypes, null),
+        DefaultPrimitiveEntryBase.ForDto<LayerHandleOptions>(HideLayerEntry.TypeId),
         Schema<MoveLayerEntry>(MoveLayerEntry.ParameterTypes, MoveLayerEntry.DefaultValues),
-        Schema<ReplaceLayerEntry>(ReplaceLayerEntry.ParameterTypes, null)
+        DefaultPrimitiveEntryBase.ForDto<LayerReplaceOptions>(ReplaceLayerEntry.TypeId)
     ]);
 
     public static IEntryModule CreateAnimationsModule() => new DefaultEntryModule("animations",
     [
         Schema<AnimateEntry>(AnimateEntry.ParameterTypes, AnimateEntry.DefaultValues, AnimateEntry.ParameterOptions),
         Schema<PlayAnimationPlanEntry>(PlayAnimationPlanEntry.ParameterTypes, null),
-        Schema<StopAnimationEntry>(StopAnimationEntry.ParameterTypes, StopAnimationEntry.DefaultValues, StopAnimationEntry.ParameterOptions)
+        DefaultPrimitiveEntryBase.ForDto<AnimationStopOptions>(StopAnimationEntry.TypeId)
     ]);
 
     public static IEntryModule CreateAudioModule() => new DefaultEntryModule("audio",
@@ -66,25 +66,25 @@ public static class BuiltinSchemas
         DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(ClearAudioEntry.TypeId),
         Schema<EnqueueAudioEntry>(EnqueueAudioEntry.ParameterTypes, EnqueueAudioEntry.DefaultValues, EnqueueAudioEntry.ParameterOptions),
         Schema<ApplyAudioSEffectEntry>(ApplyAudioSEffectEntry.ParameterTypes, ApplyAudioSEffectEntry.DefaultValues),
-        Schema<StopAudioSEffectEntry>(StopAudioSEffectEntry.ParameterTypes, StopAudioSEffectEntry.DefaultValues)
+        DefaultPrimitiveEntryBase.ForDto<AudioSEffectStopOptions>(StopAudioSEffectEntry.TypeId)
     ]);
 
     public static IEntryModule CreateVideoModule() => new DefaultEntryModule("video",
     [
         Schema<PlayVideoEntry>(PlayVideoEntry.ParameterTypes, PlayVideoEntry.DefaultValues, PlayVideoEntry.ParameterOptions),
-        Schema<StopVideoEntry>(StopVideoEntry.ParameterTypes, StopVideoEntry.DefaultValues)
+        DefaultPrimitiveEntryBase.ForDto<VideoStopOptions>(StopVideoEntry.TypeId)
     ]);
 
     public static IEntryModule CreateEffectsModule() => new DefaultEntryModule("effects",
     [
         Schema<ApplyEffectEntry>(ApplyEffectEntry.ParameterTypes, ApplyEffectEntry.DefaultValues),
-        Schema<StopEffectEntry>(StopEffectEntry.ParameterTypes, null)
+        DefaultPrimitiveEntryBase.ForDto<InstanceIdOptions>(StopEffectEntry.TypeId)
     ]);
 
     public static IEntryModule CreateParticlesModule() => new DefaultEntryModule("particles",
     [
         Schema<PlayParticleEmitterEntry>(PlayParticleEmitterEntry.ParameterTypes, PlayParticleEmitterEntry.DefaultValues),
-        Schema<StopParticleEmitterEntry>(StopParticleEmitterEntry.ParameterTypes, null),
+        DefaultPrimitiveEntryBase.ForDto<InstanceIdOptions>(StopParticleEmitterEntry.TypeId),
         Schema<BurstParticlesEntry>(BurstParticlesEntry.ParameterTypes, BurstParticlesEntry.DefaultValues)
     ]);
 
@@ -95,12 +95,12 @@ public static class BuiltinSchemas
 
     public static IEntryModule CreateVariablesModule() => new DefaultEntryModule("variables",
     [
-        Schema<SetVariableEntry>(SetVariableEntry.ParameterTypes, null)
+        DefaultPrimitiveEntryBase.ForDto<VariableSetOptions>(SetVariableEntry.TypeId)
     ]);
 
     public static IEntryModule CreateGalleryModule() => new DefaultEntryModule("gallery",
     [
-        Schema<UnlockGalleryEntry>(UnlockGalleryEntry.ParameterTypes, null)
+        DefaultPrimitiveEntryBase.ForDto<GalleryUnlockOptions>(UnlockGalleryEntry.TypeId)
     ]);
 
     public static IEntryModule CreateTransitionsModule() =>
@@ -111,6 +111,11 @@ public static class BuiltinSchemas
         new DefaultCompositeEntryBase(TextVoiceEntry.TypeId, EntrySchema.DynamicParameters(TextVoiceEntry.ParameterTypes, TextVoiceEntry.DefaultValues), static () => new TextVoiceEntry()),
         new DefaultCompositeEntryBase(AppendVoiceNvlEntry.TypeId, EntrySchema.DynamicParameters(AppendVoiceNvlEntry.ParameterTypes, AppendVoiceNvlEntry.DefaultValues), static () => new AppendVoiceNvlEntry())
     ]);
+
+    private static DefaultPrimitiveEntryBase Reading<T>(string type)
+        where T : IFieldDto, IFieldSchema<T>, new() => new(type,
+            new DynamicParameterTable(T.Schema.Select(field => new DynamicParameterDescriptor(field))))
+        { FieldDataType = typeof(T), IsReading = true };
 
     private static DefaultPrimitiveEntryBase Schema<TEntry>(
         IReadOnlyDictionary<string, EntryParameterType> parameters,

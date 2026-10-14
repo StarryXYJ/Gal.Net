@@ -2,9 +2,9 @@
 
 2026-10-14 用户确认开始全量 DTO 与执行/实例简化，评估见 [迁移评估](dto-migration-assessment.md)。实施顺序为 5a 公共能力 → 5b 简单 Primitive → 5c 复杂 Primitive → 5d Composite/旧类壳 → 4b 异步实例与任务 scope；对白/NVL 与请求构造按净收益处理。JSON 字段、默认/null、运行模式和错误策略保持显式；不改变快照与平台所有权。
 
-2026-10-14 Phase 4 已验证：PrimitiveImplementation.Immediate / Immediate<T> 简化同步工厂，轨道操作与 wait 使用唯一 DTO 参数声明，复杂校验/Composite/异步实例保留手写扩展。307 个不重复回归用例通过；五条指令迁移前后 CLI 描述相同，独立契约部署与实际项目编译通过。证据见 [phase-4.md](phase-4.md)。当前无阻断项，下一阶段为 Phase 4b 的异步机制与清理。
+2026-10-14 Phase 4 已验证：PrimitiveImplementation.Immediate / Immediate<T> 简化同步工厂，轨道操作与 wait 使用唯一 DTO 参数声明，复杂校验/Composite/异步实例保留手写扩展。307 个不重复回归用例通过；五条指令迁移前后 CLI 描述相同，独立契约部署与实际项目编译通过。证据见 [phase-4.md](phase-4.md)。当前 5a/5b 也已验证，下一批为 5c 复杂 Primitive；异步机制与清理由后续 Phase 4b 处理。
 
-2026-10-14 最新收敛决定：DTO 成员特性生成有序 schema 与成员访问表，公共 DTO 适配器连接表单和宿主提交；新增 Phase 2d 位于 Phase 2c 最小验证之后。源码生成器已确认为实施目标，替代下文旧的候选/条件表述。范围、通知/默认值边界及退出条件以 [DTO 收敛计划](dto-convergence-plan.md) 为准；Phase 2c 最小宿主接入已验证（241 项回归），见 [阶段记录](phase-2c.md)；Phase 2d 单 Entry DTO 生成/绑定试点已验证（348 项回归、独立契约部署与实际 CLI 编译），见 [phase-2d.md](phase-2d.md)。Phase 4 已验证，下一步为 Phase 4b；全量设置 DTO 化仍暂缓，进一步作者工具化由 Phase 5 处理。
+2026-10-14 最新收敛决定：DTO 成员特性生成有序 schema 与成员访问表，公共 DTO 适配器连接表单和宿主提交；新增 Phase 2d 位于 Phase 2c 最小验证之后。源码生成器已确认为实施目标，替代下文旧的候选/条件表述。范围、通知/默认值边界及退出条件以 [DTO 收敛计划](dto-convergence-plan.md) 为准；Phase 2c 最小宿主接入已验证（241 项回归），见 [阶段记录](phase-2c.md)；Phase 2d 单 Entry DTO 生成/绑定试点已验证（348 项回归、独立契约部署与实际 CLI 编译），见 [phase-2d.md](phase-2d.md)。Phase 4、5a/5b 已验证，下一步为 Phase 5c；全量设置 DTO 化仍暂缓，进一步作者工具化由 Phase 5 处理。
 
 状态：设计与目标边界。Phase 1–4 的值工具、共享表单/宿主适配、DTO 生成/执行、Sample 组合和代表作者路径已验证；后续为异步/清理及进一步工具化。后续方案从已落地的 DTO generator 与 For<T>/Immediate<T> 继续评估收益，不重复建立工具链。
 

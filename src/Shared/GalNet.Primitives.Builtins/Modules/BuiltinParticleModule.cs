@@ -10,7 +10,7 @@ public sealed class BuiltinParticleModule : PrimitiveModule
     [
         BuiltinInstructionFactory.Create<PlayParticleEmitterEntry>(context => new PlayParticlePrimitiveInstance(context.Runtime, presenter, BuiltinRuntimeActions.CreateParticleRequest(context), context.BatchId, context.ScopeCancellation)),
         BuiltinInstructionFactory.Create<BurstParticlesEntry>(context => new BurstParticlePrimitiveInstance(presenter, BuiltinRuntimeActions.CreateParticleBurstRequest(context), context.BatchId, context.ScopeCancellation)),
-        BuiltinInstructionFactory.Create<StopParticleEmitterEntry>(context => new StopParticlePrimitiveInstance(context.Runtime, presenter, Arguments.String(context, "instanceId"), context.BatchId, context.ScopeCancellation))
+        PrimitiveImplementation.For<InstanceIdOptions>(StopParticleEmitterEntry.TypeId, (context, options) => new StopParticlePrimitiveInstance(context.Runtime, presenter, options.InstanceId ?? "", context.BatchId, context.ScopeCancellation))
     ])
     { }
 }

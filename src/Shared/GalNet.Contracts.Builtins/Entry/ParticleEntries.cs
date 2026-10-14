@@ -14,7 +14,6 @@ public sealed class StopParticleEmitterEntry : PrimitiveEntry
 {
     public const string TypeId = "particle.stop";
     public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("instanceId", EntryParameterType.Text));
 }
 
 public sealed class BurstParticlesEntry : PrimitiveEntry

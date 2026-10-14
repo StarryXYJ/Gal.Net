@@ -8,12 +8,12 @@ public sealed class BuiltinVariableModule : PrimitiveModule
 {
     public BuiltinVariableModule() : base(
     [
-        BuiltinInstructionFactory.Create<SetVariableEntry>(context => new ImmediatePrimitiveInstance(() =>
+        PrimitiveImplementation.Immediate<VariableSetOptions>(SetVariableEntry.TypeId, (context, options) =>
             {
-                var target = Arguments.String(context, "target");
+                var target = options.Target;
                 if (!string.IsNullOrWhiteSpace(target))
-                    context.Runtime.SetVariable(target, context.Runtime.EvaluateExpression(Arguments.String(context, "expression")) ?? "");
-            }, batchId: context.BatchId))
+                    context.Runtime.SetVariable(target, context.Runtime.EvaluateExpression(options.Expression ?? "") ?? "");
+            })
     ])
     { }
 }

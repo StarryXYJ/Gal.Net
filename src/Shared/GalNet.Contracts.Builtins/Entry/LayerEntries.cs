@@ -25,7 +25,6 @@ public sealed class HideLayerEntry : PrimitiveEntry
 {
     public const string TypeId = "layer.hide";
     public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("handleId", EntryParameterType.Text));
 }
 
 public sealed class MoveLayerEntry : PrimitiveEntry
@@ -40,5 +39,4 @@ public sealed class ReplaceLayerEntry : PrimitiveEntry
 {
     public const string TypeId = "layer.replace";
     public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("handleId", EntryParameterType.Text), ("assetId", EntryParameterType.ImageAsset));
 }

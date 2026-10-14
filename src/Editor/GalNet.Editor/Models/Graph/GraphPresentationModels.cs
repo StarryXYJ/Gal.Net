@@ -284,9 +284,12 @@ public partial class EntryEditorItemViewModel : ObservableObject
         if (schema.FieldDataType is not null)
         {
             _formParameters = parameters;
-            ParameterForm = new EntryParameterFormBinding(this, parameters.Fields);
-            UpdateEffectHints();
-            return;
+            if (!schema.Parameters.Any(pair => UsesDedicatedEditor(parameters[pair.Key].Field, pair.Value)))
+            {
+                ParameterForm = new EntryParameterFormBinding(this, parameters.Fields);
+                UpdateEffectHints();
+                return;
+            }
         }
 
         foreach (var (id, type) in schema.Parameters)
@@ -307,11 +310,14 @@ public partial class EntryEditorItemViewModel : ObservableObject
         UpdateEffectHints();
     }
 
-    private EntryParameterEditorItemViewModel CreateField(EntryParameterDefinition definition, string value, IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames) =>
-        definition.Field.Value.ValueType != typeof(string) || definition.Type is not (EntryParameterType.MultilineText or EntryParameterType.Autocomplete
+    private static bool UsesDedicatedEditor(FieldDescriptor field, EntryParameterType type) =>
+        field.Value.ValueType == typeof(string) && type is (EntryParameterType.MultilineText or EntryParameterType.Autocomplete
             or EntryParameterType.VariableName or EntryParameterType.Expression or EntryParameterType.ImageAsset or EntryParameterType.AudioAsset
             or EntryParameterType.VideoAsset or EntryParameterType.EffectProgramAsset)
-            || definition.Field.Editor?.EditorId != "entry." + definition.Type.ToString().ToLowerInvariant()
+            && field.Editor?.EditorId == "entry." + type.ToString().ToLowerInvariant();
+
+    private EntryParameterEditorItemViewModel CreateField(EntryParameterDefinition definition, string value, IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames) =>
+        !UsesDedicatedEditor(definition.Field, definition.Type)
         ? new SchemaEntryParameterEditorItemViewModel(definition, this, SetParameter) : definition.Type switch
         {
             EntryParameterType.Autocomplete => new AutocompleteEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),

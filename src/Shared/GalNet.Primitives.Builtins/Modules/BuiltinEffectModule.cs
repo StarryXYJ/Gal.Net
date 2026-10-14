@@ -14,10 +14,10 @@ public sealed class BuiltinEffectModule : PrimitiveModule
                 BuiltinRuntimeActions.CreateEffectRequest(context),
                 context.BatchId,
                 context.ScopeCancellation)),
-        BuiltinInstructionFactory.Create<StopEffectEntry>(context => new StopEffectPrimitiveInstance(
+        PrimitiveImplementation.For<InstanceIdOptions>(StopEffectEntry.TypeId, (context, options) => new StopEffectPrimitiveInstance(
                 context.Runtime,
                 presenter,
-                Arguments.String(context, "instanceId"),
+                options.InstanceId ?? "",
                 context.BatchId,
                 context.ScopeCancellation))
     ])

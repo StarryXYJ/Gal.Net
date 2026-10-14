@@ -17,16 +17,15 @@ public sealed class BuiltinDialogueModule : PrimitiveModule
     ])
     { }
 
-    private static PrimitiveImplementation Text(IDialoguePresenter? presenter, CharacterCatalog characters) => new PrimitiveImplementation(TextEntry.TypeId, context => new DialoguePrimitiveInstance(
+    private static PrimitiveImplementation Text(IDialoguePresenter? presenter, CharacterCatalog characters) => PrimitiveImplementation.For<DialogueTextOptions>(TextEntry.TypeId, (context, options) => new DialoguePrimitiveInstance(
             presenter ?? throw new InvalidOperationException("The dialogue module has no presenter."),
-            ResolveSpeaker(context, characters),
-            context.Runtime.TextResolver.Resolve(Arguments.String(context, "content")),
+            ResolveSpeaker(context, characters, options.Speaker),
+            context.Runtime.TextResolver.Resolve(options.Content ?? ""),
             context.BatchId,
             context.ScopeCancellation));
 
-    private static string ResolveSpeaker(PrimitiveCreateContext context, CharacterCatalog characters)
+    private static string ResolveSpeaker(PrimitiveCreateContext context, CharacterCatalog characters, string? id)
     {
-        var id = Arguments.String(context, "speaker");
         return string.IsNullOrEmpty(id) ? "" : context.Runtime.TextResolver.Resolve(characters.GetRequired(id).DisplayNameKey);
     }
 

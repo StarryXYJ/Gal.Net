@@ -43,8 +43,6 @@ public sealed class StopAudioSEffectEntry : PrimitiveEntry
 {
     public const string TypeId = "audio.seffect.stop";
     public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("trackId", EntryParameterType.Text), ("instanceId", EntryParameterType.Text));
-    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("trackId", "bgm"));
 }
 
 public sealed class PlayVideoEntry : PrimitiveEntry
@@ -67,6 +65,4 @@ public sealed class StopVideoEntry : PrimitiveEntry
 {
     public const string TypeId = "video.stop";
     public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("handleId", EntryParameterType.Text));
-    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("handleId", "video"));
 }

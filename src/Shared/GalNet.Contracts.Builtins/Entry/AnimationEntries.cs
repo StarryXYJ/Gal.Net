@@ -34,7 +34,4 @@ public sealed class StopAnimationEntry : PrimitiveEntry
 {
     public const string TypeId = "animation.stop";
     public override string Type => TypeId;
-    public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("playbackHandleId", EntryParameterType.Text), ("mode", EntryParameterType.Select));
-    public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("mode", "AfterIteration"));
-    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParameterOptions { get; } = EntrySchema.Options(("mode", ["AfterIteration", "CompleteImmediately"]));
 }

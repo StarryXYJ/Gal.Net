@@ -161,7 +161,7 @@ var form = new SchemaForm
 
 SchemaForm 只需要字段列表和 IFieldBinding，不要求数据源是 DTO。DtoBinding 的普通提交经值校验后写成员；async apply/save 使用其宿主提交回调，由宿主更新数据并通知/刷新。绑定借用 DTO，表单拥有草稿/控件订阅；宿主在换对象时释放 DtoBinding。对象/数组继续用 JSON 编辑器，不生成递归面板。
 
-Editor 对 DTO 契约 Entry 使用整组 SchemaForm 和 EntryParameterFormBinding，直接读写作者参数字典，不实例化 DTO。省略与显式 null 保留在文档层；提交替换 Parameters，由既有 workspace 历史/保存链路观察。默认值仅用于展示，打开面板不写入文档；无效但可解析的 JSON 值仍可读取并修正。旧字符串作者文档无法无损表达的值（如显式 null 字符串）仍明确拒绝。手写契约和专属资源/表达式控件继续使用原路径。
+Editor 对采用通用字段编辑器的 DTO 契约 Entry 使用整组 SchemaForm 和 EntryParameterFormBinding，直接读写作者参数字典，不实例化 DTO。省略与显式 null 保留在文档层；提交替换 Parameters，由既有 workspace 历史/保存链路观察。默认值仅用于展示，打开面板不写入文档；无效但可解析的 JSON 值仍可读取并修正。旧字符串作者文档无法无损表达的值（如显式 null 字符串）仍明确拒绝。含专属补全、多行文本、资源或表达式编辑提示的 DTO 使用已有逐字段控件投影，参数事实仍来自 DTO.Schema；手写契约继续支持。
 
 执行模块可选择强类型入口，与契约使用相同 DTO：
 

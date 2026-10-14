@@ -1,6 +1,8 @@
+using System.Text.Json;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
+using GalNet.Core.Parameters;
 using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Services;
 using GalNet.Primitives.Builtins;
@@ -67,5 +69,26 @@ public class GraphEditingServiceTests
         entry.ConfigureParameterFields(catalog, [], ["second", "third"]);
         Assert.That(entry.ParameterFields.Single(field => field.Id == "target").Suggestions,
             Is.EqualTo(SecondSuggestions));
+    }
+
+    [Test]
+    public async Task MixedDtoFieldsRetainAssetPickerAndSharedBindingWithoutDuplicatingSchema()
+    {
+        var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
+        var entry = new EntryEditorItemViewModel { Type = ReplaceLayerEntry.TypeId };
+        entry.ConfigureParameterFields(catalog, [], []);
+        Assert.That(entry.ParameterForm, Is.Null);
+        var asset = entry.ParameterFields.OfType<AssetEntryParameterEditorItemViewModel>().Single();
+        var handle = entry.ParameterFields.OfType<SchemaEntryParameterEditorItemViewModel>().Single();
+        Assert.That(asset.AssetFilter, Is.EqualTo(GalNet.Editor.Models.AssetPickerFilter.Image));
+        Assert.That(handle.Definition.Field, Is.SameAs(catalog.Get(entry.Type).DynamicParameters!["handleId"].Field));
+        asset.StringValue = "background";
+        Assert.That(await handle.CommitAsync(new(JsonSerializer.SerializeToElement("scene")), default), Is.Null);
+        Assert.That(entry.Parameters, Is.EquivalentTo(new Dictionary<string, string> { ["handleId"] = "scene", ["assetId"] = "background" }));
+        entry.Type = HideLayerEntry.TypeId;
+        entry.ConfigureParameterFields(catalog, [], []);
+        Assert.That(entry.ParameterFields, Is.Empty);
+        Assert.That(entry.ParameterForm!.Fields.Single().Id, Is.EqualTo("handleId"));
+        Assert.That(await handle.CommitAsync(new(JsonSerializer.SerializeToElement("stale")), default), Is.Not.Null);
     }
 }

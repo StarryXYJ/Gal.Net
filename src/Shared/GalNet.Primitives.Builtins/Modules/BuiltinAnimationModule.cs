@@ -29,10 +29,10 @@ public sealed class BuiltinAnimationModule : PrimitiveModule
                 BuiltinRuntimeActions.CreateAnimationPlan(context),
                 context.BatchId,
                 context.ScopeCancellation)),
-        BuiltinInstructionFactory.Create<StopAnimationEntry>(context => new ImmediatePrimitiveInstance(() =>
+        PrimitiveImplementation.Immediate<AnimationStopOptions>(StopAnimationEntry.TypeId, (context, options) =>
             {
-                var playbackHandleId = Arguments.String(context, "playbackHandleId");
-                var mode = Arguments.Enum(context, "mode", AnimationStopMode.AfterIteration);
+                var playbackHandleId = options.PlaybackHandleId ?? "";
+                var mode = options.Mode ?? AnimationStopMode.AfterIteration;
                 if (context.Runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(playbackHandleId, out var playback))
                     playback.RequestStop(mode);
                 if (mode == AnimationStopMode.CompleteImmediately)
@@ -40,7 +40,7 @@ public sealed class BuiltinAnimationModule : PrimitiveModule
                     animationPresenter?.CompleteAnimationImmediately(playbackHandleId);
                     BuiltinRuntimeActions.StopAnimationState(context.Runtime, playbackHandleId);
                 }
-            }, batchId: context.BatchId))
+            })
     ])
     { }
 }

@@ -11,13 +11,13 @@ public sealed class BuiltinVideoModule : PrimitiveModule
     public BuiltinVideoModule(IVideoPresenter? presenter = null) : base(
     [
         BuiltinInstructionFactory.Create<PlayVideoEntry>(context => CreatePlay(context, presenter)),
-        BuiltinInstructionFactory.Create<StopVideoEntry>(context => new ImmediatePrimitiveInstance(() =>
+        PrimitiveImplementation.Immediate<VideoStopOptions>(StopVideoEntry.TypeId, (context, options) =>
             {
-                var handleId = Arguments.String(context, "handleId");
+                var handleId = options.HandleId ?? "";
                 if (context.Runtime.SceneInstances.TryGet<Layer>(handleId, out var layer) && layer.IsVideo)
                     context.Runtime.SceneInstances.Remove<Layer>(handleId, out _);
                 presenter?.StopVideo(handleId);
-            }, batchId: context.BatchId))
+            })
     ])
     { }
 

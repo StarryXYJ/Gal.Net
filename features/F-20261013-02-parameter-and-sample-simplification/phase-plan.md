@@ -112,7 +112,7 @@
 顺序调整：Phase 4 → 5a → 5b → 5c → 5d → 4b → 后续净收益复核 → 6；不重新建立生成器或通用 Runner。每批完成验证后独立提交。
 
 - 5a（verified，456 项回归与 CLI 格式对照通过，见 phase-5a.md）：JSON 默认/选项与字符串 bool/enum 编码、公共 DTO 读取、Composite 类型化入口；以 audio.stop 和测试 Composite 验证格式与行为。退出：省略/null、默认、codec、独立实例与编译信封验证通过。
-- 5b（planned）：11 条简单 Primitive 的唯一 DTO 描述和执行读取；退出：编译/执行与原 schema、诊断回归通过。
+- 5b（verified，235 项回归与 11 条 CLI schema 对照通过，见 phase-5b.md）：11 条简单 Primitive 的唯一 DTO 描述和执行读取；退出：编译/执行与原 schema、诊断回归通过。
 - 5c（planned）：其余媒体/场景/动画/效果的外层 DTO；开放 payload 保留 JsonElement，普通执行/计划/重放只共享有收益的读取与 request 构造。退出：默认/转换/场景及媒体回归通过，不改变快照。
 - 5d（planned）：8 条 Composite 的 typed options 与旧 primitive 类壳/取 ID 工厂收尾。退出：展开结果、batch/condition/reading boundary、独立契约及全部项目编译通过。
 - 4b（planned）：简单异步展示与模块任务 scope，截图/清理失败策略保持原语义；对白/NVL 状态机另做净收益检查，不把视频/动画计划强行并入。

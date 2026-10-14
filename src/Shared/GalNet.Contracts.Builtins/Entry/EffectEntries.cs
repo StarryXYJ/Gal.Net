@@ -10,4 +10,4 @@ public sealed class ApplyEffectEntry : PrimitiveEntry
     public static IReadOnlyDictionary<string, string> DefaultValues { get; } = EntrySchema.Defaults(("program", ""), ("id", ""), ("targetHandleId", ""), ("order", "0"), ("parameters", "{}"));
 }
 
-public sealed class StopEffectEntry : PrimitiveEntry { public const string TypeId = "effect.stop"; public override string Type => TypeId; public static IReadOnlyDictionary<string, EntryParameterType> ParameterTypes { get; } = EntrySchema.Parameters(("instanceId", EntryParameterType.Text)); }
+public sealed class StopEffectEntry : PrimitiveEntry { public const string TypeId = "effect.stop"; public override string Type => TypeId; }

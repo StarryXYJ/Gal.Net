@@ -15,6 +15,51 @@ namespace GeneralTest.Entry;
 
 public sealed class TypedBuiltinAuthoringTests
 {
+    [TestCase("animation.stop", "playbackHandleId")]
+    [TestCase("audio.seffect.stop", "instanceId")]
+    [TestCase("dialogue.text", "content")]
+    [TestCase("effect.stop", "instanceId")]
+    [TestCase("layer.hide", "handleId")]
+    [TestCase("layer.replace", "assetId")]
+    [TestCase("nvl.append", "content")]
+    [TestCase("particle.stop", "instanceId")]
+    [TestCase("variable.set", "expression")]
+    [TestCase("video.stop", "handleId")]
+    public void SimpleDtoContractsPreserveOptionalTextNullAndDiagnostics(string type, string field)
+    {
+        var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
+        var omitted = Compile(catalog, type, new { }).Arguments;
+        Assert.That(catalog.Get(type).FieldDataType, Is.Not.Null);
+        Assert.That(omitted.TryGetProperty(field, out _), Is.EqualTo(type == "video.stop"));
+        var explicitNull = Compile(catalog, type, new Dictionary<string, object?> { [field] = null }).Arguments;
+        Assert.That(explicitNull.GetProperty(field).ValueKind, Is.EqualTo(JsonValueKind.Null));
+        Assert.That(() => Compile(catalog, type, new Dictionary<string, object?> { [field] = 42 }),
+            Throws.TypeOf<InvalidDataException>().With.Message.Contains(field));
+        Assert.That(() => Compile(catalog, type, new { unexpected = "value" }),
+            Throws.TypeOf<InvalidDataException>().With.Message.Contains("unexpected"));
+    }
+
+    [Test]
+    public void AnimationStopKeepsStringEnumDefaultNullAndStrictChoices()
+    {
+        var catalog = new TargetProfileEntryCatalog([BuiltinSchemas.CreateAnimationsModule()]);
+        Assert.That(Compile(catalog, "animation.stop", new { }).Arguments.GetProperty("mode").GetString(), Is.EqualTo("AfterIteration"));
+        Assert.That(Compile(catalog, "animation.stop", new { mode = (string?)null }).Arguments.GetProperty("mode").ValueKind, Is.EqualTo(JsonValueKind.Null));
+        Assert.That(() => Compile(catalog, "animation.stop", new { mode = "completeImmediately" }), Throws.TypeOf<InvalidDataException>());
+        Assert.That(() => Compile(catalog, "animation.stop", new { mode = 1 }), Throws.TypeOf<InvalidDataException>());
+    }
+
+    [Test]
+    public void GalleryDtoRetainsOptionalIntegerAndRuntimePositiveIdValidation()
+    {
+        var catalog = new TargetProfileEntryCatalog([BuiltinSchemas.CreateGalleryModule()]);
+        Assert.That(Compile(catalog, "gallery.unlock", new { }).Arguments.TryGetProperty("id", out _), Is.False);
+        Assert.That(() => Compile(catalog, "gallery.unlock", new { id = (int?)null }), Throws.TypeOf<InvalidDataException>());
+        using var view = new GameRegistration().UseCatalog(catalog).AddBuiltinImplementations(catalog).BuildView();
+        Assert.That(() => view.Dispatch(new PrimitiveEntry("gallery.unlock", Compile(catalog, "gallery.unlock", new { }).Arguments),
+            new GameRuntime(null), default), Throws.TypeOf<InvalidDataException>().With.Message.Contains("positive integer"));
+    }
+
     [Test]
     public void AudioStopPreservesStringBooleanDefaultsAndExplicitNull()
     {
