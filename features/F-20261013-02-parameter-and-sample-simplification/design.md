@@ -1,5 +1,7 @@
 # 设计边界与收益判断
 
+2026-10-15 收尾：4b2 清理不短路、4b3 文本推进默认实现和 Phase 6 已验证。文本不套用单次异步的自动完成规则；执行 DTO 与持久重放输入继续保留独立适配，不引入逆向 DTO 转换或通用 Runner。实际结果/成本/暂缓与审核见 summary.md/review.md；下文保持各日期设计历史。
+
 2026-10-15 Phase 4b 分批实施：4b1 建立可重载 AsyncPrimitiveInstance 与 Async<T> 回调工厂；业务同步状态写入与异步操作分开，错误策略可重载。Effect/Particle 共用窄范围展示默认实现，截图共用实例机制和组合式 PrimitiveTaskScope。完成任务从创建时稳定，错误先于逻辑完成通知发布；scope 只登记已运行任务，完成移除但保留错误供释放聚合。实现、验证与实际成本见 [phase-4b1.md](phase-4b1.md)。Session 清理与文本推进状态机另批验证。
 
 2026-10-14 Phase 5d 实施补充：颜色过渡以源基类共用 12 个字段；生成器合并源基类 Field 并拒绝 Order/ID 冲突及成员隐藏/重写，避免另写第二份 schema。新增 ValueCodec.SerializeFields 按成员 codec 写子指令，默认保留 null，省略 undefined JSON，可显式省略 null；编译 Normalize 补默认。42 个稳定内置 ID 集中到 BuiltinEntryIds，删除 Primitive 作者类壳与取 ID 工厂，Composite 用静态业务回调，开放动画事件 payload 不递归 DTO 化。

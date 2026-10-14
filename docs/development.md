@@ -215,40 +215,31 @@ var wait = PrimitiveImplementation.For<WaitOptions>(BuiltinEntryIds.Wait, (conte
 schema 不引用游戏服务或平台对象。执行模块持有共享数据和服务，贡献完整指令 ID 与实例工厂：
 
 ```csharp
+// 契约项目只引用 Core，generator 作为构建期 Analyzer。
+using GalNet.Core.Entry;
+using GalNet.Core.Parameters;
+
+[GenerateFieldSchema]
+public partial class ReputationOptions
+{
+    [Field(0, Required = true, AllowNull = false)]
+    public string? Faction { get; set; }
+    [Field(1)]
+    public int Amount { get; set; } = 1;
+}
+
+public sealed class MyGameSchemas() : EntryModuleBase("mygame",
+    [DefaultPrimitiveEntryBase.ForDto<ReputationOptions>("mygame.reputation.add")]) { }
+```
+
+执行项目引用契约和展示执行抽象，借用自己的业务服务：
+
+```csharp
 using GalNet.Presentation.Abstractions.Execution;
 
-public sealed class MyGameSchemas : EntryModuleBase
-{
-    public MyGameSchemas()
-        : base("mygame",
-        [
-            new DefaultPrimitiveEntryBase(
-                "mygame.reputation.add",
-                new DynamicParameterTable(
-                [
-                    new DynamicParameterDescriptor("faction", typeof(string), isRequired: true),
-                    new DynamicParameterDescriptor("amount", typeof(int),
-                        defaultValue: JsonSerializer.SerializeToElement(1))
-                ]))
-        ])
-    { }
-}
-
-public sealed class MyGameModule : PrimitiveModule
-{
-    public MyGameModule(IReputationService reputationService)
-        : base(
-        [
-            new PrimitiveImplementation("mygame.reputation.add", context =>
-                new ImmediatePrimitiveInstance(() =>
-                {
-                    var faction = context.Arguments.GetProperty("faction").GetString()!;
-                    var amount = context.Arguments.GetProperty("amount").GetInt32();
-                    reputationService.Add(faction, amount);
-                }, batchId: context.BatchId))
-        ])
-    { }
-}
+public sealed class MyGameModule(IReputationService reputationService) : PrimitiveModule(
+    [PrimitiveImplementation.Immediate<ReputationOptions>("mygame.reputation.add",
+        (_, options) => reputationService.Add(options.Faction!, options.Amount))]) { }
 ```
 
 不必逐条在组合根注册。一个领域模块可以贡献多个指令，并在实例间共享轨道、缓存或服务；也可用 `RegisterInstruction` 单独贡献指令。同前缀可以由多个模块贡献不同指令，只有完整 type ID 重复才冲突。schema 模块无资源生命周期；执行模块可覆写 `Dispose` / `DisposeAsync`。
@@ -273,6 +264,9 @@ Sample 的 Session、Runner、Presentation 与下属存档/资源 scope 按明�
 文本显示后仍要等待玩家推进时，可以继承 Builtins 的 TextAdvancePrimitiveInstance，共用阶段/skip/模式机制，重载展示操作。下面是使用现有对白端口的完整实例；执行模块通过 For<T> 传入正文、BatchId 和 ScopeCancellation：
 
 ```csharp
+using GalNet.Presentation.Abstractions.View;
+using GalNet.Primitives.Builtins;
+
 public sealed class NarrationInstance(IDialoguePresenter presenter, string text,
     string? batchId, CancellationToken token) : TextAdvancePrimitiveInstance(batchId, token)
 {

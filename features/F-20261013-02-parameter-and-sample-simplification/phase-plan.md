@@ -2,7 +2,7 @@
 
 ## 当前后续计划（2026-10-15 整理）
 
-本节为当前实施入口；下文早期阶段记录保留作历史证据。计划调整依据是 5a–5d 全量 DTO 已验证、4b1 已提交，以及当前代码仍存在的清理短路和文本状态机重复。本轮只整理计划，不开始业务实现。
+2026-10-15 全部实际实施批次与 Phase 6 已完成，结果见 summary.md/review.md；下文阶段记录保留历史证据。本节原先按 5a–5d/4b1 的状态整理后续顺序，现在各项均有退出证据。
 
 已完成：参数/schema/Editor 绑定、Sample 组合、全量 Primitive/Composite DTO、同步工厂、简单异步默认实例与任务 scope。当前可用作者路径为 Immediate<T>、Async<T>、For<T> 和显式 Composite 展开。生成器已落地，不再作为待选方案重复建设。
 
@@ -11,7 +11,7 @@
 | 验证基线 | verified，见 phase-4b-baseline.md | 两项设置用例在真实 UI pump 中运行，业务断言不变 | 完整 Integration 101/101 通过，无排除用例 |
 | 4b2 | verified，见 phase-4b2.md | Session/Runner/Presentation 与下属资源不短路 | 故障注入、完整 Integration 104 和 Architecture 37 通过 |
 | 4b3 | verified，见 phase-4b3.md | Dialogue/NVL 共用文本推进状态机 | 331 项回归通过，258 → 153 行，模式/skip/失败规则保留 |
-| 6 | planned，完成实际实施批次后 | 作者路径/收益复核、必要回归、文档与 feature 收尾 | 已实施范围验证完整；候选明确实施或暂缓；summary/review 与事实一致 |
+| 6 | verified，见 summary.md/review.md | 作者路径/收益复核、完整回归、文档收尾 | 898 用例、解决方案/部署/CLI 和文档示例编译通过 |
 
 基线处理不是重新迁移设置。两个测试分别为 SampleDisplaySettingsTests.FullscreenDisablesWindowSizeAndPreferencesRestoreWithoutWritingAgain 和 SampleLocalizationTests.SettingsPersistAndRestoreWithoutLosingOtherPlayerVariables。当前其他任务的未提交 FlushAsync 使用 UI 调度，而测试没有 UI pump；先确认并行改动最终状态，若仍要求 UI 线程则在独立验证改动中提供真实 Headless/UI pump。不得通过吞错、跳过 flush 或长期排除用例宣布全回归通过。这项缺口不阻止 4b2/4b3 的独立单元验证，但影响 Session 的 UI/持久化集成验证和最终收尾。
 
@@ -23,7 +23,7 @@
 
 2026-10-14 最新收敛决定：DTO 成员特性生成有序 schema 与成员访问表，公共 DTO 适配器连接表单和宿主提交；新增 Phase 2d 位于 Phase 2c 最小验证之后。源码生成器已确认为实施目标，替代下文旧的候选/条件表述。范围、通知/默认值边界及退出条件以 [DTO 收敛计划](dto-convergence-plan.md) 为准；Phase 2c 最小宿主接入已验证（241 项回归），见 [阶段记录](phase-2c.md)；Phase 2d 单 Entry DTO 生成/绑定试点已验证（348 项回归、独立契约部署与实际 CLI 编译），见 [phase-2d.md](phase-2d.md)。Phase 4 已验证，下一步为 Phase 4b；全量设置 DTO 化仍暂缓，进一步作者工具化由 Phase 5 处理。
 
-状态：in-progress。Phase 0/1/2a/2b/2c/2d/2e/3/4、5a–5d、4b1 已验证；剩余为验证基线缺口、4b2 清理、4b3 文本状态机和 Phase 6 收尾。
+状态：completed。Phase 0/1/2a/2b/2c/2d/2e/3/4、5a–5d、4b1/基线/4b2/4b3/6 已验证；无当前实施剩余项，明确暂缓项见下文。
 
 实际顺序：Phase 0 → 1 → 2a → 2b → 2c → 2d → 2e → 3 → 4 → 5a → 5b → 5c → 5d → 4b1 → 4b2 → 4b3 → 6。Phase 5 的 DTO/作者工具化已通过 5a–5d 完成；不重新建立生成器或 authoring 框架。4b3 若实际收益不足可以缩小或 skipped，记录证据后进入 Phase 6；4b2 的清理正确性问题须修正或明确保留为未完成事项。
 
@@ -134,11 +134,11 @@
 - 5b（verified，235 项回归与 11 条 CLI schema 对照通过，见 phase-5b.md）：11 条简单 Primitive 的唯一 DTO 描述和执行读取；退出：编译/执行与原 schema、诊断回归通过。
 - 5c（verified，338 项回归与 12 条 CLI schema 对照通过，见 phase-5c.md）：其余媒体/场景/动画/效果的外层 DTO；开放 payload 保留 JsonElement，普通执行/计划/重放只共享有收益的读取与 request 构造。退出：默认/转换/场景及媒体回归通过，不改变快照。
 - 5d（verified，393 项回归、8 条 schema 与 16→20 编译对照通过，见 phase-5d.md）：8 条 Composite 的 typed options 与旧 primitive 类壳/取 ID 工厂收尾。退出：展开结果、batch/condition/reading boundary、独立契约及全部项目编译通过。
-- 4b（in-progress）：4b1 已验证并提交；4b2 清理与 4b3 文本状态机仍 planned，详细退出条件见下文。不把视频/动画计划强行并入。
+- 4b（verified）：4b1、4b2、4b3 与验证基线均已完成，详细证据见相应阶段记录。不把视频/动画计划强行并入。
 
 ## Phase 4b：Entry 异步生命周期与 Sample 清理收敛
 
-状态：in-progress；依赖 Phase 3；与 Phase 4 作者路径正交；相对工作量：中。4b1/4b2/4b3 分批独立验证与提交，见本页最新记录。
+状态：verified；依赖 Phase 3；与 Phase 4 作者路径正交；相对工作量：中。4b1/4b2/4b3 分批独立验证与提交，生产成本合计净减 51 行。
 
 - 目标：删除截图异步样板，修正清理短路，同时保持业务行为和显式所有权；本阶段不以缩短普通新 Entry 的参数/schema 声明作为验收。
 - 模块：Core 的实例完成协议（仅必要改动）、Presentation.Abstractions 的模块工具、Sample 截图/Session/Runner/Presentation，以及按证据选取的 Builtins PrimitiveInstance、module factory、RuntimeActions 与重放消费边界。
@@ -182,7 +182,7 @@
 
 ## Phase 6：范围复核、回归与收尾
 
-状态：planned；依赖所有实际实施阶段；相对工作量：小～中。
+状态：verified；依赖所有实际实施阶段；相对工作量：小～中。完整证据与保留理由见 summary.md/review.md。
 
 - 目标：确认代码更清晰，而不是新增一层外观一致的框架。
 - 模块：实际改动的生产项目、测试与正式文档。

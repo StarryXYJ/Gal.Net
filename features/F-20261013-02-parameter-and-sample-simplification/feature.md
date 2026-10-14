@@ -2,12 +2,14 @@
 id: F-20261013-02-parameter-and-sample-simplification
 title: 参数契约共用与 Sample 扩展简化
 type: feature
-status: in-progress
+status: completed
 created: 2026-10-13
 updated: 2026-10-15
 ---
 
 # 参数契约共用与 Sample 扩展简化
+
+2026-10-15 已完成全部实际实施批次与收尾。最终 11 项目 898 项回归通过，无排除用例；全解决方案编译、契约独立部署和真实 CLI 编译通过。文本实例含公共实现从 258 行降至 153 行，Phase 4b 生产合计净减 51 行。实现/成本/暂缓/人工验证限制见 [summary.md](summary.md)，收尾自审见 [review.md](review.md)。下文按日期保留历史记录。
 
 2026-10-15 后续计划已按当前代码整理，实施入口见 [Phase Plan](phase-plan.md#当前后续计划2026-10-15-整理)：先明确两项 UI Flush 验证缺口，再实施 4b2 清理不短路、4b3 文本推进状态机复用，最后 Phase 6 作者路径/收益复核与收尾。全量 DTO 和 generator 不再作为待实施工作；剩余 request/重放胶水按证据决定，不追加通用框架。本轮仅修改计划文档。
 
