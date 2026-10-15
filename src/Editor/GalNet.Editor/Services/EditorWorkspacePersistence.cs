@@ -32,7 +32,6 @@ public sealed class EditorWorkspacePersistence
     {
         if (_projects.Current is not { } project)
         {
-            _documents.Unload();
             return null;
         }
 
@@ -41,20 +40,11 @@ public sealed class EditorWorkspacePersistence
         return GraphDocumentMapper.Load(_documents.LoadedProject, _groups);
     }
 
-    public async Task<bool> SaveCurrentProjectAsync(
-        IEnumerable<GraphNode> nodes,
-        IEnumerable<GraphEdge> edges)
+    public async Task<bool> SaveCurrentProjectAsync()
     {
         if (_projects.Current is not { } project)
             return false;
 
-        var document = CreateDocument(project.Name, nodes, edges);
-        project.Settings.PlayerVariables = document.PlayerVariables.Select(item => item.Clone()).ToList();
-        project.Settings.SaveVariables = document.SaveVariables.Select(item => item.Clone()).ToList();
-        _saveCoordinator.SaveProjectDocument(
-            project.RootPath,
-            document,
-            GraphDocumentMapper.CreateGroupEntriesSnapshot(nodes));
         await _projects.SaveAsync();
         return true;
     }

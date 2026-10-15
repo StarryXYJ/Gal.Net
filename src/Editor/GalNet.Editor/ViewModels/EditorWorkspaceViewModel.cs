@@ -20,6 +20,7 @@ using GalNet.Editor.History;
 using GalNet.Editor.Models;
 using GalNet.Editor.Services;
 using GalNet.Editor.Services.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
 namespace GalNet.Editor.ViewModels;
@@ -45,7 +46,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
     private readonly Dictionary<string, (double X, double Y)> _savedPositions = [];
     private readonly Dictionary<(object Item, string Property), object?> _propertyValues = [];
     private readonly Dictionary<GalNet.Core.Variable.VariableScope, List<GalNet.Core.Variable.ProjectVariableDefinition>> _variableSnapshots = [];
-    public IUndoRedoHistory UndoRedoHistory => _histories.Graph;
+    public IUndoRedoHistory UndoRedoHistory => _histories.Content;
     public event Action? VariableDefinitionsChanged;
 
     [ObservableProperty]
@@ -187,10 +188,11 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
 
     public void SaveGraphViewport()
     {
-        if (_projectService.Current is null)
+        if (_projectService.Current is not { } project)
             return;
 
-        _saveScheduler.Schedule(_projectService.SaveAsync);
+        var content = project.Services.GetRequiredService<IProjectContentSession>();
+        _saveScheduler.Schedule(content.SaveViewStateAsync);
     }
 
     public GraphNode AddNode(GraphNodeKind kind, double x, double y)
@@ -393,11 +395,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         if (edits.Count > 0) PushGraphEdit(new CompositeEdit("Move nodes", edits));
     }
 
-    public static void PersistGraphDocument()
-    {
-        // Author data is owned by the project; persistence is coordinated by SaveCoreAsync.
-    }
-
     public string Localize(string key) => _localization[key];
 
     public Task SaveAsync() => _saveScheduler.SaveNowAsync(SaveCoreAsync);
@@ -410,11 +407,12 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         _isSaving = true;
         try
         {
-            if (!await _persistence.SaveCurrentProjectAsync(Nodes, Edges))
+            if (!await _persistence.SaveCurrentProjectAsync())
                 return;
-            _documentService.MarkSaved();
             _histories.MarkSaved();
-            project.IsDirty = false;
+            if (_histories.IsDirty) _documentService.MarkDirty();
+            else _documentService.MarkSaved();
+            project.IsDirty = _histories.IsDirty;
         }
         finally { _isSaving = false; }
     }
@@ -490,7 +488,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
                 Edges.Add(edge);
 
             UpdateConnectorStates();
-            _histories.Clear();
             CaptureVariableSnapshots();
             SelectNode(EntryNode ?? Nodes.FirstOrDefault());
         }
@@ -545,14 +542,14 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
     private void ExecuteGraphEdit(IUndoableEdit edit)
     {
         _isApplyingHistory = true;
-        try { _histories.Graph.Execute(edit); }
+        try { _histories.Content.Execute(edit); }
         finally { _isApplyingHistory = false; }
         MarkGraphDirty();
     }
 
     private void PushGraphEdit(IUndoableEdit edit)
     {
-        _histories.Graph.PushAlreadyApplied(edit);
+        _histories.Content.PushAlreadyApplied(edit);
         MarkGraphDirty();
     }
 
@@ -560,7 +557,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
     {
         if (_projectService.Current is { } project)
             project.IsDirty = _histories.IsDirty;
-        if (_histories.IsDirty && !_isLoadingGraph && !_isSaving)
+        if (_histories.IsDirty && !_histories.Content.IsBusy && !_isLoadingGraph && !_isSaving)
             ScheduleAutoSave();
     }
 

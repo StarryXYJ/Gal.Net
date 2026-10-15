@@ -62,11 +62,16 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<IProjectFileCommandCatalog, AssetFileCommandCatalog>();
         services.AddScoped<IProjectFileCommandExecutor, AssetFileCommandExecutor>();
         services.AddScoped<EditorHistories>();
+        services.AddScoped<IProjectEditLifetime>(sp => sp.GetRequiredService<EditorHistories>());
+        services.AddSingleton<IProjectClosePrompt, ProjectClosePrompt>();
+        services.AddScoped<IProjectContentSession, ProjectContentSession>();
+        services.AddSingleton(new ProjectSessionOptions());
         services.AddScoped<UndoRedoRouter>();
         services.AddScoped<IEditorDocumentRepository, EditorDocumentRepository>();
         services.AddScoped<IEditorDocumentService, EditorDocumentService>();
         services.AddScoped<IEditorSaveCoordinator, EditorSaveCoordinator>();
         services.AddScoped<IProjectSaveScheduler, ProjectSaveScheduler>();
+        services.AddScoped<IProjectEditLifetime>(sp => (ProjectSaveScheduler)sp.GetRequiredService<IProjectSaveScheduler>());
         services.AddScoped<IVariableDefinitionService, VariableDefinitionService>();
         services.AddScoped<EditorVariableService>();
         services.AddScoped<IVariableService>(sp => sp.GetRequiredService<EditorVariableService>());

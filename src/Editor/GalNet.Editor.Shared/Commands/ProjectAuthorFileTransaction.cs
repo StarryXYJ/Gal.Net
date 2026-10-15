@@ -1,75 +1,184 @@
+using System.Security.Cryptography;
+using System.Text.Json;
 using GalNet.Editor.Shared.Services;
 
 namespace GalNet.Editor.Shared.Commands;
 
-/// <summary>Stages author-file changes and restores published files if later publication fails.
-/// Failure recovery within one process, not crash-safe or cross-process atomicity.</summary>
+public sealed class ProjectRepairRequiredException(string recoveryDirectory, Exception innerException)
+    : IOException($"Project repair is required. Recovery material: '{recoveryDirectory}'.", innerException)
+{
+    public string RecoveryDirectory { get; } = recoveryDirectory;
+}
+
 public static class ProjectAuthorFileTransaction
 {
     public static void Commit(string projectPath, IReadOnlyDictionary<string, byte[]> writes,
+        IReadOnlyList<string> deletedFiles, CancellationToken cancellationToken = default) =>
+        new AuthorFileTransaction().Commit(projectPath, writes, deletedFiles, cancellationToken);
+
+    public static void Recover(string projectPath) => new AuthorFileTransaction().Recover(projectPath);
+}
+
+/// <summary>Persistent prepare manifest and backups; publication is compensated before reporting failure.</summary>
+public class AuthorFileTransaction
+{
+    private const string TransactionRoot = ".galnet/editor/transactions";
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
+
+    public void Commit(string projectPath, IReadOnlyDictionary<string, byte[]> writes,
         IReadOnlyList<string> deletedFiles, CancellationToken cancellationToken = default)
     {
         var reader = new ProjectRawReader(projectPath);
-        var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
         var paths = writes.Keys.Concat(deletedFiles).ToArray();
+        var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
         if (paths.Distinct(comparer).Count() != paths.Length) throw new ArgumentException("A file can only be changed once.");
-        var originals = new Dictionary<string, byte[]?>(comparer);
-        var temporary = new Dictionary<string, string>(comparer);
-        var published = new List<string>();
+        foreach (var file in paths) ValidatePath(reader, file);
+        cancellationToken.ThrowIfCancellationRequested();
+        var directory = reader.Resolve(TransactionRoot + "/" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var manifest = new AuthorTransactionManifest();
+        var publicationStarted = false;
+        var keep = false;
         try
         {
             foreach (var file in paths)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var path = reader.Resolve(file);
-                if (!string.Equals(reader.Relative(path), file, StringComparison.Ordinal))
-                    throw new ArgumentException($"Author file path must be normalized: '{file}'.");
-                if (file != "settings.json" && file != "Graph/graph.json" &&
-                    !(file.StartsWith("Graph/", StringComparison.Ordinal) && file.EndsWith(".rawgalgroup", StringComparison.OrdinalIgnoreCase)))
-                    throw new ArgumentException($"Not an author document path: '{file}'.");
-                if (Directory.Exists(path)) throw new IOException($"A directory occupies author file '{file}'.");
-                originals.Add(file, File.Exists(path) ? File.ReadAllBytes(path) : null);
+                var original = File.Exists(path) ? File.ReadAllBytes(path) : null;
+                var next = writes.GetValueOrDefault(file);
+                var index = manifest.Files.Count;
+                if (original is not null) File.WriteAllBytes(Path.Combine(directory, $"{index}.old"), original);
+                if (next is not null) File.WriteAllBytes(Path.Combine(directory, $"{index}.new"), next);
+                manifest.Files.Add(new(file, Hash(original), Hash(next)));
             }
-            foreach (var (file, bytes) in writes)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var path = reader.Resolve(file);
-                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-                var stage = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-                temporary.Add(file, stage);
-                File.WriteAllBytes(stage, bytes);
-            }
+            manifest.Status = "prepared";
+            WriteManifest(directory, manifest);
             cancellationToken.ThrowIfCancellationRequested();
-            foreach (var file in paths)
+            foreach (var file in manifest.Files)
+                if (ReadHash(reader.Resolve(file.Path)) != file.BeforeHash)
+                    throw new IOException($"Author file changed before publication: '{file.Path}'.");
+            manifest.Status = "publishing";
+            WriteManifest(directory, manifest);
+            publicationStarted = true;
+            for (var index = 0; index < manifest.Files.Count; index++)
             {
-                var path = reader.Resolve(file);
-                if (temporary.TryGetValue(file, out var stage)) File.Move(stage, path, overwrite: true);
-                else File.Delete(path);
-                published.Add(file);
+                var file = manifest.Files[index];
+                Publish(reader.Resolve(file.Path), file.AfterHash is null ? null : Path.Combine(directory, $"{index}.new"));
             }
+            manifest.Status = "committed";
+            WriteManifest(directory, manifest);
         }
-        catch (Exception originalFailure)
+        catch (Exception failure)
         {
-            var failures = new List<Exception> { originalFailure };
-            foreach (var file in published.AsEnumerable().Reverse())
-                try
+            if (publicationStarted)
+            {
+                try { RestoreAll(reader, directory, manifest); }
+                catch (Exception compensation)
                 {
-                    var path = reader.Resolve(file);
-                    if (originals[file] is { } bytes)
-                    {
-                        var stage = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-                        try { File.WriteAllBytes(stage, bytes); File.Move(stage, path, overwrite: true); }
-                        finally { if (File.Exists(stage)) File.Delete(stage); }
-                    }
-                    else File.Delete(path);
+                    keep = true;
+                    manifest.Status = "repair-required";
+                    try { WriteManifest(directory, manifest); }
+                    catch (Exception manifestFailure) { compensation = new AggregateException(compensation, manifestFailure); }
+                    throw new ProjectRepairRequiredException(directory, new AggregateException(failure, compensation));
                 }
-                catch (Exception rollbackFailure) { failures.Add(rollbackFailure); }
-            if (failures.Count != 1) throw new AggregateException("Author-file publication and recovery failed; inspect the project before retrying.", failures);
+            }
             throw;
         }
         finally
         {
-            foreach (var stage in temporary.Values) if (File.Exists(stage)) File.Delete(stage);
+            if (!keep && Directory.Exists(directory))
+                try { Directory.Delete(directory, recursive: true); }
+                catch (IOException cleanup) { Serilog.Log.Warning(cleanup, "Transaction cleanup deferred: {Directory}", directory); }
+                catch (UnauthorizedAccessException cleanup) { Serilog.Log.Warning(cleanup, "Transaction cleanup deferred: {Directory}", directory); }
         }
     }
+
+    protected virtual void Publish(string path, string? stagedFile) => Replace(path, stagedFile);
+    protected virtual void Restore(string path, string? backupFile) => Replace(path, backupFile);
+
+    private static void Replace(string path, string? source)
+    {
+        if (source is null) { File.Delete(path); return; }
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try { File.Copy(source, temporary); File.Move(temporary, path, overwrite: true); }
+        finally { if (File.Exists(temporary)) File.Delete(temporary); }
+    }
+
+    private void RestoreAll(ProjectRawReader reader, string directory, AuthorTransactionManifest manifest)
+    {
+        var failures = new List<Exception>();
+        foreach (var file in manifest.Files)
+        {
+            ValidatePath(reader, file.Path);
+            var current = ReadHash(reader.Resolve(file.Path));
+            if (current != file.BeforeHash && current != file.AfterHash)
+                throw new IOException($"Recovery found external content: '{file.Path}'.");
+        }
+        for (var index = manifest.Files.Count - 1; index >= 0; index--)
+        {
+            var file = manifest.Files[index];
+            try
+            {
+                if (ReadHash(reader.Resolve(file.Path)) == file.BeforeHash) continue;
+                var backup = file.BeforeHash is null ? null : Path.Combine(directory, $"{index}.old");
+                if (backup is not null && ReadHash(backup) != file.BeforeHash)
+                    throw new IOException($"Recovery backup is missing or corrupt: '{file.Path}'.");
+                Restore(reader.Resolve(file.Path), backup);
+            }
+            catch (Exception failure) { failures.Add(failure); }
+        }
+        if (failures.Count > 0) throw new AggregateException("Author-file recovery failed.", failures);
+    }
+
+    public void Recover(string projectPath)
+    {
+        var reader = new ProjectRawReader(projectPath);
+        var root = reader.Resolve(TransactionRoot);
+        if (!Directory.Exists(root)) return;
+        foreach (var candidate in Directory.EnumerateDirectories(root))
+        {
+            var directory = reader.Resolve(reader.Relative(candidate));
+            var manifestPath = reader.Resolve(reader.Relative(Path.Combine(directory, "manifest.json")));
+            if (!File.Exists(manifestPath)) { Directory.Delete(directory, recursive: true); continue; }
+            try
+            {
+                var manifest = JsonSerializer.Deserialize<AuthorTransactionManifest>(File.ReadAllBytes(manifestPath), JsonOptions)
+                    ?? throw new InvalidDataException("Recovery manifest is empty.");
+                if (manifest.Status is "publishing" or "repair-required") RestoreAll(reader, directory, manifest);
+                else if (manifest.Status is not ("prepared" or "committed")) throw new InvalidDataException("Unknown transaction status.");
+                Directory.Delete(directory, recursive: true);
+            }
+            catch (Exception failure) { throw new ProjectRepairRequiredException(directory, failure); }
+        }
+    }
+
+    private static void ValidatePath(ProjectRawReader reader, string file)
+    {
+        var path = reader.Resolve(file);
+        if (reader.Relative(path) != file ||
+            file != "settings.json" && file != "Graph/graph.json" && file != ".galnet/editor-state.json" &&
+            !(file.StartsWith("Graph/", StringComparison.Ordinal) && file.EndsWith(".rawgalgroup", StringComparison.OrdinalIgnoreCase)))
+            throw new ArgumentException($"Not a normalized author document path: '{file}'.");
+        if (Directory.Exists(path)) throw new IOException($"A directory occupies author file '{file}'.");
+    }
+
+    private static string? Hash(byte[]? bytes) => bytes is null ? null : Convert.ToHexString(SHA256.HashData(bytes));
+    private static string? ReadHash(string path) => File.Exists(path) ? Hash(File.ReadAllBytes(path)) : null;
+    private static void WriteManifest(string directory, AuthorTransactionManifest manifest)
+    {
+        var path = Path.Combine(directory, "manifest.json");
+        var next = path + ".tmp";
+        File.WriteAllBytes(next, JsonSerializer.SerializeToUtf8Bytes(manifest, JsonOptions));
+        File.Move(next, path, overwrite: true);
+    }
 }
+
+public sealed class AuthorTransactionManifest
+{
+    public string Status { get; set; } = "prepared";
+    public List<AuthorTransactionFile> Files { get; set; } = [];
+}
+
+public sealed record AuthorTransactionFile(string Path, string? BeforeHash, string? AfterHash);

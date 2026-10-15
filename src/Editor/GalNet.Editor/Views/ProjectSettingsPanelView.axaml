@@ -13,6 +13,8 @@
 
         <ScrollViewer Grid.Row="1">
             <StackPanel Spacing="8">
+                <TextBlock Text="Project Name" />
+                <TextBox Name="ProjectNameInput" Text="{Binding ProjectName}" />
                 <TextBlock Text="{loc:Localize Settings.Project.DefaultResolution}"
                            Foreground="{DynamicResource SemiColorText2}"
                            FontSize="12" />
@@ -71,9 +73,12 @@
             <TextBlock Grid.Column="0" Text="{Binding IsDirtyText}"
                        Foreground="{DynamicResource SemiColorText2}"
                        VerticalAlignment="Center" />
-            <Button Grid.Column="1"
-                    Content="{loc:Localize Settings.Save}"
-                    Command="{Binding SaveSettingsCommand}" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <Button Content="Cancel changes" Command="{Binding CancelDraftCommand}" />
+                <Button Name="ApplySettingsButton"
+                        Content="Apply changes"
+                        Command="{Binding SaveSettingsCommand}" />
+            </StackPanel>
         </Grid>
     </Grid>
 </UserControl>

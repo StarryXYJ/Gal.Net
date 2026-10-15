@@ -70,23 +70,25 @@ public sealed class UndoRedoHistoryTests
     }
 
     [Test]
-    public void RouterUsesActiveDomainHistory()
+    public async Task RouterKeepsProjectHistoryWhenPagesOrInspectorFocusChange()
     {
-        var graph = new UndoRedoHistory();
-        var ui = new UndoRedoHistory();
+        using var histories = new EditorHistories();
+        var graph = histories.Content;
+        var ui = histories.Content;
         var graphValue = 0;
         var uiValue = 0;
         graph.Execute(new PropertyEdit<int>("Graph", next => graphValue = next, 0, 1));
         ui.Execute(new PropertyEdit<int>("UI", next => uiValue = next, 0, 1));
-        var router = new UndoRedoRouter();
+        var router = new UndoRedoRouter(histories);
 
         router.SetActive(new Target(graph));
-        router.Undo();
+        router.SetActive(null);
+        await router.UndoAsync();
 
         Assert.Multiple(() =>
         {
-            Assert.That(graphValue, Is.Zero);
-            Assert.That(uiValue, Is.EqualTo(1));
+            Assert.That(graphValue, Is.EqualTo(1));
+            Assert.That(uiValue, Is.Zero);
         });
     }
 

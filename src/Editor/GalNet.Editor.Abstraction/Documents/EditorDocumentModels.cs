@@ -120,7 +120,8 @@ public sealed class EditorGroupDocument(string groupId, string relativePath, Lis
 {
     public string Id { get; } = groupId;
     public string DocumentId => "group/" + Id;
-    public string RelativePath { get; } = relativePath;
+    public string RelativePath { get; private set; } = relativePath;
+    public void ChangeSourcePath(string relativePath) => RelativePath = relativePath;
     public List<EditorEntryData> Entries { get; } = entries;
 }
 

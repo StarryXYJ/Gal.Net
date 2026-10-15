@@ -10,7 +10,8 @@ public partial class EditorPageView : UserControl
     public EditorPageView()
     {
         InitializeComponent();
-        AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
+        // Let text editors consume local undo/IME input before project shortcuts.
+        AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Bubble);
         DockHost.PointerReleased += (_, _) =>
         {
             if (DataContext is EditorPageViewModel vm)

@@ -18,6 +18,7 @@ using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Commands;
 using GalNet.Editor.Dock;
+using GalNet.Editor.History;
 using GalNet.Editor.Models;
 using GalNet.Editor.Services;
 using GalNet.Editor.Shared.Services;
@@ -34,6 +35,8 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
     private readonly IEditorWindowFactory _windowFactory;
     private readonly IEditorSettingsService _editorSettingsService;
     private readonly PropertyChangedEventHandler _localizationChangedHandler;
+    private readonly EditorHistories _histories;
+    private readonly IProjectContentSession _content;
 
     public IEditorLocalizationService L { get; }
 
@@ -66,9 +69,14 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
         DockLayoutSerializer dockLayoutSerializer,
         IEditorWindowFactory windowFactory,
         IEditorSettingsService editorSettingsService,
-        IEditorLocalizationService localization)
+        IEditorLocalizationService localization,
+        EditorHistories histories,
+        IProjectContentSession content)
     {
         _projectService = projectService;
+        _histories = histories;
+        _content = content;
+        _content.Changed += OnContentChanged;
         _shortcutService = shortcutService;
         _dockFactory = dockFactory;
         _dockLayoutSerializer = dockLayoutSerializer;
@@ -92,6 +100,8 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
         UpdateLocalizedText();
         InitializeDock();
         BuildMenuItems();
+        _histories.Changed += OnHistoryChanged;
+        OnHistoryChanged();
         _dockFactory.LayoutChanged += OnDockLayoutChanged;
         _projectService.CurrentChanged += OnCurrentProjectChanged;
 
@@ -105,6 +115,25 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
         UpdateLocalizedText();
     }
 
+    private void OnHistoryChanged()
+    {
+        foreach (var item in MenuItems.SelectMany(menu => menu.Children ?? []))
+        {
+            if (ReferenceEquals(item.Command, UndoCommand)) item.Header = L["Editor.Menu.Undo"] + (_histories.Content.UndoDescription is { } undo ? ": " + undo : "");
+            if (ReferenceEquals(item.Command, RedoCommand)) item.Header = L["Editor.Menu.Redo"] + (_histories.Content.RedoDescription is { } redo ? ": " + redo : "");
+        }
+        OnContentChanged();
+    }
+
+    private void OnContentChanged()
+    {
+        OnPropertyChanged(nameof(ProjectName));
+        UpdateLocalizedText();
+        if (_content.RepairRequired) StatusText = "Project repair required. Inspect .galnet/editor recovery material before reopening.";
+        else if (_content.LastError is { } error) StatusText = "Save failed: " + error.Message;
+        else if (_content.LastRecoveryError is { } recovery) StatusText = "Recovery snapshot failed: " + recovery.Message;
+    }
+
     public bool TryExecuteShortcut(KeyEventArgs args, string context = "Global") =>
         _shortcutService.TryExecute(new Avalonia.Input.KeyGesture(args.Key, args.KeyModifiers), context);
 
@@ -112,7 +141,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
     private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == "Item[]")
-            UpdateLocalizedText();
+            OnHistoryChanged();
     }
 
     private void UpdateLocalizedText()
@@ -393,6 +422,8 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
         _layoutSaveTimer.Tick -= OnLayoutSaveTimerTick;
         _dockFactory.LayoutChanged -= OnDockLayoutChanged;
         _projectService.CurrentChanged -= OnCurrentProjectChanged;
+        _histories.Changed -= OnHistoryChanged;
+        _content.Changed -= OnContentChanged;
         L.PropertyChanged -= _localizationChangedHandler;
         GC.SuppressFinalize(this);
     }

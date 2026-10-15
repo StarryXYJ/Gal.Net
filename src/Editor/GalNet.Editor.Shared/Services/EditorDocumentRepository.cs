@@ -79,7 +79,7 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog) : IEditorDoc
             foreach (var node in old.RootElement.Deserialize<EditorGraphDocument>()!.Nodes.Where(node => node.Type == "Group"))
             {
                 var file = GroupPath(reader, node.File!);
-                if (!owners.Contains(file) && !groupEntries.ContainsKey(node.Id)) removed.Add(file);
+                if (!owners.Contains(file) && (!groupEntries.ContainsKey(node.Id) || document.Nodes.Any(current => current.Id == node.Id && current.Type == "Group"))) removed.Add(file);
             }
         }
         return new(writes, removed);

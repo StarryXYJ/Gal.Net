@@ -69,7 +69,9 @@ GUI 的 `IEditorDocumentService`、变量定义服务和 `EditorDockFactory` 由
 
 Editor 随发行包提供默认契约模板，新建项目不需要用户准备 DLL；留空自定义契约目录时，自动将默认契约复制到项目 `Contracts/`。新项目随后使用同一项目契约加载路径，自定义目录仅供需要自定义 schema 的项目选择。打开已有项目不会用该模板替换缺失或损坏的契约。
 
-Editor 要求显式且唯一的 Entry 根节点，无效图不会被样例图替换或在加载时补节点。当前工作区暂不注册游戏预览面板，预览接入另立后续 feature。项目统一撤销与版本化保存尚在重构计划中，不能把文档所有权调整等同于其已完成。
+Editor 要求显式且唯一的 Entry 根节点，无效图不会被样例图替换或在加载时补节点。当前工作区暂不注册游戏预览面板，预览接入另立后续 feature。
+
+Editor 内容历史采用项目单栈，不随 Dock/Inspector 焦点切换；设置页首先接入显式草稿提交。GUI 的 `ProjectContentSession` 统一捕获并发布 Graph、Group 与完整设置，以实际内容与保存基线判断 dirty，后续编辑不被异步保存误标为已保存。关闭提供保存全部/放弃未保存内容/取消。作者文件事务的 manifest/备份与周期作者快照位于 `.galnet/editor/`，补偿失败禁止继续写入。Graph 的旧监听记录仍按 P2/P3 迁移，完整 Group 草稿协调在 P5/P6；当前语义及边界见 [Editor 项目历史与保存](editor-history-and-save.md)。
 
 CLI 只做参数、结果协议和退出码适配；Shared 提供原始查询、无写回校验、定向编译、严格编辑/保存、项目/Group 生命周期服务。原始访问保留未知内容，不依赖 entry DLL；有语义的操作使用项目 Contracts DLL，不回退内置。Editor 的 ProjectSchemaSession、catalog 及文档消费者由项目 scope 持有。Windows 回收通过 Editor.Abstraction.IProjectRecycleBin 注入，Shared 不引用 Shell；Editor 先关闭匹配会话并等待清理，再回收，最后更新最近记录。当前接口及范围见 [CLI README](../../src/Editor/GalNet.Editor.Headless/README.md)。
 

@@ -18,6 +18,7 @@ public interface IEditorDocumentService
     void Unload();
     void MarkDirty();
     void MarkSaved();
+    void SynchronizeGroups();
     EditorGroupDocument GetOrCreateGroup(string groupId, string relativePath);
     EditorGroupDocument? FindGroupByPath(string relativePath);
 }

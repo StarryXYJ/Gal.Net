@@ -25,7 +25,7 @@ public sealed class EditorDocumentService : IEditorDocumentService
             GetOrCreateGroup(node.Id, "Graph/" + (node.File ?? $"groups/{node.Id}.rawgalgroup"));
         IsLoaded = true;
         IsDirty = false;
-        DocumentChanged?.Invoke();
+        NotifyDocumentChanged();
         DirtyStateChanged?.Invoke(false);
     }
 
@@ -36,7 +36,7 @@ public sealed class EditorDocumentService : IEditorDocumentService
         _paths.Clear();
         IsLoaded = false;
         IsDirty = false;
-        DocumentChanged?.Invoke();
+        NotifyDocumentChanged();
         DirtyStateChanged?.Invoke(false);
     }
 
@@ -72,4 +72,34 @@ public sealed class EditorDocumentService : IEditorDocumentService
     }
 
     public EditorGroupDocument? FindGroupByPath(string relativePath) => _paths.GetValueOrDefault(relativePath.Replace('\\', '/'));
+
+    public void SynchronizeGroups()
+    {
+        _paths.Clear();
+        foreach (var node in CurrentDocument.Nodes.Where(node => node.Type == "Group"))
+        {
+            var path = ("Graph/" + node.File).Replace('\\', '/');
+            if (_groups.TryGetValue(node.Id, out var existing))
+            {
+                if (LoadedProject.GroupEntries.TryGetValue(node.Id, out var entries) && !ReferenceEquals(entries, existing.Entries))
+                {
+                    existing.Entries.Clear();
+                    existing.Entries.AddRange(entries);
+                    LoadedProject.GroupEntries[node.Id] = existing.Entries;
+                }
+                existing.ChangeSourcePath(path);
+                _paths.Add(path, existing);
+            }
+            else GetOrCreateGroup(node.Id, path);
+        }
+        NotifyDocumentChanged();
+    }
+
+    private void NotifyDocumentChanged()
+    {
+        if (DocumentChanged is null) return;
+        foreach (Action observer in DocumentChanged.GetInvocationList())
+            try { observer(); }
+            catch (Exception failure) { Serilog.Log.Error(failure, "An author document observer failed"); }
+    }
 }

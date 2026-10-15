@@ -88,8 +88,8 @@ public sealed class EditorWorkspaceViewModelTests
                 Assert.That(field.Read().Json!.Value.GetSingle(), Is.EqualTo(1.5));
                 Assert.That(changes, Is.EqualTo(3));
                 await workspace.SaveAsync();
-                var snapshot = fixture.SaveCoordinator.SavedEntries![group.Id].Single();
-                Assert.That(snapshot.Parameters["duration"].GetSingle(), Is.EqualTo(1.5f));
+                Assert.That(entry.Source.Parameters["duration"].GetSingle(), Is.EqualTo(1.5f));
+                Assert.That(fixture.ProjectService.SaveCount, Is.EqualTo(1));
                 Assert.That(workspace.UndoRedoHistory.IsDirty, Is.False);
             }
             finally { window.Close(); }
@@ -171,8 +171,6 @@ public sealed class EditorWorkspaceViewModelTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(fixture.SaveCoordinator.SavedDocument, Is.Not.Null);
-            Assert.That(fixture.SaveCoordinator.SavedDocument!.Nodes, Has.Count.EqualTo(workspace.Nodes.Count));
             Assert.That(fixture.ProjectService.SaveCount, Is.EqualTo(1));
             Assert.That(fixture.SaveScheduler.SaveNowCount, Is.EqualTo(1));
             Assert.That(fixture.DocumentService.IsDirty, Is.False);
@@ -224,15 +222,14 @@ public sealed class EditorWorkspaceViewModelTests
             documents,
             saveCoordinator);
 
-        var graph = persistence.LoadCurrentProject();
-        var saved = await persistence.SaveCurrentProjectAsync(graph!.Nodes, graph.Edges);
+        var graph = persistence.LoadCurrentProject()!;
+        var saved = await persistence.SaveCurrentProjectAsync();
 
         Assert.Multiple(() =>
         {
             Assert.That(graph.Nodes, Has.Count.EqualTo(2));
             Assert.That(documents.CurrentDocument.Name, Is.EqualTo("Test Project"));
             Assert.That(saved, Is.True);
-            Assert.That(saveCoordinator.SavedDocument, Is.Not.Null);
             Assert.That(projects.SaveCount, Is.EqualTo(1));
         });
 
@@ -349,14 +346,6 @@ public sealed class EditorWorkspaceViewModelTests
 
     private sealed class CapturingSaveCoordinator : IEditorSaveCoordinator
     {
-        public EditorGraphDocument? SavedDocument { get; private set; }
-        public IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>>? SavedEntries { get; private set; }
-
-        public void SaveProjectDocument(string projectPath, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries)
-        {
-            SavedDocument = document;
-            SavedEntries = groupEntries;
-        }
         public string BuildPreviewData(string previewPath, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries) => previewPath;
     }
 

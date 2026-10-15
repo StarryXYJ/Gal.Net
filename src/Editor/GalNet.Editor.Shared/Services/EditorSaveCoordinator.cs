@@ -25,14 +25,6 @@ public sealed class EditorSaveCoordinator : IEditorSaveCoordinator
         _catalog = catalog;
     }
 
-    public void SaveProjectDocument(
-        string projectPath,
-        EditorGraphDocument document,
-        IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries)
-    {
-        _repository.Save(projectPath, document, groupEntries);
-    }
-
     public string BuildPreviewData(
         string previewPath,
         EditorGraphDocument document,

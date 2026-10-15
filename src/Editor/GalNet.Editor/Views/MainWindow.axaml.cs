@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Notifications;
+using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Services;
 using GalNet.Editor.ViewModels;
 using Serilog;
@@ -12,17 +13,22 @@ public partial class MainWindow : UrsaWindow
     private readonly INavigationService _navigation;
     private readonly IEditorViewFactory _viewFactory;
     private readonly WindowToastManager _toastManager;
+    private readonly IProjectService _projects;
+    private bool _closeApproved;
+    private bool _closing;
 
-    public MainWindow(MainWindowViewModel viewModel, IEditorViewFactory viewFactory)
+    public MainWindow(MainWindowViewModel viewModel, IEditorViewFactory viewFactory, IProjectService projects)
     {
         InitializeComponent();
         DataContext = viewModel;
         _navigation = viewModel.Navigation;
         _viewFactory = viewFactory;
+        _projects = projects;
         _toastManager = new WindowToastManager(this);
 
         _navigation.CurrentPageChanged += OnCurrentPageChanged;
         Closed += OnClosed;
+        Closing += OnClosing;
 
         Loaded += (_, _) =>
         {
@@ -34,10 +40,32 @@ public partial class MainWindow : UrsaWindow
     public void ShowSuccessToast(string message) =>
         _toastManager.Show(new Toast(message), showIcon: false, showClose: true, type: NotificationType.Success);
 
+    private async void OnClosing(object? sender, WindowClosingEventArgs args)
+    {
+        if (_closeApproved || _projects.Current is null) return;
+        args.Cancel = true;
+        if (_closing) return;
+        _closing = true;
+        try
+        {
+            await _projects.CloseAsync();
+            _closeApproved = true;
+            Close();
+        }
+        catch (System.OperationCanceledException) { }
+        catch (System.Exception failure)
+        {
+            Log.Error(failure, "Could not close the project");
+            _toastManager.Show(new Toast(failure.Message), showClose: true, type: NotificationType.Error);
+        }
+        finally { _closing = false; }
+    }
+
     private void OnClosed(object? sender, System.EventArgs e)
     {
         _navigation.CurrentPageChanged -= OnCurrentPageChanged;
         Closed -= OnClosed;
+        Closing -= OnClosing;
     }
 
     private void OnCurrentPageChanged(object? page)

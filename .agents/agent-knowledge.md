@@ -74,6 +74,8 @@
 
 ## 经验索引
 
+- [Editor 历史与发布锁顺序](lessons/L-20261015-04-editor-history-publication-lock-order.md)：先捕获历史，再尝试发布；发布门忙时释放捕获租约，禁止保存与结构编辑互相等待。
+
 - [停止后端前撤销播放身份](lessons/L-20261015-03-audio-stop-identity-order.md)：Stop 可同步重入终态事件；批量停止先清空旧映射，避免旧队列被推进。
 
 

@@ -51,6 +51,8 @@ public sealed class ProjectService : IProjectService
         if (!Directory.Exists(projectPath))
             throw new DirectoryNotFoundException($"Project directory not found: {projectPath}");
 
+        Commands.ProjectAuthorFileTransaction.Recover(projectPath);
+
         var scope = _globalServices.CreateScope();
         ProjectSettings settings;
         EditorProjectState editorState;
@@ -72,6 +74,7 @@ public sealed class ProjectService : IProjectService
         var id = Path.GetFileName(projectPath);
 
         var program = new GalProject(id, name, projectPath, settings, editorState, scope);
+        scope.ServiceProvider.GetService<IProjectContentSession>()?.Open(program);
 
         _current = program;
 
@@ -88,7 +91,7 @@ public sealed class ProjectService : IProjectService
         {
             recent.Clear();
             recent.AddRange(previousRecent);
-            await CloseAsync();
+            await CloseCoreAsync(false);
             throw;
         }
 
@@ -98,10 +101,42 @@ public sealed class ProjectService : IProjectService
     public async Task<GalProject> CreateAsync(string projectPath, string name, ProjectSettings settings, string contractsDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(contractsDirectory);
+        if (_current is not null) await CloseAsync();
         await Commands.EditorProjectCreator.CreateAsync(new(projectPath, name, contractsDirectory), settings);
         return await OpenAsync(projectPath);
     }
-    public Task CloseAsync() => CloseCoreAsync(false);
+    private Task? _closing;
+    public Task CloseAsync() => _closing ??= CloseRequestedAsync();
+
+    private async Task CloseRequestedAsync()
+    {
+        // Always yield so the shared in-flight task is installed before it can finish.
+        await Task.Yield();
+        var project = _current;
+        if (project is null) { _closing = null; return; }
+        var content = project.Services.GetService<IProjectContentSession>();
+        var participants = project.Services.GetServices<IProjectEditLifetime>().ToArray();
+        try
+        {
+            foreach (var participant in participants) await participant.SuspendAsync();
+            if (content is not null) await content.SuspendAsync();
+            while (content?.IsDirty ?? project.IsDirty)
+            {
+                var choice = _globalServices.GetService<IProjectClosePrompt>() is { } prompt
+                    ? await prompt.ChooseAsync(project.Name) : ProjectCloseChoice.Cancel;
+                if (choice == ProjectCloseChoice.Cancel) throw new OperationCanceledException("Project close was canceled.");
+                if (choice == ProjectCloseChoice.Discard) break;
+                content?.ResumeSaves();
+                foreach (var participant in participants) participant.ResumeEditing();
+                await SaveAsync();
+                foreach (var participant in participants) await participant.SuspendAsync();
+                if (content is not null) await content.SuspendAsync();
+            }
+            await CloseCoreAsync(false);
+        }
+        catch { content?.ResumeSaves(); foreach (var participant in participants) participant.ResumeEditing(); throw; }
+        finally { _closing = null; }
+    }
 
     public Task<ToolResult> DeleteAsync(string projectPath, bool dryRun = false, System.Threading.CancellationToken cancellationToken = default) =>
         new Commands.ProjectDeleteService(_recycleBin).DeleteAsync(projectPath, dryRun, async root =>
@@ -116,6 +151,9 @@ public sealed class ProjectService : IProjectService
             return;
 
         var closingProject = _current;
+        // Deletion and failed-open cleanup also enter here, bypassing the interactive close request.
+        foreach (var participant in closingProject.Services.GetServices<IProjectEditLifetime>()) await participant.SuspendAsync();
+        if (closingProject.Services.GetService<IProjectContentSession>() is { } content) await content.SuspendAsync();
         var failures = new List<Exception>();
         Log.Information("Closing project: {Name}", closingProject.Name);
 
@@ -151,13 +189,7 @@ public sealed class ProjectService : IProjectService
     {
         if (_current == null)
             return Task.CompletedTask;
-
-        var graph = _current.Services.GetRequiredService<IEditorDocumentService>().CurrentDocument;
-        _current.Settings.PlayerVariables = graph.PlayerVariables.Select(item => item.Clone()).ToList();
-        _current.Settings.SaveVariables = graph.SaveVariables.Select(item => item.Clone()).ToList();
-        return Task.WhenAll(
-            SaveProjectSettingsAsync(_current.RootPath, _current.Settings),
-            SaveEditorProjectStateAsync(_current.RootPath, _current.EditorState));
+        return _current.Services.GetRequiredService<IProjectContentSession>().SaveAsync();
     }
 
     // ────────── 最近项目 ──────────
@@ -180,7 +212,7 @@ public sealed class ProjectService : IProjectService
 
     public Task<bool> CheckUnsavedChangesAsync()
     {
-        return Task.FromResult(_current?.IsDirty == true);
+        return Task.FromResult(_current?.Services.GetService<IProjectContentSession>()?.IsDirty ?? _current?.IsDirty == true);
     }
 
     private void AddToRecentProjects(string name, string projectPath)
@@ -205,13 +237,6 @@ public sealed class ProjectService : IProjectService
 
     // ────────── 项目设置持久化 ──────────
 
-    private static async Task SaveProjectSettingsAsync(string projectPath, ProjectSettings settings)
-    {
-        var settingsPath = Path.Combine(projectPath, "settings.json");
-        var json = JsonSerializer.Serialize(settings, JsonOptions);
-        await File.WriteAllTextAsync(settingsPath, json);
-    }
-
     private static async Task<EditorProjectState> LoadEditorProjectStateAsync(string projectPath)
     {
         var statePath = Path.Combine(projectPath, ".galnet", "editor-state.json");
@@ -221,15 +246,6 @@ public sealed class ProjectService : IProjectService
             return JsonSerializer.Deserialize<EditorProjectState>(json, JsonOptions) ?? new EditorProjectState();
         }
         return new EditorProjectState();
-    }
-
-    private static async Task SaveEditorProjectStateAsync(string projectPath, EditorProjectState state)
-    {
-        var stateDir = Path.Combine(projectPath, ".galnet");
-        Directory.CreateDirectory(stateDir);
-        var statePath = Path.Combine(stateDir, "editor-state.json");
-        var json = JsonSerializer.Serialize(state, JsonOptions);
-        await File.WriteAllTextAsync(statePath, json);
     }
 
     private static string NormalizeProjectPath(string projectPath) =>
