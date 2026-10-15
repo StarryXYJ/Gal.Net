@@ -65,6 +65,12 @@ Avalonia GameView 通过精确 Gallery `typeId` 的 `IGalleryPageRegistry` 选�
 
 `EditorProjectDocument` 是 UI 无关的图、Group、设置编辑聚合。资源 metadata 属于 `Assets/`；Gallery annotation 不进入 Editor document，也不存在集中式 Gallery authoring 文件。预览编译 Raw Group，并用当前项目的 metadata 和共享 catalog 构建 `GameContent.Gallery`。
 
+GUI 的 `IEditorDocumentService`、变量定义服务和 `EditorDockFactory` 由项目 scope 持有。项目打开时加载作者 Graph/Group 一次；Group 以稳定 ID 和独立源路径登记为 `EditorGroupDocument`，项目级 `EditorGroupProjectionStore` 缓存可观察投影。Graph 节点、边、分支项直接引用作者 DTO，Group 页面以 ID 打开，页面关闭只释放订阅，不丢弃未保存内容。`EditorEntryData.Parameters` 保留原始 JSON 值；字符串仅用于控件和既有 CLI 输入适配。变量声明以 Graph 为权威，保存 settings 时派生所需副本。
+
+Editor 随发行包提供默认契约模板，新建项目不需要用户准备 DLL；留空自定义契约目录时，自动将默认契约复制到项目 `Contracts/`。新项目随后使用同一项目契约加载路径，自定义目录仅供需要自定义 schema 的项目选择。打开已有项目不会用该模板替换缺失或损坏的契约。
+
+Editor 要求显式且唯一的 Entry 根节点，无效图不会被样例图替换或在加载时补节点。当前工作区暂不注册游戏预览面板，预览接入另立后续 feature。项目统一撤销与版本化保存尚在重构计划中，不能把文档所有权调整等同于其已完成。
+
 CLI 只做参数、结果协议和退出码适配；Shared 提供原始查询、无写回校验、定向编译、严格编辑/保存、项目/Group 生命周期服务。原始访问保留未知内容，不依赖 entry DLL；有语义的操作使用项目 Contracts DLL，不回退内置。Editor 的 ProjectSchemaSession、catalog 及文档消费者由项目 scope 持有。Windows 回收通过 Editor.Abstraction.IProjectRecycleBin 注入，Shared 不引用 Shell；Editor 先关闭匹配会话并等待清理，再回收，最后更新最近记录。当前接口及范围见 [CLI README](../../src/Editor/GalNet.Editor.Headless/README.md)。
 
 `EditorAssetManager`、`EditorGameDataProvider`、`AssetCatalogService` 与 `GameExportService` 共享 Editor 组合根的 catalog。导出把资源写入基础 PAK，把 Graph/settings/I18n 和派生 Gallery JSON 写入 `.galpak`。

@@ -41,7 +41,7 @@ public class TargetProfileEditorCommandTests
         var document = new EditorProjectDocument
         {
             Graph = new EditorGraphDocument { Nodes = [new EditorGraphNodeDto { Id = "group", Type = "Group" }] },
-            GroupEntries = { ["group"] = [new EditorEntryData { StableId = "pulse", Type = "custom.pulse", Parameters = new() { ["count"] = "4" } }] }
+            GroupEntries = { ["group"] = [new EditorEntryData { StableId = "pulse", Type = "custom.pulse", Parameters = new() { ["count"] = System.Text.Json.JsonSerializer.SerializeToElement(4) } }] }
         };
         var operations = new IProjectEditCommand[]
         {
@@ -55,7 +55,7 @@ public class TargetProfileEditorCommandTests
             Assert.That(result.Success, Is.False);
             Assert.That(result.Diagnostics.Single().Code, Is.EqualTo("group.entry.unknownParameter"));
             Assert.That(document.GroupEntries["group"], Has.Count.EqualTo(1));
-            Assert.That(document.GroupEntries["group"][0].Parameters["count"], Is.EqualTo("4"));
+            Assert.That(document.GroupEntries["group"][0].Parameters["count"].GetInt32(), Is.EqualTo(4));
         }
     }
 }

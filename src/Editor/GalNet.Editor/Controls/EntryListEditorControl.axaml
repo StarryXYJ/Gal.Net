@@ -3,6 +3,7 @@
              xmlns:forms="using:GalNet.Game.Controls.Forms" xmlns:controls="using:GalNet.Editor.Controls"
              xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:models="using:GalNet.Editor.Models.Graph"
              xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
+             xmlns:converters="using:Avalonia.Data.Converters"
              x:Class="GalNet.Editor.Controls.EntryListEditorControl"
              x:Name="Root"
              x:DataType="vm:GroupEditorPanelViewModel"
@@ -72,19 +73,19 @@
                                                              Text="{Binding Condition}"
                                                              Suggestions="{Binding #Root.DataContext.ConditionSuggestions}"
                                                              ValidationVariables="{Binding #Root.DataContext.ValidationVariables}" />
-                            <ToggleButton Grid.Column="4"
+                            <ToggleButton Name="ParametersToggle" Grid.Column="4"
                                           Width="30"
-                                          IsChecked="{Binding IsExpanded}"
+                                          IsChecked="True"
                                           ToolTip.Tip="{loc:Localize Entry.ToggleParameters}">
                                 <Grid>
                                     <PathIcon Width="16"
                                               Height="16"
                                               Data="{StaticResource ChevronUpRegular}"
-                                              IsVisible="{Binding IsExpanded}" />
+                                              IsVisible="{Binding #ParametersToggle.IsChecked}" />
                                     <PathIcon Width="16"
                                               Height="16"
                                               Data="{StaticResource ChevronDownRegular}"
-                                              IsVisible="{Binding !IsExpanded}" />
+                                              IsVisible="{Binding #ParametersToggle.IsChecked, Converter={x:Static converters:BoolConverters.Not}}" />
                                 </Grid>
                             </ToggleButton>
                             <Button Grid.Column="5"
@@ -93,7 +94,7 @@
                                     Command="{Binding #Root.DataContext.RemoveEntryCommand}"
                                     CommandParameter="{Binding}"><PathIcon Width="16" Height="16" Data="{StaticResource DeleteRegularIcon}" /></Button>
                         </Grid>
-                        <StackPanel Margin="0,8,0,0" Spacing="6" IsVisible="{Binding IsExpanded}">
+                        <StackPanel Margin="0,8,0,0" Spacing="6" IsVisible="{Binding #ParametersToggle.IsChecked}">
                             <forms:SchemaForm Schema="{Binding ParameterForm.Fields}" Binding="{Binding ParameterForm.Binding}" Registry="{Binding #Root.DataContext.FieldEditors}" IsVisible="{Binding HasParameterForm}" />
                             <ItemsControl ItemsSource="{Binding ParameterFields}">
                                 <ItemsControl.ItemTemplate>

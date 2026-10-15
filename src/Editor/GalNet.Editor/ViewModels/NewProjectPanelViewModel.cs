@@ -17,6 +17,7 @@ public partial class NewProjectPanelViewModel : PageViewModelBase
     private readonly INavigationService _navigation;
     private readonly IProjectService _projectService;
     private readonly IEditorPageFactory _editorPageFactory;
+    private readonly IFileDialogService _dialogs;
 
     [ObservableProperty]
     private string _projectName = "NewGalProject";
@@ -42,11 +43,13 @@ public partial class NewProjectPanelViewModel : PageViewModelBase
     public NewProjectPanelViewModel(
         INavigationService navigation,
         IProjectService projectService,
-        IEditorPageFactory editorPageFactory)
+        IEditorPageFactory editorPageFactory,
+        IFileDialogService dialogs)
     {
         _navigation = navigation;
         _projectService = projectService;
         _editorPageFactory = editorPageFactory;
+        _dialogs = dialogs;
         Title = "New Project";
     }
 
@@ -69,9 +72,10 @@ public partial class NewProjectPanelViewModel : PageViewModelBase
             var projectPath = Path.Combine(ProjectRoot, ProjectName);
             if (!TryParseResolution(Resolution, out var width, out var height))
                 throw new InvalidOperationException("Resolution must be in the form width×height.");
-            if (string.IsNullOrWhiteSpace(ContractsDirectory))
-                throw new InvalidOperationException("A built project contract directory is required. Create the project with CLI project create --contracts before opening it in Editor.");
-            await _projectService.CreateAsync(projectPath, ProjectName, new ProjectSettings { DefaultWidth = width, DefaultHeight = height }, ContractsDirectory);
+            var contracts = string.IsNullOrWhiteSpace(ContractsDirectory)
+                ? Path.Combine(AppContext.BaseDirectory, "DefaultContracts")
+                : ContractsDirectory;
+            await _projectService.CreateAsync(projectPath, ProjectName, new ProjectSettings { DefaultWidth = width, DefaultHeight = height }, contracts);
             _navigation.NavigateTo(_editorPageFactory.CreateEditorPage());
         }
         catch (Exception ex)
@@ -82,6 +86,20 @@ public partial class NewProjectPanelViewModel : PageViewModelBase
         {
             IsBusy = false;
         }
+    }
+
+    [RelayCommand]
+    private async Task BrowseContractsAsync()
+    {
+        var directory = await _dialogs.OpenFolderPickerAsync("Select built project contract directory");
+        if (directory is not null) ContractsDirectory = directory;
+    }
+
+    [RelayCommand]
+    private async Task BrowseProjectRootAsync()
+    {
+        var directory = await _dialogs.OpenFolderPickerAsync("Select project parent folder");
+        if (directory is not null) ProjectRoot = directory;
     }
 
     [RelayCommand]

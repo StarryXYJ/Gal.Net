@@ -60,7 +60,12 @@ public sealed class ProjectService : IProjectService
             scope.ServiceProvider.GetRequiredService<ProjectSchemaSession>().Open(projectPath);
             settings = Commands.DirectProjectPersistence.LoadSettings(projectPath);
             editorState = await LoadEditorProjectStateAsync(projectPath);
-            name = scope.ServiceProvider.GetRequiredService<IEditorDocumentRepository>().Load(projectPath, "", settings).Document.Name;
+            var loaded = scope.ServiceProvider.GetRequiredService<IEditorDocumentRepository>().Load(projectPath, "", settings);
+            if (loaded.Document.Nodes.Count(node => node.Type == "Entry") != 1 ||
+                !loaded.Document.Nodes.Any(node => node.Type == "Entry" && node.Id == loaded.Document.RootNodeId))
+                throw new InvalidDataException("The editor graph requires one explicit Entry root node.");
+            scope.ServiceProvider.GetRequiredService<IEditorDocumentService>().Load(loaded);
+            name = loaded.Document.Name;
         }
         catch { scope.Dispose(); throw; }
 
@@ -147,6 +152,9 @@ public sealed class ProjectService : IProjectService
         if (_current == null)
             return Task.CompletedTask;
 
+        var graph = _current.Services.GetRequiredService<IEditorDocumentService>().CurrentDocument;
+        _current.Settings.PlayerVariables = graph.PlayerVariables.Select(item => item.Clone()).ToList();
+        _current.Settings.SaveVariables = graph.SaveVariables.Select(item => item.Clone()).ToList();
         return Task.WhenAll(
             SaveProjectSettingsAsync(_current.RootPath, _current.Settings),
             SaveEditorProjectStateAsync(_current.RootPath, _current.EditorState));

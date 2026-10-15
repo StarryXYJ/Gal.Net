@@ -112,6 +112,8 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
             () => _isLoadingGraph,
             OnTrackedNodeChanged,
             OnTrackedItemChanged);
+        Nodes.CollectionChanged += OnGraphCollectionChanged;
+        Edges.CollectionChanged += OnGraphCollectionChanged;
         LoadCurrentProjectGraph();
     }
 
@@ -125,6 +127,8 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         _variableDefinitionService.DefinitionsChanged -= _definitionsChangedHandler;
         _histories.Changed -= OnHistoryChanged;
         _graphChangeTracker.Dispose();
+        Nodes.CollectionChanged -= OnGraphCollectionChanged;
+        Edges.CollectionChanged -= OnGraphCollectionChanged;
         GC.SuppressFinalize(this);
     }
 
@@ -391,7 +395,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
 
     public static void PersistGraphDocument()
     {
-        // The live ViewModels are the canonical GUI state. SaveCoreAsync maps them to files.
+        // Author data is owned by the project; persistence is coordinated by SaveCoreAsync.
     }
 
     public string Localize(string key) => _localization[key];
@@ -459,6 +463,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
 
     private void LoadCurrentProjectGraph()
     {
+        _isLoadingGraph = true;
         ClearSelection();
         _graphChangeTracker.Clear();
         Nodes.Clear();
@@ -470,7 +475,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
             var graph = _persistence.LoadCurrentProject();
             if (graph is null)
             {
-                BuildSampleGraph();
                 return;
             }
 
@@ -492,78 +496,17 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "Failed to load graph document; using sample graph");
-            _documentService.Unload();
+            Log.Error(ex, "Failed to load project graph");
             ClearSelection();
             Nodes.Clear();
             Edges.Clear();
-            BuildSampleGraph();
+            StatusText = $"Failed to load graph: {ex.Message}";
+            throw;
         }
         finally
         {
             _isLoadingGraph = false;
         }
-    }
-
-    private void BuildSampleGraph()
-    {
-        var entry = new GraphNode(new Group { Name = "Entry" }, GraphNodeKind.Entry)
-        {
-            X = 4420,
-            Y = 4900,
-            IsRoot = true
-        };
-
-        var opening = new GraphNode(new Group { Name = "Opening" }, GraphNodeKind.LinearGroup)
-        {
-            X = 4700,
-            Y = 4900
-        };
-
-        var choice = new GraphNode(new Branch
-        {
-            Name = "First Choice",
-            BranchType = BranchType.Choice
-        }, GraphNodeKind.ChoiceBranch)
-        {
-            X = 5000,
-            Y = 4940
-        };
-
-        var routeA = new GraphNode(new Group { Name = "Route A" }, GraphNodeKind.LinearGroup)
-        {
-            X = 5300,
-            Y = 4860
-        };
-
-        var routeB = new GraphNode(new Group { Name = "Route B" }, GraphNodeKind.LinearGroup)
-        {
-            X = 5300,
-            Y = 5040
-        };
-
-        choice.Options.Add(new BranchOptionEditorItemViewModel { Text = "Go Route A" });
-        choice.Options.Add(new BranchOptionEditorItemViewModel { Text = "Go Route B" });
-        choice.RefreshConnectors();
-
-        Nodes.Add(entry);
-        TrackNode(entry);
-        Nodes.Add(opening);
-        TrackNode(opening);
-        Nodes.Add(choice);
-        TrackNode(choice);
-        Nodes.Add(routeA);
-        TrackNode(routeA);
-        Nodes.Add(routeB);
-        TrackNode(routeB);
-
-        Edges.Add(new GraphEdge(entry, opening));
-        Edges.Add(new GraphEdge(opening, choice));
-        Edges.Add(new GraphEdge(choice, routeA, 0));
-        Edges.Add(new GraphEdge(choice, routeB, 1));
-        UpdateConnectorStates();
-
-        SelectNode(entry);
     }
 
     private void MarkGraphDirty()
@@ -572,6 +515,13 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         if (_projectService.Current is { } project)
             project.IsDirty = true;
         ScheduleAutoSave();
+    }
+
+    private void OnGraphCollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs args)
+    {
+        if (_isLoadingGraph) return;
+        _documentService.CurrentDocument.Nodes = Nodes.Select(node => node.Source).ToList();
+        _documentService.CurrentDocument.Edges = Edges.Select(edge => edge.Source).ToList();
     }
 
     private void ScheduleAutoSave()
@@ -771,4 +721,3 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
 
     public GraphNode? EntryNode => Nodes.FirstOrDefault(n => n.NodeKind == GraphNodeKind.Entry);
 }
-

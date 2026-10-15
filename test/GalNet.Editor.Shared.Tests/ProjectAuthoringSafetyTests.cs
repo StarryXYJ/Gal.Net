@@ -95,7 +95,7 @@ public sealed class ProjectAuthoringSafetyTests
         document.Graph.Name = "Preview";
         Assert.That(persistence.PrepareSave(document).Writes, Contains.Key("Graph/graph.json"));
         AssertSnapshot(original);
-        document.GroupEntries["a"][0].Parameters["unknown"] = "value";
+        document.GroupEntries["a"][0].Parameters["unknown"] = JsonSerializer.SerializeToElement("value");
         Assert.That(() => persistence.PrepareSave(document), Throws.TypeOf<InvalidDataException>());
         AssertSnapshot(original);
     }
@@ -191,7 +191,7 @@ public sealed class ProjectAuthoringSafetyTests
         Assert.That(graph.RootElement.GetProperty("edges")[0].GetProperty("id").GetString(), Is.EqualTo("edge"));
         var source = graph.RootElement.GetProperty("nodes")[1].GetProperty("file").GetString()!;
         Assert.That(File.Exists(Path.Combine(preview, source)), Is.True);
-        loaded.GroupEntries["a"][0].Parameters["unknown"] = "value";
+        loaded.GroupEntries["a"][0].Parameters["unknown"] = JsonSerializer.SerializeToElement("value");
         Assert.That(() => coordinator.BuildPreviewData(preview, loaded.Document, entries), Throws.TypeOf<InvalidDataException>());
     }
 

@@ -54,21 +54,22 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<IThemeRegistry, ThemeRegistry>();
         services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<IGameExitService, EditorGameExitService>();
-        services.AddSingleton<IEditorPlayerVariableStore, EditorPlayerVariableStore>();
+        services.AddScoped<IEditorPlayerVariableStore, EditorPlayerVariableStore>();
         services.AddScoped<IGraphEditingService, GraphEditingService>();
         services.AddScoped<GraphSelectionState>();
         services.AddScoped<EditorWorkspacePersistence>();
+        services.AddScoped<EditorGroupProjectionStore>();
         services.AddSingleton<IProjectFileCommandCatalog, AssetFileCommandCatalog>();
         services.AddScoped<IProjectFileCommandExecutor, AssetFileCommandExecutor>();
         services.AddScoped<EditorHistories>();
         services.AddScoped<UndoRedoRouter>();
         services.AddScoped<IEditorDocumentRepository, EditorDocumentRepository>();
-        services.AddSingleton<IEditorDocumentService, EditorDocumentService>();
+        services.AddScoped<IEditorDocumentService, EditorDocumentService>();
         services.AddScoped<IEditorSaveCoordinator, EditorSaveCoordinator>();
         services.AddScoped<IProjectSaveScheduler, ProjectSaveScheduler>();
-        services.AddSingleton<IVariableDefinitionService, VariableDefinitionService>();
-        services.AddSingleton<EditorVariableService>();
-        services.AddSingleton<IVariableService>(sp => sp.GetRequiredService<EditorVariableService>());
+        services.AddScoped<IVariableDefinitionService, VariableDefinitionService>();
+        services.AddScoped<EditorVariableService>();
+        services.AddScoped<IVariableService>(sp => sp.GetRequiredService<EditorVariableService>());
         services.AddSingleton<EditorGameDataProvider>();
         services.AddSingleton<IGameContentProvider>(sp => sp.GetRequiredService<EditorGameDataProvider>());
         services.AddSingleton<IEditorExtensionRegistry>(_ =>
@@ -77,7 +78,7 @@ public static class EditorServiceCollectionExtensions
             BuiltInDockContributions.Register(registry);
             return registry;
         });
-        services.AddSingleton<EditorDockFactory>();
+        services.AddScoped<EditorDockFactory>();
         services.AddSingleton<DockLayoutSerializer>();
         services.AddSingleton<IAssetCatalogService, AssetCatalogService>();
         services.AddSingleton<EditorAssetManager>();

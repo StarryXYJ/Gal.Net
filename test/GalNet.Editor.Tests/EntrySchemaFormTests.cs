@@ -35,11 +35,11 @@ public sealed class EntrySchemaFormTests
         var first = payloadFirst ? payload : id;
         var second = payloadFirst ? id : payload;
         Assert.That(await first.CommitAsync(new(payloadFirst ? Json("{\"particleTexture\":\"snow\"}") : Json("\"snow\"")), default), Is.Null);
-        var incomplete = new EditorDocumentRepository(catalog).SerializeEntry(new EditorEntryData { StableId = entry.StableId, Type = entry.Type, Parameters = entry.Parameters });
+        var incomplete = new EditorDocumentRepository(catalog).SerializeEntry(new EditorEntryData { StableId = entry.StableId, Type = entry.Type, Parameters = entry.Source.Parameters });
         Assert.That(() => PrimitiveArgumentHelper.Normalize(catalog.Get(entry.Type).DynamicParameters!, JsonSerializer.SerializeToElement(incomplete.Parameters)),
             Throws.TypeOf<InvalidDataException>());
         Assert.That(await second.CommitAsync(new(payloadFirst ? Json("\"snow\"") : Json("{\"particleTexture\":\"snow\"}")), default), Is.Null);
-        var saved = new EditorDocumentRepository(catalog).SerializeEntry(new EditorEntryData { StableId = entry.StableId, Type = entry.Type, Parameters = entry.Parameters });
+        var saved = new EditorDocumentRepository(catalog).SerializeEntry(new EditorEntryData { StableId = entry.StableId, Type = entry.Type, Parameters = entry.Source.Parameters });
         Assert.That(() => PrimitiveArgumentHelper.Normalize(catalog.Get(entry.Type).DynamicParameters!, JsonSerializer.SerializeToElement(saved.Parameters)), Throws.Nothing);
     }
 
@@ -76,7 +76,7 @@ public sealed class EntrySchemaFormTests
         Assert.That(await required.CommitAsync(default, CancellationToken.None), Is.Not.Null);
         Assert.That(await optional.CommitAsync(default, CancellationToken.None), Is.Null);
         Assert.That(optional.Read().IsProvided, Is.False);
-        var saved = new EditorDocumentRepository(catalog).SerializeEntry(new EditorEntryData { StableId = entry.StableId, Type = entry.Type, Parameters = entry.Parameters });
+        var saved = new EditorDocumentRepository(catalog).SerializeEntry(new EditorEntryData { StableId = entry.StableId, Type = entry.Type, Parameters = entry.Source.Parameters });
         Assert.That(saved.Parameters, Is.Empty);
         entry.ConfigureParameterFields(catalog, [], []);
         Assert.That(await count.CommitAsync(new(Json("8")), CancellationToken.None), Is.Not.Null);
@@ -122,7 +122,7 @@ public sealed class EntrySchemaFormTests
                 ((CheckBox)form.Editors[2].Control).IsChecked = false;
                 ((ComboBox)form.Editors[1].Control).SelectedItem = form.Contexts[1].Options.Single(item => item.Value.GetString() == "Friday");
                 var saved = new EditorDocumentRepository(catalog).SerializeEntry(new EditorEntryData
-                { StableId = entry.StableId, Type = entry.Type, Parameters = entry.Parameters });
+                { StableId = entry.StableId, Type = entry.Type, Parameters = entry.Source.Parameters });
                 Assert.That(saved.Parameters["count"].GetInt64(), Is.EqualTo(9007199254740995L));
                 Assert.That(saved.Parameters["day"].GetString(), Is.EqualTo("Friday"));
                 Assert.That(saved.Parameters["enabled"].GetString(), Is.EqualTo("no"));

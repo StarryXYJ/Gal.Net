@@ -14,7 +14,9 @@ using GalNet.Core.Graph;
 using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
 using GalNet.Core.Scene;
+using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Controls;
+using GalNet.Editor.Services;
 using GalNet.Game.Controls.Forms;
 using GalNet.Primitives.Builtins;
 
@@ -41,7 +43,7 @@ public partial class GraphNode : ObservableObject
     private static readonly IBrush SelectedBorderBrush = Brush.Parse("#8F72FF");
     private static readonly IBrush EntryBorderBrush = Brush.Parse("#A891FF");
     private static readonly IBrush DefaultBorderBrush = Brush.Parse("#45475A");
-    public Node Node { get; }
+    public EditorGraphNodeDto Source { get; }
     public GraphNodeKind NodeKind { get; }
 
     [ObservableProperty]
@@ -66,7 +68,7 @@ public partial class GraphNode : ObservableObject
     [ObservableProperty]
     private bool _isRoot;
 
-    public string Id => Node.Id;
+    public string Id => Source.Id;
     public string KindLabel => NodeKind switch
     {
         GraphNodeKind.Entry => "Entry",
@@ -84,25 +86,42 @@ public partial class GraphNode : ObservableObject
 
     public ObservableCollection<GraphConnector> InputConnectors { get; } = [];
     public ObservableCollection<GraphConnector> OutputConnectors { get; } = [];
-    public ObservableCollection<EntryEditorItemViewModel> Entries { get; } = [];
+    public ObservableCollection<EntryEditorItemViewModel> Entries { get; private set; } = [];
     public ObservableCollection<BranchOptionEditorItemViewModel> Options { get; } = [];
     public ObservableCollection<BranchConditionEditorItemViewModel> Conditions { get; } = [];
 
     public int EntryCount => Entries.Count;
 
-    public GraphNode(Node node, GraphNodeKind nodeKind)
+    public GraphNode(Node node, GraphNodeKind nodeKind) : this(new EditorGraphNodeDto
     {
-        Node = node;
+        Id = node.Id,
+        Name = node.Name,
+        Type = nodeKind == GraphNodeKind.Entry ? "Entry" : nodeKind == GraphNodeKind.LinearGroup ? "Group" : "Branch",
+        File = nodeKind == GraphNodeKind.LinearGroup ? $"groups/{node.Id}.rawgalgroup" : null,
+        BranchType = nodeKind == GraphNodeKind.ChoiceBranch ? "Choice" : "Condition"
+    }, nodeKind)
+    { }
+
+    public GraphNode(EditorGraphNodeDto source, GraphNodeKind nodeKind)
+    {
+        Source = source;
         NodeKind = nodeKind;
-        Name = string.IsNullOrWhiteSpace(node.Name) ? KindLabel : node.Name;
+        _name = source.Name;
+        _x = source.X;
+        _y = source.Y;
 
-        if (NodeKind == GraphNodeKind.ConditionBranch)
-            Conditions.Add(new BranchConditionEditorItemViewModel { Expression = "true" });
-
-        if (NodeKind == GraphNodeKind.ChoiceBranch && Options.Count == 0)
-            Options.Add(new BranchOptionEditorItemViewModel { Text = "Option 1" });
+        foreach (var option in source.Options ?? []) Options.Add(new BranchOptionEditorItemViewModel(option));
+        foreach (var condition in source.Conditions ?? []) Conditions.Add(new BranchConditionEditorItemViewModel(condition));
+        Options.CollectionChanged += (_, _) => Source.Options = Options.Select(item => item.Source).ToList();
+        Conditions.CollectionChanged += (_, _) => Source.Conditions = Conditions.Select(item => item.Source).ToList();
 
         RefreshConnectors();
+    }
+
+    public void BindGroup(EditorGroupProjection group)
+    {
+        if (Entries.Count != 0) throw new InvalidOperationException("Group must be bound before inserting entries.");
+        Entries = group.Entries;
     }
 
     public void RefreshConnectors()
@@ -145,8 +164,11 @@ public partial class GraphNode : ObservableObject
 
     partial void OnNameChanged(string value)
     {
-        Node.Name = value;
+        Source.Name = value;
     }
+
+    partial void OnXChanged(double value) => Source.X = value;
+    partial void OnYChanged(double value) => Source.Y = value;
 }
 
 public partial class GraphConnector : ObservableObject
@@ -175,7 +197,8 @@ public partial class GraphEdge : ObservableObject
     private static readonly IBrush SelectedStrokeBrush = Brush.Parse("#A891FF");
     public GraphNode From { get; }
     public GraphNode To { get; }
-    public string Id { get; }
+    public EditorGraphEdgeDto Source { get; }
+    public string Id => Source.Id;
 
     [ObservableProperty]
     private int _outlet;
@@ -193,12 +216,21 @@ public partial class GraphEdge : ObservableObject
     public double ControlOffset => Math.Max(80, Math.Abs(EndX - StartX) * 0.5);
     public string PathData => $"M {StartX},{StartY} C {StartX + ControlOffset},{StartY} {EndX - ControlOffset},{EndY} {EndX},{EndY}";
 
-    public GraphEdge(GraphNode from, GraphNode to, int outlet = 0, string? id = null)
+    public GraphEdge(GraphNode from, GraphNode to, int outlet = 0, string? id = null) : this(from, to, new EditorGraphEdgeDto
     {
-        Id = string.IsNullOrWhiteSpace(id) ? Guid.NewGuid().ToString("N") : id;
+        Id = string.IsNullOrWhiteSpace(id) ? Guid.NewGuid().ToString("N") : id,
+        FromNodeId = from.Id,
+        ToNodeId = to.Id,
+        FromOutlet = outlet
+    })
+    { }
+
+    public GraphEdge(GraphNode from, GraphNode to, EditorGraphEdgeDto source)
+    {
+        Source = source;
         From = from;
         To = to;
-        _outlet = outlet;
+        _outlet = source.FromOutlet;
 
         From.PropertyChanged += (_, e) => OnNodeMoved(e.PropertyName);
         To.PropertyChanged += (_, e) => OnNodeMoved(e.PropertyName);
@@ -226,15 +258,37 @@ public partial class GraphEdge : ObservableObject
 
     partial void OnOutletChanged(int value)
     {
+        Source.FromOutlet = value;
         OnPropertyChanged(nameof(StartX));
         OnPropertyChanged(nameof(StartY));
         OnPropertyChanged(nameof(PathData));
     }
 }
 
-public partial class EntryEditorItemViewModel : ObservableObject
+public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
 {
-    public string StableId { get; init; } = Guid.NewGuid().ToString("N");
+    public EditorEntryData Source { get; }
+    private IEntryCatalog? _authorCatalog;
+    private bool _disposed;
+    public string StableId { get => Source.StableId; init => Source.StableId = value; }
+
+    public EntryEditorItemViewModel() => Source = new() { StableId = Guid.NewGuid().ToString("N") };
+
+    public EntryEditorItemViewModel(IEntryCatalog catalog) : this() => _authorCatalog = catalog;
+
+    public EntryEditorItemViewModel(EditorEntryData source, IEntryCatalog catalog)
+    {
+        Source = source;
+        _authorCatalog = catalog;
+        _id = source.Id;
+        _type = source.Type;
+        _condition = source.Condition;
+        _parameters = source.GetParameterText(catalog);
+    }
+
+    partial void OnIdChanged(int value) => Source.Id = value;
+    partial void OnTypeChanged(string value) => Source.Type = value;
+    partial void OnConditionChanged(string value) => Source.Condition = value;
 
     [ObservableProperty]
     private int _id;
@@ -247,9 +301,6 @@ public partial class EntryEditorItemViewModel : ObservableObject
 
     [ObservableProperty]
     private Dictionary<string, string> _parameters = new(StringComparer.Ordinal);
-
-    [ObservableProperty]
-    private bool _isExpanded = true;
 
     [ObservableProperty]
     private string _effectHint = "";
@@ -268,6 +319,9 @@ public partial class EntryEditorItemViewModel : ObservableObject
     /// <summary>Builds the editor projection from the Core registry, the single schema source.</summary>
     public void ConfigureParameterFields(IEntryCatalog catalog, IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames, bool resetValues = false, IEffectCatalog? effectCatalog = null)
     {
+        if (_authorCatalog is null)
+            Source.Parameters = EditorEntryData.ParseParameters(catalog, Type, Parameters);
+        _authorCatalog = catalog;
         ParameterForm?.Dispose();
         ParameterForm = null;
         _formParameters = null;
@@ -336,6 +390,7 @@ public partial class EntryEditorItemViewModel : ObservableObject
     internal Task<ValueIssue?> CommitParameterAsync(FieldDescriptor field, FieldValue value, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (_disposed) return Task.FromResult<ValueIssue?>(new("entry.obsolete", "The project document is closed.", field.Id));
         var updated = new Dictionary<string, string>(Parameters, StringComparer.Ordinal);
         if (value.Json is not { } json)
         {
@@ -364,6 +419,7 @@ public partial class EntryEditorItemViewModel : ObservableObject
 
     partial void OnParametersChanged(Dictionary<string, string> value)
     {
+        if (_authorCatalog is not null) Source.Parameters = EditorEntryData.ParseParameters(_authorCatalog, Type, value);
         foreach (var field in ParameterFields.OfType<SchemaEntryParameterEditorItemViewModel>()) field.RefreshValue();
         ParameterForm?.Refresh();
         UpdateEffectHints();
@@ -388,11 +444,25 @@ public partial class EntryEditorItemViewModel : ObservableObject
         EffectHint = $"{effect.Stage} · static: {string.Join(", ", effect.Parameters.Select(parameter => parameter.Name))} · animatable: {string.Join(", ", effect.AnimatableProperties.Select(property => property.Name))}";
         EffectDiagnostic = string.Join(" ", _effectCatalog.Validate(id, Parameters.GetValueOrDefault("targetHandleId", ""), Parameters.GetValueOrDefault("parameters", "{}")));
     }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        ParameterForm?.Dispose();
+        ParameterFields.Clear();
+        GC.SuppressFinalize(this);
+    }
 }
 
 public partial class BranchOptionEditorItemViewModel : ObservableObject
 {
-    public string Id { get; init; } = Guid.NewGuid().ToString("N");
+    public EditorGraphBranchOptionDto Source { get; }
+    public string Id { get => Source.Id; init => Source.Id = value; }
+    public BranchOptionEditorItemViewModel() => Source = new() { Id = Guid.NewGuid().ToString("N") };
+    public BranchOptionEditorItemViewModel(EditorGraphBranchOptionDto source) { Source = source; _text = source.Text; _condition = source.Condition; }
+    partial void OnTextChanged(string value) => Source.Text = value;
+    partial void OnConditionChanged(string value) => Source.Condition = value;
 
     [ObservableProperty]
     private string _text = "";
@@ -403,7 +473,11 @@ public partial class BranchOptionEditorItemViewModel : ObservableObject
 
 public partial class BranchConditionEditorItemViewModel : ObservableObject
 {
-    public string Id { get; init; } = Guid.NewGuid().ToString("N");
+    public EditorGraphBranchConditionDto Source { get; }
+    public string Id { get => Source.Id; init => Source.Id = value; }
+    public BranchConditionEditorItemViewModel() => Source = new() { Id = Guid.NewGuid().ToString("N") };
+    public BranchConditionEditorItemViewModel(EditorGraphBranchConditionDto source) { Source = source; _expression = source.Expression; }
+    partial void OnExpressionChanged(string value) => Source.Expression = value;
 
     [ObservableProperty]
     private string _expression = "";

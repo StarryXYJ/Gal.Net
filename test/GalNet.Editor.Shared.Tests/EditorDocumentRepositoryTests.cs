@@ -82,7 +82,7 @@ public class EditorDocumentRepositoryTests
         Assert.That(loaded.Document.SaveVariables, Is.Empty);
         Assert.That(loaded.GroupEntries[groupId], Has.Count.EqualTo(1));
         Assert.That(loaded.GroupEntries[groupId][0].Type, Is.EqualTo("dialogue.text"));
-        Assert.That(loaded.GroupEntries[groupId][0].Parameters, Does.ContainKey("content").WithValue("hello"));
+        Assert.That(loaded.GroupEntries[groupId][0].Parameters["content"].GetString(), Is.EqualTo("hello"));
         Assert.That(loaded.GroupEntries[groupId][0].Parameters, Does.Not.ContainKey("obsolete"));
     }
 
@@ -116,7 +116,7 @@ public class EditorDocumentRepositoryTests
                         StableId = "text-1",
                         Type = "dialogue.text",
                         Condition = "[player_name] == 'Alice'",
-                        Parameters = new Dictionary<string, string> { ["speaker"] = "Alice", ["content"] = "Hello" }
+                        Parameters = new() { ["speaker"] = JsonSerializer.SerializeToElement("Alice"), ["content"] = JsonSerializer.SerializeToElement("Hello") }
                     }
                 ]
             });
@@ -161,7 +161,7 @@ public class EditorDocumentRepositoryTests
         var loaded = repository.Load(_tempDir, "Custom", new ProjectSettings());
         repository.Save(_tempDir, loaded.Document, loaded.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value));
 
-        Assert.That(loaded.GroupEntries[groupId].Single().Parameters["count"], Is.EqualTo("3"));
+        Assert.That(loaded.GroupEntries[groupId].Single().Parameters["count"].GetInt32(), Is.EqualTo(3));
         using var saved = JsonDocument.Parse(File.ReadAllText(Path.Combine(_tempDir, "Graph", "groups", $"{groupId}.rawgalgroup")));
         Assert.That(saved.RootElement.GetProperty("entries")[0].GetProperty("parameters").GetProperty("count").GetInt32(), Is.EqualTo(3));
     }
@@ -186,8 +186,8 @@ public class EditorDocumentRepositoryTests
             """{"version":2,"kind":"Raw","entries":[{"id":"day-1","type":"custom.day","parameters":{"day":"Monday"}}]}""");
         var repository = new EditorDocumentRepository(catalog);
         var loaded = repository.Load(_tempDir, "Days", new ProjectSettings());
-        Assert.That(loaded.GroupEntries[groupId][0].Parameters["day"], Is.EqualTo("\"Monday\""));
-        loaded.GroupEntries[groupId][0].Parameters["day"] = "\"Tuesday\"";
+        Assert.That(loaded.GroupEntries[groupId][0].Parameters["day"].GetString(), Is.EqualTo("Monday"));
+        loaded.GroupEntries[groupId][0].Parameters["day"] = JsonSerializer.SerializeToElement("Tuesday");
         repository.Save(_tempDir, loaded.Document,
             loaded.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value));
         using var saved = JsonDocument.Parse(File.ReadAllText(sourcePath));

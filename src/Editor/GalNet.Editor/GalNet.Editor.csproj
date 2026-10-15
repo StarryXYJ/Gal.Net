@@ -45,6 +45,9 @@
 
     <ItemGroup>
       <EmbeddedResource Include="Localization\*.json" />
+      <ProjectReference Include="..\GalNet.Editor.DefaultContracts\GalNet.Editor.DefaultContracts.csproj" ReferenceOutputAssembly="false" GlobalPropertiesToRemove="OutputPath;OutDir" />
+      <Content Include="..\GalNet.Editor.DefaultContracts\bin\$(Configuration)\net10.0\GalNet.Project.Contracts.dll"
+               Link="DefaultContracts\GalNet.Project.Contracts.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     </ItemGroup>
 
     <ItemGroup>

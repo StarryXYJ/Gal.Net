@@ -20,7 +20,7 @@ using Serilog;
 
 namespace GalNet.Editor.Dock;
 
-public sealed class EditorDockFactory : Factory
+public sealed class EditorDockFactory : Factory, IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly IEditorExtensionRegistry _extensions;
@@ -31,6 +31,7 @@ public sealed class EditorDockFactory : Factory
     private bool _activeDockableHandlerAttached;
     private bool _dockableEventHandlersAttached;
     private DocumentDock? _documentDock;
+    private readonly PropertyChangedEventHandler _localizationChanged;
 
     /// <summary>Raised after a panel is created, closed, moved, or activated.</summary>
     public event Action? LayoutChanged;
@@ -45,11 +46,12 @@ public sealed class EditorDockFactory : Factory
         _localization = localization;
         _inspector = new DockInspectorCoordinator(_panelByDockable, () =>
             serviceProvider.GetService<IProjectService>()?.Current?.Services.GetService<EditorWorkspaceViewModel>());
-        _localization.PropertyChanged += (_, e) =>
+        _localizationChanged = (_, e) =>
         {
             if (e.PropertyName is nameof(IEditorLocalizationService.CurrentCulture) or "Item[]")
                 RefreshDockTitles();
         };
+        _localization.PropertyChanged += _localizationChanged;
     }
 
     // ── Layout creation ──
@@ -57,13 +59,13 @@ public sealed class EditorDockFactory : Factory
     public override IRootDock CreateLayout()
     {
         _documentDock = null;
+        DisposeGroupPages();
         _panelByDockable.Clear();
         _inspector.Clear();
         AttachWorkspace();
 
         var panels = _extensions.DockPanelContributions.ToDictionary(panel => panel.PanelId, StringComparer.Ordinal);
         var nodeGraphDocument = CreateDocument(panels[EditorDockPanelIds.NodeGraph]);
-        var previewDocument = CreateDocument(panels[EditorDockPanelIds.GamePreview]);
         var logDocument = CreateDocument(panels[EditorDockPanelIds.Log]);
         var assetsDocument = CreateDocument(panels[EditorDockPanelIds.Assets]);
         var inspectorDocument = CreateDocument(panels[EditorDockPanelIds.Inspector]);
@@ -75,7 +77,7 @@ public sealed class EditorDockFactory : Factory
             Title = "Documents",
             IsCollapsable = false,
             ActiveDockable = nodeGraphDocument,
-            VisibleDockables = CreateList<IDockable>(CreateDefaultPanels(DockPanelPlacement.MainDocument, nodeGraphDocument, previewDocument).ToArray()),
+            VisibleDockables = CreateList<IDockable>(CreateDefaultPanels(DockPanelPlacement.MainDocument, nodeGraphDocument).ToArray()),
             EnableGlobalDocking = true
         };
 
@@ -143,6 +145,7 @@ public sealed class EditorDockFactory : Factory
 
     public bool PrepareRestoredLayout(IRootDock layout)
     {
+        DisposeGroupPages();
         _panelByDockable.Clear();
         _inspector.Clear();
         AttachWorkspace();
@@ -176,7 +179,7 @@ public sealed class EditorDockFactory : Factory
                     continue;
                 }
 
-                document.Context = panel.CreateViewModel(services, group);
+                document.Context = panel.CreateViewModel(services, group.Id);
                 document.Title = LocalizeTitle(panel, [group.Name]);
             }
             else
@@ -251,7 +254,7 @@ public sealed class EditorDockFactory : Factory
         var existing = _documentDock.VisibleDockables.FirstOrDefault(d => d.Id == documentId);
         if (existing is not null) { _documentDock.ActiveDockable = existing; return; }
 
-        var document = CreateDocument(_extensions.FindDockPanel(EditorDockPanelIds.GroupEditor)!, groupNode, documentId, [groupNode.Name]);
+        var document = CreateDocument(_extensions.FindDockPanel(EditorDockPanelIds.GroupEditor)!, groupNode.Id, documentId, [groupNode.Name]);
         _documentDock.VisibleDockables.Add(document);
         _documentDock.ActiveDockable = document;
         LayoutChanged?.Invoke();
@@ -297,6 +300,12 @@ public sealed class EditorDockFactory : Factory
         {
             DockableAdded += (_, args) => { Log.Information("[DockFactory] DockableAdded: {Id}", args.Dockable?.Id); LayoutChanged?.Invoke(); };
             DockableRemoved += (_, args) => { Log.Information("[DockFactory] DockableRemoved: {Id}", args.Dockable?.Id); LayoutChanged?.Invoke(); };
+            DockableClosed += (_, args) =>
+            {
+                if (args.Dockable is not { } closed) return;
+                if (closed.Context is GroupEditorPanelViewModel group) group.Dispose();
+                _panelByDockable.Remove(closed);
+            };
             DockableMoved += (_, args) => { Log.Information("[DockFactory] DockableMoved: {Id}", args.Dockable?.Id); LayoutChanged?.Invoke(); };
             _dockableEventHandlersAttached = true;
         }
@@ -381,7 +390,24 @@ public sealed class EditorDockFactory : Factory
         owner.ActiveDockable = owner.VisibleDockables.FirstOrDefault();
         _inspector.RemoveInspectorAndRecover(document, () => FindActiveInspectableDockable(FactoryExtensions.GetActiveRoot(this)));
         _panelByDockable.Remove(document);
+        (document.Context as IDisposable)?.Dispose();
         LayoutChanged?.Invoke();
+    }
+
+    public void Dispose()
+    {
+        _localization.PropertyChanged -= _localizationChanged;
+        if (_workspace is not null) _workspace.PropertyChanged -= OnWorkspacePropertyChanged;
+        foreach (var dockable in _panelByDockable.Keys)
+            if (!ReferenceEquals(dockable.Context, _workspace)) (dockable.Context as IDisposable)?.Dispose();
+        _panelByDockable.Clear();
+        _inspector.Clear();
+    }
+
+    private void DisposeGroupPages()
+    {
+        foreach (var page in _panelByDockable.Keys.Select(dockable => dockable.Context).OfType<GroupEditorPanelViewModel>())
+            page.Dispose();
     }
 
     // ── Utility ──

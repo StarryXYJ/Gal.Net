@@ -12,17 +12,20 @@ public sealed class EditorWorkspacePersistence
     private readonly IEditorDocumentRepository _repository;
     private readonly IEditorDocumentService _documents;
     private readonly IEditorSaveCoordinator _saveCoordinator;
+    private readonly EditorGroupProjectionStore? _groups;
 
     public EditorWorkspacePersistence(
         IProjectService projects,
         IEditorDocumentRepository repository,
         IEditorDocumentService documents,
-        IEditorSaveCoordinator saveCoordinator)
+        IEditorSaveCoordinator saveCoordinator,
+        EditorGroupProjectionStore? groups = null)
     {
         _projects = projects;
         _repository = repository;
         _documents = documents;
         _saveCoordinator = saveCoordinator;
+        _groups = groups;
     }
 
     public GraphDocumentLoadResult? LoadCurrentProject()
@@ -33,15 +36,9 @@ public sealed class EditorWorkspacePersistence
             return null;
         }
 
-        var loaded = _repository.Load(project.RootPath, project.Name, project.Settings);
-        if (loaded.Document is null || loaded.Document.Nodes.Count == 0)
-        {
-            _documents.Unload();
-            return null;
-        }
-
-        _documents.Load(loaded);
-        return GraphDocumentMapper.Load(loaded);
+        if (!_documents.IsLoaded)
+            _documents.Load(_repository.Load(project.RootPath, project.Name, project.Settings));
+        return GraphDocumentMapper.Load(_documents.LoadedProject, _groups);
     }
 
     public async Task<bool> SaveCurrentProjectAsync(
@@ -52,6 +49,8 @@ public sealed class EditorWorkspacePersistence
             return false;
 
         var document = CreateDocument(project.Name, nodes, edges);
+        project.Settings.PlayerVariables = document.PlayerVariables.Select(item => item.Clone()).ToList();
+        project.Settings.SaveVariables = document.SaveVariables.Select(item => item.Clone()).ToList();
         _saveCoordinator.SaveProjectDocument(
             project.RootPath,
             document,

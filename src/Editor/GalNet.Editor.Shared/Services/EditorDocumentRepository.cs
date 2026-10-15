@@ -1,6 +1,5 @@
 using System.Text.Json;
 using GalNet.Core.Entry;
-using GalNet.Core.Parameters;
 using GalNet.Core.Serialization;
 using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Commands;
@@ -32,17 +31,13 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog) : IEditorDoc
             var group = validator.ValidateGroup(file, diagnostics, catalog);
             RequireValid(diagnostics);
             _baseline[file] = File.ReadAllBytes(reader.Resolve(file));
-            foreach (var entry in group!.Entries)
-                foreach (var (key, value) in entry.Parameters)
-                    if (!JsonElement.DeepEquals(value, ValueCodec.FromEditorText(catalog.Get(entry.Type).DynamicParameters![key].Value, ValueCodec.ToEditorText(catalog.Get(entry.Type).DynamicParameters![key].Value, value))))
-                        throw new InvalidDataException($"Parameter '{key}' in '{file}' cannot round-trip through the editor value representation; edit the raw file directly.");
             loaded.GroupEntries[node.Id] = group!.Entries.Select((entry, index) => new EditorEntryData
             {
                 StableId = entry.Id,
                 Id = index + 1,
                 Type = entry.Type,
                 Condition = entry.Condition,
-                Parameters = entry.Parameters.ToDictionary(pair => pair.Key, pair => ValueCodec.ToEditorText(catalog.Get(entry.Type).DynamicParameters![pair.Key].Value, pair.Value), StringComparer.Ordinal)
+                Parameters = entry.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal)
             }).ToList();
         }
         return loaded;
@@ -111,14 +106,12 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog) : IEditorDoc
         if (string.IsNullOrWhiteSpace(entry.StableId)) throw new InvalidDataException("Entry stable ID is required.");
         foreach (var key in entry.Parameters.Keys)
             if (!definition.Parameters.ContainsKey(key)) throw new InvalidDataException($"Unknown parameter '{key}' for '{entry.Type}'.");
-        if (entry.Parameters.Values.Any(value => value is null)) throw new InvalidDataException("Editor parameter values must be strings; use patchParameters null to remove a parameter.");
         return new GroupEntryDocument
         {
             Id = entry.StableId,
             Type = entry.Type,
             Condition = entry.Condition,
-            Parameters = entry.Parameters.ToDictionary(pair => pair.Key,
-                pair => ValueCodec.FromEditorText(definition.DynamicParameters![pair.Key].Value, pair.Value), StringComparer.Ordinal)
+            Parameters = entry.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal)
         };
     }
 

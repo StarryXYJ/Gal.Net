@@ -19,6 +19,7 @@ public class ProjectDependencyTests
             ["GalNet.Assets"] = ["GalNet.Core"],
             ["GalNet.Storage.FileSystem"] = ["GalNet.Core", "GalNet.Runtime", "GalNet.Assets"],
             ["GalNet.Editor.Abstraction"] = ["GalNet.Core"],
+            ["GalNet.Editor.DefaultContracts"] = ["GalNet.Contracts.Builtins"],
             ["GalNet.ProjectTools.Windows"] = ["GalNet.Editor.Abstraction"],
             ["GalNet.Editor.Shared"] =
             [

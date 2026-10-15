@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
@@ -17,7 +18,7 @@ using GalNet.Game.Controls.Forms;
 
 namespace GalNet.Editor.ViewModels;
 
-public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarget
+public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarget, IDisposable
 {
     private readonly IGraphEditingService _graphEditingService;
     private readonly IProjectService _projects;
@@ -25,10 +26,12 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     private readonly IEntryCatalog _catalog;
 
     public EditorWorkspaceViewModel Workspace { get; }
-    public GraphNode GroupNode { get; }
+    public GraphNode GroupNode => Workspace.Nodes.Single(node => node.Id == GroupId);
     public IUndoRedoHistory? UndoRedoHistory => Workspace.UndoRedoHistory;
 
-    public string GroupId => GroupNode.Id;
+    public string GroupId { get; }
+    private readonly ObservableCollection<EntryEditorItemViewModel> _entries;
+    private bool _disposed;
     public IReadOnlyList<ConditionVariableSuggestion> ConditionSuggestions => Workspace.GetConditionVariableSuggestions();
     public IReadOnlyList<GalNet.Core.Variable.ProjectVariableDefinition> ValidationVariables => Workspace.AllProjectVariableDefinitions;
     public IAssetManager AssetManager { get; }
@@ -42,10 +45,11 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     [ObservableProperty]
     private decimal _batchAddCount = 1;
 
-    public GroupEditorPanelViewModel(EditorWorkspaceViewModel workspace, GraphNode groupNode, IGraphEditingService graphEditingService, IProjectService projects, IAssetManager assetManager, EditorShortcutService shortcutService, IEffectCatalog effects, IEntryCatalog catalog)
+    public GroupEditorPanelViewModel(EditorWorkspaceViewModel workspace, string groupId, IGraphEditingService graphEditingService, IProjectService projects, IAssetManager assetManager, EditorShortcutService shortcutService, IEffectCatalog effects, IEntryCatalog catalog)
     {
         Workspace = workspace;
-        GroupNode = groupNode;
+        GroupId = groupId;
+        _entries = GroupNode.Entries;
         _graphEditingService = graphEditingService;
         _projects = projects;
         _effects = effects;
@@ -54,8 +58,8 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         ShortcutService = shortcutService;
         EntryTypes = catalog.Definitions.Select(definition => new EntryTypeOption(definition.Type, definition.Category, $"Entry.Type.{definition.Type}")).ToArray();
         Workspace.VariableDefinitionsChanged += OnVariableDefinitionsChanged;
-        GroupNode.Entries.CollectionChanged += OnEntriesChanged;
-        foreach (var entry in GroupNode.Entries) Attach(entry);
+        _entries.CollectionChanged += OnEntriesChanged;
+        foreach (var entry in _entries) Attach(entry);
     }
 
     [RelayCommand]
@@ -164,5 +168,15 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         if (project.Settings.Speakers.Any(item => string.Equals(item, speaker, StringComparison.OrdinalIgnoreCase))) return;
         project.Settings.Speakers.Add(speaker);
         project.IsDirty = true;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        Workspace.VariableDefinitionsChanged -= OnVariableDefinitionsChanged;
+        _entries.CollectionChanged -= OnEntriesChanged;
+        foreach (var entry in _entries) entry.PropertyChanged -= OnEntryPropertyChanged;
+        GC.SuppressFinalize(this);
     }
 }

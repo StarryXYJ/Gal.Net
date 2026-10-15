@@ -11,7 +11,7 @@ namespace GalNet.Editor.Shared.Services;
 /// Editor implementation of IVariableService.
 /// Wraps EditorPlayerVariableStore for player variables and manages save variables in-memory.
 /// </summary>
-public sealed class EditorVariableService : IVariableService
+public sealed class EditorVariableService : IVariableService, IDisposable
 {
     private readonly IEditorPlayerVariableStore _playerStore;
     private readonly IVariableDefinitionService _variableDefinitions;
@@ -28,6 +28,8 @@ public sealed class EditorVariableService : IVariableService
         _variableDefinitions = variableDefinitions;
         _variableDefinitions.DefinitionsChanged += OnDefinitionsChanged;
     }
+
+    public void Dispose() => _variableDefinitions.DefinitionsChanged -= OnDefinitionsChanged;
 
     public void ConfigureSystemVariables(IReadOnlyCollection<SystemVariableDefinition> definitions)
     {

@@ -6,16 +6,25 @@
              x:DataType="vm:NewProjectPanelViewModel"
              Background="{DynamicResource SemiColorBackground0}">
     <ScrollViewer>
-        <StackPanel Margin="12" Spacing="10" MaxWidth="520">
+        <StackPanel Margin="12" Spacing="10" MaxWidth="520" IsEnabled="{Binding !IsBusy}">
             <TextBlock Text="New Project"
                        FontSize="16"
                        FontWeight="SemiBold" />
 
             <TextBlock Text="Name" />
-            <TextBox Text="{Binding ProjectName}" />
+            <TextBox Name="ProjectNameInput" Text="{Binding ProjectName}" />
 
             <TextBlock Text="Parent Folder" />
-            <TextBox Text="{Binding ProjectRoot}" />
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBox Name="ProjectRootInput" Text="{Binding ProjectRoot}" />
+                <Button Grid.Column="1" Content="Browse" Command="{Binding BrowseProjectRootCommand}" Margin="8,0,0,0" />
+            </Grid>
+
+            <TextBlock Text="Custom Contract Directory (Optional)" />
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBox Name="ContractsDirectoryInput" Text="{Binding ContractsDirectory}" PlaceholderText="Leave empty to use built-in contracts" />
+                <Button Name="BrowseContractsButton" Grid.Column="1" Content="Browse" Command="{Binding BrowseContractsCommand}" Margin="8,0,0,0" />
+            </Grid>
 
             <TextBlock Text="Design Resolution" />
             <ComboBox ItemsSource="{Binding ResolutionPresets}"
@@ -23,7 +32,7 @@
                       IsEditable="True" />
 
             <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Content="Create Project"
+                <Button Name="CreateProjectButton" Content="Create Project"
                         Command="{Binding CreateCommand}" />
                 <Button Content="Cancel"
                         Command="{Binding CancelCommand}" />

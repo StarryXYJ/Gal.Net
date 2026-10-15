@@ -23,13 +23,13 @@ Project/
 
 `I18n/` 的人物表、文本源与默认语言完整性检查见 [国际化](i18n.md)。它是特殊内容，不是资源 provider 输入。
 
-`Contracts/` 不进入 galpak。游戏通过自己的契约项目引用取得同一集合；CLI/Editor 外层加载固定的 `GalNet.Project.Contracts.ProjectSchemas.Modules` 静态只读模块列表。缺少 DLL 时原始查询和结构校验仍可用，语义校验/编译/Editor 打开明确失败。项目创建可先生成缺契约骨架，也可复制完整构建目录；部署方法见 [Sample 契约](../../src/Samples/GalNet.Sample.Contracts/README.md)。项目显示名改名不移动目录，不改变节点/entry ID；整项目删除采用系统回收站。
+`Contracts/` 不进入 galpak。游戏通过自己的契约项目引用取得同一集合；CLI/Editor 外层加载固定的 `GalNet.Project.Contracts.ProjectSchemas.Modules` 静态只读模块列表。缺少 DLL 时原始查询和结构校验仍可用，语义校验/编译/Editor 打开明确失败。Editor 新建项目会自动部署随程序分发的默认契约，无需用户准备 DLL，也可选择自定义构建目录。CLI 项目创建仍可先生成缺契约骨架；自定义部署方法见 [Sample 契约](../../src/Samples/GalNet.Sample.Contracts/README.md)。项目显示名改名不移动目录，不改变节点/entry ID；整项目删除采用系统回收站。
 
 ## Graph 与 Group
 
 `Graph/graph.json` 是版本 2 的编辑图，包含稳定节点/边 ID、坐标、变量和 Group 的 `groups/<id>.rawgalgroup` 文件引用。`.rawgalgroup` 是版本 2、`kind: Raw` 的编辑源，可包含 primitive 和 composite；`.galgroup` 是版本 3、`kind: Compiled` 的运行产物，只能包含 primitive。旧分号文本、旧版本 Group 格式和运行时加载 Raw 文档均不受支持。
 
-变量声明的字段固定为 `name`、`defaultValue`、`type`，不随 JSON serializer 的命名策略变化；`defaultValue` 使用变量 converter 的 `Uid`、`Name`、`Type`、`Value`。编辑工具只接受当前源格式，不补稳定 ID、不从 settings 迁移变量。原始查询保留未知数据，类型化保存则拒绝未知字段/参数及不能无损转换到编辑值的参数；空字符串不会作为缺失参数删除。
+变量声明的字段固定为 `name`、`defaultValue`、`type`，不随 JSON serializer 的命名策略变化；`defaultValue` 使用变量 converter 的 `Uid`、`Name`、`Type`、`Value`。编辑工具只接受当前源格式，不补稳定 ID、不从 settings 迁移变量。原始查询保留未知数据，当前类型化加载/保存仍拒绝未知字段/参数或不符合完整契约的内容；空字符串不会作为缺失参数删除。Editor 作者参数直接保存 JSON 值，保留复杂值、大整数、缺省与显式 null，不要求所有值先通过字符串表示往返。Group 源路径按 Graph 中的 file 原样保留，显示名改名不重建文件名。GUI 打开另要求显式且唯一的 Entry 根节点，结构/CLI 工具不因此统一限制为 GUI 入口规则。
 
 共享保存先准备并校验 Graph/Group 写入计划，再暂存全部目标文件后发布。删除 Group 节点并删除其 entries 时同步删除该源文件；保留 entries 时源文件成为孤立作者文件。后续发布失败会恢复此前发布的文件；恢复失败明确报告。该机制只提供单进程失败恢复，不承诺进程崩溃或跨进程修改下的整体原子事务。
 

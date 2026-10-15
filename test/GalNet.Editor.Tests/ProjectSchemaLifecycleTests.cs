@@ -180,7 +180,7 @@ public sealed class ProjectSchemaLifecycleTests
         Directory.CreateDirectory(Path.Combine(project, "Graph"));
         File.WriteAllText(Path.Combine(project, "settings.json"), "{}");
         File.WriteAllText(Path.Combine(project, "Graph/graph.json"),
-            """{"version":2,"name":"Fixture","rootNodeId":"","nodes":[],"edges":[],"playerVariables":[],"saveVariables":[]}""");
+            """{"version":2,"name":"Fixture","rootNodeId":"entry","nodes":[{"id":"entry","type":"Entry","name":"Entry","x":0,"y":0}],"edges":[],"playerVariables":[],"saveVariables":[]}""");
         return project;
     }
     private sealed class TestSettings : IEditorSettingsService

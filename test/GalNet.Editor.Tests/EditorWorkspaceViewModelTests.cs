@@ -48,7 +48,7 @@ public sealed class EditorWorkspaceViewModelTests
             // Supply only layout icon resources; the real parameter panel and bindings are used below.
             foreach (var key in new[] { "AddIcon", "DeleteRegularIcon", "ChevronUpRegular", "ChevronDownRegular" })
                 Application.Current!.Resources[key] = StreamGeometry.Parse("M0,0 L8,8");
-            var panel = new GroupEditorPanelViewModel(workspace, group, new GraphEditingService(catalog), fixture.ProjectService,
+            var panel = new GroupEditorPanelViewModel(workspace, group.Id, new GraphEditingService(catalog), fixture.ProjectService,
                 null!, null!, null!, catalog);
             Application.Current!.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
             Application.Current.Styles.Add(new Semi.Avalonia.SemiTheme());
@@ -89,7 +89,7 @@ public sealed class EditorWorkspaceViewModelTests
                 Assert.That(changes, Is.EqualTo(3));
                 await workspace.SaveAsync();
                 var snapshot = fixture.SaveCoordinator.SavedEntries![group.Id].Single();
-                Assert.That(snapshot.Parameters["duration"], Is.EqualTo("1.5"));
+                Assert.That(snapshot.Parameters["duration"].GetSingle(), Is.EqualTo(1.5f));
                 Assert.That(workspace.UndoRedoHistory.IsDirty, Is.False);
             }
             finally { window.Close(); }
@@ -251,7 +251,8 @@ public sealed class EditorWorkspaceViewModelTests
         public WorkspaceFixture(bool withProject = false, bool useDto = false)
         {
             var loaded = CreateLoadedDocument();
-            if (withProject)
+            if (!withProject)
+                loaded.Document.Nodes.Add(new EditorGraphNodeDto { Id = "choice", Type = "Branch", BranchType = "Choice", Name = "Choice" });
             {
                 var projectScope = new FakeScope();
                 ProjectService.SetCurrent(new GalProject(

@@ -1,5 +1,8 @@
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Text.Json.Serialization;
+using GalNet.Core.Entry;
+using GalNet.Core.Parameters;
 using GalNet.Core.Settings;
 using GalNet.Core.Variable;
 
@@ -101,8 +104,24 @@ public sealed class EditorEntryData
     public int Id { get; set; }
     public string Type { get; set; } = "";
     public string Condition { get; set; } = "";
-    /// <summary>Runtime-compatible parameter map. Values remain strings because they are serialized to .galgroup.</summary>
-    public Dictionary<string, string> Parameters { get; set; } = new();
+    /// <summary>Owned author JSON. A missing key and a provided JSON null are distinct.</summary>
+    public Dictionary<string, JsonElement> Parameters { get; set; } = new();
+
+    public static Dictionary<string, JsonElement> ParseParameters(IEntryCatalog catalog, string type, IReadOnlyDictionary<string, string> values) =>
+        values.ToDictionary(pair => pair.Key,
+            pair => ValueCodec.ParseEditorText(catalog.Get(type).DynamicParameters![pair.Key].Value, pair.Value).Clone(), StringComparer.Ordinal);
+
+    public Dictionary<string, string> GetParameterText(IEntryCatalog catalog) => Parameters.ToDictionary(pair => pair.Key,
+        pair => ValueCodec.ToEditorText(catalog.Get(Type).DynamicParameters![pair.Key].Value, pair.Value), StringComparer.Ordinal);
+}
+
+/// <summary>Project-owned content identity; its path can change without replacing the document.</summary>
+public sealed class EditorGroupDocument(string groupId, string relativePath, List<EditorEntryData> entries)
+{
+    public string Id { get; } = groupId;
+    public string DocumentId => "group/" + Id;
+    public string RelativePath { get; } = relativePath;
+    public List<EditorEntryData> Entries { get; } = entries;
 }
 
 public sealed class LoadedEditorProjectDocument

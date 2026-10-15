@@ -1,6 +1,6 @@
 using System;
-using System.Globalization;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -44,6 +44,7 @@ public partial class StartupPageViewModel : PageViewModelBase
     }
 
     public ObservableCollection<RecentProjectItem> RecentProjects { get; } = [];
+    [ObservableProperty] private string _errorText = "";
 
     private void RefreshRecentProjects()
     {
@@ -72,6 +73,7 @@ public partial class StartupPageViewModel : PageViewModelBase
     [RelayCommand]
     private async Task OpenProjectAsync()
     {
+        ErrorText = "";
         try
         {
             var projectPath = await _fileDialog.OpenFolderPickerAsync("Select project folder");
@@ -83,12 +85,14 @@ public partial class StartupPageViewModel : PageViewModelBase
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to open project");
+            ErrorText = ex.Message;
         }
     }
 
     [RelayCommand]
     private async Task OpenRecentProjectAsync(RecentProjectItem? item)
     {
+        ErrorText = "";
         if (item == null) return;
 
         try
@@ -96,6 +100,7 @@ public partial class StartupPageViewModel : PageViewModelBase
             if (!Directory.Exists(item.Path))
             {
                 Log.Warning("Recent project path no longer exists: {Path}", item.Path);
+                ErrorText = $"Project folder not found: {item.Path}";
                 _projectService.RemoveRecentProject(item.Path);
                 RefreshRecentProjects();
                 return;
@@ -107,6 +112,7 @@ public partial class StartupPageViewModel : PageViewModelBase
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to open recent project: {Path}", item.Path);
+            ErrorText = ex.Message;
         }
     }
 

@@ -11,10 +11,12 @@ namespace GalNet.Editor.Services;
 public sealed class GraphEditingService : IGraphEditingService
 {
     private readonly IEntryCatalog _catalog;
+    private readonly EditorGroupProjectionStore? _groups;
 
-    public GraphEditingService(IEntryCatalog catalog)
+    public GraphEditingService(IEntryCatalog catalog, EditorGroupProjectionStore? groups = null)
     {
         _catalog = catalog;
+        _groups = groups;
     }
     public GraphNode CreateNode(ObservableCollection<GraphNode> nodes, GraphNodeKind kind, double x, double y, string? id = null)
     {
@@ -33,7 +35,15 @@ public sealed class GraphEditingService : IGraphEditingService
             Y = y
         };
         if (kind == GraphNodeKind.LinearGroup)
+        {
+            if (_groups is not null) graphNode.BindGroup(_groups.Get(graphNode.Id));
             InsertEntries(graphNode, 0, 1);
+        }
+        else if (kind == GraphNodeKind.ChoiceBranch)
+            graphNode.Options.Add(new BranchOptionEditorItemViewModel { Text = "Option 1" });
+        else if (kind == GraphNodeKind.ConditionBranch)
+            graphNode.Conditions.Add(new BranchConditionEditorItemViewModel { Expression = "true" });
+        graphNode.RefreshConnectors();
         return graphNode;
     }
 
@@ -100,7 +110,7 @@ public sealed class GraphEditingService : IGraphEditingService
         var inserted = new List<EntryEditorItemViewModel>(count);
         for (var offset = 0; offset < count; offset++)
         {
-            var entry = new EntryEditorItemViewModel
+            var entry = new EntryEditorItemViewModel(_catalog)
             {
                 StableId = Guid.NewGuid().ToString("N"),
                 Type = definition.Type,
