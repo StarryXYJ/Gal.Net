@@ -66,6 +66,33 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
         }
     }
 
+    public Task<bool> CommitSliderValueAsync(object? value)
+    {
+        if (_disposed) return Task.FromResult(false);
+        FieldValue candidate;
+        try { candidate = new(ValueCodec.Serialize(Field.Value, value)); }
+        catch (Exception exception)
+        {
+            Issue = new("value.invalid", exception.Message);
+            Notify();
+            return Task.FromResult(false);
+        }
+        if (_binding is not IFieldPreviewBinding { SupportsPreview: true } previewBinding)
+            return CommitAsync(candidate);
+        if (_submitting || !_binding.IsEnabled || !_binding.IsVisible) return Task.FromResult(false);
+
+        ValueIssue? issue;
+        try { issue = previewBinding.Preview(candidate); }
+        catch (Exception exception) { issue = new("field.preview", exception.Message); }
+        if (_disposed) return Task.FromResult(false);
+        _dirty = false;
+        _pending = null;
+        Refresh();
+        Issue = issue;
+        Notify();
+        return Task.FromResult(issue is null);
+    }
+
     public Task<bool> CommitTextAsync()
     {
         if (_disposed || !_dirty) return Task.FromResult(false);

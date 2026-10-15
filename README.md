@@ -67,6 +67,15 @@ dotnet format style GalNet.slnx --no-restore --verify-no-changes --diagnostics I
 
 Headless 示例在终端中交互；Avalonia 示例会启动桌面窗口。两个脚本都支持通过 `-Project`、`-BuildOutput` 和 `-SkipBuild` 指定已有内容。
 
+统计项目代码量可以运行：
+
+```powershell
+.\scripts\count-code-lines.ps1
+.\scripts\count-code-lines.ps1 -Json
+```
+
+脚本按编辑器、测试、文档和其他源码分组，显示文件数、物理行数和非空行数。默认识别 `.cs`、`.xaml`、`.axaml` 及常见源码扩展，并跳过构建产物、依赖、缓存和 agent 工具目录。
+
 ## 开发流程
 
 较大的功能、架构调整和跨阶段重构使用 `features/F-YYYYMMDD-NN-short-slug/` 记录需求、设计、实施计划和验证总结。文档职责与推荐流程见 [Feature 工作流与 Agent 知识维护](docs/design/feature-workflow.md)。

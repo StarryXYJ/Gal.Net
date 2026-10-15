@@ -1,11 +1,14 @@
 using DynamicLocalization.Core;
+using Avalonia.Threading;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
+using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Core.Settings;
 using GalNet.Core.Variable;
 using GalNet.Game.Controls.Forms;
 using GalNet.Runtime.Variables;
+using GalNet.Runtime.Logging;
 
 namespace GalNet.Sample.Avalonia.Services;
 
@@ -18,11 +21,16 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
     private readonly GamePageViewModel _gameplay;
     private readonly ChoiceSetting<string> _language;
     private readonly SettingsCoordinator _coordinator;
+    private readonly DispatcherTimer _audioPreviewTimer;
+    private readonly DispatcherTimer _liveSaveTimer;
     private readonly IPlayerDisplayService _display;
     private readonly ChoiceSetting<PlayerDisplayMode> _displayMode;
     private readonly ChoiceSetting<PlayerWindowSize> _windowSize;
     private PlayerVariableService? _variables;
     private bool _restoring;
+    private bool _audioPreviewPending;
+    private bool _liveSavePending;
+    private long _liveSaveRevision;
     private readonly List<Action<IReadOnlyDictionary<string, GalNet.Core.Variable.Variable>>> _restoreValues = [];
     public GameSettings RuntimeSettings { get; private set; } = new();
     public event Action<GameSettings>? SettingsChanged;
@@ -32,6 +40,10 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
         _localization = localization;
         _gameplay = gameplay;
         _display = display ?? new SampleWindowDisplayService();
+        _audioPreviewTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        _audioPreviewTimer.Tick += OnAudioPreviewTimerTick;
+        _liveSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+        _liveSaveTimer.Tick += OnLiveSaveTimerTick;
         _displayMode = new ChoiceSetting<PlayerDisplayMode>("displayMode", "Settings.DisplayMode", PlayerDisplayMode.Window,
             _display.Modes.Select(mode => new SettingChoice<PlayerDisplayMode>(mode.ToString(), "Settings.Display." + mode, mode, localization.GetString("Settings.Display." + mode))),
             () => _display.Mode, async (value, token) => { await _display.ApplyModeAsync(value, token); Store("player.galnet.settings.displayMode", value.ToString()); }, localization.GetString("Settings.DisplayMode"))
@@ -58,13 +70,13 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
             new SettingCategory("graphics", "Settings.Graphics", [_displayMode, _windowSize], localization.GetString("Settings.Graphics")),
             new SettingCategory("audio", "Settings.Audio",
             [
-                Number("masterVolume", "Settings.MasterVolume", 1, 1, .01, () => RuntimeSettings.MasterVolume, value => RuntimeSettings.MasterVolume = (float)value, NumericEditorKind.Slider),
+                Number("masterVolume", "Settings.MasterVolume", 1, 1, .01, () => RuntimeSettings.MasterVolume, value => RuntimeSettings.MasterVolume = (float)value, NumericEditorKind.Slider, livePreview: true),
                 Boolean("masterMuted", "Settings.MasterMuted", false, () => RuntimeSettings.MasterMuted, value => RuntimeSettings.MasterMuted = value),
-                Number("bgmVolume", "Settings.BgmVolume", 1, 1, .01, () => RuntimeSettings.BgmVolume, value => RuntimeSettings.BgmVolume = (float)value, NumericEditorKind.Slider),
+                Number("bgmVolume", "Settings.BgmVolume", 1, 1, .01, () => RuntimeSettings.BgmVolume, value => RuntimeSettings.BgmVolume = (float)value, NumericEditorKind.Slider, livePreview: true),
                 Boolean("bgmMuted", "Settings.BgmMuted", false, () => RuntimeSettings.BgmMuted, value => RuntimeSettings.BgmMuted = value),
-                Number("sfxVolume", "Settings.SfxVolume", 1, 1, .01, () => RuntimeSettings.SfxVolume, value => RuntimeSettings.SfxVolume = (float)value, NumericEditorKind.Slider),
+                Number("sfxVolume", "Settings.SfxVolume", 1, 1, .01, () => RuntimeSettings.SfxVolume, value => RuntimeSettings.SfxVolume = (float)value, NumericEditorKind.Slider, livePreview: true),
                 Boolean("sfxMuted", "Settings.SfxMuted", false, () => RuntimeSettings.SfxMuted, value => RuntimeSettings.SfxMuted = value),
-                Number("voiceVolume", "Settings.VoiceVolume", 1, 1, .01, () => RuntimeSettings.VoiceVolume, value => RuntimeSettings.VoiceVolume = (float)value, NumericEditorKind.Slider),
+                Number("voiceVolume", "Settings.VoiceVolume", 1, 1, .01, () => RuntimeSettings.VoiceVolume, value => RuntimeSettings.VoiceVolume = (float)value, NumericEditorKind.Slider, livePreview: true),
                 Boolean("voiceMuted", "Settings.VoiceMuted", false, () => RuntimeSettings.VoiceMuted, value => RuntimeSettings.VoiceMuted = value)
             ], localization.GetString("Settings.Audio"))
         });
@@ -76,7 +88,20 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
 
     public IReadOnlyList<SettingCategory> Categories { get; }
     public EditorRegistry Editors { get; } = SampleCustomization.CreateFieldEditors();
-    public Task FlushAsync() => _coordinator.FlushAsync();
+    public Task FlushAsync() => AvaloniaUiDispatcher.Instance.InvokeAsync(FlushOnUiAsync);
+
+    private async Task FlushOnUiAsync()
+    {
+        FlushAudioPreview();
+        _liveSaveTimer.Stop();
+        if (_liveSavePending)
+        {
+            var revision = _liveSaveRevision;
+            await _coordinator.RequestSaveAsync();
+            if (revision == _liveSaveRevision) _liveSavePending = false;
+        }
+        await _coordinator.FlushAsync();
+    }
 
     public void BindWindow(global::Avalonia.Controls.Window? window)
     {
@@ -131,7 +156,7 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
     }
 
     private DoubleSetting Number(string id, string key, double defaultValue, double maximum, double step,
-        Func<double> read, Action<double> write, NumericEditorKind editor = NumericEditorKind.NumericUpDown)
+        Func<double> read, Action<double> write, NumericEditorKind editor = NumericEditorKind.NumericUpDown, bool livePreview = false)
     {
         var variable = "player.galnet.settings." + id;
         _restoreValues.Add(stored =>
@@ -141,7 +166,55 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
         });
         return new DoubleSetting(id, key, defaultValue, 0, maximum, step, read,
             (value, token) => ApplyRuntimeSettingAsync(variable, () => write(value), (float)value, token), _localization.GetString(key))
-        { EditorKind = editor };
+        {
+            EditorKind = editor,
+            LivePreview = livePreview ? value => PreviewRuntimeSetting(variable, () => write(value), (float)value) : null
+        };
+    }
+
+    private void PreviewRuntimeSetting(string variable, Action apply, object storedValue)
+    {
+        apply();
+        if (!_audioPreviewPending)
+        {
+            _audioPreviewPending = true;
+            _audioPreviewTimer.Start();
+        }
+        Store(variable, storedValue);
+        if (_restoring || _variables is null) return;
+        _liveSavePending = true;
+        _liveSaveRevision++;
+        _liveSaveTimer.Stop();
+        _liveSaveTimer.Start();
+    }
+
+    private void OnAudioPreviewTimerTick(object? sender, EventArgs args) => FlushAudioPreview();
+
+    private void FlushAudioPreview()
+    {
+        _audioPreviewTimer.Stop();
+        if (!_audioPreviewPending) return;
+        _audioPreviewPending = false;
+        try { SettingsChanged?.Invoke(RuntimeSettings); }
+        catch (Exception exception) { GameLog.Logger.Error(exception, "Live audio settings preview failed"); }
+    }
+
+    private void OnLiveSaveTimerTick(object? sender, EventArgs args)
+    {
+        _liveSaveTimer.Stop();
+        _ = PersistLivePreviewAsync();
+    }
+
+    private async Task PersistLivePreviewAsync()
+    {
+        if (!_liveSavePending) return;
+        var revision = _liveSaveRevision;
+        try
+        {
+            await _coordinator.RequestSaveAsync();
+            if (revision == _liveSaveRevision) _liveSavePending = false;
+        }
+        catch (Exception exception) { GameLog.Logger.Error(exception, "Debounced player settings save failed"); }
     }
 
     private IntSetting Milliseconds(string id, string key, int defaultValue, int maximum, int step, Func<int> read, Action<int> write)
@@ -189,6 +262,10 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
 
     public void Dispose()
     {
+        _audioPreviewTimer.Stop();
+        _audioPreviewTimer.Tick -= OnAudioPreviewTimerTick;
+        _liveSaveTimer.Stop();
+        _liveSaveTimer.Tick -= OnLiveSaveTimerTick;
         _localization.CultureService.CultureChanged -= OnCultureChanged;
         _display.Changed -= OnDisplayChanged;
         if (_display is SampleWindowDisplayService desktop) desktop.Dispose();

@@ -100,7 +100,7 @@ public static class DefaultFieldEditors
                         context.Text = control.Value.ToString("R", CultureInfo.InvariantCulture);
                         _ = context.CommitTextAsync();
                     }
-                    else _ = context.CommitValueAsync(Convert.ChangeType(control.Value, type, CultureInfo.InvariantCulture));
+                    else _ = context.CommitSliderValueAsync(Convert.ChangeType(control.Value, type, CultureInfo.InvariantCulture));
                 }
             });
     }

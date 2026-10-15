@@ -70,7 +70,7 @@ public abstract class SettingItem : ObservableObject
     public abstract void Refresh();
 }
 
-public abstract class SettingItem<T> : SettingItem, IFieldBinding
+public abstract class SettingItem<T> : SettingItem, IFieldBinding, IFieldPreviewBinding
 {
     private readonly Func<T> _read;
     private readonly Func<T, CancellationToken, Task> _apply;
@@ -92,6 +92,8 @@ public abstract class SettingItem<T> : SettingItem, IFieldBinding
     protected virtual EditorHints? GetEditorHints() => Editor;
     protected virtual IReadOnlyList<FieldEditorOption>? FieldOptions => null;
     IReadOnlyList<FieldEditorOption>? IFieldBinding.Options => FieldOptions;
+    public Action<T>? LivePreview { get; init; }
+    bool IFieldPreviewBinding.SupportsPreview => LivePreview is not null;
     public event EventHandler? Changed;
     protected override void OnPropertyChanged(PropertyChangedEventArgs e)
     {
@@ -105,6 +107,26 @@ public abstract class SettingItem<T> : SettingItem, IFieldBinding
         if (value.Json is not { } json) return new("setting.required", "A setting value is required.", Id);
         var typed = (T)ValueCodec.Deserialize(ValueContract, json)!;
         return await TrySetValueAsync(typed, cancellationToken) ? null : new("setting.apply", ErrorKey ?? "Settings.Cancelled", Id);
+    }
+    ValueIssue? IFieldPreviewBinding.Preview(FieldValue value)
+    {
+        RefreshAvailability();
+        if (IsForced || !Availability.IsEnabled) return new("setting.unavailable", Availability.ReasonKey ?? "Settings.Unavailable", Id);
+        if (LivePreview is not { } preview) return new("setting.preview", "Live preview is unavailable.", Id);
+        if (value.Json is not { } json) return new("setting.required", "A setting value is required.", Id);
+        if (ValueValidation.Validate(ValueContract, json) is { } issue) return issue;
+        T typed;
+        try { typed = (T)ValueCodec.Deserialize(ValueContract, json)!; }
+        catch (Exception exception) { return new("setting.preview", exception.Message, Id); }
+        if (Validate(typed) is { } error) return new("setting.invalid", error, Id);
+        try
+        {
+            ErrorKey = null;
+            preview(typed);
+            Refresh();
+            return null;
+        }
+        catch (Exception exception) { return new("setting.preview", exception.Message, Id); }
     }
     public override bool IsForced => _forcedValue is not null;
     public T DefaultValue { get; set; }
@@ -173,6 +195,23 @@ public sealed class SettingsCoordinator
             _tail = ObserveAsync(flush);
             return flush;
         }
+    }
+    public Task RequestSaveAsync(CancellationToken cancellationToken = default)
+    {
+        lock (_gate)
+        {
+            var save = SaveAfterAsync(_tail, cancellationToken);
+            _tail = ObserveAsync(save);
+            return save;
+        }
+    }
+    private async Task SaveAfterAsync(Task previous, CancellationToken cancellationToken)
+    {
+        await Task.Yield();
+        await previous;
+        cancellationToken.ThrowIfCancellationRequested();
+        _pendingSave = true;
+        await PersistAsync(cancellationToken);
     }
     private async Task FlushCoreAsync(Task previous)
     {

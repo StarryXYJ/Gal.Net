@@ -29,3 +29,10 @@ public interface IFieldBinding
     object? Label => null;
     IReadOnlyList<FieldEditorOption>? Options => null;
 }
+
+/// <summary>Optional synchronous preview path for controls that change continuously, such as sliders.</summary>
+public interface IFieldPreviewBinding
+{
+    bool SupportsPreview { get; }
+    ValueIssue? Preview(FieldValue value);
+}
