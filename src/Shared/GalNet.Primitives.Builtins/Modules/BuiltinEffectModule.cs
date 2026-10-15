@@ -4,22 +4,11 @@ using GalNet.Presentation.Abstractions.View;
 
 namespace GalNet.Primitives.Builtins;
 
-public sealed class BuiltinEffectModule : PrimitiveModule
-{
-    public BuiltinEffectModule(IEffectPresenter? presenter = null) : base(
-    [
-        PrimitiveImplementation.For<EffectApplyOptions>(BuiltinEntryIds.ApplyEffect, (context, options) => new ApplyEffectPrimitiveInstance(
-                context.Runtime,
-                presenter,
-                BuiltinRuntimeActions.CreateEffectRequest(options),
-                context.BatchId,
-                context.ScopeCancellation)),
-        PrimitiveImplementation.For<InstanceIdOptions>(BuiltinEntryIds.StopEffect, (context, options) => new StopEffectPrimitiveInstance(
-                context.Runtime,
-                presenter,
-                options.InstanceId ?? "",
-                context.BatchId,
-                context.ScopeCancellation))
-    ])
-    { }
-}
+public sealed class BuiltinEffectModule(IEffectPresenter? presenter = null) : PrimitiveModule(
+    registry =>
+    {
+        registry.Register<EffectApplyOptions>(BuiltinEntryIds.ApplyEffect, (context, options) =>
+            new ApplyEffectPrimitiveInstance(presenter, context, options));
+        registry.Register<InstanceIdOptions>(BuiltinEntryIds.StopEffect, (context, options) =>
+            new StopEffectPrimitiveInstance(presenter, context, options));
+    });

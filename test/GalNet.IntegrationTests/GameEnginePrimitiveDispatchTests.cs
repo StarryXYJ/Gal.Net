@@ -416,15 +416,18 @@ public class GameEnginePrimitiveDispatchTests
     private static PrimitiveEntry Primitive(string typeId, object arguments, string? batchId = null) =>
         new(typeId, JsonSerializer.SerializeToElement(arguments), batchId);
 
-    private static PrimitiveImplementation Entry(
+    private static (string Type, Func<PrimitiveCreateContext, PrimitiveInstance> Factory) Entry(
         string name,
         Func<PrimitiveCreateContext, PrimitiveInstance> factory) =>
-        new(name, factory);
+        (name, factory);
 
-    private static CompositeGameView View(params PrimitiveImplementation[] entries) =>
+    private static CompositeGameView View(params (string Type, Func<PrimitiveCreateContext, PrimitiveInstance> Factory)[] entries) =>
         new GameRegistration()
             .RegisterSchema(new DefaultEntryModule("test", entries.Select(entry => new DefaultPrimitiveEntryBase(entry.Type, DynamicParameterTable.Empty))))
-            .RegisterImplementation(new PrimitiveModule(entries))
+            .RegisterImplementation(new PrimitiveModule(registry =>
+            {
+                foreach (var entry in entries) registry.Register(entry.Type, entry.Factory);
+            }))
             .BuildView();
 
     private static async Task WaitUntilAsync(Func<bool> condition)

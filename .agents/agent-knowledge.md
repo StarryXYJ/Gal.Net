@@ -39,6 +39,8 @@
 
 ## 当前工作
 
+- [F-20261015-01 primitive 注册简化](../features/F-20261015-01-primitive-registration/summary.md)：PrimitiveImplementation 已移除，IPrimitiveModule.Register(PrimitiveRegistry) 在 BuildView 时直接登记 ID → 实例工厂；Register<T> 校验 DTO 并逐次解码独立 Options，Immediate/Async 保留短回调。注册结束或失败后冻结；RegisterDeclared 按 catalog 交集筛选并保留最终契约校验。复杂 Builtins 实例接收 context/Options，场景重放仍使用 request 构造路径。
+
 - [F-20261013-02 参数与 Sample 简化](../features/F-20261013-02-parameter-and-sample-simplification/summary.md) 已完成。Core 的 ValueDescriptor/FieldDescriptor、ValueCodec/ValueValidation 为中立值事实；开放 EditorId/SchemaForm/registry/lease 由 Avalonia 宿主/主题组合，Editor 直接绑定作者文档，设置保留独立异步 apply/save。generator 生成有序字段与成员访问，仅为构建期 Analyzer；源基类字段/default/converter 可合并并检查冲突。全量 43 条 Entry 中 38 条参数 Entry 已 DTO 化，5 条无参数空 schema；ID 位于 BuiltinEntryIds，Composite 用 typed options/子 DTO writer，普通字符串 reader/34 个作者类壳已删除。partial/full 校验保持分开，专属资源/表达式编辑器仍消费唯一 schema；省略/null/default 仍独立。SampleCustomization 集中项目选择，保留 Session/Runner/Presentation 等所有权。作者路径为 Immediate<T>、Async<T>、For<T>、typed Composite；AsyncPrimitiveInstance 默认传播失败，Builtin 展示明确处理错误，PrimitiveTaskScope 完成移除/保留错误。TextAdvancePrimitiveInstance 保留展示结束与玩家推进分离，原 Dialogue Lock 语义保留；Sample 的顺序清理继续尝试所有独立释放并聚合错误，Session 重复关闭复用结果。最终 11 项目 898 用例、解决方案编译、契约独立部署、CLI 编译 4 个 Group 和 16→20 Composite 完整产物对照通过；原两项 UI Flush 挂起已由真实 UI pump 测试解决。4b 计入公共机制后生产净减 51 行，5d 净减 155 行；新增表单/generator 的成本单列，不声称全仓净减少。原生媒体人工全程未做，完整范围与自审见 summary/review。全量设置 DTO、自动框架与 Core 领域/快照重构继续暂缓。
 
 - [F-20261013-01-editor-cli-operations](../features/F-20261013-01-editor-cli-operations/summary.md) 已实现独立内置/项目契约、项目 scope catalog、面向 agent 的 CLI 原始查询/校验/单 Group 编译、共享生命周期与无损保存、Windows 回收站和单平台截图样例；Phase 1–7 已验证并提交；审核与当前边界见 summary/review。CLI 发现使用 help --json，不保留旧别名或默认内置 fallback。契约是可信 C# 代码，动态加载不构成沙箱。

@@ -170,11 +170,11 @@ Editor 对采用通用字段编辑器的 DTO 契约 Entry 使用整组 SchemaFor
 执行模块可选择强类型入口，与契约使用相同 DTO：
 
 ```csharp
-var implementation = PrimitiveImplementation.Immediate<PulseOptions>(
-    "game.pulse", (context, options) => ApplyPulse(options.Faction!, options.Amount));
+var module = new PrimitiveModule(registry => registry.Immediate<PulseOptions>(
+    "game.pulse", (context, options) => ApplyPulse(options.Faction!, options.Amount)));
 ```
 
-CompositeGameView 构建时检查执行工厂的 DTO 类型与契约 FieldDataType 一致。Dispatch 先用契约规范化和校验 JSON，再由工厂使用每个字段的 ValueCodec 和生成成员访问填充独立 DTO；参数默认值和属性 converter 不另写一份。Context 继续提供 Runtime、BatchId 和 ScopeCancellation，业务 DTO 不需要 ObservableObject。未提供且无 schema 默认值的字段保持新 DTO 的成员值；需要判断 presence 时查询 context.Arguments，其中包含规范化后的默认值，并非原始作者输入。普通 JSON 工厂仍可用于手写/动态契约；For<T> 不支持直接把未经规范化的参数交给工厂执行。
+CompositeGameView 构建时检查执行工厂的 DTO 类型与契约 FieldDataType 一致。Dispatch 先用契约规范化和校验 JSON，再由工厂使用每个字段的 ValueCodec 和生成成员访问填充独立 DTO；参数默认值和属性 converter 不另写一份。Context 继续提供 Runtime、BatchId 和 ScopeCancellation，业务 DTO 不需要 ObservableObject。未提供且无 schema 默认值的字段保持新 DTO 的成员值；需要判断 presence 时查询 context.Arguments，其中包含规范化后的默认值，并非原始作者输入。普通 JSON 工厂仍可用于手写/动态契约；Register<T> 不支持直接把未经规范化的参数交给工厂执行。
 
 Sample 的 ScreenshotOptions 同时作为契约定义和截图执行参数；Editor 只消费其 schema，不维护副本。见 [阶段证据](../features/F-20261013-02-parameter-and-sample-simplification/phase-2e.md)。
 
@@ -187,8 +187,8 @@ const string type = "game.mark";
 using var registration = new GameRegistration()
     .RegisterSchema(new DefaultEntryModule("game",
         [new DefaultPrimitiveEntryBase(type, DynamicParameterTable.Empty)]))
-    .RegisterImplementation(new PrimitiveModule([
-        PrimitiveImplementation.Immediate(type, context => context.Runtime.SetVariable("seen", true))]));
+    .RegisterImplementation(new PrimitiveModule(registry =>
+        registry.Immediate(type, context => context.Runtime.SetVariable("seen", true))));
 using var view = registration.BuildView();
 var compiled = GalgroupCompiler.Compile(new GroupDocument
 {
@@ -201,14 +201,14 @@ view.Dispatch(new PrimitiveEntry(compiled.TypeId, compiled.Arguments, compiled.B
 
 Immediate / Immediate<T> 创建非阻塞、不可跳过的同步实例，回调完成后逻辑完成；Normal 和 Quick 使用 dispatch，CatchUp 默认重复同一行为。需要不同重放策略时显式传入 catchUp 回调；纯副作用可传空回调，持久状态操作应在 catchUp 中保留必要状态更新。回调异常仍传播，工厂不负责 UI dispatch、自动取消或后台任务；不能用 async lambda 向 Action 回调隐藏异步工作。
 
-复杂校验继续通过 ForDto 的 validateArguments 处理，例如 ScreenshotSchema.ValidateFileName 的安全文件名规则；值类型、长度、默认值等仍来自 ScreenshotOptions。异步或可跳过实例使用 For<T> 返回业务实例，显式传递 BatchId / ScopeCancellation：
+复杂校验继续通过 ForDto 的 validateArguments 处理，例如 ScreenshotSchema.ValidateFileName 的安全文件名规则；值类型、长度、默认值等仍来自 ScreenshotOptions。异步或可跳过实例使用 Register<T> 返回业务实例，显式传递 BatchId / ScopeCancellation：
 
 ```csharp
-var wait = PrimitiveImplementation.For<WaitOptions>(BuiltinEntryIds.Wait, (context, options) =>
-    new WaitPrimitiveInstance(TimeSpan.FromSeconds(options.Duration), context.BatchId, context.ScopeCancellation));
+var module = new PrimitiveModule(registry => registry.Register<WaitOptions>(BuiltinEntryIds.Wait, (context, options) =>
+    new WaitPrimitiveInstance(TimeSpan.FromSeconds(options.Duration), context.BatchId, context.ScopeCancellation)));
 ```
 
-这段是内置 flow.wait 的实际路径，等待、Quick/CatchUp 和 skip 保留原实例语义。截图仍使用 For<ScreenshotOptions> 返回自己的异步实例；Composite 仍通过 Compile 显式展开成 primitive，不生成业务、生命周期或持久化。完整 Composite 示例见下文。内置 Entry 不再需要一条指令一个作者 CLR 类；稳定 ID 位于 BuiltinEntryIds，参数事实从 catalog.DynamicParameters 或 DTO.Schema 取得，执行使用通用 PrimitiveEntry。
+这段是内置 flow.wait 的实际路径，等待、Quick/CatchUp 和 skip 保留原实例语义。截图仍使用 Register<ScreenshotOptions> 返回自己的异步实例；Composite 仍通过 Compile 显式展开成 primitive，不生成业务、生命周期或持久化。完整 Composite 示例见下文。内置 Entry 不再需要一条指令一个作者 CLR 类；稳定 ID 位于 BuiltinEntryIds，参数事实从 catalog.DynamicParameters 或 DTO.Schema 取得，执行使用通用 PrimitiveEntry。
 
 ### 2. 分别定义契约和执行模块
 
@@ -238,22 +238,24 @@ public sealed class MyGameSchemas() : EntryModuleBase("mygame",
 using GalNet.Presentation.Abstractions.Execution;
 
 public sealed class MyGameModule(IReputationService reputationService) : PrimitiveModule(
-    [PrimitiveImplementation.Immediate<ReputationOptions>("mygame.reputation.add",
-        (_, options) => reputationService.Add(options.Faction!, options.Amount))]) { }
+    registry => registry.Immediate<ReputationOptions>("mygame.reputation.add",
+        (_, options) => reputationService.Add(options.Faction!, options.Amount))) { }
 ```
+
+IPrimitiveModule 通过 Register(PrimitiveRegistry) 在 BuildView 时贡献工厂；PrimitiveModule 接受注册回调。注册表直接保存完整 ID 到实例工厂，注册结束或失败后冻结，不创建逐指令 implementation 对象。复杂实例可以接收 Options 和 PrimitiveCreateContext；Options 只保存契约参数，context 和构造参数提供 runtime、取消、批次和 presenter。
 
 不必逐条在组合根注册。一个领域模块可以贡献多个指令，并在实例间共享轨道、缓存或服务；也可用 `RegisterInstruction` 单独贡献指令。同前缀可以由多个模块贡献不同指令，只有完整 type ID 重复才冲突。schema 模块无资源生命周期；执行模块可覆写 `Dispose` / `DisposeAsync`。
 
-单次异步业务可以使用 `PrimitiveImplementation.Async<T>`，默认非阻塞、不可跳过；Quick 正常执行，CatchUp 默认重复执行，若该模式不应产生副作用，显式提供 catchUp 回调：
+单次异步业务可以使用 `PrimitiveRegistry.Async<T>`，默认非阻塞、不可跳过；Quick 正常执行，CatchUp 默认重复执行，若该模式不应产生副作用，显式提供 catchUp 回调：
 
 ```csharp
-var export = PrimitiveImplementation.Async<ExportOptions>("project.export",
+var module = new PrimitiveModule(registry => registry.Async<ExportOptions>("project.export",
     (_, options, token) => exporter.ExportAsync(options.Name, token),
     blocking: true,
-    catchUp: (_, _, _) => Task.CompletedTask);
+    catchUp: (_, _, _) => Task.CompletedTask));
 ```
 
-该工厂自动传递 BatchId/执行 scope token，每次调用独立解码 DTO；失败通过 PresentationCompletion 传播。需要实例状态或不同错误策略时，用 `For<T>` 返回继承 `AsyncPrimitiveInstance` 的实例：`OnStarting` 同步提交状态，`ExecuteAsync` 包含业务操作与 finally 清理；`HandleExecutionFailure` 默认返回 false 传播错误，只有明确处理错误时才返回 true。IsBlocking/IsSkippable、模式与 skip 钩子仍可重载，CatchUp 无异步操作时调用 `CompleteWithoutExecution`；若还需同步提交状态则调用 `DispatchWithoutExecution`。PresentationCompletion 从实例创建时保持同一任务，在操作和清理后发布结果/错误，随后发送 Completed 通知。
+该工厂自动传递 BatchId/执行 scope token，每次调用独立解码 DTO；失败通过 PresentationCompletion 传播。需要实例状态或不同错误策略时，用 `Register<T>` 返回继承 `AsyncPrimitiveInstance` 的实例：`OnStarting` 同步提交状态，`ExecuteAsync` 包含业务操作与 finally 清理；`HandleExecutionFailure` 默认返回 false 传播错误，只有明确处理错误时才返回 true。IsBlocking/IsSkippable、模式与 skip 钩子仍可重载，CatchUp 无异步操作时调用 `CompleteWithoutExecution`；若还需同步提交状态则调用 `DispatchWithoutExecution`。PresentationCompletion 从实例创建时保持同一任务，在操作和清理后发布结果/错误，随后发送 Completed 通知。
 
 模块需要拥有后台操作时可组合 `PrimitiveTaskScope`：`Run(token => operation)` 只登记已运行任务，完成即移除；Dispose 启动取消，DisposeAsync 等待操作和清理、聚合保留的错误，重复释放等待同一任务。业务需要同时遵守 Engine scope 时仍应链接两个 token；scope 不拥有 presenter 或其他平台资源。释放时传播还是记录错误由模块明确选择。截图模块是实际示例。
 
@@ -261,7 +263,7 @@ Sample 的 Session、Runner、Presentation 与下属存档/资源 scope 按明�
 
 多阶段交互、视频或动画可以直接继承 `PrimitiveInstance`，保留自身推进/资源规则。不要用未经观察异常的 `async void`。创建实例时原样传入 `context.BatchId`，`OnSkip` 必须幂等且只处理自己的资源。non-blocking 原语应先提交可存档状态，再启动展示。
 
-文本显示后仍要等待玩家推进时，可以继承 Builtins 的 TextAdvancePrimitiveInstance，共用阶段/skip/模式机制，重载展示操作。下面是使用现有对白端口的完整实例；执行模块通过 For<T> 传入正文、BatchId 和 ScopeCancellation：
+文本显示后仍要等待玩家推进时，可以继承 Builtins 的 TextAdvancePrimitiveInstance，共用阶段/skip/模式机制，重载展示操作。下面是使用现有对白端口的完整实例；执行模块通过 Register<T> 传入正文、BatchId 和 ScopeCancellation：
 
 ```csharp
 using GalNet.Presentation.Abstractions.View;

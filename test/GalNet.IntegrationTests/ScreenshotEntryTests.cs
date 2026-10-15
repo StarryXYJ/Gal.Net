@@ -203,22 +203,23 @@ public sealed class ScreenshotEntryTests
     }
 
     [Test]
-    public async Task DisposingModuleDoesNotWaitForAnUndispatchedInstance()
+    public async Task DisposedModuleRejectsDispatchAndUndispatchedScopeDoesNotBlockCleanup()
     {
         await using var session = HeadlessUnitTestSession.StartNew(typeof(ScreenshotTestApplication));
         await DispatchAsync(session, async () =>
         {
-            await using var module = new SampleScreenshotModule(new GamePage(), () => _root);
+            using var scope = new GalNet.Presentation.Abstractions.Execution.PrimitiveTaskScope();
+            var page = new GamePage();
+            await using var module = new SampleScreenshotModule(page, () => _root);
             var catalog = new TargetProfileEntryCatalog(ProjectSchemas.Modules);
-            var context = new PrimitiveCreateContext(catalog.Get(ScreenshotSchema.TypeId),
-                new PrimitiveEntry(ScreenshotSchema.TypeId, JsonSerializer.SerializeToElement(new { })),
-                new GalNet.Runtime.Runtime.GameRuntime(null), default);
-            var implementation = module.Instructions[ScreenshotSchema.TypeId];
-            var instance = implementation.CreateInstance(context);
+            await using var view = new CompositeGameView(catalog, [module]);
+            var entry = new PrimitiveEntry(ScreenshotSchema.TypeId, JsonSerializer.SerializeToElement(new { }));
+            var instance = new ScreenshotPrimitiveInstance(scope, page, () => _root, null, null, default, scope.CancellationToken);
             await module.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
-            Assert.Throws<ObjectDisposedException>(() => implementation.CreateInstance(context));
+            Assert.Throws<ObjectDisposedException>(() => view.Dispatch(entry, new GalNet.Runtime.Runtime.GameRuntime(null), default));
+            await scope.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
             instance.Dispatch();
-            try { await instance.PresentationCompletion; Assert.Fail("Expected module cancellation."); }
+            try { await instance.PresentationCompletion; Assert.Fail("Expected scope cancellation."); }
             catch (OperationCanceledException) { }
             Assert.That(instance.PresentationCompletion.IsCanceled, Is.True);
             Assert.That(Directory.GetFiles(_root), Is.Empty);

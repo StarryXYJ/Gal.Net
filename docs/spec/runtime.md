@@ -141,14 +141,14 @@ Dialogue/NVL 使用 Builtins 的 `TextAdvancePrimitiveInstance` 共用打字、�
 契约和执行独立注册：
 
 - `IEntryModule` 导出 primitive 参数 schema 和编译期 composite，不创建执行服务。
-- `IPrimitiveModule` 导出完整指令 ID 到 `PrimitiveImplementation` 的表，持有游戏会话共享状态。
+- `IPrimitiveModule.Register(PrimitiveRegistry)` 在 view 组合时登记完整指令 ID 到实例工厂，持有游戏会话共享状态；注册表检查 schema/DTO 与重复 ID，组合结束或失败后冻结。没有逐指令 implementation 包装对象。
 - `GameRegistration` 组合两者；`BuildCatalog` 提供编译契约，`BuildView` 冻结注册并转移执行模块所有权。
 - 同前缀可多次注册不同指令；重复完整 ID、实现无对应 schema 都会报错。
 - `AddBuiltins` 是主内置入口；`AddBuiltinSchemas` 和各领域 `AddBuiltin*` 可独立选择。注册不等于提供平台能力，具体 presenter/host 由宿主传入。
 
-`CompositeGameView.Dispatch()` 查找完整 ID，按 schema 规范化参数并执行语义验证，构造 `PrimitiveCreateContext`，调用工厂、验证 BatchId，最后分发实例。缺失实现抛错，不返回 null；Engine 初始化时检查 Graph 所需的全部 primitive 实现。普通分发失败也不会被忽略或推进该条目的游标。
+`CompositeGameView.Dispatch()` 查找完整 ID，按 schema 规范化参数并执行语义验证，构造 `PrimitiveCreateContext`，调用工厂、验证 BatchId，最后分发实例。泛型 `Register<T>` 在工厂入口解码独立 Options，复杂实例可以直接消费 context 与 Options；Immediate / Async 保留短回调入口。缺失实现抛错，不返回 null；Engine 初始化时检查 Graph 所需的全部 primitive 实现。普通分发失败也不会被忽略或推进该条目的游标。
 
-Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`，最后释放借用的 presenter 和后端；view 逆序释放全部执行模块并汇总错误。未转移的模块由 registration 释放。
+Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`，最后释放借用的 presenter 和后端；view 逆序释放全部执行模块并汇总错误。内置选择模块通过 RegisterDeclared 按传入 catalog 过滤贡献，已选指令仍须通过最终契约的 schema/DTO 校验。未转移的模块由 registration 释放。
 
 ## 当前内置模块
 

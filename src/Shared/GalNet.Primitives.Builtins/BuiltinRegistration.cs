@@ -70,10 +70,7 @@ public static class BuiltinRegistration
     // Selection limits exposed instructions while retaining the whole component's shared state and ownership.
     private sealed class SelectedBuiltinModule(IPrimitiveModule inner, IEntryCatalog catalog) : IPrimitiveModule
     {
-        public IReadOnlyDictionary<string, PrimitiveImplementation> Instructions { get; } =
-            new System.Collections.ObjectModel.ReadOnlyDictionary<string, PrimitiveImplementation>(inner.Instructions
-                .Where(pair => catalog.TryGet(pair.Key, out var schema) && schema.Kind == EntryKind.Primitive)
-                .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal));
+        public void Register(PrimitiveRegistry registry) => registry.RegisterDeclared(inner, catalog);
         private bool _disposed;
         public void Dispose() { if (_disposed) return; _disposed = true; inner.Dispose(); }
         public async ValueTask DisposeAsync() { if (_disposed) return; _disposed = true; await inner.DisposeAsync().ConfigureAwait(false); }

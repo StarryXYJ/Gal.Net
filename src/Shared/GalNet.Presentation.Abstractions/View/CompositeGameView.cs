@@ -10,7 +10,7 @@ public sealed class CompositeGameView : IGameView
 {
     private readonly IEntryCatalog _catalog;
     private readonly IReadOnlyList<IPrimitiveModule> _modules;
-    private readonly Dictionary<string, PrimitiveImplementation> _instructions = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Func<PrimitiveCreateContext, PrimitiveInstance>> _instructions;
     private bool _disposed;
 
     public CompositeGameView(IEntryCatalog catalog, IEnumerable<IPrimitiveModule> modules)
@@ -19,15 +19,10 @@ public sealed class CompositeGameView : IGameView
         ArgumentNullException.ThrowIfNull(modules);
         _catalog = catalog;
         _modules = modules.ToArray();
-        foreach (var module in _modules)
-            foreach (var instruction in module.Instructions.Values)
-            {
-                if (!catalog.TryGet(instruction.Type, out var schema) || schema.Kind != EntryKind.Primitive)
-                    throw new InvalidOperationException($"Instruction '{instruction.Type}' has no primitive schema.");
-                instruction.ValidateDefinition(schema);
-                if (!_instructions.TryAdd(instruction.Type, instruction))
-                    throw new InvalidOperationException($"Instruction '{instruction.Type}' is already registered.");
-            }
+        var registry = new PrimitiveRegistry(catalog);
+        try { foreach (var module in _modules) module.Register(registry); }
+        finally { registry.Freeze(); }
+        _instructions = registry.Instructions;
         Primitives = Array.AsReadOnly(catalog.Definitions.Where(definition => definition.Kind == EntryKind.Primitive).ToArray());
     }
 
@@ -67,7 +62,8 @@ public sealed class CompositeGameView : IGameView
             ReadingBoundaryId = entry.ReadingBoundaryId,
             Condition = entry.Condition
         };
-        var instance = implementation.CreateInstance(new PrimitiveCreateContext(definition, normalized, runtime, cancellationToken));
+        var instance = implementation(new PrimitiveCreateContext(definition, normalized, runtime, cancellationToken))
+            ?? throw new InvalidOperationException($"Instruction '{entry.Type}' returned no instance.");
         if (!string.Equals(instance.BatchId, normalized.BatchId, StringComparison.Ordinal))
             throw new InvalidOperationException($"Instruction '{entry.Type}' created an instance with a different BatchId.");
         instance.Dispatch(mode);

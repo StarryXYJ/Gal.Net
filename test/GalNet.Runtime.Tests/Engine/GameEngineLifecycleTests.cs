@@ -291,7 +291,7 @@ public sealed class GameEngineLifecycleTests
         }
     }
 
-    private sealed class OwnedModule() : PrimitiveModule([new PrimitiveImplementation("test.run", _ => new ImmediatePrimitiveInstance())])
+    private sealed class OwnedModule() : PrimitiveModule(registry => registry.Register("test.run", _ => new ImmediatePrimitiveInstance()))
     {
         public int Disposals { get; private set; }
         public override void Dispose() { Disposals++; base.Dispose(); }

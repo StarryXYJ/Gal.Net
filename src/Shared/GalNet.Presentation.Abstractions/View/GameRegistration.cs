@@ -29,7 +29,7 @@ public sealed class GameRegistration : IDisposable, IAsyncDisposable
     }
 
     public GameRegistration RegisterInstruction(string type, Func<GalNet.Core.Primitives.PrimitiveCreateContext, GalNet.Core.Primitives.PrimitiveInstance> factory) =>
-        RegisterImplementation(new PrimitiveModule([new PrimitiveImplementation(type, factory)]));
+        RegisterImplementation(new PrimitiveModule(registry => registry.Register(type, factory)));
 
     public GameRegistration UseCatalog(IEntryCatalog catalog)
     {

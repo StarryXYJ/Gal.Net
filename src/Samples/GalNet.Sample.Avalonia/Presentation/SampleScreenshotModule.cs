@@ -13,15 +13,13 @@ public sealed class SampleScreenshotModule : PrimitiveModule
     private readonly PrimitiveTaskScope _scope;
     public SampleScreenshotModule(GamePage page, Func<string> outputDirectory) : this(page, outputDirectory, new PrimitiveTaskScope()) { }
     private SampleScreenshotModule(GamePage page, Func<string> outputDirectory, PrimitiveTaskScope scope) : base(
-    [
-            PrimitiveImplementation.For<ScreenshotOptions>(ScreenshotSchema.TypeId, (context, options) =>
+    registry => registry.Register<ScreenshotOptions>(ScreenshotSchema.TypeId, (context, options) =>
             {
                 scope.ThrowIfDisposed();
                 return new ScreenshotPrimitiveInstance(scope, page, outputDirectory,
                     options.FileName,
                     context.BatchId, context.ScopeCancellation, scope.CancellationToken);
             })
-        ]
         )
         => _scope = scope;
 

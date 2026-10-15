@@ -1,26 +1,22 @@
-using System.Collections.ObjectModel;
-
 namespace GalNet.Presentation.Abstractions.Execution;
 
 /// <summary>A game-scoped set of instruction implementations and their shared state.</summary>
 public interface IPrimitiveModule : IDisposable, IAsyncDisposable
 {
-    IReadOnlyDictionary<string, PrimitiveImplementation> Instructions { get; }
+    void Register(PrimitiveRegistry registry);
 }
 
 public class PrimitiveModule : IPrimitiveModule
 {
-    public PrimitiveModule(IEnumerable<PrimitiveImplementation> instructions)
+    private readonly Action<PrimitiveRegistry> _register;
+
+    public PrimitiveModule(Action<PrimitiveRegistry> register)
     {
-        ArgumentNullException.ThrowIfNull(instructions);
-        var entries = new Dictionary<string, PrimitiveImplementation>(StringComparer.Ordinal);
-        foreach (var instruction in instructions)
-            if (!entries.TryAdd(instruction.Type, instruction))
-                throw new ArgumentException($"Instruction '{instruction.Type}' is registered more than once.", nameof(instructions));
-        Instructions = new ReadOnlyDictionary<string, PrimitiveImplementation>(entries);
+        ArgumentNullException.ThrowIfNull(register);
+        _register = register;
     }
 
-    public IReadOnlyDictionary<string, PrimitiveImplementation> Instructions { get; }
+    public void Register(PrimitiveRegistry registry) => _register(registry);
     public virtual void Dispose() => GC.SuppressFinalize(this);
     public virtual ValueTask DisposeAsync()
     {

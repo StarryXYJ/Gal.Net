@@ -1,35 +1,22 @@
 using GalNet.Contracts.Builtins;
-using GalNet.Core.Primitives;
 using GalNet.Core.Scene;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 
 namespace GalNet.Primitives.Builtins;
 
-public sealed class BuiltinAnimationModule : PrimitiveModule
-{
-    public BuiltinAnimationModule(
+public sealed class BuiltinAnimationModule(
         IAnimationPresenter? animationPresenter = null,
         ILayerPresenter? layerPresenter = null,
         IEffectPresenter? effectPresenter = null,
-        IParticlePresenter? particlePresenter = null) : base(
-    [
-        PrimitiveImplementation.For<AnimationOptions>(BuiltinEntryIds.Animate, (context, options) => new AnimationPrimitiveInstance(
-                context.Runtime,
-                animationPresenter,
-                BuiltinRuntimeActions.CreateAnimationRequest(options, context.Arguments.TryGetProperty("from", out _) ? options.From : null),
-                context.BatchId,
-                context.ScopeCancellation)),
-        PrimitiveImplementation.For<AnimationPlanOptions>(BuiltinEntryIds.PlayAnimationPlan, (context, options) => new AnimationPlanPrimitiveInstance(
-                context.Runtime,
-                animationPresenter,
-                layerPresenter,
-                effectPresenter,
-                particlePresenter,
-                BuiltinRuntimeActions.CreateAnimationPlan(options),
-                context.BatchId,
-                context.ScopeCancellation)),
-        PrimitiveImplementation.Immediate<AnimationStopOptions>(BuiltinEntryIds.StopAnimation, (context, options) =>
+        IParticlePresenter? particlePresenter = null) : PrimitiveModule(
+    registry =>
+    {
+        registry.Register<AnimationOptions>(BuiltinEntryIds.Animate, (context, options) =>
+            new AnimationPrimitiveInstance(animationPresenter, context, options));
+        registry.Register<AnimationPlanOptions>(BuiltinEntryIds.PlayAnimationPlan, (context, options) =>
+            new AnimationPlanPrimitiveInstance(animationPresenter, layerPresenter, effectPresenter, particlePresenter, context, options));
+        registry.Immediate<AnimationStopOptions>(BuiltinEntryIds.StopAnimation, (context, options) =>
             {
                 var playbackHandleId = options.PlaybackHandleId ?? "";
                 var mode = options.Mode ?? AnimationStopMode.AfterIteration;
@@ -40,7 +27,5 @@ public sealed class BuiltinAnimationModule : PrimitiveModule
                     animationPresenter?.CompleteAnimationImmediately(playbackHandleId);
                     BuiltinRuntimeActions.StopAnimationState(context.Runtime, playbackHandleId);
                 }
-            })
-    ])
-    { }
-}
+            });
+    });

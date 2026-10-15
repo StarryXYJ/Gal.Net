@@ -1,3 +1,5 @@
+using GalNet.Contracts.Builtins;
+using GalNet.Core.Primitives;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Runtime.Logging;
 
@@ -8,6 +10,11 @@ public sealed class NvlAppendPrimitiveInstance : TextAdvancePrimitiveInstance
 {
     private readonly INvlPresenter _presenter;
     private readonly string _text;
+    public NvlAppendPrimitiveInstance(INvlPresenter? presenter, PrimitiveCreateContext context, NvlAppendOptions options)
+        : this(presenter ?? throw new InvalidOperationException("The NVL module has no presenter."),
+            context.Runtime.TextResolver.Resolve(options.Content ?? ""), context.BatchId, context.ScopeCancellation)
+    { }
+
     public NvlAppendPrimitiveInstance(INvlPresenter presenter, string text,
         string? batchId, CancellationToken cancellationToken) : base(batchId, cancellationToken)
     {

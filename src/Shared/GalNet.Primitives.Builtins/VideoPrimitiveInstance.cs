@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
 using GalNet.Core.Scene;
@@ -14,6 +15,14 @@ public sealed class VideoPrimitiveInstance(
     string? batchId,
     CancellationToken cancellationToken) : PrimitiveInstance(batchId)
 {
+    public VideoPrimitiveInstance(IVideoPresenter? presenter, PrimitiveCreateContext context, VideoPlayOptions options)
+        : this(context.Runtime, presenter, new VideoRenderRequest(Guid.NewGuid().ToString("N"),
+            new LayerRenderRequest(options.HandleId ?? "", options.Asset ?? "",
+                Arguments.Json<LayerTransform>(options.Transform) ?? new LayerTransform(), options.Z,
+                options.DisplayMode ?? LayerDisplayMode.Uniform, options.Opacity), Arguments.Json<double[]>(options.SkipPoints) ?? []),
+            options.Blocking ?? false, context.BatchId, context.ScopeCancellation)
+    { }
+
     private bool _catchUpDetached;
     private Task _presentationTask = Task.CompletedTask;
     public override Task PresentationCompletion => _presentationTask;

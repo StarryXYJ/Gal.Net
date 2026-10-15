@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
 using GalNet.Core.Scene;
@@ -18,6 +19,12 @@ public sealed class AnimationPrimitiveInstance : PrimitiveInstance
     private bool _catchUpDetached;
     private Task _presentationTask = Task.CompletedTask;
     public override Task PresentationCompletion => _presentationTask;
+
+    public AnimationPrimitiveInstance(IAnimationPresenter? presenter, PrimitiveCreateContext context, AnimationOptions options)
+        : this(context.Runtime, presenter,
+            BuiltinRuntimeActions.CreateAnimationRequest(options, context.Arguments.TryGetProperty("from", out _) ? options.From : null),
+            context.BatchId, context.ScopeCancellation)
+    { }
 
     public AnimationPrimitiveInstance(
         IGameRuntime runtime,

@@ -32,6 +32,12 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
     private Task _skipTask = Task.CompletedTask;
     public override Task PresentationCompletion => Task.WhenAll(_presentationTask, _skipTask);
 
+    public AnimationPlanPrimitiveInstance(IAnimationPresenter? animationPresenter, ILayerPresenter? layerPresenter,
+        IEffectPresenter? effectPresenter, IParticlePresenter? particlePresenter, PrimitiveCreateContext context, AnimationPlanOptions options)
+        : this(context.Runtime, animationPresenter, layerPresenter, effectPresenter, particlePresenter,
+            BuiltinRuntimeActions.CreateAnimationPlan(options), context.BatchId, context.ScopeCancellation)
+    { }
+
     public AnimationPlanPrimitiveInstance(
         IGameRuntime runtime,
         IAnimationPresenter? animationPresenter,
