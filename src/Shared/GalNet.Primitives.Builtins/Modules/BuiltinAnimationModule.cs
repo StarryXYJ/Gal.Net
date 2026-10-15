@@ -12,6 +12,28 @@ public sealed class BuiltinAnimationModule(
         IParticlePresenter? particlePresenter = null) : PrimitiveModule(
     registry =>
     {
+        registry.ValidateState((_, state) =>
+        {
+            foreach (var animation in state.Table<LoopAnimationState>().Values)
+                if (state.SceneObjects<ISceneInstance>().Any(item => item.Id == animation.Id))
+                    throw new InvalidDataException($"Animation playback handle '{animation.Id}' conflicts with a scene object.");
+        });
+        registry.State<LoopAnimationState>("builtin.animations", value => value.Id, context =>
+        {
+            if (animationPresenter is null) return Task.CompletedTask;
+            foreach (var state in context.Runtime.State.Table<LoopAnimationState>().Values)
+            {
+                if (state.Request is { } request)
+                    context.Start(new AnimationPrimitiveInstance(context.Runtime, animationPresenter, request, null, context.CancellationToken, restoring: true));
+                else if (state.Plan is { } plan)
+                    context.Start(new AnimationPlanPrimitiveInstance(context.Runtime, animationPresenter, layerPresenter, effectPresenter,
+                        particlePresenter, plan, null, context.CancellationToken, restoring: true));
+            }
+            return Task.CompletedTask;
+        }, validate: state =>
+        {
+            if ((state.Request is null) == (state.Plan is null)) throw new InvalidDataException("An animation state requires exactly one definition.");
+        }, after: ["builtin.layers", "builtin.effects", "builtin.particles", "builtin.videos"]);
         registry.Register<AnimationOptions>(BuiltinEntryIds.Animate, (context, options) =>
             new AnimationPrimitiveInstance(animationPresenter, context, options));
         registry.Register<AnimationPlanOptions>(BuiltinEntryIds.PlayAnimationPlan, (context, options) =>

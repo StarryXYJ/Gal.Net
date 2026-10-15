@@ -14,7 +14,7 @@ Graph + 已编译 .galgroup
 
 `GameEngine` 是剧情流程和活动 primitive 队列的唯一拥有者。玩家和 UI 只应调用 `AdvanceAsync()` 推进；Choice、条件、分支映射和节点跳转属于 Engine 内置控制流，不能实现为普通 primitive。
 
-`IGameRuntime` 是运行事实的唯一来源，保存当前节点、条目位置、变量和 `SceneState`。呈现端口负责显示，不反过来拥有剧情或可存档状态。
+`IGameRuntime` 是运行事实的唯一来源，保存当前节点、条目位置、变量和 `GameState`。呈现端口负责显示，不反过来拥有剧情或可存档状态。
 
 Engine 的 `StateChanged` 统一报告开始运行、完成、失败和停止，覆盖选择结果和阻塞实例自然完成；宿主无需在多个推进入口重复判断结束。关闭会话使用 `await engine.StopAsync()` 或异步释放，随后释放执行 view 与平台后端。停止是 Engine 终态，重开创建新实例。详细契约见[运行时参考](spec/runtime.md#状态通知和停止)。
 
@@ -62,9 +62,9 @@ Project/
 
 - non-blocking primitive 必须在 `Dispatch()` 返回前写入它的最终可存档逻辑状态；
 - blocking primitive 的中间展示状态不会成为新的稳定存档；
-- 读档不恢复 Task、CancellationToken、平台控件或活动 `PrimitiveInstance`；宿主必须根据 `SceneState` 重放长期展示。
+- 读档不恢复 Task、CancellationToken、平台控件或活动 `PrimitiveInstance`；宿主通过 `StateRestoreSession` 按模块注册处理器恢复展示与音频。
 
-影响场景的原语应先写 `SceneState`，再调用 presenter。这样存档恢复、Headless 和平台前端能保持同一游戏事实。
+持久条目应先在 `GameState.Update` 内写入状态，再调用 presenter。这样存档恢复、Headless 和平台前端能保持同一游戏事实。
 
 ## 默认能力与宿主
 

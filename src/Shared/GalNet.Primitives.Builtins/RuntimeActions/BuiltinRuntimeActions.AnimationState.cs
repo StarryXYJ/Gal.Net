@@ -25,12 +25,7 @@ internal static partial class BuiltinRuntimeActions
             ApplyAnimationValue(runtime, request.HandleId, request.Property, initialValue, AnimationBlendMode.Replace);
         }
 
-        TrackLoopingAnimation(
-            runtime,
-            BuiltinEntryIds.Animate,
-            request.PlaybackHandleId,
-            request.LoopMode,
-            ToReplayParameters(request));
+        TrackLoopingAnimation(runtime, new LoopAnimationState { Id = request.PlaybackHandleId, Request = request });
     }
 
     public static void ApplyAnimationTerminalValue(IGameRuntime runtime, AnimationRequest request) =>
@@ -51,15 +46,7 @@ internal static partial class BuiltinRuntimeActions
                     AnimationTrackSampler.Evaluate(track, 0),
                     AnimationBlendMode.Replace);
 
-            TrackLoopingAnimation(
-                runtime,
-                BuiltinEntryIds.PlayAnimationPlan,
-                plan.PlaybackHandleId,
-                plan.LoopMode,
-                new Dictionary<string, string>(StringComparer.Ordinal)
-                {
-                    ["plan"] = JsonSerializer.Serialize(plan, Arguments.JsonOptions)
-                });
+            TrackLoopingAnimation(runtime, new LoopAnimationState { Id = plan.PlaybackHandleId, Plan = plan });
             return;
         }
 
@@ -86,8 +73,10 @@ internal static partial class BuiltinRuntimeActions
         if (string.IsNullOrWhiteSpace(playbackHandleId))
             return;
 
-        runtime.SceneInstances.Remove<AnimationPlaybackInstance>(playbackHandleId, out _);
-        runtime.SceneState.ActiveAnimations.RemoveAll(animation =>
-            string.Equals(animation.PlaybackHandleId, playbackHandleId, StringComparison.Ordinal));
+        runtime.State.Update(() =>
+        {
+            runtime.SceneInstances.Remove<AnimationPlaybackInstance>(playbackHandleId, out _);
+            runtime.State.Table<LoopAnimationState>().Remove(playbackHandleId);
+        });
     }
 }

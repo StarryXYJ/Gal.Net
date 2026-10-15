@@ -14,11 +14,11 @@
 - `docs/spec/` 描述已经实现的稳定事实；`docs/design/` 描述设计和分阶段计划。
 - Runtime/Core 应保持与 Avalonia、WPF、Skia、具体文件系统和其他平台实现解耦。
 - Entry 契约与执行已分离：IEntryModule 只含 schema/composite，IPrimitiveModule 按领域共享状态并贡献完整指令 ID；GameRegistration 独立注册，AddBuiltins 为完整内置运行入口；独立 GalNet.Contracts.Builtins 只依赖 Core，CreateAllModules 返回 13 个组件模块。可选 schema、部分内置实现或全自定义；仅完整 ID 排他。同前缀和 schema 模块名可重复。音频用 AudioRuntime + IAudioPlaybackHost 组合，不强制继承。见 docs/adr/0002-entry-schema-execution-registration.md 和 docs/development.md。
-- 当前 GameSnapshot 版本为 3，不兼容旧版；读档取消旧运行 scope 并替换场景对象。Engine 不拥有执行 view，宿主先释放 Engine，再异步释放 view 与后端。
+- 当前 GameSnapshot 版本为 4，不兼容旧版；持久数据在注册式 GameState 表中，快照为 StateId → version/JSON payload；读档先验证，再取消旧 scope 并替换整个状态根。Engine 不拥有执行 view，宿主先释放 Engine，再异步释放 view 与后端。
 - Engine 提供终态 StopAsync 和 StateChanged，覆盖玩家推进、Choice 与阻塞实例自然完成；不新增通用 Runner。AvaloniaGamePresenters 只组合端口，SampleGamePresentation 管理平台资源。见 docs/design/game-runner-refactor.md 和 docs/spec/runtime.md。
 - Presentation.Defaults 已删除，空 NullGameView 位于展示抽象的 View 命名空间；当前生产项目图已扩展到 24 个项目（见 F-20261013-01）。GameContent.Settings 包含项目设置，项目/安装加载器与两个 Sample 已接通自定义音频轨道配置。
 - 旧的 `GalNet.Control` 与 `GalNet.Control.Abstraction` 已完成迁移并删除；当前共享 Avalonia 游戏页面唯一入口是 `GalNet.Avalonia.GameView`，页面架构见 `docs/spec/control.md`。
-- 会影响场景的运行时条目应先更新 `SceneState`，再通知展示层；读取存档后由宿主通过 Builtins 的 PersistentSceneReplaySession 根据状态重放展示并拥有 continuation 清理。
+- 持久条目先在 `GameState.Update` 中修改唯一数据记录，再通知展示层；模块通过 PrimitiveRegistry.State/Restore/ValidateState 声明状态、恢复依赖和校验，宿主使用展示抽象 StateRestoreSession 统一恢复、等待和逆序清理。旧 SceneState/Active* 镜像与 Builtins 中央 replay 已删除。
 - 视觉扩展应通过展示抽象和渲染端口接入；不要把平台类型或渲染资源泄漏进 Core/Runtime。
 - 当前已有大型阶段计划：[runtime-presentation-decoupling-phase-plan.md](../docs/design/runtime-presentation-decoupling-phase-plan.md) 和 [render-effects-pipeline-plan.md](../docs/design/render-effects-pipeline-plan.md)。新增 feature 应链接它们，不要复制其中的长期设计。
 
@@ -39,6 +39,9 @@
 
 ## 当前工作
 
+- F-20261015-03 模块化游戏状态：GameSnapshot v4；状态 catalog 随 view 组合，Engine 接入；中立 Layer/EffectInstance/ParticleEmitterInstance 直接作为唯一可变数据记录，属性变更必须在 State.Update，编码形成隔离快照。LoopAnimationState 保存类型化 request/plan；停止控制与播放 identity 仅运行期持有。音频 AudioTrackState/AudioSEffectState 包含暂停、队列与空闲效果，所有轨道按稳定检查点从头恢复；不恢复 seek/淡化时钟，玩家设置不回滚。恢复首帧不重复一次性事件，暂停声音在 Resume 前不启动后端。七个相关项目 665 项测试、解决方案构建与 CLI 实际项目校验/编译通过；新档验证见 [feature summary](../features/F-20261015-03-modular-game-state/summary.md)。
+
+
 - [F-20261015-01 primitive 注册简化](../features/F-20261015-01-primitive-registration/summary.md)：PrimitiveImplementation 已移除，IPrimitiveModule.Register(PrimitiveRegistry) 在 BuildView 时直接登记 ID → 实例工厂；Register<T> 校验 DTO 并逐次解码独立 Options，Immediate/Async 保留短回调。注册结束或失败后冻结；RegisterDeclared 按 catalog 交集筛选并保留最终契约校验。复杂 Builtins 实例接收 context/Options，场景重放仍使用 request 构造路径。
 
 - [F-20261013-02 参数与 Sample 简化](../features/F-20261013-02-parameter-and-sample-simplification/summary.md) 已完成。Core 的 ValueDescriptor/FieldDescriptor、ValueCodec/ValueValidation 为中立值事实；开放 EditorId/SchemaForm/registry/lease 由 Avalonia 宿主/主题组合，Editor 直接绑定作者文档，设置保留独立异步 apply/save。generator 生成有序字段与成员访问，仅为构建期 Analyzer；源基类字段/default/converter 可合并并检查冲突。全量 43 条 Entry 中 38 条参数 Entry 已 DTO 化，5 条无参数空 schema；ID 位于 BuiltinEntryIds，Composite 用 typed options/子 DTO writer，普通字符串 reader/34 个作者类壳已删除。partial/full 校验保持分开，专属资源/表达式编辑器仍消费唯一 schema；省略/null/default 仍独立。SampleCustomization 集中项目选择，保留 Session/Runner/Presentation 等所有权。作者路径为 Immediate<T>、Async<T>、For<T>、typed Composite；AsyncPrimitiveInstance 默认传播失败，Builtin 展示明确处理错误，PrimitiveTaskScope 完成移除/保留错误。TextAdvancePrimitiveInstance 保留展示结束与玩家推进分离，原 Dialogue Lock 语义保留；Sample 的顺序清理继续尝试所有独立释放并聚合错误，Session 重复关闭复用结果。最终 11 项目 898 用例、解决方案编译、契约独立部署、CLI 编译 4 个 Group 和 16→20 Composite 完整产物对照通过；原两项 UI Flush 挂起已由真实 UI pump 测试解决。4b 计入公共机制后生产净减 51 行，5d 净减 155 行；新增表单/generator 的成本单列，不声称全仓净减少。原生媒体人工全程未做，完整范围与自审见 summary/review。全量设置 DTO、自动框架与 Core 领域/快照重构继续暂缓。
@@ -56,7 +59,7 @@
 - [F-20261010-02-runtime-i18n](../features/F-20261010-02-runtime-i18n/summary.md) Phase 1–5 已实现。Sample 用 Core 2.1.2 + ReflectionBinding；每 JSON 独立 provider，culture-first 查询内嵌/包内/External/额外源；首次选择在 Engine 前原子保存 locale/count。设置切换不重译当前剧情。安装器保留 External 并拒绝覆盖不同包，导出不包含第三方文件。当前契约见 `docs/spec/i18n.md`，人工 GUI 全程与原生媒体 opt-in 验证限制见 summary。
 
 - `F-20260926-01-gallery-meta-pages` 的实现、正式文档与示例 Gallery 解锁 smoke test 已完成；其外部阻塞项 `EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString` 已由 `F-20260929-04-quality-baseline` 修复，Gallery feature 可按自身流程收尾。
-- [F-20260916-02-audio-system](../features/F-20260916-02-audio-system/feature.md) 已完成首期：轨道逻辑、`AudioRuntime`、`IAudioPlaybackHost`、Avalonia LibVLC host、语音文本 composite 和 Sample 验收已落地。Runtime 只能传 asset ID；平台 host 必须经 `IAssetManager` 实体化临时媒体文件。后续 [F-20261009-01-track-seffects](../features/F-20261009-01-track-seffects/feature.md) 增加 host 注册的 `SEffectCatalog`、`seffect.gain` 与基于 LibVLC equalizer 的 `seffect.lowPass` / `seffect.highPass`；item scope、动画、存档、玩家音量和角色默认轨道均未实现。
+- [F-20260916-02-audio-system](../features/F-20260916-02-audio-system/feature.md) 已完成首期：轨道逻辑、`AudioRuntime`、`IAudioPlaybackHost`、Avalonia LibVLC host、语音文本 composite 和 Sample 验收已落地。Runtime 只能传 asset ID；平台 host 必须经 `IAssetManager` 实体化临时媒体文件。后续 [F-20261009-01-track-seffects](../features/F-20261009-01-track-seffects/feature.md) 增加 host 注册的 `SEffectCatalog`、`seffect.gain` 与基于 LibVLC equalizer 的 `seffect.lowPass` / `seffect.highPass`；后续已实现轨道/SEffect 存档与玩家音量，见 F-20261015-03；item scope、音频参数动画和角色默认轨道仍未实现。
 - `F-20260929-01-compiled-content-pipeline` 正在实施；粒子 Primitive、Runtime 状态与 Presenter 桥接及存档后的 effect/particle 展示重放已经验证，完整 Sample/Headless smoke 与 Phase 4 收尾仍待完成。
 - [F-20260929-15-replay-save-format](../features/F-20260929-15-replay-save-format/feature.md) 已暂缓：正式存档继续使用完整稳定快照；后续节点解锁/快速进入能力应另立 feature。
 - `F-20260929-03-maintainability-roadmap` 及其后续 `F-20260929-14-format-baseline` 已完成。资源协议归 Core.Assets；内容、保存、变量、Gallery 组合和进度端口归 Runtime；Editor 设置/退出协议归 Editor.Abstraction；展示端口使用 `GalNet.Presentation.Abstractions.*`，推荐内置类型使用 `GalNet.Primitives.Builtins`。`GalNet.Storage.Abstractions` 与无消费者历史接口已删除，`ISaveService` 已统一为异步可取消 API。测试已按 10 个生产/运行边界拆分，跨外层场景集中在 `GalNet.IntegrationTests`，Architecture 门禁同时约束生产与测试项目引用。Editor Workspace、Avalonia presenter、Sample 会话和 Editor 扩展边界均已按路线图收敛。当前 24 个生产项目的物理路径按 Shared、Presentation、Infrastructure、Editor、Samples 和 Launcher 分组。CI 使用 solution 级 whitespace 与 `IDE0005` import 检查阻止格式基线回退。
@@ -70,6 +73,9 @@
 4. 如果项目架构变化，检查并标记受影响的 lesson 和 skill，而不是继续沿用旧规则。
 
 ## 经验索引
+
+- [停止后端前撤销播放身份](lessons/L-20261015-03-audio-stop-identity-order.md)：Stop 可同步重入终态事件；批量停止先清空旧映射，避免旧队列被推进。
+
 
 - [UI 测试异步观察异常](lessons/L-20261015-02-ui-tests-await-failures.md)：UI 回调中直接 await + try/catch，避免同步 Assert.ThrowsAsync 阻塞依赖 UI pump 的任务。
 

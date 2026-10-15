@@ -359,7 +359,7 @@ public sealed class AlertCompositeEntry : CompositeEntry
 有两种合规路径：
 
 1. **推荐：窄端口。** 在 `MyGame.Gameplay` 定义项目自己的小接口，例如 `IMyNotificationPresenter`；Avalonia/Unity/其他宿主在 `MyGame.View` 实现它。primitive 依赖接口，逻辑仍可 Headless 测试。
-2. **单平台项目：直接依赖。** 让模块闭包捕获 Avalonia 页面服务、Skia renderer 或媒体后端也可行，但该模块必须留在 `MyGame.View` 或客户端层。它将无法用于 Headless/其他前端，且读档后仍需由宿主按 `SceneState` 或自己的稳定状态重建视觉结果。
+2. **单平台项目：直接依赖。** 让模块闭包捕获 Avalonia 页面服务、Skia renderer 或媒体后端也可行，但该模块必须留在 `MyGame.View` 或客户端层。它将无法用于 Headless/其他前端，且读档后仍需由宿主按 `GameState` 中注册的稳定状态重建视觉结果。
 
 无论哪种路径，都不能让 `GalNet.Core`、`GalNet.Runtime` 或 `GalNet.Editor.Shared` 反向依赖具体平台程序集。
 
@@ -393,3 +393,16 @@ Avalonia 的 `src/Samples/GalNet.Sample.Avalonia/SampleCustomization.cs` 集中�
 新增截图一类的业务时：在契约项目声明参数/schema 并加入 Modules，在平台业务文件实现 module，然后在 SampleCustomization.ConfigureExecution 注册。需要专属字段编辑器时在 CreateFieldEditors 注册工厂，需要新资源类型时在资源策略入口配置。App、Session、Runner 和关闭流程不需要认识新 module；BuildView 将执行模块所有权转交给 view，模块只释放自己的资源，借用的页面和媒体端口由 Presentation 在 view 之后释放。契约变化后重新部署 DLL 给工具使用。
 
 App 负责应用初始化/关闭；Session 协调游戏、设置和存档；Runner 拥有单次 Engine；ResourceScope 持有 assets/预加载租约；Presentation 持有平台端口；SaveSession 持有 profile 的变量、进度和 Gallery resolver。设置条目和首次启动策略分别留在 SamplePlayerSettingsService 和 SampleStartupService，二次开发者可以直接改业务策略，不需把它们合并到生命周期类。默认 layer resolver 使用预加载纹理并拥有 fallback，Gallery resolver 使用独立资源租约，两者不能共享释放逻辑。
+
+
+## 持久状态与读档扩展
+
+执行模块可以在同一个注册回调中调用 `registry.State<T>(stateId, key, restore, validate, after)` 注册纯数据表。StateId 是稳定协议 ID，内存通过类型访问，不使用 CLR 名称序列化。恢复依赖可引用已声明状态表或恢复器 ID；组合时检查缺失、重复和循环。无需修改中央快照、Runtime 恢复分支或内置重放 switch。只需恢复行为而不新增状态表时使用 `registry.Restore`；跨表/项目配置校验通过 `registry.ValidateState` 登记。
+
+状态通过 `context.Runtime.State.Table<T>()` 读写，同步批量操作使用 `State.Update`。表对象与记录属于该运行代，不缓存一个会动态指向新 Runtime 状态的全局入口；不要保存 ticket、Task、CTS、平台句柄或玩家设置副本。不要在 Update 的同步边界内 await 或调用展示端口。
+
+需要长期恢复的状态与一次 Entry 的 Options 分开定义。动画目标适配器直接读写该数据记录；场景索引只保存引用，不再维护第二份可存档镜像。复杂状态需要可序列化的中立值对象；通用 codec 在快照时捕获隔离载荷，不需要每类手写 Clone。
+
+宿主用 `new StateRestoreSession(view)` 管理恢复资源。读档顺序为 `engine.RestoreFrom(snapshot)`，再 `await engine.SynchronizePresentationAsync(restorer.RestoreAsync)`，成功后继续推进。恢复处理器通过 `context.Start(instance)` 登记动画/视频 continuation，通过 `context.Own(cleanup)` 登记平台资源的异步清理，均应先登记再启动可能部分失败的操作。处理器恢复展示不重放变量修改或一次性事件。先停止 Engine 和恢复会话，再释放 view 与后端。
+
+GameSnapshot v4 只接受新格式；更新示例后直接新建存档，不迁移旧文件。纯 schema 编译仍不需要创建执行/平台模块。直接构造 Runtime 做模块测试时，使用 view.StateCatalog 配置运行状态；Engine 构造会自动接入 view 的状态 catalog。

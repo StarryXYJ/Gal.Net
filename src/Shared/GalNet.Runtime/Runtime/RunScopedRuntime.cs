@@ -17,7 +17,7 @@ internal sealed class RunScopedRuntime : IGameRuntime
     {
         _runtime = runtime;
         _cancellation = cancellation;
-        SceneState = runtime.SceneState;
+        State = runtime.State;
         SceneInstances = runtime.SceneInstances;
     }
 
@@ -26,7 +26,7 @@ internal sealed class RunScopedRuntime : IGameRuntime
     public bool IsGameEnded => _runtime.IsGameEnded;
     public ITextResolver TextResolver => _runtime.TextResolver;
     public SettingsContainer Settings => _runtime.Settings;
-    public SceneState SceneState { get; }
+    public GameState State { get; }
     public ISceneInstanceManager SceneInstances { get; }
     public void JumpTo(string nodeId, int entryIndex = 0) { Check(); _runtime.JumpTo(nodeId, entryIndex); }
     public void SetEntryIndex(int entryIndex) { Check(); _runtime.SetEntryIndex(entryIndex); }

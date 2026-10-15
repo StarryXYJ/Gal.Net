@@ -13,7 +13,7 @@ public sealed class SimplePresentationPrimitiveTests
     [TestCase(PrimitiveInvocationMode.CatchUp)]
     public async Task AllFiveInstancesKeepStateAndPresentationModePolicy(PrimitiveInvocationMode mode)
     {
-        var runtime = new GameRuntime(null);
+        var runtime = BuiltinTestRuntime.Create(null);
         var presenter = new Presenter();
         var definition = new ParticleEmitterDefinition("snow");
         PrimitiveInstance[] instances =
@@ -29,16 +29,16 @@ public sealed class SimplePresentationPrimitiveTests
             var instance = instances[i];
             var completion = instance.PresentationCompletion;
             instance.Dispatch(mode);
-            if (i == 0) Assert.That(runtime.SceneState.ActiveEffects.Single().InstanceId, Is.EqualTo("effect"));
-            if (i == 1) Assert.That(runtime.SceneState.ActiveParticleEmitters.Single().InstanceId, Is.EqualTo("particle"));
+            if (i == 0) Assert.That(runtime.State.Table<EffectInstance>().Values.Single().Id, Is.EqualTo("effect"));
+            if (i == 1) Assert.That(runtime.State.Table<ParticleEmitterInstance>().Values.Single().Id, Is.EqualTo("particle"));
             await completion;
             Assert.That(instance.IsCompleted, Is.True);
             Assert.That(instance.IsBlocking, Is.False);
             Assert.That(instance.IsSkippable, Is.False);
             Assert.That(instance.BatchId, Is.EqualTo("batch"));
         }
-        Assert.That(runtime.SceneState.ActiveEffects, Is.Empty);
-        Assert.That(runtime.SceneState.ActiveParticleEmitters, Is.Empty);
+        Assert.That(runtime.State.Table<EffectInstance>().Values, Is.Empty);
+        Assert.That(runtime.State.Table<ParticleEmitterInstance>().Values, Is.Empty);
         Assert.That(presenter.Calls, Is.EqualTo(mode == PrimitiveInvocationMode.CatchUp ? 0 : 5));
     }
 
@@ -47,7 +47,7 @@ public sealed class SimplePresentationPrimitiveTests
     {
         using var cancellation = new CancellationTokenSource();
         var presenter = new Presenter { Operation = _ => throw new IOException("backend") };
-        var runtime = new GameRuntime(null);
+        var runtime = BuiltinTestRuntime.Create(null);
         var failed = new StopEffectPrimitiveInstance(runtime, presenter, "effect", null, cancellation.Token);
         failed.Dispatch();
         await failed.PresentationCompletion;

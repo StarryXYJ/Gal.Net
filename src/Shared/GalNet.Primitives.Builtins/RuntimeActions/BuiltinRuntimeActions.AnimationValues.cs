@@ -21,90 +21,19 @@ internal static partial class BuiltinRuntimeActions
             target.TryGetAnimationValue(property, out var current))
             finalValue = current + authoredValue;
 
-        if (target.TrySetAnimationValue(property, finalValue, out _))
-            SyncAnimationState(runtime, target);
+        runtime.State.Update(() => target.TrySetAnimationValue(property, finalValue, out _));
     }
 
-    private static void SyncAnimationState(IGameRuntime runtime, AnimatableSceneInstance target)
+    private static void TrackLoopingAnimation(IGameRuntime runtime, LoopAnimationState state)
     {
-        switch (target)
+        if (string.IsNullOrWhiteSpace(state.Id)) return;
+        runtime.State.Update(() =>
         {
-            case EffectInstance effect:
-                SyncEffectAnimationState(runtime, effect);
-                break;
-            case ParticleEmitterInstance emitter:
-                SyncParticleAnimationState(runtime, emitter);
-                break;
-        }
-    }
-
-    private static void SyncEffectAnimationState(IGameRuntime runtime, EffectInstance effect)
-    {
-        var state = runtime.SceneState.ActiveEffects.FirstOrDefault(item =>
-            string.Equals(item.InstanceId, effect.Id, StringComparison.Ordinal));
-        if (state is null)
-            return;
-
-        state.AnimationValues.Clear();
-        foreach (var (property, value) in effect.AnimationValues)
-            state.AnimationValues[property] = value;
-    }
-
-    private static void SyncParticleAnimationState(IGameRuntime runtime, ParticleEmitterInstance emitter)
-    {
-        var state = runtime.SceneState.ActiveParticleEmitters.FirstOrDefault(item =>
-            string.Equals(item.InstanceId, emitter.Id, StringComparison.Ordinal));
-        if (state is null)
-            return;
-
-        state.AnimationValues.Clear();
-        foreach (var (property, value) in emitter.AnimationValues)
-            state.AnimationValues[property] = value;
-    }
-
-    private static void TrackLoopingAnimation(
-        IGameRuntime runtime,
-        string entryType,
-        string playbackHandleId,
-        AnimationLoopMode loopMode,
-        Dictionary<string, string> parameters)
-    {
-        if (string.IsNullOrWhiteSpace(playbackHandleId))
-            return;
-
-        runtime.SceneInstances.Remove<AnimationPlaybackInstance>(playbackHandleId, out _);
-        runtime.SceneInstances.GetOrAddTransient(playbackHandleId, id => new AnimationPlaybackInstance
-        {
-            Id = id,
-            LoopMode = loopMode
+            runtime.SceneInstances.Remove<AnimationPlaybackInstance>(state.Id, out _);
+            runtime.SceneInstances.GetOrAddTransient(state.Id, id => new AnimationPlaybackInstance
+            { Id = id, LoopMode = state.Request?.LoopMode ?? state.Plan!.LoopMode });
+            runtime.State.Table<LoopAnimationState>().Set(state);
         });
-        runtime.SceneState.ActiveAnimations.RemoveAll(animation =>
-            string.Equals(animation.PlaybackHandleId, playbackHandleId, StringComparison.Ordinal));
-        runtime.SceneState.ActiveAnimations.Add(new ActiveAnimationState
-        {
-            EntryType = entryType,
-            PlaybackHandleId = playbackHandleId,
-            LoopMode = loopMode,
-            Parameters = parameters
-        });
-    }
-
-    private static Dictionary<string, string> ToReplayParameters(AnimationRequest request)
-    {
-        var result = new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["handleId"] = request.HandleId,
-            ["property"] = request.Property,
-            ["to"] = Invariant(request.To),
-            ["duration"] = Invariant(request.DurationSeconds),
-            ["curve"] = request.CurveKind.ToString(),
-            ["blocking"] = request.Blocking.ToString(),
-            ["skippable"] = request.Skippable.ToString(),
-            ["blendMode"] = request.BlendMode.ToString()
-        };
-        if (request.From.HasValue)
-            result["from"] = Invariant(request.From.Value);
-        return result;
     }
 
     private static bool TryResolveAnimationStartValue(IGameRuntime runtime, AnimationRequest request, out float value)

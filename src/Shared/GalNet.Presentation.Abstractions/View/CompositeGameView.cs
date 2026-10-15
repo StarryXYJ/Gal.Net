@@ -12,6 +12,7 @@ public sealed class CompositeGameView : IGameView
     private readonly IReadOnlyList<IPrimitiveModule> _modules;
     private readonly Dictionary<string, Func<PrimitiveCreateContext, PrimitiveInstance>> _instructions;
     private bool _disposed;
+    private readonly IReadOnlyList<Action<IGameRuntime, GameState>> _stateValidators;
 
     public CompositeGameView(IEntryCatalog catalog, IEnumerable<IPrimitiveModule> modules)
     {
@@ -23,10 +24,20 @@ public sealed class CompositeGameView : IGameView
         try { foreach (var module in _modules) module.Register(registry); }
         finally { registry.Freeze(); }
         _instructions = registry.Instructions;
+        StateCatalog = registry.StateCatalog;
+        StateRestorers = registry.BuildRestorers();
+        _stateValidators = registry.StateValidators.ToArray();
         Primitives = Array.AsReadOnly(catalog.Definitions.Where(definition => definition.Kind == EntryKind.Primitive).ToArray());
     }
 
     public IReadOnlyCollection<EntryDefinition> Primitives { get; }
+    public StateCatalog StateCatalog { get; }
+    public bool RequiresStateRestore => StateRestorers.Count != 0;
+    internal IReadOnlyList<StateRestorer> StateRestorers { get; }
+    public void ValidateState(IGameRuntime runtime, GameState state)
+    {
+        foreach (var validate in _stateValidators) validate(runtime, state);
+    }
     public bool TryGetEntry(string primitiveType, out EntryDefinition? entry) => _catalog.TryGet(primitiveType, out entry!);
     public bool CanExecute(string primitiveType) => !_disposed && _instructions.ContainsKey(primitiveType);
 
@@ -51,6 +62,7 @@ public sealed class CompositeGameView : IGameView
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (!entry.IsGeneric)
             throw new InvalidOperationException($"Instruction '{entry.Type}' must be compiled before dispatch.");
+        runtime.State.Configure(StateCatalog);
         if (!_instructions.TryGetValue(entry.Type, out var implementation))
             throw new InvalidOperationException($"Instruction '{entry.Type}' has no registered implementation.");
         var definition = _catalog.Get(entry.Type);

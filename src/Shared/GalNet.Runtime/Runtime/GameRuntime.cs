@@ -28,7 +28,7 @@ public sealed class GameRuntime : IGameRuntime
     public SettingsContainer Settings { get; }
 
     // ── 场景状态 ──
-    public SceneState SceneState { get; private set; } = new();
+    public GameState State { get; private set; } = new();
     public ISceneInstanceManager SceneInstances { get; private set; }
 
     // ── 内部状态 ──
@@ -38,12 +38,13 @@ public sealed class GameRuntime : IGameRuntime
 
     public GameRuntime(ITextResolver? textResolver, string rootNodeId = "",
         SettingsContainer? settings = null,
-        IVariableService? variableService = null)
+        IVariableService? variableService = null, StateCatalog? stateCatalog = null)
     {
         TextResolver = textResolver ?? PassthroughTextResolver.Instance;
         CurrentNodeId = rootNodeId;
         Settings = settings ?? new SettingsContainer();
-        SceneInstances = new SceneInstanceManager(SceneState);
+        State = new GameState(stateCatalog);
+        SceneInstances = new SceneInstanceManager(State);
         _variableService = variableService;
 
         _variables = new VariableStore(
@@ -82,7 +83,7 @@ public sealed class GameRuntime : IGameRuntime
 
     // ── 变量操作 ──
 
-    public void SetVariable(string name, object value) => _variables.Set(name, value);
+    public void SetVariable(string name, object value) => State.Update(() => _variables.Set(name, value));
 
     public GalVariable? GetVariable(string name)
     {
@@ -102,62 +103,25 @@ public sealed class GameRuntime : IGameRuntime
 
     // ── 存档快照 ──
 
-    public GameSnapshot CreateSnapshot()
+    public GameSnapshot CreateSnapshot() => State.Read(() => new GameSnapshot
     {
-        return new GameSnapshot
-        {
-            Version = GameSnapshot.CurrentFormatVersion,
-            NodeId = CurrentNodeId,
-            EntryIndex = EntryIndex,
-            Variables = _variables.SaveSnapshot.ToDictionary(pair => pair.Key, pair => SnapshotCopy.CloneVariable(pair.Value)),
-            SceneState = SnapshotCopy.CloneSceneState(SceneState)
-        };
-    }
+        Version = GameSnapshot.CurrentFormatVersion,
+        NodeId = CurrentNodeId,
+        EntryIndex = EntryIndex,
+        Variables = _variables.SaveSnapshot.ToDictionary(pair => pair.Key, pair => SnapshotCopy.CloneVariable(pair.Value)),
+        States = State.Capture()
+    });
 
     public void RestoreFrom(GameSnapshot snapshot)
     {
         if (snapshot.Version != GameSnapshot.CurrentFormatVersion)
             throw new InvalidDataException($"Unsupported save version '{snapshot.Version}'.");
-
+        var state = GameState.Restore(State.Catalog, snapshot.States);
         CurrentNodeId = snapshot.NodeId;
         EntryIndex = snapshot.EntryIndex;
-
         _variables.RestoreSaveFrom(snapshot.Variables);
         IsGameEnded = false;
-        SceneState = SnapshotCopy.CloneSceneState(snapshot.SceneState);
-        SceneInstances = new SceneInstanceManager(SceneState);
-        SceneInstances.Rebuild(SceneState.Layers.Cast<ISceneInstance>()
-            .Concat(SceneState.ActiveEffects.Select(CreateEffectInstance))
-            .Concat(SceneState.ActiveParticleEmitters.Select(CreateParticleEmitterInstance))
-            .Concat(SceneState.ActiveAnimations.Select(CreateAnimationPlaybackInstance)));
+        State = state;
+        SceneInstances = new SceneInstanceManager(State);
     }
-
-    private static EffectInstance CreateEffectInstance(ActiveEffectState effect)
-    {
-        var instance = new EffectInstance
-        {
-            Id = effect.InstanceId,
-            EffectId = effect.Id,
-            ProgramResource = effect.ProgramResource,
-            TargetHandleId = effect.TargetHandleId,
-            Order = effect.Order,
-            Parameters = effect.Parameters
-        };
-        instance.RestoreAnimationValues(effect.AnimationValues);
-        return instance;
-    }
-
-    private static ParticleEmitterInstance CreateParticleEmitterInstance(ActiveParticleEmitterState emitter)
-    {
-        var instance = new ParticleEmitterInstance(emitter.InstanceId, emitter.Definition, emitter.Z);
-        instance.RestoreAnimationValues(emitter.AnimationValues);
-        return instance;
-    }
-
-    private static AnimationPlaybackInstance CreateAnimationPlaybackInstance(ActiveAnimationState animation) => new()
-    {
-        Id = animation.PlaybackHandleId,
-        LoopMode = animation.LoopMode
-    };
-
 }

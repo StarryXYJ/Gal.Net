@@ -1,11 +1,9 @@
-using GalNet.Core.Scene;
-
 namespace GalNet.Core.Runtime;
 
 /// <summary>Persisted runtime state needed to resume a game and rebuild its visible scene.</summary>
 public sealed class GameSnapshot
 {
-    public const int CurrentFormatVersion = 3;
+    public const int CurrentFormatVersion = 4;
 
     /// <summary>Persisted save format version. Older formats are intentionally rejected.</summary>
     public int Version { get; init; } = CurrentFormatVersion;
@@ -20,5 +18,6 @@ public sealed class GameSnapshot
     public Dictionary<string, GalNet.Core.Variable.Variable> Variables { get; init; } = [];
 
     /// <summary>Layer, control, effect, and transition state used to rehydrate the presentation.</summary>
-    public SceneState SceneState { get; init; } = new();
+    [System.Text.Json.Serialization.JsonRequired]
+    public Dictionary<string, StateSection> States { get; init; } = new(StringComparer.Ordinal);
 }

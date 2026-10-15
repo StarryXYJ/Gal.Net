@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace GalNet.Core.Scene;
 
 /// <summary>Controls whether a sampled animation value replaces or offsets the underlying property value.</summary>
@@ -25,7 +27,9 @@ public sealed class AnimationRequest
     public double DurationSeconds { get; set; }
     /// <summary>Serializable identity of the built-in curve used to recreate persistent loops.</summary>
     public BuiltinAnimationCurve CurveKind { get; set; }
-    public IAnimationCurve Curve { get; set; } = AnimationCurves.Linear;
+    private IAnimationCurve? _curve;
+    [JsonIgnore]
+    public IAnimationCurve Curve { get => _curve ?? AnimationCurves.Create(CurveKind); set => _curve = value; }
     public bool Blocking { get; set; }
     /// <summary>Whether an advance request may complete this playback or its batch early.</summary>
     public bool Skippable { get; set; }

@@ -49,7 +49,7 @@ public class GameEnginePrimitiveDispatchTests
             video.End.TrySetResult();
         }
         await WaitUntilAsync(() => Volatile.Read(ref markers) == 1);
-        Assert.That(engine.Runtime.SceneState.Layers, Is.Empty);
+        Assert.That(engine.Runtime.State.Table<Layer>().Values, Is.Empty);
     }
 
     [Test]
@@ -69,21 +69,22 @@ public class GameEnginePrimitiveDispatchTests
         }));
         using var engine = new GameEngine(GraphWithGroup(Primitive("test.wait")), view);
         var snapshot = engine.CreateSaveData();
-        snapshot.SceneState.Layers.Add(new Layer { Id = "restored", AssetId = "saved" });
+        engine.Runtime.State.Table<Layer>().Add(new Layer { Id = "restored", AssetId = "saved" });
+        snapshot.States["test.layers"] = engine.Runtime.State.Capture()["test.layers"];
         await engine.AdvanceAsync();
 
         engine.RestoreFrom(snapshot);
-        oldContext!.Runtime.SceneState.Layers.Clear();
-        snapshot.SceneState.Layers.Clear();
+        oldContext!.Runtime.State.Table<Layer>().Clear();
+        snapshot.States.Clear();
         var returned = engine.LastStableSnapshot;
-        returned.SceneState.Layers.Clear();
+        returned.States.Clear();
 
         Assert.Multiple(() =>
         {
             Assert.That(oldContext.ScopeCancellation.IsCancellationRequested, Is.True);
             Assert.Throws<OperationCanceledException>(() => oldContext.Runtime.EndGame());
-            Assert.That(engine.Runtime.SceneState.Layers.Single().AssetId, Is.EqualTo("saved"));
-            Assert.That(engine.CreateSaveData().SceneState.Layers.Single().AssetId, Is.EqualTo("saved"));
+            Assert.That(engine.Runtime.State.Table<Layer>().Values.Single().AssetId, Is.EqualTo("saved"));
+            Assert.That(GalNet.Core.Runtime.GameState.Restore(engine.Runtime.State.Catalog, engine.CreateSaveData().States).Table<Layer>().Values.Single().AssetId, Is.EqualTo("saved"));
         });
     }
 
@@ -122,11 +123,11 @@ public class GameEnginePrimitiveDispatchTests
         {
             Assert.That(video.Advances, Is.EqualTo(2));
             Assert.That(markers, Is.Zero);
-            Assert.That(engine.CreateSaveData().SceneState.Layers, Is.Empty);
+            Assert.That(GalNet.Core.Runtime.GameState.Restore(engine.Runtime.State.Catalog, engine.CreateSaveData().States).Table<Layer>().Values, Is.Empty);
         });
         video.End.TrySetResult();
         await WaitUntilAsync(() => markers == 1);
-        Assert.That(engine.Runtime.SceneState.Layers, Is.Empty);
+        Assert.That(engine.Runtime.State.Table<Layer>().Values, Is.Empty);
     }
 
     [Test]
@@ -374,14 +375,14 @@ public class GameEnginePrimitiveDispatchTests
         {
             Assert.That(presenter.ShownLayers.Single().AssetId, Is.EqualTo("hero-a.png"));
             Assert.That(presenter.Dialogue, Is.EqualTo(("Alice", "Continue?")));
-            Assert.That(runtime.SceneState.Layers.Single().AssetId, Is.EqualTo("hero-a.png"));
+            Assert.That(runtime.State.Table<Layer>().Values.Single().AssetId, Is.EqualTo("hero-a.png"));
         });
 
         await engine.AdvanceAsync();
         Assert.That(presenter.Options, Is.EqualTo(VisibleOptions));
 
         presenter.Select(0);
-        await WaitUntilAsync(() => runtime.SceneState.Layers.Single().AssetId == "hero-b.png");
+        await WaitUntilAsync(() => runtime.State.Table<Layer>().Values.Single().AssetId == "hero-b.png");
 
         Assert.That(presenter.ReplacedLayers, Does.Contain(("hero", "hero-b.png")));
     }
@@ -426,6 +427,7 @@ public class GameEnginePrimitiveDispatchTests
             .RegisterSchema(new DefaultEntryModule("test", entries.Select(entry => new DefaultPrimitiveEntryBase(entry.Type, DynamicParameterTable.Empty))))
             .RegisterImplementation(new PrimitiveModule(registry =>
             {
+                registry.State<Layer>("test.layers", layer => layer.Id);
                 foreach (var entry in entries) registry.Register(entry.Type, entry.Factory);
             }))
             .BuildView();

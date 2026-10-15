@@ -1,18 +1,19 @@
 using GalNet.Core.Primitives;
 using GalNet.Core.Scene;
+using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
 using GalNet.Runtime.Runtime;
 
 namespace GeneralTest.Runtime;
 
-public sealed class PersistentSceneReplaySessionTests
+public sealed class StateRestoreSessionTests
 {
     [TestCase(false)]
     [TestCase(true)]
     public async Task RestoredLoopsKeepTheirDefinitionsAndWaitForPresentationCleanup(bool plan)
     {
-        var runtime = new GameRuntime(null);
+        var runtime = BuiltinTestRuntime.Create(null);
         runtime.SceneInstances.GetOrAdd("hero", id => new Layer { Id = id, AssetId = "image" });
         PrimitiveInstance definition = plan
             ? new AnimationPlanPrimitiveInstance(runtime, null, null, null, null,
@@ -21,16 +22,17 @@ public sealed class PersistentSceneReplaySessionTests
                 new AnimationRequest { PlaybackHandleId = "loop", HandleId = "hero", Property = "opacity", From = .5f, To = 1, DurationSeconds = 1, LoopMode = AnimationLoopMode.Loop }, null, CancellationToken.None);
         definition.Dispatch(PrimitiveInvocationMode.CatchUp);
         var animations = new DelayedAnimationPresenter();
-        await using var restorer = new PersistentSceneReplaySession(null, null!, animations, null!);
+        using var view = new GameRegistration().AddBuiltins(animationPresenter: animations).BuildView();
+        await using var restorer = new StateRestoreSession(view);
         using var scope = new CancellationTokenSource();
         await restorer.RestoreAsync(runtime, scope.Token);
 
         var suspend = restorer.SuspendAsync(CancellationToken.None);
         Assert.That(suspend.IsCompleted, Is.False);
-        Assert.That(runtime.SceneState.ActiveAnimations, Has.Count.EqualTo(1));
+        Assert.That(runtime.State.Table<LoopAnimationState>().Values, Has.Count.EqualTo(1));
         animations.Cleaned.TrySetResult();
         await suspend.WaitAsync(TimeSpan.FromSeconds(2));
-        Assert.That(runtime.SceneState.ActiveAnimations, Has.Count.EqualTo(1));
+        Assert.That(runtime.State.Table<LoopAnimationState>().Values, Has.Count.EqualTo(1));
         await restorer.RestoreAsync(runtime, scope.Token);
         Assert.That(animations.Starts, Is.EqualTo(2));
         scope.Cancel();
@@ -40,20 +42,21 @@ public sealed class PersistentSceneReplaySessionTests
     [Test]
     public async Task RestoredVideoIsDetachedAndDrainedBeforeReusingItsHandle()
     {
-        var runtime = new GameRuntime(null);
+        var runtime = BuiltinTestRuntime.Create(null);
         runtime.SceneInstances.GetOrAdd("video", id => new Layer { Id = id, AssetId = "clip", IsVideo = true });
         var video = new DelayedVideoPresenter();
-        await using var restorer = new PersistentSceneReplaySession(null, null!, null!, null!, video);
+        using var view = new GameRegistration().AddBuiltins(videoPresenter: video).BuildView();
+        await using var restorer = new StateRestoreSession(view);
         using var scope = new CancellationTokenSource();
         await restorer.RestoreAsync(runtime, scope.Token);
 
         var suspend = restorer.SuspendAsync(CancellationToken.None);
         Assert.That(video.Stops, Is.EqualTo(1));
         Assert.That(suspend.IsCompleted, Is.False, "Logical completion must not bypass presentation cleanup.");
-        Assert.That(runtime.SceneState.Layers.Single().IsVideo, Is.True);
+        Assert.That(runtime.State.Table<Layer>().Values.Single().IsVideo, Is.True);
         video.Ends[0].TrySetResult();
         await suspend.WaitAsync(TimeSpan.FromSeconds(2));
-        Assert.That(runtime.SceneState.Layers.Single().IsVideo, Is.True);
+        Assert.That(runtime.State.Table<Layer>().Values.Single().IsVideo, Is.True);
 
         await restorer.RestoreAsync(runtime, scope.Token);
         Assert.That(video.Requests, Has.Count.EqualTo(2));
@@ -65,10 +68,11 @@ public sealed class PersistentSceneReplaySessionTests
     [Test]
     public async Task CanceledSuspensionStillDrainsOldPlaybackBeforeTheNextRestore()
     {
-        var runtime = new GameRuntime(null);
+        var runtime = BuiltinTestRuntime.Create(null);
         runtime.SceneInstances.GetOrAdd("video", id => new Layer { Id = id, AssetId = "clip", IsVideo = true });
         var video = new DelayedVideoPresenter();
-        await using var restorer = new PersistentSceneReplaySession(null, null!, null!, null!, video);
+        using var view = new GameRegistration().AddBuiltins(videoPresenter: video).BuildView();
+        await using var restorer = new StateRestoreSession(view);
         using var scope = new CancellationTokenSource();
         await restorer.RestoreAsync(runtime, scope.Token);
         using var canceled = new CancellationTokenSource();
@@ -87,10 +91,11 @@ public sealed class PersistentSceneReplaySessionTests
     [Test]
     public async Task DisposalDrainsPresentationAndRejectsAnotherRestore()
     {
-        var runtime = new GameRuntime(null);
+        var runtime = BuiltinTestRuntime.Create(null);
         runtime.SceneInstances.GetOrAdd("video", id => new Layer { Id = id, AssetId = "clip", IsVideo = true });
         var video = new DelayedVideoPresenter();
-        var replay = new PersistentSceneReplaySession(videos: video);
+        using var view = new GameRegistration().AddBuiltins(videoPresenter: video).BuildView();
+        var replay = new StateRestoreSession(view);
         await replay.RestoreAsync(runtime);
         var disposal = replay.DisposeAsync().AsTask();
         Assert.That(disposal.IsCompleted, Is.False);

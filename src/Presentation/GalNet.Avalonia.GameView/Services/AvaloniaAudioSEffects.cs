@@ -54,24 +54,19 @@ public sealed class AvaloniaAudioSEffectState(IReadOnlyList<float> equalizerBand
 
 public sealed class GainSEffectProcessor : IAudioSEffectProcessor
 {
-    public SEffectDefinition Definition { get; } = new("seffect.gain", TrackScope, [new("gain", Required: true, Minimum: 0, Maximum: 1)]);
+    public SEffectDefinition Definition { get; } = SEffectCatalog.Builtins.Definitions.Single(value => value.Id == "seffect.gain");
     public void Apply(JsonElement parameters, AvaloniaAudioSEffectState state) => state.MultiplyGain(Value(parameters, "gain", 1));
-    private static IReadOnlySet<SEffectScope> TrackScope { get; } = new HashSet<SEffectScope> { SEffectScope.Track };
     internal static float Value(JsonElement parameters, string name, float fallback) => parameters.TryGetProperty(name, out var value) && value.TryGetSingle(out var result) ? result : fallback;
 }
 
 public sealed class LowPassSEffectProcessor : IAudioSEffectProcessor
 {
-    public SEffectDefinition Definition { get; } = new("seffect.lowPass", TrackScope,
-        [new("cutoffHz", Required: true, Minimum: 20, Maximum: 20_000), new("attenuationDb", Minimum: -20, Maximum: 0)]);
+    public SEffectDefinition Definition { get; } = SEffectCatalog.Builtins.Definitions.Single(value => value.Id == "seffect.lowPass");
     public void Apply(JsonElement parameters, AvaloniaAudioSEffectState state) => state.AttenuateAbove(GainSEffectProcessor.Value(parameters, "cutoffHz", 20_000), GainSEffectProcessor.Value(parameters, "attenuationDb", -20));
-    private static IReadOnlySet<SEffectScope> TrackScope { get; } = new HashSet<SEffectScope> { SEffectScope.Track };
 }
 
 public sealed class HighPassSEffectProcessor : IAudioSEffectProcessor
 {
-    public SEffectDefinition Definition { get; } = new("seffect.highPass", TrackScope,
-        [new("cutoffHz", Required: true, Minimum: 20, Maximum: 20_000), new("attenuationDb", Minimum: -20, Maximum: 0)]);
+    public SEffectDefinition Definition { get; } = SEffectCatalog.Builtins.Definitions.Single(value => value.Id == "seffect.highPass");
     public void Apply(JsonElement parameters, AvaloniaAudioSEffectState state) => state.AttenuateBelow(GainSEffectProcessor.Value(parameters, "cutoffHz", 20), GainSEffectProcessor.Value(parameters, "attenuationDb", -20));
-    private static IReadOnlySet<SEffectScope> TrackScope { get; } = new HashSet<SEffectScope> { SEffectScope.Track };
 }

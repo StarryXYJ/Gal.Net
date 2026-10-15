@@ -36,6 +36,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
     private Task? _disposeTask;
     private int _stopRequested;
     private bool _started;
+    private bool _restorationPending;
     private bool _stopped;
     private bool _publishingState;
     private volatile bool _disposed;
@@ -70,6 +71,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         _active = new ActivePrimitiveRegistry(OnBlockingCompleted, OnAutoBlockingChanged);
         _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
         _view = view ?? throw new ArgumentNullException(nameof(view));
+        _runtime.State.Configure(_view.StateCatalog);
         _dispatchRuntime = new RunScopedRuntime(_runtime, _scopeCancellation.Token);
         var entries = graph.Nodes.OfType<Group>().SelectMany(group => group.Entries).ToArray();
         if (entries.Any(entry => entry is not PrimitiveEntry { IsGeneric: true }))
@@ -109,6 +111,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             if (Volatile.Read(ref _stopRequested) != 0) return false;
             ThrowIfDisposed();
             ThrowFlowError();
+            if (_restorationPending) return IsRunning;
             if (_started && !IsRunning) return false;
             _started = true;
             _catchUpActive = false;
@@ -176,8 +179,15 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             cancellationToken.ThrowIfCancellationRequested();
             if (Volatile.Read(ref _stopRequested) != 0) throw new InvalidOperationException("A stopped engine cannot synchronize presentation.");
             await synchronize(_dispatchRuntime, _scopeCancellation.Token).ConfigureAwait(false);
+            _restorationPending = false;
         }
-        finally { _dispatchGate.Release(); }
+        catch (Exception error) when (!_scopeCancellation.IsCancellationRequested)
+        {
+            _flowError = error;
+            IsRunning = false;
+            throw;
+        }
+        finally { CaptureStateChange(); _dispatchGate.Release(); PublishStateChanges(); }
     }
 
     public void RestoreFrom(GameSnapshot data)
@@ -187,6 +197,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         if (data.Version != GameSnapshot.CurrentFormatVersion)
             throw new InvalidDataException($"Unsupported save version '{data.Version}'.");
         data = SnapshotCopy.Clone(data);
+        _view.ValidateState(_runtime, GameState.Restore(_runtime.State.Catalog, data.States));
         _dispatchGate.Wait();
         try
         {
@@ -204,6 +215,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             previousScope.Cancel();
             previousScope.Dispose();
             _runtime.RestoreFrom(data);
+            _restorationPending = _view.RequiresStateRestore;
             _scopeCancellation = new CancellationTokenSource();
             _dispatchRuntime = new RunScopedRuntime(_runtime, _scopeCancellation.Token);
             _lastStableSnapshot = _runtime.CreateSnapshot();

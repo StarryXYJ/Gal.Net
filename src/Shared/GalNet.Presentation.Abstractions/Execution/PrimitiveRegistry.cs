@@ -1,6 +1,7 @@
 using GalNet.Core.Entry;
 using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
+using GalNet.Core.Runtime;
 
 namespace GalNet.Presentation.Abstractions.Execution;
 
@@ -11,6 +12,47 @@ public sealed class PrimitiveRegistry
     internal Dictionary<string, Func<PrimitiveCreateContext, PrimitiveInstance>> Instructions { get; } = new(StringComparer.Ordinal);
     private bool _frozen;
     private Func<string, bool>? _selection;
+    private readonly StateCatalogBuilder _states = new();
+    private readonly List<StateRestorer> _restorers = [];
+    internal List<Action<IGameRuntime, GameState>> StateValidators { get; } = [];
+    public void ValidateState(Action<IGameRuntime, GameState> validate)
+    {
+        ObjectDisposedException.ThrowIf(_frozen, this);
+        StateValidators.Add(validate);
+    }
+    internal StateCatalog StateCatalog => _states.Build();
+    internal IReadOnlyList<StateRestorer> BuildRestorers()
+    {
+        var declared = StateCatalog.Ids.Concat(_restorers.Select(item => item.Id)).ToHashSet(StringComparer.Ordinal);
+        foreach (var item in _restorers)
+            foreach (var dependency in item.After)
+                if (!declared.Contains(dependency)) throw new InvalidOperationException($"State restorer '{item.Id}' requires missing dependency '{dependency}'.");
+        var pending = _restorers.ToList();
+        var ordered = new List<StateRestorer>();
+        while (pending.Count != 0)
+        {
+            var next = pending.FirstOrDefault(item => item.After.All(id => !pending.Any(candidate => candidate.Id == id)))
+                ?? throw new InvalidOperationException("State restoration dependencies contain a cycle.");
+            ordered.Add(next);
+            pending.Remove(next);
+        }
+        return ordered;
+    }
+    public void State<T>(string id, Func<T, string> key, Func<StateRestoreContext, Task>? restore = null,
+        Action<T>? validate = null, params string[] after) where T : class
+    {
+        ObjectDisposedException.ThrowIf(_frozen, this);
+        _states.Register(id, key, validate);
+        if (restore is not null) Restore(id, restore, after);
+    }
+    public void Restore(string id, Func<StateRestoreContext, Task> restore, params string[] after)
+    {
+        ObjectDisposedException.ThrowIf(_frozen, this);
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        ArgumentNullException.ThrowIfNull(restore);
+        if (_restorers.Any(item => item.Id == id)) throw new InvalidOperationException($"Duplicate state restorer '{id}'.");
+        _restorers.Add(new(id, after.ToArray(), restore));
+    }
 
     internal PrimitiveRegistry(IEntryCatalog catalog) => _catalog = catalog;
     internal void Freeze() => _frozen = true;

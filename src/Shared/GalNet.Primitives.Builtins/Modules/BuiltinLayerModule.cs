@@ -9,6 +9,16 @@ namespace GalNet.Primitives.Builtins;
 public sealed class BuiltinLayerModule(ILayerPresenter? presenter = null) : PrimitiveModule(
     registry =>
     {
+        registry.State<Layer>("builtin.layers", value => value.Id, context =>
+        {
+            if (presenter is null) return Task.CompletedTask;
+            foreach (var layer in context.Runtime.State.Table<Layer>().Values.Where(value => !value.IsVideo && value.Visible))
+            {
+                context.Own(() => { presenter.HideLayer(layer.Id); return Task.CompletedTask; });
+                presenter.ShowLayer(Request(layer));
+            }
+            return Task.CompletedTask;
+        });
         registry.Register<LayerShowOptions>(BuiltinEntryIds.ShowLayer, (context, options) => Immediate(context, presenter, target =>
             BuiltinRuntimeActions.ShowLayer(context.Runtime, target, new LayerRenderRequest(
                 options.HandleId ?? "", options.AssetId ?? "", Arguments.Json<LayerTransform>(options.Transform) ?? new LayerTransform(),
@@ -36,6 +46,9 @@ public sealed class BuiltinLayerModule(ILayerPresenter? presenter = null) : Prim
                 options.AssetId ?? "")));
     })
 {
+    internal static LayerRenderRequest Request(Layer layer) => new(layer.Id, layer.AssetId, layer.Transform.Clone(), layer.Z,
+        layer.DisplayMode, layer.Opacity, layer.Color, layer.Flipbook?.Clone());
+
     private static ImmediatePrimitiveInstance Immediate(PrimitiveCreateContext context, ILayerPresenter? presenter,
         Action<ILayerPresenter?> action) => new(() => action(presenter), batchId: context.BatchId, catchUp: () => action(null));
 }

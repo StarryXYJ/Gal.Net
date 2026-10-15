@@ -4,6 +4,7 @@ using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Runtime;
+using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
 using GalNet.Rendering.Scene;
@@ -29,7 +30,7 @@ internal sealed class SampleGamePresentation : IAsyncDisposable, ICatchUpPresent
     public AvaloniaVideoPresenter Video { get; private set; } = null!;
     public CompositeGameView View { get; private set; } = null!;
     public BuiltinAudioModule AudioModule { get; private set; } = null!;
-    public PersistentSceneReplaySession Restorer { get; private set; } = null!;
+    public StateRestoreSession Restorer { get; private set; } = null!;
 
     public static async Task<SampleGamePresentation> CreateAsync(
         GamePageViewModel gameplay, GamePage page, SampleGameResourceScope resources,
@@ -59,8 +60,7 @@ internal sealed class SampleGamePresentation : IAsyncDisposable, ICatchUpPresent
                 presentation.Effects, presentation.Audio, presentation.Video, presentation.AudioModule);
             presentation.View = registration.BuildView();
             presentation.View.RequireInstructions(resources.Content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>().SelectMany(group => group.Entries).Select(entry => entry.Type));
-            presentation.Restorer = new PersistentSceneReplaySession(presentation.Effects, presenters.ParticlePresenter,
-                presenters.AnimationPresenter, presenters.LayerPresenter, presentation.Video);
+            presentation.Restorer = new StateRestoreSession(presentation.View);
             return presentation;
         }
         catch (Exception error)

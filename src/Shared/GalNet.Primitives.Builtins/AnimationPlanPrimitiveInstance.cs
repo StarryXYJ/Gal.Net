@@ -11,6 +11,7 @@ namespace GalNet.Primitives.Builtins;
 public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposable
 {
     private readonly object _gate = new();
+    private readonly bool _restoring;
     private readonly IGameRuntime _runtime;
     private readonly IAnimationPresenter? _animationPresenter;
     private readonly ILayerPresenter? _layerPresenter;
@@ -46,9 +47,10 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
         IParticlePresenter? particlePresenter,
         AnimationPlanDefinition plan,
         string? batchId,
-        CancellationToken scopeCancellation)
+        CancellationToken scopeCancellation, bool restoring = false)
         : base(batchId)
     {
+        _restoring = restoring;
         _runtime = runtime;
         _animationPresenter = animationPresenter;
         _layerPresenter = layerPresenter;
@@ -63,6 +65,8 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
             .ThenBy(item => item.Index)
             .ToArray();
         _notifiedEvents = new bool[_events.Length];
+        if (restoring)
+            foreach (var item in _events.Where(item => item.Event.Frame <= 0)) _notifiedEvents[item.Index] = true;
     }
 
     public override bool IsBlocking => _plan.Blocking;
@@ -77,7 +81,9 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
 
     protected override void OnDispatch()
     {
-        BuiltinRuntimeActions.ApplyPlanStableState(_runtime, _plan);
+        if (!_restoring) BuiltinRuntimeActions.ApplyPlanStableState(_runtime, _plan);
+        else _runtime.SceneInstances.GetOrAddTransient(_plan.PlaybackHandleId,
+            id => new AnimationPlaybackInstance { Id = id, LoopMode = _plan.LoopMode });
         _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_plan.PlaybackHandleId, out _playback!);
         if (_animationPresenter is null)
         {
@@ -143,8 +149,11 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
         { GameLog.Logger.Warning(error, "Animation plan {PlaybackId} presentation failed", _plan.PlaybackHandleId); }
         finally
         {
-            if (!_catchUpDetached && _playback is not null && _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_plan.PlaybackHandleId, out var current) && ReferenceEquals(current, _playback))
-                BuiltinRuntimeActions.StopAnimationState(_runtime, _plan.PlaybackHandleId);
+            _runtime.State.Update(() =>
+            {
+                if (!_catchUpDetached && _playback is not null && _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_plan.PlaybackHandleId, out var current) && ReferenceEquals(current, _playback))
+                    BuiltinRuntimeActions.StopAnimationState(_runtime, _plan.PlaybackHandleId);
+            });
             bool skipRequested;
             lock (_gate)
             {

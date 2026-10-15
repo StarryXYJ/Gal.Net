@@ -11,6 +11,7 @@ public static class SaveManager
     private static readonly JsonSerializerOptions Options = new()
     {
         WriteIndented = true,
+        AllowDuplicateProperties = false,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
@@ -23,7 +24,7 @@ public static class SaveManager
     /// <summary>从 JSON 字符串反序列化。</summary>
     public static GameSnapshot? Deserialize(string json)
     {
-        using var document = JsonDocument.Parse(json);
+        using var document = JsonDocument.Parse(json, new JsonDocumentOptions { AllowDuplicateProperties = false });
         if (document.RootElement.ValueKind != JsonValueKind.Object ||
             !document.RootElement.TryGetProperty("version", out var version) ||
             !version.TryGetInt32(out var formatVersion) ||

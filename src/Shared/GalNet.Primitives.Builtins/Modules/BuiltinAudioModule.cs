@@ -18,7 +18,7 @@ public sealed class BuiltinAudioModule : PrimitiveModule
     public void BeginCatchUp() => _runtime.BeginCatchUp();
     public void EndCatchUp() => _runtime.EndCatchUp();
 
-    public BuiltinAudioModule(IAudioPlaybackHost? host = null) : this(new AudioRuntime(host)) { }
+    public BuiltinAudioModule(IAudioPlaybackHost? host = null, ISEffectCatalog? effects = null) : this(new AudioRuntime(host, effects)) { }
 
     private BuiltinAudioModule(AudioRuntime runtime) : this(runtime, new AudioScope(runtime)) { }
 
@@ -52,6 +52,17 @@ public sealed class BuiltinAudioModule : PrimitiveModule
 
     private static void RegisterPrimitives(PrimitiveRegistry registry, AudioRuntime runtime, AudioScope scope)
     {
+        registry.State<AudioTrackState>("builtin.audio.tracks", value => value.Id, validate: AudioRuntime.ValidateTrack);
+        registry.State<AudioSEffectState>("builtin.audio.seffects", value => AudioSEffectState.Key(value.TrackId, value.InstanceId));
+        registry.ValidateState((game, state) => runtime.Validate(state, game.Settings.Get<ProjectSettings>().AudioTracks));
+        registry.Restore("builtin.audio", async context =>
+        {
+            scope.Bind(context.Runtime, context.CancellationToken);
+            context.Own(() => runtime.SuspendAsync(context.Runtime.State));
+            runtime.ApplyPlayerSettings(context.Runtime.Settings.Get<GameSettings>());
+            await runtime.RestoreAsync(context.Runtime.State, context.Runtime.Settings.Get<ProjectSettings>().AudioTracks,
+                context.CancellationToken).ConfigureAwait(false);
+        });
         registry.Register<AudioPlayOptions>(BuiltinEntryIds.PlayAudio, (context, options) => Playback(context, runtime, scope,
             options, options.Placement ?? AudioPlacement.Enqueue));
         registry.Register<AudioStopOptions>(BuiltinEntryIds.StopAudio, (context, options) => Audio(context, scope, () =>
@@ -76,7 +87,7 @@ public sealed class BuiltinAudioModule : PrimitiveModule
     private static AudioPlaybackPrimitiveInstance Playback(PrimitiveCreateContext context, AudioRuntime runtime,
         AudioScope scope, AudioPlayOptions options, AudioPlacement placement) => new(() =>
         {
-            scope.Bind(context.ScopeCancellation);
+            scope.Bind(context.Runtime, context.ScopeCancellation);
             context.ScopeCancellation.ThrowIfCancellationRequested();
             runtime.ApplyPlayerSettings(context.Runtime.Settings.Get<GameSettings>());
             return runtime.Play(Tracks(context), PlayRequest(options, placement));
@@ -87,13 +98,17 @@ public sealed class BuiltinAudioModule : PrimitiveModule
     private sealed class AudioScope(AudioRuntime runtime) : IDisposable
     {
         private CancellationToken _token;
+        private GalNet.Core.Runtime.GameState? _boundState;
         private CancellationTokenRegistration _registration;
-        public void Bind(CancellationToken token)
+        public void Bind(GalNet.Core.Runtime.IGameRuntime game, CancellationToken token)
         {
-            if (_token == token) return;
+            if (_token == token && ReferenceEquals(_boundState, game.State)) return;
+            _boundState = game.State;
             _registration.Dispose();
             _token = token;
-            _registration = token.Register(runtime.Reset);
+            runtime.Bind(game.State);
+            var state = game.State;
+            _registration = token.Register(() => runtime.Reset(state));
         }
         public void Dispose() => _registration.Dispose();
     }
@@ -101,7 +116,7 @@ public sealed class BuiltinAudioModule : PrimitiveModule
     private static void Track(PrimitiveRegistry registry, string type, AudioScope scope, Action<PrimitiveCreateContext, string> action) =>
         registry.Immediate<AudioTrackOptions>(type, (context, options) =>
         {
-            scope.Bind(context.ScopeCancellation);
+            scope.Bind(context.Runtime, context.ScopeCancellation);
             context.ScopeCancellation.ThrowIfCancellationRequested();
             action(context, options.TrackId ?? "");
         });
@@ -109,7 +124,7 @@ public sealed class BuiltinAudioModule : PrimitiveModule
     private static ImmediatePrimitiveInstance Audio(PrimitiveCreateContext context, AudioScope scope, Action action) =>
         new(() =>
         {
-            scope.Bind(context.ScopeCancellation);
+            scope.Bind(context.Runtime, context.ScopeCancellation);
             context.ScopeCancellation.ThrowIfCancellationRequested();
             action();
         }, batchId: context.BatchId);

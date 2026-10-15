@@ -8,17 +8,22 @@ internal static partial class BuiltinRuntimeActions
 {
     public static void ShowLayer(IGameRuntime runtime, ILayerPresenter? presenter, LayerRenderRequest request, bool notify = true)
     {
-        var layer = runtime.SceneInstances.GetOrAdd(request.HandleId, id => new Layer { Id = id });
-        layer.AssetId = request.AssetId;
-        layer.IsVideo = false;
-        layer.VideoPlaybackId = null;
-        layer.Color = request.Color;
-        layer.Flipbook = request.Flipbook?.Clone();
-        layer.Transform = request.Transform.Clone();
-        layer.Z = request.Z;
-        layer.Opacity = request.Opacity;
-        layer.DisplayMode = request.DisplayMode;
-        layer.Visible = true;
+        runtime.State.Update(() =>
+        {
+            runtime.SceneInstances.Remove<Layer>(request.HandleId, out _);
+            runtime.SceneInstances.GetOrAdd(request.HandleId, id => new Layer
+            {
+                Id = id,
+                AssetId = request.AssetId,
+                Color = request.Color,
+                Flipbook = request.Flipbook?.Clone(),
+                Transform = request.Transform.Clone(),
+                Z = request.Z,
+                Opacity = request.Opacity,
+                DisplayMode = request.DisplayMode,
+                Visible = true
+            });
+        });
         if (notify)
             presenter?.ShowLayer(request);
     }
@@ -39,24 +44,37 @@ internal static partial class BuiltinRuntimeActions
         float durationSeconds,
         bool notify = true)
     {
-        if (runtime.SceneInstances.TryGet<Layer>(handleId, out var layer))
+        runtime.State.Update(() =>
         {
-            layer.Transform = transform.Clone();
-            layer.Z = z;
-        }
+            if (runtime.SceneInstances.TryGet<Layer>(handleId, out var layer))
+            {
+                layer.Transform = transform.Clone();
+                layer.Z = z;
+            }
+        });
         if (notify)
             presenter?.MoveLayer(handleId, transform, z, durationSeconds);
     }
 
     public static void ReplaceLayer(IGameRuntime runtime, ILayerPresenter? presenter, string handleId, string assetId, bool notify = true)
     {
-        if (runtime.SceneInstances.TryGet<Layer>(handleId, out var layer))
+        runtime.State.Update(() =>
         {
-            layer.AssetId = assetId;
-            layer.IsVideo = false;
-            layer.VideoPlaybackId = null;
-            layer.Color = null;
-        }
+            if (runtime.SceneInstances.TryGet<Layer>(handleId, out var layer))
+            {
+                runtime.State.Table<Layer>().Set(new Layer
+                {
+                    Id = handleId,
+                    AssetId = assetId,
+                    Transform = layer.Transform.Clone(),
+                    Z = layer.Z,
+                    Opacity = layer.Opacity,
+                    DisplayMode = layer.DisplayMode,
+                    Visible = layer.Visible,
+                    Flipbook = layer.Flipbook?.Clone()
+                });
+            }
+        });
         if (notify)
             presenter?.ReplaceLayer(handleId, assetId);
     }

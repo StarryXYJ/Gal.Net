@@ -28,38 +28,10 @@ internal static partial class BuiltinRuntimeActions
         };
     }
 
-    public static AnimationRequest CreateAnimationRequest(ActiveAnimationState state)
-    {
-        var curve = ParseEnum(Get(state.Parameters, "curve"), BuiltinAnimationCurve.Linear);
-        return new AnimationRequest
-        {
-            PlaybackHandleId = state.PlaybackHandleId,
-            HandleId = Get(state.Parameters, "handleId"),
-            Property = Get(state.Parameters, "property"),
-            From = TryParseFloat(Get(state.Parameters, "from"), out var from) ? from : null,
-            To = ParseFloat(Get(state.Parameters, "to")),
-            DurationSeconds = Math.Max(0, ParseDouble(Get(state.Parameters, "duration"), 0.25)),
-            CurveKind = curve,
-            Curve = AnimationCurves.Create(curve),
-            Blocking = ParseBool(Get(state.Parameters, "blocking")),
-            Skippable = ParseBool(Get(state.Parameters, "skippable")),
-            LoopMode = state.LoopMode,
-            BlendMode = ParseEnum(Get(state.Parameters, "blendMode"), AnimationBlendMode.Replace)
-        };
-    }
-
     public static AnimationPlanDefinition CreateAnimationPlan(AnimationPlanOptions options)
     {
         return Arguments.Json<AnimationPlanDefinition>(options.Plan)
             ?? throw new InvalidDataException("animation.play requires a plan object.");
-    }
-
-    public static AnimationPlanDefinition CreateAnimationPlan(ActiveAnimationState state)
-    {
-        if (!state.Parameters.TryGetValue("plan", out var json) || string.IsNullOrWhiteSpace(json))
-            throw new InvalidDataException($"Persistent animation plan '{state.PlaybackHandleId}' has no replay definition.");
-        return JsonSerializer.Deserialize<AnimationPlanDefinition>(json, Arguments.JsonOptions)
-            ?? throw new InvalidDataException($"Persistent animation plan '{state.PlaybackHandleId}' is invalid.");
     }
 
     public static EffectRequest CreateEffectRequest(EffectApplyOptions options) => new(

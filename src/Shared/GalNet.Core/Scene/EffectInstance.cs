@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace GalNet.Core.Scene;
 
 /// <summary>A live effect target whose numeric parameters can be driven by the common animation system.</summary>
@@ -13,8 +15,9 @@ public sealed class EffectInstance : AnimatableSceneInstance
     public string TargetHandleId { get; init; } = "";
     public int Order { get; init; }
     public string Parameters { get; init; } = "{}";
+    [JsonIgnore]
     public override IReadOnlyList<AnimatableProperty> AnimatableProperties => _properties;
-    public IReadOnlyDictionary<string, float> AnimationValues => _values;
+    public IReadOnlyDictionary<string, float> AnimationValues { get => _values; init => RestoreAnimationValues(value); }
     /// <summary>Registers an Effect-owned float property without imposing platform knowledge on Runtime.</summary>
     public AnimatableProperty EnsureAnimationProperty(string propertyName)
     {

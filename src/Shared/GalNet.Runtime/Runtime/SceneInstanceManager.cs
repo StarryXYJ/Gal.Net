@@ -1,70 +1,52 @@
+using GalNet.Core.Runtime;
 using GalNet.Core.Scene;
 
 namespace GalNet.Runtime.Runtime;
 
-/// <summary>Active scene instances indexed by their hidden handle IDs.</summary>
-internal sealed class SceneInstanceManager : ISceneInstanceManager
+/// <summary>Derived handle lookup over canonical state plus ephemeral execution controls.</summary>
+internal sealed class SceneInstanceManager(GameState state) : ISceneInstanceManager
 {
-    private readonly Dictionary<string, ISceneInstance> _instances = new(StringComparer.Ordinal);
-    private readonly SceneState _sceneState;
-
-    public SceneInstanceManager(SceneState sceneState)
+    private readonly Dictionary<string, ISceneInstance> _transient = new(StringComparer.Ordinal);
+    public IReadOnlyList<T> GetAll<T>() where T : class, ISceneInstance => state.Read(() =>
+        state.SceneObjects<T>().Concat(_transient.Values.OfType<T>()).ToArray());
+    public bool TryGet<T>(string id, out T instance) where T : class, ISceneInstance
     {
-        _sceneState = sceneState;
-        Rebuild(sceneState.Layers);
-    }
-
-    public IReadOnlyList<TInstance> GetAll<TInstance>() where TInstance : class, ISceneInstance =>
-        _instances.Values.OfType<TInstance>().ToArray();
-
-    public bool TryGet<TInstance>(string handleId, out TInstance instance) where TInstance : class, ISceneInstance
-    {
-        if (_instances.TryGetValue(handleId, out var candidate) && candidate is TInstance typed)
+        lock (state.SyncRoot)
         {
-            instance = typed;
-            return true;
+            if (_transient.TryGetValue(id, out var value)) { instance = value as T ?? null!; return instance is not null; }
+            return state.TryGetScene(id, out instance);
         }
-
-        instance = null!;
-        return false;
     }
-
-    public TInstance GetOrAdd<TInstance>(string handleId, Func<string, TInstance> factory) where TInstance : class, ISceneInstance
-        => GetOrAddCore(handleId, factory, persistLayer: true);
-
-    public TInstance GetOrAddTransient<TInstance>(string handleId, Func<string, TInstance> factory) where TInstance : class, ISceneInstance
-        => GetOrAddCore(handleId, factory, persistLayer: false);
-
-    private TInstance GetOrAddCore<TInstance>(string handleId, Func<string, TInstance> factory, bool persistLayer) where TInstance : class, ISceneInstance
+    public T GetOrAdd<T>(string id, Func<string, T> factory) where T : class, ISceneInstance
     {
-        if (TryGet<TInstance>(handleId, out var existing)) return existing;
-        if (_instances.TryGetValue(handleId, out var conflicting))
-            throw new InvalidOperationException($"Scene handle '{handleId}' already belongs to {conflicting.GetType().Name}.");
-
-        var created = factory(handleId);
-        _instances.Add(handleId, created);
-        if (persistLayer && created is Layer layer) _sceneState.Layers.Add(layer);
-        return created;
-    }
-
-    public bool Remove<TInstance>(string handleId, out TInstance? instance) where TInstance : class, ISceneInstance
-    {
-        if (!TryGet<TInstance>(handleId, out var existing))
+        lock (state.SyncRoot)
         {
-            instance = null;
-            return false;
+            if (TryGet<T>(id, out var existing)) return existing;
+            if (_transient.ContainsKey(id)) throw new InvalidOperationException($"Scene handle '{id}' is already in use.");
+            var value = factory(id);
+            state.Table<T>().Add(value);
+            return value;
         }
-
-        _instances.Remove(handleId);
-        if (existing is Layer layer) _sceneState.Layers.Remove(layer);
-        instance = existing;
-        return true;
     }
-
-    public void Rebuild(IEnumerable<ISceneInstance> instances)
+    public T GetOrAddTransient<T>(string id, Func<string, T> factory) where T : class, ISceneInstance
     {
-        _instances.Clear();
-        foreach (var instance in instances)
-            if (!string.IsNullOrWhiteSpace(instance.Id)) _instances[instance.Id] = instance;
+        lock (state.SyncRoot)
+        {
+            if (TryGet<T>(id, out var existing)) return existing;
+            if (GetAll<ISceneInstance>().Any(item => item.Id == id)) throw new InvalidOperationException($"Scene handle '{id}' is already in use.");
+            var value = factory(id);
+            _transient.Add(id, value);
+            return value;
+        }
+    }
+    public bool Remove<T>(string id, out T? instance) where T : class, ISceneInstance
+    {
+        lock (state.SyncRoot)
+        {
+            if (!TryGet<T>(id, out var existing)) { instance = null; return false; }
+            instance = existing;
+            if (_transient.Remove(id)) return true;
+            return state.Table<T>().Remove(id);
+        }
     }
 }

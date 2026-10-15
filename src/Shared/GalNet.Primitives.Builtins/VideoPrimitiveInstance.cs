@@ -23,6 +23,7 @@ public sealed class VideoPrimitiveInstance(
             options.Blocking ?? false, context.BatchId, context.ScopeCancellation)
     { }
 
+    private Layer? _layer;
     private bool _catchUpDetached;
     private Task _presentationTask = Task.CompletedTask;
     public override Task PresentationCompletion => _presentationTask;
@@ -31,10 +32,7 @@ public sealed class VideoPrimitiveInstance(
 
     protected override void OnDispatch()
     {
-        BuiltinRuntimeActions.ShowLayer(runtime, null, request.Layer);
-        var layer = runtime.SceneInstances.GetOrAdd(request.Layer.HandleId, id => new Layer { Id = id });
-        layer.IsVideo = true;
-        layer.VideoPlaybackId = request.PlaybackId;
+        SetLayer();
         _presentationTask = ObserveAsync();
     }
 
@@ -44,26 +42,28 @@ public sealed class VideoPrimitiveInstance(
     {
         if (mode == PrimitiveInvocationMode.Normal || (!blocking && mode != PrimitiveInvocationMode.CatchUp)) return;
         _catchUpDetached = !blocking;
-        if (runtime.SceneInstances.TryGet<Layer>(request.Layer.HandleId, out var layer) &&
-            layer.VideoPlaybackId == request.PlaybackId)
+        var owned = false;
+        runtime.State.Update(() =>
         {
-            presenter?.StopVideo(request.Layer.HandleId);
-            if (blocking) runtime.SceneInstances.Remove<Layer>(request.Layer.HandleId, out _);
-        }
+            owned = runtime.SceneInstances.TryGet<Layer>(request.Layer.HandleId, out var layer) && ReferenceEquals(layer, _layer);
+            if (owned && blocking) runtime.SceneInstances.Remove<Layer>(request.Layer.HandleId, out _);
+        });
+        if (owned) presenter?.StopVideo(request.Layer.HandleId);
         TryComplete();
     }
 
     protected override void OnCatchUpDispatch()
     {
-        if (!blocking)
-        {
-            BuiltinRuntimeActions.ShowLayer(runtime, null, request.Layer);
-            var layer = runtime.SceneInstances.GetOrAdd(request.Layer.HandleId, id => new Layer { Id = id });
-            layer.IsVideo = true;
-            layer.VideoPlaybackId = request.PlaybackId;
-        }
+        if (!blocking) SetLayer();
         TryComplete();
     }
+
+    private void SetLayer() => runtime.State.Update(() =>
+    {
+        BuiltinRuntimeActions.ShowLayer(runtime, null, request.Layer);
+        _layer = runtime.State.Table<Layer>().Get(request.Layer.HandleId);
+        _layer.IsVideo = true;
+    });
 
     private async Task ObserveAsync()
     {
@@ -79,9 +79,12 @@ public sealed class VideoPrimitiveInstance(
         }
         finally
         {
-            if (!_catchUpDetached && runtime.SceneInstances.TryGet<Layer>(request.Layer.HandleId, out var layer) &&
-                layer.VideoPlaybackId == request.PlaybackId)
-                runtime.SceneInstances.Remove<Layer>(request.Layer.HandleId, out _);
+            runtime.State.Update(() =>
+            {
+                if (!_catchUpDetached && runtime.SceneInstances.TryGet<Layer>(request.Layer.HandleId, out var layer) &&
+                    ReferenceEquals(layer, _layer))
+                    runtime.SceneInstances.Remove<Layer>(request.Layer.HandleId, out _);
+            });
             TryComplete();
         }
     }

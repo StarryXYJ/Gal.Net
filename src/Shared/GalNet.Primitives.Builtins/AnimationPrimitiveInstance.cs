@@ -10,6 +10,7 @@ namespace GalNet.Primitives.Builtins;
 public sealed class AnimationPrimitiveInstance : PrimitiveInstance
 {
     private readonly object _gate = new();
+    private readonly bool _restoring;
     private readonly IGameRuntime _runtime;
     private readonly IAnimationPresenter? _presenter;
     private readonly AnimationRequest _request;
@@ -31,9 +32,10 @@ public sealed class AnimationPrimitiveInstance : PrimitiveInstance
         IAnimationPresenter? presenter,
         AnimationRequest request,
         string? batchId,
-        CancellationToken scopeCancellation)
+        CancellationToken scopeCancellation, bool restoring = false)
         : base(batchId)
     {
+        _restoring = restoring;
         _runtime = runtime;
         _presenter = presenter;
         _request = request;
@@ -53,7 +55,9 @@ public sealed class AnimationPrimitiveInstance : PrimitiveInstance
 
     protected override void OnDispatch()
     {
-        BuiltinRuntimeActions.ApplyAnimationStableState(_runtime, _request);
+        if (!_restoring) BuiltinRuntimeActions.ApplyAnimationStableState(_runtime, _request);
+        else _runtime.SceneInstances.GetOrAddTransient(_request.PlaybackHandleId,
+            id => new AnimationPlaybackInstance { Id = id, LoopMode = _request.LoopMode });
         _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_request.PlaybackHandleId, out _playback!);
         if (_presenter is null)
         {
@@ -110,8 +114,11 @@ public sealed class AnimationPrimitiveInstance : PrimitiveInstance
         catch (Exception error) { GameLog.Logger.Warning(error, "Primitive presentation failed"); }
         finally
         {
-            if (!_catchUpDetached && _playback is not null && _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_request.PlaybackHandleId, out var current) && ReferenceEquals(current, _playback))
-                BuiltinRuntimeActions.StopAnimationState(_runtime, _request.PlaybackHandleId);
+            _runtime.State.Update(() =>
+            {
+                if (!_catchUpDetached && _playback is not null && _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_request.PlaybackHandleId, out var current) && ReferenceEquals(current, _playback))
+                    BuiltinRuntimeActions.StopAnimationState(_runtime, _request.PlaybackHandleId);
+            });
             lock (_gate)
                 _skippable = false;
             TryComplete();
