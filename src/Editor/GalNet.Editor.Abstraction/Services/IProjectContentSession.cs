@@ -21,6 +21,7 @@ public interface IProjectContentSession
     Task SaveAsync(CancellationToken cancellationToken = default);
     Task SaveViewStateAsync();
     Task PublishStructureAsync(IProjectStructureChange change);
+    Task PublishStructureAsync(Func<EditorProjectDocument, EditorProjectDocument, IProjectStructureChange> prepare);
     EditorProjectDocument CaptureWorking();
     EditorProjectDocument CaptureSaved();
     Task SuspendAsync();

@@ -253,9 +253,15 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
 
     /// <summary>Small author-file structure plans (Graph/Group/settings), shared by later Graph and file edits.
     /// Publication and the final in-memory transform run without yielding, so unrelated edits cannot slip between them.</summary>
-    public async Task PublishStructureAsync(IProjectStructureChange change)
+    public Task PublishStructureAsync(IProjectStructureChange change)
     {
         ArgumentNullException.ThrowIfNull(change);
+        return PublishStructureAsync((_, _) => change);
+    }
+
+    public async Task PublishStructureAsync(Func<EditorProjectDocument, EditorProjectDocument, IProjectStructureChange> prepare)
+    {
+        ArgumentNullException.ThrowIfNull(prepare);
         ObjectDisposedException.ThrowIf(_disposed, this);
         using var lease = await AcquirePlanAsync(true, CancellationToken.None);
         try
@@ -264,6 +270,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
             var project = _project ?? throw new InvalidOperationException("No project is open.");
             var working = Capture();
             var saved = JsonSerializer.Deserialize<EditorProjectDocument>(_baseline, JsonOptions)!;
+            var change = prepare(working, saved);
             var nextWorking = EditorDocumentCloner.Clone(working);
             var nextSaved = EditorDocumentCloner.Clone(saved);
             change.Apply(nextWorking, AuthorDocumentVersion.Working);

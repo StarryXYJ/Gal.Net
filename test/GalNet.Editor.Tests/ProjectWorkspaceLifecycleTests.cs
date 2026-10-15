@@ -18,6 +18,7 @@ using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Composition;
 using GalNet.Editor.Dock;
 using GalNet.Editor.History;
+using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Services;
 using GalNet.Editor.Services.Interfaces;
 using GalNet.Editor.Shared.Services;
@@ -478,6 +479,299 @@ public sealed class ProjectWorkspaceLifecycleTests
         store.Dispose();
         Assert.That(await field.CommitAsync(new(JsonSerializer.SerializeToElement(9)), CancellationToken.None), Is.Not.Null);
         Assert.That(entry.Source.Parameters["count"].GetInt32(), Is.EqualTo(4));
+    }
+
+    [Test]
+    public async Task GraphConnectionsAllowConvergenceAndUndoOnlyTheReplacedOutput()
+    {
+        using var services = Services();
+        var projects = services.GetRequiredService<IProjectService>();
+        var project = await projects.CreateAsync(Path.Combine(_root, "Convergence"), "Graph", new(), Contracts());
+        var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
+        var first = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
+        var second = await workspace.AddNodeAsync(GraphNodeKind.LinearGroup, 300, 100);
+        var target = await workspace.AddNodeAsync(GraphNodeKind.LinearGroup, 600, 100);
+        workspace.Connect(first.OutputConnectors[0], target.InputConnectors[0]);
+        workspace.Connect(second.OutputConnectors[0], target.InputConnectors[0]);
+        Assert.That(workspace.Edges.Count(edge => edge.To.Id == target.Id), Is.EqualTo(2));
+        var firstEdge = workspace.Edges.Single(edge => edge.From.Id == first.Id).Id;
+        workspace.Connect(first.OutputConnectors[0], second.InputConnectors[0]);
+        Assert.That(workspace.Edges.Single(edge => edge.From.Id == second.Id).To.Id, Is.EqualTo(target.Id));
+        await workspace.UndoRedoHistory.UndoAsync();
+        Assert.That(workspace.Edges.Single(edge => edge.From.Id == first.Id).Id, Is.EqualTo(firstEdge));
+        Assert.That(workspace.Edges.Count(edge => edge.To.Id == target.Id), Is.EqualTo(2));
+        await workspace.SaveAsync();
+        var path = project.RootPath;
+        await projects.CloseAsync();
+        var reopened = await projects.OpenAsync(path);
+        var graph = reopened.Services.GetRequiredService<IEditorDocumentService>().CurrentDocument;
+        Assert.That(graph.Edges.Count(edge => edge.ToNodeId == target.Id), Is.EqualTo(2));
+        await projects.CloseAsync();
+    }
+
+    [Test]
+    public async Task DeleteGroupRestoresIndependentWorkingAndSavedContentAndHistorySurvivesWorkspaceDisposal()
+    {
+        using var services = Services();
+        var projects = services.GetRequiredService<IProjectService>();
+        var project = await projects.CreateAsync(Path.Combine(_root, "DeleteRestore"), "Graph", new(), Contracts());
+        var scope = project.Services;
+        var workspace = scope.GetRequiredService<EditorWorkspaceViewModel>();
+        var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
+        var entry = workspace.InsertEntriesInto(group, 0, 1).Single();
+        entry.Type = "dialogue.text";
+        entry.Parameters = new() { ["content"] = "saved" };
+        await workspace.SaveAsync();
+        entry.Parameters = new() { ["content"] = "working" };
+        var source = scope.GetRequiredService<IEditorDocumentService>().Groups[group.Id].RelativePath;
+        var path = Path.Combine(project.RootPath, source);
+        var savedBytes = File.ReadAllBytes(path);
+        await workspace.DeleteNodeAsync(group);
+        Assert.That(File.Exists(path), Is.False);
+        Assert.That(workspace.Nodes.Any(node => node.Id == group.Id), Is.False);
+        workspace.Dispose();
+        var replacement = ActivatorUtilities.CreateInstance<EditorWorkspaceViewModel>(scope);
+        try
+        {
+            var histories = scope.GetRequiredService<EditorHistories>();
+            await histories.Content.UndoAsync();
+            Assert.That(File.ReadAllBytes(path), Is.EqualTo(savedBytes));
+            var restored = replacement.Nodes.Single(node => node.Id == group.Id);
+            Assert.That(restored.Entries.Single().Source.Parameters["content"].GetString(), Is.EqualTo("working"));
+            Assert.That(restored.Entries.Single(), Is.SameAs(entry), "Restore must preserve existing Group data bindings.");
+            Assert.That(replacement.Edges.Any(edge => edge.To.Id == group.Id), Is.True);
+            await replacement.SaveAsync();
+            await histories.Content.RedoAsync();
+            Assert.That(File.Exists(path), Is.False);
+            await histories.Content.UndoAsync();
+            Assert.That(File.ReadAllText(path), Does.Contain("working"), "Redo must capture the newer saved baseline.");
+            Assert.That(restored.Id, Is.EqualTo(group.Id));
+            await histories.Content.UndoAsync();
+            Assert.That(replacement.Nodes.Single(node => node.Id == group.Id).Entries.Single().Source.Parameters["content"].GetString(), Is.EqualTo("saved"), "Earlier item edits must still target restored author content.");
+        }
+        finally { replacement.Dispose(); }
+        await projects.CloseAsync();
+    }
+
+    [Test]
+    public async Task GraphPreviewCancelAndMultiMoveDoNotLeakUncommittedCoordinates()
+    {
+        using var services = Services();
+        var projects = services.GetRequiredService<IProjectService>();
+        var project = await projects.CreateAsync(Path.Combine(_root, "Move"), "Graph", new(), Contracts());
+        var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
+        var content = project.Services.GetRequiredService<IProjectContentSession>();
+        var histories = project.Services.GetRequiredService<EditorHistories>();
+        var nodes = workspace.Nodes.ToArray();
+        var original = nodes.Select(node => (node.Source.X, node.Source.Y)).ToArray();
+        foreach (var node in nodes) { node.X += 20; node.Y += 30; }
+        Assert.That(content.IsDirty, Is.False);
+        Assert.That(histories.Content.CanUndo, Is.False);
+        await workspace.SaveAsync();
+        Assert.That(content.CaptureSaved().Graph.Nodes.Select(node => (node.X, node.Y)), Is.EqualTo(original));
+        workspace.CancelNodeDrag();
+        Assert.That(nodes.Select(node => (node.X, node.Y)), Is.EqualTo(original));
+        foreach (var node in nodes) { node.X += 20; node.Y += 30; }
+        workspace.CommitNodePositions();
+        Assert.That(histories.Content.UndoDescription, Is.EqualTo("Move nodes"));
+        await histories.Content.UndoAsync();
+        Assert.That(nodes.Select(node => (node.X, node.Y)), Is.EqualTo(original));
+        Assert.That(histories.Content.CanUndo, Is.False, "One multi-node gesture must create one record.");
+        Assert.That(content.IsDirty, Is.False);
+        await histories.Content.RedoAsync();
+        Assert.That(nodes.All(node => node.Source.X == node.X), Is.True);
+        var source = nodes.Last().Source.File;
+        nodes.Last().Name = "Display name only";
+        Assert.That(nodes.Last().Source.File, Is.EqualTo(source));
+        workspace.Dispose();
+        await histories.Content.UndoAsync();
+        Assert.That(nodes.Last().Source.Name, Is.Not.EqualTo("Display name only"));
+        await projects.CloseAsync();
+    }
+
+    [Test]
+    public async Task GroupCreationWithConnectionIsOneReversibleEmptySourceOperation()
+    {
+        using var services = Services();
+        var projects = services.GetRequiredService<IProjectService>();
+        var project = await projects.CreateAsync(Path.Combine(_root, "CreateGroup"), "Graph", new(), Contracts());
+        var scope = project.Services;
+        var workspace = scope.GetRequiredService<EditorWorkspaceViewModel>();
+        var entry = workspace.Nodes.Single(node => node.IsEntryNode);
+        var oldEdge = workspace.Edges.Single().Source;
+        var created = await workspace.AddNodeAsync(GraphNodeKind.LinearGroup, 400, 200, entry.OutputConnectors[0]);
+        var path = Path.Combine(project.RootPath, "Graph", created.Source.File!);
+        Assert.That(created.Entries, Is.Empty);
+        Assert.That(File.Exists(path), Is.True);
+        Assert.That(workspace.Edges.Single().To.Id, Is.EqualTo(created.Id));
+        var histories = scope.GetRequiredService<EditorHistories>();
+        await histories.Content.UndoAsync();
+        Assert.That(File.Exists(path), Is.False);
+        Assert.That(workspace.Edges.Single().Id, Is.EqualTo(oldEdge.Id));
+        Assert.That(histories.Content.CanUndo, Is.False);
+        await histories.Content.RedoAsync();
+        Assert.That(workspace.Nodes.Single(node => node.Id == created.Id).Entries, Is.Empty);
+        Assert.That(File.Exists(path), Is.True);
+        await projects.CloseAsync();
+    }
+
+    [Test]
+    public async Task GraphDeleteExternalConflictPreservesNodesFilesAndHistory()
+    {
+        using var services = Services();
+        var projects = services.GetRequiredService<IProjectService>();
+        var project = await projects.CreateAsync(Path.Combine(_root, "DeleteConflict"), "Graph", new(), Contracts());
+        var scope = project.Services;
+        var workspace = scope.GetRequiredService<EditorWorkspaceViewModel>();
+        var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
+        var path = Path.Combine(project.RootPath, "Graph", group.Source.File!);
+        var original = File.ReadAllBytes(path);
+        File.AppendAllText(path, " ");
+        Exception? failure = null;
+        try { await workspace.DeleteNodeAsync(group); } catch (Exception error) { failure = error; }
+        Assert.That(failure, Is.Not.Null);
+        Assert.That(workspace.Nodes, Does.Contain(group));
+        Assert.That(File.ReadAllText(path), Does.EndWith(" "));
+        Assert.That(scope.GetRequiredService<EditorHistories>().Content.CanUndo, Is.False);
+        File.WriteAllBytes(path, original);
+        await workspace.DeleteNodeAsync(group);
+        Assert.That(File.Exists(path), Is.False);
+        await projects.CloseAsync();
+    }
+
+    [Test]
+    public async Task GraphCanvasActualPointerDragCanCancelAndCommitOneHistoryStep()
+    {
+        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        await session.Dispatch<bool>(async () =>
+        {
+            Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());
+            using var services = Services();
+            var projects = services.GetRequiredService<IProjectService>();
+            var project = await projects.CreateAsync(Path.Combine(_root, "PointerGraph"), "Graph", new(), Contracts());
+            var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
+            var view = new NodeGraphPanelView { DataContext = workspace };
+            var window = new Window { Width = 1000, Height = 700, Content = view };
+            window.Show();
+            window.UpdateLayout();
+            try
+            {
+                var node = workspace.Nodes.Single(node => node.IsEntryNode);
+                var control = view.GetVisualDescendants().OfType<GalNet.Editor.Controls.GraphNodeControl>().Single(control => ReferenceEquals(control.DataContext, node));
+                using var initialFrame = window.CaptureRenderedFrame();
+                var label = control.GetVisualDescendants().OfType<TextBlock>().First(label => label.Text == node.Name);
+                var point = label.TranslatePoint(new Point(10, 8), window)!.Value;
+                var original = (node.X, node.Y);
+                window.MouseDown(point, MouseButton.Left);
+                window.MouseMove(point + new Vector(45, 30), RawInputModifiers.LeftMouseButton);
+                Assert.That((node.X, node.Y), Is.Not.EqualTo(original), "Actual pointer movement must reach the canvas.");
+                Assert.That((node.Source.X, node.Source.Y), Is.EqualTo(original));
+                window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+                window.MouseUp(point + new Vector(45, 30), MouseButton.Left);
+                Assert.That((node.X, node.Y), Is.EqualTo(original));
+                Assert.That(workspace.UndoRedoHistory.CanUndo, Is.False);
+                window.UpdateLayout();
+                window.MouseDown(point, MouseButton.Left);
+                window.MouseMove(point + new Vector(50, 35), RawInputModifiers.LeftMouseButton);
+                window.MouseUp(point + new Vector(50, 35), MouseButton.Left);
+                Assert.That(node.Source.X, Is.EqualTo(node.X));
+                Assert.That((node.Source.X, node.Source.Y), Is.Not.EqualTo(original));
+                await workspace.UndoRedoHistory.UndoAsync();
+                Assert.That((node.X, node.Y), Is.EqualTo(original));
+                Assert.That(workspace.UndoRedoHistory.CanUndo, Is.False);
+                if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } artifacts)
+                {
+                    window.UpdateLayout();
+                    using var frame = window.CaptureRenderedFrame();
+                    frame!.Save(Path.Combine(artifacts, "p2-graph-canvas.png"));
+                }
+            }
+            finally { window.Close(); }
+            await projects.CloseAsync();
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
+    public async Task BranchCreationRemainsUnsavedUntilSaveAndCanBeUndoneWithoutFilePublication()
+    {
+        using var services = Services();
+        var projects = services.GetRequiredService<IProjectService>();
+        var project = await projects.CreateAsync(Path.Combine(_root, "Branch"), "Graph", new(), Contracts());
+        var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
+        var content = project.Services.GetRequiredService<IProjectContentSession>();
+        var bytes = File.ReadAllBytes(Path.Combine(project.RootPath, "Graph/graph.json"));
+        var branch = await workspace.AddNodeAsync(GraphNodeKind.ChoiceBranch, 400, 200);
+        Assert.That(branch.Options.Single().Id, Is.Not.Empty);
+        Assert.That(File.ReadAllBytes(Path.Combine(project.RootPath, "Graph/graph.json")), Is.EqualTo(bytes));
+        Assert.That(content.IsDirty, Is.True);
+        await workspace.UndoRedoHistory.UndoAsync();
+        Assert.That(content.IsDirty, Is.False);
+        await workspace.UndoRedoHistory.RedoAsync();
+        await workspace.SaveAsync();
+        Assert.That(content.CaptureSaved().Graph.Nodes.Any(node => node.Id == branch.Id), Is.True);
+        await projects.CloseAsync();
+    }
+
+    [Test]
+    public async Task DeletingMultipleGroupsRestoresTheirOrderConnectionsAndSourcesInOneStep()
+    {
+        using var services = Services();
+        var projects = services.GetRequiredService<IProjectService>();
+        var project = await projects.CreateAsync(Path.Combine(_root, "DeleteSelection"), "Graph", new(), Contracts());
+        var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
+        var first = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
+        var second = await workspace.AddNodeAsync(GraphNodeKind.LinearGroup, 600, 200, first.OutputConnectors[0]);
+        var ids = workspace.Nodes.Select(node => node.Id).ToArray();
+        var edges = workspace.Edges.Select(edge => edge.Id).ToArray();
+        var histories = project.Services.GetRequiredService<EditorHistories>();
+        histories.Clear();
+        workspace.SelectNodes([first, second]);
+        await workspace.DeleteSelectionAsync();
+        Assert.That(workspace.Nodes.Single().IsEntryNode, Is.True);
+        Assert.That(workspace.SelectedNodes, Is.Empty);
+        await histories.Content.UndoAsync();
+        Assert.That(workspace.Nodes.Select(node => node.Id), Is.EqualTo(ids));
+        Assert.That(workspace.Edges.Select(edge => edge.Id), Is.EqualTo(edges));
+        Assert.That(histories.Content.CanUndo, Is.False);
+        Assert.That(File.Exists(Path.Combine(project.RootPath, "Graph", first.Source.File!)), Is.True);
+        Assert.That(File.Exists(Path.Combine(project.RootPath, "Graph", second.Source.File!)), Is.True);
+        await projects.CloseAsync();
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task QueuedCreationRevalidatesItsStartingNodeAndOutletBeforeWriting(bool removeNode)
+    {
+        using var services = Services();
+        var projects = services.GetRequiredService<IProjectService>();
+        var project = await projects.CreateAsync(Path.Combine(_root, "QueuedCreate"), "Graph", new(), Contracts());
+        var scope = project.Services;
+        var workspace = scope.GetRequiredService<EditorWorkspaceViewModel>();
+        var branch = await workspace.AddNodeAsync(GraphNodeKind.ChoiceBranch, 400, 200);
+        branch.Options.Add(new() { Id = Guid.NewGuid().ToString("N"), Text = "Second" });
+        branch.RefreshConnectors();
+        var release = new TaskCompletionSource();
+        var history = scope.GetRequiredService<EditorHistories>().Content;
+        var documents = scope.GetRequiredService<IEditorDocumentService>();
+        var blocker = history.ExecuteAsync(new CallbackEdit("Previous queued change", async () =>
+        {
+            await release.Task;
+            if (removeNode) documents.CurrentDocument.Nodes.Remove(branch.Source);
+            else branch.Source.Options!.RemoveAt(1);
+            documents.SynchronizeGroups();
+        }, () => ValueTask.CompletedTask));
+        var files = Directory.GetFiles(Path.Combine(project.RootPath, "Graph/groups"));
+        var creating = workspace.AddNodeAsync(GraphNodeKind.LinearGroup, 600, 200, branch.OutputConnectors[1]);
+        release.SetResult();
+        await blocker;
+        Exception? failure = null;
+        try { await creating; } catch (Exception error) { failure = error; }
+        Assert.That(failure, Is.Not.Null);
+        Assert.That(Directory.GetFiles(Path.Combine(project.RootPath, "Graph/groups")), Is.EquivalentTo(files));
+        Assert.That(workspace.Nodes.Count(node => node.NodeKind == GraphNodeKind.LinearGroup), Is.EqualTo(1));
+        Assert.That(history.UndoDescription, Is.EqualTo("Previous queued change"));
+        await projects.CloseAsync();
     }
 
     private static ServiceProvider Services(IProjectClosePrompt? closePrompt = null) => new ServiceCollection().AddEditorServices()

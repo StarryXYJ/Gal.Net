@@ -74,6 +74,9 @@
 
 ## 经验索引
 
+- [Headless 拖动按键状态](lessons/L-20261016-01-headless-drag-modifiers.md)：MouseMove 必须显式携带 LeftMouseButton，不能从 MouseDown 假定状态持续。
+- [结构撤销材料捕获时机](lessons/L-20261016-02-structure-baseline-capture.md)：结构准备在取得发布门后读取 Working/Saved，避免正在发布的保存推进基线后恢复旧内容。
+
 - [Editor 历史与发布锁顺序](lessons/L-20261015-04-editor-history-publication-lock-order.md)：先捕获历史，再尝试发布；发布门忙时释放捕获租约，禁止保存与结构编辑互相等待。
 
 - [停止后端前撤销播放身份](lessons/L-20261015-03-audio-stop-identity-order.md)：Stop 可同步重入终态事件；批量停止先清空旧映射，避免旧队列被推进。

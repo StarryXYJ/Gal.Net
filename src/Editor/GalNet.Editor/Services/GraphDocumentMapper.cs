@@ -8,25 +8,9 @@ public sealed class GraphDocumentMapper
 {
     public static GraphDocumentLoadResult Load(LoadedEditorProjectDocument loaded, EditorGroupProjectionStore? groups = null)
     {
-        var nodes = loaded.Document.Nodes.Select(dto =>
-        {
-            var kind = dto.Type switch
-            {
-                "Entry" => GraphNodeKind.Entry,
-                "Group" => GraphNodeKind.LinearGroup,
-                "Branch" when dto.BranchType == "Choice" => GraphNodeKind.ChoiceBranch,
-                "Branch" when dto.BranchType == "Condition" => GraphNodeKind.ConditionBranch,
-                _ => throw new InvalidDataException($"Unknown graph node type '{dto.Type}/{dto.BranchType}'.")
-            };
-            var node = new GraphNode(dto, kind);
-            if (kind == GraphNodeKind.LinearGroup)
-            {
-                if (groups is not null) node.BindGroup(groups.Get(dto.Id, dto.File));
-                else if (loaded.GroupEntries.GetValueOrDefault(dto.Id) is { Count: > 0 })
-                    throw new InvalidOperationException("Group content requires a project projection store.");
-            }
-            return node;
-        }).ToList();
+        if (groups is null && loaded.GroupEntries.Values.Any(entries => entries.Count > 0))
+            throw new InvalidOperationException("Group content requires a project projection store.");
+        var nodes = loaded.Document.Nodes.Select(dto => CreateNode(dto, groups)).ToList();
         var nodeMap = nodes.ToDictionary(node => node.Id);
         if (!nodeMap.TryGetValue(loaded.Document.RootNodeId, out var root) || !root.IsEntryNode)
             throw new InvalidDataException("The graph root must identify an explicit Entry node.");
@@ -38,6 +22,24 @@ public sealed class GraphDocumentMapper
             return new GraphEdge(from, to, edge);
         }).ToList();
         return new GraphDocumentLoadResult(nodes, edges);
+    }
+
+    public static GraphNode CreateNode(EditorGraphNodeDto dto, EditorGroupProjectionStore? groups = null)
+    {
+        var kind = dto.Type switch
+        {
+            "Entry" => GraphNodeKind.Entry,
+            "Group" => GraphNodeKind.LinearGroup,
+            "Branch" when dto.BranchType == "Choice" => GraphNodeKind.ChoiceBranch,
+            "Branch" when dto.BranchType == "Condition" => GraphNodeKind.ConditionBranch,
+            _ => throw new InvalidDataException($"Unknown graph node type '{dto.Type}/{dto.BranchType}'.")
+        };
+        var node = new GraphNode(dto, kind);
+        if (kind == GraphNodeKind.LinearGroup)
+        {
+            if (groups is not null) node.BindGroup(groups.Get(dto.Id, dto.File));
+        }
+        return node;
     }
 
     public static EditorGraphDocument CreateDocument(string projectName, int version, IEnumerable<GraphNode> nodes,

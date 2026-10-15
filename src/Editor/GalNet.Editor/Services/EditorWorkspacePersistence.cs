@@ -40,6 +40,8 @@ public sealed class EditorWorkspacePersistence
         return GraphDocumentMapper.Load(_documents.LoadedProject, _groups);
     }
 
+    public GraphNode ProjectNode(EditorGraphNodeDto node) => GraphDocumentMapper.CreateNode(node, _groups);
+
     public async Task<bool> SaveCurrentProjectAsync()
     {
         if (_projects.Current is not { } project)

@@ -140,24 +140,24 @@ public sealed class EditorWorkspaceViewModelTests
     }
 
     [Test]
-    public void GraphEdit_UndoAndRedoRestoreTheSameNode()
+    public async Task GraphEdit_UndoAndRedoRestoreTheStableNodeIdentity()
     {
         using var fixture = new WorkspaceFixture();
         var workspace = fixture.Workspace;
         var initialCount = workspace.Nodes.Count;
 
-        var added = workspace.AddNode(GraphNodeKind.LinearGroup, 120, 240);
+        var added = await workspace.AddNodeAsync(GraphNodeKind.LinearGroup, 120, 240);
 
         Assert.That(workspace.Nodes, Has.Count.EqualTo(initialCount + 1));
         Assert.That(workspace.UndoRedoHistory.CanUndo, Is.True);
 
-        workspace.UndoRedoHistory.Undo();
+        await workspace.UndoRedoHistory.UndoAsync();
         Assert.That(workspace.Nodes, Has.Count.EqualTo(initialCount));
         Assert.That(workspace.Nodes, Does.Not.Contain(added));
 
-        workspace.UndoRedoHistory.Redo();
+        await workspace.UndoRedoHistory.RedoAsync();
         Assert.That(workspace.Nodes, Has.Count.EqualTo(initialCount + 1));
-        Assert.That(workspace.Nodes, Does.Contain(added));
+        Assert.That(workspace.Nodes.Select(node => node.Id), Does.Contain(added.Id));
     }
 
     [Test]
@@ -165,7 +165,7 @@ public sealed class EditorWorkspaceViewModelTests
     {
         using var fixture = new WorkspaceFixture(withProject: true);
         var workspace = fixture.Workspace;
-        workspace.AddNode(GraphNodeKind.LinearGroup, 120, 240);
+        await workspace.AddNodeAsync(GraphNodeKind.LinearGroup, 120, 240);
 
         await workspace.SaveAsync();
 
@@ -245,6 +245,9 @@ public sealed class EditorWorkspaceViewModelTests
         public EditorWorkspaceViewModel Workspace { get; }
         public IEntryCatalog Catalog { get; }
 
+        private readonly string _root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "GalNet-workspace-test-" + Guid.NewGuid().ToString("N"))).FullName;
+        private readonly ProjectContentSession _content;
+
         public WorkspaceFixture(bool withProject = false, bool useDto = false)
         {
             var loaded = CreateLoadedDocument();
@@ -255,7 +258,7 @@ public sealed class EditorWorkspaceViewModelTests
                 ProjectService.SetCurrent(new GalProject(
                     "test",
                     "Test Project",
-                    "C:\\test-project",
+                    _root,
                     new ProjectSettings(),
                     new EditorProjectState(),
                     projectScope));
@@ -282,9 +285,14 @@ public sealed class EditorWorkspaceViewModelTests
                 DocumentService,
                 SaveCoordinator);
 
+            var histories = new EditorHistories();
+            DocumentService.Load(loaded);
+            File.WriteAllText(Path.Combine(_root, "settings.json"), System.Text.Json.JsonSerializer.Serialize(ProjectService.Current!.Settings));
+            _content = new ProjectContentSession(DocumentService, repository);
+            _content.Open(ProjectService.Current!);
             Workspace = new EditorWorkspaceViewModel(
                 ProjectService,
-                new EditorHistories(),
+                histories,
                 dockFactory,
                 DocumentService,
                 variableDefinitions,
@@ -293,13 +301,15 @@ public sealed class EditorWorkspaceViewModelTests
                 localization,
                 SaveScheduler,
                 new GraphSelectionState(),
-                persistence);
+                persistence, new GraphAuthoringService(DocumentService, histories, _content));
         }
 
         public void Dispose()
         {
             Workspace.Dispose();
+            _content.Dispose();
             ProjectService.Current?.Dispose();
+            Directory.Delete(_root, true);
         }
 
         public static LoadedEditorProjectDocument CreateLoadedDocument() => new()
@@ -312,7 +322,7 @@ public sealed class EditorWorkspaceViewModelTests
                 Nodes =
                 [
                     new EditorGraphNodeDto { Id = "entry", Type = "Entry", Name = "Entry" },
-                    new EditorGraphNodeDto { Id = "opening", Type = "Group", Name = "Opening" }
+                    new EditorGraphNodeDto { Id = "opening", Type = "Group", Name = "Opening", File = "groups/opening.rawgalgroup" }
                 ],
                 Edges = [new EditorGraphEdgeDto { Id = "edge", FromNodeId = "entry", ToNodeId = "opening" }]
             }
@@ -339,8 +349,16 @@ public sealed class EditorWorkspaceViewModelTests
     private sealed class FakeDocumentRepository(LoadedEditorProjectDocument loaded) : IEditorDocumentRepository
     {
         public LoadedEditorProjectDocument Load(string projectPath, string projectName, ProjectSettings settings) => loaded;
-        public ProjectSavePlan PrepareSave(string projectPath, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries) => throw new NotSupportedException();
-        public void ApplySave(string projectPath, ProjectSavePlan plan, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public ProjectSavePlan PrepareSave(string projectPath, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries) => new(new Dictionary<string, byte[]>(), []);
+        public void ApplySave(string projectPath, ProjectSavePlan plan, CancellationToken cancellationToken = default)
+        {
+            foreach (var pair in plan.Writes)
+            {
+                var path = Path.Combine(projectPath, pair.Key);
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                File.WriteAllBytes(path, pair.Value);
+            }
+        }
         public void Save(string projectPath, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries) => throw new NotSupportedException();
     }
 

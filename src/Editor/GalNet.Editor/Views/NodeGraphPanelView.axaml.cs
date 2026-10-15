@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -14,6 +15,8 @@ namespace GalNet.Editor.Views;
 public partial class NodeGraphPanelView : UserControl
 {
     private GraphNode? _draggedNode;
+    private IPointer? _dragPointer;
+    private EditorWorkspaceViewModel? _dragWorkspace;
     private readonly Dictionary<GraphNode, Point> _dragStartPositions = [];
     private GraphConnector? _pendingConnector;
     private GraphConnector? _previewTargetConnector;
@@ -32,20 +35,23 @@ public partial class NodeGraphPanelView : UserControl
         InitializeComponent();
 
         AttachedToVisualTree += (_, _) => ApplyViewportState();
+        DetachedFromVisualTree += (_, _) => CancelInteraction();
+        PointerCaptureLost += (_, _) => CancelInteraction();
         Viewport.ViewChanged += (_, _) => SaveViewportState();
         Viewport.SizeChanged += (_, _) => ApplyViewportState();
     }
 
     private EditorWorkspaceViewModel? Workspace => DataContext as EditorWorkspaceViewModel;
 
-    private void OnKeyDown(object? sender, KeyEventArgs e)
+    private async void OnKeyDown(object? sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Escape) { CancelInteraction(); e.Handled = true; return; }
         if (e.Key != Key.Space)
         {
             if (e.Key == Key.Delete)
             {
-                Workspace?.DeleteSelection();
                 e.Handled = true;
+                await RunGraphAction(async workspace => await workspace.DeleteSelectionAsync());
             }
             return;
         }
@@ -113,7 +119,7 @@ public partial class NodeGraphPanelView : UserControl
         {
             if (_previewTargetConnector is not null)
             {
-                Workspace?.Connect(_pendingConnector, _previewTargetConnector);
+                RunGraphAction(workspace => workspace.Connect(_pendingConnector, _previewTargetConnector));
             }
             else if (_pendingConnector.Kind == GraphConnectorKind.Output)
             {
@@ -197,7 +203,7 @@ public partial class NodeGraphPanelView : UserControl
         if (!e.OriginalEventArgs.GetCurrentPoint(sender as Avalonia.Controls.Control).Properties.IsLeftButtonPressed)
             return;
 
-        if (Workspace is null)
+        if (Workspace is null || Workspace.UndoRedoHistory.IsBusy)
             return;
 
         var wasSelected = e.Node.IsSelected;
@@ -205,6 +211,8 @@ public partial class NodeGraphPanelView : UserControl
             Workspace.SelectNode(e.Node);
 
         _draggedNode = e.Node;
+        _dragPointer = e.OriginalEventArgs.Pointer;
+        _dragWorkspace = Workspace;
         _nodeDragMoved = false;
         _dragStartWorld = ViewportToWorld(e.OriginalEventArgs.GetPosition(Viewport));
         _dragStartPositions.Clear();
@@ -225,7 +233,7 @@ public partial class NodeGraphPanelView : UserControl
 
         if (!e.GetCurrentPoint(Viewport).Properties.IsLeftButtonPressed)
         {
-            EndNodeDrag(e.Pointer);
+            CancelInteraction();
             e.Handled = true;
             return;
         }
@@ -260,12 +268,41 @@ public partial class NodeGraphPanelView : UserControl
     private void EndNodeDrag(IPointer pointer)
     {
         if (_draggedNode is not null && _nodeDragMoved)
-            Workspace?.SaveGraphDocument();
-
+            RunGraphAction(workspace => workspace.CommitNodePositions());
         _draggedNode = null;
+        _dragWorkspace = null;
+        _dragPointer = null;
         _nodeDragMoved = false;
         _dragStartPositions.Clear();
         pointer.Capture(null);
+    }
+
+    private void CancelInteraction()
+    {
+        _dragWorkspace?.CancelNodeDrag();
+        var pointer = _dragPointer;
+        _draggedNode = null;
+        _dragWorkspace = null;
+        _dragPointer = null;
+        _nodeDragMoved = false;
+        _dragStartPositions.Clear();
+        _isSelecting = false;
+        SelectionRectangle.IsVisible = false;
+        ClearPendingConnection();
+        pointer?.Capture(null);
+    }
+
+    private async Task RunGraphAction(Func<EditorWorkspaceViewModel, Task> action)
+    {
+        if (Workspace is not { } workspace) return;
+        try { await action(workspace); }
+        catch (Exception failure) { workspace.CancelNodeDrag(); workspace.ReportGraphError(failure); }
+    }
+    private void RunGraphAction(Action<EditorWorkspaceViewModel> action)
+    {
+        if (Workspace is not { } workspace) return;
+        try { action(workspace); }
+        catch (Exception failure) { workspace.CancelNodeDrag(); workspace.ReportGraphError(failure); }
     }
 
     private void OnNodeDoubleTapped(object? sender, GraphNodeEventArgs e)
@@ -297,7 +334,7 @@ public partial class NodeGraphPanelView : UserControl
             Header = Workspace.Localize(e.Node.CanDelete ? "Graph.Menu.Delete" : "Graph.Menu.CannotDeleteEntry"),
             IsEnabled = e.Node.CanDelete
         };
-        deleteItem.Click += (_, _) => Workspace?.DeleteNode(e.Node);
+        deleteItem.Click += async (_, _) => await RunGraphAction(async workspace => await workspace.DeleteNodeAsync(e.Node));
         menu.Items.Add(deleteItem);
         menu.Placement = PlacementMode.Pointer;
         menu.ShowAt(control, true);
@@ -327,7 +364,7 @@ public partial class NodeGraphPanelView : UserControl
 
         var menu = new MenuFlyout();
         var deleteItem = new MenuItem { Header = Workspace?.Localize("Graph.Menu.Delete") ?? "Delete" };
-        deleteItem.Click += (_, _) => Workspace?.DeleteEdge(edge);
+        deleteItem.Click += (_, _) => RunGraphAction(workspace => workspace.DeleteEdge(edge));
         menu.Items.Add(deleteItem);
         menu.Placement = PlacementMode.Pointer;
         menu.ShowAt(control, true);
@@ -338,7 +375,7 @@ public partial class NodeGraphPanelView : UserControl
     {
         var menu = new MenuFlyout();
         var deleteItem = new MenuItem { Header = Workspace?.Localize("Graph.Menu.Delete") ?? "Delete" };
-        deleteItem.Click += (_, _) => Workspace?.DeleteSelection();
+        deleteItem.Click += async (_, _) => await RunGraphAction(async workspace => await workspace.DeleteSelectionAsync());
         menu.Items.Add(deleteItem);
         menu.Placement = PlacementMode.Pointer;
         menu.ShowAt(target ?? Viewport, true);
@@ -362,7 +399,7 @@ public partial class NodeGraphPanelView : UserControl
         if (_pendingConnector is null)
             return;
 
-        Workspace?.Connect(_pendingConnector, e.Connector);
+        RunGraphAction(workspace => workspace.Connect(_pendingConnector, e.Connector));
         ClearPendingConnection();
         e.OriginalEventArgs.Pointer.Capture(null);
         e.OriginalEventArgs.Handled = true;
@@ -458,13 +495,11 @@ public partial class NodeGraphPanelView : UserControl
         GraphConnector? connectFrom)
     {
         var item = new MenuItem { Header = header };
-        item.Click += (_, _) =>
+        item.Click += async (_, _) =>
         {
             var x = Math.Clamp(position.X, 0, GraphCanvas.Width - GraphLayoutMetrics.NodeWidth);
             var y = Math.Clamp(position.Y, 0, GraphCanvas.Height - GraphLayoutMetrics.NodeMinHeight);
-            var node = Workspace?.AddNode(kind, x, y);
-            if (node is not null && connectFrom is not null)
-                Workspace?.Connect(connectFrom, node.InputConnectors[0]);
+            await RunGraphAction(async workspace => { await workspace.AddNodeAsync(kind, x, y, connectFrom); });
 
             Log.Information("Node menu created {NodeKind} at {X}, {Y}", kind, x, y);
         };

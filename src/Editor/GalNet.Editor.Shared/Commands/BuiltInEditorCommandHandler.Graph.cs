@@ -137,7 +137,6 @@ public sealed partial class BuiltInEditorCommandHandler
             return Error("graph.edge.invalidOutlet", $"Outlet {command.Outlet} does not exist on node '{from.Id}'.", NodeResource(from.Id));
 
         document.Graph.Edges.RemoveAll(edge =>
-            edge.ToNodeId == to.Id ||
             (edge.FromNodeId == from.Id && edge.FromOutlet == command.Outlet));
         var edge = new EditorGraphEdgeDto
         {

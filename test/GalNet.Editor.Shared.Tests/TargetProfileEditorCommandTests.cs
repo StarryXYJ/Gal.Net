@@ -9,6 +9,26 @@ namespace GeneralTest.Editor;
 public class TargetProfileEditorCommandTests
 {
     [Test]
+    public void ConnectingAnotherPredecessorPreservesConvergenceAndReplacesOnlyItsOutput()
+    {
+        var handler = new BuiltInEditorCommandHandler(new TargetProfileEntryCatalog([]));
+        var document = new EditorProjectDocument
+        {
+            Graph = new()
+            {
+                RootNodeId = "entry",
+                Nodes =
+        [new() { Id = "entry", Type = "Entry" }, new() { Id = "a", Type = "Group" }, new() { Id = "b", Type = "Group" }, new() { Id = "c", Type = "Group" }]
+            }
+        };
+        Assert.That(handler.Execute(document, new ConnectNodesCommand("a", 0, "c", "a-c"), new(0, false)).Success, Is.True);
+        Assert.That(handler.Execute(document, new ConnectNodesCommand("b", 0, "c", "b-c"), new(0, false)).Success, Is.True);
+        Assert.That(document.Graph.Edges.Count(edge => edge.ToNodeId == "c"), Is.EqualTo(2));
+        Assert.That(handler.Execute(document, new ConnectNodesCommand("a", 0, "b", "a-b"), new(0, false)).Success, Is.True);
+        Assert.That(document.Graph.Edges.Select(edge => edge.Id), Is.EquivalentTo(new[] { "a-b", "b-c" }));
+    }
+
+    [Test]
     public void EntryCommandsOnlyAcceptTypesFromTheirInjectedProfile()
     {
         var catalog = new TargetProfileEntryCatalog(

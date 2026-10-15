@@ -44,6 +44,28 @@ public sealed class ProjectContentSessionTests
     }
 
     [Test]
+    public async Task StructurePreparationSeesTheBaselineOfAnEarlierSaveThatWasStillPublishing()
+    {
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var release = new ManualResetEventSlim();
+        _repository.BeforeApply = () => { entered.TrySetResult(); if (!release.Wait(TimeSpan.FromSeconds(10))) throw new TimeoutException(); };
+        _documents.CurrentDocument.Name = "Just saved";
+        var saving = _session.SaveAsync();
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        string? baseline = null;
+        var structure = _session.PublishStructureAsync((working, saved) =>
+        {
+            baseline = saved.Graph.Name;
+            return new GroupPresence(true);
+        });
+        Assert.That(baseline, Is.Null, "Preparation must wait for the publication gate.");
+        release.Set();
+        await Task.WhenAll(saving, structure).WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.That(baseline, Is.EqualTo("Just saved"));
+        Assert.That(_session.CaptureSaved().Graph.Name, Is.EqualTo("Just saved"));
+    }
+
+    [Test]
     public async Task SaveAllIncludesGraphGroupsAndCompleteSettingsAndComparesActualContent()
     {
         _documents.CurrentDocument.Name = "Renamed";

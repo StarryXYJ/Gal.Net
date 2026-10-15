@@ -52,8 +52,24 @@ public partial class GraphNode : ObservableObject
     [ObservableProperty]
     private double _y;
 
-    [ObservableProperty]
     private string _name = "";
+    public Action<string>? RenameRequested { get; set; }
+    public string Name
+    {
+        get => _name;
+        set
+        {
+            if (_name == value) return;
+            if (RenameRequested is { } rename) { rename(value); return; }
+            if (SetProperty(ref _name, value)) Source.Name = value;
+        }
+    }
+    public void RefreshAuthorValues()
+    {
+        SetProperty(ref _name, Source.Name, nameof(Name));
+        X = Source.X;
+        Y = Source.Y;
+    }
 
     [ObservableProperty]
     private bool _isSelected;
@@ -162,13 +178,7 @@ public partial class GraphNode : ObservableObject
         return new Point(X + x, Y + firstY + index * rowHeight);
     }
 
-    partial void OnNameChanged(string value)
-    {
-        Source.Name = value;
-    }
 
-    partial void OnXChanged(double value) => Source.X = value;
-    partial void OnYChanged(double value) => Source.Y = value;
 }
 
 public partial class GraphConnector : ObservableObject
@@ -191,7 +201,7 @@ public partial class GraphConnector : ObservableObject
     }
 }
 
-public partial class GraphEdge : ObservableObject
+public partial class GraphEdge : ObservableObject, IDisposable
 {
     private static readonly IBrush DefaultStrokeBrush = Brush.Parse("#8F72FF");
     private static readonly IBrush SelectedStrokeBrush = Brush.Parse("#A891FF");
@@ -232,10 +242,21 @@ public partial class GraphEdge : ObservableObject
         To = to;
         _outlet = source.FromOutlet;
 
-        From.PropertyChanged += (_, e) => OnNodeMoved(e.PropertyName);
-        To.PropertyChanged += (_, e) => OnNodeMoved(e.PropertyName);
-        From.OutputConnectors.CollectionChanged += (_, _) => OnNodeMoved(nameof(GraphNode.Y));
-        To.InputConnectors.CollectionChanged += (_, _) => OnNodeMoved(nameof(GraphNode.Y));
+        From.PropertyChanged += NodeMoved;
+        To.PropertyChanged += NodeMoved;
+        From.OutputConnectors.CollectionChanged += ConnectorsChanged;
+        To.InputConnectors.CollectionChanged += ConnectorsChanged;
+    }
+
+    private void NodeMoved(object? sender, System.ComponentModel.PropertyChangedEventArgs args) => OnNodeMoved(args.PropertyName);
+    private void ConnectorsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs args) => OnNodeMoved(nameof(GraphNode.Y));
+    public void Dispose()
+    {
+        From.PropertyChanged -= NodeMoved;
+        To.PropertyChanged -= NodeMoved;
+        From.OutputConnectors.CollectionChanged -= ConnectorsChanged;
+        To.InputConnectors.CollectionChanged -= ConnectorsChanged;
+        GC.SuppressFinalize(this);
     }
 
     private void OnNodeMoved(string? propertyName)
