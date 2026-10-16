@@ -1,6 +1,5 @@
-using GalNet.Media.LibVlc;
 using System.Text.Json;
-using GalNet.Avalonia.GameView.Services;
+using GalNet.Media.LibVlc;
 
 namespace GalNet.Presentation.Tests;
 

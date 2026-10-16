@@ -10,13 +10,15 @@
 
 ## 项目事实（已从仓库文档确认）
 
+- 宿主分层已落地：GameHost 提供 GameSession/IGameRun/GameRun、PlayerSession、PlayerPreferences/PlayerStartup；Avalonia.GameHost 提供默认页面会话、运行绑定、展示组合、资源预加载和设置/输入/窗口适配。Sample 仅保留项目配置、启动适配、本地化和调试。中立应用接口在 Presentation.Abstractions.Application，共享音频后端在 Media.LibVlc；项目删除与 ProjectTools.Windows 已移除。见 docs/spec/architecture.md 和 docs/design/game-host-refactor.md。
+
 - 解决方案入口是 `GalNet.slnx`。
 - `docs/spec/` 描述已经实现的稳定事实；`docs/design/` 描述设计和分阶段计划。
 - Runtime/Core 应保持与 Avalonia、WPF、Skia、具体文件系统和其他平台实现解耦。
 - Entry 契约与执行已分离：IEntryModule 只含 schema/composite，IPrimitiveModule 按领域共享状态并贡献完整指令 ID；GameRegistration 独立注册，AddBuiltins 为完整内置运行入口；独立 GalNet.Contracts.Builtins 只依赖 Core，CreateAllModules 返回 13 个组件模块。可选 schema、部分内置实现或全自定义；仅完整 ID 排他。同前缀和 schema 模块名可重复。音频用 AudioRuntime + IAudioPlaybackHost 组合，不强制继承。见 docs/adr/0002-entry-schema-execution-registration.md 和 docs/development.md。
 - 当前 GameSnapshot 版本为 4，不兼容旧版；持久数据在注册式 GameState 表中，快照为 StateId → version/JSON payload；读档先验证，再取消旧 scope 并替换整个状态根。Engine 不拥有执行 view，宿主先释放 Engine，再异步释放 view 与后端。
-- Engine 提供终态 StopAsync 和 StateChanged，覆盖玩家推进、Choice 与阻塞实例自然完成；不新增通用 Runner。AvaloniaGamePresenters 只组合端口，SampleGamePresentation 管理平台资源。见 docs/design/game-runner-refactor.md 和 docs/spec/runtime.md。
-- Presentation.Defaults 已删除，空 NullGameView 位于展示抽象的 View 命名空间；当前生产项目图已扩展到 24 个项目（见 F-20261013-01）。GameContent.Settings 包含项目设置，项目/安装加载器与两个 Sample 已接通自定义音频轨道配置。
+- Engine 提供终态 StopAsync 和 StateChanged，覆盖玩家推进、Choice 与阻塞实例自然完成；GameHost 仅协调应用会话，不复制 Engine 执行机制。AvaloniaGamePresenters 只组合端口，AvaloniaGamePresentation 管理平台资源。见 docs/design/game-runner-refactor.md 和 docs/spec/runtime.md。
+- Presentation.Defaults 已删除，空 NullGameView 位于展示抽象的 View 命名空间；当前程序集布局见 docs/spec/architecture.md。GameContent.Settings 包含项目设置，项目/安装加载器与两个 Sample 已接通自定义音频轨道配置。
 - 旧的 `GalNet.Control` 与 `GalNet.Control.Abstraction` 已完成迁移并删除；当前共享 Avalonia 游戏页面唯一入口是 `GalNet.Avalonia.GameView`，页面架构见 `docs/spec/control.md`。
 - 持久条目先在 `GameState.Update` 中修改唯一数据记录，再通知展示层；模块通过 PrimitiveRegistry.State/Restore/ValidateState 声明状态、恢复依赖和校验，宿主使用展示抽象 StateRestoreSession 统一恢复、等待和逆序清理。旧 SceneState/Active* 镜像与 Builtins 中央 replay 已删除。
 - 视觉扩展应通过展示抽象和渲染端口接入；不要把平台类型或渲染资源泄漏进 Core/Runtime。
@@ -62,7 +64,7 @@
 - [F-20260916-02-audio-system](../features/F-20260916-02-audio-system/feature.md) 已完成首期：轨道逻辑、`AudioRuntime`、`IAudioPlaybackHost`、Avalonia LibVLC host、语音文本 composite 和 Sample 验收已落地。Runtime 只能传 asset ID；平台 host 必须经 `IAssetManager` 实体化临时媒体文件。后续 [F-20261009-01-track-seffects](../features/F-20261009-01-track-seffects/feature.md) 增加 host 注册的 `SEffectCatalog`、`seffect.gain` 与基于 LibVLC equalizer 的 `seffect.lowPass` / `seffect.highPass`；后续已实现轨道/SEffect 存档与玩家音量，见 F-20261015-03；item scope、音频参数动画和角色默认轨道仍未实现。
 - `F-20260929-01-compiled-content-pipeline` 正在实施；粒子 Primitive、Runtime 状态与 Presenter 桥接及存档后的 effect/particle 展示重放已经验证，完整 Sample/Headless smoke 与 Phase 4 收尾仍待完成。
 - [F-20260929-15-replay-save-format](../features/F-20260929-15-replay-save-format/feature.md) 已暂缓：正式存档继续使用完整稳定快照；后续节点解锁/快速进入能力应另立 feature。
-- `F-20260929-03-maintainability-roadmap` 及其后续 `F-20260929-14-format-baseline` 已完成。资源协议归 Core.Assets；内容、保存、变量、Gallery 组合和进度端口归 Runtime；Editor 设置/退出协议归 Editor.Abstraction；展示端口使用 `GalNet.Presentation.Abstractions.*`，推荐内置类型使用 `GalNet.Primitives.Builtins`。`GalNet.Storage.Abstractions` 与无消费者历史接口已删除，`ISaveService` 已统一为异步可取消 API。测试已按 10 个生产/运行边界拆分，跨外层场景集中在 `GalNet.IntegrationTests`，Architecture 门禁同时约束生产与测试项目引用。Editor Workspace、Avalonia presenter、Sample 会话和 Editor 扩展边界均已按路线图收敛。当前 24 个生产项目的物理路径按 Shared、Presentation、Infrastructure、Editor、Samples 和 Launcher 分组。CI 使用 solution 级 whitespace 与 `IDE0005` import 检查阻止格式基线回退。
+- `F-20260929-03-maintainability-roadmap` 及其后续 `F-20260929-14-format-baseline` 已完成。资源协议归 Core.Assets；内容、保存、变量、Gallery 组合和进度端口归 Runtime；Editor 设置/退出协议归 Editor.Abstraction；展示端口使用 `GalNet.Presentation.Abstractions.*`，推荐内置类型使用 `GalNet.Primitives.Builtins`。`GalNet.Storage.Abstractions` 与无消费者历史接口已删除，`ISaveService` 已统一为异步可取消 API。测试已按 10 个生产/运行边界拆分，跨外层场景集中在 `GalNet.IntegrationTests`，Architecture 门禁同时约束生产与测试项目引用。Editor Workspace、Avalonia presenter、Sample 会话和 Editor 扩展边界均已按路线图收敛。生产项目的物理路径按 Shared、Presentation、Infrastructure、Editor、Samples 和 Launcher 分组。CI 使用 solution 级 whitespace 与 `IDE0005` import 检查阻止格式基线回退。
 - 后续 feature、验证命令和新经验在实际工作中补充，并保留来源链接或 feature ID。
 
 ## 维护规则
@@ -73,6 +75,8 @@
 4. 如果项目架构变化，检查并标记受影响的 lesson 和 skill，而不是继续沿用旧规则。
 
 ## 经验索引
+
+- [批量预加载的部分成功租约](lessons/L-20261016-06-partial-preload-leases.md)：每次成功获取立即登记；WhenAll 失败仍须释放其他已成功任务的租约。
 
 - [分支节点高度变化必须发布连线布局刷新](lessons/L-20261016-04-graph-edge-layout-refresh.md)：连接器重建时输入集合事件可能早于输出集合重建，节点布局完成后必须单独通知入边刷新路径。
 

@@ -392,7 +392,11 @@ Avalonia 的 `src/Samples/GalNet.Sample.Avalonia/SampleCustomization.cs` 集中�
 
 新增截图一类的业务时：在契约项目声明参数/schema 并加入 Modules，在平台业务文件实现 module，然后在 SampleCustomization.ConfigureExecution 注册。需要专属字段编辑器时在 CreateFieldEditors 注册工厂，需要新资源类型时在资源策略入口配置。App、Session、Runner 和关闭流程不需要认识新 module；BuildView 将执行模块所有权转交给 view，模块只释放自己的资源，借用的页面和媒体端口由 Presentation 在 view 之后释放。契约变化后重新部署 DLL 给工具使用。
 
-App 负责应用初始化/关闭；Session 协调游戏、设置和存档；Runner 拥有单次 Engine；ResourceScope 持有 assets/预加载租约；Presentation 持有平台端口；SaveSession 持有 profile 的变量、进度和 Gallery resolver。设置条目和首次启动策略分别留在 SamplePlayerSettingsService 和 SampleStartupService，二次开发者可以直接改业务策略，不需把它们合并到生命周期类。默认 layer resolver 使用预加载纹理并拥有 fallback，Gallery resolver 使用独立资源租约，两者不能共享释放逻辑。
+默认运行框架位于 `GalNet.GameHost` 和 `GalNet.Avalonia.GameHost`。`SampleCustomization.CreateHostOptions()` 选择项目 catalog、指令实现和预加载策略；`AvaloniaGameSession` 直接提供新游戏、继续、存读档及关闭流程。Sample 的会话派生类仅适配启动参数和调试存档，不需要复制生命周期代码。
+
+`GameSession` 通过 `IGameRun` 管理替换和命令互斥；`GameRun` 不自动注册内置模块。WPF/WinUI 可复用这一层，另行实现页面/Presenter 绑定。现有 Core 场景模型保持原位，通用宿主 API 不要求 Layer Presenter。
+
+偏好读写与非法值回退由 `PlayerPreferences` 承担，首次启动规则由 `PlayerStartup` 承担；Avalonia 设置 UI 使用 `AvaloniaPlayerSettingsService`，可注入字段编辑器 registry，并通过 `IPlayerLocalization` 接入项目本地化。`AvaloniaGamePresentationOptions.CreateLayers/CreateAudioHost` 可替换默认纹理工厂与音频后端，工厂返回的新对象由展示会话负责释放。共享音频实现位于 `GalNet.Media.LibVlc`。默认 layer resolver 拥有 fallback，Gallery resolver 持有独立媒体租约，二者不能共用释放逻辑。
 
 
 ## 持久状态与读档扩展

@@ -1,7 +1,6 @@
-using GalNet.Media.LibVlc;
-using GalNet.Avalonia.GameView.Services;
 using GalNet.Core.Assets;
 using GalNet.Core.Audio;
+using GalNet.Media.LibVlc;
 using GalNet.Presentation.Abstractions.Audio;
 
 namespace GeneralTest.Presentation;

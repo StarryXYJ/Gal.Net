@@ -1,22 +1,20 @@
-using GalNet.Media.LibVlc;
-using GalNet.Avalonia.GameHost;
-using GalNet.Avalonia.GameView.ViewModels;
 using DynamicLocalization.Core;
 using DynamicLocalization.Core.Providers;
-using GalNet.Assets;
+using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameView.Composition;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
+using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Avalonia.Themes;
 using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
-using GalNet.Core.Scene;
 using GalNet.Game.Controls.Forms;
+using GalNet.Media.LibVlc;
+using GalNet.Presentation.Abstractions.Audio;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
 using GalNet.Project.Contracts;
-using GalNet.Rendering.Scene;
 using GalNet.Runtime.Content;
 using GalNet.Sample.Avalonia.Debug;
 using GalNet.Sample.Avalonia.Presentation;
@@ -73,18 +71,19 @@ internal static class SampleCustomization
         return (resources, BuiltinGalleryTypes.CreateCatalog(resources));
     }
 
-    internal static void ConfigureDecoders(IAssetManager assets) =>
-        assets.RegisterDecoder<SceneTexture>("sprite", new SceneTextureAssetDecoder());
-
-    internal static Task<IReadOnlyList<IGameFile>> SelectTexturePreloadsAsync(IAssetManager assets, CancellationToken token) =>
-        assets.GetFilesAsync("sprite", token);
-
-    internal static async Task<EffectProgramResource[]> SelectEffectProgramsAsync(IAssetManager assets, CancellationToken token) =>
-        (await assets.GetFilesAsync("effect-program", token)).Select(file => new EffectProgramResource(file.Id)).ToArray();
+    internal static AvaloniaGameHostOptions CreateHostOptions() => new()
+    {
+        GameTitle = "GalNet Avalonia Sample",
+        NoGameMessage = "Usage: GalNet.Sample.Avalonia <game-data-directory> [--profile <directory>]",
+        CreateContentCatalogs = CreateContentCatalogs,
+        ConfigureExecution = (registration, presentation, page, content) => ConfigureExecution(registration,
+            presentation.Presenters, page, content, presentation.Effects, presentation.Audio,
+            presentation.Video, presentation.AudioModule)
+    };
 
     internal static void ConfigureExecution(
         GameRegistration registration, AvaloniaGamePresenters presenters, GamePage page,
-        GameContent content, AvaloniaEffectRuntime? effects, LibVlcAudioPlaybackHost? audio,
+        GameContent content, AvaloniaEffectRuntime? effects, IAudioPlaybackHost? audio,
         AvaloniaVideoPresenter? video, BuiltinAudioModule? audioModule)
     {
         registration.UseCatalog(ProjectSchemas.CreateCatalog());

@@ -3,18 +3,17 @@ using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Runtime;
 using GalNet.Core.Services;
 using GalNet.Core.Settings;
+using GalNet.GameHost;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Logging;
 using GalNet.Runtime.Runtime;
-using LibVLCSharp.Shared;
-using GalNet.Avalonia.GameHost;
-using GalNet.GameHost;
 using GalNet.Storage.FileSystem;
+using LibVLCSharp.Shared;
 
-namespace GalNet.Sample.Avalonia.Services;
+namespace GalNet.Avalonia.GameHost;
 
-/// <summary>Sample page binding and run ownership; the engine owns execution and terminal states.</summary>
-internal sealed class SampleGameRunner : IGameRun
+/// <summary>Default page binding and run ownership; the engine owns execution and terminal states.</summary>
+internal sealed class AvaloniaGameRun : IGameRun
 {
     private readonly GamePageViewModel _gameplay;
     private readonly GameRun _run;
@@ -28,7 +27,7 @@ internal sealed class SampleGameRunner : IGameRun
     private Task _stateUpdate = Task.CompletedTask;
     private bool _disposed;
 
-    private SampleGameRunner(
+    private AvaloniaGameRun(
         GamePageViewModel gameplay, GameRun run, AvaloniaGamePresentation presentation, AvaloniaPlayerSettingsService playerSettings,
         Func<bool, string?, Task> updateStateAsync, Func<Task> runCompletedAsync,
         Func<Task> resetPresentationAsync, Func<Action, Task> onUiAsync)
@@ -48,20 +47,18 @@ internal sealed class SampleGameRunner : IGameRun
         _engine.StateChanged += OnEngineStateChanged;
     }
 
-    public static async Task<SampleGameRunner> CreateAsync(
+    public static async Task<AvaloniaGameRun> CreateAsync(
         GamePageViewModel gameplay, GamePage page, GameResourceScope resources, AvaloniaGameResources visuals,
-        PlayerSession saveSession, AvaloniaPlayerSettingsService playerSettings, ITextResolver textResolver,
+        PlayerSession saveSession, AvaloniaPlayerSettingsService playerSettings, ITextResolver textResolver, AvaloniaGameHostOptions options,
         LibVLC? sharedLibVlc, Func<bool, string?, Task> updateStateAsync,
         Func<Task> runCompletedAsync, Func<Task> resetPresentationAsync,
         Func<Action, Task> onUiAsync, CancellationToken cancellationToken)
     {
         var presentation = await AvaloniaGamePresentation.CreateAsync(gameplay, page, resources.Assets,
             visuals.PreloadedTextures, visuals.EffectPrograms, resources.MediaFiles,
-            (registration, presentation) => SampleCustomization.ConfigureExecution(registration,
-                presentation.Presenters, page, resources.Content, presentation.Effects,
-                presentation.Audio, presentation.Video, presentation.AudioModule),
+            (registration, presentation) => options.ConfigureExecution(registration, presentation, page, resources.Content),
             resources.Content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>()
-                .SelectMany(group => group.Entries).Select(entry => entry.Type), sharedLibVlc, cancellationToken);
+                .SelectMany(group => group.Entries).Select(entry => entry.Type), options.Presentation, sharedLibVlc, cancellationToken);
         GameRun? run = null;
         try
         {
@@ -71,7 +68,7 @@ internal sealed class SampleGameRunner : IGameRun
             var runtime = new GameRuntime(textResolver, resources.Content.Graph.RootNodeId, settings, saveSession.Variables);
             run = new GameRun(resources.Content.Graph, runtime, presentation.View,
                 saveSession.Progress, presentation.Presenters.ChoicePresenter, presentation, presentation.Restorer);
-            return new SampleGameRunner(gameplay, run, presentation, playerSettings,
+            return new AvaloniaGameRun(gameplay, run, presentation, playerSettings,
                 updateStateAsync, runCompletedAsync, resetPresentationAsync, onUiAsync);
         }
         catch (Exception error)

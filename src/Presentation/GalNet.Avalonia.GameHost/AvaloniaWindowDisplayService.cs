@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Controls;
-using GalNet.Avalonia.GameView.Services;
 
 namespace GalNet.Avalonia.GameHost;
 

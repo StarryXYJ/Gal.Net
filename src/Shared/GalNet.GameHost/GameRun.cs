@@ -7,18 +7,22 @@ using GalNet.Runtime.Progress;
 
 namespace GalNet.GameHost;
 
-/// <summary>Default engine lifecycle. The caller owns the view, restore session and platform backends.</summary>
+/// <summary>Default engine lifecycle. The caller owns the view and platform backends; a supplied restore session is borrowed.</summary>
 public sealed class GameRun : IGameRun
 {
     private readonly StateRestoreSession? _restoration;
     private bool _prepared;
+    private readonly bool _ownsRestoration;
+    private readonly object _disposeGate = new();
+    private Task? _disposeTask;
 
     public GameRun(Graph graph, IGameRuntime runtime, IGameView view,
         IGameProgressService? progress = null, IChoicePresenter? choices = null,
         ICatchUpPresentation? catchUp = null, StateRestoreSession? restoration = null)
     {
         Engine = new GameEngine(graph, runtime, view, progress, choices, catchUp);
-        _restoration = restoration;
+        _ownsRestoration = restoration is null && view is CompositeGameView;
+        _restoration = restoration ?? (view is CompositeGameView composite ? new StateRestoreSession(composite) : null);
     }
 
     public GameEngine Engine { get; }
@@ -49,5 +53,15 @@ public sealed class GameRun : IGameRun
         if (_restoration is not null) await _restoration.SuspendAsync(CancellationToken.None);
     }
 
-    public ValueTask DisposeAsync() => Engine.DisposeAsync();
+    public ValueTask DisposeAsync()
+    {
+        lock (_disposeGate) return new(_disposeTask ??= DisposeCoreAsync());
+    }
+    private async Task DisposeCoreAsync()
+    {
+        var cleanup = new ResourceCleanup();
+        await cleanup.RunAsync(Engine.DisposeAsync);
+        if (_ownsRestoration && _restoration is not null) await cleanup.RunAsync(_restoration.DisposeAsync);
+        cleanup.ThrowIfFailed();
+    }
 }

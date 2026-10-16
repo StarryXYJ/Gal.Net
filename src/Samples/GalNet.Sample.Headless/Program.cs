@@ -1,10 +1,9 @@
 using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
 using GalNet.Core.Settings;
+using GalNet.GameHost;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
-using GalNet.Runtime.Engine;
-using GalNet.GameHost;
 using GalNet.Runtime.Persistence;
 using GalNet.Runtime.Runtime;
 using GalNet.Runtime.Variables;
@@ -49,11 +48,12 @@ try
     await using var run = new GameRun(content.Graph, runtime, view, progress, presentation);
     var engine = run.Engine;
 
+    GalNet.Core.Runtime.GameSnapshot? initialSnapshot = null;
     if (options.LoadSlot is { } loadSlot)
     {
         var snapshot = await saves.LoadAsync(loadSlot)
             ?? throw new InvalidOperationException($"Save slot {loadSlot} is empty or invalid.");
-        engine.RestoreFrom(snapshot);
+        initialSnapshot = snapshot;
         Console.WriteLine($"[Save] loaded slot {loadSlot}");
     }
 
@@ -74,7 +74,8 @@ try
         catch (Exception exception) { advanceFailure.TrySetResult(exception); }
     }
 
-    await engine.AdvanceAsync();
+    await run.PrepareAsync(initialSnapshot);
+    await run.StartPreparedAsync();
     while (engine.IsRunning)
     {
         var completed = await Task.WhenAny(Task.Delay(25), advanceFailure.Task);

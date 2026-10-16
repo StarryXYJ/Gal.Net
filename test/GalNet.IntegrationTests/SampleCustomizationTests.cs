@@ -1,5 +1,5 @@
-using GalNet.Avalonia.GameHost;
 using Avalonia.Headless;
+using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;

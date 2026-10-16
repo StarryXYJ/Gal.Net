@@ -1,8 +1,8 @@
-using GalNet.Avalonia.GameHost;
 using Avalonia.Controls;
 using Avalonia.Data;
 using DynamicLocalization.Core;
 using DynamicLocalization.Core.Providers;
+using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameView.MarkupExtensions;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;

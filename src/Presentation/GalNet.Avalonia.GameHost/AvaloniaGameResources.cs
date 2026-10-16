@@ -45,7 +45,7 @@ public sealed class AvaloniaGameResources : IDisposable
 
     public void Dispose()
     {
-        var cleanup = new PresentationCleanup();
+        var cleanup = new GalNet.GameHost.ResourceCleanup();
         foreach (var handle in _textures.Values) cleanup.Run(handle.Dispose);
         _textures.Clear();
         cleanup.ThrowIfFailed();

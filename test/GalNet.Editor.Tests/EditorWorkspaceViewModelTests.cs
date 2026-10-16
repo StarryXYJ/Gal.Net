@@ -339,7 +339,6 @@ public sealed class EditorWorkspaceViewModelTests
         public Task<GalProject> OpenAsync(string projectPath) => throw new NotSupportedException();
         public Task<GalProject> CreateAsync(string projectPath, string name, ProjectSettings settings, string contractsDirectory) => throw new NotSupportedException();
         public Task CloseAsync() => Task.CompletedTask;
-        public Task<GalNet.Editor.Abstraction.Commands.ToolResult> DeleteAsync(string projectPath, bool dryRun = false, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task SaveAsync() { SaveCount++; return Task.CompletedTask; }
         public IReadOnlyList<RecentProjectInfo> GetRecentProjects() => [];
         public void RemoveRecentProject(string projectPath) { }

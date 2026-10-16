@@ -1,17 +1,17 @@
-using GalNet.Media.LibVlc;
 using GalNet.Assets;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
+using GalNet.Core.Assets;
 using GalNet.Core.Runtime;
+using GalNet.Core.Scene;
+using GalNet.Presentation.Abstractions.Audio;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
 using GalNet.Rendering.Scene;
 using GalNet.Runtime.Logging;
-using GalNet.Core.Assets;
-using GalNet.Core.Scene;
 using LibVLCSharp.Shared;
 
 namespace GalNet.Avalonia.GameHost;
@@ -19,16 +19,17 @@ namespace GalNet.Avalonia.GameHost;
 /// <summary>Default Avalonia composition and ownership of platform resources; no story execution logic.</summary>
 public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresentation
 {
-    private DefaultGameLayerFactory? _layers;
+    private IGamePageLayerFactory? _layers;
     private SkiaShaderEffectProgramResolver? _programs;
     private Task? _disposeTask;
+    private readonly object _disposeGate = new();
     private GamePageViewModel _gameplay = null!;
 
     private AvaloniaGamePresentation() { }
 
     public AvaloniaGamePresenters Presenters { get; private set; } = null!;
     public AvaloniaEffectRuntime Effects { get; private set; } = null!;
-    public LibVlcAudioPlaybackHost Audio { get; private set; } = null!;
+    public IAudioPlaybackHost Audio { get; private set; } = null!;
     public AvaloniaVideoPresenter Video { get; private set; } = null!;
     public CompositeGameView View { get; private set; } = null!;
     public BuiltinAudioModule AudioModule { get; private set; } = null!;
@@ -40,13 +41,14 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
         IReadOnlyList<EffectProgramResource> effectPrograms, IAssetFileMaterializer files,
         Action<GameRegistration, AvaloniaGamePresentation> configure,
         IEnumerable<string> requiredInstructions,
-        LibVLC? sharedLibVlc = null, CancellationToken cancellationToken = default)
+        AvaloniaGamePresentationOptions? options = null, LibVLC? sharedLibVlc = null, CancellationToken cancellationToken = default)
     {
+        options ??= new AvaloniaGamePresentationOptions();
         var presentation = new AvaloniaGamePresentation();
         presentation._gameplay = gameplay;
         try
         {
-            presentation._layers = new DefaultGameLayerFactory(textures);
+            presentation._layers = options.CreateLayers(textures);
             presentation.Presenters = new AvaloniaGamePresenters(gameplay, page, presentation._layers);
             presentation._programs = new SkiaShaderEffectProgramResolver(
                 new AssetManagerShaderEffectProgramSource(assets));
@@ -55,8 +57,7 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
                 "Preloaded {UsableEffectProgramCount}/{EffectProgramCount} effect programs in {ElapsedMilliseconds} ms",
                 preload.UsableProgramCount, preload.RequestedProgramCount, preload.Cache.TotalLoadTime.TotalMilliseconds);
             presentation.Effects = new AvaloniaEffectRuntime(gameplay, presentation._programs);
-            presentation.Audio = new LibVlcAudioPlaybackHost(assets, files: files,
-                sharedLibVlc: sharedLibVlc);
+            presentation.Audio = options.CreateAudioHost(assets, files, sharedLibVlc);
             presentation.AudioModule = new BuiltinAudioModule(presentation.Audio);
             presentation.Video = new AvaloniaVideoPresenter(assets, gameplay, files: files,
                 sharedLibVlc: sharedLibVlc);
@@ -75,7 +76,10 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
         }
     }
 
-    public ValueTask DisposeAsync() => new(_disposeTask ??= DisposeCoreAsync());
+    public ValueTask DisposeAsync()
+    {
+        lock (_disposeGate) return new(_disposeTask ??= DisposeCoreAsync());
+    }
 
     public async Task BeginCatchUpAsync(CancellationToken cancellationToken)
     {
@@ -100,19 +104,20 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
 
     private async Task DisposeCoreAsync()
     {
-        var cleanup = new PresentationCleanup();
+        var cleanup = new GalNet.GameHost.ResourceCleanup();
         // Implementations borrow platform ports, so release the view first.
         await cleanup.RunAsync(() => Restorer?.DisposeAsync() ?? ValueTask.CompletedTask);
         await cleanup.RunAsync(() => View?.DisposeAsync() ?? ValueTask.CompletedTask);
         await cleanup.RunAsync(() => Video?.DisposeAsync() ?? ValueTask.CompletedTask);
-        await cleanup.RunAsync(() => Audio?.DisposeAsync() ?? ValueTask.CompletedTask);
+        if (Audio is IAsyncDisposable asyncAudio) await cleanup.RunAsync(asyncAudio.DisposeAsync);
+        else cleanup.Run(() => Audio?.Dispose());
         cleanup.Run(() =>
         {
             if (Effects is not null) Effects.Dispose(); // owns the program resolver
             else _programs?.Dispose();
         });
         cleanup.Run(() => Presenters?.Dispose());
-        cleanup.Run(() => _layers?.Dispose());
+        cleanup.Run(() => (_layers as IDisposable)?.Dispose());
         cleanup.ThrowIfFailed();
     }
 }

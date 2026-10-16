@@ -1,7 +1,7 @@
-using GalNet.Avalonia.GameHost;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Sample.Avalonia.Debug;
 using GalNet.Sample.Avalonia.Services;

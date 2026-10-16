@@ -14,8 +14,12 @@ Core.Assets 声明 IAssetFileMaterializer 与 AssetFileLease；GalNet.Assets 提
 
 ## 恢复与关闭
 
-Builtins 的 PersistentSceneReplaySession 拥有恢复产生的展示 continuation；等待取消后仍保留未清理实例。宿主先停止 Engine，再释放重放会话、执行 view 和平台后端，最后释放资源 scope。
+展示抽象的 StateRestoreSession 拥有恢复产生的展示 continuation；等待取消后仍保留未清理实例。宿主先停止 Engine，再释放重放会话、执行 view 和平台后端，最后释放资源 scope。
 
 已读进度的内存更新与磁盘提交分开。文件实现默认每 2 秒提交 dirty revision；存档和停止边界显式等待 flush。持久化失败保留 dirty 状态并重试，关闭失败向调用者传播。强制终止可能丢失上次成功提交后的进度；持续 I/O 失败时没有最大丢失时间保证。
 
 当前契约和行为分别见 [architecture](../spec/architecture.md)、[assets](../spec/assets.md)、[runtime](../spec/runtime.md) 和 [i18n](../spec/i18n.md)。
+
+## 默认宿主组合
+
+`GameHost` 提供平台无关的命令协调、运行生命周期和玩家会话；`Avalonia.GameHost` 提供默认页面适配、纹理租约和展示组合。中立资源 scope 在文件基础设施中，不含渲染纹理。共享音频后端为 `Media.LibVlc`，视频画面由 Avalonia 实现。可替换工厂及职责图见 [当前架构](../spec/architecture.md)。

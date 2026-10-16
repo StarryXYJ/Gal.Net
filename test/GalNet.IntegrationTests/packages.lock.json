@@ -328,7 +328,8 @@
           "GalNet.Media.LibVlc": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "GalNet.Primitives.Builtins": "[1.0.0, )",
-          "GalNet.Runtime": "[1.0.0, )"
+          "GalNet.Runtime": "[1.0.0, )",
+          "GalNet.Storage.FileSystem": "[1.0.0, )"
         }
       },
       "galnet.avalonia.gameview": {

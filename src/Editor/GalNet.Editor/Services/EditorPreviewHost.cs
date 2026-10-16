@@ -1,6 +1,5 @@
 extern alias GameViewAssembly;
 extern alias ThemesAssembly;
-using GalNet.Media.LibVlc;
 using System.Collections.ObjectModel;
 using Avalonia;
 using Avalonia.Controls;
@@ -12,6 +11,7 @@ using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
 using GalNet.Core.Runtime;
 using GalNet.Core.Settings;
+using GalNet.Media.LibVlc;
 using GalNet.Presentation.Abstractions.Runtime;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
