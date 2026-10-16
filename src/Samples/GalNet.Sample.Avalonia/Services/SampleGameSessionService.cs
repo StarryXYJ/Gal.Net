@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.GameHost;
+using GalNet.Storage.FileSystem;
+using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
@@ -23,7 +25,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private readonly SampleLibVlcRuntime _mediaRuntime;
     private readonly ObservableCollection<GameSaveSlot> _saveSlots = [];
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySaveSlots;
-    private SampleGameResourceScope? _resources;
+    private GameResourceScope? _resources;
+    private AvaloniaGameResources? _visualResources;
     private SampleSaveSession? _saveSession;
     private readonly GameSession _session;
     private readonly SemaphoreSlim _initialization = new(1, 1);
@@ -79,13 +82,17 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
 
         try
         {
-            var resources = await SampleGameResourceScope.OpenAsync(
-                options.GameDirectory,
-                cancellationToken);
+            var catalogs = SampleCustomization.CreateContentCatalogs();
+            var resources = await GameResourceScope.OpenAsync(options.GameDirectory,
+                catalogs.Resources, catalogs.Gallery, cancellationToken);
             var profileDirectory = options.ProfileDirectory ?? Path.Combine(resources.GameDirectory, ".galnet");
             SampleSaveSession? saveSession = null;
+            AvaloniaGameResources? visuals = null;
             try
             {
+                SampleCustomization.ConfigureDecoders(resources.Assets);
+                visuals = await AvaloniaGameResources.CreateAsync(resources.Assets,
+                    SampleCustomization.SelectTexturePreloadsAsync, SampleCustomization.SelectEffectProgramsAsync, cancellationToken);
                 saveSession = await SampleSaveSession.CreateAsync(
                     profileDirectory,
                     resources.Content,
@@ -95,22 +102,24 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             catch (Exception error)
             {
                 var cleanup = new SampleCleanup();
+                cleanup.Run(() => visuals?.Dispose());
                 cleanup.Run(resources.Dispose);
                 cleanup.ThrowIfFailed(error);
                 throw;
             }
 
             _resources = resources;
+            _visualResources = visuals;
             _saveSession = saveSession;
             _localization.AttachGame(resources.Content);
 
             foreach (var diagnostic in resources.Content.Localization.Diagnostics)
                 GameLog.Logger.Warning("Skipped localization source {Path}: {Reason}", diagnostic.RelativePath, diagnostic.Message);
-            var preloadFailures = resources.SpriteFileCount - resources.PreloadedTextures.Count;
+            var preloadFailures = visuals.SpriteFileCount - visuals.PreloadedTextures.Count;
             GameLog.Logger.Information("Preloaded {SpriteCount} sprite assets ({FailureCount} deferred to fallback)",
-                resources.SpriteFileCount, preloadFailures);
+                visuals.SpriteFileCount, preloadFailures);
             GameLog.Logger.Information("Discovered {EffectProgramCount} effect program assets for session prewarming",
-                resources.EffectPrograms.Count);
+                visuals.EffectPrograms.Count);
 
             GalleryDataSource = saveSession.GalleryDataSource;
             GalleryResources = saveSession.GalleryResources;
@@ -282,6 +291,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             GalleryResources = null;
             GalleryDataSource = null;
             cleanup.Run(() => saves?.Dispose());
+            cleanup.Run(() => _visualResources?.Dispose());
+            _visualResources = null;
             var resources = _resources;
             _resources = null;
             cleanup.Run(() => resources?.Dispose());
@@ -309,6 +320,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _gameplay,
             _page,
             resources,
+            _visualResources!,
             saveSession,
             _settings,
             _localization,

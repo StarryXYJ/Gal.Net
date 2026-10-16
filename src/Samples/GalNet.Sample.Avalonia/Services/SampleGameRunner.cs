@@ -9,6 +9,7 @@ using GalNet.Runtime.Runtime;
 using LibVLCSharp.Shared;
 using GalNet.Avalonia.GameHost;
 using GalNet.GameHost;
+using GalNet.Storage.FileSystem;
 
 namespace GalNet.Sample.Avalonia.Services;
 
@@ -48,14 +49,14 @@ internal sealed class SampleGameRunner : IGameRun
     }
 
     public static async Task<SampleGameRunner> CreateAsync(
-        GamePageViewModel gameplay, GamePage page, SampleGameResourceScope resources,
+        GamePageViewModel gameplay, GamePage page, GameResourceScope resources, AvaloniaGameResources visuals,
         SampleSaveSession saveSession, SamplePlayerSettingsService playerSettings, ITextResolver textResolver,
         LibVLC? sharedLibVlc, Func<bool, string?, Task> updateStateAsync,
         Func<Task> runCompletedAsync, Func<Task> resetPresentationAsync,
         Func<Action, Task> onUiAsync, CancellationToken cancellationToken)
     {
         var presentation = await AvaloniaGamePresentation.CreateAsync(gameplay, page, resources.Assets,
-            resources.PreloadedTextures, resources.EffectPrograms, resources.MediaFiles,
+            visuals.PreloadedTextures, visuals.EffectPrograms, resources.MediaFiles,
             (registration, presentation) => SampleCustomization.ConfigureExecution(registration,
                 presentation.Presenters, page, resources.Content, presentation.Effects,
                 presentation.Audio, presentation.Video, presentation.AudioModule),

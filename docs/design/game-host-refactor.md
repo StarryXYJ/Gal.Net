@@ -22,3 +22,5 @@
 - Step 1 verified: Architecture 37/37; Editor.Shared 180/180; ProjectSchemaLifecycle 5/5.
 - Step 2: 默认展示组合位于独立 Avalonia.GameHost，避免页面控件层反向依赖 Runtime/Builtins。模块由调用者配置；纹理工厂已下放。配置与清理回归 6/6。
 - Step 3: 新增中立 GameSession/IGameRun/GameRun；Sample 的存档与替换共用命令门，Headless 也接入 GameRun。增加串行保存/替换、准备失败清理、停止失败与重复关闭测试。
+- Step 4: GameResourceScope 位于文件基础设施，AvaloniaGameResources 仅持有渲染资源租约；移除 Sample 资源 scope。批量预加载逐个记录成功租约，部分失败时统一释放。
+- Step 4 verified: 资源、配置与清理回归 7/7；经验见 `.agents/lessons/L-20261016-06-partial-preload-leases.md`。

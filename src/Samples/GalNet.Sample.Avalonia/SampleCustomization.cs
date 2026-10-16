@@ -68,13 +68,13 @@ internal static class SampleCustomization
         return (resources, BuiltinGalleryTypes.CreateCatalog(resources));
     }
 
-    internal static void ConfigureDecoders(AssetManager assets) =>
+    internal static void ConfigureDecoders(IAssetManager assets) =>
         assets.RegisterDecoder<SceneTexture>("sprite", new SceneTextureAssetDecoder());
 
-    internal static Task<IReadOnlyList<IGameFile>> SelectTexturePreloadsAsync(AssetManager assets, CancellationToken token) =>
+    internal static Task<IReadOnlyList<IGameFile>> SelectTexturePreloadsAsync(IAssetManager assets, CancellationToken token) =>
         assets.GetFilesAsync("sprite", token);
 
-    internal static async Task<EffectProgramResource[]> SelectEffectProgramsAsync(AssetManager assets, CancellationToken token) =>
+    internal static async Task<EffectProgramResource[]> SelectEffectProgramsAsync(IAssetManager assets, CancellationToken token) =>
         (await assets.GetFilesAsync("effect-program", token)).Select(file => new EffectProgramResource(file.Id)).ToArray();
 
     internal static void ConfigureExecution(
