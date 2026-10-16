@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GalNet.Core.Entry;
+using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
 using GalNet.Core.Scene;
 using GalNet.Core.Serialization;
@@ -97,11 +98,14 @@ public static class GalgroupCompiler
                 return primitive;
             }
 
-            return catalog.Create(
+            var composite = catalog.Create(
                 source.Type,
                 index,
                 source.Condition,
                 source.Parameters.ToDictionary(pair => pair.Key, pair => ToValue(pair.Value), StringComparer.Ordinal));
+            if (composite is CompositeEntry typedComposite)
+                typedComposite.SetSourceArguments(JsonSerializer.SerializeToElement(source.Parameters));
+            return composite;
         }
         catch (Exception exception) when (exception is InvalidDataException or JsonException or ArgumentException)
         {
@@ -139,13 +143,10 @@ public static class GalgroupCompiler
         var definition = catalog.Get(entry.Type);
         var arguments = entry.Values.ToDictionary(
             pair => pair.Key,
-            pair => ToJsonElement(pair.Value, (definition.DynamicParameters ?? throw new InvalidDataException($"Entry '{entry.Type}' has no dynamic parameter schema."))[pair.Key].ValueType),
+            pair => ValueCodec.FromEditorText((definition.DynamicParameters ?? throw new InvalidDataException($"Entry '{entry.Type}' has no dynamic parameter schema."))[pair.Key].Value, pair.Value),
             StringComparer.Ordinal);
         return JsonSerializer.SerializeToElement(arguments);
     }
-
-    private static JsonElement ToJsonElement(string value, Type valueType) =>
-        DynamicParameterValue.FromEditorValue(value, valueType);
 
     private static string ToValue(JsonElement value) => value.ValueKind switch
     {

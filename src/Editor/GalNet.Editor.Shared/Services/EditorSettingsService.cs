@@ -16,9 +16,9 @@ public sealed class EditorSettingsService : IEditorSettingsService
     private readonly string _settingsPath;
     private EditorSettings? _settings;
 
-    public EditorSettingsService()
+    public EditorSettingsService(string? settingsPath = null)
     {
-        _settingsPath = Path.Combine(
+        _settingsPath = settingsPath ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "GalNet", "editor-settings.json");
     }

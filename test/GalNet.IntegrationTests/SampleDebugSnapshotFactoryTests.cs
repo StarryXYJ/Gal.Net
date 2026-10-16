@@ -21,9 +21,9 @@ public sealed class SampleDebugSnapshotFactoryTests
             Assert.That(snapshot.EntryIndex, Is.EqualTo(7));
             Assert.That(snapshot.Variables["score"].AsInt(), Is.EqualTo(42));
             Assert.That(snapshot.Variables["score"], Is.Not.SameAs(source.Variables["score"]));
-            Assert.That(snapshot.SceneState.Layers, Is.Empty);
-            Assert.That(snapshot.SceneState.ActiveEffects, Is.Empty);
-            Assert.That(snapshot.SceneState.ActiveAnimations, Is.Empty);
+            Assert.That(BuiltinTestRuntime.State(snapshot).Table<Layer>().Values, Is.Empty);
+            Assert.That(BuiltinTestRuntime.State(snapshot).Table<EffectInstance>().Values, Is.Empty);
+            Assert.That(BuiltinTestRuntime.State(snapshot).Table<LoopAnimationState>().Values, Is.Empty);
         });
     }
 
@@ -39,7 +39,7 @@ public sealed class SampleDebugSnapshotFactoryTests
             Assert.That(snapshot.NodeId, Is.EqualTo("chapter-2"));
             Assert.That(snapshot.EntryIndex, Is.Zero);
             Assert.That(snapshot.Variables["score"].AsInt(), Is.EqualTo(42));
-            Assert.That(snapshot.SceneState.Layers, Is.Empty);
+            Assert.That(BuiltinTestRuntime.State(snapshot).Table<Layer>().Values, Is.Empty);
         });
     }
 
@@ -47,17 +47,12 @@ public sealed class SampleDebugSnapshotFactoryTests
     {
         var score = new GalVariable { Name = "score" };
         score.SetValue(42);
-        return new GameSnapshot
-        {
-            NodeId = "chapter-2",
-            EntryIndex = entryIndex,
-            Variables = new Dictionary<string, GalVariable> { ["score"] = score },
-            SceneState = new SceneState
-            {
-                Layers = [new Layer { Id = "hero", AssetId = "hero-a" }],
-                ActiveEffects = [new ActiveEffectState { Id = "blur", InstanceId = "blur-1" }],
-                ActiveAnimations = [new ActiveAnimationState { PlaybackHandleId = "fade" }]
-            }
-        };
+        var runtime = BuiltinTestRuntime.Create(null, "chapter-2");
+        runtime.SetEntryIndex(entryIndex);
+        runtime.SetVariable("score", 42);
+        runtime.State.Table<Layer>().Add(new Layer { Id = "hero", AssetId = "hero-a" });
+        runtime.State.Table<EffectInstance>().Add(new EffectInstance { Id = "blur-1", EffectId = "blur" });
+        runtime.State.Table<LoopAnimationState>().Add(new LoopAnimationState { Id = "fade", Request = new AnimationRequest { PlaybackHandleId = "fade" } });
+        return runtime.CreateSnapshot();
     }
 }

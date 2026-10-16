@@ -2,10 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using GalNet.Core.Compilation;
 using GalNet.Core.Entry;
-using GalNet.Core.Primitives;
 using GalNet.Core.Serialization;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
@@ -24,19 +25,14 @@ public sealed class EditorSaveCoordinator : IEditorSaveCoordinator
         _catalog = catalog;
     }
 
-    public void SaveProjectDocument(
-        string projectPath,
-        EditorGraphDocument document,
-        IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries)
-    {
-        _repository.Save(projectPath, document, groupEntries);
-    }
-
     public string BuildPreviewData(
         string previewPath,
         EditorGraphDocument document,
         IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries)
     {
+        for (var directory = new DirectoryInfo(Path.GetFullPath(previewPath)); directory is not null; directory = directory.Parent)
+            if (directory.Exists && (directory.Attributes & FileAttributes.ReparsePoint) != 0)
+                throw new InvalidDataException("Preview output must not traverse directory links.");
         Directory.CreateDirectory(previewPath);
 
         foreach (var file in Directory.EnumerateFiles(previewPath, "*.galgroup"))
@@ -54,20 +50,23 @@ public sealed class EditorSaveCoordinator : IEditorSaveCoordinator
                 Name = node.Name,
                 X = node.X,
                 Y = node.Y,
-                File = null,
+                File = node.Type == "Group" ? PreviewFile(node.Id) : null,
                 BranchType = node.BranchType,
                 Options = node.Options?.Select(option => new EditorGraphBranchOptionDto
                 {
+                    Id = option.Id,
                     Text = option.Text,
                     Condition = option.Condition
                 }).ToList(),
                 Conditions = node.Conditions?.Select(condition => new EditorGraphBranchConditionDto
                 {
+                    Id = condition.Id,
                     Expression = condition.Expression
                 }).ToList()
             }).ToList(),
             Edges = document.Edges.Select(edge => new EditorGraphEdgeDto
             {
+                Id = edge.Id,
                 FromNodeId = edge.FromNodeId,
                 FromOutlet = edge.FromOutlet,
                 ToNodeId = edge.ToNodeId
@@ -81,29 +80,12 @@ public sealed class EditorSaveCoordinator : IEditorSaveCoordinator
         {
             var raw = new GroupDocument { Kind = GroupDocumentKind.Raw, Entries = entries.Select(SerializeEntry).ToList() };
             var compiled = GalgroupCompiler.Compile(raw, _catalog).Document;
-            File.WriteAllText(Path.Combine(previewPath, $"{groupId}.galgroup"), JsonSerializer.Serialize(compiled, JsonOptions));
+            File.WriteAllText(Path.Combine(previewPath, PreviewFile(groupId)), JsonSerializer.Serialize(compiled, JsonOptions));
         }
 
         return previewPath;
     }
 
-    private GroupEntryDocument SerializeEntry(EditorEntryData entry)
-    {
-        var definition = _catalog.Get(entry.Type);
-        var parameters = entry.Parameters
-            .Where(pair => definition.Parameters.ContainsKey(pair.Key) && pair.Value.Length > 0)
-            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
-
-        entry.StableId = string.IsNullOrWhiteSpace(entry.StableId) ? Guid.NewGuid().ToString("N") : entry.StableId;
-        return new GroupEntryDocument
-        {
-            Id = entry.StableId,
-            Type = entry.Type,
-            Condition = entry.Condition,
-            Parameters = parameters.ToDictionary(pair => pair.Key, pair => ToJsonValue(definition.DynamicParameters![pair.Key].ValueType, pair.Value), StringComparer.Ordinal)
-        };
-    }
-
-    private static JsonElement ToJsonValue(Type valueType, string value) =>
-        DynamicParameterValue.FromEditorValue(value, valueType);
+    private static string PreviewFile(string id) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(id))) + ".galgroup";
+    private GroupEntryDocument SerializeEntry(EditorEntryData entry) => new EditorDocumentRepository(_catalog).SerializeEntry(entry);
 }

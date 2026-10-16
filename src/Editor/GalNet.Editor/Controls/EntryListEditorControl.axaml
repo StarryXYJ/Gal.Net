@@ -1,12 +1,36 @@
 <controls:ReorderableListControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:controls="using:GalNet.Editor.Controls"
+             xmlns:forms="using:GalNet.Game.Controls.Forms" xmlns:controls="using:GalNet.Editor.Controls"
              xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:models="using:GalNet.Editor.Models.Graph"
              xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
+             xmlns:converters="using:Avalonia.Data.Converters"
              x:Class="GalNet.Editor.Controls.EntryListEditorControl"
              x:Name="Root"
              x:DataType="vm:GroupEditorPanelViewModel"
              MoveCommand="{Binding ReorderEntryCommand}">
+    <controls:ReorderableListControl.Styles>
+        <Style Selector="forms|SchemaForm" x:CompileBindings="False">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <StackPanel Spacing="6">
+                        <ItemsControl ItemsSource="{TemplateBinding Editors}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="130,*" ColumnSpacing="8">
+                                        <TextBlock DataContext="{Binding Context}" Text="{loc:Localize Label}" VerticalAlignment="Center" />
+                                        <StackPanel Grid.Column="1"><ContentControl Content="{Binding Control}" /><TextBlock Text="{Binding Context.Issue.Message}" TextWrapping="Wrap" /></StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <ItemsControl ItemsSource="{TemplateBinding Diagnostics}">
+                            <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding Message}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+    </controls:ReorderableListControl.Styles>
     <Grid RowDefinitions="Auto,*,Auto">
         <Button HorizontalAlignment="Left"
                 ToolTip.Tip="{loc:Localize Entry.Add}"
@@ -49,19 +73,19 @@
                                                              Text="{Binding Condition}"
                                                              Suggestions="{Binding #Root.DataContext.ConditionSuggestions}"
                                                              ValidationVariables="{Binding #Root.DataContext.ValidationVariables}" />
-                            <ToggleButton Grid.Column="4"
+                            <ToggleButton Name="ParametersToggle" Grid.Column="4"
                                           Width="30"
-                                          IsChecked="{Binding IsExpanded}"
+                                          IsChecked="True"
                                           ToolTip.Tip="{loc:Localize Entry.ToggleParameters}">
                                 <Grid>
                                     <PathIcon Width="16"
                                               Height="16"
                                               Data="{StaticResource ChevronUpRegular}"
-                                              IsVisible="{Binding IsExpanded}" />
+                                              IsVisible="{Binding #ParametersToggle.IsChecked}" />
                                     <PathIcon Width="16"
                                               Height="16"
                                               Data="{StaticResource ChevronDownRegular}"
-                                              IsVisible="{Binding !IsExpanded}" />
+                                              IsVisible="{Binding #ParametersToggle.IsChecked, Converter={x:Static converters:BoolConverters.Not}}" />
                                 </Grid>
                             </ToggleButton>
                             <Button Grid.Column="5"
@@ -70,18 +94,19 @@
                                     Command="{Binding #Root.DataContext.RemoveEntryCommand}"
                                     CommandParameter="{Binding}"><PathIcon Width="16" Height="16" Data="{StaticResource DeleteRegularIcon}" /></Button>
                         </Grid>
-                        <StackPanel Margin="0,8,0,0" Spacing="6" IsVisible="{Binding IsExpanded}">
+                        <StackPanel Margin="0,8,0,0" Spacing="6" IsVisible="{Binding #ParametersToggle.IsChecked}">
+                            <forms:SchemaForm Schema="{Binding ParameterForm.Fields}" Binding="{Binding ParameterForm.Binding}" Registry="{Binding #Root.DataContext.FieldEditors}" IsVisible="{Binding HasParameterForm}" />
                             <ItemsControl ItemsSource="{Binding ParameterFields}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="models:EntryParameterEditorItemViewModel">
                                         <ContentControl Content="{Binding}">
                                             <ContentControl.DataTemplates>
+                                                <DataTemplate DataType="models:SchemaEntryParameterEditorItemViewModel" x:CompileBindings="False">
+                                                    <forms:SchemaForm Schema="{Binding Fields}" Binding="{Binding FieldBinding}" Registry="{Binding #Root.DataContext.FieldEditors}" />
+                                                </DataTemplate>
                                                 <DataTemplate DataType="models:TextEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding StringValue}" AcceptsReturn="{Binding IsMultiline}" TextWrapping="Wrap" MinHeight="30" HorizontalAlignment="Stretch" /></Grid></DataTemplate>
                                                 <DataTemplate DataType="models:AutocompleteEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><ComboBox Grid.Column="1" IsEditable="True" ItemsSource="{Binding Suggestions}" Text="{Binding StringValue}" HorizontalAlignment="Stretch" LostFocus="OnAutocompleteLostFocus" /></Grid></DataTemplate>
-                                                <DataTemplate DataType="models:IntegerEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><NumericUpDown Grid.Column="1" Value="{Binding NumericValue}" Increment="1" FormatString="0" HorizontalAlignment="Stretch" /></Grid></DataTemplate>
-                                                <DataTemplate DataType="models:FloatEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><NumericUpDown Grid.Column="1" Value="{Binding NumericValue}" Increment="0.1" FormatString="0.##" HorizontalAlignment="Stretch" /></Grid></DataTemplate>
                                                 <DataTemplate DataType="models:AssetEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><controls:AssetPicker Grid.Column="1" AssetManager="{Binding #Root.DataContext.AssetManager}" Filter="{Binding AssetFilter}" SelectedAssetId="{Binding StringValue}" HorizontalAlignment="Left" /></Grid></DataTemplate>
-                                                <DataTemplate DataType="models:SelectEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><ComboBox Grid.Column="1" ItemsSource="{Binding Options}" SelectedValue="{Binding StringValue}" SelectedValueBinding="{Binding Value}" HorizontalAlignment="Stretch"><ComboBox.ItemTemplate><DataTemplate x:DataType="models:EntrySelectOption"><TextBlock Text="{loc:Localize DisplayNameKey}" /></DataTemplate></ComboBox.ItemTemplate></ComboBox></Grid></DataTemplate>
                                                 <DataTemplate DataType="models:VariableNameEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><ComboBox Grid.Column="1" IsEditable="True" ItemsSource="{Binding Suggestions}" Text="{Binding StringValue, Mode=TwoWay}" HorizontalAlignment="Stretch" /></Grid></DataTemplate>
                                                 <DataTemplate DataType="models:ExpressionEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><controls:ConditionEditorControl Grid.Column="1" Text="{Binding StringValue}" Suggestions="{Binding #Root.DataContext.ConditionSuggestions}" ValidationVariables="{Binding #Root.DataContext.ValidationVariables}" /></Grid></DataTemplate>
                                             </ContentControl.DataTemplates>

@@ -1,3 +1,4 @@
+using GalNet.Core.Runtime;
 using GalNet.Core.Scene;
 using GalNet.Runtime.Runtime;
 
@@ -5,108 +6,75 @@ namespace GeneralTest.Runtime;
 
 public class GameRuntimeSnapshotTests
 {
-    [Test]
-    public void RestoreDetachesOldSceneAndResetsEndedState()
+    private static StateCatalog Catalog()
     {
-        var runtime = new GameRuntime(null, "start");
-        runtime.SceneState.Layers.Add(new Layer { Id = "layer", AssetId = "saved" });
+        var builder = new StateCatalogBuilder();
+        builder.Register<Layer>("layers", value => value.Id);
+        builder.Register<ParticleEmitterInstance>("particles", value => value.Id);
+        builder.Register<LoopAnimationState>("animations", value => value.Id);
+        return builder.Build();
+    }
+    [Test]
+    public void RestoreDetachesOldStateAndResetsEndedState()
+    {
+        var runtime = new GameRuntime(null, "start", stateCatalog: Catalog());
+        runtime.State.Table<Layer>().Add(new Layer { Id = "layer", AssetId = "saved" });
         var snapshot = runtime.CreateSnapshot();
-        var oldScene = runtime.SceneState;
+        var oldState = runtime.State;
         var oldInstances = runtime.SceneInstances;
-        runtime.EndGame();
-
-        runtime.RestoreFrom(snapshot);
-        oldScene.Layers.Clear();
-        snapshot.SceneState.Layers[0].AssetId = "caller-mutated";
-
+        runtime.EndGame(); runtime.RestoreFrom(snapshot);
+        oldState.Table<Layer>().Clear(); snapshot.States.Clear();
         Assert.Multiple(() =>
         {
             Assert.That(runtime.IsGameEnded, Is.False);
-            Assert.That(runtime.SceneState, Is.Not.SameAs(oldScene));
+            Assert.That(runtime.State, Is.Not.SameAs(oldState));
             Assert.That(runtime.SceneInstances, Is.Not.SameAs(oldInstances));
-            Assert.That(runtime.SceneState.Layers.Single().AssetId, Is.EqualTo("saved"));
+            Assert.That(runtime.State.Table<Layer>().Get("layer").AssetId, Is.EqualTo("saved"));
         });
     }
-
     [Test]
-    public void CreateSnapshotDoesNotShareMutableSceneState()
+    public void CaptureDoesNotShareMutableValuesAndNestedTransforms()
     {
-        var runtime = new GameRuntime(null, "start");
-        runtime.SceneState.Layers.Add(new Layer { Id = "layer", AssetId = "before" });
-
+        var catalog = Catalog();
+        var runtime = new GameRuntime(null, stateCatalog: catalog);
+        runtime.State.Table<Layer>().Add(new Layer { Id = "layer", AssetId = "before" });
         var snapshot = runtime.CreateSnapshot();
-        runtime.SceneState.Layers[0].AssetId = "after";
-        runtime.SceneState.Layers[0].Transform.X = 42;
-
-        Assert.That(snapshot.SceneState.Layers.Single().AssetId, Is.EqualTo("before"));
-        Assert.That(snapshot.SceneState.Layers.Single().Transform.X, Is.Zero);
+        runtime.State.Table<Layer>().Get("layer").Transform.X = 42;
+        runtime.State.Table<Layer>().Get("layer").AssetId = "after";
+        var restored = GameState.Restore(catalog, snapshot.States);
+        Assert.That(restored.Table<Layer>().Get("layer").AssetId, Is.EqualTo("before"));
+        Assert.That(restored.Table<Layer>().Get("layer").Transform.X, Is.Zero);
     }
-
     [Test]
-    public void RestoreFromRebuildsParticleRuntimeInstanceWithSavedAnimationValues()
+    public void RestoredParticleIsTheCanonicalAnimationTarget()
     {
-        var source = new GameRuntime(null, "start");
-        source.SceneState.ActiveParticleEmitters.Add(new ActiveParticleEmitterState
-        {
-            InstanceId = "snow",
-            Definition = new ParticleEmitterDefinition(
-                "snowflake",
-                EmissionRate: 72,
-                MaxParticles: 240,
-                Flipbook: new ParticleFlipbookDefinition(4, 2, 7, FramesPerSecond: new ParticleFloatRange(12, 12), Loop: true)),
-            Z = 42,
-            AnimationValues = new Dictionary<string, float>(StringComparer.Ordinal)
-            {
-                ["emissionRate"] = 18,
-                ["particleScale"] = 1.5f
-            }
-        });
-        var snapshot = source.CreateSnapshot();
-        var restored = new GameRuntime(null, "other");
-
-        restored.RestoreFrom(snapshot);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(restored.SceneState.ActiveParticleEmitters.Single().InstanceId, Is.EqualTo("snow"));
-            Assert.That(restored.SceneInstances.TryGet<ParticleEmitterInstance>("snow", out var emitter), Is.True);
-            Assert.That(emitter.Definition.ParticleTexture, Is.EqualTo("snowflake"));
-            Assert.That(emitter.Definition.Flipbook, Is.EqualTo(new ParticleFlipbookDefinition(4, 2, 7, FramesPerSecond: new ParticleFloatRange(12, 12), Loop: true)));
-            Assert.That(emitter.Z, Is.EqualTo(42));
-            Assert.That(emitter.AnimationValues["emissionRate"], Is.EqualTo(18));
-            Assert.That(emitter.AnimationValues["particleScale"], Is.EqualTo(1.5f));
-        });
+        var catalog = Catalog();
+        var source = new GameRuntime(null, stateCatalog: catalog);
+        var emitter = new ParticleEmitterInstance("snow", new ParticleEmitterDefinition("snowflake", EmissionRate: 72), 42);
+        emitter.TrySetAnimationValue("emissionRate", 18, out _);
+        source.State.Table<ParticleEmitterInstance>().Add(emitter);
+        var restored = new GameRuntime(null, stateCatalog: catalog);
+        restored.RestoreFrom(source.CreateSnapshot());
+        Assert.That(restored.SceneInstances.TryGet<ParticleEmitterInstance>("snow", out var target), Is.True);
+        Assert.That(target, Is.SameAs(restored.State.Table<ParticleEmitterInstance>().Get("snow")));
+        Assert.That(target.AnimationValues["emissionRate"], Is.EqualTo(18));
+        Assert.That(target.Z, Is.EqualTo(42));
     }
-
     [Test]
-    public void RestoreFromRebuildsLoopPlaybackAndPreservesReplayDefinition()
+    public void LoopDefinitionIsTypedAndDetachedButExecutionControlsAreNotSaved()
     {
-        var source = new GameRuntime(null, "start");
-        source.SceneState.ActiveAnimations.Add(new ActiveAnimationState
+        var catalog = Catalog();
+        var source = new GameRuntime(null, stateCatalog: catalog);
+        var definition = new LoopAnimationState
         {
-            EntryType = "animation.animate",
-            PlaybackHandleId = "snow-rate-loop",
-            LoopMode = AnimationLoopMode.PingPong,
-            Parameters = new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["handleId"] = "snow",
-                ["property"] = "emissionRate",
-                ["from"] = "72",
-                ["to"] = "18",
-                ["duration"] = "1.25"
-            }
-        });
-        var snapshot = source.CreateSnapshot();
-        source.SceneState.ActiveAnimations[0].Parameters["to"] = "999";
-        var restored = new GameRuntime(null, "other");
-
-        restored.RestoreFrom(snapshot);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(restored.SceneState.ActiveAnimations.Single().Parameters["to"], Is.EqualTo("18"));
-            Assert.That(restored.SceneInstances.TryGet<AnimationPlaybackInstance>("snow-rate-loop", out var playback), Is.True);
-            Assert.That(playback.LoopMode, Is.EqualTo(AnimationLoopMode.PingPong));
-        });
+            Id = "loop",
+            Request = new AnimationRequest
+            { PlaybackHandleId = "loop", HandleId = "snow", Property = "emissionRate", From = 72, To = 18, DurationSeconds = 1.25, LoopMode = AnimationLoopMode.PingPong }
+        };
+        source.State.Table<LoopAnimationState>().Add(definition);
+        var snapshot = source.CreateSnapshot(); definition.Request.To = 999;
+        var restored = new GameRuntime(null, stateCatalog: catalog); restored.RestoreFrom(snapshot);
+        Assert.That(restored.State.Table<LoopAnimationState>().Get("loop").Request!.To, Is.EqualTo(18));
+        Assert.That(restored.SceneInstances.TryGet<AnimationPlaybackInstance>("loop", out _), Is.False);
     }
 }

@@ -8,7 +8,7 @@ namespace GeneralTest.Editor;
 public class GraphChangeTrackerTests
 {
     [Test]
-    public void Track_MarksPersistedChanges_AndClearStopsTracking()
+    public void Track_MarksLegacyItemChangesButLeavesBasicNodeNamesToExplicitEdits()
     {
         var changes = 0;
         using var tracker = new GraphChangeTracker(() => changes++, () => false);
@@ -19,11 +19,11 @@ public class GraphChangeTrackerTests
         node.Name = "Renamed";
         node.Entries[0].Parameters = new Dictionary<string, string> { ["content"] = "Hello" };
 
-        Assert.That(changes, Is.EqualTo(2));
+        Assert.That(changes, Is.EqualTo(1));
 
         tracker.Clear();
         node.Name = "Ignored";
 
-        Assert.That(changes, Is.EqualTo(2));
+        Assert.That(changes, Is.EqualTo(1));
     }
 }

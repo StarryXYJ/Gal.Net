@@ -1,6 +1,4 @@
-using System.Reflection;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using GalNet.Core.I18n;
 using GalNet.Editor.Abstraction.Commands;
 
@@ -8,19 +6,13 @@ namespace GalNet.Editor.Shared.Commands;
 
 public sealed class EditorCommandCatalog : IEditorCommandCatalog
 {
-    private static readonly JsonSerializerOptions DefaultJsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true,
-        Converters = { new JsonStringEnumConverter() }
-    };
-
     private readonly IReadOnlyList<IProjectCommandDefinition> _definitions;
     private readonly Dictionary<string, IProjectCommandDefinition> _byId;
 
     public EditorCommandCatalog()
     {
         _definitions = CreateDefinitions();
-        _byId = _definitions.ToDictionary(definition => definition.Id, StringComparer.OrdinalIgnoreCase);
+        _byId = _definitions.ToDictionary(definition => definition.Id, StringComparer.Ordinal);
     }
 
     public IReadOnlyList<IProjectCommandDefinition> GetAll() => _definitions;
@@ -36,7 +28,7 @@ public sealed class EditorCommandCatalog : IEditorCommandCatalog
         if (!(_byId.TryGetValue(commandId, out var definition)))
             throw new KeyNotFoundException($"Unknown editor command '{commandId}'.");
 
-        return (IProjectEditCommand?)payload.Deserialize(definition.CommandType, options ?? DefaultJsonOptions)
+        return (IProjectEditCommand?)payload.Deserialize(definition.CommandType, options ?? CommandJson.Options)
             ?? throw new JsonException($"Command '{commandId}' deserialized to null.");
     }
 
@@ -82,33 +74,7 @@ public sealed class EditorCommandCatalog : IEditorCommandCatalog
             description,
             new I18nKey(ToDisplayNameKey(id)),
             typeof(TCommand),
-            BuildSchema(typeof(TCommand)));
-
-    private static EditorCommandSchema BuildSchema(Type commandType)
-    {
-        var constructor = commandType.GetConstructors().OrderByDescending(item => item.GetParameters().Length).First();
-        var parameters = constructor.GetParameters()
-            .Where(parameter => !string.Equals(parameter.Name, "commandId", StringComparison.OrdinalIgnoreCase))
-            .Select(parameter => new EditorCommandParameter(
-                parameter.Name ?? "value",
-                GetFriendlyTypeName(parameter.ParameterType),
-                !parameter.HasDefaultValue && Nullable.GetUnderlyingType(parameter.ParameterType) is null,
-                $"Value for {parameter.Name}."))
-            .ToList();
-        return new EditorCommandSchema(parameters);
-    }
-
-    private static string GetFriendlyTypeName(Type type)
-    {
-        type = Nullable.GetUnderlyingType(type) ?? type;
-        if (type == typeof(string)) return "string";
-        if (type == typeof(bool)) return "boolean";
-        if (type == typeof(int) || type == typeof(long)) return "integer";
-        if (type == typeof(double) || type == typeof(float) || type == typeof(decimal)) return "number";
-        if (type.IsEnum) return string.Join(" | ", Enum.GetNames(type));
-        if (type.IsGenericType && typeof(System.Collections.IEnumerable).IsAssignableFrom(type)) return "array";
-        return type.Name;
-    }
+            CommandSchemaBuilder.Build(typeof(TCommand), id));
 
     private static string ToDisplayNameKey(string id) =>
         "Command." + string.Join('.', id.Split('.').Select(segment => char.ToUpperInvariant(segment[0]) + segment[1..]));

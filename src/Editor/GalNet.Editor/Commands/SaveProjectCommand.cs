@@ -32,14 +32,12 @@ public sealed class SaveProjectCommand : AsyncEditorUiCommand
                 await project.Services.GetRequiredService<EditorWorkspaceViewModel>().SaveAsync();
             if (_projectService.Current is { } program)
             {
-                program.IsDirty = false;
                 Log.Information("Project saved: {Name}", program.Name);
             }
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to save project");
-            throw;
         }
     }
 }

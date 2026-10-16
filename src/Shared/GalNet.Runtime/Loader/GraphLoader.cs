@@ -16,13 +16,6 @@ public static class GraphLoader
         Converters = { new NodeJsonConverter() }
     };
 
-    /// <summary>从文件路径加载图。</summary>
-    public static Graph LoadFromFile(string path)
-    {
-        var json = File.ReadAllText(path);
-        return LoadFromJson(json);
-    }
-
     /// <summary>从 JSON 字符串加载图。</summary>
     public static Graph LoadFromJson(string json)
     {

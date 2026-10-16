@@ -13,7 +13,6 @@
   <Thickness x:Key="GalNet.Theme.ChoicePadding">24,16</Thickness>
   <Thickness x:Key="GalNet.Theme.ChoiceMargin">0,7</Thickness>
   <x:Int32 x:Key="GalNet.Theme.SaveColumns">4</x:Int32>
-  <FontFamily x:Key="GalNet.Theme.FontFamily">Segoe UI, Noto Sans CJK SC, Microsoft YaHei, Default</FontFamily>
   <ControlTheme x:Key="{x:Type page:GamePage}" TargetType="page:GamePage">
     <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Background}" />
     <Setter Property="Template">

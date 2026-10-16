@@ -16,6 +16,7 @@
     <ProjectReference Include="..\GalNet.Avalonia.Controls\GalNet.Avalonia.Controls.csproj" />
     <ProjectReference Include="..\GalNet.Avalonia.Rendering\GalNet.Avalonia.Rendering.csproj" />
     <ProjectReference Include="..\..\Shared\GalNet.Presentation.Abstractions\GalNet.Presentation.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Shared\GalNet.Assets\GalNet.Assets.csproj" />
     <ProjectReference Include="..\..\Shared\GalNet.Core\GalNet.Core.csproj" />
   </ItemGroup>
 

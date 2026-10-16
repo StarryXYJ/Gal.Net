@@ -61,3 +61,24 @@ dotnet run --project src/Samples/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.c
 Video smoke: advance the first dialogue to reach blocking playback. Each left click seeks to the next point after the current position; the oversized final point ends playback. The following non-blocking playback uses rotation, scale and opacity below the portrait, then stops on dialogue advance. Headless has no video presenter and completes these entries immediately.
 
 Native decode tests are opt-in: set `GALNET_VIDEO_ASSETS` to the absolute `GameTestCase/Assets` directory and `GALNET_VIDEO_LIBVLC` to the native LibVLC directory, then run Presentation tests with `--filter FullyQualifiedName~VideoNativeSmokeTests`. `GALNET_VIDEO_CAPTURE` optionally exports a composed scene PNG. The tests check actual decoded pixels, sequential seeks, natural completion and cancellation of loading during hide/replace.
+
+## 项目 Entry 契约
+
+本目录是当前格式的作者内容，entry 集合由独立 Sample.Contracts 项目声明。先从仓库根构建并部署工具契约，再使用 CLI 或打开 Editor：
+
+```powershell
+./scripts/build-project-contracts.ps1 -ContractsProject ./src/Samples/GalNet.Sample.Contracts/GalNet.Sample.Contracts.csproj -ProjectDirectory ./GameTestCase
+dotnet run --project ./src/Editor/GalNet.Editor.Headless -- schema list ./GameTestCase
+dotnet run --project ./src/Editor/GalNet.Editor.Headless -- validate ./GameTestCase
+```
+
+Contracts/ 是本机构建产物，不提交 DLL；游戏 Sample 正常引用同一契约项目。缺 DLL 时工具不回退内置，原始查询和结构校验仍可用。参数和命令见 [CLI README](../src/Editor/GalNet.Editor.Headless/README.md)。
+
+平台截图示例独立放在 [Sample.Contracts/Examples](../src/Samples/GalNet.Sample.Contracts/Examples/screenshot.rawgalgroup)，不自动加入此项目的默认剧情，所以 Headless 默认流程仍可执行。
+
+
+## 模块状态存档 smoke
+
+intro 在 gain 效果启用后新增暂停 BGM 的对白检查点。运行到提示时新建存档，然后读档：背景/立绘与 gain 轨道效果应恢复，BGM 保持暂停；推进执行 audio.resume 后从头播放，并保留该效果直到后续 stop 指令。使用新存档验证，旧格式文件不做迁移。
+
+自动回归 `ModularSaveRestoreTests` 直接编译该实际作者文件中的图层/音频条目，通过 FileSaveService 写入全新槽位，再由 Engine 和注册式恢复会话读回；后端使用可观察的测试 host。实际 LibVLC 声音效果仍需按上面的原生媒体方式人工检查。

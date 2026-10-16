@@ -84,7 +84,7 @@ public sealed partial class GameEngine
                 RemoveCompleted();
                 // An extension may retain its normal blocker during catch-up. If
                 // catch-up is cancelled here, playback must still own that boundary.
-                _advanceBoundary = HasBlockingInstance();
+                _advanceBoundary = _active.HasBlockingInstance();
             }
             finally { _dispatchGate.Release(); PublishStateChanges(); }
 
@@ -102,7 +102,7 @@ public sealed partial class GameEngine
                     ContinueUntilBlocked();
                     ThrowFlowError();
                     if (!_catchUpActive || !IsRunning || _pendingChoice is not null) break;
-                    waiting = HasBlockingInstance();
+                    waiting = _active.HasBlockingInstance();
                 }
                 finally { CaptureStateChange(); _dispatchGate.Release(); PublishStateChanges(); }
                 if (waiting) await _catchUpSignal.WaitAsync(token).ConfigureAwait(false);

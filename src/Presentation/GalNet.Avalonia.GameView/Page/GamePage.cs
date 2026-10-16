@@ -92,6 +92,8 @@ public class GamePage : TemplatedControl
     private void OnPagePointerPressed(object? sender, PointerPressedEventArgs eventArgs)
     {
         if (DataContext is not GamePageViewModel viewModel ||
+            eventArgs.Pointer.Type == PointerType.Touch && viewModel.Input is not null ||
+            eventArgs.Handled ||
             !eventArgs.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             return;
 

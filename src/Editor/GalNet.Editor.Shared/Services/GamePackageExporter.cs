@@ -4,9 +4,9 @@ using System.Text.Json;
 using GalNet.Assets;
 using GalNet.Assets.Provider;
 using GalNet.Core.Assets;
+using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
 using GalNet.Core.Serialization;
-using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -21,20 +21,22 @@ public static class GamePackageExporter
         string outputDirectory,
         IResourceTypeCatalog resourceTypes,
         IGalleryTypeCatalog galleryTypes,
+        IEntryCatalog entryCatalog,
         CancellationToken cancellationToken = default)
     {
         string? temporaryPath = null;
         string? stagingRoot = null;
         try
         {
+            ArgumentNullException.ThrowIfNull(entryCatalog);
+            ProjectContentBuilder.ValidateOutputPath(Path.GetFullPath(projectRoot), Path.GetFullPath(outputDirectory));
             Directory.CreateDirectory(outputDirectory);
             var packagePath = Path.Combine(outputDirectory, $"{SafeFileName(projectName)}.galpak");
-            temporaryPath = packagePath + ".tmp";
-            if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+            temporaryPath = packagePath + ".export-" + Guid.NewGuid().ToString("N") + ".tmp";
             ArgumentNullException.ThrowIfNull(resourceTypes);
             ArgumentNullException.ThrowIfNull(galleryTypes);
             stagingRoot = Path.Combine(Path.GetTempPath(), $"galnet-export-{Guid.NewGuid():N}");
-            await new ProjectContentBuilder(BuiltinSchemas.CreateCatalog())
+            await new ProjectContentBuilder(entryCatalog)
                 .BuildAsync(projectRoot, stagingRoot, cancellationToken)
                 .ConfigureAwait(false);
             var assets = await LoadAssetsAsync(Path.Combine(stagingRoot, "Assets"), resourceTypes, cancellationToken);
@@ -52,6 +54,7 @@ public static class GamePackageExporter
                 await WriteEntryAsync(zip, $"{SafeFileName(projectName)}.galnet", JsonSerializer.SerializeToUtf8Bytes(manifest, JsonOptions), cancellationToken);
             }
             await VerifyAsync(temporaryPath, packages, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             File.Move(temporaryPath, packagePath, true);
             return GamePackageExportResult.Succeeded(packagePath);
         }

@@ -21,7 +21,7 @@ public sealed class GalProject : IDisposable, IAsyncDisposable
     public string Id { get; }
 
     /// <summary>工程显示名称</summary>
-    public string Name { get; }
+    public string Name { get; set; }
 
     /// <summary>工程根目录绝对路径</summary>
     public string RootPath { get; }

@@ -1,7 +1,6 @@
 using System.Globalization;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Core.Gallery;
@@ -10,7 +9,7 @@ namespace GalNet.Avalonia.GameView.ViewModels;
 
 public sealed partial class CgGalleryImagePageViewModel(
     IGameNavigationService navigation,
-    GalleryMediaService media) : PageViewModelBase, IActivatablePageViewModel<GalleryItemData>, IDisposable
+    GalleryMediaService media) : BackNavigablePageViewModel(navigation), IActivatablePageViewModel<GalleryItemData>, IDisposable
 {
     [ObservableProperty] private string _title = "Gallery";
     [ObservableProperty] private Bitmap? _image;
@@ -31,6 +30,5 @@ public sealed partial class CgGalleryImagePageViewModel(
         return Task.CompletedTask;
     }
 
-    [RelayCommand] private void Back() => navigation.GoBack();
     public void Dispose() { Image?.Dispose(); Image = null; }
 }

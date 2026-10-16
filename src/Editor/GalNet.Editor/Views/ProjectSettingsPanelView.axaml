@@ -13,6 +13,8 @@
 
         <ScrollViewer Grid.Row="1">
             <StackPanel Spacing="8">
+                <TextBlock Text="{loc:Localize Settings.Project.Name}" />
+                <TextBox Name="ProjectNameInput" Text="{Binding ProjectName}" />
                 <TextBlock Text="{loc:Localize Settings.Project.DefaultResolution}"
                            Foreground="{DynamicResource SemiColorText2}"
                            FontSize="12" />
@@ -38,20 +40,20 @@
                                Foreground="{DynamicResource SemiColorText0}" />
 
                 <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
-                    <TextBlock Text="Audio tracks" Foreground="{DynamicResource SemiColorText2}" FontSize="12" />
-                    <Button Grid.Column="1" Content="Add track" Command="{Binding AddAudioTrackCommand}" />
+                    <TextBlock Text="{loc:Localize Settings.Project.AudioTracks}" Foreground="{DynamicResource SemiColorText2}" FontSize="12" />
+                    <Button Grid.Column="1" Content="{loc:Localize Settings.Project.AddTrack}" Command="{Binding AddAudioTrackCommand}" />
                 </Grid>
                 <ItemsControl ItemsSource="{Binding AudioTracks}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:AudioTrackEditorItem">
                             <Grid ColumnDefinitions="*,*,110,80,70,70,Auto" ColumnSpacing="6" Margin="0,2">
-                                <TextBox Grid.Column="0" Text="{Binding Id}" PlaceholderText="id" />
-                                <TextBox Grid.Column="1" Text="{Binding Name}" PlaceholderText="name" />
+                                <TextBox Grid.Column="0" Text="{Binding Id}" PlaceholderText="{loc:Localize Settings.Project.TrackId}" />
+                                <TextBox Grid.Column="1" Text="{Binding Name}" PlaceholderText="{loc:Localize Settings.Project.TrackName}" />
                                 <TextBox Grid.Column="2" Text="{Binding Bus}" PlaceholderText="bgm / sfx / vocal" />
-                                <NumericUpDown Grid.Column="3" Value="{Binding DefaultGain}" Minimum="0" Maximum="1" Increment="0.05" />
-                                <NumericUpDown Grid.Column="4" Value="{Binding MaxVoices}" Minimum="1" Maximum="32" Increment="1" />
-                                <NumericUpDown Grid.Column="5" Value="{Binding MaxQueuedItems}" Minimum="0" Maximum="256" Increment="1" />
-                                <Button Grid.Column="6" Content="×" Command="{Binding RemoveCommand}" />
+                                <NumericUpDown Grid.Column="3" Value="{Binding DefaultGain}" ToolTip.Tip="{loc:Localize Settings.Project.Gain}" AutomationProperties.Name="{loc:Localize Settings.Project.Gain}" Minimum="0" Maximum="1" Increment="0.05" />
+                                <NumericUpDown Grid.Column="4" Value="{Binding MaxVoices}" ToolTip.Tip="{loc:Localize Settings.Project.Voices}" AutomationProperties.Name="{loc:Localize Settings.Project.Voices}" Minimum="1" Maximum="32" Increment="1" />
+                                <NumericUpDown Grid.Column="5" Value="{Binding MaxQueuedItems}" ToolTip.Tip="{loc:Localize Settings.Project.Queue}" AutomationProperties.Name="{loc:Localize Settings.Project.Queue}" Minimum="0" Maximum="256" Increment="1" />
+                                <Button Grid.Column="6" Content="×" Command="{Binding RemoveCommand}" ToolTip.Tip="{loc:Localize Settings.Project.RemoveTrack}" AutomationProperties.Name="{loc:Localize Settings.Project.RemoveTrack}" />
                             </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
@@ -71,9 +73,12 @@
             <TextBlock Grid.Column="0" Text="{Binding IsDirtyText}"
                        Foreground="{DynamicResource SemiColorText2}"
                        VerticalAlignment="Center" />
-            <Button Grid.Column="1"
-                    Content="{loc:Localize Settings.Save}"
-                    Command="{Binding SaveSettingsCommand}" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <Button Content="{loc:Localize Settings.Project.Cancel}" Command="{Binding CancelDraftCommand}" />
+                <Button Name="ApplySettingsButton"
+                        Content="{loc:Localize Settings.Project.Apply}"
+                        Command="{Binding SaveSettingsCommand}" />
+            </StackPanel>
         </Grid>
     </Grid>
 </UserControl>

@@ -138,7 +138,8 @@ public sealed partial class BuiltInEditorCommandHandler
         foreach (var entry in document.GroupEntries.Values.SelectMany(value => value))
         {
             entry.Condition = Regex.Replace(entry.Condition, pattern, newName);
-            entry.Parameters = entry.Parameters.ToDictionary(pair => pair.Key, pair => Regex.Replace(pair.Value, pattern, newName), StringComparer.Ordinal);
+            entry.Parameters = entry.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value.ValueKind == JsonValueKind.String
+                ? JsonSerializer.SerializeToElement(Regex.Replace(pair.Value.GetString()!, pattern, newName)) : pair.Value.Clone(), StringComparer.Ordinal);
         }
         foreach (var node in document.Graph.Nodes)
         {

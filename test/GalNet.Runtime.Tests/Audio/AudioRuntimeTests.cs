@@ -172,6 +172,35 @@ public class AudioRuntimeTests
         Assert.That(host.Actions, Is.EqualTo(new[] { AudioBackendAction.Start, AudioBackendAction.Pause, AudioBackendAction.Resume }));
     }
 
+    [Test]
+    public async Task SynchronousBackendCompletionCanBeDrainedWithoutRacingQueueAssignment()
+    {
+        var host = new SynchronousEndHost();
+        await using var runtime = new AudioRuntime(host);
+        for (var index = 0; index < 20; index++)
+            Assert.That(runtime.Play(Tracks, new("bgm", "clip", AudioPlacement.Replace)).IsCompleted, Is.True);
+        await runtime.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.That(host.Starts, Is.EqualTo(20));
+    }
+
+    private sealed class SynchronousEndHost : IAudioPlaybackHost
+    {
+        public AudioBackendCapabilities Capabilities { get; } = new(true, true, true);
+        public ISEffectCatalog SEffects { get; } = SEffectCatalog.Empty;
+        public event Action<AudioBackendEvent>? EventReceived;
+        public int Starts { get; private set; }
+        public Task ApplyAsync(AudioBackendRequest request, CancellationToken cancellationToken = default)
+        {
+            if (request.Action == AudioBackendAction.Start)
+            {
+                Starts++;
+                EventReceived?.Invoke(new(AudioBackendEventKind.Ended, request.TrackId, request.VoiceId, request.Generation));
+            }
+            return Task.CompletedTask;
+        }
+        public void Dispose() { }
+    }
+
     private sealed class DelayedStartHost : IAudioPlaybackHost
     {
         public AudioBackendCapabilities Capabilities { get; } = new(true, true, true);

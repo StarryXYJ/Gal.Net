@@ -21,6 +21,9 @@ public sealed class Variable
     [JsonIgnore]
     public VariableValue Value { get; set; } = VariableValue.From("");
 
+    /// <summary>Copies the variable value while retaining its stable identity.</summary>
+    public Variable Clone(string? name = null) => new() { Uid = Uid, Name = name ?? Name, Value = Value };
+
     // ── 快捷读取（委托给 Value）───────────────────────────────────────────
 
     public VariableType Type => Value.Type;

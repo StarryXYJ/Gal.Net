@@ -92,7 +92,7 @@ public static class EditorDocumentCloner
         Id = source.Id,
         Type = source.Type,
         Condition = source.Condition,
-        Parameters = new Dictionary<string, string>(source.Parameters)
+        Parameters = source.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value.Clone())
     };
 
     private static GalNet.Core.Settings.ProjectSettings CloneSettings(GalNet.Core.Settings.ProjectSettings source) => new()
@@ -104,7 +104,19 @@ public static class EditorDocumentCloner
         DefaultWidth = source.DefaultWidth,
         DefaultHeight = source.DefaultHeight,
         PlayerVariables = source.PlayerVariables.Select(variable => variable.Clone()).ToList(),
-        SaveVariables = source.SaveVariables.Select(variable => variable.Clone()).ToList()
+        SaveVariables = source.SaveVariables.Select(variable => variable.Clone()).ToList(),
+        AudioTracks = source.AudioTracks.Select(track => new GalNet.Core.Audio.AudioTrackDefinition
+        {
+            Id = track.Id,
+            Name = track.Name,
+            Bus = track.Bus,
+            DefaultGain = track.DefaultGain,
+            MaxVoices = track.MaxVoices,
+            MaxQueuedItems = track.MaxQueuedItems,
+            OverflowPolicy = track.OverflowPolicy,
+            QueueOverflowPolicy = track.QueueOverflowPolicy
+        }).ToList(),
+        Speakers = source.Speakers.ToList()
     };
 
 }

@@ -1,5 +1,7 @@
 # 游戏运行编排与 Avalonia 呈现收敛
 
+> 后续宿主分层已由 [game-host-refactor](game-host-refactor.md) 实现；本文保留早期收敛设计，当前类型和归属以架构规范为准。
+
 ## 范围
 
 保留页面、presenter 和运行会话的职责边界。不改变 Editor/Launcher 功能；Editor 仅迁移共享类型名称和事件订阅 API。

@@ -4,12 +4,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../src/Tooling/GalNet.SchemaGenerator/GalNet.SchemaGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" GlobalPropertiesToRemove="OutputPath;OutDir" />
+    <ProjectReference Include="../Fixtures/SchemaA/SchemaA.csproj" ReferenceOutputAssembly="false" GlobalPropertiesToRemove="OutputPath;OutDir" />
+    <ProjectReference Include="../Fixtures/SchemaB/SchemaB.csproj" ReferenceOutputAssembly="false" GlobalPropertiesToRemove="OutputPath;OutDir" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Avalonia.Headless" />
 
     <ProjectReference Include="..\..\src\Shared\GalNet.Core\GalNet.Core.csproj" />
     <ProjectReference Include="..\..\src\Editor\GalNet.Editor.Abstraction\GalNet.Editor.Abstraction.csproj" />
     <ProjectReference Include="..\..\src\Editor\GalNet.Editor.Shared\GalNet.Editor.Shared.csproj" />
     <ProjectReference Include="..\..\src\Editor\GalNet.Editor\GalNet.Editor.csproj" />
     <ProjectReference Include="..\..\src\Shared\GalNet.Primitives.Builtins\GalNet.Primitives.Builtins.csproj" />
+    <ProjectReference Include="..\..\src\Shared\GalNet.Contracts.Builtins\GalNet.Contracts.Builtins.csproj" />
   </ItemGroup>
 </Project>

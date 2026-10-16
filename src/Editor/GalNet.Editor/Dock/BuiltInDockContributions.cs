@@ -34,11 +34,6 @@ public static class BuiltInDockContributions
             sp => sp.GetRequiredService<EditorWorkspaceViewModel>(), typeof(NodeGraphPanelView),
             new DelegateInspectorContribution<EditorWorkspaceViewModel, NodeInspectorControlViewModel>(
                 (sp, _) => sp.GetRequiredService<NodeInspectorControlViewModel>(), typeof(NodeInspectorControl))));
-        registry.RegisterDockPanel(new DelegateDockPanelContribution<GamePreviewPanelViewModel>(
-            EditorDockPanelIds.GamePreview, "Dock.Panel.GamePreview", DockPanelPlacement.MainDocument, true, true, true, true, true,
-            sp => sp.GetRequiredService<GamePreviewPanelViewModel>(), typeof(GamePreviewPanelView),
-            new DelegateInspectorContribution<GamePreviewPanelViewModel, PreviewVariablesInspectorControlViewModel>(
-                (_, dock) => new PreviewVariablesInspectorControlViewModel(dock), typeof(PreviewVariablesInspectorControl))));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<AssetPanelViewModel>(
             EditorDockPanelIds.Assets, "Dock.Panel.Assets", DockPanelPlacement.BottomDocument, true, true, true, true, true,
             sp => sp.GetRequiredService<AssetPanelViewModel>(), typeof(AssetPanelView),
@@ -47,7 +42,7 @@ public static class BuiltInDockContributions
         registry.RegisterDockPanel(new DelegateDockPanelContribution<LogPanelViewModel>(
             EditorDockPanelIds.Log, "Dock.Panel.Log", DockPanelPlacement.BottomDocument, true, true, true, true, true,
             sp => sp.GetRequiredService<LogPanelViewModel>(), typeof(LogPanelView), null));
-        registry.RegisterDockPanel(new DelegateDockPanelContribution<GroupEditorPanelViewModel, GraphNode>(
+        registry.RegisterDockPanel(new DelegateDockPanelContribution<GroupEditorPanelViewModel, string>(
             EditorDockPanelIds.GroupEditor, "Dock.Panel.GroupEditor", DockPanelPlacement.MainDocument, false, true, true, false, false,
             (sp, node) => new GroupEditorPanelViewModel(
                 sp.GetRequiredService<EditorWorkspaceViewModel>(),

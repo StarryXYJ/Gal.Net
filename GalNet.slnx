@@ -1,12 +1,20 @@
 <Solution>
   <Folder Name="/src/" />
+  <Folder Name="/src/Tooling/">
+    <Project Path="src/Tooling/GalNet.SchemaGenerator/GalNet.SchemaGenerator.csproj" />
+  </Folder>
+  <Folder Name="/test/Schema/">
+    <Project Path="test/GalNet.SchemaGenerator.Tests/GalNet.SchemaGenerator.Tests.csproj" />
+  </Folder>
   <Folder Name="/src/Editor/">
+    <Project Path="src/Editor/GalNet.Editor.DefaultContracts/GalNet.Editor.DefaultContracts.csproj" />
     <Project Path="src/Editor/GalNet.Editor.Abstraction/GalNet.Editor.Abstraction.csproj" />
     <Project Path="src/Editor/GalNet.Editor.Shared/GalNet.Editor.Shared.csproj" />
     <Project Path="src/Editor/GalNet.Editor/GalNet.Editor.csproj" />
     <Project Path="src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj" />
   </Folder>
   <Folder Name="/src/Infrastructure/">
+    <Project Path="src/Infrastructure/GalNet.Media.LibVlc/GalNet.Media.LibVlc.csproj" />
     <Project Path="src/Infrastructure/GalNet.Storage.FileSystem/GalNet.Storage.FileSystem.csproj" />
   </Folder>
   <Folder Name="/src/Launcher/">
@@ -21,23 +29,28 @@
     <Project Path="src/Launcher/GalNet.Launcher/GalNet.Launcher.csproj" />
   </Folder>
   <Folder Name="/src/Presentation/">
+    <Project Path="src/Presentation/GalNet.Avalonia.GameHost/GalNet.Avalonia.GameHost.csproj" />
     <Project Path="src/Presentation/GalNet.Avalonia.Controls/GalNet.Avalonia.Controls.csproj" />
     <Project Path="src/Presentation/GalNet.Avalonia.Rendering/GalNet.Avalonia.Rendering.csproj" />
     <Project Path="src/Presentation/GalNet.Avalonia.GameView/GalNet.Avalonia.GameView.csproj" />
     <Project Path="src/Presentation/GalNet.Avalonia.Themes/GalNet.Avalonia.Themes.csproj" />
   </Folder>
   <Folder Name="/src/Samples/">
+    <Project Path="src/Samples/GalNet.Sample.Contracts/GalNet.Sample.Contracts.csproj" />
     <Project Path="src/Samples/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj" />
     <Project Path="src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj" />
   </Folder>
   <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/GalNet.GameHost/GalNet.GameHost.csproj" />
     <Project Path="src/Shared/GalNet.Assets/GalNet.Assets.csproj" />
     <Project Path="src/Shared/GalNet.Core/GalNet.Core.csproj" />
+    <Project Path="src/Shared/GalNet.Contracts.Builtins/GalNet.Contracts.Builtins.csproj" />
     <Project Path="src/Shared/GalNet.Presentation.Abstractions/GalNet.Presentation.Abstractions.csproj" />
     <Project Path="src/Shared/GalNet.Primitives.Builtins/GalNet.Primitives.Builtins.csproj" />
     <Project Path="src/Shared/GalNet.Runtime/GalNet.Runtime.csproj" />
   </Folder>
   <Folder Name="/test/">
+    <Project Path="test/GalNet.GameHost.Tests/GalNet.GameHost.Tests.csproj" />
     <Project Path="test/GalNet.Architecture.Tests/GalNet.Architecture.Tests.csproj" />
     <Project Path="test/GalNet.Assets.Tests/GalNet.Assets.Tests.csproj" />
     <Project Path="test/GalNet.Core.Tests/GalNet.Core.Tests.csproj" />

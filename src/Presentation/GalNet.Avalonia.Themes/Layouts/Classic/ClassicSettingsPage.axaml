@@ -21,7 +21,7 @@
         <ScrollViewer Grid.Row="2" Margin="0,24,0,0" HorizontalScrollBarVisibility="Disabled">
           <Border Classes="player-settings-card">
             <StackPanel Spacing="28">
-              <common:SettingsCategories Categories="{Binding Categories}" />
+              <common:SettingsCategories Categories="{Binding Categories}" Editors="{Binding Editors}" />
               <TextBlock Text="{text:PlayerText Settings.Hint, 'Changes apply immediately.'}" FontSize="12" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" />
             </StackPanel>
           </Border>

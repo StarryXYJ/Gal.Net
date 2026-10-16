@@ -7,9 +7,11 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Core.Assets;
+using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
 using GalNet.Core.Runtime;
 using GalNet.Core.Settings;
+using GalNet.Media.LibVlc;
 using GalNet.Presentation.Abstractions.Runtime;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
@@ -77,6 +79,7 @@ public sealed class EditorPreviewHost : IAsyncDisposable
 
 public sealed record EditorPreviewContext(
     string Title,
+    IEntryCatalog Catalog,
     IAssetManager Assets,
     IGameContentProvider Content,
     IVariableService Variables,
@@ -98,7 +101,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
     private AvaloniaGamePresenters? _pageView;
     private EditorPreviewLayerFactory? _layers;
     private AvaloniaEffectRuntime? _effects;
-    private AvaloniaAudioPlaybackHost? _audio;
+    private LibVlcAudioPlaybackHost? _audio;
     private GameEngine? _engine;
     private readonly Dictionary<string, AssetHandle<SceneTexture>> _preloadedTextures = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
@@ -188,6 +191,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
         {
             _disposed = true;
             DisposeEngine();
+            (_context.Progress as IDisposable)?.Dispose();
             (_context.Saves as IDisposable)?.Dispose();
         }
     }
@@ -283,8 +287,9 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
         _layers = new EditorPreviewLayerFactory(_preloadedTextures);
         _pageView = new AvaloniaGamePresenters(_gameplay, _page, _layers);
         _effects = new AvaloniaEffectRuntime(_gameplay);
-        _audio = new AvaloniaAudioPlaybackHost(_context.Assets);
-        var view = new GameRegistration().AddBuiltins(
+        _audio = new LibVlcAudioPlaybackHost(_context.Assets);
+        using var registration = new GameRegistration().UseCatalog(_context.Catalog);
+        var view = registration.AddBuiltinImplementations(_context.Catalog,
             _pageView.DialoguePresenter,
             _pageView.LayerPresenter,
             _pageView.AnimationPresenter,
@@ -293,6 +298,8 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
             _pageView.ParticlePresenter,
             _pageView.NvlPresenter,
             _audio).BuildView();
+        try { view.RequireInstructions(content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>().SelectMany(group => group.Entries).Select(entry => entry.Type)); }
+        catch { view.Dispose(); throw; }
         var runtime = new GameRuntime(null, content.Graph.RootNodeId, new SettingsContainer(), _context.Variables);
         _engine = new GameEngine(content.Graph, runtime, view, _context.Progress, _pageView.ChoicePresenter);
         _gameplay.BindPlayback(_engine);

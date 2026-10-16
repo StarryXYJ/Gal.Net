@@ -1,4 +1,5 @@
 using DynamicLocalization.Core;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
@@ -20,7 +21,7 @@ public class GameTestCaseTests
     public void AuthoringSamplePassesDocumentValidation()
     {
         var source = Path.Combine(FindRepositoryDirectory(), "GameTestCase");
-        var document = new DirectProjectPersistence(source, new EditorDocumentRepository(BuiltinSchemas.CreateCatalog())).Load();
+        var document = new DirectProjectPersistence(source, new EditorDocumentRepository(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()))).Load();
         var result = EditorDocumentValidator.Validate(document);
         Assert.That(result.IsValid, Is.True, string.Join(Environment.NewLine, result.Diagnostics.Select(item => item.Message)));
     }
@@ -34,7 +35,7 @@ public class GameTestCaseTests
         var output = Path.Combine(Path.GetTempPath(), "galnet-localized-smoke-" + Guid.NewGuid().ToString("N"));
         try
         {
-            await new ProjectContentBuilder().BuildAsync(Path.Combine(FindRepositoryDirectory(), "GameTestCase"), output);
+            await new ProjectContentBuilder(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).BuildAsync(Path.Combine(FindRepositoryDirectory(), "GameTestCase"), output);
             var types = BuiltinResourceTypes.CreateCatalog();
             var content = await new ProjectGameContentProvider(output, types, BuiltinGalleryTypes.CreateCatalog(types)).LoadAsync();
             var cultures = new CultureService();
@@ -76,7 +77,7 @@ public class GameTestCaseTests
         var output = Path.Combine(Path.GetTempPath(), $"galnet-game-testcase-{Guid.NewGuid():N}");
         try
         {
-            await new ProjectContentBuilder().BuildAsync(Path.Combine(directory, "GameTestCase"), output);
+            await new ProjectContentBuilder(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).BuildAsync(Path.Combine(directory, "GameTestCase"), output);
 
             var resourceTypes = BuiltinResourceTypes.CreateCatalog();
             var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);

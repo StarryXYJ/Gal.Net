@@ -8,12 +8,14 @@ public sealed class GameRegistration : IDisposable, IAsyncDisposable
 {
     private readonly List<IEntryModule> _schemas = [];
     private readonly List<IPrimitiveModule> _implementations = [];
+    private IEntryCatalog? _catalog;
     private bool _frozen;
 
     public GameRegistration RegisterSchema(IEntryModule schema)
     {
         ObjectDisposedException.ThrowIf(_frozen, this);
         ArgumentNullException.ThrowIfNull(schema);
+        if (_catalog is not null) throw new InvalidOperationException("A supplied project catalog cannot be extended with additional schemas.");
         _schemas.Add(schema);
         return this;
     }
@@ -27,9 +29,18 @@ public sealed class GameRegistration : IDisposable, IAsyncDisposable
     }
 
     public GameRegistration RegisterInstruction(string type, Func<GalNet.Core.Primitives.PrimitiveCreateContext, GalNet.Core.Primitives.PrimitiveInstance> factory) =>
-        RegisterImplementation(new PrimitiveModule([new PrimitiveImplementation(type, factory)]));
+        RegisterImplementation(new PrimitiveModule(registry => registry.Register(type, factory)));
 
-    public TargetProfileEntryCatalog BuildCatalog() => new(_schemas);
+    public GameRegistration UseCatalog(IEntryCatalog catalog)
+    {
+        ObjectDisposedException.ThrowIf(_frozen, this);
+        ArgumentNullException.ThrowIfNull(catalog);
+        if (_catalog is not null || _schemas.Count != 0) throw new InvalidOperationException("Select either a supplied project catalog or schema modules once.");
+        _catalog = catalog;
+        return this;
+    }
+
+    public IEntryCatalog BuildCatalog() => _catalog ?? new TargetProfileEntryCatalog(_schemas);
 
     /// <summary>Freezes registration and transfers module ownership to the view.</summary>
     public CompositeGameView BuildView()

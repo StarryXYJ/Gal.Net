@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
@@ -48,14 +49,14 @@ public class GameEnginePrimitiveDispatchTests
             video.End.TrySetResult();
         }
         await WaitUntilAsync(() => Volatile.Read(ref markers) == 1);
-        Assert.That(engine.Runtime.SceneState.Layers, Is.Empty);
+        Assert.That(engine.Runtime.State.Table<Layer>().Values, Is.Empty);
     }
 
     [Test]
     public void UncompiledAuthoringEntriesAreRejectedInsteadOfSilentlySkipped()
     {
         using var view = new GameRegistration().AddBuiltins().BuildView();
-        Assert.Throws<InvalidOperationException>(() => new GameEngine(GraphWithGroup(new WaitEntry()), view));
+        Assert.Throws<InvalidOperationException>(() => new GameEngine(GraphWithGroup(new AuthoringPrimitiveEntry(BuiltinEntryIds.Wait)), view));
     }
     [Test]
     public async Task RestoreCancelsOldScopeAndIsolatesSceneAndSnapshots()
@@ -68,21 +69,22 @@ public class GameEnginePrimitiveDispatchTests
         }));
         using var engine = new GameEngine(GraphWithGroup(Primitive("test.wait")), view);
         var snapshot = engine.CreateSaveData();
-        snapshot.SceneState.Layers.Add(new Layer { Id = "restored", AssetId = "saved" });
+        engine.Runtime.State.Table<Layer>().Add(new Layer { Id = "restored", AssetId = "saved" });
+        snapshot.States["test.layers"] = engine.Runtime.State.Capture()["test.layers"];
         await engine.AdvanceAsync();
 
         engine.RestoreFrom(snapshot);
-        oldContext!.Runtime.SceneState.Layers.Clear();
-        snapshot.SceneState.Layers.Clear();
+        oldContext!.Runtime.State.Table<Layer>().Clear();
+        snapshot.States.Clear();
         var returned = engine.LastStableSnapshot;
-        returned.SceneState.Layers.Clear();
+        returned.States.Clear();
 
         Assert.Multiple(() =>
         {
             Assert.That(oldContext.ScopeCancellation.IsCancellationRequested, Is.True);
             Assert.Throws<OperationCanceledException>(() => oldContext.Runtime.EndGame());
-            Assert.That(engine.Runtime.SceneState.Layers.Single().AssetId, Is.EqualTo("saved"));
-            Assert.That(engine.CreateSaveData().SceneState.Layers.Single().AssetId, Is.EqualTo("saved"));
+            Assert.That(engine.Runtime.State.Table<Layer>().Values.Single().AssetId, Is.EqualTo("saved"));
+            Assert.That(GalNet.Core.Runtime.GameState.Restore(engine.Runtime.State.Catalog, engine.CreateSaveData().States).Table<Layer>().Values.Single().AssetId, Is.EqualTo("saved"));
         });
     }
 
@@ -121,11 +123,11 @@ public class GameEnginePrimitiveDispatchTests
         {
             Assert.That(video.Advances, Is.EqualTo(2));
             Assert.That(markers, Is.Zero);
-            Assert.That(engine.CreateSaveData().SceneState.Layers, Is.Empty);
+            Assert.That(GalNet.Core.Runtime.GameState.Restore(engine.Runtime.State.Catalog, engine.CreateSaveData().States).Table<Layer>().Values, Is.Empty);
         });
         video.End.TrySetResult();
         await WaitUntilAsync(() => markers == 1);
-        Assert.That(engine.Runtime.SceneState.Layers, Is.Empty);
+        Assert.That(engine.Runtime.State.Table<Layer>().Values, Is.Empty);
     }
 
     [Test]
@@ -328,7 +330,7 @@ public class GameEnginePrimitiveDispatchTests
                     Id = "scene",
                     Entries =
                     {
-                        Primitive(ShowLayerEntry.TypeId, new
+                        Primitive(BuiltinEntryIds.ShowLayer, new
                         {
                             handleId = "hero",
                             assetId = "hero-a.png",
@@ -337,7 +339,7 @@ public class GameEnginePrimitiveDispatchTests
                             opacity = 1,
                             displayMode = "Native"
                         }),
-                        new PrimitiveEntry(TextEntry.TypeId, JsonSerializer.SerializeToElement(new { speaker = "Alice", content = "story.continue" })) { StableId = "continue#1" }
+                        new PrimitiveEntry(BuiltinEntryIds.Text, JsonSerializer.SerializeToElement(new { speaker = "Alice", content = "story.continue" })) { StableId = "continue#1" }
                     }
                 },
                 new Branch
@@ -354,7 +356,7 @@ public class GameEnginePrimitiveDispatchTests
                 new Group
                 {
                     Id = "visible",
-                    Entries = { Primitive(ReplaceLayerEntry.TypeId, new { handleId = "hero", assetId = "hero-b.png" }) }
+                    Entries = { Primitive(BuiltinEntryIds.ReplaceLayer, new { handleId = "hero", assetId = "hero-b.png" }) }
                 }
             },
             Edges =
@@ -373,14 +375,14 @@ public class GameEnginePrimitiveDispatchTests
         {
             Assert.That(presenter.ShownLayers.Single().AssetId, Is.EqualTo("hero-a.png"));
             Assert.That(presenter.Dialogue, Is.EqualTo(("Alice", "Continue?")));
-            Assert.That(runtime.SceneState.Layers.Single().AssetId, Is.EqualTo("hero-a.png"));
+            Assert.That(runtime.State.Table<Layer>().Values.Single().AssetId, Is.EqualTo("hero-a.png"));
         });
 
         await engine.AdvanceAsync();
         Assert.That(presenter.Options, Is.EqualTo(VisibleOptions));
 
         presenter.Select(0);
-        await WaitUntilAsync(() => runtime.SceneState.Layers.Single().AssetId == "hero-b.png");
+        await WaitUntilAsync(() => runtime.State.Table<Layer>().Values.Single().AssetId == "hero-b.png");
 
         Assert.That(presenter.ReplacedLayers, Does.Contain(("hero", "hero-b.png")));
     }
@@ -415,15 +417,19 @@ public class GameEnginePrimitiveDispatchTests
     private static PrimitiveEntry Primitive(string typeId, object arguments, string? batchId = null) =>
         new(typeId, JsonSerializer.SerializeToElement(arguments), batchId);
 
-    private static PrimitiveImplementation Entry(
+    private static (string Type, Func<PrimitiveCreateContext, PrimitiveInstance> Factory) Entry(
         string name,
         Func<PrimitiveCreateContext, PrimitiveInstance> factory) =>
-        new(name, factory);
+        (name, factory);
 
-    private static CompositeGameView View(params PrimitiveImplementation[] entries) =>
+    private static CompositeGameView View(params (string Type, Func<PrimitiveCreateContext, PrimitiveInstance> Factory)[] entries) =>
         new GameRegistration()
             .RegisterSchema(new DefaultEntryModule("test", entries.Select(entry => new DefaultPrimitiveEntryBase(entry.Type, DynamicParameterTable.Empty))))
-            .RegisterImplementation(new PrimitiveModule(entries))
+            .RegisterImplementation(new PrimitiveModule(registry =>
+            {
+                registry.State<Layer>("test.layers", layer => layer.Id);
+                foreach (var entry in entries) registry.Register(entry.Type, entry.Factory);
+            }))
             .BuildView();
 
     private static async Task WaitUntilAsync(Func<bool> condition)

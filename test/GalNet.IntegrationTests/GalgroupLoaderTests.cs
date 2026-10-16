@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Compilation;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
@@ -141,7 +142,7 @@ public class GalgroupLoaderTests
                 new GroupEntryDocument
                 {
                     Id = "cross-fade",
-                    Type = CrossFadeTransitionEntry.TypeId,
+                    Type = BuiltinEntryIds.CrossFadeTransition,
                     Parameters = new Dictionary<string, JsonElement>
                     {
                         ["playbackHandleId"] = JsonSerializer.SerializeToElement("transition-playback"),
@@ -154,12 +155,12 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var result = GalgroupCompiler.Compile(raw, BuiltinSchemas.CreateCatalog());
+        var result = GalgroupCompiler.Compile(raw, new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()));
 
         Assert.That(result.Document.Kind, Is.EqualTo(GroupDocumentKind.Compiled));
         Assert.That(result.Document.Entries, Has.Count.EqualTo(1));
         Assert.That(result.Document.Entries[0].Id, Is.EqualTo("cross-fade#1"));
-        Assert.That(result.Document.Entries[0].TypeId, Is.EqualTo(PlayAnimationPlanEntry.TypeId));
+        Assert.That(result.Document.Entries[0].TypeId, Is.EqualTo(BuiltinEntryIds.PlayAnimationPlan));
         Assert.That(result.SourceMap["cross-fade"], Is.EqualTo(CrossFadeSourceMap));
 
         var plan = result.Document.Entries[0].Arguments.GetProperty("plan");
@@ -167,8 +168,8 @@ public class GalgroupLoaderTests
         Assert.That(plan.GetProperty("skippable").GetBoolean(), Is.True);
         Assert.That(plan.GetProperty("tracks").GetArrayLength(), Is.EqualTo(2));
         Assert.That(plan.GetProperty("events").GetArrayLength(), Is.EqualTo(2));
-        Assert.That(plan.GetProperty("events")[0].GetProperty("type").GetString(), Is.EqualTo(ShowLayerEntry.TypeId));
-        Assert.That(plan.GetProperty("events")[1].GetProperty("type").GetString(), Is.EqualTo(HideLayerEntry.TypeId));
+        Assert.That(plan.GetProperty("events")[0].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.ShowLayer));
+        Assert.That(plan.GetProperty("events")[1].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.HideLayer));
     }
 
     [Test]
@@ -182,7 +183,7 @@ public class GalgroupLoaderTests
                 new GroupEntryDocument
                 {
                     Id = "slide",
-                    Type = SlideTransitionEntry.TypeId,
+                    Type = BuiltinEntryIds.SlideTransition,
                     Parameters = new Dictionary<string, JsonElement>
                     {
                         ["playbackHandleId"] = JsonSerializer.SerializeToElement("slide-playback"),
@@ -196,7 +197,7 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var plan = GalgroupCompiler.Compile(raw, BuiltinSchemas.CreateCatalog()).Document.Entries.Single().Arguments.GetProperty("plan");
+        var plan = GalgroupCompiler.Compile(raw, new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).Document.Entries.Single().Arguments.GetProperty("plan");
         var tracks = plan.GetProperty("tracks");
 
         Assert.That(plan.GetProperty("blocking").GetBoolean(), Is.True);
@@ -207,7 +208,7 @@ public class GalgroupLoaderTests
         Assert.That(tracks[0].GetProperty("keys")[1].GetProperty("value").GetSingle(), Is.EqualTo(-1280f));
         Assert.That(tracks[1].GetProperty("blendMode").GetString(), Is.EqualTo("Replace"));
         Assert.That(tracks[1].GetProperty("keys")[0].GetProperty("value").GetSingle(), Is.EqualTo(1280f));
-        Assert.That(plan.GetProperty("events")[1].GetProperty("type").GetString(), Is.EqualTo(HideLayerEntry.TypeId));
+        Assert.That(plan.GetProperty("events")[1].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.HideLayer));
     }
 
     [Test]
@@ -221,7 +222,7 @@ public class GalgroupLoaderTests
                 new GroupEntryDocument
                 {
                     Id = "blinds",
-                    Type = BlindsTransitionEntry.TypeId,
+                    Type = BuiltinEntryIds.BlindsTransition,
                     Parameters = new Dictionary<string, JsonElement>
                     {
                         ["playbackHandleId"] = JsonSerializer.SerializeToElement("blinds-playback"),
@@ -236,7 +237,7 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var plan = GalgroupCompiler.Compile(raw, BuiltinSchemas.CreateCatalog()).Document.Entries.Single().Arguments.GetProperty("plan");
+        var plan = GalgroupCompiler.Compile(raw, new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).Document.Entries.Single().Arguments.GetProperty("plan");
         var track = plan.GetProperty("tracks")[0];
         var events = plan.GetProperty("events");
 
@@ -246,13 +247,13 @@ public class GalgroupLoaderTests
             Assert.That(plan.GetProperty("skippable").GetBoolean(), Is.True);
             Assert.That(track.GetProperty("handleId").GetString(), Is.EqualTo("blinds:blinds-mask"));
             Assert.That(track.GetProperty("property").GetString(), Is.EqualTo("progress"));
-            Assert.That(events[0].GetProperty("type").GetString(), Is.EqualTo(ApplyEffectEntry.TypeId));
+            Assert.That(events[0].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.ApplyEffect));
             Assert.That(events[0].GetProperty("parameters").GetProperty("program").GetString(), Is.EqualTo("a1000000000000000000000000000008"));
             Assert.That(events[0].GetProperty("parameters").GetProperty("targetHandleId").GetString(), Is.EqualTo("new-background"));
             Assert.That(events[0].GetProperty("parameters").GetProperty("parameters").GetProperty("bladeCount").GetInt32(), Is.EqualTo(9));
-            Assert.That(events[1].GetProperty("type").GetString(), Is.EqualTo(ShowLayerEntry.TypeId));
-            Assert.That(events[2].GetProperty("type").GetString(), Is.EqualTo(StopEffectEntry.TypeId));
-            Assert.That(events[3].GetProperty("type").GetString(), Is.EqualTo(HideLayerEntry.TypeId));
+            Assert.That(events[1].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.ShowLayer));
+            Assert.That(events[2].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.StopEffect));
+            Assert.That(events[3].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.HideLayer));
         });
     }
 
@@ -267,7 +268,7 @@ public class GalgroupLoaderTests
                 new GroupEntryDocument
                 {
                     Id = "color-fade",
-                    Type = ColorFadeTransitionEntry.TypeId,
+                    Type = BuiltinEntryIds.ColorFadeTransition,
                     Parameters = new Dictionary<string, JsonElement>
                     {
                         ["playbackHandleId"] = JsonSerializer.SerializeToElement("color-fade-playback"),
@@ -283,25 +284,25 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var result = GalgroupCompiler.Compile(raw, BuiltinSchemas.CreateCatalog());
+        var result = GalgroupCompiler.Compile(raw, new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()));
         var plan = result.Document.Entries.Single().Arguments.GetProperty("plan");
         var events = plan.GetProperty("events");
 
         Assert.That(plan.GetProperty("blocking").GetBoolean(), Is.True);
         Assert.That(plan.GetProperty("skippable").GetBoolean(), Is.True);
         Assert.That(events.GetArrayLength(), Is.EqualTo(4));
-        Assert.That(events[0].GetProperty("type").GetString(), Is.EqualTo(ShowColorLayerEntry.TypeId));
+        Assert.That(events[0].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.ShowColorLayer));
         Assert.That(events[0].GetProperty("parameters").GetProperty("color").GetString(), Is.EqualTo("#336699"));
-        Assert.That(events[1].GetProperty("type").GetString(), Is.EqualTo(HideLayerEntry.TypeId));
-        Assert.That(events[2].GetProperty("type").GetString(), Is.EqualTo(ShowLayerEntry.TypeId));
-        Assert.That(events[3].GetProperty("type").GetString(), Is.EqualTo(HideLayerEntry.TypeId));
+        Assert.That(events[1].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.HideLayer));
+        Assert.That(events[2].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.ShowLayer));
+        Assert.That(events[3].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.HideLayer));
         Assert.That(plan.GetProperty("frameRate").GetInt32(), Is.EqualTo(60));
         Assert.That(plan.GetProperty("durationFrames").GetInt32(), Is.EqualTo(54));
         Assert.That(events[1].GetProperty("frame").GetInt32(), Is.EqualTo(12));
     }
 
-    [TestCase(BlackFadeTransitionEntry.TypeId, "#000000")]
-    [TestCase(WhiteFadeTransitionEntry.TypeId, "#FFFFFF")]
+    [TestCase(BuiltinEntryIds.BlackFadeTransition, "#000000")]
+    [TestCase(BuiltinEntryIds.WhiteFadeTransition, "#FFFFFF")]
     public void Compile_ExpandsPresetColorFadesIntoExpectedOverlay(string transitionType, string expectedColor)
     {
         var raw = new GroupDocument
@@ -324,7 +325,7 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var plan = GalgroupCompiler.Compile(raw, BuiltinSchemas.CreateCatalog()).Document.Entries.Single().Arguments.GetProperty("plan");
+        var plan = GalgroupCompiler.Compile(raw, new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).Document.Entries.Single().Arguments.GetProperty("plan");
         Assert.That(plan.GetProperty("events")[0].GetProperty("parameters").GetProperty("color").GetString(), Is.EqualTo(expectedColor));
     }
 }

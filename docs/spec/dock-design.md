@@ -132,12 +132,12 @@ registry.RegisterDockPanel(new DelegateDockPanelContribution(
 | PanelId | 位置 | 全局 | 默认 | 说明 |
 |---|---|---|---|---|
 | `NodeGraph` | MainDocument | 是 | 是 | 节点图编辑器 |
-| `GamePreview` | MainDocument | 是 | 是 | 游戏预览 |
 | `Assets` | BottomDocument | 是 | 是 | 资源管理 |
 | `Log` | BottomDocument | 是 | 是 | 日志面板 |
 | `GroupEditor` | MainDocument | 否 | 否 | 组编辑器（按需打开） |
 | `Inspector` | InspectorDocument | 否 | 是 | 属性检查器 |
-| `UiCustomization` | BottomDocument | 是 | 是 | UI 定制面板 |
+
+Editor 工作区重构期间暂不注册 `GamePreview`，旧布局中的该项会作为不可用面板移除；当前也没有 `UiCustomization` contribution。`EditorDockFactory` 属于项目 scope。Group contribution 接收稳定 Group ID 字符串，项目文档及共享投影不由 Dock 页面拥有；关闭页面释放其订阅，重开继续使用相同项目内容。
 
 ---
 

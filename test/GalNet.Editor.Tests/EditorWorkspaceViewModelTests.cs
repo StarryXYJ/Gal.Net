@@ -1,10 +1,19 @@
 using System.ComponentModel;
 using System.Globalization;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Media;
+using Avalonia.VisualTree;
+using GalNet.Contracts.Builtins;
+using GalNet.Core.Entry;
+using GalNet.Core.Parameters;
 using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Extensibility;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Controls;
 using GalNet.Editor.Dock;
 using GalNet.Editor.History;
 using GalNet.Editor.Models.Graph;
@@ -12,6 +21,7 @@ using GalNet.Editor.Services;
 using GalNet.Editor.Services.Interfaces;
 using GalNet.Editor.Shared.Services;
 using GalNet.Editor.ViewModels;
+using GalNet.Game.Controls.Forms;
 using GalNet.Primitives.Builtins;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -20,6 +30,90 @@ namespace GeneralTest.Editor;
 [TestFixture]
 public sealed class EditorWorkspaceViewModelTests
 {
+    [TestCase(false), TestCase(true), NonParallelizable]
+    public async Task SchemaFieldCommitUsesWorkspaceHistoryAndSaveSnapshot(bool useDto)
+    {
+        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        await session.Dispatch<bool>(async () =>
+        {
+            using var fixture = new WorkspaceFixture(withProject: true, useDto: useDto);
+            var workspace = fixture.Workspace;
+            var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
+            var entry = workspace.InsertEntriesInto(group, 0, 1).Single();
+            entry.Type = BuiltinEntryIds.Wait;
+            entry.Parameters = new() { ["duration"] = "1" };
+            if (useDto) entry.Parameters = new(entry.Parameters) { ["label"] = "wait" };
+            var catalog = fixture.Catalog;
+            entry.ConfigureParameterFields(catalog, [], []);
+            // Supply only layout icon resources; the real parameter panel and bindings are used below.
+            foreach (var key in new[] { "AddIcon", "DeleteRegularIcon", "ChevronUpRegular", "ChevronDownRegular" })
+                Application.Current!.Resources[key] = StreamGeometry.Parse("M0,0 L8,8");
+            var panel = new GroupEditorPanelViewModel(workspace, group.Id, new GraphEditingService(catalog), fixture.ProjectService,
+                null!, null!, null!, catalog);
+            Application.Current!.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
+            Application.Current.Styles.Add(new Semi.Avalonia.SemiTheme());
+            var view = new EntryListEditorControl { DataContext = panel };
+            var window = new Window { Width = 900, Height = 500, Content = view };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+            try
+            {
+                var forms = view.GetVisualDescendants().OfType<SchemaForm>().Where(item => item.Schema is { Count: > 0 }).ToArray();
+                Assert.That(forms.Length, Is.EqualTo(1));
+                var form = forms.Single();
+                if (useDto)
+                {
+                    entry.ConfigureParameterFields(catalog, [], []);
+                    window.UpdateLayout();
+                    form = view.GetVisualDescendants().OfType<SchemaForm>().Single(item => item.Schema is { Count: > 0 });
+                    Assert.That(form.Contexts[1].Text, Is.EqualTo("wait"));
+                }
+                Assert.That(form.Diagnostics, Is.Empty);
+                Assert.That(form.Contexts[0].Field.Id, Is.EqualTo("duration"));
+                Assert.That(view.GetVisualDescendants(), Does.Contain(form.Editors[0].Control));
+                var field = useDto ? entry.ParameterForm!.Binding(entry.ParameterForm.Fields[0]) : (IFieldBinding)entry.ParameterFields.Single();
+                if (useDto) Assert.That(entry.ParameterFields, Is.Empty, "The generated DTO replaces the old per-field projection.");
+                var changes = 0;
+                field.Changed += (_, _) => changes++;
+                workspace.UndoRedoHistory.MarkSaved();
+                ((TextBox)form.Editors[0].Control).Text = "1.5";
+                Assert.That(await form.Contexts[0].CommitTextAsync(), Is.True);
+                Assert.That(workspace.UndoRedoHistory.IsDirty, Is.True);
+                workspace.UndoRedoHistory.Undo();
+                Assert.That(field.Read().Json!.Value.GetSingle(), Is.EqualTo(1));
+                Assert.That(((TextBox)form.Editors[0].Control).Text, Is.EqualTo("1"));
+                Assert.That(workspace.UndoRedoHistory.IsDirty, Is.False);
+                workspace.UndoRedoHistory.Redo();
+                Assert.That(field.Read().Json!.Value.GetSingle(), Is.EqualTo(1.5));
+                Assert.That(changes, Is.EqualTo(3));
+                await workspace.SaveAsync();
+                Assert.That(entry.Source.Parameters["duration"].GetSingle(), Is.EqualTo(1.5f));
+                Assert.That(fixture.ProjectService.SaveCount, Is.EqualTo(1));
+                Assert.That(workspace.UndoRedoHistory.IsDirty, Is.False);
+            }
+            finally { window.Close(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
+    public void CommitSpeaker_IgnoresNullAndWhitespaceFromAutocomplete()
+    {
+        using var fixture = new WorkspaceFixture(withProject: true);
+        var group = fixture.Workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
+        using var panel = new GroupEditorPanelViewModel(fixture.Workspace, group.Id,
+            new GraphEditingService(fixture.Catalog), fixture.ProjectService, null!, null!, null!, fixture.Catalog);
+
+        Assert.Multiple(() =>
+        {
+            Assert.DoesNotThrow(() => panel.CommitSpeaker(null));
+            Assert.DoesNotThrow(() => panel.CommitSpeaker("   "));
+            Assert.That(fixture.ProjectService.Current!.Settings.Speakers, Is.Empty);
+            Assert.That(fixture.ProjectService.Current.IsDirty, Is.False);
+        });
+    }
+
     [Test]
     public void Selection_KeepsNodeAndEdgeFlagsConsistent()
     {
@@ -63,24 +157,24 @@ public sealed class EditorWorkspaceViewModelTests
     }
 
     [Test]
-    public void GraphEdit_UndoAndRedoRestoreTheSameNode()
+    public async Task GraphEdit_UndoAndRedoRestoreTheStableNodeIdentity()
     {
         using var fixture = new WorkspaceFixture();
         var workspace = fixture.Workspace;
         var initialCount = workspace.Nodes.Count;
 
-        var added = workspace.AddNode(GraphNodeKind.LinearGroup, 120, 240);
+        var added = await workspace.AddNodeAsync(GraphNodeKind.LinearGroup, 120, 240);
 
         Assert.That(workspace.Nodes, Has.Count.EqualTo(initialCount + 1));
         Assert.That(workspace.UndoRedoHistory.CanUndo, Is.True);
 
-        workspace.UndoRedoHistory.Undo();
+        await workspace.UndoRedoHistory.UndoAsync();
         Assert.That(workspace.Nodes, Has.Count.EqualTo(initialCount));
         Assert.That(workspace.Nodes, Does.Not.Contain(added));
 
-        workspace.UndoRedoHistory.Redo();
+        await workspace.UndoRedoHistory.RedoAsync();
         Assert.That(workspace.Nodes, Has.Count.EqualTo(initialCount + 1));
-        Assert.That(workspace.Nodes, Does.Contain(added));
+        Assert.That(workspace.Nodes.Select(node => node.Id), Does.Contain(added.Id));
     }
 
     [Test]
@@ -88,14 +182,12 @@ public sealed class EditorWorkspaceViewModelTests
     {
         using var fixture = new WorkspaceFixture(withProject: true);
         var workspace = fixture.Workspace;
-        workspace.AddNode(GraphNodeKind.LinearGroup, 120, 240);
+        await workspace.AddNodeAsync(GraphNodeKind.LinearGroup, 120, 240);
 
         await workspace.SaveAsync();
 
         Assert.Multiple(() =>
         {
-            Assert.That(fixture.SaveCoordinator.SavedDocument, Is.Not.Null);
-            Assert.That(fixture.SaveCoordinator.SavedDocument!.Nodes, Has.Count.EqualTo(workspace.Nodes.Count));
             Assert.That(fixture.ProjectService.SaveCount, Is.EqualTo(1));
             Assert.That(fixture.SaveScheduler.SaveNowCount, Is.EqualTo(1));
             Assert.That(fixture.DocumentService.IsDirty, Is.False);
@@ -147,15 +239,14 @@ public sealed class EditorWorkspaceViewModelTests
             documents,
             saveCoordinator);
 
-        var graph = persistence.LoadCurrentProject();
-        var saved = await persistence.SaveCurrentProjectAsync(graph!.Nodes, graph.Edges);
+        var graph = persistence.LoadCurrentProject()!;
+        var saved = await persistence.SaveCurrentProjectAsync();
 
         Assert.Multiple(() =>
         {
             Assert.That(graph.Nodes, Has.Count.EqualTo(2));
             Assert.That(documents.CurrentDocument.Name, Is.EqualTo("Test Project"));
             Assert.That(saved, Is.True);
-            Assert.That(saveCoordinator.SavedDocument, Is.Not.Null);
             Assert.That(projects.SaveCount, Is.EqualTo(1));
         });
 
@@ -169,17 +260,22 @@ public sealed class EditorWorkspaceViewModelTests
         public CapturingSaveCoordinator SaveCoordinator { get; } = new();
         public ImmediateSaveScheduler SaveScheduler { get; } = new();
         public EditorWorkspaceViewModel Workspace { get; }
+        public IEntryCatalog Catalog { get; }
 
-        public WorkspaceFixture(bool withProject = false)
+        private readonly string _root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "GalNet-workspace-test-" + Guid.NewGuid().ToString("N"))).FullName;
+        private readonly ProjectContentSession _content;
+
+        public WorkspaceFixture(bool withProject = false, bool useDto = false)
         {
             var loaded = CreateLoadedDocument();
-            if (withProject)
+            if (!withProject)
+                loaded.Document.Nodes.Add(new EditorGraphNodeDto { Id = "choice", Type = "Branch", BranchType = "Choice", Name = "Choice" });
             {
                 var projectScope = new FakeScope();
                 ProjectService.SetCurrent(new GalProject(
                     "test",
                     "Test Project",
-                    "C:\\test-project",
+                    _root,
                     new ProjectSettings(),
                     new EditorProjectState(),
                     projectScope));
@@ -190,7 +286,14 @@ public sealed class EditorWorkspaceViewModelTests
                 new NullServiceProvider(),
                 new EditorExtensionRegistry(),
                 localization);
-            var catalog = BuiltinSchemas.CreateCatalog();
+            var modules = BuiltinSchemas.CreateAllModules().Where(module => module.Id != "flow").ToList();
+            var wait = useDto ? DefaultPrimitiveEntryBase.ForDto<EditorWaitOptions>(BuiltinEntryIds.Wait)
+                : new DefaultPrimitiveEntryBase(BuiltinEntryIds.Wait, new GalNet.Core.Primitives.DynamicParameterTable(
+                    [new GalNet.Core.Primitives.DynamicParameterDescriptor("duration", typeof(float),
+                        defaultValue: System.Text.Json.JsonSerializer.SerializeToElement(1f), editor: new(ValueEditorIds.Numeric))]));
+            modules.Add(new DefaultEntryModule("flow", [wait]));
+            var catalog = new TargetProfileEntryCatalog(modules);
+            Catalog = catalog;
             var variableDefinitions = new VariableDefinitionService(DocumentService);
             var repository = new FakeDocumentRepository(loaded);
             var persistence = new EditorWorkspacePersistence(
@@ -199,9 +302,14 @@ public sealed class EditorWorkspaceViewModelTests
                 DocumentService,
                 SaveCoordinator);
 
+            var histories = new EditorHistories();
+            DocumentService.Load(loaded);
+            File.WriteAllText(Path.Combine(_root, "settings.json"), System.Text.Json.JsonSerializer.Serialize(ProjectService.Current!.Settings));
+            _content = new ProjectContentSession(DocumentService, repository);
+            _content.Open(ProjectService.Current!);
             Workspace = new EditorWorkspaceViewModel(
                 ProjectService,
-                new EditorHistories(),
+                histories,
                 dockFactory,
                 DocumentService,
                 variableDefinitions,
@@ -210,13 +318,15 @@ public sealed class EditorWorkspaceViewModelTests
                 localization,
                 SaveScheduler,
                 new GraphSelectionState(),
-                persistence);
+                persistence, new GraphAuthoringService(DocumentService, histories, _content));
         }
 
         public void Dispose()
         {
             Workspace.Dispose();
+            _content.Dispose();
             ProjectService.Current?.Dispose();
+            Directory.Delete(_root, true);
         }
 
         public static LoadedEditorProjectDocument CreateLoadedDocument() => new()
@@ -229,7 +339,7 @@ public sealed class EditorWorkspaceViewModelTests
                 Nodes =
                 [
                     new EditorGraphNodeDto { Id = "entry", Type = "Entry", Name = "Entry" },
-                    new EditorGraphNodeDto { Id = "opening", Type = "Group", Name = "Opening" }
+                    new EditorGraphNodeDto { Id = "opening", Type = "Group", Name = "Opening", File = "groups/opening.rawgalgroup" }
                 ],
                 Edges = [new EditorGraphEdgeDto { Id = "edge", FromNodeId = "entry", ToNodeId = "opening" }]
             }
@@ -244,7 +354,7 @@ public sealed class EditorWorkspaceViewModelTests
 
         public void SetCurrent(GalProject project) => Current = project;
         public Task<GalProject> OpenAsync(string projectPath) => throw new NotSupportedException();
-        public Task<GalProject> CreateAsync(string projectPath, string name, ProjectSettings settings) => throw new NotSupportedException();
+        public Task<GalProject> CreateAsync(string projectPath, string name, ProjectSettings settings, string contractsDirectory) => throw new NotSupportedException();
         public Task CloseAsync() => Task.CompletedTask;
         public Task SaveAsync() { SaveCount++; return Task.CompletedTask; }
         public IReadOnlyList<RecentProjectInfo> GetRecentProjects() => [];
@@ -255,14 +365,21 @@ public sealed class EditorWorkspaceViewModelTests
     private sealed class FakeDocumentRepository(LoadedEditorProjectDocument loaded) : IEditorDocumentRepository
     {
         public LoadedEditorProjectDocument Load(string projectPath, string projectName, ProjectSettings settings) => loaded;
+        public ProjectSavePlan PrepareSave(string projectPath, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries) => new(new Dictionary<string, byte[]>(), []);
+        public void ApplySave(string projectPath, ProjectSavePlan plan, CancellationToken cancellationToken = default)
+        {
+            foreach (var pair in plan.Writes)
+            {
+                var path = Path.Combine(projectPath, pair.Key);
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                File.WriteAllBytes(path, pair.Value);
+            }
+        }
         public void Save(string projectPath, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries) => throw new NotSupportedException();
     }
 
     private sealed class CapturingSaveCoordinator : IEditorSaveCoordinator
     {
-        public EditorGraphDocument? SavedDocument { get; private set; }
-
-        public void SaveProjectDocument(string projectPath, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries) => SavedDocument = document;
         public string BuildPreviewData(string previewPath, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries) => previewPath;
     }
 

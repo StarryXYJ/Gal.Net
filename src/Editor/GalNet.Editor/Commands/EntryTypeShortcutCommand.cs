@@ -1,6 +1,7 @@
 using System.Windows.Input;
 using Avalonia.Input;
 using CommunityToolkit.Mvvm.Input;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.I18n;
 using GalNet.Primitives.Builtins;
@@ -27,10 +28,10 @@ public sealed class EntryTypeShortcutCommand : EditorUiCommand
         DisplayNameKey = new I18nKey($"Entry.Type.{definition.Type}");
         DefaultGesture = definition.Type switch
         {
-            TextEntry.TypeId => new KeyGesture(Key.T),
-            ShowLayerEntry.TypeId => new KeyGesture(Key.L),
-            HideLayerEntry.TypeId => new KeyGesture(Key.L, KeyModifiers.Shift),
-            MoveLayerEntry.TypeId => new KeyGesture(Key.L, KeyModifiers.Control),
+            BuiltinEntryIds.Text => new KeyGesture(Key.T),
+            BuiltinEntryIds.ShowLayer => new KeyGesture(Key.L),
+            BuiltinEntryIds.HideLayer => new KeyGesture(Key.L, KeyModifiers.Shift),
+            BuiltinEntryIds.MoveLayer => new KeyGesture(Key.L, KeyModifiers.Control),
             _ => null
         };
         Gesture = DefaultGesture;

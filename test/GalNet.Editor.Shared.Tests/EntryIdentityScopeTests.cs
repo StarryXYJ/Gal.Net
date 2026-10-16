@@ -1,7 +1,8 @@
+using GalNet.Contracts.Builtins;
+using GalNet.Core.Entry;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Shared.Commands;
-using GalNet.Primitives.Builtins;
 
 namespace GeneralTest.Editor;
 
@@ -11,7 +12,7 @@ public class EntryIdentityScopeTests
     public void AddingEntriesAllowsTheSameIdInDifferentGroupsButRejectsItInTheSameGroup()
     {
         var document = CreateDocument();
-        var handler = new BuiltInEditorCommandHandler(BuiltinSchemas.CreateCatalog());
+        var handler = new BuiltInEditorCommandHandler(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()));
         var context = new EditorCommandContext(0, false);
 
         Assert.That(handler.Execute(document, new AddEntryCommand("first", "show", Type: "dialogue.show"), context).Success, Is.True);

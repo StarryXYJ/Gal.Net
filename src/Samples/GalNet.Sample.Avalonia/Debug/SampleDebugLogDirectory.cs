@@ -12,6 +12,6 @@ public sealed class SampleDebugLogDirectory
         var directory = _launchOptions.LogDirectory;
         Directory.CreateDirectory(directory);
         if (Process.Start(new ProcessStartInfo(directory) { UseShellExecute = true }) is null)
-            throw new InvalidOperationException("无法打开日志目录。");
+            throw new InvalidOperationException("can not open log directory");
     }
 }

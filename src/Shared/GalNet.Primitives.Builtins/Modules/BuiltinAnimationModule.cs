@@ -1,37 +1,47 @@
-using GalNet.Core.Primitives;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Scene;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 
 namespace GalNet.Primitives.Builtins;
 
-public sealed class BuiltinAnimationModule : PrimitiveModule
-{
-    public BuiltinAnimationModule(
+public sealed class BuiltinAnimationModule(
         IAnimationPresenter? animationPresenter = null,
         ILayerPresenter? layerPresenter = null,
         IEffectPresenter? effectPresenter = null,
-        IParticlePresenter? particlePresenter = null) : base(
-    [
-        BuiltinInstructionFactory.Create<AnimateEntry>(context => new AnimationPrimitiveInstance(
-                context.Runtime,
-                animationPresenter,
-                BuiltinRuntimeActions.CreateAnimationRequest(context),
-                context.BatchId,
-                context.ScopeCancellation)),
-        BuiltinInstructionFactory.Create<PlayAnimationPlanEntry>(context => new AnimationPlanPrimitiveInstance(
-                context.Runtime,
-                animationPresenter,
-                layerPresenter,
-                effectPresenter,
-                particlePresenter,
-                BuiltinRuntimeActions.CreateAnimationPlan(context),
-                context.BatchId,
-                context.ScopeCancellation)),
-        BuiltinInstructionFactory.Create<StopAnimationEntry>(context => new ImmediatePrimitiveInstance(() =>
+        IParticlePresenter? particlePresenter = null) : PrimitiveModule(
+    registry =>
+    {
+        registry.ValidateState((_, state) =>
+        {
+            foreach (var animation in state.Table<LoopAnimationState>().Values)
+                if (state.SceneObjects<ISceneInstance>().Any(item => item.Id == animation.Id))
+                    throw new InvalidDataException($"Animation playback handle '{animation.Id}' conflicts with a scene object.");
+        });
+        registry.State<LoopAnimationState>("builtin.animations", value => value.Id, context =>
+        {
+            if (animationPresenter is null) return Task.CompletedTask;
+            foreach (var state in context.Runtime.State.Table<LoopAnimationState>().Values)
             {
-                var playbackHandleId = Arguments.String(context, "playbackHandleId");
-                var mode = Arguments.Enum(context, "mode", AnimationStopMode.AfterIteration);
+                if (state.Request is { } request)
+                    context.Start(new AnimationPrimitiveInstance(context.Runtime, animationPresenter, request, null, context.CancellationToken, restoring: true));
+                else if (state.Plan is { } plan)
+                    context.Start(new AnimationPlanPrimitiveInstance(context.Runtime, animationPresenter, layerPresenter, effectPresenter,
+                        particlePresenter, plan, null, context.CancellationToken, restoring: true));
+            }
+            return Task.CompletedTask;
+        }, validate: state =>
+        {
+            if ((state.Request is null) == (state.Plan is null)) throw new InvalidDataException("An animation state requires exactly one definition.");
+        }, after: ["builtin.layers", "builtin.effects", "builtin.particles", "builtin.videos"]);
+        registry.Register<AnimationOptions>(BuiltinEntryIds.Animate, (context, options) =>
+            new AnimationPrimitiveInstance(animationPresenter, context, options));
+        registry.Register<AnimationPlanOptions>(BuiltinEntryIds.PlayAnimationPlan, (context, options) =>
+            new AnimationPlanPrimitiveInstance(animationPresenter, layerPresenter, effectPresenter, particlePresenter, context, options));
+        registry.Immediate<AnimationStopOptions>(BuiltinEntryIds.StopAnimation, (context, options) =>
+            {
+                var playbackHandleId = options.PlaybackHandleId ?? "";
+                var mode = options.Mode ?? AnimationStopMode.AfterIteration;
                 if (context.Runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(playbackHandleId, out var playback))
                     playback.RequestStop(mode);
                 if (mode == AnimationStopMode.CompleteImmediately)
@@ -39,7 +49,5 @@ public sealed class BuiltinAnimationModule : PrimitiveModule
                     animationPresenter?.CompleteAnimationImmediately(playbackHandleId);
                     BuiltinRuntimeActions.StopAnimationState(context.Runtime, playbackHandleId);
                 }
-            }, batchId: context.BatchId))
-    ])
-    { }
-}
+            });
+    });

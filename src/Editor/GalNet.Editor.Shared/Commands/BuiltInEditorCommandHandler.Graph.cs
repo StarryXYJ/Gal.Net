@@ -13,6 +13,8 @@ public sealed partial class BuiltInEditorCommandHandler
             return Error("graph.node.duplicateId", $"Node '{command.NodeId}' already exists.", NodeResource(command.NodeId));
         if (!double.IsFinite(command.X) || !double.IsFinite(command.Y))
             return Error("graph.node.invalidPosition", "Node coordinates must be finite numbers.");
+        if (command.Kind == EditorNodeKind.LinearGroup && (command.NodeId is "." or ".." || command.NodeId.Contains('/') || command.NodeId.Contains('\\') || command.NodeId.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0))
+            return Error("graph.node.invalidGroupId", "Group node ID must be a valid single filename component.");
         if (command.Kind == EditorNodeKind.Entry && document.Graph.Nodes.Any(IsEntryNode))
             return Error("graph.node.entryExists", "The graph already contains an entry node.");
 
@@ -135,7 +137,6 @@ public sealed partial class BuiltInEditorCommandHandler
             return Error("graph.edge.invalidOutlet", $"Outlet {command.Outlet} does not exist on node '{from.Id}'.", NodeResource(from.Id));
 
         document.Graph.Edges.RemoveAll(edge =>
-            edge.ToNodeId == to.Id ||
             (edge.FromNodeId == from.Id && edge.FromOutlet == command.Outlet));
         var edge = new EditorGraphEdgeDto
         {

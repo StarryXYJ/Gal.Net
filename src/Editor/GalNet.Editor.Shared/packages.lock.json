@@ -19,6 +19,12 @@
           "GalNet.Core": "[1.0.0, )"
         }
       },
+      "galnet.contracts.builtins": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Core": "[1.0.0, )"
+        }
+      },
       "galnet.core": {
         "type": "Project"
       },
@@ -33,14 +39,6 @@
         "type": "Project",
         "dependencies": {
           "GalNet.Core": "[1.0.0, )"
-        }
-      },
-      "galnet.primitives.builtins": {
-        "type": "Project",
-        "dependencies": {
-          "GalNet.Core": "[1.0.0, )",
-          "GalNet.Presentation.Abstractions": "[1.0.0, )",
-          "GalNet.Runtime": "[1.0.0, )"
         }
       },
       "galnet.runtime": {

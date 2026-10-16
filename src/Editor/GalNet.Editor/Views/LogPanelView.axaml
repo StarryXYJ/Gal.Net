@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:GalNet.Editor.MarkupExtensions"
              xmlns:vm="using:GalNet.Editor.ViewModels"
              xmlns:s="using:GalNet.Editor.Services"
              x:Class="GalNet.Editor.Views.LogPanelView"
@@ -10,17 +11,17 @@
             <ToggleButton IsChecked="{Binding OnlyShowErrors}"
                           ToolTip.Tip="Errors only"
                           AutomationProperties.Name="Errors only">
-                <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource FilterIcon}" /><TextBlock Text="Errors Only" /></StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource FilterIcon}" /><TextBlock Text="{loc:Localize Log.ErrorsOnly}" /></StackPanel>
             </ToggleButton>
             <ToggleButton IsChecked="{Binding AutoScroll}"
                           ToolTip.Tip="Auto-scroll"
                           AutomationProperties.Name="Auto-scroll">
-                <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource ScrollIcon}" /><TextBlock Text="Auto-scroll" /></StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource ScrollIcon}" /><TextBlock Text="{loc:Localize Log.AutoScroll}" /></StackPanel>
             </ToggleButton>
             <Menu VerticalAlignment="Center">
                 <MenuItem Header="{Binding ChannelDisplay}">
-                    <MenuItem Header="Game" ToggleType="CheckBox" IsChecked="{Binding IsGameEnabled, Mode=TwoWay}" />
-                    <MenuItem Header="Editor" ToggleType="CheckBox" IsChecked="{Binding IsEditorEnabled, Mode=TwoWay}" />
+                    <MenuItem Header="{loc:Localize Log.Game}" ToggleType="CheckBox" IsChecked="{Binding IsGameEnabled, Mode=TwoWay}" />
+                    <MenuItem Header="{loc:Localize Log.Editor}" ToggleType="CheckBox" IsChecked="{Binding IsEditorEnabled, Mode=TwoWay}" />
                 </MenuItem>
             </Menu>
         </StackPanel>

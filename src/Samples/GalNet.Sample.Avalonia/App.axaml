@@ -4,6 +4,7 @@
              xmlns:semi="https://irihi.tech/semi"            
              xmlns:usemi="https://irihi.tech/ursa/themes/semi"
              xmlns:loc="using:DynamicLocalization.Core"
+             xmlns:typography="using:GalNet.Avalonia.Themes"
 
              RequestedThemeVariant="Default">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
@@ -16,5 +17,8 @@
     <Application.Styles>
         <semi:SemiTheme></semi:SemiTheme>
         <semi:UrsaSemiTheme></semi:UrsaSemiTheme>
+        <Style Selector=":is(Window)">
+            <Setter Property="FontFamily" Value="{x:Static typography:GameTypography.UiFontFamily}" />
+        </Style>
     </Application.Styles>
 </Application>

@@ -1,4 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using System.ComponentModel;
+using GalNet.Core.Parameters;
+using GalNet.Game.Controls.Forms;
 
 namespace GalNet.Avalonia.GameView.Settings;
 
@@ -39,7 +42,13 @@ public abstract class SettingItem : ObservableObject
     public string NameKey { get; }
     public object Label { get; }
     public string? DescriptionKey { get; init; }
+    public bool IsFullWidth { get; init; }
+    public int EditorColumn => IsFullWidth ? 0 : 1;
+    public int EditorColumnSpan => IsFullWidth ? 2 : 1;
     public abstract Type ValueType { get; }
+    public virtual FieldDescriptor? Field => null;
+    public IReadOnlyList<FieldDescriptor> Fields => Field is { } descriptor ? [descriptor] : [];
+    public Func<FieldDescriptor, IFieldBinding> FieldBinding => _ => (IFieldBinding)this;
     public Func<SettingAvailability>? EvaluateAvailability { get; init; }
     public SettingAvailability Availability => _availability;
     public bool IsVisible => _availability.IsVisible;
@@ -64,7 +73,7 @@ public abstract class SettingItem : ObservableObject
     public abstract void Refresh();
 }
 
-public abstract class SettingItem<T> : SettingItem
+public abstract class SettingItem<T> : SettingItem, IFieldBinding, IFieldPreviewBinding
 {
     private readonly Func<T> _read;
     private readonly Func<T, CancellationToken, Task> _apply;
@@ -79,6 +88,49 @@ public abstract class SettingItem<T> : SettingItem
         _forcedValue = forcedValue;
     }
     public override Type ValueType => typeof(T);
+    public ValueDescriptor ValueContract { get; protected set; } = new(typeof(T));
+    public EditorHints? Editor { get; init; }
+    public override FieldDescriptor Field => new(Id, ValueContract, isRequired: true,
+        editor: GetEditorHints(), labelKey: NameKey, descriptionKey: DescriptionKey);
+    protected virtual EditorHints? GetEditorHints() => Editor;
+    protected virtual IReadOnlyList<FieldEditorOption>? FieldOptions => null;
+    IReadOnlyList<FieldEditorOption>? IFieldBinding.Options => FieldOptions;
+    public Action<T>? LivePreview { get; init; }
+    bool IFieldPreviewBinding.SupportsPreview => LivePreview is not null;
+    public event EventHandler? Changed;
+    protected override void OnPropertyChanged(PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+    FieldValue IFieldBinding.Read() => new(ValueCodec.Serialize(ValueContract, Value));
+    async Task<ValueIssue?> IFieldBinding.CommitAsync(FieldValue value, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (value.Json is not { } json) return new("setting.required", "A setting value is required.", Id);
+        var typed = (T)ValueCodec.Deserialize(ValueContract, json)!;
+        return await TrySetValueAsync(typed, cancellationToken) ? null : new("setting.apply", ErrorKey ?? "Settings.Cancelled", Id);
+    }
+    ValueIssue? IFieldPreviewBinding.Preview(FieldValue value)
+    {
+        RefreshAvailability();
+        if (IsForced || !Availability.IsEnabled) return new("setting.unavailable", Availability.ReasonKey ?? "Settings.Unavailable", Id);
+        if (LivePreview is not { } preview) return new("setting.preview", "Live preview is unavailable.", Id);
+        if (value.Json is not { } json) return new("setting.required", "A setting value is required.", Id);
+        if (ValueValidation.Validate(ValueContract, json) is { } issue) return issue;
+        T typed;
+        try { typed = (T)ValueCodec.Deserialize(ValueContract, json)!; }
+        catch (Exception exception) { return new("setting.preview", exception.Message, Id); }
+        if (Validate(typed) is { } error) return new("setting.invalid", error, Id);
+        try
+        {
+            ErrorKey = null;
+            preview(typed);
+            Refresh();
+            return null;
+        }
+        catch (Exception exception) { return new("setting.preview", exception.Message, Id); }
+    }
     public override bool IsForced => _forcedValue is not null;
     public T DefaultValue { get; set; }
     public Func<T, string?>? Validator { get; init; }
@@ -146,6 +198,23 @@ public sealed class SettingsCoordinator
             _tail = ObserveAsync(flush);
             return flush;
         }
+    }
+    public Task RequestSaveAsync(CancellationToken cancellationToken = default)
+    {
+        lock (_gate)
+        {
+            var save = SaveAfterAsync(_tail, cancellationToken);
+            _tail = ObserveAsync(save);
+            return save;
+        }
+    }
+    private async Task SaveAfterAsync(Task previous, CancellationToken cancellationToken)
+    {
+        await Task.Yield();
+        await previous;
+        cancellationToken.ThrowIfCancellationRequested();
+        _pendingSave = true;
+        await PersistAsync(cancellationToken);
     }
     private async Task FlushCoreAsync(Task previous)
     {

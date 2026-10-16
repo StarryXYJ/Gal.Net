@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
 
@@ -32,16 +33,14 @@ public class NvlPrimitiveInstanceTests
     public void VisibilityAndClearEntriesCallOnlyTheirRequestedOperation()
     {
         var presenter = new ControlledNvlPresenter();
-        var module = new BuiltinNvlModule(presenter);
+        using var view = new GameRegistration().AddBuiltins(nvlPresenter: presenter).BuildView();
 
-        foreach (var entry in new[] { ShowNvlEntry.TypeId, HideNvlEntry.TypeId, ClearNvlEntry.TypeId })
+        foreach (var entry in new[] { BuiltinEntryIds.ShowNvl, BuiltinEntryIds.HideNvl, BuiltinEntryIds.ClearNvl })
         {
-            var primitive = module.Instructions[entry];
-            primitive.CreateInstance(new GalNet.Core.Primitives.PrimitiveCreateContext(
-                BuiltinSchemas.CreateCatalog().Get(entry),
+            view.Dispatch(
                 new GalNet.Core.Entry.PrimitiveEntry(entry, System.Text.Json.JsonSerializer.SerializeToElement(new { })),
                 new GalNet.Runtime.Runtime.GameRuntime(null),
-                CancellationToken.None)).Dispatch();
+                CancellationToken.None);
         }
 
         Assert.That(presenter.Operations, Is.EqualTo(["show", "hide", "clear"]));

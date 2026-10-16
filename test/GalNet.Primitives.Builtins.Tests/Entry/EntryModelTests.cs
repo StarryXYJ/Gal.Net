@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Primitives.Builtins;
 
@@ -10,7 +11,7 @@ public class EntryModelTests
     private static readonly string[] SlideDirections = ["Left", "Right", "Up", "Down"];
     private static readonly string[] BlindOrientations = ["Vertical", "Horizontal"];
 
-    private static TargetProfileEntryCatalog Catalog => BuiltinSchemas.CreateCatalog();
+    private static TargetProfileEntryCatalog Catalog => new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
 
     [Test]
     public void Registry_Should_Create_All_BuiltIn_Entries()
@@ -23,7 +24,7 @@ public class EntryModelTests
     [Test]
     public void Create_Should_Apply_Defaults_And_Discard_Unknown_Values()
     {
-        var entry = Catalog.Create(ShowLayerEntry.TypeId, 3, "flag", new Dictionary<string, string>
+        var entry = Catalog.Create(BuiltinEntryIds.ShowLayer, 3, "flag", new Dictionary<string, string>
         {
             ["handleId"] = "hero",
             ["unknown"] = "discard"
@@ -40,8 +41,8 @@ public class EntryModelTests
     [Test]
     public void Entry_Values_Should_Not_Be_Shared()
     {
-        var first = Catalog.Create(TextEntry.TypeId);
-        var second = Catalog.Create(TextEntry.TypeId);
+        var first = Catalog.Create(BuiltinEntryIds.Text);
+        var second = Catalog.Create(BuiltinEntryIds.Text);
         first.Values["content"] = "first";
         Assert.That(second.Values, Does.Not.ContainKey("content"));
     }
@@ -64,16 +65,16 @@ public class EntryModelTests
     [Test]
     public void TextEntry_Should_Not_Expose_Widget_Parameter()
     {
-        var definition = Catalog.Get(TextEntry.TypeId);
+        var definition = Catalog.Get(BuiltinEntryIds.Text);
         Assert.That(definition.Parameters.Keys, Is.EquivalentTo(TextParameters));
-        Assert.That(Catalog.Create(TextEntry.TypeId).Values, Does.Not.ContainKey("widget"));
+        Assert.That(Catalog.Create(BuiltinEntryIds.Text).Values, Does.Not.ContainKey("widget"));
     }
 
     [Test]
     public void Dialogue_Visibility_Entries_Should_Have_No_Parameters()
     {
-        Assert.That(Catalog.Get(ShowDialogueEntry.TypeId).Parameters, Is.Empty);
-        Assert.That(Catalog.Get(HideDialogueEntry.TypeId).Parameters, Is.Empty);
+        Assert.That(Catalog.Get(BuiltinEntryIds.ShowDialogue).Parameters, Is.Empty);
+        Assert.That(Catalog.Get(BuiltinEntryIds.HideDialogue).Parameters, Is.Empty);
     }
 
     [Test]
@@ -81,17 +82,17 @@ public class EntryModelTests
     {
         Assert.Multiple(() =>
         {
-            Assert.That(Catalog.Get(ShowNvlEntry.TypeId).Parameters, Is.Empty);
-            Assert.That(Catalog.Get(HideNvlEntry.TypeId).Parameters, Is.Empty);
-            Assert.That(Catalog.Get(ClearNvlEntry.TypeId).Parameters, Is.Empty);
-            Assert.That(Catalog.Get(AppendNvlEntry.TypeId).Parameters.Keys, Is.EquivalentTo(["content"]));
+            Assert.That(Catalog.Get(BuiltinEntryIds.ShowNvl).Parameters, Is.Empty);
+            Assert.That(Catalog.Get(BuiltinEntryIds.HideNvl).Parameters, Is.Empty);
+            Assert.That(Catalog.Get(BuiltinEntryIds.ClearNvl).Parameters, Is.Empty);
+            Assert.That(Catalog.Get(BuiltinEntryIds.AppendNvl).Parameters.Keys, Is.EquivalentTo(["content"]));
         });
     }
 
     [Test]
     public void SetVariable_Should_Only_Expose_Target_And_Expression()
     {
-        var definition = Catalog.Get(SetVariableEntry.TypeId);
+        var definition = Catalog.Get(BuiltinEntryIds.SetVariable);
         Assert.That(definition.Parameters.Keys, Is.EquivalentTo(VariableParameters));
         Assert.That(definition.Parameters["target"], Is.EqualTo(EntryParameterType.VariableName));
         Assert.That(definition.Parameters["expression"], Is.EqualTo(EntryParameterType.Expression));
@@ -104,7 +105,7 @@ public class EntryModelTests
     [Test]
     public void Color_Field_Transitions_Are_Composite_Entries_With_Declared_Parameter_Schemas()
     {
-        foreach (var type in new[] { BlackFadeTransitionEntry.TypeId, WhiteFadeTransitionEntry.TypeId, ColorFadeTransitionEntry.TypeId })
+        foreach (var type in new[] { BuiltinEntryIds.BlackFadeTransition, BuiltinEntryIds.WhiteFadeTransition, BuiltinEntryIds.ColorFadeTransition })
         {
             var definition = Catalog.Get(type);
             Assert.That(definition.Kind, Is.EqualTo(EntryKind.Composite));
@@ -114,13 +115,13 @@ public class EntryModelTests
             Assert.That(definition.Parameters.Keys, Does.Contain("holdDuration"));
             Assert.That(definition.Parameters.Keys, Does.Contain("fadeOutDuration"));
         }
-        Assert.That(Catalog.Get(ColorFadeTransitionEntry.TypeId).Parameters.Keys, Does.Contain("color"));
+        Assert.That(Catalog.Get(BuiltinEntryIds.ColorFadeTransition).Parameters.Keys, Does.Contain("color"));
     }
 
     [Test]
     public void Slide_Transition_Is_A_Composite_Entry_With_Direction_And_Distance()
     {
-        var definition = Catalog.Get(SlideTransitionEntry.TypeId);
+        var definition = Catalog.Get(BuiltinEntryIds.SlideTransition);
         Assert.That(definition.Kind, Is.EqualTo(EntryKind.Composite));
         Assert.That(definition.Parameters["direction"], Is.EqualTo(EntryParameterType.Select));
         Assert.That(definition.Parameters["distance"], Is.EqualTo(EntryParameterType.Float));
@@ -130,7 +131,7 @@ public class EntryModelTests
     [Test]
     public void Blinds_Transition_Is_A_Composite_Entry_With_Mask_Parameters()
     {
-        var definition = Catalog.Get(BlindsTransitionEntry.TypeId);
+        var definition = Catalog.Get(BuiltinEntryIds.BlindsTransition);
         Assert.That(definition.Kind, Is.EqualTo(EntryKind.Composite));
         Assert.That(definition.Parameters["maskProgram"], Is.EqualTo(EntryParameterType.EffectProgramAsset));
         Assert.That(definition.Parameters["bladeCount"], Is.EqualTo(EntryParameterType.Integer));
@@ -141,7 +142,7 @@ public class EntryModelTests
     [Test]
     public void Effect_apply_uses_a_typed_program_resource()
     {
-        var definition = Catalog.Get(ApplyEffectEntry.TypeId);
+        var definition = Catalog.Get(BuiltinEntryIds.ApplyEffect);
         Assert.That(definition.Parameters["program"], Is.EqualTo(EntryParameterType.EffectProgramAsset));
     }
 }

@@ -29,6 +29,7 @@ public abstract class GameLayoutTheme(GamePalette palette) : IGameLayoutTheme
                 Source = new Uri("avares://GalNet.Avalonia.Themes/Common/Styles.axaml")
             }
         };
+        styles.Resources["GalNet.Theme.FontFamily"] = GameTypography.UiFontFamily;
         styles.Resources.MergedDictionaries.Add(paletteResources);
         var source = new Uri($"avares://GalNet.Avalonia.Themes/Layouts/{LayoutName}/Resources.axaml");
         styles.Resources.MergedDictionaries.Add(new ResourceInclude(source) { Source = source });

@@ -9,6 +9,7 @@ using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Editor.Commands;
 using GalNet.Editor.Models.Graph;
@@ -24,7 +25,7 @@ public partial class EntryTypePicker : UserControl
     public static readonly StyledProperty<IEnumerable?> OptionsProperty =
         AvaloniaProperty.Register<EntryTypePicker, IEnumerable?>(nameof(Options));
     public static readonly StyledProperty<string> SelectedValueProperty =
-        AvaloniaProperty.Register<EntryTypePicker, string>(nameof(SelectedValue), TextEntry.TypeId, defaultBindingMode: BindingMode.TwoWay);
+        AvaloniaProperty.Register<EntryTypePicker, string>(nameof(SelectedValue), BuiltinEntryIds.Text, defaultBindingMode: BindingMode.TwoWay);
     public static readonly StyledProperty<EditorShortcutService?> ShortcutServiceProperty =
         AvaloniaProperty.Register<EntryTypePicker, EditorShortcutService?>(nameof(ShortcutService));
     public static readonly DirectProperty<EntryTypePicker, string> SelectedDisplayNameKeyProperty =
@@ -37,7 +38,7 @@ public partial class EntryTypePicker : UserControl
     public EditorShortcutService? ShortcutService { get => GetValue(ShortcutServiceProperty); set => SetValue(ShortcutServiceProperty, value); }
 
     public ObservableCollection<EntryTypeCategoryItem> Categories { get; } = [];
-    private string _selectedDisplayNameKey = $"Entry.Type.{TextEntry.TypeId}";
+    private string _selectedDisplayNameKey = $"Entry.Type.{BuiltinEntryIds.Text}";
     private string _selectedGestureText = "";
     private EditorShortcutService? _subscribedShortcutService;
     public string SelectedDisplayNameKey => _selectedDisplayNameKey;

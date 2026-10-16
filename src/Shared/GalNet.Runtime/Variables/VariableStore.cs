@@ -104,27 +104,7 @@ public sealed class VariableStore
         return name;
     }
 
-    private static Variable CloneVariable(Variable variable, string name)
-    {
-        var clone = new Variable { Name = name };
-        switch (variable.Type)
-        {
-            case VariableType.Bool:
-                clone.SetValue(variable.AsBool());
-                break;
-            case VariableType.Int:
-                clone.SetValue(variable.AsInt());
-                break;
-            case VariableType.Float:
-                clone.SetValue(variable.AsFloat());
-                break;
-            default:
-                clone.SetValue(variable.AsString());
-                break;
-        }
-
-        return clone;
-    }
+    private static Variable CloneVariable(Variable variable, string name) => variable.Clone(name);
 
     private static bool HasSameValue(Variable variable, object value)
     {

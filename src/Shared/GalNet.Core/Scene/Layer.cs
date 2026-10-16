@@ -27,9 +27,6 @@ public sealed class Layer : AnimatableSceneInstance
     /// <summary>Video sources restart from zero when a stable scene is restored.</summary>
     public bool IsVideo { get; set; }
 
-    [JsonIgnore]
-    public string? VideoPlaybackId { get; set; }
-
     /// <summary>Optional sprite-sheet source. When absent, <see cref="AssetId"/> represents one static image.</summary>
     public FlipbookDefinition? Flipbook { get; set; }
 
@@ -47,6 +44,7 @@ public sealed class Layer : AnimatableSceneInstance
 
     public float Opacity { get; set; } = 1;
 
+    [JsonIgnore]
     public override IReadOnlyList<AnimatableProperty> AnimatableProperties => AnimationProperties;
 
     /// <summary>Returns the image region selected for the current render frame.</summary>

@@ -15,9 +15,6 @@ public static class GalgroupLoader
         Converters = { new JsonStringEnumConverter() }
     };
 
-    public static void LoadIntoGroup(Group group, string galgroupPath) =>
-        LoadIntoGroupFromContent(group, File.ReadAllText(galgroupPath));
-
     public static void LoadIntoGroupFromContent(Group group, string content)
     {
         ArgumentNullException.ThrowIfNull(group);

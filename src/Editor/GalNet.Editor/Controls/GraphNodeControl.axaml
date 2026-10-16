@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:GalNet.Editor.MarkupExtensions"
              xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:models="using:GalNet.Editor.Models.Graph"
              x:Class="GalNet.Editor.Controls.GraphNodeControl"
              x:DataType="models:GraphNode"
@@ -48,11 +49,11 @@
                            FontWeight="SemiBold"
                            TextTrimming="CharacterEllipsis" />
                 <TextBlock Grid.Row="1"
-                           Text="{Binding KindLabel}"
+                           Text="{loc:Localize KindLabelKey}"
                            FontSize="11"
                            Foreground="{DynamicResource SemiColorText2}" />
                 <TextBlock Grid.Row="2"
-                           Text="Entry"
+                           Text="{loc:Localize Graph.Kind.Entry}"
                            Margin="0,8,0,0"
                            FontSize="11"
                            FontWeight="SemiBold"

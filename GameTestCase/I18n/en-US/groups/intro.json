@@ -11,5 +11,6 @@
   "group.intro.entry.nvl-append-rich.content": "<b>NVL is visible.</b>\\skip <color=#8E8AB8>Rich text</color> and typewriter skip boundaries are active.",
   "group.intro.entry.nvl-append-history.content": "This is the second paragraph in the scrollable NVL history.",
   "group.intro.entry.nvl-append-after-clear.content": "The prior NVL history was cleared, then this paragraph was appended.",
-  "group.intro.entry.intro-line-5.content": "The BGM is now fading out mid-track. Choose a route to see a transition and particles."
+  "group.intro.entry.intro-line-5.content": "The BGM is now fading out mid-track. Choose a route to see a transition and particles.",
+  "group.intro.entry.audio-save-checkpoint.content": "Save here and load the new save: the scene and gain effect return, and BGM stays paused. Advance to resume it from the beginning."
 }

@@ -1,23 +1,32 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading;
+using System.Threading.Tasks;
+using GalNet.Editor.Services;
 
 namespace GalNet.Editor.History;
 
 public interface IUndoableEdit
 {
+    long RetainedBytes => 0;
     string Description { get; }
+    EditorText DisplayText => EditorText.History(Description);
     void Undo();
     void Redo();
 }
 
 public interface IUndoRedoHistory
 {
+    bool IsBusy { get; }
+    bool RepairRequired { get; }
     bool CanUndo { get; }
     bool CanRedo { get; }
     bool IsDirty { get; }
     string? UndoDescription { get; }
     string? RedoDescription { get; }
+    EditorText? UndoText => UndoDescription is { } text ? EditorText.History(text) : null;
+    EditorText? RedoText => RedoDescription is { } text ? EditorText.History(text) : null;
     event Action? Changed;
     void Execute(IUndoableEdit edit);
     void PushAlreadyApplied(IUndoableEdit edit);
@@ -25,6 +34,20 @@ public interface IUndoRedoHistory
     void Redo();
     void Clear();
     void MarkSaved();
+    Task ExecuteAsync(IAsyncUndoableEdit edit);
+    Task ExecuteAsync(IUndoableEdit edit);
+    Task UndoAsync();
+    Task RedoAsync();
+}
+
+/// <summary>Each individual step must leave its input state intact when it throws.</summary>
+public interface IAsyncUndoableEdit
+{
+    long RetainedBytes => 0;
+    string Description { get; }
+    EditorText DisplayText => EditorText.History(Description);
+    ValueTask UndoAsync();
+    ValueTask RedoAsync();
 }
 
 public interface IUndoRedoTarget
@@ -32,75 +55,257 @@ public interface IUndoRedoTarget
     IUndoRedoHistory? UndoRedoHistory { get; }
 }
 
-public sealed class UndoRedoHistory(int capacity = 200) : IUndoRedoHistory
+public sealed class UndoRedoHistory(int capacity = 200, long byteBudget = 1024L * 1024 * 1024) : IUndoRedoHistory, IDisposable
 {
-    private readonly List<IUndoableEdit> _edits = [];
+    private readonly List<IAsyncUndoableEdit> _edits = [];
+    private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly AsyncLocal<bool> _executing = new();
+    private Func<bool>? _contentDirty;
+    private Func<bool>? _contentRepair;
+    private bool _suspended;
+    private long _retainedBytes;
     private int _position;
     private int _savedPosition;
     private bool _savedPositionValid = true;
 
-    public bool CanUndo => _position > 0;
-    public bool CanRedo => _position < _edits.Count;
-    public bool IsDirty => !_savedPositionValid || _position != _savedPosition;
+    public bool IsBusy { get; private set; }
+    public bool RepairRequired { get; private set; }
+    public Exception? LastCleanupError { get; private set; }
+    public Exception? LastNotificationError { get; private set; }
+    public bool CanUndo => !_suspended && !IsBusy && !RepairRequired && _contentRepair?.Invoke() != true && _position > 0;
+    public bool CanRedo => !_suspended && !IsBusy && !RepairRequired && _contentRepair?.Invoke() != true && _position < _edits.Count;
+    public bool IsDirty => _contentDirty?.Invoke() ?? (!_savedPositionValid || _position != _savedPosition);
     public string? UndoDescription => CanUndo ? _edits[_position - 1].Description : null;
     public string? RedoDescription => CanRedo ? _edits[_position].Description : null;
+    public EditorText? UndoText => CanUndo ? _edits[_position - 1].DisplayText : null;
+    public EditorText? RedoText => CanRedo ? _edits[_position].DisplayText : null;
     public event Action? Changed;
 
     public void Execute(IUndoableEdit edit)
     {
-        edit.Redo();
-        PushAlreadyApplied(edit);
+        RunSync(() => { edit.Redo(); Append(new SyncEdit(edit)); });
     }
 
     public void PushAlreadyApplied(IUndoableEdit edit)
     {
         ArgumentNullException.ThrowIfNull(edit);
+        RunSync(() => Append(new SyncEdit(edit)));
+    }
+
+    public void BindContent(Func<bool> dirty, Func<bool> repair)
+    {
+        _contentDirty = dirty;
+        _contentRepair = repair;
+    }
+
+    private void Append(IAsyncUndoableEdit edit)
+    {
         if (_position < _edits.Count)
         {
             if (_savedPosition > _position)
                 _savedPositionValid = false;
+            foreach (var removed in _edits.GetRange(_position, _edits.Count - _position)) Release(removed);
             _edits.RemoveRange(_position, _edits.Count - _position);
         }
         _edits.Add(edit);
         _position++;
-        if (_edits.Count > capacity)
+        _retainedBytes = _edits.Sum(item => item.RetainedBytes);
+        while (_edits.Count > 1 && (_edits.Count > Math.Max(1, capacity) || _retainedBytes > byteBudget))
         {
+            _retainedBytes -= _edits[0].RetainedBytes;
+            Release(_edits[0]);
             _edits.RemoveAt(0);
             _position--;
             if (_savedPosition > 0) _savedPosition--;
             else _savedPositionValid = false;
         }
-        Changed?.Invoke();
     }
 
     public void Undo()
     {
         if (!CanUndo) return;
-        _edits[--_position].Undo();
-        Changed?.Invoke();
+        RunSync(() => { RequireSync(_edits[_position - 1]).Undo(); _position--; });
     }
 
     public void Redo()
     {
         if (!CanRedo) return;
-        _edits[_position++].Redo();
-        Changed?.Invoke();
+        RunSync(() => { RequireSync(_edits[_position]).Redo(); _position++; });
+    }
+
+    private static IUndoableEdit RequireSync(IAsyncUndoableEdit edit) => edit is SyncEdit sync
+        ? sync.Edit : throw new InvalidOperationException("Use the asynchronous history API for this edit.");
+
+    private void RunSync(Action operation)
+    {
+        if (!_gate.Wait(0)) throw new InvalidOperationException("An edit is already executing.");
+        try { EnsureWritable(); IsBusy = true; operation(); }
+        catch (HistoryRepairRequiredException) { RepairRequired = true; throw; }
+        finally { IsBusy = false; _gate.Release(); NotifyChanged(); }
+    }
+
+    private void EnsureWritable()
+    {
+        if (RepairRequired || _contentRepair?.Invoke() == true)
+            throw new InvalidOperationException("Project repair is required before editing.");
+        if (_suspended) throw new InvalidOperationException("Project edits are suspended while closing.");
+    }
+
+    public Task ExecuteAsync(IAsyncUndoableEdit edit) => RunAsync(async () =>
+    {
+        await edit.RedoAsync();
+        Append(edit);
+    });
+
+    public Task ExecuteAsync(IUndoableEdit edit) => ExecuteAsync(new SyncEdit(edit));
+
+    public Task UndoAsync() => RunAsync(async () =>
+    {
+        if (_position == 0) return;
+        await _edits[_position - 1].UndoAsync();
+        _position--;
+    });
+
+    public Task RedoAsync() => RunAsync(async () =>
+    {
+        if (_position == _edits.Count) return;
+        await _edits[_position].RedoAsync();
+        _position++;
+    });
+
+    private async Task RunAsync(Func<Task> operation)
+    {
+        if (_executing.Value) throw new InvalidOperationException("History operations cannot reenter history.");
+        await _gate.WaitAsync();
+        try
+        {
+            EnsureWritable();
+            _executing.Value = true;
+            IsBusy = true;
+            NotifyChanged();
+            await operation();
+        }
+        catch (HistoryRepairRequiredException) { RepairRequired = true; throw; }
+        finally { _executing.Value = false; IsBusy = false; _gate.Release(); NotifyChanged(); }
+    }
+
+    private sealed record SyncEdit(IUndoableEdit Edit) : IAsyncUndoableEdit, IDisposable
+    {
+        public string Description => Edit.Description;
+        public EditorText DisplayText => Edit.DisplayText;
+        public long RetainedBytes => Edit.RetainedBytes;
+        public ValueTask UndoAsync() { Edit.Undo(); return ValueTask.CompletedTask; }
+        public ValueTask RedoAsync() { Edit.Redo(); return ValueTask.CompletedTask; }
+        public void Dispose() => (Edit as IDisposable)?.Dispose();
+    }
+
+    public async Task SuspendAsync()
+    {
+        _suspended = true;
+        await _gate.WaitAsync();
+        _gate.Release();
+        NotifyChanged();
+    }
+
+    public void Resume() { _suspended = false; NotifyChanged(); }
+
+    public async Task<IDisposable> AcquireCaptureAsync(bool allowExecutingEdit = false, CancellationToken cancellationToken = default)
+    {
+        if (_executing.Value)
+        {
+            if (allowExecutingEdit) return new EmptyLease();
+            throw new InvalidOperationException("Cannot capture a partially executing edit.");
+        }
+        await _gate.WaitAsync(cancellationToken);
+        return new CaptureLease(_gate);
+    }
+
+    private sealed class EmptyLease : IDisposable { public void Dispose() { } }
+
+    private sealed class CaptureLease(SemaphoreSlim gate) : IDisposable
+    {
+        private bool _disposed;
+        public void Dispose() { if (_disposed) return; _disposed = true; gate.Release(); }
+    }
+
+    public void Dispose()
+    {
+        foreach (var edit in _edits) Release(edit);
+        _edits.Clear();
+        _gate.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     public void Clear()
     {
+        if (IsBusy) throw new InvalidOperationException("Cannot clear executing history.");
+        foreach (var edit in _edits) Release(edit);
         _edits.Clear();
         _position = 0;
         _savedPosition = 0;
         _savedPositionValid = true;
-        Changed?.Invoke();
+        NotifyChanged();
     }
 
     public void MarkSaved()
     {
         _savedPosition = _position;
         _savedPositionValid = true;
-        Changed?.Invoke();
+        NotifyChanged();
+    }
+
+    private void Release(IAsyncUndoableEdit edit)
+    {
+        try { (edit as IDisposable)?.Dispose(); }
+        catch (Exception failure) { LastCleanupError = failure; }
+    }
+
+    private void NotifyChanged()
+    {
+        if (Changed is null) return;
+        foreach (Action observer in Changed.GetInvocationList())
+            try { observer(); }
+            catch (Exception failure) { LastNotificationError = failure; Serilog.Log.Error(failure, "A history observer failed"); }
+    }
+}
+
+public sealed class HistoryRepairRequiredException(string message, Exception innerException) : Exception(message, innerException);
+
+public sealed class AsyncCompositeEdit(string description, IReadOnlyList<IAsyncUndoableEdit> edits) : IAsyncUndoableEdit, IDisposable
+{
+    public string Description { get; } = description;
+    public long RetainedBytes => edits.Sum(edit => edit.RetainedBytes);
+    public void Dispose()
+    {
+        List<Exception> failures = [];
+        foreach (var edit in edits)
+            try { (edit as IDisposable)?.Dispose(); }
+            catch (Exception failure) { failures.Add(failure); }
+        if (failures.Count > 0) throw new AggregateException("History resource cleanup failed.", failures);
+    }
+
+    public async ValueTask RedoAsync()
+    {
+        var index = 0;
+        try { for (; index < edits.Count; index++) await edits[index].RedoAsync(); }
+        catch (Exception failure)
+        {
+            try { for (var restore = index - 1; restore >= 0; restore--) await edits[restore].UndoAsync(); }
+            catch (Exception compensation) { throw new HistoryRepairRequiredException("Edit compensation failed.", new AggregateException(failure, compensation)); }
+            throw;
+        }
+    }
+
+    public async ValueTask UndoAsync()
+    {
+        var index = edits.Count - 1;
+        try { for (; index >= 0; index--) await edits[index].UndoAsync(); }
+        catch (Exception failure)
+        {
+            try { for (var restore = index + 1; restore < edits.Count; restore++) await edits[restore].RedoAsync(); }
+            catch (Exception compensation) { throw new HistoryRepairRequiredException("Undo compensation failed.", new AggregateException(failure, compensation)); }
+            throw;
+        }
     }
 }
 
@@ -139,36 +344,62 @@ public sealed class CollectionMoveEdit<T>(string description, ObservableCollecti
     public void Redo() => collection.Move(before, after);
 }
 
-public sealed class CompositeEdit(string description, IReadOnlyList<IUndoableEdit> edits) : IUndoableEdit
+public sealed class CompositeEdit(string description, IReadOnlyList<IUndoableEdit> edits) : IUndoableEdit, IDisposable
 {
     public string Description { get; } = description;
+    public long RetainedBytes => edits.Sum(edit => edit.RetainedBytes);
+    public void Dispose()
+    {
+        List<Exception> failures = [];
+        foreach (var edit in edits)
+            try { (edit as IDisposable)?.Dispose(); }
+            catch (Exception failure) { failures.Add(failure); }
+        if (failures.Count > 0) throw new AggregateException("History resource cleanup failed.", failures);
+    }
     public void Undo()
     {
-        for (var index = edits.Count - 1; index >= 0; index--) edits[index].Undo();
+        var index = edits.Count - 1;
+        try { for (; index >= 0; index--) edits[index].Undo(); }
+        catch (Exception failure)
+        {
+            try { for (var restore = index + 1; restore < edits.Count; restore++) edits[restore].Redo(); }
+            catch (Exception compensation) { throw new HistoryRepairRequiredException("Undo compensation failed.", new AggregateException(failure, compensation)); }
+            throw;
+        }
     }
     public void Redo()
     {
-        foreach (var edit in edits) edit.Redo();
+        var index = 0;
+        try { for (; index < edits.Count; index++) edits[index].Redo(); }
+        catch (Exception failure)
+        {
+            try { for (var restore = index - 1; restore >= 0; restore--) edits[restore].Undo(); }
+            catch (Exception compensation) { throw new HistoryRepairRequiredException("Edit compensation failed.", new AggregateException(failure, compensation)); }
+            throw;
+        }
     }
 }
 
-public sealed class UndoRedoRouter
+public sealed class UndoRedoRouter(EditorHistories histories, GalNet.Editor.Abstraction.Services.IProjectContentSession? session = null)
 {
-    private IUndoRedoHistory? _active;
-    public IUndoRedoHistory? Active => _active;
-    public event Action? Changed;
+    public object? ActiveTarget { get; private set; }
+    public IUndoRedoHistory Active => histories.Content;
+    public event Action? Changed
+    {
+        add { Active.Changed += value; if (session is not null) session.Changed += value; }
+        remove { Active.Changed -= value; if (session is not null) session.Changed -= value; }
+    }
 
     public void SetActive(object? target)
     {
-        var next = (target as IUndoRedoTarget)?.UndoRedoHistory;
-        if (ReferenceEquals(next, _active)) return;
-        if (_active is not null) _active.Changed -= OnHistoryChanged;
-        _active = next;
-        if (_active is not null) _active.Changed += OnHistoryChanged;
-        Changed?.Invoke();
+        ActiveTarget = target;
     }
 
-    public void Undo() => _active?.Undo();
-    public void Redo() => _active?.Redo();
-    private void OnHistoryChanged() => Changed?.Invoke();
+    public Task UndoAsync() => RunAsync(Active.UndoAsync);
+    public Task RedoAsync() => RunAsync(Active.RedoAsync);
+    private async Task RunAsync(Func<Task> operation)
+    {
+        try { if (session is not null) await session.CommitDraftsAsync(); await operation(); }
+        catch (Exception failure) { session?.ReportError(failure); throw; }
+    }
 }

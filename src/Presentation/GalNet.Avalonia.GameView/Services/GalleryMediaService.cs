@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using Avalonia.Media.Imaging;
 using GalNet.Core.Gallery;
 using LibVLCSharp.Shared;
@@ -14,6 +12,7 @@ public sealed class GalleryMediaService(IGameSessionService session) : IDisposab
     private MediaPlayer? _audioPlayer;
     private MediaPlayer? _videoPlayer;
     private bool _initializationAttempted;
+    private readonly GalleryThumbnailService _thumbnails = new();
 
     public event Action? PlaybackChanged;
 
@@ -43,7 +42,7 @@ public sealed class GalleryMediaService(IGameSessionService session) : IDisposab
         {
             if (video)
             {
-                var thumbnailPath = await EnsureVideoThumbnailAsync(path, cancellationToken);
+                var thumbnailPath = await _thumbnails.CreateAsync(path, cancellationToken);
                 return thumbnailPath is null ? null : await Task.Run(() => new Bitmap(thumbnailPath), cancellationToken);
             }
             return await Task.Run(() => new Bitmap(path), cancellationToken);
@@ -137,6 +136,7 @@ public sealed class GalleryMediaService(IGameSessionService session) : IDisposab
         _videoPlayer?.Stop();
         _audioPlayer?.Dispose();
         _videoPlayer?.Dispose();
+        _thumbnails.Dispose();
         _libVlc?.Dispose();
     }
 
@@ -168,31 +168,4 @@ public sealed class GalleryMediaService(IGameSessionService session) : IDisposab
         return _libVlc = new LibVLC("--no-video-title-show");
     }
 
-    private async Task<string?> EnsureVideoThumbnailAsync(string sourcePath, CancellationToken cancellationToken)
-    {
-        var cacheDirectory = Path.Combine(Path.GetTempPath(), "GalNet", "GalleryThumbnails");
-        Directory.CreateDirectory(cacheDirectory);
-        var key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(sourcePath))).ToLowerInvariant();
-        var thumbnailPath = Path.Combine(cacheDirectory, $"{key}.png");
-        if (File.Exists(thumbnailPath)) return thumbnailPath;
-
-        try
-        {
-            using var player = new MediaPlayer(GetLibVlc());
-            using var media = new LibVlcMedia(GetLibVlc(), sourcePath);
-            var playing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            player.Playing += (_, _) => playing.TrySetResult();
-            if (!player.Play(media)) return null;
-            await playing.Task.WaitAsync(TimeSpan.FromSeconds(4), cancellationToken);
-            await Task.Delay(250, cancellationToken);
-            if (!player.TakeSnapshot(0, thumbnailPath, 0, 0)) return null;
-            player.Stop();
-            return File.Exists(thumbnailPath) ? thumbnailPath : null;
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            LastError = exception.Message;
-            return null;
-        }
-    }
 }

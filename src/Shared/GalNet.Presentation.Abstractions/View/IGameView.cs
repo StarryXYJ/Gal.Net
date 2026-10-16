@@ -7,6 +7,9 @@ namespace GalNet.Presentation.Abstractions.View;
 /// <summary>Resolves and dispatches one compiled primitive call.</summary>
 public interface IGameView : IDisposable, IAsyncDisposable
 {
+    StateCatalog StateCatalog => StateCatalog.Empty;
+    bool RequiresStateRestore => false;
+    void ValidateState(IGameRuntime runtime, GameState state) { }
     IReadOnlyCollection<EntryDefinition> Primitives { get; }
 
     bool TryGetEntry(string primitiveType, out EntryDefinition? entry);

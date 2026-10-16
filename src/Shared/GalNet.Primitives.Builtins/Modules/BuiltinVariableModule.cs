@@ -1,18 +1,12 @@
-using GalNet.Core.Primitives;
+using GalNet.Contracts.Builtins;
 using GalNet.Presentation.Abstractions.Execution;
 
 namespace GalNet.Primitives.Builtins;
 
-public sealed class BuiltinVariableModule : PrimitiveModule
-{
-    public BuiltinVariableModule() : base(
-    [
-        BuiltinInstructionFactory.Create<SetVariableEntry>(context => new ImmediatePrimitiveInstance(() =>
+public sealed class BuiltinVariableModule() : PrimitiveModule(
+    registry => registry.Immediate<VariableSetOptions>(BuiltinEntryIds.SetVariable, (context, options) =>
             {
-                var target = Arguments.String(context, "target");
+                var target = options.Target;
                 if (!string.IsNullOrWhiteSpace(target))
-                    context.Runtime.SetVariable(target, context.Runtime.EvaluateExpression(Arguments.String(context, "expression")) ?? "");
-            }, batchId: context.BatchId))
-    ])
-    { }
-}
+                    context.Runtime.SetVariable(target, context.Runtime.EvaluateExpression(options.Expression ?? "") ?? "");
+            }));

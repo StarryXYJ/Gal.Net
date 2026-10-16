@@ -11,7 +11,7 @@ using Serilog;
 
 namespace GalNet.Editor.Shared.Services;
 
-public sealed class EditorPlayerVariableStore : IEditorPlayerVariableStore
+public sealed class EditorPlayerVariableStore : IEditorPlayerVariableStore, IDisposable
 {
     private static readonly JsonSerializerOptions IndentedJsonOptions = new() { WriteIndented = true };
     private readonly IProjectService _projectService;
@@ -27,9 +27,17 @@ public sealed class EditorPlayerVariableStore : IEditorPlayerVariableStore
     {
         _projectService = projectService;
         _variableDefinitions = variableDefinitions;
-        _projectService.CurrentChanged += _ => Reload();
+        _projectService.CurrentChanged += OnProjectChanged;
         _variableDefinitions.DefinitionsChanged += OnDefinitionsChanged;
         Reload();
+    }
+
+    private void OnProjectChanged(GalProject? _) => Reload();
+
+    public void Dispose()
+    {
+        _projectService.CurrentChanged -= OnProjectChanged;
+        _variableDefinitions.DefinitionsChanged -= OnDefinitionsChanged;
     }
 
     public void ConfigureSystemVariables(IReadOnlyCollection<SystemVariableDefinition> definitions)

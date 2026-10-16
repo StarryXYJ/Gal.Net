@@ -6,6 +6,7 @@ using GalNet.Core.Primitives;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Runtime.Engine;
+using GalNet.Runtime.Progress;
 
 namespace GeneralTest.Runtime;
 
@@ -216,6 +217,47 @@ public sealed class GameEngineLifecycleTests
             .RegisterSchema(new DefaultEntryModule("test", [new DefaultPrimitiveEntryBase("test.run", DynamicParameterTable.Empty)]))
             .RegisterInstruction("test.run", factory).BuildView();
 
+    [Test]
+    public async Task StopWaitsForProgressFlush()
+    {
+        using var view = View(_ => new ImmediatePrimitiveInstance());
+        var progress = new DelayedProgress();
+        await using var engine = new GameEngine(GroupGraph(), view, progress: progress);
+        var stop = engine.StopAsync();
+        await progress.Entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.That(stop.IsCompleted, Is.False);
+        progress.Release.TrySetResult();
+        await stop.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.That(engine.State, Is.EqualTo(GameEngineState.Stopped));
+    }
+
+    [Test]
+    public void FlushFailureIsReportedAfterTheEngineReachesStopped()
+    {
+        using var view = View(_ => new ImmediatePrimitiveInstance());
+        var progress = new DelayedProgress { Fail = true };
+        progress.Release.TrySetResult();
+        var engine = new GameEngine(GroupGraph(), view, progress: progress);
+        Assert.ThrowsAsync<AggregateException>(() => engine.StopAsync());
+        Assert.That(engine.State, Is.EqualTo(GameEngineState.Stopped));
+        Assert.ThrowsAsync<AggregateException>(async () => await engine.DisposeAsync());
+    }
+
+    private sealed class DelayedProgress : IGameProgressService
+    {
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public bool Fail { get; init; }
+        public bool IsRead(string groupId, string entryId) => false;
+        public void MarkRead(string groupId, string entryId) { }
+        public async Task FlushAsync(CancellationToken cancellationToken = default)
+        {
+            Entered.TrySetResult();
+            await Release.Task.WaitAsync(cancellationToken);
+            if (Fail) throw new IOException("Progress store failed.");
+        }
+    }
+
     private static Graph GroupGraph(int count = 1) => new()
     {
         RootNodeId = "main",
@@ -249,7 +291,7 @@ public sealed class GameEngineLifecycleTests
         }
     }
 
-    private sealed class OwnedModule() : PrimitiveModule([new PrimitiveImplementation("test.run", _ => new ImmediatePrimitiveInstance())])
+    private sealed class OwnedModule() : PrimitiveModule(registry => registry.Register("test.run", _ => new ImmediatePrimitiveInstance()))
     {
         public int Disposals { get; private set; }
         public override void Dispose() { Disposals++; base.Dispose(); }

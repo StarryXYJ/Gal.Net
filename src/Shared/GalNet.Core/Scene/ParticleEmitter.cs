@@ -323,8 +323,9 @@ public sealed class ParticleEmitterInstance : AnimatableSceneInstance
     public ParticleEmitterDefinition Definition { get; init; }
     public float Z { get; init; }
     public bool IsEmitting { get; set; } = true;
+    [JsonIgnore]
     public override IReadOnlyList<AnimatableProperty> AnimatableProperties => AnimationProperties;
-    public IReadOnlyDictionary<string, float> AnimationValues => _values;
+    public IReadOnlyDictionary<string, float> AnimationValues { get => _values; init => RestoreAnimationValues(value); }
     public override bool TryGetAnimationValue(string propertyName, out float value) => _values.TryGetValue(propertyName, out value);
     public override bool TrySetAnimationValue(string propertyName, float value, out string? error)
     {
@@ -347,13 +348,4 @@ public sealed class ParticleEmitterInstance : AnimatableSceneInstance
         ["particleScale"] = definition.InitialModule.Size.Center,
         ["particleLifetime"] = definition.InitialModule.Lifetime.Center
     };
-}
-
-/// <summary>Saved state for an emitter that was still producing particles at save time.</summary>
-public sealed class ActiveParticleEmitterState
-{
-    public string InstanceId { get; init; } = "";
-    public ParticleEmitterDefinition Definition { get; init; } = new("");
-    public float Z { get; init; }
-    public Dictionary<string, float> AnimationValues { get; init; } = new(StringComparer.Ordinal);
 }

@@ -2,6 +2,17 @@
   "version": 2,
   "dependencies": {
     "net10.0": {
+      "Avalonia.Headless": {
+        "type": "Direct",
+        "requested": "[12.0.5, )",
+        "resolved": "12.0.5",
+        "contentHash": "F+o+kxHts+hhpUVtzeCe4U7ZLDWbpeVIX8LhoHSw/3oUQHlh+OrO9MGZSMae72hKFRE+r4AJh0kuhzIeWDFgdQ==",
+        "dependencies": {
+          "Avalonia": "12.0.5",
+          "Avalonia.Fonts.Inter": "12.0.5",
+          "Avalonia.HarfBuzz": "12.0.5"
+        }
+      },
       "coverlet.collector": {
         "type": "Direct",
         "requested": "[6.0.4, )",
@@ -353,6 +364,7 @@
         "dependencies": {
           "Avalonia": "[12.0.5, )",
           "CommunityToolkit.Mvvm": "[8.4.1, )",
+          "GalNet.Assets": "[1.0.0, )",
           "GalNet.Avalonia.Controls": "[1.0.0, )",
           "GalNet.Avalonia.Rendering": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
@@ -380,6 +392,12 @@
           "GalNet.Avalonia.GameView": "[1.0.0, )"
         }
       },
+      "galnet.contracts.builtins": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Core": "[1.0.0, )"
+        }
+      },
       "galnet.core": {
         "type": "Project"
       },
@@ -405,9 +423,11 @@
           "GalNet.Avalonia.GameView": "[1.0.0, )",
           "GalNet.Avalonia.Rendering": "[1.0.0, )",
           "GalNet.Avalonia.Themes": "[1.0.0, )",
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
           "GalNet.Editor.Abstraction": "[1.0.0, )",
           "GalNet.Editor.Shared": "[1.0.0, )",
+          "GalNet.Media.LibVlc": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "GalNet.Primitives.Builtins": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )",
@@ -435,11 +455,28 @@
         "type": "Project",
         "dependencies": {
           "GalNet.Assets": "[1.0.0, )",
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
           "GalNet.Editor.Abstraction": "[1.0.0, )",
-          "GalNet.Primitives.Builtins": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )",
           "Serilog": "[4.2.0, )"
+        }
+      },
+      "galnet.gamehost": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "GalNet.Runtime": "[1.0.0, )"
+        }
+      },
+      "galnet.media.libvlc": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Assets": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "LibVLCSharp": "[3.10.0, )"
         }
       },
       "galnet.presentation.abstractions": {
@@ -451,6 +488,7 @@
       "galnet.primitives.builtins": {
         "type": "Project",
         "dependencies": {
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )"
@@ -470,6 +508,7 @@
         "dependencies": {
           "GalNet.Assets": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
+          "GalNet.GameHost": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )"
         }
       },

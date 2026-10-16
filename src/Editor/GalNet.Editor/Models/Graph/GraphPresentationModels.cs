@@ -2,13 +2,22 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
+using GalNet.Core.Parameters;
+using GalNet.Core.Primitives;
 using GalNet.Core.Scene;
+using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Controls;
+using GalNet.Editor.Services;
+using GalNet.Game.Controls.Forms;
 using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Models.Graph;
@@ -34,7 +43,7 @@ public partial class GraphNode : ObservableObject
     private static readonly IBrush SelectedBorderBrush = Brush.Parse("#8F72FF");
     private static readonly IBrush EntryBorderBrush = Brush.Parse("#A891FF");
     private static readonly IBrush DefaultBorderBrush = Brush.Parse("#45475A");
-    public Node Node { get; }
+    public EditorGraphNodeDto Source { get; }
     public GraphNodeKind NodeKind { get; }
 
     [ObservableProperty]
@@ -43,8 +52,24 @@ public partial class GraphNode : ObservableObject
     [ObservableProperty]
     private double _y;
 
-    [ObservableProperty]
     private string _name = "";
+    public Action<string>? RenameRequested { get; set; }
+    public string Name
+    {
+        get => _name;
+        set
+        {
+            if (_name == value) return;
+            if (RenameRequested is { } rename) { rename(value); return; }
+            if (SetProperty(ref _name, value)) Source.Name = value;
+        }
+    }
+    public void RefreshAuthorValues()
+    {
+        SetProperty(ref _name, Source.Name, nameof(Name));
+        X = Source.X;
+        Y = Source.Y;
+    }
 
     [ObservableProperty]
     private bool _isSelected;
@@ -59,7 +84,8 @@ public partial class GraphNode : ObservableObject
     [ObservableProperty]
     private bool _isRoot;
 
-    public string Id => Node.Id;
+    public string Id => Source.Id;
+    public string KindLabelKey => "Graph.Kind." + NodeKind;
     public string KindLabel => NodeKind switch
     {
         GraphNodeKind.Entry => "Entry",
@@ -77,25 +103,43 @@ public partial class GraphNode : ObservableObject
 
     public ObservableCollection<GraphConnector> InputConnectors { get; } = [];
     public ObservableCollection<GraphConnector> OutputConnectors { get; } = [];
-    public ObservableCollection<EntryEditorItemViewModel> Entries { get; } = [];
+    public ObservableCollection<EntryEditorItemViewModel> Entries { get; private set; } = [];
     public ObservableCollection<BranchOptionEditorItemViewModel> Options { get; } = [];
     public ObservableCollection<BranchConditionEditorItemViewModel> Conditions { get; } = [];
 
     public int EntryCount => Entries.Count;
+    public double LayoutHeight => GraphLayoutMetrics.GetNodeHeight(InputConnectors.Count, OutputConnectors.Count);
 
-    public GraphNode(Node node, GraphNodeKind nodeKind)
+    public GraphNode(Node node, GraphNodeKind nodeKind) : this(new EditorGraphNodeDto
     {
-        Node = node;
+        Id = node.Id,
+        Name = node.Name,
+        Type = nodeKind == GraphNodeKind.Entry ? "Entry" : nodeKind == GraphNodeKind.LinearGroup ? "Group" : "Branch",
+        File = nodeKind == GraphNodeKind.LinearGroup ? $"groups/{node.Id}.rawgalgroup" : null,
+        BranchType = nodeKind == GraphNodeKind.ChoiceBranch ? "Choice" : "Condition"
+    }, nodeKind)
+    { }
+
+    public GraphNode(EditorGraphNodeDto source, GraphNodeKind nodeKind)
+    {
+        Source = source;
         NodeKind = nodeKind;
-        Name = string.IsNullOrWhiteSpace(node.Name) ? KindLabel : node.Name;
+        _name = source.Name;
+        _x = source.X;
+        _y = source.Y;
 
-        if (NodeKind == GraphNodeKind.ConditionBranch)
-            Conditions.Add(new BranchConditionEditorItemViewModel { Expression = "true" });
-
-        if (NodeKind == GraphNodeKind.ChoiceBranch && Options.Count == 0)
-            Options.Add(new BranchOptionEditorItemViewModel { Text = "Option 1" });
+        foreach (var option in source.Options ?? []) Options.Add(new BranchOptionEditorItemViewModel(option));
+        foreach (var condition in source.Conditions ?? []) Conditions.Add(new BranchConditionEditorItemViewModel(condition));
+        Options.CollectionChanged += (_, _) => Source.Options = Options.Select(item => item.Source).ToList();
+        Conditions.CollectionChanged += (_, _) => Source.Conditions = Conditions.Select(item => item.Source).ToList();
 
         RefreshConnectors();
+    }
+
+    public void BindGroup(EditorGroupProjection group)
+    {
+        if (Entries.Count != 0) throw new InvalidOperationException("Group must be bound before inserting entries.");
+        Entries = group.Entries;
     }
 
     public void RefreshConnectors()
@@ -118,6 +162,7 @@ public partial class GraphNode : ObservableObject
             OutputConnectors.Add(new GraphConnector(this, GraphConnectorKind.Output, i));
 
         OnPropertyChanged(nameof(EntryCount));
+        OnPropertyChanged(nameof(LayoutHeight));
     }
 
     public Point GetConnectorCenter(GraphConnectorKind kind, int index)
@@ -136,10 +181,7 @@ public partial class GraphNode : ObservableObject
         return new Point(X + x, Y + firstY + index * rowHeight);
     }
 
-    partial void OnNameChanged(string value)
-    {
-        Node.Name = value;
-    }
+
 }
 
 public partial class GraphConnector : ObservableObject
@@ -162,13 +204,14 @@ public partial class GraphConnector : ObservableObject
     }
 }
 
-public partial class GraphEdge : ObservableObject
+public partial class GraphEdge : ObservableObject, IDisposable
 {
     private static readonly IBrush DefaultStrokeBrush = Brush.Parse("#8F72FF");
     private static readonly IBrush SelectedStrokeBrush = Brush.Parse("#A891FF");
     public GraphNode From { get; }
     public GraphNode To { get; }
-    public string Id { get; }
+    public EditorGraphEdgeDto Source { get; }
+    public string Id => Source.Id;
 
     [ObservableProperty]
     private int _outlet;
@@ -186,22 +229,42 @@ public partial class GraphEdge : ObservableObject
     public double ControlOffset => Math.Max(80, Math.Abs(EndX - StartX) * 0.5);
     public string PathData => $"M {StartX},{StartY} C {StartX + ControlOffset},{StartY} {EndX - ControlOffset},{EndY} {EndX},{EndY}";
 
-    public GraphEdge(GraphNode from, GraphNode to, int outlet = 0, string? id = null)
+    public GraphEdge(GraphNode from, GraphNode to, int outlet = 0, string? id = null) : this(from, to, new EditorGraphEdgeDto
     {
-        Id = string.IsNullOrWhiteSpace(id) ? Guid.NewGuid().ToString("N") : id;
+        Id = string.IsNullOrWhiteSpace(id) ? Guid.NewGuid().ToString("N") : id,
+        FromNodeId = from.Id,
+        ToNodeId = to.Id,
+        FromOutlet = outlet
+    })
+    { }
+
+    public GraphEdge(GraphNode from, GraphNode to, EditorGraphEdgeDto source)
+    {
+        Source = source;
         From = from;
         To = to;
-        _outlet = outlet;
+        _outlet = source.FromOutlet;
 
-        From.PropertyChanged += (_, e) => OnNodeMoved(e.PropertyName);
-        To.PropertyChanged += (_, e) => OnNodeMoved(e.PropertyName);
-        From.OutputConnectors.CollectionChanged += (_, _) => OnNodeMoved(nameof(GraphNode.Y));
-        To.InputConnectors.CollectionChanged += (_, _) => OnNodeMoved(nameof(GraphNode.Y));
+        From.PropertyChanged += NodeMoved;
+        To.PropertyChanged += NodeMoved;
+        From.OutputConnectors.CollectionChanged += ConnectorsChanged;
+        To.InputConnectors.CollectionChanged += ConnectorsChanged;
+    }
+
+    private void NodeMoved(object? sender, System.ComponentModel.PropertyChangedEventArgs args) => OnNodeMoved(args.PropertyName);
+    private void ConnectorsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs args) => OnNodeMoved(nameof(GraphNode.LayoutHeight));
+    public void Dispose()
+    {
+        From.PropertyChanged -= NodeMoved;
+        To.PropertyChanged -= NodeMoved;
+        From.OutputConnectors.CollectionChanged -= ConnectorsChanged;
+        To.InputConnectors.CollectionChanged -= ConnectorsChanged;
+        GC.SuppressFinalize(this);
     }
 
     private void OnNodeMoved(string? propertyName)
     {
-        if (propertyName is not (nameof(GraphNode.X) or nameof(GraphNode.Y)))
+        if (propertyName is not (nameof(GraphNode.X) or nameof(GraphNode.Y) or nameof(GraphNode.LayoutHeight)))
             return;
 
         OnPropertyChanged(nameof(StartX));
@@ -219,15 +282,37 @@ public partial class GraphEdge : ObservableObject
 
     partial void OnOutletChanged(int value)
     {
+        Source.FromOutlet = value;
         OnPropertyChanged(nameof(StartX));
         OnPropertyChanged(nameof(StartY));
         OnPropertyChanged(nameof(PathData));
     }
 }
 
-public partial class EntryEditorItemViewModel : ObservableObject
+public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
 {
-    public string StableId { get; init; } = Guid.NewGuid().ToString("N");
+    public EditorEntryData Source { get; }
+    private IEntryCatalog? _authorCatalog;
+    private bool _disposed;
+    public string StableId { get => Source.StableId; init => Source.StableId = value; }
+
+    public EntryEditorItemViewModel() => Source = new() { StableId = Guid.NewGuid().ToString("N") };
+
+    public EntryEditorItemViewModel(IEntryCatalog catalog) : this() => _authorCatalog = catalog;
+
+    public EntryEditorItemViewModel(EditorEntryData source, IEntryCatalog catalog)
+    {
+        Source = source;
+        _authorCatalog = catalog;
+        _id = source.Id;
+        _type = source.Type;
+        _condition = source.Condition;
+        _parameters = source.GetParameterText(catalog);
+    }
+
+    partial void OnIdChanged(int value) => Source.Id = value;
+    partial void OnTypeChanged(string value) => Source.Type = value;
+    partial void OnConditionChanged(string value) => Source.Condition = value;
 
     [ObservableProperty]
     private int _id;
@@ -242,58 +327,83 @@ public partial class EntryEditorItemViewModel : ObservableObject
     private Dictionary<string, string> _parameters = new(StringComparer.Ordinal);
 
     [ObservableProperty]
-    private bool _isExpanded = true;
-
-    [ObservableProperty]
     private string _effectHint = "";
 
     [ObservableProperty]
     private string _effectDiagnostic = "";
 
     private IEffectCatalog? _effectCatalog;
+    private DynamicParameterTable? _formParameters;
+    [ObservableProperty] private EntryParameterFormBinding? _parameterForm;
+    public bool HasParameterForm => ParameterForm is not null;
+    partial void OnParameterFormChanged(EntryParameterFormBinding? value) => OnPropertyChanged(nameof(HasParameterForm));
     public bool HasEffectDiagnostic => !string.IsNullOrWhiteSpace(EffectDiagnostic);
 
     public ObservableCollection<EntryParameterEditorItemViewModel> ParameterFields { get; } = [];
     /// <summary>Builds the editor projection from the Core registry, the single schema source.</summary>
     public void ConfigureParameterFields(IEntryCatalog catalog, IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames, bool resetValues = false, IEffectCatalog? effectCatalog = null)
     {
+        if (_authorCatalog is null)
+            Source.Parameters = EditorEntryData.ParseParameters(catalog, Type, Parameters);
+        _authorCatalog = catalog;
+        ParameterForm?.Dispose();
+        ParameterForm = null;
+        _formParameters = null;
         _effectCatalog = effectCatalog;
         var schema = catalog.Get(Type);
         var values = resetValues
             ? new Dictionary<string, string>(schema.Defaults, StringComparer.Ordinal)
             : Parameters.Where(pair => schema.Parameters.ContainsKey(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
-        foreach (var pair in schema.Defaults)
-            values.TryAdd(pair.Key, pair.Value);
         if (!Parameters.OrderBy(x => x.Key).SequenceEqual(values.OrderBy(x => x.Key)))
             Parameters = values;
         ParameterFields.Clear();
+        var parameters = schema.DynamicParameters ?? EntrySchema.DynamicParameters(schema.Parameters, schema.Defaults, schema.Options);
+
+        if (schema.FieldDataType is not null)
+        {
+            _formParameters = parameters;
+            if (!schema.Parameters.Any(pair => UsesDedicatedEditor(parameters[pair.Key].Field, pair.Value)))
+            {
+                ParameterForm = new EntryParameterFormBinding(this, parameters.Fields);
+                UpdateEffectHints();
+                return;
+            }
+        }
 
         foreach (var (id, type) in schema.Parameters)
         {
             var defaultValue = schema.Defaults.GetValueOrDefault(id, "");
-            var options = (Type == ApplyEffectEntry.TypeId && id == "id" && effectCatalog is not null
+            var options = (Type == BuiltinEntryIds.ApplyEffect && id == "id" && effectCatalog is not null
                     ? effectCatalog.Definitions.Select(definition => definition.Id).ToArray()
                     : schema.Options.GetValueOrDefault(id, []))
                 .Select(value => new EntrySelectOption(value, $"Entry.Option.{(value.Length == 0 ? "None" : value)}"))
                 .ToArray();
-            var definition = new EntryParameterDefinition(id, Type == ApplyEffectEntry.TypeId && id == "id" && effectCatalog is not null ? EntryParameterType.Select : type, $"Entry.Parameter.{id}", defaultValue, options);
+            var source = parameters[id].Field;
+            var field = Type == BuiltinEntryIds.ApplyEffect && id == "id" && effectCatalog is not null
+                ? new FieldDescriptor(id, source.Value, source.IsRequired, source.DefaultValue, new(ValueEditorIds.Choice), source.LabelKey, source.DescriptionKey) : source;
+            var definition = new EntryParameterDefinition(id, type, $"Entry.Parameter.{id}", defaultValue, options, field);
             var value = Parameters.GetValueOrDefault(id, defaultValue);
             ParameterFields.Add(CreateField(definition, value, speakers, variableNames));
         }
         UpdateEffectHints();
     }
 
-    private EntryParameterEditorItemViewModel CreateField(EntryParameterDefinition definition, string value, IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames) => definition.Type switch
-    {
-        EntryParameterType.Autocomplete => new AutocompleteEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
-        EntryParameterType.VariableName => new VariableNameEntryParameterEditorItemViewModel(definition, value, variableNames, SetParameter),
-        EntryParameterType.Expression => new ExpressionEntryParameterEditorItemViewModel(definition, value, variableNames, SetParameter),
-        EntryParameterType.Integer => new IntegerEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
-        EntryParameterType.Float => new FloatEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
-        EntryParameterType.ImageAsset or EntryParameterType.AudioAsset or EntryParameterType.VideoAsset or EntryParameterType.EffectProgramAsset => new AssetEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
-        EntryParameterType.Select => new SelectEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
-        _ => new TextEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter)
-    };
+    private static bool UsesDedicatedEditor(FieldDescriptor field, EntryParameterType type) =>
+        field.Value.ValueType == typeof(string) && type is (EntryParameterType.MultilineText or EntryParameterType.Autocomplete
+            or EntryParameterType.VariableName or EntryParameterType.Expression or EntryParameterType.ImageAsset or EntryParameterType.AudioAsset
+            or EntryParameterType.VideoAsset or EntryParameterType.EffectProgramAsset)
+            && field.Editor?.EditorId == "entry." + type.ToString().ToLowerInvariant();
+
+    private EntryParameterEditorItemViewModel CreateField(EntryParameterDefinition definition, string value, IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames) =>
+        !UsesDedicatedEditor(definition.Field, definition.Type)
+        ? new SchemaEntryParameterEditorItemViewModel(definition, this, SetParameter) : definition.Type switch
+        {
+            EntryParameterType.Autocomplete => new AutocompleteEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
+            EntryParameterType.VariableName => new VariableNameEntryParameterEditorItemViewModel(definition, value, variableNames, SetParameter),
+            EntryParameterType.Expression => new ExpressionEntryParameterEditorItemViewModel(definition, value, variableNames, SetParameter),
+            EntryParameterType.ImageAsset or EntryParameterType.AudioAsset or EntryParameterType.VideoAsset or EntryParameterType.EffectProgramAsset => new AssetEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
+            _ => new TextEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter)
+        };
 
     private void SetParameter(string id, string value)
     {
@@ -301,12 +411,48 @@ public partial class EntryEditorItemViewModel : ObservableObject
         Parameters = updated;
     }
 
-    partial void OnParametersChanged(Dictionary<string, string> value) => UpdateEffectHints();
+    internal Task<ValueIssue?> CommitParameterAsync(FieldDescriptor field, FieldValue value, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (_disposed) return Task.FromResult<ValueIssue?>(new("entry.obsolete", "The project document is closed.", field.Id));
+        var updated = new Dictionary<string, string>(Parameters, StringComparer.Ordinal);
+        if (value.Json is not { } json)
+        {
+            if (field.IsRequired && field.DefaultValue is null) return Task.FromResult<ValueIssue?>(new("entry.required", "A value is required.", field.Id));
+            updated.Remove(field.Id);
+        }
+        else
+        {
+            if (ValueValidation.Validate(field.Value, json) is { } issue) return Task.FromResult<ValueIssue?>(issue);
+            var text = ValueCodec.ToEditorText(field.Value, json);
+            if (!JsonElement.DeepEquals(json, ValueCodec.ParseEditorText(field.Value, text)))
+                return Task.FromResult<ValueIssue?>(new("entry.representation", "This value cannot be represented by the editor document.", field.Id));
+            updated[field.Id] = text;
+        }
+        try
+        {
+            if (_formParameters is { } parameters)
+                parameters.ValidatePartialArguments(JsonSerializer.SerializeToElement(updated.ToDictionary(pair => pair.Key,
+                    pair => ValueCodec.ParseEditorText(parameters[pair.Key].Value, pair.Value))));
+        }
+        catch (Exception exception) when (exception is ArgumentException or JsonException)
+        { return Task.FromResult<ValueIssue?>(new("entry.arguments", exception.Message, field.Id)); }
+        if (!Parameters.OrderBy(pair => pair.Key).SequenceEqual(updated.OrderBy(pair => pair.Key))) Parameters = updated;
+        return Task.FromResult<ValueIssue?>(null);
+    }
+
+    partial void OnParametersChanged(Dictionary<string, string> value)
+    {
+        if (_authorCatalog is not null) Source.Parameters = EditorEntryData.ParseParameters(_authorCatalog, Type, value);
+        foreach (var field in ParameterFields.OfType<SchemaEntryParameterEditorItemViewModel>()) field.RefreshValue();
+        ParameterForm?.Refresh();
+        UpdateEffectHints();
+    }
     partial void OnEffectDiagnosticChanged(string value) => OnPropertyChanged(nameof(HasEffectDiagnostic));
 
     private void UpdateEffectHints()
     {
-        if (Type != ApplyEffectEntry.TypeId || _effectCatalog is null)
+        if (Type != BuiltinEntryIds.ApplyEffect || _effectCatalog is null)
         {
             EffectHint = "";
             EffectDiagnostic = "";
@@ -322,11 +468,25 @@ public partial class EntryEditorItemViewModel : ObservableObject
         EffectHint = $"{effect.Stage} · static: {string.Join(", ", effect.Parameters.Select(parameter => parameter.Name))} · animatable: {string.Join(", ", effect.AnimatableProperties.Select(property => property.Name))}";
         EffectDiagnostic = string.Join(" ", _effectCatalog.Validate(id, Parameters.GetValueOrDefault("targetHandleId", ""), Parameters.GetValueOrDefault("parameters", "{}")));
     }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        ParameterForm?.Dispose();
+        ParameterFields.Clear();
+        GC.SuppressFinalize(this);
+    }
 }
 
 public partial class BranchOptionEditorItemViewModel : ObservableObject
 {
-    public string Id { get; init; } = Guid.NewGuid().ToString("N");
+    public EditorGraphBranchOptionDto Source { get; }
+    public string Id { get => Source.Id; init => Source.Id = value; }
+    public BranchOptionEditorItemViewModel() => Source = new() { Id = Guid.NewGuid().ToString("N") };
+    public BranchOptionEditorItemViewModel(EditorGraphBranchOptionDto source) { Source = source; _text = source.Text; _condition = source.Condition; }
+    partial void OnTextChanged(string value) => Source.Text = value;
+    partial void OnConditionChanged(string value) => Source.Condition = value;
 
     [ObservableProperty]
     private string _text = "";
@@ -337,7 +497,11 @@ public partial class BranchOptionEditorItemViewModel : ObservableObject
 
 public partial class BranchConditionEditorItemViewModel : ObservableObject
 {
-    public string Id { get; init; } = Guid.NewGuid().ToString("N");
+    public EditorGraphBranchConditionDto Source { get; }
+    public string Id { get => Source.Id; init => Source.Id = value; }
+    public BranchConditionEditorItemViewModel() => Source = new() { Id = Guid.NewGuid().ToString("N") };
+    public BranchConditionEditorItemViewModel(EditorGraphBranchConditionDto source) { Source = source; _expression = source.Expression; }
+    partial void OnExpressionChanged(string value) => Source.Expression = value;
 
     [ObservableProperty]
     private string _expression = "";

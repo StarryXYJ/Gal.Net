@@ -37,6 +37,12 @@ public sealed class SEffectCatalog : ISEffectCatalog
     }
 
     public static SEffectCatalog Empty { get; } = new([]);
+    public static SEffectCatalog Builtins { get; } = new([
+        new("seffect.gain", new HashSet<SEffectScope> { SEffectScope.Track }, [new("gain", Required: true, Minimum: 0, Maximum: 1)]),
+        new("seffect.lowPass", new HashSet<SEffectScope> { SEffectScope.Track },
+            [new("cutoffHz", Required: true, Minimum: 20, Maximum: 20_000), new("attenuationDb", Minimum: -20, Maximum: 0)]),
+        new("seffect.highPass", new HashSet<SEffectScope> { SEffectScope.Track },
+            [new("cutoffHz", Required: true, Minimum: 20, Maximum: 20_000), new("attenuationDb", Minimum: -20, Maximum: 0)])]);
     public IReadOnlyList<SEffectDefinition> Definitions { get; }
     public bool TryGet(string id, out SEffectDefinition definition) => _byId.TryGetValue(id, out definition!);
 

@@ -84,7 +84,7 @@ public class PlaybackModeTests
         Assert.That(oldToken.CanBeCanceled, Is.True);
         engine.RestoreFrom(engine.Runtime.CreateSnapshot());
         Assert.That(oldToken.IsCancellationRequested, Is.True);
-        Assert.That(oldRuntime!.SceneState, Is.Not.SameAs(engine.Runtime.SceneState));
+        Assert.That(oldRuntime!.State, Is.Not.SameAs(engine.Runtime.State));
         Assert.Throws<OperationCanceledException>(() => oldRuntime.SetVariable("late", 1));
         CancellationToken currentToken = default;
         await engine.SynchronizePresentationAsync((_, token) => { currentToken = token; return Task.CompletedTask; });

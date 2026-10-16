@@ -11,7 +11,7 @@ namespace GalNet.Avalonia.GameView.ViewModels;
 
 public sealed partial class AudioGalleryPageViewModel(
     IGameNavigationService navigation,
-    GalleryMediaService media) : PageViewModelBase, IGalleryPageViewModel, IDisposable
+    GalleryMediaService media) : BackNavigablePageViewModel(navigation), IGalleryPageViewModel, IDisposable
 {
     public ObservableCollection<GalleryEntryViewModel> Items { get; } = [];
     [ObservableProperty] private string _title = "Gallery";
@@ -38,7 +38,6 @@ public sealed partial class AudioGalleryPageViewModel(
         UpdateAudioState();
     }
 
-    [RelayCommand] private void Back() => navigation.GoBack();
 
     public void Dispose()
     {

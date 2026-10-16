@@ -1,15 +1,10 @@
+using GalNet.Contracts.Builtins;
 using GalNet.Presentation.Abstractions.Execution;
 
 namespace GalNet.Primitives.Builtins;
 
-public sealed class BuiltinFlowModule : PrimitiveModule
-{
-    public BuiltinFlowModule() : base(
-    [
-        BuiltinInstructionFactory.Create<WaitEntry>(context => new WaitPrimitiveInstance(
-                TimeSpan.FromSeconds(Arguments.Float(context, "duration", 1)),
+public sealed class BuiltinFlowModule() : PrimitiveModule(
+    registry => registry.Register<WaitOptions>(BuiltinEntryIds.Wait, (context, options) => new WaitPrimitiveInstance(
+                TimeSpan.FromSeconds(options.Duration),
                 context.BatchId,
-                context.ScopeCancellation))
-    ])
-    { }
-}
+                context.ScopeCancellation)));

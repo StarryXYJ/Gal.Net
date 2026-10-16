@@ -402,3 +402,6 @@ ducking、精确播放位置恢复、`audio.wait`、`shuffleCycle`、高通/压�
 当前 `AudioChannelManager`、`IAudioService` 和 `LibVlcAudioController` 使用预置 channel、单个 `CurrentAsset`、字符串 `mode/times` 与不具备真实队列语义的 `Enqueue`；`BuiltinAudioModule` 则只提供空的 schema 原语。它们可作为 Phase 4 前的占位实现和测试基线，但不能直接扩展为本设计的核心模型。
 
 本设计以新模型取代旧 channel 约定，而非将 `bgm2`、`sfx1` 等命名作为兼容层永久固化。旧项目内容和已编译内容不做迁移：遇到旧 schema/format 应明确拒绝并要求按新 schema 重编译。
+
+
+2026-10-15 更新：轨道与轨道 SEffect 的重启式存档恢复已在 [模块化游戏状态](modular-game-state-and-restore.md) 实施，当前行为以 [runtime spec](../spec/runtime.md) 为准。旧的未来计划不再表示该项尚未实现。

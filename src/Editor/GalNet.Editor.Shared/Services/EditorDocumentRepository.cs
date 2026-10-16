@@ -1,218 +1,145 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text.Json;
 using GalNet.Core.Entry;
-using GalNet.Core.Primitives;
 using GalNet.Core.Serialization;
 using GalNet.Core.Settings;
-using GalNet.Core.Variable;
+using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Shared.Commands;
 
 namespace GalNet.Editor.Shared.Services;
 
-public sealed class EditorDocumentRepository : IEditorDocumentRepository
+public sealed class EditorDocumentRepository(IEntryCatalog catalog) : IEditorDocumentRepository
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
-    private readonly IEntryCatalog _catalog;
-
-    public EditorDocumentRepository(IEntryCatalog catalog)
-    {
-        _catalog = catalog;
-    }
+    private Dictionary<string, byte[]?>? _baseline;
 
     public LoadedEditorProjectDocument Load(string projectPath, string projectName, ProjectSettings settings)
     {
-        var graphPath = Path.Combine(projectPath, "Graph");
-        var graphFile = Path.Combine(graphPath, "graph.json");
-        EditorGraphDocument document;
-
-        if (File.Exists(graphFile))
-        {
-            var json = File.ReadAllText(graphFile);
-            document = JsonSerializer.Deserialize<EditorGraphDocument>(json) ?? new EditorGraphDocument();
-        }
-        else
-        {
-            document = CreateDefaultDocument(projectName);
-        }
-
-        document.Name = string.IsNullOrWhiteSpace(document.Name) ? projectName : document.Name;
-        MigrateVariableDefinitions(document, settings);
-        EnsureStableIds(document);
-
+        var reader = new ProjectRawReader(projectPath);
+        var validator = new ProjectValidationService(projectPath);
+        var diagnostics = new List<ToolDiagnostic>();
+        var rawGraph = reader.Read("Graph/graph.json", diagnostics);
+        validator.ValidateGraph(rawGraph, diagnostics);
+        RequireValid(diagnostics);
+        var document = rawGraph!.Value.Deserialize<EditorGraphDocument>()!;
         var loaded = new LoadedEditorProjectDocument { Document = document };
-        foreach (var groupNode in document.Nodes.Where(n => string.Equals(n.Type, "Group", StringComparison.OrdinalIgnoreCase)))
+        _baseline = new(PathComparer) { ["Graph/graph.json"] = File.ReadAllBytes(reader.Resolve("Graph/graph.json")) };
+        foreach (var node in document.Nodes.Where(node => node.Type == "Group"))
         {
-            loaded.GroupEntries[groupNode.Id] = LoadGroupEntries(graphPath, groupNode.File);
+            var file = GroupPath(reader, node.File!);
+            var group = validator.ValidateGroup(file, diagnostics, catalog);
+            RequireValid(diagnostics);
+            _baseline[file] = File.ReadAllBytes(reader.Resolve(file));
+            loaded.GroupEntries[node.Id] = group!.Entries.Select((entry, index) => new EditorEntryData
+            {
+                StableId = entry.Id,
+                Id = index + 1,
+                Type = entry.Type,
+                Condition = entry.Condition,
+                Parameters = entry.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal)
+            }).ToList();
         }
-
         return loaded;
     }
 
-    public void Save(
-        string projectPath,
-        EditorGraphDocument document,
+    public ProjectSavePlan PrepareSave(string projectPath, EditorGraphDocument document,
         IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries)
     {
-        var graphPath = Path.Combine(projectPath, "Graph");
-        var groupsDir = Path.Combine(graphPath, "groups");
-        Directory.CreateDirectory(groupsDir);
-
-        foreach (var groupNode in document.Nodes.Where(n => string.Equals(n.Type, "Group", StringComparison.OrdinalIgnoreCase)))
+        var reader = new ProjectRawReader(projectPath);
+        EnsureUnchanged(reader);
+        if (_baseline is null && File.Exists(reader.Resolve("Graph/graph.json"))) _ = Load(projectPath, document.Name, new ProjectSettings());
+        var diagnostics = new List<ToolDiagnostic>();
+        var validator = new ProjectValidationService(projectPath);
+        var graph = JsonSerializer.SerializeToElement(document, JsonOptions);
+        validator.ValidateGraph(graph, diagnostics, checkSourceReferences: false);
+        var writes = new Dictionary<string, byte[]>(PathComparer);
+        var owners = new HashSet<string>(PathComparer);
+        foreach (var node in document.Nodes.Where(node => node.Type == "Group"))
         {
-            var relativeFile = string.IsNullOrWhiteSpace(groupNode.File)
-                ? $"groups/{groupNode.Id}.rawgalgroup"
-                : ToRawGroupFile(groupNode.File!);
-            groupNode.File = relativeFile;
-
-            groupEntries.TryGetValue(groupNode.Id, out var entries);
-            var serialized = new GroupDocument { Kind = GroupDocumentKind.Raw, Entries = (entries ?? []).Select(SerializeEntry).ToList() };
-            var groupFile = Path.Combine(graphPath, relativeFile.Replace('/', Path.DirectorySeparatorChar));
-            var groupTemporary = groupFile + ".tmp";
-            File.WriteAllText(groupTemporary, JsonSerializer.Serialize(serialized, JsonOptions));
-            File.Move(groupTemporary, groupFile, true);
+            if (string.IsNullOrWhiteSpace(node.File)) throw new InvalidDataException("Group source path is required.");
+            var file = GroupPath(reader, node.File);
+            if (!owners.Add(file)) throw new InvalidDataException($"Multiple Groups reference '{file}'.");
+            if (!groupEntries.TryGetValue(node.Id, out var entries)) throw new InvalidDataException($"Group '{node.Id}' has no entry document.");
+            var raw = JsonSerializer.SerializeToElement(new GroupDocument { Kind = GroupDocumentKind.Raw, Entries = entries.Select(SerializeEntry).ToList() }, JsonOptions);
+            _ = ProjectValidationService.ValidateGroupDocument(raw, file, diagnostics, catalog);
+            if (File.Exists(reader.Resolve(file)) && _baseline is not null && !_baseline.ContainsKey(file))
+                throw new EditorOperationException("project.fileCollision", $"New Group source would overwrite an existing unowned file: '{file}'.", file);
+            writes.Add(file, JsonSerializer.SerializeToUtf8Bytes(raw, JsonOptions));
         }
-
-        var graphFile = Path.Combine(graphPath, "graph.json");
-        var graphTemporary = graphFile + ".tmp";
-        File.WriteAllText(graphTemporary, JsonSerializer.Serialize(document, JsonOptions));
-        File.Move(graphTemporary, graphFile, true);
-
-    }
-
-    private static EditorGraphDocument CreateDefaultDocument(string projectName)
-    {
-        var entryId = Guid.NewGuid().ToString("N");
-        var groupId = Guid.NewGuid().ToString("N");
-        return new EditorGraphDocument
+        RequireValid(diagnostics);
+        writes.Add("Graph/graph.json", JsonSerializer.SerializeToUtf8Bytes(graph, JsonOptions));
+        var removed = new List<string>();
+        var oldGraphPath = reader.Resolve("Graph/graph.json");
+        if (File.Exists(oldGraphPath))
         {
-            Name = projectName,
-            RootNodeId = entryId,
-            Nodes =
-            [
-                new EditorGraphNodeDto
-                {
-                    Id = entryId,
-                    Type = "Entry",
-                    Name = "Entry",
-                    X = 4620,
-                    Y = 4950
-                },
-                new EditorGraphNodeDto
-                {
-                    Id = groupId,
-                    Type = "Group",
-                    Name = "Opening",
-                    X = 4900,
-                    Y = 4950,
-                    File = $"groups/{groupId}.rawgalgroup"
-                }
-            ],
-            Edges =
-            [
-                new EditorGraphEdgeDto
-                {
-                    FromNodeId = entryId,
-                    FromOutlet = 0,
-                    ToNodeId = groupId
-                }
-            ]
-        };
-    }
-
-    private static void MigrateVariableDefinitions(EditorGraphDocument document, ProjectSettings settings)
-    {
-        if (document.PlayerVariables.Count == 0 && settings.PlayerVariables.Count > 0)
-            document.PlayerVariables = settings.PlayerVariables.Select(v => v.Clone()).ToList();
-
-        if (document.SaveVariables.Count == 0 && settings.SaveVariables.Count > 0)
-            document.SaveVariables = settings.SaveVariables.Select(v => v.Clone()).ToList();
-
-        VariableNameRules.Normalize(document.PlayerVariables, document.SaveVariables);
-    }
-
-    private List<EditorEntryData> LoadGroupEntries(string graphPath, string? relativeFile)
-    {
-        var entries = new List<EditorEntryData>();
-        if (string.IsNullOrWhiteSpace(relativeFile))
-            return entries;
-
-        var file = Path.Combine(graphPath, relativeFile.Replace('/', Path.DirectorySeparatorChar));
-        if (!File.Exists(file))
-            return entries;
-
-        var document = JsonSerializer.Deserialize<GroupDocument>(File.ReadAllText(file), JsonOptions)
-            ?? throw new InvalidDataException($"The .galgroup file '{relativeFile}' is empty.");
-        if (document.Version != GroupDocument.CurrentVersion)
-            throw new InvalidDataException($"Unsupported .galgroup version '{document.Version}'.");
-        if (document.Kind != GroupDocumentKind.Raw)
-            throw new InvalidDataException($"The editor source file '{relativeFile}' must be a .rawgalgroup document.");
-
-        foreach (var entry in document.Entries)
-        {
-            var definition = _catalog.Get(entry.Type);
-            var parameters = entry.Parameters
-                .Where(p => definition.Parameters.ContainsKey(p.Key))
-                .ToDictionary(pair => pair.Key, pair => DynamicParameterValue.ToEditorValue(pair.Value), StringComparer.Ordinal);
-
-            entries.Add(new EditorEntryData
+            using var old = JsonDocument.Parse(File.ReadAllBytes(oldGraphPath));
+            validator.ValidateGraph(old.RootElement, diagnostics);
+            RequireValid(diagnostics);
+            foreach (var node in old.RootElement.Deserialize<EditorGraphDocument>()!.Nodes.Where(node => node.Type == "Group"))
             {
-                StableId = string.IsNullOrWhiteSpace(entry.Id) ? Guid.NewGuid().ToString("N") : entry.Id,
-                Id = entries.Count + 1,
-                Type = entry.Type,
-                Condition = entry.Condition,
-                Parameters = parameters
-            });
+                var file = GroupPath(reader, node.File!);
+                if (!owners.Contains(file) && (!groupEntries.ContainsKey(node.Id) || document.Nodes.Any(current => current.Id == node.Id && current.Type == "Group"))) removed.Add(file);
+            }
         }
-
-        return entries;
+        return new(writes, removed);
     }
 
-    private GroupEntryDocument SerializeEntry(EditorEntryData entry)
+    public void Save(string projectPath, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries)
     {
-        var definition = _catalog.Get(entry.Type);
-        var parameters = entry.Parameters
-            .Where(pair => definition.Parameters.ContainsKey(pair.Key) && pair.Value.Length > 0)
-            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        var plan = PrepareSave(projectPath, document, groupEntries);
+        ApplySave(projectPath, plan);
+    }
 
-        entry.StableId = string.IsNullOrWhiteSpace(entry.StableId)
-            ? Guid.NewGuid().ToString("N")
-            : entry.StableId;
+    public void ApplySave(string projectPath, ProjectSavePlan plan, CancellationToken cancellationToken = default)
+    {
+        EnsureUnchanged(new ProjectRawReader(projectPath));
+        ProjectAuthorFileTransaction.Commit(projectPath, plan.Writes, plan.DeletedFiles, cancellationToken);
+        _baseline ??= new(PathComparer);
+        foreach (var (file, bytes) in plan.Writes) _baseline[file] = bytes.ToArray();
+        foreach (var file in plan.DeletedFiles) _baseline.Remove(file);
+    }
+
+    public GroupEntryDocument SerializeEntry(EditorEntryData entry)
+    {
+        var definition = catalog.Get(entry.Type);
+        if (string.IsNullOrWhiteSpace(entry.StableId)) throw new InvalidDataException("Entry stable ID is required.");
+        foreach (var key in entry.Parameters.Keys)
+            if (!definition.Parameters.ContainsKey(key)) throw new InvalidDataException($"Unknown parameter '{key}' for '{entry.Type}'.");
         return new GroupEntryDocument
         {
             Id = entry.StableId,
             Type = entry.Type,
             Condition = entry.Condition,
-            Parameters = parameters.ToDictionary(pair => pair.Key, pair => ToJsonValue(definition.DynamicParameters![pair.Key].ValueType, pair.Value), StringComparer.Ordinal)
+            Parameters = entry.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal)
         };
     }
 
-    private static JsonElement ToJsonValue(Type valueType, string value) =>
-        DynamicParameterValue.FromEditorValue(value, valueType);
-
-    private static void EnsureStableIds(EditorGraphDocument document)
+    private void EnsureUnchanged(ProjectRawReader reader)
     {
-        foreach (var edge in document.Edges)
-            edge.Id = EnsureId(edge.Id);
-
-        foreach (var node in document.Nodes)
+        if (_baseline is null) return;
+        foreach (var (file, original) in _baseline)
         {
-            foreach (var option in node.Options ?? [])
-                option.Id = EnsureId(option.Id);
-            foreach (var condition in node.Conditions ?? [])
-                condition.Id = EnsureId(condition.Id);
+            var path = reader.Resolve(file);
+            var current = File.Exists(path) ? File.ReadAllBytes(path) : null;
+            if (!(original is null ? current is null : current is not null && original.AsSpan().SequenceEqual(current)))
+                throw new EditorOperationException("project.externalFile", $"Project source changed after loading: '{file}'. Reload before saving.", file);
         }
     }
 
-    private static string EnsureId(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? Guid.NewGuid().ToString("N") : value;
+    private static string GroupPath(ProjectRawReader reader, string file)
+    {
+        if (Path.IsPathRooted(file)) throw new InvalidDataException("Group source must be relative to Graph/.");
+        var relative = reader.Relative(reader.Resolve(Path.Combine("Graph", file)));
+        if (!relative.StartsWith("Graph/", StringComparison.Ordinal) || !relative.EndsWith(".rawgalgroup", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("Group source must be a .rawgalgroup within Graph/.");
+        return relative;
+    }
 
-    private static string ToRawGroupFile(string file) => file.EndsWith(".rawgalgroup", StringComparison.OrdinalIgnoreCase)
-        ? file
-        : file.EndsWith(".galgroup", StringComparison.OrdinalIgnoreCase)
-            ? $"{file[..^".galgroup".Length]}.rawgalgroup"
-            : $"{file}.rawgalgroup";
+    private static StringComparer PathComparer => OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+    private static void RequireValid(IEnumerable<ToolDiagnostic> diagnostics)
+    {
+        var errors = diagnostics.Where(item => item.Severity == "error").ToArray();
+        if (errors.Length != 0) throw new InvalidDataException(string.Join("\n", errors.Select(item => $"{item.File}{item.JsonPointer}: {item.Code}: {item.Message}")));
+    }
 }

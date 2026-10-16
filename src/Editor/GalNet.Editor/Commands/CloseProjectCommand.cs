@@ -35,13 +35,12 @@ public sealed class CloseProjectCommand : AsyncEditorUiCommand
         {
             if (_projectService.Current is null)
                 return;
-            if (_projectService.Current is { IsDirty: true } project)
-                await project.Services.GetRequiredService<EditorWorkspaceViewModel>().SaveAsync();
             await _projectService.CloseAsync();
             if (_navigation.CurrentPage is IDisposable disposable)
                 disposable.Dispose();
             _navigation.ResetTo<StartupPageViewModel>();
         }
+        catch (OperationCanceledException) { }
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to close project");

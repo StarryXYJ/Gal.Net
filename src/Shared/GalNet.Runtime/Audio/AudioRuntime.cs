@@ -1,119 +1,175 @@
 using GalNet.Core.Audio;
+using GalNet.Core.Runtime;
 using GalNet.Core.Settings;
 using GalNet.Presentation.Abstractions.Audio;
 
 namespace GalNet.Runtime.Audio;
 
-/// <summary>Game-scope logical audio state. It serializes queues and protects against late backend events.</summary>
+/// <summary>Projects canonical audio state to backend voices. Only tickets and backend identities live here.</summary>
 public sealed class AudioRuntime : IDisposable, IAsyncDisposable
 {
     private readonly object _gate = new();
     private readonly IAudioPlaybackHost? _host;
-    private readonly Dictionary<string, TrackState> _tracks = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, BackendQueue> _backendQueues = new(StringComparer.Ordinal);
-    private readonly List<Task> _pendingRequests = [];
+    private readonly ISEffectCatalog _effects;
+    private readonly AudioBackendDispatcher _dispatcher;
+    private readonly Dictionary<string, TrackBinding> _tracks = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, VoiceBinding> _voices = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, List<AudioPlaybackTicket>> _tickets = new(StringComparer.Ordinal);
+    private GameState _state;
     private long _nextGeneration;
-    private bool _disposed;
     private GameSettings _settings = new();
+    private bool _disposed;
     private bool _catchUp;
-
-    public void BeginCatchUp()
-    {
-        lock (_gate)
-        {
-            if (_catchUp || _disposed) return;
-            var projections = _tracks.Values.ToDictionary(track => track,
-                track => track.Definition.Bus == AudioBuses.Bgm
-                    ? (track.Active.Select(voice => voice.Request with { Gain = voice.Gain }).ToArray(), track.Pending.Select(item => item.Request).ToArray())
-                    : (Array.Empty<AudioPlayRequest>(), Array.Empty<AudioPlayRequest>()));
-            foreach (var track in _tracks.Values) { StopActive(track, 0); ClearPending(track); }
-            _catchUp = true;
-            foreach (var (track, (active, pending)) in projections)
-            {
-                foreach (var request in active) Start(track, new(request, new AudioPlaybackTicket(StopTicket)));
-                foreach (var request in pending) track.Pending.Add(new(request, new AudioPlaybackTicket(StopTicket)));
-            }
-        }
-    }
-
-    public void EndCatchUp()
-    {
-        lock (_gate)
-        {
-            if (!_catchUp || _disposed) return;
-            _catchUp = false;
-            foreach (var track in _tracks.Values)
-                foreach (var voice in track.Active.ToArray())
-                {
-                    Send(new(AudioBackendAction.Start, track.Definition.Id, voice.Id, voice.Generation, voice.AssetId,
-                        EffectiveGain(track, voice)));
-                    foreach (var effect in track.SEffects.Values)
-                        Send(new(AudioBackendAction.ApplySEffect, track.Definition.Id, voice.Id, voice.Generation,
-                            SEffectId: effect.SEffectId, SEffectInstanceId: effect.InstanceId, SEffectParameters: effect.Parameters));
-                }
-        }
-    }
-
-    public void ApplyPlayerSettings(GameSettings settings)
-    {
-        ArgumentNullException.ThrowIfNull(settings);
-        lock (_gate)
-        {
-            _settings = settings;
-            foreach (var track in _tracks.Values)
-                foreach (var voice in track.Active)
-                    Send(new(AudioBackendAction.SetGain, track.Definition.Id, voice.Id, voice.Generation,
-                        Gain: EffectiveGain(track, voice)));
-        }
-    }
-
-    public AudioRuntime(IAudioPlaybackHost? host = null)
-    {
-        _host = host;
-        if (_host is not null) _host.EventReceived += OnBackendEvent;
-    }
-
     public event Action<string>? Diagnostic;
 
-    public void Reset()
+    public AudioRuntime(IAudioPlaybackHost? host = null, ISEffectCatalog? effects = null)
+    {
+        _host = host;
+        _effects = effects ?? host?.SEffects ?? SEffectCatalog.Builtins;
+        var builder = new StateCatalogBuilder();
+        builder.Register<AudioTrackState>("builtin.audio.tracks", value => value.Id, ValidateTrack);
+        builder.Register<AudioSEffectState>("builtin.audio.seffects", value => AudioSEffectState.Key(value.TrackId, value.InstanceId), ValidateEffect);
+        _state = new GameState(builder.Build());
+        _dispatcher = new(host, _gate, Report, OnBackendEvent);
+        if (host is not null) host.EventReceived += OnBackendEvent;
+    }
+
+    public void Bind(GameState state)
     {
         lock (_gate)
         {
-            if (_disposed) return;
-            foreach (var track in _tracks.Values) { StopActive(track, 0); ClearPending(track); }
+            if (ReferenceEquals(state, _state)) return;
+            StopBindings();
+            _state = state;
+            _tracks.Clear();
+        }
+    }
+    public async Task SuspendAsync(GameState expected)
+    {
+        lock (_gate)
+        {
+            if (!ReferenceEquals(_state, expected)) return;
+            StopBindings();
+        }
+        await _dispatcher.DrainAsync().ConfigureAwait(false);
+    }
+    public void Reset(GameState? expected = null)
+    {
+        lock (_gate) lock (_state.SyncRoot)
+        {
+            if (_disposed || expected is not null && !ReferenceEquals(expected, _state)) return;
+            StopBindings();
+            _state.Table<AudioTrackState>().Clear();
+            _state.Table<AudioSEffectState>().Clear();
             _tracks.Clear();
             _catchUp = false;
         }
     }
-
+    public void Validate(GameState state, IReadOnlyList<AudioTrackDefinition> definitions)
+    {
+        var identities = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var track in state.Table<AudioTrackState>().Values)
+        {
+            ValidateTrack(track);
+            if (track.Active.Concat(track.Pending).Any(item => !identities.Add(item.Id)))
+                throw new InvalidDataException("Saved audio item identities must be unique across tracks.");
+            var definition = definitions.SingleOrDefault(item => item.Id == track.Id)
+                ?? throw new InvalidDataException($"Unknown saved audio track '{track.Id}'.");
+            if (!ValidDefinition(definition) || track.Active.Count > definition.MaxVoices || track.Pending.Count > definition.MaxQueuedItems)
+                throw new InvalidDataException($"Saved audio track '{track.Id}' exceeds its configured limits.");
+        }
+        foreach (var effect in state.Table<AudioSEffectState>().Values)
+        {
+            ValidateEffect(effect);
+            if (!state.Table<AudioTrackState>().TryGet(effect.TrackId, out _)) throw new InvalidDataException("An audio effect references a missing track.");
+        }
+    }
+    public static void ValidateTrack(AudioTrackState track)
+    {
+        if (string.IsNullOrWhiteSpace(track.Id) || track.Active is null || track.Pending is null)
+            throw new InvalidDataException("An audio track requires an ID and playback collections.");
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var item in track.Active.Concat(track.Pending))
+            if (item is null || item.Request is null || string.IsNullOrWhiteSpace(item.Id) || !ids.Add(item.Id) || item.Request.TrackId != track.Id ||
+                string.IsNullOrWhiteSpace(item.Request.AssetId) || !float.IsFinite(item.Request.Gain) || item.Request.Gain < 0 ||
+                !float.IsFinite(item.Request.FadeInSeconds) || item.Request.FadeInSeconds < 0)
+                throw new InvalidDataException($"Invalid playback item in track '{track.Id}'.");
+    }
+    private void ValidateEffect(AudioSEffectState effect)
+    {
+        if (string.IsNullOrWhiteSpace(effect.TrackId) || string.IsNullOrWhiteSpace(effect.InstanceId)) throw new InvalidDataException("An audio effect requires track and instance IDs.");
+        var diagnostics = _effects.Validate(effect.SEffectId, SEffectScope.Track, effect.Parameters);
+        if (diagnostics.Count > 0) throw new InvalidDataException(string.Join(" ", diagnostics));
+    }
+    public async Task RestoreAsync(GameState state, IReadOnlyList<AudioTrackDefinition> definitions, CancellationToken token)
+    {
+        Validate(state, definitions);
+        Bind(state);
+        lock (_gate) StopBindings();
+        await _dispatcher.DrainAsync().WaitAsync(token).ConfigureAwait(false);
+        lock (_gate) lock (_state.SyncRoot)
+        {
+            token.ThrowIfCancellationRequested();
+            if (!ReferenceEquals(_state, state)) throw new OperationCanceledException("The audio run was replaced.", token);
+            foreach (var saved in _state.Table<AudioTrackState>().Values)
+            {
+                var track = GetTrack(definitions, saved.Id)!;
+                foreach (var item in saved.Active.ToArray()) Project(track, item, fade: 0);
+            }
+        }
+    }
+    public void BeginCatchUp()
+    {
+        lock (_gate) lock (_state.SyncRoot)
+        {
+            if (_catchUp || _disposed) return;
+            StopBindings();
+            _catchUp = true;
+            // CatchUp suppresses one-shot sounds while preserving its existing BGM projection policy.
+            foreach (var track in _tracks.Values.Where(track => track.Definition.Bus != AudioBuses.Bgm))
+            { track.State.Active.Clear(); track.State.Pending.Clear(); }
+        }
+    }
+    public void EndCatchUp()
+    {
+        lock (_gate) lock (_state.SyncRoot)
+        {
+            if (!_catchUp || _disposed) return;
+            _catchUp = false;
+            foreach (var track in _tracks.Values)
+                foreach (var item in track.State.Active.ToArray()) Project(track, item, 0);
+        }
+    }
+    public void ApplyPlayerSettings(GameSettings settings)
+    {
+        lock (_gate) lock (_state.SyncRoot)
+        {
+            _settings = settings;
+            foreach (var track in _tracks.Values)
+                foreach (var item in track.State.Active.ToArray()) SendItem(track, item, AudioBackendAction.SetGain);
+        }
+    }
     public AudioPlaybackTicket Play(IReadOnlyList<AudioTrackDefinition> definitions, AudioPlayRequest request)
     {
-        lock (_gate)
+        lock (_gate) lock (_state.SyncRoot)
         {
             var ticket = new AudioPlaybackTicket(StopTicket);
-            var item = new QueuedPlay(request, ticket);
             var track = GetTrack(definitions, request.TrackId);
-            if (track is null || string.IsNullOrWhiteSpace(request.AssetId)) { ticket.Complete(); return ticket; }
-            if (_catchUp && track.Definition.Bus != AudioBuses.Bgm) { ticket.Complete(); return ticket; }
-            if (_host is null)
+            if (track is null || string.IsNullOrWhiteSpace(request.AssetId) || _catchUp && track.Definition.Bus != AudioBuses.Bgm)
+            { ticket.Complete(); return ticket; }
+            if (request.Placement == AudioPlacement.ReplaceIfDifferent)
             {
-                Report($"No audio playback host is available for '{request.TrackId}'.");
-                ticket.Complete();
-                return ticket;
-            }
-
-            if (request.Placement == AudioPlacement.ReplaceIfDifferent &&
-                track.Active.Any(voice => string.Equals(voice.AssetId, request.AssetId, StringComparison.Ordinal)))
-            {
-                foreach (var voice in track.Active.Where(voice => string.Equals(voice.AssetId, request.AssetId, StringComparison.Ordinal)))
+                var same = track.State.Active.Where(item => item.Request.AssetId == request.AssetId).ToArray();
+                if (same.Length > 0)
                 {
-                    voice.Gain = request.Gain;
-                    Send(new(AudioBackendAction.SetGain, track.Definition.Id, voice.Id, voice.Generation, Gain: EffectiveGain(track, voice)));
+                    foreach (var item in same) { item.Request = item.Request with { Gain = request.Gain }; SendItem(track, item, AudioBackendAction.SetGain); }
+                    if (_host is not null) Tickets(same[0].Id).Add(ticket);
+                    if (_host is null) ticket.Complete();
+                    return ticket;
                 }
-                track.Active.First(voice => voice.AssetId == request.AssetId).Tickets.Add(ticket);
-                return ticket;
             }
-
+            var value = new AudioItemState { Request = request };
+            if (_host is not null) Tickets(value.Id).Add(ticket);
             switch (request.Placement)
             {
                 case AudioPlacement.Replace:
@@ -121,210 +177,126 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
                 case AudioPlacement.ReplaceIfDifferent:
                     StopActive(track, 0);
                     if (request.Placement == AudioPlacement.ReplaceAll) ClearPending(track);
-                    Start(track, item);
-                    return ticket;
+                    Start(track, value); break;
                 case AudioPlacement.Next:
-                    if (track.Definition.MaxVoices != 1)
-                    {
-                        Report($"audio.next requires a single-voice track: '{track.Definition.Id}'.");
-                        ticket.Complete();
-                        return ticket;
-                    }
-                    StopActive(track, 0);
-                    StartOrQueue(track, item, priority: true);
-                    Pump(track);
-                    return ticket;
-                default:
-                    StartOrQueue(track, item, priority: false);
-                    return ticket;
+                    if (track.Definition.MaxVoices != 1) { Report("audio.next requires a single-voice track."); Complete(value); break; }
+                    StopActive(track, 0); QueueOrStart(track, value, true); Pump(track); break;
+                default: QueueOrStart(track, value, false); break;
             }
+            if (_host is null) ticket.Complete();
+            return ticket;
         }
     }
-
     public void Stop(IReadOnlyList<AudioTrackDefinition> definitions, AudioStopRequest request)
     {
-        lock (_gate)
+        lock (_gate) lock (_state.SyncRoot)
         {
-            var track = GetTrack(definitions, request.TrackId);
-            if (track is null) return;
-            StopActive(track, request.FadeOutSeconds);
-            if (request.ClearQueue) ClearPending(track);
+            var track = GetTrack(definitions, request.TrackId); if (track is null) return;
+            StopActive(track, request.FadeOutSeconds); if (request.ClearQueue) ClearPending(track);
         }
     }
-
-    public void Pause(IReadOnlyList<AudioTrackDefinition> definitions, string trackId) => ApplyActive(definitions, trackId, AudioBackendAction.Pause);
-    public void Resume(IReadOnlyList<AudioTrackDefinition> definitions, string trackId) => ApplyActive(definitions, trackId, AudioBackendAction.Resume);
-
+    public void Pause(IReadOnlyList<AudioTrackDefinition> definitions, string trackId) => SetPaused(definitions, trackId, true);
+    public void Resume(IReadOnlyList<AudioTrackDefinition> definitions, string trackId) => SetPaused(definitions, trackId, false);
+    private void SetPaused(IReadOnlyList<AudioTrackDefinition> definitions, string trackId, bool paused)
+    {
+        lock (_gate) lock (_state.SyncRoot)
+        {
+            var track = GetTrack(definitions, trackId); if (track is null) return;
+            track.State.Paused = paused;
+            foreach (var item in track.State.Active.ToArray())
+                if (!paused && !_voices.ContainsKey(item.Id)) Project(track, item, 0);
+                else SendItem(track, item, paused ? AudioBackendAction.Pause : AudioBackendAction.Resume);
+            if (!paused) Pump(track);
+        }
+    }
     public void Next(IReadOnlyList<AudioTrackDefinition> definitions, string trackId)
     {
-        lock (_gate)
+        lock (_gate) lock (_state.SyncRoot)
         {
-            var track = GetTrack(definitions, trackId);
-            if (track is null) return;
-            if (track.Definition.MaxVoices != 1)
-            {
-                Report($"audio.next requires a single-voice track: '{track.Definition.Id}'.");
-                return;
-            }
-            StopActive(track, 0);
-            Pump(track);
+            var track = GetTrack(definitions, trackId); if (track is null) return;
+            if (track.Definition.MaxVoices != 1) { Report("audio.next requires a single-voice track."); return; }
+            StopActive(track, 0); Pump(track);
         }
     }
-
     public void Clear(IReadOnlyList<AudioTrackDefinition> definitions, string trackId)
-    {
-        lock (_gate)
-        {
-            var track = GetTrack(definitions, trackId);
-            if (track is not null) ClearPending(track);
-        }
-    }
-
+    { lock (_gate) lock (_state.SyncRoot) { var track = GetTrack(definitions, trackId); if (track is not null) ClearPending(track); } }
     public void ApplySEffect(IReadOnlyList<AudioTrackDefinition> definitions, AudioSEffectRequest request)
     {
-        lock (_gate)
+        lock (_gate) lock (_state.SyncRoot)
         {
-            var track = GetTrack(definitions, request.TrackId);
-            if (track is null || string.IsNullOrWhiteSpace(request.InstanceId) || string.IsNullOrWhiteSpace(request.SEffectId)) return;
-            if (_host is null)
-            {
-                Report($"No audio playback host is available for '{request.TrackId}'.");
-                return;
-            }
-            var diagnostics = _host.SEffects.Validate(request.SEffectId, SEffectScope.Track, request.Parameters);
-            if (diagnostics.Count > 0)
-            {
-                foreach (var diagnostic in diagnostics) Report(diagnostic);
-                return;
-            }
-            track.SEffects[request.InstanceId] = request;
-            foreach (var voice in track.Active)
-                Send(new(AudioBackendAction.ApplySEffect, track.Definition.Id, voice.Id, voice.Generation, SEffectId: request.SEffectId, SEffectInstanceId: request.InstanceId, SEffectParameters: request.Parameters));
+            var track = GetTrack(definitions, request.TrackId); if (track is null) return;
+            var effect = new AudioSEffectState(request.TrackId, request.InstanceId, request.SEffectId, request.Parameters.Clone());
+            try { ValidateEffect(effect); } catch (InvalidDataException error) { Report(error.Message); return; }
+            _state.Table<AudioSEffectState>().Set(effect);
+            foreach (var item in track.State.Active.ToArray()) SendEffect(track, item, effect, AudioBackendAction.ApplySEffect);
         }
     }
-
     public void StopSEffect(IReadOnlyList<AudioTrackDefinition> definitions, string trackId, string instanceId)
     {
-        lock (_gate)
+        lock (_gate) lock (_state.SyncRoot)
         {
-            var track = GetTrack(definitions, trackId);
-            if (track is null || !track.SEffects.Remove(instanceId, out var effect)) return;
-            foreach (var voice in track.Active)
-                Send(new(AudioBackendAction.StopSEffect, track.Definition.Id, voice.Id, voice.Generation, SEffectId: effect.SEffectId, SEffectInstanceId: effect.InstanceId));
+            var track = GetTrack(definitions, trackId); if (track is null) return;
+            var table = _state.Table<AudioSEffectState>();
+            var key = AudioSEffectState.Key(trackId, instanceId);
+            if (!table.TryGet(key, out var effect)) return;
+            table.Remove(key);
+            foreach (var item in track.State.Active.ToArray()) SendEffect(track, item, effect, AudioBackendAction.StopSEffect);
         }
     }
-
-    public void Dispose()
-    {
-        lock (_gate)
-        {
-            if (_disposed) return;
-            _disposed = true;
-            foreach (var track in _tracks.Values) { StopActive(track, 0); ClearPending(track); }
-            _tracks.Clear();
-            if (_host is not null) _host.EventReceived -= OnBackendEvent;
-        }
-    }
-
-    /// <summary>Stops voices and waits for all backend commands before the host is released.</summary>
-    public async ValueTask DisposeAsync()
-    {
-        Dispose();
-        Task[] requests;
-        lock (_gate) requests = _pendingRequests.ToArray();
-        await Task.WhenAll(requests).ConfigureAwait(false);
-    }
-
-    private void ApplyActive(IReadOnlyList<AudioTrackDefinition> definitions, string trackId, AudioBackendAction action)
-    {
-        lock (_gate)
-        {
-            var track = GetTrack(definitions, trackId);
-            if (track is null) return;
-            foreach (var voice in track.Active) Send(new(action, track.Definition.Id, voice.Id, voice.Generation));
-        }
-    }
-
-    private TrackState? GetTrack(IReadOnlyList<AudioTrackDefinition> definitions, string trackId)
+    private TrackBinding? GetTrack(IReadOnlyList<AudioTrackDefinition> definitions, string id)
     {
         if (_disposed) return null;
-        var definition = definitions.FirstOrDefault(candidate => string.Equals(candidate.Id, trackId, StringComparison.Ordinal));
-        if (definition is null)
-        {
-            Report($"Unknown audio track '{trackId}'.");
-            return null;
-        }
-        if (!AudioBuses.IsValid(definition.Bus) || definition.MaxVoices <= 0 || definition.MaxQueuedItems < 0 || !float.IsFinite(definition.DefaultGain))
-        {
-            Report($"Invalid audio track definition '{trackId}'.");
-            return null;
-        }
-        if (!_tracks.TryGetValue(trackId, out var state))
-        {
-            state = new TrackState(definition);
-            _tracks.Add(trackId, state);
-        }
-        return state;
+        if (_tracks.TryGetValue(id, out var cached)) return cached;
+        var definition = definitions.FirstOrDefault(value => value.Id == id);
+        if (definition is null || !ValidDefinition(definition))
+        { Report($"Unknown or invalid audio track '{id}'."); return null; }
+        var table = _state.Table<AudioTrackState>();
+        if (!table.TryGet(id, out var data)) { data = new AudioTrackState { Id = id }; table.Add(data); }
+        var track = new TrackBinding(definition, data); _tracks.Add(id, track); return track;
     }
-
-    private void StartOrQueue(TrackState track, QueuedPlay item, bool priority)
+    private void QueueOrStart(TrackBinding track, AudioItemState item, bool priority)
     {
-        var request = item.Request;
-        if (track.Active.Count < track.Definition.MaxVoices)
-        {
-            Start(track, item);
-            return;
-        }
+        if (track.State.Active.Count < track.Definition.MaxVoices) { Start(track, item); return; }
         if (track.Definition.MaxQueuedItems == 0)
         {
-            if (track.Definition.OverflowPolicy == AudioOverflowPolicy.DropNewest)
-            {
-                Report($"Audio voice limit reached for '{track.Definition.Id}'; dropped '{request.AssetId}'.");
-                item.Ticket.Complete();
-                return;
-            }
-            var oldest = track.Active.OrderBy(voice => voice.Generation).First();
-            StopVoice(track, oldest, 0);
-            Start(track, item);
-            return;
+            if (track.Definition.OverflowPolicy == AudioOverflowPolicy.DropNewest) { Report("Audio voice limit reached."); Complete(item); return; }
+            StopVoice(track, track.State.Active[0], 0); Start(track, item); return;
         }
-        if (track.Pending.Count >= track.Definition.MaxQueuedItems)
+        if (track.State.Pending.Count >= track.Definition.MaxQueuedItems)
         {
-            if (track.Definition.QueueOverflowPolicy == AudioQueueOverflowPolicy.DropNewest)
-            {
-                Report($"Audio queue limit reached for '{track.Definition.Id}'; dropped '{request.AssetId}'.");
-                item.Ticket.Complete();
-                return;
-            }
-            track.Pending[0].Ticket.Complete();
-            track.Pending.RemoveAt(0);
+            if (track.Definition.QueueOverflowPolicy == AudioQueueOverflowPolicy.DropNewest) { Report("Audio queue limit reached."); Complete(item); return; }
+            Complete(track.State.Pending[0]); track.State.Pending.RemoveAt(0);
         }
-        if (priority) track.Pending.Insert(0, item); else track.Pending.Add(item);
+        if (priority) track.State.Pending.Insert(0, item); else track.State.Pending.Add(item);
     }
-
-    private void Pump(TrackState track)
+    private void Start(TrackBinding track, AudioItemState item) { track.State.Active.Add(item); Project(track, item, item.Request.FadeInSeconds); }
+    private void Pump(TrackBinding track)
     {
-        while (track.Active.Count < track.Definition.MaxVoices && track.Pending.Count > 0)
-        {
-            var request = track.Pending[0];
-            track.Pending.RemoveAt(0);
-            Start(track, request);
-        }
+        while (!track.State.Paused && track.State.Active.Count < track.Definition.MaxVoices && track.State.Pending.Count > 0)
+        { var item = track.State.Pending[0]; track.State.Pending.RemoveAt(0); Start(track, item); }
     }
-
-    private void Start(TrackState track, QueuedPlay item)
+    private void Project(TrackBinding track, AudioItemState item, float fade)
     {
-        var request = item.Request;
+        if (_catchUp || track.State.Paused || _host is null) return;
         var generation = ++_nextGeneration;
-        var voice = new VoiceState($"{track.Definition.Id}:{generation}", generation, request);
-        voice.Tickets.Add(item.Ticket);
-        track.Active.Add(voice);
-        Send(new(AudioBackendAction.Start, track.Definition.Id, voice.Id, voice.Generation, voice.AssetId, EffectiveGain(track, voice), request.FadeInSeconds));
-        foreach (var effect in track.SEffects.Values)
-            Send(new(AudioBackendAction.ApplySEffect, track.Definition.Id, voice.Id, voice.Generation, SEffectId: effect.SEffectId, SEffectInstanceId: effect.InstanceId, SEffectParameters: effect.Parameters));
+        var binding = new VoiceBinding(track.State.Id, $"{track.Definition.Id}:{generation}", generation);
+        _voices[item.Id] = binding;
+        _dispatcher.Enqueue(new(AudioBackendAction.Start, track.Definition.Id, binding.Id, generation, item.Request.AssetId, Gain(track, item), fade));
+        foreach (var effect in _state.Table<AudioSEffectState>().Values.Where(value => value.TrackId == track.State.Id))
+            SendEffect(track, item, effect, AudioBackendAction.ApplySEffect);
     }
-
-    private float EffectiveGain(TrackState track, VoiceState voice)
+    private void SendItem(TrackBinding track, AudioItemState item, AudioBackendAction action, float fade = 0)
+    {
+        if (!_catchUp && _voices.TryGetValue(item.Id, out var binding))
+            _dispatcher.Enqueue(new(action, track.State.Id, binding.Id, binding.Generation, Gain: Gain(track, item), FadeSeconds: fade));
+    }
+    private void SendEffect(TrackBinding track, AudioItemState item, AudioSEffectState effect, AudioBackendAction action)
+    {
+        if (!_catchUp && _voices.TryGetValue(item.Id, out var binding))
+            _dispatcher.Enqueue(new(action, track.State.Id, binding.Id, binding.Generation, SEffectId: effect.SEffectId,
+                SEffectInstanceId: effect.InstanceId, SEffectParameters: effect.Parameters));
+    }
+    private float Gain(TrackBinding track, AudioItemState item)
     {
         var (volume, muted) = track.Definition.Bus switch
         {
@@ -333,156 +305,70 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
             _ => (_settings.SfxVolume, _settings.SfxMuted)
         };
         if (_settings.MasterMuted || muted) return 0;
-        var gain = track.Definition.DefaultGain * voice.Gain * volume * _settings.MasterVolume;
-        return float.IsFinite(gain) ? Math.Clamp(gain, 0f, 1f) : 0;
+        var gain = track.Definition.DefaultGain * item.Request.Gain * volume * _settings.MasterVolume;
+        return float.IsFinite(gain) ? Math.Clamp(gain, 0, 1) : 0;
     }
-
-    private void StopActive(TrackState track, float fadeSeconds)
+    private List<AudioPlaybackTicket> Tickets(string id)
+    { if (!_tickets.TryGetValue(id, out var tickets)) _tickets[id] = tickets = []; return tickets; }
+    private void Complete(AudioItemState item)
+    { if (_tickets.Remove(item.Id, out var tickets)) foreach (var ticket in tickets) ticket.Complete(); }
+    private void StopVoice(TrackBinding track, AudioItemState item, float fade)
     {
-        foreach (var voice in track.Active.ToArray()) StopVoice(track, voice, fadeSeconds);
+        track.State.Active.Remove(item); SendItem(track, item, AudioBackendAction.Stop, Math.Max(0, fade));
+        _voices.Remove(item.Id); Complete(item);
     }
-
-    private void StopVoice(TrackState track, VoiceState voice, float fadeSeconds)
+    private void StopActive(TrackBinding track, float fade) { foreach (var item in track.State.Active.ToArray()) StopVoice(track, item, fade); }
+    private void ClearPending(TrackBinding track) { foreach (var item in track.State.Pending) Complete(item); track.State.Pending.Clear(); }
+    private void StopBindings()
     {
-        track.Active.Remove(voice);
-        foreach (var ticket in voice.Tickets) ticket.Complete();
-        Send(new(AudioBackendAction.Stop, track.Definition.Id, voice.Id, voice.Generation, FadeSeconds: Math.Max(0, fadeSeconds)));
+        var bindings = _voices.Values.ToArray();
+        _voices.Clear();
+        var pendingTickets = _tickets.Values.SelectMany(tickets => tickets).ToArray();
+        _tickets.Clear();
+        // Some hosts report an end synchronously from Stop. Invalidate identities before calling them.
+        foreach (var binding in bindings)
+            _dispatcher.Enqueue(new(AudioBackendAction.Stop, binding.TrackId, binding.Id, binding.Generation));
+        foreach (var ticket in pendingTickets) ticket.Complete();
     }
-
-    private void OnBackendEvent(AudioBackendEvent backendEvent)
+    private void OnBackendEvent(AudioBackendEvent value)
     {
-        lock (_gate)
+        lock (_gate) lock (_state.SyncRoot)
         {
-            if (_disposed || !_tracks.TryGetValue(backendEvent.TrackId, out var track)) return;
-            var voice = track.Active.FirstOrDefault(candidate => candidate.Id == backendEvent.VoiceId && candidate.Generation == backendEvent.Generation);
-            if (voice is null) return;
-            if (backendEvent.Kind is AudioBackendEventKind.Ended or AudioBackendEventKind.Failed)
-            {
-                track.Active.Remove(voice);
-                foreach (var ticket in voice.Tickets) ticket.Complete();
-                if (_backendQueues.Remove(voice.Id, out var queue))
-                {
-                    queue.StartCancellation.Cancel();
-                    _ = ReleaseQueueAsync(queue);
-                }
-                if (backendEvent.Kind == AudioBackendEventKind.Failed) Report(backendEvent.Message ?? $"Audio backend failed for '{voice.AssetId}'.");
-                Pump(track);
-            }
+            if (_disposed || value.Kind is not (AudioBackendEventKind.Ended or AudioBackendEventKind.Failed) || !_tracks.TryGetValue(value.TrackId, out var track)) return;
+            var item = track.State.Active.FirstOrDefault(item => _voices.TryGetValue(item.Id, out var voice) && voice.Id == value.VoiceId && voice.Generation == value.Generation);
+            if (item is null) return;
+            track.State.Active.Remove(item); _voices.Remove(item.Id); _dispatcher.CompleteVoice(value.VoiceId);
+            if (value.Kind == AudioBackendEventKind.Failed) Report(value.Message ?? $"Audio backend failed for '{item.Request.AssetId}'.");
+            Pump(track);
+            Complete(item);
         }
     }
-
-    private void Send(AudioBackendRequest request)
-    {
-        if (_catchUp) return;
-        if (_host is null)
-        {
-            Report($"No audio playback host is available for '{request.TrackId}'.");
-            return;
-        }
-        if (request.Action is AudioBackendAction.ApplySEffect or AudioBackendAction.StopSEffect && !_host.Capabilities.SupportsTrackSEffects)
-        {
-            Report($"Audio backend does not support SEffect on '{request.TrackId}'.");
-            return;
-        }
-        if (request.FadeSeconds > 0 && !_host.Capabilities.SupportsFade)
-        {
-            Report($"Audio backend does not support fades on '{request.TrackId}'; applying immediately.");
-            request = request with { FadeSeconds = 0 };
-        }
-        if (!_backendQueues.TryGetValue(request.VoiceId, out var queue))
-        {
-            queue = new BackendQueue();
-            _backendQueues.Add(request.VoiceId, queue);
-        }
-        // Stop invalidates an in-flight asset load immediately; subsequent commands
-        // for this voice still run in order after the producer has observed cancellation.
-        if (request.Action == AudioBackendAction.Stop) queue.StartCancellation.Cancel();
-        queue.Tail = SendAsync(queue.Tail, queue, request);
-        _pendingRequests.RemoveAll(task => task.IsCompleted);
-        _pendingRequests.Add(queue.Tail);
-    }
-
-    private async Task SendAsync(Task previous, BackendQueue queue, AudioBackendRequest request)
-    {
-        try
-        {
-            await previous.ConfigureAwait(false);
-            var cancellation = request.Action == AudioBackendAction.Start ? queue.StartCancellation.Token : CancellationToken.None;
-            cancellation.ThrowIfCancellationRequested();
-            await _host!.ApplyAsync(request, cancellation).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (queue.StartCancellation.IsCancellationRequested) { }
-        catch (Exception exception)
-        {
-            Report($"Audio backend request failed: {exception.Message}");
-            if (request.Action == AudioBackendAction.Start)
-                OnBackendEvent(new(AudioBackendEventKind.Failed, request.TrackId, request.VoiceId, request.Generation, exception.Message));
-        }
-        finally
-        {
-            if (request.Action == AudioBackendAction.Stop)
-            {
-                lock (_gate) _backendQueues.Remove(request.VoiceId);
-                queue.StartCancellation.Dispose();
-            }
-        }
-    }
-
-    private sealed class BackendQueue
-    {
-        public Task Tail { get; set; } = Task.CompletedTask;
-        public CancellationTokenSource StartCancellation { get; } = new();
-    }
-
-    private static async Task ReleaseQueueAsync(BackendQueue queue)
-    {
-        // Backend events may arrive synchronously inside ApplyAsync, before Send
-        // has assigned its returned task. Wait for that assignment before cleanup.
-        await Task.Yield();
-        await queue.Tail.ConfigureAwait(false);
-        queue.StartCancellation.Dispose();
-    }
-
-    private void Report(string message) => Diagnostic?.Invoke(message);
-
-    private sealed class TrackState(AudioTrackDefinition definition)
-    {
-        public AudioTrackDefinition Definition { get; } = definition;
-        public List<VoiceState> Active { get; } = [];
-        public List<QueuedPlay> Pending { get; } = [];
-        public Dictionary<string, AudioSEffectRequest> SEffects { get; } = new(StringComparer.Ordinal);
-    }
-
-    private sealed class VoiceState(string id, long generation, AudioPlayRequest request)
-    {
-        public string Id { get; } = id;
-        public long Generation { get; } = generation;
-        public AudioPlayRequest Request { get; } = request;
-        public string AssetId { get; } = request.AssetId;
-        public float Gain { get; set; } = request.Gain;
-        public List<AudioPlaybackTicket> Tickets { get; } = [];
-    }
-
-    private sealed record QueuedPlay(AudioPlayRequest Request, AudioPlaybackTicket Ticket);
-
-    private static void ClearPending(TrackState track)
-    {
-        foreach (var item in track.Pending) item.Ticket.Complete();
-        track.Pending.Clear();
-    }
-
     private void StopTicket(AudioPlaybackTicket ticket)
     {
-        lock (_gate)
+        lock (_gate) lock (_state.SyncRoot)
         {
             foreach (var track in _tracks.Values)
             {
-                track.Pending.RemoveAll(item => ReferenceEquals(item.Ticket, ticket));
-                foreach (var voice in track.Active.Where(voice => voice.Tickets.Contains(ticket)).ToArray())
-                    StopVoice(track, voice, 0);
+                foreach (var item in track.State.Pending.Where(item => Tickets(item.Id).Contains(ticket)).ToArray())
+                { track.State.Pending.Remove(item); Complete(item); }
+                foreach (var item in track.State.Active.Where(item => Tickets(item.Id).Contains(ticket)).ToArray()) StopVoice(track, item, 0);
                 Pump(track);
             }
             ticket.Complete();
         }
     }
+    public void Dispose()
+    {
+        lock (_gate)
+        {
+            if (_disposed) return; _disposed = true;
+            StopBindings(); if (_host is not null) _host.EventReceived -= OnBackendEvent;
+        }
+    }
+    public async ValueTask DisposeAsync() { Dispose(); await _dispatcher.DrainAsync().ConfigureAwait(false); }
+    private void Report(string message) => Diagnostic?.Invoke(message);
+    private static bool ValidDefinition(AudioTrackDefinition value) => AudioBuses.IsValid(value.Bus) && value.MaxVoices > 0 &&
+        value.MaxQueuedItems >= 0 && float.IsFinite(value.DefaultGain);
+    private sealed record TrackBinding(AudioTrackDefinition Definition, AudioTrackState State);
+    private sealed record VoiceBinding(string TrackId, string Id, long Generation);
 }

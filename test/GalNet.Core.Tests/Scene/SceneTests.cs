@@ -57,31 +57,29 @@ public class LayerTests
     }
 }
 
-public class SceneStateTests
+public class GameStateTableTests
 {
     [Test]
-    public void SceneState_Should_Have_Empty_Collections_By_Default()
+    public void RegisteredTablesAreEmptyAndUnregisteredTypesAreRejected()
     {
-        var scene = new SceneState();
-        Assert.That(scene.Layers, Is.Empty);
-        Assert.That(scene.ActiveEffects, Is.Empty);
-        Assert.That(scene.ActiveAnimations, Is.Empty);
+        var builder = new GalNet.Core.Runtime.StateCatalogBuilder();
+        builder.Register<Layer>("layers", value => value.Id);
+        var state = new GalNet.Core.Runtime.GameState(builder.Build());
+        Assert.That(state.Table<Layer>().Values, Is.Empty);
+        Assert.Throws<InvalidOperationException>(() => state.Table<EffectInstance>());
     }
-
     [Test]
-    public void SceneState_Should_Store_Layers_And_Controls()
+    public void TablesRejectDuplicateIdsAndCaptureDetachedPayloads()
     {
-        var scene = new SceneState
-        {
-            Layers =
-            {
-                new Layer { Id = "bg", AssetId = "bg_classroom", Z = 0 },
-                new Layer { Id = "alice", AssetId = "alice_smile", Z = 10 }
-            },
-            ActiveEffects = { new ActiveEffectState { InstanceId = "shake" } }
-        };
-
-        Assert.That(scene.Layers, Has.Count.EqualTo(2));
-        Assert.That(scene.ActiveEffects[0].InstanceId, Is.EqualTo("shake"));
+        var builder = new GalNet.Core.Runtime.StateCatalogBuilder();
+        builder.Register<Layer>("layers", value => value.Id);
+        var catalog = builder.Build();
+        var state = new GalNet.Core.Runtime.GameState(catalog);
+        state.Table<Layer>().Add(new Layer { Id = "bg", AssetId = "before" });
+        var snapshot = state.Capture();
+        Assert.Throws<InvalidDataException>(() => state.Table<Layer>().Add(new Layer { Id = "bg" }));
+        state.Table<Layer>().Get("bg").AssetId = "after";
+        var restored = GalNet.Core.Runtime.GameState.Restore(catalog, snapshot);
+        Assert.That(restored.Table<Layer>().Get("bg").AssetId, Is.EqualTo("before"));
     }
 }

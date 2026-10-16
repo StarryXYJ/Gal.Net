@@ -8,6 +8,8 @@ namespace GalNet.Avalonia.GameView.ViewModels;
 
 public sealed partial class GamePageViewModel
 {
+    public GalNet.Avalonia.GameView.Input.PlayerInputSettings? Input { get; set; }
+    public Task SetQuickHeldAsync(bool held) => RequestModeAsync(held ? PlaybackMode.Quick : PlaybackMode.Manual);
     private IPlayerPlaybackController? _playback;
     private Task _playbackRequests = Task.CompletedTask;
     private PlaybackMode? _pointerToggle;

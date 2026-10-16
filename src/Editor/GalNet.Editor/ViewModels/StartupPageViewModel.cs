@@ -1,6 +1,6 @@
 using System;
-using System.Globalization;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -13,12 +13,20 @@ using Serilog;
 
 namespace GalNet.Editor.ViewModels;
 
-public partial class StartupPageViewModel : PageViewModelBase
+public partial class StartupPageViewModel : PageViewModelBase, IDisposable
 {
     private readonly INavigationService _navigation;
     private readonly IProjectService _projectService;
     private readonly IEditorPageFactory _editorPageFactory;
     private readonly IFileDialogService _fileDialog;
+    private Exception? _error;
+    private void OnCultureChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName != "Item[]") return;
+        Title = L["App.Title"];
+        ErrorText = _error is null ? "" : EditorText.Error(_error).Render(L);
+    }
+    public void Dispose() { L.PropertyChanged -= OnCultureChanged; GC.SuppressFinalize(this); }
     public IEditorLocalizationService L { get; }
 
     public StartupPageViewModel(
@@ -34,16 +42,13 @@ public partial class StartupPageViewModel : PageViewModelBase
         _fileDialog = fileDialog;
         L = localization;
         Title = L["App.Title"];
-        L.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == "Item[]")
-                Title = L["App.Title"];
-        };
+        L.PropertyChanged += OnCultureChanged;
 
         RefreshRecentProjects();
     }
 
     public ObservableCollection<RecentProjectItem> RecentProjects { get; } = [];
+    [ObservableProperty] private string _errorText = "";
 
     private void RefreshRecentProjects()
     {
@@ -72,9 +77,11 @@ public partial class StartupPageViewModel : PageViewModelBase
     [RelayCommand]
     private async Task OpenProjectAsync()
     {
+        _error = null;
+        ErrorText = "";
         try
         {
-            var projectPath = await _fileDialog.OpenFolderPickerAsync("Select project folder");
+            var projectPath = await _fileDialog.OpenFolderPickerAsync(L["NewProject.BrowseParent"]);
             if (projectPath == null) return;
 
             var project = await _projectService.OpenAsync(projectPath);
@@ -83,12 +90,16 @@ public partial class StartupPageViewModel : PageViewModelBase
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to open project");
+            _error = ex;
+            ErrorText = EditorText.Error(ex).Render(L);
         }
     }
 
     [RelayCommand]
     private async Task OpenRecentProjectAsync(RecentProjectItem? item)
     {
+        _error = null;
+        ErrorText = "";
         if (item == null) return;
 
         try
@@ -96,6 +107,8 @@ public partial class StartupPageViewModel : PageViewModelBase
             if (!Directory.Exists(item.Path))
             {
                 Log.Warning("Recent project path no longer exists: {Path}", item.Path);
+                _error = new EditorOperationException("project.folderMissing", "Project folder not found.", item.Path);
+                ErrorText = EditorText.Error(_error).Render(L);
                 _projectService.RemoveRecentProject(item.Path);
                 RefreshRecentProjects();
                 return;
@@ -107,6 +120,8 @@ public partial class StartupPageViewModel : PageViewModelBase
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to open recent project: {Path}", item.Path);
+            _error = ex;
+            ErrorText = EditorText.Error(ex).Render(L);
         }
     }
 

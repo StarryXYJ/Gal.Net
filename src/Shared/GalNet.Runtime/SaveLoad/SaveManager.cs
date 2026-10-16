@@ -11,6 +11,7 @@ public static class SaveManager
     private static readonly JsonSerializerOptions Options = new()
     {
         WriteIndented = true,
+        AllowDuplicateProperties = false,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
@@ -23,7 +24,7 @@ public static class SaveManager
     /// <summary>从 JSON 字符串反序列化。</summary>
     public static GameSnapshot? Deserialize(string json)
     {
-        using var document = JsonDocument.Parse(json);
+        using var document = JsonDocument.Parse(json, new JsonDocumentOptions { AllowDuplicateProperties = false });
         if (document.RootElement.ValueKind != JsonValueKind.Object ||
             !document.RootElement.TryGetProperty("version", out var version) ||
             !version.TryGetInt32(out var formatVersion) ||
@@ -34,21 +35,4 @@ public static class SaveManager
         return snapshot?.Version == GameSnapshot.CurrentFormatVersion ? snapshot : null;
     }
 
-    /// <summary>保存到文件。</summary>
-    public static void SaveToFile(GameSnapshot data, string path)
-    {
-        var json = Serialize(data);
-        var dir = Path.GetDirectoryName(path);
-        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-            Directory.CreateDirectory(dir);
-        File.WriteAllText(path, json);
-    }
-
-    /// <summary>从文件加载。</summary>
-    public static GameSnapshot? LoadFromFile(string path)
-    {
-        if (!File.Exists(path)) return null;
-        var json = File.ReadAllText(path);
-        return Deserialize(json);
-    }
 }

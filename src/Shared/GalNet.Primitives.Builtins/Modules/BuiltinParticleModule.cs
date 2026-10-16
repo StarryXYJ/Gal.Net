@@ -1,15 +1,27 @@
+using GalNet.Contracts.Builtins;
+using GalNet.Core.Scene;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 
 namespace GalNet.Primitives.Builtins;
 
-public sealed class BuiltinParticleModule : PrimitiveModule
-{
-    public BuiltinParticleModule(IParticlePresenter? presenter = null) : base(
-    [
-        BuiltinInstructionFactory.Create<PlayParticleEmitterEntry>(context => new PlayParticlePrimitiveInstance(context.Runtime, presenter, BuiltinRuntimeActions.CreateParticleRequest(context), context.BatchId, context.ScopeCancellation)),
-        BuiltinInstructionFactory.Create<BurstParticlesEntry>(context => new BurstParticlePrimitiveInstance(presenter, BuiltinRuntimeActions.CreateParticleBurstRequest(context), context.BatchId, context.ScopeCancellation)),
-        BuiltinInstructionFactory.Create<StopParticleEmitterEntry>(context => new StopParticlePrimitiveInstance(context.Runtime, presenter, Arguments.String(context, "instanceId"), context.BatchId, context.ScopeCancellation))
-    ])
-    { }
-}
+public sealed class BuiltinParticleModule(IParticlePresenter? presenter = null) : PrimitiveModule(
+    registry =>
+    {
+        registry.State<ParticleEmitterInstance>("builtin.particles", value => value.Id, async context =>
+        {
+            if (presenter is null) return;
+            foreach (var emitter in context.Runtime.State.Table<ParticleEmitterInstance>().Values)
+            {
+                context.Own(() => presenter.StopParticleEmitterAsync(emitter.Id, CancellationToken.None));
+                await presenter.StartParticleEmitterAsync(new ParticleEmitterRequest(emitter.Id, emitter.Definition, emitter.Z)
+                { AnimationValues = emitter.AnimationValues }, context.CancellationToken).ConfigureAwait(false);
+            }
+        });
+        registry.Register<ParticlePlayOptions>(BuiltinEntryIds.PlayParticleEmitter, (context, options) =>
+            new PlayParticlePrimitiveInstance(presenter, context, options));
+        registry.Register<ParticleBurstOptions>(BuiltinEntryIds.BurstParticles, (context, options) =>
+            new BurstParticlePrimitiveInstance(presenter, context, options));
+        registry.Register<InstanceIdOptions>(BuiltinEntryIds.StopParticleEmitter, (context, options) =>
+            new StopParticlePrimitiveInstance(presenter, context, options));
+    });

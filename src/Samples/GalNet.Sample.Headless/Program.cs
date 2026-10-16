@@ -1,11 +1,12 @@
 using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
 using GalNet.Core.Settings;
+using GalNet.GameHost;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
-using GalNet.Runtime.Engine;
 using GalNet.Runtime.Persistence;
 using GalNet.Runtime.Runtime;
+using GalNet.Runtime.Variables;
 using GalNet.Sample.Headless;
 using GalNet.Sample.Localization;
 using GalNet.Storage.FileSystem;
@@ -25,29 +26,34 @@ try
     var content = await installation.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync();
     foreach (var diagnostic in content.Localization.Diagnostics)
         Console.Error.WriteLine($"Skipped localization source '{diagnostic.RelativePath}': {diagnostic.Message}");
-    var textResolver = new GameTextResolver(content, () => content.Settings.TargetLocale.ToCultureInfo());
+    var textResolver = new GameLocalizationProvider(content, () => content.Settings.TargetLocale.ToCultureInfo());
     var settings = new SettingsContainer();
     settings.Set(content.Settings);
     settings.Set(new GameSettings());
 
     var saves = new FileSaveService(options.ProfileDirectory);
-    var variables = await FileVariableService.CreateAsync(new FilePlayerVariableStore(options.ProfileDirectory));
+    var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(options.ProfileDirectory));
     variables.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(content.Gallery));
-    var progress = new FileGameProgressService(options.ProfileDirectory);
+    await using var progress = new FileGameProgressService(options.ProfileDirectory);
 
     var presentation = new ConsolePresentation(settings.Get<GameSettings>());
-    await using var view = new GameRegistration().AddBuiltins(
+    using var registration = new GameRegistration();
+    registration.UseCatalog(GalNet.Project.Contracts.ProjectSchemas.CreateCatalog());
+    await using var view = registration.AddBuiltinImplementations(registration.BuildCatalog(),
         presentation, presentation, presentation, presentation, content.Gallery, nvlPresenter: presentation,
         characters: content.Localization.Characters).BuildView();
+    view.RequireInstructions(content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>().SelectMany(group => group.Entries).Select(entry => entry.Type));
 
     var runtime = new GameRuntime(textResolver, content.Graph.RootNodeId, settings, variables);
-    using var engine = new GameEngine(content.Graph, runtime, view, progress, presentation);
+    await using var run = new GameRun(content.Graph, runtime, view, progress, presentation);
+    var engine = run.Engine;
 
+    GalNet.Core.Runtime.GameSnapshot? initialSnapshot = null;
     if (options.LoadSlot is { } loadSlot)
     {
         var snapshot = await saves.LoadAsync(loadSlot)
             ?? throw new InvalidOperationException($"Save slot {loadSlot} is empty or invalid.");
-        engine.RestoreFrom(snapshot);
+        initialSnapshot = snapshot;
         Console.WriteLine($"[Save] loaded slot {loadSlot}");
     }
 
@@ -68,7 +74,8 @@ try
         catch (Exception exception) { advanceFailure.TrySetResult(exception); }
     }
 
-    await engine.AdvanceAsync();
+    await run.PrepareAsync(initialSnapshot);
+    await run.StartPreparedAsync();
     while (engine.IsRunning)
     {
         var completed = await Task.WhenAny(Task.Delay(25), advanceFailure.Task);
@@ -80,6 +87,7 @@ try
 
     if (options.SaveSlot is { } finalSaveSlot)
     {
+        await progress.FlushAsync();
         await saves.SaveAsync(finalSaveSlot, new SaveRequest { Snapshot = engine.CreateSaveData() });
         Console.WriteLine($"[Save] wrote slot {finalSaveSlot}");
     }

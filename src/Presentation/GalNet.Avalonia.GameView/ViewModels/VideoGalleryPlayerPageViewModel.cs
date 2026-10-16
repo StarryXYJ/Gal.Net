@@ -1,6 +1,5 @@
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Core.Gallery;
@@ -10,7 +9,7 @@ namespace GalNet.Avalonia.GameView.ViewModels;
 
 public sealed partial class VideoGalleryPlayerPageViewModel(
     IGameNavigationService navigation,
-    GalleryMediaService media) : PageViewModelBase, IActivatablePageViewModel<GalleryItemData>, IDisposable
+    GalleryMediaService media) : BackNavigablePageViewModel(navigation), IActivatablePageViewModel<GalleryItemData>, IDisposable
 {
     public MediaPlayer? VideoPlayer => media.VideoPlayer;
     [ObservableProperty] private string _title = "Gallery";
@@ -27,6 +26,6 @@ public sealed partial class VideoGalleryPlayerPageViewModel(
         return Task.CompletedTask;
     }
 
-    [RelayCommand] private void Back() { media.StopVideo(); navigation.GoBack(); }
+    protected override void OnBack() { media.StopVideo(); base.OnBack(); }
     public void Dispose() => media.StopVideo();
 }

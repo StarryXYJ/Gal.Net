@@ -1,6 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:loc="clr-namespace:GalNet.Sample.Avalonia.MarkupExtensions"
+             xmlns:loc="clr-namespace:GalNet.Avalonia.GameView.MarkupExtensions;assembly=GalNet.Avalonia.GameView"
              xmlns:locSetting="using:GalNet.Avalonia.GameView.Services"
              xmlns:vm="using:GalNet.Sample.Avalonia.ViewModels"
              x:Class="GalNet.Sample.Avalonia.Views.LanguageSelectionView" Classes="galnet-player"

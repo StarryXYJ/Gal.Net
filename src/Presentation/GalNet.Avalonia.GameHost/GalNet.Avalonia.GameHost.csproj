@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Infrastructure/GalNet.Storage.FileSystem/GalNet.Storage.FileSystem.csproj" />
+    <ProjectReference Include="../../Infrastructure/GalNet.Media.LibVlc/GalNet.Media.LibVlc.csproj" />
+    <PackageReference Include="DynamicLocalization.Core" />
+    <ProjectReference Include="../../Shared/GalNet.GameHost/GalNet.GameHost.csproj" />
+    <ProjectReference Include="../GalNet.Avalonia.Controls/GalNet.Avalonia.Controls.csproj" />
+    <ProjectReference Include="../GalNet.Avalonia.GameView/GalNet.Avalonia.GameView.csproj" />
+    <ProjectReference Include="../../Shared/GalNet.Primitives.Builtins/GalNet.Primitives.Builtins.csproj" />
+    <ProjectReference Include="../../Shared/GalNet.Runtime/GalNet.Runtime.csproj" />
+    <ProjectReference Include="../../Shared/GalNet.Presentation.Abstractions/GalNet.Presentation.Abstractions.csproj" />
+    <ProjectReference Include="../../Shared/GalNet.Assets/GalNet.Assets.csproj" />
+    <ProjectReference Include="../../Shared/GalNet.Core/GalNet.Core.csproj" />
+    <ProjectReference Include="../GalNet.Avalonia.Rendering/GalNet.Avalonia.Rendering.csproj" />
+  </ItemGroup>
+</Project>

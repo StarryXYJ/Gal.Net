@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
+using System.Text.Json;
 using DynamicLocalization.Core;
 using DynamicLocalization.Core.Providers;
 using GalNet.Editor.Abstraction.Services;
@@ -11,6 +12,8 @@ namespace GalNet.Editor.Services;
 public sealed class EditorLocalizationService : IEditorLocalizationService
 {
     private readonly CultureService _cultureService;
+    private readonly Dictionary<string, string> _fallback;
+    public const string DefaultLocale = "zh-CN";
 
     public static IEditorLocalizationService? Current { get; private set; }
 
@@ -26,7 +29,15 @@ public sealed class EditorLocalizationService : IEditorLocalizationService
 
     public CultureInfo CurrentCulture => _cultureService.CurrentCulture;
 
-    public string this[string key] => _cultureService[key];
+    public string this[string key]
+    {
+        get
+        {
+            var value = _cultureService[key];
+            if (!string.IsNullOrEmpty(value) && value != key && value != "#" + key + "#") return value;
+            return _fallback.GetValueOrDefault(key, "[" + key + "]");
+        }
+    }
 
     public EditorLocalizationService()
     {
@@ -42,21 +53,32 @@ public sealed class EditorLocalizationService : IEditorLocalizationService
         });
 
         _cultureService.RegisterProvider(provider);
+        var assembly = typeof(MainWindow).Assembly;
+        using var stream = assembly.GetManifestResourceStream(assembly.GetManifestResourceNames().Single(name => name.EndsWith("Localization.zh-CN.json", StringComparison.Ordinal)))!;
+        _fallback = JsonSerializer.Deserialize<Dictionary<string, string>>(stream)!;
+        ApplyLocale(DefaultLocale);
     }
 
     public string Format(string key, params object[] args)
     {
         var template = this[key];
-        return string.Format(CultureInfo.CurrentCulture, template, args);
+        return string.Format(CurrentCulture, template, args);
     }
 
     public void ApplyLocale(string localeCode)
     {
-        ApplyCulture(new CultureInfo(localeCode));
+        localeCode = string.IsNullOrWhiteSpace(localeCode) ? DefaultLocale : localeCode.Replace("_", "-", StringComparison.Ordinal);
+        CultureInfo culture;
+        try { culture = CultureInfo.GetCultureInfo(localeCode); }
+        catch (CultureNotFoundException) { culture = CultureInfo.GetCultureInfo(DefaultLocale); }
+        ApplyCulture(culture);
     }
 
     public void ApplyCulture(CultureInfo culture)
     {
+        culture = AvailableCultures.FirstOrDefault(item => item.Name.Equals(culture.Name, StringComparison.OrdinalIgnoreCase))
+            ?? AvailableCultures.FirstOrDefault(item => item.TwoLetterISOLanguageName == culture.TwoLetterISOLanguageName)
+            ?? CultureInfo.GetCultureInfo(DefaultLocale);
         if (_cultureService.CurrentCulture.Name == culture.Name) return;
 
         _cultureService.SetCulture(culture.Name);

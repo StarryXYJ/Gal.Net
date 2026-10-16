@@ -10,26 +10,33 @@ public class ProjectDependencyTests
         new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
             ["GalNet.Core"] = [],
+            ["GalNet.Contracts.Builtins"] = ["GalNet.Core", "GalNet.SchemaGenerator"],
+            ["GalNet.Sample.Contracts"] = ["GalNet.Core", "GalNet.Contracts.Builtins", "GalNet.SchemaGenerator"],
+            ["GalNet.SchemaGenerator"] = [],
             ["GalNet.Presentation.Abstractions"] = ["GalNet.Core"],
+            ["GalNet.GameHost"] = ["GalNet.Core", "GalNet.Runtime", "GalNet.Presentation.Abstractions"],
             ["GalNet.Runtime"] = ["GalNet.Core", "GalNet.Presentation.Abstractions"],
-            ["GalNet.Primitives.Builtins"] = ["GalNet.Core", "GalNet.Presentation.Abstractions", "GalNet.Runtime"],
+            ["GalNet.Primitives.Builtins"] = ["GalNet.Core", "GalNet.Contracts.Builtins", "GalNet.Presentation.Abstractions", "GalNet.Runtime"],
+            ["GalNet.Media.LibVlc"] = ["GalNet.Core", "GalNet.Assets", "GalNet.Presentation.Abstractions"],
             ["GalNet.Assets"] = ["GalNet.Core"],
-            ["GalNet.Storage.FileSystem"] = ["GalNet.Core", "GalNet.Runtime", "GalNet.Assets"],
+            ["GalNet.Storage.FileSystem"] = ["GalNet.Core", "GalNet.Runtime", "GalNet.Assets", "GalNet.GameHost"],
             ["GalNet.Editor.Abstraction"] = ["GalNet.Core"],
+            ["GalNet.Editor.DefaultContracts"] = ["GalNet.Contracts.Builtins"],
             ["GalNet.Editor.Shared"] =
             [
                 "GalNet.Core",
                 "GalNet.Editor.Abstraction",
-                "GalNet.Primitives.Builtins",
+                "GalNet.Contracts.Builtins",
                 "GalNet.Runtime",
                 "GalNet.Assets"
             ],
+            ["GalNet.Avalonia.GameHost"] = ["GalNet.Storage.FileSystem", "GalNet.Media.LibVlc", "GalNet.GameHost", "GalNet.Avalonia.Controls", "GalNet.Avalonia.GameView", "GalNet.Avalonia.Rendering", "GalNet.Primitives.Builtins", "GalNet.Runtime", "GalNet.Presentation.Abstractions", "GalNet.Assets", "GalNet.Core"],
             ["GalNet.Avalonia.Controls"] = ["GalNet.Core"],
             ["GalNet.Avalonia.Themes"] = ["GalNet.Avalonia.Controls", "GalNet.Avalonia.GameView"],
             ["GalNet.Avalonia.GameView"] =
             [
                 "GalNet.Avalonia.Controls", "GalNet.Avalonia.Rendering",
-                "GalNet.Presentation.Abstractions", "GalNet.Core"
+                "GalNet.Presentation.Abstractions", "GalNet.Core", "GalNet.Assets"
             ],
             ["GalNet.Avalonia.Rendering"] = ["GalNet.Core"]
         };
@@ -38,6 +45,7 @@ public class ProjectDependencyTests
         new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
             ["GalNet.Architecture.Tests"] = [],
+            ["GalNet.GameHost.Tests"] = ["GalNet.GameHost"],
             ["GalNet.Core.Tests"] = ["GalNet.Core"],
             ["GalNet.Runtime.Tests"] = ["GalNet.Core", "GalNet.Presentation.Abstractions", "GalNet.Runtime"],
             ["GalNet.Primitives.Builtins.Tests"] =
@@ -45,6 +53,7 @@ public class ProjectDependencyTests
                 "GalNet.Core",
                 "GalNet.Presentation.Abstractions",
                 "GalNet.Primitives.Builtins",
+                "GalNet.Contracts.Builtins",
                 "GalNet.Runtime"
             ],
             ["GalNet.Assets.Tests"] = ["GalNet.Assets", "GalNet.Core"],
@@ -57,21 +66,29 @@ public class ProjectDependencyTests
             ],
             ["GalNet.Editor.Shared.Tests"] =
             [
+                "GalNet.Editor.Headless",
+                "SchemaA", "SchemaB", "SchemaDuplicate", "SchemaInvalid", "SchemaIncompatible",
                 "GalNet.Core",
                 "GalNet.Editor.Abstraction",
                 "GalNet.Editor.Shared",
-                "GalNet.Primitives.Builtins"
+                "GalNet.Primitives.Builtins",
+                "GalNet.Contracts.Builtins"
             ],
             ["GalNet.Editor.Tests"] =
             [
+                "GalNet.SchemaGenerator",
+                "SchemaA", "SchemaB",
                 "GalNet.Core",
                 "GalNet.Editor",
                 "GalNet.Editor.Abstraction",
                 "GalNet.Editor.Shared",
-                "GalNet.Primitives.Builtins"
+                "GalNet.Primitives.Builtins",
+                "GalNet.Contracts.Builtins"
             ],
             ["GalNet.Presentation.Tests"] =
             [
+                "GalNet.Media.LibVlc",
+                "GalNet.SchemaGenerator",
                 "GalNet.Assets",
                 "GalNet.Avalonia.Controls",
                 "GalNet.Avalonia.GameView",
@@ -81,6 +98,7 @@ public class ProjectDependencyTests
                 "GalNet.Presentation.Abstractions",
                 "GalNet.Runtime"
             ],
+            ["GalNet.SchemaGenerator.Tests"] = ["GalNet.SchemaGenerator", "GalNet.Core"],
             ["GalNet.IntegrationTests"] =
             [
                 "GalNet.Assets",
@@ -89,6 +107,7 @@ public class ProjectDependencyTests
                 "GalNet.Editor.Shared",
                 "GalNet.Presentation.Abstractions",
                 "GalNet.Primitives.Builtins",
+                "GalNet.Contracts.Builtins",
                 "GalNet.Runtime",
                 "GalNet.Sample.Avalonia",
                 "GalNet.Storage.FileSystem"
@@ -140,6 +159,19 @@ public class ProjectDependencyTests
         Assert.That(consumers, Is.Empty, $"Test projects reference other test projects: {string.Join(", ", consumers)}");
     }
 
+    [TestCase("GalNet.Sample.Contracts", false)]
+    [TestCase("GalNet.Contracts.Builtins", false)]
+    [TestCase("GalNet.Editor.Tests", true)]
+    [TestCase("GalNet.Presentation.Tests", true)]
+    public void SchemaGeneratorReferencesAreBuildOnly(string project, bool testProject)
+    {
+        var file = testProject ? FindTestProjectFile(project) : FindProjectFile(project);
+        var reference = XDocument.Load(file).Descendants("ProjectReference")
+            .Single(item => ((string?)item.Attribute("Include"))?.Contains("GalNet.SchemaGenerator.csproj", StringComparison.Ordinal) == true);
+        Assert.That((string?)reference.Attribute("OutputItemType"), Is.EqualTo("Analyzer"));
+        Assert.That((string?)reference.Attribute("ReferenceOutputAssembly"), Is.EqualTo("false"));
+    }
+
     [Test]
     public void StorageAbstractions_IsAbsentFromTheProductionProjectGraph()
     {
@@ -156,8 +188,11 @@ public class ProjectDependencyTests
         });
     }
 
+    [TestCase("GalNet.GameHost", "GalNet.GameHost")]
+    [TestCase("GalNet.Media.LibVlc", "GalNet.Media.LibVlc")]
     [TestCase("GalNet.Presentation.Abstractions", "GalNet.Presentation.Abstractions")]
     [TestCase("GalNet.Primitives.Builtins", "GalNet.Primitives.Builtins")]
+    [TestCase("GalNet.Contracts.Builtins", "GalNet.Contracts.Builtins")]
     public void ExtensionProject_DeclaresOnlyOwnedNamespaces(string projectName, string namespaceRoot)
     {
         var projectDirectory = Path.GetDirectoryName(FindProjectFile(projectName))!;
@@ -178,6 +213,28 @@ public class ProjectDependencyTests
             unexpected,
             Is.Empty,
             $"{projectName} declares namespaces outside its owned root: {string.Join(", ", unexpected)}");
+    }
+
+    [TestCase("GalNet.GameHost")]
+    [TestCase("GalNet.Media.LibVlc")]
+    public void SharedHostAndAudioBackend_DoNotReferenceUiPackages(string project)
+    {
+        var packages = XDocument.Load(FindProjectFile(project)).Descendants("PackageReference")
+            .Select(reference => (string?)reference.Attribute("Include") ?? "").ToArray();
+        Assert.That(packages.Where(name => name.StartsWith("Avalonia", StringComparison.Ordinal) ||
+            name.StartsWith("SkiaSharp", StringComparison.Ordinal) || name.EndsWith(".Avalonia", StringComparison.Ordinal)), Is.Empty);
+    }
+
+    [Test]
+    public void Runtime_DoesNotPerformFileSystemIo()
+    {
+        var directory = Path.GetDirectoryName(FindProjectFile("GalNet.Runtime"))!;
+        var forbidden = new System.Text.RegularExpressions.Regex(@"\b(?:File|Directory)\s*\.");
+        var violations = Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !IsBuildOutput(path, directory))
+            .Where(path => forbidden.IsMatch(File.ReadAllText(path)))
+            .Select(path => Path.GetRelativePath(RepositoryRoot, path)).ToArray();
+        Assert.That(violations, Is.Empty, "Runtime must consume content and persistence ports instead of paths.");
     }
 
     private static string FindProjectFile(string projectName)

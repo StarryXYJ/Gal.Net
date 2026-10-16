@@ -1,6 +1,6 @@
-using GalNet.Avalonia.GameView.Services;
 using GalNet.Core.Assets;
 using GalNet.Core.Audio;
+using GalNet.Media.LibVlc;
 using GalNet.Presentation.Abstractions.Audio;
 
 namespace GeneralTest.Presentation;
@@ -12,7 +12,7 @@ public sealed class AvaloniaAudioLifetimeTests
     {
         LibVLCSharp.Shared.Core.Initialize(Environment.GetEnvironmentVariable("GALNET_AUDIO_LIBVLC")!);
         using var assets = new DelayedAssets();
-        await using var host = new AvaloniaAudioPlaybackHost(assets);
+        await using var host = new LibVlcAudioPlaybackHost(assets);
         Assert.That(host.InitializationError, Is.Null);
         var events = new List<AudioBackendEvent>();
         host.EventReceived += events.Add;

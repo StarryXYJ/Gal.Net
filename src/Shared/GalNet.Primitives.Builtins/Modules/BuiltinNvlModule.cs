@@ -1,26 +1,20 @@
-using GalNet.Core.Entry;
-using GalNet.Core.Primitives;
+using GalNet.Contracts.Builtins;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 
 namespace GalNet.Primitives.Builtins;
 
-public sealed class BuiltinNvlModule : PrimitiveModule
+public sealed class BuiltinNvlModule(INvlPresenter? presenter = null) : PrimitiveModule(
+    registry =>
+    {
+        Visibility(registry, BuiltinEntryIds.ShowNvl, presenter, static target => target.ShowNvl());
+        Visibility(registry, BuiltinEntryIds.HideNvl, presenter, static target => target.HideNvl());
+        Visibility(registry, BuiltinEntryIds.ClearNvl, presenter, static target => target.ClearNvl());
+        registry.Register<NvlAppendOptions>(BuiltinEntryIds.AppendNvl, (context, options) =>
+            new NvlAppendPrimitiveInstance(presenter, context, options));
+    })
 {
-    public BuiltinNvlModule(INvlPresenter? presenter = null) : base(
-    [
-        Visibility<ShowNvlEntry>(presenter, static target => target.ShowNvl()),
-        Visibility<HideNvlEntry>(presenter, static target => target.HideNvl()),
-        Visibility<ClearNvlEntry>(presenter, static target => target.ClearNvl()),
-        new PrimitiveImplementation(AppendNvlEntry.TypeId, context => new NvlAppendPrimitiveInstance(
-                presenter ?? throw new InvalidOperationException("The NVL module has no presenter."),
-                context.Runtime.TextResolver.Resolve(Arguments.String(context, "content")),
-                context.BatchId,
-                context.ScopeCancellation))
-    ])
-    { }
-
-    private static PrimitiveImplementation Visibility<TEntry>(INvlPresenter? presenter, Action<INvlPresenter> operation)
-        where TEntry : PrimitiveEntry, new() => new PrimitiveImplementation(new TEntry().Type, context => new ImmediatePrimitiveInstance(() => operation(
-            presenter ?? throw new InvalidOperationException("The NVL module has no presenter.")), batchId: context.BatchId));
+    private static void Visibility(PrimitiveRegistry registry, string type, INvlPresenter? presenter, Action<INvlPresenter> operation)
+        => registry.Immediate(type, _ => operation(
+            presenter ?? throw new InvalidOperationException("The NVL module has no presenter.")));
 }

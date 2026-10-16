@@ -9,6 +9,7 @@ using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Core.Assets;
+using GalNet.Core.Entry;
 using GalNet.Core.Runtime;
 using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Project;
@@ -110,6 +111,7 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
             var profileDirectory = Path.Combine(project.EditorStateDirectory, "player");
             var context = new EditorPreviewContext(
                 project.Name,
+                project.Services.GetRequiredService<IEntryCatalog>(),
                 _assets,
                 _contentProvider,
                 _variableService,

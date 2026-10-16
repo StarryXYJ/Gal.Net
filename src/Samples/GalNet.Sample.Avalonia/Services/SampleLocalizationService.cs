@@ -8,10 +8,10 @@ namespace GalNet.Sample.Avalonia.Services;
 
 /// <summary>Owns the official demo's observable LocalizedString values for the Sample lifetime.</summary>
 public sealed class SampleLocalizationService(CultureService cultureService,
-    IEnumerable<ILocalizationProvider>? bootstrapProviders = null) : IDisposable, ITextResolver
+    IEnumerable<ILocalizationProvider>? bootstrapProviders = null) : IDisposable, GalNet.Avalonia.GameHost.IPlayerLocalization
 {
     private readonly Dictionary<string, LocalizedString> _strings = new(StringComparer.Ordinal);
-    private GameTextResolver? _gameProvider;
+    private GameLocalizationProvider? _gameProvider;
     private readonly ILocalizationProvider[] _bootstrapProviders = bootstrapProviders?.ToArray() ?? [];
     public static SampleLocalizationService? Current { get; private set; }
 
@@ -21,7 +21,7 @@ public sealed class SampleLocalizationService(CultureService cultureService,
 
     public void AttachGame(GameContent content, IEnumerable<GameLocalizationSource>? additionalSources = null)
     {
-        var provider = new GameTextResolver(content, () => CultureService.CurrentCulture, _bootstrapProviders, additionalSources);
+        var provider = new GameLocalizationProvider(content, () => CultureService.CurrentCulture, _bootstrapProviders, additionalSources);
         foreach (var bootstrap in _bootstrapProviders) CultureService.UnregisterProvider(bootstrap.Name);
         if (_gameProvider is not null) CultureService.UnregisterProvider(_gameProvider.Name);
         _gameProvider = provider;

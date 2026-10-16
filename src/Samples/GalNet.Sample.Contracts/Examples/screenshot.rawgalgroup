@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "kind": "Raw",
+  "entries": [
+    {
+      "id": "sample-scene-screenshot",
+      "type": "sample.screenshot",
+      "parameters": {}
+    }
+  ]
+}

@@ -6,7 +6,11 @@
 
 ```text
 Core ───────────────────── 领域模型、资源/Gallery registry、服务契约
-Presentation.Abstractions ─ IGameView 与细分 presenter 端口
+Contracts.Builtins ──────── 仅依赖 Core 的内置 schema、参数和 Composite
+Presentation.Abstractions ─ IGameView、presenter 与平台无关应用契约
+GameHost ───────────────── 游戏会话、运行生命周期、玩家持久化与偏好规则
+Avalonia.GameHost ───────── 默认 Avalonia 会话、展示组合、设置 UI 和平台适配
+Media.LibVlc ────────────── 可供不同 UI 框架复用的 LibVLC 音频后端
 Runtime ────────────────── Graph、Compiled Group、Engine、存档状态与宿主端口
 Assets ─────────────────── Local/PAK provider、Archive、AssetManager
 Storage.FileSystem ─────── 项目/安装内容、保存、变量与进度实现
@@ -15,23 +19,52 @@ Editor.Shared ──────────── 项目读写、命令、导�
 Editor / Samples ───────── 组合根与平台宿主
 ```
 
+宿主分层决定见 [ADR-0006](../adr/0006-game-host-layering.md)。主要依赖方向如下（省略重复的 Core 引用）：
+
+```mermaid
+flowchart TB
+    Sample[Sample] --> AvaloniaHost[Avalonia.GameHost]
+    Editor[Editor] --> EditorShared[Editor.Shared]
+    Editor --> GameView[Avalonia.GameView]
+    EditorShared --> Runtime
+    EditorShared --> Assets
+    AvaloniaHost --> GameView
+    AvaloniaHost --> Host[GameHost]
+    AvaloniaHost --> Builtins[Primitives.Builtins]
+    AvaloniaHost --> Storage[Storage.FileSystem]
+    AvaloniaHost --> Media[Media.LibVlc]
+    Host --> Runtime
+    Builtins --> Runtime
+    Builtins --> Contracts[Contracts.Builtins]
+    Storage --> Host
+    Storage --> Assets
+    Media --> Assets
+    Media --> Ports[Presentation.Abstractions]
+    GameView --> Ports
+    GameView --> Rendering[Avalonia.Rendering]
+    Runtime --> Ports
+    Ports --> Core
+    Contracts --> Core
+    Assets --> Core
+```
+
 ## 物理布局
 
-`src` 按职责分组，目录中的项目名继续与程序集名一致：
+`src` 按职责分组，项目名默认与程序集名一致；Sample.Contracts 为工具固定契约约定输出 GalNet.Project.Contracts：
 
 ```text
 src/
-  Shared/          Core、Runtime、Assets、Presentation.Abstractions、Primitives.Builtins
-  Presentation/    Avalonia.Controls、Avalonia.Rendering、Avalonia.GameView
-  Infrastructure/  Storage.FileSystem
+  Shared/          Core、Contracts.Builtins、Runtime、Assets、Presentation.Abstractions、Primitives.Builtins、GameHost
+  Presentation/    Avalonia.Controls、Avalonia.Rendering、Avalonia.GameView、Avalonia.Themes、Avalonia.GameHost
+  Infrastructure/  Storage.FileSystem、Media.LibVlc
   Editor/          Editor.Abstraction、Editor.Shared、Editor、Editor.Headless
-  Samples/         Sample.Avalonia、Sample.Headless
+  Samples/         Sample.Contracts、Sample.Avalonia、Sample.Headless
   Launcher/        Launcher 共享项目与 Android、Browser、Desktop、iOS 宿主
 ```
 
 物理分组用于表达查找和所有权，不改变程序集名称、根命名空间或依赖方向。新增生产项目应放入与其职责一致的分组，并同步 `GalNet.slnx`；测试项目统一位于 `test/<Assembly>.Tests`。
 
-程序集拥有自己的根命名空间：展示与执行注册端口位于 `GalNet.Presentation.Abstractions.*`，内置 entry、primitive 和 module 位于 `GalNet.Primitives.Builtins`。Entry schema 不依赖执行工厂，执行模块按领域共享状态。Builtins 可依赖 Runtime 的平台无关逻辑（如音频轨道），Runtime 不反向依赖 Builtins。扩展程序集不得在 `GalNet.Core.*` 下声明类型；Core 只保留领域基础类型和扩展协议。注册拆分决定见 [ADR-0002](../adr/0002-entry-schema-execution-registration.md)。
+程序集拥有自己的根命名空间：展示与执行注册端口位于 `GalNet.Presentation.Abstractions.*`，内置 schema、Entry DTO 与 Composite 位于 `GalNet.Contracts.Builtins`，primitive 和执行 module 位于 `GalNet.Primitives.Builtins`。契约项目只依赖 Core，执行模块按领域共享状态，可依赖 Runtime 的平台无关逻辑（如音频轨道）；Runtime 不反向依赖 Builtins。扩展程序集不得在 `GalNet.Core.*` 下声明类型；Core 只保留领域基础类型和扩展协议。注册与程序集拆分决定见 [ADR-0002](../adr/0002-entry-schema-execution-registration.md)、[ADR-0004](../adr/0004-project-entry-contract-assembly.md)。
 
 资源层只向上暴露 `IAssetProvider`、`IArchive`、`IGameFile` 和 `IAssetManager`。provider 定位源文件；manager 负责 GUID 查询、decoder 分派、缓存和 `AssetHandle<T>` 生命周期。Core、Runtime 与 Editor.Shared 不引用 Avalonia。
 
@@ -51,9 +84,13 @@ src/
 
 ## 游戏运行
 
-`GameEngine` 持有 `IGameRuntime`，解释图、条目、Choice、skip batch 和快照；它不认识具体 UI。Engine 统一报告运行状态，负责停止、取消执行 scope 和等待内部 continuation 退出，不拥有执行 view 或平台后端。`IGameView` 解析 entry schema、创建 primitive instance 并调用 presenter 端口。影响场景的 primitive 先写入 `SceneState`，再通知呈现端；读取快照后由宿主调用 Builtins 的场景重放入口。
+`GameEngine` 持有 `IGameRuntime`，解释图、条目、Choice、skip batch 和快照；它不认识具体 UI。Engine 统一报告运行状态，负责停止、取消执行 scope 和等待内部 continuation 退出，不拥有执行 view 或平台后端。`IGameView` 解析 entry schema、创建 primitive instance 并调用 presenter 端口。影响场景的 primitive 先写入 `GameState`，再通知呈现端；读取快照后由宿主调用注册式 StateRestoreSession。
 
-Avalonia 展示按领域拆为 dialogue/choice、layer、animation 和 particle presenter；`AvaloniaGamePresenters` 只创建并暴露这些 presenter，`CompositeGameView` 组合独立的 schema catalog 与执行模块，提供 Runtime 使用的 `IGameView`。官方 Avalonia Sample 的页面会话只串行化公开命令和顶层 UI 状态：`SampleGameResourceScope` 管理安装内容与资源，`SampleSaveSession` 管理玩家持久化与 Gallery 数据，`SampleGameRunner` 绑定 Engine 与页面、准备读档及首次推进，`SampleGamePresentation` 管理执行 view 和平台展示资源，`PersistentSceneRestorer` 复用 Builtins 重放 renderer-owned 场景对象。没有通用 Runner 抽象或必须继承的宿主基类。runner 必须先于资源 scope 异步释放。
+Avalonia 展示按领域拆为 dialogue/choice、layer、animation 和 particle presenter；`AvaloniaGamePresenters` 只创建并暴露这些 presenter，`CompositeGameView` 组合独立的 schema catalog 与执行模块，提供 Runtime 使用的 `IGameView`。`GameHost.GameSession` 串行化准备、开始、存档回调、运行替换与停止，拥有可替换的 `IGameRun`；默认 `GameRun` 组合 Engine 与展示恢复，不注册任何 Builtins，也不要求 Layer Presenter。`PlayerSession` 协调玩家持久化，`PlayerPreferences` 和 `PlayerStartup` 提供偏好与首次启动规则。文件实现通过 `GameResourceScope` 和 `FilePlayerSession` 组合。
+
+`Avalonia.GameHost` 提供可直接使用的 `AvaloniaGameSession`、页面绑定 `AvaloniaGameRun`、展示组合 `AvaloniaGamePresentation`、纹理租约 `AvaloniaGameResources` 以及默认设置/窗口/手柄适配。`AvaloniaGameHostOptions` 由项目提供 catalog 和执行注册，预加载策略可替换；`AvaloniaGamePresentationOptions` 可替换 Layer 工厂与音频后端，新建适配对象的所有权交给展示会话。Sample 只保留启动参数、项目策略、本地化适配与调试扩展。
+
+会话、显示能力和 Gallery 路径契约位于 `Presentation.Abstractions.Application`。共享 LibVLC 音频后端位于 `Media.LibVlc`，不引用 Avalonia；视频画面适配仍位于 Avalonia。释放顺序为运行/Engine → 展示恢复与执行 view → 平台后端 → Gallery 媒体与玩家持久化 → 纹理租约 → 内容资源。
 
 Gallery catalog 是平台无关的静态内容。宿主把其自动生成的 `gallery_<item-id>_unlocked` Player bool 注册到变量服务；`GalleryDataSource` 合并 catalog 与当前 Player 值。Gallery 解锁不存于独立 UI 状态或存档槽。
 
@@ -62,6 +99,16 @@ Avalonia GameView 通过精确 Gallery `typeId` 的 `IGalleryPageRegistry` 选�
 ## 编辑器工作流
 
 `EditorProjectDocument` 是 UI 无关的图、Group、设置编辑聚合。资源 metadata 属于 `Assets/`；Gallery annotation 不进入 Editor document，也不存在集中式 Gallery authoring 文件。预览编译 Raw Group，并用当前项目的 metadata 和共享 catalog 构建 `GameContent.Gallery`。
+
+GUI 的 `IEditorDocumentService`、变量定义服务和 `EditorDockFactory` 由项目 scope 持有。项目打开时加载作者 Graph/Group 一次；Group 以稳定 ID 和独立源路径登记为 `EditorGroupDocument`，项目级 `EditorGroupProjectionStore` 缓存可观察投影。Graph 节点、边、分支项直接引用作者 DTO，Group 页面以 ID 打开，页面关闭只释放订阅，不丢弃未保存内容。`EditorEntryData.Parameters` 保留原始 JSON 值；字符串仅用于控件和既有 CLI 输入适配。变量声明以 Graph 为权威，保存 settings 时派生所需副本。
+
+Editor 随发行包提供默认契约模板，新建项目不需要用户准备 DLL；留空自定义契约目录时，自动将默认契约复制到项目 `Contracts/`。新项目随后使用同一项目契约加载路径，自定义目录仅供需要自定义 schema 的项目选择。打开已有项目不会用该模板替换缺失或损坏的契约。
+
+Editor 要求显式且唯一的 Entry 根节点，无效图不会被样例图替换或在加载时补节点。当前工作区暂不注册游戏预览面板，预览接入另立后续 feature。
+
+Editor 内容历史采用项目单栈，不随 Dock/Inspector 焦点切换；设置页首先接入显式草稿提交。GUI 的 `ProjectContentSession` 统一捕获并发布 Graph、Group 与完整设置，以实际内容与保存基线判断 dirty，后续编辑不被异步保存误标为已保存。关闭提供保存全部/放弃未保存内容/取消。作者文件事务的 manifest/备份与周期作者快照位于 `.galnet/editor/`，补偿失败禁止继续写入。Graph 基本操作由项目数据编辑记录承担，页面按文档事件同步投影；Group 创建/删除复用 Working/Saved 结构计划。分支/条目旧记录和完整 Group 草稿继续按后续阶段迁移，见 [Graph 基础编辑](editor-graph.md)；当前语义及边界见 [Editor 项目历史与保存](editor-history-and-save.md)。
+
+CLI 只做参数、结果协议和退出码适配；Shared 提供原始查询、无写回校验、定向编译、严格编辑/保存、项目/Group 生命周期服务。原始访问保留未知内容，不依赖 entry DLL；有语义的操作使用项目 Contracts DLL，不回退内置。Editor 的 ProjectSchemaSession、catalog 及文档消费者由项目 scope 持有。不提供项目目录删除功能；最近项目列表仅支持移除记录。当前接口及范围见 [CLI README](../../src/Editor/GalNet.Editor.Headless/README.md)。
 
 `EditorAssetManager`、`EditorGameDataProvider`、`AssetCatalogService` 与 `GameExportService` 共享 Editor 组合根的 catalog。导出把资源写入基础 PAK，把 Graph/settings/I18n 和派生 Gallery JSON 写入 `.galpak`。
 
@@ -74,6 +121,7 @@ Editor 扩展 registry 通过非泛型 `IDockPanelContribution` 和 `IInspectorC
 | 项目 | 职责 |
 | --- | --- |
 | `GalNet.Architecture.Tests` | 项目引用、命名空间与仓库结构门禁 |
+| `GalNet.GameHost.Tests` | 通用运行会话、命令互斥、生命周期与偏好规则 |
 | `GalNet.Core.Tests` | Core 领域模型与纯逻辑 |
 | `GalNet.Runtime.Tests` | Runtime 状态、加载、表达式与存档序列化 |
 | `GalNet.Primitives.Builtins.Tests` | 内置 entry module 与 primitive 行为 |
@@ -89,9 +137,17 @@ Integration 测试只承载必须联合多个外层实现的场景；单一生�
 ## 维护规则
 
 - 不让 Core、Runtime 或 Editor.Shared 反向引用具体 Avalonia 实现。
-- `GalNet.Architecture.Tests/ProjectDependencyTests` 检查内层与共享项目、10 个测试项目的直接依赖 allowlist，禁止测试项目互相引用，并要求 `GalNet.Storage.Abstractions` 项目及引用保持不存在；依赖边界变化必须同步更新 ADR 或设计依据。
+- `GalNet.Architecture.Tests/ProjectDependencyTests` 检查内层与共享项目、测试项目的直接依赖 allowlist，禁止测试项目互相引用，并要求 `GalNet.Storage.Abstractions` 项目及引用保持不存在；依赖边界变化必须同步更新 ADR 或设计依据。
 - 内容、保存、玩家变量、变量桥接和进度协议由 Runtime 拥有；资源访问协议由 Core.Assets 拥有；Editor 设置和退出协议由 Editor.Abstraction 拥有。
 - `ISaveService` 只提供异步、可取消的 I/O API，保存请求统一使用 `SaveRequest` 携带 snapshot 与可选展示 metadata。
 - Provider 不管理解码对象或引用计数；页面/媒体实现不理解目录与 PAK 布局。
 - 新资源类型、Gallery 类型、decoder 与页面各自注册在所属层；不要合并为一个跨层“资源模块”。
 - 新持久化字段要同时检查作者 JSON、加载器、导出包、安装加载和验证测试。
+
+变量桥接实现 `PlayerVariableService` 归 Runtime.Variables，仅通过 `IPlayerVariableStore` 持久化；文件实现为 `FilePlayerVariableStore`。变量值复制使用 Core 的 `Variable.Clone`，保留 Uid 并可显式替换名称；不可变 VariableValue 可共享。
+
+Runtime 的 GraphLoader/GalgroupLoader/SaveManager 仅解析和序列化内容；文件路径和 I/O 由外层内容 provider、宿主和 ISaveService 实现处理。
+
+展示执行抽象的 StateRestoreSession 拥有重放 continuation；宿主在执行 view 和平台 presenter 释放前异步释放该会话。Suspend 等待取消后仍保留旧实例，下一次重放或释放会继续等待真实展示清理。
+
+运行与宿主资源的依赖及生命周期依据见 [runtime-resource-ownership](../design/runtime-resource-ownership.md)，包括 GameView 对 Assets 的媒体 adapter 默认实现依赖。

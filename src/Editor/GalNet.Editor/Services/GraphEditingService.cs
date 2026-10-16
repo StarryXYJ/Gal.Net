@@ -11,81 +11,7 @@ namespace GalNet.Editor.Services;
 public sealed class GraphEditingService : IGraphEditingService
 {
     private readonly IEntryCatalog _catalog;
-
-    public GraphEditingService(IEntryCatalog catalog)
-    {
-        _catalog = catalog;
-    }
-    public GraphNode CreateNode(ObservableCollection<GraphNode> nodes, GraphNodeKind kind, double x, double y, string? id = null)
-    {
-        var index = nodes.Count(node => node.NodeKind == kind) + 1;
-        Node node = kind switch
-        {
-            GraphNodeKind.LinearGroup => new Group { Id = id ?? Guid.NewGuid().ToString("N"), Name = $"Linear Group {index}" },
-            GraphNodeKind.ChoiceBranch => new Branch { Id = id ?? Guid.NewGuid().ToString("N"), Name = $"Choice Branch {index}", BranchType = BranchType.Choice },
-            GraphNodeKind.ConditionBranch => new Branch { Id = id ?? Guid.NewGuid().ToString("N"), Name = $"Condition Branch {index}", BranchType = BranchType.Condition },
-            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
-        };
-
-        var graphNode = new GraphNode(node, kind)
-        {
-            X = x,
-            Y = y
-        };
-        if (kind == GraphNodeKind.LinearGroup)
-            InsertEntries(graphNode, 0, 1);
-        return graphNode;
-    }
-
-    public bool DeleteEdge(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphEdge edge)
-    {
-        var removed = edges.Remove(edge);
-        if (removed)
-            UpdateConnectorStates(nodes, edges);
-
-        return removed;
-    }
-
-    public bool DeleteNode(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphNode node)
-    {
-        if (!node.CanDelete)
-            return false;
-
-        var relatedEdges = edges
-            .Where(edge => ReferenceEquals(edge.From, node) || ReferenceEquals(edge.To, node))
-            .ToList();
-
-        foreach (var edge in relatedEdges)
-            edges.Remove(edge);
-
-        var removed = nodes.Remove(node);
-        if (removed)
-            UpdateConnectorStates(nodes, edges);
-
-        return removed;
-    }
-
-    public bool Connect(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges, GraphConnector first, GraphConnector second)
-    {
-        if (ReferenceEquals(first.Node, second.Node) || first.Kind == second.Kind)
-            return false;
-
-        var output = first.Kind == GraphConnectorKind.Output ? first : second;
-        var input = first.Kind == GraphConnectorKind.Input ? first : second;
-
-        var conflictingEdges = edges
-            .Where(edge =>
-                ReferenceEquals(edge.To, input.Node)
-                || (ReferenceEquals(edge.From, output.Node) && edge.Outlet == output.Index))
-            .ToList();
-
-        foreach (var edge in conflictingEdges)
-            edges.Remove(edge);
-
-        edges.Add(new GraphEdge(output.Node, input.Node, output.Index));
-        UpdateConnectorStates(nodes, edges);
-        return true;
-    }
+    public GraphEditingService(IEntryCatalog catalog) => _catalog = catalog;
 
     public IReadOnlyList<EntryEditorItemViewModel> InsertEntries(GraphNode groupNode, int index, int count)
     {
@@ -100,7 +26,7 @@ public sealed class GraphEditingService : IGraphEditingService
         var inserted = new List<EntryEditorItemViewModel>(count);
         for (var offset = 0; offset < count; offset++)
         {
-            var entry = new EntryEditorItemViewModel
+            var entry = new EntryEditorItemViewModel(_catalog)
             {
                 StableId = Guid.NewGuid().ToString("N"),
                 Type = definition.Type,

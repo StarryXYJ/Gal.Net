@@ -17,7 +17,8 @@ internal static class SampleDebugSnapshotFactory
             NodeId = source.NodeId,
             EntryIndex = kind == SampleDebugSaveKind.GalGroupStart ? 0 : source.EntryIndex,
             Variables = source.Variables.ToDictionary(pair => pair.Key, pair => CloneVariable(pair.Value)),
-            SceneState = new SceneState()
+            States = source.States.ToDictionary(pair => pair.Key, pair =>
+                new StateSection(pair.Value.Version, System.Text.Json.JsonSerializer.SerializeToElement(Array.Empty<object>())))
         };
     }
 

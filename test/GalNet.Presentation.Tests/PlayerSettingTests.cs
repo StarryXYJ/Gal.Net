@@ -1,9 +1,40 @@
+using System.Text.Json;
 using GalNet.Avalonia.GameView.Settings;
+using GalNet.Core.Parameters;
 
 namespace GeneralTest.Presentation;
 
 public class PlayerSettingTests
 {
+    [Test]
+    public async Task NumericFieldUsesSharedBoundsAndKeepsStepAsPresentationMetadata()
+    {
+        var value = 0d;
+        var setting = new DoubleSetting("interval", "Settings.Interval", 0, 0, 10, .5,
+            () => value, (next, _) => { value = next; return Task.CompletedTask; })
+        { EditorKind = NumericEditorKind.Slider, Format = "0.00", UnitKey = "Seconds" };
+        var field = setting.Field;
+        Assert.That(field.Value, Is.SameAs(setting.ValueContract));
+        Assert.That(field.Editor!.EditorId, Is.EqualTo(ValueEditorIds.Slider));
+        Assert.That(field.Editor.Step, Is.EqualTo(.5));
+        Assert.That(field.Editor.UnitKey, Is.EqualTo("Seconds"));
+        Assert.That(field.LabelKey, Is.EqualTo("Settings.Interval"));
+        Assert.That(ValueValidation.Validate(field.Value, JsonSerializer.SerializeToElement(11))!.Code, Is.EqualTo("value.range"));
+        Assert.That(await setting.TrySetValueAsync(11), Is.False);
+        Assert.That(value, Is.Zero);
+        Assert.That(await setting.TrySetValueAsync(.13), Is.True);
+    }
+
+    [Test]
+    public void CustomEditorIdAndActionsRemainHostOwned()
+    {
+        var setting = new IntSetting("integer", "Integer", 0, 0, 10, 1,
+            () => 0, (_, _) => Task.CompletedTask)
+        { Editor = new("my.knob") };
+        Assert.That(setting.Field.Editor!.EditorId, Is.EqualTo("my.knob"));
+        Assert.That(new ActionSetting("action", "Action", _ => Task.CompletedTask).Field, Is.Null);
+    }
+
     [Test]
     public async Task FlushRetriesPendingPersistenceWithoutReapplyingTheValueAndReportsFailure()
     {

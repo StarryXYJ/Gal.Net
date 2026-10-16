@@ -160,6 +160,7 @@ public sealed partial class GamePageViewModel : PageViewModelBase
     {
         ResetSceneVisuals();
         IsDialogueVisible = false;
+        IsNvlMode = false;
         IsChoiceVisible = false;
         IsGameUiReady = false;
         NvlClearRequested?.Invoke();

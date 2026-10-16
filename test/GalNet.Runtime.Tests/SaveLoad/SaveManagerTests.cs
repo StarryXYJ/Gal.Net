@@ -18,6 +18,13 @@ public class SaveManagerTests
     }
 
     [Test]
+    public void Deserialize_RejectsDuplicateStateSections()
+    {
+        Assert.Throws<System.Text.Json.JsonException>(() => SaveManager.Deserialize(
+            """{ "version": 4, "states": { "custom": { "version": 1, "payload": [] }, "custom": { "version": 1, "payload": [] } } }"""));
+    }
+
+    [Test]
     public void Deserialize_RejectsPreviousSnapshotVersions()
     {
         Assert.That(SaveManager.Deserialize("""{ "version": 1, "nodeId": "intro" }"""), Is.Null);

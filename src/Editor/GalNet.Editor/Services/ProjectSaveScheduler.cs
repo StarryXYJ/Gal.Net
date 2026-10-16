@@ -1,18 +1,20 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Services.Interfaces;
 using Serilog;
 
 namespace GalNet.Editor.Services;
 
 /// <summary>Project-scoped save queue. At most one write is active and a newer auto-save replaces an older pending one.</summary>
-public sealed class ProjectSaveScheduler : IProjectSaveScheduler, IDisposable
+public sealed class ProjectSaveScheduler : IProjectSaveScheduler, IProjectEditLifetime, IDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly object _sync = new();
     private CancellationTokenSource? _pendingSave;
     private bool _disposed;
+    private bool _suspended;
 
     public void Schedule(Func<Task> save)
     {
@@ -21,8 +23,8 @@ public sealed class ProjectSaveScheduler : IProjectSaveScheduler, IDisposable
         lock (_sync)
         {
             ThrowIfDisposed();
+            if (_suspended) return;
             _pendingSave?.Cancel();
-            _pendingSave?.Dispose();
             cancellation = _pendingSave = new CancellationTokenSource();
         }
 
@@ -35,8 +37,8 @@ public sealed class ProjectSaveScheduler : IProjectSaveScheduler, IDisposable
         lock (_sync)
         {
             ThrowIfDisposed();
+            if (_suspended) throw new InvalidOperationException("Saving is suspended while closing.");
             _pendingSave?.Cancel();
-            _pendingSave?.Dispose();
             _pendingSave = null;
         }
 
@@ -72,6 +74,7 @@ public sealed class ProjectSaveScheduler : IProjectSaveScheduler, IDisposable
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (_disposed || _suspended) return;
             await save();
         }
         finally
@@ -88,7 +91,6 @@ public sealed class ProjectSaveScheduler : IProjectSaveScheduler, IDisposable
                 return;
             _disposed = true;
             _pendingSave?.Cancel();
-            _pendingSave?.Dispose();
             _pendingSave = null;
         }
     }
@@ -97,4 +99,18 @@ public sealed class ProjectSaveScheduler : IProjectSaveScheduler, IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
     }
+
+    public async Task SuspendAsync()
+    {
+        lock (_sync)
+        {
+            _suspended = true;
+            _pendingSave?.Cancel();
+            _pendingSave = null;
+        }
+        await _gate.WaitAsync();
+        _gate.Release();
+    }
+
+    public void ResumeEditing() { lock (_sync) _suspended = false; }
 }

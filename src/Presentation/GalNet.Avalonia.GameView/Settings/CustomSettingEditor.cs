@@ -1,13 +1,14 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
+using GalNet.Game.Controls.Forms;
 
 namespace GalNet.Avalonia.GameView.Settings;
 
 /// <summary>A custom editor owns a fresh lease only while it belongs to the visual tree.</summary>
 public sealed class CustomSettingEditor : ContentControl
 {
-    private SettingEditorLease? _lease;
+    private FieldEditorLease? _lease;
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);

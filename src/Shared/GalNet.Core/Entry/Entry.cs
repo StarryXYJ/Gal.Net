@@ -94,6 +94,8 @@ public sealed class AuthoringPrimitiveEntry : PrimitiveEntry
 /// <summary>An editor-facing composite entry expanded into Runtime primitives before execution.</summary>
 public abstract class CompositeEntry : Entry
 {
+    internal virtual void SetSourceArguments(System.Text.Json.JsonElement arguments) { }
+
     /// <summary>Builds the ordered Runtime primitives represented by this entry.</summary>
     public abstract IReadOnlyList<PrimitiveEntry> Compile(EntryCompileContext context);
 }
@@ -173,6 +175,7 @@ public sealed class EntryDefinition
     public EntryKind Kind { get; }
     public DynamicParameterTable? DynamicParameters { get; }
     public bool IsReading { get; init; }
+    public Type? FieldDataType { get; init; }
 
     private static ReadOnlyDictionary<TKey, TValue> Freeze<TKey, TValue>(IReadOnlyDictionary<TKey, TValue> values)
         where TKey : notnull => new ReadOnlyDictionary<TKey, TValue>(values.ToDictionary(pair => pair.Key, pair => pair.Value));

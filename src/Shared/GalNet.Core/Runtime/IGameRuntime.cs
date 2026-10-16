@@ -29,7 +29,7 @@ public interface IGameRuntime
     SettingsContainer Settings { get; }
 
     // ── 场景状态 ──
-    SceneState SceneState { get; }
+    GameState State { get; }
     ISceneInstanceManager SceneInstances { get; }
 
     // ── 控制流方法 ──

@@ -11,5 +11,6 @@
   "group.intro.entry.nvl-append-rich.content": "<b>NVL 已显示。</b>\\skip <color=#8E8AB8>富文本</color>和打字机跳过边界均已启用。",
   "group.intro.entry.nvl-append-history.content": "这是可滚动 NVL 历史中的第二段。",
   "group.intro.entry.nvl-append-after-clear.content": "之前的 NVL 历史已清空，随后追加了这一段。",
-  "group.intro.entry.intro-line-5.content": "背景音乐正在播放途中淡出。选择路线以查看转场和粒子效果。"
+  "group.intro.entry.intro-line-5.content": "背景音乐正在播放途中淡出。选择路线以查看转场和粒子效果。",
+  "group.intro.entry.audio-save-checkpoint.content": "在这里新建存档再读档：场景与轨道 gain 效果会恢复，BGM 保持暂停。推进后从头恢复播放。"
 }

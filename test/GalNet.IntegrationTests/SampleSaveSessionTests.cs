@@ -4,13 +4,37 @@ using GalNet.Core.Runtime;
 using GalNet.Core.Variable;
 using GalNet.Runtime.Content;
 using GalNet.Runtime.Persistence;
-using GalNet.Sample.Avalonia.Services;
+using GalNet.Storage.FileSystem;
 using GalVariable = GalNet.Core.Variable.Variable;
 
 namespace GalNet.IntegrationTests;
 
 public sealed class SampleSaveSessionTests
 {
+    [Test]
+    public async Task FirstEmptySavesSerializeAndNeverOverwriteOccupiedOrCorruptSlots()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "galnet-empty-slot-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            using var assets = new EmptyAssetManager();
+            using var session = await FilePlayerSession.OpenAsync(directory, new GameContent { Graph = new Graph() }.Gallery, CancellationToken.None);
+            await session.SaveAsync(0, new GameSnapshot { NodeId = "original" }, CancellationToken.None);
+            await File.WriteAllTextAsync(Path.Combine(directory, "saves", "slot-001.json"), "corrupt");
+            var slots = await Task.WhenAll(
+                session.SaveFirstEmptyAsync(new GameSnapshot { NodeId = "first" }, CancellationToken.None),
+                session.SaveFirstEmptyAsync(new GameSnapshot { NodeId = "second" }, CancellationToken.None));
+            Assert.That(slots, Is.EqualTo(new int?[] { 2, 3 }));
+            Assert.That((await session.LoadAsync(0, CancellationToken.None))!.NodeId, Is.EqualTo("original"));
+            Assert.That(await File.ReadAllTextAsync(Path.Combine(directory, "saves", "slot-001.json")), Is.EqualTo("corrupt"));
+            for (var index = 4; index < 60; index++)
+                await session.SaveAsync(index, new GameSnapshot(), CancellationToken.None);
+            Assert.That(await session.SaveFirstEmptyAsync(new GameSnapshot(), CancellationToken.None), Is.Null);
+            Assert.That((await session.LoadAsync(0, CancellationToken.None))!.NodeId, Is.EqualTo("original"));
+        }
+        finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
+    }
+
     [Test]
     public async Task ClearAsync_resets_all_player_owned_state()
     {
@@ -22,11 +46,7 @@ public sealed class SampleSaveSessionTests
         try
         {
             using var assets = new EmptyAssetManager();
-            using var session = await SampleSaveSession.CreateAsync(
-                profileDirectory,
-                new GameContent { Graph = new Graph() },
-                assets,
-                CancellationToken.None);
+            using var session = await FilePlayerSession.OpenAsync(profileDirectory, new GameContent { Graph = new Graph() }.Gallery, CancellationToken.None);
             var originalSettings = session.Settings;
             var score = new GalVariable { Name = "score" };
             score.SetValue(42);

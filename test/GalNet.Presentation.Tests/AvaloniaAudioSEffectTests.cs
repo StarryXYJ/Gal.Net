@@ -1,5 +1,5 @@
 using System.Text.Json;
-using GalNet.Avalonia.GameView.Services;
+using GalNet.Media.LibVlc;
 
 namespace GalNet.Presentation.Tests;
 
@@ -9,7 +9,7 @@ public sealed class AvaloniaAudioSEffectTests
     [Test]
     public void Default_registry_exposes_the_processors_it_can_execute()
     {
-        var registry = new AvaloniaAudioSEffectRegistry(AvaloniaAudioSEffectRegistry.DefaultProcessors);
+        var registry = new LibVlcAudioSEffectRegistry(LibVlcAudioSEffectRegistry.DefaultProcessors);
 
         Assert.That(registry.Catalog.Definitions.Select(definition => definition.Id), Is.EquivalentTo(["seffect.gain", "seffect.lowPass", "seffect.highPass"]));
     }
@@ -17,7 +17,7 @@ public sealed class AvaloniaAudioSEffectTests
     [Test]
     public void Registry_accepts_a_host_specific_processor()
     {
-        var registry = new AvaloniaAudioSEffectRegistry([new TestProcessor()]);
+        var registry = new LibVlcAudioSEffectRegistry([new TestProcessor()]);
 
         Assert.That(registry.Catalog.TryGet("seffect.test", out _), Is.True);
         Assert.That(registry.TryGet("seffect.test", out var processor), Is.True);
@@ -27,7 +27,7 @@ public sealed class AvaloniaAudioSEffectTests
     [Test]
     public void Low_and_high_pass_processors_aggregate_equalizer_attenuation()
     {
-        var state = new AvaloniaAudioSEffectState([60, 1_000, 8_000]);
+        var state = new LibVlcAudioSEffectState([60, 1_000, 8_000]);
         using var lowPassParameters = JsonDocument.Parse("{\"cutoffHz\": 1000, \"attenuationDb\": -20}");
         using var highPassParameters = JsonDocument.Parse("{\"cutoffHz\": 1000, \"attenuationDb\": -20}");
 
@@ -42,7 +42,7 @@ public sealed class AvaloniaAudioSEffectTests
     [Test]
     public void Gain_processors_multiply_the_output_gain()
     {
-        var state = new AvaloniaAudioSEffectState([]);
+        var state = new LibVlcAudioSEffectState([]);
         using var first = JsonDocument.Parse("{\"gain\": 0.5}");
         using var second = JsonDocument.Parse("{\"gain\": 0.4}");
 
@@ -55,6 +55,6 @@ public sealed class AvaloniaAudioSEffectTests
     private sealed class TestProcessor : IAudioSEffectProcessor
     {
         public GalNet.Core.Audio.SEffectDefinition Definition { get; } = new("seffect.test", new HashSet<GalNet.Core.Audio.SEffectScope> { GalNet.Core.Audio.SEffectScope.Track }, []);
-        public void Apply(JsonElement parameters, AvaloniaAudioSEffectState state) { }
+        public void Apply(JsonElement parameters, LibVlcAudioSEffectState state) { }
     }
 }

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.ObjectModel;
 using System.Text.Json;
+using GalNet.Core.Parameters;
 
 namespace GalNet.Core.Primitives;
 
@@ -12,36 +13,38 @@ public sealed class DynamicParameterDescriptor
         Type valueType,
         bool isRequired = false,
         JsonElement? defaultValue = null,
-        JsonElement? constraints = null)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-            throw new ArgumentException("Parameter names cannot be empty.", nameof(name));
-        ArgumentNullException.ThrowIfNull(valueType);
-        if (defaultValue is { } value)
-            DynamicParameterValue.Validate(value, valueType, name);
-        if (constraints is { ValueKind: not JsonValueKind.Object })
-            throw new ArgumentException("Parameter constraints must be a JSON object.", nameof(constraints));
+        JsonElement? constraints = null,
+        bool? allowNull = null,
+        EditorHints? editor = null)
+        : this(name, new ValueDescriptor(valueType, allowNull, constraints), isRequired, defaultValue, editor) { }
 
-        Name = name;
-        ValueType = valueType;
-        IsRequired = isRequired;
-        DefaultValue = defaultValue?.Clone();
-        Constraints = constraints?.Clone();
+    public DynamicParameterDescriptor(string name, ValueDescriptor value, bool isRequired = false,
+        JsonElement? defaultValue = null, EditorHints? editor = null)
+        : this(new FieldDescriptor(name, value, isRequired, defaultValue, editor)) { }
+
+    public DynamicParameterDescriptor(FieldDescriptor field)
+    {
+        ArgumentNullException.ThrowIfNull(field);
+        Field = field;
     }
 
-    public string Name { get; }
-    public Type ValueType { get; }
-    public bool IsRequired { get; }
-    public JsonElement? DefaultValue { get; }
-    public JsonElement? Constraints { get; }
+    public FieldDescriptor Field { get; }
+    public string Name => Field.Id;
+    public Type ValueType => Value.ValueType;
+    public bool IsRequired => Field.IsRequired;
+    public ValueDescriptor Value => Field.Value;
+    public bool AllowNull => Value.AllowNull;
+    public JsonElement? DefaultValue => Field.DefaultValue;
+    public EditorHints? Editor => Field.Editor;
+    public JsonElement? Constraints => Value.Constraints;
 
-    public bool TryGetConstraint(string name, out JsonElement value)
+    public void Validate(JsonElement value)
     {
-        if (Constraints is { } constraints && constraints.TryGetProperty(name, out value))
-            return true;
-        value = default;
-        return false;
+        if (ValueValidation.Validate(Value, value) is { } issue)
+            throw new ArgumentException($"Parameter '{Name}': {issue.Message}");
     }
+
+    public bool TryGetConstraint(string name, out JsonElement value) => Value.TryGetConstraint(name, out value);
 }
 
 /// <summary>A frozen, ordinally keyed dynamic parameter schema.</summary>
@@ -49,66 +52,38 @@ public sealed class DynamicParameterTable : IReadOnlyDictionary<string, DynamicP
 {
     private readonly IReadOnlyDictionary<string, DynamicParameterDescriptor> _parameters;
     private readonly Action<JsonElement>? _validateArguments;
+    private readonly Action<JsonElement>? _validatePartialArguments;
 
-    public DynamicParameterTable(IEnumerable<DynamicParameterDescriptor> parameters, Action<JsonElement>? validateArguments = null)
+    public DynamicParameterTable(IEnumerable<DynamicParameterDescriptor> parameters, Action<JsonElement>? validateArguments = null,
+        Action<JsonElement>? validatePartialArguments = null)
     {
         ArgumentNullException.ThrowIfNull(parameters);
         _validateArguments = validateArguments;
+        _validatePartialArguments = validatePartialArguments ?? validateArguments;
         var copy = new Dictionary<string, DynamicParameterDescriptor>(StringComparer.Ordinal);
+        var fields = new List<FieldDescriptor>();
         foreach (var parameter in parameters)
         {
             ArgumentNullException.ThrowIfNull(parameter);
             if (!copy.TryAdd(parameter.Name, parameter))
                 throw new ArgumentException($"Parameter '{parameter.Name}' is declared more than once.", nameof(parameters));
+            fields.Add(parameter.Field);
         }
         _parameters = new ReadOnlyDictionary<string, DynamicParameterDescriptor>(copy);
+        Fields = fields.AsReadOnly();
     }
 
     public static DynamicParameterTable Empty { get; } = new([]);
+    public IReadOnlyList<FieldDescriptor> Fields { get; }
     public IEnumerable<string> Keys => _parameters.Keys;
     public IEnumerable<DynamicParameterDescriptor> Values => _parameters.Values;
     public int Count => _parameters.Count;
     public DynamicParameterDescriptor this[string key] => _parameters[key];
     public bool ContainsKey(string key) => _parameters.ContainsKey(key);
     public void ValidateArguments(JsonElement arguments) => _validateArguments?.Invoke(arguments);
+    /// <summary>Authoring may omit unfinished fields and defaults; full compilation still uses ValidateArguments.</summary>
+    public void ValidatePartialArguments(JsonElement arguments) => _validatePartialArguments?.Invoke(arguments);
     public bool TryGetValue(string key, out DynamicParameterDescriptor value) => _parameters.TryGetValue(key, out value!);
     public IEnumerator<KeyValuePair<string, DynamicParameterDescriptor>> GetEnumerator() => _parameters.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-}
-
-/// <summary>Converts editor text to typed JSON without serializing CLR type metadata.</summary>
-public static class DynamicParameterValue
-{
-    public static JsonElement FromEditorValue(string value, Type valueType)
-    {
-        ArgumentNullException.ThrowIfNull(valueType);
-        try
-        {
-            if (valueType == typeof(string)) return JsonSerializer.SerializeToElement(value);
-            using var document = JsonDocument.Parse(value);
-            var element = document.RootElement.Clone();
-            Validate(element, valueType, "value");
-            return element;
-        }
-        catch (JsonException exception)
-        {
-            throw new InvalidDataException($"Expected a JSON value compatible with '{valueType.Name}', but received '{value}'.", exception);
-        }
-    }
-
-    public static void Validate(JsonElement value, Type valueType, string parameterName)
-    {
-        try
-        {
-            _ = JsonSerializer.Deserialize(value.GetRawText(), valueType);
-        }
-        catch (JsonException exception)
-        {
-            throw new ArgumentException($"Default value for parameter '{parameterName}' is not compatible with '{valueType.Name}'.", exception);
-        }
-    }
-
-    public static string ToEditorValue(JsonElement value) => value.ValueKind == JsonValueKind.String
-        ? value.GetString() ?? ""
-        : value.GetRawText();
 }

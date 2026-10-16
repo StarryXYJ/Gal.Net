@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Text.Json;
+using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
 
 namespace GalNet.Core.Entry;
@@ -20,6 +21,7 @@ public abstract class EntryBase
     public string Category { get; }
     public DynamicParameterTable Parameters { get; }
     public bool IsReading { get; init; }
+    public Type? FieldDataType { get; init; }
 
     internal abstract EntryDefinition CreateDefinition();
 
@@ -34,7 +36,10 @@ public abstract class EntryBase
         {
             editorParameters.Add(parameter.Name, EntrySchema.GetEditorType(parameter));
             if (parameter.DefaultValue is { } defaultValue)
-                defaults.Add(parameter.Name, ToPersistedValue(defaultValue));
+            {
+                var text = ValueCodec.ToEditorText(parameter.Value, defaultValue);
+                if (JsonElement.DeepEquals(defaultValue, ValueCodec.ParseEditorText(parameter.Value, text))) defaults.Add(parameter.Name, text);
+            }
             if (parameter.TryGetConstraint("options", out var values) && values.ValueKind == JsonValueKind.Array)
                 options.Add(parameter.Name, values.EnumerateArray().Select(value => value.GetString() ?? "").ToArray());
             else if (parameter.ValueType == typeof(bool))
@@ -50,7 +55,7 @@ public abstract class EntryBase
             options,
             kind,
             Parameters)
-        { IsReading = IsReading };
+        { IsReading = IsReading, FieldDataType = FieldDataType };
     }
 
     private static string GetDefaultCategory(string name)
@@ -59,9 +64,6 @@ public abstract class EntryBase
         return separator > 0 ? name[..separator] : name;
     }
 
-    private static string ToPersistedValue(JsonElement value) => value.ValueKind == JsonValueKind.String
-        ? value.GetString() ?? ""
-        : value.GetRawText();
 }
 
 /// <summary>A primitive parameter contract. Execution is registered independently.</summary>
@@ -82,6 +84,12 @@ public abstract class PrimitiveEntryBase : EntryBase
 /// <summary>A data-only primitive definition.</summary>
 public sealed class DefaultPrimitiveEntryBase : PrimitiveEntryBase
 {
+    public static DefaultPrimitiveEntryBase ForDto<T>(string name, Action<JsonElement>? validateArguments = null, string? category = null,
+        Action<JsonElement>? validatePartialArguments = null)
+        where T : IFieldDto, IFieldSchema<T>, new() => new(name,
+            new DynamicParameterTable(T.Schema.Select(descriptor => new DynamicParameterDescriptor(descriptor)), validateArguments, validatePartialArguments), category)
+        { FieldDataType = typeof(T) };
+
     public DefaultPrimitiveEntryBase(
         string name,
         DynamicParameterTable parameters,
@@ -106,6 +114,15 @@ public abstract class CompositeEntryBase : EntryBase
 /// <summary>Default composite definition backed by an authoring-entry factory.</summary>
 public sealed class DefaultCompositeEntryBase : CompositeEntryBase
 {
+    public static DefaultCompositeEntryBase ForDto<T>(string name,
+        Func<EntryCompileContext, T, IReadOnlyList<PrimitiveEntry>> compile, Action<JsonElement>? validateArguments = null, string? category = null)
+        where T : IFieldDto, IFieldSchema<T>, new()
+    {
+        ArgumentNullException.ThrowIfNull(compile);
+        var parameters = new DynamicParameterTable(T.Schema.Select(field => new DynamicParameterDescriptor(field)), validateArguments);
+        return new(name, parameters, () => new DtoCompositeEntry<T>(name, parameters, compile), category) { FieldDataType = typeof(T) };
+    }
+
     private readonly Func<CompositeEntry> _factory;
 
     public DefaultCompositeEntryBase(
@@ -121,6 +138,21 @@ public sealed class DefaultCompositeEntryBase : CompositeEntryBase
 
     public override CompositeEntry CreateEntry() =>
         _factory() ?? throw new InvalidOperationException($"Composite entry '{Name}' returned no authoring entry.");
+
+    private sealed class DtoCompositeEntry<T>(string name, DynamicParameterTable parameters,
+        Func<EntryCompileContext, T, IReadOnlyList<PrimitiveEntry>> compile) : CompositeEntry where T : IFieldDto, new()
+    {
+        private JsonElement? _sourceArguments;
+        public override string Type => name;
+        internal override void SetSourceArguments(JsonElement arguments) => _sourceArguments = arguments.Clone();
+        public override IReadOnlyList<PrimitiveEntry> Compile(EntryCompileContext context)
+        {
+            var source = _sourceArguments ?? JsonSerializer.SerializeToElement(Values.ToDictionary(pair => pair.Key,
+                pair => ValueCodec.FromEditorText(parameters[pair.Key].Value, pair.Value), StringComparer.Ordinal));
+            var normalized = PrimitiveArgumentHelper.Normalize(parameters, source);
+            return compile(context, ValueCodec.DeserializeFields<T>(parameters.Fields, normalized));
+        }
+    }
 }
 
 /// <summary>A module owns independent frozen primitive and composite entry tables.</summary>
