@@ -1,3 +1,4 @@
+using GalNet.Media.LibVlc;
 using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameView.ViewModels;
 using DynamicLocalization.Core;
@@ -36,7 +37,7 @@ internal static class SampleCustomization
         services.AddAvaloniaGameViewPages(theme: PlayerTheme)
             .AddSingleton(_ => CreateLocalizationService())
             .AddSingleton<IPlayerLocalization>(provider => provider.GetRequiredService<SampleLocalizationService>())
-            .AddSingleton<SampleLibVlcRuntime>()
+            .AddSingleton<LibVlcRuntime>()
             .AddScoped(provider => new AvaloniaPlayerSettingsService(provider.GetRequiredService<IPlayerLocalization>(),
                 provider.GetRequiredService<GamePageViewModel>(), editors: CreateFieldEditors()))
             .AddScoped<AvaloniaPlayerStartup>()
@@ -83,7 +84,7 @@ internal static class SampleCustomization
 
     internal static void ConfigureExecution(
         GameRegistration registration, AvaloniaGamePresenters presenters, GamePage page,
-        GameContent content, AvaloniaEffectRuntime? effects, AvaloniaAudioPlaybackHost? audio,
+        GameContent content, AvaloniaEffectRuntime? effects, LibVlcAudioPlaybackHost? audio,
         AvaloniaVideoPresenter? video, BuiltinAudioModule? audioModule)
     {
         registration.UseCatalog(ProjectSchemas.CreateCatalog());

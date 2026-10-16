@@ -26,3 +26,4 @@
 - Step 4 verified: 资源、配置与清理回归 7/7；经验见 `.agents/lessons/L-20261016-06-partial-preload-leases.md`。
 - Step 5: PlayerSession 统一存档、空槽选择、继续选择、进度 flush、玩家变量和 Gallery 数据；FilePlayerSession 组合文件实现。Gallery 媒体 resolver 改由展示会话独立持有。清理协作者 ResourceCleanup 下放 GameHost。
 - Step 6: PlayerPreferences/PlayerStartup 为中立偏好读写、非法值回退和首次启动规则；AvaloniaPlayerSettingsService 负责设置控件、预览 timer 与 UI 应用。默认窗口/手柄适配下放 Avalonia，编辑器 registry 可注入，项目本地化由 IPlayerLocalization 接入。
+- Step 7: 会话/显示/Gallery 路径接口迁至 Presentation.Abstractions.Application；无 Avalonia API 的音频播放、音效处理和共享 LibVLC 生命周期迁至独立 GalNet.Media.LibVlc。视频画面仍由 Avalonia 适配。

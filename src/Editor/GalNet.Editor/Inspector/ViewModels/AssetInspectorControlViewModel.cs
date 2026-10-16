@@ -15,6 +15,7 @@ using GalNet.Editor.Models;
 using GalNet.Editor.Services.Interfaces;
 using GalNet.Editor.ViewModels;
 using LibVLCSharp.Shared;
+using LibVlcMedia = LibVLCSharp.Shared.Media;
 
 namespace GalNet.Editor.Inspector.ViewModels;
 
@@ -120,7 +121,7 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
         {
             EnsureAudioPlayer();
             if (IsAudioPreviewPlaying) { _player!.Pause(); IsAudioPreviewPlaying = false; return; }
-            _player!.Media = new Media(_vlc!, asset.FullPath);
+            _player!.Media = new LibVlcMedia(_vlc!, asset.FullPath);
             _player.Play();
             IsAudioPreviewPlaying = true;
             AudioPreviewError = "";
@@ -134,7 +135,7 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
         try
         {
             EnsureAudioPlayer();
-            _player!.Media ??= new Media(_vlc!, asset.FullPath);
+            _player!.Media ??= new LibVlcMedia(_vlc!, asset.FullPath);
             _player.Time = (long)position;
             _player.Play();
             IsAudioPreviewPlaying = true;

@@ -1,21 +1,21 @@
 using System.Text.Json;
 using GalNet.Core.Audio;
 
-namespace GalNet.Avalonia.GameView.Services;
+namespace GalNet.Media.LibVlc;
 
-/// <summary>Platform processor registered by an Avalonia audio host for one stable SEffect ID.</summary>
+/// <summary>Platform processor registered by a LibVLC audio host for one stable SEffect ID.</summary>
 public interface IAudioSEffectProcessor
 {
     SEffectDefinition Definition { get; }
-    void Apply(JsonElement parameters, AvaloniaAudioSEffectState state);
+    void Apply(JsonElement parameters, LibVlcAudioSEffectState state);
 }
 
 /// <summary>Immutable construction-time registry for the effect processors a host can execute.</summary>
-public sealed class AvaloniaAudioSEffectRegistry
+public sealed class LibVlcAudioSEffectRegistry
 {
     private readonly IReadOnlyDictionary<string, IAudioSEffectProcessor> _byId;
 
-    public AvaloniaAudioSEffectRegistry(IEnumerable<IAudioSEffectProcessor> processors)
+    public LibVlcAudioSEffectRegistry(IEnumerable<IAudioSEffectProcessor> processors)
     {
         _byId = processors.ToDictionary(processor => processor.Definition.Id, StringComparer.OrdinalIgnoreCase);
         Catalog = new SEffectCatalog(_byId.Values.Select(processor => processor.Definition));
@@ -27,7 +27,7 @@ public sealed class AvaloniaAudioSEffectRegistry
 }
 
 /// <summary>Aggregates output-gain and LibVLC equalizer contributions from active track effects.</summary>
-public sealed class AvaloniaAudioSEffectState(IReadOnlyList<float> equalizerBandFrequencies)
+public sealed class LibVlcAudioSEffectState(IReadOnlyList<float> equalizerBandFrequencies)
 {
     private readonly float[] _bandGains = new float[equalizerBandFrequencies.Count];
 
@@ -55,18 +55,18 @@ public sealed class AvaloniaAudioSEffectState(IReadOnlyList<float> equalizerBand
 public sealed class GainSEffectProcessor : IAudioSEffectProcessor
 {
     public SEffectDefinition Definition { get; } = SEffectCatalog.Builtins.Definitions.Single(value => value.Id == "seffect.gain");
-    public void Apply(JsonElement parameters, AvaloniaAudioSEffectState state) => state.MultiplyGain(Value(parameters, "gain", 1));
+    public void Apply(JsonElement parameters, LibVlcAudioSEffectState state) => state.MultiplyGain(Value(parameters, "gain", 1));
     internal static float Value(JsonElement parameters, string name, float fallback) => parameters.TryGetProperty(name, out var value) && value.TryGetSingle(out var result) ? result : fallback;
 }
 
 public sealed class LowPassSEffectProcessor : IAudioSEffectProcessor
 {
     public SEffectDefinition Definition { get; } = SEffectCatalog.Builtins.Definitions.Single(value => value.Id == "seffect.lowPass");
-    public void Apply(JsonElement parameters, AvaloniaAudioSEffectState state) => state.AttenuateAbove(GainSEffectProcessor.Value(parameters, "cutoffHz", 20_000), GainSEffectProcessor.Value(parameters, "attenuationDb", -20));
+    public void Apply(JsonElement parameters, LibVlcAudioSEffectState state) => state.AttenuateAbove(GainSEffectProcessor.Value(parameters, "cutoffHz", 20_000), GainSEffectProcessor.Value(parameters, "attenuationDb", -20));
 }
 
 public sealed class HighPassSEffectProcessor : IAudioSEffectProcessor
 {
     public SEffectDefinition Definition { get; } = SEffectCatalog.Builtins.Definitions.Single(value => value.Id == "seffect.highPass");
-    public void Apply(JsonElement parameters, AvaloniaAudioSEffectState state) => state.AttenuateBelow(GainSEffectProcessor.Value(parameters, "cutoffHz", 20), GainSEffectProcessor.Value(parameters, "attenuationDb", -20));
+    public void Apply(JsonElement parameters, LibVlcAudioSEffectState state) => state.AttenuateBelow(GainSEffectProcessor.Value(parameters, "cutoffHz", 20), GainSEffectProcessor.Value(parameters, "attenuationDb", -20));
 }

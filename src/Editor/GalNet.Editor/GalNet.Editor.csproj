@@ -9,6 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+    <ProjectReference Include="../../Infrastructure/GalNet.Media.LibVlc/GalNet.Media.LibVlc.csproj" />
         <Folder Include="Models\" />
         <AvaloniaResource Include="Assets\**" />
     </ItemGroup>

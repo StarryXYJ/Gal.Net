@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../Infrastructure/GalNet.Media.LibVlc/GalNet.Media.LibVlc.csproj" />
     <ProjectReference Include="../../Shared/GalNet.GameHost/GalNet.GameHost.csproj" />
     <ProjectReference Include="../../Presentation/GalNet.Avalonia.GameHost/GalNet.Avalonia.GameHost.csproj" />
     <ProjectReference Include="..\..\Presentation\GalNet.Avalonia.Themes\GalNet.Avalonia.Themes.csproj" />

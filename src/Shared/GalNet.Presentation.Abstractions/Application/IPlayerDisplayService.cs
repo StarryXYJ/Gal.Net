@@ -1,4 +1,4 @@
-namespace GalNet.Avalonia.GameView.Services;
+namespace GalNet.Presentation.Abstractions.Application;
 
 public enum PlayerDisplayMode { Window, BorderlessFullscreen, ExclusiveFullscreen }
 public readonly record struct PlayerWindowSize(int Width, int Height);

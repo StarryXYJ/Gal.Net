@@ -14,6 +14,7 @@
     <Project Path="src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj" />
   </Folder>
   <Folder Name="/src/Infrastructure/">
+    <Project Path="src/Infrastructure/GalNet.Media.LibVlc/GalNet.Media.LibVlc.csproj" />
     <Project Path="src/Infrastructure/GalNet.Storage.FileSystem/GalNet.Storage.FileSystem.csproj" />
   </Folder>
   <Folder Name="/src/Launcher/">

@@ -1,6 +1,6 @@
 using GalNet.Core.Gallery;
 
-namespace GalNet.Avalonia.GameView.Services;
+namespace GalNet.Presentation.Abstractions.Application;
 
 /// <summary>Optional session capability consumed by the default Gallery front end.</summary>
 public interface IGameGallerySession

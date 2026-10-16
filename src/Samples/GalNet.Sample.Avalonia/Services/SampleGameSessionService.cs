@@ -1,3 +1,4 @@
+using GalNet.Media.LibVlc;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.GameHost;
@@ -22,7 +23,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private readonly AvaloniaPlayerSettingsService _settings;
     private readonly SampleLocalizationService _localization;
     private readonly AvaloniaPlayerStartup _startup;
-    private readonly SampleLibVlcRuntime _mediaRuntime;
+    private readonly LibVlcRuntime _mediaRuntime;
     private readonly ObservableCollection<GameSaveSlot> _saveSlots = [];
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySaveSlots;
     private GameResourceScope? _resources;
@@ -36,7 +37,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private Task? _disposeTask;
 
     public SampleGameSessionService(GamePageViewModel gameplay, GamePage page, AvaloniaPlayerSettingsService settings,
-        SampleLocalizationService localization, AvaloniaPlayerStartup startup, SampleLibVlcRuntime mediaRuntime)
+        SampleLocalizationService localization, AvaloniaPlayerStartup startup, LibVlcRuntime mediaRuntime)
     {
         _session = new GameSession(CreateRunAsync);
         _gameplay = gameplay;

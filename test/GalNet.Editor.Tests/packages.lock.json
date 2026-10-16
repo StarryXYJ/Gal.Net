@@ -427,6 +427,7 @@
           "GalNet.Core": "[1.0.0, )",
           "GalNet.Editor.Abstraction": "[1.0.0, )",
           "GalNet.Editor.Shared": "[1.0.0, )",
+          "GalNet.Media.LibVlc": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "GalNet.Primitives.Builtins": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )",
@@ -467,6 +468,15 @@
           "GalNet.Core": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )"
+        }
+      },
+      "galnet.media.libvlc": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Assets": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "LibVLCSharp": "[3.10.0, )"
         }
       },
       "galnet.presentation.abstractions": {

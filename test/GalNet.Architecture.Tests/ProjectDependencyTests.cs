@@ -17,6 +17,7 @@ public class ProjectDependencyTests
             ["GalNet.GameHost"] = ["GalNet.Core", "GalNet.Runtime", "GalNet.Presentation.Abstractions"],
             ["GalNet.Runtime"] = ["GalNet.Core", "GalNet.Presentation.Abstractions"],
             ["GalNet.Primitives.Builtins"] = ["GalNet.Core", "GalNet.Contracts.Builtins", "GalNet.Presentation.Abstractions", "GalNet.Runtime"],
+            ["GalNet.Media.LibVlc"] = ["GalNet.Core", "GalNet.Assets", "GalNet.Presentation.Abstractions"],
             ["GalNet.Assets"] = ["GalNet.Core"],
             ["GalNet.Storage.FileSystem"] = ["GalNet.Core", "GalNet.Runtime", "GalNet.Assets", "GalNet.GameHost"],
             ["GalNet.Editor.Abstraction"] = ["GalNet.Core"],
@@ -29,7 +30,7 @@ public class ProjectDependencyTests
                 "GalNet.Runtime",
                 "GalNet.Assets"
             ],
-            ["GalNet.Avalonia.GameHost"] = ["GalNet.GameHost", "GalNet.Avalonia.Controls", "GalNet.Avalonia.GameView", "GalNet.Avalonia.Rendering", "GalNet.Primitives.Builtins", "GalNet.Runtime", "GalNet.Presentation.Abstractions", "GalNet.Assets", "GalNet.Core"],
+            ["GalNet.Avalonia.GameHost"] = ["GalNet.Media.LibVlc", "GalNet.GameHost", "GalNet.Avalonia.Controls", "GalNet.Avalonia.GameView", "GalNet.Avalonia.Rendering", "GalNet.Primitives.Builtins", "GalNet.Runtime", "GalNet.Presentation.Abstractions", "GalNet.Assets", "GalNet.Core"],
             ["GalNet.Avalonia.Controls"] = ["GalNet.Core"],
             ["GalNet.Avalonia.Themes"] = ["GalNet.Avalonia.Controls", "GalNet.Avalonia.GameView"],
             ["GalNet.Avalonia.GameView"] =
@@ -86,6 +87,7 @@ public class ProjectDependencyTests
             ],
             ["GalNet.Presentation.Tests"] =
             [
+                "GalNet.Media.LibVlc",
                 "GalNet.SchemaGenerator",
                 "GalNet.Assets",
                 "GalNet.Avalonia.Controls",
@@ -186,6 +188,8 @@ public class ProjectDependencyTests
         });
     }
 
+    [TestCase("GalNet.GameHost", "GalNet.GameHost")]
+    [TestCase("GalNet.Media.LibVlc", "GalNet.Media.LibVlc")]
     [TestCase("GalNet.Presentation.Abstractions", "GalNet.Presentation.Abstractions")]
     [TestCase("GalNet.Primitives.Builtins", "GalNet.Primitives.Builtins")]
     [TestCase("GalNet.Contracts.Builtins", "GalNet.Contracts.Builtins")]
@@ -209,6 +213,16 @@ public class ProjectDependencyTests
             unexpected,
             Is.Empty,
             $"{projectName} declares namespaces outside its owned root: {string.Join(", ", unexpected)}");
+    }
+
+    [TestCase("GalNet.GameHost")]
+    [TestCase("GalNet.Media.LibVlc")]
+    public void SharedHostAndAudioBackend_DoNotReferenceUiPackages(string project)
+    {
+        var packages = XDocument.Load(FindProjectFile(project)).Descendants("PackageReference")
+            .Select(reference => (string?)reference.Attribute("Include") ?? "").ToArray();
+        Assert.That(packages.Where(name => name.StartsWith("Avalonia", StringComparison.Ordinal) ||
+            name.StartsWith("SkiaSharp", StringComparison.Ordinal) || name.EndsWith(".Avalonia", StringComparison.Ordinal)), Is.Empty);
     }
 
     [Test]

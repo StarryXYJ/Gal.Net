@@ -6,10 +6,10 @@ using GalNet.Presentation.Abstractions.Audio;
 using LibVLCSharp.Shared;
 using LibVlcMedia = LibVLCSharp.Shared.Media;
 
-namespace GalNet.Avalonia.GameView.Services;
+namespace GalNet.Media.LibVlc;
 
 /// <summary>LibVLC-backed audio host. Logical queue and track ownership remains in AudioRuntime.</summary>
-public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost, IAsyncDisposable
+public sealed class LibVlcAudioPlaybackHost : IAudioPlaybackHost, IAsyncDisposable
 {
     private readonly object _gate = new();
     private readonly IAssetFileMaterializer _files;
@@ -24,18 +24,18 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost, IAsyncDispos
         Channel.CreateUnbounded<(Voice, AudioBackendEventKind, string?)>(new UnboundedChannelOptions { SingleReader = true });
     private readonly Task _terminalWorker;
     private Task? _disposeTask;
-    private readonly AvaloniaAudioSEffectRegistry _effects;
+    private readonly LibVlcAudioSEffectRegistry _effects;
     private readonly LibVLC? _libVlc;
     private readonly bool _ownsLibVlc;
     private bool _disposed;
 
-    public AvaloniaAudioPlaybackHost(IAssetManager assets, IEnumerable<IAudioSEffectProcessor>? effectProcessors = null,
+    public LibVlcAudioPlaybackHost(IAssetManager assets, IEnumerable<IAudioSEffectProcessor>? effectProcessors = null,
         IAssetFileMaterializer? files = null, LibVLC? sharedLibVlc = null)
     {
         _files = files ?? new AssetFileMaterializer(assets);
         _ownsFiles = files is null;
         _ownsLibVlc = sharedLibVlc is null;
-        _effects = new AvaloniaAudioSEffectRegistry(AvaloniaAudioSEffectRegistry.DefaultProcessors.Concat(effectProcessors ?? []));
+        _effects = new LibVlcAudioSEffectRegistry(LibVlcAudioSEffectRegistry.DefaultProcessors.Concat(effectProcessors ?? []));
         if (sharedLibVlc is not null)
         {
             _libVlc = sharedLibVlc;
@@ -206,7 +206,7 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost, IAsyncDispos
             var lease = await _files.AcquireAsync(assetId, cancellationToken).ConfigureAwait(false);
             lock (_gate)
             {
-                if (_disposed) { lease.Dispose(); throw new ObjectDisposedException(nameof(AvaloniaAudioPlaybackHost)); }
+                if (_disposed) { lease.Dispose(); throw new ObjectDisposedException(nameof(LibVlcAudioPlaybackHost)); }
                 _paths.Add(assetId, lease);
                 return lease.Path;
             }
@@ -320,7 +320,7 @@ public sealed class AvaloniaAudioPlaybackHost : IAudioPlaybackHost, IAsyncDispos
     private void ReapplySEffects(Voice voice)
     {
         using var equalizer = new Equalizer();
-        var state = new AvaloniaAudioSEffectState(Enumerable.Range(0, (int)equalizer.BandCount).Select(index => equalizer.BandFrequency((uint)index)).ToArray());
+        var state = new LibVlcAudioSEffectState(Enumerable.Range(0, (int)equalizer.BandCount).Select(index => equalizer.BandFrequency((uint)index)).ToArray());
         foreach (var effect in voice.Effects.Values)
             if (_effects.TryGet(effect.Id, out var processor)) processor.Apply(effect.Parameters, state);
         voice.EffectGain = state.Gain;

@@ -1,5 +1,6 @@
 extern alias GameViewAssembly;
 extern alias ThemesAssembly;
+using GalNet.Media.LibVlc;
 using System.Collections.ObjectModel;
 using Avalonia;
 using Avalonia.Controls;
@@ -100,7 +101,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
     private AvaloniaGamePresenters? _pageView;
     private EditorPreviewLayerFactory? _layers;
     private AvaloniaEffectRuntime? _effects;
-    private AvaloniaAudioPlaybackHost? _audio;
+    private LibVlcAudioPlaybackHost? _audio;
     private GameEngine? _engine;
     private readonly Dictionary<string, AssetHandle<SceneTexture>> _preloadedTextures = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
@@ -286,7 +287,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
         _layers = new EditorPreviewLayerFactory(_preloadedTextures);
         _pageView = new AvaloniaGamePresenters(_gameplay, _page, _layers);
         _effects = new AvaloniaEffectRuntime(_gameplay);
-        _audio = new AvaloniaAudioPlaybackHost(_context.Assets);
+        _audio = new LibVlcAudioPlaybackHost(_context.Assets);
         using var registration = new GameRegistration().UseCatalog(_context.Catalog);
         var view = registration.AddBuiltinImplementations(_context.Catalog,
             _pageView.DialoguePresenter,

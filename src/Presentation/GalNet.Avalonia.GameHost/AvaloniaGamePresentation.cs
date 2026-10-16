@@ -1,3 +1,4 @@
+using GalNet.Media.LibVlc;
 using GalNet.Assets;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Presentation;
@@ -27,7 +28,7 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
 
     public AvaloniaGamePresenters Presenters { get; private set; } = null!;
     public AvaloniaEffectRuntime Effects { get; private set; } = null!;
-    public AvaloniaAudioPlaybackHost Audio { get; private set; } = null!;
+    public LibVlcAudioPlaybackHost Audio { get; private set; } = null!;
     public AvaloniaVideoPresenter Video { get; private set; } = null!;
     public CompositeGameView View { get; private set; } = null!;
     public BuiltinAudioModule AudioModule { get; private set; } = null!;
@@ -54,7 +55,7 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
                 "Preloaded {UsableEffectProgramCount}/{EffectProgramCount} effect programs in {ElapsedMilliseconds} ms",
                 preload.UsableProgramCount, preload.RequestedProgramCount, preload.Cache.TotalLoadTime.TotalMilliseconds);
             presentation.Effects = new AvaloniaEffectRuntime(gameplay, presentation._programs);
-            presentation.Audio = new AvaloniaAudioPlaybackHost(assets, files: files,
+            presentation.Audio = new LibVlcAudioPlaybackHost(assets, files: files,
                 sharedLibVlc: sharedLibVlc);
             presentation.AudioModule = new BuiltinAudioModule(presentation.Audio);
             presentation.Video = new AvaloniaVideoPresenter(assets, gameplay, files: files,
