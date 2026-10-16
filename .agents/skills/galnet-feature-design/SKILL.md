@@ -11,10 +11,10 @@ feature 已创建，或用户要求为某个 GalNet 改动设计方案、评估�
 
 ## 工作方式
 
-1. 读取 `.agents/agent-knowledge.md`、对应 `feature.md`、相关 `docs/spec/` 和 `docs/design/`。
+1. 读取 `.agents/agent-knowledge.md`、对应 `feature.md`、相关 `docs/spec/` 和 `docs/manual/`。
 2. 检查真实代码和项目依赖，区分当前事实、目标状态和推测。
 3. 在 `features/<feature-id>/design.md` 中记录：问题、目标、设计边界、数据流、接口、模块职责、候选方案、取舍、兼容性、迁移、风险和验收影响。
-4. 只在架构决定确实跨模块、难以逆转或需要长期引用时提出 ADR；ADR 接受前保持 Proposed，不替用户宣布 Accepted。
+4. 对跨模块或难以逆转的决定，在 feature 的设计与阶段计划中明确记录取舍，并在实现验证后将稳定约束收敛到对应 spec。
 5. 更新 `feature.md` 的链接和设计状态，但不伪造用户尚未确认的决定。
 
 ## 边界

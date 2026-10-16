@@ -2,7 +2,7 @@
 
 ## 分层
 
-`Core` 不依赖 UI、文件系统或 DI。Runtime 只依赖 Core 与呈现抽象；宿主组装文件系统、资源、媒体和页面实现。[ADR-0001](../adr/0001-runtime-storage-contract-ownership.md) 已完成落地，旧 `GalNet.Storage.Abstractions` 项目已删除。
+`Core` 不依赖 UI、文件系统或 DI。Runtime 只依赖 Core 与呈现抽象；宿主组装文件系统、资源、媒体和页面实现。旧 `GalNet.Storage.Abstractions` 项目已删除。
 
 ```text
 Core ───────────────────── 领域模型、资源/Gallery registry、服务契约
@@ -19,7 +19,7 @@ Editor.Shared ──────────── 项目读写、命令、导�
 Editor / Samples ───────── 组合根与平台宿主
 ```
 
-宿主分层决定见 [ADR-0006](../adr/0006-game-host-layering.md)。主要依赖方向如下（省略重复的 Core 引用）：
+主要依赖方向如下（省略重复的 Core 引用）：
 
 ```mermaid
 flowchart TB
@@ -64,7 +64,7 @@ src/
 
 物理分组用于表达查找和所有权，不改变程序集名称、根命名空间或依赖方向。新增生产项目应放入与其职责一致的分组，并同步 `GalNet.slnx`；测试项目统一位于 `test/<Assembly>.Tests`。
 
-程序集拥有自己的根命名空间：展示与执行注册端口位于 `GalNet.Presentation.Abstractions.*`，内置 schema、Entry DTO 与 Composite 位于 `GalNet.Contracts.Builtins`，primitive 和执行 module 位于 `GalNet.Primitives.Builtins`。契约项目只依赖 Core，执行模块按领域共享状态，可依赖 Runtime 的平台无关逻辑（如音频轨道）；Runtime 不反向依赖 Builtins。扩展程序集不得在 `GalNet.Core.*` 下声明类型；Core 只保留领域基础类型和扩展协议。注册与程序集拆分决定见 [ADR-0002](../adr/0002-entry-schema-execution-registration.md)、[ADR-0004](../adr/0004-project-entry-contract-assembly.md)。
+程序集拥有自己的根命名空间：展示与执行注册端口位于 `GalNet.Presentation.Abstractions.*`，内置 schema、Entry DTO 与 Composite 位于 `GalNet.Contracts.Builtins`，primitive 和执行 module 位于 `GalNet.Primitives.Builtins`。契约项目只依赖 Core，执行模块按领域共享状态，可依赖 Runtime 的平台无关逻辑（如音频轨道）；Runtime 不反向依赖 Builtins。扩展程序集不得在 `GalNet.Core.*` 下声明类型；Core 只保留领域基础类型和扩展协议。注册的精确规则见[条目类型](entry-types.md)。
 
 资源层只向上暴露 `IAssetProvider`、`IArchive`、`IGameFile` 和 `IAssetManager`。provider 定位源文件；manager 负责 GUID 查询、decoder 分派、缓存和 `AssetHandle<T>` 生命周期。Core、Runtime 与 Editor.Shared 不引用 Avalonia。
 
@@ -137,7 +137,7 @@ Integration 测试只承载必须联合多个外层实现的场景；单一生�
 ## 维护规则
 
 - 不让 Core、Runtime 或 Editor.Shared 反向引用具体 Avalonia 实现。
-- `GalNet.Architecture.Tests/ProjectDependencyTests` 检查内层与共享项目、测试项目的直接依赖 allowlist，禁止测试项目互相引用，并要求 `GalNet.Storage.Abstractions` 项目及引用保持不存在；依赖边界变化必须同步更新 ADR 或设计依据。
+- `GalNet.Architecture.Tests/ProjectDependencyTests` 检查内层与共享项目、测试项目的直接依赖 allowlist，禁止测试项目互相引用，并要求 `GalNet.Storage.Abstractions` 项目及引用保持不存在；依赖边界变化必须同步更新本页和受影响模块规范。
 - 内容、保存、玩家变量、变量桥接和进度协议由 Runtime 拥有；资源访问协议由 Core.Assets 拥有；Editor 设置和退出协议由 Editor.Abstraction 拥有。
 - `ISaveService` 只提供异步、可取消的 I/O API，保存请求统一使用 `SaveRequest` 携带 snapshot 与可选展示 metadata。
 - Provider 不管理解码对象或引用计数；页面/媒体实现不理解目录与 PAK 布局。
@@ -150,4 +150,4 @@ Runtime 的 GraphLoader/GalgroupLoader/SaveManager 仅解析和序列化内容�
 
 展示执行抽象的 StateRestoreSession 拥有重放 continuation；宿主在执行 view 和平台 presenter 释放前异步释放该会话。Suspend 等待取消后仍保留旧实例，下一次重放或释放会继续等待真实展示清理。
 
-运行与宿主资源的依赖及生命周期依据见 [runtime-resource-ownership](../design/runtime-resource-ownership.md)，包括 GameView 对 Assets 的媒体 adapter 默认实现依赖。
+运行与宿主资源的依赖及生命周期以本页的游戏运行段和[运行时规范](runtime.md)为准，包括 GameView 对 Assets 的媒体 adapter 默认实现依赖。

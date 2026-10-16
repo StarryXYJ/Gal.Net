@@ -21,13 +21,13 @@ src/
   Samples/         Avalonia 与 Headless 玩家示例
   Launcher/        共享 Launcher 与 Desktop/Browser/Android/iOS 宿主
 test/              按生产边界拆分的 10 个测试项目
-docs/              当前 spec、长期 design、ADR 与文档索引
+docs/              当前 spec、二次开发手册与文档索引
 features/          按 feature 保存的需求、设计、阶段计划与总结
 scripts/           可直接运行的样例脚本
 GameTestCase/      示例工程与 smoke test 内容
 ```
 
-从[引擎使用手册](docs/engine.md)了解内容与运行期；基于本项目制作客户端或添加玩法能力时，请从[二次开发手册](docs/development.md)开始。程序集边界、依赖方向和测试职责见[架构文档](docs/spec/architecture.md)。
+从[文档索引](docs/README.md)进入当前规范；基于本项目制作客户端、添加玩法能力或定制示例时，请阅读[二次开发手册](docs/manual/)。程序集边界、依赖方向和测试职责见[架构文档](docs/spec/architecture.md)。
 
 ## 构建与测试
 
@@ -78,6 +78,6 @@ Headless 示例在终端中交互；Avalonia 示例会启动桌面窗口。两�
 
 ## 开发流程
 
-较大的功能、架构调整和跨阶段重构使用 `features/F-YYYYMMDD-NN-short-slug/` 记录需求、设计、实施计划和验证总结。文档职责与推荐流程见 [Feature 工作流与 Agent 知识维护](docs/design/feature-workflow.md)。
+较大的功能、架构调整和跨阶段重构使用 `features/F-YYYYMMDD-NN-short-slug/` 记录需求、设计、实施计划和验证总结。当前可用的模块事实同步到 `docs/spec/`；feature 目录保留过程与历史，不替代规范。
 
 GalNet 采用 [MIT License](LICENSE) 发布，允许用于商业和非商业项目。

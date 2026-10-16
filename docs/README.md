@@ -1,16 +1,28 @@
 # GalNet 文档
 
-- [引擎使用手册](engine.md)：内容、编译、Runtime、推进、存档和宿主的总览入口。
-- [二次开发手册](development.md)：不修改 Shared 层时，如何添加项目自有原语、模块、页面和资源能力。
-- [架构](spec/architecture.md)：当前程序集边界、游戏运行、编辑器工作流与维护规则。
-- [运行时](spec/runtime.md)：游戏引擎、变量、快照与条目执行的精确契约。
-- [条目类型](spec/entry-types.md)：primitive/composite、模块和内置条目的精确契约。
-- [文件格式](spec/file-formats.md)：项目目录、图、条目组和当前 `.galpak` 发布布局。
-- [资源](spec/assets.md)：资源提供者、归档和包格式。
-- [Avalonia 游戏页面](spec/control.md)：共享游戏页面、导航、组合和 Avalonia 呈现边界。
-- [国际化](spec/i18n.md)：编辑器本地化、运行时文本解析器和项目语言设置。
-- [术语表](glossary.md)：项目术语。
-- [杂项待办](design/misc-todo.md)：尚未实现的工程性后续工作。
-- [Feature 工作流与 Agent 知识维护](design/feature-workflow.md)：推荐的 feature 记录流程，以及开发者文档、feature 历史与 agent 知识的职责边界。
-- [分阶段渲染与 Effect 管线计划](design/render-effects-pipeline-plan.md)：Layer Source、Shader 效果、UI 前后全屏后处理与 Flipbook 的实施计划。
-- [音频系统设计](design/audio-system-design.md)：尚未实施的音频能力设计。
+这里仅保留当前可用的项目文档。功能开发过程、已废弃方案和决策记录不作为规范来源；需要追溯一次实现时，查看对应的 `features/F-*/` 记录。
+
+## 项目入口
+
+- [设计理念与架构概览](philosophy.md)：分层原则、依赖方向与高层架构图。
+- [术语表](glossary.md)：项目通用术语的统一定义。
+
+## 规范
+
+`spec/` 描述已实现的模块契约和当前限制。新增或修改功能后，应更新其唯一对应页面，而不是另建设计或 ADR 文档。
+
+- [架构与程序集边界](spec/architecture.md)
+- [运行时与存档](spec/runtime.md)
+- [条目类型与项目契约](spec/entry-types.md)
+- [资源管理](spec/assets.md)
+- [项目与发布格式](spec/file-formats.md)
+- [Avalonia 游戏页面](spec/control.md)
+- [国际化](spec/i18n.md)
+- [Editor Graph 编辑](spec/editor-graph.md)
+- [Editor 历史与保存](spec/editor-history-and-save.md)
+- [Dock 集成](spec/dock-design.md)
+
+## 二次开发手册
+
+- [接入新的表现层](manual/new-presentation-layer.md)：为 WPF、WinUI 或其他 UI 框架实现宿主和呈现适配的最小路径。
+- [定制 Avalonia Sample](manual/customize-avalonia-sample.md)：基于现有 Sample 落地项目配置、主题、原语和平台能力。

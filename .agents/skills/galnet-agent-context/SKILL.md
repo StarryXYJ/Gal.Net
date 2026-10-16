@@ -13,7 +13,7 @@ description: "在 GalNet 开始工作、上下文可能过时或需要整理长�
 
 1. 从项目根目录读取 `.agents/agent-knowledge.md`。
 2. 根据当前任务的关键词，只读取相关的 `.agents/lessons/` 和 `.agents/skills/`，不要默认加载全部经验。
-3. 阅读对应的 `docs/spec/`、`docs/design/` 和 feature 文档；正式文档中的当前事实优先于旧 lesson。
+3. 阅读对应的 `docs/spec/`、`docs/manual/` 和 feature 文档；正式规范中的当前事实优先于旧 lesson 和 feature 过程记录。
 4. 只把已经验证、未来仍有复用价值的事实写回 `agent-knowledge.md`。
 5. 如果规则已经失效，标记关联 lesson 或 skill 为 `superseded`，不要继续保留为当前规则。
 

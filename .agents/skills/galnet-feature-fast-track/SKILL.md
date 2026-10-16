@@ -18,7 +18,7 @@ description: "按 GalNet 快速 feature 通道处理边界清晰的小到中等�
 3. 只有用户明确要求完成或实现该 feature 时，才进入代码修改；单纯“规划一下”不等于实现授权。
 4. 遇到以下情况时退回普通 feature 流程，并说明原因：
    - 需求或验收标准仍不清楚。
-   - 需要 ADR、长期架构决策或大范围迁移。
+   - 需要长期架构决策或大范围迁移。
    - 影响核心分层、存档语义、公共 API 或多个并行 feature。
    - 工作树中已有改动与本任务冲突。
    - 无法定义快速、可信的验证方式。
@@ -49,7 +49,7 @@ description: "按 GalNet 快速 feature 通道处理边界清晰的小到中等�
 遵守 `galnet-feature-closeout`：
 
 - 在 `summary.md` 记录实际实现、验证证据、计划偏差、已知限制和后续工作。
-- 将稳定事实同步到 `docs/spec/` 或 `docs/design/`；只把 agent 经验放入 `.agents/lessons/` 或 `.agents/agent-knowledge.md`。
+- 将稳定事实同步到 `docs/spec/`，必要的接入说明同步到 `docs/manual/`；只把 agent 经验放入 `.agents/lessons/` 或 `.agents/agent-knowledge.md`。
 - 需要独立审核或风险较高时，先使用 `galnet-feature-review`，不要把 review 隐藏进 summary。
 
 ## 完成条件
