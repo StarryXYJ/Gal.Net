@@ -161,10 +161,10 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         resetValues,
         _effects);
 
-    public void CommitSpeaker(string value)
+    public void CommitSpeaker(string? value)
     {
+        if (string.IsNullOrWhiteSpace(value) || _projects.Current is not { } project) return;
         var speaker = value.Trim();
-        if (string.IsNullOrEmpty(speaker) || _projects.Current is not { } project) return;
         if (project.Settings.Speakers.Any(item => string.Equals(item, speaker, StringComparison.OrdinalIgnoreCase))) return;
         project.Settings.Speakers.Add(speaker);
         project.IsDirty = true;
