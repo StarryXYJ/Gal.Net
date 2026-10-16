@@ -19,6 +19,32 @@ namespace GalNet.IntegrationTests;
 public sealed class SampleLocalizationTests
 {
     [Test]
+    public void SharedLocalizeBindingRefreshesAndPreservesFormatting()
+    {
+        using var localization = CreateLocalization();
+        var previous = PlayerTextExtension.Resolve;
+        try
+        {
+            PlayerTextExtension.Resolve = localization.GetString;
+            var extension = new LocalizeExtension("Settings.Title") { StringFormat = "[{0}]" };
+            var text = new TextBlock();
+            using var binding = text.Bind(TextBlock.TextProperty, (ReflectionBinding)extension.ProvideValue(null!));
+            Assert.That(text.Text, Is.EqualTo("[Settings]"));
+            localization.CultureService.SetCulture("zh-CN");
+            Assert.That(text.Text, Is.EqualTo("[设置]"));
+            localization.CultureService.SetCulture("en-US");
+            Assert.That(text.Text, Is.EqualTo("[Settings]"));
+
+            PlayerTextExtension.Resolve = null;
+            Assert.That(extension.ProvideValue(null!), Is.EqualTo("Settings.Title"));
+            Assert.That(new LocalizeExtension().ProvideValue(null!), Is.EqualTo(string.Empty));
+            Assert.That(new PlayerTextExtension("Settings.Title", "Settings fallback").ProvideValue(null!),
+                Is.EqualTo("Settings fallback"));
+        }
+        finally { PlayerTextExtension.Resolve = previous; }
+    }
+
+    [Test]
     public void DynamicSettingKeysResolveAndRefreshWhenLanguageOrReasonChanges()
     {
         using var localization = CreateLocalization();

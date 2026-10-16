@@ -49,3 +49,9 @@
 | 8 Sample 收敛与文档 | 本次收尾提交 | 全部 12 个测试项目共 1,038 项通过，零失败；Release 全解决方案构建、格式与 IDE0005 检查通过 |
 
 原生音视频播放和完整 GUI 人工流程未验收；自动回归覆盖媒体生命周期、音效逻辑、页面绑定、状态恢复与失败清理。Debug 全解决方案构建仅因正在运行的 Sample 锁定可执行文件而失败，独立 Release 输出的完整解决方案构建通过（零错误）。
+
+## 后续补充：共享本地化扩展
+
+Sample 的 `LocalizeExtension` 下放到 `Avalonia.GameView.MarkupExtensions`，与 `PlayerTextExtension` 共用 observable text 解析入口；Sample 的三个窗口/页面改用共享扩展。保留 Key 回退、StringFormat 和语言即时刷新，不依赖 SampleLocalizationService.Current，也不向中立层引入 Avalonia。Editor 的动态 Path 本地化扩展保留原实现。
+
+验证：Sample XAML 与集成项目编译通过；本地化集成测试 11/11，包含实际 TextBlock 的中英文切换、格式化、未配置解析器与空 Key 回退。
