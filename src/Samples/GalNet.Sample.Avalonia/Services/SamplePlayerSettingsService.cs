@@ -9,6 +9,7 @@ using GalNet.Core.Variable;
 using GalNet.Game.Controls.Forms;
 using GalNet.Runtime.Variables;
 using GalNet.Runtime.Logging;
+using GalNet.Avalonia.GameView.Input;
 
 namespace GalNet.Sample.Avalonia.Services;
 
@@ -34,11 +35,29 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
     private readonly List<Action<IReadOnlyDictionary<string, GalNet.Core.Variable.Variable>>> _restoreValues = [];
     public GameSettings RuntimeSettings { get; private set; } = new();
     public event Action<GameSettings>? SettingsChanged;
+    public PlayerInputSettings Input { get; } = new();
+    private readonly CustomSetting<PlayerInputConfiguration> _inputSetting;
+    private readonly SampleGamepadInput _gamepadInput;
 
     public SamplePlayerSettingsService(SampleLocalizationService localization, GamePageViewModel gameplay, IPlayerDisplayService? display = null)
     {
         _localization = localization;
         _gameplay = gameplay;
+        gameplay.Input = Input;
+        _gamepadInput = new SampleGamepadInput(Input);
+        _inputSetting = new CustomSetting<PlayerInputConfiguration>("inputBindings", "Settings.Operation", PlayerInputSettings.Defaults(),
+            () => Input.Configuration, (value, _) =>
+            {
+                Input.Apply(value);
+                Store("player.galnet.input.bindings", Input.Serialize());
+                return Task.CompletedTask;
+            }, _ =>
+            {
+                var panel = new InputBindingsPanel(Input);
+                return new FieldEditorLease(panel, panel.Dispose);
+            }, localization.GetString("Settings.Operation"))
+        { IsFullWidth = true, Validator = PlayerInputSettings.Validate };
+        Input.CommitAsync = value => _inputSetting.TrySetValueAsync(value);
         _display = display ?? new SampleWindowDisplayService();
         _audioPreviewTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
         _audioPreviewTimer.Tick += OnAudioPreviewTimerTick;
@@ -56,6 +75,12 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
             Languages(), () => localization.CultureService.CurrentCulture.Name,
             (value, _) => { localization.ApplyCulture(value); Store(LocaleVariable, value); return Task.CompletedTask; },
             localization.GetString("Settings.Language"));
+        Input.ToggleFullscreenAsync = async () =>
+        {
+            if (_display.IsAvailable)
+                await _displayMode.TrySetValueAsync(_display.Mode == PlayerDisplayMode.Window
+                    ? PlayerDisplayMode.BorderlessFullscreen : PlayerDisplayMode.Window);
+        };
         Categories = Array.AsReadOnly(new[]
         {
             new SettingCategory("game", "Settings.Game",
@@ -67,6 +92,7 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
                 Milliseconds("quickInterval", "Settings.QuickInterval", 50, 5000, 10, () => RuntimeSettings.QuickAdvanceIntervalMilliseconds, value => RuntimeSettings.QuickAdvanceIntervalMilliseconds = value),
                 Milliseconds("autoInterval", "Settings.AutoInterval", 2000, 30000, 100, () => RuntimeSettings.AutoAdvanceIntervalMilliseconds, value => RuntimeSettings.AutoAdvanceIntervalMilliseconds = value)
             ], localization.GetString("Settings.Game")),
+            new SettingCategory("operation", "Settings.Operation", [_inputSetting], localization.GetString("Settings.Operation")),
             new SettingCategory("graphics", "Settings.Graphics", [_displayMode, _windowSize], localization.GetString("Settings.Graphics")),
             new SettingCategory("audio", "Settings.Audio",
             [
@@ -105,6 +131,7 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
 
     public void BindWindow(global::Avalonia.Controls.Window? window)
     {
+        _gamepadInput.Bind(window);
         if (_display is SampleWindowDisplayService desktop) desktop.Bind(window);
     }
 
@@ -140,6 +167,7 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
         try
         {
             var stored = variables.GetSnapshot(VariableScope.Player);
+            Input.Restore(stored.TryGetValue("player.galnet.input.bindings", out var bindings) && bindings.Type == VariableType.String ? bindings.AsString() : null);
             var languages = Languages();
             if (stored.TryGetValue(LocaleVariable, out var locale) && locale.Type == VariableType.String && languages.Any(option => option.Value == locale.AsString()))
                 _localization.ApplyCulture(locale.AsString());
@@ -262,6 +290,8 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
 
     public void Dispose()
     {
+        _gamepadInput.Dispose();
+        Input.Dispose();
         _audioPreviewTimer.Stop();
         _audioPreviewTimer.Tick -= OnAudioPreviewTimerTick;
         _liveSaveTimer.Stop();

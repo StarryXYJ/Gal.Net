@@ -12,7 +12,7 @@ using GalNet.Sample.Avalonia.Debug;
 namespace GalNet.Sample.Avalonia.Services;
 
 /// <summary>Sample host implementation; all game/file-system work stays outside page VMs.</summary>
-internal sealed partial class SampleGameSessionService : ObservableObject, IGameSessionService, IPreparedGameSessionService, IGameGallerySession, IAsyncDisposable
+internal sealed partial class SampleGameSessionService : ObservableObject, IGameSessionService, IPreparedGameSessionService, IFirstEmptySlotSession, IGameGallerySession, IAsyncDisposable
 {
     private readonly GamePageViewModel _gameplay;
     private readonly GamePage _page;
@@ -218,6 +218,23 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         finally { _lifecycle.Release(); }
     }
 
+    public async Task<int?> SaveFirstEmptyAsync(CancellationToken cancellationToken = default)
+    {
+        await _lifecycle.WaitAsync(cancellationToken);
+        try
+        {
+            if (_disposed || !IsPlaying || _runner is null || _saveSession is null)
+                throw new InvalidOperationException("No active game is available to save.");
+            await _settings.FlushAsync();
+            var slot = await _saveSession.SaveFirstEmptyAsync(_runner.CreateSaveData(), cancellationToken);
+            if (slot is null) return null;
+            await RefreshSlotsAsync(cancellationToken);
+            _gameplay.StatusMessage = $"Saved to slot {slot.Value + 1}.";
+            return slot;
+        }
+        finally { _lifecycle.Release(); }
+    }
+
     internal async Task<SampleDebugSaveResult> SaveDebugSnapshotAsync(
         SampleDebugSaveKind kind,
         bool overwriteWhenAllVisibleSlotsAreOccupied,
@@ -368,7 +385,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         await OnUiAsync(() =>
         {
             _saveSlots.Clear();
-            foreach (var slot in slots.Take(12))
+            foreach (var slot in slots)
             {
                 _saveSlots.Add(new GameSaveSlot(
                     slot.SlotIndex,

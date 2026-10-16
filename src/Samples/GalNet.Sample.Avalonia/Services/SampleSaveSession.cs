@@ -14,6 +14,7 @@ internal sealed class SampleSaveSession : IDisposable
 {
     private readonly FileSaveService _saves;
     private bool _disposed;
+    private readonly SemaphoreSlim _writeGate = new(1, 1);
 
     internal SampleSaveSession(
         FileSaveService saves,
@@ -71,6 +72,27 @@ internal sealed class SampleSaveSession : IDisposable
     }
 
     public async Task SaveAsync(int slotIndex, GameSnapshot snapshot, CancellationToken cancellationToken)
+    {
+        await _writeGate.WaitAsync(cancellationToken);
+        try { await SaveCoreAsync(slotIndex, snapshot, cancellationToken); }
+        finally { _writeGate.Release(); }
+    }
+
+    public async Task<int?> SaveFirstEmptyAsync(GameSnapshot snapshot, CancellationToken cancellationToken)
+    {
+        await _writeGate.WaitAsync(cancellationToken);
+        try
+        {
+            var slots = await _saves.ListSlotsAsync(cancellationToken);
+            var empty = slots.Where(slot => slot.Timestamp == default && !slot.IsCorrupt).OrderBy(slot => slot.SlotIndex).FirstOrDefault();
+            if (empty is null) return null;
+            await SaveCoreAsync(empty.SlotIndex, snapshot, cancellationToken);
+            return empty.SlotIndex;
+        }
+        finally { _writeGate.Release(); }
+    }
+
+    private async Task SaveCoreAsync(int slotIndex, GameSnapshot snapshot, CancellationToken cancellationToken)
     {
         await Progress.FlushAsync(cancellationToken);
         await _saves.SaveAsync(slotIndex, new SaveRequest { Snapshot = snapshot }, cancellationToken);

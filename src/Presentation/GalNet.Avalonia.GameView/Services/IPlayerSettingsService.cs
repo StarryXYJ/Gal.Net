@@ -8,6 +8,7 @@ public interface IPlayerSettingsService
 {
     IReadOnlyList<SettingCategory> Categories { get; }
     EditorRegistry Editors { get; }
+    GalNet.Avalonia.GameView.Input.PlayerInputSettings? Input => null;
 }
 
 // Also used by the initial language-selection flow, independently of settings editors.

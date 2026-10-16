@@ -29,6 +29,9 @@ public partial class GameShell : UserControl, IDisposable
     private bool _hadActiveRun;
     private bool _returningToTitle;
     private bool _disposed;
+    private readonly GalNet.Avalonia.GameView.Input.PlayerInputRouter? _inputRouter;
+    private readonly GalNet.Avalonia.GameView.Input.TouchInputRecognizer? _touchInput;
+    private readonly GalNet.Avalonia.GameView.Input.PlayerInputSettings? _inputSettings;
 
     public GameShell(
         GameShellViewModel viewModel,
@@ -37,7 +40,8 @@ public partial class GameShell : UserControl, IDisposable
         IGameSessionService session,
         IGameNavigationService navigation,
         GameNavigationTransitionCoordinator transitions,
-        IGameLayoutTheme theme)
+        IGameLayoutTheme theme,
+        IPlayerSettingsService settings)
     {
         _viewModel = viewModel;
         _views = views;
@@ -45,17 +49,25 @@ public partial class GameShell : UserControl, IDisposable
         _session = session;
         _navigation = navigation;
         _transitions = transitions;
+        _inputSettings = settings.Input;
         InitializeComponent();
         Styles.Add(theme.CreateStyles());
         DataContext = viewModel;
         session.PropertyChanged += OnSessionPropertyChanged;
         _transitions.Attach(ShowPageAsync);
         ShowCurrentPage();
+        if (settings.Input is { } input)
+        {
+            _inputRouter = new(this, input, () => _viewModel.CurrentViewModel as GamePageViewModel, session, () => navigation.GoBack());
+            _touchInput = new(this, input, () => _viewModel.CurrentViewModel is GamePageViewModel { IsChoiceVisible: false, IsSkipConfirmationOpen: false }, _inputRouter.DispatchAsync);
+        }
     }
 
     public void Dispose()
     {
         _disposed = true;
+        _inputRouter?.Dispose();
+        _touchInput?.Dispose();
         _transitions.Detach();
         _session.PropertyChanged -= OnSessionPropertyChanged;
         if (_gameplay is not null)
@@ -218,6 +230,9 @@ public partial class GameShell : UserControl, IDisposable
 
     private void TrackGameplay(PageViewModelBase? viewModel)
     {
+        if (viewModel is SettingsPageViewModel) _inputSettings?.SelectedDevice = null;
+        _inputRouter?.ResetInput();
+        _touchInput?.Reset();
         if (!ReferenceEquals(_gameplay, viewModel))
         {
             if (_gameplay is not null)

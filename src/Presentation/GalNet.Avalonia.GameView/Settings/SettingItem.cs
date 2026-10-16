@@ -42,6 +42,9 @@ public abstract class SettingItem : ObservableObject
     public string NameKey { get; }
     public object Label { get; }
     public string? DescriptionKey { get; init; }
+    public bool IsFullWidth { get; init; }
+    public int EditorColumn => IsFullWidth ? 0 : 1;
+    public int EditorColumnSpan => IsFullWidth ? 2 : 1;
     public abstract Type ValueType { get; }
     public virtual FieldDescriptor? Field => null;
     public IReadOnlyList<FieldDescriptor> Fields => Field is { } descriptor ? [descriptor] : [];

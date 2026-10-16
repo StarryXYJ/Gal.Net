@@ -37,6 +37,12 @@ public interface IPreparedGameSessionService
     Task BeginPreparedGameAsync(CancellationToken cancellationToken = default);
 }
 
+/// <summary>Optional safe save action; null means every normal slot is occupied.</summary>
+public interface IFirstEmptySlotSession
+{
+    Task<int?> SaveFirstEmptyAsync(CancellationToken cancellationToken = default);
+}
+
 /// <summary>Presentation-safe save slot data. The host owns loading, writing and preview bytes.</summary>
 public sealed record GameSaveSlot(int SlotIndex, DateTime Timestamp, string Description, bool IsEmpty, bool IsCorrupt)
 {
