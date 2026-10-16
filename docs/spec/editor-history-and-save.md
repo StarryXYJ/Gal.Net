@@ -1,6 +1,6 @@
 # Editor 项目历史与保存
 
-当前实现见 `features/F-20261015-02-editor-authoring-workspace/phase-1b.md`。P2 已接入 [Graph 基础编辑](editor-graph.md)；分支完整交互、项目文件界面和完整 Group 参数 UI 按后续阶段继续迁移。
+当前实现见 `features/F-20261015-02-editor-authoring-workspace/phase-1b.md`。P2/P3 已接入 [Graph 编辑](editor-graph.md)，包括分支与整批粘贴；项目文件界面和完整 Group 参数 UI 按后续阶段继续迁移。
 
 ## 操作与输入
 

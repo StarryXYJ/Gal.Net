@@ -64,11 +64,42 @@ public partial class GraphNode : ObservableObject
             if (SetProperty(ref _name, value)) Source.Name = value;
         }
     }
+    private Action<string, string, string?>? _branchValueRequested;
+    public Action<string, string, string?>? BranchValueRequested
+    {
+        get => _branchValueRequested;
+        set { _branchValueRequested = value; foreach (var item in Options) item.ChangeRequested = value; foreach (var item in Conditions) item.ChangeRequested = value; }
+    }
+    private void RefreshBranchItems()
+    {
+        var options = Source.Options?.ToArray() ?? [];
+        var conditions = Source.Conditions?.ToArray() ?? [];
+        var changed = Options.Count != options.Length || !Options.Select(item => item.Id).SequenceEqual(options.Select(item => item.Id))
+            || Conditions.Count != conditions.Length || !Conditions.Select(item => item.Id).SequenceEqual(conditions.Select(item => item.Id));
+        foreach (var item in Options.Where(item => !options.Any(dto => ReferenceEquals(dto, item.Source))).ToArray()) { item.ChangeRequested = null; Options.Remove(item); }
+        foreach (var item in Conditions.Where(item => !conditions.Any(dto => ReferenceEquals(dto, item.Source))).ToArray()) { item.ChangeRequested = null; Conditions.Remove(item); }
+        for (var i = 0; i < options.Length; i++)
+        {
+            var item = Options.FirstOrDefault(item => ReferenceEquals(item.Source, options[i]));
+            if (item is null) { item = new(options[i]); Options.Insert(i, item); }
+            else if (Options.IndexOf(item) != i) Options.Move(Options.IndexOf(item), i);
+            item.ChangeRequested = BranchValueRequested; item.Refresh();
+        }
+        for (var i = 0; i < conditions.Length; i++)
+        {
+            var item = Conditions.FirstOrDefault(item => ReferenceEquals(item.Source, conditions[i]));
+            if (item is null) { item = new(conditions[i]); Conditions.Insert(i, item); }
+            else if (Conditions.IndexOf(item) != i) Conditions.Move(Conditions.IndexOf(item), i);
+            item.ChangeRequested = BranchValueRequested; item.Refresh();
+        }
+        if (changed) RefreshConnectors();
+    }
     public void RefreshAuthorValues()
     {
         SetProperty(ref _name, Source.Name, nameof(Name));
         X = Source.X;
         Y = Source.Y;
+        RefreshBranchItems();
     }
 
     [ObservableProperty]
@@ -153,8 +184,8 @@ public partial class GraphNode : ObservableObject
         var outputCount = NodeKind switch
         {
             GraphNodeKind.Entry => 1,
-            GraphNodeKind.ChoiceBranch => Math.Max(1, Options.Count),
-            GraphNodeKind.ConditionBranch => Math.Max(1, Conditions.Count),
+            GraphNodeKind.ChoiceBranch => Options.Count,
+            GraphNodeKind.ConditionBranch => Conditions.Count,
             _ => 1
         };
 
@@ -188,7 +219,10 @@ public partial class GraphConnector : ObservableObject
 {
     public GraphNode Node { get; }
     public GraphConnectorKind Kind { get; }
-    public int Index { get; }
+    public string? ItemId { get; }
+    private readonly int _index;
+    public int Index => ItemId is null ? _index : Node.NodeKind == GraphNodeKind.ChoiceBranch
+        ? Node.Options.ToList().FindIndex(item => item.Id == ItemId) : Node.Conditions.ToList().FindIndex(item => item.Id == ItemId);
 
     [ObservableProperty]
     private bool _isConnected;
@@ -200,7 +234,9 @@ public partial class GraphConnector : ObservableObject
     {
         Node = node;
         Kind = kind;
-        Index = index;
+        _index = index;
+        ItemId = kind != GraphConnectorKind.Output ? null : node.NodeKind == GraphNodeKind.ChoiceBranch ? node.Options.ElementAtOrDefault(index)?.Id
+            : node.NodeKind == GraphNodeKind.ConditionBranch ? node.Conditions.ElementAtOrDefault(index)?.Id : null;
     }
 }
 
@@ -483,26 +519,23 @@ public partial class BranchOptionEditorItemViewModel : ObservableObject
 {
     public EditorGraphBranchOptionDto Source { get; }
     public string Id { get => Source.Id; init => Source.Id = value; }
-    public BranchOptionEditorItemViewModel() => Source = new() { Id = Guid.NewGuid().ToString("N") };
-    public BranchOptionEditorItemViewModel(EditorGraphBranchOptionDto source) { Source = source; _text = source.Text; _condition = source.Condition; }
-    partial void OnTextChanged(string value) => Source.Text = value;
-    partial void OnConditionChanged(string value) => Source.Condition = value;
-
-    [ObservableProperty]
-    private string _text = "";
-
-    [ObservableProperty]
-    private string _condition = "";
+    public Action<string, string, string?>? ChangeRequested { get; set; }
+    private string _text = "", _condition = "";
+    public string Text { get => _text; set { if (_text == value) return; if (ChangeRequested is { } change) change(Id, nameof(Text), value); else { Source.Text = value ?? ""; Refresh(); } } }
+    public string Condition { get => _condition; set { if (_condition == value) return; if (ChangeRequested is { } change) change(Id, nameof(Condition), value); else { Source.Condition = value ?? ""; Refresh(); } } }
+    public BranchOptionEditorItemViewModel() : this(new() { Id = Guid.NewGuid().ToString("N") }) { }
+    public BranchOptionEditorItemViewModel(EditorGraphBranchOptionDto source) { Source = source; Refresh(); }
+    public void Refresh() { SetProperty(ref _text, Source.Text, nameof(Text)); SetProperty(ref _condition, Source.Condition, nameof(Condition)); }
 }
 
 public partial class BranchConditionEditorItemViewModel : ObservableObject
 {
     public EditorGraphBranchConditionDto Source { get; }
     public string Id { get => Source.Id; init => Source.Id = value; }
-    public BranchConditionEditorItemViewModel() => Source = new() { Id = Guid.NewGuid().ToString("N") };
-    public BranchConditionEditorItemViewModel(EditorGraphBranchConditionDto source) { Source = source; _expression = source.Expression; }
-    partial void OnExpressionChanged(string value) => Source.Expression = value;
-
-    [ObservableProperty]
+    public Action<string, string, string?>? ChangeRequested { get; set; }
     private string _expression = "";
+    public string Expression { get => _expression; set { if (_expression == value) return; if (ChangeRequested is { } change) change(Id, nameof(Expression), value); else { Source.Expression = value ?? ""; Refresh(); } } }
+    public BranchConditionEditorItemViewModel() : this(new() { Id = Guid.NewGuid().ToString("N") }) { }
+    public BranchConditionEditorItemViewModel(EditorGraphBranchConditionDto source) { Source = source; Refresh(); }
+    public void Refresh() => SetProperty(ref _expression, Source.Expression, nameof(Expression));
 }

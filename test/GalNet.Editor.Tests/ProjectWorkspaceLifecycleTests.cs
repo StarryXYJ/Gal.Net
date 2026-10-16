@@ -774,11 +774,12 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         await projects.CloseAsync();
     }
 
-    private static ServiceProvider Services(IProjectClosePrompt? closePrompt = null, IEditorLocalizationService? localization = null) => new ServiceCollection().AddEditorServices()
+    private static ServiceProvider Services(IProjectClosePrompt? closePrompt = null, IEditorLocalizationService? localization = null, GalNet.Editor.Shared.Commands.AuthorFileTransaction? transaction = null) => new ServiceCollection().AddEditorServices()
         .AddSingleton<IEditorLocalizationService>(localization ?? new EditorLocalizationService())
         .AddSingleton<IProjectClosePrompt>(closePrompt ?? new DiscardProjectClosePrompt())
         .AddSingleton<IEditorSettingsService>(new TestSettings())
         .AddSingleton<IFileDialogService>(new TestDialogs())
+        .AddScoped<IEditorDocumentRepository>(provider => transaction is null ? new EditorDocumentRepository(provider.GetRequiredService<IEntryCatalog>()) : new FaultRepository(new EditorDocumentRepository(provider.GetRequiredService<IEntryCatalog>()), transaction))
         .AddSingleton<IEffectCatalog>(new EffectCatalog([]))
         .BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 

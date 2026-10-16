@@ -7,11 +7,12 @@
              Focusable="True"
              KeyDown="OnKeyDown"
              Background="{DynamicResource SemiColorBackground0}">
+    <Grid RowDefinitions="*,Auto">
     <controls:PanZoomCanvas Name="Viewport"
                             Background="{DynamicResource SemiColorBackground0}"
                             CanvasWidth="10000"
                             CanvasHeight="10000"
-                            MinZoom="0.2"
+                            MinZoom="0.02"
                             MaxZoom="3"
                             ZoomStep="1.04"
                             PointerPressed="OnViewportPointerPressed"
@@ -107,4 +108,6 @@
                        IsHitTestVisible="False" />
         </Canvas>
     </controls:PanZoomCanvas>
+    <TextBlock Grid.Row="1" Text="{Binding StatusText}" TextWrapping="Wrap" Margin="8,4" />
+    </Grid>
 </UserControl>

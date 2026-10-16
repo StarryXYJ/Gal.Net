@@ -18,6 +18,7 @@ public sealed partial class NodeInspectorControlViewModel : ObservableObject, II
 {
     private readonly IEditorLocalizationService _localization;
     private bool _isLocked;
+    private string? _inspectedNodeId;
 
     public EditorWorkspaceViewModel Workspace { get; }
     public IUndoRedoHistory? UndoRedoHistory => Workspace.UndoRedoHistory;
@@ -39,6 +40,7 @@ public sealed partial class NodeInspectorControlViewModel : ObservableObject, II
         _localization = localization;
         SyncSelection();
         Workspace.PropertyChanged += OnWorkspacePropertyChanged;
+        Workspace.Nodes.CollectionChanged += OnNodesChanged;
         Workspace.VariableDefinitionsChanged += OnVariableDefinitionsChanged;
         _localization.PropertyChanged += OnLocalizationPropertyChanged;
     }
@@ -84,7 +86,15 @@ public sealed partial class NodeInspectorControlViewModel : ObservableObject, II
     private void SyncSelection()
     {
         InspectedNode = Workspace.SelectedNode;
+        _inspectedNodeId = InspectedNode?.Id;
         InspectedEdge = Workspace.SelectedEdge;
+        RaiseSelectionPropertiesChanged();
+    }
+
+    private void OnNodesChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs args)
+    {
+        if (!_isLocked || _inspectedNodeId is null) return;
+        InspectedNode = Workspace.Nodes.FirstOrDefault(node => node.Id == _inspectedNodeId);
         RaiseSelectionPropertiesChanged();
     }
 
@@ -113,6 +123,7 @@ public sealed partial class NodeInspectorControlViewModel : ObservableObject, II
     public void Dispose()
     {
         Workspace.PropertyChanged -= OnWorkspacePropertyChanged;
+        Workspace.Nodes.CollectionChanged -= OnNodesChanged;
         Workspace.VariableDefinitionsChanged -= OnVariableDefinitionsChanged;
         _localization.PropertyChanged -= OnLocalizationPropertyChanged;
     }

@@ -138,7 +138,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         _variableDefinitionService.DefinitionsChanged -= _definitionsChangedHandler;
         _histories.Changed -= OnHistoryChanged;
         _documentService.DocumentChanged -= SynchronizeGraph;
-        foreach (var node in Nodes) node.RenameRequested = null;
+        foreach (var node in Nodes) { node.RenameRequested = null; node.BranchValueRequested = null; }
         foreach (var edge in Edges) edge.Dispose();
         _graphChangeTracker.Dispose();
         Nodes.CollectionChanged -= OnGraphCollectionChanged;
@@ -196,7 +196,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
 
     public async Task<GraphNode> AddNodeAsync(GraphNodeKind kind, double x, double y, GraphConnector? from = null)
     {
-        var id = await _graphAuthoring.AddNodeAsync(kind, x, y, from?.Node.Id, from?.Index ?? 0);
+        var id = await _graphAuthoring.AddNodeAsync(kind, x, y, from?.Node.Id, from?.Index ?? 0, from?.ItemId);
         var node = Nodes.Single(node => node.Id == id);
         SelectNode(node);
         return node;
@@ -235,17 +235,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         AddChoiceOptionTo(SelectedNode);
     }
 
-    public void AddChoiceOptionTo(GraphNode? node)
-    {
-        if (node?.NodeKind != GraphNodeKind.ChoiceBranch) return;
-        if (!_graphEditingService.AddChoiceOption(Nodes, Edges, node)) return;
-        var option = node.Options[^1];
-        _propertyValues[(option, nameof(option.Text))] = option.Text;
-        _propertyValues[(option, nameof(option.Condition))] = option.Condition;
-        PushGraphEdit(new DelegateEdit("Add choice option",
-            () => { node.Options.Remove(option); RefreshGraphNode(node); },
-            () => { node.Options.Add(option); RefreshGraphNode(node); }));
-    }
+    public void AddChoiceOptionTo(GraphNode? node) { if (node?.NodeKind == GraphNodeKind.ChoiceBranch) EditBranch(() => _graphAuthoring.AddBranchItem(node.Id)); }
 
     [RelayCommand]
     private void RemoveChoiceOption(BranchOptionEditorItemViewModel? option)
@@ -253,32 +243,14 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         RemoveChoiceOptionFrom(SelectedNode, option);
     }
 
-    public void RemoveChoiceOptionFrom(GraphNode? node, BranchOptionEditorItemViewModel? option)
-    {
-        if (node?.NodeKind != GraphNodeKind.ChoiceBranch || option is null) return;
-        var index = node.Options.IndexOf(option); if (index < 0) return;
-        var edges = Edges.ToList();
-        if (!_graphEditingService.RemoveChoiceOption(Nodes, Edges, node, option)) return;
-        var afterEdges = Edges.ToList();
-        PushGraphEdit(new DelegateEdit("Delete choice option",
-            () => { node.Options.Insert(index, option); ReplaceEdges(edges); RefreshGraphNode(node); },
-            () => { node.Options.Remove(option); ReplaceEdges(afterEdges); RefreshGraphNode(node); }));
-    }
+    public void RemoveChoiceOptionFrom(GraphNode? node, BranchOptionEditorItemViewModel? option) { if (node is not null && option is not null) EditBranch(() => _graphAuthoring.RemoveBranchItem(node.Id, option.Id)); }
 
     public void MoveChoiceOptionTo(BranchOptionEditorItemViewModel? option, int newIndex)
     {
         MoveChoiceOptionTo(SelectedNode, option, newIndex);
     }
 
-    public void MoveChoiceOptionTo(GraphNode? node, BranchOptionEditorItemViewModel? option, int newIndex)
-    {
-        if (node?.NodeKind != GraphNodeKind.ChoiceBranch || option is null) return;
-        var oldIndex = node.Options.IndexOf(option); if (oldIndex < 0) return;
-        var oldOutlets = Edges.ToDictionary(edge => edge, edge => edge.Outlet);
-        if (!_graphEditingService.MoveChoiceOption(Nodes, Edges, node, option, newIndex)) return;
-        var newOutlets = Edges.ToDictionary(edge => edge, edge => edge.Outlet);
-        PushGraphEdit(CreateBranchMoveEdit("Move choice option", node, node.Options, oldIndex, newIndex, oldOutlets, newOutlets));
-    }
+    public void MoveChoiceOptionTo(GraphNode? node, BranchOptionEditorItemViewModel? option, int newIndex) { if (node is not null && option is not null) EditBranch(() => _graphAuthoring.MoveBranchItem(node.Id, option.Id, newIndex)); }
 
     public void FocusAsset(AssetEntry asset)
     {
@@ -299,16 +271,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         AddConditionTo(SelectedNode);
     }
 
-    public void AddConditionTo(GraphNode? node)
-    {
-        if (node?.NodeKind != GraphNodeKind.ConditionBranch) return;
-        if (!_graphEditingService.AddCondition(Nodes, Edges, node)) return;
-        var condition = node.Conditions[^1];
-        _propertyValues[(condition, nameof(condition.Expression))] = condition.Expression;
-        PushGraphEdit(new DelegateEdit("Add condition",
-            () => { node.Conditions.Remove(condition); RefreshGraphNode(node); },
-            () => { node.Conditions.Add(condition); RefreshGraphNode(node); }));
-    }
+    public void AddConditionTo(GraphNode? node) { if (node?.NodeKind == GraphNodeKind.ConditionBranch) EditBranch(() => _graphAuthoring.AddBranchItem(node.Id)); }
 
     [RelayCommand]
     private void RemoveCondition(BranchConditionEditorItemViewModel? condition)
@@ -316,32 +279,14 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         RemoveConditionFrom(SelectedNode, condition);
     }
 
-    public void RemoveConditionFrom(GraphNode? node, BranchConditionEditorItemViewModel? condition)
-    {
-        if (node?.NodeKind != GraphNodeKind.ConditionBranch || condition is null) return;
-        var index = node.Conditions.IndexOf(condition); if (index < 0) return;
-        var edges = Edges.ToList();
-        if (!_graphEditingService.RemoveCondition(Nodes, Edges, node, condition)) return;
-        var afterEdges = Edges.ToList();
-        PushGraphEdit(new DelegateEdit("Delete condition",
-            () => { node.Conditions.Insert(index, condition); ReplaceEdges(edges); RefreshGraphNode(node); },
-            () => { node.Conditions.Remove(condition); ReplaceEdges(afterEdges); RefreshGraphNode(node); }));
-    }
+    public void RemoveConditionFrom(GraphNode? node, BranchConditionEditorItemViewModel? condition) { if (node is not null && condition is not null) EditBranch(() => _graphAuthoring.RemoveBranchItem(node.Id, condition.Id)); }
 
     public void MoveConditionTo(BranchConditionEditorItemViewModel? condition, int newIndex)
     {
         MoveConditionTo(SelectedNode, condition, newIndex);
     }
 
-    public void MoveConditionTo(GraphNode? node, BranchConditionEditorItemViewModel? condition, int newIndex)
-    {
-        if (node?.NodeKind != GraphNodeKind.ConditionBranch || condition is null) return;
-        var oldIndex = node.Conditions.IndexOf(condition); if (oldIndex < 0) return;
-        var oldOutlets = Edges.ToDictionary(edge => edge, edge => edge.Outlet);
-        if (!_graphEditingService.MoveCondition(Nodes, Edges, node, condition, newIndex)) return;
-        var newOutlets = Edges.ToDictionary(edge => edge, edge => edge.Outlet);
-        PushGraphEdit(CreateBranchMoveEdit("Move condition", node, node.Conditions, oldIndex, newIndex, oldOutlets, newOutlets));
-    }
+    public void MoveConditionTo(GraphNode? node, BranchConditionEditorItemViewModel? condition, int newIndex) { if (node is not null && condition is not null) EditBranch(() => _graphAuthoring.MoveBranchItem(node.Id, condition.Id, newIndex)); }
 
     [RelayCommand]
     private void ReorderCondition(ReorderRequest? request)
@@ -425,7 +370,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         _isLoadingGraph = true;
         ClearSelection();
         _graphChangeTracker.Clear();
-        foreach (var node in Nodes) node.RenameRequested = null;
+        foreach (var node in Nodes) { node.RenameRequested = null; node.BranchValueRequested = null; }
         foreach (var edge in Edges) edge.Dispose();
         Nodes.Clear();
         Edges.Clear();
@@ -481,7 +426,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
             foreach (var node in Nodes.ToArray())
                 if (!source.Nodes.Any(dto => ReferenceEquals(dto, node.Source)))
                 {
-                    node.RenameRequested = null;
+                    node.RenameRequested = null; node.BranchValueRequested = null;
                     Nodes.Remove(node);
                     if (node.NodeKind == GraphNodeKind.LinearGroup) _dockFactory.CloseGroupEditor(node.Id);
                 }
@@ -507,6 +452,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
                     Edges.Insert(index, edge);
                 }
                 else if (Edges.IndexOf(edge) != index) Edges.Move(Edges.IndexOf(edge), index);
+                edge.Outlet = dto.FromOutlet;
             }
             UpdateConnectorStates();
             _selection.SelectNodes(Nodes.Where(node => selected.Contains(node.Id)));
@@ -591,9 +537,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
             (EntryEditorItemViewModel entry, nameof(EntryEditorItemViewModel.Type)) => entry.Type,
             (EntryEditorItemViewModel entry, nameof(EntryEditorItemViewModel.Condition)) => entry.Condition,
             (EntryEditorItemViewModel entry, nameof(EntryEditorItemViewModel.Parameters)) => entry.Parameters,
-            (BranchOptionEditorItemViewModel option, nameof(BranchOptionEditorItemViewModel.Text)) => option.Text,
-            (BranchOptionEditorItemViewModel option, nameof(BranchOptionEditorItemViewModel.Condition)) => option.Condition,
-            (BranchConditionEditorItemViewModel condition, nameof(BranchConditionEditorItemViewModel.Expression)) => condition.Expression,
             _ => null
         };
         if (current is not null) RecordPropertyEdit(item, propertyName, current, value => SetTrackedProperty(item, propertyName, value));
@@ -617,9 +560,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
             case (EntryEditorItemViewModel entry, nameof(EntryEditorItemViewModel.Type)): entry.Type = (string)value!; break;
             case (EntryEditorItemViewModel entry, nameof(EntryEditorItemViewModel.Condition)): entry.Condition = (string)value!; break;
             case (EntryEditorItemViewModel entry, nameof(EntryEditorItemViewModel.Parameters)): entry.Parameters = new Dictionary<string, string>((Dictionary<string, string>)value!); break;
-            case (BranchOptionEditorItemViewModel option, nameof(BranchOptionEditorItemViewModel.Text)): option.Text = (string)value!; break;
-            case (BranchOptionEditorItemViewModel option, nameof(BranchOptionEditorItemViewModel.Condition)): option.Condition = (string)value!; break;
-            case (BranchConditionEditorItemViewModel condition, nameof(BranchConditionEditorItemViewModel.Expression)): condition.Expression = (string)value!; break;
         }
     }
 
@@ -669,6 +609,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
     private void TrackNode(GraphNode node)
     {
         node.RenameRequested = value => { try { _graphAuthoring.Rename(node.Id, value); } catch (Exception failure) { ReportGraphError(failure); } };
+        node.BranchValueRequested = (itemId, field, value) => EditBranch(() => _graphAuthoring.SetBranchValue(node.Id, itemId, field, value));
         _graphChangeTracker.Track(node);
         foreach (var entry in node.Entries) CacheEntry(entry);
         foreach (var option in node.Options) { _propertyValues[(option, nameof(option.Text))] = option.Text; _propertyValues[(option, nameof(option.Condition))] = option.Condition; }
@@ -716,22 +657,8 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         finally { _isApplyingHistory = false; }
     }
 
-    private void ReplaceEdges(IReadOnlyList<GraphEdge> edges)
-    {
-        Edges.Clear(); foreach (var edge in edges) Edges.Add(edge); UpdateConnectorStates();
-    }
-
-    private void RefreshGraphNode(GraphNode node) { node.RefreshConnectors(); UpdateConnectorStates(); }
-
-    private DelegateEdit CreateBranchMoveEdit<T>(string description, GraphNode node, ObservableCollection<T> items,
-        int before, int after, IReadOnlyDictionary<GraphEdge, int> oldOutlets, IReadOnlyDictionary<GraphEdge, int> newOutlets)
-    {
-        void Apply(int from, int to, IReadOnlyDictionary<GraphEdge, int> outlets)
-        {
-            items.Move(from, to); foreach (var pair in outlets) pair.Key.Outlet = pair.Value; RefreshGraphNode(node);
-        }
-        return new DelegateEdit(description, () => Apply(after, before, oldOutlets), () => Apply(before, after, newOutlets));
-    }
-
+    private void EditBranch(Action edit) { try { edit(); } catch (Exception failure) { ReportGraphError(failure); } }
+    public string CopySelection() => _graphAuthoring.CopyNodes(SelectedNodes.Select(node => node.Id));
+    public async Task PasteAsync(string text, double x, double y) { var ids = await _graphAuthoring.PasteAsync(text, x, y); SelectNodes(Nodes.Where(node => ids.Contains(node.Id))); SetStatus(new("Status.GraphPasted", ids.Count)); }
     public GraphNode? EntryNode => Nodes.FirstOrDefault(n => n.NodeKind == GraphNodeKind.Entry);
 }

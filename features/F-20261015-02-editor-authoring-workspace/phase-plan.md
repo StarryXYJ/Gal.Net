@@ -1,6 +1,6 @@
 # Editor 创作工作区实施计划
 
-日期：2026-10-15；进度更新：2026-10-16。依赖：[需求](feature.md)、[设计](design.md)。用户已授权实施，P1a 已验证，见 [phase-1a.md](phase-1a.md)；P1b 已完成当前工作树集成验证，构建成功、311 项测试通过，见 [phase-1b.md](phase-1b.md)。P2 已验证，当前工作树构建成功、323 项回归通过，见 [phase-2.md](phase-2.md)。用户追加编辑器 UI i18n 后，在 P3 前插入 P2i；P2i 已验证，隔离基线构建成功、328 项回归通过，见 [phase-2i.md](phase-2i.md)；下一阶段 P3，其余 Phase 为 planned。状态只使用 planned / in-progress / verified / skipped；状态更新必须附实际证据。
+日期：2026-10-15；进度更新：2026-10-17。依赖：[需求](feature.md)、[设计](design.md)。用户已授权实施，P1a 已验证，见 [phase-1a.md](phase-1a.md)；P1b 已完成当前工作树集成验证，构建成功、311 项测试通过，见 [phase-1b.md](phase-1b.md)。P2 已验证，当前工作树构建成功、323 项回归通过，见 [phase-2.md](phase-2.md)。用户追加编辑器 UI i18n 后，在 P3 前插入 P2i；P2i 已验证，隔离基线构建成功、328 项回归通过，见 [phase-2i.md](phase-2i.md)；P3 已验证，当前工作树构建成功、339 项回归通过，见 [phase-3.md](phase-3.md)；下一阶段 P4a，其余 Phase 为 planned。状态只使用 planned / in-progress / verified / skipped；状态更新必须附实际证据。
 
 ## 顺序与范围
 
@@ -21,7 +21,7 @@ P1a 基本页面/项目文档 → P1b 项目历史/保存骨架
 | P1b | verified | 项目统一历史、保存、失败补偿及恢复骨架；当前工作树构建成功，311 项回归通过 | 2、3、6、7 |
 | P2 | verified | 基本节点与连线编辑，Group 最小生命周期；323 项回归通过 | 1、4 |
 | P2i | verified | 四语基础页面、语言偏好与动态刷新；隔离基线构建成功、328 项回归通过 | 11 |
-| P3 | planned | 分支、批量编辑、复制粘贴、快捷键 | 2、4 |
+| P3 | verified | 分支、批量编辑、深复制粘贴、键盘操作；339 项回归通过 | 2、4、11 |
 | P4a | planned | 项目文件事务和未保存文档协调 | 5、6、7 |
 | P4b | planned | 项目文件树与实际文件操作体验 | 1、2、5 |
 | P5 | planned | 多 Group 编辑、变量和基本参数 UI | 1、2、3、8 |
@@ -130,7 +130,7 @@ P1a 基本页面/项目文档 → P1b 项目历史/保存骨架
 
 ## P3：分支、批量操作与 Graph 完整交互
 
-状态：planned。前置：P2、P2i。
+状态：verified。前置：P2、P2i。2026-10-17 当前工作树解决方案构建成功，Editor 102、Shared 180、架构 45、内容集成 12 项通过，见 [phase-3.md](phase-3.md)。
 
 **目标**：支持有分支的真实剧情结构和批量编辑。
 

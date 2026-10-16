@@ -41,6 +41,8 @@
 
 ## 当前工作
 
+- [F-20261015-02 Editor 创作工作区](../features/F-20261015-02-editor-authoring-workspace/phase-plan.md)：P1a/P1b/P2/P2i/P3 已验证。项目单栈、事务保存、基础 Graph、分支稳定项操作、深复制粘贴与四语已接通；下一阶段 P4a 文件事务/文档协调，游戏预览另立 feature。当前实现见 docs/spec/editor-graph.md 和 editor-history-and-save.md。
+
 - F-20261015-03 模块化游戏状态：GameSnapshot v4；状态 catalog 随 view 组合，Engine 接入；中立 Layer/EffectInstance/ParticleEmitterInstance 直接作为唯一可变数据记录，属性变更必须在 State.Update，编码形成隔离快照。LoopAnimationState 保存类型化 request/plan；停止控制与播放 identity 仅运行期持有。音频 AudioTrackState/AudioSEffectState 包含暂停、队列与空闲效果，所有轨道按稳定检查点从头恢复；不恢复 seek/淡化时钟，玩家设置不回滚。恢复首帧不重复一次性事件，暂停声音在 Resume 前不启动后端。七个相关项目 665 项测试、解决方案构建与 CLI 实际项目校验/编译通过；新档验证见 [feature summary](../features/F-20261015-03-modular-game-state/summary.md)。
 
 
@@ -75,6 +77,8 @@
 4. 如果项目架构变化，检查并标记受影响的 lesson 和 skill，而不是继续沿用旧规则。
 
 ## 经验索引
+
+- [局部编辑的全局位置](lessons/L-20261017-01-local-edit-global-indices.md)：删除局部集合中的中间项后，After 快照必须同步重算全局索引；比较完整作者快照验证撤销。
 
 - [批量预加载的部分成功租约](lessons/L-20261016-06-partial-preload-leases.md)：每次成功获取立即登记；WhenAll 失败仍须释放其他已成功任务的租约。
 

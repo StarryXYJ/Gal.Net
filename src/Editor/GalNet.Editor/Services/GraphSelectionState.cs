@@ -13,6 +13,7 @@ public sealed class GraphSelectionState
 
     public void SelectNode(GraphNode? node, bool additive = false)
     {
+        if (SelectedEdge is { } edge) { edge.IsSelected = false; SelectedEdge = null; }
         if (!additive)
             Clear();
 
