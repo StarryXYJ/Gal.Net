@@ -74,6 +74,8 @@
 
 ## 经验索引
 
+- [分支节点高度变化必须发布连线布局刷新](lessons/L-20261016-04-graph-edge-layout-refresh.md)：连接器重建时输入集合事件可能早于输出集合重建，节点布局完成后必须单独通知入边刷新路径。
+
 - [Editor 语言绑定实际刷新](lessons/L-20261016-03-editor-localization-binding.md)：静态文案显式监听 CurrentCulture，动态 key 同时监听路径；真实窗口切换验收，关闭后释放绑定。
 
 - [Headless 拖动按键状态](lessons/L-20261016-01-headless-drag-modifiers.md)：MouseMove 必须显式携带 LeftMouseButton，不能从 MouseDown 假定状态持续。

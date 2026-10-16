@@ -3,6 +3,8 @@ using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.Parameters;
+using GalNet.Editor.Abstraction.Documents;
+using GalNet.Editor.Controls;
 using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Services;
 using GalNet.Primitives.Builtins;
@@ -41,6 +43,41 @@ public class GraphEditingServiceTests
         Assert.That(node.Entries.TakeLast(2), Is.EqualTo(appended));
         Assert.That(rejected, Is.Empty);
         Assert.That(node.Entries.Select(entry => entry.Id), Is.EqualTo(TwoEntryIds));
+    }
+
+    [Test]
+    public void GraphEdge_Should_Refresh_When_Target_Connector_Layout_Changes()
+    {
+        var source = new GraphNode(new Group { Id = "source", Name = "Source" }, GraphNodeKind.LinearGroup) { Y = 100 };
+        var target = new GraphNode(new EditorGraphNodeDto
+        {
+            Id = "branch",
+            Type = "Branch",
+            BranchType = "Choice",
+            Name = "Branch",
+            Y = 100,
+            Options = [new EditorGraphBranchOptionDto { Id = "option-1", Text = "Option 1" }]
+        }, GraphNodeKind.ChoiceBranch);
+        using var edge = new GraphEdge(source, target);
+        var initialEndY = edge.EndY;
+        var pathChanges = 0;
+        edge.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(GraphEdge.PathData))
+                pathChanges++;
+        };
+
+        target.Options.Add(new BranchOptionEditorItemViewModel { Id = "option-2", Text = "Option 2" });
+        target.Options.Add(new BranchOptionEditorItemViewModel { Id = "option-3", Text = "Option 3" });
+        target.Options.Add(new BranchOptionEditorItemViewModel { Id = "option-4", Text = "Option 4" });
+        target.RefreshConnectors();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(target.LayoutHeight, Is.GreaterThan(GraphLayoutMetrics.NodeMinHeight));
+            Assert.That(edge.EndY, Is.GreaterThan(initialEndY));
+            Assert.That(pathChanges, Is.GreaterThan(0));
+        });
     }
 
     [Test]

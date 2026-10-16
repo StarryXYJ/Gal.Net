@@ -108,6 +108,7 @@ public partial class GraphNode : ObservableObject
     public ObservableCollection<BranchConditionEditorItemViewModel> Conditions { get; } = [];
 
     public int EntryCount => Entries.Count;
+    public double LayoutHeight => GraphLayoutMetrics.GetNodeHeight(InputConnectors.Count, OutputConnectors.Count);
 
     public GraphNode(Node node, GraphNodeKind nodeKind) : this(new EditorGraphNodeDto
     {
@@ -161,6 +162,7 @@ public partial class GraphNode : ObservableObject
             OutputConnectors.Add(new GraphConnector(this, GraphConnectorKind.Output, i));
 
         OnPropertyChanged(nameof(EntryCount));
+        OnPropertyChanged(nameof(LayoutHeight));
     }
 
     public Point GetConnectorCenter(GraphConnectorKind kind, int index)
@@ -250,7 +252,7 @@ public partial class GraphEdge : ObservableObject, IDisposable
     }
 
     private void NodeMoved(object? sender, System.ComponentModel.PropertyChangedEventArgs args) => OnNodeMoved(args.PropertyName);
-    private void ConnectorsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs args) => OnNodeMoved(nameof(GraphNode.Y));
+    private void ConnectorsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs args) => OnNodeMoved(nameof(GraphNode.LayoutHeight));
     public void Dispose()
     {
         From.PropertyChanged -= NodeMoved;
@@ -262,7 +264,7 @@ public partial class GraphEdge : ObservableObject, IDisposable
 
     private void OnNodeMoved(string? propertyName)
     {
-        if (propertyName is not (nameof(GraphNode.X) or nameof(GraphNode.Y)))
+        if (propertyName is not (nameof(GraphNode.X) or nameof(GraphNode.Y) or nameof(GraphNode.LayoutHeight)))
             return;
 
         OnPropertyChanged(nameof(StartX));
