@@ -2,10 +2,10 @@ using Avalonia;
 using Avalonia.Controls;
 using GalNet.Avalonia.GameView.Services;
 
-namespace GalNet.Sample.Avalonia.Services;
+namespace GalNet.Avalonia.GameHost;
 
 /// <summary>Avalonia FullScreen means borderless fullscreen, not an exclusive display-mode switch.</summary>
-internal sealed class SampleWindowDisplayService : IPlayerDisplayService, IDisposable
+public sealed class AvaloniaWindowDisplayService : IPlayerDisplayService, IDisposable
 {
     private Window? _window;
     public bool IsAvailable => _window is not null;

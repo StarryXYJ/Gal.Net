@@ -1,3 +1,5 @@
+using GalNet.Avalonia.GameHost;
+using GalNet.Avalonia.GameView.ViewModels;
 using DynamicLocalization.Core;
 using DynamicLocalization.Core.Providers;
 using GalNet.Assets;
@@ -33,11 +35,13 @@ internal static class SampleCustomization
     {
         services.AddAvaloniaGameViewPages(theme: PlayerTheme)
             .AddSingleton(_ => CreateLocalizationService())
+            .AddSingleton<IPlayerLocalization>(provider => provider.GetRequiredService<SampleLocalizationService>())
             .AddSingleton<SampleLibVlcRuntime>()
-            .AddScoped<SamplePlayerSettingsService>()
-            .AddScoped<SampleStartupService>()
+            .AddScoped(provider => new AvaloniaPlayerSettingsService(provider.GetRequiredService<IPlayerLocalization>(),
+                provider.GetRequiredService<GamePageViewModel>(), editors: CreateFieldEditors()))
+            .AddScoped<AvaloniaPlayerStartup>()
             .AddScoped<LanguageSelectionViewModel>()
-            .AddScoped<IPlayerSettingsService>(provider => provider.GetRequiredService<SamplePlayerSettingsService>())
+            .AddScoped<IPlayerSettingsService>(provider => provider.GetRequiredService<AvaloniaPlayerSettingsService>())
             .AddScoped<SampleGameSessionService>()
             .AddScoped<IGameSessionService>(provider => provider.GetRequiredService<SampleGameSessionService>())
             .AddTransient<MainWindow>();

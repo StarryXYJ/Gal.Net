@@ -1,3 +1,4 @@
+using GalNet.Avalonia.GameHost;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -25,7 +26,7 @@ public partial class MainWindow : UrsaWindow
         _debugViewModel = services.GetService<SampleDebugViewModel>();
         _languageSelectionViewModel = services.GetRequiredService<LanguageSelectionViewModel>();
         InitializeComponent();
-        services.GetRequiredService<SamplePlayerSettingsService>().BindWindow(this);
+        services.GetRequiredService<AvaloniaPlayerSettingsService>().BindWindow(this);
         PlayerRoot.Styles.Add(SampleCustomization.PlayerTheme.CreateStyles());
         LanguageSelection.DataContext = _languageSelectionViewModel;
         GameCanvas.GameContent = shell;
@@ -98,7 +99,7 @@ public partial class MainWindow : UrsaWindow
 
     private void OnClosed(object? sender, EventArgs e)
     {
-        _services.GetRequiredService<SamplePlayerSettingsService>().BindWindow(null);
+        _services.GetRequiredService<AvaloniaPlayerSettingsService>().BindWindow(null);
         if (_debugViewModel is null)
             return;
 

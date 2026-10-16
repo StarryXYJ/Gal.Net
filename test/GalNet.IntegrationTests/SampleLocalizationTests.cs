@@ -1,3 +1,4 @@
+using GalNet.Avalonia.GameHost;
 using Avalonia.Controls;
 using Avalonia.Data;
 using DynamicLocalization.Core;
@@ -54,7 +55,7 @@ public sealed class SampleLocalizationTests
             var badBool = new GalNet.Core.Variable.Variable { Name = "player.galnet.settings.quickReadOnly" };
             badBool.SetValue("false");
             variables.NotifyVariableChanged(GalNet.Core.Variable.VariableScope.Player, badBool.Name, badBool);
-            using var settings = new SamplePlayerSettingsService(localization, new GamePageViewModel(null!));
+            using var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!));
             var runtime = new GameSettings { QuickReadOnly = false, QuickAdvanceIntervalMilliseconds = 3000 };
             await settings.AttachAsync(variables, runtime);
             Assert.That(runtime.QuickReadOnly, Is.True);
@@ -92,7 +93,7 @@ public sealed class SampleLocalizationTests
         {
             using var localization = CreateLocalization();
             using (var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory)))
-            using (var settings = new SamplePlayerSettingsService(localization, new GamePageViewModel(null!)))
+            using (var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!)))
             {
                 var other = new GalNet.Core.Variable.Variable { Name = "player.other" };
                 other.SetValue("preserved");
@@ -114,7 +115,7 @@ public sealed class SampleLocalizationTests
             }
             using var restoredLocalization = CreateLocalization();
             using var restoredVariables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory));
-            using var restoredSettings = new SamplePlayerSettingsService(restoredLocalization, new GamePageViewModel(null!));
+            using var restoredSettings = new AvaloniaPlayerSettingsService(restoredLocalization, new GamePageViewModel(null!));
             var restoredRuntime = new GameSettings();
             await restoredSettings.AttachAsync(restoredVariables, restoredRuntime);
             Assert.Multiple(() =>
@@ -155,7 +156,7 @@ public sealed class SampleLocalizationTests
         try
         {
             using var localization = CreateLocalization();
-            using var settings = new SamplePlayerSettingsService(localization, new GamePageViewModel(null!));
+            using var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!));
             localization.AttachGame(new GalNet.Runtime.Content.GameContent
             {
                 Graph = new(),
@@ -202,7 +203,7 @@ public sealed class SampleLocalizationTests
             }
         };
         localization.AttachGame(content);
-        using var settings = new SamplePlayerSettingsService(localization, new GamePageViewModel(null!));
+        using var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!));
         Assert.That(title.Value, Is.EqualTo("Translated UI"));
         Assert.That(localization.Resolve("line"), Is.EqualTo("external"));
         Assert.That(localization.Resolve("unique"), Is.EqualTo("kept"));

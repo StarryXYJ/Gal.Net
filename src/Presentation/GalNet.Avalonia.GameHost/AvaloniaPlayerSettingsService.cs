@@ -1,3 +1,4 @@
+using GalNet.GameHost;
 using DynamicLocalization.Core;
 using Avalonia.Threading;
 using GalNet.Avalonia.GameView.Services;
@@ -11,14 +12,14 @@ using GalNet.Runtime.Variables;
 using GalNet.Runtime.Logging;
 using GalNet.Avalonia.GameView.Input;
 
-namespace GalNet.Sample.Avalonia.Services;
+namespace GalNet.Avalonia.GameHost;
 
 /// <summary>Applies preferences and persists them through the session's player variables.</summary>
-public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDisposable
+public sealed class AvaloniaPlayerSettingsService : IPlayerSettingsService, IDisposable
 {
-    public const string LocaleVariable = "player.galnet.settings.locale";
-    public const string TextSpeedVariable = "player.galnet.settings.textSpeed";
-    private readonly SampleLocalizationService _localization;
+    public const string LocaleVariable = PlayerPreferences.LocaleVariable;
+    public const string TextSpeedVariable = PlayerPreferences.TextSpeedVariable;
+    private readonly IPlayerLocalization _localization;
     private readonly GamePageViewModel _gameplay;
     private readonly ChoiceSetting<string> _language;
     private readonly SettingsCoordinator _coordinator;
@@ -28,6 +29,7 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
     private readonly ChoiceSetting<PlayerDisplayMode> _displayMode;
     private readonly ChoiceSetting<PlayerWindowSize> _windowSize;
     private PlayerVariableService? _variables;
+    private PlayerPreferences? _preferences;
     private bool _restoring;
     private bool _audioPreviewPending;
     private bool _liveSavePending;
@@ -37,14 +39,15 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
     public event Action<GameSettings>? SettingsChanged;
     public PlayerInputSettings Input { get; } = new();
     private readonly CustomSetting<PlayerInputConfiguration> _inputSetting;
-    private readonly SampleGamepadInput _gamepadInput;
+    private readonly AvaloniaGamepadInput _gamepadInput;
 
-    public SamplePlayerSettingsService(SampleLocalizationService localization, GamePageViewModel gameplay, IPlayerDisplayService? display = null)
+    public AvaloniaPlayerSettingsService(IPlayerLocalization localization, GamePageViewModel gameplay, IPlayerDisplayService? display = null, EditorRegistry? editors = null)
     {
+        Editors = editors ?? EditorRegistry.CreateDefault();
         _localization = localization;
         _gameplay = gameplay;
         gameplay.Input = Input;
-        _gamepadInput = new SampleGamepadInput(Input);
+        _gamepadInput = new AvaloniaGamepadInput(Input);
         _inputSetting = new CustomSetting<PlayerInputConfiguration>("inputBindings", "Settings.Operation", PlayerInputSettings.Defaults(),
             () => Input.Configuration, (value, _) =>
             {
@@ -58,7 +61,7 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
             }, localization.GetString("Settings.Operation"))
         { IsFullWidth = true, Validator = PlayerInputSettings.Validate };
         Input.CommitAsync = value => _inputSetting.TrySetValueAsync(value);
-        _display = display ?? new SampleWindowDisplayService();
+        _display = display ?? new AvaloniaWindowDisplayService();
         _audioPreviewTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
         _audioPreviewTimer.Tick += OnAudioPreviewTimerTick;
         _liveSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
@@ -113,7 +116,7 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
     }
 
     public IReadOnlyList<SettingCategory> Categories { get; }
-    public EditorRegistry Editors { get; } = SampleCustomization.CreateFieldEditors();
+    public EditorRegistry Editors { get; }
     public Task FlushAsync() => AvaloniaUiDispatcher.Instance.InvokeAsync(FlushOnUiAsync);
 
     private async Task FlushOnUiAsync()
@@ -132,7 +135,7 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
     public void BindWindow(global::Avalonia.Controls.Window? window)
     {
         _gamepadInput.Bind(window);
-        if (_display is SampleWindowDisplayService desktop) desktop.Bind(window);
+        if (_display is AvaloniaWindowDisplayService desktop) desktop.Bind(window);
     }
 
     public async Task RestoreDisplayAsync(CancellationToken cancellationToken = default)
@@ -162,6 +165,7 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
     public async Task AttachAsync(PlayerVariableService variables, GameSettings runtimeSettings, CancellationToken cancellationToken = default)
     {
         _variables = variables;
+        _preferences = new PlayerPreferences(variables);
         RuntimeSettings = runtimeSettings;
         _restoring = true;
         try
@@ -187,11 +191,7 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
         Func<double> read, Action<double> write, NumericEditorKind editor = NumericEditorKind.NumericUpDown, bool livePreview = false)
     {
         var variable = "player.galnet.settings." + id;
-        _restoreValues.Add(stored =>
-        {
-            var value = stored.TryGetValue(variable, out var saved) && saved.Type == VariableType.Float ? saved.AsFloat() : defaultValue;
-            write(double.IsFinite(value) && value >= 0 && value <= maximum ? value : defaultValue);
-        });
+        _restoreValues.Add(_ => write(_preferences!.Number(variable, defaultValue, maximum)));
         return new DoubleSetting(id, key, defaultValue, 0, maximum, step, read,
             (value, token) => ApplyRuntimeSettingAsync(variable, () => write(value), (float)value, token), _localization.GetString(key))
         {
@@ -248,11 +248,7 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
     private IntSetting Milliseconds(string id, string key, int defaultValue, int maximum, int step, Func<int> read, Action<int> write)
     {
         var variable = "player.galnet.settings." + id;
-        _restoreValues.Add(stored =>
-        {
-            var value = stored.TryGetValue(variable, out var saved) && saved.Type == VariableType.Int ? saved.AsInt() : defaultValue;
-            write(value >= 0 && value <= maximum ? value : defaultValue);
-        });
+        _restoreValues.Add(_ => write(_preferences!.Integer(variable, defaultValue, maximum)));
         return new IntSetting(id, key, defaultValue, 0, maximum, step, read,
             (value, token) => ApplyRuntimeSettingAsync(variable, () => write(value), value, token), _localization.GetString(key))
         { EditorKind = NumericEditorKind.NumericUpDown, Format = "0" };
@@ -261,7 +257,7 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
     private BoolSetting Boolean(string id, string key, bool defaultValue, Func<bool> read, Action<bool> write)
     {
         var variable = "player.galnet.settings." + id;
-        _restoreValues.Add(stored => write(stored.TryGetValue(variable, out var saved) && saved.Type == VariableType.Bool ? saved.AsBool() : defaultValue));
+        _restoreValues.Add(_ => write(_preferences!.Boolean(variable, defaultValue)));
         return new BoolSetting(id, key, defaultValue, read,
             (value, token) => ApplyRuntimeSettingAsync(variable, () => write(value), value, token), _localization.GetString(key));
     }
@@ -282,10 +278,8 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
 
     private void Store(string name, object value)
     {
-        if (_restoring || _variables is not { } variables) return;
-        var variable = new GalNet.Core.Variable.Variable { Name = name };
-        variable.SetValue(value);
-        variables.NotifyVariableChanged(VariableScope.Player, name, variable);
+        if (_restoring) return;
+        _preferences?.Set(name, value);
     }
 
     public void Dispose()
@@ -298,6 +292,6 @@ public sealed class SamplePlayerSettingsService : IPlayerSettingsService, IDispo
         _liveSaveTimer.Tick -= OnLiveSaveTimerTick;
         _localization.CultureService.CultureChanged -= OnCultureChanged;
         _display.Changed -= OnDisplayChanged;
-        if (_display is SampleWindowDisplayService desktop) desktop.Dispose();
+        if (_display is AvaloniaWindowDisplayService desktop) desktop.Dispose();
     }
 }

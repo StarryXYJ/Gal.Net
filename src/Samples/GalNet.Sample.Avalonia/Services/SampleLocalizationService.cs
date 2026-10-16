@@ -8,7 +8,7 @@ namespace GalNet.Sample.Avalonia.Services;
 
 /// <summary>Owns the official demo's observable LocalizedString values for the Sample lifetime.</summary>
 public sealed class SampleLocalizationService(CultureService cultureService,
-    IEnumerable<ILocalizationProvider>? bootstrapProviders = null) : IDisposable, ITextResolver
+    IEnumerable<ILocalizationProvider>? bootstrapProviders = null) : IDisposable, GalNet.Avalonia.GameHost.IPlayerLocalization
 {
     private readonly Dictionary<string, LocalizedString> _strings = new(StringComparer.Ordinal);
     private GameLocalizationProvider? _gameProvider;

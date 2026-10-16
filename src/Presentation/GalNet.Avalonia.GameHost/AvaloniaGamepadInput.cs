@@ -3,17 +3,17 @@ using Avalonia.Controls;
 using Avalonia.Threading;
 using GalNet.Avalonia.GameView.Input;
 
-namespace GalNet.Sample.Avalonia.Services;
+namespace GalNet.Avalonia.GameHost;
 
 /// <summary>Windows XInput adapter. Neutral button codes are the only values crossing into GameView.</summary>
-internal sealed class SampleGamepadInput : IDisposable
+internal sealed class AvaloniaGamepadInput : IDisposable
 {
     private readonly PlayerInputSettings _input;
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(32) };
     private Window? _window;
     private HashSet<string> _previous = [];
     private bool _available = OperatingSystem.IsWindows();
-    public SampleGamepadInput(PlayerInputSettings input)
+    public AvaloniaGamepadInput(PlayerInputSettings input)
     {
         _input = input;
         input.GamepadSupported = _available;

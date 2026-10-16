@@ -20,7 +20,7 @@ internal sealed class SampleGameRunner : IGameRun
     private readonly GameRun _run;
     private GameEngine _engine => _run.Engine;
     private readonly AvaloniaGamePresentation _presentation;
-    private readonly SamplePlayerSettingsService _playerSettings;
+    private readonly AvaloniaPlayerSettingsService _playerSettings;
     private readonly Func<bool, string?, Task> _updateStateAsync;
     private readonly Func<Task> _runCompletedAsync;
     private readonly Func<Task> _resetPresentationAsync;
@@ -29,7 +29,7 @@ internal sealed class SampleGameRunner : IGameRun
     private bool _disposed;
 
     private SampleGameRunner(
-        GamePageViewModel gameplay, GameRun run, AvaloniaGamePresentation presentation, SamplePlayerSettingsService playerSettings,
+        GamePageViewModel gameplay, GameRun run, AvaloniaGamePresentation presentation, AvaloniaPlayerSettingsService playerSettings,
         Func<bool, string?, Task> updateStateAsync, Func<Task> runCompletedAsync,
         Func<Task> resetPresentationAsync, Func<Action, Task> onUiAsync)
     {
@@ -50,7 +50,7 @@ internal sealed class SampleGameRunner : IGameRun
 
     public static async Task<SampleGameRunner> CreateAsync(
         GamePageViewModel gameplay, GamePage page, GameResourceScope resources, AvaloniaGameResources visuals,
-        PlayerSession saveSession, SamplePlayerSettingsService playerSettings, ITextResolver textResolver,
+        PlayerSession saveSession, AvaloniaPlayerSettingsService playerSettings, ITextResolver textResolver,
         LibVLC? sharedLibVlc, Func<bool, string?, Task> updateStateAsync,
         Func<Task> runCompletedAsync, Func<Task> resetPresentationAsync,
         Func<Action, Task> onUiAsync, CancellationToken cancellationToken)

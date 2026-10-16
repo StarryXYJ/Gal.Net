@@ -29,7 +29,7 @@ public class ProjectDependencyTests
                 "GalNet.Runtime",
                 "GalNet.Assets"
             ],
-            ["GalNet.Avalonia.GameHost"] = ["GalNet.Avalonia.GameView", "GalNet.Avalonia.Rendering", "GalNet.Primitives.Builtins", "GalNet.Runtime", "GalNet.Presentation.Abstractions", "GalNet.Assets", "GalNet.Core"],
+            ["GalNet.Avalonia.GameHost"] = ["GalNet.GameHost", "GalNet.Avalonia.Controls", "GalNet.Avalonia.GameView", "GalNet.Avalonia.Rendering", "GalNet.Primitives.Builtins", "GalNet.Runtime", "GalNet.Presentation.Abstractions", "GalNet.Assets", "GalNet.Core"],
             ["GalNet.Avalonia.Controls"] = ["GalNet.Core"],
             ["GalNet.Avalonia.Themes"] = ["GalNet.Avalonia.Controls", "GalNet.Avalonia.GameView"],
             ["GalNet.Avalonia.GameView"] =

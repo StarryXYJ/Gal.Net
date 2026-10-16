@@ -1,3 +1,4 @@
+using GalNet.Avalonia.GameHost;
 using Avalonia.Headless;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Presentation;
@@ -40,9 +41,9 @@ public sealed class SampleCustomizationTests
                 var localization = first.ServiceProvider.GetRequiredService<SampleLocalizationService>();
                 Assert.That(localization.CultureService.AvailableCultures.Select(culture => culture.Name), Does.Contain("en-US"));
                 Assert.That(second.ServiceProvider.GetRequiredService<SampleLocalizationService>(), Is.SameAs(localization));
-                var settings = first.ServiceProvider.GetRequiredService<SamplePlayerSettingsService>();
+                var settings = first.ServiceProvider.GetRequiredService<AvaloniaPlayerSettingsService>();
                 Assert.That(first.ServiceProvider.GetRequiredService<IPlayerSettingsService>(), Is.SameAs(settings));
-                Assert.That(second.ServiceProvider.GetRequiredService<SamplePlayerSettingsService>().Editors, Is.Not.SameAs(settings.Editors));
+                Assert.That(second.ServiceProvider.GetRequiredService<AvaloniaPlayerSettingsService>().Editors, Is.Not.SameAs(settings.Editors));
                 var game = first.ServiceProvider.GetRequiredService<SampleGameSessionService>();
                 Assert.That(first.ServiceProvider.GetRequiredService<IGameSessionService>(), Is.SameAs(game));
                 Assert.That(first.ServiceProvider.GetService<SampleDebugViewModel>() is not null, Is.EqualTo(enableDebug));

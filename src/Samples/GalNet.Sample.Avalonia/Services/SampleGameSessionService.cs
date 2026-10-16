@@ -19,9 +19,9 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
 {
     private readonly GamePageViewModel _gameplay;
     private readonly GamePage _page;
-    private readonly SamplePlayerSettingsService _settings;
+    private readonly AvaloniaPlayerSettingsService _settings;
     private readonly SampleLocalizationService _localization;
-    private readonly SampleStartupService _startup;
+    private readonly AvaloniaPlayerStartup _startup;
     private readonly SampleLibVlcRuntime _mediaRuntime;
     private readonly ObservableCollection<GameSaveSlot> _saveSlots = [];
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySaveSlots;
@@ -35,8 +35,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private readonly object _disposeGate = new();
     private Task? _disposeTask;
 
-    public SampleGameSessionService(GamePageViewModel gameplay, GamePage page, SamplePlayerSettingsService settings,
-        SampleLocalizationService localization, SampleStartupService startup, SampleLibVlcRuntime mediaRuntime)
+    public SampleGameSessionService(GamePageViewModel gameplay, GamePage page, AvaloniaPlayerSettingsService settings,
+        SampleLocalizationService localization, AvaloniaPlayerStartup startup, SampleLibVlcRuntime mediaRuntime)
     {
         _session = new GameSession(CreateRunAsync);
         _gameplay = gameplay;

@@ -338,10 +338,13 @@
       "galnet.avalonia.gamehost": {
         "type": "Project",
         "dependencies": {
+          "DynamicLocalization.Core": "[2.1.2, )",
           "GalNet.Assets": "[1.0.0, )",
+          "GalNet.Avalonia.Controls": "[1.0.0, )",
           "GalNet.Avalonia.GameView": "[1.0.0, )",
           "GalNet.Avalonia.Rendering": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
+          "GalNet.GameHost": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "GalNet.Primitives.Builtins": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )"
