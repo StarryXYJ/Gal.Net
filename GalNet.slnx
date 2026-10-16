@@ -28,6 +28,7 @@
     <Project Path="src/Launcher/GalNet.Launcher/GalNet.Launcher.csproj" />
   </Folder>
   <Folder Name="/src/Presentation/">
+    <Project Path="src/Presentation/GalNet.Avalonia.GameHost/GalNet.Avalonia.GameHost.csproj" />
     <Project Path="src/Presentation/GalNet.Avalonia.Controls/GalNet.Avalonia.Controls.csproj" />
     <Project Path="src/Presentation/GalNet.Avalonia.Rendering/GalNet.Avalonia.Rendering.csproj" />
     <Project Path="src/Presentation/GalNet.Avalonia.GameView/GalNet.Avalonia.GameView.csproj" />

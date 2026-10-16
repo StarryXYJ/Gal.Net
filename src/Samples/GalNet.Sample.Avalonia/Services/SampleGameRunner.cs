@@ -7,6 +7,7 @@ using GalNet.Runtime.Engine;
 using GalNet.Runtime.Logging;
 using GalNet.Runtime.Runtime;
 using LibVLCSharp.Shared;
+using GalNet.Avalonia.GameHost;
 
 namespace GalNet.Sample.Avalonia.Services;
 
@@ -15,7 +16,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
 {
     private readonly GamePageViewModel _gameplay;
     private readonly GameEngine _engine;
-    private readonly SampleGamePresentation _presentation;
+    private readonly AvaloniaGamePresentation _presentation;
     private readonly SamplePlayerSettingsService _playerSettings;
     private readonly Func<bool, string?, Task> _updateStateAsync;
     private readonly Func<Task> _runCompletedAsync;
@@ -26,7 +27,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
     private bool _disposed;
 
     private SampleGameRunner(
-        GamePageViewModel gameplay, GameEngine engine, SampleGamePresentation presentation, SamplePlayerSettingsService playerSettings,
+        GamePageViewModel gameplay, GameEngine engine, AvaloniaGamePresentation presentation, SamplePlayerSettingsService playerSettings,
         Func<bool, string?, Task> updateStateAsync, Func<Task> runCompletedAsync,
         Func<Task> resetPresentationAsync, Func<Action, Task> onUiAsync)
     {
@@ -52,7 +53,13 @@ internal sealed class SampleGameRunner : IAsyncDisposable
         Func<Task> runCompletedAsync, Func<Task> resetPresentationAsync,
         Func<Action, Task> onUiAsync, CancellationToken cancellationToken)
     {
-        var presentation = await SampleGamePresentation.CreateAsync(gameplay, page, resources, cancellationToken, sharedLibVlc);
+        var presentation = await AvaloniaGamePresentation.CreateAsync(gameplay, page, resources.Assets,
+            resources.PreloadedTextures, resources.EffectPrograms, resources.MediaFiles,
+            (registration, presentation) => SampleCustomization.ConfigureExecution(registration,
+                presentation.Presenters, page, resources.Content, presentation.Effects,
+                presentation.Audio, presentation.Video, presentation.AudioModule),
+            resources.Content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>()
+                .SelectMany(group => group.Entries).Select(entry => entry.Type), sharedLibVlc, cancellationToken);
         GameEngine? engine = null;
         try
         {

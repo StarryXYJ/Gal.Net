@@ -7,10 +7,10 @@ using GalNet.Core.Assets;
 using GalNet.Rendering.Scene;
 using GalNet.Runtime.Logging;
 
-namespace GalNet.Sample.Avalonia.Presentation;
+namespace GalNet.Avalonia.GameHost;
 
-/// <summary>Resolves sample game assets into Avalonia controls for the shared game page.</summary>
-internal sealed class SampleLayerFactory(IReadOnlyDictionary<string, AssetHandle<SceneTexture>> textures) : IGamePageLayerFactory, IDisposable
+/// <summary>Resolves game assets into Avalonia controls for the shared game page.</summary>
+public sealed class DefaultGameLayerFactory(IReadOnlyDictionary<string, AssetHandle<SceneTexture>> textures) : IGamePageLayerFactory, IDisposable
 {
     private readonly IReadOnlyDictionary<string, AssetHandle<SceneTexture>> _texturesById = textures ?? throw new ArgumentNullException(nameof(textures));
     private readonly Dictionary<string, SceneTexture> _textures = new(StringComparer.OrdinalIgnoreCase);

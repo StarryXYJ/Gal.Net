@@ -64,7 +64,7 @@ public sealed class SampleCustomizationTests
                 Entries = [new() { Id = "capture", Type = ScreenshotSchema.TypeId }]
             }, catalog).Document.Entries.Single();
             var page = new GamePage();
-            using var layers = new SampleLayerFactory(new Dictionary<string, GalNet.Core.Assets.AssetHandle<GalNet.Rendering.Scene.SceneTexture>>());
+            using var layers = new GalNet.Avalonia.GameHost.DefaultGameLayerFactory(new Dictionary<string, GalNet.Core.Assets.AssetHandle<GalNet.Rendering.Scene.SceneTexture>>());
             using var presenters = new AvaloniaGamePresenters(new GamePageViewModel(null!), page, layers);
             using var firstRegistration = new GameRegistration();
             using var secondRegistration = new GameRegistration();

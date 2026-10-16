@@ -20,3 +20,4 @@
 ## 验证记录
 
 - Step 1 verified: Architecture 37/37; Editor.Shared 180/180; ProjectSchemaLifecycle 5/5.
+- Step 2: 默认展示组合位于独立 Avalonia.GameHost，避免页面控件层反向依赖 Runtime/Builtins。模块由调用者配置；纹理工厂已下放。配置与清理回归 6/6。

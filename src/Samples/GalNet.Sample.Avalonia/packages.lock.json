@@ -335,6 +335,18 @@
           "GalNet.Core": "[1.0.0, )"
         }
       },
+      "galnet.avalonia.gamehost": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Assets": "[1.0.0, )",
+          "GalNet.Avalonia.GameView": "[1.0.0, )",
+          "GalNet.Avalonia.Rendering": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "GalNet.Primitives.Builtins": "[1.0.0, )",
+          "GalNet.Runtime": "[1.0.0, )"
+        }
+      },
       "galnet.avalonia.gameview": {
         "type": "Project",
         "dependencies": {
