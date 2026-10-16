@@ -125,6 +125,14 @@
       "galnet.core": {
         "type": "Project"
       },
+      "galnet.gamehost": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "GalNet.Runtime": "[1.0.0, )"
+        }
+      },
       "galnet.presentation.abstractions": {
         "type": "Project",
         "dependencies": {
@@ -145,6 +153,7 @@
         "dependencies": {
           "GalNet.Assets": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
+          "GalNet.GameHost": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )"
         }
       },

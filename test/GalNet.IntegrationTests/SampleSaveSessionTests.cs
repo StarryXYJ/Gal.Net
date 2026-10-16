@@ -4,7 +4,7 @@ using GalNet.Core.Runtime;
 using GalNet.Core.Variable;
 using GalNet.Runtime.Content;
 using GalNet.Runtime.Persistence;
-using GalNet.Sample.Avalonia.Services;
+using GalNet.Storage.FileSystem;
 using GalVariable = GalNet.Core.Variable.Variable;
 
 namespace GalNet.IntegrationTests;
@@ -18,7 +18,7 @@ public sealed class SampleSaveSessionTests
         try
         {
             using var assets = new EmptyAssetManager();
-            using var session = await SampleSaveSession.CreateAsync(directory, new GameContent { Graph = new Graph() }, assets, CancellationToken.None);
+            using var session = await FilePlayerSession.OpenAsync(directory, new GameContent { Graph = new Graph() }.Gallery, CancellationToken.None);
             await session.SaveAsync(0, new GameSnapshot { NodeId = "original" }, CancellationToken.None);
             await File.WriteAllTextAsync(Path.Combine(directory, "saves", "slot-001.json"), "corrupt");
             var slots = await Task.WhenAll(
@@ -46,11 +46,7 @@ public sealed class SampleSaveSessionTests
         try
         {
             using var assets = new EmptyAssetManager();
-            using var session = await SampleSaveSession.CreateAsync(
-                profileDirectory,
-                new GameContent { Graph = new Graph() },
-                assets,
-                CancellationToken.None);
+            using var session = await FilePlayerSession.OpenAsync(profileDirectory, new GameContent { Graph = new Graph() }.Gallery, CancellationToken.None);
             var originalSettings = session.Settings;
             var score = new GalVariable { Name = "score" };
             score.SetValue(42);

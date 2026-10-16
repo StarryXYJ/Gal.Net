@@ -1,7 +1,7 @@
-namespace GalNet.Sample.Avalonia.Services;
+namespace GalNet.GameHost;
 
 /// <summary>Attempts explicitly ordered releases and preserves every failure.</summary>
-internal sealed class SampleCleanup
+public sealed class ResourceCleanup
 {
     private readonly List<Exception> _errors = [];
     public void Run(Action release)

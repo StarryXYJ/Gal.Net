@@ -429,7 +429,6 @@
           "GalNet.Editor.Shared": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "GalNet.Primitives.Builtins": "[1.0.0, )",
-          "GalNet.ProjectTools.Windows": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )",
           "GalNet.Storage.FileSystem": "[1.0.0, )",
           "Irihi.Ursa": "[2.1.0, )",
@@ -462,6 +461,14 @@
           "Serilog": "[4.2.0, )"
         }
       },
+      "galnet.gamehost": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "GalNet.Runtime": "[1.0.0, )"
+        }
+      },
       "galnet.presentation.abstractions": {
         "type": "Project",
         "dependencies": {
@@ -475,12 +482,6 @@
           "GalNet.Core": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )"
-        }
-      },
-      "galnet.projecttools.windows": {
-        "type": "Project",
-        "dependencies": {
-          "GalNet.Editor.Abstraction": "[1.0.0, )"
         }
       },
       "galnet.runtime": {
@@ -497,6 +498,7 @@
         "dependencies": {
           "GalNet.Assets": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
+          "GalNet.GameHost": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )"
         }
       },

@@ -433,6 +433,7 @@
         "dependencies": {
           "GalNet.Assets": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
+          "GalNet.GameHost": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )"
         }
       },

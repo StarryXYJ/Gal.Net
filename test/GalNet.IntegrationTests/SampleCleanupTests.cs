@@ -1,3 +1,4 @@
+using GalNet.GameHost;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.Settings;
@@ -19,7 +20,7 @@ public sealed class SampleCleanupTests
     [Test]
     public async Task OrderedCleanupRetainsSynchronousAsynchronousAndCancellationFailures()
     {
-        var cleanup = new SampleCleanup();
+        var cleanup = new ResourceCleanup();
         var order = new List<int>();
         var errors = new Exception[] { new IOException("sync"), new InvalidDataException("async"), new OperationCanceledException("cancel") };
         cleanup.Run(() => { order.Add(1); throw errors[0]; });
@@ -32,7 +33,7 @@ public sealed class SampleCleanupTests
     }
 
     [Test]
-    public async Task SaveSessionReleasesProgressVariablesAndSaveServiceAfterGalleryFailure()
+    public async Task PlayerSessionReleasesProgressAndSaveServiceAfterVariableFailure()
     {
         var directory = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "galnet-cleanup-" + Guid.NewGuid().ToString("N"))).FullName;
         try
@@ -42,15 +43,13 @@ public sealed class SampleCleanupTests
             var progress = new FileGameProgressService(directory, TimeSpan.FromHours(1));
             progress.MarkRead("group", "entry");
             var saves = new FileSaveService(directory);
-            var gallery = new Gallery();
-            var session = new SampleSaveSession(saves, variables, progress, null!, gallery);
+            var session = new PlayerSession(saves, variables, progress, null!, _ => Task.CompletedTask);
             var error = Assert.Throws<AggregateException>(session.Dispose);
-            Assert.That(error!.InnerExceptions.Select(item => item.Message), Is.EqualTo(new[] { "gallery", "variables" }));
+            Assert.That(error!.InnerExceptions.Select(item => item.Message), Is.EqualTo(new[] { "variables" }));
             Assert.That(File.Exists(Path.Combine(directory, "progress.json")), Is.True);
             Assert.That(store.Disposals, Is.EqualTo(1));
             Assert.ThrowsAsync<ObjectDisposedException>(() => saves.DeleteAsync(0));
             session.Dispose();
-            Assert.That(gallery.Disposals, Is.EqualTo(1));
             Assert.That(store.Disposals, Is.EqualTo(1));
         }
         finally { Directory.Delete(directory, true); }

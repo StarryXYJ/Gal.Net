@@ -27,7 +27,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySaveSlots;
     private GameResourceScope? _resources;
     private AvaloniaGameResources? _visualResources;
-    private SampleSaveSession? _saveSession;
+    private PlayerSession? _saveSession;
+    private IGalleryResourceResolver? _galleryResources;
     private readonly GameSession _session;
     private readonly SemaphoreSlim _initialization = new(1, 1);
     private bool _disposed;
@@ -86,22 +87,23 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             var resources = await GameResourceScope.OpenAsync(options.GameDirectory,
                 catalogs.Resources, catalogs.Gallery, cancellationToken);
             var profileDirectory = options.ProfileDirectory ?? Path.Combine(resources.GameDirectory, ".galnet");
-            SampleSaveSession? saveSession = null;
+            PlayerSession? saveSession = null;
             AvaloniaGameResources? visuals = null;
+            IGalleryResourceResolver? galleryResources = null;
             try
             {
                 SampleCustomization.ConfigureDecoders(resources.Assets);
                 visuals = await AvaloniaGameResources.CreateAsync(resources.Assets,
                     SampleCustomization.SelectTexturePreloadsAsync, SampleCustomization.SelectEffectProgramsAsync, cancellationToken);
-                saveSession = await SampleSaveSession.CreateAsync(
-                    profileDirectory,
-                    resources.Content,
-                    resources.Assets,
-                    cancellationToken, resources.MediaFiles);
+                saveSession = await FilePlayerSession.OpenAsync(profileDirectory, resources.Content.Gallery, cancellationToken);
+                galleryResources = await AssetGalleryResourceResolver.CreateAsync(resources.Assets,
+                    resources.Content.Gallery, cancellationToken, resources.MediaFiles);
             }
             catch (Exception error)
             {
-                var cleanup = new SampleCleanup();
+                var cleanup = new ResourceCleanup();
+                cleanup.Run(() => (galleryResources as IDisposable)?.Dispose());
+                cleanup.Run(() => saveSession?.Dispose());
                 cleanup.Run(() => visuals?.Dispose());
                 cleanup.Run(resources.Dispose);
                 cleanup.ThrowIfFailed(error);
@@ -111,6 +113,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _resources = resources;
             _visualResources = visuals;
             _saveSession = saveSession;
+            _galleryResources = galleryResources;
             _localization.AttachGame(resources.Content);
 
             foreach (var diagnostic in resources.Content.Localization.Diagnostics)
@@ -122,7 +125,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
                 visuals.EffectPrograms.Count);
 
             GalleryDataSource = saveSession.GalleryDataSource;
-            GalleryResources = saveSession.GalleryResources;
+            GalleryResources = galleryResources;
             OnPropertyChanged(nameof(GalleryDataSource));
             OnPropertyChanged(nameof(GalleryResources));
 
@@ -167,22 +170,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         return PrepareGameAsync(null, cancellationToken);
     }
 
-    public async Task PrepareContinueAsync(CancellationToken cancellationToken = default)
-    {
-        var slot = _saveSlots
-            .Where(candidate => !candidate.IsEmpty && !candidate.IsCorrupt)
-            .OrderByDescending(candidate => candidate.Timestamp)
-            .FirstOrDefault();
-        if (slot is null)
-        {
-            StatusMessage = "There is no valid save to continue.";
-            GameLog.Logger.Warning("Continue requested but no valid slot exists");
-            throw new InvalidOperationException("There is no valid save to continue.");
-        }
-
-        GameLog.Logger.Information("Preparing continuation from slot {SlotIndex} at {Timestamp}", slot.SlotIndex, slot.Timestamp);
-        await PrepareLoadAsync(slot.SlotIndex, cancellationToken);
-    }
+    public Task PrepareContinueAsync(CancellationToken cancellationToken = default) =>
+        _session.PrepareFromAsync(token => _saveSession!.LoadLatestAsync(token), cancellationToken);
 
     public Task StopAsync(CancellationToken cancellationToken = default) =>
         _disposed ? Task.CompletedTask : _session.StopAsync(cancellationToken);
@@ -265,11 +254,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     }
 
     public Task PrepareLoadAsync(int slotIndex, CancellationToken cancellationToken = default) =>
-        _session.PrepareFromAsync(async token =>
-        {
-            var snapshot = await _saveSession!.LoadAsync(slotIndex, token);
-            return snapshot ?? throw new InvalidOperationException($"Slot {slotIndex} is empty or invalid.");
-        }, cancellationToken);
+        _session.PrepareFromAsync(token => _saveSession!.LoadRequiredAsync(slotIndex, token), cancellationToken);
 
     public ValueTask DisposeAsync()
     {
@@ -281,7 +266,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         await _initialization.WaitAsync();
         try
         {
-            var cleanup = new SampleCleanup();
+            var cleanup = new ResourceCleanup();
             _disposed = true;
             _gameplay.InteractionObserved -= OnInteractionObserved;
             await cleanup.RunAsync(() => _session.DisposeAsync());
@@ -290,6 +275,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             _saveSession = null;
             GalleryResources = null;
             GalleryDataSource = null;
+            cleanup.Run(() => (_galleryResources as IDisposable)?.Dispose());
+            _galleryResources = null;
             cleanup.Run(() => saves?.Dispose());
             cleanup.Run(() => _visualResources?.Dispose());
             _visualResources = null;

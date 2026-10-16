@@ -50,7 +50,7 @@ internal sealed class SampleGameRunner : IGameRun
 
     public static async Task<SampleGameRunner> CreateAsync(
         GamePageViewModel gameplay, GamePage page, GameResourceScope resources, AvaloniaGameResources visuals,
-        SampleSaveSession saveSession, SamplePlayerSettingsService playerSettings, ITextResolver textResolver,
+        PlayerSession saveSession, SamplePlayerSettingsService playerSettings, ITextResolver textResolver,
         LibVLC? sharedLibVlc, Func<bool, string?, Task> updateStateAsync,
         Func<Task> runCompletedAsync, Func<Task> resetPresentationAsync,
         Func<Action, Task> onUiAsync, CancellationToken cancellationToken)
@@ -111,7 +111,7 @@ internal sealed class SampleGameRunner : IGameRun
         if (_disposed) return;
         _disposed = true;
         _playerSettings.SettingsChanged -= OnPlayerSettingsChanged;
-        var cleanup = new SampleCleanup();
+        var cleanup = new ResourceCleanup();
         cleanup.Run(() => _gameplay.BindPlayback(null));
         _gameplay.AdvanceRequested -= OnAdvanceRequested;
         _engine.StateChanged -= OnEngineStateChanged;

@@ -24,3 +24,4 @@
 - Step 3: 新增中立 GameSession/IGameRun/GameRun；Sample 的存档与替换共用命令门，Headless 也接入 GameRun。增加串行保存/替换、准备失败清理、停止失败与重复关闭测试。
 - Step 4: GameResourceScope 位于文件基础设施，AvaloniaGameResources 仅持有渲染资源租约；移除 Sample 资源 scope。批量预加载逐个记录成功租约，部分失败时统一释放。
 - Step 4 verified: 资源、配置与清理回归 7/7；经验见 `.agents/lessons/L-20261016-06-partial-preload-leases.md`。
+- Step 5: PlayerSession 统一存档、空槽选择、继续选择、进度 flush、玩家变量和 Gallery 数据；FilePlayerSession 组合文件实现。Gallery 媒体 resolver 改由展示会话独立持有。清理协作者 ResourceCleanup 下放 GameHost。
