@@ -32,6 +32,7 @@ public partial class GameShell : UserControl, IDisposable
     private readonly GalNet.Avalonia.GameView.Input.PlayerInputRouter? _inputRouter;
     private readonly GalNet.Avalonia.GameView.Input.TouchInputRecognizer? _touchInput;
     private readonly GalNet.Avalonia.GameView.Input.PlayerInputSettings? _inputSettings;
+    private readonly GalNet.Avalonia.GameView.Input.PageBackInputListener _pageBackInput;
 
     public GameShell(
         GameShellViewModel viewModel,
@@ -56,16 +57,28 @@ public partial class GameShell : UserControl, IDisposable
         session.PropertyChanged += OnSessionPropertyChanged;
         _transitions.Attach(ShowPageAsync);
         ShowCurrentPage();
+        _pageBackInput = new(this, () => _viewModel.CurrentViewModel as BackNavigablePageViewModel,
+            () => _inputSettings?.IsCapturing == true);
         if (settings.Input is { } input)
         {
-            _inputRouter = new(this, input, () => _viewModel.CurrentViewModel as GamePageViewModel, session, () => navigation.GoBack());
+            _inputRouter = new(this, input, () => _viewModel.CurrentViewModel as GamePageViewModel, session, GoBack);
             _touchInput = new(this, input, () => _viewModel.CurrentViewModel is GamePageViewModel { IsChoiceVisible: false, IsSkipConfirmationOpen: false }, _inputRouter.DispatchAsync);
         }
+    }
+
+    private void GoBack()
+    {
+        if (_viewModel.CurrentViewModel is BackNavigablePageViewModel page)
+        {
+            if (page.BackCommand.CanExecute(null)) page.BackCommand.Execute(null);
+        }
+        else _navigation.GoBack();
     }
 
     public void Dispose()
     {
         _disposed = true;
+        _pageBackInput.Dispose();
         _inputRouter?.Dispose();
         _touchInput?.Dispose();
         _transitions.Detach();

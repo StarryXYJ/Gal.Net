@@ -86,7 +86,7 @@ public sealed class InputBindingsPanel : UserControl, IDisposable
                 };
                 Grid.SetColumn(clear, 3);
                 row.Children.Add(clear);
-                rows.Children.Add(row);
+                rows.Children.Add(new Border { Classes = { "player-setting-row" }, Child = row });
                 if (!settings.IsActionAvailable(action.Id)) rows.Children.Add(Text("Input.HistoryUnavailable"));
             }
             var reset = new Button { Content = Text("Input.ResetDevice") };

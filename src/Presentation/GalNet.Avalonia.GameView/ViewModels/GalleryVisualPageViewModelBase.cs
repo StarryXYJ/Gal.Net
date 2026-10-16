@@ -8,7 +8,7 @@ namespace GalNet.Avalonia.GameView.ViewModels;
 /// <summary>Shared lifecycle for Gallery pages that display a thumbnail grid.</summary>
 public abstract partial class GalleryVisualPageViewModelBase(
     IGameNavigationService navigation,
-    GalleryMediaService media) : PageViewModelBase, IDisposable
+    GalleryMediaService media) : BackNavigablePageViewModel(navigation), IDisposable
 {
     private CancellationTokenSource? _thumbnailCancellation;
     private GalleryTypeData? _gallery;
@@ -54,8 +54,6 @@ public abstract partial class GalleryVisualPageViewModelBase(
     private Task OpenItemAsync(GalleryEntryViewModel item, CancellationToken cancellationToken) =>
         item.IsUnlocked ? OpenDetailAsync(item.Data, cancellationToken) : Task.CompletedTask;
 
-    [CommunityToolkit.Mvvm.Input.RelayCommand]
-    private void Back() => navigation.GoBack();
 
     public void Dispose()
     {
@@ -67,6 +65,5 @@ public abstract partial class GalleryVisualPageViewModelBase(
         GC.SuppressFinalize(this);
     }
 
-    protected IGameNavigationService Navigation => navigation;
     protected GalleryMediaService Media => media;
 }

@@ -18,6 +18,10 @@
 
 `IGameNavigationService` 只管理一个游戏 Scope 内的页面状态和回退历史。`IPageViewRegistry` 在组合期建立不可变的 ViewModel→View 映射，`IPageViewFactory` 从同一 Scope 解析页面并设置 `DataContext`。页面导航参数通过 `IActivatablePageViewModel<TArgs>` 传递，不注册到 DI。
 
+需要返回行为的页面继承 `BackNavigablePageViewModel`，获得共享 `BackCommand`、受保护的 `Navigation` 和可重写的 `OnBack()`；默认通过导航历史返回。设置、存读档、鉴赏及其详情、关于页已接入；视频详情的 `OnBack()` 先停止播放。标题、加载和剧情页不默认开启返回。页面 XAML 继续绑定 `BackCommand`，无需绑定键盘事件。
+
+`GameShell` 始终组合 `PageBackInputListener`，即使宿主未提供可配置输入设置也支持默认 Esc 返回。模块在所在 TopLevel 的 bubble 阶段处理未消费的纯 Esc，执行当前返回页面的同一个命令；快捷键录入、下拉框和其他已消费 Esc 的内部交互优先取消，不同时退页。按住 Esc 不连续退多页；窗口失活、卸载及 Dispose 清理监听/按键状态。壳外宿主控件不触发该返回行为。手柄页面返回也复用当前页的 `BackCommand`。
+
 ## 页面与组合
 
 共享 ViewModel 由 `AddAvaloniaGameViewPages(theme)` 注册，普通 View 由所选主题提供：
@@ -67,6 +71,8 @@ Gallery 使用独立的 `IGalleryPageRegistry`，以精确 Gallery `typeId` 映�
 ### 设置与界面文本
 
 Sample 新增 `operation`（操作）分类，与游戏、画面、音频并列。它借用现有 `CustomSetting<PlayerInputConfiguration>` 和可释放编辑器租约，承载键鼠、手柄、触屏三个局部 Tab；`SettingItem.IsFullWidth` 允许此类编辑器跨设置行标签列展示。键盘/鼠标共用录入控件，手柄支持按钮组合，触屏通过 ComboBox 选择离散手势。偏好经原 SettingsCoordinator 保存到 `player.galnet.input.bindings`，不进入剧情快照。
+
+共享 `SettingsCategories` 和 `InputBindingsPanel` 的动作行使用 `player-setting-row` 边框样式，采用当前主题的 Surface/Border/Focus/PrimaryHover 资源与圆角。设置行具有浅底描边、内边距、悬停/焦点提示；行内按钮、文本框和下拉框保留明确的编辑边界。外框不增加整行点击行为，不改变 SchemaForm 工厂、可用性、错误反馈或提交队列。
 
 `PlayerInputSettings` 与输入路由属于 GameView，宿主实现原始设备适配。Sample 的 Windows 手柄后端为 XInput，非 Windows 未提供原生手柄后端；三主题共享面板行为和现有设置页外壳。`PlayerInputSettings.OpenHistoryAsync` 是未来对白历史页的可选入口，无回调时历史动作禁用。`IFirstEmptySlotSession.SaveFirstEmptyAsync` 表示普通槽位的首空槽保存，null 表示槽位已满；Sample 在写门内重新查询并保存，满槽打开存档页供玩家选择。该行为独立于单文件 quick-save。
 

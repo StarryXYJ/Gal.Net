@@ -121,6 +121,24 @@
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="VerticalAlignment" Value="Top" />
   </Style>
+  <Style Selector=".galnet-player Border.player-setting-row">
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Border}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource GalNet.Theme.CornerRadius}" />
+    <Setter Property="Padding" Value="18" />
+    <Setter Property="Margin" Value="0,0,0,12" />
+  </Style>
+  <Style Selector=".galnet-player Border.player-setting-row:pointerover">
+    <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.PrimaryHover}" />
+  </Style>
+  <Style Selector=".galnet-player Border.player-setting-row:focus-within">
+    <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Focus}" />
+  </Style>
+  <Style Selector=".galnet-player Border.player-setting-row TextBox, .galnet-player Border.player-setting-row ComboBox, .galnet-player Border.player-setting-row Button">
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="MinHeight" Value="40" />
+  </Style>
   <Style Selector=".galnet-player Border.player-media-stage">
     <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Background}" />
     <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Border}" />

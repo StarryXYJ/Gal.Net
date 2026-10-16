@@ -1,5 +1,4 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Core.Gallery;
 
@@ -7,7 +6,7 @@ namespace GalNet.Avalonia.GameView.ViewModels;
 
 /// <summary>Explicit diagnostic page for Gallery content with no registered frontend page.</summary>
 public sealed partial class MissingGalleryPageViewModel(IGameNavigationService navigation)
-    : PageViewModelBase, IGalleryPageViewModel
+    : BackNavigablePageViewModel(navigation), IGalleryPageViewModel
 {
     [ObservableProperty] private string _message = "No Gallery page is registered.";
 
@@ -18,5 +17,4 @@ public sealed partial class MissingGalleryPageViewModel(IGameNavigationService n
         return Task.CompletedTask;
     }
 
-    [RelayCommand] private void Back() => navigation.GoBack();
 }

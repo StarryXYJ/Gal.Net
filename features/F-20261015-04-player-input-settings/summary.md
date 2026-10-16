@@ -27,6 +27,16 @@
 - 输入持久化测试关闭/重开变量存储，恢复键鼠与 A/B 布局且不额外写文件；清空玩家变量后恢复默认。
 - 本 feature 未修改 Editor 用户工作树，未自动提交混合改动。
 
+## 追加：设置项视觉提示与默认 Esc 返回
+
+- 上一轮实现单独提交为 `b62bff6`，未纳入用户的 Editor 和 agent 文档改动。
+- `SettingsCategories` 普通设置行和 `InputBindingsPanel` 动作行共用 `player-setting-row`，具有主题底色、1px 描边、主题圆角、内边距及悬停/焦点提示。设置管线、可用性、错误文本和控件交互不变；不是整行可点击的伪按钮。
+- `BackNavigablePageViewModel` 提供共享 `BackCommand`、`Navigation` 和 `OnBack()`。设置、存读档、全部鉴赏页及详情、关于已迁移，去掉各 VM 重复的返回命令；视频详情通过 `OnBack()` 停止播放。
+- GameShell 一次组合 `PageBackInputListener`，不依赖 `PlayerInputSettings` 是否存在。未被内部控件消费的纯 Esc 在 bubble 阶段执行页面返回命令，捕获/弹出选择/局部取消优先，长按不连续退页；标题/加载/剧情不默认返回，宿主壳外输入不会误触发。手柄返回同样调用当前页命令。
+- 最终 Presentation 回归 225 项通过。新增 5 项 Esc 用例、3 项真实三主题 GameShell 设置/存档/鉴赏返回用例；原设置工厂测试追加边框和焦点画刷断言。实际渲染截图位于 `artifacts/player-settings/`（构建产物，不提交），已检查三套主题的设置页面和行内编辑焦点。
+- Sample 构建成功；Sample 输入/显示设置、保存、组合/清理，以及 Gallery 和截图受影响集成测试共 26 项通过。测试项目顺序构建，未改动 Editor 的业务或测试文件。
+- 已同步 [control.md](../../docs/spec/control.md)，新页面继承返回基类即可，无需逐页监听按键；特殊清理重写 `OnBack()` 并调用基类。
+
 ## 限制与后续验收
 
 - 实体手柄尚未连接实测；当前原生适配为 Windows XInput，非 XInput 控制器和非 Windows 手柄后端尚未实现。按钮标签目前采用中立代码和 Xbox A/B 布局文案，未实现各厂商动态图标。

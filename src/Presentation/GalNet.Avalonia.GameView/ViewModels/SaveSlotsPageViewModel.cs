@@ -9,10 +9,9 @@ namespace GalNet.Avalonia.GameView.ViewModels;
 
 public enum SaveSlotsMode { Save, Load }
 
-public sealed partial class SaveSlotsPageViewModel : PageViewModelBase, IActivatablePageViewModel<SaveSlotsMode>, IDisposable
+public sealed partial class SaveSlotsPageViewModel : BackNavigablePageViewModel, IActivatablePageViewModel<SaveSlotsMode>, IDisposable
 {
     private readonly IGameSessionService _session;
-    private readonly IGameNavigationService _navigation;
     private readonly GameLaunchFlow _launchFlow;
 
     public ReadOnlyObservableCollection<GameSaveSlot> SaveSlots => _session.SaveSlots;
@@ -24,10 +23,9 @@ public sealed partial class SaveSlotsPageViewModel : PageViewModelBase, IActivat
     public SaveSlotsPageViewModel(
         IGameSessionService session,
         IGameNavigationService navigation,
-        GameLaunchFlow launchFlow)
+        GameLaunchFlow launchFlow) : base(navigation)
     {
         _session = session;
-        _navigation = navigation;
         _launchFlow = launchFlow;
         ((INotifyCollectionChanged)_session.SaveSlots).CollectionChanged += OnSlotsChanged;
         RebuildRows();
@@ -37,7 +35,7 @@ public sealed partial class SaveSlotsPageViewModel : PageViewModelBase, IActivat
     private async Task SaveSlotAsync(int slotIndex)
     {
         await _session.SaveAsync(slotIndex);
-        _navigation.GoBack();
+        Navigation.GoBack();
     }
 
     [RelayCommand]
@@ -56,7 +54,6 @@ public sealed partial class SaveSlotsPageViewModel : PageViewModelBase, IActivat
             cancellationToken);
     }
 
-    [RelayCommand] private void Back() => _navigation.GoBack();
 
     public Task ActivateAsync(SaveSlotsMode mode, CancellationToken cancellationToken = default)
     {

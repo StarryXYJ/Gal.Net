@@ -7,7 +7,7 @@ using GalNet.Core.Gallery;
 namespace GalNet.Avalonia.GameView.ViewModels;
 
 public sealed partial class GalleryPageViewModel(IGameNavigationService navigation, GalleryNavigationService galleryNavigation)
-    : PageViewModelBase, IActivatablePageViewModel<IReadOnlyList<GalleryTypeData>>
+    : BackNavigablePageViewModel(navigation), IActivatablePageViewModel<IReadOnlyList<GalleryTypeData>>
 {
     public ObservableCollection<GalleryTypeData> Types { get; } = [];
 
@@ -26,5 +26,4 @@ public sealed partial class GalleryPageViewModel(IGameNavigationService navigati
     private Task OpenTypeAsync(GalleryTypeData type, CancellationToken cancellationToken) =>
         galleryNavigation.OpenTypeAsync(type, cancellationToken);
 
-    [RelayCommand] private void Back() => navigation.GoBack();
 }

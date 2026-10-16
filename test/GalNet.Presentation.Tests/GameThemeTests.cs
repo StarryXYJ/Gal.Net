@@ -38,6 +38,53 @@ public sealed class GameThemeTests
     [TestCase("Classic")]
     [TestCase("Minimal")]
     [TestCase("Paper")]
+    public async Task ShellProvidesEscapeOnSettingsSavesAndGalleryWithoutPageHandlers(string layout)
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
+        await session.Dispatch<bool>(async () =>
+        {
+            using var provider = CreateServices(CreateTheme(layout, "Ocean")).BuildServiceProvider();
+            using var scope = provider.CreateScope();
+            var services = scope.ServiceProvider;
+            var navigation = services.GetRequiredService<IGameNavigationService>();
+            navigation.ResetTo<TitlePageViewModel>(NavigationTransition.None);
+            var shell = services.GetRequiredService<GameShell>();
+            var window = new Window { Width = 1920, Height = 1080, Content = shell };
+            window.Show();
+            try
+            {
+                PageViewModelBase[] pages = [services.GetRequiredService<SettingsPageViewModel>(),
+                    services.GetRequiredService<SaveSlotsPageViewModel>(), services.GetRequiredService<GalleryPageViewModel>()];
+                foreach (var page in pages)
+                {
+                    await navigation.NavigateAsync(page, NavigationTransition.None);
+                    window.UpdateLayout();
+                    window.Focus();
+                    if (page is SettingsPageViewModel)
+                    {
+                        var row = shell.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("player-setting-row"));
+                        Assert.That(row.BorderThickness, Is.EqualTo(new Thickness(1)));
+                        Assert.That(row.Background, Is.Not.Null);
+                        Assert.That(row.Padding.Left, Is.GreaterThan(0));
+                        Capture(window, $"{layout}-SettingsFields");
+                    }
+                    window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+                    window.KeyRelease(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+                    Assert.That(navigation.CurrentViewModel, Is.TypeOf<TitlePageViewModel>());
+                    await Task.Delay(240);
+                }
+                window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+                window.KeyRelease(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+                Assert.That(navigation.CurrentViewModel, Is.TypeOf<TitlePageViewModel>());
+            }
+            finally { window.Close(); }
+            return true;
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
+    [TestCase("Classic")]
+    [TestCase("Minimal")]
+    [TestCase("Paper")]
     public async Task SettingFactoryOverridesKeepOtherEditorsAndSharedRows(string layout)
     {
         var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
@@ -54,6 +101,15 @@ public sealed class GameThemeTests
             {
                 window.UpdateLayout();
                 Assert.That(control.GetVisualDescendants().OfType<CheckBox>().Count(), Is.EqualTo(1));
+                var rows = control.GetVisualDescendants().OfType<Border>().Where(border => border.Classes.Contains("player-setting-row")).ToArray();
+                Assert.That(rows.Length, Is.EqualTo(2));
+                Assert.That(rows.All(row => row.BorderThickness == new Thickness(1) && row.Padding.Left > 0), Is.True);
+                var number = control.GetVisualDescendants().OfType<TextBox>().Single();
+                Assert.That(number.Focus(NavigationMethod.Tab), Is.True);
+                var focusedRow = number.GetVisualAncestors().OfType<Border>().First(border => border.Classes.Contains("player-setting-row"));
+                Assert.That(root.TryFindResource("GalNet.Brush.Focus", out var focusBrush), Is.True);
+                Assert.That(((ISolidColorBrush)focusedRow.BorderBrush!).Color, Is.EqualTo(((ISolidColorBrush)focusBrush!).Color));
+                Capture(window, $"{layout}-SettingAffordances");
                 var overridden = EditorRegistry.CreateDefault();
                 overridden.Replace(ValueEditorIds.Toggle, _ => new FieldEditorLease(new TextBlock { Text = "Overridden boolean editor" }));
                 control.Editors = overridden;
