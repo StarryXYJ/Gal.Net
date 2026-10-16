@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using GalNet.Core.Settings;
-using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,7 +20,6 @@ public sealed class ProjectService : IProjectService
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     private readonly IServiceProvider _globalServices;
     private readonly IEditorSettingsService _editorSettingsService;
-    private readonly IProjectRecycleBin _recycleBin;
 
     private GalProject? _current;
 
@@ -29,11 +27,10 @@ public sealed class ProjectService : IProjectService
 
     public event Action<GalProject?>? CurrentChanged;
 
-    public ProjectService(IServiceProvider globalServices, IEditorSettingsService editorSettingsService, IProjectRecycleBin recycleBin)
+    public ProjectService(IServiceProvider globalServices, IEditorSettingsService editorSettingsService)
     {
         _globalServices = globalServices;
         _editorSettingsService = editorSettingsService;
-        _recycleBin = recycleBin;
         // 延迟加载，避免构造函数中执行同步 IO
     }
 
@@ -91,7 +88,7 @@ public sealed class ProjectService : IProjectService
         {
             recent.Clear();
             recent.AddRange(previousRecent);
-            await CloseCoreAsync(false);
+            await CloseCoreAsync();
             throw;
         }
 
@@ -132,29 +129,21 @@ public sealed class ProjectService : IProjectService
                 foreach (var participant in participants) await participant.SuspendAsync();
                 if (content is not null) await content.SuspendAsync();
             }
-            await CloseCoreAsync(false);
+            await CloseCoreAsync();
         }
         catch { content?.ResumeSaves(); foreach (var participant in participants) participant.ResumeEditing(); throw; }
         finally { _closing = null; }
     }
 
-    public Task<ToolResult> DeleteAsync(string projectPath, bool dryRun = false, System.Threading.CancellationToken cancellationToken = default) =>
-        new Commands.ProjectDeleteService(_recycleBin).DeleteAsync(projectPath, dryRun, async root =>
-        {
-            var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-            if (_current is not null && string.Equals(_current.RootPath, root, comparison)) await CloseCoreAsync(true);
-        }, RemoveRecentProject, cancellationToken);
-
-    private async Task CloseCoreAsync(bool requireSuccess)
+    private async Task CloseCoreAsync()
     {
         if (_current == null)
             return;
 
         var closingProject = _current;
-        // Deletion and failed-open cleanup also enter here, bypassing the interactive close request.
+        // Failed-open cleanup also enters here, bypassing the interactive close request.
         foreach (var participant in closingProject.Services.GetServices<IProjectEditLifetime>()) await participant.SuspendAsync();
         if (closingProject.Services.GetService<IProjectContentSession>() is { } content) await content.SuspendAsync();
-        var failures = new List<Exception>();
         Log.Information("Closing project: {Name}", closingProject.Name);
 
         // Scoped services can raise notifications while being disposed. Clear the
@@ -169,7 +158,6 @@ public sealed class ProjectService : IProjectService
         }
         catch (Exception ex)
         {
-            failures.Add(ex);
             Log.Warning(ex, "A project-change listener failed while closing {Name}", closingProject.Name);
         }
         try
@@ -178,11 +166,9 @@ public sealed class ProjectService : IProjectService
         }
         catch (Exception ex)
         {
-            failures.Add(ex);
             // Scope disposal is guaranteed by GalProject even when preview shutdown fails.
             Log.Warning(ex, "Project cleanup reported an error while closing {Name}", closingProject.Name);
         }
-        if (requireSuccess && failures.Count != 0) throw new AggregateException("Project shutdown failed; recycling was refused.", failures);
     }
 
     public Task SaveAsync()

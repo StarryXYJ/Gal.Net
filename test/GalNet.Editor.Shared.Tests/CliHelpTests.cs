@@ -31,6 +31,7 @@ public sealed class CliHelpTests
             });
     }
 
+    [TestCase("project", "delete", "project")]
     [TestCase("commands")]
     [TestCase("nodes", "project")]
     [TestCase("help", "unknown")]

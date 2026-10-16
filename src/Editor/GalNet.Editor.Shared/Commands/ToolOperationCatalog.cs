@@ -44,8 +44,6 @@ public sealed class ToolOperationCatalog
                  new("--search", "string", "Search operation ID, command path and description.")],
                 requiresProject: false),
             Route("project.info", "project info", "Shows raw project settings, graph and Group counts without modifying files.", Project()),
-            Route("project.delete", "project delete", "Recycles a recognized project directory using the host recycle bin. Never permanently deletes.",
-                Project(new CliParameter("--dry-run", "boolean", "Identify the project without recycling or closing its session.", Default: false)), readOnly: false, dryRun: true),
             Route("project.create", "project create", "Creates an empty author project, optionally deploying a validated contract directory. Without a contract, semantic operations remain unavailable.",
                 Project(new CliParameter("--name", "string", "Project display name."), new("--contracts", "string", "Built contract directory containing GalNet.Project.Contracts.dll and managed dependencies."),
                     new("--dry-run", "boolean", "Validate inputs and report files without creating directories or files.", Default: false)), readOnly: false, requiresProject: false, dryRun: true),
@@ -143,7 +141,6 @@ public sealed class ToolOperationCatalog
         Type? dataType = operation.OperationId switch
         {
             "project.create" => typeof(ProjectCreateReport),
-            "project.delete" => typeof(ProjectDeleteReport),
             "project.build" => typeof(ProjectBuildReport),
             "project.export" => typeof(ProjectExportReport),
             "project.rename" or "group.create" or "group.rename" or "group.delete" => typeof(ProjectEditReport),

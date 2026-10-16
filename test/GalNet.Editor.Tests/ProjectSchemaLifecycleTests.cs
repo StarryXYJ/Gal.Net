@@ -99,49 +99,6 @@ public sealed class ProjectSchemaLifecycleTests
     }
 
     [Test]
-    public async Task Delete_ClosesBeforeRecycle_AndOnlySuccessfulRecycleRemovesRecent()
-    {
-        var settings = new TestSettings();
-        var bin = new TestBin();
-        using var services = new ServiceCollection().AddEditorServices().AddSingleton<IEditorSettingsService>(settings)
-            .AddSingleton<IProjectRecycleBin>(bin).BuildServiceProvider();
-        var projects = services.GetRequiredService<IProjectService>();
-        var path = Deploy("SchemaA");
-        var project = await projects.OpenAsync(path);
-        var context = project.Services.GetRequiredService<ProjectSchemaSession>().Context;
-        var cleaned = false;
-        project.RegisterClosingCallback(() => { cleaned = true; return Task.CompletedTask; });
-        bin.Callback = _ =>
-        {
-            Assert.That(cleaned, Is.True);
-            Assert.That(projects.Current, Is.Null);
-            Assert.That(() => context.Catalog, Throws.TypeOf<ObjectDisposedException>());
-            throw new IOException("recycle failed");
-        };
-        Assert.That((await projects.DeleteAsync(path, true)).Success, Is.True);
-        Assert.That(projects.Current, Is.SameAs(project));
-        Assert.That((await projects.DeleteAsync(path)).Success, Is.False);
-        Assert.That(settings.GetSettings().RecentProjects.Any(item => item.Path == path), Is.True);
-        bin.Callback = _ => Task.CompletedTask;
-        Assert.That((await projects.DeleteAsync(path)).Success, Is.True);
-        Assert.That(settings.GetSettings().RecentProjects.Any(item => item.Path == path), Is.False);
-    }
-
-    [Test]
-    public async Task Delete_ShutdownFailure_ReleasesScopeButNeverRecycles()
-    {
-        var bin = new TestBin();
-        using var services = new ServiceCollection().AddEditorServices().AddSingleton<IEditorSettingsService>(new TestSettings())
-            .AddSingleton<IProjectRecycleBin>(bin).BuildServiceProvider();
-        var projects = services.GetRequiredService<IProjectService>();
-        var project = await projects.OpenAsync(Deploy("SchemaA"));
-        project.RegisterClosingCallback(() => throw new IOException("preview did not stop"));
-        Assert.That((await projects.DeleteAsync(project.RootPath)).Success, Is.False);
-        Assert.That(bin.Calls, Is.Zero);
-        Assert.That(Directory.Exists(project.RootPath), Is.True);
-    }
-
-    [Test]
     public async Task Open_SettingsSaveFailure_DisposesScopeAndRestoresRecentList()
     {
         var settings = new TestSettings { FailSave = true };
@@ -154,14 +111,6 @@ public sealed class ProjectSchemaLifecycleTests
         Assert.That(settings.GetSettings().RecentProjects, Is.Empty);
         Assert.That(() => context!.Catalog, Throws.TypeOf<ObjectDisposedException>());
         await projects.CloseAsync();
-    }
-
-    private sealed class TestBin : IProjectRecycleBin
-    {
-        public bool IsSupported => true;
-        public int Calls { get; private set; }
-        public Func<string, Task>? Callback { get; set; }
-        public Task RecycleAsync(string path, CancellationToken cancellationToken = default) { Calls++; return Callback?.Invoke(path) ?? Task.CompletedTask; }
     }
 
     private string Deploy(string fixture)

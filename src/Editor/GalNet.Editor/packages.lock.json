@@ -540,12 +540,6 @@
           "GalNet.Runtime": "[1.0.0, )"
         }
       },
-      "galnet.projecttools.windows": {
-        "type": "Project",
-        "dependencies": {
-          "GalNet.Editor.Abstraction": "[1.0.0, )"
-        }
-      },
       "galnet.runtime": {
         "type": "Project",
         "dependencies": {

@@ -11,7 +11,6 @@ Presentation.Abstractions ─ IGameView 与细分 presenter 端口
 Runtime ────────────────── Graph、Compiled Group、Engine、存档状态与宿主端口
 Assets ─────────────────── Local/PAK provider、Archive、AssetManager
 Storage.FileSystem ─────── 项目/安装内容、保存、变量与进度实现
-ProjectTools.Windows ───── Editor 抽象的 Windows 系统回收站适配
 Avalonia.GameView ──────── 共享页面、导航、Gallery page registry、呈现
 Editor.Shared ──────────── 项目读写、命令、导出
 Editor / Samples ───────── 组合根与平台宿主
@@ -25,7 +24,7 @@ Editor / Samples ───────── 组合根与平台宿主
 src/
   Shared/          Core、Contracts.Builtins、Runtime、Assets、Presentation.Abstractions、Primitives.Builtins
   Presentation/    Avalonia.Controls、Avalonia.Rendering、Avalonia.GameView、Avalonia.Themes
-  Infrastructure/  Storage.FileSystem、ProjectTools.Windows
+  Infrastructure/  Storage.FileSystem
   Editor/          Editor.Abstraction、Editor.Shared、Editor、Editor.Headless
   Samples/         Sample.Contracts、Sample.Avalonia、Sample.Headless
   Launcher/        Launcher 共享项目与 Android、Browser、Desktop、iOS 宿主
@@ -73,7 +72,7 @@ Editor 要求显式且唯一的 Entry 根节点，无效图不会被样例图替
 
 Editor 内容历史采用项目单栈，不随 Dock/Inspector 焦点切换；设置页首先接入显式草稿提交。GUI 的 `ProjectContentSession` 统一捕获并发布 Graph、Group 与完整设置，以实际内容与保存基线判断 dirty，后续编辑不被异步保存误标为已保存。关闭提供保存全部/放弃未保存内容/取消。作者文件事务的 manifest/备份与周期作者快照位于 `.galnet/editor/`，补偿失败禁止继续写入。Graph 基本操作由项目数据编辑记录承担，页面按文档事件同步投影；Group 创建/删除复用 Working/Saved 结构计划。分支/条目旧记录和完整 Group 草稿继续按后续阶段迁移，见 [Graph 基础编辑](editor-graph.md)；当前语义及边界见 [Editor 项目历史与保存](editor-history-and-save.md)。
 
-CLI 只做参数、结果协议和退出码适配；Shared 提供原始查询、无写回校验、定向编译、严格编辑/保存、项目/Group 生命周期服务。原始访问保留未知内容，不依赖 entry DLL；有语义的操作使用项目 Contracts DLL，不回退内置。Editor 的 ProjectSchemaSession、catalog 及文档消费者由项目 scope 持有。Windows 回收通过 Editor.Abstraction.IProjectRecycleBin 注入，Shared 不引用 Shell；Editor 先关闭匹配会话并等待清理，再回收，最后更新最近记录。当前接口及范围见 [CLI README](../../src/Editor/GalNet.Editor.Headless/README.md)。
+CLI 只做参数、结果协议和退出码适配；Shared 提供原始查询、无写回校验、定向编译、严格编辑/保存、项目/Group 生命周期服务。原始访问保留未知内容，不依赖 entry DLL；有语义的操作使用项目 Contracts DLL，不回退内置。Editor 的 ProjectSchemaSession、catalog 及文档消费者由项目 scope 持有。不提供项目目录删除功能；最近项目列表仅支持移除记录。当前接口及范围见 [CLI README](../../src/Editor/GalNet.Editor.Headless/README.md)。
 
 `EditorAssetManager`、`EditorGameDataProvider`、`AssetCatalogService` 与 `GameExportService` 共享 Editor 组合根的 catalog。导出把资源写入基础 PAK，把 Graph/settings/I18n 和派生 Gallery JSON 写入 `.galpak`。
 
