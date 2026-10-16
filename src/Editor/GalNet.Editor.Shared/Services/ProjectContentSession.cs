@@ -168,7 +168,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
                 var snapshot = Capture();
                 capturedContent = Serialize(snapshot);
                 if (!File.ReadAllBytes(settingsPath).AsSpan().SequenceEqual(_settingsBaseline))
-                    throw new IOException("Project settings changed outside the editor. Reload before saving.");
+                    throw new EditorOperationException("project.externalSettings", "Project settings changed outside the editor. Reload before saving.");
                 var content = repository.PrepareSave(project.RootPath, snapshot.Graph,
                     snapshot.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value));
                 settings = JsonSerializer.SerializeToUtf8Bytes(snapshot.Settings, JsonOptions);
@@ -184,7 +184,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
             await Task.Run(() =>
             {
                 if (!File.ReadAllBytes(settingsPath).AsSpan().SequenceEqual(_settingsBaseline))
-                    throw new IOException("Project settings changed before publication.");
+                    throw new EditorOperationException("project.externalSettings", "Project settings changed before publication.");
                 repository.ApplySave(project.RootPath, plan, cancellationToken);
             }, cancellationToken);
             _settingsBaseline = settings;
@@ -318,7 +318,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     private ProjectSavePlan PrepareAuthorPlan(GalProject project, EditorProjectDocument snapshot, bool checkSettingsBaseline = true)
     {
         if (checkSettingsBaseline && !File.ReadAllBytes(Path.Combine(project.RootPath, "settings.json")).AsSpan().SequenceEqual(_settingsBaseline))
-            throw new IOException("Project settings changed outside the editor.");
+            throw new EditorOperationException("project.externalSettings", "Project settings changed outside the editor.");
         _ = Serialize(snapshot);
         var content = repository.PrepareSave(project.RootPath, snapshot.Graph,
             snapshot.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value));

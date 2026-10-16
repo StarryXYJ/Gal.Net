@@ -267,82 +267,180 @@
   "Graph.Menu.CreateChoiceBranch": "选项分支",
   "Graph.Menu.CreateConditionBranch": "条件分支",
   "Common.Cancel": "取消",
-  "Common.Confirm": "确认"
-  ,"Editor.Menu.Export": "导出游戏..."
-  ,"Export.Title": "导出游戏"
-  ,"Export.OutputDirectory": "输出目录"
-  ,"Export.Browse": "浏览..."
-  ,"Export.Package": "输出包"
-  ,"Export.Action": "导出"
-  ,"Export.SelectDirectory": "选择导出目录"
-  ,"Export.Success": "游戏包导出成功。"
-  ,"Export.Failed": "导出失败。"
-  ,"Export.Unavailable": "需要先打开项目并选择输出目录。"
-  ,"Export.Progress.Title": "正在导出游戏"
-  ,"Export.Progress.Working": "正在构建游戏包..."
-  ,"Export.Progress.Cancel": "取消"
-  ,"Export.Progress.Close": "关闭"
-  ,"Entry.Add": "添加条目"
-  ,"Entry.Remove": "删除条目"
-  ,"Entry.ToggleParameters": "展开或折叠参数"
-  ,"Entry.Type.text": "文本"
-  ,"Entry.Type.layer.show": "显示图层"
-  ,"Entry.Type.layer.hide": "隐藏图层"
-  ,"Entry.Type.layer.move": "移动图层"
-  ,"Entry.Type.audio.play": "播放音频"
-  ,"Entry.Type.audio.stop": "停止音频"
-  ,"Entry.Type.audio.pause": "暂停音频"
-  ,"Entry.Type.audio.resume": "继续音频"
-  ,"Entry.Type.audio.enqueue": "音频入队"
-  ,"Entry.Type.video.play": "播放视频"
-  ,"Entry.Type.video.stop": "停止视频"
-  ,"Entry.Type.control.show": "显示控件"
-  ,"Entry.Type.control.hide": "隐藏控件"
-  ,"Entry.Type.control.set": "设置控件属性"
-  ,"Entry.Type.effect.apply": "应用特效"
-  ,"Entry.Type.effect.stop": "停止特效"
-  ,"Entry.Type.wait": "等待"
-  ,"Entry.Type.variable.set": "设置变量"
-  ,"Entry.Type.variable.eval": "计算变量"
-  ,"Entry.Type.unlock_gallery": "解锁画廊项目"
-  ,"Entry.Parameter.speaker": "说话人"
-  ,"Entry.Parameter.content": "文本"
-  ,"Entry.Parameter.voice": "语音"
-  ,"Entry.Parameter.widget": "组件"
-  ,"Entry.Parameter.id": "ID"
-  ,"Entry.Parameter.asset": "资源"
-  ,"Entry.Parameter.x": "X 坐标"
-  ,"Entry.Parameter.y": "Y 坐标"
-  ,"Entry.Parameter.z": "Z 坐标"
-  ,"Entry.Parameter.transition": "过渡"
-  ,"Entry.Parameter.duration": "时长"
-  ,"Entry.Parameter.channel": "音轨"
-  ,"Entry.Parameter.volume": "音量"
-  ,"Entry.Parameter.mode": "模式"
-  ,"Entry.Parameter.times": "次数"
-  ,"Entry.Parameter.property": "属性"
-  ,"Entry.Parameter.value": "值"
-  ,"Entry.Parameter.type": "特效类型"
-  ,"Entry.Parameter.parameters": "参数（JSON）"
-  ,"Entry.Parameter.target": "目标"
-  ,"Entry.Parameter.valueType": "值类型"
-  ,"Entry.Parameter.expression": "表达式"
-  ,"Entry.Parameter.category": "分类"
-  ,"Entry.Option.None": "无"
-  ,"Entry.Option.fade": "淡入淡出"
-  ,"Entry.Option.dissolve": "溶解"
-  ,"Entry.Option.slide_left": "向左滑动"
-  ,"Entry.Option.slide_right": "向右滑动"
-  ,"Entry.Option.bgm": "背景音乐"
-  ,"Entry.Option.sfx": "音效"
-  ,"Entry.Option.voice": "语音"
-  ,"Entry.Option.once": "单次"
-  ,"Entry.Option.loop": "循环"
-  ,"Entry.Option.string": "字符串"
-  ,"Entry.Option.bool": "布尔值"
-  ,"Entry.Option.int": "整数"
-  ,"Entry.Option.float": "浮点数"
-  ,"Entry.Option.Cg": "CG"
-  ,"Entry.Option.Portrait": "立绘"
-  ,"Entry.Option.Scene": "场景"
+  "Common.Confirm": "确认",
+  "Editor.Menu.Export": "导出游戏...",
+  "Export.Title": "导出游戏",
+  "Export.OutputDirectory": "输出目录",
+  "Export.Browse": "浏览...",
+  "Export.Package": "输出包",
+  "Export.Action": "导出",
+  "Export.SelectDirectory": "选择导出目录",
+  "Export.Success": "游戏包导出成功。",
+  "Export.Failed": "导出失败。",
+  "Export.Unavailable": "需要先打开项目并选择输出目录。",
+  "Export.Progress.Title": "正在导出游戏",
+  "Export.Progress.Working": "正在构建游戏包...",
+  "Export.Progress.Cancel": "取消",
+  "Export.Progress.Close": "关闭",
+  "Entry.Add": "添加条目",
+  "Entry.Remove": "删除条目",
+  "Entry.ToggleParameters": "展开或折叠参数",
+  "Entry.Type.text": "文本",
+  "Entry.Type.layer.show": "显示图层",
+  "Entry.Type.layer.hide": "隐藏图层",
+  "Entry.Type.layer.move": "移动图层",
+  "Entry.Type.audio.play": "播放音频",
+  "Entry.Type.audio.stop": "停止音频",
+  "Entry.Type.audio.pause": "暂停音频",
+  "Entry.Type.audio.resume": "继续音频",
+  "Entry.Type.audio.enqueue": "音频入队",
+  "Entry.Type.video.play": "播放视频",
+  "Entry.Type.video.stop": "停止视频",
+  "Entry.Type.control.show": "显示控件",
+  "Entry.Type.control.hide": "隐藏控件",
+  "Entry.Type.control.set": "设置控件属性",
+  "Entry.Type.effect.apply": "应用特效",
+  "Entry.Type.effect.stop": "停止特效",
+  "Entry.Type.wait": "等待",
+  "Entry.Type.variable.set": "设置变量",
+  "Entry.Type.variable.eval": "计算变量",
+  "Entry.Type.unlock_gallery": "解锁画廊项目",
+  "Entry.Parameter.speaker": "说话人",
+  "Entry.Parameter.content": "文本",
+  "Entry.Parameter.voice": "语音",
+  "Entry.Parameter.widget": "组件",
+  "Entry.Parameter.id": "ID",
+  "Entry.Parameter.asset": "资源",
+  "Entry.Parameter.x": "X 坐标",
+  "Entry.Parameter.y": "Y 坐标",
+  "Entry.Parameter.z": "Z 坐标",
+  "Entry.Parameter.transition": "过渡",
+  "Entry.Parameter.duration": "时长",
+  "Entry.Parameter.channel": "音轨",
+  "Entry.Parameter.volume": "音量",
+  "Entry.Parameter.mode": "模式",
+  "Entry.Parameter.times": "次数",
+  "Entry.Parameter.property": "属性",
+  "Entry.Parameter.value": "值",
+  "Entry.Parameter.type": "特效类型",
+  "Entry.Parameter.parameters": "参数（JSON）",
+  "Entry.Parameter.target": "目标",
+  "Entry.Parameter.valueType": "值类型",
+  "Entry.Parameter.expression": "表达式",
+  "Entry.Parameter.category": "分类",
+  "Entry.Option.None": "无",
+  "Entry.Option.fade": "淡入淡出",
+  "Entry.Option.dissolve": "溶解",
+  "Entry.Option.slide_left": "向左滑动",
+  "Entry.Option.slide_right": "向右滑动",
+  "Entry.Option.bgm": "背景音乐",
+  "Entry.Option.sfx": "音效",
+  "Entry.Option.voice": "语音",
+  "Entry.Option.once": "单次",
+  "Entry.Option.loop": "循环",
+  "Entry.Option.string": "字符串",
+  "Entry.Option.bool": "布尔值",
+  "Entry.Option.int": "整数",
+  "Entry.Option.float": "浮点数",
+  "Entry.Option.Cg": "CG",
+  "Entry.Option.Portrait": "立绘",
+  "Entry.Option.Scene": "场景",
+  "NewProject.Name": "名称",
+  "NewProject.Parent": "父目录",
+  "NewProject.Contracts": "自定义契约目录（可选）",
+  "NewProject.ContractsHint": "留空使用内置契约",
+  "NewProject.Resolution": "设计分辨率",
+  "NewProject.Create": "创建项目",
+  "NewProject.BrowseContracts": "选择已构建的项目契约目录",
+  "NewProject.BrowseParent": "选择项目父目录",
+  "Common.Browse": "浏览",
+  "Common.Save": "保存",
+  "Common.Apply": "应用",
+  "Common.Reset": "重置",
+  "Settings.Project.Name": "项目名称",
+  "Settings.Project.AudioTracks": "音频轨道",
+  "Settings.Project.AddTrack": "添加轨道",
+  "Settings.Project.TrackId": "轨道 ID",
+  "Settings.Project.TrackName": "轨道名称",
+  "Settings.Project.Apply": "应用修改",
+  "Settings.Project.Cancel": "取消修改",
+  "Settings.Project.ApplyFailed": "无法应用设置：{0}",
+  "Settings.AutoSaveEnabled": "已启用自动保存",
+  "Settings.AutoSaveDisabled": "已禁用自动保存",
+  "Settings.SearchCommands": "搜索命令",
+  "Settings.ShortcutConflict": "与 {0} 冲突",
+  "Settings.ShortcutInvalid": "快捷键无效",
+  "Close.Title": "关闭项目",
+  "Close.Question": "是否保存对 {0} 的修改？",
+  "Close.Save": "保存全部",
+  "Close.Discard": "放弃未保存内容",
+  "Close.Summary": "放弃仅针对未保存内容，已写入磁盘的文件操作仍然有效。",
+  "Status.Repair": "项目需要修复。重新打开前请检查 .galnet/editor 中的恢复材料。",
+  "Status.SaveFailed": "保存失败：{0}",
+  "Status.RecoveryFailed": "恢复快照失败：{0}",
+  "Status.AutoSaved": "已自动保存",
+  "Status.Created": "已创建项目 {0}",
+  "Status.GraphLoadFailed": "无法加载图：{0}",
+  "Status.LayoutReset": "已保存的窗口布局无效，已重置。",
+  "Layout.Name": "布局名称",
+  "History.Rename": "重命名节点",
+  "History.Move": "移动节点",
+  "History.Connect": "修改连线",
+  "History.DeleteNodes": "删除节点及 Group 源文件",
+  "History.CreateNode": "创建节点及源文件",
+  "History.Settings": "修改项目名称和设置",
+  "History.AddChoice": "添加选项",
+  "History.DeleteChoice": "删除选项",
+  "History.MoveChoice": "移动选项",
+  "History.AddCondition": "添加条件",
+  "History.DeleteCondition": "删除条件",
+  "History.MoveCondition": "移动条件",
+  "History.AddEntry": "添加条目",
+  "History.AddEntries": "添加 {0} 个条目",
+  "History.DeleteEntry": "删除条目",
+  "History.MoveEntry": "移动条目",
+  "History.Variables": "编辑变量定义",
+  "History.EditField": "编辑字段 {0}",
+  "Graph.Kind.Entry": "入口",
+  "Graph.Kind.LinearGroup": "线性组",
+  "Graph.Kind.ChoiceBranch": "选项分支",
+  "Graph.Kind.ConditionBranch": "条件分支",
+  "Log.ErrorsOnly": "仅错误",
+  "Log.AutoScroll": "自动滚动",
+  "Log.Game": "游戏",
+  "Log.Editor": "编辑器",
+  "Error.Unexpected": "操作失败。详细信息：{0}",
+  "Error.project.nameRequired": "请输入项目名称。",
+  "Error.project.folderRequired": "请选择项目目录。",
+  "Error.project.resolutionInvalid": "请输入有效的宽 × 高分辨率。",
+  "Error.settings.invalid": "项目分辨率、通道数或存档槽数量无效。",
+  "Error.settings.localeInvalid": "项目语言无效：{0}",
+  "Error.settings.tracksRequired": "至少需要一个音频轨道。",
+  "Error.settings.trackIds": "音频轨道 ID 不能为空或重复。",
+  "Error.settings.trackInvalid": "音频总线、增益或声音数量限制无效。",
+  "Error.settings.changed": "设置已在此操作之外更改，请检查后重试。",
+  "Error.graph.rootExists": "项目已有入口节点。",
+  "Error.graph.rootDelete": "不能删除入口节点。",
+  "Error.graph.coordinates": "节点坐标必须是有限数值。",
+  "Error.graph.nameRequired": "请输入节点名称。",
+  "Error.graph.connection": "图连接无效。",
+  "Error.graph.changed": "图数据已在此操作之外更改，请检查后重试。",
+  "Error.graph.targetRemoved": "目标节点或输出口已失效。",
+  "Error.project.externalSettings": "项目设置已被外部修改，请重新加载后保存。",
+  "Error.project.unavailable": "项目正在关闭或等待修复，暂时无法编辑。",
+  "Error.project.folderMissing": "项目目录不存在：{0}",
+  "Layout.Reserved": "Default 是保留的布局名称。",
+  "Layout.Saved": "已保存窗口布局 {0}。",
+  "Layout.None": "没有已保存的窗口布局。",
+  "Layout.LoadFailed": "无法加载窗口布局 {0}。",
+  "Layout.Loaded": "已加载窗口布局 {0}。",
+  "Layout.Reset": "已恢复默认窗口布局。",
+  "Layout.Deleted": "已删除窗口布局 {0}。",
+  "Layout.SaveFailed": "无法保存窗口布局。",
+  "Error.project.externalFile": "项目源文件已被外部修改：{0}。请重新加载后保存。",
+  "Error.project.fileCollision": "源文件 {0} 已存在，请选择其他路径。",
+  "Settings.Project.RemoveTrack": "移除轨道",
+  "Settings.Project.Gain": "默认增益",
+  "Settings.Project.Voices": "最大声音数量",
+  "Settings.Project.Queue": "队列容量"
 }

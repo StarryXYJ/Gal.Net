@@ -53,6 +53,8 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
     public ICommand RedoCommand { get; }
     public ICommand TogglePanelCommand { get; }
 
+    private EditorText? _layoutStatus;
+    private void SetLayoutStatus(EditorText text) { _layoutStatus = text; StatusText = text.Render(L); }
     private bool _savingLayout;
     private bool _disposed;
     private bool _layoutSavePending;
@@ -119,8 +121,8 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
     {
         foreach (var item in MenuItems.SelectMany(menu => menu.Children ?? []))
         {
-            if (ReferenceEquals(item.Command, UndoCommand)) item.Header = L["Editor.Menu.Undo"] + (_histories.Content.UndoDescription is { } undo ? ": " + undo : "");
-            if (ReferenceEquals(item.Command, RedoCommand)) item.Header = L["Editor.Menu.Redo"] + (_histories.Content.RedoDescription is { } redo ? ": " + redo : "");
+            if (ReferenceEquals(item.Command, UndoCommand)) item.Header = L["Editor.Menu.Undo"] + (_histories.Content.UndoText is { } undo ? ": " + undo.Render(L) : "");
+            if (ReferenceEquals(item.Command, RedoCommand)) item.Header = L["Editor.Menu.Redo"] + (_histories.Content.RedoText is { } redo ? ": " + redo.Render(L) : "");
         }
         OnContentChanged();
     }
@@ -129,9 +131,10 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
     {
         OnPropertyChanged(nameof(ProjectName));
         UpdateLocalizedText();
-        if (_content.RepairRequired) StatusText = "Project repair required. Inspect .galnet/editor recovery material before reopening.";
-        else if (_content.LastError is { } error) StatusText = "Save failed: " + error.Message;
-        else if (_content.LastRecoveryError is { } recovery) StatusText = "Recovery snapshot failed: " + recovery.Message;
+        if (_content.RepairRequired) StatusText = L["Status.Repair"];
+        else if (_content.LastError is { } error) StatusText = L.Format("Status.SaveFailed", EditorText.Error(error).Render(L));
+        else if (_content.LastRecoveryError is { } recovery) StatusText = L.Format("Status.RecoveryFailed", EditorText.Error(recovery).Render(L));
+        else if (_layoutStatus is not null) StatusText = _layoutStatus.Render(L);
     }
 
     public bool TryExecuteShortcut(KeyEventArgs args, string context = "Global") =>
@@ -163,7 +166,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
             // Discard that malformed global value once so every subsequent start is clean.
             settings.LastDockLayout = null;
             _editorSettingsService.SaveSettings();
-            StatusText = "Saved window layout was invalid and has been reset.";
+            SetLayoutStatus(new("Status.LayoutReset"));
         }
         if (Layout is null)
         {
@@ -192,13 +195,13 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
         name = name.Trim();
         if (string.Equals(name, "Default", StringComparison.OrdinalIgnoreCase))
         {
-            StatusText = "Default is reserved.";
+            SetLayoutStatus(new("Layout.Reserved"));
             return;
         }
         var settings = _editorSettingsService.GetSettings();
         settings.DockLayouts[name] = SerializeLayout(Layout);
         _editorSettingsService.SaveSettings();
-        StatusText = $"Window layout '{name}' saved.";
+        SetLayoutStatus(new("Layout.Saved", name));
         BuildMenuItems();
     }
 
@@ -212,18 +215,18 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
         var settings = _editorSettingsService.GetSettings();
         if (string.IsNullOrWhiteSpace(name) || !settings.DockLayouts.TryGetValue(name, out var serialized))
         {
-            StatusText = "No saved window layout.";
+            SetLayoutStatus(new("Layout.None"));
             return;
         }
         var layout = TryLoadLayout(serialized);
         if (layout is null)
         {
-            StatusText = $"Window layout '{name}' could not be loaded.";
+            SetLayoutStatus(new("Layout.LoadFailed", name));
             return;
         }
         Layout = layout;
         OnPropertyChanged(nameof(Layout));
-        StatusText = $"Window layout '{name}' loaded.";
+        SetLayoutStatus(new("Layout.Loaded", name));
     }
 
     private void ResetLayout()
@@ -231,7 +234,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
         Layout = _dockFactory.CreateLayout();
         _dockFactory.InitLayout(Layout);
         OnPropertyChanged(nameof(Layout));
-        StatusText = "Default window layout restored.";
+        SetLayoutStatus(new("Layout.Reset"));
     }
 
     private void DeleteLayout(string? name)
@@ -240,7 +243,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
         var settings = _editorSettingsService.GetSettings();
         if (!settings.DockLayouts.Remove(name)) return;
         _editorSettingsService.SaveSettings();
-        StatusText = $"Window layout '{name}' deleted.";
+        SetLayoutStatus(new("Layout.Deleted", name));
         BuildMenuItems();
     }
 
@@ -290,7 +293,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
         }
         catch (Exception exception)
         {
-            StatusText = "Failed to save window layout.";
+            SetLayoutStatus(new("Layout.SaveFailed"));
             Log.Error(exception, "Failed to persist editor dock layout");
         }
         finally { _savingLayout = false; }
@@ -462,14 +465,14 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
         }
     }
 
-    private static async Task<string?> RequestLayoutNameAsync()
+    private async Task<string?> RequestLayoutNameAsync()
     {
         var owner = GetMainWindow();
         if (owner is null) return null;
-        var input = new TextBox { MinWidth = 260, PlaceholderText = "Layout name" };
+        var input = new TextBox { MinWidth = 260, PlaceholderText = L["Layout.Name"] };
         var dialog = new Window
         {
-            Title = "Save Window Layout",
+            Title = L["Editor.Menu.SaveLayout"],
             Width = 360,
             Height = 140,
             WindowStartupLocation = WindowStartupLocation.CenterOwner
@@ -488,12 +491,16 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
                     Spacing = 8,
                     Children =
                     {
-                        new Button { Content = "Cancel", Command = new RelayCommand(() => dialog.Close(null)) },
-                        new Button { Content = "Save", Command = new RelayCommand(() => dialog.Close(input.Text)) }
+                        new Button { Content = L["Common.Cancel"], Command = new RelayCommand(() => dialog.Close(null)) },
+                        new Button { Content = L["Common.Save"], Command = new RelayCommand(() => dialog.Close(input.Text)) }
                     }
                 }
             }
         };
+        var bindings = new List<IDisposable> { LocalizedBindings.Bind(dialog, Window.TitleProperty, L, "Editor.Menu.SaveLayout"), LocalizedBindings.Bind(input, TextBox.PlaceholderTextProperty, L, "Layout.Name") };
+        foreach (var button in ((StackPanel)dialog.Content!).Children.OfType<StackPanel>().SelectMany(panel => panel.Children).OfType<Button>())
+            bindings.Add(LocalizedBindings.Bind(button, ContentControl.ContentProperty, L, button.Content?.ToString() == L["Common.Cancel"] ? "Common.Cancel" : "Common.Save"));
+        dialog.Closed += (_, _) => { foreach (var binding in bindings) binding.Dispose(); };
         return await dialog.ShowDialog<string?>(owner);
     }
 }

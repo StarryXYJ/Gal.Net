@@ -9,6 +9,7 @@ using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
+using GalNet.Editor.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -104,13 +105,16 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
         }
         _isLoading = false;
         _hasDraft = false;
+        _validationError = null;
         UpdateDirtyText();
         DraftReset?.Invoke();
     }
 
+    private Exception? _validationError;
     private void UpdateDirtyText()
     {
-        IsDirtyText = _histories.Content.IsDirty ? L["Settings.Project.Unsaved"] : "";
+        IsDirtyText = _validationError is { } error ? L.Format("Settings.Project.ApplyFailed", EditorText.Error(error).Render(L))
+            : _histories.Content.IsDirty ? L["Settings.Project.Unsaved"] : "";
     }
 
     [RelayCommand]
@@ -119,14 +123,17 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
         try
         {
             if (_projectService.Current is not { } project) return;
-            if (string.IsNullOrWhiteSpace(ProjectName)) throw new InvalidDataException("Project name is required.");
-            var locale = new Core.I18n.I18nLocale(TargetLocale).Code;
+            if (string.IsNullOrWhiteSpace(ProjectName)) throw new EditorOperationException("project.nameRequired", "Project name is required.");
+            string locale;
+            try { locale = new Core.I18n.I18nLocale(TargetLocale).Code; }
+            catch (Exception failure) when (failure is ArgumentException or FormatException)
+            { throw new EditorOperationException("settings.localeInvalid", failure.Message, TargetLocale); }
             var before = SettingsSnapshot.From(project.Name, project.Settings);
             var after = new SettingsSnapshot(ProjectName.Trim(), DefaultWidth, DefaultHeight, SaveSlotCount, SfxChannelCount, locale, AudioTracks.Select(item => item.ToDefinition()).ToArray());
             ValidateTracks(after.AudioTracks);
             if (before.Matches(after)) { LoadFromProject(); return; }
             if (!NewProjectPanelViewModel.TryParseResolution($"{DefaultWidth}×{DefaultHeight}", out _, out _) || SaveSlotCount <= 0 || SfxChannelCount <= 0)
-                throw new InvalidDataException("Invalid project dimensions or channel/slot count.");
+                throw new EditorOperationException("settings.invalid", "Invalid project dimensions or channel/slot count.");
             var graph = project.Services.GetRequiredService<IEditorDocumentService>().CurrentDocument;
             await _histories.Content.ExecuteAsync(new SettingsEdit(project.Settings, graph, before, after));
             LoadFromProject();
@@ -135,7 +142,8 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
         }
         catch (Exception ex)
         {
-            IsDirtyText = L["Settings.SaveFailed"] + ": " + ex.Message;
+            _validationError = ex;
+            UpdateDirtyText();
             Log.Error(ex, "Failed to save project settings");
         }
     }
@@ -185,11 +193,11 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
 
     private static void ValidateTracks(IReadOnlyList<AudioTrackDefinition> tracks)
     {
-        if (tracks.Count == 0) throw new InvalidDataException("At least one audio track is required.");
+        if (tracks.Count == 0) throw new EditorOperationException("settings.tracksRequired", "At least one audio track is required.");
         if (tracks.Any(track => string.IsNullOrWhiteSpace(track.Id)) || tracks.Select(track => track.Id).Distinct(StringComparer.Ordinal).Count() != tracks.Count)
-            throw new InvalidDataException("Audio track IDs must be non-empty and unique.");
+            throw new EditorOperationException("settings.trackIds", "Audio track IDs must be non-empty and unique.");
         if (tracks.Any(track => !GalNet.Core.Audio.AudioBuses.IsValid(track.Bus) || !float.IsFinite(track.DefaultGain) || track.DefaultGain < 0 || track.DefaultGain > 1 || track.MaxVoices <= 0 || track.MaxQueuedItems < 0))
-            throw new InvalidDataException("Audio track configuration contains an invalid bus, gain, or voice limit.");
+            throw new EditorOperationException("settings.trackInvalid", "Audio track configuration contains an invalid bus, gain, or voice limit.");
     }
 
     private void TriggerAutoSave()
@@ -221,7 +229,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
     {
         if (!HasDraftChanges) return;
         await SaveSettingsAsync();
-        if (_hasDraft) throw new InvalidDataException(IsDirtyText);
+        if (_hasDraft) throw _validationError ?? new EditorOperationException("settings.invalid", "Invalid settings draft.");
     }
 
     private bool HasDraftChanges => _hasDraft && _projectService.Current is { } project &&
@@ -237,7 +245,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
         private void Apply(SettingsSnapshot expected, SettingsSnapshot value)
         {
             if (!SettingsSnapshot.From(Graph.Name, Settings).Matches(expected))
-                throw new InvalidOperationException("Project settings changed before this edit. Review the current values and retry.");
+                throw new EditorOperationException("settings.changed", "Project settings changed before this edit. Review the current values and retry.");
             value.Apply(Settings);
             Graph.Name = value.Name;
         }

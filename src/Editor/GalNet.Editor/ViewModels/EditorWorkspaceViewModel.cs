@@ -41,6 +41,12 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
     private readonly IProjectSaveScheduler _saveScheduler;
     private readonly GraphChangeTracker _graphChangeTracker;
     private readonly GraphAuthoringService _graphAuthoring;
+    private EditorText _statusMessage = new("Editor.Status.Ready");
+    private void SetStatus(EditorText text) { _statusMessage = text; StatusText = text.Render(_localization); }
+    private void OnCultureChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == "Item[]") StatusText = _statusMessage.Render(_localization);
+    }
     private bool _disposed;
     private bool _isSaving;
     private bool _isApplyingHistory;
@@ -93,6 +99,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         _graphEditingService = graphEditingService;
         _editorSettings = editorSettings;
         _localization = localization;
+        _localization.PropertyChanged += OnCultureChanged;
         _saveScheduler = saveScheduler;
         _selection = selection;
         _persistence = persistence;
@@ -115,6 +122,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
             OnTrackedItemChanged);
         Nodes.CollectionChanged += OnGraphCollectionChanged;
         Edges.CollectionChanged += OnGraphCollectionChanged;
+        SetStatus(_statusMessage);
         LoadCurrentProjectGraph();
         _documentService.DocumentChanged += SynchronizeGraph;
     }
@@ -124,6 +132,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         if (_disposed)
             return;
         _disposed = true;
+        _localization.PropertyChanged -= OnCultureChanged;
         _projectService.CurrentChanged -= _projectChangedHandler;
         _documentService.DirtyStateChanged -= OnDocumentDirtyStateChanged;
         _variableDefinitionService.DefinitionsChanged -= _definitionsChangedHandler;
@@ -198,7 +207,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
 
     public void ReportGraphError(Exception failure)
     {
-        StatusText = failure.Message;
+        SetStatus(EditorText.Error(failure));
         _projectService.Current?.Services.GetService<IProjectContentSession>()?.ReportError(failure);
         Log.Error(failure, "Graph edit failed");
     }
@@ -379,7 +388,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
 
         var projectPath = Path.Combine(path, name);
         await _projectService.CreateAsync(projectPath, name, new ProjectSettings(), contractsDirectory);
-        StatusText = $"Created project {name}";
+        SetStatus(new("Status.Created", name));
         Log.Information("Project created from startup page: {Name} at {Path}", name, projectPath);
     }
 
@@ -450,7 +459,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
             ClearSelection();
             Nodes.Clear();
             Edges.Clear();
-            StatusText = $"Failed to load graph: {ex.Message}";
+            SetStatus(new("Status.GraphLoadFailed", EditorText.Error(ex)));
             throw;
         }
         finally
@@ -530,7 +539,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         _saveScheduler.Schedule(async () =>
         {
             await SaveCoreAsync();
-            Avalonia.Threading.Dispatcher.UIThread.Post(() => StatusText = "Auto-saved");
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => SetStatus(new("Status.AutoSaved")));
         });
     }
 

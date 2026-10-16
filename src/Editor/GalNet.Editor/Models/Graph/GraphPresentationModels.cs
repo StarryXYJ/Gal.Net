@@ -85,6 +85,7 @@ public partial class GraphNode : ObservableObject
     private bool _isRoot;
 
     public string Id => Source.Id;
+    public string KindLabelKey => "Graph.Kind." + NodeKind;
     public string KindLabel => NodeKind switch
     {
         GraphNodeKind.Entry => "Entry",

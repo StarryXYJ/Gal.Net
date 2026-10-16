@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
+using GalNet.Editor.Services;
 
 namespace GalNet.Editor.History;
 
@@ -10,6 +11,7 @@ public interface IUndoableEdit
 {
     long RetainedBytes => 0;
     string Description { get; }
+    EditorText DisplayText => EditorText.History(Description);
     void Undo();
     void Redo();
 }
@@ -23,6 +25,8 @@ public interface IUndoRedoHistory
     bool IsDirty { get; }
     string? UndoDescription { get; }
     string? RedoDescription { get; }
+    EditorText? UndoText => UndoDescription is { } text ? EditorText.History(text) : null;
+    EditorText? RedoText => RedoDescription is { } text ? EditorText.History(text) : null;
     event Action? Changed;
     void Execute(IUndoableEdit edit);
     void PushAlreadyApplied(IUndoableEdit edit);
@@ -41,6 +45,7 @@ public interface IAsyncUndoableEdit
 {
     long RetainedBytes => 0;
     string Description { get; }
+    EditorText DisplayText => EditorText.History(Description);
     ValueTask UndoAsync();
     ValueTask RedoAsync();
 }
@@ -72,6 +77,8 @@ public sealed class UndoRedoHistory(int capacity = 200, long byteBudget = 1024L 
     public bool IsDirty => _contentDirty?.Invoke() ?? (!_savedPositionValid || _position != _savedPosition);
     public string? UndoDescription => CanUndo ? _edits[_position - 1].Description : null;
     public string? RedoDescription => CanRedo ? _edits[_position].Description : null;
+    public EditorText? UndoText => CanUndo ? _edits[_position - 1].DisplayText : null;
+    public EditorText? RedoText => CanRedo ? _edits[_position].DisplayText : null;
     public event Action? Changed;
 
     public void Execute(IUndoableEdit edit)
@@ -185,6 +192,7 @@ public sealed class UndoRedoHistory(int capacity = 200, long byteBudget = 1024L 
     private sealed record SyncEdit(IUndoableEdit Edit) : IAsyncUndoableEdit, IDisposable
     {
         public string Description => Edit.Description;
+        public EditorText DisplayText => Edit.DisplayText;
         public long RetainedBytes => Edit.RetainedBytes;
         public ValueTask UndoAsync() { Edit.Undo(); return ValueTask.CompletedTask; }
         public ValueTask RedoAsync() { Edit.Redo(); return ValueTask.CompletedTask; }

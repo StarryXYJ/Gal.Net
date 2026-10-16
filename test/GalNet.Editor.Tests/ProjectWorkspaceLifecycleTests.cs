@@ -30,7 +30,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace GeneralTest.Editor;
 
 [NonParallelizable]
-public sealed class ProjectWorkspaceLifecycleTests
+public sealed partial class ProjectWorkspaceLifecycleTests
 {
     private string _root = null!;
 
@@ -250,7 +250,7 @@ public sealed class ProjectWorkspaceLifecycleTests
         else panel.ProjectName = "";
         panel.SaveSlotCount = 19;
         try { await projects.CloseAsync(); Assert.Fail("An invalid draft must block Save and Close."); }
-        catch (InvalidDataException) { }
+        catch (EditorOperationException failure) { Assert.That(failure.Code, Does.StartWith(invalidLocale ? "settings." : "project.")); }
         Assert.That(projects.Current, Is.SameAs(project));
         Assert.That(invalidLocale ? panel.TargetLocale : panel.ProjectName, Is.Empty);
         Assert.That(project.Settings.SaveSlotCount, Is.EqualTo(60), "Invalid input must not partially apply other settings.");
@@ -367,9 +367,9 @@ public sealed class ProjectWorkspaceLifecycleTests
         public Task<ProjectCloseChoice> ChooseAsync(string projectName) { Calls++; return Task.FromResult(Choice); }
     }
 
-    [TestCase("Save All", ProjectCloseChoice.Save)]
-    [TestCase("Discard Unsaved Content", ProjectCloseChoice.Discard)]
-    [TestCase("Cancel", ProjectCloseChoice.Cancel)]
+    [TestCase("CloseSave", ProjectCloseChoice.Save)]
+    [TestCase("CloseDiscard", ProjectCloseChoice.Discard)]
+    [TestCase("CloseCancel", ProjectCloseChoice.Cancel)]
     [TestCase(null, ProjectCloseChoice.Cancel)]
     public async Task CloseDialogButtonsAndWindowCloseReturnTheExpectedChoice(string? buttonLabel, ProjectCloseChoice expected)
     {
@@ -385,7 +385,7 @@ public sealed class ProjectWorkspaceLifecycleTests
                 var result = dialog.ShowDialog<ProjectCloseChoice>(owner);
                 dialog.UpdateLayout();
                 if (buttonLabel is null) dialog.Close();
-                else dialog.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, buttonLabel))
+                else dialog.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Name, buttonLabel))
                     .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
                 Assert.That(await result, Is.EqualTo(expected));
             }
@@ -774,7 +774,8 @@ public sealed class ProjectWorkspaceLifecycleTests
         await projects.CloseAsync();
     }
 
-    private static ServiceProvider Services(IProjectClosePrompt? closePrompt = null) => new ServiceCollection().AddEditorServices()
+    private static ServiceProvider Services(IProjectClosePrompt? closePrompt = null, IEditorLocalizationService? localization = null) => new ServiceCollection().AddEditorServices()
+        .AddSingleton<IEditorLocalizationService>(localization ?? new EditorLocalizationService())
         .AddSingleton<IProjectClosePrompt>(closePrompt ?? new DiscardProjectClosePrompt())
         .AddSingleton<IEditorSettingsService>(new TestSettings())
         .AddSingleton<IFileDialogService>(new TestDialogs())

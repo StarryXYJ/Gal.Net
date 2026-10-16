@@ -23,6 +23,8 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
     private bool _loading;
     private readonly PropertyChangedEventHandler _localizationChanged;
 
+    private EditorText? _statusMessage;
+    private void SetStatus(EditorText text) { _statusMessage = text; StatusText = text.Render(L); }
     public IEditorLocalizationService L { get; }
 
     [ObservableProperty]
@@ -60,7 +62,10 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
         _localizationChanged = (_, e) =>
         {
             if (e.PropertyName == "Item[]")
+            {
                 ReloadDisplayNames();
+                if (_statusMessage is not null) StatusText = _statusMessage.Render(L);
+            }
         };
         L.PropertyChanged += _localizationChanged;
 
@@ -97,26 +102,27 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
 
     private void ReloadDisplayNames()
     {
-        var selectedThemeName = SelectedTheme?.Name;
-
-        AvailableThemes.Clear();
-        foreach (var theme in _themeRegistry.GetAvailableThemes().Values)
-            AvailableThemes.Add(new ThemeSelectionItem(theme.Name, L[theme.DisplayKey]));
-
-        if (AvailableCultures.Count == 0)
+        var wasLoading = _loading;
+        _loading = true;
+        try
         {
-            foreach (var culture in L.AvailableCultures)
-                AvailableCultures.Add(culture);
+            var selectedThemeName = SelectedTheme?.Name;
+            AvailableThemes.Clear();
+            foreach (var theme in _themeRegistry.GetAvailableThemes().Values)
+                AvailableThemes.Add(new ThemeSelectionItem(theme.Name, L[theme.DisplayKey]));
+            if (AvailableCultures.Count == 0)
+                foreach (var culture in L.AvailableCultures) AvailableCultures.Add(culture);
+            SelectedTheme = AvailableThemes.FirstOrDefault(theme => theme.Name == selectedThemeName) ?? SelectedTheme;
+            ReloadShortcuts(preserveDrafts: true);
         }
-
-        SelectedTheme = AvailableThemes.FirstOrDefault(theme => theme.Name == selectedThemeName) ?? SelectedTheme;
-        ReloadShortcuts();
+        finally { _loading = wasLoading; }
     }
 
     partial void OnShortcutSearchTextChanged(string value) => ReloadShortcuts();
 
-    private void ReloadShortcuts()
+    private void ReloadShortcuts(bool preserveDrafts = false)
     {
+        var drafts = preserveDrafts ? Shortcuts.ToDictionary(item => item.CommandId, item => item.GestureText) : null;
         var search = ShortcutSearchText.Trim();
         Shortcuts.Clear();
         foreach (var command in _shortcutService.Commands.Where(command =>
@@ -125,7 +131,9 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
                      L[command.DisplayNameKey.Key].Contains(search, StringComparison.CurrentCultureIgnoreCase) ||
                      L[command.CategoryKey.Key].Contains(search, StringComparison.CurrentCultureIgnoreCase)))
         {
-            Shortcuts.Add(new ShortcutSettingItemViewModel(command, _shortcutService, L));
+            var item = new ShortcutSettingItemViewModel(command, _shortcutService, L);
+            if (drafts?.TryGetValue(command.Id, out var draft) == true) item.GestureText = draft;
+            Shortcuts.Add(item);
         }
     }
 
@@ -134,7 +142,7 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
     {
         _shortcutService.ResetAll();
         ReloadShortcuts();
-        StatusText = L["Settings.Saved"];
+        SetStatus(new("Settings.Saved"));
     }
 
     partial void OnSelectedThemeChanged(ThemeSelectionItem? value)
@@ -146,7 +154,7 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
         _themeService.ApplyThemeByName(value.Name);
         _editorSettings.SaveSettings();
 
-        StatusText = L.Format("Settings.ThemeChanged", value.DisplayName);
+        SetStatus(new("Settings.ThemeChanged", value.Name));
     }
 
     partial void OnSelectedCultureChanged(CultureInfo? value)
@@ -159,7 +167,7 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
         _editorSettings.SaveSettings();
         L.ApplyCulture(value);
 
-        StatusText = L["Settings.Saved"];
+        SetStatus(new("Settings.Saved"));
     }
 
     partial void OnAutoSaveProjectChanged(bool value)
@@ -168,7 +176,7 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
         var settings = _editorSettings.GetSettings();
         settings.AutoSaveProject = value;
         _editorSettings.SaveSettings();
-        StatusText = value ? "Auto-save enabled" : "Auto-save disabled";
+        SetStatus(new(value ? "Settings.AutoSaveEnabled" : "Settings.AutoSaveDisabled"));
     }
 
     [RelayCommand]
@@ -184,12 +192,12 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
 
             _editorSettings.SaveSettings();
 
-            StatusText = L["Settings.Saved"];
+            SetStatus(new("Settings.Saved"));
             Log.Information("Editor settings saved: Theme={Theme}, Locale={Locale}", settings.Theme, settings.UiLocale);
         }
         catch (Exception ex)
         {
-            StatusText = L["Settings.SaveFailed"];
+            SetStatus(new("Settings.SaveFailed"));
             Log.Error(ex, "Failed to save editor settings");
         }
     }
@@ -201,6 +209,7 @@ public sealed partial class ShortcutSettingItemViewModel : ObservableObject
 {
     private readonly IEditorShortcutCommandDefinition _definition;
     private readonly EditorShortcutService _service;
+    private readonly IEditorLocalizationService _localization;
 
     public string CommandId => _definition.Id;
     public string DisplayName { get; }
@@ -220,6 +229,7 @@ public sealed partial class ShortcutSettingItemViewModel : ObservableObject
         IEditorLocalizationService localization)
     {
         _definition = definition;
+        _localization = localization;
         _service = service;
         DisplayName = localization[definition.DisplayNameKey.Key];
         Category = localization[definition.CategoryKey.Key];
@@ -256,11 +266,11 @@ public sealed partial class ShortcutSettingItemViewModel : ObservableObject
         {
             var gesture = KeyGesture.Parse(value);
             var conflict = _service.FindConflict(CommandId, Context, gesture);
-            return conflict is null ? "" : $"Conflicts with {conflict.Id}";
+            return conflict is null ? "" : _localization.Format("Settings.ShortcutConflict", conflict.Id);
         }
         catch
         {
-            return "Invalid shortcut";
+            return _localization["Settings.ShortcutInvalid"];
         }
     }
 }

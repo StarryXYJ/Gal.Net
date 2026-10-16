@@ -106,7 +106,7 @@ public sealed partial class NodeInspectorControlViewModel : ObservableObject, II
 
     private void OnLocalizationPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(IEditorLocalizationService.CurrentCulture) or "Item[]")
+        if (e.PropertyName == "Item[]")
             OnPropertyChanged(nameof(EntryCountText));
     }
 

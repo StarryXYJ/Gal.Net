@@ -108,7 +108,8 @@ public sealed class ProjectAuthoringSafetyTests
         Put("Graph/groups/a.rawgalgroup", """{"version":2,"kind":"Raw","entries":[]}""");
         var original = Snapshot();
         document.Graph.Name = "Stale";
-        Assert.ThrowsAsync<IOException>(() => persistence.SaveAsync(document));
+        var failure = Assert.ThrowsAsync<GalNet.Editor.Abstraction.Services.EditorOperationException>(() => persistence.SaveAsync(document));
+        Assert.That(failure!.Code, Is.EqualTo("project.externalFile"));
         AssertSnapshot(original);
         await Task.CompletedTask;
     }

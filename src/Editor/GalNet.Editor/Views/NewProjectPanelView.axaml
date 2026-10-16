@@ -7,34 +7,34 @@
              Background="{DynamicResource SemiColorBackground0}">
     <ScrollViewer>
         <StackPanel Margin="12" Spacing="10" MaxWidth="520" IsEnabled="{Binding !IsBusy}">
-            <TextBlock Text="New Project"
+            <TextBlock Text="{loc:Localize Startup.NewProject}"
                        FontSize="16"
                        FontWeight="SemiBold" />
 
-            <TextBlock Text="Name" />
+            <TextBlock Text="{loc:Localize NewProject.Name}" />
             <TextBox Name="ProjectNameInput" Text="{Binding ProjectName}" />
 
-            <TextBlock Text="Parent Folder" />
+            <TextBlock Text="{loc:Localize NewProject.Parent}" />
             <Grid ColumnDefinitions="*,Auto">
                 <TextBox Name="ProjectRootInput" Text="{Binding ProjectRoot}" />
-                <Button Grid.Column="1" Content="Browse" Command="{Binding BrowseProjectRootCommand}" Margin="8,0,0,0" />
+                <Button Grid.Column="1" Content="{loc:Localize Common.Browse}" Command="{Binding BrowseProjectRootCommand}" Margin="8,0,0,0" />
             </Grid>
 
-            <TextBlock Text="Custom Contract Directory (Optional)" />
+            <TextBlock Text="{loc:Localize NewProject.Contracts}" />
             <Grid ColumnDefinitions="*,Auto">
-                <TextBox Name="ContractsDirectoryInput" Text="{Binding ContractsDirectory}" PlaceholderText="Leave empty to use built-in contracts" />
-                <Button Name="BrowseContractsButton" Grid.Column="1" Content="Browse" Command="{Binding BrowseContractsCommand}" Margin="8,0,0,0" />
+                <TextBox Name="ContractsDirectoryInput" Text="{Binding ContractsDirectory}" PlaceholderText="{loc:Localize NewProject.ContractsHint}" />
+                <Button Name="BrowseContractsButton" Grid.Column="1" Content="{loc:Localize Common.Browse}" Command="{Binding BrowseContractsCommand}" Margin="8,0,0,0" />
             </Grid>
 
-            <TextBlock Text="Design Resolution" />
+            <TextBlock Text="{loc:Localize NewProject.Resolution}" />
             <ComboBox ItemsSource="{Binding ResolutionPresets}"
                       Text="{Binding Resolution}"
                       IsEditable="True" />
 
             <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Name="CreateProjectButton" Content="Create Project"
+                <Button Name="CreateProjectButton" Content="{loc:Localize NewProject.Create}"
                         Command="{Binding CreateCommand}" />
-                <Button Content="Cancel"
+                <Button Content="{loc:Localize Common.Cancel}"
                         Command="{Binding CancelCommand}" />
             </StackPanel>
 

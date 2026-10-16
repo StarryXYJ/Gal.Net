@@ -20,18 +20,19 @@ public sealed class LocalizeExtension
     }
 
     public string? Key { get; set; }
+    public string? Path { get; set; }
 
     public string? StringFormat { get; set; }
 
     public object ProvideValue(IServiceProvider serviceProvider)
     {
-        if (string.IsNullOrWhiteSpace(Key))
+        if (string.IsNullOrWhiteSpace(Key) && string.IsNullOrWhiteSpace(Path))
             return string.Empty;
 
         if (EditorLocalizationService.Current is not { } localization)
             return Key;
 
-        if (!Key.Contains('.'))
+        if (Path is not null || !Key!.Contains('.'))
         {
             var binding = new MultiBinding
             {
@@ -39,7 +40,7 @@ public sealed class LocalizeExtension
                 StringFormat = StringFormat
             };
 
-            binding.Bindings.Add(new ReflectionBinding(Key));
+            binding.Bindings.Add(new ReflectionBinding(Path ?? Key!));
             binding.Bindings.Add(new ReflectionBinding(nameof(IEditorLocalizationService.CurrentCulture))
             {
                 Source = localization
@@ -48,9 +49,10 @@ public sealed class LocalizeExtension
             return binding;
         }
 
-        return new ReflectionBinding($"[{Key}]")
+        return new ReflectionBinding(nameof(IEditorLocalizationService.CurrentCulture))
         {
             Source = localization,
+            Converter = new FuncValueConverter<object?, string>(_ => localization[Key!]),
             Mode = BindingMode.OneWay,
             StringFormat = StringFormat
         };

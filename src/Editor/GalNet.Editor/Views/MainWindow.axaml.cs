@@ -56,7 +56,7 @@ public partial class MainWindow : UrsaWindow
         catch (System.Exception failure)
         {
             Log.Error(failure, "Could not close the project");
-            _toastManager.Show(new Toast(failure.Message), showClose: true, type: NotificationType.Error);
+            _toastManager.Show(new Toast(GalNet.Editor.Services.EditorLocalizationService.Current is { } localization ? GalNet.Editor.Services.EditorText.Error(failure).Render(localization) : failure.Message), showClose: true, type: NotificationType.Error);
         }
         finally { _closing = false; }
     }

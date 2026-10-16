@@ -74,6 +74,8 @@
 
 ## 经验索引
 
+- [Editor 语言绑定实际刷新](lessons/L-20261016-03-editor-localization-binding.md)：静态文案显式监听 CurrentCulture，动态 key 同时监听路径；真实窗口切换验收，关闭后释放绑定。
+
 - [Headless 拖动按键状态](lessons/L-20261016-01-headless-drag-modifiers.md)：MouseMove 必须显式携带 LeftMouseButton，不能从 MouseDown 假定状态持续。
 - [结构撤销材料捕获时机](lessons/L-20261016-02-structure-baseline-capture.md)：结构准备在取得发布门后读取 Working/Saved，避免正在发布的保存推进基线后恢复旧内容。
 

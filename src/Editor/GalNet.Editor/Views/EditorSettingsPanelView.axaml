@@ -53,7 +53,7 @@
                     <Button Grid.Column="1" Content="{loc:Localize Settings.Shortcuts.ResetAll}"
                             Command="{Binding ResetAllShortcutsCommand}" />
                 </Grid>
-                <TextBox Text="{Binding ShortcutSearchText, Mode=TwoWay}" PlaceholderText="Search commands" />
+                <TextBox Text="{Binding ShortcutSearchText, Mode=TwoWay}" PlaceholderText="{loc:Localize Settings.SearchCommands}" />
                 <ItemsControl ItemsSource="{Binding Shortcuts}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:ShortcutSettingItemViewModel">
@@ -69,8 +69,8 @@
                                         <TextBox Text="{Binding GestureText, Mode=TwoWay}" />
                                         <TextBlock Text="{Binding ValidationMessage}" FontSize="10" Foreground="OrangeRed" />
                                     </StackPanel>
-                                    <Button Grid.Column="3" Content="Apply" Command="{Binding ApplyCommand}" />
-                                    <Button Grid.Column="4" Content="Reset" Command="{Binding ResetCommand}" />
+                                    <Button Grid.Column="3" Content="{loc:Localize Common.Apply}" Command="{Binding ApplyCommand}" />
+                                    <Button Grid.Column="4" Content="{loc:Localize Common.Reset}" Command="{Binding ResetCommand}" />
                                 </Grid>
                             </Border>
                         </DataTemplate>

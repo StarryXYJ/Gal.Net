@@ -64,7 +64,7 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog) : IEditorDoc
             var raw = JsonSerializer.SerializeToElement(new GroupDocument { Kind = GroupDocumentKind.Raw, Entries = entries.Select(SerializeEntry).ToList() }, JsonOptions);
             _ = ProjectValidationService.ValidateGroupDocument(raw, file, diagnostics, catalog);
             if (File.Exists(reader.Resolve(file)) && _baseline is not null && !_baseline.ContainsKey(file))
-                throw new IOException($"New Group source would overwrite an existing unowned file: '{file}'.");
+                throw new EditorOperationException("project.fileCollision", $"New Group source would overwrite an existing unowned file: '{file}'.", file);
             writes.Add(file, JsonSerializer.SerializeToUtf8Bytes(raw, JsonOptions));
         }
         RequireValid(diagnostics);
@@ -123,7 +123,7 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog) : IEditorDoc
             var path = reader.Resolve(file);
             var current = File.Exists(path) ? File.ReadAllBytes(path) : null;
             if (!(original is null ? current is null : current is not null && original.AsSpan().SequenceEqual(current)))
-                throw new IOException($"Project source changed after loading: '{file}'. Reload before saving.");
+                throw new EditorOperationException("project.externalFile", $"Project source changed after loading: '{file}'. Reload before saving.", file);
         }
     }
 

@@ -11,8 +11,8 @@ public sealed class GraphAuthoringService(IEditorDocumentService documents, Edit
 {
     public async Task<string> AddNodeAsync(GraphNodeKind kind, double x, double y, string? fromId = null, int outlet = 0)
     {
-        if (kind == GraphNodeKind.Entry) throw new InvalidOperationException("The project already owns its Entry root.");
-        if (!double.IsFinite(x) || !double.IsFinite(y)) throw new InvalidDataException("Node coordinates must be finite.");
+        if (kind == GraphNodeKind.Entry) throw new EditorOperationException("graph.rootExists", "The project already owns its Entry root.");
+        if (!double.IsFinite(x) || !double.IsFinite(y)) throw new EditorOperationException("graph.coordinates", "Node coordinates must be finite.");
         var id = Guid.NewGuid().ToString("N");
         var node = new EditorGraphNodeDto
         {
@@ -37,13 +37,13 @@ public sealed class GraphAuthoringService(IEditorDocumentService documents, Edit
     {
         var ids = nodeIds.Distinct(StringComparer.Ordinal).ToArray();
         foreach (var id in ids)
-            if (Find(id).Type == "Entry") throw new InvalidOperationException("The Entry root cannot be deleted.");
+            if (Find(id).Type == "Entry") throw new EditorOperationException("graph.rootDelete", "The Entry root cannot be deleted.");
         return ids.Length == 0 ? Task.CompletedTask : histories.Content.ExecuteAsync(new PresenceEdit(documents, content, ids));
     }
 
     public void Rename(string id, string value)
     {
-        if (string.IsNullOrWhiteSpace(value)) throw new InvalidDataException("Node name is required.");
+        if (string.IsNullOrWhiteSpace(value)) throw new EditorOperationException("graph.nameRequired", "Node name is required.");
         var before = Find(id).Name;
         if (before != value) histories.Content.Execute(new NameEdit(documents, id, before, value));
     }
@@ -53,7 +53,7 @@ public sealed class GraphAuthoringService(IEditorDocumentService documents, Edit
         var changes = positions.Select(pair =>
         {
             var node = Find(pair.Key);
-            if (!double.IsFinite(pair.Value.X) || !double.IsFinite(pair.Value.Y)) throw new InvalidDataException("Node coordinates must be finite.");
+            if (!double.IsFinite(pair.Value.X) || !double.IsFinite(pair.Value.Y)) throw new EditorOperationException("graph.coordinates", "Node coordinates must be finite.");
             return new Position(pair.Key, node.X, node.Y, pair.Value.X, pair.Value.Y);
         }).Where(item => item.X != item.NextX || item.Y != item.NextY).ToArray();
         if (changes.Length > 0) histories.Content.Execute(new MoveEdit(documents, changes));
@@ -82,7 +82,7 @@ public sealed class GraphAuthoringService(IEditorDocumentService documents, Edit
         var count = from.BranchType == "Choice" ? Math.Max(1, from.Options?.Count ?? 0)
             : from.BranchType == "Condition" ? Math.Max(1, from.Conditions?.Count ?? 0) : 1;
         if (from.Id == to.Id || to.Type == "Entry" || outlet < 0 || outlet >= count)
-            throw new InvalidDataException("Invalid graph connection.");
+            throw new EditorOperationException("graph.connection", "Invalid graph connection.");
     }
 
     private static void Changed(IEditorDocumentService source) => source.SynchronizeGroups();
@@ -95,7 +95,7 @@ public sealed class GraphAuthoringService(IEditorDocumentService documents, Edit
         private void Apply(string expected, string value)
         {
             var node = Source.CurrentDocument.Nodes.Single(node => node.Id == Id);
-            if (node.Name != expected) throw new InvalidOperationException("The node name changed outside this edit.");
+            if (node.Name != expected) throw new EditorOperationException("graph.changed", "The node name changed outside this edit.");
             node.Name = value; Changed(Source);
         }
     }
@@ -111,7 +111,7 @@ public sealed class GraphAuthoringService(IEditorDocumentService documents, Edit
             var nodes = Positions.Select(item => (item, node: Source.CurrentDocument.Nodes.Single(node => node.Id == item.Id))).ToArray();
             foreach (var (item, node) in nodes)
                 if (node.X != (forward ? item.X : item.NextX) || node.Y != (forward ? item.Y : item.NextY))
-                    throw new InvalidOperationException("Node positions changed outside this edit.");
+                    throw new EditorOperationException("graph.changed", "Node positions changed outside this edit.");
             foreach (var (item, node) in nodes) { node.X = forward ? item.NextX : item.X; node.Y = forward ? item.NextY : item.Y; }
             Changed(Source);
         }
@@ -128,7 +128,7 @@ public sealed class GraphAuthoringService(IEditorDocumentService documents, Edit
         {
             var edges = Source.CurrentDocument.Edges;
             if (remove.Any(item => !edges.Any(edge => Same(edge, item.Edge))) || add.Any(item => edges.Any(edge => edge.Id == item.Edge.Id)))
-                throw new InvalidOperationException("Connections changed outside this edit.");
+                throw new EditorOperationException("graph.changed", "Connections changed outside this edit.");
             foreach (var item in remove) edges.RemoveAll(edge => edge.Id == item.Edge.Id);
             foreach (var item in add.OrderBy(item => item.Index)) edges.Insert(Math.Min(item.Index, edges.Count), item.Edge);
             Changed(Source);
@@ -165,14 +165,14 @@ public sealed class GraphAuthoringService(IEditorDocumentService documents, Edit
             IProjectStructureChange Prepare(EditorProjectDocument working, EditorProjectDocument saved)
             {
                 if (!present && ids.Any(id => !working.Graph.Nodes.Any(node => node.Id == id)))
-                    throw new InvalidOperationException("A queued node deletion no longer has its original targets.");
+                    throw new EditorOperationException("graph.targetRemoved", "A queued node deletion no longer has its original targets.");
                 if (present && fromId is not null)
                 {
                     var from = working.Graph.Nodes.SingleOrDefault(node => node.Id == fromId)
-                        ?? throw new InvalidOperationException("The starting node was removed before this edit.");
+                        ?? throw new EditorOperationException("graph.targetRemoved", "The starting node was removed before this edit.");
                     var count = from.BranchType == "Choice" ? Math.Max(1, from.Options?.Count ?? 0)
                         : from.BranchType == "Condition" ? Math.Max(1, from.Conditions?.Count ?? 0) : 1;
-                    if (outlet < 0 || outlet >= count) throw new InvalidOperationException("The starting outlet changed before this edit.");
+                    if (outlet < 0 || outlet >= count) throw new EditorOperationException("graph.targetRemoved", "The starting outlet changed before this edit.");
                 }
                 // Capture only after publication is available: an earlier save may advance Saved while we wait.
                 var liveWorking = new EditorProjectDocument { Graph = source.CurrentDocument, GroupEntries = source.LoadedProject.GroupEntries };

@@ -11,7 +11,7 @@ using GalNet.Editor.Services.Interfaces;
 
 namespace GalNet.Editor.ViewModels;
 
-public partial class NewProjectPanelViewModel : PageViewModelBase
+public partial class NewProjectPanelViewModel : PageViewModelBase, IDisposable
 {
     public static IReadOnlyList<string> ResolutionPresets { get; } = ["1280×720", "1280×800", "1280×920", "1366×768", "1600×900", "1920×1080", "2560×1440", "3840×2160"];
     private readonly INavigationService _navigation;
@@ -40,17 +40,29 @@ public partial class NewProjectPanelViewModel : PageViewModelBase
     private string _contractsDirectory = "";
 
 
+    private readonly IEditorLocalizationService _localization;
+    private Exception? _error;
+    public void Dispose() { _localization.PropertyChanged -= OnCultureChanged; GC.SuppressFinalize(this); }
+    private void OnCultureChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName != "Item[]") return;
+        Title = _localization["Startup.NewProject"];
+        Message = _error is null ? "" : EditorText.Error(_error).Render(_localization);
+    }
+
     public NewProjectPanelViewModel(
         INavigationService navigation,
         IProjectService projectService,
         IEditorPageFactory editorPageFactory,
-        IFileDialogService dialogs)
+        IFileDialogService dialogs, IEditorLocalizationService localization)
     {
         _navigation = navigation;
         _projectService = projectService;
         _editorPageFactory = editorPageFactory;
         _dialogs = dialogs;
-        Title = "New Project";
+        _localization = localization;
+        _localization.PropertyChanged += OnCultureChanged;
+        Title = _localization["Startup.NewProject"];
     }
 
     [RelayCommand]
@@ -60,18 +72,19 @@ public partial class NewProjectPanelViewModel : PageViewModelBase
             return;
 
         IsBusy = true;
+        _error = null;
         Message = "";
 
         try
         {
             if (string.IsNullOrWhiteSpace(ProjectName))
-                throw new InvalidOperationException("Project name is required.");
+                throw new EditorOperationException("project.nameRequired", "Project name is required.");
             if (string.IsNullOrWhiteSpace(ProjectRoot))
-                throw new InvalidOperationException("Project folder is required.");
+                throw new EditorOperationException("project.folderRequired", "Project folder is required.");
 
             var projectPath = Path.Combine(ProjectRoot, ProjectName);
             if (!TryParseResolution(Resolution, out var width, out var height))
-                throw new InvalidOperationException("Resolution must be in the form width×height.");
+                throw new EditorOperationException("project.resolutionInvalid", "Resolution must be in the form width×height.");
             var contracts = string.IsNullOrWhiteSpace(ContractsDirectory)
                 ? Path.Combine(AppContext.BaseDirectory, "DefaultContracts")
                 : ContractsDirectory;
@@ -80,7 +93,8 @@ public partial class NewProjectPanelViewModel : PageViewModelBase
         }
         catch (Exception ex)
         {
-            Message = ex.Message;
+            _error = ex;
+            Message = EditorText.Error(ex).Render(_localization);
         }
         finally
         {
@@ -91,14 +105,14 @@ public partial class NewProjectPanelViewModel : PageViewModelBase
     [RelayCommand]
     private async Task BrowseContractsAsync()
     {
-        var directory = await _dialogs.OpenFolderPickerAsync("Select built project contract directory");
+        var directory = await _dialogs.OpenFolderPickerAsync(_localization["NewProject.BrowseContracts"]);
         if (directory is not null) ContractsDirectory = directory;
     }
 
     [RelayCommand]
     private async Task BrowseProjectRootAsync()
     {
-        var directory = await _dialogs.OpenFolderPickerAsync("Select project parent folder");
+        var directory = await _dialogs.OpenFolderPickerAsync(_localization["NewProject.BrowseParent"]);
         if (directory is not null) ProjectRoot = directory;
     }
 
