@@ -13,50 +13,47 @@
           <ItemsControl ItemsSource="{Binding Items}" Margin="0,20,0,0">
             <ItemsControl.ItemTemplate>
               <DataTemplate DataType="settings:SettingItem">
-                <Border Classes="player-setting-row" IsVisible="{Binding IsVisible}">
-                  <Grid ColumnDefinitions="180,*" ColumnSpacing="22">
-                    <StackPanel Spacing="4" IsVisible="{Binding !IsFullWidth}">
-                      <ContentControl Content="{Binding Label}" />
-                      <text:PlayerTextBlock Key="{Binding DescriptionKey}" TextWrapping="Wrap" Opacity="0.64" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="{Binding EditorColumn}" Grid.ColumnSpan="{Binding EditorColumnSpan}" Spacing="4">
-                      <ToolTip.Tip><text:PlayerTextBlock Key="{Binding Availability.ReasonKey}" /></ToolTip.Tip>
-                      <ContentControl Content="{Binding}" IsEnabled="{Binding IsEnabled}">
-                        <ContentControl.DataTemplates>
-                          <DataTemplate DataType="settings:ActionSetting"><Button Content="{Binding Label}" Command="{Binding ExecuteCommand}" /></DataTemplate>
-                          <DataTemplate DataType="settings:ICustomSetting"><settings:CustomSettingEditor /></DataTemplate>
-                          <DataTemplate DataType="settings:SettingItem">
-                            <forms:SchemaForm Schema="{Binding Fields}" Binding="{Binding FieldBinding}"
-                                              Registry="{Binding Editors, RelativeSource={RelativeSource AncestorType=common:SettingsCategories}}">
-                              <forms:SchemaForm.Template>
-                                <ControlTemplate>
-                                  <StackPanel>
-                                    <ItemsControl ItemsSource="{TemplateBinding Editors}">
-                                      <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                          <StackPanel Spacing="4">
-                                            <ContentControl Content="{Binding Control}" />
-                                            <text:PlayerTextBlock Key="{Binding Context.Field.Editor.UnitKey}" Opacity="0.64" />
-                                            <TextBlock Text="{Binding Context.Issue.Message}" TextWrapping="Wrap" />
-                                          </StackPanel>
-                                        </DataTemplate>
-                                      </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    <ItemsControl ItemsSource="{TemplateBinding Diagnostics}">
-                                      <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding Message}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                  </StackPanel>
-                                </ControlTemplate>
-                              </forms:SchemaForm.Template>
-                            </forms:SchemaForm>
-                          </DataTemplate>
-                        </ContentControl.DataTemplates>
-                      </ContentControl>
-                      <text:PlayerTextBlock Key="{Binding Availability.ReasonKey}" TextWrapping="Wrap" Opacity="0.64" />
-                      <text:PlayerTextBlock Key="{Binding ErrorKey}" TextWrapping="Wrap" />
-                    </StackPanel>
-                  </Grid>
-                </Border>
+                <Grid ColumnDefinitions="180,*" ColumnSpacing="22" Margin="0,0,0,24" IsVisible="{Binding IsVisible}">
+                  <StackPanel Spacing="4" IsVisible="{Binding !IsFullWidth}">
+                    <ContentControl Content="{Binding Label}" />
+                    <text:PlayerTextBlock Key="{Binding DescriptionKey}" TextWrapping="Wrap" Opacity="0.64" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="{Binding EditorColumn}" Grid.ColumnSpan="{Binding EditorColumnSpan}" Spacing="4">
+                    <ContentControl Content="{Binding}" IsEnabled="{Binding IsEnabled}">
+                      <ContentControl.DataTemplates>
+                        <DataTemplate DataType="settings:ActionSetting"><Button Content="{Binding Label}" Command="{Binding ExecuteCommand}" /></DataTemplate>
+                        <DataTemplate DataType="settings:ICustomSetting"><settings:CustomSettingEditor /></DataTemplate>
+                        <DataTemplate DataType="settings:SettingItem">
+                          <forms:SchemaForm Schema="{Binding Fields}" Binding="{Binding FieldBinding}"
+                                            Registry="{Binding Editors, RelativeSource={RelativeSource AncestorType=common:SettingsCategories}}">
+                            <forms:SchemaForm.Template>
+                              <ControlTemplate>
+                                <StackPanel>
+                                  <ItemsControl ItemsSource="{TemplateBinding Editors}">
+                                    <ItemsControl.ItemTemplate>
+                                      <DataTemplate>
+                                        <StackPanel Spacing="4">
+                                          <ContentControl Content="{Binding Control}" />
+                                          <text:PlayerTextBlock Key="{Binding Context.Field.Editor.UnitKey}" Opacity="0.64" />
+                                          <TextBlock Text="{Binding Context.Issue.Message}" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                      </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                  </ItemsControl>
+                                  <ItemsControl ItemsSource="{TemplateBinding Diagnostics}">
+                                    <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding Message}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate>
+                                  </ItemsControl>
+                                </StackPanel>
+                              </ControlTemplate>
+                            </forms:SchemaForm.Template>
+                          </forms:SchemaForm>
+                        </DataTemplate>
+                      </ContentControl.DataTemplates>
+                    </ContentControl>
+                    <text:PlayerTextBlock Key="{Binding Availability.ReasonKey}" TextWrapping="Wrap" Opacity="0.64" />
+                    <text:PlayerTextBlock Key="{Binding ErrorKey}" TextWrapping="Wrap" />
+                  </StackPanel>
+                </Grid>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>

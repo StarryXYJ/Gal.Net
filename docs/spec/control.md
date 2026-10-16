@@ -72,7 +72,7 @@ Gallery 使用独立的 `IGalleryPageRegistry`，以精确 Gallery `typeId` 映�
 
 Sample 新增 `operation`（操作）分类，与游戏、画面、音频并列。它借用现有 `CustomSetting<PlayerInputConfiguration>` 和可释放编辑器租约，承载键鼠、手柄、触屏三个局部 Tab；`SettingItem.IsFullWidth` 允许此类编辑器跨设置行标签列展示。键盘/鼠标共用录入控件，手柄支持按钮组合，触屏通过 ComboBox 选择离散手势。偏好经原 SettingsCoordinator 保存到 `player.galnet.input.bindings`，不进入剧情快照。
 
-共享 `SettingsCategories` 和 `InputBindingsPanel` 的动作行使用 `player-setting-row` 边框样式，采用当前主题的 Surface/Border/Focus/PrimaryHover 资源与圆角。设置行具有浅底描边、内边距、悬停/焦点提示；行内按钮、文本框和下拉框保留明确的编辑边界。外框不增加整行点击行为，不改变 SchemaForm 工厂、可用性、错误反馈或提交队列。
+设置项保持无逐行外框的布局。`InputBindingCapture` 使用 Button 样式键及 `player-input-binding` 类，将当前键值（如 Control）呈现为可点击的输入框：独立 1px 描边、主题底色与圆角、悬停文字/描边变色和键盘焦点提示；修改仅作用绑定控件，不给整行配置项加卡片。设置模板不再创建重复的可用性 Tooltip，避免空说明也弹出空白提示；不可用原因和错误仍以内联文字展示。不改变 SchemaForm 工厂、可用性或提交队列。
 
 `PlayerInputSettings` 与输入路由属于 GameView，宿主实现原始设备适配。Sample 的 Windows 手柄后端为 XInput，非 Windows 未提供原生手柄后端；三主题共享面板行为和现有设置页外壳。`PlayerInputSettings.OpenHistoryAsync` 是未来对白历史页的可选入口，无回调时历史动作禁用。`IFirstEmptySlotSession.SaveFirstEmptyAsync` 表示普通槽位的首空槽保存，null 表示槽位已满；Sample 在写门内重新查询并保存，满槽打开存档页供玩家选择。该行为独立于单文件 quick-save。
 

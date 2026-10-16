@@ -301,9 +301,9 @@
 
 ## 追加切片：设置项视觉提示与页面 Esc 返回
 
-状态：verified（自动化与离屏截图）；Presentation 完整回归 225 项通过，Sample/Gallery/截图受影响集成测试 26 项通过。
+状态：verified（自动化与离屏截图）；初轮 Presentation 225 项、Sample/Gallery/截图集成 26 项通过；用户纠正视觉目标后，本轮 Presentation 完整回归 228 项通过。
 
-- 设置普通配置项和快捷键动作行使用共享的 `player-setting-row`，检查三主题下真实边框、编辑控件和焦点画刷，保存实际渲染截图。
+- 视觉部分后经用户纠正：撤销 `player-setting-row` 逐行外框；改为 `InputBindingCapture` 键值编辑入口自身的描边与悬停前景反馈，取消重复空白 Tooltip。详见 design.md 第 11 节；返回模块不受影响。
 - 新增 `BackNavigablePageViewModel`，迁移设置/存读档/鉴赏与详情/关于页面；保留视频返回时停止播放的扩展点。
 - GameShell 统一挂载 `PageBackInputListener`，且不依赖可配置快捷键是否启用；Esc、返回按钮和手柄页面返回走同一命令。
 - Esc 专项覆盖局部消费和下拉框优先、录入取消后不退页、长按去重、壳外输入隔离、卸载/重挂/Dispose。

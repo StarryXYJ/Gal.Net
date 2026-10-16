@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Threading;
@@ -136,6 +137,58 @@ public sealed class PlayerInputTests
                 window.Content = null;
                 Assert.That(settings.IsCapturing, Is.False);
                 settings.ObserveGamepad(new HashSet<string> { "LB" });
+            }
+            finally { window.Close(); }
+            await Task.CompletedTask;
+        });
+    }
+
+    [TestCase("Classic")]
+    [TestCase("Minimal")]
+    [TestCase("Paper")]
+    public async Task BindingFieldsHaveARealButtonTemplateAndForegroundHoverFeedback(string theme)
+    {
+        await Ui(async () =>
+        {
+            using var settings = Settings();
+            using var panel = new InputBindingsPanel(settings);
+            var root = new Border { Classes = { "galnet-player" }, Child = panel };
+            root.Styles.Add(theme switch
+            {
+                "Minimal" => new MinimalTheme().CreateStyles(),
+                "Paper" => new PaperTheme().CreateStyles(),
+                _ => new ClassicTheme().CreateStyles()
+            });
+            var window = new Window { Content = root, Width = 1280, Height = 1000 };
+            window.Show();
+            try
+            {
+                window.UpdateLayout();
+                var capture = panel.GetVisualDescendants().OfType<InputBindingCapture>().Single(control => Equals(control.Content, "Control"));
+                Assert.That(capture.Template, Is.Not.Null, "Derived capture buttons must inherit the Button template.");
+                Assert.That(capture.BorderThickness, Is.EqualTo(new Thickness(1)));
+                Assert.That(capture.GetVisualDescendants().OfType<ContentPresenter>().Any(presenter => presenter.BorderThickness.Left > 0), Is.True);
+                Assert.That(panel.GetVisualDescendants().OfType<Border>().Any(border => border.Classes.Contains("player-setting-row")), Is.False);
+                var point = capture.TranslatePoint(new(capture.Bounds.Width / 2, capture.Bounds.Height / 2), window)!.Value;
+                var before = ((global::Avalonia.Media.ISolidColorBrush)capture.Foreground!).Color;
+                window.MouseMove(point);
+                Assert.That(capture.IsPointerOver, Is.True);
+                Assert.That(((global::Avalonia.Media.ISolidColorBrush)capture.Foreground!).Color, Is.Not.EqualTo(before));
+                Assert.That(root.TryFindResource("GalNet.Brush.PrimaryHover", out var hover), Is.True);
+                Assert.That(((global::Avalonia.Media.ISolidColorBrush)capture.Foreground!).Color,
+                    Is.EqualTo(((global::Avalonia.Media.ISolidColorBrush)hover!).Color));
+                Assert.That(((global::Avalonia.Media.ISolidColorBrush)capture.GetVisualDescendants().OfType<TextBlock>().First().Foreground!).Color,
+                    Is.EqualTo(((global::Avalonia.Media.ISolidColorBrush)hover!).Color), "The rendered label must change, not just the button property.");
+                var directory = Environment.GetEnvironmentVariable("GALNET_THEME_CAPTURE_DIR");
+                if (!string.IsNullOrWhiteSpace(directory))
+                {
+                    root.TryFindResource("GalNet.Brush.Background", out var background);
+                    root.Background = (global::Avalonia.Media.IBrush)background!;
+                    Directory.CreateDirectory(directory);
+                    AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                    using var bitmap = window.CaptureRenderedFrame();
+                    bitmap!.Save(Path.Combine(directory, theme + "-InputBindingFields.png"));
+                }
             }
             finally { window.Close(); }
             await Task.CompletedTask;

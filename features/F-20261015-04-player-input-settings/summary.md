@@ -30,12 +30,21 @@
 ## 追加：设置项视觉提示与默认 Esc 返回
 
 - 上一轮实现单独提交为 `b62bff6`，未纳入用户的 Editor 和 agent 文档改动。
-- `SettingsCategories` 普通设置行和 `InputBindingsPanel` 动作行共用 `player-setting-row`，具有主题底色、1px 描边、主题圆角、内边距及悬停/焦点提示。设置管线、可用性、错误文本和控件交互不变；不是整行可点击的伪按钮。
+- 上一轮视觉实现（现已撤回）：`SettingsCategories` 普通设置行和 `InputBindingsPanel` 动作行使用 `player-setting-row`。用户已澄清框应位于键值绑定入口本身，见下节修正。
 - `BackNavigablePageViewModel` 提供共享 `BackCommand`、`Navigation` 和 `OnBack()`。设置、存读档、全部鉴赏页及详情、关于已迁移，去掉各 VM 重复的返回命令；视频详情通过 `OnBack()` 停止播放。
 - GameShell 一次组合 `PageBackInputListener`，不依赖 `PlayerInputSettings` 是否存在。未被内部控件消费的纯 Esc 在 bubble 阶段执行页面返回命令，捕获/弹出选择/局部取消优先，长按不连续退页；标题/加载/剧情不默认返回，宿主壳外输入不会误触发。手柄返回同样调用当前页命令。
 - 最终 Presentation 回归 225 项通过。新增 5 项 Esc 用例、3 项真实三主题 GameShell 设置/存档/鉴赏返回用例；原设置工厂测试追加边框和焦点画刷断言。实际渲染截图位于 `artifacts/player-settings/`（构建产物，不提交），已检查三套主题的设置页面和行内编辑焦点。
 - Sample 构建成功；Sample 输入/显示设置、保存、组合/清理，以及 Gallery 和截图受影响集成测试共 26 项通过。测试项目顺序构建，未改动 Editor 的业务或测试文件。
 - 已同步 [control.md](../../docs/spec/control.md)，新页面继承返回基类即可，无需逐页监听按键；特殊清理重写 `OnBack()` 并调用基类。
+
+## 修正：键值入口描边，不是逐行外框
+
+- 撤掉普通设置和快捷键动作行的全部 `player-setting-row` 外框；不影响共享 Esc 返回。
+- `InputBindingCapture` 显式复用 Button 样式键与 `player-input-binding` 类，为 Control 等键值自身提供输入框式描边、主题底色/圆角和悬停文字/描边反馈。模板内实际显示的文字同样变色，不只是根控件属性发生变化。
+- 原设置模板无条件创建非空 Tip 内容对象，ReasonKey 为空、内部文字隐藏时仍会弹空容器。删除重复 Tooltip，保留原内联可用性原因和错误；测试验证原因出现时仍可见。
+- 先补三主题回归，旧实现均因绑定按钮 BorderThickness 为 0 失败；修正后独立三主题用例通过，最终 Presentation 全量 228 项通过。已检查三套主题实际绑定面板截图（`artifacts/player-settings/*-InputBindingFields.png`，测试宿主未接本地化，标签显示 key；不提交产物）。测试同时覆盖实际模板描边、实际文字悬停、无行外框/无空 Tip、内联原因、原捕获与 Esc 返回。
+- [control.md](../../docs/spec/control.md) 与设计第 11 节已修正；用户澄清与视觉回归经验见 [lesson-binding-field-affordance.md](lesson-binding-field-affordance.md)。
+- 按用户要求整理：将 `InputBindingCapture` 从面板文件拆到独立文件，集中捕获状态字段和构造初始化，面板只负责布局/设置投影；不改变公开类型或捕获语义。整理后输入、返回与主题相关 81 项回归通过。
 
 ## 限制与后续验收
 

@@ -62,10 +62,7 @@ public sealed class GameThemeTests
                     window.Focus();
                     if (page is SettingsPageViewModel)
                     {
-                        var row = shell.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("player-setting-row"));
-                        Assert.That(row.BorderThickness, Is.EqualTo(new Thickness(1)));
-                        Assert.That(row.Background, Is.Not.Null);
-                        Assert.That(row.Padding.Left, Is.GreaterThan(0));
+                        Assert.That(shell.GetVisualDescendants().OfType<Border>().Any(border => border.Classes.Contains("player-setting-row")), Is.False);
                         Capture(window, $"{layout}-SettingsFields");
                     }
                     window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
@@ -90,7 +87,9 @@ public sealed class GameThemeTests
         var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch(() =>
         {
-            var flag = new BoolSetting("flag", "Flag", false, () => false, (_, _) => Task.CompletedTask);
+            string? reason = null;
+            var flag = new BoolSetting("flag", "Flag", false, () => false, (_, _) => Task.CompletedTask)
+            { EvaluateAvailability = () => new(IsEnabled: reason is null, ReasonKey: reason) };
             var interval = new IntSetting("interval", "Interval", 50, 0, 5000, 10, () => 50, (_, _) => Task.CompletedTask);
             var control = new GalNet.Avalonia.Themes.Common.SettingsCategories { Editors = EditorRegistry.CreateDefault(), Categories = [new("game", "Game", [flag, interval])] };
             var root = new Border { Classes = { "galnet-player" }, Child = control };
@@ -101,14 +100,16 @@ public sealed class GameThemeTests
             {
                 window.UpdateLayout();
                 Assert.That(control.GetVisualDescendants().OfType<CheckBox>().Count(), Is.EqualTo(1));
-                var rows = control.GetVisualDescendants().OfType<Border>().Where(border => border.Classes.Contains("player-setting-row")).ToArray();
-                Assert.That(rows.Length, Is.EqualTo(2));
-                Assert.That(rows.All(row => row.BorderThickness == new Thickness(1) && row.Padding.Left > 0), Is.True);
+                Assert.That(control.GetVisualDescendants().OfType<Border>().Any(border => border.Classes.Contains("player-setting-row")), Is.False);
+                Assert.That(control.GetVisualDescendants().OfType<Control>().All(item => ToolTip.GetTip(item) is null), Is.True,
+                    "Settings without a reason must not create empty tooltip containers.");
+                reason = "Input.DeviceUnavailable";
+                flag.RefreshAvailability();
+                window.UpdateLayout();
+                Assert.That(control.GetVisualDescendants().OfType<GalNet.Avalonia.GameView.MarkupExtensions.PlayerTextBlock>()
+                    .Any(text => text.Key == reason && text.IsVisible), Is.True, "Availability explanations must remain visible inline.");
                 var number = control.GetVisualDescendants().OfType<TextBox>().Single();
                 Assert.That(number.Focus(NavigationMethod.Tab), Is.True);
-                var focusedRow = number.GetVisualAncestors().OfType<Border>().First(border => border.Classes.Contains("player-setting-row"));
-                Assert.That(root.TryFindResource("GalNet.Brush.Focus", out var focusBrush), Is.True);
-                Assert.That(((ISolidColorBrush)focusedRow.BorderBrush!).Color, Is.EqualTo(((ISolidColorBrush)focusBrush!).Color));
                 Capture(window, $"{layout}-SettingAffordances");
                 var overridden = EditorRegistry.CreateDefault();
                 overridden.Replace(ValueEditorIds.Toggle, _ => new FieldEditorLease(new TextBlock { Text = "Overridden boolean editor" }));
