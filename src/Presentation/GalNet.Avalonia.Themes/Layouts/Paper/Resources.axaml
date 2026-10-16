@@ -15,7 +15,6 @@
   <Thickness x:Key="GalNet.Theme.ChoicePadding">24,18</Thickness>
   <Thickness x:Key="GalNet.Theme.ChoiceMargin">0,8</Thickness>
   <x:Int32 x:Key="GalNet.Theme.SaveColumns">3</x:Int32>
-  <FontFamily x:Key="GalNet.Theme.FontFamily">Georgia, Noto Serif CJK SC, Microsoft YaHei, Default</FontFamily>
   <ControlTheme x:Key="{x:Type controls:DialoguePresenter}" TargetType="controls:DialoguePresenter">
     <Setter Property="Template">
       <ControlTemplate>

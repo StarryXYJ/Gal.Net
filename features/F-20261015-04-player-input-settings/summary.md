@@ -46,6 +46,15 @@
 - [control.md](../../docs/spec/control.md) 与设计第 11 节已修正；用户澄清与视觉回归经验见 [lesson-binding-field-affordance.md](lesson-binding-field-affordance.md)。
 - 按用户要求整理：将 `InputBindingCapture` 从面板文件拆到独立文件，集中捕获状态字段和构造初始化，面板只负责布局/设置投影；不改变公开类型或捕获语义。整理后输入、返回与主题相关 81 项回归通过。
 
+## 整理提交与 Sample 字体统一
+
+- 绑定控件整理和键值框/空 Tooltip 修正提交为 `4736341`。捕获控件、面板和动作分发各自独立，未纳入其他正在进行的宿主/媒体迁移。
+- 新增 `GameTypography` 统一字体与回退配置：Sample 启动字体管理器和应用 Window、三套玩家主题共用中文优先无衬线字体；删除各布局重复字体资源及 Paper 独立 Georgia。日志的显式等宽设置保留，Editor 自身字体不改。
+- 当前 Windows 字体专项两项通过，三主题实际字体均解析为 `Microsoft YaHei UI`；验证中文/标点的普通与粗体非零字形映射，以及共享资源/配置实例隔离。三主题混排渲染图输出到 `artifacts/player-settings/*-ChineseTypography.png`。
+- 最终 Presentation 全量 230 项通过，三套中英混排渲染图已检查；Sample 构建成功，0 警告、0 错误。字体范围及宿主配置入口已同步到 Themes README 和 control.md。
+- 配置使用系统安装字体，没有下载或随包分发字体；非 Windows 中文字体的安装与实际效果仍需真机验证。
+- 当前工作树的音频迁移曾使 Presentation 编译因类型/接口不匹配失败；该路径的项目引用补齐后，按当前依赖图正常 restore 并重跑字体测试通过。本任务未修复、回退或提交那部分代码。
+
 ## 限制与后续验收
 
 - 实体手柄尚未连接实测；当前原生适配为 Windows XInput，非 XInput 控制器和非 Windows 手柄后端尚未实现。按钮标签目前采用中立代码和 Xbox A/B 布局文案，未实现各厂商动态图标。

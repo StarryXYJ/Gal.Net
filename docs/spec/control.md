@@ -18,6 +18,8 @@
 
 `IGameNavigationService` 只管理一个游戏 Scope 内的页面状态和回退历史。`IPageViewRegistry` 在组合期建立不可变的 ViewModel→View 映射，`IPageViewFactory` 从同一 Scope 解析页面并设置 `DataContext`。页面导航参数通过 `IActivatablePageViewModel<TArgs>` 传递，不注册到 DI。
 
+内置三布局统一使用 Themes 的 `GameTypography.UiFontFamily`，经 `GalNet.Theme.FontFamily` 资源应用于玩家根。Windows 优先微软雅黑 UI，macOS 优先苹方简体，其他平台优先 Noto Sans CJK SC 等已安装中文字体。Sample 的 AppBuilder 使用 `CreateFontManagerOptions()` 配置同一中文回退链，并统一所有应用 Window 的字体；显式日志等宽字体保留。未下载或打包字体文件，其他平台实际字体依赖与渲染效果仍需验收；Editor 自身字体不在本次范围。
+
 需要返回行为的页面继承 `BackNavigablePageViewModel`，获得共享 `BackCommand`、受保护的 `Navigation` 和可重写的 `OnBack()`；默认通过导航历史返回。设置、存读档、鉴赏及其详情、关于页已接入；视频详情的 `OnBack()` 先停止播放。标题、加载和剧情页不默认开启返回。页面 XAML 继续绑定 `BackCommand`，无需绑定键盘事件。
 
 `GameShell` 始终组合 `PageBackInputListener`，即使宿主未提供可配置输入设置也支持默认 Esc 返回。模块在所在 TopLevel 的 bubble 阶段处理未消费的纯 Esc，执行当前返回页面的同一个命令；快捷键录入、下拉框和其他已消费 Esc 的内部交互优先取消，不同时退页。按住 Esc 不连续退多页；窗口失活、卸载及 Dispose 清理监听/按键状态。壳外宿主控件不触发该返回行为。手柄页面返回也复用当前页的 `BackCommand`。

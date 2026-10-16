@@ -1,5 +1,6 @@
 using System.Globalization;
 using Avalonia;
+using GalNet.Avalonia.Themes;
 using GalNet.Runtime.Logging;
 using GalNet.Sample.Avalonia.Debug;
 using Serilog;
@@ -56,5 +57,6 @@ sealed class Program
             .WithDeveloperTools()
 #endif
             .WithInterFont()
+            .With(GameTypography.CreateFontManagerOptions())
             .LogToTrace();
 }

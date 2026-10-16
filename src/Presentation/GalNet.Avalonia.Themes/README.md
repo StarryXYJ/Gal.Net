@@ -81,6 +81,14 @@ GamePageViewModel 的自定义 View 必须继承 GamePage；运行 presenter 和
 
 DialoguePresenter 保留 PART_Typewriter，NvlPresenter 保留 PART_Lines 和 PART_ScrollViewer；这些内部部件承担运行状态，不能在播放过程中任意重建。GamePage 在首条对白、NVL 和选项前检查布局承载点，缺失时明确报错。
 
+## 统一 UI 字体
+
+内置三布局共用 `GameTypography.UiFontFamily`，由 `GameLayoutTheme.CreateStyles()` 注入 `GalNet.Theme.FontFamily`。Windows 优先微软雅黑 UI / 微软雅黑，macOS 优先苹方简体，其他平台优先 Noto Sans CJK SC / Noto Sans SC / 文泉驿微米黑。Paper 保留自己的布局、字号和配色，但不再单独指定 Georgia。
+
+宿主可在 AppBuilder 使用 `.With(GameTypography.CreateFontManagerOptions())` 接入相同的中文回退策略。官方 Sample 同时为应用内所有 Window 设置该 FontFamily，覆盖玩家页面以外的窗口；日志等显式设置的等宽字体保留，并可借助字体管理器回退显示中文。
+
+此配置使用系统已安装字体，不附带字体文件；在无中文字体的 Linux 部署上仍需安装相应字体。当前 Windows 已验证中文、标点和粗体字形及三布局渲染；其他系统需单独验证。Editor 自身的默认字体不由此设置修改。
+
 ## 自定义配色和主题
 
 复制 Palettes 中一个完整字典到自己的程序集：

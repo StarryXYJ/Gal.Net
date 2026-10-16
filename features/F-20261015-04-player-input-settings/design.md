@@ -301,3 +301,13 @@ JSON 顶层带 `version: 1`，按设备保存动作 ID 到手势列表。缺失�
 用户明确指出框应加在 Control 等键值编辑入口本身，不是每条配置项的整行。删除普通设置项和快捷键动作行的 `player-setting-row` 外框，恢复原有无逐行卡片的布局。`InputBindingCapture` 显式借用 Button 样式键，并使用 `player-input-binding` 提供独立描边、主题底色/圆角、左对齐键值和悬停时的前景色/描边变化；悬停颜色同时作用实际模板文字，而不是只改变根属性。
 
 设置模板原本无条件创建 ToolTip 内容控件，即使 ReasonKey 为空、内部文字隐藏也仍有非空 Tip 对象。去掉重复 Tooltip，以原有内联可用性原因保留说明。Esc 返回、录入捕获与保存流程不变。
+
+## 12. 代码整理与 Sample 字体统一
+
+用户要求整理并提交本部分，同时更换应用字体改善中文。范围按本线程的 Sample 应用处理，不修改 Editor 自身字体。
+
+- 捕获控件从 `InputBindingsPanel.cs` 拆到独立的 `InputBindingCapture.cs`，公开类型/行为不变，避免布局与事件状态混在同一文件；样式及空 Tooltip 修正单独提交。
+- `GameTypography` 统一提供 UI FontFamily 与独立的 FontManagerOptions。Sample 的启动字体管理器、各应用窗口及三套玩家主题使用同一策略，不再逐布局复制字体列表或由 Paper 单独使用 Georgia。
+- Windows 优先 Microsoft YaHei UI / Microsoft YaHei，macOS 优先 PingFang SC，其他平台优先 Noto Sans CJK SC / Noto Sans SC / WenQuanYi Micro Hei。依赖系统已安装字体，未引入或下载字体文件；非 Windows 的实际字体存在性和视觉效果需真机验收。
+- 保留日志等显式等宽字体；为缺失字符提供中文优先回退，不影响既有本地化文本与语言设置流程。
+- 验证字体资源共享、配置实例隔离、中文/标点普通与粗体的非零字形映射、三主题中英混排截图以及完整 Presentation 回归和 Sample 编译。

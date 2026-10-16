@@ -885,5 +885,6 @@ public static class ThemeTestApplication
 {
     public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<Application>()
         .UseSkia()
+        .With(GameTypography.CreateFontManagerOptions())
         .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false });
 }
