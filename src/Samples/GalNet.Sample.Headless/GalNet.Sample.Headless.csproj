@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <ProjectReference Include="../../Shared/GalNet.GameHost/GalNet.GameHost.csproj" />
     <ProjectReference Include="..\GalNet.Sample.Contracts\GalNet.Sample.Contracts.csproj" />
   </ItemGroup>
 

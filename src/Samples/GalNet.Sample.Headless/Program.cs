@@ -4,6 +4,7 @@ using GalNet.Core.Settings;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
 using GalNet.Runtime.Engine;
+using GalNet.GameHost;
 using GalNet.Runtime.Persistence;
 using GalNet.Runtime.Runtime;
 using GalNet.Runtime.Variables;
@@ -45,7 +46,8 @@ try
     view.RequireInstructions(content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>().SelectMany(group => group.Entries).Select(entry => entry.Type));
 
     var runtime = new GameRuntime(textResolver, content.Graph.RootNodeId, settings, variables);
-    using var engine = new GameEngine(content.Graph, runtime, view, progress, presentation);
+    await using var run = new GameRun(content.Graph, runtime, view, progress, presentation);
+    var engine = run.Engine;
 
     if (options.LoadSlot is { } loadSlot)
     {

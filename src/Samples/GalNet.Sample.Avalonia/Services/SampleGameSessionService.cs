@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using GalNet.GameHost;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
@@ -24,8 +25,8 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySaveSlots;
     private SampleGameResourceScope? _resources;
     private SampleSaveSession? _saveSession;
-    private SampleGameRunner? _runner;
-    private readonly SemaphoreSlim _lifecycle = new(1, 1);
+    private readonly GameSession _session;
+    private readonly SemaphoreSlim _initialization = new(1, 1);
     private bool _disposed;
     private readonly object _disposeGate = new();
     private Task? _disposeTask;
@@ -33,6 +34,7 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     public SampleGameSessionService(GamePageViewModel gameplay, GamePage page, SamplePlayerSettingsService settings,
         SampleLocalizationService localization, SampleStartupService startup, SampleLibVlcRuntime mediaRuntime)
     {
+        _session = new GameSession(CreateRunAsync);
         _gameplay = gameplay;
         _page = page;
         _settings = settings;
@@ -55,12 +57,14 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
     public async Task<bool> InitializeAsync(GameLaunchOptions options,
         Func<string, CancellationToken, Task<string?>> selectLanguage, CancellationToken cancellationToken = default)
     {
-        await _lifecycle.WaitAsync(cancellationToken);
+        await _initialization.WaitAsync(cancellationToken);
         try
         {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_resources is not null) throw new InvalidOperationException("The game session is already initialized.");
             return await InitializeGameResourcesAsync(options, selectLanguage, cancellationToken);
         }
-        finally { _lifecycle.Release(); }
+        finally { _initialization.Release(); }
     }
 
     private async Task<bool> InitializeGameResourcesAsync(GameLaunchOptions options,
@@ -171,29 +175,15 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         await PrepareLoadAsync(slot.SlotIndex, cancellationToken);
     }
 
-    public async Task StopAsync(CancellationToken cancellationToken = default)
-    {
-        if (_disposed) return;
-        GameLog.Logger.Information("Stopping active game flow");
-        await _lifecycle.WaitAsync(cancellationToken);
-        try
-        {
-            if (!_disposed) await StopCurrentRunAsync();
-        }
-        finally { _lifecycle.Release(); }
-    }
+    public Task StopAsync(CancellationToken cancellationToken = default) =>
+        _disposed ? Task.CompletedTask : _session.StopAsync(cancellationToken);
 
-    internal async Task ClearPlayerStateAsync(CancellationToken cancellationToken = default)
-    {
-        GameLog.Logger.Information("Clearing all sample player state");
-        await _lifecycle.WaitAsync(cancellationToken);
-        try
+    internal Task ClearPlayerStateAsync(CancellationToken cancellationToken = default) =>
+        _session.ResetAsync(async token =>
         {
-            await StopCurrentRunAsync();
             var saveSession = _saveSession;
             await _settings.FlushAsync();
-            if (saveSession is not null)
-                await saveSession.ClearAsync(cancellationToken);
+            if (saveSession is not null) await saveSession.ClearAsync(token);
             await OnUiAsync(() =>
             {
                 _gameplay.TextSpeed = saveSession?.Settings.TextSpeed ?? _gameplay.TextSpeed;
@@ -201,49 +191,42 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
                 _gameplay.IsUiHidden = false;
                 _gameplay.StatusMessage = "Player state cleared. Restarting...";
             });
-        }
-        finally { _lifecycle.Release(); }
-    }
+        }, cancellationToken);
 
     public async Task SaveAsync(int slotIndex, CancellationToken cancellationToken = default)
     {
-        await _lifecycle.WaitAsync(cancellationToken);
-        try
+        await _session.WithSnapshotAsync(async (snapshot, token) =>
         {
-            await EnsureRunnerAsync(cancellationToken);
-            await _saveSession!.SaveAsync(slotIndex, _runner!.CreateSaveData(), cancellationToken);
-            _gameplay.StatusMessage = $"Saved to slot {slotIndex}.";
-            await RefreshSlotsAsync(cancellationToken);
-        }
-        finally { _lifecycle.Release(); }
+            await _saveSession!.SaveAsync(slotIndex, snapshot, token);
+            await RefreshSlotsAsync(token);
+            await OnUiAsync(() => _gameplay.StatusMessage = $"Saved to slot {slotIndex}.");
+            return true;
+        }, cancellationToken);
     }
 
-    public async Task<int?> SaveFirstEmptyAsync(CancellationToken cancellationToken = default)
-    {
-        await _lifecycle.WaitAsync(cancellationToken);
-        try
+    public Task<int?> SaveFirstEmptyAsync(CancellationToken cancellationToken = default) =>
+        _session.WithSnapshotAsync(async (snapshot, token) =>
         {
-            if (_disposed || !IsPlaying || _runner is null || _saveSession is null)
+            if (!IsPlaying || _saveSession is null)
                 throw new InvalidOperationException("No active game is available to save.");
             await _settings.FlushAsync();
-            var slot = await _saveSession.SaveFirstEmptyAsync(_runner.CreateSaveData(), cancellationToken);
-            if (slot is null) return null;
-            await RefreshSlotsAsync(cancellationToken);
-            _gameplay.StatusMessage = $"Saved to slot {slot.Value + 1}.";
+            var slot = await _saveSession.SaveFirstEmptyAsync(snapshot, token);
+            if (slot is not null)
+            {
+                await RefreshSlotsAsync(token);
+                await OnUiAsync(() => _gameplay.StatusMessage = $"Saved to slot {slot.Value + 1}.");
+            }
             return slot;
-        }
-        finally { _lifecycle.Release(); }
-    }
+        }, cancellationToken);
 
-    internal async Task<SampleDebugSaveResult> SaveDebugSnapshotAsync(
+    internal Task<SampleDebugSaveResult> SaveDebugSnapshotAsync(
         SampleDebugSaveKind kind,
         bool overwriteWhenAllVisibleSlotsAreOccupied,
         CancellationToken cancellationToken = default)
     {
-        await _lifecycle.WaitAsync(cancellationToken);
-        try
+        return _session.WithSnapshotAsync(async (currentSnapshot, token) =>
         {
-            if (_runner is null || _saveSession is null)
+            if (_saveSession is null)
                 throw new InvalidOperationException("没有进行中的游戏可供存档。");
 
             var firstEmptySlot = _saveSlots
@@ -256,14 +239,13 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
             var targetSlot = firstEmptySlot?.SlotIndex
                 ?? _saveSlots.OrderBy(slot => slot.SlotIndex).FirstOrDefault()?.SlotIndex
                 ?? throw new InvalidOperationException("没有可用的存档槽。");
-            var snapshot = SampleDebugSnapshotFactory.Create(_runner.CreateSaveData(), kind);
+            var snapshot = SampleDebugSnapshotFactory.Create(currentSnapshot, kind);
             await _saveSession.SaveAsync(targetSlot, snapshot, cancellationToken);
             await RefreshSlotsAsync(cancellationToken);
             await OnUiAsync(() => _gameplay.StatusMessage = $"Debug saved to slot {targetSlot}.");
             GameLog.Logger.Information("Created {DebugSaveKind} debug save in slot {SlotIndex}", kind, targetSlot);
             return SampleDebugSaveResult.Saved(targetSlot);
-        }
-        finally { _lifecycle.Release(); }
+        }, cancellationToken);
     }
 
     public async Task LoadAsync(int slotIndex, CancellationToken cancellationToken = default)
@@ -273,21 +255,12 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
         _gameplay.StatusMessage = $"Loaded slot {slotIndex}.";
     }
 
-    public async Task PrepareLoadAsync(int slotIndex, CancellationToken cancellationToken = default)
-    {
-        GameLog.Logger.Information("Loading slot {SlotIndex}", slotIndex);
-        GameSnapshot? snapshot;
-        snapshot = await _saveSession!.LoadAsync(slotIndex, cancellationToken);
-        if (snapshot is null)
+    public Task PrepareLoadAsync(int slotIndex, CancellationToken cancellationToken = default) =>
+        _session.PrepareFromAsync(async token =>
         {
-            _gameplay.StatusMessage = $"Slot {slotIndex} is empty or invalid.";
-            GameLog.Logger.Warning("Slot {SlotIndex} contained no valid snapshot", slotIndex);
-            throw new InvalidOperationException($"Slot {slotIndex} is empty or invalid.");
-        }
-
-        await PrepareGameAsync(snapshot, cancellationToken);
-        _gameplay.StatusMessage = $"Loaded slot {slotIndex}.";
-    }
+            var snapshot = await _saveSession!.LoadAsync(slotIndex, token);
+            return snapshot ?? throw new InvalidOperationException($"Slot {slotIndex} is empty or invalid.");
+        }, cancellationToken);
 
     public ValueTask DisposeAsync()
     {
@@ -296,74 +269,43 @@ internal sealed partial class SampleGameSessionService : ObservableObject, IGame
 
     private async Task DisposeCoreAsync()
     {
-        var cleanup = new SampleCleanup();
-        await cleanup.RunAsync(() => new(StopAsync()));
-        _disposed = true;
-        _gameplay.InteractionObserved -= OnInteractionObserved;
-        await cleanup.RunAsync(() => new(DisposeRunnerAsync()));
-        await cleanup.RunAsync(() => new(_settings.FlushAsync()));
-        var saves = _saveSession;
-        _saveSession = null;
-        GalleryResources = null;
-        GalleryDataSource = null;
-        cleanup.Run(() => saves?.Dispose());
-        var resources = _resources;
-        _resources = null;
-        cleanup.Run(() => resources?.Dispose());
-        cleanup.ThrowIfFailed();
-    }
-
-    public async Task BeginPreparedGameAsync(CancellationToken cancellationToken = default)
-    {
-        await _lifecycle.WaitAsync(cancellationToken);
+        await _initialization.WaitAsync();
         try
         {
-            if (_runner is null)
-                throw new InvalidOperationException("No prepared game is available to start.");
-
-            await _runner.StartPreparedAsync(cancellationToken);
+            var cleanup = new SampleCleanup();
+            _disposed = true;
+            _gameplay.InteractionObserved -= OnInteractionObserved;
+            await cleanup.RunAsync(() => _session.DisposeAsync());
+            await cleanup.RunAsync(() => new(_settings.FlushAsync()));
+            var saves = _saveSession;
+            _saveSession = null;
+            GalleryResources = null;
+            GalleryDataSource = null;
+            cleanup.Run(() => saves?.Dispose());
+            var resources = _resources;
+            _resources = null;
+            cleanup.Run(() => resources?.Dispose());
+            cleanup.ThrowIfFailed();
         }
-        finally { _lifecycle.Release(); }
+        finally { _initialization.Release(); }
     }
 
-    private async Task PrepareGameAsync(GameSnapshot? snapshot, CancellationToken cancellationToken)
-    {
-        await _lifecycle.WaitAsync(cancellationToken);
-        try
-        {
-            await StopCurrentRunAsync();
-            await DisposeRunnerAsync();
-            await EnsureRunnerAsync(cancellationToken);
-            await _runner!.PrepareAsync(snapshot, cancellationToken);
-        }
-        finally { _lifecycle.Release(); }
-    }
+    public Task BeginPreparedGameAsync(CancellationToken cancellationToken = default) =>
+        _session.BeginPreparedAsync(cancellationToken);
 
-    private async Task StopCurrentRunAsync()
-    {
-        if (_runner is not null)
-            await _runner.StopAsync();
-    }
-
-    private async Task DisposeRunnerAsync()
-    {
-        var runner = _runner;
-        _runner = null;
-        if (runner is not null)
-            await runner.DisposeAsync();
-    }
+    private Task PrepareGameAsync(GameSnapshot? snapshot, CancellationToken cancellationToken) =>
+        _session.PrepareAsync(snapshot, cancellationToken);
 
     private Task ResetScenePresentationAsync() => OnUiAsync(_gameplay.ResetScenePresentation);
 
-    private async Task EnsureRunnerAsync(CancellationToken cancellationToken)
+    private async Task<IGameRun> CreateRunAsync(CancellationToken cancellationToken)
     {
-        if (_runner is not null) return;
         var resources = _resources;
         var saveSession = _saveSession;
         if (!IsReady || resources is null || saveSession is null)
             throw new InvalidOperationException("The game session is not initialized.");
 
-        _runner = await SampleGameRunner.CreateAsync(
+        return await SampleGameRunner.CreateAsync(
             _gameplay,
             _page,
             resources,

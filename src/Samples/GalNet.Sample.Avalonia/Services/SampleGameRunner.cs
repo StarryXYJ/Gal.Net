@@ -8,14 +8,16 @@ using GalNet.Runtime.Logging;
 using GalNet.Runtime.Runtime;
 using LibVLCSharp.Shared;
 using GalNet.Avalonia.GameHost;
+using GalNet.GameHost;
 
 namespace GalNet.Sample.Avalonia.Services;
 
 /// <summary>Sample page binding and run ownership; the engine owns execution and terminal states.</summary>
-internal sealed class SampleGameRunner : IAsyncDisposable
+internal sealed class SampleGameRunner : IGameRun
 {
     private readonly GamePageViewModel _gameplay;
-    private readonly GameEngine _engine;
+    private readonly GameRun _run;
+    private GameEngine _engine => _run.Engine;
     private readonly AvaloniaGamePresentation _presentation;
     private readonly SamplePlayerSettingsService _playerSettings;
     private readonly Func<bool, string?, Task> _updateStateAsync;
@@ -23,16 +25,15 @@ internal sealed class SampleGameRunner : IAsyncDisposable
     private readonly Func<Task> _resetPresentationAsync;
     private readonly Func<Action, Task> _onUiAsync;
     private Task _stateUpdate = Task.CompletedTask;
-    private bool _prepared;
     private bool _disposed;
 
     private SampleGameRunner(
-        GamePageViewModel gameplay, GameEngine engine, AvaloniaGamePresentation presentation, SamplePlayerSettingsService playerSettings,
+        GamePageViewModel gameplay, GameRun run, AvaloniaGamePresentation presentation, SamplePlayerSettingsService playerSettings,
         Func<bool, string?, Task> updateStateAsync, Func<Task> runCompletedAsync,
         Func<Task> resetPresentationAsync, Func<Action, Task> onUiAsync)
     {
         _gameplay = gameplay;
-        _engine = engine;
+        _run = run;
         _presentation = presentation;
         _playerSettings = playerSettings;
         _playerSettings.SettingsChanged += OnPlayerSettingsChanged;
@@ -42,7 +43,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
         _resetPresentationAsync = resetPresentationAsync;
         _onUiAsync = onUiAsync;
         _gameplay.AdvanceRequested += OnAdvanceRequested;
-        _gameplay.BindPlayback(engine);
+        _gameplay.BindPlayback(_engine);
         _engine.StateChanged += OnEngineStateChanged;
     }
 
@@ -60,22 +61,22 @@ internal sealed class SampleGameRunner : IAsyncDisposable
                 presentation.Audio, presentation.Video, presentation.AudioModule),
             resources.Content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>()
                 .SelectMany(group => group.Entries).Select(entry => entry.Type), sharedLibVlc, cancellationToken);
-        GameEngine? engine = null;
+        GameRun? run = null;
         try
         {
             var settings = new SettingsContainer();
             settings.Set(resources.Content.Settings);
             settings.Set(saveSession.Settings);
             var runtime = new GameRuntime(textResolver, resources.Content.Graph.RootNodeId, settings, saveSession.Variables);
-            engine = new GameEngine(resources.Content.Graph, runtime, presentation.View,
-                saveSession.Progress, presentation.Presenters.ChoicePresenter, presentation);
-            return new SampleGameRunner(gameplay, engine, presentation, playerSettings,
+            run = new GameRun(resources.Content.Graph, runtime, presentation.View,
+                saveSession.Progress, presentation.Presenters.ChoicePresenter, presentation, presentation.Restorer);
+            return new SampleGameRunner(gameplay, run, presentation, playerSettings,
                 updateStateAsync, runCompletedAsync, resetPresentationAsync, onUiAsync);
         }
         catch (Exception error)
         {
             List<Exception> errors = [error];
-            try { if (engine is not null) await engine.DisposeAsync(); }
+            try { if (run is not null) await run.DisposeAsync(); }
             catch (Exception cleanupError) { errors.Add(cleanupError); }
             try { await presentation.DisposeAsync(); }
             catch (Exception cleanupError) { errors.Add(cleanupError); }
@@ -84,33 +85,22 @@ internal sealed class SampleGameRunner : IAsyncDisposable
         }
     }
 
-    public GameSnapshot CreateSaveData() => _engine.CreateSaveData();
+    public GameSnapshot CreateSaveData() => _run.CreateSaveData();
 
-    public async Task PrepareAsync(GameSnapshot? snapshot, CancellationToken cancellationToken)
-    {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        if (snapshot is not null)
-        {
-            _engine.RestoreFrom(snapshot);
-            await _engine.SynchronizePresentationAsync(_presentation.Restorer.RestoreAsync, cancellationToken);
-        }
-        _prepared = true;
-    }
+    public Task PrepareAsync(GameSnapshot? snapshot, CancellationToken cancellationToken) =>
+        _run.PrepareAsync(snapshot, cancellationToken);
 
     public async Task StartPreparedAsync(CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (!_prepared) throw new InvalidOperationException("No prepared game is available to start.");
-        _prepared = false;
         _ = CompleteOpeningPresentationAsync();
-        try { await _engine.AdvanceAsync(cancellationToken); }
+        try { await _run.StartPreparedAsync(cancellationToken); }
         finally { _presentation.Presenters.CompleteInitialPresentation(); }
     }
 
     public async Task StopAsync()
     {
-        await _engine.StopAsync();
-        await _presentation.Restorer.SuspendAsync(CancellationToken.None);
+        await _run.StopAsync();
         _presentation.Presenters.CompleteInitialPresentation();
         await _stateUpdate;
     }
@@ -125,7 +115,7 @@ internal sealed class SampleGameRunner : IAsyncDisposable
         _gameplay.AdvanceRequested -= OnAdvanceRequested;
         _engine.StateChanged -= OnEngineStateChanged;
         cleanup.Run(_presentation.Presenters.CompleteInitialPresentation);
-        await cleanup.RunAsync(() => _engine.DisposeAsync());
+        await cleanup.RunAsync(() => _run.DisposeAsync());
         await cleanup.RunAsync(() => new(_presentation.Restorer.SuspendAsync(CancellationToken.None)));
         await cleanup.RunAsync(() => new(_stateUpdate));
         await cleanup.RunAsync(() => new(_resetPresentationAsync()));
