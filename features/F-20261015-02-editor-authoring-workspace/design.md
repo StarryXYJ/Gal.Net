@@ -182,6 +182,18 @@
 
 本 feature 不创建新的 Engine/Runner/Preview 抽象，不修复独立游戏侧问题。基础工作区不默认开启预览；旧预览如依赖已删除作者路径，可暂时关闭入口并明确待后续 feature 接入，不保留第二套作者数据维护兼容。
 
+## 9.1 编辑器 UI i18n（2026-10-16 追加计划）
+
+现有 Editor 已有 IEditorLocalizationService、DynamicLocalization 和四语嵌入 JSON，见 `src/Editor/GalNet.Editor/Services/EditorLocalizationService.cs` 与 `Localization/`。本次补齐硬编码文案、动态刷新和验收，不重建服务。编辑器语言属于 Editor 偏好，与游戏 TargetLocale、项目 I18n 翻译分开；切换不提交作者编辑、不改 dirty、不清空历史。
+
+P2i 先补齐已实现的启动/项目设置/关闭恢复/基础 Graph 与语言偏好闭环；P3–P6 新功能在各自阶段完成四语接入，P7 整体验收。语言集为 zh-CN、en-US、ja-JP、ko-KR，不默认新增语言。
+
+历史与诊断保留稳定 key/code 和参数，在展示时按当前 Editor culture 格式化；不能只在执行时保存翻译文本，导致旧历史/旧错误不随切换更新。路径、作者名称、字段 ID 等作为参数原样保留。Shared 输出中立错误码、定位和细节，UI 翻译；Core/Runtime/CLI 不引入 Editor 的本地化框架或 Avalonia 依赖，机器协议不随显示语言改变。
+
+已打开页面、Dock 标题、Inspector、菜单、历史菜单、状态/错误、关闭/恢复对话框均需响应切换并释放订阅。参数表单复用 schema LabelKey/DescriptionKey、枚举和专属编辑器的文案键；自定义契约缺译时回退到可读名称/字段 ID，不把作者值或任意字符串当 key，不推断游戏文本翻译。
+
+统一声明基准语言、缺 key 与无效 locale 回退规则，四语发布资源具有相同键和兼容格式占位符，不能用回退掩盖缺译。数字控件可按 culture 显示/解析，但作者 JSON、数值和机器 ID 不变。验收包括资源/占位符检查、硬编码文案清单（允许技术名称与作者值）、真实控件动态切换和长文案布局。
+
 ## 10. 迁移、风险与验证影响
 
 按基本页面 → Graph → 文件 → Group → 自动生成 UI → 前期整体验收推进。每个领域接入新作者数据与项目历史时，同阶段删除该领域旧写入口/事件记账，CLI 受影响适配同步更新；纯搬迁/重命名与行为变化尽量分开提交。
