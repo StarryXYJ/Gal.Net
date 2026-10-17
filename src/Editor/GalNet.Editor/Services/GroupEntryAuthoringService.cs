@@ -67,8 +67,6 @@ public sealed class GroupEntryAuthoringService(EditorGroupProjectionStore groups
             // full semantic validation belongs to compile/check, not clipboard insertion.
             foreach (var entry in clip.Entries)
             {
-                if (!catalog.TryGet(entry.Type, out var definition) || entry.Parameters.Keys.Any(key => !definition.Parameters.ContainsKey(key)))
-                    throw new EditorOperationException("entry.clipboardSchema", "The clipboard entries are not supported by this project's contract.");
                 entry.StableId = Guid.NewGuid().ToString("N");
             }
         }

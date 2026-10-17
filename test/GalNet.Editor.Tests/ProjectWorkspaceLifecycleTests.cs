@@ -774,14 +774,18 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         await projects.CloseAsync();
     }
 
-    private static ServiceProvider Services(IProjectClosePrompt? closePrompt = null, IEditorLocalizationService? localization = null, GalNet.Editor.Shared.Commands.AuthorFileTransaction? transaction = null) => new ServiceCollection().AddEditorServices()
-        .AddSingleton<IEditorLocalizationService>(localization ?? new EditorLocalizationService())
-        .AddSingleton<IProjectClosePrompt>(closePrompt ?? new DiscardProjectClosePrompt())
-        .AddSingleton<IEditorSettingsService>(new TestSettings())
-        .AddSingleton<IFileDialogService>(new TestDialogs())
-        .AddScoped<IEditorDocumentRepository>(provider => transaction is null ? new EditorDocumentRepository(provider.GetRequiredService<IEntryCatalog>()) : new FaultRepository(new EditorDocumentRepository(provider.GetRequiredService<IEntryCatalog>()), transaction))
-        .AddSingleton<IEffectCatalog>(new EffectCatalog([]))
-        .BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+    private static ServiceProvider Services(IProjectClosePrompt? closePrompt = null, IEditorLocalizationService? localization = null, GalNet.Editor.Shared.Commands.AuthorFileTransaction? transaction = null)
+    {
+        var services = new ServiceCollection().AddEditorServices()
+            .AddSingleton<IEditorLocalizationService>(localization ?? new EditorLocalizationService())
+            .AddSingleton<IProjectClosePrompt>(closePrompt ?? new DiscardProjectClosePrompt())
+            .AddSingleton<IEditorSettingsService>(new TestSettings())
+            .AddSingleton<IFileDialogService>(new TestDialogs())
+            .AddSingleton<IEffectCatalog>(new EffectCatalog([]));
+        if (transaction is not null)
+            services.AddScoped<IEditorDocumentRepository>(provider => new FaultRepository(new EditorDocumentRepository(provider.GetRequiredService<IEntryCatalog>(), EditorDocumentValidation.Authoring), transaction));
+        return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+    }
 
     private static string Contracts()
     {

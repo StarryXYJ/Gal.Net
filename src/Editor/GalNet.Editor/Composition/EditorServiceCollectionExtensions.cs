@@ -75,7 +75,7 @@ public static class EditorServiceCollectionExtensions
         services.AddScoped<IProjectContentSession, ProjectContentSession>();
         services.AddSingleton(new ProjectSessionOptions());
         services.AddScoped<UndoRedoRouter>();
-        services.AddScoped<IEditorDocumentRepository, EditorDocumentRepository>();
+        services.AddScoped<IEditorDocumentRepository>(provider => new EditorDocumentRepository(provider.GetRequiredService<IEntryCatalog>(), EditorDocumentValidation.Authoring));
         services.AddScoped<IEditorDocumentService, EditorDocumentService>();
         services.AddScoped<IEditorSaveCoordinator, EditorSaveCoordinator>();
         services.AddScoped<IProjectSaveScheduler, ProjectSaveScheduler>();

@@ -101,7 +101,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     }
 
     [Test]
-    public async Task EntryClipboardRejectsWholeInvalidOrUnsupportedPayloadWithoutHistory()
+    public async Task EntryClipboardRejectsWholeMalformedPayloadWithoutHistoryAndPreservesUnknownSchema()
     {
         using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
         var project = await projects.CreateAsync(Path.Combine(_root, "EntryRejected"), "Entries", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
@@ -111,7 +111,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var clip = author.Copy(group.Id, [entry.StableId]); history.Clear();
         var unsupported = JsonNode.Parse(clip)!; unsupported["Entries"]!.AsArray().Add(JsonNode.Parse("{\"Type\":\"unavailable.custom\",\"Condition\":\"\",\"Parameters\":{}}"));
         var unknownField = JsonNode.Parse(clip)!; unknownField["Entries"]![0]!["Parameters"]!["newField"] = 1;
-        var invalid = new[] { "", "not json", "null", "{}", clip.Replace("GalNet.Entries", "GalNet.Graph", StringComparison.Ordinal), clip.Replace("\"Version\":1", "\"Version\":2", StringComparison.Ordinal), unsupported.ToJsonString(), unknownField.ToJsonString(), new string('x', 16 * 1024 * 1024 + 1) };
+        var malformed = JsonNode.Parse(clip)!; malformed["Entries"]![0]!["Parameters"] = 42;
+        var invalid = new[] { "", "not json", "null", "{}", clip.Replace("GalNet.Entries", "GalNet.Graph", StringComparison.Ordinal), clip.Replace("\"Version\":1", "\"Version\":2", StringComparison.Ordinal), malformed.ToJsonString(), new string('x', 16 * 1024 * 1024 + 1) };
         foreach (var text in invalid)
         {
             Assert.Throws<EditorOperationException>(() => author.Paste(group.Id, text, null));
@@ -119,6 +120,12 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         }
         Assert.Throws<EditorOperationException>(() => author.Paste(group.Id, clip, "deleted-anchor"));
         Assert.That(history.CanUndo, Is.False);
+        var pasted = author.Paste(group.Id, unsupported.ToJsonString(), null);
+        Assert.That(pasted[^1].Type, Is.EqualTo("unavailable.custom")); Assert.That(pasted[^1].IsUnknownType, Is.True);
+        await history.UndoAsync(); Assert.That(group.Entries.Single(), Is.SameAs(entry));
+        pasted = author.Paste(group.Id, unknownField.ToJsonString(), null);
+        Assert.That(pasted.Single().Source.Parameters["newField"].GetInt32(), Is.EqualTo(1)); Assert.That(pasted.Single().HasUnknownParameters, Is.True);
+        await history.UndoAsync(); Assert.That(group.Entries.Single(), Is.SameAs(entry));
         await projects.CloseAsync();
     }
 

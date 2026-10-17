@@ -1,6 +1,6 @@
 # Editor 创作工作区实施计划
 
-日期：2026-10-15；进度更新：2026-10-17。依赖：[需求](feature.md)、[设计](design.md)。用户已授权实施，P1a 已验证，见 [phase-1a.md](phase-1a.md)；P1b 已完成当前工作树集成验证，构建成功、311 项测试通过，见 [phase-1b.md](phase-1b.md)。P2 已验证，当前工作树构建成功、323 项回归通过，见 [phase-2.md](phase-2.md)。用户追加编辑器 UI i18n 后，在 P3 前插入 P2i；P2i 已验证，隔离基线构建成功、328 项回归通过，见 [phase-2i.md](phase-2i.md)；P3 已验证，当前工作树构建成功、339 项回归通过，见 [phase-3.md](phase-3.md)；P4a 已验证，当前工作树构建成功、365 项相关回归通过，见 [phase-4a.md](phase-4a.md)；P4b 已验证，最终隔离解决方案构建成功、383 项相关回归通过，见 [phase-4b.md](phase-4b.md)；P6a 共享 UI 基础提前验证，P5a Group 交互、P5b 多选剪贴板及 P5c 变量面板已验证，P5 整体仍 in-progress。状态只使用 planned / in-progress / verified / skipped；状态更新必须附实际证据。
+日期：2026-10-15；进度更新：2026-10-17。依赖：[需求](feature.md)、[设计](design.md)。用户已授权实施，P1a 已验证，见 [phase-1a.md](phase-1a.md)；P1b 已完成当前工作树集成验证，构建成功、311 项测试通过，见 [phase-1b.md](phase-1b.md)。P2 已验证，当前工作树构建成功、323 项回归通过，见 [phase-2.md](phase-2.md)。用户追加编辑器 UI i18n 后，在 P3 前插入 P2i；P2i 已验证，隔离基线构建成功、328 项回归通过，见 [phase-2i.md](phase-2i.md)；P3 已验证，当前工作树构建成功、339 项回归通过，见 [phase-3.md](phase-3.md)；P4a 已验证，当前工作树构建成功、365 项相关回归通过，见 [phase-4a.md](phase-4a.md)；P4b 已验证，最终隔离解决方案构建成功、383 项相关回归通过，见 [phase-4b.md](phase-4b.md)；P6a 共享 UI 基础提前验证，P5a Group 交互、P5b 多选剪贴板及 P5c 变量面板已验证，P5d/P5e 已验证，P5 整体 verified（635 项相关回归）；状态只使用 planned / in-progress / verified / skipped；状态更新必须附实际证据。
 
 ## 顺序与范围
 
@@ -186,7 +186,7 @@ P1a 基本页面/项目文档 → P1b 项目历史/保存骨架
 
 ## P5：galgroup 多文档编辑与最小参数 UI
 
-状态：in-progress。P5a/P5b/P5c 已验证，见 [phase-5a.md](phase-5a.md)、[phase-5b.md](phase-5b.md)、[phase-5c.md](phase-5c.md)；P5d 作者绑定迁移已验证，解决方案构建及 614 项相关回归通过，见 [phase-5d.md](phase-5d.md)。P5e 未完成/未知作者内容保存仍 planned。前置：P4b。
+状态：verified。P5a/P5b/P5c 已验证，见 [phase-5a.md](phase-5a.md)、[phase-5b.md](phase-5b.md)、[phase-5c.md](phase-5c.md)；P5d 作者绑定迁移已验证，见 [phase-5d.md](phase-5d.md)。P5e 未完成/未知作者内容保存已验证，最终解决方案构建和 635 项相关回归通过，格式及源码指纹通过；整体退出条件核对见 [phase-5e.md](phase-5e.md)。前置：P4b。
 
 **目标**：完成可保存、可编译检查的剧情条目创作。
 
@@ -300,6 +300,6 @@ P6a 验证：隔离解决方案构建成功，610 项相关回归通过、0 失�
 
 ## P5e：未完成作者内容的保存
 
-状态：planned。前置 P5d。此项是 P5 原有退出条件的显式拆分：当前 Repository 的 Load/PrepareSave 和 SerializeEntry 仍要求完整契约有效，不能把 partial 表单可编辑等同于草稿可保存。
+状态：verified。前置 P5d，用户已授权继续。此项是 P5 原有退出条件的显式拆分：实施前 Repository 的 Load/PrepareSave 和 SerializeEntry 要求完整契约有效，不能把 partial 表单可编辑等同于草稿可保存。GUI 现显式使用 Authoring，默认 Complete 及 CLI 完整校验保留；解决方案构建成功，635 项相关回归、格式及源码指纹通过。当前实施与证据见 [phase-5e.md](phase-5e.md)。
 
-需要把 GUI 作者文档的结构/身份安全检查与完整语义检查分开，允许未填写完的已知条目、未知类型/参数无损保存重开；无效 JSON、重复身份、非法路径和未知顶层 shape 继续拒绝。CLI check/compile 和游戏编译继续完整校验；逐项核对现有 Shared 安全测试，不通过删除测试或全局跳过验证达成。未知 schema 的通用 JSON 编辑 UI 与 P6 协调，P5e 至少保证打开、保留、复制/撤销及保存策略明确。退出条件为真实项目文件往返、partial/full 两条验证路径、严格结构拒绝、已知条目及未知 JSON 的无损测试。
+实现已把 GUI 作者文档的结构/身份安全检查与完整语义检查分开，允许未填写完的已知条目、未知类型/参数无损保存重开；无效 JSON、重复身份、非法路径和未知顶层 shape 继续拒绝。CLI check/compile 和游戏编译继续完整校验；逐项核对现有 Shared 安全测试，不通过删除测试或全局跳过验证达成。未知 schema 的通用 JSON 编辑 UI 与 P6 协调，P5e 至少保证打开、保留、复制/撤销及保存策略明确。退出条件为真实项目文件往返、partial/full 两条验证路径、严格结构拒绝、已知条目及未知 JSON 的无损测试。

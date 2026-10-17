@@ -97,6 +97,8 @@
                                     CommandParameter="{Binding}"><PathIcon Width="16" Height="16" Data="{StaticResource DeleteRegularIcon}" /></Button>
                         </Grid>
                         <StackPanel Margin="0,8,0,0" Spacing="6" IsVisible="{Binding #ParametersToggle.IsChecked}">
+                            <TextBlock Text="{loc:Localize Entry.UnknownTypePreserved}" IsVisible="{Binding IsUnknownType}" TextWrapping="Wrap" />
+                            <TextBlock Text="{loc:Localize Entry.UnknownParametersPreserved}" IsVisible="{Binding HasUnknownParameters}" TextWrapping="Wrap" />
                             <forms:DtoEditorHost Item="{Binding ParameterForm.Item}" Registry="{Binding #Root.DataContext.FieldEditors}" IsVisible="{Binding HasParameterForm}" />
                             <ItemsControl ItemsSource="{Binding ParameterFields}">
                                 <ItemsControl.ItemTemplate>

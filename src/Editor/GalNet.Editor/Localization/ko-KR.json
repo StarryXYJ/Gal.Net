@@ -607,5 +607,7 @@
   "History.EntryCondition": "항목 조건 편집",
   "History.EntryParameters": "항목 매개변수 편집",
   "Error.entry.obsolete": "항목이 삭제되었거나 유형이 변경되었습니다. 편집기를 다시 여세요.",
-  "Error.entry.changed": "다른 작업으로 항목이 변경되었습니다. 새로 고친 후 다시 시도하세요."
+  "Error.entry.changed": "다른 작업으로 항목이 변경되었습니다. 새로 고친 후 다시 시도하세요.",
+  "Entry.UnknownTypePreserved": "현재 계약에 이 유형의 편집 양식이 없습니다. 내용은 보존되며 저장하거나 유형을 변경할 수 있습니다. 검사와 컴파일에는 유효한 계약이 필요합니다.",
+  "Entry.UnknownParametersPreserved": "현재 계약에 선언되지 않은 매개변수도 저장 시 보존됩니다. 검사나 컴파일에서 오류가 보고될 수 있습니다."
 }

@@ -361,6 +361,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         SetProperty(ref _type, Source.Type, nameof(Type));
         SetProperty(ref _condition, Source.Condition, nameof(Condition));
         if (parametersChanged) OnPropertyChanged(nameof(Parameters));
+        OnPropertyChanged(nameof(HasUnknownParameters));
         foreach (var field in ParameterFields) field.RefreshValue(Parameters.GetValueOrDefault(field.Id, field.Definition.DefaultValue));
         ParameterForm?.Refresh();
         UpdateEffectHints();
@@ -421,6 +422,8 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     public bool HasEffectDiagnostic => !string.IsNullOrWhiteSpace(EffectDiagnostic);
 
     public ObservableCollection<EntryParameterEditorItemViewModel> ParameterFields { get; } = [];
+    public bool IsUnknownType => _authorCatalog is not null && !_authorCatalog.TryGet(Type, out _);
+    public bool HasUnknownParameters => _authorCatalog is not null && _authorCatalog.TryGet(Type, out var schema) && Source.Parameters.Keys.Any(key => !schema.Parameters.ContainsKey(key));
     /// <summary>Builds the editor projection from the Core registry, the single schema source.</summary>
     public void ConfigureParameterFields(IEntryCatalog catalog, IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames, IEffectCatalog? effectCatalog = null)
     {
@@ -433,7 +436,9 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         _effectCatalog = effectCatalog;
         _schemaGeneration++;
         ParameterFields.Clear();
-        if (!catalog.TryGet(Type, out var schema)) return;
+        OnPropertyChanged(nameof(IsUnknownType));
+        OnPropertyChanged(nameof(HasUnknownParameters));
+        if (!catalog.TryGet(Type, out var schema)) { UpdateEffectHints(); return; }
         var parameters = schema.DynamicParameters ?? EntrySchema.DynamicParameters(schema.Parameters, schema.Defaults, schema.Options);
 
         if (schema.FieldDataType is not null)
@@ -498,8 +503,10 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
 
     private void SetParameter(string id, string value)
     {
-        var updated = new Dictionary<string, string>(Parameters, StringComparer.Ordinal) { [id] = value };
-        Parameters = updated;
+        var updated = Source.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal);
+        updated[id] = ValueCodec.ParseEditorText(_authorCatalog!.Get(Type).DynamicParameters![id].Value, value);
+        if (_authoring is not null) _authoring.SetParameters(_groupId!, Source, Type, updated);
+        else { Source.Parameters = updated; RefreshAuthorReferences(_authorCatalog); }
     }
 
     internal Task<ValueIssue?> CommitParameterAsync(FieldDescriptor field, FieldValue value, CancellationToken cancellationToken)

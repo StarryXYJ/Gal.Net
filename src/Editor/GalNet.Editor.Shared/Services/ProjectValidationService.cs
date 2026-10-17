@@ -117,7 +117,7 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
             if (!entry.TryGetProperty("parameters", out var parameters) || !Object(parameters, file, pointer + "/parameters", diagnostics))
             { Error(diagnostics, "entry.parametersRequired", "Entry parameters must be an object.", file, pointer + "/parameters"); continue; }
             if (!structureOnly) Condition(ProjectRawReader.Text(entry, "condition"), file, pointer + "/condition", diagnostics);
-            if (catalog is null) continue;
+            if (structureOnly || catalog is null) continue;
             var type = ProjectRawReader.Text(entry, "type");
             if (type is null || !catalog.TryGet(type, out var definition))
             { Error(diagnostics, "entry.typeUnknown", $"Entry '{type}' is not declared by the project contract.", file, pointer + "/type", ProjectRawReader.Text(entry, "id")); continue; }
@@ -131,14 +131,14 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
         }
         if (diagnostics.Skip(start).Any(item => item.Severity == "error")) return null;
         var document = JsonSerializer.Deserialize<GroupDocument>(raw, JsonOptions)!;
-        if (catalog is not null)
+        if (!structureOnly && catalog is not null)
             foreach (var (entry, index) in document.Entries.Select((entry, index) => (entry, index)))
                 try { _ = GalgroupCompiler.Compile(new GroupDocument { Entries = [entry] }, catalog); }
                 catch (Exception exception) { Error(diagnostics, "entry.compileInvalid", exception.Message, file, $"/entries/{index}", entry.Id); }
         return diagnostics.Skip(start).Any(item => item.Severity == "error") ? null : document;
     }
 
-    public void ValidateGraph(JsonElement? content, List<ToolDiagnostic> diagnostics, bool structureOnly = false, bool checkSourceReferences = true)
+    public void ValidateGraph(JsonElement? content, List<ToolDiagnostic> diagnostics, bool structureOnly = false, bool checkSourceReferences = true, bool validateConditionSyntax = true)
     {
         if (content is null || !Shape(content.Value, GraphFile, "", diagnostics, ["version", "name", "rootNodeId", "nodes", "edges", "playerVariables", "saveVariables"])) return;
         var graph = content.Value;
@@ -196,9 +196,9 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
                     var child = pointer + $"/{key}/{n++}";
                     if (!Shape(item, GraphFile, child, diagnostics, key == "options" ? ["id", "text", "condition"] : ["id", "expression"])) continue;
                     Identity(item, "id", key == "options" ? options : conditions, GraphFile, child, diagnostics);
-                    String(item, key == "options" ? "text" : "expression", GraphFile, child, diagnostics, required: true, allowEmpty: key == "options");
+                    String(item, key == "options" ? "text" : "expression", GraphFile, child, diagnostics, required: true, allowEmpty: key == "options" || !validateConditionSyntax);
                     if (key == "options") String(item, "condition", GraphFile, child, diagnostics);
-                    if (!structureOnly) Condition(ProjectRawReader.Text(item, key == "options" ? "condition" : "expression"), GraphFile, child, diagnostics);
+                    if (!structureOnly && validateConditionSyntax) Condition(ProjectRawReader.Text(item, key == "options" ? "condition" : "expression"), GraphFile, child, diagnostics);
                 }
             }
         }

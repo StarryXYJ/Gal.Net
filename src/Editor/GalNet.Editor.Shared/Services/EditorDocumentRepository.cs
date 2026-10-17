@@ -9,8 +9,11 @@ using GalNet.Editor.Shared.Commands;
 
 namespace GalNet.Editor.Shared.Services;
 
-public sealed class EditorDocumentRepository(IEntryCatalog catalog) : IEditorDocumentRepository
+public enum EditorDocumentValidation { Complete, Authoring }
+
+public sealed class EditorDocumentRepository(IEntryCatalog catalog, EditorDocumentValidation validation = EditorDocumentValidation.Complete) : IEditorDocumentRepository
 {
+    private bool IsAuthoring => validation == EditorDocumentValidation.Authoring;
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     private Dictionary<string, byte[]?>? _baseline;
 
@@ -20,7 +23,7 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog) : IEditorDoc
         var validator = new ProjectValidationService(projectPath);
         var diagnostics = new List<ToolDiagnostic>();
         var rawGraph = reader.Read("Graph/graph.json", diagnostics);
-        validator.ValidateGraph(rawGraph, diagnostics);
+        validator.ValidateGraph(rawGraph, diagnostics, validateConditionSyntax: !IsAuthoring);
         RequireValid(diagnostics);
         var document = rawGraph!.Value.Deserialize<EditorGraphDocument>()!;
         var loaded = new LoadedEditorProjectDocument { Document = document };
@@ -28,7 +31,7 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog) : IEditorDoc
         foreach (var node in document.Nodes.Where(node => node.Type == "Group"))
         {
             var file = GroupPath(reader, node.File!);
-            var group = validator.ValidateGroup(file, diagnostics, catalog);
+            var group = validator.ValidateGroup(file, diagnostics, IsAuthoring ? null : catalog, structureOnly: IsAuthoring);
             RequireValid(diagnostics);
             _baseline[file] = File.ReadAllBytes(reader.Resolve(file));
             loaded.GroupEntries[node.Id] = group!.Entries.Select((entry, index) => new EditorEntryData
@@ -52,7 +55,7 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog) : IEditorDoc
         var diagnostics = new List<ToolDiagnostic>();
         var validator = new ProjectValidationService(projectPath);
         var graph = JsonSerializer.SerializeToElement(document, JsonOptions);
-        validator.ValidateGraph(graph, diagnostics, checkSourceReferences: false);
+        validator.ValidateGraph(graph, diagnostics, checkSourceReferences: false, validateConditionSyntax: !IsAuthoring);
         var writes = new Dictionary<string, byte[]>(PathComparer);
         var owners = new HashSet<string>(PathComparer);
         foreach (var node in document.Nodes.Where(node => node.Type == "Group"))
@@ -62,7 +65,7 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog) : IEditorDoc
             if (!owners.Add(file)) throw new InvalidDataException($"Multiple Groups reference '{file}'.");
             if (!groupEntries.TryGetValue(node.Id, out var entries)) throw new InvalidDataException($"Group '{node.Id}' has no entry document.");
             var raw = JsonSerializer.SerializeToElement(new GroupDocument { Kind = GroupDocumentKind.Raw, Entries = entries.Select(SerializeEntry).ToList() }, JsonOptions);
-            _ = ProjectValidationService.ValidateGroupDocument(raw, file, diagnostics, catalog);
+            _ = ProjectValidationService.ValidateGroupDocument(raw, file, diagnostics, IsAuthoring ? null : catalog, structureOnly: IsAuthoring);
             if (File.Exists(reader.Resolve(file)) && _baseline is not null && !_baseline.ContainsKey(file))
                 throw new EditorOperationException("project.fileCollision", $"New Group source would overwrite an existing unowned file: '{file}'.", file);
             writes.Add(file, JsonSerializer.SerializeToUtf8Bytes(raw, JsonOptions));
@@ -74,7 +77,7 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog) : IEditorDoc
         if (File.Exists(oldGraphPath))
         {
             using var old = JsonDocument.Parse(File.ReadAllBytes(oldGraphPath));
-            validator.ValidateGraph(old.RootElement, diagnostics);
+            validator.ValidateGraph(old.RootElement, diagnostics, validateConditionSyntax: !IsAuthoring);
             RequireValid(diagnostics);
             foreach (var node in old.RootElement.Deserialize<EditorGraphDocument>()!.Nodes.Where(node => node.Type == "Group"))
             {
@@ -103,10 +106,13 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog) : IEditorDoc
 
     public GroupEntryDocument SerializeEntry(EditorEntryData entry)
     {
-        var definition = catalog.Get(entry.Type);
         if (string.IsNullOrWhiteSpace(entry.StableId)) throw new InvalidDataException("Entry stable ID is required.");
-        foreach (var key in entry.Parameters.Keys)
-            if (!definition.Parameters.ContainsKey(key)) throw new InvalidDataException($"Unknown parameter '{key}' for '{entry.Type}'.");
+        if (!IsAuthoring)
+        {
+            var definition = catalog.Get(entry.Type);
+            foreach (var key in entry.Parameters.Keys)
+                if (!definition.Parameters.ContainsKey(key)) throw new InvalidDataException($"Unknown parameter '{key}' for '{entry.Type}'.");
+        }
         return new GroupEntryDocument
         {
             Id = entry.StableId,

@@ -607,5 +607,7 @@
   "History.EntryCondition": "Edit entry condition",
   "History.EntryParameters": "Edit entry parameters",
   "Error.entry.obsolete": "The entry was removed or its type changed. Reopen the editor.",
-  "Error.entry.changed": "The entry changed outside this edit. Refresh and try again."
+  "Error.entry.changed": "The entry changed outside this edit. Refresh and try again.",
+  "Entry.UnknownTypePreserved": "The current contract has no editor for this type. Its content is preserved and can be saved or changed to another type; validation and compilation still require a valid contract.",
+  "Entry.UnknownParametersPreserved": "Parameters not declared by the current contract are preserved when saving. Validation or compilation may report errors."
 }

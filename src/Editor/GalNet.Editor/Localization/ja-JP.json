@@ -607,5 +607,7 @@
   "History.EntryCondition": "エントリの条件を編集",
   "History.EntryParameters": "エントリのパラメーターを編集",
   "Error.entry.obsolete": "エントリが削除されたか種類が変更されました。エディターを開き直してください。",
-  "Error.entry.changed": "エントリが別の操作で変更されました。更新して再試行してください。"
+  "Error.entry.changed": "エントリが別の操作で変更されました。更新して再試行してください。",
+  "Entry.UnknownTypePreserved": "現在のコントラクトにはこの種類の編集フォームがありません。内容は保持され、保存や種類の変更ができます。検証・コンパイルには有効なコントラクトが必要です。",
+  "Entry.UnknownParametersPreserved": "現在のコントラクトにないパラメーターも保存時に保持されます。検証やコンパイルでエラーになる場合があります。"
 }

@@ -607,5 +607,7 @@
   "History.EntryCondition": "编辑条目条件",
   "History.EntryParameters": "编辑条目参数",
   "Error.entry.obsolete": "条目已移除或其类型已改变，请重新打开编辑。",
-  "Error.entry.changed": "条目内容已被其他操作修改，请刷新后重试。"
+  "Error.entry.changed": "条目内容已被其他操作修改，请刷新后重试。",
+  "Entry.UnknownTypePreserved": "当前契约没有此类型的编辑表单。内容已保留，可保存或更换类型；检查和编译仍需有效契约。",
+  "Entry.UnknownParametersPreserved": "包含当前契约未声明的参数，保存时会保留；检查或编译可能报告问题。"
 }
