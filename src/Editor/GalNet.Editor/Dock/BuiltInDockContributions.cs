@@ -22,6 +22,7 @@ public static class EditorDockPanelIds
     public const string Assets = "Assets";
     public const string Log = "Log";
     public const string GroupEditor = "GroupEditor";
+    public const string FileEditor = "FileEditor";
     public const string Inspector = "Inspector";
 }
 
@@ -54,6 +55,9 @@ public static class BuiltInDockContributions
                 sp.GetRequiredService<IEffectCatalog>(),
                 sp.GetRequiredService<IEntryCatalog>()),
             typeof(GroupEditorPanelView), null));
+        registry.RegisterDockPanel(new DelegateDockPanelContribution<FileDocumentPanelViewModel, string>(
+            EditorDockPanelIds.FileEditor, "Files.Document", DockPanelPlacement.MainDocument, false, true, true, false, false,
+            (sp, id) => new FileDocumentPanelViewModel(sp.GetRequiredService<ProjectTextFiles>().Get(id)), typeof(FileDocumentPanelView), null));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<InspectorHostViewModel>(
             EditorDockPanelIds.Inspector, "Dock.Panel.Inspector", DockPanelPlacement.InspectorDocument, false, true, true, true, true,
             sp => sp.GetRequiredService<InspectorHostViewModel>(), typeof(InspectorHostView), null));

@@ -40,7 +40,7 @@
 
 ## 当前工作
 
-- [F-20261015-02 Editor 创作工作区](../features/F-20261015-02-editor-authoring-workspace/phase-plan.md)：P1a/P1b/P2/P2i/P3/P4a 已验证，P4a 构建与 365 项相关回归通过。项目单栈、Graph、文件事务/双版本文档协调、metadata/引用保护与四语已接通；下一阶段 P4b 项目文件界面，左侧目录树、右侧当前目录网格。游戏预览另立 feature。当前实现见 docs/spec/editor-graph.md、editor-files.md 和 editor-history-and-save.md。
+- [F-20261015-02 Editor 创作工作区](../features/F-20261015-02-editor-authoring-workspace/phase-plan.md)：P1a/P1b/P2/P2i/P3/P4a/P4b 已验证，P4b 隔离构建与 383 项相关回归通过。项目单栈、Graph、文件事务/双版本文档协调、metadata/引用保护、文件树/网格、路径块/全局文件名搜索、项目文本缓冲与四语已接通；下一阶段 P5 Group 核心编辑与最小参数 UI。游戏预览另立 feature。当前实现见 docs/spec/editor-graph.md、editor-files.md 和 editor-history-and-save.md。
 
 - F-20261015-03 模块化游戏状态：GameSnapshot v4；状态 catalog 随 view 组合，Engine 接入；中立 Layer/EffectInstance/ParticleEmitterInstance 直接作为唯一可变数据记录，属性变更必须在 State.Update，编码形成隔离快照。LoopAnimationState 保存类型化 request/plan；停止控制与播放 identity 仅运行期持有。音频 AudioTrackState/AudioSEffectState 包含暂停、队列与空闲效果，所有轨道按稳定检查点从头恢复；不恢复 seek/淡化时钟，玩家设置不回滚。恢复首帧不重复一次性事件，暂停声音在 Resume 前不启动后端。七个相关项目 665 项测试、解决方案构建与 CLI 实际项目校验/编译通过；新档验证见 [feature summary](../features/F-20261015-03-modular-game-state/summary.md)。
 
@@ -76,6 +76,8 @@
 4. 如果项目架构变化，检查并标记受影响的 lesson 和 skill，而不是继续沿用旧规则。
 
 ## 经验索引
+
+- [项目监听器身份](lessons/L-20261017-03-project-watcher-owner.md)：后台事件使用创建时固定的项目根，投递 UI 后复查项目身份与 disposed；关闭后不可再从全局 Current 取根。
 
 - [容错读取与作者重写](lessons/L-20261017-02-tolerant-reader-authoring.md)：读取 codec 返回默认 DTO 不代表可以无损写回；作者操作须严格校验并保留原始文件。
 

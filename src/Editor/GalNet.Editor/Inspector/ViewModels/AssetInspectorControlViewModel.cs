@@ -32,6 +32,10 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
     private MediaPlayer? _player;
     private bool _updating;
     private bool _isSeeking;
+    private bool _disposed;
+    private string? _inspectedId;
+    private string? _inspectedPath;
+    private readonly string? _projectRoot;
 
     public EditorWorkspaceViewModel Workspace { get; }
     public bool IsAvailable => true;
@@ -61,7 +65,9 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
         _fileCommands = fileCommands;
         _projects = projects;
         _localization = localization;
+        _projectRoot = projects.Current?.RootPath;
         SyncAsset();
+        _assets.Changed += OnAssetsChanged;
         Workspace.PropertyChanged += OnWorkspacePropertyChanged;
         _localization.PropertyChanged += OnLocalizationPropertyChanged;
     }
@@ -77,7 +83,38 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
 
     private void SyncAsset()
     {
-        InspectedAsset = Workspace.SelectedAsset;
+        _inspectedId = Workspace.SelectedAsset?.Id;
+        _inspectedPath = Workspace.SelectedAsset?.RelativePath;
+        SetAsset(Workspace.SelectedAsset);
+    }
+
+    private void OnAssetsChanged() => Dispatcher.UIThread.Post(() =>
+    {
+        if (_disposed || _projects.Current?.RootPath != _projectRoot || _inspectedPath is null) return;
+        try
+        {
+            var current = _assets.GetEntry(_inspectedPath);
+            if (_inspectedId is not null && !string.Equals(current?.Id, _inspectedId, StringComparison.OrdinalIgnoreCase))
+            {
+                current = null;
+                var pending = new Stack<string>(); pending.Push("");
+                while (pending.TryPop(out var directory) && current is null)
+                    foreach (var item in _assets.GetDirectory(directory))
+                    {
+                        if ((System.IO.File.GetAttributes(item.FullPath) & System.IO.FileAttributes.ReparsePoint) != 0) continue;
+                        if (item.IsDirectory) pending.Push(item.RelativePath);
+                        else if (string.Equals(item.Id, _inspectedId, StringComparison.OrdinalIgnoreCase)) { current = item; break; }
+                    }
+            }
+            if (current is not null) _inspectedPath = current.RelativePath;
+            SetAsset(current);
+        }
+        catch (Exception error) { Serilog.Log.Warning(error, "Could not refresh inspected asset identity"); }
+    });
+
+    private void SetAsset(AssetEntry? asset)
+    {
+        InspectedAsset = asset;
         Load();
         _ = LoadImagePreviewAsync();
         OnPropertyChanged(nameof(HasSelectedAsset));
@@ -182,7 +219,7 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
         try
         {
             var bitmap = await Task.Run(() => new Bitmap(path));
-            if (!ReferenceEquals(InspectedAsset, asset)) { bitmap.Dispose(); return; }
+            if (_disposed || !ReferenceEquals(InspectedAsset, asset)) { bitmap.Dispose(); return; }
             ImagePreview = bitmap;
         }
         catch (Exception ex) { ImagePreviewError = ex.Message; }
@@ -191,6 +228,8 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
     private static string FormatTime(double milliseconds) => TimeSpan.FromMilliseconds(Math.Max(0, milliseconds)).ToString(@"m\:ss", CultureInfo.CurrentCulture);
     public void Dispose()
     {
+        if (_disposed) return; _disposed = true;
+        _assets.Changed -= OnAssetsChanged;
         Workspace.PropertyChanged -= OnWorkspacePropertyChanged;
         _localization.PropertyChanged -= OnLocalizationPropertyChanged;
         ImagePreview?.Dispose();

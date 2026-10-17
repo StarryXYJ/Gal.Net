@@ -42,7 +42,8 @@ public static class EditorDocumentCloner
         GroupEntries = source.GroupEntries.ToDictionary(
             pair => pair.Key,
             pair => pair.Value.Select(CloneEntry).ToList()),
-        Settings = CloneSettings(source.Settings)
+        Settings = CloneSettings(source.Settings),
+        Files = source.Files.ToDictionary(pair => pair.Key, pair => new EditorFileDocument { Id = pair.Value.Id, Path = pair.Value.Path, Exists = pair.Value.Exists, ManagedContent = pair.Value.ManagedContent, Data = pair.Value.Data.ToArray() })
     };
 
     public static EditorGraphDocument CloneGraph(EditorGraphDocument source) => new()

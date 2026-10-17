@@ -25,6 +25,8 @@ public interface IProjectContentSession
     Task PublishStructureAsync(Func<EditorProjectDocument, EditorProjectDocument, IProjectStructureChange> prepare);
     EditorProjectDocument CaptureWorking();
     EditorProjectDocument CaptureSaved();
+    IReadOnlyDictionary<string, EditorFileDocument> FileDocuments => new Dictionary<string, EditorFileDocument>();
+    EditorFileDocument TrackFile(string path, byte[]? textBytes = null) => throw new NotSupportedException();
     Task SuspendAsync();
     void ResumeSaves();
 }

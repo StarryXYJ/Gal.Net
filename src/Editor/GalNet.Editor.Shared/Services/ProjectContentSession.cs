@@ -18,6 +18,23 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     private bool _suspended;
     private bool _disposed;
     private readonly List<DraftRegistration> _drafts = [];
+    private readonly Dictionary<string, EditorFileDocument> _files = [];
+    public IReadOnlyDictionary<string, EditorFileDocument> FileDocuments => _files;
+    public EditorFileDocument TrackFile(string path, byte[]? textBytes = null)
+    {
+        path = textBytes is null ? ProjectFilePaths.Normalize(path) : ProjectFilePaths.Editable(path);
+        _ = new ProjectRawReader(_project!.RootPath).Resolve(path);
+        var existing = _files.Values.FirstOrDefault(file => file.Exists && ProjectFilePaths.Comparer.Equals(file.Path, path));
+        if (existing is not null) return existing;
+        if (IsPublishing) throw ProjectFilePaths.Error("busy", path);
+        var file = new EditorFileDocument { Path = path, ManagedContent = textBytes is not null, Data = textBytes?.ToArray() ?? [] };
+        _files.Add(file.Id, file);
+        var saved = JsonSerializer.Deserialize<EditorProjectDocument>(_baseline, JsonOptions)!;
+        saved.Files.Add(file.Id, EditorDocumentCloner.Clone(new EditorProjectDocument { Files = new() { [file.Id] = file } }).Files[file.Id]);
+        _baseline = Serialize(saved);
+        Refresh();
+        return file;
+    }
     private Func<bool, CancellationToken, Task<IDisposable>>? _captureGuard;
     private readonly CancellationTokenSource _lifetime = new();
     private ProjectRecoveryStore? _recovery;
@@ -28,7 +45,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     public Exception? LastNotificationError { get; private set; }
 
     public bool IsPublishing => !_disposed && _saveGate.CurrentCount == 0;
-    public bool IsDirty => _project is not null && (_drafts.Any(draft => draft.HasChanges()) || !Serialize(Capture()).AsSpan().SequenceEqual(_baseline));
+    public bool IsDirty => _project is not null && (_drafts.Any(draft => draft.HasChanges()) || !ComparisonBytes(Capture()).AsSpan().SequenceEqual(ComparisonBytes(JsonSerializer.Deserialize<EditorProjectDocument>(_baseline, JsonOptions)!)));
     public bool RepairRequired { get; private set; }
     public Exception? LastError { get; private set; }
     public event Action? Changed;
@@ -120,7 +137,8 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
         {
             Graph = documents.CurrentDocument,
             Settings = project.Settings,
-            GroupEntries = documents.LoadedProject.GroupEntries
+            GroupEntries = documents.LoadedProject.GroupEntries,
+            Files = _files
         });
     }
 
@@ -138,6 +156,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     {
         // Lookup insertion order and displayed line numbers are not persisted author content.
         document.GroupEntries = document.GroupEntries.OrderBy(pair => pair.Key, StringComparer.Ordinal).ToDictionary(pair => pair.Key, pair => pair.Value);
+        document.Files = document.Files.OrderBy(pair => pair.Key, StringComparer.Ordinal).ToDictionary(pair => pair.Key, pair => pair.Value);
         foreach (var entry in document.GroupEntries.Values.SelectMany(entries => entries))
         {
             entry.Id = 0;
@@ -147,6 +166,12 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
         document.Settings.PlayerVariables = document.Graph.PlayerVariables.Select(item => item.Clone()).ToList();
         document.Settings.SaveVariables = document.Graph.SaveVariables.Select(item => item.Clone()).ToList();
         return JsonSerializer.SerializeToUtf8Bytes(document, JsonOptions);
+    }
+
+    private static byte[] ComparisonBytes(EditorProjectDocument document)
+    {
+        foreach (var file in document.Files.Values.Where(file => !file.Exists)) file.Data = [];
+        return Serialize(document);
     }
 
     public async Task SaveAsync(CancellationToken cancellationToken = default)
@@ -168,6 +193,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
             try
             {
                 var snapshot = Capture();
+                CheckTrackedFiles();
                 capturedContent = Serialize(snapshot);
                 if (!File.ReadAllBytes(settingsPath).AsSpan().SequenceEqual(_settingsBaseline))
                     throw new EditorOperationException("project.externalSettings", "Project settings changed outside the editor. Reload before saving.");
@@ -179,12 +205,14 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
                     ["settings.json"] = settings,
                     [".galnet/editor-state.json"] = JsonSerializer.SerializeToUtf8Bytes(project.EditorState, JsonOptions)
                 };
-                plan = new ProjectSavePlan(writes, content.DeletedFiles);
+                foreach (var file in snapshot.Files.Values.Where(file => file.Exists && file.ManagedContent)) writes[file.Path] = file.Data;
+                plan = new ProjectSavePlan(writes, content.DeletedFiles) { Files = TrackedExpectations() };
             }
             finally { captureLease?.Dispose(); captureLease = null; }
             // Capture and plan on the UI caller; publish detached bytes while newer author edits remain possible.
             await Task.Run(() =>
             {
+                CheckTrackedFiles();
                 if (!File.ReadAllBytes(settingsPath).AsSpan().SequenceEqual(_settingsBaseline))
                     throw new EditorOperationException("project.externalSettings", "Project settings changed before publication.");
                 repository.ApplySave(project.RootPath, plan, cancellationToken);
@@ -280,11 +308,15 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
             ValidateWorkingStructure(project.RootPath, nextWorking);
             _ = Serialize(nextWorking);
             var plan = PrepareAuthorPlan(project, nextSaved);
-            if (change is IProjectFileStructureChange files) plan = plan with { Files = files.Files };
+            if (change is IProjectFileStructureChange files)
+            {
+                foreach (var pair in plan.Files!.ExpectedHashes) files.Files.ExpectedHashes[pair.Key] = pair.Value;
+                plan = plan with { Files = files.Files };
+            }
             repository.ApplySave(project.RootPath, plan);
             try
             {
-                change.Apply(new() { Graph = documents.CurrentDocument, Settings = project.Settings, GroupEntries = documents.LoadedProject.GroupEntries }, AuthorDocumentVersion.Working);
+                change.Apply(new() { Graph = documents.CurrentDocument, Settings = project.Settings, GroupEntries = documents.LoadedProject.GroupEntries, Files = _files }, AuthorDocumentVersion.Working);
                 documents.SynchronizeGroups();
             }
             catch (Exception failure)
@@ -320,12 +352,39 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
 
     private ProjectSavePlan PrepareAuthorPlan(GalProject project, EditorProjectDocument snapshot, bool checkSettingsBaseline = true)
     {
+        if (checkSettingsBaseline) CheckTrackedFiles();
         if (checkSettingsBaseline && !File.ReadAllBytes(Path.Combine(project.RootPath, "settings.json")).AsSpan().SequenceEqual(_settingsBaseline))
             throw new EditorOperationException("project.externalSettings", "Project settings changed outside the editor.");
         _ = Serialize(snapshot);
         var content = repository.PrepareSave(project.RootPath, snapshot.Graph,
             snapshot.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value));
-        return new(new Dictionary<string, byte[]>(content.Writes) { ["settings.json"] = JsonSerializer.SerializeToUtf8Bytes(snapshot.Settings, JsonOptions) }, content.DeletedFiles);
+        var writes = new Dictionary<string, byte[]>(content.Writes) { ["settings.json"] = JsonSerializer.SerializeToUtf8Bytes(snapshot.Settings, JsonOptions) };
+        foreach (var file in snapshot.Files.Values.Where(file => file.Exists && file.ManagedContent)) writes[file.Path] = file.Data;
+        var previous = JsonSerializer.Deserialize<EditorProjectDocument>(_baseline, JsonOptions)!;
+        var removed = previous.Files.Values.Where(file => file.ManagedContent && file.Exists &&
+            (!snapshot.Files.TryGetValue(file.Id, out var next) || !next.Exists || !ProjectFilePaths.Comparer.Equals(file.Path, next.Path))).Select(file => file.Path);
+        return new(writes, content.DeletedFiles.Concat(removed).Distinct(ProjectFilePaths.Comparer).ToArray()) { Files = TrackedExpectations() };
+    }
+
+    private ProjectFilePlan TrackedExpectations()
+    {
+        var plan = new ProjectFilePlan();
+        var saved = JsonSerializer.Deserialize<EditorProjectDocument>(_baseline, JsonOptions)!;
+        foreach (var file in saved.Files.Values.Where(file => file.ManagedContent))
+            plan.ExpectedHashes[file.Path] = file.Exists ? Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(file.Data)) : null;
+        return plan;
+    }
+
+    private void CheckTrackedFiles()
+    {
+        var saved = JsonSerializer.Deserialize<EditorProjectDocument>(_baseline, JsonOptions)!;
+        var reader = new ProjectRawReader(_project!.RootPath);
+        foreach (var file in saved.Files.Values.Where(file => file.ManagedContent))
+        {
+            var path = reader.Resolve(file.Path);
+            if (file.Exists ? !File.Exists(path) || !File.ReadAllBytes(path).AsSpan().SequenceEqual(file.Data) : File.Exists(path))
+                throw ProjectFilePaths.Error("changed", file.Path);
+        }
     }
 
     private static void ValidateWorkingStructure(string projectPath, EditorProjectDocument document)

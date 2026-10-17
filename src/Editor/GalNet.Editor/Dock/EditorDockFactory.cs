@@ -169,6 +169,7 @@ public sealed class EditorDockFactory : Factory, IDisposable
             }
 
             var services = _serviceProvider.GetService<IProjectService>()?.Current?.Services ?? _serviceProvider;
+            if (panel.PanelId == EditorDockPanelIds.FileEditor) { RemoveRestoredDocument(document); continue; }
             if (panel.PanelId == EditorDockPanelIds.GroupEditor)
             {
                 var groupId = GetGroupEditorId(document.Id);
@@ -267,6 +268,20 @@ public sealed class EditorDockFactory : Factory, IDisposable
         if (document is not null) CloseDocument(document);
     }
 
+    public void OpenFileEditor(ProjectTextBuffer buffer)
+    {
+        if (_documentDock?.VisibleDockables is null) return;
+        var id = "FileEditor:" + buffer.Id;
+        var existing = _panelByDockable.Keys.FirstOrDefault(item => item.Id == id);
+        if (existing is not null) { if (existing.Owner is null) _documentDock.ActiveDockable = existing; else Activate(existing); return; }
+        var document = CreateDocument(_extensions.FindDockPanel(EditorDockPanelIds.FileEditor)!, buffer.Id, id);
+        var viewModel = (FileDocumentPanelViewModel)document.Context!;
+        document.Title = viewModel.Title;
+        viewModel.PropertyChanged += (_, args) => { if (args.PropertyName == nameof(FileDocumentPanelViewModel.Title)) document.Title = viewModel.Title; };
+        AddDocument(document, _extensions.FindDockPanel(EditorDockPanelIds.FileEditor)!); Activate(document);
+        LayoutChanged?.Invoke();
+    }
+
     // ── Init ──
 
     public override void InitLayout(IDockable layout)
@@ -304,6 +319,7 @@ public sealed class EditorDockFactory : Factory, IDisposable
             {
                 if (args.Dockable is not { } closed) return;
                 if (closed.Context is GroupEditorPanelViewModel group) group.Dispose();
+                if (closed.Context is FileDocumentPanelViewModel file) file.Dispose();
                 _panelByDockable.Remove(closed);
             };
             DockableMoved += (_, args) => { Log.Information("[DockFactory] DockableMoved: {Id}", args.Dockable?.Id); LayoutChanged?.Invoke(); };
@@ -339,7 +355,7 @@ public sealed class EditorDockFactory : Factory, IDisposable
         foreach (var (dockable, panel) in _panelByDockable)
             dockable.Title = panel.PanelId == EditorDockPanelIds.GroupEditor && dockable.Context is GroupEditorPanelViewModel group
                 ? LocalizeTitle(panel, [group.GroupNode.Name])
-                : LocalizeTitle(panel);
+                : dockable.Context is FileDocumentPanelViewModel file ? file.Title : LocalizeTitle(panel);
     }
 
     private static string GetGroupEditorDocumentId(string groupId) => $"GroupEditor:{groupId}";
@@ -408,6 +424,7 @@ public sealed class EditorDockFactory : Factory, IDisposable
     {
         foreach (var page in _panelByDockable.Keys.Select(dockable => dockable.Context).OfType<GroupEditorPanelViewModel>())
             page.Dispose();
+        foreach (var page in _panelByDockable.Keys.Select(dockable => dockable.Context).OfType<FileDocumentPanelViewModel>()) page.Dispose();
     }
 
     // ── Utility ──

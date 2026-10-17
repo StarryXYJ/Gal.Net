@@ -322,7 +322,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         public ProjectSavePlan PrepareSave(string path, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groups) => inner.PrepareSave(path, document, groups);
         public void ApplySave(string path, ProjectSavePlan plan, CancellationToken cancellationToken = default)
         {
-            if (transaction is PasteFaultTransaction { Armed: true }) transaction.Commit(path, plan, cancellationToken);
+            if (transaction is PasteFaultTransaction { Armed: true } or TextPublishFailure { Armed: true } or TextPublishPause { Armed: true }) transaction.Commit(path, plan, cancellationToken);
             else inner.ApplySave(path, plan, cancellationToken);
         }
         public void Save(string path, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groups) => inner.Save(path, document, groups);

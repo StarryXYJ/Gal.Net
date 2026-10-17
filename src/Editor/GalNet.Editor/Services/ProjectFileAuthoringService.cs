@@ -11,6 +11,11 @@ namespace GalNet.Editor.Services;
 /// <summary>One project history entry for each complete file intent.</summary>
 public sealed class ProjectFileAuthoringService(IProjectService projects, IProjectContentSession content, EditorHistories histories, IEntryCatalog catalog, IResourceTypeCatalog types, Interfaces.IAssetCatalogService assets) : IProjectFileCommandExecutor
 {
+    public ProjectFileImpact Analyze(ProjectFileRequest request)
+    {
+        using var operation = new ProjectFileOperation(projects.Current!.RootPath, request, catalog, types);
+        return operation.Analyze(content.CaptureWorking(), content.CaptureSaved());
+    }
     public async Task ExecuteAsync(ProjectFileRequest request)
     {
         var project = projects.Current ?? throw new InvalidOperationException("No project is open.");

@@ -1,6 +1,6 @@
 # Editor 创作工作区实施计划
 
-日期：2026-10-15；进度更新：2026-10-17。依赖：[需求](feature.md)、[设计](design.md)。用户已授权实施，P1a 已验证，见 [phase-1a.md](phase-1a.md)；P1b 已完成当前工作树集成验证，构建成功、311 项测试通过，见 [phase-1b.md](phase-1b.md)。P2 已验证，当前工作树构建成功、323 项回归通过，见 [phase-2.md](phase-2.md)。用户追加编辑器 UI i18n 后，在 P3 前插入 P2i；P2i 已验证，隔离基线构建成功、328 项回归通过，见 [phase-2i.md](phase-2i.md)；P3 已验证，当前工作树构建成功、339 项回归通过，见 [phase-3.md](phase-3.md)；P4a 已验证，当前工作树构建成功、365 项相关回归通过，见 [phase-4a.md](phase-4a.md)；下一阶段 P4b，其余 Phase 为 planned。状态只使用 planned / in-progress / verified / skipped；状态更新必须附实际证据。
+日期：2026-10-15；进度更新：2026-10-17。依赖：[需求](feature.md)、[设计](design.md)。用户已授权实施，P1a 已验证，见 [phase-1a.md](phase-1a.md)；P1b 已完成当前工作树集成验证，构建成功、311 项测试通过，见 [phase-1b.md](phase-1b.md)。P2 已验证，当前工作树构建成功、323 项回归通过，见 [phase-2.md](phase-2.md)。用户追加编辑器 UI i18n 后，在 P3 前插入 P2i；P2i 已验证，隔离基线构建成功、328 项回归通过，见 [phase-2i.md](phase-2i.md)；P3 已验证，当前工作树构建成功、339 项回归通过，见 [phase-3.md](phase-3.md)；P4a 已验证，当前工作树构建成功、365 项相关回归通过，见 [phase-4a.md](phase-4a.md)；P4b 已验证，最终隔离解决方案构建成功、383 项相关回归通过，见 [phase-4b.md](phase-4b.md)；下一阶段 P5，其余 Phase 为 planned。状态只使用 planned / in-progress / verified / skipped；状态更新必须附实际证据。
 
 ## 顺序与范围
 
@@ -23,7 +23,7 @@ P1a 基本页面/项目文档 → P1b 项目历史/保存骨架
 | P2i | verified | 四语基础页面、语言偏好与动态刷新；隔离基线构建成功、328 项回归通过 | 11 |
 | P3 | verified | 分支、批量编辑、深复制粘贴、键盘操作；339 项回归通过 | 2、4、11 |
 | P4a | verified | 项目文件事务、引用保护和未保存文档协调；365 项相关回归通过 | 5、6、7 |
-| P4b | planned | 项目文件树与实际文件操作体验 | 1、2、5 |
+| P4b | verified | 项目文件树与实际文件操作体验 | 1、2、5 |
 | P5 | planned | 多 Group 编辑、变量和基本参数 UI | 1、2、3、8 |
 | P6 | planned | 完整 schema/复杂值/专属编辑器接入 | 8、9 |
 | P7 | planned | 当前快照校验编译、i18n 与跨功能真实验收 | 1–11 |
@@ -169,7 +169,7 @@ P1a 基本页面/项目文档 → P1b 项目历史/保存骨架
 
 ## P4b：项目文件树与文件编辑入口
 
-状态：planned。前置：P4a。
+状态：verified。2026-10-17 构建及 383 项相关回归通过，见 [phase-4b.md](phase-4b.md)；地址栏/拖放/全局搜索和文本页已验证，原生对话框及外部应用人工验收仍单列。前置：P4a。
 
 **目标**：让用户在 GUI 实际完成项目内部文件操作。
 

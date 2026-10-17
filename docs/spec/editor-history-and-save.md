@@ -1,6 +1,6 @@
 # Editor 项目历史与保存
 
-当前实现见 `features/F-20261015-02-editor-authoring-workspace/phase-1b.md`。P2/P3 已接入 [Graph 编辑](editor-graph.md)，包括分支与整批粘贴；项目文件界面和完整 Group 参数 UI 按后续阶段继续迁移。
+当前实现见 `features/F-20261015-02-editor-authoring-workspace/phase-1b.md`。P2/P3 已接入 [Graph 编辑](editor-graph.md)，包括分支与整批粘贴；项目文件界面及文本页已接入，见 [项目文件操作](editor-files.md)；完整 Group 参数 UI 继续按后续阶段迁移。
 
 ## 操作与输入
 
@@ -22,7 +22,7 @@ dirty 依据当前作者内容与最近成功保存内容比较，独立于历�
 
 ## 结构计划与恢复材料
 
-`IProjectStructureChange` 分别对 Working 与 Saved 版本应用同一结构意图，允许删除/恢复保留各自的 Group 内容。`PublishStructureAsync` 只发布变换后的保存基线，内存仍保留原有未保存字段。后续保存再撤销路径变更时，变换应用于当时的基线，不用旧整份文件覆盖刚保存的其他字段。`IProjectFileStructureChange` 可附带普通文件、目录与大小写改名计划，与 Graph/Raw Group/settings 一起发布；现有 Assets 操作已接入，完整项目文件界面尚未开放。支持矩阵与引用规则见 [项目文件操作](editor-files.md)。
+`IProjectStructureChange` 分别对 Working 与 Saved 版本应用同一结构意图，允许删除/恢复保留各自的 Group 内容。`PublishStructureAsync` 只发布变换后的保存基线，内存仍保留原有未保存字段。后续保存再撤销路径变更时，变换应用于当时的基线，不用旧整份文件覆盖刚保存的其他字段。`IProjectFileStructureChange` 可附带普通文件、目录与大小写改名计划，与 Graph/Raw Group/settings 一起发布；项目文件界面与文本缓冲已接入。项目拥有的文件描述项使用稳定会话 ID，独立保存 path、存在状态和受管理文本字节；关闭视图不删除该状态。删除项的保留字节不参与当前 dirty 比较，但仍保留于历史/恢复材料，以支持分别恢复 Working/Saved。支持矩阵与引用规则见 [项目文件操作](editor-files.md)。
 
 作者文件事务材料位于 `.galnet/editor/transactions/<id>/`：manifest 记录路径、前后内容哈希与 prepared/publishing/committed/repair-required 状态，编号 `.old`/`.new` 文件保留备份与新内容。失败逆序恢复；恢复失败保留目录。打开项目时检查未完成计划，只在现有内容匹配记录的旧/新哈希时恢复，发现外部内容则拒绝覆盖并报告材料位置。成功材料清理失败只记录并延后清理，不将已成功发布报告为保存失败。
 

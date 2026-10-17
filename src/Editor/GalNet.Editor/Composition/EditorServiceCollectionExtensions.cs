@@ -156,6 +156,8 @@ public static class EditorServiceCollectionExtensions
         services.AddTransient<NewProjectPanelViewModel>();
         services.AddTransient<LogPanelViewModel>();
         services.AddScoped<AssetPanelViewModel>();
+        services.AddScoped<ProjectFilesIndex>();
+        services.AddScoped<ProjectTextFiles>();
         services.AddTransient<ProjectSettingsPanelViewModel>();
         services.AddTransient<EditorSettingsPanelViewModel>();
         services.AddTransient<ExportPanelViewModel>();

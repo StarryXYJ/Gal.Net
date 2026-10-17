@@ -12,7 +12,7 @@ namespace GalNet.Editor.Shared.Services;
 public enum ProjectFileAction { Move, Copy, Import, Delete, CreateFile, CreateDirectory, Metadata }
 public sealed record ProjectFileRequest(ProjectFileAction Action, IReadOnlyList<string> Sources, string Target = "",
     bool TargetIsDirectory = true, byte[]? Content = null, bool DeleteGroups = false, bool AllowCandidateReferences = false,
-    string? Filter = null, string? Compression = null);
+    string? Filter = null, string? Compression = null, bool UniqueNames = false);
 public sealed record ProjectFileReference(string Document, string Field, bool Certain);
 public sealed record ProjectFileImpact(IReadOnlyList<string> Groups, IReadOnlyList<ProjectFileReference> References);
 
@@ -76,6 +76,7 @@ public sealed class ProjectFileOperation : IDisposable
     private bool _disposed;
     private FileStream? _lease;
     private bool _caseOnly;
+    private HashSet<int>? _galleryIds;
     private RemovedContent? _removedWorking, _removedSaved;
     public string Id { get; } = Guid.NewGuid().ToString("N");
     public long RetainedBytes => _storedBytes + _removedBytes;
@@ -94,6 +95,10 @@ public sealed class ProjectFileOperation : IDisposable
         await publish((working, saved) =>
         {
             if (!_initialized) Initialize(working, saved);
+            foreach (var file in working.Files.Values.Concat(saved.Files.Values).Where(file => file.ManagedContent))
+            {
+                _managed.Add(file.Path); _managed.Add(Map(file.Path, true)); _managed.Add(Map(file.Path, false));
+            }
             if (forward && _request.Action == ProjectFileAction.Delete)
             {
                 var removed = CaptureRemoved(working);
@@ -107,7 +112,11 @@ public sealed class ProjectFileOperation : IDisposable
             var desiredDirectories = forward ? _afterDirectories : _beforeDirectories;
             foreach (var path in _before.Keys.Concat(_after.Keys).Distinct(ProjectFilePaths.Comparer))
             {
-                if (_managed.Contains(path)) continue;
+                if (_managed.Contains(path))
+                {
+                    if (!current.Keys.Contains(path, ProjectFilePaths.Comparer) && File.Exists(_reader.Resolve(path))) throw ProjectFilePaths.Error("changed", path);
+                    continue;
+                }
                 var expected = current.FirstOrDefault(pair => ProjectFilePaths.Comparer.Equals(pair.Key, path)).Value;
                 if (AuthorFileTransaction.ReadHash(_reader.Resolve(path)) != expected?.Hash) throw ProjectFilePaths.Error("changed", path);
             }
@@ -121,7 +130,7 @@ public sealed class ProjectFileOperation : IDisposable
             }
             var files = new ProjectFilePlan();
             foreach (var pair in current.Where(pair => !_managed.Contains(pair.Key))) files.ExpectedHashes[pair.Key] = pair.Value.Hash;
-            foreach (var path in desired.Keys.Where(path => !current.Keys.Contains(path, ProjectFilePaths.Comparer) && !_managed.Contains(path))) files.ExpectedHashes[path] = null;
+            foreach (var path in desired.Keys.Where(path => !current.Keys.Contains(path, ProjectFilePaths.Comparer))) files.ExpectedHashes[path] = null;
             if (_caseOnly)
             {
                 foreach (var (from, to) in _moves) files.CaseRenames.Add(forward ? new(from, to) : new(to, from));
@@ -170,9 +179,18 @@ public sealed class ProjectFileOperation : IDisposable
             if ((File.GetAttributes(full) & FileAttributes.ReparsePoint) != 0) throw ProjectFilePaths.Error("path", source);
             if (_request.Action == ProjectFileAction.Metadata && Directory.Exists(full)) throw ProjectFilePaths.Error("category", source);
             string? target = _request.Action is ProjectFileAction.Delete or ProjectFileAction.Metadata ? null
-                : ProjectFilePaths.Editable(_request.TargetIsDirectory ? _request.Target.TrimEnd('/') + "/" + Path.GetFileName(source) : _request.Target);
+                : ProjectFilePaths.Editable(_request.TargetIsDirectory ? (_request.Target.Length == 0 ? "" : _request.Target.TrimEnd('/') + "/") + Path.GetFileName(source) : _request.Target);
             if (target is not null)
             {
+                if (_request.UniqueNames && _request.Action is ProjectFileAction.Copy or ProjectFileAction.Import)
+                {
+                    var original = target; var suffix = 1;
+                    while (_targets.Contains(target) || File.Exists(_reader.Resolve(target)) || Directory.Exists(_reader.Resolve(target)))
+                    {
+                        var extension = File.Exists(full) ? Path.GetExtension(original) : "";
+                        target = original[..(original.Length - extension.Length)] + " " + suffix++ + extension;
+                    }
+                }
                 var parent = Path.GetDirectoryName(target)?.Replace(Path.DirectorySeparatorChar, '/') ?? "";
                 if (!Directory.Exists(_reader.Resolve(parent))) throw ProjectFilePaths.Error("missing", parent);
                 if (_request.Action != ProjectFileAction.Import && ProjectFilePaths.Category(source) != ProjectFilePaths.Category(target)) throw ProjectFilePaths.Error("category", target);
@@ -270,7 +288,14 @@ public sealed class ProjectFileOperation : IDisposable
         }
         if (Strings(JsonSerializer.SerializeToElement(document.Settings)).Any(text => values.Any(value => text.Contains(value, StringComparison.OrdinalIgnoreCase))))
             references.Add(new("settings.json", "custom", false));
-        foreach (var file in new[] { "UI/ui.json" }.Where(path => File.Exists(_reader.Resolve(path))))
+        foreach (var file in document.Files.Values.Where(file => file.Exists && file.ManagedContent && !_roots.Any(root => ProjectFilePaths.Within(file.Path, root))))
+        {
+            using var stream = new MemoryStream(file.Data, writable: false);
+            using var reader = new StreamReader(stream, new System.Text.UTF8Encoding(false, true), detectEncodingFromByteOrderMarks: true);
+            var text = reader.ReadToEnd();
+            if (values.Any(value => text.Contains(value, StringComparison.OrdinalIgnoreCase))) references.Add(new(file.Path, "custom", false));
+        }
+        foreach (var file in new[] { "UI/ui.json" }.Where(path => File.Exists(_reader.Resolve(path)) && !document.Files.Values.Any(file => file.Exists && file.ManagedContent && ProjectFilePaths.Comparer.Equals(file.Path, path))))
         {
             var text = File.ReadAllText(_reader.Resolve(file));
             if (values.Any(value => text.Contains(value, StringComparison.OrdinalIgnoreCase))) references.Add(new(file, "custom", false));
@@ -302,6 +327,23 @@ public sealed class ProjectFileOperation : IDisposable
             meta = (AssetMeta)Activator.CreateInstance(type.MetaDtoType)!; meta.TypeId = type.TypeId; meta.Id = Guid.NewGuid().ToString("N");
         }
         if (newId) meta.Id = Guid.NewGuid().ToString("N");
+        if (newId && meta.Gallery is { Count: > 0 })
+        {
+            if (_galleryIds is null)
+            {
+                _galleryIds = [];
+                if (Directory.Exists(_reader.Resolve("Assets")))
+                    foreach (var path in Enumerate(_reader.Resolve("Assets")).Files.Where(path => path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)))
+                        foreach (var item in _codec.Deserialize(File.ReadAllText(path), _reader.Relative(path)[7..^5]).Gallery ?? []) _galleryIds.Add(item.Id);
+            }
+            meta.Gallery = meta.Gallery.Select(item =>
+            {
+                if (item.Id <= 0) throw ProjectFilePaths.Error("galleryId", destination);
+                if (_galleryIds.Add(item.Id)) return item;
+                var id = 1; while (_galleryIds.Contains(id)) id = checked(id + 1);
+                _galleryIds.Add(id); return item with { Id = id };
+            }).ToList();
+        }
         meta.Path = destination[7..];
         if (_request.Action == ProjectFileAction.Metadata) { if (meta is SpriteAssetMeta sprite && _request.Filter is not null) sprite.Filter = _request.Filter; if (_request.Compression is not null) meta.Compress = _request.Compression; }
         _after[destination + ".meta"] = Store(System.Text.Encoding.UTF8.GetBytes(_codec.Serialize(meta)));
@@ -341,7 +383,7 @@ public sealed class ProjectFileOperation : IDisposable
     {
         var nodes = document.Graph.Nodes.Where(node => node.Type == "Group" && _roots.Any(root => ProjectFilePaths.Within("Graph/" + node.File, root))).ToArray();
         var ids = nodes.Select(node => node.Id).ToHashSet();
-        return new(Clone(new EditorProjectDocument { Graph = new() { Nodes = nodes.ToList(), Edges = document.Graph.Edges.Where(edge => ids.Contains(edge.FromNodeId) || ids.Contains(edge.ToNodeId)).ToList() }, GroupEntries = document.GroupEntries.Where(pair => ids.Contains(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value) }),
+        return new(Clone(new EditorProjectDocument { Graph = new() { Nodes = nodes.ToList(), Edges = document.Graph.Edges.Where(edge => ids.Contains(edge.FromNodeId) || ids.Contains(edge.ToNodeId)).ToList() }, GroupEntries = document.GroupEntries.Where(pair => ids.Contains(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value), Files = document.Files.Where(pair => _roots.Any(root => ProjectFilePaths.Within(pair.Value.Path, root))).ToDictionary(pair => pair.Key, pair => pair.Value) }),
             document.Graph.Nodes.Select((node, index) => (node.Id, index)).ToDictionary(item => item.Id, item => item.index),
             document.Graph.Edges.Select((edge, index) => (edge.Id, index)).ToDictionary(item => item.Id, item => item.index));
     }
@@ -351,10 +393,19 @@ public sealed class ProjectFileOperation : IDisposable
     {
         public void Apply(EditorProjectDocument document, AuthorDocumentVersion version)
         {
+            var removed = version == AuthorDocumentVersion.Working ? Working : Saved;
+            foreach (var file in document.Files.Values)
+            {
+                if (Owner.Action == ProjectFileAction.Move) file.Path = Owner.Map(file.Path, Forward);
+                if (Owner.Action == ProjectFileAction.Delete && Owner._roots.Any(root => ProjectFilePaths.Within(file.Path, root)))
+                {
+                    file.Exists = !Forward;
+                    if (!Forward && removed?.Document.Files.TryGetValue(file.Id, out var previous) == true) file.Data = previous.Data.ToArray();
+                }
+            }
             if (Owner.Action == ProjectFileAction.Move)
                 foreach (var node in document.Graph.Nodes.Where(node => node.Type == "Group")) node.File = Owner.Map("Graph/" + node.File, Forward)[6..];
             if (Owner.Action != ProjectFileAction.Delete) return;
-            var removed = version == AuthorDocumentVersion.Working ? Working : Saved;
             if (removed is null) return;
             var ids = removed.Document.Graph.Nodes.Select(node => node.Id).ToHashSet();
             if (Forward)

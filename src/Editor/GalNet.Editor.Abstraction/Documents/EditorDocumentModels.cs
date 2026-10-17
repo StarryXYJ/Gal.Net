@@ -139,4 +139,15 @@ public sealed class EditorProjectDocument
     public EditorGraphDocument Graph { get; set; } = new();
     public Dictionary<string, List<EditorEntryData>> GroupEntries { get; set; } = [];
     public ProjectSettings Settings { get; set; } = new();
+    public Dictionary<string, EditorFileDocument> Files { get; set; } = [];
+}
+
+/// <summary>Session identity survives path changes and closed views. Only managed text bytes participate in saving.</summary>
+public sealed class EditorFileDocument
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string Path { get; set; } = "";
+    public bool Exists { get; set; } = true;
+    public bool ManagedContent { get; set; }
+    public byte[] Data { get; set; } = [];
 }

@@ -19,6 +19,7 @@ public sealed class EditorViewFactory : IEditorViewFactory
         [typeof(EditorWorkspaceViewModel)] = typeof(NodeGraphPanelView),
         [typeof(InspectorHostViewModel)] = typeof(InspectorHostView),
         [typeof(GroupEditorPanelViewModel)] = typeof(GroupEditorPanelView),
+        [typeof(FileDocumentPanelViewModel)] = typeof(FileDocumentPanelView),
         [typeof(NewProjectPanelViewModel)] = typeof(NewProjectPanelView),
         [typeof(GamePreviewPanelViewModel)] = typeof(GamePreviewPanelView),
         [typeof(LogPanelViewModel)] = typeof(LogPanelView)
