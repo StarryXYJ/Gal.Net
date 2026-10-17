@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GalNet.Core.Settings;
+using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Shared.Services;
@@ -53,6 +54,19 @@ public sealed class DirectProjectPersistence(string projectPath, IEditorDocument
         var writes = new Dictionary<string, byte[]>(plan.Writes)
         { ["settings.json"] = JsonSerializer.SerializeToUtf8Bytes(settings, JsonOptions) };
         return new(writes, plan.DeletedFiles);
+    }
+
+    public Task PublishStructureAsync(EditorProjectDocument document, Func<EditorProjectDocument, EditorProjectDocument, GalNet.Editor.Abstraction.Changes.IProjectStructureChange> prepare, CancellationToken cancellationToken = default)
+    {
+        var change = prepare(document, document);
+        var next = EditorDocumentCloner.Clone(document);
+        change.Apply(next, GalNet.Editor.Abstraction.Changes.AuthorDocumentVersion.Working);
+        var plan = PrepareSave(next);
+        if (change is GalNet.Editor.Abstraction.Changes.IProjectFileStructureChange files) plan = plan with { Files = files.Files };
+        _repository.ApplySave(_projectPath, plan, cancellationToken);
+        _settingsBaseline = plan.Writes["settings.json"].ToArray();
+        document.Graph = next.Graph; document.GroupEntries = next.GroupEntries; document.Settings = next.Settings;
+        return Task.CompletedTask;
     }
 
     public static ProjectSettings LoadSettings(string projectPath)

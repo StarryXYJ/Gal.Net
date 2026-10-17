@@ -23,6 +23,8 @@
 
 资源类型只负责识别、保存、枚举和打包；它不注册 decoder、Editor inspector 或 Avalonia 页面。decoder 以 `(typeId, target CLR type)` 另行注册。
 
+Editor 将原始资源与 sidecar 作为一次项目文件编辑：移动保留 ID 并重定位 path，导入/复制生成新 ID，保留 Gallery 与扩展字段；无法无损类型化的 metadata 拒绝重写。资源索引刷新只读，不负责补建 sidecar。GUI 操作支持项目历史撤销，CLI 共用事务而不保留 GUI 历史，见 [Editor 项目文件操作](editor-files.md)。
+
 ## 查询、解码与生命周期
 
 ```text

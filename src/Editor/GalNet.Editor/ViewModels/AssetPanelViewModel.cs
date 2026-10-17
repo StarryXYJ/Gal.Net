@@ -26,6 +26,10 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
     private readonly IEditorLocalizationService _localization;
     private AssetEntry? _clipboardEntry;
     private bool _isCut;
+    private Exception? _fileError;
+    private void ShowFileError(Exception error) { _fileError = error; ErrorText = GalNet.Editor.Services.EditorText.Error(error).Render(_localization); }
+    partial void OnErrorTextChanged(string value) { if (_fileError is { } error && value != GalNet.Editor.Services.EditorText.Error(error).Render(_localization)) _fileError = null; }
+    private void OnLocaleChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args) { if (args.PropertyName == "Item[]" && _fileError is { } error) ErrorText = GalNet.Editor.Services.EditorText.Error(error).Render(_localization); }
     private bool _disposed;
     private CancellationTokenSource? _thumbnailCancellation;
     [ObservableProperty] private string _currentDirectory = "";
@@ -43,7 +47,7 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
 
     public AssetPanelViewModel(IAssetCatalogService catalog, IProjectFileCommandExecutor fileCommands, IProjectService projects, EditorWorkspaceViewModel workspace, IFileDialogService fileDialogs, IEditorLocalizationService localization)
     {
-        _catalog = catalog; _fileCommands = fileCommands; _projects = projects; _workspace = workspace; _fileDialogs = fileDialogs; _localization = localization; _catalog.Changed += OnCatalogChanged; _ = RefreshAsync();
+        _catalog = catalog; _fileCommands = fileCommands; _projects = projects; _workspace = workspace; _fileDialogs = fileDialogs; _localization = localization; _localization.PropertyChanged += OnLocaleChanged; _catalog.Changed += OnCatalogChanged; _ = RefreshAsync();
     }
     partial void OnCurrentDirectoryChanged(string value) { PathText = string.IsNullOrEmpty(value) ? "Assets" : "Assets/" + value; OnPropertyChanged(nameof(Breadcrumb)); OnPropertyChanged(nameof(CanGoBack)); }
     partial void OnSelectedEntryChanged(AssetEntry? value) { if (value is { IsDirectory: false }) _workspace.FocusAsset(value); }
@@ -51,7 +55,7 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
     private async Task RefreshAsync()
     {
         try { ErrorText = ""; await _catalog.RefreshAsync(); LoadEntries(); }
-        catch (Exception ex) { ErrorText = ex.Message; }
+        catch (Exception ex) { ShowFileError(ex); }
     }
     [RelayCommand]
     private void Open(AssetEntry? entry)
@@ -60,7 +64,7 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         if (!entry.IsDirectory)
         {
             try { Process.Start(new ProcessStartInfo(entry.FullPath) { UseShellExecute = true }); }
-            catch (Exception ex) { ErrorText = ex.Message; }
+            catch (Exception ex) { ShowFileError(ex); }
             return;
         }
         CurrentDirectory = entry.RelativePath; SelectedEntry = null; LoadEntries();
@@ -88,14 +92,14 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         var files = await _fileDialogs.OpenFilePickerAsync("Import Assets");
         if (files.Count == 0) return;
         try { await ExecuteFileCommandAsync(new ImportAssetsCommand(files, CurrentDirectory)); }
-        catch (Exception ex) { ErrorText = ex.Message; }
+        catch (Exception ex) { ShowFileError(ex); }
     }
     [RelayCommand] private Task ImportExternalAsync(IEnumerable<string> paths) => ImportExternalCoreAsync(paths);
     public void SetExternalDropActive(bool value) => IsExternalDropActive = value;
     private async Task ImportExternalCoreAsync(IEnumerable<string> paths)
     {
         try { ErrorText = ""; await ExecuteFileCommandAsync(new ImportAssetsCommand(paths.ToList(), CurrentDirectory)); }
-        catch (Exception ex) { ErrorText = ex.Message; }
+        catch (Exception ex) { ShowFileError(ex); }
     }
     [RelayCommand]
     private void CopySelected()
@@ -119,13 +123,13 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
             else if (!_clipboardEntry.IsDirectory) await ExecuteFileCommandAsync(new ImportAssetsCommand([_clipboardEntry.FullPath], CurrentDirectory));
             _clipboardEntry = null; _isCut = false; LoadEntries();
         }
-        catch (Exception ex) { ErrorText = ex.Message; }
+        catch (Exception ex) { ShowFileError(ex); }
     }
     [RelayCommand]
     private async Task NewFolderAsync()
     {
         try { await ExecuteFileCommandAsync(new CreateAssetDirectoryCommand(CurrentDirectory, "New Folder")); }
-        catch (Exception ex) { ErrorText = ex.Message; }
+        catch (Exception ex) { ShowFileError(ex); }
     }
     [RelayCommand]
     private void BeginRename(AssetEntry? entry)
@@ -167,7 +171,7 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         var path = entry?.FullPath;
         if (string.IsNullOrWhiteSpace(path)) return;
         try { Process.Start(new ProcessStartInfo("explorer.exe", entry!.IsDirectory ? $"\"{path}\"" : $"/select,\"{path}\"") { UseShellExecute = true }); }
-        catch (Exception ex) { ErrorText = ex.Message; }
+        catch (Exception ex) { ShowFileError(ex); }
     }
     [RelayCommand]
     private void ShowCurrentDirectoryInExplorer()
@@ -177,14 +181,14 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
             var entry = _catalog.GetEntry(CurrentDirectory);
             if (entry is not null) ShowInExplorer(entry);
         }
-        catch (Exception ex) { ErrorText = ex.Message; }
+        catch (Exception ex) { ShowFileError(ex); }
     }
     [RelayCommand] private Task DeleteSelected() => DeleteSelectedAsync();
     private async Task DeleteSelectedAsync()
     {
         if (SelectedEntry is null) return;
         try { await ExecuteFileCommandAsync(new DeleteAssetCommand(SelectedEntry.RelativePath)); SelectedEntry = null; LoadEntries(); }
-        catch (Exception ex) { ErrorText = ex.Message; }
+        catch (Exception ex) { ShowFileError(ex); }
     }
     public static bool CanMoveTo(AssetEntry target, string sourceRelativePath)
     {
@@ -233,8 +237,8 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         var project = _projects.Current ?? throw new InvalidOperationException("No project is open.");
         var result = await _fileCommands.ExecuteAsync(project.RootPath, command);
         if (!result.Success)
-            throw new IOException(string.Join("; ", result.Diagnostics.Select(item => item.Message)));
-        project.IsDirty = true;
+            throw result.Error ?? new IOException(string.Join("; ", result.Diagnostics.Select(item => item.Message)));
+
         await _catalog.RefreshAsync();
         LoadEntries();
     }
@@ -277,6 +281,7 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         if (_disposed)
             return;
         _disposed = true;
+        _localization.PropertyChanged -= OnLocaleChanged;
         _catalog.Changed -= OnCatalogChanged;
         _thumbnailCancellation?.Cancel();
         _thumbnailCancellation?.Dispose();

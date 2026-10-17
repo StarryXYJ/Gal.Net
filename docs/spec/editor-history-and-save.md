@@ -22,7 +22,7 @@ dirty 依据当前作者内容与最近成功保存内容比较，独立于历�
 
 ## 结构计划与恢复材料
 
-`IProjectStructureChange` 分别对 Working 与 Saved 版本应用同一结构意图，允许删除/恢复保留各自的 Group 内容。`PublishStructureAsync` 只发布变换后的保存基线，内存仍保留原有未保存字段。后续保存再撤销路径变更时，变换应用于当时的基线，不用旧整份文件覆盖刚保存的其他字段。当前底层支持 Graph/Raw Group/settings 的小型计划，已验证 Group 创建、删除、路径变更及恢复；任意项目文件操作和其 GUI 入口尚未开放。
+`IProjectStructureChange` 分别对 Working 与 Saved 版本应用同一结构意图，允许删除/恢复保留各自的 Group 内容。`PublishStructureAsync` 只发布变换后的保存基线，内存仍保留原有未保存字段。后续保存再撤销路径变更时，变换应用于当时的基线，不用旧整份文件覆盖刚保存的其他字段。`IProjectFileStructureChange` 可附带普通文件、目录与大小写改名计划，与 Graph/Raw Group/settings 一起发布；现有 Assets 操作已接入，完整项目文件界面尚未开放。支持矩阵与引用规则见 [项目文件操作](editor-files.md)。
 
 作者文件事务材料位于 `.galnet/editor/transactions/<id>/`：manifest 记录路径、前后内容哈希与 prepared/publishing/committed/repair-required 状态，编号 `.old`/`.new` 文件保留备份与新内容。失败逆序恢复；恢复失败保留目录。打开项目时检查未完成计划，只在现有内容匹配记录的旧/新哈希时恢复，发现外部内容则拒绝覆盖并报告材料位置。成功材料清理失败只记录并延后清理，不将已成功发布报告为保存失败。
 

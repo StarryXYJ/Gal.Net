@@ -460,5 +460,22 @@
   "Graph.Branch.Remove": "分岐項目を削除",
   "Graph.Branch.Text": "選択肢テキストキー",
   "Graph.Branch.Condition": "条件式",
-  "Status.GraphPasted": "{0} 個のノードを貼り付けました。カスタム内容内の参照は元のままです。確認してください。"
+  "Status.GraphPasted": "{0} 個のノードを貼り付けました。カスタム内容内の参照は元のままです。確認してください。",
+  "History.FileMove": "ファイルを移動：{0}",
+  "History.FileCopy": "ファイルをコピー：{0}",
+  "History.FileImport": "ファイルをインポート：{0}",
+  "History.FileDelete": "ファイルを削除：{0}",
+  "History.FileCreateFile": "ファイルを作成：{0}",
+  "History.FileCreateDirectory": "フォルダーを作成：{0}",
+  "History.FileMetadata": "リソース属性を編集：{0}",
+  "Error.files.path": "パスが無効かリンクを含んでいます：{0}",
+  "Error.files.protected": "このパスはプロジェクトの専用機能で管理されています：{0}",
+  "Error.files.missing": "ファイルまたはフォルダーが見つかりません：{0}",
+  "Error.files.collision": "移動先は使用中です。既存の内容は保持されました：{0}",
+  "Error.files.category": "異なるコンテンツ分類や言語フォルダーには移動できません：{0}",
+  "Error.files.changed": "ファイルまたはフォルダーが変更されました。確認して再試行してください：{0}",
+  "Error.files.referenced": "参照されているため削除しませんでした：{0}",
+  "Error.files.guidCollision": "リソース ID が重複しています。操作は適用されませんでした：{0}",
+  "Error.files.references": "未宣言の参照は自動で書き換えられません：{0}",
+  "Error.files.failed": "ファイル操作に失敗しました：{0}"
 }

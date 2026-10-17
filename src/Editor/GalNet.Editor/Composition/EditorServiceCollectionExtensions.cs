@@ -60,7 +60,8 @@ public static class EditorServiceCollectionExtensions
         services.AddScoped<EditorWorkspacePersistence>();
         services.AddScoped<EditorGroupProjectionStore>();
         services.AddSingleton<IProjectFileCommandCatalog, AssetFileCommandCatalog>();
-        services.AddScoped<IProjectFileCommandExecutor, AssetFileCommandExecutor>();
+        services.AddScoped<ProjectFileAuthoringService>();
+        services.AddScoped<IProjectFileCommandExecutor>(provider => provider.GetRequiredService<ProjectFileAuthoringService>());
         services.AddScoped<EditorHistories>();
         services.AddScoped<IProjectEditLifetime>(sp => sp.GetRequiredService<EditorHistories>());
         services.AddSingleton<IProjectClosePrompt, ProjectClosePrompt>();

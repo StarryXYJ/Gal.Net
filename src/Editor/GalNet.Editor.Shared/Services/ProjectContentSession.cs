@@ -27,6 +27,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     public Exception? LastRecoveryError { get; private set; }
     public Exception? LastNotificationError { get; private set; }
 
+    public bool IsPublishing => !_disposed && _saveGate.CurrentCount == 0;
     public bool IsDirty => _project is not null && (_drafts.Any(draft => draft.HasChanges()) || !Serialize(Capture()).AsSpan().SequenceEqual(_baseline));
     public bool RepairRequired { get; private set; }
     public Exception? LastError { get; private set; }
@@ -65,6 +66,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     public void Open(GalProject project)
     {
         if (_project is not null) throw new InvalidOperationException("The content session is already open.");
+        ProjectFileOperation.CleanupOrphans(project.RootPath);
         _project = project;
         _baseline = Serialize(Capture());
         _settingsBaseline = File.ReadAllBytes(Path.Combine(project.RootPath, "settings.json"));
@@ -278,6 +280,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
             ValidateWorkingStructure(project.RootPath, nextWorking);
             _ = Serialize(nextWorking);
             var plan = PrepareAuthorPlan(project, nextSaved);
+            if (change is IProjectFileStructureChange files) plan = plan with { Files = files.Files };
             repository.ApplySave(project.RootPath, plan);
             try
             {

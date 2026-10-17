@@ -11,8 +11,8 @@ public sealed class AssetFileCommandCatalog : IProjectFileCommandCatalog
         Define<ImportAssetsCommand>("asset.import", "Imports files into the project asset directory."),
         Define<CreateAssetDirectoryCommand>("asset.directory.create", "Creates a directory below the project asset root."),
         Define<MoveAssetCommand>("asset.move", "Moves an asset or asset directory within the project asset root."),
-        Define<RenameAssetCommand>("asset.rename", "Renames an asset and optionally updates project references."),
-        Define<DeleteAssetCommand>("asset.delete", "Deletes an asset after returning its project references."),
+        Define<RenameAssetCommand>("asset.rename", "Renames an asset and its metadata, preserving its ID. Automatic reference rewriting is unsupported."),
+        Define<DeleteAssetCommand>("asset.delete", "Deletes an asset and metadata only when no project references or candidates are found."),
         Define<PatchAssetMetadataCommand>("asset.meta.patch", "Updates supported asset metadata such as filter and compression mode.")
     ];
 

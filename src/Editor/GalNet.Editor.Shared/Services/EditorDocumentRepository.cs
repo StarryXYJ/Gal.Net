@@ -94,9 +94,10 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog) : IEditorDoc
     public void ApplySave(string projectPath, ProjectSavePlan plan, CancellationToken cancellationToken = default)
     {
         EnsureUnchanged(new ProjectRawReader(projectPath));
-        ProjectAuthorFileTransaction.Commit(projectPath, plan.Writes, plan.DeletedFiles, cancellationToken);
+        new AuthorFileTransaction().Commit(projectPath, plan, cancellationToken);
         _baseline ??= new(PathComparer);
-        foreach (var (file, bytes) in plan.Writes) _baseline[file] = bytes.ToArray();
+        foreach (var (file, bytes) in plan.Writes)
+            if (file == "Graph/graph.json" || file.StartsWith("Graph/", StringComparison.Ordinal) && file.EndsWith(".rawgalgroup", StringComparison.OrdinalIgnoreCase)) _baseline[file] = bytes.ToArray();
         foreach (var file in plan.DeletedFiles) _baseline.Remove(file);
     }
 

@@ -108,7 +108,6 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
             new PatchAssetMetadataCommand(asset.RelativePath, AssetFilter, AssetCompression));
         if (result.Success)
         {
-            project.IsDirty = true;
             await _assets.RefreshAsync();
         }
     }

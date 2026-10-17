@@ -460,5 +460,22 @@
   "Graph.Branch.Remove": "删除分支项",
   "Graph.Branch.Text": "选项文本键",
   "Graph.Branch.Condition": "条件表达式",
-  "Status.GraphPasted": "已粘贴 {0} 个节点。自定义内容中的引用保持原样，请检查。"
+  "Status.GraphPasted": "已粘贴 {0} 个节点。自定义内容中的引用保持原样，请检查。",
+  "History.FileMove": "移动文件：{0}",
+  "History.FileCopy": "复制文件：{0}",
+  "History.FileImport": "导入文件：{0}",
+  "History.FileDelete": "删除文件：{0}",
+  "History.FileCreateFile": "创建文件：{0}",
+  "History.FileCreateDirectory": "创建目录：{0}",
+  "History.FileMetadata": "编辑资源属性：{0}",
+  "Error.files.path": "路径无效或包含链接：{0}",
+  "Error.files.protected": "此路径由项目专用功能管理，不能直接操作：{0}",
+  "Error.files.missing": "文件或目录不存在：{0}",
+  "Error.files.collision": "目标已被占用，未覆盖原内容：{0}",
+  "Error.files.category": "不能将文件移动到不同的内容类别或语言目录：{0}",
+  "Error.files.changed": "文件或目录在操作后已被更改，请检查后重试：{0}",
+  "Error.files.referenced": "仍有引用，未执行删除：{0}",
+  "Error.files.guidCollision": "资源标识重复，未执行操作：{0}",
+  "Error.files.references": "无法自动改写未声明的引用：{0}",
+  "Error.files.failed": "文件操作失败：{0}"
 }

@@ -7,6 +7,7 @@ namespace GalNet.Editor.Abstraction.Services;
 public interface IProjectContentSession
 {
     bool IsDirty { get; }
+    bool IsPublishing => false;
     bool RepairRequired { get; }
     Exception? LastError { get; }
     Exception? LastRecoveryError { get; }

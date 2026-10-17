@@ -460,5 +460,22 @@
   "Graph.Branch.Remove": "분기 항목 삭제",
   "Graph.Branch.Text": "선택지 텍스트 키",
   "Graph.Branch.Condition": "조건식",
-  "Status.GraphPasted": "노드 {0}개를 붙여넣었습니다. 사용자 정의 내용의 참조는 원래 값으로 유지되므로 확인하세요."
+  "Status.GraphPasted": "노드 {0}개를 붙여넣었습니다. 사용자 정의 내용의 참조는 원래 값으로 유지되므로 확인하세요.",
+  "History.FileMove": "파일 이동: {0}",
+  "History.FileCopy": "파일 복사: {0}",
+  "History.FileImport": "파일 가져오기: {0}",
+  "History.FileDelete": "파일 삭제: {0}",
+  "History.FileCreateFile": "파일 만들기: {0}",
+  "History.FileCreateDirectory": "폴더 만들기: {0}",
+  "History.FileMetadata": "리소스 속성 편집: {0}",
+  "Error.files.path": "경로가 잘못되었거나 링크가 포함되어 있습니다: {0}",
+  "Error.files.protected": "이 경로는 프로젝트의 전용 기능에서 관리합니다: {0}",
+  "Error.files.missing": "파일 또는 폴더를 찾을 수 없습니다: {0}",
+  "Error.files.collision": "대상 경로가 사용 중이므로 기존 내용을 유지했습니다: {0}",
+  "Error.files.category": "콘텐츠 종류 또는 언어 폴더 간에는 이동할 수 없습니다: {0}",
+  "Error.files.changed": "파일 또는 폴더가 변경되었습니다. 확인 후 다시 시도하세요: {0}",
+  "Error.files.referenced": "참조가 있어 삭제하지 않았습니다: {0}",
+  "Error.files.guidCollision": "리소스 ID가 중복되어 작업을 적용하지 않았습니다: {0}",
+  "Error.files.references": "선언되지 않은 참조는 자동으로 변경할 수 없습니다: {0}",
+  "Error.files.failed": "파일 작업에 실패했습니다: {0}"
 }

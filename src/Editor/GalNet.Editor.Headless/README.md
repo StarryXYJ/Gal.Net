@@ -24,7 +24,7 @@ project create <directory>
 
 创建只生成带稳定 ID 的 Entry、空 Opening Group 和基础目录；不虚构可运行剧情。--contracts 接收已经构建好的目录，校验固定入口 DLL 和依赖，再完整复制到新项目 Contracts/。省略该选项时创建空骨架和部署说明，基础查询/结构校验可用，语义校验/编译/Editor 打开仍要求部署契约。目标必须不存在或为空，拒绝链接路径；dry-run 校验契约并返回文件清单，不创建目标或缺失的父目录。结果明确 contractReady 和契约指纹。
 
-Editor 的 CreateAsync 也调用同一创建服务，并要求显式契约目录；打开时读取 Graph 的显示名，目录名仅用于既有路径身份。当前未添加契约目录选择 UI，推荐 CLI 创建后在 Editor 打开。没有旧创建 API 重载或默认内置 DLL。
+Editor 的新建面板调用同一创建服务；未指定自定义契约目录时使用随程序分发的 DefaultContracts，用户无需准备 DLL。也可选择已构建的自定义契约目录。打开时读取 Graph 的显示名，目录名仅用于既有路径身份；已有项目仍加载自己的契约，不静默回退到默认契约。
 
 原始磁盘查询已接入：`files`、`find`、`references`、`project info`、`graph show/nodes/node/edges`、`group list/show/entries` 和 `variables` 不需要契约 DLL，不补 ID、不丢未知字段、不写回。列表返回 total/offset/returned/hasMore/items/complete；可使用 --offset/--limit 显式分页。
 
@@ -61,7 +61,7 @@ group compile <project> --file Graph/groups/example.rawgalgroup --output Output/
 
 build/export 使用项目 DLL 的同一 catalog，先校验原始 Graph 和目标 Group 再编译。共享 ProjectContentBuilder 和 GamePackageExporter 要求显式传入 catalog，没有内置默认值或兼容重载。缺契约或契约未声明的 entry 明确失败；部分组件不会自动补成内置全集。输出拒绝作者目录、Contracts、项目根/祖先和链接路径；导出的 galpak 包含编译内容，不包含工具 DLL。execute 已切换项目 catalog；其无损写入边界与新增生命周期命令在后续阶段完善。
 
-execute 的文档加载和保存只接受当前格式：不补 ID、不迁移变量，不过滤未知参数。未知 Graph/Group/settings 字段、重复属性、缺稳定 ID 或无法无损转换的参数会阻止写入；原始查询仍可用于检查这些文件。空字符串参数保留。dryRun 使用同一待保存内容校验且不创建文件；加载后源文件或 settings 改变会要求重新加载。Graph、Group 和 settings 统一暂存后发布，后续发布失败会恢复此前改动并清理临时文件；不承诺进程崩溃或跨进程整体原子性。删除 Group 并删除 entries 时同步删除作者文件，保留 entries 时保留孤立文件。资产文件操作仍是单独执行，不能混入文档批次。
+execute 的文档加载和保存只接受当前格式：不补 ID、不迁移变量，不过滤未知参数。未知 Graph/Group/settings 字段、重复属性、缺稳定 ID 或无法无损转换的参数会阻止写入；原始查询仍可用于检查这些文件。空字符串参数保留。dryRun 使用同一待保存内容校验且不创建文件；加载后源文件或 settings 改变会要求重新加载。Graph、Group 和 settings 统一暂存后发布，后续发布失败会恢复此前改动并清理临时文件；不承诺进程崩溃或跨进程整体原子性。删除 Group 并删除 entries 时同步删除作者文件，保留 entries 时保留孤立文件。资产文件操作仍是单独执行，不能混入文档批次；它与 GUI 共用项目文件预检、metadata、引用检查及持久事务，执行前需要有效作者文档。CLI 不保留 GUI Undo 栈，未知引用不自动重写，详见 [项目文件操作](../../../docs/spec/editor-files.md)。
 
 Editor 打开项目时也必须加载 Contracts DLL。ProjectSchemaSession 由项目 DI scope 持有，catalog、文档仓库、Graph 编辑、文件操作和保存协调器均按项目解析，entry 快捷键从该项目集合生成。关闭/切换项目释放契约上下文；契约或打开监听器失败时清理 scope，不能继续沿用旧项目 catalog。预览使用同一 catalog，按选定集合注册内置实现，并在启动前检查实际编译内容的指令。加载不会提供自定义 entry 的平台执行实现，缺少实现时明确失败。
 

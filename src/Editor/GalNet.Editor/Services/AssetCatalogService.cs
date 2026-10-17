@@ -11,7 +11,7 @@ using GalNet.Editor.Services.Interfaces;
 
 namespace GalNet.Editor.Services;
 
-/// <summary>Owns editor-side Assets file operations and keeps sidecar JSON metadata in lockstep.</summary>
+/// <summary>Read-only Assets index; mutations belong to project file history.</summary>
 public sealed class AssetCatalogService : IAssetCatalogService
 {
     private readonly IProjectService _projects;
@@ -61,8 +61,7 @@ public sealed class AssetCatalogService : IAssetCatalogService
         try
         {
             var root = RootOrNull(); if (root is null) return;
-            foreach (var file in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories).Where(p => !p.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)))
-            { cancellationToken.ThrowIfCancellationRequested(); await EnsureMetaAsync(file, cancellationToken); }
+            while (_projects.Current?.Services.GetService(typeof(IProjectContentSession)) is IProjectContentSession { IsPublishing: true }) await Task.Delay(25, cancellationToken);
             Changed?.Invoke();
         }
         finally { _refreshGate.Release(); }
@@ -83,7 +82,6 @@ public sealed class AssetCatalogService : IAssetCatalogService
 
     private void OnFileSystemChanged(object? sender, FileSystemEventArgs args)
     {
-        if (args.FullPath.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)) return;
         _watchDebounce?.Cancel(); _watchDebounce?.Dispose();
         var cts = _watchDebounce = new CancellationTokenSource();
         _ = Task.Run(async () =>
@@ -91,40 +89,6 @@ public sealed class AssetCatalogService : IAssetCatalogService
             try { await Task.Delay(250, cts.Token); await RefreshAsync(cts.Token); }
             catch (OperationCanceledException) { }
         });
-    }
-
-    public async Task ImportAsync(IEnumerable<string> sourcePaths, string targetDirectory, CancellationToken cancellationToken = default)
-    {
-        var target = Resolve(targetDirectory); Directory.CreateDirectory(target);
-        foreach (var source in sourcePaths.Where(File.Exists))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var destination = UniquePath(Path.Combine(target, Path.GetFileName(source)));
-            File.Copy(source, destination); await EnsureMetaAsync(destination, cancellationToken);
-        }
-        Changed?.Invoke();
-    }
-
-    public async Task ImportExternalAsync(IEnumerable<string> sourcePaths, string targetDirectory, CancellationToken cancellationToken = default)
-    {
-        var target = Resolve(targetDirectory);
-        Directory.CreateDirectory(target);
-        foreach (var source in sourcePaths.Distinct(StringComparer.OrdinalIgnoreCase))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (File.Exists(source))
-            {
-                var destination = UniquePath(Path.Combine(target, Path.GetFileName(source)));
-                File.Copy(source, destination);
-                await EnsureMetaAsync(destination, cancellationToken);
-            }
-            else if (Directory.Exists(source))
-            {
-                var destination = UniquePath(Path.Combine(target, Path.GetFileName(source.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))));
-                await CopyDirectoryAsync(source, destination, cancellationToken);
-            }
-        }
-        Changed?.Invoke();
     }
 
     public Task<string?> GetThumbnailPathAsync(AssetEntry entry, CancellationToken cancellationToken = default)
@@ -135,95 +99,12 @@ public sealed class AssetCatalogService : IAssetCatalogService
         return Task.FromResult<string?>(null);
     }
 
-    private async Task CopyDirectoryAsync(string source, string destination, CancellationToken cancellationToken)
-    {
-        Directory.CreateDirectory(destination);
-        foreach (var directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
-            Directory.CreateDirectory(Path.Combine(destination, Path.GetRelativePath(source, directory)));
-        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories).Where(file => !file.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var target = Path.Combine(destination, Path.GetRelativePath(source, file));
-            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            File.Copy(file, target, overwrite: false);
-            await EnsureMetaAsync(target, cancellationToken);
-        }
-    }
-
-    public async Task MoveAsync(string relativePath, string targetDirectory, CancellationToken cancellationToken = default)
-    {
-        var source = Resolve(relativePath); var targetDir = Resolve(targetDirectory);
-        if ((!File.Exists(source) && !Directory.Exists(source)) || !Directory.Exists(targetDir)) throw new IOException("Invalid asset move.");
-        if (Directory.Exists(source) && targetDir.StartsWith(source + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new IOException("A folder cannot be moved into itself.");
-        if (string.Equals(Path.GetDirectoryName(source), targetDir, StringComparison.OrdinalIgnoreCase)) return;
-        var destination = UniquePath(Path.Combine(targetDir, Path.GetFileName(source)));
-        if (Directory.Exists(source)) { Directory.Move(source, destination); await RewriteMetaPathsTreeAsync(destination, cancellationToken); }
-        else { File.Move(source, destination); var meta = source + ".meta"; if (File.Exists(meta)) File.Move(meta, destination + ".meta"); await RewriteMetaPathAsync(destination, cancellationToken); }
-        Changed?.Invoke();
-    }
-
-    public async Task RenameAsync(string relativePath, string newName, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(newName) || newName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) throw new ArgumentException("Invalid file name.");
-        var source = Resolve(relativePath); if (!File.Exists(source) && !Directory.Exists(source)) throw new FileNotFoundException();
-        var destination = UniquePath(Path.Combine(Path.GetDirectoryName(source)!, newName));
-        if (Directory.Exists(source)) { Directory.Move(source, destination); await RewriteMetaPathsTreeAsync(destination, cancellationToken); }
-        else { File.Move(source, destination); if (File.Exists(source + ".meta")) File.Move(source + ".meta", destination + ".meta"); await RewriteMetaPathAsync(destination, cancellationToken); }
-        Changed?.Invoke();
-    }
-
-    public Task DeleteAsync(string relativePath, CancellationToken cancellationToken = default)
-    {
-        var path = Resolve(relativePath);
-        if (File.Exists(path)) { File.Delete(path); if (File.Exists(path + ".meta")) File.Delete(path + ".meta"); }
-        else if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
-        Changed?.Invoke(); return Task.CompletedTask;
-    }
-
-    public async Task UpdateMetaAsync(AssetEntry entry, string? filter, string? compress, CancellationToken cancellationToken = default)
-    {
-        var meta = await ReadMetaAsync(entry.FullPath, cancellationToken) ?? CreateMeta(entry.FullPath);
-        if (meta is SpriteAssetMeta sprite) sprite.Filter = filter;
-        meta.Compress = entry.IsImage || entry.IsVideo ? compress : null;
-        await WriteMetaAsync(entry.FullPath, meta, cancellationToken); Changed?.Invoke();
-    }
-
-    public Task CreateDirectoryAsync(string parentDirectory, string name, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(name) || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
-            throw new ArgumentException("Invalid folder name.");
-        var parent = Resolve(parentDirectory);
-        Directory.CreateDirectory(UniquePath(Path.Combine(parent, name)));
-        Changed?.Invoke();
-        return Task.CompletedTask;
-    }
-
     private AssetEntry CreateDirectory(string fullPath) => new() { FullPath = fullPath, RelativePath = Relative(fullPath), Name = Path.GetFileName(fullPath), IsDirectory = true };
     private AssetEntry CreateFile(string fullPath)
     {
         var meta = ReadMeta(fullPath);
         return new() { FullPath = fullPath, RelativePath = Relative(fullPath), Name = Path.GetFileName(fullPath), Type = meta?.TypeId ?? InferType(fullPath), Id = meta?.Id, Filter = (meta as SpriteAssetMeta)?.Filter, Compress = meta?.Compress, HasValidMeta = meta is not null };
     }
-    private async Task EnsureMetaAsync(string fullPath, CancellationToken ct) { if (!File.Exists(fullPath + ".meta")) await WriteMetaAsync(fullPath, CreateMeta(fullPath), ct); }
-    private AssetMeta CreateMeta(string fullPath)
-    {
-        var type = InferType(fullPath);
-        var registration = _resourceTypes.Get(type);
-        var meta = (AssetMeta)Activator.CreateInstance(registration.MetaDtoType)!;
-        meta.Id = Guid.NewGuid().ToString("N");
-        meta.TypeId = type;
-        meta.Path = Relative(fullPath);
-        meta.Compress = type is "sprite" or "video" ? "none" : null;
-        if (meta is SpriteAssetMeta sprite) sprite.Filter = "bilinear";
-        return meta;
-    }
-    private async Task RewriteMetaPathAsync(string path, CancellationToken ct) { var meta = await ReadMetaAsync(path, ct) ?? CreateMeta(path); meta.Path = Relative(path); await WriteMetaAsync(path, meta, ct); }
-    private async Task RewriteMetaPathsTreeAsync(string directory, CancellationToken ct)
-    {
-        foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories).Where(p => !p.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)))
-            await RewriteMetaPathAsync(file, ct);
-    }
-    private async Task<AssetMeta?> ReadMetaAsync(string file, CancellationToken ct) { try { return File.Exists(file + ".meta") ? _metaCodec.Deserialize(await File.ReadAllTextAsync(file + ".meta", ct)) : null; } catch { return null; } }
     private AssetMeta? ReadMeta(string file)
     {
         try
@@ -233,7 +114,6 @@ public sealed class AssetCatalogService : IAssetCatalogService
         }
         catch { return null; }
     }
-    private Task WriteMetaAsync(string file, AssetMeta meta, CancellationToken ct) => File.WriteAllTextAsync(file + ".meta", _metaCodec.Serialize(meta), ct);
     private string? RootOrNull() => _projects.Current?.AssetsPath;
     private string Resolve(string relative)
     {
@@ -242,7 +122,6 @@ public sealed class AssetCatalogService : IAssetCatalogService
     }
     private string Relative(string full) => Path.GetRelativePath(RootOrNull()!, full).Replace('\\', '/');
     private string InferType(string path) => _resourceTypes.TryGetByExtension(Path.GetExtension(path), out var registration) ? registration.TypeId : "data";
-    private static string UniquePath(string path) { var dir = Path.GetDirectoryName(path)!; var stem = Path.GetFileNameWithoutExtension(path); var ext = Path.GetExtension(path); var candidate = path; var index = 1; while (File.Exists(candidate) || Directory.Exists(candidate)) candidate = Path.Combine(dir, $"{stem} {index++}{ext}"); return candidate; }
     public void Dispose()
     {
         _projects.CurrentChanged -= _projectChangedHandler;

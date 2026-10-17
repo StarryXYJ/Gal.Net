@@ -20,6 +20,7 @@
 - [国际化](spec/i18n.md)
 - [Editor Graph 编辑](spec/editor-graph.md)
 - [Editor 历史与保存](spec/editor-history-and-save.md)
+- [Editor 项目文件操作](spec/editor-files.md)
 - [Dock 集成](spec/dock-design.md)
 
 ## 二次开发手册

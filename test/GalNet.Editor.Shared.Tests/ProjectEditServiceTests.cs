@@ -124,16 +124,18 @@ public sealed class ProjectEditServiceTests
     }
 
     [Test]
-    public async Task BatchFailure_PreservesAllFiles_AndFileCommandsNeedNoDocumentLoad()
+    public async Task BatchFailureAndInvalidAuthorDocumentsPreventFilePublication()
     {
         var original = Snapshot();
         var failed = await _service.ExecuteAsync([new RenameProjectCommand("Changed"), new RenameNodeCommand("missing", "Missing")]);
         Assert.That(failed.Success, Is.False);
         AssertSnapshot(original);
         File.WriteAllText(Path.Combine(_root, "Graph/graph.json"), "broken");
+        var invalid = Snapshot();
         var file = await _service.ExecuteJsonAsync("""{"commandId":"asset.directory.create","parentDirectory":"","name":"Created"}""");
-        Assert.That(file.Success, Is.True, JsonSerializer.Serialize(file.Diagnostics));
-        Assert.That(Directory.Exists(Path.Combine(_root, "Assets/Created")), Is.True);
+        Assert.That(file.Success, Is.False, JsonSerializer.Serialize(file.Diagnostics));
+        Assert.That(Directory.Exists(Path.Combine(_root, "Assets/Created")), Is.False);
+        AssertSnapshot(invalid);
     }
 
     [Test]

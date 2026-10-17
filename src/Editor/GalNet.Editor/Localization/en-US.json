@@ -460,5 +460,22 @@
   "Graph.Branch.Remove": "Remove branch item",
   "Graph.Branch.Text": "Option text key",
   "Graph.Branch.Condition": "Condition expression",
-  "Status.GraphPasted": "Pasted {0} nodes. References inside custom content are unchanged; review them."
+  "Status.GraphPasted": "Pasted {0} nodes. References inside custom content are unchanged; review them.",
+  "History.FileMove": "Move files: {0}",
+  "History.FileCopy": "Copy files: {0}",
+  "History.FileImport": "Import files: {0}",
+  "History.FileDelete": "Delete files: {0}",
+  "History.FileCreateFile": "Create file: {0}",
+  "History.FileCreateDirectory": "Create directory: {0}",
+  "History.FileMetadata": "Edit asset metadata: {0}",
+  "Error.files.path": "Invalid path or linked entry: {0}",
+  "Error.files.protected": "This path is managed by a dedicated project feature: {0}",
+  "Error.files.missing": "File or directory not found: {0}",
+  "Error.files.collision": "The destination is occupied; existing content was preserved: {0}",
+  "Error.files.category": "Files cannot cross content categories or language directories: {0}",
+  "Error.files.changed": "The file or directory changed; review it before retrying: {0}",
+  "Error.files.referenced": "Deletion was blocked by references: {0}",
+  "Error.files.guidCollision": "Duplicate asset ID; the operation was not applied: {0}",
+  "Error.files.references": "Undeclared references cannot be rewritten automatically: {0}",
+  "Error.files.failed": "File operation failed: {0}"
 }
