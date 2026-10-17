@@ -12,7 +12,7 @@ using GalNet.Game.Controls.Forms;
 
 namespace GalNet.Editor.Models.Graph;
 
-public sealed record EntryTypeOption(string Value, string Category, string DisplayNameKey);
+public sealed record EntryTypeOption(string Value, string Category, string DisplayNameKey, IReadOnlyList<string>? SearchAliases = null);
 public sealed record EntrySelectOption(string Value, string DisplayNameKey);
 
 /// <summary>Schema-driven edits read the author document directly; no DTO snapshot or synchronization is needed.</summary>
@@ -39,6 +39,7 @@ public sealed class EntryParameterFormBinding : IDisposable
 
     private sealed class DocumentField(EntryParameterFormBinding form, FieldDescriptor field) : IFieldBinding
     {
+        public object? Label => @field.LabelKey ?? "Entry.Parameter." + @field.Id;
         public bool IsEnabled => !form._disposed;
         public FieldValue Read() => form._owner.Parameters.TryGetValue(field.Id, out var text)
             ? new(ValueCodec.ParseEditorText(field.Value, text)) : default;

@@ -13,12 +13,12 @@ public sealed class GraphEditingService : IGraphEditingService
     private readonly IEntryCatalog _catalog;
     public GraphEditingService(IEntryCatalog catalog) => _catalog = catalog;
 
-    public IReadOnlyList<EntryEditorItemViewModel> InsertEntries(GraphNode groupNode, int index, int count)
+    public IReadOnlyList<EntryEditorItemViewModel> InsertEntries(GraphNode groupNode, int index, int count, string? type = null)
     {
         if (groupNode.NodeKind != GraphNodeKind.LinearGroup || count < 1)
             return [];
 
-        var definition = _catalog.Definitions.Count > 0 ? _catalog.Definitions[0] : null;
+        var definition = _catalog.Definitions.FirstOrDefault(item => item.Type == (type ?? GalNet.Contracts.Builtins.BuiltinEntryIds.Text));
         if (definition is null)
             return [];
 

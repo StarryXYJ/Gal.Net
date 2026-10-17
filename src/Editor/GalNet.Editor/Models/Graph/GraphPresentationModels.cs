@@ -331,6 +331,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     private IEntryCatalog? _authorCatalog;
     private bool _disposed;
     public string StableId { get => Source.StableId; init => Source.StableId = value; }
+    [ObservableProperty] private bool _isParametersExpanded = true;
 
     public EntryEditorItemViewModel() => Source = new() { StableId = Guid.NewGuid().ToString("N") };
 

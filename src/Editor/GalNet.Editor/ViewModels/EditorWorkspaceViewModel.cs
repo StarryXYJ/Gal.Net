@@ -563,10 +563,10 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         }
     }
 
-    public IReadOnlyList<EntryEditorItemViewModel> InsertEntriesInto(GraphNode groupNode, int index, int count)
+    public IReadOnlyList<EntryEditorItemViewModel> InsertEntriesInto(GraphNode groupNode, int index, int count, string? type = null)
     {
         if (groupNode.NodeKind != GraphNodeKind.LinearGroup) return [];
-        var inserted = _graphEditingService.InsertEntries(groupNode, index, Math.Clamp(count, 1, 1000));
+        var inserted = _graphEditingService.InsertEntries(groupNode, index, Math.Clamp(count, 1, 1000), type);
         if (inserted.Count == 0) return inserted;
         foreach (var entry in inserted) CacheEntry(entry);
         var actualIndex = groupNode.Entries.IndexOf(inserted[0]);
@@ -591,6 +591,20 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         var index = groupNode.Entries.IndexOf(entry); if (index < 0 || !_graphEditingService.RemoveEntry(groupNode, entry)) return false;
         PushGraphEdit(new DelegateEdit("Delete entry", () => groupNode.Entries.Insert(index, entry), () => groupNode.Entries.Remove(entry)));
         return true;
+    }
+
+    public void ChangeEntryType(GraphNode groupNode, EntryEditorItemViewModel entry, string type, IReadOnlyDictionary<string, string> parameters)
+    {
+        if (!groupNode.Entries.Contains(entry) || entry.Type == type) return;
+        var previousType = entry.Type; var previous = new Dictionary<string, string>(entry.Parameters, StringComparer.Ordinal);
+        var next = new Dictionary<string, string>(parameters, StringComparer.Ordinal);
+        void Apply(string value, Dictionary<string, string> fields)
+        {
+            var applying = _isApplyingHistory; _isApplyingHistory = true;
+            try { entry.Type = value; entry.Parameters = new(fields, StringComparer.Ordinal); }
+            finally { _isApplyingHistory = applying; }
+        }
+        ExecuteGraphEdit(new DelegateEdit("Edit Type", () => Apply(previousType, previous), () => Apply(type, next)));
     }
 
     public bool MoveEntryTo(GraphNode groupNode, EntryEditorItemViewModel entry, int newIndex)

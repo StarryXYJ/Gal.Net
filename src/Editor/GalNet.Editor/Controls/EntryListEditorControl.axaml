@@ -7,7 +7,7 @@
              x:Class="GalNet.Editor.Controls.EntryListEditorControl"
              x:Name="Root"
              x:DataType="vm:GroupEditorPanelViewModel"
-             MoveCommand="{Binding ReorderEntryCommand}">
+             MoveCommand="{Binding ReorderEntryCommand}" Focusable="True">
     <controls:ReorderableListControl.Styles>
         <Style Selector="forms|SchemaForm" x:CompileBindings="False">
             <Setter Property="Template">
@@ -32,10 +32,12 @@
         </Style>
     </controls:ReorderableListControl.Styles>
     <Grid RowDefinitions="Auto,*,Auto">
-        <Button HorizontalAlignment="Left"
-                ToolTip.Tip="{loc:Localize Entry.Add}"
-                AutomationProperties.Name="{loc:Localize Entry.Add}"
-                Command="{Binding AddEntryCommand}"><PathIcon Width="16" Height="16" Data="{StaticResource AddIcon}" /></Button>
+        <WrapPanel x:Name="EntryToolbar" Orientation="Horizontal">
+            <Button Content="{loc:Localize Entry.Add}" Command="{Binding AddEntryCommand}" Margin="0,0,6,0" />
+            <Button Content="{loc:Localize Entry.AppendBatch}" Command="{Binding AppendEntriesCommand}" Margin="0,0,6,0" />
+            <NumericUpDown x:Name="BatchCount" Width="90" Minimum="1" Maximum="1000" Increment="1" FormatString="0" Value="{Binding BatchAddCount,Mode=TwoWay}" Margin="0,0,6,0" ToolTip.Tip="{loc:Localize Entry.BatchCount}" />
+            <controls:EntryTypePicker x:Name="InsertPicker" MinWidth="180" Options="{Binding EntryTypes}" ShortcutService="{Binding ShortcutService}" SelectedValue="{Binding InsertionType,Mode=OneWay}" Opened="OnInsertPickerOpened" Closed="OnInsertPickerClosed" TypeConfirmed="OnInsertTypeConfirmed" />
+        </WrapPanel>
 
         <ListBox Name="ItemsListBox"
                  Grid.Row="1"
@@ -43,7 +45,7 @@
                  ItemsSource="{Binding GroupNode.Entries}"
                  SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
                  SelectionMode="Single"
-                 Background="Transparent">
+                 Background="Transparent" Padding="0,0,0,64">
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="models:EntryEditorItemViewModel">
                     <Border Margin="0,4"
@@ -68,14 +70,14 @@
                             <controls:EntryTypePicker Grid.Column="2"
                                                       Options="{Binding #Root.DataContext.EntryTypes}"
                                                       ShortcutService="{Binding #Root.DataContext.ShortcutService}"
-                                                      SelectedValue="{Binding Type, Mode=TwoWay}" />
+                                                      SelectedValue="{Binding Type, Mode=OneWay}" TypeConfirmed="OnEntryTypeConfirmed" />
                             <controls:ConditionEditorControl Grid.Column="3"
                                                              Text="{Binding Condition}"
                                                              Suggestions="{Binding #Root.DataContext.ConditionSuggestions}"
                                                              ValidationVariables="{Binding #Root.DataContext.ValidationVariables}" />
                             <ToggleButton Name="ParametersToggle" Grid.Column="4"
                                           Width="30"
-                                          IsChecked="True"
+                                          IsChecked="{Binding IsParametersExpanded,Mode=TwoWay}"
                                           ToolTip.Tip="{loc:Localize Entry.ToggleParameters}">
                                 <Grid>
                                     <PathIcon Width="16"
@@ -122,11 +124,7 @@
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
-        <StackPanel Grid.Row="2" Margin="0,8,0,0" Orientation="Horizontal"
-                    HorizontalAlignment="Center" Spacing="8">
-            <NumericUpDown Width="90" Minimum="1" Maximum="1000" Increment="1" FormatString="0"
-                           Value="{Binding BatchAddCount, Mode=TwoWay}" />
-            <Button Content="{loc:Localize Entry.AppendBatch}" Command="{Binding AppendEntriesCommand}" />
-        </StackPanel>
+        <TextBlock Grid.Row="2" Text="{Binding ErrorText}" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" TextWrapping="Wrap" />
+
     </Grid>
 </controls:ReorderableListControl>

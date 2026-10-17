@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
 using GalNet.Core.Scene;
@@ -32,6 +33,14 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     public string GroupId { get; }
     private readonly ObservableCollection<EntryEditorItemViewModel> _entries;
     private bool _disposed;
+    private readonly HashSet<EntryEditorItemViewModel> _attached = [];
+    private readonly Dictionary<string, bool> _expanded = new(StringComparer.Ordinal);
+    private (string? Anchor, int Count)? _pendingInsertion;
+    public event Action? TypeSelectionRequested;
+    public string? PickerAnchor => _pendingInsertion.HasValue ? _pendingInsertion.Value.Anchor : SelectedEntry?.StableId;
+    public void CancelInsertion() => _pendingInsertion = null;
+    [ObservableProperty] private string _insertionType = BuiltinEntryIds.Text;
+    [ObservableProperty] private string _errorText = "";
     public IReadOnlyList<ConditionVariableSuggestion> ConditionSuggestions => Workspace.GetConditionVariableSuggestions();
     public IReadOnlyList<GalNet.Core.Variable.ProjectVariableDefinition> ValidationVariables => Workspace.AllProjectVariableDefinitions;
     public IAssetManager AssetManager { get; }
@@ -67,24 +76,42 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     private void AddEntry()
     {
         var selectedIndex = SelectedEntry is null ? -1 : GroupNode.Entries.IndexOf(SelectedEntry);
-        InsertEntries(selectedIndex >= 0 ? selectedIndex + 1 : GroupNode.Entries.Count, 1);
+        InsertEntries(selectedIndex >= 0 ? selectedIndex + 1 : GroupNode.Entries.Count, BatchCount, SelectedEntry?.StableId);
     }
 
     [RelayCommand]
     private void AppendEntry()
     {
-        InsertEntries(GroupNode.Entries.Count, 1);
+        InsertEntries(GroupNode.Entries.Count, BatchCount);
     }
 
     [RelayCommand]
     private void AppendEntries()
     {
-        InsertEntries(GroupNode.Entries.Count, Math.Clamp((int)BatchAddCount, 1, 1000));
+        InsertEntries(GroupNode.Entries.Count, BatchCount);
     }
 
-    private void InsertEntries(int index, int count)
+    private int BatchCount => (int)Math.Clamp(BatchAddCount, 1, 1000);
+    public void InsertType(string type, string? anchorId)
     {
-        var inserted = Workspace.InsertEntriesInto(GroupNode, index, count);
+        if (_disposed) return;
+        var count = _pendingInsertion?.Count ?? 1;
+        if (_pendingInsertion.HasValue) anchorId = _pendingInsertion.Value.Anchor;
+        _pendingInsertion = null;
+        var index = anchorId is null ? GroupNode.Entries.Count : GroupNode.Entries.ToList().FindIndex(entry => entry.StableId == anchorId) + 1;
+        if (anchorId is not null && index == 0) { ErrorText = EditorLocalizationService.Current?["Entry.AnchorMissing"] ?? "The insertion target was removed."; return; }
+        InsertionType = type; InsertEntries(index, count);
+    }
+    public void ChangeType(EntryEditorItemViewModel entry, string type)
+    {
+        if (!_disposed && EntryTypes.Any(item => item.Value == type)) Workspace.ChangeEntryType(GroupNode, entry, type, _catalog.Create(type).Values);
+    }
+    private void InsertEntries(int index, int count, string? anchorId = null)
+    {
+        if (_disposed) return;
+        ErrorText = "";
+        if (!EntryTypes.Any(item => item.Value == InsertionType)) { _pendingInsertion = (anchorId, count); TypeSelectionRequested?.Invoke(); return; }
+        var inserted = Workspace.InsertEntriesInto(GroupNode, index, count, InsertionType);
         if (inserted.Count > 0)
             SelectedEntry = inserted[^1];
     }
@@ -137,14 +164,16 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
 
     private void OnEntriesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (e.NewItems is not null)
-            foreach (EntryEditorItemViewModel entry in e.NewItems) Attach(entry);
-        if (e.OldItems is not null)
-            foreach (EntryEditorItemViewModel entry in e.OldItems) entry.PropertyChanged -= OnEntryPropertyChanged;
+        if (e.Action == NotifyCollectionChangedAction.Move) return;
+        foreach (var entry in _attached.Where(entry => !_entries.Contains(entry)).ToArray()) { entry.PropertyChanged -= OnEntryPropertyChanged; _attached.Remove(entry); }
+        foreach (var entry in _entries.Where(entry => !_attached.Contains(entry)).ToArray()) Attach(entry);
+        if (SelectedEntry is not null && !_entries.Contains(SelectedEntry)) SelectedEntry = null;
     }
 
     private void Attach(EntryEditorItemViewModel entry)
     {
+        if (!_attached.Add(entry)) return;
+        entry.IsParametersExpanded = _expanded.GetValueOrDefault(entry.StableId, true);
         entry.PropertyChanged += OnEntryPropertyChanged;
         Configure(entry);
     }
@@ -152,6 +181,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     private void OnEntryPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (sender is not EntryEditorItemViewModel entry) return;
+        if (e.PropertyName == nameof(EntryEditorItemViewModel.IsParametersExpanded)) _expanded[entry.StableId] = entry.IsParametersExpanded;
         if (e.PropertyName == nameof(EntryEditorItemViewModel.Type)) Configure(entry, resetValues: true);
     }
 
@@ -177,7 +207,8 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         _disposed = true;
         Workspace.VariableDefinitionsChanged -= OnVariableDefinitionsChanged;
         _entries.CollectionChanged -= OnEntriesChanged;
-        foreach (var entry in _entries) entry.PropertyChanged -= OnEntryPropertyChanged;
+        foreach (var entry in _attached) entry.PropertyChanged -= OnEntryPropertyChanged;
+        _attached.Clear(); _expanded.Clear();
         GC.SuppressFinalize(this);
     }
 }

@@ -150,3 +150,7 @@ UI Editor 的功能落后于当前项目能力，需要分析并重构整体架�
 - [Editor 职责拆分](../F-20260929-10-editor-responsibility-split/summary.md)：已有职责抽取，本次重新设计交互和所有权，不改写该 feature 的完成状态。
 - [Editor/CLI 操作](../F-20261013-01-editor-cli-operations/summary.md)：复用项目契约、查询、校验、编译和文件操作基础，不沿用其未要求文件撤销的范围限制。
 - [参数契约共用与 Sample 简化](../F-20261013-02-parameter-and-sample-simplification/summary.md)：复用值描述、schema 表单及专属编辑器基础。
+
+### P5a 实施进度（2026-10-17）
+
+Group 补充第 1–5 点已验证：搜索/键盘类型选择、顶部批量和直接插入、折叠拖放、可滚动尾部与取消选择、Space 快速插入。类型及完整参数切换作为一次历史撤销。解决方案构建成功，614 项相关回归通过，另 6 个媒体环境用例未执行，见 [phase-5a.md](phase-5a.md)。P5 多选剪贴板、变量面板及剩余作者绑定迁移继续 planned；状态查询与专业动画编辑仍属后续范围。

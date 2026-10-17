@@ -6,7 +6,7 @@ namespace GalNet.Editor.Services.Interfaces;
 
 public interface IGraphEditingService
 {
-    IReadOnlyList<EntryEditorItemViewModel> InsertEntries(GraphNode groupNode, int index, int count);
+    IReadOnlyList<EntryEditorItemViewModel> InsertEntries(GraphNode groupNode, int index, int count, string? type = null);
     bool RemoveEntry(GraphNode groupNode, EntryEditorItemViewModel entry);
     bool MoveEntry(GraphNode groupNode, EntryEditorItemViewModel entry, int newIndex);
     void UpdateConnectorStates(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges);

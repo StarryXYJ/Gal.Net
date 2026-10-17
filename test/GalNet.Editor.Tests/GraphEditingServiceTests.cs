@@ -13,6 +13,14 @@ namespace GeneralTest.Editor;
 
 public class GraphEditingServiceTests
 {
+    [Test]
+    public void CustomProfilesDoNotImplicitlyCreateTheirFirstType()
+    {
+        var service = new GraphEditingService(new TargetProfileEntryCatalog([new DefaultEntryModule("custom", [new DefaultPrimitiveEntryBase("custom.first", GalNet.Core.Primitives.DynamicParameterTable.Empty)])]));
+        var group = new GraphNode(new Group { Name = "Custom" }, GraphNodeKind.LinearGroup);
+        Assert.That(service.InsertEntries(group, 0, 1), Is.Empty);
+        Assert.That(service.InsertEntries(group, 0, 1, "custom.first").Single().Type, Is.EqualTo("custom.first"));
+    }
     private static readonly int[] ThreeEntryIds = [1, 2, 3];
     private static readonly int[] TwoEntryIds = [1, 2];
     private static readonly string[] FirstSuggestions = ["first", "second"];
