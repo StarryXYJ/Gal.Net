@@ -211,7 +211,7 @@ P1a 基本页面/项目文档 → P1b 项目历史/保存骨架
 
 **任务**：嵌套对象、列表元素/顺序、nullable/optional、默认值提示及显式重置；资源/表达式/多行/补全专属 EditorId；不支持节点的明确 JSON 回退；partial/full 校验分离；动态选项与 schema 失效拒绝过期提交；按展开创建字段并释放控件订阅。
 
-**扩展实施边界**：默认 SchemaForm；候选注册优先级为整个 DTO 面板 → 自动表单中的成员映射/值类型映射 → 现有 registry。成员与根面板替换分别验收，工厂失败/重复注册/取消晚提交/lease 回收需覆盖。Sample 在程序入口复用注册协议但保持自己的设置 binding。场景 Locator 的静态不确定性、自动 handle 映射、timeline/曲线为后续独立可验收切片，落地前细分范围；不能在 P6 最小表单接入时宣称这些都已完成。
+**扩展实施边界**：共享 Avalonia 层三层注册（特定 DTO、特定 DTO 成员、默认类型）；默认 DTO 表单只解析成员/默认类型，多 DTO 面板逐项选择整 DTO 覆盖或默认表单。成员与根面板替换分别验收，工厂失败/重复注册/取消晚提交/lease 回收需覆盖。Sample 在程序入口复用注册协议但保持自己的设置 binding。Editor 状态查询的一定/可能两类存在性、Group 入口缓存与缺目标跳过语义、自动 handle 映射、timeline/曲线为后续独立可验收切片，落地前细分范围；不能在 P6 最小表单接入时宣称这些都已完成。
 
 **验证**：真实视觉树中编辑 string/enum/object/array/缺省/null/default；复杂值编辑后保存重开及撤销；粒子参数按不同字段顺序均可创作，完整编译仍严格；资源 GUID/轨道等动态选项刷新；换类型或删除 Entry 后晚提交被拒绝；未知字段原样保存；长列表与多次开关面板不持续增加控件/订阅。
 
@@ -270,3 +270,5 @@ dotnet build GalNet.slnx --no-restore -m:1 -p:UseSharedCompilation=false
 - 2026-10-17：用户追加 Group 编辑 6 点；第 1–5 点接入 P5 交互范围，第 6 点仅设计并明确字段/整 DTO 注册与场景目标分析边界。数量作用添加/追加，picker 一次一条；底层 handle 保留并对演出/剧本作者隐藏。详见 group-editing-design.md。
 
 - 2026-10-17：第 6 点集中为 parameter-editor-design.md，明确三种注册粒度、嵌套解析/默认表单组合、Editor/Sample binding 边界、静态场景置信度与六个候选实施切片；保持 design 状态，无业务实现。
+
+- 2026-10-17：用户进一步确认共享 UI 三层映射/默认 DTO 表单/多 DTO 面板的职责；Editor 当前状态查询独立，只公开一定存在/可能存在，Entry 缺目标跳过。缓存采用 Group 入口/出口摘要和按需前缀检查点的设计方向。

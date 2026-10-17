@@ -44,7 +44,7 @@ TextBox、NumericUpDown、条件/表达式控件、已有类型搜索框和其�
 
 ## 5. 第 6 点：参数控件与场景目标扩展（仅设计）
 
-第 6 点的完整方案集中到 [参数控件与场景目标设计](parameter-editor-design.md)，此处只保留边界：默认使用共享 SchemaForm；支持指定 DTO 成员、值类型、整个 DTO 面板三种注册粒度；Editor 与 Sample 在程序入口组合注册，各自提供业务 binding。底层 handle 保留，对演出/剧本作者隐藏，场景实例目标与资产库资源分开解析。新注册服务、Locator 和 timeline/曲线本轮不实现。
+第 6 点的完整方案集中到 [参数控件与场景目标设计](parameter-editor-design.md)，此处只保留边界：默认使用共享 SchemaForm；支持特定 DTO、特定 DTO 成员、默认类型三层映射，默认 DTO 表单负责后两层，多 DTO 面板负责逐项分派；Editor 与 Sample 在程序入口组合注册，各自提供业务 binding。底层 handle 保留，对演出/剧本作者隐藏，场景实例目标与资产库资源分开解析，状态只分一定存在/可能存在，缺目标跳过执行。新注册服务、Locator 和 timeline/曲线本轮不实现。
 
 ## 验收与阶段归属
 
