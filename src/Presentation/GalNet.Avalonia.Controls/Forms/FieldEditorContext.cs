@@ -16,17 +16,31 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
     private int _draftVersion;
     private string _text = "";
     private FieldValue? _pending;
-    public FieldEditorContext(FieldDescriptor field, IFieldBinding binding)
+    private bool _jsonText;
+    public FieldEditorContext(FieldDescriptor field, IFieldBinding binding, EditorRegistry? registry = null, int depth = 0)
     {
         ArgumentNullException.ThrowIfNull(field);
         ArgumentNullException.ThrowIfNull(binding);
         Field = field;
+        Registry = registry;
+        Depth = depth;
         _binding = binding;
         Refresh();
         _binding.Changed += OnChanged;
     }
 
     public FieldDescriptor Field { get; }
+    internal EditorRegistry? Registry { get; }
+    internal int Depth { get; }
+    public bool CanOmit => !Field.IsRequired || Field.DefaultValue is not null;
+    public bool CanSetNull => Field.Value.AllowNull;
+    public bool HasDefault => Field.DefaultValue is not null;
+    public Task<bool> OmitAsync() => CommitAsync(default);
+    public Task<bool> SetNullAsync() => CommitAsync(new(JsonSerializer.SerializeToElement<object?>(null)));
+    public Task<bool> ResetDefaultAsync() => Field.DefaultValue is { } value ? CommitAsync(new(value)) : Task.FromResult(false);
+    public void RevertDraft() { if (_disposed) return; _dirty = false; _pending = null; Issue = null; _draftVersion++; Refresh(); }
+    internal void ReportIssue(ValueIssue issue) { if (!_disposed) { Issue = issue; Notify(); } }
+    internal void UseJsonText() { _jsonText = true; Refresh(); }
     public FieldValue Value { get; private set; }
     public JsonElement? EffectiveValue => (_pending ?? Value).Json ?? Field.DefaultValue;
     public object Label => _binding.Label ?? Field.LabelKey ?? Field.Id;
@@ -102,7 +116,7 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
         return Task.FromResult(false);
     }
 
-    public async Task<bool> CommitAsync(FieldValue candidate)
+    public async Task<bool> CommitAsync(FieldValue candidate, CancellationToken cancellationToken = default)
     {
         if (_disposed || _submitting) return false;
         if (!_binding.IsEnabled || !_binding.IsVisible)
@@ -124,7 +138,9 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
         Notify();
         try
         {
-            var issue = await _binding.CommitAsync(candidate, _lifetime.Token);
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token, cancellationToken);
+            linked.Token.ThrowIfCancellationRequested();
+            var issue = await _binding.CommitAsync(candidate, linked.Token);
             if (_disposed) return false;
             if (version == _draftVersion)
             {
@@ -151,7 +167,7 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
     {
         try
         {
-            var json = ValueCodec.ParseEditorText(Field.Value, Text);
+            var json = _jsonText ? JsonSerializer.Deserialize<JsonElement>(Text) : ValueCodec.ParseEditorText(Field.Value, Text);
             issue = ValueValidation.Validate(Field.Value, json);
             return new(json);
         }
@@ -179,7 +195,7 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
         Value = _binding.Read();
         Options = ReadOptions();
         if (Issue?.Code == "field.binding") Issue = null;
-        if (!_dirty) _text = EffectiveValue is { } json ? ValueCodec.ToEditorText(Field.Value, json) : "";
+        if (!_dirty) _text = EffectiveValue is { } json ? _jsonText ? json.GetRawText() : ValueCodec.ToEditorText(Field.Value, json) : "";
         Notify();
     }
 

@@ -774,7 +774,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         await projects.CloseAsync();
     }
 
-    private static ServiceProvider Services(IProjectClosePrompt? closePrompt = null, IEditorLocalizationService? localization = null, GalNet.Editor.Shared.Commands.AuthorFileTransaction? transaction = null)
+    private static ServiceProvider Services(IProjectClosePrompt? closePrompt = null, IEditorLocalizationService? localization = null, GalNet.Editor.Shared.Commands.AuthorFileTransaction? transaction = null, IEntryCatalog? catalog = null)
     {
         var services = new ServiceCollection().AddEditorServices()
             .AddSingleton<IEditorLocalizationService>(localization ?? new EditorLocalizationService())
@@ -784,6 +784,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             .AddSingleton<IEffectCatalog>(new EffectCatalog([]));
         if (transaction is not null)
             services.AddScoped<IEditorDocumentRepository>(provider => new FaultRepository(new EditorDocumentRepository(provider.GetRequiredService<IEntryCatalog>(), EditorDocumentValidation.Authoring), transaction));
+        if (catalog is not null) services.AddScoped<IEntryCatalog>(_ => catalog);
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
     }
 

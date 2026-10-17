@@ -45,4 +45,8 @@ MyOptions 代表项目自己的 schema DTO 类型；真实业务提交仍由宿�
 
 多项 DTO 用各自 DtoBinding 或作者文档 binding 创建 DtoEditorItem，再传给 DtoPanel.ItemsSource；每项 Id 唯一，同一 Type 可出现多次。只展示一个 DTO 时也可使用同一分派逻辑的 DtoEditorHost。IFieldDto 的 CLR 对象仍由宿主管理，Editor 直接绑定作者 JSON；只为查找控件不需要创建完整 DTO。原子多字段 patch 必须提供 DtoEditorItem 的 commit 委托；普通单字段 DTO/设置绑定继续沿用现有提交路径。
 
+普通生成 DTO 的嵌套对象和常用列表/一维数组会自动获得可折叠表单，不需要逐类型注册；内部字段继续使用相同 registry。展开创建子控件，折叠释放；未知类型、复杂 converter、过深或过长的结构使用明确 JSON 回退。专业时间轴、曲线等仍通过成员或整 DTO 覆盖接入，不为所有 JsonElement 注册同一个专属控件。
+
+共享默认样式中的 FieldEditorActions 提供显式默认值/null/缺省/恢复草稿。缺省提交需要宿主保存 presence，普通 CLR DtoBinding 没有这种能力时返回 dto.presence，不能把删除字段等同于 CLR 赋 null；Sample 的设置应用/保存规则保持由原宿主管理。
+
 具体生命周期、冻结、错误及当前支持范围见[Schema 字段表单](../spec/control.md#schema-字段表单)。

@@ -106,17 +106,17 @@ Runtime 只依赖 `GalNet.Presentation.Abstractions` 中的 `IGameView` 与细�
 
 `GalNet.Game.Controls.Forms.SchemaForm` 位于 GalNet.Avalonia.Controls。宿主传入有序 Schema（FieldDescriptor 列表）、Registry 和 Binding（字段到 IFieldBinding 的函数），可选 DtoType 启用特定 DTO 成员映射。控件只创建、挂载和释放字段编辑器；不选择游戏主题，不持有保存/撤销服务。结构样式位于 `avares://GalNet.Avalonia.Controls/Styles/SchemaForm.axaml`，只定义标签、编辑器与诊断的结构，没有颜色、间距或皮肤资源；宿主显式加载或提供自己的 Template/Theme。
 
-EditorRegistry 以开放 EditorId 映射到工厂，提供 Register/Replace/RegisterDefault/Resolve。显式 ID 精确匹配；省略 ID 时按合法选项、注册的值类型及 enum/JSON 默认规则选择。重复注册、未知 ID 和不支持类型均明确报错，不静默替换自定义 ID。默认集合由宿主调用 CreateDefault 创建；主题可贡献样式或工厂注册方法，由宿主显式组合，不拥有 registry/设置服务的生命周期。
+EditorRegistry 以开放 EditorId 映射到工厂，提供 Register/Replace/RegisterDefault/Resolve。显式 ID 精确匹配；省略 ID 时按合法选项、注册的值类型及 enum/生成 DTO/列表/JSON 默认规则选择。重复注册明确报错；未知 ID 或工厂以 NotSupportedException 声明不支持时，SchemaForm 保留 editor.fallback 诊断并为该字段提供明确 JSON 回退。其他工厂异常仍按创建失败清理，不伪装为成功。默认集合由宿主调用 CreateDefault 创建；主题可贡献样式或工厂注册方法，由宿主显式组合，不拥有 registry/设置服务的生命周期。
 
-默认 Text/Numeric/JSON 使用 TextBox 保存草稿，Enter/失焦时只提交有编辑的文本；Numeric 不经过 double/decimal 控件值转换，以保留大整数和未完成输入。Toggle/Choice/Slider 提交选定值，复用 Core 的 codec/校验和项目 JSON 配置。Slider 需要有限 min/max、正步长；decimal、不安全整数精度/CLR 范围或非整数整数滑块配置明确诊断。Step 仅决定滑块交互，不限制业务合法值。合法选项与标签分开；binding 的动态选项更新不会重建表单。
+默认 Text/Numeric 使用 TextBox 保存草稿，Enter/失焦时只提交有编辑的文本；JSON 使用带标识的多行 TextBox，Ctrl+Enter/失焦提交，按原始 JSON 表达字符串引号，Escape 恢复未提交草稿；Numeric 不经过 double/decimal 控件值转换，以保留大整数和未完成输入。Toggle/Choice/Slider 提交选定值，复用 Core 的 codec/校验和项目 JSON 配置。Slider 需要有限 min/max、正步长；decimal、不安全整数精度/CLR 范围或非整数整数滑块配置明确诊断。Step 仅决定滑块交互，不限制业务合法值。合法选项与标签分开；binding 的动态选项更新不会重建表单。
 
-FieldValue 以未提供的 Json 和显式 JSON null 区分省略/null。Context 保留草稿和诊断；默认值只用于未提供状态的展示，未编辑的默认/null/空状态失焦不会写回。宿主可通过 CommitAsync 显式提交省略或 null，默认结构未提供统一的删除/null 操作按钮。对象/数组以 JSON 文本编辑，不承诺任意嵌套控件。
+FieldValue 以未提供的 Json 和显式 JSON null 区分省略/null。Context 保留草稿和诊断；默认值只用于未提供状态的展示，未编辑的默认/null/空状态失焦不会写回。宿主可通过 CommitAsync 显式提交省略或 null；共享默认结构通过 FieldEditorActions 提供相应按钮，宿主自定义模板可自行组合。支持范围内对象/数组使用懒创建表单，其他类型明确使用 JSON；普通 CLR DtoBinding 没有 presence 时仍拒绝省略，不能静默写成 null。
 
 IFieldBinding 是借用的宿主对象，提供 Read、Changed、CommitAsync、可用性/标签/可选选项。除 Changed 可从后台发出外，接口调用与工厂/Context 操作均在 UI 线程。binding 负责保存、撤销、异步应用和业务校验，必须捕获对应项目/服务作用域并遵守 CancellationToken；Context 只隔离过期 UI 结果，不回滚宿主已完成的业务写入。
 
 工厂返回独立、无父级的 FieldEditorLease；SchemaForm 在换 schema/registry/binding、卸载或创建失败时先取消所有 Context，再释放全部 lease，最后移除子控件；清理异常保留为 Diagnostics，不短路后续释放。控件不释放借用的 binding。工厂在返回 lease 前失败时，需自行清理尚未交出的临时资源。registry 注册更新后显式调用 RefreshEditors，普通值/选项/可用性通知不重建控件。现有 CustomSettingEditor 复用同一 FieldEditorLease，旧 SettingEditorLease 已移除。
 
-Editor 的通用数值、布尔、文本、选项与 JSON 参数通过 SchemaEntryParameterEditorItemViewModel 使用完整值契约，提交替换 Entry.Parameters，继续由 workspace 历史与保存链路观察。Group 面板使用项目 scope 的 registry（直接构造时可显式传入），EditorFieldEditors 仅扩展选项标签本地化，转换与提交复用默认工厂。多行文本、资源选择、说话人/变量补全及表达式仍使用现有专属控件。仅打开参数面板不会写入省略的默认值；字符串文档不能无损表示的值（如显式 null 字符串）明确拒绝，原始工具路径可处理。设置页和 Editor 各自提供表单模板，业务对象不进入项目 schema DLL。
+Editor 的通用数值、布尔、文本、选项与 JSON 参数通过 SchemaEntryParameterEditorItemViewModel 使用完整值契约，提交替换 Entry.Parameters，提交通过项目作者意图记录历史并由统一保存链路持久化。Group 面板使用项目 scope 的 registry（直接构造时可显式传入），EditorFieldEditors 仅扩展选项标签本地化，转换与提交复用默认工厂。多行文本、资源选择、说话人/变量补全及表达式仍使用现有专属控件。仅打开参数面板不会写入省略的默认值；生成表单直接保存作者 JSON，缺省与显式 null 可以无损往返。设置页和 Editor 各自提供表单模板，业务对象不进入项目 schema DLL。
 
 `DtoBinding` 从生成的 IFieldDto 取得字段列表和成员访问，提供同一 IFieldBinding 协议，不再为每种 DTO 定义字段 ViewModel。普通提交调用 ValueCodec/ValueValidation 后写成员；提供 commit 回调时由宿主承担提交与数据同步。INotifyPropertyChanged 自动刷新；无通知 DTO 显式 Refresh。字段订阅随 Context 的 Changed 订阅建立/移除，Dispose 释放自身订阅，不释放借用 DTO。普通 CLR 成员不被当作 presence 容器。
 
@@ -134,7 +134,11 @@ DtoEditorItem 包含稳定 Id、可选 DtoType、冻结字段清单及借用 bin
 
 Context 的生命周期包装取消旧提交、保留动态选项和 IFieldPreviewBinding 的能力；卸载、换项或创建失败先取消上下文并释放自建字段，再卸载内容与释放控件 lease，清理错误进入 Diagnostics。事件仅由实际订阅者退订一次，不释放借用宿主 binding。宿主提交回调必须遵守取消令牌，框架不回滚回调已完成的写入；工厂在交出 lease 前仍须负责自身临时控件资源。
 
-内置设置主题的普通设置改用 SettingItem.EditorItem/DtoEditorHost，继续提供原单字段 SchemaForm 的皮肤与设置应用/保存队列；Action/ICustomSetting 保留各自行为。Sample 的 CreateFieldEditors 组合结束后冻结 registry。Editor 的 Dock 创建 Group 面板时传入项目 registry；目前依赖旧资源/表达式等专属字段的 Entry 继续走原路径。通用嵌套结构表单、所有专属字段迁移、手势合并协议、状态查询与 timeline/曲线不包含在本次基础层交付中。
+内置设置主题的普通设置改用 SettingItem.EditorItem/DtoEditorHost，继续提供原单字段 SchemaForm 的皮肤与设置应用/保存队列；Action/ICustomSetting 保留各自行为。Sample 的 CreateFieldEditors 组合结束后冻结 registry。Editor 的 Dock 创建 Group 面板时传入项目 registry；目前依赖旧资源/表达式等专属字段的 Entry 继续走原路径。P6b 补充普通嵌套结构表单；所有专属字段迁移、手势合并协议、状态查询与 timeline/曲线仍未包含。
+
+StructuredFieldEditor 复用 Expander 主题（StyleKey 为 Expander，宿主样式使用 Expander.structured-field 类选择器），按展开创建、折叠释放子控件。支持有生成静态 Schema 的 DTO，以及一维数组、List<T>/IList<T>/IReadOnlyList<T>/IEnumerable<T>。嵌套对象继续通过 DtoEditorHost 支持整 DTO 覆盖，默认内部表单继续成员/类型注册；根据 JsonTypeInfo 映射实际 wire 名，不构造 DTO 来生成 UI。对象提交合并当前 JSON，仅替换编辑成员，保留未知成员。自定义 converter、无 schema 的对象、字典、八层深度或超过 200 元素使用 JSON；用户也可显式切换结构/JSON。
+
+列表结构变化取消当前版本令牌，旧索引绑定和延迟提交失效；普通元素值编辑保留其余行控件。共享控件不实现保存或撤销，依旧提交一个根字段 JSON 值，由宿主负责原子修改及历史。FieldEditorActions 提供显式默认值、缺省、null 和草稿恢复，CanOmit/CanSetNull/HasDefault 决定入口，宿主用 StyledProperty 翻译提示；仅打开表单不写默认值。
 
 ## 宿主接入约束
 

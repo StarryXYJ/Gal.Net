@@ -609,5 +609,13 @@
   "Error.entry.obsolete": "エントリが削除されたか種類が変更されました。エディターを開き直してください。",
   "Error.entry.changed": "エントリが別の操作で変更されました。更新して再試行してください。",
   "Entry.UnknownTypePreserved": "現在のコントラクトにはこの種類の編集フォームがありません。内容は保持され、保存や種類の変更ができます。検証・コンパイルには有効なコントラクトが必要です。",
-  "Entry.UnknownParametersPreserved": "現在のコントラクトにないパラメーターも保存時に保持されます。検証やコンパイルでエラーになる場合があります。"
+  "Entry.UnknownParametersPreserved": "現在のコントラクトにないパラメーターも保存時に保持されます。検証やコンパイルでエラーになる場合があります。",
+  "Form.Default": "既定値を明示的に設定",
+  "Form.Omit": "既定値を書き込まずにフィールドを省略",
+  "Form.Null": "明示的な null を設定",
+  "Form.Revert": "未確定の入力を元に戻す",
+  "Form.AddElement": "要素を追加",
+  "Form.RemoveElement": "要素を削除",
+  "Form.MoveUp": "上へ",
+  "Form.MoveDown": "下へ"
 }

@@ -12,8 +12,9 @@ public sealed class DtoEditorContext : IDisposable
     private readonly Dictionary<string, ScopedBinding> _bindings = new(StringComparer.Ordinal);
     private readonly List<FieldEditorContext> _fields = [];
     private bool _disposed, _submitting;
-    internal DtoEditorContext(DtoEditorItem item, EditorRegistry registry, ControlTheme? formTheme)
-    { Item = item; _registry = registry; _formTheme = formTheme; }
+    private readonly int _depth;
+    internal DtoEditorContext(DtoEditorItem item, EditorRegistry registry, ControlTheme? formTheme, int depth = 0)
+    { Item = item; _registry = registry; _formTheme = formTheme; _depth = depth; }
     public DtoEditorItem Item { get; }
     public CancellationToken CancellationToken => _lifetime.Token;
     public IReadOnlyDictionary<string, FieldValue> Read() => Item.Fields.ToDictionary(field => field.Id, field => GetBinding(field).Read(), StringComparer.Ordinal);
@@ -26,13 +27,13 @@ public sealed class DtoEditorContext : IDisposable
     public FieldEditorContext CreateField(string id)
     {
         var field = Item.Fields.Single(field => field.Id == id);
-        var context = new FieldEditorContext(field, GetBinding(field)); _fields.Add(context); return context;
+        var context = new FieldEditorContext(field, GetBinding(field), _registry, _depth); _fields.Add(context); return context;
     }
     public SchemaForm CreateDefaultForm(params string[] exclude)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (exclude.Any(id => !Item.Fields.Any(field => field.Id == id))) throw new ArgumentException("Unknown excluded field.", nameof(exclude));
-        var form = new SchemaForm { DtoType = Item.DtoType, Schema = Item.Fields.Where(field => !exclude.Contains(field.Id, StringComparer.Ordinal)).ToArray(), Registry = _registry, Binding = GetBinding };
+        var form = new SchemaForm { Depth = _depth, DtoType = Item.DtoType, Schema = Item.Fields.Where(field => !exclude.Contains(field.Id, StringComparer.Ordinal)).ToArray(), Registry = _registry, Binding = GetBinding };
         if (_formTheme is not null) form.Theme = _formTheme;
         return form;
     }

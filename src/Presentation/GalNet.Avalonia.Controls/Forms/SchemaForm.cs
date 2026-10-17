@@ -7,11 +7,16 @@ using GalNet.Core.Parameters;
 
 namespace GalNet.Game.Controls.Forms;
 
-public sealed record FieldEditorItem(FieldEditorContext Context, Control Control);
+public sealed record FieldEditorItem(FieldEditorContext Context, Control Control)
+{
+    public bool IsJsonFallback => Equals(Control.Tag, "schema.json");
+}
 
 /// <summary>Owns editors while mounted. Schema, registry, binding and visual theme are supplied by the host.</summary>
 public sealed class SchemaForm : TemplatedControl
 {
+    public static readonly StyledProperty<int> DepthProperty = AvaloniaProperty.Register<SchemaForm, int>(nameof(Depth));
+    public int Depth { get => GetValue(DepthProperty); set => SetValue(DepthProperty, value); }
     public static readonly StyledProperty<Type?> DtoTypeProperty = AvaloniaProperty.Register<SchemaForm, Type?>(nameof(DtoType));
     public Type? DtoType { get => GetValue(DtoTypeProperty); set => SetValue(DtoTypeProperty, value); }
     public static readonly StyledProperty<IReadOnlyList<FieldDescriptor>?> SchemaProperty =
@@ -74,9 +79,15 @@ public sealed class SchemaForm : TemplatedControl
                 foreach (var field in fields)
                 {
                     current = field.Id;
-                    var context = new FieldEditorContext(field, Binding!(field));
+                    var context = new FieldEditorContext(field, Binding!(field), Registry, Depth);
                     _owned.Add((context, null));
-                    var lease = Registry!.Resolve(field, DtoType)(context) ?? throw new InvalidOperationException("Editor factory returned no lease.");
+                    FieldEditorLease lease;
+                    try { lease = Registry!.Resolve(field, DtoType)(context) ?? throw new InvalidOperationException("Editor factory returned no lease."); }
+                    catch (NotSupportedException error)
+                    {
+                        errors.Add(new("editor.fallback", error.Message, field.Id));
+                        lease = DefaultFieldEditors.CreateJson(context);
+                    }
                     _owned[^1] = (context, lease);
                     if (!controls.Add(lease.Control) || lease.Control.Parent is not null || lease.Control.GetVisualParent() is not null)
                         throw new InvalidOperationException("Editor factories must return fresh, unparented controls.");

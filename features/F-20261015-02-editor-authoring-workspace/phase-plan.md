@@ -204,7 +204,7 @@ P1a 基本页面/项目文档 → P1b 项目历史/保存骨架
 
 ## P6：自动生成 UI 与复杂值编辑
 
-状态：planned。前置：P5；复用现有参数/表单机制，不重做 DTO generator。第 6 点原先仅形成 [扩展设计](parameter-editor-design.md)，用户随后已授权实施；共享 UI 基础先独立推进 P6a，状态查询/Locator 和动画工具另作后续切片。
+状态：in-progress。前置：P5；复用现有参数/表单机制，不重做 DTO generator。第 6 点原先仅形成 [扩展设计](parameter-editor-design.md)，用户随后已授权实施；共享 UI 基础先独立推进 P6a，状态查询/Locator 和动画工具另作后续切片。
 
 **目标**：让项目契约能够直接获得可用的基础编辑 UI。
 
@@ -303,3 +303,10 @@ P6a 验证：隔离解决方案构建成功，610 项相关回归通过、0 失�
 状态：verified。前置 P5d，用户已授权继续。此项是 P5 原有退出条件的显式拆分：实施前 Repository 的 Load/PrepareSave 和 SerializeEntry 要求完整契约有效，不能把 partial 表单可编辑等同于草稿可保存。GUI 现显式使用 Authoring，默认 Complete 及 CLI 完整校验保留；解决方案构建成功，635 项相关回归、格式及源码指纹通过。当前实施与证据见 [phase-5e.md](phase-5e.md)。
 
 实现已把 GUI 作者文档的结构/身份安全检查与完整语义检查分开，允许未填写完的已知条目、未知类型/参数无损保存重开；无效 JSON、重复身份、非法路径和未知顶层 shape 继续拒绝。CLI check/compile 和游戏编译继续完整校验；逐项核对现有 Shared 安全测试，不通过删除测试或全局跳过验证达成。未知 schema 的通用 JSON 编辑 UI 与 P6 协调，P5e 至少保证打开、保留、复制/撤销及保存策略明确。退出条件为真实项目文件往返、partial/full 两条验证路径、严格结构拒绝、已知条目及未知 JSON 的无损测试。
+
+
+## P6b：普通复杂值表单
+
+状态：verified。解决方案构建成功，879 项相关回归、格式和源码指纹通过，另 6 项原生媒体环境用例未执行。用户于 2026-10-18 授权开始，复杂定制与 AnimationPlan 一起留下一阶段。范围和证据见 [phase-6b.md](phase-6b.md)：普通生成 DTO 嵌套、列表、presence/null/default、JSON 回退、懒创建/释放，沿用项目历史与保存。
+
+P6 后续仍包括未知 Entry 整参数 JSON 修改、Editor 状态查询/Locator（一定/可能存在、缺目标跳过、缓存/动态候选），以及 AnimationPlan/timeline/曲线等复杂专属控件。按独立可验证切片推进，不在本阶段引入专业动画 UI。

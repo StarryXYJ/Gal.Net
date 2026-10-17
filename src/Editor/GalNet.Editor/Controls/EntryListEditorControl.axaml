@@ -9,6 +9,18 @@
              x:DataType="vm:GroupEditorPanelViewModel"
              MoveCommand="{Binding ReorderEntryCommand}" Focusable="True">
     <controls:ReorderableListControl.Styles>
+        <Style Selector="forms|FieldEditorActions">
+            <Setter Property="DefaultText" Value="{loc:Localize Form.Default}" />
+            <Setter Property="OmitText" Value="{loc:Localize Form.Omit}" />
+            <Setter Property="NullText" Value="{loc:Localize Form.Null}" />
+            <Setter Property="RevertText" Value="{loc:Localize Form.Revert}" />
+        </Style>
+        <Style Selector="Expander.structured-field">
+            <Setter Property="forms:StructuredFieldEditor.AddText" Value="{loc:Localize Form.AddElement}" />
+            <Setter Property="forms:StructuredFieldEditor.RemoveText" Value="{loc:Localize Form.RemoveElement}" />
+            <Setter Property="forms:StructuredFieldEditor.UpText" Value="{loc:Localize Form.MoveUp}" />
+            <Setter Property="forms:StructuredFieldEditor.DownText" Value="{loc:Localize Form.MoveDown}" />
+        </Style>
         <Style Selector="forms|SchemaForm" x:CompileBindings="False">
             <Setter Property="Template">
                 <ControlTemplate>
@@ -17,8 +29,8 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Grid ColumnDefinitions="130,*" ColumnSpacing="8">
-                                        <TextBlock DataContext="{Binding Context}" Text="{loc:Localize Label}" VerticalAlignment="Center" />
-                                        <StackPanel Grid.Column="1"><ContentControl Content="{Binding Control}" /><TextBlock Text="{Binding Context.Issue.Message}" TextWrapping="Wrap" /></StackPanel>
+                                        <TextBlock DataContext="{Binding Context}" Text="{loc:Localize Label, FallbackPath=Field.Id}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                        <StackPanel Grid.Column="1"><ContentControl Content="{Binding Control}" /><TextBlock Text="JSON" IsVisible="{Binding IsJsonFallback}" Opacity="0.65"/><forms:FieldEditorActions Context="{Binding Context}"/><TextBlock Text="{Binding Context.Issue.Message}" TextWrapping="Wrap" /></StackPanel>
                                     </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>

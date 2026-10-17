@@ -9,6 +9,8 @@ namespace GalNet.Game.Controls.Forms;
 /// <summary>Dispatches one DTO to an override or the default form. Never owns the borrowed item/binding.</summary>
 public sealed class DtoEditorHost : ContentControl
 {
+    public static readonly StyledProperty<int> DepthProperty = AvaloniaProperty.Register<DtoEditorHost, int>(nameof(Depth));
+    public int Depth { get => GetValue(DepthProperty); set => SetValue(DepthProperty, value); }
     public static readonly StyledProperty<DtoEditorItem?> ItemProperty = AvaloniaProperty.Register<DtoEditorHost, DtoEditorItem?>(nameof(Item));
     public static readonly StyledProperty<EditorRegistry?> RegistryProperty = AvaloniaProperty.Register<DtoEditorHost, EditorRegistry?>(nameof(Registry));
     public static readonly StyledProperty<ControlTheme?> FormThemeProperty = AvaloniaProperty.Register<DtoEditorHost, ControlTheme?>(nameof(FormTheme));
@@ -37,7 +39,7 @@ public sealed class DtoEditorHost : ContentControl
             if (Item is { } item)
             {
                 var registry = Registry ?? throw new InvalidOperationException("DTO editor requires a registry.");
-                _context = new(item, registry, FormTheme);
+                _context = new(item, registry, FormTheme, Depth);
                 _lease = registry.CreateDto(_context) ?? throw new InvalidOperationException("DTO factory returned no lease.");
                 if (_lease.Control.Parent is not null || _lease.Control.GetVisualParent() is not null) throw new InvalidOperationException("DTO factory must return a fresh unparented control.");
                 Content = _lease.Control;

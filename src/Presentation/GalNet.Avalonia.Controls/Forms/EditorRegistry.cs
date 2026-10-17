@@ -91,7 +91,7 @@ public sealed class EditorRegistry
         if (id is null)
             id = field.Value.TryGetConstraint("enum", out _) || field.Value.TryGetConstraint("options", out _)
                 ? ValueEditorIds.Choice : _defaults.TryGetValue(type, out var mapped) ? mapped
-                    : type.IsEnum ? ValueEditorIds.Choice : ValueEditorIds.Json;
+                    : type.IsEnum ? ValueEditorIds.Choice : StructuredFieldEditor.Supports(type) ? "structure" : ValueEditorIds.Json;
         return _factories.TryGetValue(id, out var factory) ? factory
             : throw new NotSupportedException($"Editor '{id}' for field '{field.Id}' is not registered.");
     }
@@ -105,6 +105,7 @@ public sealed class EditorRegistry
         registry.Register(ValueEditorIds.Toggle, DefaultFieldEditors.CreateToggle);
         registry.Register(ValueEditorIds.Choice, DefaultFieldEditors.CreateChoice);
         registry.Register(ValueEditorIds.Json, DefaultFieldEditors.CreateJson);
+        registry.Register("structure", context => context.Depth >= 8 ? DefaultFieldEditors.CreateJson(context) : StructuredFieldEditor.Create(context));
         registry.RegisterDefault(typeof(string), ValueEditorIds.Text);
         registry.RegisterDefault(typeof(bool), ValueEditorIds.Toggle);
         foreach (var type in DefaultFieldEditors.NumericTypes) registry.RegisterDefault(type, ValueEditorIds.Numeric);
