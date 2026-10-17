@@ -138,6 +138,7 @@ UI Editor 的功能落后于当前项目能力，需要分析并重构整体架�
 ## 相关记录与当前事实
 
 - [架构设计](design.md)
+- [galgroup 编辑交互与控件扩展补充设计](group-editing-design.md)：用户追加第 1–5 点纳入 P5；第 6 点仅设计，底层保留 handle，作者选择可读场景目标。
 - [实施 Phase Plan](phase-plan.md)
 - [Feature 工作流](../../docs/design/feature-workflow.md)
 - [当前架构](../../docs/spec/architecture.md)
