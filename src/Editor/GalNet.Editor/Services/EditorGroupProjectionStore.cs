@@ -12,12 +12,16 @@ public sealed class EditorGroupProjectionStore : IDisposable
     private readonly Dictionary<string, EditorGroupProjection> _groups = new(StringComparer.Ordinal);
     private readonly IEditorDocumentService documents;
     private readonly IEntryCatalog catalog;
-    public EditorGroupProjectionStore(IEditorDocumentService documents, IEntryCatalog catalog)
+    private readonly EntryFieldAuthoringService authoring;
+    public EditorGroupProjectionStore(IEditorDocumentService documents, IEntryCatalog catalog, EntryFieldAuthoringService authoring)
     {
         this.documents = documents;
         this.catalog = catalog;
+        this.authoring = authoring;
         documents.DocumentChanged += Synchronize;
+        authoring.Changed += RefreshFields;
     }
+    private void RefreshFields(string groupId) { if (_groups.TryGetValue(groupId, out var group)) group.Synchronize(catalog); }
     private void Synchronize()
     {
         foreach (var group in _groups.Values) group.Synchronize(catalog);
@@ -27,7 +31,7 @@ public sealed class EditorGroupProjectionStore : IDisposable
     {
         if (_groups.TryGetValue(groupId, out var existing)) return existing;
         var source = documents.GetOrCreateGroup(groupId, "Graph/" + (sourcePath ?? $"groups/{groupId}.rawgalgroup"));
-        var projection = new EditorGroupProjection(source, catalog);
+        var projection = new EditorGroupProjection(source, catalog, authoring);
         _groups.Add(groupId, projection);
         return projection;
     }
@@ -35,6 +39,7 @@ public sealed class EditorGroupProjectionStore : IDisposable
     public void Dispose()
     {
         documents.DocumentChanged -= Synchronize;
+        authoring.Changed -= RefreshFields;
         foreach (var group in _groups.Values) group.Dispose();
         _groups.Clear();
     }
@@ -46,19 +51,26 @@ public sealed class EditorGroupProjection : IDisposable
     public ObservableCollection<EntryEditorItemViewModel> Entries { get; }
     private readonly HashSet<EntryEditorItemViewModel> _allEntries = [];
     private bool _synchronizing;
+    private readonly EntryFieldAuthoringService _authoring;
 
-    internal EditorGroupProjection(EditorGroupDocument document, IEntryCatalog catalog)
+    internal EditorGroupProjection(EditorGroupDocument document, IEntryCatalog catalog, EntryFieldAuthoringService authoring)
     {
         Document = document;
+        _authoring = authoring;
         Entries = new(document.Entries.Select(entry => new EntryEditorItemViewModel(entry, catalog)));
         _allEntries.UnionWith(Entries);
+        foreach (var entry in Entries) Bind(entry);
         Entries.CollectionChanged += OnEntriesChanged;
     }
 
     private void OnEntriesChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs args)
     {
         if (_synchronizing) return;
+        if (args.OldItems is not null)
+            foreach (EntryEditorItemViewModel entry in args.OldItems)
+                if (!Entries.Contains(entry)) entry.InvalidateParameterFields();
         _allEntries.UnionWith(Entries);
+        foreach (var entry in Entries) Bind(entry);
         Document.Entries.Clear();
         Document.Entries.AddRange(Entries.Select(entry => entry.Source));
     }
@@ -72,6 +84,7 @@ public sealed class EditorGroupProjection : IDisposable
         }
         var previous = Entries.ToArray();
         var current = Document.Entries.ToArray();
+        foreach (var entry in previous.Where(entry => !current.Contains(entry.Source))) entry.InvalidateParameterFields();
         _synchronizing = true;
         try
         {
@@ -80,11 +93,14 @@ public sealed class EditorGroupProjection : IDisposable
             {
                 var entry = previous.FirstOrDefault(entry => ReferenceEquals(entry.Source, source)) ?? new EntryEditorItemViewModel(source, catalog);
                 Entries.Add(entry);
+                Bind(entry);
                 _allEntries.Add(entry);
             }
         }
         finally { _synchronizing = false; }
     }
+
+    private void Bind(EntryEditorItemViewModel entry) => entry.BindAuthoring(Document.Id, _authoring);
 
     public void Dispose()
     {

@@ -602,5 +602,10 @@
   "Error.variable.duplicate": "플레이어 변수와 저장 변수에서 이미 사용 중인 이름입니다.",
   "Error.variable.default": "선택한 유형에 맞는 기본값을 입력하세요.",
   "Error.variable.inUse": "확실한 참조가 있습니다. 참조를 제거한 후 삭제하세요.",
-  "Error.variable.changed": "변수 또는 참조가 변경되었습니다. 초안을 되돌린 후 다시 편집하세요."
+  "Error.variable.changed": "변수 또는 참조가 변경되었습니다. 초안을 되돌린 후 다시 편집하세요.",
+  "History.EntryType": "항목 유형 편집",
+  "History.EntryCondition": "항목 조건 편집",
+  "History.EntryParameters": "항목 매개변수 편집",
+  "Error.entry.obsolete": "항목이 삭제되었거나 유형이 변경되었습니다. 편집기를 다시 여세요.",
+  "Error.entry.changed": "다른 작업으로 항목이 변경되었습니다. 새로 고친 후 다시 시도하세요."
 }

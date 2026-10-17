@@ -40,7 +40,7 @@
 
 ## 当前工作
 
-- [F-20261015-02 Editor 创作工作区](../features/F-20261015-02-editor-authoring-workspace/phase-plan.md)：P1a/P1b/P2/P2i/P3/P4a/P4b 已验证，P4b 隔离构建与 383 项相关回归通过。项目单栈、Graph、文件事务/双版本文档协调、metadata/引用保护、文件树/网格、路径块/全局文件名搜索、项目文本缓冲与四语已接通；P6a 已提前完成共享 DTO UI 基础，610 项相关回归通过，另 6 项媒体环境用例未执行；三层注册、默认表单、多 DTO 面板与两个宿主已接入。P5a Group 交互已验证（搜索/键盘插入、批量、折叠拖放、尾部取消选择），614 项相关回归通过，6 个媒体环境用例未执行。P5b 多选剪贴板/批量删除与移动已验证，493 项相关回归和解决方案构建通过，含异步剪贴板保护与集合补偿故障测试。P5c 独立变量面板及声明/引用单历史已验证，611 项相关回归和解决方案构建通过；玩家/存档页签、草稿/应用、说明、引用诊断与补全刷新已接通。后续继续 P5 剩余 Entry 绑定迁移与 P6 状态查询/复杂值功能。游戏预览另立 feature。当前实现见 docs/spec/editor-graph.md、editor-groups.md、editor-variables.md、editor-files.md 和 editor-history-and-save.md。
+- [F-20261015-02 Editor 创作工作区](../features/F-20261015-02-editor-authoring-workspace/phase-plan.md)：P1a/P1b/P2/P2i/P3/P4a/P4b 已验证，P4b 隔离构建与 383 项相关回归通过。项目单栈、Graph、文件事务/双版本文档协调、metadata/引用保护、文件树/网格、路径块/全局文件名搜索、项目文本缓冲与四语已接通；P6a 已提前完成共享 DTO UI 基础，610 项相关回归通过，另 6 项媒体环境用例未执行；三层注册、默认表单、多 DTO 面板与两个宿主已接入。P5a Group 交互已验证（搜索/键盘插入、批量、折叠拖放、尾部取消选择），614 项相关回归通过，6 个媒体环境用例未执行。P5b 多选剪贴板/批量删除与移动已验证，493 项相关回归和解决方案构建通过，含异步剪贴板保护与集合补偿故障测试。P5c 独立变量面板及声明/引用单历史已验证，611 项相关回归和解决方案构建通过；玩家/存档页签、草稿/应用、说明、引用诊断与补全刷新已接通。P5d Entry 字段与新增入口迁移已验证，614 项相关回归及解决方案构建通过；字段历史按稳定 ID/作者 JSON 执行，不保留页面，旧表单在删除/换类型及撤销后不复活。后续继续 P5e 未完成/未知作者内容保存与 P6 状态查询/复杂值功能。游戏预览另立 feature。当前实现见 docs/spec/editor-graph.md、editor-groups.md、editor-variables.md、editor-files.md 和 editor-history-and-save.md。
 
 - F-20261015-03 模块化游戏状态：GameSnapshot v4；状态 catalog 随 view 组合，Engine 接入；中立 Layer/EffectInstance/ParticleEmitterInstance 直接作为唯一可变数据记录，属性变更必须在 State.Update，编码形成隔离快照。LoopAnimationState 保存类型化 request/plan；停止控制与播放 identity 仅运行期持有。音频 AudioTrackState/AudioSEffectState 包含暂停、队列与空闲效果，所有轨道按稳定检查点从头恢复；不恢复 seek/淡化时钟，玩家设置不回滚。恢复首帧不重复一次性事件，暂停声音在 Resume 前不启动后端。七个相关项目 665 项测试、解决方案构建与 CLI 实际项目校验/编译通过；新档验证见 [feature summary](../features/F-20261015-03-modular-game-state/summary.md)。
 
@@ -76,6 +76,8 @@
 4. 如果项目架构变化，检查并标记受影响的 lesson 和 skill，而不是继续沿用旧规则。
 
 ## 经验索引
+
+- [Entry 旧绑定复活边界](lessons/L-20261018-01-entry-binding-revival.md)：candidate；稳定 ID 可随撤销恢复，控件提交租约必须重新建立，不能只检查对象存在和类型相同。
 
 - [项目监听器身份](lessons/L-20261017-03-project-watcher-owner.md)：后台事件使用创建时固定的项目根，投递 UI 后复查项目身份与 disposed；关闭后不可再从全局 Current 取根。
 

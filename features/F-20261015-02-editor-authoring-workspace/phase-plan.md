@@ -186,7 +186,7 @@ P1a 基本页面/项目文档 → P1b 项目历史/保存骨架
 
 ## P5：galgroup 多文档编辑与最小参数 UI
 
-状态：in-progress。P5a/P5b/P5c 已验证，见 [phase-5a.md](phase-5a.md)、[phase-5b.md](phase-5b.md)、[phase-5c.md](phase-5c.md)；剩余作者绑定迁移仍 planned。前置：P4b。
+状态：in-progress。P5a/P5b/P5c 已验证，见 [phase-5a.md](phase-5a.md)、[phase-5b.md](phase-5b.md)、[phase-5c.md](phase-5c.md)；P5d 作者绑定迁移已验证，解决方案构建及 614 项相关回归通过，见 [phase-5d.md](phase-5d.md)。P5e 未完成/未知作者内容保存仍 planned。前置：P4b。
 
 **目标**：完成可保存、可编译检查的剧情条目创作。
 
@@ -293,3 +293,13 @@ P6a 验证：隔离解决方案构建成功，610 项相关回归通过、0 失�
 ## P5c：独立变量面板
 
 状态：verified。解决方案构建成功，611 项相关回归通过，whitespace/IDE0005 verify 与源码指纹通过。按用户确认统一面板内分玩家/存档变量，先交付声明/初值/说明、显式草稿和应用、新增/修改/删除、明确引用同步重命名及候选诊断。项目统一历史，Graph 为唯一声明来源；运行期当前值不进入本面板，剩余 Entry 作者绑定迁移仍单列。见 [phase-5c.md](phase-5c.md)。
+
+## P5d：Entry 作者字段绑定
+
+状态：verified。用户于 2026-10-18 授权继续。迁移类型、条件、参数与新增条目入口为项目级显式意图，删除 Workspace 的 Entry 属性监听补记历史。生成表单读写作者 JSON，专属控件复用契约转换；按稳定 ID 执行完整前后值撤销，关闭页面不影响已提交历史，旧字段租约不会随撤销复活。解决方案构建 0 错误、48 条警告，614 项相关回归通过，格式和源码指纹核对通过。验证和保存边界见 [phase-5d.md](phase-5d.md)。
+
+## P5e：未完成作者内容的保存
+
+状态：planned。前置 P5d。此项是 P5 原有退出条件的显式拆分：当前 Repository 的 Load/PrepareSave 和 SerializeEntry 仍要求完整契约有效，不能把 partial 表单可编辑等同于草稿可保存。
+
+需要把 GUI 作者文档的结构/身份安全检查与完整语义检查分开，允许未填写完的已知条目、未知类型/参数无损保存重开；无效 JSON、重复身份、非法路径和未知顶层 shape 继续拒绝。CLI check/compile 和游戏编译继续完整校验；逐项核对现有 Shared 安全测试，不通过删除测试或全局跳过验证达成。未知 schema 的通用 JSON 编辑 UI 与 P6 协调，P5e 至少保证打开、保留、复制/撤销及保存策略明确。退出条件为真实项目文件往返、partial/full 两条验证路径、严格结构拒绝、已知条目及未知 JSON 的无损测试。

@@ -21,17 +21,20 @@ public sealed class EntryParameterFormBinding : IDisposable
     private readonly EntryEditorItemViewModel _owner;
     private EventHandler? _changed;
     private bool _disposed;
+    private readonly string _type;
     public EntryParameterFormBinding(EntryEditorItemViewModel owner, IReadOnlyList<FieldDescriptor> fields, Type? dtoType = null)
     {
         _owner = owner;
+        _type = owner.Type;
         Fields = fields;
         var members = fields.ToDictionary(field => field.Id, field => (IFieldBinding)new DocumentField(this, field), StringComparer.Ordinal);
         Binding = field => members[field.Id];
-        Item = new(owner.StableId, dtoType, fields, Binding, (patch, token) => _disposed
+        Item = new(owner.StableId, dtoType, fields, Binding, (patch, token) => !IsCurrent
             ? Task.FromResult<ValueIssue?>(new("entry.obsolete", "Entry schema has changed."))
             : owner.CommitParametersAsync(patch.ToDictionary(pair => pair.Key, pair => (fields.Single(field => field.Id == pair.Key), pair.Value)), token));
     }
     public DtoEditorItem Item { get; }
+    private bool IsCurrent => !_disposed && _owner.IsCurrent && _owner.Type == _type;
     public IReadOnlyList<FieldDescriptor> Fields { get; }
     public Func<FieldDescriptor, IFieldBinding> Binding { get; }
     public void Refresh() { if (!_disposed) _changed?.Invoke(this, EventArgs.Empty); }
@@ -40,9 +43,9 @@ public sealed class EntryParameterFormBinding : IDisposable
     private sealed class DocumentField(EntryParameterFormBinding form, FieldDescriptor field) : IFieldBinding
     {
         public object? Label => @field.LabelKey ?? "Entry.Parameter." + @field.Id;
-        public bool IsEnabled => !form._disposed;
-        public FieldValue Read() => form._owner.Parameters.TryGetValue(field.Id, out var text)
-            ? new(ValueCodec.ParseEditorText(field.Value, text)) : default;
+        public bool IsEnabled => form.IsCurrent;
+        public FieldValue Read() => form._owner.Source.Parameters.TryGetValue(field.Id, out var json)
+            ? new(json.Clone()) : default;
         public event EventHandler? Changed
         {
             add { ObjectDisposedException.ThrowIf(form._disposed, form); form._changed += value; }
@@ -51,7 +54,7 @@ public sealed class EntryParameterFormBinding : IDisposable
         public Task<ValueIssue?> CommitAsync(FieldValue value, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return form._disposed ? Task.FromResult<ValueIssue?>(new("entry.obsolete", "Entry schema has changed.", field.Id)) :
+            return !form.IsCurrent ? Task.FromResult<ValueIssue?>(new("entry.obsolete", "Entry schema has changed.", field.Id)) :
                 form._owner.CommitParameterAsync(field, value, cancellationToken);
         }
     }
@@ -68,6 +71,7 @@ public sealed record EntryParameterDefinition(
 public partial class EntryParameterEditorItemViewModel : ObservableObject
 {
     private readonly Action<string, string> _setValue;
+    private bool _refreshing;
 
     public EntryParameterDefinition Definition { get; }
     public string Id => Definition.Id;
@@ -95,21 +99,28 @@ public partial class EntryParameterEditorItemViewModel : ObservableObject
         _stringValue = value;
     }
 
-    partial void OnStringValueChanged(string value) => _setValue(Id, value ?? "");
+    partial void OnStringValueChanged(string value) { if (!_refreshing) _setValue(Id, value ?? ""); }
+    public virtual void RefreshValue(string value)
+    {
+        _refreshing = true;
+        try { StringValue = value; }
+        finally { _refreshing = false; }
+    }
 
 }
 
-/// <summary>Editor authoring adapter. Commits still replace Parameters so graph history and persistence observe the edit.</summary>
+/// <summary>Field adapter submits through the project's explicit Entry intent.</summary>
 public sealed class SchemaEntryParameterEditorItemViewModel(EntryParameterDefinition definition, EntryEditorItemViewModel owner,
     Action<string, string> set) : EntryParameterEditorItemViewModel(definition, "", [], set), IFieldBinding
 {
+    private readonly string _type = owner.Type;
     public IReadOnlyList<FieldDescriptor> Fields { get; } = [definition.Field];
     public Func<FieldDescriptor, IFieldBinding> FieldBinding => _ => this;
     public event EventHandler? Changed;
     object? IFieldBinding.Label => Definition.DisplayNameKey;
-    public void RefreshValue() => Changed?.Invoke(this, EventArgs.Empty);
-    public FieldValue Read() => owner.Parameters.TryGetValue(Id, out var text)
-        ? new(ValueCodec.ParseEditorText(Definition.Field.Value, text)) : default;
+    public override void RefreshValue(string value) => Changed?.Invoke(this, EventArgs.Empty);
+    public FieldValue Read() => owner.Source.Parameters.TryGetValue(Id, out var json)
+        ? new(json.Clone()) : default;
     IReadOnlyList<FieldEditorOption>? IFieldBinding.Options => Definition.Options.Count == 0 ? null : Array.AsReadOnly(Definition.Options.Select(option =>
         new FieldEditorOption(option.Value, option, Definition.Field.Value.ValueType == typeof(bool)
             ? ValueCodec.Serialize(Definition.Field.Value, bool.Parse(option.Value))
@@ -117,7 +128,7 @@ public sealed class SchemaEntryParameterEditorItemViewModel(EntryParameterDefini
     public Task<ValueIssue?> CommitAsync(FieldValue value, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (!owner.ParameterFields.Contains(this)) return Task.FromResult<ValueIssue?>(new("entry.obsolete", "Entry schema has changed.", Id));
+        if (!owner.IsCurrent || owner.Type != _type || !owner.ParameterFields.Contains(this)) return Task.FromResult<ValueIssue?>(new("entry.obsolete", "Entry schema has changed.", Id));
         return owner.CommitParameterAsync(Definition.Field, value, cancellationToken);
     }
 }

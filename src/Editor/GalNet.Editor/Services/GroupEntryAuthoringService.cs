@@ -12,6 +12,22 @@ namespace GalNet.Editor.Services;
 /// <summary>Project-owned batch entry intents. History never retains a Group page.</summary>
 public sealed class GroupEntryAuthoringService(EditorGroupProjectionStore groups, IEditorDocumentService documents, IEntryCatalog catalog, EditorHistories histories)
 {
+    public IReadOnlyList<EntryEditorItemViewModel> Insert(string groupId, int index, int count, string? type)
+    {
+        var group = Group(groupId);
+        type ??= GalNet.Contracts.Builtins.BuiltinEntryIds.Text;
+        if (!catalog.TryGet(type, out _)) return [];
+        index = Math.Clamp(index, 0, group.Entries.Count);
+        var inserted = Enumerable.Range(0, Math.Clamp(count, 1, MaximumEntries)).Select(_ => new EntryEditorItemViewModel(new EditorEntryData
+        {
+            StableId = Guid.NewGuid().ToString("N"),
+            Type = type,
+            Parameters = EditorEntryData.ParseParameters(catalog, type, catalog.Create(type).Values)
+        }, catalog)).ToArray();
+        histories.Content.Execute(new PresenceEdit(this, groupId, inserted.Select((entry, offset) => new PositionedEntry(index + offset, entry)).ToArray(), true,
+            new("History.AddEntries", inserted.Length)));
+        return inserted;
+    }
     private sealed record EntryClipboard(string Kind, int Version, List<EditorEntryData> Entries);
     private const string ClipboardKind = "GalNet.Entries";
     private const int MaximumEntries = 1000;

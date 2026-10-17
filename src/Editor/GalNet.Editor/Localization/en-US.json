@@ -602,5 +602,10 @@
   "Error.variable.duplicate": "Player and save variables share a namespace. This name is already used.",
   "Error.variable.default": "The default value is not valid for the selected type.",
   "Error.variable.inUse": "The variable has known references. Remove them before deleting it.",
-  "Error.variable.changed": "The variable or its references changed. Revert the draft and edit again."
+  "Error.variable.changed": "The variable or its references changed. Revert the draft and edit again.",
+  "History.EntryType": "Edit entry type",
+  "History.EntryCondition": "Edit entry condition",
+  "History.EntryParameters": "Edit entry parameters",
+  "Error.entry.obsolete": "The entry was removed or its type changed. Reopen the editor.",
+  "Error.entry.changed": "The entry changed outside this edit. Refresh and try again."
 }

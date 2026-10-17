@@ -470,7 +470,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             Document = new() { Nodes = [new() { Id = "group", Type = "Group", File = "groups/group.rawgalgroup" }] },
             GroupEntries = { ["group"] = [new() { StableId = "line", Type = "custom.value", Parameters = new() { ["count"] = JsonSerializer.SerializeToElement(4) } }] }
         });
-        var store = new EditorGroupProjectionStore(documents, catalog);
+        var store = new EditorGroupProjectionStore(documents, catalog, new EntryFieldAuthoringService(documents, new EditorHistories()));
         var group = store.Get("group");
         var entry = group.Entries.Single();
         entry.ConfigureParameterFields(catalog, [], []);

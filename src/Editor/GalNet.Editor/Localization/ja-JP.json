@@ -602,5 +602,10 @@
   "Error.variable.duplicate": "プレイヤー変数とセーブ変数でこの名前は既に使用されています。",
   "Error.variable.default": "初期値が選択した型に適合しません。",
   "Error.variable.inUse": "明確な参照があります。参照を削除してから変数を削除してください。",
-  "Error.variable.changed": "変数または参照が変更されました。下書きを戻して再編集してください。"
+  "Error.variable.changed": "変数または参照が変更されました。下書きを戻して再編集してください。",
+  "History.EntryType": "エントリの種類を編集",
+  "History.EntryCondition": "エントリの条件を編集",
+  "History.EntryParameters": "エントリのパラメーターを編集",
+  "Error.entry.obsolete": "エントリが削除されたか種類が変更されました。エディターを開き直してください。",
+  "Error.entry.changed": "エントリが別の操作で変更されました。更新して再試行してください。"
 }

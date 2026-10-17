@@ -58,6 +58,7 @@ public static class EditorServiceCollectionExtensions
         services.AddScoped<IEditorPlayerVariableStore, EditorPlayerVariableStore>();
         services.AddScoped<GraphAuthoringService>();
         services.AddScoped<GroupEntryAuthoringService>();
+        services.AddScoped<EntryFieldAuthoringService>();
         services.AddScoped<VariableAuthoringService>();
         services.AddTransient<VariablesPanelViewModel>();
         services.AddScoped<EditorRegistry>(_ => EditorFieldEditors.CreateDefault());

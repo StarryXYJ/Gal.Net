@@ -602,5 +602,10 @@
   "Error.variable.duplicate": "玩家变量和存档变量共用名称空间，该名称已存在。",
   "Error.variable.default": "默认值与所选类型不符。",
   "Error.variable.inUse": "该变量存在明确引用，请先移除引用再删除。",
-  "Error.variable.changed": "变量或引用已变化，请还原草稿后重新编辑。"
+  "Error.variable.changed": "变量或引用已变化，请还原草稿后重新编辑。",
+  "History.EntryType": "编辑条目类型",
+  "History.EntryCondition": "编辑条目条件",
+  "History.EntryParameters": "编辑条目参数",
+  "Error.entry.obsolete": "条目已移除或其类型已改变，请重新打开编辑。",
+  "Error.entry.changed": "条目内容已被其他操作修改，请刷新后重试。"
 }

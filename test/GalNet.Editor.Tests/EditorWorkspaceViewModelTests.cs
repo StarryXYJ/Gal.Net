@@ -296,13 +296,14 @@ public sealed class EditorWorkspaceViewModelTests
             Catalog = catalog;
             var variableDefinitions = new VariableDefinitionService(DocumentService);
             var repository = new FakeDocumentRepository(loaded);
+            var histories = new EditorHistories();
+            var groups = new EditorGroupProjectionStore(DocumentService, catalog, new EntryFieldAuthoringService(DocumentService, histories));
             var persistence = new EditorWorkspacePersistence(
                 ProjectService,
                 repository,
                 DocumentService,
-                SaveCoordinator);
+                SaveCoordinator, groups);
 
-            var histories = new EditorHistories();
             DocumentService.Load(loaded);
             File.WriteAllText(Path.Combine(_root, "settings.json"), System.Text.Json.JsonSerializer.Serialize(ProjectService.Current!.Settings));
             _content = new ProjectContentSession(DocumentService, repository);
@@ -318,7 +319,7 @@ public sealed class EditorWorkspaceViewModelTests
                 localization,
                 SaveScheduler,
                 new GraphSelectionState(),
-                persistence, new GraphAuthoringService(DocumentService, histories, _content));
+                persistence, new GraphAuthoringService(DocumentService, histories, _content), new GroupEntryAuthoringService(groups, DocumentService, catalog, histories));
         }
 
         public void Dispose()

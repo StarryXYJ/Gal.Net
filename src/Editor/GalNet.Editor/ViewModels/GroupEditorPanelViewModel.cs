@@ -248,14 +248,13 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     {
         if (sender is not EntryEditorItemViewModel entry) return;
         if (e.PropertyName == nameof(EntryEditorItemViewModel.IsParametersExpanded)) _expanded[entry.StableId] = entry.IsParametersExpanded;
-        if (e.PropertyName == nameof(EntryEditorItemViewModel.Type)) Configure(entry, resetValues: true);
+        if (e.PropertyName == nameof(EntryEditorItemViewModel.Type)) Configure(entry);
     }
 
-    private void Configure(EntryEditorItemViewModel entry, bool resetValues = false) => entry.ConfigureParameterFields(
+    private void Configure(EntryEditorItemViewModel entry) => entry.ConfigureParameterFields(
         _catalog,
         _projects.Current?.Settings.Speakers ?? [],
         Workspace.AllProjectVariableDefinitions.Select(variable => variable.Name).ToArray(),
-        resetValues,
         _effects);
 
     public void CommitSpeaker(string? value)
@@ -274,7 +273,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         if (_localization is not null) _localization.PropertyChanged -= OnLocaleChanged;
         Workspace.VariableDefinitionsChanged -= OnVariableDefinitionsChanged;
         _entries.CollectionChanged -= OnEntriesChanged;
-        foreach (var entry in _attached) entry.PropertyChanged -= OnEntryPropertyChanged;
+        foreach (var entry in _attached) { entry.PropertyChanged -= OnEntryPropertyChanged; entry.InvalidateParameterFields(); }
         _attached.Clear(); _expanded.Clear();
         GC.SuppressFinalize(this);
     }

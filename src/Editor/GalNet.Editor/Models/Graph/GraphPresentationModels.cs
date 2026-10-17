@@ -347,31 +347,65 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         _parameters = source.GetParameterText(catalog);
     }
 
+    private EntryFieldAuthoringService? _authoring;
+    private string? _groupId;
+    private int _schemaGeneration;
+    internal void BindAuthoring(string groupId, EntryFieldAuthoringService authoring) { _groupId = groupId; _authoring = authoring; }
+    internal bool IsCurrent => !_disposed && (_authoring is null || _authoring.IsCurrent(_groupId!, Source));
     internal void RefreshAuthorReferences(IEntryCatalog catalog)
     {
-        SetProperty(ref _condition, Source.Condition, nameof(Condition));
         var values = Source.GetParameterText(catalog);
-        if (Parameters.OrderBy(pair => pair.Key).SequenceEqual(values.OrderBy(pair => pair.Key))) return;
-        SetProperty(ref _parameters, values, nameof(Parameters));
-        foreach (var field in ParameterFields.OfType<SchemaEntryParameterEditorItemViewModel>()) field.RefreshValue();
+        var parametersChanged = !_parameters.OrderBy(pair => pair.Key).SequenceEqual(values.OrderBy(pair => pair.Key));
+        _parameters = values;
+        if (_type != Source.Type) InvalidateParameterFields();
+        SetProperty(ref _type, Source.Type, nameof(Type));
+        SetProperty(ref _condition, Source.Condition, nameof(Condition));
+        if (parametersChanged) OnPropertyChanged(nameof(Parameters));
+        foreach (var field in ParameterFields) field.RefreshValue(Parameters.GetValueOrDefault(field.Id, field.Definition.DefaultValue));
         ParameterForm?.Refresh();
+        UpdateEffectHints();
     }
 
     partial void OnIdChanged(int value) => Source.Id = value;
-    partial void OnTypeChanged(string value) => Source.Type = value;
-    partial void OnConditionChanged(string value) => Source.Condition = value;
-
-    [ObservableProperty]
-    private int _id;
-
-    [ObservableProperty]
+    [ObservableProperty] private int _id;
     private string _type = "";
-
-    [ObservableProperty]
     private string _condition = "";
-
-    [ObservableProperty]
     private Dictionary<string, string> _parameters = new(StringComparer.Ordinal);
+    public string Type
+    {
+        get => Source.Type;
+        set
+        {
+            if (Type == value) return;
+            if (_authoring is not null) ChangeAuthorType(value, _authorCatalog!.Create(value).Values);
+            else { Source.Type = value; SetProperty(ref _type, value); }
+        }
+    }
+    internal void ChangeAuthorType(string type, IReadOnlyDictionary<string, string> parameters) =>
+        _authoring!.SetType(_groupId!, Source, type, EditorEntryData.ParseParameters(_authorCatalog!, type, parameters));
+    public string Condition
+    {
+        get => Source.Condition;
+        set
+        {
+            value ??= "";
+            if (Condition == value) return;
+            if (_authoring is not null) _authoring.SetCondition(_groupId!, Source, value);
+            else { Source.Condition = value; SetProperty(ref _condition, value); }
+        }
+    }
+    /// <summary>Text is a projection of author JSON, never a second writable document.</summary>
+    public Dictionary<string, string> Parameters
+    {
+        get => _authorCatalog is null ? new(_parameters, StringComparer.Ordinal) : Source.GetParameterText(_authorCatalog);
+        set
+        {
+            if (_authorCatalog is null) { SetProperty(ref _parameters, new(value, StringComparer.Ordinal)); return; }
+            var parsed = EditorEntryData.ParseParameters(_authorCatalog, Type, value);
+            if (_authoring is not null) _authoring.SetParameters(_groupId!, Source, Type, parsed);
+            else { Source.Parameters = parsed; RefreshAuthorReferences(_authorCatalog); }
+        }
+    }
 
     [ObservableProperty]
     private string _effectHint = "";
@@ -388,7 +422,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<EntryParameterEditorItemViewModel> ParameterFields { get; } = [];
     /// <summary>Builds the editor projection from the Core registry, the single schema source.</summary>
-    public void ConfigureParameterFields(IEntryCatalog catalog, IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames, bool resetValues = false, IEffectCatalog? effectCatalog = null)
+    public void ConfigureParameterFields(IEntryCatalog catalog, IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames, IEffectCatalog? effectCatalog = null)
     {
         if (_authorCatalog is null)
             Source.Parameters = EditorEntryData.ParseParameters(catalog, Type, Parameters);
@@ -397,13 +431,9 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         ParameterForm = null;
         _formParameters = null;
         _effectCatalog = effectCatalog;
-        var schema = catalog.Get(Type);
-        var values = resetValues
-            ? new Dictionary<string, string>(schema.Defaults, StringComparer.Ordinal)
-            : Parameters.Where(pair => schema.Parameters.ContainsKey(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
-        if (!Parameters.OrderBy(x => x.Key).SequenceEqual(values.OrderBy(x => x.Key)))
-            Parameters = values;
+        _schemaGeneration++;
         ParameterFields.Clear();
+        if (!catalog.TryGet(Type, out var schema)) return;
         var parameters = schema.DynamicParameters ?? EntrySchema.DynamicParameters(schema.Parameters, schema.Defaults, schema.Options);
 
         if (schema.FieldDataType is not null)
@@ -435,22 +465,36 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         UpdateEffectHints();
     }
 
+    internal void InvalidateParameterFields()
+    {
+        _schemaGeneration++;
+        ParameterForm?.Dispose();
+        ParameterForm = null;
+        ParameterFields.Clear();
+    }
+
     private static bool UsesDedicatedEditor(FieldDescriptor field, EntryParameterType type) =>
         field.Value.ValueType == typeof(string) && type is (EntryParameterType.MultilineText or EntryParameterType.Autocomplete
             or EntryParameterType.VariableName or EntryParameterType.Expression or EntryParameterType.ImageAsset or EntryParameterType.AudioAsset
             or EntryParameterType.VideoAsset or EntryParameterType.EffectProgramAsset)
             && field.Editor?.EditorId == "entry." + type.ToString().ToLowerInvariant();
 
-    private EntryParameterEditorItemViewModel CreateField(EntryParameterDefinition definition, string value, IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames) =>
+    private EntryParameterEditorItemViewModel CreateField(EntryParameterDefinition definition, string value, IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames)
+    {
+        var generation = _schemaGeneration;
+        var type = Type;
+        void Commit(string id, string text) { if (generation == _schemaGeneration && Type == type && IsCurrent) SetParameter(id, text); }
+        return
         !UsesDedicatedEditor(definition.Field, definition.Type)
-        ? new SchemaEntryParameterEditorItemViewModel(definition, this, SetParameter) : definition.Type switch
+        ? new SchemaEntryParameterEditorItemViewModel(definition, this, Commit) : definition.Type switch
         {
-            EntryParameterType.Autocomplete => new AutocompleteEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
-            EntryParameterType.VariableName => new VariableNameEntryParameterEditorItemViewModel(definition, value, variableNames, SetParameter),
-            EntryParameterType.Expression => new ExpressionEntryParameterEditorItemViewModel(definition, value, variableNames, SetParameter),
-            EntryParameterType.ImageAsset or EntryParameterType.AudioAsset or EntryParameterType.VideoAsset or EntryParameterType.EffectProgramAsset => new AssetEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter),
-            _ => new TextEntryParameterEditorItemViewModel(definition, value, speakers, SetParameter)
+            EntryParameterType.Autocomplete => new AutocompleteEntryParameterEditorItemViewModel(definition, value, speakers, Commit),
+            EntryParameterType.VariableName => new VariableNameEntryParameterEditorItemViewModel(definition, value, variableNames, Commit),
+            EntryParameterType.Expression => new ExpressionEntryParameterEditorItemViewModel(definition, value, variableNames, Commit),
+            EntryParameterType.ImageAsset or EntryParameterType.AudioAsset or EntryParameterType.VideoAsset or EntryParameterType.EffectProgramAsset => new AssetEntryParameterEditorItemViewModel(definition, value, speakers, Commit),
+            _ => new TextEntryParameterEditorItemViewModel(definition, value, speakers, Commit)
         };
+    }
 
     private void SetParameter(string id, string value)
     {
@@ -464,8 +508,8 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     internal Task<ValueIssue?> CommitParametersAsync(IReadOnlyDictionary<string, (FieldDescriptor Field, FieldValue Value)> patch, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (_disposed) return Task.FromResult<ValueIssue?>(new("entry.obsolete", "The project document is closed."));
-        var updated = new Dictionary<string, string>(Parameters, StringComparer.Ordinal);
+        if (!IsCurrent) return Task.FromResult<ValueIssue?>(new("entry.obsolete", "The project document is closed."));
+        var updated = Source.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal);
         foreach (var (id, (field, value)) in patch)
         {
             if (value.Json is not { } json)
@@ -476,31 +520,21 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
             else
             {
                 if (ValueValidation.Validate(field.Value, json) is { } issue) return Task.FromResult<ValueIssue?>(issue);
-                var text = ValueCodec.ToEditorText(field.Value, json);
-                if (!JsonElement.DeepEquals(json, ValueCodec.ParseEditorText(field.Value, text)))
-                    return Task.FromResult<ValueIssue?>(new("entry.representation", "This value cannot be represented by the editor document.", id));
-                updated[id] = text;
+                updated[id] = json.Clone();
             }
         }
         try
         {
             if (_formParameters is { } parameters)
-                parameters.ValidatePartialArguments(JsonSerializer.SerializeToElement(updated.ToDictionary(pair => pair.Key,
-                    pair => ValueCodec.ParseEditorText(parameters[pair.Key].Value, pair.Value))));
+                parameters.ValidatePartialArguments(JsonSerializer.SerializeToElement(updated.Where(pair => parameters.Fields.Any(field => field.Id == pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value)));
         }
         catch (Exception exception) when (exception is ArgumentException or JsonException)
         { return Task.FromResult<ValueIssue?>(new("entry.arguments", exception.Message)); }
-        if (!Parameters.OrderBy(pair => pair.Key).SequenceEqual(updated.OrderBy(pair => pair.Key))) Parameters = updated;
+        if (_authoring is not null) _authoring.SetParameters(_groupId!, Source, Type, updated);
+        else { Source.Parameters = updated; RefreshAuthorReferences(_authorCatalog!); }
         return Task.FromResult<ValueIssue?>(null);
     }
 
-    partial void OnParametersChanged(Dictionary<string, string> value)
-    {
-        if (_authorCatalog is not null) Source.Parameters = EditorEntryData.ParseParameters(_authorCatalog, Type, value);
-        foreach (var field in ParameterFields.OfType<SchemaEntryParameterEditorItemViewModel>()) field.RefreshValue();
-        ParameterForm?.Refresh();
-        UpdateEffectHints();
-    }
     partial void OnEffectDiagnosticChanged(string value) => OnPropertyChanged(nameof(HasEffectDiagnostic));
 
     private void UpdateEffectHints()

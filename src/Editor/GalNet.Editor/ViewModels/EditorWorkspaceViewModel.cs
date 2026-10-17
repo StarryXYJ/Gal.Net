@@ -39,7 +39,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
     private readonly Action<GalProject?> _projectChangedHandler;
     private readonly Action<GalNet.Core.Variable.VariableScope> _definitionsChangedHandler;
     private readonly IProjectSaveScheduler _saveScheduler;
-    private readonly GraphChangeTracker _graphChangeTracker;
+    private readonly GroupEntryAuthoringService _entryAuthoring;
     private readonly GraphAuthoringService _graphAuthoring;
     private EditorText _statusMessage = new("Editor.Status.Ready");
     private void SetStatus(EditorText text) { _statusMessage = text; StatusText = text.Render(_localization); }
@@ -50,7 +50,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
     private bool _disposed;
     private bool _isSaving;
     private bool _isApplyingHistory;
-    private readonly Dictionary<(object Item, string Property), object?> _propertyValues = [];
     private readonly Dictionary<GalNet.Core.Variable.VariableScope, List<GalNet.Core.Variable.ProjectVariableDefinition>> _variableSnapshots = [];
     public IUndoRedoHistory UndoRedoHistory => _histories.Content;
     public event Action? VariableDefinitionsChanged;
@@ -90,7 +89,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         IEditorLocalizationService localization,
         IProjectSaveScheduler saveScheduler,
         GraphSelectionState selection,
-        EditorWorkspacePersistence persistence, GraphAuthoringService graphAuthoring)
+        EditorWorkspacePersistence persistence, GraphAuthoringService graphAuthoring, GroupEntryAuthoringService entryAuthoring)
     {
         _projectService = projectService;
         _histories = histories;
@@ -104,6 +103,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         _selection = selection;
         _persistence = persistence;
         _graphAuthoring = graphAuthoring;
+        _entryAuthoring = entryAuthoring;
         _variableDefinitionService = variableDefinitionService;
         _projectChangedHandler = _ => LoadCurrentProjectGraph();
         _definitionsChangedHandler = _ =>
@@ -116,10 +116,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         _documentService.DirtyStateChanged += OnDocumentDirtyStateChanged;
         _variableDefinitionService.DefinitionsChanged += _definitionsChangedHandler;
         _histories.Changed += OnHistoryChanged;
-        _graphChangeTracker = new GraphChangeTracker(
-            MarkGraphDirty,
-            () => _isLoadingGraph || _histories.Content.IsBusy,
-            OnTrackedItemChanged);
         Nodes.CollectionChanged += OnGraphCollectionChanged;
         Edges.CollectionChanged += OnGraphCollectionChanged;
         SetStatus(_statusMessage);
@@ -140,7 +136,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         _documentService.DocumentChanged -= SynchronizeGraph;
         foreach (var node in Nodes) { node.RenameRequested = null; node.BranchValueRequested = null; }
         foreach (var edge in Edges) edge.Dispose();
-        _graphChangeTracker.Dispose();
         Nodes.CollectionChanged -= OnGraphCollectionChanged;
         Edges.CollectionChanged -= OnGraphCollectionChanged;
         GC.SuppressFinalize(this);
@@ -369,7 +364,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
     {
         _isLoadingGraph = true;
         ClearSelection();
-        _graphChangeTracker.Clear();
         foreach (var node in Nodes) { node.RenameRequested = null; node.BranchValueRequested = null; }
         foreach (var edge in Edges) edge.Dispose();
         Nodes.Clear();
@@ -384,7 +378,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
                 return;
             }
 
-            _propertyValues.Clear();
             foreach (var node in graph.Nodes)
             {
                 node.IsRoot = node.NodeKind == GraphNodeKind.Entry;
@@ -422,7 +415,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
             var selected = SelectedNodes.Select(node => node.Id).ToHashSet();
             var selectedEdge = SelectedEdge?.Id;
             var source = _documentService.CurrentDocument;
-            _graphChangeTracker.Clear();
             foreach (var node in Nodes.ToArray())
                 if (!source.Nodes.Any(dto => ReferenceEquals(dto, node.Source)))
                 {
@@ -495,14 +487,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
             project.IsDirty = isDirty || _histories.IsDirty;
     }
 
-    private void ExecuteGraphEdit(IUndoableEdit edit)
-    {
-        _isApplyingHistory = true;
-        try { _histories.Content.Execute(edit); }
-        finally { _isApplyingHistory = false; }
-        MarkGraphDirty();
-    }
-
     private void PushGraphEdit(IUndoableEdit edit)
     {
         _histories.Content.PushAlreadyApplied(edit);
@@ -512,17 +496,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
     private void OnHistoryChanged()
     {
         if (_disposed) return;
-        _propertyValues.Clear();
-        foreach (var node in Nodes)
-        {
-            foreach (var entry in node.Entries) CacheEntry(entry);
-            foreach (var option in node.Options)
-            {
-                _propertyValues[(option, nameof(option.Text))] = option.Text;
-                _propertyValues[(option, nameof(option.Condition))] = option.Condition;
-            }
-            foreach (var condition in node.Conditions) _propertyValues[(condition, nameof(condition.Expression))] = condition.Expression;
-        }
         CaptureVariableSnapshots();
         if (_projectService.Current is { } project)
             project.IsDirty = _histories.IsDirty;
@@ -530,111 +503,34 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
             ScheduleAutoSave();
     }
 
-    private void OnTrackedItemChanged(GraphNode node, object item, string propertyName)
-    {
-        object? current = (item, propertyName) switch
-        {
-            (EntryEditorItemViewModel entry, nameof(EntryEditorItemViewModel.Type)) => entry.Type,
-            (EntryEditorItemViewModel entry, nameof(EntryEditorItemViewModel.Condition)) => entry.Condition,
-            (EntryEditorItemViewModel entry, nameof(EntryEditorItemViewModel.Parameters)) => entry.Parameters,
-            _ => null
-        };
-        if (current is not null) RecordPropertyEdit(item, propertyName, current, value => SetTrackedProperty(item, propertyName, value));
-    }
-
-    private void RecordPropertyEdit(object item, string propertyName, object? current, Action<object?> setter)
-    {
-        var key = (item, propertyName);
-        if (_isApplyingHistory || !_propertyValues.TryGetValue(key, out var before)) { _propertyValues[key] = current; return; }
-        if (Equals(before, current)) return;
-        _propertyValues[key] = current;
-        PushGraphEdit(new DelegateEdit($"Edit {propertyName}",
-            () => { _isApplyingHistory = true; try { setter(before); _propertyValues[key] = before; } finally { _isApplyingHistory = false; } },
-            () => { _isApplyingHistory = true; try { setter(current); _propertyValues[key] = current; } finally { _isApplyingHistory = false; } }));
-    }
-
-    private static void SetTrackedProperty(object item, string propertyName, object? value)
-    {
-        switch (item, propertyName)
-        {
-            case (EntryEditorItemViewModel entry, nameof(EntryEditorItemViewModel.Type)): entry.Type = (string)value!; break;
-            case (EntryEditorItemViewModel entry, nameof(EntryEditorItemViewModel.Condition)): entry.Condition = (string)value!; break;
-            case (EntryEditorItemViewModel entry, nameof(EntryEditorItemViewModel.Parameters)): entry.Parameters = new Dictionary<string, string>((Dictionary<string, string>)value!); break;
-        }
-    }
-
-    public IReadOnlyList<EntryEditorItemViewModel> InsertEntriesInto(GraphNode groupNode, int index, int count, string? type = null)
-    {
-        if (groupNode.NodeKind != GraphNodeKind.LinearGroup) return [];
-        var inserted = _graphEditingService.InsertEntries(groupNode, index, Math.Clamp(count, 1, 1000), type);
-        if (inserted.Count == 0) return inserted;
-        foreach (var entry in inserted) CacheEntry(entry);
-        var actualIndex = groupNode.Entries.IndexOf(inserted[0]);
-        PushGraphEdit(new DelegateEdit(
-            inserted.Count == 1 ? "Add entry" : $"Add {inserted.Count} entries",
-            () =>
-            {
-                foreach (var entry in inserted) groupNode.Entries.Remove(entry);
-                RenumberGroupEntries(groupNode);
-            },
-            () =>
-            {
-                for (var offset = 0; offset < inserted.Count; offset++)
-                    groupNode.Entries.Insert(Math.Min(actualIndex + offset, groupNode.Entries.Count), inserted[offset]);
-                RenumberGroupEntries(groupNode);
-            }));
-        return inserted;
-    }
+    public IReadOnlyList<EntryEditorItemViewModel> InsertEntriesInto(GraphNode groupNode, int index, int count, string? type = null) =>
+        groupNode.NodeKind == GraphNodeKind.LinearGroup ? _entryAuthoring.Insert(groupNode.Id, index, count, type) : [];
 
     public bool RemoveEntryFrom(GraphNode groupNode, EntryEditorItemViewModel entry)
     {
-        var index = groupNode.Entries.IndexOf(entry); if (index < 0 || !_graphEditingService.RemoveEntry(groupNode, entry)) return false;
-        PushGraphEdit(new DelegateEdit("Delete entry", () => groupNode.Entries.Insert(index, entry), () => groupNode.Entries.Remove(entry)));
+        if (!groupNode.Entries.Contains(entry)) return false;
+        _entryAuthoring.Delete(groupNode.Id, [entry.StableId]);
         return true;
     }
 
     public void ChangeEntryType(GraphNode groupNode, EntryEditorItemViewModel entry, string type, IReadOnlyDictionary<string, string> parameters)
     {
         if (!groupNode.Entries.Contains(entry) || entry.Type == type) return;
-        var previousType = entry.Type; var previous = new Dictionary<string, string>(entry.Parameters, StringComparer.Ordinal);
-        var next = new Dictionary<string, string>(parameters, StringComparer.Ordinal);
-        void Apply(string value, Dictionary<string, string> fields)
-        {
-            var applying = _isApplyingHistory; _isApplyingHistory = true;
-            try { entry.Type = value; entry.Parameters = new(fields, StringComparer.Ordinal); }
-            finally { _isApplyingHistory = applying; }
-        }
-        ExecuteGraphEdit(new DelegateEdit("Edit Type", () => Apply(previousType, previous), () => Apply(type, next)));
+        entry.ChangeAuthorType(type, parameters);
     }
 
     public bool MoveEntryTo(GraphNode groupNode, EntryEditorItemViewModel entry, int newIndex)
     {
-        var oldIndex = groupNode.Entries.IndexOf(entry); if (!_graphEditingService.MoveEntry(groupNode, entry, newIndex)) return false;
-        PushGraphEdit(new CollectionMoveEdit<EntryEditorItemViewModel>("Move entry", groupNode.Entries, oldIndex, newIndex));
+        var oldIndex = groupNode.Entries.IndexOf(entry);
+        if (oldIndex < 0 || newIndex < 0 || newIndex >= groupNode.Entries.Count || oldIndex == newIndex) return false;
+        _entryAuthoring.Move(groupNode.Id, [entry.StableId], entry.StableId, newIndex);
         return true;
-    }
-
-    private static void RenumberGroupEntries(GraphNode groupNode)
-    {
-        for (var index = 0; index < groupNode.Entries.Count; index++)
-            groupNode.Entries[index].Id = index + 1;
     }
 
     private void TrackNode(GraphNode node)
     {
         node.RenameRequested = value => { try { _graphAuthoring.Rename(node.Id, value); } catch (Exception failure) { ReportGraphError(failure); } };
         node.BranchValueRequested = (itemId, field, value) => EditBranch(() => _graphAuthoring.SetBranchValue(node.Id, itemId, field, value));
-        _graphChangeTracker.Track(node);
-        foreach (var entry in node.Entries) CacheEntry(entry);
-        foreach (var option in node.Options) { _propertyValues[(option, nameof(option.Text))] = option.Text; _propertyValues[(option, nameof(option.Condition))] = option.Condition; }
-        foreach (var condition in node.Conditions) _propertyValues[(condition, nameof(condition.Expression))] = condition.Expression;
-    }
-
-    private void CacheEntry(EntryEditorItemViewModel entry)
-    {
-        _propertyValues[(entry, nameof(entry.Type))] = entry.Type;
-        _propertyValues[(entry, nameof(entry.Condition))] = entry.Condition;
-        _propertyValues[(entry, nameof(entry.Parameters))] = entry.Parameters;
     }
 
     private void CaptureVariableSnapshots()
