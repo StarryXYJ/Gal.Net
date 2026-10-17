@@ -65,7 +65,11 @@ public sealed class EditorGroupProjection : IDisposable
 
     public void Synchronize(IEntryCatalog catalog)
     {
-        if (Document.Entries.SequenceEqual(Entries.Select(entry => entry.Source))) return;
+        if (Document.Entries.SequenceEqual(Entries.Select(entry => entry.Source)))
+        {
+            foreach (var entry in Entries) entry.RefreshAuthorReferences(catalog);
+            return;
+        }
         var previous = Entries.ToArray();
         var current = Document.Entries.ToArray();
         _synchronizing = true;

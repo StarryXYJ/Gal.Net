@@ -645,7 +645,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
 
     private void RecordVariableDefinitionsChange(GalNet.Core.Variable.VariableScope scope)
     {
-        if (_isLoadingGraph || _isApplyingHistory) return;
+        if (_isLoadingGraph || _isApplyingHistory || _histories.Content.IsBusy) return;
         var current = GetVariableDefinitions(scope).Select(item => item.Clone()).ToList();
         if (!_variableSnapshots.TryGetValue(scope, out var before)) { _variableSnapshots[scope] = current; return; }
         _variableSnapshots[scope] = current.Select(item => item.Clone()).ToList();

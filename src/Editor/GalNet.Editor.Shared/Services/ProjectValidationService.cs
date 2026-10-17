@@ -220,7 +220,8 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
             for (var i = 0; i < variables.Count; i++)
             {
                 var variable = variables[i]; var pointer = $"/{key}/{i}";
-                if (!Shape(variable, GraphFile, pointer, diagnostics, ["name", "defaultValue", "type"])) continue;
+                if (!Shape(variable, GraphFile, pointer, diagnostics, ["name", "defaultValue", "type", "description"])) continue;
+                String(variable, "description", GraphFile, pointer, diagnostics);
                 Identity(variable, "name", variableNames, GraphFile, pointer, diagnostics);
                 if (!variable.TryGetProperty("defaultValue", out var value) || !Shape(value, GraphFile, pointer + "/defaultValue", diagnostics, ["Uid", "Name", "Type", "Value"]))
                 { Error(diagnostics, "variable.defaultRequired", "Typed defaultValue is required.", GraphFile, pointer); continue; }

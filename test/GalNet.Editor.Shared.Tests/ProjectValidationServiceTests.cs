@@ -43,6 +43,18 @@ public sealed class ProjectValidationServiceTests
         });
     }
 
+    [TestCase("\"Author notes\"", true)]
+    [TestCase("42", false)]
+    [TestCase("null", false)]
+    public void VariableDescriptionIsOptionalTextAndDoesNotRelaxUnknownFields(string description, bool valid)
+    {
+        var variable = "{\"name\":\"score\",\"description\":" + description + ",\"type\":1,\"defaultValue\":{\"Uid\":\"score-id\",\"Name\":\"score\",\"Type\":1,\"Value\":0}}";
+        Put("Graph/graph.json", Graph.Replace("\"saveVariables\":[]", "\"saveVariables\":[" + variable + "]", StringComparison.Ordinal));
+        var report = new ProjectValidationService(_root).Validate("graph", structureOnly: true);
+        Assert.That(report.Success, Is.EqualTo(valid));
+        if (!valid) Assert.That(report.Diagnostics.Any(item => item.JsonPointer == "/saveVariables/0/description"), Is.True);
+    }
+
     [TestCase("{}", "document.versionInvalid")]
     [TestCase("{\"version\":1,\"kind\":\"Raw\",\"entries\":[]}", "document.versionInvalid")]
     [TestCase("{\"version\":2,\"kind\":\"Compiled\",\"entries\":[]}", "group.kindInvalid")]

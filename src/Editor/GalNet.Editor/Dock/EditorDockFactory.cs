@@ -320,6 +320,7 @@ public sealed class EditorDockFactory : Factory, IDisposable
                 if (args.Dockable is not { } closed) return;
                 if (closed.Context is GroupEditorPanelViewModel group) group.Dispose();
                 if (closed.Context is FileDocumentPanelViewModel file) file.Dispose();
+                if (closed.Context is VariablesPanelViewModel variables) variables.Dispose();
                 _panelByDockable.Remove(closed);
             };
             DockableMoved += (_, args) => { Log.Information("[DockFactory] DockableMoved: {Id}", args.Dockable?.Id); LayoutChanged?.Invoke(); };
@@ -425,6 +426,7 @@ public sealed class EditorDockFactory : Factory, IDisposable
         foreach (var page in _panelByDockable.Keys.Select(dockable => dockable.Context).OfType<GroupEditorPanelViewModel>())
             page.Dispose();
         foreach (var page in _panelByDockable.Keys.Select(dockable => dockable.Context).OfType<FileDocumentPanelViewModel>()) page.Dispose();
+        foreach (var page in _panelByDockable.Keys.Select(dockable => dockable.Context).OfType<VariablesPanelViewModel>()) page.Dispose();
     }
 
     // ── Utility ──

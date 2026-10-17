@@ -24,12 +24,16 @@ public static class EditorDockPanelIds
     public const string GroupEditor = "GroupEditor";
     public const string FileEditor = "FileEditor";
     public const string Inspector = "Inspector";
+    public const string Variables = "Variables";
 }
 
 public static class BuiltInDockContributions
 {
     public static void Register(IEditorExtensionRegistry registry)
     {
+        registry.RegisterDockPanel(new DelegateDockPanelContribution<VariablesPanelViewModel>(
+            EditorDockPanelIds.Variables, "Dock.Panel.Variables", DockPanelPlacement.MainDocument, true, true, true, false, true,
+            sp => sp.GetRequiredService<VariablesPanelViewModel>(), typeof(VariablesPanelView), null));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<EditorWorkspaceViewModel>(
             EditorDockPanelIds.NodeGraph, "Dock.Panel.NodeGraph", DockPanelPlacement.MainDocument, true, true, true, true, true,
             sp => sp.GetRequiredService<EditorWorkspaceViewModel>(), typeof(NodeGraphPanelView),

@@ -1,6 +1,6 @@
 # Editor 创作工作区实施计划
 
-日期：2026-10-15；进度更新：2026-10-17。依赖：[需求](feature.md)、[设计](design.md)。用户已授权实施，P1a 已验证，见 [phase-1a.md](phase-1a.md)；P1b 已完成当前工作树集成验证，构建成功、311 项测试通过，见 [phase-1b.md](phase-1b.md)。P2 已验证，当前工作树构建成功、323 项回归通过，见 [phase-2.md](phase-2.md)。用户追加编辑器 UI i18n 后，在 P3 前插入 P2i；P2i 已验证，隔离基线构建成功、328 项回归通过，见 [phase-2i.md](phase-2i.md)；P3 已验证，当前工作树构建成功、339 项回归通过，见 [phase-3.md](phase-3.md)；P4a 已验证，当前工作树构建成功、365 项相关回归通过，见 [phase-4a.md](phase-4a.md)；P4b 已验证，最终隔离解决方案构建成功、383 项相关回归通过，见 [phase-4b.md](phase-4b.md)；P6a 共享 UI 基础提前验证，P5a Group 交互、P5b 多选剪贴板已验证，P5 整体仍 in-progress。状态只使用 planned / in-progress / verified / skipped；状态更新必须附实际证据。
+日期：2026-10-15；进度更新：2026-10-17。依赖：[需求](feature.md)、[设计](design.md)。用户已授权实施，P1a 已验证，见 [phase-1a.md](phase-1a.md)；P1b 已完成当前工作树集成验证，构建成功、311 项测试通过，见 [phase-1b.md](phase-1b.md)。P2 已验证，当前工作树构建成功、323 项回归通过，见 [phase-2.md](phase-2.md)。用户追加编辑器 UI i18n 后，在 P3 前插入 P2i；P2i 已验证，隔离基线构建成功、328 项回归通过，见 [phase-2i.md](phase-2i.md)；P3 已验证，当前工作树构建成功、339 项回归通过，见 [phase-3.md](phase-3.md)；P4a 已验证，当前工作树构建成功、365 项相关回归通过，见 [phase-4a.md](phase-4a.md)；P4b 已验证，最终隔离解决方案构建成功、383 项相关回归通过，见 [phase-4b.md](phase-4b.md)；P6a 共享 UI 基础提前验证，P5a Group 交互、P5b 多选剪贴板及 P5c 变量面板已验证，P5 整体仍 in-progress。状态只使用 planned / in-progress / verified / skipped；状态更新必须附实际证据。
 
 ## 顺序与范围
 
@@ -186,7 +186,7 @@ P1a 基本页面/项目文档 → P1b 项目历史/保存骨架
 
 ## P5：galgroup 多文档编辑与最小参数 UI
 
-状态：in-progress。P5a/P5b 已验证，见 [phase-5a.md](phase-5a.md)、[phase-5b.md](phase-5b.md)；变量与剩余作者绑定迁移仍 planned。前置：P4b。
+状态：in-progress。P5a/P5b/P5c 已验证，见 [phase-5a.md](phase-5a.md)、[phase-5b.md](phase-5b.md)、[phase-5c.md](phase-5c.md)；剩余作者绑定迁移仍 planned。前置：P4b。
 
 **目标**：完成可保存、可编译检查的剧情条目创作。
 
@@ -289,3 +289,7 @@ P6a 验证：隔离解决方案构建成功，610 项相关回归通过、0 失�
 ## P5b：Entry 多选与剪贴板
 
 状态：verified。解决方案构建成功，493 项相关回归通过，格式与指纹门禁通过，详见 [phase-5b.md](phase-5b.md)。接续 P5a，实现多选、剪贴板与批量删除/移动。活动项与选中集合分开，复制按列表顺序，新副本稳定 ID 与批量单历史；剪切失败及异步晚返回保护。沿用当前项目投影，不将变量 UI/剩余字段历史迁移混入此切片。退出条件为真实主题键鼠、跨 Group 复制与项目历史、保存重开、错误/取消及构建回归验证；见 [phase-5b.md](phase-5b.md)。
+
+## P5c：独立变量面板
+
+状态：verified。解决方案构建成功，611 项相关回归通过，whitespace/IDE0005 verify 与源码指纹通过。按用户确认统一面板内分玩家/存档变量，先交付声明/初值/说明、显式草稿和应用、新增/修改/删除、明确引用同步重命名及候选诊断。项目统一历史，Graph 为唯一声明来源；运行期当前值不进入本面板，剩余 Entry 作者绑定迁移仍单列。见 [phase-5c.md](phase-5c.md)。

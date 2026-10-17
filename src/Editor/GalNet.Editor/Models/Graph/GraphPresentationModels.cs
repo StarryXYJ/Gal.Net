@@ -347,6 +347,16 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         _parameters = source.GetParameterText(catalog);
     }
 
+    internal void RefreshAuthorReferences(IEntryCatalog catalog)
+    {
+        SetProperty(ref _condition, Source.Condition, nameof(Condition));
+        var values = Source.GetParameterText(catalog);
+        if (Parameters.OrderBy(pair => pair.Key).SequenceEqual(values.OrderBy(pair => pair.Key))) return;
+        SetProperty(ref _parameters, values, nameof(Parameters));
+        foreach (var field in ParameterFields.OfType<SchemaEntryParameterEditorItemViewModel>()) field.RefreshValue();
+        ParameterForm?.Refresh();
+    }
+
     partial void OnIdChanged(int value) => Source.Id = value;
     partial void OnTypeChanged(string value) => Source.Type = value;
     partial void OnConditionChanged(string value) => Source.Condition = value;
