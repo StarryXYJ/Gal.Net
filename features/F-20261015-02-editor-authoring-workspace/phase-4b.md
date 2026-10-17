@@ -41,3 +41,9 @@
 大型目录枚举/WrapPanel/缩略图与多个文本缓冲的性能继续按 P7 fixture 测量，不声称已经满足一万文件规模。游戏预览仍是后续独立 feature。
 
 正式规则见 [项目文件操作](../../docs/spec/editor-files.md)、[历史与保存](../../docs/spec/editor-history-and-save.md)、[目录格式](../../docs/spec/file-formats.md)、[资源](../../docs/spec/assets.md)、[i18n](../../docs/spec/i18n.md)。下一阶段 P5 Group 核心编辑与最小参数表单；整体 feature 保持 in-progress。
+
+## 后续修正：目录展开三角（2026-10-17）
+
+原实现给所有目录放入占位子项，叶目录首次点击后才消失。改为父项展开生成目录行时，提前探测各行是否包含可见子目录，仅非叶项保留懒加载占位；探测只枚举当前层目录，沿用隐藏与 reparse point 过滤，不递归预载整棵树。刷新重新探测，因此新增/移除子目录后箭头同步更新。
+
+隔离 Editor.Tests 项目构建成功（0 错误）；新增真实挂载目录树用例覆盖空目录、仅文件、仅隐藏目录、非叶/孙级叶节点和刷新后增删子目录，连同路径块/搜索、文件面板操作回归共 3 项通过，无失败和跳过。证据：p4b-validation/tree-expanders-build.log、tree-expanders.trx。此次为 UI 查询/目录节点修正，未重新运行 Shared/Architecture/Integration 全量；此前 383 项门禁记录保持其原始版本含义。

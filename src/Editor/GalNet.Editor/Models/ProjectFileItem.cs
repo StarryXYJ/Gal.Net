@@ -21,12 +21,12 @@ public sealed partial class ProjectFileItem : ObservableObject, IDisposable
     public void Dispose() => Thumbnail?.Dispose();
 }
 
-public sealed partial class ProjectDirectoryNode(string path, string name, Func<string, IEnumerable<ProjectDirectoryNode>> load, bool placeholder = false) : ObservableObject
+public sealed partial class ProjectDirectoryNode(string path, string name, Func<string, IEnumerable<ProjectDirectoryNode>> load, bool hasChildren = true) : ObservableObject
 {
     public string Path { get; } = path;
     public string Name { get; } = name;
-    public ObservableCollection<ProjectDirectoryNode> Children { get; } = placeholder ? [] : [new(path, "…", _ => [], true)];
-    private bool _loaded = placeholder;
+    public ObservableCollection<ProjectDirectoryNode> Children { get; } = hasChildren ? [new(path, "…", _ => [], false)] : [];
+    private bool _loaded = !hasChildren;
     [ObservableProperty] private bool _isExpanded;
     partial void OnIsExpandedChanged(bool value) { if (value) EnsureChildren(); }
     public void EnsureChildren()

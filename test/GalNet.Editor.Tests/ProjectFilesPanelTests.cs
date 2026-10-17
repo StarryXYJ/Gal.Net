@@ -22,6 +22,45 @@ namespace GeneralTest.Editor;
 public sealed partial class ProjectWorkspaceLifecycleTests
 {
     [Test]
+    public async Task DirectoryExpandersAreKnownWhenTheirParentOpensAndRefreshAfterChanges()
+    {
+        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        await session.Dispatch<bool>(async () =>
+        {
+            Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());
+            using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
+            var project = await projects.CreateAsync(Path.Combine(_root, "TreeExpanders"), "TreeExpanders", new(), Contracts());
+            Directory.CreateDirectory(Path.Combine(project.RootPath, "notes/empty"));
+            Directory.CreateDirectory(Path.Combine(project.RootPath, "notes/files"));
+            File.WriteAllText(Path.Combine(project.RootPath, "notes/files/a.txt"), "text");
+            Directory.CreateDirectory(Path.Combine(project.RootPath, "notes/hidden/.galnet"));
+            Directory.CreateDirectory(Path.Combine(project.RootPath, "notes/branch/leaf"));
+            var vm = project.Services.GetRequiredService<AssetPanelViewModel>();
+            var view = new AssetPanelView { DataContext = vm }; var window = new Window { Width = 1100, Height = 700, Content = view }; window.Show(); window.UpdateLayout();
+            try
+            {
+                var notes = vm.Directories[0].Children.Single(node => node.Path == "notes"); notes.IsExpanded = true; window.UpdateLayout();
+                foreach (var name in new[] { "empty", "files", "hidden" })
+                {
+                    var node = notes.Children.Single(child => child.Name == name);
+                    Assert.That(node.IsExpanded, Is.False); Assert.That(node.Children, Is.Empty);
+                    var item = view.GetVisualDescendants().OfType<TreeViewItem>().Single(item => ReferenceEquals(item.DataContext, node));
+                    Assert.That(item.ItemCount, Is.Zero, "Visible leaf rows must already have no expander before clicking.");
+                }
+                var branch = notes.Children.Single(child => child.Name == "branch"); Assert.That(branch.IsExpanded, Is.False); Assert.That(branch.Children, Is.Not.Empty);
+                branch.IsExpanded = true; window.UpdateLayout(); Assert.That(branch.Children.Single().Name, Is.EqualTo("leaf")); Assert.That(branch.Children.Single().Children, Is.Empty);
+                Directory.CreateDirectory(Path.Combine(project.RootPath, "notes/empty/new")); vm.Refresh(); window.UpdateLayout();
+                notes = vm.Directories[0].Children.Single(node => node.Path == "notes"); Assert.That(notes.IsExpanded, Is.True);
+                Assert.That(notes.Children.Single(child => child.Name == "empty").Children, Is.Not.Empty);
+                Directory.Delete(Path.Combine(project.RootPath, "notes/empty/new")); vm.Refresh(); window.UpdateLayout();
+                notes = vm.Directories[0].Children.Single(node => node.Path == "notes"); Assert.That(notes.Children.Single(child => child.Name == "empty").Children, Is.Empty);
+            }
+            finally { window.Close(); await projects.CloseAsync(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
     public async Task BrowserAddressBlocksDropAndGlobalSearchExitFollowSelection()
     {
         await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));

@@ -10,13 +10,15 @@ public sealed class ProjectFilesIndex(IProjectService projects, IAssetCatalogSer
 {
     private static readonly string[] Hidden = [".galnet", ".git", ".vs", ".idea", ".editor-tx", ".editor-trash", "bin", "obj", "Output", "Temp"];
     public string Root { get; } = projects.Current?.RootPath ?? throw new InvalidOperationException("No project is open.");
+    private static bool Visible(string full) => !Hidden.Contains(Path.GetFileName(full), StringComparer.OrdinalIgnoreCase) && (File.GetAttributes(full) & FileAttributes.ReparsePoint) == 0;
+    private bool HasDirectories(string path) => Directory.EnumerateDirectories(new ProjectRawReader(Root).Resolve(path)).Any(Visible);
     public bool DirectoryExists(string path) { try { return Directory.Exists(new ProjectRawReader(Root).Resolve(path)); } catch (Exception) { return false; } }
     public IEnumerable<ProjectFileItem> Read(string directory)
     {
         var reader = new ProjectRawReader(Root);
         foreach (var full in Directory.EnumerateFileSystemEntries(reader.Resolve(directory)).OrderBy(path => !Directory.Exists(path)).ThenBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase))
         {
-            if (Hidden.Contains(Path.GetFileName(full), StringComparer.OrdinalIgnoreCase) || (File.GetAttributes(full) & FileAttributes.ReparsePoint) != 0) continue;
+            if (!Visible(full)) continue;
             var path = reader.Relative(full);
             if (path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase) && path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)) continue;
             var reason = "";
@@ -25,7 +27,7 @@ public sealed class ProjectFilesIndex(IProjectService projects, IAssetCatalogSer
             yield return new() { Path = path, FullPath = full, IsDirectory = Directory.Exists(full), WriteTimeUtc = File.GetLastWriteTimeUtc(full), Type = Directory.Exists(full) ? "folder" : asset?.Type ?? Path.GetExtension(path).TrimStart('.'), ProtectionReason = reason };
         }
     }
-    public IEnumerable<ProjectDirectoryNode> Directories(string path) => Read(path).Where(item => item.IsDirectory).Select(item => new ProjectDirectoryNode(item.Path, item.Name, Directories));
+    public IEnumerable<ProjectDirectoryNode> Directories(string path) => Read(path).Where(item => item.IsDirectory).Select(item => new ProjectDirectoryNode(item.Path, item.Name, Directories, HasDirectories(item.Path)));
     // Type filtering stays separate from the search syntax for future scope/type controls.
     public IEnumerable<ProjectFileItem> Search(string name, string? type = null)
     {
