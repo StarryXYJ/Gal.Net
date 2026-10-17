@@ -21,13 +21,17 @@ public sealed class EntryParameterFormBinding : IDisposable
     private readonly EntryEditorItemViewModel _owner;
     private EventHandler? _changed;
     private bool _disposed;
-    public EntryParameterFormBinding(EntryEditorItemViewModel owner, IReadOnlyList<FieldDescriptor> fields)
+    public EntryParameterFormBinding(EntryEditorItemViewModel owner, IReadOnlyList<FieldDescriptor> fields, Type? dtoType = null)
     {
         _owner = owner;
         Fields = fields;
         var members = fields.ToDictionary(field => field.Id, field => (IFieldBinding)new DocumentField(this, field), StringComparer.Ordinal);
         Binding = field => members[field.Id];
+        Item = new(owner.StableId, dtoType, fields, Binding, (patch, token) => _disposed
+            ? Task.FromResult<ValueIssue?>(new("entry.obsolete", "Entry schema has changed."))
+            : owner.CommitParametersAsync(patch.ToDictionary(pair => pair.Key, pair => (fields.Single(field => field.Id == pair.Key), pair.Value)), token));
     }
+    public DtoEditorItem Item { get; }
     public IReadOnlyList<FieldDescriptor> Fields { get; }
     public Func<FieldDescriptor, IFieldBinding> Binding { get; }
     public void Refresh() { if (!_disposed) _changed?.Invoke(this, EventArgs.Empty); }

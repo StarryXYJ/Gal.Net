@@ -53,7 +53,8 @@ public static class BuiltInDockContributions
                 sp.GetRequiredService<IAssetManager>(),
                 sp.GetRequiredService<EditorShortcutService>(),
                 sp.GetRequiredService<IEffectCatalog>(),
-                sp.GetRequiredService<IEntryCatalog>()),
+                sp.GetRequiredService<IEntryCatalog>(),
+                sp.GetRequiredService<GalNet.Game.Controls.Forms.EditorRegistry>()),
             typeof(GroupEditorPanelView), null));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<FileDocumentPanelViewModel, string>(
             EditorDockPanelIds.FileEditor, "Files.Document", DockPanelPlacement.MainDocument, false, true, true, false, false,

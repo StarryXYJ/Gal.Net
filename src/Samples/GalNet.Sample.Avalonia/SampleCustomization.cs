@@ -47,7 +47,7 @@ internal static class SampleCustomization
         if (enableDebug) services.AddSampleDebug();
     }
 
-    internal static EditorRegistry CreateFieldEditors() => EditorRegistry.CreateDefault();
+    internal static EditorRegistry CreateFieldEditors() => EditorRegistry.CreateDefault().Freeze();
 
     internal static SampleLocalizationService CreateLocalizationService()
     {

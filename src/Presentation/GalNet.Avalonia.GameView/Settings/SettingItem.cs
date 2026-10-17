@@ -1,5 +1,5 @@
-using CommunityToolkit.Mvvm.ComponentModel;
 using System.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Core.Parameters;
 using GalNet.Game.Controls.Forms;
 
@@ -47,6 +47,8 @@ public abstract class SettingItem : ObservableObject
     public int EditorColumnSpan => IsFullWidth ? 2 : 1;
     public abstract Type ValueType { get; }
     public virtual FieldDescriptor? Field => null;
+    private DtoEditorItem? _editorItem;
+    public DtoEditorItem EditorItem => _editorItem ??= new(Id, GetType(), Fields, FieldBinding);
     public IReadOnlyList<FieldDescriptor> Fields => Field is { } descriptor ? [descriptor] : [];
     public Func<FieldDescriptor, IFieldBinding> FieldBinding => _ => (IFieldBinding)this;
     public Func<SettingAvailability>? EvaluateAvailability { get; init; }

@@ -37,7 +37,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     public IAssetManager AssetManager { get; }
     public EditorShortcutService ShortcutService { get; }
     public IReadOnlyList<EntryTypeOption> EntryTypes { get; }
-    public EditorRegistry FieldEditors { get; } = EditorFieldEditors.CreateDefault();
+    public EditorRegistry FieldEditors { get; }
 
     [ObservableProperty]
     private EntryEditorItemViewModel? _selectedEntry;
@@ -45,7 +45,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     [ObservableProperty]
     private decimal _batchAddCount = 1;
 
-    public GroupEditorPanelViewModel(EditorWorkspaceViewModel workspace, string groupId, IGraphEditingService graphEditingService, IProjectService projects, IAssetManager assetManager, EditorShortcutService shortcutService, IEffectCatalog effects, IEntryCatalog catalog)
+    public GroupEditorPanelViewModel(EditorWorkspaceViewModel workspace, string groupId, IGraphEditingService graphEditingService, IProjectService projects, IAssetManager assetManager, EditorShortcutService shortcutService, IEffectCatalog effects, IEntryCatalog catalog, EditorRegistry? fieldEditors = null)
     {
         Workspace = workspace;
         GroupId = groupId;
@@ -54,6 +54,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         _projects = projects;
         _effects = effects;
         _catalog = catalog;
+        FieldEditors = fieldEditors ?? EditorFieldEditors.CreateDefault();
         AssetManager = assetManager;
         ShortcutService = shortcutService;
         EntryTypes = catalog.Definitions.Select(definition => new EntryTypeOption(definition.Type, definition.Category, $"Entry.Type.{definition.Type}")).ToArray();

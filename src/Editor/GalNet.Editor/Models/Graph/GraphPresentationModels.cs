@@ -400,7 +400,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
             _formParameters = parameters;
             if (!schema.Parameters.Any(pair => UsesDedicatedEditor(parameters[pair.Key].Field, pair.Value)))
             {
-                ParameterForm = new EntryParameterFormBinding(this, parameters.Fields);
+                ParameterForm = new EntryParameterFormBinding(this, parameters.Fields, schema.FieldDataType);
                 UpdateEffectHints();
                 return;
             }
@@ -448,22 +448,28 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     }
 
     internal Task<ValueIssue?> CommitParameterAsync(FieldDescriptor field, FieldValue value, CancellationToken cancellationToken)
+        => CommitParametersAsync(new Dictionary<string, (FieldDescriptor Field, FieldValue Value)> { [field.Id] = (field, value) }, cancellationToken);
+
+    internal Task<ValueIssue?> CommitParametersAsync(IReadOnlyDictionary<string, (FieldDescriptor Field, FieldValue Value)> patch, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (_disposed) return Task.FromResult<ValueIssue?>(new("entry.obsolete", "The project document is closed.", field.Id));
+        if (_disposed) return Task.FromResult<ValueIssue?>(new("entry.obsolete", "The project document is closed."));
         var updated = new Dictionary<string, string>(Parameters, StringComparer.Ordinal);
-        if (value.Json is not { } json)
+        foreach (var (id, (field, value)) in patch)
         {
-            if (field.IsRequired && field.DefaultValue is null) return Task.FromResult<ValueIssue?>(new("entry.required", "A value is required.", field.Id));
-            updated.Remove(field.Id);
-        }
-        else
-        {
-            if (ValueValidation.Validate(field.Value, json) is { } issue) return Task.FromResult<ValueIssue?>(issue);
-            var text = ValueCodec.ToEditorText(field.Value, json);
-            if (!JsonElement.DeepEquals(json, ValueCodec.ParseEditorText(field.Value, text)))
-                return Task.FromResult<ValueIssue?>(new("entry.representation", "This value cannot be represented by the editor document.", field.Id));
-            updated[field.Id] = text;
+            if (value.Json is not { } json)
+            {
+                if (field.IsRequired && field.DefaultValue is null) return Task.FromResult<ValueIssue?>(new("entry.required", "A value is required.", id));
+                updated.Remove(id);
+            }
+            else
+            {
+                if (ValueValidation.Validate(field.Value, json) is { } issue) return Task.FromResult<ValueIssue?>(issue);
+                var text = ValueCodec.ToEditorText(field.Value, json);
+                if (!JsonElement.DeepEquals(json, ValueCodec.ParseEditorText(field.Value, text)))
+                    return Task.FromResult<ValueIssue?>(new("entry.representation", "This value cannot be represented by the editor document.", id));
+                updated[id] = text;
+            }
         }
         try
         {
@@ -472,7 +478,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
                     pair => ValueCodec.ParseEditorText(parameters[pair.Key].Value, pair.Value))));
         }
         catch (Exception exception) when (exception is ArgumentException or JsonException)
-        { return Task.FromResult<ValueIssue?>(new("entry.arguments", exception.Message, field.Id)); }
+        { return Task.FromResult<ValueIssue?>(new("entry.arguments", exception.Message)); }
         if (!Parameters.OrderBy(pair => pair.Key).SequenceEqual(updated.OrderBy(pair => pair.Key))) Parameters = updated;
         return Task.FromResult<ValueIssue?>(null);
     }

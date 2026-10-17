@@ -40,7 +40,7 @@
 
 ## 当前工作
 
-- [F-20261015-02 Editor 创作工作区](../features/F-20261015-02-editor-authoring-workspace/phase-plan.md)：P1a/P1b/P2/P2i/P3/P4a/P4b 已验证，P4b 隔离构建与 383 项相关回归通过。项目单栈、Graph、文件事务/双版本文档协调、metadata/引用保护、文件树/网格、路径块/全局文件名搜索、项目文本缓冲与四语已接通；下一阶段 P5 Group 核心编辑与最小参数 UI。游戏预览另立 feature。当前实现见 docs/spec/editor-graph.md、editor-files.md 和 editor-history-and-save.md。
+- [F-20261015-02 Editor 创作工作区](../features/F-20261015-02-editor-authoring-workspace/phase-plan.md)：P1a/P1b/P2/P2i/P3/P4a/P4b 已验证，P4b 隔离构建与 383 项相关回归通过。项目单栈、Graph、文件事务/双版本文档协调、metadata/引用保护、文件树/网格、路径块/全局文件名搜索、项目文本缓冲与四语已接通；P6a 已提前完成共享 DTO UI 基础，610 项相关回归通过，另 6 项媒体环境用例未执行；三层注册、默认表单、多 DTO 面板与两个宿主已接入。后续继续 P5 与 P6 剩余状态查询/复杂值功能。游戏预览另立 feature。当前实现见 docs/spec/editor-graph.md、editor-files.md 和 editor-history-and-save.md。
 
 - F-20261015-03 模块化游戏状态：GameSnapshot v4；状态 catalog 随 view 组合，Engine 接入；中立 Layer/EffectInstance/ParticleEmitterInstance 直接作为唯一可变数据记录，属性变更必须在 State.Update，编码形成隔离快照。LoopAnimationState 保存类型化 request/plan；停止控制与播放 identity 仅运行期持有。音频 AudioTrackState/AudioSEffectState 包含暂停、队列与空闲效果，所有轨道按稳定检查点从头恢复；不恢复 seek/淡化时钟，玩家设置不回滚。恢复首帧不重复一次性事件，暂停声音在 Resume 前不启动后端。七个相关项目 665 项测试、解决方案构建与 CLI 实际项目校验/编译通过；新档验证见 [feature summary](../features/F-20261015-03-modular-game-state/summary.md)。
 
@@ -164,3 +164,5 @@
 - [Headless 会话发布竞态](lessons/L-20261014-05-headless-session-publication-race.md)：12.0.5 StartNew 的 task 闭包发布存在竞态；Presentation 通过官方程序集缓存会话避免逐测试释放 worker，Dispatch 保持 PerTest 隔离。
 
 - [Entry 默认值使用完整 codec](lessons/L-20261014-06-entry-defaults-use-value-codec.md)：JSON 字符串编码不代表 CLR 字符串；无法无损投影的默认值保留在字段描述，不填入旧 Defaults。
+
+- [L-20261017-05 scoped binding 幂等退订](lessons/L-20261017-05-scoped-binding-unsubscribe.md)：字段与DTO两层释放只移除一次实际 source 订阅，不释放借用 binding。

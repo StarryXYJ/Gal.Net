@@ -12,6 +12,8 @@ public sealed record FieldEditorItem(FieldEditorContext Context, Control Control
 /// <summary>Owns editors while mounted. Schema, registry, binding and visual theme are supplied by the host.</summary>
 public sealed class SchemaForm : TemplatedControl
 {
+    public static readonly StyledProperty<Type?> DtoTypeProperty = AvaloniaProperty.Register<SchemaForm, Type?>(nameof(DtoType));
+    public Type? DtoType { get => GetValue(DtoTypeProperty); set => SetValue(DtoTypeProperty, value); }
     public static readonly StyledProperty<IReadOnlyList<FieldDescriptor>?> SchemaProperty =
         AvaloniaProperty.Register<SchemaForm, IReadOnlyList<FieldDescriptor>?>(nameof(Schema));
     public static readonly StyledProperty<EditorRegistry?> RegistryProperty =
@@ -50,7 +52,7 @@ public sealed class SchemaForm : TemplatedControl
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == SchemaProperty || change.Property == RegistryProperty || change.Property == BindingProperty)
+        if (change.Property == SchemaProperty || change.Property == RegistryProperty || change.Property == BindingProperty || change.Property == DtoTypeProperty)
             RefreshEditors();
     }
 
@@ -74,7 +76,7 @@ public sealed class SchemaForm : TemplatedControl
                     current = field.Id;
                     var context = new FieldEditorContext(field, Binding!(field));
                     _owned.Add((context, null));
-                    var lease = Registry!.Resolve(field)(context) ?? throw new InvalidOperationException("Editor factory returned no lease.");
+                    var lease = Registry!.Resolve(field, DtoType)(context) ?? throw new InvalidOperationException("Editor factory returned no lease.");
                     _owned[^1] = (context, lease);
                     if (!controls.Add(lease.Control) || lease.Control.Parent is not null || lease.Control.GetVisualParent() is not null)
                         throw new InvalidOperationException("Editor factories must return fresh, unparented controls.");

@@ -104,7 +104,7 @@ Runtime 只依赖 `GalNet.Presentation.Abstractions` 中的 `IGameView` 与细�
 
 ## Schema 字段表单
 
-`GalNet.Game.Controls.Forms.SchemaForm` 位于 GalNet.Avalonia.Controls。宿主传入有序 Schema（FieldDescriptor 列表）、Registry 和 Binding（字段到 IFieldBinding 的函数）。控件只创建、挂载和释放字段编辑器；不选择游戏主题，不持有保存/撤销服务。结构样式位于 `avares://GalNet.Avalonia.Controls/Styles/SchemaForm.axaml`，只定义标签、编辑器与诊断的结构，没有颜色、间距或皮肤资源；宿主显式加载或提供自己的 Template/Theme。
+`GalNet.Game.Controls.Forms.SchemaForm` 位于 GalNet.Avalonia.Controls。宿主传入有序 Schema（FieldDescriptor 列表）、Registry 和 Binding（字段到 IFieldBinding 的函数），可选 DtoType 启用特定 DTO 成员映射。控件只创建、挂载和释放字段编辑器；不选择游戏主题，不持有保存/撤销服务。结构样式位于 `avares://GalNet.Avalonia.Controls/Styles/SchemaForm.axaml`，只定义标签、编辑器与诊断的结构，没有颜色、间距或皮肤资源；宿主显式加载或提供自己的 Template/Theme。
 
 EditorRegistry 以开放 EditorId 映射到工厂，提供 Register/Replace/RegisterDefault/Resolve。显式 ID 精确匹配；省略 ID 时按合法选项、注册的值类型及 enum/JSON 默认规则选择。重复注册、未知 ID 和不支持类型均明确报错，不静默替换自定义 ID。默认集合由宿主调用 CreateDefault 创建；主题可贡献样式或工厂注册方法，由宿主显式组合，不拥有 registry/设置服务的生命周期。
 
@@ -116,11 +116,25 @@ IFieldBinding 是借用的宿主对象，提供 Read、Changed、CommitAsync、�
 
 工厂返回独立、无父级的 FieldEditorLease；SchemaForm 在换 schema/registry/binding、卸载或创建失败时先取消所有 Context，再释放全部 lease，最后移除子控件；清理异常保留为 Diagnostics，不短路后续释放。控件不释放借用的 binding。工厂在返回 lease 前失败时，需自行清理尚未交出的临时资源。registry 注册更新后显式调用 RefreshEditors，普通值/选项/可用性通知不重建控件。现有 CustomSettingEditor 复用同一 FieldEditorLease，旧 SettingEditorLease 已移除。
 
-Editor 的通用数值、布尔、文本、选项与 JSON 参数通过 SchemaEntryParameterEditorItemViewModel 使用完整值契约，提交替换 Entry.Parameters，继续由 workspace 历史与保存链路观察。每个 Group 面板拥有独立 registry，EditorFieldEditors 仅扩展选项标签本地化，转换与提交复用默认工厂。多行文本、资源选择、说话人/变量补全及表达式仍使用现有专属控件。仅打开参数面板不会写入省略的默认值；字符串文档不能无损表示的值（如显式 null 字符串）明确拒绝，原始工具路径可处理。设置页和 Editor 各自提供表单模板，业务对象不进入项目 schema DLL。
+Editor 的通用数值、布尔、文本、选项与 JSON 参数通过 SchemaEntryParameterEditorItemViewModel 使用完整值契约，提交替换 Entry.Parameters，继续由 workspace 历史与保存链路观察。Group 面板使用项目 scope 的 registry（直接构造时可显式传入），EditorFieldEditors 仅扩展选项标签本地化，转换与提交复用默认工厂。多行文本、资源选择、说话人/变量补全及表达式仍使用现有专属控件。仅打开参数面板不会写入省略的默认值；字符串文档不能无损表示的值（如显式 null 字符串）明确拒绝，原始工具路径可处理。设置页和 Editor 各自提供表单模板，业务对象不进入项目 schema DLL。
 
 `DtoBinding` 从生成的 IFieldDto 取得字段列表和成员访问，提供同一 IFieldBinding 协议，不再为每种 DTO 定义字段 ViewModel。普通提交调用 ValueCodec/ValueValidation 后写成员；提供 commit 回调时由宿主承担提交与数据同步。INotifyPropertyChanged 自动刷新；无通知 DTO 显式 Refresh。字段订阅随 Context 的 Changed 订阅建立/移除，Dispose 释放自身订阅，不释放借用 DTO。普通 CLR 成员不被当作 presence 容器。
 
-Editor 中有 FieldDataType 的 Entry 用一个 SchemaForm 承载全部字段。EntryParameterFormBinding 直接读取参数字典并通过现有提交方法替换 Parameters，不创建或同步 DTO；外部修改、撤销/重做由 Parameters 变化通知刷新。省略与显式 null 保留在文档，默认值不在打开面板时写回。重新配置释放旧绑定，旧字段不能再提交。通用表单行模板在 Editor 面板内共享，专属资源/表达式等继续保留原路径。字段编辑校验当前候选及自定义跨字段规则，完整文档必填检查留在编译/执行阶段，以允许逐步修正不完整文档。
+Editor 中有 FieldDataType 且不需要旧专属字段路径的 Entry 通过 DtoEditorHost 承载参数区，未注册整 DTO 覆盖时使用 SchemaForm。EntryParameterFormBinding 直接读取参数字典并通过现有提交方法替换 Parameters，不创建或同步 DTO；外部修改、撤销/重做由 Parameters 变化通知刷新。省略与显式 null 保留在文档，默认值不在打开面板时写回。重新配置释放旧绑定，旧字段不能再提交。通用表单行模板在 Editor 面板内共享，专属资源/表达式等继续保留原路径。字段编辑校验当前候选及自定义跨字段规则，完整文档必填检查留在编译/执行阶段，以允许逐步修正不完整文档。
+
+### DTO 控件构建
+
+同一 EditorRegistry 另外提供类型化的三层注册：RegisterDto<T>/ReplaceDto<T> 替换整个参数区，RegisterMember<T>(成员表达式, factory)/ReplaceMember<T> 替换指定成员，RegisterDefault<T>/ReplaceDefault<T> 指定字段类型默认工厂。默认集合中已有的类型需要 ReplaceDefault，不允许重复 RegisterDefault。显式成员覆盖先于类型覆盖，类型覆盖先于内部 EditorId/default 适配；nullable 按基础类型选择工厂，原字段 codec、presence/null 语义保留。Freeze 后所有注册/替换返回错误；宿主在组合结束后显式冻结，未冻结的旧 registry 仍可按原方式显式刷新。
+
+当前成员表达式只接受直接的生成 DTO 属性（有 Field 特性），用 JsonPropertyName 或与 generator 一致的 camelCase 取得 wire ID，不构造 DTO；嵌套路径、任意 CLR 属性、集合路径模板尚未实现。重复整 DTO/成员注册报错，替换必须明确调用 Replace。内部 EditorId 注册继续承接已有专属控件，不要求新的类型扩展作者使用字符串 ID。
+
+DtoEditorItem 包含稳定 Id、可选 DtoType、冻结字段清单及借用 binding，可选传入原子 patch 提交委托。DtoEditorHost 对单项选择整 DTO 工厂或默认 SchemaForm；FormTheme 可为自动表单提供宿主皮肤。DtoPanel 将有序项列表映射到多个 Host，按项 Id 而非 Type 识别；相同类型多项可以并存，移动未替换的项不重建控件或清除草稿。ItemsSource 支持 UI 线程的集合通知，替换同一 Id 的项对象会重新建立上下文；重复/空项以 Diagnostics 拒绝本次刷新。DtoPanel 是顺序容器，不承诺长列表虚拟化；需要虚拟化或特殊选择/重排外壳的宿主可在自己的列表模板内使用同一 DtoEditorHost。
+
+整 DTO 工厂获得 DtoEditorContext，可 Read 独立字段快照、CreateField、CreateDefaultForm(排除字段)，或 CommitAsync 提交字段 patch。混合表单直接创建默认表单，不再次走整 DTO 分派；其他字段仍遵循成员/默认类型映射。Editor 的 patch 在一次 Parameters 替换中验证并提交，因此多字段修改只产生一条项目历史；控件不以完整 DTO 反序列化/再序列化替换作者数据。没有宿主原子回调时只允许单字段提交，多字段 patch 整体拒绝，不能逐字段提交并假装原子成功。
+
+Context 的生命周期包装取消旧提交、保留动态选项和 IFieldPreviewBinding 的能力；卸载、换项或创建失败先取消上下文并释放自建字段，再卸载内容与释放控件 lease，清理错误进入 Diagnostics。事件仅由实际订阅者退订一次，不释放借用宿主 binding。宿主提交回调必须遵守取消令牌，框架不回滚回调已完成的写入；工厂在交出 lease 前仍须负责自身临时控件资源。
+
+内置设置主题的普通设置改用 SettingItem.EditorItem/DtoEditorHost，继续提供原单字段 SchemaForm 的皮肤与设置应用/保存队列；Action/ICustomSetting 保留各自行为。Sample 的 CreateFieldEditors 组合结束后冻结 registry。Editor 的 Dock 创建 Group 面板时传入项目 registry；目前依赖旧资源/表达式等专属字段的 Entry 继续走原路径。通用嵌套结构表单、所有专属字段迁移、手势合并协议、状态查询与 timeline/曲线不包含在本次基础层交付中。
 
 ## 宿主接入约束
 

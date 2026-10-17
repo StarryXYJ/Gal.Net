@@ -15,6 +15,33 @@ namespace GeneralTest.Presentation;
 public sealed class SettingSchemaFormTests
 {
     [Test]
+    public async Task WholeSettingDtoOverrideUsesTheSameDefaultFormAndSettingsBinding()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
+        await session.Dispatch<bool>(async () =>
+        {
+            var value = 5; var applies = 0;
+            var setting = new IntSetting("count", "Count", 5, 0, 20, 1, () => value, (next, _) => { value = next; applies++; return Task.CompletedTask; });
+            var editors = EditorRegistry.CreateDefault();
+            editors.RegisterDto<IntSetting>(context =>
+            {
+                var panel = new StackPanel(); panel.Children.Add(new TextBlock { Text = "custom setting" }); panel.Children.Add(context.CreateDefaultForm()); return new(panel);
+            });
+            var view = new SettingsCategories { Editors = editors.Freeze(), Categories = [new("game", "Game", [setting])] };
+            var window = Mount(view);
+            try
+            {
+                Assert.That(view.GetVisualDescendants().OfType<TextBlock>().Any(text => text.Text == "custom setting"), Is.True);
+                var context = view.GetVisualDescendants().OfType<SchemaForm>().Single().Contexts.Single();
+                context.Text = "12"; Assert.That(await context.CommitTextAsync(), Is.True);
+                Assert.That(value, Is.EqualTo(12)); Assert.That(applies, Is.EqualTo(1));
+            }
+            finally { window.Close(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
     public async Task NumericDraftValidatesThenUsesTheApplyAndRetrySaveQueue()
     {
         var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
