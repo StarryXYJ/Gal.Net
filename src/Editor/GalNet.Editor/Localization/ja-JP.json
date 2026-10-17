@@ -590,7 +590,7 @@
   "Variables.Type.Int": "整数",
   "Variables.Type.Float": "浮動小数点数",
   "Variables.Type.String": "テキスト",
-  "Variables.DefaultHint.Bool": "true または false を入力してください。",
+  "Variables.DefaultHint.Bool": "チェックありは true、チェックなしは false です。",
   "Variables.DefaultHint.Int": "32 ビット整数を入力してください。",
   "Variables.DefaultHint.Float": "小数点を使用して有限の数を入力してください。",
   "Variables.DefaultHint.String": "JSON の引用符を付けずに入力してください。",

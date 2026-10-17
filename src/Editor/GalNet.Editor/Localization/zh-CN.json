@@ -590,7 +590,7 @@
   "Variables.Type.Int": "整数",
   "Variables.Type.Float": "浮点数",
   "Variables.Type.String": "文本",
-  "Variables.DefaultHint.Bool": "输入 true 或 false。",
+  "Variables.DefaultHint.Bool": "勾选为 true，取消勾选为 false。",
   "Variables.DefaultHint.Int": "输入 32 位整数。",
   "Variables.DefaultHint.Float": "使用小数点输入有限浮点数。",
   "Variables.DefaultHint.String": "直接输入文本，不需要 JSON 引号。",

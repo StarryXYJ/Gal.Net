@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:services="using:GalNet.Editor.Services"
              xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
+             xmlns:globalization="clr-namespace:System.Globalization;assembly=System.Runtime"
              x:Class="GalNet.Editor.Views.VariablesPanelView" x:DataType="vm:VariablesPanelViewModel">
   <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="12" RowSpacing="8">
     <TabControl x:Name="ScopeTabs" Height="44" SelectedIndex="{Binding ScopeIndex}">
@@ -22,7 +23,16 @@
           <ComboBox x:Name="TypeInput" ItemsSource="{Binding Types}" SelectedItem="{Binding DraftType}" HorizontalAlignment="Stretch">
             <ComboBox.ItemTemplate><DataTemplate x:DataType="vm:VariableTypeOption"><TextBlock Text="{loc:Localize LabelKey}"/></DataTemplate></ComboBox.ItemTemplate>
           </ComboBox>
-          <TextBlock Text="{loc:Localize Variables.Default}"/><TextBox x:Name="DefaultInput" Text="{Binding DraftDefault}" />
+          <TextBlock Text="{loc:Localize Variables.Default}"/>
+          <Grid>
+            <TextBox x:Name="DefaultInput" IsVisible="{Binding IsTextDefault}" Text="{Binding DraftDefault}" />
+            <NumericUpDown x:Name="NumericDefaultInput" IsVisible="{Binding IsNumericDefault}"
+                           Text="{Binding DraftDefault, Mode=TwoWay}" Increment="{Binding DefaultIncrement}"
+                           NumberFormat="{x:Static globalization:NumberFormatInfo.InvariantInfo}" ParsingNumberStyle="Float"
+                           AutomationProperties.Name="{loc:Localize Variables.Default}" />
+            <CheckBox x:Name="BooleanDefaultInput" IsVisible="{Binding IsBooleanDefault}"
+                      IsChecked="{Binding DraftBoolean, Mode=TwoWay}" AutomationProperties.Name="{loc:Localize Variables.Default}" />
+          </Grid>
           <TextBlock Text="{loc:Localize DefaultHintKey}" Opacity="0.65" TextWrapping="Wrap"/>
           <TextBlock Text="{loc:Localize Variables.Description}"/><TextBox x:Name="DescriptionInput" Text="{Binding DraftDescription}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="70"/>
           <WrapPanel>

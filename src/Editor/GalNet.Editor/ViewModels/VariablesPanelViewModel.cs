@@ -37,6 +37,15 @@ public sealed partial class VariablesPanelViewModel : ObservableObject, IUndoRed
     public bool HasSelection => Selected is not null;
     public string ScopeHintKey => ScopeIndex == 0 ? "Variables.PlayerHint" : "Variables.SaveHint";
     public string DefaultHintKey => "Variables.DefaultHint." + (DraftType?.Value ?? VariableType.String);
+    public bool IsBooleanDefault => DraftType?.Value == VariableType.Bool;
+    public bool IsNumericDefault => DraftType?.Value is VariableType.Int or VariableType.Float;
+    public bool IsTextDefault => DraftType?.Value == VariableType.String;
+    public decimal DefaultIncrement => DraftType?.Value == VariableType.Int ? 1m : 0.1m;
+    public bool DraftBoolean
+    {
+        get => bool.TryParse(DraftDefault, out var value) && value;
+        set => DraftDefault = value ? "true" : "false";
+    }
     private VariableScope Scope => ScopeIndex == 0 ? VariableScope.Player : VariableScope.Save;
     public VariablesPanelViewModel(VariableAuthoringService authoring, IVariableDefinitionService definitions, IEditorLocalizationService localization, EditorHistories histories)
     {
@@ -53,9 +62,14 @@ public sealed partial class VariablesPanelViewModel : ObservableObject, IUndoRed
     }
     partial void OnDraftTypeChanged(VariableTypeOption? value)
     {
-        OnPropertyChanged(nameof(DefaultHintKey));
         if (!_refreshing) DraftDefault = value?.Value switch { VariableType.Bool => "false", VariableType.Int or VariableType.Float => "0", _ => "" };
+        OnPropertyChanged(nameof(DefaultHintKey));
+        OnPropertyChanged(nameof(IsBooleanDefault));
+        OnPropertyChanged(nameof(IsNumericDefault));
+        OnPropertyChanged(nameof(IsTextDefault));
+        OnPropertyChanged(nameof(DefaultIncrement));
     }
+    partial void OnDraftDefaultChanged(string value) => OnPropertyChanged(nameof(DraftBoolean));
     private bool HasDraftChanges => _baseline is not null && (DraftName != _baseline.Name || DraftDescription != _baseline.Description || DraftType?.Value != _baseline.Type || DraftDefault != VariableAuthoringService.DefaultText(_baseline));
     private void OnDefinitionsChanged(VariableScope _) => Refresh();
     private void Refresh()

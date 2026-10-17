@@ -134,15 +134,42 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 history.Clear(); Click(window, view.FindControl<Button>("AddVariableButton")!); Assert.That(vm.HasSelection, Is.True); Assert.That(author.Get(VariableScope.Player), Has.Count.EqualTo(1)); history.Clear();
                 var name = view.FindControl<TextBox>("NameInput")!; name.Text = "unlockFlag"; var description = view.FindControl<TextBox>("DescriptionInput")!; description.Text = "Unlock description";
                 view.FindControl<ComboBox>("TypeInput")!.SelectedItem = vm.Types.Single(item => item.Value == VariableType.Bool); Dispatcher.UIThread.RunJobs();
-                view.FindControl<TextBox>("DefaultInput")!.Text = "true"; Dispatcher.UIThread.RunJobs(); Assert.That(author.Get(VariableScope.Player).Single().Name, Is.Not.EqualTo("unlockFlag"), "Draft typing must not mutate the author document.");
+                var boolean = view.FindControl<CheckBox>("BooleanDefaultInput")!;
+                var numeric = view.FindControl<NumericUpDown>("NumericDefaultInput")!;
+                var text = view.FindControl<TextBox>("DefaultInput")!;
+                Assert.That(boolean.IsVisible, Is.True); Assert.That(numeric.IsVisible || text.IsVisible, Is.False);
+                Click(window, boolean); Dispatcher.UIThread.RunJobs(); Assert.That(author.Get(VariableScope.Player).Single().Name, Is.Not.EqualTo("unlockFlag"), "Draft typing must not mutate the author document.");
                 Click(window, view.FindControl<Button>("ApplyVariableButton")!); Assert.That(author.Get(VariableScope.Player).Single().Name, Is.EqualTo("unlockFlag")); Assert.That(author.Get(VariableScope.Player).Single().DefaultValue.AsBool(), Is.True);
                 await history.UndoAsync(); Assert.That(vm.DraftName, Is.Not.EqualTo("unlockFlag")); Assert.That(history.CanUndo, Is.False); await history.RedoAsync(); Assert.That(vm.DraftName, Is.EqualTo("unlockFlag"));
+                Assert.That(boolean.IsChecked, Is.True);
+                foreach (var pair in new[] { (VariableType.Int, -42m), (VariableType.Float, 1.25m) })
+                {
+                    view.FindControl<ComboBox>("TypeInput")!.SelectedItem = vm.Types.Single(item => item.Value == pair.Item1); Dispatcher.UIThread.RunJobs();
+                    Assert.That(numeric.IsVisible, Is.True); Assert.That(boolean.IsVisible || text.IsVisible, Is.False);
+                    numeric.Value = pair.Item2; Dispatcher.UIThread.RunJobs();
+                    Assert.That(author.Get(VariableScope.Player).Single().Type, Is.EqualTo(VariableType.Bool));
+                    Click(window, view.FindControl<Button>("ApplyVariableButton")!);
+                    Assert.That(author.Get(VariableScope.Player).Single().Type, Is.EqualTo(pair.Item1));
+                    Assert.That(vm.DraftDefault, Is.EqualTo(pair.Item2.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+                    await history.UndoAsync(); Assert.That(boolean.IsChecked, Is.True); await history.RedoAsync();
+                    await history.UndoAsync();
+                }
+                view.FindControl<ComboBox>("TypeInput")!.SelectedItem = vm.Types.Single(item => item.Value == VariableType.String); Dispatcher.UIThread.RunJobs();
+                Assert.That(text.IsVisible, Is.True); text.Text = "plain text"; Dispatcher.UIThread.RunJobs();
+                Click(window, view.FindControl<Button>("ApplyVariableButton")!); Assert.That(author.Get(VariableScope.Player).Single().DefaultValue.AsString(), Is.EqualTo("plain text"));
                 var tabs = view.FindControl<TabControl>("ScopeTabs")!; tabs.SelectedIndex = 1; Dispatcher.UIThread.RunJobs(); Click(window, view.FindControl<Button>("AddVariableButton")!); Assert.That(author.Get(VariableScope.Save), Has.Count.EqualTo(1)); Assert.That(vm.ScopeIndex, Is.EqualTo(1));
                 vm.DraftName = "unlockFlag"; Click(window, view.FindControl<Button>("ApplyVariableButton")!); Assert.That(vm.MessageText, Is.Not.Empty);
                 var localization = project.Services.GetRequiredService<IEditorLocalizationService>(); foreach (var locale in new[] { "en-US", "ja-JP", "ko-KR", "zh-CN" }) { localization.ApplyLocale(locale); Assert.That(vm.MessageText, Is.EqualTo(localization["Error.variable.duplicate"])); }
                 var draftName = vm.DraftName; var saveUid = vm.Selected!.Uid;
                 author.Update(VariableScope.Save, saveUid, "external", VariableType.Int, "2", ""); Assert.That(vm.DraftName, Is.EqualTo(draftName), "Unrelated notifications must not discard a draft.");
                 vm.ApplyCommand.Execute(null); Assert.That(vm.MessageText, Is.EqualTo(localization["Error.variable.changed"])); vm.RevertCommand.Execute(null); Assert.That(vm.DraftName, Is.EqualTo("external"));
+                foreach (var value in new[] { "1E+35", "1E-35" })
+                {
+                    author.Update(VariableScope.Save, saveUid, "external", VariableType.Float, value, ""); Dispatcher.UIThread.RunJobs();
+                    Assert.That(numeric.Text, Is.EqualTo(vm.DraftDefault));
+                    Click(window, view.FindControl<Button>("ApplyVariableButton")!);
+                    Assert.That(author.Get(VariableScope.Save).Single().DefaultValue.AsFloat(), Is.EqualTo(float.Parse(value, System.Globalization.CultureInfo.InvariantCulture)), "Loading a float must not truncate it to the spinner's decimal precision.");
+                }
                 var dock = project.Services.GetRequiredService<EditorDockFactory>(); var layout = dock.CreateLayout(); dock.InitLayout(layout); dock.OpenPanel(EditorDockPanelIds.Variables); dock.OpenPanel(EditorDockPanelIds.Variables); Assert.That(dock.HasGlobalPanel(EditorDockPanelIds.Variables), Is.True); dock.ToggleGlobalPanel(EditorDockPanelIds.Variables); Assert.That(dock.HasGlobalPanel(EditorDockPanelIds.Variables), Is.False);
                 if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } artifacts) { using var frame = window.CaptureRenderedFrame(); frame!.Save(Path.Combine(artifacts, "variables-panel.png")); }
                 vm.Dispose(); var count = author.Get(VariableScope.Save).Count; vm.AddVariableCommand.Execute(null); Assert.That(author.Get(VariableScope.Save).Count, Is.EqualTo(count));

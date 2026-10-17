@@ -590,7 +590,7 @@
   "Variables.Type.Int": "정수",
   "Variables.Type.Float": "실수",
   "Variables.Type.String": "텍스트",
-  "Variables.DefaultHint.Bool": "true 또는 false를 입력하세요.",
+  "Variables.DefaultHint.Bool": "선택하면 true, 선택하지 않으면 false입니다.",
   "Variables.DefaultHint.Int": "32비트 정수를 입력하세요.",
   "Variables.DefaultHint.Float": "소수점을 사용하여 유한한 실수를 입력하세요.",
   "Variables.DefaultHint.String": "JSON 따옴표 없이 텍스트를 입력하세요.",

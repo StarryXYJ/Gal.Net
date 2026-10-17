@@ -8,7 +8,7 @@
 
 新增、应用和删除各是一条项目历史，变量稳定 UID 不随改名/类型变化改变；关闭面板仍可撤销。Graph 的 playerVariables/saveVariables 为唯一作者来源，settings 中同名列表由保存派生，不由面板另外维护。新面板采用显式项目意图，旧 Preview 变量编辑仍待预览阶段整理，不能据此宣称所有旧绑定已经移除。
 
-名称在两个作用域间唯一、区分大小写；使用 ASCII 字母或下划线开头，后续允许字母、数字和下划线。表达式关键字及 Gallery 生成名称保留。类型包括 Bool、Int、Float、String：切换类型把默认值草稿重置为相应零值；应用时 Bool 解析 true/false，Int 限 Int32，Float 使用不随界面语言变化的小数点且必须有限，String 为无需 JSON 引号的原文。说明是作者内容，不翻译。非法输入不写作者文档，不追加历史。
+名称在两个作用域间唯一、区分大小写；使用 ASCII 字母或下划线开头，后续允许字母、数字和下划线。表达式关键字及 Gallery 生成名称保留。类型包括 Bool、Int、Float、String：切换类型把默认值草稿重置为相应零值；Bool 默认值使用 CheckBox，Int/Float 使用 NumericUpDown（步长分别为 1 和 0.1），String 使用 TextBox。数字输入使用固定小数点格式，应用时 Int 限 Int32，Float 必须有限，String 为无需 JSON 引号的原文。说明是作者内容，不翻译。非法输入不写作者文档，不追加历史。
 
 ## 引用检查
 

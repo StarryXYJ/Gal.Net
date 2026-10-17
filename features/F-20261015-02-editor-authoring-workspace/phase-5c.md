@@ -21,3 +21,9 @@
 Editor 151、Shared 194、Core 111、Architecture 45、Integration 110，共 611 项通过、0 失败、0 未执行。自有 C# 的 whitespace/IDE0005 --verify-no-changes 通过，受检 C#/AXAML/四语文件的前后 SHA256 一致；p5c-source-sha256.json、p5c-*-final.trx 与 validate-p5c.ps1 可复核。Shared 新增 description 的合法字符串/数字/null 三例全部通过。
 
 自查了新面板的 Dock 单例与释放、默认预览未启用、草稿不进入项目内容、声明唯一真源、UID/类型/说明保留、引用范围与字面量保护、单历史与旧监听去重、失败恢复/冲突拒绝、四语切换及源码提交边界。Formal docs 已同步 editor-variables、editor-graph、file-formats 和 i18n；旧 CLI 的重命名算法没有在此阶段统一，明确引用扫描不宣称完整 AST 语义分析。未将 P5 剩余作者绑定迁移或 P6 状态查询宣称完成。
+
+## 默认值控件跟进（2026-10-17）
+
+按用户要求，Bool 默认值使用 CheckBox，Int/Float 使用 NumericUpDown（步长 1/0.1），String 保留 TextBox。仍编辑同一份草稿，应用才写项目历史；数字采用固定小数点格式。NumericUpDown 绑定原始文本，避免打开/应用时通过 decimal 值转换截断 float 范围或精度，最终合法性由原有声明服务检查。四语 Bool 提示同步改为勾选说明。
+
+扩展现有挂载交互测试，验证复选框点击、数值控件编辑、类型可见性、文本输入、应用前不改作者文档、Undo/Redo 回填，以及 1E+35、1E-35 回填和应用往返。首次构建发现应使用 NumberFormat 而非 CultureInfo 属性，修正后通过。最终隔离 Editor 测试项目构建 0 错误、20 条编译/分析器警告；Editor 全量 151 项通过、0 失败、0 跳过。本次两个 C# 文件 whitespace verify 与自有 diff 空白检查通过，截图已检查。证据为上述验证目录中的 variables-typed-build.log、variables-typed-editor.trx、variables-panel.png；本次未重跑上一节其他四个测试项目。

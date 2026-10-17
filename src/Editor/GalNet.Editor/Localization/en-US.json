@@ -590,7 +590,7 @@
   "Variables.Type.Int": "Integer",
   "Variables.Type.Float": "Float",
   "Variables.Type.String": "Text",
-  "Variables.DefaultHint.Bool": "Enter true or false.",
+  "Variables.DefaultHint.Bool": "Checked means true; unchecked means false.",
   "Variables.DefaultHint.Int": "Enter a 32-bit integer.",
   "Variables.DefaultHint.Float": "Enter a finite floating-point number using a decimal point.",
   "Variables.DefaultHint.String": "Enter plain text without JSON quotes.",
