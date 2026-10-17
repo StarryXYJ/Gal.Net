@@ -219,3 +219,5 @@ P2i 先补齐已实现的启动/项目设置/关闭恢复/基础 Graph 与语言
 ### Group 编辑交互与类型控件扩展（2026-10-17）
 
 详细补充见 [galgroup 编辑设计](group-editing-design.md)。P5 纳入搜索型 Entry picker、顶部添加/追加/数量、按稳定 Entry 身份保存折叠状态、尾部空白取消选择和 Space 快速插入。第 6 点仅设计：共享 SchemaForm 的成员/值类型控件替换、整个 DTO 面板替换、Sample 入口注册复用及 Editor 场景目标 Locator；底层 handle 保留，剧情/演出作者不需感知。数量作用两个按钮，picker 直接确认一条，均已获用户确认。新增注册服务、场景分析与 timeline/曲线不在本轮实现。
+
+第 6 点独立整理到 [参数控件与场景目标设计](parameter-editor-design.md)，替代 Group 补充文档中的详细扩展段落；注册优先级、宿主边界、数据提交与生命周期、场景分析及实施切片以该文为准。

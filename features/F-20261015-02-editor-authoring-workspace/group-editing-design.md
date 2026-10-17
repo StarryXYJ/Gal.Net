@@ -42,43 +42,9 @@ Group 内容页面或列表拥有键盘焦点时，Space 打开与顶部同一�
 
 TextBox、NumericUpDown、条件/表达式控件、已有类型搜索框和其他正在编辑的控件先处理空格；不通过全窗口 Tunnel handler 抢键。按键重复只保持一个弹窗。没有选中项时“页面有焦点”指该 Group 页面内部键盘焦点，不是鼠标悬停或后台 Dock 页。
 
-## 5. 第 6 点：默认生成表单与两层控件扩展（仅设计）
+## 5. 第 6 点：参数控件与场景目标扩展（仅设计）
 
-默认继续用现有 SchemaForm 及 schema/binding 生成全部参数 UI。注册服务放在共享 Avalonia.Controls Forms 层，不将 Avalonia Control 引用加入 Core/契约 DLL。宿主在应用入口显式组合内置及自定义工厂；Sample 可在 SampleCustomization.ConfigureServices/CreateFieldEditors 所在组合点采用同一方式，Editor 与 Sample 使用各自宿主/项目 scope 的注册集合。
-
-建议公开 API 形态（设计名称，非已实现接口）：
-
-~~~csharp
-editors.RegisterValue<AnimationPlanDefinition>(context => CreateTimeline(context));
-editors.RegisterField<AnimationPlanOptions>(dto => dto.Plan, context => CreateTimelineJsonAdapter(context));
-editors.RegisterDto<MyOptions>(context => CreateCustomPanel(context));
-~~~
-
-这三种用途不能混为一个映射：
-
-| 粒度 | 命中条件 | 替换范围 |
-| --- | --- | --- |
-| 成员 | 根/当前 DTO 类型 + 强类型成员路径 | 仅该字段位置；其他字段继续自动生成 |
-| 值类型 | 精确字段 CLR 类型 | 所有该类型字段的单个编辑器，例如曲线/颜色/结构对象 |
-| 整个 DTO | EntryDefinition.FieldDataType 或设置对象根类型 | 整个参数区；自定义面板可嵌入自动生成部分 |
-
-解析顺序：先查根 DTO 面板映射；未命中则创建自动表单。自动表单每个字段按成员映射 → 值类型映射 → 现有 EditorRegistry（显式 EditorId/标量默认/JSON 回退）解析。类型覆盖是宿主明确注册的替换意图，因此可覆盖内置 hint。nullable 保留原 presence/null 能力，控件选择可解包基础类型；转换型 wire 字段仍走其 ValueCodec。采用精确类型匹配，暂不做继承/接口优先级猜测；重复注册报错，替换使用显式 Replace，注册结束冻结。EditorId 留作内部/旧 hint 适配，普通扩展作者按 Type/成员注册，不要求手填 editor ID。
-
-整个 DTO 控件并不要求先反序列化一个完整可变 DTO：未完成 Entry 可能缺必填字段。Context 应提供 schema、只读快照、字段/子路径 binding、原子 patch 提交、校验/诊断和 lifetime。任何控件都通过同一 binding/项目事务提交；未知字段、缺省/null/default 保留，禁止用新 DTO 整体序列化覆盖作者 JSON。一个 timeline 拖动手势合并为一条撤销，临时预览不直接写作者状态。
-
-需要混合展示时，自定义根控件可调用“创建默认表单（排除已负责字段）”，只跳过根面板映射以避免递归，字段映射仍有效。嵌套对象递归时维护成员路径，深度/循环类型给出反馈；每次生成独立 Control/Lease，schema 切换、行折叠、卸载取消旧提交并释放订阅。注册工厂失败显示诊断，不静默变为成功的空控件。项目契约类型的映射随项目释放，避免应用单例持有 Type 导致程序集无法卸载。
-
-AnimationPlan 的现状取舍：Plan 是 JsonElement 时，第一步通过 AnimationPlanOptions.Plan 成员映射和适配器转换已知字段，不能对所有 JsonElement 全局替换 timeline；以后若改为强类型 AnimationPlanDefinition，可自然使用值类型映射。曲线字段既可只替换嵌套的曲线值，也可由整个 timeline 面板组合，统一复用参数面板和提交协议。真正 timeline/曲线编辑器是独立可验收工作，不因增加 registry 就宣称已完成。
-
-## 6. 第 6 点：场景目标与 Locator（仅设计）
-
-资产库资源（文件/asset ID）与场景实例（某次创建、替换、隐藏后的对象）不是同一身份；一个图片资源可被多个层使用。当前 Core 有 IAssetManager 和 ISceneInstanceManager，尚未查到可直接复用的作者级 Locator 类型。可复用资源选择器的搜索/缩略图界面及底层 asset 索引，但场景目标候选必须来自独立场景分析服务。
-
-建议作者侧提供 SceneTargetRef/Locator：以稳定创建 Entry ID + 输出槽位标识对象，显示友好名称/资源缩略图/对象类型；创建类 Entry 自动分配内部 handle，引用类 Entry 选择目标，不要求剧情作者手输 handle 字符串。复制创建 Entry 分配新身份，同批内部引用重映射，重排及文件改名不改变身份，删除生产者显示断链诊断。禁止按“资源名/GUID 就是目标”解析多实例。
-
-没有游戏预览时，用当前 Entry 之前的作者数据做可解释的静态分析；每种创建/替换/删除等 Entry 由显式贡献的纯场景语义提供器更新抽象场景，不执行游戏命令。条件、分支汇合、循环、跨 Group 和未知自定义 Entry 下区分确定存在、可能存在、无法推断；不伪造确定的运行时状态。未知贡献者返回 unknown，保留已有引用并给出诊断，不能在候选刷新时清空值。后期运行时观测可增强候选，但引用保存仍使用稳定作者身份。
-
-用户已确认隐藏范围为使用 Editor 创作演出/剧本的人；底层继续使用 handle，C# 执行 API 不要求改为 Locator。优先让 Locator 作为 Editor 的目标选择模型/解析服务，创建 Entry 的 handle 自动由稳定作者身份与输出槽位分配，引用选择后写入对应内部 handle；现有 Raw/Compiled handle 字段可以继续沿用。需要持久作者引用元数据时，再单独设计 codec/compiler 的一致性，不预先强制修改格式。多对象歧义、引用到未来对象、无法反查的已有目标与跨 Group 生命周期都必须显示诊断，作者界面展示未解析目标而不是强制手输 handle。自动分配/编译映射的具体方案在实施前验证碰撞、复制重映射及身份稳定性，不把隐藏文本框等同于目标系统完成。
+第 6 点的完整方案集中到 [参数控件与场景目标设计](parameter-editor-design.md)，此处只保留边界：默认使用共享 SchemaForm；支持指定 DTO 成员、值类型、整个 DTO 面板三种注册粒度；Editor 与 Sample 在程序入口组合注册，各自提供业务 binding。底层 handle 保留，对演出/剧本作者隐藏，场景实例目标与资产库资源分开解析。新注册服务、Locator 和 timeline/曲线本轮不实现。
 
 ## 验收与阶段归属
 

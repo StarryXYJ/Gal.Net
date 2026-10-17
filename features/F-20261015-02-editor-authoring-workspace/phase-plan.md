@@ -203,7 +203,7 @@ P1a 基本页面/项目文档 → P1b 项目历史/保存骨架
 
 ## P6：自动生成 UI 与复杂值编辑
 
-状态：planned。前置：P5；复用现有参数/表单机制，不重做 DTO generator。用户本轮第 6 点仅形成 [扩展设计](group-editing-design.md)，不授权在设计过程中实现注册服务、Locator 或 Sample 迁移。
+状态：planned。前置：P5；复用现有参数/表单机制，不重做 DTO generator。用户本轮第 6 点仅形成 [扩展设计](parameter-editor-design.md)，不授权在设计过程中实现注册服务、Locator 或 Sample 迁移。
 
 **目标**：让项目契约能够直接获得可用的基础编辑 UI。
 
@@ -268,3 +268,5 @@ dotnet build GalNet.slnx --no-restore -m:1 -p:UseSharedCompilation=false
 - 2026-10-16：用户追加编辑器 UI i18n。复用现有四语机制，在 P3 前插入 P2i 补齐已有页面与动态文案；P3–P6 随功能接入，P7 统一验收。游戏文本翻译和新增语言不自动纳入。
 
 - 2026-10-17：用户追加 Group 编辑 6 点；第 1–5 点接入 P5 交互范围，第 6 点仅设计并明确字段/整 DTO 注册与场景目标分析边界。数量作用添加/追加，picker 一次一条；底层 handle 保留并对演出/剧本作者隐藏。详见 group-editing-design.md。
+
+- 2026-10-17：第 6 点集中为 parameter-editor-design.md，明确三种注册粒度、嵌套解析/默认表单组合、Editor/Sample binding 边界、静态场景置信度与六个候选实施切片；保持 design 状态，无业务实现。
