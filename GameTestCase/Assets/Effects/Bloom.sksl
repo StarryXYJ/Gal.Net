@@ -1,0 +1,60 @@
+/*
+@gal.effect v=1
+@input source
+@targets scenePost
+
+@param strength
+  uniform: strength
+  type: float
+  default: 3
+  range: 0..3
+  animatable: false
+
+@param radius
+  uniform: radius
+  type: float
+  default: 40
+  range: 8..48
+  animatable: false
+*/
+uniform shader source;
+uniform float strength;
+uniform float radius;
+
+half4 main(float2 p) {
+    half4 original = source.eval(p);
+    float3 baseColor = float3(original.rgb);
+    float3 glow = float3(0.0);
+    float totalWeight = 0.0;
+    // The classroom image is already bright in LDR; isolate the near-white windows so
+    // the glow stays local instead of lifting the whole ceiling and walls.
+    const float threshold = 0.84;
+    const float softKnee = 0.12;
+    const float sigma = 1.5;
+
+    for (int y = -2; y <= 2; y++) {
+        for (int x = -2; x <= 2; x++) {
+            float2 offset = float2(float(x), float(y)) * (radius * 0.5);
+            float3 color = max(float3(source.eval(p + offset).rgb), float3(0.0));
+            float luminance = dot(color, float3(0.2126, 0.7152, 0.0722));
+            float soft = clamp(luminance - threshold + softKnee, 0.0, 2.0 * softKnee);
+            soft = soft * soft / (4.0 * softKnee + 0.0001);
+            float contribution = max(luminance - threshold, soft);
+            float highlight = contribution / max(luminance, 0.0001);
+            float distanceSquared = float(x * x + y * y);
+            float weight = exp(-0.5 * distanceSquared / (sigma * sigma));
+
+            glow += color * highlight * weight;
+            totalWeight += weight;
+        }
+    }
+
+    glow /= max(totalWeight, 0.0001);
+
+    // Scene surfaces are 8-bit LDR, so use remaining headroom as a soft highlight shoulder.
+    float3 headroom = max(float3(1.0) - clamp(baseColor, 0.0, 1.0), float3(0.0));
+    // Keep a little headroom even for strong settings so this LDR pass never clips to white.
+    float3 bloom = clamp(glow * strength, float3(0.0), float3(0.65));
+    float3 result = baseColor + headroom * bloom;
+    return half4(half3(clamp(result, 0.0, 1.0)), original.a);
+}

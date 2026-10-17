@@ -64,7 +64,10 @@ public partial class AnimationOptions
 public sealed class AnimationPropertyValueConverter : JsonConverter<string>, IStringValueEncoding
 {
     public IReadOnlyList<string> Choices { get; } = Array.AsReadOnly(Layer.AnimationProperties
-        .Concat(ParticleEmitterInstance.AnimationProperties).Select(property => property.Name).Distinct(StringComparer.Ordinal).ToArray());
+        .Concat(ParticleEmitterInstance.AnimationProperties)
+        // Shader effect properties come from program metadata, so the compiler cannot enumerate
+        // them here. Keep the common Shadertoy time property authorable.
+        .Select(property => property.Name).Append("time").Distinct(StringComparer.Ordinal).ToArray());
     public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => reader.GetString();
     public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options) => writer.WriteStringValue(value);
 }

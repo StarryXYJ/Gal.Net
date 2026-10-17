@@ -1,0 +1,44 @@
+/*
+@gal.effect v=1
+@input source
+@targets scenePost
+
+@param radius
+  uniform: radius
+  type: float
+  default: 28
+  range: 4..48
+  animatable: false
+
+@param direction
+  uniform: direction
+  type: vector2
+  default: [1,0]
+  animatable: false
+*/
+uniform shader source;
+uniform float radius;
+uniform float2 direction;
+
+half4 main(float2 p) {
+    float sigma = max(radius / 3.0, 0.5);
+    float4 color = float4(source.eval(p));
+    float totalWeight = 1.0;
+
+    // Five bands with three dense taps per band approximate a sampled Gaussian over 3 sigma.
+    for (int iteration = 0; iteration < 5; iteration++) {
+        for (int substep = 0; substep < 3; substep++) {
+            float sampleIndex = float(iteration * 3 + substep + 1);
+            float offset = radius * sampleIndex / 15.0;
+            float normalizedOffset = offset / sigma;
+            float weight = exp(-0.5 * normalizedOffset * normalizedOffset);
+            float2 delta = direction * offset;
+
+            color += float4(source.eval(p + delta)) * weight;
+            color += float4(source.eval(p - delta)) * weight;
+            totalWeight += 2.0 * weight;
+        }
+    }
+
+    return half4(color / totalWeight);
+}

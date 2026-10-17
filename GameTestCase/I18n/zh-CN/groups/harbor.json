@@ -1,3 +1,9 @@
 {
-  "group.harbor.entry.line.content": "这条路线同时展示持续发射器，以及使用逐粒子序列帧的一次性粒子爆发。"
+  "group.harbor.entry.line.content": "这条路线同时展示持续发射器，以及使用逐粒子序列帧的一次性粒子爆发。",
+  "group.harbor.entry.shader-intro.content": "接下来依次展示五种场景后处理效果，每次只展示一种；Blur 内部会用横向和纵向两遍高斯采样，ShaderToy 示例会使用纯色舞台。",
+  "group.harbor.entry.shader-bloom.content": "Bloom 是路线选项后的第一个 shader 示例、紧接着介绍并先于 Blur；留意教室明亮窗户边缘向室内扩散的柔和光晕。",
+  "group.harbor.entry.shader-blur.content": "Blur 使用分离式高斯模糊，横向和纵向各经过 5 个迭代段、15 个密集采样点；28 像素半径让画面柔和扩散。",
+  "group.harbor.entry.shader-toy-tunnel.content": "ShaderToy 示例：动态程序化雾气隧道。",
+  "group.harbor.entry.shader-toy-grid.content": "ShaderToy 示例：带透视感的动态三维网格。",
+  "group.harbor.entry.shader-toy-rain.content": "ShaderToy 示例：通过光线步进绘制的雨夜道路与倒影。"
 }

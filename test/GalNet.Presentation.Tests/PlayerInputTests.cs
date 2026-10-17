@@ -116,7 +116,8 @@ public sealed class PlayerInputTests
                 {
                     panel = new InputBindingsPanel(settings);
                     return new FieldEditorLease(panel, panel.Dispose);
-                }) { IsFullWidth = true };
+                })
+            { IsFullWidth = true };
             var view = new SettingsCategories { Categories = [new("operation", "Operation", [item])] };
             var border = new Border { Classes = { "galnet-player" }, Child = view };
             border.Styles.Add((theme switch { "Minimal" => new MinimalTheme().CreateStyles(), "Paper" => new PaperTheme().CreateStyles(), _ => new ClassicTheme().CreateStyles() }));
@@ -319,8 +320,10 @@ public sealed class PlayerInputTests
             using var settings = Settings();
             Control control = kind switch
             {
-                "textbox" => new TextBox(), "combobox" => new ComboBox(),
-                "slider" => new Slider(), _ => new Button()
+                "textbox" => new TextBox(),
+                "combobox" => new ComboBox(),
+                "slider" => new Slider(),
+                _ => new Button()
             };
             var root = new Border { Child = kind == "host-button" ? null : control };
             var host = new StackPanel { Children = { root } };

@@ -1,3 +1,9 @@
 {
-  "group.harbor.entry.line.content": "The route combines a persistent rate emitter with a one-shot, per-particle flipbook burst."
+  "group.harbor.entry.line.content": "The route combines a persistent rate emitter with a one-shot, per-particle flipbook burst.",
+  "group.harbor.entry.shader-intro.content": "Now I’ll show five scene-post visual effects one at a time. Blur uses horizontal and vertical Gaussian passes; the ShaderToy demos use a plain color stage.",
+  "group.harbor.entry.shader-bloom.content": "Bloom is the first shader sample after the route choice, just before Blur. Look for a soft halo spreading inward from the bright classroom windows.",
+  "group.harbor.entry.shader-blur.content": "Blur uses a separable Gaussian with five iteration bands and 15 dense taps in each horizontal and vertical pass. Its 28-pixel radius softly diffuses the scene.",
+  "group.harbor.entry.shader-toy-tunnel.content": "ShaderToy sample: an animated procedural fog tunnel.",
+  "group.harbor.entry.shader-toy-grid.content": "ShaderToy sample: an animated, perspective 3D grid.",
+  "group.harbor.entry.shader-toy-rain.content": "ShaderToy sample: a raymarched rainy road with reflections."
 }

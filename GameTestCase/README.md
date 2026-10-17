@@ -36,6 +36,16 @@ The `.rawgalgroup` files are the sole authoring source. Build them with `GalNet.
 the generated `.galgroup` files use the version 3 compiled format (`typeId`, `arguments`, and reading metadata). The raw authoring format remains version 2. Every
 resource reference is its stable GUID; human-readable paths occur only in adjacent `.meta` files.
 
+Choosing the second route option demonstrates five scene-post effect programs in sequence: bloom,
+blur, and three adapted Shadertoy samples. Bloom is shown first, before blur; it uses a high-threshold
+bright-pass, a wide Gaussian spread, and bounded LDR highlight roll-off. Blur is one visual demo
+implemented as horizontal and vertical separable Gaussian passes, with five iteration bands and 15 dense taps per axis.
+Before the Shadertoy
+samples, the route background and portrait are hidden, the snow emitter is stopped, and a
+solid-color scene layer is shown. The sequence proceeds directly into the ending on that stage;
+it does not restore the harbor scene. Each visual demonstration stops before the next begins;
+Blur's paired passes are one demonstration. Animated samples also stop their time animation before stopping the shader.
+
 Entry IDs must be unique within each group, not across groups. Read progress uses
 the group ID together with the compiled entry ID. The current `progress.json`
 format is version 2; older progress is rejected rather than migrated. For an old
