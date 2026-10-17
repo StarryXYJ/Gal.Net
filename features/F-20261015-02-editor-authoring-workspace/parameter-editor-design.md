@@ -1,6 +1,6 @@
 # 参数控件与场景目标设计（用户第 6 点）
 
-日期：2026-10-17。状态：design；用户随后已授权实施，共享 UI 基础已由 [P6a](phase-6a.md) 验证，普通嵌套/列表和 presence 操作由 [P6b](phase-6b.md) 验证，其余部分仍为设计。所属：[Editor 创作工作区](feature.md) / P6；Group 交互第 1–5 点另见 [Group 编辑设计](group-editing-design.md)。本文件是第 6 点的唯一详细设计来源。
+日期：2026-10-17；补充：2026-10-18。状态：design；用户随后已授权实施，共享 UI 基础已由 [P6a](phase-6a.md) 验证，普通嵌套/列表和 presence 操作由 [P6b](phase-6b.md) 验证，其余部分仍为设计。所属：[Editor 创作工作区](feature.md) / P6；Group 交互第 1–5 点另见 [Group 编辑设计](group-editing-design.md)。本文件集中第 6 点的总体职责与状态查询设计；复杂控件的细节见 [对象树时间轴设计](complex-editor-design.md)，不重复建立另一套注册/查询架构。
 
 ## 1. 目标与已确认边界
 
@@ -149,6 +149,8 @@ Group 初始状态来自可达前驱/调用上下文，不把每个 Group 都视
 跨 Group 输入多样时，默认用合并后的入口状态服务普通 Editor；如果宿主提供明确调用上下文，可以按输入签名分别查询/缓存。缓存设置数量/内存预算并淘汰，项目关闭释放全部分析状态。后台分析捕获一致作者快照，完成时核对 revision/请求位置再发布，过期结果丢弃；共享 UI 只订阅结果，不拥有分析任务。
 
 ## 8. AnimationPlan、timeline 与曲线
+
+2026-10-18 用户补充对象/属性树和关键帧/切线/曲线交互，详细设计见 [complex-editor-design.md](complex-editor-design.md)。后者细化本节：对象父行分组、属性选择加入轨道、首帧/碰撞/时长/FPS 规则、Hermite 单位、局部草稿与单历史、事件和隐藏 handle；状态仍为 design。
 
 第一步可对 AnimationPlanOptions.Plan 做成员覆盖，适配现有 JsonElement；只替换这一字段，不对所有 JsonElement 注册 timeline。适配器只改负责的键，未知扩展字段无损保留；无法解析的内容显示诊断/原始值回退，不自动重置为新计划。
 
