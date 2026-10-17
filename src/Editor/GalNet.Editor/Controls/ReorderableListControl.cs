@@ -79,6 +79,7 @@ public class ReorderableListControl : UserControl
     protected void OnDragHandlePressed(object? sender, PointerPressedEventArgs e)
     {
         if (_listBox is null || sender is not AvaloniaControl control || control.DataContext is not { } item) return;
+        PrepareReorder(item);
         _dragIndex = _listBox.Items.IndexOf(item);
         if (_dragIndex < 0) return;
         _dragItem = item;
@@ -86,6 +87,8 @@ public class ReorderableListControl : UserControl
         _preview.Content = item; _preview.ContentTemplate = _listBox.ItemTemplate;
         e.Pointer.Capture(this); e.Handled = true;
     }
+
+    protected virtual void PrepareReorder(object item) { }
 
     /// <summary>
     /// Subclass binds this to the control's PointerMoved event.

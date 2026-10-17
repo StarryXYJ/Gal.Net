@@ -552,5 +552,20 @@
   "Entry.Category.animation": "アニメーション",
   "Entry.Category.nvl": "NVL",
   "Entry.Category.particle": "パーティクル",
-  "Entry.Category.transition": "トランジション"
+  "Entry.Category.transition": "トランジション",
+  "Entry.Menu.Copy": "エントリをコピー",
+  "Entry.Menu.Cut": "エントリを切り取り",
+  "Entry.Menu.Paste": "エントリを貼り付け",
+  "Entry.Menu.Duplicate": "エントリを複製",
+  "Entry.Menu.Delete": "選択したエントリを削除",
+  "Entry.Menu.SelectAll": "すべて選択",
+  "History.PasteEntries": "{0} 件のエントリを貼り付け",
+  "History.DeleteEntries": "{0} 件のエントリを削除",
+  "History.MoveEntries": "エントリを移動",
+  "Error.entry.clipboard": "対応する GalNet エントリではありません（最大 1,000 件、テキスト 16 MiB）。",
+  "Error.entry.clipboardSchema": "このプロジェクトの契約はクリップボードの型またはフィールドに対応していません。貼り付けは行われませんでした。",
+  "Error.entry.clipboardUnavailable": "クリップボードを利用できません。",
+  "Error.entry.groupMissing": "Group は削除されました。",
+  "Error.entry.anchorMissing": "挿入先が削除されました。選択し直してください。",
+  "Error.entry.cutChanged": "クリップボードへの書き込み中に元のエントリが変更されたため、削除しませんでした。"
 }

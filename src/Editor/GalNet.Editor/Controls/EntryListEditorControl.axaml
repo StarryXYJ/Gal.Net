@@ -43,8 +43,8 @@
                  Grid.Row="1"
                  Margin="0,8,0,0"
                  ItemsSource="{Binding GroupNode.Entries}"
-                 SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
-                 SelectionMode="Single"
+                 SelectedItems="{Binding SelectedEntries, Mode=OneWay}"
+                 SelectionMode="Multiple"
                  Background="Transparent" Padding="0,0,0,64">
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="models:EntryEditorItemViewModel">

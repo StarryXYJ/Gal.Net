@@ -552,5 +552,20 @@
   "Entry.Category.animation": "애니메이션",
   "Entry.Category.nvl": "NVL",
   "Entry.Category.particle": "파티클",
-  "Entry.Category.transition": "전환"
+  "Entry.Category.transition": "전환",
+  "Entry.Menu.Copy": "항목 복사",
+  "Entry.Menu.Cut": "항목 잘라내기",
+  "Entry.Menu.Paste": "항목 붙여넣기",
+  "Entry.Menu.Duplicate": "항목 복제",
+  "Entry.Menu.Delete": "선택한 항목 삭제",
+  "Entry.Menu.SelectAll": "모두 선택",
+  "History.PasteEntries": "항목 {0}개 붙여넣기",
+  "History.DeleteEntries": "항목 {0}개 삭제",
+  "History.MoveEntries": "항목 이동",
+  "Error.entry.clipboard": "지원하는 GalNet 항목 데이터가 아닙니다(최대 1,000개, 텍스트 16 MiB).",
+  "Error.entry.clipboardSchema": "이 프로젝트 계약이 클립보드의 유형 또는 필드를 지원하지 않습니다. 항목을 붙여넣지 않았습니다.",
+  "Error.entry.clipboardUnavailable": "클립보드를 사용할 수 없습니다.",
+  "Error.entry.groupMissing": "Group이 삭제되었습니다.",
+  "Error.entry.anchorMissing": "삽입 대상이 삭제되었습니다. 다시 선택하세요.",
+  "Error.entry.cutChanged": "클립보드에 쓰는 동안 원본 항목이 변경되어 삭제하지 않았습니다."
 }

@@ -48,7 +48,7 @@ public sealed class EditorWorkspaceViewModelTests
             // Supply only layout icon resources; the real parameter panel and bindings are used below.
             foreach (var key in new[] { "AddIcon", "DeleteRegularIcon", "ChevronUpRegular", "ChevronDownRegular" })
                 Application.Current!.Resources[key] = StreamGeometry.Parse("M0,0 L8,8");
-            var panel = new GroupEditorPanelViewModel(workspace, group.Id, new GraphEditingService(catalog), fixture.ProjectService,
+            var panel = new GroupEditorPanelViewModel(workspace, group.Id, null!, fixture.ProjectService,
                 null!, null!, null!, catalog);
             Application.Current!.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
             Application.Current.Styles.Add(new Semi.Avalonia.SemiTheme());
@@ -103,7 +103,7 @@ public sealed class EditorWorkspaceViewModelTests
         using var fixture = new WorkspaceFixture(withProject: true);
         var group = fixture.Workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
         using var panel = new GroupEditorPanelViewModel(fixture.Workspace, group.Id,
-            new GraphEditingService(fixture.Catalog), fixture.ProjectService, null!, null!, null!, fixture.Catalog);
+            null!, fixture.ProjectService, null!, null!, null!, fixture.Catalog);
 
         Assert.Multiple(() =>
         {

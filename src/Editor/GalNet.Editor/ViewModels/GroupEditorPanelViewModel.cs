@@ -21,10 +21,13 @@ namespace GalNet.Editor.ViewModels;
 
 public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarget, IDisposable
 {
-    private readonly IGraphEditingService _graphEditingService;
+    private readonly GroupEntryAuthoringService _authoring;
     private readonly IProjectService _projects;
     private readonly IEffectCatalog _effects;
     private readonly IEntryCatalog _catalog;
+    private readonly IEditorLocalizationService? _localization;
+    private EditorText? _errorMessage;
+    private bool _renderingError;
 
     public EditorWorkspaceViewModel Workspace { get; }
     public GraphNode GroupNode => Workspace.Nodes.Single(node => node.Id == GroupId);
@@ -41,6 +44,21 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     public void CancelInsertion() => _pendingInsertion = null;
     [ObservableProperty] private string _insertionType = BuiltinEntryIds.Text;
     [ObservableProperty] private string _errorText = "";
+    partial void OnErrorTextChanged(string value) { if (!_renderingError) _errorMessage = null; }
+    public void ReportError(Exception error)
+    {
+        _errorMessage = EditorText.Error(error);
+        RenderError();
+        Workspace.ReportGraphError(error);
+    }
+    private void RenderError()
+    {
+        if (_errorMessage is null) return;
+        _renderingError = true;
+        try { ErrorText = _localization is null ? _errorMessage.Key ?? "" : _errorMessage.Render(_localization); }
+        finally { _renderingError = false; }
+    }
+    private void OnLocaleChanged(object? sender, PropertyChangedEventArgs args) { if (args.PropertyName == "Item[]") RenderError(); }
     public IReadOnlyList<ConditionVariableSuggestion> ConditionSuggestions => Workspace.GetConditionVariableSuggestions();
     public IReadOnlyList<GalNet.Core.Variable.ProjectVariableDefinition> ValidationVariables => Workspace.AllProjectVariableDefinitions;
     public IAssetManager AssetManager { get; }
@@ -51,18 +69,62 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     [ObservableProperty]
     private EntryEditorItemViewModel? _selectedEntry;
 
+    public ObservableCollection<EntryEditorItemViewModel> SelectedEntries { get; } = [];
+    private bool _changingSelection;
+    public void SetSelection(IEnumerable<EntryEditorItemViewModel> entries)
+    {
+        var selected = entries.Where(_entries.Contains).Distinct().ToArray();
+        _changingSelection = true;
+        try
+        {
+            SelectedEntries.Clear();
+            foreach (var entry in selected) SelectedEntries.Add(entry);
+            SelectedEntry = selected.LastOrDefault();
+        }
+        finally { _changingSelection = false; }
+    }
+    partial void OnSelectedEntryChanged(EntryEditorItemViewModel? value)
+    {
+        if (!_changingSelection) SetSelection(value is null ? [] : [value]);
+    }
+    public void UpdateActiveSelection(EntryEditorItemViewModel? added)
+    {
+        if (_changingSelection) return;
+        _changingSelection = true;
+        try { SelectedEntry = added ?? (SelectedEntry is not null && SelectedEntries.Contains(SelectedEntry) ? SelectedEntry : SelectedEntries.LastOrDefault()); }
+        finally { _changingSelection = false; }
+    }
+    public bool IsDisposed => _disposed;
+    public string CopySelection() => _authoring.Copy(GroupId, SelectedEntries.Select(entry => entry.StableId));
+    public void DeleteEntries(IEnumerable<string> ids) { if (!_disposed) _authoring.Delete(GroupId, ids); }
+    public void DeleteSelection() => DeleteEntries(SelectedEntries.Select(entry => entry.StableId).ToArray());
+    public void DeleteCopiedEntries(string[] ids, string text)
+    {
+        if (_disposed) return;
+        if (_authoring.Copy(GroupId, ids) != text) throw new EditorOperationException("entry.cutChanged", "The source entries changed while writing the clipboard. They were not removed.");
+        DeleteEntries(ids);
+    }
+    public void Paste(string text, string? anchor) { if (!_disposed) SetSelection(_authoring.Paste(GroupId, text, anchor)); }
+    public void DuplicateSelection()
+    {
+        var text = CopySelection();
+        if (text.Length > 0) Paste(text, SelectedEntry?.StableId);
+    }
+
     [ObservableProperty]
     private decimal _batchAddCount = 1;
 
-    public GroupEditorPanelViewModel(EditorWorkspaceViewModel workspace, string groupId, IGraphEditingService graphEditingService, IProjectService projects, IAssetManager assetManager, EditorShortcutService shortcutService, IEffectCatalog effects, IEntryCatalog catalog, EditorRegistry? fieldEditors = null)
+    public GroupEditorPanelViewModel(EditorWorkspaceViewModel workspace, string groupId, GroupEntryAuthoringService authoring, IProjectService projects, IAssetManager assetManager, EditorShortcutService shortcutService, IEffectCatalog effects, IEntryCatalog catalog, EditorRegistry? fieldEditors = null)
     {
         Workspace = workspace;
         GroupId = groupId;
         _entries = GroupNode.Entries;
-        _graphEditingService = graphEditingService;
+        _authoring = authoring;
         _projects = projects;
         _effects = effects;
         _catalog = catalog;
+        _localization = EditorLocalizationService.Current;
+        if (_localization is not null) _localization.PropertyChanged += OnLocaleChanged;
         FieldEditors = fieldEditors ?? EditorFieldEditors.CreateDefault();
         AssetManager = assetManager;
         ShortcutService = shortcutService;
@@ -122,7 +184,8 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         if (entry is null)
             return;
 
-        Workspace.RemoveEntryFrom(GroupNode, entry);
+        try { _authoring.Delete(GroupId, [entry.StableId]); }
+        catch (Exception error) { ReportError(error); }
     }
 
     [RelayCommand]
@@ -143,7 +206,9 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         if (request?.Item is not EntryEditorItemViewModel entry)
             return;
 
-        Workspace.MoveEntryTo(GroupNode, entry, request.NewIndex);
+        var ids = SelectedEntries.Contains(entry) ? SelectedEntries.Select(item => item.StableId).ToArray() : [entry.StableId];
+        try { _authoring.Move(GroupId, ids, entry.StableId, request.NewIndex); }
+        catch (Exception error) { ReportError(error); }
     }
 
     private void MoveEntry(EntryEditorItemViewModel? entry, int delta)
@@ -167,7 +232,8 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         if (e.Action == NotifyCollectionChangedAction.Move) return;
         foreach (var entry in _attached.Where(entry => !_entries.Contains(entry)).ToArray()) { entry.PropertyChanged -= OnEntryPropertyChanged; _attached.Remove(entry); }
         foreach (var entry in _entries.Where(entry => !_attached.Contains(entry)).ToArray()) Attach(entry);
-        if (SelectedEntry is not null && !_entries.Contains(SelectedEntry)) SelectedEntry = null;
+        foreach (var entry in SelectedEntries.Where(entry => !_entries.Contains(entry)).ToArray()) SelectedEntries.Remove(entry);
+        UpdateActiveSelection(null);
     }
 
     private void Attach(EntryEditorItemViewModel entry)
@@ -205,6 +271,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     {
         if (_disposed) return;
         _disposed = true;
+        if (_localization is not null) _localization.PropertyChanged -= OnLocaleChanged;
         Workspace.VariableDefinitionsChanged -= OnVariableDefinitionsChanged;
         _entries.CollectionChanged -= OnEntriesChanged;
         foreach (var entry in _attached) entry.PropertyChanged -= OnEntryPropertyChanged;

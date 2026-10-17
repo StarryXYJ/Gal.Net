@@ -48,7 +48,7 @@ public static class BuiltInDockContributions
             (sp, node) => new GroupEditorPanelViewModel(
                 sp.GetRequiredService<EditorWorkspaceViewModel>(),
                 node,
-                sp.GetRequiredService<IGraphEditingService>(),
+                sp.GetRequiredService<GroupEntryAuthoringService>(),
                 sp.GetRequiredService<IProjectService>(),
                 sp.GetRequiredService<IAssetManager>(),
                 sp.GetRequiredService<EditorShortcutService>(),

@@ -552,5 +552,20 @@
   "Entry.Category.animation": "Animation",
   "Entry.Category.nvl": "NVL",
   "Entry.Category.particle": "Particles",
-  "Entry.Category.transition": "Transitions"
+  "Entry.Category.transition": "Transitions",
+  "Entry.Menu.Copy": "Copy entries",
+  "Entry.Menu.Cut": "Cut entries",
+  "Entry.Menu.Paste": "Paste entries",
+  "Entry.Menu.Duplicate": "Duplicate entries",
+  "Entry.Menu.Delete": "Delete selected entries",
+  "Entry.Menu.SelectAll": "Select all",
+  "History.PasteEntries": "Paste {0} entries",
+  "History.DeleteEntries": "Delete {0} entries",
+  "History.MoveEntries": "Move entries",
+  "Error.entry.clipboard": "The clipboard does not contain supported GalNet entries (up to 1,000 entries / 16 MiB of text).",
+  "Error.entry.clipboardSchema": "This project's contract does not support the clipboard types or fields. No entries were pasted.",
+  "Error.entry.clipboardUnavailable": "Clipboard is unavailable.",
+  "Error.entry.groupMissing": "The Group was removed.",
+  "Error.entry.anchorMissing": "The insertion target was removed. Select a new target.",
+  "Error.entry.cutChanged": "The source entries changed while writing the clipboard. They were not removed."
 }

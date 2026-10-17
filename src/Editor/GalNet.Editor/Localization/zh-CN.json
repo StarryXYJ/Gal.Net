@@ -552,5 +552,20 @@
   "Entry.Category.animation": "动画",
   "Entry.Category.nvl": "NVL",
   "Entry.Category.particle": "粒子",
-  "Entry.Category.transition": "过渡"
+  "Entry.Category.transition": "过渡",
+  "Entry.Menu.Copy": "复制条目",
+  "Entry.Menu.Cut": "剪切条目",
+  "Entry.Menu.Paste": "粘贴条目",
+  "Entry.Menu.Duplicate": "创建副本",
+  "Entry.Menu.Delete": "删除所选条目",
+  "Entry.Menu.SelectAll": "全选",
+  "History.PasteEntries": "粘贴 {0} 个条目",
+  "History.DeleteEntries": "删除 {0} 个条目",
+  "History.MoveEntries": "移动条目",
+  "Error.entry.clipboard": "剪贴板不是受支持的 GalNet 条目数据（最多 1,000 条、16 MiB 文本）。",
+  "Error.entry.clipboardSchema": "目标项目契约不支持剪贴板中的类型或字段，未粘贴任何条目。",
+  "Error.entry.clipboardUnavailable": "剪贴板不可用。",
+  "Error.entry.groupMissing": "该 Group 已被删除。",
+  "Error.entry.anchorMissing": "插入位置已被删除，请重新选择。",
+  "Error.entry.cutChanged": "写入剪贴板期间原条目发生变化，未删除原条目。"
 }
