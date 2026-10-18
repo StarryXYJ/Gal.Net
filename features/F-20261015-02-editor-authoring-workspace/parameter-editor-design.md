@@ -154,6 +154,8 @@ Group 初始状态来自可达前驱/调用上下文，不把每个 Group 都视
 
 用户进一步确认先做独立 Timeline Dock（默认资源区域），属性树叶节点值直接 upsert 当前帧键，再做 animate 自定义曲线。Timeline 名称替换和未来实时预览另有代码影响分析；Timeline 曲线按帧编辑属性，animate 自定义曲线按归一化时间编辑进度，复用画布但分开值契约。其余专业参数面板保留远期接点，不作为这一轮额外工具目标。
 
+Timeline Dock 直接绑定当前活动 Entry，非 Timeline/无选择时显示不可编辑提示，不固定旧目标；切换先协调输入/手势，再使旧租约失效。实时预览不纳入阶段计划，既有预览分析只作架构备忘，不成为 Timeline 的依赖或验收要求。
+
 第一步可对 AnimationPlanOptions.Plan 做成员覆盖，适配现有 JsonElement；只替换这一字段，不对所有 JsonElement 注册 timeline。适配器只改负责的键，未知扩展字段无损保留；无法解析的内容显示诊断/原始值回退，不自动重置为新计划。
 
 未来如果把 Plan 改为强类型 AnimationPlanDefinition，默认类型映射即可复用。这个类型化属于契约变化，需要单独验证 codec 与执行参数，不是注册服务的先决条件。

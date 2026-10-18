@@ -4,6 +4,8 @@
 
 后续用户将近期范围限定为 Timeline Dock 与 animate 自定义曲线两个工具，Timeline 优先。Dock 默认与资源同组，叶节点当前值输入执行当前帧关键帧 upsert；详细设计已同步第 3–4 节。全面 Timeline 命名方案与独立预览场景/可控时钟/seek 的未来接点见该文第 10–12 节，属于待实施设计，不表示现有 IAnimationPresenter 已支持 seek。
 
+最新确认：Timeline Dock 直接跟随当前活动 Entry，选择非 Timeline/无选择时进入不可编辑提示，不保留可写旧目标或固定模式；实时预览移出阶段计划，仅保留架构备忘，不作为实现依赖。
+
 日期：2026-10-15；进度更新：2026-10-18。状态：目标设计，P1a/P1b/P2/P2i/P3/P4a/P4b/P6a/P6b 与 P5a–P5e 已验证，其余范围以阶段计划为准；产品范围以 [feature.md](feature.md) 为准，实际进度与证据见 [phase-plan.md](phase-plan.md)。第 1 节记录设计时的基线事实；本文中的类型名用于界定职责，不要求逐一新建接口或服务。
 
 ## 1. 当前事实与目标差异
