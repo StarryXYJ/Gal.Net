@@ -135,7 +135,7 @@ registry.RegisterDockPanel(new DelegateDockPanelContribution(
 | `NodeGraph` | MainDocument | 是 | 是 | 节点图编辑器 |
 | `Assets` | BottomDocument | 是 | 是 | 资源管理 |
 | `Log` | BottomDocument | 是 | 是 | 日志面板 |
-| `Timeline` | BottomDocument | 是 | 是 | 跟随活动 Entry，编辑已有轨道的当前帧数值 |
+| `Timeline` | BottomDocument | 是 | 是 | 跟随活动 Entry，场景属性树、轨道创建与当前帧数值编辑 |
 | `GroupEditor` | MainDocument | 否 | 否 | 组编辑器（按需打开） |
 | `Inspector` | InspectorDocument | 否 | 是 | 属性检查器 |
 

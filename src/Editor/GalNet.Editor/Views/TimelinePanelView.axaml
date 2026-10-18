@@ -2,7 +2,7 @@
              xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:services="using:GalNet.Editor.Services"
              xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
              x:Class="GalNet.Editor.Views.TimelinePanelView" x:DataType="vm:TimelinePanelViewModel">
-  <Grid Margin="10" RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="6">
+  <Grid Margin="10" RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" RowSpacing="6">
     <TextBlock Text="{Binding Session.Source}" Opacity="0.7" TextWrapping="Wrap"/>
     <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
       <TextBlock x:Name="TimelineStatus" Text="{loc:Localize Path=Session.StatusKey}" VerticalAlignment="Center" TextWrapping="Wrap"/>
@@ -14,22 +14,28 @@
       <TextBlock Text="{loc:Localize Timeline.Duration}" VerticalAlignment="Center"/><TextBlock Text="{Binding Session.Duration}" VerticalAlignment="Center"/>
       <TextBlock Text="FPS" VerticalAlignment="Center"/><TextBlock Text="{Binding Session.FrameRate}" VerticalAlignment="Center"/>
     </StackPanel>
-    <ScrollViewer Grid.Row="3" IsVisible="{Binding Session.CanEdit}">
-      <StackPanel Spacing="8">
-        <TextBlock Text="{loc:Localize Timeline.Empty}" IsVisible="{Binding Session.HasNoRows}" TextWrapping="Wrap"/>
-        <ItemsControl ItemsSource="{Binding Session.Rows}">
-          <ItemsControl.ItemTemplate><DataTemplate x:DataType="services:TimelineValueRow">
-            <Grid ColumnDefinitions="150,*,150,150" ColumnSpacing="8" Margin="0,4">
-              <TextBlock Text="{Binding ObjectLabel}" VerticalAlignment="Center"/>
-              <TextBlock Grid.Column="1" Text="{Binding Property}" VerticalAlignment="Center"/>
-              <NumericUpDown Grid.Column="2" Name="TimelineValue" Value="{Binding DraftValue,Mode=TwoWay}" Increment="0.1" FormatString="G9" IsEnabled="{Binding IsEditable}" ToolTip.Tip="{loc:Localize Timeline.InputHint}"
-                             LostFocus="OnValueLostFocus"/>
-              <TextBlock Grid.Column="3" Text="{Binding Hint}" VerticalAlignment="Center" TextWrapping="Wrap" Opacity="0.7"/>
-            </Grid>
-          </DataTemplate></ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </StackPanel>
-    </ScrollViewer>
-    <TextBlock Grid.Row="4" Text="{Binding Session.Message}" TextWrapping="Wrap" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"/>
+    <TextBlock Grid.Row="3" Text="{loc:Localize Timeline.AnalysisIncomplete}" IsVisible="{Binding Session.AnalysisIncomplete}" TextWrapping="Wrap" Opacity="0.7"/>
+    <Grid Grid.Row="4" IsVisible="{Binding Session.CanEdit}">
+      <TextBlock Text="{loc:Localize Timeline.Empty}" IsVisible="{Binding Session.HasNoRows}" TextWrapping="Wrap"/>
+      <TreeView Name="TimelinePropertyTree" ItemsSource="{Binding Session.Tree}">
+        <TreeView.Styles><Style Selector="TreeViewItem"><Setter Property="IsExpanded" Value="{ReflectionBinding IsExpanded,Mode=TwoWay}"/></Style></TreeView.Styles>
+        <TreeView.ItemTemplate><TreeDataTemplate x:DataType="services:TimelineTreeNode" ItemsSource="{Binding Children}">
+          <Grid ColumnDefinitions="260,*" ColumnSpacing="8" Margin="0,3">
+            <TextBlock Text="{Binding Label}" ToolTip.Tip="{Binding Label}" VerticalAlignment="Center"/>
+            <ContentControl Grid.Column="1" Content="{Binding Value}" IsVisible="{Binding IsLeaf}">
+              <ContentControl.ContentTemplate><DataTemplate x:DataType="services:TimelineValueRow">
+                <Grid ColumnDefinitions="Auto,150,Auto,*" ColumnSpacing="8">
+                  <CheckBox Name="TimelineTrack" IsChecked="{Binding HasTrack,Mode=OneWay}" Click="OnTrackClick" ToolTip.Tip="{loc:Localize Timeline.TrackToggle}" VerticalAlignment="Center"/>
+                  <NumericUpDown Grid.Column="1" Name="TimelineValue" Value="{Binding DraftValue,Mode=TwoWay}" Increment="0.1" FormatString="G9" IsEnabled="{Binding IsEditable}" ToolTip.Tip="{loc:Localize Timeline.InputHint}" LostFocus="OnValueLostFocus"/>
+                  <CheckBox Grid.Column="2" Content="{loc:Localize Timeline.Offset}" IsChecked="{Binding IsAdditive,Mode=TwoWay}" IsVisible="{Binding !HasTrack}"/>
+                  <TextBlock Grid.Column="3" Text="{Binding Hint}" VerticalAlignment="Center" TextWrapping="Wrap" Opacity="0.7"/>
+                </Grid>
+              </DataTemplate></ContentControl.ContentTemplate>
+            </ContentControl>
+          </Grid>
+        </TreeDataTemplate></TreeView.ItemTemplate>
+      </TreeView>
+    </Grid>
+    <TextBlock Grid.Row="5" Text="{Binding Session.Message}" TextWrapping="Wrap" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"/>
   </Grid>
 </UserControl>

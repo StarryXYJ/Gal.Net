@@ -42,6 +42,8 @@
 
 ## 当前工作
 
+- 2026-10-18 P6e1 已验证：Editor.Shared 的 SceneTargetAnalysis 对作者快照做纯有限事实分析，Group 入口固定点、确定交/可能并、条件/未知语义/循环预算与跨类型身份冲突保守处理；ProjectSceneTargets 整代缓存，不执行游戏。Timeline 对象/属性树支持建/移轨道、未知初值和偏移首键、旧行失效；GUI 创建者自动内部 ID，Entry 粘贴按语义槽位重映射内部引用。解决方案构建、同源码 656 项回归、格式/指纹通过；一次未修改文件面板指针测试偶发已记录，隔离及完整重跑通过，根因未确认。见 [phase-6e1](../features/F-20261015-02-editor-authoring-workspace/phase-6e1.md)、[当前查询规范](../docs/spec/editor-scene-targets.md)。下一步 P6e2 画布/关键帧，P6e3 曲线；P6e4 事件/剩余语义、通用 Locator、Graph/转场复制和缺目标核验。只提供固定内置能力子集，未分析 Timeline/转场不当无影响；实时预览不列阶段。
+
 - 2026-10-18 P6d 已验证：Timeline 默认底部单实例 Dock 跟随活动 Group Entry，项目 scope 的 EntrySelectionContext/TimelineEditSession 不借用页面字段 lease；已有轨道 NumericUpDown 按当前帧覆盖/插键，保留切线/未知 JSON，单次项目历史。旧行在切换/删除/换类型/关闭后失效，保存和切语言保留未确认输入；切 Entry/帧/根值及关闭 Dock 明确取消。644 项相关回归、解决方案构建、格式与源码指纹通过。见 [phase-6d](../features/F-20261015-02-editor-authoring-workspace/phase-6d.md)。下一步 P6e 目标/属性能力、对象树、创建轨道与画布/曲线；P6f animate 自定义曲线，P7 统一关闭协调。当前仅 Timeline 行隐藏 handle，Group JSON 仍是修复入口；实时预览不列阶段。
 
 - 2026-10-18 P6c 已验证：AnimationPlan 全面统一为 Timeline 类型/播放接口，Entry 为 timeline.play、根参数 timeline，转场与循环恢复同步；builtin.animations section v2，PrimitiveRegistry.State 可显式 version（其他默认 1）。1081 项回归、解决方案构建、格式与源码指纹通过，6 项原生媒体环境未执行。见 [phase-6c](../features/F-20261015-02-editor-authoring-workspace/phase-6c.md)。下一步 P6d 实现跟随活动 Entry 的 Timeline Dock/项目编辑会话，P6e 对象树/关键帧/曲线，P6f animate 自定义曲线；实时预览不列阶段。

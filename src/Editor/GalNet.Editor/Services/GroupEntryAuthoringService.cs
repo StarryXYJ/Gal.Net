@@ -6,6 +6,7 @@ using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
 using GalNet.Editor.Models.Graph;
+using GalNet.Editor.Shared.Services;
 
 namespace GalNet.Editor.Services;
 
@@ -22,7 +23,7 @@ public sealed class GroupEntryAuthoringService(EditorGroupProjectionStore groups
         {
             StableId = Guid.NewGuid().ToString("N"),
             Type = type,
-            Parameters = EditorEntryData.ParseParameters(catalog, type, catalog.Create(type).Values)
+            Parameters = SceneAuthoringIdentities.NewEntry(type, EditorEntryData.ParseParameters(catalog, type, catalog.Create(type).Values))
         }, catalog)).ToArray();
         histories.Content.Execute(new PresenceEdit(this, groupId, inserted.Select((entry, offset) => new PositionedEntry(index + offset, entry)).ToArray(), true,
             new("History.AddEntries", inserted.Length)));
@@ -71,6 +72,7 @@ public sealed class GroupEntryAuthoringService(EditorGroupProjectionStore groups
             }
         }
         catch (Exception error) when (error is JsonException or ArgumentException) { throw InvalidClipboard(); }
+        SceneAuthoringIdentities.RemapCopy(clip.Entries);
         var inserted = clip.Entries.Select(entry => new EntryEditorItemViewModel(entry, catalog)).ToArray();
         var positions = inserted.Select((entry, offset) => new PositionedEntry(index + offset, entry)).ToArray();
         histories.Content.Execute(new PresenceEdit(this, groupId, positions, true, new("History.PasteEntries", inserted.Length)));

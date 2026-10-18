@@ -61,6 +61,7 @@ public static class EditorServiceCollectionExtensions
         services.AddScoped<EntryFieldAuthoringService>();
         services.AddScoped<EntrySelectionContext>();
         services.AddScoped<TimelineEditSession>();
+        services.AddScoped<ProjectSceneTargets>();
         services.AddTransient<TimelinePanelViewModel>();
         services.AddScoped<VariableAuthoringService>();
         services.AddTransient<VariablesPanelViewModel>();

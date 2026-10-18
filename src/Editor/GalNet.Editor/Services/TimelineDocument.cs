@@ -16,11 +16,13 @@ internal sealed class TimelineDocument
     public int Duration { get; }
     public int FrameRate { get; }
     public IReadOnlyList<TimelineTrackDefinition> Tracks { get; }
+    public bool HasEvents { get; }
     public TimelineDocument(JsonElement value)
     {
         _root = JsonNode.Parse(value.GetRawText()) as JsonObject ?? throw new InvalidDataException("Timeline.Invalid");
         FrameRate = Integer(_root, "frameRate", 60);
         Duration = Integer(_root, "durationFrames", 0);
+        HasEvents = Array(_root, "events").Count > 0;
         if (FrameRate is < 1 or > 240 || Duration < 0) throw new InvalidDataException("Timeline.Invalid");
         var tracks = Array(_root, "tracks");
         Tracks = tracks.Select(node => node?.Deserialize<TimelineTrackDefinition>(Options) ?? throw new InvalidDataException("Timeline.Invalid")).ToArray();
@@ -48,6 +50,24 @@ internal sealed class TimelineDocument
     private static int Integer(JsonObject obj, string name, int fallback) => obj.TryGetPropertyValue(Name(obj, name), out var value)
         ? value?.GetValue<int>() ?? throw new InvalidDataException("Timeline.Invalid") : fallback;
     private static JsonArray Array(JsonObject obj, string name) => !obj.TryGetPropertyValue(Name(obj, name), out var node) ? [] : node as JsonArray ?? throw new InvalidDataException("Timeline.Invalid");
+    public JsonElement Add(string handle, string property, int frame, float value, float? baseline, bool additive)
+    {
+        if (Tracks.Any(track => track.HandleId == handle && track.Property == property) || string.IsNullOrWhiteSpace(handle)
+            || frame < 0 || frame > Duration || !float.IsFinite(value)) throw new InvalidDataException("Timeline.Invalid");
+        var initial = frame == 0 ? value : additive ? 0 : baseline ?? value;
+        var root = (JsonObject)_root.DeepClone();
+        var name = Name(root, "tracks");
+        if (!root.ContainsKey(name)) root[name] = new JsonArray();
+        var keys = new JsonArray(new JsonObject { ["frame"] = 0, ["value"] = initial, ["interpolationToNext"] = "Linear" });
+        if (frame > 0) keys.Add(new JsonObject { ["frame"] = frame, ["value"] = value, ["interpolationToNext"] = "Linear" });
+        Array(root, "tracks").Add(new JsonObject { ["handleId"] = handle, ["property"] = property, ["blendMode"] = additive ? "Additive" : "Replace", ["keys"] = keys });
+        return JsonSerializer.SerializeToElement(root);
+    }
+    public JsonElement Remove(int index)
+    {
+        if (index < 0 || index >= Tracks.Count) throw new InvalidDataException("Timeline.Invalid");
+        var root = (JsonObject)_root.DeepClone(); Array(root, "tracks").RemoveAt(index); return JsonSerializer.SerializeToElement(root);
+    }
     public JsonElement Upsert(int index, int frame, float value)
     {
         if (index < 0 || index >= Tracks.Count || frame < 0 || frame > Duration || !float.IsFinite(value)) throw new InvalidDataException("Timeline.Invalid");

@@ -20,7 +20,7 @@ public sealed class EntryFieldAuthoringService(IEditorDocumentService documents,
         Update(groupId, expected, type, new(type, expected.Condition, Clone(parameters)), "Edit Parameters");
 
     public void SetType(string groupId, EditorEntryData expected, string type, Dictionary<string, JsonElement> parameters) =>
-        Update(groupId, expected, expected.Type, new(type, expected.Condition, Clone(parameters)), "Edit Type");
+        Update(groupId, expected, expected.Type, new(type, expected.Condition, GalNet.Editor.Shared.Services.SceneAuthoringIdentities.NewEntry(type, Clone(parameters))), "Edit Type");
 
     private void Update(string groupId, EditorEntryData expected, string expectedType, EntryValue after, string description)
     {

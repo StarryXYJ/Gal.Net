@@ -138,6 +138,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [TestCase("null", "Timeline.Missing")]
     [TestCase("{}", "Timeline.Editing")]
     [TestCase("{\"tracks\":null}", "Timeline.Invalid")]
+    [TestCase("{\"events\":null}", "Timeline.Invalid")]
     [TestCase("{\"frameRate\":null}", "Timeline.Invalid")]
     [TestCase("{\"durationFrames\":-1}", "Timeline.Invalid")]
     [TestCase("\"invalid\"", "Timeline.Invalid")]
