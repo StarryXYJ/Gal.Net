@@ -323,7 +323,7 @@ P6 后续仍包括未知 Entry 整参数 JSON 修改、Editor 状态查询/Locat
 
 ## P6d：Timeline Dock 与项目编辑会话
 
-状态：planned。前置 P6c。项目级活动 Entry 选择上下文、BottomDocument 单实例 Dock、非 Timeline/无选择禁用提示、类型/删除/切项目失效；项目拥有的参数 binding、无损 Timeline JSON 投影、当前帧叶值 upsert 与单历史手势。值输入使用 NumericUpDown，当前帧已有键保留切线/插值。验证真实 Dock 选择切换、旧提交拒绝、未知字段/缺省保留、输入/手势取消、跨页 Undo/Save/重开与四语；通过后标记 verified。
+状态：verified。前置 P6c。项目级活动 Entry 选择上下文、BottomDocument 单实例 Dock、非 Timeline/无选择禁用提示、类型/删除/切项目失效；项目拥有的参数 binding、无损 Timeline JSON 投影、当前帧叶值 upsert 与单历史手势已接通。值输入使用 NumericUpDown，当前帧已有键保留切线/插值。当前切片编辑已有轨道，以对象序号隐藏 handle；目标候选、轨道创建与对象树仍属 P6e。真实 Dock 选择切换、旧提交拒绝、未知字段/缺省保留、输入取消、跨页 Undo/Save/重开与四语通过验证；解决方案构建成功，644 项相关回归、格式及源码指纹通过，见 [phase-6d.md](phase-6d.md)。
 
 ## P6e：对象树、关键帧与曲线编辑
 

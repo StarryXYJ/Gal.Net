@@ -618,5 +618,21 @@
   "Form.AddElement": "요소 추가",
   "Form.RemoveElement": "요소 삭제",
   "Form.MoveUp": "위로",
-  "Form.MoveDown": "아래로"
+  "Form.MoveDown": "아래로",
+  "Dock.Panel.Timeline": "타임라인",
+  "Timeline.SelectEntry": "타임라인 항목을 선택하세요.",
+  "Timeline.Unsupported": "이 항목은 타임라인 편집을 지원하지 않습니다.",
+  "Timeline.Missing": "아직 타임라인이 없습니다.",
+  "Timeline.Create": "타임라인 만들기",
+  "Timeline.Editing": "타임라인 편집 중",
+  "Timeline.Invalid": "내용이 잘못되었습니다. 항목 매개변수의 JSON을 수정하세요.",
+  "Timeline.Frame": "현재 프레임",
+  "Timeline.Duration": "끝 프레임",
+  "Timeline.Empty": "속성 트랙이 없습니다. 항목 매개변수에서 추가하세요.",
+  "Timeline.Object": "오브젝트 {0}",
+  "Timeline.Offset": "오프셋",
+  "Timeline.KeyHere": "현재 프레임에 키 있음",
+  "Timeline.Sampled": "샘플 값",
+  "Timeline.EditRejected": "변경을 적용하지 못했습니다.",
+  "Timeline.InputHint": "Enter 또는 입력란을 벗어나면 적용하고 Esc로 취소합니다. 항목 전환 시 미확정 입력을 취소합니다."
 }

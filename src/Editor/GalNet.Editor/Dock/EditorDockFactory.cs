@@ -253,11 +253,12 @@ public sealed class EditorDockFactory : Factory, IDisposable
 
         var documentId = GetGroupEditorDocumentId(groupNode.Id);
         var existing = _documentDock.VisibleDockables.FirstOrDefault(d => d.Id == documentId);
-        if (existing is not null) { _documentDock.ActiveDockable = existing; return; }
+        if (existing is not null) { _documentDock.ActiveDockable = existing; (existing.Context as GroupEditorPanelViewModel)?.PublishSelection(); return; }
 
         var document = CreateDocument(_extensions.FindDockPanel(EditorDockPanelIds.GroupEditor)!, groupNode.Id, documentId, [groupNode.Name]);
         _documentDock.VisibleDockables.Add(document);
         _documentDock.ActiveDockable = document;
+        (document.Context as GroupEditorPanelViewModel)?.PublishSelection();
         LayoutChanged?.Invoke();
     }
 
@@ -304,6 +305,7 @@ public sealed class EditorDockFactory : Factory, IDisposable
             ActiveDockableChanged += (_, args) =>
             {
                 _inspector.UpdateFor(args.Dockable);
+                if (args.Dockable?.Context is GroupEditorPanelViewModel group) group.PublishSelection();
                 var services = _serviceProvider.GetService<IProjectService>()?.Current?.Services;
                 services?.GetService<UndoRedoRouter>()?.SetActive(args.Dockable?.Context);
                 LayoutChanged?.Invoke();
@@ -321,6 +323,7 @@ public sealed class EditorDockFactory : Factory, IDisposable
                 if (closed.Context is GroupEditorPanelViewModel group) group.Dispose();
                 if (closed.Context is FileDocumentPanelViewModel file) file.Dispose();
                 if (closed.Context is VariablesPanelViewModel variables) variables.Dispose();
+                if (closed.Context is TimelinePanelViewModel timeline) timeline.Dispose();
                 _panelByDockable.Remove(closed);
             };
             DockableMoved += (_, args) => { Log.Information("[DockFactory] DockableMoved: {Id}", args.Dockable?.Id); LayoutChanged?.Invoke(); };
@@ -427,6 +430,7 @@ public sealed class EditorDockFactory : Factory, IDisposable
             page.Dispose();
         foreach (var page in _panelByDockable.Keys.Select(dockable => dockable.Context).OfType<FileDocumentPanelViewModel>()) page.Dispose();
         foreach (var page in _panelByDockable.Keys.Select(dockable => dockable.Context).OfType<VariablesPanelViewModel>()) page.Dispose();
+        foreach (var page in _panelByDockable.Keys.Select(dockable => dockable.Context).OfType<TimelinePanelViewModel>()) page.Dispose();
     }
 
     // ── Utility ──

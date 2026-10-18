@@ -42,6 +42,8 @@
 
 ## 当前工作
 
+- 2026-10-18 P6d 已验证：Timeline 默认底部单实例 Dock 跟随活动 Group Entry，项目 scope 的 EntrySelectionContext/TimelineEditSession 不借用页面字段 lease；已有轨道 NumericUpDown 按当前帧覆盖/插键，保留切线/未知 JSON，单次项目历史。旧行在切换/删除/换类型/关闭后失效，保存和切语言保留未确认输入；切 Entry/帧/根值及关闭 Dock 明确取消。644 项相关回归、解决方案构建、格式与源码指纹通过。见 [phase-6d](../features/F-20261015-02-editor-authoring-workspace/phase-6d.md)。下一步 P6e 目标/属性能力、对象树、创建轨道与画布/曲线；P6f animate 自定义曲线，P7 统一关闭协调。当前仅 Timeline 行隐藏 handle，Group JSON 仍是修复入口；实时预览不列阶段。
+
 - 2026-10-18 P6c 已验证：AnimationPlan 全面统一为 Timeline 类型/播放接口，Entry 为 timeline.play、根参数 timeline，转场与循环恢复同步；builtin.animations section v2，PrimitiveRegistry.State 可显式 version（其他默认 1）。1081 项回归、解决方案构建、格式与源码指纹通过，6 项原生媒体环境未执行。见 [phase-6c](../features/F-20261015-02-editor-authoring-workspace/phase-6c.md)。下一步 P6d 实现跟随活动 Entry 的 Timeline Dock/项目编辑会话，P6e 对象树/关键帧/曲线，P6f animate 自定义曲线；实时预览不列阶段。
 
 - 2026-10-18 P6b 已验证：普通生成 DTO 对象/列表、presence/null/default、JSON 回退、懒创建/释放接入共享层和 Group 页，879 项回归通过，6 项原生媒体环境用例未执行，解决方案构建/格式/源码指纹通过。详见 [phase-6b](../features/F-20261015-02-editor-authoring-workspace/phase-6b.md)。剩余 P6 为未知 Entry JSON 修改、状态查询/Locator 和 AnimationPlan 等复杂定制；后者按用户要求留后续阶段。

@@ -49,7 +49,7 @@ public sealed class EditorWorkspaceViewModelTests
             foreach (var key in new[] { "AddIcon", "DeleteRegularIcon", "ChevronUpRegular", "ChevronDownRegular" })
                 Application.Current!.Resources[key] = StreamGeometry.Parse("M0,0 L8,8");
             var panel = new GroupEditorPanelViewModel(workspace, group.Id, null!, fixture.ProjectService,
-                null!, null!, null!, catalog);
+                null!, null!, null!, catalog, new GalNet.Editor.Services.EntrySelectionContext());
             Application.Current!.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
             Application.Current.Styles.Add(new Semi.Avalonia.SemiTheme());
             var view = new EntryListEditorControl { DataContext = panel };
@@ -103,7 +103,7 @@ public sealed class EditorWorkspaceViewModelTests
         using var fixture = new WorkspaceFixture(withProject: true);
         var group = fixture.Workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
         using var panel = new GroupEditorPanelViewModel(fixture.Workspace, group.Id,
-            null!, fixture.ProjectService, null!, null!, null!, fixture.Catalog);
+            null!, fixture.ProjectService, null!, null!, null!, fixture.Catalog, new GalNet.Editor.Services.EntrySelectionContext());
 
         Assert.Multiple(() =>
         {

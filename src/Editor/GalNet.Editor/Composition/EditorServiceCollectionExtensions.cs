@@ -59,6 +59,9 @@ public static class EditorServiceCollectionExtensions
         services.AddScoped<GraphAuthoringService>();
         services.AddScoped<GroupEntryAuthoringService>();
         services.AddScoped<EntryFieldAuthoringService>();
+        services.AddScoped<EntrySelectionContext>();
+        services.AddScoped<TimelineEditSession>();
+        services.AddTransient<TimelinePanelViewModel>();
         services.AddScoped<VariableAuthoringService>();
         services.AddTransient<VariablesPanelViewModel>();
         services.AddScoped<EditorRegistry>(_ => EditorFieldEditors.CreateDefault());
@@ -140,6 +143,7 @@ public static class EditorServiceCollectionExtensions
         services.AddTransient<EditorPageView>();
         services.AddTransient<MainWindow>();
         services.AddTransient<AssetPanelView>();
+        services.AddTransient<TimelinePanelView>();
         services.AddTransient<InspectorHostView>();
         services.AddTransient<NodeInspectorControl>();
         services.AddTransient<PreviewVariablesInspectorControl>();

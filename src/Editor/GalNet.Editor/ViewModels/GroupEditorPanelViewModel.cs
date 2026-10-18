@@ -25,6 +25,8 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     private readonly IProjectService _projects;
     private readonly IEffectCatalog _effects;
     private readonly IEntryCatalog _catalog;
+    private readonly EntrySelectionContext _selection;
+    private readonly Guid _selectionOwner = Guid.NewGuid();
     private readonly IEditorLocalizationService? _localization;
     private EditorText? _errorMessage;
     private bool _renderingError;
@@ -82,10 +84,12 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
             SelectedEntry = selected.LastOrDefault();
         }
         finally { _changingSelection = false; }
+        PublishSelection();
     }
     partial void OnSelectedEntryChanged(EntryEditorItemViewModel? value)
     {
         if (!_changingSelection) SetSelection(value is null ? [] : [value]);
+        PublishSelection();
     }
     public void UpdateActiveSelection(EntryEditorItemViewModel? added)
     {
@@ -95,6 +99,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         finally { _changingSelection = false; }
     }
     public bool IsDisposed => _disposed;
+    public void PublishSelection() { if (!_disposed) _selection.Select(_selectionOwner, GroupId, SelectedEntry?.StableId); }
     public string CopySelection() => _authoring.Copy(GroupId, SelectedEntries.Select(entry => entry.StableId));
     public void DeleteEntries(IEnumerable<string> ids) { if (!_disposed) _authoring.Delete(GroupId, ids); }
     public void DeleteSelection() => DeleteEntries(SelectedEntries.Select(entry => entry.StableId).ToArray());
@@ -114,7 +119,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     [ObservableProperty]
     private decimal _batchAddCount = 1;
 
-    public GroupEditorPanelViewModel(EditorWorkspaceViewModel workspace, string groupId, GroupEntryAuthoringService authoring, IProjectService projects, IAssetManager assetManager, EditorShortcutService shortcutService, IEffectCatalog effects, IEntryCatalog catalog, EditorRegistry? fieldEditors = null)
+    public GroupEditorPanelViewModel(EditorWorkspaceViewModel workspace, string groupId, GroupEntryAuthoringService authoring, IProjectService projects, IAssetManager assetManager, EditorShortcutService shortcutService, IEffectCatalog effects, IEntryCatalog catalog, EntrySelectionContext selection, EditorRegistry? fieldEditors = null)
     {
         Workspace = workspace;
         GroupId = groupId;
@@ -123,6 +128,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         _projects = projects;
         _effects = effects;
         _catalog = catalog;
+        _selection = selection;
         _localization = EditorLocalizationService.Current;
         if (_localization is not null) _localization.PropertyChanged += OnLocaleChanged;
         FieldEditors = fieldEditors ?? EditorFieldEditors.CreateDefault();
@@ -270,6 +276,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     {
         if (_disposed) return;
         _disposed = true;
+        _selection.Clear(_selectionOwner);
         if (_localization is not null) _localization.PropertyChanged -= OnLocaleChanged;
         Workspace.VariableDefinitionsChanged -= OnVariableDefinitionsChanged;
         _entries.CollectionChanged -= OnEntriesChanged;

@@ -618,5 +618,21 @@
   "Form.AddElement": "添加元素",
   "Form.RemoveElement": "删除元素",
   "Form.MoveUp": "上移",
-  "Form.MoveDown": "下移"
+  "Form.MoveDown": "下移",
+  "Dock.Panel.Timeline": "时间轴",
+  "Timeline.SelectEntry": "请选择时间轴条目。",
+  "Timeline.Unsupported": "当前条目不支持时间轴编辑。",
+  "Timeline.Missing": "此条目尚未创建时间轴。",
+  "Timeline.Create": "创建时间轴",
+  "Timeline.Editing": "正在编辑时间轴",
+  "Timeline.Invalid": "时间轴内容无效，请在条目参数中修复 JSON。",
+  "Timeline.Frame": "当前帧",
+  "Timeline.Duration": "结束帧",
+  "Timeline.Empty": "暂无属性轨道，可在条目参数中添加。",
+  "Timeline.Object": "对象 {0}",
+  "Timeline.Offset": "偏移值",
+  "Timeline.KeyHere": "当前帧已有键",
+  "Timeline.Sampled": "采样值",
+  "Timeline.EditRejected": "无法应用此次修改。",
+  "Timeline.InputHint": "Enter 或离开输入框应用；Esc 取消。切换条目会取消未确认的输入。"
 }

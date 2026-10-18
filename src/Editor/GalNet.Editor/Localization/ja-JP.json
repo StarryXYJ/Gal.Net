@@ -618,5 +618,21 @@
   "Form.AddElement": "要素を追加",
   "Form.RemoveElement": "要素を削除",
   "Form.MoveUp": "上へ",
-  "Form.MoveDown": "下へ"
+  "Form.MoveDown": "下へ",
+  "Dock.Panel.Timeline": "タイムライン",
+  "Timeline.SelectEntry": "タイムラインの項目を選択してください。",
+  "Timeline.Unsupported": "この項目はタイムライン編集に対応していません。",
+  "Timeline.Missing": "タイムラインがまだありません。",
+  "Timeline.Create": "タイムラインを作成",
+  "Timeline.Editing": "タイムライン編集中",
+  "Timeline.Invalid": "内容が無効です。項目の JSON パラメーターを修正してください。",
+  "Timeline.Frame": "現在のフレーム",
+  "Timeline.Duration": "終了フレーム",
+  "Timeline.Empty": "プロパティトラックがありません。項目のパラメーターで追加できます。",
+  "Timeline.Object": "オブジェクト {0}",
+  "Timeline.Offset": "オフセット",
+  "Timeline.KeyHere": "現在のフレームにキーあり",
+  "Timeline.Sampled": "サンプル値",
+  "Timeline.EditRejected": "変更を適用できませんでした。",
+  "Timeline.InputHint": "Enter またはフォーカス移動で適用、Esc で取消。項目の切替時は未確定の入力を取り消します。"
 }

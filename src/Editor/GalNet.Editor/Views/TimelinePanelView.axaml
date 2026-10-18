@@ -1,0 +1,35 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:services="using:GalNet.Editor.Services"
+             xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
+             x:Class="GalNet.Editor.Views.TimelinePanelView" x:DataType="vm:TimelinePanelViewModel">
+  <Grid Margin="10" RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="6">
+    <TextBlock Text="{Binding Session.Source}" Opacity="0.7" TextWrapping="Wrap"/>
+    <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+      <TextBlock x:Name="TimelineStatus" Text="{loc:Localize Path=Session.StatusKey}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+      <Button x:Name="CreateTimeline" Content="{loc:Localize Timeline.Create}" Command="{Binding CreateCommand}" IsVisible="{Binding Session.CanCreate}"/>
+    </StackPanel>
+    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" IsVisible="{Binding Session.CanEdit}">
+      <TextBlock Text="{loc:Localize Timeline.Frame}" VerticalAlignment="Center"/>
+      <NumericUpDown x:Name="TimelineFrame" Width="120" Minimum="0" Maximum="{Binding Session.Duration}" Increment="1" FormatString="0" Value="{Binding Session.Frame,Mode=TwoWay}"/>
+      <TextBlock Text="{loc:Localize Timeline.Duration}" VerticalAlignment="Center"/><TextBlock Text="{Binding Session.Duration}" VerticalAlignment="Center"/>
+      <TextBlock Text="FPS" VerticalAlignment="Center"/><TextBlock Text="{Binding Session.FrameRate}" VerticalAlignment="Center"/>
+    </StackPanel>
+    <ScrollViewer Grid.Row="3" IsVisible="{Binding Session.CanEdit}">
+      <StackPanel Spacing="8">
+        <TextBlock Text="{loc:Localize Timeline.Empty}" IsVisible="{Binding Session.HasNoRows}" TextWrapping="Wrap"/>
+        <ItemsControl ItemsSource="{Binding Session.Rows}">
+          <ItemsControl.ItemTemplate><DataTemplate x:DataType="services:TimelineValueRow">
+            <Grid ColumnDefinitions="150,*,150,150" ColumnSpacing="8" Margin="0,4">
+              <TextBlock Text="{Binding ObjectLabel}" VerticalAlignment="Center"/>
+              <TextBlock Grid.Column="1" Text="{Binding Property}" VerticalAlignment="Center"/>
+              <NumericUpDown Grid.Column="2" Name="TimelineValue" Value="{Binding DraftValue,Mode=TwoWay}" Increment="0.1" FormatString="G9" IsEnabled="{Binding IsEditable}" ToolTip.Tip="{loc:Localize Timeline.InputHint}"
+                             LostFocus="OnValueLostFocus"/>
+              <TextBlock Grid.Column="3" Text="{Binding Hint}" VerticalAlignment="Center" TextWrapping="Wrap" Opacity="0.7"/>
+            </Grid>
+          </DataTemplate></ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+    <TextBlock Grid.Row="4" Text="{Binding Session.Message}" TextWrapping="Wrap" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"/>
+  </Grid>
+</UserControl>

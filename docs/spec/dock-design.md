@@ -77,6 +77,7 @@ RootDock ("Root")
     │   └── DocumentDock ("LogDocuments")         ← 底部区域
     │       ├── Document ("Log")                  ← 日志面板
     │       ├── Document ("Assets")               ← 资源面板
+    │       ├── Document ("Timeline")             ← 当前 Entry 的 Timeline
     │       ├── Document ("UiCustomization")      ← UI 定制面板
     │       └── ... (其他底部面板)
     ├── ProportionalDockSplitter
@@ -134,10 +135,13 @@ registry.RegisterDockPanel(new DelegateDockPanelContribution(
 | `NodeGraph` | MainDocument | 是 | 是 | 节点图编辑器 |
 | `Assets` | BottomDocument | 是 | 是 | 资源管理 |
 | `Log` | BottomDocument | 是 | 是 | 日志面板 |
+| `Timeline` | BottomDocument | 是 | 是 | 跟随活动 Entry，编辑已有轨道的当前帧数值 |
 | `GroupEditor` | MainDocument | 否 | 否 | 组编辑器（按需打开） |
 | `Inspector` | InspectorDocument | 否 | 是 | 属性检查器 |
 
 Editor 工作区重构期间暂不注册 `GamePreview`，旧布局中的该项会作为不可用面板移除；当前也没有 `UiCustomization` contribution。`EditorDockFactory` 属于项目 scope。Group contribution 接收稳定 Group ID 字符串，项目文档及共享投影不由 Dock 页面拥有；关闭页面释放其订阅，重开继续使用相同项目内容。
+
+Timeline 使用项目 scope 的 `EntrySelectionContext` 与 `TimelineEditSession`；页面只发布稳定选择，面板不持有 Group 页字段 lease。激活 Group 页恢复其活动选择，工具面板获焦不改变来源。关闭 Timeline 释放面板并取消未确认输入，项目会话与内容历史保留；重新打开使用同一个项目会话。当前编辑行为与后续画布范围见 [Group 编辑](editor-groups.md#timeline-dock)。
 
 ---
 

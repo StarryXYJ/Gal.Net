@@ -618,5 +618,21 @@
   "Form.AddElement": "Add element",
   "Form.RemoveElement": "Remove element",
   "Form.MoveUp": "Move up",
-  "Form.MoveDown": "Move down"
+  "Form.MoveDown": "Move down",
+  "Dock.Panel.Timeline": "Timeline",
+  "Timeline.SelectEntry": "Select a Timeline entry.",
+  "Timeline.Unsupported": "This entry does not support Timeline editing.",
+  "Timeline.Missing": "This entry has no timeline.",
+  "Timeline.Create": "Create timeline",
+  "Timeline.Editing": "Editing timeline",
+  "Timeline.Invalid": "Invalid timeline. Repair its JSON in the entry parameters.",
+  "Timeline.Frame": "Frame",
+  "Timeline.Duration": "End frame",
+  "Timeline.Empty": "No property tracks. Add tracks in the entry parameters.",
+  "Timeline.Object": "Object {0}",
+  "Timeline.Offset": "Offset",
+  "Timeline.KeyHere": "Key at this frame",
+  "Timeline.Sampled": "Sampled value",
+  "Timeline.EditRejected": "The edit could not be applied.",
+  "Timeline.InputHint": "Enter or leave the field to apply; Esc cancels. Switching entries cancels unconfirmed input."
 }

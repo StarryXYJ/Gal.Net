@@ -25,12 +25,16 @@ public static class EditorDockPanelIds
     public const string FileEditor = "FileEditor";
     public const string Inspector = "Inspector";
     public const string Variables = "Variables";
+    public const string Timeline = "Timeline";
 }
 
 public static class BuiltInDockContributions
 {
     public static void Register(IEditorExtensionRegistry registry)
     {
+        registry.RegisterDockPanel(new DelegateDockPanelContribution<TimelinePanelViewModel>(
+            EditorDockPanelIds.Timeline, "Dock.Panel.Timeline", DockPanelPlacement.BottomDocument, true, true, true, true, true,
+            sp => sp.GetRequiredService<TimelinePanelViewModel>(), typeof(TimelinePanelView), null));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<VariablesPanelViewModel>(
             EditorDockPanelIds.Variables, "Dock.Panel.Variables", DockPanelPlacement.MainDocument, true, true, true, false, true,
             sp => sp.GetRequiredService<VariablesPanelViewModel>(), typeof(VariablesPanelView), null));
@@ -58,6 +62,7 @@ public static class BuiltInDockContributions
                 sp.GetRequiredService<EditorShortcutService>(),
                 sp.GetRequiredService<IEffectCatalog>(),
                 sp.GetRequiredService<IEntryCatalog>(),
+                sp.GetRequiredService<EntrySelectionContext>(),
                 sp.GetRequiredService<GalNet.Game.Controls.Forms.EditorRegistry>()),
             typeof(GroupEditorPanelView), null));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<FileDocumentPanelViewModel, string>(
