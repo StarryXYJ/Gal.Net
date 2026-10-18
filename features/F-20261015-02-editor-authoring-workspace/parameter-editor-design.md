@@ -152,6 +152,8 @@ Group 初始状态来自可达前驱/调用上下文，不把每个 Group 都视
 
 2026-10-18 用户补充对象/属性树和关键帧/切线/曲线交互，详细设计见 [complex-editor-design.md](complex-editor-design.md)。后者细化本节：对象父行分组、属性选择加入轨道、首帧/碰撞/时长/FPS 规则、Hermite 单位、局部草稿与单历史、事件和隐藏 handle；状态仍为 design。
 
+用户进一步确认先做独立 Timeline Dock（默认资源区域），属性树叶节点值直接 upsert 当前帧键，再做 animate 自定义曲线。Timeline 名称替换和未来实时预览另有代码影响分析；Timeline 曲线按帧编辑属性，animate 自定义曲线按归一化时间编辑进度，复用画布但分开值契约。其余专业参数面板保留远期接点，不作为这一轮额外工具目标。
+
 第一步可对 AnimationPlanOptions.Plan 做成员覆盖，适配现有 JsonElement；只替换这一字段，不对所有 JsonElement 注册 timeline。适配器只改负责的键，未知扩展字段无损保留；无法解析的内容显示诊断/原始值回退，不自动重置为新计划。
 
 未来如果把 Plan 改为强类型 AnimationPlanDefinition，默认类型映射即可复用。这个类型化属于契约变化，需要单独验证 codec 与执行参数，不是注册服务的先决条件。
