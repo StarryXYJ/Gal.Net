@@ -84,7 +84,8 @@ transition.fadeColor
 dialogue.text, dialogue.textVoice, dialogue.show, dialogue.hide
 nvl.show, nvl.hide, nvl.clear, nvl.append, nvl.appendVoice
 layer.show, layer.showColor, layer.hide, layer.move, layer.replace
-animation.animate, animation.play, animation.stop
+animation.animate, animation.stop
+timeline.play
 audio.play, audio.stop, audio.pause, audio.resume, audio.enqueue, audio.next, audio.clear
 audio.seffect.apply, audio.seffect.stop
 video.play, video.stop
@@ -125,3 +126,5 @@ flow.wait, variable.set, gallery.unlock
 ## DTO 字段声明
 
 GenerateFieldSchema + Field 属性生成中立 FieldDescriptor 列表及 IFieldDto 成员访问，不生成平台控件。DefaultPrimitiveEntryBase.ForDto<T> 使用 T.Schema 建表，并记录 FieldDataType，不提供 Editor DTO 工厂。运行时仍调度通用 PrimitiveEntry；执行模块可使用 PrimitiveRegistry.Register<T>，注册时检查 DTO 类型，执行时用规范化参数和逐字段 ValueCodec 填充独立 DTO。契约运行时不依赖 Roslyn，生成器仅为构建工具。默认值通过完整 ValueCodec 投影；旧字符串文档不能无损表示的默认值不填入 Defaults，仍保留在字段描述中，避免 JSON null 字符串和字符串编码枚举被改写。具体接入方式见[定制 Avalonia Sample 手册](../manual/customize-avalonia-sample.md)。
+
+Timeline 使用 TimelineOptions.Timeline 对应的 timeline 根参数（JsonElement），内容为 TimelineDefinition；播放接口为 PlayTimelineAsync。旧 animation.play ID 和 plan 根参数没有别名。动画轨道、键与事件分别使用 TimelineTrackDefinition、TimelineKeyframeDefinition、TimelineEventDefinition，纯采样入口为 TimelineSampler。

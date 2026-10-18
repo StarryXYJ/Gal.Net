@@ -25,19 +25,19 @@ public sealed class BuiltinAnimationModule(
             {
                 if (state.Request is { } request)
                     context.Start(new AnimationPrimitiveInstance(context.Runtime, animationPresenter, request, null, context.CancellationToken, restoring: true));
-                else if (state.Plan is { } plan)
-                    context.Start(new AnimationPlanPrimitiveInstance(context.Runtime, animationPresenter, layerPresenter, effectPresenter,
-                        particlePresenter, plan, null, context.CancellationToken, restoring: true));
+                else if (state.Timeline is { } timeline)
+                    context.Start(new TimelinePrimitiveInstance(context.Runtime, animationPresenter, layerPresenter, effectPresenter,
+                        particlePresenter, timeline, null, context.CancellationToken, restoring: true));
             }
             return Task.CompletedTask;
         }, validate: state =>
         {
-            if ((state.Request is null) == (state.Plan is null)) throw new InvalidDataException("An animation state requires exactly one definition.");
-        }, after: ["builtin.layers", "builtin.effects", "builtin.particles", "builtin.videos"]);
+            if ((state.Request is null) == (state.Timeline is null)) throw new InvalidDataException("An animation state requires exactly one definition.");
+        }, version: 2, after: ["builtin.layers", "builtin.effects", "builtin.particles", "builtin.videos"]);
         registry.Register<AnimationOptions>(BuiltinEntryIds.Animate, (context, options) =>
             new AnimationPrimitiveInstance(animationPresenter, context, options));
-        registry.Register<AnimationPlanOptions>(BuiltinEntryIds.PlayAnimationPlan, (context, options) =>
-            new AnimationPlanPrimitiveInstance(animationPresenter, layerPresenter, effectPresenter, particlePresenter, context, options));
+        registry.Register<TimelineOptions>(BuiltinEntryIds.PlayTimeline, (context, options) =>
+            new TimelinePrimitiveInstance(animationPresenter, layerPresenter, effectPresenter, particlePresenter, context, options));
         registry.Immediate<AnimationStopOptions>(BuiltinEntryIds.StopAnimation, (context, options) =>
             {
                 var playbackHandleId = options.PlaybackHandleId ?? "";

@@ -8,7 +8,7 @@ namespace GalNet.Contracts.Builtins;
 
 internal static class TransitionEntrySupport
 {
-    public static readonly JsonSerializerOptions PlanJsonOptions = new()
+    public static readonly JsonSerializerOptions TimelineJsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         Converters = { new JsonStringEnumConverter() }
@@ -43,11 +43,11 @@ internal static class TransitionEntrySupport
         catch (JsonException exception) { throw new InvalidDataException($"Transition '{type}' has invalid transform '{name}'.", exception); }
         catch (InvalidDataException) { throw new InvalidDataException($"Transition '{type}' requires positive scale values in '{name}'."); }
     }
-    public static PrimitiveEntry PlanEntry(EntryCompileContext context, AnimationPlanDefinition plan, string? batchId)
+    public static PrimitiveEntry TimelineEntry(EntryCompileContext context, TimelineDefinition timeline, string? batchId)
     {
         return new PrimitiveEntry(
-            BuiltinEntryIds.PlayAnimationPlan,
-            ValueCodec.SerializeFields(new AnimationPlanOptions { Plan = JsonSerializer.SerializeToElement(plan, PlanJsonOptions) }, omitNullValues: true))
+            BuiltinEntryIds.PlayTimeline,
+            ValueCodec.SerializeFields(new TimelineOptions { Timeline = JsonSerializer.SerializeToElement(timeline, TimelineJsonOptions) }, omitNullValues: true))
         {
             Condition = context.Condition,
             BatchId = batchId
@@ -56,7 +56,7 @@ internal static class TransitionEntrySupport
     public static string? NullIfWhiteSpace(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 }
 
-/// <summary>Non-primitive cross-fade that compiles into one keyframe animation plan.</summary>
+/// <summary>Non-primitive cross-fade that compiles into one keyframe animation timeline.</summary>
 internal static class CrossFadeTransition
 {
     public static IReadOnlyList<PrimitiveEntry> Compile(EntryCompileContext context, CrossFadeOptions options)
@@ -66,7 +66,7 @@ internal static class CrossFadeTransition
         var newHandle = TransitionEntrySupport.Require(options.NewHandleId, "newHandleId", BuiltinEntryIds.CrossFadeTransition);
         var asset = TransitionEntrySupport.Require(options.AssetId, "assetId", BuiltinEntryIds.CrossFadeTransition);
         var frames = TransitionEntrySupport.PositiveInt(options.DurationFrames, "durationFrames", BuiltinEntryIds.CrossFadeTransition);
-        var plan = new AnimationPlanDefinition
+        var timeline = new TimelineDefinition
         {
             PlaybackHandleId = playback,
             FrameRate = TransitionEntrySupport.PositiveInt(options.FrameRate, "frameRate", BuiltinEntryIds.CrossFadeTransition),
@@ -76,22 +76,22 @@ internal static class CrossFadeTransition
             Tracks = [OpacityTrack(oldHandle, 1, 0, frames), OpacityTrack(newHandle, 0, 1, frames)],
             Events = [ShowLayer(newHandle, asset, TransitionEntrySupport.Json(options.Transform, "transform", BuiltinEntryIds.CrossFadeTransition), options.Z, 0, TransitionEntrySupport.DisplayMode(options.DisplayMode)), HideLayer(oldHandle, frames)]
         };
-        return [TransitionEntrySupport.PlanEntry(context, plan, TransitionEntrySupport.NullIfWhiteSpace(options.BatchId))];
+        return [TransitionEntrySupport.TimelineEntry(context, timeline, TransitionEntrySupport.NullIfWhiteSpace(options.BatchId))];
     }
 
-    internal static AnimationTrackDefinition OpacityTrack(string handle, float from, float to, int frames) => new()
+    internal static TimelineTrackDefinition OpacityTrack(string handle, float from, float to, int frames) => new()
     {
         HandleId = handle,
         Property = "opacity",
-        Keys = [new AnimationKeyframeDefinition { Frame = 0, Value = from, InterpolationToNext = AnimationInterpolation.Linear }, new AnimationKeyframeDefinition { Frame = frames, Value = to }]
+        Keys = [new TimelineKeyframeDefinition { Frame = 0, Value = from, InterpolationToNext = AnimationInterpolation.Linear }, new TimelineKeyframeDefinition { Frame = frames, Value = to }]
     };
-    internal static AnimationPlanEventDefinition ShowLayer(string handle, string asset, JsonElement transform, float z, float opacity, LayerDisplayMode displayMode) => new()
+    internal static TimelineEventDefinition ShowLayer(string handle, string asset, JsonElement transform, float z, float opacity, LayerDisplayMode displayMode) => new()
     {
         Frame = 0,
         Type = BuiltinEntryIds.ShowLayer,
         Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal) { ["handleId"] = JsonSerializer.SerializeToElement(handle), ["assetId"] = JsonSerializer.SerializeToElement(asset), ["transform"] = transform, ["z"] = JsonSerializer.SerializeToElement(z), ["opacity"] = JsonSerializer.SerializeToElement(opacity), ["displayMode"] = JsonSerializer.SerializeToElement(displayMode.ToString()) }
     };
-    internal static AnimationPlanEventDefinition HideLayer(string handle, int frame) => new()
+    internal static TimelineEventDefinition HideLayer(string handle, int frame) => new()
     {
         Frame = frame,
         Type = BuiltinEntryIds.HideLayer,
@@ -117,7 +117,7 @@ internal static class SlideTransition
         var initial = destination.Clone(); initial.X += incomingX; initial.Y += incomingY;
         var frames = TransitionEntrySupport.PositiveInt(options.DurationFrames, "durationFrames", BuiltinEntryIds.SlideTransition);
         var property = incomingX != 0 ? "transform.x" : "transform.y";
-        var plan = new AnimationPlanDefinition
+        var timeline = new TimelineDefinition
         {
             PlaybackHandleId = playback,
             FrameRate = TransitionEntrySupport.PositiveInt(options.FrameRate, "frameRate", BuiltinEntryIds.SlideTransition),
@@ -125,23 +125,23 @@ internal static class SlideTransition
             Blocking = true,
             Skippable = true,
             Tracks = [Track(oldHandle, property, 0, -incomingX - incomingY, frames, AnimationBlendMode.Additive), Track(newHandle, property, incomingX != 0 ? initial.X : initial.Y, incomingX != 0 ? destination.X : destination.Y, frames, AnimationBlendMode.Replace)],
-            Events = [CrossFadeTransition.ShowLayer(newHandle, TransitionEntrySupport.Require(options.ToAssetId, "toAssetId", BuiltinEntryIds.SlideTransition), JsonSerializer.SerializeToElement(initial, TransitionEntrySupport.PlanJsonOptions), options.ToZ, 1, TransitionEntrySupport.DisplayMode(options.ToDisplayMode)), CrossFadeTransition.HideLayer(oldHandle, frames)]
+            Events = [CrossFadeTransition.ShowLayer(newHandle, TransitionEntrySupport.Require(options.ToAssetId, "toAssetId", BuiltinEntryIds.SlideTransition), JsonSerializer.SerializeToElement(initial, TransitionEntrySupport.TimelineJsonOptions), options.ToZ, 1, TransitionEntrySupport.DisplayMode(options.ToDisplayMode)), CrossFadeTransition.HideLayer(oldHandle, frames)]
         };
-        return [TransitionEntrySupport.PlanEntry(context, plan, TransitionEntrySupport.NullIfWhiteSpace(options.BatchId))];
+        return [TransitionEntrySupport.TimelineEntry(context, timeline, TransitionEntrySupport.NullIfWhiteSpace(options.BatchId))];
     }
 
-    private static AnimationTrackDefinition Track(string handle, string property, float from, float to, int frames, AnimationBlendMode blendMode) => new()
+    private static TimelineTrackDefinition Track(string handle, string property, float from, float to, int frames, AnimationBlendMode blendMode) => new()
     {
         HandleId = handle,
         Property = property,
         BlendMode = blendMode,
-        Keys = [new AnimationKeyframeDefinition { Frame = 0, Value = from, InterpolationToNext = AnimationInterpolation.Linear }, new AnimationKeyframeDefinition { Frame = frames, Value = to }]
+        Keys = [new TimelineKeyframeDefinition { Frame = 0, Value = from, InterpolationToNext = AnimationInterpolation.Linear }, new TimelineKeyframeDefinition { Frame = frames, Value = to }]
     };
 }
 
 /// <summary>
 /// Reveals the incoming layer through a layer-attached blinds mask. The mask is a
-/// normal animatable Effect instance, so the generated plan has no renderer-specific tracks.
+/// normal animatable Effect instance, so the generated timeline has no renderer-specific tracks.
 /// </summary>
 internal static class BlindsTransition
 {
@@ -157,19 +157,19 @@ internal static class BlindsTransition
         if (!string.Equals(orientation, "Vertical", StringComparison.OrdinalIgnoreCase) && !string.Equals(orientation, "Horizontal", StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException($"Transition '{BuiltinEntryIds.BlindsTransition}' has an unknown orientation.");
         var mask = $"{context.SourceEntryId}:blinds-mask";
-        var maskParameters = JsonSerializer.SerializeToElement(new { bladeCount, orientation }, TransitionEntrySupport.PlanJsonOptions);
-        var plan = new AnimationPlanDefinition
+        var maskParameters = JsonSerializer.SerializeToElement(new { bladeCount, orientation }, TransitionEntrySupport.TimelineJsonOptions);
+        var timeline = new TimelineDefinition
         {
             PlaybackHandleId = playback,
             FrameRate = TransitionEntrySupport.PositiveInt(options.FrameRate, "frameRate", BuiltinEntryIds.BlindsTransition),
             DurationFrames = frames,
             Blocking = true,
             Skippable = true,
-            Tracks = [new AnimationTrackDefinition
+            Tracks = [new TimelineTrackDefinition
             {
                 HandleId = mask,
                 Property = "progress",
-                Keys = [new AnimationKeyframeDefinition { Frame = 0, Value = 0, InterpolationToNext = AnimationInterpolation.Linear }, new AnimationKeyframeDefinition { Frame = frames, Value = 1 }]
+                Keys = [new TimelineKeyframeDefinition { Frame = 0, Value = 0, InterpolationToNext = AnimationInterpolation.Linear }, new TimelineKeyframeDefinition { Frame = frames, Value = 1 }]
             }],
             Events =
             [
@@ -182,10 +182,10 @@ internal static class BlindsTransition
                 CrossFadeTransition.HideLayer(oldHandle, frames)
             ]
         };
-        return [TransitionEntrySupport.PlanEntry(context, plan, TransitionEntrySupport.NullIfWhiteSpace(options.BatchId))];
+        return [TransitionEntrySupport.TimelineEntry(context, timeline, TransitionEntrySupport.NullIfWhiteSpace(options.BatchId))];
     }
 
-    private static AnimationPlanEventDefinition ApplyMask(string instanceId, string targetHandleId, string program, JsonElement parameters) => new()
+    private static TimelineEventDefinition ApplyMask(string instanceId, string targetHandleId, string program, JsonElement parameters) => new()
     {
         Frame = 0,
         Type = BuiltinEntryIds.ApplyEffect,
@@ -198,7 +198,7 @@ internal static class BlindsTransition
         }
     };
 
-    private static AnimationPlanEventDefinition StopMask(string instanceId, int frame) => new()
+    private static TimelineEventDefinition StopMask(string instanceId, int frame) => new()
     {
         Frame = frame,
         Type = BuiltinEntryIds.StopEffect,
@@ -223,17 +223,17 @@ internal static class ColorFieldTransition
         var newHandle = TransitionEntrySupport.Require(options.ToLayerHandleId, "toLayerHandleId", type);
         var overlay = $"{context.SourceEntryId}:color-overlay";
         if (!Layer.IsValidColor(color ?? "")) throw new InvalidDataException($"Transition '{type}' has an invalid overlay color '{color}'.");
-        var keys = new List<AnimationKeyframeDefinition> { new() { Frame = 0, Value = 0, InterpolationToNext = AnimationInterpolation.Linear }, new() { Frame = fadeIn, Value = 1, InterpolationToNext = AnimationInterpolation.Linear } };
-        if (hold > 0) keys.Add(new AnimationKeyframeDefinition { Frame = fadeOutStart, Value = 1, InterpolationToNext = AnimationInterpolation.Linear });
-        keys.Add(new AnimationKeyframeDefinition { Frame = duration, Value = 0 });
-        var plan = new AnimationPlanDefinition
+        var keys = new List<TimelineKeyframeDefinition> { new() { Frame = 0, Value = 0, InterpolationToNext = AnimationInterpolation.Linear }, new() { Frame = fadeIn, Value = 1, InterpolationToNext = AnimationInterpolation.Linear } };
+        if (hold > 0) keys.Add(new TimelineKeyframeDefinition { Frame = fadeOutStart, Value = 1, InterpolationToNext = AnimationInterpolation.Linear });
+        keys.Add(new TimelineKeyframeDefinition { Frame = duration, Value = 0 });
+        var timeline = new TimelineDefinition
         {
             PlaybackHandleId = TransitionEntrySupport.Require(options.PlaybackHandleId, "playbackHandleId", type),
             FrameRate = TimelineFrameRate,
             DurationFrames = duration,
             Blocking = true,
             Skippable = true,
-            Tracks = [new AnimationTrackDefinition { HandleId = overlay, Property = "opacity", Keys = keys }],
+            Tracks = [new TimelineTrackDefinition { HandleId = overlay, Property = "opacity", Keys = keys }],
             Events = [new() { Frame = 0, Type = BuiltinEntryIds.ShowColorLayer, Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
             { ["handleId"] = JsonSerializer.SerializeToElement(overlay), ["color"] = JsonSerializer.SerializeToElement(color), ["transform"] = JsonSerializer.SerializeToElement(new { }), ["z"] = JsonSerializer.SerializeToElement(options.OverlayZ), ["opacity"] = JsonSerializer.SerializeToElement(0f) } },
             CrossFadeTransition.HideLayer(oldHandle, swapFrame),
@@ -241,7 +241,7 @@ internal static class ColorFieldTransition
             { ["handleId"] = JsonSerializer.SerializeToElement(newHandle), ["assetId"] = JsonSerializer.SerializeToElement(TransitionEntrySupport.Require(options.ToAssetId, "toAssetId", type)), ["transform"] = TransitionEntrySupport.Json(options.ToTransform, "toTransform", type), ["z"] = JsonSerializer.SerializeToElement(options.ToZ), ["opacity"] = JsonSerializer.SerializeToElement(1f), ["displayMode"] = JsonSerializer.SerializeToElement(TransitionEntrySupport.DisplayMode(options.ToDisplayMode).ToString()) } },
             CrossFadeTransition.HideLayer(overlay, duration)]
         };
-        return [TransitionEntrySupport.PlanEntry(context, plan, TransitionEntrySupport.NullIfWhiteSpace(options.BatchId))];
+        return [TransitionEntrySupport.TimelineEntry(context, timeline, TransitionEntrySupport.NullIfWhiteSpace(options.BatchId))];
     }
     private static int Frames(float seconds, string name, bool positive, string type)
     {

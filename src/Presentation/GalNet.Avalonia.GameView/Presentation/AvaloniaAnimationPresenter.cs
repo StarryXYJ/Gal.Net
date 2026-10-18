@@ -11,11 +11,11 @@ public sealed class AvaloniaAnimationPresenter : IAnimationPresenter, IDisposabl
     private readonly IAvaloniaUiDispatcher _dispatcher;
     private readonly Lock _gate = new();
     private readonly Dictionary<string, ActiveAnimation> _activeAnimations = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, ActivePlanTrack> _activePlanTracks = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ActiveTimelineTrack> _activeTimelineTracks = new(StringComparer.Ordinal);
     private readonly List<ActiveAnimation> _activeAdditiveAnimations = [];
-    private readonly List<ActivePlanTrack> _activeAdditivePlanTracks = [];
+    private readonly List<ActiveTimelineTrack> _activeAdditiveTimelineTracks = [];
     private readonly Dictionary<string, double> _additiveBaseValues = new(StringComparer.Ordinal);
-    private readonly List<ActivePlan> _activePlans = [];
+    private readonly List<ActiveTimeline> _activeTimelines = [];
     private readonly Dictionary<string, ICompletablePlayback> _activePlaybacks = new(StringComparer.Ordinal);
     private long _sequence;
 
@@ -38,7 +38,7 @@ public sealed class AvaloniaAnimationPresenter : IAnimationPresenter, IDisposabl
                 _activeAdditiveAnimations.Add(active);
             else
             {
-                if (_activePlanTracks.Remove(key, out var planTrack)) planTrack.Complete(AnimationOutcome.Replaced);
+                if (_activeTimelineTracks.Remove(key, out var timelineTrack)) timelineTrack.Complete(AnimationOutcome.Replaced);
                 if (_activeAnimations.Remove(key, out var replaced)) replaced.Complete(AnimationOutcome.Replaced);
                 _activeAnimations.Add(key, active);
             }
@@ -114,24 +114,24 @@ public sealed class AvaloniaAnimationPresenter : IAnimationPresenter, IDisposabl
         }
     }
 
-    public async Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(
-        AnimationPlanDefinition plan,
+    public async Task<TimelinePlayResult> PlayTimelineAsync(
+        TimelineDefinition timeline,
         CancellationToken cancellationToken, Func<double, Task>? beforeFrame = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var active = new ActivePlan(plan, Interlocked.Increment(ref _sequence));
+        var active = new ActiveTimeline(timeline, Interlocked.Increment(ref _sequence));
         lock (_gate)
         {
-            if (_activePlaybacks.ContainsKey(plan.PlaybackHandleId))
-                return new AnimationPlanPlayResult { Outcome = AnimationOutcome.Replaced };
-            _activePlans.Add(active);
-            _activePlaybacks.Add(plan.PlaybackHandleId, active);
+            if (_activePlaybacks.ContainsKey(timeline.PlaybackHandleId))
+                return new TimelinePlayResult { Outcome = AnimationOutcome.Replaced };
+            _activeTimelines.Add(active);
+            _activePlaybacks.Add(timeline.PlaybackHandleId, active);
         }
 
         try
         {
             var started = Stopwatch.StartNew();
-            var tracks = RegisterPlanTracks(active, plan.Tracks);
+            var tracks = RegisterTimelineTracks(active, timeline.Tracks);
             AnimationOutcome outcome;
             while (true)
             {
@@ -140,15 +140,15 @@ public sealed class AvaloniaAnimationPresenter : IAnimationPresenter, IDisposabl
                 {
                     outcome = await active.Completion.Task;
                     if (outcome == AnimationOutcome.Skipped)
-                        await ApplyPlanFrameAsync(tracks, plan.DurationFrames);
+                        await ApplyTimelineFrameAsync(tracks, timeline.DurationFrames);
                     break;
                 }
 
-                var elapsedFrames = started.Elapsed.TotalSeconds * plan.FrameRate;
+                var elapsedFrames = started.Elapsed.TotalSeconds * timeline.FrameRate;
                 if (beforeFrame is not null) await beforeFrame(elapsedFrames);
-                var frame = GetPlanFrame(plan, elapsedFrames);
-                await ApplyPlanFrameAsync(tracks, frame);
-                if (plan.LoopMode == AnimationLoopMode.Once && elapsedFrames >= plan.DurationFrames)
+                var frame = GetTimelineFrame(timeline, elapsedFrames);
+                await ApplyTimelineFrameAsync(tracks, frame);
+                if (timeline.LoopMode == AnimationLoopMode.Once && elapsedFrames >= timeline.DurationFrames)
                 {
                     outcome = AnimationOutcome.Completed;
                     break;
@@ -162,10 +162,10 @@ public sealed class AvaloniaAnimationPresenter : IAnimationPresenter, IDisposabl
             var outcomes = tracks.Select(track => track.Completion.Task.IsCompleted
                 ? track.Completion.Task.GetAwaiter().GetResult()
                 : outcome).ToArray();
-            return new AnimationPlanPlayResult
+            return new TimelinePlayResult
             {
                 Outcome = outcome,
-                TrackOutcomes = plan.Tracks.Select((track, index) => (track, outcome: outcomes[index]))
+                TrackOutcomes = timeline.Tracks.Select((track, index) => (track, outcome: outcomes[index]))
                     .ToDictionary(
                         item => $"{item.track.HandleId}:{item.track.Property}",
                         item => item.outcome,
@@ -174,7 +174,7 @@ public sealed class AvaloniaAnimationPresenter : IAnimationPresenter, IDisposabl
         }
         finally
         {
-            await CleanupPlanTracksAsync(active);
+            await CleanupTimelineTracksAsync(active);
         }
     }
 
@@ -207,40 +207,40 @@ public sealed class AvaloniaAnimationPresenter : IAnimationPresenter, IDisposabl
 
     private static double Lerp(double from, double to, double amount) => from + ((to - from) * amount);
 
-    private List<ActivePlanTrack> RegisterPlanTracks(
-        ActivePlan plan,
-        IEnumerable<AnimationTrackDefinition> tracks)
+    private List<ActiveTimelineTrack> RegisterTimelineTracks(
+        ActiveTimeline timeline,
+        IEnumerable<TimelineTrackDefinition> tracks)
     {
-        var registered = new List<ActivePlanTrack>();
+        var registered = new List<ActiveTimelineTrack>();
         lock (_gate)
         {
             foreach (var track in tracks)
             {
-                var activeTrack = new ActivePlanTrack(track);
+                var activeTrack = new ActiveTimelineTrack(track);
                 if (track.BlendMode == AnimationBlendMode.Additive)
-                    _activeAdditivePlanTracks.Add(activeTrack);
+                    _activeAdditiveTimelineTracks.Add(activeTrack);
                 else
                 {
                     if (_activeAnimations.Remove(activeTrack.Key, out var animation))
                         animation.Complete(AnimationOutcome.Replaced);
-                    if (_activePlanTracks.Remove(activeTrack.Key, out var replaced))
+                    if (_activeTimelineTracks.Remove(activeTrack.Key, out var replaced))
                         replaced.Complete(AnimationOutcome.Replaced);
-                    _activePlanTracks.Add(activeTrack.Key, activeTrack);
+                    _activeTimelineTracks.Add(activeTrack.Key, activeTrack);
                 }
-                plan.Tracks.Add(activeTrack);
+                timeline.Tracks.Add(activeTrack);
                 registered.Add(activeTrack);
             }
         }
         return registered;
     }
 
-    private Task ApplyPlanFrameAsync(IReadOnlyList<ActivePlanTrack> tracks, double frame) =>
+    private Task ApplyTimelineFrameAsync(IReadOnlyList<ActiveTimelineTrack> tracks, double frame) =>
         _dispatcher.InvokeAsync(() =>
         {
             foreach (var activeTrack in tracks)
             {
                 if (activeTrack.Completion.Task.IsCompleted) continue;
-                var value = AnimationTrackSampler.Evaluate(activeTrack.Track, frame);
+                var value = TimelineSampler.Evaluate(activeTrack.Track, frame);
                 if (activeTrack.Track.BlendMode == AnimationBlendMode.Additive)
                     ApplyAdditiveValue(
                         activeTrack,
@@ -253,28 +253,28 @@ public sealed class AvaloniaAnimationPresenter : IAnimationPresenter, IDisposabl
             return Task.CompletedTask;
         });
 
-    private static double GetPlanFrame(AnimationPlanDefinition plan, double elapsedFrames)
+    private static double GetTimelineFrame(TimelineDefinition timeline, double elapsedFrames)
     {
-        if (plan.LoopMode == AnimationLoopMode.Once)
-            return Math.Min(plan.DurationFrames, elapsedFrames);
-        if (plan.DurationFrames <= 0) return 0;
-        if (plan.LoopMode == AnimationLoopMode.PingPong)
+        if (timeline.LoopMode == AnimationLoopMode.Once)
+            return Math.Min(timeline.DurationFrames, elapsedFrames);
+        if (timeline.DurationFrames <= 0) return 0;
+        if (timeline.LoopMode == AnimationLoopMode.PingPong)
         {
-            var position = elapsedFrames % (plan.DurationFrames * 2d);
-            return position <= plan.DurationFrames
+            var position = elapsedFrames % (timeline.DurationFrames * 2d);
+            return position <= timeline.DurationFrames
                 ? position
-                : (plan.DurationFrames * 2d) - position;
+                : (timeline.DurationFrames * 2d) - position;
         }
-        return elapsedFrames % plan.DurationFrames;
+        return elapsedFrames % timeline.DurationFrames;
     }
 
-    private async Task CleanupPlanTracksAsync(ActivePlan plan)
+    private async Task CleanupTimelineTracksAsync(ActiveTimeline timeline)
     {
         await _dispatcher.InvokeAsync(() =>
         {
-            foreach (var track in plan.Tracks.Where(track => track.Track.BlendMode == AnimationBlendMode.Additive))
+            foreach (var track in timeline.Tracks.Where(track => track.Track.BlendMode == AnimationBlendMode.Additive))
             {
-                if (plan.Plan.LoopMode != AnimationLoopMode.Once)
+                if (timeline.Timeline.LoopMode != AnimationLoopMode.Once)
                     RemoveAdditiveValue(track, track.Track.HandleId, track.Track.Property);
                 else
                     BakeAdditiveValue(track, track.Track.HandleId, track.Track.Property);
@@ -283,15 +283,15 @@ public sealed class AvaloniaAnimationPresenter : IAnimationPresenter, IDisposabl
         });
         lock (_gate)
         {
-            _activePlans.Remove(plan);
-            if (_activePlaybacks.TryGetValue(plan.Plan.PlaybackHandleId, out var playback) &&
-                ReferenceEquals(playback, plan))
-                _activePlaybacks.Remove(plan.Plan.PlaybackHandleId);
-            foreach (var track in plan.Tracks)
+            _activeTimelines.Remove(timeline);
+            if (_activePlaybacks.TryGetValue(timeline.Timeline.PlaybackHandleId, out var playback) &&
+                ReferenceEquals(playback, timeline))
+                _activePlaybacks.Remove(timeline.Timeline.PlaybackHandleId);
+            foreach (var track in timeline.Tracks)
             {
-                if (_activePlanTracks.TryGetValue(track.Key, out var current) && ReferenceEquals(current, track))
-                    _activePlanTracks.Remove(track.Key);
-                _activeAdditivePlanTracks.Remove(track);
+                if (_activeTimelineTracks.TryGetValue(track.Key, out var current) && ReferenceEquals(current, track))
+                    _activeTimelineTracks.Remove(track.Key);
+                _activeAdditiveTimelineTracks.Remove(track);
             }
         }
     }
@@ -351,7 +351,7 @@ public sealed class AvaloniaAnimationPresenter : IAnimationPresenter, IDisposabl
             return _activeAdditiveAnimations
                 .Where(animation => animation.Request.HandleId == handleId && animation.Request.Property == property)
                 .Sum(animation => animation.CurrentValue) +
-                _activeAdditivePlanTracks
+                _activeAdditiveTimelineTracks
                     .Where(track => track.Track.HandleId == handleId && track.Track.Property == property)
                     .Sum(track => track.CurrentValue);
     }
@@ -402,19 +402,19 @@ public sealed class AvaloniaAnimationPresenter : IAnimationPresenter, IDisposabl
         public void Complete(AnimationOutcome outcome) => Outcome.TrySetResult(outcome);
     }
 
-    private sealed class ActivePlan(AnimationPlanDefinition plan, long sequence) : ICompletablePlayback
+    private sealed class ActiveTimeline(TimelineDefinition timeline, long sequence) : ICompletablePlayback
     {
-        public AnimationPlanDefinition Plan { get; } = plan;
+        public TimelineDefinition Timeline { get; } = timeline;
         public long Sequence { get; } = sequence;
-        public List<ActivePlanTrack> Tracks { get; } = [];
+        public List<ActiveTimelineTrack> Tracks { get; } = [];
         public TaskCompletionSource<AnimationOutcome> Completion { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
         public void Complete(AnimationOutcome outcome) => Completion.TrySetResult(outcome);
     }
 
-    private sealed class ActivePlanTrack(AnimationTrackDefinition track) : IAdditiveAnimation
+    private sealed class ActiveTimelineTrack(TimelineTrackDefinition track) : IAdditiveAnimation
     {
-        public AnimationTrackDefinition Track { get; } = track;
+        public TimelineTrackDefinition Track { get; } = track;
         public string Key { get; } = $"{track.HandleId}:{track.Property}";
         public double CurrentValue { get; set; }
         public TaskCompletionSource<AnimationOutcome> Completion { get; } =

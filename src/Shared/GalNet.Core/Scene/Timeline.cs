@@ -12,12 +12,12 @@ public enum AnimationInterpolation
 
 /// <summary>Serializable clip-like timeline for float scene properties.</summary>
 /// <example>
-/// A plan at 60 fps with <c>DurationFrames = 30</c> plays for half a second. A track whose
+/// A timeline at 60 fps with <c>DurationFrames = 30</c> plays for half a second. A track whose
 /// keys are `(0, 0)` and `(30, 1)` linearly fades its target property from 0 to 1.
 /// </example>
-public sealed class AnimationPlanDefinition
+public sealed class TimelineDefinition
 {
-    /// <summary>Opaque handle for this plan playback; it must be unique while the plan is active.</summary>
+    /// <summary>Opaque handle for this timeline playback; it must be unique while the timeline is active.</summary>
     public string PlaybackHandleId { get; set; } = "";
     /// <summary>Timeline sampling frequency in frames per second. Valid authoring values are 1 through 240.</summary>
     public int FrameRate { get; set; } = 60;
@@ -28,24 +28,24 @@ public sealed class AnimationPlanDefinition
     /// <summary>Whether the whole timeline plays once or is restarted after its final frame.</summary>
     public AnimationLoopMode LoopMode { get; set; }
     /// <summary>Property tracks sampled in parallel during playback.</summary>
-    public List<AnimationTrackDefinition> Tracks { get; set; } = [];
+    public List<TimelineTrackDefinition> Tracks { get; set; } = [];
     /// <summary>Entries dispatched at their declared frames without creating a separate engine checkpoint.</summary>
-    public List<AnimationPlanEventDefinition> Events { get; set; } = [];
+    public List<TimelineEventDefinition> Events { get; set; } = [];
 }
 
 /// <summary>Keyframed values for one property on one active scene instance.</summary>
-public sealed class AnimationTrackDefinition
+public sealed class TimelineTrackDefinition
 {
     public string HandleId { get; set; } = "";
     public string Property { get; set; } = "";
     /// <summary>Whether keys are absolute property values or relative offsets from the current Replace value.</summary>
     public AnimationBlendMode BlendMode { get; set; }
     /// <summary>Strictly frame-ordered keys; the first key must be at frame 0.</summary>
-    public List<AnimationKeyframeDefinition> Keys { get; set; } = [];
+    public List<TimelineKeyframeDefinition> Keys { get; set; } = [];
 }
 
 /// <summary>Tangents are values per timeline frame. Interpolation belongs to the segment after this key.</summary>
-public sealed class AnimationKeyframeDefinition
+public sealed class TimelineKeyframeDefinition
 {
     public int Frame { get; set; }
     public float Value { get; set; }
@@ -57,7 +57,7 @@ public sealed class AnimationKeyframeDefinition
 }
 
 /// <summary>Entry-like event embedded in a timeline and dispatched when its frame is reached.</summary>
-public sealed class AnimationPlanEventDefinition
+public sealed class TimelineEventDefinition
 {
     public int Frame { get; set; }
     public string Type { get; set; } = "";
@@ -65,21 +65,21 @@ public sealed class AnimationPlanEventDefinition
     public Dictionary<string, JsonElement> Parameters { get; set; } = new(StringComparer.Ordinal);
 }
 
-/// <summary>Terminal plan outcome plus the terminal outcome recorded for each track.</summary>
-public sealed class AnimationPlanPlayResult
+/// <summary>Terminal timeline outcome plus the terminal outcome recorded for each track.</summary>
+public sealed class TimelinePlayResult
 {
     public AnimationOutcome Outcome { get; init; }
     public IReadOnlyDictionary<string, AnimationOutcome> TrackOutcomes { get; init; } = new Dictionary<string, AnimationOutcome>();
 }
 
 /// <summary>Pure keyframe sampler shared by presentation implementations and tests.</summary>
-public static class AnimationTrackSampler
+public static class TimelineSampler
 {
     /// <summary>Evaluates one validated track at a fractional timeline frame.</summary>
     /// <param name="track">Track whose keys are sampled.</param>
     /// <param name="frame">Frame position, including fractional frames between authored keys.</param>
     /// <returns>The interpolated property value, clamped to the first or last key outside the track range.</returns>
-    public static float Evaluate(AnimationTrackDefinition track, double frame)
+    public static float Evaluate(TimelineTrackDefinition track, double frame)
     {
         var keys = track.Keys;
         if (frame <= keys[0].Frame) return keys[0].Value;

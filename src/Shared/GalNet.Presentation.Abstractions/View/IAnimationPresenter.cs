@@ -8,6 +8,6 @@ public interface IAnimationPresenter
     Task<AnimationOutcome> AnimateAsync(AnimationRequest request, CancellationToken cancellationToken);
     /// <summary>Await beforeFrame with monotonically increasing elapsed frames before sampling each frame.
     /// The callback owns event dispatch; the presenter owns timing and must publish the terminal frame before normal completion.</summary>
-    Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken cancellationToken, Func<double, Task>? beforeFrame = null);
+    Task<TimelinePlayResult> PlayTimelineAsync(TimelineDefinition timeline, CancellationToken cancellationToken, Func<double, Task>? beforeFrame = null);
     bool CompleteAnimationImmediately(string playbackHandleId);
 }

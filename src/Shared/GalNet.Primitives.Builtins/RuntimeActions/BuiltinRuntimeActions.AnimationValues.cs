@@ -31,7 +31,7 @@ internal static partial class BuiltinRuntimeActions
         {
             runtime.SceneInstances.Remove<AnimationPlaybackInstance>(state.Id, out _);
             runtime.SceneInstances.GetOrAddTransient(state.Id, id => new AnimationPlaybackInstance
-            { Id = id, LoopMode = state.Request?.LoopMode ?? state.Plan!.LoopMode });
+            { Id = id, LoopMode = state.Request?.LoopMode ?? state.Timeline!.LoopMode });
             runtime.State.Table<LoopAnimationState>().Set(state);
         });
     }

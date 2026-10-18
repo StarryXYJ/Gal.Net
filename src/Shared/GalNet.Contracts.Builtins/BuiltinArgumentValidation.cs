@@ -9,7 +9,7 @@ namespace GalNet.Contracts.Builtins;
 internal static class BuiltinArgumentValidation
 {
     private static readonly Lazy<IEntryCatalog> EventCatalog = new(() => new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()));
-    private static readonly HashSet<string> PlanEventTypes = new(StringComparer.Ordinal)
+    private static readonly HashSet<string> TimelineEventTypes = new(StringComparer.Ordinal)
     {
         BuiltinEntryIds.ShowLayer, BuiltinEntryIds.ShowColorLayer, BuiltinEntryIds.HideLayer,
         BuiltinEntryIds.MoveLayer, BuiltinEntryIds.ReplaceLayer, BuiltinEntryIds.ApplyEffect,
@@ -34,10 +34,10 @@ internal static class BuiltinArgumentValidation
                     points.Zip(points.Skip(1), (left, right) => right > left).Any(valid => !valid))
                     throw new InvalidDataException("video.play skipPoints must be finite, non-negative and strictly increasing seconds.");
                 break;
-            case BuiltinEntryIds.PlayAnimationPlan:
-                if (!arguments.TryGetProperty("plan", out var value) || value.ValueKind != JsonValueKind.Object)
-                    throw new InvalidDataException("animation.play requires a plan object.");
-                ValidatePlan(value.Deserialize<AnimationPlanDefinition>(JsonOptions)!);
+            case BuiltinEntryIds.PlayTimeline:
+                if (!arguments.TryGetProperty("timeline", out var value) || value.ValueKind != JsonValueKind.Object)
+                    throw new InvalidDataException("timeline.play requires a timeline object.");
+                ValidateTimeline(value.Deserialize<TimelineDefinition>(JsonOptions)!);
                 break;
             case BuiltinEntryIds.PlayParticleEmitter:
             case BuiltinEntryIds.BurstParticles:
@@ -56,14 +56,14 @@ internal static class BuiltinArgumentValidation
                 throw new InvalidDataException($"{type} requires '{name}'.");
     }
 
-    private static void ValidatePlan(AnimationPlanDefinition plan)
+    private static void ValidateTimeline(TimelineDefinition timeline)
     {
-        if (plan.FrameRate is < 1 or > 240 || plan.DurationFrames < 0)
-            throw new InvalidDataException("Animation plan frameRate must be 1..240 and durationFrames must be non-negative.");
-        if (plan.Tracks is null || plan.Events is null || !Enum.IsDefined(plan.LoopMode))
-            throw new InvalidDataException("Animation plan requires track/event arrays and a valid loop mode.");
+        if (timeline.FrameRate is < 1 or > 240 || timeline.DurationFrames < 0)
+            throw new InvalidDataException("Animation timeline frameRate must be 1..240 and durationFrames must be non-negative.");
+        if (timeline.Tracks is null || timeline.Events is null || !Enum.IsDefined(timeline.LoopMode))
+            throw new InvalidDataException("Animation timeline requires track/event arrays and a valid loop mode.");
         var targets = new HashSet<(string HandleId, string Property)>();
-        foreach (var track in plan.Tracks)
+        foreach (var track in timeline.Tracks)
         {
             if (track is null || track.Keys is null || !Enum.IsDefined(track.BlendMode) ||
                 string.IsNullOrWhiteSpace(track.HandleId) || string.IsNullOrWhiteSpace(track.Property) ||
@@ -72,18 +72,18 @@ internal static class BuiltinArgumentValidation
             var previous = -1;
             foreach (var key in track.Keys)
             {
-                if (key is null || !Enum.IsDefined(key.InterpolationToNext) || key.Frame <= previous || key.Frame > plan.DurationFrames ||
+                if (key is null || !Enum.IsDefined(key.InterpolationToNext) || key.Frame <= previous || key.Frame > timeline.DurationFrames ||
                     !float.IsFinite(key.Value) || !float.IsFinite(key.InTangent) || !float.IsFinite(key.OutTangent))
-                    throw new InvalidDataException("Animation keys must be finite, strictly ordered and inside the plan duration.");
+                    throw new InvalidDataException("Animation keys must be finite, strictly ordered and inside the timeline duration.");
                 previous = key.Frame;
             }
         }
-        foreach (var item in plan.Events)
+        foreach (var item in timeline.Events)
         {
-            if (item is null || item.Parameters is null || item.Frame < 0 || item.Frame > plan.DurationFrames)
-                throw new InvalidDataException("Animation events must be inside the plan duration.");
-            if (!PlanEventTypes.Contains(item.Type))
-                throw new InvalidDataException($"Unsupported animation plan event '{item.Type}'.");
+            if (item is null || item.Parameters is null || item.Frame < 0 || item.Frame > timeline.DurationFrames)
+                throw new InvalidDataException("Animation events must be inside the timeline duration.");
+            if (!TimelineEventTypes.Contains(item.Type))
+                throw new InvalidDataException($"Unsupported animation timeline event '{item.Type}'.");
             PrimitiveArgumentHelper.Normalize(EventCatalog.Value.Get(item.Type).DynamicParameters!,
                 JsonSerializer.SerializeToElement(item.Parameters));
         }

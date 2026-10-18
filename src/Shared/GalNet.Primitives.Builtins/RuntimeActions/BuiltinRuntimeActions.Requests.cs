@@ -28,10 +28,10 @@ internal static partial class BuiltinRuntimeActions
         };
     }
 
-    public static AnimationPlanDefinition CreateAnimationPlan(AnimationPlanOptions options)
+    public static TimelineDefinition CreateTimeline(TimelineOptions options)
     {
-        return Arguments.Json<AnimationPlanDefinition>(options.Plan)
-            ?? throw new InvalidDataException("animation.play requires a plan object.");
+        return Arguments.Json<TimelineDefinition>(options.Timeline)
+            ?? throw new InvalidDataException("timeline.play requires a timeline object.");
     }
 
     public static EffectRequest CreateEffectRequest(EffectApplyOptions options) => new(

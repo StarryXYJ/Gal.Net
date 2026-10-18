@@ -42,6 +42,8 @@
 
 ## 当前工作
 
+- 2026-10-18 P6c 已验证：AnimationPlan 全面统一为 Timeline 类型/播放接口，Entry 为 timeline.play、根参数 timeline，转场与循环恢复同步；builtin.animations section v2，PrimitiveRegistry.State 可显式 version（其他默认 1）。1081 项回归、解决方案构建、格式与源码指纹通过，6 项原生媒体环境未执行。见 [phase-6c](../features/F-20261015-02-editor-authoring-workspace/phase-6c.md)。下一步 P6d 实现跟随活动 Entry 的 Timeline Dock/项目编辑会话，P6e 对象树/关键帧/曲线，P6f animate 自定义曲线；实时预览不列阶段。
+
 - 2026-10-18 P6b 已验证：普通生成 DTO 对象/列表、presence/null/default、JSON 回退、懒创建/释放接入共享层和 Group 页，879 项回归通过，6 项原生媒体环境用例未执行，解决方案构建/格式/源码指纹通过。详见 [phase-6b](../features/F-20261015-02-editor-authoring-workspace/phase-6b.md)。剩余 P6 为未知 Entry JSON 修改、状态查询/Locator 和 AnimationPlan 等复杂定制；后者按用户要求留后续阶段。
 
 - [F-20261015-02 Editor 创作工作区](../features/F-20261015-02-editor-authoring-workspace/phase-plan.md)：P1a/P1b/P2/P2i/P3/P4a/P4b 已验证，P4b 隔离构建与 383 项相关回归通过。项目单栈、Graph、文件事务/双版本文档协调、metadata/引用保护、文件树/网格、路径块/全局文件名搜索、项目文本缓冲与四语已接通；P6a 已提前完成共享 DTO UI 基础，610 项相关回归通过，另 6 项媒体环境用例未执行；三层注册、默认表单、多 DTO 面板与两个宿主已接入。P5a Group 交互已验证（搜索/键盘插入、批量、折叠拖放、尾部取消选择），614 项相关回归通过，6 个媒体环境用例未执行。P5b 多选剪贴板/批量删除与移动已验证，493 项相关回归和解决方案构建通过，含异步剪贴板保护与集合补偿故障测试。P5c 独立变量面板及声明/引用单历史已验证，611 项相关回归和解决方案构建通过；玩家/存档页签、草稿/应用、说明、引用诊断与补全刷新已接通。P5d Entry 字段与新增入口迁移已验证，614 项相关回归及解决方案构建通过；字段历史按稳定 ID/作者 JSON 执行，不保留页面，旧表单在删除/换类型及撤销后不复活。P5e GUI 作者草稿保存已验证，635 项相关回归、解决方案构建与格式/源码指纹通过；Authoring 保留未知/不完整条目 JSON，默认 Complete 与 CLI 校验/编译仍严格。P5 整体 verified，后续继续 P6 状态查询/Locator 和复杂值功能、P7 验收。游戏预览另立 feature。当前实现见 docs/spec/editor-graph.md、editor-groups.md、editor-variables.md、editor-files.md 和 editor-history-and-save.md。

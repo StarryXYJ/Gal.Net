@@ -7,7 +7,7 @@ namespace GalNet.Primitives.Builtins;
 
 internal static partial class BuiltinRuntimeActions
 {
-    public static void ApplyPlanEventToRuntime(IGameRuntime runtime, AnimationPlanEventDefinition planEvent)
+    public static void ApplyTimelineEventToRuntime(IGameRuntime runtime, TimelineEventDefinition planEvent)
     {
         switch (planEvent.Type)
         {
@@ -48,8 +48,8 @@ internal static partial class BuiltinRuntimeActions
         }
     }
 
-    public static Task NotifyPlanEventAsync(
-        AnimationPlanEventDefinition planEvent,
+    public static Task NotifyTimelineEventAsync(
+        TimelineEventDefinition planEvent,
         ILayerPresenter? layerPresenter,
         IEffectPresenter? effectPresenter,
         IParticlePresenter? particlePresenter,

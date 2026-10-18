@@ -22,7 +22,7 @@
 | SampleCustomization / DtoBinding | 程序入口组合及设置数据适配 | 新注册协议的共享接入 |
 | IAssetManager / ISceneInstanceManager | 分别查询资产、运行时实例 | 未启动游戏时的作者场景目标分析 |
 
-当前 AnimationPlanOptions.Plan 是 JsonElement，尚不是 AnimationPlanDefinition 类型字段；目前没有发现可直接复用的作者场景 Locator。不能把这些目标能力写成已存在服务。
+P6c 后当前 TimelineOptions.Timeline 是 JsonElement，尚不是 TimelineDefinition 类型字段；目前没有发现可直接复用的作者场景 Locator。不能把这些目标能力写成已存在服务。
 
 ## 3. 两个独立子系统
 
@@ -66,7 +66,7 @@ flowchart TD
 
 ~~~csharp
 editors.RegisterDto<MyOptions>(ctx => CreateCustomPanel(ctx));
-editors.RegisterMember<AnimationPlanOptions>(x => x.Plan, ctx => CreateTimelineJsonAdapter(ctx));
+editors.RegisterMember<TimelineOptions>(x => x.Timeline, ctx => CreateTimelineJsonAdapter(ctx));
 editors.RegisterDefault<string>(ctx => CreateTextEditor(ctx));
 editors.RegisterDefault<MyCurve>(ctx => CreateCurveEditor(ctx));
 ~~~
@@ -148,7 +148,7 @@ Group 初始状态来自可达前驱/调用上下文，不把每个 Group 都视
 
 跨 Group 输入多样时，默认用合并后的入口状态服务普通 Editor；如果宿主提供明确调用上下文，可以按输入签名分别查询/缓存。缓存设置数量/内存预算并淘汰，项目关闭释放全部分析状态。后台分析捕获一致作者快照，完成时核对 revision/请求位置再发布，过期结果丢弃；共享 UI 只订阅结果，不拥有分析任务。
 
-## 8. AnimationPlan、timeline 与曲线
+## 8. Timeline 与曲线
 
 2026-10-18 用户补充对象/属性树和关键帧/切线/曲线交互，详细设计见 [complex-editor-design.md](complex-editor-design.md)。后者细化本节：对象父行分组、属性选择加入轨道、首帧/碰撞/时长/FPS 规则、Hermite 单位、局部草稿与单历史、事件和隐藏 handle；状态仍为 design。
 
@@ -156,9 +156,9 @@ Group 初始状态来自可达前驱/调用上下文，不把每个 Group 都视
 
 Timeline Dock 直接绑定当前活动 Entry，非 Timeline/无选择时显示不可编辑提示，不固定旧目标；切换先协调输入/手势，再使旧租约失效。实时预览不纳入阶段计划，既有预览分析只作架构备忘，不成为 Timeline 的依赖或验收要求。
 
-第一步可对 AnimationPlanOptions.Plan 做成员覆盖，适配现有 JsonElement；只替换这一字段，不对所有 JsonElement 注册 timeline。适配器只改负责的键，未知扩展字段无损保留；无法解析的内容显示诊断/原始值回退，不自动重置为新计划。
+第一步可对 TimelineOptions.Timeline 做成员覆盖，适配现有 JsonElement；只替换这一字段，不对所有 JsonElement 注册 timeline。适配器只改负责的键，未知扩展字段无损保留；无法解析的内容显示诊断/原始值回退，不自动重置为新计划。
 
-未来如果把 Plan 改为强类型 AnimationPlanDefinition，默认类型映射即可复用。这个类型化属于契约变化，需要单独验证 codec 与执行参数，不是注册服务的先决条件。
+未来如果把 Timeline 字段改为强类型 TimelineDefinition，默认类型映射即可复用。这个类型化属于契约变化，需要单独验证 codec 与执行参数，不是注册服务的先决条件。
 
 timeline 可组合轨道列表、场景目标选择、关键帧视图、属性面板；曲线控件作为独立值/成员覆盖，也可嵌入 timeline。二者使用同一上下文、patch 和手势协议，算法/绘制与 Editor 历史分离。完整动画预览与游戏预览分开：可以先做数值曲线采样预览，游戏场景预览仍放后期。
 

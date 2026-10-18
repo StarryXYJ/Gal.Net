@@ -73,9 +73,9 @@ public sealed class AnimationPropertyValueConverter : JsonConverter<string>, ISt
 }
 
 [GenerateFieldSchema]
-public partial class AnimationPlanOptions
+public partial class TimelineOptions
 {
-    [Field(0, EditorId = ValueEditorIds.Json)] public JsonElement Plan { get; set; }
+    [Field(0, EditorId = ValueEditorIds.Json)] public JsonElement Timeline { get; set; }
     [Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? BatchId { get; set; }
 }
 

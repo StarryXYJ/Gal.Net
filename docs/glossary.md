@@ -38,7 +38,7 @@
 | 图层 | `Layer` | 背景与立绘的统一资源图层，拥有 transform、z、显示模式和 opacity。 |
 | 场景句柄 | `handleId` | 作者内容中用于定位场上实例的稳定字符串，不是显示名称。 |
 | 动画请求 | `AnimationRequest` | 对单一可动画属性的一次 Replace（绝对值）或 Additive（相对增量）插值请求。 |
-| 动画计划 | `AnimationPlanDefinition` | 多 track 时间线；当前作为单个 primitive instance 执行。 |
+| 时间轴 | `TimelineDefinition` | 多 track 时间线；当前作为单个 primitive instance 执行。 |
 | 效果实例 | `EffectInstance` | 可存档的活跃效果描述，包含 effect id、program、instance id、目标、顺序和参数。 |
 
 ## 页面与 UI

@@ -80,7 +80,7 @@ public sealed class TypedBuiltinAuthoringTests
         var choices = catalog.Get("animation.animate").DynamicParameters!["property"];
         Assert.That(choices.TryGetConstraint("options", out var properties), Is.True);
         Assert.That(properties.EnumerateArray().Select(value => value.GetString()), Is.EqualTo(GalNet.Core.Scene.Layer.AnimationProperties
-            .Concat(GalNet.Core.Scene.ParticleEmitterInstance.AnimationProperties).Select(property => property.Name).Distinct(StringComparer.Ordinal)));
+            .Concat(GalNet.Core.Scene.ParticleEmitterInstance.AnimationProperties).Select(property => property.Name).Append("time").Distinct(StringComparer.Ordinal)));
     }
 
     [TestCase("animation.stop", "playbackHandleId")]

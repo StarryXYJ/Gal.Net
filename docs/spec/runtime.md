@@ -83,7 +83,7 @@ Choice 节点由 Engine 求值并过滤可见选项，再通过 `IChoicePresente
 | `State` / `SceneInstances` | 按注册类型/ID 存储的 GameState，以及其派生场景句柄索引与临时执行控制 |
 | 变量存储 | Player / Save 作用域变量与表达式求值 |
 
-`GameSnapshot` 当前版本为 4，旧版本直接拒绝，不提供迁移兼容。它包含 `NodeId`、`EntryIndex`、Save 变量与 `States`：稳定 StateId → section version / JSON payload。模块组合时显式注册纯数据表与恢复处理器，未注册类型、重复 ID、缺失/未知 section、版本不符及无效载荷明确报错。每份存档写出全部注册表，包括空表；不写 CLR 类型名、Task 或后端对象。
+`GameSnapshot` 当前版本为 4，旧版本直接拒绝，不提供迁移兼容。它包含 `NodeId`、`EntryIndex`、Save 变量与 `States`：稳定 StateId → section version / JSON payload。模块组合时显式注册纯数据表与恢复处理器，未注册类型、重复 ID、缺失/未知 section、版本不符及无效载荷明确报错。builtin.animations 当前 section version 为 2，LoopAnimationState 保存 Request 或 Timeline；旧 v1 section 明确拒绝。PrimitiveRegistry.State 的 version 参数传递到 Core 状态契约，其他模块默认仍为 1。每份存档写出全部注册表，包括空表；不写 CLR 类型名、Task 或后端对象。
 
 `CreateSaveData()` 返回 Engine 保存的最后稳定快照。状态表编码共享短同步边界，JSON 载荷和变量与运行对象隔离；不再由中央代码逐类型复制字段。读档先解码/校验候选状态与模块规则，再取消旧 scope 并替换整个 GameState/SceneInstances。旧回调保留旧状态根，不能清理新代。展示恢复成功前暂停推进，恢复失败进入 Faulted。
 
@@ -100,7 +100,7 @@ Save scope 随存档槽保存和恢复；Player scope 由宿主变量服务独�
 动画按稳定语义存档，而不是保存展示层播放游标：
 
 - `Once` 的 non-blocking 动画在分发时提交末值，读档直接显示末值；
-- `Loop` / `PingPong` 保持第 0 帧逻辑状态，并在 `LoopAnimationState` 表保存类型化 request 或 plan，读档后从第 0 帧重新播放；
+- `Loop` / `PingPong` 保持第 0 帧逻辑状态，并在 `LoopAnimationState` 表保存类型化 request 或 timeline，读档后从第 0 帧重新播放；
 - blocking 动画运行期间不会产生新的稳定快照，因此不保存其中间帧；
 - 循环粒子属性动画保存 emitter、初始属性值与动画定义，不保存单颗粒子、渲染资源或时钟。
 
@@ -159,12 +159,12 @@ Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`
 - `dialogue.text`：对话与打字机阶段，支持 `\skip` 分段跳过；`dialogue.show` / `dialogue.hide` 控制显示状态。
 - `nvl.show` / `nvl.hide` / `nvl.clear`：分别显示、隐藏和清空 NVL 历史；`nvl.append` 以相同的富文本和打字机语义追加一行，完成打字后等待玩家推进。NVL 不会因 append 自动显示。
 - `layer.*`：show/showColor/hide/move/replace，先更新 `GameState` 的 Layer 表再通知 `ILayerPresenter`。
-- `animation.animate` / `animation.play` / `animation.stop`：创建 animation primitive instance；一次性动画先提交最终逻辑状态，循环动画提交第 0 帧状态并保存完整重放定义，再启动呈现动画。plan 是单个 instance，内部事件只作为 animation 模块私有 layer/effect 事件处理，不重新进入通用 Entry 分发。
+- `animation.animate` / `timeline.play` / `animation.stop`：创建 animation primitive instance；一次性动画先提交最终逻辑状态，循环动画提交第 0 帧状态并保存完整重放定义，再启动呈现动画。timeline 是单个 instance，内部事件只作为 animation 模块私有 layer/effect 事件处理，不重新进入通用 Entry 分发。
 - `effect.apply` / `effect.stop`：维护唯一的 EffectInstance 数据表和 `IEffectPresenter` 调用；动画直接修改同一记录，不维护 ActiveEffectState 镜像。Skia effect-program 的 `@gal.effect` 元数据声明可动画参数，动画使用其逻辑参数名；`time` 可映射到常见 shader 时间 uniform。
 - `audio.play` / `audio.stop` / `audio.pause` / `audio.resume` / `audio.enqueue` / `audio.next` / `audio.clear`：`AudioRuntime` 持有轨道队列与 voice 生命周期，`IAudioPlaybackHost` 只执行平台播放请求。`dialogue.textVoice` 与 `nvl.appendVoice` 会先发出非阻塞的 `audio.play(replaceIfDifferent)`，默认使用 `vocal` 轨道，再按正常文本语义阻塞。
 - `audio.seffect.apply` / `audio.seffect.stop`：以 `trackId` 和 `instanceId` 附着或移除宿主 catalog 已注册的轨道 SEffect；当前 Avalonia host 支持 `seffect.gain`、基于 equalizer 频段近似的 `seffect.lowPass` 与 `seffect.highPass`。未知 ID、非法参数或不支持 scope 只记录诊断，不会静默附着。
 - `particle.play` / `particle.stop`：用 `rate` 创建和停止持续 emitter，维护唯一的 ParticleEmitterInstance 数据表，场景句柄查找引用同一记录。存档只保存 emitter 定义、排序与动画值；宿主读档后通过模块注册的恢复处理器 以相同 seed 从头重建，不保存单颗粒子。`initial` 的 lifetime、velocity、size、rotation、angular velocity、color 以及 `flipbook` 的播放速度与起始帧都按粒子确定性采样；`motion` 提供 gravity、noise、drag、radial、orbit、attractor，`lifetime` 曲线线性插值 size、opacity、velocity、rotation、color。当前粒子年龄、位置和 flipbook 帧不单独存档。
-- `particle.burst`：用 `count` 向 `IParticlePresenter` 发出一次性 burst，不创建 Runtime scene state，也不参与存档恢复。有限持续效果由流程或 animation plan 编排 play/stop；重复 burst 由 animation plan 事件表达，跳过 plan 时不补发未来 burst。
+- `particle.burst`：用 `count` 向 `IParticlePresenter` 发出一次性 burst，不创建 Runtime scene state，也不参与存档恢复。有限持续效果由流程或 animation timeline 编排 play/stop；重复 burst 由 animation timeline 事件表达，跳过 timeline 时不补发未来 burst。
 - `video.play` / `video.stop`：视频是 Runtime Layer，`IVideoPresenter` 将平台解码帧送入场景管线；阻塞时每次推进跳到当前播放位置之后的下一时间戳，跳转期间保持阻塞，结束后继续剧情。稳定存档只保存视频图层定义，非阻塞视频恢复时从零播放；播放 identity 和游标不入存档。
 - `flow.wait`：blocking、skippable 的等待实例。
 - `variable.set`：求值后写入 Runtime 变量。
@@ -172,7 +172,7 @@ Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`
 
 视频图层与音频的轨道播放、淡化、队列和当前轨道 SEffect 行为由内置模块实现。玩家音量/静音按 master × bus × 内容 gain × 轨道默认 gain 合成并应用到当前及后续 voice；item effect 和音频参数动画仍未实现。AudioTrackState 保存轨道当前播放项、内容 gain、暂停状态与有序队列；AudioSEffectState 单独保存轨道效果，空闲时仍保留并作用于后续 voice。所有仍存在的轨道状态按检查点恢复，包含 SFX/Vocal；活动内容从头开始，不恢复游标和淡化时钟。暂停轨道在 Resume 前不启动播放器。恢复重新读取项目轨道配置并应用当前玩家音量；正常结束先更新逻辑状态和队列，后端身份/ticket 不入存档。Gallery 的平台无关 catalog 与解锁数据层由 Core/Runtime 提供；默认 Avalonia 前端通过宿主提供的 `IGameGallerySession` 浏览 CG、视频和音频，不把页面或媒体状态写入 Runtime。
 
-动画 plan 的事件与轨道共用 presenter 的播放时间源。`PlayAnimationPlanAsync` 必须在采样前 await `beforeFrame(elapsedFrames)`，正常完成前提供末帧；Loop/PingPong 的 elapsedFrames 单调增加，不在循环时归零。跳过不补发未来 particle burst。
+动画 timeline 的事件与轨道共用 presenter 的播放时间源。`PlayTimelineAsync` 必须在采样前 await `beforeFrame(elapsedFrames)`，正常完成前提供末帧；Loop/PingPong 的 elapsedFrames 单调增加，不在循环时归零。跳过不补发未来 particle burst。
 
 音频后端请求按 voice 顺序提交，Stop 即刻取消尚未完成的 Start；异步销毁等待排队请求结束。Avalonia host 先登记待加载音频，停止/销毁取消加载，等待加载结束后释放 LibVLC 与临时目录。读档停止旧 scope 音频，模块恢复时重新生成后端 identity。旧 scope Reset 与延迟终态事件不能影响新代。Headless 仍保留轨道/效果逻辑数据；缺少 host 时流程 ticket 完成。
 

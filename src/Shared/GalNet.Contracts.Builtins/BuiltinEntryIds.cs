@@ -4,7 +4,7 @@ namespace GalNet.Contracts.Builtins;
 public static class BuiltinEntryIds
 {
     public const string Animate = "animation.animate";
-    public const string PlayAnimationPlan = "animation.play";
+    public const string PlayTimeline = "timeline.play";
     public const string StopAnimation = "animation.stop";
     public const string Text = "dialogue.text";
     public const string ShowDialogue = "dialogue.show";

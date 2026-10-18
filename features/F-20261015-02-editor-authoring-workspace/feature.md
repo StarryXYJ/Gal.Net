@@ -35,6 +35,8 @@ P6b 普通复杂值表单已验证：对象/列表、缺省/null/default、JSON 
 
 用户明确 Timeline Dock 跟随当前所选 Entry：Timeline 类型显示编辑器，其他类型或无选择显示不可编辑提示；不固定上一个 Timeline。多选按活动项处理。实时预览不纳入阶段计划，只保留架构备忘，不作为 Timeline 的依赖或验收项。
 
+P6c Timeline 命名与契约已验证：类型/播放接口、timeline.play/timeline、转场和循环恢复统一，builtin.animations section 升至 v2；1081 项回归、解决方案构建及格式/源码指纹通过，见 [phase-6c.md](phase-6c.md)。下一阶段为 Timeline Dock 与当前 Entry 绑定，时间轴工具尚未完成。
+
 ## 问题与现有基础
 
 - Editor.Shared 已有类型化编辑命令、项目查询、校验、编译和文件操作；GUI 仍有直接修改可观察模型、独立历史及保存映射路径，需要重新明确作者数据与页面状态的所有权。

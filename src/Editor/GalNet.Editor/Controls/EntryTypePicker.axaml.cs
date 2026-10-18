@@ -154,7 +154,7 @@ public partial class EntryTypePicker : UserControl
         [BuiltinEntryIds.MoveLayer] = "yidong yd",
         ["flow.wait"] = "dengdai dd",
         ["animation.animate"] = "donghua dh",
-        ["animation.play"] = "jihua donghua jh dh",
+        ["timeline.play"] = "shijianzhou sjz timeline",
         ["audio.play"] = "bofang yinpin yinyue bf yp yy",
         ["video.play"] = "shipin sp",
         ["effect.apply"] = "texiao tx",

@@ -8,7 +8,7 @@ using GalNet.Runtime.Logging;
 
 namespace GalNet.Primitives.Builtins;
 
-public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposable
+public sealed class TimelinePrimitiveInstance : PrimitiveInstance, IDisposable
 {
     private readonly object _gate = new();
     private readonly bool _restoring;
@@ -17,9 +17,9 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
     private readonly ILayerPresenter? _layerPresenter;
     private readonly IEffectPresenter? _effectPresenter;
     private readonly IParticlePresenter? _particlePresenter;
-    private readonly AnimationPlanDefinition _plan;
+    private readonly TimelineDefinition _timeline;
     private readonly CancellationToken _scopeCancellation;
-    private readonly IndexedPlanEvent[] _events;
+    private readonly IndexedTimelineEvent[] _events;
     private readonly bool[] _notifiedEvents;
     private readonly CancellationTokenSource _presentationCancellation = new();
     private readonly SemaphoreSlim _notificationGate = new(1, 1);
@@ -33,19 +33,19 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
     private Task _skipTask = Task.CompletedTask;
     public override Task PresentationCompletion => Task.WhenAll(_presentationTask, _skipTask);
 
-    public AnimationPlanPrimitiveInstance(IAnimationPresenter? animationPresenter, ILayerPresenter? layerPresenter,
-        IEffectPresenter? effectPresenter, IParticlePresenter? particlePresenter, PrimitiveCreateContext context, AnimationPlanOptions options)
+    public TimelinePrimitiveInstance(IAnimationPresenter? animationPresenter, ILayerPresenter? layerPresenter,
+        IEffectPresenter? effectPresenter, IParticlePresenter? particlePresenter, PrimitiveCreateContext context, TimelineOptions options)
         : this(context.Runtime, animationPresenter, layerPresenter, effectPresenter, particlePresenter,
-            BuiltinRuntimeActions.CreateAnimationPlan(options), context.BatchId, context.ScopeCancellation)
+            BuiltinRuntimeActions.CreateTimeline(options), context.BatchId, context.ScopeCancellation)
     { }
 
-    public AnimationPlanPrimitiveInstance(
+    public TimelinePrimitiveInstance(
         IGameRuntime runtime,
         IAnimationPresenter? animationPresenter,
         ILayerPresenter? layerPresenter,
         IEffectPresenter? effectPresenter,
         IParticlePresenter? particlePresenter,
-        AnimationPlanDefinition plan,
+        TimelineDefinition timeline,
         string? batchId,
         CancellationToken scopeCancellation, bool restoring = false)
         : base(batchId)
@@ -56,11 +56,11 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
         _layerPresenter = layerPresenter;
         _effectPresenter = effectPresenter;
         _particlePresenter = particlePresenter;
-        _plan = plan;
+        _timeline = timeline;
         _scopeCancellation = scopeCancellation;
-        _skippable = plan.Skippable;
-        _events = plan.Events
-            .Select((item, index) => new IndexedPlanEvent(index, item))
+        _skippable = timeline.Skippable;
+        _events = timeline.Events
+            .Select((item, index) => new IndexedTimelineEvent(index, item))
             .OrderBy(item => item.Event.Frame)
             .ThenBy(item => item.Index)
             .ToArray();
@@ -69,7 +69,7 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
             foreach (var item in _events.Where(item => item.Event.Frame <= 0)) _notifiedEvents[item.Index] = true;
     }
 
-    public override bool IsBlocking => _plan.Blocking;
+    public override bool IsBlocking => _timeline.Blocking;
     public override bool IsSkippable
     {
         get
@@ -81,10 +81,10 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
 
     protected override void OnDispatch()
     {
-        if (!_restoring) BuiltinRuntimeActions.ApplyPlanStableState(_runtime, _plan);
-        else _runtime.SceneInstances.GetOrAddTransient(_plan.PlaybackHandleId,
-            id => new AnimationPlaybackInstance { Id = id, LoopMode = _plan.LoopMode });
-        _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_plan.PlaybackHandleId, out _playback!);
+        if (!_restoring) BuiltinRuntimeActions.ApplyTimelineStableState(_runtime, _timeline);
+        else _runtime.SceneInstances.GetOrAddTransient(_timeline.PlaybackHandleId,
+            id => new AnimationPlaybackInstance { Id = id, LoopMode = _timeline.LoopMode });
+        _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_timeline.PlaybackHandleId, out _playback!);
         if (_animationPresenter is null)
         {
             Dispose();
@@ -106,28 +106,28 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
             _presentationCancellation.Cancel();
         }
 
-        _animationPresenter?.CompleteAnimationImmediately(_plan.PlaybackHandleId);
-        if (_plan.LoopMode != AnimationLoopMode.Once)
-            BuiltinRuntimeActions.ApplyPlanTerminalState(_runtime, _plan);
+        _animationPresenter?.CompleteAnimationImmediately(_timeline.PlaybackHandleId);
+        if (_timeline.LoopMode != AnimationLoopMode.Once)
+            BuiltinRuntimeActions.ApplyTimelineTerminalState(_runtime, _timeline);
         _skipTask = CompleteSkipAsync();
     }
 
     protected override void OnPlaybackModeChanged(PrimitiveInvocationMode mode)
     {
-        if (mode == PrimitiveInvocationMode.CatchUp && !_plan.Blocking && _plan.LoopMode != AnimationLoopMode.Once)
+        if (mode == PrimitiveInvocationMode.CatchUp && !_timeline.Blocking && _timeline.LoopMode != AnimationLoopMode.Once)
         {
             _catchUpDetached = true;
             _presentationCancellation.Cancel();
-            _animationPresenter?.CompleteAnimationImmediately(_plan.PlaybackHandleId);
+            _animationPresenter?.CompleteAnimationImmediately(_timeline.PlaybackHandleId);
             return;
         }
-        if (mode != PrimitiveInvocationMode.Normal && (_plan.Blocking || _plan.LoopMode == AnimationLoopMode.Once)) Skip();
+        if (mode != PrimitiveInvocationMode.Normal && (_timeline.Blocking || _timeline.LoopMode == AnimationLoopMode.Once)) Skip();
     }
 
     protected override void OnCatchUpDispatch()
     {
-        if (!_plan.Skippable && _plan.Blocking) { OnDispatch(); return; }
-        BuiltinRuntimeActions.ApplyPlanStableState(_runtime, _plan);
+        if (!_timeline.Skippable && _timeline.Blocking) { OnDispatch(); return; }
+        BuiltinRuntimeActions.ApplyTimelineStableState(_runtime, _timeline);
         Dispose();
         TryComplete();
     }
@@ -140,19 +140,19 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
                 _scopeCancellation,
                 _presentationCancellation.Token);
             await NotifyEventsThroughFrameAsync(0, linked.Token).ConfigureAwait(false);
-            await _animationPresenter!.PlayAnimationPlanAsync(
-                _plan, linked.Token, elapsedFrames => NotifyPlaybackEventsAsync(elapsedFrames, linked.Token)).ConfigureAwait(false);
+            await _animationPresenter!.PlayTimelineAsync(
+                _timeline, linked.Token, elapsedFrames => NotifyPlaybackEventsAsync(elapsedFrames, linked.Token)).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (_scopeCancellation.IsCancellationRequested || _presentationCancellation.IsCancellationRequested)
         { }
         catch (Exception error)
-        { GameLog.Logger.Warning(error, "Animation plan {PlaybackId} presentation failed", _plan.PlaybackHandleId); }
+        { GameLog.Logger.Warning(error, "Animation timeline {PlaybackId} presentation failed", _timeline.PlaybackHandleId); }
         finally
         {
             _runtime.State.Update(() =>
             {
-                if (!_catchUpDetached && _playback is not null && _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_plan.PlaybackHandleId, out var current) && ReferenceEquals(current, _playback))
-                    BuiltinRuntimeActions.StopAnimationState(_runtime, _plan.PlaybackHandleId);
+                if (!_catchUpDetached && _playback is not null && _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_timeline.PlaybackHandleId, out var current) && ReferenceEquals(current, _playback))
+                    BuiltinRuntimeActions.StopAnimationState(_runtime, _timeline.PlaybackHandleId);
             });
             bool skipRequested;
             lock (_gate)
@@ -189,18 +189,18 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
     // Events and values therefore share one monotonic playback clock, including stalls.
     private async Task NotifyPlaybackEventsAsync(double elapsedFrames, CancellationToken cancellationToken)
     {
-        var cycleFrames = _plan.LoopMode == AnimationLoopMode.PingPong
-            ? _plan.DurationFrames * 2d : _plan.DurationFrames;
-        var cycle = _plan.LoopMode == AnimationLoopMode.Once || cycleFrames <= 0
+        var cycleFrames = _timeline.LoopMode == AnimationLoopMode.PingPong
+            ? _timeline.DurationFrames * 2d : _timeline.DurationFrames;
+        var cycle = _timeline.LoopMode == AnimationLoopMode.Once || cycleFrames <= 0
             ? 0 : (long)(elapsedFrames / cycleFrames);
         for (; _eventCycle < cycle; _eventCycle++)
         {
-            await NotifyEventsThroughFrameAsync(_plan.DurationFrames, cancellationToken).ConfigureAwait(false);
+            await NotifyEventsThroughFrameAsync(_timeline.DurationFrames, cancellationToken).ConfigureAwait(false);
             lock (_gate) Array.Clear(_notifiedEvents);
         }
-        var frame = _plan.LoopMode == AnimationLoopMode.Once || cycleFrames <= 0
+        var frame = _timeline.LoopMode == AnimationLoopMode.Once || cycleFrames <= 0
             ? elapsedFrames : elapsedFrames % cycleFrames;
-        await NotifyEventsThroughFrameAsync((int)Math.Min(_plan.DurationFrames, frame), cancellationToken).ConfigureAwait(false);
+        await NotifyEventsThroughFrameAsync((int)Math.Min(_timeline.DurationFrames, frame), cancellationToken).ConfigureAwait(false);
     }
 
     private async Task NotifyRemainingEventsAsync(CancellationToken cancellationToken)
@@ -213,7 +213,7 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
         }
     }
 
-    private async Task NotifyEventAsync(IndexedPlanEvent item, CancellationToken cancellationToken)
+    private async Task NotifyEventAsync(IndexedTimelineEvent item, CancellationToken cancellationToken)
     {
         await _notificationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -226,7 +226,7 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
             }
             try
             {
-                await BuiltinRuntimeActions.NotifyPlanEventAsync(
+                await BuiltinRuntimeActions.NotifyTimelineEventAsync(
                     item.Event, _layerPresenter, _effectPresenter, _particlePresenter,
                     cancellationToken).ConfigureAwait(false);
             }
@@ -237,7 +237,7 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
             }
             catch (Exception error)
             {
-                GameLog.Logger.Warning(error, "Animation plan event {EntryType} presentation failed", item.Event.Type);
+                GameLog.Logger.Warning(error, "Animation timeline event {EntryType} presentation failed", item.Event.Type);
             }
         }
         finally { _notificationGate.Release(); }
@@ -262,5 +262,5 @@ public sealed class AnimationPlanPrimitiveInstance : PrimitiveInstance, IDisposa
         GC.SuppressFinalize(this);
     }
 
-    private sealed record IndexedPlanEvent(int Index, AnimationPlanEventDefinition Event);
+    private sealed record IndexedTimelineEvent(int Index, TimelineEventDefinition Event);
 }

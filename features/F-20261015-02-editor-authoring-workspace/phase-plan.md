@@ -314,3 +314,21 @@ P6 后续仍包括未知 Entry 整参数 JSON 修改、Editor 状态查询/Locat
 2026-10-18 已形成 [复杂定制设计](complex-editor-design.md)，按用户描述的 Unity 类对象/属性树交互细化。建议依赖顺序为目标/属性查询 → Plan 无损适配与手势草稿 → 对象树/关键帧 → Hermite 曲线/纯采样 → 帧内事件与专业参数面板。此处仅记录设计依赖，正式阶段编号和退出条件仍待 phase plan；不标记这些功能已实施或已验证。
 
 用户随后收敛工具范围与顺序：先 Timeline Dock，再 animate 自定义曲线；其他专业参数面板移出近期范围。Timeline Dock 默认与资源同 BottomDocument 区域，树叶右侧值输入覆盖/创建当前帧键，并直接跟随当前活动 Entry：Timeline 类型可编辑，非 Timeline/无选择显示不可编辑提示，不固定旧目标。设计已补全全仓命名候选，见复杂定制设计第 10、12 节。实时预览明确不纳入阶段计划，不添加预览 Phase、不作为 Timeline 的前置或验收项；第 11 节仅为架构备忘。正式实施前将命名与 Dock/编辑/查询依赖拆为可验证阶段，不仅修改 UI 标题。
+
+## P6c：Timeline 契约与命名统一
+
+状态：verified。解决方案构建成功、1081 项回归和格式/源码指纹通过，6 个原生媒体环境用例未执行。2026-10-18 用户授权开始实施。前置 P6b；范围为 AnimationPlan→Timeline 的类型、播放/恢复接口、Entry ID timeline.play 与根参数 timeline，统一 composite writer、Sample/fixtures、四语与当前 spec；移除旧入口，不提供兼容别名。LoopAnimationState 的字段变化同步提升 builtin.animations payload 版本，保留 animate 共享的动画/混合/循环协议名称。
+
+验证：旧 Entry ID/旧参数拒绝，新 DTO/schema/compile/执行一致；转场展开到新 ID/参数；循环 Timeline 保存/恢复、原 animate 恢复不回归、旧 payload 版本拒绝；Core、Primitives、Runtime、Presentation、Integration、Editor/Shared/Architecture 受影响回归及解决方案构建。退出条件为所有实际消费者接通和新旧边界有测试证据；不宣称 Dock 或曲线工具已实现。记录见 [phase-6c.md](phase-6c.md)。
+
+## P6d：Timeline Dock 与项目编辑会话
+
+状态：planned。前置 P6c。项目级活动 Entry 选择上下文、BottomDocument 单实例 Dock、非 Timeline/无选择禁用提示、类型/删除/切项目失效；项目拥有的参数 binding、无损 Timeline JSON 投影、当前帧叶值 upsert 与单历史手势。值输入使用 NumericUpDown，当前帧已有键保留切线/插值。验证真实 Dock 选择切换、旧提交拒绝、未知字段/缺省保留、输入/手势取消、跨页 Undo/Save/重开与四语；通过后标记 verified。
+
+## P6e：对象树、关键帧与曲线编辑
+
+状态：planned。前置 P6d。接入隐藏 handle 的目标/属性能力、对象→属性树、时间刻度/缩放/滚动、关键帧多选/移动、Step/Linear/Hermite 切线、纯数值采样和受支持事件。直线查询先行；分支/循环保守分类与缺目标跳过按独立语义验收，不将未分析行为当作无影响。验证首键/碰撞/时长/FPS、切线单位、帧内事件顺序、复制引用、一次手势单历史、实际模板键鼠与保存闭环。实时场景预览不在范围内。
+
+## P6f：animate 自定义曲线
+
+状态：planned。前置 Timeline 编辑切片 verified。增加可序列化的归一化自定义曲线契约、采样/校验、编译与循环恢复，复用曲线控件及单历史手势；旧内置预设继续作为明确模式。正式实施前细化端点/overshoot 等值契约，不把界面注册当作持久化支持。实时预览不列 Phase。

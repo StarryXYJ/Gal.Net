@@ -1,6 +1,6 @@
 # 复杂参数定制与对象树时间轴
 
-日期：2026-10-18。状态：design，尚未实现。归属 F-20261015-02 / P6 后续，扩展 [参数控件与场景目标设计](parameter-editor-design.md) 第 5–8 节；三层注册与状态查询的总体职责仍以该文为准。
+日期：2026-10-18。状态：design，UI 工具尚未实现；P6c 已完成命名与契约，见 [phase-6c.md](phase-6c.md)。归属 F-20261015-02 / P6 后续，扩展 [参数控件与场景目标设计](parameter-editor-design.md) 第 5–8 节；三层注册与状态查询的总体职责仍以该文为准。
 
 ## 1. 用户要求与本轮选择
 
@@ -25,7 +25,7 @@
 | Plan 事件有同帧原数组顺序；运行时在采样前通知相应事件 | 事件排序与定位必须保留原序，同帧对象创建和动画采样要一致 |
 | Editor 只有字段/DTO patch 提交与部分 Preview binding，没有通用拖动事务或作者场景查询 | 这两部分是待实现依赖，不能把现有接口改名当作完成 |
 
-主要证据：[Plan/采样器](../../src/Shared/GalNet.Core/Scene/AnimationPlan.cs)、[契约 DTO](../../src/Shared/GalNet.Contracts.Builtins/Entry/ComplexPrimitiveOptions.cs)、[完整校验](../../src/Shared/GalNet.Contracts.Builtins/BuiltinArgumentValidation.cs)、[事件调度](../../src/Shared/GalNet.Primitives.Builtins/AnimationPlanPrimitiveInstance.cs)、[当前表单协议](../../src/Presentation/GalNet.Avalonia.Controls/Forms/FieldBinding.cs)。这是静态代码核对，不是新增功能验证。
+主要证据：[Plan/采样器](../../src/Shared/GalNet.Core/Scene/Timeline.cs)、[契约 DTO](../../src/Shared/GalNet.Contracts.Builtins/Entry/ComplexPrimitiveOptions.cs)、[完整校验](../../src/Shared/GalNet.Contracts.Builtins/BuiltinArgumentValidation.cs)、[事件调度](../../src/Shared/GalNet.Primitives.Builtins/AnimationPlanPrimitiveInstance.cs)、[当前表单协议](../../src/Presentation/GalNet.Avalonia.Controls/Forms/FieldBinding.cs)。这是静态代码核对，不是新增功能验证。
 
 ## 3. 界面与树形轨道
 
@@ -187,7 +187,7 @@ JSON 适配器保留原始树，只对已负责的键打 patch；移动数组元
 
 AnimationPlan 改为 Timeline 可行。当前静态搜索命中 23 个 C# 文件，包含 Core、契约、Primitives、展示接口/Avalonia 实现、状态恢复、Sample 和测试；这个数字不包含所有 JSON/文档，实施前仍需全仓核对。主要工作是统一符号、数据入口和消费者，并非重写采样算法。
 
-建议目标命名如下，尚未执行重命名：
+P6c 已按以下对应关系完成命名统一；表左为设计基线旧名，表右为当前名称：
 
 | 现名 | 目标名 |
 | --- | --- |
@@ -202,7 +202,7 @@ AnimationPlan 改为 Timeline 可行。当前静态搜索命中 23 个 C# 文件
 
 UI 和代码采用 Timeline 作为概念名称；IAnimationPresenter、AnimationBlendMode、AnimationLoopMode、动画播放身份/停止协议仍与 animate 共用，不为了消除所有 Animation 字样而改名。单属性 animate 继续使用原有单属性入口。
 
-不保留旧符号别名或旧 Entry ID 回退。若采用表内 wire 命名变更，契约、编译、运行、事件/转场 composite writer、Sample 内容、fixtures、Raw 编辑/CLI 和恢复 payload 必须同一切片更新；核对受影响的状态 codec 版本，避免旧 payload 被当作新格式解释。这是可一起完成的内容变更，不是仅给窗口改标题。旧作者内容不做兼容迁移，但仓库中仍作为有效样例使用的内容必须同步更新。以上是命名建议，用户目前询问的是可行性，不能据此记录已经完成全仓改名。
+不保留旧符号别名或旧 Entry ID 回退。若采用表内 wire 命名变更，契约、编译、运行、事件/转场 composite writer、Sample 内容、fixtures、Raw 编辑/CLI 和恢复 payload 必须同一切片更新；核对受影响的状态 codec 版本，避免旧 payload 被当作新格式解释。这是可一起完成的内容变更，不是仅给窗口改标题。旧作者内容不做兼容迁移，但仓库中仍作为有效样例使用的内容必须同步更新。用户后续已授权实施，P6c 已验证这些命名与内容入口变更；Dock 和时间轴编辑工具仍留后续阶段。
 
 animate 自定义曲线目前尚无可保存的自由曲线契约：AnimationOptions.Curve / AnimationRequest.CurveKind 保存的是内置枚举，IAnimationCurve 的运行期覆盖不参与 JSON。后续需要可序列化的归一化曲线定义、统一 sampler/validator、编译转换和循环动画恢复；只增加编辑 UI 会导致保存重开/循环恢复退回原曲线。首版建议保留内置预设并增加自定义模式，范围/端点/是否允许 overshoot 单独在该切片设计，不把 Timeline 的帧曲线直接塞进枚举字符串。
 

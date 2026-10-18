@@ -52,7 +52,7 @@ public static class BuiltinSchemas
     public static IEntryModule CreateAnimationsModule() => new DefaultEntryModule("animations",
     [
         DefaultPrimitiveEntryBase.ForDto<AnimationOptions>(BuiltinEntryIds.Animate),
-        DefaultPrimitiveEntryBase.ForDto<AnimationPlanOptions>(BuiltinEntryIds.PlayAnimationPlan, arguments => BuiltinArgumentValidation.Validate(BuiltinEntryIds.PlayAnimationPlan, arguments), validatePartialArguments: static _ => { }),
+        DefaultPrimitiveEntryBase.ForDto<TimelineOptions>(BuiltinEntryIds.PlayTimeline, arguments => BuiltinArgumentValidation.Validate(BuiltinEntryIds.PlayTimeline, arguments), validatePartialArguments: static _ => { }),
         DefaultPrimitiveEntryBase.ForDto<AnimationStopOptions>(BuiltinEntryIds.StopAnimation)
     ]);
 

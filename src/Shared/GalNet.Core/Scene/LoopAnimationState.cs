@@ -5,5 +5,5 @@ public sealed class LoopAnimationState
 {
     public string Id { get; init; } = "";
     public AnimationRequest? Request { get; init; }
-    public AnimationPlanDefinition? Plan { get; init; }
+    public TimelineDefinition? Timeline { get; init; }
 }
