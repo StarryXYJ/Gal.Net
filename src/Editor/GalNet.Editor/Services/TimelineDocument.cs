@@ -9,7 +9,7 @@ using GalNet.Core.Scene;
 namespace GalNet.Editor.Services;
 
 /// <summary>Known-value projection of raw author JSON. Patches always retain the original objects.</summary>
-internal sealed class TimelineDocument
+internal sealed partial class TimelineDocument
 {
     private static readonly JsonSerializerOptions Options = new() { PropertyNameCaseInsensitive = true, Converters = { new JsonStringEnumConverter() } };
     private readonly JsonObject _root;

@@ -62,11 +62,10 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(session.Tree, Has.Count.EqualTo(2)); Assert.That(session.AnalysisIncomplete, Is.False); Assert.That(history.CanUndo, Is.False);
                 Assert.That(session.Tree.Select(node => node.Label).Distinct().Count(), Is.EqualTo(2));
                 Assert.That(view.GetVisualDescendants().OfType<TextBlock>().Any(block => handles.Any(handle => block.Text?.Contains(handle!, StringComparison.Ordinal) == true)), Is.False);
-                var tree = view.FindControl<TreeView>("TimelinePropertyTree")!;
-                var parent = tree.GetVisualDescendants().OfType<TreeViewItem>().Single(item => ReferenceEquals(item.DataContext, session.Tree[0]));
-                var expander = parent.GetVisualDescendants().OfType<ToggleButton>().First(button => button is not CheckBox);
+                var tree = view.FindControl<ItemsControl>("TimelinePropertyTree")!;
+                var expander = tree.GetVisualDescendants().OfType<ToggleButton>().Single(button => button.Name == "TimelineExpand" && ReferenceEquals(button.DataContext, session.Tree[0]));
                 TimelineClick(window, expander); Assert.That(session.Tree[0].IsExpanded, Is.False); session.Frame = 5; TimelinePump(window); Assert.That(session.Tree[0].IsExpanded, Is.False, "Collapsed objects survive playback-head refresh.");
-                parent = tree.GetVisualDescendants().OfType<TreeViewItem>().Single(item => ReferenceEquals(item.DataContext, session.Tree[0])); TimelineClick(window, parent.GetVisualDescendants().OfType<ToggleButton>().First(button => button is not CheckBox));
+                TimelineClick(window, tree.GetVisualDescendants().OfType<ToggleButton>().Single(button => button.Name == "TimelineExpand" && ReferenceEquals(button.DataContext, session.Tree[0])));
                 var row = session.Tree[0].Children.SelectMany(node => node.Children).Select(node => node.Value).Single(item => item?.Property == "transform.x")!;
                 var input = view.GetVisualDescendants().OfType<NumericUpDown>().Single(control => ReferenceEquals(control.DataContext, row));
                 var text = input.GetVisualDescendants().OfType<TextBox>().Single(); text.Focus(); text.Text = "15"; TimelinePump(window); PressGroupKey(text, Key.Enter); TimelinePump(window);

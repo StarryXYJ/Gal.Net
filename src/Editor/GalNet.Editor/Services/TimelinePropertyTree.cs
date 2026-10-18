@@ -14,8 +14,12 @@ public sealed partial class TimelineTreeNode(string key, Func<string> label, Tim
     public TimelineValueRow? Value { get; } = value;
     public bool IsLeaf => Value is not null;
     public bool IsBranch => !IsLeaf;
+    public int Depth { get; internal set; }
+    public double Indent => Depth * 16;
     public ObservableCollection<TimelineTreeNode> Children { get; } = [];
     [ObservableProperty] private bool _isExpanded = true;
+    public string ExpandGlyph => IsExpanded ? "▾" : "▸";
+    partial void OnIsExpandedChanged(bool value) => OnPropertyChanged(nameof(ExpandGlyph));
     internal IEnumerable<TimelineTreeNode> Descendants() => new[] { this }.Concat(Children.SelectMany(node => node.Descendants()));
     internal void RefreshLabel() => OnPropertyChanged(nameof(Label));
 }
@@ -58,7 +62,8 @@ public sealed partial class TimelineEditSession
                 parent.Children.Add(new(path + "/" + segments[^1], () => PropertyName(row.Property), row));
             }
         }
-        foreach (var node in Tree.SelectMany(node => node.Descendants())) if (_expansion.TryGetValue(node.Key, out var expanded)) node.IsExpanded = expanded;
+        foreach (var node in Tree.SelectMany(node => node.Descendants()))
+        { if (_expansion.TryGetValue(node.Key, out var expanded)) node.IsExpanded = expanded; node.PropertyChanged += OnTreeExpansion; }
     }
     private string PropertyName(string property)
     {

@@ -42,7 +42,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
     [ObservableProperty] private bool _canEdit;
     [ObservableProperty] private int _duration;
     [ObservableProperty] private int _frameRate = 60;
-    public bool HasNoRows => CanEdit && Rows.Count == 0;
+    public bool HasNoRows => CanEdit && VisibleNodes.Count == 0;
     public bool AnalysisIncomplete => CanEdit && (!_scene.Complete || _document?.HasEvents == true);
     public int Frame
     {
@@ -50,7 +50,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         set
         {
             var next = Math.Clamp(value, 0, Duration);
-            if (SetProperty(ref _frame, next)) BuildRows();
+            if (SetProperty(ref _frame, next)) { Canvas.Cancel(); BuildRows(); }
         }
     }
     public TimelineEditSession(EntrySelectionContext selection, IEditorDocumentService documents, EntryFieldAuthoringService authoring,
@@ -58,6 +58,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
     {
         _selection = selection; _documents = documents; _authoring = authoring; _catalog = catalog; _localization = localization; _histories = histories;
         _sceneQuery = sceneQuery;
+        InitializeCanvas();
         selection.Changed += OnSelection; documents.DocumentChanged += Refresh; histories.Changed += Refresh;
         localization.PropertyChanged += OnLocale;
         Refresh();
@@ -84,7 +85,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         if (_target == _selection.Current && ReferenceEquals(_entry, next) && _type == next?.Type && sameValue && sceneSignature == _sceneSignature)
         { RefreshSource(); foreach (var node in Tree.SelectMany(node => node.Descendants())) node.RefreshLabel(); return; }
         _scene = scene; _sceneSignature = sceneSignature;
-        SaveExpansion(); _generation++; Rows.Clear(); Tree.Clear(); _document = null; _baseline = null; Message = "";
+        SaveExpansion(); DetachTree(); InvalidateKeyDocument(); _generation++; Rows.Clear(); Tree.Clear(); _document = null; _baseline = null; Message = "";
         _target = _selection.Current; _entry = next; _type = next?.Type; _baseline = root;
         CanCreate = false; CanEdit = false; Duration = 0; FrameRate = 60;
         RefreshSource();
@@ -107,7 +108,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         (_documents.CurrentDocument.Nodes.Single(node => node.Id == _target!.GroupId).Name) + " / " + _entry.Id;
     private void BuildRows()
     {
-        SaveExpansion(); _generation++; Rows.Clear(); Tree.Clear();
+        SaveExpansion(); DetachTree(); _generation++; Rows.Clear(); Tree.Clear();
         if (_document is not null && CanEdit)
         {
             var objects = _document.Tracks.Select(track => track.HandleId).Distinct(StringComparer.Ordinal).ToArray();
@@ -127,7 +128,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
                 }
             BuildTree();
         }
-        NotifyState();
+        SyncCanvasDocument(); NotifyState();
     }
     public void Create()
     {
@@ -167,10 +168,10 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         }
         catch (Exception error) { Message = EditorText.Error(error).Render(_localization); return false; }
     }
-    public void CancelInput() { if (!_disposed) BuildRows(); }
+    public void CancelInput() { if (!_disposed) { Canvas.Cancel(); BuildRows(); } }
     public void Dispose()
     {
-        if (_disposed) return; _disposed = true; _generation++; Rows.Clear(); Tree.Clear();
+        if (_disposed) return; _disposed = true; DetachTree(); InvalidateKeyDocument(); _generation++; Rows.Clear(); Tree.Clear();
         _selection.Changed -= OnSelection; _documents.DocumentChanged -= Refresh; _histories.Changed -= Refresh;
         _localization.PropertyChanged -= OnLocale; _entry = null; _document = null;
     }
@@ -184,6 +185,7 @@ public sealed partial class TimelineValueRow : ObservableObject
     private readonly bool _offset, _hasKey;
     private readonly decimal? _original;
     internal string Handle { get; }
+    internal int TrackIndex => _index;
     internal SceneTarget? Target { get; }
     internal AnimatableProperty? Capability => Target?.Properties.FirstOrDefault(property => property.Name == Property);
     internal float? Baseline => _original is { } value ? (float)value : null;

@@ -39,7 +39,9 @@ P6c Timeline 命名与契约已验证：类型/播放接口、timeline.play/time
 
 P6d Timeline Dock 与当前 Entry 绑定已验证：底部单实例、普通条目/无选择提示、已有轨道的当前帧 NumericUpDown 写键、项目历史、无损保存和旧行失效接通。解决方案构建成功，644 项相关回归及格式/源码指纹通过，见 [phase-6d.md](phase-6d.md)。
 
-P6e1 已验证基础场景候选和对象→属性树，轨道可显式创建/移除，未知初值与偏移首键规则接通；GUI 创建者分配内部身份，Entry 粘贴按声明槽位重映射批内引用。分支/循环查询保守分类，不支持的 Timeline/转场/自定义语义提示不完整。解决方案构建、656 项相关回归、格式与源码指纹通过，见 [phase-6e1.md](phase-6e1.md)。P6e 整体仍在实施，下一步 P6e2 画布和关键帧操作，曲线、事件/剩余引用随后推进；实时预览继续排除。
+P6e1 已验证基础场景候选和对象→属性树，轨道可显式创建/移除，未知初值与偏移首键规则接通；GUI 创建者分配内部身份，Entry 粘贴按声明槽位重映射批内引用。分支/循环查询保守分类，不支持的 Timeline/转场/自定义语义提示不完整。解决方案构建、656 项相关回归、格式与源码指纹通过，见 [phase-6e1.md](phase-6e1.md)。P6e 整体仍在实施，P6e2 画布和关键帧操作见下方进度，曲线、事件/剩余引用随后推进；实时预览继续排除。
+
+P6e2 已验证关键帧画布、树/画布行对齐、缩放/滚动、选择/拖动/删除、首键与碰撞保护、时长/FPS 和单历史手势。解决方案构建、901 项相关回归及格式/源码指纹通过，6 项原生媒体环境用例未执行；见 [phase-6e2.md](phase-6e2.md)。下一步 P6e3 曲线和切线，P6e4 事件与剩余语义；实时预览不在计划。
 
 ## 问题与现有基础
 
@@ -155,7 +157,7 @@ P6e1 已验证基础场景候选和对象→属性树，轨道可显式创建/�
 - [参数控件与场景目标设计（第 6 点）](parameter-editor-design.md)：共享 UI 基础已完成 [P6a](phase-6a.md)，状态查询、隐藏 handle 和动画编辑仍按后续切片推进。
 - [galgroup 编辑交互与控件扩展补充设计](group-editing-design.md)：用户追加第 1–5 点纳入 P5；第 6 点仅设计，底层保留 handle，作者选择可读场景目标。
 - [实施 Phase Plan](phase-plan.md)
-- [Feature 工作流](../../docs/design/feature-workflow.md)
+- [Feature 实施流程](../../.agents/skills/galnet-feature-implement/SKILL.md)
 - [当前架构](../../docs/spec/architecture.md)
 - [文件格式](../../docs/spec/file-formats.md)
 - [资源](../../docs/spec/assets.md)

@@ -661,5 +661,22 @@
   "Timeline.Property.noise": "噪声",
   "Timeline.Property.particleScale": "粒子大小",
   "Timeline.Property.particleLifetime": "粒子寿命",
-  "Timeline.Property.progress": "进度"
+  "Timeline.Property.progress": "进度",
+  "Timeline.PreviousKey": "上一键",
+  "Timeline.NextKey": "下一键",
+  "Timeline.AddKey": "当前帧加键",
+  "Timeline.DeleteKeys": "删除所选键",
+  "Timeline.ShowAvailable": "可添加属性",
+  "Timeline.KeepSeconds": "保留秒数",
+  "Timeline.ApplyTiming": "应用时间设置",
+  "Timeline.TrimTiming": "裁剪并应用",
+  "Timeline.CanvasHint": "刻度定位 · Ctrl 多选/滚轮缩放 · 拖动移动/框选 · Delete 删除 · Esc 取消",
+  "Timeline.Zoom": "缩放",
+  "Timeline.ReplaceCollisions": "替换碰撞键并应用",
+  "Timeline.CancelMove": "取消移动",
+  "Timeline.KeyProtected": "第 0 帧键不能移动或删除，需要时请明确移除整条轨道。",
+  "Timeline.KeyOutside": "关键帧必须位于时间轴时长范围内。",
+  "Timeline.KeyCollision": "移动或重定时会与其他关键帧碰撞，尚未修改内容。",
+  "Timeline.TrimRequired": "缩短时长会移除关键帧或事件，请使用“裁剪并应用”明确确认。",
+  "Timeline.SelectTrack": "请先选择已有轨道的属性或关键帧。"
 }

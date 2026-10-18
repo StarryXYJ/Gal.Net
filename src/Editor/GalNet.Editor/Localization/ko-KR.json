@@ -661,5 +661,22 @@
   "Timeline.Property.noise": "노이즈",
   "Timeline.Property.particleScale": "파티클 크기",
   "Timeline.Property.particleLifetime": "파티클 수명",
-  "Timeline.Property.progress": "진행률"
+  "Timeline.Property.progress": "진행률",
+  "Timeline.PreviousKey": "이전 키",
+  "Timeline.NextKey": "다음 키",
+  "Timeline.AddKey": "현재 프레임에 키 추가",
+  "Timeline.DeleteKeys": "선택 키 삭제",
+  "Timeline.ShowAvailable": "추가 가능한 속성",
+  "Timeline.KeepSeconds": "초 단위 시간 유지",
+  "Timeline.ApplyTiming": "시간 설정 적용",
+  "Timeline.TrimTiming": "잘라내고 적용",
+  "Timeline.CanvasHint": "눈금 이동 · Ctrl 다중 선택/확대 · 드래그 이동/영역 선택 · Delete 삭제 · Esc 취소",
+  "Timeline.Zoom": "확대",
+  "Timeline.ReplaceCollisions": "충돌 키를 교체하고 적용",
+  "Timeline.CancelMove": "이동 취소",
+  "Timeline.KeyProtected": "0 프레임 키는 이동하거나 삭제할 수 없습니다. 필요하면 트랙 전체를 제거하세요.",
+  "Timeline.KeyOutside": "키는 타임라인 길이 안에 있어야 합니다.",
+  "Timeline.KeyCollision": "이동 또는 시간 변경 시 다른 키와 충돌합니다. 내용은 변경되지 않았습니다.",
+  "Timeline.TrimRequired": "길이를 줄이면 키나 이벤트가 제거됩니다. 잘라내고 적용을 사용하세요.",
+  "Timeline.SelectTrack": "먼저 트랙의 속성이나 키를 선택하세요。"
 }

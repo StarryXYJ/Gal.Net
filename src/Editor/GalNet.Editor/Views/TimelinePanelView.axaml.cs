@@ -24,4 +24,6 @@ public partial class TimelinePanelView : UserControl
             args.Handled = true;
         }
     }
+    private void OnTreeRowPointerPressed(object? sender, PointerPressedEventArgs args)
+    { if (sender is Control { DataContext: TimelineTreeNode { Value: { } row } } && DataContext is ViewModels.TimelinePanelViewModel vm) vm.Session.SetActiveTrack(row); }
 }

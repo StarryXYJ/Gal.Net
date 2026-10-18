@@ -661,5 +661,22 @@
   "Timeline.Property.noise": "Noise",
   "Timeline.Property.particleScale": "Particle scale",
   "Timeline.Property.particleLifetime": "Particle lifetime",
-  "Timeline.Property.progress": "Progress"
+  "Timeline.Property.progress": "Progress",
+  "Timeline.PreviousKey": "Previous key",
+  "Timeline.NextKey": "Next key",
+  "Timeline.AddKey": "Add key",
+  "Timeline.DeleteKeys": "Delete keys",
+  "Timeline.ShowAvailable": "Available properties",
+  "Timeline.KeepSeconds": "Preserve seconds",
+  "Timeline.ApplyTiming": "Apply timing",
+  "Timeline.TrimTiming": "Trim and apply",
+  "Timeline.CanvasHint": "Ruler: seek · Ctrl: multi-select/zoom · drag: move/box select · Delete · Esc: cancel",
+  "Timeline.Zoom": "Zoom",
+  "Timeline.ReplaceCollisions": "Replace colliding keys and apply",
+  "Timeline.CancelMove": "Cancel move",
+  "Timeline.KeyProtected": "The frame-zero key cannot be moved or deleted. Remove its track explicitly if needed.",
+  "Timeline.KeyOutside": "Keys must stay within the timeline duration.",
+  "Timeline.KeyCollision": "The move or retiming collides with another key. Nothing was changed.",
+  "Timeline.TrimRequired": "Shortening would remove keys or events. Use Trim and apply to confirm.",
+  "Timeline.SelectTrack": "Select a tracked property or key first."
 }

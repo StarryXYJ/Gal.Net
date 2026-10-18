@@ -661,5 +661,22 @@
   "Timeline.Property.noise": "ノイズ",
   "Timeline.Property.particleScale": "パーティクルサイズ",
   "Timeline.Property.particleLifetime": "パーティクル寿命",
-  "Timeline.Property.progress": "進行度"
+  "Timeline.Property.progress": "進行度",
+  "Timeline.PreviousKey": "前のキー",
+  "Timeline.NextKey": "次のキー",
+  "Timeline.AddKey": "現在フレームにキー追加",
+  "Timeline.DeleteKeys": "選択キーを削除",
+  "Timeline.ShowAvailable": "追加可能なプロパティ",
+  "Timeline.KeepSeconds": "秒数を保持",
+  "Timeline.ApplyTiming": "時間設定を適用",
+  "Timeline.TrimTiming": "切り詰めて適用",
+  "Timeline.CanvasHint": "目盛りで移動 · Ctrlで複数選択/拡大 · ドラッグで移動/範囲選択 · Delete削除 · Esc取消",
+  "Timeline.Zoom": "ズーム",
+  "Timeline.ReplaceCollisions": "衝突キーを置換して適用",
+  "Timeline.CancelMove": "移動を取消",
+  "Timeline.KeyProtected": "フレーム0のキーは移動・削除できません。必要ならトラック全体を削除してください。",
+  "Timeline.KeyOutside": "キーはタイムラインの長さの範囲内に置いてください。",
+  "Timeline.KeyCollision": "移動または時間変更でキーが衝突します。内容は変更していません。",
+  "Timeline.TrimRequired": "短縮するとキーやイベントが失われます。「切り詰めて適用」で確定してください。",
+  "Timeline.SelectTrack": "先にトラックのプロパティまたはキーを選択してください。"
 }

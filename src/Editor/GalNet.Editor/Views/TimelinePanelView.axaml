@@ -1,41 +1,77 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:services="using:GalNet.Editor.Services"
+             xmlns:timeline="using:GalNet.Game.Controls.Timeline"
              xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
              x:Class="GalNet.Editor.Views.TimelinePanelView" x:DataType="vm:TimelinePanelViewModel">
-  <Grid Margin="10" RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" RowSpacing="6">
+  <Grid Margin="10" RowDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto" RowSpacing="6">
     <TextBlock Text="{Binding Session.Source}" Opacity="0.7" TextWrapping="Wrap"/>
     <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
-      <TextBlock x:Name="TimelineStatus" Text="{loc:Localize Path=Session.StatusKey}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+      <TextBlock x:Name="TimelineStatus" Text="{loc:Localize Path=Session.StatusKey}" VerticalAlignment="Center"/>
       <Button x:Name="CreateTimeline" Content="{loc:Localize Timeline.Create}" Command="{Binding CreateCommand}" IsVisible="{Binding Session.CanCreate}"/>
     </StackPanel>
-    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" IsVisible="{Binding Session.CanEdit}">
-      <TextBlock Text="{loc:Localize Timeline.Frame}" VerticalAlignment="Center"/>
-      <NumericUpDown x:Name="TimelineFrame" Width="120" Minimum="0" Maximum="{Binding Session.Duration}" Increment="1" FormatString="0" Value="{Binding Session.Frame,Mode=TwoWay}"/>
-      <TextBlock Text="{loc:Localize Timeline.Duration}" VerticalAlignment="Center"/><TextBlock Text="{Binding Session.Duration}" VerticalAlignment="Center"/>
-      <TextBlock Text="FPS" VerticalAlignment="Center"/><TextBlock Text="{Binding Session.FrameRate}" VerticalAlignment="Center"/>
-    </StackPanel>
-    <TextBlock Grid.Row="3" Text="{loc:Localize Timeline.AnalysisIncomplete}" IsVisible="{Binding Session.AnalysisIncomplete}" TextWrapping="Wrap" Opacity="0.7"/>
-    <Grid Grid.Row="4" IsVisible="{Binding Session.CanEdit}">
-      <TextBlock Text="{loc:Localize Timeline.Empty}" IsVisible="{Binding Session.HasNoRows}" TextWrapping="Wrap"/>
-      <TreeView Name="TimelinePropertyTree" ItemsSource="{Binding Session.Tree}">
-        <TreeView.Styles><Style Selector="TreeViewItem"><Setter Property="IsExpanded" Value="{ReflectionBinding IsExpanded,Mode=TwoWay}"/></Style></TreeView.Styles>
-        <TreeView.ItemTemplate><TreeDataTemplate x:DataType="services:TimelineTreeNode" ItemsSource="{Binding Children}">
-          <Grid ColumnDefinitions="260,*" ColumnSpacing="8" Margin="0,3">
-            <TextBlock Text="{Binding Label}" ToolTip.Tip="{Binding Label}" VerticalAlignment="Center"/>
-            <ContentControl Grid.Column="1" Content="{Binding Value}" IsVisible="{Binding IsLeaf}">
-              <ContentControl.ContentTemplate><DataTemplate x:DataType="services:TimelineValueRow">
-                <Grid ColumnDefinitions="Auto,150,Auto,*" ColumnSpacing="8">
-                  <CheckBox Name="TimelineTrack" IsChecked="{Binding HasTrack,Mode=OneWay}" Click="OnTrackClick" ToolTip.Tip="{loc:Localize Timeline.TrackToggle}" VerticalAlignment="Center"/>
-                  <NumericUpDown Grid.Column="1" Name="TimelineValue" Value="{Binding DraftValue,Mode=TwoWay}" Increment="0.1" FormatString="G9" IsEnabled="{Binding IsEditable}" ToolTip.Tip="{loc:Localize Timeline.InputHint}" LostFocus="OnValueLostFocus"/>
-                  <CheckBox Grid.Column="2" Content="{loc:Localize Timeline.Offset}" IsChecked="{Binding IsAdditive,Mode=TwoWay}" IsVisible="{Binding !HasTrack}"/>
-                  <TextBlock Grid.Column="3" Text="{Binding Hint}" VerticalAlignment="Center" TextWrapping="Wrap" Opacity="0.7"/>
+    <WrapPanel Grid.Row="2" IsVisible="{Binding Session.CanEdit}">
+      <TextBlock Margin="0,0,6,0" Text="{loc:Localize Timeline.Frame}" VerticalAlignment="Center"/>
+      <NumericUpDown x:Name="TimelineFrame" Width="90" Minimum="0" Maximum="{Binding Session.Duration}" Increment="1" FormatString="0" Value="{Binding Session.Frame,Mode=TwoWay}"/>
+      <Button Margin="6,0" Content="{loc:Localize Timeline.PreviousKey}" Command="{Binding PreviousKeyCommand}"/>
+      <Button Content="{loc:Localize Timeline.NextKey}" Command="{Binding NextKeyCommand}"/>
+      <Button Margin="6,0" Content="{loc:Localize Timeline.AddKey}" Command="{Binding AddKeyCommand}"/>
+      <Button Content="{loc:Localize Timeline.DeleteKeys}" Command="{Binding DeleteKeysCommand}"/>
+      <CheckBox Margin="10,0" Content="{loc:Localize Timeline.ShowAvailable}" IsChecked="{Binding Session.ShowAvailableProperties,Mode=TwoWay}"/>
+    </WrapPanel>
+    <WrapPanel Grid.Row="3" IsVisible="{Binding Session.CanEdit}">
+      <TextBlock Margin="0,0,6,0" Text="{loc:Localize Timeline.Duration}" VerticalAlignment="Center"/>
+      <NumericUpDown Name="TimelineDurationDraft" Width="95" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" Value="{Binding Session.TimingDurationDraft,Mode=TwoWay}" IsEnabled="{Binding !Session.KeepSeconds}"/>
+      <TextBlock Margin="6,0" Text="FPS" VerticalAlignment="Center"/>
+      <NumericUpDown Name="TimelineFpsDraft" Width="75" Minimum="1" Maximum="240" Increment="1" FormatString="0" Value="{Binding Session.TimingFrameRateDraft,Mode=TwoWay}"/>
+      <CheckBox Margin="8,0" Content="{loc:Localize Timeline.KeepSeconds}" IsChecked="{Binding Session.KeepSeconds,Mode=TwoWay}"/>
+      <TextBlock Margin="0,0,6,0" Text="{Binding Session.RetimedDuration}" IsVisible="{Binding Session.KeepSeconds}" VerticalAlignment="Center"/>
+      <Button Content="{loc:Localize Timeline.ApplyTiming}" Command="{Binding ApplyTimingCommand}"/>
+      <Button Margin="6,0" Content="{loc:Localize Timeline.TrimTiming}" Command="{Binding TrimTimingCommand}"/>
+    </WrapPanel>
+    <Grid Grid.Row="4" RowDefinitions="28,*,Auto" ColumnDefinitions="470,*" IsVisible="{Binding Session.CanEdit}">
+      <TextBlock Text="{loc:Localize Timeline.CanvasHint}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{loc:Localize Timeline.CanvasHint}" FontSize="11" VerticalAlignment="Center"/>
+      <timeline:TimelineCanvas Grid.Column="1" Name="TimelineRuler" IsRuler="True" Model="{Binding Session.Canvas}"/>
+      <ScrollViewer Name="TimelineVertical" Grid.Row="1" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <Grid ColumnDefinitions="470,*">
+          <ItemsControl Name="TimelinePropertyTree" ItemsSource="{Binding Session.VisibleNodes}">
+            <ItemsControl.ItemTemplate><DataTemplate x:DataType="services:TimelineTreeNode">
+              <Grid Height="38" ColumnDefinitions="*,250" PointerPressed="OnTreeRowPointerPressed">
+                <Grid ColumnDefinitions="Auto,18,*">
+                  <Border Width="{Binding Indent}"/>
+                  <ToggleButton Grid.Column="1" Name="TimelineExpand" Width="18" MinWidth="0" Height="26" Padding="0" Content="{Binding ExpandGlyph}" IsVisible="{Binding IsBranch}" IsChecked="{Binding IsExpanded,Mode=TwoWay}"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Label}" ToolTip.Tip="{Binding Label}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="3,0"/>
                 </Grid>
-              </DataTemplate></ContentControl.ContentTemplate>
-            </ContentControl>
-          </Grid>
-        </TreeDataTemplate></TreeView.ItemTemplate>
-      </TreeView>
+                <ContentControl Grid.Column="1" Content="{Binding Value}" IsVisible="{Binding IsLeaf}">
+                  <ContentControl.ContentTemplate><DataTemplate x:DataType="services:TimelineValueRow">
+                    <Grid ColumnDefinitions="26,110,*" ColumnSpacing="4">
+                      <CheckBox Name="TimelineTrack" IsChecked="{Binding HasTrack,Mode=OneWay}" Click="OnTrackClick" ToolTip.Tip="{loc:Localize Timeline.TrackToggle}" VerticalAlignment="Center"/>
+                      <NumericUpDown Grid.Column="1" Name="TimelineValue" Value="{Binding DraftValue,Mode=TwoWay}" Increment="0.1" FormatString="G9" IsEnabled="{Binding IsEditable}" LostFocus="OnValueLostFocus">
+                        <ToolTip.Tip><StackPanel MaxWidth="420"><TextBlock Text="{Binding Hint}" TextWrapping="Wrap"/><TextBlock Text="{loc:Localize Timeline.InputHint}" TextWrapping="Wrap"/></StackPanel></ToolTip.Tip>
+                      </NumericUpDown>
+                      <CheckBox Grid.Column="2" Content="{loc:Localize Timeline.Offset}" IsChecked="{Binding IsAdditive,Mode=TwoWay}" IsVisible="{Binding !HasTrack}"/>
+                    </Grid>
+                  </DataTemplate></ContentControl.ContentTemplate>
+                </ContentControl>
+              </Grid>
+            </DataTemplate></ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <timeline:TimelineCanvas Grid.Column="1" Name="TimelineKeys" Model="{Binding Session.Canvas}" Height="{Binding Session.Canvas.ContentHeight}" VerticalAlignment="Top"/>
+          <TextBlock Text="{loc:Localize Timeline.Empty}" IsVisible="{Binding Session.HasNoRows}" TextWrapping="Wrap" Margin="4"/>
+        </Grid>
+      </ScrollViewer>
+      <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6">
+        <TextBlock Text="{loc:Localize Timeline.Zoom}" VerticalAlignment="Center"/>
+        <Slider Name="TimelineZoom" Width="140" Minimum="0.5" Maximum="64" Value="{Binding Session.Canvas.PixelsPerFrame,Mode=TwoWay}"/>
+      </StackPanel>
+      <ScrollBar Grid.Row="2" Grid.Column="1" Name="TimelineScroll" Orientation="Horizontal" Minimum="0" Maximum="{Binding Session.Duration}" SmallChange="1" LargeChange="10" Value="{Binding Session.Canvas.StartFrame,Mode=TwoWay}"/>
     </Grid>
-    <TextBlock Grid.Row="5" Text="{Binding Session.Message}" TextWrapping="Wrap" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"/>
+    <StackPanel Grid.Row="5" Spacing="4">
+      <TextBlock Text="{loc:Localize Timeline.AnalysisIncomplete}" IsVisible="{Binding Session.AnalysisIncomplete}" TextWrapping="Wrap" Opacity="0.7"/>
+      <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding Session.Canvas.HasPendingMove}">
+        <Button Content="{loc:Localize Timeline.ReplaceCollisions}" Command="{Binding ReplaceCollisionsCommand}"/>
+        <Button Content="{loc:Localize Timeline.CancelMove}" Command="{Binding CancelMoveCommand}"/>
+      </StackPanel>
+    </StackPanel>
+    <TextBlock Grid.Row="6" Text="{Binding Session.Message}" TextWrapping="Wrap" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"/>
   </Grid>
 </UserControl>

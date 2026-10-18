@@ -1,6 +1,6 @@
 # 复杂参数定制与对象树时间轴
 
-日期：2026-10-18。状态：部分实施，P6c 已完成命名与契约，见 [phase-6c.md](phase-6c.md)；P6d 已验证 Dock、活动选择与已有轨道数值编辑，见 [phase-6d.md](phase-6d.md)；P6e1 已验证基础场景查询、对象/属性树和轨道创建，见 [phase-6e1.md](phase-6e1.md)。画布、专属曲线工具和 Timeline 事件语义尚未实现。归属 F-20261015-02 / P6 后续，扩展 [参数控件与场景目标设计](parameter-editor-design.md) 第 5–8 节；三层注册与状态查询的总体职责仍以该文为准。
+日期：2026-10-18。状态：部分实施，P6c 已完成命名与契约，见 [phase-6c.md](phase-6c.md)；P6d 已验证 Dock、活动选择与已有轨道数值编辑，见 [phase-6d.md](phase-6d.md)；P6e1 已验证基础场景查询、对象/属性树和轨道创建，见 [phase-6e1.md](phase-6e1.md)。P6e2 已验证关键帧画布、选择/移动、缩放滚动与时间编辑，见 [phase-6e2.md](phase-6e2.md)。专属曲线工具和 Timeline 事件语义尚未实现。归属 F-20261015-02 / P6 后续，扩展 [参数控件与场景目标设计](parameter-editor-design.md) 第 5–8 节；三层注册与状态查询的总体职责仍以该文为准。
 
 ## 1. 用户要求与本轮选择
 
@@ -25,7 +25,7 @@
 | Plan 事件有同帧原数组顺序；运行时在采样前通知相应事件 | 事件排序与定位必须保留原序，同帧对象创建和动画采样要一致 |
 | Editor 只有字段/DTO patch 提交与部分 Preview binding，没有通用拖动事务或作者场景查询 | 这两部分是待实现依赖，不能把现有接口改名当作完成 |
 
-主要证据：[Plan/采样器](../../src/Shared/GalNet.Core/Scene/Timeline.cs)、[契约 DTO](../../src/Shared/GalNet.Contracts.Builtins/Entry/ComplexPrimitiveOptions.cs)、[完整校验](../../src/Shared/GalNet.Contracts.Builtins/BuiltinArgumentValidation.cs)、[事件调度](../../src/Shared/GalNet.Primitives.Builtins/AnimationPlanPrimitiveInstance.cs)、[当前表单协议](../../src/Presentation/GalNet.Avalonia.Controls/Forms/FieldBinding.cs)。这是静态代码核对，不是新增功能验证。
+主要证据：[Plan/采样器](../../src/Shared/GalNet.Core/Scene/Timeline.cs)、[契约 DTO](../../src/Shared/GalNet.Contracts.Builtins/Entry/ComplexPrimitiveOptions.cs)、[完整校验](../../src/Shared/GalNet.Contracts.Builtins/BuiltinArgumentValidation.cs)、[事件调度](../../src/Shared/GalNet.Primitives.Builtins/TimelinePrimitiveInstance.cs)、[当前表单协议](../../src/Presentation/GalNet.Avalonia.Controls/Forms/FieldBinding.cs)。这是静态代码核对，不是新增功能验证。
 
 ## 3. 界面与树形轨道
 
