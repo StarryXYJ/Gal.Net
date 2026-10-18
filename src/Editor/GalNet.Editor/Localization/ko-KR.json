@@ -676,5 +676,18 @@
   "Timeline.KeyProtected": "0 프레임 키는 이동하거나 삭제할 수 없습니다. 필요하면 트랙 전체를 제거하세요.",
   "Timeline.KeyOutside": "키프레임은 지원 범위 안의 0 이상 프레임에 있어야 합니다.",
   "Timeline.KeyCollision": "이동 또는 시간 변경 시 다른 키와 충돌합니다. 내용은 변경되지 않았습니다.",
-  "Timeline.SelectTrack": "먼저 트랙의 속성이나 키를 선택하세요。"
+  "Timeline.SelectTrack": "먼저 트랙의 속성이나 키를 선택하세요。",
+  "Scene.Target": "장면 대상",
+  "Scene.None": "선택 안 함",
+  "Scene.Unresolved": "확인되지 않은 대상",
+  "Scene.Search": "리소스, 대상 또는 생성 위치 검색",
+  "Scene.CandidateHint": "이 항목 실행 전의 알려진 상태를 사용합니다. 미지원 동작이 결과에 영향을 줄 수 있습니다.",
+  "Scene.Global": "전체 장면 (레이어 없음)",
+  "Scene.Stale": "내용이 변경되었습니다. 선택기를 다시 여세요.",
+  "Scene.LoadFailed": "대상 리소스 정보를 불러올 수 없습니다.",
+  "Scene.AddObject": "애니메이션 대상 추가",
+  "Scene.ReplaceObject": "대상 변경",
+  "Scene.Duplicate": "대상에 같은 속성 트랙이 이미 있습니다.",
+  "Scene.ChooseTarget": "장면 대상 선택",
+  "Scene.AddProperty": "속성 오버라이드 추가"
 }

@@ -54,7 +54,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var timeline = workspace.InsertEntriesInto(group, 2, 1, BuiltinEntryIds.PlayTimeline).Single();
             timeline.Source.Parameters = new() { ["timeline"] = JsonSerializer.Deserialize<JsonElement>("""{"playbackHandleId":"play","durationFrames":60,"future":[9007199254740993,null],"tracks":[],"events":[]}""") };
             using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = timeline;
-            var session = scope.GetRequiredService<TimelineEditSession>(); var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear();
+            var session = scope.GetRequiredService<TimelineEditSession>(); session.ShowAvailableProperties = true; var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear();
             var view = scope.GetRequiredService<TimelinePanelView>(); view.DataContext = scope.GetRequiredService<TimelinePanelViewModel>();
             var window = new Window { Content = view, Width = 1350, Height = 950 }; window.Show(); TimelinePump(window);
             try

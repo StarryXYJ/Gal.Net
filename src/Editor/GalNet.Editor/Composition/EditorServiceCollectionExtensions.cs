@@ -62,10 +62,11 @@ public static class EditorServiceCollectionExtensions
         services.AddScoped<EntrySelectionContext>();
         services.AddScoped<TimelineEditSession>();
         services.AddScoped<ProjectSceneTargets>();
+        services.AddScoped<SceneTargetCatalog>();
         services.AddTransient<TimelinePanelViewModel>();
         services.AddScoped<VariableAuthoringService>();
         services.AddTransient<VariablesPanelViewModel>();
-        services.AddScoped<EditorRegistry>(_ => EditorFieldEditors.CreateDefault());
+        services.AddScoped<EditorRegistry>(sp => EditorFieldEditors.CreateDefault(sp.GetRequiredService<SceneTargetCatalog>()));
         services.AddScoped<IGraphEditingService, GraphEditingService>();
         services.AddScoped<GraphSelectionState>();
         services.AddScoped<EditorWorkspacePersistence>();

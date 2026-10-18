@@ -20,6 +20,7 @@
       <Button x:Name="CreateTimeline" Content="{loc:Localize Timeline.Create}" Command="{Binding CreateCommand}" IsVisible="{Binding Session.CanCreate}"/>
     </StackPanel>
     <WrapPanel Grid.Row="2" IsVisible="{Binding Session.CanEdit}">
+      <Button Name="AddTimelineObject" Content="＋" ToolTip.Tip="{loc:Localize Scene.AddObject}" Click="OnAddObject" Margin="0,0,6,0"/>
       <TextBlock Margin="0,0,6,0" Text="{loc:Localize Timeline.Frame}" VerticalAlignment="Center"/>
       <NumericUpDown x:Name="TimelineFrame" Width="90" Minimum="0" Maximum="{Binding Session.Duration}" Increment="1" FormatString="0" Value="{Binding Session.Frame,Mode=TwoWay}"/>
       <Button Margin="6,0" Content="{loc:Localize Timeline.PreviousKey}" Command="{Binding PreviousKeyCommand}"/>
@@ -42,10 +43,11 @@
           <ItemsControl Name="TimelinePropertyTree" ItemsSource="{Binding Session.VisibleNodes}">
             <ItemsControl.ItemTemplate><DataTemplate x:DataType="services:TimelineTreeNode">
               <Grid Height="38" ColumnDefinitions="*,250" PointerPressed="OnTreeRowPointerPressed">
-                <Grid ColumnDefinitions="Auto,18,*">
+                <Grid ColumnDefinitions="Auto,24,18,*">
                   <Border Width="{Binding Indent}"/>
-                  <ToggleButton Grid.Column="1" Name="TimelineExpand" Width="18" MinWidth="0" Height="26" Padding="0" Content="{Binding ExpandGlyph}" IsVisible="{Binding IsBranch}" IsChecked="{Binding IsExpanded,Mode=TwoWay}"/>
-                  <TextBlock Grid.Column="2" Text="{Binding Label}" ToolTip.Tip="{Binding Label}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="3,0"/>
+                  <Button Grid.Column="1" Name="AddTimelineProperty" Width="24" MinWidth="0" Padding="0" Content="＋" ToolTip.Tip="{loc:Localize Scene.AddProperty}" IsVisible="{Binding IsObject}" IsEnabled="{Binding CanAddProperties}" Click="OnAddProperty"/>
+                  <ToggleButton Grid.Column="2" Name="TimelineExpand" Width="18" MinWidth="0" Height="26" Padding="0" Content="{Binding ExpandGlyph}" IsVisible="{Binding IsBranch}" IsChecked="{Binding IsExpanded,Mode=TwoWay}"/>
+                  <TextBlock Grid.Column="3" Text="{Binding Label}" ToolTip.Tip="{Binding Label}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="3,0"/>
                 </Grid>
                 <ContentControl Grid.Column="1" Content="{Binding Value}" IsVisible="{Binding IsLeaf}">
                   <ContentControl.ContentTemplate><DataTemplate x:DataType="services:TimelineValueRow">
@@ -61,6 +63,7 @@
                     </Grid>
                   </DataTemplate></ContentControl.ContentTemplate>
                 </ContentControl>
+                <Button Grid.Column="1" Name="ReplaceTimelineObject" Content="{loc:Localize Scene.ReplaceObject}" IsVisible="{Binding CanReplaceObject}" Click="OnReplaceObject" HorizontalAlignment="Right" VerticalAlignment="Center"/>
               </Grid>
             </DataTemplate></ItemsControl.ItemTemplate>
           </ItemsControl>

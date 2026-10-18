@@ -1,6 +1,6 @@
 # Editor 场景目标查询
 
-`Editor.Shared.Services.SceneTargetAnalysis` 对作者 Graph 和 Group 快照进行纯分析，不创建游戏、不执行 Entry，也不读取或修改玩家数据。项目 scope 的 `ProjectSceneTargets` 按当前内存作者快照复用一代分析，包含 Group 入口事实；修改、撤销、重做或拓扑改变后整体换代，保存相同内容复用原代。当前没有增量前缀缓存和后台分析。
+`Editor.Shared.Services.SceneTargetAnalysis` 对作者 Graph 和 Group 快照进行纯分析，不创建游戏、不执行 Entry，也不读取或修改玩家数据。项目 scope 的 `ProjectSceneTargets` 是场景状态查询入口，按当前内存作者快照复用一代分析，包含 Group 入口事实；修改、撤销、重做或拓扑改变后整体换代，保存相同内容复用原代。项目 scope 释放时清除缓存并使旧查询选择失效。当前没有增量前缀缓存和后台分析。
 
 查询位置是某个 Group 的某个稳定 Entry **执行前**，null 表示 Group 末尾。目标来源为 Group ID、创建者稳定 Entry ID 和输出槽位组成的 `SceneLocator`，内部解析到运行时 handle。返回对象种类、来源、资源提示、能力、唯一可知数值与存在性；候选的存在性只有一定存在、可能存在。没有入口或尚未分析到的位置返回不可分析结果，不伪造空场景已经完整分析。
 
@@ -23,6 +23,16 @@
 
 当前不从 effect shader metadata 推测能力，也未增加 flipbook 专属能力。Timeline 内事件的帧内状态尚未分析；包含事件时面板提示不完整，不使用入口数值虚构当前帧基值。候选缺失不清空既有轨道，无法匹配的引用显示为未解析对象。查询是作者辅助，没有改变编译或运行时的参数校验规则。
 
-GUI 新增或切换为内置层、视频、粒子、效果创建条目时分配新的内部 GUID；animate 同时分配播放身份。打开旧作者内容不会补写身份。Group 条目粘贴先为批内创建者和 Timeline 播放/事件输出分配身份，再按已声明的引用槽位重映射批内引用，外部引用和不相关 JSON 字符串保留；同次粘贴的身份随 Undo/Redo 保留。Graph 剪贴板、转场参数的语义重映射和通用 Locator 字段控件仍属后续范围，不宣称全 Editor 已隐藏 handle。
+GUI 新增或切换为内置层、视频、粒子、效果创建条目时分配新的内部 GUID；animate 同时分配播放身份。打开旧作者内容不会补写身份。Group 条目粘贴先为批内创建者和 Timeline 播放/事件输出分配身份，再按已声明的引用槽位重映射批内引用，外部引用和不相关 JSON 字符串保留；同次粘贴的身份随 Undo/Redo 保留。Graph 剪贴板、转场参数的语义重映射和新增播放实例目标仍属后续范围，不宣称全 Editor 已隐藏 handle。
 
-验证记录见 [P6e1](../../features/F-20261015-02-editor-authoring-workspace/phase-6e1.md)。
+## 查询与选择控件
+
+查询服务只接受剧情位置并返回场景事实，不拥有控件或弹窗。Editor 的 `SceneTargetCatalog` 将事实适配为资源名、类型、创建来源和存在性候选，并通过 Locator 解析内部 handle；`SceneTargetSelection` 捕获位置、候选身份与分析代次，提交前重新检查有效性。普通条目字段和 Timeline 都使用这一查询入口，筛选条件由调用方提供。
+
+共享 Avalonia `ResourcePickerPanel` 提供搜索、卡片、可选缩略图、方向键高亮、Enter 确认和 Escape 取消；原 Assets Picker 与 Editor 的 `SceneTargetPicker` 均使用此面板。资产文件与场景创建实例是不同的数据源，场景中使用同一资源的两个对象分别显示。搜索无结果时清除当前选择，不会确认上次目标；语言切换不写作者数据。
+
+内置 layer.hide/move/replace、video.stop、animation.animate 的目标，effect.apply 的目标层，以及 effect.stop、particle.stop 的实例字段通过 DTO 成员映射使用场景选择控件，不为所有字符串注册同一控件。创建者的内部输出身份从普通生成表单中隐藏，尚未解析的既有引用显示提示并保留原值；重选或清空才修改参数。effect.apply 的空目标显示“整个场景”。播放实例与转场等未接入字段仍待后续支持。
+
+选择器展示一定存在与可能存在两类候选；不完整分析显示提示，仍允许作者选择可能目标。控件自行管理展示和焦点，字段与 Timeline 各自保存结果；没有统一弹窗调度服务。普通字段确认是一条项目内容历史，候选查询、搜索、取消均不写内容。切换/删除条目、改变作者数据或关闭项目后，旧选择不能提交；保存相同作者内容不使选择失效。
+
+验证记录见 [P6e1](../../features/F-20261015-02-editor-authoring-workspace/phase-6e1.md) 与 [P6e2b](../../features/F-20261015-02-editor-authoring-workspace/scene-locator-plan.md)。

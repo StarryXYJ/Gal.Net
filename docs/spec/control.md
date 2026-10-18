@@ -147,6 +147,10 @@ StructuredFieldEditor 复用 Expander 主题（StyleKey 为 Expander，宿主样
 - 共享页面可以被替换或覆写；最终客户端的窗口、主题、资源定位和平台服务不进入共享页面项目。
 - 新增页面时，需要补充 ViewModel、View、组合注册和导航测试。
 
+## 资源与对象候选面板
+
+共享 Forms 命名空间的 `ResourcePickerPanel` 接收不透明 ID、显示文本、详情、图标、可选缩略图与徽标候选，提供卡片搜索和键鼠选择事件，不解析资产/场景对象，也不保存数据。缩略图由宿主管理。Editor 的 Assets Picker 与场景目标选择控件复用这一组件，各自提供数据源及提交规则；项目状态查询保持在 Editor 服务中。
+
 ## Timeline 关键帧画布
 
 共享 `GalNet.Avalonia.Controls` 的 `TimelineCanvas` 与 `TimelineCanvasModel` 提供整数帧标尺、播放头、可见行关键帧/折叠汇总绘制、多选/框选、水平拖动预览及缩放平移。模型通过委托请求开始、预览、提交、取消和加删键，通过事件请求定位；标尺拖动通过 DisplayFrame 显示本地预览，松手只请求一次定位，取消/失效恢复实际帧。控件不引用 Editor、作者 JSON、项目历史或游戏执行状态。宿主提供可见行、会话内键身份及版本失效，并协调相同高度的属性行。Editor 的无损修改与单历史规则见 [Timeline Dock](editor-groups.md#timeline-dock)。

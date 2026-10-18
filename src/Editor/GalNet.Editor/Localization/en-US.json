@@ -676,5 +676,18 @@
   "Timeline.KeyProtected": "The frame-zero key cannot be moved or deleted. Remove its track explicitly if needed.",
   "Timeline.KeyOutside": "Keys must use a nonnegative frame within the supported range.",
   "Timeline.KeyCollision": "The move or retiming collides with another key. Nothing was changed.",
-  "Timeline.SelectTrack": "Select a tracked property or key first."
+  "Timeline.SelectTrack": "Select a tracked property or key first.",
+  "Scene.Target": "Scene target",
+  "Scene.None": "None",
+  "Scene.Unresolved": "Unresolved target",
+  "Scene.Search": "Search resources, objects or sources",
+  "Scene.CandidateHint": "Candidates use known state before this entry; unsupported behavior may affect results.",
+  "Scene.Global": "Whole scene (no layer)",
+  "Scene.Stale": "Content changed. Reopen the selector.",
+  "Scene.LoadFailed": "Could not load target resource information.",
+  "Scene.AddObject": "Add animated object",
+  "Scene.ReplaceObject": "Change target",
+  "Scene.Duplicate": "The target already contains the same property track.",
+  "Scene.ChooseTarget": "Choose a scene object",
+  "Scene.AddProperty": "Add property override"
 }

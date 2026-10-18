@@ -676,5 +676,18 @@
   "Timeline.KeyProtected": "フレーム0のキーは移動・削除できません。必要ならトラック全体を削除してください。",
   "Timeline.KeyOutside": "キーフレームは対応範囲内の非負フレームに置いてください。",
   "Timeline.KeyCollision": "移動または時間変更でキーが衝突します。内容は変更していません。",
-  "Timeline.SelectTrack": "先にトラックのプロパティまたはキーを選択してください。"
+  "Timeline.SelectTrack": "先にトラックのプロパティまたはキーを選択してください。",
+  "Scene.Target": "シーン対象",
+  "Scene.None": "未選択",
+  "Scene.Unresolved": "未解決の対象",
+  "Scene.Search": "リソース・対象・作成元を検索",
+  "Scene.CandidateHint": "このエントリー直前の既知状態に基づく候補です。未対応の動作が影響する場合があります。",
+  "Scene.Global": "シーン全体（レイヤーなし）",
+  "Scene.Stale": "内容が変更されました。選択画面を開き直してください。",
+  "Scene.LoadFailed": "対象のリソース情報を読み込めませんでした。",
+  "Scene.AddObject": "アニメーション対象を追加",
+  "Scene.ReplaceObject": "対象を変更",
+  "Scene.Duplicate": "同じプロパティのトラックが対象に存在します。",
+  "Scene.ChooseTarget": "シーン対象を選択",
+  "Scene.AddProperty": "プロパティオーバーライドを追加"
 }

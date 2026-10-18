@@ -676,5 +676,18 @@
   "Timeline.KeyProtected": "第 0 帧键不能移动或删除，需要时请明确移除整条轨道。",
   "Timeline.KeyOutside": "关键帧必须位于支持范围内的非负帧。",
   "Timeline.KeyCollision": "移动或重定时会与其他关键帧碰撞，尚未修改内容。",
-  "Timeline.SelectTrack": "请先选择已有轨道的属性或关键帧。"
+  "Timeline.SelectTrack": "请先选择已有轨道的属性或关键帧。",
+  "Scene.Target": "场上对象",
+  "Scene.None": "未选择",
+  "Scene.Unresolved": "未解析目标",
+  "Scene.Search": "搜索资源、对象或来源",
+  "Scene.CandidateHint": "候选基于条目执行前的已知状态；未分析的行为可能影响结果。",
+  "Scene.Global": "整个场景（无图层）",
+  "Scene.Stale": "内容已变化，请重新打开选择器。",
+  "Scene.LoadFailed": "目标资源信息加载失败。",
+  "Scene.AddObject": "添加动画对象",
+  "Scene.ReplaceObject": "更换对象",
+  "Scene.Duplicate": "目标已包含相同属性轨道。",
+  "Scene.ChooseTarget": "选择场上对象",
+  "Scene.AddProperty": "添加属性重载"
 }

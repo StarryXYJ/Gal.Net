@@ -28,7 +28,7 @@
                         <ItemsControl ItemsSource="{TemplateBinding Editors}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid ColumnDefinitions="130,*" ColumnSpacing="8">
+                                    <Grid ColumnDefinitions="130,*" ColumnSpacing="8" IsVisible="{Binding Context.IsVisible}">
                                         <TextBlock DataContext="{Binding Context}" Text="{loc:Localize Label, FallbackPath=Field.Id}" TextWrapping="Wrap" VerticalAlignment="Center" />
                                         <StackPanel Grid.Column="1"><ContentControl Content="{Binding Control}" /><TextBlock Text="JSON" IsVisible="{Binding IsJsonFallback}" Opacity="0.65"/><forms:FieldEditorActions Context="{Binding Context}"/><TextBlock Text="{Binding Context.Issue.Message}" TextWrapping="Wrap" /></StackPanel>
                                     </Grid>
@@ -118,7 +118,7 @@
                                         <ContentControl Content="{Binding}">
                                             <ContentControl.DataTemplates>
                                                 <DataTemplate DataType="models:SchemaEntryParameterEditorItemViewModel" x:CompileBindings="False">
-                                                    <forms:SchemaForm Schema="{Binding Fields}" Binding="{Binding FieldBinding}" Registry="{Binding #Root.DataContext.FieldEditors}" />
+                                                    <forms:SchemaForm Schema="{Binding Fields}" Binding="{Binding FieldBinding}" DtoType="{Binding DtoType}" Registry="{Binding #Root.DataContext.FieldEditors}" />
                                                 </DataTemplate>
                                                 <DataTemplate DataType="models:TextEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding StringValue}" AcceptsReturn="{Binding IsMultiline}" TextWrapping="Wrap" MinHeight="30" HorizontalAlignment="Stretch" /></Grid></DataTemplate>
                                                 <DataTemplate DataType="models:AutocompleteEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><ComboBox Grid.Column="1" IsEditable="True" ItemsSource="{Binding Suggestions}" Text="{Binding StringValue}" HorizontalAlignment="Stretch" LostFocus="OnAutocompleteLostFocus" /></Grid></DataTemplate>

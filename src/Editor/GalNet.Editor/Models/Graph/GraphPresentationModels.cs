@@ -349,8 +349,12 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
 
     private EntryFieldAuthoringService? _authoring;
     private string? _groupId;
+    private SceneTargetCatalog? _scenes;
     private int _schemaGeneration;
-    internal void BindAuthoring(string groupId, EntryFieldAuthoringService authoring) { _groupId = groupId; _authoring = authoring; }
+    internal void BindAuthoring(string groupId, EntryFieldAuthoringService authoring, SceneTargetCatalog? scenes) { _groupId = groupId; _authoring = authoring; _scenes = scenes; }
+    internal IReadOnlyList<FieldEditorOption>? SceneOptions(string field) => _scenes?.FieldOptions(_groupId!, StableId, Type, field);
+    internal bool IsSceneOutput(string field) => SceneFieldSemantics.IsOutput(Type, field);
+    internal Type? ParameterDtoType => _authorCatalog?.TryGet(Type, out var schema) == true ? schema.FieldDataType : null;
     internal bool IsCurrent => !_disposed && (_authoring is null || _authoring.IsCurrent(_groupId!, Source));
     internal void RefreshAuthorReferences(IEntryCatalog catalog)
     {

@@ -14,6 +14,10 @@ public sealed partial class TimelineTreeNode(string key, Func<string> label, Tim
     public TimelineValueRow? Value { get; } = value;
     public bool IsLeaf => Value is not null;
     public bool IsBranch => !IsLeaf;
+    public string? ObjectHandle { get; init; }
+    public bool IsObject => ObjectHandle is not null;
+    public bool CanReplaceObject => ObjectHandle is not null && Descendants().Any(node => node.Value?.HasTrack == true);
+    public bool CanAddProperties => ObjectHandle is not null && Descendants().Any(node => node.Value is { HasTrack: false, Capability: not null });
     public int Depth { get; internal set; }
     public double Indent => Depth * 16;
     public ObservableCollection<TimelineTreeNode> Children { get; } = [];
@@ -48,7 +52,7 @@ public sealed partial class TimelineEditSession
         foreach (var rows in Rows.GroupBy(row => row.Handle))
         {
             var ordinal = ++number; var first = rows.First();
-            var root = new TimelineTreeNode(rows.Key, () => ObjectName(first, ordinal)); Tree.Add(root);
+            var root = new TimelineTreeNode(rows.Key, () => ObjectName(first, ordinal)) { ObjectHandle = rows.Key }; Tree.Add(root);
             foreach (var row in rows)
             {
                 var segments = row.Property.Split('.'); var parent = root; var path = root.Key;

@@ -18,6 +18,7 @@ namespace GalNet.Editor.Services;
 public sealed partial class TimelineEditSession : ObservableObject, IDisposable
 {
     private readonly ProjectSceneTargets _sceneQuery;
+    private readonly SceneTargetCatalog _targets;
     private SceneTargetResult _scene = new([], false, false);
     private string? _sceneSignature;
     private readonly EntrySelectionContext _selection;
@@ -54,16 +55,17 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         }
     }
     public TimelineEditSession(EntrySelectionContext selection, IEditorDocumentService documents, EntryFieldAuthoringService authoring,
-        IEntryCatalog catalog, IEditorLocalizationService localization, EditorHistories histories, ProjectSceneTargets sceneQuery)
+        IEntryCatalog catalog, IEditorLocalizationService localization, EditorHistories histories, ProjectSceneTargets sceneQuery, SceneTargetCatalog targets)
     {
         _selection = selection; _documents = documents; _authoring = authoring; _catalog = catalog; _localization = localization; _histories = histories;
         _sceneQuery = sceneQuery;
+        _targets = targets;
         InitializeCanvas();
         selection.Changed += OnSelection; documents.DocumentChanged += Refresh; histories.Changed += Refresh;
         localization.PropertyChanged += OnLocale;
         Refresh();
     }
-    private void OnSelection() { _frame = 0; OnPropertyChanged(nameof(Frame)); Refresh(); }
+    private void OnSelection() { ClearObjectDrafts(); _frame = 0; OnPropertyChanged(nameof(Frame)); Refresh(); }
     private void OnLocale(object? sender, PropertyChangedEventArgs args)
     {
         if (args.PropertyName != "Item[]") return;
@@ -84,7 +86,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         var sameValue = _baseline is { } previous ? root is { } current && JsonElement.DeepEquals(previous, current) : root is null;
         if (_target == _selection.Current && ReferenceEquals(_entry, next) && _type == next?.Type && sameValue && sceneSignature == _sceneSignature)
         { RefreshSource(); foreach (var node in Tree.SelectMany(node => node.Descendants())) node.RefreshLabel(); return; }
-        _scene = scene; _sceneSignature = sceneSignature;
+        EndObjectEdit(); _scene = scene; _sceneSignature = sceneSignature;
         SaveExpansion(); DetachTree(); InvalidateKeyDocument(); _generation++; Rows.Clear(); Tree.Clear(); _document = null; _baseline = null; Message = "";
         _target = _selection.Current; _entry = next; _type = next?.Type; _baseline = root;
         CanCreate = false; CanEdit = false; Duration = 0; FrameRate = 60;
@@ -108,6 +110,8 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         (_documents.CurrentDocument.Nodes.Single(node => node.Id == _target!.GroupId).Name) + " / " + _entry.Id;
     private void BuildRows()
     {
+        EndObjectEdit();
+        PruneObjectDrafts();
         SaveExpansion(); DetachTree(); _generation++; Rows.Clear(); Tree.Clear();
         if (_document is not null && CanEdit)
         {
@@ -171,7 +175,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
     public void CancelInput() { if (!_disposed) { Canvas.Cancel(); CancelTimingInput(false); CancelTimingInput(true); BuildRows(); } }
     public void Dispose()
     {
-        if (_disposed) return; _disposed = true; DetachTree(); InvalidateKeyDocument(); _generation++; Rows.Clear(); Tree.Clear();
+        if (_disposed) return; EndObjectEdit(); _disposed = true; DetachTree(); InvalidateKeyDocument(); _generation++; Rows.Clear(); Tree.Clear();
         _selection.Changed -= OnSelection; _documents.DocumentChanged -= Refresh; _histories.Changed -= Refresh;
         _localization.PropertyChanged -= OnLocale; _entry = null; _document = null;
     }
@@ -202,6 +206,7 @@ public sealed partial class TimelineValueRow : ObservableObject
     }
     public int BlendModeIndex { get => IsAdditive ? 1 : 0; set { if (value is 0 or 1) IsAdditive = value == 1; } }
     public string Property { get; }
+    public string Label { get { var key = "Timeline.Property." + Property; var text = _localization[key]; return text == "[" + key + "]" ? Property : text; } }
     public string ObjectLabel => _localization.Format("Timeline.Object", _objectNumber);
     public string Hint => _localization[!HasTrack ? _original is null ? "Timeline.InitialUnknown" : "Timeline.NotTracked" : _offset ? "Timeline.Offset" : _hasKey ? "Timeline.KeyHere" : "Timeline.Sampled"];
     public bool IsEditable { get; }
@@ -218,5 +223,5 @@ public sealed partial class TimelineValueRow : ObservableObject
     public bool Commit(bool confirm = false) => ((!HasTrack && confirm) || DraftValue != _original) && _session.Commit(this, _generation, _index, _frame, DraftValue);
     public bool ToggleTrack() => HasTrack ? _session.Remove(this, _generation, _index) : _session.Commit(this, _generation, _index, _frame, IsAdditive ? 0 : DraftValue);
     public void Cancel() => DraftValue = _original;
-    internal void RefreshLabel() { OnPropertyChanged(nameof(ObjectLabel)); OnPropertyChanged(nameof(Hint)); }
+    internal void RefreshLabel() { OnPropertyChanged(nameof(ObjectLabel)); OnPropertyChanged(nameof(Hint)); OnPropertyChanged(nameof(Label)); }
 }

@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Core.Entry;
 using GalNet.Core.Parameters;
 using GalNet.Editor.Models;
+using GalNet.Editor.Services;
 using GalNet.Game.Controls.Forms;
 
 namespace GalNet.Editor.Models.Graph;
@@ -42,8 +43,10 @@ public sealed class EntryParameterFormBinding : IDisposable
 
     private sealed class DocumentField(EntryParameterFormBinding form, FieldDescriptor field) : IFieldBinding
     {
-        public object? Label => @field.LabelKey ?? "Entry.Parameter." + @field.Id;
+        public object? Label => SceneFieldSemantics.TargetKinds(form._owner.Type, @field.Id) is not null ? "Scene.Target" : @field.LabelKey ?? "Entry.Parameter." + @field.Id;
         public bool IsEnabled => form.IsCurrent;
+        public bool IsVisible => !form._owner.IsSceneOutput(@field.Id);
+        public IReadOnlyList<FieldEditorOption>? Options => form._owner.SceneOptions(@field.Id);
         public FieldValue Read() => form._owner.Source.Parameters.TryGetValue(field.Id, out var json)
             ? new(json.Clone()) : default;
         public event EventHandler? Changed
@@ -116,15 +119,17 @@ public sealed class SchemaEntryParameterEditorItemViewModel(EntryParameterDefini
     private readonly string _type = owner.Type;
     public IReadOnlyList<FieldDescriptor> Fields { get; } = [definition.Field];
     public Func<FieldDescriptor, IFieldBinding> FieldBinding => _ => this;
+    public Type? DtoType => owner.ParameterDtoType;
+    bool IFieldBinding.IsVisible => !owner.IsSceneOutput(Id);
     public event EventHandler? Changed;
-    object? IFieldBinding.Label => Definition.DisplayNameKey;
+    object? IFieldBinding.Label => SceneFieldSemantics.TargetKinds(owner.Type, Id) is not null ? "Scene.Target" : Definition.DisplayNameKey;
     public override void RefreshValue(string value) => Changed?.Invoke(this, EventArgs.Empty);
     public FieldValue Read() => owner.Source.Parameters.TryGetValue(Id, out var json)
         ? new(json.Clone()) : default;
-    IReadOnlyList<FieldEditorOption>? IFieldBinding.Options => Definition.Options.Count == 0 ? null : Array.AsReadOnly(Definition.Options.Select(option =>
+    IReadOnlyList<FieldEditorOption>? IFieldBinding.Options => owner.SceneOptions(Id) ?? (Definition.Options.Count == 0 ? null : Array.AsReadOnly(Definition.Options.Select(option =>
         new FieldEditorOption(option.Value, option, Definition.Field.Value.ValueType == typeof(bool)
             ? ValueCodec.Serialize(Definition.Field.Value, bool.Parse(option.Value))
-            : ValueCodec.FromEditorText(Definition.Field.Value, option.Value))).ToArray());
+            : ValueCodec.FromEditorText(Definition.Field.Value, option.Value))).ToArray()));
     public Task<ValueIssue?> CommitAsync(FieldValue value, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();

@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [查询上下文随项目 scope 失效](lessons/L-20261018-04-query-scope-disposal.md)：旧服务仍可能持有 IsLoaded 文档；查询服务释放时清缓存并推进代次，不能以可读数据代替有效会话。
+
 - [L-20261018-03 派生控件主题键](lessons/L-20261018-03-derived-control-theme-key.md)：复用 Expander 等基类模板时显式 StyleKeyOverride；挂载后验证实际交互入口，属性赋值测试不能证明按钮可用。
 
 这是 GalNet 项目的长期 agent 上下文入口。这里只保存经过验证、以后工作仍然有用的项目事实、边界和经验索引；不要写入对当前任务没有复用价值的对话流水账、秘密或未经确认的猜测。
@@ -42,7 +44,7 @@
 
 ## 当前工作
 
-- 2026-10-18 用户补充 Timeline“＋”新增动画对象/属性及更换定位器交互。计划已将通用场景 Locator 选择/解析和普通 DTO 字段接入从 P6e4 提前为 P6e2b，先于 P6e3 曲线；当前只有查询与 SceneLocator 数据，选择 UI 尚未实现。新增父对象由所选属性轨道分组，现有对象替换目标保留键且单历史。见 [scene-locator-plan](../features/F-20261015-02-editor-authoring-workspace/scene-locator-plan.md)。本次仅计划修订，不宣称功能 verified。
+- 2026-10-18 P6e2b 已验证：ProjectSceneTargets 是指定 Group/Entry 位置的查询服务，缓存作者快照并随项目 scope 释放失效；SceneTargetCatalog/Selection 适配候选与 Locator 解析，控件自己管理弹窗。Assets/普通字段/Timeline 共用 ResourcePickerPanel。Timeline 顶部“＋”只选对象，对象行左侧“＋”逐项选属性；未知初值待明确输入才创建，空对象仅面板草稿。整个对象替换保留键/未知 JSON、单历史。初轮六项目 905 项、用户两步交互修订后最终 461 项相关回归、解决方案构建及格式/指纹通过；6 项原生媒体用例未执行，四语 691 keys。见 [scene-locator-plan](../features/F-20261015-02-editor-authoring-workspace/scene-locator-plan.md)。下一步 P6e3 曲线/切线，P6e4 剩余语义/事件/引用；实时预览不列阶段。
 
 - 2026-10-18 Timeline 交互简化已验证，取代 P6e2 原保秒重定时/裁剪方案：已有轨道持续显示绝对值/叠加偏移模式，切换保留数值与切线；结束帧/FPS Enter/失焦独立提交、FPS 保留帧号、结束帧下限覆盖键/事件，越界拖动与延长合为单历史。旧应用/裁剪/保秒生产路径移除，四语各 678 keys。初轮六项目 901 项通过，模式拒绝回显补充后的最终 457 项、解决方案构建、格式/指纹通过，6 项媒体环境未执行；见 [timeline-simplification](../features/F-20261015-02-editor-authoring-workspace/timeline-simplification.md)。下一步 P6e3 曲线/切线。
 

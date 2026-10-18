@@ -13,13 +13,17 @@ public sealed class EditorGroupProjectionStore : IDisposable
     private readonly IEditorDocumentService documents;
     private readonly IEntryCatalog catalog;
     private readonly EntryFieldAuthoringService authoring;
-    public EditorGroupProjectionStore(IEditorDocumentService documents, IEntryCatalog catalog, EntryFieldAuthoringService authoring)
+    private readonly SceneTargetCatalog? scenes;
+    private readonly History.EditorHistories? histories;
+    public EditorGroupProjectionStore(IEditorDocumentService documents, IEntryCatalog catalog, EntryFieldAuthoringService authoring, SceneTargetCatalog? scenes = null, History.EditorHistories? histories = null)
     {
         this.documents = documents;
         this.catalog = catalog;
         this.authoring = authoring;
+        this.scenes = scenes; this.histories = histories;
         documents.DocumentChanged += Synchronize;
         authoring.Changed += RefreshFields;
+        if (histories is not null) histories.Changed += Synchronize;
     }
     private void RefreshFields(string groupId) { if (_groups.TryGetValue(groupId, out var group)) group.Synchronize(catalog); }
     private void Synchronize()
@@ -31,7 +35,7 @@ public sealed class EditorGroupProjectionStore : IDisposable
     {
         if (_groups.TryGetValue(groupId, out var existing)) return existing;
         var source = documents.GetOrCreateGroup(groupId, "Graph/" + (sourcePath ?? $"groups/{groupId}.rawgalgroup"));
-        var projection = new EditorGroupProjection(source, catalog, authoring);
+        var projection = new EditorGroupProjection(source, catalog, authoring, scenes);
         _groups.Add(groupId, projection);
         return projection;
     }
@@ -40,6 +44,7 @@ public sealed class EditorGroupProjectionStore : IDisposable
     {
         documents.DocumentChanged -= Synchronize;
         authoring.Changed -= RefreshFields;
+        if (histories is not null) histories.Changed -= Synchronize;
         foreach (var group in _groups.Values) group.Dispose();
         _groups.Clear();
     }
@@ -52,11 +57,13 @@ public sealed class EditorGroupProjection : IDisposable
     private readonly HashSet<EntryEditorItemViewModel> _allEntries = [];
     private bool _synchronizing;
     private readonly EntryFieldAuthoringService _authoring;
+    private readonly SceneTargetCatalog? _scenes;
 
-    internal EditorGroupProjection(EditorGroupDocument document, IEntryCatalog catalog, EntryFieldAuthoringService authoring)
+    internal EditorGroupProjection(EditorGroupDocument document, IEntryCatalog catalog, EntryFieldAuthoringService authoring, SceneTargetCatalog? scenes)
     {
         Document = document;
         _authoring = authoring;
+        _scenes = scenes;
         Entries = new(document.Entries.Select(entry => new EntryEditorItemViewModel(entry, catalog)));
         _allEntries.UnionWith(Entries);
         foreach (var entry in Entries) Bind(entry);
@@ -100,7 +107,7 @@ public sealed class EditorGroupProjection : IDisposable
         finally { _synchronizing = false; }
     }
 
-    private void Bind(EntryEditorItemViewModel entry) => entry.BindAuthoring(Document.Id, _authoring);
+    private void Bind(EntryEditorItemViewModel entry) => entry.BindAuthoring(Document.Id, _authoring, _scenes);
 
     public void Dispose()
     {

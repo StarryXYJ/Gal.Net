@@ -332,7 +332,7 @@ P6 后续仍包括未知 Entry 整参数 JSON 修改、Editor 状态查询/Locat
 - P6e1（verified）：纯场景候选、Group 入口分析/快照换代、两类存在性、基础属性树和轨道创建/移除；GUI 创建身份及 Entry 批量复制引用重映射。解决方案构建、656 项相关回归、格式与源码指纹通过；文件面板单次偶发及同源码重跑记录保留，见 [phase-6e1.md](phase-6e1.md)。
 - P6e2（verified，前置 P6e1）：时间刻度/缩放/滚动、播放头、关键帧选择/拖动/删除、首键与碰撞保护、时长/FPS 操作及单历史手势；与属性树共用行布局。解决方案构建、901 项相关回归、格式和源码指纹通过，6 项原生媒体环境用例未执行；见 [phase-6e2.md](phase-6e2.md)。
 - P6e2 交互简化修订（verified）：用户确认已有轨道模式持续可编辑；结束帧/FPS Enter 或失焦独立提交、FPS 固定保留帧号、结束帧不裁剪内容、越界拖动原子延长；删除旧重定时和裁剪路径。最终 457 项相关回归、解决方案构建、格式/源码指纹通过，6 项媒体环境用例未执行；见 [timeline-simplification.md](timeline-simplification.md)。
-- P6e2b（planned，前置 P6e2）：通用场景 Locator 选择/解析、已支持目标的普通 DTO 字段接入；Timeline“＋”选择对象与属性并批量建轨道、父对象更换定位器。用户要求将这项从 P6e4 提前到曲线之前；目标/模块/验证/风险及退出条件见 [scene-locator-plan.md](scene-locator-plan.md)。
+- P6e2b（verified，前置 P6e2）：指定剧情位置的场景状态查询、通用 Locator 选择/解析、已支持目标的普通 DTO 字段接入；Timeline 顶部“＋”仅选择对象，对象行左侧“＋”逐项加入属性轨道、父对象更换定位器。查询与缓存属于服务，展示/选择/弹窗属于控件，不抽弹窗调度服务。初轮六项目 905 项、两步交互修订后最终 461 项相关回归，解决方案构建及格式/源码指纹通过，6 项原生媒体用例未执行；目标/模块/验证/风险及退出条件见 [scene-locator-plan.md](scene-locator-plan.md)。
 - P6e3（planned，前置 P6e2b）：Step/Linear/Hermite 详情、曲线展开、切线编辑/单位/采样及批量手势。
 - P6e4（planned）：Timeline 事件/帧内状态、转场和剩余内置语义、effect metadata/flipbook 能力、新增播放实例/事件目标及其 Locator 适配、Graph/转场复制引用重映射；缺目标运行时行为独立核验。当前已支持目标的通用 Locator 选择闭环提前到 P6e2b；P6e2/3 不将未分析事件当成无影响。
 

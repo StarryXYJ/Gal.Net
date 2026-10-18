@@ -18,7 +18,7 @@ public sealed partial class TimelineEditSession
     private ActiveEntrySelection? _moveTarget;
     private TimelineKeyLocation[]? _moveKeys;
     private string? _activeHandle, _activeProperty;
-    [ObservableProperty] private bool _showAvailableProperties = true;
+    [ObservableProperty] private bool _showAvailableProperties;
     [ObservableProperty] private decimal? _timingDurationDraft = 60;
     [ObservableProperty] private decimal? _timingFrameRateDraft = 60;
     public int MinimumDuration => _document?.MinimumDuration ?? 0;
@@ -56,7 +56,9 @@ public sealed partial class TimelineEditSession
     private void RebuildVisibleNodes()
     {
         VisibleNodes.Clear();
-        bool Include(TimelineTreeNode node) => ShowAvailableProperties || node.Descendants().Any(child => child.Value?.HasTrack == true);
+        bool Include(TimelineTreeNode node) => ShowAvailableProperties
+            || (node.Value is { } row ? row.HasTrack || _pendingProperties.Contains((row.Handle, row.Property))
+                : node.ObjectHandle is { } handle && _selectedObjects.Contains(handle) || node.Children.Any(Include));
         void Add(TimelineTreeNode node, int depth)
         {
             if (!Include(node)) return;
