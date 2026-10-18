@@ -21,10 +21,8 @@ public sealed partial class TimelineEditSession
     [ObservableProperty] private bool _showAvailableProperties = true;
     [ObservableProperty] private decimal? _timingDurationDraft = 60;
     [ObservableProperty] private decimal? _timingFrameRateDraft = 60;
-    [ObservableProperty] private bool _keepSeconds;
-    public decimal? RetimedDuration => TimingFrameRateDraft is { } fps ? Math.Round(Duration * fps / FrameRate, MidpointRounding.AwayFromZero) : null;
+    public int MinimumDuration => _document?.MinimumDuration ?? 0;
     partial void OnShowAvailablePropertiesChanged(bool value) { Canvas.Cancel(); RebuildVisibleNodes(); }
-    partial void OnTimingFrameRateDraftChanged(decimal? value) => OnPropertyChanged(nameof(RetimedDuration));
     private void InitializeCanvas()
     {
         Canvas.SeekRequested += SeekCanvas;
@@ -48,7 +46,7 @@ public sealed partial class TimelineEditSession
                 { var location = new TimelineKeyLocation(track, key.Frame); var id = Guid.NewGuid(); _keyIds.Add(location, id); _keyLocations.Add(id, location); }
             TimingDurationDraft = Duration; TimingFrameRateDraft = FrameRate;
         }
-        Canvas.Duration = Duration; Canvas.Frame = Frame; OnPropertyChanged(nameof(RetimedDuration));
+        Canvas.Duration = Duration; Canvas.Frame = Frame; OnPropertyChanged(nameof(MinimumDuration));
         RebuildVisibleNodes();
     }
     private void DetachTree()
@@ -127,13 +125,18 @@ public sealed partial class TimelineEditSession
         var frames = tracks.SelectMany(track => _document.Tracks[track].Keys.Select(key => key.Frame));
         var next = direction < 0 ? frames.Where(frame => frame < Frame).DefaultIfEmpty(0).Max() : frames.Where(frame => frame > Frame).DefaultIfEmpty(Duration).Min(); Frame = next;
     }
-    public void ApplyTiming(bool trim)
+    public void CancelTimingInput(bool frameRate)
+    { if (frameRate) TimingFrameRateDraft = FrameRate; else TimingDurationDraft = Duration; }
+    public void CommitTimingInput(bool frameRate)
     {
         if (_document is null) return;
-        if (TimingDurationDraft is not { } duration || TimingFrameRateDraft is not { } fps || duration % 1 != 0 || fps % 1 != 0 || duration < 0 || duration > int.MaxValue || fps is < 1 or > 240)
+        var value = frameRate ? TimingFrameRateDraft : TimingDurationDraft;
+        if (value is not { } number || number % 1 != 0 || number < (frameRate ? 1 : 0) || number > (frameRate ? 240 : int.MaxValue))
         { Message = _localization["Timeline.EditRejected"]; return; }
+        var duration = frameRate ? Duration : Math.Max((int)number, MinimumDuration);
+        var fps = frameRate ? (int)number : FrameRate;
         Canvas.Cancel();
-        try { Submit(_document.ChangeTiming((int)duration, (int)fps, KeepSeconds, trim)); }
+        try { if (Submit(_document.ChangeTiming(duration, fps))) CancelTimingInput(frameRate); }
         catch (Exception error) when (error is InvalidDataException or OverflowException or InvalidOperationException or ArgumentException) { EditError(error); }
     }
 }

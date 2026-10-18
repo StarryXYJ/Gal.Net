@@ -46,7 +46,7 @@ public sealed class TimelineCanvas : Control
         var grid = new Pen(Brushes.SlateGray, .4);
         var requested = Math.Max(1, 70 / model.PixelsPerFrame); var power = Math.Pow(10, Math.Floor(Math.Log10(requested)));
         var step = (long)(new[] { 1d, 2d, 5d, 10d }.First(value => value * power >= requested) * power);
-        var last = Math.Min(model.Duration, model.StartFrame + Bounds.Width / model.PixelsPerFrame);
+        var last = Math.Min(int.MaxValue, model.StartFrame + Bounds.Width / model.PixelsPerFrame);
         for (var frame = (long)(Math.Floor(model.StartFrame / step) * step); frame <= last; frame += step)
         {
             var x = X((int)frame); context.DrawLine(grid, new Point(x, 0), new Point(x, Bounds.Height));

@@ -31,6 +31,7 @@ internal sealed partial class TimelineDocument
             foreach (var key in nodes) { var frame = Integer(key, "frame", 0); if (frames.Contains(frame)) key[Name(key, "frame")] = frame + delta; }
             array.Clear(); foreach (var key in nodes.OrderBy(key => Integer(key, "frame", 0))) array.Add(key);
         }
+        root[Name(root, "durationFrames")] = Math.Max(Duration, keys.Select(key => key.Frame + delta).DefaultIfEmpty(0).Max());
         var result = JsonSerializer.SerializeToElement(root); _ = new TimelineDocument(result); return result;
     }
     public void ValidateMove(IEnumerable<TimelineKeyLocation> selected, int delta, bool replace)
@@ -38,7 +39,7 @@ internal sealed partial class TimelineDocument
         var keys = Locations(selected);
         if (delta == 0) return;
         if (keys.Any(key => key.Frame == 0)) throw new InvalidDataException("Timeline.KeyProtected");
-        if (keys.Any(key => (long)key.Frame + delta < 0 || (long)key.Frame + delta > Duration)) throw new InvalidDataException("Timeline.KeyOutside");
+        if (keys.Any(key => (long)key.Frame + delta < 0 || (long)key.Frame + delta > int.MaxValue)) throw new InvalidDataException("Timeline.KeyOutside");
         foreach (var group in keys.GroupBy(key => key.Track))
         {
             var frames = group.Select(key => key.Frame).ToHashSet(); var destinations = frames.Select(frame => frame + delta).ToHashSet();
@@ -69,47 +70,22 @@ internal sealed partial class TimelineDocument
         }
         return result;
     }
-    public JsonElement ChangeTiming(int duration, int fps, bool keepSeconds, bool trim)
+    public JsonElement ChangeTiming(int duration, int fps)
     {
         if (duration < 0 || fps is < 1 or > 240) throw new InvalidDataException("Timeline.EditRejected");
-        var ratio = keepSeconds ? (double)fps / FrameRate : 1;
-        int Scale(int frame) => checked((int)Math.Round(frame * ratio, MidpointRounding.AwayFromZero));
-        if (keepSeconds) duration = Scale(Duration);
         var root = (JsonObject)_root.DeepClone();
-        var tracks = Array(root, "tracks");
-        for (var trackIndex = 0; trackIndex < tracks.Count; trackIndex++)
-        {
-            var keys = Array((JsonObject)tracks[trackIndex]!, "keys"); var original = Tracks[trackIndex].Keys; var frames = original.Select(key => Scale(key.Frame)).ToArray();
-            if (frames.Distinct().Count() != frames.Length) throw new InvalidDataException("Timeline.KeyCollision");
-            for (var index = keys.Count - 1; index >= 0; index--)
-            {
-                if (frames[index] > duration) { if (!trim) throw new InvalidDataException("Timeline.TrimRequired"); keys.RemoveAt(index); continue; }
-                var key = (JsonObject)keys[index]!;
-                if (keepSeconds)
-                {
-                    key[Name(key, "frame")] = frames[index];
-                    void Tangent(string name, float value, int oldSpan, int newSpan)
-                    {
-                        var next = (float)((double)value * oldSpan / newSpan);
-                        if (!float.IsFinite(next)) throw new InvalidDataException("Timeline.EditRejected");
-                        // Preserve absence when the default zero has not changed.
-                        if (value != next || key.ContainsKey(Name(key, name))) key[Name(key, name)] = next;
-                    }
-                    if (index > 0) Tangent("inTangent", original[index].InTangent, original[index].Frame - original[index - 1].Frame, frames[index] - frames[index - 1]);
-                    if (index + 1 < original.Count) Tangent("outTangent", original[index].OutTangent, original[index + 1].Frame - original[index].Frame, frames[index + 1] - frames[index]);
-                }
-            }
-        }
-        var events = Array(root, "events");
-        for (var index = events.Count - 1; index >= 0; index--)
-        {
-            if (events[index] is not JsonObject item) throw new InvalidDataException("Timeline.EditRejected");
-            var previous = Integer(item, "frame", 0); if (previous < 0 || previous > Duration) throw new InvalidDataException("Timeline.EditRejected");
-            var frame = Scale(previous);
-            if (frame > duration) { if (!trim) throw new InvalidDataException("Timeline.TrimRequired"); events.RemoveAt(index); }
-            else if (keepSeconds) item[Name(item, "frame")] = frame;
-        }
-        root[Name(root, "frameRate")] = fps; root[Name(root, "durationFrames")] = duration;
-        var result = JsonSerializer.SerializeToElement(root); _ = new TimelineDocument(result); return result;
+        if (fps != FrameRate) root[Name(root, "frameRate")] = fps;
+        duration = Math.Max(duration, MinimumDuration);
+        if (duration != Duration) root[Name(root, "durationFrames")] = duration;
+        return JsonSerializer.SerializeToElement(root);
+    }
+    public JsonElement ChangeBlendMode(int index, bool additive)
+    {
+        if (index < 0 || index >= Tracks.Count) throw new InvalidDataException("Timeline.EditRejected");
+        if ((Tracks[index].BlendMode == AnimationBlendMode.Additive) == additive) return JsonSerializer.SerializeToElement(_root);
+        var root = (JsonObject)_root.DeepClone();
+        var track = (JsonObject)Array(root, "tracks")[index]!;
+        track[Name(track, "blendMode")] = additive ? "Additive" : "Replace";
+        return JsonSerializer.SerializeToElement(root);
     }
 }

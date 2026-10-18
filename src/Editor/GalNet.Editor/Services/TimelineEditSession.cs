@@ -168,7 +168,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         }
         catch (Exception error) { Message = EditorText.Error(error).Render(_localization); return false; }
     }
-    public void CancelInput() { if (!_disposed) { Canvas.Cancel(); BuildRows(); } }
+    public void CancelInput() { if (!_disposed) { Canvas.Cancel(); CancelTimingInput(false); CancelTimingInput(true); BuildRows(); } }
     public void Dispose()
     {
         if (_disposed) return; _disposed = true; DetachTree(); InvalidateKeyDocument(); _generation++; Rows.Clear(); Tree.Clear();
@@ -190,7 +190,17 @@ public sealed partial class TimelineValueRow : ObservableObject
     internal AnimatableProperty? Capability => Target?.Properties.FirstOrDefault(property => property.Name == Property);
     internal float? Baseline => _original is { } value ? (float)value : null;
     public bool HasTrack => _index >= 0;
-    [ObservableProperty] private bool _isAdditive;
+    private bool _isAdditive;
+    public bool IsAdditive
+    {
+        get => _isAdditive;
+        set
+        {
+            if (_isAdditive == value || (HasTrack && !_session.ChangeBlendMode(this, _generation, _index, value))) return;
+            SetProperty(ref _isAdditive, value); OnPropertyChanged(nameof(BlendModeIndex));
+        }
+    }
+    public int BlendModeIndex { get => IsAdditive ? 1 : 0; set { if (value is 0 or 1) IsAdditive = value == 1; } }
     public string Property { get; }
     public string ObjectLabel => _localization.Format("Timeline.Object", _objectNumber);
     public string Hint => _localization[!HasTrack ? _original is null ? "Timeline.InitialUnknown" : "Timeline.NotTracked" : _offset ? "Timeline.Offset" : _hasKey ? "Timeline.KeyHere" : "Timeline.Sampled"];

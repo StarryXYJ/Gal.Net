@@ -14,8 +14,6 @@ public sealed partial class TimelinePanelViewModel(TimelineEditSession session, 
     [RelayCommand] private void DeleteKeys() => Session.DeleteSelectedKeys();
     [RelayCommand] private void PreviousKey() => Session.NavigateKey(-1);
     [RelayCommand] private void NextKey() => Session.NavigateKey(1);
-    [RelayCommand] private void ApplyTiming() => Session.ApplyTiming(false);
-    [RelayCommand] private void TrimTiming() => Session.ApplyTiming(true);
     [RelayCommand] private void ReplaceCollisions() => Session.ReplaceKeyCollisions();
     [RelayCommand] private void CancelMove() => Session.Canvas.Cancel();
     public void Dispose() => Session.CancelInput();

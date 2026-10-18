@@ -52,6 +52,18 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var spins = view.GetVisualDescendants().OfType<RepeatButton>().Where(button => button.GetVisualAncestors().OfType<NumericUpDown>().Any()).ToArray();
                 Assert.That(spins.Length, Is.GreaterThanOrEqualTo(6), "Real NumericUpDown templates expose their repeat buttons.");
                 foreach (var spin in spins) { Assert.That(spin.Delay, Is.EqualTo(250), string.Join(" / ", spin.GetVisualAncestors().Prepend(spin).OfType<Control>().Select(control => $"{control.GetType().FullName}#{control.Name} template={control.TemplatedParent?.GetType().FullName}"))); Assert.That(spin.Interval, Is.EqualTo(30)); }
+                var mode = view.GetVisualDescendants().OfType<ComboBox>().Single(control => control.Name == "TimelineBlendMode" && control.DataContext is TimelineValueRow row && row.Property == "transform.x");
+                Assert.That(mode.IsVisible, Is.True); mode.Focus(); PressGroupKey(mode, Key.Down); TimelinePump(window);
+                Assert.That(entry.Source.Parameters["timeline"].GetProperty("Tracks")[0].GetProperty("blendMode").GetString(), Is.EqualTo("Additive"));
+                await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); TimelinePump(window);
+                var durationInput = view.FindControl<NumericUpDown>("TimelineDurationDraft")!; var durationText = durationInput.GetVisualDescendants().OfType<TextBox>().Single();
+                Assert.That(durationInput.Minimum, Is.EqualTo(59)); durationText.Focus(); durationText.Text = "80"; TimelinePump(window); PressGroupKey(durationText, Key.Enter); TimelinePump(window);
+                Assert.That(session.Duration, Is.EqualTo(80)); await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); TimelinePump(window);
+                durationText.Focus(); durationText.Text = "90"; TimelinePump(window); PressGroupKey(durationText, Key.Escape); TimelinePump(window);
+                Assert.That(session.TimingDurationDraft, Is.EqualTo(60)); Assert.That(session.Duration, Is.EqualTo(60)); Assert.That(history.CanUndo, Is.False);
+                var fpsInput = view.FindControl<NumericUpDown>("TimelineFpsDraft")!; var fpsText = fpsInput.GetVisualDescendants().OfType<TextBox>().Single();
+                fpsText.Focus(); fpsText.Text = "30"; TimelinePump(window); canvas.Focus(); TimelinePump(window);
+                Assert.That(session.FrameRate, Is.EqualTo(30)); await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); TimelinePump(window);
                 var xRow = session.VisibleNodes.ToList().FindIndex(node => node.Value?.Property == "transform.x"); var yRow = session.VisibleNodes.ToList().FindIndex(node => node.Value?.Property == "transform.y");
                 var input = view.GetVisualDescendants().OfType<NumericUpDown>().Single(control => control.DataContext is TimelineValueRow row && row.Property == "transform.x");
                 var inputCenter = input.TranslatePoint(new Point(0, input.Bounds.Height / 2), window)!.Value.Y;
@@ -96,6 +108,15 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(entry.Source.Parameters["timeline"].GetProperty("Tracks")[0].GetProperty("Keys")[1].GetProperty("Frame").GetInt32(), Is.EqualTo(12));
                 Assert.That(entry.Source.Parameters["timeline"].GetProperty("Tracks")[1].GetProperty("Keys")[1].GetProperty("Frame").GetInt32(), Is.EqualTo(12));
                 await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); await history.RedoAsync(); history.Clear(); TimelinePump(window);
+                first = CanvasPoint(window, canvas, xRow, 12); window.MouseDown(first, MouseButton.Left); window.MouseMove(first + new Vector(480, 0));
+                Assert.That(session.Duration, Is.EqualTo(60), "Dragging past the end only previews until release.");
+                window.MouseUp(first + new Vector(480, 0), MouseButton.Left); TimelinePump(window);
+                Assert.That(session.Duration, Is.EqualTo(72)); Assert.That(entry.Source.Parameters["timeline"].GetProperty("Tracks")[0].GetProperty("Keys")[2].GetProperty("Frame").GetInt32(), Is.EqualTo(72));
+                await history.UndoAsync(); Assert.That(history.CanUndo, Is.False, "Duration extension and all selected keys are a single edit."); Assert.That(session.Duration, Is.EqualTo(60)); TimelinePump(window);
+                first = CanvasPoint(window, canvas, xRow, 12); window.MouseDown(first, MouseButton.Left); window.MouseMove(first + new Vector(480, 0)); PressGroupKey(canvas, Key.Escape); window.MouseUp(first + new Vector(480, 0), MouseButton.Left);
+                Assert.That(session.Duration, Is.EqualTo(60)); Assert.That(history.CanUndo, Is.False);
+                session.Canvas.Select([session.Canvas.Rows[xRow].Keys.Single(key => key.Frame == 12).Id]); Assert.That(session.Canvas.StartMove(), Is.True); session.Canvas.UpdateMove(int.MaxValue);
+                Assert.That(session.Canvas.IsMoveValid, Is.False); session.Canvas.Cancel(); Assert.That(history.CanUndo, Is.False);
                 first = CanvasPoint(window, canvas, xRow, 12); window.MouseDown(first, MouseButton.Left); window.MouseMove(first + new Vector(64, 0)); window.MouseUp(first + new Vector(64, 0), MouseButton.Left); TimelinePump(window);
                 Assert.That(session.Canvas.HasPendingMove, Is.True); Assert.That(session.Canvas.IsMoveValid, Is.False); Assert.That(history.CanUndo, Is.False);
                 PressGroupKey(canvas, Key.Escape); Assert.That(session.Canvas.HasPendingMove, Is.False); Assert.That(history.CanUndo, Is.False);
@@ -115,7 +136,11 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(entry.Source.Parameters["timeline"].GetProperty("Tracks")[0].GetProperty("Keys")[1].GetProperty("Frame").GetInt32(), Is.EqualTo(12));
                 var localization = scope.GetRequiredService<IEditorLocalizationService>();
                 foreach (var locale in new[] { "en-US", "ja-JP", "ko-KR", "zh-CN" })
-                { localization.ApplyLocale(locale); TimelinePump(window); Assert.That(view.GetVisualDescendants().OfType<Button>().Single(button => ReferenceEquals(button.Command, vm.AddKeyCommand)).Content, Is.EqualTo(localization["Timeline.AddKey"])); }
+                {
+                    localization.ApplyLocale(locale); TimelinePump(window); Assert.That(view.GetVisualDescendants().OfType<Button>().Single(button => ReferenceEquals(button.Command, vm.AddKeyCommand)).Content, Is.EqualTo(localization["Timeline.AddKey"]));
+                    mode = view.GetVisualDescendants().OfType<ComboBox>().First(control => control.Name == "TimelineBlendMode");
+                    Assert.That(mode.Items.OfType<ComboBoxItem>().Select(item => item.Content), Is.EqualTo(new[] { localization["Timeline.Absolute"], localization["Timeline.Offset"] }));
+                }
                 TimelinePump(window); if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } artifacts) { using var frame = window.CaptureRenderedFrame(); frame!.Save(Path.Combine(artifacts, "p6e2-key-canvas.png")); }
                 await workspace.SaveAsync(); var path = project.RootPath; var groupId = group.Id; var entryId = entry.StableId; window.Close(); page.Dispose(); await projects.CloseAsync();
                 project = await projects.OpenAsync(path); var saved = project.Services.GetRequiredService<EditorGroupProjectionStore>().Get(groupId).Entries.Single(item => item.StableId == entryId).Source.Parameters["timeline"];
@@ -127,7 +152,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     }
 
     [Test]
-    public async Task TimelineTimingRetimeTrimAndFrameInsertionAreAtomicAndPreserveUnknownContentAndEventOrder()
+    public async Task TimelineTimingFieldsCommitIndependentlyClampToContentAndPreserveFramesAndJson()
     {
         using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
         var project = await projects.CreateAsync(Path.Combine(_root, "TimelineTiming"), "Timing", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
@@ -135,20 +160,31 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.PlayTimeline).Single(); entry.Source.Parameters["timeline"] = KeyCanvasFixture();
         using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = entry;
         var session = scope.GetRequiredService<TimelineEditSession>(); var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear(); var original = entry.Source.Parameters["timeline"].GetRawText();
-        foreach (var invalid in new (decimal? Duration, decimal? Fps)[] { (-1, 60), (60, 0), (60, 241), (60.5m, 60), (60, null), (null, 60) })
-        { session.TimingDurationDraft = invalid.Duration; session.TimingFrameRateDraft = invalid.Fps; session.ApplyTiming(false); Assert.That(history.CanUndo, Is.False); Assert.That(entry.Source.Parameters["timeline"].GetRawText(), Is.EqualTo(original)); }
-        session.TimingFrameRateDraft = 60;
-        session.TimingDurationDraft = 15; session.ApplyTiming(false); Assert.That(history.CanUndo, Is.False); Assert.That(entry.Source.Parameters["timeline"].GetRawText(), Is.EqualTo(original));
-        session.ApplyTiming(true); var root = entry.Source.Parameters["timeline"]; Assert.That(root.GetProperty("DurationFrames").GetInt32(), Is.EqualTo(15)); Assert.That(root.GetProperty("Tracks")[0].GetProperty("Keys").GetArrayLength(), Is.EqualTo(2)); Assert.That(root.GetProperty("Events").EnumerateArray().Select(item => item.GetProperty("tag").GetString()), Is.EqualTo(new[] { "a", "b" }));
+        foreach (var invalid in new decimal?[] { -1, .5m, null })
+        { session.TimingDurationDraft = invalid; session.CommitTimingInput(false); Assert.That(history.CanUndo, Is.False); Assert.That(entry.Source.Parameters["timeline"].GetRawText(), Is.EqualTo(original)); }
+        foreach (var invalid in new decimal?[] { 0, 241, 1.5m, null })
+        { session.TimingFrameRateDraft = invalid; session.CommitTimingInput(true); Assert.That(history.CanUndo, Is.False); Assert.That(entry.Source.Parameters["timeline"].GetRawText(), Is.EqualTo(original)); }
+        Assert.That(session.MinimumDuration, Is.EqualTo(59));
+        session.TimingDurationDraft = 15; session.CommitTimingInput(false);
+        var root = entry.Source.Parameters["timeline"]; Assert.That(root.GetProperty("DurationFrames").GetInt32(), Is.EqualTo(59)); Assert.That(session.TimingDurationDraft, Is.EqualTo(59));
+        Assert.That(JsonElement.DeepEquals(root.GetProperty("Tracks"), KeyCanvasFixture().GetProperty("Tracks")), Is.True);
+        Assert.That(JsonElement.DeepEquals(root.GetProperty("Events"), KeyCanvasFixture().GetProperty("Events")), Is.True);
         await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); history.Clear();
-        session.TimingFrameRateDraft = 120; session.ApplyTiming(false); root = entry.Source.Parameters["timeline"]; Assert.That(root.GetProperty("FrameRate").GetInt32(), Is.EqualTo(120)); Assert.That(root.GetProperty("Tracks")[0].GetProperty("Keys")[1].GetProperty("Frame").GetInt32(), Is.EqualTo(10));
-        await history.UndoAsync(); history.Clear(); session.KeepSeconds = true; session.TimingFrameRateDraft = 120; session.ApplyTiming(false); root = entry.Source.Parameters["timeline"];
-        Assert.That(root.GetProperty("DurationFrames").GetInt32(), Is.EqualTo(120)); var key = root.GetProperty("Tracks")[0].GetProperty("Keys")[1]; Assert.That(key.GetProperty("Frame").GetInt32(), Is.EqualTo(20)); Assert.That(key.GetProperty("InTangent").GetSingle(), Is.EqualTo(.5f)); Assert.That(key.GetProperty("OutTangent").GetSingle(), Is.EqualTo(1));
-        Assert.That(root.GetProperty("Events")[0].GetProperty("Frame").GetInt32(), Is.EqualTo(24)); Assert.That(root.GetProperty("Events")[1].GetProperty("tag").GetString(), Is.EqualTo("b")); Assert.That(root.GetProperty("opaque").GetProperty("big").GetRawText(), Is.EqualTo("9007199254740993"));
-        await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); history.Clear(); session.TimingFrameRateDraft = 1; session.ApplyTiming(false); Assert.That(history.CanUndo, Is.False); Assert.That(entry.Source.Parameters["timeline"].GetRawText(), Is.EqualTo(original));
-        session.KeepSeconds = false; session.Frame = 5; session.SetActiveTrack(session.Rows.Single(row => row.Property == "transform.x")); session.AddCurrentKey(); root = entry.Source.Parameters["timeline"]; Assert.That(root.GetProperty("Tracks")[0].GetProperty("Keys")[1].GetProperty("frame").GetInt32(), Is.EqualTo(5)); Assert.That(session.Canvas.Selection, Has.Count.EqualTo(1));
+        session.TimingDurationDraft = null; session.TimingFrameRateDraft = 120; session.CommitTimingInput(true); root = entry.Source.Parameters["timeline"];
+        Assert.That(root.GetProperty("FrameRate").GetInt32(), Is.EqualTo(120)); Assert.That(root.GetProperty("DurationFrames").GetInt32(), Is.EqualTo(60));
+        Assert.That(JsonElement.DeepEquals(root.GetProperty("Tracks"), KeyCanvasFixture().GetProperty("Tracks")), Is.True); Assert.That(JsonElement.DeepEquals(root.GetProperty("Events"), KeyCanvasFixture().GetProperty("Events")), Is.True);
+        Assert.That(root.GetProperty("opaque").GetProperty("big").GetRawText(), Is.EqualTo("9007199254740993"));
+        session.CommitTimingInput(true); await history.UndoAsync(); Assert.That(history.CanUndo, Is.False, "Reconfirming the same FPS adds no history."); history.Clear();
+        var mode = session.Rows[0]; mode.BlendModeIndex = 1; root = entry.Source.Parameters["timeline"]; Assert.That(root.GetProperty("Tracks")[0].GetProperty("blendMode").GetString(), Is.EqualTo("Additive"));
+        Assert.That(JsonElement.DeepEquals(root.GetProperty("Tracks")[0].GetProperty("Keys"), KeyCanvasFixture().GetProperty("Tracks")[0].GetProperty("Keys")), Is.True);
+        await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); mode.BlendModeIndex = 0; Assert.That(history.CanUndo, Is.False, "Old rows cannot change a restored track.");
+        session.Rows[0].BlendModeIndex = 1; history.Clear();
+        session.Frame = 5; session.SetActiveTrack(session.Rows.Single(row => row.Property == "transform.x")); session.AddCurrentKey(); root = entry.Source.Parameters["timeline"]; Assert.That(root.GetProperty("Tracks")[0].GetProperty("Keys")[1].GetProperty("frame").GetInt32(), Is.EqualTo(5)); Assert.That(session.Canvas.Selection, Has.Count.EqualTo(1));
         session.AddCurrentKey(); await history.UndoAsync(); Assert.That(history.CanUndo, Is.False, "Adding at an existing frame only selects that key."); history.Clear();
         session.Frame = 5; session.NavigateKey(1); Assert.That(session.Frame, Is.EqualTo(10)); session.NavigateKey(-1); Assert.That(session.Frame, Is.EqualTo(0)); Assert.That(history.CanUndo, Is.False);
+        var parameters = new Dictionary<string, JsonElement>(entry.Source.Parameters) { ["timeline"] = JsonSerializer.Deserialize<JsonElement>("{\"tracks\":[],\"events\":[],\"unknown\":true}") };
+        scope.GetRequiredService<EntryFieldAuthoringService>().SetParameters(group.Id, entry.Source, entry.Type, parameters); history.Clear(); var omitted = entry.Source.Parameters["timeline"].GetRawText();
+        session.CommitTimingInput(false); session.CommitTimingInput(true); Assert.That(history.CanUndo, Is.False); Assert.That(entry.Source.Parameters["timeline"].GetRawText(), Is.EqualTo(omitted), "Confirming unchanged defaults does not materialize omitted fields.");
         await projects.CloseAsync();
     }
 }

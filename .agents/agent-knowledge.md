@@ -42,6 +42,8 @@
 
 ## 当前工作
 
+- 2026-10-18 Timeline 交互简化已验证，取代 P6e2 原保秒重定时/裁剪方案：已有轨道持续显示绝对值/叠加偏移模式，切换保留数值与切线；结束帧/FPS Enter/失焦独立提交、FPS 保留帧号、结束帧下限覆盖键/事件，越界拖动与延长合为单历史。旧应用/裁剪/保秒生产路径移除，四语各 678 keys。初轮六项目 901 项通过，模式拒绝回显补充后的最终 457 项、解决方案构建、格式/指纹通过，6 项媒体环境未执行；见 [timeline-simplification](../features/F-20261015-02-editor-authoring-workspace/timeline-simplification.md)。下一步 P6e3 曲线/切线。
+
 - 2026-10-18 P6e2 用户反馈修正已验证：播放头拖动只更新 DisplayFrame 预览，松手才定位/采样一次，取消/版本失效不提交；Timeline 复选框居中、NumericUpDown 实际模板按钮长按 250ms 后每 30ms 连发。457 项受影响回归、解决方案构建、格式/指纹通过，6 项原生媒体环境未执行，见 [phase-6e2 修正记录](../features/F-20261015-02-editor-authoring-workspace/phase-6e2.md#用户反馈修正播放头与控件交互)。
 
 - 2026-10-18 P6e2 已验证：共享 Avalonia TimelineCanvas/Model 与 Editor 无损 JSON 修改分层，树/画布共用扁平可见行和纵向滚动；关键帧多选/框选/整帧移动、首键保护/明确碰撞替换、时长/FPS/保秒重定时与裁剪均单历史，源变化取消旧手势。六项目 901 项回归、解决方案构建、格式/源码指纹通过；6 项原生媒体环境未执行。见 [phase-6e2](../features/F-20261015-02-editor-authoring-workspace/phase-6e2.md)。下一步 P6e3 曲线/切线，P6e4 事件/剩余状态与引用，实时预览不列阶段。

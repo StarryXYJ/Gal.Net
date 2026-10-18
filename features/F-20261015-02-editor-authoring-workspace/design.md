@@ -1,5 +1,7 @@
 # Editor 创作工作区设计
 
+P6e2 后续交互修订以 [Timeline 交互简化](timeline-simplification.md) 为准：模式为整轨道属性，可持续切换；结束帧/FPS 直接确认，保留帧号、不裁剪内容，越界拖动自动延长。旧保秒重定时和应用/裁剪组合已退出本轮设计。
+
 2026-10-18 复杂定制补充设计见 [对象树时间轴与专业参数控件](complex-editor-design.md)：按用户描述的 Unity 类交互组织“对象 → 可动画属性”，关键帧/曲线共用数据，明确切线、手势、JSON 适配、Locator 和事件边界。此为设计，尚未实施或验证，不改变 P6a/P6b 已交付状态。
 
 后续用户将近期范围限定为 Timeline Dock 与 animate 自定义曲线两个工具，Timeline 优先。Dock 默认与资源同组，叶节点当前值输入执行当前帧关键帧 upsert；详细设计已同步第 3–4 节。全面 Timeline 命名方案与独立预览场景/可控时钟/seek 的未来接点见该文第 10–12 节，属于待实施设计，不表示现有 IAnimationPresenter 已支持 seek。

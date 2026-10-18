@@ -17,6 +17,7 @@ internal sealed partial class TimelineDocument
     public int FrameRate { get; }
     public IReadOnlyList<TimelineTrackDefinition> Tracks { get; }
     public bool HasEvents { get; }
+    public int MinimumDuration { get; }
     public TimelineDocument(JsonElement value)
     {
         _root = JsonNode.Parse(value.GetRawText()) as JsonObject ?? throw new InvalidDataException("Timeline.Invalid");
@@ -40,6 +41,9 @@ internal sealed partial class TimelineDocument
                 previous = key.Frame;
             }
         }
+        var eventFrames = Array(_root, "events").Select(item => item is JsonObject obj ? Integer(obj, "frame", 0) : throw new InvalidDataException("Timeline.Invalid")).ToArray();
+        if (eventFrames.Any(frame => frame < 0 || frame > Duration)) throw new InvalidDataException("Timeline.Invalid");
+        MinimumDuration = Math.Max(Tracks.SelectMany(track => track.Keys).Select(key => key.Frame).DefaultIfEmpty(0).Max(), eventFrames.DefaultIfEmpty(0).Max());
     }
     private static string Name(JsonObject obj, string name)
     {

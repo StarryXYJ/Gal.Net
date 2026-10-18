@@ -90,7 +90,12 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 await history.UndoAsync(); unknown = session.Tree[0].Children.Single(node => node.Value?.Property == "opacity").Value!;
                 unknown.IsAdditive = true; unknown.DraftValue = 2; Assert.That(unknown.Commit(), Is.True); created = timeline.Source.Parameters["timeline"].GetProperty("tracks")[1];
                 Assert.That(created.GetProperty("blendMode").GetString(), Is.EqualTo("Additive")); Assert.That(created.GetProperty("keys")[0].GetProperty("value").GetSingle(), Is.EqualTo(0)); Assert.That(created.GetProperty("keys")[1].GetProperty("value").GetSingle(), Is.EqualTo(2));
-                await history.UndoAsync();
+                TimelinePump(window); var opacityMode = view.GetVisualDescendants().OfType<ComboBox>().Single(control => control.Name == "TimelineBlendMode" && control.DataContext is TimelineValueRow item && item.HasTrack && item.Property == "opacity");
+                Assert.That(opacityMode.SelectedIndex, Is.EqualTo(1)); history.Clear(); opacityMode.Focus(); PressGroupKey(opacityMode, Key.Up); TimelinePump(window);
+                Assert.That(opacityMode.SelectedIndex, Is.EqualTo(1), "A rejected absolute mode must still display the actual additive mode."); Assert.That(history.CanUndo, Is.False);
+                Assert.That(timeline.Source.Parameters["timeline"].GetProperty("tracks")[1].GetProperty("blendMode").GetString(), Is.EqualTo("Additive"));
+                // Remove the additive track explicitly so the remaining save assertion keeps its original scope.
+                unknown = session.Rows.Single(item => item.HasTrack && item.Property == "opacity"); Assert.That(unknown.ToggleTrack(), Is.True);
                 var draft = session.Rows.First(item => !item.HasTrack && item.Property == "opacity"); draft.DraftValue = .5m;
                 var localization = scope.GetRequiredService<IEditorLocalizationService>(); foreach (var locale in new[] { "ja-JP", "ko-KR", "en-US", "zh-CN" }) { localization.ApplyLocale(locale); TimelinePump(window); Assert.That(session.Tree[0].Label, Does.Contain(localization["Timeline.Possible"])); Assert.That(draft.DraftValue, Is.EqualTo(.5m)); }
                 draft.Cancel();

@@ -74,4 +74,11 @@ public sealed partial class TimelineEditSession
         if (_disposed || generation != _generation || !Rows.Contains(row) || _document is null) return false;
         return Submit(_document.Remove(index));
     }
+    internal bool ChangeBlendMode(TimelineValueRow row, int generation, int index, bool additive)
+    {
+        if (_disposed || generation != _generation || !Rows.Contains(row) || _document is null || index < 0) return false;
+        if (!additive && row.Capability is { } capability && _document.Tracks[index].Keys.Any(key => !capability.Accepts(key.Value)))
+        { Message = _localization["Timeline.ValueRange"]; return false; }
+        return Submit(_document.ChangeBlendMode(index, additive));
+    }
 }

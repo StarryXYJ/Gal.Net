@@ -30,13 +30,9 @@
     </WrapPanel>
     <WrapPanel Grid.Row="3" IsVisible="{Binding Session.CanEdit}">
       <TextBlock Margin="0,0,6,0" Text="{loc:Localize Timeline.Duration}" VerticalAlignment="Center"/>
-      <NumericUpDown Name="TimelineDurationDraft" Width="95" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" Value="{Binding Session.TimingDurationDraft,Mode=TwoWay}" IsEnabled="{Binding !Session.KeepSeconds}"/>
+      <NumericUpDown Name="TimelineDurationDraft" Width="95" Minimum="{Binding Session.MinimumDuration}" Maximum="2147483647" Increment="1" FormatString="0" Value="{Binding Session.TimingDurationDraft,Mode=TwoWay}" LostFocus="OnTimingLostFocus"/>
       <TextBlock Margin="6,0" Text="FPS" VerticalAlignment="Center"/>
-      <NumericUpDown Name="TimelineFpsDraft" Width="75" Minimum="1" Maximum="240" Increment="1" FormatString="0" Value="{Binding Session.TimingFrameRateDraft,Mode=TwoWay}"/>
-      <CheckBox Margin="8,0" Content="{loc:Localize Timeline.KeepSeconds}" IsChecked="{Binding Session.KeepSeconds,Mode=TwoWay}"/>
-      <TextBlock Margin="0,0,6,0" Text="{Binding Session.RetimedDuration}" IsVisible="{Binding Session.KeepSeconds}" VerticalAlignment="Center"/>
-      <Button Content="{loc:Localize Timeline.ApplyTiming}" Command="{Binding ApplyTimingCommand}"/>
-      <Button Margin="6,0" Content="{loc:Localize Timeline.TrimTiming}" Command="{Binding TrimTimingCommand}"/>
+      <NumericUpDown Name="TimelineFpsDraft" Width="75" Minimum="1" Maximum="240" Increment="1" FormatString="0" Value="{Binding Session.TimingFrameRateDraft,Mode=TwoWay}" LostFocus="OnTimingLostFocus"/>
     </WrapPanel>
     <Grid Grid.Row="4" RowDefinitions="28,*,Auto" ColumnDefinitions="470,*" IsVisible="{Binding Session.CanEdit}">
       <TextBlock Text="{loc:Localize Timeline.CanvasHint}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{loc:Localize Timeline.CanvasHint}" FontSize="11" VerticalAlignment="Center"/>
@@ -58,7 +54,10 @@
                       <NumericUpDown Grid.Column="1" Name="TimelineValue" Value="{Binding DraftValue,Mode=TwoWay}" Increment="0.1" FormatString="G9" IsEnabled="{Binding IsEditable}" LostFocus="OnValueLostFocus">
                         <ToolTip.Tip><StackPanel MaxWidth="420"><TextBlock Text="{Binding Hint}" TextWrapping="Wrap"/><TextBlock Text="{loc:Localize Timeline.InputHint}" TextWrapping="Wrap"/></StackPanel></ToolTip.Tip>
                       </NumericUpDown>
-                      <CheckBox Grid.Column="2" Content="{loc:Localize Timeline.Offset}" IsChecked="{Binding IsAdditive,Mode=TwoWay}" IsVisible="{Binding !HasTrack}"/>
+                      <ComboBox Grid.Column="2" Name="TimelineBlendMode" SelectedIndex="{Binding BlendModeIndex,Mode=OneWay}" SelectionChanged="OnBlendModeSelectionChanged" VerticalAlignment="Center" ToolTip.Tip="{loc:Localize Timeline.ModeHint}">
+                        <ComboBoxItem Content="{loc:Localize Timeline.Absolute}"/>
+                        <ComboBoxItem Content="{loc:Localize Timeline.Offset}"/>
+                      </ComboBox>
                     </Grid>
                   </DataTemplate></ContentControl.ContentTemplate>
                 </ContentControl>
