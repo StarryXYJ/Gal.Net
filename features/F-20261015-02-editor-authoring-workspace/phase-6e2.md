@@ -27,3 +27,15 @@
 证据目录：`C:/Users/Starry/.codex/visualizations/2026/10/15/01a13e35-d53c-7270-b753-7b67a4eee31c/timeline-validation`。复核入口 `validate-p6e2.ps1`；构建 `p6e2-solution-build.log`，六项目结果 `p6e2-GalNet*.log/trx`，格式 `p6e2-format-verify.log`，指纹 `p6e2-source-sha256.json`，截图 `p6e2-key-canvas.png`。本阶段文档相对链接及 `git diff --check` 通过。
 
 P6e2 退出条件满足，P6e 整体仍 in-progress。下一步 P6e3 插值、曲线及切线编辑，P6e4 事件和剩余状态/引用语义；实时场景预览继续排除。
+
+## 用户反馈修正：播放头与控件交互
+
+用户要求复选框与其他控件对齐、播放头拖动松手结算和 NumericUpDown 长按更快。播放头改为共享模型中的临时显示帧：移动只重绘线，松手请求一次定位后采样/重建属性行，Escape、捕获丢失、换模型或版本失效取消预览。三个带说明的 CheckBox 与轨道勾选框统一垂直居中；Timeline 数字框模板 RepeatButton 使用 250ms 初始延迟、30ms 重复间隔，单击步长不变。
+
+偏移采用既有 Additive 语义（基础值加轨道值）；保留秒数只影响 FPS 修改时的重定时，帧/时长按新旧 FPS 比例调整，未勾选则保留帧号。这次不修改两者的数据契约。
+
+初轮模板断言误枚举整个面板的 RepeatButton，包含 Slider 内部按钮，因此读到缩放条的 300ms 延迟。沿实际视觉祖先定位 NumericUpDown 后再检查，保持缩放条原速度；不把这个测试定位错误当作 NumericUpDown 模板缺陷。
+
+修正已验证：13 项 Timeline 聚焦通过；同源码解决方案构建成功（53 警告、0 错误），完整受影响回归 Editor 169、Architecture 45、Presentation 243，共 457 项通过、0 失败。Presentation TRX 另有 6 项 NotExecuted，缺少原生 LibVLC/视频环境；本次未修改媒体功能。whitespace/IDE0005 verify、源码指纹和 diff 检查通过。真实指针断言验证拖动 12 次期间实际帧/属性行不变，松手只请求一次定位，Escape 和版本失效不会提交；同时检查 NumericUpDown 真实模板按钮的 Delay/Interval 和复选框对齐。截图 `p6e2-feedback-alignment.png` 已检查。
+
+修正证据同目录：`validate-p6e2-feedback.ps1`、`p6e2-feedback-final-solution-build.log`、`p6e2-feedback-final-GalNet*.log/trx`、`p6e2-feedback-final-format-verify.log` 和 `p6e2-feedback-final-source-sha256.json`。此结果独立于上方 P6e2 原提交的 901 项回归记录。

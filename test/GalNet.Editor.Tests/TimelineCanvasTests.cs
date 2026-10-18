@@ -47,6 +47,11 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             {
                 var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear();
                 var canvas = view.FindControl<TimelineCanvas>("TimelineKeys")!; var ruler = view.FindControl<TimelineCanvas>("TimelineRuler")!;
+                foreach (var check in view.GetVisualDescendants().OfType<CheckBox>())
+                { Assert.That(check.VerticalAlignment, Is.EqualTo(Avalonia.Layout.VerticalAlignment.Center)); Assert.That(check.VerticalContentAlignment, Is.EqualTo(Avalonia.Layout.VerticalAlignment.Center)); }
+                var spins = view.GetVisualDescendants().OfType<RepeatButton>().Where(button => button.GetVisualAncestors().OfType<NumericUpDown>().Any()).ToArray();
+                Assert.That(spins.Length, Is.GreaterThanOrEqualTo(6), "Real NumericUpDown templates expose their repeat buttons.");
+                foreach (var spin in spins) { Assert.That(spin.Delay, Is.EqualTo(250), string.Join(" / ", spin.GetVisualAncestors().Prepend(spin).OfType<Control>().Select(control => $"{control.GetType().FullName}#{control.Name} template={control.TemplatedParent?.GetType().FullName}"))); Assert.That(spin.Interval, Is.EqualTo(30)); }
                 var xRow = session.VisibleNodes.ToList().FindIndex(node => node.Value?.Property == "transform.x"); var yRow = session.VisibleNodes.ToList().FindIndex(node => node.Value?.Property == "transform.y");
                 var input = view.GetVisualDescendants().OfType<NumericUpDown>().Single(control => control.DataContext is TimelineValueRow row && row.Property == "transform.x");
                 var inputCenter = input.TranslatePoint(new Point(0, input.Bounds.Height / 2), window)!.Value.Y;
@@ -65,6 +70,20 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(session.Canvas.StartFrame, Is.EqualTo(3)); Assert.That(session.Canvas.PixelsPerFrame, Is.EqualTo(12));
                 var seek = ruler.TranslatePoint(new Point(84, 12), window)!.Value; window.MouseDown(seek, MouseButton.Left); window.MouseUp(seek, MouseButton.Left); TimelinePump(window);
                 Assert.That(session.Frame, Is.EqualTo(10)); Assert.That(history.CanUndo, Is.False);
+                var originalRow = session.Rows[0]; var seeks = 0; void CountSeek(int _) => seeks++;
+                session.Canvas.SeekRequested += CountSeek;
+                var endSeek = ruler.TranslatePoint(new Point(204, 12), window)!.Value;
+                window.MouseDown(seek, MouseButton.Left);
+                for (var step = 1; step <= 12; step++) window.MouseMove(seek + new Vector(step * 10, 0));
+                Assert.That(session.Frame, Is.EqualTo(10)); Assert.That(session.Canvas.DisplayFrame, Is.EqualTo(20));
+                Assert.That(session.Rows[0], Is.SameAs(originalRow), "Scrubbing only paints the preview, without rebuilding property rows."); Assert.That(seeks, Is.Zero);
+                window.MouseUp(endSeek, MouseButton.Left); TimelinePump(window);
+                Assert.That(session.Frame, Is.EqualTo(20)); Assert.That(seeks, Is.EqualTo(1)); Assert.That(history.CanUndo, Is.False);
+                window.MouseDown(seek, MouseButton.Left); window.MouseMove(endSeek); PressGroupKey(ruler, Key.Escape); window.MouseUp(seek, MouseButton.Left);
+                Assert.That(session.Frame, Is.EqualTo(20)); Assert.That(session.Canvas.DisplayFrame, Is.EqualTo(20)); Assert.That(seeks, Is.EqualTo(1));
+                window.MouseDown(seek, MouseButton.Left); window.MouseMove(endSeek); session.Canvas.Invalidate(); window.MouseUp(seek, MouseButton.Left);
+                Assert.That(session.Frame, Is.EqualTo(20)); Assert.That(seeks, Is.EqualTo(1), "Invalidated scrubbing cannot seek a replacement target.");
+                session.Canvas.SeekRequested -= CountSeek; session.Frame = 10;
                 session.Canvas.StartFrame = 0; session.Canvas.PixelsPerFrame = 8; TimelinePump(window);
                 var first = CanvasPoint(window, canvas, xRow, 10); var second = CanvasPoint(window, canvas, yRow, 10);
                 window.MouseDown(first, MouseButton.Left); window.MouseUp(first, MouseButton.Left);

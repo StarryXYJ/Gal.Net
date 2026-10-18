@@ -28,14 +28,15 @@ public sealed class TimelineCanvas : Control
     { base.OnPropertyChanged(change); if (change.Property == ModelProperty) { Observe(); InvalidateVisual(); } }
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e) { base.OnAttachedToVisualTree(e); Observe(); }
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
-    { if (_drag) Model?.Cancel(); ReleaseLocal(); if (_observed is not null) _observed.PropertyChanged -= ModelChanged; _observed = null; base.OnDetachedFromVisualTree(e); }
+    { if (_drag || _seeking) Model?.Cancel(); ReleaseLocal(); if (_observed is not null) _observed.PropertyChanged -= ModelChanged; _observed = null; base.OnDetachedFromVisualTree(e); }
     private void Observe()
     {
         if (ReferenceEquals(_observed, Model)) return;
-        if (_observed is not null) _observed.PropertyChanged -= ModelChanged;
+        if (_observed is not null) { if (_drag || _seeking) _observed.Cancel(); _observed.PropertyChanged -= ModelChanged; }
+        ReleaseLocal();
         _observed = Model; if (_observed is not null) _observed.PropertyChanged += ModelChanged;
     }
-    private void ModelChanged(object? sender, PropertyChangedEventArgs e) { if (_drag && Model?.InteractionVersion != _version) ReleaseLocal(); InvalidateVisual(); }
+    private void ModelChanged(object? sender, PropertyChangedEventArgs e) { if (_origin is not null && Model?.InteractionVersion != _version) ReleaseLocal(); InvalidateVisual(); }
     private double X(int frame) => Model is { } model ? (frame - model.StartFrame) * model.PixelsPerFrame : 0;
     private int FrameAt(double x) => Model is { } model ? (int)Math.Clamp(Math.Round(model.StartFrame + x / model.PixelsPerFrame, MidpointRounding.AwayFromZero), 0, model.Duration) : 0;
     public override void Render(DrawingContext context)
@@ -71,14 +72,14 @@ public sealed class TimelineCanvas : Control
             }
             if (_origin is { } start && _boxEnd is { } end) context.DrawRectangle(null, new Pen(Brushes.DodgerBlue, 1), new Rect(start, end).Normalize());
         }
-        var playhead = X(model.Frame); context.DrawLine(new Pen(Brushes.OrangeRed, 1.5), new Point(playhead, 0), new Point(playhead, Bounds.Height));
+        var playhead = X(model.DisplayFrame); context.DrawLine(new Pen(Brushes.OrangeRed, 1.5), new Point(playhead, 0), new Point(playhead, Bounds.Height));
     }
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e); if (Model is not { } model || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
         Focus(); model.Cancel(); var point = e.GetPosition(this); _version = model.InteractionVersion; _origin = point;
         _extend = e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta); _prior = model.Selection.ToArray();
-        if (IsRuler) { _seeking = true; model.Seek(FrameAt(point.X)); }
+        if (IsRuler) { _seeking = true; model.PreviewSeek(FrameAt(point.X)); }
         else
         {
             var index = (int)(point.Y / model.RowHeight); var row = index >= 0 && index < model.Rows.Count ? model.Rows[index] : null;
@@ -97,7 +98,7 @@ public sealed class TimelineCanvas : Control
     {
         base.OnPointerMoved(e); if (_origin is not { } origin || Model is not { } model) return;
         var point = e.GetPosition(this);
-        if (_seeking) model.Seek(FrameAt(point.X));
+        if (_seeking) model.PreviewSeek(FrameAt(point.X));
         else if (_keyPress && !_summary)
         {
             if (!_drag && Math.Abs(point.X - origin.X) >= 3) { _drag = model.StartMove(); _version = model.InteractionVersion; }
@@ -115,12 +116,14 @@ public sealed class TimelineCanvas : Control
     {
         base.OnPointerReleased(e); if (_origin is null) return;
         var finish = _drag && Model?.InteractionVersion == _version;
+        var seek = _seeking && Model?.InteractionVersion == _version ? FrameAt(e.GetPosition(this).X) : (int?)null;
         var clickSelection = _keyPress && !_drag && !_extend ? _pressedIds : null;
         ReleaseLocal(); e.Pointer.Capture(null);
+        if (seek is { } frame) Model?.Seek(frame);
         if (clickSelection is not null) Model?.Select(clickSelection);
         if (finish) Model?.FinishMove(); InvalidateVisual(); e.Handled = true;
     }
-    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e) { if (_drag) Model?.Cancel(); ReleaseLocal(); base.OnPointerCaptureLost(e); }
+    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e) { if (_drag || _seeking) Model?.Cancel(); ReleaseLocal(); base.OnPointerCaptureLost(e); }
     private void ReleaseLocal()
     {
         _origin = null; _boxEnd = null; _drag = false; _keyPress = false; _summary = false; _seeking = false; _pressedIds = [];
@@ -129,7 +132,7 @@ public sealed class TimelineCanvas : Control
     protected override void OnKeyDown(KeyEventArgs e)
     {
         if (Model is not { } model) return;
-        if (e.Key == Key.Escape) { if (model.HasPendingMove) model.Cancel(); else model.Select([]); ReleaseLocal(); }
+        if (e.Key == Key.Escape) { if (model.HasPendingMove || _seeking) model.Cancel(); else model.Select([]); ReleaseLocal(); }
         else if (e.Key == Key.Delete) model.DeleteRequested?.Invoke();
         else if (e.Key == Key.Insert) model.AddRequested?.Invoke();
         else if (e.Key == Key.A && (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta))) model.Select(model.Rows.SelectMany(row => row.Keys.Select(key => key.Id)));

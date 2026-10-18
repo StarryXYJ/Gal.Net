@@ -3,6 +3,16 @@
              xmlns:timeline="using:GalNet.Game.Controls.Timeline"
              xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
              x:Class="GalNet.Editor.Views.TimelinePanelView" x:DataType="vm:TimelinePanelViewModel">
+  <UserControl.Styles>
+    <Style Selector="CheckBox">
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="NumericUpDown /template/ RepeatButton, NumericUpDown /template/ ButtonSpinner /template/ RepeatButton">
+      <Setter Property="Delay" Value="250"/>
+      <Setter Property="Interval" Value="30"/>
+    </Style>
+  </UserControl.Styles>
   <Grid Margin="10" RowDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto" RowSpacing="6">
     <TextBlock Text="{Binding Session.Source}" Opacity="0.7" TextWrapping="Wrap"/>
     <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">

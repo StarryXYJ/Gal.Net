@@ -42,6 +42,8 @@
 
 ## 当前工作
 
+- 2026-10-18 P6e2 用户反馈修正已验证：播放头拖动只更新 DisplayFrame 预览，松手才定位/采样一次，取消/版本失效不提交；Timeline 复选框居中、NumericUpDown 实际模板按钮长按 250ms 后每 30ms 连发。457 项受影响回归、解决方案构建、格式/指纹通过，6 项原生媒体环境未执行，见 [phase-6e2 修正记录](../features/F-20261015-02-editor-authoring-workspace/phase-6e2.md#用户反馈修正播放头与控件交互)。
+
 - 2026-10-18 P6e2 已验证：共享 Avalonia TimelineCanvas/Model 与 Editor 无损 JSON 修改分层，树/画布共用扁平可见行和纵向滚动；关键帧多选/框选/整帧移动、首键保护/明确碰撞替换、时长/FPS/保秒重定时与裁剪均单历史，源变化取消旧手势。六项目 901 项回归、解决方案构建、格式/源码指纹通过；6 项原生媒体环境未执行。见 [phase-6e2](../features/F-20261015-02-editor-authoring-workspace/phase-6e2.md)。下一步 P6e3 曲线/切线，P6e4 事件/剩余状态与引用，实时预览不列阶段。
 
 - 2026-10-18 P6e1 已验证：Editor.Shared 的 SceneTargetAnalysis 对作者快照做纯有限事实分析，Group 入口固定点、确定交/可能并、条件/未知语义/循环预算与跨类型身份冲突保守处理；ProjectSceneTargets 整代缓存，不执行游戏。Timeline 对象/属性树支持建/移轨道、未知初值和偏移首键、旧行失效；GUI 创建者自动内部 ID，Entry 粘贴按语义槽位重映射内部引用。解决方案构建、同源码 656 项回归、格式/指纹通过；一次未修改文件面板指针测试偶发已记录，隔离及完整重跑通过，根因未确认。见 [phase-6e1](../features/F-20261015-02-editor-authoring-workspace/phase-6e1.md)、[当前查询规范](../docs/spec/editor-scene-targets.md)。下一步 P6e2 画布/关键帧，P6e3 曲线；P6e4 事件/剩余语义、通用 Locator、Graph/转场复制和缺目标核验。只提供固定内置能力子集，未分析 Timeline/转场不当无影响；实时预览不列阶段。
