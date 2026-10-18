@@ -1,5 +1,7 @@
 # 参数控件与场景目标设计（用户第 6 点）
 
+最新阶段调整：通用场景定位器选择/解析及普通 DTO 字段接入提前到 P6e2b，先于曲线编辑，Timeline“＋”和更换对象复用同一组件。范围与退出条件见 [scene-locator-plan.md](scene-locator-plan.md)；已有查询/SceneLocator 不等同于已完成选择控件。
+
 日期：2026-10-17；补充：2026-10-18。状态：design；用户随后已授权实施，共享 UI 基础已由 [P6a](phase-6a.md) 验证，普通嵌套/列表和 presence 操作由 [P6b](phase-6b.md) 验证，其余部分仍为设计。所属：[Editor 创作工作区](feature.md) / P6；Group 交互第 1–5 点另见 [Group 编辑设计](group-editing-design.md)。本文件集中第 6 点的总体职责与状态查询设计；复杂控件的细节见 [对象树时间轴设计](complex-editor-design.md)，不重复建立另一套注册/查询架构。
 
 ## 1. 目标与已确认边界

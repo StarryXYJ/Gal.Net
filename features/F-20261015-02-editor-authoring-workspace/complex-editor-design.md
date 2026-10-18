@@ -1,5 +1,7 @@
 # 复杂参数定制与对象树时间轴
 
+最新顺序调整：通用场景目标定位器及 Timeline“＋”/更换对象入口提前为 P6e2b，先于曲线编辑。选择器、普通 DTO 字段和 Timeline 共享边界及新增协议见 [scene-locator-plan.md](scene-locator-plan.md)；当前仅具备查询与内部 Locator 数据，不表示选择 UI 已完成。
+
 P6e2 后续时间设置与轨道模式采用 [Timeline 交互简化](timeline-simplification.md)：直接确认结束帧/FPS，保留帧号，不提供裁剪/保秒模式；模式持续可改、跨结尾拖动自动延长。下文旧时间操作候选以此修订为准。
 
 日期：2026-10-18。状态：部分实施，P6c 已完成命名与契约，见 [phase-6c.md](phase-6c.md)；P6d 已验证 Dock、活动选择与已有轨道数值编辑，见 [phase-6d.md](phase-6d.md)；P6e1 已验证基础场景查询、对象/属性树和轨道创建，见 [phase-6e1.md](phase-6e1.md)。P6e2 已验证关键帧画布、选择/移动、缩放滚动与时间编辑，见 [phase-6e2.md](phase-6e2.md)。专属曲线工具和 Timeline 事件语义尚未实现。归属 F-20261015-02 / P6 后续，扩展 [参数控件与场景目标设计](parameter-editor-design.md) 第 5–8 节；三层注册与状态查询的总体职责仍以该文为准。
