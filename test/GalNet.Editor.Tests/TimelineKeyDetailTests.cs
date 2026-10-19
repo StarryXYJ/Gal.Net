@@ -1,7 +1,10 @@
 using System.Text.Json;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using GalNet.Contracts.Builtins;
 using GalNet.Editor.Abstraction.Services;
@@ -17,6 +20,29 @@ namespace GeneralTest.Editor;
 
 public sealed partial class ProjectWorkspaceLifecycleTests
 {
+    private static MenuFlyout TimelineKeyMenu(Window window, TimelinePanelView view, TimelineEditSession session)
+    {
+        var canvas = view.FindControl<TimelineCanvas>("TimelineKeys")!;
+        if (FlyoutBase.GetAttachedFlyout(canvas) is PopupFlyoutBase previous)
+        {
+            var editor = (previous as Flyout)?.Content as TimelineKeyEditorView;
+            previous.Hide();
+            if (editor is not null) { Assert.That(editor.DataContext, Is.Null); Assert.That(((Flyout)previous).Content, Is.Null); }
+        }
+        TimelinePump(window);
+        var row = session.Canvas.Rows.ToList().FindIndex(row => !row.IsSummary && row.Keys.Any(key => session.Canvas.Selection.Contains(key.Id)));
+        var key = session.Canvas.Rows[row].Keys.First(key => session.Canvas.Selection.Contains(key.Id));
+        var point = canvas.TranslatePoint(new Point((key.Frame - session.Canvas.StartFrame) * session.Canvas.PixelsPerFrame, session.Canvas.RowTop(row) + 19), window)!.Value;
+        window.MouseDown(point, MouseButton.Right); window.MouseUp(point, MouseButton.Right); TimelinePump(window);
+        var menu = (MenuFlyout)FlyoutBase.GetAttachedFlyout(canvas)!; Assert.That(menu.IsOpen, Is.True); return menu;
+    }
+    private static TimelineKeyEditorView OpenTimelineKeyEditor(Window window, TimelinePanelView view, TimelineEditSession session)
+    {
+        var menu = TimelineKeyMenu(window, view, session);
+        menu.Items.OfType<MenuItem>().Single(item => item.Name == "TimelineEditKeyValues").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)); TimelinePump(window);
+        var flyout = (Flyout)FlyoutBase.GetAttachedFlyout(view.FindControl<TimelineCanvas>("TimelineKeys")!)!;
+        Assert.That(flyout.IsOpen, Is.True); return (TimelineKeyEditorView)flyout.Content!;
+    }
     [Test]
     public async Task TimelineKeyDetailsBatchEditInterpolationTangentsUnitsAndPresetsThroughMountedControls()
     {
@@ -43,7 +69,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var original = entry.Source.Parameters["timeline"];
                 void Input(string name, string text)
                 {
-                    var numeric = view.FindControl<NumericUpDown>(name)!; var box = numeric.GetVisualDescendants().OfType<TextBox>().Single();
+                    var numeric = OpenTimelineKeyEditor(window, view, session).FindControl<NumericUpDown>(name)!; var box = numeric.GetVisualDescendants().OfType<TextBox>().Single();
                     box.Focus(); box.Text = text; TimelinePump(window); PressGroupKey(box, Key.Enter); TimelinePump(window);
                 }
                 Input("TimelineKeyIncoming", "6");
@@ -52,22 +78,22 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(XKeys()[1].GetProperty("futureKey")[0].GetInt32(), Is.EqualTo(1)); Assert.That(session.KeyEdit!.Count, Is.EqualTo(2));
                 await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); Assert.That(JsonElement.DeepEquals(original, entry.Source.Parameters["timeline"]), Is.True); await history.RedoAsync(); Select(10, 20); history.Clear();
                 var old = session.KeyEdit!; old.Value = 99;
-                view.FindControl<ComboBox>("TimelineKeyInterpolation")!.SelectedIndex = 0; TimelinePump(window);
+                OpenTimelineKeyEditor(window, view, session).FindControl<ComboBox>("TimelineKeyInterpolation")!.SelectedIndex = 0; TimelinePump(window);
                 Assert.That(XKeys()[1].GetProperty("InterpolationToNext").GetString(), Is.EqualTo("Step")); Assert.That(XKeys()[1].GetProperty("InTangent").GetSingle(), Is.EqualTo(6)); Assert.That(XKeys()[1].GetProperty("OutTangent").GetSingle(), Is.EqualTo(2)); Assert.That(old.CommitValue(), Is.False);
                 await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); Select(10, 20);
-                view.FindControl<ComboBox>("TimelineKeyInterpolation")!.SelectedIndex = 1; TimelinePump(window);
+                OpenTimelineKeyEditor(window, view, session).FindControl<ComboBox>("TimelineKeyInterpolation")!.SelectedIndex = 1; TimelinePump(window);
                 Assert.That(XKeys()[1].GetProperty("InterpolationToNext").GetString(), Is.EqualTo("Linear")); Assert.That(XKeys()[1].GetProperty("InTangent").GetSingle(), Is.EqualTo(6)); history.Clear();
                 session.TangentsPerSecond = true; Assert.That(session.KeyEdit!.Incoming, Is.EqualTo(360)); Input("TimelineKeyIncoming", "120");
                 Assert.That(XKeys()[1].GetProperty("InTangent").GetSingle(), Is.EqualTo(2)); Assert.That(XKeys()[2].GetProperty("InTangent").GetSingle(), Is.EqualTo(2));
                 await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); await history.RedoAsync(); Select(10, 20);
                 session.TimingFrameRateDraft = 30; session.CommitTimingInput(true); Select(10, 20); Assert.That(session.KeyEdit!.Incoming, Is.EqualTo(60)); history.Clear();
-                TimelineClick(window, view.FindControl<Button>("TimelineTangentFlat")!);
+                Assert.That(session.KeyEdit!.ApplyPreset(TimelineTangentPreset.Flat), Is.True);
                 Assert.That(XKeys()[1].GetProperty("InterpolationToNext").GetString(), Is.EqualTo("CubicHermite")); Assert.That(XKeys()[1].GetProperty("OutTangent").GetSingle(), Is.EqualTo(0)); Assert.That(XKeys()[2].GetProperty("InTangent").GetSingle(), Is.EqualTo(0));
                 await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); Select(10, 20);
-                TimelineClick(window, view.FindControl<Button>("TimelineTangentLinear")!); Assert.That(XKeys()[1].GetProperty("InTangent").GetSingle(), Is.EqualTo(1)); Assert.That(XKeys()[2].GetProperty("outTangent").GetSingle(), Is.EqualTo(1));
+                Assert.That(session.KeyEdit!.ApplyPreset(TimelineTangentPreset.Linear), Is.True); Assert.That(XKeys()[1].GetProperty("InTangent").GetSingle(), Is.EqualTo(1)); Assert.That(XKeys()[2].GetProperty("outTangent").GetSingle(), Is.EqualTo(1));
                 await history.UndoAsync(); Select(10, 20); history.Clear();
-                TimelineClick(window, view.FindControl<Button>("TimelineTangentSmooth")!); Assert.That(XKeys()[1].GetProperty("InTangent").GetSingle(), Is.EqualTo(1)); await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); Select(10, 20);
-                TimelineClick(window, view.FindControl<Button>("TimelineTangentAligned")!); Assert.That(XKeys()[1].GetProperty("InTangent").GetSingle(), Is.EqualTo(2)); Assert.That(XKeys()[2].GetProperty("outTangent").GetSingle(), Is.EqualTo(1)); history.Clear();
+                Assert.That(session.KeyEdit!.ApplyPreset(TimelineTangentPreset.Smooth), Is.True); Assert.That(XKeys()[1].GetProperty("InTangent").GetSingle(), Is.EqualTo(1)); await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); Select(10, 20);
+                Assert.That(session.KeyEdit!.ApplyPreset(TimelineTangentPreset.Aligned), Is.True); Assert.That(XKeys()[1].GetProperty("InTangent").GetSingle(), Is.EqualTo(2)); Assert.That(XKeys()[2].GetProperty("outTangent").GetSingle(), Is.EqualTo(1)); history.Clear();
                 // Value editing includes the protected first key but never changes its frame.
                 Select(0, 10); Input("TimelineKeyValue", "8"); Assert.That(XKeys()[0].GetProperty("Value").GetSingle(), Is.EqualTo(8)); Assert.That(XKeys()[1].GetProperty("Value").GetSingle(), Is.EqualTo(8)); Assert.That(XKeys()[0].GetProperty("Frame").GetInt32(), Is.EqualTo(0));
                 await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); Select(10, 20);
@@ -75,6 +101,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var draft = session.KeyEdit!; var beforeDraft = draft.Incoming; draft.Incoming = 13; var locale = scope.GetRequiredService<IEditorLocalizationService>();
                 foreach (var culture in new[] { "ja-JP", "ko-KR", "en-US", "zh-CN" }) { locale.ApplyLocale(culture); TimelinePump(window); Assert.That(draft.Incoming, Is.EqualTo(13)); Assert.That(session.KeyEdit, Is.SameAs(draft)); }
                 draft.Cancel(); Assert.That(draft.Incoming, Is.EqualTo(beforeDraft));
+                if (FlyoutBase.GetAttachedFlyout(canvas) is PopupFlyoutBase opened) opened.Hide();
                 var saved = entry.Source.Parameters["timeline"]; var path = project.RootPath; var groupId = group.Id; var entryId = entry.StableId;
                 await workspace.SaveAsync(); Assert.That(session.KeyEdit, Is.SameAs(draft)); Assert.That(history.CanUndo, Is.False);
                 if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } output) { using var frame = window.CaptureRenderedFrame(); frame!.Save(Path.Combine(output, "timeline-key-details.png")); }
@@ -110,6 +137,14 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         session.Canvas.Select(session.Canvas.Rows.SelectMany(row => row.Keys.Select(key => key.Id)));
         var original = entry.Source.Parameters["timeline"]; session.KeyEdit!.Value = 2; Assert.That(session.KeyEdit.CommitValue(), Is.False);
         Assert.That(history.CanUndo, Is.False); Assert.That(JsonElement.DeepEquals(original, entry.Source.Parameters["timeline"]), Is.True);
+        Assert.That(session.Canvas.StartCurve(), Is.True); session.Canvas.UpdateCurve(new(ValueDelta: 1));
+        Assert.That(session.Canvas.IsMoveValid, Is.False); session.Canvas.FinishCurve();
+        Assert.That(session.Canvas.HasPendingCurve, Is.False); Assert.That(history.CanUndo, Is.False); Assert.That(JsonElement.DeepEquals(original, entry.Source.Parameters["timeline"]), Is.True);
+        Assert.That(session.Canvas.StartCurve(), Is.True); session.Canvas.UpdateCurve(new(Tangent: float.NaN));
+        Assert.That(session.Canvas.IsMoveValid, Is.False); session.Canvas.Cancel(); Assert.That(history.CanUndo, Is.False);
+        Assert.That(session.Canvas.StartCurve(), Is.True); session.Canvas.UpdateCurve(new(ValueDelta: -.1f));
+        session.Canvas.Select(session.Canvas.Selection.Take(1).ToArray()); Assert.That(session.Canvas.HasPendingCurve, Is.False);
+        session.Canvas.Select(session.Canvas.Rows.SelectMany(row => row.Keys.Select(key => key.Id)));
         session.KeyEdit.Value = .25m; Assert.That(session.KeyEdit.CommitValue(), Is.True);
         Assert.That(entry.Source.Parameters["timeline"].GetProperty("tracks").EnumerateArray().SelectMany(track => track.GetProperty("keys").EnumerateArray()).All(key => key.GetProperty("value").GetSingle() == .25f), Is.True);
         await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); Assert.That(JsonElement.DeepEquals(original, entry.Source.Parameters["timeline"]), Is.True);

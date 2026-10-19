@@ -32,7 +32,7 @@ internal sealed partial class TimelineDocument
             array.Clear(); foreach (var key in nodes.OrderBy(key => Integer(key, "frame", 0))) array.Add(key);
         }
         root[Name(root, "durationFrames")] = Math.Max(Duration, keys.Select(key => key.Frame + delta).DefaultIfEmpty(0).Max());
-        var result = JsonSerializer.SerializeToElement(root); _ = new TimelineDocument(result); return result;
+        return FinishCurvePatch(root);
     }
     public void ValidateMove(IEnumerable<TimelineKeyLocation> selected, int delta, bool replace)
     {
@@ -58,7 +58,7 @@ internal sealed partial class TimelineDocument
             var frames = group.Select(key => key.Frame).ToHashSet(); var array = Array((JsonObject)Array(root, "tracks")[group.Key]!, "keys");
             for (var index = array.Count - 1; index >= 0; index--) if (frames.Contains(Integer((JsonObject)array[index]!, "frame", 0))) array.RemoveAt(index);
         }
-        return JsonSerializer.SerializeToElement(root);
+        return FinishCurvePatch(root);
     }
     public JsonElement AddKeys(IEnumerable<int> tracks, int frame)
     {

@@ -723,5 +723,17 @@
   "Entry.Parameter.transform": "変換",
   "Entry.Parameter.opacity": "不透明度",
   "Entry.Parameter.toTransform": "移動先の変換",
-  "Entry.Parameter.timeline": "タイムライン"
+  "Entry.Parameter.timeline": "タイムライン",
+  "Timeline.Curve.Interpolation": "補間",
+  "Timeline.Curve.Hermite": "ベジェ / Hermite",
+  "Timeline.Curve.Both": "両側の接線",
+  "Timeline.Curve.Free": "自由",
+  "Timeline.Curve.Flat": "水平",
+  "Timeline.Curve.Linear": "線形",
+  "Timeline.Curve.Auto": "自動ベジェ",
+  "Timeline.Curve.Linked": "接線を連動",
+  "Timeline.Curve.Broken": "接線を分離",
+  "Timeline.Curve.EditValues": "値を編集…",
+  "Timeline.Curve.Fit": "値域に合わせる",
+  "Timeline.Curve.Hint": "Alt+ホイールで値域を拡大縮小、Alt+ドラッグで移動。キーをドラッグして時間と値を変更し、選択して接線ハンドルを表示します。"
 }

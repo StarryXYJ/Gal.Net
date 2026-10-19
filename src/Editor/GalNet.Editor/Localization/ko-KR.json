@@ -723,5 +723,17 @@
   "Entry.Parameter.transform": "변환",
   "Entry.Parameter.opacity": "불투명도",
   "Entry.Parameter.toTransform": "대상 변환",
-  "Entry.Parameter.timeline": "타임라인"
+  "Entry.Parameter.timeline": "타임라인",
+  "Timeline.Curve.Interpolation": "보간",
+  "Timeline.Curve.Hermite": "베지어 / Hermite",
+  "Timeline.Curve.Both": "양쪽 접선",
+  "Timeline.Curve.Free": "자유",
+  "Timeline.Curve.Flat": "평탄",
+  "Timeline.Curve.Linear": "선형",
+  "Timeline.Curve.Auto": "자동 베지어",
+  "Timeline.Curve.Linked": "접선 연결",
+  "Timeline.Curve.Broken": "접선 분리",
+  "Timeline.Curve.EditValues": "값 편집…",
+  "Timeline.Curve.Fit": "값 범위 맞춤",
+  "Timeline.Curve.Hint": "Alt+휠로 값 범위를 확대하고 Alt+드래그로 이동합니다. 키를 드래그하여 시간과 값을 변경하고 선택하여 접선 핸들을 표시합니다."
 }

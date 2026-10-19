@@ -14,7 +14,7 @@
 
 ## P6e3b：值曲线与拖柄手势
 
-状态：planned。前置 P6e3a 和本轮 Timeline 交互简化。按 2026-10-19 用户确认改为属性内联曲线 UX，不再新增独立曲线/详情区域；实时游戏预览继续排除。
+状态：verified。前置 P6e3a 和本轮 Timeline 交互简化。按 2026-10-19 用户确认改为属性内联曲线 UX，不再新增独立曲线/详情区域；实时游戏预览继续排除。
 
 1. 每个已重载属性提供展开按钮，展开为该属性的值视图，与时间轴共享时间坐标、播放头、选择和横向缩放/滚动。普通关键帧视图的位置表示时间；值视图的纵坐标表示值，支持值域缩放/平移，树与画布行高统一更新，折叠不写作者数据。
 2. 关键帧右键基于当前选择提供插值和切线菜单：左侧/入切线、右侧/出切线、联动/断开、平坦/线性/自动等。右击未选键先选择该键；右击已选键保留多选集合。菜单批量动作一次历史，混合模式不伪装为统一值。
@@ -23,7 +23,7 @@
 5. 共享 Avalonia 数值曲线控件负责绘制/命中/手势，Editor 适配负责属性能力、数据/历史和模式重算。Step/Linear/Hermite 绘制与运行时 sampler 一致，不以显示钳位掩盖 overshoot。实施前核对有限属性范围的区间极值诊断和共享校验边界；接受规则变化需同步中立规则与消费者。
 6. 内联编辑和右键菜单接通后，移除当前独立关键帧详情区及独立预设按钮；必要的精确数值输入放在对应键/柄的菜单或就地输入中，避免同一行为出现两套永久入口。
 
-退出条件：真实主题下属性展开/折叠与行对齐、键/柄鼠标与菜单、批量单历史/撤销重做、自动模式邻键重算、取消/过期拒绝、四语和保存重开；采样与运行时一致，相关项目回归和解决方案构建通过。上述为下一阶段计划，本轮不宣称已实现。
+退出条件：真实主题下属性展开/折叠与行对齐、键/柄鼠标与菜单、批量单历史/撤销重做、自动模式邻键重算、取消/过期拒绝、四语和保存重开；采样与运行时一致，相关项目回归和解决方案构建通过。上述范围已实施，结果与保留边界见本页实施记录。
 
 ## Timeline 交互简化（2026-10-19）
 
@@ -35,7 +35,7 @@
 
 证据目录沿用本文件末尾 timeline-validation，脚本 validate-timeline-ux.ps1；构建 timeline-ux-final-solution-build.log，回归 timeline-ux-final-GalNet*.trx/.log，格式 timeline-ux-final-format-verify.log，指纹 timeline-ux-final-source-sha256.json，截图 timeline-ux-override-menu.png 和 p6e1-property-tree.png。
 
-独立详情区本轮保留，到 P6e3b 就地曲线和菜单接通后移除。P6e3b 及 P6e4/P6f 仍 planned。
+该次交互简化结束时保留独立详情区；后续 P6e3b 已由内联曲线和菜单替换。P6e4/P6f 仍 planned。
 
 ## P6e3a 实施记录
 
@@ -49,4 +49,34 @@
 
 证据目录：`C:/Users/Starry/.codex/visualizations/2026/10/15/01a13e35-d53c-7270-b753-7b67a4eee31c/timeline-validation`。脚本 validate-key-details.ps1；构建 key-details-final-solution-build.log；TRX/日志 key-details-final-GalNet*；指纹 key-details-final-source-sha256.json；格式 key-details-final-format-verify.log；真实控件截图 timeline-key-details.png。聚焦结果 key-details-focused.trx 包含新建的 3 个用例及原画布指针用例。
 
-正式行为见 [Group/Timeline](../../docs/spec/editor-groups.md)、[i18n](../../docs/spec/i18n.md)。未修改开工时已有的 feature.md 与 group-property-editor-design.md 设计改动。P6e3a 退出条件满足；P6e3 整体仍 in-progress，下一步 P6e3b 共享图形曲线与拖柄手势，之后 P6e4 事件/剩余语义与 P6f animate 自定义曲线。
+正式行为见 [Group/Timeline](../../docs/spec/editor-groups.md)、[i18n](../../docs/spec/i18n.md)。未修改开工时已有的 feature.md 与 group-property-editor-design.md 设计改动。P6e3a 退出条件满足；后续 P6e3b 当前结果见下文，P6e4 事件/剩余语义与 P6f animate 自定义曲线随后推进。
+
+## P6e3b 实施决策（2026-10-19）
+
+作者键增加 Editor 专用 `editorTangents` 对象，保存 incoming/outgoing（Free/Flat/Linear/Auto）及 linked，保留其中未知成员。运行时继续只消费现有值/帧斜率和 Step/Linear/CubicHermite；Editor 提交值、增删/移动邻键时，在同一根 patch 内重算自动/线性/平坦切线。自动模式使用前后邻键中心斜率，在局部极值取零，并限制为相邻同号斜率最小绝对值的三倍；端点采用相邻区间斜率。此为明确的非加权、限制过冲的自动贝塞尔行为，不宣称逐项复制 Unity/Premiere 的内部算法。
+
+左右侧可独立设模式，单侧选择断开联动；联动动作先平均入/出斜率并转自由模式，随后拖柄/精确输入同步另一侧。自动模式直接保存派生数值，保存重开仍保留编辑模式；编译/运行时不需要新的动态重算协议。旧无模式键默认自由且断开，打开页面不补写作者数据。
+
+属性叶默认收起，展开增加就地值图，原时间坐标和播放头共享；树/画布采用同一可变行高。图形采样直接调用 Core TimelineSampler，适应值域包含 Hermite 区间极值；不更改原有属性端点/Runtime 有限键的接受规则，不新增 Editor 独有的区间越界拒绝。图中值域不钳制，所以已有 overshoot 可见。曲线摄像机是视图状态，Alt+滚轮缩放、Alt+拖动平移、适应值域按钮不写历史。
+
+关键帧时间/值及入出柄拖动统一局部预览和松手单历史，首帧只允许改值/切线；非法手势释放取消，不执行隐式覆盖碰撞键。普通时间轴原有显式碰撞替换保留。右键未选键先选中，右键已选键保留多选；插值、左右/双侧模式、联动/断开、精确数值弹窗替代独立详情区。
+
+验证已完成，见下方最终记录；P6e4/P6f 和实时游戏预览未混入本切片。
+
+共享采样边界复现：新增 Step 前段之后内部键的精确帧与前后分数帧断言，原实现 Evaluate(10) 返回 0、预期 1，基线日志 inline-curve-step-before-fix.log/TRX 已保留；Core 区间查找改为 <=，不改变现有接受范围。经验见 `.agents/lessons/L-20261019-02-timeline-exact-key-frame.md`。两次初始构建分别暴露 Avalonia Point 减法结果不能直接取 Length，以及迁移测试缺少 Avalonia 引用，均已修正，日志 inline-curve-initial-build.log 和 inline-curve-second-build.log 保留；不属于产品运行失败。
+
+聚焦回归 20 项通过；追加的精确值域/极值、摄像机缩放锚点、Alt 平移、范围/非有限切线整批拒绝及选择变化取消等边界聚焦 3 项通过。最终完整构建与六项目回归正在验证，退出状态以最终结果为准。
+
+主工作区完整构建通过（121 警告、0 错误），但 Editor 总回归为 181 通过/3 失败：BrowserAddressBlocksDropAndGlobalSearchExitFollowSelection 的目录块点击、GroupToolbarBatchesAreSingleHistoryStepsAndSpaceInsertsOneAtCapturedAnchor 的尾部留白、GroupTransformAndColorUseRealControlsSingleHistoryAndLosslessSave 的宽度。工作区当时另有非本轮 Condition/EntryList 控件及 Condition.Placeholder 修改，未纳入本轮提交；文件面板点击此前已有偶发记录。不凭猜测修改这些文件，也不隐藏失败日志 inline-curve-final-GalNet.Editor.Tests.*。
+
+为确认本轮候选，使用 git archive 117d6c1 加明确 Timeline/Core 源文件和仅 12 个 Timeline.Curve.* 新 key 创建隔离快照，排除 Condition.Placeholder 和未提交控件改动；依赖用清空 packageSources 的 config 从全局缓存离线还原。第一次快照构建因默认契约固定 Content 路径 MSB3030 失败；以快照自身 artifacts 产物补齐 DefaultContracts 与 schema fixture 的普通 bin 预期位置后，重建成功（38 警告、0 错误）。相关前置条件见 L-20261019-03 lesson，未改业务 csproj。隔离六项目回归与指纹待最终结果。
+
+### P6e3b 最终验证
+
+隔离候选源码六项目回归通过：Editor 184、Core 111、Architecture 45、Presentation 243、Primitives.Builtins 117、Integration 110，共 810 项，0 失败；Presentation TRX 另有 6 项 NotExecuted（原生媒体环境），未误用控制台“已跳过 0”汇总。四语各 737 keys，新增的 12 个 Timeline.Curve.* 文案一致；主工作区另有 Condition.Placeholder，不纳入候选或提交。
+
+菜单截图 timeline-inline-curve-menu.png 已检查。收尾复核发现精确输入 Flyout 关闭后 attached flyout/content 仍能保留草稿引用，已补关闭时解除绑定、清空 DataContext/Content/attached flyout 的释放逻辑及实际弹窗断言；同一候选快照受影响 Editor 184 项重新全部通过。其他五项目的代码和输入未变化，未重复运行。whitespace/IDE0005 verify 和原工作区/候选快照源码指纹一致性通过。
+
+最终证据：inline-curve-isolated-build-2.log；inline-curve-isolated-GalNet*.trx/.log；弹窗修正 inline-curve-popup-build.log、inline-curve-popup-GalNet.Editor.Tests.trx/.log；格式 inline-curve-final-format-verify.log 与 inline-curve-popup-format-verify.log；最终指纹 inline-curve-main-final-source-sha256.json、inline-curve-snapshot-final-source-sha256.json。证据目录沿用本页 timeline-validation。主工作区首次 3 项非 Timeline 失败保留在原日志，不伪报原工作区全绿；本轮候选已排除并保留另一组控件改动。临时源码快照验证后清理，避免测试项目递归扫描误识别重复 csproj；HEAD 源码归档和输入清单保留。
+
+P6e3a/P6e3b 退出条件均满足，P6e3 verified；P6e 整体仍 in-progress。后续 P6e4 事件/剩余语义、P6f animate 自定义曲线；加权切线和实时游戏预览不在本轮范围。

@@ -13,6 +13,9 @@ public class TimelineTests
             new() { Frame = 20, Value = 3 });
 
         Assert.That(TimelineSampler.Evaluate(track, 5), Is.EqualTo(0));
+        Assert.That(TimelineSampler.Evaluate(track, 9.999), Is.EqualTo(0));
+        Assert.That(TimelineSampler.Evaluate(track, 10), Is.EqualTo(1), "An authored key wins at its exact frame, including after a stepped segment.");
+        Assert.That(TimelineSampler.Evaluate(track, 10.001), Is.GreaterThan(1));
         Assert.That(TimelineSampler.Evaluate(track, 15), Is.EqualTo(2));
     }
 

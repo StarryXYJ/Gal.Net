@@ -1,5 +1,9 @@
 # GalNet Agent Knowledge
 
+- [隔离构建的契约产物](lessons/L-20261019-03-isolated-contract-artifacts.md)：默认契约 Content 和 schema fixture 固定读取普通 bin；全新 artifacts 快照要用同源码产物补齐，不能借用旧 DLL。
+
+- [精确关键帧边界](lessons/L-20261019-02-timeline-exact-key-frame.md)：Step 段需验证内部键及前后分数帧；Editor 直接共用 Runtime sampler，不用时间偏移掩盖边界错误。
+
 - [延迟模板祖先类型解析](lessons/L-20261019-01-template-ancestor-type-resolution.md)：带命名空间的祖先反射绑定必须实际挂载验证；已复现表达式使用 RelativeSource + x:Type 修复。
 
 - [查询上下文随项目 scope 失效](lessons/L-20261018-04-query-scope-disposal.md)：旧服务仍可能持有 IsLoaded 文档；查询服务释放时清缓存并推进代次，不能以可读数据代替有效会话。
@@ -45,6 +49,8 @@
 - `docs/manual/`：二次开发流程与框架接入指南。
 
 ## 当前工作
+
+- 2026-10-19 P6e3b 已验证：属性展开为内联值曲线，右键插值/左右侧切线模式、持久自动贝塞尔重算、联动/断开和精确输入弹窗取代独立详情区；共享 Avalonia 控件直接调用 Core sampler，Step 精确内部键边界已修正。editorTangents 只属于作者模式，Runtime 消费烘焙斜率；值/柄手势预览、松手单历史与过期取消，关闭弹窗释放绑定和草稿。隔离候选六项目 810 项、弹窗收尾 Editor 184 项、构建/格式/指纹通过，六项媒体未执行；主工作区另外的控件改动和首次三个非 Timeline 失败保留。P6e3 verified，P6e4/P6f 后续，见 features/F-20261015-02-editor-authoring-workspace/phase-6e3.md。
 
 - 2026-10-19 Group 属性编辑器改造已验证：统一响应式字段行、标题左上/重置同行右侧，去掉常驻 presence 操作；Transform 成员与类型工厂、ColorPicker、Timeline Dock 按钮，列表按元素类型分派。CanReset/HostContext 经 DTO scope 转发，Timeline 无默认定义禁止通用重置；子项 patch 保留未知 JSON，变换按语义相等保留无关更新下的草稿。802 项相关回归、解决方案构建、格式/源码指纹通过，六项媒体未执行，四语 727 keys。见 [实施记录](../features/F-20261015-02-editor-authoring-workspace/phase-group-properties.md)。动态结构 JSON 回退、八层/200 元素保护及 P6e3b/P6e4/P6f 范围保留。
 

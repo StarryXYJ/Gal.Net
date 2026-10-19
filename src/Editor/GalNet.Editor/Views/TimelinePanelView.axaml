@@ -33,32 +33,7 @@
       <NumericUpDown Name="TimelineDurationDraft" Width="95" Minimum="{Binding Session.MinimumDuration}" Maximum="2147483647" Increment="1" FormatString="0" Value="{Binding Session.TimingDurationDraft,Mode=TwoWay}" LostFocus="OnTimingLostFocus"/>
       <TextBlock Margin="6,0" Text="FPS" VerticalAlignment="Center"/>
       <NumericUpDown Name="TimelineFpsDraft" Width="75" Minimum="1" Maximum="240" Increment="1" FormatString="0" Value="{Binding Session.TimingFrameRateDraft,Mode=TwoWay}" LostFocus="OnTimingLostFocus"/>
-      <CheckBox Margin="10,0" Content="{loc:Localize Timeline.Key.Seconds}" IsChecked="{Binding Session.TangentsPerSecond,Mode=TwoWay}" IsEnabled="{Binding Session.HasKeySelection}"/>
     </WrapPanel>
-    <Border Grid.Row="4" IsVisible="{Binding Session.CanEdit}" IsEnabled="{Binding Session.HasKeySelection}" Padding="6" BorderThickness="1" BorderBrush="{DynamicResource SemiColorBorder}" CornerRadius="4">
-      <StackPanel DataContext="{Binding Session.KeyEdit}" x:DataType="services:TimelineKeyEdit" Spacing="5">
-        <WrapPanel>
-          <TextBlock Text="{loc:Localize Timeline.Key.Selected}" VerticalAlignment="Center"/><TextBlock Text="{Binding Count}" Width="30" Margin="4,0,10,0" VerticalAlignment="Center"/>
-          <TextBlock Text="{loc:Localize Timeline.Key.Value}" VerticalAlignment="Center"/>
-          <NumericUpDown Name="TimelineKeyValue" Width="105" Margin="4,0,10,0" Value="{Binding Value,Mode=TwoWay}" Increment="0.1" FormatString="G9" LostFocus="OnKeyDetailLostFocus"/>
-          <ComboBox Name="TimelineKeyInterpolation" Width="125" SelectedIndex="{Binding InterpolationIndex,Mode=TwoWay}" SelectionChanged="OnKeyInterpolationChanged">
-            <ComboBoxItem Content="{loc:Localize Timeline.Key.Step}"/><ComboBoxItem Content="{loc:Localize Timeline.Key.Linear}"/><ComboBoxItem Content="Hermite"/>
-          </ComboBox>
-          <TextBlock Text="{loc:Localize Timeline.Key.Incoming}" Margin="10,0,4,0" VerticalAlignment="Center"/>
-          <NumericUpDown Name="TimelineKeyIncoming" Width="105" Value="{Binding Incoming,Mode=TwoWay}" Increment="0.01" FormatString="G9" LostFocus="OnKeyDetailLostFocus"/>
-          <TextBlock Text="{loc:Localize Timeline.Key.Outgoing}" Margin="10,0,4,0" VerticalAlignment="Center"/>
-          <NumericUpDown Name="TimelineKeyOutgoing" Width="105" Value="{Binding Outgoing,Mode=TwoWay}" Increment="0.01" FormatString="G9" LostFocus="OnKeyDetailLostFocus"/>
-          <TextBlock Text="{loc:Localize Path=UnitKey}" Width="95" Margin="6,0" VerticalAlignment="Center"/>
-        </WrapPanel>
-        <WrapPanel>
-          <Button Name="TimelineTangentFlat" Content="{loc:Localize Timeline.Key.Flat}" Tag="Flat" Click="OnKeyTangentPreset" Margin="0,0,6,0"/>
-          <Button Name="TimelineTangentLinear" Content="{loc:Localize Timeline.Key.LinearTangents}" Tag="Linear" Click="OnKeyTangentPreset" Margin="0,0,6,0"/>
-          <Button Name="TimelineTangentSmooth" Content="{loc:Localize Timeline.Key.Smooth}" Tag="Smooth" Click="OnKeyTangentPreset" Margin="0,0,6,0"/>
-          <Button Name="TimelineTangentAligned" Content="{loc:Localize Timeline.Key.Aligned}" Tag="Aligned" Click="OnKeyTangentPreset" Margin="0,0,10,0"/>
-          <TextBlock Text="{loc:Localize Timeline.Key.Hint}" TextWrapping="Wrap" MaxWidth="720" VerticalAlignment="Center" Opacity="0.7"/>
-        </WrapPanel>
-      </StackPanel>
-    </Border>
     <Grid Grid.Row="5" RowDefinitions="28,*,Auto" ColumnDefinitions="470,*" IsVisible="{Binding Session.CanEdit}">
       <TextBlock Text="{loc:Localize Timeline.CanvasHint}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{loc:Localize Timeline.CanvasHint}" FontSize="11" VerticalAlignment="Center"/>
       <timeline:TimelineCanvas Grid.Column="1" Name="TimelineRuler" IsRuler="True" Model="{Binding Session.Canvas}"/>
@@ -66,14 +41,18 @@
         <Grid ColumnDefinitions="470,*">
           <ItemsControl Name="TimelinePropertyTree" ItemsSource="{Binding Session.VisibleNodes}">
             <ItemsControl.ItemTemplate><DataTemplate x:DataType="services:TimelineTreeNode">
-              <Grid Name="TimelineTreeRow" Height="38" ColumnDefinitions="*,250" Background="Transparent" PointerPressed="OnTreeRowPointerPressed" ContextRequested="OnTreeContextRequested">
-                <Grid ColumnDefinitions="Auto,24,18,*">
+              <Grid Name="TimelineTreeRow" Height="{Binding Height}" ColumnDefinitions="*,250" Background="Transparent" PointerPressed="OnTreeRowPointerPressed" ContextRequested="OnTreeContextRequested">
+                <Grid ColumnDefinitions="Auto,24,18,*" Height="38" VerticalAlignment="Top">
                   <Border Width="{Binding Indent}"/>
                   <Button Grid.Column="1" Name="AddTimelineProperty" Width="24" MinWidth="0" Padding="0" Content="＋" ToolTip.Tip="{loc:Localize Scene.AddProperty}" IsVisible="{Binding IsObject}" IsEnabled="{Binding CanAddProperties}" Click="OnAddProperty"/>
-                  <ToggleButton Grid.Column="2" Name="TimelineExpand" Width="18" MinWidth="0" Height="26" Padding="0" Content="{Binding ExpandGlyph}" IsVisible="{Binding IsBranch}" IsChecked="{Binding IsExpanded,Mode=TwoWay}"/>
+                  <ToggleButton Grid.Column="2" Name="TimelineExpand" Width="18" MinWidth="0" Height="26" Padding="0" Content="{Binding ExpandGlyph}" IsVisible="{Binding CanExpand}" IsChecked="{Binding IsExpanded,Mode=TwoWay}"/>
                   <TextBlock Grid.Column="3" Text="{Binding Label}" ToolTip.Tip="{Binding Label}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="3,0"/>
                 </Grid>
-                <ContentControl Grid.Column="1" Content="{Binding Value}" IsVisible="{Binding IsLeaf}">
+                <StackPanel Grid.ColumnSpan="2" Margin="30,44,10,0" VerticalAlignment="Top" IsVisible="{Binding HasCurve}" Spacing="6">
+                  <TextBlock Text="{loc:Localize Timeline.Curve.Hint}" Width="380" TextWrapping="Wrap" Opacity="0.65"/>
+                  <Button Name="FitTimelineCurve" Content="{loc:Localize Timeline.Curve.Fit}" Click="OnFitCurve" HorizontalAlignment="Left"/>
+                </StackPanel>
+                <ContentControl Height="38" VerticalAlignment="Top" Grid.Column="1" Content="{Binding Value}" IsVisible="{Binding IsLeaf}">
                   <ContentControl.ContentTemplate><DataTemplate x:DataType="services:TimelineValueRow">
                     <Grid ColumnDefinitions="130,*" ColumnSpacing="4">
                       <NumericUpDown Name="TimelineValue" Value="{Binding DraftValue,Mode=TwoWay}" Increment="0.1" FormatString="G9" IsEnabled="{Binding IsEditable}" LostFocus="OnValueLostFocus">
@@ -89,7 +68,7 @@
               </Grid>
             </DataTemplate></ItemsControl.ItemTemplate>
           </ItemsControl>
-          <timeline:TimelineCanvas Grid.Column="1" Name="TimelineKeys" Model="{Binding Session.Canvas}" Height="{Binding Session.Canvas.ContentHeight}" VerticalAlignment="Top"/>
+          <timeline:TimelineCanvas Grid.Column="1" Name="TimelineKeys" KeyContextRequested="OnKeyContextRequested" Model="{Binding Session.Canvas}" Height="{Binding Session.Canvas.ContentHeight}" VerticalAlignment="Top"/>
           <TextBlock Text="{loc:Localize Timeline.Empty}" IsVisible="{Binding Session.HasNoRows}" TextWrapping="Wrap" Margin="4"/>
         </Grid>
       </ScrollViewer>

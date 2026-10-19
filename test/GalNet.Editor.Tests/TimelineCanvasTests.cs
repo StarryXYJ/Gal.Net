@@ -28,7 +28,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
           "Events":[{"Frame":12,"Type":"future.a","tag":"a"},{"Frame":12,"Type":"future.b","tag":"b"},{"Frame":59,"Type":"future.c","tag":"late"}]}
         """);
     private static Point CanvasPoint(Window window, TimelineCanvas canvas, int row, int frame) => canvas.TranslatePoint(
-        new Point((frame - canvas.Model!.StartFrame) * canvas.Model.PixelsPerFrame, (row + .5) * canvas.Model.RowHeight), window)!.Value;
+        new Point((frame - canvas.Model!.StartFrame) * canvas.Model.PixelsPerFrame, canvas.Model.RowTop(row) + canvas.Model.RowHeight / 2), window)!.Value;
 
     [Test]
     public async Task TimelineCanvasRealPointerGesturesAlignSelectMoveCancelReplaceProtectAndRejectStaleTargets()

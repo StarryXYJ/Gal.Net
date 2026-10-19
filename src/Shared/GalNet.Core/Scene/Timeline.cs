@@ -86,7 +86,7 @@ public static class TimelineSampler
         if (frame >= keys[^1].Frame) return keys[^1].Value;
 
         var index = 0;
-        while (keys[index + 1].Frame < frame) index++;
+        while (keys[index + 1].Frame <= frame) index++;
         var start = keys[index];
         var end = keys[index + 1];
         var span = end.Frame - start.Frame;

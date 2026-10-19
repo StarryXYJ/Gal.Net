@@ -73,6 +73,6 @@ public sealed partial class TimelineEditSession
         _pendingProperties.RemoveWhere(item => !_scene.Targets.Any(target => target.Handle == item.Handle)
             || _document?.Tracks.Any(track => track.HandleId == item.Handle && track.Property == item.Property) == true);
     }
-    private void ClearObjectDrafts() { _selectedObjects.Clear(); _pendingProperties.Clear(); }
+    private void ClearObjectDrafts() { _curveViews.Clear(); _selectedObjects.Clear(); _pendingProperties.Clear(); }
     public void EndObjectEdit() { var previous = ObjectEdit; ObjectEdit = null; previous?.Dispose(); OnPropertyChanged(nameof(ObjectEdit)); }
 }

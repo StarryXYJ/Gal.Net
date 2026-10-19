@@ -41,6 +41,7 @@ internal sealed partial class TimelineDocument
                 previous = key.Frame;
             }
         }
+        foreach (var track in tracks.OfType<JsonObject>()) foreach (var key in Array(track, "keys").OfType<JsonObject>()) _ = Settings(key);
         var eventFrames = Array(_root, "events").Select(item => item is JsonObject obj ? Integer(obj, "frame", 0) : throw new InvalidDataException("Timeline.Invalid")).ToArray();
         if (eventFrames.Any(frame => frame < 0 || frame > Duration)) throw new InvalidDataException("Timeline.Invalid");
         MinimumDuration = Math.Max(Tracks.SelectMany(track => track.Keys).Select(key => key.Frame).DefaultIfEmpty(0).Max(), eventFrames.DefaultIfEmpty(0).Max());
@@ -106,7 +107,7 @@ internal sealed partial class TimelineDocument
                 ["interpolationToNext"] = previous.InterpolationToNext.ToString()
             });
         }
-        return JsonSerializer.SerializeToElement(root);
+        return FinishCurvePatch(root);
     }
     private static float Derivative(TimelineTrackDefinition track, int frame)
     {

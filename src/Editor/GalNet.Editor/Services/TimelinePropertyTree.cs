@@ -14,15 +14,18 @@ public sealed partial class TimelineTreeNode(string key, Func<string> label, Tim
     public TimelineValueRow? Value { get; } = value;
     public bool IsLeaf => Value is not null;
     public bool IsBranch => !IsLeaf;
+    public bool CanExpand => IsBranch || Value?.HasTrack == true;
+    public bool HasCurve => IsLeaf && Value!.HasTrack && IsExpanded;
+    public double Height => 38 + (HasCurve ? GalNet.Game.Controls.Timeline.TimelineCurveViewport.Height : 0);
     public string? ObjectHandle { get; init; }
     public bool IsObject => ObjectHandle is not null;
     public bool CanAddProperties => ObjectHandle is not null && Descendants().Any(node => node.Value is { HasTrack: false, Capability: not null });
     public int Depth { get; internal set; }
     public double Indent => Depth * 16;
     public ObservableCollection<TimelineTreeNode> Children { get; } = [];
-    [ObservableProperty] private bool _isExpanded = true;
+    [ObservableProperty] private bool _isExpanded = value is null;
     public string ExpandGlyph => IsExpanded ? "▾" : "▸";
-    partial void OnIsExpandedChanged(bool value) => OnPropertyChanged(nameof(ExpandGlyph));
+    partial void OnIsExpandedChanged(bool value) { OnPropertyChanged(nameof(ExpandGlyph)); OnPropertyChanged(nameof(HasCurve)); OnPropertyChanged(nameof(Height)); }
     internal IEnumerable<TimelineTreeNode> Descendants() => new[] { this }.Concat(Children.SelectMany(node => node.Descendants()));
     internal void RefreshLabel() => OnPropertyChanged(nameof(Label));
 }

@@ -723,5 +723,17 @@
   "Entry.Parameter.transform": "Transform",
   "Entry.Parameter.opacity": "Opacity",
   "Entry.Parameter.toTransform": "Target transform",
-  "Entry.Parameter.timeline": "Timeline"
+  "Entry.Parameter.timeline": "Timeline",
+  "Timeline.Curve.Interpolation": "Interpolation",
+  "Timeline.Curve.Hermite": "Bézier / Hermite",
+  "Timeline.Curve.Both": "Both tangents",
+  "Timeline.Curve.Free": "Free",
+  "Timeline.Curve.Flat": "Flat",
+  "Timeline.Curve.Linear": "Linear",
+  "Timeline.Curve.Auto": "Auto Bézier",
+  "Timeline.Curve.Linked": "Link tangents",
+  "Timeline.Curve.Broken": "Break tangents",
+  "Timeline.Curve.EditValues": "Edit values…",
+  "Timeline.Curve.Fit": "Fit values",
+  "Timeline.Curve.Hint": "Alt+wheel zooms values; Alt+drag pans. Drag keys to edit time and value; select keys to show tangent handles."
 }

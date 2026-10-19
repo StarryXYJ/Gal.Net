@@ -10,7 +10,7 @@ using Avalonia.VisualTree;
 namespace GalNet.Game.Controls.Timeline;
 
 /// <summary>Integer-frame key canvas, reusable without Editor services or history.</summary>
-public sealed class TimelineCanvas : Control
+public sealed partial class TimelineCanvas : Control
 {
     public static readonly StyledProperty<TimelineCanvasModel?> ModelProperty = AvaloniaProperty.Register<TimelineCanvas, TimelineCanvasModel?>(nameof(Model));
     public static readonly StyledProperty<bool> IsRulerProperty = AvaloniaProperty.Register<TimelineCanvas, bool>(nameof(IsRuler));
@@ -28,11 +28,11 @@ public sealed class TimelineCanvas : Control
     { base.OnPropertyChanged(change); if (change.Property == ModelProperty) { Observe(); InvalidateVisual(); } }
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e) { base.OnAttachedToVisualTree(e); Observe(); }
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
-    { if (_drag || _seeking) Model?.Cancel(); ReleaseLocal(); if (_observed is not null) _observed.PropertyChanged -= ModelChanged; _observed = null; base.OnDetachedFromVisualTree(e); }
+    { if (_drag || _seeking || _curvePan) Model?.Cancel(); ReleaseLocal(); if (_observed is not null) _observed.PropertyChanged -= ModelChanged; _observed = null; base.OnDetachedFromVisualTree(e); }
     private void Observe()
     {
         if (ReferenceEquals(_observed, Model)) return;
-        if (_observed is not null) { if (_drag || _seeking) _observed.Cancel(); _observed.PropertyChanged -= ModelChanged; }
+        if (_observed is not null) { if (_drag || _seeking || _curvePan) _observed.Cancel(); _observed.PropertyChanged -= ModelChanged; }
         ReleaseLocal();
         _observed = Model; if (_observed is not null) _observed.PropertyChanged += ModelChanged;
     }
@@ -57,10 +57,11 @@ public sealed class TimelineCanvas : Control
         {
             for (var index = 0; index < model.Rows.Count; index++)
             {
-                var y = (index + .5) * model.RowHeight;
-                context.DrawLine(grid, new Point(0, (index + 1) * model.RowHeight), new Point(Bounds.Width, (index + 1) * model.RowHeight));
+                var top = model.RowTop(index); var y = top + model.RowHeight / 2;
+                context.DrawLine(grid, new Point(0, top + model.Rows[index].Height), new Point(Bounds.Width, top + model.Rows[index].Height));
                 var row = model.Rows[index];
-                foreach (var keys in row.Keys.GroupBy(key => (long)key.Frame + (model.Selection.Contains(key.Id) && model.HasPendingMove ? model.PreviewDelta : 0)))
+                if (row.Curve is not null) RenderCurve(context, row, top + model.RowHeight);
+                foreach (var keys in row.Keys.Select(PreviewKey).GroupBy(key => (long)key.Frame + (model.Selection.Contains(key.Id) && model.HasPendingMove ? model.PreviewDelta : 0)))
                 {
                     var selected = keys.Any(key => model.Selection.Contains(key.Id));
                     var frame = keys.Key;
@@ -76,15 +77,19 @@ public sealed class TimelineCanvas : Control
     }
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
-        base.OnPointerPressed(e); if (Model is not { } model || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        base.OnPointerPressed(e); if (Model is not { } model) return;
+        if (e.GetCurrentPoint(this).Properties.IsRightButtonPressed) { RequestKeyContext(e); return; }
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
         Focus(); model.Cancel(); var point = e.GetPosition(this); _version = model.InteractionVersion; _origin = point;
         _extend = e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta); _prior = model.Selection.ToArray();
         if (IsRuler) { _seeking = true; model.PreviewSeek(FrameAt(point.X)); }
         else
         {
-            var index = (int)(point.Y / model.RowHeight); var row = index >= 0 && index < model.Rows.Count ? model.Rows[index] : null;
+            var index = model.RowAt(point.Y); var row = index >= 0 && index < model.Rows.Count ? model.Rows[index] : null;
+            if (row?.Curve is not null && point.Y >= model.RowTop(index) + model.RowHeight)
+            { PressCurve(e, index, point); return; }
             var hit = row?.Keys.Where(key => Math.Abs(X(key.Frame) - point.X) <= 8).OrderBy(key => Math.Abs(X(key.Frame) - point.X)).FirstOrDefault();
-            if (hit is not null && Math.Abs((index + .5) * model.RowHeight - point.Y) <= 10)
+            if (hit is not null && Math.Abs(model.RowTop(index) + model.RowHeight / 2 - point.Y) <= 10)
             {
                 var ids = row!.Keys.Where(key => key.Frame == hit.Frame).Select(key => key.Id).ToArray();
                 if (_extend) model.Select(ids, extend: true, toggle: ids.All(model.Selection.Contains));
@@ -99,6 +104,7 @@ public sealed class TimelineCanvas : Control
     {
         base.OnPointerMoved(e); if (_origin is not { } origin || Model is not { } model) return;
         var point = e.GetPosition(this);
+        if (_curve || _curvePan) { MoveCurve(point); return; }
         if (_seeking) model.PreviewSeek(FrameAt(point.X));
         else if (_keyPress && !_deselected)
         {
@@ -108,7 +114,7 @@ public sealed class TimelineCanvas : Control
         else if (!_keyPress)
         {
             _boxEnd = point; var area = new Rect(origin, point).Normalize();
-            var ids = model.Rows.SelectMany((row, index) => row.IsSummary ? [] : row.Keys.Where(key => area.Contains(new Point(X(key.Frame), (index + .5) * model.RowHeight))).Select(key => key.Id));
+            var ids = model.Rows.SelectMany((row, index) => row.IsSummary ? [] : row.Keys.Where(key => area.Contains(new Point(X(key.Frame), model.RowTop(index) + model.RowHeight / 2))).Select(key => key.Id));
             model.Select(_extend ? _prior.Concat(ids) : ids);
         }
         InvalidateVisual(); e.Handled = true;
@@ -118,22 +124,24 @@ public sealed class TimelineCanvas : Control
         base.OnPointerReleased(e); if (_origin is null) return;
         var finish = _drag && Model?.InteractionVersion == _version;
         var seek = _seeking && Model?.InteractionVersion == _version ? FrameAt(e.GetPosition(this).X) : (int?)null;
+        var finishCurve = _curve && _drag;
         var clickSelection = _keyPress && !_drag && !_extend ? _pressedIds : null;
         ReleaseLocal(); e.Pointer.Capture(null);
         if (seek is { } frame) Model?.Seek(frame);
         if (clickSelection is not null) Model?.Select(clickSelection);
-        if (finish) Model?.FinishMove(); InvalidateVisual(); e.Handled = true;
+        if (finishCurve) Model?.FinishCurve();
+        else if (finish) Model?.FinishMove(); InvalidateVisual(); e.Handled = true;
     }
-    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e) { if (_drag || _seeking) Model?.Cancel(); ReleaseLocal(); base.OnPointerCaptureLost(e); }
+    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e) { if (_drag || _seeking || _curvePan) Model?.Cancel(); ReleaseLocal(); base.OnPointerCaptureLost(e); }
     private void ReleaseLocal()
     {
-        _origin = null; _boxEnd = null; _drag = false; _keyPress = false; _deselected = false; _seeking = false; _pressedIds = [];
+        _curve = false; _curvePan = false; _origin = null; _boxEnd = null; _drag = false; _keyPress = false; _deselected = false; _seeking = false; _pressedIds = [];
         var pointer = _pointer; _pointer = null; pointer?.Capture(null); InvalidateVisual();
     }
     protected override void OnKeyDown(KeyEventArgs e)
     {
         if (Model is not { } model) return;
-        if (e.Key == Key.Escape) { if (model.HasPendingMove || _seeking) model.Cancel(); else model.Select([]); ReleaseLocal(); }
+        if (e.Key == Key.Escape) { if (model.HasPendingMove || model.HasPendingCurve || _seeking) model.Cancel(); else model.Select([]); ReleaseLocal(); }
         else if (e.Key == Key.Delete) model.DeleteRequested?.Invoke();
         else if (e.Key == Key.Insert) model.AddRequested?.Invoke();
         else if (e.Key == Key.A && (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta))) model.Select(model.Rows.SelectMany(row => row.Keys.Select(key => key.Id)));
@@ -146,7 +154,10 @@ public sealed class TimelineCanvas : Control
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
         if (Model is not { } model) return;
-        if (e.KeyModifiers.HasFlag(KeyModifiers.Control)) { var x = e.GetPosition(this).X; var anchor = model.StartFrame + x / model.PixelsPerFrame; model.PixelsPerFrame *= Math.Pow(1.2, e.Delta.Y); model.StartFrame = anchor - x / model.PixelsPerFrame; }
+        var curveIndex = model.RowAt(e.GetPosition(this).Y);
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Alt) && curveIndex >= 0 && model.Rows[curveIndex].Curve is { } viewport)
+        { viewport.Zoom(Math.Pow(1.2, -e.Delta.Y), viewport.ValueAt(e.GetPosition(this).Y - model.RowTop(curveIndex) - model.RowHeight)); model.Changed(); }
+        else if (e.KeyModifiers.HasFlag(KeyModifiers.Control)) { var x = e.GetPosition(this).X; var anchor = model.StartFrame + x / model.PixelsPerFrame; model.PixelsPerFrame *= Math.Pow(1.2, e.Delta.Y); model.StartFrame = anchor - x / model.PixelsPerFrame; }
         else if (e.KeyModifiers.HasFlag(KeyModifiers.Shift) || e.Delta.X != 0) model.StartFrame -= (e.Delta.X != 0 ? e.Delta.X : e.Delta.Y) * 60 / model.PixelsPerFrame;
         else { base.OnPointerWheelChanged(e); return; }
         e.Handled = true;

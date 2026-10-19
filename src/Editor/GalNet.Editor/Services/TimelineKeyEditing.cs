@@ -26,6 +26,7 @@ public sealed partial class TimelineEditSession
         Canvas.PropertyChanged += OnCanvasSelection;
         Canvas.SeekRequested += SeekCanvas;
         Canvas.BeginMove = BeginKeyMove; Canvas.PreviewMove = PreviewKeyMove; Canvas.CommitMove = delta => CommitKeyMove(delta, false);
+        Canvas.BeginCurve = BeginKeyMove; Canvas.PreviewCurve = PreviewCurve; Canvas.CommitCurve = CommitCurve;
         Canvas.CancelMove = () => { _moveDocument = null; _moveKeys = null; };
         Canvas.DeleteRequested = DeleteSelectedKeys; Canvas.AddRequested = AddCurrentKey;
     }
@@ -66,8 +67,8 @@ public sealed partial class TimelineEditSession
         }
         foreach (var root in Tree) Add(root, 0);
         IReadOnlyList<TimelineCanvasKey> Keys(TimelineTreeNode node) => node.Descendants().Where(child => child.Value?.HasTrack == true)
-            .SelectMany(child => _keyIds.Where(pair => pair.Key.Track == child.Value!.TrackIndex).Select(pair => new TimelineCanvasKey(pair.Value, pair.Key.Frame))).ToArray();
-        Canvas.Rows = VisibleNodes.Select(node => new TimelineCanvasRow(Keys(node), !node.IsLeaf)).ToArray();
+            .SelectMany(child => _keyIds.Where(pair => pair.Key.Track == child.Value!.TrackIndex).Select(pair => CanvasKey(pair.Value, _document!.Tracks[pair.Key.Track].Keys.Single(key => key.Frame == pair.Key.Frame)))).ToArray();
+        Canvas.Rows = VisibleNodes.Select(node => { var keys = Keys(node); return new TimelineCanvasRow(keys, !node.IsLeaf, node.HasCurve ? CurveView(node, keys) : null); }).ToArray();
         OnPropertyChanged(nameof(HasNoRows));
     }
     public void SetActiveTrack(TimelineValueRow row)

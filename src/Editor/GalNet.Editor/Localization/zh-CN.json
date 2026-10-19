@@ -723,5 +723,17 @@
   "Entry.Parameter.transform": "变换",
   "Entry.Parameter.opacity": "不透明度",
   "Entry.Parameter.toTransform": "目标变换",
-  "Entry.Parameter.timeline": "时间轴"
+  "Entry.Parameter.timeline": "时间轴",
+  "Timeline.Curve.Interpolation": "插值",
+  "Timeline.Curve.Hermite": "贝塞尔 / Hermite",
+  "Timeline.Curve.Both": "左右切线",
+  "Timeline.Curve.Free": "自由",
+  "Timeline.Curve.Flat": "平坦",
+  "Timeline.Curve.Linear": "线性",
+  "Timeline.Curve.Auto": "自动贝塞尔",
+  "Timeline.Curve.Linked": "切线联动",
+  "Timeline.Curve.Broken": "断开切线",
+  "Timeline.Curve.EditValues": "编辑数值…",
+  "Timeline.Curve.Fit": "适应值域",
+  "Timeline.Curve.Hint": "Alt＋滚轮缩放值域，Alt＋拖动平移。拖动关键帧调整时间和值；选中后显示切线柄。"
 }

@@ -11,18 +11,12 @@ namespace GalNet.Editor.Views;
 public partial class TimelinePanelView : UserControl
 {
     private Flyout? _objectFlyout;
+    private Flyout? _keyFlyout;
     public TimelinePanelView() { InitializeComponent(); AddHandler(KeyDownEvent, OnValueKeyDown, RoutingStrategies.Tunnel); }
     private void OnValueLostFocus(object? sender, FocusChangedEventArgs args)
     { if (sender is Control { DataContext: TimelineValueRow row }) row.Commit(); }
     private void OnValueKeyDown(object? sender, KeyEventArgs args)
     {
-        var detail = args.Source as NumericUpDown ?? (args.Source as Control)?.FindAncestorOfType<NumericUpDown>();
-        if (detail?.DataContext is TimelineKeyEdit key)
-        {
-            if (args.Key == Key.Enter) { CommitKeyDetail(detail, key); args.Handled = true; }
-            else if (args.Key == Key.Escape) { key.Cancel(); args.Handled = true; }
-            return;
-        }
         var timing = args.Source as NumericUpDown ?? (args.Source as Control)?.FindAncestorOfType<NumericUpDown>();
         if (timing?.Name is "TimelineDurationDraft" or "TimelineFpsDraft" && DataContext is ViewModels.TimelinePanelViewModel vm)
         {
@@ -34,22 +28,6 @@ public partial class TimelinePanelView : UserControl
         if (args.Key == Key.Enter) { row.Commit(true); args.Handled = true; }
         else if (args.Key == Key.Escape) { row.Cancel(); args.Handled = true; }
     }
-    private static void CommitKeyDetail(NumericUpDown input, TimelineKeyEdit key)
-    {
-        if (input.Name == "TimelineKeyValue") key.CommitValue();
-        else if (input.Name == "TimelineKeyIncoming") key.CommitIncoming();
-        else if (input.Name == "TimelineKeyOutgoing") key.CommitOutgoing();
-    }
-    private void OnKeyDetailLostFocus(object? sender, FocusChangedEventArgs args)
-    { if (sender is NumericUpDown { DataContext: TimelineKeyEdit key } input) CommitKeyDetail(input, key); }
-    private void OnKeyInterpolationChanged(object? sender, SelectionChangedEventArgs args)
-    {
-        if (sender is not ComboBox { DataContext: TimelineKeyEdit key } input || input.SelectedIndex < 0) return;
-        key.InterpolationIndex = input.SelectedIndex; key.CommitInterpolation();
-        input.SetCurrentValue(Avalonia.Controls.Primitives.SelectingItemsControl.SelectedIndexProperty, key.InterpolationIndex);
-    }
-    private void OnKeyTangentPreset(object? sender, RoutedEventArgs args)
-    { if (sender is Button { DataContext: TimelineKeyEdit key, Tag: string tag } && Enum.TryParse<TimelineTangentPreset>(tag, out var preset)) key.ApplyPreset(preset); }
     private void OnTimingLostFocus(object? sender, FocusChangedEventArgs args)
     { if (sender is NumericUpDown input && DataContext is ViewModels.TimelinePanelViewModel vm) vm.Session.CommitTimingInput(input.Name == "TimelineFpsDraft"); }
     private void OnBlendModeSelectionChanged(object? sender, SelectionChangedEventArgs args)
@@ -117,5 +95,57 @@ public partial class TimelinePanelView : UserControl
         menu.Closed += (_, _) => Avalonia.Controls.Primitives.FlyoutBase.SetAttachedFlyout(button, null);
         menu.ShowAt(button); args.Handled = true;
     }
-    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e) { _objectFlyout?.Hide(); base.OnDetachedFromVisualTree(e); }
+    private void OnFitCurve(object? sender, RoutedEventArgs args)
+    { if (sender is Button { DataContext: TimelineTreeNode node } && DataContext is ViewModels.TimelinePanelViewModel vm) vm.Session.FitCurve(node); }
+    private void OnKeyContextRequested(object? sender, GalNet.Game.Controls.Timeline.TimelineKeyContextEventArgs args)
+    {
+        if (sender is not Control anchor || DataContext is not ViewModels.TimelinePanelViewModel vm || vm.Session.KeyEdit is not { } draft) return;
+        var text = vm.Session.SceneText; var menu = new MenuFlyout();
+        MenuItem Item(string name, string label, Action action, bool selected = false)
+        {
+            var item = new MenuItem { Name = name, Header = text[label], ToggleType = MenuItemToggleType.CheckBox, IsChecked = selected };
+            item.Click += (_, _) => { action(); menu.Hide(); }; return item;
+        }
+        var interpolation = new MenuItem { Header = text["Timeline.Curve.Interpolation"] };
+        foreach (var mode in Enum.GetValues<GalNet.Core.Scene.AnimationInterpolation>())
+        {
+            var captured = mode;
+            interpolation.Items.Add(Item("TimelineInterpolation" + mode, mode == GalNet.Core.Scene.AnimationInterpolation.CubicHermite ? "Timeline.Curve.Hermite" : "Timeline.Key." + mode,
+                () => { draft.InterpolationIndex = (int)captured; draft.CommitInterpolation(); }, draft.InterpolationIndex == (int)mode));
+        }
+        menu.Items.Add(interpolation);
+        foreach (bool? side in new bool?[] { null, true, false })
+        {
+            var group = new MenuItem { Header = text[side is null ? "Timeline.Curve.Both" : side.Value ? "Timeline.Key.Incoming" : "Timeline.Key.Outgoing"] };
+            foreach (var mode in Enum.GetValues<TimelineTangentMode>())
+            {
+                var captured = mode; var selected = draft.TangentModes.All(settings => (side == false || settings.Incoming == mode) && (side == true || settings.Outgoing == mode));
+                group.Items.Add(Item("TimelineMode" + (side is null ? "Both" : side.Value ? "Incoming" : "Outgoing") + mode,
+                    "Timeline.Curve." + mode, () => draft.SetMode(captured, side), selected));
+            }
+            menu.Items.Add(group);
+        }
+        menu.Items.Add(Item("TimelineLinkTangents", "Timeline.Curve.Linked", () => draft.SetLinked(true), draft.TangentModes.All(settings => settings.Linked)));
+        menu.Items.Add(Item("TimelineBreakTangents", "Timeline.Curve.Broken", () => draft.SetLinked(false), draft.TangentModes.All(settings => !settings.Linked)));
+        var precise = new MenuItem { Name = "TimelineEditKeyValues", Header = text["Timeline.Curve.EditValues"] };
+        precise.Click += (_, _) =>
+        {
+            menu.Hide(); if (!draft.IsCurrent) return;
+            _keyFlyout?.Hide(); var editor = new TimelineKeyEditorView(); editor.Configure(vm.Session);
+            var flyout = new Flyout { Content = editor }; _keyFlyout = flyout;
+            Avalonia.Controls.Primitives.FlyoutBase.SetAttachedFlyout(anchor, flyout);
+            flyout.Closed += (_, _) =>
+            {
+                editor.Dispose(); editor.DataContext = null; flyout.Content = null;
+                if (ReferenceEquals(_keyFlyout, flyout)) _keyFlyout = null;
+                if (ReferenceEquals(Avalonia.Controls.Primitives.FlyoutBase.GetAttachedFlyout(anchor), flyout)) Avalonia.Controls.Primitives.FlyoutBase.SetAttachedFlyout(anchor, null);
+            };
+            flyout.ShowAt(anchor, true);
+        };
+        menu.Items.Add(new Separator()); menu.Items.Add(precise);
+        Avalonia.Controls.Primitives.FlyoutBase.SetAttachedFlyout(anchor, menu);
+        menu.Closed += (_, _) => { if (ReferenceEquals(Avalonia.Controls.Primitives.FlyoutBase.GetAttachedFlyout(anchor), menu)) Avalonia.Controls.Primitives.FlyoutBase.SetAttachedFlyout(anchor, null); };
+        menu.ShowAt(anchor, true);
+    }
+    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e) { _objectFlyout?.Hide(); _keyFlyout?.Hide(); base.OnDetachedFromVisualTree(e); }
 }

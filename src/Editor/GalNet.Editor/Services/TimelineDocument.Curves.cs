@@ -20,6 +20,16 @@ internal sealed partial class TimelineDocument
             var definition = Tracks[location.Track]; var index = definition.Keys.FindIndex(key => key.Frame == location.Frame);
             var key = (JsonObject)Array((JsonObject)Array(root, "tracks")[location.Track]!, "keys")[index]!;
             void Set(string name, float number) { if (!float.IsFinite(number)) throw new InvalidDataException("Timeline.EditRejected"); key[Name(key, name)] = number; }
+            var settings = Settings(key);
+            if (incoming is not null || outgoing is not null || preset is not null)
+            {
+                var inputChanged = incoming is not null || preset is not null || settings.Linked && outgoing is not null;
+                var outputChanged = outgoing is not null || preset is not null || settings.Linked && incoming is not null;
+                if (key.ContainsKey(Name(key, "editorTangents")))
+                    WriteSettings(key, settings with { Incoming = inputChanged ? TimelineTangentMode.Free : settings.Incoming, Outgoing = outputChanged ? TimelineTangentMode.Free : settings.Outgoing });
+                if (settings.Linked && preset is null)
+                { if (incoming is { } joinedIn) Set("outTangent", joinedIn); else if (outgoing is { } joinedOut) Set("inTangent", joinedOut); }
+            }
             if (value is { } number) Set("value", number);
             if (incoming is { } input) Set("inTangent", input);
             if (outgoing is { } output) Set("outTangent", output);
@@ -38,6 +48,6 @@ internal sealed partial class TimelineDocument
                 key[Name(key, "interpolationToNext")] = AnimationInterpolation.CubicHermite.ToString();
             }
         }
-        var result = JsonSerializer.SerializeToElement(root); _ = new TimelineDocument(result); return result;
+        return FinishCurvePatch(root);
     }
 }

@@ -55,6 +55,9 @@ public sealed partial class TimelineKeyEdit : ObservableObject
         if (_owner.EditSelectedKeys(this, interpolation: (AnimationInterpolation)InterpolationIndex)) return true;
         Cancel(); return false;
     }
+    public TimelineTangentSettings[] TangentModes => Locations.Select(Document.TangentSettings).ToArray();
+    public bool SetMode(TimelineTangentMode mode, bool? incoming = null) => _owner.SetTangentMode(this, incoming, mode);
+    public bool SetLinked(bool linked) => _owner.SetTangentMode(this, null, TimelineTangentMode.Free, linked);
     public bool ApplyPreset(TimelineTangentPreset preset) => _owner.EditSelectedKeys(this, preset: preset);
 }
 
@@ -65,7 +68,7 @@ public sealed partial class TimelineEditSession
     public bool HasKeySelection => KeyEdit is not null;
     partial void OnKeyEditChanged(TimelineKeyEdit? value) => OnPropertyChanged(nameof(HasKeySelection));
     partial void OnTangentsPerSecondChanged(bool value) => KeyEdit?.ConvertUnits(value);
-    private void OnCanvasSelection(object? sender, PropertyChangedEventArgs args) { if (args.PropertyName == nameof(Canvas.Selection)) RefreshKeyEdit(); }
+    private void OnCanvasSelection(object? sender, PropertyChangedEventArgs args) { if (args.PropertyName == nameof(Canvas.Selection)) { if (Canvas.HasPendingMove || Canvas.HasPendingCurve) Canvas.Cancel(); RefreshKeyEdit(); } }
     private void RefreshKeyEdit()
     {
         var selected = Canvas.Selection.Where(_keyLocations.ContainsKey).Select(id => _keyLocations[id]).OrderBy(key => key.Track).ThenBy(key => key.Frame).ToArray();
