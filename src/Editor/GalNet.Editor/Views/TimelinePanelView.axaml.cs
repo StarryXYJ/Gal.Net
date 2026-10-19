@@ -59,22 +59,25 @@ public partial class TimelinePanelView : UserControl
         input.SetCurrentValue(Avalonia.Controls.Primitives.SelectingItemsControl.SelectedIndexProperty, row.BlendModeIndex);
         args.Handled = true;
     }
-    private void OnTrackClick(object? sender, Avalonia.Interactivity.RoutedEventArgs args)
+    private void OnTreeContextRequested(object? sender, ContextRequestedEventArgs args)
     {
-        if (sender is CheckBox { DataContext: TimelineValueRow row } check)
-        {
-            if (!row.ToggleTrack()) check.SetCurrentValue(Avalonia.Controls.Primitives.ToggleButton.IsCheckedProperty, row.HasTrack);
-            args.Handled = true;
-        }
+        if (sender is not Control { DataContext: TimelineTreeNode node } control
+            || DataContext is not ViewModels.TimelinePanelViewModel vm || !vm.Session.VisibleNodes.Contains(node)) return;
+        var menu = new MenuFlyout();
+        var remove = new MenuItem { Name = "RemoveTimelineOverride", Header = vm.Session.SceneText["Timeline.RemoveOverride"] };
+        remove.Click += (_, _) => vm.Session.RemoveOverride(node);
+        menu.Items.Add(remove);
+        Avalonia.Controls.Primitives.FlyoutBase.SetAttachedFlyout(control, menu);
+        menu.Closed += (_, _) => Avalonia.Controls.Primitives.FlyoutBase.SetAttachedFlyout(control, null);
+        menu.ShowAt(control); args.Handled = true;
     }
     private void OnTreeRowPointerPressed(object? sender, PointerPressedEventArgs args)
     { if (sender is Control { DataContext: TimelineTreeNode { Value: { } row } } && DataContext is ViewModels.TimelinePanelViewModel vm) vm.Session.SetActiveTrack(row); }
-    private void OnAddObject(object? sender, RoutedEventArgs args) { if (sender is Button button) OpenObjects(button, null); }
-    private void OnReplaceObject(object? sender, RoutedEventArgs args) { if (sender is Button { DataContext: TimelineTreeNode node } button) OpenObjects(button, node.ObjectHandle); }
-    private async void OpenObjects(Button button, string? handle)
+    private void OnAddObject(object? sender, RoutedEventArgs args) { if (sender is Button button) OpenObjects(button); }
+    private async void OpenObjects(Button button)
     {
         _objectFlyout?.Hide();
-        if (DataContext is not ViewModels.TimelinePanelViewModel vm || vm.Session.BeginObjectEdit(handle) is not { } draft) return;
+        if (DataContext is not ViewModels.TimelinePanelViewModel vm || vm.Session.BeginObjectEdit() is not { } draft) return;
         try
         {
             await draft.PrepareAsync(); if (!draft.IsCurrent) return;

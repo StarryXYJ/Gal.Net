@@ -18,7 +18,7 @@ public sealed class TimelineCanvas : Control
     public bool IsRuler { get => GetValue(IsRulerProperty); set => SetValue(IsRulerProperty, value); }
     private TimelineCanvasModel? _observed;
     private Point? _origin, _boxEnd;
-    private bool _keyPress, _summary, _drag, _seeking, _extend;
+    private bool _keyPress, _deselected, _drag, _seeking, _extend;
     private int _version;
     private Guid[] _prior = [];
     private Guid[] _pressedIds = [];
@@ -87,8 +87,9 @@ public sealed class TimelineCanvas : Control
             if (hit is not null && Math.Abs((index + .5) * model.RowHeight - point.Y) <= 10)
             {
                 var ids = row!.Keys.Where(key => key.Frame == hit.Frame).Select(key => key.Id).ToArray();
-                if (_extend || !ids.All(model.Selection.Contains)) model.Select(ids, toggle: _extend);
-                _pressedIds = ids; _keyPress = true; _summary = row.IsSummary || !ids.Any(model.Selection.Contains);
+                if (_extend) model.Select(ids, extend: true, toggle: ids.All(model.Selection.Contains));
+                else if (!ids.All(model.Selection.Contains)) model.Select(ids);
+                _pressedIds = ids; _keyPress = true; _deselected = !ids.Any(model.Selection.Contains);
             }
             else { if (!_extend) model.Select([]); _boxEnd = point; }
         }
@@ -99,7 +100,7 @@ public sealed class TimelineCanvas : Control
         base.OnPointerMoved(e); if (_origin is not { } origin || Model is not { } model) return;
         var point = e.GetPosition(this);
         if (_seeking) model.PreviewSeek(FrameAt(point.X));
-        else if (_keyPress && !_summary)
+        else if (_keyPress && !_deselected)
         {
             if (!_drag && Math.Abs(point.X - origin.X) >= 3) { _drag = model.StartMove(); _version = model.InteractionVersion; }
             if (_drag) model.UpdateMove((int)Math.Clamp(Math.Round((point.X - origin.X) / model.PixelsPerFrame, MidpointRounding.AwayFromZero), int.MinValue, int.MaxValue));
@@ -126,7 +127,7 @@ public sealed class TimelineCanvas : Control
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e) { if (_drag || _seeking) Model?.Cancel(); ReleaseLocal(); base.OnPointerCaptureLost(e); }
     private void ReleaseLocal()
     {
-        _origin = null; _boxEnd = null; _drag = false; _keyPress = false; _summary = false; _seeking = false; _pressedIds = [];
+        _origin = null; _boxEnd = null; _drag = false; _keyPress = false; _deselected = false; _seeking = false; _pressedIds = [];
         var pointer = _pointer; _pointer = null; pointer?.Capture(null); InvalidateVisual();
     }
     protected override void OnKeyDown(KeyEventArgs e)

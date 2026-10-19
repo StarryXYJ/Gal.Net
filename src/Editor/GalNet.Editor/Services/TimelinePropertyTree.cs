@@ -16,7 +16,6 @@ public sealed partial class TimelineTreeNode(string key, Func<string> label, Tim
     public bool IsBranch => !IsLeaf;
     public string? ObjectHandle { get; init; }
     public bool IsObject => ObjectHandle is not null;
-    public bool CanReplaceObject => ObjectHandle is not null && Descendants().Any(node => node.Value?.HasTrack == true);
     public bool CanAddProperties => ObjectHandle is not null && Descendants().Any(node => node.Value is { HasTrack: false, Capability: not null });
     public int Depth { get; internal set; }
     public double Indent => Depth * 16;
@@ -73,10 +72,16 @@ public sealed partial class TimelineEditSession
     {
         var key = "Timeline.Property." + property; var text = _localization[key]; return text == "[" + key + "]" ? property : text;
     }
-    internal bool Remove(TimelineValueRow row, int generation, int index)
+    public bool RemoveOverride(TimelineTreeNode node)
     {
-        if (_disposed || generation != _generation || !Rows.Contains(row) || _document is null) return false;
-        return Submit(_document.Remove(index));
+        if (_disposed || !CanEdit || _document is null || !Tree.SelectMany(root => root.Descendants()).Contains(node)) return false;
+        Canvas.Cancel();
+        var rows = node.Descendants().Where(child => child.Value is not null).Select(child => child.Value!).ToArray();
+        var indices = rows.Where(row => row.HasTrack).Select(row => row.TrackIndex).ToArray();
+        if (indices.Length > 0 && !Submit(_document.RemoveTracks(indices))) return false;
+        if (node.ObjectHandle is { } handle) _selectedObjects.Remove(handle);
+        foreach (var row in rows) _pendingProperties.Remove((row.Handle, row.Property));
+        RebuildVisibleNodes(); return true;
     }
     internal bool ChangeBlendMode(TimelineValueRow row, int generation, int index, bool additive)
     {

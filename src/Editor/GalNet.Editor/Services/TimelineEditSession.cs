@@ -222,7 +222,6 @@ public sealed partial class TimelineValueRow : ObservableObject
         catch (OverflowException) { IsEditable = false; }
     }
     public bool Commit(bool confirm = false) => ((!HasTrack && confirm) || DraftValue != _original) && _session.Commit(this, _generation, _index, _frame, DraftValue);
-    public bool ToggleTrack() => HasTrack ? _session.Remove(this, _generation, _index) : _session.Commit(this, _generation, _index, _frame, IsAdditive ? 0 : DraftValue);
     public void Cancel() => DraftValue = _original;
     internal void RefreshLabel() { OnPropertyChanged(nameof(ObjectLabel)); OnPropertyChanged(nameof(Hint)); OnPropertyChanged(nameof(Label)); }
 }

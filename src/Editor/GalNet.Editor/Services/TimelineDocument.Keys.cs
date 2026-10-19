@@ -88,14 +88,4 @@ internal sealed partial class TimelineDocument
         track[Name(track, "blendMode")] = additive ? "Additive" : "Replace";
         return JsonSerializer.SerializeToElement(root);
     }
-    public JsonElement ReplaceTarget(string before, string after)
-    {
-        if (string.IsNullOrWhiteSpace(after) || !Tracks.Any(track => track.HandleId == before)) throw new InvalidDataException("Timeline.EditRejected");
-        var properties = Tracks.Where(track => track.HandleId == before).Select(track => track.Property).ToHashSet();
-        if (after != before && Tracks.Any(track => track.HandleId == after && properties.Contains(track.Property))) throw new InvalidDataException("Scene.Duplicate");
-        var root = (JsonObject)_root.DeepClone();
-        foreach (var track in Array(root, "tracks").OfType<JsonObject>())
-            if (track[Name(track, "handleId")]?.GetValue<string>() == before) track[Name(track, "handleId")] = after;
-        var result = JsonSerializer.SerializeToElement(root); _ = new TimelineDocument(result); return result;
-    }
 }

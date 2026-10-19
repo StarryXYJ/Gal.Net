@@ -195,19 +195,22 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var root = timeline.Source.Parameters["timeline"]; Assert.That(root.GetProperty("tracks").GetArrayLength(), Is.EqualTo(2));
                 Assert.That(root.GetProperty("tracks").EnumerateArray().Single(track => track.GetProperty("property").GetString() == "transform.x").GetProperty("keys")[0].GetProperty("value").GetSingle(), Is.EqualTo(42));
                 Assert.That(root.GetProperty("tracks").EnumerateArray().Single(track => track.GetProperty("property").GetString() == "opacity").GetProperty("keys")[0].GetProperty("value").GetSingle(), Is.EqualTo(.5f));
-                history.Clear(); var replace = timelineView.GetVisualDescendants().OfType<Button>().Single(control => control.Name == "ReplaceTimelineObject" && control.IsVisible);
-                TimelineClick(timelineWindow, replace); flyout = (Flyout)FlyoutBase.GetAttachedFlyout(replace)!; objectPicker = (SceneTargetPicker)flyout.Content!; draft = session.ObjectEdit!;
-                Assert.That(draft.IsCurrent, Is.True); Assert.That(flyout.IsOpen, Is.True);
+                history.Clear(); TimelineClick(timelineWindow, add); flyout = (Flyout)FlyoutBase.GetAttachedFlyout(add)!;
+                objectPicker = (SceneTargetPicker)flyout.Content!; draft = session.ObjectEdit!;
                 var other = draft.Snapshot.Choices.Single(choice => choice.Target.Locator.EntryId == layers[1].StableId);
                 objectPicker.ResourcePanel.Search.Text = other.Item.Label; TimelinePump(timelineWindow); PressGroupKey(objectPicker.ResourcePanel.Search, Key.Down); PressGroupKey(objectPicker.ResourcePanel.Search, Key.Enter); TimelinePump(timelineWindow);
-                Assert.That(timeline.Source.Parameters["timeline"].GetProperty("tracks").EnumerateArray().All(track => track.GetProperty("handleId").GetString() == other.Target.Handle), Is.True, draft.Message);
-                await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); Assert.That(JsonElement.DeepEquals(root, timeline.Source.Parameters["timeline"]), Is.True); await history.RedoAsync(); TimelinePump(timelineWindow); history.Clear();
+                Assert.That(history.CanUndo, Is.False);
+                Assert.That(timelineView.GetVisualDescendants().OfType<Button>().Any(control => control.Name == "ReplaceTimelineObject"), Is.False);
+                Assert.That(timelineView.GetVisualDescendants().OfType<CheckBox>().Any(control => control.Name == "TimelineTrack"), Is.False);
                 // A possible object's unknown value stays a visible draft until explicitly entered.
                 var otherPlus = timelineView.GetVisualDescendants().OfType<Button>().Single(control => control.Name == "AddTimelineProperty" && control.IsVisible && control.DataContext is TimelineTreeNode { ObjectHandle: var handle } && handle == other.Target.Handle);
                 TimelineClick(timelineWindow, otherPlus); var propertyMenu = (MenuFlyout)FlyoutBase.GetAttachedFlyout(otherPlus)!;
                 propertyMenu.Items.OfType<MenuItem>().Single(item => item.DataContext is TimelineValueRow row && row.Property == "transform.y").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)); propertyMenu.Hide(); TimelinePump(timelineWindow);
                 var pending = session.VisibleNodes.Single(node => node.Value?.Property == "transform.y").Value!;
-                Assert.That(pending.DraftValue, Is.Null); Assert.That(history.CanUndo, Is.False); pending.DraftValue = 7; Assert.That(pending.Commit(true), Is.True);
+                Assert.That(pending.DraftValue, Is.Null); Assert.That(history.CanUndo, Is.False);
+                RemoveTimelineOverride(timelineWindow, timelineView, session.VisibleNodes.Single(node => ReferenceEquals(node.Value, pending)));
+                Assert.That(history.CanUndo, Is.False); Assert.That(session.VisibleNodes.Any(node => ReferenceEquals(node.Value, pending)), Is.False);
+                Assert.That(session.AddProperty(pending), Is.True); TimelinePump(timelineWindow); pending.DraftValue = 7; Assert.That(pending.Commit(true), Is.True);
                 await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); Assert.That(session.AddProperty(pending), Is.False); history.Clear();
                 TimelineClick(timelineWindow, add); flyout = (Flyout)FlyoutBase.GetAttachedFlyout(add)!; objectPicker = (SceneTargetPicker)flyout.Content!;
                 PressGroupKey(objectPicker.ResourcePanel.Search, Key.Escape); Assert.That(history.CanUndo, Is.False);
@@ -225,7 +228,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     }
 
     [Test]
-    public async Task TimelineObjectReplacementPreservesRawKeysAndRejectsDuplicateProperties()
+    public async Task TimelineOverrideRemovalIsAtomicRejectsStaleRowsAndPreservesOtherRawTracks()
     {
         await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
         await ui.Dispatch<bool>(async () =>
@@ -240,15 +243,46 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             entry.Source.Parameters["timeline"] = root;
             using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = entry;
             var session = scope.GetRequiredService<TimelineEditSession>(); var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear();
-            var draft = session.BeginObjectEdit(first)!; draft.Select(draft.Snapshot.Choices.Single(choice => choice.Target.Handle == second).Item.Id); Assert.That(draft.Commit(), Is.True);
-            var changed = entry.Source.Parameters["timeline"];
-            Assert.That(changed.GetProperty("tracks")[0].GetProperty("keys").GetRawText(), Is.EqualTo(root.GetProperty("tracks")[0].GetProperty("keys").GetRawText()));
-            Assert.That(changed.GetProperty("tracks")[0].GetProperty("future")[0].GetRawText(), Is.EqualTo("9007199254740993"));
-            await history.UndoAsync(); Assert.That(history.CanUndo, Is.False);
             var node = System.Text.Json.Nodes.JsonNode.Parse(root.GetRawText())!;
-            var track = node["tracks"]![0]!.DeepClone(); track["handleId"] = second; ((System.Text.Json.Nodes.JsonArray)node["tracks"]!).Add(track);
-            scope.GetRequiredService<EntryFieldAuthoringService>().SetParameters(group.Id, entry.Source, entry.Type, new() { ["timeline"] = JsonSerializer.SerializeToElement(node) });
-            draft = session.BeginObjectEdit(first)!; Assert.That(draft.Snapshot.Choices.Any(choice => choice.Target.Handle == second), Is.False, "Overlapping properties must not be silently merged.");
+            var tracks = (System.Text.Json.Nodes.JsonArray)node["tracks"]!;
+            var extra = tracks[0]!.DeepClone(); extra["property"] = "transform.x"; tracks.Add(extra);
+            var other = tracks[0]!.DeepClone(); other["handleId"] = second; tracks.Add(other);
+            scope.GetRequiredService<EntryFieldAuthoringService>().SetParameters(group.Id, entry.Source, entry.Type, new() { ["timeline"] = JsonSerializer.SerializeToElement(node) }); history.Clear();
+            root = entry.Source.Parameters["timeline"];
+            var view = scope.GetRequiredService<TimelinePanelView>(); view.DataContext = scope.GetRequiredService<TimelinePanelViewModel>();
+            var window = new Window { Content = view, Width = 1350, Height = 950 }; window.Show(); TimelinePump(window);
+            try
+            {
+                var stale = session.Tree.Single(item => item.ObjectHandle == first);
+                RemoveTimelineOverride(window, view, stale);
+                var changed = entry.Source.Parameters["timeline"];
+                Assert.That(changed.GetProperty("tracks").GetArrayLength(), Is.EqualTo(1));
+                Assert.That(JsonElement.DeepEquals(changed.GetProperty("tracks")[0], root.GetProperty("tracks")[2]), Is.True);
+                Assert.That(changed.GetProperty("future").ValueKind, Is.EqualTo(JsonValueKind.Null));
+                Assert.That(session.VisibleNodes.Any(item => item.ObjectHandle == first), Is.False);
+                await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); Assert.That(JsonElement.DeepEquals(root, entry.Source.Parameters["timeline"]), Is.True);
+                Assert.That(session.RemoveOverride(stale), Is.False, "An old row cannot remove tracks after Undo.");
+                await history.RedoAsync(); Assert.That(entry.Source.Parameters["timeline"].GetProperty("tracks").GetArrayLength(), Is.EqualTo(1));
+                await history.UndoAsync(); history.Clear(); TimelinePump(window);
+                var leaf = session.Tree.Single(item => item.ObjectHandle == first).Children.Single(item => item.Value?.Property == "opacity");
+                RemoveTimelineOverride(window, view, leaf);
+                Assert.That(entry.Source.Parameters["timeline"].GetProperty("tracks").GetArrayLength(), Is.EqualTo(2));
+                await history.UndoAsync(); Assert.That(history.CanUndo, Is.False);
+                Assert.That(JsonElement.DeepEquals(root, entry.Source.Parameters["timeline"]), Is.True);
+                TimelinePump(window);
+                var menu = TimelineOverrideMenu(window, view, session.Tree.Single(item => item.ObjectHandle == first));
+                session.Frame = 5;
+                menu.Items.OfType<MenuItem>().Single().RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)); menu.Hide();
+                Assert.That(history.CanUndo, Is.False, "An open stale menu cannot address rebuilt track indices.");
+                Assert.That(JsonElement.DeepEquals(root, entry.Source.Parameters["timeline"]), Is.True);
+                // Removing an empty object or unknown initial-value draft never creates author history.
+                var draft = session.BeginObjectEdit()!; draft.Select(draft.Snapshot.Choices.Single(choice => choice.Target.Handle == first).Item.Id); Assert.That(draft.Commit(), Is.True);
+                Assert.That(session.RemoveOverride(session.Tree.Single(item => item.ObjectHandle == first)), Is.True);
+                history.Clear();
+                draft = session.BeginObjectEdit()!; draft.Select(draft.Snapshot.Choices.Single(choice => choice.Target.Handle == first).Item.Id); Assert.That(draft.Commit(), Is.True);
+                Assert.That(session.RemoveOverride(session.Tree.Single(item => item.ObjectHandle == first)), Is.True); Assert.That(history.CanUndo, Is.False);
+            }
+            finally { window.Close(); }
             await projects.CloseAsync(); return true;
         }, CancellationToken.None);
     }

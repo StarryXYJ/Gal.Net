@@ -68,9 +68,14 @@ internal sealed partial class TimelineDocument
         return JsonSerializer.SerializeToElement(root);
     }
     public JsonElement Remove(int index)
+        => RemoveTracks([index]);
+    public JsonElement RemoveTracks(IEnumerable<int> indices)
     {
-        if (index < 0 || index >= Tracks.Count) throw new InvalidDataException("Timeline.Invalid");
-        var root = (JsonObject)_root.DeepClone(); Array(root, "tracks").RemoveAt(index); return JsonSerializer.SerializeToElement(root);
+        var selected = indices.Distinct().OrderDescending().ToArray();
+        if (selected.Any(index => index < 0 || index >= Tracks.Count)) throw new InvalidDataException("Timeline.Invalid");
+        var root = (JsonObject)_root.DeepClone();
+        foreach (var index in selected) Array(root, "tracks").RemoveAt(index);
+        return JsonSerializer.SerializeToElement(root);
     }
     public JsonElement Upsert(int index, int frame, float value)
     {
