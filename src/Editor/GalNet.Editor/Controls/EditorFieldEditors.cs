@@ -3,6 +3,7 @@ using Avalonia.Controls.Templates;
 using Avalonia.Data;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Parameters;
+using GalNet.Core.Scene;
 using GalNet.Editor.MarkupExtensions;
 using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Services;
@@ -13,9 +14,22 @@ namespace GalNet.Editor.Controls;
 /// <summary>Editor-owned presentation extensions; value conversion and submission stay in the shared factory.</summary>
 public static class EditorFieldEditors
 {
-    public static EditorRegistry CreateDefault(SceneTargetCatalog? scenes = null)
+    public static EditorRegistry CreateDefault(SceneTargetCatalog? scenes = null, Action<FieldEditorContext>? openTimeline = null)
     {
-        var registry = EditorRegistry.CreateDefault();
+        var registry = EditorRegistry.CreateDefault(emptyInputClearsOptionalFields: true);
+        registry.RegisterDefault<LayerTransform>(TransformFieldEditor.Create);
+        registry.RegisterMember<LayerShowOptions>(value => value.Transform, TransformFieldEditor.Create);
+        registry.RegisterMember<LayerColorOptions>(value => value.Transform, TransformFieldEditor.Create);
+        registry.RegisterMember<LayerMoveOptions>(value => value.Transform, TransformFieldEditor.Create);
+        registry.RegisterMember<VideoPlayOptions>(value => value.Transform, TransformFieldEditor.Create);
+        registry.RegisterMember<CrossFadeOptions>(value => value.Transform, TransformFieldEditor.Create);
+        registry.RegisterMember<SlideOptions>(value => value.ToTransform, TransformFieldEditor.Create);
+        registry.RegisterMember<BlindsOptions>(value => value.Transform, TransformFieldEditor.Create);
+        registry.RegisterMember<ColorFieldOptions>(value => value.ToTransform, TransformFieldEditor.Create);
+        registry.RegisterMember<ColorFadeOptions>(value => value.ToTransform, TransformFieldEditor.Create);
+        registry.RegisterMember<LayerColorOptions>(value => value.Color, ColorFieldEditor.Create);
+        registry.RegisterMember<ColorFadeOptions>(value => value.Color, ColorFieldEditor.Create);
+        registry.RegisterMember<TimelineOptions>(value => value.Timeline, context => TimelineFieldEditor.Create(context, openTimeline));
         registry.Replace(ValueEditorIds.Choice, context =>
         {
             var lease = DefaultFieldEditors.CreateChoice(context);

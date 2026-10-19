@@ -327,6 +327,7 @@ public partial class GraphEdge : ObservableObject, IDisposable
 
 public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
 {
+    internal string? AuthorGroupId => _groupId;
     public EditorEntryData Source { get; }
     private IEntryCatalog? _authorCatalog;
     private bool _disposed;
@@ -493,7 +494,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         var generation = _schemaGeneration;
         var type = Type;
         void Commit(string id, string text) { if (generation == _schemaGeneration && Type == type && IsCurrent) SetParameter(id, text); }
-        return
+        EntryParameterEditorItemViewModel result =
         !UsesDedicatedEditor(definition.Field, definition.Type)
         ? new SchemaEntryParameterEditorItemViewModel(definition, this, Commit) : definition.Type switch
         {
@@ -503,12 +504,17 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
             EntryParameterType.ImageAsset or EntryParameterType.AudioAsset or EntryParameterType.VideoAsset or EntryParameterType.EffectProgramAsset => new AssetEntryParameterEditorItemViewModel(definition, value, speakers, Commit),
             _ => new TextEntryParameterEditorItemViewModel(definition, value, speakers, Commit)
         };
+        result.ActionForm = new(this, [definition.Field], ParameterDtoType, () => generation == _schemaGeneration);
+        return result;
     }
 
     private void SetParameter(string id, string value)
     {
         var updated = Source.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal);
-        updated[id] = ValueCodec.ParseEditorText(_authorCatalog!.Get(Type).DynamicParameters![id].Value, value);
+        var field = _authorCatalog!.Get(Type).DynamicParameters![id].Field;
+        if (value.Length == 0 && (!field.IsRequired || field.DefaultValue is not null) &&
+            field.Editor?.EditorId is "entry.imageasset" or "entry.audioasset" or "entry.videoasset" or "entry.effectprogramasset") updated.Remove(id);
+        else updated[id] = ValueCodec.ParseEditorText(field.Value, value);
         if (_authoring is not null) _authoring.SetParameters(_groupId!, Source, Type, updated);
         else { Source.Parameters = updated; RefreshAuthorReferences(_authorCatalog); }
     }

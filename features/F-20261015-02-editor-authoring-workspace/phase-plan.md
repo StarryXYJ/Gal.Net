@@ -336,6 +336,10 @@ P6 后续仍包括未知 Entry 整参数 JSON 修改、Editor 状态查询/Locat
 - P6e3（in-progress，前置 P6e2b）：按 [phase-6e3.md](phase-6e3.md) 分为 P6e3a（verified，关键帧详情、Step/Linear/Hermite、切线单位/一次性预设、批量单历史；解决方案构建、332 项回归及格式/源码指纹通过）和 P6e3b（planned，共享曲线视图、采样与拖柄/值拖动手势）。P6e3a 不宣称已支持图形曲线；P6e3b 实施前明确有限范围极值诊断与共享校验边界。
 - P6e4（planned）：Timeline 事件/帧内状态、转场和剩余内置语义、effect metadata/flipbook 能力、新增播放实例/事件目标及其 Locator 适配、Graph/转场复制引用重映射；缺目标运行时行为独立核验。当前已支持目标的通用 Locator 选择闭环提前到 P6e2b；P6e2/3 不将未分析事件当成无影响。
 
+## GalGroup 属性编辑器改造（独立补充切片）
+
+2026-10-19 用户授权独立推进 [GalGroup 属性编辑器改造](phase-group-properties.md)，当前 verified；布局/单重置、Transform、ColorPicker、Timeline 面板入口与普通对象/列表展示已接通，802 项相关回归、解决方案构建、格式和源码指纹通过，另六项媒体用例未执行。此切片不依赖图形曲线 P6e3b，不代表 P6e 或 P6f 整体完成。
+
 ## P6f：animate 自定义曲线
 
 状态：planned。前置 Timeline 编辑切片 verified。增加可序列化的归一化自定义曲线契约、采样/校验、编译与循环恢复，复用曲线控件及单历史手势；旧内置预设继续作为明确模式。正式实施前细化端点/overshoot 等值契约，不把界面注册当作持久化支持。实时预览不列 Phase。

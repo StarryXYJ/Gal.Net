@@ -30,14 +30,17 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
     }
 
     public FieldDescriptor Field { get; }
-    internal EditorRegistry? Registry { get; }
+    public object? HostContext => _binding.HostContext;
+    public EditorRegistry? Registry { get; }
     internal int Depth { get; }
     public bool CanOmit => !Field.IsRequired || Field.DefaultValue is not null;
     public bool CanSetNull => Field.Value.AllowNull;
     public bool HasDefault => Field.DefaultValue is not null;
+    public bool CanReset => _binding.CanReset && (HasDefault || CanOmit);
     public Task<bool> OmitAsync() => CommitAsync(default);
     public Task<bool> SetNullAsync() => CommitAsync(new(JsonSerializer.SerializeToElement<object?>(null)));
     public Task<bool> ResetDefaultAsync() => Field.DefaultValue is { } value ? CommitAsync(new(value)) : Task.FromResult(false);
+    public Task<bool> ResetAsync() => !CanReset ? Task.FromResult(false) : HasDefault ? ResetDefaultAsync() : OmitAsync();
     public void RevertDraft() { if (_disposed) return; _dirty = false; _pending = null; Issue = null; _draftVersion++; Refresh(); }
     internal void ReportIssue(ValueIssue issue) { if (!_disposed) { Issue = issue; Notify(); } }
     internal void UseJsonText() { _jsonText = true; Refresh(); }
@@ -165,6 +168,12 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
 
     private FieldValue ParseText(out ValueIssue? issue)
     {
+        if (!_jsonText && Registry?.EmptyInputClearsOptionalFields == true && Text.Length == 0 &&
+            (Nullable.GetUnderlyingType(Field.Value.ValueType) ?? Field.Value.ValueType) != typeof(string))
+        {
+            issue = CanOmit ? null : new("field.required", "Field must be provided.");
+            return default;
+        }
         try
         {
             var json = _jsonText ? JsonSerializer.Deserialize<JsonElement>(Text) : ValueCodec.ParseEditorText(Field.Value, Text);

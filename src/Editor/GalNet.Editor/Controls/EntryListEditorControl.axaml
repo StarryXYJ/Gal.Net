@@ -10,12 +10,18 @@
              MoveCommand="{Binding ReorderEntryCommand}" Focusable="True">
     <controls:ReorderableListControl.Styles>
         <Style Selector="forms|FieldEditorActions">
-            <Setter Property="DefaultText" Value="{loc:Localize Form.Default}" />
-            <Setter Property="OmitText" Value="{loc:Localize Form.Omit}" />
+            <Setter Property="Simplified" Value="True" />
+            <Setter Property="UnavailableText" Value="{loc:Localize Form.NoDefault}" />
+            <Setter Property="DefaultText" Value="{loc:Localize Form.Reset}" />
+            <Setter Property="OmitText" Value="{loc:Localize Form.Clear}" />
             <Setter Property="NullText" Value="{loc:Localize Form.Null}" />
             <Setter Property="RevertText" Value="{loc:Localize Form.Revert}" />
         </Style>
         <Style Selector="Expander.structured-field">
+            <Setter Property="forms:StructuredFieldEditor.ExpandByDefault" Value="True" />
+            <Setter Property="forms:StructuredFieldEditor.ObjectText" Value="{loc:Localize Form.Object}" />
+            <Setter Property="forms:StructuredFieldEditor.ListText" Value="{loc:Localize Form.List}" />
+            <Setter Property="forms:StructuredFieldEditor.RepairText" Value="{loc:Localize Form.Repair}" />
             <Setter Property="forms:StructuredFieldEditor.AddText" Value="{loc:Localize Form.AddElement}" />
             <Setter Property="forms:StructuredFieldEditor.RemoveText" Value="{loc:Localize Form.RemoveElement}" />
             <Setter Property="forms:StructuredFieldEditor.UpText" Value="{loc:Localize Form.MoveUp}" />
@@ -28,10 +34,10 @@
                         <ItemsControl ItemsSource="{TemplateBinding Editors}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid ColumnDefinitions="130,*" ColumnSpacing="8" IsVisible="{Binding Context.IsVisible}">
-                                        <TextBlock DataContext="{Binding Context}" Text="{loc:Localize Label, FallbackPath=Field.Id}" TextWrapping="Wrap" VerticalAlignment="Center" />
-                                        <StackPanel Grid.Column="1"><ContentControl Content="{Binding Control}" /><TextBlock Text="JSON" IsVisible="{Binding IsJsonFallback}" Opacity="0.65"/><forms:FieldEditorActions Context="{Binding Context}"/><TextBlock Text="{Binding Context.Issue.Message}" TextWrapping="Wrap" /></StackPanel>
-                                    </Grid>
+                                    <forms:FieldEditorRow Context="{Binding Context}" Editor="{Binding Control}" IsVisible="{Binding Context.IsVisible}"
+                                                          ShowLabel="{Binding ShowLabels, RelativeSource={RelativeSource AncestorType={x:Type forms:SchemaForm}}}">
+                                        <forms:FieldEditorRow.Label><TextBlock DataContext="{Binding Context}" Text="{loc:Localize Label, FallbackPath=Field.Id}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label>
+                                    </forms:FieldEditorRow>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -120,11 +126,11 @@
                                                 <DataTemplate DataType="models:SchemaEntryParameterEditorItemViewModel" x:CompileBindings="False">
                                                     <forms:SchemaForm Schema="{Binding Fields}" Binding="{Binding FieldBinding}" DtoType="{Binding DtoType}" Registry="{Binding #Root.DataContext.FieldEditors}" />
                                                 </DataTemplate>
-                                                <DataTemplate DataType="models:TextEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding StringValue}" AcceptsReturn="{Binding IsMultiline}" TextWrapping="Wrap" MinHeight="30" HorizontalAlignment="Stretch" /></Grid></DataTemplate>
-                                                <DataTemplate DataType="models:AutocompleteEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><ComboBox Grid.Column="1" IsEditable="True" ItemsSource="{Binding Suggestions}" Text="{Binding StringValue}" HorizontalAlignment="Stretch" LostFocus="OnAutocompleteLostFocus" /></Grid></DataTemplate>
-                                                <DataTemplate DataType="models:AssetEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><controls:AssetPicker Grid.Column="1" AssetManager="{Binding #Root.DataContext.AssetManager}" Filter="{Binding AssetFilter}" SelectedAssetId="{Binding StringValue}" HorizontalAlignment="Left" /></Grid></DataTemplate>
-                                                <DataTemplate DataType="models:VariableNameEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><ComboBox Grid.Column="1" IsEditable="True" ItemsSource="{Binding Suggestions}" Text="{Binding StringValue, Mode=TwoWay}" HorizontalAlignment="Stretch" /></Grid></DataTemplate>
-                                                <DataTemplate DataType="models:ExpressionEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><controls:ConditionEditorControl Grid.Column="1" Text="{Binding StringValue}" Suggestions="{Binding #Root.DataContext.ConditionSuggestions}" ValidationVariables="{Binding #Root.DataContext.ValidationVariables}" /></Grid></DataTemplate>
+                                                <DataTemplate DataType="models:TextEntryParameterEditorItemViewModel"><forms:FieldEditorRow Field="{Binding Definition.Field}" Binding="{Binding ActionBinding}"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize DisplayNameKey}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><TextBox Text="{Binding StringValue}" AcceptsReturn="{Binding IsMultiline}" TextWrapping="Wrap" MinHeight="30" HorizontalAlignment="Stretch" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow></DataTemplate>
+                                                <DataTemplate DataType="models:AutocompleteEntryParameterEditorItemViewModel"><forms:FieldEditorRow Field="{Binding Definition.Field}" Binding="{Binding ActionBinding}"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize DisplayNameKey}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><ComboBox IsEditable="True" ItemsSource="{Binding Suggestions}" Text="{Binding StringValue}" HorizontalAlignment="Stretch" LostFocus="OnAutocompleteLostFocus" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow></DataTemplate>
+                                                <DataTemplate DataType="models:AssetEntryParameterEditorItemViewModel"><forms:FieldEditorRow Field="{Binding Definition.Field}" Binding="{Binding ActionBinding}"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize DisplayNameKey}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><controls:AssetPicker AssetManager="{Binding #Root.DataContext.AssetManager}" Filter="{Binding AssetFilter}" SelectedAssetId="{Binding StringValue}" HorizontalAlignment="Stretch" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow></DataTemplate>
+                                                <DataTemplate DataType="models:VariableNameEntryParameterEditorItemViewModel"><forms:FieldEditorRow Field="{Binding Definition.Field}" Binding="{Binding ActionBinding}"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize DisplayNameKey}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><ComboBox IsEditable="True" ItemsSource="{Binding Suggestions}" Text="{Binding StringValue, Mode=TwoWay}" HorizontalAlignment="Stretch" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow></DataTemplate>
+                                                <DataTemplate DataType="models:ExpressionEntryParameterEditorItemViewModel"><forms:FieldEditorRow Field="{Binding Definition.Field}" Binding="{Binding ActionBinding}"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize DisplayNameKey}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><controls:ConditionEditorControl Text="{Binding StringValue}" Suggestions="{Binding #Root.DataContext.ConditionSuggestions}" ValidationVariables="{Binding #Root.DataContext.ValidationVariables}" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow></DataTemplate>
                                             </ContentControl.DataTemplates>
                                         </ContentControl>
                                     </DataTemplate>

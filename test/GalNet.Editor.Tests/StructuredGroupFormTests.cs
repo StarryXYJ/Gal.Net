@@ -64,7 +64,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 {
                     localization.ApplyLocale(locale); Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
                     Assert.That(details.AddText, Is.EqualTo(localization["Form.AddElement"]));
-                    Assert.That(view.GetVisualDescendants().OfType<FieldEditorActions>().First().OmitText, Is.EqualTo(localization["Form.Omit"]));
+                    Assert.That(view.GetVisualDescendants().OfType<FieldEditorActions>().First().OmitText, Is.EqualTo(localization["Form.Clear"]));
                     Assert.That(view.GetVisualDescendants().OfType<TextBlock>().Any(block => block.Text == "title"), Is.True, "Custom field IDs must have readable labels without translation keys.");
                 }
                 await workspace.SaveAsync(); var path = project.RootPath; var groupId = group.Id; var stableId = entry.StableId;

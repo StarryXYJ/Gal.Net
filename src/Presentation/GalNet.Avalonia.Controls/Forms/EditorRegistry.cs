@@ -11,6 +11,8 @@ public delegate FieldEditorLease FieldEditorFactory(FieldEditorContext context);
 /// <summary>Host-scoped, explicit registration. Mutations are reflected on the next form rebuild.</summary>
 public sealed class EditorRegistry
 {
+    /// <summary>Host policy: optional non-string text inputs may be cleared without authoring null.</summary>
+    public bool EmptyInputClearsOptionalFields { get; init; }
     private readonly Dictionary<string, FieldEditorFactory> _factories = new(StringComparer.Ordinal);
     private readonly Dictionary<Type, string> _defaults = [];
     private readonly Dictionary<Type, FieldEditorFactory> _typeFactories = [];
@@ -96,9 +98,9 @@ public sealed class EditorRegistry
             : throw new NotSupportedException($"Editor '{id}' for field '{field.Id}' is not registered.");
     }
 
-    public static EditorRegistry CreateDefault()
+    public static EditorRegistry CreateDefault(bool emptyInputClearsOptionalFields = false)
     {
-        var registry = new EditorRegistry();
+        var registry = new EditorRegistry { EmptyInputClearsOptionalFields = emptyInputClearsOptionalFields };
         registry.Register(ValueEditorIds.Text, DefaultFieldEditors.CreateText);
         registry.Register(ValueEditorIds.Numeric, DefaultFieldEditors.CreateNumeric);
         registry.Register(ValueEditorIds.Slider, DefaultFieldEditors.CreateSlider);

@@ -15,6 +15,8 @@ public sealed record FieldEditorItem(FieldEditorContext Context, Control Control
 /// <summary>Owns editors while mounted. Schema, registry, binding and visual theme are supplied by the host.</summary>
 public sealed class SchemaForm : TemplatedControl
 {
+    public static readonly StyledProperty<bool> ShowLabelsProperty = AvaloniaProperty.Register<SchemaForm, bool>(nameof(ShowLabels), true);
+    public bool ShowLabels { get => GetValue(ShowLabelsProperty); set => SetValue(ShowLabelsProperty, value); }
     public static readonly StyledProperty<int> DepthProperty = AvaloniaProperty.Register<SchemaForm, int>(nameof(Depth));
     public int Depth { get => GetValue(DepthProperty); set => SetValue(DepthProperty, value); }
     public static readonly StyledProperty<Type?> DtoTypeProperty = AvaloniaProperty.Register<SchemaForm, Type?>(nameof(DtoType));

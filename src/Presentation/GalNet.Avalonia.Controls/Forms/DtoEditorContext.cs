@@ -80,7 +80,9 @@ public sealed class DtoEditorContext : IDisposable
         public FieldValue Read() => source.Read();
         public bool IsEnabled => !owner._disposed && source.IsEnabled;
         public bool IsVisible => source.IsVisible;
+        public bool CanReset => source.CanReset;
         public object? Label => source.Label;
+        public object? HostContext => source.HostContext;
         public IReadOnlyList<FieldEditorOption>? Options => source.Options;
         public bool SupportsPreview => !owner._disposed && source is IFieldPreviewBinding { SupportsPreview: true };
         public ValueIssue? Preview(FieldValue value) => !IsEnabled ? new("dto.obsolete", "DTO editor is unavailable.") : source is IFieldPreviewBinding preview ? preview.Preview(value) : new("dto.preview", "Preview is unavailable.");

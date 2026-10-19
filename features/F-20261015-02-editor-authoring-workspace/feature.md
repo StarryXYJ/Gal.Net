@@ -4,7 +4,7 @@ title: Editor 创作工作区重构
 type: refactor
 status: in-progress
 created: 2026-10-15
-updated: 2026-10-18
+updated: 2026-10-19
 ---
 
 # Editor 创作工作区重构
@@ -155,6 +155,7 @@ P6e2 用户反馈进一步收敛交互：持续显示轨道的绝对值/叠加�
 
 ## 相关记录与当前事实
 
+- [GalGroup 属性编辑器改造设计](group-property-editor-design.md)：用户于 2026-10-19 授权实施；统一布局/单重置、Transform/列表控件、Timeline 面板按钮和 ColorPicker 已 verified，802 项相关回归、解决方案构建与格式检查通过；范围和证据见 [实施记录](phase-group-properties.md)。
 - [架构设计](design.md)
 - [参数控件与场景目标设计（第 6 点）](parameter-editor-design.md)：共享 UI 基础已完成 [P6a](phase-6a.md)，状态查询、隐藏 handle 和动画编辑仍按后续切片推进。
 - [galgroup 编辑交互与控件扩展补充设计](group-editing-design.md)：用户追加第 1–5 点纳入 P5；第 6 点仅设计，底层保留 handle，作者选择可读场景目标。

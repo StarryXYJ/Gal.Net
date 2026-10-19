@@ -16,6 +16,12 @@ namespace GalNet.Editor.Models.Graph;
 public sealed record EntryTypeOption(string Value, string Category, string DisplayNameKey, IReadOnlyList<string>? SearchAliases = null);
 public sealed record EntrySelectOption(string Value, string DisplayNameKey);
 
+public interface IEntryFieldOrigin
+{
+    string? GroupId { get; }
+    string EntryId { get; }
+}
+
 /// <summary>Schema-driven edits read the author document directly; no DTO snapshot or synchronization is needed.</summary>
 public sealed class EntryParameterFormBinding : IDisposable
 {
@@ -23,9 +29,10 @@ public sealed class EntryParameterFormBinding : IDisposable
     private EventHandler? _changed;
     private bool _disposed;
     private readonly string _type;
-    public EntryParameterFormBinding(EntryEditorItemViewModel owner, IReadOnlyList<FieldDescriptor> fields, Type? dtoType = null)
+    public EntryParameterFormBinding(EntryEditorItemViewModel owner, IReadOnlyList<FieldDescriptor> fields, Type? dtoType = null, Func<bool>? isCurrent = null)
     {
         _owner = owner;
+        _isCurrent = isCurrent;
         _type = owner.Type;
         Fields = fields;
         var members = fields.ToDictionary(field => field.Id, field => (IFieldBinding)new DocumentField(this, field), StringComparer.Ordinal);
@@ -35,16 +42,21 @@ public sealed class EntryParameterFormBinding : IDisposable
             : owner.CommitParametersAsync(patch.ToDictionary(pair => pair.Key, pair => (fields.Single(field => field.Id == pair.Key), pair.Value)), token));
     }
     public DtoEditorItem Item { get; }
-    private bool IsCurrent => !_disposed && _owner.IsCurrent && _owner.Type == _type;
+    private readonly Func<bool>? _isCurrent;
+    private bool IsCurrent => !_disposed && _owner.IsCurrent && _owner.Type == _type && (_isCurrent?.Invoke() ?? true);
     public IReadOnlyList<FieldDescriptor> Fields { get; }
     public Func<FieldDescriptor, IFieldBinding> Binding { get; }
     public void Refresh() { if (!_disposed) _changed?.Invoke(this, EventArgs.Empty); }
     public void Dispose() { _disposed = true; _changed = null; }
 
-    private sealed class DocumentField(EntryParameterFormBinding form, FieldDescriptor field) : IFieldBinding
+    private sealed class DocumentField(EntryParameterFormBinding form, FieldDescriptor field) : IFieldBinding, IEntryFieldOrigin
     {
+        public string? GroupId => form._owner.AuthorGroupId;
+        public string EntryId => form._owner.StableId;
+        public object HostContext => this;
         public object? Label => SceneFieldSemantics.TargetKinds(form._owner.Type, @field.Id) is not null ? "Scene.Target" : @field.LabelKey ?? "Entry.Parameter." + @field.Id;
         public bool IsEnabled => form.IsCurrent;
+        public bool CanReset => form._owner.Type != GalNet.Contracts.Builtins.BuiltinEntryIds.PlayTimeline || @field.Id != "timeline" || @field.DefaultValue is not null;
         public bool IsVisible => !form._owner.IsSceneOutput(@field.Id);
         public IReadOnlyList<FieldEditorOption>? Options => form._owner.SceneOptions(@field.Id);
         public FieldValue Read() => form._owner.Source.Parameters.TryGetValue(field.Id, out var json)
@@ -73,6 +85,8 @@ public sealed record EntryParameterDefinition(
 
 public partial class EntryParameterEditorItemViewModel : ObservableObject
 {
+    internal EntryParameterFormBinding? ActionForm { get; set; }
+    public IFieldBinding? ActionBinding => ActionForm?.Binding(Definition.Field);
     private readonly Action<string, string> _setValue;
     private bool _refreshing;
 
@@ -105,6 +119,7 @@ public partial class EntryParameterEditorItemViewModel : ObservableObject
     partial void OnStringValueChanged(string value) { if (!_refreshing) _setValue(Id, value ?? ""); }
     public virtual void RefreshValue(string value)
     {
+        ActionForm?.Refresh();
         _refreshing = true;
         try { StringValue = value; }
         finally { _refreshing = false; }
@@ -114,8 +129,13 @@ public partial class EntryParameterEditorItemViewModel : ObservableObject
 
 /// <summary>Field adapter submits through the project's explicit Entry intent.</summary>
 public sealed class SchemaEntryParameterEditorItemViewModel(EntryParameterDefinition definition, EntryEditorItemViewModel owner,
-    Action<string, string> set) : EntryParameterEditorItemViewModel(definition, "", [], set), IFieldBinding
+    Action<string, string> set) : EntryParameterEditorItemViewModel(definition, "", [], set), IFieldBinding, IEntryFieldOrigin
 {
+    public string? GroupId => owner.AuthorGroupId;
+    public string EntryId => owner.StableId;
+    public object HostContext => this;
+    public bool IsEnabled => owner.IsCurrent && owner.Type == _type && owner.ParameterFields.Contains(this);
+    public bool CanReset => owner.Type != GalNet.Contracts.Builtins.BuiltinEntryIds.PlayTimeline || Id != "timeline" || Definition.Field.DefaultValue is not null;
     private readonly string _type = owner.Type;
     public IReadOnlyList<FieldDescriptor> Fields { get; } = [definition.Field];
     public Func<FieldDescriptor, IFieldBinding> FieldBinding => _ => this;

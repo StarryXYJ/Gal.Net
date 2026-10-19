@@ -12,6 +12,14 @@ namespace GalNet.Game.Controls.Forms;
 public sealed class StructuredFieldEditor : Expander, IDisposable
 {
     protected override Type StyleKeyOverride => typeof(Expander);
+    public static readonly StyledProperty<bool> ExpandByDefaultProperty = AvaloniaProperty.Register<StructuredFieldEditor, bool>(nameof(ExpandByDefault));
+    public bool ExpandByDefault { get => GetValue(ExpandByDefaultProperty); set => SetValue(ExpandByDefaultProperty, value); }
+    public static readonly StyledProperty<string?> ObjectTextProperty = AvaloniaProperty.Register<StructuredFieldEditor, string?>(nameof(ObjectText));
+    public static readonly StyledProperty<string?> ListTextProperty = AvaloniaProperty.Register<StructuredFieldEditor, string?>(nameof(ListText));
+    public static readonly StyledProperty<string> RepairTextProperty = AvaloniaProperty.Register<StructuredFieldEditor, string>(nameof(RepairText), "JSON");
+    public string? ObjectText { get => GetValue(ObjectTextProperty); set => SetValue(ObjectTextProperty, value); }
+    public string? ListText { get => GetValue(ListTextProperty); set => SetValue(ListTextProperty, value); }
+    public string RepairText { get => GetValue(RepairTextProperty); set => SetValue(RepairTextProperty, value); }
     public static readonly StyledProperty<string> AddTextProperty = AvaloniaProperty.Register<StructuredFieldEditor, string>(nameof(AddText), "Add element");
     public static readonly StyledProperty<string> RemoveTextProperty = AvaloniaProperty.Register<StructuredFieldEditor, string>(nameof(RemoveText), "Remove element");
     public static readonly StyledProperty<string> UpTextProperty = AvaloniaProperty.Register<StructuredFieldEditor, string>(nameof(UpText), "Move up");
@@ -31,6 +39,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
     private JsonElement? _submitted;
     private bool _elementCommit;
     private bool _jsonMode;
+    private Button? _jsonButton;
     private bool _disposed;
     private int _generation;
     private static Type? ElementType(Type type) => type.IsArray && type.GetArrayRank() == 1 ? type.GetElementType()
@@ -56,12 +65,23 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
         base.OnPropertyChanged(change);
         if (Context is null || _disposed) return;
         if (change.Property == IsExpandedProperty) { if (IsExpanded) Build(); else Release(); }
+        else if (change.Property == ExpandByDefaultProperty && ExpandByDefault)
+        {
+            try { if (_element is null && Members(Context.Field.Value, _type).Count <= 6) IsExpanded = true; }
+            catch (Exception error) when (error is ArgumentException or InvalidOperationException or NotSupportedException or TargetInvocationException) { }
+        }
+        else if (change.Property == ObjectTextProperty || change.Property == ListTextProperty || change.Property == RepairTextProperty)
+        {
+            if (IsExpanded) SetHeader(_jsonMode || _fallback is not null ? "JSON" : HeaderText());
+            else Header = HeaderText();
+        }
         else if (change.Property == AddTextProperty || change.Property == RemoveTextProperty || change.Property == UpTextProperty || change.Property == DownTextProperty) RefreshButtonText();
     }
     private static bool Equal(JsonElement? left, JsonElement? right) => left is { } a ? right is { } b && JsonElement.DeepEquals(a, b) : right is null;
     private void Changed(object? sender, PropertyChangedEventArgs args)
     {
         if (_disposed) return;
+        if (_jsonButton is not null) _jsonButton.IsVisible = RepairText == "JSON" || _jsonMode || _fallback is not null || Context.Issue is not null;
         IsEnabled = Context.IsEnabled;
         IsVisible = Context.IsVisible;
         var current = Current;
@@ -93,8 +113,9 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
     {
         var panel = new StackPanel { Orientation = global::Avalonia.Layout.Orientation.Horizontal, Spacing = 8 };
         panel.Children.Add(new TextBlock { Text = text, VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center });
-        var button = new Button { Name = "JsonMode", Content = _jsonMode ? "≡" : "JSON" };
-        ToolTip.SetTip(button, "JSON");
+        var button = new Button { Name = "JsonMode", Content = _jsonMode ? "≡" : RepairText == "JSON" ? "JSON" : "⋯", IsVisible = RepairText == "JSON" || _jsonMode || _fallback is not null || Context.Issue is not null };
+        _jsonButton = button;
+        ToolTip.SetTip(button, RepairText);
         button.Click += (_, _) =>
         {
             if (Context.HasDraft) return;
@@ -102,6 +123,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
         };
         panel.Children.Add(button); Header = panel;
     }
+    private string HeaderText() => _element is null ? ObjectText ?? _type.Name : (ListText ?? _type.Name) + " · " + ArrayValues().Count;
     private sealed record Member(FieldDescriptor Field, string Wire);
     private static IReadOnlyList<Member> Members(ValueDescriptor descriptor, Type type)
     {
@@ -120,7 +142,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
     }
     private void BuildObject()
     {
-        SetHeader(_type.Name);
+        SetHeader(HeaderText());
         var members = Members(Context.Field.Value, _type); var fields = members.Select(member => member.Field).ToArray();
         var map = members.ToDictionary(member => member.Field.Id, member => member.Wire, StringComparer.Ordinal);
         var bindings = fields.ToDictionary(field => field.Id, field => Bind(field, map[field.Id], null), StringComparer.Ordinal);
@@ -130,7 +152,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
     }
     private void BuildArray()
     {
-        var values = ArrayValues(); SetHeader(_type.Name + " · " + values.Count);
+        var values = ArrayValues(); SetHeader(HeaderText());
         var panel = new StackPanel { Spacing = 6 };
         var generation = _generation;
         for (var index = 0; index < values.Count; index++)
@@ -145,7 +167,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
             row.Children.Add(buttons);
             var descriptor = new FieldDescriptor("element", new(_element!, jsonOptions: Context.Field.Value.JsonOptions), isRequired: true);
             var binding = Bind(descriptor, null, position);
-            row.Children.Add(new SchemaForm { Depth = Context.Depth + 1, Schema = [descriptor], Registry = Context.Registry, Binding = _ => binding });
+            row.Children.Add(new SchemaForm { ShowLabels = false, Depth = Context.Depth + 1, Schema = [descriptor], Registry = Context.Registry, Binding = _ => binding });
             panel.Children.Add(row);
         }
         AddButton(panel, "add", () => ChangeArray(generation, list => list.Add(InitialValue(new(_element!, jsonOptions: Context.Field.Value.JsonOptions))))).IsEnabled = values.Count < 200;

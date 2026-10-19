@@ -66,7 +66,11 @@ public static class EditorServiceCollectionExtensions
         services.AddTransient<TimelinePanelViewModel>();
         services.AddScoped<VariableAuthoringService>();
         services.AddTransient<VariablesPanelViewModel>();
-        services.AddScoped<EditorRegistry>(sp => EditorFieldEditors.CreateDefault(sp.GetRequiredService<SceneTargetCatalog>()));
+        services.AddScoped<EditorRegistry>(sp => EditorFieldEditors.CreateDefault(sp.GetRequiredService<SceneTargetCatalog>(), context =>
+        {
+            if (context.IsEnabled && context.HostContext is Models.Graph.IEntryFieldOrigin { GroupId: { } groupId } origin)
+                sp.GetRequiredService<EditorDockFactory>().OpenTimeline(groupId, origin.EntryId);
+        }));
         services.AddScoped<IGraphEditingService, GraphEditingService>();
         services.AddScoped<GraphSelectionState>();
         services.AddScoped<EditorWorkspacePersistence>();

@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [延迟模板祖先类型解析](lessons/L-20261019-01-template-ancestor-type-resolution.md)：带命名空间的祖先反射绑定必须实际挂载验证；已复现表达式使用 RelativeSource + x:Type 修复。
+
 - [查询上下文随项目 scope 失效](lessons/L-20261018-04-query-scope-disposal.md)：旧服务仍可能持有 IsLoaded 文档；查询服务释放时清缓存并推进代次，不能以可读数据代替有效会话。
 
 - [L-20261018-03 派生控件主题键](lessons/L-20261018-03-derived-control-theme-key.md)：复用 Expander 等基类模板时显式 StyleKeyOverride；挂载后验证实际交互入口，属性赋值测试不能证明按钮可用。
@@ -43,6 +45,8 @@
 - `docs/manual/`：二次开发流程与框架接入指南。
 
 ## 当前工作
+
+- 2026-10-19 Group 属性编辑器改造已验证：统一响应式字段行、标题左上/重置同行右侧，去掉常驻 presence 操作；Transform 成员与类型工厂、ColorPicker、Timeline Dock 按钮，列表按元素类型分派。CanReset/HostContext 经 DTO scope 转发，Timeline 无默认定义禁止通用重置；子项 patch 保留未知 JSON，变换按语义相等保留无关更新下的草稿。802 项相关回归、解决方案构建、格式/源码指纹通过，六项媒体未执行，四语 727 keys。见 [实施记录](../features/F-20261015-02-editor-authoring-workspace/phase-group-properties.md)。动态结构 JSON 回退、八层/200 元素保护及 P6e3b/P6e4/P6f 范围保留。
 
 - 2026-10-19 P6e3a 已验证：选中关键帧的值/出段 Step/Linear/Hermite/入出切线、混合值、多键单历史、平坦/线性/平滑/对齐一次性预设与值/秒显示换算；保存仍值/帧，切 Step/Linear 保留切线。详情按文档代次与选择失效，保留未知 JSON/大小写/首帧，越界/斜率溢出整批拒绝；布局预留不因选择移动画布。解决方案构建、Editor/Core/Architecture 332 项、格式/指纹通过，四语 705 keys，见 [phase-6e3](../features/F-20261015-02-editor-authoring-workspace/phase-6e3.md)。P6e3b 图形曲线/拖柄仍 planned，P6e4/P6f 随后；没有新增 Runtime 的极值拒绝规则或实时预览。开工已有的 feature.md/Group 属性设计改动保留未提交。
 

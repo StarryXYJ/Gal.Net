@@ -262,6 +262,18 @@ public sealed class EditorDockFactory : Factory, IDisposable
         LayoutChanged?.Invoke();
     }
 
+    public void OpenTimeline(string groupId, string entryId)
+    {
+        var group = _workspace?.Nodes.FirstOrDefault(node => node.Id == groupId);
+        var entry = group?.Entries.FirstOrDefault(item => item.StableId == entryId);
+        if (group is null || entry is null || entry.Type != GalNet.Contracts.Builtins.BuiltinEntryIds.PlayTimeline) return;
+        OpenGroupEditor(group);
+        var page = _documentDock?.VisibleDockables?.FirstOrDefault(item => item.Id == GetGroupEditorDocumentId(groupId))?.Context as GroupEditorPanelViewModel;
+        if (page is null || page.IsDisposed) return;
+        page.SelectedEntry = entry; page.PublishSelection();
+        OpenPanel(EditorDockPanelIds.Timeline);
+    }
+
     public void CloseGroupEditor(string groupId)
     {
         if (_documentDock?.VisibleDockables is null) return;

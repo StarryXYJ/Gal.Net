@@ -26,7 +26,10 @@ public interface IFieldBinding
     Task<ValueIssue?> CommitAsync(FieldValue value, CancellationToken cancellationToken);
     bool IsEnabled => true;
     bool IsVisible => true;
+    bool CanReset => true;
     object? Label => null;
+    /// <summary>Optional host metadata, forwarded by scoped decorators without exposing their source binding.</summary>
+    object? HostContext => null;
     IReadOnlyList<FieldEditorOption>? Options => null;
 }
 
