@@ -35,12 +35,18 @@ public static class EditorFieldEditors
             var lease = DefaultFieldEditors.CreateChoice(context);
             ((ComboBox)lease.Control).ItemTemplate = new FuncDataTemplate<FieldEditorOption>((option, _) =>
             {
-                var label = new TextBlock { DataContext = option?.Label };
-                if (option?.Label is EntrySelectOption)
+                var localizedOption = option?.Label switch
                 {
-                    var value = new LocalizeExtension("DisplayNameKey").ProvideValue(null!);
+                    EntrySelectOption entryOption => entryOption,
+                    string text => new EntrySelectOption(text, $"Entry.Option.{text}"),
+                    _ => null
+                };
+                var label = new TextBlock { DataContext = localizedOption ?? option?.Label };
+                if (localizedOption is not null)
+                {
+                    var value = new LocalizeExtension { Path = "DisplayNameKey", FallbackPath = "Value" }.ProvideValue(null!);
                     if (value is BindingBase binding) label.Bind(TextBlock.TextProperty, binding);
-                    else label.Text = ((EntrySelectOption)option.Label).DisplayNameKey;
+                    else label.Text = localizedOption.Value;
                 }
                 else label.Text = option?.Label?.ToString();
                 return label;

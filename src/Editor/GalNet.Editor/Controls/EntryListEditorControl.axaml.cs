@@ -32,6 +32,7 @@ public partial class EntryListEditorControl : ReorderableListControl
             ScrollSelectionIntoView();
         };
         ItemsListBox.ContextRequested += OnEntriesContextRequested;
+        ItemsListBox.AddHandler(PointerPressedEvent, OnEntryPointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
         ItemsListBox.AddHandler(PointerPressedEvent, OnListBackgroundPressed, RoutingStrategies.Bubble, handledEventsToo: true);
         DataContextChanged += (_, _) => Subscribe();
         AttachedToVisualTree += (_, _) => Subscribe();
@@ -53,6 +54,19 @@ public partial class EntryListEditorControl : ReorderableListControl
         if (source.GetSelfAndVisualAncestors().Any(control => control is ListBoxItem or ScrollBar)) return;
         if (DataContext is GroupEditorPanelViewModel vm) vm.SelectedEntry = null;
         ItemsListBox.Focus();
+    }
+    private void OnEntryPointerPressed(object? sender, PointerPressedEventArgs args)
+    {
+        if (!args.GetCurrentPoint(ItemsListBox).Properties.IsLeftButtonPressed
+            || args.KeyModifiers.HasFlag(KeyModifiers.Control)
+            || args.KeyModifiers.HasFlag(KeyModifiers.Shift)
+            || args.Source is not Control source
+            || DataContext is not GroupEditorPanelViewModel vm)
+            return;
+
+        if (source.GetSelfAndVisualAncestors().OfType<ListBoxItem>().FirstOrDefault()?.DataContext is EntryEditorItemViewModel entry
+            && !vm.SelectedEntries.Contains(entry))
+            vm.SetSelection([entry]);
     }
     private void OpenInsertPicker()
     {

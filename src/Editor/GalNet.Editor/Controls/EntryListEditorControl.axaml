@@ -54,7 +54,7 @@
             <Button Content="{loc:Localize Entry.Add}" Command="{Binding AddEntryCommand}" Margin="0,0,6,0" />
             <Button Content="{loc:Localize Entry.AppendBatch}" Command="{Binding AppendEntriesCommand}" Margin="0,0,6,0" />
             <NumericUpDown x:Name="BatchCount" Width="90" Minimum="1" Maximum="1000" Increment="1" FormatString="0" Value="{Binding BatchAddCount,Mode=TwoWay}" Margin="0,0,6,0" ToolTip.Tip="{loc:Localize Entry.BatchCount}" />
-            <controls:EntryTypePicker x:Name="InsertPicker" MinWidth="180" Options="{Binding EntryTypes}" ShortcutService="{Binding ShortcutService}" SelectedValue="{Binding InsertionType,Mode=OneWay}" Opened="OnInsertPickerOpened" Closed="OnInsertPickerClosed" TypeConfirmed="OnInsertTypeConfirmed" />
+            <controls:EntryTypePicker x:Name="InsertPicker" MinWidth="180" MinHeight="32" VerticalAlignment="Center" Options="{Binding EntryTypes}" ShortcutService="{Binding ShortcutService}" SelectedValue="{Binding InsertionType,Mode=OneWay}" Opened="OnInsertPickerOpened" Closed="OnInsertPickerClosed" TypeConfirmed="OnInsertTypeConfirmed" />
         </WrapPanel>
 
         <ListBox Name="ItemsListBox"
@@ -63,11 +63,11 @@
                  ItemsSource="{Binding GroupNode.Entries}"
                  SelectedItems="{Binding SelectedEntries, Mode=OneWay}"
                  SelectionMode="Multiple"
-                 Background="Transparent" Padding="0,0,0,64">
+                 Background="Transparent" Padding="0">
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="models:EntryEditorItemViewModel">
-                    <Border Margin="0,4"
-                            Padding="8"
+                    <Border Margin="0,3"
+                            Padding="6"
                             Background="{DynamicResource SemiColorBackground1}"
                             BorderBrush="{DynamicResource SemiColorBorder}"
                             BorderThickness="1"
@@ -88,7 +88,8 @@
                             <controls:EntryTypePicker Grid.Column="2"
                                                       Options="{Binding #Root.DataContext.EntryTypes}"
                                                       ShortcutService="{Binding #Root.DataContext.ShortcutService}"
-                                                      SelectedValue="{Binding Type, Mode=OneWay}" TypeConfirmed="OnEntryTypeConfirmed" />
+                                                      SelectedValue="{Binding Type, Mode=OneWay}" TypeConfirmed="OnEntryTypeConfirmed"
+                                                      MinHeight="32" VerticalAlignment="Center" HorizontalAlignment="Stretch" />
                             <controls:ConditionEditorControl Grid.Column="3"
                                                              Text="{Binding Condition}"
                                                              Suggestions="{Binding #Root.DataContext.ConditionSuggestions}"
@@ -114,7 +115,7 @@
                                     Command="{Binding #Root.DataContext.RemoveEntryCommand}"
                                     CommandParameter="{Binding}"><PathIcon Width="16" Height="16" Data="{StaticResource DeleteRegularIcon}" /></Button>
                         </Grid>
-                        <StackPanel Margin="0,8,0,0" Spacing="6" IsVisible="{Binding #ParametersToggle.IsChecked}">
+                        <StackPanel Margin="0,6,0,0" Spacing="4" IsVisible="{Binding #ParametersToggle.IsChecked}">
                             <TextBlock Text="{loc:Localize Entry.UnknownTypePreserved}" IsVisible="{Binding IsUnknownType}" TextWrapping="Wrap" />
                             <TextBlock Text="{loc:Localize Entry.UnknownParametersPreserved}" IsVisible="{Binding HasUnknownParameters}" TextWrapping="Wrap" />
                             <forms:DtoEditorHost Item="{Binding ParameterForm.Item}" Registry="{Binding #Root.DataContext.FieldEditors}" IsVisible="{Binding HasParameterForm}" />
@@ -126,11 +127,11 @@
                                                 <DataTemplate DataType="models:SchemaEntryParameterEditorItemViewModel" x:CompileBindings="False">
                                                     <forms:SchemaForm Schema="{Binding Fields}" Binding="{Binding FieldBinding}" DtoType="{Binding DtoType}" Registry="{Binding #Root.DataContext.FieldEditors}" />
                                                 </DataTemplate>
-                                                <DataTemplate DataType="models:TextEntryParameterEditorItemViewModel"><forms:FieldEditorRow Field="{Binding Definition.Field}" Binding="{Binding ActionBinding}"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize DisplayNameKey}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><TextBox Text="{Binding StringValue}" AcceptsReturn="{Binding IsMultiline}" TextWrapping="Wrap" MinHeight="30" HorizontalAlignment="Stretch" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow></DataTemplate>
-                                                <DataTemplate DataType="models:AutocompleteEntryParameterEditorItemViewModel"><forms:FieldEditorRow Field="{Binding Definition.Field}" Binding="{Binding ActionBinding}"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize DisplayNameKey}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><ComboBox IsEditable="True" ItemsSource="{Binding Suggestions}" Text="{Binding StringValue}" HorizontalAlignment="Stretch" LostFocus="OnAutocompleteLostFocus" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow></DataTemplate>
-                                                <DataTemplate DataType="models:AssetEntryParameterEditorItemViewModel"><forms:FieldEditorRow Field="{Binding Definition.Field}" Binding="{Binding ActionBinding}"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize DisplayNameKey}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><controls:AssetPicker AssetManager="{Binding #Root.DataContext.AssetManager}" Filter="{Binding AssetFilter}" SelectedAssetId="{Binding StringValue}" HorizontalAlignment="Stretch" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow></DataTemplate>
-                                                <DataTemplate DataType="models:VariableNameEntryParameterEditorItemViewModel"><forms:FieldEditorRow Field="{Binding Definition.Field}" Binding="{Binding ActionBinding}"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize DisplayNameKey}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><ComboBox IsEditable="True" ItemsSource="{Binding Suggestions}" Text="{Binding StringValue, Mode=TwoWay}" HorizontalAlignment="Stretch" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow></DataTemplate>
-                                                <DataTemplate DataType="models:ExpressionEntryParameterEditorItemViewModel"><forms:FieldEditorRow Field="{Binding Definition.Field}" Binding="{Binding ActionBinding}"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize DisplayNameKey}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><controls:ConditionEditorControl Text="{Binding StringValue}" Suggestions="{Binding #Root.DataContext.ConditionSuggestions}" ValidationVariables="{Binding #Root.DataContext.ValidationVariables}" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow></DataTemplate>
+                                                <DataTemplate DataType="models:TextEntryParameterEditorItemViewModel"><forms:FieldEditorRow Field="{Binding Definition.Field}" Binding="{Binding ActionBinding}"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize DisplayNameKey, FallbackPath=Id}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><TextBox Text="{Binding StringValue}" AcceptsReturn="{Binding IsMultiline}" TextWrapping="Wrap" MinHeight="30" HorizontalAlignment="Stretch" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow></DataTemplate>
+                                                <DataTemplate DataType="models:AutocompleteEntryParameterEditorItemViewModel"><forms:FieldEditorRow Field="{Binding Definition.Field}" Binding="{Binding ActionBinding}"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize DisplayNameKey, FallbackPath=Id}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><ComboBox IsEditable="True" ItemsSource="{Binding Suggestions}" Text="{Binding StringValue}" HorizontalAlignment="Stretch" LostFocus="OnAutocompleteLostFocus" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow></DataTemplate>
+                                                <DataTemplate DataType="models:AssetEntryParameterEditorItemViewModel"><forms:FieldEditorRow Field="{Binding Definition.Field}" Binding="{Binding ActionBinding}"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize DisplayNameKey, FallbackPath=Id}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><controls:AssetPicker AssetManager="{Binding #Root.DataContext.AssetManager}" Filter="{Binding AssetFilter}" SelectedAssetId="{Binding StringValue}" HorizontalAlignment="Stretch" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow></DataTemplate>
+                                                <DataTemplate DataType="models:VariableNameEntryParameterEditorItemViewModel"><forms:FieldEditorRow Field="{Binding Definition.Field}" Binding="{Binding ActionBinding}"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize DisplayNameKey, FallbackPath=Id}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><ComboBox IsEditable="True" ItemsSource="{Binding Suggestions}" Text="{Binding StringValue, Mode=TwoWay}" HorizontalAlignment="Stretch" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow></DataTemplate>
+                                                <DataTemplate DataType="models:ExpressionEntryParameterEditorItemViewModel"><forms:FieldEditorRow Field="{Binding Definition.Field}" Binding="{Binding ActionBinding}"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize DisplayNameKey, FallbackPath=Id}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><controls:ConditionEditorControl Text="{Binding StringValue}" Suggestions="{Binding #Root.DataContext.ConditionSuggestions}" ValidationVariables="{Binding #Root.DataContext.ValidationVariables}" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow></DataTemplate>
                                             </ContentControl.DataTemplates>
                                         </ContentControl>
                                     </DataTemplate>
