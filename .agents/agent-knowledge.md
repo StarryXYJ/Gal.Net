@@ -44,6 +44,8 @@
 
 ## 当前工作
 
+- 2026-10-19 P6e3a 已验证：选中关键帧的值/出段 Step/Linear/Hermite/入出切线、混合值、多键单历史、平坦/线性/平滑/对齐一次性预设与值/秒显示换算；保存仍值/帧，切 Step/Linear 保留切线。详情按文档代次与选择失效，保留未知 JSON/大小写/首帧，越界/斜率溢出整批拒绝；布局预留不因选择移动画布。解决方案构建、Editor/Core/Architecture 332 项、格式/指纹通过，四语 705 keys，见 [phase-6e3](../features/F-20261015-02-editor-authoring-workspace/phase-6e3.md)。P6e3b 图形曲线/拖柄仍 planned，P6e4/P6f 随后；没有新增 Runtime 的极值拒绝规则或实时预览。开工已有的 feature.md/Group 属性设计改动保留未提交。
+
 - 2026-10-18 P6e2b 已验证：ProjectSceneTargets 是指定 Group/Entry 位置的查询服务，缓存作者快照并随项目 scope 释放失效；SceneTargetCatalog/Selection 适配候选与 Locator 解析，控件自己管理弹窗。Assets/普通字段/Timeline 共用 ResourcePickerPanel。Timeline 顶部“＋”只选对象，对象行左侧“＋”逐项选属性；未知初值待明确输入才创建，空对象仅面板草稿。整个对象替换保留键/未知 JSON、单历史。初轮六项目 905 项、用户两步交互修订后最终 461 项相关回归、解决方案构建及格式/指纹通过；6 项原生媒体用例未执行，四语 691 keys。见 [scene-locator-plan](../features/F-20261015-02-editor-authoring-workspace/scene-locator-plan.md)。下一步 P6e3 曲线/切线，P6e4 剩余语义/事件/引用；实时预览不列阶段。
 
 - 2026-10-18 Timeline 交互简化已验证，取代 P6e2 原保秒重定时/裁剪方案：已有轨道持续显示绝对值/叠加偏移模式，切换保留数值与切线；结束帧/FPS Enter/失焦独立提交、FPS 保留帧号、结束帧下限覆盖键/事件，越界拖动与延长合为单历史。旧应用/裁剪/保秒生产路径移除，四语各 678 keys。初轮六项目 901 项通过，模式拒绝回显补充后的最终 457 项、解决方案构建、格式/指纹通过，6 项媒体环境未执行；见 [timeline-simplification](../features/F-20261015-02-editor-authoring-workspace/timeline-simplification.md)。下一步 P6e3 曲线/切线。

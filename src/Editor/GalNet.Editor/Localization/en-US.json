@@ -689,5 +689,19 @@
   "Scene.ReplaceObject": "Change target",
   "Scene.Duplicate": "The target already contains the same property track.",
   "Scene.ChooseTarget": "Choose a scene object",
-  "Scene.AddProperty": "Add property override"
+  "Scene.AddProperty": "Add property override",
+  "Timeline.Key.Selected": "Selected keys",
+  "Timeline.Key.Value": "Value",
+  "Timeline.Key.Step": "Step",
+  "Timeline.Key.Linear": "Linear",
+  "Timeline.Key.Incoming": "In tangent",
+  "Timeline.Key.Outgoing": "Out tangent",
+  "Timeline.Key.Seconds": "Tangents per second",
+  "Timeline.Key.PerFrame": "value/frame",
+  "Timeline.Key.PerSecond": "value/second",
+  "Timeline.Key.Flat": "Flat tangents",
+  "Timeline.Key.LinearTangents": "Linear tangents",
+  "Timeline.Key.Smooth": "Smooth tangents",
+  "Timeline.Key.Aligned": "Align tangents",
+  "Timeline.Key.Hint": "Interpolation affects the following segment. Mixed values are blank; input applies to every selected key."
 }

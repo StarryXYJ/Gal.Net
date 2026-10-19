@@ -16,6 +16,13 @@ public partial class TimelinePanelView : UserControl
     { if (sender is Control { DataContext: TimelineValueRow row }) row.Commit(); }
     private void OnValueKeyDown(object? sender, KeyEventArgs args)
     {
+        var detail = args.Source as NumericUpDown ?? (args.Source as Control)?.FindAncestorOfType<NumericUpDown>();
+        if (detail?.DataContext is TimelineKeyEdit key)
+        {
+            if (args.Key == Key.Enter) { CommitKeyDetail(detail, key); args.Handled = true; }
+            else if (args.Key == Key.Escape) { key.Cancel(); args.Handled = true; }
+            return;
+        }
         var timing = args.Source as NumericUpDown ?? (args.Source as Control)?.FindAncestorOfType<NumericUpDown>();
         if (timing?.Name is "TimelineDurationDraft" or "TimelineFpsDraft" && DataContext is ViewModels.TimelinePanelViewModel vm)
         {
@@ -27,6 +34,22 @@ public partial class TimelinePanelView : UserControl
         if (args.Key == Key.Enter) { row.Commit(true); args.Handled = true; }
         else if (args.Key == Key.Escape) { row.Cancel(); args.Handled = true; }
     }
+    private static void CommitKeyDetail(NumericUpDown input, TimelineKeyEdit key)
+    {
+        if (input.Name == "TimelineKeyValue") key.CommitValue();
+        else if (input.Name == "TimelineKeyIncoming") key.CommitIncoming();
+        else if (input.Name == "TimelineKeyOutgoing") key.CommitOutgoing();
+    }
+    private void OnKeyDetailLostFocus(object? sender, FocusChangedEventArgs args)
+    { if (sender is NumericUpDown { DataContext: TimelineKeyEdit key } input) CommitKeyDetail(input, key); }
+    private void OnKeyInterpolationChanged(object? sender, SelectionChangedEventArgs args)
+    {
+        if (sender is not ComboBox { DataContext: TimelineKeyEdit key } input || input.SelectedIndex < 0) return;
+        key.InterpolationIndex = input.SelectedIndex; key.CommitInterpolation();
+        input.SetCurrentValue(Avalonia.Controls.Primitives.SelectingItemsControl.SelectedIndexProperty, key.InterpolationIndex);
+    }
+    private void OnKeyTangentPreset(object? sender, RoutedEventArgs args)
+    { if (sender is Button { DataContext: TimelineKeyEdit key, Tag: string tag } && Enum.TryParse<TimelineTangentPreset>(tag, out var preset)) key.ApplyPreset(preset); }
     private void OnTimingLostFocus(object? sender, FocusChangedEventArgs args)
     { if (sender is NumericUpDown input && DataContext is ViewModels.TimelinePanelViewModel vm) vm.Session.CommitTimingInput(input.Name == "TimelineFpsDraft"); }
     private void OnBlendModeSelectionChanged(object? sender, SelectionChangedEventArgs args)

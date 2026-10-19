@@ -689,5 +689,19 @@
   "Scene.ReplaceObject": "更换对象",
   "Scene.Duplicate": "目标已包含相同属性轨道。",
   "Scene.ChooseTarget": "选择场上对象",
-  "Scene.AddProperty": "添加属性重载"
+  "Scene.AddProperty": "添加属性重载",
+  "Timeline.Key.Selected": "已选关键帧",
+  "Timeline.Key.Value": "值",
+  "Timeline.Key.Step": "阶梯",
+  "Timeline.Key.Linear": "线性",
+  "Timeline.Key.Incoming": "入切线",
+  "Timeline.Key.Outgoing": "出切线",
+  "Timeline.Key.Seconds": "切线按秒显示",
+  "Timeline.Key.PerFrame": "值/帧",
+  "Timeline.Key.PerSecond": "值/秒",
+  "Timeline.Key.Flat": "平坦切线",
+  "Timeline.Key.LinearTangents": "线性切线",
+  "Timeline.Key.Smooth": "平滑切线",
+  "Timeline.Key.Aligned": "对齐切线",
+  "Timeline.Key.Hint": "插值作用于此键后的区间。混合值留空，输入会统一设置所有选中键。"
 }

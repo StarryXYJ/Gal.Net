@@ -689,5 +689,19 @@
   "Scene.ReplaceObject": "対象を変更",
   "Scene.Duplicate": "同じプロパティのトラックが対象に存在します。",
   "Scene.ChooseTarget": "シーン対象を選択",
-  "Scene.AddProperty": "プロパティオーバーライドを追加"
+  "Scene.AddProperty": "プロパティオーバーライドを追加",
+  "Timeline.Key.Selected": "選択キーフレーム",
+  "Timeline.Key.Value": "値",
+  "Timeline.Key.Step": "ステップ",
+  "Timeline.Key.Linear": "線形",
+  "Timeline.Key.Incoming": "入接線",
+  "Timeline.Key.Outgoing": "出接線",
+  "Timeline.Key.Seconds": "接線を秒単位で表示",
+  "Timeline.Key.PerFrame": "値/フレーム",
+  "Timeline.Key.PerSecond": "値/秒",
+  "Timeline.Key.Flat": "平坦な接線",
+  "Timeline.Key.LinearTangents": "線形接線",
+  "Timeline.Key.Smooth": "滑らかな接線",
+  "Timeline.Key.Aligned": "接線を整列",
+  "Timeline.Key.Hint": "補間は次の区間に適用されます。混在する値は空欄で、入力は選択した全キーに適用されます。"
 }

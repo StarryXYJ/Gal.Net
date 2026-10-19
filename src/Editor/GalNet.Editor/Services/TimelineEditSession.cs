@@ -175,6 +175,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
     public void CancelInput() { if (!_disposed) { Canvas.Cancel(); CancelTimingInput(false); CancelTimingInput(true); BuildRows(); } }
     public void Dispose()
     {
+        Canvas.PropertyChanged -= OnCanvasSelection; KeyEdit = null;
         if (_disposed) return; EndObjectEdit(); _disposed = true; DetachTree(); InvalidateKeyDocument(); _generation++; Rows.Clear(); Tree.Clear();
         _selection.Changed -= OnSelection; _documents.DocumentChanged -= Refresh; _histories.Changed -= Refresh;
         _localization.PropertyChanged -= OnLocale; _entry = null; _document = null;

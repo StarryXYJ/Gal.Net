@@ -25,6 +25,7 @@ public sealed partial class TimelineEditSession
     partial void OnShowAvailablePropertiesChanged(bool value) { Canvas.Cancel(); RebuildVisibleNodes(); }
     private void InitializeCanvas()
     {
+        Canvas.PropertyChanged += OnCanvasSelection;
         Canvas.SeekRequested += SeekCanvas;
         Canvas.BeginMove = BeginKeyMove; Canvas.PreviewMove = PreviewKeyMove; Canvas.CommitMove = delta => CommitKeyMove(delta, false);
         Canvas.CancelMove = () => { _moveDocument = null; _moveKeys = null; };
@@ -48,6 +49,7 @@ public sealed partial class TimelineEditSession
         }
         Canvas.Duration = Duration; Canvas.Frame = Frame; OnPropertyChanged(nameof(MinimumDuration));
         RebuildVisibleNodes();
+        RefreshKeyEdit();
     }
     private void DetachTree()
     { foreach (var node in Tree.SelectMany(node => node.Descendants())) node.PropertyChanged -= OnTreeExpansion; }

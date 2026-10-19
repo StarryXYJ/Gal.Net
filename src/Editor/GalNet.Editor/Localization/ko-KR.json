@@ -689,5 +689,19 @@
   "Scene.ReplaceObject": "대상 변경",
   "Scene.Duplicate": "대상에 같은 속성 트랙이 이미 있습니다.",
   "Scene.ChooseTarget": "장면 대상 선택",
-  "Scene.AddProperty": "속성 오버라이드 추가"
+  "Scene.AddProperty": "속성 오버라이드 추가",
+  "Timeline.Key.Selected": "선택한 키프레임",
+  "Timeline.Key.Value": "값",
+  "Timeline.Key.Step": "단계",
+  "Timeline.Key.Linear": "선형",
+  "Timeline.Key.Incoming": "입력 접선",
+  "Timeline.Key.Outgoing": "출력 접선",
+  "Timeline.Key.Seconds": "초 단위 접선 표시",
+  "Timeline.Key.PerFrame": "값/프레임",
+  "Timeline.Key.PerSecond": "값/초",
+  "Timeline.Key.Flat": "평평한 접선",
+  "Timeline.Key.LinearTangents": "선형 접선",
+  "Timeline.Key.Smooth": "부드러운 접선",
+  "Timeline.Key.Aligned": "접선 정렬",
+  "Timeline.Key.Hint": "보간은 다음 구간에 적용됩니다. 혼합 값은 비워 두며 입력은 선택한 모든 키에 적용됩니다."
 }

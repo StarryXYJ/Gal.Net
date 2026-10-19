@@ -13,7 +13,7 @@
       <Setter Property="Interval" Value="30"/>
     </Style>
   </UserControl.Styles>
-  <Grid Margin="10" RowDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto" RowSpacing="6">
+  <Grid Margin="10" RowDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto,Auto" RowSpacing="6">
     <TextBlock Text="{Binding Session.Source}" Opacity="0.7" TextWrapping="Wrap"/>
     <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
       <TextBlock x:Name="TimelineStatus" Text="{loc:Localize Path=Session.StatusKey}" VerticalAlignment="Center"/>
@@ -34,8 +34,33 @@
       <NumericUpDown Name="TimelineDurationDraft" Width="95" Minimum="{Binding Session.MinimumDuration}" Maximum="2147483647" Increment="1" FormatString="0" Value="{Binding Session.TimingDurationDraft,Mode=TwoWay}" LostFocus="OnTimingLostFocus"/>
       <TextBlock Margin="6,0" Text="FPS" VerticalAlignment="Center"/>
       <NumericUpDown Name="TimelineFpsDraft" Width="75" Minimum="1" Maximum="240" Increment="1" FormatString="0" Value="{Binding Session.TimingFrameRateDraft,Mode=TwoWay}" LostFocus="OnTimingLostFocus"/>
+      <CheckBox Margin="10,0" Content="{loc:Localize Timeline.Key.Seconds}" IsChecked="{Binding Session.TangentsPerSecond,Mode=TwoWay}" IsEnabled="{Binding Session.HasKeySelection}"/>
     </WrapPanel>
-    <Grid Grid.Row="4" RowDefinitions="28,*,Auto" ColumnDefinitions="470,*" IsVisible="{Binding Session.CanEdit}">
+    <Border Grid.Row="4" IsVisible="{Binding Session.CanEdit}" IsEnabled="{Binding Session.HasKeySelection}" Padding="6" BorderThickness="1" BorderBrush="{DynamicResource SemiColorBorder}" CornerRadius="4">
+      <StackPanel DataContext="{Binding Session.KeyEdit}" x:DataType="services:TimelineKeyEdit" Spacing="5">
+        <WrapPanel>
+          <TextBlock Text="{loc:Localize Timeline.Key.Selected}" VerticalAlignment="Center"/><TextBlock Text="{Binding Count}" Width="30" Margin="4,0,10,0" VerticalAlignment="Center"/>
+          <TextBlock Text="{loc:Localize Timeline.Key.Value}" VerticalAlignment="Center"/>
+          <NumericUpDown Name="TimelineKeyValue" Width="105" Margin="4,0,10,0" Value="{Binding Value,Mode=TwoWay}" Increment="0.1" FormatString="G9" LostFocus="OnKeyDetailLostFocus"/>
+          <ComboBox Name="TimelineKeyInterpolation" Width="125" SelectedIndex="{Binding InterpolationIndex,Mode=TwoWay}" SelectionChanged="OnKeyInterpolationChanged">
+            <ComboBoxItem Content="{loc:Localize Timeline.Key.Step}"/><ComboBoxItem Content="{loc:Localize Timeline.Key.Linear}"/><ComboBoxItem Content="Hermite"/>
+          </ComboBox>
+          <TextBlock Text="{loc:Localize Timeline.Key.Incoming}" Margin="10,0,4,0" VerticalAlignment="Center"/>
+          <NumericUpDown Name="TimelineKeyIncoming" Width="105" Value="{Binding Incoming,Mode=TwoWay}" Increment="0.01" FormatString="G9" LostFocus="OnKeyDetailLostFocus"/>
+          <TextBlock Text="{loc:Localize Timeline.Key.Outgoing}" Margin="10,0,4,0" VerticalAlignment="Center"/>
+          <NumericUpDown Name="TimelineKeyOutgoing" Width="105" Value="{Binding Outgoing,Mode=TwoWay}" Increment="0.01" FormatString="G9" LostFocus="OnKeyDetailLostFocus"/>
+          <TextBlock Text="{loc:Localize Path=UnitKey}" Width="95" Margin="6,0" VerticalAlignment="Center"/>
+        </WrapPanel>
+        <WrapPanel>
+          <Button Name="TimelineTangentFlat" Content="{loc:Localize Timeline.Key.Flat}" Tag="Flat" Click="OnKeyTangentPreset" Margin="0,0,6,0"/>
+          <Button Name="TimelineTangentLinear" Content="{loc:Localize Timeline.Key.LinearTangents}" Tag="Linear" Click="OnKeyTangentPreset" Margin="0,0,6,0"/>
+          <Button Name="TimelineTangentSmooth" Content="{loc:Localize Timeline.Key.Smooth}" Tag="Smooth" Click="OnKeyTangentPreset" Margin="0,0,6,0"/>
+          <Button Name="TimelineTangentAligned" Content="{loc:Localize Timeline.Key.Aligned}" Tag="Aligned" Click="OnKeyTangentPreset" Margin="0,0,10,0"/>
+          <TextBlock Text="{loc:Localize Timeline.Key.Hint}" TextWrapping="Wrap" MaxWidth="720" VerticalAlignment="Center" Opacity="0.7"/>
+        </WrapPanel>
+      </StackPanel>
+    </Border>
+    <Grid Grid.Row="5" RowDefinitions="28,*,Auto" ColumnDefinitions="470,*" IsVisible="{Binding Session.CanEdit}">
       <TextBlock Text="{loc:Localize Timeline.CanvasHint}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{loc:Localize Timeline.CanvasHint}" FontSize="11" VerticalAlignment="Center"/>
       <timeline:TimelineCanvas Grid.Column="1" Name="TimelineRuler" IsRuler="True" Model="{Binding Session.Canvas}"/>
       <ScrollViewer Name="TimelineVertical" Grid.Row="1" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -77,13 +102,13 @@
       </StackPanel>
       <ScrollBar Grid.Row="2" Grid.Column="1" Name="TimelineScroll" Orientation="Horizontal" Minimum="0" Maximum="{Binding Session.Duration}" SmallChange="1" LargeChange="10" Value="{Binding Session.Canvas.StartFrame,Mode=TwoWay}"/>
     </Grid>
-    <StackPanel Grid.Row="5" Spacing="4">
+    <StackPanel Grid.Row="6" Spacing="4">
       <TextBlock Text="{loc:Localize Timeline.AnalysisIncomplete}" IsVisible="{Binding Session.AnalysisIncomplete}" TextWrapping="Wrap" Opacity="0.7"/>
       <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding Session.Canvas.HasPendingMove}">
         <Button Content="{loc:Localize Timeline.ReplaceCollisions}" Command="{Binding ReplaceCollisionsCommand}"/>
         <Button Content="{loc:Localize Timeline.CancelMove}" Command="{Binding CancelMoveCommand}"/>
       </StackPanel>
     </StackPanel>
-    <TextBlock Grid.Row="6" Text="{Binding Session.Message}" TextWrapping="Wrap" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"/>
+    <TextBlock Grid.Row="7" Text="{Binding Session.Message}" TextWrapping="Wrap" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"/>
   </Grid>
 </UserControl>
