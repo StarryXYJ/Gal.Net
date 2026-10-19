@@ -313,7 +313,6 @@
   "Entry.Parameter.asset": "アセット",
   "Entry.Parameter.x": "X",
   "Entry.Parameter.y": "Y",
-  "Entry.Parameter.z": "Z",
   "Entry.Parameter.transition": "トランジション",
   "Entry.Parameter.duration": "時間",
   "Entry.Parameter.channel": "チャンネル",
@@ -809,5 +808,7 @@
   "Timeline.Curve.Broken": "接線を分離",
   "Timeline.Curve.EditValues": "値を編集…",
   "Timeline.Curve.Fit": "値域に合わせる",
-  "Timeline.Curve.Hint": "Alt+ホイールで値域を拡大縮小、Alt+ドラッグで移動。キーをドラッグして時間と値を変更し、選択して接線ハンドルを表示します。"
+  "Timeline.Curve.Hint": "Alt+ホイールで値域を拡大縮小、Alt+ドラッグで移動。キーをドラッグして時間と値を変更し、選択して接線ハンドルを表示します。",
+  "Scene.CreatedAt": "フレーム {0} で作成",
+  "Scene.FutureAt": "フレーム {0} で作成（まだ存在しません）"
 }

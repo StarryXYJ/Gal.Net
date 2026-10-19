@@ -8,7 +8,7 @@ using GalNet.Game.Controls.Forms;
 namespace GalNet.Editor.Services;
 
 public sealed record SceneTargetChoice(SceneTarget Target, ResourcePickerItem Item);
-public sealed record SceneTargetSnapshot(string GroupId, string EntryId, long Revision, bool Complete, IReadOnlyList<SceneTargetChoice> Choices, Func<SceneTarget, bool>? Filter = null);
+public sealed record SceneTargetSnapshot(string GroupId, string EntryId, long Revision, bool Complete, IReadOnlyList<SceneTargetChoice> Choices, Func<SceneTarget, bool>? Filter = null, SceneTimelinePosition? Position = null);
 public sealed record SceneFieldChoice(SceneTargetSnapshot Snapshot, SceneTargetChoice? Choice, ResourcePickerItem Item, string? EmptyLabelKey = null)
 { public override string ToString() => Item.Label; }
 
@@ -17,9 +17,9 @@ public sealed class SceneTargetCatalog(ProjectSceneTargets query, IEditorDocumen
 {
     private readonly Dictionary<string, string> _paths = new(StringComparer.Ordinal);
     public IEditorLocalizationService Text => localization;
-    public SceneTargetSnapshot Query(string groupId, string entryId, Func<SceneTarget, bool>? filter = null)
+    public SceneTargetSnapshot Query(string groupId, string entryId, Func<SceneTarget, bool>? filter = null, SceneTimelinePosition? position = null)
     {
-        var result = query.Before(groupId, entryId);
+        var result = position is null ? query.Before(groupId, entryId) : query.AtTimeline(groupId, entryId, position);
         var choices = result.Targets.Where(target => target.Kind != SceneTargetKind.Unresolved && (filter?.Invoke(target) ?? true)).Select(target =>
         {
             var group = documents.CurrentDocument.Nodes.FirstOrDefault(node => node.Id == target.Locator.GroupId);
@@ -27,16 +27,17 @@ public sealed class SceneTargetCatalog(ProjectSceneTargets query, IEditorDocumen
             var origin = (group?.Name ?? "") + " / " + entry?.Id;
             var resource = _paths.GetValueOrDefault(target.Resource, target.Resource);
             var name = string.IsNullOrWhiteSpace(resource) || Guid.TryParse(resource, out _) ? localization["Timeline.Kind." + target.Kind] : Path.GetFileName(resource);
-            var presence = localization[target.Presence == TargetPresence.Definite ? "Timeline.Definite" : "Timeline.Possible"];
+            if (target.CreatedAtFrame is { } created && !target.IsFuture) origin += " · " + localization.Format("Scene.CreatedAt", created);
+            var presence = target.IsFuture ? localization.Format("Scene.FutureAt", target.CreatedAtFrame) : localization[target.Presence == TargetPresence.Definite ? "Timeline.Definite" : "Timeline.Possible"];
             return new SceneTargetChoice(target, new(JsonSerializer.Serialize(target.Locator), name + " · " + origin,
                 localization["Timeline.Kind." + target.Kind] + " · " + resource + " · " + origin + " · " + presence,
                 target.Kind == SceneTargetKind.Particle ? "✦" : target.Kind == SceneTargetKind.Effect ? "◈" : "▣", Badge: presence));
         }).ToArray();
-        return new(groupId, entryId, query.Revision, result.Complete, choices, filter);
+        return new(groupId, entryId, query.Revision, result.Complete, choices, filter, position);
     }
-    public async Task PrepareAsync(string groupId, string entryId, CancellationToken token = default)
+    public async Task PrepareAsync(string groupId, string entryId, SceneTimelinePosition? position = null, CancellationToken token = default)
     {
-        var resources = query.Before(groupId, entryId).Targets.Select(target => target.Resource).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToArray();
+        var resources = (position is null ? query.Before(groupId, entryId) : query.AtTimeline(groupId, entryId, position)).Targets.Select(target => target.Resource).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToArray();
         foreach (var resource in resources)
         {
             token.ThrowIfCancellationRequested();
@@ -45,11 +46,11 @@ public sealed class SceneTargetCatalog(ProjectSceneTargets query, IEditorDocumen
         }
     }
     public bool IsCurrent(SceneTargetSnapshot snapshot)
-    { query.Before(snapshot.GroupId, snapshot.EntryId); return query.IsAvailable && query.Revision == snapshot.Revision; }
+    { if (snapshot.Position is null) query.Before(snapshot.GroupId, snapshot.EntryId); else query.AtTimeline(snapshot.GroupId, snapshot.EntryId, snapshot.Position); return query.IsAvailable && query.Revision == snapshot.Revision; }
     public SceneTarget? Resolve(SceneTargetSnapshot snapshot, string id)
     {
         if (!snapshot.Choices.Any(choice => choice.Item.Id == id) || !IsCurrent(snapshot)) return null;
-        return Query(snapshot.GroupId, snapshot.EntryId).Choices.FirstOrDefault(choice => choice.Item.Id == id)?.Target;
+        return Query(snapshot.GroupId, snapshot.EntryId, snapshot.Filter, snapshot.Position).Choices.FirstOrDefault(choice => choice.Item.Id == id)?.Target;
     }
     public IReadOnlyList<FieldEditorOption>? FieldOptions(string groupId, string entryId, string type, string field)
     {

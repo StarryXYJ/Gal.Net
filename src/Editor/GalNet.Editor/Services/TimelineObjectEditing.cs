@@ -23,7 +23,7 @@ public sealed partial class TimelineObjectEdit : ObservableObject, IDisposable
     internal TimelineObjectEdit(TimelineEditSession owner, SceneTargetCatalog catalog, TimelineDocument document, int generation, int frame, string group, string entry)
     {
         _owner = owner; _catalog = catalog; Document = document; Generation = generation; Frame = frame;
-        Selection = new(catalog, catalog.Query(group, entry, Eligible));
+        Selection = new(catalog, catalog.Query(group, entry, Eligible, new(frame, IncludeFuture: true)));
     }
     private static bool Eligible(SceneTarget target) => target.Properties.Count > 0;
     public Task PrepareAsync() => Selection.PrepareAsync();

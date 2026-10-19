@@ -46,7 +46,8 @@ public sealed partial class TimelineEditSession
         var group = _documents.CurrentDocument.Nodes.FirstOrDefault(node => node.Id == target.Locator.GroupId);
         var entry = _documents.Groups.TryGetValue(target.Locator.GroupId, out var document) ? document.Entries.FirstOrDefault(item => item.StableId == target.Locator.EntryId) : null;
         var source = (group?.Name ?? "") + " / " + entry?.Id;
-        return _localization["Timeline.Kind." + target.Kind] + " · " + source + " · " + _localization[target.Presence == TargetPresence.Definite && _document?.HasEvents != true ? "Timeline.Definite" : "Timeline.Possible"];
+        if (target.CreatedAtFrame is { } created && !target.IsFuture) source += " · " + _localization.Format("Scene.CreatedAt", created);
+        return _localization["Timeline.Kind." + target.Kind] + " · " + source + " · " + (target.IsFuture ? _localization.Format("Scene.FutureAt", target.CreatedAtFrame) : _localization[target.Presence == TargetPresence.Definite ? "Timeline.Definite" : "Timeline.Possible"]);
     }
     private void BuildTree()
     {

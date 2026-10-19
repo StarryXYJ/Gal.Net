@@ -5,7 +5,7 @@ using GalNet.Editor.Shared.Services;
 
 namespace GeneralTest.Editor;
 
-public sealed class SceneTargetAnalysisTests
+public sealed partial class SceneTargetAnalysisTests
 {
     private static EditorEntryData Entry(string id, string type, object parameters, string condition = "") => new()
     { StableId = id, Type = type, Condition = condition, Parameters = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(JsonSerializer.Serialize(parameters))! };

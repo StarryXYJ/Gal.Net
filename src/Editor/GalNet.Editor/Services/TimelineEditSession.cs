@@ -44,7 +44,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
     [ObservableProperty] private int _duration;
     [ObservableProperty] private int _frameRate = 60;
     public bool HasNoRows => CanEdit && VisibleNodes.Count == 0;
-    public bool AnalysisIncomplete => CanEdit && (!_scene.Complete || _document?.HasEvents == true);
+    public bool AnalysisIncomplete => CanEdit && !_scene.Complete;
     public int Frame
     {
         get => _frame;
@@ -82,6 +82,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         var next = Find(_selection.Current);
         var root = next?.Parameters.TryGetValue("timeline", out var value) == true ? (JsonElement?)value.Clone() : null;
         var scene = next is null ? new SceneTargetResult([], false, false) : _sceneQuery.Before(_selection.Current!.GroupId, next.StableId);
+        if (next?.Type == BuiltinEntryIds.PlayTimeline) scene = _sceneQuery.AtTimeline(_selection.Current!.GroupId, next.StableId, new(Frame, IncludeFuture: true));
         var sceneSignature = JsonSerializer.Serialize(scene);
         var sameValue = _baseline is { } previous ? root is { } current && JsonElement.DeepEquals(previous, current) : root is null;
         if (_target == _selection.Current && ReferenceEquals(_entry, next) && _type == next?.Type && sameValue && sceneSignature == _sceneSignature)
@@ -111,6 +112,13 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
     private void BuildRows()
     {
         EndObjectEdit();
+        var zero = new SceneTargetResult([], false, false);
+        if (_document is not null && CanEdit && _target?.EntryId is { } id)
+        {
+            _scene = _sceneQuery.AtTimeline(_target.GroupId, id, new(Frame, IncludeFuture: true));
+            _sceneSignature = JsonSerializer.Serialize(_scene);
+            zero = Frame == 0 ? _scene : _sceneQuery.AtTimeline(_target.GroupId, id, new(0));
+        }
         PruneObjectDrafts();
         SaveExpansion(); DetachTree(); _generation++; Rows.Clear(); Tree.Clear();
         if (_document is not null && CanEdit)
@@ -127,8 +135,12 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
             foreach (var target in _scene.Targets)
                 foreach (var property in target.Properties.Where(property => !_document.Tracks.Any(track => track.HandleId == target.Handle && track.Property == property.Name)))
                 {
-                    float? value = !_document.HasEvents && target.Presence == TargetPresence.Definite && target.Values.TryGetValue(property.Name, out var initial) && property.Accepts(initial) ? initial : null;
-                    Rows.Add(new(this, _generation, -1, Frame, 0, property.Name, false, false, value, _localization, target.Handle, target));
+                    float? value = target.Presence == TargetPresence.Definite && target.Values.TryGetValue(property.Name, out var initial) && property.Accepts(initial) ? initial : null;
+                    Rows.Add(new(this, _generation, -1, Frame, 0, property.Name, false, false, value, _localization, target.Handle, target)
+                    {
+                        InitialValue = zero.Targets.FirstOrDefault(item => item.Handle == target.Handle && item.Presence == TargetPresence.Definite) is { } origin
+                        && origin.Values.TryGetValue(property.Name, out var baseline) && property.Accepts(baseline) ? baseline : null
+                    });
                 }
             BuildTree();
         }
@@ -193,7 +205,8 @@ public sealed partial class TimelineValueRow : ObservableObject
     internal int TrackIndex => _index;
     internal SceneTarget? Target { get; }
     internal AnimatableProperty? Capability => Target?.Properties.FirstOrDefault(property => property.Name == Property);
-    internal float? Baseline => _original is { } value ? (float)value : null;
+    internal float? InitialValue { get; init; }
+    internal float? Baseline => HasTrack ? _original is { } value ? (float)value : null : InitialValue;
     public bool HasTrack => _index >= 0;
     private bool _isAdditive;
     public bool IsAdditive

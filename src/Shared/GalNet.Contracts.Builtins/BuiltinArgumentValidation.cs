@@ -8,14 +8,6 @@ namespace GalNet.Contracts.Builtins;
 /// <summary>Portable semantic checks shared by compilation and every implementation of built-in contracts.</summary>
 internal static class BuiltinArgumentValidation
 {
-    private static readonly Lazy<IEntryCatalog> EventCatalog = new(() => new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()));
-    private static readonly HashSet<string> TimelineEventTypes = new(StringComparer.Ordinal)
-    {
-        BuiltinEntryIds.ShowLayer, BuiltinEntryIds.ShowColorLayer, BuiltinEntryIds.HideLayer,
-        BuiltinEntryIds.MoveLayer, BuiltinEntryIds.ReplaceLayer, BuiltinEntryIds.ApplyEffect,
-        BuiltinEntryIds.StopEffect, BuiltinEntryIds.PlayParticleEmitter,
-        BuiltinEntryIds.StopParticleEmitter, BuiltinEntryIds.BurstParticles
-    };
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -58,6 +50,12 @@ internal static class BuiltinArgumentValidation
 
     private static void ValidateTimeline(TimelineDefinition timeline)
     {
+        ValidateTimelineStructure(timeline);
+        foreach (var item in timeline.Events) TimelineEventCapabilities.NormalizeEvent(item);
+    }
+    internal static void ValidateTimelineStructure(TimelineDefinition timeline)
+    {
+        if (timeline is null) throw new InvalidDataException("Missing Timeline definition.");
         if (timeline.FrameRate is < 1 or > 240 || timeline.DurationFrames < 0)
             throw new InvalidDataException("Animation timeline frameRate must be 1..240 and durationFrames must be non-negative.");
         if (timeline.Tracks is null || timeline.Events is null || !Enum.IsDefined(timeline.LoopMode))
@@ -82,10 +80,6 @@ internal static class BuiltinArgumentValidation
         {
             if (item is null || item.Parameters is null || item.Frame < 0 || item.Frame > timeline.DurationFrames)
                 throw new InvalidDataException("Animation events must be inside the timeline duration.");
-            if (!TimelineEventTypes.Contains(item.Type))
-                throw new InvalidDataException($"Unsupported animation timeline event '{item.Type}'.");
-            PrimitiveArgumentHelper.Normalize(EventCatalog.Value.Get(item.Type).DynamicParameters!,
-                JsonSerializer.SerializeToElement(item.Parameters));
         }
     }
 }

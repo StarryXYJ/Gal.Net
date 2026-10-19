@@ -313,7 +313,6 @@
   "Entry.Parameter.asset": "资源",
   "Entry.Parameter.x": "X 坐标",
   "Entry.Parameter.y": "Y 坐标",
-  "Entry.Parameter.z": "Z 坐标",
   "Entry.Parameter.transition": "过渡",
   "Entry.Parameter.duration": "时长",
   "Entry.Parameter.channel": "音轨",
@@ -809,5 +808,7 @@
   "Timeline.Curve.Broken": "断开切线",
   "Timeline.Curve.EditValues": "编辑数值…",
   "Timeline.Curve.Fit": "适应值域",
-  "Timeline.Curve.Hint": "Alt＋滚轮缩放值域，Alt＋拖动平移。拖动关键帧调整时间和值；选中后显示切线柄。"
+  "Timeline.Curve.Hint": "Alt＋滚轮缩放值域，Alt＋拖动平移。拖动关键帧调整时间和值；选中后显示切线柄。",
+  "Scene.CreatedAt": "第 {0} 帧创建",
+  "Scene.FutureAt": "第 {0} 帧创建（尚未存在）"
 }

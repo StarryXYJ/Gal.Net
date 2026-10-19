@@ -313,7 +313,6 @@
   "Entry.Parameter.asset": "Asset",
   "Entry.Parameter.x": "X",
   "Entry.Parameter.y": "Y",
-  "Entry.Parameter.z": "Z",
   "Entry.Parameter.transition": "Transition",
   "Entry.Parameter.duration": "Duration",
   "Entry.Parameter.channel": "Channel",
@@ -358,7 +357,6 @@
   "Entry.Parameter.maskProgram": "Mask program",
   "Entry.Parameter.newHandleId": "New layer handle",
   "Entry.Parameter.oldHandleId": "Old layer handle",
-  "Entry.Parameter.opacity": "Opacity",
   "Entry.Parameter.order": "Order",
   "Entry.Parameter.orientation": "Orientation",
   "Entry.Parameter.overlayZ": "Overlay Z",
@@ -810,5 +808,7 @@
   "Timeline.Curve.Broken": "Break tangents",
   "Timeline.Curve.EditValues": "Edit values…",
   "Timeline.Curve.Fit": "Fit values",
-  "Timeline.Curve.Hint": "Alt+wheel zooms values; Alt+drag pans. Drag keys to edit time and value; select keys to show tangent handles."
+  "Timeline.Curve.Hint": "Alt+wheel zooms values; Alt+drag pans. Drag keys to edit time and value; select keys to show tangent handles.",
+  "Scene.CreatedAt": "Created at frame {0}",
+  "Scene.FutureAt": "Created at frame {0} (not present yet)"
 }

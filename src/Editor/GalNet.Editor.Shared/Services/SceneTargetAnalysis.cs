@@ -8,13 +8,14 @@ namespace GalNet.Editor.Shared.Services;
 
 public enum TargetPresence { Definite, Possible }
 public enum SceneTargetKind { Layer, Particle, Effect, Unresolved }
-public sealed record SceneLocator(string GroupId, string EntryId, string Slot);
+public sealed record SceneLocator(string GroupId, string EntryId, string Slot, string? EventId = null);
+public sealed record SceneTimelinePosition(int Frame, int? BeforeEventIndex = null, bool IncludeFuture = false);
 public sealed record SceneTarget(SceneLocator Locator, string Handle, SceneTargetKind Kind, string Resource,
-    TargetPresence Presence, IReadOnlyList<AnimatableProperty> Properties, IReadOnlyDictionary<string, float> Values);
+    TargetPresence Presence, IReadOnlyList<AnimatableProperty> Properties, IReadOnlyDictionary<string, float> Values, int? CreatedAtFrame = null, bool IsFuture = false);
 public sealed record SceneTargetResult(IReadOnlyList<SceneTarget> Targets, bool Complete, bool Reachable);
 
 /// <summary>Pure, finite abstract interpretation. Never instantiates a game or executes an entry.</summary>
-public sealed class SceneTargetAnalysis
+public sealed partial class SceneTargetAnalysis
 {
     private sealed class State
     {
@@ -93,12 +94,22 @@ public sealed class SceneTargetAnalysis
             var definite = sameKind && candidates.Length == states.Count && candidates.All(target => target.Presence == TargetPresence.Definite);
             var properties = first.Properties.Where(property => candidates.All(target => target.Kind == first.Kind && target.Properties.Contains(property))).ToArray();
             var values = definite ? first.Values.Where(pair => candidates.All(target => target.Values.TryGetValue(pair.Key, out var value) && value == pair.Value)).ToDictionary(pair => pair.Key, pair => pair.Value) : [];
-            result.Targets[id] = first with { Kind = sameKind ? first.Kind : SceneTargetKind.Unresolved, Presence = definite ? TargetPresence.Definite : TargetPresence.Possible, Properties = Array.AsReadOnly(properties), Values = new ReadOnlyDictionary<string, float>(values), Resource = candidates.All(target => target.Resource == first.Resource) ? first.Resource : "" };
+            result.Targets[id] = first with
+            {
+                Kind = sameKind ? first.Kind : SceneTargetKind.Unresolved,
+                Presence = definite ? TargetPresence.Definite : TargetPresence.Possible,
+                Properties = Array.AsReadOnly(properties),
+                Values = new ReadOnlyDictionary<string, float>(values),
+                Resource = candidates.All(target => target.Resource == first.Resource) ? first.Resource : "",
+                CreatedAtFrame = candidates.All(target => target.Locator == first.Locator && target.CreatedAtFrame == first.CreatedAtFrame) ? first.CreatedAtFrame : null,
+                IsFuture = candidates.All(target => target.IsFuture)
+            };
         }
         return result;
     }
     private static bool Equal(State left, State right) => left.Complete == right.Complete && left.Targets.Count == right.Targets.Count && left.Targets.All(pair =>
         right.Targets.TryGetValue(pair.Key, out var other) && pair.Value.Locator == other.Locator && pair.Value.Kind == other.Kind && pair.Value.Resource == other.Resource
+        && pair.Value.CreatedAtFrame == other.CreatedAtFrame && pair.Value.IsFuture == other.IsFuture
         && pair.Value.Presence == other.Presence && pair.Value.Properties.SequenceEqual(other.Properties)
         && pair.Value.Values.Count == other.Values.Count && pair.Value.Values.All(value => other.Values.TryGetValue(value.Key, out var number) && number == value.Value));
     private static State Apply(State before, string group, EditorEntryData entry)
@@ -163,6 +174,7 @@ public sealed class SceneTargetAnalysis
                 var kind = entry.Type == BuiltinEntryIds.StopEffect ? SceneTargetKind.Effect : SceneTargetKind.Particle;
                 if (state.Targets.TryGetValue(Text("instanceId"), out var stopped) && stopped.Kind == kind) state.Targets.Remove(stopped.Handle);
                 break;
+            case BuiltinEntryIds.PlayTimeline: TransferTimeline(state, group, entry); break;
             case BuiltinEntryIds.Animate:
                 if (state.Targets.TryGetValue(Text("handleId"), out var animated)) state.Targets[animated.Handle] = animated with { Values = EmptyValues };
                 break;

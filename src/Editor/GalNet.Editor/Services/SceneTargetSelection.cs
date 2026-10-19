@@ -19,13 +19,13 @@ public sealed class SceneTargetSelection(SceneTargetCatalog catalog, SceneTarget
     public async Task PrepareAsync()
     {
         if (!IsCurrent) return;
-        await catalog.PrepareAsync(Snapshot.GroupId, Snapshot.EntryId, _lifetime.Token);
+        await catalog.PrepareAsync(Snapshot.GroupId, Snapshot.EntryId, Snapshot.Position, _lifetime.Token);
         RefreshLabels();
     }
     public void RefreshLabels()
     {
         if (!IsCurrent) return;
-        Snapshot = catalog.Query(Snapshot.GroupId, Snapshot.EntryId, Snapshot.Filter);
+        Snapshot = catalog.Query(Snapshot.GroupId, Snapshot.EntryId, Snapshot.Filter, Snapshot.Position);
     }
     public bool Select(string id)
     {

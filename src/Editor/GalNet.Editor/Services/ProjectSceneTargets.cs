@@ -5,7 +5,7 @@ using GalNet.Editor.Shared.Services;
 
 namespace GalNet.Editor.Services;
 
-/// <summary>Queries objects immediately before a story position. No UI or runtime execution;
+/// <summary>Queries objects before a story entry or inside a Timeline. No UI or runtime execution;
 /// one bounded analysis generation is cached per project author snapshot.</summary>
 public sealed class ProjectSceneTargets(IEditorDocumentService documents) : IDisposable
 {
@@ -15,6 +15,9 @@ public sealed class ProjectSceneTargets(IEditorDocumentService documents) : IDis
     public long Revision { get; private set; }
     public bool IsAvailable => !_disposed && documents.IsLoaded;
     public SceneTargetResult Before(string groupId, string? entryId)
+    => Query(groupId, entryId, null);
+    public SceneTargetResult AtTimeline(string groupId, string entryId, SceneTimelinePosition position) => Query(groupId, entryId, position);
+    private SceneTargetResult Query(string groupId, string? entryId, SceneTimelinePosition? position)
     {
         if (_disposed) return new([], false, false);
         if (!documents.IsLoaded)
@@ -28,7 +31,7 @@ public sealed class ProjectSceneTargets(IEditorDocumentService documents) : IDis
             var frozen = JsonSerializer.Deserialize<EditorProjectDocument>(snapshot)!;
             _analysis = new(frozen.Graph, frozen.GroupEntries); _snapshot = snapshot; Revision++;
         }
-        return _analysis!.Before(groupId, entryId);
+        return position is null ? _analysis!.Before(groupId, entryId) : entryId is null ? new([], false, false) : _analysis!.AtTimeline(groupId, entryId, position);
     }
     public void Dispose()
     {
