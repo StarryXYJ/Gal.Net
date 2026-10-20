@@ -70,15 +70,11 @@ internal static class SceneFieldSemantics
         (BuiltinEntryIds.HideLayer or BuiltinEntryIds.MoveLayer or BuiltinEntryIds.ReplaceLayer or BuiltinEntryIds.StopVideo, "handleId") => [SceneTargetKind.Layer],
         (BuiltinEntryIds.Animate, "handleId") => [SceneTargetKind.Layer, SceneTargetKind.Particle, SceneTargetKind.Effect],
         (BuiltinEntryIds.ApplyEffect, "targetHandleId") => [SceneTargetKind.Layer],
+        (BuiltinEntryIds.CrossFadeTransition or BuiltinEntryIds.BlindsTransition, "oldHandleId") => [SceneTargetKind.Layer],
+        (BuiltinEntryIds.SlideTransition or BuiltinEntryIds.BlackFadeTransition or BuiltinEntryIds.WhiteFadeTransition or BuiltinEntryIds.ColorFadeTransition, "fromLayerHandleId") => [SceneTargetKind.Layer],
         (BuiltinEntryIds.StopEffect, "instanceId") => [SceneTargetKind.Effect],
         (BuiltinEntryIds.StopParticleEmitter, "instanceId") => [SceneTargetKind.Particle],
         _ => null
     };
-    public static bool IsOutput(string type, string field) => (type, field) switch
-    {
-        (BuiltinEntryIds.ShowLayer or BuiltinEntryIds.ShowColorLayer or BuiltinEntryIds.PlayVideo, "handleId") => true,
-        (BuiltinEntryIds.PlayParticleEmitter or BuiltinEntryIds.ApplyEffect, "instanceId") => true,
-        (BuiltinEntryIds.Animate, "playbackHandleId") => true,
-        _ => false
-    };
+    public static bool IsOutput(string type, string field) => SceneAuthoringIdentities.IsOutput(type, field);
 }

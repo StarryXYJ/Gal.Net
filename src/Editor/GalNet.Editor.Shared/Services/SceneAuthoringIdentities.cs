@@ -14,7 +14,7 @@ public static class SceneAuthoringIdentities
         if (HasPlaybackSlot(type)) parameters["playbackHandleId"] = JsonSerializer.SerializeToElement(Guid.NewGuid().ToString("N"));
         return parameters;
     }
-    private static string? CreationSlot(string type) => type switch
+    public static string? CreationSlot(string type) => type switch
     {
         BuiltinEntryIds.ShowLayer or BuiltinEntryIds.ShowColorLayer or BuiltinEntryIds.PlayVideo => "handleId",
         BuiltinEntryIds.PlayParticleEmitter or BuiltinEntryIds.ApplyEffect => "instanceId",
@@ -25,6 +25,7 @@ public static class SceneAuthoringIdentities
     private static bool HasPlaybackSlot(string type) => type is BuiltinEntryIds.Animate
         or BuiltinEntryIds.CrossFadeTransition or BuiltinEntryIds.BlindsTransition or BuiltinEntryIds.SlideTransition
         or BuiltinEntryIds.BlackFadeTransition or BuiltinEntryIds.WhiteFadeTransition or BuiltinEntryIds.ColorFadeTransition;
+    public static bool IsOutput(string type, string field) => CreationSlot(type) == field || field == "playbackHandleId" && HasPlaybackSlot(type);
     public static void RemapCopy(IReadOnlyList<EditorEntryData> entries)
     {
         var roots = entries.Select(entry => (Entry: entry, Parameters: JsonSerializer.SerializeToNode(entry.Parameters)!.AsObject())).ToArray();

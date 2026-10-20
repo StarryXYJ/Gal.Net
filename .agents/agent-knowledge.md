@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [复合分析原子发布](lessons/L-20261020-04-composite-analysis-publication.md)：容错 Timeline 分析可能返回半份结果；复合条目先在临时事实中验证本次完整性，成功后发布，保留上游不确定性。
+
 - [跨宿主 DTO 表单样式](lessons/L-20261020-01-schema-form-host-style.md)：新 Dock/Flyout 要显式提供 SchemaForm 模板；Host.Diagnostics 不替代实际字段与子诊断检查。
 
 - [隔离构建的契约产物](lessons/L-20261019-03-isolated-contract-artifacts.md)：默认契约 Content 和 schema fixture 固定读取普通 bin；全新 artifacts 快照要用同源码产物补齐，不能借用旧 DLL。

@@ -112,7 +112,7 @@ public sealed partial class SceneTargetAnalysis
         && pair.Value.CreatedAtFrame == other.CreatedAtFrame && pair.Value.IsFuture == other.IsFuture
         && pair.Value.Presence == other.Presence && pair.Value.Properties.SequenceEqual(other.Properties)
         && pair.Value.Values.Count == other.Values.Count && pair.Value.Values.All(value => other.Values.TryGetValue(value.Key, out var number) && number == value.Value));
-    private static State Apply(State before, string group, EditorEntryData entry)
+    private State Apply(State before, string group, EditorEntryData entry)
     {
         if (entry.Condition.Trim().Equals("false", StringComparison.OrdinalIgnoreCase)) return before.Clone();
         var after = before.Clone();
@@ -120,7 +120,7 @@ public sealed partial class SceneTargetAnalysis
         catch (Exception error) when (error is JsonException or InvalidOperationException or ArgumentException or InvalidDataException or OverflowException) { after.Uncertain(); }
         return string.IsNullOrWhiteSpace(entry.Condition) || entry.Condition.Trim().Equals("true", StringComparison.OrdinalIgnoreCase) ? after : Merge([before, after]);
     }
-    private static void Transfer(State state, string group, EditorEntryData entry)
+    private void Transfer(State state, string group, EditorEntryData entry)
     {
         string Text(string key, string fallback = "") => entry.Parameters.TryGetValue(key, out var value) ? value.GetString() ?? fallback : fallback;
         float Number(string key, float fallback) => entry.Parameters.TryGetValue(key, out var value) ? value.GetSingle() : fallback;
@@ -175,6 +175,12 @@ public sealed partial class SceneTargetAnalysis
                 if (state.Targets.TryGetValue(Text("instanceId"), out var stopped) && stopped.Kind == kind) state.Targets.Remove(stopped.Handle);
                 break;
             case BuiltinEntryIds.PlayTimeline: TransferTimeline(state, group, entry); break;
+            case BuiltinEntryIds.CrossFadeTransition:
+            case BuiltinEntryIds.SlideTransition:
+            case BuiltinEntryIds.BlindsTransition:
+            case BuiltinEntryIds.BlackFadeTransition:
+            case BuiltinEntryIds.WhiteFadeTransition:
+            case BuiltinEntryIds.ColorFadeTransition: TransferTransition(state, group, entry); break;
             case BuiltinEntryIds.Animate:
                 if (state.Targets.TryGetValue(Text("handleId"), out var animated)) state.Targets[animated.Handle] = animated with { Values = EmptyValues };
                 break;

@@ -66,6 +66,11 @@ public static class EditorFieldEditors
             registry.RegisterMember<VideoStopOptions>(options => options.HandleId, Target);
             registry.RegisterMember<InstanceIdOptions>(options => options.InstanceId, Target);
             registry.RegisterMember<EffectApplyOptions>(options => options.TargetHandleId, Target);
+            registry.RegisterMember<CrossFadeOptions>(options => options.OldHandleId, Target);
+            registry.RegisterMember<BlindsOptions>(options => options.OldHandleId, Target);
+            registry.RegisterMember<SlideOptions>(options => options.FromLayerHandleId, Target);
+            registry.RegisterMember<ColorFieldOptions>(options => options.FromLayerHandleId, Target);
+            registry.RegisterMember<ColorFadeOptions>(options => options.FromLayerHandleId, Target);
         }
         return registry;
     }

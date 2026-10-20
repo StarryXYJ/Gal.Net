@@ -54,7 +54,7 @@ public sealed partial class SceneTargetAnalysis
         catch (Exception error) when (error is JsonException or InvalidOperationException or ArgumentException or InvalidDataException or OverflowException) { state.Uncertain(); }
         return Result(state);
     }
-    private static void TransferTimeline(State state, string group, EditorEntryData entry)
+    private void TransferTimeline(State state, string group, EditorEntryData entry)
     {
         var (timeline, raw) = ReadTimeline(entry); var before = state.Clone();
         EvaluateTimeline(state, group, entry, timeline, raw, new(timeline.DurationFrames), terminal: true);
@@ -75,7 +75,7 @@ public sealed partial class SceneTargetAnalysis
         }
         state.Targets.Clear(); foreach (var pair in merged.Targets) state.Targets.Add(pair.Key, pair.Value); state.Uncertain();
     }
-    private static void EvaluateTimeline(State state, string group, EditorEntryData owner, TimelineDefinition timeline, JsonElement raw, SceneTimelinePosition position, bool terminal)
+    private void EvaluateTimeline(State state, string group, EditorEntryData owner, TimelineDefinition timeline, JsonElement raw, SceneTimelinePosition position, bool terminal)
     {
         var ordered = timeline.Events.Select((item, index) => (Item: item, Index: index)).OrderBy(pair => pair.Item.Frame).ThenBy(pair => pair.Index).ToArray();
         var touched = new HashSet<string>(StringComparer.Ordinal);
@@ -124,7 +124,7 @@ public sealed partial class SceneTargetAnalysis
             catch (Exception error) when (error is JsonException or InvalidOperationException or ArgumentException or InvalidDataException or OverflowException) { state.Complete = false; }
         }
     }
-    private static void ApplyEvent(State state, string group, EditorEntryData owner, TimelineEventDefinition item, int index, JsonElement raw, JsonElement parameters)
+    private void ApplyEvent(State state, string group, EditorEntryData owner, TimelineEventDefinition item, int index, JsonElement raw, JsonElement parameters)
     {
         Transfer(state, group, new EditorEntryData { StableId = owner.StableId, Type = item.Type, Parameters = parameters.EnumerateObject().ToDictionary(property => property.Name, property => property.Value.Clone()) });
         if (TimelineEventCapabilities.CreationSlot(item.Type) is not { } slot || !parameters.TryGetProperty(slot, out var output) || output.GetString() is not { } handle || !state.Targets.TryGetValue(handle, out var target)) return;
