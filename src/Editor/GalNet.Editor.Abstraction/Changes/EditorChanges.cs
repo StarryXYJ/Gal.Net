@@ -116,8 +116,7 @@ public static class EditorDocumentCloner
             MaxQueuedItems = track.MaxQueuedItems,
             OverflowPolicy = track.OverflowPolicy,
             QueueOverflowPolicy = track.QueueOverflowPolicy
-        }).ToList(),
-        Speakers = source.Speakers.ToList()
+        }).ToList()
     };
 
 }

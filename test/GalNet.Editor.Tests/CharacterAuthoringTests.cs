@@ -116,11 +116,13 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     });
 
     [Test]
-    public Task CharacterLegacyNamesNeedExplicitImportAndUncertainReferencesBlockDestructiveEdits() => WithLocalizationProject(async project =>
+    public Task UnknownCharacterIdsRemainErrorsAndUncertainReferencesBlockDestructiveEdits() => WithLocalizationProject(async project =>
     {
         var item = CharacterEntry(project, "旧姓名"); var characters = project.Services.GetRequiredService<CharacterAuthoringService>();
-        Assert.That(characters.Rows(), Is.Empty); Assert.That(characters.LegacyCandidates().Single().Value, Is.EqualTo("旧姓名"));
-        await characters.ImportLegacyAsync("旧姓名"); var row = characters.Rows().Single(); Assert.That(Speaker(item.Entry), Is.EqualTo(row.Id));
+        Assert.That(characters.Rows(), Is.Empty);
+        var row = await characters.CreateAsync("旧姓名", "known"); Assert.That(Speaker(item.Entry), Is.EqualTo("旧姓名"));
+        Assert.That(project.Services.GetRequiredService<ProjectLocalizationQuery>().Get()!.Issues.Any(issue => issue.Code == "character.unknown"), Is.True);
+        await SetSpeaker(project, item, row.Id); Assert.That(Speaker(item.Entry), Is.EqualTo(row.Id));
         var unused = await characters.CreateAsync("未用");
         var documents = project.Services.GetRequiredService<IEditorDocumentService>();
         documents.Groups[item.Group].Entries.Add(new() { StableId = Guid.NewGuid().ToString("N"), Type = "unknown.schema" });
@@ -141,7 +143,6 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         project.Services.GetRequiredService<IEditorDocumentService>().Groups[first.Group].Entries.Remove(first.Entry);
         Assert.ThrowsAsync<EditorOperationException>(async () => await SetSpeaker(project, first, "过期"));
         Assert.That(characters.Rows(), Has.Count.EqualTo(1)); Assert.That(characters.Rows().Single().Uses, Is.EqualTo(1));
-        Assert.That(project.Settings.Speakers, Is.Empty);
     });
 
     [Test]

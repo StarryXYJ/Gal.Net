@@ -13,11 +13,10 @@ public sealed record CharacterRow(string Id, string DisplayNameKey, string? Name
     public string DisplayName => Name ?? Id;
     public override string ToString() => DisplayName + " · " + Id;
 }
-public sealed record LegacyCharacterCandidate(string Value, int Uses);
 
 /// <summary>Character identities, default-language names and declared references share one project history.</summary>
 public sealed class CharacterAuthoringService(LocalizationDocumentStore store, ProjectLocalizationQuery query,
-    IProjectContentSession content, IEditorDocumentService documents, IProjectService projects, IEntryCatalog catalog,
+    IProjectContentSession content, IEditorDocumentService documents, IEntryCatalog catalog,
     LocalizationAuthoringService authoring, IEditorLocalizationService text)
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -34,14 +33,6 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
         return index.Characters.Select(character => new CharacterRow(character.Id, character.DisplayNameKey,
             index.FindDirect(culture, character.DisplayNameKey)?.Text,
             counts.GetValueOrDefault(character.Id))).ToArray();
-    }
-    public IReadOnlyList<LegacyCharacterCandidate> LegacyCandidates()
-    {
-        var rows = Rows();
-        var unknown = Index.References.Where(reference => reference.Semantic == FieldValueSemantic.CharacterReference && !rows.Any(row => row.Id == reference.Key)).ToArray();
-        return unknown.Select(reference => reference.Key).Concat((projects.Current?.Settings.Speakers ?? []).Where(value => !rows.Any(row => row.Name == value)))
-            .Where(value => !string.IsNullOrWhiteSpace(value) && !rows.Any(row => row.Id == value))
-            .Distinct(StringComparer.Ordinal).Select(value => new LegacyCharacterCandidate(value, unknown.Count(reference => reference.Key == value))).ToArray();
     }
     private EditorOperationException Error(string code) => new(code, text["Error." + code]);
     private static JsonArray ReadCatalog(LocalizationFileSnapshot snapshot)
@@ -63,10 +54,10 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
     public async Task<CharacterRow> CreateAsync(string name, string? key = null)
     {
         await _gate.WaitAsync();
-        try { return await CreateCoreAsync(name, key, []); }
+        try { return await CreateCoreAsync(name, key); }
         finally { _gate.Release(); }
     }
-    private async Task<CharacterRow> CreateCoreAsync(string name, string? key, IReadOnlyList<LocalizationEntryPatch> entries, string? legacy = null)
+    private async Task<CharacterRow> CreateCoreAsync(string name, string? key)
     {
         ValidateName(name);
         if (key is not null && string.IsNullOrWhiteSpace(key)) throw Error("character.key");
@@ -82,8 +73,7 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
         var target = store.CaptureText(nameKey, newFile: $"I18n/{content.CaptureWorking().Settings.TargetLocale.Code}/characters.json");
         await content.CommitFileDraftsAsync(target.File.Id);
         var patches = new[] { new LocalizationFilePatch(file, LocalizationJson.WriteLike(file.Data, array)), store.PrepareText(target, name) };
-        if (legacy is not null) { RequireComplete(); entries = ReferencePatches(legacy, key); }
-        await authoring.ApplyAsync(store.PrepareWithEntries(patches, entries), key, "History.Character");
+        await authoring.ApplyAsync(store.Prepare(patches), key, "History.Character");
         return Rows().Single(row => row.Id == key);
     }
 
@@ -122,18 +112,6 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
             var file = store.CaptureFile(LocalizationJson.CatalogPath);
             var array = ReadCatalog(file); array.Remove(Find(array, row.Id));
             await authoring.ApplyAsync(store.Prepare(new LocalizationFilePatch(file, LocalizationJson.WriteLike(file.Data, array))), row.Id, "History.Character");
-        }
-        finally { _gate.Release(); }
-    }
-
-    public async Task ImportLegacyAsync(string value)
-    {
-        await _gate.WaitAsync();
-        try
-        {
-            RequireComplete();
-            if (!LegacyCandidates().Any(candidate => candidate.Value == value)) throw Error("character.changed");
-            await CreateCoreAsync(value, null, [], value);
         }
         finally { _gate.Release(); }
     }

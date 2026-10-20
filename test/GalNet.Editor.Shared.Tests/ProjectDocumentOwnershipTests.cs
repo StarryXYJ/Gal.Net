@@ -41,7 +41,7 @@ public sealed class ProjectDocumentOwnershipTests
         {
             Settings = new ProjectSettings
             {
-                Speakers = ["author"],
+                AvailableLocales = [new("en-US")],
                 AudioTracks = [new AudioTrackDefinition
                 {
                     Id = "custom", Name = "Custom", Bus = AudioBuses.Sfx, DefaultGain = .4f, MaxVoices = 3, MaxQueuedItems = 4,
@@ -53,14 +53,14 @@ public sealed class ProjectDocumentOwnershipTests
         using (var json = JsonDocument.Parse("""{"payload":{"items":[9007199254740993,null,{"enabled":true}]},"explicitNull":null}"""))
             project.GroupEntries["opening"][0].Parameters = json.RootElement.EnumerateObject().ToDictionary(property => property.Name, property => property.Value.Clone());
         var clone = EditorDocumentCloner.Clone(project);
-        project.Settings.Speakers.Clear();
+        project.Settings.AvailableLocales.Clear();
         project.Settings.AudioTracks[0].Name = "Changed";
         project.GroupEntries["opening"][0].Parameters.Clear();
         var values = clone.GroupEntries["opening"].Single().Parameters;
         Assert.That(values["payload"].GetProperty("items")[0].GetInt64(), Is.EqualTo(9007199254740993L));
         Assert.That(values["explicitNull"].ValueKind, Is.EqualTo(JsonValueKind.Null));
         Assert.That(values.ContainsKey("omitted"), Is.False);
-        Assert.That(clone.Settings.Speakers.Single(), Is.EqualTo("author"));
+        Assert.That(clone.Settings.AvailableLocales.Single().Code, Is.EqualTo("en-US"));
         Assert.That(clone.Settings.AudioTracks[0].Name, Is.EqualTo("Custom"));
         Assert.That(clone.Settings.AudioTracks[0].DefaultGain, Is.EqualTo(.4f));
         Assert.That(clone.Settings.AudioTracks[0].MaxQueuedItems, Is.EqualTo(4));

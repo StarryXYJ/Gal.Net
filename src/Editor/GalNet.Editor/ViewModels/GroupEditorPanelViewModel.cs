@@ -263,12 +263,6 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         Workspace.AllProjectVariableDefinitions.Select(variable => variable.Name).ToArray(),
         _effects);
 
-    public void CommitSpeaker(string? value)
-    {
-        // Legacy unmarked autocomplete is not a character declaration source.
-        // Marked fields commit through CharacterAuthoringService and the project history.
-    }
-
     public void Dispose()
     {
         if (_disposed) return;

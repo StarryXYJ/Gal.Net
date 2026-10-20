@@ -98,23 +98,6 @@ public sealed class EditorWorkspaceViewModelTests
     }
 
     [Test]
-    public void CommitSpeaker_IgnoresNullAndWhitespaceFromAutocomplete()
-    {
-        using var fixture = new WorkspaceFixture(withProject: true);
-        var group = fixture.Workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
-        using var panel = new GroupEditorPanelViewModel(fixture.Workspace, group.Id,
-            null!, fixture.ProjectService, null!, null!, null!, fixture.Catalog, new GalNet.Editor.Services.EntrySelectionContext());
-
-        Assert.Multiple(() =>
-        {
-            Assert.DoesNotThrow(() => panel.CommitSpeaker(null));
-            Assert.DoesNotThrow(() => panel.CommitSpeaker("   "));
-            Assert.That(fixture.ProjectService.Current!.Settings.Speakers, Is.Empty);
-            Assert.That(fixture.ProjectService.Current.IsDirty, Is.False);
-        });
-    }
-
-    [Test]
     public void Selection_KeepsNodeAndEdgeFlagsConsistent()
     {
         using var fixture = new WorkspaceFixture();

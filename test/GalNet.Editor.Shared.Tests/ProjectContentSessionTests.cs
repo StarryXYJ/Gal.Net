@@ -69,14 +69,14 @@ public sealed class ProjectContentSessionTests
     public async Task SaveAllIncludesGraphGroupsAndCompleteSettingsAndComparesActualContent()
     {
         _documents.CurrentDocument.Name = "Renamed";
-        _project.Settings.Speakers = ["narrator"];
+        _project.Settings.DefaultWidth = 1440;
         _project.Settings.SaveSlotCount = 17;
         Assert.That(_session.IsDirty, Is.True);
         await _session.SaveAsync();
         Assert.That(_session.IsDirty, Is.False);
         Assert.That(_repository.LastPlan!.Writes.Keys, Does.Contain("Graph/graph.json"));
         Assert.That(_repository.LastPlan.Writes.Keys.Any(path => path.EndsWith(".rawgalgroup", StringComparison.Ordinal)), Is.True);
-        Assert.That(DirectProjectPersistence.LoadSettings(_root).Speakers.Single(), Is.EqualTo("narrator"));
+        Assert.That(DirectProjectPersistence.LoadSettings(_root).DefaultWidth, Is.EqualTo(1440));
         _documents.CurrentDocument.Name = "Other";
         Assert.That(_session.IsDirty, Is.True);
         _documents.CurrentDocument.Name = "Renamed";
@@ -124,7 +124,7 @@ public sealed class ProjectContentSessionTests
     {
         var original = File.ReadAllBytes(Path.Combine(_root, "Graph/graph.json"));
         _documents.CurrentDocument.Name = "Unsaved";
-        _project.Settings.Speakers = ["unsaved speaker"];
+        _project.Settings.DefaultWidth = 1440;
         _repository.Transaction = new FaultTransaction(failRecovery, 3);
         try { await _session.SaveAsync(); Assert.Fail("Injected publication must fail."); }
         catch (IOException) { }
@@ -202,11 +202,11 @@ public sealed class ProjectContentSessionTests
         var file = Path.Combine(_root, "Graph/groups/created.rawgalgroup");
         Assert.That(File.Exists(file), Is.True);
         Assert.That(_session.IsDirty, Is.False);
-        _project.Settings.Speakers = ["still unsaved"];
+        _project.Settings.DefaultWidth = 1440;
         await _session.PublishStructureAsync(new GroupPresence(false));
         Assert.That(File.Exists(file), Is.False);
         Assert.That(_session.IsDirty, Is.True);
-        Assert.That(DirectProjectPersistence.LoadSettings(_root).Speakers, Is.Empty);
+        Assert.That(DirectProjectPersistence.LoadSettings(_root).DefaultWidth, Is.EqualTo(1920));
     }
 
     [Test]

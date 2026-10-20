@@ -74,6 +74,6 @@ CharacterAuthoringService 以 catalog 为唯一角色身份来源，以项目 Ta
 
 标记 CharacterReference 的字符串字段使用专属输入框，根字段与嵌套表单共用语义注册。候选按姓名/key 不区分大小写匹配，最多显示 50 项；选择提交精确 ID。直接输入失焦或 Enter 时按精确 key、唯一精确姓名的顺序解析；同名歧义要求选择，其他非空文本创建角色。空白输入清空引用，不创建角色。输入法组合态的 Enter 不提交，Escape 还原草稿；过期表单、取消或已移除 Entry 不能继续创建角色。普通未标记字符串保持原提交行为。
 
-旧 Settings.Speakers 与未知 speaker 值只进入显式迁移候选，不自动解释成姓名。迁移预览列出候选，确认导入后新建角色并替换全部明确引用；旧 Settings 列表保留，但不再是普通 speaker 候选和写入来源。原文/JSON 草稿冲突沿用受管理文档的校验与保留规则。
+角色身份只来源于 catalog，ProjectSettings 不再包含 Speakers。没有旧角色候选、旧姓名迁移或导入兼容入口；未知 speaker ID 报告 character.unknown。原文/JSON 草稿冲突沿用受管理文档的校验与保留规则。
 
 实现与验证记录见 [P1](../../features/F-20261019-01-editor-game-localization/phase-1.md)、[P2](../../features/F-20261019-01-editor-game-localization/phase-2.md)、[P3](../../features/F-20261019-01-editor-game-localization/phase-3.md)，完整目标见 [设计](../../features/F-20261019-01-editor-game-localization/design.md)。

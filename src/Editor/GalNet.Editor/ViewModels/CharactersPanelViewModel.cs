@@ -15,9 +15,7 @@ public sealed partial class CharactersPanelViewModel : ObservableObject, IUndoRe
     private EditorText? _error;
     public IUndoRedoHistory UndoRedoHistory { get; }
     public ObservableCollection<CharacterRow> Rows { get; } = [];
-    public ObservableCollection<LegacyCharacterCandidate> LegacyRows { get; } = [];
     [ObservableProperty] private CharacterRow? _selected;
-    [ObservableProperty] private LegacyCharacterCandidate? _selectedLegacy;
     [ObservableProperty] private string _search = "";
     [ObservableProperty] private string _draftName = "";
     [ObservableProperty] private string _draftKey = "";
@@ -25,7 +23,6 @@ public sealed partial class CharactersPanelViewModel : ObservableObject, IUndoRe
     [ObservableProperty] private bool _busy;
     public bool CanEdit => !Busy && (_new || Selected is not null);
     public bool CanDelete => !Busy && Selected is { Uses: 0 } && _characters.Complete;
-    public bool HasLegacy => LegacyRows.Count > 0;
     public bool Incomplete => !_characters.Complete;
     private bool HasDraft => _new || _baseline is not null && (DraftName != _baseline.Name || DraftKey != _baseline.Id);
     public CharactersPanelViewModel(CharacterAuthoringService characters, EditorHistories histories)
@@ -57,12 +54,9 @@ public sealed partial class CharactersPanelViewModel : ObservableObject, IUndoRe
             foreach (var row in _characters.Rows().Where(row => row.Id.Contains(Search, StringComparison.OrdinalIgnoreCase) || row.DisplayName.Contains(Search, StringComparison.OrdinalIgnoreCase))) Rows.Add(row);
             Selected = Rows.FirstOrDefault(row => row.Id == id);
             if (!preserve) Load();
-            var legacy = SelectedLegacy?.Value; LegacyRows.Clear();
-            foreach (var row in _characters.LegacyCandidates()) LegacyRows.Add(row);
-            SelectedLegacy = LegacyRows.FirstOrDefault(row => row.Value == legacy);
         }
         finally { _refreshing = false; }
-        OnPropertyChanged(nameof(CanEdit)); OnPropertyChanged(nameof(CanDelete)); OnPropertyChanged(nameof(HasLegacy)); OnPropertyChanged(nameof(Incomplete));
+        OnPropertyChanged(nameof(CanEdit)); OnPropertyChanged(nameof(CanDelete)); OnPropertyChanged(nameof(Incomplete));
     }
     [RelayCommand]
     private void Add()
@@ -82,7 +76,6 @@ public sealed partial class CharactersPanelViewModel : ObservableObject, IUndoRe
     });
     [RelayCommand] private async Task DeleteAsync() => await Run(async () => { if (Selected is { } row) await _characters.DeleteAsync(row); });
     [RelayCommand] private void Revert() { _new = false; Load(); }
-    [RelayCommand] private async Task ImportLegacyAsync() => await Run(async () => { if (SelectedLegacy is { } legacy) await _characters.ImportLegacyAsync(legacy.Value); });
     private async Task Run(Func<Task> action)
     {
         if (_disposed || Busy) return;

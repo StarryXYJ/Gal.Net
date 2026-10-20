@@ -2,6 +2,8 @@
 
 状态：P1–P3 verified，P4–P6 planned。前置产品决定见 [feature.md](feature.md)，目标架构见 [design.md](design.md)。每阶段只对实际完成并验证的事实更新 spec，不提前把设计当成实现。
 
+2026-10-20 用户要求取消向后兼容；P3a 先移除旧 Speakers、迁移服务/面板、兼容回调及对应资源，然后继续 P4。历史 P3 记录保留当时事实，当前行为以最新 spec 为准。
+
 ## P1：字段语义与可诊断项目索引 — verified
 
 2026-10-19：解决方案构建成功，generator/Editor.Shared/Core/Architecture 合计 411 项通过；任务文件格式校验通过。实现与限制见 [phase-1.md](phase-1.md)。

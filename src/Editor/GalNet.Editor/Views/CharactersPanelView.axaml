@@ -2,7 +2,7 @@
              xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:services="using:GalNet.Editor.Services"
              xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
              x:Class="GalNet.Editor.Views.CharactersPanelView" x:DataType="vm:CharactersPanelViewModel">
-  <Grid RowDefinitions="Auto,Auto,*,Auto,Auto,Auto" Margin="12" RowSpacing="8">
+  <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="12" RowSpacing="8">
     <DockPanel><Button x:Name="AddCharacter" DockPanel.Dock="Right" Content="{loc:Localize Characters.Add}" Command="{Binding AddCommand}"/>
       <TextBox x:Name="CharacterSearch" Text="{Binding Search}" PlaceholderText="{loc:Localize Characters.Search}" Margin="0,0,8,0"/>
     </DockPanel>
@@ -25,13 +25,6 @@
         <Button x:Name="DeleteCharacter" Content="{loc:Localize Characters.Delete}" Command="{Binding DeleteCommand}" IsEnabled="{Binding CanDelete}"/>
       </WrapPanel>
     </StackPanel>
-    <Expander Grid.Row="4" Header="{loc:Localize Characters.Legacy}" IsVisible="{Binding HasLegacy}">
-      <StackPanel Spacing="6"><TextBlock Text="{loc:Localize Characters.LegacyHint}" TextWrapping="Wrap"/>
-        <ListBox x:Name="LegacyCharacters" MaxHeight="160" ItemsSource="{Binding LegacyRows}" SelectedItem="{Binding SelectedLegacy}">
-          <ListBox.ItemTemplate><DataTemplate x:DataType="services:LegacyCharacterCandidate"><TextBlock Text="{Binding Value}"/></DataTemplate></ListBox.ItemTemplate>
-        </ListBox><Button Content="{loc:Localize Characters.ImportLegacy}" Command="{Binding ImportLegacyCommand}"/>
-      </StackPanel>
-    </Expander>
-    <TextBlock Grid.Row="5" Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"/>
+    <TextBlock Grid.Row="4" Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"/>
   </Grid>
 </UserControl>

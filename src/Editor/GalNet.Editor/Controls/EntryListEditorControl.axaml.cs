@@ -216,11 +216,4 @@ public partial class EntryListEditorControl : ReorderableListControl
         }, DispatcherPriority.Loaded);
     }
 
-    private void OnAutocompleteLostFocus(object? sender, RoutedEventArgs e)
-    {
-        if (sender is Avalonia.Controls.Control { DataContext: EntryParameterEditorItemViewModel field }
-            && field.Id == "speaker"
-            && DataContext is GroupEditorPanelViewModel viewModel)
-            viewModel.CommitSpeaker(field.StringValue);
-    }
 }
