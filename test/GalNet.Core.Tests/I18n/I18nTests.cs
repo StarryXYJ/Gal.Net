@@ -41,6 +41,15 @@ public class I18nKeyTests
 
 public class I18nLocaleTests
 {
+    [TestCase(" ZH_hans_cn ", "zh-Hans-CN")]
+    [TestCase("EN-us", "en-US")]
+    [TestCase("sr_latn_rs", "sr-Latn-RS")]
+    public void Locale_Uses_Canonical_Culture_Casing(string input, string expected) =>
+        Assert.That(new I18nLocale(input).Code, Is.EqualTo(expected));
+
+    [Test]
+    public void Locale_Rejects_Invalid_Culture() => Assert.Throws<System.Globalization.CultureNotFoundException>(() => new I18nLocale("bad/locale"));
+
     [Test]
     public void Locale_Should_Be_Equatable()
     {

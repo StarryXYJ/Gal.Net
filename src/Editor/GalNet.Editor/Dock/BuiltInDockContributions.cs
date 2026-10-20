@@ -26,6 +26,7 @@ public static class EditorDockPanelIds
     public const string Inspector = "Inspector";
     public const string Variables = "Variables";
     public const string Characters = "Characters";
+    public const string Localization = "Localization";
     public const string Timeline = "Timeline";
 }
 
@@ -33,6 +34,9 @@ public static class BuiltInDockContributions
 {
     public static void Register(IEditorExtensionRegistry registry)
     {
+        registry.RegisterDockPanel(new DelegateDockPanelContribution<GameLocalizationPanelViewModel>(
+            EditorDockPanelIds.Localization, "Dock.Panel.Localization", DockPanelPlacement.MainDocument, true, true, true, false, true,
+            sp => sp.GetRequiredService<GameLocalizationPanelViewModel>(), typeof(GameLocalizationPanelView), null));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<CharactersPanelViewModel>(
             EditorDockPanelIds.Characters, "Dock.Panel.Characters", DockPanelPlacement.MainDocument, true, true, true, false, true,
             sp => sp.GetRequiredService<CharactersPanelViewModel>(), typeof(CharactersPanelView), null));

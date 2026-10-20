@@ -128,6 +128,8 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
             try { locale = new Core.I18n.I18nLocale(TargetLocale).Code; }
             catch (Exception failure) when (failure is ArgumentException or FormatException)
             { throw new EditorOperationException("settings.localeInvalid", failure.Message, TargetLocale); }
+            if (locale != project.Settings.TargetLocale.Code)
+                throw new EditorOperationException("i18n.development", L["I18n.UsePanel"]);
             var before = SettingsSnapshot.From(project.Name, project.Settings);
             var after = new SettingsSnapshot(ProjectName.Trim(), DefaultWidth, DefaultHeight, SaveSlotCount, SfxChannelCount, locale, AudioTracks.Select(item => item.ToDefinition()).ToArray());
             ValidateTracks(after.AudioTracks);

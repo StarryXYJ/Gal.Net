@@ -23,10 +23,15 @@ public static class LocalizationTextState
         state["sourceLocale"] = culture; state["sourceFingerprint"] = Fingerprint(text);
         return LocalizationJson.WriteLike(metadata, root);
     }
-    public static bool? NeedsReview(byte[] metadata, string key, string culture)
+    public static bool? NeedsReview(byte[] metadata, string key, string culture, string? sourceLocale = null)
     {
         var root = JsonNode.Parse(LocalizationJson.Decode(metadata));
-        if (root?["textStates"]?[key] is not JsonObject state || state["translations"]?[culture] is not JsonValue reviewed) return null;
+        return NeedsReview(root?["textStates"]?[key] as JsonObject, culture, sourceLocale);
+    }
+    public static bool? NeedsReview(JsonObject? state, string culture, string? sourceLocale = null)
+    {
+        if (state is null || state["translations"]?[culture] is not JsonValue reviewed) return null;
+        if (sourceLocale is not null && state["sourceLocale"]?.GetValue<string>() != sourceLocale) return null;
         return !string.Equals(reviewed.GetValue<string>(), state["sourceFingerprint"]?.GetValue<string>(), StringComparison.OrdinalIgnoreCase);
     }
 }

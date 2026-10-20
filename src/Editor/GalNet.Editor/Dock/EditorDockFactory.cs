@@ -274,6 +274,19 @@ public sealed class EditorDockFactory : Factory, IDisposable
         OpenPanel(EditorDockPanelIds.Timeline);
     }
 
+    public void NavigateLocalization(string owner, string? entryId)
+    {
+        if (owner == "characters") { OpenPanel(EditorDockPanelIds.Characters); return; }
+        var node = _workspace?.Nodes.FirstOrDefault(node => node.Id == owner);
+        if (node is null) return;
+        _workspace!.SelectNode(node);
+        if (node.NodeKind != GalNet.Editor.Models.Graph.GraphNodeKind.LinearGroup) { OpenPanel(EditorDockPanelIds.Inspector); return; }
+        OpenGroupEditor(node);
+        var page = _documentDock?.VisibleDockables?.FirstOrDefault(item => item.Id == GetGroupEditorDocumentId(owner))?.Context as GroupEditorPanelViewModel;
+        if (page is null || page.IsDisposed) return;
+        page.SelectedEntry = node.Entries.FirstOrDefault(entry => entry.StableId == entryId); page.PublishSelection();
+    }
+
     public void CloseGroupEditor(string groupId)
     {
         if (_documentDock?.VisibleDockables is null) return;
@@ -423,7 +436,8 @@ public sealed class EditorDockFactory : Factory, IDisposable
         owner.ActiveDockable = owner.VisibleDockables.FirstOrDefault();
         _inspector.RemoveInspectorAndRecover(document, () => FindActiveInspectableDockable(FactoryExtensions.GetActiveRoot(this)));
         _panelByDockable.Remove(document);
-        (document.Context as IDisposable)?.Dispose();
+        // Localization drafts belong to the project scope and survive dock closure.
+        if (document.Context is not GameLocalizationPanelViewModel) (document.Context as IDisposable)?.Dispose();
         LayoutChanged?.Invoke();
     }
 

@@ -63,7 +63,7 @@
                            Foreground="{DynamicResource SemiColorText2}"
                            FontSize="12"
                            Margin="0,4,0,0" />
-                <TextBox Text="{Binding TargetLocale}"
+                <TextBox Text="{Binding TargetLocale}" IsReadOnly="True" ToolTip.Tip="{loc:Localize I18n.UsePanel}"
                          Foreground="{DynamicResource SemiColorText0}"
                          PlaceholderText="zh-CN" />
             </StackPanel>

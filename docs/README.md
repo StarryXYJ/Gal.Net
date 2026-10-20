@@ -18,6 +18,7 @@
 - [项目与发布格式](spec/file-formats.md)
 - [Avalonia 游戏页面](spec/control.md)
 - [国际化](spec/i18n.md)
+- [Editor 游戏本地化](spec/editor-game-localization.md)
 - [Editor Graph 编辑](spec/editor-graph.md)
 - [Editor 历史与保存](spec/editor-history-and-save.md)
 - [Editor 项目文件操作](spec/editor-files.md)
@@ -27,3 +28,4 @@
 
 - [接入新的表现层](manual/new-presentation-layer.md)：为 WPF、WinUI 或其他 UI 框架实现宿主和呈现适配的最小路径。
 - [定制 Avalonia Sample](manual/customize-avalonia-sample.md)：基于现有 Sample 落地项目配置、主题、原语和平台能力。
+- [编辑游戏文本与翻译](manual/game-localization.md)：开发语言创作、多语言表格、语言顺序和草稿处理。

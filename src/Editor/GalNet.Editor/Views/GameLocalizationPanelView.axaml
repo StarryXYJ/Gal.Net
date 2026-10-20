@@ -1,0 +1,36 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:services="using:GalNet.Editor.Services"
+             xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
+             x:Class="GalNet.Editor.Views.GameLocalizationPanelView" x:DataType="vm:GameLocalizationPanelViewModel">
+  <Grid ColumnDefinitions="190,*" ColumnSpacing="12" Margin="12">
+    <ListBox x:Name="LocalizationCategories" ItemsSource="{Binding Categories}" SelectedItem="{Binding Selected}">
+      <ListBox.ItemTemplate><DataTemplate x:DataType="services:LocalizationCategory"><TextBlock Text="{Binding Name}" TextWrapping="Wrap"/></DataTemplate></ListBox.ItemTemplate>
+    </ListBox>
+    <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="8">
+      <WrapPanel>
+        <TextBox x:Name="NewLocalizationLanguage" Width="130" Text="{Binding NewLanguage}" PlaceholderText="{loc:Localize I18n.LanguageCode}"/>
+        <Button x:Name="AddLocalizationLanguage" Content="{loc:Localize I18n.Add}" Command="{Binding AddLanguageCommand}" Margin="8,0"/>
+        <Button Content="{loc:Localize I18n.RevertDrafts}" Command="{Binding RevertDraftsCommand}"/>
+      </WrapPanel>
+      <WrapPanel Grid.Row="1">
+        <TextBlock Text="{loc:Localize I18n.Development}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+        <ComboBox x:Name="DevelopmentLanguageChoice" ItemsSource="{Binding Languages}" SelectedItem="{Binding DevelopmentLanguage}" Width="130"/>
+        <Button x:Name="PreviewDevelopmentLanguage" Content="{loc:Localize I18n.PreviewAction}" Command="{Binding PreviewDevelopmentLanguageCommand}" Margin="8,0"/>
+        <Button x:Name="ApplyDevelopmentLanguage" Content="{loc:Localize I18n.ApplyDevelopment}" Command="{Binding ChangeDevelopmentLanguageCommand}" IsEnabled="{Binding CanChangeDevelopmentLanguage}"/>
+      </WrapPanel>
+      <StackPanel Grid.Row="2">
+        <TextBlock Text="{Binding PreviewMessage}" TextWrapping="Wrap"/>
+        <TextBlock Text="{loc:Localize I18n.Incomplete}" IsVisible="{Binding Incomplete}" TextWrapping="Wrap"/>
+      </StackPanel>
+      <ScrollViewer Grid.Row="3" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+        <Grid RowDefinitions="Auto,*">
+          <StackPanel x:Name="LanguageHeaders" Orientation="Horizontal"/>
+          <ListBox x:Name="LocalizationRows" Grid.Row="1" ItemsSource="{Binding Rows}" Padding="0" HorizontalAlignment="Left">
+            <ListBox.Styles><Style Selector="ListBoxItem"><Setter Property="Padding" Value="0"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/></Style></ListBox.Styles>
+          </ListBox>
+        </Grid>
+      </ScrollViewer>
+      <TextBlock Grid.Row="4" Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"/>
+    </Grid>
+  </Grid>
+</UserControl>

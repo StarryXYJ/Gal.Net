@@ -1,6 +1,6 @@
 # Editor 游戏本地化基础
 
-当前实现包含字段语义、项目索引、受管理本地化文档、角色表/speaker 输入、默认语言正文/分支编辑与稳定复制身份（F-20261019-01 / P1–P4）。多语言表格、语言管理及导入导出仍是后续阶段。只支持当前作者格式，没有旧 Speakers 或角色迁移入口。
+当前实现包含字段语义、项目索引、受管理本地化文档、角色表/speaker 输入、默认语言正文/分支编辑与稳定复制身份、多语言表格及语言管理（F-20261019-01 / P1–P5）。模板导入导出和发布前完整校验仍是后续阶段。只支持当前作者格式，没有旧 Speakers 或角色迁移入口。
 
 ## 字段值语义
 
@@ -96,4 +96,16 @@ Graph/localization-authoring.json 的可选 textStates 记录每个文本 key �
 
 字符编号预留和文本历史共享 metadata 文件，但 characterHighWater 不可撤销。文本历史只对该字段允许单调重基，应用 before/after 时保留当前更高预留值；其他 metadata 内容仍严格检查。不能为了撤销文本而回退编号，也不能借此忽略其他冲突。
 
-实现与验证记录见 [P1](../../features/F-20261019-01-editor-game-localization/phase-1.md)、[P2](../../features/F-20261019-01-editor-game-localization/phase-2.md)、[P3](../../features/F-20261019-01-editor-game-localization/phase-3.md)、[P3a](../../features/F-20261019-01-editor-game-localization/phase-3a.md)、[P4](../../features/F-20261019-01-editor-game-localization/phase-4.md)，完整目标见 [设计](../../features/F-20261019-01-editor-game-localization/design.md)。
+## 游戏本地化面板
+
+Localization Dock 为项目级单实例，可通过视图菜单打开。左侧包含角色表、全部作者 Group（含未打开页面）和分支选项；分类和文本行使用 ListBox 虚拟化，右侧表格支持整体横向滚动。正常表格显示行/字段或选项上下文、直接文本及状态，不显示文本 key。同分类共享 key 合为一行并提示共享数量；定位按钮跳到角色表或对应 Group 条目/分支检查器。
+
+每列对应一种支持语言。开发语言固定第一，其余列按 AvailableLocales 顺序排列，可通过列头左右按钮调序。新增语言规范化并验证 culture，拒绝重复，只新增支持项，不复制任何原文。I18nLocale 使用 CultureInfo 标准名称，包括 zh-Hans-CN 等脚本子标签；项目设置原开发语言字段只读，切换入口在本面板。
+
+切换开发语言分为检查和应用：先显示目标语言缺少的被引用文本数量，入队及历史真正执行时重查当前开发语言、引用 key 集合及目标直接文本；预览过期则拒绝。分析不完整会显示提示，缺译数量不代表完整发布检查。该操作保留全部原有文本，只修改 TargetLocale/AvailableLocales；新增语言、调序和切开发语言均可一次撤销，且不覆盖其他项目设置。
+
+单元格区分缺译、空字符串、待复核、复核未知；空字符串可同时待复核，不用运行时回退冒充直接译文。多行 Ctrl+Enter 或失焦提交，Enter 保留换行，Escape 还原，组合输入期间不提交。异步提交将输入框设为只读，保留焦点。译文修改与其对应原文指纹进入同次历史；有直接开发原文时记录关联，缺原文时保持未知。切开发语言后，旧 sourceLocale 的证据不能冒充当前原文的已复核状态。
+
+单元格草稿绑定分类、文本身份、目标译文和开发原文基线。相关 JSON 草稿先校验/提交；无效 JSON 保留，目标值、来源、开发语言或引用变化后拒绝过期写入。前置检查也在历史执行边界重做，不能因入队时有效就忽略前序操作的修改。面板 ViewModel 属于项目 scope，切分类、调列序、关闭/重开视图均保留草稿；Save All 提交所有已访问分类的草稿，冲突保留并阻止保存，可用“放弃草稿”显式清除。干净单元格随作者文档刷新，输入中的草稿不被静默覆盖。每次刷新共用一个派生快照及一次 metadata 解析，不按每个按键/单元格重建全项目索引。
+
+操作步骤见 [游戏本地化使用说明](../manual/game-localization.md)。实现与验证记录见 [P1](../../features/F-20261019-01-editor-game-localization/phase-1.md)、[P2](../../features/F-20261019-01-editor-game-localization/phase-2.md)、[P3](../../features/F-20261019-01-editor-game-localization/phase-3.md)、[P3a](../../features/F-20261019-01-editor-game-localization/phase-3a.md)、[P4](../../features/F-20261019-01-editor-game-localization/phase-4.md)、[P5](../../features/F-20261019-01-editor-game-localization/phase-5.md)，完整目标见 [设计](../../features/F-20261019-01-editor-game-localization/design.md)。

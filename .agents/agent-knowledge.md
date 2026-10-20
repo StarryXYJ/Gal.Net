@@ -230,3 +230,10 @@
 - [多行提交的 Tunnel 路由](lessons/L-20261020-06-multiline-commit-tunnel.md)：Ctrl+Enter 在 TextBox 类处理前截获，保留普通换行与 IME 边界，验证真实挂载输入。
 
 - 2026-10-20 游戏本地化 P4 已 verified：默认语言正文/分支语义编辑器、稳定 key、Entry/Graph/列表复制各语言快照、源文复核状态及跨文件单次历史完成。新增 16 项通过，解决方案 0 错误；完整相关回归 812 通过、3 失败（2 项既有布局断言，1 项 Headless DisposeAsync 空引用，独立复验该方法 7 项通过）。四语资源各 850 key 一致、格式/源码指纹/文档链接通过；见 features/F-20261019-01-editor-game-localization/phase-4.md。P5 多语言表格与语言管理、P6 交换/完整校验待续。
+
+- [虚拟化模板的空内容](lessons/L-20261021-01-virtualized-null-content.md)：容器解绑回收时 FuncDataTemplate 会收到 null，工厂须返回空占位，真实滚动与关闭验证。
+- [异步文本提交的焦点](lessons/L-20261021-02-async-textbox-focus.md)：Busy 用 IsReadOnly 保护输入，避免 IsEnabled 使 Ctrl+Enter 后丢焦点、后续失焦提交消失。
+- [项目级 Dock 草稿生命周期](lessons/L-20261021-03-project-owned-dock-drafts.md)：实际菜单 CloseDocument 会主动 Dispose Context；项目级草稿模型须保留到 scope 结束，并用真实开关路径验证。
+- [历史队列执行时重查](lessons/L-20261021-04-history-admission-recheck.md)：入队后仍可因前序操作改变原文或语言；单元格及开发语言预览的 guard 必须进入实际 Redo 边界，两种交错已复现并验证。
+
+- 2026-10-21 游戏本地化 P5 已 verified：项目级 i18n Dock、角色/全部 Group/分支虚拟化多语言表格、语言新增/调序、开发语言缺译预览及切换、单元格状态/草稿保留/Save All 和历史队列执行时重查完成。I18nLocale 统一 CultureInfo 名称，支持脚本子标签标准大小写。新增 17 项通过，正常解决方案构建 0 错误；Core/Runtime/Editor.Shared/Architecture/Presentation/Editor 合计 1039 通过、2 项 P6e3 既有布局失败，另有 6 个视频环境跳过。四语各 882 key、格式/17 源码指纹/文档链接通过。见 features/F-20261019-01-editor-game-localization/phase-5.md 与 docs/manual/game-localization.md；P6 导入导出及发布前完整校验待续。
