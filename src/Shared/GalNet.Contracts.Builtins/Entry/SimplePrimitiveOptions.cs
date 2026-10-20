@@ -7,16 +7,16 @@ namespace GalNet.Contracts.Builtins;
 [GenerateFieldSchema]
 public partial class DialogueTextOptions
 {
-    [Field(0, AllowNull = true, EditorId = "entry.autocomplete")]
+    [Field(0, AllowNull = true, EditorId = "entry.autocomplete"), CharacterReference]
     public string? Speaker { get; set; }
-    [Field(1, AllowNull = true, EditorId = "entry.multilinetext")]
+    [Field(1, AllowNull = true, EditorId = "entry.multilinetext"), LocalizedText]
     public string? Content { get; set; }
 }
 
 [GenerateFieldSchema]
 public partial class NvlAppendOptions
 {
-    [Field(0, AllowNull = true, EditorId = "entry.multilinetext")]
+    [Field(0, AllowNull = true, EditorId = "entry.multilinetext"), LocalizedText]
     public string? Content { get; set; }
 }
 

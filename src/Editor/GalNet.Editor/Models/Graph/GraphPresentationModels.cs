@@ -484,7 +484,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     }
 
     private static bool UsesDedicatedEditor(FieldDescriptor field, EntryParameterType type) =>
-        field.Value.ValueType == typeof(string) && type is (EntryParameterType.MultilineText or EntryParameterType.Autocomplete
+        field.Semantic != FieldValueSemantic.CharacterReference && field.Value.ValueType == typeof(string) && type is (EntryParameterType.MultilineText or EntryParameterType.Autocomplete
             or EntryParameterType.VariableName or EntryParameterType.Expression or EntryParameterType.ImageAsset or EntryParameterType.AudioAsset
             or EntryParameterType.VideoAsset or EntryParameterType.EffectProgramAsset)
             && field.Editor?.EditorId == "entry." + type.ToString().ToLowerInvariant();
@@ -522,21 +522,21 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     internal Task<ValueIssue?> CommitParameterAsync(FieldDescriptor field, FieldValue value, CancellationToken cancellationToken)
         => CommitParametersAsync(new Dictionary<string, (FieldDescriptor Field, FieldValue Value)> { [field.Id] = (field, value) }, cancellationToken);
 
-    internal Task<ValueIssue?> CommitParametersAsync(IReadOnlyDictionary<string, (FieldDescriptor Field, FieldValue Value)> patch, CancellationToken cancellationToken)
+    internal async Task<ValueIssue?> CommitParametersAsync(IReadOnlyDictionary<string, (FieldDescriptor Field, FieldValue Value)> patch, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (!IsCurrent) return Task.FromResult<ValueIssue?>(new("entry.obsolete", "The project document is closed."));
+        if (!IsCurrent) return new("entry.obsolete", "The project document is closed.");
         var updated = Source.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal);
         foreach (var (id, (field, value)) in patch)
         {
             if (value.Json is not { } json)
             {
-                if (field.IsRequired && field.DefaultValue is null) return Task.FromResult<ValueIssue?>(new("entry.required", "A value is required.", id));
+                if (field.IsRequired && field.DefaultValue is null) return new("entry.required", "A value is required.", id);
                 updated.Remove(id);
             }
             else
             {
-                if (ValueValidation.Validate(field.Value, json) is { } issue) return Task.FromResult<ValueIssue?>(issue);
+                if (ValueValidation.Validate(field.Value, json) is { } issue) return issue;
                 updated[id] = json.Clone();
             }
         }
@@ -546,10 +546,10 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
                 parameters.ValidatePartialArguments(JsonSerializer.SerializeToElement(updated.Where(pair => parameters.Fields.Any(field => field.Id == pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value)));
         }
         catch (Exception exception) when (exception is ArgumentException or JsonException)
-        { return Task.FromResult<ValueIssue?>(new("entry.arguments", exception.Message)); }
-        if (_authoring is not null) _authoring.SetParameters(_groupId!, Source, Type, updated);
+        { return new("entry.arguments", exception.Message); }
+        if (_authoring is not null) await _authoring.SetParametersAsync(_groupId!, Source, Type, updated, cancellationToken);
         else { Source.Parameters = updated; RefreshAuthorReferences(_authorCatalog!); }
-        return Task.FromResult<ValueIssue?>(null);
+        return null;
     }
 
     partial void OnEffectDiagnosticChanged(string value) => OnPropertyChanged(nameof(HasEffectDiagnostic));

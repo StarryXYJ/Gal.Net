@@ -7,10 +7,13 @@ public sealed class FieldDescriptor
 {
     public FieldDescriptor(string id, ValueDescriptor value, bool isRequired = false,
         JsonElement? defaultValue = null, EditorHints? editor = null,
-        string? labelKey = null, string? descriptionKey = null)
+        string? labelKey = null, string? descriptionKey = null,
+        FieldValueSemantic semantic = FieldValueSemantic.None)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentNullException.ThrowIfNull(value);
+        if (!Enum.IsDefined(semantic) || semantic != FieldValueSemantic.None && value.ValueType != typeof(string))
+            throw new ArgumentException("Game text and character semantics require a string field.", nameof(semantic));
         if (defaultValue is { } json && ValueValidation.Validate(value, json) is { } issue)
             throw new ArgumentException($"Field '{id}': {issue.Message}", nameof(defaultValue));
         Id = id;
@@ -20,6 +23,7 @@ public sealed class FieldDescriptor
         Editor = editor;
         LabelKey = labelKey;
         DescriptionKey = descriptionKey;
+        Semantic = semantic;
     }
 
     public string Id { get; }
@@ -29,4 +33,5 @@ public sealed class FieldDescriptor
     public EditorHints? Editor { get; }
     public string? LabelKey { get; }
     public string? DescriptionKey { get; }
+    public FieldValueSemantic Semantic { get; }
 }

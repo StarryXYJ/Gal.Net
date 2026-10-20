@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:services="using:GalNet.Editor.Services"
+             xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
+             x:Class="GalNet.Editor.Views.CharactersPanelView" x:DataType="vm:CharactersPanelViewModel">
+  <Grid RowDefinitions="Auto,Auto,*,Auto,Auto,Auto" Margin="12" RowSpacing="8">
+    <DockPanel><Button x:Name="AddCharacter" DockPanel.Dock="Right" Content="{loc:Localize Characters.Add}" Command="{Binding AddCommand}"/>
+      <TextBox x:Name="CharacterSearch" Text="{Binding Search}" PlaceholderText="{loc:Localize Characters.Search}" Margin="0,0,8,0"/>
+    </DockPanel>
+    <Grid Grid.Row="1" ColumnDefinitions="*,*"><TextBlock Text="{loc:Localize Characters.Name}"/><TextBlock Grid.Column="1" Text="{loc:Localize Characters.Key}"/></Grid>
+    <ListBox x:Name="CharacterRows" Grid.Row="2" ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}">
+      <ListBox.Styles><Style Selector="ListBoxItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/></Style></ListBox.Styles>
+      <ListBox.ItemTemplate><DataTemplate x:DataType="services:CharacterRow"><Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+        <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap"/><TextBlock Grid.Column="1" Text="{Binding Id}" TextWrapping="Wrap"/>
+      </Grid></DataTemplate></ListBox.ItemTemplate>
+    </ListBox>
+    <StackPanel Grid.Row="3" Spacing="6">
+      <TextBlock Text="{loc:Localize Characters.Incomplete}" IsVisible="{Binding Incomplete}" TextWrapping="Wrap"/>
+      <Grid ColumnDefinitions="*,*" ColumnSpacing="12" IsEnabled="{Binding CanEdit}">
+        <TextBox x:Name="CharacterName" Text="{Binding DraftName}" PlaceholderText="{loc:Localize Characters.Name}"/>
+        <TextBox x:Name="CharacterKey" Grid.Column="1" Text="{Binding DraftKey}" PlaceholderText="{loc:Localize Characters.AutoKey}"/>
+      </Grid>
+      <WrapPanel>
+        <Button x:Name="ApplyCharacter" Content="{loc:Localize Characters.Apply}" Command="{Binding ApplyCommand}" IsEnabled="{Binding CanEdit}" Margin="0,0,8,0"/>
+        <Button Content="{loc:Localize Characters.Revert}" Command="{Binding RevertCommand}" Margin="0,0,8,0"/>
+        <Button x:Name="DeleteCharacter" Content="{loc:Localize Characters.Delete}" Command="{Binding DeleteCommand}" IsEnabled="{Binding CanDelete}"/>
+      </WrapPanel>
+    </StackPanel>
+    <Expander Grid.Row="4" Header="{loc:Localize Characters.Legacy}" IsVisible="{Binding HasLegacy}">
+      <StackPanel Spacing="6"><TextBlock Text="{loc:Localize Characters.LegacyHint}" TextWrapping="Wrap"/>
+        <ListBox x:Name="LegacyCharacters" MaxHeight="160" ItemsSource="{Binding LegacyRows}" SelectedItem="{Binding SelectedLegacy}">
+          <ListBox.ItemTemplate><DataTemplate x:DataType="services:LegacyCharacterCandidate"><TextBlock Text="{Binding Value}"/></DataTemplate></ListBox.ItemTemplate>
+        </ListBox><Button Content="{loc:Localize Characters.ImportLegacy}" Command="{Binding ImportLegacyCommand}"/>
+      </StackPanel>
+    </Expander>
+    <TextBlock Grid.Row="5" Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"/>
+  </Grid>
+</UserControl>

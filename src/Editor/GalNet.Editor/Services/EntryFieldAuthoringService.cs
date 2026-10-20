@@ -6,7 +6,7 @@ using GalNet.Editor.History;
 namespace GalNet.Editor.Services;
 
 /// <summary>Entry field intents retain author values and stable IDs, never a page or control.</summary>
-public sealed class EntryFieldAuthoringService(IEditorDocumentService documents, EditorHistories histories)
+public sealed class EntryFieldAuthoringService(IEditorDocumentService documents, EditorHistories histories, CharacterAuthoringService? characters = null)
 {
     public event Action<string>? Changed;
     internal bool IsCurrent(string groupId, EditorEntryData expected) => documents.IsLoaded
@@ -18,6 +18,14 @@ public sealed class EntryFieldAuthoringService(IEditorDocumentService documents,
 
     public void SetParameters(string groupId, EditorEntryData expected, string type, Dictionary<string, JsonElement> parameters) =>
         Update(groupId, expected, type, new(type, expected.Condition, Clone(parameters)), "Edit Parameters");
+
+    public async Task SetParametersAsync(string groupId, EditorEntryData expected, string type, Dictionary<string, JsonElement> parameters, CancellationToken token)
+    {
+        if (!IsCurrent(groupId, expected) || expected.Type != type) throw Obsolete();
+        if (characters is not null && await characters.CommitParametersAsync(groupId, expected, type, parameters, () => IsCurrent(groupId, expected), token)) return;
+        token.ThrowIfCancellationRequested();
+        SetParameters(groupId, expected, type, parameters);
+    }
 
     public void SetType(string groupId, EditorEntryData expected, string type, Dictionary<string, JsonElement> parameters) =>
         Update(groupId, expected, expected.Type, new(type, expected.Condition, GalNet.Editor.Shared.Services.SceneAuthoringIdentities.NewEntry(type, Clone(parameters))), "Edit Type");

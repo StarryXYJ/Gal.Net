@@ -25,6 +25,7 @@ public static class EditorDockPanelIds
     public const string FileEditor = "FileEditor";
     public const string Inspector = "Inspector";
     public const string Variables = "Variables";
+    public const string Characters = "Characters";
     public const string Timeline = "Timeline";
 }
 
@@ -32,6 +33,9 @@ public static class BuiltInDockContributions
 {
     public static void Register(IEditorExtensionRegistry registry)
     {
+        registry.RegisterDockPanel(new DelegateDockPanelContribution<CharactersPanelViewModel>(
+            EditorDockPanelIds.Characters, "Dock.Panel.Characters", DockPanelPlacement.MainDocument, true, true, true, false, true,
+            sp => sp.GetRequiredService<CharactersPanelViewModel>(), typeof(CharactersPanelView), null));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<TimelinePanelViewModel>(
             EditorDockPanelIds.Timeline, "Dock.Panel.Timeline", DockPanelPlacement.BottomDocument, true, true, true, true, true,
             sp => sp.GetRequiredService<TimelinePanelViewModel>(), typeof(TimelinePanelView), null));

@@ -210,3 +210,15 @@
 - [L-20261017-07 可观察集合批量补偿](lessons/L-20261017-07-observable-batch-compensation.md)：通知抛错时当前集合操作可能已生效，应按实际状态恢复；补偿失败进入 RepairRequired。已由故障注入确认。
 
 - [L-20261017-08 作者元数据与严格 Raw shape](lessons/L-20261017-08-author-metadata-strict-shape.md)：新增声明字段须同步写入前的严格白名单/类型校验，保留保存重开证据，不能绕过未知字段规则。
+
+- [文件路径复用与删除身份](lessons/L-20261019-04-file-document-path-reuse.md)：FileDocuments 按会话 ID 持有历史；删除后同路径新建可同时保留旧记录，路径查询须优先有效身份并保留删除遮罩。
+
+- 2026-10-20 游戏本地化 P2 已验证：字段标记/只读索引之上，LocalizationDocumentStore 与数据操作接入单栈和双版本文件事务；相关 JSON 草稿校验/重基与冲突保留、catalog/metadata 专属管理、角色编号持久预留完成。新增 21 项通过，完整相关回归 495 通过、3 个 P6e3 已记录 UI 失败；构建/格式/任务源码指纹通过。P3 角色 UI、P4 表单映射、P5 多语言表格、P6 交换后续。见 features/F-20261019-01-editor-game-localization/phase-2.md 与 docs/spec/editor-game-localization.md。
+
+- [嵌套语义引用使用 wire 名](lessons/L-20261020-02-nested-semantic-wire-name.md)：FieldDescriptor.Id 不等于嵌套作者 JSON 属性名；按值契约 JsonTypeInfo 定位，重建字段须保留 Semantic。P3 索引大小写与真实列表角色改 key 测试已确认。
+
+- [程序化 TextBox 刷新与延迟事件](lessons/L-20261020-03-deferred-text-change-is-not-user-edit.md)：TextChanged 延迟到 bool guard 之后，可能触发失焦写入；使用同步 TextProperty 监听并保留旧异常 JSON。角色阶段完整 Editor 回归已复现并验证修正。
+
+- 2026-10-20 游戏本地化 P3 已 verified：角色 Dock、开发语言姓名/key、speaker 姓名/key 搜索与失焦创建、跨全部 Group/嵌套引用改 key、一次历史与旧值显式导入完成。新增 14 项全通过；相关回归 759 通过、3 项 P6e3 已记录 UI 失败，完整构建 0 错误。正文/分支默认语言映射及复制身份 P4、多语言表格/语言 P5、交换/完整校验 P6 待续；见 features/F-20261019-01-editor-game-localization/phase-3.md。
+
+- 用户协作约定（2026-10-20）：每个实施阶段验证结束后提交 Git，包含本阶段相关代码、测试和文档，并报告 commit；不要混入其他任务改动。

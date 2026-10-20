@@ -92,8 +92,8 @@ public partial class ColorFadeOptions : ColorFieldOptionsBase
 [GenerateFieldSchema]
 public partial class TextVoiceOptions
 {
-    [Field(0, AllowNull = true, EditorId = "entry.autocomplete")] public string? Speaker { get; set; }
-    [Field(1, AllowNull = true, EditorId = "entry.multilinetext")] public string? Content { get; set; }
+    [Field(0, AllowNull = true, EditorId = "entry.autocomplete"), CharacterReference] public string? Speaker { get; set; }
+    [Field(1, AllowNull = true, EditorId = "entry.multilinetext"), LocalizedText] public string? Content { get; set; }
     [Field(2, AllowNull = true, EditorId = "entry.audioasset")] public string? Asset { get; set; }
     [Field(3, EditorId = ValueEditorIds.Numeric)] public float Gain { get; set; } = 1;
     [Field(4, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? TrackId { get; set; } = "vocal";
@@ -102,7 +102,7 @@ public partial class TextVoiceOptions
 [GenerateFieldSchema]
 public partial class NvlVoiceOptions
 {
-    [Field(0, AllowNull = true, EditorId = "entry.multilinetext")] public string? Content { get; set; }
+    [Field(0, AllowNull = true, EditorId = "entry.multilinetext"), LocalizedText] public string? Content { get; set; }
     [Field(1, AllowNull = true, EditorId = "entry.audioasset")] public string? Asset { get; set; }
     [Field(2, EditorId = ValueEditorIds.Numeric)] public float Gain { get; set; } = 1;
     [Field(3, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? TrackId { get; set; } = "vocal";

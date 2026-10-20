@@ -34,7 +34,7 @@ public static class ProjectFilePaths
         path = Normalize(path);
         var first = path.Split('/')[0];
         if (new[] { ".galnet", ".git", ".vs", ".idea", ".editor-tx", ".editor-trash", "Contracts", "Output", "Temp" }.Contains(first, StringComparer.OrdinalIgnoreCase)
-            || new[] { "Assets", "Graph", "I18n", "settings.json", "Graph/graph.json" }.Contains(path, Comparer)
+            || new[] { "Assets", "Graph", "I18n", "settings.json", "Graph/graph.json", LocalizationJson.MetadataPath }.Contains(path, Comparer)
             || path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase) && path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)) throw Error("protected", path);
         _ = Category(path);
         return path;

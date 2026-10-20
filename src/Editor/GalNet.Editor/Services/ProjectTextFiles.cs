@@ -28,13 +28,15 @@ public sealed class ProjectTextFiles(IProjectService projects, IProjectContentSe
         catch (Exception) { editable = false; }
         if (path.StartsWith("Graph/", StringComparison.OrdinalIgnoreCase)) editable = false;
         if (new[] { ".bin", ".dll", ".exe", ".pdb", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".mp3", ".ogg", ".wav", ".mp4", ".ttf", ".otf", ".pak", ".galpak", ".galgroup" }.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase)) editable = false;
-        if (new FileInfo(full).Length <= 2 * 1024 * 1024)
+        var original = document is { ManagedContent: true } ? document.Data
+            : File.Exists(full) && new FileInfo(full).Length <= 2 * 1024 * 1024 ? File.ReadAllBytes(full) : null;
+        if (original is { Length: <= 2 * 1024 * 1024 })
         {
-            var original = File.ReadAllBytes(full);
             if (TryDecode(original, out encoding, out text) && editable) bytes = original;
         }
+        if (encoding is null) editable = false;
         document ??= content.TrackFile(path, bytes);
-        buffer = new(document, content, histories, localization, encoding, text, root);
+        buffer = new(document, content, histories, localization, encoding, text, root, editable);
         _buffers.Add(document.Id, buffer);
         return buffer;
     }
@@ -67,6 +69,7 @@ public sealed partial class ProjectTextBuffer : ObservableObject, IDisposable
     private readonly IEditorLocalizationService _localization;
     private readonly Encoding? _encoding;
     private readonly string _root;
+    private readonly bool _canEdit;
     private readonly IDisposable _draft;
     private byte[] _observed;
     private Exception? _failure;
@@ -74,19 +77,20 @@ public sealed partial class ProjectTextBuffer : ObservableObject, IDisposable
     public string Id => _document.Id;
     public string Path => _document.Path;
     public string Title => System.IO.Path.GetFileName(Path) + (IsDirty ? " *" : "");
-    public bool IsReadOnly => !_document.ManagedContent || !_document.Exists || _content.RepairRequired;
+    public bool IsReadOnly => !_canEdit || !_document.ManagedContent || !_document.Exists || _content.RepairRequired;
     public bool IsDirty => _document.Exists && _document.ManagedContent && (HasDraft || !_content.CaptureSaved().Files.TryGetValue(Id, out var saved) || !saved.Data.AsSpan().SequenceEqual(_document.Data));
-    private bool HasDraft => !IsReadOnly && Text != Decode(_document.Data);
+    private bool HasDraft => !IsReadOnly && Text != Decode(_observed);
     public string Information => !_document.Exists ? _localization["Files.Missing"] : IsReadOnly ? _localization["Files.ReadOnly"] : _encoding!.WebName;
     public long Size { get { try { return new FileInfo(System.IO.Path.Combine(_root, Path)).Length; } catch (IOException) { return 0; } } }
     public bool CanOpenExternal => _document.Exists;
     [ObservableProperty] private string _text;
     [ObservableProperty] private string _error = "";
-    public ProjectTextBuffer(EditorFileDocument document, IProjectContentSession content, EditorHistories histories, IEditorLocalizationService localization, Encoding? encoding, string text, string root)
+    public ProjectTextBuffer(EditorFileDocument document, IProjectContentSession content, EditorHistories histories, IEditorLocalizationService localization, Encoding? encoding, string text, string root, bool canEdit = true)
     {
         _document = document; _content = content; _histories = histories; _localization = localization; _encoding = encoding; _root = root;
-        _text = document.ManagedContent ? Decode(document.Data) : text; _observed = document.Data.ToArray();
-        _draft = content.RegisterDraft(() => HasDraft, CommitAsync);
+        _canEdit = canEdit;
+        _text = document.ManagedContent && encoding is not null ? Decode(document.Data) : text; _observed = document.Data.ToArray();
+        _draft = content.RegisterFileDraft(document.Id, () => HasDraft, CommitAsync, ValidateStructuredDraft);
         content.Changed += OnChanged; localization.PropertyChanged += OnLocale;
     }
     private string Decode(byte[] bytes) => _encoding!.GetString(bytes, _encoding.GetPreamble().Length, bytes.Length - _encoding.GetPreamble().Length);
@@ -99,9 +103,14 @@ public sealed partial class ProjectTextBuffer : ObservableObject, IDisposable
     }
     private void OnChanged()
     {
-        if (_document.ManagedContent && !_observed.AsSpan().SequenceEqual(_document.Data))
+        if (_document.ManagedContent && _encoding is not null && !_observed.AsSpan().SequenceEqual(_document.Data))
         {
-            _observed = _document.Data.ToArray(); Text = Decode(_document.Data);
+            if (HasDraft && Text != Decode(_document.Data))
+            {
+                _failure = ProjectFilePaths.Error("changed", Path);
+                Error = EditorText.Error(_failure).Render(_localization);
+            }
+            else { _observed = _document.Data.ToArray(); Text = Decode(_document.Data); }
         }
         OnPropertyChanged(nameof(Path)); OnPropertyChanged(nameof(Title)); OnPropertyChanged(nameof(IsDirty)); OnPropertyChanged(nameof(IsReadOnly)); OnPropertyChanged(nameof(Information)); OnPropertyChanged(nameof(Size)); OnPropertyChanged(nameof(CanOpenExternal));
     }
@@ -110,15 +119,28 @@ public sealed partial class ProjectTextBuffer : ObservableObject, IDisposable
         if (!HasDraft) return;
         try
         {
+            if (!_document.Data.AsSpan().SequenceEqual(_observed)) throw ProjectFilePaths.Error("changed", Path);
             var next = _encoding!.GetPreamble().Concat(_encoding.GetBytes(Text)).ToArray();
-            await _histories.Content.ExecuteAsync(new TextEdit(_document, _document.Data.ToArray(), next));
+            await _histories.Content.ExecuteAsync(new TextEdit(_document, _observed.ToArray(), next));
             _failure = null; Error = _externalChange ? _localization["Files.ExternalChange"] : "";
         }
         catch (Exception error) { _failure = error; Error = EditorText.Error(error).Render(_localization); throw; }
     }
     [RelayCommand] private async Task ApplyAsync() { try { await CommitAsync(); } catch (Exception) { } }
     [RelayCommand] private async Task SaveAsync() { try { await _content.SaveAsync(); _failure = null; Error = ""; } catch (Exception error) { _failure = error; Error = EditorText.Error(error).Render(_localization); } }
-    [RelayCommand] private void Cancel() { if (_document.ManagedContent) Text = Decode(_document.Data); }
+    private void ValidateStructuredDraft()
+    {
+        if (Path.StartsWith("I18n/", StringComparison.Ordinal) || Path == LocalizationJson.MetadataPath)
+            LocalizationJson.Validate(Path, _encoding!.GetPreamble().Concat(_encoding.GetBytes(Text)).ToArray());
+        if (!_document.Data.AsSpan().SequenceEqual(_observed)) throw ProjectFilePaths.Error("changed", Path);
+    }
+    [RelayCommand]
+    private void Cancel()
+    {
+        if (!_document.ManagedContent || _encoding is null) return;
+        _observed = _document.Data.ToArray(); _failure = null; Text = Decode(_document.Data);
+        Error = _externalChange ? _localization["Files.ExternalChange"] : "";
+    }
     [RelayCommand] private void OpenExternal() { try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(System.IO.Path.Combine(_root, Path)) { UseShellExecute = true }); } catch (Exception error) { _failure = error; Error = EditorText.Error(error).Render(_localization); } }
     public void CheckExternalChange()
     {

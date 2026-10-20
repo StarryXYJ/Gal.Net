@@ -13,6 +13,8 @@ public interface IProjectContentSession
     Exception? LastRecoveryError { get; }
     event Action? Changed;
     IDisposable RegisterDraft(Func<bool> hasChanges, Func<Task> commit);
+    IDisposable RegisterFileDraft(string fileId, Func<bool> hasChanges, Func<Task> commit, Action validate) => RegisterDraft(hasChanges, commit);
+    Task CommitFileDraftsAsync(string fileId) => CommitDraftsAsync();
     IDisposable RegisterCaptureGuard(Func<bool, CancellationToken, Task<IDisposable>> acquire);
     Task CommitDraftsAsync();
     void Open(GalProject project);
@@ -27,6 +29,7 @@ public interface IProjectContentSession
     EditorProjectDocument CaptureSaved();
     IReadOnlyDictionary<string, EditorFileDocument> FileDocuments => new Dictionary<string, EditorFileDocument>();
     EditorFileDocument TrackFile(string path, byte[]? textBytes = null) => throw new NotSupportedException();
+    EditorFileDocument TrackLocalizationFile(string path, byte[] textBytes) => throw new NotSupportedException();
     Task SuspendAsync();
     void ResumeSaves();
 }

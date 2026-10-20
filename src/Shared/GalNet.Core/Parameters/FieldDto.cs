@@ -3,6 +3,16 @@ namespace GalNet.Core.Parameters;
 [AttributeUsage(AttributeTargets.Class)]
 public sealed class GenerateFieldSchemaAttribute : Attribute;
 
+/// <summary>The member stores a game text key; authoring tools edit its localized value.</summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
+public sealed class LocalizedTextAttribute : Attribute;
+
+/// <summary>The member stores a stable character ID, not a display name.</summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
+public sealed class CharacterReferenceAttribute : Attribute;
+
+public enum FieldValueSemantic { None, LocalizedText, CharacterReference }
+
 /// <summary>Member type and constant initializer provide the value contract; these annotations add authoring metadata.</summary>
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
 public sealed class FieldAttribute(int order) : Attribute

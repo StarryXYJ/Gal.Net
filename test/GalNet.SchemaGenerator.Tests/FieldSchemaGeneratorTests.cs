@@ -8,6 +8,39 @@ namespace GeneralTest.Schema;
 public sealed class FieldSchemaGeneratorTests
 {
     [Test]
+    public void GameTextSemanticsAreInheritedAndIndependentOfEditorHints()
+    {
+        const string source = """
+            using GalNet.Core.Parameters;
+            public class BaseOptions { [Field(0), CharacterReference] public string? Speaker {get;set;} }
+            [GenerateFieldSchema] public partial class Child {
+                [Field(0), LocalizedText] public string? Caption {get;set;}
+            }
+            [GenerateFieldSchema] public partial class Options : BaseOptions {
+                [Field(1)] public Child? Child {get;set;}
+            }
+            """;
+        var driver = CSharpGeneratorDriver.Create(new FieldSchemaGenerator().AsSourceGenerator())
+            .RunGeneratorsAndUpdateCompilation(Compile(source), out var output, out var diagnostics);
+        Assert.That(diagnostics, Is.Empty);
+        Assert.That(output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error), Is.Empty);
+        var code = string.Join("\n", driver.GetRunResult().GeneratedTrees);
+        Assert.That(code, Does.Contain("FieldValueSemantic.CharacterReference").And.Contains("FieldValueSemantic.LocalizedText"));
+    }
+
+    [TestCase("[Field(0), LocalizedText] public int Count {get;set;}")]
+    [TestCase("[Field(0), CharacterReference, LocalizedText] public string Name {get;set;}")]
+    [TestCase("[LocalizedText] public string Name {get;set;}")]
+    public void InvalidGameTextSemanticsProduceLocatedDiagnostic(string member)
+    {
+        var driver = CSharpGeneratorDriver.Create(new FieldSchemaGenerator().AsSourceGenerator())
+            .RunGeneratorsAndUpdateCompilation(Compile("using GalNet.Core.Parameters; [GenerateFieldSchema] public partial class Options {" + member + "}"), out _, out var diagnostics);
+        Assert.That(diagnostics.Single().Id, Is.EqualTo("GNF001"));
+        Assert.That(diagnostics[0].Location.IsInSource, Is.True);
+        Assert.That(driver.GetRunResult().GeneratedTrees, Is.Empty);
+    }
+
+    [Test]
     public void InheritedFieldsKeepTheirDefaultCodecAndOrderWithoutRepeatingDeclarations()
     {
         var source = """

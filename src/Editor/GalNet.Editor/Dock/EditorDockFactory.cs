@@ -335,6 +335,7 @@ public sealed class EditorDockFactory : Factory, IDisposable
                 if (closed.Context is GroupEditorPanelViewModel group) group.Dispose();
                 if (closed.Context is FileDocumentPanelViewModel file) file.Dispose();
                 if (closed.Context is VariablesPanelViewModel variables) variables.Dispose();
+                if (closed.Context is CharactersPanelViewModel characters) characters.Dispose();
                 if (closed.Context is TimelinePanelViewModel timeline) timeline.Dispose();
                 _panelByDockable.Remove(closed);
             };
@@ -442,6 +443,7 @@ public sealed class EditorDockFactory : Factory, IDisposable
             page.Dispose();
         foreach (var page in _panelByDockable.Keys.Select(dockable => dockable.Context).OfType<FileDocumentPanelViewModel>()) page.Dispose();
         foreach (var page in _panelByDockable.Keys.Select(dockable => dockable.Context).OfType<VariablesPanelViewModel>()) page.Dispose();
+        foreach (var page in _panelByDockable.Keys.Select(dockable => dockable.Context).OfType<CharactersPanelViewModel>()) page.Dispose();
         foreach (var page in _panelByDockable.Keys.Select(dockable => dockable.Context).OfType<TimelinePanelViewModel>()) page.Dispose();
     }
 

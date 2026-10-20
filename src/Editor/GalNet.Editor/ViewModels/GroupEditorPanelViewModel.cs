@@ -259,17 +259,14 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
 
     private void Configure(EntryEditorItemViewModel entry) => entry.ConfigureParameterFields(
         _catalog,
-        _projects.Current?.Settings.Speakers ?? [],
+        [],
         Workspace.AllProjectVariableDefinitions.Select(variable => variable.Name).ToArray(),
         _effects);
 
     public void CommitSpeaker(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value) || _projects.Current is not { } project) return;
-        var speaker = value.Trim();
-        if (project.Settings.Speakers.Any(item => string.Equals(item, speaker, StringComparison.OrdinalIgnoreCase))) return;
-        project.Settings.Speakers.Add(speaker);
-        project.IsDirty = true;
+        // Legacy unmarked autocomplete is not a character declaration source.
+        // Marked fields commit through CharacterAuthoringService and the project history.
     }
 
     public void Dispose()

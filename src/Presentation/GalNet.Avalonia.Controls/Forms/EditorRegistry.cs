@@ -14,6 +14,12 @@ public sealed class EditorRegistry
     /// <summary>Host policy: optional non-string text inputs may be cleared without authoring null.</summary>
     public bool EmptyInputClearsOptionalFields { get; init; }
     private readonly Dictionary<string, FieldEditorFactory> _factories = new(StringComparer.Ordinal);
+    private readonly Dictionary<FieldValueSemantic, FieldEditorFactory> _semantics = [];
+    public void RegisterSemantic(FieldValueSemantic semantic, FieldEditorFactory factory)
+    {
+        CheckMutable(); ArgumentNullException.ThrowIfNull(factory);
+        if (semantic == FieldValueSemantic.None || !_semantics.TryAdd(semantic, factory)) throw new ArgumentException("A nonempty semantic may be registered once.", nameof(semantic));
+    }
     private readonly Dictionary<Type, string> _defaults = [];
     private readonly Dictionary<Type, FieldEditorFactory> _typeFactories = [];
     private readonly Dictionary<(Type Type, string Field), FieldEditorFactory> _members = [];
@@ -86,6 +92,7 @@ public sealed class EditorRegistry
 
     public FieldEditorFactory Resolve(FieldDescriptor field, Type? dtoType = null)
     {
+        if (_semantics.TryGetValue(field.Semantic, out var semantic)) return semantic;
         if (dtoType is not null && _members.TryGetValue((dtoType, field.Id), out var member)) return member;
         var type = Nullable.GetUnderlyingType(field.Value.ValueType) ?? field.Value.ValueType;
         if (_typeFactories.TryGetValue(type, out var custom)) return custom;

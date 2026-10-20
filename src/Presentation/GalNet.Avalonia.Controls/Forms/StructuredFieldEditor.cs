@@ -136,7 +136,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
             var wire = properties.Single(property => property.AttributeProvider is MemberInfo info && info.Name == member.Name).Name;
             var options = new JsonSerializerOptions(descriptor.JsonOptions);
             foreach (var converter in field.Value.JsonOptions.Converters.Reverse()) options.Converters.Insert(0, converter);
-            var child = new FieldDescriptor(field.Id, new(field.Value.ValueType, field.Value.AllowNull, field.Value.Constraints, options), field.IsRequired, field.DefaultValue, field.Editor, field.LabelKey, field.DescriptionKey);
+            var child = new FieldDescriptor(field.Id, new(field.Value.ValueType, field.Value.AllowNull, field.Value.Constraints, options), field.IsRequired, field.DefaultValue, field.Editor, field.LabelKey, field.DescriptionKey, field.Semantic);
             return new Member(child, wire);
         }).ToArray();
     }

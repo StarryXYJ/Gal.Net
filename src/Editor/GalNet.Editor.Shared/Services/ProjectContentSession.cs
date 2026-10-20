@@ -35,6 +35,24 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
         Refresh();
         return file;
     }
+    public EditorFileDocument TrackLocalizationFile(string path, byte[] textBytes)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        path = LocalizationJson.Path(path);
+        if (_suspended || RepairRequired || IsPublishing) throw ProjectFilePaths.Error("busy", path);
+        var full = new ProjectRawReader(_project!.RootPath).Resolve(path);
+        if (!File.Exists(full) || !File.ReadAllBytes(full).AsSpan().SequenceEqual(textBytes)) throw ProjectFilePaths.Error("changed", path);
+        var existing = _files.Values.SingleOrDefault(file => file.Exists && ProjectFilePaths.Comparer.Equals(file.Path, path));
+        if (existing is { ManagedContent: true }) return existing;
+        var saved = CaptureSaved();
+        var file = existing ?? new EditorFileDocument { Path = path };
+        file.ManagedContent = true; file.Data = textBytes.ToArray();
+        _files[file.Id] = file;
+        saved.Files[file.Id] = new() { Id = file.Id, Path = path, ManagedContent = true, Data = textBytes.ToArray() };
+        _baseline = Serialize(saved);
+        Refresh();
+        return file;
+    }
     private Func<bool, CancellationToken, Task<IDisposable>>? _captureGuard;
     private readonly CancellationTokenSource _lifetime = new();
     private ProjectRecoveryStore? _recovery;
@@ -56,6 +74,18 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
         _drafts.Add(registration);
         return registration;
     }
+    public IDisposable RegisterFileDraft(string fileId, Func<bool> hasChanges, Func<Task> commit, Action validate)
+    {
+        var registration = new DraftRegistration(_drafts, hasChanges, commit, fileId, validate);
+        _drafts.Add(registration);
+        return registration;
+    }
+    public async Task CommitFileDraftsAsync(string fileId)
+    {
+        var drafts = _drafts.Where(draft => draft.FileId == fileId && draft.HasChanges()).ToArray();
+        foreach (var draft in drafts) draft.Validate?.Invoke();
+        foreach (var draft in drafts) await draft.Commit();
+    }
 
     public IDisposable RegisterCaptureGuard(Func<bool, CancellationToken, Task<IDisposable>> acquire)
     {
@@ -75,7 +105,8 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
             if (draft.HasChanges()) await draft.Commit();
     }
 
-    private sealed record DraftRegistration(List<DraftRegistration> Owner, Func<bool> HasChanges, Func<Task> Commit) : IDisposable
+    private sealed record DraftRegistration(List<DraftRegistration> Owner, Func<bool> HasChanges, Func<Task> Commit,
+        string? FileId = null, Action? Validate = null) : IDisposable
     {
         public void Dispose() => Owner.Remove(this);
     }
@@ -370,7 +401,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     {
         var plan = new ProjectFilePlan();
         var saved = JsonSerializer.Deserialize<EditorProjectDocument>(_baseline, JsonOptions)!;
-        foreach (var file in saved.Files.Values.Where(file => file.ManagedContent))
+        foreach (var file in TrackedFiles(saved))
             plan.ExpectedHashes[file.Path] = file.Exists ? Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(file.Data)) : null;
         return plan;
     }
@@ -379,13 +410,18 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     {
         var saved = JsonSerializer.Deserialize<EditorProjectDocument>(_baseline, JsonOptions)!;
         var reader = new ProjectRawReader(_project!.RootPath);
-        foreach (var file in saved.Files.Values.Where(file => file.ManagedContent))
+        foreach (var file in TrackedFiles(saved))
         {
             var path = reader.Resolve(file.Path);
             if (file.Exists ? !File.Exists(path) || !File.ReadAllBytes(path).AsSpan().SequenceEqual(file.Data) : File.Exists(path))
                 throw ProjectFilePaths.Error("changed", file.Path);
         }
     }
+
+    private static IEnumerable<EditorFileDocument> TrackedFiles(EditorProjectDocument document) => document.Files.Values
+        .GroupBy(file => file.Path, ProjectFilePaths.Comparer)
+        .Select(group => group.SingleOrDefault(file => file.Exists) ?? group.First())
+        .Where(file => file.ManagedContent);
 
     private static void ValidateWorkingStructure(string projectPath, EditorProjectDocument document)
     {
