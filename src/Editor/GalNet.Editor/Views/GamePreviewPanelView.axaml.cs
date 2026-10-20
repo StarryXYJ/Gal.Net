@@ -28,31 +28,16 @@ public partial class GamePreviewPanelView : UserControl
         if (_vm is not null)
         {
             _vm.PropertyChanged -= OnVmPropertyChanged;
-            _vm.NameConflictRequested -= OnNameConflictRequested;
         }
 
         _vm = DataContext as GamePreviewPanelViewModel;
         if (_vm is not null)
         {
             _vm.PropertyChanged += OnVmPropertyChanged;
-            _vm.NameConflictRequested += OnNameConflictRequested;
             SyncPageHost();
         }
 
         base.OnDataContextChanged(e);
-    }
-
-    private async void OnNameConflictRequested(string name)
-    {
-        var owner = TopLevel.GetTopLevel(this) as Window;
-        if (owner is null)
-            return;
-
-        await MessageBox.ShowAsync(
-            owner,
-            $"Variable name \"{name}\" already exists.",
-            "Duplicate Name",
-            button: MessageBoxButton.OK);
     }
 
     private void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

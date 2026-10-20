@@ -25,7 +25,6 @@ public sealed class EditorHistories : IProjectEditLifetime, IDisposable
     }
 
     public void Clear() => Content.Clear();
-    public void MarkSaved() => Content.MarkSaved();
     public System.Threading.Tasks.Task SuspendAsync() => Content.SuspendAsync();
     public void ResumeEditing() => Content.Resume();
     public void Dispose()

@@ -1,6 +1,6 @@
 # Editor Graph 编辑
 
-当前实现：F-20261015-02 / P2、P3。作者数据在项目文档中，GraphNode/GraphEdge 是可观察投影。节点增删、改名、移动、连线、分支与粘贴记录只持项目数据和稳定 ID；关闭或重建 Workspace 不丢失这些操作的撤销能力。条目及旧 Preview 变量绑定仍按后续阶段迁移；独立变量面板的声明/引用意图见 [变量编辑](editor-variables.md)。
+当前实现：F-20261015-02 / P2、P3。作者数据在项目文档中，GraphNode/GraphEdge 是可观察投影。节点增删、改名、移动、连线、分支与粘贴记录只持项目数据和稳定 ID；关闭或重建 Workspace 不丢失这些操作的撤销能力。Entry 编辑使用项目作者服务，变量声明及引用意图见 [变量编辑](editor-variables.md)；Preview 只编辑运行时当前值。
 
 ## 图规则
 

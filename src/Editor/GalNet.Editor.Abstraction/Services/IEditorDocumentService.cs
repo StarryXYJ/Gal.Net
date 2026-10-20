@@ -9,15 +9,11 @@ public interface IEditorDocumentService
     LoadedEditorProjectDocument LoadedProject { get; }
     IReadOnlyDictionary<string, EditorGroupDocument> Groups { get; }
     bool IsLoaded { get; }
-    bool IsDirty { get; }
 
     event Action? DocumentChanged;
-    event Action<bool>? DirtyStateChanged;
 
     void Load(LoadedEditorProjectDocument loadedDocument);
     void Unload();
-    void MarkDirty();
-    void MarkSaved();
     void SynchronizeGroups();
     EditorGroupDocument GetOrCreateGroup(string groupId, string relativePath);
     EditorGroupDocument? FindGroupByPath(string relativePath);

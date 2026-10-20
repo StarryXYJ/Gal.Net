@@ -76,7 +76,7 @@ public sealed class EditorWorkspaceViewModelTests
                 if (useDto) Assert.That(entry.ParameterFields, Is.Empty, "The generated DTO replaces the old per-field projection.");
                 var changes = 0;
                 field.Changed += (_, _) => changes++;
-                workspace.UndoRedoHistory.MarkSaved();
+                await fixture.Content.SaveAsync();
                 ((TextBox)form.Editors[0].Control).Text = "1.5";
                 Assert.That(await form.Contexts[0].CommitTextAsync(), Is.True);
                 Assert.That(workspace.UndoRedoHistory.IsDirty, Is.True);
@@ -173,9 +173,9 @@ public sealed class EditorWorkspaceViewModelTests
         {
             Assert.That(fixture.ProjectService.SaveCount, Is.EqualTo(1));
             Assert.That(fixture.SaveScheduler.SaveNowCount, Is.EqualTo(1));
-            Assert.That(fixture.DocumentService.IsDirty, Is.False);
+            Assert.That(fixture.Content.IsDirty, Is.False);
             Assert.That(workspace.UndoRedoHistory.IsDirty, Is.False);
-            Assert.That(fixture.ProjectService.Current!.IsDirty, Is.False);
+            Assert.That(fixture.ProjectService.Current, Is.Not.Null);
         });
     }
 
@@ -247,6 +247,7 @@ public sealed class EditorWorkspaceViewModelTests
 
         private readonly string _root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "GalNet-workspace-test-" + Guid.NewGuid().ToString("N"))).FullName;
         private readonly ProjectContentSession _content;
+        public ProjectContentSession Content => _content;
 
         public WorkspaceFixture(bool withProject = false, bool useDto = false)
         {
@@ -279,25 +280,21 @@ public sealed class EditorWorkspaceViewModelTests
             Catalog = catalog;
             var variableDefinitions = new VariableDefinitionService(DocumentService);
             var repository = new FakeDocumentRepository(loaded);
-            var histories = new EditorHistories();
-            var groups = new EditorGroupProjectionStore(DocumentService, catalog, new EntryFieldAuthoringService(DocumentService, histories));
-            var persistence = new EditorWorkspacePersistence(
-                ProjectService,
-                repository,
-                DocumentService,
-                SaveCoordinator, groups);
-
             DocumentService.Load(loaded);
             File.WriteAllText(Path.Combine(_root, "settings.json"), System.Text.Json.JsonSerializer.Serialize(ProjectService.Current!.Settings));
             _content = new ProjectContentSession(DocumentService, repository);
             _content.Open(ProjectService.Current!);
+            ProjectService.Content = _content;
+            var histories = new EditorHistories(_content);
+            var groups = new EditorGroupProjectionStore(DocumentService, catalog, new EntryFieldAuthoringService(DocumentService, histories));
+            var persistence = new EditorWorkspacePersistence(ProjectService, repository, DocumentService, SaveCoordinator, groups);
             Workspace = new EditorWorkspaceViewModel(
                 ProjectService,
                 histories,
                 dockFactory,
                 DocumentService,
                 variableDefinitions,
-                new GraphEditingService(catalog),
+                new GraphEditingService(),
                 new FakeEditorSettingsService(),
                 localization,
                 SaveScheduler,
@@ -334,16 +331,17 @@ public sealed class EditorWorkspaceViewModelTests
     {
         public GalProject? Current { get; private set; }
         public int SaveCount { get; private set; }
+        public IProjectContentSession? Content { get; set; }
         public event Action<GalProject?>? CurrentChanged { add { } remove { } }
 
         public void SetCurrent(GalProject project) => Current = project;
         public Task<GalProject> OpenAsync(string projectPath) => throw new NotSupportedException();
         public Task<GalProject> CreateAsync(string projectPath, string name, ProjectSettings settings, string contractsDirectory) => throw new NotSupportedException();
         public Task CloseAsync() => Task.CompletedTask;
-        public Task SaveAsync() { SaveCount++; return Task.CompletedTask; }
+        public Task SaveAsync() { SaveCount++; return Content?.SaveAsync() ?? Task.CompletedTask; }
         public IReadOnlyList<RecentProjectInfo> GetRecentProjects() => [];
         public void RemoveRecentProject(string projectPath) { }
-        public Task<bool> CheckUnsavedChangesAsync() => Task.FromResult(Current?.IsDirty == true);
+        public Task<bool> CheckUnsavedChangesAsync() => Task.FromResult(Content?.IsDirty == true);
     }
 
     private sealed class FakeDocumentRepository(LoadedEditorProjectDocument loaded) : IEditorDocumentRepository

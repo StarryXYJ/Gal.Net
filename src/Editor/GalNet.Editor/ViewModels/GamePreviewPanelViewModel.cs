@@ -30,7 +30,6 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
     private readonly IProjectService _projectService;
     private readonly EditorVariableService _variableService;
     private readonly IVariableDefinitionService _variableDefinitions;
-    private readonly IEditorDocumentService _documentService;
     private readonly IGameContentProvider _contentProvider;
     private readonly IAssetManager _assets;
 
@@ -69,7 +68,6 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
         IProjectService projectService,
         EditorVariableService variableService,
         IVariableDefinitionService variableDefinitions,
-        IEditorDocumentService documentService,
         IGameContentProvider contentProvider,
         IAssetManager assets)
     {
@@ -77,7 +75,6 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
         _projectService = projectService;
         _variableService = variableService;
         _variableDefinitions = variableDefinitions;
-        _documentService = documentService;
         _contentProvider = contentProvider;
         _assets = assets;
         _workspace.ActivePreview = this;
@@ -85,6 +82,7 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
 
         _projectService.CurrentChanged += OnProjectChanged;
         _variableService.VariableChanged += OnVariableServiceChanged;
+        _variableDefinitions.DefinitionsChanged += OnDefinitionsChanged;
 
         ReloadEditors();
         _ = RestartPreviewAsync();
@@ -169,18 +167,26 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
         });
     }
 
+    private void OnDefinitionsChanged(VariableScope scope)
+    {
+        if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess()) ReloadEditors();
+        else Avalonia.Threading.Dispatcher.UIThread.Post(ReloadEditors);
+    }
+
     private void ReloadEditors()
     {
-        if (_projectService.Current is null)
+        PlayerVariables?.SetCurrentValueVisibility(false);
+        SaveVariables?.SetCurrentValueVisibility(false);
+        if (_disposed || _projectService.Current is null)
+        {
+            PlayerVariables = null;
+            SaveVariables = null;
             return;
+        }
 
         PlayerVariables = new VariableListEditorViewModel(
             _variableDefinitions.GetDefinitions(VariableScope.Player),
-            VariableScope.Player,
             showCurrentValue: true,
-            allowCurrentEditing: true,
-            IsNameAvailable,
-            ResolveAvailableName,
             name => _variableService.GetSnapshot(VariableScope.Player).TryGetValue(name, out var v) ? CloneVariable(v, name) : null,
             (name, value) =>
             {
@@ -189,84 +195,20 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
                 var v = existing is not null ? CloneVariable(existing, name) : new Variable { Name = name };
                 v.SetValue(value);
                 _variableService.NotifyVariableChanged(VariableScope.Player, name, v);
-            },
-            name => _variableService.RemoveRuntimeVariable(VariableScope.Player, name),
-            RenamePlayerVariable,
-            PersistVariableDefinitions,
-            OnNameConflict);
+            });
 
         SaveVariables = new VariableListEditorViewModel(
             _variableDefinitions.GetDefinitions(VariableScope.Save),
-            VariableScope.Save,
             showCurrentValue: IsGameStarted,
-            allowCurrentEditing: true,
-            IsNameAvailable,
-            ResolveAvailableName,
             name => _variableService.GetSnapshot(VariableScope.Save).TryGetValue(name, out var v) ? CloneVariable(v, name) : null,
             (name, value) =>
             {
                 if (_runtime is null) return;
                 _runtime.SetVariable(name, value);
-            },
-            name => _variableService.RemoveRuntimeVariable(VariableScope.Save, name),
-            RenameSaveVariable,
-            PersistVariableDefinitions);
+            });
 
         OnPropertyChanged(nameof(PlayerVariables));
         OnPropertyChanged(nameof(SaveVariables));
-    }
-
-    private bool IsNameAvailable(string name, VariableScope scope)
-    {
-        return _variableDefinitions.IsNameAvailable(name, scope);
-    }
-
-    private string ResolveAvailableName(string name, VariableScope scope)
-    {
-        var sanitized = VariableNameRules.Sanitize(name, $"var_{scope.ToString().ToLowerInvariant()}");
-        if (_variableDefinitions.IsNameAvailable(sanitized, scope))
-            return sanitized;
-
-        var suffix = 1;
-        var candidate = sanitized;
-        while (!_variableDefinitions.IsNameAvailable(candidate, scope))
-            candidate = $"{sanitized}_{suffix++}";
-
-        return candidate;
-    }
-
-    private void RenamePlayerVariable(string oldName, string newName)
-    {
-        if (string.Equals(oldName, newName, StringComparison.Ordinal))
-            return;
-
-        _variableService.RenameRuntimeVariable(VariableScope.Player, oldName, newName);
-        if (_variableService.GetSnapshot(VariableScope.Player).TryGetValue(newName, out var variable))
-            _runtime?.SetVariable(newName, GetRawValue(variable));
-    }
-
-    private void RenameSaveVariable(string oldName, string newName)
-    {
-        if (string.Equals(oldName, newName, StringComparison.Ordinal))
-            return;
-
-        _variableService.RenameRuntimeVariable(VariableScope.Save, oldName, newName);
-    }
-
-    private void PersistVariableDefinitions()
-    {
-        _variableDefinitions.ResetFromDocument();
-        _documentService.MarkDirty();
-        if (_projectService.Current is { } project)
-            project.IsDirty = true;
-    }
-
-    /// <summary>Event raised when a variable name conflict is detected. The view shows a dialog.</summary>
-    public event Action<string>? NameConflictRequested;
-
-    private void OnNameConflict(string name)
-    {
-        NameConflictRequested?.Invoke(name);
     }
 
     private void OnRuntimeCreated(IGameRuntime runtime)
@@ -350,6 +292,7 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
             _projectClosingRegistration = null;
             _projectService.CurrentChanged -= OnProjectChanged;
             _variableService.VariableChanged -= OnVariableServiceChanged;
+            _variableDefinitions.DefinitionsChanged -= OnDefinitionsChanged;
             if (ReferenceEquals(_workspace.ActivePreview, this)) _workspace.ActivePreview = null;
             await StopPreviewAsync();
         }

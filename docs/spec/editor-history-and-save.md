@@ -20,7 +20,7 @@ Graph、Group、settings 与当前 editor-state 在同一作者文件事务发�
 
 GUI 的 Repository 显式使用 Authoring 验证策略：Raw Group 可以保留未知类型/参数、缺必填值、无效参数类型或未完成条件表达式，Graph 分支条件也可保留未完成文本；保存不 Normalize、不补默认值。当前格式、稳定身份、严格 JSON shape、重复属性、Graph 拓扑、源路径/归属及外部冲突仍检查。仓库默认 Complete 供 CLI 严格写入使用，validate/group compile 和预览编译不因 GUI 草稿可保存而放宽。保存后继续撤销类型变更会恢复原作者 JSON，并重新成为未保存内容。
 
-dirty 依据当前作者内容与最近成功保存内容比较，独立于历史位置。比较忽略 Group 查询字典的插入顺序、参数查询顺序和显示行号；保留实际 Graph/Entry 顺序与 JSON 值。保存失败不更新基线，保存期间产生的新编辑仍为 dirty。设置草稿也参与关闭脏检查。
+GUI 的 dirty 状态统一由 ProjectContentSession 依据当前作者内容与最近成功保存内容比较，独立于历史位置；History.IsDirty 查询同一会话，保存和关闭检查不依赖 Document 或 GalProject 的手工 dirty 标记。比较忽略 Group 查询字典的插入顺序、参数查询顺序和显示行号；保留实际 Graph/Entry 顺序与 JSON 值。保存失败不更新基线，保存期间产生的新编辑仍为 dirty。设置草稿也参与关闭脏检查。
 
 关闭项目或应用时先挂起并等待当前编辑与保存队列，取消尚未开始的自动保存。若有未保存内容，提供 Save All、Discard Unsaved Content、Cancel；取消保持原项目与草稿，保存失败也保留会话。保存期间再次产生未保存内容时重新检查，不能保存旧捕获版后直接关闭。放弃只丢弃未保存内容；已经完成的结构写盘不反向撤销。
 
@@ -36,7 +36,7 @@ dirty 依据当前作者内容与最近成功保存内容比较，独立于历�
 
 ## 当前边界
 
-- Graph 基本节点、连线、名称与坐标已迁移为项目数据记录；Group 生命周期接入双版本结构计划，见 [Graph 基础编辑](editor-graph.md)。分支字段、Entry 类型/条件/参数及独立变量面板已使用显式项目意图；旧 Preview 的变量监听路径仍待预览阶段处理。Entry 字段与新增条目历史不持有 Workspace/Group 页面，见 [Group 编辑](editor-groups.md)。
+- Graph 基本节点、连线、名称与坐标已迁移为项目数据记录；Group 生命周期接入双版本结构计划，见 [Graph 基础编辑](editor-graph.md)。分支字段、Entry 类型/条件/参数及变量声明使用显式项目意图；Preview 只编辑运行时当前值，不补记声明历史。Entry 字段与新增条目历史不持有 Workspace/Group 页面，见 [Group 编辑](editor-groups.md)。
 - 已提交的 Group 作者 JSON 可在 P5e 保存重开，包括未知/不完整语义；控件中尚未转换成 JSON 的输入草稿及复杂编辑器的关闭协调继续在 P6/P7。损坏 JSON 和不安全结构不作为作者草稿写盘。
 - 事务恢复可在打开时自动核对；作者快照提供材料及读取校验，尚无交互式快照还原页面。
 - 原生 IME 候选输入及完整桌面人工操作未验收；已通过 Headless 实际控件的本地文本撤销、设置提交和关闭对话框验证。

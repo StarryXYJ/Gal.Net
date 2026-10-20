@@ -29,7 +29,6 @@ public interface IUndoRedoHistory
     EditorText? RedoText => RedoDescription is { } text ? EditorText.History(text) : null;
     event Action? Changed;
     void Execute(IUndoableEdit edit);
-    void PushAlreadyApplied(IUndoableEdit edit);
     void Undo();
     void Redo();
     void Clear();
@@ -84,12 +83,6 @@ public sealed class UndoRedoHistory(int capacity = 200, long byteBudget = 1024L 
     public void Execute(IUndoableEdit edit)
     {
         RunSync(() => { edit.Redo(); Append(new SyncEdit(edit)); });
-    }
-
-    public void PushAlreadyApplied(IUndoableEdit edit)
-    {
-        ArgumentNullException.ThrowIfNull(edit);
-        RunSync(() => Append(new SyncEdit(edit)));
     }
 
     public void BindContent(Func<bool> dirty, Func<bool> repair)

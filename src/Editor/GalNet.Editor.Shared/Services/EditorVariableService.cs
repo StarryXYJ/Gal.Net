@@ -104,40 +104,6 @@ public sealed class EditorVariableService : IVariableService, IDisposable
         _playerStore.Reset();
     }
 
-    public void RemoveRuntimeVariable(VariableScope scope, string name)
-    {
-        if (scope == VariableScope.Player)
-        {
-            _playerStore.Remove(name);
-            return;
-        }
-
-        _saveVariables.Remove(name);
-    }
-
-    public void RenameRuntimeVariable(VariableScope scope, string oldName, string newName)
-    {
-        if (string.Equals(oldName, newName, StringComparison.Ordinal))
-            return;
-
-        if (scope == VariableScope.Player)
-        {
-            if (_playerStore.Snapshot.TryGetValue(oldName, out var current))
-            {
-                _playerStore.SetVariable(newName, CloneVariable(current, newName));
-                _playerStore.Remove(oldName);
-            }
-
-            return;
-        }
-
-        if (_saveVariables.TryGetValue(oldName, out var saveValue))
-        {
-            _saveVariables[newName] = CloneVariable(saveValue, newName);
-            _saveVariables.Remove(oldName);
-        }
-    }
-
     private void OnDefinitionsChanged(VariableScope scope)
     {
         if (scope != VariableScope.Save)

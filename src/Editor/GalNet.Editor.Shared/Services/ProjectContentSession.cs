@@ -133,7 +133,6 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     {
         if (_project is null) return;
         _project.Name = documents.CurrentDocument.Name;
-        _project.IsDirty = IsDirty;
         NotifyChanged();
     }
 

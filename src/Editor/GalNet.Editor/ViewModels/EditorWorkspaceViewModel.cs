@@ -1,17 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Avalonia;
-using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GalNet.Core.Entry;
-using GalNet.Core.Graph;
-using GalNet.Core.Settings;
-using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Controls;
@@ -49,8 +42,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
     }
     private bool _disposed;
     private bool _isSaving;
-    private bool _isApplyingHistory;
-    private readonly Dictionary<GalNet.Core.Variable.VariableScope, List<GalNet.Core.Variable.ProjectVariableDefinition>> _variableSnapshots = [];
     public IUndoRedoHistory UndoRedoHistory => _histories.Content;
     public event Action? VariableDefinitionsChanged;
 
@@ -108,12 +99,10 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         _projectChangedHandler = _ => LoadCurrentProjectGraph();
         _definitionsChangedHandler = _ =>
         {
-            RecordVariableDefinitionsChange(_);
             OnPropertyChanged(nameof(AllProjectVariableDefinitions));
             VariableDefinitionsChanged?.Invoke();
         };
         _projectService.CurrentChanged += _projectChangedHandler;
-        _documentService.DirtyStateChanged += OnDocumentDirtyStateChanged;
         _variableDefinitionService.DefinitionsChanged += _definitionsChangedHandler;
         _histories.Changed += OnHistoryChanged;
         Nodes.CollectionChanged += OnGraphCollectionChanged;
@@ -130,7 +119,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         _disposed = true;
         _localization.PropertyChanged -= OnCultureChanged;
         _projectService.CurrentChanged -= _projectChangedHandler;
-        _documentService.DirtyStateChanged -= OnDocumentDirtyStateChanged;
         _variableDefinitionService.DefinitionsChanged -= _definitionsChangedHandler;
         _histories.Changed -= OnHistoryChanged;
         _documentService.DocumentChanged -= SynchronizeGraph;
@@ -302,63 +290,15 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
 
     private async Task SaveCoreAsync()
     {
-        if (_projectService.Current is not { } project)
+        if (_projectService.Current is null)
             return;
 
         _isSaving = true;
-        try
-        {
-            if (!await _persistence.SaveCurrentProjectAsync())
-                return;
-            _histories.MarkSaved();
-            if (_histories.IsDirty) _documentService.MarkDirty();
-            else _documentService.MarkSaved();
-            project.IsDirty = _histories.IsDirty;
-        }
+        try { await _persistence.SaveCurrentProjectAsync(); }
         finally { _isSaving = false; }
     }
 
-    public async Task CreateProjectAsync(string name, string path, string contractsDirectory)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-            throw new InvalidOperationException("Project name is required.");
-
-        if (string.IsNullOrWhiteSpace(path))
-            throw new InvalidOperationException("Project path is required.");
-
-        var projectPath = Path.Combine(path, name);
-        await _projectService.CreateAsync(projectPath, name, new ProjectSettings(), contractsDirectory);
-        SetStatus(new("Status.Created", name));
-        Log.Information("Project created from startup page: {Name} at {Path}", name, projectPath);
-    }
-
     private void UpdateConnectorStates() => _graphEditingService.UpdateConnectorStates(Nodes, Edges);
-
-    private void ExecuteSelectedNodeGraphChange(
-        Func<GraphNode, bool> change,
-        Action<GraphNode>? onLogged = null)
-    {
-        if (SelectedNode is null)
-            return;
-
-        ExecuteGraphChange(
-            () => change(SelectedNode),
-            onSucceeded: null,
-            onLogged: onLogged is null ? null : () => onLogged(SelectedNode));
-    }
-
-    private void ExecuteGraphChange(
-        Func<bool> change,
-        Action? onSucceeded = null,
-        Action? onLogged = null)
-    {
-        if (!change())
-            return;
-
-        onSucceeded?.Invoke();
-        onLogged?.Invoke();
-        MarkGraphDirty();
-    }
 
     private void LoadCurrentProjectGraph()
     {
@@ -388,7 +328,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
                 Edges.Add(edge);
 
             UpdateConnectorStates();
-            CaptureVariableSnapshots();
             SelectNode(EntryNode ?? Nodes.FirstOrDefault());
         }
         catch (Exception ex)
@@ -454,14 +393,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         finally { _isLoadingGraph = false; }
     }
 
-    private void MarkGraphDirty()
-    {
-        _documentService.MarkDirty();
-        if (_projectService.Current is { } project)
-            project.IsDirty = true;
-        ScheduleAutoSave();
-    }
-
     private void OnGraphCollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs args)
     {
         if (_isLoadingGraph) return;
@@ -481,24 +412,9 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         });
     }
 
-    private void OnDocumentDirtyStateChanged(bool isDirty)
-    {
-        if (_projectService.Current is { } project)
-            project.IsDirty = isDirty || _histories.IsDirty;
-    }
-
-    private void PushGraphEdit(IUndoableEdit edit)
-    {
-        _histories.Content.PushAlreadyApplied(edit);
-        MarkGraphDirty();
-    }
-
     private void OnHistoryChanged()
     {
         if (_disposed) return;
-        CaptureVariableSnapshots();
-        if (_projectService.Current is { } project)
-            project.IsDirty = _histories.IsDirty;
         if (_histories.IsDirty && !_histories.Content.IsBusy && !_isLoadingGraph && !_isSaving)
             ScheduleAutoSave();
     }
@@ -519,54 +435,12 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         entry.ChangeAuthorType(type, parameters);
     }
 
-    public bool MoveEntryTo(GraphNode groupNode, EntryEditorItemViewModel entry, int newIndex)
-    {
-        var oldIndex = groupNode.Entries.IndexOf(entry);
-        if (oldIndex < 0 || newIndex < 0 || newIndex >= groupNode.Entries.Count || oldIndex == newIndex) return false;
-        _entryAuthoring.Move(groupNode.Id, [entry.StableId], entry.StableId, newIndex);
-        return true;
-    }
-
     private void TrackNode(GraphNode node)
     {
         node.GameTexts = _projectService.Current?.Services.GetService<GameTextAuthoringService>();
         foreach (var option in node.Options) option.BindText(node.GameTexts, node.Id);
         node.RenameRequested = value => { try { _graphAuthoring.Rename(node.Id, value); } catch (Exception failure) { ReportGraphError(failure); } };
         node.BranchValueRequested = (itemId, field, value) => EditBranch(() => _graphAuthoring.SetBranchValue(node.Id, itemId, field, value));
-    }
-
-    private void CaptureVariableSnapshots()
-    {
-        _variableSnapshots[GalNet.Core.Variable.VariableScope.Player] = _documentService.CurrentDocument.PlayerVariables.Select(item => item.Clone()).ToList();
-        _variableSnapshots[GalNet.Core.Variable.VariableScope.Save] = _documentService.CurrentDocument.SaveVariables.Select(item => item.Clone()).ToList();
-    }
-
-    private void RecordVariableDefinitionsChange(GalNet.Core.Variable.VariableScope scope)
-    {
-        if (_isLoadingGraph || _isApplyingHistory || _histories.Content.IsBusy) return;
-        var current = GetVariableDefinitions(scope).Select(item => item.Clone()).ToList();
-        if (!_variableSnapshots.TryGetValue(scope, out var before)) { _variableSnapshots[scope] = current; return; }
-        _variableSnapshots[scope] = current.Select(item => item.Clone()).ToList();
-        PushGraphEdit(new DelegateEdit("Edit variable definitions",
-            () => ReplaceVariableDefinitions(scope, before),
-            () => ReplaceVariableDefinitions(scope, current)));
-    }
-
-    private List<GalNet.Core.Variable.ProjectVariableDefinition> GetVariableDefinitions(GalNet.Core.Variable.VariableScope scope) =>
-        scope == GalNet.Core.Variable.VariableScope.Player ? _documentService.CurrentDocument.PlayerVariables : _documentService.CurrentDocument.SaveVariables;
-
-    private void ReplaceVariableDefinitions(GalNet.Core.Variable.VariableScope scope, IReadOnlyList<GalNet.Core.Variable.ProjectVariableDefinition> values)
-    {
-        _isApplyingHistory = true;
-        try
-        {
-            var target = GetVariableDefinitions(scope);
-            target.Clear(); target.AddRange(values.Select(item => item.Clone()));
-            _variableSnapshots[scope] = target.Select(item => item.Clone()).ToList();
-            OnPropertyChanged(nameof(AllProjectVariableDefinitions));
-            VariableDefinitionsChanged?.Invoke();
-        }
-        finally { _isApplyingHistory = false; }
     }
 
     private void EditBranch(Action edit) { try { edit(); } catch (Exception failure) { ReportGraphError(failure); } }

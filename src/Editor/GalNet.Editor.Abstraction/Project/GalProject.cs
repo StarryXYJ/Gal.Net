@@ -68,9 +68,6 @@ public sealed class GalProject : IDisposable, IAsyncDisposable
     /// <summary>项目级 ServiceProvider</summary>
     public IServiceProvider Services => Scope.ServiceProvider;
 
-    /// <summary>工程项目是否有未保存的修改</summary>
-    public bool IsDirty { get; set; }
-
     public GalProject(string id, string name, string rootPath, ProjectSettings settings, EditorProjectState editorState, IServiceScope scope)
     {
         Id = id;
