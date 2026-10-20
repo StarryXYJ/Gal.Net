@@ -810,5 +810,15 @@
   "Timeline.Curve.Fit": "값 범위 맞춤",
   "Timeline.Curve.Hint": "Alt+휠로 값 범위를 확대하고 Alt+드래그로 이동합니다. 키를 드래그하여 시간과 값을 변경하고 선택하여 접선 핸들을 표시합니다.",
   "Scene.CreatedAt": "{0} 프레임에서 생성",
-  "Scene.FutureAt": "{0} 프레임에서 생성 (아직 없음)"
+  "Scene.FutureAt": "{0} 프레임에서 생성 (아직 없음)",
+  "Timeline.Event.Title": "타임라인 이벤트",
+  "Timeline.Event.Add": "이벤트 추가",
+  "Timeline.Event.Label": "{0} 프레임 · {1}",
+  "Timeline.Event.Edit": "편집",
+  "Timeline.Event.Apply": "적용",
+  "Timeline.Event.Cancel": "취소",
+  "Timeline.Event.Earlier": "같은 프레임에서 앞으로",
+  "Timeline.Event.Later": "같은 프레임에서 뒤로",
+  "Timeline.Event.Delete": "이벤트 삭제",
+  "Entry.Category.Timeline": "타임라인"
 }

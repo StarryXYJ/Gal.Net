@@ -24,7 +24,7 @@ internal static class SceneTargetFieldEditor
             var empty = context.EffectiveValue is not { ValueKind: JsonValueKind.String } text || string.IsNullOrWhiteSpace(text.GetString());
             var choice = current?.Label as SceneFieldChoice;
             button.Content = choice?.EmptyLabelKey is { } key ? catalog.Text[key]
-                : choice?.Choice is { } target ? catalog.Query(choice.Snapshot.GroupId, choice.Snapshot.EntryId).Choices.FirstOrDefault(item => item.Item.Id == target.Item.Id)?.Item.Label ?? catalog.Text["Scene.Unresolved"]
+                : choice?.Choice is { } target ? catalog.Query(choice.Snapshot.GroupId, choice.Snapshot.EntryId, choice.Snapshot.Filter, choice.Snapshot.Position).Choices.FirstOrDefault(item => item.Item.Id == target.Item.Id)?.Item.Label ?? catalog.Text["Scene.Unresolved"]
                 : catalog.Text[empty ? "Scene.None" : "Scene.Unresolved"];
             picker?.Refresh();
         }

@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [跨宿主 DTO 表单样式](lessons/L-20261020-01-schema-form-host-style.md)：新 Dock/Flyout 要显式提供 SchemaForm 模板；Host.Diagnostics 不替代实际字段与子诊断检查。
+
 - [隔离构建的契约产物](lessons/L-20261019-03-isolated-contract-artifacts.md)：默认契约 Content 和 schema fixture 固定读取普通 bin；全新 artifacts 快照要用同源码产物补齐，不能借用旧 DLL。
 
 - [精确关键帧边界](lessons/L-20261019-02-timeline-exact-key-frame.md)：Step 段需验证内部键及前后分数帧；Editor 直接共用 Runtime sampler，不用时间偏移掩盖边界错误。

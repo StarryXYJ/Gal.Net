@@ -147,5 +147,5 @@ public partial class TimelinePanelView : UserControl
         menu.Closed += (_, _) => { if (ReferenceEquals(Avalonia.Controls.Primitives.FlyoutBase.GetAttachedFlyout(anchor), menu)) Avalonia.Controls.Primitives.FlyoutBase.SetAttachedFlyout(anchor, null); };
         menu.ShowAt(anchor, true);
     }
-    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e) { _objectFlyout?.Hide(); _keyFlyout?.Hide(); base.OnDetachedFromVisualTree(e); }
+    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e) { _objectFlyout?.Hide(); _keyFlyout?.Hide(); _eventFlyout?.Hide(); _eventInsertion = null; base.OnDetachedFromVisualTree(e); }
 }

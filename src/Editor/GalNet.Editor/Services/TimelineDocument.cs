@@ -42,7 +42,8 @@ internal sealed partial class TimelineDocument
             }
         }
         foreach (var track in tracks.OfType<JsonObject>()) foreach (var key in Array(track, "keys").OfType<JsonObject>()) _ = Settings(key);
-        var eventFrames = Array(_root, "events").Select(item => item is JsonObject obj ? Integer(obj, "frame", 0) : throw new InvalidDataException("Timeline.Invalid")).ToArray();
+        Events = ReadEvents();
+        var eventFrames = Events.Select(item => item.Frame).ToArray();
         if (eventFrames.Any(frame => frame < 0 || frame > Duration)) throw new InvalidDataException("Timeline.Invalid");
         MinimumDuration = Math.Max(Tracks.SelectMany(track => track.Keys).Select(key => key.Frame).DefaultIfEmpty(0).Max(), eventFrames.DefaultIfEmpty(0).Max());
     }

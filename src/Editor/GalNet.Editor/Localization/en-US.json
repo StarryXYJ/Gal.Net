@@ -810,5 +810,15 @@
   "Timeline.Curve.Fit": "Fit values",
   "Timeline.Curve.Hint": "Alt+wheel zooms values; Alt+drag pans. Drag keys to edit time and value; select keys to show tangent handles.",
   "Scene.CreatedAt": "Created at frame {0}",
-  "Scene.FutureAt": "Created at frame {0} (not present yet)"
+  "Scene.FutureAt": "Created at frame {0} (not present yet)",
+  "Timeline.Event.Title": "Timeline events",
+  "Timeline.Event.Add": "Add event",
+  "Timeline.Event.Label": "Frame {0} · {1}",
+  "Timeline.Event.Edit": "Edit",
+  "Timeline.Event.Apply": "Apply",
+  "Timeline.Event.Cancel": "Cancel",
+  "Timeline.Event.Earlier": "Earlier at this frame",
+  "Timeline.Event.Later": "Later at this frame",
+  "Timeline.Event.Delete": "Delete events",
+  "Entry.Category.Timeline": "Timeline"
 }

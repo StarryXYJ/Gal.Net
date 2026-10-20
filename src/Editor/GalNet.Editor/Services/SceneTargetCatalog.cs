@@ -52,10 +52,10 @@ public sealed class SceneTargetCatalog(ProjectSceneTargets query, IEditorDocumen
         if (!snapshot.Choices.Any(choice => choice.Item.Id == id) || !IsCurrent(snapshot)) return null;
         return Query(snapshot.GroupId, snapshot.EntryId, snapshot.Filter, snapshot.Position).Choices.FirstOrDefault(choice => choice.Item.Id == id)?.Target;
     }
-    public IReadOnlyList<FieldEditorOption>? FieldOptions(string groupId, string entryId, string type, string field)
+    public IReadOnlyList<FieldEditorOption>? FieldOptions(string groupId, string entryId, string type, string field, SceneTimelinePosition? position = null)
     {
         var kinds = SceneFieldSemantics.TargetKinds(type, field); if (kinds is null) return null;
-        var snapshot = Query(groupId, entryId, target => kinds.Contains(target.Kind));
+        var snapshot = Query(groupId, entryId, target => kinds.Contains(target.Kind), position);
         var noneKey = type == BuiltinEntryIds.ApplyEffect ? "Scene.Global" : "Scene.None";
         var none = new ResourcePickerItem("none", localization[noneKey], "", "×");
         return new[] { new FieldEditorOption("none", new SceneFieldChoice(snapshot, null, none, noneKey), JsonSerializer.SerializeToElement("")) }

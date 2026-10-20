@@ -810,5 +810,15 @@
   "Timeline.Curve.Fit": "値域に合わせる",
   "Timeline.Curve.Hint": "Alt+ホイールで値域を拡大縮小、Alt+ドラッグで移動。キーをドラッグして時間と値を変更し、選択して接線ハンドルを表示します。",
   "Scene.CreatedAt": "フレーム {0} で作成",
-  "Scene.FutureAt": "フレーム {0} で作成（まだ存在しません）"
+  "Scene.FutureAt": "フレーム {0} で作成（まだ存在しません）",
+  "Timeline.Event.Title": "タイムラインイベント",
+  "Timeline.Event.Add": "イベント追加",
+  "Timeline.Event.Label": "フレーム {0} · {1}",
+  "Timeline.Event.Edit": "編集",
+  "Timeline.Event.Apply": "適用",
+  "Timeline.Event.Cancel": "キャンセル",
+  "Timeline.Event.Earlier": "同一フレームで前へ",
+  "Timeline.Event.Later": "同一フレームで後へ",
+  "Timeline.Event.Delete": "イベント削除",
+  "Entry.Category.Timeline": "タイムライン"
 }

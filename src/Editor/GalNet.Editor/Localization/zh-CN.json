@@ -810,5 +810,15 @@
   "Timeline.Curve.Fit": "适应值域",
   "Timeline.Curve.Hint": "Alt＋滚轮缩放值域，Alt＋拖动平移。拖动关键帧调整时间和值；选中后显示切线柄。",
   "Scene.CreatedAt": "第 {0} 帧创建",
-  "Scene.FutureAt": "第 {0} 帧创建（尚未存在）"
+  "Scene.FutureAt": "第 {0} 帧创建（尚未存在）",
+  "Timeline.Event.Title": "时间轴事件",
+  "Timeline.Event.Add": "添加事件",
+  "Timeline.Event.Label": "第 {0} 帧 · {1}",
+  "Timeline.Event.Edit": "编辑",
+  "Timeline.Event.Apply": "应用",
+  "Timeline.Event.Cancel": "取消",
+  "Timeline.Event.Earlier": "同帧提前",
+  "Timeline.Event.Later": "同帧延后",
+  "Timeline.Event.Delete": "删除事件",
+  "Entry.Category.Timeline": "时间轴"
 }

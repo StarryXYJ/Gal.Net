@@ -14,9 +14,11 @@ namespace GalNet.Editor.Controls;
 /// <summary>Editor-owned presentation extensions; value conversion and submission stay in the shared factory.</summary>
 public static class EditorFieldEditors
 {
-    public static EditorRegistry CreateDefault(SceneTargetCatalog? scenes = null, Action<FieldEditorContext>? openTimeline = null)
+    public static EditorRegistry CreateDefault(SceneTargetCatalog? scenes = null, Action<FieldEditorContext>? openTimeline = null, GalNet.Core.Assets.IAssetManager? assets = null)
     {
         var registry = EditorRegistry.CreateDefault(emptyInputClearsOptionalFields: true);
+        registry.Register("entry.imageasset", context => AssetFieldEditor.Create(context, assets, Models.AssetPickerFilter.Image));
+        registry.Register("entry.effectprogramasset", context => AssetFieldEditor.Create(context, assets, Models.AssetPickerFilter.EffectProgram));
         registry.RegisterDefault<LayerTransform>(TransformFieldEditor.Create);
         registry.RegisterMember<LayerShowOptions>(value => value.Transform, TransformFieldEditor.Create);
         registry.RegisterMember<LayerColorOptions>(value => value.Transform, TransformFieldEditor.Create);

@@ -63,6 +63,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         InitializeCanvas();
         selection.Changed += OnSelection; documents.DocumentChanged += Refresh; histories.Changed += Refresh;
         localization.PropertyChanged += OnLocale;
+        InitializeEvents();
         Refresh();
     }
     private void OnSelection() { ClearObjectDrafts(); _frame = 0; OnPropertyChanged(nameof(Frame)); Refresh(); }
@@ -71,6 +72,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         if (args.PropertyName != "Item[]") return;
         foreach (var row in Rows) row.RefreshLabel();
         foreach (var node in Tree.SelectMany(node => node.Descendants())) node.RefreshLabel();
+        foreach (var row in Events) row.RefreshLabel();
         if (Message.Length != 0) Message = _localization["Timeline.EditRejected"];
     }
     private EditorEntryData? Find(ActiveEntrySelection? target) => !_documents.IsLoaded || target?.EntryId is null
@@ -89,6 +91,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         { RefreshSource(); foreach (var node in Tree.SelectMany(node => node.Descendants())) node.RefreshLabel(); return; }
         EndObjectEdit(); _scene = scene; _sceneSignature = sceneSignature;
         SaveExpansion(); DetachTree(); InvalidateKeyDocument(); _generation++; Rows.Clear(); Tree.Clear(); _document = null; _baseline = null; Message = "";
+        InvalidateEvents();
         _target = _selection.Current; _entry = next; _type = next?.Type; _baseline = root;
         CanCreate = false; CanEdit = false; Duration = 0; FrameRate = 60;
         RefreshSource();
@@ -144,7 +147,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
                 }
             BuildTree();
         }
-        SyncCanvasDocument(); NotifyState();
+        SyncCanvasDocument(); SyncEvents(); NotifyState();
     }
     public void Create()
     {
@@ -187,6 +190,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
     public void CancelInput() { if (!_disposed) { Canvas.Cancel(); CancelTimingInput(false); CancelTimingInput(true); BuildRows(); } }
     public void Dispose()
     {
+        DisposeEvents();
         Canvas.PropertyChanged -= OnCanvasSelection; KeyEdit = null;
         if (_disposed) return; EndObjectEdit(); _disposed = true; DetachTree(); InvalidateKeyDocument(); _generation++; Rows.Clear(); Tree.Clear();
         _selection.Changed -= OnSelection; _documents.DocumentChanged -= Refresh; _histories.Changed -= Refresh;

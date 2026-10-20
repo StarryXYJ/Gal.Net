@@ -70,7 +70,7 @@ public static class EditorServiceCollectionExtensions
         {
             if (context.IsEnabled && context.HostContext is Models.Graph.IEntryFieldOrigin { GroupId: { } groupId } origin)
                 sp.GetRequiredService<EditorDockFactory>().OpenTimeline(groupId, origin.EntryId);
-        }));
+        }, sp.GetRequiredService<IAssetManager>()));
         services.AddScoped<IGraphEditingService, GraphEditingService>();
         services.AddScoped<GraphSelectionState>();
         services.AddScoped<EditorWorkspacePersistence>();
