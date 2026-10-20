@@ -87,3 +87,26 @@
 - 最终八个源码文件 whitespace/IDE0005 verify 通过；七个独占文件 SHA256 与候选一致，共享 EditorFieldEditors 仅核验并提交五行转场注册，保留工作区其他文本服务注册。原始证据位于前述 timeline-validation 目录，前缀 transitions-c2-，包含初始基线 archive、已提交集成 overlay、八文件最终源码 archive、源码指纹、构建/格式日志和所有 TRX。完成后清理已核对绝对路径的临时快照，只提交本切片代码、测试、文档与 lesson。
 
 P6e4c 仍在实施；后续为 effect metadata/flipbook 能力、播放实例 Locator、其他内置语义与缺目标运行时独立核验。实时游戏预览不加入本阶段。
+
+
+### P6e4c3a：Flipbook 索引能力
+
+状态：verified（2026-10-21，保留两项已独立复现的 Group 布局基线失败）。c3 拆为直接来自作者 JSON 的 flipbook 能力和需要异步资源读取的效果 metadata 两个可验证切片。本轮仅实现前者，不将效果资源缓存或 shader 编译列为已完成。
+
+只为 layer.show 中非空且布局有效的 FlipbookDefinition 提供 Core 声明的 flipbook.index；保留原始浮点索引，不取整、不按 FrameCount 限定动画值。Move/Replace 保留该能力，重新显示静态层移除该能力。无效布局仅保留基础层事实并标记不完整；无效索引不给可写初值，坏 JSON 不发布新层。条件/分支与 Timeline 事件/未来候选/采样复用现有分析，既有无法解析的轨道保留。
+
+验证边界：静态/null/default/无效定义、原始浮点与超帧数值、分支能力交集、事件首帧与未来候选、Core 现有独立行为、实际属性菜单及 NumericUpDown、单步 Undo/Redo、能力移除后的旧行失效、四语和保存重开。P6e4c3b 继续接入 shader 注释 metadata 的异步资源快照及刷新，不在同步查询中读取或编译 GPU 程序。
+
+
+#### P6e4c3a 验证证据
+
+- 隔离基线 d0105ba，只覆盖本轮三个 C# 文件。首轮编译的唯一错误是测试调用了内部 Descendants 方法；改用公开 Children 检查，没有扩展产品 API。最终解决方案构建成功，42 警告、0 错误。默认契约和 schema fixture 固定路径产物均来自同一候选源码，工作区其他本地化界面工作未纳入候选。
+- 场景分析专项 67 项通过，包含本轮 12 项：浮点/超帧数值、null/默认/无效布局/整数容量溢出/负初值、坏 JSON 不发布新对象、Move/Replace/重新 Show、条件与分支能力交集、事件未来候选和共用采样。实际 Timeline 用例通过属性“＋”菜单和 NumericUpDown 写入 7.25，验证第 0 帧保持 2.5、单步撤销重做、旧行失效不删除轨道、四语及保存重开，保留未知字段和大整数。
+- 最终六项目 921 通过、2 失败、0 跳过：Editor 226/2、Editor.Shared 312/0、Architecture 45/0、Core 111/0、Primitives.Builtins 117/0、Integration 110/0。Core 的现有独立用例确认静态层拒绝索引动画、非空 flipbook 接受超帧数原始索引而只夹取显示格子。保留的两项失败仍是此前独立复现的 Group 尾部留白/窄面板宽度，未修改布局或放宽断言。未运行原生媒体测试。
+- 最终三个源码文件 whitespace/IDE0005 verify 通过，SHA256 与主工作区一致；证据在上述 timeline-validation 目录，前缀 flipbook-c3a-，含基线/候选源码 archive、三个文件清单、源码指纹、构建/格式日志与 TRX。完成后删除核对绝对路径的临时快照，只提交本切片代码、测试和文档。
+
+### P6e4c3b：效果 metadata 资源快照
+
+状态：planned。效果参数声明来自 shader 源码注释，不是 EffectProgramAssetMeta 字段；复用 Core 的 ShaderEffectMetadataParser 和中立描述，不调用 Skia shader 编译器。需要单列异步资源准备、不可变快照代次、资源更新/关闭取消及旧选择 lease 失效；同步场景查询只读取已准备的事实，不能阻塞 UI 等待文件读取。
+
+后续验证必须覆盖 program 与 legacy catalog 的区分、animatable 标记和受支持标量属性、静态参数/metadata 默认值与现有运行路径一致、缺失/坏资源的保守能力，以及 Timeline 事件、属性菜单和保存闭环。本切片仍未实施，不因 flipbook 接入而标记完成；播放实例 Locator 和缺目标运行时独立核验仍保留后续。

@@ -139,8 +139,21 @@ public sealed partial class SceneTargetAnalysis
             if (create)
             {
                 values["opacity"] = Number("opacity", 1);
-                // Flipbook capability requires an actual flipbook; don't advertise it on static layers.
-                Create(handle, SceneTargetKind.Layer, Text(entry.Type == BuiltinEntryIds.PlayVideo ? "asset" : entry.Type == BuiltinEntryIds.ShowColorLayer ? "color" : "assetId"), Layer.AnimationProperties.Where(property => property.Name != "flipbook.index"), values);
+                var properties = Layer.AnimationProperties.Where(property => property.Name != "flipbook.index").ToList();
+                if (entry.Type == BuiltinEntryIds.ShowLayer && entry.Parameters.TryGetValue("flipbook", out var raw) && raw.ValueKind is not (JsonValueKind.Null or JsonValueKind.Undefined))
+                {
+                    var flipbook = raw.Deserialize<FlipbookDefinition>(TimelineJson);
+                    if (flipbook is { IsValid: true })
+                    {
+                        var property = Layer.AnimationProperties.Single(property => property.Name == "flipbook.index");
+                        properties.Add(property);
+                        // Runtime stores the raw float index; only rendering floors/clamps it to a cell.
+                        if (property.Accepts(flipbook.Index)) values[property.Name] = flipbook.Index;
+                        else state.Complete = false;
+                    }
+                    else if (flipbook is not null) state.Complete = false;
+                }
+                Create(handle, SceneTargetKind.Layer, Text(entry.Type == BuiltinEntryIds.PlayVideo ? "asset" : entry.Type == BuiltinEntryIds.ShowColorLayer ? "color" : "assetId"), properties, values);
             }
             else if (state.Targets.TryGetValue(handle, out var target) && target.Kind == SceneTargetKind.Layer)
                 state.Targets[handle] = target with { Values = new ReadOnlyDictionary<string, float>(target.Values.Where(pair => !values.ContainsKey(pair.Key)).Concat(values).ToDictionary(pair => pair.Key, pair => pair.Value)) };

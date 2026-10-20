@@ -4,7 +4,7 @@ title: Editor 创作工作区重构
 type: refactor
 status: in-progress
 created: 2026-10-15
-updated: 2026-10-20
+updated: 2026-10-21
 ---
 
 # Editor 创作工作区重构
