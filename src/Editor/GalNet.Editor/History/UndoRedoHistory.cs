@@ -271,9 +271,10 @@ public sealed class UndoRedoHistory(int capacity = 200, long byteBudget = 1024L 
 
 public sealed class HistoryRepairRequiredException(string message, Exception innerException) : Exception(message, innerException);
 
-public sealed class AsyncCompositeEdit(string description, IReadOnlyList<IAsyncUndoableEdit> edits) : IAsyncUndoableEdit, IDisposable
+public sealed class AsyncCompositeEdit(string description, IReadOnlyList<IAsyncUndoableEdit> edits, EditorText? display = null) : IAsyncUndoableEdit, IDisposable
 {
     public string Description { get; } = description;
+    public EditorText DisplayText => display ?? EditorText.History(Description);
     public long RetainedBytes => edits.Sum(edit => edit.RetainedBytes);
     public void Dispose()
     {
@@ -307,6 +308,15 @@ public sealed class AsyncCompositeEdit(string description, IReadOnlyList<IAsyncU
             throw;
         }
     }
+}
+
+public sealed class AsyncEditAdapter(IUndoableEdit edit) : IAsyncUndoableEdit
+{
+    public string Description => edit.Description;
+    public EditorText DisplayText => edit.DisplayText;
+    public long RetainedBytes => edit.RetainedBytes;
+    public ValueTask RedoAsync() { edit.Redo(); return ValueTask.CompletedTask; }
+    public ValueTask UndoAsync() { edit.Undo(); return ValueTask.CompletedTask; }
 }
 
 public sealed class DelegateEdit(string description, Action undo, Action redo) : IUndoableEdit

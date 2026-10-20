@@ -65,6 +65,7 @@ public partial class GraphNode : ObservableObject
         }
     }
     private Action<string, string, string?>? _branchValueRequested;
+    internal GameTextAuthoringService? GameTexts { get; set; }
     public Action<string, string, string?>? BranchValueRequested
     {
         get => _branchValueRequested;
@@ -83,7 +84,7 @@ public partial class GraphNode : ObservableObject
             var item = Options.FirstOrDefault(item => ReferenceEquals(item.Source, options[i]));
             if (item is null) { item = new(options[i]); Options.Insert(i, item); }
             else if (Options.IndexOf(item) != i) Options.Move(Options.IndexOf(item), i);
-            item.ChangeRequested = BranchValueRequested; item.Refresh();
+            item.ChangeRequested = BranchValueRequested; item.BindText(GameTexts, Id); item.Refresh();
         }
         for (var i = 0; i < conditions.Length; i++)
         {
@@ -484,7 +485,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     }
 
     private static bool UsesDedicatedEditor(FieldDescriptor field, EntryParameterType type) =>
-        field.Semantic != FieldValueSemantic.CharacterReference && field.Value.ValueType == typeof(string) && type is (EntryParameterType.MultilineText or EntryParameterType.Autocomplete
+        field.Semantic == FieldValueSemantic.None && field.Value.ValueType == typeof(string) && type is (EntryParameterType.MultilineText or EntryParameterType.Autocomplete
             or EntryParameterType.VariableName or EntryParameterType.Expression or EntryParameterType.ImageAsset or EntryParameterType.AudioAsset
             or EntryParameterType.VideoAsset or EntryParameterType.EffectProgramAsset)
             && field.Editor?.EditorId == "entry." + type.ToString().ToLowerInvariant();
@@ -543,7 +544,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         try
         {
             if (_formParameters is { } parameters)
-                parameters.ValidatePartialArguments(JsonSerializer.SerializeToElement(updated.Where(pair => parameters.Fields.Any(field => field.Id == pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value)));
+                parameters.ValidatePartialArguments(JsonSerializer.SerializeToElement(updated.Where(pair => patch.ContainsKey(pair.Key) && parameters.Fields.Any(field => field.Id == pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value)));
         }
         catch (Exception exception) when (exception is ArgumentException or JsonException)
         { return new("entry.arguments", exception.Message); }
@@ -585,6 +586,14 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
 
 public partial class BranchOptionEditorItemViewModel : ObservableObject
 {
+    public GameTextAuthoringService? GameTexts { get; private set; }
+    public IFieldBinding? TextBinding { get; private set; }
+    internal void BindText(GameTextAuthoringService? service, string node)
+    {
+        if (ReferenceEquals(GameTexts, service)) return;
+        GameTexts = service; TextBinding = service?.BranchBinding(node, Source);
+        OnPropertyChanged(nameof(GameTexts)); OnPropertyChanged(nameof(TextBinding));
+    }
     public EditorGraphBranchOptionDto Source { get; }
     public string Id { get => Source.Id; init => Source.Id = value; }
     public Action<string, string, string?>? ChangeRequested { get; set; }

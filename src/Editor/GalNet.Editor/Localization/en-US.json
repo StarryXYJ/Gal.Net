@@ -1,4 +1,12 @@
 {
+  "Error.text.changed": "The text reference changed. Reload this draft.",
+  "Error.text.conflict": "Conflicting edits target the same shared text.",
+  "History.GameText": "Game text: {0}",
+  "GameText.Placeholder": "Enter development-language text",
+  "GameText.Missing": "Development-language text is missing",
+  "GameText.Shared": "Shared text: changes affect {0} references",
+  "Error.text.localeChanged": "The project development language changed. Reload this draft.",
+  "Form.CopyElement": "Copy element",
   "Dock.Panel.Characters": "Characters",
   "History.Character": "Edit character: {0}",
   "Characters.Add": "Add character",

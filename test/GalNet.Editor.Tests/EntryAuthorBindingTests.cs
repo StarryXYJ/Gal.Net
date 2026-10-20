@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using GalNet.Contracts.Builtins;
@@ -50,9 +51,13 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var field = form.Contexts.Single(context => context.Field.Id == "duration");
                 ((TextBox)form.Editors.Single(editor => editor.Context == field).Control).Text = "4.25"; Dispatcher.UIThread.RunJobs();
                 Assert.That(await field.CommitTextAsync(), Is.True); Assert.That(wait.Source.Parameters["duration"].GetSingle(), Is.EqualTo(4.25f));
-                var content = view1.GetVisualDescendants().OfType<TextBox>().Single(input => input.DataContext is TextEntryParameterEditorItemViewModel { Id: "content" });
+                var content = view1.GetVisualDescendants().OfType<TextBox>().Single(input => input.Name == "GameTextInput");
                 content.Text = "Written through the author intent"; Dispatcher.UIThread.RunJobs();
-                Assert.That(text.Source.Parameters["content"].GetString(), Is.EqualTo(content.Text));
+                content.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter, KeyModifiers = KeyModifiers.Control });
+                var texts = project.Services.GetRequiredService<GameTextAuthoringService>();
+                await PumpCharacterUi(() => texts.Read(text.Source.Parameters["content"].GetString()!) == "Written through the author intent");
+                var contentKey = text.Source.Parameters["content"].GetString()!;
+                Assert.That(contentKey, Is.Not.EqualTo(content.Text));
                 var oldForm = wait.ParameterForm!;
                 window1.Content = null; window2.Content = null; page1.Dispose(); page2.Dispose();
                 Assert.That(await oldForm.Binding(oldForm.Fields.First()).CommitAsync(new(JsonSerializer.SerializeToElement(8)), CancellationToken.None), Is.Not.Null);
@@ -65,7 +70,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var reopened = await projects.OpenAsync(path); var groups = reopened.Services.GetRequiredService<EditorGroupProjectionStore>();
                 Assert.That(groups.Get(firstId).Entries.Single().StableId, Is.EqualTo(stableId));
                 Assert.That(groups.Get(firstId).Entries.Single().Condition, Is.EqualTo("true"));
-                Assert.That(groups.Get(firstId).Entries.Single().Parameters["content"], Is.EqualTo("Written through the author intent"));
+                Assert.That(groups.Get(firstId).Entries.Single().Parameters["content"], Is.EqualTo(contentKey));
+                Assert.That(reopened.Services.GetRequiredService<GameTextAuthoringService>().Read(contentKey), Is.EqualTo("Written through the author intent"));
                 Assert.That(groups.Get(secondId).Entries.Single().Source.Parameters["duration"].GetSingle(), Is.EqualTo(4.25f));
                 await projects.CloseAsync();
             }

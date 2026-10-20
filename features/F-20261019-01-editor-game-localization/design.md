@@ -58,6 +58,8 @@ JSON 修改只改目标叶值，保留其他属性、未知信息和文件归属
 
 普通标量文本建议首次生成 entry_<StableId>_<member>。属性名转义/哈希必须确定且防碰撞，生成后检查全项目占用。key 为不透明身份，分类和归属按引用计算，不解析 key 前缀。
 
+P4 实施细化：采用 text_<owner>_<GUID> 的不透明文本 key；owner 可为稳定 Entry/option ID 或 copy/item，任何重排都不解析或重建 key。表单提交中只短暂使用编辑意图，作者文件与历史保存最终 key。Entry/Graph 剪贴板提升为 version 2，携带包内各语言有效文本和复核快照，直接拒绝旧版。
+
 - 更新原文、Entry 重排、保存重开：保留已存 key。
 - Entry 跨组移动：保留 key，分类随引用改变，不按新 Group 重算。
 - 复制 Entry/Group：新 Entry 身份，复制批次建立旧 key→新 key 映射并复制所有现有译文；角色引用仍共享。相互独立的文本副本不按相同原文合并。

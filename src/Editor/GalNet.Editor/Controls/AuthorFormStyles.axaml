@@ -13,6 +13,7 @@
             <Setter Property="forms:StructuredFieldEditor.ListText" Value="{loc:Localize Form.List}" />
             <Setter Property="forms:StructuredFieldEditor.RepairText" Value="{loc:Localize Form.Repair}" />
             <Setter Property="forms:StructuredFieldEditor.AddText" Value="{loc:Localize Form.AddElement}" />
+            <Setter Property="forms:StructuredFieldEditor.CopyText" Value="{loc:Localize Form.CopyElement}" />
             <Setter Property="forms:StructuredFieldEditor.RemoveText" Value="{loc:Localize Form.RemoveElement}" />
             <Setter Property="forms:StructuredFieldEditor.UpText" Value="{loc:Localize Form.MoveUp}" />
             <Setter Property="forms:StructuredFieldEditor.DownText" Value="{loc:Localize Form.MoveDown}" />

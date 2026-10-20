@@ -111,7 +111,7 @@ public partial class EntryListEditorControl : ReorderableListControl
             if (e.Key == Key.C) await CopySelectionAsync();
             else if (e.Key == Key.X) await CopySelectionAsync(cut: true);
             else if (e.Key == Key.V) await PasteSelectionAsync();
-            else if (e.Key == Key.D) await RunEntryAction(vm => { vm.DuplicateSelection(); return Task.CompletedTask; });
+            else if (e.Key == Key.D) await RunEntryAction(vm => vm.DuplicateSelectionAsync());
             else ItemsListBox.SelectAll();
             return;
         }
@@ -155,7 +155,7 @@ public partial class EntryListEditorControl : ReorderableListControl
     {
         var anchor = vm.SelectedEntry?.StableId;
         var text = await ReadClipboardAsync();
-        if (!vm.IsDisposed && ReferenceEquals(DataContext, vm)) vm.Paste(text ?? "", anchor);
+        if (!vm.IsDisposed && ReferenceEquals(DataContext, vm)) await vm.PasteAsync(text ?? "", anchor);
     });
 
     protected virtual Task WriteClipboardAsync(string text) => (TopLevel.GetTopLevel(this)?.Clipboard
@@ -194,7 +194,7 @@ public partial class EntryListEditorControl : ReorderableListControl
         Add("Entry.Menu.Copy", "Ctrl+C", () => CopySelectionAsync(), selected);
         Add("Entry.Menu.Cut", "Ctrl+X", () => CopySelectionAsync(cut: true), selected);
         Add("Entry.Menu.Paste", "Ctrl+V", PasteSelectionAsync);
-        Add("Entry.Menu.Duplicate", "Ctrl+D", () => RunEntryAction(model => { model.DuplicateSelection(); return Task.CompletedTask; }), selected);
+        Add("Entry.Menu.Duplicate", "Ctrl+D", () => RunEntryAction(model => model.DuplicateSelectionAsync()), selected);
         Add("Entry.Menu.Delete", "Delete", () => RunEntryAction(model => { model.DeleteSelection(); return Task.CompletedTask; }), selected);
         menu.Items.Add(new Separator());
         Add("Entry.Menu.SelectAll", "Ctrl+A", () => { ItemsListBox.SelectAll(); return Task.CompletedTask; });

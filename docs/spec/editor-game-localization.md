@@ -1,6 +1,6 @@
 # Editor 游戏本地化基础
 
-当前实现包含字段语义、项目索引、受管理本地化文档写入和角色管理 Dock/speaker 输入（F-20261019-01 / P1–P3）。正文的默认语言表单映射、多语言表格及导入导出仍是后续阶段。
+当前实现包含字段语义、项目索引、受管理本地化文档、角色表/speaker 输入、默认语言正文/分支编辑与稳定复制身份（F-20261019-01 / P1–P4）。多语言表格、语言管理及导入导出仍是后续阶段。只支持当前作者格式，没有旧 Speakers 或角色迁移入口。
 
 ## 字段值语义
 
@@ -76,4 +76,24 @@ CharacterAuthoringService 以 catalog 为唯一角色身份来源，以项目 Ta
 
 角色身份只来源于 catalog，ProjectSettings 不再包含 Speakers。没有旧角色候选、旧姓名迁移或导入兼容入口；未知 speaker ID 报告 character.unknown。原文/JSON 草稿冲突沿用受管理文档的校验与保留规则。
 
-实现与验证记录见 [P1](../../features/F-20261019-01-editor-game-localization/phase-1.md)、[P2](../../features/F-20261019-01-editor-game-localization/phase-2.md)、[P3](../../features/F-20261019-01-editor-game-localization/phase-3.md)，完整目标见 [设计](../../features/F-20261019-01-editor-game-localization/design.md)。
+## 默认语言文本与稳定身份
+
+LocalizedText 字段使用 GameTextAuthoringService 与专属编辑器，读取项目 TargetLocale 的直接文本；UI 语言切换不改变作者值。缺译显示提示，不显示 key 或其他语言的回退文本。共享 key 显示引用数量，修改影响全部共享位置；未标记字符串保持原值语义。
+
+初次提交生成不依赖位置的 GUID 文本 key，正常修改沿用原 key。Entry StableId、选项 id、文本 key 是不同身份；移动 Entry/列表项搬运含 key 的原 JSON，不能按新位置重算。null、缺省与显式空译文分别保留；打开表单不创建文本，清空文本并明确提交得到空字符串译文，移除字段不自动删除翻译。
+
+单行 Enter、多行 Ctrl+Enter 和失焦提交，普通多行 Enter 输入换行；Escape 还原草稿，IME 组合态不提交。控件固定首次输入时的原引用、原文与开发语言基线，引用重绑定、原文变化、切开发语言、删除或关闭项目后，过期草稿不能覆盖当前值。根字段和嵌套 DTO/列表走同一语义提交边界；原文、复核状态与引用更新是一条历史。角色与正文在同一次 DTO 提交中也保持单次历史。
+
+Entry/Graph 剪贴板 version 2 保存作者数据及各语言当前生效的包内文本快照，旧剪贴板直接拒绝；External 和被遮蔽的定义不作为复制译文。复制批次为原文本 key 分配新 key，保留批次内共享关系，各语言文本和已有复核状态一起复制。普通字符串、未知 JSON、nullable/default 保留，角色 ID 仍共享；跨项目复制文本使用快照，缺角色仍按当前项目诊断，不自动迁移 catalog。
+
+列表的“复制项”使用相同语义规则。副本不会按相同原文自动合并；原本缺开发语言文本的副本仍缺译，不伪造空字符串。复制后的移动和保存重开保持新 key，撤销/重做恢复同一身份。
+
+新翻译/metadata 文件先建立空 Saved 基线，实际值与复制内容进入 Working。含本地化引用的 Graph 复制在结构发布时使用空 Group 内容/空选项文本作为 Saved 基线；Working 持有完整副本，Save All 才整体发布，避免撤销→保存→重做时提前发布缺少译文的新 key。历史不持有控件或输入草稿。
+
+## 原文指纹与复核状态
+
+Graph/localization-authoring.json 的可选 textStates 记录每个文本 key 的 sourceLocale、sourceFingerprint 和 translations（locale→原文指纹或 null）。指纹为原文 UTF-8 的 SHA-256，不复制译文值作为第二作者来源。源文变化保留各语言译文；有旧原文关联的译文标为需复核，没有关联证据时保持未知。角色姓名修改复用该记录，复制保留已有状态，跨开发语言复制按目标开发原文建立状态。
+
+字符编号预留和文本历史共享 metadata 文件，但 characterHighWater 不可撤销。文本历史只对该字段允许单调重基，应用 before/after 时保留当前更高预留值；其他 metadata 内容仍严格检查。不能为了撤销文本而回退编号，也不能借此忽略其他冲突。
+
+实现与验证记录见 [P1](../../features/F-20261019-01-editor-game-localization/phase-1.md)、[P2](../../features/F-20261019-01-editor-game-localization/phase-2.md)、[P3](../../features/F-20261019-01-editor-game-localization/phase-3.md)、[P3a](../../features/F-20261019-01-editor-game-localization/phase-3a.md)、[P4](../../features/F-20261019-01-editor-game-localization/phase-4.md)，完整目标见 [设计](../../features/F-20261019-01-editor-game-localization/design.md)。

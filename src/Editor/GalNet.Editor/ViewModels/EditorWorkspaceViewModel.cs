@@ -529,6 +529,8 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
 
     private void TrackNode(GraphNode node)
     {
+        node.GameTexts = _projectService.Current?.Services.GetService<GameTextAuthoringService>();
+        foreach (var option in node.Options) option.BindText(node.GameTexts, node.Id);
         node.RenameRequested = value => { try { _graphAuthoring.Rename(node.Id, value); } catch (Exception failure) { ReportGraphError(failure); } };
         node.BranchValueRequested = (itemId, field, value) => EditBranch(() => _graphAuthoring.SetBranchValue(node.Id, itemId, field, value));
     }

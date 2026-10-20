@@ -42,7 +42,7 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
     public Task<bool> ResetDefaultAsync() => Field.DefaultValue is { } value ? CommitAsync(new(value)) : Task.FromResult(false);
     public Task<bool> ResetAsync() => !CanReset ? Task.FromResult(false) : HasDefault ? ResetDefaultAsync() : OmitAsync();
     public void RevertDraft() { if (_disposed) return; _dirty = false; _pending = null; Issue = null; _draftVersion++; Refresh(); }
-    internal void ReportIssue(ValueIssue issue) { if (!_disposed) { Issue = issue; Notify(); } }
+    public void ReportIssue(ValueIssue issue) { if (!_disposed) { Issue = issue; Notify(); } }
     internal void UseJsonText() { _jsonText = true; Refresh(); }
     public FieldValue Value { get; private set; }
     public JsonElement? EffectiveValue => (_pending ?? Value).Json ?? Field.DefaultValue;

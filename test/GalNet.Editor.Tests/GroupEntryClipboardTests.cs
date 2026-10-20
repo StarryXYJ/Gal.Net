@@ -36,10 +36,10 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         group.Entries.CollectionChanged += failOnce;
         try
         {
-            shouldFail = true; Assert.Throws<IOException>(() => author.Paste(group.Id, clip, null)); Assert.That(group.Entries, Is.EqualTo(original)); Assert.That(history.CanUndo, Is.False);
+            shouldFail = true; Assert.ThrowsAsync<IOException>(async () => await author.PasteAsync(group.Id, clip, null)); Assert.That(group.Entries, Is.EqualTo(original)); Assert.That(history.CanUndo, Is.False);
             shouldFail = true; Assert.Throws<IOException>(() => author.Delete(group.Id, [original[0].StableId, original[2].StableId])); Assert.That(group.Entries, Is.EqualTo(original)); Assert.That(history.CanUndo, Is.False);
             shouldFail = true; Assert.Throws<IOException>(() => author.Move(group.Id, [original[0].StableId], original[0].StableId, 2)); Assert.That(group.Entries, Is.EqualTo(original)); Assert.That(history.CanUndo, Is.False);
-            var inserted = author.Paste(group.Id, clip, null); var withPaste = group.Entries.ToArray(); shouldFail = true;
+            var inserted = await author.PasteAsync(group.Id, clip, null); var withPaste = group.Entries.ToArray(); shouldFail = true;
             try { await history.UndoAsync(); Assert.Fail("Expected observer failure."); } catch (IOException) { }
             Assert.That(group.Entries, Is.EqualTo(withPaste)); Assert.That(history.CanUndo, Is.True); Assert.That(history.CanRedo, Is.False);
             await history.UndoAsync(); Assert.That(group.Entries, Is.EqualTo(original)); shouldFail = true;
@@ -51,7 +51,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         history.Clear();
         NotifyCollectionChangedEventHandler failAlways = (_, _) => throw new IOException("persistent observer failure");
         group.Entries.CollectionChanged += failAlways;
-        try { Assert.Throws<HistoryRepairRequiredException>(() => author.Paste(group.Id, clip, null)); Assert.That(history.RepairRequired, Is.True); Assert.That(project.Services.GetRequiredService<IProjectContentSession>().RepairRequired, Is.True); }
+        try { Assert.ThrowsAsync<HistoryRepairRequiredException>(async () => await author.PasteAsync(group.Id, clip, null)); Assert.That(history.RepairRequired, Is.True); Assert.That(project.Services.GetRequiredService<IProjectContentSession>().RepairRequired, Is.True); }
         finally { group.Entries.CollectionChanged -= failAlways; await projects.CloseAsync(); }
     }
 
@@ -75,7 +75,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var clip = author.Copy(source.Id, [effect.StableId, original[0].StableId]);
         original[0].Condition = "changed";
         history.Clear();
-        var pasted = author.Paste(target.Id, clip, null);
+        var pasted = await author.PasteAsync(target.Id, clip, null);
         Assert.That(pasted.Select(entry => entry.Type), Is.EqualTo(new[] { BuiltinEntryIds.Wait, BuiltinEntryIds.ApplyEffect }));
         Assert.That(pasted[0].Condition, Is.EqualTo("score > 1"));
         Assert.That(pasted[0].Source.Parameters.ContainsKey("duration"), Is.False);
@@ -112,18 +112,18 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var unsupported = JsonNode.Parse(clip)!; unsupported["Entries"]!.AsArray().Add(JsonNode.Parse("{\"Type\":\"unavailable.custom\",\"Condition\":\"\",\"Parameters\":{}}"));
         var unknownField = JsonNode.Parse(clip)!; unknownField["Entries"]![0]!["Parameters"]!["newField"] = 1;
         var malformed = JsonNode.Parse(clip)!; malformed["Entries"]![0]!["Parameters"] = 42;
-        var invalid = new[] { "", "not json", "null", "{}", clip.Replace("GalNet.Entries", "GalNet.Graph", StringComparison.Ordinal), clip.Replace("\"Version\":1", "\"Version\":2", StringComparison.Ordinal), malformed.ToJsonString(), new string('x', 16 * 1024 * 1024 + 1) };
+        var invalid = new[] { "", "not json", "null", "{}", clip.Replace("GalNet.Entries", "GalNet.Graph", StringComparison.Ordinal), clip.Replace("\"Version\":2", "\"Version\":1", StringComparison.Ordinal), malformed.ToJsonString(), new string('x', 16 * 1024 * 1024 + 1) };
         foreach (var text in invalid)
         {
-            Assert.Throws<EditorOperationException>(() => author.Paste(group.Id, text, null));
+            Assert.ThrowsAsync<EditorOperationException>(async () => await author.PasteAsync(group.Id, text, null));
             Assert.That(group.Entries.Single(), Is.SameAs(entry)); Assert.That(history.CanUndo, Is.False);
         }
-        Assert.Throws<EditorOperationException>(() => author.Paste(group.Id, clip, "deleted-anchor"));
+        Assert.ThrowsAsync<EditorOperationException>(async () => await author.PasteAsync(group.Id, clip, "deleted-anchor"));
         Assert.That(history.CanUndo, Is.False);
-        var pasted = author.Paste(group.Id, unsupported.ToJsonString(), null);
+        var pasted = await author.PasteAsync(group.Id, unsupported.ToJsonString(), null);
         Assert.That(pasted[^1].Type, Is.EqualTo("unavailable.custom")); Assert.That(pasted[^1].IsUnknownType, Is.True);
         await history.UndoAsync(); Assert.That(group.Entries.Single(), Is.SameAs(entry));
-        pasted = author.Paste(group.Id, unknownField.ToJsonString(), null);
+        pasted = await author.PasteAsync(group.Id, unknownField.ToJsonString(), null);
         Assert.That(pasted.Single().Source.Parameters["newField"].GetInt32(), Is.EqualTo(1)); Assert.That(pasted.Single().HasUnknownParameters, Is.True);
         await history.UndoAsync(); Assert.That(group.Entries.Single(), Is.SameAs(entry));
         await projects.CloseAsync();

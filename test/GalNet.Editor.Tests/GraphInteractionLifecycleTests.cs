@@ -76,6 +76,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
         var entry = workspace.InsertEntriesInto(group, 0, 1).Single();
         entry.Type = "dialogue.text"; entry.Parameters = new() { ["content"] = group.Id };
+        entry.Source.Parameters["opaque"] = JsonSerializer.SerializeToElement(new { node = group.Id });
+        WriteTranslation(project, JsonSerializer.Serialize(new Dictionary<string, string> { [group.Id] = group.Id }));
         var branch = await workspace.AddNodeAsync(GraphNodeKind.ChoiceBranch, 500, 300);
         author.Connect(group.Id, 0, branch.Id);
         author.Connect(branch.Id, 0, group.Id);
@@ -93,7 +95,10 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var copy = pasted.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
         Assert.That(copy.Source.File, Is.Not.EqualTo(group.Source.File));
         Assert.That(copy.Entries.Single().StableId, Is.Not.EqualTo(entry.StableId));
-        Assert.That(copy.Entries.Single().Parameters["content"], Is.EqualTo(group.Id), "Opaque strings must not be guessed as references.");
+        var copiedTextKey = copy.Entries.Single().Parameters["content"];
+        Assert.That(copiedTextKey, Is.Not.EqualTo(group.Id), "Declared localized text gets a new identity.");
+        Assert.That(project.Services.GetRequiredService<GameTextAuthoringService>().Read(copiedTextKey), Is.EqualTo(group.Id), "Text values are not guessed as scene references.");
+        Assert.That(copy.Entries.Single().Source.Parameters["opaque"].GetProperty("node").GetString(), Is.EqualTo(group.Id), "Unmarked JSON stays opaque.");
         Assert.That(pasted.Single(node => node.NodeKind == GraphNodeKind.ChoiceBranch).Options.Single().Id, Is.Not.EqualTo(branch.Options.Single().Id));
         Assert.That(workspace.Edges.Count(edge => pasted.Contains(edge.From) && pasted.Contains(edge.To)), Is.EqualTo(2));
         Assert.That(workspace.Edges.Count(edge => edge.To == copy), Is.EqualTo(1), "Incoming external Entry edge is excluded.");
@@ -108,7 +113,10 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         await workspace.SaveAsync();
         await projects.CloseAsync();
         var reopened = await projects.OpenAsync(project.RootPath);
-        Assert.That(reopened.Services.GetRequiredService<IEditorDocumentService>().Groups[copy.Id].Entries.Single().Parameters["content"].GetString(), Is.EqualTo(group.Id));
+        var restored = reopened.Services.GetRequiredService<IEditorDocumentService>().Groups[copy.Id].Entries.Single();
+        Assert.That(restored.Parameters["content"].GetString(), Is.EqualTo(copiedTextKey));
+        Assert.That(reopened.Services.GetRequiredService<GameTextAuthoringService>().Read(copiedTextKey), Is.EqualTo(group.Id));
+        Assert.That(restored.Parameters["opaque"].GetProperty("node").GetString(), Is.EqualTo(group.Id));
         await projects.CloseAsync();
     }
 
@@ -168,12 +176,12 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var sentinel = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
                 sentinel.Name = "Keep previous project edit";
                 input.Focus(); input.SelectAll(); window.KeyTextInput("choice.new");
-                Assert.That(branch.Source.Options![0].Text, Is.EqualTo("choice.new"));
+                Assert.That(branch.Source.Options![0].Text, Is.Empty, "Typing remains a local draft until commit.");
                 Assert.That(control.GetVisualDescendants().OfType<TextBox>().Any(box => ReferenceEquals(box, input)), Is.True, "Editing must retain the active text control.");
                 window.KeyPress(Key.Z, RawInputModifiers.Control, PhysicalKey.Z, "z");
                 window.KeyRelease(Key.Z, RawInputModifiers.None, PhysicalKey.Z, "z");
                 Assert.That(sentinel.Name, Is.EqualTo("Keep previous project edit"));
-                Assert.That(input.Text, Is.EqualTo("Option 1"));
+                Assert.That(input.Text, Is.Empty);
                 var add = control.GetVisualDescendants().OfType<Button>().First(button => button.CommandParameter is null);
                 add.Command!.Execute(null); window.UpdateLayout();
                 Assert.That(branch.Options, Has.Count.EqualTo(2));
@@ -185,7 +193,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     Assert.That(workspace.UndoRedoHistory.UndoText!.Render(localization), Does.Contain(branch.Name));
                 }
                 inspectorModel.ReorderChoiceOptionCommand.Execute(new ReorderRequest(branch.Options[0], 1));
-                Assert.That(branch.Options[1].Text, Is.EqualTo("Option 1"));
+                Assert.That(branch.Options[1].Text, Is.Empty);
                 if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } artifacts)
                 {
                     graph.FrameNodes(false); window.UpdateLayout(); using var frame = window.CaptureRenderedFrame(); frame!.Save(Path.Combine(artifacts, "p3-graph-inspector.png"));

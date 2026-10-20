@@ -7,7 +7,7 @@ using GalNet.Editor.History;
 namespace GalNet.Editor.Services;
 
 /// <summary>Project data edits. Records retain author data and IDs, never a workspace or control.</summary>
-public sealed partial class GraphAuthoringService(IEditorDocumentService documents, EditorHistories histories, IProjectContentSession content)
+public sealed partial class GraphAuthoringService(IEditorDocumentService documents, EditorHistories histories, IProjectContentSession content, GameTextAuthoringService? texts = null)
 {
     public async Task<string> AddNodeAsync(GraphNodeKind kind, double x, double y, string? fromId = null, int outlet = 0, string? fromItemId = null)
     {
@@ -23,7 +23,7 @@ public sealed partial class GraphAuthoringService(IEditorDocumentService documen
             Type = kind == GraphNodeKind.LinearGroup ? "Group" : "Branch",
             File = kind == GraphNodeKind.LinearGroup ? $"groups/{id}.rawgalgroup" : null,
             BranchType = kind == GraphNodeKind.ChoiceBranch ? "Choice" : kind == GraphNodeKind.ConditionBranch ? "Condition" : null,
-            Options = kind == GraphNodeKind.ChoiceBranch ? [new() { Id = Guid.NewGuid().ToString("N"), Text = "Option 1" }] : null,
+            Options = kind == GraphNodeKind.ChoiceBranch ? [new() { Id = Guid.NewGuid().ToString("N"), Text = "" }] : null,
             Conditions = kind == GraphNodeKind.ConditionBranch ? [new() { Id = Guid.NewGuid().ToString("N"), Expression = "true" }] : null
         };
         // Creation with a connection is one structural intent, including the replaced output edge.
@@ -155,7 +155,7 @@ public sealed partial class GraphAuthoringService(IEditorDocumentService documen
     }
 
     private sealed class PresenceEdit(IEditorDocumentService source, IProjectContentSession session, string[] ids,
-        Bundle? created = null, string? fromId = null, int outlet = 0, EditorText? display = null, string? fromItemId = null) : IAsyncUndoableEdit
+        Bundle? created = null, string? fromId = null, int outlet = 0, EditorText? display = null, string? fromItemId = null, bool emptyCopyBaseline = false) : IAsyncUndoableEdit
     {
         private readonly bool _isCreation = created is not null;
         private readonly bool _writesFiles = created?.Nodes.Any(item => item.Node.Type == "Group") == true || source.CurrentDocument.Nodes.Any(node => ids.Contains(node.Id) && node.Type == "Group");
@@ -189,6 +189,13 @@ public sealed partial class GraphAuthoringService(IEditorDocumentService documen
                 var liveWorking = new EditorProjectDocument { Graph = source.CurrentDocument, GroupEntries = source.LoadedProject.GroupEntries };
                 nextWorking = present ? _working! : Bundle.Capture(liveWorking, ids);
                 nextSaved = present ? _saved! : Bundle.Capture(saved, ids);
+                if (present && emptyCopyBaseline)
+                {
+                    nextSaved = new(nextSaved.Nodes.Select(item => (item.Index, Copy(item.Node))).ToArray(), nextSaved.Edges.Select(item => (item.Index, Copy(item.Edge))).ToArray(),
+                        nextSaved.Groups.ToDictionary(pair => pair.Key, pair => Copy(pair.Value)));
+                    foreach (var group in nextSaved.Groups.Values) group.Clear();
+                    foreach (var option in nextSaved.Nodes.SelectMany(item => item.Node.Options ?? [])) option.Text = "";
+                }
                 replacedWorking = present && fromId is not null ? Outgoing(working) : _replacedWorking;
                 replacedSaved = present && fromId is not null ? Outgoing(saved) : _replacedSaved;
                 return new PresenceChange(source.CurrentDocument, ids, nextWorking, nextSaved, present, fromId, outlet, replacedWorking, replacedSaved, fromItemId);

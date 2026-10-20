@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using GalNet.Contracts.Builtins;
@@ -50,12 +51,14 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     Assert.That(view.GetVisualDescendants().OfType<TextBlock>().Any(block => block.IsVisible && block.Text == localization["Entry.UnknownParametersPreserved"]), Is.True);
                 }
                 var history = project.Services.GetRequiredService<EditorHistories>().Content; history.Clear();
-                var input = view.GetVisualDescendants().OfType<TextBox>().Single(control => control.DataContext is TextEntryParameterEditorItemViewModel { Id: "content" });
+                var input = view.GetVisualDescendants().OfType<TextBox>().Single(control => control.Name == "GameTextInput");
                 input.Text = "edited"; Dispatcher.UIThread.RunJobs();
+                input.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter, KeyModifiers = KeyModifiers.Control });
+                await PumpCharacterUi(() => project.Services.GetRequiredService<GameTextAuthoringService>().Read("original") == "edited");
                 Assert.That(text.Source.Parameters["speaker"].ValueKind, Is.EqualTo(JsonValueKind.Object), "Editing one dedicated text field must not reparse and coerce another invalid string field.");
                 await history.UndoAsync(); Assert.That(text.Parameters["content"], Is.EqualTo("original")); Assert.That(history.CanUndo, Is.False); await history.RedoAsync();
                 var authoring = project.Services.GetRequiredService<GroupEntryAuthoringService>(); var payload = opaque.Source.Parameters["payload"].Clone();
-                var copied = authoring.Paste(groupId, authoring.Copy(groupId, [opaque.StableId]), null).Single();
+                var copied = (await authoring.PasteAsync(groupId, authoring.Copy(groupId, [opaque.StableId]), null)).Single();
                 Assert.That(copied.StableId, Is.Not.EqualTo(opaque.StableId)); Assert.That(copied.Type, Is.EqualTo(opaque.Type));
                 Assert.That(JsonElement.DeepEquals(copied.Source.Parameters["payload"], payload), Is.True);
                 await history.UndoAsync(); Assert.That(group.Entries.Contains(copied), Is.False); await history.RedoAsync();
@@ -72,7 +75,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } artifacts) { using var frame = window.CaptureRenderedFrame(); frame!.Save(Path.Combine(artifacts, "authoring-drafts.png")); }
                 window.Close(); page.Dispose(); await projects.CloseAsync();
                 project = await projects.OpenAsync(path); var reopened = project.Services.GetRequiredService<EditorGroupProjectionStore>().Get(groupId).Entries;
-                Assert.That(reopened.Single(entry => entry.StableId == textId).Parameters["content"], Is.EqualTo("edited"));
+                Assert.That(reopened.Single(entry => entry.StableId == textId).Parameters["content"], Is.EqualTo("original"));
+                Assert.That(project.Services.GetRequiredService<GameTextAuthoringService>().Read("original"), Is.EqualTo("edited"));
                 Assert.That(reopened.Single(entry => entry.StableId == textId).Source.Parameters["speaker"].ValueKind, Is.EqualTo(JsonValueKind.Object));
                 Assert.That(reopened.Count(entry => entry.Type == "custom.future"), Is.EqualTo(2));
                 Assert.That(reopened.Single(entry => entry.StableId == partialId).Source.Parameters, Is.Empty);

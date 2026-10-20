@@ -76,5 +76,10 @@ public sealed partial class LocalizationDocumentStore(IProjectContentSession con
         RequireActive();
         return new(content, RequireActive, patches, documents, entries);
     }
+    public LocalizationEditOperation PrepareWithOptions(IEnumerable<LocalizationFilePatch> patches, IEnumerable<LocalizationOptionPatch> options)
+    {
+        RequireActive();
+        return new(content, RequireActive, patches, documents, options: options);
+    }
     public void Dispose() => _disposed = true;
 }

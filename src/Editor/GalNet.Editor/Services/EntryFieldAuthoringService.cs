@@ -6,7 +6,7 @@ using GalNet.Editor.History;
 namespace GalNet.Editor.Services;
 
 /// <summary>Entry field intents retain author values and stable IDs, never a page or control.</summary>
-public sealed class EntryFieldAuthoringService(IEditorDocumentService documents, EditorHistories histories, CharacterAuthoringService? characters = null)
+public sealed class EntryFieldAuthoringService(IEditorDocumentService documents, EditorHistories histories, CharacterAuthoringService? characters = null, GameTextAuthoringService? texts = null)
 {
     public event Action<string>? Changed;
     internal bool IsCurrent(string groupId, EditorEntryData expected) => documents.IsLoaded
@@ -23,6 +23,7 @@ public sealed class EntryFieldAuthoringService(IEditorDocumentService documents,
     {
         if (!IsCurrent(groupId, expected) || expected.Type != type) throw Obsolete();
         if (characters is not null && await characters.CommitParametersAsync(groupId, expected, type, parameters, () => IsCurrent(groupId, expected), token)) return;
+        if (texts is not null && await texts.CommitEntryAsync(groupId, expected, type, parameters, () => IsCurrent(groupId, expected), token)) return;
         token.ThrowIfCancellationRequested();
         SetParameters(groupId, expected, type, parameters);
     }

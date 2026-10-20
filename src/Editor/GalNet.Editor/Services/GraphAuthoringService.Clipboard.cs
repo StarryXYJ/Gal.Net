@@ -2,12 +2,13 @@ using System.Text.Json;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Shared.Services;
+using GalNet.Editor.History;
 
 namespace GalNet.Editor.Services;
 
 public sealed partial class GraphAuthoringService
 {
-    private sealed record GraphClipboard(int Version, List<EditorGraphNodeDto> Nodes, List<EditorGraphEdgeDto> Edges, Dictionary<string, List<EditorEntryData>> Groups);
+    private sealed record GraphClipboard(int Version, List<EditorGraphNodeDto> Nodes, List<EditorGraphEdgeDto> Edges, Dictionary<string, List<EditorEntryData>> Groups, GameTextClipboard Texts);
 
     public string CopyNodes(IEnumerable<string> nodeIds)
     {
@@ -16,8 +17,9 @@ public sealed partial class GraphAuthoringService
         var nodes = graph.Nodes.Where(node => ids.Contains(node.Id) && node.Type != "Entry").ToList();
         if (nodes.Count == 0) return "";
         ids = nodes.Select(node => node.Id).ToHashSet(StringComparer.Ordinal);
-        return JsonSerializer.Serialize(new GraphClipboard(1, nodes, graph.Edges.Where(edge => ids.Contains(edge.FromNodeId) && ids.Contains(edge.ToNodeId)).ToList(),
-            documents.LoadedProject.GroupEntries.Where(pair => ids.Contains(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value)));
+        var groups = documents.LoadedProject.GroupEntries.Where(pair => ids.Contains(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value);
+        return JsonSerializer.Serialize(new GraphClipboard(2, nodes, graph.Edges.Where(edge => ids.Contains(edge.FromNodeId) && ids.Contains(edge.ToNodeId)).ToList(),
+            groups, texts?.CaptureCopies(groups.Values.SelectMany(entries => entries).ToArray(), nodes) ?? new(new(), new())));
     }
 
     public async Task<IReadOnlyList<string>> PasteAsync(string text, double x, double y)
@@ -27,10 +29,11 @@ public sealed partial class GraphAuthoringService
         {
             if (text.Length > 16 * 1024 * 1024 || !double.IsFinite(x) || !double.IsFinite(y)) throw new JsonException();
             clip = JsonSerializer.Deserialize<GraphClipboard>(text) ?? throw new JsonException();
-            if (clip.Version != 1 || clip.Nodes is not { Count: > 0 and <= 1000 } || clip.Edges is null || clip.Groups is null
+            if (clip.Version != 2 || clip.Nodes is not { Count: > 0 and <= 1000 } || clip.Edges is null || clip.Groups is null
                 || clip.Nodes.Any(node => node is null || string.IsNullOrWhiteSpace(node.Id) || !double.IsFinite(node.X) || !double.IsFinite(node.Y)
                     || node.Type is not ("Group" or "Branch") || node.Type == "Branch" && node.BranchType is not ("Choice" or "Condition"))
                 || clip.Nodes.Select(node => node.Id).Distinct(StringComparer.Ordinal).Count() != clip.Nodes.Count) throw new JsonException();
+            GameTextAuthoringService.ValidateClipboard(clip.Texts);
             var nodes = clip.Nodes.ToDictionary(node => node.Id);
             foreach (var node in clip.Nodes)
             {
@@ -67,7 +70,11 @@ public sealed partial class GraphAuthoringService
         var bundle = new Bundle(clip.Nodes.Select((node, index) => (documents.CurrentDocument.Nodes.Count + index, node)).ToArray(),
             clip.Edges.Select((edge, index) => (documents.CurrentDocument.Edges.Count + index, edge)).ToArray(), groups);
         var ids = clip.Nodes.Select(node => node.Id).ToArray();
-        await histories.Content.ExecuteAsync(new PresenceEdit(documents, content, ids, bundle, display: new EditorText("History.PasteNodes", ids.Length)));
+        var copiedTexts = texts is null ? null : await texts.PrepareCopiesAsync(clip.Texts, groups.Values.SelectMany(entries => entries).ToArray(), clip.Nodes,
+            () => { if (!documents.IsLoaded) throw new EditorOperationException("graph.targetRemoved", "The project is closed."); });
+        var presence = new PresenceEdit(documents, content, ids, bundle, display: new EditorText("History.PasteNodes", ids.Length), emptyCopyBaseline: copiedTexts is not null);
+        if (copiedTexts is null) await histories.Content.ExecuteAsync(presence);
+        else await histories.Content.ExecuteAsync(new AsyncCompositeEdit("Paste nodes", [copiedTexts, presence], new EditorText("History.PasteNodes", ids.Length)));
         return ids;
     }
 

@@ -1,4 +1,12 @@
 {
+  "Error.text.changed": "テキスト参照が変更されました。下書きを再読み込みしてください。",
+  "Error.text.conflict": "同じ共有テキストに競合する変更があります。",
+  "History.GameText": "ゲームテキスト：{0}",
+  "GameText.Placeholder": "開発言語のテキストを入力",
+  "GameText.Missing": "開発言語のテキストがありません",
+  "GameText.Shared": "共有テキスト：{0} 箇所に反映されます",
+  "Error.text.localeChanged": "開発言語が変更されました。下書きを再読み込みしてください。",
+  "Form.CopyElement": "項目を複製",
   "Dock.Panel.Characters": "登場人物",
   "History.Character": "登場人物を編集：{0}",
   "Characters.Add": "登場人物を追加",

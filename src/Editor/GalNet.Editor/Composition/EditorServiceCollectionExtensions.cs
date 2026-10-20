@@ -65,6 +65,7 @@ public static class EditorServiceCollectionExtensions
         services.AddScoped<ProjectLocalizationQuery>();
         services.AddScoped<LocalizationDocumentStore>();
         services.AddScoped<LocalizationAuthoringService>();
+        services.AddScoped<GameTextAuthoringService>();
         services.AddScoped<CharacterAuthoringService>();
         services.AddTransient<CharactersPanelViewModel>();
         services.AddScoped<SceneTargetCatalog>();
@@ -75,7 +76,7 @@ public static class EditorServiceCollectionExtensions
         {
             if (context.IsEnabled && context.HostContext is Models.Graph.IEntryFieldOrigin { GroupId: { } groupId } origin)
                 sp.GetRequiredService<EditorDockFactory>().OpenTimeline(groupId, origin.EntryId);
-        }, sp.GetRequiredService<IAssetManager>(), sp.GetRequiredService<CharacterAuthoringService>()));
+        }, sp.GetRequiredService<IAssetManager>(), sp.GetRequiredService<CharacterAuthoringService>(), sp.GetRequiredService<GameTextAuthoringService>()));
         services.AddScoped<IGraphEditingService, GraphEditingService>();
         services.AddScoped<GraphSelectionState>();
         services.AddScoped<EditorWorkspacePersistence>();

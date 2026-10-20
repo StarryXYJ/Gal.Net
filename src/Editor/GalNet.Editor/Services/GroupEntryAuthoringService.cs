@@ -11,7 +11,7 @@ using GalNet.Editor.Shared.Services;
 namespace GalNet.Editor.Services;
 
 /// <summary>Project-owned batch entry intents. History never retains a Group page.</summary>
-public sealed class GroupEntryAuthoringService(EditorGroupProjectionStore groups, IEditorDocumentService documents, IEntryCatalog catalog, EditorHistories histories)
+public sealed class GroupEntryAuthoringService(EditorGroupProjectionStore groups, IEditorDocumentService documents, IEntryCatalog catalog, EditorHistories histories, GameTextAuthoringService? texts = null)
 {
     public IReadOnlyList<EntryEditorItemViewModel> Insert(string groupId, int index, int count, string? type)
     {
@@ -29,7 +29,7 @@ public sealed class GroupEntryAuthoringService(EditorGroupProjectionStore groups
             new("History.AddEntries", inserted.Length)));
         return inserted;
     }
-    private sealed record EntryClipboard(string Kind, int Version, List<EditorEntryData> Entries);
+    private sealed record EntryClipboard(string Kind, int Version, List<EditorEntryData> Entries, GameTextClipboard Texts);
     private const string ClipboardKind = "GalNet.Entries";
     private const int MaximumEntries = 1000;
     private const int MaximumBytes = 16 * 1024 * 1024;
@@ -47,12 +47,12 @@ public sealed class GroupEntryAuthoringService(EditorGroupProjectionStore groups
         var entries = Group(groupId).Entries.Where(entry => selected.Contains(entry.StableId)).Select(entry => entry.Source).ToList();
         if (entries.Count == 0) return "";
         if (entries.Count > MaximumEntries) throw InvalidClipboard();
-        var text = JsonSerializer.Serialize(new EntryClipboard(ClipboardKind, 1, entries));
+        var text = JsonSerializer.Serialize(new EntryClipboard(ClipboardKind, 2, entries, texts?.CaptureCopies(entries) ?? new(new(), new())));
         if (Encoding.UTF8.GetByteCount(text) > MaximumBytes) throw InvalidClipboard();
         return text;
     }
 
-    public IReadOnlyList<EntryEditorItemViewModel> Paste(string groupId, string text, string? anchorId)
+    public async Task<IReadOnlyList<EntryEditorItemViewModel>> PasteAsync(string groupId, string text, string? anchorId)
     {
         var group = Group(groupId);
         var index = anchorId is null ? group.Entries.Count : group.Entries.ToList().FindIndex(entry => entry.StableId == anchorId) + 1;
@@ -62,8 +62,9 @@ public sealed class GroupEntryAuthoringService(EditorGroupProjectionStore groups
         {
             if (text.Length > MaximumBytes || Encoding.UTF8.GetByteCount(text) > MaximumBytes) throw new JsonException();
             clip = JsonSerializer.Deserialize<EntryClipboard>(text) ?? throw new JsonException();
-            if (clip.Kind != ClipboardKind || clip.Version != 1 || clip.Entries is not { Count: > 0 and <= MaximumEntries }
+            if (clip.Kind != ClipboardKind || clip.Version != 2 || clip.Entries is not { Count: > 0 and <= MaximumEntries }
                 || clip.Entries.Any(entry => entry is null || string.IsNullOrWhiteSpace(entry.Type) || entry.Condition is null || entry.Parameters is null)) throw new JsonException();
+            GameTextAuthoringService.ValidateClipboard(clip.Texts);
             // Check the entire payload before creating any live projection. Keep incomplete drafts;
             // full semantic validation belongs to compile/check, not clipboard insertion.
             foreach (var entry in clip.Entries)
@@ -73,9 +74,17 @@ public sealed class GroupEntryAuthoringService(EditorGroupProjectionStore groups
         }
         catch (Exception error) when (error is JsonException or ArgumentException) { throw InvalidClipboard(); }
         SceneAuthoringIdentities.RemapCopy(clip.Entries);
+        var copy = texts is null ? null : await texts.PrepareCopiesAsync(clip.Texts, clip.Entries, null, () =>
+        {
+            _ = Group(groupId);
+            if (anchorId is not null && !group.Entries.Any(entry => entry.StableId == anchorId)) throw new EditorOperationException("entry.anchorMissing", "The insertion target was removed.");
+        });
+        index = anchorId is null ? group.Entries.Count : group.Entries.ToList().FindIndex(entry => entry.StableId == anchorId) + 1;
         var inserted = clip.Entries.Select(entry => new EntryEditorItemViewModel(entry, catalog)).ToArray();
         var positions = inserted.Select((entry, offset) => new PositionedEntry(index + offset, entry)).ToArray();
-        histories.Content.Execute(new PresenceEdit(this, groupId, positions, true, new("History.PasteEntries", inserted.Length)));
+        var presence = new PresenceEdit(this, groupId, positions, true, new("History.PasteEntries", inserted.Length));
+        if (copy is null) histories.Content.Execute(presence);
+        else await histories.Content.ExecuteAsync(new AsyncCompositeEdit("Paste entries", [copy, new AsyncEditAdapter(presence)], new("History.PasteEntries", inserted.Length)));
         return inserted;
     }
 

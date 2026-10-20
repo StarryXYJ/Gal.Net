@@ -109,11 +109,11 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         if (_authoring.Copy(GroupId, ids) != text) throw new EditorOperationException("entry.cutChanged", "The source entries changed while writing the clipboard. They were not removed.");
         DeleteEntries(ids);
     }
-    public void Paste(string text, string? anchor) { if (!_disposed) SetSelection(_authoring.Paste(GroupId, text, anchor)); }
-    public void DuplicateSelection()
+    public async Task PasteAsync(string text, string? anchor) { if (!_disposed) { var pasted = await _authoring.PasteAsync(GroupId, text, anchor); if (!_disposed) SetSelection(pasted); } }
+    public async Task DuplicateSelectionAsync()
     {
         var text = CopySelection();
-        if (text.Length > 0) Paste(text, SelectedEntry?.StableId);
+        if (text.Length > 0) await PasteAsync(text, SelectedEntry?.StableId);
     }
 
     [ObservableProperty]

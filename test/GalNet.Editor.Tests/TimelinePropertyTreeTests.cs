@@ -28,7 +28,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var timeline = workspace.InsertEntriesInto(group, 1, 1, BuiltinEntryIds.PlayTimeline).Single();
         timeline.Source.Parameters["timeline"] = JsonSerializer.SerializeToElement(new { playbackHandleId = "play", tracks = new[] { new { handleId = id, property = "opacity", keys = new[] { new { frame = 0, value = 1 } } } }, events = Array.Empty<object>() });
         var author = scope.GetRequiredService<GroupEntryAuthoringService>(); var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear();
-        var copy = author.Paste(group.Id, author.Copy(group.Id, [creator.StableId, timeline.StableId]), timeline.StableId);
+        var copy = await author.PasteAsync(group.Id, author.Copy(group.Id, [creator.StableId, timeline.StableId]), timeline.StableId);
         var copiedId = copy[0].Source.Parameters["handleId"].GetString(); Assert.That(copiedId, Is.Not.EqualTo(id)); Assert.That(copy[1].Source.Parameters["timeline"].GetProperty("tracks")[0].GetProperty("handleId").GetString(), Is.EqualTo(copiedId));
         await history.UndoAsync(); Assert.That(group.Entries, Has.Count.EqualTo(2)); Assert.That(history.CanUndo, Is.False); await history.RedoAsync(); Assert.That(copy[0].Source.Parameters["handleId"].GetString(), Is.EqualTo(copiedId));
         history.Clear(); var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.ChangeType(creator, BuiltinEntryIds.PlayParticleEmitter); var particleId = creator.Source.Parameters["instanceId"].GetString(); Assert.That(Guid.TryParse(particleId, out _), Is.True);

@@ -17,7 +17,7 @@ public sealed record CharacterRow(string Id, string DisplayNameKey, string? Name
 /// <summary>Character identities, default-language names and declared references share one project history.</summary>
 public sealed class CharacterAuthoringService(LocalizationDocumentStore store, ProjectLocalizationQuery query,
     IProjectContentSession content, IEditorDocumentService documents, IEntryCatalog catalog,
-    LocalizationAuthoringService authoring, IEditorLocalizationService text)
+    LocalizationAuthoringService authoring, IEditorLocalizationService text, GameTextAuthoringService texts)
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     public IEditorLocalizationService Text => text;
@@ -95,8 +95,10 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
             await content.CommitFileDraftsAsync(target.File.Id);
             Find(array, expected.Id)["id"] = key;
             var refs = key != expected.Id ? ReferencePatches(expected.Id, key) : [];
+            var patches = await texts.PrepareTextAsync(target, name, [new(before, LocalizationJson.WriteLike(before.Data, array))], () =>
+            { if (Rows().SingleOrDefault(row => row.Id == expected.Id)?.Name != expected.Name) throw Error("character.changed"); });
             await authoring.ApplyAsync(store.PrepareWithEntries(
-                [new(before, LocalizationJson.WriteLike(before.Data, array)), store.PrepareText(target, name)], refs), key, "History.Character");
+                patches, refs), key, "History.Character");
         }
         finally { _gate.Release(); }
     }
@@ -164,7 +166,10 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
             }
             Current();
             var after = root.Deserialize<Dictionary<string, JsonElement>>()!;
-            ValidateParameters(type, after);
+            if (await texts.PrepareEntryAsync(groupId, expected, after, filePatches, Current) is { } localized)
+            { after = localized.Parameters; filePatches = localized.Files.ToList(); }
+            Current();
+            ValidateParameters(type, after, before);
             await authoring.ApplyAsync(store.PrepareWithEntries(filePatches, [new(groupId, expected.StableId, type, before, after)]), expected.StableId, "History.Character");
             return true;
         }
@@ -183,15 +188,16 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
             var node = JsonSerializer.SerializeToNode(entry.Parameters)!.AsObject();
             foreach (var reference in group) Set(node, reference.JsonPointer, to);
             var after = node.Deserialize<Dictionary<string, JsonElement>>()!;
-            ValidateParameters(entry.Type, after);
+            ValidateParameters(entry.Type, after, entry.Parameters);
             patches.Add(new(group.Key.Owner, entry.StableId, entry.Type, entry.Parameters, after));
         }
         return patches;
     }
-    private void ValidateParameters(string type, IReadOnlyDictionary<string, JsonElement> values)
+    private void ValidateParameters(string type, IReadOnlyDictionary<string, JsonElement> values, IReadOnlyDictionary<string, JsonElement> before)
     {
         var schema = catalog.Get(type).DynamicParameters;
-        schema?.ValidatePartialArguments(JsonSerializer.SerializeToElement(values.Where(pair => schema.ContainsKey(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value)));
+        schema?.ValidatePartialArguments(JsonSerializer.SerializeToElement(values.Where(pair => schema.ContainsKey(pair.Key) &&
+            (!before.TryGetValue(pair.Key, out var previous) || !JsonElement.DeepEquals(previous, pair.Value))).ToDictionary(pair => pair.Key, pair => pair.Value)));
     }
     private static void Set(JsonNode root, string pointer, string value)
     {

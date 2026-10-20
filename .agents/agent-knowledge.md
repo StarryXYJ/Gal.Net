@@ -224,3 +224,9 @@
 - 2026-10-20 游戏本地化 P3 已 verified：角色 Dock、开发语言姓名/key、speaker 姓名/key 搜索与失焦创建、跨全部 Group/嵌套引用改 key、一次历史与旧值显式导入完成。新增 14 项全通过；相关回归 759 通过、3 项 P6e3 已记录 UI 失败，完整构建 0 错误。正文/分支默认语言映射及复制身份 P4、多语言表格/语言 P5、交换/完整校验 P6 待续；见 features/F-20261019-01-editor-game-localization/phase-3.md。
 
 - 用户协作约定（2026-10-20）：每个实施阶段验证结束后提交 Git，包含本阶段相关代码、测试和文档，并报告 commit；不要混入其他任务改动。
+
+- 用户修订：本地化 feature 不考虑向后兼容；旧 Speakers、角色迁移 UI/服务与回调已删除（d2e4b82），后续只支持当前作者及剪贴板格式。
+- [文本历史与不可撤销编号](lessons/L-20261020-05-text-history-reserved-number.md)：同文件的 characterHighWater 仅允许单调重基，文本历史不能回退编号；其他 metadata 严格校验。
+- [多行提交的 Tunnel 路由](lessons/L-20261020-06-multiline-commit-tunnel.md)：Ctrl+Enter 在 TextBox 类处理前截获，保留普通换行与 IME 边界，验证真实挂载输入。
+
+- 2026-10-20 游戏本地化 P4 已 verified：默认语言正文/分支语义编辑器、稳定 key、Entry/Graph/列表复制各语言快照、源文复核状态及跨文件单次历史完成。新增 16 项通过，解决方案 0 错误；完整相关回归 812 通过、3 失败（2 项既有布局断言，1 项 Headless DisposeAsync 空引用，独立复验该方法 7 项通过）。四语资源各 850 key 一致、格式/源码指纹/文档链接通过；见 features/F-20261019-01-editor-game-localization/phase-4.md。P5 多语言表格与语言管理、P6 交换/完整校验待续。

@@ -7,12 +7,18 @@ using GalNet.Core.Parameters;
 namespace GalNet.Game.Controls.Forms;
 
 public delegate FieldEditorLease FieldEditorFactory(FieldEditorContext context);
+public sealed class FieldCopy(JsonElement value, Action? release = null) : IDisposable
+{
+    public JsonElement Value { get; } = value.Clone();
+    public void Dispose() => Interlocked.Exchange(ref release, null)?.Invoke();
+}
 
 /// <summary>Host-scoped, explicit registration. Mutations are reflected on the next form rebuild.</summary>
 public sealed class EditorRegistry
 {
     /// <summary>Host policy: optional non-string text inputs may be cleared without authoring null.</summary>
     public bool EmptyInputClearsOptionalFields { get; init; }
+    public Func<ValueDescriptor, JsonElement, FieldCopy>? CopyValue { get; init; }
     private readonly Dictionary<string, FieldEditorFactory> _factories = new(StringComparer.Ordinal);
     private readonly Dictionary<FieldValueSemantic, FieldEditorFactory> _semantics = [];
     public void RegisterSemantic(FieldValueSemantic semantic, FieldEditorFactory factory)
@@ -105,9 +111,9 @@ public sealed class EditorRegistry
             : throw new NotSupportedException($"Editor '{id}' for field '{field.Id}' is not registered.");
     }
 
-    public static EditorRegistry CreateDefault(bool emptyInputClearsOptionalFields = false)
+    public static EditorRegistry CreateDefault(bool emptyInputClearsOptionalFields = false, Func<ValueDescriptor, JsonElement, FieldCopy>? copyValue = null)
     {
-        var registry = new EditorRegistry { EmptyInputClearsOptionalFields = emptyInputClearsOptionalFields };
+        var registry = new EditorRegistry { EmptyInputClearsOptionalFields = emptyInputClearsOptionalFields, CopyValue = copyValue };
         registry.Register(ValueEditorIds.Text, DefaultFieldEditors.CreateText);
         registry.Register(ValueEditorIds.Numeric, DefaultFieldEditors.CreateNumeric);
         registry.Register(ValueEditorIds.Slider, DefaultFieldEditors.CreateSlider);

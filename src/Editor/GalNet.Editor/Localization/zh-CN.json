@@ -1,4 +1,12 @@
 {
+  "Error.text.changed": "文本引用已改变，请重新载入草稿。",
+  "Error.text.conflict": "同一共享文本收到互相冲突的修改。",
+  "History.GameText": "游戏文本：{0}",
+  "GameText.Placeholder": "输入开发语言文本",
+  "GameText.Missing": "缺少开发语言文本",
+  "GameText.Shared": "共享文本：修改将影响 {0} 处引用",
+  "Error.text.localeChanged": "项目开发语言已改变，请重新载入草稿。",
+  "Form.CopyElement": "复制项",
   "Dock.Panel.Characters": "角色表",
   "History.Character": "编辑角色：{0}",
   "Characters.Add": "新增角色",

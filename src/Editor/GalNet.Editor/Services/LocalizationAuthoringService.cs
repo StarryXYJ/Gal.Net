@@ -15,6 +15,7 @@ public sealed class LocalizationAuthoringService(LocalizationDocumentStore store
         await ApplyAsync(store.Prepare(patch), patch.Before.Path);
     }
     public Task ApplyAsync(LocalizationEditOperation operation, string label, string historyKey = "History.TextFile") => histories.Content.ExecuteAsync(new Edit(operation, label, historyKey));
+    public IAsyncUndoableEdit CreateEdit(LocalizationEditOperation operation, string label, string historyKey) => new Edit(operation, label, historyKey);
     private sealed record Edit(LocalizationEditOperation Operation, string Label, string HistoryKey) : IAsyncUndoableEdit
     {
         public string Description => "Edit localization " + Label;

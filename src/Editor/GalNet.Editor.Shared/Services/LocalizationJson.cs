@@ -73,9 +73,25 @@ public static class LocalizationJson
             if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("version", out var version) || version.ValueKind != JsonValueKind.Number || !version.TryGetInt32(out var number) || number != 1 ||
                 !root.TryGetProperty("characterHighWater", out var water) || water.ValueKind != JsonValueKind.Number || !water.TryGetInt64(out var highWater) || highWater < 0)
                 throw new InvalidDataException("Unsupported localization author metadata.");
+            if (root.TryGetProperty("textStates", out var states))
+            {
+                if (states.ValueKind != JsonValueKind.Object) throw new InvalidDataException("Text states must be an object.");
+                foreach (var item in states.EnumerateObject())
+                {
+                    var state = item.Value;
+                    if (string.IsNullOrWhiteSpace(item.Name) || state.ValueKind != JsonValueKind.Object || !state.TryGetProperty("sourceLocale", out var locale) || locale.ValueKind != JsonValueKind.String ||
+                        !state.TryGetProperty("sourceFingerprint", out var fingerprint) || !Hash(fingerprint) ||
+                        !state.TryGetProperty("translations", out var translations) || translations.ValueKind != JsonValueKind.Object)
+                        throw new InvalidDataException("Invalid text revision state.");
+                    if (CultureInfo.GetCultureInfo(locale.GetString()!).Name.Length == 0) throw new InvalidDataException("Source culture cannot be invariant.");
+                    foreach (var translation in translations.EnumerateObject())
+                    { if (CultureInfo.GetCultureInfo(translation.Name).Name.Length == 0 || translation.Value.ValueKind != JsonValueKind.Null && !Hash(translation.Value)) throw new InvalidDataException("Invalid translation revision."); }
+                }
+            }
         }
         else _ = TextLeaves(json.RootElement);
     }
+    private static bool Hash(JsonElement value) => value.ValueKind == JsonValueKind.String && value.GetString() is { Length: 64 } hash && hash.All(Uri.IsHexDigit);
 
     private static void CheckProperties(JsonElement element)
     {

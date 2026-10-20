@@ -28,6 +28,8 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
     public string RemoveText { get => GetValue(RemoveTextProperty); set => SetValue(RemoveTextProperty, value); }
     public string UpText { get => GetValue(UpTextProperty); set => SetValue(UpTextProperty, value); }
     public string DownText { get => GetValue(DownTextProperty); set => SetValue(DownTextProperty, value); }
+    public static readonly StyledProperty<string> CopyTextProperty = AvaloniaProperty.Register<StructuredFieldEditor, string>(nameof(CopyText), "Copy element");
+    public string CopyText { get => GetValue(CopyTextProperty); set => SetValue(CopyTextProperty, value); }
     public FieldEditorContext Context { get; }
     private readonly Type _type;
     private readonly Type? _element;
@@ -75,7 +77,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
             if (IsExpanded) SetHeader(_jsonMode || _fallback is not null ? "JSON" : HeaderText());
             else Header = HeaderText();
         }
-        else if (change.Property == AddTextProperty || change.Property == RemoveTextProperty || change.Property == UpTextProperty || change.Property == DownTextProperty) RefreshButtonText();
+        else if (change.Property == AddTextProperty || change.Property == RemoveTextProperty || change.Property == UpTextProperty || change.Property == DownTextProperty || change.Property == CopyTextProperty) RefreshButtonText();
     }
     private static bool Equal(JsonElement? left, JsonElement? right) => left is { } a ? right is { } b && JsonElement.DeepEquals(a, b) : right is null;
     private void Changed(object? sender, PropertyChangedEventArgs args)
@@ -164,6 +166,14 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
             AddButton(buttons, "up", () => Move(position, -1, generation)).IsEnabled = index > 0;
             AddButton(buttons, "down", () => Move(position, 1, generation)).IsEnabled = index + 1 < values.Count;
             AddButton(buttons, "remove", () => ChangeArray(generation, list => list.RemoveAt(position)));
+            AddButton(buttons, "copy", async () =>
+            {
+                if (!Available(generation)) return;
+                var items = ArrayValues();
+                using var copy = Context.Registry?.CopyValue?.Invoke(new(_element!, jsonOptions: Context.Field.Value.JsonOptions), items[position]) ?? new FieldCopy(items[position]);
+                items.Insert(position + 1, copy.Value);
+                await Submit(JsonSerializer.SerializeToElement(items), generation, CancellationToken.None);
+            }).IsEnabled = values.Count < 200;
             row.Children.Add(buttons);
             var descriptor = new FieldDescriptor("element", new(_element!, jsonOptions: Context.Field.Value.JsonOptions), isRequired: true);
             var binding = Bind(descriptor, null, position);
@@ -180,7 +190,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
         panel.Children.Add(button); RefreshButtonText(); return button;
     }
     private void RefreshButtonText()
-    { foreach (var (button, kind) in _buttons) button.Content = kind switch { "add" => AddText, "remove" => RemoveText, "up" => UpText, _ => DownText }; }
+    { foreach (var (button, kind) in _buttons) button.Content = kind switch { "add" => AddText, "remove" => RemoveText, "up" => UpText, "copy" => CopyText, _ => DownText }; }
     private List<JsonElement> ArrayValues() => Current is { ValueKind: JsonValueKind.Array } array ? array.EnumerateArray().Select(item => item.Clone()).ToList() : [];
     private static JsonElement InitialValue(ValueDescriptor descriptor, int depth = 0)
     {
@@ -219,6 +229,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
     }
     private sealed class ChildBinding(StructuredFieldEditor owner, FieldDescriptor field, string? wire, int? index, int generation) : IFieldBinding
     {
+        public object? HostContext => owner.Context.HostContext;
         public bool IsEnabled => owner.Available(generation);
         public FieldValue Read()
         {

@@ -12,7 +12,7 @@ public sealed partial class GraphAuthoringService
         var node = Find(nodeId);
         ChangeBranch(node, "History.AddBranchItem", state =>
         {
-            if (node.BranchType == "Choice") state.Options!.Add(new() { Id = Guid.NewGuid().ToString("N"), Text = $"Option {state.Options.Count + 1}" });
+            if (node.BranchType == "Choice") state.Options!.Add(new() { Id = Guid.NewGuid().ToString("N"), Text = "" });
             else state.Conditions!.Add(new() { Id = Guid.NewGuid().ToString("N"), Expression = "true" });
         });
     }
