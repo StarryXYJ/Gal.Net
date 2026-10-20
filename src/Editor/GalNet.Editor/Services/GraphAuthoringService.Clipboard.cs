@@ -1,6 +1,7 @@
 using System.Text.Json;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Shared.Services;
 
 namespace GalNet.Editor.Services;
 
@@ -47,6 +48,8 @@ public sealed partial class GraphAuthoringService
         var map = clip.Nodes.ToDictionary(node => node.Id, _ => Guid.NewGuid().ToString("N"));
         var minX = clip.Nodes.Min(node => node.X); var minY = clip.Nodes.Min(node => node.Y);
         var groups = new Dictionary<string, List<EditorEntryData>>();
+        // One identity map spans the complete selection, including references across Groups.
+        SceneAuthoringIdentities.RemapCopy(clip.Nodes.Where(node => node.Type == "Group").SelectMany(node => clip.Groups[node.Id]).ToArray());
         foreach (var node in clip.Nodes)
         {
             var originalId = node.Id;

@@ -11,15 +11,20 @@ public static class SceneAuthoringIdentities
     public static Dictionary<string, JsonElement> NewEntry(string type, Dictionary<string, JsonElement> parameters)
     {
         if (CreationSlot(type) is { } slot) parameters[slot] = JsonSerializer.SerializeToElement(Guid.NewGuid().ToString("N"));
-        if (type == BuiltinEntryIds.Animate) parameters["playbackHandleId"] = JsonSerializer.SerializeToElement(Guid.NewGuid().ToString("N"));
+        if (HasPlaybackSlot(type)) parameters["playbackHandleId"] = JsonSerializer.SerializeToElement(Guid.NewGuid().ToString("N"));
         return parameters;
     }
     private static string? CreationSlot(string type) => type switch
     {
         BuiltinEntryIds.ShowLayer or BuiltinEntryIds.ShowColorLayer or BuiltinEntryIds.PlayVideo => "handleId",
         BuiltinEntryIds.PlayParticleEmitter or BuiltinEntryIds.ApplyEffect => "instanceId",
+        BuiltinEntryIds.CrossFadeTransition or BuiltinEntryIds.BlindsTransition => "newHandleId",
+        BuiltinEntryIds.SlideTransition or BuiltinEntryIds.BlackFadeTransition or BuiltinEntryIds.WhiteFadeTransition or BuiltinEntryIds.ColorFadeTransition => "toLayerHandleId",
         _ => null
     };
+    private static bool HasPlaybackSlot(string type) => type is BuiltinEntryIds.Animate
+        or BuiltinEntryIds.CrossFadeTransition or BuiltinEntryIds.BlindsTransition or BuiltinEntryIds.SlideTransition
+        or BuiltinEntryIds.BlackFadeTransition or BuiltinEntryIds.WhiteFadeTransition or BuiltinEntryIds.ColorFadeTransition;
     public static void RemapCopy(IReadOnlyList<EditorEntryData> entries)
     {
         var roots = entries.Select(entry => (Entry: entry, Parameters: JsonSerializer.SerializeToNode(entry.Parameters)!.AsObject())).ToArray();
@@ -31,7 +36,7 @@ public static class SceneAuthoringIdentities
         void Discover(string type, JsonObject parameters)
         {
             if (CreationSlot(type) is { } slot) Allocate(parameters, slot);
-            if (type == BuiltinEntryIds.Animate) Allocate(parameters, "playbackHandleId");
+            if (HasPlaybackSlot(type)) Allocate(parameters, "playbackHandleId");
             if (type != BuiltinEntryIds.PlayTimeline || parameters["timeline"] is not JsonObject timeline) return;
             foreach (var (key, _) in timeline.ToArray()) if (key.Equals("playbackHandleId", StringComparison.OrdinalIgnoreCase)) Allocate(timeline, key);
             foreach (var (key, node) in timeline) if (key.Equals("events", StringComparison.OrdinalIgnoreCase) && node is JsonArray events)
@@ -45,6 +50,7 @@ public static class SceneAuthoringIdentities
         void Rewrite(string type, JsonObject parameters)
         {
             if (CreationSlot(type) is { } slot) Replace(parameters, slot);
+            if (HasPlaybackSlot(type)) Replace(parameters, "playbackHandleId");
             foreach (var field in ReferenceSlots(type)) Replace(parameters, field);
             if (type != BuiltinEntryIds.PlayTimeline || parameters["timeline"] is not JsonObject timeline) return;
             foreach (var (key, node) in timeline.ToArray())
@@ -62,7 +68,9 @@ public static class SceneAuthoringIdentities
     }
     private static IEnumerable<string> ReferenceSlots(string type) => type switch
     {
-        BuiltinEntryIds.Animate => ["handleId", "playbackHandleId"],
+        BuiltinEntryIds.Animate => ["handleId"],
+        BuiltinEntryIds.CrossFadeTransition or BuiltinEntryIds.BlindsTransition => ["oldHandleId"],
+        BuiltinEntryIds.SlideTransition or BuiltinEntryIds.BlackFadeTransition or BuiltinEntryIds.WhiteFadeTransition or BuiltinEntryIds.ColorFadeTransition => ["fromLayerHandleId"],
         BuiltinEntryIds.StopAnimation => ["playbackHandleId"],
         BuiltinEntryIds.HideLayer or BuiltinEntryIds.MoveLayer or BuiltinEntryIds.ReplaceLayer or BuiltinEntryIds.StopVideo => ["handleId"],
         BuiltinEntryIds.StopEffect or BuiltinEntryIds.StopParticleEmitter => ["instanceId"],
