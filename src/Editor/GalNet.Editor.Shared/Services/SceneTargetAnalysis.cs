@@ -11,7 +11,7 @@ public enum SceneTargetKind { Layer, Particle, Effect, Unresolved }
 public sealed record SceneLocator(string GroupId, string EntryId, string Slot, string? EventId = null);
 public sealed record SceneTimelinePosition(int Frame, int? BeforeEventIndex = null, bool IncludeFuture = false);
 public sealed record SceneTarget(SceneLocator Locator, string Handle, SceneTargetKind Kind, string Resource,
-    TargetPresence Presence, IReadOnlyList<AnimatableProperty> Properties, IReadOnlyDictionary<string, float> Values, int? CreatedAtFrame = null, bool IsFuture = false);
+    TargetPresence Presence, IReadOnlyList<AnimatableProperty> Properties, IReadOnlyDictionary<string, float> Values, int? CreatedAtFrame = null, bool IsFuture = false, bool CapabilitiesComplete = true);
 public sealed record SceneTargetResult(IReadOnlyList<SceneTarget> Targets, bool Complete, bool Reachable);
 
 /// <summary>Pure, finite abstract interpretation. Never instantiates a game or executes an entry.</summary>
@@ -26,12 +26,16 @@ public sealed partial class SceneTargetAnalysis
     }
     private static readonly IReadOnlyDictionary<string, float> EmptyValues = new ReadOnlyDictionary<string, float>(new Dictionary<string, float>());
     private readonly IReadOnlyDictionary<string, List<EditorEntryData>> _groups;
+    private readonly IReadOnlyDictionary<string, ShaderEffectDescriptor?>? _programs;
+    private readonly IEffectCatalog? _effects;
     private readonly Dictionary<string, State> _inputs = new(StringComparer.Ordinal);
     private bool _budgetExceeded;
-    public SceneTargetAnalysis(EditorGraphDocument graph, IReadOnlyDictionary<string, List<EditorEntryData>> groups, int budget = 10000)
+    public SceneTargetAnalysis(EditorGraphDocument graph, IReadOnlyDictionary<string, List<EditorEntryData>> groups, int budget = 10000,
+        IReadOnlyDictionary<string, ShaderEffectDescriptor?>? programs = null, IEffectCatalog? effects = null)
     {
         // Caller owns the immutable snapshot for this generation.
         _groups = groups;
+        _programs = programs; _effects = effects;
         var nodes = graph.Nodes.ToDictionary(node => node.Id, StringComparer.Ordinal);
         if (!nodes.ContainsKey(graph.RootNodeId)) return;
         var outputs = new Dictionary<string, State>(StringComparer.Ordinal);
@@ -60,8 +64,10 @@ public sealed partial class SceneTargetAnalysis
         }
     }
     public SceneTargetResult Before(string groupId, string? entryId)
+        => StateBefore(groupId, entryId) is { } state ? Result(state) : new([], false, false);
+    private State? StateBefore(string groupId, string? entryId)
     {
-        if (!_inputs.TryGetValue(groupId, out var input) || !_groups.TryGetValue(groupId, out var entries)) return new([], false, false);
+        if (!_inputs.TryGetValue(groupId, out var input) || !_groups.TryGetValue(groupId, out var entries)) return null;
         var state = input.Clone();
         if (_budgetExceeded)
         {
@@ -79,9 +85,9 @@ public sealed partial class SceneTargetAnalysis
             if (entry.StableId == entryId) { found = true; break; }
             state = Apply(state, groupId, entry);
         }
-        if (!found) return new([], false, false);
+        if (!found) return null;
         if (_budgetExceeded) state.Uncertain();
-        return new(state.Targets.Values.OrderBy(target => target.Locator.GroupId, StringComparer.Ordinal).ThenBy(target => target.Locator.EntryId, StringComparer.Ordinal).ToArray(), state.Complete, true);
+        return state;
     }
     private static State Merge(IReadOnlyList<State> states)
     {
@@ -102,7 +108,8 @@ public sealed partial class SceneTargetAnalysis
                 Values = new ReadOnlyDictionary<string, float>(values),
                 Resource = candidates.All(target => target.Resource == first.Resource) ? first.Resource : "",
                 CreatedAtFrame = candidates.All(target => target.Locator == first.Locator && target.CreatedAtFrame == first.CreatedAtFrame) ? first.CreatedAtFrame : null,
-                IsFuture = candidates.All(target => target.IsFuture)
+                IsFuture = candidates.All(target => target.IsFuture),
+                CapabilitiesComplete = candidates.All(target => target.CapabilitiesComplete)
             };
         }
         return result;
@@ -110,6 +117,7 @@ public sealed partial class SceneTargetAnalysis
     private static bool Equal(State left, State right) => left.Complete == right.Complete && left.Targets.Count == right.Targets.Count && left.Targets.All(pair =>
         right.Targets.TryGetValue(pair.Key, out var other) && pair.Value.Locator == other.Locator && pair.Value.Kind == other.Kind && pair.Value.Resource == other.Resource
         && pair.Value.CreatedAtFrame == other.CreatedAtFrame && pair.Value.IsFuture == other.IsFuture
+        && pair.Value.CapabilitiesComplete == other.CapabilitiesComplete
         && pair.Value.Presence == other.Presence && pair.Value.Properties.SequenceEqual(other.Properties)
         && pair.Value.Values.Count == other.Values.Count && pair.Value.Values.All(value => other.Values.TryGetValue(value.Key, out var number) && number == value.Value));
     private State Apply(State before, string group, EditorEntryData entry)
@@ -180,7 +188,9 @@ public sealed partial class SceneTargetAnalysis
                     new() { ["emissionRate"] = definition.EmissionRate, ["initialVelocityX"] = definition.InitialModule.VelocityX.Center, ["initialVelocityY"] = definition.InitialModule.VelocityY.Center, ["noise"] = definition.MotionModule.Noise, ["particleScale"] = definition.InitialModule.Size.Center, ["particleLifetime"] = definition.InitialModule.Lifetime.Center });
                 break;
             case BuiltinEntryIds.ApplyEffect:
-                Create(Text("instanceId"), SceneTargetKind.Effect, Text("program", Text("id")), [new("progress", AnimationValueKind.Float, 0, 1)], new() { ["progress"] = 0 });
+                var effect = EffectCapabilities(entry);
+                Create(Text("instanceId"), SceneTargetKind.Effect, string.IsNullOrWhiteSpace(Text("program")) ? Text("id") : Text("program"), effect.Properties, effect.Values);
+                if (state.Targets.TryGetValue(Text("instanceId"), out var createdEffect)) state.Targets[createdEffect.Handle] = createdEffect with { CapabilitiesComplete = effect.Complete };
                 break;
             case BuiltinEntryIds.StopParticleEmitter:
             case BuiltinEntryIds.StopEffect:

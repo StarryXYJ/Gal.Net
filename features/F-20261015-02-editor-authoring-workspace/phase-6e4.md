@@ -107,6 +107,19 @@ P6e4c 仍在实施；后续为 effect metadata/flipbook 能力、播放实例 Lo
 
 ### P6e4c3b：效果 metadata 资源快照
 
-状态：planned。效果参数声明来自 shader 源码注释，不是 EffectProgramAssetMeta 字段；复用 Core 的 ShaderEffectMetadataParser 和中立描述，不调用 Skia shader 编译器。需要单列异步资源准备、不可变快照代次、资源更新/关闭取消及旧选择 lease 失效；同步场景查询只读取已准备的事实，不能阻塞 UI 等待文件读取。
+状态：verified（2026-10-21，保留两项已独立复现的 Group 布局基线失败）。效果参数声明来自 shader 源码注释，不是 EffectProgramAssetMeta 字段；复用 Core 的 ShaderEffectMetadataParser 和中立描述，不调用 Skia shader 编译器。需要单列异步资源准备、不可变快照代次、资源更新/关闭取消及旧选择 lease 失效；同步场景查询只读取已准备的事实，不能阻塞 UI 等待文件读取。
 
-后续验证必须覆盖 program 与 legacy catalog 的区分、animatable 标记和受支持标量属性、静态参数/metadata 默认值与现有运行路径一致、缺失/坏资源的保守能力，以及 Timeline 事件、属性菜单和保存闭环。本切片仍未实施，不因 flipbook 接入而标记完成；播放实例 Locator 和缺目标运行时独立核验仍保留后续。
+已验证 program 与 legacy catalog 的区分、animatable 标记和受支持标量属性、静态参数/metadata 默认值与现有运行路径一致、缺失/坏资源的保守能力，以及 Timeline 事件、属性菜单和保存闭环。本切片完成；播放实例 Locator 和缺目标运行时独立核验仍保留后续。
+
+设计落点：Core 共用受支持标量属性转换；Editor.Shared 接收不可变 program descriptor 快照及 legacy catalog，静态参数优先于 metadata 默认值并夹取范围。资源读取/UTF-8 解析在后台，不编译 shader；每个作者快照准备前 256 个不同 program、单资源最多 1 MiB，失败缓存至资源刷新。项目级查询代次隔离旧加载、选择和编辑行；缺声明仅使该对象能力不完整，不破坏已知身份或让已移除的临时效果污染终态。
+
+
+#### P6e4c3b 验证证据
+
+- 隔离基线 e7aa7f2，只覆盖明确列出的 11 个 C# 文件。本工作区并行的本地化交换功能未纳入候选或提交。默认契约和 schema fixture 的固定路径产物均由同一候选源码生成。首轮受限 .NET 进程无法访问 Windows 服务控制器，改用获准执行环境进行离线构建；首轮两处测试编译错误已修正，未扩展产品 API。最终解决方案构建 115 警告、0 错误。
+- 场景分析专项 74 项通过，本轮增加 7 项；另有 Core 转换 1 项、Editor 异步生命周期和真实 Timeline 2 项。覆盖受支持标量/禁用属性、stage、静态参数与默认值/夹取、legacy 路径、progress 的 Core 初值、事件/未来候选/保守 Additive，以及效果移除后只恢复能力完整性、不抹掉上游未知语义。
+- 异步测试使用可控延迟资源：调用方取消不取消共享准备；刷新后旧结果不回写；坏 metadata、UTF-8、错误类型、过大和缺失资源保守退回并负缓存；释放项目后不回写。真实 Timeline 通过对象行属性菜单和 NumericUpDown 编辑效果参数，验证单步 Undo/Redo、资源 Changed 后旧 Locator/属性行失效、保留既有轨道、刷新不写历史，以及保存重开保留未知 JSON 与大整数。
+- 最终七项目：Editor 242 通过/2 失败、Editor.Shared 319/0、Architecture 45/0、Core 116/0、Primitives.Builtins 117/0、Integration 110/0、Presentation 243/0；合计 1192 通过、2 失败。两项仍为已独立复现的 Group 尾部留白和窄面板宽度断言，未修改布局或放宽断言。6 项原生媒体环境测试未执行；metadata 接入不宣称 GPU shader 可编译或实时预览已实现。
+- 11 个最终源码 whitespace/IDE0005 verify 与 SHA256 核对通过，主工作区、隔离候选一致；证据在 timeline-validation，前缀 metadata-c3b-，含基线/候选源码归档、文件清单、指纹、构建/格式日志和 TRX。删除经绝对路径核对的临时快照后，仅提交本切片代码、测试、文档和 lesson。
+
+P6e4c 整体仍 in-progress。下一步为播放实例 Locator、其余内置语义与缺目标运行时独立核验；animate 自定义曲线留 P6f，实时预览不列 Phase。

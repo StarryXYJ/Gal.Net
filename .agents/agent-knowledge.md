@@ -239,3 +239,5 @@
 - 2026-10-21 游戏本地化 P5 已 verified：项目级 i18n Dock、角色/全部 Group/分支虚拟化多语言表格、语言新增/调序、开发语言缺译预览及切换、单元格状态/草稿保留/Save All 和历史队列执行时重查完成。I18nLocale 统一 CultureInfo 名称，支持脚本子标签标准大小写。新增 17 项通过，正常解决方案构建 0 错误；Core/Runtime/Editor.Shared/Architecture/Presentation/Editor 合计 1039 通过、2 项 P6e3 既有布局失败，另有 6 个视频环境跳过。四语各 882 key、格式/17 源码指纹/文档链接通过。见 features/F-20261019-01-editor-game-localization/phase-5.md 与 docs/manual/game-localization.md；P6 导入导出及发布前完整校验待续。
 
 - 2026-10-21 Editor 写入口与状态已收口：GUI dirty 唯一来源为 ProjectContentSession 的内容/保存基线比较，Document 与 GalProject 不再持有 dirty 标记；变量声明通过 VariableAuthoringService，IVariableDefinitionService 仅返回保留 UID 的独立快照并通知刷新。Preview 只编辑运行时当前值，旧声明表单、Workspace 快照补历史和 PushAlreadyApplied 已删除，不保留兼容层。见 features/F-20261021-01-editor-state-simplification/summary.md、docs/spec/editor-variables.md 与 docs/spec/editor-history-and-save.md。
+
+- [组合查询的完整性原因](lessons/L-20261021-05-query-completeness-causes.md)：内部保留语义未知与对象能力缺失的区别；停止效果可消除后者，不能抹掉前者。candidate，见双路径回归。

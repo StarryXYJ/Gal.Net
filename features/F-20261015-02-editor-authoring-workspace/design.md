@@ -1,5 +1,7 @@
 # Editor 创作工作区设计
 
+2026-10-21 P6e4c3b：效果声明通过项目级后台资源准备进入不可变场景查询代次，Core 与 renderer 共用受支持标量转换；legacy catalog 与 program metadata 分开处理。当前对象能力缺失与上游语义未知独立保留；资源刷新/关闭使旧加载、选择及编辑行失效，既有轨道保留。已验证边界见 [phase-6e4.md](phase-6e4.md)，稳定规则见 [场景目标查询规范](../../docs/spec/editor-scene-targets.md)。
+
 2026-10-21 P6e4c3a：从作者 JSON 中有效的 FlipbookDefinition 接入 flipbook.index，复用 Core 属性声明和 Timeline 既有浮点编辑/采样；不把显示格子的取整/夹取当作动画值限制。无效数据保守退回，定义变更使旧行失效而不删除轨道。效果 metadata 需要独立的异步资源快照与刷新，留 P6e4c3b，不在同步查询或共享层编译 GPU shader。见 [phase-6e4.md](phase-6e4.md)。
 
 2026-10-20 P6e4c2：六种内置转场通过固定内置契约目录做纯编译展开，复用 Timeline 终态分析，不复制转场算法或执行项目扩展。每代作者快照缓存展开及失败，原条件只在条目边界合并；整段在临时事实中验证后发布，失败保留保守输入，上游不完整标记不被清除。输出 Locator 映回原转场输出槽位。输入对象复用场景 Picker，输出/播放身份由统一声明隐藏；未知作者扩展不进入临时编译投影、不改写原始 JSON，严格项目编译不受影响。实施与验证见 [phase-6e4.md](phase-6e4.md)。

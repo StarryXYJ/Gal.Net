@@ -21,6 +21,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
     private readonly SceneTargetCatalog _targets;
     private SceneTargetResult _scene = new([], false, false);
     private string? _sceneSignature;
+    private long _sceneRevision;
     private readonly EntrySelectionContext _selection;
     private readonly IEditorDocumentService _documents;
     private readonly EntryFieldAuthoringService _authoring;
@@ -62,6 +63,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         _targets = targets;
         InitializeCanvas();
         selection.Changed += OnSelection; documents.DocumentChanged += Refresh; histories.Changed += Refresh;
+        _sceneQuery.Changed += Refresh;
         localization.PropertyChanged += OnLocale;
         InitializeEvents();
         Refresh();
@@ -87,9 +89,9 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         if (next?.Type == BuiltinEntryIds.PlayTimeline) scene = _sceneQuery.AtTimeline(_selection.Current!.GroupId, next.StableId, new(Frame, IncludeFuture: true));
         var sceneSignature = JsonSerializer.Serialize(scene);
         var sameValue = _baseline is { } previous ? root is { } current && JsonElement.DeepEquals(previous, current) : root is null;
-        if (_target == _selection.Current && ReferenceEquals(_entry, next) && _type == next?.Type && sameValue && sceneSignature == _sceneSignature)
+        if (_target == _selection.Current && ReferenceEquals(_entry, next) && _type == next?.Type && sameValue && sceneSignature == _sceneSignature && _sceneRevision == _sceneQuery.Revision)
         { RefreshSource(); foreach (var node in Tree.SelectMany(node => node.Descendants())) node.RefreshLabel(); return; }
-        EndObjectEdit(); _scene = scene; _sceneSignature = sceneSignature;
+        EndObjectEdit(); _scene = scene; _sceneSignature = sceneSignature; _sceneRevision = _sceneQuery.Revision;
         SaveExpansion(); DetachTree(); InvalidateKeyDocument(); _generation++; Rows.Clear(); Tree.Clear(); _document = null; _baseline = null; Message = "";
         InvalidateEvents();
         _target = _selection.Current; _entry = next; _type = next?.Type; _baseline = root;
@@ -174,6 +176,8 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
     }
     private bool Submit(JsonElement value)
     {
+        if (_target?.EntryId is { } entryId) _sceneQuery.Before(_target.GroupId, entryId);
+        if (_sceneRevision != _sceneQuery.Revision) { Refresh(); return false; }
         if (_entry is null || !ReferenceEquals(_entry, Find(_target)) || _entry.Type != BuiltinEntryIds.PlayTimeline || _selection.Current != _target) return false;
         var current = _entry.Parameters.TryGetValue("timeline", out var json) ? (JsonElement?)json : null;
         if (_baseline is { } expected ? current is not { } actual || !JsonElement.DeepEquals(expected, actual)
@@ -194,6 +198,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         Canvas.PropertyChanged -= OnCanvasSelection; KeyEdit = null;
         if (_disposed) return; EndObjectEdit(); _disposed = true; DetachTree(); InvalidateKeyDocument(); _generation++; Rows.Clear(); Tree.Clear();
         _selection.Changed -= OnSelection; _documents.DocumentChanged -= Refresh; _histories.Changed -= Refresh;
+        _sceneQuery.Changed -= Refresh;
         _localization.PropertyChanged -= OnLocale; _entry = null; _document = null;
     }
 }

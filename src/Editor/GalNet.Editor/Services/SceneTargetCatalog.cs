@@ -37,6 +37,7 @@ public sealed class SceneTargetCatalog(ProjectSceneTargets query, IEditorDocumen
     }
     public async Task PrepareAsync(string groupId, string entryId, SceneTimelinePosition? position = null, CancellationToken token = default)
     {
+        await query.PrepareAsync(token);
         var resources = (position is null ? query.Before(groupId, entryId) : query.AtTimeline(groupId, entryId, position)).Targets.Select(target => target.Resource).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToArray();
         foreach (var resource in resources)
         {

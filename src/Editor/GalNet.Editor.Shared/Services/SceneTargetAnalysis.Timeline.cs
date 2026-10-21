@@ -37,13 +37,12 @@ public sealed partial class SceneTargetAnalysis
         return (timeline, raw);
     }
     private static SceneTargetResult Result(State state) => new(state.Targets.Values.OrderBy(target => target.Locator.GroupId, StringComparer.Ordinal)
-        .ThenBy(target => target.Locator.EntryId, StringComparer.Ordinal).ThenBy(target => target.CreatedAtFrame).ThenBy(target => target.Locator.EventId, StringComparer.Ordinal).ToArray(), state.Complete, true);
+        .ThenBy(target => target.Locator.EntryId, StringComparer.Ordinal).ThenBy(target => target.CreatedAtFrame).ThenBy(target => target.Locator.EventId, StringComparer.Ordinal).ToArray(), state.Complete && state.Targets.Values.All(target => target.CapabilitiesComplete), true);
     public SceneTargetResult AtTimeline(string groupId, string entryId, SceneTimelinePosition position)
     {
-        var before = Before(groupId, entryId);
-        if (!before.Reachable || !_groups.TryGetValue(groupId, out var entries) || entries.FirstOrDefault(entry => entry.StableId == entryId) is not { Type: BuiltinEntryIds.PlayTimeline } entry)
+        var state = StateBefore(groupId, entryId);
+        if (state is null || !_groups.TryGetValue(groupId, out var entries) || entries.FirstOrDefault(entry => entry.StableId == entryId) is not { Type: BuiltinEntryIds.PlayTimeline } entry)
             return new([], false, false);
-        var state = new State { Complete = before.Complete }; foreach (var target in before.Targets) state.Targets.Add(target.Handle, target);
         try
         {
             var (timeline, raw) = ReadTimeline(entry);

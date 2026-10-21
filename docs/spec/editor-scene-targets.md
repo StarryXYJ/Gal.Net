@@ -1,6 +1,6 @@
 # Editor 场景目标查询
 
-`Editor.Shared.Services.SceneTargetAnalysis` 对作者 Graph 和 Group 快照进行纯分析，不创建游戏、不执行 Entry，也不读取或修改玩家数据。项目 scope 的 `ProjectSceneTargets` 是场景状态查询入口，按当前内存作者快照复用一代分析，包含 Group 入口事实；修改、撤销、重做或拓扑改变后整体换代，保存相同内容复用原代。项目 scope 释放时清除缓存并使旧查询选择失效。当前没有增量前缀缓存和后台分析。
+`Editor.Shared.Services.SceneTargetAnalysis` 对作者 Graph 和 Group 快照进行纯分析，不创建游戏、不执行 Entry，也不读取或修改玩家数据。项目 scope 的 `ProjectSceneTargets` 是场景状态查询入口，按当前内存作者快照复用一代分析，包含 Group 入口事实；修改、撤销、重做或拓扑改变后整体换代，保存相同内容复用原代。项目 scope 释放时清除缓存并使旧查询选择失效。场景分析仍为同步纯计算，没有增量前缀缓存；效果声明的资源读取和解析在后台准备，完成后发布不可变快照并推进查询代次。
 
 普通查询位置是某个 Group 的某个稳定 Entry **执行前**，null 表示 Group 末尾；`AtTimeline` 查询指定 Timeline 的帧或事件前位置。目标来源为 Group ID、创建者稳定 Entry ID 和输出槽位组成的 `SceneLocator`，Timeline 事件创建者另有事件身份，内部解析到运行时 handle。返回对象种类、来源、资源提示、能力、唯一可知数值与存在性；候选的存在性只有一定存在、可能存在。没有入口或尚未分析到的位置返回不可分析结果，不伪造空场景已经完整分析。
 
@@ -15,7 +15,7 @@
 | layer.show / showColor | 按 handle 创建或替换来源，提供 Core 的变换/不透明度能力和可知初值；show 的有效 flipbook 另提供索引能力 |
 | layer.hide / move / replace | 按层语义删除、更新变换、替换资源，保留实例身份 |
 | particle.play / stop | 使用纯粒子定义解码和 Core 声明的 float 能力，创建/删除目标 |
-| effect.apply / stop | 创建/删除效果目标，目前只提供中立的 progress 能力 |
+| effect.apply / stop | 创建/删除效果目标，保留 Core progress，并从 program metadata 或 legacy catalog 增补支持的标量能力 |
 | video.play / stop | 视频可能自然结束，创建后仅标可能存在；停止移除层候选 |
 | animation.animate | 保留存在性，清除相关对象的唯一数值事实 |
 | 已知对白、音频、变量等中立条目 | 保持场景候选事实 |
@@ -23,13 +23,25 @@
 | 六种内置转场 | 复用内置契约的纯编译展开，按阻塞 Timeline 终态传播新层、删除旧层；临时遮罩/覆盖层在终态移除 |
 | 自定义或未支持语义 | 已知目标降为可能，清除唯一数值并提示分析不完整；不执行它们获取结果 |
 
-当前不从 effect shader metadata 推测能力。候选缺失不清空既有轨道，无法匹配的引用显示为未解析对象。查询是作者辅助，没有改变编译或运行时的参数校验规则。
+候选缺失不清空既有轨道，无法匹配的引用显示为未解析对象。查询是作者辅助，没有改变编译或运行时的参数校验规则。
 
 layer.show 的非空、有效 FlipbookDefinition 提供 Core 的 flipbook.index 属性及可写的原始浮点初值；静态图片、null、颜色层和视频不提供此能力。显式空对象使用 Core 的 1×1 默认定义。索引不取整，也不以 FrameCount 设置动画上限；格子显示的 floor/clamp 仍由渲染路径负责。无效布局保留基础层事实、移除索引能力并标记不完整；负值或非有限索引没有可写初值。无法解码的 JSON 使条目分析退回保守输入，不发布新层。
 
 Move/Replace 保留已创建对象的 flipbook 能力，重新 Show 静态层移除；分支合并取共同属性能力，可能存在的对象不发布唯一数值。Timeline 事件创建、未来候选、帧内与终态采样使用同一能力，未来候选保留能力但不提供当前数值。源定义变更使旧行失效，既有轨道保留供作者修正。此分析只读取作者 JSON，不读取图片尺寸或编译效果程序。
 
 内置转场只通过固定内置契约目录调用纯编译器，不加载或运行项目自定义条目。展开结果和无效输入按不可变快照代次缓存，条件在原条目边界合并；缺失旧层不阻止创建新层。无效参数保留保守输入事实并标记不完整，不发布部分展开对象。未知作者扩展不参与临时编译投影，原 JSON 保留，严格项目编译仍执行原校验。转场输出的 Locator 使用原 Group/Entry 及 newHandleId/toLayerHandleId 输出槽位，不使用编译生成事件或瞬态对象的身份。
+
+## 效果能力与资源快照
+
+非空 program 使用 shader 注释的 Core `ShaderEffectMetadataParser` 声明，优先于 legacy id；空 program 才使用宿主 `IEffectCatalog`。两种来源均检查目标 stage。Core `ShaderEffectAnimationProperties` 与渲染器共用转换，只增补 animatable 的 Float/Integer 标量，不把 bool、颜色、向量或纹理臆造为 float 轨道。
+
+标量初值优先取 parameters 中的有限数值，其次取 metadata 默认值或 0，再按声明范围夹取。无效静态值保留属性能力但不发布唯一初值；重复参数同样保守处理。Core 自带的 progress 仍单独保留：EffectRequest 已提供初值 0，先于 shader 静态值/默认值；metadata 声明同名属性时使用与 Core 0..1 的共同范围，不能共同接受 0 时不显示可写初值。
+
+同步查询只使用已经准备的资源事实，并排队后台准备；`PrepareAsync` 可等待资源就绪。准备直接读取 IGameFile 源字节，不借用 renderer decoder 缓存、不执行项目自定义代码、不编译 GPU shader。普通 effect.apply 及 Timeline 事件中的 program 引用共用快照；每个作者快照最多准备前 256 个不同 program，每份源码上限 1 MiB。错误类型、缺失、读取失败、坏 UTF-8/metadata 和超出预算均不推测 shader 能力；失败缓存至下一次资源刷新。
+
+缺声明的效果仍具有已知身份和 Core 能力，按目标标记 CapabilitiesComplete=false。对外结果汇总当前能力完整性，内部组合查询仍保留语义完整性：停止此效果可以消除能力缺失，不会抹掉上游未知语义。条件、分支、Timeline 事件/未来候选和采样沿用同一声明；未来或可能对象不提供唯一当前数值。
+
+资产目录 Changed 通知使资源快照失效并重新准备。完成、刷新和项目释放都推进查询代次；旧资源加载不能覆盖新代，旧 Locator 选择、属性行和手势不能提交。取消单个 PrepareAsync 调用只取消该调用方的等待；刷新或项目释放才取消共享加载。Timeline 订阅变化并更新属性菜单/行，既有轨道与未知作者 JSON 保留，查询和刷新不写内容历史。没有实时游戏预览。
 
 ## Timeline 帧内查询
 

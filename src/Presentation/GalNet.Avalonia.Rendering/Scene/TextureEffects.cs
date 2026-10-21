@@ -174,10 +174,7 @@ public class ShaderProgramTextureEffectFactory : ITextureEffectFactory
             effectId,
             stage,
             _program.Descriptor.Parameters.Select(ToCatalogParameter).ToArray(),
-            _program.Descriptor.Parameters
-                .Where(parameter => parameter.Animatable && parameter.Kind is ShaderEffectParameterKind.Float or ShaderEffectParameterKind.Integer)
-                .Select(ToAnimatableProperty)
-                .ToArray());
+            ShaderEffectAnimationProperties.Create(_program.Descriptor));
     }
 
     public EffectProgramResource Program { get; }
@@ -200,15 +197,4 @@ public class ShaderProgramTextureEffectFactory : ITextureEffectFactory
         parameter.Maximum is { } maximum ? (float)maximum : null,
         parameter.Options);
 
-    private static AnimatableProperty ToAnimatableProperty(ShaderEffectParameterDescriptor parameter) => new(
-        parameter.Name,
-        AnimationValueKind.Float,
-        parameter.Minimum is { } minimum ? (float)minimum : null,
-        parameter.Maximum is { } maximum ? (float)maximum : null,
-        ParseAnimationDefault(parameter.DefaultValue));
-
-    private static float? ParseAnimationDefault(string? value) =>
-        float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) && float.IsFinite(parsed)
-            ? parsed
-            : null;
 }
