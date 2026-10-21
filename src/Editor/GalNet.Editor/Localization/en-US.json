@@ -880,5 +880,21 @@
   "Error.i18n.language": "Enter a valid language code.",
   "Error.i18n.stale": "The text, reference, or development language changed. Keep this draft and review the current value.",
   "Error.i18n.duplicate": "Language is already supported.",
-  "Error.i18n.development": "Change the development language in the game localization panel."
+  "Error.i18n.development": "Change the development language in the game localization panel.",
+  "Exchange.All": "All categories",
+  "Exchange.Runtime": "Runtime texts",
+  "Exchange.Export": "Export JSON",
+  "Exchange.Import": "Import preview",
+  "Exchange.AllowEmpty": "Allow empty translations to clear text",
+  "Exchange.Apply": "Apply selected",
+  "Exchange.Cancel": "Cancel preview",
+  "Exchange.Unknown": "Unknown text",
+  "Exchange.Skip": "Skipped (null)",
+  "Exchange.Clear": "Clear text",
+  "Exchange.Change": "Will change",
+  "Exchange.Unchanged": "Unchanged",
+  "History.ImportLocalization": "Import translations: {0}",
+  "Error.exchange.project": "The template belongs to another project or development language.",
+  "Error.exchange.language": "Choose a supported translation language other than the development language.",
+  "Error.exchange.stale": "The import preview is stale. Preview the file again."
 }

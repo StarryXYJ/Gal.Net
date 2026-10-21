@@ -7,12 +7,30 @@ using CommunityToolkit.Mvvm.Input;
 using GalNet.Editor.History;
 using GalNet.Editor.Services;
 using GalNet.Editor.Shared.Services;
+using GalNet.Editor.Abstraction.Services;
 
 namespace GalNet.Editor.ViewModels;
 
 public sealed record LocalizationGridRow(LocalizationTableRow Source, IReadOnlyList<LocalizationGridCell> Cells)
 {
     public string Context => Source.Context;
+}
+
+public sealed partial class LocalizationImportRowViewModel : ObservableObject
+{
+    public LocalizationImportCandidate Candidate { get; }
+    public string Source { get; }
+    public string Translation => Candidate.Row.Translation ?? "";
+    public string ExportedSource => Candidate.Row.SourceText ?? "";
+    public string Status { get; }
+    public bool CanInclude => Candidate.Known && Candidate.Row.Translation is not null;
+    [ObservableProperty] private bool _include;
+    public LocalizationImportRowViewModel(LocalizationImportCandidate candidate, IEditorLocalizationService text)
+    {
+        Candidate = candidate; Source = candidate.CurrentSource ?? candidate.Row.SourceText ?? text["I18n.Missing"];
+        Status = text[!candidate.Known ? "Exchange.Unknown" : candidate.Row.Translation is null ? "Exchange.Skip" : candidate.Row.Translation.Length == 0 ? "Exchange.Clear" : candidate.SourceChanged ? "I18n.Review" : candidate.Target?.Text == candidate.Row.Translation ? "Exchange.Unchanged" : "Exchange.Change"];
+        Include = CanInclude && candidate.Row.Translation!.Length > 0 && (candidate.SourceChanged || candidate.Target?.Text != candidate.Row.Translation);
+    }
 }
 
 public sealed partial class LocalizationGridCell : ObservableObject
@@ -98,6 +116,17 @@ public sealed partial class GameLocalizationPanelViewModel : ObservableObject, I
     private bool _refreshing;
     public bool IsDisposed { get; private set; }
     public event Action? StructureChanged;
+    private readonly LocalizationExchangeService _exchange;
+    private readonly IFileDialogService _dialogs;
+    private LocalizationImportPreview? _import;
+    public ObservableCollection<LocalizationImportRowViewModel> ImportRows { get; } = [];
+    [ObservableProperty] private string? _exchangeLanguage;
+    [ObservableProperty] private bool _exportAll = true;
+    [ObservableProperty] private bool _exportRuntime;
+    [ObservableProperty] private bool _allowEmpty;
+    public bool HasImport => _import is not null;
+    partial void OnExchangeLanguageChanged(string? value) => CancelImport();
+    partial void OnAllowEmptyChanged(bool value) { if (!value) foreach (var row in ImportRows.Where(row => row.Candidate.Row.Translation?.Length == 0)) row.Include = false; }
     [ObservableProperty] private LocalizationCategory? _selected;
     [ObservableProperty] private string _newLanguage = "";
     [ObservableProperty] private string? _developmentLanguage;
@@ -106,13 +135,44 @@ public sealed partial class GameLocalizationPanelViewModel : ObservableObject, I
     [ObservableProperty] private bool _incomplete;
     private DevelopmentLanguagePreview? _preview;
     public bool CanChangeDevelopmentLanguage => _preview is not null;
-    public GameLocalizationPanelViewModel(GameLocalizationPanelService service, EditorHistories histories)
+    public GameLocalizationPanelViewModel(GameLocalizationPanelService service, EditorHistories histories, LocalizationExchangeService exchange, IFileDialogService dialogs)
     {
+        _exchange = exchange; _dialogs = dialogs;
         Service = service; UndoRedoHistory = histories.Content;
         _draftRegistration = service.Content.RegisterDraft(() => _cells.Values.Any(cell => cell.IsDirty), CommitDraftsAsync);
         service.Content.Changed += ContentChanged; service.Text.PropertyChanged += LocaleChanged;
         Refresh();
     }
+    [RelayCommand]
+    private Task ExportAsync() => RunAsync(async () =>
+    {
+        var culture = ExchangeLanguage ?? Languages.FirstOrDefault(language => language != Languages[0]) ?? Languages[0];
+        var path = await _dialogs.SaveFilePickerAsync(Service.Text["Exchange.Export"], culture + (ExportRuntime ? ".texts.json" : ".template.json"));
+        if (path is null || IsDisposed) return;
+        await _exchange.ExportFileAsync(path, culture, ExportAll ? null : Selected?.Id, ExportRuntime);
+    });
+    [RelayCommand]
+    private Task PreviewImportAsync() => RunAsync(async () =>
+    {
+        var files = await _dialogs.OpenFilePickerAsync(Service.Text["Exchange.Import"], false);
+        if (files.Count == 0 || IsDisposed) return;
+        CancelImport();
+        var info = new FileInfo(files[0]); if (info.Length > 8 * 1024 * 1024) throw new InvalidDataException("Exchange file exceeds 8 MiB.");
+        var bytes = await File.ReadAllBytesAsync(files[0]); if (IsDisposed) return;
+        var json = new System.Text.UTF8Encoding(false, true).GetString(bytes.AsSpan().StartsWith(new byte[] { 0xef, 0xbb, 0xbf }) ? bytes.AsSpan(3) : bytes);
+        var preview = _exchange.Preview(json, ExchangeLanguage ?? Languages.FirstOrDefault(language => language != Languages[0]) ?? Languages[0]);
+        ExchangeLanguage = preview.Culture; _import = preview;
+        ImportRows.Clear(); foreach (var row in _import.Rows) ImportRows.Add(new(row, Service.Text));
+        AllowEmpty = false; OnPropertyChanged(nameof(HasImport));
+    });
+    [RelayCommand]
+    private Task ApplyImportAsync() => RunAsync(async () =>
+    {
+        if (_import is not { } preview) return;
+        await _exchange.ApplyAsync(preview, ImportRows.Where(row => row.Include).Select(row => row.Candidate.Row.Key).ToArray(), AllowEmpty);
+        CancelImport();
+    });
+    [RelayCommand] private void CancelImport() { _import = null; ImportRows.Clear(); OnPropertyChanged(nameof(HasImport)); }
     partial void OnSelectedChanged(LocalizationCategory? value) { if (!_refreshing) Refresh(); }
     partial void OnDevelopmentLanguageChanged(string? value) { _preview = null; PreviewMessage = ""; OnPropertyChanged(nameof(CanChangeDevelopmentLanguage)); }
     private void ContentChanged()
@@ -139,6 +199,7 @@ public sealed partial class GameLocalizationPanelViewModel : ObservableObject, I
             if (Selected?.Id != category) snapshot = Service.Snapshot(Selected!.Id);
             var changed = !Languages.SequenceEqual(snapshot.Languages);
             if (changed) { Languages.Clear(); foreach (var language in snapshot.Languages) Languages.Add(language); }
+            if (ExchangeLanguage is null || !Languages.Contains(ExchangeLanguage)) ExchangeLanguage = Languages.FirstOrDefault(language => language != snapshot.Source) ?? snapshot.Source;
             var states = JsonNode.Parse(LocalizationJson.Decode(snapshot.Metadata))?["textStates"];
             var rows = snapshot.Rows.Select(row => new LocalizationGridRow(row, snapshot.Languages.Select(culture =>
             {

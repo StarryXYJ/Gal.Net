@@ -815,7 +815,10 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     private sealed class TestDialogs : IFileDialogService
     {
         public string? Folder { get; set; }
+        public string? SavePath { get; set; }
+        public IReadOnlyList<string> OpenPaths { get; set; } = [];
+        public Task<string?> SaveFilePickerAsync(string title, string suggestedName) => Task.FromResult(SavePath);
         public Task<string?> OpenFolderPickerAsync(string title) => Task.FromResult(Folder);
-        public Task<IReadOnlyList<string>> OpenFilePickerAsync(string title, bool allowMultiple = true) => Task.FromResult<IReadOnlyList<string>>([]);
+        public Task<IReadOnlyList<string>> OpenFilePickerAsync(string title, bool allowMultiple = true) => Task.FromResult(OpenPaths);
     }
 }

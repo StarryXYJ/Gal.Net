@@ -73,6 +73,12 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
                 files.Add(file);
                 ValidateGroup(file, diagnostics, structureOnly ? null : catalog, structureOnly);
             }
+            if (!structureOnly && scope == "project" && catalog is not null)
+            {
+                diagnostics.AddRange(LocalizationValidation.ValidateDisk(_reader.Root, catalog));
+                if (Directory.Exists(_reader.Resolve("I18n"))) files.AddRange(_reader.Files("I18n", diagnostics).Where(file => file.EndsWith(".json", StringComparison.OrdinalIgnoreCase) && !file.StartsWith("I18n/External/", StringComparison.OrdinalIgnoreCase)));
+                if (File.Exists(_reader.Resolve(LocalizationJson.MetadataPath))) files.Add(LocalizationJson.MetadataPath);
+            }
         }
         finally { context?.Dispose(); }
 
@@ -83,12 +89,14 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
         if (scope == "project") checks.AddRange(["settings-json", "metadata-guid-and-adjacent-file"]);
         if (!structureOnly) checks.Add("condition-syntax");
         if (!structureOnly && scope != "graph" && catalog is not null) checks.AddRange(["entry-parameters-and-contract-validator", "composite-compilation"]);
-        var skipped = new List<string> { "runtime-expression-evaluation", "custom-code-references", "asset-payloads", "settings-semantics", "localization-semantics" };
+        var skipped = new List<string> { "runtime-expression-evaluation", "custom-code-references", "asset-payloads", "settings-semantics" };
+        if (!structureOnly && scope == "project" && catalog is not null) checks.Add("localization-semantics");
+        else skipped.Add("localization-semantics");
         if (structureOnly) skipped.AddRange(["condition-syntax", "entry-contracts", "graph-source-references"]);
         else if (scope != "graph" && catalog is null) skipped.Add("entry-contracts");
         return new(scope + ".validate", !diagnostics.Any(item => item.Severity == "error"),
             new ProjectValidationReport(scope, structureOnly, semantic, files.Distinct().Order(StringComparer.Ordinal).ToArray(), checks, skipped,
-                semantic != "unavailable" && !diagnostics.Any(item => item.Code is "file.read" or "directory.read" or "file.linkSkipped" or "json.invalid" or "json.objectRequired" or "graph.shapeInvalid"), contractSha256), diagnostics);
+                semantic != "unavailable" && !diagnostics.Any(item => item.Code is "file.read" or "directory.read" or "file.linkSkipped" or "json.invalid" or "json.objectRequired" or "graph.shapeInvalid" or "localization.incomplete" or "localization.invalid"), contractSha256), diagnostics);
     }
 
     /// <summary>Checks a selected source and returns a DTO only after its raw structure is accepted.</summary>

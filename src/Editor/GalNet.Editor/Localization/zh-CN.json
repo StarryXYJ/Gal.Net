@@ -880,5 +880,21 @@
   "Error.i18n.language": "请输入有效语言代码。",
   "Error.i18n.stale": "原文、引用或开发语言已变化。草稿已保留，请检查当前值。",
   "Error.i18n.duplicate": "项目已支持该语言。",
-  "Error.i18n.development": "请在游戏本地化面板检查并切换开发语言。"
+  "Error.i18n.development": "请在游戏本地化面板检查并切换开发语言。",
+  "Exchange.All": "全部分类",
+  "Exchange.Runtime": "运行文本",
+  "Exchange.Export": "导出 JSON",
+  "Exchange.Import": "导入预览",
+  "Exchange.AllowEmpty": "允许空字符串清空译文",
+  "Exchange.Apply": "应用所选",
+  "Exchange.Cancel": "取消预览",
+  "Exchange.Unknown": "未知文本",
+  "Exchange.Skip": "跳过（null）",
+  "Exchange.Clear": "清空译文",
+  "Exchange.Change": "将修改",
+  "Exchange.Unchanged": "未变化",
+  "History.ImportLocalization": "导入译文：{0}",
+  "Error.exchange.project": "模板属于其他项目或开发语言。",
+  "Error.exchange.language": "请选择开发语言以外的受支持翻译语言。",
+  "Error.exchange.stale": "导入预览已过期，请重新预览文件。"
 }

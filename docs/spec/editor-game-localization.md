@@ -1,6 +1,6 @@
 # Editor 游戏本地化基础
 
-当前实现包含字段语义、项目索引、受管理本地化文档、角色表/speaker 输入、默认语言正文/分支编辑与稳定复制身份、多语言表格及语言管理（F-20261019-01 / P1–P5）。模板导入导出和发布前完整校验仍是后续阶段。只支持当前作者格式，没有旧 Speakers 或角色迁移入口。
+当前实现包含字段语义、项目索引、受管理本地化文档、角色表/speaker 输入、默认语言正文/分支编辑与稳定复制身份、多语言表格、语言管理、JSON 交换及发布前本地化检查（F-20261019-01 / P1–P6）。只支持当前作者及模板格式，没有旧 Speakers、角色迁移或旧版本模板入口。
 
 ## 字段值语义
 
@@ -108,4 +108,43 @@ Localization Dock 为项目级单实例，可通过视图菜单打开。左侧�
 
 单元格草稿绑定分类、文本身份、目标译文和开发原文基线。相关 JSON 草稿先校验/提交；无效 JSON 保留，目标值、来源、开发语言或引用变化后拒绝过期写入。前置检查也在历史执行边界重做，不能因入队时有效就忽略前序操作的修改。面板 ViewModel 属于项目 scope，切分类、调列序、关闭/重开视图均保留草稿；Save All 提交所有已访问分类的草稿，冲突保留并阻止保存，可用“放弃草稿”显式清除。干净单元格随作者文档刷新，输入中的草稿不被静默覆盖。每次刷新共用一个派生快照及一次 metadata 解析，不按每个按键/单元格重建全项目索引。
 
-操作步骤见 [游戏本地化使用说明](../manual/game-localization.md)。实现与验证记录见 [P1](../../features/F-20261019-01-editor-game-localization/phase-1.md)、[P2](../../features/F-20261019-01-editor-game-localization/phase-2.md)、[P3](../../features/F-20261019-01-editor-game-localization/phase-3.md)、[P3a](../../features/F-20261019-01-editor-game-localization/phase-3a.md)、[P4](../../features/F-20261019-01-editor-game-localization/phase-4.md)、[P5](../../features/F-20261019-01-editor-game-localization/phase-5.md)，完整目标见 [设计](../../features/F-20261019-01-editor-game-localization/design.md)。
+## 模板、导出与导入
+
+面板提供当前分类/全部分类、单目标语言的 JSON 模板导出；勾选“运行文本”则输出已定义直接译文的平铺 key→string JSON，缺译不写入，显式空串保留。External 不进入作者交换来源。模板是 UTF-8 JSON，当前仅接受 version 1：
+
+```json
+{
+  "version": 1,
+  "projectId": "0123456789abcdef0123456789abcdef",
+  "sourceLocale": "zh-CN",
+  "targetLocale": "en-US",
+  "rows": [{
+    "key": "text_example",
+    "sourceText": "Hello",
+    "sourceFingerprint": "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969",
+    "context": ["group/entry/content"],
+    "translation": null
+  }],
+  "complete": true
+}
+```
+
+projectId 来自 Graph/localization-authoring.json 的 exchangeProjectId，不使用显示名或目录名。首次模板导出持久预留 GUID，分别保留 Working/Saved 中其他内容，不顺带保存 dirty 文本；身份不随文本历史撤销，已有身份不能被历史替换。首次预留可能在后续输出失败后保留，译文仍不改变。complete 表示引用分析范围是否完整，不表示全部文本已翻译或整个项目可发布；无法分析的范围保持 false，已知文本仍可交换。
+
+导出先提交有效作者草稿，选择取消则不启动；目标须在项目目录外且不得经过目录链接，先写临时文件再原子替换，避免覆盖受管理作者来源或产生半个文件。文件中的 key 是机器身份，表格和导入预览不显示它。
+
+导入接受上述模板，或单语言平铺 JSON（key→string/null）。模板核对项目 GUID、开发语言、支持的目标语言、版本、重复属性/行及原文指纹自洽；平铺 JSON 使用面板所选语言，没有原文证据。导入仅写开发语言以外的已支持语言，不隐式添加语言或改原文。单文件最多 8 MiB、100000 行，拒绝其他 JSON 值类型。
+
+预览按稳定 key 匹配，显示当前开发原文、待写译文和状态；原模板原文可在提示中查看。未知 key 不可选；null 跳过；空串默认不选，选入后仍须显式允许清空。未变值默认不选。原文已变化的模板译文可选择应用，并按旧指纹标待复核；平铺输入或缺原文时复核状态未知。行顺序和 context 只供阅读，不用于身份匹配，角色改 ID 不改变姓名文本 key。
+
+应用前提交相关有效 JSON 草稿，失效或损坏的草稿保留。预览捕获包内文本/引用、语言与 metadata 证据，在历史实际执行时再次核对；变动或项目关闭则拒绝旧预览。按文件共用快照并批量修改叶值，保留非目标译文、嵌套布局和其他 metadata。值与复核状态作为一次项目历史，撤销/重做沿用相同身份；新文件先初始化空 Saved 基线。应用期间预览控件禁用，取消预览用于尚未开始的应用。
+
+## 发布检查与自定义契约
+
+完整非 structure-only 的 project.validate 接入 localization-semantics，列出检查的包内翻译、catalog 和 metadata；独立 graph/group 范围明确报告跳过完整本地化检查。ProjectContentBuilder 在创建/替换输出前检查已声明文本、角色引用、默认语言、来源 JSON 和语言设置，确定的缺译、未知角色、重复/损坏来源和非法设置阻止发布，已有输出保留。External 不能补足包内默认语言完整性。
+
+未知 schema、opaque 字段或分析预算上限报告 warning 和范围不完整，project.validate 的 Complete 为 false，不声称已检查自定义代码内部字符串。构建结果及 CLI diagnostics 保留这些警告；确定的错误仍阻止构建。作者 Save All 继续允许可修复的语义草稿，不能把作者保存等同于发布检查。
+
+自定义 DTO 在 string/string? 成员上使用 [LocalizedText] 或 [CharacterReference]，生成/手工 schema 应保留 FieldDescriptor.Semantic；嵌套 DTO 和列表使用同一 walker。标记不改变 ValueCodec 的字符串契约，也不执行自定义游戏模块。自定义运行指令收到的仍是 key，须自行调用 ITextResolver；无标记字符串不被猜测或替换。接入示例见 [使用说明](../manual/game-localization.md)。
+
+操作步骤见 [游戏本地化使用说明](../manual/game-localization.md)。实现与验证记录见 [阶段计划](../../features/F-20261019-01-editor-game-localization/phase-plan.md)、[P6](../../features/F-20261019-01-editor-game-localization/phase-6.md) 和 [实现总结](../../features/F-20261019-01-editor-game-localization/summary.md)。

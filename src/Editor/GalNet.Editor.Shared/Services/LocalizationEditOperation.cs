@@ -103,6 +103,12 @@ public sealed class LocalizationEditOperation
     {
         if (path != LocalizationJson.MetadataPath) return desired.ToArray();
         var node = JsonNode.Parse(LocalizationJson.Decode(desired))!;
+        var actualIdentity = JsonNode.Parse(LocalizationJson.Decode(current))!["exchangeProjectId"]?.GetValue<string>();
+        if (node["exchangeProjectId"] is null && actualIdentity is not null)
+        {
+            node["exchangeProjectId"] = actualIdentity;
+            desired = LocalizationJson.WriteLike(desired, node);
+        }
         var reserved = JsonNode.Parse(LocalizationJson.Decode(current))!["characterHighWater"]!.GetValue<long>();
         if (reserved <= node["characterHighWater"]!.GetValue<long>()) return desired.ToArray();
         node["characterHighWater"] = reserved;
@@ -111,7 +117,9 @@ public sealed class LocalizationEditOperation
     private static bool Matches(string path, byte[] current, byte[] expected)
     {
         if (path != LocalizationJson.MetadataPath) return current.AsSpan().SequenceEqual(expected);
+        LocalizationJson.Validate(path, current);
         var actual = JsonNode.Parse(LocalizationJson.Decode(current))!.AsObject(); var baseline = JsonNode.Parse(LocalizationJson.Decode(expected))!.AsObject();
+        if (baseline["exchangeProjectId"] is null) actual.Remove("exchangeProjectId");
         if (actual["characterHighWater"]!.GetValue<long>() < baseline["characterHighWater"]!.GetValue<long>()) return false;
         actual.Remove("characterHighWater"); baseline.Remove("characterHighWater"); return JsonNode.DeepEquals(actual, baseline);
     }

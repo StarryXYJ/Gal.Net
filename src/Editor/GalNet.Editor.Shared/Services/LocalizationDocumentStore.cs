@@ -66,6 +66,38 @@ public sealed partial class LocalizationDocumentStore(IProjectContentSession con
         return new(before, current.Text == text ? before.Data.ToArray() : LocalizationJson.SetText(before.Data, target.Key, text));
     }
 
+    public IReadOnlyDictionary<string, LocalizationTextTarget> CaptureTexts(IEnumerable<string> keys, string culture)
+    {
+        RequireActive(); culture = System.Globalization.CultureInfo.GetCultureInfo(culture).Name;
+        var index = query.Get()!;
+        var files = new Dictionary<string, (LocalizationFileSnapshot File, IReadOnlyDictionary<string, string> Values)>(ProjectFilePaths.Comparer);
+        var result = new Dictionary<string, LocalizationTextTarget>(StringComparer.Ordinal);
+        foreach (var key in keys.Distinct(StringComparer.Ordinal))
+        {
+            var path = index.FindDirect(culture, key)?.File ?? $"I18n/{culture}/authoring.json";
+            if (!files.TryGetValue(path, out var item))
+            {
+                var file = CaptureFile(path); LocalizationJson.Validate(path, file.Data);
+                files.Add(path, item = (file, LocalizationJson.Texts(file.Data)));
+            }
+            result.Add(key, new(key, culture, item.File, item.Values.GetValueOrDefault(key)));
+        }
+        return result;
+    }
+    public IReadOnlyList<LocalizationFilePatch> PrepareTexts(IEnumerable<LocalizationTextTarget> targets, IReadOnlyDictionary<string, string> values)
+    {
+        var expected = targets.ToArray(); if (expected.Length == 0) return [];
+        var current = CaptureTexts(expected.Select(target => target.Key), expected[0].Culture);
+        foreach (var target in expected)
+        {
+            var now = current[target.Key];
+            if (now.Text != target.Text || now.File.Exists != target.File.Exists || !ProjectFilePaths.Comparer.Equals(now.File.Path, target.File.Path) || now.File.Exists && now.File.Id != target.File.Id)
+                throw ProjectFilePaths.Error("changed", target.File.Path);
+        }
+        return current.Values.GroupBy(target => target.File.Path, ProjectFilePaths.Comparer).Select(group => new LocalizationFilePatch(group.First().File,
+            LocalizationJson.SetTexts(group.First().File.Data, group.ToDictionary(target => target.Key, target => values[target.Key], StringComparer.Ordinal)))).ToArray();
+    }
+
     public LocalizationEditOperation Prepare(params LocalizationFilePatch[] patches)
     {
         RequireActive();

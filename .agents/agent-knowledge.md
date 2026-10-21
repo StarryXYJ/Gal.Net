@@ -241,3 +241,6 @@
 - 2026-10-21 Editor 写入口与状态已收口：GUI dirty 唯一来源为 ProjectContentSession 的内容/保存基线比较，Document 与 GalProject 不再持有 dirty 标记；变量声明通过 VariableAuthoringService，IVariableDefinitionService 仅返回保留 UID 的独立快照并通知刷新。Preview 只编辑运行时当前值，旧声明表单、Workspace 快照补历史和 PushAlreadyApplied 已删除，不保留兼容层。见 features/F-20261021-01-editor-state-simplification/summary.md、docs/spec/editor-variables.md 与 docs/spec/editor-history-and-save.md。
 
 - [组合查询的完整性原因](lessons/L-20261021-05-query-completeness-causes.md)：内部保留语义未知与对象能力缺失的区别；停止效果可消除后者，不能抹掉前者。candidate，见双路径回归。
+
+- [架构项目发现排除构建输出](lessons/L-20261021-06-architecture-project-discovery.md)：递归 csproj 枚举须排除任意层级 bin/obj；保留临时仓库副本复验 45 项通过，不能靠删除其他任务产物修复测试。
+- 2026-10-21 游戏本地化 P6 已 verified，feature P1–P6 完成：单语言模板/平铺 JSON 导入导出、项目交换 GUID、稳定 key 与源文指纹、选择预览、明确空串、整批单次历史及执行时证据重查；完整 project.validate/build 增加包内默认语言和角色语义校验，未知范围 warning/Complete=false。身份预留可能在输出失败后保留，旧文本历史须保留新身份（见文本历史 lesson）。新增 20 项通过，正常解决方案构建 0 错误；完整相关回归 1180 通过、2 项 P6e3 既有布局失败，另有 6 个视频环境跳过。原生文件选择/IME 和大项目性能阈值仍待人工验收。当前契约见 docs/spec/editor-game-localization.md，操作见 docs/manual/game-localization.md，交付与自审见 features/F-20261019-01-editor-game-localization/summary.md、review.md；不保留旧格式兼容。

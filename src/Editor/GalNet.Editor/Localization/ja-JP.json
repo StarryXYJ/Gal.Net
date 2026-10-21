@@ -880,5 +880,21 @@
   "Error.i18n.language": "有効な言語コードを入力してください。",
   "Error.i18n.stale": "原文、参照、または開発言語が変更されました。下書きを保持し、現在の値を確認してください。",
   "Error.i18n.duplicate": "この言語は既に対応しています。",
-  "Error.i18n.development": "ゲームのローカライズ画面で開発言語を確認・変更してください。"
+  "Error.i18n.development": "ゲームのローカライズ画面で開発言語を確認・変更してください。",
+  "Exchange.All": "全カテゴリ",
+  "Exchange.Runtime": "実行用テキスト",
+  "Exchange.Export": "JSON を書き出す",
+  "Exchange.Import": "読み込みプレビュー",
+  "Exchange.AllowEmpty": "空文字で翻訳を消去する",
+  "Exchange.Apply": "選択項目を適用",
+  "Exchange.Cancel": "プレビューを閉じる",
+  "Exchange.Unknown": "不明なテキスト",
+  "Exchange.Skip": "スキップ（null）",
+  "Exchange.Clear": "翻訳を消去",
+  "Exchange.Change": "変更予定",
+  "Exchange.Unchanged": "変更なし",
+  "History.ImportLocalization": "翻訳を読み込む：{0}",
+  "Error.exchange.project": "テンプレートのプロジェクトまたは開発言語が異なります。",
+  "Error.exchange.language": "開発言語以外の対応言語を選択してください。",
+  "Error.exchange.stale": "プレビューが古くなりました。ファイルを再確認してください。"
 }

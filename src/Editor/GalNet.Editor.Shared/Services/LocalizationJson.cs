@@ -73,6 +73,8 @@ public static class LocalizationJson
             if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("version", out var version) || version.ValueKind != JsonValueKind.Number || !version.TryGetInt32(out var number) || number != 1 ||
                 !root.TryGetProperty("characterHighWater", out var water) || water.ValueKind != JsonValueKind.Number || !water.TryGetInt64(out var highWater) || highWater < 0)
                 throw new InvalidDataException("Unsupported localization author metadata.");
+            if (root.TryGetProperty("exchangeProjectId", out var projectId) && (projectId.ValueKind != JsonValueKind.String || !Guid.TryParseExact(projectId.GetString(), "N", out _)))
+                throw new InvalidDataException("Invalid localization exchange project identity.");
             if (root.TryGetProperty("textStates", out var states))
             {
                 if (states.ValueKind != JsonValueKind.Object) throw new InvalidDataException("Text states must be an object.");
@@ -139,18 +141,31 @@ public static class LocalizationJson
     }
 
     public static byte[] SetText(byte[] bytes, string key, string text)
+        => SetTexts(bytes, new Dictionary<string, string>(StringComparer.Ordinal) { [key] = text });
+
+    public static IReadOnlyDictionary<string, string> Texts(byte[] bytes)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(key);
-        ArgumentNullException.ThrowIfNull(text);
+        using var json = JsonDocument.Parse(Decode(bytes)); CheckProperties(json.RootElement);
+        return TextLeaves(json.RootElement).ToDictionary(pair => pair.Key, pair =>
+        {
+            var value = json.RootElement; foreach (var part in pair.Value) value = value.GetProperty(part);
+            return value.GetString()!;
+        }, StringComparer.Ordinal);
+    }
+    public static byte[] SetTexts(byte[] bytes, IReadOnlyDictionary<string, string> values)
+    {
         using var json = JsonDocument.Parse(Decode(bytes));
         CheckProperties(json.RootElement);
         var leaves = TextLeaves(json.RootElement);
         var root = JsonNode.Parse(Decode(bytes))!.AsObject();
-        var path = leaves.GetValueOrDefault(key) ?? [key];
-        var parent = root;
-        foreach (var part in path.SkipLast(1)) parent = parent[part]!.AsObject();
-        if (!leaves.ContainsKey(key) && parent.ContainsKey(path[^1])) throw new InvalidDataException("Key conflicts with an existing object.");
-        parent[path[^1]] = text;
+        foreach (var (key, text) in values)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(key); ArgumentNullException.ThrowIfNull(text);
+            var path = leaves.GetValueOrDefault(key) ?? [key]; var parent = root;
+            foreach (var part in path.SkipLast(1)) parent = parent[part]!.AsObject();
+            if (!leaves.ContainsKey(key) && parent.ContainsKey(path[^1])) throw new InvalidDataException("Key conflicts with an existing object.");
+            parent[path[^1]] = text;
+        }
         var result = WriteLike(bytes, root);
         using var check = JsonDocument.Parse(Decode(result));
         _ = TextLeaves(check.RootElement);

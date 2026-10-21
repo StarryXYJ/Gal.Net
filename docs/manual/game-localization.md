@@ -12,4 +12,26 @@
 
 所有文本和语言操作支持项目撤销/重做，使用 Save All 保存。切换分类或关闭面板会保留未提交草稿；Save All 会尝试提交它们。遇到原文、译文、引用或 JSON 草稿冲突时，当前输入保留，请先检查现值；“放弃草稿”会清除面板中所有分类的待提交输入。项目关闭后不再接受旧面板写入。
 
-当前阶段尚未提供模板导入导出；缺译数量也不能代替发布前完整检查。作者数据及扩展契约见 [游戏本地化规范](../spec/editor-game-localization.md)。
+选择交换语言，保留“全部分类”或取消以导出当前分类，再点击“导出 JSON”。默认输出带上下文和原文指纹的单语言模板；只修改 rows 中的 translation，保留项目身份、key、语言和原文列。行顺序可以调整。勾选“运行文本”会输出直接译文的平铺 JSON，缺译不输出。导出位置须在项目目录之外。
+
+点击“导入预览”选择模板，也可导入平铺 key→string/null JSON。平铺文件使用面板所选语言；模板按自身目标语言预览。目标语言必须先添加，且不能是当前开发语言。预览显示当前原文、导入值与状态，勾选要应用的行；未知文本不能选，null 跳过，空字符串须同时选择该行并勾选“允许空字符串清空译文”。原文发生变化的译文会显示待复核，应用不覆盖原文。预览过期时重新打开文件，不能强行覆盖当前值。
+
+点击“应用所选”把整批译文和复核状态纳入一次撤销/重做，随后 Save All。应用开始前可取消预览，应用期间控件暂时禁用。首次模板导出会持久分配项目交换 GUID，改目录名不影响匹配；后续文件输出失败时该身份仍保留，不会保存其他 dirty 文本。
+
+发布前运行完整项目检查或构建。包内开发语言缺译、未知角色和损坏来源会阻止替换构建输出，外部覆盖包不能补足默认语言。仅切换开发语言时看到的缺译数量不能代替发布检查；自定义无法分析的范围会明确提示不完整。
+
+扩展 DTO 可声明文本与角色语义：
+
+```csharp
+[GenerateFieldSchema]
+public partial class MyLineOptions
+{
+    [Field(0, AllowNull = true), CharacterReference]
+    public string? Speaker { get; set; }
+
+    [Field(1, AllowNull = true, EditorId = "entry.multilinetext"), LocalizedText]
+    public string? Content { get; set; }
+}
+```
+
+使用 GalNet.Core.Parameters 中的特性和项目 schema generator；注册生成的字段 schema 后，工具按开发语言编辑并保存 key。自定义运行指令仍需通过 ITextResolver 解析文本 key，角色名通过 catalog 的姓名文本 key 解析；不把任意字符串或 opaque JSON 自动当成本地化文本。作者数据及分析边界见 [游戏本地化规范](../spec/editor-game-localization.md)。

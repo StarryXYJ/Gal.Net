@@ -880,5 +880,21 @@
   "Error.i18n.language": "올바른 언어 코드를 입력하세요.",
   "Error.i18n.stale": "원문, 참조 또는 개발 언어가 변경되었습니다. 초안을 유지하고 현재 값을 확인하세요.",
   "Error.i18n.duplicate": "이미 지원하는 언어입니다.",
-  "Error.i18n.development": "게임 현지화 패널에서 개발 언어를 확인하고 변경하세요."
+  "Error.i18n.development": "게임 현지화 패널에서 개발 언어를 확인하고 변경하세요.",
+  "Exchange.All": "모든 분류",
+  "Exchange.Runtime": "실행 텍스트",
+  "Exchange.Export": "JSON 내보내기",
+  "Exchange.Import": "가져오기 미리보기",
+  "Exchange.AllowEmpty": "빈 문자열로 번역 지우기 허용",
+  "Exchange.Apply": "선택 항목 적용",
+  "Exchange.Cancel": "미리보기 취소",
+  "Exchange.Unknown": "알 수 없는 텍스트",
+  "Exchange.Skip": "건너뜀(null)",
+  "Exchange.Clear": "번역 지우기",
+  "Exchange.Change": "변경 예정",
+  "Exchange.Unchanged": "변경 없음",
+  "History.ImportLocalization": "번역 가져오기: {0}",
+  "Error.exchange.project": "템플릿의 프로젝트 또는 개발 언어가 다릅니다.",
+  "Error.exchange.language": "개발 언어 이외의 지원 번역 언어를 선택하세요.",
+  "Error.exchange.stale": "미리보기가 오래되었습니다. 파일을 다시 확인하세요."
 }

@@ -30,4 +30,11 @@ public sealed class FileDialogService : IFileDialogService
         var files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions { Title = title, AllowMultiple = allowMultiple });
         return files.Select(x => x.Path.LocalPath).ToList();
     }
+    public async Task<string?> SaveFilePickerAsync(string title, string suggestedName)
+    {
+        var owner = GetOwner();
+        if (owner?.StorageProvider is null) return null;
+        var file = await owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions { Title = title, SuggestedFileName = suggestedName, DefaultExtension = "json" });
+        return file?.Path.LocalPath;
+    }
 }

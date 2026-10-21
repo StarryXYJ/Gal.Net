@@ -7,11 +7,32 @@
       <ListBox.ItemTemplate><DataTemplate x:DataType="services:LocalizationCategory"><TextBlock Text="{Binding Name}" TextWrapping="Wrap"/></DataTemplate></ListBox.ItemTemplate>
     </ListBox>
     <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="8">
-      <WrapPanel>
+      <StackPanel Spacing="6"><WrapPanel>
         <TextBox x:Name="NewLocalizationLanguage" Width="130" Text="{Binding NewLanguage}" PlaceholderText="{loc:Localize I18n.LanguageCode}"/>
         <Button x:Name="AddLocalizationLanguage" Content="{loc:Localize I18n.Add}" Command="{Binding AddLanguageCommand}" Margin="8,0"/>
         <Button Content="{loc:Localize I18n.RevertDrafts}" Command="{Binding RevertDraftsCommand}"/>
       </WrapPanel>
+      <WrapPanel IsEnabled="{Binding !ApplyImportCommand.IsRunning}">
+        <ComboBox x:Name="ExchangeLanguage" ItemsSource="{Binding Languages}" SelectedItem="{Binding ExchangeLanguage}" Width="130"/>
+        <CheckBox Content="{loc:Localize Exchange.All}" IsChecked="{Binding ExportAll}" Margin="8,0"/>
+        <CheckBox Content="{loc:Localize Exchange.Runtime}" IsChecked="{Binding ExportRuntime}" Margin="8,0"/>
+        <Button x:Name="ExportLocalization" Content="{loc:Localize Exchange.Export}" Command="{Binding ExportCommand}" Margin="8,0"/>
+        <Button x:Name="ImportLocalization" Content="{loc:Localize Exchange.Import}" Command="{Binding PreviewImportCommand}"/>
+      </WrapPanel>
+      <StackPanel IsVisible="{Binding HasImport}" IsEnabled="{Binding !ApplyImportCommand.IsRunning}" Spacing="6">
+        <WrapPanel><CheckBox x:Name="AllowEmptyImport" Content="{loc:Localize Exchange.AllowEmpty}" IsChecked="{Binding AllowEmpty}"/>
+          <Button x:Name="ApplyLocalizationImport" Content="{loc:Localize Exchange.Apply}" Command="{Binding ApplyImportCommand}" Margin="8,0"/>
+          <Button Content="{loc:Localize Exchange.Cancel}" Command="{Binding CancelImportCommand}"/>
+        </WrapPanel>
+        <ListBox x:Name="LocalizationImportRows" ItemsSource="{Binding ImportRows}" MaxHeight="200">
+          <ListBox.ItemTemplate><DataTemplate x:DataType="vm:LocalizationImportRowViewModel"><Grid ColumnDefinitions="Auto,*,*,Auto" ColumnSpacing="8">
+            <CheckBox IsChecked="{Binding Include}" IsEnabled="{Binding CanInclude}"/>
+            <TextBlock Grid.Column="1" Text="{Binding Source}" ToolTip.Tip="{Binding ExportedSource}" TextWrapping="Wrap" MaxWidth="300"/>
+            <TextBlock Grid.Column="2" Text="{Binding Translation}" TextWrapping="Wrap" MaxWidth="300"/>
+            <TextBlock Grid.Column="3" Text="{Binding Status}" TextWrapping="Wrap"/>
+          </Grid></DataTemplate></ListBox.ItemTemplate>
+        </ListBox>
+      </StackPanel></StackPanel>
       <WrapPanel Grid.Row="1">
         <TextBlock Text="{loc:Localize I18n.Development}" VerticalAlignment="Center" Margin="0,0,8,0"/>
         <ComboBox x:Name="DevelopmentLanguageChoice" ItemsSource="{Binding Languages}" SelectedItem="{Binding DevelopmentLanguage}" Width="130"/>
