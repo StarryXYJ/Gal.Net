@@ -12,7 +12,7 @@ public sealed record GameDebugChoice(string Id, string[] Options);
 public sealed record GameDebugActiveEntry(string GroupId, string EntryId);
 public sealed record GameDebugState(long Generation, GameEngineState State, bool Paused, string NodeId, int EntryIndex,
     string[] ActiveEntryIds, GameDebugVariable[] Variables, GameDebugGroup[] Groups, string[] CachedGroups, string? Error, GameDebugChoice? Choice,
-    GameDebugActiveEntry[]? ActiveEntries = null);
+    GameDebugActiveEntry[]? ActiveEntries = null, GameDebugCacheStats? Cache = null, GameDebugReplayStats? Replay = null);
 
 public sealed partial class GameEngine
 {
@@ -41,11 +41,13 @@ public sealed partial class GameEngine
         public long Generation => Interlocked.Read(ref _generation);
         internal DebugSession(GameEngine engine, GameDebugOptions options)
         {
+            if (options.MaxEntrancePayloadBytes < 0 || options.MaxEntranceGroups < 0) throw new ArgumentOutOfRangeException(nameof(options));
             _engine = engine;
             _options = new GameDebugOptions
             {
                 Instructions = options.Instructions.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal),
-                SynchronizePresentation = options.SynchronizePresentation
+                SynchronizePresentation = options.SynchronizePresentation,
+                MaxEntrancePayloadBytes = options.MaxEntrancePayloadBytes, MaxEntranceGroups = options.MaxEntranceGroups
             };
             _initialScene = CaptureScene();
         }
@@ -66,7 +68,8 @@ public sealed partial class GameEngine
                     _entrances.Keys.ToArray(), _engine._flowError?.ToString(),
                     _engine._pendingChoice is { } choice ? new(choice.Id, choice.Options.Select(item => item.Text).ToArray()) : null,
                     _engine._active.Where(item => !item.Instance.IsCompleted).OrderBy(item => item.Sequence)
-                        .Select(item => new GameDebugActiveEntry(item.GroupId, item.StableId)).ToArray());
+                        .Select(item => new GameDebugActiveEntry(item.GroupId, item.StableId)).ToArray(),
+                    new(_entrances.Count, _cacheBytes, _options.MaxEntrancePayloadBytes, _options.MaxEntranceGroups), _lastReplay);
             }
             finally { _engine._dispatchGate.Release(); }
         }

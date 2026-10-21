@@ -13,6 +13,53 @@ namespace GeneralTest.Runtime;
 
 public class DebugSessionTests
 {
+    [TestCase(0, 0)]
+    [TestCase(256, 1)]
+    public async Task EntranceCacheHonorsItsCountAndPayloadBudgets(int groups, long bytes)
+    {
+        var graph = GraphOf(Entry("test.text", "first"));
+        graph.Nodes.Add(new Group { Id = "second", Entries = { Entry("test.text", "second") } });
+        graph.Edges.Add(new("main", 0, "second"));
+        using var view = Registration().RegisterInstruction("test.text", _ => new TextWait()).BuildView();
+        await using var engine = new GameEngine(graph, Runtime(), view);
+        using var debug = engine.AttachDebugging(new() { Instructions = Options().Instructions, MaxEntranceGroups = groups, MaxEntrancePayloadBytes = bytes });
+        await engine.AdvanceAsync(); await engine.AdvanceAsync();
+        var state = await debug.InspectAsync();
+        Assert.That(state.CachedGroups, Is.Empty);
+        Assert.That(state.Cache!.PayloadBytes, Is.Zero);
+    }
+
+    [Test]
+    public async Task LatestEntranceLruAvoidsReplayingEarlierGroupsAndReportsMeasuredWork()
+    {
+        var graph = GraphOf(Enumerable.Range(0, 2000).Select(index => Entry("test.scene", "prefix" + index)).Append(Entry("test.text", "wait")).ToArray());
+        graph.Nodes.Add(new Group { Id = "second", Entries = Enumerable.Range(0, 200).Select(index => (Entry)Entry("test.scene", "local" + index)).Append(Entry("test.text", "second")).ToList() });
+        graph.Edges.Add(new("main", 0, "second"));
+        using var view = Registration().RegisterInstruction("test.text", _ => new TextWait())
+            .RegisterInstruction("test.scene", context => new ImmediatePrimitiveInstance(() => context.Runtime.State.Table<Layer>()
+                .Set(new Layer { Id = "scene", AssetId = context.Entry.StableId }))).BuildView();
+        await using var engine = new GameEngine(graph, Runtime(), view);
+        using var debug = engine.AttachDebugging(new() { Instructions = Options().Instructions, MaxEntranceGroups = 1 });
+        await engine.AdvanceAsync(); await engine.AdvanceAsync();
+        Assert.That((await debug.InspectAsync()).CachedGroups, Is.EqualTo(new[] { "second" }));
+        await debug.SeekAsync(debug.Generation, new("second", 150, []));
+        var local = await debug.InspectAsync();
+        Assert.That(local.Replay!.EntranceCacheHit, Is.True);
+        Assert.That(local.Replay.Instructions, Is.EqualTo(150));
+        var result = engine.Runtime.State.Table<Layer>().Get("scene").AssetId;
+        var expectedStates = JsonSerializer.Serialize(engine.Runtime.CreateSnapshot().States);
+        await debug.SeekAsync(debug.Generation, new("second", 150, [new("main", 0, "second")]));
+        var root = await debug.InspectAsync();
+        Assert.That(root.Replay!.EntranceCacheHit, Is.False);
+        Assert.That(root.Replay.Instructions, Is.EqualTo(2151));
+        Assert.That(engine.Runtime.State.Table<Layer>().Get("scene").AssetId, Is.EqualTo(result));
+        Assert.That(JsonSerializer.Serialize(engine.Runtime.CreateSnapshot().States), Is.EqualTo(expectedStates));
+        Assert.That(root.Cache!.PayloadBytes, Is.LessThanOrEqualTo(root.Cache.BudgetBytes));
+        TestContext.Out.WriteLine($"entrance={local.Replay.Milliseconds:F2}ms/{local.Replay.Instructions} primitives; root={root.Replay.Milliseconds:F2}ms/{root.Replay.Instructions} primitives; payload={root.Cache.PayloadBytes} bytes");
+        engine.RestoreFrom(engine.Runtime.CreateSnapshot());
+        Assert.That((await debug.InspectAsync()).Cache!.PayloadBytes, Is.Zero);
+    }
+
     [Test]
     public async Task TargetAuthorConditionIsForcedOnceAcrossExpansionThenOrdinaryConditionsResume()
     {

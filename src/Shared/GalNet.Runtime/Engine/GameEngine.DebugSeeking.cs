@@ -9,6 +9,8 @@ namespace GalNet.Runtime.Engine;
 public enum DebugReplayBehavior { Unsupported, Scene, Ignore }
 public sealed class GameDebugOptions
 {
+    public long MaxEntrancePayloadBytes { get; init; } = 64L * 1024 * 1024;
+    public int MaxEntranceGroups { get; init; } = 256;
     public IReadOnlyDictionary<string, DebugReplayBehavior> Instructions { get; init; } = new Dictionary<string, DebugReplayBehavior>();
     public Func<IGameRuntime, CancellationToken, Task>? SynchronizePresentation { get; init; }
 }
@@ -40,14 +42,14 @@ public sealed partial class GameEngine
             _skipBreakpoint = null;
             Interlocked.Increment(ref _generation);
             if (_restoring) _ownedRestoreGeneration = Generation;
-            else { CancelSeek(); _entrances.Clear(); }
+            else { CancelSeek(); ClearEntrances(); }
             Paused = _restoring;
         }
         internal void CaptureEntrance(string group)
         {
             if (_suppressEntrance) { _suppressEntrance = false; return; }
             if (Replaying) return;
-            if (_engine.EntryIndex == 0) _entrances[group] = CaptureScene();
+            if (_engine.EntryIndex == 0) StoreEntrance(group);
         }
         private GameSnapshot CaptureScene()
         {
@@ -86,6 +88,9 @@ public sealed partial class GameEngine
             _seekCancellation = cancellation;
             var began = false;
             var changed = false;
+            var startedAt = System.Diagnostics.Stopwatch.GetTimestamp();
+            var cacheHit = false;
+            _replayedInstructions = 0;
             var ownedGeneration = generation;
             Exception? failure = null;
             try
@@ -111,7 +116,12 @@ public sealed partial class GameEngine
                     }
                     else if (start == _engine.CurrentNodeId && (start != target.GroupId || target.EntryIndex >= _engine.EntryIndex))
                         baseline = _engine._runtime.CreateSnapshot();
-                    else if (_entrances.TryGetValue(start, out var entrance)) baseline = SnapshotCopy.Clone(entrance);
+                    else if (_entrances.TryGetValue(start, out var entrance))
+                    {
+                        baseline = SnapshotCopy.Clone(entrance);
+                        _entranceUse[start] = ++_cacheClock;
+                        cacheHit = true;
+                    }
                     else if (_initialScene.NodeId == start) baseline = SnapshotCopy.Clone(_initialScene);
                     else throw new InvalidOperationException("No entrance scene is cached. Choose a route from the game entry.");
                     ValidateRoute(target, baseline);
@@ -215,7 +225,11 @@ public sealed partial class GameEngine
                         await presentation.EndCatchUpAsync(_engine._dispatchRuntime, _engine._scopeCancellation.Token).ConfigureAwait(false);
                     else if (changed && Generation == ownedGeneration && _options.SynchronizePresentation is { } synchronize)
                         await synchronize(_engine._dispatchRuntime, _engine._scopeCancellation.Token).ConfigureAwait(false);
-                    if (changed && Generation == ownedGeneration) _engine.UpdateLastStableSnapshot();
+                    if (changed && Generation == ownedGeneration)
+                    {
+                        _lastReplay = new(System.Diagnostics.Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds, _replayedInstructions, cacheHit);
+                        _engine.UpdateLastStableSnapshot();
+                    }
                 }
                 catch (Exception error)
                 {

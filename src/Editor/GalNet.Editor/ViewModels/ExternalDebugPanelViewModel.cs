@@ -274,6 +274,8 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         }
         var edges = _documents.CurrentDocument.Edges.Select(edge => new GameDebugRouteEdge(edge.FromNodeId, edge.FromOutlet, edge.ToNodeId)).ToArray();
         var plan = DebugRoutePlanner.Plan(state.NodeId, group, edges, _workspace.SelectedNodes.Select(node => node.Id).ToArray());
+        if (state.NodeId == group && index < state.EntryIndex && !state.CachedGroups.Contains(group))
+            plan = DebugRoutePlanner.Plan(_documents.CurrentDocument.RootNodeId, group, edges);
         if (plan.Routes.Length == 0 && state.CachedGroups.Contains(group)) plan = new([[]], false, false);
         if (plan.Routes.Length == 0) plan = DebugRoutePlanner.Plan(_documents.CurrentDocument.RootNodeId, group, edges);
         if (plan.Routes.Length == 0) throw new InvalidOperationException(plan.Truncated ? L["Debug.RouteLimit"] : L["Debug.NoRoute"]);

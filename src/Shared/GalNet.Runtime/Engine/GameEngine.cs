@@ -358,6 +358,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             _scopeCancellation.Token.ThrowIfCancellationRequested();
             var entry = group.Entries[_runtime.EntryIndex];
             if (_debugger?.BeforeEntry(group.Id, _runtime.EntryIndex) == true) return;
+            if (_debugger?.Replaying == true) _debugger.RecordReplayInstruction();
             if (_debugger?.Replaying == true && _debugger.IgnoreInstruction(entry.Type))
             {
                 _runtime.SetEntryIndex(_runtime.EntryIndex + 1);
