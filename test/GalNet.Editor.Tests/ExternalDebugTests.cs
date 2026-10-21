@@ -86,6 +86,14 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 await panel.SeekAsync(group.Id, entry.StableId);
                 Assert.That(engine.EntryIndex, Is.Zero);
                 Assert.That(engine.Runtime.GetVariable("score")!.AsInt(), Is.EqualTo(11));
+                await Until(() => panel.RuntimeState?.Paused == true && client.Host?.Run?.Generation == adapter.Info.Generation && !panel.Busy);
+                await panel.ToggleBreakpointAsync(group.Id, entry.StableId);
+                Assert.That(panel.Error, Is.Empty);
+                Assert.That(entry.IsDebugBreakpoint, Is.True);
+                await panel.StepCommand.ExecuteAsync(null);
+                Assert.That(panel.Error, Is.Empty);
+                Assert.That(engine.EntryIndex, Is.EqualTo(1));
+                Assert.That(project.Services.GetRequiredService<EditorHistories>().Content.IsDirty, Is.False);
                 await panel.DisconnectCommand.ExecuteAsync(null);
                 await Until(() => !panel.HasRun);
             }

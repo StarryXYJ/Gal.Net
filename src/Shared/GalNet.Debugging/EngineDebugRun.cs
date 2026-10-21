@@ -21,7 +21,7 @@ public sealed class EngineDebugRun : IDebugGameRun, IDisposable
         _session = engine.AttachDebugging(options);
         _stop = stop;
     }
-    public DebugRunInfo Info => new(_id, _session.Generation, ["inspect", "pause", "resume", "setVariable", "choose", "seek", "groupEnd", "stop", "cancel"], _operationGeneration);
+    public DebugRunInfo Info => new(_id, _session.Generation, ["inspect", "pause", "resume", "step", "breakpoints", "setVariable", "choose", "seek", "groupEnd", "stop", "cancel"], _operationGeneration);
     public async Task<object?> ExecuteAsync(DebugCommand command, CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -33,6 +33,8 @@ public sealed class EngineDebugRun : IDebugGameRun, IDisposable
             case "inspect": return await _session.InspectAsync(cancellationToken).ConfigureAwait(false);
             case "pause": await _session.PauseAsync(generation, cancellationToken).ConfigureAwait(false); break;
             case "resume": await _session.ResumeAsync(generation, cancellationToken).ConfigureAwait(false); break;
+            case "step": await _session.StepAsync(generation, Read<GameDebugSpan>(command.Arguments), cancellationToken).ConfigureAwait(false); break;
+            case "breakpoints": await _session.SetBreakpointsAsync(generation, Read<GameDebugSpan[]>(command.Arguments), cancellationToken).ConfigureAwait(false); break;
             case "setVariable":
                 var edit = Read<DebugVariableEdit>(command.Arguments);
                 await _session.SetVariableAsync(generation, edit.Expected, edit.Value, cancellationToken).ConfigureAwait(false); break;

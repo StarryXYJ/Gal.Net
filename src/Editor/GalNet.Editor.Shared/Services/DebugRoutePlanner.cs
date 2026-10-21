@@ -19,6 +19,7 @@ public static class DebugRoutePlanner
             var pending = new Stack<(string Node, GameDebugRouteEdge[] Path, HashSet<string> Visited)>();
             pending.Push((start, [], new(StringComparer.Ordinal) { start }));
             var budget = searchBudget;
+            var selectionTruncated = false;
             while (pending.TryPop(out var work) && --budget >= 0 && candidates.Count < 2)
             {
                 if (work.Node == target)
@@ -26,12 +27,15 @@ public static class DebugRoutePlanner
                     if (work.Visited.SetEquals(selection)) candidates.Add(work.Path);
                     continue;
                 }
-                if (work.Path.Length >= maxDepth) continue;
+                if (work.Path.Length >= maxDepth) { selectionTruncated = true; continue; }
                 foreach (var edge in outgoing.GetValueOrDefault(work.Node, []))
-                    if (selection.Contains(edge.To) && !work.Visited.Contains(edge.To) && pending.Count < searchBudget)
+                    if (selection.Contains(edge.To) && !work.Visited.Contains(edge.To))
+                    {
+                        if (pending.Count >= searchBudget) { selectionTruncated = true; break; }
                         pending.Push((edge.To, [.. work.Path, edge], new(work.Visited, StringComparer.Ordinal) { edge.To }));
+                    }
             }
-            if (candidates.Count == 1 && pending.Count == 0 && budget >= 0) return new([candidates[0]], true, false);
+            if (candidates.Count == 1 && pending.Count == 0 && budget >= 0 && !selectionTruncated) return new([candidates[0]], true, false);
         }
         var routes = new List<GameDebugRouteEdge[]>();
         var queue = new Queue<(string Node, GameDebugRouteEdge[] Path, HashSet<string> Visited)>();

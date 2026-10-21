@@ -44,7 +44,7 @@
                                     Background="Transparent"
                                     Cursor="SizeAll"
                                     PointerPressed="OnDragHandlePressed">
-                                <TextBlock Text="::" />
+                                <StackPanel Orientation="Horizontal"><TextBlock Text="●" Foreground="Red" IsVisible="{Binding IsDebugBreakpoint}"/><TextBlock Text="::" /></StackPanel>
                             </Border>
                             <TextBlock Grid.Column="1"
                                        Text="{Binding Id}"

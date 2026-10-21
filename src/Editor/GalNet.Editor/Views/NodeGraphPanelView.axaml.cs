@@ -417,6 +417,9 @@ public partial class NodeGraphPanelView : UserControl
         var jump = new MenuItem { Header = Workspace.Localize("Debug.Jump"), IsEnabled = debug.CanLocate };
         jump.Click += async (_, _) => await debug.SeekAsync(node.Id);
         menu.Items.Add(jump);
+        var isolated = new MenuItem { Header = Workspace.Localize("Debug.IsolatedStart"), IsEnabled = debug.CanLocate };
+        isolated.Click += async (_, _) => await debug.SeekAsync(node.Id, initialScene: true);
+        menu.Items.Add(isolated);
     }
 
     private void OnConnectorPointerPressed(object? sender, GraphConnectorPointerPressedEventArgs e)

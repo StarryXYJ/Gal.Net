@@ -13,7 +13,7 @@ public sealed class GameDebugOptions
     public Func<IGameRuntime, CancellationToken, Task>? SynchronizePresentation { get; init; }
 }
 public sealed record GameDebugRouteEdge(string From, int Outlet, string To);
-public sealed record GameDebugSeek(string GroupId, int EntryIndex, GameDebugRouteEdge[] Route);
+public sealed record GameDebugSeek(string GroupId, int EntryIndex, GameDebugRouteEdge[] Route, int? TargetEnd = null, bool InitialScene = false);
 
 public sealed partial class GameEngine
 {
@@ -35,6 +35,9 @@ public sealed partial class GameEngine
 
         internal void OnExternalRestore()
         {
+            _forcedTarget = null;
+            _stepBoundary = null;
+            _skipBreakpoint = null;
             Interlocked.Increment(ref _generation);
             if (_restoring) _ownedRestoreGeneration = Generation;
             else { CancelSeek(); _entrances.Clear(); }
@@ -43,6 +46,7 @@ public sealed partial class GameEngine
         internal void CaptureEntrance(string group)
         {
             if (_suppressEntrance) { _suppressEntrance = false; return; }
+            if (Replaying) return;
             if (_engine.EntryIndex == 0) _entrances[group] = CaptureScene();
         }
         private GameSnapshot CaptureScene()
@@ -52,7 +56,8 @@ public sealed partial class GameEngine
         }
         internal bool BeforeEntry(string group, int index)
         {
-            if (_seek is null || _seek.GroupId != group || _seek.EntryIndex != index || _route.Count > 0) return false;
+            if (_seek is null) return BeforeNormalEntry(group, index);
+            if (_seek.GroupId != group || _seek.EntryIndex != index || _route.Count > 0) return false;
             Paused = true;
             _engine._catchUpActive = false;
             _engine._catchUpStopAtBoundary = true;
@@ -97,7 +102,14 @@ public sealed partial class GameEngine
                     if (_engine._navigation.FindNode(target.GroupId) is not Group group || target.EntryIndex < 0 || target.EntryIndex > group.Entries.Count)
                         throw new ArgumentException("Invalid debug target.", nameof(target));
                     var start = target.Route.FirstOrDefault()?.From ?? target.GroupId;
-                    if (start == _engine.CurrentNodeId && (start != target.GroupId || target.EntryIndex >= _engine.EntryIndex))
+                    var targetEnd = target.TargetEnd ?? Math.Min(target.EntryIndex + 1, group.Entries.Count);
+                    if (targetEnd < target.EntryIndex || targetEnd > group.Entries.Count) throw new ArgumentException("Invalid target author span.", nameof(target));
+                    if (target.InitialScene)
+                    {
+                        if (target.Route.Length != 0) throw new ArgumentException("An isolated test start cannot include a route.", nameof(target));
+                        baseline = new GameSnapshot { NodeId = target.GroupId, EntryIndex = 0, States = _initialScene.States };
+                    }
+                    else if (start == _engine.CurrentNodeId && (start != target.GroupId || target.EntryIndex >= _engine.EntryIndex))
                         baseline = _engine._runtime.CreateSnapshot();
                     else if (_entrances.TryGetValue(start, out var entrance)) baseline = SnapshotCopy.Clone(entrance);
                     else if (_initialScene.NodeId == start) baseline = SnapshotCopy.Clone(_initialScene);
@@ -158,7 +170,12 @@ public sealed partial class GameEngine
                         _engine.RemoveCompleted();
                         _engine.ContinueUntilBlocked();
                         _engine.ThrowFlowError();
-                        if (Paused) break;
+                        if (Paused)
+                        {
+                            _forcedTarget = new(target.GroupId, target.EntryIndex, target.TargetEnd ?? Math.Min(target.EntryIndex + 1,
+                                ((Group)_engine._navigation.FindNode(target.GroupId)!).Entries.Count));
+                            break;
+                        }
                         if (!_engine.IsRunning) throw new InvalidOperationException("The debug route ended before the target.");
                         waiting = _engine._active.HasBlockingInstance();
                     }

@@ -364,7 +364,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
                 continue;
             }
             PrimitiveInstance? instance = null;
-            if (((_catchUpActive && _catchUpIgnoreConditions) || _runtime.EvaluateCondition(entry.Condition)) && entry is PrimitiveEntry primitive)
+            if (((_catchUpActive && _catchUpIgnoreConditions) || _debugger?.ForceTargetCondition(group.Id, _runtime.EntryIndex) == true || _runtime.EvaluateCondition(entry.Condition)) && entry is PrimitiveEntry primitive)
             {
                 CheckReadingBoundary(group, primitive);
                 if (_catchUpStopAtBoundary) return;

@@ -36,6 +36,9 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     private readonly IFileDialogService _files;
     private readonly Dictionary<(string Group, string Primitive), string> _sources = [];
     private readonly Dictionary<(string Group, string Source), int> _positions = [];
+    private readonly Dictionary<(string Group, string Source), GameDebugSpan> _spans = [];
+    private readonly HashSet<(string Group, string Source)> _breakpoints = [];
+    private string? _breakpointRun;
     private string? _runIdentity;
     private string? _authorSignature;
     private bool _closed;
@@ -100,6 +103,11 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         }
         if (state is not null && run is not null)
         {
+            if (_breakpointRun != run.RunId)
+            {
+                if (_breakpoints.Count == 0) _breakpointRun = run.RunId;
+                else if (!Busy) _ = SynchronizeBreakpointsAsync(run.RunId);
+            }
             UpdateVariables(PlayerVariables, state.Variables.Where(variable => variable.Scope == VariableScope.Player), run);
             UpdateVariables(SaveVariables, state.Variables.Where(variable => variable.Scope == VariableScope.Save), run);
             if (state.Choice is { } choice)
@@ -113,7 +121,11 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
             }
             else Choices.Clear();
         }
-        else { PlayerVariables.Clear(); SaveVariables.Clear(); Choices.Clear(); }
+        else if (run is null)
+        {
+            foreach (var row in PlayerVariables.Concat(SaveVariables)) row.Invalidate();
+            PlayerVariables.Clear(); SaveVariables.Clear(); Choices.Clear();
+        }
         UpdateHighlights(); NotifyControls(); OnPropertyChanged(nameof(RuntimeState));
     }
     private void UpdateVariables(ObservableCollection<DebugVariableRow> rows, IEnumerable<GameDebugVariable> values, DebugRunInfo run)
@@ -133,12 +145,15 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         foreach (var node in _workspace.Nodes)
         {
             node.IsDebugCurrent = state?.NodeId == node.Id;
-            var active = state?.NodeId == node.Id
-                ? state.ActiveEntryIds.Select(id => _sources.GetValueOrDefault((node.Id, id))).Where(id => id is not null).ToHashSet()
-                : [];
+            var active = state?.ActiveEntries?.Where(item => item.GroupId == node.Id)
+                .Select(item => _sources.GetValueOrDefault((node.Id, item.EntryId))).Where(id => id is not null).ToHashSet() ?? [];
             if (state?.NodeId == node.Id && active.Count == 0 && state.Groups.FirstOrDefault(group => group.Id == node.Id) is { } group && state.EntryIndex < group.Entries.Length)
                 active.Add(_sources.GetValueOrDefault((node.Id, group.Entries[state.EntryIndex])));
-            foreach (var entry in node.Entries) entry.IsDebugCurrent = active.Contains(entry.StableId);
+            foreach (var entry in node.Entries)
+            {
+                entry.IsDebugCurrent = active.Contains(entry.StableId);
+                entry.IsDebugBreakpoint = _breakpoints.Contains((node.Id, entry.StableId));
+            }
         }
     }
     [RelayCommand] private async Task BrowseAsync()
@@ -186,7 +201,7 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         }
         var output = Path.Combine(project.RootPath, "Output", "Debug");
         await new ProjectContentBuilder(_catalog).BuildAsync(project.RootPath, output);
-        _sources.Clear(); _positions.Clear();
+        _sources.Clear(); _positions.Clear(); _spans.Clear(); _breakpointRun = null;
         var repository = new EditorDocumentRepository(_catalog);
         foreach (var group in _documents.Groups.Values)
         {
@@ -196,6 +211,7 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
             {
                 _positions[(group.Id, entry.StableId)] = offset;
                 foreach (var primitive in result.SourceMap[entry.StableId]) { _sources[(group.Id, primitive)] = entry.StableId; offset++; }
+                _spans[(group.Id, entry.StableId)] = new(group.Id, _positions[(group.Id, entry.StableId)], offset);
             }
         }
         _authorSignature = Signature(); ContentChanged = false;
@@ -211,6 +227,14 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     [RelayCommand] private Task StopGameAsync() => CommandAsync("stop");
     [RelayCommand] private Task PauseAsync() => CommandAsync("pause");
     [RelayCommand] private Task ResumeAsync() => CommandAsync("resume");
+    [RelayCommand] private Task StepAsync() => RunAsync(async () =>
+    {
+        if (ContentChanged) throw new InvalidOperationException(L["Debug.ContentChanged"]);
+        var state = _client.State ?? throw new InvalidOperationException("No active game.");
+        var span = _spans.Values.FirstOrDefault(span => span.GroupId == state.NodeId && span.Start <= state.EntryIndex && state.EntryIndex < span.End)
+            ?? throw new InvalidOperationException("There is no next author entry in this Group. Continue to leave it.");
+        await _client.SendAsync("step", span);
+    });
     [RelayCommand] private Task GroupEndAsync() => CommandAsync("groupEnd");
     [RelayCommand] private Task DisconnectAsync() => RunAsync(_client.DisconnectAsync);
     [RelayCommand] private async Task CancelAsync() { try { await _client.SendAsync("cancel"); } catch (Exception error) { Error = error.Message; } }
@@ -224,29 +248,53 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         catch (Exception error) { Error = error.Message; }
         finally { Busy = false; }
     }
-    public Task SeekAsync(string group, string? sourceEntry = null) => RunAsync(async () =>
+    public Task ToggleBreakpointAsync(string group, string source) => RunAsync(async () =>
+    {
+        if (ContentChanged || !_spans.ContainsKey((group, source))) throw new InvalidOperationException(L["Debug.ContentChanged"]);
+        var key = (group, source);
+        if (!_breakpoints.Remove(key)) _breakpoints.Add(key);
+        try { await SendBreakpointsAsync(); }
+        catch { if (!_breakpoints.Remove(key)) _breakpoints.Add(key); throw; }
+        UpdateHighlights();
+    });
+    private Task SendBreakpointsAsync() => _client.SendAsync("breakpoints", ContentChanged ? Array.Empty<GameDebugSpan>() :
+        _breakpoints.Where(key => _spans.ContainsKey(key)).Select(key => _spans[key]).ToArray());
+    private Task SynchronizeBreakpointsAsync(string run) => RunAsync(async () => { await SendBreakpointsAsync(); _breakpointRun = run; });
+    public Task SeekAsync(string group, string? sourceEntry = null, bool initialScene = false) => RunAsync(async () =>
     {
         if (ContentChanged || _authorSignature is null) throw new InvalidOperationException(L["Debug.ContentChanged"]);
         var state = _client.State ?? throw new InvalidOperationException("No active game.");
         var index = sourceEntry is null ? 0 : _positions.GetValueOrDefault((group, sourceEntry), -1);
         if (index < 0) throw new InvalidOperationException("The author entry is not mapped to this game content.");
+        var span = sourceEntry is null ? _spans.Values.FirstOrDefault(item => item.GroupId == group && item.Start == 0 && item.End > 0) : _spans.GetValueOrDefault((group, sourceEntry));
+        if (initialScene)
+        {
+            await _client.SendAsync("seek", new GameDebugSeek(group, index, [], span?.End, InitialScene: true));
+            return;
+        }
         var edges = _documents.CurrentDocument.Edges.Select(edge => new GameDebugRouteEdge(edge.FromNodeId, edge.FromOutlet, edge.ToNodeId)).ToArray();
         var plan = DebugRoutePlanner.Plan(state.NodeId, group, edges, _workspace.SelectedNodes.Select(node => node.Id).ToArray());
         if (plan.Routes.Length == 0 && state.CachedGroups.Contains(group)) plan = new([[]], false, false);
         if (plan.Routes.Length == 0) plan = DebugRoutePlanner.Plan(_documents.CurrentDocument.RootNodeId, group, edges);
         if (plan.Routes.Length == 0) throw new InvalidOperationException(plan.Truncated ? L["Debug.RouteLimit"] : L["Debug.NoRoute"]);
         var route = plan.Routes.Length == 1 && !plan.Truncated ? plan.Routes[0] : await SelectRouteAsync(plan);
-        if (route is not null) await _client.SendAsync("seek", new GameDebugSeek(group, index, route));
+        if (route is not null) await _client.SendAsync("seek", new GameDebugSeek(group, index, route, span?.End));
     });
     private async Task<GameDebugRouteEdge[]?> SelectRouteAsync(DebugRoutePlan plan)
     {
         var owner = (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
         if (owner is null) return null;
         var dialog = new Window { Title = L["Debug.SelectRoute"], Width = 620, Height = 360, WindowStartupLocation = WindowStartupLocation.CenterOwner };
-        var list = new ListBox { ItemsSource = plan.Routes.Select(route => string.Join(" → ", route.Select(edge => edge.From).Append(route.LastOrDefault()?.To ?? ""))).ToArray(), SelectedIndex = 0 };
+        var list = new ListBox { ItemsSource = plan.Routes.Select(route => string.Join(" → ", route.Select(edge => $"{_workspace.Nodes.FirstOrDefault(node => node.Id == edge.From)?.Name ?? edge.From} [{edge.Outlet}]")
+            .Append(_workspace.Nodes.FirstOrDefault(node => node.Id == route.LastOrDefault()?.To)?.Name ?? route.LastOrDefault()?.To ?? ""))).ToArray(), SelectedIndex = 0 };
         var confirm = new Button { Content = L["Debug.Jump"], HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right };
         confirm.Click += (_, _) => dialog.Close(list.SelectedIndex);
         var layout = new DockPanel { Margin = new Thickness(12), LastChildFill = true };
+        if (plan.Truncated)
+        {
+            var warning = new TextBlock { Text = L["Debug.RouteLimit"], TextWrapping = Avalonia.Media.TextWrapping.Wrap };
+            DockPanel.SetDock(warning, Avalonia.Controls.Dock.Top); layout.Children.Add(warning);
+        }
         DockPanel.SetDock(confirm, Avalonia.Controls.Dock.Bottom); layout.Children.Add(confirm); layout.Children.Add(list); dialog.Content = layout;
         var selected = await dialog.ShowDialog<int?>(owner);
         return selected is { } index && (uint)index < plan.Routes.Length ? plan.Routes[index] : null;

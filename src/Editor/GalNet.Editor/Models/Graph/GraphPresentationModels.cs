@@ -329,6 +329,7 @@ public partial class GraphEdge : ObservableObject, IDisposable
 
 public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
 {
+    [ObservableProperty] private bool _isDebugBreakpoint;
     [ObservableProperty] private bool _isDebugCurrent;
     internal string? AuthorGroupId => _groupId;
     public EditorEntryData Source { get; }

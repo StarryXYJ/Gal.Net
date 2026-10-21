@@ -13,6 +13,69 @@ namespace GeneralTest.Runtime;
 
 public class DebugSessionTests
 {
+    [Test]
+    public async Task TargetAuthorConditionIsForcedOnceAcrossExpansionThenOrdinaryConditionsResume()
+    {
+        var calls = new List<string>();
+        using var view = Registration().RegisterInstruction("test.scene", context => new ImmediatePrimitiveInstance(() => calls.Add(context.Entry.StableId)))
+            .RegisterInstruction("test.text", _ => new TextWait()).BuildView();
+        var graph = GraphOf(Entry("test.scene", "author#1", "false"), Entry("test.scene", "author#2", "false"),
+            Entry("test.scene", "following#1", "false"), Entry("test.text", "wait"));
+        await using var engine = new GameEngine(graph, Runtime(), view);
+        using var debug = engine.AttachDebugging(Options());
+        await debug.SeekAsync(debug.Generation, new("main", 0, [], TargetEnd: 2));
+        await debug.ResumeAsync(debug.Generation);
+        Assert.That(calls, Is.EqualTo(new[] { "author#1", "author#2" }));
+        await engine.AdvanceAsync();
+        Assert.That(calls, Has.Count.EqualTo(2));
+    }
+
+    [Test]
+    public async Task BreakpointsStopBeforeAuthorSpansAndStepDoesNotRunFollowingEntry()
+    {
+        var calls = 0;
+        using var view = Registration().RegisterInstruction("test.scene", _ => new ImmediatePrimitiveInstance(() => calls++))
+            .RegisterInstruction("test.text", _ => new TextWait()).BuildView();
+        var graph = GraphOf(Entry("test.scene", "first#1"), Entry("test.scene", "first#2"), Entry("test.scene", "next#1"), Entry("test.text", "wait"));
+        await using var engine = new GameEngine(graph, Runtime(), view);
+        using var debug = engine.AttachDebugging(Options());
+        await debug.SetBreakpointsAsync(debug.Generation, [new("main", 0, 2)]);
+        await engine.AdvanceAsync();
+        Assert.That(calls, Is.Zero);
+        Assert.That((await debug.InspectAsync()).Paused, Is.True);
+        await debug.StepAsync(debug.Generation, new("main", 0, 2));
+        Assert.That(calls, Is.EqualTo(2));
+        Assert.That(engine.EntryIndex, Is.EqualTo(2));
+        Assert.That((await debug.InspectAsync()).Paused, Is.True);
+        await debug.ResumeAsync(debug.Generation);
+        Assert.That(calls, Is.EqualTo(3));
+    }
+
+    [Test]
+    public async Task CrossGroupReplayCannotReplaceNaturalEntrancesAndIsolatedStartUsesInitialScene()
+    {
+        var graph = GraphOf(Entry("test.text", "first"), Entry("test.scene", "object", "false"));
+        graph.Nodes.Add(new Group { Id = "second", Entries = { Entry("test.text", "second-line") } });
+        graph.Nodes.Add(new Group { Id = "isolated", Entries = { Entry("test.text", "isolated-line") } });
+        graph.Edges.Add(new("main", 0, "second"));
+        using var view = Registration().RegisterInstruction("test.text", _ => new TextWait())
+            .RegisterInstruction("test.scene", context => new ImmediatePrimitiveInstance(() => context.Runtime.State.Table<Layer>()
+                .Set(new Layer { Id = "forced", AssetId = "replay" }))).BuildView();
+        await using var engine = new GameEngine(graph, Runtime(), view);
+        using var debug = engine.AttachDebugging(Options());
+        await engine.AdvanceAsync(); await engine.AdvanceAsync();
+        Assert.That(engine.CurrentNodeId, Is.EqualTo("second"));
+        await debug.SeekAsync(debug.Generation, new("main", 0, []));
+        await debug.SeekAsync(debug.Generation, new("second", 0, [new("main", 0, "second")]));
+        Assert.That(engine.Runtime.State.Table<Layer>().TryGet("forced", out _), Is.True);
+        await debug.ResumeAsync(debug.Generation);
+        await debug.SeekAsync(debug.Generation, new("second", 0, []));
+        Assert.That(engine.Runtime.State.Table<Layer>().TryGet("forced", out _), Is.False);
+        await debug.SeekAsync(debug.Generation, new("isolated", 0, [], InitialScene: true));
+        Assert.That(engine.CurrentNodeId, Is.EqualTo("isolated"));
+        Assert.That(engine.Runtime.State.Table<Layer>().TryGet("forced", out _), Is.False);
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public async Task StopOrExternalRestoreCancelsAnInFlightSeekAndDrainsOldWork(bool restore)
@@ -28,7 +91,7 @@ public class DebugSessionTests
         await blocker.Entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
         if (restore) engine.RestoreFrom(initial);
         else await engine.StopAsync().WaitAsync(TimeSpan.FromSeconds(2));
-        Assert.ThrowsAsync<OperationCanceledException>(async () => await operation.WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.CatchAsync<OperationCanceledException>(async () => await operation.WaitAsync(TimeSpan.FromSeconds(2)));
         Assert.That(engine.State, Is.EqualTo(restore ? GameEngineState.Ready : GameEngineState.Stopped));
         if (restore)
         {

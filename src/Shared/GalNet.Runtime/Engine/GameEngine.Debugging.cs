@@ -9,8 +9,10 @@ namespace GalNet.Runtime.Engine;
 public sealed record GameDebugVariable(VariableScope Scope, string Uid, string Name, VariableType Type, string Value);
 public sealed record GameDebugGroup(string Id, string[] Entries);
 public sealed record GameDebugChoice(string Id, string[] Options);
+public sealed record GameDebugActiveEntry(string GroupId, string EntryId);
 public sealed record GameDebugState(long Generation, GameEngineState State, bool Paused, string NodeId, int EntryIndex,
-    string[] ActiveEntryIds, GameDebugVariable[] Variables, GameDebugGroup[] Groups, string[] CachedGroups, string? Error, GameDebugChoice? Choice);
+    string[] ActiveEntryIds, GameDebugVariable[] Variables, GameDebugGroup[] Groups, string[] CachedGroups, string? Error, GameDebugChoice? Choice,
+    GameDebugActiveEntry[]? ActiveEntries = null);
 
 public sealed partial class GameEngine
 {
@@ -62,7 +64,9 @@ public sealed partial class GameEngine
                     _engine._navigation.Nodes.OfType<Group>().Select(group => new GameDebugGroup(group.Id,
                         group.Entries.OfType<GalNet.Core.Entry.PrimitiveEntry>().Select(entry => entry.StableId).ToArray())).ToArray(),
                     _entrances.Keys.ToArray(), _engine._flowError?.ToString(),
-                    _engine._pendingChoice is { } choice ? new(choice.Id, choice.Options.Select(item => item.Text).ToArray()) : null);
+                    _engine._pendingChoice is { } choice ? new(choice.Id, choice.Options.Select(item => item.Text).ToArray()) : null,
+                    _engine._active.Where(item => !item.Instance.IsCompleted).OrderBy(item => item.Sequence)
+                        .Select(item => new GameDebugActiveEntry(item.GroupId, item.StableId)).ToArray());
             }
             finally { _engine._dispatchGate.Release(); }
         }
@@ -104,6 +108,7 @@ public sealed partial class GameEngine
             try
             {
                 Check(generation);
+                if (Paused) _skipBreakpoint = (_engine.CurrentNodeId, _engine.EntryIndex);
                 Paused = false;
                 _engine.ThrowFlowError();
                 if (_engine._pendingChoice is { DebugSelection: { } selected } pending)
