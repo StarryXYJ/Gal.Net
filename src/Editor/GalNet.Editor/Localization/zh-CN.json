@@ -899,5 +899,10 @@
   "History.ImportLocalization": "导入译文：{0}",
   "Error.exchange.project": "模板属于其他项目或开发语言。",
   "Error.exchange.language": "请选择开发语言以外的受支持翻译语言。",
-  "Error.exchange.stale": "导入预览已过期，请重新预览文件。"
+  "Error.exchange.stale": "导入预览已过期，请重新预览文件。",
+  "Entry.Type.variants.show": "显示差分图集",
+  "Entry.Type.variants.select": "切换图片差分",
+  "Entry.Parameter.dimension": "维度",
+  "Entry.Parameter.selection": "初始选择",
+  "Variants.AmbiguousSource": "图集来源随剧情路径变化"
 }

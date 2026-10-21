@@ -20,9 +20,11 @@ public static class EditorFieldEditors
         if (characters is not null) registry.RegisterSemantic(FieldValueSemantic.CharacterReference, context => CharacterFieldEditor.Create(context, characters));
         if (texts is not null) registry.RegisterSemantic(FieldValueSemantic.LocalizedText, context => GameTextFieldEditor.Create(context, texts));
         registry.Register("entry.imageasset", context => AssetFieldEditor.Create(context, assets, Models.AssetPickerFilter.Image));
+        registry.Register("entry.variantsasset", context => AssetFieldEditor.Create(context, assets, Models.AssetPickerFilter.ImageVariants));
         registry.Register("entry.effectprogramasset", context => AssetFieldEditor.Create(context, assets, Models.AssetPickerFilter.EffectProgram));
         registry.RegisterDefault<LayerTransform>(TransformFieldEditor.Create);
         registry.RegisterMember<LayerShowOptions>(value => value.Transform, TransformFieldEditor.Create);
+        registry.RegisterMember<VariantsShowOptions>(value => value.Transform, TransformFieldEditor.Create);
         registry.RegisterMember<LayerColorOptions>(value => value.Transform, TransformFieldEditor.Create);
         registry.RegisterMember<LayerMoveOptions>(value => value.Transform, TransformFieldEditor.Create);
         registry.RegisterMember<VideoPlayOptions>(value => value.Transform, TransformFieldEditor.Create);
@@ -63,6 +65,7 @@ public static class EditorFieldEditors
             registry.RegisterMember<LayerHandleOptions>(options => options.HandleId, Target);
             registry.RegisterMember<LayerMoveOptions>(options => options.HandleId, Target);
             registry.RegisterMember<LayerReplaceOptions>(options => options.HandleId, Target);
+            registry.RegisterMember<VariantsSelectOptions>(options => options.HandleId, Target);
             registry.RegisterMember<AnimationOptions>(options => options.HandleId, Target);
             registry.RegisterMember<AnimationStopOptions>(options => options.PlaybackHandleId, Target);
             registry.RegisterMember<VideoStopOptions>(options => options.HandleId, Target);

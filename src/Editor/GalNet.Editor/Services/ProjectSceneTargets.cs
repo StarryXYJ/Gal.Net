@@ -1,8 +1,11 @@
 using System.Text;
 using System.Text.Json;
 using Avalonia.Threading;
+using GalNet.Assets.Variants;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
 using GalNet.Core.Scene;
+using GalNet.Core.Variants;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Services.Interfaces;
@@ -10,7 +13,7 @@ using GalNet.Editor.Shared.Services;
 
 namespace GalNet.Editor.Services;
 
-/// <summary>One immutable author snapshot plus asynchronously loaded effect declarations per project scope.</summary>
+/// <summary>One immutable author snapshot plus asynchronously loaded resource declarations per project scope.</summary>
 public sealed class ProjectSceneTargets : IDisposable
 {
     private readonly IEditorDocumentService _documents;
@@ -24,6 +27,7 @@ public sealed class ProjectSceneTargets : IDisposable
     private EditorProjectDocument? _frozen;
     private SceneTargetAnalysis? _analysis;
     private IReadOnlyDictionary<string, ShaderEffectDescriptor?> _programs = new Dictionary<string, ShaderEffectDescriptor?>(StringComparer.Ordinal);
+    private IReadOnlyDictionary<string, ImageVariantsDefinition?> _variants = new Dictionary<string, ImageVariantsDefinition?>(StringComparer.OrdinalIgnoreCase);
     private Task? _loading;
     private long _resourceEpoch;
     public event Action? Changed;
@@ -45,7 +49,7 @@ public sealed class ProjectSceneTargets : IDisposable
         {
             if (!Capture()) return new([], false, false);
             QueuePreparation();
-            _analysis ??= new(_frozen!.Graph, _frozen.GroupEntries, programs: _assets is null ? null : _programs, effects: _effects);
+            _analysis ??= new(_frozen!.Graph, _frozen.GroupEntries, programs: _assets is null ? null : _programs, effects: _effects, variants: _variants);
             return position is null ? _analysis.Before(groupId, entryId) : entryId is null ? new([], false, false) : _analysis.AtTimeline(groupId, entryId, position);
         }
     }
@@ -88,15 +92,17 @@ public sealed class ProjectSceneTargets : IDisposable
         if (_assets is null || _frozen is null || _disposed) return null;
         if (_loading is not null) return _loading;
         var ids = Programs(_frozen).Distinct(StringComparer.Ordinal).Take(256).Where(id => !_programs.ContainsKey(id)).ToArray();
-        if (ids.Length == 0) return null;
+        var variants = Variants(_frozen).Distinct(StringComparer.OrdinalIgnoreCase).Take(256).Where(id => !_variants.ContainsKey(id)).ToArray();
+        if (ids.Length == 0 && variants.Length == 0) return null;
         var epoch = _resourceEpoch;
         var token = _resourceLifetime.Token;
-        return _loading = Task.Run(() => LoadAsync(ids, epoch, token));
+        return _loading = Task.Run(() => LoadAsync(ids, variants, epoch, token));
     }
 
-    private async Task LoadAsync(string[] ids, long epoch, CancellationToken token)
+    private async Task LoadAsync(string[] ids, string[] variants, long epoch, CancellationToken token)
     {
         var loaded = new Dictionary<string, ShaderEffectDescriptor?>(StringComparer.Ordinal);
+        var loadedVariants = new Dictionary<string, ImageVariantsDefinition?>(StringComparer.OrdinalIgnoreCase);
         try
         {
             foreach (var id in ids)
@@ -117,19 +123,41 @@ public sealed class ProjectSceneTargets : IDisposable
                 catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
                 { /* Missing/unreadable declarations remain incomplete until the next resource refresh. */ }
             }
+            foreach (var id in variants)
+            {
+                token.ThrowIfCancellationRequested();
+                loadedVariants[id] = null;
+                try
+                {
+                    var file = await _assets!.GetFileAsync(id, token);
+                    if (file is null || file.TypeId != ImageVariantsCodec.ResourceType || file.Length > 1024 * 1024) continue;
+                    var bytes = await file.ReadAllBytesAsync(token);
+                    if (bytes.Length <= 1024 * 1024) loadedVariants[id] = ImageVariantsCodec.Decode(bytes);
+                }
+                catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+                catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or JsonException)
+                { /* Failed definitions stay incomplete until the next resource refresh. */ }
+            }
             lock (_gate)
             {
                 if (_disposed || epoch != _resourceEpoch || _frozen is null) return;
                 var referenced = Programs(_frozen!).Distinct(StringComparer.Ordinal).Take(256).ToHashSet(StringComparer.Ordinal);
                 var merged = _programs.Where(pair => referenced.Contains(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
                 foreach (var pair in loaded.Where(pair => referenced.Contains(pair.Key))) merged[pair.Key] = pair.Value;
-                _programs = merged; _analysis = null; Revision++;
+                var referencedVariants = Variants(_frozen).Distinct(StringComparer.OrdinalIgnoreCase).Take(256).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var mergedVariants = _variants.Where(pair => referencedVariants.Contains(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
+                foreach (var pair in loadedVariants.Where(pair => referencedVariants.Contains(pair.Key))) mergedVariants[pair.Key] = pair.Value;
+                _programs = merged; _variants = mergedVariants; _analysis = null; Revision++;
             }
             NotifyChanged();
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         finally { lock (_gate) { if (epoch == _resourceEpoch) _loading = null; } }
     }
+
+    private static IEnumerable<string> Variants(EditorProjectDocument project) => project.GroupEntries.Values.SelectMany(entries => entries)
+        .Where(entry => entry.Type == BuiltinEntryIds.ShowVariants).Select(entry => entry.Parameters.GetValueOrDefault("assetId"))
+        .Where(value => value.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(value.GetString())).Select(value => value.GetString()!.Trim());
 
     private static IEnumerable<string> Programs(EditorProjectDocument project)
     {
@@ -160,6 +188,7 @@ public sealed class ProjectSceneTargets : IDisposable
             if (_disposed) return;
             _resourceEpoch++; _resourceLifetime.Cancel(); _resourceLifetime.Dispose(); _resourceLifetime = new();
             _programs = new Dictionary<string, ShaderEffectDescriptor?>(StringComparer.Ordinal); _loading = null; _analysis = null; Revision++;
+            _variants = new Dictionary<string, ImageVariantsDefinition?>(StringComparer.OrdinalIgnoreCase);
             if (Capture()) QueuePreparation();
         }
         NotifyChanged();
@@ -173,6 +202,7 @@ public sealed class ProjectSceneTargets : IDisposable
             _disposed = true; _resourceEpoch++; _resourceLifetime.Cancel(); _resourceLifetime.Dispose();
             if (_resources is not null) _resources.Changed -= OnResourcesChanged;
             _snapshot = null; _frozen = null; _analysis = null; _programs = new Dictionary<string, ShaderEffectDescriptor?>(); Revision++; Changed = null;
+            _variants = new Dictionary<string, ImageVariantsDefinition?>();
         }
     }
 }

@@ -16,7 +16,7 @@ public static class SceneAuthoringIdentities
     }
     public static string? CreationSlot(string type) => type switch
     {
-        BuiltinEntryIds.ShowLayer or BuiltinEntryIds.ShowColorLayer or BuiltinEntryIds.PlayVideo => "handleId",
+        BuiltinEntryIds.ShowLayer or BuiltinEntryIds.ShowColorLayer or BuiltinEntryIds.PlayVideo or BuiltinEntryIds.ShowVariants => "handleId",
         BuiltinEntryIds.PlayParticleEmitter or BuiltinEntryIds.ApplyEffect => "instanceId",
         BuiltinEntryIds.CrossFadeTransition or BuiltinEntryIds.BlindsTransition => "newHandleId",
         BuiltinEntryIds.SlideTransition or BuiltinEntryIds.BlackFadeTransition or BuiltinEntryIds.WhiteFadeTransition or BuiltinEntryIds.ColorFadeTransition => "toLayerHandleId",
@@ -73,7 +73,7 @@ public static class SceneAuthoringIdentities
         BuiltinEntryIds.CrossFadeTransition or BuiltinEntryIds.BlindsTransition => ["oldHandleId"],
         BuiltinEntryIds.SlideTransition or BuiltinEntryIds.BlackFadeTransition or BuiltinEntryIds.WhiteFadeTransition or BuiltinEntryIds.ColorFadeTransition => ["fromLayerHandleId"],
         BuiltinEntryIds.StopAnimation => ["playbackHandleId"],
-        BuiltinEntryIds.HideLayer or BuiltinEntryIds.MoveLayer or BuiltinEntryIds.ReplaceLayer or BuiltinEntryIds.StopVideo => ["handleId"],
+        BuiltinEntryIds.HideLayer or BuiltinEntryIds.MoveLayer or BuiltinEntryIds.ReplaceLayer or BuiltinEntryIds.StopVideo or BuiltinEntryIds.SelectVariants => ["handleId"],
         BuiltinEntryIds.StopEffect or BuiltinEntryIds.StopParticleEmitter => ["instanceId"],
         BuiltinEntryIds.ApplyEffect => ["targetHandleId"],
         _ => []

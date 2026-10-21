@@ -899,5 +899,10 @@
   "History.ImportLocalization": "Import translations: {0}",
   "Error.exchange.project": "The template belongs to another project or development language.",
   "Error.exchange.language": "Choose a supported translation language other than the development language.",
-  "Error.exchange.stale": "The import preview is stale. Preview the file again."
+  "Error.exchange.stale": "The import preview is stale. Preview the file again.",
+  "Entry.Type.variants.show": "Show image variants",
+  "Entry.Type.variants.select": "Select image variant",
+  "Entry.Parameter.dimension": "Dimension",
+  "Entry.Parameter.selection": "Initial selection",
+  "Variants.AmbiguousSource": "Atlas source varies by path"
 }

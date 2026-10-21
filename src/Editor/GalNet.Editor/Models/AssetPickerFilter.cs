@@ -7,7 +7,8 @@ public enum AssetPickerFilter
     Audio,
     Video,
     EffectProgram,
-    Text
+    Text,
+    ImageVariants
 }
 
 public static class AssetPickerTextFileExtensions

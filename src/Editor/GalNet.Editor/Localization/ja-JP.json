@@ -899,5 +899,10 @@
   "History.ImportLocalization": "翻訳を読み込む：{0}",
   "Error.exchange.project": "テンプレートのプロジェクトまたは開発言語が異なります。",
   "Error.exchange.language": "開発言語以外の対応言語を選択してください。",
-  "Error.exchange.stale": "プレビューが古くなりました。ファイルを再確認してください。"
+  "Error.exchange.stale": "プレビューが古くなりました。ファイルを再確認してください。",
+  "Entry.Type.variants.show": "差分画像を表示",
+  "Entry.Type.variants.select": "画像差分を切り替え",
+  "Entry.Parameter.dimension": "次元",
+  "Entry.Parameter.selection": "初期選択",
+  "Variants.AmbiguousSource": "経路によって差分画像の参照元が異なります"
 }

@@ -25,10 +25,12 @@ public sealed class SceneTargetCatalog(ProjectSceneTargets query, IEditorDocumen
             var group = documents.CurrentDocument.Nodes.FirstOrDefault(node => node.Id == target.Locator.GroupId);
             var entry = documents.Groups.TryGetValue(target.Locator.GroupId, out var source) ? source.Entries.FirstOrDefault(item => item.StableId == target.Locator.EntryId) : null;
             var origin = (group?.Name ?? "") + " / " + entry?.Id;
-            var resource = playback ? localization["Entry.Type." + target.Resource] : _paths.GetValueOrDefault(target.Resource, target.Resource);
+            var resourceId = string.IsNullOrWhiteSpace(target.Resource) && target.Variants is { AssetIds.Count: 1 } variants ? variants.AssetIds[0] : target.Resource;
+            var resource = playback ? localization["Entry.Type." + target.Resource] : _paths.GetValueOrDefault(resourceId, resourceId);
             var kind = localization[playback ? "Scene.Playback" : "Timeline.Kind." + target.Kind];
             var name = playback ? resource : string.IsNullOrWhiteSpace(resource) || Guid.TryParse(resource, out _) ? kind : Path.GetFileName(resource);
             var detail = playback ? resource + " · " + target.Resource : resource;
+            if (target.Variants is { Definite: false }) detail += " · " + localization["Variants.AmbiguousSource"];
             if (target.CreatedAtFrame is { } created && !target.IsFuture) origin += " · " + localization.Format("Scene.CreatedAt", created);
             var presence = target.IsFuture ? localization.Format("Scene.FutureAt", target.CreatedAtFrame) : localization[target.Presence == TargetPresence.Definite ? "Timeline.Definite" : "Timeline.Possible"];
             return new SceneTargetChoice(target, new(JsonSerializer.Serialize(target.Locator), name + " · " + origin,
@@ -40,7 +42,8 @@ public sealed class SceneTargetCatalog(ProjectSceneTargets query, IEditorDocumen
     public async Task PrepareAsync(string groupId, string entryId, SceneTimelinePosition? position = null, CancellationToken token = default)
     {
         await query.PrepareAsync(token);
-        var resources = (position is null ? query.Before(groupId, entryId) : query.AtTimeline(groupId, entryId, position)).Targets.Select(target => target.Resource).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToArray();
+        var resources = (position is null ? query.Before(groupId, entryId) : query.AtTimeline(groupId, entryId, position)).Targets
+            .SelectMany(target => new[] { target.Resource }.Concat(target.Variants?.AssetIds ?? [])).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToArray();
         foreach (var resource in resources)
         {
             token.ThrowIfCancellationRequested();
@@ -58,7 +61,7 @@ public sealed class SceneTargetCatalog(ProjectSceneTargets query, IEditorDocumen
     public IReadOnlyList<FieldEditorOption>? FieldOptions(string groupId, string entryId, string type, string field, SceneTimelinePosition? position = null)
     {
         var kinds = SceneFieldSemantics.TargetKinds(type, field); if (kinds is null) return null;
-        var snapshot = Query(groupId, entryId, target => kinds.Contains(target.Kind), position, type == BuiltinEntryIds.StopAnimation);
+        var snapshot = Query(groupId, entryId, target => kinds.Contains(target.Kind) && (type != BuiltinEntryIds.SelectVariants || target.Variants is not null), position, type == BuiltinEntryIds.StopAnimation);
         var noneKey = type == BuiltinEntryIds.ApplyEffect ? "Scene.Global" : "Scene.None";
         var none = new ResourcePickerItem("none", localization[noneKey], "", "×");
         return new[] { new FieldEditorOption("none", new SceneFieldChoice(snapshot, null, none, noneKey), JsonSerializer.SerializeToElement("")) }
@@ -71,7 +74,7 @@ internal static class SceneFieldSemantics
     public static SceneTargetKind[]? TargetKinds(string type, string field) => (type, field) switch
     {
         (BuiltinEntryIds.StopAnimation, "playbackHandleId") => [SceneTargetKind.Playback],
-        (BuiltinEntryIds.HideLayer or BuiltinEntryIds.MoveLayer or BuiltinEntryIds.ReplaceLayer or BuiltinEntryIds.StopVideo, "handleId") => [SceneTargetKind.Layer],
+        (BuiltinEntryIds.HideLayer or BuiltinEntryIds.MoveLayer or BuiltinEntryIds.ReplaceLayer or BuiltinEntryIds.StopVideo or BuiltinEntryIds.SelectVariants, "handleId") => [SceneTargetKind.Layer],
         (BuiltinEntryIds.Animate, "handleId") => [SceneTargetKind.Layer, SceneTargetKind.Particle, SceneTargetKind.Effect],
         (BuiltinEntryIds.ApplyEffect, "targetHandleId") => [SceneTargetKind.Layer],
         (BuiltinEntryIds.CrossFadeTransition or BuiltinEntryIds.BlindsTransition, "oldHandleId") => [SceneTargetKind.Layer],

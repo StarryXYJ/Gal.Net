@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Text.Json;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Scene;
+using GalNet.Core.Variants;
 using GalNet.Editor.Abstraction.Documents;
 
 namespace GalNet.Editor.Shared.Services;
@@ -11,7 +12,10 @@ public enum SceneTargetKind { Layer, Particle, Effect, Unresolved, Playback }
 public sealed record SceneLocator(string GroupId, string EntryId, string Slot, string? EventId = null);
 public sealed record SceneTimelinePosition(int Frame, int? BeforeEventIndex = null, bool IncludeFuture = false);
 public sealed record SceneTarget(SceneLocator Locator, string Handle, SceneTargetKind Kind, string Resource,
-    TargetPresence Presence, IReadOnlyList<AnimatableProperty> Properties, IReadOnlyDictionary<string, float> Values, int? CreatedAtFrame = null, bool IsFuture = false, bool CapabilitiesComplete = true);
+    TargetPresence Presence, IReadOnlyList<AnimatableProperty> Properties, IReadOnlyDictionary<string, float> Values, int? CreatedAtFrame = null, bool IsFuture = false, bool CapabilitiesComplete = true)
+{
+    public SceneImageVariants? Variants { get; init; }
+}
 public sealed record SceneTargetResult(IReadOnlyList<SceneTarget> Targets, bool Complete, bool Reachable)
 {
     public IReadOnlyList<SceneTarget> Playbacks { get; init; } = [];
@@ -29,21 +33,23 @@ public sealed partial class SceneTargetAnalysis
         public void Uncertain()
         {
             Complete = false;
-            foreach (var domain in new[] { Targets, Playbacks }) foreach (var (id, target) in domain.ToArray()) domain[id] = target with { Presence = TargetPresence.Possible, Values = EmptyValues };
+            foreach (var domain in new[] { Targets, Playbacks }) foreach (var (id, target) in domain.ToArray()) domain[id] = target with { Presence = TargetPresence.Possible, Values = EmptyValues, Variants = null };
         }
     }
     private static readonly IReadOnlyDictionary<string, float> EmptyValues = new ReadOnlyDictionary<string, float>(new Dictionary<string, float>());
     private readonly IReadOnlyDictionary<string, List<EditorEntryData>> _groups;
     private readonly IReadOnlyDictionary<string, ShaderEffectDescriptor?>? _programs;
     private readonly IEffectCatalog? _effects;
+    private readonly IReadOnlyDictionary<string, ImageVariantsDefinition?>? _variants;
     private readonly Dictionary<string, State> _inputs = new(StringComparer.Ordinal);
     private bool _budgetExceeded;
     public SceneTargetAnalysis(EditorGraphDocument graph, IReadOnlyDictionary<string, List<EditorEntryData>> groups, int budget = 10000,
-        IReadOnlyDictionary<string, ShaderEffectDescriptor?>? programs = null, IEffectCatalog? effects = null)
+        IReadOnlyDictionary<string, ShaderEffectDescriptor?>? programs = null, IEffectCatalog? effects = null,
+        IReadOnlyDictionary<string, ImageVariantsDefinition?>? variants = null)
     {
         // Caller owns the immutable snapshot for this generation.
         _groups = groups;
-        _programs = programs; _effects = effects;
+        _programs = programs; _effects = effects; _variants = variants;
         var nodes = graph.Nodes.ToDictionary(node => node.Id, StringComparer.Ordinal);
         if (!nodes.ContainsKey(graph.RootNodeId)) return;
         var outputs = new Dictionary<string, State>(StringComparer.Ordinal);
@@ -122,6 +128,7 @@ public sealed partial class SceneTargetAnalysis
                 Properties = Array.AsReadOnly(properties),
                 Values = new ReadOnlyDictionary<string, float>(values),
                 Resource = candidates.All(target => target.Resource == first.Resource) ? first.Resource : "",
+                Variants = MergeVariants(candidates, sameKind),
                 CreatedAtFrame = candidates.All(target => target.Locator == first.Locator && target.CreatedAtFrame == first.CreatedAtFrame) ? first.CreatedAtFrame : null,
                 IsFuture = candidates.All(target => target.IsFuture),
                 CapabilitiesComplete = candidates.All(target => target.CapabilitiesComplete)
@@ -133,6 +140,7 @@ public sealed partial class SceneTargetAnalysis
         right.TryGetValue(pair.Key, out var other) && pair.Value.Locator == other.Locator && pair.Value.Kind == other.Kind && pair.Value.Resource == other.Resource
         && pair.Value.CreatedAtFrame == other.CreatedAtFrame && pair.Value.IsFuture == other.IsFuture
         && pair.Value.CapabilitiesComplete == other.CapabilitiesComplete
+        && EqualVariants(pair.Value.Variants, other.Variants)
         && pair.Value.Presence == other.Presence && pair.Value.Properties.SequenceEqual(other.Properties)
         && pair.Value.Values.Count == other.Values.Count && pair.Value.Values.All(value => other.Values.TryGetValue(value.Key, out var number) && number == value.Value));
     private State Apply(State before, string group, EditorEntryData entry)
@@ -156,7 +164,8 @@ public sealed partial class SceneTargetAnalysis
         }
         void Transform(string handle, bool create)
         {
-            var transform = Json("transform").Deserialize<LayerTransform>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? throw new JsonException();
+            var transform = entry.Type == BuiltinEntryIds.ShowVariants ? VariantsArgumentValidation.ReadTransform(Json("transform"))
+                : Json("transform").Deserialize<LayerTransform>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? throw new JsonException();
             Dictionary<string, float> values = new() { ["transform.x"] = transform.X, ["transform.y"] = transform.Y, ["transform.rotationDegrees"] = transform.RotationDegrees, ["transform.scaleX"] = transform.ScaleX, ["transform.scaleY"] = transform.ScaleY };
             if (values.Values.Any(value => !float.IsFinite(value))) throw new InvalidDataException("Invalid transform.");
             if (create)
@@ -185,6 +194,13 @@ public sealed partial class SceneTargetAnalysis
         {
             case BuiltinEntryIds.ShowLayer:
             case BuiltinEntryIds.ShowColorLayer: Transform(Text("handleId"), true); break;
+            case BuiltinEntryIds.ShowVariants:
+                Transform(Text("handleId"), true);
+                ShowVariants(state, Text("handleId"), Text("assetId"), Json("selection"));
+                break;
+            case BuiltinEntryIds.SelectVariants:
+                SelectVariants(state, Text("handleId"), Text("dimension"), Text("value"));
+                break;
             case BuiltinEntryIds.PlayVideo:
                 Transform(Text("handleId", "video"), true);
                 if (state.Targets.TryGetValue(Text("handleId", "video"), out var video)) state.Targets[video.Handle] = video with { Presence = TargetPresence.Possible, Values = EmptyValues };
@@ -195,7 +211,7 @@ public sealed partial class SceneTargetAnalysis
                 break;
             case BuiltinEntryIds.MoveLayer: Transform(Text("handleId"), false); break;
             case BuiltinEntryIds.ReplaceLayer:
-                if (state.Targets.TryGetValue(Text("handleId"), out var replaced) && replaced.Kind == SceneTargetKind.Layer) state.Targets[replaced.Handle] = replaced with { Resource = Text("assetId") };
+                if (state.Targets.TryGetValue(Text("handleId"), out var replaced) && replaced.Kind == SceneTargetKind.Layer) state.Targets[replaced.Handle] = replaced with { Resource = Text("assetId"), Variants = null };
                 break;
             case BuiltinEntryIds.PlayParticleEmitter:
                 var definition = ParticleEmitterDefinition.FromJson(Json("parameters").GetRawText());
