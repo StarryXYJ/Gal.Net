@@ -61,6 +61,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
     private string _statusText = "Ready";
 
     public ObservableCollection<GraphNode> Nodes { get; } = [];
+    public ExternalDebugPanelViewModel? ExternalDebug => _projectService.Current?.Services.GetService<ExternalDebugPanelViewModel>();
     public ObservableCollection<GraphEdge> Edges { get; } = [];
     public ObservableCollection<GraphNode> SelectedNodes => _selection.SelectedNodes;
     public GraphViewportState GraphViewport => _projectService.Current?.EditorState.GraphViewport ?? _fallbackViewport;

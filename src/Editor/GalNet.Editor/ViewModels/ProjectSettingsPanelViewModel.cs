@@ -12,6 +12,7 @@ using GalNet.Editor.History;
 using GalNet.Editor.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
+using GalNet.Editor.Shared.Services;
 
 namespace GalNet.Editor.ViewModels;
 
@@ -54,6 +55,23 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
 
     [ObservableProperty]
     private string _projectName = "";
+    [ObservableProperty] private string _debugExecutable = "";
+    [ObservableProperty] private string _debugArguments = "";
+    [ObservableProperty] private string _debugWorkingDirectory = "";
+    [ObservableProperty] private string _debugConfigurationMessage = "";
+
+    [RelayCommand] private void SaveDebugConfiguration()
+    {
+        try
+        {
+            if (_projectService.Current is not { } project) return;
+            ExternalGameDebugClient.SaveSettings(project.RootPath, new(DebugExecutable.Trim(),
+                DebugArguments.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries),
+                string.IsNullOrWhiteSpace(DebugWorkingDirectory) ? null : DebugWorkingDirectory.Trim()));
+            DebugConfigurationMessage = "";
+        }
+        catch (Exception error) { DebugConfigurationMessage = error.Message; }
+    }
 
     public ProjectSettingsPanelViewModel(
         IProjectService projectService,
@@ -90,6 +108,12 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
 
         _isLoading = true;
         ProjectName = project.Name;
+        if (ExternalGameDebugClient.LoadSettings(project.RootPath) is { } launch)
+        {
+            DebugExecutable = launch.Executable;
+            DebugArguments = string.Join(Environment.NewLine, launch.Arguments);
+            DebugWorkingDirectory = launch.WorkingDirectory ?? "";
+        }
         DefaultWidth = settings.DefaultWidth;
         DefaultHeight = settings.DefaultHeight;
         Resolution = $"{DefaultWidth}×{DefaultHeight}";

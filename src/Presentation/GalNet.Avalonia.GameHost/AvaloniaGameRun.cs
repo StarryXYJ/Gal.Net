@@ -26,6 +26,7 @@ internal sealed class AvaloniaGameRun : IGameRun
     private readonly Func<Action, Task> _onUiAsync;
     private Task _stateUpdate = Task.CompletedTask;
     private bool _disposed;
+    private IDisposable? _debugBinding;
 
     private AvaloniaGameRun(
         GamePageViewModel gameplay, GameRun run, AvaloniaGamePresentation presentation, AvaloniaPlayerSettingsService playerSettings,
@@ -68,8 +69,10 @@ internal sealed class AvaloniaGameRun : IGameRun
             var runtime = new GameRuntime(textResolver, resources.Content.Graph.RootNodeId, settings, saveSession.Variables);
             run = new GameRun(resources.Content.Graph, runtime, presentation.View,
                 saveSession.Progress, presentation.Presenters.ChoicePresenter, presentation, presentation.Restorer);
-            return new AvaloniaGameRun(gameplay, run, presentation, playerSettings,
+            var adapter = new AvaloniaGameRun(gameplay, run, presentation, playerSettings,
                 updateStateAsync, runCompletedAsync, resetPresentationAsync, onUiAsync);
+            adapter._debugBinding = options.AttachDebugRun?.Invoke(run.Engine);
+            return adapter;
         }
         catch (Exception error)
         {
@@ -114,6 +117,7 @@ internal sealed class AvaloniaGameRun : IGameRun
         _engine.StateChanged -= OnEngineStateChanged;
         cleanup.Run(_presentation.Presenters.CompleteInitialPresentation);
         await cleanup.RunAsync(() => _run.DisposeAsync());
+        cleanup.Run(() => _debugBinding?.Dispose());
         await cleanup.RunAsync(() => new(_presentation.Restorer.SuspendAsync(CancellationToken.None)));
         await cleanup.RunAsync(() => new(_stateUpdate));
         await cleanup.RunAsync(() => new(_resetPresentationAsync()));

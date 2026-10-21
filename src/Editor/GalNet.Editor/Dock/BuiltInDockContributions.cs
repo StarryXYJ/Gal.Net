@@ -28,12 +28,16 @@ public static class EditorDockPanelIds
     public const string Characters = "Characters";
     public const string Localization = "Localization";
     public const string Timeline = "Timeline";
+    public const string ExternalDebug = "ExternalDebug";
 }
 
 public static class BuiltInDockContributions
 {
     public static void Register(IEditorExtensionRegistry registry)
     {
+        registry.RegisterDockPanel(new DelegateDockPanelContribution<ExternalDebugPanelViewModel>(
+            EditorDockPanelIds.ExternalDebug, "Debug.Panel", DockPanelPlacement.BottomDocument, true, true, true, false, true,
+            sp => sp.GetRequiredService<ExternalDebugPanelViewModel>(), typeof(ExternalDebugPanelView), null));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<GameLocalizationPanelViewModel>(
             EditorDockPanelIds.Localization, "Dock.Panel.Localization", DockPanelPlacement.MainDocument, true, true, true, false, true,
             sp => sp.GetRequiredService<GameLocalizationPanelViewModel>(), typeof(GameLocalizationPanelView), null));

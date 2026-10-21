@@ -66,6 +66,15 @@
                 <TextBox Text="{Binding TargetLocale}" IsReadOnly="True" ToolTip.Tip="{loc:Localize I18n.UsePanel}"
                          Foreground="{DynamicResource SemiColorText0}"
                          PlaceholderText="zh-CN" />
+                <Expander Header="{loc:Localize Debug.Configuration}">
+                    <StackPanel Spacing="6">
+                        <TextBox Text="{Binding DebugExecutable}" PlaceholderText="{loc:Localize Debug.Executable}"/>
+                        <TextBox Text="{Binding DebugArguments}" PlaceholderText="{loc:Localize Debug.Arguments}" AcceptsReturn="True" MinHeight="50"/>
+                        <TextBox Text="{Binding DebugWorkingDirectory}" PlaceholderText="{loc:Localize Debug.WorkingDirectory}"/>
+                        <Button Content="{loc:Localize Debug.SaveConfiguration}" Command="{Binding SaveDebugConfigurationCommand}"/>
+                        <TextBlock Text="{Binding DebugConfigurationMessage}" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Expander>
             </StackPanel>
         </ScrollViewer>
 

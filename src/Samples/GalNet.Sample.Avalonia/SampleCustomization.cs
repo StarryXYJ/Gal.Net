@@ -45,6 +45,7 @@ internal static class SampleCustomization
             .AddScoped<IGameSessionService>(provider => provider.GetRequiredService<SampleGameSessionService>())
             .AddTransient<MainWindow>();
         if (enableDebug) services.AddSampleDebug();
+        if (enableDebug) services.AddScoped<SampleExternalDebug>();
     }
 
     internal static EditorRegistry CreateFieldEditors() => EditorRegistry.CreateDefault().Freeze();
@@ -71,11 +72,12 @@ internal static class SampleCustomization
         return (resources, BuiltinGalleryTypes.CreateCatalog(resources));
     }
 
-    internal static AvaloniaGameHostOptions CreateHostOptions() => new()
+    internal static AvaloniaGameHostOptions CreateHostOptions(Func<GalNet.Runtime.Engine.GameEngine, IDisposable>? attachDebugRun = null) => new()
     {
         GameTitle = "GalNet Avalonia Sample",
         NoGameMessage = "Usage: GalNet.Sample.Avalonia <game-data-directory> [--profile <directory>]",
         CreateContentCatalogs = CreateContentCatalogs,
+        AttachDebugRun = attachDebugRun,
         ConfigureExecution = (registration, presentation, page, content) => ConfigureExecution(registration,
             presentation.Presenters, page, content, presentation.Effects, presentation.Audio,
             presentation.Video, presentation.AudioModule, presentation.ImageVariants)

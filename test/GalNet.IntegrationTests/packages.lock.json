@@ -374,6 +374,12 @@
       "galnet.core": {
         "type": "Project"
       },
+      "galnet.debugging": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Runtime": "[1.0.0, )"
+        }
+      },
       "galnet.editor.abstraction": {
         "type": "Project",
         "dependencies": {
@@ -387,6 +393,7 @@
           "GalNet.Assets": "[1.0.0, )",
           "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
+          "GalNet.Debugging": "[1.0.0, )",
           "GalNet.Editor.Abstraction": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )",
           "Serilog": "[4.2.0, )"
@@ -457,6 +464,7 @@
           "GalNet.Avalonia.Themes": "[1.0.0, )",
           "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
+          "GalNet.Debugging": "[1.0.0, )",
           "GalNet.GameHost": "[1.0.0, )",
           "GalNet.Media.LibVlc": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",

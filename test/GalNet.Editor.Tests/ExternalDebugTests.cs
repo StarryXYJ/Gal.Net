@@ -1,0 +1,103 @@
+using System.Text.Json;
+using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
+using GalNet.Contracts.Builtins;
+using GalNet.Core.Graph;
+using GalNet.Core.Primitives;
+using GalNet.Core.Entry;
+using GalNet.Debugging;
+using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.History;
+using GalNet.Editor.Models.Graph;
+using GalNet.Editor.Shared.Services;
+using GalNet.Editor.ViewModels;
+using GalNet.Editor.Views;
+using GalNet.Presentation.Abstractions.View;
+using GalNet.Runtime.Engine;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace GeneralTest.Editor;
+
+public sealed partial class ProjectWorkspaceLifecycleTests
+{
+    [Test]
+    public async Task ExternalDebugPanelConnectsThroughTcpEditsRuntimeValuesAndKeepsAuthorHistoryClean()
+    {
+        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        await ui.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme();
+            using var services = Services();
+            var projects = services.GetRequiredService<IProjectService>();
+            var project = await projects.CreateAsync(Path.Combine(_root, "ExternalDebug"), "Debug", new(), Contracts());
+            var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
+            var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
+            var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.Text).Single();
+            await SetGameText(project, group.Id, entry.Source, "Test line");
+            var panel = project.Services.GetRequiredService<ExternalDebugPanelViewModel>();
+            var view = new ExternalDebugPanelView { DataContext = panel };
+            var window = new Window { Content = view, Width = 1200, Height = 700 };
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            try
+            {
+                await panel.WaitForApplicationCommand.ExecuteAsync(null);
+                Assert.That(panel.Error, Is.Empty);
+                var client = project.Services.GetRequiredService<ExternalGameDebugClient>();
+                Assert.That(client.Invitation, Is.Not.Null);
+                using var gameView = new GameRegistration().UseCatalog(project.Services.GetRequiredService<IEntryCatalog>())
+                    .RegisterInstruction(BuiltinEntryIds.Text, _ => new DebugTextWait()).BuildView();
+                var graph = new Graph { RootNodeId = group.Id, Nodes = { new Group { Id = group.Id, Entries = { new PrimitiveEntry(BuiltinEntryIds.Text,
+                    JsonSerializer.SerializeToElement(new { content = "Test line" })) { StableId = entry.StableId + "#1" } } } } };
+                await using var engine = new GameEngine(graph, gameView);
+                engine.Runtime.SetVariable("save.score", 4);
+                engine.Runtime.SetVariable("player.unlocked", false);
+                using var adapter = new EngineDebugRun(engine, new() { Instructions = new Dictionary<string, DebugReplayBehavior> { [BuiltinEntryIds.Text] = DebugReplayBehavior.Scene } });
+                await using var host = new GameDebugHost();
+                using var binding = host.AttachRun(adapter);
+                await host.ConnectAsync(client.Invitation!);
+                await engine.AdvanceAsync();
+                async Task Until(Func<bool> condition)
+                {
+                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    while (!condition()) { Dispatcher.UIThread.RunJobs(); await Task.Delay(15, timeout.Token); }
+                    Dispatcher.UIThread.RunJobs();
+                }
+                await Until(() => panel.SaveVariables.Count == 1 && panel.PlayerVariables.Count == 1);
+                Assert.That(group.IsDebugCurrent, Is.True);
+                Assert.That(entry.IsDebugCurrent, Is.True);
+                var row = panel.SaveVariables.Single();
+                row.Draft = "9";
+                await row.ApplyCommand.ExecuteAsync(null);
+                Assert.That(panel.Error, Is.Empty);
+                await Until(() => row.CurrentValue == "9");
+                Assert.That(engine.Runtime.GetVariable("score")!.AsInt(), Is.EqualTo(9));
+                row.Draft = "12";
+                engine.Runtime.SetVariable("save.score", 11);
+                await Until(() => row.CurrentValue == "11");
+                Assert.That(row.Draft, Is.EqualTo("12"));
+                Assert.That(row.Conflict, Is.True);
+                await row.ApplyCommand.ExecuteAsync(null);
+                Assert.That(engine.Runtime.GetVariable("score")!.AsInt(), Is.EqualTo(11));
+                Assert.That(panel.Error, Is.Not.Empty);
+                Assert.That(project.Services.GetRequiredService<EditorHistories>().Content.IsDirty, Is.False);
+                Assert.That(view.GetVisualDescendants().OfType<TabControl>().Single().Items.Count, Is.EqualTo(3));
+                await panel.SeekAsync(group.Id, entry.StableId);
+                Assert.That(engine.EntryIndex, Is.Zero);
+                Assert.That(engine.Runtime.GetVariable("score")!.AsInt(), Is.EqualTo(11));
+                await panel.DisconnectCommand.ExecuteAsync(null);
+                await Until(() => !panel.HasRun);
+            }
+            finally { window.Close(); await projects.CloseAsync(); }
+            return true;
+        }, CancellationToken.None);
+    }
+    private sealed class DebugTextWait : PrimitiveInstance
+    {
+        public override bool IsBlocking => true;
+        public override bool IsSkippable => true;
+        protected override void OnDispatch() { }
+        protected override void OnPlaybackModeChanged(PrimitiveInvocationMode mode) { if (mode == PrimitiveInvocationMode.CatchUp) TryComplete(); }
+    }
+}

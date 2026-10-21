@@ -38,6 +38,7 @@ public enum GraphConnectorKind
 
 public partial class GraphNode : ObservableObject
 {
+    [ObservableProperty] private bool _isDebugCurrent;
     private static readonly IBrush SelectedBackground = Brush.Parse("#312A55");
     private static readonly IBrush DefaultBackground = Brush.Parse("#1E1E2E");
     private static readonly IBrush SelectedBorderBrush = Brush.Parse("#8F72FF");
@@ -328,6 +329,7 @@ public partial class GraphEdge : ObservableObject, IDisposable
 
 public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
 {
+    [ObservableProperty] private bool _isDebugCurrent;
     internal string? AuthorGroupId => _groupId;
     public EditorEntryData Source { get; }
     private IEntryCatalog? _authorCatalog;

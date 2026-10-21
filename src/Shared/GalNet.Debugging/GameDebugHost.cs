@@ -27,7 +27,8 @@ public sealed class GameDebugHost(Func<CancellationToken, Task>? startGame = nul
     public async Task ConnectAsync(DebugInvitation invitation, CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (_peer is not null) throw new InvalidOperationException("Disconnect before reconnecting.");
+        if (_peer?.IsConnected == true) throw new InvalidOperationException("Disconnect before reconnecting.");
+        if (_peer is not null) await DisconnectAsync().ConfigureAwait(false);
         var client = new TcpClient();
         try
         {
@@ -48,7 +49,8 @@ public sealed class GameDebugHost(Func<CancellationToken, Task>? startGame = nul
         if (method == "cancel")
         {
             var cancel = payload.Deserialize<DebugCommand>(DebugWire.Json) ?? throw new InvalidDataException("Missing debug command.");
-            if (run is null || cancel.Method != method || cancel.RunId != run.Info.RunId || cancel.Generation != run.Info.Generation)
+            if (run is null || cancel.Method != method || cancel.RunId != run.Info.RunId ||
+                (cancel.Generation != run.Info.Generation && cancel.Generation != run.Info.OperationGeneration))
                 throw new InvalidOperationException("The debug run has changed. Refresh before submitting.");
             return await run.ExecuteAsync(cancel, token).ConfigureAwait(false);
         }
@@ -67,14 +69,22 @@ public sealed class GameDebugHost(Func<CancellationToken, Task>? startGame = nul
             if (run is null || command.RunId != run.Info.RunId || command.Generation != run.Info.Generation)
                 throw new InvalidOperationException("The debug run has changed. Refresh before submitting.");
             if (method != command.Method) throw new InvalidDataException("Debug command method mismatch.");
-            return await run.ExecuteAsync(command, token).ConfigureAwait(false);
+            var result = await run.ExecuteAsync(command, token).ConfigureAwait(false);
+            if (method == "stop") { lock (_sync) if (ReferenceEquals(_run, run)) _run = null; }
+            return result;
         }
         finally { _commands.Release(); }
     }
     public async ValueTask DisposeAsync()
     {
         lock (_sync) { _disposed = true; _run = null; }
-        if (_peer is not null) await _peer.DisposeAsync().ConfigureAwait(false);
+        await DisconnectAsync().ConfigureAwait(false);
+    }
+    public async Task DisconnectAsync()
+    {
+        var peer = _peer;
+        _peer = null;
+        if (peer is not null) await peer.DisposeAsync().ConfigureAwait(false);
     }
     private sealed class Binding(GameDebugHost owner, IDebugGameRun run) : IDisposable
     {

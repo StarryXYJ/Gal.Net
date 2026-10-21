@@ -346,7 +346,7 @@ public partial class NodeGraphPanelView : UserControl
 
         if (e.Node.IsSelected && Workspace.SelectedNodes.Count > 1)
         {
-            ShowSelectionMenu(control);
+            ShowSelectionMenu(control, e.Node);
             e.OriginalEventArgs.Handled = true;
             return;
         }
@@ -354,6 +354,7 @@ public partial class NodeGraphPanelView : UserControl
         Workspace.SelectNode(e.Node);
 
         var menu = new MenuFlyout();
+        AddDebugJump(menu, e.Node);
         var deleteItem = new MenuItem
         {
             Header = Workspace.Localize(e.Node.CanDelete ? "Graph.Menu.Delete" : "Graph.Menu.CannotDeleteEntry"),
@@ -398,15 +399,24 @@ public partial class NodeGraphPanelView : UserControl
         e.Handled = true;
     }
 
-    private void ShowSelectionMenu(Avalonia.Controls.Control? target = null)
+    private void ShowSelectionMenu(Avalonia.Controls.Control? target = null, GraphNode? debugTarget = null)
     {
         var menu = new MenuFlyout();
+        if (debugTarget is not null) AddDebugJump(menu, debugTarget);
         var deleteItem = new MenuItem { Header = Workspace?.Localize("Graph.Menu.Delete") ?? "Delete" };
         deleteItem.Click += async (_, _) => await RunGraphAction(async workspace => await workspace.DeleteSelectionAsync());
         menu.Items.Add(deleteItem);
         AddGraphActions(menu);
         menu.Placement = PlacementMode.Pointer;
         menu.ShowAt(target ?? Viewport, true);
+    }
+
+    private void AddDebugJump(MenuFlyout menu, GraphNode node)
+    {
+        if (node.NodeKind != GraphNodeKind.LinearGroup || Workspace?.ExternalDebug is not { } debug) return;
+        var jump = new MenuItem { Header = Workspace.Localize("Debug.Jump"), IsEnabled = debug.CanLocate };
+        jump.Click += async (_, _) => await debug.SeekAsync(node.Id);
+        menu.Items.Add(jump);
     }
 
     private void OnConnectorPointerPressed(object? sender, GraphConnectorPointerPressedEventArgs e)

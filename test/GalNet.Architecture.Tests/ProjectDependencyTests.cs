@@ -25,6 +25,7 @@ public class ProjectDependencyTests
             ["GalNet.Editor.DefaultContracts"] = ["GalNet.Contracts.Builtins"],
             ["GalNet.Editor.Shared"] =
             [
+                "GalNet.Debugging",
                 "GalNet.Core",
                 "GalNet.Editor.Abstraction",
                 "GalNet.Contracts.Builtins",

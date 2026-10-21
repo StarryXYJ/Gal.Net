@@ -23,6 +23,7 @@ using GalNet.Editor.Models;
 using GalNet.Editor.Services;
 using GalNet.Editor.Shared.Services;
 using Serilog;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Editor.ViewModels;
 
@@ -352,6 +353,12 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
     {
         var closeCmd = _shortcutService.GetCommand<CloseProjectCommand>();
         var saveCmd = _shortcutService.GetCommand<SaveProjectCommand>();
+        ICommand DebugAction(Func<ExternalDebugPanelViewModel, Task> action) => new AsyncRelayCommand(async () =>
+        {
+            if (_projectService.Current is not { } project) return;
+            if (!_dockFactory.HasGlobalPanel(EditorDockPanelIds.ExternalDebug)) TogglePanel(EditorDockPanelIds.ExternalDebug);
+            await action(project.Services.GetRequiredService<ExternalDebugPanelViewModel>());
+        });
 
         var items = new AvaloniaList<MenuData>
         {
@@ -398,6 +405,19 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
                     new() { HeaderKey = "Editor.Menu.SaveLayout", Command = SaveLayoutCommand },
                     new() { HeaderKey = "Editor.Menu.LoadLayout", Children = BuildLoadLayoutItems() },
                     new() { HeaderKey = "Editor.Menu.DeleteLayout", Children = BuildDeleteLayoutItems() },
+                }
+            },
+            new()
+            {
+                HeaderKey = "Debug.Menu",
+                Children = new AvaloniaList<MenuData>
+                {
+                    new() { HeaderKey = "Debug.Launch", Command = DebugAction(vm => vm.LaunchCommand.ExecuteAsync(null)) },
+                    new() { HeaderKey = "Debug.Wait", Command = DebugAction(vm => vm.WaitForApplicationCommand.ExecuteAsync(null)) },
+                    new() { HeaderKey = "Debug.Start", Command = DebugAction(vm => vm.StartGameCommand.ExecuteAsync(null)) },
+                    new() { HeaderKey = "Debug.Stop", Command = DebugAction(vm => vm.StopGameCommand.ExecuteAsync(null)) },
+                    new() { HeaderKey = "Debug.GroupEnd", Command = DebugAction(vm => vm.GroupEndCommand.ExecuteAsync(null)) },
+                    new() { HeaderKey = "Debug.Panel", Command = TogglePanelCommand, CommandParameter = EditorDockPanelIds.ExternalDebug }
                 }
             },
             new()

@@ -47,6 +47,8 @@ public partial class App : Application
                 {
                     var session = scopedServices.GetRequiredService<SampleGameSessionService>();
                     var ready = await session.InitializeAsync(LaunchOptions, mainWindow.SelectLanguageAsync, startupCancellation.Token);
+                    if (ready && LaunchOptions.DebugInvitation is { } invitation)
+                        await scopedServices.GetRequiredService<Debug.SampleExternalDebug>().ConnectAsync(invitation, startupCancellation.Token);
                     if (!startupCancellation.IsCancellationRequested)
                         mainWindow.CompleteStartup(ready ? null : session.StatusMessage);
                 }

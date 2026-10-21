@@ -10,6 +10,7 @@
              MoveCommand="{Binding ReorderEntryCommand}" Focusable="True">
     <controls:ReorderableListControl.Styles>
         <StyleInclude Source="avares://GalNet.Editor/Controls/AuthorFormStyles.axaml"/>
+        <Style Selector="Border.debugCurrent"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorSuccess}"/><Setter Property="BorderThickness" Value="3"/></Style>
     </controls:ReorderableListControl.Styles>
     <Grid RowDefinitions="Auto,*,Auto">
         <WrapPanel x:Name="EntryToolbar" Orientation="Horizontal">
@@ -29,6 +30,7 @@
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="models:EntryEditorItemViewModel">
                     <Border Margin="0,3"
+                            Classes.debugCurrent="{Binding IsDebugCurrent}"
                             Padding="6"
                             Background="{DynamicResource SemiColorBackground1}"
                             BorderBrush="{DynamicResource SemiColorBorder}"

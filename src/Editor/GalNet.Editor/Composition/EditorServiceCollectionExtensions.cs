@@ -31,6 +31,8 @@ public static class EditorServiceCollectionExtensions
     public static IServiceCollection AddEditorServices(this IServiceCollection services)
     {
         services.AddScoped<ProjectSchemaSession>();
+        services.AddScoped<ExternalGameDebugClient>();
+        services.AddScoped<ExternalDebugPanelViewModel>();
         services.AddScoped<IEntryCatalog>(sp => sp.GetRequiredService<ProjectSchemaSession>().Catalog);
         services.AddEditorCoreServices();
         services.AddEditorCommands();
@@ -159,6 +161,7 @@ public static class EditorServiceCollectionExtensions
         services.AddTransient<MainWindow>();
         services.AddTransient<AssetPanelView>();
         services.AddTransient<TimelinePanelView>();
+        services.AddTransient<ExternalDebugPanelView>();
         services.AddTransient<InspectorHostView>();
         services.AddTransient<NodeInspectorControl>();
         services.AddTransient<PreviewVariablesInspectorControl>();

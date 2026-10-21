@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:loc="using:GalNet.Editor.MarkupExtensions"
+             x:Class="GalNet.Editor.Views.ExternalDebugPanelView" x:DataType="vm:ExternalDebugPanelViewModel">
+  <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" Margin="10" RowSpacing="8">
+    <Expander Header="{loc:Localize Debug.Configuration}">
+      <StackPanel Spacing="6">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6"><TextBox Text="{Binding Executable}" PlaceholderText="{loc:Localize Debug.Executable}"/><Button Grid.Column="1" Content="…" Command="{Binding BrowseCommand}"/></Grid>
+        <TextBox Text="{Binding Arguments}" AcceptsReturn="True" MinHeight="50" PlaceholderText="{loc:Localize Debug.Arguments}"/>
+        <TextBox Text="{Binding WorkingDirectory}" PlaceholderText="{loc:Localize Debug.WorkingDirectory}"/>
+        <Button Content="{loc:Localize Debug.SaveConfiguration}" Command="{Binding SaveConfigurationCommand}"/>
+      </StackPanel>
+    </Expander>
+    <WrapPanel Grid.Row="1">
+      <Button Content="{loc:Localize Debug.Launch}" Command="{Binding LaunchCommand}" IsEnabled="{Binding !Busy}" Margin="0,0,6,4"/>
+      <Button Content="{loc:Localize Debug.Wait}" Command="{Binding WaitForApplicationCommand}" IsEnabled="{Binding !Busy}" Margin="0,0,6,4"/>
+      <Button Content="{loc:Localize Debug.Start}" Command="{Binding StartGameCommand}" IsEnabled="{Binding CanStart}" Margin="0,0,6,4"/>
+      <Button Content="{loc:Localize Debug.Pause}" Command="{Binding PauseCommand}" IsEnabled="{Binding CanControl}" Margin="0,0,6,4"/>
+      <Button Content="{loc:Localize Debug.Resume}" Command="{Binding ResumeCommand}" IsEnabled="{Binding CanControl}" Margin="0,0,6,4"/>
+      <Button Content="{loc:Localize Debug.GroupEnd}" Command="{Binding GroupEndCommand}" IsEnabled="{Binding CanLocate}" Margin="0,0,6,4"/>
+      <Button Content="{loc:Localize Debug.Cancel}" Command="{Binding CancelCommand}" IsEnabled="{Binding HasRun}" Margin="0,0,6,4"/>
+      <Button Content="{loc:Localize Debug.Stop}" Command="{Binding StopGameCommand}" IsEnabled="{Binding CanControl}" Margin="0,0,6,4"/>
+      <Button Content="{loc:Localize Debug.Disconnect}" Command="{Binding DisconnectCommand}" IsEnabled="{Binding !Busy}" Margin="0,0,6,4"/>
+    </WrapPanel>
+    <TextBlock Grid.Row="2" Text="{Binding Status}" TextWrapping="Wrap"/>
+    <StackPanel Grid.Row="3"><TextBlock Text="{Binding Error}" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" TextWrapping="Wrap"/><TextBlock Text="{loc:Localize Debug.ContentChanged}" IsVisible="{Binding ContentChanged}"/></StackPanel>
+    <TabControl Grid.Row="4">
+      <TabItem Header="{loc:Localize Debug.PlayerVariables}"><ListBox ItemsSource="{Binding PlayerVariables}"><ListBox.ItemTemplate><DataTemplate x:DataType="vm:DebugVariableRow"><Grid ColumnDefinitions="160,80,150,*,Auto,Auto" ColumnSpacing="6" Margin="0,4"><TextBlock Text="{Binding Name}"/><TextBlock Grid.Column="1" Text="{Binding Type}"/><TextBlock Grid.Column="2" Text="{Binding CurrentValue}"/><TextBox Grid.Column="3" Text="{Binding Draft}"/><Button Grid.Column="4" Content="{loc:Localize Debug.Apply}" Command="{Binding ApplyCommand}"/><Button Grid.Column="5" Content="↺" Command="{Binding ResetCommand}"/></Grid></DataTemplate></ListBox.ItemTemplate></ListBox></TabItem>
+      <TabItem Header="{loc:Localize Debug.SaveVariables}"><ListBox ItemsSource="{Binding SaveVariables}"><ListBox.ItemTemplate><DataTemplate x:DataType="vm:DebugVariableRow"><Grid ColumnDefinitions="160,80,150,*,Auto,Auto" ColumnSpacing="6" Margin="0,4"><TextBlock Text="{Binding Name}"/><TextBlock Grid.Column="1" Text="{Binding Type}"/><TextBlock Grid.Column="2" Text="{Binding CurrentValue}"/><TextBox Grid.Column="3" Text="{Binding Draft}"/><Button Grid.Column="4" Content="{loc:Localize Debug.Apply}" Command="{Binding ApplyCommand}"/><Button Grid.Column="5" Content="↺" Command="{Binding ResetCommand}"/></Grid></DataTemplate></ListBox.ItemTemplate></ListBox></TabItem>
+      <TabItem Header="{loc:Localize Debug.Choices}"><ItemsControl ItemsSource="{Binding Choices}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:DebugChoiceRow"><Button Content="{Binding Text}" Command="{Binding ChooseCommand}" Margin="4"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></TabItem>
+    </TabControl>
+  </Grid>
+</UserControl>
+

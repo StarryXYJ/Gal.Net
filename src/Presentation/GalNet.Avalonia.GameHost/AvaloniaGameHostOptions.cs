@@ -16,6 +16,8 @@ public sealed class AvaloniaGameHostOptions
     public string NoGameMessage { get; init; } = "Select a game directory to start.";
     public required Func<(IResourceTypeCatalog Resources, IGalleryTypeCatalog Gallery)> CreateContentCatalogs { get; init; }
     public required Action<GameRegistration, AvaloniaGamePresentation, GamePage, GameContent> ConfigureExecution { get; init; }
+    /// <summary>Optional borrowed runtime binding. Disposed before the run; no debugger dependency is required.</summary>
+    public Func<GalNet.Runtime.Engine.GameEngine, IDisposable>? AttachDebugRun { get; init; }
     public Action<IAssetManager> ConfigureDecoders { get; init; } = assets =>
     {
         assets.RegisterDecoder<GalNet.Rendering.Scene.SceneTexture>("sprite", new GalNet.Rendering.Scene.SceneTextureAssetDecoder());

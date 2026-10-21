@@ -191,6 +191,12 @@ public partial class EntryListEditorControl : ReorderableListControl
             item.Click += async (_, _) => await action(); menu.Items.Add(item);
         }
         var selected = vm.SelectedEntries.Count > 0;
+        if (vm.SelectedEntry is { } target && vm.Workspace.ExternalDebug is { } debug)
+        {
+            var jump = new MenuItem { Header = vm.Workspace.Localize("Debug.Jump"), IsEnabled = debug.CanLocate };
+            jump.Click += async (_, _) => await debug.SeekAsync(vm.GroupId, target.StableId);
+            menu.Items.Add(jump);
+        }
         Add("Entry.Menu.Copy", "Ctrl+C", () => CopySelectionAsync(), selected);
         Add("Entry.Menu.Cut", "Ctrl+X", () => CopySelectionAsync(cut: true), selected);
         Add("Entry.Menu.Paste", "Ctrl+V", PasteSelectionAsync);
