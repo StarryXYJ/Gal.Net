@@ -16,6 +16,7 @@ public class ProjectDependencyTests
             ["GalNet.Presentation.Abstractions"] = ["GalNet.Core"],
             ["GalNet.GameHost"] = ["GalNet.Core", "GalNet.Runtime", "GalNet.Presentation.Abstractions"],
             ["GalNet.Runtime"] = ["GalNet.Core", "GalNet.Presentation.Abstractions"],
+            ["GalNet.Debugging"] = ["GalNet.Runtime"],
             ["GalNet.Primitives.Builtins"] = ["GalNet.Core", "GalNet.Contracts.Builtins", "GalNet.Presentation.Abstractions", "GalNet.Runtime"],
             ["GalNet.Media.LibVlc"] = ["GalNet.Core", "GalNet.Assets", "GalNet.Presentation.Abstractions"],
             ["GalNet.Assets"] = ["GalNet.Core"],
@@ -45,6 +46,7 @@ public class ProjectDependencyTests
         new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
             ["GalNet.Architecture.Tests"] = [],
+            ["GalNet.Debugging.Tests"] = ["GalNet.Debugging"],
             ["GalNet.GameHost.Tests"] = ["GalNet.GameHost"],
             ["GalNet.Core.Tests"] = ["GalNet.Core"],
             ["GalNet.Runtime.Tests"] = ["GalNet.Core", "GalNet.Presentation.Abstractions", "GalNet.Runtime"],
