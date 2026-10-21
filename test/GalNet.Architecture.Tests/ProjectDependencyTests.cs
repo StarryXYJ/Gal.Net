@@ -239,14 +239,16 @@ public class ProjectDependencyTests
 
     private static string FindProjectFile(string projectName)
     {
-        var matches = Directory.EnumerateFiles(Path.Combine(RepositoryRoot, "src"), $"{projectName}.csproj", SearchOption.AllDirectories).ToArray();
+        var directory = Path.Combine(RepositoryRoot, "src");
+        var matches = Directory.EnumerateFiles(directory, $"{projectName}.csproj", SearchOption.AllDirectories).Where(path => !IsBuildOutput(path, directory)).ToArray();
         Assert.That(matches, Has.Length.EqualTo(1), $"Expected one project file for {projectName}.");
         return matches[0];
     }
 
     private static string FindTestProjectFile(string projectName)
     {
-        var matches = Directory.EnumerateFiles(Path.Combine(RepositoryRoot, "test"), $"{projectName}.csproj", SearchOption.AllDirectories).ToArray();
+        var directory = Path.Combine(RepositoryRoot, "test");
+        var matches = Directory.EnumerateFiles(directory, $"{projectName}.csproj", SearchOption.AllDirectories).Where(path => !IsBuildOutput(path, directory)).ToArray();
         Assert.That(matches, Has.Length.EqualTo(1), $"Expected one test project file for {projectName}.");
         return matches[0];
     }
@@ -268,8 +270,7 @@ public class ProjectDependencyTests
     private static bool IsBuildOutput(string path, string projectDirectory)
     {
         var relativePath = Path.GetRelativePath(projectDirectory, path);
-        return relativePath.StartsWith($"bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase) ||
-               relativePath.StartsWith($"obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase);
+        return relativePath.Split(Path.DirectorySeparatorChar).Any(part => part.Equals("bin", StringComparison.OrdinalIgnoreCase) || part.Equals("obj", StringComparison.OrdinalIgnoreCase));
     }
 
     private static string ReadNamespace(string declaration) =>
