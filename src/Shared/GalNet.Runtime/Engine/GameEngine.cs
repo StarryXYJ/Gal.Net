@@ -111,6 +111,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             if (Volatile.Read(ref _stopRequested) != 0) return false;
             ThrowIfDisposed();
             ThrowFlowError();
+            if (_debugger?.Paused == true) return IsRunning;
             if (_restorationPending) return IsRunning;
             if (_started && !IsRunning) return false;
             _started = true;
@@ -215,6 +216,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             previousScope.Cancel();
             previousScope.Dispose();
             _runtime.RestoreFrom(data);
+            _debugger?.OnExternalRestore();
             _restorationPending = _view.RequiresStateRestore;
             _scopeCancellation = new CancellationTokenSource();
             _dispatchRuntime = new RunScopedRuntime(_runtime, _scopeCancellation.Token);
@@ -235,6 +237,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
     /// <summary>Terminal stop: cancel execution and drain internal continuations without owning the view.</summary>
     public Task StopAsync()
     {
+        _debugger?.CancelSeek();
         CancelCatchUp();
         lock (_lifecycleSync)
         {
@@ -291,6 +294,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         Task[] background;
         lock (_lifecycleSync) background = _backgroundTasks.ToArray();
         await Task.WhenAll(background).ConfigureAwait(false);
+        if (_debugger is { } debugger) await debugger.PendingSeek.ConfigureAwait(false);
         Exception? progressError = null;
         try { if (_progress is not null) await _progress.FlushAsync().ConfigureAwait(false); }
         catch (Exception exception) { progressError = exception; }
@@ -308,7 +312,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
 
     private void ContinueUntilBlocked()
     {
-        while (IsRunning && _pendingChoice is null && !_active.HasBlockingInstance() && !_catchUpStopAtBoundary)
+        while (IsRunning && _debugger?.Paused != true && _pendingChoice is null && !_active.HasBlockingInstance() && !_catchUpStopAtBoundary)
         {
             if (_catchUpActive && --_catchUpBudget < 0) break;
             _scopeCancellation.Token.ThrowIfCancellationRequested();
@@ -347,12 +351,18 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
 
     private void ProcessGroup(Group group)
     {
-        _active.BeginGroupExecution(group.Id);
-        while (_runtime.EntryIndex < group.Entries.Count && !_active.HasBlockingInstance())
+        if (_active.BeginGroupExecution(group.Id)) _debugger?.CaptureEntrance(group.Id);
+        while (_runtime.EntryIndex < group.Entries.Count && _debugger?.Paused != true && !_active.HasBlockingInstance())
         {
             if (_catchUpActive && --_catchUpBudget < 0) return;
             _scopeCancellation.Token.ThrowIfCancellationRequested();
             var entry = group.Entries[_runtime.EntryIndex];
+            if (_debugger?.BeforeEntry(group.Id, _runtime.EntryIndex) == true) return;
+            if (_debugger?.Replaying == true && _debugger.IgnoreInstruction(entry.Type))
+            {
+                _runtime.SetEntryIndex(_runtime.EntryIndex + 1);
+                continue;
+            }
             PrimitiveInstance? instance = null;
             if (((_catchUpActive && _catchUpIgnoreConditions) || _runtime.EvaluateCondition(entry.Condition)) && entry is PrimitiveEntry primitive)
             {
@@ -373,6 +383,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         if (_runtime.EntryIndex < group.Entries.Count || _active.HasBlockingInstance())
             return;
 
+        if (_debugger?.BeforeEntry(group.Id, _runtime.EntryIndex) == true) return;
         if (_catchUpActive && _catchUpTarget == CatchUpTarget.GroupEnd)
         {
             _catchUpActive = false;
@@ -416,6 +427,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
 
     private void ProcessConditionBranch(Branch branch)
     {
+        if (_debugger?.Replaying == true) { JumpFrom(branch.Id, 0); return; }
         for (var index = 0; index < branch.Conditions.Count; index++)
         {
             if (!_runtime.EvaluateCondition(branch.Conditions[index].Expression))
@@ -428,6 +440,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
 
     private void ProcessChoice(Branch branch)
     {
+        if (_debugger?.Replaying == true) { JumpFrom(branch.Id, 0); return; }
         if (_catchUpActive)
         {
             _catchUpActive = false;
@@ -495,6 +508,11 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         {
             if (!ReferenceEquals(_pendingChoice, pending) || _disposed || Volatile.Read(ref _stopRequested) != 0)
                 return;
+            if (_debugger?.Paused == true)
+            {
+                pending.DebugSelection = selected;
+                return;
+            }
             _pendingChoice = null;
             pending.Cancellation.Dispose();
             if (selected < 0 || selected >= pending.Options.Count)
@@ -636,6 +654,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
 
     private void JumpFrom(string nodeId, int outlet)
     {
+        if (_debugger?.Replaying == true) outlet = _debugger.TakeOutlet(nodeId);
         var target = _navigation.FindTarget(nodeId, outlet);
         if (target is null) IsRunning = false;
         else _runtime.JumpTo(target);
@@ -677,5 +696,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         CancellationTokenSource Cancellation)
     {
         public CancellationToken Token { get; } = Cancellation.Token;
+        public string Id { get; } = Guid.NewGuid().ToString("N");
+        public int? DebugSelection { get; set; }
     }
 }

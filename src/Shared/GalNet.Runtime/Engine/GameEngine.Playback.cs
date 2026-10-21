@@ -35,6 +35,7 @@ public sealed partial class GameEngine
         {
             if (Volatile.Read(ref _stopRequested) != 0) return;
             ThrowFlowError();
+            if (_debugger?.Paused == true) mode = PlaybackMode.Manual;
             if (!IsRunning || _pendingChoice is not null) mode = PlaybackMode.Manual;
             if (mode == PlaybackMode.Quick && IsQuickBlockedByUnreadText()) mode = PlaybackMode.Manual;
             SetPlaybackModeCore(mode);
@@ -93,7 +94,7 @@ public sealed partial class GameEngine
     {
         if (item.Instance.IsAutoBlocking) _autoBlockers.Add(item.Instance);
         else _autoBlockers.Remove(item.Instance);
-        if (!item.ReadMarked && item.IsReading && item.Instance is IAdvanceWaitInstance { IsTextPresented: true })
+        if (_debugger?.Replaying != true && !item.ReadMarked && item.IsReading && item.Instance is IAdvanceWaitInstance { IsTextPresented: true })
         {
             if (string.IsNullOrWhiteSpace(item.StableId))
                 throw new InvalidDataException("Reading primitives require a stable compiled identity.");
@@ -116,7 +117,7 @@ public sealed partial class GameEngine
         finally { CaptureStateChange(); _dispatchGate.Release(); PublishStateChanges(); }
     });
 
-    private bool CanSchedulePlayback() => _playbackMode != PlaybackMode.Manual && _advanceBoundary && IsRunning &&
+    private bool CanSchedulePlayback() => _debugger?.Paused != true && _playbackMode != PlaybackMode.Manual && _advanceBoundary && IsRunning &&
         _pendingChoice is null && !_disposed && Volatile.Read(ref _stopRequested) == 0 &&
         _autoBlockers.Count == 0 && _active.All(item => !item.Instance.IsBlocking || item.Instance.IsCompleted ||
             item.Instance is IAdvanceWaitInstance { IsWaitingForAdvance: true });

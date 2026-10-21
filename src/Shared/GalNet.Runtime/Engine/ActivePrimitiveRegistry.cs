@@ -79,12 +79,13 @@ internal sealed class ActivePrimitiveRegistry(Action<PrimitiveInstance> complete
         _items.Clear();
     }
 
-    public void BeginGroupExecution(string groupId)
+    public bool BeginGroupExecution(string groupId)
     {
         if (string.Equals(_groupId, groupId, StringComparison.Ordinal))
-            return;
+            return false;
         _groupId = groupId;
         _groupExecutionId++;
+        return true;
     }
 
 }

@@ -6,7 +6,7 @@ namespace GalNet.Runtime.Engine;
 
 public sealed partial class GameEngine
 {
-    private enum CatchUpTarget { Unread, GroupEnd }
+    private enum CatchUpTarget { Unread, GroupEnd, DebugPosition }
 
     private readonly SemaphoreSlim _catchUpSignal = new(0);
     private CancellationTokenSource? _catchUpCancellation;
@@ -89,6 +89,7 @@ public sealed partial class GameEngine
             {
                 token.ThrowIfCancellationRequested();
                 if (!IsRunning || _restorationPending || _pendingChoice is not null) return;
+                if (_debugger?.Paused == true) throw new InvalidOperationException("Resume the debugger before starting player catch-up.");
                 if (_catchUpTarget == CatchUpTarget.GroupEnd && _navigation.FindNode(_runtime.CurrentNodeId) is not Group) return;
                 if (_catchUpTarget == CatchUpTarget.Unread && _active.Any(item => item.IsReading && !item.WasRead)) return;
                 scopedRuntime = _dispatchRuntime;

@@ -46,6 +46,12 @@ Engine 同时支持同步和异步释放；异步宿主优先使用 `await using
 
 ## Batch 与活动实例
 
+### 可选调试会话
+
+宿主显式 `AttachDebugging(GameDebugOptions)` 获取借用的 DebugSession。查询与变量修改经过同一执行门，返回独立 DTO；提交按执行代次、作用域、UID、类型与原值重查，数值解析使用固定文化与有限 Float。Pause 阻止玩家/自动/自然继续，Choice 已产生的结果可延后到 Resume；不表示媒体时钟完整冻结。
+
+调试会话每 Group 保存最近自然入口的单份逻辑场景，不存变量或执行任务。指定路线定位验证真实后继与模块 Scene/Ignore 能力，恢复场景根并无条件追帧到目标前，保留当前变量且不重复写已读；普通读档清空入口缓存并推进代次，调试重建不覆盖基线。Stop/读档会取消旧定位，宿主先停止 Engine，再释放调试 binding。查询/追帧/通信尚未由 Runtime 自动启用。
+
 ### 追帧到当前 Group 末尾
 
 `GameEngine.SkipToGroupEndAsync(bool ignoreConditions = false, CancellationToken cancellationToken = default)` 复用现有 CatchUp 展示压缩与清理机制，消费当前 Group 的剩余条目，不受未读文本限制。默认执行条件和逻辑写入；显式忽略条件只绕过 Entry 条件，不跳过变量赋值或参数/资源校验。
