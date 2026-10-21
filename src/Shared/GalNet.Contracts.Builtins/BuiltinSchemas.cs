@@ -46,7 +46,9 @@ public static class BuiltinSchemas
         DefaultPrimitiveEntryBase.ForDto<LayerColorOptions>(BuiltinEntryIds.ShowColorLayer),
         DefaultPrimitiveEntryBase.ForDto<LayerHandleOptions>(BuiltinEntryIds.HideLayer),
         DefaultPrimitiveEntryBase.ForDto<LayerMoveOptions>(BuiltinEntryIds.MoveLayer),
-        DefaultPrimitiveEntryBase.ForDto<LayerReplaceOptions>(BuiltinEntryIds.ReplaceLayer)
+        DefaultPrimitiveEntryBase.ForDto<LayerReplaceOptions>(BuiltinEntryIds.ReplaceLayer),
+        DefaultPrimitiveEntryBase.ForDto<VariantsShowOptions>(BuiltinEntryIds.ShowVariants, VariantsArgumentValidation.Show, validatePartialArguments: static _ => { }),
+        DefaultPrimitiveEntryBase.ForDto<VariantsSelectOptions>(BuiltinEntryIds.SelectVariants, VariantsArgumentValidation.Select, validatePartialArguments: static _ => { })
     ]);
 
     public static IEntryModule CreateAnimationsModule() => new DefaultEntryModule("animations",

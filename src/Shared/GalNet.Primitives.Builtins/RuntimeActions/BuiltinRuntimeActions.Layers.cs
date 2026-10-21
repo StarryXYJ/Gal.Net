@@ -6,7 +6,8 @@ namespace GalNet.Primitives.Builtins;
 
 internal static partial class BuiltinRuntimeActions
 {
-    public static void ShowLayer(IGameRuntime runtime, ILayerPresenter? presenter, LayerRenderRequest request, bool notify = true)
+    public static void ShowLayer(IGameRuntime runtime, ILayerPresenter? presenter, LayerRenderRequest request, bool notify = true,
+        LayerVariantsState? variants = null)
     {
         runtime.State.Update(() =>
         {
@@ -17,6 +18,7 @@ internal static partial class BuiltinRuntimeActions
                 AssetId = request.AssetId,
                 Color = request.Color,
                 Flipbook = request.Flipbook?.Clone(),
+                Variants = variants,
                 Transform = request.Transform.Clone(),
                 Z = request.Z,
                 Opacity = request.Opacity,

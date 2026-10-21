@@ -1,7 +1,7 @@
 # 多维图片差分图集设计
 
 日期：2026-10-21
-状态：实施中；P1 纯定义与解析、P2 资源编译与发布已实现，见第 12、13 节。Layer 状态、指令和专属作者 UI 等后续内容仍为目标设计。
+状态：实施中；P1–P3 已实现，见第 12–14 节。专属作者 UI、场景查询适配及最终集成验收仍为后续目标。
 
 ## 1. 问题与设计取向
 
@@ -161,6 +161,8 @@ hide/move/普通连续动画继续使用 Layer 的现有能力。show 建立一�
 
 ## 9. 状态、异步和恢复
 
+P3 实施修订：现有 `IGameView.ValidateState` 是同步的读档预检，并在状态根替换前调用。为保持该边界且不以同步等待阻塞异步资源加载，宿主在会话准备时异步加载并验证全部图集，注入不可变 `ImageVariantsCatalog`。show/select 随后只做同步查找和原子状态修改；没有指令内 I/O，也不需要异步切换队列。定义加载的取消/失败在会话准备阶段处理，旧 scope 的任务不会持有新实例。下面原异步风险通过此预加载方案消除，不扩展或改写 Engine 的恢复协议。
+
 - Layer 是唯一实例真源；在其可选差分状态中保存图集 ID、完整请求、保护集合及实际变体。AssetId 表示当前实际图片，不能在第二张状态表再维护一份平行 Layer。
 - 定义加载/校验先完成，再在受控执行边界内原子更新请求和实际图片；失败不提交一半选择。并发 select 应保持引擎执行顺序，并校验目标实例仍属于同一次 show，避免旧加载覆盖新实例。
 - Normal 与 CatchUp 共用解析和状态提交；CatchUp 不触发展示副作用，最终由统一状态恢复还原画面。
@@ -217,3 +219,15 @@ P1 没有改变前文匹配规则。具体实现和验证见 [P1 记录](phase-1
 - 资源事务对移动/复制改写已知 folder；导入生成 sidecar；发布前验证投影快照，破坏默认图等情况在写盘前拒绝，撤销/重做沿用同一文件事务。显式 metadata 的类型优先于扩展名。
 
 这落实了第 7 节的作者准备层：准备发生在本地资源 provider 和事务预检，不放进 runtime decoder，也不把目录扫描引入 Core。当前没有为 P3 添加执行入口或 Layer 状态。稳定资源事实见[资源规范](../../docs/spec/assets.md)，验证见 [P2 记录](phase-2.md)。
+
+## 14. P3 已实现接口与恢复
+
+`variants.show/select` 加入现有 layers schema/执行模块，独立模块数不变；内置总数为 44（36 primitive、8 composite）。源参数由独立生成 DTO 校验，show 的 selection 是对象，transform 保持普通 Layer 的对象/嵌入 JSON 文本语义。
+
+会话准备时，Assets 的 `LoadImageVariantsCatalogAsync` acquire 定义、验证所有 sprite 引用，完成后释放句柄并返回不可变 Core `ImageVariantsCatalog`。默认 Avalonia 呈现将其暴露给配置回调；Avalonia Sample、Headless Sample、Editor Preview 均将目录注入执行注册。AddBuiltins/AddBuiltinImplementations/AddBuiltinLayers 提供可选 imageVariants 参数；只使用普通图层时可不传。
+
+Layer.Variants 保存图集 ID、完整请求、保护集合、实际变体键与解析原因；实际图片使用原 AssetId。select 原子修改同一 Layer 的图片与差分状态，不替换对象或停止循环动画。普通来源替换不携带 Variants，hide 删实例，重新 show 重置选择。
+
+builtin.layers 节升至 v2，旧 v1 明确拒绝；GameSnapshot 外层仍为 v4。State 合约校验来源互斥和子状态结构；view.ValidateState 在 Engine 替换根之前，用已预载目录重算并核对实际结果。StateRestoreSession 在展示前再次验证，普通 Layer presenter 只接收实际 sprite ID。CatchUp 使用同一同步修改逻辑但不通知 presenter。
+
+与初始设计的差异仅为异步工作的放置位置：没有指令内加载/队列，也不修改同步的 Engine 恢复预检 API。所有定义异步工作先于执行模块创建，取消/加载失败不产生场景实例；作用域间定义隔离。见 [P3 验证记录](phase-3.md)。

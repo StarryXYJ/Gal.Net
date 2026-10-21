@@ -89,7 +89,9 @@ Choice 节点由 Engine 求值并过滤可见选项，再通过 `IChoicePresente
 | `State` / `SceneInstances` | 按注册类型/ID 存储的 GameState，以及其派生场景句柄索引与临时执行控制 |
 | 变量存储 | Player / Save 作用域变量与表达式求值 |
 
-`GameSnapshot` 当前版本为 4，旧版本直接拒绝，不提供迁移兼容。它包含 `NodeId`、`EntryIndex`、Save 变量与 `States`：稳定 StateId → section version / JSON payload。模块组合时显式注册纯数据表与恢复处理器，未注册类型、重复 ID、缺失/未知 section、版本不符及无效载荷明确报错。builtin.animations 当前 section version 为 2，LoopAnimationState 保存 Request 或 Timeline；旧 v1 section 明确拒绝。PrimitiveRegistry.State 的 version 参数传递到 Core 状态契约，其他模块默认仍为 1。每份存档写出全部注册表，包括空表；不写 CLR 类型名、Task 或后端对象。
+`GameSnapshot` 当前版本为 4，旧版本直接拒绝，不提供迁移兼容。它包含 `NodeId`、`EntryIndex`、Save 变量与 `States`：稳定 StateId → section version / JSON payload。模块组合时显式注册纯数据表与恢复处理器，未注册类型、重复 ID、缺失/未知 section、版本不符及无效载荷明确报错。builtin.animations 当前 section version 为 2，LoopAnimationState 保存 Request 或 Timeline；builtin.layers 当前 section version 也为 2，新增可选的 LayerVariantsState；两者均明确拒绝旧 v1 section。PrimitiveRegistry.State 的 version 参数传递到 Core 状态契约，其他模块默认仍为 1。每份存档写出全部注册表，包括空表；不写 CLR 类型名、Task 或后端对象。
+
+差分 Layer 保存图集资源 ID、完整请求、最后保护集合、实际变体键和解析原因，实际 sprite ID 仍以 Layer.AssetId 为真源。解码阶段检查来源互斥与状态结构，模块的同步 ValidateState 使用会话已准备的不可变 ImageVariantsCatalog 重新解析，核对实际变体/图片/原因，再允许替换状态根；内容版本变更导致不一致时拒绝读档。展示恢复还会在呈现前复核内容。定义异步加载在会话准备阶段完成，show/select 本身同步，无需改变 Engine 读档协议。恢复后继续选择仍保留曾因缺组合而未显示的服装等意图。
 
 `CreateSaveData()` 返回 Engine 保存的最后稳定快照。状态表编码共享短同步边界，JSON 载荷和变量与运行对象隔离；不再由中央代码逐类型复制字段。读档先解码/校验候选状态与模块规则，再取消旧 scope 并替换整个 GameState/SceneInstances。旧回调保留旧状态根，不能清理新代。展示恢复成功前暂停推进，恢复失败进入 Faulted。
 

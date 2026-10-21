@@ -78,19 +78,19 @@ internal static class SampleCustomization
         CreateContentCatalogs = CreateContentCatalogs,
         ConfigureExecution = (registration, presentation, page, content) => ConfigureExecution(registration,
             presentation.Presenters, page, content, presentation.Effects, presentation.Audio,
-            presentation.Video, presentation.AudioModule)
+            presentation.Video, presentation.AudioModule, presentation.ImageVariants)
     };
 
     internal static void ConfigureExecution(
         GameRegistration registration, AvaloniaGamePresenters presenters, GamePage page,
         GameContent content, AvaloniaEffectRuntime? effects, IAudioPlaybackHost? audio,
-        AvaloniaVideoPresenter? video, BuiltinAudioModule? audioModule)
+        AvaloniaVideoPresenter? video, BuiltinAudioModule? audioModule, GalNet.Core.Variants.ImageVariantsCatalog? imageVariants = null)
     {
         registration.UseCatalog(ProjectSchemas.CreateCatalog());
         registration.AddBuiltinImplementations(registration.BuildCatalog(),
             presenters.DialoguePresenter, presenters.LayerPresenter, presenters.AnimationPresenter,
             effects, content.Gallery, presenters.ParticlePresenter,
-            presenters.NvlPresenter, audio, video, content.Localization.Characters, audioModule);
+            presenters.NvlPresenter, audio, video, content.Localization.Characters, audioModule, imageVariants);
         registration.RegisterImplementation(new SampleScreenshotModule(page,
             () => SampleScreenshotOutput.GetHostDirectory(content.Graph.Name)));
     }

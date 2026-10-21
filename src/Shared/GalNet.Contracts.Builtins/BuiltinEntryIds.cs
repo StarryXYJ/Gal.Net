@@ -19,6 +19,8 @@ public static class BuiltinEntryIds
     public const string HideLayer = "layer.hide";
     public const string MoveLayer = "layer.move";
     public const string ReplaceLayer = "layer.replace";
+    public const string ShowVariants = "variants.show";
+    public const string SelectVariants = "variants.select";
     public const string PlayAudio = "audio.play";
     public const string StopAudio = "audio.stop";
     public const string PauseAudio = "audio.pause";

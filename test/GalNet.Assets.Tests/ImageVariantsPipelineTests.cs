@@ -179,4 +179,57 @@ public sealed class ImageVariantsPipelineTests
         }
         finally { Directory.Delete(link); }
     }
+
+    [Test]
+    public async Task Prepared_catalog_outlives_resource_leases_and_is_isolated_from_later_scopes()
+    {
+        Fixture();
+        ImageVariantsCatalog original;
+        using (var first = new AssetManager([new LocalFileProvider(Assets, Types)]))
+        {
+            first.RegisterImageVariantsDecoder();
+            original = await first.LoadImageVariantsCatalogAsync();
+        }
+        Asset("alice/weap.png", "new-weap", "sprite");
+        using var second = new AssetManager([new LocalFileProvider(Assets, Types)]);
+        second.RegisterImageVariantsDecoder();
+        var updated = await second.LoadImageVariantsCatalogAsync();
+        Assert.That(original.Get("ATLAS").Variants.Single(item => item.Key == "weap").AssetId, Is.EqualTo("sprite-weap"));
+        Assert.That(updated.Get("atlas").Variants.Single(item => item.Key == "weap").AssetId, Is.EqualTo("new-weap"));
+        Assert.That(() => original.Get("missing"), Throws.TypeOf<InvalidDataException>());
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task Catalog_preparation_rejects_missing_or_non_sprite_dependencies_in_a_Pak(bool wrongType)
+    {
+        Fixture();
+        byte[] payload;
+        using (var provider = new LocalFileProvider(Assets, Types))
+        using (var archive = await provider.OpenArchiveAsync("assets")) payload = archive.GetAsset("atlas")!.ReadAllBytes();
+        var meta = new ImageVariantsAssetMeta { Id = "atlas", Path = "alice.variants", TypeId = "image-variants" };
+        var files = new List<IGameFile> { new GameFile(meta.Id, meta.Path, meta.TypeId, meta, payload) };
+        foreach (var key in new[] { "idle_coat", "idle_skirt", "smile_coat", "smile_skirt", "weap" })
+        {
+            if (key == "weap" && !wrongType) continue;
+            AssetMeta sprite = key == "weap" ? new AudioAssetMeta() : new SpriteAssetMeta();
+            sprite.Id = "sprite-" + key;
+            sprite.TypeId = key == "weap" ? "audio" : "sprite";
+            sprite.Path = "alice/" + key + ".png";
+            files.Add(new GameFile(sprite.Id, sprite.Path, sprite.TypeId, sprite, [1]));
+        }
+        File.WriteAllBytes(Path.Combine(_root, "assets.pak"), PakBuilder.Build("assets", files));
+        using var manager = new AssetManager([new PakFileProvider(_root, Types)]);
+        manager.RegisterImageVariantsDecoder();
+        Assert.ThrowsAsync<InvalidDataException>(() => manager.LoadImageVariantsCatalogAsync());
+    }
+
+    [Test]
+    public void Cancelled_preparation_does_not_publish_an_empty_successful_catalog()
+    {
+        using var manager = new AssetManager();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        Assert.ThrowsAsync<OperationCanceledException>(() => manager.LoadImageVariantsCatalogAsync(cancellation.Token));
+    }
 }

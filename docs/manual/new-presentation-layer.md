@@ -18,6 +18,22 @@
 - 音频平台实现通过 `IAudioPlaybackHost` 组合；同一逻辑轨道的队列和状态仍由 `AudioRuntime` 管理。
 - 新的自定义 primitive 需要同时提供 schema、执行注册、参数/恢复验证和覆盖其生命周期的测试。
 
+## 接入图片差分
+
+内置 layers 模块包含 `variants.show/select`。资源 scope 建立后，先注册 decoder 并异步准备目录，再构造执行 view：
+
+```csharp
+using GalNet.Assets.Variants;
+
+assets.RegisterImageVariantsDecoder();
+var imageVariants = await assets.LoadImageVariantsCatalogAsync(cancellationToken);
+using var registration = new GameRegistration().UseCatalog(projectCatalog);
+var view = registration.AddBuiltinImplementations(projectCatalog,
+    layerPresenter: layers, imageVariants: imageVariants).BuildView();
+```
+
+图集定义无需持有资源租约；sprite 图片仍按现有 presenter 生命周期管理。普通 `ILayerPresenter.ShowLayer/ReplaceLayer` 已足够，渲染器不解析文件名或维度。会话播放中目录不变，读档由同一目录进行同步内容预检；切换内容或项目时重新准备，不能把旧目录挂到新项目。默认 Avalonia 配置回调可从 `presentation.ImageVariants` 获取已准备目录，并传入 AddBuiltinImplementations。
+
 ## 验证清单
 
 - 只含自定义 schema/执行的最小内容可编译和运行，缺失执行会明确失败。

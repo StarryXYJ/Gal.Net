@@ -2,6 +2,7 @@ using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
 using GalNet.Core.I18n;
+using GalNet.Core.Variants;
 using GalNet.Presentation.Abstractions.Audio;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
@@ -30,12 +31,13 @@ public static class BuiltinRegistration
         IAudioPlaybackHost? audioHost = null,
         IVideoPresenter? videoPresenter = null,
         CharacterCatalog? characters = null,
-        BuiltinAudioModule? audioModule = null)
+        BuiltinAudioModule? audioModule = null,
+        ImageVariantsCatalog? imageVariants = null)
     {
         registration.AddBuiltinSchemas();
         return registration.AddBuiltinImplementations(registration.BuildCatalog(),
             dialoguePresenter, layerPresenter, animationPresenter, effectPresenter, gallery,
-            particlePresenter, nvlPresenter, audioHost, videoPresenter, characters, audioModule);
+            particlePresenter, nvlPresenter, audioHost, videoPresenter, characters, audioModule, imageVariants);
     }
 
     /// <summary>Registers logical implementations. Optional presenters select state-only/headless operation.</summary>
@@ -52,13 +54,14 @@ public static class BuiltinRegistration
         IAudioPlaybackHost? audioHost = null,
         IVideoPresenter? videoPresenter = null,
         CharacterCatalog? characters = null,
-        BuiltinAudioModule? audioModule = null)
+        BuiltinAudioModule? audioModule = null,
+        ImageVariantsCatalog? imageVariants = null)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         IPrimitiveModule[] modules =
         [
             new BuiltinDialogueModule(dialoguePresenter, characters), new BuiltinNvlModule(nvlPresenter),
-            new BuiltinLayerModule(layerPresenter), new BuiltinAnimationModule(animationPresenter, layerPresenter, effectPresenter, particlePresenter),
+            new BuiltinLayerModule(layerPresenter, imageVariants), new BuiltinAnimationModule(animationPresenter, layerPresenter, effectPresenter, particlePresenter),
             audioModule ?? new BuiltinAudioModule(audioHost), new BuiltinVideoModule(videoPresenter),
             new BuiltinEffectModule(effectPresenter), new BuiltinParticleModule(particlePresenter),
             new BuiltinFlowModule(), new BuiltinVariableModule(), new BuiltinGalleryModule(gallery)
@@ -82,7 +85,8 @@ public static class BuiltinRegistration
     public static GameRegistration AddBuiltinGallery(this GameRegistration registration, GalleryCatalog? gallery = null) => registration.RegisterImplementation(new BuiltinGalleryModule(gallery));
     public static GameRegistration AddBuiltinDialogue(this GameRegistration registration, IDialoguePresenter? presenter = null, CharacterCatalog? characters = null) => registration.RegisterImplementation(new BuiltinDialogueModule(presenter, characters));
     public static GameRegistration AddBuiltinNvl(this GameRegistration registration, INvlPresenter? presenter = null) => registration.RegisterImplementation(new BuiltinNvlModule(presenter));
-    public static GameRegistration AddBuiltinLayers(this GameRegistration registration, ILayerPresenter? presenter = null) => registration.RegisterImplementation(new BuiltinLayerModule(presenter));
+    public static GameRegistration AddBuiltinLayers(this GameRegistration registration, ILayerPresenter? presenter = null,
+        ImageVariantsCatalog? imageVariants = null) => registration.RegisterImplementation(new BuiltinLayerModule(presenter, imageVariants));
     public static GameRegistration AddBuiltinEffects(this GameRegistration registration, IEffectPresenter? presenter = null) => registration.RegisterImplementation(new BuiltinEffectModule(presenter));
     public static GameRegistration AddBuiltinParticles(this GameRegistration registration, IParticlePresenter? presenter = null) => registration.RegisterImplementation(new BuiltinParticleModule(presenter));
     public static GameRegistration AddBuiltinVideo(this GameRegistration registration, IVideoPresenter? presenter = null) => registration.RegisterImplementation(new BuiltinVideoModule(presenter));

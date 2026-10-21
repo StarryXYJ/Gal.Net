@@ -58,7 +58,7 @@ IAssetProvider / IArchive / IGameFile
 
 ## 图片差分资源
 
-`image-variants` 的作者扩展名为 `.variants`，metadata DTO 为 `ImageVariantsAssetMeta`。它管理一组完整 sprite 图片，不表示纹理合并、Flipbook 或 CG Gallery；当前资源编译能力不包含图集游戏指令或专属编辑 UI。
+`image-variants` 的作者扩展名为 `.variants`，metadata DTO 为 `ImageVariantsAssetMeta`。它管理一组完整 sprite 图片，不表示纹理合并、Flipbook 或 CG Gallery。游戏显示/切换使用 [variants 指令](entry-types.md#图片差分指令)，专属编辑 UI 尚未实现。
 
 ```json
 {
@@ -81,6 +81,8 @@ folder 相对描述文件，允许 `.` 和不越过 Assets 的 `..`，兼容两�
 `PakBuilder` 直接打包本地归档的编译结果及正常 sprite，PAK 格式仍为 2。导出和包内验证沿用调用方的同一 resource catalog；从 PAK 读取定义无需原始图片文件夹。`project.validate`（项目范围，包括 structure-only）与 build 校验该资源，业务错误报告 `variants.invalid`；原始目录索引刷新不写作者文件或 dirty 状态。
 
 解码注册仍与类型注册分离。使用 Assets 中的 `RegisterImageVariantsDecoder()` 扩展方法注册 `(image-variants, ImageVariantsDefinition)`，默认 Avalonia 游戏宿主与项目级 EditorAssetManager 已接入；自定义宿主覆写 decoder 配置时需自行注册。编辑器资源刷新重建内部 manager 时重新注册该 decoder。
+
+执行会话准备使用 `LoadImageVariantsCatalogAsync()` 一次异步加载图集定义，并检查全部变体引用都存在且为 sprite。返回的 Core `ImageVariantsCatalog` 只持有不可变定义，不持有资源句柄；加载失败/取消不会返回半份目录。资源 ID 使用与 AssetManager 相同的首尾空格处理和大小写无关查询，变体键与维度值仍精确比较。目录按会话注入内置 Layer 模块；播放中不扫描文件夹或异步加载定义，重新准备会话才采用新内容。默认 Avalonia 游戏呈现、Sample Headless 和 Editor Preview 已在注册执行模块前完成该准备。
 
 项目资源文件事务在 Assets 改动发布前，使用投影后的文件/目录快照调用同一编译器预检。移动描述文件或图片目录会调整已知的相对 folder；复制完整目录时生成独立资源 ID 并将内部目录关系指向副本；这些改动与原操作一起撤销/重做。显式 metadata 的图集类型不因改扩展名而丢失。改名或删除若令 default 等定义失效，会在写盘前拒绝，不能靠文件路径变化静默迁移维度语义。显式导入包含图集的完整目录会在同一事务中为资源创建 sidecar。
 
