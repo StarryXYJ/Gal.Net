@@ -47,7 +47,7 @@ public sealed class TimelineEventEdit : IDisposable
         public FieldDescriptor Descriptor => descriptor;
         public bool IsEnabled => owner.IsCurrent;
         public bool IsVisible => !SceneFieldSemantics.IsOutput(type, descriptor.Id);
-        public object? Label => SceneFieldSemantics.TargetKinds(type, descriptor.Id) is not null ? "Scene.Target" : descriptor.LabelKey ?? "Entry.Parameter." + descriptor.Id;
+        public object? Label => SceneFieldSemantics.Label(type, descriptor.Id) ?? descriptor.LabelKey ?? "Entry.Parameter." + descriptor.Id;
         public IReadOnlyList<FieldEditorOption>? Options => owner.IsCurrent ? owner._owner.EventFieldOptions(owner.Index, type, descriptor.Id) : null;
         public FieldValue Read() => owner._values.TryGetValue(descriptor.Id, out var value) ? new(value) : default;
         public event EventHandler? Changed;

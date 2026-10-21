@@ -37,7 +37,8 @@ public sealed partial class SceneTargetAnalysis
         return (timeline, raw);
     }
     private static SceneTargetResult Result(State state) => new(state.Targets.Values.OrderBy(target => target.Locator.GroupId, StringComparer.Ordinal)
-        .ThenBy(target => target.Locator.EntryId, StringComparer.Ordinal).ThenBy(target => target.CreatedAtFrame).ThenBy(target => target.Locator.EventId, StringComparer.Ordinal).ToArray(), state.Complete && state.Targets.Values.All(target => target.CapabilitiesComplete), true);
+        .ThenBy(target => target.Locator.EntryId, StringComparer.Ordinal).ThenBy(target => target.CreatedAtFrame).ThenBy(target => target.Locator.EventId, StringComparer.Ordinal).ToArray(), state.Complete && state.Targets.Values.All(target => target.CapabilitiesComplete), true)
+    { Playbacks = state.Playbacks.Values.OrderBy(target => target.Locator.GroupId, StringComparer.Ordinal).ThenBy(target => target.Locator.EntryId, StringComparer.Ordinal).ToArray() };
     public SceneTargetResult AtTimeline(string groupId, string entryId, SceneTimelinePosition position)
     {
         var state = StateBefore(groupId, entryId);
@@ -49,6 +50,8 @@ public sealed partial class SceneTargetAnalysis
             if (position.Frame < 0 || position.Frame > timeline.DurationFrames || position.BeforeEventIndex is { } index &&
                 (index < 0 || index >= timeline.Events.Count || timeline.Events[index].Frame != position.Frame)) return new([], false, false);
             EvaluateTimeline(state, groupId, entry, timeline, raw, position, terminal: false);
+            AddPlayback(state, groupId, entry, timeline.PlaybackHandleId, "timeline.playbackHandleId",
+                timeline.DurationFrames == 0 || position.Frame == timeline.DurationFrames ? TargetPresence.Possible : TargetPresence.Definite);
         }
         catch (Exception error) when (error is JsonException or InvalidOperationException or ArgumentException or InvalidDataException or OverflowException) { state.Uncertain(); }
         return Result(state);
@@ -72,7 +75,10 @@ public sealed partial class SceneTargetAnalysis
             }
             catch (Exception error) when (error is JsonException or InvalidOperationException or ArgumentException or InvalidDataException or OverflowException) { merged.Complete = false; }
         }
-        state.Targets.Clear(); foreach (var pair in merged.Targets) state.Targets.Add(pair.Key, pair.Value); state.Uncertain();
+        state.Targets.Clear(); foreach (var pair in merged.Targets) state.Targets.Add(pair.Key, pair.Value);
+        state.Playbacks.Clear(); foreach (var pair in merged.Playbacks) state.Playbacks.Add(pair.Key, pair.Value);
+        state.Uncertain();
+        AddPlayback(state, group, entry, timeline.PlaybackHandleId, "timeline.playbackHandleId", TargetPresence.Possible);
     }
     private void EvaluateTimeline(State state, string group, EditorEntryData owner, TimelineDefinition timeline, JsonElement raw, SceneTimelinePosition position, bool terminal)
     {

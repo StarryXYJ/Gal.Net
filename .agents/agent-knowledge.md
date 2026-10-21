@@ -244,3 +244,5 @@
 
 - [架构项目发现排除构建输出](lessons/L-20261021-06-architecture-project-discovery.md)：递归 csproj 枚举须排除任意层级 bin/obj；保留临时仓库副本复验 45 项通过，不能靠删除其他任务产物修复测试。
 - 2026-10-21 游戏本地化 P6 已 verified，feature P1–P6 完成：单语言模板/平铺 JSON 导入导出、项目交换 GUID、稳定 key 与源文指纹、选择预览、明确空串、整批单次历史及执行时证据重查；完整 project.validate/build 增加包内默认语言和角色语义校验，未知范围 warning/Complete=false。身份预留可能在输出失败后保留，旧文本历史须保留新身份（见文本历史 lesson）。新增 20 项通过，正常解决方案构建 0 错误；完整相关回归 1180 通过、2 项 P6e3 既有布局失败，另有 6 个视频环境跳过。原生文件选择/IME 和大项目性能阈值仍待人工验收。当前契约见 docs/spec/editor-game-localization.md，操作见 docs/manual/game-localization.md，交付与自审见 features/F-20261019-01-editor-game-localization/summary.md、review.md；不保留旧格式兼容。
+
+- [作者参数线格式](lessons/L-20261021-07-author-parameter-wire-format.md)：测试作者 JSON 必须按字段 schema/converter 编码；Animate 的字符串布尔与嵌套 Timeline 的 JSON bool 不可混用，保留坏格式拒绝与有效夹具 Complete 断言。

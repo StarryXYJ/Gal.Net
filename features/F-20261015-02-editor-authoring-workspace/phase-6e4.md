@@ -123,3 +123,22 @@ P6e4c 仍在实施；后续为 effect metadata/flipbook 能力、播放实例 Lo
 - 11 个最终源码 whitespace/IDE0005 verify 与 SHA256 核对通过，主工作区、隔离候选一致；证据在 timeline-validation，前缀 metadata-c3b-，含基线/候选源码归档、文件清单、指纹、构建/格式日志和 TRX。删除经绝对路径核对的临时快照后，仅提交本切片代码、测试、文档和 lesson。
 
 P6e4c 整体仍 in-progress。下一步为播放实例 Locator、其余内置语义与缺目标运行时独立核验；animate 自定义曲线留 P6f，实时预览不列 Phase。
+
+### P6e4c4：播放实例 Locator
+
+状态：verified（2026-10-21，保留两项已独立复现的 Group 布局基线失败）。在同一纯查询状态中单独保存播放候选，与可动画场景对象分域；使用原 Animate 的 playbackHandleId 或 Timeline 的 timeline.playbackHandleId 槽位形成 Locator。停止动画字段复用同一查询服务、选择 lease 和卡片控件，列表显示本地化类型/原条目来源，不暴露底层 ID；Timeline 对象/属性树不列播放实例。
+
+执行后的非阻塞 Once 与循环播放只标可能存在，不猜测自然结束/替换/并发时刻；阻塞完成和零时长 Once 不创建后续候选。Timeline 内部查询可指向当前播放，但第一次行程终点保持保守。CompleteImmediately 停止移除候选，AfterIteration 只保留可能候选。条件、Graph 分支/循环、未知语义、复制身份及项目/作者代次失效共用现有规则；冲突播放身份不猜测创建者。播放生命周期不同于场景对象的动画数值，不在此切片预测完整运行终态或实现实时预览。
+
+退出条件：纯查询、条件/分支/循环预算、停止模式、无效/冲突身份、现有场景候选不污染、真实停止字段搜索/键盘/四语/未知引用、单步 Undo/Redo、复制关联、过期选择及保存重开均有证据；其余内置语义和缺目标运行时独立核验保留后续。
+
+#### P6e4c4 实施与验证
+
+- 同一纯分析 State 分别维护场景和播放候选，条件/分支/循环固定点与预算处理覆盖两域；结果的 Targets、Playbacks 分开，Timeline 树保持场景对象语义。原作者来源槽位生成 Locator，冲突身份保守降为未解析，查询不生成 ID。六种转场的阻塞完成不会泄漏内部播放。
+- 停止字段通过 AnimationStopOptions 成员映射复用 SceneTargetFieldEditor/SceneTargetPicker；快照、解析与语言刷新显式保留播放域。标签、搜索提示四语接通，候选显示本地化类型、英文类型 ID 与来源；不展示底层播放 handle。选择、清空及既有未解析引用沿用项目作者 binding、单历史和 JSON 保留。
+- 首轮 16 项分析失败来自测试 helper 将 Animate 的字符串布尔写成 JSON bool；生产 converter 严格规则保留，修正后加入原生 bool 拒绝和有效夹具 Complete 断言，见 author-parameter-wire-format lesson。另修正预算零尚无入口的夹具预期，并让真实列表用例定位停止条目、先将控件滚动入视区；没有绕过真实指针/键盘，未放宽产品行为断言。原始专项失败日志和 TRX 保留。
+- 最终场景分析专项 100 项通过，本轮新增 26 项；真实播放选择器 1 项通过，覆盖本地化/英文搜索、无结果不提交、四语刷新不换域、不显示 handle、选择/清空单步 Undo/Redo、作者改变/Undo/关闭后旧 lease 拒绝、Timeline 对象树不列播放实例，以及保存重开保留未知字段和大整数。
+- 隔离基线 39bc39b，明确覆盖 13 个 C# 与 4 个语言资源文件；默认契约及 schema fixture 固定路径产物均来自此候选。最终解决方案构建 49 警告、0 错误。最终七项目合计 1239 通过、2 失败、0 跳过：Editor 252/2、Editor.Shared 355/0、Architecture 45/0、Core 116/0、Primitives.Builtins 117/0、Integration 111/0、Presentation 243/0。两项仍是此前独立复现的 Group 尾部留白和窄面板宽度，未修改布局或放宽断言。6 项原生媒体环境测试未执行；本切片未声称运行时全部缺目标语义已独立验证。
+- 13 个 C# 的 whitespace/IDE0005 verify、四语 JSON 唯一 key/键集合、全部 17 个候选源码/资源 SHA256 与归档核对通过。证据在 timeline-validation，前缀 playback-c4-，含基线、清单、候选源码 archive、构建/格式日志及 TRX；仅删除核对绝对路径的本轮临时快照。当前规范见 [Editor 场景目标查询](../../docs/spec/editor-scene-targets.md)。
+
+P6e4c 仍 in-progress。继续剩余内置语义与缺目标运行时独立核验；P6f 自定义曲线和实时预览的原有边界不变。

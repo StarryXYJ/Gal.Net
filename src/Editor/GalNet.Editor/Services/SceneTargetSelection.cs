@@ -25,7 +25,7 @@ public sealed class SceneTargetSelection(SceneTargetCatalog catalog, SceneTarget
     public void RefreshLabels()
     {
         if (!IsCurrent) return;
-        Snapshot = catalog.Query(Snapshot.GroupId, Snapshot.EntryId, Snapshot.Filter, Snapshot.Position);
+        Snapshot = catalog.Query(Snapshot.GroupId, Snapshot.EntryId, Snapshot.Filter, Snapshot.Position, Snapshot.Playback);
     }
     public bool Select(string id)
     {

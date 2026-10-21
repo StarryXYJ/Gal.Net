@@ -54,7 +54,7 @@ public sealed class EntryParameterFormBinding : IDisposable
         public string? GroupId => form._owner.AuthorGroupId;
         public string EntryId => form._owner.StableId;
         public object HostContext => this;
-        public object? Label => SceneFieldSemantics.TargetKinds(form._owner.Type, @field.Id) is not null ? "Scene.Target" : @field.LabelKey ?? "Entry.Parameter." + @field.Id;
+        public object? Label => SceneFieldSemantics.Label(form._owner.Type, @field.Id) ?? @field.LabelKey ?? "Entry.Parameter." + @field.Id;
         public bool IsEnabled => form.IsCurrent;
         public bool CanReset => form._owner.Type != GalNet.Contracts.Builtins.BuiltinEntryIds.PlayTimeline || @field.Id != "timeline" || @field.DefaultValue is not null;
         public bool IsVisible => !form._owner.IsSceneOutput(@field.Id);
@@ -142,7 +142,7 @@ public sealed class SchemaEntryParameterEditorItemViewModel(EntryParameterDefini
     public Type? DtoType => owner.ParameterDtoType;
     bool IFieldBinding.IsVisible => !owner.IsSceneOutput(Id);
     public event EventHandler? Changed;
-    object? IFieldBinding.Label => SceneFieldSemantics.TargetKinds(owner.Type, Id) is not null ? "Scene.Target" : Definition.DisplayNameKey;
+    object? IFieldBinding.Label => SceneFieldSemantics.Label(owner.Type, Id) ?? Definition.DisplayNameKey;
     public override void RefreshValue(string value) => Changed?.Invoke(this, EventArgs.Empty);
     public FieldValue Read() => owner.Source.Parameters.TryGetValue(Id, out var json)
         ? new(json.Clone()) : default;

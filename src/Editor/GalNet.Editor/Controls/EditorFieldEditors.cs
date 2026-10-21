@@ -64,6 +64,7 @@ public static class EditorFieldEditors
             registry.RegisterMember<LayerMoveOptions>(options => options.HandleId, Target);
             registry.RegisterMember<LayerReplaceOptions>(options => options.HandleId, Target);
             registry.RegisterMember<AnimationOptions>(options => options.HandleId, Target);
+            registry.RegisterMember<AnimationStopOptions>(options => options.PlaybackHandleId, Target);
             registry.RegisterMember<VideoStopOptions>(options => options.HandleId, Target);
             registry.RegisterMember<InstanceIdOptions>(options => options.InstanceId, Target);
             registry.RegisterMember<EffectApplyOptions>(options => options.TargetHandleId, Target);

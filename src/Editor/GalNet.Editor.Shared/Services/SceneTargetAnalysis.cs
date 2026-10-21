@@ -7,12 +7,15 @@ using GalNet.Editor.Abstraction.Documents;
 namespace GalNet.Editor.Shared.Services;
 
 public enum TargetPresence { Definite, Possible }
-public enum SceneTargetKind { Layer, Particle, Effect, Unresolved }
+public enum SceneTargetKind { Layer, Particle, Effect, Unresolved, Playback }
 public sealed record SceneLocator(string GroupId, string EntryId, string Slot, string? EventId = null);
 public sealed record SceneTimelinePosition(int Frame, int? BeforeEventIndex = null, bool IncludeFuture = false);
 public sealed record SceneTarget(SceneLocator Locator, string Handle, SceneTargetKind Kind, string Resource,
     TargetPresence Presence, IReadOnlyList<AnimatableProperty> Properties, IReadOnlyDictionary<string, float> Values, int? CreatedAtFrame = null, bool IsFuture = false, bool CapabilitiesComplete = true);
-public sealed record SceneTargetResult(IReadOnlyList<SceneTarget> Targets, bool Complete, bool Reachable);
+public sealed record SceneTargetResult(IReadOnlyList<SceneTarget> Targets, bool Complete, bool Reachable)
+{
+    public IReadOnlyList<SceneTarget> Playbacks { get; init; } = [];
+}
 
 /// <summary>Pure, finite abstract interpretation. Never instantiates a game or executes an entry.</summary>
 public sealed partial class SceneTargetAnalysis
@@ -20,9 +23,14 @@ public sealed partial class SceneTargetAnalysis
     private sealed class State
     {
         public Dictionary<string, SceneTarget> Targets { get; } = new(StringComparer.Ordinal);
+        public Dictionary<string, SceneTarget> Playbacks { get; } = new(StringComparer.Ordinal);
         public bool Complete { get; set; } = true;
-        public State Clone() { var copy = new State { Complete = Complete }; foreach (var pair in Targets) copy.Targets.Add(pair.Key, pair.Value); return copy; }
-        public void Uncertain() { Complete = false; foreach (var (id, target) in Targets.ToArray()) Targets[id] = target with { Presence = TargetPresence.Possible, Values = EmptyValues }; }
+        public State Clone() { var copy = new State { Complete = Complete }; foreach (var pair in Targets) copy.Targets.Add(pair.Key, pair.Value); foreach (var pair in Playbacks) copy.Playbacks.Add(pair.Key, pair.Value); return copy; }
+        public void Uncertain()
+        {
+            Complete = false;
+            foreach (var domain in new[] { Targets, Playbacks }) foreach (var (id, target) in domain.ToArray()) domain[id] = target with { Presence = TargetPresence.Possible, Values = EmptyValues };
+        }
     }
     private static readonly IReadOnlyDictionary<string, float> EmptyValues = new ReadOnlyDictionary<string, float>(new Dictionary<string, float>());
     private readonly IReadOnlyDictionary<string, List<EditorEntryData>> _groups;
@@ -77,6 +85,7 @@ public sealed partial class SceneTargetAnalysis
             {
                 var candidate = Apply(new State(), id, entry);
                 foreach (var (handle, target) in candidate.Targets) state.Targets.TryAdd(handle, target with { Presence = TargetPresence.Possible, Values = EmptyValues });
+                foreach (var (handle, target) in candidate.Playbacks) state.Playbacks.TryAdd(handle, target with { Presence = TargetPresence.Possible });
             }
         }
         var found = entryId is null;
@@ -92,15 +101,21 @@ public sealed partial class SceneTargetAnalysis
     private static State Merge(IReadOnlyList<State> states)
     {
         var result = new State { Complete = states.All(state => state.Complete) };
-        foreach (var id in states.SelectMany(state => state.Targets.Keys).Distinct(StringComparer.Ordinal))
+        MergeDomain(result.Targets, states.Select(state => state.Targets).ToArray());
+        MergeDomain(result.Playbacks, states.Select(state => state.Playbacks).ToArray());
+        return result;
+    }
+    private static void MergeDomain(Dictionary<string, SceneTarget> result, IReadOnlyList<Dictionary<string, SceneTarget>> domains)
+    {
+        foreach (var id in domains.SelectMany(domain => domain.Keys).Distinct(StringComparer.Ordinal))
         {
-            var candidates = states.Where(state => state.Targets.ContainsKey(id)).Select(state => state.Targets[id]).ToArray();
+            var candidates = domains.Where(domain => domain.ContainsKey(id)).Select(domain => domain[id]).ToArray();
             var first = candidates.OrderBy(target => target.Locator.GroupId, StringComparer.Ordinal).ThenBy(target => target.Locator.EntryId, StringComparer.Ordinal).First();
-            var sameKind = candidates.All(target => target.Kind == first.Kind);
-            var definite = sameKind && candidates.Length == states.Count && candidates.All(target => target.Presence == TargetPresence.Definite);
+            var sameKind = candidates.All(target => target.Kind == first.Kind && (first.Kind != SceneTargetKind.Playback || target.Locator == first.Locator));
+            var definite = sameKind && candidates.Length == domains.Count && candidates.All(target => target.Presence == TargetPresence.Definite);
             var properties = first.Properties.Where(property => candidates.All(target => target.Kind == first.Kind && target.Properties.Contains(property))).ToArray();
             var values = definite ? first.Values.Where(pair => candidates.All(target => target.Values.TryGetValue(pair.Key, out var value) && value == pair.Value)).ToDictionary(pair => pair.Key, pair => pair.Value) : [];
-            result.Targets[id] = first with
+            result[id] = first with
             {
                 Kind = sameKind ? first.Kind : SceneTargetKind.Unresolved,
                 Presence = definite ? TargetPresence.Definite : TargetPresence.Possible,
@@ -112,10 +127,10 @@ public sealed partial class SceneTargetAnalysis
                 CapabilitiesComplete = candidates.All(target => target.CapabilitiesComplete)
             };
         }
-        return result;
     }
-    private static bool Equal(State left, State right) => left.Complete == right.Complete && left.Targets.Count == right.Targets.Count && left.Targets.All(pair =>
-        right.Targets.TryGetValue(pair.Key, out var other) && pair.Value.Locator == other.Locator && pair.Value.Kind == other.Kind && pair.Value.Resource == other.Resource
+    private static bool Equal(State left, State right) => left.Complete == right.Complete && EqualDomain(left.Targets, right.Targets) && EqualDomain(left.Playbacks, right.Playbacks);
+    private static bool EqualDomain(Dictionary<string, SceneTarget> left, Dictionary<string, SceneTarget> right) => left.Count == right.Count && left.All(pair =>
+        right.TryGetValue(pair.Key, out var other) && pair.Value.Locator == other.Locator && pair.Value.Kind == other.Kind && pair.Value.Resource == other.Resource
         && pair.Value.CreatedAtFrame == other.CreatedAtFrame && pair.Value.IsFuture == other.IsFuture
         && pair.Value.CapabilitiesComplete == other.CapabilitiesComplete
         && pair.Value.Presence == other.Presence && pair.Value.Properties.SequenceEqual(other.Properties)
@@ -205,8 +220,10 @@ public sealed partial class SceneTargetAnalysis
             case BuiltinEntryIds.WhiteFadeTransition:
             case BuiltinEntryIds.ColorFadeTransition: TransferTransition(state, group, entry); break;
             case BuiltinEntryIds.Animate:
+                TransferAnimationPlayback(state, group, entry);
                 if (state.Targets.TryGetValue(Text("handleId"), out var animated)) state.Targets[animated.Handle] = animated with { Values = EmptyValues };
                 break;
+            case BuiltinEntryIds.StopAnimation: StopPlayback(state, entry); break;
             // Proven scene-neutral built-ins. Unknown/composite/Timeline semantics must never be neutral by default.
             case BuiltinEntryIds.Text:
             case BuiltinEntryIds.ShowDialogue:
@@ -229,8 +246,7 @@ public sealed partial class SceneTargetAnalysis
             case BuiltinEntryIds.EnqueueAudio:
             case BuiltinEntryIds.ApplyAudioSEffect:
             case BuiltinEntryIds.StopAudioSEffect:
-            case BuiltinEntryIds.BurstParticles:
-            case BuiltinEntryIds.StopAnimation: break;
+            case BuiltinEntryIds.BurstParticles: break;
             default: state.Uncertain(); break;
         }
     }

@@ -37,8 +37,8 @@ public sealed class SceneTargetPicker : UserControl, IDisposable
         try
         {
             _selection.RefreshLabels();
-            ResourcePanel.Search.PlaceholderText = _selection.Text["Scene.Search"];
-            ResourcePanel.Hint = _selection.Text[_selection.IsCurrent ? _selection.Snapshot.Complete ? "Scene.ChooseTarget" : "Scene.CandidateHint" : "Scene.Stale"];
+            ResourcePanel.Search.PlaceholderText = _selection.Text[_selection.Snapshot.Playback ? "Scene.SearchPlayback" : "Scene.Search"];
+            ResourcePanel.Hint = _selection.Text[_selection.IsCurrent ? _selection.Snapshot.Complete ? _selection.Snapshot.Playback ? "Scene.ChoosePlayback" : "Scene.ChooseTarget" : "Scene.CandidateHint" : "Scene.Stale"];
             ResourcePanel.SetItems(_selection.Items, _selection.SelectedId);
         }
         finally { _refreshing = false; }

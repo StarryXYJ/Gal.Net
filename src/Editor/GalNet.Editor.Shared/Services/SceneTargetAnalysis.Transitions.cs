@@ -44,5 +44,7 @@ public sealed partial class SceneTargetAnalysis
             candidate.Targets[handle] = target with { Locator = new(group, entry.StableId, slot), CreatedAtFrame = null, IsFuture = false };
         state.Targets.Clear();
         foreach (var pair in candidate.Targets) state.Targets.Add(pair.Key, pair.Value);
+        state.Playbacks.Clear();
+        foreach (var pair in candidate.Playbacks) state.Playbacks.Add(pair.Key, pair.Value);
     }
 }
