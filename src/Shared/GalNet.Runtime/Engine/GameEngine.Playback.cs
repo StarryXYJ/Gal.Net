@@ -79,7 +79,7 @@ public sealed partial class GameEngine
         var readingId = entry.ReadingBoundaryId;
         if (readingId is null && _view.TryGetEntry(entry.Type, out var definition) && definition!.IsReading)
             readingId = entry.StableId;
-        if (readingId is not null && _catchUpActive && _progress?.IsRead(group.Id, readingId) != true)
+        if (readingId is not null && _catchUpActive && _catchUpTarget == CatchUpTarget.Unread && _progress?.IsRead(group.Id, readingId) != true)
         {
             _catchUpActive = false;
             _catchUpStopAtBoundary = true;

@@ -46,6 +46,12 @@ Engine 同时支持同步和异步释放；异步宿主优先使用 `await using
 
 ## Batch 与活动实例
 
+### 追帧到当前 Group 末尾
+
+`GameEngine.SkipToGroupEndAsync(bool ignoreConditions = false, CancellationToken cancellationToken = default)` 复用现有 CatchUp 展示压缩与清理机制，消费当前 Group 的剩余条目，不受未读文本限制。默认执行条件和逻辑写入；显式忽略条件只绕过 Entry 条件，不跳过变量赋值或参数/资源校验。
+
+完成时游标仍在当前 Group、EntryIndex 等于条目数，Manual 模式，不执行出边或呈现后继 Choice；下一次显式 Advance 才离开。没有运行中的 Group 时不做操作。异步展示先清理，最终场景同步完成后任务返回；不支持 CatchUp 的阻塞扩展仍等待其自然完成，可通过 CancelCatchUp/停止取消。相同追帧请求共享正在执行的任务，不同追帧目标或策略同时请求明确拒绝。此能力不增加玩家控制接口或 Sample 按钮，原 SkipToUnread 行为保持。
+
 `PrimitiveEntry.BatchId` 是编译后的可选局部分组字段。GameView 创建实例时把它原样传入 `PrimitiveInstance.BatchId`，Engine 实际按 `(GroupExecutionId, BatchId)` 匹配 skip 批次：
 
 - 同一次 Group 执行内，同 batch 的 blocking 与 non-blocking 实例可以一起 skip。

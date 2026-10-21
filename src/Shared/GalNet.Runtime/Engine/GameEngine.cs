@@ -354,7 +354,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             _scopeCancellation.Token.ThrowIfCancellationRequested();
             var entry = group.Entries[_runtime.EntryIndex];
             PrimitiveInstance? instance = null;
-            if (_runtime.EvaluateCondition(entry.Condition) && entry is PrimitiveEntry primitive)
+            if (((_catchUpActive && _catchUpIgnoreConditions) || _runtime.EvaluateCondition(entry.Condition)) && entry is PrimitiveEntry primitive)
             {
                 CheckReadingBoundary(group, primitive);
                 if (_catchUpStopAtBoundary) return;
@@ -372,6 +372,15 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
 
         if (_runtime.EntryIndex < group.Entries.Count || _active.HasBlockingInstance())
             return;
+
+        if (_catchUpActive && _catchUpTarget == CatchUpTarget.GroupEnd)
+        {
+            _catchUpActive = false;
+            _catchUpStopAtBoundary = true;
+            _advanceBoundary = false;
+            UpdateLastStableSnapshot();
+            return;
+        }
 
         _runtime.SetEntryIndex(0);
         _active.EndGroup();

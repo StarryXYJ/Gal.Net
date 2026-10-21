@@ -1,3 +1,4 @@
+using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
 
@@ -5,22 +6,44 @@ namespace GalNet.Runtime.Engine;
 
 public sealed partial class GameEngine
 {
+    private enum CatchUpTarget { Unread, GroupEnd }
+
     private readonly SemaphoreSlim _catchUpSignal = new(0);
     private CancellationTokenSource? _catchUpCancellation;
     private Task? _catchUpTask;
     private bool _catchUpActive;
     private int _catchUpBudget;
     private bool _catchUpStopAtBoundary;
+    private CatchUpTarget _catchUpTarget;
+    private bool _catchUpIgnoreConditions;
     public bool IsCatchingUp => _catchUpActive;
 
     /// <summary>Runs the current path, including conditions and side effects, until unread text or a choice.</summary>
-    public Task SkipToUnreadAsync(CancellationToken cancellationToken = default)
+    public Task SkipToUnreadAsync(CancellationToken cancellationToken = default) =>
+        StartCatchUp(CatchUpTarget.Unread, false, cancellationToken);
+
+    /// <summary>
+    /// Catches up through the current group's remaining entries, including unread text, without entering its successor.
+    /// Conditions are evaluated unless explicitly ignored; variable assignments and other logical effects still execute.
+    /// The next advance leaves the group. Does nothing without a running group.
+    /// </summary>
+    public Task SkipToGroupEndAsync(bool ignoreConditions = false, CancellationToken cancellationToken = default) =>
+        StartCatchUp(CatchUpTarget.GroupEnd, ignoreConditions, cancellationToken);
+
+    private Task StartCatchUp(CatchUpTarget target, bool ignoreConditions, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
         lock (_lifecycleSync)
         {
-            if (_catchUpTask is { IsCompleted: false }) return _catchUpTask;
+            if (_catchUpTask is { IsCompleted: false })
+            {
+                if (_catchUpTarget != target || _catchUpIgnoreConditions != ignoreConditions)
+                    throw new InvalidOperationException("A different catch-up operation is already in progress.");
+                return _catchUpTask;
+            }
             if (Volatile.Read(ref _stopRequested) != 0) return Task.CompletedTask;
+            _catchUpTarget = target;
+            _catchUpIgnoreConditions = ignoreConditions;
             _catchUpCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _scopeCancellation.Token);
             var cancellation = _catchUpCancellation;
             _catchUpTask = Task.Run(() => CatchUpCoreAsync(cancellation), CancellationToken.None);
@@ -65,7 +88,9 @@ public sealed partial class GameEngine
             try
             {
                 token.ThrowIfCancellationRequested();
-                if (!IsRunning || _pendingChoice is not null || _active.Any(item => item.IsReading && !item.WasRead)) return;
+                if (!IsRunning || _restorationPending || _pendingChoice is not null) return;
+                if (_catchUpTarget == CatchUpTarget.GroupEnd && _navigation.FindNode(_runtime.CurrentNodeId) is not Group) return;
+                if (_catchUpTarget == CatchUpTarget.Unread && _active.Any(item => item.IsReading && !item.WasRead)) return;
                 scopedRuntime = _dispatchRuntime;
                 SetPlaybackModeCore(PlaybackMode.Manual);
                 _catchUpActive = true;
@@ -119,7 +144,7 @@ public sealed partial class GameEngine
                 if (ReferenceEquals(scopedRuntime, _dispatchRuntime))
                 {
                     _catchUpActive = false;
-                    var resumeAtBoundary = _catchUpStopAtBoundary && !token.IsCancellationRequested;
+                    var resumeAtBoundary = _catchUpStopAtBoundary && _catchUpTarget == CatchUpTarget.Unread && !token.IsCancellationRequested;
                     _catchUpStopAtBoundary = false;
                     foreach (var item in _active.ToArray()) item.Instance.ApplyPlaybackMode(PrimitiveInvocationMode.Normal);
                     if (beganPresentation && _catchUpPresentation is not null && !_scopeCancellation.IsCancellationRequested)
