@@ -1,4 +1,5 @@
 using GalNet.Avalonia.GameView.Page;
+using GalNet.Assets.Variants;
 using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
 using GalNet.Core.Scene;
@@ -16,7 +17,10 @@ public sealed class AvaloniaGameHostOptions
     public required Func<(IResourceTypeCatalog Resources, IGalleryTypeCatalog Gallery)> CreateContentCatalogs { get; init; }
     public required Action<GameRegistration, AvaloniaGamePresentation, GamePage, GameContent> ConfigureExecution { get; init; }
     public Action<IAssetManager> ConfigureDecoders { get; init; } = assets =>
+    {
         assets.RegisterDecoder<GalNet.Rendering.Scene.SceneTexture>("sprite", new GalNet.Rendering.Scene.SceneTextureAssetDecoder());
+        assets.RegisterImageVariantsDecoder();
+    };
     public Func<IAssetManager, CancellationToken, Task<IReadOnlyList<IGameFile>>> SelectTexturePreloads { get; init; } =
         (assets, token) => assets.GetFilesAsync("sprite", token);
     public Func<IAssetManager, CancellationToken, Task<EffectProgramResource[]>> SelectEffectPrograms { get; init; } =

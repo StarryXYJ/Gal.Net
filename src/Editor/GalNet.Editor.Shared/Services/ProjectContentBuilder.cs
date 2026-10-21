@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GalNet.Core.Compilation;
+using GalNet.Core.Assets;
 using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
 using GalNet.Editor.Abstraction.Documents;
@@ -8,7 +9,7 @@ using GalNet.Editor.Abstraction.Documents;
 namespace GalNet.Editor.Shared.Services;
 
 /// <summary>Builds editable project content into the compiled directory layout consumed by Runtime.</summary>
-public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog)
+public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceTypeCatalog? resourceTypes = null)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -34,6 +35,7 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog)
         cancellationToken.ThrowIfCancellationRequested();
         var validation = new ProjectValidationService(sourceRoot).Validate("graph");
         var diagnostics = validation.Diagnostics.ToList();
+        diagnostics.AddRange(ImageVariantsValidation.Validate(sourceRoot, resourceTypes ?? BuiltinResourceTypes.CreateCatalog()));
         diagnostics.AddRange(LocalizationValidation.ValidateDisk(sourceRoot, _entryCatalog));
         _ = new ProjectRawReader(sourceRoot).Files(null, diagnostics);
         if (!validation.Success || diagnostics.Any(item => item.Code == "file.linkSkipped" || item.Severity == "error"))

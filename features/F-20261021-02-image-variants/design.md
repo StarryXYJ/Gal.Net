@@ -1,7 +1,7 @@
 # 多维图片差分图集设计
 
 日期：2026-10-21
-状态：实施中；P1 纯定义与解析已实现，见第 12 节。资源接入、Layer 状态和指令等后续内容仍为目标设计。
+状态：实施中；P1 纯定义与解析、P2 资源编译与发布已实现，见第 12、13 节。Layer 状态、指令和专属作者 UI 等后续内容仍为目标设计。
 
 ## 1. 问题与设计取向
 
@@ -202,6 +202,18 @@ Core 的 `GalNet.Core.Variants` 已提供：
 - `ImageVariantsResolver.Initialize/Select/Resolve`：初始化、单维切换和显式保护集合重算；非法请求抛出 `ArgumentException`，缺组合按第 5 节回退。
 - `ImageVariantResolution`：独立冻结的完整请求、按维度顺序排列的保护集合、实际变体、Exact/Reduced/Default 原因、按删除顺序排列的维度及各次候选快照。最终 default 单独由原因和实际变体表示，不伪造成某个候选的精确命中。
 
-源码位于 `src/Shared/GalNet.Core/Variants/`。当前未注册 `.variants` 或 `image-variants`，未加入 Layer 状态及指令；运行时定义的发行序列化和加载在 P2 确定，不能把作者 DTO 直接当作已存在的发行协议。
+源码位于 `src/Shared/GalNet.Core/Variants/`。P1 交付时未注册 `.variants` 或 `image-variants`，也未加入 Layer 状态及指令；运行时定义的发行序列化和加载由 P2 接续，不能将作者 DTO 直接用作发行协议。
 
 P1 没有改变前文匹配规则。具体实现和验证见 [P1 记录](phase-1.md)。
+
+## 13. P2 已实现接口与边界
+
+- 确定资源类型为 `image-variants`，作者扩展名 `.variants`，metadata 为 `ImageVariantsAssetMeta`。
+- `LocalAssetCompiler.CompileAsync` 接收调用方拥有的逻辑文件/物理备份路径与目录快照。LocalFileProvider 安全枚举磁盘，项目资源事务投影待发布快照；两者共用作者描述解析、目录解析与 P1 定义构建，不需要创建临时项目副本做预检。
+- LocalFileProvider 在生成本地归档时，把图集源描述转换为同 ID、同类型、同逻辑路径的编译 IGameFile。图片仍是普通 sprite。编译后字节随该归档冻结，不将定义本身缓存为当前项目的可变全局状态；目录扫描按 watcher/Invalidate 失效并在编译后复核代次。
+- `ImageVariantsCodec` 的发行 payload 为 kind=image-variants、version=1，含 dimensions、default 和 variants（key/assetId）；没有 folder。`ImageVariantsDecoder` 只解码该格式，不扫描文件系统。
+- `RegisterImageVariantsDecoder()` 显式注册 decoder；默认 Avalonia 游戏宿主和项目级 EditorAssetManager 已接入，后者重建 manager 时重新注册。自定义 decoder 配置的宿主仍需自行注册。
+- 项目范围 validate 与 build 使用本地编译器检查图集；GamePackageExporter 打包编译归档，包内校验沿用相同 catalog，不修改通用 PAK 格式。
+- 资源事务对移动/复制改写已知 folder；导入生成 sidecar；发布前验证投影快照，破坏默认图等情况在写盘前拒绝，撤销/重做沿用同一文件事务。显式 metadata 的类型优先于扩展名。
+
+这落实了第 7 节的作者准备层：准备发生在本地资源 provider 和事务预检，不放进 runtime decoder，也不把目录扫描引入 Core。当前没有为 P3 添加执行入口或 Layer 状态。稳定资源事实见[资源规范](../../docs/spec/assets.md)，验证见 [P2 记录](phase-2.md)。

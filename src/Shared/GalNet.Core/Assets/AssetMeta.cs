@@ -46,6 +46,7 @@ public sealed class SpriteAssetMeta : AssetMeta
 
 public sealed class AudioAssetMeta : AssetMeta;
 public sealed class VideoAssetMeta : AssetMeta;
+public sealed class ImageVariantsAssetMeta : AssetMeta;
 public sealed class FontAssetMeta : AssetMeta;
 public sealed class EffectProgramAssetMeta : AssetMeta;
 public sealed class BinaryAssetMeta : AssetMeta;

@@ -54,7 +54,7 @@ public static class ProjectFilePaths
 }
 
 /// <summary>Reusable data-only edit. Immutable ordinary bytes live in retained files; Group data is rebased on each publication.</summary>
-public sealed class ProjectFileOperation : IDisposable
+public sealed partial class ProjectFileOperation : IDisposable
 {
     private readonly ProjectRawReader _reader;
     private readonly ProjectFileRequest _request;
@@ -128,13 +128,15 @@ public sealed class ProjectFileOperation : IDisposable
                 var expected = current.Keys.Where(path => ProjectFilePaths.Within(path, root)).ToHashSet(ProjectFilePaths.Comparer);
                 if (!actual.SetEquals(expected)) throw ProjectFilePaths.Error("changed", root);
             }
+            ValidateVariants(current, desired, currentDirectories, desiredDirectories);
             var files = new ProjectFilePlan();
             foreach (var pair in current.Where(pair => !_managed.Contains(pair.Key))) files.ExpectedHashes[pair.Key] = pair.Value.Hash;
             foreach (var path in desired.Keys.Where(path => !current.Keys.Contains(path, ProjectFilePaths.Comparer))) files.ExpectedHashes[path] = null;
             if (_caseOnly)
             {
                 foreach (var (from, to) in _moves) files.CaseRenames.Add(forward ? new(from, to) : new(to, from));
-                foreach (var pair in desired.Where(pair => pair.Key.EndsWith(".meta", StringComparison.OrdinalIgnoreCase))) files.Writes[pair.Key] = File.ReadAllBytes(pair.Value.Backup);
+                foreach (var pair in desired.Where(pair => pair.Key.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)
+                    || !current.TryGetValue(pair.Key, out var old) || old.Hash != pair.Value.Hash)) files.Writes[pair.Key] = File.ReadAllBytes(pair.Value.Backup);
             }
             else
             {
@@ -201,6 +203,7 @@ public sealed class ProjectFileOperation : IDisposable
                 if (caseRename && (_request.Action != ProjectFileAction.Move || sources.Length != 1)) throw ProjectFilePaths.Error("path", source);
                 _caseOnly = caseRename;
                 if (_request.Action == ProjectFileAction.Move) _moves.Add((source, target));
+                if (_request.Action == ProjectFileAction.Copy) _variantCopies.Add((source, target));
             }
             var tree = Enumerate(full);
             if (target is not null && tree.Directories.Count > 0) _roots.Add(target);
@@ -262,6 +265,7 @@ public sealed class ProjectFileOperation : IDisposable
                 var id = _codec.Deserialize(File.ReadAllText(path), relative[7..^5]).Id;
                 if (ids.Contains(id)) throw ProjectFilePaths.Error("guidCollision", relative);
             }
+        PrepareVariantRelations();
         _initialized = true;
     }
 

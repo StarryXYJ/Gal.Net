@@ -1,5 +1,6 @@
 using System.Text.Json;
 using GalNet.Core.Compilation;
+using GalNet.Core.Assets;
 using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
 using GalNet.Core.Variable;
@@ -10,7 +11,7 @@ using GalNet.Editor.Shared.Commands;
 namespace GalNet.Editor.Shared.Services;
 
 /// <summary>Validates author files without repository repair, migration or persistence.</summary>
-public sealed class ProjectValidationService(string projectDirectory, string graphFile = "Graph/graph.json")
+public sealed class ProjectValidationService(string projectDirectory, string graphFile = "Graph/graph.json", IResourceTypeCatalog? resourceTypes = null)
 {
     private readonly string GraphFile = graphFile.Replace('\\', '/');
     private readonly ProjectRawReader _reader = new(projectDirectory);
@@ -24,6 +25,7 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
         var diagnostics = new List<ToolDiagnostic>();
         var files = new List<string>();
         var groups = new List<string>();
+        if (scope == "project") diagnostics.AddRange(ImageVariantsValidation.Validate(_reader.Root, resourceTypes ?? BuiltinResourceTypes.CreateCatalog()));
         if (scope == "group")
         {
             var file = new ProjectQueryService(_reader.Root).ResolveGroup(selector ?? throw new ArgumentException("Group selector required."), diagnostics);
@@ -86,7 +88,7 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
         var checks = new List<string> { "raw-json", "duplicate-properties", "current-format", "stable-ids" };
         if (scope != "group") checks.AddRange(["graph-topology", "variable-definitions"]);
         if (scope != "group" && !structureOnly) checks.Add("graph-source-references");
-        if (scope == "project") checks.AddRange(["settings-json", "metadata-guid-and-adjacent-file"]);
+        if (scope == "project") checks.AddRange(["settings-json", "metadata-guid-and-adjacent-file", "image-variants"]);
         if (!structureOnly) checks.Add("condition-syntax");
         if (!structureOnly && scope != "graph" && catalog is not null) checks.AddRange(["entry-parameters-and-contract-validator", "composite-compilation"]);
         var skipped = new List<string> { "runtime-expression-evaluation", "custom-code-references", "asset-payloads", "settings-semantics" };

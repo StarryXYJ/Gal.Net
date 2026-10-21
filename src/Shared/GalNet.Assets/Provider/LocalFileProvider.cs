@@ -1,4 +1,4 @@
-using System.Text.Json;
+using GalNet.Assets.Variants;
 using GalNet.Core.Assets;
 
 namespace GalNet.Assets.Provider;
@@ -17,8 +17,8 @@ public sealed class LocalFileProvider : IAssetProvider, IDisposable
 {
     private readonly string _assetsRoot;
     private readonly bool _optional;
-    private readonly AssetMetaCodec _metaCodec;
-    private List<string>? _cachedMetaPaths;
+    private readonly IResourceTypeCatalog _resourceTypes;
+    private ScanResult? _cachedScan;
     private Task<ScanResult>? _scanTask;
     private FileSystemWatcher? _watcher;
     private readonly object _cacheLock = new();
@@ -33,9 +33,9 @@ public sealed class LocalFileProvider : IAssetProvider, IDisposable
     /// <param name="optional">若目录不存在是否静默返回空归档</param>
     public LocalFileProvider(string assetsRoot, IResourceTypeCatalog? resourceTypes = null, bool optional = false)
     {
-        _assetsRoot = assetsRoot.Replace('\\', '/').TrimEnd('/');
+        _assetsRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(assetsRoot));
         _optional = optional;
-        _metaCodec = new AssetMetaCodec(resourceTypes ?? BuiltinResourceTypes.CreateCatalog());
+        _resourceTypes = resourceTypes ?? BuiltinResourceTypes.CreateCatalog();
     }
 
     public string Name => $"LocalFile({_assetsRoot})";
@@ -62,12 +62,12 @@ public sealed class LocalFileProvider : IAssetProvider, IDisposable
         while (true)
         {
             Task<ScanResult>? scanTask = null;
-            List<string>? metaPaths = null;
+            ScanResult? cached = null;
             lock (_cacheLock)
             {
-                if (!_cacheDirty && _cachedMetaPaths is not null)
+                if (!_cacheDirty && _cachedScan is not null)
                 {
-                    metaPaths = _cachedMetaPaths;
+                    cached = _cachedScan;
                 }
                 else
                 {
@@ -77,7 +77,17 @@ public sealed class LocalFileProvider : IAssetProvider, IDisposable
                 }
             }
 
-            if (metaPaths is not null) return await CreateArchiveAsync(metaPaths, ct);
+            if (cached is not null)
+            {
+                var prepared = await CreateArchiveAsync(cached, ct);
+                lock (_cacheLock)
+                {
+                    if (!_disposed && cached.Version == _cacheVersion) return prepared;
+                }
+                prepared.Dispose();
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                continue;
+            }
 
             try
             {
@@ -96,10 +106,10 @@ public sealed class LocalFileProvider : IAssetProvider, IDisposable
                         continue;
                     }
 
-                    _cachedMetaPaths = scan.MetaPaths;
+                    _cachedScan = scan;
                     _cacheDirty = false;
                 }
-                return await CreateArchiveAsync(scan.MetaPaths, ct);
+                // Prepare through the cached branch, which also rechecks the generation after compilation.
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -120,38 +130,40 @@ public sealed class LocalFileProvider : IAssetProvider, IDisposable
 
     private Task<ScanResult> ScanAsync(int version) => Task.Run(() =>
     {
-        var metaPaths = Directory.GetFiles(_assetsRoot, "*.meta", SearchOption.AllDirectories).ToList();
-        return new ScanResult(version, metaPaths);
-    });
-
-    private async Task<IArchive> CreateArchiveAsync(IEnumerable<string> metaPaths, CancellationToken ct)
-    {
-        var files = new List<IGameFile>();
-        var pathToId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var metaPath in metaPaths)
+        for (var ancestor = new DirectoryInfo(_assetsRoot); ancestor is not null; ancestor = ancestor.Parent)
+            if (ancestor.Exists && (ancestor.Attributes & FileAttributes.ReparsePoint) != 0)
+                throw new InvalidDataException("Assets root must not traverse a directory link.");
+        var files = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var directories = new List<string>();
+        var pending = new Stack<string>();
+        pending.Push(_assetsRoot);
+        while (pending.TryPop(out var directory))
         {
-            ct.ThrowIfCancellationRequested();
-            try
+            var relative = Path.GetRelativePath(_assetsRoot, directory).Replace('\\', '/');
+            directories.Add(relative == "." ? "" : relative);
+            foreach (var entry in Directory.EnumerateFileSystemEntries(directory))
             {
-                var json = await File.ReadAllTextAsync(metaPath, ct);
-                var relativePath = Path.GetRelativePath(_assetsRoot, metaPath[..^5]).Replace('\\', '/');
-                var meta = _metaCodec.Deserialize(json, relativePath);
-
-                // The resource file path is relative to the meta file.
-                var resourcePath = metaPath[..^5]; // remove ".meta"
-                if (!File.Exists(resourcePath))
-                    throw new FileNotFoundException($"Asset resource file for metadata '{metaPath}' was not found.", resourcePath);
-
-                var gameFile = new LocalGameFile(meta, resourcePath);
-                files.Add(gameFile);
-                pathToId[AssetPathHelper.Normalize(meta.Path)] = meta.Id;
-            }
-            catch (Exception exception) when (exception is InvalidDataException or JsonException or ArgumentException or KeyNotFoundException or IOException or UnauthorizedAccessException)
-            {
-                throw new InvalidDataException($"Failed to load asset metadata '{metaPath}'.", exception);
+                var attributes = File.GetAttributes(entry);
+                if ((attributes & FileAttributes.ReparsePoint) != 0) throw new InvalidDataException($"Assets path '{entry}' traverses a link.");
+                if ((attributes & FileAttributes.Directory) != 0) pending.Push(entry);
+                else if (!files.TryAdd(Path.GetRelativePath(_assetsRoot, entry).Replace('\\', '/'), entry))
+                    throw new InvalidDataException($"Assets contains a case-only path collision at '{entry}'.");
             }
         }
-        return new DevArchive(_assetsRoot, files, pathToId);
+        return new ScanResult(version, files, directories);
+    });
+
+    private async Task<IArchive> CreateArchiveAsync(ScanResult snapshot, CancellationToken ct)
+    {
+        var files = await LocalAssetCompiler.CompileAsync(snapshot.Files, snapshot.Directories, _resourceTypes, ct);
+        return new DevArchive(_assetsRoot, files.ToList(), files.ToDictionary(file => AssetPathHelper.Normalize(file.Path), file => file.Id, StringComparer.OrdinalIgnoreCase));
+    }
+
+    /// <summary>Invalidates the source index after a known author edit, without writing or repairing files.</summary>
+    public void Invalidate()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        MarkCacheDirty();
     }
 
     private void InitWatcher()
@@ -168,6 +180,7 @@ public sealed class LocalFileProvider : IAssetProvider, IDisposable
             _watcher.Created += (_, _) => MarkCacheDirty();
             _watcher.Deleted += (_, _) => MarkCacheDirty();
             _watcher.Renamed += (_, _) => MarkCacheDirty();
+            _watcher.Error += (_, _) => MarkCacheDirty();
             _watcher.EnableRaisingEvents = true;
         }
         catch
@@ -195,7 +208,7 @@ public sealed class LocalFileProvider : IAssetProvider, IDisposable
             _disposed = true;
             watcher = _watcher;
             _watcher = null;
-            _cachedMetaPaths = null;
+            _cachedScan = null;
             _scanTask = null;
             _cacheDirty = true;
             _cacheVersion++;
@@ -248,19 +261,5 @@ public sealed class LocalFileProvider : IAssetProvider, IDisposable
         }
     }
 
-    private sealed class LocalGameFile(AssetMeta meta, string resourcePath) : IGameFile
-    {
-        private readonly Lazy<string> _hash = new(() => CryptoHelper.HashSHA256(File.ReadAllBytes(resourcePath)));
-        public string Id => meta.Id;
-        public string Path => meta.Path;
-        public string TypeId => meta.TypeId;
-        public AssetMeta Metadata => meta;
-        public long Length => new FileInfo(resourcePath).Length;
-        public string? Hash => _hash.Value;
-        public Stream OpenRead() => File.OpenRead(resourcePath);
-        public byte[] ReadAllBytes() => File.ReadAllBytes(resourcePath);
-        public Task<byte[]> ReadAllBytesAsync(CancellationToken ct = default) => File.ReadAllBytesAsync(resourcePath, ct);
-    }
-
-    private sealed record ScanResult(int Version, List<string> MetaPaths);
+    private sealed record ScanResult(int Version, IReadOnlyDictionary<string, string> Files, IReadOnlyCollection<string> Directories);
 }
