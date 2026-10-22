@@ -1,7 +1,7 @@
 # 外部游戏调试与测试
 
 - 日期：2026-10-21
-- 状态：in-progress；用户已授权实施，先验证 Runtime 追帧基础，再按阶段接通外部调试。
+- 状态：verified-with-follow-up；核心实现与跨进程验收完成，既有回归失败、固定预计算延期及人工检查范围见 [summary.md](summary.md)。
 - 工作流：create → design → phase-plan → implement → review → closeout。
 - 设计：[design.md](design.md)
 - 阶段计划：[phase-plan.md](phase-plan.md)

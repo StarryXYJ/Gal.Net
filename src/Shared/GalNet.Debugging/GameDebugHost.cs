@@ -11,6 +11,7 @@ public sealed class GameDebugHost(Func<CancellationToken, Task>? startGame = nul
     private readonly SemaphoreSlim _commands = new(1, 1);
     private IDebugGameRun? _run;
     private DebugPeer? _peer;
+    private Task _disconnection = Task.CompletedTask;
     private string _sessionId = "";
     private bool _disposed;
 
@@ -38,6 +39,7 @@ public sealed class GameDebugHost(Func<CancellationToken, Task>? startGame = nul
             if (!await DebugWire.ReadAsync<bool>(stream, cancellationToken).ConfigureAwait(false)) throw new InvalidDataException("Debug handshake failed.");
             _sessionId = invitation.SessionId;
             _peer = new DebugPeer(stream, HandleAsync);
+            _disconnection = ObserveDisconnectAsync(_peer);
         }
         catch { client.Dispose(); throw; }
     }
@@ -46,13 +48,15 @@ public sealed class GameDebugHost(Func<CancellationToken, Task>? startGame = nul
         IDebugGameRun? run;
         lock (_sync) run = _run;
         if (method == "status") return new DebugHostStatus(_sessionId, startGame is not null, run?.Info);
-        if (method == "cancel")
+        if (method is "cancel" or "stop")
         {
             var cancel = payload.Deserialize<DebugCommand>(DebugWire.Json) ?? throw new InvalidDataException("Missing debug command.");
             if (run is null || cancel.Method != method || cancel.RunId != run.Info.RunId ||
                 (cancel.Generation != run.Info.Generation && cancel.Generation != run.Info.OperationGeneration))
                 throw new InvalidOperationException("The debug run has changed. Refresh before submitting.");
-            return await run.ExecuteAsync(cancel, token).ConfigureAwait(false);
+            var result = await run.ExecuteAsync(cancel, token).ConfigureAwait(false);
+            if (method == "stop") { lock (_sync) if (ReferenceEquals(_run, run)) _run = null; }
+            return result;
         }
         await _commands.WaitAsync(token).ConfigureAwait(false);
         try
@@ -85,6 +89,19 @@ public sealed class GameDebugHost(Func<CancellationToken, Task>? startGame = nul
         var peer = _peer;
         _peer = null;
         if (peer is not null) await peer.DisposeAsync().ConfigureAwait(false);
+        await _disconnection.ConfigureAwait(false);
+    }
+    private async Task ObserveDisconnectAsync(DebugPeer peer)
+    {
+        await peer.Completion.ConfigureAwait(false);
+        await _commands.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            IDebugGameRun? run;
+            lock (_sync) run = _run;
+            if (run is not null) await run.OnDisconnectedAsync().ConfigureAwait(false);
+        }
+        finally { _commands.Release(); }
     }
     private sealed class Binding(GameDebugHost owner, IDebugGameRun run) : IDisposable
     {

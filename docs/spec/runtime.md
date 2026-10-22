@@ -52,6 +52,12 @@ Engine 同时支持同步和异步释放；异步宿主优先使用 `await using
 
 调试会话每 Group 保存最近自然入口的单份逻辑场景，不存变量或执行任务。指定路线定位验证真实后继与模块 Scene/Ignore 能力，恢复场景根并无条件追帧到目标前，保留当前变量且不重复写已读；普通读档清空入口缓存并推进代次，调试重建不覆盖基线。Stop/读档会取消旧定位，宿主先停止 Engine，再释放调试 binding。查询/追帧/通信尚未由 Runtime 自动启用。
 
+入口缓存默认 LRU 限制 256 个 Group、64 MiB 序列化 payload，`MaxEntranceGroups/MaxEntrancePayloadBytes` 可调整，0 关闭；初始运行场景单独保留。查询包括 payload 预算和最近追帧耗时/指令数；不预跑任意插件或授予未经证明的固定场景。前跳从活动实例 CatchUp 收束后的场景捕获基线；回跳从入口捕获场景重建。
+
+`GameDebugSpan` 表示匹配作者映射提供的 primitive 半开范围。断点在范围起点前，单步不跨出范围且保留正常阻塞/Skip；定位的 `TargetEnd` 指定一次目标条件豁免范围，离开后恢复普通条件。Engine 不解析作者 ID 或网络协议。`InitialScene` 是调用方显式选择的独立测试起点，不自动把不可达位置视为正常剧情路线。
+
+Runtime 本地变量表归一化作用域前缀；向 IVariableService 回写已有变量时按 UID 保留桥接服务中的原键，避免同一 Player 系统变量生成两个存储别名。默认 Avalonia 运行停止/释放后刷新玩家变量；Save 仍由正常保存链写入。
+
 ### 追帧到当前 Group 末尾
 
 `GameEngine.SkipToGroupEndAsync(bool ignoreConditions = false, CancellationToken cancellationToken = default)` 复用现有 CatchUp 展示压缩与清理机制，消费当前 Group 的剩余条目，不受未读文本限制。默认执行条件和逻辑写入；显式忽略条件只绕过 Entry 条件，不跳过变量赋值或参数/资源校验。

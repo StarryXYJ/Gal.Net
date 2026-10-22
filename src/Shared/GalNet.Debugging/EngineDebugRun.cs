@@ -14,18 +14,19 @@ public sealed class EngineDebugRun : IDebugGameRun, IDisposable
     private readonly Func<CancellationToken, Task>? _stop;
     private readonly string _id = Guid.NewGuid().ToString("N");
     private bool _disposed;
-    private long? _operationGeneration;
+    private long _operationGeneration;
+    private long? OperationGeneration => Interlocked.Read(ref _operationGeneration) is var value && value != 0 ? value : null;
     public EngineDebugRun(GameEngine engine, GameDebugOptions? options = null, Func<CancellationToken, Task>? stop = null)
     {
         _engine = engine;
         _session = engine.AttachDebugging(options);
         _stop = stop;
     }
-    public DebugRunInfo Info => new(_id, _session.Generation, ["inspect", "pause", "resume", "step", "breakpoints", "setVariable", "choose", "seek", "groupEnd", "stop", "cancel"], _operationGeneration);
+    public DebugRunInfo Info => new(_id, _session.Generation, ["inspect", "pause", "resume", "step", "breakpoints", "setVariable", "choose", "seek", "groupEnd", "stop", "cancel"], OperationGeneration);
     public async Task<object?> ExecuteAsync(DebugCommand command, CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (command.RunId != _id || (command.Generation != _session.Generation && !(command.Method == "cancel" && command.Generation == _operationGeneration)))
+        if (command.RunId != _id || (command.Generation != _session.Generation && !(command.Method is "cancel" or "stop" && command.Generation == OperationGeneration)))
             throw new InvalidOperationException("The debug execution has changed.");
         var generation = command.Generation ?? throw new InvalidDataException("Missing execution generation.");
         switch (command.Method)
@@ -42,16 +43,16 @@ public sealed class EngineDebugRun : IDebugGameRun, IDisposable
                 var choice = Read<DebugChoiceSelection>(command.Arguments);
                 await _session.ChooseAsync(generation, choice.ChoiceId, choice.Index, cancellationToken).ConfigureAwait(false); break;
             case "seek":
-                _operationGeneration = generation;
+                Interlocked.Exchange(ref _operationGeneration, generation);
                 try { await _session.SeekAsync(generation, Read<GameDebugSeek>(command.Arguments), cancellationToken).ConfigureAwait(false); }
-                finally { _operationGeneration = null; }
+                finally { Interlocked.Exchange(ref _operationGeneration, 0); }
                 break;
             case "groupEnd":
                 var state = await _session.InspectAsync(cancellationToken).ConfigureAwait(false);
                 var group = state.Groups.SingleOrDefault(group => group.Id == state.NodeId) ?? throw new InvalidOperationException("No current Group.");
-                _operationGeneration = generation;
+                Interlocked.Exchange(ref _operationGeneration, generation);
                 try { await _session.SeekAsync(generation, new(group.Id, group.Entries.Length, []), cancellationToken).ConfigureAwait(false); }
-                finally { _operationGeneration = null; }
+                finally { Interlocked.Exchange(ref _operationGeneration, 0); }
                 break;
             case "cancel": _session.CancelSeek(); _engine.CancelCatchUp(); break;
             case "stop":
@@ -64,5 +65,16 @@ public sealed class EngineDebugRun : IDebugGameRun, IDisposable
         return null;
     }
     private static T Read<T>(JsonElement value) => value.Deserialize<T>(DebugWire.Json) ?? throw new InvalidDataException("Missing debug arguments.");
+    public async Task OnDisconnectedAsync()
+    {
+        if (_disposed) return;
+        try
+        {
+            var generation = _session.Generation;
+            await _session.SetBreakpointsAsync(generation, []).ConfigureAwait(false);
+            await _session.ResumeAsync(generation).ConfigureAwait(false);
+        }
+        catch (Exception error) when (error is InvalidOperationException or ObjectDisposedException) { }
+    }
     public void Dispose() { if (_disposed) return; _disposed = true; _session.Dispose(); }
 }

@@ -10,7 +10,8 @@
              MoveCommand="{Binding ReorderEntryCommand}" Focusable="True">
     <controls:ReorderableListControl.Styles>
         <StyleInclude Source="avares://GalNet.Editor/Controls/AuthorFormStyles.axaml"/>
-        <Style Selector="Border.debugCurrent"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorSuccess}"/><Setter Property="BorderThickness" Value="3"/></Style>
+        <Style Selector="Border.debugEntry"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}"/><Setter Property="BorderThickness" Value="1"/></Style>
+        <Style Selector="Border.debugEntry.debugCurrent"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorSuccess}"/><Setter Property="BorderThickness" Value="3"/></Style>
     </controls:ReorderableListControl.Styles>
     <Grid RowDefinitions="Auto,*,Auto">
         <WrapPanel x:Name="EntryToolbar" Orientation="Horizontal">
@@ -30,11 +31,10 @@
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="models:EntryEditorItemViewModel">
                     <Border Margin="0,3"
+                            Classes="debugEntry"
                             Classes.debugCurrent="{Binding IsDebugCurrent}"
                             Padding="6"
                             Background="{DynamicResource SemiColorBackground1}"
-                            BorderBrush="{DynamicResource SemiColorBorder}"
-                            BorderThickness="1"
                             CornerRadius="6">
                         <StackPanel>
                         <Grid ColumnDefinitions="Auto,48,140,*,Auto,Auto"
@@ -44,11 +44,11 @@
                                     Background="Transparent"
                                     Cursor="SizeAll"
                                     PointerPressed="OnDragHandlePressed">
-                                <StackPanel Orientation="Horizontal"><TextBlock Text="●" Foreground="Red" IsVisible="{Binding IsDebugBreakpoint}"/><TextBlock Text="::" /></StackPanel>
+                                <TextBlock Text="::" />
                             </Border>
-                            <TextBlock Grid.Column="1"
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="●" Foreground="Red" IsVisible="{Binding IsDebugBreakpoint}"/><TextBlock
                                        Text="{Binding Id}"
-                                       VerticalAlignment="Center" />
+                                       VerticalAlignment="Center" /></StackPanel>
                             <controls:EntryTypePicker Grid.Column="2"
                                                       Options="{Binding #Root.DataContext.EntryTypes}"
                                                       ShortcutService="{Binding #Root.DataContext.ShortcutService}"

@@ -8,11 +8,44 @@ using GalNet.Core.Variable;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Runtime;
+using GalNet.Runtime.Progress;
 
 namespace GeneralTest.Runtime;
 
 public class DebugSessionTests
 {
+    [Test]
+    public async Task CompressingTheCurrentUnreadTextForDebugSeekDoesNotMarkItRead()
+    {
+        var wait = new DeferredReadingWait();
+        var progress = new ReadCounter();
+        using var view = Registration().RegisterInstruction("test.text", _ => wait).BuildView();
+        await using var engine = new GameEngine(GraphOf(Entry("test.text", "unread")), Runtime(), view, progress: progress);
+        using var debug = engine.AttachDebugging(Options());
+        await engine.AdvanceAsync();
+        var seek = debug.SeekAsync(debug.Generation, new("main", 1, []));
+        try
+        {
+            await wait.Compressed.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            while ((await debug.InspectAsync(timeout.Token)).ActiveEntryIds.Length != 0) await Task.Delay(1, timeout.Token);
+        }
+        finally { wait.Presented.TrySetResult(); }
+        await seek;
+        Assert.That(progress.Marks, Is.Zero);
+    }
+    [Test]
+    public async Task ForwardSeekCapturesTheStateCommittedByAnActiveTransitionDuringCompression()
+    {
+        using var view = Registration().RegisterInstruction("test.scene", context => new CompressingWait(context.Runtime))
+            .RegisterInstruction("test.text", _ => new TextWait()).BuildView();
+        await using var engine = new GameEngine(GraphOf(Entry("test.scene", "transition"), Entry("test.text", "target")), Runtime(), view);
+        using var debug = engine.AttachDebugging(Options());
+        await engine.AdvanceAsync();
+        Assert.That(engine.Runtime.State.Table<Layer>().Get("scene").AssetId, Is.EqualTo("initial"));
+        await debug.SeekAsync(debug.Generation, new("main", 1, []));
+        Assert.That(engine.Runtime.State.Table<Layer>().Get("scene").AssetId, Is.EqualTo("compressed"));
+    }
     [TestCase(0, 0)]
     [TestCase(256, 1)]
     public async Task EntranceCacheHonorsItsCountAndPayloadBudgets(int groups, long bytes)
@@ -307,5 +340,43 @@ public class DebugSessionTests
         public override bool IsBlocking => true;
         public override bool IsSkippable => false;
         protected override void OnDispatch() => Entered.TrySetResult();
+    }
+    private sealed class CompressingWait(IGameRuntime runtime) : PrimitiveInstance
+    {
+        public override bool IsBlocking => true;
+        public override bool IsSkippable => false;
+        protected override void OnDispatch() => runtime.State.Table<Layer>().Set(new Layer { Id = "scene", AssetId = "initial" });
+        protected override void OnPlaybackModeChanged(PrimitiveInvocationMode mode)
+        {
+            if (mode != PrimitiveInvocationMode.CatchUp) return;
+            runtime.State.Table<Layer>().Set(new Layer { Id = "scene", AssetId = "compressed" });
+            TryComplete();
+        }
+    }
+    private sealed class ReadCounter : IGameProgressService
+    {
+        public int Marks;
+        public bool IsRead(string groupId, string entryId) => false;
+        public void MarkRead(string groupId, string entryId) => Interlocked.Increment(ref Marks);
+    }
+    private sealed class DeferredReadingWait : PrimitiveInstance, IAdvanceWaitInstance
+    {
+        public TaskCompletionSource Compressed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Presented { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public override Task PresentationCompletion => Presented.Task;
+        public override bool IsBlocking => true;
+        public override bool IsSkippable => true;
+        public bool IsTextPresented { get; private set; }
+        public bool IsWaitingForAdvance => false;
+        public void CompleteAdvance() => TryComplete();
+        protected override void OnDispatch() => SetAutoBlocking(true);
+        protected override void OnPlaybackModeChanged(PrimitiveInvocationMode mode)
+        {
+            if (mode != PrimitiveInvocationMode.CatchUp) return;
+            IsTextPresented = true;
+            SetAutoBlocking(false);
+            TryComplete();
+            Compressed.TrySetResult();
+        }
     }
 }

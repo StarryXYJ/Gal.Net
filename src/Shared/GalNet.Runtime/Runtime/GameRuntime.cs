@@ -62,7 +62,11 @@ public sealed class GameRuntime : IGameRuntime
 
     private void OnVariableChanged(VariableScope scope, string name, GalVariable variable)
     {
-        _variableService?.NotifyVariableChanged(scope, name, variable);
+        if (_variableService is null) return;
+        // The local store strips scope prefixes. Preserve the bridge's existing key
+        // so editing a restored system/player variable cannot create a second alias.
+        var originalName = _variableService.GetSnapshot(scope).FirstOrDefault(pair => pair.Value.Uid == variable.Uid).Key;
+        _variableService.NotifyVariableChanged(scope, originalName ?? name, variable);
     }
 
     public void JumpTo(string nodeId, int entryIndex = 0)

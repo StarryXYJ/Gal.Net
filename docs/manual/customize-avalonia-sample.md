@@ -2,6 +2,8 @@
 
 `GalNet.Sample.Avalonia` 是项目级组合根示例：保留启动参数、项目选择、本地化和调试策略；通用会话、页面与展示组合应优先复用 `Avalonia.GameHost`、`Avalonia.GameView` 和 Themes，而不是复制其生命周期代码。
 
+外部 Editor 调试的启动配置、运行变量面板、路线定位和可选宿主接入见[对接外部游戏调试](external-game-debugging.md)。
+
 ## 推荐改造顺序
 
 1. **建立项目契约。** 复制或引用 `GalNet.Sample.Contracts`，在 `ProjectSchemas.Modules` 中列出项目允许的 `IEntryModule`。构建后用 `scripts/build-project-contracts.ps1` 部署到内容项目的 `Contracts/`。CLI/Editor 与玩家必须消费同一契约集合。

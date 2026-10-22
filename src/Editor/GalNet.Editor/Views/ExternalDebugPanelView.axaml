@@ -14,12 +14,12 @@
       <Button Content="{loc:Localize Debug.Launch}" Command="{Binding LaunchCommand}" IsEnabled="{Binding !Busy}" Margin="0,0,6,4"/>
       <Button Content="{loc:Localize Debug.Wait}" Command="{Binding WaitForApplicationCommand}" IsEnabled="{Binding !Busy}" Margin="0,0,6,4"/>
       <Button Content="{loc:Localize Debug.Start}" Command="{Binding StartGameCommand}" IsEnabled="{Binding CanStart}" Margin="0,0,6,4"/>
-      <Button Content="{loc:Localize Debug.Pause}" Command="{Binding PauseCommand}" IsEnabled="{Binding CanControl}" Margin="0,0,6,4"/>
-      <Button Content="{loc:Localize Debug.Resume}" Command="{Binding ResumeCommand}" IsEnabled="{Binding CanControl}" Margin="0,0,6,4"/>
-      <Button Content="{loc:Localize Debug.Step}" Command="{Binding StepCommand}" IsEnabled="{Binding CanLocate}" Margin="0,0,6,4"/>
+      <Button Content="{loc:Localize Debug.Pause}" Command="{Binding PauseCommand}" IsEnabled="{Binding CanPause}" Margin="0,0,6,4"/>
+      <Button Content="{loc:Localize Debug.Resume}" Command="{Binding ResumeCommand}" IsEnabled="{Binding CanResume}" Margin="0,0,6,4"/>
+      <Button Content="{loc:Localize Debug.Step}" Command="{Binding StepCommand}" IsEnabled="{Binding CanStep}" Margin="0,0,6,4"/>
       <Button Content="{loc:Localize Debug.GroupEnd}" Command="{Binding GroupEndCommand}" IsEnabled="{Binding CanLocate}" Margin="0,0,6,4"/>
       <Button Content="{loc:Localize Debug.Cancel}" Command="{Binding CancelCommand}" IsEnabled="{Binding HasRun}" Margin="0,0,6,4"/>
-      <Button Content="{loc:Localize Debug.Stop}" Command="{Binding StopGameCommand}" IsEnabled="{Binding CanControl}" Margin="0,0,6,4"/>
+      <Button Content="{loc:Localize Debug.Stop}" Command="{Binding StopGameCommand}" IsEnabled="{Binding CanStop}" Margin="0,0,6,4"/>
       <Button Content="{loc:Localize Debug.Disconnect}" Command="{Binding DisconnectCommand}" IsEnabled="{Binding !Busy}" Margin="0,0,6,4"/>
     </WrapPanel>
     <TextBlock Grid.Row="2" Text="{Binding Status}" TextWrapping="Wrap"/>

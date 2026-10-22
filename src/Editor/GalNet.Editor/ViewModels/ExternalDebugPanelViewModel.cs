@@ -22,6 +22,7 @@ using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Shared.Services;
 using GalNet.Runtime.Engine;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Editor.ViewModels;
 
@@ -41,6 +42,7 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     private string? _breakpointRun;
     private string? _runIdentity;
     private string? _authorSignature;
+    private string? _savedConfiguration;
     private bool _closed;
     private readonly IDisposable? _closing;
     public IEditorLocalizationService L { get; }
@@ -58,7 +60,13 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     public bool HasRun => _client.Host?.Run is not null;
     public bool CanStart => IsConnected && _client.Host?.CanStart == true && !HasRun && !Busy;
     public bool CanControl => HasRun && !Busy;
-    public bool CanLocate => CanControl && !ContentChanged && _authorSignature is not null;
+    public bool CanLocate => CanControl && !ContentChanged && _authorSignature is not null && Supports("seek");
+    public bool CanPause => CanControl && Supports("pause");
+    public bool CanResume => CanControl && Supports("resume");
+    public bool CanStep => CanLocate && Supports("step") && _client.State?.Paused == true;
+    public bool CanStop => HasRun && Supports("stop");
+    public bool CanSetBreakpoint => CanLocate && Supports("breakpoints");
+    private bool Supports(string method) => _client.Host?.Run?.Capabilities.Contains(method) == true;
     public GameDebugState? RuntimeState => _client.State;
 
     public ExternalDebugPanelViewModel(ExternalGameDebugClient client, IProjectService projects, IEditorDocumentService documents,
@@ -67,8 +75,12 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         _client = client; _projects = projects; _documents = documents; _catalog = catalog; _workspace = workspace; _files = files; L = localization;
         if (projects.Current is { } project)
         {
-            var settings = ExternalGameDebugClient.LoadSettings(project.RootPath);
-            if (settings is not null) { Executable = settings.Executable; Arguments = string.Join(Environment.NewLine, settings.Arguments); WorkingDirectory = settings.WorkingDirectory ?? ""; }
+            try
+            {
+                var settings = ExternalGameDebugClient.LoadSettings(project.RootPath);
+                if (settings is not null) UseConfiguration(settings);
+            }
+            catch (Exception error) when (error is IOException or JsonException or UnauthorizedAccessException) { Error = error.Message; }
             _closing = project.RegisterClosingCallback(CloseProjectAsync);
         }
         _client.Changed += OnClientChanged;
@@ -81,6 +93,8 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(IsConnected)); OnPropertyChanged(nameof(HasRun)); OnPropertyChanged(nameof(CanStart));
         OnPropertyChanged(nameof(CanControl)); OnPropertyChanged(nameof(CanLocate));
+        OnPropertyChanged(nameof(CanPause)); OnPropertyChanged(nameof(CanResume)); OnPropertyChanged(nameof(CanStep));
+        OnPropertyChanged(nameof(CanStop)); OnPropertyChanged(nameof(CanSetBreakpoint));
     }
     private void OnClientChanged() => Dispatcher.UIThread.Post(() => { if (!_closed) Refresh(); });
     private void OnAuthorChanged()
@@ -166,14 +180,18 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         try
         {
             var project = _projects.Current ?? throw new InvalidOperationException("No project.");
-            ExternalGameDebugClient.SaveSettings(project.RootPath, new(Executable.Trim(), Arguments.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries),
-                string.IsNullOrWhiteSpace(WorkingDirectory) ? null : WorkingDirectory.Trim()));
+            var configuration = new GameDebugLaunchSettings(Executable.Trim(), Arguments.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries),
+                string.IsNullOrWhiteSpace(WorkingDirectory) ? null : WorkingDirectory.Trim());
+            ExternalGameDebugClient.SaveSettings(project.RootPath, configuration);
+            _savedConfiguration = JsonSerializer.Serialize(configuration);
             Error = "";
         }
         catch (Exception error) { Error = error.Message; }
     }
     [RelayCommand] private Task LaunchAsync() => RunAsync(async () =>
     {
+        if (_projects.Current is { } project && ExternalGameDebugClient.LoadSettings(project.RootPath) is { } latest && JsonSerializer.Serialize(latest) != _savedConfiguration)
+            UseConfiguration(latest);
         if (!File.Exists(Executable))
         {
             await BrowseAsync();
@@ -184,21 +202,22 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         _client.Launch(new(Executable, Arguments.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries),
             string.IsNullOrWhiteSpace(WorkingDirectory) ? null : WorkingDirectory), root, Path.Combine(_projects.Current!.RootPath, ".galnet", "debug-profile"));
     });
+    private void UseConfiguration(GameDebugLaunchSettings settings)
+    {
+        Executable = settings.Executable; Arguments = string.Join(Environment.NewLine, settings.Arguments ?? []);
+        WorkingDirectory = settings.WorkingDirectory ?? ""; _savedConfiguration = JsonSerializer.Serialize(settings);
+    }
     [RelayCommand] private Task WaitForApplicationAsync() => RunAsync(async () =>
     {
-        await PrepareAsync();
+        var root = await PrepareAsync();
         var invitation = _client.Invitation!;
-        Status = $"{Status} — --debug-port {invitation.Port} --debug-session {invitation.SessionId} --debug-project {invitation.Identity.ProjectId} --debug-token {invitation.Token}";
+        Status = $"{Status} — \"{root}\" --profile \"{Path.Combine(_projects.Current!.RootPath, ".galnet", "debug-profile")}\" --debug-port {invitation.Port} --debug-session {invitation.SessionId} --debug-project {invitation.Identity.ProjectId} --debug-token {invitation.Token} --debug-contract {invitation.Identity.ContractFingerprint}";
     });
     private async Task<string> PrepareAsync()
     {
         await _client.DisconnectAsync();
         await _projects.SaveAsync();
         var project = _projects.Current ?? throw new InvalidOperationException("No project.");
-        if (ExternalGameDebugClient.LoadSettings(project.RootPath) is { } launch)
-        {
-            Executable = launch.Executable; Arguments = string.Join(Environment.NewLine, launch.Arguments); WorkingDirectory = launch.WorkingDirectory ?? "";
-        }
         var output = Path.Combine(project.RootPath, "Output", "Debug");
         await new ProjectContentBuilder(_catalog).BuildAsync(project.RootPath, output);
         _sources.Clear(); _positions.Clear(); _spans.Clear(); _breakpointRun = null;
@@ -215,7 +234,7 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
             }
         }
         _authorSignature = Signature(); ContentChanged = false;
-        _client.Listen(new(project.Id, DebugContentIdentity.Compute(output)));
+        _client.Listen(new(project.Id, DebugContentIdentity.Compute(output), project.Services.GetRequiredService<ProjectSchemaSession>().Context.Fingerprint));
         return output;
     }
     private string Signature() => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
@@ -224,7 +243,11 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         Groups = _documents.Groups.Select(pair => new { pair.Key, Entries = pair.Value.Entries.Select(entry => new { entry.StableId, entry.Type, entry.Condition, entry.Parameters }) }).ToArray()
     }))));
     [RelayCommand] private Task StartGameAsync() => CommandAsync("start");
-    [RelayCommand] private Task StopGameAsync() => CommandAsync("stop");
+    [RelayCommand] private async Task StopGameAsync()
+    {
+        try { await _client.SendAsync("stop"); }
+        catch (Exception error) { Error = error.Message; }
+    }
     [RelayCommand] private Task PauseAsync() => CommandAsync("pause");
     [RelayCommand] private Task ResumeAsync() => CommandAsync("resume");
     [RelayCommand] private Task StepAsync() => RunAsync(async () =>

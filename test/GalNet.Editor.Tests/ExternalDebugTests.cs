@@ -10,6 +10,7 @@ using GalNet.Core.Entry;
 using GalNet.Debugging;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
+using GalNet.Editor.Controls;
 using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Shared.Services;
 using GalNet.Editor.ViewModels;
@@ -39,6 +40,13 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var panel = project.Services.GetRequiredService<ExternalDebugPanelViewModel>();
             var view = new ExternalDebugPanelView { DataContext = panel };
             var window = new Window { Content = view, Width = 1200, Height = 700 };
+            using var groupEditor = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id);
+            var entries = new EntryListEditorControl { DataContext = groupEditor };
+            var graphNode = new GraphNodeControl { DataContext = group };
+            var groupLayout = new Grid { RowDefinitions = new RowDefinitions("Auto,*") };
+            groupLayout.Children.Add(graphNode); Grid.SetRow(entries, 1); groupLayout.Children.Add(entries);
+            var groupWindow = new Window { Content = groupLayout, Width = 1000, Height = 700 };
+            groupWindow.Show();
             window.Show(); Dispatcher.UIThread.RunJobs();
             try
             {
@@ -67,6 +75,9 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 await Until(() => panel.SaveVariables.Count == 1 && panel.PlayerVariables.Count == 1);
                 Assert.That(group.IsDebugCurrent, Is.True);
                 Assert.That(entry.IsDebugCurrent, Is.True);
+                var entryChrome = entries.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("debugEntry") && ReferenceEquals(border.DataContext, entry));
+                Assert.That(entryChrome.BorderThickness, Is.EqualTo(new Avalonia.Thickness(3)));
+                Assert.That(graphNode.FindControl<Border>("NodeChrome")!.BorderThickness, Is.EqualTo(new Avalonia.Thickness(3)));
                 var row = panel.SaveVariables.Single();
                 row.Draft = "9";
                 await row.ApplyCommand.ExecuteAsync(null);
@@ -97,7 +108,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 await panel.DisconnectCommand.ExecuteAsync(null);
                 await Until(() => !panel.HasRun);
             }
-            finally { window.Close(); await projects.CloseAsync(); }
+            finally { groupWindow.Close(); window.Close(); await projects.CloseAsync(); }
             return true;
         }, CancellationToken.None);
     }

@@ -27,23 +27,26 @@ public sealed partial class GameEngine
         private readonly SemaphoreSlim _seeks = new(1, 1);
         private CancellationTokenSource? _seekCancellation;
         private TaskCompletionSource? _seekCompletion;
-        private long _ownedRestoreGeneration;
         internal Task PendingSeek => Volatile.Read(ref _seekCompletion)?.Task ?? Task.CompletedTask;
-        private bool _restoring;
         private bool _suppressEntrance;
         private GameDebugSeek? _seek;
+        private bool _preparingReplay;
         private Queue<GameDebugRouteEdge> _route = new();
         internal bool Replaying => _seek is not null;
+        internal bool SuppressReadProgress => _preparingReplay || Replaying;
 
-        internal void OnExternalRestore()
+        internal void OnExternalRestore(bool debugRestore)
         {
             _forcedTarget = null;
             _stepBoundary = null;
             _skipBreakpoint = null;
             Interlocked.Increment(ref _generation);
-            if (_restoring) _ownedRestoreGeneration = Generation;
-            else { CancelSeek(); ClearEntrances(); }
-            Paused = _restoring;
+            if (!debugRestore)
+            {
+                CancelSeek(); ClearEntrances();
+                _seek = null; _route.Clear(); _preparingReplay = false; _suppressEntrance = false;
+            }
+            Paused = debugRestore;
         }
         internal void CaptureEntrance(string group)
         {
@@ -97,6 +100,7 @@ public sealed partial class GameEngine
             {
                 await _engine.CancelCatchUpAndWaitAsync(cancellation.Token).ConfigureAwait(false);
                 GameSnapshot baseline;
+                var fromCurrent = false;
                 Task[] oldPresentations;
                 await _engine._dispatchGate.WaitAsync(cancellation.Token).ConfigureAwait(false);
                 try
@@ -115,7 +119,10 @@ public sealed partial class GameEngine
                         baseline = new GameSnapshot { NodeId = target.GroupId, EntryIndex = 0, States = _initialScene.States };
                     }
                     else if (start == _engine.CurrentNodeId && (start != target.GroupId || target.EntryIndex >= _engine.EntryIndex))
+                    {
                         baseline = _engine._runtime.CreateSnapshot();
+                        fromCurrent = true;
+                    }
                     else if (_entrances.TryGetValue(start, out var entrance))
                     {
                         baseline = SnapshotCopy.Clone(entrance);
@@ -125,6 +132,7 @@ public sealed partial class GameEngine
                     else if (_initialScene.NodeId == start) baseline = SnapshotCopy.Clone(_initialScene);
                     else throw new InvalidOperationException("No entrance scene is cached. Choose a route from the game entry.");
                     ValidateRoute(target, baseline);
+                    _preparingReplay = true;
                     Paused = true;
                     _engine.SetPlaybackModeCore(PlaybackMode.Manual);
                     _engine.CancelPlaybackTimer();
@@ -136,18 +144,26 @@ public sealed partial class GameEngine
                     var old = _engine._active.ToArray();
                     foreach (var item in old) item.Instance.ApplyPlaybackMode(PrimitiveInvocationMode.CatchUp);
                     oldPresentations = old.Select(item => item.Instance.PresentationCompletion).ToArray();
+                }
+                finally { _engine._dispatchGate.Release(); _engine.PublishStateChanges(); }
+
+                await Task.WhenAll(oldPresentations).WaitAsync(cancellation.Token).ConfigureAwait(false);
+                await _engine._dispatchGate.WaitAsync(cancellation.Token).ConfigureAwait(false);
+                try
+                {
+                    Check(generation);
+                    // Active transitions may commit their terminal scene while being
+                    // compressed. A forward baseline must include that committed state.
+                    if (fromCurrent) baseline = _engine._runtime.CreateSnapshot();
                     baseline = new GameSnapshot
                     {
                         NodeId = baseline.NodeId, EntryIndex = baseline.EntryIndex, States = baseline.States,
                         Variables = _engine._runtime.CreateSnapshot().Variables
                     };
                 }
-                finally { _engine._dispatchGate.Release(); _engine.PublishStateChanges(); }
-
-                _restoring = true;
-                try { _engine.RestoreFrom(baseline); changed = true; ownedGeneration = _ownedRestoreGeneration; }
-                finally { _restoring = false; }
-                await Task.WhenAll(oldPresentations).WaitAsync(cancellation.Token).ConfigureAwait(false);
+                finally { _engine._dispatchGate.Release(); }
+                ownedGeneration = _engine.RestoreFromCore(baseline, this, generation);
+                changed = true;
 
                 await _engine._dispatchGate.WaitAsync(cancellation.Token).ConfigureAwait(false);
                 try
@@ -214,6 +230,7 @@ public sealed partial class GameEngine
                 try
                 {
                     _seek = null;
+                    _preparingReplay = false;
                     _suppressEntrance = false;
                     if (changed && Generation == ownedGeneration)
                     {

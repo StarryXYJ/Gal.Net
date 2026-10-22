@@ -191,7 +191,9 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         finally { CaptureStateChange(); _dispatchGate.Release(); PublishStateChanges(); }
     }
 
-    public void RestoreFrom(GameSnapshot data)
+    public void RestoreFrom(GameSnapshot data) => RestoreFromCore(data);
+
+    private long RestoreFromCore(GameSnapshot data, DebugSession? restoringDebugger = null, long? expectedGeneration = null)
     {
         ArgumentNullException.ThrowIfNull(data);
         ThrowIfDisposed();
@@ -205,6 +207,8 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             ThrowIfDisposed();
             if (Volatile.Read(ref _stopRequested) != 0)
                 throw new InvalidOperationException("A stopped engine cannot be restored. Create a new engine.");
+            if (restoringDebugger is not null && (!ReferenceEquals(_debugger, restoringDebugger) || restoringDebugger.Generation != expectedGeneration))
+                throw new InvalidOperationException("The execution changed before debug restoration.");
             CancelPendingChoice();
             CancelCatchUp();
             _catchUpActive = false;
@@ -216,7 +220,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             previousScope.Cancel();
             previousScope.Dispose();
             _runtime.RestoreFrom(data);
-            _debugger?.OnExternalRestore();
+            _debugger?.OnExternalRestore(restoringDebugger is not null);
             _restorationPending = _view.RequiresStateRestore;
             _scopeCancellation = new CancellationTokenSource();
             _dispatchRuntime = new RunScopedRuntime(_runtime, _scopeCancellation.Token);
@@ -225,6 +229,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             _flowError = null;
             IsRunning = true;
             _started = false;
+            return _debugger?.Generation ?? 0;
         }
         finally
         {

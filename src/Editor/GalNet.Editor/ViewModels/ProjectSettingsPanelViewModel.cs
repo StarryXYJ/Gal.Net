@@ -108,12 +108,16 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
 
         _isLoading = true;
         ProjectName = project.Name;
-        if (ExternalGameDebugClient.LoadSettings(project.RootPath) is { } launch)
+        try
         {
-            DebugExecutable = launch.Executable;
-            DebugArguments = string.Join(Environment.NewLine, launch.Arguments);
-            DebugWorkingDirectory = launch.WorkingDirectory ?? "";
+            if (ExternalGameDebugClient.LoadSettings(project.RootPath) is { } launch)
+            {
+                DebugExecutable = launch.Executable;
+                DebugArguments = string.Join(Environment.NewLine, launch.Arguments ?? []);
+                DebugWorkingDirectory = launch.WorkingDirectory ?? "";
+            }
         }
+        catch (Exception error) when (error is System.IO.IOException or System.Text.Json.JsonException or UnauthorizedAccessException) { DebugConfigurationMessage = error.Message; }
         DefaultWidth = settings.DefaultWidth;
         DefaultHeight = settings.DefaultHeight;
         Resolution = $"{DefaultWidth}×{DefaultHeight}";

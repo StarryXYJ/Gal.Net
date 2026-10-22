@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace GalNet.Debugging;
 
-public sealed record DebugIdentity(string ProjectId, string ContentFingerprint);
+public sealed record DebugIdentity(string ProjectId, string ContentFingerprint, string? ContractFingerprint = null);
 public sealed record DebugInvitation(int Port, string Token, string SessionId, DebugIdentity Identity);
 public sealed record DebugRunInfo(string RunId, long Generation, string[] Capabilities, long? OperationGeneration = null);
 public sealed record DebugHostStatus(string SessionId, bool CanStart, DebugRunInfo? Run);
@@ -13,6 +13,7 @@ public interface IDebugGameRun
 {
     DebugRunInfo Info { get; }
     Task<object?> ExecuteAsync(DebugCommand command, CancellationToken cancellationToken);
+    Task OnDisconnectedAsync() => Task.CompletedTask;
 }
 
 internal sealed record DebugMessage(string Kind, string Id, string? Method, JsonElement Payload, string? Error = null);

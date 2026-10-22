@@ -49,6 +49,7 @@ public sealed class ExternalGameDebugClient : IAsyncDisposable, IDisposable
         foreach (var argument in new[] { contentRoot, "--profile", profileRoot, "--debug-port", invitation.Port.ToString(System.Globalization.CultureInfo.InvariantCulture),
             "--debug-token", invitation.Token, "--debug-session", invitation.SessionId, "--debug-project", invitation.Identity.ProjectId })
             start.ArgumentList.Add(argument);
+        if (invitation.Identity.ContractFingerprint is { } contract) { start.ArgumentList.Add("--debug-contract"); start.ArgumentList.Add(contract); }
         Process.Start(start)?.Dispose();
     }
     public async Task<JsonElement> SendAsync(string method, object? arguments = null, string? expectedRun = null, long? expectedGeneration = null,
@@ -76,7 +77,7 @@ public sealed class ExternalGameDebugClient : IAsyncDisposable, IDisposable
             {
                 token.ThrowIfCancellationRequested();
                 Host = (await peer.RequestAsync("status", cancellationToken: token).ConfigureAwait(false)).Deserialize<DebugHostStatus>(Json);
-                if (Host?.Run is { } run)
+                if (Host?.Run is { } run && run.Capabilities.Contains("inspect"))
                 {
                     try
                     {

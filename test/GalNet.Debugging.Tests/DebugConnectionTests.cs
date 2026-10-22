@@ -6,6 +6,21 @@ namespace GalNet.Debugging.Tests;
 public class DebugConnectionTests
 {
     [Test]
+    public async Task OversizedResponseReturnsAnErrorAndTheConnectionRemainsUsable()
+    {
+        using var listener = new DebugListener(new("project", "content"));
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var accepted = listener.AcceptAsync(timeout.Token);
+        await using var host = new GameDebugHost();
+        using var binding = host.AttachRun(new LargeRun());
+        await host.ConnectAsync(listener.Invitation, timeout.Token);
+        await using var peer = await accepted;
+        var error = Assert.ThrowsAsync<InvalidOperationException>(async () => await peer.RequestAsync("read", Command("large"), timeout.Token));
+        Assert.That(error!.Message, Does.Contain("frame limit"));
+        Assert.That((await peer.RequestAsync("status", cancellationToken: timeout.Token)).GetProperty("run").GetProperty("runId").GetString(), Is.EqualTo("large"));
+    }
+
+    [Test]
     public async Task ConnectedAppCanAttachDetachAndReplaceRunsWithoutReconnecting()
     {
         using var listener = new DebugListener(new("project", "content"));
@@ -41,14 +56,18 @@ public class DebugConnectionTests
         else Assert.ThrowsAsync<InvalidOperationException>(async () => await peer.RequestAsync("start", cancellationToken: timeout.Token));
         Assert.That(starts, Is.EqualTo(enabled ? 1 : 0));
     }
-    [Test]
-    public async Task IncorrectProjectIsRejectedAndDoesNotConsumeTheListener()
+    [TestCase("project")]
+    [TestCase("content")]
+    [TestCase("contract")]
+    public async Task IncorrectIdentityIsRejectedAndDoesNotConsumeTheListener(string mismatch)
     {
-        using var listener = new DebugListener(new("project", "content"));
+        using var listener = new DebugListener(new("project", "content", "contract"));
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         var accepted = listener.AcceptAsync(timeout.Token);
         await using var wrong = new GameDebugHost();
-        Assert.ThrowsAsync<EndOfStreamException>(async () => await wrong.ConnectAsync(listener.Invitation with { Identity = new("other", "content") }, timeout.Token));
+        var identity = mismatch switch { "project" => new DebugIdentity("other", "content", "contract"),
+            "content" => new("project", "other", "contract"), _ => new("project", "content", "other") };
+        Assert.ThrowsAsync<EndOfStreamException>(async () => await wrong.ConnectAsync(listener.Invitation with { Identity = identity }, timeout.Token));
         Assert.That(accepted.IsCompleted, Is.False);
         await using var correct = new GameDebugHost();
         await correct.ConnectAsync(listener.Invitation, timeout.Token);
@@ -56,6 +75,11 @@ public class DebugConnectionTests
         Assert.That(peer.IsConnected, Is.True);
     }
     private static DebugCommand Command(string run) => new("read", run, 1, JsonSerializer.SerializeToElement(new { }));
+    private sealed class LargeRun : IDebugGameRun
+    {
+        public DebugRunInfo Info => new("large", 1, ["read"]);
+        public Task<object?> ExecuteAsync(DebugCommand command, CancellationToken cancellationToken) => Task.FromResult<object?>(new string('x', 4 * 1024 * 1024));
+    }
     private sealed class Run(string id) : IDebugGameRun
     {
         public DebugRunInfo Info => new(id, 1, ["read"]);

@@ -196,7 +196,7 @@ public partial class EntryListEditorControl : ReorderableListControl
             var jump = new MenuItem { Header = vm.Workspace.Localize("Debug.Jump"), IsEnabled = debug.CanLocate };
             jump.Click += async (_, _) => await debug.SeekAsync(vm.GroupId, target.StableId);
             menu.Items.Add(jump);
-            var breakpoint = new MenuItem { Header = vm.Workspace.Localize("Debug.Breakpoint"), IsEnabled = debug.CanLocate };
+            var breakpoint = new MenuItem { Header = vm.Workspace.Localize("Debug.Breakpoint"), IsEnabled = debug.CanSetBreakpoint };
             breakpoint.Click += async (_, _) => await debug.ToggleBreakpointAsync(vm.GroupId, target.StableId);
             menu.Items.Add(breakpoint);
         }

@@ -81,7 +81,11 @@ public partial class App : Application
                     }
                     finally
                     {
-                        try { if (_gameScope is { } scope) await scope.DisposeAsync(); }
+                        try
+                        {
+                            mainWindow.DetachHostBindings();
+                            if (_gameScope is { } scope) await scope.DisposeAsync();
+                        }
                         finally
                         {
                             _gameScope = null;

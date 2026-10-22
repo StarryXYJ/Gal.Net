@@ -14,6 +14,8 @@ namespace GalNet.Sample.Avalonia.Views;
 public partial class MainWindow : UrsaWindow
 {
     private readonly IServiceProvider _services;
+    private readonly AvaloniaPlayerSettingsService _settings;
+    private bool _bindingsDetached;
     private readonly SampleDebugLogStore? _debugLogStore;
     private readonly SampleDebugViewModel? _debugViewModel;
     private readonly LanguageSelectionViewModel _languageSelectionViewModel;
@@ -26,7 +28,8 @@ public partial class MainWindow : UrsaWindow
         _debugViewModel = services.GetService<SampleDebugViewModel>();
         _languageSelectionViewModel = services.GetRequiredService<LanguageSelectionViewModel>();
         InitializeComponent();
-        services.GetRequiredService<AvaloniaPlayerSettingsService>().BindWindow(this);
+        _settings = services.GetRequiredService<AvaloniaPlayerSettingsService>();
+        _settings.BindWindow(this);
         PlayerRoot.Styles.Add(SampleCustomization.PlayerTheme.CreateStyles());
         LanguageSelection.DataContext = _languageSelectionViewModel;
         GameCanvas.GameContent = shell;
@@ -99,12 +102,19 @@ public partial class MainWindow : UrsaWindow
 
     private void OnClosed(object? sender, EventArgs e)
     {
-        _services.GetRequiredService<AvaloniaPlayerSettingsService>().BindWindow(null);
+        DetachHostBindings();
         if (_debugViewModel is null)
             return;
 
         _debugViewModel.LogRequested -= OnLogRequested;
         _debugViewModel.ConfirmationRequested -= ConfirmAsync;
         _debugViewModel.NotificationRequested -= NotifyAsync;
+    }
+
+    internal void DetachHostBindings()
+    {
+        if (_bindingsDetached) return;
+        _bindingsDetached = true;
+        _settings.BindWindow(null);
     }
 }

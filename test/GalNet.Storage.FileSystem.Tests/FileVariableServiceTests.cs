@@ -10,6 +10,21 @@ namespace GeneralTest.Storage;
 
 public sealed class PlayerVariableServiceTests
 {
+    [Test]
+    public async Task RuntimeUpdatesOfRestoredPrefixedVariablesPreserveTheBridgeKeyAndUid()
+    {
+        using var service = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(_profileDirectory));
+        var value = new GalVariable { Name = "player.galnet.startup.launchCount" }; value.SetValue(2);
+        service.NotifyVariableChanged(VariableScope.Player, value.Name, value);
+        var runtime = new GameRuntime(null, variableService: service);
+        runtime.SetVariable("player.galnet.startup.launchCount", 9);
+        Assert.That(service.GetSnapshot(VariableScope.Player), Has.Count.EqualTo(1));
+        Assert.That(service.GetSnapshot(VariableScope.Player)[value.Name].Uid, Is.EqualTo(value.Uid));
+        Assert.That(service.GetSnapshot(VariableScope.Player)[value.Name].AsInt(), Is.EqualTo(9));
+        await service.FlushPlayerVariablesAsync();
+        using var restored = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(_profileDirectory));
+        Assert.That(restored.GetSnapshot(VariableScope.Player)[value.Name].AsInt(), Is.EqualTo(9));
+    }
     private string _profileDirectory = null!;
 
     [SetUp]

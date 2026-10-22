@@ -94,7 +94,7 @@ public sealed partial class GameEngine
     {
         if (item.Instance.IsAutoBlocking) _autoBlockers.Add(item.Instance);
         else _autoBlockers.Remove(item.Instance);
-        if (_debugger?.Replaying != true && !item.ReadMarked && item.IsReading && item.Instance is IAdvanceWaitInstance { IsTextPresented: true })
+        if (_debugger?.SuppressReadProgress != true && !item.ReadMarked && item.IsReading && item.Instance is IAdvanceWaitInstance { IsTextPresented: true })
         {
             if (string.IsNullOrWhiteSpace(item.StableId))
                 throw new InvalidDataException("Reading primitives require a stable compiled identity.");

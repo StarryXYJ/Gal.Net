@@ -85,6 +85,13 @@ public sealed class DebugPeer : IAsyncDisposable
         }
         catch (Exception error) { response = new("response", request.Id, null, DebugWire.Element(null), error.Message); }
         try { await SendAsync(response, _lifetime.Token).ConfigureAwait(false); }
+        catch (InvalidDataException)
+        {
+            // No header has been written when the frame-size check fails. Return a
+            // bounded error so the caller is not left waiting for a missing response.
+            try { await SendAsync(new("response", request.Id, null, DebugWire.Element(null), "Debug response exceeds the frame limit."), _lifetime.Token).ConfigureAwait(false); }
+            catch (Exception error) when (error is IOException or OperationCanceledException or ObjectDisposedException) { }
+        }
         catch (Exception error) when (error is IOException or OperationCanceledException or ObjectDisposedException) { }
     }
     public async ValueTask DisposeAsync()

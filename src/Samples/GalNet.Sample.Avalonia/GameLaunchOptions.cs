@@ -44,7 +44,14 @@ internal sealed record GameLaunchOptions(string? GameDirectory, string? ProfileD
             if (gameDirectory is null || !debug.TryGetValue("--debug-port", out var portText) || !int.TryParse(portText, out var port) || port is <= 0 or > 65535 ||
                 !debug.TryGetValue("--debug-token", out var token) || !debug.TryGetValue("--debug-session", out var session) || !debug.TryGetValue("--debug-project", out var project))
                 throw new ArgumentException("Debug launch requires a content directory, port, token, session and project identity.");
-            invitation = new(port, token, session, new(project, DebugContentIdentity.Compute(gameDirectory)));
+            string? fingerprint = null;
+            if (debug.TryGetValue("--debug-contract", out var expected))
+            {
+                fingerprint = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(typeof(GalNet.Project.Contracts.ProjectSchemas).Assembly.Location)));
+                if (!string.Equals(expected, fingerprint, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("The App contract differs from the Editor project. Deploy matching Contracts before debugging.");
+            }
+            invitation = new(port, token, session, new(project, DebugContentIdentity.Compute(gameDirectory), fingerprint));
         }
         return new GameLaunchOptions(gameDirectory, profileDirectory) { DebugInvitation = invitation };
     }
