@@ -268,7 +268,7 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         if (Busy || _closed) return;
         Busy = true; Error = "";
         try { await action(); }
-        catch (Exception error) { Error = error.Message; }
+        catch (Exception error) { Error = error.Message; Serilog.Log.Error(error, "External game debug operation failed"); }
         finally { Busy = false; }
     }
     public Task ToggleBreakpointAsync(string group, string source) => RunAsync(async () =>

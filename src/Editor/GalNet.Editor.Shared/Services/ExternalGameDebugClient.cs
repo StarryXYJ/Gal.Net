@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 using GalNet.Debugging;
 using GalNet.Runtime.Engine;
@@ -15,6 +16,7 @@ public sealed class ExternalGameDebugClient : IAsyncDisposable, IDisposable
     private DebugListener? _listener;
     private DebugPeer? _peer;
     private Task? _connection;
+    private Task? _launchMonitor;
     private long _epoch;
     public event Action? Changed;
     public DebugHostStatus? Host { get; private set; }
@@ -43,6 +45,7 @@ public sealed class ExternalGameDebugClient : IAsyncDisposable, IDisposable
         var start = new ProcessStartInfo(settings.Executable)
         {
             UseShellExecute = false,
+            RedirectStandardError = true,
             WorkingDirectory = settings.WorkingDirectory ?? Path.GetDirectoryName(settings.Executable)!
         };
         foreach (var argument in settings.Arguments) start.ArgumentList.Add(argument);
@@ -50,7 +53,48 @@ public sealed class ExternalGameDebugClient : IAsyncDisposable, IDisposable
             "--debug-token", invitation.Token, "--debug-session", invitation.SessionId, "--debug-project", invitation.Identity.ProjectId })
             start.ArgumentList.Add(argument);
         if (invitation.Identity.ContractFingerprint is { } contract) { start.ArgumentList.Add("--debug-contract"); start.ArgumentList.Add(contract); }
-        Process.Start(start)?.Dispose();
+        var process = Process.Start(start) ?? throw new InvalidOperationException("Could not start the debug application.");
+        Serilog.Log.Information("Started debug application {Executable}, process {ProcessId}", settings.Executable, process.Id);
+        _launchMonitor = MonitorLaunchAsync(process, _epoch, _lifetime!.Token);
+    }
+    private async Task MonitorLaunchAsync(Process process, long epoch, CancellationToken token)
+    {
+        using (process)
+        {
+            try
+            {
+                var diagnostics = ReadErrorTailAsync(process.StandardError, token);
+                await Task.WhenAll(process.WaitForExitAsync(token), diagnostics).ConfigureAwait(false);
+                var details = await diagnostics.ConfigureAwait(false);
+                if (token.IsCancellationRequested || epoch != _epoch) return;
+                if (process.ExitCode == 0 && _peer is not null) return;
+                Error = $"Debug application exited {(_peer is null ? "before connecting " : "")}(exit code {process.ExitCode})." +
+                    (string.IsNullOrWhiteSpace(details) ? " Check the application logs and launch configuration." : Environment.NewLine + details.Trim());
+                Status = "Application exited";
+                Serilog.Log.Error("{DebugLaunchError}", Error);
+                Changed?.Invoke();
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+            catch (Exception error) when (error is IOException or InvalidOperationException or ObjectDisposedException)
+            {
+                if (token.IsCancellationRequested || epoch != _epoch) return;
+                Error = error.Message;
+                Serilog.Log.Error(error, "Could not monitor debug application");
+                Changed?.Invoke();
+            }
+        }
+    }
+    private static async Task<string> ReadErrorTailAsync(StreamReader reader, CancellationToken token)
+    {
+        var tail = new StringBuilder();
+        var buffer = new char[1024];
+        int count;
+        while ((count = await reader.ReadAsync(buffer.AsMemory(), token).ConfigureAwait(false)) > 0)
+        {
+            tail.Append(buffer, 0, count);
+            if (tail.Length > 8192) tail.Remove(0, tail.Length - 8192);
+        }
+        return tail.ToString();
     }
     public async Task<JsonElement> SendAsync(string method, object? arguments = null, string? expectedRun = null, long? expectedGeneration = null,
         CancellationToken cancellationToken = default)
@@ -108,6 +152,8 @@ public sealed class ExternalGameDebugClient : IAsyncDisposable, IDisposable
         _listener?.Dispose();
         if (_peer is not null) await _peer.DisposeAsync().ConfigureAwait(false);
         if (_connection is not null) await _connection.ConfigureAwait(false);
+        if (_launchMonitor is not null) await _launchMonitor.ConfigureAwait(false);
+        _launchMonitor = null;
         _peer = null;
         _listener = null;
         _lifetime = null;

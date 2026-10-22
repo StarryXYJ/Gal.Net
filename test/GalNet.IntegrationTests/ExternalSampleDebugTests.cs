@@ -15,6 +15,34 @@ namespace GalNet.IntegrationTests;
 public sealed class ExternalSampleDebugTests
 {
     [Test]
+    public async Task FailedSampleLaunchReportsContractErrorAndExitCodeToEditor()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "galnet-launch-error-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            await using var client = new ExternalGameDebugClient();
+            client.Listen(new("project", "content", "different-contract"));
+            var changed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            client.Changed += () => { if (client.Error is not null) changed.TrySetResult(); };
+            var dotnet = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") ?? "dotnet";
+            if (!Path.IsPathRooted(dotnet))
+                dotnet = Path.Combine(System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory(), "..", "..", "..", OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet");
+            client.Launch(new(dotnet, [typeof(GalNet.Sample.Avalonia.GameLaunchOptions).Assembly.Location]), root, Path.Combine(root, "profile"));
+            await changed.Task.WaitAsync(TimeSpan.FromSeconds(20));
+            Assert.Multiple(() =>
+            {
+                Assert.That(client.Status, Is.EqualTo("Application exited"));
+                Assert.That(client.Error, Does.Contain("exit code 1").And.Contain("App contract differs"));
+                Assert.That(client.IsConnected, Is.False);
+            });
+            await client.DisconnectAsync();
+            client.Listen(new("next-project", "next-content"));
+            Assert.That(client.Error, Is.Null);
+        }
+        finally { Directory.Delete(root, true); }
+    }
+    [Test]
     public void LaunchChecksTheActualContractAssemblyInsteadOfTrustingTheExpectedArgument()
     {
         var root = Path.Combine(Path.GetTempPath(), "galnet-debug-contract-" + Guid.NewGuid().ToString("N"));

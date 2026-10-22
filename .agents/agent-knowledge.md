@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [启动日志前的调试失败](lessons/L-20261023-01-debug-launch-before-logging.md)：契约校验可早于日志初始化；App 顶层需 stderr/非零退出码，Editor 需监控自己启动的进程，不能只等待 TCP。
+
 - [选择器准备与作者代次](lessons/L-20261022-02-selector-preparation-generation.md)：同代后台准备可推进结果 Revision；等待完成后按不可变作者快照身份与资源代次复核，再更新选择快照。
 
 - [变量桥接原键与 UID](lessons/L-20261022-01-variable-bridge-original-key.md)：Runtime 去作用域前缀，回写已有玩家/系统变量必须保留桥接服务原键；仅 Runtime 改值通过不能证明重开/落盘正确。
