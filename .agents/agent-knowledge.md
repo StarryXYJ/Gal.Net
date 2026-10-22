@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [选择器准备与作者代次](lessons/L-20261022-02-selector-preparation-generation.md)：同代后台准备可推进结果 Revision；等待完成后按不可变作者快照身份与资源代次复核，再更新选择快照。
+
 - [变量桥接原键与 UID](lessons/L-20261022-01-variable-bridge-original-key.md)：Runtime 去作用域前缀，回写已有玩家/系统变量必须保留桥接服务原键；仅 Runtime 改值通过不能证明重开/落盘正确。
 
 - [窗口关闭晚于 scope 释放](lessons/L-20261021-01-window-closed-after-scope-disposal.md)：异步 Closing 先释放 scope 时，Closed 不能再 GetRequiredService；窗口绑定应在释放前幂等解绑，并用真实进程正常退出验证。

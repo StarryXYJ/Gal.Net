@@ -61,6 +61,9 @@ public static class EditorFieldEditors
         });
         if (scenes is not null)
         {
+            registry.RegisterMember<VariantsShowOptions>(options => options.Selection, context => VariantFieldEditor.Create(context, scenes, selection: true));
+            registry.RegisterMember<VariantsSelectOptions>(options => options.Dimension, context => VariantFieldEditor.Create(context, scenes, selection: false, dimension: true));
+            registry.RegisterMember<VariantsSelectOptions>(options => options.Value, context => VariantFieldEditor.Create(context, scenes, selection: false));
             FieldEditorLease Target(FieldEditorContext context) => SceneTargetFieldEditor.Create(context, scenes);
             registry.RegisterMember<LayerHandleOptions>(options => options.HandleId, Target);
             registry.RegisterMember<LayerMoveOptions>(options => options.HandleId, Target);

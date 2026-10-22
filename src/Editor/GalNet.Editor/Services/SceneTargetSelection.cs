@@ -19,8 +19,10 @@ public sealed class SceneTargetSelection(SceneTargetCatalog catalog, SceneTarget
     public async Task PrepareAsync()
     {
         if (!IsCurrent) return;
+        var stamp = catalog.PreparationStamp;
         await catalog.PrepareAsync(Snapshot.GroupId, Snapshot.EntryId, Snapshot.Position, _lifetime.Token);
-        RefreshLabels();
+        if (!_disposed && catalog.IsSamePreparation(stamp))
+            Snapshot = catalog.Query(Snapshot.GroupId, Snapshot.EntryId, Snapshot.Filter, Snapshot.Position, Snapshot.Playback);
     }
     public void RefreshLabels()
     {

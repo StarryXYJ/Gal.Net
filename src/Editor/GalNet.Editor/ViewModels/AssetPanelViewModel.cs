@@ -5,6 +5,8 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GalNet.Core.Assets;
+using System.Text;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Dock;
 using GalNet.Editor.Models;
@@ -67,6 +69,24 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
     public string ProjectRoot => _index.Root;
     public bool HasSearch => SearchText.Length > 0;
     public event Action<ProjectTextBuffer>? FileOpened;
+
+    [RelayCommand]
+    private async Task NewVariantsAsync()
+    {
+        try
+        {
+            var directory = SelectedEntry is { IsDirectory: true } selected ? selected.Path : CurrentDirectory;
+            if (directory != "Assets" && !directory.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException(_localization["Variants.ChooseFolder"]);
+            var path = directory + "/variants.variants";
+            var number = 1;
+            while (File.Exists(new ProjectRawReader(ProjectRoot).Resolve(path))) path = directory + "/variants" + number++ + ".variants";
+            var types = (IResourceTypeCatalog)_projects.Current!.Services.GetService(typeof(IResourceTypeCatalog))!;
+            var json = ImageVariantsAuthoring.Create(ProjectRoot, path, types);
+            if (!await ExecuteAsync(new(ProjectFileAction.CreateFile, [], path, Content: Encoding.UTF8.GetBytes(json)))) return;
+            _workspace.SelectedAsset = _assets.GetEntry(path[7..]);
+        }
+        catch (Exception error) { ShowError(error); }
+    }
 
     public AssetPanelViewModel(ProjectFilesIndex index, ProjectFileAuthoringService files, ProjectTextFiles texts, IProjectService projects, EditorWorkspaceViewModel workspace, EditorDockFactory dock, IFileDialogService dialogs, IAssetCatalogService assets, IEditorLocalizationService localization)
     {

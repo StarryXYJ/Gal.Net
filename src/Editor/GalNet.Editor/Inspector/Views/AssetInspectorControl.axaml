@@ -1,5 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:GalNet.Editor.Inspector.ViewModels" xmlns:loc="using:GalNet.Editor.MarkupExtensions" x:Class="GalNet.Editor.Inspector.Views.AssetInspectorControl" x:DataType="vm:AssetInspectorControlViewModel">
+             xmlns:vm="using:GalNet.Editor.Inspector.ViewModels" xmlns:views="using:GalNet.Editor.Inspector.Views" xmlns:converters="using:Avalonia.Data.Converters" xmlns:loc="using:GalNet.Editor.MarkupExtensions" x:Class="GalNet.Editor.Inspector.Views.AssetInspectorControl" x:DataType="vm:AssetInspectorControlViewModel">
  <ScrollViewer>
   <StackPanel Margin="12" Spacing="10">
    
@@ -12,6 +12,7 @@
    <TextBlock Text="{Binding InspectedAsset.RelativePath}" />
    
    <Panel Margin="5"></Panel>
+   <Panel IsVisible="{Binding Variants, Converter={x:Static converters:ObjectConverters.IsNotNull}}"><views:ImageVariantsEditor DataContext="{Binding Variants}"/></Panel>
    
    <StackPanel IsVisible="{Binding IsSelectedAssetImage}" Spacing="6">
     <TextBlock Text="{loc:Localize Inspector.Asset.ImagePreview}" FontWeight="SemiBold" Foreground="{DynamicResource SemiColorText2}" />

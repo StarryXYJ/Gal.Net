@@ -104,8 +104,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 search.Text = "t:txt"; Assert.That(vm.Entries, Is.Empty, "Type syntax is reserved; current search matches literal filenames."); search.Text = "";
                 var grid = view.FindControl<ListBox>("FileGrid")!;
                 grid.ContextMenu!.Open(grid); window.UpdateLayout();
-                var createMenu = grid.ContextMenu.Items.OfType<MenuItem>().Single(item => item.Items.Count == 2); createMenu.IsSubMenuOpen = true; window.UpdateLayout();
-                Assert.That(grid.ContextMenu!.Items.OfType<MenuItem>().Single(item => item.Items.Count == 2).Items.OfType<MenuItem>().Any(item => item.Command == vm.NewFileCommand), Is.True);
+                var createMenu = grid.ContextMenu.Items.OfType<MenuItem>().Single(item => item.Items.OfType<MenuItem>().Any(child => child.Command == vm.NewFileCommand)); createMenu.IsSubMenuOpen = true; window.UpdateLayout();
+                Assert.That(createMenu.Items.OfType<MenuItem>().Any(item => item.Command == vm.NewVariantsCommand), Is.True);
                 grid.ContextMenu.Close();
                 Assert.That(view.GetVisualDescendants().OfType<Button>().Any(button => button.Command == vm.ImportCommand || button.Command == vm.NewFolderCommand || button.Command == vm.NewFileCommand), Is.False);
                 Assert.That(Grid.GetColumn(view.FindControl<Button>("RefreshButton")!), Is.EqualTo(2));

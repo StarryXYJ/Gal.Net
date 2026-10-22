@@ -49,6 +49,7 @@
           <MenuItem Header="{loc:Localize Files.New}">
             <MenuItem Header="{loc:Localize Asset.Menu.NewFolder}" Command="{Binding NewFolderCommand}" />
             <MenuItem Header="{loc:Localize Files.NewText}" Command="{Binding NewFileCommand}" />
+            <MenuItem Header="{loc:Localize Variants.New}" Command="{Binding NewVariantsCommand}" />
           </MenuItem>
           <MenuItem Header="{loc:Localize Asset.Menu.Refresh}" Command="{Binding RefreshCommand}" />
           <MenuItem Header="{loc:Localize Asset.Menu.OpenInExplorer}" Command="{Binding ShowInExplorerCommand}" />
@@ -67,6 +68,7 @@
               <MenuItem Header="{loc:Localize Files.New}">
                 <MenuItem Header="{loc:Localize Asset.Menu.NewFolder}" Command="{Binding #Root.DataContext.NewFolderCommand}" />
                 <MenuItem Header="{loc:Localize Files.NewText}" Command="{Binding #Root.DataContext.NewFileCommand}" />
+                <MenuItem Header="{loc:Localize Variants.New}" Command="{Binding #Root.DataContext.NewVariantsCommand}" />
               </MenuItem>
               <MenuItem Header="{loc:Localize Asset.Menu.Refresh}" Command="{Binding #Root.DataContext.RefreshCommand}" />
               <Separator />

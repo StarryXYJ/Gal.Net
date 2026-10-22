@@ -1,6 +1,8 @@
 using System.Text.Json;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
+using GalNet.Core.Variants;
+using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Shared.Services;
 using GalNet.Game.Controls.Forms;
@@ -11,12 +13,26 @@ public sealed record SceneTargetChoice(SceneTarget Target, ResourcePickerItem It
 public sealed record SceneTargetSnapshot(string GroupId, string EntryId, long Revision, bool Complete, IReadOnlyList<SceneTargetChoice> Choices, Func<SceneTarget, bool>? Filter = null, SceneTimelinePosition? Position = null, bool Playback = false);
 public sealed record SceneFieldChoice(SceneTargetSnapshot Snapshot, SceneTargetChoice? Choice, ResourcePickerItem Item, string? EmptyLabelKey = null)
 { public override string ToString() => Item.Label; }
+public sealed record VariantFieldSource(SceneTargetSnapshot Snapshot, ImageVariantsDefinition? Definition, string? Dimension);
 
 /// <summary>Editor adapter: stable locator choices resolve to opaque runtime handles only at commit.</summary>
 public sealed class SceneTargetCatalog(ProjectSceneTargets query, IEditorDocumentService documents, IAssetManager assets, IEditorLocalizationService localization)
 {
     private readonly Dictionary<string, string> _paths = new(StringComparer.Ordinal);
     public IEditorLocalizationService Text => localization;
+    public event Action? Changed { add => query.Changed += value; remove => query.Changed -= value; }
+    internal (object? Author, long Resources) PreparationStamp => query.PreparationStamp;
+    internal bool IsSamePreparation((object? Author, long Resources) stamp)
+    { var current = query.PreparationStamp; return query.IsAvailable && ReferenceEquals(current.Author, stamp.Author) && current.Resources == stamp.Resources; }
+    public VariantFieldSource? VariantsSource(IEntryFieldOrigin? origin)
+    {
+        if (origin?.GroupId is not { } groupId || !documents.Groups.TryGetValue(groupId, out var group)
+            || group.Entries.FirstOrDefault(entry => entry.StableId == origin.EntryId) is not { } entry) return null;
+        var snapshot = Query(groupId, entry.StableId);
+        string Read(string key) => entry.Parameters.TryGetValue(key, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() ?? "" : "";
+        var id = entry.Type == BuiltinEntryIds.ShowVariants ? Read("assetId") : snapshot.Choices.FirstOrDefault(choice => choice.Target.Handle == Read("handleId"))?.Target.Variants is { Definite: true, AssetIds.Count: 1 } binding ? binding.AssetIds[0] : "";
+        return new(snapshot, id.Length == 0 ? null : query.VariantDefinition(id), Read("dimension"));
+    }
     public SceneTargetSnapshot Query(string groupId, string entryId, Func<SceneTarget, bool>? filter = null, SceneTimelinePosition? position = null, bool playback = false)
     {
         var result = position is null ? query.Before(groupId, entryId) : query.AtTimeline(groupId, entryId, position);

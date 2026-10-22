@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text;
+using GalNet.Core.Assets;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Editor.Abstraction.Documents;
@@ -10,7 +11,7 @@ using GalNet.Editor.Shared.Services;
 namespace GalNet.Editor.Services;
 
 /// <summary>Project-owned buffers outlive their Dock views; bytes, paths and saving belong to the content session.</summary>
-public sealed class ProjectTextFiles(IProjectService projects, IProjectContentSession content, EditorHistories histories, IEditorLocalizationService localization) : IDisposable
+public sealed class ProjectTextFiles(IProjectService projects, IProjectContentSession content, EditorHistories histories, IEditorLocalizationService localization, IResourceTypeCatalog? resourceTypes = null) : IDisposable
 {
     private readonly Dictionary<string, ProjectTextBuffer> _buffers = [];
     public ProjectTextBuffer Get(string id) => _buffers[id];
@@ -36,9 +37,19 @@ public sealed class ProjectTextFiles(IProjectService projects, IProjectContentSe
         }
         if (encoding is null) editable = false;
         document ??= content.TrackFile(path, bytes);
-        buffer = new(document, content, histories, localization, encoding, text, root, editable);
+        buffer = new(document, content, histories, localization, encoding, text, root, editable, ValidateVariants);
         _buffers.Add(document.Id, buffer);
         return buffer;
+    }
+    private void ValidateVariants(string path, string text)
+    {
+        if (resourceTypes is null || !path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase)) return;
+        var isVariants = resourceTypes.TryGetByExtension(Path.GetExtension(path), out var type) && type.TypeId == "image-variants";
+        var sidecar = new ProjectRawReader(projects.Current!.RootPath).Resolve(path + ".meta");
+        if (!isVariants && File.Exists(sidecar)) isVariants = new AssetMetaCodec(resourceTypes).Deserialize(File.ReadAllText(sidecar), path[7..]).TypeId == "image-variants";
+        if (!isVariants) return;
+        var build = ImageVariantsAuthoring.Scan(projects.Current!.RootPath, path, text, resourceTypes).Build;
+        if (build.Definition is null) throw new InvalidDataException(string.Join("\n", build.Diagnostics.Select(item => $"{item.Path} [{item.Code}]: {item.Message}")));
     }
     internal static bool TryDecode(byte[] bytes, out Encoding? encoding, out string text)
     {
@@ -71,13 +82,15 @@ public sealed partial class ProjectTextBuffer : ObservableObject, IDisposable
     private readonly string _root;
     private readonly bool _canEdit;
     private readonly IDisposable _draft;
+    private readonly Action<string, string>? _validate;
     private byte[] _observed;
     private Exception? _failure;
     private bool _externalChange;
+    private bool _disposed;
     public string Id => _document.Id;
     public string Path => _document.Path;
     public string Title => System.IO.Path.GetFileName(Path) + (IsDirty ? " *" : "");
-    public bool IsReadOnly => !_canEdit || !_document.ManagedContent || !_document.Exists || _content.RepairRequired;
+    public bool IsReadOnly => _disposed || !_canEdit || !_document.ManagedContent || !_document.Exists || _content.RepairRequired;
     public bool IsDirty => _document.Exists && _document.ManagedContent && (HasDraft || !_content.CaptureSaved().Files.TryGetValue(Id, out var saved) || !saved.Data.AsSpan().SequenceEqual(_document.Data));
     private bool HasDraft => !IsReadOnly && Text != Decode(_observed);
     public string Information => !_document.Exists ? _localization["Files.Missing"] : IsReadOnly ? _localization["Files.ReadOnly"] : _encoding!.WebName;
@@ -85,8 +98,9 @@ public sealed partial class ProjectTextBuffer : ObservableObject, IDisposable
     public bool CanOpenExternal => _document.Exists;
     [ObservableProperty] private string _text;
     [ObservableProperty] private string _error = "";
-    public ProjectTextBuffer(EditorFileDocument document, IProjectContentSession content, EditorHistories histories, IEditorLocalizationService localization, Encoding? encoding, string text, string root, bool canEdit = true)
+    public ProjectTextBuffer(EditorFileDocument document, IProjectContentSession content, EditorHistories histories, IEditorLocalizationService localization, Encoding? encoding, string text, string root, bool canEdit = true, Action<string, string>? validate = null)
     {
+        _validate = validate;
         _document = document; _content = content; _histories = histories; _localization = localization; _encoding = encoding; _root = root;
         _canEdit = canEdit;
         _text = document.ManagedContent && encoding is not null ? Decode(document.Data) : text; _observed = document.Data.ToArray();
@@ -94,7 +108,7 @@ public sealed partial class ProjectTextBuffer : ObservableObject, IDisposable
         content.Changed += OnChanged; localization.PropertyChanged += OnLocale;
     }
     private string Decode(byte[] bytes) => _encoding!.GetString(bytes, _encoding.GetPreamble().Length, bytes.Length - _encoding.GetPreamble().Length);
-    partial void OnTextChanged(string value) { _content.Refresh(); OnPropertyChanged(nameof(Title)); }
+    partial void OnTextChanged(string value) { if (!_disposed) _content.Refresh(); OnPropertyChanged(nameof(Title)); }
     private void OnLocale(object? sender, PropertyChangedEventArgs args)
     {
         if (_failure is not null) Error = EditorText.Error(_failure).Render(_localization);
@@ -119,6 +133,7 @@ public sealed partial class ProjectTextBuffer : ObservableObject, IDisposable
         if (!HasDraft) return;
         try
         {
+            _validate?.Invoke(Path, Text);
             if (!_document.Data.AsSpan().SequenceEqual(_observed)) throw ProjectFilePaths.Error("changed", Path);
             var next = _encoding!.GetPreamble().Concat(_encoding.GetBytes(Text)).ToArray();
             await _histories.Content.ExecuteAsync(new TextEdit(_document, _observed.ToArray(), next));
@@ -130,6 +145,7 @@ public sealed partial class ProjectTextBuffer : ObservableObject, IDisposable
     [RelayCommand] private async Task SaveAsync() { try { await _content.SaveAsync(); _failure = null; Error = ""; } catch (Exception error) { _failure = error; Error = EditorText.Error(error).Render(_localization); } }
     private void ValidateStructuredDraft()
     {
+        _validate?.Invoke(Path, Text);
         if (Path.StartsWith("I18n/", StringComparison.Ordinal) || Path == LocalizationJson.MetadataPath)
             LocalizationJson.Validate(Path, _encoding!.GetPreamble().Concat(_encoding.GetBytes(Text)).ToArray());
         if (!_document.Data.AsSpan().SequenceEqual(_observed)) throw ProjectFilePaths.Error("changed", Path);
@@ -167,5 +183,5 @@ public sealed partial class ProjectTextBuffer : ObservableObject, IDisposable
         public void Redo() => Apply(Before, After);
         public void Undo() => Apply(After, Before);
     }
-    public void Dispose() { _content.Changed -= OnChanged; _localization.PropertyChanged -= OnLocale; _draft.Dispose(); }
+    public void Dispose() { if (_disposed) return; _disposed = true; _content.Changed -= OnChanged; _localization.PropertyChanged -= OnLocale; _draft.Dispose(); OnPropertyChanged(nameof(IsReadOnly)); }
 }

@@ -20,6 +20,10 @@ public sealed class ProjectSceneTargets : IDisposable
     private readonly IAssetManager? _assets;
     private readonly IEffectCatalog? _effects;
     private readonly IAssetCatalogService? _resources;
+    private readonly IProjectContentSession? _content;
+    private readonly IProjectService? _projects;
+    private readonly IResourceTypeCatalog? _types;
+    private string _workingFingerprint = "";
     private readonly object _gate = new();
     private CancellationTokenSource _resourceLifetime = new();
     private bool _disposed;
@@ -33,12 +37,27 @@ public sealed class ProjectSceneTargets : IDisposable
     public event Action? Changed;
     public long Revision { get; private set; }
     public bool IsAvailable { get { lock (_gate) return !_disposed && _documents.IsLoaded; } }
+    internal (object? Author, long Resources) PreparationStamp { get { lock (_gate) return (Capture() ? _frozen : null, _resourceEpoch); } }
 
     public ProjectSceneTargets(IEditorDocumentService documents, IAssetManager? assets = null,
-        IEffectCatalog? effects = null, IAssetCatalogService? resources = null)
+        IEffectCatalog? effects = null, IAssetCatalogService? resources = null, IProjectContentSession? content = null,
+        IProjectService? projects = null, IResourceTypeCatalog? types = null)
     {
         _documents = documents; _assets = assets; _effects = effects; _resources = resources;
+        _content = content; _projects = projects; _types = types;
+        if (_content is not null) _content.Changed += OnContentChanged;
         if (_resources is not null) _resources.Changed += OnResourcesChanged;
+    }
+    public ImageVariantsDefinition? VariantDefinition(string id)
+    {
+        lock (_gate) { if (!Capture()) return null; QueuePreparation(); return _variants.GetValueOrDefault(id.Trim()); }
+    }
+    private void OnContentChanged()
+    {
+        var fingerprint = string.Join("\n", _content!.FileDocuments.Values.Where(file => file.Exists && file.ManagedContent && file.Path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(file => file.Id, StringComparer.Ordinal).Select(file => file.Id + ":" + file.Path + ":" + Convert.ToBase64String(file.Data)));
+        if (fingerprint == _workingFingerprint) return;
+        _workingFingerprint = fingerprint; InvalidateResources();
     }
 
     public SceneTargetResult Before(string groupId, string? entryId) => Query(groupId, entryId, null);
@@ -96,10 +115,13 @@ public sealed class ProjectSceneTargets : IDisposable
         if (ids.Length == 0 && variants.Length == 0) return null;
         var epoch = _resourceEpoch;
         var token = _resourceLifetime.Token;
-        return _loading = Task.Run(() => LoadAsync(ids, variants, epoch, token));
+        var working = _content?.FileDocuments.Values.Where(file => file.Exists && file.ManagedContent && file.Path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(file => file.Path, file => file.Data.ToArray(), StringComparer.OrdinalIgnoreCase) ?? [];
+        var root = _projects?.Current?.RootPath;
+        return _loading = Task.Run(() => LoadAsync(ids, variants, epoch, token, working, root));
     }
 
-    private async Task LoadAsync(string[] ids, string[] variants, long epoch, CancellationToken token)
+    private async Task LoadAsync(string[] ids, string[] variants, long epoch, CancellationToken token, Dictionary<string, byte[]> working, string? root)
     {
         var loaded = new Dictionary<string, ShaderEffectDescriptor?>(StringComparer.Ordinal);
         var loadedVariants = new Dictionary<string, ImageVariantsDefinition?>(StringComparer.OrdinalIgnoreCase);
@@ -131,6 +153,12 @@ public sealed class ProjectSceneTargets : IDisposable
                 {
                     var file = await _assets!.GetFileAsync(id, token);
                     if (file is null || file.TypeId != ImageVariantsCodec.ResourceType || file.Length > 1024 * 1024) continue;
+                    if (root is not null && _types is not null && working.TryGetValue("Assets/" + file.Path, out var author))
+                    {
+                        if (author.Length <= 1024 * 1024 && ProjectTextFiles.TryDecode(author, out _, out var text))
+                            loadedVariants[id] = ImageVariantsAuthoring.Scan(root, "Assets/" + file.Path, text, _types).Build.Definition;
+                        continue;
+                    }
                     var bytes = await file.ReadAllBytesAsync(token);
                     if (bytes.Length <= 1024 * 1024) loadedVariants[id] = ImageVariantsCodec.Decode(bytes);
                 }
@@ -201,6 +229,7 @@ public sealed class ProjectSceneTargets : IDisposable
             if (_disposed) return;
             _disposed = true; _resourceEpoch++; _resourceLifetime.Cancel(); _resourceLifetime.Dispose();
             if (_resources is not null) _resources.Changed -= OnResourcesChanged;
+            if (_content is not null) _content.Changed -= OnContentChanged;
             _snapshot = null; _frozen = null; _analysis = null; _programs = new Dictionary<string, ShaderEffectDescriptor?>(); Revision++; Changed = null;
             _variants = new Dictionary<string, ImageVariantsDefinition?>();
         }

@@ -8,6 +8,8 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GalNet.Core.Assets;
+using GalNet.Editor.Services;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Extensibility;
 using GalNet.Editor.Abstraction.Services;
@@ -36,6 +38,9 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
     private string? _inspectedId;
     private string? _inspectedPath;
     private readonly string? _projectRoot;
+    private readonly ProjectTextFiles? _texts;
+    private readonly IResourceTypeCatalog? _types;
+    [ObservableProperty] private ImageVariantsInspector? _variants;
 
     public EditorWorkspaceViewModel Workspace { get; }
     public bool IsAvailable => true;
@@ -58,7 +63,7 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
     [ObservableProperty] private Bitmap? _imagePreview;
     [ObservableProperty] private string _imagePreviewError = "";
 
-    public AssetInspectorControlViewModel(EditorWorkspaceViewModel workspace, IAssetCatalogService assets, IProjectFileCommandExecutor fileCommands, IProjectService projects, IEditorLocalizationService localization)
+    public AssetInspectorControlViewModel(EditorWorkspaceViewModel workspace, IAssetCatalogService assets, IProjectFileCommandExecutor fileCommands, IProjectService projects, IEditorLocalizationService localization, ProjectTextFiles? texts = null, IResourceTypeCatalog? types = null)
     {
         Workspace = workspace;
         _assets = assets;
@@ -66,6 +71,7 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
         _projects = projects;
         _localization = localization;
         _projectRoot = projects.Current?.RootPath;
+        _texts = texts; _types = types;
         SyncAsset();
         _assets.Changed += OnAssetsChanged;
         Workspace.PropertyChanged += OnWorkspacePropertyChanged;
@@ -114,6 +120,13 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
 
     private void SetAsset(AssetEntry? asset)
     {
+        var variantsPath = asset?.Type == "image-variants" ? "Assets/" + asset.RelativePath : null;
+        if (Variants?.Buffer.Path != variantsPath)
+        {
+            Variants?.Dispose(); Variants = null;
+            if (variantsPath is not null && _texts is not null && _types is not null && _projectRoot is not null)
+                Variants = new(_projectRoot, _texts.Open(variantsPath), _projects, _types, _assets, _localization);
+        }
         InspectedAsset = asset;
         Load();
         _ = LoadImagePreviewAsync();
@@ -228,6 +241,7 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
     private static string FormatTime(double milliseconds) => TimeSpan.FromMilliseconds(Math.Max(0, milliseconds)).ToString(@"m\:ss", CultureInfo.CurrentCulture);
     public void Dispose()
     {
+        Variants?.Dispose(); Variants = null;
         if (_disposed) return; _disposed = true;
         _assets.Changed -= OnAssetsChanged;
         Workspace.PropertyChanged -= OnWorkspacePropertyChanged;

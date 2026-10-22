@@ -24,6 +24,22 @@ namespace GeneralTest.Editor;
 
 public sealed partial class ProjectWorkspaceLifecycleTests
 {
+    [Test]
+    public async Task ColdAtlasSelectorCanFinishPreparationButAnAuthorEditStillInvalidatesIt()
+    {
+        using var assets = new VariantsAssets(); using var services = VariantsServices(assets); var projects = services.GetRequiredService<IProjectService>();
+        var project = await projects.CreateAsync(Path.Combine(_root, "ColdAtlas"), "Atlas", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
+        var scope = project.Services; var workspace = scope.GetRequiredService<EditorWorkspaceViewModel>(); var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
+        var show = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.ShowVariants).Single(); show.Source.Parameters["assetId"] = JsonSerializer.SerializeToElement("atlas");
+        var select = workspace.InsertEntriesInto(group, 1, 1, BuiltinEntryIds.SelectVariants).Single();
+        var gate = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously); assets.File.Gate = gate;
+        var catalog = scope.GetRequiredService<SceneTargetCatalog>(); using var selection = new SceneTargetSelection(catalog, catalog.Query(group.Id, select.StableId));
+        selection.Select(selection.Items.Single().Id); var preparing = selection.PrepareAsync();
+        await assets.File.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10)); gate.SetResult(AtlasBytes()); await preparing;
+        Assert.That(selection.TryResolve(out var handle), Is.True); Assert.That(handle, Is.EqualTo(show.Source.Parameters["handleId"].GetString()));
+        scope.GetRequiredService<EntryFieldAuthoringService>().SetCondition(group.Id, show.Source, "false"); Assert.That(selection.TryResolve(out _), Is.False);
+        await projects.CloseAsync();
+    }
     private static byte[] AtlasBytes(string defaultKey = "idle_coat") => ImageVariantsCodec.Encode(ImageVariantsBuilder.Build(
         new() { Folder = ".", Default = defaultKey }, new[] { "idle_coat", "smile_skirt", "weap" }.Select(key => new ImageVariantFile(key + ".png", "sprite-" + key))).Definition!);
 
