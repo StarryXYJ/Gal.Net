@@ -21,5 +21,6 @@ if ((Get-FileHash -LiteralPath (Join-Path $sampleOutput $contractName)).Hash -ne
 New-Item -ItemType Directory -Path $destination -Force | Out-Null
 Get-ChildItem -LiteralPath $contractsOutput -Filter '*.dll' -File | Copy-Item -Destination $destination -Force
 Write-Host "Contracts exported to: $destination"
+Write-Host "Contracts SHA256: $((Get-FileHash -LiteralPath (Join-Path $destination $contractName) -Algorithm SHA256).Hash)"
 Write-Host 'Close the Editor project, copy these DLLs to its Contracts directory, then reopen it.'
 Write-Host "Matching App: $(Join-Path $sampleOutput 'GalNet.Sample.Avalonia.exe')"

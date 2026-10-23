@@ -51,7 +51,8 @@ public sealed class ExternalSampleDebugTests
         {
             var actual = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(typeof(GalNet.Project.Contracts.ProjectSchemas).Assembly.Location)));
             string[] Args(string fingerprint) => [root, "--debug-port", "10000", "--debug-token", "token", "--debug-session", "session", "--debug-project", "project", "--debug-contract", fingerprint];
-            Assert.Throws<InvalidDataException>(() => GalNet.Sample.Avalonia.GameLaunchOptions.Parse(Args("different")));
+            var error = Assert.Throws<InvalidDataException>(() => GalNet.Sample.Avalonia.GameLaunchOptions.Parse(Args("different")));
+            Assert.That(error!.Message, Does.Contain("Expected SHA256: different").And.Contain($"actual SHA256: {actual}"));
             Assert.That(GalNet.Sample.Avalonia.GameLaunchOptions.Parse(Args(actual)).DebugInvitation!.Identity.ContractFingerprint, Is.EqualTo(actual));
         }
         finally { Directory.Delete(root, true); }

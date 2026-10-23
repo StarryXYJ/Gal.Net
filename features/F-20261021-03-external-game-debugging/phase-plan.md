@@ -1,5 +1,7 @@
 # 外部游戏调试阶段计划草案
 
+2026-10-23 契约 Git 构建元数据导致重复不匹配的修正见 [phase-contract-identity.md](phase-contract-identity.md)。
+
 2026-10-23 调试面板 UI 整理见 [phase-panel-ui.md](phase-panel-ui.md)。
 
 2026-10-23 启动诊断与契约导出修正见 [phase-launch-diagnostics.md](phase-launch-diagnostics.md)。

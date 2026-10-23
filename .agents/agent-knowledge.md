@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [契约与 Git 构建元数据](lessons/L-20261023-02-contract-git-metadata.md)：SDK 的 InformationalVersion 可包含 commit；严格 DLL 哈希需要稳定非功能元数据，并用不同 SourceRevisionId 重建比较验证。
+
 - [调试 Step 与异步呈现](lessons/L-20261023-02-debug-step-async-presentation.md)：Step 响应不保证异步截图等呈现任务已完成；按具体完成信号有限等待，CatchUp 不产生截图副作用。
 
 - [启动日志前的调试失败](lessons/L-20261023-01-debug-launch-before-logging.md)：契约校验可早于日志初始化；App 顶层需 stderr/非零退出码，Editor 需监控自己启动的进程，不能只等待 TCP。

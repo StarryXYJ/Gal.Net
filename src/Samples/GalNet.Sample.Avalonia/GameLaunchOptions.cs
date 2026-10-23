@@ -49,7 +49,7 @@ internal sealed record GameLaunchOptions(string? GameDirectory, string? ProfileD
             {
                 fingerprint = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(typeof(GalNet.Project.Contracts.ProjectSchemas).Assembly.Location)));
                 if (!string.Equals(expected, fingerprint, StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidDataException("The App contract differs from the Editor project. Deploy matching Contracts before debugging.");
+                    throw new InvalidDataException($"The App contract differs from the Editor project. Expected SHA256: {expected}; actual SHA256: {fingerprint}. Deploy the App's matching Contracts and reopen the Editor project before debugging.");
             }
             invitation = new(port, token, session, new(project, DebugContentIdentity.Compute(gameDirectory), fingerprint));
         }
