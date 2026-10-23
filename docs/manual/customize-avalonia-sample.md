@@ -4,6 +4,8 @@
 
 外部 Editor 调试的启动配置、运行变量面板、路线定位和可选宿主接入见[对接外部游戏调试](external-game-debugging.md)。
 
+只需用两个字符串调用项目逻辑时，可用内置 `custom.invoke`，在运行组合中注册 action，无需为每个 action 新建项目契约；见[通用 action 注册与模式语义](custom-actions.md)。
+
 ## 推荐改造顺序
 
 1. **建立项目契约。** 复制或引用 `GalNet.Sample.Contracts`，在 `ProjectSchemas.Modules` 中列出项目允许的 `IEntryModule`。构建后用 `scripts/build-project-contracts.ps1` 部署到内容项目的 `Contracts/`。CLI/Editor 与玩家必须消费同一契约集合。

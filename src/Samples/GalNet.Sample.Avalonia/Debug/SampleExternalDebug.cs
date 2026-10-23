@@ -27,6 +27,7 @@ internal sealed class SampleExternalDebug : IAsyncDisposable
     public IDisposable Attach(GameEngine engine)
     {
         var instructions = BuiltinSchemas.CreateAllModules().SelectMany(module => module.PrimitiveEntries.Values)
+            .Where(entry => entry.Name != BuiltinEntryIds.InvokeCustom)
             .ToDictionary(entry => entry.Name, _ => DebugReplayBehavior.Scene, StringComparer.Ordinal);
         instructions[BuiltinEntryIds.SetVariable] = DebugReplayBehavior.Ignore;
         instructions[BuiltinEntryIds.UnlockGallery] = DebugReplayBehavior.Ignore;

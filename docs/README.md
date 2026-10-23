@@ -28,6 +28,7 @@
 
 - [接入新的表现层](manual/new-presentation-layer.md)：为 WPF、WinUI 或其他 UI 框架实现宿主和呈现适配的最小路径。
 - [定制 Avalonia Sample](manual/customize-avalonia-sample.md)：基于现有 Sample 落地项目配置、主题、原语和平台能力。
+- [注册通用 action](manual/custom-actions.md)：用固定双字符串原语调用项目逻辑，配置同步、异步和完整实例的运行行为。
 - [对接外部游戏调试](manual/external-game-debugging.md)：可选宿主接入、测试启动配置、实例变量、路线定位与缓存边界。
 - [编辑游戏文本与翻译](manual/game-localization.md)：开发语言创作、多语言表格、语言顺序和草稿处理。
 - [创建图片差分图集](manual/image-variants.md)：目录导入、配置与差分预览、剧情初始选择及维度切换。

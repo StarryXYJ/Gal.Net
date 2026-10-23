@@ -12,6 +12,7 @@ public static class BuiltinEntryIds
     public const string ApplyEffect = "effect.apply";
     public const string StopEffect = "effect.stop";
     public const string Wait = "flow.wait";
+    public const string InvokeCustom = "custom.invoke";
     public const string SetVariable = "variable.set";
     public const string UnlockGallery = "gallery.unlock";
     public const string ShowLayer = "layer.show";

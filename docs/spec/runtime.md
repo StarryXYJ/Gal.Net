@@ -189,6 +189,7 @@ Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`
 - `flow.wait`：blocking、skippable 的等待实例。
 - `variable.set`：求值后写入 Runtime 变量。
 - `gallery.unlock`：按稳定 item ID 解锁 Gallery，写入对应的系统 Player bool。
+- `custom.invoke`：`BuiltinCustomActionModule` 按 ordinal action ID 查注册的实例工厂，原样传入 argument。注册在 view 组合时冻结，重复/空白 ID 拒绝。`RegisterImmediate` 同步非阻塞；`RegisterAsync` 支持运行 scope/模块生命周期联合取消和可选阻塞，并通过 PrimitiveTaskScope 在异步释放时取消、排空任务和聚合错误。两种便利入口 Normal 调 execute，Quick 调 quick 或回退 execute，CatchUp 调 catchUp 或空操作；运行中模式切换不重启委托。`RegisterFactory` 返回的独立实例自行管理完整模式/跳过/完成和资源清理语义。未匹配时所有模式 warning 后同步完成，可配置严格缺失报错；处理器自身失败正常传播。模块不自动注册持久状态，也不序列化委托或资源。接入见[通用 action](../manual/custom-actions.md)。
 
 视频图层与音频的轨道播放、淡化、队列和当前轨道 SEffect 行为由内置模块实现。玩家音量/静音按 master × bus × 内容 gain × 轨道默认 gain 合成并应用到当前及后续 voice；item effect 和音频参数动画仍未实现。AudioTrackState 保存轨道当前播放项、内容 gain、暂停状态与有序队列；AudioSEffectState 单独保存轨道效果，空闲时仍保留并作用于后续 voice。所有仍存在的轨道状态按检查点恢复，包含 SFX/Vocal；活动内容从头开始，不恢复游标和淡化时钟。暂停轨道在 Resume 前不启动播放器。恢复重新读取项目轨道配置并应用当前玩家音量；正常结束先更新逻辑状态和队列，后端身份/ticket 不入存档。Gallery 的平台无关 catalog 与解锁数据层由 Core/Runtime 提供；默认 Avalonia 前端通过宿主提供的 `IGameGallerySession` 浏览 CG、视频和音频，不把页面或媒体状态写入 Runtime。
 

@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [必填字符串与 schema 默认值](lessons/L-20261024-01-required-string-defaults.md)：Required 字段有默认值仍会被 Normalize 补齐；要求显式提供且空串合法时不声明 schema 默认，并显式 AllowNull=false。DTO 构造函数赋值不导出为 schema 默认。
+
 - [契约与 Git 构建元数据](lessons/L-20261023-02-contract-git-metadata.md)：SDK 的 InformationalVersion 可包含 commit；严格 DLL 哈希需要稳定非功能元数据，并用不同 SourceRevisionId 重建比较验证。
 
 - [调试 Step 与异步呈现](lessons/L-20261023-02-debug-step-async-presentation.md)：Step 响应不保证异步截图等呈现任务已完成；按具体完成信号有限等待，CatchUp 不产生截图副作用。
@@ -41,7 +43,7 @@
 - 解决方案入口是 `GalNet.slnx`。
 - `docs/spec/` 描述已经实现的稳定事实；`docs/manual/` 描述二次开发路径；`features/` 保留实现过程和历史。
 - Runtime/Core 应保持与 Avalonia、WPF、Skia、具体文件系统和其他平台实现解耦。
-- Entry 契约与执行已分离：IEntryModule 只含 schema/composite，IPrimitiveModule 按领域共享状态并贡献完整指令 ID；GameRegistration 独立注册，AddBuiltins 为完整内置运行入口；独立 GalNet.Contracts.Builtins 只依赖 Core，CreateAllModules 返回 13 个组件模块。可选 schema、部分内置实现或全自定义；仅完整 ID 排他。同前缀和 schema 模块名可重复。音频用 AudioRuntime + IAudioPlaybackHost 组合，不强制继承。见 docs/spec/runtime.md、docs/spec/entry-types.md 和 docs/manual/。
+- Entry 契约与执行已分离：IEntryModule 只含 schema/composite，IPrimitiveModule 按领域共享状态并贡献完整指令 ID；GameRegistration 独立注册，AddBuiltins 为完整内置运行入口；独立 GalNet.Contracts.Builtins 只依赖 Core，CreateAllModules 返回 14 个组件模块，包含 custom.invoke 的固定双字符串 schema。可选 schema、部分内置实现或全自定义；仅完整 ID 排他。同前缀和 schema 模块名可重复。音频用 AudioRuntime + IAudioPlaybackHost 组合，不强制继承。见 docs/spec/runtime.md、docs/spec/entry-types.md 和 docs/manual/。
 - 当前 GameSnapshot 版本为 4，不兼容旧版；持久数据在注册式 GameState 表中，快照为 StateId → version/JSON payload；读档先验证，再取消旧 scope 并替换整个状态根。Engine 不拥有执行 view，宿主先释放 Engine，再异步释放 view 与后端。
 - Engine 提供终态 StopAsync 和 StateChanged，覆盖玩家推进、Choice 与阻塞实例自然完成；GameHost 仅协调应用会话，不复制 Engine 执行机制。AvaloniaGamePresenters 只组合端口，AvaloniaGamePresentation 管理平台资源。见 docs/spec/runtime.md 和 docs/spec/architecture.md。
 - Presentation.Defaults 已删除，空 NullGameView 位于展示抽象的 View 命名空间；当前程序集布局见 docs/spec/architecture.md。GameContent.Settings 包含项目设置，项目/安装加载器与两个 Sample 已接通自定义音频轨道配置。

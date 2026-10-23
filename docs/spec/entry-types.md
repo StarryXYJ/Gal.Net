@@ -30,7 +30,7 @@ DynamicParameterTable 的 ValidatePartialArguments 用于尚未补默认值的�
 
 所有 8 条内置 Composite 使用 ForDto<T> 接收输入，普通 schema 类型/选项/未知字段检查由同一 Normalize 执行；业务展开、正数/颜色/变换校验保持显式。语音子指令及计划 Primitive 外层参数通过 ValueCodec.SerializeFields 使用对应子 DTO 的字段 codec；undefined JSON 字段省略，null 默认保留，可显式选择省略 null。黑白与自定义颜色过渡共用源基类的 12 个字段；生成器合并继承字段并拒绝隐藏/重写或 Order/ID 冲突。
 
-BuiltinEntryIds 集中声明 44 个内置稳定 wire ID。内置 Primitive 的作者类壳及取 ID 的泛型工厂已移除；catalog.Create 继续返回 Core 的通用作者表示，运行时依旧使用通用 PrimitiveEntry。项目仍显式选择 13 个独立 schema modules，不通过 CLR 类扫描启用指令。
+BuiltinEntryIds 集中声明 45 个内置稳定 wire ID。内置 Primitive 的作者类壳及取 ID 的泛型工厂已移除；catalog.Create 继续返回 Core 的通用作者表示，运行时依旧使用通用 PrimitiveEntry。项目仍显式选择 14 个独立 schema modules，不通过 CLR 类扫描启用指令。
 
 Field.DefaultJson 声明经值 codec 校验的 JSON 默认，不能与属性初始化值同时声明；Choices 提供固定合法选项。StringBooleanValueConverter / StringEnumValueConverter 通过 IStringValueEncoding 保留字符串 wire 类型、选项及编辑文本，同时提供强类型成员；普通 converter 行为不改变。audio.stop 已用 AudioStopOptions，clearQueue 保持字符串 true/false 与显式 null 的旧行为。DefaultCompositeEntryBase.ForDto<T> 提供类型化编译展开，共用 ValueCodec.DeserializeFields，源 JSON 保留 null/presence，输出仍通过目标 primitive 契约规范化。
 
@@ -74,7 +74,7 @@ transition.fadeColor
 
 ## 内置 primitive ID
 
-`GalNet.Contracts.Builtins` 提供只依赖 Core 的作者契约；`GalNet.Primitives.Builtins` 提供运行时领域模块。`BuiltinSchemas.CreateAllModules()` 返回 13 个独立模块的只读列表，各组件也可通过 `Create<Domain>Module()` 单独选择；没有合成全内置大模块或内置专用 catalog 工厂。消费者使用 `new TargetProfileEntryCatalog(modules)`。
+`GalNet.Contracts.Builtins` 提供只依赖 Core 的作者契约；`GalNet.Primitives.Builtins` 提供运行时领域模块。`BuiltinSchemas.CreateAllModules()` 返回 14 个独立模块的只读列表，各组件也可通过 `Create<Domain>Module()` 单独选择；没有合成全内置大模块或内置专用 catalog 工厂。消费者使用 `new TargetProfileEntryCatalog(modules)`。
 
 完整运行入口是 `GameRegistration.AddBuiltins`；也可单独调用 `AddBuiltinSchemas` 注册模块列表，再组合部分内置或自定义执行模块。内置 entry DTO、纯参数校验和 Composite 位于 `GalNet.Contracts.Builtins`，primitive instance 和执行 module 位于 `GalNet.Primitives.Builtins`；`GalNet.Core.Entry` 只包含通用基础设施。内容格式只保存下列稳定 `TypeId`，不保存 CLR 类型名。
 
@@ -93,6 +93,7 @@ video.play, video.stop
 effect.apply, effect.stop
 particle.play, particle.stop
 flow.wait, variable.set, gallery.unlock
+custom.invoke
 ```
 
 `gallery.unlock` 的参数是正整数 `id`，其值必须是当前 `GalleryCatalog` 中存在的稳定 Gallery item ID。执行时写入 `player.gallery_<id>_unlocked = true`；Gallery item 从资源 `.meta.gallery[]` 聚合，发行运行读取其生成快照。旧的 category/sequence 参数不受支持。
@@ -115,6 +116,8 @@ select 保留同一个 Layer 对象、变换、显示模式、层级、透明度
 这些名称和参数属于可选内置契约。开发者可以只注册自定义模块，或在自己的 target profile 中定义完全不同的前缀、参数与语义；编辑器不会凭名称假定 `dialogue`、`nvl`、`layer` 或任何其他模块存在。
 
 当前已实现 Runtime 行为的内置能力见 [runtime.md](runtime.md)。
+
+`custom.invoke` 属于独立的 custom schema 模块，参数 DTO 为 `CustomInvokeOptions`：`action` 和 `argument` 均为无默认值、不可为 null 的必填 string，action 额外拒绝空白；argument 可为空。参数内容不求值、不解析也不标为本地化文本。编译期不检查 action 注册或其参数语法。执行模块与模式策略见[通用 action 手册](../manual/custom-actions.md)。
 
 ## 视频图层 entry
 

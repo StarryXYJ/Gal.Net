@@ -22,7 +22,8 @@ public static class BuiltinSchemas
         CreateVariablesModule(),
         CreateGalleryModule(),
         CreateTransitionsModule(),
-        CreateVoiceModule()
+        CreateVoiceModule(),
+        CreateCustomActionsModule()
     ]);
 
     public static IEntryModule CreateDialogueModule() => new DefaultEntryModule("dialogue",
@@ -99,6 +100,21 @@ public static class BuiltinSchemas
     [
         DefaultPrimitiveEntryBase.ForDto<VariableSetOptions>(BuiltinEntryIds.SetVariable)
     ]);
+
+    public static IEntryModule CreateCustomActionsModule() => new DefaultEntryModule("custom",
+    [
+        DefaultPrimitiveEntryBase.ForDto<CustomInvokeOptions>(BuiltinEntryIds.InvokeCustom, ValidateCustomAction,
+            validatePartialArguments: arguments =>
+            {
+                if (arguments.TryGetProperty("action", out _)) ValidateCustomAction(arguments);
+            })
+    ]);
+
+    private static void ValidateCustomAction(JsonElement arguments)
+    {
+        if (string.IsNullOrWhiteSpace(arguments.GetProperty("action").GetString()))
+            throw new InvalidDataException("custom.invoke requires a nonblank 'action'.");
+    }
 
     public static IEntryModule CreateGalleryModule() => new DefaultEntryModule("gallery",
     [

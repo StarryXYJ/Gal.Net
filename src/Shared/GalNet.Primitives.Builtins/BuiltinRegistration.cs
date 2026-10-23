@@ -32,12 +32,13 @@ public static class BuiltinRegistration
         IVideoPresenter? videoPresenter = null,
         CharacterCatalog? characters = null,
         BuiltinAudioModule? audioModule = null,
-        ImageVariantsCatalog? imageVariants = null)
+        ImageVariantsCatalog? imageVariants = null,
+        BuiltinCustomActionModule? customActions = null)
     {
         registration.AddBuiltinSchemas();
         return registration.AddBuiltinImplementations(registration.BuildCatalog(),
             dialoguePresenter, layerPresenter, animationPresenter, effectPresenter, gallery,
-            particlePresenter, nvlPresenter, audioHost, videoPresenter, characters, audioModule, imageVariants);
+            particlePresenter, nvlPresenter, audioHost, videoPresenter, characters, audioModule, imageVariants, customActions);
     }
 
     /// <summary>Registers logical implementations. Optional presenters select state-only/headless operation.</summary>
@@ -55,7 +56,8 @@ public static class BuiltinRegistration
         IVideoPresenter? videoPresenter = null,
         CharacterCatalog? characters = null,
         BuiltinAudioModule? audioModule = null,
-        ImageVariantsCatalog? imageVariants = null)
+        ImageVariantsCatalog? imageVariants = null,
+        BuiltinCustomActionModule? customActions = null)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         IPrimitiveModule[] modules =
@@ -64,7 +66,8 @@ public static class BuiltinRegistration
             new BuiltinLayerModule(layerPresenter, imageVariants), new BuiltinAnimationModule(animationPresenter, layerPresenter, effectPresenter, particlePresenter),
             audioModule ?? new BuiltinAudioModule(audioHost), new BuiltinVideoModule(videoPresenter),
             new BuiltinEffectModule(effectPresenter), new BuiltinParticleModule(particlePresenter),
-            new BuiltinFlowModule(), new BuiltinVariableModule(), new BuiltinGalleryModule(gallery)
+            new BuiltinFlowModule(), new BuiltinVariableModule(), new BuiltinGalleryModule(gallery),
+            customActions ?? new BuiltinCustomActionModule()
         ];
         foreach (var module in modules) registration.RegisterImplementation(new SelectedBuiltinModule(module, catalog));
         return registration;
@@ -81,6 +84,8 @@ public static class BuiltinRegistration
 
     public static GameRegistration AddBuiltinVariables(this GameRegistration registration) => registration.RegisterImplementation(new BuiltinVariableModule());
     public static GameRegistration AddBuiltinFlow(this GameRegistration registration) => registration.RegisterImplementation(new BuiltinFlowModule());
+    public static GameRegistration AddBuiltinCustomActions(this GameRegistration registration, BuiltinCustomActionModule? module = null) =>
+        registration.RegisterImplementation(module ?? new BuiltinCustomActionModule());
     public static GameRegistration AddBuiltinAudio(this GameRegistration registration, IAudioPlaybackHost? host = null) => registration.RegisterImplementation(new BuiltinAudioModule(host));
     public static GameRegistration AddBuiltinGallery(this GameRegistration registration, GalleryCatalog? gallery = null) => registration.RegisterImplementation(new BuiltinGalleryModule(gallery));
     public static GameRegistration AddBuiltinDialogue(this GameRegistration registration, IDialoguePresenter? presenter = null, CharacterCatalog? characters = null) => registration.RegisterImplementation(new BuiltinDialogueModule(presenter, characters));
