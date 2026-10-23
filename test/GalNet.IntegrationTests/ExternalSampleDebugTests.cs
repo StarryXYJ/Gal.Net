@@ -56,8 +56,8 @@ public sealed class ExternalSampleDebugTests
         }
         finally { Directory.Delete(root, true); }
     }
-    [Test, Explicit("Launches the native Avalonia Sample in a separate process; requires a desktop and native media dependencies.")]
-    public async Task ExternalSampleConnectsAtTitleStartsEditsSeeksStopsAndRejectsOldRuns()
+    [TestCase(true, false), TestCase(false, false), TestCase(false, true), Explicit("Launches the native Avalonia Sample in a separate process; requires a desktop and native media dependencies.")]
+    public async Task ExternalSampleConnectsAtTitleStartsEditsSeeksStopsAndRejectsOldRuns(bool stopBeforeClose, bool withTimeline)
     {
         var root = Path.Combine(Path.GetTempPath(), "galnet-external-debug-" + Guid.NewGuid().ToString("N"));
         var content = Path.Combine(root, "Output", "Debug");
@@ -74,6 +74,15 @@ public sealed class ExternalSampleDebugTests
                 {"version":2,"kind":"Raw","entries":[{"id":"line","type":"dialogue.text","parameters":{"content":"line"}},{"id":"second","type":"dialogue.text","condition":"false","parameters":{"content":"second"}}]}
                 """);
             await File.WriteAllTextAsync(Path.Combine(root, "I18n", "zh-CN", "main.json"), """{"line":"Cross process test","second":"Conditional target"}""");
+            if (withTimeline)
+            {
+                var groupPath = Path.Combine(root, "Graph", "groups", "main.rawgalgroup");
+                var group = System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(groupPath))!;
+                var entries = group["entries"]!.AsArray();
+                entries.Insert(0, System.Text.Json.Nodes.JsonNode.Parse("""{"id":"layer","type":"layer.showColor","parameters":{"handleId":"background","opacity":1,"transform":{},"z":0}}"""));
+                entries.Insert(1, System.Text.Json.Nodes.JsonNode.Parse("""{"id":"timeline","type":"timeline.play","parameters":{"timeline":{"playbackHandleId":"motion","frameRate":60,"durationFrames":600,"tracks":[{"handleId":"background","property":"transform.x","blendMode":"Replace","keys":[{"frame":0,"value":0,"interpolationToNext":"Linear"},{"frame":600,"value":100}]}],"events":[]}}}"""));
+                await File.WriteAllTextAsync(groupPath, group.ToJsonString());
+            }
             await new ProjectContentBuilder(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).BuildAsync(root, content);
             using (var store = new FilePlayerVariableStore(profile))
             {
@@ -107,23 +116,49 @@ public sealed class ExternalSampleDebugTests
             var state = (await Command(first, "inspect")).Deserialize<GameDebugState>(json)!;
             var countValue = state.Variables.Single(variable => variable.Scope == VariableScope.Player && variable.Name.EndsWith("galnet.startup.launchCount", StringComparison.Ordinal));
             await Command(first, "setVariable", new DebugVariableEdit(countValue, "9"));
-            await Command(first, "seek", new GameDebugSeek("main", 1, [], TargetEnd: 2));
+            var targetIndex = withTimeline ? 3 : 1;
+            await Command(first, "seek", new GameDebugSeek("main", targetIndex, [], TargetEnd: targetIndex + 1));
             var current = (await Status()).Run!;
             var target = (await Command(current, "inspect")).Deserialize<GameDebugState>(json)!;
             Assert.That(target.Paused, Is.True);
-            Assert.That(target.EntryIndex, Is.EqualTo(1));
+            Assert.That(target.EntryIndex, Is.EqualTo(targetIndex));
             Assert.That(target.Variables.Single(variable => variable.Uid == countValue.Uid).Value, Is.EqualTo("9"));
-            await Command(current, "step", new GameDebugSpan("main", 1, 2));
-            Assert.That((await Command(current, "inspect")).Deserialize<GameDebugState>(json)!.EntryIndex, Is.EqualTo(2));
+            await Command(current, "step", new GameDebugSpan("main", targetIndex, targetIndex + 1));
+            Assert.That((await Command(current, "inspect")).Deserialize<GameDebugState>(json)!.EntryIndex, Is.EqualTo(targetIndex + 1));
             await Command(current, "stop");
             Assert.That((await Status()).Run, Is.Null);
             await peer.RequestAsync("start", cancellationToken: timeout.Token);
             Assert.That((await Status()).Run!.RunId, Is.Not.EqualTo(first.RunId));
             Assert.ThrowsAsync<InvalidOperationException>(async () => await Command(first, "resume"));
-            await Command((await Status()).Run!, "stop");
+            if (stopBeforeClose) await Command((await Status()).Run!, "stop");
             Assert.That(app.HasExited, Is.False);
+            using var pollingCancellation = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
+            var polling = Task.Run(async () =>
+            {
+                try
+                {
+                    while (!pollingCancellation.IsCancellationRequested)
+                    {
+                        var host = (await peer.RequestAsync("status", cancellationToken: pollingCancellation.Token)).Deserialize<DebugHostStatus>(json)!;
+                        if (host.Run is { } run)
+                        {
+                            try { await peer.RequestAsync("inspect", new DebugCommand("inspect", run.RunId, run.Generation, JsonSerializer.SerializeToElement(new { }, json)), pollingCancellation.Token); }
+                            catch (InvalidOperationException) { }
+                        }
+                        await Task.Delay(150, pollingCancellation.Token);
+                    }
+                }
+                catch (Exception error) when (error is OperationCanceledException or IOException) { }
+            });
+            await Task.Delay(300, timeout.Token);
             app.CloseMainWindow();
-            await app.WaitForExitAsync(timeout.Token);
+            try { await app.WaitForExitAsync(timeout.Token).WaitAsync(TimeSpan.FromSeconds(5)); }
+            catch (TimeoutException)
+            {
+                TestContext.Out.WriteLine(await File.ReadAllTextAsync(Directory.GetFiles(Path.Combine(profile, "logs"), "game-*.log").Single()));
+                throw;
+            }
+            finally { await pollingCancellation.CancelAsync(); await polling; }
             TestContext.Out.WriteLine(await stdout);
             var errors = await stderr;
             Assert.That(app.ExitCode, Is.Zero, errors);

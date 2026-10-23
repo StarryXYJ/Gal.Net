@@ -2,6 +2,8 @@
 
 2026-10-23 启动诊断与契约导出修正见 [phase-launch-diagnostics.md](phase-launch-diagnostics.md)。
 
+2026-10-23 游戏窗口关闭停顿调查见 [phase-shutdown-investigation.md](phase-shutdown-investigation.md)；补充耗时日志和真实关闭回归，尚未复现用户停顿，不宣称已修复。
+
 状态：verified-with-follow-up；核心范围完成，固定入口/热点前缀优化延期，既有回归失败和人工媒体检查明确保留。最终证据见 [phase-6.md](phase-6.md)，使用方式以正式手册为准。
 
 修订：用户明确跳转为“选定路线、忽略条件追帧”；原 P4 历史回溯/P5 历史分叉方案被本版替代。P4 先保证无缓存正确性，P5 再优化，避免将优化当成定位的必要前提。
