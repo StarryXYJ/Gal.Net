@@ -23,6 +23,7 @@ and increment the count. Debug **Clear game data** resets player variables and r
 so the picker reappears. Use `--profile <directory>` for an isolated test profile.
 
 - `layer.show`, `layer.replace`, `layer.move`, and `layer.hide` through `ILayerPresenter`;
+- `variants.show` / `variants.select` for the XY portrait and three-dimensional classroom backgrounds (see the walkthrough below);
 - `niko.mp4` as a real scene layer: blocking `video.play` with `[3, 6, 9, 999999]` second skip points, then transformed non-blocking playback and explicit `video.stop`; the portrait stays above it by z order;
 - blocking `dialogue.text` with typewriter directives and `\skip` boundaries;
 - explicit `nvl.show`, `nvl.append`, `nvl.clear`, and `nvl.hide`, including rich-text and typewriter NVL history;
@@ -35,6 +36,50 @@ so the picker reappears. Use `--profile <directory>` for an isolated test profil
 The `.rawgalgroup` files are the sole authoring source. Build them with `GalNet.Editor.Headless`;
 the generated `.galgroup` files use the version 3 compiled format (`typeId`, `arguments`, and reading metadata). The raw authoring format remains version 2. Every
 resource reference is its stable GUID; human-readable paths occur only in adjacent `.meta` files.
+
+## Image variants walkthrough
+
+Rebuild the project after pulling these changes; an existing `Output/` still contains the old compiled intro.
+The default intro now pauses at these checkpoints, in both English and Chinese:
+
+| Checkpoint entry | Request / action | Visible result |
+| --- | --- | --- |
+| `portrait` | `pose=xy`, `expression=shock` | `xy_shock` |
+| `variants-exact` | select `expression=shy` | `xy_shy` (Exact) |
+| `variants-reduced` | select `pose=solo`, retain `shy` | `solo` (Reduced); save/load here |
+| `variants-remembered` | select `pose=xy` | `xy_shy` restored |
+| `variants-default` | background `scene=classroom`, `mode=speech`, `focus=empty` | `classroom_idle_empty` (Default); save/load here |
+| `variants-scene` | select `focus=teacher`, retain `speech` | `classroom_speech_teacher` (Exact) |
+| `variants-reset` | hide and show the portrait again | `xy_idle` (default selection) |
+| `intro-line-2` | select `expression=wink` during the existing jitter loop | `xy_wink`, same moving layer |
+
+`Assets/Variants/xy.variants` points to `xy/`: the first filename segment is `pose`,
+the second is `expression`. The five renamed `xy_*.png` files retain their pixels;
+`solo.png` is a copy of `xy_wink.png` used to demonstrate a shorter filename and retained selection.
+This is a matching fixture, not an additional illustration.
+
+`Assets/Variants/classroom.variants` points to `classroom/`, with `scene`, `mode`, and
+`focus` dimensions. The two original classroom JPEGs are now named
+`classroom_idle_empty.jpeg` and `classroom_speech_teacher.jpeg`. Their resource IDs
+and the classroom Gallery item remain unchanged, so existing route references work.
+Each atlas directory contains only its own images; unrelated assets are not scanned.
+
+The descriptor IDs are `a1000000000000000000000000000020` (portrait) and
+`a1000000000000000000000000000021` (classroom). Use these image-variants resources
+in `variants.show`; each image still has its own sprite ID. See
+[the authoring guide](../docs/manual/image-variants.md) for creation and editing.
+
+From the repository root, validate and rebuild with the current project contracts:
+
+```powershell
+./scripts/build-project-contracts.ps1 -ContractsProject ./src/Samples/GalNet.Sample.Contracts/GalNet.Sample.Contracts.csproj -ProjectDirectory ./GameTestCase
+dotnet run --project ./src/Editor/GalNet.Editor.Headless -- validate ./GameTestCase
+dotnet run --project ./src/Editor/GalNet.Editor.Headless -- build ./GameTestCase
+```
+
+When supplying a custom host, register the image-variants decoder and prepare its catalog
+before constructing execution modules; pass that catalog to `AddBuiltins(imageVariants: ...)`.
+The default Avalonia and Headless Samples already prepare it.
 
 Choosing the second route option demonstrates five scene-post effect programs in sequence: bloom,
 blur, and three adapted Shadertoy samples. Bloom is shown first, before blur; it uses a high-threshold

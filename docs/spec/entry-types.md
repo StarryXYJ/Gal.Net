@@ -108,7 +108,7 @@ flow.wait, variable.set, gallery.unlock
 
 两条指令在 Dispatch 返回前完成逻辑状态提交，无指令内异步 I/O，保持非阻塞、不可跳过及 batchId。Normal/Quick 更新状态后通知普通 Layer presenter，CatchUp 仅更新同样的状态，由 StateRestoreSession 重建显示。宿主先异步准备 `ImageVariantsCatalog`，再通过 AddBuiltins/AddBuiltinImplementations/AddBuiltinLayers 的 imageVariants 参数注入；未注入时旧的普通图层仍可运行，但图集资源查询会失败。
 
-select 保留同一个 Layer 对象、变换、显示模式、层级、透明度及活动连续属性动画。hide 删除完整实例；普通 layer.replace/show/showColor 或视频来源替换退出图集模式，再执行 select 会报错；重新 variants.show 按默认/初始选择重建实例。图集与 Color/IsVideo/Flipbook 互斥，没有增加连续差分动画轨道或专属切图淡化。专属编辑表单和场景静态分析适配仍为后续阶段。
+select 保留同一个 Layer 对象、变换、显示模式、层级、透明度及活动连续属性动画。hide 删除完整实例；普通 layer.replace/show/showColor 或视频来源替换退出图集模式，再执行 select 会报错；重新 variants.show 按默认/初始选择重建实例。图集与 Color/IsVideo/Flipbook 互斥，没有增加连续差分动画轨道或专属切图淡化。编辑器提供 show 的资源/初始选择、select 的对象/维度/值联动表单，场景静态分析保留图集来源、请求和实际图片事实；来源不唯一时提供保守候选，见[图集手册](../manual/image-variants.md)。
 
 `nvl.show` 和 `nvl.hide` 只改变 NVL 覆盖层的可见性；`nvl.clear` 移除已累积的历史行；`nvl.append` 只接收长文本 `content`，以与 `dialogue.text` 相同的富文本和打字机语义追加一段，并在文字完成后等待一次玩家推进。它不会自动显示 NVL，剧情应显式调用 `nvl.show`。
 

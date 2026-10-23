@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "folder": "classroom",
+  "default": "classroom_idle_empty",
+  "dimensions": [
+    {
+      "key": "scene",
+      "label": "场景"
+    },
+    {
+      "key": "mode",
+      "label": "状态"
+    },
+    {
+      "key": "focus",
+      "label": "人物"
+    }
+  ]
+}

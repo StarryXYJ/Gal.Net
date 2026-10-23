@@ -1,0 +1,14 @@
+{
+  "id": "a1000000000000000000000000000001",
+  "type": "sprite",
+  "path": "Variants/classroom/classroom_idle_empty.jpeg",
+  "filter": "bilinear",
+  "compress": "none",
+  "gallery": [
+    {
+      "id": 100,
+      "typeId": "cg",
+      "title": "Classroom"
+    }
+  ]
+}

@@ -1,4 +1,10 @@
 {
+  "group.intro.entry.variants-exact.content": "Exact match: xy_shy. Next, switch the first dimension to exercise a missing combination.",
+  "group.intro.entry.variants-reduced.content": "Requested solo_shy; removing the second dimension shows solo (a copy of wink). Save and load here: the shy selection is retained.",
+  "group.intro.entry.variants-remembered.content": "Switching the first dimension back to xy restores the remembered xy_shy.",
+  "group.intro.entry.variants-default.content": "The background request classroom_speech_empty has no match, so the explicit default classroom_idle_empty is shown. Save and load here too.",
+  "group.intro.entry.variants-scene.content": "Selecting teacher in the third dimension matches classroom_speech_teacher, retaining the earlier speech request.",
+  "group.intro.entry.variants-reset.content": "Hide and re-show resets the portrait to xy_idle. A later selection switches to wink during the loop animation.",
   "group.intro.entry.intro-line-1.content": "The Runtime sample now builds from Raw authoring content. The test BGM is fading in on the bgm track.",
   "group.intro.entry.intro-video-background.content": "niko.mp4 is a scene layer below the portrait, with rotation, scale and opacity. This non-blocking video lets dialogue advance. Advance to stop it.",
   "group.intro.entry.intro-line-effect-on.content": "A seffect.gain effect is now active, ducking this BGM track while the scene continues.",

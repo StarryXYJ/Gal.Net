@@ -231,3 +231,7 @@ Layer.Variants 保存图集 ID、完整请求、保护集合、实际变体键�
 builtin.layers 节升至 v2，旧 v1 明确拒绝；GameSnapshot 外层仍为 v4。State 合约校验来源互斥和子状态结构；view.ValidateState 在 Engine 替换根之前，用已预载目录重算并核对实际结果。StateRestoreSession 在展示前再次验证，普通 Layer presenter 只接收实际 sprite ID。CatchUp 使用同一同步修改逻辑但不通知 presenter。
 
 与初始设计的差异仅为异步工作的放置位置：没有指令内加载/队列，也不修改同步的 Engine 恢复预检 API。所有定义异步工作先于执行模块创建，取消/加载失败不产生场景实例；作用域间定义隔离。见 [P3 验证记录](phase-3.md)。
+
+## 15. P5 示例素材适配
+
+用户将真实立绘更名为 `xy_表情.png`；Sample 使用 pose / expression 两个维度，并复制 wink 为较短名称 `solo.png`，演示削减后保留表情。两张原有 classroom JPEG 使用 scene / mode / focus 三维命名，演示合法值缺组合时显式 Default 及后续精确命中。保留既有资源 ID、图片字节与 Gallery 引用；没有改写算法或引入别名机制。原始 smile/coat/weap 名称矩阵仍由纯解析和运行时测试覆盖。实际示例、验证范围和限制见 [P5](phase-5.md)。

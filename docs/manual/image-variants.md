@@ -44,4 +44,13 @@
 
 配置应用后，即使尚未保存到磁盘，剧情字段会使用已提交的项目工作版本。仅在属性面板输入、尚未应用的配置草稿只用于本面板预览；应用或保存全部后再影响剧情查询。刷新、换条目或关闭项目后，旧选项不能继续提交。
 
-本页覆盖编辑器作者流程。发行包运行、原生渲染人工验收及完整示例的最终集成验收见 feature 的 P5 阶段记录。
+## 运行仓库示例
+
+`GameTestCase` 的默认 intro 包含两个可直接运行的图集，拉取后需重新构建项目，旧 Output 不会自动更新：
+
+- `Assets/Variants/xy.variants`：五张 `xy_表情.png` 立绘和一张复用 wink 图片的 `solo.png`。选择 shy → 第一维 solo 时削减显示 solo，再切回 xy 恢复 shy；Reduced 对话处可存读档。
+- `Assets/Variants/classroom.variants`：两张原有 classroom 背景，按 `scene_mode_focus` 命名。选择 speech 时缺少 empty 组合，显示显式默认背景；再选择 teacher 显示讲台背景。Default 对话处可存读档。
+
+隐藏再显示会恢复默认选择；后续 wink 切换发生在既有立绘循环动画期间。详细检查点、资源 ID 和构建命令见 [示例说明](../../GameTestCase/README.md#image-variants-walkthrough)。
+
+标准导出包将图集编译定义与图片一起放入 PAK，运行不需要原始图片目录或作者 `.variants` 文件。自定义宿主需在创建执行模块前注册 decoder、准备图集 catalog，并传入 `AddBuiltins(imageVariants: ...)`。

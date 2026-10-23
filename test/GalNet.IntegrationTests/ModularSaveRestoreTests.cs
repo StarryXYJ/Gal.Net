@@ -1,4 +1,9 @@
 using System.Text.Json;
+using GalNet.Assets;
+using GalNet.Assets.Provider;
+using GalNet.Assets.Variants;
+using GalNet.Contracts.Builtins;
+using GalNet.Core.Assets;
 using GalNet.Core.Audio;
 using GalNet.Core.Compilation;
 using GalNet.Core.Entry;
@@ -33,10 +38,14 @@ public class ModularSaveRestoreTests
         var commands = new GroupDocument
         {
             Entries = source.Entries.Take(checkpointIndex)
-            .Where(entry => entry.Type.StartsWith("audio.", StringComparison.Ordinal) || entry.Type.StartsWith("layer.", StringComparison.Ordinal)).ToList()
+            .Where(entry => entry.Type.StartsWith("audio.", StringComparison.Ordinal) || entry.Type.StartsWith("layer.", StringComparison.Ordinal)
+                || entry.Type.StartsWith("variants.", StringComparison.Ordinal)).ToList()
         };
         var host = new Host();
-        using var registration = new GameRegistration().AddBuiltins(audioHost: host);
+        using var assets = new AssetManager([new LocalFileProvider(Path.Combine(directory.FullName, "GameTestCase", "Assets"), BuiltinResourceTypes.CreateCatalog())]);
+        assets.RegisterImageVariantsDecoder();
+        var variants = await assets.LoadImageVariantsCatalogAsync();
+        using var registration = new GameRegistration().AddBuiltins(audioHost: host, imageVariants: variants);
         var compiled = GalgroupCompiler.Compile(commands, registration.BuildCatalog()).Document;
         var group = new Group { Id = "intro" };
         GalgroupLoader.LoadIntoGroupFromContent(group, JsonSerializer.Serialize(compiled));
@@ -60,6 +69,8 @@ public class ModularSaveRestoreTests
             await using var restoration = new StateRestoreSession(view);
             await restored.SynchronizePresentationAsync(restoration.RestoreAsync);
             Assert.That(restored.Runtime.State.Table<Layer>().Values.Select(value => value.Id), Is.EquivalentTo(new[] { "background", "teacher" }));
+            Assert.That(restored.Runtime.State.Table<Layer>().Get("teacher").Variants!.VariantKey, Is.EqualTo("xy_idle"));
+            Assert.That(restored.Runtime.State.Table<Layer>().Get("background").Variants!.VariantKey, Is.EqualTo("classroom_speech_teacher"));
             Assert.That(restored.Runtime.State.Table<AudioTrackState>().Get("bgm").Paused, Is.True);
             Assert.That(restored.Runtime.State.Table<AudioSEffectState>().Values.Single().SEffectId, Is.EqualTo("seffect.gain"));
             Assert.That(host.Requests.Count(value => value.Action == AudioBackendAction.Start), Is.EqualTo(1));

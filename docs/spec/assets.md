@@ -58,7 +58,7 @@ IAssetProvider / IArchive / IGameFile
 
 ## 图片差分资源
 
-`image-variants` 的作者扩展名为 `.variants`，metadata DTO 为 `ImageVariantsAssetMeta`。它管理一组完整 sprite 图片，不表示纹理合并、Flipbook 或 CG Gallery。游戏显示/切换使用 [variants 指令](entry-types.md#图片差分指令)，专属编辑 UI 尚未实现。
+`image-variants` 的作者扩展名为 `.variants`，metadata DTO 为 `ImageVariantsAssetMeta`。它管理一组完整 sprite 图片，不表示纹理合并、Flipbook 或 CG Gallery。游戏显示/切换使用 [variants 指令](entry-types.md#图片差分指令)；编辑器支持从目录创建、配置和差分预览，操作见[图集手册](../manual/image-variants.md)。
 
 ```json
 {

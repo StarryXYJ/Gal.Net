@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [调试 Step 与异步呈现](lessons/L-20261023-02-debug-step-async-presentation.md)：Step 响应不保证异步截图等呈现任务已完成；按具体完成信号有限等待，CatchUp 不产生截图副作用。
+
 - [启动日志前的调试失败](lessons/L-20261023-01-debug-launch-before-logging.md)：契约校验可早于日志初始化；App 顶层需 stderr/非零退出码，Editor 需监控自己启动的进程，不能只等待 TCP。
 
 - [选择器准备与作者代次](lessons/L-20261022-02-selector-preparation-generation.md)：同代后台准备可推进结果 Revision；等待完成后按不可变作者快照身份与资源代次复核，再更新选择快照。
