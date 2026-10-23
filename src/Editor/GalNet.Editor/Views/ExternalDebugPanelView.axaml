@@ -1,34 +1,128 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:loc="using:GalNet.Editor.MarkupExtensions"
-             x:Class="GalNet.Editor.Views.ExternalDebugPanelView" x:DataType="vm:ExternalDebugPanelViewModel">
-  <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" Margin="10" RowSpacing="8">
-    <Expander Header="{loc:Localize Debug.Configuration}">
-      <StackPanel Spacing="6">
-        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6"><TextBox Text="{Binding Executable}" PlaceholderText="{loc:Localize Debug.Executable}"/><Button Grid.Column="1" Content="…" Command="{Binding BrowseCommand}"/></Grid>
-        <TextBox Text="{Binding Arguments}" AcceptsReturn="True" MinHeight="50" PlaceholderText="{loc:Localize Debug.Arguments}"/>
-        <TextBox Text="{Binding WorkingDirectory}" PlaceholderText="{loc:Localize Debug.WorkingDirectory}"/>
-        <Button Content="{loc:Localize Debug.SaveConfiguration}" Command="{Binding SaveConfigurationCommand}"/>
-      </StackPanel>
-    </Expander>
-    <WrapPanel Grid.Row="1">
-      <Button Content="{loc:Localize Debug.Launch}" Command="{Binding LaunchCommand}" IsEnabled="{Binding !Busy}" Margin="0,0,6,4"/>
-      <Button Content="{loc:Localize Debug.Wait}" Command="{Binding WaitForApplicationCommand}" IsEnabled="{Binding !Busy}" Margin="0,0,6,4"/>
-      <Button Content="{loc:Localize Debug.Start}" Command="{Binding StartGameCommand}" IsEnabled="{Binding CanStart}" Margin="0,0,6,4"/>
-      <Button Content="{loc:Localize Debug.Pause}" Command="{Binding PauseCommand}" IsEnabled="{Binding CanPause}" Margin="0,0,6,4"/>
-      <Button Content="{loc:Localize Debug.Resume}" Command="{Binding ResumeCommand}" IsEnabled="{Binding CanResume}" Margin="0,0,6,4"/>
-      <Button Content="{loc:Localize Debug.Step}" Command="{Binding StepCommand}" IsEnabled="{Binding CanStep}" Margin="0,0,6,4"/>
-      <Button Content="{loc:Localize Debug.GroupEnd}" Command="{Binding GroupEndCommand}" IsEnabled="{Binding CanLocate}" Margin="0,0,6,4"/>
-      <Button Content="{loc:Localize Debug.Cancel}" Command="{Binding CancelCommand}" IsEnabled="{Binding HasRun}" Margin="0,0,6,4"/>
-      <Button Content="{loc:Localize Debug.Stop}" Command="{Binding StopGameCommand}" IsEnabled="{Binding CanStop}" Margin="0,0,6,4"/>
-      <Button Content="{loc:Localize Debug.Disconnect}" Command="{Binding DisconnectCommand}" IsEnabled="{Binding !Busy}" Margin="0,0,6,4"/>
-    </WrapPanel>
-    <TextBlock Grid.Row="2" Text="{Binding Status}" TextWrapping="Wrap"/>
-    <StackPanel Grid.Row="3"><TextBlock Text="{Binding Error}" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" TextWrapping="Wrap"/><TextBlock Text="{loc:Localize Debug.ContentChanged}" IsVisible="{Binding ContentChanged}"/></StackPanel>
-    <TabControl Grid.Row="4">
-      <TabItem Header="{loc:Localize Debug.PlayerVariables}"><ListBox ItemsSource="{Binding PlayerVariables}"><ListBox.ItemTemplate><DataTemplate x:DataType="vm:DebugVariableRow"><Grid ColumnDefinitions="160,80,150,*,Auto,Auto" ColumnSpacing="6" Margin="0,4"><TextBlock Text="{Binding Name}"/><TextBlock Grid.Column="1" Text="{Binding Type}"/><TextBlock Grid.Column="2" Text="{Binding CurrentValue}"/><TextBox Grid.Column="3" Text="{Binding Draft}"/><Button Grid.Column="4" Content="{loc:Localize Debug.Apply}" Command="{Binding ApplyCommand}"/><Button Grid.Column="5" Content="↺" Command="{Binding ResetCommand}"/></Grid></DataTemplate></ListBox.ItemTemplate></ListBox></TabItem>
-      <TabItem Header="{loc:Localize Debug.SaveVariables}"><ListBox ItemsSource="{Binding SaveVariables}"><ListBox.ItemTemplate><DataTemplate x:DataType="vm:DebugVariableRow"><Grid ColumnDefinitions="160,80,150,*,Auto,Auto" ColumnSpacing="6" Margin="0,4"><TextBlock Text="{Binding Name}"/><TextBlock Grid.Column="1" Text="{Binding Type}"/><TextBlock Grid.Column="2" Text="{Binding CurrentValue}"/><TextBox Grid.Column="3" Text="{Binding Draft}"/><Button Grid.Column="4" Content="{loc:Localize Debug.Apply}" Command="{Binding ApplyCommand}"/><Button Grid.Column="5" Content="↺" Command="{Binding ResetCommand}"/></Grid></DataTemplate></ListBox.ItemTemplate></ListBox></TabItem>
-      <TabItem Header="{loc:Localize Debug.Choices}"><ItemsControl ItemsSource="{Binding Choices}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:DebugChoiceRow"><Button Content="{Binding Text}" Command="{Binding ChooseCommand}" Margin="4"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></TabItem>
-    </TabControl>
-  </Grid>
+ xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:loc="using:GalNet.Editor.MarkupExtensions"
+ x:Class="GalNet.Editor.Views.ExternalDebugPanelView" x:DataType="vm:ExternalDebugPanelViewModel"
+ Background="{DynamicResource SemiColorBackground0}">
+ <UserControl.Resources>
+  <StreamGeometry x:Key="DebugLaunchIcon">M2 3H14V7H12V5H4V15H12V13H14V17H2Z M10 8H16V5L22 10L16 15V12H10Z</StreamGeometry>
+  <StreamGeometry x:Key="DebugPauseIcon">M5 4H10V20H5Z M14 4H19V20H14Z</StreamGeometry>
+  <StreamGeometry x:Key="DebugResumeIcon">M3 4H5V20H3Z M8 4L21 12L8 20Z</StreamGeometry>
+  <StreamGeometry x:Key="DebugStepIcon">M3 11H15L11 7L12.5 5.5L19 12L12.5 18.5L11 17L15 13H3Z M20 4H22V20H20Z</StreamGeometry>
+  <StreamGeometry x:Key="DebugGroupEndIcon">M2 5L11 12L2 19Z M10 5L19 12L10 19Z M20 5H22V19H20Z</StreamGeometry>
+  <StreamGeometry x:Key="DebugCancelIcon">M5 3L12 10L19 3L21 5L14 12L21 19L19 21L12 14L5 21L3 19L10 12L3 5Z</StreamGeometry>
+  <StreamGeometry x:Key="DebugDisconnectIcon">M5 2L22 19L20 21L3 4Z M7 6V2H9V6Z M15 2H17V7H20V9H18V12L16 10V9H15L13 7H15Z M6 10L8 12C8 14 10 16 12 16L14 18H13V22H11V18C8 17 6 15 6 12Z</StreamGeometry>
+  <StreamGeometry x:Key="DebugApplyIcon">M3 12L5 10L10 15L19 5L21 7L10 19Z</StreamGeometry>
+  <StreamGeometry x:Key="DebugResetIcon">M5 5L2 2V10H10L7 7C10 4 15 5 17 8C20 12 17 18 12 18C9 18 7 17 6 15H3C4 19 8 21 12 21C19 21 23 13 19 7C16 2 9 1 5 5Z</StreamGeometry>
+  <StreamGeometry x:Key="DebugBrowseIcon">M2 5H10L12 7H22V10H7L3 19H2Z M8 12H23L19 20H4Z</StreamGeometry>
+  <StreamGeometry x:Key="DebugStartGameIcon">M6 3L21 12L6 21Z</StreamGeometry>
+  <StreamGeometry x:Key="DebugWaitForApplicationIcon">M7 2H9V7H15V2H17V7H20V9H18V12C18 15 16 17 13 18V22H11V18C8 17 6 15 6 12V9H4V7H7Z M8 9V12C8 14 10 16 12 16C14 16 16 14 16 12V9Z</StreamGeometry>
+  <StreamGeometry x:Key="DebugStopGameIcon">M5 5H19V19H5Z</StreamGeometry>
+  <ControlTheme x:Key="DebugIconButton" TargetType="Button">
+   <Setter Property="Width" Value="30"/><Setter Property="Height" Value="30"/>
+   <Setter Property="MinWidth" Value="0"/><Setter Property="MinHeight" Value="0"/>
+   <Setter Property="Padding" Value="6"/><Setter Property="Background" Value="Transparent"/>
+   <Setter Property="BorderBrush" Value="Transparent"/><Setter Property="BorderThickness" Value="1"/>
+   <Setter Property="CornerRadius" Value="4"/><Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/>
+   <Setter Property="ToolTip.ShowOnDisabled" Value="True"/>
+   <Setter Property="Template"><ControlTemplate>
+    <Border Name="ButtonSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}">
+     <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" Padding="{TemplateBinding Padding}" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+    </Border>
+   </ControlTemplate></Setter>
+   <Style Selector="^:pointerover /template/ Border#ButtonSurface"><Setter Property="Background" Value="{DynamicResource SemiColorFill0}"/></Style>
+   <Style Selector="^:pressed /template/ Border#ButtonSurface"><Setter Property="Background" Value="{DynamicResource SemiColorFill1}"/></Style>
+   <Style Selector="^:focus-visible /template/ Border#ButtonSurface"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}"/></Style>
+   <Style Selector="^:disabled"><Setter Property="Opacity" Value="0.35"/></Style>
+  </ControlTheme>
+  <DataTemplate x:Key="DebugVariableTemplate" x:DataType="vm:DebugVariableRow">
+   <Border BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="0,0,0,1" Padding="2,9">
+    <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
+     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" VerticalAlignment="Center"/>
+      <TextBlock Grid.Column="1" Text="{Binding Type}" FontSize="11" Foreground="{DynamicResource SemiColorText2}" VerticalAlignment="Center"/>
+     </Grid>
+     <Grid Grid.Row="1" ColumnDefinitions="*,*,Auto,Auto" ColumnSpacing="6">
+      <StackPanel Spacing="3"><TextBlock Classes="fieldHint" Text="{loc:Localize Debug.CurrentValue}"/><TextBox Text="{Binding CurrentValue, Mode=OneWay}" IsReadOnly="True" FontFamily="Consolas" MinWidth="0" ToolTip.Tip="{Binding CurrentValue}" AutomationProperties.Name="{loc:Localize Debug.CurrentValue}"/></StackPanel>
+      <StackPanel Grid.Column="1" Spacing="3"><TextBlock Classes="fieldHint" Text="{loc:Localize Debug.EditValue}"/><TextBox Text="{Binding Draft}" FontFamily="Consolas" MinWidth="0" AutomationProperties.Name="{loc:Localize Debug.EditValue}"/></StackPanel>
+      <Button Theme="{StaticResource DebugIconButton}" Command="{Binding ApplyCommand}"  Grid.Column="2" VerticalAlignment="Bottom" ToolTip.Tip="{loc:Localize Debug.Apply}" AutomationProperties.Name="{loc:Localize Debug.Apply}"><PathIcon Data="{StaticResource DebugApplyIcon}"/></Button>
+      <Button Theme="{StaticResource DebugIconButton}" Command="{Binding ResetCommand}"  Grid.Column="3" VerticalAlignment="Bottom" ToolTip.Tip="{loc:Localize Common.Reset}" AutomationProperties.Name="{loc:Localize Common.Reset}"><PathIcon Data="{StaticResource DebugResetIcon}"/></Button>
+     </Grid>
+     <TextBlock Grid.Row="2" Text="{loc:Localize Debug.VariableConflict}" IsVisible="{Binding Conflict}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"/>
+    </Grid>
+   </Border>
+  </DataTemplate>
+ </UserControl.Resources>
+ <UserControl.Styles>
+  <Style Selector="PathIcon"><Setter Property="Width" Value="16"/><Setter Property="Height" Value="16"/></Style>
+  <Style Selector="TextBlock.fieldHint"><Setter Property="FontSize" Value="11"/><Setter Property="Foreground" Value="{DynamicResource SemiColorText2}"/></Style>
+  <Style Selector="TextBlock.emptyHint"><Setter Property="HorizontalAlignment" Value="Center"/><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="Foreground" Value="{DynamicResource SemiColorText2}"/><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="Margin" Value="16"/></Style>
+  <Style Selector="ListBox.debugVariables"><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="6,0"/></Style>
+  <Style Selector="ListBox.debugVariables ListBoxItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="2,0"/></Style>
+  <Style Selector="Border.debugDivider"><Setter Property="Width" Value="1"/><Setter Property="Height" Value="18"/><Setter Property="Margin" Value="5,0"/><Setter Property="Background" Value="{DynamicResource SemiColorBorder}"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
+ </UserControl.Styles>
+ <Grid RowDefinitions="Auto,Auto,*,Auto">
+  <Border BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="0,0,0,1" Padding="6,4">
+   <WrapPanel Name="DebugToolbar">
+    <StackPanel Orientation="Horizontal" Spacing="2">
+     <Button Theme="{StaticResource DebugIconButton}" Command="{Binding LaunchCommand}" IsEnabled="{Binding !Busy}" Name="LaunchDebugApp" ToolTip.Tip="{loc:Localize Debug.Launch}" AutomationProperties.Name="{loc:Localize Debug.Launch}"><PathIcon Data="{StaticResource DebugLaunchIcon}"/></Button>
+     <Button Theme="{StaticResource DebugIconButton}" Command="{Binding WaitForApplicationCommand}" IsEnabled="{Binding !Busy}"  ToolTip.Tip="{loc:Localize Debug.Wait}" AutomationProperties.Name="{loc:Localize Debug.Wait}"><PathIcon Data="{StaticResource DebugWaitForApplicationIcon}"/></Button>
+     <Border Classes="debugDivider"/>
+    </StackPanel>
+    <StackPanel Orientation="Horizontal" Spacing="2">
+     <Button Theme="{StaticResource DebugIconButton}" Command="{Binding StartGameCommand}" IsEnabled="{Binding CanStart}" Foreground="#36A66A" ToolTip.Tip="{loc:Localize Debug.Start}" AutomationProperties.Name="{loc:Localize Debug.Start}"><PathIcon Data="{StaticResource DebugStartGameIcon}"/></Button>
+     <Button Theme="{StaticResource DebugIconButton}" Command="{Binding PauseCommand}" IsEnabled="{Binding CanPause}"  ToolTip.Tip="{loc:Localize Debug.Pause}" AutomationProperties.Name="{loc:Localize Debug.Pause}"><PathIcon Data="{StaticResource DebugPauseIcon}"/></Button>
+     <Button Theme="{StaticResource DebugIconButton}" Command="{Binding ResumeCommand}" IsEnabled="{Binding CanResume}" Foreground="#36A66A" ToolTip.Tip="{loc:Localize Debug.Resume}" AutomationProperties.Name="{loc:Localize Debug.Resume}"><PathIcon Data="{StaticResource DebugResumeIcon}"/></Button>
+     <Button Theme="{StaticResource DebugIconButton}" Command="{Binding StopGameCommand}" IsEnabled="{Binding CanStop}" Name="StopDebugGame" Foreground="#D75C67" ToolTip.Tip="{loc:Localize Debug.Stop}" AutomationProperties.Name="{loc:Localize Debug.Stop}"><PathIcon Data="{StaticResource DebugStopGameIcon}"/></Button>
+     <Border Classes="debugDivider"/>
+    </StackPanel>
+    <StackPanel Orientation="Horizontal" Spacing="2">
+     <Button Theme="{StaticResource DebugIconButton}" Command="{Binding StepCommand}" IsEnabled="{Binding CanStep}"  ToolTip.Tip="{loc:Localize Debug.Step}" AutomationProperties.Name="{loc:Localize Debug.Step}"><PathIcon Data="{StaticResource DebugStepIcon}"/></Button>
+     <Button Theme="{StaticResource DebugIconButton}" Command="{Binding GroupEndCommand}" IsEnabled="{Binding CanLocate}"  ToolTip.Tip="{loc:Localize Debug.GroupEnd}" AutomationProperties.Name="{loc:Localize Debug.GroupEnd}"><PathIcon Data="{StaticResource DebugGroupEndIcon}"/></Button>
+     <Button Theme="{StaticResource DebugIconButton}" Command="{Binding CancelCommand}" IsEnabled="{Binding HasRun}"  ToolTip.Tip="{loc:Localize Debug.Cancel}" AutomationProperties.Name="{loc:Localize Debug.Cancel}"><PathIcon Data="{StaticResource DebugCancelIcon}"/></Button>
+     <Border Classes="debugDivider"/>
+     <Button Theme="{StaticResource DebugIconButton}" Command="{Binding DisconnectCommand}" IsEnabled="{Binding !Busy}"  ToolTip.Tip="{loc:Localize Debug.Disconnect}" AutomationProperties.Name="{loc:Localize Debug.Disconnect}"><PathIcon Data="{StaticResource DebugDisconnectIcon}"/></Button>
+    </StackPanel>
+   </WrapPanel>
+  </Border>
+  <Expander Grid.Row="1" Header="{loc:Localize Debug.Configuration}" Margin="8,4" HorizontalAlignment="Stretch">
+   <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8" Margin="0,4,0,8">
+    <StackPanel Spacing="4"><TextBlock Text="{loc:Localize Debug.Executable}" FontSize="12"/>
+     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4"><TextBox Text="{Binding Executable}" MinWidth="0" ToolTip.Tip="{Binding Executable}"/>
+      <Button Theme="{StaticResource DebugIconButton}" Command="{Binding BrowseCommand}"  Grid.Column="1" ToolTip.Tip="{loc:Localize Debug.Executable}" AutomationProperties.Name="{loc:Localize Debug.Executable}"><PathIcon Data="{StaticResource DebugBrowseIcon}"/></Button>
+     </Grid>
+    </StackPanel>
+    <StackPanel Grid.Row="1" Spacing="4"><TextBlock Text="{loc:Localize Debug.Arguments}" FontSize="12"/><TextBox Text="{Binding Arguments}" AcceptsReturn="True" MinHeight="56" MaxHeight="120" FontFamily="Consolas"/></StackPanel>
+    <StackPanel Grid.Row="2" Spacing="4"><TextBlock Text="{loc:Localize Debug.WorkingDirectory}" FontSize="12"/><TextBox Text="{Binding WorkingDirectory}" MinWidth="0"/></StackPanel>
+    <Button Grid.Row="3" Content="{loc:Localize Debug.SaveConfiguration}" Command="{Binding SaveConfigurationCommand}" HorizontalAlignment="Left"/>
+   </Grid>
+  </Expander>
+  <TabControl Grid.Row="2" Name="DebugTabs" Margin="6,0">
+   <TabItem Header="{loc:Localize Debug.PlayerVariables}"><Grid>
+  <ListBox Classes="debugVariables" ItemsSource="{Binding PlayerVariables}" ItemTemplate="{StaticResource DebugVariableTemplate}"/>
+  <TextBlock Classes="emptyHint" Text="{loc:Localize Debug.NoVariables}" IsVisible="{Binding !PlayerVariables.Count}"/>
+</Grid></TabItem>
+   <TabItem Header="{loc:Localize Debug.SaveVariables}"><Grid>
+  <ListBox Classes="debugVariables" ItemsSource="{Binding SaveVariables}" ItemTemplate="{StaticResource DebugVariableTemplate}"/>
+  <TextBlock Classes="emptyHint" Text="{loc:Localize Debug.NoVariables}" IsVisible="{Binding !SaveVariables.Count}"/>
+</Grid></TabItem>
+   <TabItem Header="{loc:Localize Debug.Choices}"><Grid>
+    <ScrollViewer><ItemsControl ItemsSource="{Binding Choices}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:DebugChoiceRow"><Button Content="{Binding Text}" Command="{Binding ChooseCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Margin="6,4"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></ScrollViewer>
+    <TextBlock Classes="emptyHint" Text="{loc:Localize Debug.NoChoices}" IsVisible="{Binding !Choices.Count}"/>
+   </Grid></TabItem>
+  </TabControl>
+  <Border Grid.Row="3" Name="DebugStatusBar" BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="0,1,0,0" Padding="10,7">
+   <StackPanel Spacing="6">
+    <Border Name="DebugErrorDetails" IsVisible="{Binding HasError}" BorderBrush="{DynamicResource SystemControlErrorTextForegroundBrush}" BorderThickness="2,0,0,0" Padding="8,2">
+     <ScrollViewer MaxHeight="100" HorizontalScrollBarVisibility="Disabled"><SelectableTextBlock Text="{Binding Error}" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"/></ScrollViewer>
+    </Border>
+    <TextBlock Text="{loc:Localize Debug.ContentChanged}" IsVisible="{Binding ContentChanged}" FontSize="12" TextWrapping="Wrap"/>
+    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+     <Border Width="7" Height="7" CornerRadius="4" Background="#8B9099" VerticalAlignment="Center" IsVisible="{Binding !IsConnected}"/>
+     <Border Width="7" Height="7" CornerRadius="4" Background="#36A66A" VerticalAlignment="Center" IsVisible="{Binding IsConnected}"/>
+     <TextBlock Grid.Column="1" Text="{Binding Status}" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip.Tip="{Binding Status}"/>
+     <TextBlock Grid.Column="2" Text="{loc:Localize Debug.Working}" FontSize="11" IsVisible="{Binding Busy}" Foreground="{DynamicResource SemiColorText2}" VerticalAlignment="Center"/>
+    </Grid>
+   </StackPanel>
+  </Border>
+ </Grid>
 </UserControl>
 

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Threading;
@@ -73,6 +74,35 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     Dispatcher.UIThread.RunJobs();
                 }
                 await Until(() => panel.SaveVariables.Count == 1 && panel.PlayerVariables.Count == 1);
+                var toolbar = view.FindControl<WrapPanel>("DebugToolbar")!;
+                var launch = view.FindControl<Button>("LaunchDebugApp")!;
+                var stop = view.FindControl<Button>("StopDebugGame")!;
+                Assert.That(toolbar.GetVisualDescendants().OfType<Button>().Count(), Is.EqualTo(10));
+                Assert.That(launch.Content, Is.TypeOf<PathIcon>());
+                Assert.That(ToolTip.GetTip(launch), Is.Not.Null);
+                Assert.That(stop.IsEffectivelyEnabled, Is.True);
+                view.FindControl<TabControl>("DebugTabs")!.SelectedIndex = 1;
+                foreach (var width in new[] { 440, 320 })
+                {
+                    Avalonia.Application.Current!.RequestedThemeVariant = width == 440 ? Avalonia.Styling.ThemeVariant.Light : Avalonia.Styling.ThemeVariant.Dark;
+                    window.Width = width; window.Height = 650; window.UpdateLayout(); Dispatcher.UIThread.RunJobs();
+                    Assert.That(view.Bounds.Width, Is.LessThanOrEqualTo(window.ClientSize.Width));
+                    Assert.That(view.GetVisualDescendants().OfType<TextBlock>().Any(text => text.IsEffectivelyVisible && text.Text == panel.L["Debug.NoVariables"]), Is.False);
+                    var footer = view.FindControl<Border>("DebugStatusBar")!;
+                    Assert.That(footer.TranslatePoint(default, view)!.Value.Y, Is.GreaterThan(view.Bounds.Height - 80));
+                    Assert.That(toolbar.Bounds.Width, Is.LessThanOrEqualTo(view.Bounds.Width));
+                    foreach (var input in view.GetVisualDescendants().OfType<TextBox>().Where(input => input.IsEffectivelyVisible))
+                    {
+                        var point = input.TranslatePoint(default, view)!.Value;
+                        Assert.That(point.X + input.Bounds.Width, Is.LessThanOrEqualTo(view.Bounds.Width + 1));
+                    }
+                    if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } artifacts)
+                    { using var frame = window.CaptureRenderedFrame(); frame!.Save(Path.Combine(artifacts, $"debug-panel-{width}.png")); }
+                }
+                Click(window, toolbar.GetVisualDescendants().OfType<Button>().Single(button => ReferenceEquals(button.Command, panel.PauseCommand)));
+                await Until(() => panel.RuntimeState?.Paused == true && !panel.Busy);
+                Click(window, toolbar.GetVisualDescendants().OfType<Button>().Single(button => ReferenceEquals(button.Command, panel.ResumeCommand)));
+                await Until(() => panel.RuntimeState?.Paused == false && !panel.Busy);
                 Assert.That(group.IsDebugCurrent, Is.True);
                 Assert.That(entry.IsDebugCurrent, Is.True);
                 var entryChrome = entries.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("debugEntry") && ReferenceEquals(border.DataContext, entry));
@@ -92,6 +122,9 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 await row.ApplyCommand.ExecuteAsync(null);
                 Assert.That(engine.Runtime.GetVariable("score")!.AsInt(), Is.EqualTo(11));
                 Assert.That(panel.Error, Is.Not.Empty);
+                Assert.That(panel.HasError, Is.True);
+                Dispatcher.UIThread.RunJobs();
+                Assert.That(view.FindControl<Border>("DebugErrorDetails")!.IsVisible, Is.True);
                 Assert.That(project.Services.GetRequiredService<EditorHistories>().Content.IsDirty, Is.False);
                 Assert.That(view.GetVisualDescendants().OfType<TabControl>().Single().Items.Count, Is.EqualTo(3));
                 await panel.SeekAsync(group.Id, entry.StableId);
@@ -104,6 +137,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 await panel.StepCommand.ExecuteAsync(null);
                 Assert.That(panel.Error, Is.Empty);
                 Assert.That(engine.EntryIndex, Is.EqualTo(1));
+                Assert.That(panel.HasError, Is.False);
                 Assert.That(project.Services.GetRequiredService<EditorHistories>().Content.IsDirty, Is.False);
                 await panel.DisconnectCommand.ExecuteAsync(null);
                 await Until(() => !panel.HasRun);

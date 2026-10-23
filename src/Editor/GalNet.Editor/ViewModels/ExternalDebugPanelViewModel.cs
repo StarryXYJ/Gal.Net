@@ -54,6 +54,8 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     [ObservableProperty] private string _workingDirectory = "";
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private string _error = "";
+    public bool HasError => !string.IsNullOrWhiteSpace(Error);
+    partial void OnErrorChanged(string value) => OnPropertyChanged(nameof(HasError));
     [ObservableProperty] private bool _busy;
     [ObservableProperty] private bool _contentChanged;
     public bool IsConnected => _client.IsConnected;

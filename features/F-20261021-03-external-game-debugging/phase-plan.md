@@ -1,5 +1,7 @@
 # 外部游戏调试阶段计划草案
 
+2026-10-23 调试面板 UI 整理见 [phase-panel-ui.md](phase-panel-ui.md)。
+
 2026-10-23 启动诊断与契约导出修正见 [phase-launch-diagnostics.md](phase-launch-diagnostics.md)。
 
 2026-10-23 游戏窗口关闭停顿调查见 [phase-shutdown-investigation.md](phase-shutdown-investigation.md)；补充耗时日志和真实关闭回归，尚未复现用户停顿，不宣称已修复。
