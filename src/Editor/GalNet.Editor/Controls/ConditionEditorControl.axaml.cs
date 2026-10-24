@@ -66,6 +66,7 @@ public partial class ConditionEditorControl : UserControl
 
         if (change.Property == TextProperty || change.Property == SuggestionsProperty)
             UpdateSuggestions();
+        if (change.Property == ValidationVariablesProperty && EditorBox is not null) Validate();
     }
 
     private void UpdateSuggestions()

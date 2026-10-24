@@ -28,10 +28,10 @@ internal sealed class ConsolePresentation : IDialoguePresenter, INvlPresenter, I
         Console.WriteLine($"[Animation] {request.PlaybackHandleId}: {request.HandleId}.{request.Property} -> {request.To}");
         return Task.FromResult(AnimationOutcome.Completed);
     }
-    public Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken cancellationToken, Func<double, Task>? beforeFrame = null)
+    public Task<TimelinePlayResult> PlayTimelineAsync(TimelineDefinition timeline, CancellationToken cancellationToken, Func<double, Task>? beforeFrame = null)
     {
-        Console.WriteLine($"[Animation] plan {plan.PlaybackHandleId}: {plan.Tracks.Count} track(s), {plan.DurationFrames} frame(s)");
-        return Task.FromResult(new AnimationPlanPlayResult { Outcome = AnimationOutcome.Completed });
+        Console.WriteLine($"[Animation] timeline {timeline.PlaybackHandleId}: {timeline.Tracks.Count} track(s), {timeline.DurationFrames} frame(s)");
+        return Task.FromResult(new TimelinePlayResult { Outcome = AnimationOutcome.Completed });
     }
     public bool CompleteAnimationImmediately(string playbackHandleId)
     {

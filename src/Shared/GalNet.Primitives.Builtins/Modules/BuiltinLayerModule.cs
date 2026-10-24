@@ -1,16 +1,23 @@
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Primitives;
 using GalNet.Core.Scene;
+using GalNet.Core.Variants;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 
 namespace GalNet.Primitives.Builtins;
 
-public sealed class BuiltinLayerModule(ILayerPresenter? presenter = null) : PrimitiveModule(
+public sealed class BuiltinLayerModule(ILayerPresenter? presenter = null, ImageVariantsCatalog? imageVariants = null) : PrimitiveModule(
     registry =>
     {
+        var variants = imageVariants ?? ImageVariantsCatalog.Empty;
+        registry.ValidateState((_, state) =>
+        {
+            foreach (var layer in state.Table<Layer>().Values) LayerVariantsRuntime.ValidateContent(layer, variants);
+        });
         registry.State<Layer>("builtin.layers", value => value.Id, context =>
         {
+            foreach (var layer in context.Runtime.State.Table<Layer>().Values) LayerVariantsRuntime.ValidateContent(layer, variants);
             if (presenter is null) return Task.CompletedTask;
             foreach (var layer in context.Runtime.State.Table<Layer>().Values.Where(value => !value.IsVideo && value.Visible))
             {
@@ -18,7 +25,11 @@ public sealed class BuiltinLayerModule(ILayerPresenter? presenter = null) : Prim
                 presenter.ShowLayer(Request(layer));
             }
             return Task.CompletedTask;
-        });
+        }, validate: LayerVariantsRuntime.ValidateShape, version: 2);
+        registry.Register<VariantsShowOptions>(BuiltinEntryIds.ShowVariants, (context, options) => Immediate(context, presenter,
+            target => LayerVariantsRuntime.Show(context, options, variants, target)));
+        registry.Register<VariantsSelectOptions>(BuiltinEntryIds.SelectVariants, (context, options) => Immediate(context, presenter,
+            target => LayerVariantsRuntime.Select(context, options, variants, target)));
         registry.Register<LayerShowOptions>(BuiltinEntryIds.ShowLayer, (context, options) => Immediate(context, presenter, target =>
             BuiltinRuntimeActions.ShowLayer(context.Runtime, target, new LayerRenderRequest(
                 options.HandleId ?? "", options.AssetId ?? "", Arguments.Json<LayerTransform>(options.Transform) ?? new LayerTransform(),

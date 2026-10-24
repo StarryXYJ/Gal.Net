@@ -1,3 +1,5 @@
+using GalNet.Assets;
+using GalNet.Assets.Variants;
 using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
 using GalNet.Core.Settings;
@@ -24,6 +26,9 @@ try
     var resourceTypes = BuiltinResourceTypes.CreateCatalog();
     var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
     var content = await installation.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync();
+    using var assets = new AssetManager(installation.CreateAssetProviders(resourceTypes));
+    assets.RegisterImageVariantsDecoder();
+    var imageVariants = await assets.LoadImageVariantsCatalogAsync();
     foreach (var diagnostic in content.Localization.Diagnostics)
         Console.Error.WriteLine($"Skipped localization source '{diagnostic.RelativePath}': {diagnostic.Message}");
     var textResolver = new GameLocalizationProvider(content, () => content.Settings.TargetLocale.ToCultureInfo());
@@ -41,7 +46,7 @@ try
     registration.UseCatalog(GalNet.Project.Contracts.ProjectSchemas.CreateCatalog());
     await using var view = registration.AddBuiltinImplementations(registration.BuildCatalog(),
         presentation, presentation, presentation, presentation, content.Gallery, nvlPresenter: presentation,
-        characters: content.Localization.Characters).BuildView();
+        characters: content.Localization.Characters, imageVariants: imageVariants).BuildView();
     view.RequireInstructions(content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>().SelectMany(group => group.Entries).Select(entry => entry.Type));
 
     var runtime = new GameRuntime(textResolver, content.Graph.RootNodeId, settings, variables);

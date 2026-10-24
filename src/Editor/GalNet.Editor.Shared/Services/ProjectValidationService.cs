@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GalNet.Core.Assets;
 using GalNet.Core.Compilation;
 using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
@@ -10,7 +11,7 @@ using GalNet.Editor.Shared.Commands;
 namespace GalNet.Editor.Shared.Services;
 
 /// <summary>Validates author files without repository repair, migration or persistence.</summary>
-public sealed class ProjectValidationService(string projectDirectory, string graphFile = "Graph/graph.json")
+public sealed class ProjectValidationService(string projectDirectory, string graphFile = "Graph/graph.json", IResourceTypeCatalog? resourceTypes = null)
 {
     private readonly string GraphFile = graphFile.Replace('\\', '/');
     private readonly ProjectRawReader _reader = new(projectDirectory);
@@ -24,6 +25,7 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
         var diagnostics = new List<ToolDiagnostic>();
         var files = new List<string>();
         var groups = new List<string>();
+        if (scope == "project") diagnostics.AddRange(ImageVariantsValidation.Validate(_reader.Root, resourceTypes ?? BuiltinResourceTypes.CreateCatalog()));
         if (scope == "group")
         {
             var file = new ProjectQueryService(_reader.Root).ResolveGroup(selector ?? throw new ArgumentException("Group selector required."), diagnostics);
@@ -73,6 +75,12 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
                 files.Add(file);
                 ValidateGroup(file, diagnostics, structureOnly ? null : catalog, structureOnly);
             }
+            if (!structureOnly && scope == "project" && catalog is not null)
+            {
+                diagnostics.AddRange(LocalizationValidation.ValidateDisk(_reader.Root, catalog));
+                if (Directory.Exists(_reader.Resolve("I18n"))) files.AddRange(_reader.Files("I18n", diagnostics).Where(file => file.EndsWith(".json", StringComparison.OrdinalIgnoreCase) && !file.StartsWith("I18n/External/", StringComparison.OrdinalIgnoreCase)));
+                if (File.Exists(_reader.Resolve(LocalizationJson.MetadataPath))) files.Add(LocalizationJson.MetadataPath);
+            }
         }
         finally { context?.Dispose(); }
 
@@ -80,15 +88,17 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
         var checks = new List<string> { "raw-json", "duplicate-properties", "current-format", "stable-ids" };
         if (scope != "group") checks.AddRange(["graph-topology", "variable-definitions"]);
         if (scope != "group" && !structureOnly) checks.Add("graph-source-references");
-        if (scope == "project") checks.AddRange(["settings-json", "metadata-guid-and-adjacent-file"]);
+        if (scope == "project") checks.AddRange(["settings-json", "metadata-guid-and-adjacent-file", "image-variants"]);
         if (!structureOnly) checks.Add("condition-syntax");
         if (!structureOnly && scope != "graph" && catalog is not null) checks.AddRange(["entry-parameters-and-contract-validator", "composite-compilation"]);
-        var skipped = new List<string> { "runtime-expression-evaluation", "custom-code-references", "asset-payloads", "settings-semantics", "localization-semantics" };
+        var skipped = new List<string> { "runtime-expression-evaluation", "custom-code-references", "asset-payloads", "settings-semantics" };
+        if (!structureOnly && scope == "project" && catalog is not null) checks.Add("localization-semantics");
+        else skipped.Add("localization-semantics");
         if (structureOnly) skipped.AddRange(["condition-syntax", "entry-contracts", "graph-source-references"]);
         else if (scope != "graph" && catalog is null) skipped.Add("entry-contracts");
         return new(scope + ".validate", !diagnostics.Any(item => item.Severity == "error"),
             new ProjectValidationReport(scope, structureOnly, semantic, files.Distinct().Order(StringComparer.Ordinal).ToArray(), checks, skipped,
-                semantic != "unavailable" && !diagnostics.Any(item => item.Code is "file.read" or "directory.read" or "file.linkSkipped" or "json.invalid" or "json.objectRequired" or "graph.shapeInvalid"), contractSha256), diagnostics);
+                semantic != "unavailable" && !diagnostics.Any(item => item.Code is "file.read" or "directory.read" or "file.linkSkipped" or "json.invalid" or "json.objectRequired" or "graph.shapeInvalid" or "localization.incomplete" or "localization.invalid"), contractSha256), diagnostics);
     }
 
     /// <summary>Checks a selected source and returns a DTO only after its raw structure is accepted.</summary>
@@ -117,7 +127,7 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
             if (!entry.TryGetProperty("parameters", out var parameters) || !Object(parameters, file, pointer + "/parameters", diagnostics))
             { Error(diagnostics, "entry.parametersRequired", "Entry parameters must be an object.", file, pointer + "/parameters"); continue; }
             if (!structureOnly) Condition(ProjectRawReader.Text(entry, "condition"), file, pointer + "/condition", diagnostics);
-            if (catalog is null) continue;
+            if (structureOnly || catalog is null) continue;
             var type = ProjectRawReader.Text(entry, "type");
             if (type is null || !catalog.TryGet(type, out var definition))
             { Error(diagnostics, "entry.typeUnknown", $"Entry '{type}' is not declared by the project contract.", file, pointer + "/type", ProjectRawReader.Text(entry, "id")); continue; }
@@ -131,14 +141,14 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
         }
         if (diagnostics.Skip(start).Any(item => item.Severity == "error")) return null;
         var document = JsonSerializer.Deserialize<GroupDocument>(raw, JsonOptions)!;
-        if (catalog is not null)
+        if (!structureOnly && catalog is not null)
             foreach (var (entry, index) in document.Entries.Select((entry, index) => (entry, index)))
                 try { _ = GalgroupCompiler.Compile(new GroupDocument { Entries = [entry] }, catalog); }
                 catch (Exception exception) { Error(diagnostics, "entry.compileInvalid", exception.Message, file, $"/entries/{index}", entry.Id); }
         return diagnostics.Skip(start).Any(item => item.Severity == "error") ? null : document;
     }
 
-    public void ValidateGraph(JsonElement? content, List<ToolDiagnostic> diagnostics, bool structureOnly = false, bool checkSourceReferences = true)
+    public void ValidateGraph(JsonElement? content, List<ToolDiagnostic> diagnostics, bool structureOnly = false, bool checkSourceReferences = true, bool validateConditionSyntax = true)
     {
         if (content is null || !Shape(content.Value, GraphFile, "", diagnostics, ["version", "name", "rootNodeId", "nodes", "edges", "playerVariables", "saveVariables"])) return;
         var graph = content.Value;
@@ -196,9 +206,9 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
                     var child = pointer + $"/{key}/{n++}";
                     if (!Shape(item, GraphFile, child, diagnostics, key == "options" ? ["id", "text", "condition"] : ["id", "expression"])) continue;
                     Identity(item, "id", key == "options" ? options : conditions, GraphFile, child, diagnostics);
-                    String(item, key == "options" ? "text" : "expression", GraphFile, child, diagnostics, required: true, allowEmpty: key == "options");
+                    String(item, key == "options" ? "text" : "expression", GraphFile, child, diagnostics, required: true, allowEmpty: key == "options" || !validateConditionSyntax);
                     if (key == "options") String(item, "condition", GraphFile, child, diagnostics);
-                    if (!structureOnly) Condition(ProjectRawReader.Text(item, key == "options" ? "condition" : "expression"), GraphFile, child, diagnostics);
+                    if (!structureOnly && validateConditionSyntax) Condition(ProjectRawReader.Text(item, key == "options" ? "condition" : "expression"), GraphFile, child, diagnostics);
                 }
             }
         }
@@ -220,7 +230,8 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
             for (var i = 0; i < variables.Count; i++)
             {
                 var variable = variables[i]; var pointer = $"/{key}/{i}";
-                if (!Shape(variable, GraphFile, pointer, diagnostics, ["name", "defaultValue", "type"])) continue;
+                if (!Shape(variable, GraphFile, pointer, diagnostics, ["name", "defaultValue", "type", "description"])) continue;
+                String(variable, "description", GraphFile, pointer, diagnostics);
                 Identity(variable, "name", variableNames, GraphFile, pointer, diagnostics);
                 if (!variable.TryGetProperty("defaultValue", out var value) || !Shape(value, GraphFile, pointer + "/defaultValue", diagnostics, ["Uid", "Name", "Type", "Value"]))
                 { Error(diagnostics, "variable.defaultRequired", "Typed defaultValue is required.", GraphFile, pointer); continue; }

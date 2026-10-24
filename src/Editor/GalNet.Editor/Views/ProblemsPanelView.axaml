@@ -1,0 +1,23 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:loc="using:GalNet.Editor.MarkupExtensions"
+ x:Class="GalNet.Editor.Views.ProblemsPanelView" x:Name="Root" x:DataType="vm:ProblemsPanelViewModel">
+ <UserControl.Styles>
+  <Style Selector="TextBlock.severity"><Setter Property="Foreground" Value="{DynamicResource SemiColorInformation}"/></Style>
+  <Style Selector="TextBlock.severity.error"><Setter Property="Foreground" Value="{DynamicResource SemiColorDanger}"/></Style>
+  <Style Selector="TextBlock.severity.warning"><Setter Property="Foreground" Value="{DynamicResource SemiColorWarning}"/></Style>
+ </UserControl.Styles>
+ <Grid RowDefinitions="Auto,*" Margin="8" RowSpacing="6">
+  <WrapPanel><Button Content="{loc:Localize Uiux.Validation.Check}" Command="{Binding ValidateCommand}" Margin="0,0,8,0"/><TextBlock Text="{Binding Status}" VerticalAlignment="Center" Margin="0,0,8,0"/><CheckBox Content="{loc:Localize Log.ErrorsOnly}" IsChecked="{Binding OnlyErrors}"/></WrapPanel>
+  <ListBox Grid.Row="1" ItemsSource="{Binding VisibleProblems}">
+   <ListBox.ItemTemplate><DataTemplate x:DataType="vm:AuthorProblem">
+    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+     <TextBlock Text="{loc:Localize SeverityKey}" Classes="severity" Classes.error="{Binding IsError}" Classes.warning="{Binding IsWarning}"/>
+     <Button Grid.Column="1" Command="{Binding #Root.DataContext.NavigateCommand}" CommandParameter="{Binding}" HorizontalContentAlignment="Left" Background="Transparent">
+      <StackPanel><TextBlock Text="{Binding Message}" TextWrapping="Wrap"/><TextBlock Text="{Binding Source}" FontSize="11" Foreground="{DynamicResource SemiColorText2}"/></StackPanel>
+     </Button>
+     <Button Grid.Column="2" Content="{loc:Localize Files.CancelDraft}" Command="{Binding #Root.DataContext.DiscardCommand}" CommandParameter="{Binding}" IsVisible="{Binding HasDiscard}"/>
+    </Grid>
+   </DataTemplate></ListBox.ItemTemplate>
+  </ListBox>
+ </Grid>
+</UserControl>

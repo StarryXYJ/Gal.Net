@@ -59,6 +59,9 @@ public sealed class CliHelpTests
         const string configuration = "Release";
 #endif
         var dll = Path.Combine(root.FullName, "src", "Editor", "GalNet.Editor.Headless", "bin", configuration, "net10.0", "GalNet.Editor.Headless.dll");
+        // Isolated --artifacts-path builds place the CLI beside this test project.
+        var sibling = Path.GetFullPath(Path.Combine(TestContext.CurrentContext.TestDirectory, "..", "..", "GalNet.Editor.Headless", new DirectoryInfo(TestContext.CurrentContext.TestDirectory).Name, "GalNet.Editor.Headless.dll"));
+        if (File.Exists(sibling)) dll = sibling;
         var info = new ProcessStartInfo("dotnet") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
         info.ArgumentList.Add(dll);
         foreach (var argument in arguments) info.ArgumentList.Add(argument);

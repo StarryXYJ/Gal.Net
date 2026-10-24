@@ -20,4 +20,7 @@ public interface IEditorDocumentRepository
         IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries);
 }
 
-public sealed record ProjectSavePlan(IReadOnlyDictionary<string, byte[]> Writes, IReadOnlyList<string> DeletedFiles);
+public sealed record ProjectSavePlan(IReadOnlyDictionary<string, byte[]> Writes, IReadOnlyList<string> DeletedFiles)
+{
+    public GalNet.Editor.Abstraction.Changes.ProjectFilePlan? Files { get; init; }
+}

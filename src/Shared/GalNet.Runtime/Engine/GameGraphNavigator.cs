@@ -7,6 +7,7 @@ internal sealed class GameGraphNavigator
 {
     private readonly Dictionary<string, Node> _nodes = new(StringComparer.Ordinal);
     private readonly Dictionary<(string NodeId, int Outlet), string> _targets = [];
+    public IEnumerable<Node> Nodes => _nodes.Values;
     public GameGraphNavigator(Graph graph)
     {
         foreach (var node in graph.Nodes) _nodes.TryAdd(node.Id, node);

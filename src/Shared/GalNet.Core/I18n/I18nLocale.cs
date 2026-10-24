@@ -22,20 +22,10 @@ public sealed class I18nLocale
     /// <summary>规范化：将 "zh_cn" 转为 "zh-CN"</summary>
     private static string Normalize(string code)
     {
-        if (string.IsNullOrWhiteSpace(code))
-            throw new ArgumentNullException(nameof(code));
-
-        // 下划线转短横，确保格式一致
-        code = code.Replace('_', '-');
-
-        // 确保后缀部分大写（如 "zh-cn" → "zh-CN"）
-        var dashIndex = code.IndexOf('-');
-        if (dashIndex > 0 && dashIndex < code.Length - 1)
-        {
-            code = code[..(dashIndex + 1)] + code[(dashIndex + 1)..].ToUpperInvariant();
-        }
-
-        return code;
+        ArgumentException.ThrowIfNullOrWhiteSpace(code);
+        var culture = CultureInfo.GetCultureInfo(code.Trim().Replace('_', '-'));
+        if (culture.Name.Length == 0) throw new ArgumentException("A project language cannot be invariant.", nameof(code));
+        return culture.Name;
     }
 
     public override string ToString() => Code;

@@ -11,6 +11,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using GalNet.Core.Assets;
 using GalNet.Editor.Models;
+using GalNet.Game.Controls.Forms;
 
 namespace GalNet.Editor.Controls;
 
@@ -45,25 +46,27 @@ public partial class AssetPicker : UserControl
         FilterProperty.Changed.AddClassHandler<AssetPicker>((picker, args) => { if (picker._flyoutOpen) _ = picker.LoadItemsAsync(); });
     }
 
-    public AssetPicker() => InitializeComponent();
+    public AssetPicker()
+    {
+        InitializeComponent();
+        PickerPanel.Search.PlaceholderText = "Search assets";
+        PickerPanel.Confirmed += () =>
+        {
+            if (PickerPanel.Selected is not { } item) return;
+            SelectedAssetId = item.Id; PickerButton.Flyout?.Hide();
+        };
+        PickerPanel.Cancelled += () => PickerButton.Flyout?.Hide();
+    }
+    public ResourcePickerPanel ResourcePanel => PickerPanel;
 
     private async void OnFlyoutOpened(object? sender, EventArgs e)
     {
         _flyoutOpen = true;
         await LoadItemsAsync();
-        Dispatcher.UIThread.Post(() => SearchBox.Focus());
+        Dispatcher.UIThread.Post(() => PickerPanel.Search.Focus());
     }
 
     private void OnFlyoutClosed(object? sender, EventArgs e) => _flyoutOpen = false;
-    private void OnSearchTextChanged(object? sender, TextChangedEventArgs e) => ApplyFilter(SearchBox.Text);
-
-    private void OnSelectionChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        if (ResourceList.SelectedItem is not AssetPickerItem item) return;
-        SelectedAssetId = item.File?.Id ?? string.Empty;
-        PickerButton.Flyout?.Hide();
-        ResourceList.SelectedItem = null;
-    }
 
     private async Task ResolveCurrentAsync()
     {
@@ -85,21 +88,21 @@ public partial class AssetPicker : UserControl
     {
         var assetManager = AssetManager;
         if (assetManager is null) { _allItems = []; ApplyFilter(null); return; }
-        var type = Filter switch { AssetPickerFilter.Image => "sprite", AssetPickerFilter.Audio => "audio", AssetPickerFilter.Video => "video", AssetPickerFilter.EffectProgram => "effect-program", _ => null };
+        var type = Filter switch { AssetPickerFilter.Image => "sprite", AssetPickerFilter.Audio => "audio", AssetPickerFilter.Video => "video", AssetPickerFilter.EffectProgram => "effect-program", AssetPickerFilter.ImageVariants => "image-variants", _ => null };
         var files = await assetManager.GetFilesAsync(type);
-        if (Filter == AssetPickerFilter.All) files = files.Where(x => x.TypeId is "sprite" or "audio" or "video" or "effect-program").ToArray();
+        if (Filter == AssetPickerFilter.All) files = files.Where(x => x.TypeId is "sprite" or "audio" or "video" or "effect-program" or "image-variants").ToArray();
         else if (Filter == AssetPickerFilter.Text) files = files.Where(x => IsTextPath(x.Path)).ToArray();
         _allItems = await Task.WhenAll(files.Select(AssetPickerItem.CreateAsync));
-        ApplyFilter(SearchBox?.Text);
+        ApplyFilter(null);
     }
 
     internal static bool IsTextPath(string path) => AssetPickerTextFileExtensions.IsSupported(path);
 
     private void ApplyFilter(string? search)
     {
-        var query = search?.Trim() ?? string.Empty;
         Items.Clear(); Items.Add(AssetPickerItem.Empty);
-        foreach (var item in _allItems.Where(x => string.IsNullOrWhiteSpace(query) || x.Name.Contains(query, StringComparison.OrdinalIgnoreCase) || x.Path.Contains(query, StringComparison.OrdinalIgnoreCase))) Items.Add(item);
+        foreach (var item in _allItems) Items.Add(item);
+        PickerPanel.SetItems(Items.Select(item => new ResourcePickerItem(item.File?.Id ?? "", item.Name, item.Path, item.Icon, item.Thumbnail)).ToArray());
     }
 
     private void NotifyDisplay(string assetId)

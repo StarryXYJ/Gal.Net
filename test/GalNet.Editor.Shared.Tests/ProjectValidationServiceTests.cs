@@ -26,6 +26,18 @@ public sealed class ProjectValidationServiceTests
     public void TearDown() => Directory.Delete(_root, recursive: true);
 
     [Test]
+    public void LocalizationScopeIsCheckedAndOpaqueContractsAreExplicitlyIncomplete()
+    {
+        Put(Source, """{"version":2,"kind":"Raw","entries":[{"id":"opaque","type":"opaque","parameters":{"blob":{"future":"unmarked"}}}]}""");
+        var catalog = new TargetProfileEntryCatalog([new DefaultEntryModule("test", [new DefaultPrimitiveEntryBase("opaque", new DynamicParameterTable([new("blob", typeof(JsonElement))]))])]);
+        var result = new ProjectValidationService(_root).Validate(catalog: catalog);
+        Assert.That(result.Success, Is.True, string.Join(";", result.Diagnostics.Select(item => item.Message)));
+        var report = (ProjectValidationReport)result.Data!;
+        Assert.That(report.Checks, Does.Contain("localization-semantics")); Assert.That(report.Complete, Is.False);
+        Assert.That(result.Diagnostics.Any(item => item.Code == "localization.incomplete" && item.Severity == "warning"), Is.True);
+    }
+
+    [Test]
     public void StructureOnly_NeedsNoDll_AndReportsSkippedSemanticChecks()
     {
         var before = Snapshot();
@@ -41,6 +53,18 @@ public sealed class ProjectValidationServiceTests
             Assert.That(((ProjectValidationReport)semantic.Data!).Complete, Is.False);
             Assert.That(Snapshot(), Is.EqualTo(before));
         });
+    }
+
+    [TestCase("\"Author notes\"", true)]
+    [TestCase("42", false)]
+    [TestCase("null", false)]
+    public void VariableDescriptionIsOptionalTextAndDoesNotRelaxUnknownFields(string description, bool valid)
+    {
+        var variable = "{\"name\":\"score\",\"description\":" + description + ",\"type\":1,\"defaultValue\":{\"Uid\":\"score-id\",\"Name\":\"score\",\"Type\":1,\"Value\":0}}";
+        Put("Graph/graph.json", Graph.Replace("\"saveVariables\":[]", "\"saveVariables\":[" + variable + "]", StringComparison.Ordinal));
+        var report = new ProjectValidationService(_root).Validate("graph", structureOnly: true);
+        Assert.That(report.Success, Is.EqualTo(valid));
+        if (!valid) Assert.That(report.Diagnostics.Any(item => item.JsonPointer == "/saveVariables/0/description"), Is.True);
     }
 
     [TestCase("{}", "document.versionInvalid")]

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using GalNet.Core.Assets;
 using GalNet.Core.Compilation;
 using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
@@ -8,7 +9,7 @@ using GalNet.Editor.Abstraction.Documents;
 namespace GalNet.Editor.Shared.Services;
 
 /// <summary>Builds editable project content into the compiled directory layout consumed by Runtime.</summary>
-public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog)
+public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceTypeCatalog? resourceTypes = null)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -34,6 +35,8 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog)
         cancellationToken.ThrowIfCancellationRequested();
         var validation = new ProjectValidationService(sourceRoot).Validate("graph");
         var diagnostics = validation.Diagnostics.ToList();
+        diagnostics.AddRange(ImageVariantsValidation.Validate(sourceRoot, resourceTypes ?? BuiltinResourceTypes.CreateCatalog()));
+        diagnostics.AddRange(LocalizationValidation.ValidateDisk(sourceRoot, _entryCatalog));
         _ = new ProjectRawReader(sourceRoot).Files(null, diagnostics);
         if (!validation.Success || diagnostics.Any(item => item.Code == "file.linkSkipped" || item.Severity == "error"))
             throw new InvalidDataException(string.Join("; ", diagnostics.Select(item => $"{item.File}{item.JsonPointer}: {item.Message}")));
@@ -76,7 +79,7 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog)
                 backupRoot = null;
             }
 
-            return new ProjectContentBuildResult(targetRoot, compiledGroups);
+            return new ProjectContentBuildResult(targetRoot, compiledGroups) { Diagnostics = diagnostics.ToArray() };
         }
         finally
         {
@@ -216,4 +219,7 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog)
     private static string DisplayPath(string basePath, string path) => Path.GetRelativePath(basePath, path).Replace('\\', '/');
 }
 
-public sealed record ProjectContentBuildResult(string OutputPath, int CompiledGroupCount);
+public sealed record ProjectContentBuildResult(string OutputPath, int CompiledGroupCount)
+{
+    public IReadOnlyList<GalNet.Editor.Abstraction.Commands.ToolDiagnostic> Diagnostics { get; init; } = [];
+}

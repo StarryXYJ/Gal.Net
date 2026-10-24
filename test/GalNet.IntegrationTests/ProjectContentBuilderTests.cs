@@ -23,6 +23,20 @@ public sealed class ProjectContentBuilderTests
     }
 
     [Test]
+    public async Task BuildAsync_RejectsMissingDevelopmentTextBeforeReplacingOutputEvenWhenExternalHasIt()
+    {
+        await WriteProjectAsync("groups/opening.rawgalgroup", "opening");
+        await File.WriteAllTextAsync(Path.Combine(_root, "I18n/zh-CN/opening.json"), """{"character.guide.name":"向导"}""");
+        Directory.CreateDirectory(Path.Combine(_root, "I18n/External/zh-CN"));
+        await File.WriteAllTextAsync(Path.Combine(_root, "I18n/External/zh-CN/extra.json"), """{"group.opening.entry.line.content":"external"}""");
+        var output = Path.Combine(_root, "Output"); Directory.CreateDirectory(output); await File.WriteAllTextAsync(Path.Combine(output, "sentinel.txt"), "keep");
+        var failure = Assert.ThrowsAsync<InvalidDataException>(() => new ProjectContentBuilder(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).BuildAsync(_root, output));
+        Assert.That(failure!.Message, Does.Contain("Unresolved reference")); Assert.That(File.ReadAllText(Path.Combine(output, "sentinel.txt")), Is.EqualTo("keep"));
+        var issue = LocalizationValidation.ValidateDisk(_root, new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).Single(item => item.Code == "localization.text.defaultMissing");
+        Assert.That(issue.JsonPointer, Is.EqualTo("/entries/0/parameters/content")); Assert.That(issue.ObjectId, Is.EqualTo("line"));
+    }
+
+    [Test]
     public async Task BuildAsync_CompilesNestedRawGroupsIntoRuntimeLayout()
     {
         await WriteProjectAsync("story/opening.rawgalgroup", "opening");

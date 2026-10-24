@@ -22,7 +22,8 @@ public static class BuiltinSchemas
         CreateVariablesModule(),
         CreateGalleryModule(),
         CreateTransitionsModule(),
-        CreateVoiceModule()
+        CreateVoiceModule(),
+        CreateCustomActionsModule()
     ]);
 
     public static IEntryModule CreateDialogueModule() => new DefaultEntryModule("dialogue",
@@ -46,13 +47,15 @@ public static class BuiltinSchemas
         DefaultPrimitiveEntryBase.ForDto<LayerColorOptions>(BuiltinEntryIds.ShowColorLayer),
         DefaultPrimitiveEntryBase.ForDto<LayerHandleOptions>(BuiltinEntryIds.HideLayer),
         DefaultPrimitiveEntryBase.ForDto<LayerMoveOptions>(BuiltinEntryIds.MoveLayer),
-        DefaultPrimitiveEntryBase.ForDto<LayerReplaceOptions>(BuiltinEntryIds.ReplaceLayer)
+        DefaultPrimitiveEntryBase.ForDto<LayerReplaceOptions>(BuiltinEntryIds.ReplaceLayer),
+        DefaultPrimitiveEntryBase.ForDto<VariantsShowOptions>(BuiltinEntryIds.ShowVariants, VariantsArgumentValidation.Show, validatePartialArguments: static _ => { }),
+        DefaultPrimitiveEntryBase.ForDto<VariantsSelectOptions>(BuiltinEntryIds.SelectVariants, VariantsArgumentValidation.Select, validatePartialArguments: static _ => { })
     ]);
 
     public static IEntryModule CreateAnimationsModule() => new DefaultEntryModule("animations",
     [
         DefaultPrimitiveEntryBase.ForDto<AnimationOptions>(BuiltinEntryIds.Animate),
-        DefaultPrimitiveEntryBase.ForDto<AnimationPlanOptions>(BuiltinEntryIds.PlayAnimationPlan, arguments => BuiltinArgumentValidation.Validate(BuiltinEntryIds.PlayAnimationPlan, arguments), validatePartialArguments: static _ => { }),
+        DefaultPrimitiveEntryBase.ForDto<TimelineOptions>(BuiltinEntryIds.PlayTimeline, arguments => BuiltinArgumentValidation.Validate(BuiltinEntryIds.PlayTimeline, arguments), validatePartialArguments: static _ => { }),
         DefaultPrimitiveEntryBase.ForDto<AnimationStopOptions>(BuiltinEntryIds.StopAnimation)
     ]);
 
@@ -97,6 +100,21 @@ public static class BuiltinSchemas
     [
         DefaultPrimitiveEntryBase.ForDto<VariableSetOptions>(BuiltinEntryIds.SetVariable)
     ]);
+
+    public static IEntryModule CreateCustomActionsModule() => new DefaultEntryModule("custom",
+    [
+        DefaultPrimitiveEntryBase.ForDto<CustomInvokeOptions>(BuiltinEntryIds.InvokeCustom, ValidateCustomAction,
+            validatePartialArguments: arguments =>
+            {
+                if (arguments.TryGetProperty("action", out _)) ValidateCustomAction(arguments);
+            })
+    ]);
+
+    private static void ValidateCustomAction(JsonElement arguments)
+    {
+        if (string.IsNullOrWhiteSpace(arguments.GetProperty("action").GetString()))
+            throw new InvalidDataException("custom.invoke requires a nonblank 'action'.");
+    }
 
     public static IEntryModule CreateGalleryModule() => new DefaultEntryModule("gallery",
     [

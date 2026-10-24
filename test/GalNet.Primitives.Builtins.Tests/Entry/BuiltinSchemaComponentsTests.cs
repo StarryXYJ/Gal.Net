@@ -34,10 +34,10 @@ public sealed class BuiltinSchemaComponentsTests
         var catalog = new TargetProfileEntryCatalog(modules);
         Assert.Multiple(() =>
         {
-            Assert.That(modules, Has.Count.EqualTo(13));
-            Assert.That(modules.Select(module => module.Id).Distinct().Count(), Is.EqualTo(13));
-            Assert.That(catalog.Definitions, Has.Count.EqualTo(42));
-            Assert.That(catalog.Definitions.Count(entry => entry.Kind == EntryKind.Primitive), Is.EqualTo(34));
+            Assert.That(modules, Has.Count.EqualTo(14));
+            Assert.That(modules.Select(module => module.Id).Distinct().Count(), Is.EqualTo(14));
+            Assert.That(catalog.Definitions, Has.Count.EqualTo(45));
+            Assert.That(catalog.Definitions.Count(entry => entry.Kind == EntryKind.Primitive), Is.EqualTo(37));
             Assert.That(catalog.Definitions.Count(entry => entry.Kind == EntryKind.Composite), Is.EqualTo(8));
             Assert.That(() => ((IList<IEntryModule>)modules).Clear(), Throws.TypeOf<NotSupportedException>());
         });

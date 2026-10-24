@@ -1,0 +1,18 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
+             x:Class="GalNet.Editor.Views.FileDocumentPanelView" x:DataType="vm:FileDocumentPanelViewModel">
+  <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="8" RowSpacing="6">
+    <StackPanel Orientation="Horizontal" Spacing="6">
+      <Button Content="{loc:Localize Files.Apply}" Command="{Binding Buffer.ApplyCommand}" IsEnabled="{Binding !Buffer.IsReadOnly}" />
+      <Button Content="{loc:Localize Files.SaveAll}" Command="{Binding Buffer.SaveCommand}" />
+      <Button Content="{loc:Localize Files.CancelDraft}" Command="{Binding Buffer.CancelCommand}" IsEnabled="{Binding !Buffer.IsReadOnly}" />
+      <Button Content="{loc:Localize Files.OpenExternal}" Command="{Binding Buffer.OpenExternalCommand}" IsEnabled="{Binding Buffer.CanOpenExternal}" />
+    </StackPanel>
+    <StackPanel Grid.Row="1"><TextBlock Text="{Binding Buffer.Path}" TextWrapping="Wrap" /><TextBlock Text="{Binding Buffer.Size,StringFormat='{}{0:N0} B'}" /></StackPanel>
+    <TextBox x:Name="FileTextInput" Grid.Row="2" Text="{Binding Buffer.Text,Mode=TwoWay}" IsReadOnly="{Binding Buffer.IsReadOnly}"
+             AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap" FontFamily="Cascadia Mono,Consolas,monospace"
+             ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"
+             LostFocus="OnTextLostFocus" KeyDown="OnTextKeyDown" />
+    <StackPanel Grid.Row="3"><TextBlock Text="{Binding Buffer.Information}" /><TextBlock Text="{Binding Buffer.Error}" Foreground="OrangeRed" TextWrapping="Wrap" /></StackPanel>
+  </Grid>
+</UserControl>

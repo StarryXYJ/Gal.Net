@@ -1,4 +1,7 @@
 using DynamicLocalization.Core;
+using GalNet.Assets;
+using GalNet.Assets.Provider;
+using GalNet.Assets.Variants;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
@@ -43,8 +46,11 @@ public class GameTestCaseTests
             localization.AttachGame(content);
             localization.ApplyCulture(culture);
             var presenter = new SmokeTextPresenter(route);
+            using var assets = new AssetManager([new LocalFileProvider(Path.Combine(output, "Assets"), types)]);
+            assets.RegisterImageVariantsDecoder();
+            var variants = await assets.LoadImageVariantsCatalogAsync();
             await using var view = new GameRegistration().AddBuiltins(presenter, gallery: content.Gallery,
-                nvlPresenter: presenter, characters: content.Localization.Characters).BuildView();
+                nvlPresenter: presenter, characters: content.Localization.Characters, imageVariants: variants).BuildView();
             var settings = new SettingsContainer();
             settings.Set(content.Settings);
             await using var engine = new GameEngine(content.Graph, view, localization, settings, choicePresenter: presenter);

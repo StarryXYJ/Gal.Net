@@ -1,4 +1,5 @@
 using GalNet.Assets;
+using GalNet.Assets.Variants;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
@@ -6,6 +7,7 @@ using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Assets;
 using GalNet.Core.Runtime;
 using GalNet.Core.Scene;
+using GalNet.Core.Variants;
 using GalNet.Presentation.Abstractions.Audio;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
@@ -34,6 +36,7 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
     public CompositeGameView View { get; private set; } = null!;
     public BuiltinAudioModule AudioModule { get; private set; } = null!;
     public StateRestoreSession Restorer { get; private set; } = null!;
+    public ImageVariantsCatalog ImageVariants { get; private set; } = ImageVariantsCatalog.Empty;
 
     public static async Task<AvaloniaGamePresentation> CreateAsync(
         GamePageViewModel gameplay, GamePage page, IAssetManager assets,
@@ -48,6 +51,7 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
         presentation._gameplay = gameplay;
         try
         {
+            presentation.ImageVariants = await assets.LoadImageVariantsCatalogAsync(cancellationToken);
             presentation._layers = options.CreateLayers(textures);
             presentation.Presenters = new AvaloniaGamePresenters(gameplay, page, presentation._layers);
             presentation._programs = new SkiaShaderEffectProgramResolver(

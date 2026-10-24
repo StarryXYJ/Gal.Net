@@ -20,11 +20,16 @@
                 BorderThickness="0,1,0,0"
                 Padding="12,6"
                 x:DataType="vm:EditorPageViewModel">
-            <Grid ColumnDefinitions="Auto,*,Auto">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="12">
                 <TextBlock Text="{Binding StatusText}"
+                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding StatusText}"
                            FontSize="12"
                            Foreground="{DynamicResource SemiColorText2}" />
-                <TextBlock Grid.Column="2"
+                <TextBlock Grid.Column="1" Text="{Binding SaveStatus}" FontSize="12" VerticalAlignment="Center" />
+                <Button Grid.Column="2" Command="{Binding ShowProblemsCommand}" Padding="4,0" MinHeight="0" Background="Transparent">
+                    <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Text="{Binding DraftCount}"/><TextBlock Text="{Binding Problems.Status}"/><TextBlock Text="{Binding Problems.Count}"/></StackPanel>
+                </Button>
+                <TextBlock Grid.Column="3"
                            Text="{Binding ProjectName}"
                            FontSize="12"
                            Foreground="{DynamicResource SemiColorText3}" />

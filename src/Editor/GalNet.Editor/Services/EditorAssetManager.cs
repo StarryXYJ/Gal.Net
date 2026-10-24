@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GalNet.Assets;
 using GalNet.Assets.Provider;
+using GalNet.Assets.Variants;
 using GalNet.Core.Assets;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Services.Interfaces;
@@ -30,7 +31,9 @@ public sealed class EditorAssetManager : IAssetManager
     private void OnCatalogChanged() => Rebuild(_projects.Current);
     private void Rebuild(Abstraction.Project.GalProject? project)
     {
-        var previous = Interlocked.Exchange(ref _inner, project is null ? new AssetManager() : new AssetManager([new LocalFileProvider(project.AssetsPath, _resourceTypes, optional: true)]));
+        var next = project is null ? new AssetManager() : new AssetManager([new LocalFileProvider(project.AssetsPath, _resourceTypes, optional: true)]);
+        next.RegisterImageVariantsDecoder();
+        var previous = Interlocked.Exchange(ref _inner, next);
         previous.Dispose();
     }
     public Task<IGameFile?> GetFileAsync(string assetId, CancellationToken ct = default) => _inner.GetFileAsync(assetId, ct);

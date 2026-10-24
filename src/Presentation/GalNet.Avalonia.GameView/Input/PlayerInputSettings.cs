@@ -67,13 +67,13 @@ public sealed class PlayerInputSettings : ObservableObject, IDisposable
         await _edits.WaitAsync();
         try
         {
-        if (!Actions.Any(item => item.Id == action) || index is < 0 or > 1) return false;
-        var next = Configuration;
-        var bindings = next.Bindings.GetValueOrDefault(action, []);
-        var own = bindings.Where(binding => binding.Device == device).ToList();
-        while (own.Count <= index) own.Add(new(device, ""));
-        own[index] = new(device, gesture ?? "");
-        next.Bindings[action] = bindings.Where(binding => binding.Device != device).Concat(own).ToArray();
+            if (!Actions.Any(item => item.Id == action) || index is < 0 or > 1) return false;
+            var next = Configuration;
+            var bindings = next.Bindings.GetValueOrDefault(action, []);
+            var own = bindings.Where(binding => binding.Device == device).ToList();
+            while (own.Count <= index) own.Add(new(device, ""));
+            own[index] = new(device, gesture ?? "");
+            next.Bindings[action] = bindings.Where(binding => binding.Device != device).Concat(own).ToArray();
             if (Validate(next) is { } error)
             {
                 ErrorKey = error;
@@ -82,9 +82,9 @@ public sealed class PlayerInputSettings : ObservableObject, IDisposable
                 Changed?.Invoke();
                 return false;
             }
-        ErrorKey = null;
+            ErrorKey = null;
             ConflictActionKey = null;
-        return await CommitAsync(next);
+            return await CommitAsync(next);
         }
         finally { _edits.Release(); }
     }
@@ -94,12 +94,12 @@ public sealed class PlayerInputSettings : ObservableObject, IDisposable
         await _edits.WaitAsync();
         try
         {
-        var next = Configuration;
-        if (next.EastConfirms == east) return true;
-        foreach (var id in next.Bindings.Keys.ToArray())
-            next.Bindings[id] = next.Bindings[id].Select(binding => binding.Device != PlayerInputDevice.Gamepad ? binding :
-                binding with { Gesture = string.Join('+', binding.Gesture.Split('+').Select(code => code == "South" ? "East" : code == "East" ? "South" : code).Order(StringComparer.Ordinal)) }).ToArray();
-        return await CommitAsync(next with { EastConfirms = east });
+            var next = Configuration;
+            if (next.EastConfirms == east) return true;
+            foreach (var id in next.Bindings.Keys.ToArray())
+                next.Bindings[id] = next.Bindings[id].Select(binding => binding.Device != PlayerInputDevice.Gamepad ? binding :
+                    binding with { Gesture = string.Join('+', binding.Gesture.Split('+').Select(code => code == "South" ? "East" : code == "East" ? "South" : code).Order(StringComparer.Ordinal)) }).ToArray();
+            return await CommitAsync(next with { EastConfirms = east });
         }
         finally { _edits.Release(); }
     }
@@ -108,12 +108,12 @@ public sealed class PlayerInputSettings : ObservableObject, IDisposable
         await _edits.WaitAsync();
         try
         {
-        var next = Configuration;
-        var defaults = Defaults();
-        foreach (var action in Actions)
-            next.Bindings[action.Id] = next.Bindings.GetValueOrDefault(action.Id, []).Where(binding => binding.Device != device)
-                .Concat(defaults.Bindings.GetValueOrDefault(action.Id, []).Where(binding => binding.Device == device)).ToArray();
-        return await CommitAsync(device == PlayerInputDevice.Gamepad ? next with { EastConfirms = false } : next);
+            var next = Configuration;
+            var defaults = Defaults();
+            foreach (var action in Actions)
+                next.Bindings[action.Id] = next.Bindings.GetValueOrDefault(action.Id, []).Where(binding => binding.Device != device)
+                    .Concat(defaults.Bindings.GetValueOrDefault(action.Id, []).Where(binding => binding.Device == device)).ToArray();
+            return await CommitAsync(device == PlayerInputDevice.Gamepad ? next with { EastConfirms = false } : next);
         }
         finally { _edits.Release(); }
     }

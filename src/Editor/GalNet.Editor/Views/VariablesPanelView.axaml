@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:services="using:GalNet.Editor.Services"
+             xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
+             xmlns:globalization="clr-namespace:System.Globalization;assembly=System.Runtime"
+             x:Class="GalNet.Editor.Views.VariablesPanelView" x:Name="Root" x:DataType="vm:VariablesPanelViewModel">
+  <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="12" RowSpacing="8">
+    <TabControl x:Name="ScopeTabs" Height="44" SelectedIndex="{Binding ScopeIndex}">
+      <TabItem Header="{loc:Localize Variables.Player}" />
+      <TabItem Header="{loc:Localize Variables.Save}" />
+    </TabControl>
+    <TextBlock Grid.Row="1" Text="{loc:Localize ScopeHintKey}" TextWrapping="Wrap" Opacity="0.75" />
+    <Grid Grid.Row="2" ColumnDefinitions="240,12,*">
+      <Grid RowDefinitions="*,Auto" RowSpacing="8">
+        <ListBox x:Name="VariableRows" ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}">
+          <ListBox.ItemTemplate><DataTemplate x:DataType="vm:VariableDefinitionRow"><StackPanel><TextBlock Text="{Binding Name}"/><TextBlock Text="{Binding Description}" Opacity="0.65" TextWrapping="Wrap"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+        </ListBox>
+        <Button x:Name="AddVariableButton" Grid.Row="1" Content="{loc:Localize Variables.Add}" Command="{Binding AddVariableCommand}" />
+      </Grid>
+      <ScrollViewer Grid.Column="2" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Spacing="8" IsEnabled="{Binding HasSelection}">
+          <TextBlock Text="{loc:Localize Variables.Name}"/><TextBox x:Name="NameInput" Text="{Binding DraftName}" />
+          <TextBlock Text="{loc:Localize Variables.Type}"/>
+          <ComboBox x:Name="TypeInput" ItemsSource="{Binding Types}" SelectedItem="{Binding DraftType}" HorizontalAlignment="Stretch">
+            <ComboBox.ItemTemplate><DataTemplate x:DataType="vm:VariableTypeOption"><TextBlock Text="{loc:Localize LabelKey}"/></DataTemplate></ComboBox.ItemTemplate>
+          </ComboBox>
+          <TextBlock Text="{loc:Localize Variables.Default}"/>
+          <Grid>
+            <TextBox x:Name="DefaultInput" IsVisible="{Binding IsTextDefault}" Text="{Binding DraftDefault}" />
+            <NumericUpDown x:Name="NumericDefaultInput" IsVisible="{Binding IsNumericDefault}"
+                           Text="{Binding DraftDefault, Mode=TwoWay}" Increment="{Binding DefaultIncrement}"
+                           NumberFormat="{x:Static globalization:NumberFormatInfo.InvariantInfo}" ParsingNumberStyle="Float"
+                           AutomationProperties.Name="{loc:Localize Variables.Default}" />
+            <CheckBox x:Name="BooleanDefaultInput" IsVisible="{Binding IsBooleanDefault}"
+                      IsChecked="{Binding DraftBoolean, Mode=TwoWay}" AutomationProperties.Name="{loc:Localize Variables.Default}" />
+          </Grid>
+          <TextBlock Text="{loc:Localize DefaultHintKey}" Opacity="0.65" TextWrapping="Wrap"/>
+          <TextBlock Text="{loc:Localize Variables.Description}"/><TextBox x:Name="DescriptionInput" Text="{Binding DraftDescription}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="70"/>
+          <WrapPanel>
+            <Button x:Name="ApplyVariableButton" Content="{loc:Localize Variables.Apply}" Command="{Binding ApplyCommand}" Margin="0,0,8,0"/>
+            <Button Content="{loc:Localize Variables.Revert}" Command="{Binding RevertCommand}" Margin="0,0,8,0"/>
+            <Button x:Name="DeleteVariableButton" Content="{loc:Localize Variables.Delete}" Command="{Binding DeleteVariableCommand}"/>
+          </WrapPanel>
+          <Button Content="{loc:Localize Variables.References}" Command="{Binding CheckReferencesCommand}"/>
+          <TextBlock Text="{loc:Localize Variables.ReferenceHint}" TextWrapping="Wrap" Opacity="0.65"/>
+          <ItemsControl ItemsSource="{Binding References}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="services:VariableReference"><StackPanel Margin="0,4"><Button Background="Transparent" Command="{Binding #Root.DataContext.NavigateReferenceCommand}" CommandParameter="{Binding}" HorizontalContentAlignment="Left"><TextBlock Text="{Binding Location}" TextWrapping="Wrap"/></Button><TextBlock Text="{loc:Localize Variables.Certain}" IsVisible="{Binding Certain}"/><TextBlock Text="{loc:Localize Variables.Possible}" IsVisible="{Binding !Certain}" Opacity="0.65"/></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+    <TextBlock Grid.Row="3" Text="{Binding MessageText}" TextWrapping="Wrap" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"/>
+  </Grid>
+</UserControl>

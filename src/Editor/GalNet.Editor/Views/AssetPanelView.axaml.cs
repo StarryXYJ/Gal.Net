@@ -1,10 +1,10 @@
-using System;
-using System.Linq;
+using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.VisualTree;
 using GalNet.Editor.Models;
 using GalNet.Editor.ViewModels;
 
@@ -12,136 +12,115 @@ namespace GalNet.Editor.Views;
 
 public partial class AssetPanelView : UserControl
 {
-    private static readonly DataFormat<string> InternalAssetFormat = DataFormat.CreateStringApplicationFormat("galnet.asset-relative-path");
-    private (AssetEntry Entry, PointerPressedEventArgs Args, Point Position)? _pendingInternalDrag;
-
-    public AssetPanelView() => InitializeComponent();
-    private void OnEntryDoubleTapped(object? sender, TappedEventArgs e)
+    private void OnListViewChanged(object? sender, RoutedEventArgs args)
     {
-        if (sender is Avalonia.Controls.Control { DataContext: AssetEntry entry } && DataContext is AssetPanelViewModel vm)
-            vm.OpenCommand.Execute(entry);
+        if (FileGrid is not null && DataContext is AssetPanelViewModel vm)
+            FileGrid.ItemsPanel = new Avalonia.Controls.Templates.FuncTemplate<Panel?>(() => vm.IsListView ? new StackPanel() : new WrapPanel());
     }
-    private void OnPathLostFocus(object? sender, RoutedEventArgs e)
+    private static readonly DataFormat<string> InternalFiles = DataFormat.CreateStringApplicationFormat("galnet.project-files");
+    private (PointerPressedEventArgs Args, Point Position, string[] Paths)? _pending;
+    private sealed record Payload(string Root, string[] Paths);
+    public AssetPanelView()
     {
-        if (sender is TextBox box && DataContext is AssetPanelViewModel vm) vm.NavigatePathCommand.Execute(box.Text);
+        InitializeComponent();
+        AttachedToVisualTree += (_, _) => OnListViewChanged(null, new RoutedEventArgs());
+        DataContextChanged += (_, _) => OnListViewChanged(null, new RoutedEventArgs());
     }
-    private void OnPathKeyDown(object? sender, KeyEventArgs e)
+    private void OnEntryDoubleTapped(object? sender, TappedEventArgs args) { if (sender is Control { DataContext: ProjectFileItem item } && DataContext is AssetPanelViewModel vm) vm.OpenCommand.Execute(item); }
+    private void OnAddressPressed(object? sender, PointerPressedEventArgs args)
     {
-        if (e.Key == Key.Enter && sender is TextBox box && DataContext is AssetPanelViewModel vm) { vm.NavigatePathCommand.Execute(box.Text); e.Handled = true; }
+        if (DataContext is not AssetPanelViewModel vm || vm.IsEditingPath || !args.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if (args.Source is Visual source && source.GetSelfAndVisualAncestors().OfType<Button>().Any()) return;
+        vm.PathText = vm.CurrentDirectory; vm.IsEditingPath = true;
+        var box = this.FindControl<TextBox>("PathInput")!; box.Focus(); box.SelectAll(); args.Handled = true;
     }
-    private void OnEntryPointerPressed(object? sender, PointerPressedEventArgs e)
+    private void OnPathKeyDown(object? sender, KeyEventArgs args)
     {
-        if (!e.GetCurrentPoint(sender as Visual).Properties.IsLeftButtonPressed || sender is not Avalonia.Controls.Control { DataContext: AssetEntry entry }) return;
-        _pendingInternalDrag = (entry, e, e.GetPosition(this));
+        if (DataContext is not AssetPanelViewModel vm) return;
+        if (args.Key == Key.Enter) { vm.NavigatePathCommand.Execute((sender as TextBox)?.Text); vm.IsEditingPath = false; args.Handled = true; }
+        else if (args.Key == Key.Escape) { vm.PathText = vm.CurrentDirectory; vm.IsEditingPath = false; args.Handled = true; }
     }
-    private async void OnEntryPointerMoved(object? sender, PointerEventArgs e)
+    private void OnPathLostFocus(object? sender, RoutedEventArgs args) { if (DataContext is AssetPanelViewModel vm) { vm.PathText = vm.CurrentDirectory; vm.IsEditingPath = false; } }
+    private void OnEntryPressed(object? sender, PointerPressedEventArgs args)
     {
-        if (_pendingInternalDrag is not { } pending || sender is not Avalonia.Controls.Control) return;
-        var position = e.GetPosition(this);
-        if (Math.Abs(position.X - pending.Position.X) < 5 && Math.Abs(position.Y - pending.Position.Y) < 5) return;
-        _pendingInternalDrag = null;
-        var data = new DataTransfer();
-        data.Add(DataTransferItem.Create(InternalAssetFormat, pending.Entry.RelativePath));
-        await DragDrop.DoDragDropAsync(pending.Args, data, DragDropEffects.Move);
+        if (sender is not Control { DataContext: ProjectFileItem item } control || DataContext is not AssetPanelViewModel vm) return;
+        var properties = args.GetCurrentPoint(control).Properties;
+        if (properties.IsRightButtonPressed) vm.Select(item);
+        if (!properties.IsLeftButtonPressed || !item.CanEdit) return;
+        var paths = vm.SelectedEntries.Contains(item) ? vm.SelectedEntries.Select(entry => entry.Path).ToArray() : [item.Path];
+        _pending = (args, args.GetPosition(this), paths);
     }
-    private void OnDragOver(object? sender, DragEventArgs e)
+    private async void OnEntryMoved(object? sender, PointerEventArgs args)
     {
-        if (e.DataTransfer.Formats.Contains(InternalAssetFormat))
-        {
-            e.DragEffects = DragDropEffects.None;
-            (DataContext as AssetPanelViewModel)?.SetExternalDropActive(false);
-            return;
-        }
-        var files = e.DataTransfer.TryGetFiles();
-        var fileEnumerator = files?.GetEnumerator();
-        try
-        {
-            e.DragEffects = fileEnumerator?.MoveNext() == true
-                ? DragDropEffects.Copy
-                : DragDropEffects.None;
-        }
-        finally
-        {
-            (fileEnumerator as IDisposable)?.Dispose();
-        }
-        if (DataContext is AssetPanelViewModel vm) vm.SetExternalDropActive(e.DragEffects == DragDropEffects.Copy);
-        e.Handled = true;
+        if (_pending is not { } pending || DataContext is not AssetPanelViewModel vm) return;
+        if (!args.GetCurrentPoint(this).Properties.IsLeftButtonPressed) { _pending = null; return; }
+        var position = args.GetPosition(this);
+        if (Math.Abs(position.X - pending.Position.X) < 6 && Math.Abs(position.Y - pending.Position.Y) < 6) return;
+        _pending = null;
+        var transfer = new DataTransfer(); transfer.Add(DataTransferItem.Create(InternalFiles, JsonSerializer.Serialize(new Payload(vm.ProjectRoot, pending.Paths))));
+        await DragDrop.DoDragDropAsync(pending.Args, transfer, DragDropEffects.Copy | DragDropEffects.Move);
     }
-    private void OnDragLeave(object? sender, RoutedEventArgs e) => (DataContext as AssetPanelViewModel)?.SetExternalDropActive(false);
-    private void OnBackDragOver(object? sender, DragEventArgs e)
+    private string[]? ReadInternal(DragEventArgs args)
     {
-        if (DataContext is not AssetPanelViewModel vm || !e.DataTransfer.Formats.Contains(InternalAssetFormat)) return;
-        var sourcePath = e.DataTransfer.TryGetValue(InternalAssetFormat);
-        var allowed = sourcePath is not null && vm.CanMoveToParent(sourcePath);
-        e.DragEffects = allowed ? DragDropEffects.Move : DragDropEffects.None;
-        vm.SetParentDropTarget(allowed);
-        e.Handled = true;
+        if (DataContext is not AssetPanelViewModel vm || !args.DataTransfer.Formats.Contains(InternalFiles)) return null;
+        try { var payload = JsonSerializer.Deserialize<Payload>(args.DataTransfer.TryGetValue(InternalFiles)!); return payload?.Root == vm.ProjectRoot ? payload.Paths : []; } catch (JsonException) { return []; }
     }
-    private void OnBackDragLeave(object? sender, RoutedEventArgs e)
+    private static string? Target(Control? control) => control?.DataContext switch { ProjectDirectoryNode node => node.Path, FileBreadcrumb crumb => crumb.Path, ProjectFileItem { IsDirectory: true } item => item.Path, _ => null };
+    private void SetEffects(DragEventArgs args, string target)
     {
-        if (DataContext is AssetPanelViewModel vm) vm.SetParentDropTarget(false);
+        if (DataContext is not AssetPanelViewModel vm) return;
+        var copy = args.KeyModifiers.HasFlag(KeyModifiers.Control);
+        var paths = ReadInternal(args);
+        args.DragEffects = paths is not null ? paths.Length > 0 && vm.CanDrop(paths, target, copy) ? copy ? DragDropEffects.Copy : DragDropEffects.Move : DragDropEffects.None
+            : vm.CanImportInto(target) && args.DataTransfer.TryGetFiles()?.Any() == true ? DragDropEffects.Copy : DragDropEffects.None;
+        args.Handled = true;
     }
-    private async void OnBackDrop(object? sender, DragEventArgs e)
+    private void OnGridDragOver(object? sender, DragEventArgs args) { if (DataContext is AssetPanelViewModel vm) SetEffects(args, vm.CurrentDirectory); }
+    private void OnTargetDragOver(object? sender, DragEventArgs args) { if (Target(sender as Control) is { } target) { SetEffects(args, target); (sender as Control)?.Classes.Set("drop-target", args.DragEffects != DragDropEffects.None); } }
+    private void OnTargetDragLeave(object? sender, RoutedEventArgs args) => (sender as Control)?.Classes.Set("drop-target", false);
+    private async Task DropAsync(DragEventArgs args, string target)
     {
-        if (DataContext is AssetPanelViewModel vm && e.DataTransfer.Formats.Contains(InternalAssetFormat))
-        {
-            var sourcePath = e.DataTransfer.TryGetValue(InternalAssetFormat);
-            if (sourcePath is not null) await vm.MoveInternalToParentAsync(sourcePath);
-            e.Handled = true;
-        }
-        if (DataContext is AssetPanelViewModel viewModel) viewModel.SetParentDropTarget(false);
+        if (DataContext is not AssetPanelViewModel vm) return;
+        SetEffects(args, target); if (args.DragEffects == DragDropEffects.None) return;
+        if (ReadInternal(args) is { Length: > 0 } paths) await vm.DropAsync(paths, target, args.KeyModifiers.HasFlag(KeyModifiers.Control));
+        else { var external = args.DataTransfer.TryGetFiles()?.Select(file => file.TryGetLocalPath()).OfType<string>().ToArray() ?? []; if (external.Length > 0) await vm.ImportExternalAsync(external, target); }
     }
-    private void OnDrop(object? sender, DragEventArgs e)
+    private async void OnGridDrop(object? sender, DragEventArgs args) { if (DataContext is AssetPanelViewModel vm) await DropAsync(args, vm.CurrentDirectory); }
+    private async void OnTargetDrop(object? sender, DragEventArgs args) { if (Target(sender as Control) is { } target) await DropAsync(args, target); (sender as Control)?.Classes.Set("drop-target", false); }
+    private void FocusRename(TextBox box)
     {
-        var files = e.DataTransfer.TryGetFiles();
-        var paths = files?.Select(file => file.TryGetLocalPath()).OfType<string>().ToArray() ?? [];
-        if (paths.Length > 0 && DataContext is AssetPanelViewModel vm) vm.ImportExternalCommand.Execute(paths);
-        if (DataContext is AssetPanelViewModel viewModel) viewModel.SetExternalDropActive(false);
-        e.Handled = true;
+        if (!box.IsVisible || box.DataContext is not ProjectFileItem { IsRenaming: true } item) return;
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => { if (!box.IsVisible) return; box.Focus(); box.SelectionStart = 0; var extension = item.IsDirectory ? "" : Path.GetExtension(item.Name); box.SelectionEnd = item.Name.Length - extension.Length; });
     }
-    private void OnEntryDragOver(object? sender, DragEventArgs e)
+    private void OnRenameAttached(object? sender, VisualTreeAttachmentEventArgs args) { if (sender is TextBox box) FocusRename(box); }
+    private void OnRenamePropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs args) { if (args.Property == IsVisibleProperty && sender is TextBox box) FocusRename(box); }
+    private async void OnRenameKeyDown(object? sender, KeyEventArgs args)
     {
-        if (sender is not Avalonia.Controls.Control { DataContext: AssetEntry target } || DataContext is not AssetPanelViewModel vm || !e.DataTransfer.Formats.Contains(InternalAssetFormat)) return;
-        var sourcePath = e.DataTransfer.TryGetValue(InternalAssetFormat);
-        var allowed = sourcePath is not null && AssetPanelViewModel.CanMoveTo(target, sourcePath);
-        e.DragEffects = allowed ? DragDropEffects.Move : DragDropEffects.None;
-        vm.SetDropTarget(allowed ? target : null);
-        e.Handled = true;
+        if (DataContext is not AssetPanelViewModel vm) return;
+        if (args.Key == Key.Enter) { args.Handled = true; await vm.CommitRenameAsync(); }
+        else if (args.Key == Key.Escape) { args.Handled = true; vm.CancelRenameCommand.Execute(null); }
     }
-    private void OnEntryDragLeave(object? sender, RoutedEventArgs e)
+    private async void OnRenameLostFocus(object? sender, RoutedEventArgs args)
     {
-        if (DataContext is AssetPanelViewModel vm) vm.SetDropTarget(null);
+        if (sender is Control { DataContext: ProjectFileItem { IsRenaming: true } item } && DataContext is AssetPanelViewModel vm && ReferenceEquals(item, vm.RenamingEntry)) await vm.CommitRenameAsync();
     }
-    private async void OnEntryDrop(object? sender, DragEventArgs e)
+    private async void OnBrowserKeyDown(object? sender, KeyEventArgs args)
     {
-        if (sender is Avalonia.Controls.Control { DataContext: AssetEntry target } && DataContext is AssetPanelViewModel vm && e.DataTransfer.Formats.Contains(InternalAssetFormat))
-        {
-            var sourcePath = e.DataTransfer.TryGetValue(InternalAssetFormat);
-            if (sourcePath is not null) await vm.MoveInternalAsync(sourcePath, target);
-            e.Handled = true;
-        }
-        if (DataContext is AssetPanelViewModel viewModel) viewModel.SetDropTarget(null);
-    }
-    private void OnRenameLostFocus(object? sender, RoutedEventArgs e)
-    {
-        if (sender is Avalonia.Controls.Control { DataContext: AssetEntry entry } && DataContext is AssetPanelViewModel vm) vm.CommitRenameCommand.Execute(entry);
-    }
-    private void OnRenameTextBoxAttached(object? sender, VisualTreeAttachmentEventArgs e)
-    {
-        if (sender is not TextBox { DataContext: AssetEntry entry } box || !entry.IsRenaming) return;
-        var extensionIndex = entry.IsDirectory ? -1 : entry.Name.LastIndexOf('.');
-        var length = extensionIndex > 0 ? extensionIndex : entry.Name.Length;
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-        {
-            box.Focus();
-            box.SelectionStart = 0;
-            box.SelectionEnd = length;
-        });
-    }
-    private void OnRenameKeyDown(object? sender, KeyEventArgs e)
-    {
-        if (sender is not Avalonia.Controls.Control { DataContext: AssetEntry entry } || DataContext is not AssetPanelViewModel vm) return;
-        if (e.Key == Key.Enter) { vm.CommitRenameCommand.Execute(entry); e.Handled = true; }
-        else if (e.Key == Key.Escape) { vm.CancelRenameCommand.Execute(null); e.Handled = true; }
+        if (args.Handled || args.Source is TextBox || DataContext is not AssetPanelViewModel vm) return;
+        var control = args.KeyModifiers.HasFlag(KeyModifiers.Control);
+        if (args.KeyModifiers.HasFlag(KeyModifiers.Alt) && args.Key == Key.Left) vm.BackCommand.Execute(null);
+        else if (args.KeyModifiers.HasFlag(KeyModifiers.Alt) && args.Key == Key.Right) vm.ForwardCommand.Execute(null);
+        else if (control && args.Key == Key.F) this.FindControl<TextBox>("SearchInput")!.Focus();
+        else if (control && args.Key == Key.A) this.FindControl<ListBox>("FileGrid")!.SelectAll();
+        else if (control && args.Key == Key.C) vm.CopySelectedCommand.Execute(null);
+        else if (control && args.Key == Key.X) vm.CutSelectedCommand.Execute(null);
+        else if (control && args.Key == Key.V) await vm.PasteCommand.ExecuteAsync(null);
+        else if (control && args.Key == Key.D) await vm.DuplicateCommand.ExecuteAsync(null);
+        else if (args.Key == Key.F2 && vm.CanRename) vm.BeginRenameCommand.Execute(vm.SelectedEntry);
+        else if (args.Key == Key.Delete) await vm.DeleteSelectedCommand.ExecuteAsync(null);
+        else if (args.Key == Key.Back) vm.UpCommand.Execute(null);
+        else if (args.Key == Key.Enter) vm.OpenCommand.Execute(vm.SelectedEntry);
+        else return;
+        args.Handled = true;
     }
 }

@@ -7,9 +7,9 @@ using GalNet.Editor.History;
 namespace GalNet.Editor.Services;
 
 /// <summary>Project data edits. Records retain author data and IDs, never a workspace or control.</summary>
-public sealed class GraphAuthoringService(IEditorDocumentService documents, EditorHistories histories, IProjectContentSession content)
+public sealed partial class GraphAuthoringService(IEditorDocumentService documents, EditorHistories histories, IProjectContentSession content, GameTextAuthoringService? texts = null)
 {
-    public async Task<string> AddNodeAsync(GraphNodeKind kind, double x, double y, string? fromId = null, int outlet = 0)
+    public async Task<string> AddNodeAsync(GraphNodeKind kind, double x, double y, string? fromId = null, int outlet = 0, string? fromItemId = null)
     {
         if (kind == GraphNodeKind.Entry) throw new EditorOperationException("graph.rootExists", "The project already owns its Entry root.");
         if (!double.IsFinite(x) || !double.IsFinite(y)) throw new EditorOperationException("graph.coordinates", "Node coordinates must be finite.");
@@ -23,13 +23,18 @@ public sealed class GraphAuthoringService(IEditorDocumentService documents, Edit
             Type = kind == GraphNodeKind.LinearGroup ? "Group" : "Branch",
             File = kind == GraphNodeKind.LinearGroup ? $"groups/{id}.rawgalgroup" : null,
             BranchType = kind == GraphNodeKind.ChoiceBranch ? "Choice" : kind == GraphNodeKind.ConditionBranch ? "Condition" : null,
-            Options = kind == GraphNodeKind.ChoiceBranch ? [new() { Id = Guid.NewGuid().ToString("N"), Text = "Option 1" }] : null,
+            Options = kind == GraphNodeKind.ChoiceBranch ? [new() { Id = Guid.NewGuid().ToString("N"), Text = "" }] : null,
             Conditions = kind == GraphNodeKind.ConditionBranch ? [new() { Id = Guid.NewGuid().ToString("N"), Expression = "true" }] : null
         };
         // Creation with a connection is one structural intent, including the replaced output edge.
-        if (fromId is not null) ValidateConnection(fromId, outlet, node);
+        if (fromId is not null)
+        {
+            ValidateConnection(fromId, outlet, node);
+            var from = Find(fromId);
+            fromItemId ??= from.BranchType == "Choice" ? from.Options![outlet].Id : from.BranchType == "Condition" ? from.Conditions![outlet].Id : null;
+        }
         await histories.Content.ExecuteAsync(new PresenceEdit(documents, content, [id], new Bundle([(documents.CurrentDocument.Nodes.Count, node)], [],
-            node.Type == "Group" ? new() { [id] = [] } : new()), fromId, outlet));
+            node.Type == "Group" ? new() { [id] = [] } : new()), fromId, outlet, fromItemId: fromItemId));
         return id;
     }
 
@@ -79,11 +84,15 @@ public sealed class GraphAuthoringService(IEditorDocumentService documents, Edit
     private void ValidateConnection(string fromId, int outlet, EditorGraphNodeDto to)
     {
         var from = Find(fromId);
-        var count = from.BranchType == "Choice" ? Math.Max(1, from.Options?.Count ?? 0)
-            : from.BranchType == "Condition" ? Math.Max(1, from.Conditions?.Count ?? 0) : 1;
+        var count = from.BranchType == "Choice" ? from.Options?.Count ?? 0
+            : from.BranchType == "Condition" ? from.Conditions?.Count ?? 0 : 1;
         if (from.Id == to.Id || to.Type == "Entry" || outlet < 0 || outlet >= count)
             throw new EditorOperationException("graph.connection", "Invalid graph connection.");
     }
+
+    private static int ResolveOutlet(EditorGraphNodeDto? from, int outlet, string? itemId) => from is null ? -1 : itemId is null ? outlet
+        : from.BranchType == "Choice" ? from.Options?.FindIndex(item => item.Id == itemId) ?? -1
+        : from.Conditions?.FindIndex(item => item.Id == itemId) ?? -1;
 
     private static void Changed(IEditorDocumentService source) => source.SynchronizeGroups();
     private sealed record NameEdit(IEditorDocumentService Source, string Id, string Before, string After) : IUndoableEdit
@@ -146,7 +155,7 @@ public sealed class GraphAuthoringService(IEditorDocumentService documents, Edit
     }
 
     private sealed class PresenceEdit(IEditorDocumentService source, IProjectContentSession session, string[] ids,
-        Bundle? created = null, string? fromId = null, int outlet = 0) : IAsyncUndoableEdit
+        Bundle? created = null, string? fromId = null, int outlet = 0, EditorText? display = null, string? fromItemId = null, bool emptyCopyBaseline = false) : IAsyncUndoableEdit
     {
         private readonly bool _isCreation = created is not null;
         private readonly bool _writesFiles = created?.Nodes.Any(item => item.Node.Type == "Group") == true || source.CurrentDocument.Nodes.Any(node => ids.Contains(node.Id) && node.Type == "Group");
@@ -155,6 +164,7 @@ public sealed class GraphAuthoringService(IEditorDocumentService documents, Edit
         private (int Index, EditorGraphEdgeDto Edge)[] _replacedWorking = [];
         private (int Index, EditorGraphEdgeDto Edge)[] _replacedSaved = [];
         public string Description => !_isCreation ? "Delete nodes and Group sources" : "Create node and source";
+        public EditorText DisplayText => display ?? EditorText.History(Description);
         public long RetainedBytes => (_working?.Bytes ?? 0) + (_saved?.Bytes ?? 0);
         public ValueTask RedoAsync() => SetAsync(_isCreation);
         public ValueTask UndoAsync() => SetAsync(!_isCreation);
@@ -170,17 +180,25 @@ public sealed class GraphAuthoringService(IEditorDocumentService documents, Edit
                 {
                     var from = working.Graph.Nodes.SingleOrDefault(node => node.Id == fromId)
                         ?? throw new EditorOperationException("graph.targetRemoved", "The starting node was removed before this edit.");
-                    var count = from.BranchType == "Choice" ? Math.Max(1, from.Options?.Count ?? 0)
-                        : from.BranchType == "Condition" ? Math.Max(1, from.Conditions?.Count ?? 0) : 1;
+                    if (fromItemId is not null) outlet = from.BranchType == "Choice" ? from.Options!.FindIndex(item => item.Id == fromItemId) : from.Conditions!.FindIndex(item => item.Id == fromItemId);
+                    var count = from.BranchType == "Choice" ? from.Options?.Count ?? 0
+                        : from.BranchType == "Condition" ? from.Conditions?.Count ?? 0 : 1;
                     if (outlet < 0 || outlet >= count) throw new EditorOperationException("graph.targetRemoved", "The starting outlet changed before this edit.");
                 }
                 // Capture only after publication is available: an earlier save may advance Saved while we wait.
                 var liveWorking = new EditorProjectDocument { Graph = source.CurrentDocument, GroupEntries = source.LoadedProject.GroupEntries };
                 nextWorking = present ? _working! : Bundle.Capture(liveWorking, ids);
                 nextSaved = present ? _saved! : Bundle.Capture(saved, ids);
+                if (present && emptyCopyBaseline)
+                {
+                    nextSaved = new(nextSaved.Nodes.Select(item => (item.Index, Copy(item.Node))).ToArray(), nextSaved.Edges.Select(item => (item.Index, Copy(item.Edge))).ToArray(),
+                        nextSaved.Groups.ToDictionary(pair => pair.Key, pair => Copy(pair.Value)));
+                    foreach (var group in nextSaved.Groups.Values) group.Clear();
+                    foreach (var option in nextSaved.Nodes.SelectMany(item => item.Node.Options ?? [])) option.Text = "";
+                }
                 replacedWorking = present && fromId is not null ? Outgoing(working) : _replacedWorking;
                 replacedSaved = present && fromId is not null ? Outgoing(saved) : _replacedSaved;
-                return new PresenceChange(source.CurrentDocument, ids, nextWorking, nextSaved, present, fromId, outlet, replacedWorking, replacedSaved);
+                return new PresenceChange(source.CurrentDocument, ids, nextWorking, nextSaved, present, fromId, outlet, replacedWorking, replacedSaved, fromItemId);
             }
             if (_writesFiles) await session.PublishStructureAsync(Prepare);
             else
@@ -195,11 +213,11 @@ public sealed class GraphAuthoringService(IEditorDocumentService documents, Edit
             else { _replacedWorking = replacedWorking; _replacedSaved = replacedSaved; }
         }
         private (int Index, EditorGraphEdgeDto Edge)[] Outgoing(EditorProjectDocument document) =>
-            document.Graph.Edges.Select((edge, index) => (index, edge)).Where(item => item.edge.FromNodeId == fromId && item.edge.FromOutlet == outlet).ToArray();
+            document.Graph.Edges.Select((edge, index) => (index, edge)).Where(item => item.edge.FromNodeId == fromId && item.edge.FromOutlet == ResolveOutlet(document.Graph.Nodes.SingleOrDefault(node => node.Id == fromId), outlet, fromItemId)).ToArray();
     }
 
     private sealed record PresenceChange(EditorGraphDocument LiveGraph, string[] Ids, Bundle Working, Bundle Saved, bool Present, string? FromId, int Outlet,
-        (int Index, EditorGraphEdgeDto Edge)[] ReplacedWorking, (int Index, EditorGraphEdgeDto Edge)[] ReplacedSaved) : IProjectStructureChange
+        (int Index, EditorGraphEdgeDto Edge)[] ReplacedWorking, (int Index, EditorGraphEdgeDto Edge)[] ReplacedSaved, string? FromItemId) : IProjectStructureChange
     {
         public void Apply(EditorProjectDocument document, AuthorDocumentVersion version)
         {
@@ -220,10 +238,11 @@ public sealed class GraphAuthoringService(IEditorDocumentService documents, Edit
             foreach (var item in bundle.Nodes.OrderBy(item => item.Index)) document.Graph.Nodes.Insert(Math.Min(item.Index, document.Graph.Nodes.Count), live ? item.Node : Copy(item.Node));
             foreach (var pair in bundle.Groups) document.GroupEntries.Add(pair.Key, live ? pair.Value : Copy(pair.Value));
             foreach (var item in bundle.Edges.OrderBy(item => item.Index)) document.Graph.Edges.Insert(Math.Min(item.Index, document.Graph.Edges.Count), live ? item.Edge : Copy(item.Edge));
-            if (FromId is not null && document.Graph.Nodes.Any(node => node.Id == FromId))
+            var resolvedOutlet = ResolveOutlet(document.Graph.Nodes.SingleOrDefault(node => node.Id == FromId), Outlet, FromItemId);
+            if (FromId is not null && resolvedOutlet >= 0)
             {
-                document.Graph.Edges.RemoveAll(edge => edge.FromNodeId == FromId && edge.FromOutlet == Outlet);
-                document.Graph.Edges.Add(new() { Id = "edge-" + Ids[0], FromNodeId = FromId, FromOutlet = Outlet, ToNodeId = Ids[0] });
+                document.Graph.Edges.RemoveAll(edge => edge.FromNodeId == FromId && edge.FromOutlet == resolvedOutlet);
+                document.Graph.Edges.Add(new() { Id = "edge-" + Ids[0], FromNodeId = FromId, FromOutlet = resolvedOutlet, ToNodeId = Ids[0] });
             }
         }
         private static T Copy<T>(T value) => JsonSerializer.Deserialize<T>(JsonSerializer.SerializeToUtf8Bytes(value))!;

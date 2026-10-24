@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "folder": "xy",
+  "default": "xy_idle",
+  "dimensions": [
+    {
+      "key": "pose",
+      "label": "姿态"
+    },
+    {
+      "key": "expression",
+      "label": "表情"
+    }
+  ]
+}

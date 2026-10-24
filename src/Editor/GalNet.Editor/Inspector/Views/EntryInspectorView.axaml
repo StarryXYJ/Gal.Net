@@ -1,0 +1,18 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:vm="using:GalNet.Editor.Inspector.ViewModels" xmlns:forms="using:GalNet.Game.Controls.Forms"
+ xmlns:controls="using:GalNet.Editor.Controls" xmlns:loc="using:GalNet.Editor.MarkupExtensions"
+ x:Class="GalNet.Editor.Inspector.Views.EntryInspectorView" x:DataType="vm:EntryInspectorViewModel"
+ Background="{DynamicResource SemiColorBackground0}" Foreground="{DynamicResource SemiColorText0}">
+ <UserControl.Styles><StyleInclude Source="avares://GalNet.Editor/Controls/AuthorFormStyles.axaml"/></UserControl.Styles>
+ <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+  <StackPanel Margin="10" Spacing="8">
+   <SelectableTextBlock Text="{Binding TargetDescription}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+   <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding HasMultipleSelection}"><TextBlock Text="{loc:Localize Uiux.Entry.Selected}"/><TextBlock Text="{Binding SelectionCount}"/><TextBlock Text="{loc:Localize Uiux.Entry.ActiveOnly}"/></StackPanel>
+   <TextBlock Text="{loc:Localize Uiux.Entry.Condition}"/>
+   <controls:ConditionEditorControl Text="{Binding Entry.Condition}" Suggestions="{Binding Page.ConditionSuggestions}" ValidationVariables="{Binding Page.ValidationVariables}"/>
+   <TextBlock Text="{loc:Localize Entry.UnknownTypePreserved}" IsVisible="{Binding Entry.IsUnknownType}" TextWrapping="Wrap"/>
+   <TextBlock Text="{loc:Localize Entry.UnknownParametersPreserved}" IsVisible="{Binding Entry.HasUnknownParameters}" TextWrapping="Wrap"/>
+   <forms:DtoEditorHost Name="EntryDetails" Item="{Binding Form.Item}" Registry="{Binding FieldEditors}"/>
+  </StackPanel>
+ </ScrollViewer>
+</UserControl>

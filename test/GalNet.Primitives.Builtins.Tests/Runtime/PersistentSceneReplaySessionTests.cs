@@ -11,13 +11,13 @@ public sealed class StateRestoreSessionTests
 {
     [TestCase(false)]
     [TestCase(true)]
-    public async Task RestoredLoopsKeepTheirDefinitionsAndWaitForPresentationCleanup(bool plan)
+    public async Task RestoredLoopsKeepTheirDefinitionsAndWaitForPresentationCleanup(bool timeline)
     {
         var runtime = BuiltinTestRuntime.Create(null);
         runtime.SceneInstances.GetOrAdd("hero", id => new Layer { Id = id, AssetId = "image" });
-        PrimitiveInstance definition = plan
-            ? new AnimationPlanPrimitiveInstance(runtime, null, null, null, null,
-                new AnimationPlanDefinition { PlaybackHandleId = "loop", DurationFrames = 60, LoopMode = AnimationLoopMode.Loop }, null, CancellationToken.None)
+        PrimitiveInstance definition = timeline
+            ? new TimelinePrimitiveInstance(runtime, null, null, null, null,
+                new TimelineDefinition { PlaybackHandleId = "loop", DurationFrames = 60, LoopMode = AnimationLoopMode.Loop }, null, CancellationToken.None)
             : new AnimationPrimitiveInstance(runtime, null,
                 new AnimationRequest { PlaybackHandleId = "loop", HandleId = "hero", Property = "opacity", From = .5f, To = 1, DurationSeconds = 1, LoopMode = AnimationLoopMode.Loop }, null, CancellationToken.None);
         definition.Dispatch(PrimitiveInvocationMode.CatchUp);
@@ -116,7 +116,7 @@ public sealed class StateRestoreSessionTests
             await RunAsync(cancellationToken);
             return AnimationOutcome.Skipped;
         }
-        public async Task<AnimationPlanPlayResult> PlayAnimationPlanAsync(AnimationPlanDefinition plan, CancellationToken cancellationToken, Func<double, Task>? beforeFrame = null)
+        public async Task<TimelinePlayResult> PlayTimelineAsync(TimelineDefinition timeline, CancellationToken cancellationToken, Func<double, Task>? beforeFrame = null)
         {
             await RunAsync(cancellationToken);
             return new() { Outcome = AnimationOutcome.Skipped };

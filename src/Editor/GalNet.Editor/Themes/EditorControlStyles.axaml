@@ -1,0 +1,41 @@
+<Styles xmlns="https://github.com/avaloniaui" xmlns:primitives="using:Avalonia.Controls.Primitives" xmlns:themes="using:GalNet.Editor.Themes">
+  <!-- Native themes also contain palette defaults. Bind author controls explicitly to the
+       Editor palette so custom variants keep readable text and consistent neutral surfaces. -->
+  <Style Selector=":is(primitives|TemplatedControl)">
+    <Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/>
+  </Style>
+  <Style Selector="TextBlock"><Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/></Style>
+  <Style Selector="SelectableTextBlock"><Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/></Style>
+  <Style Selector="TextBox">
+    <Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/>
+    <Setter Property="Background" Value="{DynamicResource SemiColorBackground2}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}"/>
+    <Setter Property="PlaceholderForeground" Value="{DynamicResource SemiColorText2}"/>
+  </Style>
+  <Style Selector="NumericUpDown">
+    <Setter Property="Background" Value="{DynamicResource SemiColorBackground2}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}"/>
+  </Style>
+  <Style Selector="ListBox">
+    <Setter Property="Background" Value="{DynamicResource SemiColorBackground0}"/>
+  </Style>
+  <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}"/>
+    <Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/>
+  </Style>
+  <Style Selector="ComboBox">
+    <Setter Property="Background" Value="{DynamicResource SemiColorBackground2}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}"/>
+  </Style>
+  <Style Selector="Button:not(.editor-icon)">
+    <Setter Property="Background" Value="{DynamicResource SemiColorFill0}"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+  </Style>
+  <Style Selector="Button:not(.editor-icon):pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SemiColorFill1}"/>
+    <Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/>
+  </Style>
+  <Style Selector="Button:not(.editor-icon):pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SemiColorFill2}"/>
+  </Style>
+</Styles>

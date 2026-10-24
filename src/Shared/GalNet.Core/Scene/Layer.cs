@@ -30,6 +30,9 @@ public sealed class Layer : AnimatableSceneInstance
     /// <summary>Optional sprite-sheet source. When absent, <see cref="AssetId"/> represents one static image.</summary>
     public FlipbookDefinition? Flipbook { get; set; }
 
+    /// <summary>Optional differential image source, mutually exclusive with video, color and flipbook.</summary>
+    public LayerVariantsState? Variants { get; set; }
+
     /// <summary>Optional #RRGGBB or #AARRGGBB solid color used instead of an image asset.</summary>
     public string? Color { get; set; }
 

@@ -4,7 +4,7 @@ namespace GalNet.Contracts.Builtins;
 public static class BuiltinEntryIds
 {
     public const string Animate = "animation.animate";
-    public const string PlayAnimationPlan = "animation.play";
+    public const string PlayTimeline = "timeline.play";
     public const string StopAnimation = "animation.stop";
     public const string Text = "dialogue.text";
     public const string ShowDialogue = "dialogue.show";
@@ -12,6 +12,7 @@ public static class BuiltinEntryIds
     public const string ApplyEffect = "effect.apply";
     public const string StopEffect = "effect.stop";
     public const string Wait = "flow.wait";
+    public const string InvokeCustom = "custom.invoke";
     public const string SetVariable = "variable.set";
     public const string UnlockGallery = "gallery.unlock";
     public const string ShowLayer = "layer.show";
@@ -19,6 +20,8 @@ public static class BuiltinEntryIds
     public const string HideLayer = "layer.hide";
     public const string MoveLayer = "layer.move";
     public const string ReplaceLayer = "layer.replace";
+    public const string ShowVariants = "variants.show";
+    public const string SelectVariants = "variants.select";
     public const string PlayAudio = "audio.play";
     public const string StopAudio = "audio.stop";
     public const string PauseAudio = "audio.pause";

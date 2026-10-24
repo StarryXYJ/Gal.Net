@@ -36,7 +36,7 @@ public static class GamePackageExporter
             ArgumentNullException.ThrowIfNull(resourceTypes);
             ArgumentNullException.ThrowIfNull(galleryTypes);
             stagingRoot = Path.Combine(Path.GetTempPath(), $"galnet-export-{Guid.NewGuid():N}");
-            await new ProjectContentBuilder(entryCatalog)
+            await new ProjectContentBuilder(entryCatalog, resourceTypes)
                 .BuildAsync(projectRoot, stagingRoot, cancellationToken)
                 .ConfigureAwait(false);
             var assets = await LoadAssetsAsync(Path.Combine(stagingRoot, "Assets"), resourceTypes, cancellationToken);
@@ -53,7 +53,7 @@ public static class GamePackageExporter
                 var manifest = new GalpakManifest(1, projectId, projectName, DateTimeOffset.UtcNow, packages);
                 await WriteEntryAsync(zip, $"{SafeFileName(projectName)}.galnet", JsonSerializer.SerializeToUtf8Bytes(manifest, JsonOptions), cancellationToken);
             }
-            await VerifyAsync(temporaryPath, packages, cancellationToken);
+            await VerifyAsync(temporaryPath, packages, resourceTypes, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             File.Move(temporaryPath, packagePath, true);
             return GamePackageExportResult.Succeeded(packagePath);
@@ -105,7 +105,7 @@ public static class GamePackageExporter
         await stream.WriteAsync(data, ct);
     }
 
-    private static async Task VerifyAsync(string path, IReadOnlyList<GalpakFileEntry> packages, CancellationToken ct)
+    private static async Task VerifyAsync(string path, IReadOnlyList<GalpakFileEntry> packages, IResourceTypeCatalog resourceTypes, CancellationToken ct)
     {
         await using var file = File.OpenRead(path);
         using var zip = new ZipArchive(file, ZipArchiveMode.Read);
@@ -119,7 +119,7 @@ public static class GamePackageExporter
             if (!string.Equals(Hash(data), package.Sha256, StringComparison.Ordinal)) throw new InvalidDataException($"Checksum mismatch for '{package.Path}'.");
             if (package.Path.EndsWith(".pak", StringComparison.OrdinalIgnoreCase))
             {
-                using var archive = Archive.Deserialize(Path.GetFileNameWithoutExtension(package.Path), data);
+                using var archive = Archive.Deserialize(Path.GetFileNameWithoutExtension(package.Path), data, resourceTypes);
             }
         }
     }

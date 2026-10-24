@@ -10,6 +10,7 @@ using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
 using GalNet.Editor.Services;
+using GalNet.Editor.Shared.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -54,6 +55,24 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
 
     [ObservableProperty]
     private string _projectName = "";
+    [ObservableProperty] private string _debugExecutable = "";
+    [ObservableProperty] private string _debugArguments = "";
+    [ObservableProperty] private string _debugWorkingDirectory = "";
+    [ObservableProperty] private string _debugConfigurationMessage = "";
+
+    [RelayCommand]
+    private void SaveDebugConfiguration()
+    {
+        try
+        {
+            if (_projectService.Current is not { } project) return;
+            ExternalGameDebugClient.SaveSettings(project.RootPath, new(DebugExecutable.Trim(),
+                DebugArguments.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries),
+                string.IsNullOrWhiteSpace(DebugWorkingDirectory) ? null : DebugWorkingDirectory.Trim()));
+            DebugConfigurationMessage = "";
+        }
+        catch (Exception error) { DebugConfigurationMessage = error.Message; }
+    }
 
     public ProjectSettingsPanelViewModel(
         IProjectService projectService,
@@ -90,6 +109,16 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
 
         _isLoading = true;
         ProjectName = project.Name;
+        try
+        {
+            if (ExternalGameDebugClient.LoadSettings(project.RootPath) is { } launch)
+            {
+                DebugExecutable = launch.Executable;
+                DebugArguments = string.Join(Environment.NewLine, launch.Arguments ?? []);
+                DebugWorkingDirectory = launch.WorkingDirectory ?? "";
+            }
+        }
+        catch (Exception error) when (error is System.IO.IOException or System.Text.Json.JsonException or UnauthorizedAccessException) { DebugConfigurationMessage = error.Message; }
         DefaultWidth = settings.DefaultWidth;
         DefaultHeight = settings.DefaultHeight;
         Resolution = $"{DefaultWidth}×{DefaultHeight}";
@@ -128,6 +157,8 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
             try { locale = new Core.I18n.I18nLocale(TargetLocale).Code; }
             catch (Exception failure) when (failure is ArgumentException or FormatException)
             { throw new EditorOperationException("settings.localeInvalid", failure.Message, TargetLocale); }
+            if (locale != project.Settings.TargetLocale.Code)
+                throw new EditorOperationException("i18n.development", L["I18n.UsePanel"]);
             var before = SettingsSnapshot.From(project.Name, project.Settings);
             var after = new SettingsSnapshot(ProjectName.Trim(), DefaultWidth, DefaultHeight, SaveSlotCount, SfxChannelCount, locale, AudioTracks.Select(item => item.ToDefinition()).ToArray());
             ValidateTracks(after.AudioTracks);

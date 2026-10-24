@@ -1,0 +1,27 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:services="using:GalNet.Editor.Services" xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
+             x:Class="GalNet.Editor.Views.TimelineKeyEditorView" x:DataType="services:TimelineKeyEdit">
+  <UserControl.Styles>
+    <Style Selector="NumericUpDown /template/ RepeatButton, NumericUpDown /template/ ButtonSpinner /template/ RepeatButton">
+      <Setter Property="Delay" Value="250"/><Setter Property="Interval" Value="30"/>
+    </Style>
+  </UserControl.Styles>
+  <StackPanel Margin="12" Width="380" Spacing="8">
+    <StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Text="{loc:Localize Timeline.Key.Selected}"/><TextBlock Text="{Binding Count}"/></StackPanel>
+    <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
+      <TextBlock Text="{loc:Localize Timeline.Key.Value}" VerticalAlignment="Center"/>
+      <NumericUpDown Grid.Column="1" Name="TimelineKeyValue" Value="{Binding Value,Mode=TwoWay}" Increment="0.1" FormatString="G9" LostFocus="OnKeyDetailLostFocus"/>
+      <TextBlock Grid.Row="1" Text="{loc:Localize Timeline.Curve.Interpolation}" VerticalAlignment="Center"/>
+      <ComboBox Grid.Row="1" Grid.Column="1" Name="TimelineKeyInterpolation" SelectedIndex="{Binding InterpolationIndex,Mode=TwoWay}" SelectionChanged="OnKeyInterpolationChanged">
+        <ComboBoxItem Content="{loc:Localize Timeline.Key.Step}"/><ComboBoxItem Content="{loc:Localize Timeline.Key.Linear}"/><ComboBoxItem Content="{loc:Localize Timeline.Curve.Hermite}"/>
+      </ComboBox>
+      <TextBlock Grid.Row="2" Text="{loc:Localize Timeline.Key.Incoming}" VerticalAlignment="Center"/>
+      <NumericUpDown Grid.Row="2" Grid.Column="1" Name="TimelineKeyIncoming" Value="{Binding Incoming,Mode=TwoWay}" Increment="0.01" FormatString="G9" LostFocus="OnKeyDetailLostFocus"/>
+      <TextBlock Grid.Row="3" Text="{loc:Localize Timeline.Key.Outgoing}" VerticalAlignment="Center"/>
+      <NumericUpDown Grid.Row="3" Grid.Column="1" Name="TimelineKeyOutgoing" Value="{Binding Outgoing,Mode=TwoWay}" Increment="0.01" FormatString="G9" LostFocus="OnKeyDetailLostFocus"/>
+    </Grid>
+    <CheckBox Name="TimelineKeySeconds" Content="{loc:Localize Timeline.Key.Seconds}"/>
+    <TextBlock Text="{loc:Localize Path=UnitKey}"/>
+    <TextBlock Text="{loc:Localize Timeline.Key.Hint}" TextWrapping="Wrap" Opacity="0.7"/>
+  </StackPanel>
+</UserControl>

@@ -7,8 +7,11 @@ using GalNet.Editor.Services;
 
 namespace GalNet.Editor.ViewModels;
 
-public sealed partial class LogPanelViewModel : ObservableObject
+public sealed partial class LogPanelViewModel : ObservableObject, IDisposable
 {
+    public AuthorNavigationService? Navigation { get; set; }
+    public void Navigate(LogLine line) { if (line.Target is { } target) Navigation?.Navigate(target); }
+    public void Dispose() => EditorLogSink.Instance.LineAdded -= OnLineAdded;
     private readonly ObservableCollection<LogLine> _allLines;
 
     [ObservableProperty]

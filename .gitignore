@@ -461,6 +461,7 @@ riderModule.iml
 !.vscode/extensions.json
 
 # Project-specific
+/output/
 dev/*
 .galnet/
 GameTestCase/Output/

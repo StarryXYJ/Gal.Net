@@ -8,50 +8,37 @@ namespace GeneralTest.Editor;
 public class VariableDefinitionServiceTests
 {
     [Test]
-    public void AddDefinition_UsesUniqueNamesAndMarksDocumentDirty()
+    public void ReturnedDeclarationsAreDetachedFromAuthorContent()
     {
-        var documentService = new EditorDocumentService();
-        documentService.Load(new LoadedEditorProjectDocument
+        var documents = new EditorDocumentService();
+        var source = new ProjectVariableDefinition { Name = "score", DefaultValue = new() { Name = "score", Value = VariableValue.From(3) } };
+        documents.Load(new() { Document = new() { PlayerVariables = [source] } });
+        var service = new VariableDefinitionService(documents);
+        var snapshot = service.GetDefinitions(VariableScope.Player).Single();
+        snapshot.Name = "changed";
+        snapshot.DefaultValue.SetValue(99);
+        Assert.Multiple(() =>
         {
-            Document = new EditorGraphDocument
-            {
-                PlayerVariables =
-                [
-                    new ProjectVariableDefinition
-                    {
-                        Name = "var_player_1",
-                        DefaultValue = new GalNet.Core.Variable.Variable { Name = "var_player_1", Value = VariableValue.From(false) }
-                    }
-                ]
-            }
+            Assert.That(source.Name, Is.EqualTo("score"));
+            Assert.That(source.DefaultValue.AsInt(), Is.EqualTo(3));
+            Assert.That(snapshot.DefaultValue.Uid, Is.EqualTo(source.DefaultValue.Uid));
+            Assert.That(service.GetDefinitions(VariableScope.Save), Is.Empty);
         });
-
-        var service = new VariableDefinitionService(documentService);
-
-        var created = service.AddDefinition(VariableScope.Player);
-
-        Assert.That(created.Name, Is.EqualTo("var_player_2"));
-        Assert.That(documentService.IsDirty, Is.True);
-        Assert.That(service.GetDefinitions(VariableScope.Player), Has.Count.EqualTo(2));
     }
 
     [Test]
-    public void GeneratedGalleryVariableNamesAreReservedForBuiltInState()
+    public void DeclarationRefreshNotifiesBothScopesAndReadsCurrentDocument()
     {
-        var documentService = new EditorDocumentService();
-        documentService.Load(new LoadedEditorProjectDocument
-        {
-            Document = new EditorGraphDocument()
-        });
-        var service = new VariableDefinitionService(documentService);
-        var definition = service.AddDefinition(VariableScope.Player);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(service.IsNameAvailable("gallery_100_unlocked", VariableScope.Player), Is.False);
-            Assert.That(
-                service.RenameDefinition(VariableScope.Player, definition, "gallery_100_unlocked"),
-                Is.False);
-        });
+        var documents = new EditorDocumentService();
+        documents.Load(new LoadedEditorProjectDocument());
+        var service = new VariableDefinitionService(documents);
+        var changed = new List<VariableScope>();
+        service.DefinitionsChanged += changed.Add;
+        documents.CurrentDocument.SaveVariables.Add(new() { Name = "saved" });
+        service.ResetFromDocument();
+        Assert.That(changed, Is.EqualTo(new[] { VariableScope.Player, VariableScope.Save }));
+        Assert.That(service.GetDefinitions(VariableScope.Save).Single().Name, Is.EqualTo("saved"));
+        documents.Unload();
+        Assert.That(service.GetDefinitions(VariableScope.Save), Is.Empty);
     }
 }

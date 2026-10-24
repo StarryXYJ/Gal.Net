@@ -7,50 +7,38 @@
              x:Class="GalNet.Editor.Controls.EntryListEditorControl"
              x:Name="Root"
              x:DataType="vm:GroupEditorPanelViewModel"
-             MoveCommand="{Binding ReorderEntryCommand}">
+             MoveCommand="{Binding ReorderEntryCommand}" Focusable="True">
     <controls:ReorderableListControl.Styles>
-        <Style Selector="forms|SchemaForm" x:CompileBindings="False">
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <StackPanel Spacing="6">
-                        <ItemsControl ItemsSource="{TemplateBinding Editors}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Grid ColumnDefinitions="130,*" ColumnSpacing="8">
-                                        <TextBlock DataContext="{Binding Context}" Text="{loc:Localize Label}" VerticalAlignment="Center" />
-                                        <StackPanel Grid.Column="1"><ContentControl Content="{Binding Control}" /><TextBlock Text="{Binding Context.Issue.Message}" TextWrapping="Wrap" /></StackPanel>
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <ItemsControl ItemsSource="{TemplateBinding Diagnostics}">
-                            <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding Message}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </ControlTemplate>
-            </Setter>
-        </Style>
+        <StyleInclude Source="avares://GalNet.Editor/Controls/AuthorFormStyles.axaml"/>
+        <Style Selector="Border.debugEntry"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}"/><Setter Property="BorderThickness" Value="1"/></Style>
+        <Style Selector="Border.debugEntry.debugCurrent"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorSuccess}"/><Setter Property="BorderThickness" Value="3"/></Style>
     </controls:ReorderableListControl.Styles>
     <Grid RowDefinitions="Auto,*,Auto">
-        <Button HorizontalAlignment="Left"
-                ToolTip.Tip="{loc:Localize Entry.Add}"
-                AutomationProperties.Name="{loc:Localize Entry.Add}"
-                Command="{Binding AddEntryCommand}"><PathIcon Width="16" Height="16" Data="{StaticResource AddIcon}" /></Button>
+        <WrapPanel x:Name="EntryToolbar" Orientation="Horizontal">
+            <TextBox Width="170" Text="{Binding SearchText}" PlaceholderText="{loc:Localize Uiux.Entry.Search}" Margin="0,0,6,0" />
+            <Button Theme="{DynamicResource EditorIconButton}" ToolTip.Tip="{loc:Localize Entry.Add}" AutomationProperties.Name="{loc:Localize Entry.Add}" Command="{Binding AddEntryCommand}" Margin="0,0,6,0"><PathIcon Width="16" Height="16" Data="{StaticResource AddIcon}"/></Button>
+            <Button Content="{loc:Localize Entry.AppendBatch}" Command="{Binding AppendEntriesCommand}" Margin="0,0,6,0" />
+            <NumericUpDown x:Name="BatchCount" Width="90" Minimum="1" Maximum="1000" Increment="1" FormatString="0" Value="{Binding BatchAddCount,Mode=TwoWay}" Margin="0,0,6,0" ToolTip.Tip="{loc:Localize Entry.BatchCount}" />
+            <controls:EntryTypePicker x:Name="InsertPicker" MinWidth="180" MinHeight="32" VerticalAlignment="Center" Options="{Binding EntryTypes}" ShortcutService="{Binding ShortcutService}" SelectedValue="{Binding InsertionType,Mode=OneWay}" Opened="OnInsertPickerOpened" Closed="OnInsertPickerClosed" TypeConfirmed="OnInsertTypeConfirmed" />
+            <Button Theme="{DynamicResource EditorIconButton}" ToolTip.Tip="{loc:Localize Uiux.Entry.ExpandAll}" AutomationProperties.Name="{loc:Localize Uiux.Entry.ExpandAll}" Command="{Binding ExpandAllCommand}" Margin="0,0,6,0"><PathIcon Width="16" Height="16" Data="{StaticResource ChevronDownRegular}"/></Button>
+            <Button Theme="{DynamicResource EditorIconButton}" ToolTip.Tip="{loc:Localize Uiux.Entry.CollapseAll}" AutomationProperties.Name="{loc:Localize Uiux.Entry.CollapseAll}" Command="{Binding CollapseAllCommand}" Margin="0,0,6,0"><PathIcon Width="16" Height="16" Data="{StaticResource ChevronUpRegular}"/></Button>
+        </WrapPanel>
 
         <ListBox Name="ItemsListBox"
                  Grid.Row="1"
-                 Margin="0,8,0,0"
-                 ItemsSource="{Binding GroupNode.Entries}"
-                 SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
-                 SelectionMode="Single"
-                 Background="Transparent">
+                 Margin="0,8,4,0"
+                 ItemsSource="{Binding VisibleEntries}"
+                 SelectedItems="{Binding SelectedEntries, Mode=OneWay}"
+                 SelectionMode="Multiple"
+                 Background="Transparent" Padding="0">
+            <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel Margin="0,0,0,64"/></ItemsPanelTemplate></ListBox.ItemsPanel>
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="models:EntryEditorItemViewModel">
-                    <Border Margin="0,4"
-                            Padding="8"
+                    <Border Margin="0,3"
+                            Classes="debugEntry"
+                            Classes.debugCurrent="{Binding IsDebugCurrent}"
+                            Padding="6"
                             Background="{DynamicResource SemiColorBackground1}"
-                            BorderBrush="{DynamicResource SemiColorBorder}"
-                            BorderThickness="1"
                             CornerRadius="6">
                         <StackPanel>
                         <Grid ColumnDefinitions="Auto,48,140,*,Auto,Auto"
@@ -62,20 +50,29 @@
                                     PointerPressed="OnDragHandlePressed">
                                 <TextBlock Text="::" />
                             </Border>
-                            <TextBlock Grid.Column="1"
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="●" Foreground="Red" IsVisible="{Binding IsDebugBreakpoint}"/><TextBlock
                                        Text="{Binding Id}"
-                                       VerticalAlignment="Center" />
+                                       VerticalAlignment="Center" /></StackPanel>
                             <controls:EntryTypePicker Grid.Column="2"
                                                       Options="{Binding #Root.DataContext.EntryTypes}"
                                                       ShortcutService="{Binding #Root.DataContext.ShortcutService}"
-                                                      SelectedValue="{Binding Type, Mode=TwoWay}" />
+                                                      SelectedValue="{Binding Type, Mode=OneWay}" TypeConfirmed="OnEntryTypeConfirmed"
+                                                      MinHeight="32" VerticalAlignment="Center" HorizontalAlignment="Stretch" />
                             <controls:ConditionEditorControl Grid.Column="3"
+                                                             IsVisible="{Binding !#Root.UseCommonFields}"
                                                              Text="{Binding Condition}"
                                                              Suggestions="{Binding #Root.DataContext.ConditionSuggestions}"
                                                              ValidationVariables="{Binding #Root.DataContext.ValidationVariables}" />
+                            <StackPanel Grid.Column="3" IsVisible="{Binding #Root.UseCommonFields}" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Summary}" Margin="0,0,32,0" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Summary}" />
+                                <TextBlock Text="{Binding Condition}" IsVisible="{Binding HasCondition}" FontSize="11" Foreground="{DynamicResource SemiColorText2}" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                            <Button Grid.Column="3" HorizontalAlignment="Right" Content="{Binding ProblemCount}" IsVisible="{Binding HasProblems}" Foreground="{DynamicResource SemiColorDanger}"
+                                    ToolTip.Tip="{loc:Localize Uiux.Problems}" Command="{Binding #Root.DataContext.ShowEntryProblemsCommand}" CommandParameter="{Binding}"/>
                             <ToggleButton Name="ParametersToggle" Grid.Column="4"
+                                          Theme="{DynamicResource EditorIconToggleButton}"
                                           Width="30"
-                                          IsChecked="True"
+                                          IsChecked="{Binding IsParametersExpanded,Mode=TwoWay}"
                                           ToolTip.Tip="{loc:Localize Entry.ToggleParameters}">
                                 <Grid>
                                     <PathIcon Width="16"
@@ -89,26 +86,31 @@
                                 </Grid>
                             </ToggleButton>
                             <Button Grid.Column="5"
+                                    Theme="{DynamicResource EditorIconButton}"
                                     ToolTip.Tip="{loc:Localize Entry.Remove}"
                                     AutomationProperties.Name="{loc:Localize Entry.Remove}"
                                     Command="{Binding #Root.DataContext.RemoveEntryCommand}"
                                     CommandParameter="{Binding}"><PathIcon Width="16" Height="16" Data="{StaticResource DeleteRegularIcon}" /></Button>
                         </Grid>
-                        <StackPanel Margin="0,8,0,0" Spacing="6" IsVisible="{Binding #ParametersToggle.IsChecked}">
-                            <forms:SchemaForm Schema="{Binding ParameterForm.Fields}" Binding="{Binding ParameterForm.Binding}" Registry="{Binding #Root.DataContext.FieldEditors}" IsVisible="{Binding HasParameterForm}" />
+                        <StackPanel Margin="0,6,0,0" Spacing="4" IsVisible="{Binding #ParametersToggle.IsChecked}">
+                            <forms:DtoEditorHost Item="{Binding DetailForm.Item}" Registry="{Binding #Root.DataContext.FieldEditors}" DisplayMode="Common" IsVisible="{Binding #Root.UseCommonFields}" />
+                            <StackPanel IsVisible="{Binding !#Root.UseCommonFields}">
+                            <TextBlock Text="{loc:Localize Entry.UnknownTypePreserved}" IsVisible="{Binding IsUnknownType}" TextWrapping="Wrap" />
+                            <TextBlock Text="{loc:Localize Entry.UnknownParametersPreserved}" IsVisible="{Binding HasUnknownParameters}" TextWrapping="Wrap" />
+                            <forms:DtoEditorHost Item="{Binding ParameterForm.Item}" Registry="{Binding #Root.DataContext.FieldEditors}" IsVisible="{Binding HasParameterForm}" />
                             <ItemsControl ItemsSource="{Binding ParameterFields}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="models:EntryParameterEditorItemViewModel">
                                         <ContentControl Content="{Binding}">
                                             <ContentControl.DataTemplates>
                                                 <DataTemplate DataType="models:SchemaEntryParameterEditorItemViewModel" x:CompileBindings="False">
-                                                    <forms:SchemaForm Schema="{Binding Fields}" Binding="{Binding FieldBinding}" Registry="{Binding #Root.DataContext.FieldEditors}" />
+                                                    <forms:SchemaForm Schema="{Binding Fields}" Binding="{Binding FieldBinding}" DtoType="{Binding DtoType}" Registry="{Binding #Root.DataContext.FieldEditors}" />
                                                 </DataTemplate>
-                                                <DataTemplate DataType="models:TextEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding StringValue}" AcceptsReturn="{Binding IsMultiline}" TextWrapping="Wrap" MinHeight="30" HorizontalAlignment="Stretch" /></Grid></DataTemplate>
-                                                <DataTemplate DataType="models:AutocompleteEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><ComboBox Grid.Column="1" IsEditable="True" ItemsSource="{Binding Suggestions}" Text="{Binding StringValue}" HorizontalAlignment="Stretch" LostFocus="OnAutocompleteLostFocus" /></Grid></DataTemplate>
-                                                <DataTemplate DataType="models:AssetEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><controls:AssetPicker Grid.Column="1" AssetManager="{Binding #Root.DataContext.AssetManager}" Filter="{Binding AssetFilter}" SelectedAssetId="{Binding StringValue}" HorizontalAlignment="Left" /></Grid></DataTemplate>
-                                                <DataTemplate DataType="models:VariableNameEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><ComboBox Grid.Column="1" IsEditable="True" ItemsSource="{Binding Suggestions}" Text="{Binding StringValue, Mode=TwoWay}" HorizontalAlignment="Stretch" /></Grid></DataTemplate>
-                                                <DataTemplate DataType="models:ExpressionEntryParameterEditorItemViewModel"><Grid ColumnDefinitions="130,*" ColumnSpacing="8"><TextBlock Text="{loc:Localize DisplayNameKey}" VerticalAlignment="Center" /><controls:ConditionEditorControl Grid.Column="1" Text="{Binding StringValue}" Suggestions="{Binding #Root.DataContext.ConditionSuggestions}" ValidationVariables="{Binding #Root.DataContext.ValidationVariables}" /></Grid></DataTemplate>
+                                                <DataTemplate DataType="models:TextEntryParameterEditorItemViewModel"><forms:FieldEditorRow Field="{Binding Definition.Field}" Binding="{Binding ActionBinding}"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize DisplayNameKey, FallbackPath=Id}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><TextBox Text="{Binding StringValue}" AcceptsReturn="{Binding IsMultiline}" TextWrapping="Wrap" MinHeight="30" HorizontalAlignment="Stretch" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow></DataTemplate>
+                                                <DataTemplate DataType="models:AutocompleteEntryParameterEditorItemViewModel"><forms:FieldEditorRow Field="{Binding Definition.Field}" Binding="{Binding ActionBinding}"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize DisplayNameKey, FallbackPath=Id}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><ComboBox IsEditable="True" ItemsSource="{Binding Suggestions}" Text="{Binding StringValue}" HorizontalAlignment="Stretch" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow></DataTemplate>
+                                                <DataTemplate DataType="models:AssetEntryParameterEditorItemViewModel"><forms:FieldEditorRow Field="{Binding Definition.Field}" Binding="{Binding ActionBinding}"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize DisplayNameKey, FallbackPath=Id}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><controls:AssetPicker AssetManager="{Binding #Root.DataContext.AssetManager}" Filter="{Binding AssetFilter}" SelectedAssetId="{Binding StringValue}" HorizontalAlignment="Stretch" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow></DataTemplate>
+                                                <DataTemplate DataType="models:VariableNameEntryParameterEditorItemViewModel"><forms:FieldEditorRow Field="{Binding Definition.Field}" Binding="{Binding ActionBinding}"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize DisplayNameKey, FallbackPath=Id}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><ComboBox IsEditable="True" ItemsSource="{Binding Suggestions}" Text="{Binding StringValue, Mode=TwoWay}" HorizontalAlignment="Stretch" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow></DataTemplate>
+                                                <DataTemplate DataType="models:ExpressionEntryParameterEditorItemViewModel"><forms:FieldEditorRow Field="{Binding Definition.Field}" Binding="{Binding ActionBinding}"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize DisplayNameKey, FallbackPath=Id}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><controls:ConditionEditorControl Text="{Binding StringValue}" Suggestions="{Binding #Root.DataContext.ConditionSuggestions}" ValidationVariables="{Binding #Root.DataContext.ValidationVariables}" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow></DataTemplate>
                                             </ContentControl.DataTemplates>
                                         </ContentControl>
                                     </DataTemplate>
@@ -116,17 +118,15 @@
                             </ItemsControl>
                             <TextBlock Text="{Binding EffectHint}" Opacity="0.72" TextWrapping="Wrap" IsVisible="{Binding !HasEffectDiagnostic}" />
                             <TextBlock Text="{Binding EffectDiagnostic}" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" TextWrapping="Wrap" IsVisible="{Binding HasEffectDiagnostic}" />
+                            </StackPanel>
+
                         </StackPanel>
                         </StackPanel>
                     </Border>
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
-        <StackPanel Grid.Row="2" Margin="0,8,0,0" Orientation="Horizontal"
-                    HorizontalAlignment="Center" Spacing="8">
-            <NumericUpDown Width="90" Minimum="1" Maximum="1000" Increment="1" FormatString="0"
-                           Value="{Binding BatchAddCount, Mode=TwoWay}" />
-            <Button Content="{loc:Localize Entry.AppendBatch}" Command="{Binding AppendEntriesCommand}" />
-        </StackPanel>
+        <TextBlock Grid.Row="2" Text="{Binding ErrorText}" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" TextWrapping="Wrap" />
+
     </Grid>
 </controls:ReorderableListControl>

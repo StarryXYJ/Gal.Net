@@ -7,6 +7,8 @@ public sealed class ProjectVariableDefinition
 {
     [JsonPropertyName("name")]
     public string Name { get; set; } = "";
+    [JsonPropertyName("description")]
+    public string Description { get; set; } = "";
     [JsonPropertyName("defaultValue")]
     public Variable DefaultValue { get; set; } = new();
 
@@ -44,6 +46,7 @@ public sealed class ProjectVariableDefinition
         return new ProjectVariableDefinition
         {
             Name = Name,
+            Description = Description,
             DefaultValue = new Variable
             {
                 Uid = DefaultValue.Uid,

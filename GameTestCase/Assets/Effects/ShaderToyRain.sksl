@@ -1,0 +1,1605 @@
+/*
+@gal.effect v=1
+@input source
+@targets scenePost
+
+@param time
+  uniform: iTime
+  type: float
+  default: 0
+  range: 0..100000
+  animatable: true
+
+@param mixAmount
+  uniform: mixAmount
+  type: float
+  default: 0.55
+  range: 0..1
+  animatable: false
+*/
+uniform shader source;
+uniform float2 size;
+uniform float mixAmount;
+uniform float iTime;
+
+
+// ============================================================
+// Constants
+// ============================================================
+
+const float3 BACKGROUND_COLOR =
+    float3(0.2, 0.4, 0.6) * 0.09;
+
+const int MARCH_STEPS = 48;
+const int MARCH_STEPS_REFLECTION = 16;
+
+const float LIGHT_INTENSITY = 5.0;
+
+const float PI =
+    3.141592653589793238;
+
+
+// ============================================================
+// 2D rotation
+// ============================================================
+
+float2 rotate2(
+    float2 p,
+    float2 cs
+) {
+    return float2(
+        cs.x * p.x - cs.y * p.y,
+        cs.y * p.x + cs.x * p.y
+    );
+}
+
+
+// ============================================================
+// Noise
+// ============================================================
+
+float hash(float n) {
+    return fract(
+        sin(n) *
+        687.3123
+    );
+}
+
+float noise(float2 x) {
+
+    float2 p =
+        floor(x);
+
+    float2 f =
+        fract(x);
+
+    f =
+        f *
+        f *
+        (
+            3.0 -
+            2.0 * f
+        );
+
+    float n =
+        p.x +
+        p.y * 157.0;
+
+    return mix(
+        mix(
+            hash(n),
+            hash(n + 1.0),
+            f.x
+        ),
+        mix(
+            hash(n + 157.0),
+            hash(n + 158.0),
+            f.x
+        ),
+        f.y
+    );
+}
+
+float fbm(float2 p) {
+
+    float f = 0.0;
+
+    f +=
+        0.5000 *
+        noise(p);
+
+    p =
+        rotate2(
+            p,
+            float2(
+                0.80,
+                0.60
+            )
+        )
+        *
+        2.02;
+
+    f +=
+        0.2500 *
+        noise(p);
+
+    p =
+        rotate2(
+            p,
+            float2(
+                0.80,
+                0.60
+            )
+        )
+        *
+        2.03;
+
+    f +=
+        0.1250 *
+        noise(p);
+
+    return
+        f / 0.9375;
+}
+
+
+// ============================================================
+// Distance primitives
+// ============================================================
+
+float udRoundBox(
+    float3 p,
+    float3 b,
+    float r
+) {
+    return
+        length(
+            max(
+                abs(p) - b,
+                float3(0.0)
+            )
+        )
+        -
+        r;
+}
+
+float sdBox(
+    float3 p,
+    float3 b
+) {
+
+    float3 d =
+        abs(p) - b;
+
+    return
+        min(
+            max(
+                d.x,
+                max(d.y, d.z)
+            ),
+            0.0
+        )
+        +
+        length(
+            max(
+                d,
+                float3(0.0)
+            )
+        );
+}
+
+float sdSphere(
+    float3 p,
+    float s
+) {
+    return length(p) - s;
+}
+
+float sdCylinder(
+    float3 p,
+    float2 h
+) {
+
+    float2 d =
+        abs(
+            float2(
+                length(p.xz),
+                p.y
+            )
+        )
+        -
+        h;
+
+    return
+        min(
+            max(d.x, d.y),
+            0.0
+        )
+        +
+        length(
+            max(
+                d,
+                float2(0.0)
+            )
+        );
+}
+
+
+// ============================================================
+// Distance operators
+// ============================================================
+
+float opU(
+    float d2,
+    float d1
+) {
+    return min(d1, d2);
+}
+
+float opS(
+    float d2,
+    float d1
+) {
+    return max(-d1, d2);
+}
+
+float smin(
+    float a,
+    float b,
+    float k
+) {
+
+    float mn =
+        min(a, b);
+
+    float mx =
+        max(a, b);
+
+    return
+        mn -
+        log(
+            1.0 +
+            exp(
+                -k *
+                (mx - mn)
+            )
+        )
+        / k;
+}
+
+
+// ============================================================
+// Car
+// ============================================================
+
+float mapCar(
+    float3 p0
+) {
+
+    float3 p =
+        p0 +
+        float3(
+            0.0,
+            1.24,
+            0.0
+        );
+
+    float r =
+        length(p.yz);
+
+    float d =
+        length(
+            max(
+                float3(
+                    abs(p.x) - 0.35,
+                    r - 1.92,
+                    -p.y + 1.4
+                ),
+                float3(0.0)
+            )
+        )
+        -
+        0.05;
+
+    d =
+        max(
+            d,
+            p.z - 1.0
+        );
+
+    p =
+        p0 +
+        float3(
+            0.0,
+            -0.22,
+            0.39
+        );
+
+    p.xz =
+        abs(p.xz) -
+        float2(
+            0.5300,
+            0.9600
+        );
+
+    p.x =
+        abs(p.x);
+
+    r =
+        length(p.yz);
+
+    d =
+        smin(
+            d,
+            length(
+                max(
+                    float3(
+                        p.x - 0.08,
+                        r - 0.25,
+                        -p.y - 0.08
+                    ),
+                    float3(0.0)
+                )
+            )
+            -
+            0.04,
+            8.0
+        );
+
+    d =
+        max(
+            d,
+            -max(
+                p.x - 0.165,
+                r - 0.24
+            )
+        );
+
+    float d2 =
+        length(
+            float2(
+                max(
+                    p.x - 0.13,
+                    0.0
+                ),
+                r - 0.2
+            )
+        )
+        -
+        0.02;
+
+    d =
+        min(
+            d,
+            d2
+        );
+
+    return d;
+}
+
+
+// ============================================================
+// Map result
+// ============================================================
+
+struct MapResult {
+    float d;
+    float lightDist;
+};
+
+
+// ============================================================
+// Scene map
+// ============================================================
+
+MapResult mapScene(
+    float3 p
+) {
+
+    float3 pd =
+        p;
+
+    float d = 0.0;
+
+    pd.x =
+        abs(pd.x);
+
+    pd.z *=
+        -sign(p.x);
+
+    float time =
+        iTime + 90.0;
+
+    float ch =
+        hash(
+            floor(
+                (pd.z + 18.0 * time) /
+                40.0
+            )
+        );
+
+    float lh =
+        hash(
+            floor(
+                pd.z / 13.0
+            )
+        );
+
+    float3 pdm =
+        float3(
+            pd.x,
+            pd.y,
+            mod(pd.z, 10.0) - 5.0
+        );
+
+    float dL =
+        sdSphere(
+            float3(
+                pdm.x - 8.1,
+                pdm.y - 4.5,
+                pdm.z
+            ),
+            0.1
+        );
+
+    dL =
+        opU(
+            dL,
+            sdBox(
+                float3(
+                    pdm.x - 12.0,
+                    pdm.y - 9.5 - lh,
+                    mod(pd.z, 91.0) - 45.5
+                ),
+                float3(
+                    0.2,
+                    4.5,
+                    0.2
+                )
+            )
+        );
+
+    dL =
+        opU(
+            dL,
+            sdBox(
+                float3(
+                    pdm.x - 12.0,
+                    pdm.y - 11.5 + lh,
+                    mod(pd.z, 31.0) - 15.5
+                ),
+                float3(
+                    0.22,
+                    5.5,
+                    0.2
+                )
+            )
+        );
+
+    dL =
+        opU(
+            dL,
+            sdBox(
+                float3(
+                    pdm.x - 12.0,
+                    pdm.y - 8.5 - lh,
+                    mod(pd.z, 41.0) - 20.5
+                ),
+                float3(
+                    0.24,
+                    3.5,
+                    0.2
+                )
+            )
+        );
+
+    if (lh > 0.5) {
+
+        dL =
+            opU(
+                dL,
+                sdBox(
+                    float3(
+                        pdm.x - 12.5,
+                        pdm.y - 2.75 - lh,
+                        mod(pd.z, 13.0) - 6.5
+                    ),
+                    float3(
+                        0.1,
+                        0.25,
+                        3.2
+                    )
+                )
+            );
+    }
+
+    float3 pm =
+        float3(
+            mod(
+                pd.x +
+                floor(pd.z * 4.0) *
+                0.25,
+                0.5
+            ) -
+            0.25,
+
+            pd.y,
+
+            mod(pd.z, 0.25) -
+            0.125
+        );
+
+    d =
+        udRoundBox(
+            pm,
+            float3(
+                0.245,
+                0.1,
+                0.12
+            ),
+            0.005
+        );
+
+    d =
+        opS(
+            d,
+            -(p.x + 8.0)
+        );
+
+    d =
+        opU(
+            d,
+            pd.y
+        );
+
+    float3 pdc =
+        float3(
+            pd.x,
+            pd.y,
+            mod(
+                pd.z +
+                18.0 * time,
+                40.0
+            ) -
+            20.0
+        );
+
+    if (ch > 0.75) {
+
+        pdc.x +=
+            (ch - 0.75) *
+            4.0;
+
+        dL =
+            opU(
+                dL,
+                sdSphere(
+                    float3(
+                        abs(pdc.x - 5.0) - 1.05,
+                        pdc.y - 0.55,
+                        pdc.z
+                    ),
+                    0.025
+                )
+            );
+
+        dL =
+            opU(
+                dL,
+                sdSphere(
+                    float3(
+                        abs(pdc.x - 5.0) - 1.2,
+                        pdc.y - 0.65,
+                        pdc.z + 6.05
+                    ),
+                    0.025
+                )
+            );
+
+        d =
+            opU(
+                d,
+                mapCar(
+                    (
+                        pdc -
+                        float3(
+                            5.0,
+                            -0.025,
+                            -2.3
+                        )
+                    )
+                    *
+                    0.45
+                )
+            );
+    }
+
+    d =
+        opU(
+            d,
+            13.0 - pd.x
+        );
+
+    d =
+        opU(
+            d,
+            sdCylinder(
+                float3(
+                    pdm.x - 8.5,
+                    pdm.y,
+                    pdm.z
+                ),
+                float2(
+                    0.075,
+                    4.5
+                )
+            )
+        );
+
+    d =
+        opU(
+            d,
+            dL
+        );
+
+    MapResult result;
+
+    result.d = d;
+    result.lightDist = dL;
+
+    return result;
+}
+
+
+// ============================================================
+// Surface normal
+// ============================================================
+
+float3 calcNormalSimple(
+    float3 pos
+) {
+
+    const float e = 0.005;
+
+    float3 ex =
+        float3(
+            e,
+            -e,
+            -e
+        );
+
+    float3 n =
+        ex.xyy *
+        mapScene(
+            pos + ex.xyy
+        ).d
+        +
+        ex.yyx *
+        mapScene(
+            pos + ex.yyx
+        ).d
+        +
+        ex.yxy *
+        mapScene(
+            pos + ex.yxy
+        ).d
+        +
+        ex.xxx *
+        mapScene(
+            pos + ex.xxx
+        ).d;
+
+    return normalize(n);
+}
+
+float3 calcNormal(
+    float3 pos
+) {
+
+    float3 n =
+        calcNormalSimple(pos);
+
+    if (pos.y > 0.12) {
+        return n;
+    }
+
+    float2 oc =
+        floor(
+            float2(
+                pos.x +
+                floor(pos.z * 4.0) *
+                0.25,
+                pos.z
+            )
+            *
+            float2(
+                2.0,
+                4.0
+            )
+        );
+
+    if (abs(pos.x) < 8.0) {
+        oc = pos.xz;
+    }
+
+    float3 pp =
+        pos * 250.0;
+
+    float3 xn =
+        0.05 *
+        float3(
+            noise(pp.xz) - 0.5,
+            0.0,
+            noise(pp.zx) - 0.5
+        );
+
+    xn +=
+        0.1 *
+        float3(
+            fbm(oc.xy) - 0.5,
+            0.0,
+            fbm(oc.yx) - 0.5
+        );
+
+    return normalize(
+        xn + n
+    );
+}
+
+
+// ============================================================
+// Trace result
+// ============================================================
+
+struct TraceResult {
+    float hit;
+    float3 hit1;
+    float3 hit2;
+    float3 normal1;
+    float4 light1;
+    float4 light2;
+};
+
+
+// ============================================================
+// Intersection
+// ============================================================
+
+TraceResult intersectScene(
+    float3 ro,
+    float3 rd
+) {
+
+    const float precis = 0.001;
+
+    float h =
+        precis * 2.0;
+
+    float t = 0.0;
+
+    float3 hit1 =
+        float3(-500.0);
+
+    float3 hit2 =
+        float3(-500.0);
+
+    float3 normal1 =
+        float3(0.0);
+
+    float4 light1 =
+        float4(-500.0);
+
+    float4 light2 =
+        float4(-500.0);
+
+    float minLight =
+        100.0;
+
+    for (
+        int i = 0;
+        i < MARCH_STEPS;
+        i++
+    ) {
+
+        MapResult mr =
+            mapScene(
+                ro +
+                rd * t
+            );
+
+        h = mr.d;
+
+        if (
+            mr.lightDist <
+            minLight
+        ) {
+
+            minLight =
+                mr.lightDist;
+
+            light1.xyz =
+                ro +
+                rd * t;
+
+            light1.w =
+                abs(
+                    mr.lightDist
+                );
+        }
+
+        if (h < precis) {
+
+            hit1 =
+                ro +
+                rd * t;
+
+            break;
+        }
+
+        t +=
+            max(
+                h,
+                precis * 2.0
+            );
+    }
+
+    if (
+        hit1.z < -400.0 ||
+        t > 300.0
+    ) {
+
+        float planeT =
+            -(
+                ro.y + 0.1
+            )
+            /
+            rd.y;
+
+        if (planeT > 0.0) {
+
+            hit1 =
+                ro +
+                rd *
+                planeT;
+
+        } else {
+
+            TraceResult miss;
+
+            miss.hit = -1.0;
+            miss.hit1 = hit1;
+            miss.hit2 = hit2;
+            miss.normal1 = normal1;
+            miss.light1 = light1;
+            miss.light2 = light2;
+
+            return miss;
+        }
+    }
+
+    ro =
+        ro +
+        rd * t;
+
+    normal1 =
+        calcNormal(ro);
+
+    ro +=
+        0.01 *
+        normal1;
+
+    rd =
+        reflect(
+            rd,
+            normal1
+        );
+
+    t = 0.0;
+    h = precis * 2.0;
+    minLight = 100.0;
+
+    for (
+        int i = 0;
+        i < MARCH_STEPS_REFLECTION;
+        i++
+    ) {
+
+        MapResult mr =
+            mapScene(
+                ro +
+                rd * t
+            );
+
+        h = mr.d;
+
+        if (
+            mr.lightDist <
+            minLight
+        ) {
+
+            minLight =
+                mr.lightDist;
+
+            light2.xyz =
+                ro +
+                rd * t;
+
+            light2.w =
+                abs(
+                    mr.lightDist
+                );
+        }
+
+        if (h < precis) {
+
+            hit2 =
+                ro +
+                rd * t;
+
+            break;
+        }
+
+        t +=
+            max(
+                h,
+                precis * 2.0
+            );
+    }
+
+    TraceResult result;
+
+    result.hit =
+        hit2.z > -400.0
+        ? 1.0
+        : 0.0;
+
+    result.hit1 = hit1;
+    result.hit2 = hit2;
+    result.normal1 = normal1;
+    result.light1 = light1;
+    result.light2 = light2;
+
+    return result;
+}
+
+
+// ============================================================
+// Shading
+// ============================================================
+
+float3 shade(
+    float3 ro,
+    float3 pos,
+    float3 nor
+) {
+
+    float3 col =
+        float3(0.5);
+
+    if (
+        abs(pos.x) > 15.0 ||
+        abs(pos.x) < 8.0
+    ) {
+        col =
+            float3(0.02);
+    }
+
+    if (pos.y < 0.01) {
+
+        float ax =
+            abs(pos.x);
+
+        if (ax < 0.1) {
+            col =
+                float3(0.9);
+        }
+
+        if (
+            abs(ax - 7.4) <
+            0.1
+        ) {
+            col =
+                float3(0.9);
+        }
+    }
+
+    float sh =
+        clamp(
+            dot(
+                nor,
+                normalize(
+                    float3(
+                        -0.3,
+                        0.3,
+                        -0.5
+                    )
+                )
+            ),
+            0.0,
+            1.0
+        );
+
+    col *=
+        sh *
+        BACKGROUND_COLOR;
+
+    if (
+        abs(pos.x) > 12.9 &&
+        pos.y > 9.0
+    ) {
+
+        float ha =
+            hash(
+                133.1234 *
+                floor(pos.y / 3.0) +
+                floor(pos.z / 3.0)
+            );
+
+        if (ha > 0.95) {
+
+            col =
+                (ha - 0.95) *
+                10.0 *
+                float3(
+                    1.0,
+                    0.7,
+                    0.4
+                );
+        }
+    }
+
+    col =
+        mix(
+            BACKGROUND_COLOR,
+            col,
+            exp(
+                min(
+                    max(
+                        0.1 * pos.y,
+                        0.25
+                    )
+                    -
+                    0.065 *
+                    distance(
+                        pos,
+                        ro
+                    ),
+                    0.0
+                )
+            )
+        );
+
+    return col;
+}
+
+
+// ============================================================
+// Light color
+// ============================================================
+
+float3 getLightColor(
+    float3 pos
+) {
+
+    float3 lcol =
+        float3(
+            1.0,
+            0.7,
+            0.5
+        );
+
+    float3 pd =
+        pos;
+
+    pd.x =
+        abs(pd.x);
+
+    pd.z *=
+        -sign(pos.x);
+
+    float time =
+        iTime + 90.0;
+
+    float ch =
+        hash(
+            floor(
+                (
+                    pd.z +
+                    18.0 * time
+                )
+                /
+                40.0
+            )
+        );
+
+    float3 pdc =
+        float3(
+            pd.x,
+            pd.y,
+            mod(
+                pd.z +
+                18.0 * time,
+                40.0
+            )
+            -
+            20.0
+        );
+
+    if (ch > 0.75) {
+
+        pdc.x +=
+            (ch - 0.75) *
+            4.0;
+
+        if (
+            sdSphere(
+                float3(
+                    abs(
+                        pdc.x - 5.0
+                    )
+                    -
+                    1.05,
+                    pdc.y - 0.55,
+                    pdc.z
+                ),
+                0.25
+            ) < 2.0
+        ) {
+
+            lcol =
+                float3(
+                    1.0,
+                    0.05,
+                    0.01
+                );
+        }
+    }
+
+    if (
+        pd.y > 2.0 &&
+        abs(pd.x) > 10.0 &&
+        pd.y < 5.0
+    ) {
+
+        float fl =
+            floor(
+                pd.z / 13.0
+            );
+
+        lcol =
+            0.4 * lcol +
+            0.5 *
+            float3(
+                hash(0.1562 + fl),
+                hash(0.423134 + fl),
+                0.0
+            );
+    }
+
+    if (
+        abs(pd.x) > 10.0 &&
+        pd.y > 5.0
+    ) {
+
+        float fl =
+            floor(
+                pd.z / 2.0
+            );
+
+        lcol =
+            0.5 * lcol +
+            0.5 *
+            float3(
+                hash(0.1562 + fl),
+                hash(0.923134 + fl),
+                hash(0.423134 + fl)
+            );
+    }
+
+    return lcol;
+}
+
+
+// ============================================================
+// Random start
+// ============================================================
+
+float randomStart(
+    float2 co
+) {
+
+    return
+        0.8 +
+        0.2 *
+        hash(
+            dot(
+                co,
+                float2(
+                    123.42,
+                    117.853
+                )
+            )
+            *
+            412.453
+        );
+}
+
+
+// ============================================================
+// Main
+// ============================================================
+
+half4 shadertoyMain(
+    float2 fragCoord
+) {
+
+    float2 q =
+        fragCoord /
+        size.xy;
+
+    float2 p =
+        -1.0 +
+        2.0 * q;
+
+    p.x *=
+        size.x /
+        size.y;
+
+    // IMPORTANT:
+    // Skia Labs' fragCoord orientation is opposite to the
+    // orientation expected by this Shadertoy shader.
+    p.y = -p.y;
+
+
+    // Cinematic bars
+    if (
+        q.y < 0.12 ||
+        q.y >= 0.88
+    ) {
+
+        return half4(
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        );
+    }
+
+
+    // ========================================================
+    // Camera
+    // ========================================================
+
+    float time =
+        iTime + 90.0;
+
+    float z =
+        time;
+
+    float x =
+        -10.9 +
+        sin(time * 0.2);
+
+    float3 ro =
+        float3(
+            x,
+            1.3 +
+            0.3 *
+            cos(time * 0.26),
+            z - 1.0
+        );
+
+    float3 ta =
+        float3(
+            -8.0,
+            1.3 +
+            0.4 *
+            cos(time * 0.26),
+            z +
+            4.0 +
+            cos(time * 0.04)
+        );
+
+    float3 ww =
+        normalize(
+            ta - ro
+        );
+
+    float3 uu =
+        normalize(
+            cross(
+                ww,
+                float3(
+                    0.0,
+                    1.0,
+                    0.0
+                )
+            )
+        );
+
+    float3 vv =
+        normalize(
+            cross(
+                uu,
+                ww
+            )
+        );
+
+    float3 rd =
+        normalize(
+            -p.x * uu +
+            p.y * vv +
+            2.2 * ww
+        );
+
+
+    float3 col =
+        BACKGROUND_COLOR;
+
+
+    // ========================================================
+    // Raymarch
+    // ========================================================
+
+    float start =
+        randomStart(p);
+
+    TraceResult trace =
+        intersectScene(
+            ro +
+            start * rd,
+            rd
+        );
+
+    float ints =
+        trace.hit;
+
+
+    if (ints > -0.5) {
+
+        float r =
+            0.09;
+
+        if (
+            trace.hit1.y >
+            0.129
+        ) {
+
+            r =
+                0.025 *
+                hash(
+                    133.1234 *
+                    floor(
+                        trace.hit1.y /
+                        3.0
+                    )
+                    +
+                    floor(
+                        trace.hit1.z /
+                        3.0
+                    )
+                );
+        }
+
+        if (
+            abs(trace.hit1.x) <
+            8.0
+        ) {
+
+            if (
+                trace.hit1.y <
+                0.01
+            ) {
+
+                r =
+                    0.007 *
+                    fbm(
+                        trace.hit1.xz
+                    );
+
+            } else {
+
+                r =
+                    0.02;
+            }
+        }
+
+        if (
+            abs(trace.hit1.x) <
+            0.1
+        ) {
+            r *= 4.0;
+        }
+
+        if (
+            abs(
+                abs(trace.hit1.x) -
+                7.4
+            ) <
+            0.1
+        ) {
+            r *= 4.0;
+        }
+
+        r *= 2.0;
+
+        col =
+            shade(
+                ro,
+                trace.hit1,
+                trace.normal1
+            );
+
+        if (ints > 0.5) {
+
+            col +=
+                r *
+                shade(
+                    trace.hit1,
+                    trace.hit2,
+                    calcNormalSimple(
+                        trace.hit2
+                    )
+                );
+        }
+
+        if (
+            trace.light2.w >
+            0.0
+        ) {
+
+            col +=
+                (
+                    r *
+                    LIGHT_INTENSITY *
+                    exp(
+                        -trace.light2.w *
+                        7.0
+                    )
+                )
+                *
+                getLightColor(
+                    trace.light2.xyz
+                );
+        }
+    }
+
+
+    // ========================================================
+    // Rain
+    // ========================================================
+
+    float2 st =
+        256.0 *
+        (
+            p *
+            float2(
+                0.5,
+                0.01
+            )
+            +
+            float2(
+                time * 0.13 -
+                q.y * 0.6,
+                time * 0.13
+            )
+        );
+
+    float rain =
+        noise(st) *
+        noise(st * 0.773) *
+        1.55;
+
+    rain =
+        0.25 +
+        clamp(
+            pow(
+                abs(rain),
+                13.0
+            )
+            *
+            13.0,
+            0.0,
+            q.y * 0.14
+        );
+
+    if (
+        trace.light1.w >
+        0.0
+    ) {
+
+        col +=
+            (
+                rain *
+                LIGHT_INTENSITY *
+                exp(
+                    -trace.light1.w *
+                    7.0
+                )
+            )
+            *
+            getLightColor(
+                trace.light1.xyz
+            );
+    }
+
+    col +=
+        0.25 *
+        rain *
+        (
+            0.2 +
+            BACKGROUND_COLOR
+        );
+
+
+    // ========================================================
+    // Post processing
+    // ========================================================
+
+    col =
+        clamp(
+            col,
+            float3(0.0),
+            float3(1.0)
+        );
+
+    col =
+        float3(
+            pow(col.x, 0.4545),
+            pow(col.y, 0.4545),
+            pow(col.z, 0.4545)
+        );
+
+    col *=
+        1.2 *
+        float3(
+            1.0,
+            0.99,
+            0.95
+        );
+
+    col =
+        clamp(
+            1.06 * col -
+            0.03,
+            float3(0.0),
+            float3(1.0)
+        );
+
+    float vignetteY =
+        (
+            q.y -
+            0.12
+        )
+        /
+        0.76;
+
+    float vignette =
+        0.5 +
+        0.5 *
+        pow(
+            max(
+                16.0 *
+                q.x *
+                vignetteY *
+                (1.0 - q.x) *
+                (1.0 - vignetteY),
+                0.0
+            ),
+            0.1
+        );
+
+    col *=
+        vignette;
+
+    return half4(
+        col,
+        1.0
+    );
+}
+
+half4 main(float2 fragCoord) {
+    float4 scene = float4(source.eval(fragCoord));
+    float4 generated = float4(shadertoyMain(fragCoord));
+    return half4(mix(scene, generated, clamp(mixAmount, 0.0, 1.0)));
+}

@@ -11,6 +11,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="../../Shared/GalNet.Debugging/GalNet.Debugging.csproj" />
         <ProjectReference Include="..\..\Shared\GalNet.Core\GalNet.Core.csproj" />
         <ProjectReference Include="..\..\Shared\GalNet.Contracts.Builtins\GalNet.Contracts.Builtins.csproj" />
         <ProjectReference Include="..\..\Shared\GalNet.Assets\GalNet.Assets.csproj" />

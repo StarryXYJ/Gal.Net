@@ -24,9 +24,9 @@
                         <DataTemplate DataType="settings:ActionSetting"><Button Content="{Binding Label}" Command="{Binding ExecuteCommand}" /></DataTemplate>
                         <DataTemplate DataType="settings:ICustomSetting"><settings:CustomSettingEditor /></DataTemplate>
                         <DataTemplate DataType="settings:SettingItem">
-                          <forms:SchemaForm Schema="{Binding Fields}" Binding="{Binding FieldBinding}"
+                          <forms:DtoEditorHost Item="{Binding EditorItem}"
                                             Registry="{Binding Editors, RelativeSource={RelativeSource AncestorType=common:SettingsCategories}}">
-                            <forms:SchemaForm.Template>
+                            <forms:DtoEditorHost.FormTheme><ControlTheme TargetType="forms:SchemaForm"><Setter Property="Template">
                               <ControlTemplate>
                                 <StackPanel>
                                   <ItemsControl ItemsSource="{TemplateBinding Editors}">
@@ -45,8 +45,8 @@
                                   </ItemsControl>
                                 </StackPanel>
                               </ControlTemplate>
-                            </forms:SchemaForm.Template>
-                          </forms:SchemaForm>
+                            </Setter></ControlTheme></forms:DtoEditorHost.FormTheme>
+                          </forms:DtoEditorHost>
                         </DataTemplate>
                       </ContentControl.DataTemplates>
                     </ContentControl>

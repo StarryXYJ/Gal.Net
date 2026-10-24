@@ -1,6 +1,6 @@
 using System;
-using System.Globalization;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using Avalonia.Threading;
 using Serilog.Core;
 using Serilog.Events;
@@ -28,7 +28,8 @@ public sealed class EditorLogSink : ILogEventSink
             Message = logEvent.RenderMessage(CultureInfo.InvariantCulture),
             Exception = logEvent.Exception?.ToString(),
             Source = GetSource(logEvent),
-            Channel = GetChannel(logEvent)
+            Channel = GetChannel(logEvent),
+            Target = GetTarget(logEvent)
         };
 
         Dispatcher.UIThread.Post(() =>
@@ -46,6 +47,12 @@ public sealed class EditorLogSink : ILogEventSink
             return ctx.ToString().Trim('"');
 
         return string.Empty;
+    }
+    private static AuthorNavigationTarget? GetTarget(LogEvent logEvent)
+    {
+        string? Read(string key) => logEvent.Properties.TryGetValue(key, out var value) && value is ScalarValue { Value: string text } ? text : null;
+        var node = Read("AuthorNodeId"); var file = Read("AuthorFile");
+        return node is null && file is null ? null : new(node, Read("AuthorEntryId"), Read("AuthorFieldId"), file);
     }
 
     private static LogChannel GetChannel(LogEvent logEvent)
@@ -68,6 +75,7 @@ public sealed class LogLine
     public string? Exception { get; init; }
     public string Source { get; init; } = "";
     public LogChannel Channel { get; init; } = LogChannel.Editor;
+    public AuthorNavigationTarget? Target { get; init; }
 
     public bool IsError => Level >= LogEventLevel.Error;
     public bool IsWarning => Level == LogEventLevel.Warning;

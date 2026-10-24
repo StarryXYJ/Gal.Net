@@ -16,17 +16,39 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
     private int _draftVersion;
     private string _text = "";
     private FieldValue? _pending;
-    public FieldEditorContext(FieldDescriptor field, IFieldBinding binding)
+    private bool _jsonText;
+    private readonly FieldDraftState? _draft;
+    private bool _syncingDraft;
+    public FieldDraftState? DraftState => _draft;
+    public FieldEditorContext(FieldDescriptor field, IFieldBinding binding, EditorRegistry? registry = null, int depth = 0)
     {
         ArgumentNullException.ThrowIfNull(field);
         ArgumentNullException.ThrowIfNull(binding);
         Field = field;
+        Registry = registry;
+        Depth = depth;
         _binding = binding;
+        _draft = binding.Draft;
+        if (_draft is not null) { _draft.Changed += ReadDraft; ReadDraft(); }
         Refresh();
         _binding.Changed += OnChanged;
     }
 
     public FieldDescriptor Field { get; }
+    public object? HostContext => _binding.HostContext;
+    public EditorRegistry? Registry { get; }
+    internal int Depth { get; }
+    public bool CanOmit => !Field.IsRequired || Field.DefaultValue is not null;
+    public bool CanSetNull => Field.Value.AllowNull;
+    public bool HasDefault => Field.DefaultValue is not null;
+    public bool CanReset => _binding.CanReset && (HasDefault || CanOmit);
+    public Task<bool> OmitAsync() => CommitAsync(default);
+    public Task<bool> SetNullAsync() => CommitAsync(new(JsonSerializer.SerializeToElement<object?>(null)));
+    public Task<bool> ResetDefaultAsync() => Field.DefaultValue is { } value ? CommitAsync(new(value)) : Task.FromResult(false);
+    public Task<bool> ResetAsync() => !CanReset ? Task.FromResult(false) : HasDefault ? ResetDefaultAsync() : OmitAsync();
+    public void RevertDraft() { if (_disposed) return; _dirty = false; _pending = null; Issue = null; _draftVersion++; Refresh(); }
+    public void ReportIssue(ValueIssue issue) { if (!_disposed) { Issue = issue; Notify(); } }
+    internal void UseJsonText() { _jsonText = true; Refresh(); }
     public FieldValue Value { get; private set; }
     public JsonElement? EffectiveValue => (_pending ?? Value).Json ?? Field.DefaultValue;
     public object Label => _binding.Label ?? Field.LabelKey ?? Field.Id;
@@ -102,9 +124,15 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
         return Task.FromResult(false);
     }
 
-    public async Task<bool> CommitAsync(FieldValue candidate)
+    public async Task<bool> CommitAsync(FieldValue candidate, CancellationToken cancellationToken = default)
     {
         if (_disposed || _submitting) return false;
+        if (_draft?.CanCommit == false) return false;
+        if (_draft?.IsConflicted == true)
+        {
+            Issue = new("field.conflict", "The source changed. Cancel this draft before editing the new value.");
+            Notify(); return false;
+        }
         if (!_binding.IsEnabled || !_binding.IsVisible)
         {
             Issue = new("field.unavailable", "Field is currently unavailable.");
@@ -124,7 +152,9 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
         Notify();
         try
         {
-            var issue = await _binding.CommitAsync(candidate, _lifetime.Token);
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token, cancellationToken);
+            linked.Token.ThrowIfCancellationRequested();
+            var issue = await _binding.CommitAsync(candidate, linked.Token);
             if (_disposed) return false;
             if (version == _draftVersion)
             {
@@ -149,9 +179,15 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
 
     private FieldValue ParseText(out ValueIssue? issue)
     {
+        if (!_jsonText && Registry?.EmptyInputClearsOptionalFields == true && Text.Length == 0 &&
+            (Nullable.GetUnderlyingType(Field.Value.ValueType) ?? Field.Value.ValueType) != typeof(string))
+        {
+            issue = CanOmit ? null : new("field.required", "Field must be provided.");
+            return default;
+        }
         try
         {
-            var json = ValueCodec.ParseEditorText(Field.Value, Text);
+            var json = _jsonText ? JsonSerializer.Deserialize<JsonElement>(Text) : ValueCodec.ParseEditorText(Field.Value, Text);
             issue = ValueValidation.Validate(Field.Value, json);
             return new(json);
         }
@@ -179,7 +215,7 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
         Value = _binding.Read();
         Options = ReadOptions();
         if (Issue?.Code == "field.binding") Issue = null;
-        if (!_dirty) _text = EffectiveValue is { } json ? ValueCodec.ToEditorText(Field.Value, json) : "";
+        if (!_dirty) _text = EffectiveValue is { } json ? _jsonText ? json.GetRawText() : ValueCodec.ToEditorText(Field.Value, json) : "";
         Notify();
     }
 
@@ -201,11 +237,29 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
             value.ValueKind == JsonValueKind.String ? value.GetString()! : value.GetRawText(), value)).ToArray());
     }
 
-    private void Notify() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
+    private void ReadDraft()
+    {
+        if (_disposed || _draft is null || _syncingDraft) return;
+        _syncingDraft = true;
+        try
+        {
+            _dirty = _draft.IsDirty; _jsonText = _draft.JsonText;
+            if (_dirty) _text = _draft.Text;
+            Issue = _draft.Issue;
+            Refresh();
+        }
+        finally { _syncingDraft = false; }
+    }
+    private void Notify()
+    {
+        if (!_syncingDraft) _draft?.Update(_text, _dirty, Issue, _jsonText);
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
+    }
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
+        if (_draft is not null) _draft.Changed -= ReadDraft;
         _binding.Changed -= OnChanged;
         try { _lifetime.Cancel(); }
         finally { _lifetime.Dispose(); }

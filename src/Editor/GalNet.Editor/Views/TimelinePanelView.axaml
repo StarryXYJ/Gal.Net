@@ -1,0 +1,115 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:services="using:GalNet.Editor.Services"
+             xmlns:timeline="using:GalNet.Game.Controls.Timeline"
+             xmlns:controls="using:GalNet.Editor.Controls"
+             xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
+             x:Class="GalNet.Editor.Views.TimelinePanelView" x:Name="Root" x:DataType="vm:TimelinePanelViewModel"
+             Background="{DynamicResource SemiColorBackground0}" Foreground="{DynamicResource SemiColorText0}">
+  <UserControl.Styles>
+    <Style Selector="CheckBox">
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="NumericUpDown /template/ RepeatButton, NumericUpDown /template/ ButtonSpinner /template/ RepeatButton">
+      <Setter Property="Delay" Value="250"/>
+      <Setter Property="Interval" Value="30"/>
+    </Style>
+  </UserControl.Styles>
+  <Grid Margin="10" RowDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto,Auto" RowSpacing="6">
+    <TextBlock Text="{Binding Session.Source}" Opacity="0.7" TextWrapping="Wrap"/>
+    <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+      <TextBlock x:Name="TimelineStatus" Text="{loc:Localize Path=Session.StatusKey}" VerticalAlignment="Center"/>
+      <Button x:Name="CreateTimeline" Content="{loc:Localize Timeline.Create}" Command="{Binding CreateCommand}" IsVisible="{Binding Session.CanCreate}"/>
+    </StackPanel>
+    <WrapPanel Grid.Row="2" IsVisible="{Binding Session.CanEdit}">
+      <Button Name="AddTimelineObject" Content="＋" ToolTip.Tip="{loc:Localize Scene.AddObject}" Click="OnAddObject" Margin="0,0,6,0"/>
+      <TextBlock Text="{loc:Localize Timeline.Event.Add}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+      <controls:EntryTypePicker Name="TimelineEventType" Options="{Binding Session.EventTypes}" SelectedValue="layer.show" Opened="OnEventTypeOpened" Closed="OnEventTypeClosed" TypeConfirmed="OnEventTypeConfirmed" Margin="0,0,8,0"/>
+      <TextBlock Margin="0,0,6,0" Text="{loc:Localize Timeline.Frame}" VerticalAlignment="Center"/>
+      <NumericUpDown x:Name="TimelineFrame" Width="90" Minimum="0" Maximum="{Binding Session.Duration}" Increment="1" FormatString="0" Value="{Binding Session.Frame,Mode=TwoWay}"/>
+      <Button Margin="6,0" Content="{loc:Localize Timeline.PreviousKey}" Command="{Binding PreviousKeyCommand}"/>
+      <Button Content="{loc:Localize Timeline.NextKey}" Command="{Binding NextKeyCommand}"/>
+      <Button Margin="6,0" Content="{loc:Localize Timeline.AddKey}" Command="{Binding AddKeyCommand}"/>
+      <Button Content="{loc:Localize Timeline.DeleteKeys}" Command="{Binding DeleteKeysCommand}"/>
+    </WrapPanel>
+    <WrapPanel Grid.Row="3" IsVisible="{Binding Session.CanEdit}">
+      <TextBlock Margin="0,0,6,0" Text="{loc:Localize Timeline.Duration}" VerticalAlignment="Center"/>
+      <NumericUpDown Name="TimelineDurationDraft" Width="95" Minimum="{Binding Session.MinimumDuration}" Maximum="2147483647" Increment="1" FormatString="0" Value="{Binding Session.TimingDurationDraft,Mode=TwoWay}" LostFocus="OnTimingLostFocus"/>
+      <TextBlock Margin="6,0" Text="FPS" VerticalAlignment="Center"/>
+      <NumericUpDown Name="TimelineFpsDraft" Width="75" Minimum="1" Maximum="240" Increment="1" FormatString="0" Value="{Binding Session.TimingFrameRateDraft,Mode=TwoWay}" LostFocus="OnTimingLostFocus"/>
+    </WrapPanel>
+    <Grid Grid.Row="4" RowDefinitions="28,Auto" IsVisible="{Binding Session.CanEdit}"><Grid.ColumnDefinitions><ColumnDefinition Width="{Binding #Root.TreeColumnWidth,Mode=TwoWay}" MinWidth="180" MaxWidth="600"/><ColumnDefinition Width="5"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <TextBlock Text="{loc:Localize Timeline.Event.Title}" Opacity="0.7"/>
+      <timeline:TimelineCanvas Grid.Column="2" Name="TimelineRuler" IsRuler="True" Model="{Binding Session.Canvas}"/>
+      <ScrollViewer Grid.Row="1" Grid.ColumnSpan="3" MaxHeight="190" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="{Binding #Root.TreeColumnWidth,Mode=TwoWay}" MinWidth="180" MaxWidth="600"/><ColumnDefinition Width="5"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <ItemsControl Name="TimelineEvents" ItemsSource="{Binding Session.Events}">
+            <ItemsControl.ItemTemplate><DataTemplate x:DataType="services:TimelineEventRow">
+              <Border Name="TimelineEventRow" Height="38" Background="Transparent" PointerPressed="OnEventPointerPressed" ContextRequested="OnEventContextRequested">
+                <Grid ColumnDefinitions="20,*,Auto" Margin="4,0,6,0">
+                  <TextBlock Text="◆" Foreground="DodgerBlue" IsVisible="{Binding IsSelected}" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Label}" ToolTip.Tip="{Binding Label}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                  <Button Grid.Column="2" Name="EditTimelineEvent" Content="{loc:Localize Timeline.Event.Edit}" IsEnabled="{Binding CanEdit}" Click="OnEditEvent"/>
+                </Grid>
+              </Border>
+            </DataTemplate></ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <timeline:TimelineCanvas Grid.Column="2" Name="TimelineEventKeys" KeyContextRequested="OnEventKeyContextRequested" Model="{Binding Session.EventCanvas}" Height="{Binding Session.EventCanvas.ContentHeight}" VerticalAlignment="Top"/>
+        </Grid>
+      </ScrollViewer>
+      <GridSplitter Grid.Column="1" Grid.RowSpan="3" Width="3" MinWidth="0" HorizontalAlignment="Center" ResizeDirection="Columns"/>
+    </Grid>
+    <Grid Grid.Row="5" RowDefinitions="28,*,Auto" IsVisible="{Binding Session.CanEdit}"><Grid.ColumnDefinitions><ColumnDefinition Width="{Binding #Root.TreeColumnWidth,Mode=TwoWay}" MinWidth="180" MaxWidth="600"/><ColumnDefinition Width="5"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <TextBlock Text="{loc:Localize Timeline.CanvasHint}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{loc:Localize Timeline.CanvasHint}" FontSize="11" VerticalAlignment="Center"/>
+      <ScrollViewer Name="TimelineVertical" Grid.Row="1" Grid.ColumnSpan="3" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="{Binding #Root.TreeColumnWidth,Mode=TwoWay}" MinWidth="180" MaxWidth="600"/><ColumnDefinition Width="5"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <ItemsControl Name="TimelinePropertyTree" ItemsSource="{Binding Session.VisibleNodes}">
+            <ItemsControl.ItemTemplate><DataTemplate x:DataType="services:TimelineTreeNode">
+              <Grid Name="TimelineTreeRow" Height="{Binding Height}" ColumnDefinitions="*,180" Background="Transparent" PointerPressed="OnTreeRowPointerPressed" ContextRequested="OnTreeContextRequested">
+                <Grid ColumnDefinitions="Auto,24,18,*" Height="38" VerticalAlignment="Top">
+                  <Border Width="{Binding Indent}"/>
+                  <Button Grid.Column="1" Name="AddTimelineProperty" Width="24" MinWidth="0" Padding="0" Content="＋" ToolTip.Tip="{loc:Localize Scene.AddProperty}" IsVisible="{Binding IsObject}" IsEnabled="{Binding CanAddProperties}" Click="OnAddProperty"/>
+                  <ToggleButton Grid.Column="2" Name="TimelineExpand" Width="18" MinWidth="0" Height="26" Padding="0" Content="{Binding ExpandGlyph}" IsVisible="{Binding CanExpand}" IsChecked="{Binding IsExpanded,Mode=TwoWay}"/>
+                  <TextBlock Grid.Column="3" Text="{Binding Label}" ToolTip.Tip="{Binding Label}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="3,0"/>
+                </Grid>
+                <StackPanel Grid.ColumnSpan="2" Margin="30,44,10,0" VerticalAlignment="Top" IsVisible="{Binding HasCurve}" Spacing="6">
+                  <TextBlock Text="{loc:Localize Timeline.Curve.Hint}" Width="380" TextWrapping="Wrap" Opacity="0.65"/>
+                  <Button Name="FitTimelineCurve" Content="{loc:Localize Timeline.Curve.Fit}" Click="OnFitCurve" HorizontalAlignment="Left"/>
+                </StackPanel>
+                <ContentControl Height="38" VerticalAlignment="Top" Grid.Column="1" Content="{Binding Value}" IsVisible="{Binding IsLeaf}">
+                  <ContentControl.ContentTemplate><DataTemplate x:DataType="services:TimelineValueRow">
+                    <Grid ColumnDefinitions="90,*" ColumnSpacing="4">
+                      <NumericUpDown Name="TimelineValue" Value="{Binding DraftValue,Mode=TwoWay}" Increment="0.1" FormatString="G9" IsEnabled="{Binding IsEditable}" LostFocus="OnValueLostFocus">
+                        <ToolTip.Tip><StackPanel MaxWidth="420"><TextBlock Text="{Binding Hint}" TextWrapping="Wrap"/><TextBlock Text="{loc:Localize Timeline.InputHint}" TextWrapping="Wrap"/></StackPanel></ToolTip.Tip>
+                      </NumericUpDown>
+                      <ComboBox Grid.Column="1" Name="TimelineBlendMode" SelectedIndex="{Binding BlendModeIndex,Mode=OneWay}" SelectionChanged="OnBlendModeSelectionChanged" VerticalAlignment="Center" ToolTip.Tip="{loc:Localize Timeline.ModeHint}">
+                        <ComboBoxItem Content="{loc:Localize Timeline.Absolute}"/>
+                        <ComboBoxItem Content="{loc:Localize Timeline.Offset}"/>
+                      </ComboBox>
+                    </Grid>
+                  </DataTemplate></ContentControl.ContentTemplate>
+                </ContentControl>
+              </Grid>
+            </DataTemplate></ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <timeline:TimelineCanvas Grid.Column="2" Name="TimelineKeys" KeyContextRequested="OnKeyContextRequested" Model="{Binding Session.Canvas}" Height="{Binding Session.Canvas.ContentHeight}" VerticalAlignment="Top"/>
+          <TextBlock Text="{loc:Localize Timeline.Empty}" IsVisible="{Binding Session.HasNoRows}" TextWrapping="Wrap" Margin="4"/>
+        </Grid>
+      </ScrollViewer>
+      <WrapPanel Grid.Row="2">
+        <Button Content="{loc:Localize Uiux.Timeline.Fit}" Click="OnFitTimeline"/><Button Content="{loc:Localize Uiux.Timeline.Playhead}" Click="OnLocatePlayhead"/><TextBlock Text="{Binding Session.Canvas.PixelsPerFrame}" VerticalAlignment="Center"/><TextBlock Text="{loc:Localize Timeline.Zoom}" VerticalAlignment="Center"/>
+        <Slider Name="TimelineZoom" Width="140" Minimum="0.001" Maximum="64" Value="{Binding Session.Canvas.PixelsPerFrame,Mode=TwoWay}"/>
+      </WrapPanel>
+      <ScrollBar Grid.Row="2" Grid.Column="2" Name="TimelineScroll" VerticalAlignment="Bottom" Orientation="Horizontal" Minimum="0" Maximum="{Binding Session.Duration}" SmallChange="1" LargeChange="10" Value="{Binding Session.Canvas.StartFrame,Mode=TwoWay}"/>
+      <GridSplitter Grid.Column="1" Grid.RowSpan="3" Width="3" MinWidth="0" HorizontalAlignment="Center" ResizeDirection="Columns"/>
+    </Grid>
+    <StackPanel Grid.Row="6" Spacing="4">
+      <TextBlock Text="{loc:Localize Timeline.AnalysisIncomplete}" IsVisible="{Binding Session.AnalysisIncomplete}" TextWrapping="Wrap" Opacity="0.7"/>
+      <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding Session.Canvas.HasPendingMove}">
+        <Button Content="{loc:Localize Timeline.ReplaceCollisions}" Command="{Binding ReplaceCollisionsCommand}"/>
+        <Button Content="{loc:Localize Timeline.CancelMove}" Command="{Binding CancelMoveCommand}"/>
+      </StackPanel>
+    </StackPanel>
+    <TextBlock Grid.Row="7" Text="{Binding Session.Message}" TextWrapping="Wrap" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"/>
+  </Grid>
+</UserControl>

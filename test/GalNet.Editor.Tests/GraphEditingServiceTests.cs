@@ -13,38 +13,8 @@ namespace GeneralTest.Editor;
 
 public class GraphEditingServiceTests
 {
-    private static readonly int[] ThreeEntryIds = [1, 2, 3];
-    private static readonly int[] TwoEntryIds = [1, 2];
     private static readonly string[] FirstSuggestions = ["first", "second"];
     private static readonly string[] SecondSuggestions = ["second", "third"];
-
-    [Test]
-    public void InsertEntries_Should_Insert_A_Batch_At_Requested_Position_And_Renumber()
-    {
-        var service = new GraphEditingService(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()));
-        var node = new GraphNode(new Group { Name = "Group" }, GraphNodeKind.LinearGroup);
-        var inserted = service.InsertEntries(node, 0, 3);
-
-        Assert.That(inserted, Has.Count.EqualTo(3));
-        Assert.That(node.Entries, Is.EqualTo(inserted));
-        Assert.That(node.Entries.Select(entry => entry.Id), Is.EqualTo(ThreeEntryIds));
-        Assert.That(inserted.All(entry => entry.Type == BuiltinEntryIds.Text), Is.True);
-    }
-
-    [Test]
-    public void InsertEntries_Should_Clamp_Index_And_Reject_Invalid_Count()
-    {
-        var service = new GraphEditingService(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()));
-        var node = new GraphNode(new Group { Name = "Group" }, GraphNodeKind.LinearGroup);
-
-        var appended = service.InsertEntries(node, int.MaxValue, 2);
-        var rejected = service.InsertEntries(node, 0, 0);
-
-        Assert.That(node.Entries.TakeLast(2), Is.EqualTo(appended));
-        Assert.That(rejected, Is.Empty);
-        Assert.That(node.Entries.Select(entry => entry.Id), Is.EqualTo(TwoEntryIds));
-    }
-
     [Test]
     public void GraphEdge_Should_Refresh_When_Target_Connector_Layout_Changes()
     {

@@ -117,7 +117,7 @@ public sealed class ProjectService : IProjectService
         {
             foreach (var participant in participants) await participant.SuspendAsync();
             if (content is not null) await content.SuspendAsync();
-            while (content?.IsDirty ?? project.IsDirty)
+            while (content?.IsDirty == true)
             {
                 var choice = _globalServices.GetService<IProjectClosePrompt>() is { } prompt
                     ? await prompt.ChooseAsync(project.Name) : ProjectCloseChoice.Cancel;
@@ -198,7 +198,7 @@ public sealed class ProjectService : IProjectService
 
     public Task<bool> CheckUnsavedChangesAsync()
     {
-        return Task.FromResult(_current?.Services.GetService<IProjectContentSession>()?.IsDirty ?? _current?.IsDirty == true);
+        return Task.FromResult(_current is { } project && project.Services.GetRequiredService<IProjectContentSession>().IsDirty);
     }
 
     private void AddToRecentProjects(string name, string projectPath)

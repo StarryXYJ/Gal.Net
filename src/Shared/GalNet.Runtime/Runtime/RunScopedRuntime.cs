@@ -12,11 +12,13 @@ internal sealed class RunScopedRuntime : IGameRuntime
 {
     private readonly IGameRuntime _runtime;
     private readonly CancellationToken _cancellation;
+    private readonly bool _ignoreVariableWrites;
 
-    public RunScopedRuntime(IGameRuntime runtime, CancellationToken cancellation)
+    public RunScopedRuntime(IGameRuntime runtime, CancellationToken cancellation, bool ignoreVariableWrites = false)
     {
         _runtime = runtime;
         _cancellation = cancellation;
+        _ignoreVariableWrites = ignoreVariableWrites;
         State = runtime.State;
         SceneInstances = runtime.SceneInstances;
     }
@@ -31,7 +33,7 @@ internal sealed class RunScopedRuntime : IGameRuntime
     public void JumpTo(string nodeId, int entryIndex = 0) { Check(); _runtime.JumpTo(nodeId, entryIndex); }
     public void SetEntryIndex(int entryIndex) { Check(); _runtime.SetEntryIndex(entryIndex); }
     public void EndGame() { Check(); _runtime.EndGame(); }
-    public void SetVariable(string name, object value) { Check(); _runtime.SetVariable(name, value); }
+    public void SetVariable(string name, object value) { Check(); if (!_ignoreVariableWrites) _runtime.SetVariable(name, value); }
     public GalVariable? GetVariable(string name) { Check(); return _runtime.GetVariable(name); }
     public bool TryGetVariable(string name, out GalVariable variable) { Check(); return _runtime.TryGetVariable(name, out variable!); }
     public IReadOnlyDictionary<string, GalVariable> GetVariables(VariableScope scope) { Check(); return _runtime.GetVariables(scope); }

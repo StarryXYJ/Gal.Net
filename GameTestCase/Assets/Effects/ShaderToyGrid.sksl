@@ -1,0 +1,355 @@
+/*
+@gal.effect v=1
+@input source
+@targets scenePost
+
+@param time
+  uniform: iTime
+  type: float
+  default: 0
+  range: 0..100000
+  animatable: true
+
+@param mixAmount
+  uniform: mixAmount
+  type: float
+  default: 0.55
+  range: 0..1
+  animatable: false
+*/
+uniform shader source;
+uniform float2 size;
+uniform float mixAmount;
+uniform float iTime;
+
+// ------------------------------------------------------------
+// Hash replacement
+// ------------------------------------------------------------
+// The original Shadertoy shader uses floatBitsToInt() and XOR.
+// Those are not supported by this RuntimeEffect environment.
+//
+// This preserves the purpose of the hash: deterministic,
+// pseudo-random values based on a 3D position.
+// ------------------------------------------------------------
+float hash(float3 p) {
+    float h = dot(
+        p,
+        float3(127.1, 311.7, 74.7)
+    );
+
+    return fract(
+        sin(h) * 43758.5453123
+    );
+}
+
+// ------------------------------------------------------------
+// Grid distance
+// ------------------------------------------------------------
+void dogrid(
+    float3 ro,
+    float3 rd,
+    float size,
+    out float3 gridId,
+    out float gridD
+) {
+    gridId =
+        (floor(ro + rd * 1e-3) / size + 0.5)
+        * size;
+
+    float3 src =
+        -(ro - gridId) / rd;
+
+    float3 dst =
+        abs(0.5 * size) / rd;
+
+    float3 bz = src + dst;
+
+    gridD = min(
+        bz.x,
+        min(bz.y, bz.z)
+    );
+}
+
+// ------------------------------------------------------------
+// Rodrigues rotation
+// ------------------------------------------------------------
+float3 erot(
+    float3 p,
+    float3 ax,
+    float t
+) {
+    return
+        mix(
+            dot(ax, p) * ax,
+            p,
+            cos(t)
+        )
+        +
+        cross(ax, p) * sin(t);
+}
+
+// ------------------------------------------------------------
+// tanh replacement
+// tanh(x) = (e^(2x)-1)/(e^(2x)+1)
+//
+// Clamp keeps exp() from getting excessively large.
+// ------------------------------------------------------------
+float tanhApprox(float x) {
+    x = clamp(x, -8.0, 8.0);
+
+    float e = exp(2.0 * x);
+
+    return (e - 1.0) / (e + 1.0);
+}
+
+// ------------------------------------------------------------
+// Main
+// ------------------------------------------------------------
+half4 shadertoyMain(float2 fragCoord) {
+
+    float2 uv =
+        (fragCoord - 0.5 * size.xy)
+        / size.y;
+
+    float3 col = float3(0.0);
+
+    float3 ro =
+        float3(0.2, 0.2, -5.0);
+
+    float3 rt =
+        float3(0.0);
+
+    float3 z =
+        normalize(rt - ro);
+
+    float3 x =
+        normalize(
+            cross(
+                z,
+                float3(0.0, -1.0, 0.0)
+            )
+        );
+
+    float3 y =
+        cross(z, x);
+
+    // --------------------------------------------------------
+    // Camera ray
+    // --------------------------------------------------------
+
+    float hv =
+        hash(
+            float3(
+                uv.x,
+                uv.y,
+                uv.y
+            ) + iTime
+        );
+
+    float rayZ =
+        2.0 +
+        tanhApprox(
+            hv * 0.5 +
+            10.0 * sin(iTime)
+        );
+
+    float3 camDir =
+        normalize(
+            float3(
+                uv.x,
+                uv.y,
+                rayZ
+            )
+        );
+
+    // Equivalent to:
+    // mat3(x,y,z) * camDir
+    float3 rd =
+        x * camDir.x +
+        y * camDir.y +
+        z * camDir.z;
+
+    float e = 0.01;
+    float g = 0.0;
+
+    float gridLen = 0.0;
+
+    float3 gridId =
+        float3(0.0);
+
+    float gridD = 0.0;
+
+    // --------------------------------------------------------
+    // Raymarch
+    // --------------------------------------------------------
+
+    for (int iter = 0; iter < 99; iter++) {
+
+        float i =
+            float(iter + 1);
+
+        float3 p =
+            ro + rd * g;
+
+        float3 oop = p;
+
+        // Rotate world
+        p =
+            erot(
+                p,
+                normalize(
+                    sin(
+                        iTime * 0.33 +
+                        float3(
+                            -0.6,
+                            0.4,
+                            0.2
+                        )
+                    )
+                ),
+                iTime * 0.2
+            );
+
+        p.z += iTime;
+
+        float3 op = p;
+
+        // ----------------------------------------------------
+        // Advance grid
+        // ----------------------------------------------------
+
+        if (gridLen <= g) {
+
+            dogrid(
+                p,
+                rd,
+                1.0,
+                gridId,
+                gridD
+            );
+
+            gridLen += gridD;
+        }
+
+        p -= gridId;
+
+        // ----------------------------------------------------
+        // Grid pattern
+        // ----------------------------------------------------
+
+        float3 gridIdZXY =
+            float3(
+                gridId.z,
+                gridId.x,
+                gridId.y
+            );
+
+        float gy =
+            dot(
+                sin(gridId * 2.0),
+                cos(gridIdZXY * 5.0)
+            );
+
+        float rn =
+            hash(
+                gridId +
+                floor(iTime)
+            );
+
+        p.x += sin(rn) * 0.25;
+
+        // ----------------------------------------------------
+        // Distance
+        // ----------------------------------------------------
+
+        float h;
+
+        // NOTE:
+        // The original uses rn > 0.0.
+        // This is effectively always true because our
+        // replacement hash returns [0,1).
+        //
+        // To preserve the original shader's intended
+        // alternating behavior, create a signed hash.
+        float signedRn =
+            rn * 2.0 - 1.0;
+
+        if (signedRn > 0.0) {
+
+            h = 0.5;
+
+        } else {
+
+            h =
+                length(p)
+                - 0.01
+                - gy * 0.05
+                + signedRn * 0.02;
+        }
+
+        // ----------------------------------------------------
+        // Raymarch step
+        // ----------------------------------------------------
+
+        e =
+            max(
+                0.001 +
+                op.z * 0.000002,
+
+                abs(h)
+            );
+
+        g += e;
+
+        // ----------------------------------------------------
+        // Accumulate color
+        // ----------------------------------------------------
+
+        float glow =
+            exp(
+                5.0 *
+                fract(
+                    gy + iTime
+                )
+            );
+
+        col +=
+            float3(
+                0.25,
+                0.25,
+                1.0 +
+                abs(signedRn)
+            )
+            *
+            (
+                0.025 +
+                0.02 * glow
+            )
+            /
+            exp(
+                e * e * i
+            );
+    }
+
+    // --------------------------------------------------------
+    // Final shading
+    // --------------------------------------------------------
+
+    col *= exp(-0.08 * g);
+
+    col =
+        sqrt(
+            max(col, float3(0.0))
+        );
+
+    return half4(
+        col,
+        1.0
+    );
+}
+
+half4 main(float2 fragCoord) {
+    float4 scene = float4(source.eval(fragCoord));
+    float4 generated = float4(shadertoyMain(fragCoord));
+    return half4(mix(scene, generated, clamp(mixAmount, 0.0, 1.0)));
+}

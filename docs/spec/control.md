@@ -104,23 +104,43 @@ Runtime 只依赖 `GalNet.Presentation.Abstractions` 中的 `IGameView` 与细�
 
 ## Schema 字段表单
 
-`GalNet.Game.Controls.Forms.SchemaForm` 位于 GalNet.Avalonia.Controls。宿主传入有序 Schema（FieldDescriptor 列表）、Registry 和 Binding（字段到 IFieldBinding 的函数）。控件只创建、挂载和释放字段编辑器；不选择游戏主题，不持有保存/撤销服务。结构样式位于 `avares://GalNet.Avalonia.Controls/Styles/SchemaForm.axaml`，只定义标签、编辑器与诊断的结构，没有颜色、间距或皮肤资源；宿主显式加载或提供自己的 Template/Theme。
+`GalNet.Game.Controls.Forms.SchemaForm` 位于 GalNet.Avalonia.Controls。宿主传入有序 Schema（FieldDescriptor 列表）、Registry 和 Binding（字段到 IFieldBinding 的函数），可选 DtoType 启用特定 DTO 成员映射。控件只创建、挂载和释放字段编辑器；不选择游戏主题，不持有保存/撤销服务。结构样式位于 `avares://GalNet.Avalonia.Controls/Styles/SchemaForm.axaml`，只定义标签、编辑器与诊断的结构，没有颜色、间距或皮肤资源；宿主显式加载或提供自己的 Template/Theme。
 
-EditorRegistry 以开放 EditorId 映射到工厂，提供 Register/Replace/RegisterDefault/Resolve。显式 ID 精确匹配；省略 ID 时按合法选项、注册的值类型及 enum/JSON 默认规则选择。重复注册、未知 ID 和不支持类型均明确报错，不静默替换自定义 ID。默认集合由宿主调用 CreateDefault 创建；主题可贡献样式或工厂注册方法，由宿主显式组合，不拥有 registry/设置服务的生命周期。
+EditorRegistry 以开放 EditorId 映射到工厂，提供 Register/Replace/RegisterDefault/Resolve。显式 ID 精确匹配；省略 ID 时按合法选项、注册的值类型及 enum/生成 DTO/列表/JSON 默认规则选择。重复注册明确报错；未知 ID 或工厂以 NotSupportedException 声明不支持时，SchemaForm 保留 editor.fallback 诊断并为该字段提供明确 JSON 回退。其他工厂异常仍按创建失败清理，不伪装为成功。默认集合由宿主调用 CreateDefault 创建；主题可贡献样式或工厂注册方法，由宿主显式组合，不拥有 registry/设置服务的生命周期。
 
-默认 Text/Numeric/JSON 使用 TextBox 保存草稿，Enter/失焦时只提交有编辑的文本；Numeric 不经过 double/decimal 控件值转换，以保留大整数和未完成输入。Toggle/Choice/Slider 提交选定值，复用 Core 的 codec/校验和项目 JSON 配置。Slider 需要有限 min/max、正步长；decimal、不安全整数精度/CLR 范围或非整数整数滑块配置明确诊断。Step 仅决定滑块交互，不限制业务合法值。合法选项与标签分开；binding 的动态选项更新不会重建表单。
+默认 Text/Numeric 使用 TextBox 保存草稿，Enter/失焦时只提交有编辑的文本；JSON 使用带标识的多行 TextBox，Ctrl+Enter/失焦提交，按原始 JSON 表达字符串引号，Escape 恢复未提交草稿；Numeric 不经过 double/decimal 控件值转换，以保留大整数和未完成输入。Toggle/Choice/Slider 提交选定值，复用 Core 的 codec/校验和项目 JSON 配置。Slider 需要有限 min/max、正步长；decimal、不安全整数精度/CLR 范围或非整数整数滑块配置明确诊断。Step 仅决定滑块交互，不限制业务合法值。合法选项与标签分开；binding 的动态选项更新不会重建表单。
 
-FieldValue 以未提供的 Json 和显式 JSON null 区分省略/null。Context 保留草稿和诊断；默认值只用于未提供状态的展示，未编辑的默认/null/空状态失焦不会写回。宿主可通过 CommitAsync 显式提交省略或 null，默认结构未提供统一的删除/null 操作按钮。对象/数组以 JSON 文本编辑，不承诺任意嵌套控件。
+宿主可通过 `EditorRegistry.CreateDefault(emptyInputClearsOptionalFields: true)` 选择非字符串空文本恢复缺省的策略；必填无默认值仍拒绝，JSON 源码不套用此策略。FieldEditorContext.Registry 是借用的只读引用，自定义组合编辑器创建子 Context 时可以传递同一 registry，使输入策略和工厂组合一致。FieldEditorRow 提供可响应宽度的标签、编辑区、诊断和单重置布局；FieldEditorActions.Simplified 选择单重置行为，默认共享表单和 Sample 仍保留原动作集。
 
-IFieldBinding 是借用的宿主对象，提供 Read、Changed、CommitAsync、可用性/标签/可选选项。除 Changed 可从后台发出外，接口调用与工厂/Context 操作均在 UI 线程。binding 负责保存、撤销、异步应用和业务校验，必须捕获对应项目/服务作用域并遵守 CancellationToken；Context 只隔离过期 UI 结果，不回滚宿主已完成的业务写入。
+FieldValue 以未提供的 Json 和显式 JSON null 区分省略/null。Context 保留草稿和诊断；默认值只用于未提供状态的展示，未编辑的默认/null/空状态失焦不会写回。宿主可通过 CommitAsync 显式提交省略或 null；共享默认结构通过 FieldEditorActions 提供相应按钮，宿主自定义模板可自行组合。支持范围内对象/数组使用懒创建表单，其他类型明确使用 JSON；普通 CLR DtoBinding 没有 presence 时仍拒绝省略，不能静默写成 null。
+
+IFieldBinding 是借用的宿主对象，提供 Read、Changed、CommitAsync、可用性/标签/可选选项，以及可选的中立 HostContext 宿主元数据和 CanReset 操作能力。DtoEditorContext 的作用域适配转发元数据与操作能力，FieldEditorContext 只读公开它们；导航仍需检查当前字段可用性，不通过元数据绕过绑定生命周期。CanReset 允许宿主禁止特定字段的通用重置，例如没有默认定义的 Timeline；不改变文件中的 presence 语义。除 Changed 可从后台发出外，接口调用与工厂/Context 操作均在 UI 线程。binding 负责保存、撤销、异步应用和业务校验，必须捕获对应项目/服务作用域并遵守 CancellationToken；Context 只隔离过期 UI 结果，不回滚宿主已完成的业务写入。
 
 工厂返回独立、无父级的 FieldEditorLease；SchemaForm 在换 schema/registry/binding、卸载或创建失败时先取消所有 Context，再释放全部 lease，最后移除子控件；清理异常保留为 Diagnostics，不短路后续释放。控件不释放借用的 binding。工厂在返回 lease 前失败时，需自行清理尚未交出的临时资源。registry 注册更新后显式调用 RefreshEditors，普通值/选项/可用性通知不重建控件。现有 CustomSettingEditor 复用同一 FieldEditorLease，旧 SettingEditorLease 已移除。
 
-Editor 的通用数值、布尔、文本、选项与 JSON 参数通过 SchemaEntryParameterEditorItemViewModel 使用完整值契约，提交替换 Entry.Parameters，继续由 workspace 历史与保存链路观察。每个 Group 面板拥有独立 registry，EditorFieldEditors 仅扩展选项标签本地化，转换与提交复用默认工厂。多行文本、资源选择、说话人/变量补全及表达式仍使用现有专属控件。仅打开参数面板不会写入省略的默认值；字符串文档不能无损表示的值（如显式 null 字符串）明确拒绝，原始工具路径可处理。设置页和 Editor 各自提供表单模板，业务对象不进入项目 schema DLL。
+Editor 的通用数值、布尔、文本、选项与 JSON 参数通过 SchemaEntryParameterEditorItemViewModel 使用完整值契约，提交替换 Entry.Parameters，提交通过项目作者意图记录历史并由统一保存链路持久化。Group 面板使用项目 scope 的 registry（直接构造时可显式传入）；EditorFieldEditors 组合选项标签本地化、Transform/颜色/Timeline 成员及类型工厂和场景目标控件。多行文本、资源选择、说话人/变量补全及表达式仍使用专属控件，其行布局与重置同样使用 FieldEditorRow。仅打开参数面板不会写入省略的默认值；生成表单直接保存作者 JSON，缺省与显式 null 可以无损往返。设置页和 Editor 各自提供表单模板，业务对象不进入项目 schema DLL。Editor 的具体操作策略见 [Group 属性编辑](editor-groups.md#属性行与常用专属编辑器)。
 
 `DtoBinding` 从生成的 IFieldDto 取得字段列表和成员访问，提供同一 IFieldBinding 协议，不再为每种 DTO 定义字段 ViewModel。普通提交调用 ValueCodec/ValueValidation 后写成员；提供 commit 回调时由宿主承担提交与数据同步。INotifyPropertyChanged 自动刷新；无通知 DTO 显式 Refresh。字段订阅随 Context 的 Changed 订阅建立/移除，Dispose 释放自身订阅，不释放借用 DTO。普通 CLR 成员不被当作 presence 容器。
 
-Editor 中有 FieldDataType 的 Entry 用一个 SchemaForm 承载全部字段。EntryParameterFormBinding 直接读取参数字典并通过现有提交方法替换 Parameters，不创建或同步 DTO；外部修改、撤销/重做由 Parameters 变化通知刷新。省略与显式 null 保留在文档，默认值不在打开面板时写回。重新配置释放旧绑定，旧字段不能再提交。通用表单行模板在 Editor 面板内共享，专属资源/表达式等继续保留原路径。字段编辑校验当前候选及自定义跨字段规则，完整文档必填检查留在编译/执行阶段，以允许逐步修正不完整文档。
+Editor 中有 FieldDataType 且不需要旧专属字段路径的 Entry 通过 DtoEditorHost 承载参数区，未注册整 DTO 覆盖时使用 SchemaForm。EntryParameterFormBinding 直接读取参数字典并通过现有提交方法替换 Parameters，不创建或同步 DTO；外部修改、撤销/重做由 Parameters 变化通知刷新。省略与显式 null 保留在文档，默认值不在打开面板时写回。重新配置释放旧绑定，旧字段不能再提交。通用表单行模板在 Editor 面板内共享，专属资源/表达式等继续保留原路径。字段编辑校验当前候选及自定义跨字段规则，完整文档必填检查留在编译/执行阶段，以允许逐步修正不完整文档。
+
+### DTO 控件构建
+
+同一 EditorRegistry 另外提供类型化的三层注册：RegisterDto<T>/ReplaceDto<T> 替换整个参数区，RegisterMember<T>(成员表达式, factory)/ReplaceMember<T> 替换指定成员，RegisterDefault<T>/ReplaceDefault<T> 指定字段类型默认工厂。默认集合中已有的类型需要 ReplaceDefault，不允许重复 RegisterDefault。显式成员覆盖先于类型覆盖，类型覆盖先于内部 EditorId/default 适配；nullable 按基础类型选择工厂，原字段 codec、presence/null 语义保留。Freeze 后所有注册/替换返回错误；宿主在组合结束后显式冻结，未冻结的旧 registry 仍可按原方式显式刷新。
+
+当前成员表达式只接受直接的生成 DTO 属性（有 Field 特性），用 JsonPropertyName 或与 generator 一致的 camelCase 取得 wire ID，不构造 DTO；嵌套路径、任意 CLR 属性、集合路径模板尚未实现。重复整 DTO/成员注册报错，替换必须明确调用 Replace。内部 EditorId 注册继续承接已有专属控件，不要求新的类型扩展作者使用字符串 ID。
+
+DtoEditorItem 包含稳定 Id、可选 DtoType、冻结字段清单及借用 binding，可选传入原子 patch 提交委托。DtoEditorHost 对单项选择整 DTO 工厂或默认 SchemaForm；FormTheme 可为自动表单提供宿主皮肤。DtoPanel 将有序项列表映射到多个 Host，按项 Id 而非 Type 识别；相同类型多项可以并存，移动未替换的项不重建控件或清除草稿。ItemsSource 支持 UI 线程的集合通知，替换同一 Id 的项对象会重新建立上下文；重复/空项以 Diagnostics 拒绝本次刷新。DtoPanel 是顺序容器，不承诺长列表虚拟化；需要虚拟化或特殊选择/重排外壳的宿主可在自己的列表模板内使用同一 DtoEditorHost。
+
+整 DTO 工厂获得 DtoEditorContext，可 Read 独立字段快照、CreateField、CreateDefaultForm(排除字段)，或 CommitAsync 提交字段 patch。混合表单直接创建默认表单，不再次走整 DTO 分派；其他字段仍遵循成员/默认类型映射。Editor 的 patch 在一次 Parameters 替换中验证并提交，因此多字段修改只产生一条项目历史；控件不以完整 DTO 反序列化/再序列化替换作者数据。没有宿主原子回调时只允许单字段提交，多字段 patch 整体拒绝，不能逐字段提交并假装原子成功。
+
+Context 的生命周期包装取消旧提交、保留动态选项和 IFieldPreviewBinding 的能力；卸载、换项或创建失败先取消上下文并释放自建字段，再卸载内容与释放控件 lease，清理错误进入 Diagnostics。事件仅由实际订阅者退订一次，不释放借用宿主 binding。宿主提交回调必须遵守取消令牌，框架不回滚回调已完成的写入；工厂在交出 lease 前仍须负责自身临时控件资源。
+
+内置设置主题的普通设置改用 SettingItem.EditorItem/DtoEditorHost，继续提供原单字段 SchemaForm 的皮肤与设置应用/保存队列；Action/ICustomSetting 保留各自行为。Sample 的 CreateFieldEditors 组合结束后冻结 registry。Editor 的 Dock 创建 Group 面板时传入项目 registry；目前依赖旧资源/表达式等专属字段的 Entry 继续走原路径。P6b 补充普通嵌套结构表单；所有专属字段迁移、手势合并协议、状态查询与 timeline/曲线仍未包含。
+
+StructuredFieldEditor 复用 Expander 主题（StyleKey 为 Expander，宿主样式使用 Expander.structured-field 类选择器），按展开创建、折叠释放子控件。支持有生成静态 Schema 的 DTO，以及一维数组、List<T>/IList<T>/IReadOnlyList<T>/IEnumerable<T>。嵌套对象继续通过 DtoEditorHost 支持整 DTO 覆盖，默认内部表单继续成员/类型注册；根据 JsonTypeInfo 映射实际 wire 名，不构造 DTO 来生成 UI。对象提交合并当前 JSON，仅替换编辑成员，保留未知成员。自定义 converter、无 schema 的对象、字典、八层深度或超过 200 元素使用 JSON；用户也可显式切换结构/JSON。
+
+列表结构变化取消当前版本令牌，旧索引绑定和延迟提交失效；普通元素值编辑保留其余行控件。共享控件不实现保存或撤销，依旧提交一个根字段 JSON 值，由宿主负责原子修改及历史。FieldEditorActions 提供显式默认值、缺省、null 和草稿恢复，CanOmit/CanSetNull/HasDefault 决定入口，宿主用 StyledProperty 翻译提示；仅打开表单不写默认值。
 
 ## 宿主接入约束
 
@@ -129,6 +149,14 @@ Editor 中有 FieldDataType 的 Entry 用一个 SchemaForm 承载全部字段。
 - 共享页面可以被替换或覆写；最终客户端的窗口、主题、资源定位和平台服务不进入共享页面项目。
 - 新增页面时，需要补充 ViewModel、View、组合注册和导航测试。
 
+## 资源与对象候选面板
+
+共享 Forms 命名空间的 `ResourcePickerPanel` 接收不透明 ID、显示文本、详情、图标、可选缩略图与徽标候选，提供卡片搜索和键鼠选择事件，不解析资产/场景对象，也不保存数据。缩略图由宿主管理。Editor 的 Assets Picker 与场景目标选择控件复用这一组件，各自提供数据源及提交规则；项目状态查询保持在 Editor 服务中。
+
+## Timeline 关键帧画布
+
+共享 `GalNet.Avalonia.Controls` 的 `TimelineCanvas` 与 `TimelineCanvasModel` 提供整数帧标尺、播放头、可见行关键帧/折叠汇总绘制、多选/框选、水平拖动预览及缩放平移。模型通过委托请求开始、预览、提交、取消和加删键，通过事件请求定位；标尺拖动通过 DisplayFrame 显示本地预览，松手只请求一次定位，取消/失效恢复实际帧。控件不引用 Editor、作者 JSON、项目历史或游戏执行状态。宿主提供可见行、会话内键身份及版本失效，并协调相同高度的属性行。Editor 的无损修改与单历史规则见 [Timeline Dock](editor-groups.md#timeline-dock)。
+
 ## 剧情视频图层
 
 `AvaloniaVideoPresenter` 是宿主注入的 `IVideoPresenter` 实现，Sample 在会话构造时将它挂入推荐视频模块。它通过 `IAssetManager` 获取 video 资源并实体化临时媒体文件，LibVLC 像素回调按实际视频尺寸发布 `SceneFrameSource`。视频帧经过现有 `SceneLayerItem` 和场景合成管线，参与 Layer effect 与 ScenePost，而不是独立的原生 VideoView。
@@ -136,3 +164,11 @@ Editor 中有 FieldDataType 的 Entry 用一个 SchemaForm 承载全部字段。
 帧源租约保护渲染线程读取的纹理；被新帧替换或停止的源在安全时释放。UI 失效通知合并，播放完成/失败的 native callback 只发出信号，停止和释放播放器在回调线程之外完成。隐藏、替换、会话取消会停止对应视频，包括尚未完成的资源加载；异步会话销毁等待所有播放清理后释放 LibVLC。
 
 当前实现使用 CPU 解码帧上传，帧尺寸上限 8192×8192；真实解码验证在 Windows LibVLC 后端完成。其他平台需提供可用的原生 LibVLC，缺失后端会诊断并安全完成剧情视频。Gallery 保持自己的媒体生命周期。
+
+### 常用字段与宿主草稿
+
+`[Common]` 是独立的 Core DTO 字段标记，经生成器进入 `EditorHints.IsCommon`（默认 false）；手写 schema 可以直接设置该提示。它不改变必填、默认值、JSON 或运行时语义。`DtoEditorHost.DisplayMode` 默认 `All`；`Common` 仅筛选本层根字段，保持声明顺序及绑定可见性。复杂对象继续使用既有编辑器，不递归强制筛选；自定义 DTO 工厂通过 `DtoEditorContext.DisplayMode` 决定自身展示，默认表单自动遵循该模式。
+
+`IFieldBinding.Draft` 可选返回宿主拥有的 `FieldDraftState`。控件上下文同步输入和诊断，挂载结束只解除订阅；宿主决定草稿的保存、冲突和生命周期。ScopedBinding 转发该状态，结构化对象/列表和 Transform 子编辑器通过子路径取得独立草稿。输入法组合保护随控件租约登记，项目保存不能越过组合输入。没有宿主草稿的设置/游戏表单沿用控件本地生命周期。
+
+需要来源版本保护的宿主在内容变化时调用 `FieldDraftState.CheckSource()`；一旦观察到冲突，即使源值随后恢复相同内容也保留冲突，直到明确清除草稿。

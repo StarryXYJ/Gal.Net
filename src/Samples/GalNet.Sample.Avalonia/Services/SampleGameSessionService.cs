@@ -4,14 +4,16 @@ using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Media.LibVlc;
 using GalNet.Runtime.Logging;
 using GalNet.Sample.Avalonia.Debug;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Sample.Avalonia.Services;
 
 /// <summary>Project launch arguments and debug-only save policies.</summary>
 internal sealed class SampleGameSessionService(
     GamePageViewModel gameplay, GamePage page, AvaloniaPlayerSettingsService settings,
-    SampleLocalizationService localization, AvaloniaPlayerStartup startup, LibVlcRuntime mediaRuntime)
-    : AvaloniaGameSession(SampleCustomization.CreateHostOptions(), gameplay, page, settings, localization, startup, mediaRuntime)
+    SampleLocalizationService localization, AvaloniaPlayerStartup startup, LibVlcRuntime mediaRuntime, IServiceProvider services)
+    : AvaloniaGameSession(SampleCustomization.CreateHostOptions(App.LaunchOptions.DebugInvitation is null ? null :
+        engine => services.GetRequiredService<SampleExternalDebug>().Attach(engine)), gameplay, page, settings, localization, startup, mediaRuntime)
 {
     public Task<bool> InitializeAsync(GameLaunchOptions options,
         Func<string, CancellationToken, Task<string?>> selectLanguage, CancellationToken cancellationToken = default) =>

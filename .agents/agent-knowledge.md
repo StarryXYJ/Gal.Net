@@ -1,5 +1,33 @@
 # GalNet Agent Knowledge
 
+- [必填字符串与 schema 默认值](lessons/L-20261024-01-required-string-defaults.md)：Required 字段有默认值仍会被 Normalize 补齐；要求显式提供且空串合法时不声明 schema 默认，并显式 AllowNull=false。DTO 构造函数赋值不导出为 schema 默认。
+
+- [契约与 Git 构建元数据](lessons/L-20261023-02-contract-git-metadata.md)：SDK 的 InformationalVersion 可包含 commit；严格 DLL 哈希需要稳定非功能元数据，并用不同 SourceRevisionId 重建比较验证。
+
+- [调试 Step 与异步呈现](lessons/L-20261023-02-debug-step-async-presentation.md)：Step 响应不保证异步截图等呈现任务已完成；按具体完成信号有限等待，CatchUp 不产生截图副作用。
+
+- [启动日志前的调试失败](lessons/L-20261023-01-debug-launch-before-logging.md)：契约校验可早于日志初始化；App 顶层需 stderr/非零退出码，Editor 需监控自己启动的进程，不能只等待 TCP。
+
+- [选择器准备与作者代次](lessons/L-20261022-02-selector-preparation-generation.md)：同代后台准备可推进结果 Revision；等待完成后按不可变作者快照身份与资源代次复核，再更新选择快照。
+
+- [变量桥接原键与 UID](lessons/L-20261022-01-variable-bridge-original-key.md)：Runtime 去作用域前缀，回写已有玩家/系统变量必须保留桥接服务原键；仅 Runtime 改值通过不能证明重开/落盘正确。
+
+- [窗口关闭晚于 scope 释放](lessons/L-20261021-01-window-closed-after-scope-disposal.md)：异步 Closing 先释放 scope 时，Closed 不能再 GetRequiredService；窗口绑定应在释放前幂等解绑，并用真实进程正常退出验证。
+
+- [复合分析原子发布](lessons/L-20261020-04-composite-analysis-publication.md)：容错 Timeline 分析可能返回半份结果；复合条目先在临时事实中验证本次完整性，成功后发布，保留上游不确定性。
+
+- [跨宿主 DTO 表单样式](lessons/L-20261020-01-schema-form-host-style.md)：新 Dock/Flyout 要显式提供 SchemaForm 模板；Host.Diagnostics 不替代实际字段与子诊断检查。
+
+- [隔离构建的契约产物](lessons/L-20261019-03-isolated-contract-artifacts.md)：默认契约 Content 和 schema fixture 固定读取普通 bin；全新 artifacts 快照要用同源码产物补齐，不能借用旧 DLL。
+
+- [精确关键帧边界](lessons/L-20261019-02-timeline-exact-key-frame.md)：Step 段需验证内部键及前后分数帧；Editor 直接共用 Runtime sampler，不用时间偏移掩盖边界错误。
+
+- [延迟模板祖先类型解析](lessons/L-20261019-01-template-ancestor-type-resolution.md)：带命名空间的祖先反射绑定必须实际挂载验证；已复现表达式使用 RelativeSource + x:Type 修复。
+
+- [查询上下文随项目 scope 失效](lessons/L-20261018-04-query-scope-disposal.md)：旧服务仍可能持有 IsLoaded 文档；查询服务释放时清缓存并推进代次，不能以可读数据代替有效会话。
+
+- [L-20261018-03 派生控件主题键](lessons/L-20261018-03-derived-control-theme-key.md)：复用 Expander 等基类模板时显式 StyleKeyOverride；挂载后验证实际交互入口，属性赋值测试不能证明按钮可用。
+
 这是 GalNet 项目的长期 agent 上下文入口。这里只保存经过验证、以后工作仍然有用的项目事实、边界和经验索引；不要写入对当前任务没有复用价值的对话流水账、秘密或未经确认的猜测。
 
 ## 使用方式
@@ -10,19 +38,19 @@
 
 ## 项目事实（已从仓库文档确认）
 
-- 宿主分层已落地：GameHost 提供 GameSession/IGameRun/GameRun、PlayerSession、PlayerPreferences/PlayerStartup；Avalonia.GameHost 提供默认页面会话、运行绑定、展示组合、资源预加载和设置/输入/窗口适配。Sample 仅保留项目配置、启动适配、本地化和调试。中立应用接口在 Presentation.Abstractions.Application，共享音频后端在 Media.LibVlc；项目删除与 ProjectTools.Windows 已移除。见 docs/spec/architecture.md 和 docs/design/game-host-refactor.md。
+- 宿主分层已落地：GameHost 提供 GameSession/IGameRun/GameRun、PlayerSession、PlayerPreferences/PlayerStartup；Avalonia.GameHost 提供默认页面会话、运行绑定、展示组合、资源预加载和设置/输入/窗口适配。Sample 仅保留项目配置、启动适配、本地化和调试。中立应用接口在 Presentation.Abstractions.Application，共享音频后端在 Media.LibVlc；项目删除与 ProjectTools.Windows 已移除。见 docs/spec/architecture.md。
 
 - 解决方案入口是 `GalNet.slnx`。
-- `docs/spec/` 描述已经实现的稳定事实；`docs/design/` 描述设计和分阶段计划。
+- `docs/spec/` 描述已经实现的稳定事实；`docs/manual/` 描述二次开发路径；`features/` 保留实现过程和历史。
 - Runtime/Core 应保持与 Avalonia、WPF、Skia、具体文件系统和其他平台实现解耦。
-- Entry 契约与执行已分离：IEntryModule 只含 schema/composite，IPrimitiveModule 按领域共享状态并贡献完整指令 ID；GameRegistration 独立注册，AddBuiltins 为完整内置运行入口；独立 GalNet.Contracts.Builtins 只依赖 Core，CreateAllModules 返回 13 个组件模块。可选 schema、部分内置实现或全自定义；仅完整 ID 排他。同前缀和 schema 模块名可重复。音频用 AudioRuntime + IAudioPlaybackHost 组合，不强制继承。见 docs/adr/0002-entry-schema-execution-registration.md 和 docs/development.md。
+- Entry 契约与执行已分离：IEntryModule 只含 schema/composite，IPrimitiveModule 按领域共享状态并贡献完整指令 ID；GameRegistration 独立注册，AddBuiltins 为完整内置运行入口；独立 GalNet.Contracts.Builtins 只依赖 Core，CreateAllModules 返回 14 个组件模块，包含 custom.invoke 的固定双字符串 schema。可选 schema、部分内置实现或全自定义；仅完整 ID 排他。同前缀和 schema 模块名可重复。音频用 AudioRuntime + IAudioPlaybackHost 组合，不强制继承。见 docs/spec/runtime.md、docs/spec/entry-types.md 和 docs/manual/。
 - 当前 GameSnapshot 版本为 4，不兼容旧版；持久数据在注册式 GameState 表中，快照为 StateId → version/JSON payload；读档先验证，再取消旧 scope 并替换整个状态根。Engine 不拥有执行 view，宿主先释放 Engine，再异步释放 view 与后端。
-- Engine 提供终态 StopAsync 和 StateChanged，覆盖玩家推进、Choice 与阻塞实例自然完成；GameHost 仅协调应用会话，不复制 Engine 执行机制。AvaloniaGamePresenters 只组合端口，AvaloniaGamePresentation 管理平台资源。见 docs/design/game-runner-refactor.md 和 docs/spec/runtime.md。
+- Engine 提供终态 StopAsync 和 StateChanged，覆盖玩家推进、Choice 与阻塞实例自然完成；GameHost 仅协调应用会话，不复制 Engine 执行机制。AvaloniaGamePresenters 只组合端口，AvaloniaGamePresentation 管理平台资源。见 docs/spec/runtime.md 和 docs/spec/architecture.md。
 - Presentation.Defaults 已删除，空 NullGameView 位于展示抽象的 View 命名空间；当前程序集布局见 docs/spec/architecture.md。GameContent.Settings 包含项目设置，项目/安装加载器与两个 Sample 已接通自定义音频轨道配置。
 - 旧的 `GalNet.Control` 与 `GalNet.Control.Abstraction` 已完成迁移并删除；当前共享 Avalonia 游戏页面唯一入口是 `GalNet.Avalonia.GameView`，页面架构见 `docs/spec/control.md`。
 - 持久条目先在 `GameState.Update` 中修改唯一数据记录，再通知展示层；模块通过 PrimitiveRegistry.State/Restore/ValidateState 声明状态、恢复依赖和校验，宿主使用展示抽象 StateRestoreSession 统一恢复、等待和逆序清理。旧 SceneState/Active* 镜像与 Builtins 中央 replay 已删除。
 - 视觉扩展应通过展示抽象和渲染端口接入；不要把平台类型或渲染资源泄漏进 Core/Runtime。
-- 当前已有大型阶段计划：[runtime-presentation-decoupling-phase-plan.md](../docs/design/runtime-presentation-decoupling-phase-plan.md) 和 [render-effects-pipeline-plan.md](../docs/design/render-effects-pipeline-plan.md)。新增 feature 应链接它们，不要复制其中的长期设计。
+- 新增 feature 的长期实现意图记录在其自身 feature 目录；只有已验证的稳定事实才合并到 docs/spec/。
 
 - 玩家变量桥接实现为 Runtime.Variables.PlayerVariableService，存储通过 IPlayerVariableStore 注入；Variable.Clone 保留 Uid，VariableValue 不可变，可共享。Runtime loader/SaveManager 不执行文件 I/O。见 docs/spec/architecture.md。
 - Runtime.I18n.GameTextResolver 提供 culture-first、父文化与默认文化回退，只依赖宿主查询委托；DynamicLocalization/JSON 适配留在 Sample 的 GameLocalizationProvider。见 docs/spec/i18n.md。
@@ -36,10 +64,33 @@
 - `.agents/skills/`：项目 skill 的可版本化源文件；可复用经验晋升后在这里形成独立 skill。
 - Codex 的用户级 skill 发现目录保存运行时副本；源文件变化后使用 `galnet-sync-skills` 同步，避免 agent 使用旧版本。
 - `docs/spec/`：当前系统事实。
-- `docs/design/`：跨 feature 设计和推荐工作流。
-- `docs/adr/`：重要架构决定；接受后的 ADR 不直接改写。
+- `docs/manual/`：二次开发流程与框架接入指南。
 
 ## 当前工作
+
+- 2026-10-19 P6e3b 已验证：属性展开为内联值曲线，右键插值/左右侧切线模式、持久自动贝塞尔重算、联动/断开和精确输入弹窗取代独立详情区；共享 Avalonia 控件直接调用 Core sampler，Step 精确内部键边界已修正。editorTangents 只属于作者模式，Runtime 消费烘焙斜率；值/柄手势预览、松手单历史与过期取消，关闭弹窗释放绑定和草稿。隔离候选六项目 810 项、弹窗收尾 Editor 184 项、构建/格式/指纹通过，六项媒体未执行；主工作区另外的控件改动和首次三个非 Timeline 失败保留。P6e3 verified，P6e4/P6f 后续，见 features/F-20261015-02-editor-authoring-workspace/phase-6e3.md。
+
+- 2026-10-19 Group 属性编辑器改造已验证：统一响应式字段行、标题左上/重置同行右侧，去掉常驻 presence 操作；Transform 成员与类型工厂、ColorPicker、Timeline Dock 按钮，列表按元素类型分派。CanReset/HostContext 经 DTO scope 转发，Timeline 无默认定义禁止通用重置；子项 patch 保留未知 JSON，变换按语义相等保留无关更新下的草稿。802 项相关回归、解决方案构建、格式/源码指纹通过，六项媒体未执行，四语 727 keys。见 [实施记录](../features/F-20261015-02-editor-authoring-workspace/phase-group-properties.md)。动态结构 JSON 回退、八层/200 元素保护及 P6e3b/P6e4/P6f 范围保留。
+
+- 2026-10-19 P6e3a 已验证：选中关键帧的值/出段 Step/Linear/Hermite/入出切线、混合值、多键单历史、平坦/线性/平滑/对齐一次性预设与值/秒显示换算；保存仍值/帧，切 Step/Linear 保留切线。详情按文档代次与选择失效，保留未知 JSON/大小写/首帧，越界/斜率溢出整批拒绝；布局预留不因选择移动画布。解决方案构建、Editor/Core/Architecture 332 项、格式/指纹通过，四语 705 keys，见 [phase-6e3](../features/F-20261015-02-editor-authoring-workspace/phase-6e3.md)。P6e3b 图形曲线/拖柄仍 planned，P6e4/P6f 随后；没有新增 Runtime 的极值拒绝规则或实时预览。开工已有的 feature.md/Group 属性设计改动保留未提交。
+
+- 2026-10-18 P6e2b 已验证：ProjectSceneTargets 是指定 Group/Entry 位置的查询服务，缓存作者快照并随项目 scope 释放失效；SceneTargetCatalog/Selection 适配候选与 Locator 解析，控件自己管理弹窗。Assets/普通字段/Timeline 共用 ResourcePickerPanel。Timeline 顶部“＋”只选对象，对象行左侧“＋”逐项选属性；未知初值待明确输入才创建，空对象仅面板草稿。整个对象替换保留键/未知 JSON、单历史。初轮六项目 905 项、用户两步交互修订后最终 461 项相关回归、解决方案构建及格式/指纹通过；6 项原生媒体用例未执行，四语 691 keys。见 [scene-locator-plan](../features/F-20261015-02-editor-authoring-workspace/scene-locator-plan.md)。下一步 P6e3 曲线/切线，P6e4 剩余语义/事件/引用；实时预览不列阶段。
+
+- 2026-10-18 Timeline 交互简化已验证，取代 P6e2 原保秒重定时/裁剪方案：已有轨道持续显示绝对值/叠加偏移模式，切换保留数值与切线；结束帧/FPS Enter/失焦独立提交、FPS 保留帧号、结束帧下限覆盖键/事件，越界拖动与延长合为单历史。旧应用/裁剪/保秒生产路径移除，四语各 678 keys。初轮六项目 901 项通过，模式拒绝回显补充后的最终 457 项、解决方案构建、格式/指纹通过，6 项媒体环境未执行；见 [timeline-simplification](../features/F-20261015-02-editor-authoring-workspace/timeline-simplification.md)。下一步 P6e3 曲线/切线。
+
+- 2026-10-18 P6e2 用户反馈修正已验证：播放头拖动只更新 DisplayFrame 预览，松手才定位/采样一次，取消/版本失效不提交；Timeline 复选框居中、NumericUpDown 实际模板按钮长按 250ms 后每 30ms 连发。457 项受影响回归、解决方案构建、格式/指纹通过，6 项原生媒体环境未执行，见 [phase-6e2 修正记录](../features/F-20261015-02-editor-authoring-workspace/phase-6e2.md#用户反馈修正播放头与控件交互)。
+
+- 2026-10-18 P6e2 已验证：共享 Avalonia TimelineCanvas/Model 与 Editor 无损 JSON 修改分层，树/画布共用扁平可见行和纵向滚动；关键帧多选/框选/整帧移动、首键保护/明确碰撞替换、时长/FPS/保秒重定时与裁剪均单历史，源变化取消旧手势。六项目 901 项回归、解决方案构建、格式/源码指纹通过；6 项原生媒体环境未执行。见 [phase-6e2](../features/F-20261015-02-editor-authoring-workspace/phase-6e2.md)。下一步 P6e3 曲线/切线，P6e4 事件/剩余状态与引用，实时预览不列阶段。
+
+- 2026-10-18 P6e1 已验证：Editor.Shared 的 SceneTargetAnalysis 对作者快照做纯有限事实分析，Group 入口固定点、确定交/可能并、条件/未知语义/循环预算与跨类型身份冲突保守处理；ProjectSceneTargets 整代缓存，不执行游戏。Timeline 对象/属性树支持建/移轨道、未知初值和偏移首键、旧行失效；GUI 创建者自动内部 ID，Entry 粘贴按语义槽位重映射内部引用。解决方案构建、同源码 656 项回归、格式/指纹通过；一次未修改文件面板指针测试偶发已记录，隔离及完整重跑通过，根因未确认。见 [phase-6e1](../features/F-20261015-02-editor-authoring-workspace/phase-6e1.md)、[当前查询规范](../docs/spec/editor-scene-targets.md)。下一步 P6e2 画布/关键帧，P6e3 曲线；P6e4 事件/剩余语义、通用 Locator、Graph/转场复制和缺目标核验。只提供固定内置能力子集，未分析 Timeline/转场不当无影响；实时预览不列阶段。
+
+- 2026-10-18 P6d 已验证：Timeline 默认底部单实例 Dock 跟随活动 Group Entry，项目 scope 的 EntrySelectionContext/TimelineEditSession 不借用页面字段 lease；已有轨道 NumericUpDown 按当前帧覆盖/插键，保留切线/未知 JSON，单次项目历史。旧行在切换/删除/换类型/关闭后失效，保存和切语言保留未确认输入；切 Entry/帧/根值及关闭 Dock 明确取消。644 项相关回归、解决方案构建、格式与源码指纹通过。见 [phase-6d](../features/F-20261015-02-editor-authoring-workspace/phase-6d.md)。下一步 P6e 目标/属性能力、对象树、创建轨道与画布/曲线；P6f animate 自定义曲线，P7 统一关闭协调。当前仅 Timeline 行隐藏 handle，Group JSON 仍是修复入口；实时预览不列阶段。
+
+- 2026-10-18 P6c 已验证：AnimationPlan 全面统一为 Timeline 类型/播放接口，Entry 为 timeline.play、根参数 timeline，转场与循环恢复同步；builtin.animations section v2，PrimitiveRegistry.State 可显式 version（其他默认 1）。1081 项回归、解决方案构建、格式与源码指纹通过，6 项原生媒体环境未执行。见 [phase-6c](../features/F-20261015-02-editor-authoring-workspace/phase-6c.md)。下一步 P6d 实现跟随活动 Entry 的 Timeline Dock/项目编辑会话，P6e 对象树/关键帧/曲线，P6f animate 自定义曲线；实时预览不列阶段。
+
+- 2026-10-18 P6b 已验证：普通生成 DTO 对象/列表、presence/null/default、JSON 回退、懒创建/释放接入共享层和 Group 页，879 项回归通过，6 项原生媒体环境用例未执行，解决方案构建/格式/源码指纹通过。详见 [phase-6b](../features/F-20261015-02-editor-authoring-workspace/phase-6b.md)。剩余 P6 为未知 Entry JSON 修改、状态查询/Locator 和 AnimationPlan 等复杂定制；后者按用户要求留后续阶段。
+
+- [F-20261015-02 Editor 创作工作区](../features/F-20261015-02-editor-authoring-workspace/phase-plan.md)：P1a/P1b/P2/P2i/P3/P4a/P4b 已验证，P4b 隔离构建与 383 项相关回归通过。项目单栈、Graph、文件事务/双版本文档协调、metadata/引用保护、文件树/网格、路径块/全局文件名搜索、项目文本缓冲与四语已接通；P6a 已提前完成共享 DTO UI 基础，610 项相关回归通过，另 6 项媒体环境用例未执行；三层注册、默认表单、多 DTO 面板与两个宿主已接入。P5a Group 交互已验证（搜索/键盘插入、批量、折叠拖放、尾部取消选择），614 项相关回归通过，6 个媒体环境用例未执行。P5b 多选剪贴板/批量删除与移动已验证，493 项相关回归和解决方案构建通过，含异步剪贴板保护与集合补偿故障测试。P5c 独立变量面板及声明/引用单历史已验证，611 项相关回归和解决方案构建通过；玩家/存档页签、草稿/应用、说明、引用诊断与补全刷新已接通。P5d Entry 字段与新增入口迁移已验证，614 项相关回归及解决方案构建通过；字段历史按稳定 ID/作者 JSON 执行，不保留页面，旧表单在删除/换类型及撤销后不复活。P5e GUI 作者草稿保存已验证，635 项相关回归、解决方案构建与格式/源码指纹通过；Authoring 保留未知/不完整条目 JSON，默认 Complete 与 CLI 校验/编译仍严格。P5 整体 verified，后续继续 P6 状态查询/Locator 和复杂值功能、P7 验收。游戏预览另立 feature。当前实现见 docs/spec/editor-graph.md、editor-groups.md、editor-variables.md、editor-files.md 和 editor-history-and-save.md。
 
 - F-20261015-03 模块化游戏状态：GameSnapshot v4；状态 catalog 随 view 组合，Engine 接入；中立 Layer/EffectInstance/ParticleEmitterInstance 直接作为唯一可变数据记录，属性变更必须在 State.Update，编码形成隔离快照。LoopAnimationState 保存类型化 request/plan；停止控制与播放 identity 仅运行期持有。音频 AudioTrackState/AudioSEffectState 包含暂停、队列与空闲效果，所有轨道按稳定检查点从头恢复；不恢复 seek/淡化时钟，玩家设置不回滚。恢复首帧不重复一次性事件，暂停声音在 Resume 前不启动后端。七个相关项目 665 项测试、解决方案构建与 CLI 实际项目校验/编译通过；新档验证见 [feature summary](../features/F-20261015-03-modular-game-state/summary.md)。
 
@@ -54,7 +105,7 @@
 
 - [F-20261011-02-player-page-layout](../features/F-20261011-02-player-page-layout/summary.md) 已补齐三套内置主题的全部普通页面 XAML View，主题目录自行维护布局、共享 ViewModel/命令；页面无外框，主题内导航位置一致。对白名字比正文大4，Classic/Paper 26/22、Minimal 24/20；默认 GameView 页面回退已由 F-20261011-03 删除。
 
-- [F-20261011-01-game-ui-themes](../features/F-20261011-01-game-ui-themes/summary.md) 已完成启动期主题组合：可选 Themes 提供三布局/三配色，页面顺序已由 F-20261011-03 收敛为共享 GamePage→主题→宿主→完整性校验；GamePage 是稳定 TemplatedControl，四个 PART_* 承载其自有内容，派生页与 Runtime 保持同一 Scoped 实例。样式应用于玩家根，官方主题局部 Fluent 与宿主 Semi 隔离。当前无运行期切换；配置/契约见 Themes README、docs/spec/control.md、ADR 0003。
+- [F-20261011-01-game-ui-themes](../features/F-20261011-01-game-ui-themes/summary.md) 已完成启动期主题组合：可选 Themes 提供三布局/三配色，页面顺序已由 F-20261011-03 收敛为共享 GamePage→主题→宿主→完整性校验；GamePage 是稳定 TemplatedControl，四个 PART_* 承载其自有内容，派生页与 Runtime 保持同一 Scoped 实例。样式应用于玩家根，官方主题局部 Fluent 与宿主 Semi 隔离。当前无运行期切换；配置/契约见 Themes README 和 docs/spec/control.md。
 
 - [F-20261009-02-video-entries](../features/F-20261009-02-video-entries/feature.md) 已实现剧情视频图层、阻塞分段 seek、停止/替换清理和非阻塞视频定义恢复。平台视频必须经 AssetManager 获取，解码帧通过租约进入场景管线；播放游标不入存档。验证见 feature summary。
 
@@ -75,6 +126,16 @@
 4. 如果项目架构变化，检查并标记受影响的 lesson 和 skill，而不是继续沿用旧规则。
 
 ## 经验索引
+
+- [测试 fixture 的服务策略](lessons/L-20261018-02-fixture-service-policy.md)：confirmed；无故障注入时保留生产 DI 注册，防止测试的手工默认构造覆盖新策略而给出误导性失败。
+
+- [Entry 旧绑定复活边界](lessons/L-20261018-01-entry-binding-revival.md)：candidate；稳定 ID 可随撤销恢复，控件提交租约必须重新建立，不能只检查对象存在和类型相同。
+
+- [项目监听器身份](lessons/L-20261017-03-project-watcher-owner.md)：后台事件使用创建时固定的项目根，投递 UI 后复查项目身份与 disposed；关闭后不可再从全局 Current 取根。
+
+- [容错读取与作者重写](lessons/L-20261017-02-tolerant-reader-authoring.md)：读取 codec 返回默认 DTO 不代表可以无损写回；作者操作须严格校验并保留原始文件。
+
+- [局部编辑的全局位置](lessons/L-20261017-01-local-edit-global-indices.md)：删除局部集合中的中间项后，After 快照必须同步重算全局索引；比较完整作者快照验证撤销。
 
 - [批量预加载的部分成功租约](lessons/L-20261016-06-partial-preload-leases.md)：每次成功获取立即登记；WhenAll 失败仍须释放其他已成功任务的租约。
 
@@ -114,7 +175,7 @@
 - [读档必须隔离旧运行实例](lessons/L-20261010-02-restore-run-scope.md)：取消与场景对象隔离同时使用；句柄复用的清理需校验实例 identity；快照不能共享 mutable 对象。
 - [删除项目后检查依赖锁图](lessons/L-20261010-03-lock-graph-after-project-removal.md)：检查 lock 内容；缓存可能保留旧项目，需要对受影响 roots 强制重算再 locked restore。
 - [Engine 停止覆盖所有续跑](lessons/L-20261010-04-engine-stop-continuations.md)：首次推进返回不等于运行结束；停止须取消 scope、等待内部 continuation，统一发布终态。
-- [平台无关的进度契约归属](lessons/L-20260922-02-core-progress-contract.md)：已被 ADR-0001 和 F-20260929-07 取代；当前进度端口由实际消费者 Runtime 拥有。
+- [平台无关的进度契约归属](lessons/L-20260922-02-core-progress-contract.md)：已被 F-20260929-07 取代；当前进度端口由实际消费者 Runtime 拥有。
 - [受限环境中的平台 SDK 枚举](lessons/L-20260925-01-platform-sdk-sandbox.md)：全解决方案构建可能只因 Android/Browser/iOS 的 SDK 探测读取用户目录失败；应区分平台环境限制和业务项目编译结果。
 - [受限环境中的 Avalonia licensing 枚举](lessons/L-20260926-01-avalonia-license-sandbox.md)：Avalonia BuildServices 即使关闭 telemetry 仍可能读取用户级 licensing tickets；应与业务编译失败区分。
 - [首次对话的 Avalonia 模板就绪](lessons/L-20260927-01-dialogue-template-startup.md)：阻塞对话不能因模板部件尚未就绪而静默完成，否则引擎会错误地跑完整个流程。
@@ -157,3 +218,52 @@
 - [Headless 会话发布竞态](lessons/L-20261014-05-headless-session-publication-race.md)：12.0.5 StartNew 的 task 闭包发布存在竞态；Presentation 通过官方程序集缓存会话避免逐测试释放 worker，Dispatch 保持 PerTest 隔离。
 
 - [Entry 默认值使用完整 codec](lessons/L-20261014-06-entry-defaults-use-value-codec.md)：JSON 字符串编码不代表 CLR 字符串；无法无损投影的默认值保留在字段描述，不填入旧 Defaults。
+
+- [L-20261017-05 scoped binding 幂等退订](lessons/L-20261017-05-scoped-binding-unsubscribe.md)：字段与DTO两层释放只移除一次实际 source 订阅，不释放借用 binding。
+
+- [L-20261017-06 列表可滚动尾部](lessons/L-20261017-06-listbox-scrollable-tail.md)：使用主题 Padding 入口并测量满视口时的实际尾部空间；短列表空白不能证明实现有效。
+
+- [L-20261017-07 可观察集合批量补偿](lessons/L-20261017-07-observable-batch-compensation.md)：通知抛错时当前集合操作可能已生效，应按实际状态恢复；补偿失败进入 RepairRequired。已由故障注入确认。
+
+- [L-20261017-08 作者元数据与严格 Raw shape](lessons/L-20261017-08-author-metadata-strict-shape.md)：新增声明字段须同步写入前的严格白名单/类型校验，保留保存重开证据，不能绕过未知字段规则。
+
+- [文件路径复用与删除身份](lessons/L-20261019-04-file-document-path-reuse.md)：FileDocuments 按会话 ID 持有历史；删除后同路径新建可同时保留旧记录，路径查询须优先有效身份并保留删除遮罩。
+
+- 2026-10-20 游戏本地化 P2 已验证：字段标记/只读索引之上，LocalizationDocumentStore 与数据操作接入单栈和双版本文件事务；相关 JSON 草稿校验/重基与冲突保留、catalog/metadata 专属管理、角色编号持久预留完成。新增 21 项通过，完整相关回归 495 通过、3 个 P6e3 已记录 UI 失败；构建/格式/任务源码指纹通过。P3 角色 UI、P4 表单映射、P5 多语言表格、P6 交换后续。见 features/F-20261019-01-editor-game-localization/phase-2.md 与 docs/spec/editor-game-localization.md。
+
+- [嵌套语义引用使用 wire 名](lessons/L-20261020-02-nested-semantic-wire-name.md)：FieldDescriptor.Id 不等于嵌套作者 JSON 属性名；按值契约 JsonTypeInfo 定位，重建字段须保留 Semantic。P3 索引大小写与真实列表角色改 key 测试已确认。
+
+- [程序化 TextBox 刷新与延迟事件](lessons/L-20261020-03-deferred-text-change-is-not-user-edit.md)：TextChanged 延迟到 bool guard 之后，可能触发失焦写入；使用同步 TextProperty 监听并保留旧异常 JSON。角色阶段完整 Editor 回归已复现并验证修正。
+
+- 2026-10-20 游戏本地化 P3 已 verified：角色 Dock、开发语言姓名/key、speaker 姓名/key 搜索与失焦创建、跨全部 Group/嵌套引用改 key、一次历史与旧值显式导入完成。新增 14 项全通过；相关回归 759 通过、3 项 P6e3 已记录 UI 失败，完整构建 0 错误。正文/分支默认语言映射及复制身份 P4、多语言表格/语言 P5、交换/完整校验 P6 待续；见 features/F-20261019-01-editor-game-localization/phase-3.md。
+
+- 用户协作约定（2026-10-20）：每个实施阶段验证结束后提交 Git，包含本阶段相关代码、测试和文档，并报告 commit；不要混入其他任务改动。
+
+- 用户修订：本地化 feature 不考虑向后兼容；旧 Speakers、角色迁移 UI/服务与回调已删除（d2e4b82），后续只支持当前作者及剪贴板格式。
+- [文本历史与不可撤销编号](lessons/L-20261020-05-text-history-reserved-number.md)：同文件的 characterHighWater 仅允许单调重基，文本历史不能回退编号；其他 metadata 严格校验。
+- [多行提交的 Tunnel 路由](lessons/L-20261020-06-multiline-commit-tunnel.md)：Ctrl+Enter 在 TextBox 类处理前截获，保留普通换行与 IME 边界，验证真实挂载输入。
+
+- 2026-10-20 游戏本地化 P4 已 verified：默认语言正文/分支语义编辑器、稳定 key、Entry/Graph/列表复制各语言快照、源文复核状态及跨文件单次历史完成。新增 16 项通过，解决方案 0 错误；完整相关回归 812 通过、3 失败（2 项既有布局断言，1 项 Headless DisposeAsync 空引用，独立复验该方法 7 项通过）。四语资源各 850 key 一致、格式/源码指纹/文档链接通过；见 features/F-20261019-01-editor-game-localization/phase-4.md。P5 多语言表格与语言管理、P6 交换/完整校验待续。
+
+- [虚拟化模板的空内容](lessons/L-20261021-01-virtualized-null-content.md)：容器解绑回收时 FuncDataTemplate 会收到 null，工厂须返回空占位，真实滚动与关闭验证。
+- [异步文本提交的焦点](lessons/L-20261021-02-async-textbox-focus.md)：Busy 用 IsReadOnly 保护输入，避免 IsEnabled 使 Ctrl+Enter 后丢焦点、后续失焦提交消失。
+- [项目级 Dock 草稿生命周期](lessons/L-20261021-03-project-owned-dock-drafts.md)：实际菜单 CloseDocument 会主动 Dispose Context；项目级草稿模型须保留到 scope 结束，并用真实开关路径验证。
+- [历史队列执行时重查](lessons/L-20261021-04-history-admission-recheck.md)：入队后仍可因前序操作改变原文或语言；单元格及开发语言预览的 guard 必须进入实际 Redo 边界，两种交错已复现并验证。
+
+- 2026-10-21 游戏本地化 P5 已 verified：项目级 i18n Dock、角色/全部 Group/分支虚拟化多语言表格、语言新增/调序、开发语言缺译预览及切换、单元格状态/草稿保留/Save All 和历史队列执行时重查完成。I18nLocale 统一 CultureInfo 名称，支持脚本子标签标准大小写。新增 17 项通过，正常解决方案构建 0 错误；Core/Runtime/Editor.Shared/Architecture/Presentation/Editor 合计 1039 通过、2 项 P6e3 既有布局失败，另有 6 个视频环境跳过。四语各 882 key、格式/17 源码指纹/文档链接通过。见 features/F-20261019-01-editor-game-localization/phase-5.md 与 docs/manual/game-localization.md；P6 导入导出及发布前完整校验待续。
+
+- 2026-10-21 Editor 写入口与状态已收口：GUI dirty 唯一来源为 ProjectContentSession 的内容/保存基线比较，Document 与 GalProject 不再持有 dirty 标记；变量声明通过 VariableAuthoringService，IVariableDefinitionService 仅返回保留 UID 的独立快照并通知刷新。Preview 只编辑运行时当前值，旧声明表单、Workspace 快照补历史和 PushAlreadyApplied 已删除，不保留兼容层。见 features/F-20261021-01-editor-state-simplification/summary.md、docs/spec/editor-variables.md 与 docs/spec/editor-history-and-save.md。
+
+- [组合查询的完整性原因](lessons/L-20261021-05-query-completeness-causes.md)：内部保留语义未知与对象能力缺失的区别；停止效果可消除后者，不能抹掉前者。candidate，见双路径回归。
+
+- [架构项目发现排除构建输出](lessons/L-20261021-06-architecture-project-discovery.md)：递归 csproj 枚举须排除任意层级 bin/obj；保留临时仓库副本复验 45 项通过，不能靠删除其他任务产物修复测试。
+- 2026-10-21 游戏本地化 P6 已 verified，feature P1–P6 完成：单语言模板/平铺 JSON 导入导出、项目交换 GUID、稳定 key 与源文指纹、选择预览、明确空串、整批单次历史及执行时证据重查；完整 project.validate/build 增加包内默认语言和角色语义校验，未知范围 warning/Complete=false。身份预留可能在输出失败后保留，旧文本历史须保留新身份（见文本历史 lesson）。新增 20 项通过，正常解决方案构建 0 错误；完整相关回归 1180 通过、2 项 P6e3 既有布局失败，另有 6 个视频环境跳过。原生文件选择/IME 和大项目性能阈值仍待人工验收。当前契约见 docs/spec/editor-game-localization.md，操作见 docs/manual/game-localization.md，交付与自审见 features/F-20261019-01-editor-game-localization/summary.md、review.md；不保留旧格式兼容。
+
+- [作者参数线格式](lessons/L-20261021-07-author-parameter-wire-format.md)：测试作者 JSON 必须按字段 schema/converter 编码；Animate 的字符串布尔与嵌套 Timeline 的 JSON bool 不可混用，保留坏格式拒绝与有效夹具 Complete 断言。
+
+- [透明 hover 与预乘 alpha（已废止）](lessons/L-20261024-01-transparent-hover-interpolation.md)：全局自定义画刷过渡会影响 Group entry 等非按钮容器；Editor 已恢复 Ursa/Semi 原生 hover 反馈。
+- 2026-10-24 Editor UIUX：Core `[Common]` → `EditorHints.IsCommon`，共享表单默认 All，Group 显式 Common；独立 Inspector 绑定与项目 EntryEditSession 草稿，辅助工具不清空详情。保存/检查状态分离，Problems 用当前快照与稳定 ID 导航；三套手动布局及最大化恢复不进入作者历史。契约、使用与证据见 features/F-20261023-01-editor-uiux/summary.md、docs/manual/editor-authoring-workspace.md。真实 DPI/原生 IME 仍需人工验收；旧页面绑定失效规则仍保留，不用复用控件/旧绑定解决草稿保留。
+- [Dock 焦点与 Inspector](lessons/L-20261024-02-dock-focus-and-inspector.md)：已活动文档跨区域返回只改变 FocusedDockable；详情跟随须同时处理焦点和激活，并防后台选择抢占及辅助工具覆盖解锁目标。
+- [外部调试子进程监控生命周期](lessons/L-20261024-03-external-debug-child-monitor-lifetime.md)：断开调试不能等待未终止的外部进程退出；Editor 存活时仍需排空重定向输出并隔离旧会话事件。candidate，待运行复现。
+- [异步构建的同步前缀](lessons/L-20261024-04-sync-build-work-ui-thread.md)：Task API 首个 await 前的验证、扫描与编译仍会阻塞调用线程；先在 UI 线程捕获安全快照，再后台运行纯构建工作。candidate，待大项目运行复现。
+- [动画帧颜色与主题](lessons/L-20261024-05-animated-brush-measurement.md)：中间帧比较须纳入 Brush.Opacity，并显式使用实际 ThemeVariant；只看 Color 或默认资源会误报跳色。

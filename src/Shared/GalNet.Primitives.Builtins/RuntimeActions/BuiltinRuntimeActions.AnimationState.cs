@@ -31,40 +31,40 @@ internal static partial class BuiltinRuntimeActions
     public static void ApplyAnimationTerminalValue(IGameRuntime runtime, AnimationRequest request) =>
         ApplyAnimationValue(runtime, request.HandleId, request.Property, request.To, request.BlendMode);
 
-    public static void ApplyPlanStableState(IGameRuntime runtime, AnimationPlanDefinition plan)
+    public static void ApplyTimelineStableState(IGameRuntime runtime, TimelineDefinition timeline)
     {
-        if (plan.LoopMode != AnimationLoopMode.Once)
+        if (timeline.LoopMode != AnimationLoopMode.Once)
         {
-            foreach (var item in plan.Events.Where(item => item.Frame <= 0).OrderBy(item => item.Frame))
-                ApplyPlanEventToRuntime(runtime, item);
+            foreach (var item in timeline.Events.Where(item => item.Frame <= 0).OrderBy(item => item.Frame))
+                ApplyTimelineEventToRuntime(runtime, item);
 
-            foreach (var track in plan.Tracks.Where(track => track.Keys.Count > 0 && track.BlendMode == AnimationBlendMode.Replace))
+            foreach (var track in timeline.Tracks.Where(track => track.Keys.Count > 0 && track.BlendMode == AnimationBlendMode.Replace))
                 ApplyAnimationValue(
                     runtime,
                     track.HandleId,
                     track.Property,
-                    AnimationTrackSampler.Evaluate(track, 0),
+                    TimelineSampler.Evaluate(track, 0),
                     AnimationBlendMode.Replace);
 
-            TrackLoopingAnimation(runtime, new LoopAnimationState { Id = plan.PlaybackHandleId, Plan = plan });
+            TrackLoopingAnimation(runtime, new LoopAnimationState { Id = timeline.PlaybackHandleId, Timeline = timeline });
             return;
         }
 
-        ApplyPlanTerminalState(runtime, plan);
+        ApplyTimelineTerminalState(runtime, timeline);
     }
 
-    public static void ApplyPlanTerminalState(IGameRuntime runtime, AnimationPlanDefinition plan)
+    public static void ApplyTimelineTerminalState(IGameRuntime runtime, TimelineDefinition timeline)
     {
-        foreach (var item in plan.Events.OrderBy(item => item.Frame))
-            ApplyPlanEventToRuntime(runtime, item);
+        foreach (var item in timeline.Events.OrderBy(item => item.Frame))
+            ApplyTimelineEventToRuntime(runtime, item);
 
-        foreach (var track in plan.Tracks)
+        foreach (var track in timeline.Tracks)
             if (track.Keys.Count > 0)
                 ApplyAnimationValue(
                     runtime,
                     track.HandleId,
                     track.Property,
-                    AnimationTrackSampler.Evaluate(track, plan.DurationFrames),
+                    TimelineSampler.Evaluate(track, timeline.DurationFrames),
                     track.BlendMode);
     }
 

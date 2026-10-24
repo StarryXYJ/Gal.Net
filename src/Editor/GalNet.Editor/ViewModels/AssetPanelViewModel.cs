@@ -1,285 +1,346 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Text;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GalNet.Editor.Abstraction.Commands;
+using GalNet.Core.Assets;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Dock;
 using GalNet.Editor.Models;
+using GalNet.Editor.Services;
 using GalNet.Editor.Services.Interfaces;
+using GalNet.Editor.Shared.Services;
 
 namespace GalNet.Editor.ViewModels;
 
+/// <summary>Project browser navigation is view state. File intents use the project's existing publisher and history.</summary>
 public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
 {
-    private readonly IAssetCatalogService _catalog;
-    private readonly IProjectFileCommandExecutor _fileCommands;
+    private readonly ProjectFilesIndex _index;
+    private readonly ProjectFileAuthoringService _files;
+    private readonly ProjectTextFiles _texts;
     private readonly IProjectService _projects;
     private readonly EditorWorkspaceViewModel _workspace;
-    private readonly IFileDialogService _fileDialogs;
+    private readonly EditorDockFactory _dock;
+    private readonly IFileDialogService _dialogs;
+    private readonly IAssetCatalogService _assets;
     private readonly IEditorLocalizationService _localization;
-    private AssetEntry? _clipboardEntry;
-    private bool _isCut;
-    private bool _disposed;
-    private CancellationTokenSource? _thumbnailCancellation;
+    private readonly IProjectContentSession? _content;
+    private readonly Stack<string> _back = [], _forward = [];
+    private string[] _clipboard = [];
+    private bool _cut, _disposed, _rebuilding;
+    private bool _committingRename;
+    private bool _navigating;
+    private string _searchOrigin = "";
+    private Exception? _error;
+    private readonly FileSystemWatcher _watcher;
+    private readonly System.Threading.Timer _timer;
+    private CancellationTokenSource? _thumbnails;
+    private ProjectFileRequest? _delete;
     [ObservableProperty] private string _currentDirectory = "";
-    [ObservableProperty] private string _pathText = "Assets";
-    [ObservableProperty] private AssetEntry? _selectedEntry;
+    [ObservableProperty] private string _pathText = "";
+    [ObservableProperty] private string _searchText = "";
+    [ObservableProperty] private bool _isEditingPath;
     [ObservableProperty] private string _errorText = "";
-    [ObservableProperty] private bool _isExternalDropActive;
-    [ObservableProperty] private AssetEntry? _renamingEntry;
     [ObservableProperty] private string _renameText = "";
-    [ObservableProperty] private AssetEntry? _dropTargetEntry;
-    [ObservableProperty] private bool _isParentDropTarget;
-    public ObservableCollection<AssetEntry> Entries { get; } = [];
-    public string Breadcrumb => string.IsNullOrEmpty(CurrentDirectory) ? "Assets" : "Assets / " + CurrentDirectory;
-    public bool CanGoBack => !string.IsNullOrEmpty(CurrentDirectory);
+    [ObservableProperty] private ProjectFileItem? _renamingEntry;
+    [ObservableProperty] private ProjectDirectoryNode? _selectedDirectory;
+    [ObservableProperty] private double _thumbnailSize = 88;
+    [ObservableProperty] private bool _isListView;
+    [ObservableProperty] private int _typeFilterIndex;
+    public bool IsEmpty => Entries.Count == 0 && string.IsNullOrEmpty(ErrorText);
+    public string EmptyMessage => _localization[HasSearch || TypeFilterIndex > 0 ? "Uiux.Files.NoResults" : "Uiux.Files.Empty"];
+    partial void OnIsListViewChanged(bool value) { OnPropertyChanged(nameof(ItemWidth)); OnPropertyChanged(nameof(ItemHeight)); }
+    partial void OnTypeFilterIndexChanged(int value) => LoadEntries();
+    [ObservableProperty] private string _deleteDetails = "";
+    [ObservableProperty] private bool _deleteLinkedGroups;
+    [ObservableProperty] private bool _allowCandidateReferences;
+    public ObservableCollection<ProjectFileItem> Entries { get; } = [];
+    public ObservableCollection<ProjectFileItem> SelectedEntries { get; } = [];
+    public ObservableCollection<ProjectDirectoryNode> Directories { get; } = [];
+    public ObservableCollection<FileBreadcrumb> Breadcrumbs { get; } = [];
+    public ProjectFileItem? SelectedEntry => SelectedEntries.FirstOrDefault();
+    public bool CanGoBack => _back.Count > 0;
+    public bool CanGoForward => _forward.Count > 0;
+    public bool CanGoUp => CurrentDirectory.Length > 0;
+    public bool CanRename => SelectedEntries.Count == 1 && SelectedEntries[0].CanEdit;
+    public bool CanChangeSelection => SelectedEntries.Count > 0 && SelectedEntries.All(item => item.CanEdit);
+    public double ItemWidth => IsListView ? double.NaN : ThumbnailSize + 38;
+    public double ItemHeight => IsListView ? 48 : ThumbnailSize + 48;
+    partial void OnThumbnailSizeChanged(double value) { OnPropertyChanged(nameof(ItemWidth)); OnPropertyChanged(nameof(ItemHeight)); }
+    public bool IsDeletePending => _delete is not null;
+    public string SelectionInformation => SelectedEntry is { } entry ? entry.Path + (entry.CanEdit ? "" : " — " + entry.ProtectionReason) : _localization.Format("Files.ItemCount", Entries.Count);
+    public string ProjectRoot => _index.Root;
+    public bool HasSearch => SearchText.Length > 0;
+    public event Action<ProjectTextBuffer>? FileOpened;
 
-    public AssetPanelViewModel(IAssetCatalogService catalog, IProjectFileCommandExecutor fileCommands, IProjectService projects, EditorWorkspaceViewModel workspace, IFileDialogService fileDialogs, IEditorLocalizationService localization)
-    {
-        _catalog = catalog; _fileCommands = fileCommands; _projects = projects; _workspace = workspace; _fileDialogs = fileDialogs; _localization = localization; _catalog.Changed += OnCatalogChanged; _ = RefreshAsync();
-    }
-    partial void OnCurrentDirectoryChanged(string value) { PathText = string.IsNullOrEmpty(value) ? "Assets" : "Assets/" + value; OnPropertyChanged(nameof(Breadcrumb)); OnPropertyChanged(nameof(CanGoBack)); }
-    partial void OnSelectedEntryChanged(AssetEntry? value) { if (value is { IsDirectory: false }) _workspace.FocusAsset(value); }
-    [RelayCommand] private Task Refresh() => RefreshAsync();
-    private async Task RefreshAsync()
-    {
-        try { ErrorText = ""; await _catalog.RefreshAsync(); LoadEntries(); }
-        catch (Exception ex) { ErrorText = ex.Message; }
-    }
     [RelayCommand]
-    private void Open(AssetEntry? entry)
-    {
-        if (entry is null) return;
-        if (!entry.IsDirectory)
-        {
-            try { Process.Start(new ProcessStartInfo(entry.FullPath) { UseShellExecute = true }); }
-            catch (Exception ex) { ErrorText = ex.Message; }
-            return;
-        }
-        CurrentDirectory = entry.RelativePath; SelectedEntry = null; LoadEntries();
-    }
-    [RelayCommand]
-    private void Back()
-    {
-        if (!CanGoBack) return;
-        var slash = CurrentDirectory.LastIndexOf('/'); CurrentDirectory = slash < 0 ? "" : CurrentDirectory[..slash]; SelectedEntry = null; LoadEntries();
-    }
-    [RelayCommand]
-    private void NavigatePath(string? input)
-    {
-        var original = CurrentDirectory;
-        var path = (input ?? "").Trim().Replace('\\', '/').Trim('/');
-        if (path.Equals("Assets", StringComparison.OrdinalIgnoreCase)) path = "";
-        else if (path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase)) path = path[7..];
-        else { PathText = string.IsNullOrEmpty(original) ? "Assets" : "Assets/" + original; ErrorText = "Path must start with Assets"; return; }
-        if (!_catalog.DirectoryExists(path)) { PathText = string.IsNullOrEmpty(original) ? "Assets" : "Assets/" + original; ErrorText = "Folder does not exist"; return; }
-        ErrorText = ""; CurrentDirectory = path; SelectedEntry = null; LoadEntries();
-    }
-    [RelayCommand]
-    private async Task ImportAsync()
-    {
-        var files = await _fileDialogs.OpenFilePickerAsync("Import Assets");
-        if (files.Count == 0) return;
-        try { await ExecuteFileCommandAsync(new ImportAssetsCommand(files, CurrentDirectory)); }
-        catch (Exception ex) { ErrorText = ex.Message; }
-    }
-    [RelayCommand] private Task ImportExternalAsync(IEnumerable<string> paths) => ImportExternalCoreAsync(paths);
-    public void SetExternalDropActive(bool value) => IsExternalDropActive = value;
-    private async Task ImportExternalCoreAsync(IEnumerable<string> paths)
-    {
-        try { ErrorText = ""; await ExecuteFileCommandAsync(new ImportAssetsCommand(paths.ToList(), CurrentDirectory)); }
-        catch (Exception ex) { ErrorText = ex.Message; }
-    }
-    [RelayCommand]
-    private void CopySelected()
-    {
-        _clipboardEntry = SelectedEntry;
-        _isCut = false;
-    }
-    [RelayCommand]
-    private void CutSelected()
-    {
-        _clipboardEntry = SelectedEntry;
-        _isCut = true;
-    }
-    [RelayCommand]
-    private async Task PasteAsync()
-    {
-        if (_clipboardEntry is null) return;
-        try
-        {
-            if (_isCut) await ExecuteFileCommandAsync(new MoveAssetCommand(_clipboardEntry.RelativePath, CurrentDirectory));
-            else if (!_clipboardEntry.IsDirectory) await ExecuteFileCommandAsync(new ImportAssetsCommand([_clipboardEntry.FullPath], CurrentDirectory));
-            _clipboardEntry = null; _isCut = false; LoadEntries();
-        }
-        catch (Exception ex) { ErrorText = ex.Message; }
-    }
-    [RelayCommand]
-    private async Task NewFolderAsync()
-    {
-        try { await ExecuteFileCommandAsync(new CreateAssetDirectoryCommand(CurrentDirectory, "New Folder")); }
-        catch (Exception ex) { ErrorText = ex.Message; }
-    }
-    [RelayCommand]
-    private void BeginRename(AssetEntry? entry)
-    {
-        if (entry is null) return;
-        CancelRename();
-        SelectedEntry = entry;
-        RenamingEntry = entry;
-        RenameText = entry.Name;
-        entry.IsRenaming = true;
-    }
-    [RelayCommand]
-    private async Task CommitRenameAsync(AssetEntry? entry)
-    {
-        entry ??= RenamingEntry;
-        if (entry is null || !ReferenceEquals(entry, RenamingEntry)) return;
-        var newName = RenameText.Trim();
-        if (string.Equals(entry.Name, newName, StringComparison.Ordinal)) { CancelRename(); return; }
-        try
-        {
-            ErrorText = "";
-            await ExecuteFileCommandAsync(new RenameAssetCommand(entry.RelativePath, newName));
-            CancelRename();
-            LoadEntries();
-        }
-        catch (ArgumentException) { ErrorText = _localization["Asset.Error.InvalidName"]; }
-        catch (Exception) { ErrorText = _localization["Asset.Error.RenameFailed"]; }
-    }
-    [RelayCommand]
-    private void CancelRename()
-    {
-        if (RenamingEntry is not null) RenamingEntry.IsRenaming = false;
-        RenamingEntry = null;
-        RenameText = "";
-    }
-    [RelayCommand]
-    private void ShowInExplorer(AssetEntry? entry)
-    {
-        var path = entry?.FullPath;
-        if (string.IsNullOrWhiteSpace(path)) return;
-        try { Process.Start(new ProcessStartInfo("explorer.exe", entry!.IsDirectory ? $"\"{path}\"" : $"/select,\"{path}\"") { UseShellExecute = true }); }
-        catch (Exception ex) { ErrorText = ex.Message; }
-    }
-    [RelayCommand]
-    private void ShowCurrentDirectoryInExplorer()
+    private async Task NewVariantsAsync()
     {
         try
         {
-            var entry = _catalog.GetEntry(CurrentDirectory);
-            if (entry is not null) ShowInExplorer(entry);
+            var directory = SelectedEntry is { IsDirectory: true } selected ? selected.Path : CurrentDirectory;
+            if (directory != "Assets" && !directory.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException(_localization["Variants.ChooseFolder"]);
+            var path = directory + "/variants.variants";
+            var number = 1;
+            while (File.Exists(new ProjectRawReader(ProjectRoot).Resolve(path))) path = directory + "/variants" + number++ + ".variants";
+            var types = (IResourceTypeCatalog)_projects.Current!.Services.GetService(typeof(IResourceTypeCatalog))!;
+            var json = ImageVariantsAuthoring.Create(ProjectRoot, path, types);
+            if (!await ExecuteAsync(new(ProjectFileAction.CreateFile, [], path, Content: Encoding.UTF8.GetBytes(json)))) return;
+            _workspace.SelectedAsset = _assets.GetEntry(path[7..]);
         }
-        catch (Exception ex) { ErrorText = ex.Message; }
+        catch (Exception error) { ShowError(error); }
     }
-    [RelayCommand] private Task DeleteSelected() => DeleteSelectedAsync();
-    private async Task DeleteSelectedAsync()
+
+    public AssetPanelViewModel(ProjectFilesIndex index, ProjectFileAuthoringService files, ProjectTextFiles texts, IProjectService projects, EditorWorkspaceViewModel workspace, EditorDockFactory dock, IFileDialogService dialogs, IAssetCatalogService assets, IEditorLocalizationService localization, IProjectContentSession? content = null)
     {
-        if (SelectedEntry is null) return;
-        try { await ExecuteFileCommandAsync(new DeleteAssetCommand(SelectedEntry.RelativePath)); SelectedEntry = null; LoadEntries(); }
-        catch (Exception ex) { ErrorText = ex.Message; }
+        _index = index; _files = files; _texts = texts; _projects = projects; _workspace = workspace; _dock = dock; _dialogs = dialogs; _assets = assets; _localization = localization;
+        _content = content;
+        SelectedEntries.CollectionChanged += OnSelection;
+        localization.PropertyChanged += OnLocale;
+        _timer = new(_ => Dispatcher.UIThread.Post(() => { if (!_disposed) Refresh(); }), null, Timeout.Infinite, Timeout.Infinite);
+        _watcher = new(index.Root) { IncludeSubdirectories = true, NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite };
+        _watcher.Changed += OnDiskChange; _watcher.Created += OnDiskChange; _watcher.Deleted += OnDiskChange; _watcher.Renamed += OnDiskChange;
+        _watcher.EnableRaisingEvents = true;
+        Refresh();
     }
-    public static bool CanMoveTo(AssetEntry target, string sourceRelativePath)
+    private void OnDiskChange(object? sender, FileSystemEventArgs args)
     {
-        if (!target.IsDirectory || string.IsNullOrWhiteSpace(sourceRelativePath)) return false;
-        return CanMoveToDirectory(target.RelativePath, sourceRelativePath);
+        if (_disposed) return;
+        if (Path.GetRelativePath(ProjectRoot, args.FullPath).StartsWith(".galnet", StringComparison.OrdinalIgnoreCase)) return;
+        try { _timer.Change(300, Timeout.Infinite); } catch (ObjectDisposedException) { }
     }
-    private static bool CanMoveToDirectory(string targetDirectory, string sourceRelativePath)
+    private void OnLocale(object? sender, PropertyChangedEventArgs args)
     {
-        var targetPath = targetDirectory.TrimEnd('/');
-        var sourcePath = sourceRelativePath.TrimEnd('/');
-        if (string.Equals(sourcePath, targetPath, StringComparison.OrdinalIgnoreCase)) return false;
-        if (string.Equals(Path.GetDirectoryName(sourcePath)?.Replace('\\', '/'), targetPath, StringComparison.OrdinalIgnoreCase)) return false;
-        return !targetPath.StartsWith(sourcePath + "/", StringComparison.OrdinalIgnoreCase);
+        if (args.PropertyName != "Item[]") return;
+        if (_error is not null) ErrorText = EditorText.Error(_error).Render(_localization);
+        Refresh();
     }
-    public bool CanMoveToParent(string sourceRelativePath) =>
-        CanGoBack && CanMoveToDirectory(GetParentDirectory(), sourceRelativePath);
-    public void SetDropTarget(AssetEntry? entry)
+    private void OnSelection(object? sender, NotifyCollectionChangedEventArgs args)
     {
-        if (ReferenceEquals(DropTargetEntry, entry)) return;
-        if (DropTargetEntry is not null) DropTargetEntry.IsDropTarget = false;
-        DropTargetEntry = entry;
-        if (DropTargetEntry is not null) DropTargetEntry.IsDropTarget = true;
+        OnPropertyChanged(nameof(SelectedEntry)); OnPropertyChanged(nameof(CanRename)); OnPropertyChanged(nameof(CanChangeSelection)); OnPropertyChanged(nameof(SelectionInformation));
+        if (SelectedEntry is { IsDirectory: false } item && item.Path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase) && _assets.GetEntry(item.Path[7..]) is { } asset) _workspace.FocusAsset(asset);
+        else _workspace.SelectedAsset = null;
     }
-    public async Task MoveInternalAsync(string sourceRelativePath, AssetEntry target)
+    partial void OnSelectedDirectoryChanged(ProjectDirectoryNode? value) { if (!_rebuilding && value is not null) Navigate(value.Path); }
+    partial void OnSearchTextChanging(string value) { if (!HasSearch && value.Length > 0) _searchOrigin = CurrentDirectory; }
+    partial void OnSearchTextChanged(string value)
     {
-        if (!CanMoveTo(target, sourceRelativePath)) return;
-        try { ErrorText = ""; await ExecuteFileCommandAsync(new MoveAssetCommand(sourceRelativePath, target.RelativePath)); }
-        catch (Exception) { ErrorText = _localization["Asset.Error.MoveFailed"]; }
-        finally { SetDropTarget(null); }
+        OnPropertyChanged(nameof(HasSearch));
+        if (_navigating) return;
+        if (value.Length > 0) { LoadEntries(); return; }
+        var selected = SelectedEntry?.Path;
+        Navigate(selected is null ? _searchOrigin : Path.GetDirectoryName(selected)?.Replace('\\', '/') ?? "");
+        if (selected is not null && Entries.FirstOrDefault(item => ProjectFilePaths.Comparer.Equals(item.Path, selected)) is { } entry) Select(entry);
     }
-    public void SetParentDropTarget(bool value) => IsParentDropTarget = value;
-    public async Task MoveInternalToParentAsync(string sourceRelativePath)
+    [RelayCommand] private void ClearSearch() => SearchText = "";
+    partial void OnCurrentDirectoryChanged(string value)
     {
-        if (!CanMoveToParent(sourceRelativePath)) return;
-        try { ErrorText = ""; await ExecuteFileCommandAsync(new MoveAssetCommand(sourceRelativePath, GetParentDirectory())); }
-        catch (Exception) { ErrorText = _localization["Asset.Error.MoveFailed"]; }
-        finally { IsParentDropTarget = false; }
+        PathText = value; Breadcrumbs.Clear(); Breadcrumbs.Add(new(_projects.Current!.Name, ""));
+        var path = "";
+        foreach (var part in value.Split('/', StringSplitOptions.RemoveEmptyEntries)) { path = path.Length == 0 ? part : path + "/" + part; Breadcrumbs.Add(new(part, path)); }
+        OnPropertyChanged(nameof(CanGoUp));
     }
-    private string GetParentDirectory()
+    private void ShowError(Exception error) { _error = error; ErrorText = EditorText.Error(error).Render(_localization); }
+    public void Navigate(string path, bool record = true)
     {
-        var slash = CurrentDirectory.LastIndexOf('/');
-        return slash < 0 ? "" : CurrentDirectory[..slash];
+        try
+        {
+            path = path.Trim().Replace('\\', '/').TrimEnd('/');
+            if (path.Length > 0) ProjectFilePaths.Normalize(path);
+            if (!_index.DirectoryExists(path)) throw ProjectFilePaths.Error("missing", path);
+            if (CurrentDirectory != path && record) { _back.Push(CurrentDirectory); _forward.Clear(); }
+            _navigating = true;
+            try { CurrentDirectory = path; SearchText = ""; PathText = path; IsEditingPath = false; }
+            finally { _navigating = false; }
+            CancelRename(); LoadEntries(); SelectTreePath();
+            OnPropertyChanged(nameof(CanGoBack)); OnPropertyChanged(nameof(CanGoForward));
+        }
+        catch (Exception error) { PathText = CurrentDirectory; ShowError(error); }
     }
-    private async Task ExecuteFileCommandAsync(IProjectFileCommand command)
+    [RelayCommand] private void NavigateDirectory(string path) => Navigate(path);
+    [RelayCommand] private void NavigatePath(string? path) => Navigate(path ?? "");
+    [RelayCommand] private void Back() { if (_back.TryPop(out var path)) { _forward.Push(CurrentDirectory); Navigate(path, false); } }
+    [RelayCommand] private void Forward() { if (_forward.TryPop(out var path)) { _back.Push(CurrentDirectory); Navigate(path, false); } }
+    [RelayCommand] private void Up() => Navigate(Path.GetDirectoryName(CurrentDirectory)?.Replace('\\', '/') ?? "");
+    private void SelectTreePath()
     {
-        var project = _projects.Current ?? throw new InvalidOperationException("No project is open.");
-        var result = await _fileCommands.ExecuteAsync(project.RootPath, command);
-        if (!result.Success)
-            throw new IOException(string.Join("; ", result.Diagnostics.Select(item => item.Message)));
-        project.IsDirty = true;
-        await _catalog.RefreshAsync();
-        LoadEntries();
+        if (Directories.Count == 0) return;
+        var node = Directories[0]; node.IsExpanded = true;
+        var path = "";
+        foreach (var part in CurrentDirectory.Split('/', StringSplitOptions.RemoveEmptyEntries))
+        {
+            path = path.Length == 0 ? part : path + "/" + part; node.EnsureChildren();
+            var next = node.Children.FirstOrDefault(child => ProjectFilePaths.Comparer.Equals(child.Path, path));
+            if (next is null) break; node = next; node.IsExpanded = true;
+        }
+        _rebuilding = true; SelectedDirectory = node; _rebuilding = false;
     }
-    private void OnCatalogChanged() => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+    private static IEnumerable<ProjectDirectoryNode> Expanded(ProjectDirectoryNode node) => node.IsExpanded ? new[] { node }.Concat(node.Children.SelectMany(Expanded)) : [];
+    [RelayCommand]
+    public void Refresh()
     {
-        if (!_disposed)
-            LoadEntries();
-    });
+        if (_disposed || _projects.Current?.RootPath != ProjectRoot) return;
+        if (_content is { IsPublishing: true }) { _timer.Change(100, Timeout.Infinite); return; }
+        try
+        {
+            while (!_index.DirectoryExists(CurrentDirectory) && CurrentDirectory.Length > 0) CurrentDirectory = Path.GetDirectoryName(CurrentDirectory)?.Replace('\\', '/') ?? "";
+            var expanded = Directories.SelectMany(Expanded).Select(node => node.Path).ToHashSet(ProjectFilePaths.Comparer);
+            var root = new ProjectDirectoryNode("", _projects.Current.Name, _index.Directories) { IsExpanded = true };
+            Directories.Clear(); Directories.Add(root);
+            void Expand(ProjectDirectoryNode node) { if (!expanded.Contains(node.Path)) return; node.IsExpanded = true; foreach (var child in node.Children) Expand(child); }
+            Expand(root); SelectTreePath(); OnCurrentDirectoryChanged(CurrentDirectory); LoadEntries();
+            foreach (var file in _content?.FileDocuments.Keys ?? Enumerable.Empty<string>())
+                try { _texts.Get(file).CheckExternalChange(); } catch (KeyNotFoundException) { }
+        }
+        catch (Exception error) { ShowError(error); }
+    }
     private void LoadEntries()
     {
-        if (_disposed)
-            return;
-        SetDropTarget(null);
-        CancelRename();
-        _thumbnailCancellation?.Cancel();
-        _thumbnailCancellation?.Dispose();
-        _thumbnailCancellation = new CancellationTokenSource();
-        Entries.Clear();
-        foreach (var item in _catalog.GetDirectory(CurrentDirectory)) Entries.Add(item);
-        _ = LoadThumbnailsAsync(Entries.ToArray(), _thumbnailCancellation.Token);
-    }
-    private async Task LoadThumbnailsAsync(IEnumerable<AssetEntry> entries, CancellationToken cancellationToken)
-    {
-        foreach (var entry in entries)
+        if (_disposed) return;
+        var selected = SelectedEntries.Select(item => item.Path).ToHashSet(ProjectFilePaths.Comparer);
+        _thumbnails?.Cancel(); _thumbnails?.Dispose(); _thumbnails = new();
+        try
         {
+            var candidates = (HasSearch ? _index.Search(SearchText) : _index.Read(CurrentDirectory)).ToArray();
+            bool Matches(ProjectFileItem item) => TypeFilterIndex switch
+            {
+                1 => item.Type == "sprite",
+                2 => item.Type == "audio",
+                3 => item.Type == "video",
+                4 => item.Type is "rawgalgroup" or "galgroup",
+                5 => !item.IsDirectory && item.Type is not ("sprite" or "audio" or "video"),
+                6 => item.IsDirectory,
+                _ => true
+            };
+            var incoming = candidates.Where(Matches).ToArray();
+            foreach (var excluded in candidates.Where(item => !Matches(item))) excluded.Dispose();
+            foreach (var item in Entries.Where(item => !incoming.Any(next => next.Path == item.Path && next.Type == item.Type && next.WriteTimeUtc == item.WriteTimeUtc && next.ProtectionReason == item.ProtectionReason)).ToArray())
+            { SelectedEntries.Remove(item); Entries.Remove(item); item.Dispose(); }
+            for (var index = 0; index < incoming.Length; index++)
+            {
+                var next = incoming[index]; var item = Entries.FirstOrDefault(item => item.Path == next.Path);
+                if (item is null) { Entries.Insert(index, next); item = next; } else { if (Entries.IndexOf(item) != index) Entries.Move(Entries.IndexOf(item), index); next.Dispose(); }
+                if (selected.Contains(item.Path) && !SelectedEntries.Contains(item)) SelectedEntries.Add(item);
+            }
+            _ = ThumbnailsAsync(Entries.ToArray(), _thumbnails.Token);
+        }
+        catch (Exception error) { ShowError(error); }
+        OnPropertyChanged(nameof(SelectionInformation));
+        OnPropertyChanged(nameof(IsEmpty)); OnPropertyChanged(nameof(EmptyMessage));
+    }
+    private async Task ThumbnailsAsync(ProjectFileItem[] items, CancellationToken cancellationToken)
+    {
+        foreach (var item in items.Where(item => item.Type == "sprite" && item.Thumbnail is null))
             try
             {
-                var path = await _catalog.GetThumbnailPathAsync(entry, cancellationToken);
-                if (path is null || cancellationToken.IsCancellationRequested) continue;
-                var thumbnail = await Task.Run(() => new Bitmap(path), cancellationToken);
-                if (cancellationToken.IsCancellationRequested || !Entries.Contains(entry)) { thumbnail.Dispose(); continue; }
-                entry.Thumbnail = thumbnail;
+                var bitmap = await Task.Run(() => { using var stream = File.OpenRead(item.FullPath); return Bitmap.DecodeToWidth(stream, 180); }, cancellationToken);
+                if (_disposed || cancellationToken.IsCancellationRequested || !Entries.Contains(item)) bitmap.Dispose(); else item.Thumbnail = bitmap;
             }
             catch (OperationCanceledException) { return; }
-            catch { entry.Thumbnail = null; }
+            catch (Exception) { }
+    }
+    [RelayCommand]
+    private void Open(ProjectFileItem? item)
+    {
+        item ??= SelectedEntry; if (item is null) return;
+        if (item.IsDirectory) { Navigate(item.Path); return; }
+        if (item.Path == "Graph/graph.json") { _dock.OpenPanel(EditorDockPanelIds.NodeGraph); return; }
+        if (item.Path == "settings.json") { (_projects.Current!.Services.GetService(typeof(IEditorWindowFactory)) as IEditorWindowFactory)?.CreateProjectSettingsWindow().Show(); return; }
+        var group = _workspace.Nodes.FirstOrDefault(node => node.NodeKind == Models.Graph.GraphNodeKind.LinearGroup && ProjectFilePaths.Comparer.Equals("Graph/" + node.Source.File, item.Path));
+        if (group is not null) { _workspace.OpenGroupEditor(group); return; }
+        try { var buffer = _texts.Open(item.Path); _dock.OpenFileEditor(buffer); FileOpened?.Invoke(buffer); }
+        catch (Exception error) { ShowError(error); }
+    }
+    public void Select(ProjectFileItem item) { if (!SelectedEntries.Contains(item)) { SelectedEntries.Clear(); SelectedEntries.Add(item); } }
+    [RelayCommand] private void CopySelected() { if (CanChangeSelection) { _clipboard = SelectedEntries.Select(item => item.Path).ToArray(); _cut = false; } }
+    [RelayCommand] private void CutSelected() { CopySelected(); _cut = true; }
+    [RelayCommand] private Task DuplicateAsync() => CanChangeSelection ? ExecuteAsync(new(ProjectFileAction.Copy, SelectedEntries.Select(item => item.Path).ToArray(), CurrentDirectory, UniqueNames: true)) : Task.CompletedTask;
+    [RelayCommand] private async Task PasteAsync() { if (_clipboard.Length == 0) return; if (await ExecuteAsync(new(_cut ? ProjectFileAction.Move : ProjectFileAction.Copy, _clipboard, CurrentDirectory, UniqueNames: !_cut)) && _cut) _clipboard = []; }
+    [RelayCommand] private async Task ImportAsync() { var paths = await _dialogs.OpenFilePickerAsync(_localization["Files.Import"]); if (paths.Count > 0) await ImportExternalAsync(paths); }
+    public Task<bool> ImportExternalAsync(IReadOnlyList<string> paths, string? target = null) => ExecuteAsync(new(ProjectFileAction.Import, paths, target ?? CurrentDirectory, UniqueNames: true));
+    private string FreeName(string name)
+    {
+        var target = CurrentDirectory.Length == 0 ? name : CurrentDirectory + "/" + name; var original = target; var number = 1;
+        while (File.Exists(Path.Combine(ProjectRoot, target)) || Directory.Exists(Path.Combine(ProjectRoot, target))) target = original[..^Path.GetExtension(original).Length] + " " + number++ + Path.GetExtension(original);
+        return target;
+    }
+    [RelayCommand] private Task NewFolderAsync() => CreateAsync(true);
+    [RelayCommand] private Task NewFileAsync() => CreateAsync(false);
+    private async Task CreateAsync(bool directory)
+    {
+        var target = FreeName(_localization[directory ? "Files.NewFolderName" : "Files.NewFileName"]);
+        if (!await ExecuteAsync(new(directory ? ProjectFileAction.CreateDirectory : ProjectFileAction.CreateFile, [], target))) return;
+        var item = Entries.FirstOrDefault(item => item.Path == target); if (item is not null) { Select(item); BeginRename(item); }
+    }
+    [RelayCommand] private void BeginRename(ProjectFileItem? item) { item ??= SelectedEntry; if (item?.CanEdit != true) return; CancelRename(); Select(item); RenamingEntry = item; RenameText = item.Name; item.IsRenaming = true; }
+    [RelayCommand]
+    public async Task CommitRenameAsync()
+    {
+        if (_committingRename || RenamingEntry is not { } item) return;
+        var name = RenameText?.Trim() ?? "";
+        if (name == item.Name) { CancelRename(); return; }
+        _committingRename = true;
+        try { if (name.Contains('/') || name.Contains('\\')) throw ProjectFilePaths.Error("path", name); var parent = Path.GetDirectoryName(item.Path)?.Replace('\\', '/'); var target = string.IsNullOrEmpty(parent) ? name : parent + "/" + name; if (await ExecuteAsync(new(ProjectFileAction.Move, [item.Path], target, false))) { CancelRename(); if (Entries.FirstOrDefault(next => next.Path == target) is { } next) Select(next); } }
+        catch (Exception error) { ShowError(error); }
+        finally { _committingRename = false; }
+    }
+    [RelayCommand] private void CancelRename() { if (RenamingEntry is not null) RenamingEntry.IsRenaming = false; RenamingEntry = null; RenameText = ""; }
+    [RelayCommand]
+    private async Task DeleteSelectedAsync()
+    {
+        if (!CanChangeSelection) return;
+        try
+        {
+            var request = new ProjectFileRequest(ProjectFileAction.Delete, SelectedEntries.Select(item => item.Path).ToArray());
+            var impact = _files.Analyze(request);
+            _delete = request; DeleteLinkedGroups = false; AllowCandidateReferences = false;
+            DeleteDetails = string.Join("\n", request.Sources.Concat(impact.Groups.Select(id => "Group: " + id)).Concat(impact.References.Select(reference => reference.Document + "/" + reference.Field)));
+            OnPropertyChanged(nameof(IsDeletePending));
         }
+        catch (Exception error) { ShowError(error); }
+        await Task.CompletedTask;
+    }
+    [RelayCommand] private async Task ConfirmDeleteAsync() { if (_delete is not null && await ExecuteAsync(_delete with { DeleteGroups = DeleteLinkedGroups, AllowCandidateReferences = AllowCandidateReferences })) CancelDelete(); }
+    [RelayCommand] private void CancelDelete() { _delete = null; DeleteDetails = ""; OnPropertyChanged(nameof(IsDeletePending)); }
+    public bool CanDrop(IEnumerable<string> sources, string target, bool copy = false)
+    {
+        try
+        {
+            return CanImportInto(target) && sources.All(source => ProjectFilePaths.Editable(source).Length > 0 &&
+                ProjectFilePaths.Category(source) == ProjectFilePaths.Category((target.Length == 0 ? "" : target + "/") + Path.GetFileName(source)) &&
+                !ProjectFilePaths.Within(target, source) && (copy || !ProjectFilePaths.Comparer.Equals(Path.GetDirectoryName(source)?.Replace('\\', '/') ?? "", target)));
+        }
+        catch (Exception) { return false; }
+    }
+    public bool CanImportInto(string directory) { try { ProjectFilePaths.Editable((directory.Length == 0 ? "" : directory + "/") + "file.tmp"); return _index.DirectoryExists(directory); } catch (Exception) { return false; } }
+    public Task<bool> DropAsync(string[] sources, string target, bool copy) => ExecuteAsync(new(copy ? ProjectFileAction.Copy : ProjectFileAction.Move, sources, target, UniqueNames: copy));
+    private async Task<bool> ExecuteAsync(ProjectFileRequest request)
+    {
+        try { _error = null; ErrorText = ""; await _files.ExecuteAsync(request); Refresh(); return true; }
+        catch (Exception error) { ShowError(error); return false; }
+    }
+    [RelayCommand]
+    private void ShowInExplorer(ProjectFileItem? item)
+    {
+        try
+        {
+            var path = item?.FullPath ?? Path.Combine(ProjectRoot, CurrentDirectory);
+            var info = OperatingSystem.IsWindows() && File.Exists(path)
+                ? new System.Diagnostics.ProcessStartInfo("explorer.exe", $"/select,\"{path}\"")
+                : new System.Diagnostics.ProcessStartInfo(Directory.Exists(path) ? path : Path.GetDirectoryName(path)!);
+            info.UseShellExecute = true; System.Diagnostics.Process.Start(info);
+        }
+        catch (Exception error) { ShowError(error); }
     }
     public void Dispose()
     {
-        if (_disposed)
-            return;
-        _disposed = true;
-        _catalog.Changed -= OnCatalogChanged;
-        _thumbnailCancellation?.Cancel();
-        _thumbnailCancellation?.Dispose();
-        foreach (var entry in Entries) entry.Thumbnail?.Dispose();
+        if (_disposed) return; _disposed = true; _watcher.Dispose(); _timer.Dispose(); _thumbnails?.Cancel(); _thumbnails?.Dispose();
+        SelectedEntries.CollectionChanged -= OnSelection; _localization.PropertyChanged -= OnLocale; foreach (var item in Entries) item.Dispose();
     }
 }
+
+public sealed record FileBreadcrumb(string Name, string Path);

@@ -29,8 +29,8 @@ public class GalgroupLoaderTests
                   "flipbook": { "columns": 4, "rows": 4, "frameCount": 14, "index": 2 },
                   "transform": { "x": 120, "y": -30, "rotationDegrees": 12, "scaleX": 2, "scaleY": 1 }
                 } },
-                { "id": "entry-animation", "typeId": "animation.play", "arguments": {
-                  "plan": { "playbackHandleId": "intro-clip", "frameRate": 60, "durationFrames": 30, "blocking": true,
+                { "id": "entry-animation", "typeId": "timeline.play", "arguments": {
+                  "timeline": { "playbackHandleId": "intro-clip", "frameRate": 60, "durationFrames": 30, "blocking": true,
                     "tracks": [ { "handleId": "layer-handle", "property": "opacity", "keys": [
                       { "frame": 0, "value": 0, "interpolationToNext": "Linear" },
                       { "frame": 30, "value": 1 }
@@ -48,7 +48,7 @@ public class GalgroupLoaderTests
         Assert.That(layer.Arguments.GetProperty("z").GetInt32(), Is.EqualTo(5));
         Assert.That(layer.Arguments.GetProperty("visible").GetBoolean(), Is.True);
         Assert.That(layer.Arguments.GetProperty("transform").GetProperty("scaleX").GetInt32(), Is.EqualTo(2));
-        Assert.That(animation.Arguments.GetProperty("plan").GetProperty("durationFrames").GetInt32(), Is.EqualTo(30));
+        Assert.That(animation.Arguments.GetProperty("timeline").GetProperty("durationFrames").GetInt32(), Is.EqualTo(30));
     }
 
     [Test]
@@ -132,7 +132,7 @@ public class GalgroupLoaderTests
     }
 
     [Test]
-    public void Compile_ExpandsCrossFadeIntoPrimitiveAnimationPlan()
+    public void Compile_ExpandsCrossFadeIntoPrimitiveTimeline()
     {
         var raw = new GroupDocument
         {
@@ -160,16 +160,16 @@ public class GalgroupLoaderTests
         Assert.That(result.Document.Kind, Is.EqualTo(GroupDocumentKind.Compiled));
         Assert.That(result.Document.Entries, Has.Count.EqualTo(1));
         Assert.That(result.Document.Entries[0].Id, Is.EqualTo("cross-fade#1"));
-        Assert.That(result.Document.Entries[0].TypeId, Is.EqualTo(BuiltinEntryIds.PlayAnimationPlan));
+        Assert.That(result.Document.Entries[0].TypeId, Is.EqualTo(BuiltinEntryIds.PlayTimeline));
         Assert.That(result.SourceMap["cross-fade"], Is.EqualTo(CrossFadeSourceMap));
 
-        var plan = result.Document.Entries[0].Arguments.GetProperty("plan");
-        Assert.That(plan.GetProperty("blocking").GetBoolean(), Is.True);
-        Assert.That(plan.GetProperty("skippable").GetBoolean(), Is.True);
-        Assert.That(plan.GetProperty("tracks").GetArrayLength(), Is.EqualTo(2));
-        Assert.That(plan.GetProperty("events").GetArrayLength(), Is.EqualTo(2));
-        Assert.That(plan.GetProperty("events")[0].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.ShowLayer));
-        Assert.That(plan.GetProperty("events")[1].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.HideLayer));
+        var timeline = result.Document.Entries[0].Arguments.GetProperty("timeline");
+        Assert.That(timeline.GetProperty("blocking").GetBoolean(), Is.True);
+        Assert.That(timeline.GetProperty("skippable").GetBoolean(), Is.True);
+        Assert.That(timeline.GetProperty("tracks").GetArrayLength(), Is.EqualTo(2));
+        Assert.That(timeline.GetProperty("events").GetArrayLength(), Is.EqualTo(2));
+        Assert.That(timeline.GetProperty("events")[0].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.ShowLayer));
+        Assert.That(timeline.GetProperty("events")[1].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.HideLayer));
     }
 
     [Test]
@@ -197,18 +197,18 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var plan = GalgroupCompiler.Compile(raw, new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).Document.Entries.Single().Arguments.GetProperty("plan");
-        var tracks = plan.GetProperty("tracks");
+        var timeline = GalgroupCompiler.Compile(raw, new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).Document.Entries.Single().Arguments.GetProperty("timeline");
+        var tracks = timeline.GetProperty("tracks");
 
-        Assert.That(plan.GetProperty("blocking").GetBoolean(), Is.True);
-        Assert.That(plan.GetProperty("skippable").GetBoolean(), Is.True);
+        Assert.That(timeline.GetProperty("blocking").GetBoolean(), Is.True);
+        Assert.That(timeline.GetProperty("skippable").GetBoolean(), Is.True);
         Assert.That(tracks.GetArrayLength(), Is.EqualTo(2));
         Assert.That(tracks[0].GetProperty("property").GetString(), Is.EqualTo("transform.x"));
         Assert.That(tracks[0].GetProperty("blendMode").GetString(), Is.EqualTo("Additive"));
         Assert.That(tracks[0].GetProperty("keys")[1].GetProperty("value").GetSingle(), Is.EqualTo(-1280f));
         Assert.That(tracks[1].GetProperty("blendMode").GetString(), Is.EqualTo("Replace"));
         Assert.That(tracks[1].GetProperty("keys")[0].GetProperty("value").GetSingle(), Is.EqualTo(1280f));
-        Assert.That(plan.GetProperty("events")[1].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.HideLayer));
+        Assert.That(timeline.GetProperty("events")[1].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.HideLayer));
     }
 
     [Test]
@@ -237,14 +237,14 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var plan = GalgroupCompiler.Compile(raw, new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).Document.Entries.Single().Arguments.GetProperty("plan");
-        var track = plan.GetProperty("tracks")[0];
-        var events = plan.GetProperty("events");
+        var timeline = GalgroupCompiler.Compile(raw, new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).Document.Entries.Single().Arguments.GetProperty("timeline");
+        var track = timeline.GetProperty("tracks")[0];
+        var events = timeline.GetProperty("events");
 
         Assert.Multiple(() =>
         {
-            Assert.That(plan.GetProperty("blocking").GetBoolean(), Is.True);
-            Assert.That(plan.GetProperty("skippable").GetBoolean(), Is.True);
+            Assert.That(timeline.GetProperty("blocking").GetBoolean(), Is.True);
+            Assert.That(timeline.GetProperty("skippable").GetBoolean(), Is.True);
             Assert.That(track.GetProperty("handleId").GetString(), Is.EqualTo("blinds:blinds-mask"));
             Assert.That(track.GetProperty("property").GetString(), Is.EqualTo("progress"));
             Assert.That(events[0].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.ApplyEffect));
@@ -258,7 +258,7 @@ public class GalgroupLoaderTests
     }
 
     [Test]
-    public void Compile_ExpandsCustomColorFadeIntoTransientOverlayPlan()
+    public void Compile_ExpandsCustomColorFadeIntoTransientOverlayTimeline()
     {
         var raw = new GroupDocument
         {
@@ -285,19 +285,19 @@ public class GalgroupLoaderTests
         };
 
         var result = GalgroupCompiler.Compile(raw, new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()));
-        var plan = result.Document.Entries.Single().Arguments.GetProperty("plan");
-        var events = plan.GetProperty("events");
+        var timeline = result.Document.Entries.Single().Arguments.GetProperty("timeline");
+        var events = timeline.GetProperty("events");
 
-        Assert.That(plan.GetProperty("blocking").GetBoolean(), Is.True);
-        Assert.That(plan.GetProperty("skippable").GetBoolean(), Is.True);
+        Assert.That(timeline.GetProperty("blocking").GetBoolean(), Is.True);
+        Assert.That(timeline.GetProperty("skippable").GetBoolean(), Is.True);
         Assert.That(events.GetArrayLength(), Is.EqualTo(4));
         Assert.That(events[0].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.ShowColorLayer));
         Assert.That(events[0].GetProperty("parameters").GetProperty("color").GetString(), Is.EqualTo("#336699"));
         Assert.That(events[1].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.HideLayer));
         Assert.That(events[2].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.ShowLayer));
         Assert.That(events[3].GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.HideLayer));
-        Assert.That(plan.GetProperty("frameRate").GetInt32(), Is.EqualTo(60));
-        Assert.That(plan.GetProperty("durationFrames").GetInt32(), Is.EqualTo(54));
+        Assert.That(timeline.GetProperty("frameRate").GetInt32(), Is.EqualTo(60));
+        Assert.That(timeline.GetProperty("durationFrames").GetInt32(), Is.EqualTo(54));
         Assert.That(events[1].GetProperty("frame").GetInt32(), Is.EqualTo(12));
     }
 
@@ -325,8 +325,8 @@ public class GalgroupLoaderTests
             ]
         };
 
-        var plan = GalgroupCompiler.Compile(raw, new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).Document.Entries.Single().Arguments.GetProperty("plan");
-        Assert.That(plan.GetProperty("events")[0].GetProperty("parameters").GetProperty("color").GetString(), Is.EqualTo(expectedColor));
+        var timeline = GalgroupCompiler.Compile(raw, new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).Document.Entries.Single().Arguments.GetProperty("timeline");
+        Assert.That(timeline.GetProperty("events")[0].GetProperty("parameters").GetProperty("color").GetString(), Is.EqualTo(expectedColor));
     }
 }
 

@@ -25,6 +25,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceInclude Source="avares://GalNet.Editor/Assets/icons.axaml" />
+                <ResourceInclude Source="avares://GalNet.Editor/Themes/EditorButtons.axaml" />
             </ResourceDictionary.MergedDictionaries>
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light">
@@ -140,6 +141,6 @@
         <semi:SemiPopupAnimations />
         <semi:DockSemiTheme />
         <semiColorPicker:ColorPickerSemiTheme />
-        <StyleInclude Source="avares://GalNet.Editor/Themes/ThemeTransitions.axaml" />
+        <StyleInclude Source="avares://GalNet.Editor/Themes/EditorControlStyles.axaml" />
     </Application.Styles>
 </Application>

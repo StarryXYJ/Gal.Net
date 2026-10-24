@@ -21,12 +21,16 @@ public sealed class FieldEditorOption(string id, object label, JsonElement value
 /// <summary>Borrowed host binding. Changed may come from any thread; all other calls use the UI thread.</summary>
 public interface IFieldBinding
 {
+    FieldDraftState? Draft => null;
     FieldValue Read();
     event EventHandler? Changed;
     Task<ValueIssue?> CommitAsync(FieldValue value, CancellationToken cancellationToken);
     bool IsEnabled => true;
     bool IsVisible => true;
+    bool CanReset => true;
     object? Label => null;
+    /// <summary>Optional host metadata, forwarded by scoped decorators without exposing their source binding.</summary>
+    object? HostContext => null;
     IReadOnlyList<FieldEditorOption>? Options => null;
 }
 

@@ -33,6 +33,15 @@ public sealed class FieldSchemaGenerator : IIncrementalGenerator
         var members = Hierarchy(type).SelectMany(declarationType => declarationType.GetMembers()).Select(member => (Member: member,
             Attribute: member.GetAttributes().FirstOrDefault(attribute => attribute.AttributeClass?.ToDisplayString() == FieldName)))
             .Where(item => item.Attribute != null).OrderBy(item => (int)item.Attribute!.ConstructorArguments[0].Value!).ToArray();
+        foreach (var member in Hierarchy(type).SelectMany(ancestor => ancestor.GetMembers()))
+        {
+            var semantics = member.GetAttributes().Count(attribute => attribute.AttributeClass?.ToDisplayString() is
+                "GalNet.Core.Parameters.LocalizedTextAttribute" or "GalNet.Core.Parameters.CharacterReferenceAttribute");
+            if (semantics > 0 && (semantics != 1 || member is not IPropertySymbol property ||
+                property.Type.SpecialType != SpecialType.System_String ||
+                !member.GetAttributes().Any(attribute => attribute.AttributeClass?.ToDisplayString() == FieldName)))
+            { Error(member, "Use exactly one game text semantic on a string Field property."); return; }
+        }
         var fields = new List<(IPropertySymbol Member, string Id, AttributeData Attribute, string? Default)>();
         var orders = new HashSet<int>();
         var ids = new HashSet<string>(StringComparer.Ordinal);
@@ -100,8 +109,13 @@ public sealed class FieldSchemaGenerator : IIncrementalGenerator
                 .Append(", editor: new global::GalNet.Core.Parameters.EditorHints(").Append(Named(field.Attribute, "EditorId", "null"))
                 .Append(", ").Append(Named(field.Attribute, "Step", "null")).Append(", ").Append(Named(field.Attribute, "Format", "null"))
                 .Append(", ").Append(Named(field.Attribute, "UnitKey", "null"))
+                .Append(", IsCommon: ").Append(field.Member.GetAttributes().Any(attribute => attribute.AttributeClass?.ToDisplayString() == "GalNet.Core.Parameters.CommonAttribute") ? "true" : "false")
                 .Append("), labelKey: ").Append(Named(field.Attribute, "LabelKey", "null")).Append(", descriptionKey: ")
-                .Append(Named(field.Attribute, "DescriptionKey", "null")).AppendLine("),");
+                .Append(Named(field.Attribute, "DescriptionKey", "null"))
+                .Append(", semantic: global::GalNet.Core.Parameters.FieldValueSemantic.")
+                .Append(field.Member.GetAttributes().Any(attribute => attribute.AttributeClass?.ToDisplayString() == "GalNet.Core.Parameters.LocalizedTextAttribute")
+                    ? "LocalizedText" : field.Member.GetAttributes().Any(attribute => attribute.AttributeClass?.ToDisplayString() == "GalNet.Core.Parameters.CharacterReferenceAttribute")
+                        ? "CharacterReference" : "None").AppendLine("),");
         }
         code.AppendLine("});\n}");
         code.AppendLine("object? global::GalNet.Core.Parameters.IFieldDto.ReadField(string id) => id switch {");

@@ -21,6 +21,7 @@ public sealed class LocalizeExtension
 
     public string? Key { get; set; }
     public string? Path { get; set; }
+    public string? FallbackPath { get; set; }
 
     public string? StringFormat { get; set; }
 
@@ -45,6 +46,7 @@ public sealed class LocalizeExtension
             {
                 Source = localization
             });
+            if (FallbackPath is not null) binding.Bindings.Add(new ReflectionBinding(FallbackPath));
 
             return binding;
         }
@@ -65,7 +67,8 @@ public sealed class LocalizeExtension
             if (values.Count == 0 || values[0] is not string key || string.IsNullOrWhiteSpace(key))
                 return string.Empty;
 
-            return localization[key];
+            var text = localization[key];
+            return text == "[" + key + "]" && values.Count > 2 && values[2] is string fallback ? fallback : text;
         }
     }
 }

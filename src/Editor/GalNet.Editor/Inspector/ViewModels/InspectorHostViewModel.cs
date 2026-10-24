@@ -21,6 +21,7 @@ public sealed partial class InspectorHostViewModel : ObservableObject, IDisposab
     [ObservableProperty] private string? _targetPanelId;
 
     public bool HasTarget => TargetPanelId is not null;
+    public string TargetDescription => CurrentInspectorViewModel is EntryInspectorViewModel entry ? entry.TargetDescription : TargetPanelId ?? "";
     public IUndoRedoHistory? UndoRedoHistory => (_targetDockViewModel as IUndoRedoTarget)?.UndoRedoHistory;
 
     public InspectorHostViewModel(IServiceProvider services, IEditorExtensionRegistry extensions)
@@ -103,6 +104,7 @@ public sealed partial class InspectorHostViewModel : ObservableObject, IDisposab
 
     private void OnInspectorPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        OnPropertyChanged(nameof(TargetDescription));
         if (e.PropertyName == nameof(IInspectorControlViewModel.IsAvailable) && sender is IInspectorControlViewModel vm)
             CurrentInspectorViewModel = vm.IsAvailable && _currentContribution is not null ? vm : null;
     }

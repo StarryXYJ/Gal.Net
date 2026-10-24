@@ -109,10 +109,13 @@ public sealed class EditorEntryData
 
     public static Dictionary<string, JsonElement> ParseParameters(IEntryCatalog catalog, string type, IReadOnlyDictionary<string, string> values) =>
         values.ToDictionary(pair => pair.Key,
-            pair => ValueCodec.ParseEditorText(catalog.Get(type).DynamicParameters![pair.Key].Value, pair.Value).Clone(), StringComparer.Ordinal);
+            pair => catalog.TryGet(type, out var schema) && schema.Parameters.ContainsKey(pair.Key)
+                ? ValueCodec.ParseEditorText(schema.DynamicParameters![pair.Key].Value, pair.Value).Clone()
+                : JsonSerializer.Deserialize<JsonElement>(pair.Value).Clone(), StringComparer.Ordinal);
 
     public Dictionary<string, string> GetParameterText(IEntryCatalog catalog) => Parameters.ToDictionary(pair => pair.Key,
-        pair => ValueCodec.ToEditorText(catalog.Get(Type).DynamicParameters![pair.Key].Value, pair.Value), StringComparer.Ordinal);
+        pair => catalog.TryGet(Type, out var schema) && schema.Parameters.ContainsKey(pair.Key)
+            ? ValueCodec.ToEditorText(schema.DynamicParameters![pair.Key].Value, pair.Value) : pair.Value.GetRawText(), StringComparer.Ordinal);
 }
 
 /// <summary>Project-owned content identity; its path can change without replacing the document.</summary>
@@ -139,4 +142,15 @@ public sealed class EditorProjectDocument
     public EditorGraphDocument Graph { get; set; } = new();
     public Dictionary<string, List<EditorEntryData>> GroupEntries { get; set; } = [];
     public ProjectSettings Settings { get; set; } = new();
+    public Dictionary<string, EditorFileDocument> Files { get; set; } = [];
+}
+
+/// <summary>Session identity survives path changes and closed views. Only managed text bytes participate in saving.</summary>
+public sealed class EditorFileDocument
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string Path { get; set; } = "";
+    public bool Exists { get; set; } = true;
+    public bool ManagedContent { get; set; }
+    public byte[] Data { get; set; } = [];
 }

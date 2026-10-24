@@ -275,6 +275,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
     {
         if (_engine is not null) return;
         var content = await _context.Content.LoadAsync(cancellationToken);
+        var imageVariants = await GalNet.Assets.Variants.ImageVariantsCatalogLoader.LoadImageVariantsCatalogAsync(_context.Assets, cancellationToken);
         _context.Assets.RegisterDecoder<SceneTexture>("sprite", new SceneTextureAssetDecoder());
         var spriteFiles = await _context.Assets.GetFilesAsync("sprite", cancellationToken);
         var textures = await Task.WhenAll(spriteFiles.Select(file => _context.Assets.AcquireAsync<SceneTexture>(file.Id, cancellationToken)));
@@ -297,7 +298,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
             content.Gallery,
             _pageView.ParticlePresenter,
             _pageView.NvlPresenter,
-            _audio).BuildView();
+            _audio, imageVariants: imageVariants).BuildView();
         try { view.RequireInstructions(content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>().SelectMany(group => group.Entries).Select(entry => entry.Type)); }
         catch { view.Dispose(); throw; }
         var runtime = new GameRuntime(null, content.Graph.RootNodeId, new SettingsContainer(), _context.Variables);

@@ -82,7 +82,7 @@ public sealed class AvaloniaGameResourcesTests
             Task.FromResult<AssetHandle<T>?>(new(id, "sprite", (T)(object)texture, () => Released++));
         public Task<AssetHandle<T>?> AcquireByPathAsync<T>(string path, CancellationToken ct = default) where T : class => throw new NotSupportedException();
         public Task<IGameFile?> GetFileAsync(string assetId, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<IReadOnlyList<IGameFile>> GetFilesAsync(string? typeId = null, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<IGameFile>> GetFilesAsync(string? typeId = null, CancellationToken ct = default) => Task.FromResult<IReadOnlyList<IGameFile>>([]);
         public void RegisterDecoder<T>(string resourceTypeId, IAssetDecoder<T> decoder) where T : class { }
         public void RegisterProvider(IAssetProvider provider) { }
         public void Dispose() { }

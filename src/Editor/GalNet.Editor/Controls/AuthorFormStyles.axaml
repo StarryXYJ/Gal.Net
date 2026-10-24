@@ -1,0 +1,46 @@
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:forms="using:GalNet.Game.Controls.Forms" xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions">
+        <Style Selector="forms|FieldEditorActions Button#UseDefault">
+            <Setter Property="Theme" Value="{DynamicResource EditorIconButton}"/>
+            <Setter Property="ContentTemplate"><DataTemplate><PathIcon Width="16" Height="16" Data="{DynamicResource ResetIcon}"/></DataTemplate></Setter>
+        </Style>
+        <Style Selector="forms|FieldEditorActions">
+            <Setter Property="Simplified" Value="True" />
+            <Setter Property="UnavailableText" Value="{loc:Localize Form.NoDefault}" />
+            <Setter Property="DefaultText" Value="{loc:Localize Form.Reset}" />
+            <Setter Property="OmitText" Value="{loc:Localize Form.Clear}" />
+            <Setter Property="NullText" Value="{loc:Localize Form.Null}" />
+            <Setter Property="RevertText" Value="{loc:Localize Form.Revert}" />
+        </Style>
+        <Style Selector="Expander.structured-field">
+            <Setter Property="forms:StructuredFieldEditor.ExpandByDefault" Value="True" />
+            <Setter Property="forms:StructuredFieldEditor.ObjectText" Value="{loc:Localize Form.Object}" />
+            <Setter Property="forms:StructuredFieldEditor.ListText" Value="{loc:Localize Form.List}" />
+            <Setter Property="forms:StructuredFieldEditor.RepairText" Value="{loc:Localize Form.Repair}" />
+            <Setter Property="forms:StructuredFieldEditor.AddText" Value="{loc:Localize Form.AddElement}" />
+            <Setter Property="forms:StructuredFieldEditor.CopyText" Value="{loc:Localize Form.CopyElement}" />
+            <Setter Property="forms:StructuredFieldEditor.RemoveText" Value="{loc:Localize Form.RemoveElement}" />
+            <Setter Property="forms:StructuredFieldEditor.UpText" Value="{loc:Localize Form.MoveUp}" />
+            <Setter Property="forms:StructuredFieldEditor.DownText" Value="{loc:Localize Form.MoveDown}" />
+        </Style>
+        <Style Selector="forms|SchemaForm" x:CompileBindings="False">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <StackPanel Spacing="6">
+                        <ItemsControl ItemsSource="{TemplateBinding Editors}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <forms:FieldEditorRow Context="{Binding Context}" Editor="{Binding Control}" IsVisible="{Binding Context.IsVisible}"
+                                                          ShowLabel="{Binding ShowLabels, RelativeSource={RelativeSource AncestorType={x:Type forms:SchemaForm}}}">
+                                        <forms:FieldEditorRow.Label><TextBlock DataContext="{Binding Context}" Text="{loc:Localize Label, FallbackPath=Field.Id}" TextWrapping="Wrap" /></forms:FieldEditorRow.Label>
+                                    </forms:FieldEditorRow>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <ItemsControl ItemsSource="{TemplateBinding Diagnostics}">
+                            <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding Message}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+</Styles>

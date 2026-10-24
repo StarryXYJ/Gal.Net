@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace GalNet.Editor.Abstraction.Commands;
 
-/// <summary>Project-scoped file command. File commands are transactional but do not enter document Undo history.</summary>
+/// <summary>Project-scoped file command. CLI commands are transactional; the GUI adapter retains the same operations in project history.</summary>
 public interface IProjectFileCommand : IEditorCommand;
 
 public sealed record ImportAssetsCommand(IReadOnlyList<string> SourcePaths, string TargetDirectory = "") : IProjectFileCommand
@@ -59,6 +59,8 @@ public sealed record FileCommandResult(
     IReadOnlyList<string> ChangedResources,
     IReadOnlyList<EditorDiagnostic> Diagnostics)
 {
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Exception? Error { get; init; }
     public static FileCommandResult Failure(params EditorDiagnostic[] diagnostics) =>
         new(false, null, null, [], diagnostics);
 }

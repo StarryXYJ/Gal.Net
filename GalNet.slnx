@@ -41,6 +41,7 @@
     <Project Path="src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj" />
   </Folder>
   <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/GalNet.Debugging/GalNet.Debugging.csproj" />
     <Project Path="src/Shared/GalNet.GameHost/GalNet.GameHost.csproj" />
     <Project Path="src/Shared/GalNet.Assets/GalNet.Assets.csproj" />
     <Project Path="src/Shared/GalNet.Core/GalNet.Core.csproj" />
@@ -50,6 +51,7 @@
     <Project Path="src/Shared/GalNet.Runtime/GalNet.Runtime.csproj" />
   </Folder>
   <Folder Name="/test/">
+    <Project Path="test/GalNet.Debugging.Tests/GalNet.Debugging.Tests.csproj" />
     <Project Path="test/GalNet.GameHost.Tests/GalNet.GameHost.Tests.csproj" />
     <Project Path="test/GalNet.Architecture.Tests/GalNet.Architecture.Tests.csproj" />
     <Project Path="test/GalNet.Assets.Tests/GalNet.Assets.Tests.csproj" />

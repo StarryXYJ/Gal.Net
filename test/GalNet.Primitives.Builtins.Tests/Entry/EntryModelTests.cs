@@ -16,7 +16,7 @@ public class EntryModelTests
     [Test]
     public void Registry_Should_Create_All_BuiltIn_Entries()
     {
-        Assert.That(Catalog.Definitions, Has.Count.EqualTo(42));
+        Assert.That(Catalog.Definitions, Has.Count.EqualTo(45));
         foreach (var definition in Catalog.Definitions)
             Assert.That(Catalog.Create(definition.Type).Type, Is.EqualTo(definition.Type));
     }
@@ -60,7 +60,8 @@ public class EntryModelTests
 
     [Test]
     public void Concrete_Action_Types_Should_Not_Declare_Action_Parameter() =>
-        Assert.That(Catalog.Definitions.All(x => !x.Parameters.ContainsKey("action")), Is.True);
+        Assert.That(Catalog.Definitions.Where(x => x.Type != BuiltinEntryIds.InvokeCustom)
+            .All(x => !x.Parameters.ContainsKey("action")), Is.True);
 
     [Test]
     public void TextEntry_Should_Not_Expose_Widget_Parameter()

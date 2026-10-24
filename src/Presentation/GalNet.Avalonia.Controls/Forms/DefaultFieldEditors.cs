@@ -3,9 +3,11 @@ using System.Globalization;
 using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using GalNet.Core.Parameters;
 
 namespace GalNet.Game.Controls.Forms;
@@ -29,7 +31,19 @@ public static class DefaultFieldEditors
         return TextInput(context);
     }
 
-    public static FieldEditorLease CreateJson(FieldEditorContext context) => TextInput(context);
+    public static FieldEditorLease CreateJson(FieldEditorContext context)
+    {
+        context.UseJsonText();
+        var lease = TextInput(context);
+        var input = (TextBox)lease.Control;
+        input.Tag = "schema.json";
+        input.AcceptsReturn = true;
+        input.TextWrapping = global::Avalonia.Media.TextWrapping.Wrap;
+        input.MinHeight = 90;
+        input.PlaceholderText = "JSON";
+        ToolTip.SetTip(input, "JSON · " + context.Field.Value.ValueType.Name);
+        return lease;
+    }
 
     private static FieldEditorLease TextInput(FieldEditorContext context)
     {
@@ -41,6 +55,7 @@ public static class DefaultFieldEditors
     public static FieldEditorLease CreateToggle(FieldEditorContext context)
     {
         Require(context, typeof(bool));
+        if (context.EffectiveValue is { } json && ValueValidation.Validate(context.Field.Value, json) is not null) return CreateJson(context);
         var control = new CheckBox { IsThreeState = context.Field.Value.AllowNull };
         return Bind(control, context,
             () => control.IsChecked = (bool?)context.ReadValue(),
@@ -72,6 +87,7 @@ public static class DefaultFieldEditors
     public static FieldEditorLease CreateSlider(FieldEditorContext context)
     {
         Require(context, NumericTypes.Where(type => type != typeof(decimal)).ToArray());
+        if (context.EffectiveValue is { } json && ValueValidation.Validate(context.Field.Value, json) is not null) return CreateJson(context);
         var value = context.Field.Value;
         if (!value.TryGetConstraint("minimum", out var min) || !value.TryGetConstraint("maximum", out var max))
             throw new NotSupportedException("Slider requires explicit finite minimum and maximum.");
@@ -115,6 +131,8 @@ public static class DefaultFieldEditors
         Action<AvaloniaPropertyChangedEventArgs> edit, bool commitText = false)
     {
         var syncing = false;
+        bool Composing() => control.GetVisualDescendants().OfType<TextPresenter>().Any(presenter => !string.IsNullOrEmpty(presenter.PreeditText));
+        var guard = commitText ? context.DraftState?.RegisterGuard(() => !Composing()) : null;
         void Refresh()
         {
             syncing = true;
@@ -123,21 +141,24 @@ public static class DefaultFieldEditors
         }
         void Changed(object? sender, PropertyChangedEventArgs e) => Refresh();
         void Edited(object? sender, AvaloniaPropertyChangedEventArgs e) { if (!syncing) edit(e); }
-        void LostFocus(object? sender, RoutedEventArgs e) { _ = context.CommitTextAsync(); }
+        void LostFocus(object? sender, RoutedEventArgs e) { if (!Composing()) _ = context.CommitTextAsync(); }
         void KeyDown(object? sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter) { _ = context.CommitTextAsync(); e.Handled = true; }
+            if (Composing()) return;
+            if (e.Key == Key.Escape) { context.RevertDraft(); e.Handled = true; }
+            else if (e.Key == Key.Enter && (control is not TextBox { AcceptsReturn: true } || e.KeyModifiers.HasFlag(KeyModifiers.Control))) { _ = context.CommitTextAsync(); e.Handled = true; }
         }
         Refresh();
         control.DataContext = context;
         context.PropertyChanged += Changed;
         control.PropertyChanged += Edited;
-        if (commitText) { control.LostFocus += LostFocus; control.KeyDown += KeyDown; }
+        if (commitText) { control.LostFocus += LostFocus; control.AddHandler(InputElement.KeyDownEvent, KeyDown, RoutingStrategies.Tunnel); }
         return new(control, () =>
         {
+            guard?.Dispose();
             context.PropertyChanged -= Changed;
             control.PropertyChanged -= Edited;
-            if (commitText) { control.LostFocus -= LostFocus; control.KeyDown -= KeyDown; }
+            if (commitText) { control.LostFocus -= LostFocus; control.RemoveHandler(InputElement.KeyDownEvent, KeyDown); }
         });
     }
 }

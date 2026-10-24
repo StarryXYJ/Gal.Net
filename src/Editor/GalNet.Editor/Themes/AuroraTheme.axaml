@@ -32,7 +32,7 @@
     <SolidColorBrush x:Key="SemiColorText0" Color="#E4F7F3" />
     <SolidColorBrush x:Key="SemiColorText1" Color="#C7E8E3" />
     <SolidColorBrush x:Key="SemiColorText2" Color="#94BDB8" />
-    <SolidColorBrush x:Key="SemiColorText3" Color="#5F7D7A" />
+    <SolidColorBrush x:Key="SemiColorText3" Color="#84A7A3" />
     <SolidColorBrush x:Key="SemiColorBorder" Color="#3A565A" />
     <SolidColorBrush x:Key="SemiColorFill0" Color="#1D3032" />
     <SolidColorBrush x:Key="SemiColorFill1" Color="#294144" />

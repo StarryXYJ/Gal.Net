@@ -148,7 +148,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());
             using var services = Services();
             var projects = services.GetRequiredService<IProjectService>();
-            var project = await projects.CreateAsync(Path.Combine(_root, "SettingsHistory"), "Original", new() { Speakers = ["keep speaker"] }, Contracts());
+            var project = await projects.CreateAsync(Path.Combine(_root, "SettingsHistory"), "Original", new() { SfxChannelCount = 7 }, Contracts());
             var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
             var panel = project.Services.GetRequiredService<ProjectSettingsPanelViewModel>();
             var view = new ProjectSettingsPanelView { DataContext = panel };
@@ -194,7 +194,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(project.Services.GetRequiredService<IProjectContentSession>().IsDirty, Is.False);
                 await router.RedoAsync();
                 Assert.That(project.Name, Is.EqualTo("AfterSave"));
-                Assert.That(project.Settings.Speakers.Single(), Is.EqualTo("keep speaker"));
+                Assert.That(project.Settings.SfxChannelCount, Is.EqualTo(7));
                 await workspace.SaveAsync();
                 await projects.CloseAsync();
                 var reopened = await projects.OpenAsync(project.RootPath);
@@ -426,7 +426,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     {
         using var services = Services();
         var projects = services.GetRequiredService<IProjectService>();
-        var project = await projects.CreateAsync(Path.Combine(_root, "Settings"), "Settings", new() { Speakers = ["narrator"] }, Contracts());
+        var project = await projects.CreateAsync(Path.Combine(_root, "Settings"), "Settings", new() { SfxChannelCount = 7 }, Contracts());
         var value = new Variable { Name = "score" };
         value.SetValue(4);
         var documents = project.Services.GetRequiredService<IEditorDocumentService>();
@@ -435,7 +435,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         await projects.SaveAsync();
         using var saved = JsonDocument.Parse(File.ReadAllText(project.SettingsFilePath));
         Assert.That(saved.RootElement.GetProperty("playerVariables")[0].GetProperty("name").GetString(), Is.EqualTo("score"));
-        Assert.That(project.Settings.Speakers.Single(), Is.EqualTo("narrator"));
+        Assert.That(project.Settings.SfxChannelCount, Is.EqualTo(7));
         await projects.CloseAsync();
     }
 
@@ -470,7 +470,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             Document = new() { Nodes = [new() { Id = "group", Type = "Group", File = "groups/group.rawgalgroup" }] },
             GroupEntries = { ["group"] = [new() { StableId = "line", Type = "custom.value", Parameters = new() { ["count"] = JsonSerializer.SerializeToElement(4) } }] }
         });
-        var store = new EditorGroupProjectionStore(documents, catalog);
+        var store = new EditorGroupProjectionStore(documents, catalog, new EntryFieldAuthoringService(documents, new EditorHistories()));
         var group = store.Get("group");
         var entry = group.Entries.Single();
         entry.ConfigureParameterFields(catalog, [], []);
@@ -774,13 +774,19 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         await projects.CloseAsync();
     }
 
-    private static ServiceProvider Services(IProjectClosePrompt? closePrompt = null, IEditorLocalizationService? localization = null) => new ServiceCollection().AddEditorServices()
-        .AddSingleton<IEditorLocalizationService>(localization ?? new EditorLocalizationService())
-        .AddSingleton<IProjectClosePrompt>(closePrompt ?? new DiscardProjectClosePrompt())
-        .AddSingleton<IEditorSettingsService>(new TestSettings())
-        .AddSingleton<IFileDialogService>(new TestDialogs())
-        .AddSingleton<IEffectCatalog>(new EffectCatalog([]))
-        .BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+    private static ServiceProvider Services(IProjectClosePrompt? closePrompt = null, IEditorLocalizationService? localization = null, GalNet.Editor.Shared.Commands.AuthorFileTransaction? transaction = null, IEntryCatalog? catalog = null)
+    {
+        var services = new ServiceCollection().AddEditorServices()
+            .AddSingleton<IEditorLocalizationService>(localization ?? new EditorLocalizationService())
+            .AddSingleton<IProjectClosePrompt>(closePrompt ?? new DiscardProjectClosePrompt())
+            .AddSingleton<IEditorSettingsService>(new TestSettings())
+            .AddSingleton<IFileDialogService>(new TestDialogs())
+            .AddSingleton<IEffectCatalog>(new EffectCatalog([]));
+        if (transaction is not null)
+            services.AddScoped<IEditorDocumentRepository>(provider => new FaultRepository(new EditorDocumentRepository(provider.GetRequiredService<IEntryCatalog>(), EditorDocumentValidation.Authoring), transaction));
+        if (catalog is not null) services.AddScoped<IEntryCatalog>(_ => catalog);
+        return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+    }
 
     private static string Contracts()
     {
@@ -809,7 +815,10 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     private sealed class TestDialogs : IFileDialogService
     {
         public string? Folder { get; set; }
+        public string? SavePath { get; set; }
+        public IReadOnlyList<string> OpenPaths { get; set; } = [];
+        public Task<string?> SaveFilePickerAsync(string title, string suggestedName) => Task.FromResult(SavePath);
         public Task<string?> OpenFolderPickerAsync(string title) => Task.FromResult(Folder);
-        public Task<IReadOnlyList<string>> OpenFilePickerAsync(string title, bool allowMultiple = true) => Task.FromResult<IReadOnlyList<string>>([]);
+        public Task<IReadOnlyList<string>> OpenFilePickerAsync(string title, bool allowMultiple = true) => Task.FromResult(OpenPaths);
     }
 }

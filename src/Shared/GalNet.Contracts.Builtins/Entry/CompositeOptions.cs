@@ -9,15 +9,15 @@ namespace GalNet.Contracts.Builtins;
 public partial class CrossFadeOptions
 {
     [Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? PlaybackHandleId { get; set; }
-    [Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? OldHandleId { get; set; }
+    [Common, Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? OldHandleId { get; set; }
     [Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? NewHandleId { get; set; }
-    [Field(3, AllowNull = true, EditorId = "entry.imageasset")] public string? AssetId { get; set; }
+    [Common, Field(3, AllowNull = true, EditorId = "entry.imageasset")] public string? AssetId { get; set; }
     [Field(4, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Transform { get; set; }
     [Field(5, EditorId = ValueEditorIds.Numeric)] public float Z { get; set; } = 0;
     [Field(6, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<LayerDisplayMode>))]
     public LayerDisplayMode? DisplayMode { get; set; } = LayerDisplayMode.Fill;
     [Field(7, EditorId = ValueEditorIds.Numeric)] public int FrameRate { get; set; } = 60;
-    [Field(8, EditorId = ValueEditorIds.Numeric)] public int DurationFrames { get; set; } = 48;
+    [Common, Field(8, EditorId = ValueEditorIds.Numeric)] public int DurationFrames { get; set; } = 48;
     [Field(9, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? BatchId { get; set; }
 }
 
@@ -28,9 +28,9 @@ public enum BlindsOrientation { Vertical, Horizontal }
 public partial class SlideOptions
 {
     [Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? PlaybackHandleId { get; set; }
-    [Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? FromLayerHandleId { get; set; }
-    [Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? ToLayerHandleId { get; set; }
-    [Field(3, AllowNull = true, EditorId = "entry.imageasset")] public string? ToAssetId { get; set; }
+    [Common, Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? FromLayerHandleId { get; set; }
+    [Common, Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? ToLayerHandleId { get; set; }
+    [Common, Field(3, AllowNull = true, EditorId = "entry.imageasset")] public string? ToAssetId { get; set; }
     [Field(4, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement ToTransform { get; set; }
     [Field(5, EditorId = ValueEditorIds.Numeric)] public float ToZ { get; set; } = 0;
     [Field(6, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<LayerDisplayMode>))]
@@ -39,7 +39,7 @@ public partial class SlideOptions
     public SlideDirection? Direction { get; set; } = SlideDirection.Left;
     [Field(8, EditorId = ValueEditorIds.Numeric)] public float Distance { get; set; } = 1920;
     [Field(9, EditorId = ValueEditorIds.Numeric)] public int FrameRate { get; set; } = 60;
-    [Field(10, EditorId = ValueEditorIds.Numeric)] public int DurationFrames { get; set; } = 30;
+    [Common, Field(10, EditorId = ValueEditorIds.Numeric)] public int DurationFrames { get; set; } = 30;
     [Field(11, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? BatchId { get; set; }
 }
 
@@ -47,10 +47,10 @@ public partial class SlideOptions
 public partial class BlindsOptions
 {
     [Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? PlaybackHandleId { get; set; }
-    [Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? OldHandleId { get; set; }
+    [Common, Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? OldHandleId { get; set; }
     [Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? NewHandleId { get; set; }
-    [Field(3, AllowNull = true, EditorId = "entry.imageasset")] public string? AssetId { get; set; }
-    [Field(4, AllowNull = true, EditorId = "entry.effectprogramasset")] public string? MaskProgram { get; set; }
+    [Common, Field(3, AllowNull = true, EditorId = "entry.imageasset")] public string? AssetId { get; set; }
+    [Common, Field(4, AllowNull = true, EditorId = "entry.effectprogramasset")] public string? MaskProgram { get; set; }
     [Field(5, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Transform { get; set; }
     [Field(6, EditorId = ValueEditorIds.Numeric)] public float Z { get; set; } = 0;
     [Field(7, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<LayerDisplayMode>))]
@@ -59,16 +59,16 @@ public partial class BlindsOptions
     [Field(9, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<BlindsOrientation>))]
     public BlindsOrientation? Orientation { get; set; } = BlindsOrientation.Vertical;
     [Field(10, EditorId = ValueEditorIds.Numeric)] public int FrameRate { get; set; } = 60;
-    [Field(11, EditorId = ValueEditorIds.Numeric)] public int DurationFrames { get; set; } = 48;
+    [Common, Field(11, EditorId = ValueEditorIds.Numeric)] public int DurationFrames { get; set; } = 48;
     [Field(12, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? BatchId { get; set; }
 }
 
 public abstract class ColorFieldOptionsBase
 {
     [Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? PlaybackHandleId { get; set; }
-    [Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? FromLayerHandleId { get; set; }
-    [Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? ToLayerHandleId { get; set; }
-    [Field(3, AllowNull = true, EditorId = "entry.imageasset")] public string? ToAssetId { get; set; }
+    [Common, Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? FromLayerHandleId { get; set; }
+    [Common, Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? ToLayerHandleId { get; set; }
+    [Common, Field(3, AllowNull = true, EditorId = "entry.imageasset")] public string? ToAssetId { get; set; }
     [Field(4, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement ToTransform { get; set; }
     [Field(5, EditorId = ValueEditorIds.Numeric)] public float ToZ { get; set; } = 0;
     [Field(6, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<LayerDisplayMode>))]
@@ -86,24 +86,24 @@ public partial class ColorFieldOptions : ColorFieldOptionsBase;
 [GenerateFieldSchema]
 public partial class ColorFadeOptions : ColorFieldOptionsBase
 {
-    [Field(12, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? Color { get; set; } = "#000000";
+    [Common, Field(12, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? Color { get; set; } = "#000000";
 }
 
 [GenerateFieldSchema]
 public partial class TextVoiceOptions
 {
-    [Field(0, AllowNull = true, EditorId = "entry.autocomplete")] public string? Speaker { get; set; }
-    [Field(1, AllowNull = true, EditorId = "entry.multilinetext")] public string? Content { get; set; }
-    [Field(2, AllowNull = true, EditorId = "entry.audioasset")] public string? Asset { get; set; }
+    [Common, Field(0, AllowNull = true, EditorId = "entry.autocomplete"), CharacterReference] public string? Speaker { get; set; }
+    [Common, Field(1, AllowNull = true, EditorId = "entry.multilinetext"), LocalizedText] public string? Content { get; set; }
+    [Common, Field(2, AllowNull = true, EditorId = "entry.audioasset")] public string? Asset { get; set; }
     [Field(3, EditorId = ValueEditorIds.Numeric)] public float Gain { get; set; } = 1;
-    [Field(4, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? TrackId { get; set; } = "vocal";
+    [Common, Field(4, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? TrackId { get; set; } = "vocal";
 }
 
 [GenerateFieldSchema]
 public partial class NvlVoiceOptions
 {
-    [Field(0, AllowNull = true, EditorId = "entry.multilinetext")] public string? Content { get; set; }
-    [Field(1, AllowNull = true, EditorId = "entry.audioasset")] public string? Asset { get; set; }
+    [Common, Field(0, AllowNull = true, EditorId = "entry.multilinetext"), LocalizedText] public string? Content { get; set; }
+    [Common, Field(1, AllowNull = true, EditorId = "entry.audioasset")] public string? Asset { get; set; }
     [Field(2, EditorId = ValueEditorIds.Numeric)] public float Gain { get; set; } = 1;
-    [Field(3, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? TrackId { get; set; } = "vocal";
+    [Common, Field(3, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? TrackId { get; set; } = "vocal";
 }

@@ -7,6 +7,21 @@ namespace GalNet.Editor.Shared.Tests;
 
 public sealed class ProjectContractPipelineTests
 {
+    [Test]
+    public async Task ActualCliValidationAndCompilationStillRejectAnAuthoringSavedUnknownType()
+    {
+        Put("Graph/groups/a.rawgalgroup", """{"version":2,"kind":"Raw","entries":[{"id":"opaque","type":"future.custom","parameters":{"payload":[null,{"kept":true}]}}]}""");
+        using var schema = ProjectSchemaContext.Load(_root);
+        var repository = new EditorDocumentRepository(schema.Catalog, EditorDocumentValidation.Authoring);
+        var loaded = repository.Load(_root, "Draft", new());
+        repository.Save(_root, loaded.Document, loaded.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<GalNet.Editor.Abstraction.Documents.EditorEntryData>)pair.Value));
+        var original = File.ReadAllBytes(Path.Combine(_root, "Graph/groups/a.rawgalgroup"));
+        var validation = await CliHelpTests.Invoke(["validate", _root]);
+        var compilation = await CliHelpTests.Invoke(["group", "compile", _root, "--id", "a"]);
+        Assert.That(validation.ExitCode, Is.Not.Zero); Assert.That(validation.Output, Does.Contain("entry.typeUnknown"));
+        Assert.That(compilation.ExitCode, Is.Not.Zero); Assert.That(compilation.Output, Does.Contain("entry.typeUnknown"));
+        Assert.That(File.ReadAllBytes(Path.Combine(_root, "Graph/groups/a.rawgalgroup")), Is.EqualTo(original));
+    }
     private string _root = null!;
     [SetUp]
     public void SetUp()

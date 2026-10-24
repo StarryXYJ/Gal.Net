@@ -24,13 +24,15 @@ internal sealed class AvaloniaGameRun : IGameRun
     private readonly Func<Task> _runCompletedAsync;
     private readonly Func<Task> _resetPresentationAsync;
     private readonly Func<Action, Task> _onUiAsync;
+    private readonly Func<Task> _flushPlayerVariables;
     private Task _stateUpdate = Task.CompletedTask;
     private bool _disposed;
+    private IDisposable? _debugBinding;
 
     private AvaloniaGameRun(
         GamePageViewModel gameplay, GameRun run, AvaloniaGamePresentation presentation, AvaloniaPlayerSettingsService playerSettings,
         Func<bool, string?, Task> updateStateAsync, Func<Task> runCompletedAsync,
-        Func<Task> resetPresentationAsync, Func<Action, Task> onUiAsync)
+        Func<Task> resetPresentationAsync, Func<Action, Task> onUiAsync, Func<Task> flushPlayerVariables)
     {
         _gameplay = gameplay;
         _run = run;
@@ -42,6 +44,7 @@ internal sealed class AvaloniaGameRun : IGameRun
         _runCompletedAsync = runCompletedAsync;
         _resetPresentationAsync = resetPresentationAsync;
         _onUiAsync = onUiAsync;
+        _flushPlayerVariables = flushPlayerVariables;
         _gameplay.AdvanceRequested += OnAdvanceRequested;
         _gameplay.BindPlayback(_engine);
         _engine.StateChanged += OnEngineStateChanged;
@@ -60,6 +63,7 @@ internal sealed class AvaloniaGameRun : IGameRun
             resources.Content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>()
                 .SelectMany(group => group.Entries).Select(entry => entry.Type), options.Presentation, sharedLibVlc, cancellationToken);
         GameRun? run = null;
+        AvaloniaGameRun? adapter = null;
         try
         {
             var settings = new SettingsContainer();
@@ -68,12 +72,21 @@ internal sealed class AvaloniaGameRun : IGameRun
             var runtime = new GameRuntime(textResolver, resources.Content.Graph.RootNodeId, settings, saveSession.Variables);
             run = new GameRun(resources.Content.Graph, runtime, presentation.View,
                 saveSession.Progress, presentation.Presenters.ChoicePresenter, presentation, presentation.Restorer);
-            return new AvaloniaGameRun(gameplay, run, presentation, playerSettings,
-                updateStateAsync, runCompletedAsync, resetPresentationAsync, onUiAsync);
+            adapter = new AvaloniaGameRun(gameplay, run, presentation, playerSettings,
+                updateStateAsync, runCompletedAsync, resetPresentationAsync, onUiAsync, () => saveSession.Variables.FlushPlayerVariablesAsync());
+            adapter._debugBinding = options.AttachDebugRun?.Invoke(run.Engine);
+            return adapter;
         }
         catch (Exception error)
         {
             List<Exception> errors = [error];
+            if (adapter is not null)
+            {
+                try { await adapter.DisposeAsync(); }
+                catch (Exception cleanupError) { errors.Add(cleanupError); }
+                if (errors.Count > 1) throw new AggregateException(errors);
+                throw;
+            }
             try { if (run is not null) await run.DisposeAsync(); }
             catch (Exception cleanupError) { errors.Add(cleanupError); }
             try { await presentation.DisposeAsync(); }
@@ -101,6 +114,7 @@ internal sealed class AvaloniaGameRun : IGameRun
         await _run.StopAsync();
         _presentation.Presenters.CompleteInitialPresentation();
         await _stateUpdate;
+        await _flushPlayerVariables();
     }
 
     public async ValueTask DisposeAsync()
@@ -114,6 +128,8 @@ internal sealed class AvaloniaGameRun : IGameRun
         _engine.StateChanged -= OnEngineStateChanged;
         cleanup.Run(_presentation.Presenters.CompleteInitialPresentation);
         await cleanup.RunAsync(() => _run.DisposeAsync());
+        await cleanup.RunAsync(() => new(_flushPlayerVariables()));
+        cleanup.Run(() => _debugBinding?.Dispose());
         await cleanup.RunAsync(() => new(_presentation.Restorer.SuspendAsync(CancellationToken.None)));
         await cleanup.RunAsync(() => new(_stateUpdate));
         await cleanup.RunAsync(() => new(_resetPresentationAsync()));

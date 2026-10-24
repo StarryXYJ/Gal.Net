@@ -12,10 +12,8 @@ public sealed class EditorDocumentService : IEditorDocumentService
     public EditorGraphDocument CurrentDocument => LoadedProject.Document;
     public IReadOnlyDictionary<string, EditorGroupDocument> Groups => _groups;
     public bool IsLoaded { get; private set; }
-    public bool IsDirty { get; private set; }
 
     public event Action? DocumentChanged;
-    public event Action<bool>? DirtyStateChanged;
 
     public void Load(LoadedEditorProjectDocument loadedDocument)
     {
@@ -24,9 +22,7 @@ public sealed class EditorDocumentService : IEditorDocumentService
         foreach (var node in CurrentDocument.Nodes.Where(node => node.Type == "Group"))
             GetOrCreateGroup(node.Id, "Graph/" + (node.File ?? $"groups/{node.Id}.rawgalgroup"));
         IsLoaded = true;
-        IsDirty = false;
         NotifyDocumentChanged();
-        DirtyStateChanged?.Invoke(false);
     }
 
     public void Unload()
@@ -35,27 +31,7 @@ public sealed class EditorDocumentService : IEditorDocumentService
         _groups.Clear();
         _paths.Clear();
         IsLoaded = false;
-        IsDirty = false;
         NotifyDocumentChanged();
-        DirtyStateChanged?.Invoke(false);
-    }
-
-    public void MarkDirty()
-    {
-        if (IsDirty)
-            return;
-
-        IsDirty = true;
-        DirtyStateChanged?.Invoke(true);
-    }
-
-    public void MarkSaved()
-    {
-        if (!IsDirty)
-            return;
-
-        IsDirty = false;
-        DirtyStateChanged?.Invoke(false);
     }
 
     public EditorGroupDocument GetOrCreateGroup(string groupId, string relativePath)

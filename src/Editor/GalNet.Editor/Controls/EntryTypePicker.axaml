@@ -10,8 +10,7 @@
                       IsChecked="{Binding #PickerPopup.IsOpen, Mode=TwoWay}"
                       HorizontalContentAlignment="Stretch">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                <TextBlock DataContext="{Binding #Root}"
-                           Text="{loc:Localize SelectedDisplayNameKey}" />
+                <TextBlock Text="{Binding SelectedDisplayName,ElementName=Root}" />
                 <TextBlock Grid.Column="1" Text="{Binding SelectedGestureText, ElementName=Root}"
                            Foreground="{DynamicResource SemiColorText2}" FontSize="11" />
             </Grid>
@@ -20,12 +19,14 @@
                PlacementTarget="{Binding #OpenButton}"
                Placement="BottomEdgeAlignedLeft"
                IsLightDismissEnabled="True"
-               Opened="OnPopupOpened">
-            <Border MinWidth="280" MaxHeight="420" Padding="6"
+               Opened="OnPopupOpened" Closed="OnPopupClosed">
+            <Border x:Name="PopupContent" MinWidth="320" MaxHeight="420" Padding="6"
                     Background="{DynamicResource SemiColorBackground1}"
                     BorderBrush="{DynamicResource SemiColorBorder}"
                     BorderThickness="1" CornerRadius="6">
-                <TreeView x:Name="TypeTree" ItemsSource="{Binding Categories, ElementName=Root}">
+                <Grid RowDefinitions="Auto,*" RowSpacing="6">
+                <TextBox x:Name="SearchInput" PlaceholderText="{loc:Localize Entry.SearchTypes}" TextChanged="OnSearchChanged" />
+                <TreeView Grid.Row="1" x:Name="TypeTree" ItemsSource="{Binding Categories, ElementName=Root}">
                     <TreeView.Styles>
                         <Style Selector="TreeViewItem">
                             <Setter Property="IsExpanded" Value="True" />
@@ -33,17 +34,18 @@
                     </TreeView.Styles>
                     <TreeView.DataTemplates>
                         <TreeDataTemplate DataType="controls:EntryTypeCategoryItem" ItemsSource="{Binding Items}">
-                            <TextBlock Text="{loc:Localize DisplayNameKey}" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
                         </TreeDataTemplate>
                         <DataTemplate DataType="controls:EntryTypeLeafItem">
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
-                                <TextBlock Text="{loc:Localize DisplayNameKey}" />
+                                <StackPanel><TextBlock Text="{Binding DisplayName}" /><TextBlock Text="{Binding Value}" FontSize="11" Opacity="0.65" /></StackPanel>
                                 <TextBlock Grid.Column="1" Text="{Binding GestureText}"
                                            Foreground="{DynamicResource SemiColorText2}" FontSize="11" />
                             </Grid>
                         </DataTemplate>
                     </TreeView.DataTemplates>
                 </TreeView>
+                </Grid>
             </Border>
         </Popup>
     </Grid>

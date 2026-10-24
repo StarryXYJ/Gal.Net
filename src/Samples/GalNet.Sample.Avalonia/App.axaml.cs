@@ -47,6 +47,8 @@ public partial class App : Application
                 {
                     var session = scopedServices.GetRequiredService<SampleGameSessionService>();
                     var ready = await session.InitializeAsync(LaunchOptions, mainWindow.SelectLanguageAsync, startupCancellation.Token);
+                    if (ready && LaunchOptions.DebugInvitation is { } invitation)
+                        await scopedServices.GetRequiredService<Debug.SampleExternalDebug>().ConnectAsync(invitation, startupCancellation.Token);
                     if (!startupCancellation.IsCancellationRequested)
                         mainWindow.CompleteStartup(ready ? null : session.StatusMessage);
                 }
@@ -70,20 +72,29 @@ public partial class App : Application
                 if (closingInProgress) return;
 
                 closingInProgress = true;
+                var shutdown = System.Diagnostics.Stopwatch.StartNew();
+                GameLog.Logger.Information("Game host shutdown started");
                 startupCancellation.Cancel();
                 try
                 {
                     try
                     {
                         await scopedServices.GetRequiredService<SampleGameSessionService>().StopAsync();
+                        GameLog.Logger.Information("Game host stopped after {ElapsedMilliseconds} ms", shutdown.ElapsedMilliseconds);
                     }
                     finally
                     {
-                        try { if (_gameScope is { } scope) await scope.DisposeAsync(); }
+                        try
+                        {
+                            mainWindow.DetachHostBindings();
+                            if (_gameScope is { } scope) await scope.DisposeAsync();
+                            GameLog.Logger.Information("Game scope disposed after {ElapsedMilliseconds} ms", shutdown.ElapsedMilliseconds);
+                        }
                         finally
                         {
                             _gameScope = null;
                             if (_rootServices is not null) await _rootServices.DisposeAsync();
+                            GameLog.Logger.Information("Root services disposed after {ElapsedMilliseconds} ms", shutdown.ElapsedMilliseconds);
                             _rootServices = null;
                         }
                     }
@@ -92,6 +103,7 @@ public partial class App : Application
                 finally
                 {
                     allowClose = true;
+                    GameLog.Logger.Information("Game host cleanup finished after {ElapsedMilliseconds} ms; closing window", shutdown.ElapsedMilliseconds);
                     mainWindow.Close();
                     startupCancellation.Dispose();
                 }

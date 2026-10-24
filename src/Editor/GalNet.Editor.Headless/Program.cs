@@ -142,7 +142,7 @@ internal static class Program
         if (outputIndex >= 0 && outputIndex + 1 >= args.Length) return Fail("--output requires a directory path.");
         var outputDirectory = outputIndex >= 0 ? Path.GetFullPath(args[outputIndex + 1]) : null;
         var result = await new ProjectContentBuilder(entryCatalog).BuildAsync(projectPath, outputDirectory);
-        WriteJson(new ToolResult("project.build", true, new ProjectBuildReport(result.OutputPath, result.CompiledGroupCount), []));
+        WriteJson(new ToolResult("project.build", true, new ProjectBuildReport(result.OutputPath, result.CompiledGroupCount), result.Diagnostics));
         return 0;
     }
 

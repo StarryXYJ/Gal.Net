@@ -5,7 +5,9 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using GalNet.Editor.Controls;
 using GalNet.Editor.ViewModels;
 using Serilog;
@@ -14,6 +16,28 @@ namespace GalNet.Editor.Views;
 
 public partial class NodeGraphPanelView : UserControl
 {
+    private bool _syncingZoom;
+    private void OnFrameAll(object? sender, Avalonia.Interactivity.RoutedEventArgs args) => FrameNodes(false);
+    private void OnFrameSelection(object? sender, Avalonia.Interactivity.RoutedEventArgs args) => FrameNodes(true);
+    private void OnGraphZoomChanged(object? sender, Avalonia.Controls.Primitives.RangeBaseValueChangedEventArgs args)
+    {
+        if (_syncingZoom || Viewport is null) return;
+        var center = new Point(Viewport.Bounds.Width / 2, Viewport.Bounds.Height / 2);
+        var world = Viewport.ViewportToWorld(center);
+        Viewport.SetViewport(args.NewValue, center.X - world.X * args.NewValue, center.Y - world.Y * args.NewValue);
+    }
+    private void OnGraphSearchChanged(object? sender, TextChangedEventArgs args)
+    {
+        if (GraphSearchResults is null) return;
+        var query = GraphSearch.Text ?? "";
+        GraphSearchResults.IsVisible = !string.IsNullOrWhiteSpace(query);
+        GraphSearchResults.ItemsSource = Workspace?.Nodes.Where(node => node.Name.Contains(query, StringComparison.OrdinalIgnoreCase) || node.Id.Contains(query, StringComparison.OrdinalIgnoreCase)).Take(30).ToArray();
+    }
+    private void OnGraphSearchSelected(object? sender, SelectionChangedEventArgs args)
+    {
+        if (GraphSearchResults.SelectedItem is not GalNet.Editor.Models.Graph.GraphNode node || Workspace is null) return;
+        Workspace.SelectNode(node); FrameNodes(true); GraphSearchResults.IsVisible = false;
+    }
     private GraphNode? _draggedNode;
     private IPointer? _dragPointer;
     private EditorWorkspaceViewModel? _dragWorkspace;
@@ -37,7 +61,12 @@ public partial class NodeGraphPanelView : UserControl
         AttachedToVisualTree += (_, _) => ApplyViewportState();
         DetachedFromVisualTree += (_, _) => CancelInteraction();
         PointerCaptureLost += (_, _) => CancelInteraction();
-        Viewport.ViewChanged += (_, _) => SaveViewportState();
+        Viewport.ViewChanged += (_, _) =>
+        {
+            SaveViewportState(); _syncingZoom = true;
+            GraphZoom.Value = Viewport.Zoom; GraphZoomLabel.Text = Viewport.Zoom.ToString("P0");
+            _syncingZoom = false;
+        };
         Viewport.SizeChanged += (_, _) => ApplyViewportState();
     }
 
@@ -45,6 +74,24 @@ public partial class NodeGraphPanelView : UserControl
 
     private async void OnKeyDown(object? sender, KeyEventArgs e)
     {
+        if (e.Handled || e.Source is Visual source && source.GetSelfAndVisualAncestors().Any(item => item is TextBox)) return;
+        if (_draggedNode is not null || _pendingConnector is not null || _isSelecting)
+        {
+            if (e.Key == Key.Escape) { CancelInteraction(); e.Handled = true; }
+            return;
+        }
+        if (e.KeyModifiers == KeyModifiers.Control && e.Key is Key.C or Key.V or Key.A)
+        {
+            e.Handled = true;
+            if (e.Key == Key.C) await CopySelectionAsync();
+            else if (e.Key == Key.V) await PasteSelectionAsync();
+            else if (Workspace is { } workspace) workspace.SelectNodes(workspace.Nodes);
+            return;
+        }
+        if (e.KeyModifiers == KeyModifiers.None && e.Key is Key.F or Key.Home)
+        {
+            FrameNodes(e.Key == Key.F); e.Handled = true; return;
+        }
         if (e.Key == Key.Escape) { CancelInteraction(); e.Handled = true; return; }
         if (e.Key != Key.Space)
         {
@@ -206,6 +253,11 @@ public partial class NodeGraphPanelView : UserControl
         if (Workspace is null || Workspace.UndoRedoHistory.IsBusy)
             return;
 
+        Focus();
+        if (e.OriginalEventArgs.KeyModifiers.HasFlag(KeyModifiers.Control) || e.OriginalEventArgs.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            Workspace.SelectNode(e.Node, additive: true); e.OriginalEventArgs.Handled = true; return;
+        }
         var wasSelected = e.Node.IsSelected;
         if (!wasSelected)
             Workspace.SelectNode(e.Node);
@@ -321,7 +373,7 @@ public partial class NodeGraphPanelView : UserControl
 
         if (e.Node.IsSelected && Workspace.SelectedNodes.Count > 1)
         {
-            ShowSelectionMenu(control);
+            ShowSelectionMenu(control, e.Node);
             e.OriginalEventArgs.Handled = true;
             return;
         }
@@ -329,6 +381,7 @@ public partial class NodeGraphPanelView : UserControl
         Workspace.SelectNode(e.Node);
 
         var menu = new MenuFlyout();
+        AddDebugJump(menu, e.Node);
         var deleteItem = new MenuItem
         {
             Header = Workspace.Localize(e.Node.CanDelete ? "Graph.Menu.Delete" : "Graph.Menu.CannotDeleteEntry"),
@@ -336,6 +389,7 @@ public partial class NodeGraphPanelView : UserControl
         };
         deleteItem.Click += async (_, _) => await RunGraphAction(async workspace => await workspace.DeleteNodeAsync(e.Node));
         menu.Items.Add(deleteItem);
+        AddGraphActions(menu);
         menu.Placement = PlacementMode.Pointer;
         menu.ShowAt(control, true);
         e.OriginalEventArgs.Handled = true;
@@ -366,19 +420,33 @@ public partial class NodeGraphPanelView : UserControl
         var deleteItem = new MenuItem { Header = Workspace?.Localize("Graph.Menu.Delete") ?? "Delete" };
         deleteItem.Click += (_, _) => RunGraphAction(workspace => workspace.DeleteEdge(edge));
         menu.Items.Add(deleteItem);
+        AddGraphActions(menu);
         menu.Placement = PlacementMode.Pointer;
         menu.ShowAt(control, true);
         e.Handled = true;
     }
 
-    private void ShowSelectionMenu(Avalonia.Controls.Control? target = null)
+    private void ShowSelectionMenu(Avalonia.Controls.Control? target = null, GraphNode? debugTarget = null)
     {
         var menu = new MenuFlyout();
+        if (debugTarget is not null) AddDebugJump(menu, debugTarget);
         var deleteItem = new MenuItem { Header = Workspace?.Localize("Graph.Menu.Delete") ?? "Delete" };
         deleteItem.Click += async (_, _) => await RunGraphAction(async workspace => await workspace.DeleteSelectionAsync());
         menu.Items.Add(deleteItem);
+        AddGraphActions(menu);
         menu.Placement = PlacementMode.Pointer;
         menu.ShowAt(target ?? Viewport, true);
+    }
+
+    private void AddDebugJump(MenuFlyout menu, GraphNode node)
+    {
+        if (node.NodeKind != GraphNodeKind.LinearGroup || Workspace?.ExternalDebug is not { } debug) return;
+        var jump = new MenuItem { Header = Workspace.Localize("Debug.Jump"), IsEnabled = debug.CanLocate };
+        jump.Click += async (_, _) => await debug.SeekAsync(node.Id);
+        menu.Items.Add(jump);
+        var isolated = new MenuItem { Header = Workspace.Localize("Debug.IsolatedStart"), IsEnabled = debug.CanLocate };
+        isolated.Click += async (_, _) => await debug.SeekAsync(node.Id, initialScene: true);
+        menu.Items.Add(isolated);
     }
 
     private void OnConnectorPointerPressed(object? sender, GraphConnectorPointerPressedEventArgs e)
@@ -480,6 +548,7 @@ public partial class NodeGraphPanelView : UserControl
     private void ShowCreateNodeMenu(Point position, GraphConnector? connectFrom)
     {
         var menu = new MenuFlyout();
+        AddGraphActions(menu);
         AddCreateNodeMenuItem(menu, Workspace?.Localize("Graph.Menu.CreateLinearGroup") ?? "Linear Group", GraphNodeKind.LinearGroup, position, connectFrom);
         AddCreateNodeMenuItem(menu, Workspace?.Localize("Graph.Menu.CreateChoiceBranch") ?? "Choice Branch", GraphNodeKind.ChoiceBranch, position, connectFrom);
         AddCreateNodeMenuItem(menu, Workspace?.Localize("Graph.Menu.CreateConditionBranch") ?? "Condition Branch", GraphNodeKind.ConditionBranch, position, connectFrom);
@@ -506,6 +575,53 @@ public partial class NodeGraphPanelView : UserControl
         menu.Items.Add(item);
     }
 
+    public async Task CopySelectionAsync()
+    {
+        await RunGraphAction(async workspace =>
+        {
+            var text = workspace.CopySelection();
+            if (text.Length == 0) return;
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard ?? throw new GalNet.Editor.Abstraction.Services.EditorOperationException("graph.clipboardUnavailable", "Clipboard is unavailable.");
+            await clipboard.SetTextAsync(text);
+        });
+    }
+
+    public async Task PasteSelectionAsync()
+    {
+        await RunGraphAction(async workspace =>
+        {
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard ?? throw new GalNet.Editor.Abstraction.Services.EditorOperationException("graph.clipboardUnavailable", "Clipboard is unavailable.");
+            var text = await clipboard.TryGetTextAsync();
+            var position = ViewportToWorld(_isPointerInsideGraph ? _lastViewportPointerPosition : new Point(Viewport.Bounds.Width / 2, Viewport.Bounds.Height / 2));
+            await workspace.PasteAsync(text ?? "", Math.Clamp(position.X, 0, GraphCanvas.Width - 200), Math.Clamp(position.Y, 0, GraphCanvas.Height - 100));
+        });
+    }
+
+    public void FrameNodes(bool selectionOnly)
+    {
+        if (Workspace is not { } workspace) return;
+        var nodes = (selectionOnly && workspace.SelectedNodes.Count > 0 ? workspace.SelectedNodes : workspace.Nodes).ToArray();
+        if (nodes.Length == 0) return;
+        var left = nodes.Min(node => node.X); var top = nodes.Min(node => node.Y);
+        var right = nodes.Max(node => node.X + GraphLayoutMetrics.NodeWidth); var bottom = nodes.Max(node => node.Y + node.LayoutHeight);
+        var zoom = Math.Clamp(Math.Min((Viewport.Bounds.Width - 80) / Math.Max(1, right - left), (Viewport.Bounds.Height - 80) / Math.Max(1, bottom - top)), Viewport.MinZoom, Math.Min(1.5, Viewport.MaxZoom));
+        Viewport.SetViewport(zoom, Viewport.OffsetX, Viewport.OffsetY);
+        Viewport.CenterOn(new Point((left + right) / 2, (top + bottom) / 2));
+    }
+
+    private void AddGraphActions(MenuFlyout menu)
+    {
+        void Add(string key, string gesture, Func<Task> action, bool enabled = true)
+        {
+            var item = new MenuItem { Header = Workspace?.Localize(key), InputGesture = KeyGesture.Parse(gesture), IsEnabled = enabled };
+            item.Click += async (_, _) => await action(); menu.Items.Add(item);
+        }
+        Add("Graph.Menu.Copy", "Ctrl+C", CopySelectionAsync, Workspace?.SelectedNodes.Any(node => node.CanDelete) == true);
+        Add("Graph.Menu.Paste", "Ctrl+V", PasteSelectionAsync);
+        Add("Graph.Menu.SelectAll", "Ctrl+A", () => { if (Workspace is { } workspace) workspace.SelectNodes(workspace.Nodes); return Task.CompletedTask; });
+        Add("Graph.Menu.FrameSelection", "F", () => { FrameNodes(true); return Task.CompletedTask; });
+        Add("Graph.Menu.FrameAll", "Home", () => { FrameNodes(false); return Task.CompletedTask; });
+    }
     private Point ViewportToWorld(Point viewportPoint) => Viewport.ViewportToWorld(viewportPoint);
 
     private void ApplyViewportState()

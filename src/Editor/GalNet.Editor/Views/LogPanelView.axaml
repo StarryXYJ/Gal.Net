@@ -34,6 +34,7 @@
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="s:LogLine">
                     <TextBlock Text="{Binding DisplayText}"
+                               DoubleTapped="OnLogDoubleTapped"
                                FontFamily="Consolas"
                                FontSize="12"
                                Foreground="{DynamicResource SemiColorText2}" />

@@ -394,6 +394,12 @@
       "galnet.core": {
         "type": "Project"
       },
+      "galnet.debugging": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Runtime": "[1.0.0, )"
+        }
+      },
       "galnet.gamehost": {
         "type": "Project",
         "dependencies": {

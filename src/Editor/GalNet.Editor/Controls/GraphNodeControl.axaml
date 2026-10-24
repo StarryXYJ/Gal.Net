@@ -8,6 +8,7 @@
     <Border Name="NodeChrome"
             Classes.selected="{Binding IsSelected}"
             Classes.entry="{Binding IsEntryNode}"
+            Classes.debugCurrent="{Binding IsDebugCurrent}"
             Width="188"
             MinHeight="96"
             CornerRadius="6"
@@ -109,6 +110,10 @@
         </Style>
         <Style Selector="UserControl:focus-within Border#NodeChrome">
             <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" />
+        </Style>
+        <Style Selector="Border#NodeChrome.debugCurrent">
+            <Setter Property="BorderBrush" Value="{DynamicResource SemiColorSuccess}" />
+            <Setter Property="BorderThickness" Value="3" />
         </Style>
     </UserControl.Styles>
 </UserControl>

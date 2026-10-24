@@ -7,6 +7,7 @@ using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Extensibility;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Commands;
+using GalNet.Editor.Controls;
 using GalNet.Editor.Dock;
 using GalNet.Editor.History;
 using GalNet.Editor.Inspector.ViewModels;
@@ -17,6 +18,7 @@ using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
 using GalNet.Editor.ViewModels;
 using GalNet.Editor.Views;
+using GalNet.Game.Controls.Forms;
 using GalNet.Primitives.Builtins;
 using GalNet.Runtime.Content;
 using GalNet.Runtime.Variables;
@@ -29,6 +31,8 @@ public static class EditorServiceCollectionExtensions
     public static IServiceCollection AddEditorServices(this IServiceCollection services)
     {
         services.AddScoped<ProjectSchemaSession>();
+        services.AddScoped<ExternalGameDebugClient>();
+        services.AddScoped<ExternalDebugPanelViewModel>();
         services.AddScoped<IEntryCatalog>(sp => sp.GetRequiredService<ProjectSchemaSession>().Catalog);
         services.AddEditorCoreServices();
         services.AddEditorCommands();
@@ -55,19 +59,55 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<IGameExitService, EditorGameExitService>();
         services.AddScoped<IEditorPlayerVariableStore, EditorPlayerVariableStore>();
         services.AddScoped<GraphAuthoringService>();
+        services.AddScoped<GroupEntryAuthoringService>();
+        services.AddScoped<EntryFieldAuthoringService>();
+        services.AddScoped<EntrySelectionContext>();
+        services.AddScoped<EntryEditSession>();
+        services.AddScoped<AuthorNavigationService>();
+        services.AddScoped<ProblemsPanelViewModel>();
+        services.AddScoped<TimelineEditSession>();
+        services.AddScoped<ProjectSceneTargets>();
+        services.AddScoped<ProjectLocalizationQuery>();
+        services.AddScoped<LocalizationDocumentStore>();
+        services.AddScoped<LocalizationAuthoringService>();
+        services.AddScoped<GameTextAuthoringService>();
+        services.AddScoped<GameLocalizationPanelService>();
+        services.AddScoped<LocalizationExchangeService>();
+        services.AddScoped<GameLocalizationPanelViewModel>();
+        services.AddScoped<CharacterAuthoringService>();
+        services.AddTransient<CharactersPanelViewModel>();
+        services.AddScoped<SceneTargetCatalog>();
+        services.AddTransient<TimelinePanelViewModel>();
+        services.AddScoped<VariableAuthoringService>();
+        services.AddTransient<VariablesPanelViewModel>();
+        services.AddScoped<EditorRegistry>(sp =>
+        {
+            var registry = EditorFieldEditors.CreateDefault(sp.GetRequiredService<SceneTargetCatalog>(), context =>
+            {
+                if (context.IsEnabled && context.HostContext is Models.Graph.IEntryFieldOrigin { GroupId: { } groupId } origin)
+                    sp.GetRequiredService<EditorDockFactory>().OpenTimeline(groupId, origin.EntryId);
+            }, sp.GetRequiredService<IAssetManager>(), sp.GetRequiredService<CharacterAuthoringService>(), sp.GetRequiredService<GameTextAuthoringService>());
+            registry.Replace("entry.expression", context => AuthoringExpressionFieldEditors.Expression(context,
+                () => sp.GetRequiredService<EditorWorkspaceViewModel>().GetConditionVariableSuggestions(),
+                () => sp.GetRequiredService<EditorWorkspaceViewModel>().AllProjectVariableDefinitions));
+            registry.Replace("entry.variablename", context => AuthoringExpressionFieldEditors.Variable(context,
+                () => sp.GetRequiredService<EditorWorkspaceViewModel>().AllProjectVariableDefinitions.Select(variable => variable.Name).ToArray()));
+            return registry;
+        });
         services.AddScoped<IGraphEditingService, GraphEditingService>();
         services.AddScoped<GraphSelectionState>();
         services.AddScoped<EditorWorkspacePersistence>();
         services.AddScoped<EditorGroupProjectionStore>();
         services.AddSingleton<IProjectFileCommandCatalog, AssetFileCommandCatalog>();
-        services.AddScoped<IProjectFileCommandExecutor, AssetFileCommandExecutor>();
+        services.AddScoped<ProjectFileAuthoringService>();
+        services.AddScoped<IProjectFileCommandExecutor>(provider => provider.GetRequiredService<ProjectFileAuthoringService>());
         services.AddScoped<EditorHistories>();
         services.AddScoped<IProjectEditLifetime>(sp => sp.GetRequiredService<EditorHistories>());
         services.AddSingleton<IProjectClosePrompt, ProjectClosePrompt>();
         services.AddScoped<IProjectContentSession, ProjectContentSession>();
         services.AddSingleton(new ProjectSessionOptions());
         services.AddScoped<UndoRedoRouter>();
-        services.AddScoped<IEditorDocumentRepository, EditorDocumentRepository>();
+        services.AddScoped<IEditorDocumentRepository>(provider => new EditorDocumentRepository(provider.GetRequiredService<IEntryCatalog>(), EditorDocumentValidation.Authoring));
         services.AddScoped<IEditorDocumentService, EditorDocumentService>();
         services.AddScoped<IEditorSaveCoordinator, EditorSaveCoordinator>();
         services.AddScoped<IProjectSaveScheduler, ProjectSaveScheduler>();
@@ -132,6 +172,8 @@ public static class EditorServiceCollectionExtensions
         services.AddTransient<EditorPageView>();
         services.AddTransient<MainWindow>();
         services.AddTransient<AssetPanelView>();
+        services.AddTransient<TimelinePanelView>();
+        services.AddTransient<ExternalDebugPanelView>();
         services.AddTransient<InspectorHostView>();
         services.AddTransient<NodeInspectorControl>();
         services.AddTransient<PreviewVariablesInspectorControl>();
@@ -155,6 +197,8 @@ public static class EditorServiceCollectionExtensions
         services.AddTransient<NewProjectPanelViewModel>();
         services.AddTransient<LogPanelViewModel>();
         services.AddScoped<AssetPanelViewModel>();
+        services.AddScoped<ProjectFilesIndex>();
+        services.AddScoped<ProjectTextFiles>();
         services.AddTransient<ProjectSettingsPanelViewModel>();
         services.AddTransient<EditorSettingsPanelViewModel>();
         services.AddTransient<ExportPanelViewModel>();

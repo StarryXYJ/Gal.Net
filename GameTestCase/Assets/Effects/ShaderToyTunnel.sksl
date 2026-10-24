@@ -1,0 +1,165 @@
+/*
+@gal.effect v=1
+@input source
+@targets scenePost
+
+@param time
+  uniform: iTime
+  type: float
+  default: 0
+  range: 0..100000
+  animatable: true
+
+@param mixAmount
+  uniform: mixAmount
+  type: float
+  default: 1
+  range: 0..1
+  animatable: false
+*/
+uniform shader source;
+uniform float2 size;
+uniform float mixAmount;
+uniform float iTime;
+
+// The tunnel keeps the supplied shader's three defining cues: a wandering
+// centerline, a rough, ribbed inner shell, and colored vapor in the depth.
+const int MARCH_STEPS = 56;
+const float FAR_DISTANCE = 42.0;
+
+float hash12(float2 p) {
+    p = fract(p * float2(123.34, 345.45));
+    p += dot(p, p + 34.345);
+    return fract(p.x * p.y);
+}
+
+float noise2(float2 p) {
+    float2 cell = floor(p);
+    float2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = hash12(cell);
+    float b = hash12(cell + float2(1.0, 0.0));
+    float c = hash12(cell + float2(0.0, 1.0));
+    float d = hash12(cell + float2(1.0, 1.0));
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+float fbm2(float2 p) {
+    float sum = 0.0;
+    sum += 0.56 * noise2(p);
+    sum += 0.29 * noise2(p * 2.03 + float2(17.0, 9.0));
+    sum += 0.15 * noise2(p * 4.07 + float2(5.0, 31.0));
+    return sum;
+}
+
+float2 tunnelCenter(float z) {
+    float t = iTime;
+    return float2(
+        0.34 * sin(z * 0.15 + t * 0.22) + 0.15 * sin(z * 0.39 - t * 0.31),
+        0.27 * cos(z * 0.12 - t * 0.18) + 0.10 * sin(z * 0.31 + t * 0.27)
+    );
+}
+
+float tunnelRadius(float z, float angle) {
+    float t = iTime;
+    float longWave = sin(z * 0.78 + t * 0.66 + sin(z * 0.18) * 0.8);
+    float spiral = sin(angle * 3.0 + z * 1.48 - t * 0.74);
+    float corrugation = sin(angle * 7.0 - z * 0.58 + t * 0.34);
+    float rib = pow(max(0.0, 0.5 + 0.5 * cos(z * 5.8 + angle * 2.0 - t * 0.95)), 8.0);
+    return 1.86 + 0.17 * longWave + 0.10 * spiral + 0.055 * corrugation + 0.13 * rib;
+}
+
+float wallDistance(float3 p) {
+    float2 radial = p.xy - tunnelCenter(p.z);
+    float angle = atan(radial.y, radial.x);
+    return abs(length(radial) - tunnelRadius(p.z, angle));
+}
+
+float3 toneMap(float3 radiance) {
+    float3 positive = max(radiance, float3(0.0));
+    float3 mapped = positive / (float3(1.0) + positive);
+    return pow(mapped, float3(0.88));
+}
+
+half4 shadertoyMain(float2 fragCoord) {
+    float2 uv = (fragCoord - 0.5 * size) / size.y;
+    uv.y = -uv.y;
+
+    float3 rayOrigin = float3(0.0, 0.0, -2.6);
+    float3 rayDirection = normalize(float3(uv * 1.12, 1.35));
+    float travel = 0.0;
+    float3 hit = rayOrigin;
+    bool hasHit = false;
+
+    for (int step = 0; step < MARCH_STEPS; step++) {
+        float3 position = rayOrigin + rayDirection * travel;
+        float distanceToWall = wallDistance(position);
+        if (distanceToWall < 0.009) {
+            hit = position;
+            hasHit = true;
+            break;
+        }
+        travel += max(distanceToWall * 0.68, 0.012);
+        if (travel > FAR_DISTANCE) break;
+    }
+
+    float portalDistance = length(uv * float2(1.0, 0.72));
+    float portalRing = exp(-abs(portalDistance - (0.18 + 0.025 * sin(iTime * 0.7))) * 25.0);
+    float portalGlow = exp(-portalDistance * 3.2);
+    float3 fogColor = float3(0.008, 0.018, 0.036)
+        + portalGlow * float3(0.055, 0.018, 0.072)
+        + portalRing * float3(0.035, 0.11, 0.14);
+
+    if (!hasHit) {
+        float stars = pow(max(0.0, noise2(uv * 95.0 + iTime * 0.025) - 0.79), 8.0);
+        return half4(toneMap(fogColor + stars * float3(0.55, 0.24, 0.18)), 1.0);
+    }
+
+    float2 radial = normalize(hit.xy - tunnelCenter(hit.z));
+    float angle = atan(radial.y, radial.x);
+    float2 surfaceUv = float2(
+        hit.x * 1.55 + hit.z * 0.42 + sin(hit.z * 0.19) * 0.35,
+        hit.y * 1.55 + hit.z * 0.62 + iTime * 0.035
+    );
+
+    float mottling = fbm2(surfaceUv);
+    float fineGrain = noise2(surfaceUv * 5.3 + float2(7.0, -iTime * 0.11));
+    float patina = smoothstep(0.48, 0.73, 0.68 * mottling + 0.32 * fineGrain);
+
+    float3 deepMaterial = float3(0.105, 0.018, 0.045);
+    float3 warmMaterial = float3(0.72, 0.19, 0.115);
+    float3 baseColor = mix(deepMaterial, warmMaterial, smoothstep(0.27, 0.76, mottling));
+    baseColor = mix(baseColor, float3(0.045, 0.33, 0.35), patina * 0.64);
+
+    float ribPhase = cos(hit.z * 5.8 + angle * 2.0 - iTime * 0.95);
+    float raisedRibs = pow(max(0.0, ribPhase), 10.0);
+    float recessedGrooves = pow(max(0.0, -ribPhase), 5.0);
+    float3 surfaceNormal = normalize(float3(radial, -0.18 * sin(hit.z * 0.78 + angle + iTime * 0.2)));
+    float3 lightDirection = normalize(float3(-0.54, 0.68, -0.48));
+    float diffuse = 0.28 + 0.72 * max(dot(surfaceNormal, lightDirection), 0.0);
+    float grazing = pow(1.0 - abs(dot(surfaceNormal, rayDirection)), 2.0);
+    float lighting = diffuse + 0.27 * grazing;
+
+    float3 surfaceColor = baseColor * lighting;
+    surfaceColor += raisedRibs * float3(0.55, 0.19, 0.12);
+    surfaceColor *= 1.0 - 0.26 * recessedGrooves;
+    surfaceColor += pow(max(0.0, fineGrain - 0.72), 3.0) * float3(0.7, 0.31, 0.16);
+
+    float fog = exp(-travel * 0.055);
+    float3 radiance = mix(fogColor, surfaceColor, fog);
+
+    // Cheap animated vapor keeps the source shader's blue-green steam without
+    // sampling a full volume at every ray-march step.
+    float vaporField = fbm2(float2(uv.x * 5.0 + iTime * 0.09, uv.y * 7.0 + travel * 0.12));
+    float vapor = smoothstep(0.47, 0.78, vaporField) * exp(-travel * 0.026);
+    radiance += vapor * float3(0.025, 0.17, 0.20);
+
+    float vignette = clamp(1.08 - 0.32 * length(uv), 0.48, 1.0);
+    return half4(toneMap(radiance * vignette), 1.0);
+}
+
+half4 main(float2 fragCoord) {
+    float3 scene = float3(source.eval(fragCoord).rgb);
+    float3 generated = float3(shadertoyMain(fragCoord).rgb);
+    return half4(mix(scene, generated, clamp(mixAmount, 0.0, 1.0)), 1.0);
+}

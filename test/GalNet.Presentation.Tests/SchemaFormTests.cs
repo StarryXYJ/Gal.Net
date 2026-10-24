@@ -171,10 +171,11 @@ public class SchemaFormTests
             var binding = new Binding();
             var form = Form(new("value", new(type), editor: new(id)), binding);
             var window = Mount(form);
-            Assert.That(form.Editors, Is.Empty);
-            Assert.That(form.Diagnostics.Single().Code, Is.EqualTo("editor.create"));
-            Assert.That(binding.Subscribers, Is.Zero);
+            Assert.That(form.Editors.Single().IsJsonFallback, Is.True);
+            Assert.That(form.Diagnostics.Single().Code, Is.EqualTo("editor.fallback"));
+            Assert.That(binding.Subscribers, Is.EqualTo(1));
             window.Close();
+            Assert.That(binding.Subscribers, Is.Zero);
         }, CancellationToken.None);
     }
 
@@ -410,10 +411,11 @@ public class SchemaFormTests
             var binding = new Binding("0");
             var form = Form(new("value", new(type, constraints: Json(constraints)), editor: new(ValueEditorIds.Slider)), binding);
             var window = Mount(form);
-            Assert.That(form.Editors, Is.Empty);
-            Assert.That(form.Diagnostics.Single().Code, Is.EqualTo("editor.create"));
-            Assert.That(binding.Subscribers, Is.Zero);
+            Assert.That(form.Editors.Single().IsJsonFallback, Is.True);
+            Assert.That(form.Diagnostics.Single().Code, Is.EqualTo("editor.fallback"));
+            Assert.That(binding.Subscribers, Is.EqualTo(1));
             window.Close();
+            Assert.That(binding.Subscribers, Is.Zero);
         }, CancellationToken.None);
     }
 
