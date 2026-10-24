@@ -12,6 +12,7 @@
 `spec/` 描述已实现的模块契约和当前限制。新增或修改功能后，应更新其唯一对应页面，而不是另建设计或 ADR 文档。
 
 - [架构与程序集边界](spec/architecture.md)
+- [CPU 性能事件](spec/cpu-benchmark.md)
 - [运行时与存档](spec/runtime.md)
 - [条目类型与项目契约](spec/entry-types.md)
 - [资源管理](spec/assets.md)
@@ -33,3 +34,4 @@
 - [编辑游戏文本与翻译](manual/game-localization.md)：开发语言创作、多语言表格、语言顺序和草稿处理。
 - [创建图片差分图集](manual/image-variants.md)：目录导入、配置与差分预览、剧情初始选择及维度切换。
 - [使用与扩展 Editor 创作工作区](manual/editor-authoring-workspace.md)：常用字段、Inspector、会话草稿、问题定位与手动布局。
+- [测量 CPU 启动](manual/cpu-benchmark.md)：编译开关、Editor/Sample 自动化基线与方法内埋点。

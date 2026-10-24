@@ -33,6 +33,9 @@ public partial class MainWindow : UrsaWindow
         Loaded += (_, _) =>
         {
             Log.Information("=== GalNet Editor starting ===");
+#if BENCHMARK
+            using var measurement = GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.NavigateStartup");
+#endif
             _navigation.NavigateTo<StartupPageViewModel>();
         };
     }

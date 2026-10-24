@@ -10,6 +10,7 @@ public class ProjectDependencyTests
         new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
             ["GalNet.Core"] = [],
+            ["GalNet.Diagnostics"] = [],
             ["GalNet.Contracts.Builtins"] = ["GalNet.Core", "GalNet.SchemaGenerator"],
             ["GalNet.Sample.Contracts"] = ["GalNet.Core", "GalNet.Contracts.Builtins", "GalNet.SchemaGenerator"],
             ["GalNet.SchemaGenerator"] = [],
@@ -47,6 +48,7 @@ public class ProjectDependencyTests
         new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
             ["GalNet.Architecture.Tests"] = [],
+            ["GalNet.Diagnostics.Tests"] = ["GalNet.Diagnostics"],
             ["GalNet.Debugging.Tests"] = ["GalNet.Debugging"],
             ["GalNet.GameHost.Tests"] = ["GalNet.GameHost"],
             ["GalNet.Core.Tests"] = ["GalNet.Core"],

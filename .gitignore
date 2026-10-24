@@ -461,6 +461,7 @@ riderModule.iml
 !.vscode/extensions.json
 
 # Project-specific
+/artifacts/benchmarks/
 /output/
 dev/*
 .galnet/

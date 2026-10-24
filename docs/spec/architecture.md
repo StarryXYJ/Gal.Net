@@ -6,6 +6,7 @@
 
 ```text
 Core ───────────────────── 领域模型、资源/Gallery registry、服务契约
+Diagnostics ────────────── 可选 Benchmark 构建的 CPU 事件与启动捕获，独立于领域层
 Contracts.Builtins ──────── 仅依赖 Core 的内置 schema、参数和 Composite
 Presentation.Abstractions ─ IGameView、presenter 与平台无关应用契约
 GameHost ───────────────── 游戏会话、运行生命周期、玩家持久化与偏好规则
@@ -54,7 +55,7 @@ flowchart TB
 
 ```text
 src/
-  Shared/          Core、Contracts.Builtins、Runtime、Assets、Presentation.Abstractions、Primitives.Builtins、GameHost
+  Shared/          Core、Contracts.Builtins、Runtime、Assets、Presentation.Abstractions、Primitives.Builtins、GameHost、Diagnostics
   Presentation/    Avalonia.Controls、Avalonia.Rendering、Avalonia.GameView、Avalonia.Themes、Avalonia.GameHost
   Infrastructure/  Storage.FileSystem、Media.LibVlc
   Editor/          Editor.Abstraction、Editor.Shared、Editor、Editor.Headless

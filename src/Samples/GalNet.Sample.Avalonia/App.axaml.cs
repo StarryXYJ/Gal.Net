@@ -20,17 +20,29 @@ public partial class App : Application
 
     public override void Initialize()
     {
+#if BENCHMARK
+        using var measurement = GalNet.Diagnostics.CpuProfiler.Shared.Measure("Sample.Xaml");
+#endif
         AvaloniaXamlLoader.Load(this);
     }
 
     public override void OnFrameworkInitializationCompleted()
     {
+#if BENCHMARK
+        using var frameworkMeasurement = GalNet.Diagnostics.CpuProfiler.Shared.Measure("Sample.FrameworkInitialization");
+#endif
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var services = new ServiceCollection();
-            SampleCustomization.ConfigureServices(services);
+#if BENCHMARK
+            using (GalNet.Diagnostics.CpuProfiler.Shared.Measure("Sample.RegisterServices"))
+#endif
+                SampleCustomization.ConfigureServices(services);
 
-            _rootServices = services.BuildServiceProvider();
+#if BENCHMARK
+            using (GalNet.Diagnostics.CpuProfiler.Shared.Measure("Sample.BuildServiceProvider"))
+#endif
+                _rootServices = services.BuildServiceProvider();
             _gameScope = _rootServices.CreateAsyncScope();
             var scopedServices = _gameScope.Value.ServiceProvider;
             var localization = scopedServices.GetRequiredService<SampleLocalizationService>();
@@ -38,28 +50,48 @@ public partial class App : Application
 
             scopedServices.GetRequiredService<IGameNavigationService>().ResetTo<TitlePageViewModel>(NavigationTransition.None);
 
-            var mainWindow = scopedServices.GetRequiredService<MainWindow>();
+            MainWindow mainWindow;
+#if BENCHMARK
+            using (GalNet.Diagnostics.CpuProfiler.Shared.Measure("Sample.CreateMainWindow"))
+#endif
+                mainWindow = scopedServices.GetRequiredService<MainWindow>();
             desktop.MainWindow = mainWindow;
             var startupCancellation = new CancellationTokenSource();
             mainWindow.Opened += async (_, _) =>
             {
                 try
                 {
+#if BENCHMARK
+                    using var startupMeasurement = GalNet.Diagnostics.CpuProfiler.Shared.Measure("Sample.InitializeSession");
+#endif
                     var session = scopedServices.GetRequiredService<SampleGameSessionService>();
                     var ready = await session.InitializeAsync(LaunchOptions, mainWindow.SelectLanguageAsync, startupCancellation.Token);
                     if (ready && LaunchOptions.DebugInvitation is { } invitation)
                         await scopedServices.GetRequiredService<Debug.SampleExternalDebug>().ConnectAsync(invitation, startupCancellation.Token);
                     if (!startupCancellation.IsCancellationRequested)
                         mainWindow.CompleteStartup(ready ? null : session.StatusMessage);
+#if BENCHMARK
+                    startupMeasurement.Dispose();
+                    global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                    {
+                        if (GalNet.Diagnostics.StartupBenchmark.Complete(ready)) mainWindow.Close();
+                    }, global::Avalonia.Threading.DispatcherPriority.Background);
+#endif
                 }
                 catch (OperationCanceledException)
                 {
+#if BENCHMARK
+                    GalNet.Diagnostics.StartupBenchmark.Complete(false);
+#endif
                     if (!startupCancellation.IsCancellationRequested) mainWindow.Close();
                 }
                 catch (Exception error)
                 {
                     GameLog.Logger.Error(error, "Startup flow failed");
                     if (!startupCancellation.IsCancellationRequested) mainWindow.CompleteStartup(error.Message);
+#if BENCHMARK
+                    if (GalNet.Diagnostics.StartupBenchmark.Complete(false)) mainWindow.Close();
+#endif
                 }
             };
             var closingInProgress = false;

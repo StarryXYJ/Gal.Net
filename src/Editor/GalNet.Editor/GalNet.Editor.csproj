@@ -6,6 +6,7 @@
         <Nullable>enable</Nullable>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+        <DefaultContractsOutputRoot Condition="'$(Benchmark)' == 'true'">benchmark/</DefaultContractsOutputRoot>
     </PropertyGroup>
 
     <ItemGroup>
@@ -47,7 +48,7 @@
     <ItemGroup>
       <EmbeddedResource Include="Localization\*.json" />
       <ProjectReference Include="..\GalNet.Editor.DefaultContracts\GalNet.Editor.DefaultContracts.csproj" ReferenceOutputAssembly="false" GlobalPropertiesToRemove="OutputPath;OutDir" />
-      <Content Include="..\GalNet.Editor.DefaultContracts\bin\$(Configuration)\net10.0\GalNet.Project.Contracts.dll"
+      <Content Include="..\GalNet.Editor.DefaultContracts\bin\$(DefaultContractsOutputRoot)$(Configuration)\net10.0\GalNet.Project.Contracts.dll"
                Link="DefaultContracts\GalNet.Project.Contracts.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     </ItemGroup>
 
@@ -93,4 +94,7 @@
         <DependentUpon>InspectorHostView.axaml</DependentUpon>
       </Compile>
     </ItemGroup>
+  <ItemGroup Condition="'$(Benchmark)' == 'true'">
+    <ProjectReference Include="../../Shared/GalNet.Diagnostics/GalNet.Diagnostics.csproj" />
+  </ItemGroup>
 </Project>

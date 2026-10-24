@@ -16,6 +16,9 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+#if BENCHMARK
+        GalNet.Diagnostics.StartupBenchmark.Start();
+#endif
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
             .WriteTo.Console(
@@ -36,10 +39,16 @@ sealed class Program
         catch (Exception ex)
         {
             Log.Fatal(ex, "Application terminated unexpectedly");
+#if BENCHMARK
+            GalNet.Diagnostics.StartupBenchmark.Complete(false);
+#endif
         }
         finally
         {
             Log.CloseAndFlush();
+#if BENCHMARK
+            if (GalNet.Diagnostics.StartupBenchmark.Failed) Environment.ExitCode = 1;
+#endif
         }
     }
 

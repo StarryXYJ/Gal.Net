@@ -12,6 +12,9 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+#if BENCHMARK
+        GalNet.Diagnostics.StartupBenchmark.Start();
+#endif
         try
         {
             var launchOptions = GameLaunchOptions.Parse(args);
@@ -49,10 +52,16 @@ sealed class Program
             {
                 GameLog.Logger.Information("Avalonia sample stopped");
                 Log.CloseAndFlush();
+#if BENCHMARK
+                if (GalNet.Diagnostics.StartupBenchmark.Failed) Environment.ExitCode = 1;
+#endif
             }
         }
         catch (Exception exception)
         {
+#if BENCHMARK
+            GalNet.Diagnostics.StartupBenchmark.Complete(false);
+#endif
             Console.Error.WriteLine(exception);
             Environment.ExitCode = 1;
         }

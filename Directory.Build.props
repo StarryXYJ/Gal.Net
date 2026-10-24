@@ -9,5 +9,16 @@
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <DefineConstants Condition="'$(Benchmark)' == 'true'">$(DefineConstants);BENCHMARK</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Benchmark)' == 'true'">
+    <!-- Keep restore graphs and binaries separate from ordinary builds. -->
+    <BaseIntermediateOutputPath>obj/benchmark/</BaseIntermediateOutputPath>
+    <BaseOutputPath>bin/benchmark/</BaseOutputPath>
+    <NuGetLockFilePath>$(MSBuildProjectDirectory)/obj/benchmark/packages.lock.json</NuGetLockFilePath>
+  </PropertyGroup>
+  <PropertyGroup>
+    <!-- Both output trees are generated, regardless of the active build mode. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);$(MSBuildProjectDirectory)/obj/**;$(MSBuildProjectDirectory)/bin/**</DefaultItemExcludes>
   </PropertyGroup>
 </Project>

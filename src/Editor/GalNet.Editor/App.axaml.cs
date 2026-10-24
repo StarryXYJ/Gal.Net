@@ -25,28 +25,52 @@ public partial class App : Application
 
     public override void Initialize()
     {
+#if BENCHMARK
+        using var measurement = GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.Xaml");
+#endif
         AvaloniaXamlLoader.Load(this);
     }
 
     public override void OnFrameworkInitializationCompleted()
     {
+#if BENCHMARK
+        using var frameworkMeasurement = GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.FrameworkInitialization");
+#endif
         var services = new ServiceCollection();
-        services.AddSingleton<IEffectCatalog>(_ => AvaloniaEffectRuntime.CreateDefaultCatalog());
-        services.AddEditorServices();
-
-        ServiceProvider = services.BuildServiceProvider(new ServiceProviderOptions
+#if BENCHMARK
+        using (GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.RegisterServices"))
+#endif
         {
-            ValidateOnBuild = true,
-            ValidateScopes = true
-        });
+            services.AddSingleton<IEffectCatalog>(_ => AvaloniaEffectRuntime.CreateDefaultCatalog());
+            services.AddEditorServices();
+        }
 
-        var editorSettings = ServiceProvider.GetRequiredService<IEditorSettingsService>().GetSettings();
-        ServiceProvider.GetRequiredService<IEditorLocalizationService>().ApplyLocale(editorSettings.UiLocale.Code);
-        ServiceProvider.GetRequiredService<IThemeService>().ApplyThemeByName(editorSettings.Theme);
+        {
+#if BENCHMARK
+            using var measurement = GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.BuildServiceProvider");
+#endif
+            ServiceProvider = services.BuildServiceProvider(new ServiceProviderOptions
+            {
+                ValidateOnBuild = true,
+                ValidateScopes = true
+            });
+        }
+
+        {
+#if BENCHMARK
+            using var measurement = GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.SettingsLocaleTheme");
+#endif
+            var editorSettings = ServiceProvider.GetRequiredService<IEditorSettingsService>().GetSettings();
+            ServiceProvider.GetRequiredService<IEditorLocalizationService>().ApplyLocale(editorSettings.UiLocale.Code);
+            ServiceProvider.GetRequiredService<IThemeService>().ApplyThemeByName(editorSettings.Theme);
+        }
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = ServiceProvider.GetRequiredService<MainWindow>();
+#if BENCHMARK
+            using (GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.CreateMainWindow"))
+#endif
+                desktop.MainWindow = ServiceProvider.GetRequiredService<MainWindow>();
             desktop.Exit += (_, _) =>
             {
                 var navigation = ServiceProvider.GetRequiredService<INavigationService>();
