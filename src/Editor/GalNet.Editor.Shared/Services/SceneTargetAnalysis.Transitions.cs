@@ -25,8 +25,12 @@ public sealed partial class SceneTargetAnalysis
         };
         var expanded = GalgroupCompiler.Compile(source, TransitionCatalog.Value).Document.Entries.Single();
         if (expanded.TypeId != BuiltinEntryIds.PlayTimeline) throw new InvalidDataException("Unsupported transition expansion.");
-        var result = new EditorEntryData { StableId = entry.StableId, Type = expanded.TypeId,
-            Parameters = expanded.Arguments.EnumerateObject().ToDictionary(property => property.Name, property => property.Value.Clone()) };
+        var result = new EditorEntryData
+        {
+            StableId = entry.StableId,
+            Type = expanded.TypeId,
+            Parameters = expanded.Arguments.EnumerateObject().ToDictionary(property => property.Name, property => property.Value.Clone())
+        };
         _transitionTimelines[entry] = result;
         return result;
     }
