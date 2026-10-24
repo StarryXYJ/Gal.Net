@@ -78,7 +78,7 @@ internal sealed class DockInspectorCoordinator
         if (dockable is null || !_panelByDockable.TryGetValue(dockable, out var panel))
             return;
 
-        if (panel.PanelId == EditorDockPanelIds.Inspector)
+        if (panel.PanelId == EditorDockPanelIds.Inspector || panel.Inspector is null)
             return;
 
         _lastInspectableDockable = dockable;
@@ -128,7 +128,7 @@ internal sealed class DockInspectorCoordinator
         if (panelId is null) return;
 
         var dockable = findDockable(panelId);
-        if (dockable is not null)
+        if (dockable is not null && ReferenceEquals(dockable, _lastInspectableDockable))
             UpdateFor(dockable);
     }
 }

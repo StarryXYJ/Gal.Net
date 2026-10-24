@@ -134,6 +134,7 @@ public sealed class LocalizationReferenceIndex
 
     private void Reference(string owner, string? entryId, string pointer, string key, FieldValueSemantic semantic)
     {
+        if (key == string.Empty) return;
         if (string.IsNullOrWhiteSpace(key))
         {
             if (semantic == FieldValueSemantic.LocalizedText) Issue("text.emptyKey", owner, pointer, "Text key is empty.", incomplete: false);

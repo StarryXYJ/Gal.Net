@@ -367,6 +367,13 @@ public sealed class EditorDockFactory : Factory, IDisposable
                 services?.GetService<UndoRedoRouter>()?.SetActive(args.Dockable?.Context);
                 LayoutChanged?.Invoke();
             };
+            FocusedDockableChanged += (_, args) =>
+            {
+                _inspector.UpdateFor(args.Dockable);
+                if (args.Dockable?.Context is GroupEditorPanelViewModel group) group.PublishSelection();
+                var services = _serviceProvider.GetService<IProjectService>()?.Current?.Services;
+                services?.GetService<UndoRedoRouter>()?.SetActive(args.Dockable?.Context);
+            };
             _activeDockableHandlerAttached = true;
         }
 

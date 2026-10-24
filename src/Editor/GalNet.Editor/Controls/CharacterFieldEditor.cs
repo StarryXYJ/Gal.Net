@@ -36,6 +36,7 @@ internal static class CharacterFieldEditor
             var search = input.Text ?? "";
             choices.ItemsSource = rows.Where(row => row.Id.Contains(search, StringComparison.OrdinalIgnoreCase) ||
                 row.DisplayName.Contains(search, StringComparison.OrdinalIgnoreCase)).Take(50).ToArray();
+            choices.SelectedIndex = choices.ItemCount > 0 ? 0 : -1;
             popup.IsOpen = input.IsFocused && choices.ItemCount > 0 && !busy;
         }
         void Refresh()
@@ -83,14 +84,18 @@ internal static class CharacterFieldEditor
         input.TextInput += (_, _) => { if (!input.IsFocused) QueueCommit(); };
         input.KeyDown += async (_, args) =>
         {
-            if (args.Key == Key.Enter && !Composing()) { args.Handled = true; await Commit(); }
-            else if (args.Key == Key.Escape) { args.Handled = true; popup.IsOpen = false; dirty = false; context.RevertDraft(); Refresh(); }
+            if (args.Key == Key.Enter && !Composing())
+            {
+                args.Handled = true;
+                await Commit(popup.IsOpen && !string.IsNullOrWhiteSpace(input.Text) && choices.SelectedItem is CharacterRow row ? row.Id : null);
+            }
+            else if (args.Key == Key.Escape && !Composing()) { args.Handled = true; popup.IsOpen = false; dirty = false; context.RevertDraft(); Refresh(); }
             else if (args.Key == Key.Down && choices.ItemCount > 0) { args.Handled = true; popup.IsOpen = true; choices.SelectedIndex = 0; choices.Focus(); }
         };
         choices.KeyDown += async (_, args) =>
         {
-            if (args.Key == Key.Enter && choices.SelectedItem is CharacterRow row) { args.Handled = true; await Commit(row.Id); input.Focus(); popup.IsOpen = false; }
-            else if (args.Key == Key.Escape) { args.Handled = true; dirty = false; context.RevertDraft(); Refresh(); input.Focus(); popup.IsOpen = false; }
+            if (args.Key == Key.Enter && !Composing() && choices.SelectedItem is CharacterRow row) { args.Handled = true; await Commit(row.Id); input.Focus(); popup.IsOpen = false; }
+            else if (args.Key == Key.Escape && !Composing()) { args.Handled = true; dirty = false; context.RevertDraft(); Refresh(); input.Focus(); popup.IsOpen = false; }
         };
         choices.PointerReleased += async (_, args) =>
         {

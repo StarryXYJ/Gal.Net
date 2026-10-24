@@ -53,6 +53,8 @@ public sealed class ImageVariantsTests
         Assert.That(ImageVariantsResolver.Initialize(shortDefault).Request.Keys, Is.EquivalentTo(new[] { "expression" }));
     }
 
+    private static readonly string[] expected = new[] { "outfit" };
+
     [Test]
     public void Temporary_single_segment_expression_keeps_outfit_for_the_next_selection()
     {
@@ -65,7 +67,7 @@ public sealed class ImageVariantsTests
             Assert.That(special.Variant.Key, Is.EqualTo("weap"));
             Assert.That(special.Reason, Is.EqualTo(ImageVariantResolutionReason.Reduced));
             Assert.That(special.Request["outfit"], Is.EqualTo("skirt"));
-            Assert.That(special.RemovedDimensions, Is.EqualTo(new[] { "outfit" }));
+            Assert.That(special.RemovedDimensions, Is.EqualTo(expected));
             Assert.That(special.Candidates.Select(item => item.Selection.Count), Is.EqualTo(new[] { 2, 1 }));
             Assert.That(special.Candidates[0].Match, Is.Null);
             Assert.That(special.Candidates[1].Match, Is.SameAs(special.Variant));
@@ -110,7 +112,7 @@ public sealed class ImageVariantsTests
             Assert.That(result.Variant.Key, Is.EqualTo("idle"));
             Assert.That(result.RemovedDimensions, Is.EqualTo(new[] { "time", "outfit" }));
             Assert.That(result.Candidates.Select(item => item.Selection.Count), Is.EqualTo(new[] { 3, 2, 1 }));
-            Assert.That(result.Candidates[1].Selection.Keys, Is.EquivalentTo(new[] { "expression", "outfit" }));
+            Assert.That(result.Candidates[1].Selection.Keys, Is.EquivalentTo(["expression", "outfit"]));
         });
     }
 

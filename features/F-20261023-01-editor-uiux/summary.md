@@ -33,7 +33,9 @@ Core、Presentation、Editor.Shared、Editor、Architecture、Primitives.Builtin
 
 真实操作系统 150% DPI、原生 IME 候选窗口和完整鼠标/键盘桌面巡检仍需人工验收；Headless 组合输入保护与模拟缩放不等价于这些验收。无效输入仅保留在项目会话中，不跨进程恢复。Timeline 画布行仍沿用其既有专属会话生命周期。
 
-本次保留工作区原有其他 feature 和测试修改，没有提交或创建 PR。
+原实现于首次使用反馈前提交为 `d93bf52`，工作区原有其他 feature 和测试修改保留，未创建 PR。随后的人物候选 Enter、Inspector 焦点修复及仅分析的 hover 反馈见 [后续记录](follow-up-20261024.md)。
+
+用户进一步授权后的 [动画统一](motion-unification.md) 将按钮背景反馈集中到单个绘制层；共享 160ms 时长，并通过实际模板时钟验证四主题中间帧及快速反向。
 
 ## 正式文档
 

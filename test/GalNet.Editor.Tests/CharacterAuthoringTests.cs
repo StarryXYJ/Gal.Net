@@ -214,8 +214,13 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     input.Focus(); input.Text = "RED"; Dispatcher.UIThread.RunJobs();
                     var popup = input.Parent!.GetLogicalChildren().OfType<Popup>().Single(); var list = (ListBox)((Border)popup.Child!).Child!;
                     Assert.That(list.Items.Cast<CharacterRow>().Single().Id, Is.EqualTo(other.Id));
-                    PressGroupKey(input, Key.Down); PressGroupKey(list, Key.Enter);
+                    PressGroupKey(input, Key.Enter);
                     await PumpCharacterUi(() => group.Entries[0].Parameters.GetValueOrDefault("speaker") == "red"); Assert.That(author.Rows(), Has.Count.EqualTo(2));
+                    input = view.GetVisualDescendants().OfType<TextBox>().Single(box => box.Name == "CharacterInput");
+                    input.Focus(); input.Text = "RED"; Dispatcher.UIThread.RunJobs();
+                    popup = input.Parent!.GetLogicalChildren().OfType<Popup>().Single(); list = (ListBox)((Border)popup.Child!).Child!;
+                    PressGroupKey(input, Key.Down); PressGroupKey(list, Key.Enter);
+                    Assert.That(group.Entries[0].Parameters.GetValueOrDefault("speaker"), Is.EqualTo("red"));
                     input = view.GetVisualDescendants().OfType<TextBox>().Single(box => box.Name == "CharacterInput"); input.Focus(); input.Text = "小明"; Dispatcher.UIThread.RunJobs();
                     popup = input.Parent!.GetLogicalChildren().OfType<Popup>().Single(); list = (ListBox)((Border)popup.Child!).Child!;
                     list.UpdateLayout(); var choice = list.GetVisualDescendants().OfType<ListBoxItem>().Single();
@@ -223,9 +228,11 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     choiceRoot.MouseDown(point, MouseButton.Left); choiceRoot.MouseUp(point, MouseButton.Left); Dispatcher.UIThread.RunJobs();
                     await PumpCharacterUi(() => group.Entries[0].Parameters.GetValueOrDefault("speaker") == author.Rows().Single(row => row.Name == "小明").Id);
                     Assert.That(author.Rows(), Has.Count.EqualTo(2), "A candidate click must not first create its search text as a new character.");
-                    input = view.GetVisualDescendants().OfType<TextBox>().Single(box => box.Name == "CharacterInput"); input.Focus(); input.Text = "拼音";
+                    var beforeComposition = group.Entries[0].Parameters.GetValueOrDefault("speaker");
+                    input = view.GetVisualDescendants().OfType<TextBox>().Single(box => box.Name == "CharacterInput"); input.Focus(); input.Text = "RED";
                     var presenter = input.GetVisualDescendants().OfType<TextPresenter>().Single(); presenter.PreeditText = "拼";
                     PressGroupKey(input, Key.Enter); Assert.That(author.Rows(), Has.Count.EqualTo(2));
+                    Assert.That(group.Entries[0].Parameters.GetValueOrDefault("speaker"), Is.EqualTo(beforeComposition), "IME Enter cannot accept the highlighted candidate.");
                     presenter.PreeditText = null; PressGroupKey(input, Key.Escape); outside.Focus(); Dispatcher.UIThread.RunJobs();
                     Assert.That(author.Rows(), Has.Count.EqualTo(2));
                     input.Focus(); input.Text = "   "; outside.Focus(); await PumpCharacterUi(() => group.Entries[0].Parameters.GetValueOrDefault("speaker") == "");

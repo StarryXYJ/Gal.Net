@@ -263,5 +263,7 @@
 
 - [透明 hover 与预乘 alpha](lessons/L-20261024-01-transparent-hover-interpolation.md)：隐藏的透明白色 RGB 会造成暗色过渡亮度峰值；验证合成中间色与反向，图标样式须隔离普通按钮背景。
 - 2026-10-24 Editor UIUX：Core `[Common]` → `EditorHints.IsCommon`，共享表单默认 All，Group 显式 Common；独立 Inspector 绑定与项目 EntryEditSession 草稿，辅助工具不清空详情。保存/检查状态分离，Problems 用当前快照与稳定 ID 导航；三套手动布局及最大化恢复不进入作者历史。契约、使用与证据见 features/F-20261023-01-editor-uiux/summary.md、docs/manual/editor-authoring-workspace.md。真实 DPI/原生 IME 仍需人工验收；旧页面绑定失效规则仍保留，不用复用控件/旧绑定解决草稿保留。
+- [Dock 焦点与 Inspector](lessons/L-20261024-02-dock-focus-and-inspector.md)：已活动文档跨区域返回只改变 FocusedDockable；详情跟随须同时处理焦点和激活，并防后台选择抢占及辅助工具覆盖解锁目标。
 - [外部调试子进程监控生命周期](lessons/L-20261024-03-external-debug-child-monitor-lifetime.md)：断开调试不能等待未终止的外部进程退出；Editor 存活时仍需排空重定向输出并隔离旧会话事件。candidate，待运行复现。
 - [异步构建的同步前缀](lessons/L-20261024-04-sync-build-work-ui-thread.md)：Task API 首个 await 前的验证、扫描与编译仍会阻塞调用线程；先在 UI 线程捕获安全快照，再后台运行纯构建工作。candidate，待大项目运行复现。
+- [动画帧颜色与主题](lessons/L-20261024-05-animated-brush-measurement.md)：中间帧比较须纳入 Brush.Opacity，并显式使用实际 ThemeVariant；只看 Color 或默认资源会误报跳色。

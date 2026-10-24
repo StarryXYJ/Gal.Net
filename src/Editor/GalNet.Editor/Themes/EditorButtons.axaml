@@ -12,15 +12,15 @@
       <Border Name="ButtonSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
               BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}">
         <Border.Transitions><Transitions>
-          <themes:LinearBrushTransition Property="Background" Duration="0:0:0.16"/>
-          <themes:LinearBrushTransition Property="BorderBrush" Duration="0:0:0.16"/>
+          <themes:LinearBrushTransition Property="Background" Duration="{x:Static themes:EditorMotion.HoverDuration}"/>
+          <themes:LinearBrushTransition Property="BorderBrush" Duration="{x:Static themes:EditorMotion.HoverDuration}"/>
         </Transitions></Border.Transitions>
         <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
                           Padding="{TemplateBinding Padding}" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
       </Border>
     </ControlTemplate></Setter>
-    <Style Selector="^:pointerover /template/ Border#ButtonSurface"><Setter Property="Background" Value="{DynamicResource SemiColorFill0}"/></Style>
-    <Style Selector="^:pressed /template/ Border#ButtonSurface"><Setter Property="Background" Value="{DynamicResource SemiColorFill1}"/></Style>
+    <Style Selector="^:not(:disabled):pointerover /template/ Border#ButtonSurface"><Setter Property="Background" Value="{DynamicResource SemiColorFill0}"/></Style>
+    <Style Selector="^:not(:disabled):pressed /template/ Border#ButtonSurface"><Setter Property="Background" Value="{DynamicResource SemiColorFill1}"/></Style>
     <Style Selector="^:focus-visible /template/ Border#ButtonSurface"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}"/></Style>
     <Style Selector="^:disabled"><Setter Property="Opacity" Value="0.35"/></Style>
   </ControlTheme>
@@ -28,6 +28,12 @@
     <Style Selector="^:checked /template/ Border#ButtonSurface">
       <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}"/>
       <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}"/>
+    </Style>
+    <Style Selector="^:not(:disabled):checked:pointerover /template/ Border#ButtonSurface">
+      <Setter Property="Background" Value="{DynamicResource SemiColorFill1}"/>
+    </Style>
+    <Style Selector="^:not(:disabled):checked:pressed /template/ Border#ButtonSurface">
+      <Setter Property="Background" Value="{DynamicResource SemiColorFill2}"/>
     </Style>
   </ControlTheme>
 </ResourceDictionary>

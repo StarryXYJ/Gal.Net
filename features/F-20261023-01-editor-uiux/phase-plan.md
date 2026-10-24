@@ -34,6 +34,8 @@
 
 来源冲突修复后最终解决方案构建再次通过（`artifacts-uiux-solution-verified.log`）：0 错误、175 个警告，包含仓库现有 CA/nullable/XAML 分析器提示与 NU1900 审计连接警告。构建包含 Android 和 Browser 目标；未关闭分析器或通过裁掉平台规避构建。未将成功构建描述为无警告构建。
 
+首次使用反馈后，P1 进一步收敛为单个绘制层的动画，共享 EditorMotion.HoverDuration；实际模板时钟验证四主题前 32ms 响应、反向连续和 checked/hover/pressed/disabled 优先级。最新 Editor 272 项通过，局部只读格式检查通过，详见 [动画统一证据](motion-unification.md)。此前两项交互反馈与 271 项回归见 [首次反馈](follow-up-20261024.md)。
+
 ## 窗口和证据边界
 
 实际挂载 1200×800、960×640 和模拟 150% 缩放，并检查实际字段尺寸、透明按钮、资源/Graph/Timeline 控件。稳定截图位于忽略的 `artifacts/uiux/uiux-*.png`。截图捕获临时取消实例过渡以获得稳定端点；颜色中间值由独立过渡测试验证，不用稳定截图替代动画验证。
