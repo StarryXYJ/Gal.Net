@@ -430,7 +430,6 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
 
     private IEffectCatalog? _effectCatalog;
     private DynamicParameterTable? _formParameters;
-    internal bool IsParameterFieldsConfigured { get; private set; }
     [ObservableProperty] private EntryParameterFormBinding? _parameterForm;
     private EntryParameterFormBinding? _detailForm;
     public EntryParameterFormBinding? DetailForm => ParameterForm ?? _detailForm;
@@ -450,7 +449,6 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     /// <summary>Builds the editor projection from the Core registry, the single schema source.</summary>
     public void ConfigureParameterFields(IEntryCatalog catalog, IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames, IEffectCatalog? effectCatalog = null)
     {
-        IsParameterFieldsConfigured = true;
         if (_authorCatalog is null)
             Source.Parameters = EditorEntryData.ParseParameters(catalog, Type, Parameters);
         _authorCatalog = catalog;
@@ -499,7 +497,6 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
 
     internal void InvalidateParameterFields()
     {
-        IsParameterFieldsConfigured = false;
         _detailForm?.Dispose(); _detailForm = null;
         _schemaGeneration++;
         ParameterForm?.Dispose();

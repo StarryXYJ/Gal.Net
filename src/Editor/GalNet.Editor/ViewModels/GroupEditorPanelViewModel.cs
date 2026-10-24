@@ -246,7 +246,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     {
         OnPropertyChanged(nameof(ConditionSuggestions));
         OnPropertyChanged(nameof(ValidationVariables));
-        foreach (var entry in GroupNode.Entries.Where(entry => entry.IsParameterFieldsConfigured))
+        foreach (var entry in GroupNode.Entries)
             Configure(entry);
     }
 
@@ -265,23 +265,14 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         if (!_attached.Add(entry)) return;
         entry.IsParametersExpanded = _expanded.GetValueOrDefault(entry.StableId, true);
         entry.PropertyChanged += OnEntryPropertyChanged;
+        Configure(entry);
     }
 
     private void OnEntryPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (sender is not EntryEditorItemViewModel entry) return;
-        if (e.PropertyName == nameof(EntryEditorItemViewModel.IsParametersExpanded))
-        {
-            _expanded[entry.StableId] = entry.IsParametersExpanded;
-            if (entry.IsParametersExpanded) EnsureParameterFields(entry);
-        }
-        if (e.PropertyName == nameof(EntryEditorItemViewModel.Type) && (entry.IsParameterFieldsConfigured || ReferenceEquals(entry, SelectedEntry)))
-            EnsureParameterFields(entry);
-    }
-
-    internal void EnsureParameterFields(EntryEditorItemViewModel entry)
-    {
-        if (!_disposed && _attached.Contains(entry) && !entry.IsParameterFieldsConfigured) Configure(entry);
+        if (e.PropertyName == nameof(EntryEditorItemViewModel.IsParametersExpanded)) _expanded[entry.StableId] = entry.IsParametersExpanded;
+        if (e.PropertyName == nameof(EntryEditorItemViewModel.Type)) Configure(entry);
     }
 
     private void Configure(EntryEditorItemViewModel entry) => entry.ConfigureParameterFields(
