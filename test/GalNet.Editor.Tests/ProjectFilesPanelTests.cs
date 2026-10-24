@@ -78,7 +78,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             {
                 var address = view.FindControl<Border>("AddressBar")!;
                 var point = address.TranslatePoint(new Point(address.Bounds.Width - 8, address.Bounds.Height / 2), window)!.Value;
-                window.MouseDown(point, MouseButton.Left); window.MouseUp(point, MouseButton.Left); window.UpdateLayout();
+                window.MouseDown(point, MouseButton.Left); window.MouseUp(point, MouseButton.Left); Avalonia.Threading.Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
                 var input = view.FindControl<TextBox>("PathInput")!;
                 Assert.That(input.IsVisible, Is.True); input.Text = "other";
                 input.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter }); window.UpdateLayout();
@@ -86,7 +86,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 vm.Navigate("notes/nested"); window.UpdateLayout();
                 var crumb = address.GetVisualDescendants().OfType<Button>().Single(button => button.DataContext is FileBreadcrumb { Path: "notes" });
                 point = crumb.TranslatePoint(new Point(8, 8), window)!.Value;
-                window.MouseDown(point, MouseButton.Left); window.MouseUp(point, MouseButton.Left); window.UpdateLayout();
+                window.MouseDown(point, MouseButton.Left); window.MouseUp(point, MouseButton.Left); Avalonia.Threading.Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
                 Assert.That(vm.CurrentDirectory, Is.EqualTo("notes")); Assert.That(vm.IsEditingPath, Is.False);
                 vm.Navigate("notes/nested"); window.UpdateLayout();
                 var target = address.GetVisualDescendants().OfType<Border>().Single(border => border.DataContext is FileBreadcrumb { Path: "notes" } && DragDrop.GetAllowDrop(border));
@@ -98,7 +98,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var search = view.FindControl<TextBox>("SearchInput")!; var clear = view.FindControl<Button>("ClearSearchButton")!;
                 search.Text = "match file"; window.UpdateLayout(); Assert.That(vm.Entries, Has.Count.EqualTo(2)); Assert.That(clear.IsVisible, Is.True);
                 vm.Select(vm.Entries.Single(item => item.Path.StartsWith("other/")));
-                point = clear.TranslatePoint(new Point(10, 10), window)!.Value; window.MouseDown(point, MouseButton.Left); window.MouseUp(point, MouseButton.Left); window.UpdateLayout();
+                point = clear.TranslatePoint(new Point(10, 10), window)!.Value; window.MouseDown(point, MouseButton.Left); window.MouseUp(point, MouseButton.Left); Avalonia.Threading.Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
                 Assert.That(vm.SearchText, Is.Empty); Assert.That(vm.CurrentDirectory, Is.EqualTo("other")); Assert.That(vm.SelectedEntry?.Name, Is.EqualTo("MATCH file.txt")); Assert.That(clear.IsVisible, Is.False);
                 search.Text = "no-match"; window.UpdateLayout(); search.Text = ""; window.UpdateLayout(); Assert.That(vm.CurrentDirectory, Is.EqualTo("other"));
                 search.Text = "t:txt"; Assert.That(vm.Entries, Is.Empty, "Type syntax is reserved; current search matches literal filenames."); search.Text = "";
