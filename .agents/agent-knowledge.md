@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [资源结构与缓冲重基](lessons/L-20261025-01-variant-buffer-structural-rebase.md)：ManagedContent 的写盘内容来自项目文档 Data；移动时内部 folder 要分别重基工作版和保存版，Undo/Redo 保留之后保存的其他配置。
+
 - [必填字符串与 schema 默认值](lessons/L-20261024-01-required-string-defaults.md)：Required 字段有默认值仍会被 Normalize 补齐；要求显式提供且空串合法时不声明 schema 默认，并显式 AllowNull=false。DTO 构造函数赋值不导出为 schema 默认。
 
 - [契约与 Git 构建元数据](lessons/L-20261023-02-contract-git-metadata.md)：SDK 的 InformationalVersion 可包含 commit；严格 DLL 哈希需要稳定非功能元数据，并用不同 SourceRevisionId 重建比较验证。

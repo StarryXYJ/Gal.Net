@@ -110,7 +110,7 @@ public sealed class AssetCatalogService : IAssetCatalogService
         try
         {
             var metaPath = file + ".meta";
-            return File.Exists(metaPath) ? _metaCodec.Deserialize(File.ReadAllText(metaPath)) : null;
+            return File.Exists(metaPath) ? _metaCodec.Deserialize(File.ReadAllText(metaPath), Relative(file)) : null;
         }
         catch { return null; }
     }

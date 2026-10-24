@@ -128,15 +128,14 @@ public sealed partial class ProjectFileOperation : IDisposable
                 var expected = current.Keys.Where(path => ProjectFilePaths.Within(path, root)).ToHashSet(ProjectFilePaths.Comparer);
                 if (!actual.SetEquals(expected)) throw ProjectFilePaths.Error("changed", root);
             }
-            ValidateVariants(current, desired, currentDirectories, desiredDirectories);
             var files = new ProjectFilePlan();
             foreach (var pair in current.Where(pair => !_managed.Contains(pair.Key))) files.ExpectedHashes[pair.Key] = pair.Value.Hash;
             foreach (var path in desired.Keys.Where(path => !current.Keys.Contains(path, ProjectFilePaths.Comparer))) files.ExpectedHashes[path] = null;
             if (_caseOnly)
             {
                 foreach (var (from, to) in _moves) files.CaseRenames.Add(forward ? new(from, to) : new(to, from));
-                foreach (var pair in desired.Where(pair => pair.Key.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)
-                    || !current.TryGetValue(pair.Key, out var old) || old.Hash != pair.Value.Hash)) files.Writes[pair.Key] = File.ReadAllBytes(pair.Value.Backup);
+                foreach (var pair in desired.Where(pair => !_managed.Contains(pair.Key) && (pair.Key.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)
+                    || !current.TryGetValue(pair.Key, out var old) || old.Hash != pair.Value.Hash))) files.Writes[pair.Key] = File.ReadAllBytes(pair.Value.Backup);
             }
             else
             {
@@ -149,7 +148,15 @@ public sealed partial class ProjectFileOperation : IDisposable
             {
                 removedWorking = CaptureRemoved(working); removedSaved = CaptureRemoved(saved);
             }
-            return new FileChange(this, forward, files, removedWorking ?? _removedWorking, removedSaved ?? _removedSaved);
+            var change = new FileChange(this, forward, files, removedWorking ?? _removedWorking, removedSaved ?? _removedSaved);
+            if (current.Keys.Concat(desired.Keys).Any(path => path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase)))
+                foreach (var (document, version) in new[] { (working, AuthorDocumentVersion.Working), (saved, AuthorDocumentVersion.Saved) })
+                {
+                    var next = Clone(document);
+                    change.Apply(next, version);
+                    ValidateVariants(current, desired, currentDirectories, desiredDirectories, next);
+                }
+            return change;
         });
         if (removedWorking is not null) { _removedWorking = removedWorking; _removedSaved = removedSaved; _removedBytes = JsonSerializer.SerializeToUtf8Bytes(new[] { removedWorking, removedSaved }).LongLength; }
     }
@@ -400,6 +407,7 @@ public sealed partial class ProjectFileOperation : IDisposable
             var removed = version == AuthorDocumentVersion.Working ? Working : Saved;
             foreach (var file in document.Files.Values)
             {
+                if (Owner.Action == ProjectFileAction.Move && file.Exists && file.ManagedContent) Owner.RebaseVariantBuffer(file, Forward);
                 if (Owner.Action == ProjectFileAction.Move) file.Path = Owner.Map(file.Path, Forward);
                 if (Owner.Action == ProjectFileAction.Delete && Owner._roots.Any(root => ProjectFilePaths.Within(file.Path, root)))
                 {
