@@ -1010,5 +1010,19 @@
   "Uiux.Severity.info": "Info",
   "Uiux.Severity.error": "Error",
   "Uiux.Entry.Selected": "Selected",
-  "Uiux.Entry.ActiveOnly": "items; details edit the active entry only"
+  "Uiux.Entry.ActiveOnly": "items; details edit the active entry only",
+  "Uiux.Panel.Search": "Search name or description…",
+  "Uiux.Panel.NoResults": "No items or no matching results",
+  "Uiux.Panel.SelectItem": "Select an item to edit, or use + to add one.",
+  "Uiux.Panel.MissingSelection": "The selected variable was removed. Undo its removal to recover, or discard the retained draft.",
+  "Uiux.Panel.Unapplied": "Unapplied",
+  "Uiux.Panel.DeleteBlocked": "The character is referenced, or reference analysis is incomplete",
+  "Uiux.I18n.Languages": "Manage languages",
+  "Uiux.I18n.Search": "Search source, translation or context…",
+  "Uiux.I18n.All": "All states",
+  "Uiux.I18n.Missing": "Missing",
+  "Uiux.I18n.Review": "Needs review",
+  "Uiux.I18n.Drafts": "With drafts",
+  "Uiux.I18n.Exchange": "Translation exchange",
+  "Uiux.Inspector.Preview": "Preview"
 }

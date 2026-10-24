@@ -1010,5 +1010,19 @@
   "Uiux.Severity.info": "情報",
   "Uiux.Severity.error": "エラー",
   "Uiux.Entry.Selected": "選択数",
-  "Uiux.Entry.ActiveOnly": "件・詳細は現在の項目のみ編集"
+  "Uiux.Entry.ActiveOnly": "件・詳細は現在の項目のみ編集",
+  "Uiux.Panel.Search": "名前または説明を検索…",
+  "Uiux.Panel.NoResults": "項目がないか、一致する結果がありません",
+  "Uiux.Panel.SelectItem": "項目を選択するか、＋で追加してください。",
+  "Uiux.Panel.MissingSelection": "選択した変数は削除されました。削除を取り消すか、保持された下書きを破棄してください。",
+  "Uiux.Panel.Unapplied": "未適用",
+  "Uiux.Panel.DeleteBlocked": "キャラクターが参照されているか、参照分析が完了していません",
+  "Uiux.I18n.Languages": "言語の管理",
+  "Uiux.I18n.Search": "原文、訳文、コンテキストを検索…",
+  "Uiux.I18n.All": "すべての状態",
+  "Uiux.I18n.Missing": "未翻訳",
+  "Uiux.I18n.Review": "要確認",
+  "Uiux.I18n.Drafts": "下書きあり",
+  "Uiux.I18n.Exchange": "翻訳のインポート・エクスポート",
+  "Uiux.Inspector.Preview": "プレビュー"
 }

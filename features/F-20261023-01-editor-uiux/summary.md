@@ -39,6 +39,8 @@ Core、Presentation、Editor.Shared、Editor、Architecture、Primitives.Builtin
 
 ## 正式文档
 
+第二轮面板优化（2026-10-25）已实现变量分作用域选择和项目会话草稿、正文主输入行对齐、Inspector 底部独立预览、角色图标工具栏与身份安全的草稿保留，以及本地化搜索/状态筛选、语言与导出弹层、固定上下文和列头、窄面板布局。完整实施、验证结果与保留边界见 [第二轮实施](phase-ui-20261025.md)；原始候选方案保留在 [分析](analysis-20261025.md)。本轮不修改作者格式、项目保存语义或 Runtime。
+
 - [共享表单契约](../../docs/spec/control.md)
 - [Group 与 Inspector](../../docs/spec/editor-groups.md)
 - [历史、草稿与保存](../../docs/spec/editor-history-and-save.md)

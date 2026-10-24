@@ -51,8 +51,14 @@ public sealed partial class LocalizationGridCell : ObservableObject
     [ObservableProperty] private string _text = "";
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private string _message = "";
+    public bool HasStatus => Status.Length > 0;
+    public bool HasMessage => Message.Length > 0;
+    partial void OnStatusChanged(string value) => OnPropertyChanged(nameof(HasStatus));
+    partial void OnMessageChanged(string value) => OnPropertyChanged(nameof(HasMessage));
     [ObservableProperty] private bool _busy;
     public bool IsDirty => _pending;
+    public bool IsMissing { get; private set; }
+    public bool NeedsReview { get; private set; }
     public bool Enabled => !_panel.IsDisposed;
     public LocalizationGridCell(GameLocalizationPanelViewModel panel, string category, string key, string culture)
     { _panel = panel; Category = category; Key = key; Culture = culture; }
@@ -72,11 +78,13 @@ public sealed partial class LocalizationGridCell : ObservableObject
     public void Refresh(LocalizationTableSnapshot snapshot, JsonObject? revision)
     {
         _value = snapshot.Index.FindDirect(Culture, Key)?.Text;
+        IsMissing = _value is null;
         _sourceLocale = snapshot.Source; _sourceText = snapshot.Index.FindDirect(snapshot.Source, Key)?.Text;
         var state = _value is null ? "Missing" : _value.Length == 0 ? "Empty" : "";
         var review = _value is null || Culture == snapshot.Source ? "" : LocalizationTextState.NeedsReview(revision, Culture, snapshot.Source)
             switch
         { true => "Review", false => "", null => "Unknown" };
+        NeedsReview = review == "Review";
         Status = string.Join(" · ", new[] { state, review }.Where(value => value.Length > 0).Select(value => _panel.Service.Text["I18n." + value]));
         if (!IsDirty)
         {
@@ -111,6 +119,12 @@ public sealed partial class GameLocalizationPanelViewModel : ObservableObject, I
     public ObservableCollection<LocalizationCategory> Categories { get; } = [];
     public ObservableCollection<string> Languages { get; } = [];
     public ObservableCollection<LocalizationGridRow> Rows { get; } = [];
+    private LocalizationGridRow[] _allRows = [];
+    [ObservableProperty] private string _search = "";
+    [ObservableProperty] private int _filterIndex;
+    public bool HasRows => Rows.Count > 0;
+    partial void OnSearchChanged(string value) => ProjectRows();
+    partial void OnFilterIndexChanged(int value) => ProjectRows();
     private readonly Dictionary<(string Category, string Key, string Culture), LocalizationGridCell> _cells = [];
     private readonly IDisposable _draftRegistration;
     private bool _refreshing;
@@ -125,7 +139,7 @@ public sealed partial class GameLocalizationPanelViewModel : ObservableObject, I
     [ObservableProperty] private bool _exportRuntime;
     [ObservableProperty] private bool _allowEmpty;
     public bool HasImport => _import is not null;
-    partial void OnExchangeLanguageChanged(string? value) => CancelImport();
+    partial void OnExchangeLanguageChanged(string? value) { CancelImport(); if (!_refreshing) ProjectRows(); }
     partial void OnAllowEmptyChanged(bool value) { if (!value) foreach (var row in ImportRows.Where(row => row.Candidate.Row.Translation?.Length == 0)) row.Include = false; }
     [ObservableProperty] private LocalizationCategory? _selected;
     [ObservableProperty] private string _newLanguage = "";
@@ -207,12 +221,19 @@ public sealed partial class GameLocalizationPanelViewModel : ObservableObject, I
                 if (!_cells.TryGetValue(identity, out var cell)) _cells.Add(identity, cell = new(this, identity.Id, row.Key, culture));
                 cell.Refresh(snapshot, states?[row.Key] as JsonObject); return cell;
             }).ToArray())).ToArray();
-            if (changed || Rows.Count != rows.Length || !Rows.Zip(rows).All(pair => pair.First.Context == pair.Second.Context && pair.First.Cells.SequenceEqual(pair.Second.Cells)))
-            { Rows.Clear(); foreach (var row in rows) Rows.Add(row); }
+            _allRows = rows; ProjectRows();
             if (changed) StructureChanged?.Invoke();
         }
         catch (Exception error) { Message = EditorText.Error(error).Render(Service.Text); }
         finally { _refreshing = false; }
+    }
+    private void ProjectRows()
+    {
+        var rows = _allRows.Where(row => (string.IsNullOrWhiteSpace(Search) || row.Context.Contains(Search, StringComparison.OrdinalIgnoreCase) || row.Cells.Any(cell => cell.Text.Contains(Search, StringComparison.OrdinalIgnoreCase)))
+            && (FilterIndex == 0 || row.Cells.Where(cell => cell.Culture == ExchangeLanguage).Any(cell => FilterIndex switch { 1 => cell.IsMissing, 2 => cell.NeedsReview, 3 => cell.IsDirty, _ => true }))).ToArray();
+        if (Rows.Count != rows.Length || !Rows.Zip(rows).All(pair => pair.First.Context == pair.Second.Context && pair.First.Cells.SequenceEqual(pair.Second.Cells)))
+        { Rows.Clear(); foreach (var row in rows) Rows.Add(row); }
+        OnPropertyChanged(nameof(HasRows));
     }
     public async Task CommitDraftsAsync()
     {

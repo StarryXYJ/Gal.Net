@@ -269,3 +269,6 @@
 - [外部调试子进程监控生命周期](lessons/L-20261024-03-external-debug-child-monitor-lifetime.md)：断开调试不能等待未终止的外部进程退出；Editor 存活时仍需排空重定向输出并隔离旧会话事件。candidate，待运行复现。
 - [异步构建的同步前缀](lessons/L-20261024-04-sync-build-work-ui-thread.md)：Task API 首个 await 前的验证、扫描与编译仍会阻塞调用线程；先在 UI 线程捕获安全快照，再后台运行纯构建工作。candidate，待大项目运行复现。
 - [动画帧颜色与主题](lessons/L-20261024-05-animated-brush-measurement.md)：中间帧比较须纳入 Brush.Opacity，并显式使用实际 ThemeVariant；只看 Color 或默认资源会误报跳色。
+
+- [角色姓名文本与身份](lessons/L-20261025-04-character-name-key-identity.md)：DisplayNameKey 允许共享，角色草稿按 ID 与姓名文本组合区分；仅始终唯一的姓名文本可辅助跟随改名，提交仍检查原基线。
+- 2026-10-25 Editor 面板：变量以项目级 VariablePanelState 保存作用域选择与 UID 草稿，角色用 CharacterPanelState 隔离共享姓名身份；视图和 transient VM 正常释放，Save All 仍只保存两者已应用声明。本地化筛选保留单元格身份，冻结上下文保持单套虚拟化行；见 features/F-20261023-01-editor-uiux/phase-ui-20261025.md。

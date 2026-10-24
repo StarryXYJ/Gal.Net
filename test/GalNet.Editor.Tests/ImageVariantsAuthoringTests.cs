@@ -51,7 +51,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             workspace.SelectedAsset = scope.GetRequiredService<IAssetCatalogService>().GetEntry("alice/variants.variants");
             using var inspector = scope.GetRequiredService<AssetInspectorControlViewModel>(); var model = inspector.Variants!;
             Assert.That(model, Is.Not.Null); Assert.That(model.PreviewRows, Has.Count.EqualTo(2));
-            var view = new ImageVariantsEditor { DataContext = model }; var window = new Window { Content = new ScrollViewer { Content = view }, Width = 800, Height = 1100 }; window.Show(); TimelinePump(window);
+            var view = new AssetInspectorControl { DataContext = inspector }; var window = new Window { Content = view, Width = 800, Height = 1100 }; window.Show(); TimelinePump(window);
             try
             {
                 var original = model.Buffer.Text;
@@ -66,7 +66,9 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 { scope.GetRequiredService<IEditorLocalizationService>().ApplyLocale(locale); TimelinePump(window); Assert.That(model.Buffer.Text, Is.EqualTo(original)); Assert.That(model.Actual, Does.StartWith("smile_skirt")); }
                 var stale = model.PreviewRows[0]; model.Refresh(); stale.Value = "idle"; Assert.That(model.Actual, Does.StartWith("smile_skirt"));
                 model.Default = "smile_skirt"; model.Dimensions[0].Label = "Expression"; TimelinePump(window);
-                TimelineClick(window, view.FindControl<Button>("VariantsApply")!); await (model.ApplyCommand.ExecutionTask ?? Task.CompletedTask);
+                var properties = view.GetVisualDescendants().OfType<ImageVariantsEditor>().Single();
+                var apply = properties.FindControl<Button>("VariantsApply")!; apply.BringIntoView(); TimelinePump(window);
+                TimelineClick(window, apply); await (model.ApplyCommand.ExecutionTask ?? Task.CompletedTask);
                 Assert.That(model.Buffer.Error, Is.Empty); await history.UndoAsync(); Assert.That(history.CanUndo, Is.False);
                 Assert.That(model.Default, Is.EqualTo("idle_coat")); await history.RedoAsync(); Assert.That(model.Default, Is.EqualTo("smile_skirt"));
                 history.Clear(); model.Dimensions[0].Key = "expression"; Assert.That(model.Impact, Is.Not.Empty);

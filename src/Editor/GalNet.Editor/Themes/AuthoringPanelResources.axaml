@@ -1,0 +1,13 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.MergedDictionaries>
+    <ResourceInclude Source="avares://GalNet.Editor/Themes/EditorButtons.axaml"/>
+    <ResourceInclude Source="avares://GalNet.Editor/Assets/icons.axaml"/>
+  </ResourceDictionary.MergedDictionaries>
+  <StreamGeometry x:Key="PanelApplyIcon">M3 12L5 10L10 15L19 5L21 7L10 19Z</StreamGeometry>
+  <StreamGeometry x:Key="PanelNavigateIcon">M4 4H11V6H6V18H18V13H20V20H4Z M13 3H22V12H20V6.5L11 15.5L9.5 14L18.5 5H13Z</StreamGeometry>
+  <StreamGeometry x:Key="PanelImportIcon">M11 2H13V10L16 7L18 9L12 15L6 9L8 7L11 10Z M3 15H5V20H19V15H21V22H3Z</StreamGeometry>
+  <StreamGeometry x:Key="PanelExportIcon">M11 14H13V6L16 9L18 7L12 1L6 7L8 9L11 6Z M3 15H5V20H19V15H21V22H3Z</StreamGeometry>
+  <StreamGeometry x:Key="PanelLanguageIcon">M2 3H12V5H8C8 8 7 10 6 12L11 16L9 18L5 14L2 17L1 15L4 12L2 9L4 8L5 10C6 8 6 7 6 5H2Z M15 8H18L23 22H20L19 19H14L13 22H10Z M15 16H18L16.5 11Z</StreamGeometry>
+  <StreamGeometry x:Key="PanelLeftIcon">M14 4L6 12L14 20L16 18L10 12L16 6Z</StreamGeometry>
+  <StreamGeometry x:Key="PanelRightIcon">M8 4L16 12L8 20L6 18L12 12L6 6Z</StreamGeometry>
+</ResourceDictionary>

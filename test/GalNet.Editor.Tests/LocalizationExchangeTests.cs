@@ -1,9 +1,12 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
@@ -180,7 +183,19 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var view = new GameLocalizationPanelView { DataContext = model }; var window = new Window { Content = view, Width = 1300, Height = 850 }; window.Show(); Dispatcher.UIThread.RunJobs();
                 try
                 {
-                    Click(window, view.FindControl<Button>("ExportLocalization")!);
+                    var options = view.FindControl<Button>("ExportOptions")!;
+                    Click(window, options); Dispatcher.UIThread.RunJobs();
+                    var flyout = (Flyout)options.Flyout!;
+                    try
+                    {
+                        var export = ((Control)flyout.Content!).GetVisualDescendants().OfType<Button>().Single(button => button.Name == "ExportLocalization");
+                        var point = new Point(export.Bounds.Width / 2, export.Bounds.Height / 2);
+                        var popupWindow = TopLevel.GetTopLevel(export)!;
+                        var exportPoint = export.TranslatePoint(point, popupWindow)!.Value;
+                        popupWindow.MouseDown(exportPoint, MouseButton.Left); Dispatcher.UIThread.RunJobs();
+                        popupWindow.MouseUp(exportPoint, MouseButton.Left); Dispatcher.UIThread.RunJobs();
+                    }
+                    finally { flyout.Hide(); }
                     await PumpCharacterUi(() => File.Exists(dialogs.SavePath));
                     var template = JsonNode.Parse(File.ReadAllText(dialogs.SavePath))!; template["rows"]![0]!["translation"] = "Imported"; File.WriteAllText(dialogs.SavePath, template.ToJsonString());
                     dialogs.OpenPaths = [dialogs.SavePath]; await model.PreviewImportCommand.ExecuteAsync(null); Dispatcher.UIThread.RunJobs();

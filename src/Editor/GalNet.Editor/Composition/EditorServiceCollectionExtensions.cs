@@ -75,10 +75,12 @@ public static class EditorServiceCollectionExtensions
         services.AddScoped<LocalizationExchangeService>();
         services.AddScoped<GameLocalizationPanelViewModel>();
         services.AddScoped<CharacterAuthoringService>();
+        services.AddScoped<CharacterPanelState>();
         services.AddTransient<CharactersPanelViewModel>();
         services.AddScoped<SceneTargetCatalog>();
         services.AddTransient<TimelinePanelViewModel>();
         services.AddScoped<VariableAuthoringService>();
+        services.AddScoped<VariablePanelState>();
         services.AddTransient<VariablesPanelViewModel>();
         services.AddScoped<EditorRegistry>(sp =>
         {

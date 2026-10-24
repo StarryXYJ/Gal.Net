@@ -1010,5 +1010,19 @@
   "Uiux.Severity.info": "提示",
   "Uiux.Severity.error": "错误",
   "Uiux.Entry.Selected": "已选择",
-  "Uiux.Entry.ActiveOnly": "项；详情仅编辑当前条目"
+  "Uiux.Entry.ActiveOnly": "项；详情仅编辑当前条目",
+  "Uiux.Panel.Search": "搜索名称或说明…",
+  "Uiux.Panel.NoResults": "暂无条目，或没有匹配结果",
+  "Uiux.Panel.SelectItem": "选择一个条目开始编辑，或点击＋新增。",
+  "Uiux.Panel.MissingSelection": "原选中变量已删除；草稿保留，可撤销删除恢复，或放弃草稿。",
+  "Uiux.Panel.Unapplied": "未应用",
+  "Uiux.Panel.DeleteBlocked": "角色仍被引用，或引用检查尚未完成",
+  "Uiux.I18n.Languages": "管理语言",
+  "Uiux.I18n.Search": "搜索原文、译文或上下文…",
+  "Uiux.I18n.All": "全部状态",
+  "Uiux.I18n.Missing": "缺译",
+  "Uiux.I18n.Review": "待复核",
+  "Uiux.I18n.Drafts": "有草稿",
+  "Uiux.I18n.Exchange": "翻译交换",
+  "Uiux.Inspector.Preview": "预览"
 }

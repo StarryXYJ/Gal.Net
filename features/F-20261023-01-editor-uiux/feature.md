@@ -13,3 +13,5 @@
 验收及实施顺序见 [设计](design.md)、[阶段](phase-plan.md)。现有其他 feature 与测试修改保留。
 
 首次使用反馈见 [2026-10-24 后续记录](follow-up-20261024.md)：人物 Enter 与 Inspector 焦点问题已修复；按钮 hover 最初仅分析，随后按用户授权实施 [动画统一](motion-unification.md)。
+
+第二轮 UI 优化的原始分析见 [2026-10-25 分析](analysis-20261025.md)：GameTextBox 主输入行对齐、Inspector 底部预览、角色/本地化图标与排版、变量子页选择及草稿、其他 UX 建议。用户随后明确授权实施，进度及证据见 [第二轮实施](phase-ui-20261025.md)。

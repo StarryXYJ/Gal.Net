@@ -5,7 +5,11 @@ namespace GalNet.Editor.Inspector.Views;
 
 public partial class AssetInspectorControl : UserControl
 {
-    public AssetInspectorControl() => InitializeComponent();
+    public AssetInspectorControl()
+    {
+        InitializeComponent();
+        SizeChanged += (_, _) => AssetPreview.MaxHeight = Math.Max(40, Bounds.Height * 0.5);
+    }
     private void OnAudioSeekStarted(object? sender, PointerPressedEventArgs e) => (DataContext as AssetInspectorControlViewModel)?.BeginAudioSeek();
     private void OnAudioSeekCompleted(object? sender, PointerReleasedEventArgs e) { if (sender is Slider slider) (DataContext as AssetInspectorControlViewModel)?.EndAudioSeek(slider.Value); }
 }

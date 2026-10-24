@@ -28,24 +28,9 @@
   <WrapPanel>
    <Button Name="VariantsApply" Content="{loc:Localize Variants.Apply}" Command="{Binding ApplyCommand}"/>
    <Button Name="VariantsRefresh" Content="{loc:Localize Variants.Refresh}" Command="{Binding RefreshCommand}"/>
-   <Button Content="{loc:Localize Variants.ResetPreview}" Command="{Binding ResetPreviewCommand}"/>
   </WrapPanel>
   <TextBlock Text="{Binding Diagnostics}" TextWrapping="Wrap" Foreground="OrangeRed"/>
   <TextBlock Text="{Binding Buffer.Error}" TextWrapping="Wrap" Foreground="OrangeRed"/>
-  <ItemsControl ItemsSource="{Binding PreviewRows}">
-   <ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:VariantPreviewRow">
-    <Grid ColumnDefinitions="*,*" Margin="0,2">
-     <TextBlock Text="{Binding Label}" VerticalAlignment="Center"/>
-     <ComboBox Name="VariantsPreviewChoice" Grid.Column="1" ItemsSource="{Binding Options}" SelectedItem="{Binding Value}"/>
-    </Grid>
-   </DataTemplate></ItemsControl.ItemTemplate>
-  </ItemsControl>
-  <TextBlock Text="{loc:Localize Variants.Requested}" FontWeight="SemiBold"/>
-  <TextBlock Text="{Binding Requested}" TextWrapping="Wrap"/>
-  <TextBlock Text="{loc:Localize Variants.Actual}" FontWeight="SemiBold"/>
-  <TextBlock Text="{Binding Actual}" TextWrapping="Wrap"/>
-  <Image Source="{Binding Preview}" MaxHeight="300" Stretch="Uniform"/>
-  <TextBlock Text="{Binding Fallback}" TextWrapping="Wrap"/>
   <Expander Header="JSON"><TextBox Name="VariantsJson" Text="{Binding Buffer.Text}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="140" IsReadOnly="{Binding Buffer.IsReadOnly}"/></Expander>
  </StackPanel>
 </UserControl>

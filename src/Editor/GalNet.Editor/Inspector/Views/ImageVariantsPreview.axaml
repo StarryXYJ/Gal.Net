@@ -1,0 +1,21 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:vm="using:GalNet.Editor.Inspector.ViewModels" xmlns:loc="using:GalNet.Editor.MarkupExtensions"
+ x:Class="GalNet.Editor.Inspector.Views.ImageVariantsPreview" x:DataType="vm:ImageVariantsInspector">
+ <StackPanel Spacing="6">
+  <Button Content="{loc:Localize Variants.ResetPreview}" Command="{Binding ResetPreviewCommand}" HorizontalAlignment="Left"/>
+  <ItemsControl ItemsSource="{Binding PreviewRows}">
+   <ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:VariantPreviewRow">
+    <Grid ColumnDefinitions="*,*" Margin="0,2">
+     <TextBlock Text="{Binding Label}" VerticalAlignment="Center"/>
+     <ComboBox Name="VariantsPreviewChoice" Grid.Column="1" ItemsSource="{Binding Options}" SelectedItem="{Binding Value}"/>
+    </Grid>
+   </DataTemplate></ItemsControl.ItemTemplate>
+  </ItemsControl>
+  <TextBlock Text="{loc:Localize Variants.Requested}" FontWeight="SemiBold"/>
+  <TextBlock Text="{Binding Requested}" TextWrapping="Wrap"/>
+  <TextBlock Text="{loc:Localize Variants.Actual}" FontWeight="SemiBold"/>
+  <TextBlock Text="{Binding Actual}" TextWrapping="Wrap"/>
+  <Image Source="{Binding Preview}" MaxHeight="300" Stretch="Uniform"/>
+  <TextBlock Text="{Binding Fallback}" TextWrapping="Wrap"/>
+ </StackPanel>
+</UserControl>

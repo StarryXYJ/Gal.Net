@@ -223,7 +223,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     input.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter, KeyModifiers = KeyModifiers.Control });
                     Assert.That(service.Snapshot(item.Group).Index.FindDirect("en-US", "line")?.Text, Is.EqualTo("First\nSecond"));
                     presenter.PreeditText = null; input.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Escape });
-                    input.Text = "blur"; view.FindControl<TextBox>("NewLocalizationLanguage")!.Focus();
+                    input.Text = "blur"; view.FindControl<TextBox>("LocalizationSearch")!.Focus();
                     await PumpCharacterUi(() => service.Snapshot(item.Group).Index.FindDirect("en-US", "line")?.Text == "blur");
                     input.Focus(); input.Text = "discard"; input.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Escape }); Assert.That(input.Text, Is.EqualTo("blur"));
                     var cell = model.Rows.Single().Cells[1]; cell.Text = "kept draft";
