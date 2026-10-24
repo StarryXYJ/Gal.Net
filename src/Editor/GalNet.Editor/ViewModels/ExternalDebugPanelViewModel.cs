@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -43,6 +44,7 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     private string? _runIdentity;
     private string? _authorSignature;
     private string? _savedConfiguration;
+    private string? _operationStatus;
     private bool _closed;
     private readonly IDisposable? _closing;
     public IEditorLocalizationService L { get; }
@@ -94,7 +96,11 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         _documents.DocumentChanged += OnAuthorChanged;
         Refresh();
     }
-    partial void OnBusyChanged(bool value) => NotifyControls();
+    partial void OnBusyChanged(bool value)
+    {
+        if (!value) _operationStatus = null;
+        NotifyControls();
+    }
     partial void OnContentChangedChanged(bool value) => NotifyControls();
     private void NotifyControls()
     {
@@ -103,7 +109,12 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         OnPropertyChanged(nameof(CanPause)); OnPropertyChanged(nameof(CanResume)); OnPropertyChanged(nameof(CanStep));
         OnPropertyChanged(nameof(CanStop)); OnPropertyChanged(nameof(CanSetBreakpoint));
     }
-    private void OnClientChanged() => Dispatcher.UIThread.Post(() => { if (!_closed) Refresh(); });
+    private void OnClientChanged() => Dispatcher.UIThread.Post(() =>
+    {
+        if (_closed) return;
+        Refresh();
+        if (Busy && _operationStatus is { } operationStatus) Status = operationStatus;
+    });
     private void OnAuthorChanged()
     {
         if (_authorSignature is not null) ContentChanged = Signature() != _authorSignature;
@@ -208,7 +219,9 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
             if (!File.Exists(Executable)) return;
         }
         SaveConfiguration();
+        SetOperationStatus(L["Debug.Preparing"]);
         var root = await PrepareAsync();
+        SetOperationStatus(L["Debug.StartingApplication"]);
         _client.Launch(new(Executable, Arguments.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries),
             string.IsNullOrWhiteSpace(WorkingDirectory) ? null : WorkingDirectory), root, Path.Combine(_projects.Current!.RootPath, ".galnet", "debug-profile"));
     });
@@ -227,25 +240,55 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     private async Task<string> PrepareAsync()
     {
         await _client.DisconnectAsync();
-        await _projects.SaveAsync();
         var project = _projects.Current ?? throw new InvalidOperationException("No project.");
+        var profileRoot = Path.Combine(project.RootPath, ".galnet", "debug-profile");
+        _client.BeginDiagnostics(profileRoot);
+        var preparation = Stopwatch.StartNew();
+        SetOperationStatus(L["Debug.SavingProject"]);
+        _client.RecordDiagnostic("Saving project changes before building test content.");
+        await _projects.SaveAsync();
+        _client.RecordDiagnostic($"Project save completed in {preparation.ElapsedMilliseconds} ms.");
+        preparation.Restart();
         var output = Path.Combine(project.RootPath, "Output", "Debug");
-        await new ProjectContentBuilder(_catalog).BuildAsync(project.RootPath, output);
-        _sources.Clear(); _positions.Clear(); _spans.Clear(); _breakpointRun = null;
-        var repository = new EditorDocumentRepository(_catalog);
-        foreach (var group in _documents.Groups.Values)
+        SetOperationStatus(L["Debug.BuildingContent"]);
+        _client.RecordDiagnostic($"Building test content at {output}.");
+        var builder = new ProjectContentBuilder(_catalog);
+        // BuildAsync performs substantial synchronous validation before its first await.
+        // Keep that CPU and filesystem work off Avalonia's UI thread.
+        await Task.Run(() => builder.BuildAsync(project.RootPath, output));
+        _client.RecordDiagnostic($"Test content build completed in {preparation.ElapsedMilliseconds} ms.");
+        preparation.Restart();
+        SetOperationStatus(L["Debug.PreparingSourceMap"]);
+        var authorGroups = _documents.Groups.Values
+            .Select(group => (Id: group.Id, Entries: group.Entries.ToArray()))
+            .ToArray();
+        var sourceMap = await Task.Run(() =>
         {
-            var result = GalgroupCompiler.Compile(new GroupDocument { Kind = GroupDocumentKind.Raw, Entries = group.Entries.Select(repository.SerializeEntry).ToList() }, _catalog);
-            var offset = 0;
-            foreach (var entry in group.Entries)
+            var sources = new Dictionary<(string Group, string Primitive), string>();
+            var positions = new Dictionary<(string Group, string Source), int>();
+            var spans = new Dictionary<(string Group, string Source), GameDebugSpan>();
+            var repository = new EditorDocumentRepository(_catalog);
+            foreach (var group in authorGroups)
             {
-                _positions[(group.Id, entry.StableId)] = offset;
-                foreach (var primitive in result.SourceMap[entry.StableId]) { _sources[(group.Id, primitive)] = entry.StableId; offset++; }
-                _spans[(group.Id, entry.StableId)] = new(group.Id, _positions[(group.Id, entry.StableId)], offset);
+                var result = GalgroupCompiler.Compile(new GroupDocument { Kind = GroupDocumentKind.Raw, Entries = group.Entries.Select(repository.SerializeEntry).ToList() }, _catalog);
+                var offset = 0;
+                foreach (var entry in group.Entries)
+                {
+                    positions[(group.Id, entry.StableId)] = offset;
+                    foreach (var primitive in result.SourceMap[entry.StableId]) { sources[(group.Id, primitive)] = entry.StableId; offset++; }
+                    spans[(group.Id, entry.StableId)] = new(group.Id, positions[(group.Id, entry.StableId)], offset);
+                }
             }
-        }
+            return (sources, positions, spans);
+        });
+        _sources.Clear(); _positions.Clear(); _spans.Clear(); _breakpointRun = null;
+        foreach (var pair in sourceMap.sources) _sources.Add(pair.Key, pair.Value);
+        foreach (var pair in sourceMap.positions) _positions.Add(pair.Key, pair.Value);
+        foreach (var pair in sourceMap.spans) _spans.Add(pair.Key, pair.Value);
+        _client.RecordDiagnostic($"Author source map prepared in {preparation.ElapsedMilliseconds} ms for {authorGroups.Length} Group(s).");
         _authorSignature = Signature(); ContentChanged = false;
-        _client.Listen(new(project.Id, DebugContentIdentity.Compute(output), project.Services.GetRequiredService<ProjectSchemaSession>().Context.Fingerprint));
+        var identity = new DebugIdentity(project.Id, DebugContentIdentity.Compute(output), project.Services.GetRequiredService<ProjectSchemaSession>().Context.Fingerprint);
+        _client.Listen(identity);
         return output;
     }
     private string Signature() => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
@@ -254,12 +297,7 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         Groups = _documents.Groups.Select(pair => new { pair.Key, Entries = pair.Value.Entries.Select(entry => new { entry.StableId, entry.Type, entry.Condition, entry.Parameters }) }).ToArray()
     }))));
     [RelayCommand] private Task StartGameAsync() => CommandAsync("start");
-    [RelayCommand]
-    private async Task StopGameAsync()
-    {
-        try { await _client.SendAsync("stop"); }
-        catch (Exception error) { Error = error.Message; }
-    }
+    [RelayCommand] private Task StopGameAsync() => CommandAsync("stop");
     [RelayCommand] private Task PauseAsync() => CommandAsync("pause");
     [RelayCommand] private Task ResumeAsync() => CommandAsync("resume");
     [RelayCommand]
@@ -273,15 +311,24 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     });
     [RelayCommand] private Task GroupEndAsync() => CommandAsync("groupEnd");
     [RelayCommand] private Task DisconnectAsync() => RunAsync(_client.DisconnectAsync);
-    [RelayCommand] private async Task CancelAsync() { try { await _client.SendAsync("cancel"); } catch (Exception error) { Error = error.Message; } }
+    [RelayCommand] private Task CancelAsync() => CommandAsync("cancel");
     internal Task CommandAsync(string method, object? arguments = null, string? run = null, long? generation = null) =>
         RunAsync(async () => { await _client.SendAsync(method, arguments, run, generation); });
+    private void SetOperationStatus(string value) { _operationStatus = value; Status = value; }
     private async Task RunAsync(Func<Task> action)
     {
         if (Busy || _closed) return;
         Busy = true; Error = "";
         try { await action(); }
-        catch (Exception error) { Error = error.Message; Serilog.Log.Error(error, "External game debug operation failed"); }
+        catch (Exception error)
+        {
+            _client.RecordDiagnostic($"Editor debug operation failed: {error}");
+            var message = error.Message;
+            if (_client.DiagnosticLogPath is { } path && !message.Contains(path, StringComparison.OrdinalIgnoreCase))
+                message = $"{message}{Environment.NewLine}Diagnostics: {path}";
+            Error = message;
+            Serilog.Log.Error(error, "External game debug operation failed");
+        }
         finally { Busy = false; }
     }
     public Task ToggleBreakpointAsync(string group, string source) => RunAsync(async () =>
