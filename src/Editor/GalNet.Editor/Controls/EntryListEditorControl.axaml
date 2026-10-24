@@ -37,6 +37,7 @@
                     <Border Margin="0,3"
                             Classes="debugEntry"
                             Classes.debugCurrent="{Binding IsDebugCurrent}"
+                            AttachedToVisualTree="OnEntryAttachedToVisualTree"
                             Padding="6"
                             Background="{DynamicResource SemiColorBackground1}"
                             CornerRadius="6">

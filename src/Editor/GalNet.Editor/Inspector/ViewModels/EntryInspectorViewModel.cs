@@ -52,6 +52,7 @@ public sealed class EntryInspectorViewModel : ObservableObject, IInspectorContro
     private void Refresh()
     {
         var entry = Entry;
+        if (entry is not null) Page.EnsureParameterFields(entry);
         if (!ReferenceEquals(entry, _formOwner) || entry?.Type != _formType)
         {
             Form?.Dispose(); Form = null; _formOwner = entry; _formType = entry?.Type;

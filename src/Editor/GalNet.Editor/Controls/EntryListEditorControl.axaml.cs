@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
@@ -70,6 +71,13 @@ public partial class EntryListEditorControl : ReorderableListControl
         if (source.GetSelfAndVisualAncestors().OfType<ListBoxItem>().FirstOrDefault()?.DataContext is EntryEditorItemViewModel entry
             && !vm.SelectedEntries.Contains(entry))
             vm.SetSelection([entry]);
+    }
+    private void OnEntryAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs args)
+    {
+        if (sender is Control { DataContext: EntryEditorItemViewModel entry }
+            && DataContext is GroupEditorPanelViewModel vm
+            && entry.IsParametersExpanded)
+            vm.EnsureParameterFields(entry);
     }
     private void OpenInsertPicker()
     {
