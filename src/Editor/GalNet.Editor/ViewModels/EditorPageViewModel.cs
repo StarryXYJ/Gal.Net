@@ -22,8 +22,8 @@ using GalNet.Editor.History;
 using GalNet.Editor.Models;
 using GalNet.Editor.Services;
 using GalNet.Editor.Shared.Services;
-using Serilog;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 
 namespace GalNet.Editor.ViewModels;
 
@@ -45,6 +45,12 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
     private string _statusText = "";
 
     public string ProjectName => _projectService.Current?.Name ?? "";
+    private EntryEditSession? Edits => _projectService.Current?.Services.GetService<EntryEditSession>();
+    public string SaveStatus => L[_projectService.Current is null ? "Editor.Status.Ready" : _content.RepairRequired ? "Status.Repair" : _content.LastError is not null ? "Uiux.Save.Failed"
+        : _content.HasEditsSincePublication ? "Uiux.Save.Unsaved" : _content.IsPublishing ? "Uiux.Save.Saving" : Edits?.PendingCount > 0 ? "Uiux.Save.Drafts" : _content.IsDirty ? "Uiux.Save.Unsaved" : "Uiux.Save.Saved"];
+    public string DraftCount => Edits?.PendingCount is > 0 and var count ? L.Format("Uiux.Save.PendingCount", count) : "";
+    public ProblemsPanelViewModel? Problems => _projectService.Current?.Services.GetService<ProblemsPanelViewModel>();
+    public ICommand ShowProblemsCommand => new RelayCommand(() => _dockFactory.OpenPanel(EditorDockPanelIds.Problems));
 
     public IList<MenuData> MenuItems { get; } = new AvaloniaList<MenuData>();
 
@@ -130,6 +136,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
 
     private void OnContentChanged()
     {
+        OnPropertyChanged(nameof(SaveStatus)); OnPropertyChanged(nameof(DraftCount));
         OnPropertyChanged(nameof(ProjectName));
         UpdateLocalizedText();
         if (_content.RepairRequired) StatusText = L["Status.Repair"];
@@ -284,7 +291,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
 
     private void PersistLayoutCore()
     {
-        if (_savingLayout || Layout is null) return;
+        if (_savingLayout || Layout is null || _dockFactory.IsMaximized) return;
         try
         {
             _savingLayout = true;
@@ -402,6 +409,10 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
                 HeaderKey = "Editor.Menu.Window",
                 Children = new AvaloniaList<MenuData>
                 {
+                    new() { HeaderKey = "Uiux.Layout.Writing", Command = new RelayCommand(() => _dockFactory.ApplyWorkspacePreset("Writing")) },
+                    new() { HeaderKey = "Uiux.Layout.Animation", Command = new RelayCommand(() => _dockFactory.ApplyWorkspacePreset("Animation")) },
+                    new() { HeaderKey = "Uiux.Layout.Debug", Command = new RelayCommand(() => _dockFactory.ApplyWorkspacePreset("Debug")) },
+                    new() { HeaderKey = "Uiux.Layout.Maximize", Command = new RelayCommand(_dockFactory.ToggleMaximizeActive) },
                     new() { HeaderKey = "Editor.Menu.SaveLayout", Command = SaveLayoutCommand },
                     new() { HeaderKey = "Editor.Menu.LoadLayout", Children = BuildLoadLayoutItems() },
                     new() { HeaderKey = "Editor.Menu.DeleteLayout", Children = BuildDeleteLayoutItems() },

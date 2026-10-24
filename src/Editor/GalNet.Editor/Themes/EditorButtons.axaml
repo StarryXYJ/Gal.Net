@@ -1,0 +1,33 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:themes="using:GalNet.Editor.Themes">
+  <ControlTheme x:Key="EditorIconButton" TargetType="Button">
+    <Setter Property="themes:EditorButton.IsIcon" Value="True"/>
+    <Setter Property="Width" Value="32"/><Setter Property="Height" Value="32"/>
+    <Setter Property="MinWidth" Value="0"/><Setter Property="MinHeight" Value="0"/>
+    <Setter Property="Padding" Value="7"/><Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderBrush" Value="Transparent"/><Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="4"/><Setter Property="ToolTip.ShowOnDisabled" Value="True"/>
+    <Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/>
+    <Setter Property="Template"><ControlTemplate>
+      <Border Name="ButtonSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+              BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}">
+        <Border.Transitions><Transitions>
+          <themes:LinearBrushTransition Property="Background" Duration="0:0:0.16"/>
+          <themes:LinearBrushTransition Property="BorderBrush" Duration="0:0:0.16"/>
+        </Transitions></Border.Transitions>
+        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                          Padding="{TemplateBinding Padding}" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+      </Border>
+    </ControlTemplate></Setter>
+    <Style Selector="^:pointerover /template/ Border#ButtonSurface"><Setter Property="Background" Value="{DynamicResource SemiColorFill0}"/></Style>
+    <Style Selector="^:pressed /template/ Border#ButtonSurface"><Setter Property="Background" Value="{DynamicResource SemiColorFill1}"/></Style>
+    <Style Selector="^:focus-visible /template/ Border#ButtonSurface"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}"/></Style>
+    <Style Selector="^:disabled"><Setter Property="Opacity" Value="0.35"/></Style>
+  </ControlTheme>
+  <ControlTheme x:Key="EditorIconToggleButton" TargetType="ToggleButton" BasedOn="{StaticResource EditorIconButton}">
+    <Style Selector="^:checked /template/ Border#ButtonSurface">
+      <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}"/>
+    </Style>
+  </ControlTheme>
+</ResourceDictionary>

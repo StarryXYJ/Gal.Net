@@ -16,6 +16,28 @@ namespace GalNet.Editor.Views;
 
 public partial class NodeGraphPanelView : UserControl
 {
+    private bool _syncingZoom;
+    private void OnFrameAll(object? sender, Avalonia.Interactivity.RoutedEventArgs args) => FrameNodes(false);
+    private void OnFrameSelection(object? sender, Avalonia.Interactivity.RoutedEventArgs args) => FrameNodes(true);
+    private void OnGraphZoomChanged(object? sender, Avalonia.Controls.Primitives.RangeBaseValueChangedEventArgs args)
+    {
+        if (_syncingZoom || Viewport is null) return;
+        var center = new Point(Viewport.Bounds.Width / 2, Viewport.Bounds.Height / 2);
+        var world = Viewport.ViewportToWorld(center);
+        Viewport.SetViewport(args.NewValue, center.X - world.X * args.NewValue, center.Y - world.Y * args.NewValue);
+    }
+    private void OnGraphSearchChanged(object? sender, TextChangedEventArgs args)
+    {
+        if (GraphSearchResults is null) return;
+        var query = GraphSearch.Text ?? "";
+        GraphSearchResults.IsVisible = !string.IsNullOrWhiteSpace(query);
+        GraphSearchResults.ItemsSource = Workspace?.Nodes.Where(node => node.Name.Contains(query, StringComparison.OrdinalIgnoreCase) || node.Id.Contains(query, StringComparison.OrdinalIgnoreCase)).Take(30).ToArray();
+    }
+    private void OnGraphSearchSelected(object? sender, SelectionChangedEventArgs args)
+    {
+        if (GraphSearchResults.SelectedItem is not GalNet.Editor.Models.Graph.GraphNode node || Workspace is null) return;
+        Workspace.SelectNode(node); FrameNodes(true); GraphSearchResults.IsVisible = false;
+    }
     private GraphNode? _draggedNode;
     private IPointer? _dragPointer;
     private EditorWorkspaceViewModel? _dragWorkspace;
@@ -39,7 +61,12 @@ public partial class NodeGraphPanelView : UserControl
         AttachedToVisualTree += (_, _) => ApplyViewportState();
         DetachedFromVisualTree += (_, _) => CancelInteraction();
         PointerCaptureLost += (_, _) => CancelInteraction();
-        Viewport.ViewChanged += (_, _) => SaveViewportState();
+        Viewport.ViewChanged += (_, _) =>
+        {
+            SaveViewportState(); _syncingZoom = true;
+            GraphZoom.Value = Viewport.Zoom; GraphZoomLabel.Text = Viewport.Zoom.ToString("P0");
+            _syncingZoom = false;
+        };
         Viewport.SizeChanged += (_, _) => ApplyViewportState();
     }
 

@@ -6,11 +6,23 @@
   <UserControl.Styles>
     <Style Selector="Border.drop-target"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" /><Setter Property="BorderThickness" Value="2" /></Style>
   </UserControl.Styles>
-  <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="4" RowSpacing="4">
+  <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="4" RowSpacing="4">
+    <WrapPanel Grid.Row="1">
+      <Button Content="{loc:Localize Files.Import}" Command="{Binding ImportCommand}" Margin="0,0,6,0" />
+      <Button Content="{loc:Localize Files.NewText}" Command="{Binding NewFileCommand}" Margin="0,0,6,0" />
+      <Button Content="{loc:Localize Asset.Menu.NewFolder}" Command="{Binding NewFolderCommand}" Margin="0,0,6,0" />
+      <ComboBox Name="FileTypeFilter" SelectedIndex="{Binding TypeFilterIndex}" MinWidth="110" Margin="0,0,6,0">
+        <ComboBoxItem Content="{loc:Localize Uiux.Files.All}"/><ComboBoxItem Content="{loc:Localize Uiux.Files.Images}"/>
+        <ComboBoxItem Content="{loc:Localize Uiux.Files.Audio}"/><ComboBoxItem Content="{loc:Localize Uiux.Files.Video}"/>
+        <ComboBoxItem Content="{loc:Localize Uiux.Files.Groups}"/><ComboBoxItem Content="{loc:Localize Uiux.Files.Other}"/><ComboBoxItem Content="{loc:Localize Uiux.Files.Folders}"/>
+      </ComboBox>
+      <CheckBox Content="{loc:Localize Uiux.Files.List}" IsChecked="{Binding IsListView}" IsCheckedChanged="OnListViewChanged"/>
+      <TextBlock Text="{loc:Localize Uiux.Files.SearchScope}" Margin="10,0" VerticalAlignment="Center" Foreground="{DynamicResource SemiColorText2}"/>
+    </WrapPanel>
     <Grid ColumnDefinitions="Auto,Auto,Auto,*,220" ColumnSpacing="4">
-      <Button Content="←" Command="{Binding BackCommand}" IsEnabled="{Binding CanGoBack}" ToolTip.Tip="{loc:Localize Files.Back}" />
-      <Button Grid.Column="1" Content="→" Command="{Binding ForwardCommand}" IsEnabled="{Binding CanGoForward}" ToolTip.Tip="{loc:Localize Files.Forward}" />
-      <Button Grid.Column="2" Content="↑" Command="{Binding UpCommand}" IsEnabled="{Binding CanGoUp}" ToolTip.Tip="{loc:Localize Files.Up}" />
+      <Button Theme="{DynamicResource EditorIconButton}" Command="{Binding BackCommand}" IsEnabled="{Binding CanGoBack}" ToolTip.Tip="{loc:Localize Files.Back}" AutomationProperties.Name="{loc:Localize Files.Back}"><PathIcon Width="16" Height="16" Data="M14 4L6 12L14 20L16 18L10 12L16 6Z"/></Button>
+      <Button Grid.Column="1" Theme="{DynamicResource EditorIconButton}" Command="{Binding ForwardCommand}" IsEnabled="{Binding CanGoForward}" ToolTip.Tip="{loc:Localize Files.Forward}" AutomationProperties.Name="{loc:Localize Files.Forward}"><PathIcon Width="16" Height="16" Data="M8 4L16 12L8 20L6 18L12 12L6 6Z"/></Button>
+      <Button Grid.Column="2" Theme="{DynamicResource EditorIconButton}" Command="{Binding UpCommand}" IsEnabled="{Binding CanGoUp}" ToolTip.Tip="{loc:Localize Files.Up}" AutomationProperties.Name="{loc:Localize Files.Up}"><PathIcon Width="16" Height="16" Data="M4 14L12 6L20 14L18 16L12 10L6 16Z"/></Button>
       <Border x:Name="AddressBar" Grid.Column="3" BorderThickness="1" BorderBrush="{DynamicResource SemiColorBorder}" CornerRadius="4" Background="{DynamicResource SemiColorBackground0}" PointerPressed="OnAddressPressed">
         <Grid>
           <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" IsVisible="{Binding !IsEditingPath}" HorizontalAlignment="Left">
@@ -32,7 +44,7 @@
       </Grid>
     </Grid>
 
-    <Grid Grid.Row="1" ColumnDefinitions="180,5,*">
+    <Grid Grid.Row="2" ColumnDefinitions="180,5,*">
       <TreeView x:Name="DirectoryTree" ItemsSource="{Binding Directories}" SelectedItem="{Binding SelectedDirectory,Mode=TwoWay}">
         <TreeView.Styles><Style Selector="TreeViewItem"><Setter Property="IsExpanded" Value="{ReflectionBinding IsExpanded,Mode=TwoWay}" /></Style></TreeView.Styles>
         <TreeView.DataTemplates>
@@ -43,6 +55,7 @@
       </TreeView>
       <GridSplitter Grid.Column="1" ResizeDirection="Columns" HorizontalAlignment="Stretch" />
       <ListBox x:Name="FileGrid" Grid.Column="2" ItemsSource="{Binding Entries}" SelectionMode="Multiple" SelectedItems="{Binding SelectedEntries,Mode=OneWay}" DragDrop.AllowDrop="True" DragDrop.DragOver="OnGridDragOver" DragDrop.Drop="OnGridDrop">
+        <ListBox.Styles><Style Selector="ListBoxItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/></Style></ListBox.Styles>
         <ListBox.ContextMenu><ContextMenu>
           <MenuItem Header="{loc:Localize Files.Import}" Command="{Binding ImportCommand}" />
           <MenuItem Header="{loc:Localize Asset.Menu.Paste}" Command="{Binding PasteCommand}" />
@@ -76,15 +89,17 @@
               <MenuItem Header="{loc:Localize Asset.Menu.OpenInExplorer}" Command="{Binding #Root.DataContext.ShowInExplorerCommand}" CommandParameter="{Binding}" />
             </ContextMenu></Border.ContextMenu>
             <Grid RowDefinitions="*,Auto">
-              <Border Background="{DynamicResource SemiColorFill0}" CornerRadius="4"><Grid><TextBlock Text="{Binding Icon}" FontSize="38" HorizontalAlignment="Center" VerticalAlignment="Center" /><Image Source="{Binding Thumbnail}" Stretch="Uniform" /></Grid></Border>
+              <Border Background="{DynamicResource SemiColorFill0}" CornerRadius="4" IsVisible="{Binding !#Root.DataContext.IsListView}"><Grid><TextBlock Text="{Binding Icon}" FontSize="38" HorizontalAlignment="Center" VerticalAlignment="Center" /><Image Source="{Binding Thumbnail}" Stretch="Uniform" /></Grid></Border>
+              <TextBlock Text="{Binding Path}" IsVisible="{Binding #Root.DataContext.IsListView}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource SemiColorText2}" FontSize="11"/>
               <TextBlock Grid.Row="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" IsVisible="{Binding !IsRenaming}" />
               <TextBox Grid.Row="1" Text="{Binding #Root.DataContext.RenameText,Mode=TwoWay}" IsVisible="{Binding IsRenaming}" AttachedToVisualTree="OnRenameAttached" PropertyChanged="OnRenamePropertyChanged" KeyDown="OnRenameKeyDown" LostFocus="OnRenameLostFocus" />
             </Grid>
           </Border>
         </DataTemplate></ListBox.ItemTemplate>
       </ListBox>
+      <TextBlock Grid.Column="2" Text="{Binding EmptyMessage}" IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" Margin="12" IsHitTestVisible="False"/>
     </Grid>
-    <Border Grid.Row="2" Padding="8" BorderThickness="1" BorderBrush="{DynamicResource SemiColorBorder}" IsVisible="{Binding IsDeletePending}">
+    <Border Grid.Row="3" Padding="8" BorderThickness="1" BorderBrush="{DynamicResource SemiColorBorder}" IsVisible="{Binding IsDeletePending}">
       <StackPanel Spacing="4">
         <TextBlock Text="{loc:Localize Files.DeleteQuestion}" FontWeight="SemiBold" />
         <TextBlock Text="{Binding DeleteDetails}" TextWrapping="Wrap" MaxHeight="90" />
@@ -93,11 +108,11 @@
         <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="{loc:Localize Asset.Menu.Delete}" Command="{Binding ConfirmDeleteCommand}" /><Button Content="{loc:Localize Files.Cancel}" Command="{Binding CancelDeleteCommand}" /></StackPanel>
       </StackPanel>
     </Border>
-    <Grid Grid.Row="3" ColumnDefinitions="*,120,Auto" RowDefinitions="Auto,Auto">
+    <Grid Grid.Row="4" ColumnDefinitions="*,120,Auto" RowDefinitions="Auto,Auto">
       <TextBlock Text="{Binding SelectionInformation}" TextTrimming="CharacterEllipsis" />
       <Slider Grid.Column="1" Minimum="48" Maximum="144" Value="{Binding ThumbnailSize}" ToolTip.Tip="{loc:Localize Files.ThumbnailSize}" />
-      <Button x:Name="RefreshButton" Grid.Column="2" Content="⟳" Command="{Binding RefreshCommand}" ToolTip.Tip="{loc:Localize Asset.Menu.Refresh}" />
-      <TextBlock Grid.Row="1" Grid.ColumnSpan="3" Text="{Binding ErrorText}" Foreground="OrangeRed" TextWrapping="Wrap" />
+      <Button x:Name="RefreshButton" Grid.Column="2" Theme="{DynamicResource EditorIconButton}" Command="{Binding RefreshCommand}" ToolTip.Tip="{loc:Localize Asset.Menu.Refresh}" AutomationProperties.Name="{loc:Localize Asset.Menu.Refresh}"><PathIcon Width="16" Height="16" Data="M20 4V11H13L16 8A6 6 0 1 0 18 14H20A8 8 0 1 1 17.4 6.6Z"/></Button>
+      <TextBlock Grid.Row="1" Grid.ColumnSpan="3" Text="{Binding ErrorText}" Foreground="{DynamicResource SemiColorDanger}" TextWrapping="Wrap" />
     </Grid>
   </Grid>
 </UserControl>

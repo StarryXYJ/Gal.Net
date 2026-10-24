@@ -329,6 +329,7 @@ public partial class GraphEdge : ObservableObject, IDisposable
 
 public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
 {
+    internal EntryEditSession? EditSession { get; set; }
     [ObservableProperty] private bool _isDebugBreakpoint;
     [ObservableProperty] private bool _isDebugCurrent;
     internal string? AuthorGroupId => _groupId;
@@ -373,6 +374,10 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HasUnknownParameters));
         foreach (var field in ParameterFields) field.RefreshValue(Parameters.GetValueOrDefault(field.Id, field.Definition.DefaultValue));
         ParameterForm?.Refresh();
+        _detailForm?.Refresh();
+        OnPropertyChanged(nameof(DetailForm));
+        OnPropertyChanged(nameof(Summary));
+        OnPropertyChanged(nameof(HasCondition));
         UpdateEffectHints();
     }
 
@@ -426,6 +431,14 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     private IEffectCatalog? _effectCatalog;
     private DynamicParameterTable? _formParameters;
     [ObservableProperty] private EntryParameterFormBinding? _parameterForm;
+    private EntryParameterFormBinding? _detailForm;
+    public EntryParameterFormBinding? DetailForm => ParameterForm ?? _detailForm;
+    public string Summary => EditSession?.Summary(this) ?? string.Join(" · ", Source.Parameters.Where(pair => pair.Key is "content" or "speaker" or "asset" or "assetId" or "target" or "expression" or "handleId")
+        .Select(pair => pair.Value.ValueKind == JsonValueKind.String ? pair.Value.GetString() : pair.Value.GetRawText()).Where(value => !string.IsNullOrEmpty(value))).Replace('\n', ' ');
+    public bool HasCondition => !string.IsNullOrWhiteSpace(Condition);
+    [ObservableProperty] private int _problemCount;
+    public bool HasProblems => ProblemCount > 0;
+    partial void OnProblemCountChanged(int value) => OnPropertyChanged(nameof(HasProblems));
     public bool HasParameterForm => ParameterForm is not null;
     partial void OnParameterFormChanged(EntryParameterFormBinding? value) => OnPropertyChanged(nameof(HasParameterForm));
     public bool HasEffectDiagnostic => !string.IsNullOrWhiteSpace(EffectDiagnostic);
@@ -441,6 +454,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         _authorCatalog = catalog;
         ParameterForm?.Dispose();
         ParameterForm = null;
+        _detailForm?.Dispose(); _detailForm = null;
         _formParameters = null;
         _effectCatalog = effectCatalog;
         _schemaGeneration++;
@@ -449,6 +463,8 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HasUnknownParameters));
         if (!catalog.TryGet(Type, out var schema)) { UpdateEffectHints(); return; }
         var parameters = schema.DynamicParameters ?? EntrySchema.DynamicParameters(schema.Parameters, schema.Defaults, schema.Options);
+        _detailForm = new EntryParameterFormBinding(this, parameters.Fields, schema.FieldDataType);
+        OnPropertyChanged(nameof(DetailForm));
 
         if (schema.FieldDataType is not null)
         {
@@ -481,10 +497,12 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
 
     internal void InvalidateParameterFields()
     {
+        _detailForm?.Dispose(); _detailForm = null;
         _schemaGeneration++;
         ParameterForm?.Dispose();
         ParameterForm = null;
         ParameterFields.Clear();
+        OnPropertyChanged(nameof(DetailForm));
     }
 
     private static bool UsesDedicatedEditor(FieldDescriptor field, EntryParameterType type) =>
@@ -581,6 +599,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        _detailForm?.Dispose();
         ParameterForm?.Dispose();
         ParameterFields.Clear();
         GC.SuppressFinalize(this);

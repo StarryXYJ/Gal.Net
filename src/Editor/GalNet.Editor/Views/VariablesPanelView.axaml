@@ -2,7 +2,7 @@
              xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:services="using:GalNet.Editor.Services"
              xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
              xmlns:globalization="clr-namespace:System.Globalization;assembly=System.Runtime"
-             x:Class="GalNet.Editor.Views.VariablesPanelView" x:DataType="vm:VariablesPanelViewModel">
+             x:Class="GalNet.Editor.Views.VariablesPanelView" x:Name="Root" x:DataType="vm:VariablesPanelViewModel">
   <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="12" RowSpacing="8">
     <TabControl x:Name="ScopeTabs" Height="44" SelectedIndex="{Binding ScopeIndex}">
       <TabItem Header="{loc:Localize Variables.Player}" />
@@ -42,7 +42,7 @@
           </WrapPanel>
           <Button Content="{loc:Localize Variables.References}" Command="{Binding CheckReferencesCommand}"/>
           <TextBlock Text="{loc:Localize Variables.ReferenceHint}" TextWrapping="Wrap" Opacity="0.65"/>
-          <ItemsControl ItemsSource="{Binding References}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="services:VariableReference"><StackPanel Margin="0,4"><TextBlock Text="{Binding Location}" TextWrapping="Wrap"/><TextBlock Text="{loc:Localize Variables.Certain}" IsVisible="{Binding Certain}"/><TextBlock Text="{loc:Localize Variables.Possible}" IsVisible="{Binding !Certain}" Opacity="0.65"/></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+          <ItemsControl ItemsSource="{Binding References}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="services:VariableReference"><StackPanel Margin="0,4"><Button Background="Transparent" Command="{Binding #Root.DataContext.NavigateReferenceCommand}" CommandParameter="{Binding}" HorizontalContentAlignment="Left"><TextBlock Text="{Binding Location}" TextWrapping="Wrap"/></Button><TextBlock Text="{loc:Localize Variables.Certain}" IsVisible="{Binding Certain}"/><TextBlock Text="{loc:Localize Variables.Possible}" IsVisible="{Binding !Certain}" Opacity="0.65"/></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
         </StackPanel>
       </ScrollViewer>
     </Grid>

@@ -99,7 +99,7 @@ internal sealed class DockInspectorCoordinator
             return;
         if (panel.Inspector is null || dockable.Context is null)
         {
-            if (!isInitialTarget) inspector.FollowNoInspector();
+            // Auxiliary docks (timeline, logs, problems) do not replace the author's detail target.
             return;
         }
 

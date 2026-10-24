@@ -306,3 +306,11 @@ services.AddTransient<MyNewPanelViewModel>();
 - [Dock.Avalonia GitHub](https://github.com/wieslawsoltes/Dock)
 - [Document and Tool Content Guide](https://wieslawsoltes.github.io/Dock/articles/dock-content-guide.html)
 - [Dock MVVM Guide](https://wieslawsoltes.github.io/Dock/articles/dock-mvvm.html)
+
+## 创作工作区预设
+
+窗口菜单提供手动应用的剧情、动画和调试布局。剧情预设主区/Inspector 为 72:28，底部约 22% 激活资源；动画隐藏 Inspector、底部约 45% 激活 Timeline；调试底部约 40% 激活外部调试，与日志共组。打开工具只激活面板，不自动应用预设；原保存布局优先恢复。新工作区默认剧情布局，Timeline 按需打开。
+
+预设调整现有 Dock，不销毁打开的文档、作者选择或项目草稿。最大化当前面板可恢复操作前结构；临时最大化状态不覆盖自动保存的布局。Timeline 属性树初始宽 320 DIP，可通过分隔条调整；显示完整时长、定位播放头及缩放读数只改变视口。
+
+Editor 图标按钮默认透明、32 DIP 点击区域，保留键盘焦点、禁用及切换反馈。按钮、背景与文字使用 Editor 调色板；平滑颜色过渡以预乘透明度插值，避免透明白色混入暗色 hover。游戏作者数据和其他宿主不依赖这些 Editor 外观。

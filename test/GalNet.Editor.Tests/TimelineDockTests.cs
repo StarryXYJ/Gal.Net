@@ -35,7 +35,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     private static void TimelinePump(Window window) { Dispatcher.UIThread.RunJobs(); window.UpdateLayout(); }
 
     [Test]
-    public async Task TimelineDockDefaultsFollowActiveEntryAndNumericEditsRoundTripThroughHistoryAndDisk()
+    public async Task TimelineDockOpensOnDemandFollowsActiveEntryAndNumericEditsRoundTripThroughHistoryAndDisk()
     {
         await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
         await ui.Dispatch<bool>(async () =>
@@ -47,6 +47,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             entry.Source.Parameters = new() { ["timeline"] = TimelineFixture(), ["future"] = JsonSerializer.SerializeToElement(new[] { 1, 2 }) };
             var ordinary = workspace.InsertEntriesInto(group, 1, 1, BuiltinEntryIds.Wait).Single();
             var factory = project.Services.GetRequiredService<EditorDockFactory>(); var layout = factory.CreateLayout(); factory.InitLayout(layout);
+            Assert.That(TimelineDockables(layout).Any(item => item.Id == EditorDockPanelIds.Timeline), Is.False);
+            factory.OpenPanel(EditorDockPanelIds.Timeline);
             var panels = TimelineDockables(layout).ToArray(); var dock = panels.Single(item => item.Id == EditorDockPanelIds.Timeline);
             Assert.That(dock.Owner, Is.SameAs(panels.Single(item => item.Id == EditorDockPanelIds.Assets).Owner));
             factory.OpenGroupEditor(group);

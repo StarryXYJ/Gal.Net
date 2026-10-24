@@ -15,19 +15,23 @@
     </controls:ReorderableListControl.Styles>
     <Grid RowDefinitions="Auto,*,Auto">
         <WrapPanel x:Name="EntryToolbar" Orientation="Horizontal">
-            <Button Content="{loc:Localize Entry.Add}" Command="{Binding AddEntryCommand}" Margin="0,0,6,0" />
+            <TextBox Width="170" Text="{Binding SearchText}" PlaceholderText="{loc:Localize Uiux.Entry.Search}" Margin="0,0,6,0" />
+            <Button Theme="{DynamicResource EditorIconButton}" ToolTip.Tip="{loc:Localize Entry.Add}" AutomationProperties.Name="{loc:Localize Entry.Add}" Command="{Binding AddEntryCommand}" Margin="0,0,6,0"><PathIcon Width="16" Height="16" Data="{StaticResource AddIcon}"/></Button>
             <Button Content="{loc:Localize Entry.AppendBatch}" Command="{Binding AppendEntriesCommand}" Margin="0,0,6,0" />
             <NumericUpDown x:Name="BatchCount" Width="90" Minimum="1" Maximum="1000" Increment="1" FormatString="0" Value="{Binding BatchAddCount,Mode=TwoWay}" Margin="0,0,6,0" ToolTip.Tip="{loc:Localize Entry.BatchCount}" />
             <controls:EntryTypePicker x:Name="InsertPicker" MinWidth="180" MinHeight="32" VerticalAlignment="Center" Options="{Binding EntryTypes}" ShortcutService="{Binding ShortcutService}" SelectedValue="{Binding InsertionType,Mode=OneWay}" Opened="OnInsertPickerOpened" Closed="OnInsertPickerClosed" TypeConfirmed="OnInsertTypeConfirmed" />
+            <Button Theme="{DynamicResource EditorIconButton}" ToolTip.Tip="{loc:Localize Uiux.Entry.ExpandAll}" AutomationProperties.Name="{loc:Localize Uiux.Entry.ExpandAll}" Command="{Binding ExpandAllCommand}" Margin="0,0,6,0"><PathIcon Width="16" Height="16" Data="{StaticResource ChevronDownRegular}"/></Button>
+            <Button Theme="{DynamicResource EditorIconButton}" ToolTip.Tip="{loc:Localize Uiux.Entry.CollapseAll}" AutomationProperties.Name="{loc:Localize Uiux.Entry.CollapseAll}" Command="{Binding CollapseAllCommand}" Margin="0,0,6,0"><PathIcon Width="16" Height="16" Data="{StaticResource ChevronUpRegular}"/></Button>
         </WrapPanel>
 
         <ListBox Name="ItemsListBox"
                  Grid.Row="1"
-                 Margin="0,8,0,0"
-                 ItemsSource="{Binding GroupNode.Entries}"
+                 Margin="0,8,4,0"
+                 ItemsSource="{Binding VisibleEntries}"
                  SelectedItems="{Binding SelectedEntries, Mode=OneWay}"
                  SelectionMode="Multiple"
                  Background="Transparent" Padding="0">
+            <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel Margin="0,0,0,64"/></ItemsPanelTemplate></ListBox.ItemsPanel>
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="models:EntryEditorItemViewModel">
                     <Border Margin="0,3"
@@ -55,10 +59,18 @@
                                                       SelectedValue="{Binding Type, Mode=OneWay}" TypeConfirmed="OnEntryTypeConfirmed"
                                                       MinHeight="32" VerticalAlignment="Center" HorizontalAlignment="Stretch" />
                             <controls:ConditionEditorControl Grid.Column="3"
+                                                             IsVisible="{Binding !#Root.UseCommonFields}"
                                                              Text="{Binding Condition}"
                                                              Suggestions="{Binding #Root.DataContext.ConditionSuggestions}"
                                                              ValidationVariables="{Binding #Root.DataContext.ValidationVariables}" />
+                            <StackPanel Grid.Column="3" IsVisible="{Binding #Root.UseCommonFields}" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Summary}" Margin="0,0,32,0" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Summary}" />
+                                <TextBlock Text="{Binding Condition}" IsVisible="{Binding HasCondition}" FontSize="11" Foreground="{DynamicResource SemiColorText2}" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                            <Button Grid.Column="3" HorizontalAlignment="Right" Content="{Binding ProblemCount}" IsVisible="{Binding HasProblems}" Foreground="{DynamicResource SemiColorDanger}"
+                                    ToolTip.Tip="{loc:Localize Uiux.Problems}" Command="{Binding #Root.DataContext.ShowEntryProblemsCommand}" CommandParameter="{Binding}"/>
                             <ToggleButton Name="ParametersToggle" Grid.Column="4"
+                                          Theme="{DynamicResource EditorIconToggleButton}"
                                           Width="30"
                                           IsChecked="{Binding IsParametersExpanded,Mode=TwoWay}"
                                           ToolTip.Tip="{loc:Localize Entry.ToggleParameters}">
@@ -74,12 +86,15 @@
                                 </Grid>
                             </ToggleButton>
                             <Button Grid.Column="5"
+                                    Theme="{DynamicResource EditorIconButton}"
                                     ToolTip.Tip="{loc:Localize Entry.Remove}"
                                     AutomationProperties.Name="{loc:Localize Entry.Remove}"
                                     Command="{Binding #Root.DataContext.RemoveEntryCommand}"
                                     CommandParameter="{Binding}"><PathIcon Width="16" Height="16" Data="{StaticResource DeleteRegularIcon}" /></Button>
                         </Grid>
                         <StackPanel Margin="0,6,0,0" Spacing="4" IsVisible="{Binding #ParametersToggle.IsChecked}">
+                            <forms:DtoEditorHost Item="{Binding DetailForm.Item}" Registry="{Binding #Root.DataContext.FieldEditors}" DisplayMode="Common" IsVisible="{Binding #Root.UseCommonFields}" />
+                            <StackPanel IsVisible="{Binding !#Root.UseCommonFields}">
                             <TextBlock Text="{loc:Localize Entry.UnknownTypePreserved}" IsVisible="{Binding IsUnknownType}" TextWrapping="Wrap" />
                             <TextBlock Text="{loc:Localize Entry.UnknownParametersPreserved}" IsVisible="{Binding HasUnknownParameters}" TextWrapping="Wrap" />
                             <forms:DtoEditorHost Item="{Binding ParameterForm.Item}" Registry="{Binding #Root.DataContext.FieldEditors}" IsVisible="{Binding HasParameterForm}" />
@@ -103,6 +118,8 @@
                             </ItemsControl>
                             <TextBlock Text="{Binding EffectHint}" Opacity="0.72" TextWrapping="Wrap" IsVisible="{Binding !HasEffectDiagnostic}" />
                             <TextBlock Text="{Binding EffectDiagnostic}" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" TextWrapping="Wrap" IsVisible="{Binding HasEffectDiagnostic}" />
+                            </StackPanel>
+
                         </StackPanel>
                         </StackPanel>
                     </Border>

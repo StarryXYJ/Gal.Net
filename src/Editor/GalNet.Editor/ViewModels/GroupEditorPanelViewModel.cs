@@ -67,6 +67,19 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     public EditorShortcutService ShortcutService { get; }
     public IReadOnlyList<EntryTypeOption> EntryTypes { get; }
     public EditorRegistry FieldEditors { get; }
+    [ObservableProperty] private string _searchText = "";
+    public IEnumerable<EntryEditorItemViewModel> VisibleEntries => string.IsNullOrWhiteSpace(SearchText) ? GroupNode.Entries : GroupNode.Entries.Where(entry =>
+        entry.Id.ToString(System.Globalization.CultureInfo.InvariantCulture).Equals(SearchText, StringComparison.OrdinalIgnoreCase) || entry.Type.Contains(SearchText, StringComparison.OrdinalIgnoreCase)
+        || entry.Summary.Contains(SearchText, StringComparison.OrdinalIgnoreCase) || entry.Condition.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+    partial void OnSearchTextChanged(string value) => OnPropertyChanged(nameof(VisibleEntries));
+    [RelayCommand] private void ExpandAll() { foreach (var entry in GroupNode.Entries) entry.IsParametersExpanded = true; }
+    [RelayCommand] private void CollapseAll() { foreach (var entry in GroupNode.Entries) entry.IsParametersExpanded = false; }
+    [RelayCommand]
+    private void ShowEntryProblems(EntryEditorItemViewModel? entry)
+    {
+        if (entry is not null) SelectedEntry = entry;
+        (_projects.Current?.Services.GetService(typeof(GalNet.Editor.Dock.EditorDockFactory)) as GalNet.Editor.Dock.EditorDockFactory)?.OpenPanel(GalNet.Editor.Dock.EditorDockPanelIds.Problems);
+    }
 
     [ObservableProperty]
     private EntryEditorItemViewModel? _selectedEntry;
@@ -97,6 +110,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         _changingSelection = true;
         try { SelectedEntry = added ?? (SelectedEntry is not null && SelectedEntries.Contains(SelectedEntry) ? SelectedEntry : SelectedEntries.LastOrDefault()); }
         finally { _changingSelection = false; }
+        PublishSelection();
     }
     public bool IsDisposed => _disposed;
     public void PublishSelection() { if (!_disposed) _selection.Select(_selectionOwner, GroupId, SelectedEntry?.StableId); }
@@ -213,7 +227,10 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
             return;
 
         var ids = SelectedEntries.Contains(entry) ? SelectedEntries.Select(item => item.StableId).ToArray() : [entry.StableId];
-        try { _authoring.Move(GroupId, ids, entry.StableId, request.NewIndex); }
+        var visible = VisibleEntries.ToArray();
+        var index = string.IsNullOrWhiteSpace(SearchText) ? request.NewIndex
+            : request.NewIndex >= visible.Length ? GroupNode.Entries.Count : GroupNode.Entries.IndexOf(visible[Math.Max(0, request.NewIndex)]);
+        try { _authoring.Move(GroupId, ids, entry.StableId, index); }
         catch (Exception error) { ReportError(error); }
     }
 
@@ -235,6 +252,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
 
     private void OnEntriesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        OnPropertyChanged(nameof(VisibleEntries));
         if (e.Action == NotifyCollectionChangedAction.Move) return;
         foreach (var entry in _attached.Where(entry => !_entries.Contains(entry)).ToArray()) { entry.PropertyChanged -= OnEntryPropertyChanged; _attached.Remove(entry); }
         foreach (var entry in _entries.Where(entry => !_attached.Contains(entry)).ToArray()) Attach(entry);

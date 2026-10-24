@@ -3,7 +3,8 @@
              xmlns:timeline="using:GalNet.Game.Controls.Timeline"
              xmlns:controls="using:GalNet.Editor.Controls"
              xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
-             x:Class="GalNet.Editor.Views.TimelinePanelView" x:DataType="vm:TimelinePanelViewModel">
+             x:Class="GalNet.Editor.Views.TimelinePanelView" x:Name="Root" x:DataType="vm:TimelinePanelViewModel"
+             Background="{DynamicResource SemiColorBackground0}" Foreground="{DynamicResource SemiColorText0}">
   <UserControl.Styles>
     <Style Selector="CheckBox">
       <Setter Property="VerticalAlignment" Value="Center"/>
@@ -37,11 +38,11 @@
       <TextBlock Margin="6,0" Text="FPS" VerticalAlignment="Center"/>
       <NumericUpDown Name="TimelineFpsDraft" Width="75" Minimum="1" Maximum="240" Increment="1" FormatString="0" Value="{Binding Session.TimingFrameRateDraft,Mode=TwoWay}" LostFocus="OnTimingLostFocus"/>
     </WrapPanel>
-    <Grid Grid.Row="4" RowDefinitions="28,Auto" ColumnDefinitions="470,*" IsVisible="{Binding Session.CanEdit}">
+    <Grid Grid.Row="4" RowDefinitions="28,Auto" IsVisible="{Binding Session.CanEdit}"><Grid.ColumnDefinitions><ColumnDefinition Width="{Binding #Root.TreeColumnWidth,Mode=TwoWay}" MinWidth="180" MaxWidth="600"/><ColumnDefinition Width="5"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <TextBlock Text="{loc:Localize Timeline.Event.Title}" Opacity="0.7"/>
-      <timeline:TimelineCanvas Grid.Column="1" Name="TimelineRuler" IsRuler="True" Model="{Binding Session.Canvas}"/>
-      <ScrollViewer Grid.Row="1" Grid.ColumnSpan="2" MaxHeight="190" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-        <Grid ColumnDefinitions="470,*">
+      <timeline:TimelineCanvas Grid.Column="2" Name="TimelineRuler" IsRuler="True" Model="{Binding Session.Canvas}"/>
+      <ScrollViewer Grid.Row="1" Grid.ColumnSpan="3" MaxHeight="190" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="{Binding #Root.TreeColumnWidth,Mode=TwoWay}" MinWidth="180" MaxWidth="600"/><ColumnDefinition Width="5"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
           <ItemsControl Name="TimelineEvents" ItemsSource="{Binding Session.Events}">
             <ItemsControl.ItemTemplate><DataTemplate x:DataType="services:TimelineEventRow">
               <Border Name="TimelineEventRow" Height="38" Background="Transparent" PointerPressed="OnEventPointerPressed" ContextRequested="OnEventContextRequested">
@@ -53,17 +54,18 @@
               </Border>
             </DataTemplate></ItemsControl.ItemTemplate>
           </ItemsControl>
-          <timeline:TimelineCanvas Grid.Column="1" Name="TimelineEventKeys" KeyContextRequested="OnEventKeyContextRequested" Model="{Binding Session.EventCanvas}" Height="{Binding Session.EventCanvas.ContentHeight}" VerticalAlignment="Top"/>
+          <timeline:TimelineCanvas Grid.Column="2" Name="TimelineEventKeys" KeyContextRequested="OnEventKeyContextRequested" Model="{Binding Session.EventCanvas}" Height="{Binding Session.EventCanvas.ContentHeight}" VerticalAlignment="Top"/>
         </Grid>
       </ScrollViewer>
+      <GridSplitter Grid.Column="1" Grid.RowSpan="3" Width="3" MinWidth="0" HorizontalAlignment="Center" ResizeDirection="Columns"/>
     </Grid>
-    <Grid Grid.Row="5" RowDefinitions="28,*,Auto" ColumnDefinitions="470,*" IsVisible="{Binding Session.CanEdit}">
+    <Grid Grid.Row="5" RowDefinitions="28,*,Auto" IsVisible="{Binding Session.CanEdit}"><Grid.ColumnDefinitions><ColumnDefinition Width="{Binding #Root.TreeColumnWidth,Mode=TwoWay}" MinWidth="180" MaxWidth="600"/><ColumnDefinition Width="5"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <TextBlock Text="{loc:Localize Timeline.CanvasHint}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{loc:Localize Timeline.CanvasHint}" FontSize="11" VerticalAlignment="Center"/>
-      <ScrollViewer Name="TimelineVertical" Grid.Row="1" Grid.ColumnSpan="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-        <Grid ColumnDefinitions="470,*">
+      <ScrollViewer Name="TimelineVertical" Grid.Row="1" Grid.ColumnSpan="3" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="{Binding #Root.TreeColumnWidth,Mode=TwoWay}" MinWidth="180" MaxWidth="600"/><ColumnDefinition Width="5"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
           <ItemsControl Name="TimelinePropertyTree" ItemsSource="{Binding Session.VisibleNodes}">
             <ItemsControl.ItemTemplate><DataTemplate x:DataType="services:TimelineTreeNode">
-              <Grid Name="TimelineTreeRow" Height="{Binding Height}" ColumnDefinitions="*,250" Background="Transparent" PointerPressed="OnTreeRowPointerPressed" ContextRequested="OnTreeContextRequested">
+              <Grid Name="TimelineTreeRow" Height="{Binding Height}" ColumnDefinitions="*,180" Background="Transparent" PointerPressed="OnTreeRowPointerPressed" ContextRequested="OnTreeContextRequested">
                 <Grid ColumnDefinitions="Auto,24,18,*" Height="38" VerticalAlignment="Top">
                   <Border Width="{Binding Indent}"/>
                   <Button Grid.Column="1" Name="AddTimelineProperty" Width="24" MinWidth="0" Padding="0" Content="＋" ToolTip.Tip="{loc:Localize Scene.AddProperty}" IsVisible="{Binding IsObject}" IsEnabled="{Binding CanAddProperties}" Click="OnAddProperty"/>
@@ -76,7 +78,7 @@
                 </StackPanel>
                 <ContentControl Height="38" VerticalAlignment="Top" Grid.Column="1" Content="{Binding Value}" IsVisible="{Binding IsLeaf}">
                   <ContentControl.ContentTemplate><DataTemplate x:DataType="services:TimelineValueRow">
-                    <Grid ColumnDefinitions="130,*" ColumnSpacing="4">
+                    <Grid ColumnDefinitions="90,*" ColumnSpacing="4">
                       <NumericUpDown Name="TimelineValue" Value="{Binding DraftValue,Mode=TwoWay}" Increment="0.1" FormatString="G9" IsEnabled="{Binding IsEditable}" LostFocus="OnValueLostFocus">
                         <ToolTip.Tip><StackPanel MaxWidth="420"><TextBlock Text="{Binding Hint}" TextWrapping="Wrap"/><TextBlock Text="{loc:Localize Timeline.InputHint}" TextWrapping="Wrap"/></StackPanel></ToolTip.Tip>
                       </NumericUpDown>
@@ -90,15 +92,16 @@
               </Grid>
             </DataTemplate></ItemsControl.ItemTemplate>
           </ItemsControl>
-          <timeline:TimelineCanvas Grid.Column="1" Name="TimelineKeys" KeyContextRequested="OnKeyContextRequested" Model="{Binding Session.Canvas}" Height="{Binding Session.Canvas.ContentHeight}" VerticalAlignment="Top"/>
+          <timeline:TimelineCanvas Grid.Column="2" Name="TimelineKeys" KeyContextRequested="OnKeyContextRequested" Model="{Binding Session.Canvas}" Height="{Binding Session.Canvas.ContentHeight}" VerticalAlignment="Top"/>
           <TextBlock Text="{loc:Localize Timeline.Empty}" IsVisible="{Binding Session.HasNoRows}" TextWrapping="Wrap" Margin="4"/>
         </Grid>
       </ScrollViewer>
-      <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6">
-        <TextBlock Text="{loc:Localize Timeline.Zoom}" VerticalAlignment="Center"/>
-        <Slider Name="TimelineZoom" Width="140" Minimum="0.5" Maximum="64" Value="{Binding Session.Canvas.PixelsPerFrame,Mode=TwoWay}"/>
-      </StackPanel>
-      <ScrollBar Grid.Row="2" Grid.Column="1" Name="TimelineScroll" Orientation="Horizontal" Minimum="0" Maximum="{Binding Session.Duration}" SmallChange="1" LargeChange="10" Value="{Binding Session.Canvas.StartFrame,Mode=TwoWay}"/>
+      <WrapPanel Grid.Row="2">
+        <Button Content="{loc:Localize Uiux.Timeline.Fit}" Click="OnFitTimeline"/><Button Content="{loc:Localize Uiux.Timeline.Playhead}" Click="OnLocatePlayhead"/><TextBlock Text="{Binding Session.Canvas.PixelsPerFrame}" VerticalAlignment="Center"/><TextBlock Text="{loc:Localize Timeline.Zoom}" VerticalAlignment="Center"/>
+        <Slider Name="TimelineZoom" Width="140" Minimum="0.001" Maximum="64" Value="{Binding Session.Canvas.PixelsPerFrame,Mode=TwoWay}"/>
+      </WrapPanel>
+      <ScrollBar Grid.Row="2" Grid.Column="2" Name="TimelineScroll" VerticalAlignment="Bottom" Orientation="Horizontal" Minimum="0" Maximum="{Binding Session.Duration}" SmallChange="1" LargeChange="10" Value="{Binding Session.Canvas.StartFrame,Mode=TwoWay}"/>
+      <GridSplitter Grid.Column="1" Grid.RowSpan="3" Width="3" MinWidth="0" HorizontalAlignment="Center" ResizeDirection="Columns"/>
     </Grid>
     <StackPanel Grid.Row="6" Spacing="4">
       <TextBlock Text="{loc:Localize Timeline.AnalysisIncomplete}" IsVisible="{Binding Session.AnalysisIncomplete}" TextWrapping="Wrap" Opacity="0.7"/>

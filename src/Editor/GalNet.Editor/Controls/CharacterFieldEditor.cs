@@ -27,6 +27,7 @@ internal static class CharacterFieldEditor
         var rows = characters.Rows();
         var disposed = false; var updating = false; var busy = false; var dirty = false;
         bool Composing() => input.GetVisualDescendants().OfType<TextPresenter>().Any(presenter => !string.IsNullOrEmpty(presenter.PreeditText));
+        var guard = context.DraftState?.RegisterGuard(() => !Composing());
         string CurrentKey() => context.Value.Json is { } json ? json.ValueKind == JsonValueKind.String ? json.GetString() ?? "" : json.GetRawText() : "";
         void Filter()
         {
@@ -42,6 +43,11 @@ internal static class CharacterFieldEditor
             if (disposed) return;
             input.IsEnabled = context.IsEnabled && !busy;
             input.PlaceholderText = characters.Text["Characters.SpeakerHint"];
+            if (context.HasDraft)
+            {
+                updating = true; input.Text = context.Text; updating = false; dirty = true;
+            }
+            else dirty = false;
             if (!dirty && !context.HasDraft)
             {
                 updating = true;
@@ -93,6 +99,6 @@ internal static class CharacterFieldEditor
         };
         context.PropertyChanged += Changed; characters.Text.PropertyChanged += Changed; characters.Changed += SourceChanged;
         Refresh();
-        return new(panel, () => { disposed = true; popup.IsOpen = false; lifetime.Cancel(); lifetime.Dispose(); context.PropertyChanged -= Changed; characters.Text.PropertyChanged -= Changed; characters.Changed -= SourceChanged; });
+        return new(panel, () => { disposed = true; guard?.Dispose(); popup.IsOpen = false; lifetime.Cancel(); lifetime.Dispose(); context.PropertyChanged -= Changed; characters.Text.PropertyChanged -= Changed; characters.Changed -= SourceChanged; });
     }
 }

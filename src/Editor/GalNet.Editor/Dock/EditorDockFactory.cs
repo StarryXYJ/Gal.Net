@@ -31,6 +31,10 @@ public sealed class EditorDockFactory : Factory, IDisposable
     private bool _activeDockableHandlerAttached;
     private bool _dockableEventHandlersAttached;
     private DocumentDock? _documentDock;
+    private IRootDock? _layoutRoot;
+    private DocumentDock? _presetInspector;
+    private (IDock Owner, IDockable Dock, int Index, IDockable[] RootItems, IDockable? RootActive)? _maximized;
+    public bool IsMaximized => _maximized is not null;
     private readonly PropertyChangedEventHandler _localizationChanged;
 
     /// <summary>Raised after a panel is created, closed, moved, or activated.</summary>
@@ -58,6 +62,7 @@ public sealed class EditorDockFactory : Factory, IDisposable
 
     public override IRootDock CreateLayout()
     {
+        _maximized = null;
         _documentDock = null;
         DisposeGroupPages();
         _panelByDockable.Clear();
@@ -85,7 +90,7 @@ public sealed class EditorDockFactory : Factory, IDisposable
         {
             Id = "InspectorDocuments",
             Title = "Inspector",
-            Proportion = 0.32,
+            Proportion = 0.28,
             ActiveDockable = inspectorDocument,
             VisibleDockables = CreateList<IDockable>([inspectorDocument]),
             EnableGlobalDocking = true
@@ -95,7 +100,7 @@ public sealed class EditorDockFactory : Factory, IDisposable
         {
             Id = "Center",
             Title = "Center",
-            Proportion = 0.68,
+            Proportion = 0.72,
             Orientation = Orientation.Vertical,
             ActiveDockable = _documentDock,
             VisibleDockables = CreateList<IDockable>(
@@ -105,7 +110,8 @@ public sealed class EditorDockFactory : Factory, IDisposable
                 new DocumentDock
                 {
                     Id = "LogDocuments", Title = "Log",
-                    ActiveDockable = logDocument,
+                    Proportion = 0.22,
+                    ActiveDockable = assetsDocument,
                     VisibleDockables = CreateList<IDockable>(CreateDefaultPanels(DockPanelPlacement.BottomDocument, logDocument, assetsDocument).ToArray()),
                     EnableGlobalDocking = true
                 }
@@ -122,6 +128,8 @@ public sealed class EditorDockFactory : Factory, IDisposable
         };
 
         var rootDock = CreateRootDock();
+        _documentDock.Proportion = 0.78;
+        _presetInspector = inspectorDock;
         rootDock.Id = "Root"; rootDock.IsCollapsable = false;
         rootDock.ActiveDockable = mainDock; rootDock.DefaultDockable = mainDock;
         rootDock.VisibleDockables = CreateList<IDockable>([mainDock]);
@@ -145,6 +153,7 @@ public sealed class EditorDockFactory : Factory, IDisposable
 
     public bool PrepareRestoredLayout(IRootDock layout)
     {
+        _maximized = null;
         DisposeGroupPages();
         _panelByDockable.Clear();
         _inspector.Clear();
@@ -227,6 +236,12 @@ public sealed class EditorDockFactory : Factory, IDisposable
 
     public void OpenPanel(string panelId)
     {
+        if (panelId == EditorDockPanelIds.Inspector && _layoutRoot is not null && _presetInspector is { Owner: null } inspectorDock
+            && FindDockById(_layoutRoot, "Main") is ProportionalDock main)
+        {
+            main.VisibleDockables ??= CreateList<IDockable>();
+            main.VisibleDockables.Add(new ProportionalDockSplitter()); main.VisibleDockables.Add(inspectorDock); inspectorDock.Owner = main;
+        }
         var panel = _extensions.FindDockPanel(panelId);
         if (panel is null) return;
 
@@ -245,6 +260,20 @@ public sealed class EditorDockFactory : Factory, IDisposable
         }
         Activate(document);
         LayoutChanged?.Invoke();
+    }
+
+    public void ShowInspector()
+    {
+        var existing = _panelByDockable.FirstOrDefault(pair => pair.Value.PanelId == EditorDockPanelIds.Inspector
+            && pair.Key.Context is InspectorHostViewModel { IsLocked: false } && IsAttached(pair.Key)).Key;
+        if (existing is null) { OpenPanel(EditorDockPanelIds.Inspector); return; }
+        if (existing.Owner is DocumentDock { Owner: null } inspectorDock && _layoutRoot is not null
+            && FindDockById(_layoutRoot, "Main") is ProportionalDock main)
+        {
+            main.VisibleDockables ??= CreateList<IDockable>(); main.VisibleDockables.Add(new ProportionalDockSplitter());
+            main.VisibleDockables.Add(inspectorDock); inspectorDock.Owner = main;
+        }
+        Activate(existing);
     }
 
     public void OpenGroupEditor(GraphNode groupNode)
@@ -280,10 +309,11 @@ public sealed class EditorDockFactory : Factory, IDisposable
         var node = _workspace?.Nodes.FirstOrDefault(node => node.Id == owner);
         if (node is null) return;
         _workspace!.SelectNode(node);
-        if (node.NodeKind != GalNet.Editor.Models.Graph.GraphNodeKind.LinearGroup) { OpenPanel(EditorDockPanelIds.Inspector); return; }
+        if (node.NodeKind != GalNet.Editor.Models.Graph.GraphNodeKind.LinearGroup) { OpenPanel(EditorDockPanelIds.NodeGraph); ShowInspector(); return; }
         OpenGroupEditor(node);
         var page = _documentDock?.VisibleDockables?.FirstOrDefault(item => item.Id == GetGroupEditorDocumentId(owner))?.Context as GroupEditorPanelViewModel;
         if (page is null || page.IsDisposed) return;
+        page.SearchText = "";
         page.SelectedEntry = node.Entries.FirstOrDefault(entry => entry.StableId == entryId); page.PublishSelection();
     }
 
@@ -312,6 +342,8 @@ public sealed class EditorDockFactory : Factory, IDisposable
 
     public override void InitLayout(IDockable layout)
     {
+        _layoutRoot = layout as IRootDock;
+        _presetInspector = FindDockById(layout, "InspectorDocuments") as DocumentDock ?? _presetInspector;
         Log.Information("[DockFactory] InitLayout called");
 
         HostWindowLocator = new Dictionary<string, Func<IHostWindow?>>
@@ -350,6 +382,8 @@ public sealed class EditorDockFactory : Factory, IDisposable
                 if (closed.Context is VariablesPanelViewModel variables) variables.Dispose();
                 if (closed.Context is CharactersPanelViewModel characters) characters.Dispose();
                 if (closed.Context is TimelinePanelViewModel timeline) timeline.Dispose();
+                if (closed.Context is LogPanelViewModel log) log.Dispose();
+                if (closed.Context is InspectorHostViewModel) _inspector.RemoveInspector(closed);
                 _panelByDockable.Remove(closed);
             };
             DockableMoved += (_, args) => { Log.Information("[DockFactory] DockableMoved: {Id}", args.Dockable?.Id); LayoutChanged?.Invoke(); };
@@ -357,6 +391,109 @@ public sealed class EditorDockFactory : Factory, IDisposable
         }
 
         base.InitLayout(layout);
+    }
+
+    public void ApplyWorkspacePreset(string preset)
+    {
+        if (preset is not ("Writing" or "Animation" or "Debug") || _layoutRoot is null) return;
+        if (_maximized is not null) ToggleMaximizeActive();
+        var main = FindDockById(_layoutRoot, "Main") as ProportionalDock;
+        var center = FindDockById(_layoutRoot, "Center") as ProportionalDock;
+        var bottom = FindDockById(_layoutRoot, "LogDocuments") as DocumentDock;
+        var documents = FindDockById(_layoutRoot, "Documents") as DocumentDock;
+        if (main is null || center is null || bottom is null || documents is null)
+        {
+            RebuildWorkspaceContainers();
+            main = FindDockById(_layoutRoot, "Main") as ProportionalDock;
+            center = FindDockById(_layoutRoot, "Center") as ProportionalDock;
+            bottom = FindDockById(_layoutRoot, "LogDocuments") as DocumentDock;
+            documents = _documentDock;
+        }
+        if (main is null || center is null || bottom is null || documents is null) return;
+        var height = preset == "Writing" ? 0.22 : preset == "Animation" ? 0.45 : 0.40;
+        bottom.Proportion = height; documents.Proportion = 1 - height;
+        main.VisibleDockables = CreateList<IDockable>([center]); center.Owner = main;
+        center.Proportion = preset == "Animation" ? 1 : 0.72;
+        if (_presetInspector is { } inspector)
+        {
+            inspector.Owner = null;
+            if (preset != "Animation")
+            {
+                inspector.Proportion = 0.28; inspector.Owner = main;
+                main.VisibleDockables.Add(new ProportionalDockSplitter()); main.VisibleDockables.Add(inspector);
+            }
+        }
+        if (preset != "Animation" && _presetInspector?.VisibleDockables?.Any(item => item.Context is InspectorHostViewModel) != true)
+            OpenPanel(EditorDockPanelIds.Inspector);
+        var id = preset == "Writing" ? EditorDockPanelIds.Assets : preset == "Animation" ? EditorDockPanelIds.Timeline : EditorDockPanelIds.ExternalDebug;
+        OpenPanel(id);
+        if (documents.ActiveDockable is { } authorTarget) _inspector.UpdateFor(authorTarget);
+        LayoutChanged?.Invoke();
+    }
+
+    private void RebuildWorkspaceContainers()
+    {
+        if (_layoutRoot is null) return;
+        var activeDocument = _documentDock?.ActiveDockable;
+        var documents = new DocumentDock { Id = "Documents", IsCollapsable = false, EnableGlobalDocking = true, VisibleDockables = CreateList<IDockable>() };
+        var bottom = new DocumentDock { Id = "LogDocuments", EnableGlobalDocking = true, VisibleDockables = CreateList<IDockable>() };
+        var inspector = new DocumentDock { Id = "InspectorDocuments", EnableGlobalDocking = true, VisibleDockables = CreateList<IDockable>() };
+        // Dock may collapse or replace empty containers after a user closes/moves a panel.
+        // Reparent existing documents, preserving their contexts, selections, and draft leases.
+        foreach (var pair in _panelByDockable.ToArray())
+        {
+            if (pair.Key is not Document document) continue;
+            if (document.Owner is IDock oldOwner) oldOwner.VisibleDockables?.Remove(document);
+            var owner = pair.Value.Placement switch
+            {
+                DockPanelPlacement.BottomDocument => bottom,
+                DockPanelPlacement.InspectorDocument => inspector,
+                _ => documents
+            };
+            owner.VisibleDockables!.Add(document); document.Owner = owner;
+        }
+        documents.ActiveDockable = activeDocument is not null && documents.VisibleDockables!.Contains(activeDocument) ? activeDocument : documents.VisibleDockables!.FirstOrDefault();
+        bottom.ActiveDockable = bottom.VisibleDockables!.FirstOrDefault(); inspector.ActiveDockable = inspector.VisibleDockables!.FirstOrDefault();
+        var center = new ProportionalDock
+        {
+            Id = "Center",
+            Orientation = Orientation.Vertical,
+            ActiveDockable = documents,
+            VisibleDockables = CreateList<IDockable>([documents, new ProportionalDockSplitter(), bottom])
+        };
+        var main = new ProportionalDock
+        {
+            Id = "Main",
+            Orientation = Orientation.Horizontal,
+            ActiveDockable = center,
+            VisibleDockables = CreateList<IDockable>([center, new ProportionalDockSplitter(), inspector])
+        };
+        _layoutRoot.VisibleDockables = CreateList<IDockable>([main]); _layoutRoot.ActiveDockable = main; _layoutRoot.DefaultDockable = main;
+        _documentDock = documents; _presetInspector = inspector;
+        InitLayout(_layoutRoot);
+    }
+
+    public void ToggleMaximizeActive()
+    {
+        if (_layoutRoot is null) return;
+        if (_maximized is { } saved)
+        {
+            saved.Owner.VisibleDockables!.Insert(Math.Min(saved.Index, saved.Owner.VisibleDockables.Count), saved.Dock);
+            saved.Dock.Owner = saved.Owner;
+            _layoutRoot.VisibleDockables = CreateList<IDockable>(saved.RootItems); _layoutRoot.ActiveDockable = saved.RootActive;
+            _maximized = null;
+        }
+        else
+        {
+            var target = FindActiveInspectableDockable(_layoutRoot);
+            if (target?.Owner is not IDock dock || dock.Owner is not IDock owner || owner.VisibleDockables is null) return;
+            var index = owner.VisibleDockables.IndexOf(dock);
+            if (index < 0) return;
+            _maximized = (owner, dock, index, _layoutRoot.VisibleDockables?.ToArray() ?? [], _layoutRoot.ActiveDockable);
+            owner.VisibleDockables.Remove(dock); dock.Owner = _layoutRoot;
+            _layoutRoot.VisibleDockables = CreateList<IDockable>([dock]); _layoutRoot.ActiveDockable = dock;
+        }
+        LayoutChanged?.Invoke();
     }
 
     // ── Document helpers ──
@@ -437,7 +574,8 @@ public sealed class EditorDockFactory : Factory, IDisposable
         _inspector.RemoveInspectorAndRecover(document, () => FindActiveInspectableDockable(FactoryExtensions.GetActiveRoot(this)));
         _panelByDockable.Remove(document);
         // Localization drafts belong to the project scope and survive dock closure.
-        if (document.Context is not GameLocalizationPanelViewModel) (document.Context as IDisposable)?.Dispose();
+        if (document.Context is not (GameLocalizationPanelViewModel or AssetPanelViewModel or ProblemsPanelViewModel or EditorWorkspaceViewModel))
+            (document.Context as IDisposable)?.Dispose();
         LayoutChanged?.Invoke();
     }
 

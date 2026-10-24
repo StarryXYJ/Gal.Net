@@ -2,13 +2,27 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="using:GalNet.Editor.Controls"
              xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:models="using:GalNet.Editor.Models.Graph"
+             xmlns:loc="using:GalNet.Editor.MarkupExtensions"
              x:Class="GalNet.Editor.Views.NodeGraphPanelView"
              x:DataType="vm:EditorWorkspaceViewModel"
              Focusable="True"
              KeyDown="OnKeyDown"
              Background="{DynamicResource SemiColorBackground0}">
-    <Grid RowDefinitions="*,Auto">
-    <controls:PanZoomCanvas Name="Viewport"
+    <Grid RowDefinitions="Auto,*,Auto">
+    <StackPanel Grid.Row="0" Margin="6" Spacing="4">
+      <WrapPanel>
+        <TextBox Name="GraphSearch" Width="180" PlaceholderText="{loc:Localize Uiux.Graph.Search}" TextChanged="OnGraphSearchChanged" Margin="0,0,6,0"/>
+        <Button Content="{loc:Localize Uiux.Graph.FitAll}" Click="OnFrameAll" Margin="0,0,6,0"/>
+        <Button Content="{loc:Localize Uiux.Graph.FitSelection}" Click="OnFrameSelection" Margin="0,0,6,0"/>
+        <Slider Name="GraphZoom" Width="100" Minimum="0.02" Maximum="3" Value="1" ValueChanged="OnGraphZoomChanged"/>
+        <TextBlock Name="GraphZoomLabel" Margin="6,0" VerticalAlignment="Center"/>
+        <ToggleButton Name="GraphMapToggle" Content="{loc:Localize Uiux.Graph.Map}"/>
+      </WrapPanel>
+      <ListBox Name="GraphSearchResults" MaxHeight="140" IsVisible="False" SelectionChanged="OnGraphSearchSelected">
+        <ListBox.ItemTemplate><DataTemplate x:DataType="models:GraphNode"><StackPanel Orientation="Horizontal" Spacing="8"><TextBlock Text="{Binding Name}"/><TextBlock Text="{Binding Id}" Opacity="0.65"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+      </ListBox>
+    </StackPanel>
+    <controls:PanZoomCanvas Name="Viewport" Grid.Row="1"
                             Background="{DynamicResource SemiColorBackground0}"
                             CanvasWidth="10000"
                             CanvasHeight="10000"
@@ -108,6 +122,8 @@
                        IsHitTestVisible="False" />
         </Canvas>
     </controls:PanZoomCanvas>
-    <TextBlock Grid.Row="1" Text="{Binding StatusText}" TextWrapping="Wrap" Margin="8,4" />
+    <controls:GraphMiniMap Grid.Row="1" Nodes="{Binding Nodes}" Viewport="{Binding #Viewport}" IsVisible="{Binding #GraphMapToggle.IsChecked}"
+                           Width="180" Height="120" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="12"/>
+    <TextBlock Grid.Row="2" Text="{Binding StatusText}" TextWrapping="Wrap" Margin="8,4" />
     </Grid>
 </UserControl>

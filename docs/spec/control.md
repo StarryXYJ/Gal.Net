@@ -164,3 +164,11 @@ StructuredFieldEditor 复用 Expander 主题（StyleKey 为 Expander，宿主样
 帧源租约保护渲染线程读取的纹理；被新帧替换或停止的源在安全时释放。UI 失效通知合并，播放完成/失败的 native callback 只发出信号，停止和释放播放器在回调线程之外完成。隐藏、替换、会话取消会停止对应视频，包括尚未完成的资源加载；异步会话销毁等待所有播放清理后释放 LibVLC。
 
 当前实现使用 CPU 解码帧上传，帧尺寸上限 8192×8192；真实解码验证在 Windows LibVLC 后端完成。其他平台需提供可用的原生 LibVLC，缺失后端会诊断并安全完成剧情视频。Gallery 保持自己的媒体生命周期。
+
+### 常用字段与宿主草稿
+
+`[Common]` 是独立的 Core DTO 字段标记，经生成器进入 `EditorHints.IsCommon`（默认 false）；手写 schema 可以直接设置该提示。它不改变必填、默认值、JSON 或运行时语义。`DtoEditorHost.DisplayMode` 默认 `All`；`Common` 仅筛选本层根字段，保持声明顺序及绑定可见性。复杂对象继续使用既有编辑器，不递归强制筛选；自定义 DTO 工厂通过 `DtoEditorContext.DisplayMode` 决定自身展示，默认表单自动遵循该模式。
+
+`IFieldBinding.Draft` 可选返回宿主拥有的 `FieldDraftState`。控件上下文同步输入和诊断，挂载结束只解除订阅；宿主决定草稿的保存、冲突和生命周期。ScopedBinding 转发该状态，结构化对象/列表和 Transform 子编辑器通过子路径取得独立草稿。输入法组合保护随控件租约登记，项目保存不能越过组合输入。没有宿主草稿的设置/游戏表单沿用控件本地生命周期。
+
+需要来源版本保护的宿主在内容变化时调用 `FieldDraftState.CheckSource()`；一旦观察到冲突，即使源值随后恢复相同内容也保留冲突，直到明确清除草稿。

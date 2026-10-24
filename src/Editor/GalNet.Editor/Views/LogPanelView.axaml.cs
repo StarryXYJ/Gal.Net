@@ -5,6 +5,8 @@ namespace GalNet.Editor.Views;
 
 public partial class LogPanelView : UserControl
 {
+    private void OnLogDoubleTapped(object? sender, Avalonia.Input.TappedEventArgs args)
+    { if (sender is Control { DataContext: GalNet.Editor.Services.LogLine line }) _vm?.Navigate(line); }
     private LogPanelViewModel? _vm;
 
     public LogPanelView()

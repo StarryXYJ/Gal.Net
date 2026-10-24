@@ -43,7 +43,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     private static MenuFlyout TimelineOverrideMenu(Window window, TimelinePanelView view, TimelineTreeNode node)
     {
         var row = view.GetVisualDescendants().OfType<Grid>().Single(control => control.Name == "TimelineTreeRow" && ReferenceEquals(control.DataContext, node));
-        var point = row.TranslatePoint(new Point(180, row.Bounds.Height / 2), window)!.Value;
+        var point = row.TranslatePoint(new Point(Math.Min(100, row.Bounds.Width / 4), row.Bounds.Height / 2), window)!.Value;
         window.MouseDown(point, MouseButton.Right); window.MouseUp(point, MouseButton.Right); TimelinePump(window);
         var menu = (MenuFlyout)FlyoutBase.GetAttachedFlyout(row)!;
         Assert.That(menu.IsOpen, Is.True);

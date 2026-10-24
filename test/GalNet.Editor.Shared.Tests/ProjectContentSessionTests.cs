@@ -94,10 +94,15 @@ public sealed class ProjectContentSessionTests
         try
         {
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.That(_session.IsPublishing, Is.True);
+            Assert.That(_session.HasEditsSincePublication, Is.False);
             _documents.CurrentDocument.Name = "Newer";
+            _session.Refresh();
+            Assert.That(_session.HasEditsSincePublication, Is.True);
         }
         finally { release.Set(); }
         await save;
+        Assert.That(_session.HasEditsSincePublication, Is.False);
         Assert.That(_session.IsDirty, Is.True);
         using var disk = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(_root, "Graph/graph.json")));
         Assert.That(disk.RootElement.GetProperty("name").GetString(), Is.EqualTo("Captured"));

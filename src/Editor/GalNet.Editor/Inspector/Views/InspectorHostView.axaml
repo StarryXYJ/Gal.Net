@@ -1,19 +1,26 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:GalNet.Editor.Inspector.ViewModels"
+             xmlns:loc="using:GalNet.Editor.MarkupExtensions"
              x:Class="GalNet.Editor.Inspector.Views.InspectorHostView"
              x:DataType="vm:InspectorHostViewModel"
              Background="{DynamicResource SemiColorBackground0}">
   <Grid RowDefinitions="Auto,*">
     <Border Padding="4" BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+      <TextBlock Text="{Binding TargetDescription}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding TargetDescription}" VerticalAlignment="Center"/>
+      <TextBlock Grid.Column="1" Text="{loc:Localize Uiux.Inspector.Locked}" IsVisible="{Binding IsLocked}" VerticalAlignment="Center"/>
       <Button HorizontalAlignment="Right"
+              Grid.Column="2" Theme="{DynamicResource EditorIconButton}"
               Command="{Binding ToggleLockCommand}"
-              ToolTip.Tip="Lock inspector target">
+              ToolTip.Tip="{loc:Localize Uiux.Inspector.Lock}"
+              AutomationProperties.Name="{loc:Localize Uiux.Inspector.Lock}">
         <Grid>
           <PathIcon Width="16" Height="16" Data="{StaticResource LockRegular}" IsVisible="{Binding IsLocked}" />
           <PathIcon Width="16" Height="16" Data="{StaticResource UnlockRegular}" IsVisible="{Binding !IsLocked}" />
         </Grid>
       </Button>
+      </Grid>
     </Border>
     <ContentControl Grid.Row="1" x:Name="InspectorContent" />
   </Grid>

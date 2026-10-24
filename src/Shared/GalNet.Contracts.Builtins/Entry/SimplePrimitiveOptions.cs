@@ -8,8 +8,10 @@ namespace GalNet.Contracts.Builtins;
 public partial class DialogueTextOptions
 {
     [Field(0, AllowNull = true, EditorId = "entry.autocomplete"), CharacterReference]
+    [Common]
     public string? Speaker { get; set; }
     [Field(1, AllowNull = true, EditorId = "entry.multilinetext"), LocalizedText]
+    [Common]
     public string? Content { get; set; }
 }
 
@@ -17,6 +19,7 @@ public partial class DialogueTextOptions
 public partial class NvlAppendOptions
 {
     [Field(0, AllowNull = true, EditorId = "entry.multilinetext"), LocalizedText]
+    [Common]
     public string? Content { get; set; }
 }
 
@@ -24,6 +27,7 @@ public partial class NvlAppendOptions
 public partial class LayerHandleOptions
 {
     [Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)]
+    [Common]
     public string? HandleId { get; set; }
 }
 
@@ -31,8 +35,10 @@ public partial class LayerHandleOptions
 public partial class LayerReplaceOptions
 {
     [Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)]
+    [Common]
     public string? HandleId { get; set; }
     [Field(1, AllowNull = true, EditorId = "entry.imageasset")]
+    [Common]
     public string? AssetId { get; set; }
 }
 
@@ -47,6 +53,7 @@ public partial class InstanceIdOptions
 public partial class AudioSEffectStopOptions
 {
     [Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)]
+    [Common]
     public string? TrackId { get; set; } = "bgm";
     [Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)]
     public string? InstanceId { get; set; }
@@ -56,6 +63,7 @@ public partial class AudioSEffectStopOptions
 public partial class VideoStopOptions
 {
     [Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)]
+    [Common]
     public string? HandleId { get; set; } = "video";
 }
 
@@ -72,8 +80,10 @@ public partial class AnimationStopOptions
 public partial class VariableSetOptions
 {
     [Field(0, AllowNull = true, EditorId = "entry.variablename")]
+    [Common]
     public string? Target { get; set; }
     [Field(1, AllowNull = true, EditorId = "entry.expression")]
+    [Common]
     public string? Expression { get; set; }
 }
 

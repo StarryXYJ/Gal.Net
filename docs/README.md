@@ -32,3 +32,4 @@
 - [对接外部游戏调试](manual/external-game-debugging.md)：可选宿主接入、测试启动配置、实例变量、路线定位与缓存边界。
 - [编辑游戏文本与翻译](manual/game-localization.md)：开发语言创作、多语言表格、语言顺序和草稿处理。
 - [创建图片差分图集](manual/image-variants.md)：目录导入、配置与差分预览、剧情初始选择及维度切换。
+- [使用与扩展 Editor 创作工作区](manual/editor-authoring-workspace.md)：常用字段、Inspector、会话草稿、问题定位与手动布局。

@@ -107,7 +107,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var createMenu = grid.ContextMenu.Items.OfType<MenuItem>().Single(item => item.Items.OfType<MenuItem>().Any(child => child.Command == vm.NewFileCommand)); createMenu.IsSubMenuOpen = true; window.UpdateLayout();
                 Assert.That(createMenu.Items.OfType<MenuItem>().Any(item => item.Command == vm.NewVariantsCommand), Is.True);
                 grid.ContextMenu.Close();
-                Assert.That(view.GetVisualDescendants().OfType<Button>().Any(button => button.Command == vm.ImportCommand || button.Command == vm.NewFolderCommand || button.Command == vm.NewFileCommand), Is.False);
+                Assert.That(view.GetVisualDescendants().OfType<Button>().Any(button => button.Command == vm.ImportCommand || button.Command == vm.NewFolderCommand || button.Command == vm.NewFileCommand), Is.True, "Common creation actions are available without opening a context menu.");
                 Assert.That(Grid.GetColumn(view.FindControl<Button>("RefreshButton")!), Is.EqualTo(2));
                 Assert.That(grid.GetVisualDescendants().OfType<Border>().Any(border => Equals(ToolTip.GetTip(border), "MATCH file.txt")), Is.True);
                 if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } artifacts) { using var frame = window.CaptureRenderedFrame(); frame!.Save(Path.Combine(artifacts, "p4b-browser-refined.png")); }

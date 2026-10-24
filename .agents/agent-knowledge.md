@@ -260,3 +260,6 @@
 - 2026-10-21 游戏本地化 P6 已 verified，feature P1–P6 完成：单语言模板/平铺 JSON 导入导出、项目交换 GUID、稳定 key 与源文指纹、选择预览、明确空串、整批单次历史及执行时证据重查；完整 project.validate/build 增加包内默认语言和角色语义校验，未知范围 warning/Complete=false。身份预留可能在输出失败后保留，旧文本历史须保留新身份（见文本历史 lesson）。新增 20 项通过，正常解决方案构建 0 错误；完整相关回归 1180 通过、2 项 P6e3 既有布局失败，另有 6 个视频环境跳过。原生文件选择/IME 和大项目性能阈值仍待人工验收。当前契约见 docs/spec/editor-game-localization.md，操作见 docs/manual/game-localization.md，交付与自审见 features/F-20261019-01-editor-game-localization/summary.md、review.md；不保留旧格式兼容。
 
 - [作者参数线格式](lessons/L-20261021-07-author-parameter-wire-format.md)：测试作者 JSON 必须按字段 schema/converter 编码；Animate 的字符串布尔与嵌套 Timeline 的 JSON bool 不可混用，保留坏格式拒绝与有效夹具 Complete 断言。
+
+- [透明 hover 与预乘 alpha](lessons/L-20261024-01-transparent-hover-interpolation.md)：隐藏的透明白色 RGB 会造成暗色过渡亮度峰值；验证合成中间色与反向，图标样式须隔离普通按钮背景。
+- 2026-10-24 Editor UIUX：Core `[Common]` → `EditorHints.IsCommon`，共享表单默认 All，Group 显式 Common；独立 Inspector 绑定与项目 EntryEditSession 草稿，辅助工具不清空详情。保存/检查状态分离，Problems 用当前快照与稳定 ID 导航；三套手动布局及最大化恢复不进入作者历史。契约、使用与证据见 features/F-20261023-01-editor-uiux/summary.md、docs/manual/editor-authoring-workspace.md。真实 DPI/原生 IME 仍需人工验收；旧页面绑定失效规则仍保留，不用复用控件/旧绑定解决草稿保留。

@@ -22,6 +22,12 @@ public static class EditorFieldEditors
         registry.Register("entry.imageasset", context => AssetFieldEditor.Create(context, assets, Models.AssetPickerFilter.Image));
         registry.Register("entry.variantsasset", context => AssetFieldEditor.Create(context, assets, Models.AssetPickerFilter.ImageVariants));
         registry.Register("entry.effectprogramasset", context => AssetFieldEditor.Create(context, assets, Models.AssetPickerFilter.EffectProgram));
+        registry.Register("entry.audioasset", context => AssetFieldEditor.Create(context, assets, Models.AssetPickerFilter.Audio));
+        registry.Register("entry.videoasset", context => AssetFieldEditor.Create(context, assets, Models.AssetPickerFilter.Video));
+        foreach (var id in new[] { "entry.autocomplete", "entry.multilinetext" })
+            registry.Register(id, context => DefaultFieldEditors.CreateText(context));
+        registry.Register("entry.expression", context => AuthoringExpressionFieldEditors.Expression(context, () => [], () => []));
+        registry.Register("entry.variablename", context => AuthoringExpressionFieldEditors.Variable(context, () => []));
         registry.RegisterDefault<LayerTransform>(TransformFieldEditor.Create);
         registry.RegisterMember<LayerShowOptions>(value => value.Transform, TransformFieldEditor.Create);
         registry.RegisterMember<VariantsShowOptions>(value => value.Transform, TransformFieldEditor.Create);

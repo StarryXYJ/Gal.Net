@@ -3,6 +3,10 @@ namespace GalNet.Core.Parameters;
 [AttributeUsage(AttributeTargets.Class)]
 public sealed class GenerateFieldSchemaAttribute : Attribute;
 
+/// <summary>Display this field in an author's compact, common-fields view.</summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
+public sealed class CommonAttribute : Attribute;
+
 /// <summary>The member stores a game text key; authoring tools edit its localized value.</summary>
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
 public sealed class LocalizedTextAttribute : Attribute;

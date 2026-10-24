@@ -51,6 +51,8 @@ public sealed class EntryParameterFormBinding : IDisposable
 
     private sealed class DocumentField(EntryParameterFormBinding form, FieldDescriptor field) : IFieldBinding, IEntryFieldOrigin
     {
+        public FieldDraftState? Draft => GetDraft();
+        private FieldDraftState? GetDraft() => form._owner.EditSession?.Get(form._owner, field);
         public string? GroupId => form._owner.AuthorGroupId;
         public string EntryId => form._owner.StableId;
         public object HostContext => this;

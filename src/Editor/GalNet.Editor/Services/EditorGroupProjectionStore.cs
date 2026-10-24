@@ -9,18 +9,20 @@ namespace GalNet.Editor.Services;
 /// <summary>Project-owned projections. Closing a Group page releases its subscriptions, not its content.</summary>
 public sealed class EditorGroupProjectionStore : IDisposable
 {
+    public IEnumerable<EditorGroupProjection> Loaded => _groups.Values;
     private readonly Dictionary<string, EditorGroupProjection> _groups = new(StringComparer.Ordinal);
     private readonly IEditorDocumentService documents;
     private readonly IEntryCatalog catalog;
     private readonly EntryFieldAuthoringService authoring;
     private readonly SceneTargetCatalog? scenes;
     private readonly History.EditorHistories? histories;
-    public EditorGroupProjectionStore(IEditorDocumentService documents, IEntryCatalog catalog, EntryFieldAuthoringService authoring, SceneTargetCatalog? scenes = null, History.EditorHistories? histories = null)
+    private readonly EntryEditSession? edits;
+    public EditorGroupProjectionStore(IEditorDocumentService documents, IEntryCatalog catalog, EntryFieldAuthoringService authoring, SceneTargetCatalog? scenes = null, History.EditorHistories? histories = null, EntryEditSession? edits = null)
     {
         this.documents = documents;
         this.catalog = catalog;
         this.authoring = authoring;
-        this.scenes = scenes; this.histories = histories;
+        this.scenes = scenes; this.histories = histories; this.edits = edits;
         documents.DocumentChanged += Synchronize;
         authoring.Changed += RefreshFields;
         if (histories is not null) histories.Changed += Synchronize;
@@ -35,7 +37,7 @@ public sealed class EditorGroupProjectionStore : IDisposable
     {
         if (_groups.TryGetValue(groupId, out var existing)) return existing;
         var source = documents.GetOrCreateGroup(groupId, "Graph/" + (sourcePath ?? $"groups/{groupId}.rawgalgroup"));
-        var projection = new EditorGroupProjection(source, catalog, authoring, scenes);
+        var projection = new EditorGroupProjection(source, catalog, authoring, scenes, edits);
         _groups.Add(groupId, projection);
         return projection;
     }
@@ -58,12 +60,13 @@ public sealed class EditorGroupProjection : IDisposable
     private bool _synchronizing;
     private readonly EntryFieldAuthoringService _authoring;
     private readonly SceneTargetCatalog? _scenes;
+    private readonly EntryEditSession? _edits;
 
-    internal EditorGroupProjection(EditorGroupDocument document, IEntryCatalog catalog, EntryFieldAuthoringService authoring, SceneTargetCatalog? scenes)
+    internal EditorGroupProjection(EditorGroupDocument document, IEntryCatalog catalog, EntryFieldAuthoringService authoring, SceneTargetCatalog? scenes, EntryEditSession? edits = null)
     {
         Document = document;
         _authoring = authoring;
-        _scenes = scenes;
+        _scenes = scenes; _edits = edits;
         Entries = new(document.Entries.Select(entry => new EntryEditorItemViewModel(entry, catalog)));
         _allEntries.UnionWith(Entries);
         foreach (var entry in Entries) Bind(entry);
@@ -107,7 +110,7 @@ public sealed class EditorGroupProjection : IDisposable
         finally { _synchronizing = false; }
     }
 
-    private void Bind(EntryEditorItemViewModel entry) => entry.BindAuthoring(Document.Id, _authoring, _scenes);
+    private void Bind(EntryEditorItemViewModel entry) { entry.EditSession = _edits; entry.BindAuthoring(Document.Id, _authoring, _scenes); }
 
     public void Dispose()
     {

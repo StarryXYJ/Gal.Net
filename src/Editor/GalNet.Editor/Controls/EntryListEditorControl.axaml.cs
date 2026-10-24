@@ -17,6 +17,8 @@ namespace GalNet.Editor.Controls;
 
 public partial class EntryListEditorControl : ReorderableListControl
 {
+    public static readonly Avalonia.StyledProperty<bool> UseCommonFieldsProperty = Avalonia.AvaloniaProperty.Register<EntryListEditorControl, bool>(nameof(UseCommonFields));
+    public bool UseCommonFields { get => GetValue(UseCommonFieldsProperty); set => SetValue(UseCommonFieldsProperty, value); }
     private GroupEditorPanelViewModel? _subscribed;
     private string? _insertAnchor;
     private bool _quickInsert;
@@ -63,6 +65,7 @@ public partial class EntryListEditorControl : ReorderableListControl
             || args.Source is not Control source
             || DataContext is not GroupEditorPanelViewModel vm)
             return;
+        if (source.GetSelfAndVisualAncestors().OfType<ToggleButton>().Any(button => button.Name == "ParametersToggle")) return;
 
         if (source.GetSelfAndVisualAncestors().OfType<ListBoxItem>().FirstOrDefault()?.DataContext is EntryEditorItemViewModel entry
             && !vm.SelectedEntries.Contains(entry))

@@ -11,7 +11,7 @@ using GalNet.Editor.History;
 
 namespace GalNet.Editor.Services;
 
-public sealed record VariableReference(string Location, bool Certain);
+public sealed record VariableReference(string Location, bool Certain, AuthorNavigationTarget? Target = null);
 
 /// <summary>Edits declarations and their known references as one project history intent.</summary>
 public sealed class VariableAuthoringService(IEditorDocumentService documents, IEntryCatalog catalog, IVariableDefinitionService definitions, EditorHistories histories)
@@ -92,7 +92,8 @@ public sealed class VariableAuthoringService(IEditorDocumentService documents, I
         void Add(Slot slot, string text, bool expression, bool direct, string location)
         {
             var known = direct ? MatchesSymbol(text, name) : expression && text.Contains(name, StringComparison.Ordinal) && ValidExpression(text) && Rewrite(text, name, name).Found;
-            if (known || text.Contains(name, StringComparison.Ordinal)) found.Add(new(slot, text, direct, new(location, known)));
+            if (known || text.Contains(name, StringComparison.Ordinal)) found.Add(new(slot, text, direct, new(location, known, new(slot.Node, slot.Entry,
+                slot.Field.StartsWith("parameter:", StringComparison.Ordinal) ? slot.Field[10..] : slot.Field))));
         }
         foreach (var node in documents.CurrentDocument.Nodes)
         {

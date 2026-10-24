@@ -3,6 +3,8 @@ using GalNet.Core.Parameters;
 
 namespace GalNet.Game.Controls.Forms;
 
+public enum FieldDisplayMode { All, Common }
+
 /// <summary>One mounted DTO editor's lifetime. Custom panels and automatic fields share the same host bindings.</summary>
 public sealed class DtoEditorContext : IDisposable
 {
@@ -13,8 +15,9 @@ public sealed class DtoEditorContext : IDisposable
     private readonly List<FieldEditorContext> _fields = [];
     private bool _disposed, _submitting;
     private readonly int _depth;
-    internal DtoEditorContext(DtoEditorItem item, EditorRegistry registry, ControlTheme? formTheme, int depth = 0)
-    { Item = item; _registry = registry; _formTheme = formTheme; _depth = depth; }
+    internal DtoEditorContext(DtoEditorItem item, EditorRegistry registry, ControlTheme? formTheme, int depth = 0, FieldDisplayMode displayMode = FieldDisplayMode.All)
+    { Item = item; _registry = registry; _formTheme = formTheme; _depth = depth; DisplayMode = displayMode; }
+    public FieldDisplayMode DisplayMode { get; }
     public DtoEditorItem Item { get; }
     public CancellationToken CancellationToken => _lifetime.Token;
     public IReadOnlyDictionary<string, FieldValue> Read() => Item.Fields.ToDictionary(field => field.Id, field => GetBinding(field).Read(), StringComparer.Ordinal);
@@ -33,7 +36,7 @@ public sealed class DtoEditorContext : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (exclude.Any(id => !Item.Fields.Any(field => field.Id == id))) throw new ArgumentException("Unknown excluded field.", nameof(exclude));
-        var form = new SchemaForm { Depth = _depth, DtoType = Item.DtoType, Schema = Item.Fields.Where(field => !exclude.Contains(field.Id, StringComparer.Ordinal)).ToArray(), Registry = _registry, Binding = GetBinding };
+        var form = new SchemaForm { Depth = _depth, DtoType = Item.DtoType, Schema = Item.Fields.Where(field => !exclude.Contains(field.Id, StringComparer.Ordinal) && (DisplayMode == FieldDisplayMode.All || field.Editor?.IsCommon == true)).ToArray(), Registry = _registry, Binding = GetBinding };
         if (_formTheme is not null) form.Theme = _formTheme;
         return form;
     }
@@ -75,6 +78,7 @@ public sealed class DtoEditorContext : IDisposable
     }
     private sealed class ScopedBinding(DtoEditorContext owner, IFieldBinding source) : IFieldBinding, IFieldPreviewBinding, IDisposable
     {
+        public FieldDraftState? Draft => source.Draft;
         private EventHandler? _changed;
         private bool _subscribed;
         public FieldValue Read() => source.Read();

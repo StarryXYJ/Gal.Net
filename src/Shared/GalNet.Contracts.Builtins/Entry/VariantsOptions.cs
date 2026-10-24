@@ -8,8 +8,8 @@ namespace GalNet.Contracts.Builtins;
 [GenerateFieldSchema]
 public partial class VariantsShowOptions
 {
-    [Field(0, Required = true, EditorId = ValueEditorIds.Text)] public string HandleId { get; set; } = "";
-    [Field(1, Required = true, EditorId = "entry.variantsasset")] public string AssetId { get; set; } = "";
+    [Common, Field(0, Required = true, EditorId = ValueEditorIds.Text)] public string HandleId { get; set; } = "";
+    [Common, Field(1, Required = true, EditorId = "entry.variantsasset")] public string AssetId { get; set; } = "";
     [Field(2, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Selection { get; set; }
     [Field(3, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Transform { get; set; }
     [Field(4, EditorId = ValueEditorIds.Numeric)] public float Z { get; set; } = 0;
@@ -21,9 +21,9 @@ public partial class VariantsShowOptions
 [GenerateFieldSchema]
 public partial class VariantsSelectOptions
 {
-    [Field(0, Required = true, EditorId = ValueEditorIds.Text)] public string HandleId { get; set; } = "";
-    [Field(1, Required = true, EditorId = ValueEditorIds.Text)] public string Dimension { get; set; } = "";
-    [Field(2, Required = true, EditorId = ValueEditorIds.Text)] public string Value { get; set; } = "";
+    [Common, Field(0, Required = true, EditorId = ValueEditorIds.Text)] public string HandleId { get; set; } = "";
+    [Common, Field(1, Required = true, EditorId = ValueEditorIds.Text)] public string Dimension { get; set; } = "";
+    [Common, Field(2, Required = true, EditorId = ValueEditorIds.Text)] public string Value { get; set; } = "";
 }
 
 public static class VariantsArgumentValidation

@@ -1,4 +1,8 @@
 <Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:forms="using:GalNet.Game.Controls.Forms" xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions">
+        <Style Selector="forms|FieldEditorActions Button#UseDefault">
+            <Setter Property="Theme" Value="{DynamicResource EditorIconButton}"/>
+            <Setter Property="ContentTemplate"><DataTemplate><PathIcon Width="16" Height="16" Data="{DynamicResource ResetIcon}"/></DataTemplate></Setter>
+        </Style>
         <Style Selector="forms|FieldEditorActions">
             <Setter Property="Simplified" Value="True" />
             <Setter Property="UnavailableText" Value="{loc:Localize Form.NoDefault}" />

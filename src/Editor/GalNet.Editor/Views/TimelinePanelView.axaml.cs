@@ -10,6 +10,19 @@ namespace GalNet.Editor.Views;
 
 public partial class TimelinePanelView : UserControl
 {
+    public static readonly Avalonia.StyledProperty<Avalonia.Controls.GridLength> TreeColumnWidthProperty = Avalonia.AvaloniaProperty.Register<TimelinePanelView, Avalonia.Controls.GridLength>(nameof(TreeColumnWidth), new(320));
+    public Avalonia.Controls.GridLength TreeColumnWidth { get => GetValue(TreeColumnWidthProperty); set => SetValue(TreeColumnWidthProperty, value); }
+    private void OnFitTimeline(object? sender, RoutedEventArgs args)
+    {
+        if (DataContext is not ViewModels.TimelinePanelViewModel vm) return;
+        vm.Session.Canvas.PixelsPerFrame = Math.Max(1, TimelineKeys.Bounds.Width - 20) / Math.Max(1, vm.Session.Duration);
+        vm.Session.Canvas.StartFrame = 0;
+    }
+    private void OnLocatePlayhead(object? sender, RoutedEventArgs args)
+    {
+        if (DataContext is ViewModels.TimelinePanelViewModel vm)
+            vm.Session.Canvas.StartFrame = Math.Max(0, vm.Session.Frame - TimelineKeys.Bounds.Width / vm.Session.Canvas.PixelsPerFrame / 2);
+    }
     private Flyout? _objectFlyout;
     private Flyout? _keyFlyout;
     public TimelinePanelView() { InitializeComponent(); AddHandler(KeyDownEvent, OnValueKeyDown, RoutingStrategies.Tunnel); }

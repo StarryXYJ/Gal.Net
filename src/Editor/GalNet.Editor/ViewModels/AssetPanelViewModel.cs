@@ -1,12 +1,12 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Text;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Core.Assets;
-using System.Text;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Dock;
 using GalNet.Editor.Models;
@@ -28,6 +28,7 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
     private readonly IFileDialogService _dialogs;
     private readonly IAssetCatalogService _assets;
     private readonly IEditorLocalizationService _localization;
+    private readonly IProjectContentSession? _content;
     private readonly Stack<string> _back = [], _forward = [];
     private string[] _clipboard = [];
     private bool _cut, _disposed, _rebuilding;
@@ -48,6 +49,12 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
     [ObservableProperty] private ProjectFileItem? _renamingEntry;
     [ObservableProperty] private ProjectDirectoryNode? _selectedDirectory;
     [ObservableProperty] private double _thumbnailSize = 88;
+    [ObservableProperty] private bool _isListView;
+    [ObservableProperty] private int _typeFilterIndex;
+    public bool IsEmpty => Entries.Count == 0 && string.IsNullOrEmpty(ErrorText);
+    public string EmptyMessage => _localization[HasSearch || TypeFilterIndex > 0 ? "Uiux.Files.NoResults" : "Uiux.Files.Empty"];
+    partial void OnIsListViewChanged(bool value) { OnPropertyChanged(nameof(ItemWidth)); OnPropertyChanged(nameof(ItemHeight)); }
+    partial void OnTypeFilterIndexChanged(int value) => LoadEntries();
     [ObservableProperty] private string _deleteDetails = "";
     [ObservableProperty] private bool _deleteLinkedGroups;
     [ObservableProperty] private bool _allowCandidateReferences;
@@ -61,8 +68,8 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
     public bool CanGoUp => CurrentDirectory.Length > 0;
     public bool CanRename => SelectedEntries.Count == 1 && SelectedEntries[0].CanEdit;
     public bool CanChangeSelection => SelectedEntries.Count > 0 && SelectedEntries.All(item => item.CanEdit);
-    public double ItemWidth => ThumbnailSize + 38;
-    public double ItemHeight => ThumbnailSize + 48;
+    public double ItemWidth => IsListView ? double.NaN : ThumbnailSize + 38;
+    public double ItemHeight => IsListView ? 48 : ThumbnailSize + 48;
     partial void OnThumbnailSizeChanged(double value) { OnPropertyChanged(nameof(ItemWidth)); OnPropertyChanged(nameof(ItemHeight)); }
     public bool IsDeletePending => _delete is not null;
     public string SelectionInformation => SelectedEntry is { } entry ? entry.Path + (entry.CanEdit ? "" : " — " + entry.ProtectionReason) : _localization.Format("Files.ItemCount", Entries.Count);
@@ -88,9 +95,10 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         catch (Exception error) { ShowError(error); }
     }
 
-    public AssetPanelViewModel(ProjectFilesIndex index, ProjectFileAuthoringService files, ProjectTextFiles texts, IProjectService projects, EditorWorkspaceViewModel workspace, EditorDockFactory dock, IFileDialogService dialogs, IAssetCatalogService assets, IEditorLocalizationService localization)
+    public AssetPanelViewModel(ProjectFilesIndex index, ProjectFileAuthoringService files, ProjectTextFiles texts, IProjectService projects, EditorWorkspaceViewModel workspace, EditorDockFactory dock, IFileDialogService dialogs, IAssetCatalogService assets, IEditorLocalizationService localization, IProjectContentSession? content = null)
     {
         _index = index; _files = files; _texts = texts; _projects = projects; _workspace = workspace; _dock = dock; _dialogs = dialogs; _assets = assets; _localization = localization;
+        _content = content;
         SelectedEntries.CollectionChanged += OnSelection;
         localization.PropertyChanged += OnLocale;
         _timer = new(_ => Dispatcher.UIThread.Post(() => { if (!_disposed) Refresh(); }), null, Timeout.Infinite, Timeout.Infinite);
@@ -176,7 +184,7 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
     public void Refresh()
     {
         if (_disposed || _projects.Current?.RootPath != ProjectRoot) return;
-        if (_projects.Current!.Services.GetService(typeof(IProjectContentSession)) is IProjectContentSession { IsPublishing: true }) { _timer.Change(100, Timeout.Infinite); return; }
+        if (_content is { IsPublishing: true }) { _timer.Change(100, Timeout.Infinite); return; }
         try
         {
             while (!_index.DirectoryExists(CurrentDirectory) && CurrentDirectory.Length > 0) CurrentDirectory = Path.GetDirectoryName(CurrentDirectory)?.Replace('\\', '/') ?? "";
@@ -185,7 +193,7 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
             Directories.Clear(); Directories.Add(root);
             void Expand(ProjectDirectoryNode node) { if (!expanded.Contains(node.Path)) return; node.IsExpanded = true; foreach (var child in node.Children) Expand(child); }
             Expand(root); SelectTreePath(); OnCurrentDirectoryChanged(CurrentDirectory); LoadEntries();
-            foreach (var file in _projects.Current.Services.GetService(typeof(IProjectContentSession)) is IProjectContentSession content ? content.FileDocuments.Keys : [])
+            foreach (var file in _content?.FileDocuments.Keys ?? Enumerable.Empty<string>())
                 try { _texts.Get(file).CheckExternalChange(); } catch (KeyNotFoundException) { }
         }
         catch (Exception error) { ShowError(error); }
@@ -197,7 +205,19 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         _thumbnails?.Cancel(); _thumbnails?.Dispose(); _thumbnails = new();
         try
         {
-            var incoming = (HasSearch ? _index.Search(SearchText) : _index.Read(CurrentDirectory)).ToArray();
+            var candidates = (HasSearch ? _index.Search(SearchText) : _index.Read(CurrentDirectory)).ToArray();
+            bool Matches(ProjectFileItem item) => TypeFilterIndex switch
+            {
+                1 => item.Type == "sprite",
+                2 => item.Type == "audio",
+                3 => item.Type == "video",
+                4 => item.Type is "rawgalgroup" or "galgroup",
+                5 => !item.IsDirectory && item.Type is not ("sprite" or "audio" or "video"),
+                6 => item.IsDirectory,
+                _ => true
+            };
+            var incoming = candidates.Where(Matches).ToArray();
+            foreach (var excluded in candidates.Where(item => !Matches(item))) excluded.Dispose();
             foreach (var item in Entries.Where(item => !incoming.Any(next => next.Path == item.Path && next.Type == item.Type && next.WriteTimeUtc == item.WriteTimeUtc && next.ProtectionReason == item.ProtectionReason)).ToArray())
             { SelectedEntries.Remove(item); Entries.Remove(item); item.Dispose(); }
             for (var index = 0; index < incoming.Length; index++)
@@ -210,6 +230,7 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         }
         catch (Exception error) { ShowError(error); }
         OnPropertyChanged(nameof(SelectionInformation));
+        OnPropertyChanged(nameof(IsEmpty)); OnPropertyChanged(nameof(EmptyMessage));
     }
     private async Task ThumbnailsAsync(ProjectFileItem[] items, CancellationToken cancellationToken)
     {

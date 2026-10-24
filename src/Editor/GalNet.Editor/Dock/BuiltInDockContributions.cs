@@ -29,12 +29,16 @@ public static class EditorDockPanelIds
     public const string Localization = "Localization";
     public const string Timeline = "Timeline";
     public const string ExternalDebug = "ExternalDebug";
+    public const string Problems = "Problems";
 }
 
 public static class BuiltInDockContributions
 {
     public static void Register(IEditorExtensionRegistry registry)
     {
+        registry.RegisterDockPanel(new DelegateDockPanelContribution<ProblemsPanelViewModel>(
+            EditorDockPanelIds.Problems, "Uiux.Problems", DockPanelPlacement.BottomDocument, true, true, true, false, true,
+            sp => sp.GetRequiredService<ProblemsPanelViewModel>(), typeof(ProblemsPanelView), null));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<ExternalDebugPanelViewModel>(
             EditorDockPanelIds.ExternalDebug, "Debug.Panel", DockPanelPlacement.BottomDocument, true, true, true, false, true,
             sp => sp.GetRequiredService<ExternalDebugPanelViewModel>(), typeof(ExternalDebugPanelView), null));
@@ -45,11 +49,11 @@ public static class BuiltInDockContributions
             EditorDockPanelIds.Characters, "Dock.Panel.Characters", DockPanelPlacement.MainDocument, true, true, true, false, true,
             sp => sp.GetRequiredService<CharactersPanelViewModel>(), typeof(CharactersPanelView), null));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<TimelinePanelViewModel>(
-            EditorDockPanelIds.Timeline, "Dock.Panel.Timeline", DockPanelPlacement.BottomDocument, true, true, true, true, true,
+            EditorDockPanelIds.Timeline, "Dock.Panel.Timeline", DockPanelPlacement.BottomDocument, true, true, true, false, true,
             sp => sp.GetRequiredService<TimelinePanelViewModel>(), typeof(TimelinePanelView), null));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<VariablesPanelViewModel>(
             EditorDockPanelIds.Variables, "Dock.Panel.Variables", DockPanelPlacement.MainDocument, true, true, true, false, true,
-            sp => sp.GetRequiredService<VariablesPanelViewModel>(), typeof(VariablesPanelView), null));
+            sp => { var vm = sp.GetRequiredService<VariablesPanelViewModel>(); vm.Navigation = sp.GetService<AuthorNavigationService>(); return vm; }, typeof(VariablesPanelView), null));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<EditorWorkspaceViewModel>(
             EditorDockPanelIds.NodeGraph, "Dock.Panel.NodeGraph", DockPanelPlacement.MainDocument, true, true, true, true, true,
             sp => sp.GetRequiredService<EditorWorkspaceViewModel>(), typeof(NodeGraphPanelView),
@@ -62,7 +66,7 @@ public static class BuiltInDockContributions
                 (sp, _) => sp.GetRequiredService<AssetInspectorControlViewModel>(), typeof(AssetInspectorControl))));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<LogPanelViewModel>(
             EditorDockPanelIds.Log, "Dock.Panel.Log", DockPanelPlacement.BottomDocument, true, true, true, true, true,
-            sp => sp.GetRequiredService<LogPanelViewModel>(), typeof(LogPanelView), null));
+            sp => { var vm = sp.GetRequiredService<LogPanelViewModel>(); vm.Navigation = sp.GetService<AuthorNavigationService>(); return vm; }, typeof(LogPanelView), null));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<GroupEditorPanelViewModel, string>(
             EditorDockPanelIds.GroupEditor, "Dock.Panel.GroupEditor", DockPanelPlacement.MainDocument, false, true, true, false, false,
             (sp, node) => new GroupEditorPanelViewModel(
@@ -76,7 +80,8 @@ public static class BuiltInDockContributions
                 sp.GetRequiredService<IEntryCatalog>(),
                 sp.GetRequiredService<EntrySelectionContext>(),
                 sp.GetRequiredService<GalNet.Game.Controls.Forms.EditorRegistry>()),
-            typeof(GroupEditorPanelView), null));
+            typeof(GroupEditorPanelView), new DelegateInspectorContribution<GroupEditorPanelViewModel, EntryInspectorViewModel>(
+                (sp, page) => new EntryInspectorViewModel(page, sp.GetService<AuthorNavigationService>()), typeof(EntryInspectorView))));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<FileDocumentPanelViewModel, string>(
             EditorDockPanelIds.FileEditor, "Files.Document", DockPanelPlacement.MainDocument, false, true, true, false, false,
             (sp, id) => new FileDocumentPanelViewModel(sp.GetRequiredService<ProjectTextFiles>().Get(id)), typeof(FileDocumentPanelView), null));

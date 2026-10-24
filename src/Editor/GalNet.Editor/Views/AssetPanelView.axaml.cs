@@ -12,10 +12,20 @@ namespace GalNet.Editor.Views;
 
 public partial class AssetPanelView : UserControl
 {
+    private void OnListViewChanged(object? sender, RoutedEventArgs args)
+    {
+        if (FileGrid is not null && DataContext is AssetPanelViewModel vm)
+            FileGrid.ItemsPanel = new Avalonia.Controls.Templates.FuncTemplate<Panel?>(() => vm.IsListView ? new StackPanel() : new WrapPanel());
+    }
     private static readonly DataFormat<string> InternalFiles = DataFormat.CreateStringApplicationFormat("galnet.project-files");
     private (PointerPressedEventArgs Args, Point Position, string[] Paths)? _pending;
     private sealed record Payload(string Root, string[] Paths);
-    public AssetPanelView() => InitializeComponent();
+    public AssetPanelView()
+    {
+        InitializeComponent();
+        AttachedToVisualTree += (_, _) => OnListViewChanged(null, new RoutedEventArgs());
+        DataContextChanged += (_, _) => OnListViewChanged(null, new RoutedEventArgs());
+    }
     private void OnEntryDoubleTapped(object? sender, TappedEventArgs args) { if (sender is Control { DataContext: ProjectFileItem item } && DataContext is AssetPanelViewModel vm) vm.OpenCommand.Execute(item); }
     private void OnAddressPressed(object? sender, PointerPressedEventArgs args)
     {

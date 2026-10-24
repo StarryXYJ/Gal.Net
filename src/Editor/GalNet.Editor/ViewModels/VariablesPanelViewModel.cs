@@ -15,6 +15,8 @@ public sealed record VariableTypeOption(VariableType Value, string LabelKey);
 
 public sealed partial class VariablesPanelViewModel : ObservableObject, IUndoRedoTarget, IDisposable
 {
+    public AuthorNavigationService? Navigation { get; set; }
+    [RelayCommand] private void NavigateReference(VariableReference? reference) { if (reference?.Target is { } target) Navigation?.Navigate(target); }
     private readonly VariableAuthoringService _authoring;
     private readonly IVariableDefinitionService _definitions;
     private readonly IEditorLocalizationService _localization;

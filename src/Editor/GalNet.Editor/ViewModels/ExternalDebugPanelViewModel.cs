@@ -55,7 +55,12 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private string _error = "";
     public bool HasError => !string.IsNullOrWhiteSpace(Error);
-    partial void OnErrorChanged(string value) => OnPropertyChanged(nameof(HasError));
+    partial void OnErrorChanged(string value)
+    {
+        OnPropertyChanged(nameof(HasError));
+        if (!string.IsNullOrWhiteSpace(value) && !_closed)
+            _projects.Current?.Services.GetService<ProblemsPanelViewModel>()?.Report("error", value, "Debug");
+    }
     [ObservableProperty] private bool _busy;
     [ObservableProperty] private bool _contentChanged;
     public bool IsConnected => _client.IsConnected;
@@ -172,12 +177,14 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
             }
         }
     }
-    [RelayCommand] private async Task BrowseAsync()
+    [RelayCommand]
+    private async Task BrowseAsync()
     {
         var selected = await _files.OpenFilePickerAsync(L["Debug.Executable"], false);
         if (selected.FirstOrDefault() is { } path) Executable = path;
     }
-    [RelayCommand] private void SaveConfiguration()
+    [RelayCommand]
+    private void SaveConfiguration()
     {
         try
         {
@@ -190,7 +197,8 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         }
         catch (Exception error) { Error = error.Message; }
     }
-    [RelayCommand] private Task LaunchAsync() => RunAsync(async () =>
+    [RelayCommand]
+    private Task LaunchAsync() => RunAsync(async () =>
     {
         if (_projects.Current is { } project && ExternalGameDebugClient.LoadSettings(project.RootPath) is { } latest && JsonSerializer.Serialize(latest) != _savedConfiguration)
             UseConfiguration(latest);
@@ -209,7 +217,8 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         Executable = settings.Executable; Arguments = string.Join(Environment.NewLine, settings.Arguments ?? []);
         WorkingDirectory = settings.WorkingDirectory ?? ""; _savedConfiguration = JsonSerializer.Serialize(settings);
     }
-    [RelayCommand] private Task WaitForApplicationAsync() => RunAsync(async () =>
+    [RelayCommand]
+    private Task WaitForApplicationAsync() => RunAsync(async () =>
     {
         var root = await PrepareAsync();
         var invitation = _client.Invitation!;
@@ -245,14 +254,16 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         Groups = _documents.Groups.Select(pair => new { pair.Key, Entries = pair.Value.Entries.Select(entry => new { entry.StableId, entry.Type, entry.Condition, entry.Parameters }) }).ToArray()
     }))));
     [RelayCommand] private Task StartGameAsync() => CommandAsync("start");
-    [RelayCommand] private async Task StopGameAsync()
+    [RelayCommand]
+    private async Task StopGameAsync()
     {
         try { await _client.SendAsync("stop"); }
         catch (Exception error) { Error = error.Message; }
     }
     [RelayCommand] private Task PauseAsync() => CommandAsync("pause");
     [RelayCommand] private Task ResumeAsync() => CommandAsync("resume");
-    [RelayCommand] private Task StepAsync() => RunAsync(async () =>
+    [RelayCommand]
+    private Task StepAsync() => RunAsync(async () =>
     {
         if (ContentChanged) throw new InvalidOperationException(L["Debug.ContentChanged"]);
         var state = _client.State ?? throw new InvalidOperationException("No active game.");
@@ -312,8 +323,12 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         var owner = (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
         if (owner is null) return null;
         var dialog = new Window { Title = L["Debug.SelectRoute"], Width = 620, Height = 360, WindowStartupLocation = WindowStartupLocation.CenterOwner };
-        var list = new ListBox { ItemsSource = plan.Routes.Select(route => string.Join(" → ", route.Select(edge => $"{_workspace.Nodes.FirstOrDefault(node => node.Id == edge.From)?.Name ?? edge.From} [{edge.Outlet}]")
-            .Append(_workspace.Nodes.FirstOrDefault(node => node.Id == route.LastOrDefault()?.To)?.Name ?? route.LastOrDefault()?.To ?? ""))).ToArray(), SelectedIndex = 0 };
+        var list = new ListBox
+        {
+            ItemsSource = plan.Routes.Select(route => string.Join(" → ", route.Select(edge => $"{_workspace.Nodes.FirstOrDefault(node => node.Id == edge.From)?.Name ?? edge.From} [{edge.Outlet}]")
+            .Append(_workspace.Nodes.FirstOrDefault(node => node.Id == route.LastOrDefault()?.To)?.Name ?? route.LastOrDefault()?.To ?? ""))).ToArray(),
+            SelectedIndex = 0
+        };
         var confirm = new Button { Content = L["Debug.Jump"], HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right };
         confirm.Click += (_, _) => dialog.Close(list.SelectedIndex);
         var layout = new DockPanel { Margin = new Thickness(12), LastChildFill = true };
@@ -358,7 +373,8 @@ public partial class DebugVariableRow : ObservableObject
         OnPropertyChanged(nameof(CurrentValue)); OnPropertyChanged(nameof(Conflict));
     }
     public void Invalidate() => _valid = false;
-    [RelayCommand] private async Task ApplyAsync()
+    [RelayCommand]
+    private async Task ApplyAsync()
     {
         if (!_valid || _owner.Busy) return;
         await _owner.CommandAsync("setVariable", new DebugVariableEdit(_expected, Draft), _run, _generation);

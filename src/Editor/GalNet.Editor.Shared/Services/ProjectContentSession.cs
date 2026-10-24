@@ -15,6 +15,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     private GalProject? _project;
     private byte[] _baseline = [];
     private byte[] _settingsBaseline = [];
+    private byte[]? _publicationContent;
     private bool _suspended;
     private bool _disposed;
     private readonly List<DraftRegistration> _drafts = [];
@@ -63,6 +64,8 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     public Exception? LastNotificationError { get; private set; }
 
     public bool IsPublishing => !_disposed && _saveGate.CurrentCount == 0;
+    public bool HasEditsSincePublication => IsPublishing && _publicationContent is { } captured &&
+        (_drafts.Any(draft => draft.HasChanges()) || !Serialize(Capture()).AsSpan().SequenceEqual(captured));
     public bool IsDirty => _project is not null && (_drafts.Any(draft => draft.HasChanges()) || !ComparisonBytes(Capture()).AsSpan().SequenceEqual(ComparisonBytes(JsonSerializer.Deserialize<EditorProjectDocument>(_baseline, JsonOptions)!)));
     public bool RepairRequired { get; private set; }
     public Exception? LastError { get; private set; }
@@ -211,6 +214,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
         try { await CommitDraftsAsync(); }
         catch (Exception failure) { ReportError(failure); throw; }
         var captureLease = await AcquirePlanAsync(false, cancellationToken);
+        Refresh();
         try
         {
             if (_suspended) throw new InvalidOperationException("Project publication is suspended while closing.");
@@ -225,6 +229,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
                 var snapshot = Capture();
                 CheckTrackedFiles();
                 capturedContent = Serialize(snapshot);
+                _publicationContent = capturedContent;
                 if (!File.ReadAllBytes(settingsPath).AsSpan().SequenceEqual(_settingsBaseline))
                     throw new EditorOperationException("project.externalSettings", "Project settings changed outside the editor. Reload before saving.");
                 var content = repository.PrepareSave(project.RootPath, snapshot.Graph,
@@ -260,7 +265,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
             Refresh();
             throw;
         }
-        finally { captureLease?.Dispose(); _saveGate.Release(); }
+        finally { captureLease?.Dispose(); _publicationContent = null; _saveGate.Release(); Refresh(); }
     }
 
     public async Task SuspendAsync()

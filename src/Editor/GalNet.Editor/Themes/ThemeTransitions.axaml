@@ -1,9 +1,30 @@
-<Styles xmlns="https://github.com/avaloniaui">
+<Styles xmlns="https://github.com/avaloniaui" xmlns:themes="using:GalNet.Editor.Themes">
+    <Style Selector="Button">
+        <Setter Property="Transitions"><Transitions>
+            <themes:LinearBrushTransition Property="Background" Duration="0:0:0.16"/>
+            <themes:LinearBrushTransition Property="BorderBrush" Duration="0:0:0.16"/>
+        </Transitions></Setter>
+    </Style>    <Style Selector="ToggleButton">
+        <Setter Property="Transitions"><Transitions>
+            <themes:LinearBrushTransition Property="Background" Duration="0:0:0.16"/>
+            <themes:LinearBrushTransition Property="BorderBrush" Duration="0:0:0.16"/>
+        </Transitions></Setter>
+    </Style>    <Style Selector="Button /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Transitions"><Transitions>
+            <themes:LinearBrushTransition Property="Background" Duration="0:0:0.16"/>
+            <themes:LinearBrushTransition Property="BorderBrush" Duration="0:0:0.16"/>
+        </Transitions></Setter>
+    </Style>    <Style Selector="ToggleButton /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Transitions"><Transitions>
+            <themes:LinearBrushTransition Property="Background" Duration="0:0:0.16"/>
+            <themes:LinearBrushTransition Property="BorderBrush" Duration="0:0:0.16"/>
+        </Transitions></Setter>
+    </Style>
     <Style Selector="Border">
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="Background" Duration="{DynamicResource ThemeTransitionDuration}" />
-                <BrushTransition Property="BorderBrush" Duration="{DynamicResource ThemeTransitionDuration}" />
+                <themes:LinearBrushTransition Property="Background" Duration="0:0:0.16" />
+                <themes:LinearBrushTransition Property="BorderBrush" Duration="0:0:0.16" />
             </Transitions>
         </Setter>
     </Style>
@@ -11,7 +32,7 @@
     <Style Selector="Panel">
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="Background" Duration="{DynamicResource ThemeTransitionDuration}" />
+                <themes:LinearBrushTransition Property="Background" Duration="0:0:0.16" />
             </Transitions>
         </Setter>
     </Style>
@@ -19,7 +40,7 @@
     <Style Selector="TextBlock">
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="Foreground" Duration="{DynamicResource ThemeTransitionDuration}" />
+                <themes:LinearBrushTransition Property="Foreground" Duration="0:0:0.16" />
             </Transitions>
         </Setter>
     </Style>

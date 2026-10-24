@@ -115,6 +115,7 @@ internal static class TransformFieldEditor
     }
     private sealed class MemberBinding(FieldEditorContext parent, string name, Func<bool> disposed, Func<FieldValue, Task<ValueIssue?>> commit) : IFieldBinding
     {
+        public FieldDraftState? Draft => parent.DraftState?.Child?.Invoke(new FieldDescriptor(name, new(typeof(float))), name);
         public bool IsEnabled => !disposed() && parent.IsEnabled;
         public FieldValue Read()
         {

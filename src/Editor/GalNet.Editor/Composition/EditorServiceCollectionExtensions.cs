@@ -62,6 +62,9 @@ public static class EditorServiceCollectionExtensions
         services.AddScoped<GroupEntryAuthoringService>();
         services.AddScoped<EntryFieldAuthoringService>();
         services.AddScoped<EntrySelectionContext>();
+        services.AddScoped<EntryEditSession>();
+        services.AddScoped<AuthorNavigationService>();
+        services.AddScoped<ProblemsPanelViewModel>();
         services.AddScoped<TimelineEditSession>();
         services.AddScoped<ProjectSceneTargets>();
         services.AddScoped<ProjectLocalizationQuery>();
@@ -77,11 +80,20 @@ public static class EditorServiceCollectionExtensions
         services.AddTransient<TimelinePanelViewModel>();
         services.AddScoped<VariableAuthoringService>();
         services.AddTransient<VariablesPanelViewModel>();
-        services.AddScoped<EditorRegistry>(sp => EditorFieldEditors.CreateDefault(sp.GetRequiredService<SceneTargetCatalog>(), context =>
+        services.AddScoped<EditorRegistry>(sp =>
         {
-            if (context.IsEnabled && context.HostContext is Models.Graph.IEntryFieldOrigin { GroupId: { } groupId } origin)
-                sp.GetRequiredService<EditorDockFactory>().OpenTimeline(groupId, origin.EntryId);
-        }, sp.GetRequiredService<IAssetManager>(), sp.GetRequiredService<CharacterAuthoringService>(), sp.GetRequiredService<GameTextAuthoringService>()));
+            var registry = EditorFieldEditors.CreateDefault(sp.GetRequiredService<SceneTargetCatalog>(), context =>
+            {
+                if (context.IsEnabled && context.HostContext is Models.Graph.IEntryFieldOrigin { GroupId: { } groupId } origin)
+                    sp.GetRequiredService<EditorDockFactory>().OpenTimeline(groupId, origin.EntryId);
+            }, sp.GetRequiredService<IAssetManager>(), sp.GetRequiredService<CharacterAuthoringService>(), sp.GetRequiredService<GameTextAuthoringService>());
+            registry.Replace("entry.expression", context => AuthoringExpressionFieldEditors.Expression(context,
+                () => sp.GetRequiredService<EditorWorkspaceViewModel>().GetConditionVariableSuggestions(),
+                () => sp.GetRequiredService<EditorWorkspaceViewModel>().AllProjectVariableDefinitions));
+            registry.Replace("entry.variablename", context => AuthoringExpressionFieldEditors.Variable(context,
+                () => sp.GetRequiredService<EditorWorkspaceViewModel>().AllProjectVariableDefinitions.Select(variable => variable.Name).ToArray()));
+            return registry;
+        });
         services.AddScoped<IGraphEditingService, GraphEditingService>();
         services.AddScoped<GraphSelectionState>();
         services.AddScoped<EditorWorkspacePersistence>();

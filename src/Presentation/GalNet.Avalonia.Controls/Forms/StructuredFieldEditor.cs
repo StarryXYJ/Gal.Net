@@ -229,6 +229,8 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
     }
     private sealed class ChildBinding(StructuredFieldEditor owner, FieldDescriptor field, string? wire, int? index, int generation) : IFieldBinding
     {
+        public FieldDraftState? Draft => GetDraft();
+        private FieldDraftState? GetDraft() => owner.Context.DraftState?.Child?.Invoke(field, wire ?? index!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
         public object? HostContext => owner.Context.HostContext;
         public bool IsEnabled => owner.Available(generation);
         public FieldValue Read()

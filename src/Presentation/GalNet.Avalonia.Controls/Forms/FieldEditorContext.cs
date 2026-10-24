@@ -17,6 +17,9 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
     private string _text = "";
     private FieldValue? _pending;
     private bool _jsonText;
+    private readonly FieldDraftState? _draft;
+    private bool _syncingDraft;
+    public FieldDraftState? DraftState => _draft;
     public FieldEditorContext(FieldDescriptor field, IFieldBinding binding, EditorRegistry? registry = null, int depth = 0)
     {
         ArgumentNullException.ThrowIfNull(field);
@@ -25,6 +28,8 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
         Registry = registry;
         Depth = depth;
         _binding = binding;
+        _draft = binding.Draft;
+        if (_draft is not null) { _draft.Changed += ReadDraft; ReadDraft(); }
         Refresh();
         _binding.Changed += OnChanged;
     }
@@ -122,6 +127,12 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
     public async Task<bool> CommitAsync(FieldValue candidate, CancellationToken cancellationToken = default)
     {
         if (_disposed || _submitting) return false;
+        if (_draft?.CanCommit == false) return false;
+        if (_draft?.IsConflicted == true)
+        {
+            Issue = new("field.conflict", "The source changed. Cancel this draft before editing the new value.");
+            Notify(); return false;
+        }
         if (!_binding.IsEnabled || !_binding.IsVisible)
         {
             Issue = new("field.unavailable", "Field is currently unavailable.");
@@ -226,11 +237,29 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
             value.ValueKind == JsonValueKind.String ? value.GetString()! : value.GetRawText(), value)).ToArray());
     }
 
-    private void Notify() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
+    private void ReadDraft()
+    {
+        if (_disposed || _draft is null || _syncingDraft) return;
+        _syncingDraft = true;
+        try
+        {
+            _dirty = _draft.IsDirty; _jsonText = _draft.JsonText;
+            if (_dirty) _text = _draft.Text;
+            Issue = _draft.Issue;
+            Refresh();
+        }
+        finally { _syncingDraft = false; }
+    }
+    private void Notify()
+    {
+        if (!_syncingDraft) _draft?.Update(_text, _dirty, Issue, _jsonText);
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
+    }
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
+        if (_draft is not null) _draft.Changed -= ReadDraft;
         _binding.Changed -= OnChanged;
         try { _lifetime.Cancel(); }
         finally { _lifetime.Dispose(); }

@@ -46,7 +46,7 @@ public sealed class TimelineCanvasModel : INotifyPropertyChanged
     public int Duration { get => _duration; set { _duration = Math.Max(0, value); _frame = Math.Min(_frame, _duration); _start = Math.Min(_start, _duration); Changed(); Changed(nameof(StartFrame)); Changed(nameof(Frame)); } }
     public int Frame { get => _frame; set { var next = Math.Clamp(value, 0, Duration); if (_frame == next) return; _frame = next; Changed(); } }
     public double StartFrame { get => _start; set { if (!double.IsFinite(value)) return; _start = Math.Clamp(value, 0, Duration); Changed(); } }
-    public double PixelsPerFrame { get => _scale; set { if (!double.IsFinite(value)) return; _scale = Math.Clamp(value, .5, 64); Changed(); } }
+    public double PixelsPerFrame { get => _scale; set { if (!double.IsFinite(value)) return; _scale = Math.Clamp(value, .001, 64); Changed(); } }
     public void PreviewSeek(int frame) { _seekPreview = Math.Clamp(frame, 0, Duration); Changed(nameof(DisplayFrame)); }
     public void Seek(int frame) { _seekPreview = null; Changed(nameof(DisplayFrame)); SeekRequested?.Invoke(Math.Clamp(frame, 0, Duration)); }
     public void Select(IEnumerable<Guid> ids, bool extend = false, bool toggle = false)

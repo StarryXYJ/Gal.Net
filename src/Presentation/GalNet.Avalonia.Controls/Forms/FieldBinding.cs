@@ -21,6 +21,7 @@ public sealed class FieldEditorOption(string id, object label, JsonElement value
 /// <summary>Borrowed host binding. Changed may come from any thread; all other calls use the UI thread.</summary>
 public interface IFieldBinding
 {
+    FieldDraftState? Draft => null;
     FieldValue Read();
     event EventHandler? Changed;
     Task<ValueIssue?> CommitAsync(FieldValue value, CancellationToken cancellationToken);

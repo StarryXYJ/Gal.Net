@@ -109,6 +109,7 @@ public sealed class FieldSchemaGenerator : IIncrementalGenerator
                 .Append(", editor: new global::GalNet.Core.Parameters.EditorHints(").Append(Named(field.Attribute, "EditorId", "null"))
                 .Append(", ").Append(Named(field.Attribute, "Step", "null")).Append(", ").Append(Named(field.Attribute, "Format", "null"))
                 .Append(", ").Append(Named(field.Attribute, "UnitKey", "null"))
+                .Append(", IsCommon: ").Append(field.Member.GetAttributes().Any(attribute => attribute.AttributeClass?.ToDisplayString() == "GalNet.Core.Parameters.CommonAttribute") ? "true" : "false")
                 .Append("), labelKey: ").Append(Named(field.Attribute, "LabelKey", "null")).Append(", descriptionKey: ")
                 .Append(Named(field.Attribute, "DescriptionKey", "null"))
                 .Append(", semantic: global::GalNet.Core.Parameters.FieldValueSemantic.")

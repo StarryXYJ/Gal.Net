@@ -17,7 +17,7 @@ internal static class GameTextFieldEditor
 {
     public static FieldEditorLease Create(FieldEditorContext context, GameTextAuthoringService texts)
     {
-        var multiline = context.Field.Editor?.EditorId.Contains("multiline", StringComparison.OrdinalIgnoreCase) == true;
+        var multiline = context.Field.Editor?.EditorId?.Contains("multiline", StringComparison.OrdinalIgnoreCase) == true;
         var input = new TextBox { Name = "GameTextInput", AcceptsReturn = multiline, TextWrapping = multiline ? Avalonia.Media.TextWrapping.Wrap : Avalonia.Media.TextWrapping.NoWrap, MinHeight = multiline ? 80 : 0 };
         var hint = new TextBlock { Name = "GameTextHint", TextWrapping = Avalonia.Media.TextWrapping.Wrap, FontSize = 11 };
         var panel = new StackPanel { Children = { input, hint }, Spacing = 4 };
@@ -30,6 +30,7 @@ internal static class GameTextFieldEditor
         string Key() => context.Value.Json is { ValueKind: JsonValueKind.String } json ? json.GetString() ?? "" : "";
         string Owner() => (context.HostContext as IEntryFieldOrigin)?.EntryId ?? Guid.NewGuid().ToString("N");
         bool Composing() => input.GetVisualDescendants().OfType<TextPresenter>().Any(presenter => !string.IsNullOrEmpty(presenter.PreeditText));
+        var guard = context.DraftState?.RegisterGuard(() => !Composing());
         void ReadSource() { cachedKey = Key(); cachedText = texts.Read(cachedKey); cachedUses = texts.Uses(cachedKey); }
         void Refresh()
         {
@@ -39,6 +40,16 @@ internal static class GameTextFieldEditor
             input.PlaceholderText = key.Length > 0 && value is null ? texts.Text["GameText.Missing"] : texts.Text["GameText.Placeholder"];
             hint.Text = key.Length > 0 && value is null ? texts.Text["GameText.Missing"] : uses > 1 ? texts.Text.Format("GameText.Shared", uses) : "";
             hint.IsVisible = hint.Text.Length > 0;
+            if (context.HasDraft)
+            {
+                updating = true; input.Text = context.Text; updating = false;
+                if (!dirty)
+                {
+                    dirty = true; original = context.Value.Json?.Clone(); originalText = cachedText ?? "";
+                    target = texts.Capture(Key(), Owner());
+                }
+            }
+            else if (!context.HasDraft) dirty = false;
             if (!dirty)
             {
                 updating = true;
@@ -90,6 +101,6 @@ internal static class GameTextFieldEditor
         }
         context.PropertyChanged += Changed; texts.Changed += SourceChanged; texts.Text.PropertyChanged += Changed;
         Refresh();
-        return new(panel, () => { disposed = true; context.PropertyChanged -= Changed; texts.Changed -= SourceChanged; texts.Text.PropertyChanged -= Changed; });
+        return new(panel, () => { disposed = true; guard?.Dispose(); context.PropertyChanged -= Changed; texts.Changed -= SourceChanged; texts.Text.PropertyChanged -= Changed; });
     }
 }

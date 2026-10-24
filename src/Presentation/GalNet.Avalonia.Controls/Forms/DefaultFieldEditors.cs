@@ -3,9 +3,11 @@ using System.Globalization;
 using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using GalNet.Core.Parameters;
 
 namespace GalNet.Game.Controls.Forms;
@@ -129,6 +131,8 @@ public static class DefaultFieldEditors
         Action<AvaloniaPropertyChangedEventArgs> edit, bool commitText = false)
     {
         var syncing = false;
+        bool Composing() => control.GetVisualDescendants().OfType<TextPresenter>().Any(presenter => !string.IsNullOrEmpty(presenter.PreeditText));
+        var guard = commitText ? context.DraftState?.RegisterGuard(() => !Composing()) : null;
         void Refresh()
         {
             syncing = true;
@@ -137,9 +141,10 @@ public static class DefaultFieldEditors
         }
         void Changed(object? sender, PropertyChangedEventArgs e) => Refresh();
         void Edited(object? sender, AvaloniaPropertyChangedEventArgs e) { if (!syncing) edit(e); }
-        void LostFocus(object? sender, RoutedEventArgs e) { _ = context.CommitTextAsync(); }
+        void LostFocus(object? sender, RoutedEventArgs e) { if (!Composing()) _ = context.CommitTextAsync(); }
         void KeyDown(object? sender, KeyEventArgs e)
         {
+            if (Composing()) return;
             if (e.Key == Key.Escape) { context.RevertDraft(); e.Handled = true; }
             else if (e.Key == Key.Enter && (control is not TextBox { AcceptsReturn: true } || e.KeyModifiers.HasFlag(KeyModifiers.Control))) { _ = context.CommitTextAsync(); e.Handled = true; }
         }
@@ -150,6 +155,7 @@ public static class DefaultFieldEditors
         if (commitText) { control.LostFocus += LostFocus; control.AddHandler(InputElement.KeyDownEvent, KeyDown, RoutingStrategies.Tunnel); }
         return new(control, () =>
         {
+            guard?.Dispose();
             context.PropertyChanged -= Changed;
             control.PropertyChanged -= Edited;
             if (commitText) { control.LostFocus -= LostFocus; control.RemoveHandler(InputElement.KeyDownEvent, KeyDown); }

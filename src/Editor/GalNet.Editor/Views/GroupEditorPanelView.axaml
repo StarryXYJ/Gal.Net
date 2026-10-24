@@ -4,7 +4,7 @@
              xmlns:vm="using:GalNet.Editor.ViewModels"
              x:Class="GalNet.Editor.Views.GroupEditorPanelView"
              x:DataType="vm:GroupEditorPanelViewModel"
-             Background="{DynamicResource SemiColorBackground0}">
+             Background="{DynamicResource SemiColorBackground0}" Foreground="{DynamicResource SemiColorText0}">
     <Grid RowDefinitions="Auto,*">
         <Border Grid.Row="0"
                 Background="{DynamicResource SemiColorBackground1}"
@@ -16,6 +16,7 @@
         </Border>
 
         <controls:EntryListEditorControl Grid.Row="1"
+                                         UseCommonFields="True"
                                          Margin="8" />
     </Grid>
 </UserControl>
