@@ -5,6 +5,7 @@ using Avalonia.Headless;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.VisualTree;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Controls;
@@ -16,7 +17,6 @@ using GalNet.Editor.Services;
 using GalNet.Editor.Services.Interfaces;
 using GalNet.Editor.Shared.Services;
 using GalNet.Editor.ViewModels;
-using GalNet.Contracts.Builtins;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GeneralTest.Editor;

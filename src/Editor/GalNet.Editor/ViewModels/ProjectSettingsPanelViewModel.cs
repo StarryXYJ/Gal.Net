@@ -10,9 +10,9 @@ using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
 using GalNet.Editor.Services;
+using GalNet.Editor.Shared.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
-using GalNet.Editor.Shared.Services;
 
 namespace GalNet.Editor.ViewModels;
 
