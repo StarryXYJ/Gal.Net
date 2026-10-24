@@ -60,7 +60,8 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
     [ObservableProperty] private string _debugWorkingDirectory = "";
     [ObservableProperty] private string _debugConfigurationMessage = "";
 
-    [RelayCommand] private void SaveDebugConfiguration()
+    [RelayCommand]
+    private void SaveDebugConfiguration()
     {
         try
         {
