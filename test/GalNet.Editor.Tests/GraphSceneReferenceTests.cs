@@ -26,7 +26,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var second = await workspace.AddNodeAsync(GraphNodeKind.LinearGroup, 500, 200);
         static EditorEntryData Entry(string id, string type, object parameters) => new()
         {
-            StableId = id, Type = type,
+            StableId = id,
+            Type = type,
             Parameters = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(JsonSerializer.Serialize(parameters))!
         };
         documents.Groups[first.Id].Entries.Clear();

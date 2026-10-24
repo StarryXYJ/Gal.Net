@@ -157,7 +157,9 @@ public sealed partial class GameEngine
                     if (fromCurrent) baseline = _engine._runtime.CreateSnapshot();
                     baseline = new GameSnapshot
                     {
-                        NodeId = baseline.NodeId, EntryIndex = baseline.EntryIndex, States = baseline.States,
+                        NodeId = baseline.NodeId,
+                        EntryIndex = baseline.EntryIndex,
+                        States = baseline.States,
                         Variables = _engine._runtime.CreateSnapshot().Variables
                     };
                 }

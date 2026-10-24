@@ -311,7 +311,9 @@ public class DebugSessionTests
     {
         Instructions = new Dictionary<string, DebugReplayBehavior>
         {
-            ["test.text"] = DebugReplayBehavior.Scene, ["test.scene"] = DebugReplayBehavior.Scene, ["test.write"] = DebugReplayBehavior.Ignore
+            ["test.text"] = DebugReplayBehavior.Scene,
+            ["test.scene"] = DebugReplayBehavior.Scene,
+            ["test.write"] = DebugReplayBehavior.Ignore
         }
     };
     private static GameRegistration Registration() => new GameRegistration().RegisterSchema(new DefaultEntryModule("test",

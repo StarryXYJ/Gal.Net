@@ -65,8 +65,12 @@ public class DebugConnectionTests
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         var accepted = listener.AcceptAsync(timeout.Token);
         await using var wrong = new GameDebugHost();
-        var identity = mismatch switch { "project" => new DebugIdentity("other", "content", "contract"),
-            "content" => new("project", "other", "contract"), _ => new("project", "content", "other") };
+        var identity = mismatch switch
+        {
+            "project" => new DebugIdentity("other", "content", "contract"),
+            "content" => new("project", "other", "contract"),
+            _ => new("project", "content", "other")
+        };
         Assert.ThrowsAsync<EndOfStreamException>(async () => await wrong.ConnectAsync(listener.Invitation with { Identity = identity }, timeout.Token));
         Assert.That(accepted.IsCompleted, Is.False);
         await using var correct = new GameDebugHost();

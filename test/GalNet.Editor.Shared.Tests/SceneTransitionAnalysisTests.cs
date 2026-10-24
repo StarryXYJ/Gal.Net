@@ -14,8 +14,10 @@ public sealed partial class SceneTargetAnalysisTests
         var cross = type is BuiltinEntryIds.CrossFadeTransition or BuiltinEntryIds.BlindsTransition;
         Dictionary<string, object> parameters = new()
         {
-            ["playbackHandleId"] = "transition-play", [cross ? "oldHandleId" : "fromLayerHandleId"] = "old",
-            [cross ? "newHandleId" : "toLayerHandleId"] = "incoming", [cross ? "assetId" : "toAssetId"] = "new-image",
+            ["playbackHandleId"] = "transition-play",
+            [cross ? "oldHandleId" : "fromLayerHandleId"] = "old",
+            [cross ? "newHandleId" : "toLayerHandleId"] = "incoming",
+            [cross ? "assetId" : "toAssetId"] = "new-image",
             [cross ? "transform" : "toTransform"] = new { x = 19, y = -3, scaleX = 2, scaleY = 3, rotationDegrees = 12 },
             ["future"] = new { number = 9007199254740993L, text = "old" }
         };

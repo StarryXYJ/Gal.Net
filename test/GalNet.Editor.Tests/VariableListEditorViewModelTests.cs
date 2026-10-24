@@ -99,10 +99,16 @@ public class VariableListEditorViewModelTests
     private static ProjectVariableDefinition Definition(VariableType type) => new()
     {
         Name = "score",
-        DefaultValue = new() { Name = "score", Value = type switch
+        DefaultValue = new()
         {
-            VariableType.Bool => VariableValue.From(false), VariableType.Int => VariableValue.From(0),
-            VariableType.Float => VariableValue.From(0f), _ => VariableValue.From("")
-        } }
+            Name = "score",
+            Value = type switch
+            {
+                VariableType.Bool => VariableValue.From(false),
+                VariableType.Int => VariableValue.From(0),
+                VariableType.Float => VariableValue.From(0f),
+                _ => VariableValue.From("")
+            }
+        }
     };
 }

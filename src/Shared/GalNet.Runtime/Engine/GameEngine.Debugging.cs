@@ -47,7 +47,8 @@ public sealed partial class GameEngine
             {
                 Instructions = options.Instructions.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal),
                 SynchronizePresentation = options.SynchronizePresentation,
-                MaxEntrancePayloadBytes = options.MaxEntrancePayloadBytes, MaxEntranceGroups = options.MaxEntranceGroups
+                MaxEntrancePayloadBytes = options.MaxEntrancePayloadBytes,
+                MaxEntranceGroups = options.MaxEntranceGroups
             };
             _initialScene = CaptureScene();
         }

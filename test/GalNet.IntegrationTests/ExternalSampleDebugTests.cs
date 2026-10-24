@@ -97,8 +97,15 @@ public sealed class ExternalSampleDebugTests
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
             var accept = listener.AcceptAsync(timeout.Token);
             var assembly = typeof(GalNet.Sample.Avalonia.App).Assembly.Location;
-            var start = new ProcessStartInfo("dotnet") { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden,
-                RedirectStandardOutput = true, RedirectStandardError = true, WorkingDirectory = Path.GetDirectoryName(assembly)! };
+            var start = new ProcessStartInfo("dotnet")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                WorkingDirectory = Path.GetDirectoryName(assembly)!
+            };
             foreach (var arg in new[] { assembly, content, "--profile", profile, "--debug-port", invitation.Port.ToString(CultureInfo.InvariantCulture),
                 "--debug-token", invitation.Token, "--debug-session", invitation.SessionId, "--debug-project", invitation.Identity.ProjectId,
                 "--debug-contract", invitation.Identity.ContractFingerprint! }) start.ArgumentList.Add(arg);

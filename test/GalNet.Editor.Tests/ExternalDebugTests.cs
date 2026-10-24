@@ -57,8 +57,12 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(client.Invitation, Is.Not.Null);
                 using var gameView = new GameRegistration().UseCatalog(project.Services.GetRequiredService<IEntryCatalog>())
                     .RegisterInstruction(BuiltinEntryIds.Text, _ => new DebugTextWait()).BuildView();
-                var graph = new Graph { RootNodeId = group.Id, Nodes = { new Group { Id = group.Id, Entries = { new PrimitiveEntry(BuiltinEntryIds.Text,
-                    JsonSerializer.SerializeToElement(new { content = "Test line" })) { StableId = entry.StableId + "#1" } } } } };
+                var graph = new Graph
+                {
+                    RootNodeId = group.Id,
+                    Nodes = { new Group { Id = group.Id, Entries = { new PrimitiveEntry(BuiltinEntryIds.Text,
+                    JsonSerializer.SerializeToElement(new { content = "Test line" })) { StableId = entry.StableId + "#1" } } } }
+                };
                 await using var engine = new GameEngine(graph, gameView);
                 engine.Runtime.SetVariable("save.score", 4);
                 engine.Runtime.SetVariable("player.unlocked", false);

@@ -193,7 +193,8 @@ public class GroupEndCatchUpTests
         new(type, JsonSerializer.SerializeToElement(new { })) { StableId = id, Condition = condition };
     private static Graph GraphOf(params Entry[] entries) => new()
     {
-        RootNodeId = "main", Nodes = { new Group { Id = "main", Entries = entries.ToList() } }
+        RootNodeId = "main",
+        Nodes = { new Group { Id = "main", Entries = entries.ToList() } }
     };
     private sealed class TextWait(Action<PrimitiveInvocationMode>? record = null) : PrimitiveInstance
     {
