@@ -141,7 +141,6 @@
         <semi:SemiPopupAnimations />
         <semi:DockSemiTheme />
         <semiColorPicker:ColorPickerSemiTheme />
-        <StyleInclude Source="avares://GalNet.Editor/Themes/ThemeTransitions.axaml" />
         <StyleInclude Source="avares://GalNet.Editor/Themes/EditorControlStyles.axaml" />
     </Application.Styles>
 </Application>

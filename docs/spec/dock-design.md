@@ -313,6 +313,4 @@ services.AddTransient<MyNewPanelViewModel>();
 
 预设调整现有 Dock，不销毁打开的文档、作者选择或项目草稿。最大化当前面板可恢复操作前结构；临时最大化状态不覆盖自动保存的布局。Timeline 属性树初始宽 320 DIP，可通过分隔条调整；显示完整时长、定位播放头及缩放读数只改变视口。
 
-Editor 图标按钮默认透明、32 DIP 点击区域，保留键盘焦点、禁用及切换反馈。按钮、背景与文字使用 Editor 调色板；平滑颜色过渡以预乘透明度插值，避免透明白色混入暗色 hover。游戏作者数据和其他宿主不依赖这些 Editor 外观。
-
-背景与边框反馈统一使用 `EditorMotion.HoverDuration`（160ms）、零延迟与线性曲线。普通 Button/ToggleButton 只在模板 ContentPresenter 过渡，绑定来源的外层控件不重复动画；图标按钮只在 ButtonSurface Border 过渡，空的 ContentPresenter 不配置背景动画。TextBox、菜单等模板的背景 Border 使用相同时长。图标按钮选中后仍有 hover/pressed 反馈，pressed 优先于 checked-hover；禁用时保持原选中底色并降低透明度。宽泛 Panel 背景和 TextBlock 文字过渡已移除。
+Editor 图标按钮默认透明、32 DIP 点击区域，保留键盘焦点、禁用及切换反馈。按钮、背景与文字使用 Editor 调色板；普通 Button、ToggleButton、输入与菜单的 hover 直接使用 Ursa/Semi 原生模板行为。Editor 不再向全局 `Border`、控件模板或图标按钮注入自定义画刷过渡，以免 entry 卡片等非按钮容器参与动画。游戏作者数据和其他宿主不依赖这些 Editor 外观。

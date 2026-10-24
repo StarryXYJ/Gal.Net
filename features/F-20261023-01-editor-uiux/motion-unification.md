@@ -21,3 +21,7 @@
 最终 Editor 全量回归 272 项通过、0 失败（`artifacts-uiux-motion-full.log`、`test/GalNet.Editor.Tests/TestResults/uiux-motion.trx`，2m29s），测试命令同时构建 Editor 与 XAML。动画时钟、防闪白及真实小窗口挂载定向回归 3 项通过（`artifacts-uiux-motion.log`）。新增两个 C# 文件的只读空白和 IDE0005 检查均 exit 0（`artifacts-uiux-motion-verify-whitespace.log`、`artifacts-uiux-motion-verify-style.log`）；`git diff --check` 通过。
 
 本轮未修改其他并行 feature，未自动提交工作区中的后续修复。
+
+## 后续废止
+
+2026-10-24 用户实测发现，统一过渡仍会令 Group entry 选择出现卡顿，而顶部菜单及 Ursa 默认控件正常。已删除 `ThemeTransitions`、`LinearBrushTransition`、`EditorMotion` 和图标按钮模板的专用画刷过渡，改回 Ursa/Semi 的普通模板反馈；这里的中间帧测试及其前提不再适用。

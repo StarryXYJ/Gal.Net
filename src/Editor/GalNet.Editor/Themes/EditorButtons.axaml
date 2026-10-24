@@ -11,10 +11,6 @@
     <Setter Property="Template"><ControlTemplate>
       <Border Name="ButtonSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
               BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}">
-        <Border.Transitions><Transitions>
-          <themes:LinearBrushTransition Property="Background" Duration="{x:Static themes:EditorMotion.HoverDuration}"/>
-          <themes:LinearBrushTransition Property="BorderBrush" Duration="{x:Static themes:EditorMotion.HoverDuration}"/>
-        </Transitions></Border.Transitions>
         <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
                           Padding="{TemplateBinding Padding}" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
       </Border>

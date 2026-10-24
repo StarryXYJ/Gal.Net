@@ -135,7 +135,6 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var resourceBase = new Uri("avares://GalNet.Editor/");
             app.Resources.MergedDictionaries.Add(new ResourceInclude(resourceBase) { Source = new Uri("avares://GalNet.Editor/Assets/icons.axaml") });
             app.Resources.MergedDictionaries.Add(new ResourceInclude(resourceBase) { Source = new Uri("avares://GalNet.Editor/Themes/EditorButtons.axaml") });
-            app.Styles.Add(new StyleInclude(resourceBase) { Source = new Uri("avares://GalNet.Editor/Themes/ThemeTransitions.axaml") });
             app.Styles.Add(new StyleInclude(resourceBase) { Source = new Uri("avares://GalNet.Editor/Themes/EditorControlStyles.axaml") });
             foreach (var key in new[] { "AddIcon", "DeleteRegularIcon", "ChevronUpRegular", "ChevronDownRegular" }) app.Resources.Remove(key);
             foreach (var (theme, name) in new[] { (EditorThemeVariant.Violet, "Violet"), (EditorThemeVariant.Aurora, "Aurora") })
@@ -175,13 +174,15 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     Assert.That(add.Bounds.Width, Is.EqualTo(32)); Assert.That(add.Bounds.Height, Is.EqualTo(32));
                     var surface = add.GetVisualDescendants().OfType<Border>().Single(border => border.Name == "ButtonSurface");
                     Assert.That((surface.Background as ISolidColorBrush)?.Color.A ?? 0, Is.Zero, "Icon buttons keep a transparent normal surface.");
+                    var entrySurface = groupView.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("debugEntry"));
+                    Assert.That(entrySurface.Transitions?.Count ?? 0, Is.Zero, "Selecting an entry must not animate its card surface.");
                     foreach (var schema in groupView.GetVisualDescendants().OfType<SchemaForm>().Where(form => form.IsEffectivelyVisible))
                         foreach (var item in schema.Editors)
                         {
                             Assert.That(item.Control.IsEffectivelyVisible, Is.True);
                             Assert.That(item.Control.Bounds.Width, Is.GreaterThan(60)); Assert.That(item.Control.Bounds.Height, Is.GreaterThanOrEqualTo(24));
                         }
-                    Assert.That(surface.Transitions!.OfType<LinearBrushTransition>().Count(), Is.EqualTo(2));
+                    Assert.That(surface.Transitions?.Count ?? 0, Is.Zero);
                     var toggle = groupView.GetVisualDescendants().OfType<ToggleButton>().Single(button => button.Name == "ParametersToggle");
                     Assert.That(toggle.IsChecked, Is.True); Assert.That(toggle.Theme, Is.Not.Null);
                     add.Focus(); Assert.That(add.IsFocused, Is.True);

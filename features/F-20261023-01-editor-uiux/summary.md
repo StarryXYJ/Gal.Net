@@ -35,7 +35,7 @@ Core、Presentation、Editor.Shared、Editor、Architecture、Primitives.Builtin
 
 原实现于首次使用反馈前提交为 `d93bf52`，工作区原有其他 feature 和测试修改保留，未创建 PR。随后的人物候选 Enter、Inspector 焦点修复及仅分析的 hover 反馈见 [后续记录](follow-up-20261024.md)。
 
-用户进一步授权后的 [动画统一](motion-unification.md) 将按钮背景反馈集中到单个绘制层；共享 160ms 时长，并通过实际模板时钟验证四主题中间帧及快速反向。
+曾尝试将按钮背景反馈集中到单个绘制层；用户实测 Group entry 仍会卡顿后，该自定义过渡已删除，现改回 Ursa/Semi 默认模板反馈。详见[动画统一记录](motion-unification.md)。
 
 ## 正式文档
 
