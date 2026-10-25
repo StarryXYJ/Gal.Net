@@ -160,6 +160,7 @@ public sealed class ImageVariantsPipelineTests
     [Test]
     public void Runtime_decoder_rejects_author_payload_and_malformed_compiled_facts()
     {
+        Assert.That(() => ImageVariantsCodec.Decode("""{"kind":"image-variants","version":1,"default":"idle_coat","dimensions":[{"key":"d1"}],"variants":[{"key":"idle_coat","assetId":"sprite"}]}"""u8.ToArray()), Throws.TypeOf<InvalidDataException>());
         Assert.That(() => ImageVariantsCodec.Decode("""{"folder":"alice","default":"weap"}"""u8.ToArray()), Throws.Exception);
         Assert.That(() => ImageVariantsCodec.Decode("""{"kind":"image-variants","version":99,"default":"weap","dimensions":[],"variants":[]}"""u8.ToArray()), Throws.TypeOf<InvalidDataException>());
         Assert.That(() => ImageVariantsCodec.Decode("""{"kind":"image-variants","version":1,"default":"weap","dimensions":[{"key":"d1"}],"variants":[{"key":"weap","assetId":""}]}"""u8.ToArray()), Throws.TypeOf<InvalidDataException>());

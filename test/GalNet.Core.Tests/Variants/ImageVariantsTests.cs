@@ -243,12 +243,26 @@ public sealed class ImageVariantsTests
     }
 
     [Test]
-    public void Explicit_extra_dimension_is_allowed_without_synthesizing_values()
+    public void Only_file_positions_are_active_and_unused_names_are_retained()
     {
         var source = Source("idle");
         var definition = Build(source, "idle");
-        Assert.That(definition.Dimensions[1].Options, Is.Empty);
+        Assert.That(definition.Dimensions, Has.Count.EqualTo(1));
+        Assert.That(source.Dimensions, Has.Count.EqualTo(2));
         Assert.That(ImageVariantsResolver.Initialize(definition).Request.Keys, Is.EquivalentTo(new[] { "expression" }));
+    }
+
+    [Test]
+    public void File_growth_infers_new_positions_without_changing_existing_names_or_author_source()
+    {
+        var source = Source("idle_coat");
+        source.Dimensions![0].Key = "d3";
+        var definition = Build(source, "idle_coat", "smile_skirt_day");
+        Assert.That(definition.Dimensions.Select(item => item.Key), Is.EqualTo(new[] { "d3", "outfit", "d3_" }));
+        Assert.That(definition.Dimensions[2].Options, Is.EqualTo(new[] { "day" }));
+        Assert.That(source.Dimensions, Has.Count.EqualTo(2));
+        var smaller = Build(source, "idle_coat");
+        Assert.That(smaller.Dimensions, Has.Count.EqualTo(2));
     }
 
     [TestCase("idle_.png", "empty-segment")]
@@ -295,7 +309,7 @@ public sealed class ImageVariantsTests
     }
 
     [Test]
-    public void Builder_rejects_duplicate_empty_null_or_insufficient_dimensions()
+    public void Builder_rejects_duplicate_empty_or_null_dimension_names()
     {
         var source = Source();
         source.Dimensions = [new() { Key = "same" }, new() { Key = "same" }, new() { Key = " " }, null!];
@@ -303,7 +317,7 @@ public sealed class ImageVariantsTests
         Assert.That(result.Definition, Is.Null);
         Assert.That(result.Diagnostics.Select(item => item.Path), Is.EquivalentTo(new[] { "/dimensions/1/key", "/dimensions/2/key", "/dimensions/3/key" }));
         source.Dimensions = [];
-        Assert.That(ImageVariantsBuilder.Build(source, Files("idle_coat")).Diagnostics.Any(item => item.Code == "insufficient-dimensions"), Is.True);
+        Assert.That(Build(source, "idle_coat").Dimensions.Select(item => item.Key), Is.EqualTo(new[] { "d1", "d2" }));
     }
 
     [Test]

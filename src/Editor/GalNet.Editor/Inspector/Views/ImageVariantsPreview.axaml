@@ -16,6 +16,6 @@
   <TextBlock Text="{loc:Localize Variants.Actual}" FontWeight="SemiBold"/>
   <TextBlock Text="{Binding Actual}" TextWrapping="Wrap"/>
   <Image Source="{Binding Preview}" MaxHeight="300" Stretch="Uniform"/>
-  <TextBlock Text="{Binding Fallback}" TextWrapping="Wrap"/>
+  <Expander Header="{loc:Localize Variants.Details}"><TextBlock Text="{Binding Fallback}" TextWrapping="Wrap"/></Expander>
  </StackPanel>
 </UserControl>

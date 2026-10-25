@@ -58,32 +58,29 @@ public static class ImageVariantsBuilder
 
         var count = variants.Count == 0 ? 0 : variants.Max(item => item.Values.Count);
         var dimensions = new List<ImageVariantDimension>();
-        if (source.Dimensions is null)
-        {
-            for (var position = 0; position < count; position++)
-            {
-                var number = (position + 1).ToString(CultureInfo.InvariantCulture);
-                dimensions.Add(new ImageVariantDimension("d" + number, number, Options(position)));
-            }
-        }
-        else
-        {
-            if (source.Dimensions.Count < count)
-                Error("insufficient-dimensions", "/dimensions", "Dimensions must cover the longest variant name.");
-            var keys = new HashSet<string>(StringComparer.Ordinal);
+        // Author dimensions name positions; files alone determine the active structure.
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+        if (source.Dimensions is not null)
             for (var position = 0; position < source.Dimensions.Count; position++)
             {
                 var item = source.Dimensions[position];
                 var path = $"/dimensions/{position}/key";
                 if (item is null || string.IsNullOrWhiteSpace(item.Key))
-                {
                     Error("invalid-dimension-key", path, "A nonempty dimension key is required.");
-                    continue;
-                }
-                if (!keys.Add(item.Key)) Error("duplicate-dimension-key", path, $"Dimension '{item.Key}' is repeated.");
-                dimensions.Add(new ImageVariantDimension(item.Key,
-                    item.Label ?? (position + 1).ToString(CultureInfo.InvariantCulture), Options(position)));
+                else if (!keys.Add(item.Key))
+                    Error("duplicate-dimension-key", path, $"Dimension '{item.Key}' is repeated.");
             }
+        for (var position = 0; position < count; position++)
+        {
+            var number = (position + 1).ToString(CultureInfo.InvariantCulture);
+            var item = source.Dimensions is { } configured && position < configured.Count ? configured[position] : null;
+            var key = item?.Key;
+            if (key is null)
+            {
+                key = "d" + number;
+                while (!keys.Add(key)) key += "_";
+            }
+            dimensions.Add(new ImageVariantDimension(key, item?.Label ?? number, Options(position)));
         }
 
         return diagnostics.Count > 0

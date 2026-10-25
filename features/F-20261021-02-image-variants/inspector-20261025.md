@@ -1,0 +1,23 @@
+# 2026-10-25 Inspector 简化
+
+状态：本轮实现与定向验证 verified；原生目录对话框、DPI/IME 未做人工验收。
+
+## 已确认范围与实现
+
+- 默认图片仅一个 ComboBox；失效值显示原名称及缺失提示，可重新选择修复。
+- 图片目录使用选择器，路径只读；拒绝 Assets 外路径与链接。
+- 图片文件决定维度数量、顺序及选项；稳定 key 只读，仅编辑显示名称。保留旧 key，因此 GameTestCase 的 pose/expression 等剧情引用无需迁移。
+- 维度配置仅命名位置。新位置自动生成不冲突 key，超出实际数量的命名休眠保留；扫描不改写配置。Core builder、作者扫描与资源编译共用规则；编译 payload 仍要求完整结构，decoder 不自动修复坏 payload。
+- 移除自由输入默认名、维度增删排序/重新推断、应用配置和内嵌 JSON；有效修改自动提交项目内容历史，统一保存落盘。
+- 既有资源文件监视通知触发扫描，保留主动刷新；保留预览选择及显式重置，候选削减链折叠为匹配详情。
+- 同步四语资源、操作手册与正式规范。
+
+## 验证与边界
+
+- 使用 HEAD 加本次变更的 Temp/variants-inspector-source 源码副本验证，以避开共享工作区另一项本地化改动的暂时编译错误，保留用户正在运行的 Editor。
+- 普通沙箱 testhost 连接超时，后续允许的本机测试执行正常。普通 bin 被运行中的 Editor 锁定；曾同时构建共享项目导致临时 apphost 文件竞争，最终验证改为串行。
+- 首轮挂载断言错误使用 Has.Count 检查迭代器/数组，已改为显式 Count()；该失败没有被计作通过。
+- Core 差分 33 passed；Assets 管线 24 passed；Editor.Shared 差分与场景查询 29 passed；GameTestCase/差分集成 10 passed；Editor 挂载与移动重基 7 passed；Primitives.Builtins 运行与恢复 23 passed。合计 126 passed，无最终失败。Runtime 项目初次筛选无匹配测试，未计入；运行用例实际位于 Primitives.Builtins。
+- Editor 及集成依赖编译通过；本次 7 个 C# 文件 whitespace 检查通过。9 个实现/测试文件与测试副本字节一致，四语 key 集合一致。
+- 验证挂载控件只有一个默认图 ComboBox，名称编辑自动形成历史；撤销重做与保存重开保留 default、label 和原 key。资源刷新新增维度但不改作者文本/历史，缺失默认图可用下拉框修复；目录选择拒绝 Assets 外路径。
+- 原生目录对话框、真实 DPI/IME 本轮未人工验证；目录命令与 Assets 范围检查由挂载测试验证。

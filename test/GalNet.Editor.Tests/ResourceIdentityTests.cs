@@ -85,7 +85,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             await files.ExecuteAsync(new(ProjectFileAction.CreateFile, [], "Assets/hero.variants", Content: Encoding.UTF8.GetBytes("""{"folder":"alice","default":"idle_coat"}""")));
             var buffer = scope.GetRequiredService<ProjectTextFiles>().Open("Assets/hero.variants");
             using var inspector = new ImageVariantsInspector(project.RootPath, buffer, projects, scope.GetRequiredService<IResourceTypeCatalog>(), scope.GetRequiredService<IAssetCatalogService>(), scope.GetRequiredService<IEditorLocalizationService>());
-            inspector.Default = "smile_skirt"; await buffer.CommitAsync(); // Unsaved author state must remain unsaved after moving.
+            inspector.Default = "smile_skirt"; await inspector.ConfigurationSaving; // Unsaved author state must remain unsaved after moving.
             var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear();
             await files.ExecuteAsync(moveImages ? new(ProjectFileAction.Move, ["Assets/alice"], "Assets/pictures", false)
                 : new(ProjectFileAction.Move, ["Assets/hero.variants"], "Assets/atlases/hero.variants", false));

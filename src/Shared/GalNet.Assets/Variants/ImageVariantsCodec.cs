@@ -43,6 +43,9 @@ public static class ImageVariantsCodec
             throw new InvalidDataException("Unsupported compiled image variants payload.");
         if (payload.Variants.Any(item => item is null || string.IsNullOrEmpty(item.Key)))
             throw new InvalidDataException("Compiled variants require exact keys.");
+        // Compiled payloads contain the full inferred structure; only author sources infer missing names.
+        if (payload.Dimensions.Count != payload.Variants.Select(item => item.Key.Split('_').Length).DefaultIfEmpty(0).Max())
+            throw new InvalidDataException("Compiled dimensions must match the variant positions.");
         var result = ImageVariantsBuilder.Build(new ImageVariantsSource
         {
             Folder = ".",

@@ -5,32 +5,23 @@
   <TextBlock Text="{loc:Localize Variants.Title}" FontWeight="SemiBold"/>
   <StackPanel Spacing="6" IsEnabled="{Binding CanConfigure}">
    <TextBlock Text="{loc:Localize Variants.Folder}"/>
-   <TextBox Name="VariantsFolder" Text="{Binding Folder}"/>
+   <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+    <TextBox Name="VariantsFolder" Text="{Binding Folder}" IsReadOnly="True"/>
+    <Button Grid.Column="1" Content="{loc:Localize Common.Browse}" Command="{Binding BrowseFolderCommand}"/>
+   </Grid>
    <TextBlock Text="{loc:Localize Variants.Default}"/>
-   <TextBox Name="VariantsDefault" Text="{Binding Default}"/>
-   <ComboBox Name="VariantsDefaultChoices" ItemsSource="{Binding VariantKeys}" SelectedItem="{Binding DefaultChoice}" PlaceholderText="{loc:Localize Variants.Default}"/>
+   <ComboBox Name="VariantsDefaultChoices" ItemsSource="{Binding VariantKeys}" SelectedItem="{Binding DefaultChoice}" PlaceholderText="{Binding DefaultPlaceholder}"/>
    <ItemsControl ItemsSource="{Binding Dimensions}">
     <ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:VariantDimensionRow">
-     <Grid ColumnDefinitions="*,*,Auto,Auto" ColumnSpacing="4" Margin="0,2">
-      <TextBox Name="VariantsDimensionKey" Text="{Binding Key}" PlaceholderText="key"/>
-      <TextBox Grid.Column="1" Text="{Binding Label}" PlaceholderText="{loc:Localize Variants.Label}"/>
-      <Button Grid.Column="2" Content="↑" Command="{Binding #Root.DataContext.MoveUpCommand}" CommandParameter="{Binding}"/>
-      <Button Grid.Column="3" Content="×" Command="{Binding #Root.DataContext.RemoveDimensionCommand}" CommandParameter="{Binding}"/>
+     <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" Margin="0,2">
+      <TextBlock Text="{Binding Key}" VerticalAlignment="Center"/>
+      <TextBox Name="VariantsDimensionLabel" Grid.Column="1" Text="{Binding Label}" PlaceholderText="{loc:Localize Variants.Label}"/>
      </Grid>
     </DataTemplate></ItemsControl.ItemTemplate>
    </ItemsControl>
-   <WrapPanel>
-    <Button Content="{loc:Localize Variants.AddDimension}" Command="{Binding AddDimensionCommand}"/>
-    <Button Content="{loc:Localize Variants.Infer}" Command="{Binding InferDimensionsCommand}"/>
-   </WrapPanel>
   </StackPanel>
-  <TextBlock Text="{Binding Impact}" TextWrapping="Wrap" Foreground="DarkOrange"/>
-  <WrapPanel>
-   <Button Name="VariantsApply" Content="{loc:Localize Variants.Apply}" Command="{Binding ApplyCommand}"/>
-   <Button Name="VariantsRefresh" Content="{loc:Localize Variants.Refresh}" Command="{Binding RefreshCommand}"/>
-  </WrapPanel>
+  <Button Name="VariantsRefresh" Content="{loc:Localize Variants.Refresh}" Command="{Binding RefreshCommand}" HorizontalAlignment="Left"/>
   <TextBlock Text="{Binding Diagnostics}" TextWrapping="Wrap" Foreground="OrangeRed"/>
   <TextBlock Text="{Binding Buffer.Error}" TextWrapping="Wrap" Foreground="OrangeRed"/>
-  <Expander Header="JSON"><TextBox Name="VariantsJson" Text="{Binding Buffer.Text}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="140" IsReadOnly="{Binding Buffer.IsReadOnly}"/></Expander>
  </StackPanel>
 </UserControl>
