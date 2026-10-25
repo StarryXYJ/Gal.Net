@@ -3,7 +3,7 @@ param([ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug')
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$repositoryRoot = Split-Path -Parent $PSScriptRoot
+$repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $project = Join-Path $repositoryRoot 'src/Samples/GalNet.Sample.Contracts/GalNet.Sample.Contracts.csproj'
 $assembly = Join-Path $repositoryRoot "src/Samples/GalNet.Sample.Contracts/bin/$Configuration/net10.0/GalNet.Project.Contracts.dll"
 $expectedHash = $null

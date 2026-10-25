@@ -59,9 +59,9 @@ Player 修改先同步当前 Runtime 与玩家变量服务，默认 Avalonia 宿
 
 CLI/Editor/App 应使用同一份项目契约构建产物，包括默认只含内置条目的工程；选择 Sample 时需先部署 Sample 对应的 Contracts。运行内容来自构建目录，不提供资源热更新；作者内容编辑后旧源码映射失效，需要重新启动测试。
 
-在仓库根目录运行 `./scripts/export-sample-contracts.ps1`（可选 `-Configuration Release`），会先构建 Avalonia Sample，再将配套契约及依赖 DLL 导出到根目录 `output/Contracts`。该输出目录已被 Git 忽略。关闭 Editor 项目，将导出的 DLL 复制到项目 `Contracts` 目录，重新打开项目，并使用脚本打印的对应 App 路径启动测试。
+在仓库根目录运行 `./scripts/contracts/export-sample-contracts.ps1`（可选 `-Configuration Release`），会先构建 Avalonia Sample，再将配套契约及依赖 DLL 导出到根目录 `out/Contracts`。该输出目录已被 Git 忽略。关闭 Editor 项目，将导出的 DLL 复制到项目 `Contracts` 目录，重新打开项目，并使用脚本打印的对应 App 路径启动测试。
 
-仓库对项目契约及其 Core/Builtins 编译引用禁用提交相关的 InformationalVersion 后缀和 SourceLink，以免仅提交无关文件就改变 DLL 身份；PDB 和本地调试仍保留，App 自身仍带提交信息。可用 `./scripts/test-contract-reproducibility.ps1` 对两个 SourceRevisionId 做真实 Rebuild 检查。首次迁移此构建规则需重导出并部署一次旧契约；源码、引用 API、生成器、SDK、路径或编译配置变化仍可能改变严格二进制身份。仓库外自定义契约及依赖也需自行保证构建稳定，不能只依靠相同程序集版本号。
+仓库对项目契约及其 Core/Builtins 编译引用禁用提交相关的 InformationalVersion 后缀和 SourceLink，以免仅提交无关文件就改变 DLL 身份；PDB 和本地调试仍保留，App 自身仍带提交信息。可用 `./scripts/contracts/test-contract-reproducibility.ps1` 对两个 SourceRevisionId 做真实 Rebuild 检查。首次迁移此构建规则需重导出并部署一次旧契约；源码、引用 API、生成器、SDK、路径或编译配置变化仍可能改变严格二进制身份。仓库外自定义契约及依赖也需自行保证构建稳定，不能只依靠相同程序集版本号。
 
 Editor 启动的 App 在 30 秒内未连接时，调试面板会报告连接超时；Editor 不会因此终止 App。调试请求 60 秒无响应时，面板会结束等待并提示操作可能仍在运行；先检查运行状态再重试。状态/检查轮询的单次请求上限为 10 秒。
 

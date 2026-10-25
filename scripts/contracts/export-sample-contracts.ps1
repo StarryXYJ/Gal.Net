@@ -5,11 +5,11 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$repositoryRoot = Split-Path -Parent $PSScriptRoot
+$repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $sampleProject = Join-Path $repositoryRoot 'src/Samples/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj'
 $sampleOutput = Join-Path $repositoryRoot "src/Samples/GalNet.Sample.Avalonia/bin/$Configuration/net10.0"
 $contractsOutput = Join-Path $repositoryRoot "src/Samples/GalNet.Sample.Contracts/bin/$Configuration/net10.0"
-$destination = Join-Path $repositoryRoot 'output/Contracts'
+$destination = Join-Path $repositoryRoot 'out/Contracts'
 
 & dotnet build $sampleProject -c $Configuration -m:1
 if ($LASTEXITCODE -ne 0) { throw 'Sample build failed; no contracts exported.' }

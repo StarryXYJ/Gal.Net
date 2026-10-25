@@ -14,12 +14,12 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$repositoryRoot = Split-Path -Parent $PSScriptRoot
+$repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $assemblyName = if ($Target -eq 'Editor') { 'GalNet.Editor' } else { 'GalNet.Sample.Avalonia' }
 $group = if ($Target -eq 'Editor') { 'Editor' } else { 'Samples' }
 $projectDirectory = Join-Path $repositoryRoot "src/$group/$assemblyName"
 if (-not $OutputDirectory) {
-    $OutputDirectory = Join-Path $repositoryRoot ('artifacts/benchmarks/' + $Target + '-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
+    $OutputDirectory = Join-Path $repositoryRoot ('out/benchmarks/' + $Target + '-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
 }
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 $null = New-Item -ItemType Directory -Path $OutputDirectory -Force

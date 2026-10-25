@@ -11,7 +11,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$repositoryRoot = Split-Path -Parent $PSScriptRoot
+$repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $Project = if ($Project) { [System.IO.Path]::GetFullPath($Project) } else { Join-Path $repositoryRoot 'GameTestCase' }
 $gameDirectory = if ($BuildOutput) { [System.IO.Path]::GetFullPath($BuildOutput) } else { Join-Path $Project 'Output' }
 $playerProject = Join-Path $repositoryRoot 'src\Samples\GalNet.Sample.Headless\GalNet.Sample.Headless.csproj'

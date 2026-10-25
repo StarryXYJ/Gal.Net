@@ -462,6 +462,9 @@ riderModule.iml
 
 # Project-specific
 /artifacts/benchmarks/
+/out/
+!/scripts/release/
+!/scripts/release/**
 !/src/Editor/GalNet.Editor/Properties/PublishProfiles/WindowsReadyToRun.pubxml
 !/src/Samples/GalNet.Sample.Avalonia/Properties/PublishProfiles/WindowsReadyToRun.pubxml
 /output/

@@ -47,6 +47,14 @@
           "Serilog": "[4.2.0, )"
         }
       },
+      "galnet.gamehost": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "GalNet.Runtime": "[1.0.0, )"
+        }
+      },
       "galnet.presentation.abstractions": {
         "type": "Project",
         "dependencies": {
@@ -60,6 +68,15 @@
           "GalNet.Core": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "Serilog": "[4.2.0, )"
+        }
+      },
+      "galnet.storage.filesystem": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Assets": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.GameHost": "[1.0.0, )",
+          "GalNet.Runtime": "[1.0.0, )"
         }
       },
       "CoreCLR-NCalc": {

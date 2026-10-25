@@ -8,11 +8,11 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$repositoryRoot = Split-Path -Parent $PSScriptRoot
+$repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $Executable = (Resolve-Path -LiteralPath $Executable).Path
 $traceCommand = (Get-Command $TraceTool -ErrorAction Stop).Source
 if (-not $OutputDirectory) {
-    $OutputDirectory = Join-Path $repositoryRoot ('artifacts/benchmarks/profile-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
+    $OutputDirectory = Join-Path $repositoryRoot ('out/benchmarks/profile-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
 }
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 $null = New-Item -ItemType Directory -Force -Path $OutputDirectory

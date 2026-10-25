@@ -10,7 +10,7 @@ using Microsoft.Diagnostics.Tracing.Parsers.Kernel;
 using Microsoft.Diagnostics.Symbols;
 
 if (args.Length is < 2 or > 3 || (args.Length == 3 && args[2] != "--symbols"))
-    throw new ArgumentException("Usage: dotnet run scripts/analyze-startup-native.cs -- <startup.etl> <pid> [--symbols]");
+    throw new ArgumentException("Usage: dotnet run scripts/performance/analyze-startup-native.cs -- <startup.etl> <pid> [--symbols]");
 var file = Path.GetFullPath(args[0]);
 var pid = int.Parse(args[1], CultureInfo.InvariantCulture);
 var etlx = TraceLog.CreateFromEventTraceLogFile(file, file + ".etlx", new TraceLogOptions { LocalSymbolsOnly = true });

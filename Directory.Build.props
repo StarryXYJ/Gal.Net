@@ -18,10 +18,10 @@
     <NuGetLockFilePath>$(MSBuildProjectDirectory)/obj/benchmark/packages.lock.json</NuGetLockFilePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(PublishProfile)' == 'WindowsReadyToRun' And '$(Benchmark)' != 'true'">
-    <!-- RID publish restore graphs must not rewrite ordinary development locks. -->
+    <!-- Keep the RID publish graph separate from ordinary development locks, but track it for locked CI restores. -->
     <BaseIntermediateOutputPath>obj/publish/WindowsReadyToRun/</BaseIntermediateOutputPath>
     <BaseOutputPath>bin/publish/WindowsReadyToRun/</BaseOutputPath>
-    <NuGetLockFilePath>$(MSBuildProjectDirectory)/obj/publish/WindowsReadyToRun/packages.lock.json</NuGetLockFilePath>
+    <NuGetLockFilePath>$(MSBuildProjectDirectory)/packages.lock.WindowsReadyToRun.json</NuGetLockFilePath>
   </PropertyGroup>
   <PropertyGroup>
     <!-- Both output trees are generated, regardless of the active build mode. -->

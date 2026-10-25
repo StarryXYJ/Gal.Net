@@ -18,7 +18,7 @@ TraceEvent 3.1.21 离线读取并配对 MethodJittingStarted / MethodLoad 事件
 
 R2R 方法：两版均 Release、win-x64、framework-dependent，同一源代码、同一 Benchmark 开关，仅 PublishReadyToRun 不同。排除 Core、Contracts.Builtins 和固定入口 Contracts，避免转换改写严格二进制身份；发布后检查哈希与 PE native header，并在不启用 EventPipe 时交错比较固定输出。baseline/candidate 位于 Temp/r2r-experiment/il 与 r2r。
 
-原始证据：artifacts/benchmarks/runtime-profile-01、02、03。分析源码：scripts/analyze-startup-trace.cs；复现方式见 docs/manual/cpu-benchmark.md。
+原始证据：artifacts/benchmarks/runtime-profile-01、02、03。分析源码：scripts/performance/analyze-startup-trace.cs；复现方式见 docs/manual/cpu-benchmark.md。
 
 ## 同轮交错对照
 

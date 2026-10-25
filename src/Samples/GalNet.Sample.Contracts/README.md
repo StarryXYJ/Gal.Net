@@ -5,7 +5,7 @@
 从仓库根目录部署到内容项目：
 
 ```powershell
-./scripts/build-project-contracts.ps1 -ContractsProject ./src/Samples/GalNet.Sample.Contracts/GalNet.Sample.Contracts.csproj -ProjectDirectory <内容项目目录>
+./scripts/contracts/build-project-contracts.ps1 -ContractsProject ./src/Samples/GalNet.Sample.Contracts/GalNet.Sample.Contracts.csproj -ProjectDirectory <内容项目目录>
 ```
 
 脚本先完成独立构建，再替换内容项目的 `Contracts` 目录及依赖，发布失败则恢复旧目录。游戏发布仍走正常程序集依赖；不要把工具契约目录当作资源或额外打包进 galpak。

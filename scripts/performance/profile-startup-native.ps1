@@ -7,10 +7,10 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$repositoryRoot = Split-Path -Parent $PSScriptRoot
+$repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $Executable = (Resolve-Path -LiteralPath $Executable).Path
 if (-not $OutputDirectory) {
-    $OutputDirectory = Join-Path $repositoryRoot ('artifacts/benchmarks/native-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
+    $OutputDirectory = Join-Path $repositoryRoot ('out/benchmarks/native-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
 }
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 $null = New-Item -ItemType Directory -Path $OutputDirectory -ErrorAction Stop

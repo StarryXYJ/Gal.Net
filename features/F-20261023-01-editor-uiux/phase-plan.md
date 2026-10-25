@@ -22,7 +22,7 @@
 | Primitives.Builtins | 175 通过 | `artifacts-uiux-recheck-GalNet.Primitives.Builtins.Tests.log` |
 | SchemaGenerator | 18 通过 | `artifacts-uiux-recheck-GalNet.SchemaGenerator.Tests.log` |
 
-`scripts/test-contract-reproducibility.ps1 -Configuration Release` 通过：两次不同 SourceRevisionId 的 Sample 契约 SHA-256 同为 `9B97CA52F84880E640C7DAD5012C9DB9667C7887FD47959FDB1A07F1FF2CE535`。Editor 默认契约输出与打包目录 DLL 指纹一致。
+`scripts/contracts/test-contract-reproducibility.ps1 -Configuration Release` 通过：两次不同 SourceRevisionId 的 Sample 契约 SHA-256 同为 `9B97CA52F84880E640C7DAD5012C9DB9667C7887FD47959FDB1A07F1FF2CE535`。Editor 默认契约输出与打包目录 DLL 指纹一致。
 
 `dotnet build GalNet.slnx --no-restore -c Release -m:1` 在本机 IPC 权限下通过，0 错误、14 个 NU1900 审计连接警告（`artifacts-uiux-solution-elevated.log`）。首次沙箱运行的 Android/Browser MSBuild 任务宿主连接失败；同一命令在本机构建权限下成功，未为绕过错误修改平台构建配置。
 

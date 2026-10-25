@@ -45,7 +45,7 @@ $ErrorActionPreference = 'Stop'
 
 if ([string]::IsNullOrWhiteSpace($Root))
 {
-    $Root = Join-Path $PSScriptRoot '..'
+    $Root = Join-Path $PSScriptRoot '../..'
 }
 
 $rootPath = [System.IO.Path]::GetFullPath((Resolve-Path -LiteralPath $Root).Path)

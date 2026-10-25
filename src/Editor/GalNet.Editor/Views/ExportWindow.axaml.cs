@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
+using System.IO;
 using GalNet.Editor.ViewModels;
 using Ursa.Controls;
 namespace GalNet.Editor.Views;
@@ -22,7 +23,7 @@ public partial class ExportWindow : UrsaWindow
             var mainWindow = Owner as MainWindow;
             progressWindow.Close();
             Close();
-            mainWindow?.ShowSuccessToast(viewModel.L["Export.Success"]);
+            mainWindow?.ShowSuccessToast($"{viewModel.L["Export.Success"]} {Path.GetFileName(result.PackagePath)}");
             return;
         }
 

@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.401
+      - name: Build release packages
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          if ($tag -notmatch '^v([0-9]+\.[0-9]+\.[0-9]+(?:-preview\.[0-9]+)?)$') {
+            throw "Release tag '$tag' must use vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-preview.N."
+          }
+          $version = $tag.Substring(1)
+          ./scripts/release/Publish.ps1 -Package All -Version $version
+      - name: Create GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          $version = $tag.Substring(1)
+          $assetDirectory = Join-Path $PWD "out/release/$version"
+          $assets = @(Get-ChildItem -LiteralPath $assetDirectory -File | Sort-Object Name | ForEach-Object FullName)
+          if ($assets.Count -lt 6) { throw "Expected three ZIP packages and three SHA-256 sidecars in $assetDirectory." }
+          $arguments = @('release', 'create', $tag, '--title', "GalNet $version", '--generate-notes')
+          if ($version -match '-preview\.') { $arguments += '--prerelease' }
+          $arguments += $assets
+          & gh @arguments
+          if ($LASTEXITCODE -ne 0) { throw "gh release create failed with exit code $LASTEXITCODE." }

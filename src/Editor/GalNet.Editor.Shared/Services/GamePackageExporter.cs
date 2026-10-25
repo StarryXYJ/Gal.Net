@@ -14,6 +14,82 @@ public static class GamePackageExporter
 {
     private const string AssetsPakPath = "Assets/Paks/000-base.pak";
 
+    /// <summary>Builds a distributable content directory without creating an intermediate .galpak archive.</summary>
+    public static async Task<GameContentExportResult> ExportDirectoryAsync(
+        string projectId,
+        string projectName,
+        string projectRoot,
+        string outputDirectory,
+        IResourceTypeCatalog resourceTypes,
+        IGalleryTypeCatalog galleryTypes,
+        IEntryCatalog entryCatalog,
+        CancellationToken cancellationToken = default)
+    {
+        string? stagingRoot = null;
+        string? publishRoot = null;
+        try
+        {
+            ArgumentNullException.ThrowIfNull(entryCatalog);
+            ArgumentNullException.ThrowIfNull(resourceTypes);
+            ArgumentNullException.ThrowIfNull(galleryTypes);
+            var sourceRoot = Path.GetFullPath(projectRoot);
+            var targetRoot = Path.GetFullPath(outputDirectory);
+            ProjectContentBuilder.ValidateOutputPath(sourceRoot, targetRoot);
+            if (Directory.Exists(targetRoot) || File.Exists(targetRoot))
+                throw new InvalidOperationException($"Export directory '{targetRoot}' already exists.");
+
+            var targetParent = Path.GetDirectoryName(targetRoot)
+                ?? throw new InvalidOperationException("Export directory must have a parent directory.");
+            Directory.CreateDirectory(targetParent);
+            publishRoot = Path.Combine(targetParent, $".{Path.GetFileName(targetRoot)}.export-{Guid.NewGuid():N}");
+            stagingRoot = Path.Combine(targetParent, $".{Path.GetFileName(targetRoot)}.content-{Guid.NewGuid():N}");
+            await new ProjectContentBuilder(entryCatalog, resourceTypes)
+                .BuildAsync(sourceRoot, stagingRoot, cancellationToken)
+                .ConfigureAwait(false);
+
+            var assets = await LoadAssetsAsync(Path.Combine(stagingRoot, "Assets"), resourceTypes, cancellationToken);
+            var gallery = new GalleryCatalogCompiler(resourceTypes, galleryTypes).Compile(assets.Select(asset => asset.Metadata));
+            var assetsPak = PakBuilder.Build("assets", assets, GalNet.Core.Assets.CompressionMode.Brotli, resourceTypes);
+            var contentFiles = BuildContentFiles(stagingRoot, gallery, cancellationToken);
+            var payloads = new[] { (AssetsPakPath, assetsPak) }.Concat(contentFiles).ToArray();
+            var manifestFiles = payloads.Select(file => new GalpakFileEntry(file.Item1, Hash(file.Item2), file.Item2.Length)).ToArray();
+            var safeName = SafeFileName(projectName);
+            var manifestPath = $"{safeName}.galnet";
+            var manifestBytes = JsonSerializer.SerializeToUtf8Bytes(
+                new GalpakManifest(1, projectId, projectName, DateTimeOffset.UtcNow, manifestFiles), JsonOptions);
+
+            Directory.CreateDirectory(publishRoot);
+            foreach (var (relativePath, data) in payloads)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var destination = GetSafeDestination(publishRoot, relativePath);
+                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                await File.WriteAllBytesAsync(destination, data, cancellationToken).ConfigureAwait(false);
+            }
+            await File.WriteAllBytesAsync(GetSafeDestination(publishRoot, manifestPath), manifestBytes, cancellationToken).ConfigureAwait(false);
+            Directory.CreateDirectory(Path.Combine(publishRoot, "I18n", "External"));
+            await VerifyDirectoryAsync(publishRoot, manifestFiles, resourceTypes, cancellationToken).ConfigureAwait(false);
+
+            cancellationToken.ThrowIfCancellationRequested();
+            Directory.Move(publishRoot, targetRoot);
+            publishRoot = null;
+            return GameContentExportResult.Succeeded(targetRoot);
+        }
+        catch (OperationCanceledException)
+        {
+            return GameContentExportResult.Failed("Export canceled.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or InvalidOperationException or ArgumentException)
+        {
+            return GameContentExportResult.Failed(ex.Message);
+        }
+        finally
+        {
+            if (stagingRoot is not null && Directory.Exists(stagingRoot)) Directory.Delete(stagingRoot, recursive: true);
+            if (publishRoot is not null && Directory.Exists(publishRoot)) Directory.Delete(publishRoot, recursive: true);
+        }
+    }
+
     public static async Task<GamePackageExportResult> ExportAsync(
         string projectId,
         string projectName,
@@ -124,6 +200,35 @@ public static class GamePackageExporter
         }
     }
 
+    private static async Task VerifyDirectoryAsync(string root, IReadOnlyList<GalpakFileEntry> packages, IResourceTypeCatalog resourceTypes, CancellationToken ct)
+    {
+        foreach (var package in packages)
+        {
+            ct.ThrowIfCancellationRequested();
+            var path = GetSafeDestination(root, package.Path);
+            if (!File.Exists(path)) throw new InvalidDataException($"Export directory is missing '{package.Path}'.");
+            var data = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
+            if (data.LongLength != package.Size || !string.Equals(Hash(data), package.Sha256, StringComparison.Ordinal))
+                throw new InvalidDataException($"Checksum mismatch for '{package.Path}'.");
+            if (package.Path.EndsWith(".pak", StringComparison.OrdinalIgnoreCase))
+            {
+                using var archive = Archive.Deserialize(Path.GetFileNameWithoutExtension(package.Path), data, resourceTypes);
+            }
+        }
+    }
+
+    private static string GetSafeDestination(string root, string relativePath)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath) || Path.IsPathRooted(relativePath) || relativePath.Contains('\\') ||
+            relativePath.Split('/').Any(part => part is "" or "." or ".."))
+            throw new InvalidDataException($"Export path '{relativePath}' is not a safe relative path.");
+        var rootPath = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        var destination = Path.GetFullPath(Path.Combine(rootPath, relativePath.Replace('/', Path.DirectorySeparatorChar)));
+        if (!destination.StartsWith(rootPath, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException($"Export path '{relativePath}' escapes its output directory.");
+        return destination;
+    }
+
     private static void DeleteTemporary(string? path) { if (path is not null && File.Exists(path)) File.Delete(path); }
     private static string Hash(byte[] data) => Convert.ToHexString(SHA256.HashData(data)).ToLowerInvariant();
     private static string SafeFileName(string name) => string.Concat(name.Select(ch => Path.GetInvalidFileNameChars().Contains(ch) ? '_' : ch));
@@ -134,4 +239,10 @@ public sealed record GamePackageExportResult(bool Success, string? PackagePath, 
 {
     public static GamePackageExportResult Succeeded(string path) => new(true, path, null);
     public static GamePackageExportResult Failed(string error) => new(false, null, error);
+}
+
+public sealed record GameContentExportResult(bool Success, string? ContentDirectory, string? Error)
+{
+    public static GameContentExportResult Succeeded(string path) => new(true, path, null);
+    public static GameContentExportResult Failed(string error) => new(false, null, error);
 }

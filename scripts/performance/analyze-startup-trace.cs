@@ -7,7 +7,7 @@ using Microsoft.Diagnostics.Tracing;
 using Microsoft.Diagnostics.Tracing.Etlx;
 using Microsoft.Diagnostics.Tracing.Parsers.Clr;
 
-if (args.Length != 1) throw new ArgumentException("Usage: dotnet run scripts/analyze-startup-trace.cs -- <startup.nettrace>");
+if (args.Length != 1) throw new ArgumentException("Usage: dotnet run scripts/performance/analyze-startup-trace.cs -- <startup.nettrace>");
 var file = Path.GetFullPath(args[0]);
 var etlx = TraceLog.CreateFromEventPipeDataFile(file, file + ".etlx", new TraceLogOptions { LocalSymbolsOnly = true });
 using var log = new TraceLog(etlx);

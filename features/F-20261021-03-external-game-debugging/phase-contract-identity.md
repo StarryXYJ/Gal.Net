@@ -18,7 +18,7 @@
 
 ## 验证
 
-- `scripts/test-contract-reproducibility.ps1` 成功：SourceRevisionId 为 40 个 1 和 40 个 2 的两次真实 Rebuild 均产生 `C5D6C3E62379955CFF5E943976EF5A15CAAC1BB1B06754D9B176263B0D338AFA`。
+- `scripts/contracts/test-contract-reproducibility.ps1` 成功：SourceRevisionId 为 40 个 1 和 40 个 2 的两次真实 Rebuild 均产生 `C5D6C3E62379955CFF5E943976EF5A15CAAC1BB1B06754D9B176263B0D338AFA`。
 - 正常构建并运行导出脚本成功，0 错误；导出目录与实际 Sample App 契约同为该 SHA256。PDB 保留，新增错误同时包含实际/预期哈希。
 - 复用刚构建引用运行 Integration 的实际契约身份检查与真实失败子进程回归，两项通过；未放宽协议身份比较。
 - 构建有既有分析/XAML 警告及 NuGet 漏洞查询网络警告；不声明全解决方案测试通过。项目中已加载的旧契约不会自动替换，需要用户关闭项目、部署导出 DLL 后重开。

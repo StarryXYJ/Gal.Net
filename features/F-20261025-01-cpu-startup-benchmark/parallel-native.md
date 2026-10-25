@@ -21,7 +21,7 @@ Editor 的 Main 在启动 Avalonia 前创建 EditorStartupPreparation，仅包�
 
 ## 原生诊断
 
-最初 GeneralProfile 录制约 2 GiB，WPR 报告丢失 61,372 个事件，明确拒绝用它推断细分时间。改用 scripts/startup-native.wprp：只采进程/模块、原生 CPU 栈和 GalNet-CPU 阶段，不采上下文切换、文件/磁盘事件。
+最初 GeneralProfile 录制约 2 GiB，WPR 报告丢失 61,372 个事件，明确拒绝用它推断细分时间。改用 scripts/performance/startup-native.wprp：只采进程/模块、原生 CPU 栈和 GalNet-CPU 阶段，不采上下文切换、文件/磁盘事件。
 
 profile-startup-native.ps1 在 WPR 明确空闲时启动自己的录制和子进程，就绪后正常关闭、停止/合并 trace；无法识别状态或已有录制会拒绝。Editor 与 Sample 都实测成功，退出码 0；分析器对缺 Ready、丢事件直接失败。原生分析按 OS 线程 ID 对齐，Sample 无 RunAvalonia 时使用 Ready 回退。可选下载微软系统符号，第三方驱动多数仍是模块/地址。采样计数不是精确耗时，没有采集线程等待或 GPU 首帧。
 

@@ -72,7 +72,7 @@ in `variants.show`; each image still has its own sprite ID. See
 From the repository root, validate and rebuild with the current project contracts:
 
 ```powershell
-./scripts/build-project-contracts.ps1 -ContractsProject ./src/Samples/GalNet.Sample.Contracts/GalNet.Sample.Contracts.csproj -ProjectDirectory ./GameTestCase
+./scripts/contracts/build-project-contracts.ps1 -ContractsProject ./src/Samples/GalNet.Sample.Contracts/GalNet.Sample.Contracts.csproj -ProjectDirectory ./GameTestCase
 dotnet run --project ./src/Editor/GalNet.Editor.Headless -- validate ./GameTestCase
 dotnet run --project ./src/Editor/GalNet.Editor.Headless -- build ./GameTestCase
 ```
@@ -122,7 +122,7 @@ Native decode tests are opt-in: set `GALNET_VIDEO_ASSETS` to the absolute `GameT
 本目录是当前格式的作者内容，entry 集合由独立 Sample.Contracts 项目声明。先从仓库根构建并部署工具契约，再使用 CLI 或打开 Editor：
 
 ```powershell
-./scripts/build-project-contracts.ps1 -ContractsProject ./src/Samples/GalNet.Sample.Contracts/GalNet.Sample.Contracts.csproj -ProjectDirectory ./GameTestCase
+./scripts/contracts/build-project-contracts.ps1 -ContractsProject ./src/Samples/GalNet.Sample.Contracts/GalNet.Sample.Contracts.csproj -ProjectDirectory ./GameTestCase
 dotnet run --project ./src/Editor/GalNet.Editor.Headless -- schema list ./GameTestCase
 dotnet run --project ./src/Editor/GalNet.Editor.Headless -- validate ./GameTestCase
 ```

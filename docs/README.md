@@ -37,3 +37,4 @@
 - [外部工具创作与热重载](manual/external-project-authoring.md)：CLI 批量应用、Agent Skill、Git 回退和 Editor 外部文件同步。
 - [测量 CPU 启动](manual/cpu-benchmark.md)：编译开关、Editor/Sample 自动化基线与方法内埋点。
 - [使用 Windows ReadyToRun 发布](manual/ready-to-run.md)：发布版启动优化、隔离产物与契约字节身份。
+- [发布 Editor 与 Sample](manual/release-packaging.md)：本地 ZIP、GameTestCase / Galpak 整合包和 GitHub Release tag 流程。

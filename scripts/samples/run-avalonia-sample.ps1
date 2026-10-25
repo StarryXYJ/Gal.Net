@@ -9,7 +9,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$repositoryRoot = Split-Path -Parent $PSScriptRoot
+$repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $Project = if ($Project) { [System.IO.Path]::GetFullPath($Project) } else { Join-Path $repositoryRoot 'GameTestCase' }
 $gameDirectory = if ($BuildOutput) { [System.IO.Path]::GetFullPath($BuildOutput) } else { Join-Path $Project 'Output' }
 $profileDirectory = if ($Profile) { [System.IO.Path]::GetFullPath($Profile) } else { Join-Path $Project '.galnet' }

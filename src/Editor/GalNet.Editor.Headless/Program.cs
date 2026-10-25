@@ -6,6 +6,7 @@ using GalNet.Core.Gallery;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
+using GalNet.Storage.FileSystem;
 
 namespace GalNet.Editor.Headless;
 
@@ -32,6 +33,12 @@ internal static class Program
                 if (invocation.Has("--json"))
                     WriteJson(new { total = definitions.Count, operations = definitions });
                 else Console.Out.Write(ToolHelp.RenderText(definitions, invocation.Positionals.Count != 0));
+                return 0;
+            }
+            if (_operationId == "galpak.install")
+            {
+                var directory = await GalpakInstaller.InstallAsync(invocation.Positionals[0], invocation.Get("--output"));
+                WriteJson(new ToolResult(_operationId, true, new GalpakInstallReport(directory), []));
                 return 0;
             }
             args = new[] { _operationId }.Concat(invocation.Positionals)
@@ -91,6 +98,7 @@ internal static class Program
             }
             if (verb == "project.build") return await BuildAsync(projectPath, args, entryCatalog);
             if (verb == "project.export") return await ExportAsync(projectPath, args, entryCatalog);
+            if (verb == "project.export-directory") return await ExportDirectoryAsync(projectPath, args, entryCatalog);
             var edits = new ProjectEditService(projectPath, entryCatalog);
             if (verb is "project.rename" or "group.create" or "group.rename" or "group.delete")
             {
@@ -137,6 +145,22 @@ internal static class Program
         var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
         var result = await GamePackageExporter.ExportAsync(projectName, projectName, projectPath, outputDirectory, resourceTypes, galleryTypes, entryCatalog);
         WriteJson(new ToolResult("project.export", result.Success, new ProjectExportReport(result.PackagePath),
+            result.Success ? [] : [new("project.exportFailed", "error", result.Error ?? "Export failed.")]));
+        return result.Success ? 0 : 5;
+    }
+
+    private static async Task<int> ExportDirectoryAsync(string projectPath, string[] args, IEntryCatalog entryCatalog)
+    {
+        if (!Directory.Exists(projectPath)) throw new DirectoryNotFoundException($"Project directory not found: {projectPath}");
+        var outputIndex = Array.IndexOf(args, "--output");
+        if (outputIndex < 0 || outputIndex + 1 >= args.Length) return Fail("project export-directory requires --output <new-directory>.");
+        var outputDirectory = Path.GetFullPath(args[outputIndex + 1]);
+        var projectName = Path.GetFileName(Path.TrimEndingDirectorySeparator(projectPath));
+        var resourceTypes = BuiltinResourceTypes.CreateCatalog();
+        var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
+        var result = await GamePackageExporter.ExportDirectoryAsync(projectName, projectName, projectPath, outputDirectory,
+            resourceTypes, galleryTypes, entryCatalog);
+        WriteJson(new ToolResult(_operationId, result.Success, result.Success ? new ProjectExportDirectoryReport(result.ContentDirectory!) : null,
             result.Success ? [] : [new("project.exportFailed", "error", result.Error ?? "Export failed.")]));
         return result.Success ? 0 : 5;
     }

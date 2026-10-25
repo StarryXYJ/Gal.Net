@@ -7,7 +7,7 @@ P1 已完成 quick 通道的 CPU 事件采集与自动化基线；P1 交付时�
 - 独立 GalNet.Diagnostics：CpuProfiler.Shared、作用域 Measure、瞬时 Mark、Stop/Snapshot/WriteTrace，有界线程安全缓冲和 Chrome Trace JSON。计时为 CPU 侧 wall time，可跨 await，包含等待；没有 GPU 时间戳。
 - Benchmark=true 定义 BENCHMARK；所有宿主埋点显式条件编译。普通宿主不引用 Diagnostics。Benchmark 输出、obj 和 restore lock 与普通构建隔离；默认契约内容使用同模式产物。
 - Editor 接入 Main、XAML、服务注册/校验、设置/语言/主题、主窗口、欢迎页创建/导航；Sample 接入相同框架阶段及会话初始化。
-- scripts/benchmark-startup.ps1：单独构建、预热、重复启动、自动完成退出，保存 trace/日志、逐次 CSV、Median/P95 和环境/源码元数据。失败、超时、缺失 Ready、事件溢出不计入成功结果。
+- scripts/performance/benchmark-startup.ps1：单独构建、预热、重复启动、自动完成退出，保存 trace/日志、逐次 CSV、Median/P95 和环境/源码元数据。失败、超时、缺失 Ready、事件溢出不计入成功结果。
 
 当前规范：[CPU 性能事件](../../docs/spec/cpu-benchmark.md)。操作与方法内埋点：[测量 CPU 启动](../../docs/manual/cpu-benchmark.md)。
 

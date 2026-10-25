@@ -61,8 +61,8 @@ dotnet format style GalNet.slnx --no-restore --verify-no-changes --diagnostics I
 以下脚本默认编译并运行 [`GameTestCase`](GameTestCase/README.md)：
 
 ```powershell
-.\scripts\run-headless-sample.ps1
-.\scripts\run-avalonia-sample.ps1
+.\scripts\samples\run-headless-sample.ps1
+.\scripts\samples\run-avalonia-sample.ps1
 ```
 
 Headless 示例在终端中交互；Avalonia 示例会启动桌面窗口。两个脚本都支持通过 `-Project`、`-BuildOutput` 和 `-SkipBuild` 指定已有内容。
@@ -70,11 +70,11 @@ Headless 示例在终端中交互；Avalonia 示例会启动桌面窗口。两�
 统计项目代码量可以运行：
 
 ```powershell
-.\scripts\count-code-lines.ps1
-.\scripts\count-code-lines.ps1 -Json
+.\scripts\maintenance\count-code-lines.ps1
+.\scripts\maintenance\count-code-lines.ps1 -Json
 ```
 
-脚本按编辑器、测试、文档和其他源码分组，显示文件数、物理行数和非空行数。默认识别 `.cs`、`.xaml`、`.axaml` 及常见源码扩展，并跳过构建产物、依赖、缓存和 agent 工具目录。
+脚本按编辑器、测试、文档和其他源码分组，显示文件数、物理行数和非空行数。默认识别 `.cs`、`.xaml`、`.axaml` 及常见源码扩展，并跳过构建产物、依赖、缓存和 agent 工具目录。其他脚本按 contracts、samples、performance、maintenance、release 分类，见 [scripts/README.md](scripts/README.md)。
 
 ## 开发流程
 
