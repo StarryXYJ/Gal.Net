@@ -131,22 +131,22 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     });
 
     [Test]
-    public Task LocalizationFiltersKeepMissingEmptyAndDraftIdentityDistinct() => WithLocalizationProject(async project =>
+    public Task LocalizationFiltersKeepMissingEmptyAndImmediateUpdateIdentityDistinct() => WithLocalizationProject(async project =>
     {
         var item = CharacterEntry(project); WriteTranslation(project, """{"line":"Source"}""");
         var service = project.Services.GetRequiredService<GameLocalizationPanelService>(); await service.AddLanguageAsync("en-US");
         var model = project.Services.GetRequiredService<GameLocalizationPanelViewModel>(); model.Selected = model.Categories.Single(category => category.Id == item.Group); model.ExchangeLanguage = "en-US";
         var cell = model.Rows.Single().Cells.Single(cell => cell.Culture == "en-US");
-        model.FilterIndex = 1; Assert.That(model.Rows, Has.Count.EqualTo(1));
+        model.OnlyMissing = true; Assert.That(model.Rows, Has.Count.EqualTo(1));
         await cell.CommitAsync(true); Assert.That(cell.IsMissing, Is.False); Assert.That(model.Rows, Is.Empty, "Explicit empty translation is not missing.");
-        model.FilterIndex = 0; cell.Text = "Unapplied translation";
-        model.FilterIndex = 3; Assert.That(model.Rows.Single().Cells, Does.Contain(cell));
+        model.OnlyMissing = false; cell.Text = "Unapplied translation";
+        await cell.CommitAsync(); Assert.That(model.Rows.Single().Cells, Does.Contain(cell));
         model.Search = "no matching source"; Assert.That(model.Rows, Is.Empty);
         model.Search = "Unapplied"; Assert.That(model.Rows.Single().Cells, Does.Contain(cell));
         model.Selected = model.Categories.First(); model.Selected = model.Categories.Single(category => category.Id == item.Group);
         Assert.That(model.Rows.Single().Cells.Single(c => c.Culture == "en-US"), Is.SameAs(cell));
-        Assert.That(cell.Text, Is.EqualTo("Unapplied translation")); cell.Revert(); Assert.That(model.Rows, Is.Empty);
-        model.Search = ""; model.FilterIndex = 0;
+        Assert.That(cell.Text, Is.EqualTo("Unapplied translation")); Assert.That(service.Snapshot(item.Group).Index.FindDirect("en-US", "line")?.Text, Is.EqualTo("Unapplied translation"));
+        model.Search = ""; model.OnlyMissing = false;
     });
 
     [Test]
@@ -211,7 +211,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     sourceInput.Focus(); Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
                     Assert.That(sourceInput.TranslatePoint(default, scroll)!.Value.X, Is.GreaterThanOrEqualTo(188), "Keyboard focus must reveal the cell beside the frozen context.");
                     scroll.Offset = new Vector(220, 0); Dispatcher.UIThread.RunJobs();
-                    var rowContext = view.GetVisualDescendants().OfType<Button>().Single(button => button.Content is PathIcon icon && button.GetVisualAncestors().Any(ancestor => ancestor is ListBox list && list.Name == "LocalizationRows"));
+                    var rowContext = view.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "LocalizationNavigate");
                     Assert.That(rowContext.TranslatePoint(default, window)!.Value.X, Is.GreaterThanOrEqualTo(left));
                     Capture("localization-wide"); window.Width = 440; Dispatcher.UIThread.RunJobs();
                     Assert.That(view.FindControl<ComboBox>("CompactLocalizationCategory")!.IsVisible, Is.True); Capture("localization-narrow");

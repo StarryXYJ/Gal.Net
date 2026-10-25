@@ -3,31 +3,55 @@
              xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
              x:Class="GalNet.Editor.Views.GameLocalizationPanelView" x:DataType="vm:GameLocalizationPanelViewModel">
   <UserControl.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries><ResourceInclude Source="avares://GalNet.Editor/Themes/AuthoringPanelResources.axaml"/></ResourceDictionary.MergedDictionaries></ResourceDictionary></UserControl.Resources>
+  <UserControl.Styles>
+    <Style Selector="TextBox.localizationCell">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="Padding" Value="6,4"/>
+      <Setter Property="MinHeight" Value="44"/>
+      <Setter Property="MaxHeight" Value="44"/>
+    </Style>
+    <Style Selector="TextBox.localizationCell:focus">
+      <Setter Property="MinHeight" Value="76"/>
+      <Setter Property="MaxHeight" Value="240"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}"/>
+    </Style>
+  </UserControl.Styles>
   <Grid x:Name="LocalizationColumns" ColumnDefinitions="160,6,*" Margin="8">
     <ListBox x:Name="LocalizationCategories" ItemsSource="{Binding Categories}" SelectedItem="{Binding Selected}">
       <ListBox.ItemTemplate><DataTemplate x:DataType="services:LocalizationCategory"><TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}"/></DataTemplate></ListBox.ItemTemplate>
     </ListBox>
     <GridSplitter x:Name="CategorySplitter" Grid.Column="1" ResizeDirection="Columns" HorizontalAlignment="Stretch" Background="Transparent"/>
-    <Grid Grid.Column="2" RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" RowSpacing="6">
+    <Grid Grid.Column="2" RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="6">
       <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
         <TextBox x:Name="LocalizationSearch" Text="{Binding Search}" PlaceholderText="{loc:Localize Uiux.I18n.Search}" MinWidth="0"/>
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+          <ToggleButton x:Name="OnlyMissingTranslations" Theme="{StaticResource EditorIconToggleButton}" IsChecked="{Binding OnlyMissing}" ToolTip.Tip="{loc:Localize Uiux.I18n.Missing}" AutomationProperties.Name="{loc:Localize Uiux.I18n.Missing}"><PathIcon Width="16" Height="16" Data="{StaticResource FilterIcon}"/></ToggleButton>
           <Button x:Name="ManageLanguages" Theme="{StaticResource EditorIconButton}" ToolTip.Tip="{loc:Localize Uiux.I18n.Languages}" AutomationProperties.Name="{loc:Localize Uiux.I18n.Languages}">
             <PathIcon Width="16" Height="16" Data="{StaticResource PanelLanguageIcon}"/>
-            <Button.Flyout><Flyout><ScrollViewer MaxHeight="350"><StackPanel Width="280" Spacing="8">
+            <Button.Flyout><Flyout><ScrollViewer MaxHeight="480"><StackPanel Width="350" Spacing="8">
               <TextBlock Text="{loc:Localize Uiux.I18n.Languages}" FontWeight="SemiBold"/>
+              <TextBlock Text="{loc:Localize Uiux.I18n.VisibleColumns}" Foreground="{DynamicResource SemiColorText2}" FontSize="12"/>
+              <StackPanel x:Name="LanguageManagerRows" Spacing="2"/>
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
-                <TextBox x:Name="NewLocalizationLanguage" Text="{Binding NewLanguage}" PlaceholderText="{loc:Localize I18n.LanguageCode}"/>
+                <AutoCompleteBox x:Name="NewLocalizationLanguage" Text="{Binding NewLanguage, Mode=TwoWay}" ItemsSource="{Binding LanguageSuggestions}" FilterMode="None" IsTextCompletionEnabled="False" MinimumPrefixLength="0" MaxDropDownHeight="220" PlaceholderText="{loc:Localize Uiux.I18n.SearchLanguage}"/>
                 <Button x:Name="AddLocalizationLanguage" Grid.Column="1" Theme="{StaticResource EditorIconButton}" Command="{Binding AddLanguageCommand}" ToolTip.Tip="{loc:Localize I18n.Add}" AutomationProperties.Name="{loc:Localize I18n.Add}"><PathIcon Width="16" Height="16" Data="{StaticResource AddIcon}"/></Button>
               </Grid>
-              <TextBlock Text="{loc:Localize I18n.Development}"/>
-              <ComboBox x:Name="DevelopmentLanguageChoice" ItemsSource="{Binding Languages}" SelectedItem="{Binding DevelopmentLanguage}" HorizontalAlignment="Stretch"/>
-              <Button x:Name="PreviewDevelopmentLanguage" Content="{loc:Localize I18n.PreviewAction}" Command="{Binding PreviewDevelopmentLanguageCommand}"/>
-              <TextBlock Text="{Binding PreviewMessage}" TextWrapping="Wrap"/>
-              <Button x:Name="ApplyDevelopmentLanguage" Content="{loc:Localize I18n.ApplyDevelopment}" Command="{Binding ChangeDevelopmentLanguageCommand}" IsEnabled="{Binding CanChangeDevelopmentLanguage}"/>
+              <TextBlock Text="{loc:Localize Uiux.I18n.RemoveHint}" TextWrapping="Wrap" Foreground="{DynamicResource SemiColorText2}" FontSize="12"/>
+              <StackPanel IsVisible="{Binding CanChangeDevelopmentLanguage}" Spacing="6">
+                <TextBlock Text="{Binding PreviewMessage}" TextWrapping="Wrap"/>
+                <Button x:Name="ApplyDevelopmentLanguage" Content="{loc:Localize I18n.ApplyDevelopment}" Command="{Binding ChangeDevelopmentLanguageCommand}"/>
+              </StackPanel>
             </StackPanel></ScrollViewer></Flyout></Button.Flyout>
           </Button>
-          <Button x:Name="ImportLocalization" Theme="{StaticResource EditorIconButton}" Command="{Binding PreviewImportCommand}" IsEnabled="{Binding !ApplyImportCommand.IsRunning}" ToolTip.Tip="{loc:Localize Exchange.Import}" AutomationProperties.Name="{loc:Localize Exchange.Import}"><PathIcon Width="16" Height="16" Data="{StaticResource PanelImportIcon}"/></Button>
+          <Button x:Name="ImportLocalization" Theme="{StaticResource EditorIconButton}" IsEnabled="{Binding !ApplyImportCommand.IsRunning}" ToolTip.Tip="{loc:Localize Exchange.Import}" AutomationProperties.Name="{loc:Localize Exchange.Import}">
+            <PathIcon Width="16" Height="16" Data="{StaticResource PanelImportIcon}"/>
+            <Button.Flyout><Flyout><StackPanel Width="260" Spacing="8">
+              <TextBlock Text="{loc:Localize Uiux.I18n.Exchange}" FontWeight="SemiBold"/>
+              <ComboBox x:Name="ExchangeLanguage" ItemsSource="{Binding Languages}" SelectedItem="{Binding ExchangeLanguage}" HorizontalAlignment="Stretch"/>
+              <Button x:Name="ChooseLocalizationImport" Content="{loc:Localize Exchange.Import}" Command="{Binding PreviewImportCommand}"/>
+            </StackPanel></Flyout></Button.Flyout>
+          </Button>
           <Button x:Name="ExportOptions" Theme="{StaticResource EditorIconButton}" ToolTip.Tip="{loc:Localize Exchange.Export}" AutomationProperties.Name="{loc:Localize Exchange.Export}">
             <PathIcon Width="16" Height="16" Data="{StaticResource PanelExportIcon}"/>
             <Button.Flyout><Flyout><StackPanel Width="260" Spacing="8" IsEnabled="{Binding !ApplyImportCommand.IsRunning}">
@@ -38,19 +62,9 @@
               <Button x:Name="ExportLocalization" Content="{loc:Localize Exchange.Export}" Command="{Binding ExportCommand}"/>
             </StackPanel></Flyout></Button.Flyout>
           </Button>
-          <Button Theme="{StaticResource EditorIconButton}" Command="{Binding RevertDraftsCommand}" ToolTip.Tip="{loc:Localize I18n.RevertDrafts}" AutomationProperties.Name="{loc:Localize I18n.RevertDrafts}"><PathIcon Width="16" Height="16" Data="{StaticResource ResetIcon}"/></Button>
         </StackPanel>
       </Grid>
-      <Grid Grid.Row="1" ColumnDefinitions="Auto,*" ColumnSpacing="6">
-        <ComboBox x:Name="ExchangeLanguage" ItemsSource="{Binding Languages}" SelectedItem="{Binding ExchangeLanguage}" Width="110" IsEnabled="{Binding !ApplyImportCommand.IsRunning}"/>
-        <ComboBox x:Name="LocalizationStateFilter" Grid.Column="1" SelectedIndex="{Binding FilterIndex}" HorizontalAlignment="Stretch">
-          <ComboBoxItem Content="{loc:Localize Uiux.I18n.All}"/>
-          <ComboBoxItem Content="{loc:Localize Uiux.I18n.Missing}"/>
-          <ComboBoxItem Content="{loc:Localize Uiux.I18n.Review}"/>
-          <ComboBoxItem Content="{loc:Localize Uiux.I18n.Drafts}"/>
-        </ComboBox>
-      </Grid>
-      <StackPanel Grid.Row="2" IsVisible="{Binding HasImport}" IsEnabled="{Binding !ApplyImportCommand.IsRunning}" Spacing="6">
+      <StackPanel Grid.Row="1" IsVisible="{Binding HasImport}" IsEnabled="{Binding !ApplyImportCommand.IsRunning}" Spacing="6">
         <WrapPanel><CheckBox x:Name="AllowEmptyImport" Content="{loc:Localize Exchange.AllowEmpty}" IsChecked="{Binding AllowEmpty}"/>
           <Button x:Name="ApplyLocalizationImport" Content="{loc:Localize Exchange.Apply}" Command="{Binding ApplyImportCommand}" Margin="8,0"/>
           <Button Content="{loc:Localize Exchange.Cancel}" Command="{Binding CancelImportCommand}"/>
@@ -64,18 +78,18 @@
           </Grid></DataTemplate></ListBox.ItemTemplate>
         </ListBox>
       </StackPanel>
-      <StackPanel Grid.Row="3" Spacing="4">
+      <StackPanel Grid.Row="2" Spacing="4">
         <ComboBox x:Name="CompactLocalizationCategory" ItemsSource="{Binding Categories}" SelectedItem="{Binding Selected}" IsVisible="False" HorizontalAlignment="Stretch">
           <ComboBox.ItemTemplate><DataTemplate x:DataType="services:LocalizationCategory"><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
         </ComboBox>
         <TextBlock Text="{loc:Localize I18n.Incomplete}" IsVisible="{Binding Incomplete}" TextWrapping="Wrap"/>
       </StackPanel>
-      <Grid Grid.Row="4">
+      <Grid Grid.Row="3" Background="{DynamicResource SemiColorBackground0}">
         <ScrollViewer x:Name="LocalizationTableScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" ScrollChanged="OnTableScroll">
           <Grid RowDefinitions="Auto,*">
             <Grid x:Name="LocalizationHeader" ClipToBounds="True">
               <StackPanel x:Name="LanguageHeaders" Orientation="Horizontal" Margin="188,0,0,0"/>
-              <Border x:Name="ContextHeader" Width="188" HorizontalAlignment="Left" Background="{DynamicResource SemiColorBackground0}" ZIndex="1"><TextBlock Text="{loc:Localize I18n.Context}" Margin="4" VerticalAlignment="Center"/></Border>
+              <Border x:Name="ContextHeader" Width="188" HorizontalAlignment="Left" Background="{DynamicResource SemiColorBackground0}" ZIndex="1"/>
             </Grid>
             <ListBox x:Name="LocalizationRows" Grid.Row="1" ItemsSource="{Binding Rows}" Padding="0" HorizontalAlignment="Left">
               <ListBox.Styles><Style Selector="ListBoxItem"><Setter Property="Padding" Value="0"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/></Style></ListBox.Styles>
@@ -84,7 +98,7 @@
         </ScrollViewer>
         <TextBlock Text="{loc:Localize Uiux.Panel.NoResults}" IsVisible="{Binding !HasRows}" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="16" Foreground="{DynamicResource SemiColorText2}"/>
       </Grid>
-      <TextBlock Grid.Row="5" Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"/>
+      <TextBlock Grid.Row="4" Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"/>
     </Grid>
   </Grid>
 </UserControl>

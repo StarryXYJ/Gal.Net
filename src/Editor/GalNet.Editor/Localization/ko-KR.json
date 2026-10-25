@@ -1021,5 +1021,13 @@
   "Uiux.I18n.Review": "검토 필요",
   "Uiux.I18n.Drafts": "초안 있음",
   "Uiux.I18n.Exchange": "번역 가져오기 및 내보내기",
-  "Uiux.Inspector.Preview": "미리 보기"
+  "Uiux.Inspector.Preview": "미리 보기",
+  "Uiux.I18n.VisibleColumns": "표시할 언어 열 선택",
+  "Uiux.I18n.SearchLanguage": "언어 이름 또는 코드 검색…",
+  "Uiux.I18n.RemoveLanguage": "프로젝트 언어에서 제거",
+  "Uiux.I18n.RemoveHint": "언어를 제거해도 번역 파일은 유지됩니다.",
+  "Uiux.I18n.RemoveSource": "제거하기 전에 개발 언어를 변경하세요.",
+  "Uiux.I18n.LanguageActions": "언어 작업",
+  "Uiux.I18n.ReloadCell": "실패한 입력을 버리고 다시 읽기",
+  "Uiux.I18n.SourceChanged": "원문 변경됨"
 }

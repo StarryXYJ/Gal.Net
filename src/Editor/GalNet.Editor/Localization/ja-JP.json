@@ -1021,5 +1021,13 @@
   "Uiux.I18n.Review": "要確認",
   "Uiux.I18n.Drafts": "下書きあり",
   "Uiux.I18n.Exchange": "翻訳のインポート・エクスポート",
-  "Uiux.Inspector.Preview": "プレビュー"
+  "Uiux.Inspector.Preview": "プレビュー",
+  "Uiux.I18n.VisibleColumns": "表示する言語列を選択",
+  "Uiux.I18n.SearchLanguage": "言語名またはコードを検索…",
+  "Uiux.I18n.RemoveLanguage": "プロジェクトの言語から除外",
+  "Uiux.I18n.RemoveHint": "言語を除外しても翻訳ファイルは保持されます。",
+  "Uiux.I18n.RemoveSource": "除外する前に開発言語を切り替えてください。",
+  "Uiux.I18n.LanguageActions": "言語の操作",
+  "Uiux.I18n.ReloadCell": "失敗した入力を破棄して再読み込み",
+  "Uiux.I18n.SourceChanged": "原文が変更されました"
 }

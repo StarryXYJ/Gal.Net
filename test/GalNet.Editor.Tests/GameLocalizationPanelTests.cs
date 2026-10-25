@@ -164,14 +164,20 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     });
 
     [Test]
-    public Task I18nCellDraftSurvivesSourceChangeAndCategorySwitchWithoutOverwriting() => WithLocalizationProject(async project =>
+    public Task I18nFailedImmediateUpdateSurvivesSourceChangeAndCategorySwitchWithoutOverwriting() => WithLocalizationProject(async project =>
     {
         var item = CharacterEntry(project); WriteTranslation(project, """{"line":"原文"}""");
         var service = project.Services.GetRequiredService<GameLocalizationPanelService>(); await service.AddLanguageAsync("en-US");
         var model = project.Services.GetRequiredService<GameLocalizationPanelViewModel>(); model.Selected = model.Categories.Single(category => category.Id == item.Group);
+        var history = project.Services.GetRequiredService<EditorHistories>().Content;
+        var started = new TaskCompletionSource(); var release = new TaskCompletionSource();
+        var held = history.ExecuteAsync(new CallbackEdit("Hold", async () => { started.SetResult(); await release.Task; }, () => ValueTask.CompletedTask));
+        await started.Task;
+        var sourceChange = SetGameText(project, item.Group, item.Entry, "新原文");
         var cell = model.Rows.Single().Cells[1]; cell.Text = "pending";
         model.Selected = model.Categories.First();
-        await SetGameText(project, item.Group, item.Entry, "新原文"); model.Refresh();
+        release.SetResult(); await held; await sourceChange;
+        Assert.ThrowsAsync<EditorOperationException>(async () => await cell.CommitAsync()); model.Refresh();
         model.Selected = model.Categories.Single(category => category.Id == item.Group);
         Assert.That(model.Rows.Single().Cells[1], Is.SameAs(cell)); Assert.That(cell.Text, Is.EqualTo("pending"));
         Assert.ThrowsAsync<EditorOperationException>(async () => await cell.CommitAsync());
@@ -193,7 +199,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         Assert.That(cell.IsDirty, Is.False);
         await service.ChangeDevelopmentLanguageAsync(service.Preview("en-US")); model.Refresh();
         model.Selected = model.Categories.Single(category => category.Id == item.Group);
-        Assert.That(model.Rows.Single().Cells[1].Status, Does.Contain(service.Text["I18n.Unknown"]));
+        Assert.That(model.Rows.Single().Cells[1].Text, Is.EqualTo("原文"));
         await project.Services.GetRequiredService<IProjectContentSession>().SaveAsync();
         var projects = project.Services.GetRequiredService<IProjectService>(); await projects.CloseAsync(); var reopened = await projects.OpenAsync(project.RootPath);
         Assert.That(reopened.Settings.TargetLocale.Code, Is.EqualTo("en-US"));
@@ -201,7 +207,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     });
 
     [Test]
-    public async Task I18nMountedTableCommitsMultilineByKeyboardAndFocusRetainsDraftAcrossViewCloseAndMovesColumns()
+    public async Task I18nMountedTableUpdatesImmediatelyProtectsCompositionAndRetainsViewState()
     {
         await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
         await session.Dispatch<bool>(async () =>
@@ -219,20 +225,25 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     input.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter, KeyModifiers = KeyModifiers.Control });
                     await PumpCharacterUi(() => service.Snapshot(item.Group).Index.FindDirect("en-US", "line")?.Text == "First\nSecond");
                     Assert.That(input.IsFocused, Is.True, "Async commit preserves input focus.");
-                    var presenter = input.GetVisualDescendants().OfType<TextPresenter>().Single(); input.Text = "composing"; presenter.PreeditText = "拼";
+                    var presenter = input.GetVisualDescendants().OfType<TextPresenter>().Single(); presenter.PreeditText = "拼";
                     input.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter, KeyModifiers = KeyModifiers.Control });
+                    Dispatcher.UIThread.RunJobs();
                     Assert.That(service.Snapshot(item.Group).Index.FindDirect("en-US", "line")?.Text, Is.EqualTo("First\nSecond"));
-                    presenter.PreeditText = null; input.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Escape });
-                    input.Text = "blur"; view.FindControl<TextBox>("LocalizationSearch")!.Focus();
-                    await PumpCharacterUi(() => service.Snapshot(item.Group).Index.FindDirect("en-US", "line")?.Text == "blur");
-                    input.Focus(); input.Text = "discard"; input.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Escape }); Assert.That(input.Text, Is.EqualTo("blur"));
-                    var cell = model.Rows.Single().Cells[1]; cell.Text = "kept draft";
+                    presenter.PreeditText = null; input.Text = "组字完成";
+                    await PumpCharacterUi(() => service.Snapshot(item.Group).Index.FindDirect("en-US", "line")?.Text == "组字完成");
+                    Assert.That(input.IsFocused, Is.True);
+                    input.Text = "updated";
+                    await PumpCharacterUi(() => service.Snapshot(item.Group).Index.FindDirect("en-US", "line")?.Text == "updated");
+                    input.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Escape });
+                    Assert.That(input.Text, Is.EqualTo("updated"), "Escape does not undo successfully updated text.");
+                    var cell = model.Rows.Single().Cells[1]; cell.Text = "kept update"; await cell.CommitAsync();
+                    model.SetColumnWidth("en-US", 310);
                     window.Content = null; Dispatcher.UIThread.RunJobs();
                     var reopened = new GameLocalizationPanelView { DataContext = project.Services.GetRequiredService<GameLocalizationPanelViewModel>() }; window.Content = reopened; Dispatcher.UIThread.RunJobs();
-                    Assert.That(model.Rows.Single().Cells[1].Text, Is.EqualTo("kept draft"));
-                    cell.Revert();
-                    reopened.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "LanguageLeft_ja_JP").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                    await PumpCharacterUi(() => model.Languages[1] == "ja-JP");
+                    Assert.That(model.Rows.Single().Cells[1].Text, Is.EqualTo("kept update"));
+                    Assert.That(model.ColumnWidth("en-US"), Is.EqualTo(310));
+                    await service.MoveLanguageAsync("ja-JP", -1);
+                    Assert.That(model.Languages[1], Is.EqualTo("ja-JP"));
                     var history = project.Services.GetRequiredService<EditorHistories>().Content; await project.Services.GetRequiredService<IProjectContentSession>().SaveAsync();
                     project.Services.GetRequiredService<IEditorLocalizationService>().ApplyLocale("ja-JP"); Dispatcher.UIThread.RunJobs();
                     Assert.That(history.IsDirty, Is.False); Assert.That(service.Languages[0], Is.EqualTo("zh-CN"));
@@ -243,7 +254,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     var dockDraft = model.Rows.Single().Cells.Single(cell => cell.Culture == "en-US"); dockDraft.Text = "dock draft";
                     dock.ToggleGlobalPanel(EditorDockPanelIds.Localization); Assert.That(model.IsDisposed, Is.False);
                     dock.OpenPanel(EditorDockPanelIds.Localization); Assert.That(project.Services.GetRequiredService<GameLocalizationPanelViewModel>(), Is.SameAs(model));
-                    Assert.That(dockDraft.Text, Is.EqualTo("dock draft")); Assert.That(dockDraft.IsDirty, Is.True); dockDraft.Revert();
+                    await dockDraft.CommitAsync(); Assert.That(dockDraft.Text, Is.EqualTo("dock draft")); Assert.That(dockDraft.IsDirty, Is.False);
                 }
                 finally { window.Close(); }
             }); return true;

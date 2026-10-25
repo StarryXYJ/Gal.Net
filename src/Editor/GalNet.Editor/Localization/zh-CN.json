@@ -1021,5 +1021,13 @@
   "Uiux.I18n.Review": "待复核",
   "Uiux.I18n.Drafts": "有草稿",
   "Uiux.I18n.Exchange": "翻译交换",
-  "Uiux.Inspector.Preview": "预览"
+  "Uiux.Inspector.Preview": "预览",
+  "Uiux.I18n.VisibleColumns": "勾选要显示的语言列",
+  "Uiux.I18n.SearchLanguage": "搜索语言名称或代码…",
+  "Uiux.I18n.RemoveLanguage": "从项目语言列表移除",
+  "Uiux.I18n.RemoveHint": "移除语言会保留已有翻译文件。",
+  "Uiux.I18n.RemoveSource": "请先切换开发语言，再移除此语言。",
+  "Uiux.I18n.LanguageActions": "语言操作",
+  "Uiux.I18n.ReloadCell": "放弃失败输入并重新读取",
+  "Uiux.I18n.SourceChanged": "原文已变更"
 }

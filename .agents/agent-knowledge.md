@@ -287,3 +287,5 @@
 - [TraceEvent 事件保留](lessons/L-20261025-07-traceevent-retained-events.md)：迭代器复用事件对象；立即提取字段，或 Clone 后再保留。原生启动诊断使用 scripts/profile-startup-native.ps1 和 analyze-startup-native.cs，拒绝已有 WPR 会话和丢事件 trace，见 docs/manual/cpu-benchmark.md。
 
 - Editor 正常 Main 在 Avalonia 初始化前启动两个 Task.Run：设置读取与本地化数据准备；完成后交给 UI/DI，文化/主题/控件仍在 UI 线程，设计器保留同步回退。20 对复核改善约 4.1%；WGL 探测未达收益门槛，默认 ANGLE 保持，见 features/F-20261025-01-cpu-startup-benchmark/parallel-native.md。
+
+- 2026-10-25 本地化资源表：常规输入直接更新 Working，取消草稿/复核 UI，Save All 等待更新写盘；连续输入保留最新值，失败就地保留并可修复后重试。语言移除仅改支持列表，保留翻译文件且可撤销；紧凑表格、结构化不透明定位列、语言候选/列宽与可见性已验证。Editor 293/293、解决方案 0 错误，见 features/F-20261023-01-editor-uiux/phase-localization-20261025.md。

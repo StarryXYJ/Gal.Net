@@ -1021,5 +1021,13 @@
   "Uiux.I18n.Review": "Needs review",
   "Uiux.I18n.Drafts": "With drafts",
   "Uiux.I18n.Exchange": "Translation exchange",
-  "Uiux.Inspector.Preview": "Preview"
+  "Uiux.Inspector.Preview": "Preview",
+  "Uiux.I18n.VisibleColumns": "Show checked language columns",
+  "Uiux.I18n.SearchLanguage": "Search language name or code…",
+  "Uiux.I18n.RemoveLanguage": "Remove from project languages",
+  "Uiux.I18n.RemoveHint": "Translations are retained when a language is removed.",
+  "Uiux.I18n.RemoveSource": "Switch the development language before removing it.",
+  "Uiux.I18n.LanguageActions": "Language actions",
+  "Uiux.I18n.ReloadCell": "Discard unsuccessful input and reload",
+  "Uiux.I18n.SourceChanged": "Source text changed"
 }

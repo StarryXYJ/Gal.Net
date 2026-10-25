@@ -10,7 +10,11 @@ using Microsoft.Extensions.DependencyInjection;
 namespace GalNet.Editor.Services;
 
 public sealed record LocalizationCategory(string Id, string Name);
-public sealed record LocalizationTableRow(string Key, string Context, IReadOnlyList<LocalizationReference> References);
+public sealed record LocalizationRowContext(string Title, string Slot, string Details, LocalizationReference Reference);
+public sealed record LocalizationTableRow(string Key, string Context, IReadOnlyList<LocalizationReference> References)
+{
+    public IReadOnlyList<LocalizationRowContext> Locations { get; init; } = [];
+}
 public sealed record LocalizationTableSnapshot(string Source, IReadOnlyList<string> Languages,
     IReadOnlyList<LocalizationCategory> Categories, IReadOnlyList<LocalizationTableRow> Rows, LocalizationReferenceIndex Index, byte[] Metadata);
 public sealed record LocalizationCellDraft(string Category, LocalizationTextTarget Target, string SourceLocale, string? SourceText);
@@ -28,6 +32,11 @@ public sealed class GameLocalizationPanelService(IProjectContentSession content,
         Active();
         if (row.References.FirstOrDefault() is { } reference)
             projects.Current!.Services.GetRequiredService<GalNet.Editor.Dock.EditorDockFactory>().NavigateLocalization(reference.Owner, reference.EntryId);
+    }
+    public void Navigate(LocalizationReference reference)
+    {
+        Active();
+        projects.Current!.Services.GetRequiredService<GalNet.Editor.Dock.EditorDockFactory>().NavigateLocalization(reference.Owner, reference.EntryId);
     }
     private string Source => content.CaptureWorking().Settings.TargetLocale.Code;
     public IReadOnlyList<string> Languages => new[] { Source }.Concat(content.CaptureWorking().Settings.AvailableLocales.Select(locale => locale.Code))
@@ -51,30 +60,36 @@ public sealed class GameLocalizationPanelService(IProjectContentSession content,
     }
     public LocalizationTableSnapshot Snapshot(string category)
     {
-        Active(); var document = content.CaptureWorking(); var index = query.Get()!;
+        Active(); var document = content.CaptureWorking(); var index = query.Get()!; var source = document.Settings.TargetLocale.Code;
         var categories = new List<LocalizationCategory> { new("characters", text["I18n.Characters"]) };
         categories.AddRange(document.Graph.Nodes.Where(node => node.Type == "Group").Select(node => new LocalizationCategory(node.Id, node.Name)));
         categories.Add(new("branches", text["I18n.Branches"]));
-        var contexts = new Dictionary<(string Owner, string? Entry), string>();
-        if (category == "characters")
-            foreach (var (character, position) in index.Characters.Select((character, position) => (character, position)))
-                contexts.TryAdd(("characters", character.Id), text.Format("I18n.CharacterRow", position + 1));
-        else if (category == "branches")
-            foreach (var node in document.Graph.Nodes.Where(node => node.Type == "Branch" && node.BranchType == "Choice"))
-                foreach (var (option, position) in (node.Options ?? []).Select((option, position) => (option, position)))
-                    contexts.TryAdd((node.Id, option.Id), node.Name + " · " + text.Format("I18n.OptionRow", position + 1));
-        else if (document.GroupEntries.TryGetValue(category, out var entries))
-            foreach (var (entry, position) in entries.Select((entry, position) => (entry, position)))
-                contexts.TryAdd((category, entry.StableId), text.Format("I18n.EntryRow", position + 1, ""));
+        LocalizationRowContext Context(LocalizationReference reference)
+        {
+            var id = reference.EntryId ?? reference.Owner;
+            var title = id.Length > 12 ? id[..8] + "…" + id[^4..] : id;
+            var slot = reference.JsonPointer.TrimStart('/');
+            if (category == "characters")
+            {
+                var character = index.Characters.FirstOrDefault(item => item.Id == reference.EntryId);
+                title = character is null ? id : index.FindDirect(source, character.DisplayNameKey)?.Text ?? id;
+                slot = "";
+            }
+            else if (category == "branches")
+            {
+                var node = document.Graph.Nodes.FirstOrDefault(item => item.Id == reference.Owner);
+                title = node?.Name ?? reference.Owner;
+                slot = id + " · " + slot;
+            }
+            return new(title, slot, reference.Owner + "/" + id + reference.JsonPointer, reference);
+        }
         var rows = References(index, category).GroupBy(reference => reference.Key, StringComparer.Ordinal).Select(group =>
         {
-            var refs = group.ToArray(); var first = refs[0];
-            var context = contexts.GetValueOrDefault((first.Owner, first.EntryId), "");
-            if (category is not ("characters" or "branches")) context += first.JsonPointer;
-            if (refs.Length > 1) context += " · " + text.Format("GameText.Shared", refs.Length);
-            return new LocalizationTableRow(group.Key, context, refs);
+            var refs = group.ToArray(); var locations = refs.Select(Context).ToArray();
+            var context = string.Join(" · ", locations.Select(location => location.Title + " " + location.Slot + " " + location.Details));
+            return new LocalizationTableRow(group.Key, context, refs) { Locations = locations };
         }).ToArray();
-        return new(Source, Languages, categories, rows, index, store.CaptureFile(LocalizationJson.MetadataPath).Data);
+        return new(source, Languages, categories, rows, index, store.CaptureFile(LocalizationJson.MetadataPath).Data);
     }
     private void Current(LocalizationCellDraft draft)
     {
@@ -142,6 +157,14 @@ public sealed class GameLocalizationPanelService(IProjectContentSession content,
         if (position <= 0 || next <= 0 || next >= languages.Length) return Task.CompletedTask;
         (languages[position], languages[next]) = (languages[next], languages[position]);
         return SetLanguagesAsync(Source, languages);
+    }
+    public Task RemoveLanguageAsync(string value)
+    {
+        Active(); var code = Normalize(value);
+        if (code == Source) throw new EditorOperationException("i18n.source", text["Uiux.I18n.RemoveSource"]);
+        if (!Languages.Contains(code, StringComparer.OrdinalIgnoreCase)) throw new EditorOperationException("i18n.stale", text["I18n.Stale"]);
+        // Only remove support from settings. Retain translations and evidence for re-adding/undo.
+        return SetLanguagesAsync(Source, Languages.Where(language => !language.Equals(code, StringComparison.OrdinalIgnoreCase)).ToArray());
     }
     public DevelopmentLanguagePreview Preview(string value)
     {
