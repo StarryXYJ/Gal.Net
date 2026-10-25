@@ -10,7 +10,7 @@
         <DataTemplate x:DataType="models:BranchOptionEditorItemViewModel">
           <Border Margin="0,4" Padding="8" Background="{DynamicResource SemiColorBackground1}" BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="1" CornerRadius="6">
             <Grid ColumnDefinitions="Auto,*,*,Auto" ColumnSpacing="6">
-              <Border Padding="6,0" Height="32" VerticalAlignment="Top" Background="Transparent" Cursor="SizeAll" PointerPressed="OnDragHandlePressed">
+              <Border Padding="6,0" Height="32" VerticalAlignment="Center" Background="Transparent" Cursor="SizeAll" PointerPressed="OnDragHandlePressed">
                 <TextBlock Text="::" />
               </Border>
               <controls:GameTextBox Grid.Column="1" Binding="{Binding TextBinding}" Authoring="{Binding GameTexts}"
