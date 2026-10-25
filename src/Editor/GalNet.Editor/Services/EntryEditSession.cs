@@ -18,7 +18,7 @@ public sealed class EntryEditSession : IDisposable
     public EntryEditSession(IProjectContentSession content, GameTextAuthoringService texts, IEditorLocalizationService localization)
     {
         _content = content; _texts = texts; _localization = localization;
-        _registration = content.RegisterDraft(() => PendingCount > 0, CommitAsync);
+        _registration = content.RegisterDraft(() => PendingCount > 0, CommitAsync, DiscardDrafts);
         content.Changed += CheckSources;
     }
     public event Action? Changed;
@@ -51,6 +51,11 @@ public sealed class EntryEditSession : IDisposable
     private void CheckSources()
     {
         foreach (var draft in _drafts.Values) draft.State.CheckSource();
+    }
+    private void DiscardDrafts()
+    {
+        foreach (var draft in _drafts.Values) draft.State.Clear();
+        Changed?.Invoke();
     }
     private ValueIssue Error(string code) => new(code, _localization["Uiux.Draft." + code]);
     private async Task<ValueIssue?> CommitAsync(Draft draft)

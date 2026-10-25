@@ -38,6 +38,25 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
     private readonly PropertyChangedEventHandler _localizationChangedHandler;
     private readonly EditorHistories _histories;
     private readonly IProjectContentSession _content;
+    private readonly ProjectExternalChanges? _externalChanges;
+    public bool HasExternalIssue => _externalChanges?.HasIssue == true;
+    public bool CanReloadExternal => _externalChanges?.CanReload == true;
+    public string ExternalDetails => _externalChanges?.Details ?? "";
+    public string ExternalStatus => L[_externalChanges?.State switch
+    {
+        ExternalProjectState.LocalChanges => "External.LocalChanges",
+        ExternalProjectState.Publishing => "External.Publishing",
+        ExternalProjectState.ContractsChanged => "External.ContractsChanged",
+        ExternalProjectState.Invalid => "External.Invalid",
+        ExternalProjectState.Reloaded => "External.Reloaded",
+        _ => "Editor.Status.Ready"
+    }];
+    public ICommand RetryExternalChangesCommand => new AsyncRelayCommand(async () => { if (_externalChanges is not null) await _externalChanges.CheckNowAsync(); });
+    public ICommand ReloadExternalChangesCommand => new AsyncRelayCommand(async () =>
+    {
+        if (_externalChanges is null) return;
+        if (!_content.IsDirty || await ProjectReloadPrompt.ConfirmAsync(L)) await _externalChanges.CheckNowAsync(discardLocalChanges: true);
+    });
 
     public IEditorLocalizationService L { get; }
 
@@ -80,11 +99,12 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
         IEditorSettingsService editorSettingsService,
         IEditorLocalizationService localization,
         EditorHistories histories,
-        IProjectContentSession content)
+        IProjectContentSession content, ProjectExternalChanges? externalChanges = null)
     {
         _projectService = projectService;
         _histories = histories;
         _content = content;
+        _externalChanges = externalChanges;
         _content.Changed += OnContentChanged;
         _shortcutService = shortcutService;
         _dockFactory = dockFactory;
@@ -105,6 +125,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
 
         var project = _projectService.Current
             ?? throw new InvalidOperationException("EditorPageViewModel requires an open project");
+        if (_externalChanges is not null) { _externalChanges.Changed += OnExternalChanged; _externalChanges.Start(); }
 
         UpdateLocalizedText();
         InitializeDock();
@@ -142,7 +163,14 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
         if (_content.RepairRequired) StatusText = L["Status.Repair"];
         else if (_content.LastError is { } error) StatusText = L.Format("Status.SaveFailed", EditorText.Error(error).Render(L));
         else if (_content.LastRecoveryError is { } recovery) StatusText = L.Format("Status.RecoveryFailed", EditorText.Error(recovery).Render(L));
+        else if (_externalChanges?.State == ExternalProjectState.Reloaded) StatusText = ExternalStatus;
         else if (_layoutStatus is not null) StatusText = _layoutStatus.Render(L);
+    }
+
+    private void OnExternalChanged()
+    {
+        OnPropertyChanged(nameof(HasExternalIssue)); OnPropertyChanged(nameof(CanReloadExternal)); OnPropertyChanged(nameof(ExternalStatus)); OnPropertyChanged(nameof(ExternalDetails));
+        OnContentChanged();
     }
 
     public bool TryExecuteShortcut(KeyEventArgs args, string context = "Global") =>
@@ -152,7 +180,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
     private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == "Item[]")
-            OnHistoryChanged();
+        { OnHistoryChanged(); OnExternalChanged(); }
     }
 
     private void UpdateLocalizedText()
@@ -458,6 +486,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
         _projectService.CurrentChanged -= OnCurrentProjectChanged;
         _histories.Changed -= OnHistoryChanged;
         _content.Changed -= OnContentChanged;
+        if (_externalChanges is not null) _externalChanges.Changed -= OnExternalChanged;
         L.PropertyChanged -= _localizationChangedHandler;
         GC.SuppressFinalize(this);
     }

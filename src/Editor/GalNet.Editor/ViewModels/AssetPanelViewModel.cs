@@ -187,6 +187,7 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         if (_content is { IsPublishing: true }) { _timer.Change(100, Timeout.Infinite); return; }
         try
         {
+            if (ExternalProjectSnapshotReader.HasPendingTransaction(ProjectRoot)) { _timer.Change(100, Timeout.Infinite); return; }
             while (!_index.DirectoryExists(CurrentDirectory) && CurrentDirectory.Length > 0) CurrentDirectory = Path.GetDirectoryName(CurrentDirectory)?.Replace('\\', '/') ?? "";
             var expanded = Directories.SelectMany(Expanded).Select(node => node.Path).ToHashSet(ProjectFilePaths.Comparer);
             var root = new ProjectDirectoryNode("", _projects.Current.Name, _index.Directories) { IsExpanded = true };
@@ -201,10 +202,12 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
     private void LoadEntries()
     {
         if (_disposed) return;
+        if (_content is { IsPublishing: true }) { _timer.Change(100, Timeout.Infinite); return; }
         var selected = SelectedEntries.Select(item => item.Path).ToHashSet(ProjectFilePaths.Comparer);
         _thumbnails?.Cancel(); _thumbnails?.Dispose(); _thumbnails = new();
         try
         {
+            if (ExternalProjectSnapshotReader.HasPendingTransaction(ProjectRoot)) { _timer.Change(100, Timeout.Infinite); return; }
             var candidates = (HasSearch ? _index.Search(SearchText) : _index.Read(CurrentDirectory)).ToArray();
             bool Matches(ProjectFileItem item) => TypeFilterIndex switch
             {

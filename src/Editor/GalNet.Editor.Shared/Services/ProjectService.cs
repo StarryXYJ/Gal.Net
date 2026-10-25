@@ -71,7 +71,8 @@ public sealed class ProjectService : IProjectService
         var id = Path.GetFileName(projectPath);
 
         var program = new GalProject(id, name, projectPath, settings, editorState, scope);
-        scope.ServiceProvider.GetService<IProjectContentSession>()?.Open(program);
+        try { scope.ServiceProvider.GetService<IProjectContentSession>()?.Open(program); }
+        catch { await program.DisposeAsync(); throw; }
 
         _current = program;
 

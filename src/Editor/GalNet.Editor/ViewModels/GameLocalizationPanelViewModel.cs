@@ -235,7 +235,8 @@ public sealed partial class GameLocalizationPanelViewModel : ObservableObject, I
     {
         _exchange = exchange; _dialogs = dialogs;
         Service = service; UndoRedoHistory = histories.Content;
-        _draftRegistration = service.Content.RegisterDraft(() => _cells.Values.Any(cell => cell.IsDirty), CommitDraftsAsync);
+        _draftRegistration = service.Content.RegisterDraft(() => _cells.Values.Any(cell => cell.IsDirty), CommitDraftsAsync,
+            () => { foreach (var cell in _cells.Values.Where(cell => cell.IsDirty).ToArray()) cell.Revert(); });
         service.Content.Changed += ContentChanged; service.Text.PropertyChanged += LocaleChanged;
         Refresh();
     }

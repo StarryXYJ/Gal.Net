@@ -9,6 +9,9 @@ public interface IEditorDocumentRepository
 {
     LoadedEditorProjectDocument Load(string projectPath, string projectName, ProjectSettings settings);
 
+    IReadOnlyDictionary<string, byte[]?> SourceBaseline => new Dictionary<string, byte[]?>();
+    void AdoptExternalBaseline(IReadOnlyDictionary<string, byte[]?> sources) => throw new NotSupportedException("External reload is unavailable for this repository.");
+
     ProjectSavePlan PrepareSave(string projectPath, EditorGraphDocument document,
         IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries);
 

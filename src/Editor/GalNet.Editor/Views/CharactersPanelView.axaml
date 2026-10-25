@@ -19,6 +19,7 @@
     </Grid>
     <StackPanel Grid.Row="3" Spacing="6">
       <TextBlock Text="{loc:Localize Characters.Incomplete}" IsVisible="{Binding Incomplete}" TextWrapping="Wrap"/>
+      <TextBlock Text="{Binding IncompleteDetails}" IsVisible="{Binding Incomplete}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource SemiColorText2}"/>
       <TextBlock Text="{loc:Localize Uiux.Panel.SelectItem}" IsVisible="{Binding !HasEditor}" TextWrapping="Wrap" Foreground="{DynamicResource SemiColorText2}"/>
       <StackPanel IsVisible="{Binding HasEditor}" Spacing="6" IsEnabled="{Binding CanEdit}">
         <TextBlock Text="{loc:Localize Characters.Name}" FontSize="12"/>

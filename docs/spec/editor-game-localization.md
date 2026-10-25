@@ -23,7 +23,7 @@ Editor.Shared 的 LocalizationReferenceIndex 分析一个 EditorProjectDocument 
 - 遍历全部 GroupEntries，不依赖页面是否打开；定位包含 Group ID、Entry StableId 和 JSON Pointer。
 - 对 Choice 分支使用稳定 option ID，显式索引 Text；角色 catalog 的 DisplayNameKey 也进入文本引用。
 - 递归分析带静态 Schema 的 IFieldDto 和数组/List/IList/IReadOnlyList/IEnumerable；列表下标只是导航位置，索引不生成或重算文本身份。
-- 缺省、null 与精确空字符串不生成引用，不补默认值；空 LocalizedText key 表示有意的空文本，运行时解析为空字符串。仅含空白字符的 key 仍报错；未知字段/类型、不可遍历结构与错误 shape 报告分析不完整。
+- 缺省、null、空字符串和纯空白字符串不生成引用，不补默认值；空 LocalizedText key 表示有意的空文本，启动时不要求对应译文，运行时解析为空字符串。空对象和空数组也不包含引用，不因缺少 schema 或未知字段而阻止分析；非空的未知字段/类型、不可遍历结构与错误 shape 仍报告分析不完整。
 - 深度上限 16，整个分析的值预算 100,000。超限产生 analysis.limit，不能以未找到引用认定角色未使用。
 
 I18n/catalog/characters.json 的角色按 Ordinal ID 检查；允许姓名译文相同。I18n/<culture>/**/*.json 支持平铺与嵌套字符串叶值，按文件路径 Ordinal 排序并保留每个来源及属性位置。FindDirect 返回同语言最后生效的定义；缺少直接翻译返回 null，不做运行时回退。显式空串与缺失独立。External 不进入作者索引。
@@ -74,7 +74,7 @@ CharacterPanelState 属于项目 scope，以角色 ID 与 DisplayNameKey 的组�
 
 CharacterAuthoringService 以 catalog 为唯一角色身份来源，以项目 TargetLocale 的直接姓名译文为显示值；编辑器 UI 语言不改变作者姓名。允许同名、Ordinal 唯一 key；新角色不填 key 时使用持久预留的 character_n。修改角色 key 更新全部已声明的 CharacterReference，包括未打开 Group 与嵌套 DTO/列表中的实际 JSON 路径；姓名 DisplayNameKey 不变，其他语言译文保留。
 
-新建记录、姓名译文及 speaker 引用构成一次项目历史，保存前只修改 Working。第一次需要文件时，先发布空 catalog 和开发语言 characters.json 保存基线；初始化文件和编号预留不随值历史撤销，允许空文件与编号空洞。保存后撤销创建只还原 Working 值，下一次 Save All 整体落盘，不删除仍服务于 Saved Group 的文件。未使用角色只能显式删除，撤销可恢复；删除保留姓名文本。引用分析不完整时禁止删除和改 key，仍允许修改姓名。
+新建记录、姓名译文及 speaker 引用构成一次项目历史，保存前只修改 Working。第一次需要文件时，先发布空 catalog 和开发语言 characters.json 保存基线；初始化文件和编号预留不随值历史撤销，允许空文件与编号空洞。保存后撤销创建只还原 Working 值，下一次 Save All 整体落盘，不删除仍服务于 Saved Group 的文件。未使用角色只能显式删除，撤销可恢复；删除保留姓名文本。引用分析不完整时禁止删除和改 key，仍允许修改姓名。角色面板显示前五条不完整诊断的代码、Entry、位置和说明；尝试删除或改 key 时记录包含最多二十条原因的结构化 warning 日志。
 
 标记 CharacterReference 的字符串字段使用专属输入框，根字段与嵌套表单共用语义注册。候选按姓名/key 不区分大小写匹配，最多显示 50 项；选择提交精确 ID。搜索后默认高亮第一项，候选打开且输入非空时，在输入框按 Enter 可直接采用高亮角色；也可用向下键进入候选列表后按 Enter 确认。候选关闭或没有匹配时的 Enter、直接输入失焦仍按精确 key、唯一精确姓名的顺序解析；同名歧义要求选择，其他非空文本创建角色。空白输入清空引用，不创建角色。输入法组合期间不拦截 Enter/Escape，组合完成后 Escape 还原草稿；过期表单、取消或已移除 Entry 不能继续创建角色。普通未标记字符串保持原提交行为。
 

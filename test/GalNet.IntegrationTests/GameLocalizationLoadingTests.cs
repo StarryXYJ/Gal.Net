@@ -111,6 +111,27 @@ public sealed class GameLocalizationLoadingTests
             Throws.TypeOf<InvalidDataException>().With.Message.Contains("unknown"));
     }
 
+    [TestCase("{}")]
+    [TestCase("{\"content\":null,\"speaker\":null}")]
+    [TestCase("{\"content\":\"\",\"speaker\":\"\"}")]
+    [TestCase("{\"content\":\"   \",\"speaker\":\"   \"}")]
+    public void EmptyDialogueNvlAndChoiceTextDoNotRequireLocalizationEntries(string arguments)
+    {
+        var graph = new Graph
+        {
+            Nodes =
+            {
+                new Group { Entries =
+                {
+                    new PrimitiveEntry("dialogue.text", JsonSerializer.Deserialize<JsonElement>(arguments)),
+                    new PrimitiveEntry("nvl.append", JsonSerializer.Deserialize<JsonElement>(arguments))
+                } },
+                new Branch { BranchType = BranchType.Choice, Options = [new() { Text = "" }, new() { Text = "   " }] }
+            }
+        };
+        Assert.That(() => GameLocalizationLoader.Load(_root, graph, new()), Throws.Nothing);
+    }
+
     [Test]
     public async Task ProjectAndInstalledProvidersReadEquivalentTextSources()
     {

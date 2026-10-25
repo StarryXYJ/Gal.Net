@@ -157,6 +157,35 @@ public sealed class LocalizationReferenceIndexTests
         Assert.That(index.References[0].JsonPointer, Is.EqualTo("/items/0/caption~1~0"));
     }
 
+    [TestCase("null")]
+    [TestCase("\"\"")]
+    [TestCase("\"   \"")]
+    [TestCase("{}")]
+    [TestCase("[]")]
+    public void EmptyValuesDoNotBlockCharacterReferenceAnalysis(string json)
+    {
+        var empty = JsonSerializer.Deserialize<JsonElement>(json);
+        var layer = Entry("layer", "layer.show", new { });
+        layer.Parameters["transform"] = empty;
+        layer.Parameters["extension"] = empty;
+        var dialogue = Entry("line", "dialogue.text", new { speaker = " \t", content = " \n" });
+        var unknown = Entry("unknown", "custom.unknown", new { });
+        unknown.Parameters["extension"] = empty;
+        var document = new EditorProjectDocument { GroupEntries = new() { ["opening"] = [layer, dialogue, unknown] } };
+        var index = new LocalizationReferenceIndex(document, Builtins(), []);
+        Assert.Multiple(() =>
+        {
+            Assert.That(index.Complete, Is.True);
+            Assert.That(index.Issues, Is.Empty);
+            Assert.That(index.References, Is.Empty);
+            Assert.That(layer.Parameters["transform"].GetRawText(), Is.EqualTo(empty.GetRawText()));
+        });
+
+        layer.Parameters["transform"] = JsonSerializer.SerializeToElement(new { x = 1 });
+        var nonempty = new LocalizationReferenceIndex(document, Builtins(), []);
+        Assert.That(nonempty.IncompleteIssues.Single().Code, Is.EqualTo("field.opaque"));
+    }
+
     [Test]
     public void RecursiveDtosStopAtDepthBudgetAndRetainDiagnostics()
     {

@@ -44,6 +44,11 @@ public sealed class ToolOperationCatalog
                  new("--search", "string", "Search operation ID, command path and description.")],
                 requiresProject: false),
             Route("project.info", "project info", "Shows raw project settings, graph and Group counts without modifying files.", Project()),
+            Route("project.apply", "project apply", "Validates and publishes a manifest of native author files and resources in one transaction. Every target requires its prior SHA-256 (or null for a new file); source paths are relative to the manifest directory.",
+                Project(new CliParameter("manifest-file", "string", "Version 1 JSON apply manifest; see documentInputSchema.", true, true),
+                    new("--dry-run", "boolean", "Validate the final project and report the batch without changing project files.", Default: false)),
+                readOnly: false, requiresContract: true, dryRun: true, batchMode: "Native author files, resources and sidecars in one transaction.") with
+                { DocumentInputSchema = ManifestSchema() },
             Route("project.create", "project create", "Creates an empty author project, optionally deploying a validated contract directory. Without a contract, semantic operations remain unavailable.",
                 Project(new CliParameter("--name", "string", "Project display name."), new("--contracts", "string", "Built contract directory containing GalNet.Project.Contracts.dll and managed dependencies."),
                     new("--dry-run", "boolean", "Validate inputs and report files without creating directories or files.", Default: false)), readOnly: false, requiresProject: false, dryRun: true),
@@ -141,6 +146,7 @@ public sealed class ToolOperationCatalog
         Type? dataType = operation.OperationId switch
         {
             "project.create" => typeof(ProjectCreateReport),
+            "project.apply" => typeof(ProjectApplyReport),
             "project.build" => typeof(ProjectBuildReport),
             "project.export" => typeof(ProjectExportReport),
             "project.rename" or "group.create" or "group.rename" or "group.delete" => typeof(ProjectEditReport),
@@ -179,6 +185,14 @@ public sealed class ToolOperationCatalog
         file ? "Single file operation; cannot mix with document operations." : "Document-only batch; dryRun is set on the enclosing JSON payload.",
         [$"execute <project> <file containing commandId='{definition.Id}'>"], ExitCodes,
         file ? "file-operation" : "document-operation");
+    }
+
+    private static JsonElement ManifestSchema()
+    {
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web) { TypeInfoResolver = new DefaultJsonTypeInfoResolver(), UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow };
+        var schema = options.GetJsonSchemaAsNode(typeof(ProjectApplyManifest));
+        schema["properties"]!["version"]!["const"] = 1;
+        return JsonSerializer.SerializeToElement(schema);
     }
 
     public static ToolOperationDefinition Route(string id, string path, string description, IReadOnlyList<CliParameter> parameters,

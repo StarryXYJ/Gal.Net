@@ -98,14 +98,17 @@ public sealed class EditorGroupProjection : IDisposable
         _synchronizing = true;
         try
         {
-            Entries.Clear();
-            foreach (var source in current)
+            for (var index = 0; index < current.Length; index++)
             {
+                var source = current[index];
                 var entry = previous.FirstOrDefault(entry => ReferenceEquals(entry.Source, source)) ?? new EntryEditorItemViewModel(source, catalog);
-                Entries.Add(entry);
+                if (Entries.Contains(entry)) { if (Entries.IndexOf(entry) != index) Entries.Move(Entries.IndexOf(entry), index); }
+                else Entries.Insert(index, entry);
                 Bind(entry);
+                entry.RefreshAuthorReferences(catalog);
                 _allEntries.Add(entry);
             }
+            while (Entries.Count > current.Length) Entries.RemoveAt(Entries.Count - 1);
         }
         finally { _synchronizing = false; }
     }

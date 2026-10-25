@@ -25,6 +25,7 @@ public sealed partial class CharactersPanelViewModel : ObservableObject, IUndoRe
     public bool CanEdit => !Busy && (_new || Selected is not null);
     public bool CanDelete => !Busy && Selected is { Uses: 0 } && _characters.Complete;
     public bool Incomplete => !_characters.Complete;
+    public string IncompleteDetails => _characters.IncompleteDetails;
     public bool HasDraft => _new || _baseline is not null && (DraftName != _baseline.Name || DraftKey != _baseline.Id);
     public bool HasRows => Rows.Count > 0;
     public bool HasEditor => _new || Selected is not null;
@@ -92,7 +93,7 @@ public sealed partial class CharactersPanelViewModel : ObservableObject, IUndoRe
             Load(clearError: false);
         }
         finally { _refreshing = false; }
-        OnPropertyChanged(nameof(CanEdit)); OnPropertyChanged(nameof(CanDelete)); OnPropertyChanged(nameof(Incomplete)); OnPropertyChanged(nameof(HasRows)); OnPropertyChanged(nameof(DeleteHintKey));
+        OnPropertyChanged(nameof(CanEdit)); OnPropertyChanged(nameof(CanDelete)); OnPropertyChanged(nameof(Incomplete)); OnPropertyChanged(nameof(IncompleteDetails)); OnPropertyChanged(nameof(HasRows)); OnPropertyChanged(nameof(DeleteHintKey));
     }
     [RelayCommand]
     private void Add()
@@ -143,7 +144,11 @@ public sealed partial class CharactersPanelViewModel : ObservableObject, IUndoRe
         catch (Exception error) { _error = EditorText.Error(error); }
         finally { Busy = false; if (!_disposed) { Refresh(); Render(); } }
     }
-    private void OnLocale(object? sender, PropertyChangedEventArgs args) { if (!_disposed) Render(); }
+    private void OnLocale(object? sender, PropertyChangedEventArgs args)
+    {
+        if (_disposed) return;
+        Render(); OnPropertyChanged(nameof(IncompleteDetails));
+    }
     private void Render() => Message = _error?.Render(_characters.Text) ?? "";
     public void Dispose()
     {

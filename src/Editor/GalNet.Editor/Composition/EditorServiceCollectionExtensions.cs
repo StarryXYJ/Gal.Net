@@ -104,6 +104,8 @@ public static class EditorServiceCollectionExtensions
         services.AddScoped<ProjectFileAuthoringService>();
         services.AddScoped<IProjectFileCommandExecutor>(provider => provider.GetRequiredService<ProjectFileAuthoringService>());
         services.AddScoped<EditorHistories>();
+        services.AddScoped<ProjectExternalChanges>();
+        services.AddScoped<IProjectEditLifetime>(sp => sp.GetRequiredService<ProjectExternalChanges>());
         services.AddScoped<IProjectEditLifetime>(sp => sp.GetRequiredService<EditorHistories>());
         services.AddSingleton<IProjectClosePrompt, ProjectClosePrompt>();
         services.AddScoped<IProjectContentSession, ProjectContentSession>();

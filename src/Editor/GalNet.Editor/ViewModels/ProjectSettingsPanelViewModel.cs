@@ -83,12 +83,13 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
         _projectService = projectService;
         _histories = histories;
         _session = session;
-        _draftRegistration = session.RegisterDraft(() => HasDraftChanges, CommitDraftAsync);
+        _draftRegistration = session.RegisterDraft(() => HasDraftChanges, CommitDraftAsync, LoadFromProject);
         L = localization;
         L.PropertyChanged += OnLocalizationChanged;
 
         _projectService.CurrentChanged += OnProjectChanged;
         _histories.Content.Changed += OnHistoryChanged;
+        _session.ExternalReloaded += LoadFromProject;
         LoadFromProject();
     }
 
@@ -97,6 +98,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
         _projectService.CurrentChanged -= OnProjectChanged;
         _draftRegistration.Dispose();
         _histories.Content.Changed -= OnHistoryChanged;
+        _session.ExternalReloaded -= LoadFromProject;
         L.PropertyChanged -= OnLocalizationChanged;
         foreach (var track in AudioTracks) { track.Changed -= TriggerAutoSave; track.RemoveRequested = null; }
         GC.SuppressFinalize(this);

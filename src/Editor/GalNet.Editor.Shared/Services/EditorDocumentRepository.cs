@@ -17,6 +17,12 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog, EditorDocume
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     private Dictionary<string, byte[]?>? _baseline;
 
+    public IReadOnlyDictionary<string, byte[]?> SourceBaseline => _baseline is null ? new Dictionary<string, byte[]?>() :
+        _baseline.ToDictionary(pair => pair.Key, pair => pair.Value?.ToArray(), PathComparer);
+
+    public void AdoptExternalBaseline(IReadOnlyDictionary<string, byte[]?> sources) =>
+        _baseline = sources.ToDictionary(pair => pair.Key, pair => pair.Value?.ToArray(), PathComparer);
+
     public LoadedEditorProjectDocument Load(string projectPath, string projectName, ProjectSettings settings)
     {
         var reader = new ProjectRawReader(projectPath);

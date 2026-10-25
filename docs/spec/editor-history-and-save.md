@@ -16,13 +16,23 @@
 
 GUI 的项目保存统一经过项目 scope 的 `ProjectContentSession`。先提交设置草稿，在历史捕获租约中复制同一版本的 Graph、全部 Group 与完整设置，再形成一次写入/删除计划。普通保存的后台文件发布不持有历史捕获租约，用户后续编辑保留为新的未保存内容。不能在持有发布门时等待历史门，否则会与结构编辑形成锁反转。
 
-Graph、Group、settings 与当前 editor-state 在同一作者文件事务发布。变量定义以 Graph 为准，settings 中的变量副本由序列化派生。视口状态可以单独保存，不会自动保存其他作者内容。外部改变已有作者文件或 settings 后，保存明确失败，不以自己的旧内容覆盖；不承诺跨进程多文件原子性。
+Graph、Group、settings 与当前 editor-state 在同一作者文件事务发布。变量定义以 Graph 为准，settings 中的变量副本由序列化派生。视口状态可以单独保存，不会自动保存其他作者内容。尚未采纳的外部作者文件或 settings 变化会使保存明确失败，不以自己的旧内容覆盖；不承诺跨进程多文件原子性。
 
 GUI 的 Repository 显式使用 Authoring 验证策略：Raw Group 可以保留未知类型/参数、缺必填值、无效参数类型或未完成条件表达式，Graph 分支条件也可保留未完成文本；保存不 Normalize、不补默认值。当前格式、稳定身份、严格 JSON shape、重复属性、Graph 拓扑、源路径/归属及外部冲突仍检查。仓库默认 Complete 供 CLI 严格写入使用，validate/group compile 和预览编译不因 GUI 草稿可保存而放宽。保存后继续撤销类型变更会恢复原作者 JSON，并重新成为未保存内容。
 
 GUI 的 dirty 状态统一由 ProjectContentSession 依据当前作者内容与最近成功保存内容比较，独立于历史位置；History.IsDirty 查询同一会话，保存和关闭检查不依赖 Document 或 GalProject 的手工 dirty 标记。比较忽略 Group 查询字典的插入顺序、参数查询顺序和显示行号；保留实际 Graph/Entry 顺序与 JSON 值。保存失败不更新基线，保存期间产生的新编辑仍为 dirty。设置草稿也参与关闭脏检查。
 
 关闭项目或应用时先挂起并等待当前编辑与保存队列，取消尚未开始的自动保存。若有未保存内容，提供 Save All、Discard Unsaved Content、Cancel；取消保持原项目与草稿，保存失败也保留会话。保存期间再次产生未保存内容时重新检查，不能保存旧捕获版后直接关闭。放弃只丢弃未保存内容；已经完成的结构写盘不反向撤销。
+
+## 外部内容热重载
+
+`ExternalProjectSnapshotReader` 后台读取 Graph、Raw Group、settings、本地化和受管理文本的独立候选，前后核对文件集合与字节，使用 Authoring 结构策略校验。项目级 `ProjectExternalChanges` 合并文件事件并定期复核；prepared/publishing/repair-required 事务尚未完成时不采纳中间文件。
+
+`ProjectContentSession.ReloadExternalAsync` 在历史捕获门及发布门内重新核对候选。项目干净且无输入草稿时自动采纳；项目有本地修改时保留并报告冲突。明确放弃并重新加载会先捕获作者恢复快照，调用已注册草稿的取消方法；未能取消的组字/进行中输入仍阻止采纳。恢复材料只包含已应用作者内容，不承诺保存控件原始输入。
+
+采纳保持当前项目 scope、Graph 和既有 Group 文档身份，按稳定 ID 更新内容与视图，并同时推进 Repository 源字节、settings、受管理文本和 GUI 保存基线。旧内容 Undo/Redo 作为历史边界释放，外部修改不生成 AI 专属历史。自己的保存/结构发布推进相同基线，后续监听事件不清除其历史。跨会话回退可由 Git 完成。
+
+首版以整个项目判断本地冲突，不做自动三方合并。契约 DLL 变化单独报告并要求重新打开项目；正在运行的游戏预览不自动重演。操作说明见[外部工具创作](../manual/external-project-authoring.md)。
 
 ## 结构计划与恢复材料
 

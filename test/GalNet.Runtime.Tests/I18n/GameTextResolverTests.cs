@@ -37,4 +37,15 @@ public sealed class GameTextResolverTests
 
     private static LocalizedTextSource Source(string culture, string key, string value) =>
         new(CultureInfo.GetCultureInfo(culture), candidate => candidate == key ? value : null);
+
+    [TestCase("")]
+    [TestCase(" \t\n")]
+    public void EmptyReferencesResolveToEmptyTextWithoutLookingUpAMissingKey(string key)
+    {
+        var culture = CultureInfo.GetCultureInfo("en-US");
+        var resolver = new GameTextResolver([new(culture, _ => throw new AssertionException("Empty references must not query localization sources."))], culture, () => culture);
+        Assert.That(resolver.Resolve(key), Is.Empty);
+        Assert.That(resolver.TryGetString(key, culture, out var text), Is.True);
+        Assert.That(text, Is.Empty);
+    }
 }

@@ -1,5 +1,18 @@
 # 项目工具 CLI
 
+外部 Agent 创作 Skill 随 CLI 分发在 `Skills/galnet-project-authoring/`，支持文本转 Group、给对白补演出和资源导入。完整使用流程及 Editor 热重载见[外部工具创作](../../../docs/manual/external-project-authoring.md)。
+
+```text
+project apply <project> <manifest-file> [--dry-run]
+help project.apply --json
+```
+
+`project.apply` 将原生作者文件与资源作为一个批次应用。版本 1 manifest 包含 `writes`/`deletes`；write 为 `path`、相对 manifest 目录的 `source`、`contentHash` 与必需的 `expectedHash`，delete 为 `path`/`expectedHash`。哈希使用 SHA-256；`expectedHash: null` 明确要求新目标不存在。target 拒绝链接、越界和 Contracts/Output/Temp/内部目录，Graph/settings 固定入口不可删除。资源与 sidecar 必须配对，替换已有 metadata 保持 ID；被移除资源/Graph 节点和删除路径的剩余静态 JSON 引用需同批更新。
+
+dry-run 在临时候选中运行当前项目契约的完整校验，不写项目。原有媒体只建立存在性占位，不复制或解码载荷；variants 描述与 metadata 保留真实内容供校验。正式发布复核目标原哈希、校验输入和项目文件集合，再用作者文件事务统一复制/删除；失败补偿，成功无持久 Undo。报告包含 `writtenFiles`、`deletedFiles`、`contentHashes` 和 `validation`，沿用完整性及 skippedChecks；自定义代码引用和媒体内容未被检查。
+
+Editor 对任意来源文件修改执行通用热重载：无本地未保存内容/草稿时采纳新基线并刷新打开页面；有冲突时保留当前输入。采纳外部版本清除旧 Undo/Redo，Git 或用户备份负责后续回退。项目契约 DLL 变化仍需要重新打开项目。
+
 ```text
 help
 help --json

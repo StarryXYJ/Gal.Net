@@ -15,6 +15,8 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     private GalProject? _project;
     private byte[] _baseline = [];
     private byte[] _settingsBaseline = [];
+    private Dictionary<string, byte[]> _externalBaseline = new(ProjectFilePaths.Comparer);
+    private string _contractsFingerprint = "";
     private byte[]? _publicationContent;
     private bool _suspended;
     private bool _disposed;
@@ -33,6 +35,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
         var saved = JsonSerializer.Deserialize<EditorProjectDocument>(_baseline, JsonOptions)!;
         saved.Files.Add(file.Id, EditorDocumentCloner.Clone(new EditorProjectDocument { Files = new() { [file.Id] = file } }).Files[file.Id]);
         _baseline = Serialize(saved);
+        if (textBytes is not null) _externalBaseline[path] = textBytes.ToArray();
         Refresh();
         return file;
     }
@@ -51,6 +54,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
         _files[file.Id] = file;
         saved.Files[file.Id] = new() { Id = file.Id, Path = path, ManagedContent = true, Data = textBytes.ToArray() };
         _baseline = Serialize(saved);
+        _externalBaseline[path] = textBytes.ToArray();
         Refresh();
         return file;
     }
@@ -70,6 +74,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     public bool RepairRequired { get; private set; }
     public Exception? LastError { get; private set; }
     public event Action? Changed;
+    public event Action? ExternalReloaded;
 
     public IDisposable RegisterDraft(Func<bool> hasChanges, Func<Task> commit)
     {
@@ -77,9 +82,21 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
         _drafts.Add(registration);
         return registration;
     }
+    public IDisposable RegisterDraft(Func<bool> hasChanges, Func<Task> commit, Action discard)
+    {
+        var registration = new DraftRegistration(_drafts, hasChanges, commit, Discard: discard);
+        _drafts.Add(registration);
+        return registration;
+    }
     public IDisposable RegisterFileDraft(string fileId, Func<bool> hasChanges, Func<Task> commit, Action validate)
     {
         var registration = new DraftRegistration(_drafts, hasChanges, commit, fileId, validate);
+        _drafts.Add(registration);
+        return registration;
+    }
+    public IDisposable RegisterFileDraft(string fileId, Func<bool> hasChanges, Func<Task> commit, Action validate, Action discard)
+    {
+        var registration = new DraftRegistration(_drafts, hasChanges, commit, fileId, validate, discard);
         _drafts.Add(registration);
         return registration;
     }
@@ -109,7 +126,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     }
 
     private sealed record DraftRegistration(List<DraftRegistration> Owner, Func<bool> HasChanges, Func<Task> Commit,
-        string? FileId = null, Action? Validate = null) : IDisposable
+        string? FileId = null, Action? Validate = null, Action? Discard = null) : IDisposable
     {
         public void Dispose() => Owner.Remove(this);
     }
@@ -119,6 +136,15 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
         if (_project is not null) throw new InvalidOperationException("The content session is already open.");
         ProjectFileOperation.CleanupOrphans(project.RootPath);
         _project = project;
+        _externalBaseline = ExternalProjectSnapshotReader.ReadFiles(project.RootPath, []);
+        foreach (var pair in repository.SourceBaseline)
+            if (pair.Value is { } bytes) _externalBaseline[pair.Key] = bytes.ToArray();
+        foreach (var (path, bytes) in _externalBaseline.Where(pair => ExternalProjectSnapshotReader.IsLocalization(pair.Key)))
+        {
+            var file = new EditorFileDocument { Path = path, ManagedContent = true, Data = bytes.ToArray() };
+            _files.Add(file.Id, file);
+        }
+        _contractsFingerprint = ExternalProjectSnapshotReader.ContractsFingerprint(project.RootPath);
         _baseline = Serialize(Capture());
         _settingsBaseline = File.ReadAllBytes(Path.Combine(project.RootPath, "settings.json"));
         _recovery = new(project.RootPath, options ?? new());
@@ -176,6 +202,82 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     }
 
     public EditorProjectDocument CaptureWorking() => Capture();
+
+    public async Task<ExternalReloadResult> ReloadExternalAsync(ExternalProjectSnapshot snapshot, bool discardLocalChanges = false, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_project is null || _suspended || RepairRequired) return ExternalReloadResult.Unavailable;
+        using var lease = await AcquirePlanAsync(false, cancellationToken);
+        try
+        {
+            if (_disposed || _suspended || RepairRequired) return ExternalReloadResult.Unavailable;
+            if (snapshot.ContractsFingerprint != _contractsFingerprint)
+                throw new EditorOperationException("project.externalContracts", "Project contracts changed. Reopen the project to load the new contract safely.");
+            if (!ExternalProjectSnapshotReader.IsCurrent(_project.RootPath, snapshot, _files.Values)) return ExternalReloadResult.Retry;
+            if (ExternalProjectSnapshotReader.Same(snapshot.Files, _externalBaseline)) return ExternalReloadResult.Unchanged;
+            if (IsDirty && !discardLocalChanges) return ExternalReloadResult.LocalChanges;
+            if (discardLocalChanges)
+            {
+                var pending = _drafts.Where(draft => draft.HasChanges()).ToArray();
+                if (pending.Any(draft => draft.Discard is null)) return ExternalReloadResult.LocalChanges;
+                CaptureRecovery();
+                foreach (var draft in pending) draft.Discard!();
+                // Composition/in-flight input may refuse cancellation. Keep the live version until it settles.
+                if (_drafts.Any(draft => draft.HasChanges())) return ExternalReloadResult.LocalChanges;
+            }
+            // All fallible disk inspection precedes the in-memory version transition.
+            repository.AdoptExternalBaseline(snapshot.AuthorSources);
+            CopySettings(snapshot.Settings, _project.Settings);
+            foreach (var group in _files.Values.Where(file => file.ManagedContent).GroupBy(file => file.Path, ProjectFilePaths.Comparer))
+            {
+                var file = group.FirstOrDefault(file => file.Exists) ?? group.First();
+                foreach (var item in group) item.Exists = false;
+                file.Exists = snapshot.Files.TryGetValue(file.Path, out var bytes);
+                file.Data = bytes?.ToArray() ?? [];
+            }
+            foreach (var (path, bytes) in snapshot.Files.Where(pair => ExternalProjectSnapshotReader.IsLocalization(pair.Key)))
+                if (!_files.Values.Any(file => file.Exists && ProjectFilePaths.Comparer.Equals(file.Path, path)))
+                {
+                    var file = new EditorFileDocument { Path = path, ManagedContent = true, Data = bytes.ToArray() };
+                    _files.Add(file.Id, file);
+                }
+            documents.Reload(snapshot.Document);
+            _settingsBaseline = snapshot.Files["settings.json"].ToArray();
+            _externalBaseline = snapshot.Files.ToDictionary(pair => pair.Key, pair => pair.Value.ToArray(), ProjectFilePaths.Comparer);
+            _baseline = Serialize(Capture());
+            LastError = null;
+            if (ExternalReloaded is not null)
+                foreach (Action observer in ExternalReloaded.GetInvocationList())
+                    try { observer(); }
+                    catch (Exception failure) { LastNotificationError = failure; Serilog.Log.Error(failure, "An external reload observer failed"); }
+            Refresh();
+            return ExternalReloadResult.Reloaded;
+        }
+        finally { _saveGate.Release(); Refresh(); }
+    }
+
+    private static void CopySettings(GalNet.Core.Settings.ProjectSettings source, GalNet.Core.Settings.ProjectSettings target)
+    {
+        target.TargetLocale = source.TargetLocale; target.AvailableLocales = source.AvailableLocales;
+        target.SaveSlotCount = source.SaveSlotCount; target.SfxChannelCount = source.SfxChannelCount;
+        target.AudioTracks = source.AudioTracks; target.DefaultWidth = source.DefaultWidth; target.DefaultHeight = source.DefaultHeight;
+        target.PlayerVariables = source.PlayerVariables; target.SaveVariables = source.SaveVariables;
+    }
+
+    private void AcceptPublication(ProjectSavePlan plan)
+    {
+        foreach (var pair in plan.Writes)
+            if (pair.Key == "settings.json" || pair.Key.StartsWith("Graph/", StringComparison.Ordinal) || _externalBaseline.ContainsKey(pair.Key) || ExternalProjectSnapshotReader.IsLocalization(pair.Key))
+                _externalBaseline[pair.Key] = pair.Value.ToArray();
+        foreach (var path in plan.DeletedFiles) _externalBaseline.Remove(path);
+        if (plan.Files is { } files)
+        {
+            foreach (var path in files.Writes.Keys.Concat(files.Copies.Keys).Where(path =>
+                path.StartsWith("Graph/", StringComparison.Ordinal) || path.StartsWith("I18n/", StringComparison.Ordinal) || _files.Values.Any(file => file.ManagedContent && file.Path == path)))
+                _externalBaseline[path] = File.ReadAllBytes(new ProjectRawReader(_project!.RootPath).Resolve(path));
+            foreach (var path in files.Deletes) _externalBaseline.Remove(path);
+        }
+    }
     public EditorProjectDocument CaptureSaved()
     {
         var saved = JsonSerializer.Deserialize<EditorProjectDocument>(_baseline, JsonOptions)
@@ -254,6 +356,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
             }, cancellationToken);
             _settingsBaseline = settings;
             _baseline = capturedContent;
+            AcceptPublication(plan);
             LastError = null;
             Refresh();
         }
@@ -371,6 +474,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
             }
             _baseline = Serialize(nextSaved);
             _settingsBaseline = plan.Writes["settings.json"];
+            AcceptPublication(plan);
             LastError = null;
             Refresh();
         }

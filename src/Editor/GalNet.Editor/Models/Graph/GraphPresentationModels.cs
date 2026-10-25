@@ -364,6 +364,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     internal bool IsCurrent => !_disposed && (_authoring is null || _authoring.IsCurrent(_groupId!, Source));
     internal void RefreshAuthorReferences(IEntryCatalog catalog)
     {
+        SetProperty(ref _id, Source.Id, nameof(Id));
         var values = Source.GetParameterText(catalog);
         var parametersChanged = !_parameters.OrderBy(pair => pair.Key).SequenceEqual(values.OrderBy(pair => pair.Key));
         _parameters = values;

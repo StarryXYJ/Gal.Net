@@ -28,8 +28,15 @@ public sealed class GameTextResolver : ITextResolver
     public string Resolve(string key) => GetString(key, _currentCulture());
     public string GetString(string key, CultureInfo culture) => TryGetString(key, culture, out var value) ? value! : key;
 
-    public bool TryGetString(string key, CultureInfo culture, out string? value) =>
-        TryCultureChain(key, culture, out value) || TryCultureChain(key, _defaultCulture, out value);
+    public bool TryGetString(string key, CultureInfo culture, out string? value)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            value = "";
+            return true;
+        }
+        return TryCultureChain(key, culture, out value) || TryCultureChain(key, _defaultCulture, out value);
+    }
 
     private bool TryCultureChain(string key, CultureInfo culture, out string? value)
     {

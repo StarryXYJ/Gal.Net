@@ -83,6 +83,12 @@ internal static class Program
             }
             using var projectSchema = ProjectSchemaContext.Load(projectPath);
             var entryCatalog = projectSchema.Catalog;
+            if (verb == "project.apply")
+            {
+                var applied = await new ProjectApplyService(projectPath, entryCatalog).ApplyAsync(invocation.Positionals[1], invocation.Has("--dry-run"));
+                WriteJson(applied);
+                return applied.Success ? 0 : 5;
+            }
             if (verb == "project.build") return await BuildAsync(projectPath, args, entryCatalog);
             if (verb == "project.export") return await ExportAsync(projectPath, args, entryCatalog);
             var edits = new ProjectEditService(projectPath, entryCatalog);

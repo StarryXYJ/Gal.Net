@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [空本地化引用边界一致性](lessons/L-20261025-10-empty-localization-references.md)：作者索引、启动加载和运行解析都将空引用按空文本处理；空对象/数组不触发 opaque，非空未知结构仍保留诊断。
+
 - [资源结构与缓冲重基](lessons/L-20261025-01-variant-buffer-structural-rebase.md)：ManagedContent 的写盘内容来自项目文档 Data；移动时内部 folder 要分别重基工作版和保存版，Undo/Redo 保留之后保存的其他配置。
 
 - [必填字符串与 schema 默认值](lessons/L-20261024-01-required-string-defaults.md)：Required 字段有默认值仍会被 Normalize 补齐；要求显式提供且空串合法时不声明 schema 默认，并显式 AllowNull=false。DTO 构造函数赋值不导出为 schema 默认。
@@ -293,3 +295,6 @@
 - [变窄表格的表头左边界](lessons/L-20261025-08-localization-header-alignment.md)：显式宽度的表头与正文都指定 Left；真实布局覆盖内容从宽于视口变成窄于视口。
 
 - [同步捕获待提交输入](lessons/L-20261025-09-textchanging-local-input.md)：Avalonia TextChanged 在渲染后异步触发；TextChanging 同步更新本地输入，作者提交仍只在失焦/明确保存边界进行。
+
+- [静态引用不完整警告](lessons/L-20261025-11-static-reference-warning.md)：References 正常带 references.partial warning；消费方按 error/实际引用拒绝，并保留 ReferencesComplete=false，不能用诊断总数判失败。
+- 外部项目创作：CLI project.apply 使用期望哈希和原生文件清单，同事务发布 Graph/Group/资源/本地化；产品 Skill 在 skills/galnet-project-authoring，随 CLI 分发。Editor 通用热重载采纳干净项目，在同一 scope 推进所有基线并清除旧历史；本地草稿冲突保留，Contracts DLL 仍需重开。见 features/F-20261025-02-external-project-authoring/summary.md 与 docs/manual/external-project-authoring.md。

@@ -34,5 +34,6 @@
 - [编辑游戏文本与翻译](manual/game-localization.md)：开发语言创作、多语言表格、语言顺序和草稿处理。
 - [创建图片差分图集](manual/image-variants.md)：目录导入、配置与差分预览、剧情初始选择及维度切换。
 - [使用与扩展 Editor 创作工作区](manual/editor-authoring-workspace.md)：常用字段、Inspector、会话草稿、问题定位与手动布局。
+- [外部工具创作与热重载](manual/external-project-authoring.md)：CLI 批量应用、Agent Skill、Git 回退和 Editor 外部文件同步。
 - [测量 CPU 启动](manual/cpu-benchmark.md)：编译开关、Editor/Sample 自动化基线与方法内埋点。
 - [使用 Windows ReadyToRun 发布](manual/ready-to-run.md)：发布版启动优化、隔离产物与契约字节身份。

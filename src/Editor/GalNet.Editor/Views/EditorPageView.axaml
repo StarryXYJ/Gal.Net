@@ -8,13 +8,20 @@
              x:Class="GalNet.Editor.Views.EditorPageView"
              x:DataType="vm:EditorPageViewModel">
 
-    <Grid RowDefinitions="*,Auto" Background="{DynamicResource SemiColorBackground0}">
+    <Grid RowDefinitions="*,Auto,Auto" Background="{DynamicResource SemiColorBackground0}">
         <DockControl Name="DockHost" Grid.Row="0"
                      Margin="0,30,0,0"
                      Layout="{Binding Layout}"
                      Background="{DynamicResource SemiColorBackground0}" />
 
-        <Border Grid.Row="1"
+        <Border Grid.Row="1" IsVisible="{Binding HasExternalIssue}" Padding="12,8" Background="{DynamicResource SemiColorBackground1}">
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
+                <StackPanel Spacing="3"><TextBlock Text="{Binding ExternalStatus}" TextWrapping="Wrap"/><TextBlock Text="{Binding ExternalDetails}" TextWrapping="Wrap" FontSize="11"/></StackPanel>
+                <Button Grid.Column="1" Command="{Binding RetryExternalChangesCommand}" Content="{Binding L[External.Retry]}" VerticalAlignment="Center"/>
+                <Button Grid.Column="2" Command="{Binding ReloadExternalChangesCommand}" IsEnabled="{Binding CanReloadExternal}" Content="{Binding L[External.Reload]}" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+        <Border Grid.Row="2"
                 Background="{DynamicResource SemiColorBackground1}"
                 BorderBrush="{DynamicResource SemiColorBorder}"
                 BorderThickness="0,1,0,0"

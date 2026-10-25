@@ -138,7 +138,7 @@ public static class GameLocalizationLoader
             {
                 if (entry.Type is not ("dialogue.text" or "nvl.append")) continue;
                 if (entry.Type == "dialogue.text" && entry.Arguments.TryGetProperty("speaker", out var speaker)
-                    && !string.IsNullOrEmpty(speaker.GetString())) characters.GetRequired(speaker.GetString()!);
+                    && !string.IsNullOrWhiteSpace(speaker.GetString())) characters.GetRequired(speaker.GetString()!);
                 Require(entry.Arguments.TryGetProperty("content", out var content) ? content.GetString() ?? "" : "");
             }
         foreach (var branch in graph.Nodes.OfType<Branch>().Where(branch => branch.BranchType == BranchType.Choice))
@@ -146,7 +146,8 @@ public static class GameLocalizationLoader
 
         void Require(string key)
         {
-            if (string.IsNullOrWhiteSpace(key) || !defaultKeys.Contains(key))
+            if (string.IsNullOrWhiteSpace(key)) return;
+            if (!defaultKeys.Contains(key))
                 throw new InvalidDataException($"Default language '{defaultCulture}' is missing required localization key '{key}'.");
         }
     }

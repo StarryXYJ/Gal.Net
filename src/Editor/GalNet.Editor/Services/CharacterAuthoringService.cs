@@ -19,11 +19,14 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
     IProjectContentSession content, IEditorDocumentService documents, IEntryCatalog catalog,
     LocalizationAuthoringService authoring, IEditorLocalizationService text, GameTextAuthoringService texts)
 {
+    private const int DisplayedIncompleteIssueLimit = 5;
+    private const int LoggedIncompleteIssueLimit = 20;
     private readonly SemaphoreSlim _gate = new(1, 1);
     public IEditorLocalizationService Text => text;
     public event Action? Changed { add => content.Changed += value; remove => content.Changed -= value; }
     private LocalizationReferenceIndex Index => query.Get() ?? throw Error("character.obsolete");
     public bool Complete => query.Get()?.Complete == true;
+    public string IncompleteDetails => FormatIncompleteDetails(query.Get());
     public IReadOnlyList<CharacterRow> Rows()
     {
         var index = Index;
@@ -35,6 +38,24 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
             counts.GetValueOrDefault(character.Id))).ToArray();
     }
     private EditorOperationException Error(string code) => new(code, text["Error." + code]);
+    private string FormatIncompleteDetails(LocalizationReferenceIndex? index)
+    {
+        if (index is null) return text["Characters.IncompleteReasonUnavailable"];
+        if (index.Complete) return "";
+        var issues = index.IncompleteIssues;
+        if (issues.Count == 0) return text["Characters.IncompleteReasonUnavailable"];
+        var lines = issues.Take(DisplayedIncompleteIssueLimit).Select(issue =>
+        {
+            var location = issue.File;
+            if (!string.IsNullOrWhiteSpace(issue.EntryId)) location += " / " + issue.EntryId;
+            if (!string.IsNullOrWhiteSpace(issue.JsonPointer)) location += " " + issue.JsonPointer;
+            return text.Format("Characters.IncompleteReason", issue.Code, location, issue.Message);
+        }).ToList();
+        if (issues.Count > DisplayedIncompleteIssueLimit)
+            lines.Add(text.Format("Characters.IncompleteMore", issues.Count - DisplayedIncompleteIssueLimit,
+                Math.Min(issues.Count, LoggedIncompleteIssueLimit)));
+        return string.Join(Environment.NewLine, lines);
+    }
     private static JsonArray ReadCatalog(LocalizationFileSnapshot snapshot)
     {
         LocalizationJson.Validate(snapshot.Path, snapshot.Data);
@@ -49,7 +70,25 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
         if (missing.Length > 0) await store.Prepare(missing).ApplyAsync(true);
     }
     private void ValidateName(string name) { if (string.IsNullOrWhiteSpace(name)) throw Error("character.name"); }
-    private void RequireComplete() { if (!Complete) throw Error("character.incomplete"); }
+    private void RequireComplete(string operation, string characterId)
+    {
+        var index = query.Get();
+        if (index?.Complete == true) return;
+        var issues = index?.IncompleteIssues ?? [];
+        var causes = issues.Take(LoggedIncompleteIssueLimit).Select(issue => new
+        {
+            issue.Code,
+            issue.File,
+            issue.EntryId,
+            issue.JsonPointer,
+            issue.Message
+        }).ToArray();
+        Serilog.Log.Warning(
+            "Blocked character operation {Operation} for {CharacterId}: reference analysis is incomplete. IssueCount={IssueCount}, LoggedIssueCount={LoggedIssueCount}, Causes={@Causes}",
+            operation, characterId, issues.Count, causes.Length, causes);
+        var details = FormatIncompleteDetails(index);
+        throw new EditorOperationException("character.incomplete", text.Format("Error.character.incomplete", details), details);
+    }
 
     public async Task<CharacterRow> CreateAsync(string name, string? key = null)
     {
@@ -85,7 +124,7 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
             ValidateName(name);
             if (string.IsNullOrWhiteSpace(key)) throw Error("character.key");
             if (Rows().Any(row => row.Id == key && row.Id != expected.Id)) throw Error("character.duplicate");
-            if (key != expected.Id) RequireComplete();
+            if (key != expected.Id) RequireComplete("change-id", expected.Id);
             var before = store.CaptureFile(LocalizationJson.CatalogPath);
             var array = ReadCatalog(before);
             var row = Rows().SingleOrDefault(row => row.Id == expected.Id);
@@ -107,7 +146,7 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
         await _gate.WaitAsync();
         try
         {
-            RequireComplete();
+            RequireComplete("delete", expected.Id);
             var row = Rows().SingleOrDefault(row => row.Id == expected.Id);
             if (row is null || row.DisplayNameKey != expected.DisplayNameKey || row.Name != expected.Name) throw Error("character.changed");
             if (row.Uses > 0) throw Error("character.inUse");

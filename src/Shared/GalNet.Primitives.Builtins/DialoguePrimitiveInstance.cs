@@ -14,7 +14,7 @@ public sealed class DialoguePrimitiveInstance : TextAdvancePrimitiveInstance
     public DialoguePrimitiveInstance(IDialoguePresenter? presenter, CharacterCatalog characters,
         PrimitiveCreateContext context, DialogueTextOptions options)
         : this(presenter ?? throw new InvalidOperationException("The dialogue module has no presenter."),
-            string.IsNullOrEmpty(options.Speaker) ? "" : context.Runtime.TextResolver.Resolve(characters.GetRequired(options.Speaker).DisplayNameKey),
+            string.IsNullOrWhiteSpace(options.Speaker) ? "" : context.Runtime.TextResolver.Resolve(characters.GetRequired(options.Speaker).DisplayNameKey),
             context.Runtime.TextResolver.Resolve(options.Content ?? ""), context.BatchId, context.ScopeCancellation)
     { }
 
