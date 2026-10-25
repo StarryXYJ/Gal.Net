@@ -285,3 +285,5 @@
 - 启动调用栈：scripts/profile-startup.ps1 显式打开 Benchmark 的 GalNet-CPU EventPipe 镜像，scripts/analyze-startup-trace.cs 对齐 JIT/采样；采样只做诊断，收益仍用无采样固定快照交错比较。
 
 - [TraceEvent 事件保留](lessons/L-20261025-07-traceevent-retained-events.md)：迭代器复用事件对象；立即提取字段，或 Clone 后再保留。原生启动诊断使用 scripts/profile-startup-native.ps1 和 analyze-startup-native.cs，拒绝已有 WPR 会话和丢事件 trace，见 docs/manual/cpu-benchmark.md。
+
+- Editor 正常 Main 在 Avalonia 初始化前启动两个 Task.Run：设置读取与本地化数据准备；完成后交给 UI/DI，文化/主题/控件仍在 UI 线程，设计器保留同步回退。20 对复核改善约 4.1%；WGL 探测未达收益门槛，默认 ANGLE 保持，见 features/F-20261025-01-cpu-startup-benchmark/parallel-native.md。

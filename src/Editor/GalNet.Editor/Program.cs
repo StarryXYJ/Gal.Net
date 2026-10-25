@@ -38,11 +38,12 @@ sealed class Program
         try
         {
             Log.Information("GalNet Editor starting");
+            using var preparation = new EditorStartupPreparation();
             AppBuilder app;
 #if BENCHMARK
             using (GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.ConfigureAvalonia"))
 #endif
-                app = BuildAvaloniaApp();
+                app = ConfigureApp(AppBuilder.Configure(() => new App { Preparation = preparation }));
 #if BENCHMARK
             GalNet.Diagnostics.CpuProfiler.Shared.Mark("Editor.RunAvalonia");
 #endif
@@ -66,7 +67,10 @@ sealed class Program
 
     // Avalonia configuration, don't remove; also used by visual designer.
     public static AppBuilder BuildAvaloniaApp()
-        => AppBuilder.Configure<App>()
+        => ConfigureApp(AppBuilder.Configure<App>());
+
+    private static AppBuilder ConfigureApp(AppBuilder builder)
+        => builder
             .UsePlatformDetect()
             .UseManagedWindows(false)
             .UseFloatingWindowHostMode(DockFloatingWindowHostMode.Native)

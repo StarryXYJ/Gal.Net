@@ -12,11 +12,13 @@ using GalNet.Editor.ViewModels;
 using GalNet.Editor.Views;
 using GameViewAssembly::GalNet.Avalonia.GameView.Presentation;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace GalNet.Editor;
 
 public partial class App : Application
 {
+    internal EditorStartupPreparation? Preparation { get; init; }
     /// <summary>DI container for application-level services.</summary>
     public static IServiceProvider? ServiceProvider { get; private set; }
 
@@ -43,6 +45,16 @@ public partial class App : Application
         {
             services.AddSingleton<IEffectCatalog>(_ => AvaloniaEffectRuntime.CreateDefaultCatalog());
             services.AddEditorServices();
+        }
+
+        if (Preparation is { } preparation)
+        {
+#if BENCHMARK
+            using var measurement = GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.WaitStartupPreparation");
+#endif
+            services.Replace(ServiceDescriptor.Singleton<IEditorSettingsService>(preparation.Settings.GetAwaiter().GetResult()));
+            var resources = preparation.Localization.GetAwaiter().GetResult();
+            services.Replace(ServiceDescriptor.Singleton<IEditorLocalizationService>(_ => new EditorLocalizationService(resources)));
         }
 
         {

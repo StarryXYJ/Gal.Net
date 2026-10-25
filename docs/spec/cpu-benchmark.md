@@ -6,8 +6,12 @@
 
 Benchmark 可选 EventPipe 镜像：进程启动前设置 `GALNET_BENCHMARK_EVENTPIPE=1` 为 Shared 启用，独立实例可传 `emitEventPipe: true`。默认不创建 EventSource。provider 为 `GalNet-CPU`，事件 Record/1 包含 name、category、timestampMicroseconds、durationMicroseconds 和 threadId；瞬时事件 duration 为 -1，区间在结束时发出。缓冲停止或溢出的事件不镜像。采样会改变时序，只用于与 CLR JIT/采样栈对齐，不能作为正式 benchmark；普通构建完全没有镜像实现。
 
+同一 EventSource 也可被 Windows ETW 收集，确定性 GUID 为 b73a0b39-c81d-5026-2e0f-108dad0eff68。startup-native.wprp 仅启用进程/模块加载、原生 CPU 采样和阶段事件，不采集上下文切换或 GPU 完成时间。原生分析器拒绝丢事件 trace，按事件的 OS 线程 ID 对齐 UI 阶段；managed threadId 字段不用于替代 OS 线程 ID。
+
 采集和快照线程安全，每实例默认最多 100,000 个事件；超过容量后丢弃后续事件，导出 `droppedEvents`。`Stop` 阻止之后新增事件，包括尚未结束的区间；快照只包含已结束区间与瞬时事件。`WriteTrace(Stream)` 导出 Chrome Trace Event JSON（区间 X、瞬时 i），流所有权属于调用方。
 
 `StartupBenchmark.Start()` 在 Main 入口调用。存在 `GALNET_BENCHMARK_OUTPUT` 时创建 `Startup.Total` 区间；`Complete(success)` 结束它、记录 Ready/Failed、停止采集，并通过同目录临时文件导出 trace。每进程只完成一次。`GALNET_BENCHMARK_EXIT=1` 使 Complete 返回 true，由宿主正常关闭窗口。失败或导出错误设置非零进程退出码；未设置输出路径不会自动退出或写文件。Benchmark 构建中的手工 Measure/Mark 仍可用于自定义采集。
 
 Editor 在主窗口构造时准备欢迎页，避免在窗口 Loaded 后才开始首次导航；完成点仍为欢迎页 Loaded 后的 Background dispatcher 回调。Sample 完成点：会话初始化返回后、CompleteStartup 更新 UI 后的 Background dispatcher 回调；初始化失败不是 Ready。它们不保证 GPU 首帧完成或所有惰性初始化已执行。Startup.Total 不含 CLR 进入 Main 前、trace 写出及进程关闭；脚本另记 ProcessLifetimeMs，后者包含启动和退出，不能当作纯启动时间。嵌套阶段的时长不能直接求和。
+
+Editor 正常入口在平台初始化前启动两个数据准备任务（设置读取、本地化资源读取/解析），在框架初始化完成时等待并交给 DI；文化、主题、导航及控件仍在 UI 线程应用。设计器/默认 App 路径保留同步回退。此机制不改变 Ready 口径，也不是通用任务调度器。

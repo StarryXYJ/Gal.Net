@@ -12,3 +12,5 @@
 P2 后续优化已完成三项对照实验；仅保留显示窗口前准备欢迎页，其他探测恢复原状。处置、提交和证据见 experiments.md。
 
 P3 已完成调用栈诊断及契约安全的 ReadyToRun 发布对照，Editor/Sample 各 10 对全部更快。保留显式发布配置和通用诊断脚本，见 runtime-profile.md；普通 Debug 启动方式不变。
+
+P4 已完成原生图形诊断与简单并行实验；保留 Editor 两个数据准备任务，WGL 探测回退，见 parallel-native.md。原生诊断脚本在 Editor/Sample 共用，未引入通用依赖调度系统。

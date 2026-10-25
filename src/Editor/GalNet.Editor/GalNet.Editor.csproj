@@ -11,6 +11,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="GalNet.Editor.Tests" />
     <ProjectReference Include="../../Infrastructure/GalNet.Media.LibVlc/GalNet.Media.LibVlc.csproj" />
         <Folder Include="Models\" />
         <AvaloniaResource Include="Assets\**" />
