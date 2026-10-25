@@ -58,7 +58,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 ComboBox Choice(string key) => view.GetVisualDescendants().OfType<ComboBox>().Single(combo => combo.DataContext is VariantPreviewRow row && row.Key == key);
                 Choice("d1").SelectedItem = "smile"; Choice("d2").SelectedItem = "skirt"; TimelinePump(window);
                 Assert.That(model.Actual, Does.StartWith("smile_skirt"));
-                Choice("d1").SelectedItem = "weap"; TimelinePump(window); Assert.That(model.Actual, Does.StartWith("weap")); Assert.That(model.Requested, Does.Contain("d2=skirt"));
+                Choice("d1").SelectedItem = "weap"; TimelinePump(window); Assert.That(model.Actual, Does.StartWith("weap")); Assert.That(model.Requested, Does.Contain("skirt"));
                 Choice("d1").SelectedItem = "smile"; TimelinePump(window); Assert.That(model.Actual, Does.StartWith("smile_skirt"));
                 await model.PreviewLoading; TimelinePump(window); Assert.That(model.Preview, Is.Not.Null);
                 Assert.That(model.Buffer.Text, Is.EqualTo(original)); Assert.That(history.CanUndo, Is.False);
@@ -70,6 +70,12 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(properties.FindControl<TextBox>("VariantsDefault"), Is.Null);
                 Assert.That(properties.FindControl<TextBox>("VariantsJson"), Is.Null);
                 Assert.That(properties.FindControl<Button>("VariantsApply"), Is.Null);
+                Assert.That(properties.FindControl<Button>("VariantsRefresh"), Is.Null);
+                scope.GetRequiredService<IEditorLocalizationService>().ApplyLocale("zh-CN"); TimelinePump(window);
+                Assert.That(model.Dimensions.Select(row => row.Heading), Is.EqualTo(new[] { "维度 1", "维度 2" }));
+                Assert.That(model.PreviewRows[0].Label, Is.EqualTo("维度 1"));
+                Assert.That(model.Requested, Does.Contain("维度 1="));
+                Assert.That(model.Buffer.Text, Is.EqualTo(original));
                 properties.FindControl<ComboBox>("VariantsDefaultChoices")!.SelectedItem = "smile_skirt";
                 await model.ConfigurationSaving;
                 Assert.That(model.Buffer.Error, Is.Empty); await history.UndoAsync(); Assert.That(history.CanUndo, Is.False);
@@ -125,7 +131,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 model.DefaultChoice = "missing"; Assert.That(model.Default, Is.EqualTo("idle_coat"));
                 // A missing saved default remains visible and can be repaired using only the dropdown.
                 buffer.Text = original.Replace("idle_coat", "missing");
-                Assert.That(model.DefaultChoice, Is.Null); Assert.That(model.DefaultPlaceholder, Does.Contain("missing"));
+                Assert.That(model.DefaultChoice, Is.Null); Assert.That(window.Content is ImageVariantsEditor editor ? editor.FindControl<ComboBox>("VariantsDefaultChoices")!.PlaceholderText : "unexpected", Is.Null.Or.Empty);
                 Assert.That(model.CanConfigure, Is.True);
                 model.DefaultChoice = "smile_skirt_day"; await model.ConfigurationSaving;
                 Assert.That(model.Buffer.Error, Is.Empty); Assert.That(model.Diagnostics, Is.Empty);

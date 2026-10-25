@@ -10,17 +10,16 @@
     <Button Grid.Column="1" Content="{loc:Localize Common.Browse}" Command="{Binding BrowseFolderCommand}"/>
    </Grid>
    <TextBlock Text="{loc:Localize Variants.Default}"/>
-   <ComboBox Name="VariantsDefaultChoices" ItemsSource="{Binding VariantKeys}" SelectedItem="{Binding DefaultChoice}" PlaceholderText="{Binding DefaultPlaceholder}"/>
+   <ComboBox Name="VariantsDefaultChoices" ItemsSource="{Binding VariantKeys}" SelectedItem="{Binding DefaultChoice}"/>
    <ItemsControl ItemsSource="{Binding Dimensions}">
     <ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:VariantDimensionRow">
      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" Margin="0,2">
-      <TextBlock Text="{Binding Key}" VerticalAlignment="Center"/>
+      <TextBlock Name="VariantsDimensionHeading" Text="{Binding Heading}" VerticalAlignment="Center"/>
       <TextBox Name="VariantsDimensionLabel" Grid.Column="1" Text="{Binding Label}" PlaceholderText="{loc:Localize Variants.Label}"/>
      </Grid>
     </DataTemplate></ItemsControl.ItemTemplate>
    </ItemsControl>
   </StackPanel>
-  <Button Name="VariantsRefresh" Content="{loc:Localize Variants.Refresh}" Command="{Binding RefreshCommand}" HorizontalAlignment="Left"/>
   <TextBlock Text="{Binding Diagnostics}" TextWrapping="Wrap" Foreground="OrangeRed"/>
   <TextBlock Text="{Binding Buffer.Error}" TextWrapping="Wrap" Foreground="OrangeRed"/>
  </StackPanel>
