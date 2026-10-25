@@ -10,3 +10,5 @@
 设计见 design.md；验证计划见 phase-plan.md；最终证据见 summary.md。
 
 P2 后续优化已完成三项对照实验；仅保留显示窗口前准备欢迎页，其他探测恢复原状。处置、提交和证据见 experiments.md。
+
+P3 已完成调用栈诊断及契约安全的 ReadyToRun 发布对照，Editor/Sample 各 10 对全部更快。保留显式发布配置和通用诊断脚本，见 runtime-profile.md；普通 Debug 启动方式不变。

@@ -280,3 +280,6 @@
 
 - [启动固定快照交错对照](lessons/L-20261025-05-paired-startup-baselines.md)：机器缓存/负载可使同一 exe 跨轮大幅漂移；固定 SHA256、AB/BA 配对和同一 ready 口径，不用单次 smoke 宣称收益。
 - Editor 启动在 MainWindow 构造完成时准备欢迎页；Loaded 不再重置导航。20 对交错实验确认小幅收益，主题与 Acrylic 探测均回退；见 features/F-20261025-01-cpu-startup-benchmark/experiments.md。
+
+- [ReadyToRun 与契约身份](lessons/L-20261025-06-r2r-contract-identity.md)：发布转换必须排除严格契约闭包并验证原始字节。Editor/Sample 的 WindowsReadyToRun 配置隔离 bin/obj/lock；仅发布程序获得预编译收益，见 docs/manual/ready-to-run.md。
+- 启动调用栈：scripts/profile-startup.ps1 显式打开 Benchmark 的 GalNet-CPU EventPipe 镜像，scripts/analyze-startup-trace.cs 对齐 JIT/采样；采样只做诊断，收益仍用无采样固定快照交错比较。

@@ -67,3 +67,11 @@ Release；每目标 1 次预热，预热排除；Sample 使用预先构建的 Ga
 两个被拒绝探测的 XAML 已按实验前快照逐字节恢复，git diff 确认无产品代码残留。恢复后 Benchmark Release 再构建成功（0 errors），真实启动/导出/自动退出 smoke 成功：artifacts/benchmarks/optimization-final-restored-smoke。本次只运行相关检查，不声称全仓测试通过。
 
 同一个固定提前首页快照在不同轮次的基线可从约 1908ms 变化到 1473ms，说明缓存与机器负载影响明显；只能使用各轮固定二进制的交错 A/B 判断收益。最终 smoke 不是额外的优化幅度证据。
+
+## P3 调用栈与 ReadyToRun
+
+已完成，完整方法和证据见 [runtime-profile.md](runtime-profile.md)。增加显式启用的 Benchmark EventPipe 镜像、运行时采集/离线分析脚本，并将交错比较扩展到 Sample。三次调用栈发现大量启动 JIT，随后保持相同源代码/RID/部署形式进行无采样对照，各 10 对全部更快：Editor Median 1446.65→845.37ms（41.6%），Sample 2214.57→1515.76ms（31.6%）。
+
+保留两个宿主的 WindowsReadyToRun 发布配置，隔离 RID 还原图，排除严格契约闭包的转换并验证字节身份；不裁剪、不改变渲染或匹配规则。代价为 Editor/Sample 未压缩目录约增加 31.0/23.5 MiB。收益限于发布程序；Main→ready、预热缓存的新进程测试不代表冷缓存、GPU 首帧或普通 Debug。
+
+启用/禁用诊断测试 5/5、1/1，Editor 相关回归 3/3，两个普通发布的真实启动/正常退出与无诊断依赖通过，Editor 发布契约实际加载 45 项。手册已同步 CPU 调用栈和 ReadyToRun 操作；未运行全仓测试或测量工作集。

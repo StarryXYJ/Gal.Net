@@ -9,3 +9,5 @@ StartupBenchmark 读取显式输出路径，在 Main 开始总区间，在 UI �
 脚本先构建，再串行运行预热和测量进程，预热不计入分位数；保留 trace、日志、逐次数据、构建时长、配置和源码状态，失败/超时不作为成功样本。仅关闭或终止脚本拥有的子进程；不修改当前 PowerShell 的环境。Sample 内容构建与语言初始化准备独立于启动测量。
 
 验证调整：条件引用切换时复用普通 assets/deps 曾导致运行时找不到 Diagnostics；采用各项目 bin/benchmark 与 obj/benchmark（含独立 restore lock），默认契约 Content 同步选择该输出路径。未改动普通构建路径。
+
+P3 扩展：Benchmark 实现可显式镜像阶段事件到 GalNet-CPU EventSource，供 EventPipe 将阶段与运行时 JIT/采样栈对齐；默认关闭，采样数据仅用于诊断。发布实验确认收益后提供 WindowsReadyToRun 配置，使用独立 bin/obj/lock，排除契约入口与 Core/Contracts.Builtins 的 R2R 转换以保留严格字节身份。保留 IL、反射和现有渲染配置；不引入裁剪或单文件发布。

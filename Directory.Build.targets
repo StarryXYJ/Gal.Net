@@ -6,4 +6,8 @@
     <!-- Preserve portable PDBs and local debugging; omit commit-specific URLs. -->
     <EnableSourceLink>false</EnableSourceLink>
   </PropertyGroup>
+  <!-- Contract identity is the deployed IL binary, not an R2R-transformed copy. -->
+  <ItemGroup Condition="'$(PublishReadyToRun)' == 'true'">
+    <PublishReadyToRunExclude Include="GalNet.Core.dll;GalNet.Contracts.Builtins.dll;GalNet.Project.Contracts.dll" />
+  </ItemGroup>
 </Project>
