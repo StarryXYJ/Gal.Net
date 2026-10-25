@@ -8,4 +8,4 @@
 
 `StartupBenchmark.Start()` 在 Main 入口调用。存在 `GALNET_BENCHMARK_OUTPUT` 时创建 `Startup.Total` 区间；`Complete(success)` 结束它、记录 Ready/Failed、停止采集，并通过同目录临时文件导出 trace。每进程只完成一次。`GALNET_BENCHMARK_EXIT=1` 使 Complete 返回 true，由宿主正常关闭窗口。失败或导出错误设置非零进程退出码；未设置输出路径不会自动退出或写文件。Benchmark 构建中的手工 Measure/Mark 仍可用于自定义采集。
 
-Editor 完成点：欢迎页 Loaded 后的 Background dispatcher 回调。Sample 完成点：会话初始化返回后、CompleteStartup 更新 UI 后的 Background dispatcher 回调；初始化失败不是 Ready。它们不保证 GPU 首帧完成或所有惰性初始化已执行。Startup.Total 不含 CLR 进入 Main 前、trace 写出及进程关闭；脚本另记 ProcessLifetimeMs，后者包含启动和退出，不能当作纯启动时间。嵌套阶段的时长不能直接求和。
+Editor 在主窗口构造时准备欢迎页，避免在窗口 Loaded 后才开始首次导航；完成点仍为欢迎页 Loaded 后的 Background dispatcher 回调。Sample 完成点：会话初始化返回后、CompleteStartup 更新 UI 后的 Background dispatcher 回调；初始化失败不是 Ready。它们不保证 GPU 首帧完成或所有惰性初始化已执行。Startup.Total 不含 CLR 进入 Main 前、trace 写出及进程关闭；脚本另记 ProcessLifetimeMs，后者包含启动和退出，不能当作纯启动时间。嵌套阶段的时长不能直接求和。
