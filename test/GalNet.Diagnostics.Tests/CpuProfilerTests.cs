@@ -1,11 +1,46 @@
 #if BENCHMARK
 using System.Text.Json;
+using System.Diagnostics.Tracing;
+using System.Collections.Concurrent;
 using GalNet.Diagnostics;
 
 namespace GalNet.Diagnostics.Tests;
 
 public sealed class CpuProfilerTests
 {
+    [Test]
+    public void EventPipeMirrorPreservesMarkersAndCompletedDurationsOnlyWhenOptedIn()
+    {
+        using var listener = new CpuListener();
+        var disabled = new CpuProfiler();
+        disabled.Mark("not-mirrored");
+        var enabled = new CpuProfiler(emitEventPipe: true);
+        enabled.Mark("marker");
+        using (enabled.Measure("scope")) { }
+        enabled.Stop();
+        enabled.Mark("after-stop");
+        var events = listener.Events.ToArray();
+        Assert.That(events.Select(item => item.Name), Is.EqualTo(new[] { "marker", "scope" }));
+        Assert.That(events[0].Duration, Is.EqualTo(-1));
+        Assert.That(events[1].Duration, Is.GreaterThanOrEqualTo(0));
+    }
+
+    private sealed class CpuListener : EventListener
+    {
+        public ConcurrentQueue<(string Name, double Duration)> Events { get; } = new();
+
+        protected override void OnEventSourceCreated(EventSource eventSource)
+        {
+            if (eventSource.Name == "GalNet-CPU") EnableEvents(eventSource, EventLevel.Informational);
+        }
+
+        protected override void OnEventWritten(EventWrittenEventArgs eventData)
+        {
+            if (eventData.EventId == 1)
+                Events.Enqueue(((string)eventData.Payload![0]!, (double)eventData.Payload[3]!));
+        }
+    }
+
     [Test]
     public void NestedScopesAndMarksExportValidTraceAndDisposeOnlyOnce()
     {
@@ -91,6 +126,7 @@ public sealed class DisabledBuildTests
         var assembly = System.Reflection.Assembly.Load("GalNet.Diagnostics");
         Assert.That(assembly.GetType("GalNet.Diagnostics.CpuProfiler"), Is.Null);
         Assert.That(assembly.GetType("GalNet.Diagnostics.StartupBenchmark"), Is.Null);
+        Assert.That(assembly.GetType("GalNet.Diagnostics.CpuTraceEvents"), Is.Null);
     }
 }
 #endif

@@ -4,6 +4,8 @@
 
 `CpuProfiler.Shared.Measure(name, category)` 返回幂等 `IDisposable` 区间，`Mark` 记录瞬时事件。允许独立实例。时间使用 Stopwatch 单调时钟，单位为微秒；区间是 inclusive wall-clock duration，包含等待、调度、JIT 等开销，不是处理器执行时间或占用率。跨 await 区间归属开始时的 managed thread ID，不能据此把重叠异步区间解读成真实线程调用栈。没有 GPU timestamp 或 PIX 对接。
 
+Benchmark 可选 EventPipe 镜像：进程启动前设置 `GALNET_BENCHMARK_EVENTPIPE=1` 为 Shared 启用，独立实例可传 `emitEventPipe: true`。默认不创建 EventSource。provider 为 `GalNet-CPU`，事件 Record/1 包含 name、category、timestampMicroseconds、durationMicroseconds 和 threadId；瞬时事件 duration 为 -1，区间在结束时发出。缓冲停止或溢出的事件不镜像。采样会改变时序，只用于与 CLR JIT/采样栈对齐，不能作为正式 benchmark；普通构建完全没有镜像实现。
+
 采集和快照线程安全，每实例默认最多 100,000 个事件；超过容量后丢弃后续事件，导出 `droppedEvents`。`Stop` 阻止之后新增事件，包括尚未结束的区间；快照只包含已结束区间与瞬时事件。`WriteTrace(Stream)` 导出 Chrome Trace Event JSON（区间 X、瞬时 i），流所有权属于调用方。
 
 `StartupBenchmark.Start()` 在 Main 入口调用。存在 `GALNET_BENCHMARK_OUTPUT` 时创建 `Startup.Total` 区间；`Complete(success)` 结束它、记录 Ready/Failed、停止采集，并通过同目录临时文件导出 trace。每进程只完成一次。`GALNET_BENCHMARK_EXIT=1` 使 Complete 返回 true，由宿主正常关闭窗口。失败或导出错误设置非零进程退出码；未设置输出路径不会自动退出或写文件。Benchmark 构建中的手工 Measure/Mark 仍可用于自定义采集。

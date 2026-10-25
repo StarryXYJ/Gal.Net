@@ -7,18 +7,21 @@ namespace GalNet.Diagnostics;
 /// <summary>Opt-in, bounded CPU wall-clock events. Has no UI or logging dependency.</summary>
 public sealed class CpuProfiler
 {
-    public static CpuProfiler Shared { get; } = new();
+    public static CpuProfiler Shared { get; } = new(emitEventPipe:
+        Environment.GetEnvironmentVariable("GALNET_BENCHMARK_EVENTPIPE") == "1");
     private readonly object _gate = new();
     private readonly List<CpuEvent> _events = [];
     private readonly long _origin = Stopwatch.GetTimestamp();
     private readonly int _capacity;
+    private readonly bool _emitEventPipe;
     private bool _recording = true;
     private int _dropped;
 
-    public CpuProfiler(int capacity = 100_000)
+    public CpuProfiler(int capacity = 100_000, bool emitEventPipe = false)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(capacity);
         _capacity = capacity;
+        _emitEventPipe = emitEventPipe;
     }
 
     public IDisposable Measure(string name, string category = "CPU") =>
@@ -77,8 +80,13 @@ public sealed class CpuProfiler
         {
             if (!_recording) return;
             if (_events.Count < _capacity) _events.Add(item);
-            else _dropped++;
+            else
+            {
+                _dropped++;
+                return;
+            }
         }
+        if (_emitEventPipe) CpuTraceEvents.Log.Emit(item);
     }
 
     private sealed class Measurement : IDisposable

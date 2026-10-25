@@ -3,6 +3,9 @@ param(
     [Parameter(Mandatory)][string]$Baseline,
     [Parameter(Mandatory)][string]$Candidate,
     [Parameter(Mandatory)][string]$OutputDirectory,
+    [ValidateSet('Editor', 'Sample')][string]$Target = 'Editor',
+    [string]$GameDirectory,
+    [string]$Profile,
     [ValidateRange(3, 100)][int]$Pairs = 10
 )
 Set-StrictMode -Version Latest
@@ -12,7 +15,7 @@ $null = New-Item -ItemType Directory -Force -Path $OutputDirectory
 $executables = @{ A = [IO.Path]::GetFullPath($Baseline); B = [IO.Path]::GetFullPath($Candidate) }
 $benchmark = Join-Path $PSScriptRoot 'benchmark-startup.ps1'
 foreach ($label in @('A', 'B')) {
-    & $benchmark -SkipBuild -Executable $executables[$label] -Warmup 0 -Iterations 1 -OutputDirectory (Join-Path $OutputDirectory "warmup-$label") *> (Join-Path $OutputDirectory "warmup-$label.log")
+    & $benchmark -Target $Target -GameDirectory $GameDirectory -Profile $Profile -SkipBuild -Executable $executables[$label] -Warmup 0 -Iterations 1 -OutputDirectory (Join-Path $OutputDirectory "warmup-$label") *> (Join-Path $OutputDirectory "warmup-$label.log")
 }
 $results = [Collections.Generic.List[object]]::new()
 for ($pair = 0; $pair -lt $Pairs; $pair++) {
@@ -20,7 +23,7 @@ for ($pair = 0; $pair -lt $Pairs; $pair++) {
     $order = if ($pair % 2) { @('B', 'A') } else { @('A', 'B') }
     foreach ($label in $order) {
         $runDirectory = Join-Path $OutputDirectory ('pair-{0:D2}-{1}' -f $pair, $label)
-        & $benchmark -SkipBuild -Executable $executables[$label] -Warmup 0 -Iterations 1 -OutputDirectory $runDirectory *> "$runDirectory.log"
+        & $benchmark -Target $Target -GameDirectory $GameDirectory -Profile $Profile -SkipBuild -Executable $executables[$label] -Warmup 0 -Iterations 1 -OutputDirectory $runDirectory *> "$runDirectory.log"
         $trace = Get-Content (Join-Path $runDirectory 'measured-000.json') -Raw | ConvertFrom-Json
         $total = ($trace.traceEvents | Where-Object name -eq 'Startup.Total').dur / 1000
         $results.Add([pscustomobject]@{ Pair = $pair; Label = $label; Milliseconds = $total })

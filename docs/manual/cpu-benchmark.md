@@ -56,6 +56,28 @@ dotnet test test/GalNet.Diagnostics.Tests -p:Benchmark=false -p:UseSharedCompila
 pwsh -File scripts/compare-startup.ps1 -Baseline Temp/startup-experiments/A/GalNet.Editor.exe -Candidate Temp/startup-experiments/B/GalNet.Editor.exe -Pairs 10 -OutputDirectory artifacts/benchmarks/my-comparison
 ```
 
-当前比较脚本针对 Editor：两版各预热一次，再按 AB、BA 交替运行。每对只启动一个版本，保持同一个 Startup.Ready 完成点；输出 comparison.csv 和 summary.csv。每次元数据记录实际 exe 路径与 GalNet.Editor.dll SHA256，避免工作树变化后误认测量版本。单独复用固定版本也可给 benchmark-startup.ps1 传入 `-SkipBuild -Executable <path>`。
+比较脚本默认针对 Editor，也支持 `-Target Sample -GameDirectory <built-content> -Profile <test-profile>`。两版各预热一次，再按 AB、BA 交替运行。每对只启动一个版本，保持同一个 Startup.Ready 完成点；输出 comparison.csv 和 summary.csv。每次元数据记录实际 exe 路径与对应宿主 DLL SHA256，避免工作树变化后误认测量版本。单独复用固定版本也可给 benchmark-startup.ps1 传入 `-SkipBuild -Executable <path>`。
 
 Editor 额外记录 Logging、ConfigureAvalonia、RunAvalonia、Window.Opened/Loaded 和 Startup.Loaded，便于区分配置、平台初始化和首屏布局间隔。不能把启动后的整个事件循环当作一个配置阶段。
+
+## 运行时调用栈与 JIT
+
+先构建 Benchmark=true 的宿主。工具可安装在仓库临时目录，不修改全局工具；以下版本是本轮验证版本：
+
+```powershell
+dotnet tool install dotnet-trace --tool-path Temp/dotnet-tools --version 10.0.750501
+pwsh -File scripts/profile-startup.ps1 -Executable src/Editor/GalNet.Editor/bin/benchmark/Release/net10.0/GalNet.Editor.exe -TraceTool Temp/dotnet-tools/dotnet-trace.exe
+dotnet run scripts/analyze-startup-trace.cs -- <capture-directory>/startup.nettrace
+```
+
+采集脚本在自己启动的进程上启用 GalNet-CPU 镜像、CLR JIT/加载事件和托管栈采样，正常就绪后自动关闭。保存 nettrace、CPU JSON、工具日志、版本及宿主 SHA256；超时仅停止本次采集进程树。默认输出在 artifacts/benchmarks/profile-<timestamp>。不支持普通无 Benchmark 埋点的宿主。
+
+Sample 同样可采集，用 PowerShell 数组传入游戏和测试档案参数：
+
+```powershell
+& scripts/profile-startup.ps1 -Executable <sample.exe> -TraceTool Temp/dotnet-tools/dotnet-trace.exe -ApplicationArguments @('<built-game>', '--profile', '<initialized-test-profile>')
+```
+
+分析器是需要 .NET 10 SDK 的 file-based app，固定使用 TraceEvent 3.1.21 与 scripts/packages.lock.json；显式关闭工具自身的 AOT，并允许其诊断报告反射序列化。仅解析本地符号，不联网下载原生符号。生成 `<trace>.analysis.json`，提供阶段墙钟时间、主线程 JIT 区间并集、样本数、托管叶帧及包含帧、较慢 JIT 方法和丢事件检查。Sample 缺少 RunAvalonia 标记时使用 Ready 对齐，不虚构框架前置间隔。
+
+这些数字是诊断信息：JIT 区间并集不是精确 CPU 占用；采样可能把 JIT/原生工作归于最近的托管帧，Windows 原生调用内部仍需其他工具。嵌套阶段、包含栈样本不能求和。正式性能对比必须关闭 EventPipe 镜像与采样，并使用固定版本交错脚本。
