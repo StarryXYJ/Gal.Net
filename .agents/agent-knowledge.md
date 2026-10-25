@@ -283,3 +283,5 @@
 
 - [ReadyToRun 与契约身份](lessons/L-20261025-06-r2r-contract-identity.md)：发布转换必须排除严格契约闭包并验证原始字节。Editor/Sample 的 WindowsReadyToRun 配置隔离 bin/obj/lock；仅发布程序获得预编译收益，见 docs/manual/ready-to-run.md。
 - 启动调用栈：scripts/profile-startup.ps1 显式打开 Benchmark 的 GalNet-CPU EventPipe 镜像，scripts/analyze-startup-trace.cs 对齐 JIT/采样；采样只做诊断，收益仍用无采样固定快照交错比较。
+
+- [TraceEvent 事件保留](lessons/L-20261025-07-traceevent-retained-events.md)：迭代器复用事件对象；立即提取字段，或 Clone 后再保留。原生启动诊断使用 scripts/profile-startup-native.ps1 和 analyze-startup-native.cs，拒绝已有 WPR 会话和丢事件 trace，见 docs/manual/cpu-benchmark.md。

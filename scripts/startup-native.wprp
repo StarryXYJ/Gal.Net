@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WindowsPerformanceRecorder Version="1.0" Author="GalNet">
+  <Profiles>
+    <SystemCollector Id="Kernel" Name="GalNet startup CPU">
+      <BufferSize Value="256" />
+      <Buffers Value="128" />
+    </SystemCollector>
+    <EventCollector Id="Events" Name="GalNet startup phases">
+      <BufferSize Value="64" />
+      <Buffers Value="64" />
+    </EventCollector>
+    <SystemProvider Id="KernelProvider">
+      <Keywords><Keyword Value="ProcessThread" /><Keyword Value="Loader" /><Keyword Value="SampledProfile" /></Keywords>
+      <Stacks><Stack Value="SampledProfile" /></Stacks>
+    </SystemProvider>
+    <!-- EventSource's deterministic GUID for GalNet-CPU. -->
+    <EventProvider Id="Phases" Name="b73a0b39-c81d-5026-2e0f-108dad0eff68" Level="4" />
+    <Profile Id="StartupCPU.Verbose.File" Name="StartupCPU" Description="Native CPU samples and GalNet startup phases" LoggingMode="File" DetailLevel="Verbose">
+      <Collectors>
+        <SystemCollectorId Value="Kernel"><SystemProviderId Value="KernelProvider" /></SystemCollectorId>
+        <EventCollectorId Value="Events"><EventProviders><EventProviderId Value="Phases" /></EventProviders></EventCollectorId>
+      </Collectors>
+    </Profile>
+  </Profiles>
+</WindowsPerformanceRecorder>

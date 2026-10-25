@@ -81,3 +81,23 @@ Sample 同样可采集，用 PowerShell 数组传入游戏和测试档案参数�
 分析器是需要 .NET 10 SDK 的 file-based app，固定使用 TraceEvent 3.1.21 与 scripts/packages.lock.json；显式关闭工具自身的 AOT，并允许其诊断报告反射序列化。仅解析本地符号，不联网下载原生符号。生成 `<trace>.analysis.json`，提供阶段墙钟时间、主线程 JIT 区间并集、样本数、托管叶帧及包含帧、较慢 JIT 方法和丢事件检查。Sample 缺少 RunAvalonia 标记时使用 Ready 对齐，不虚构框架前置间隔。
 
 这些数字是诊断信息：JIT 区间并集不是精确 CPU 占用；采样可能把 JIT/原生工作归于最近的托管帧，Windows 原生调用内部仍需其他工具。嵌套阶段、包含栈样本不能求和。正式性能对比必须关闭 EventPipe 镜像与采样，并使用固定版本交错脚本。
+
+## Windows 原生启动栈
+
+使用管理员 PowerShell、系统 WPR 与前述 Benchmark 宿主。无需打开 WPA，脚本可离线分析；需要交互查看时用 WPA 打开 ETL。
+
+```powershell
+dotnet publish src/Editor/GalNet.Editor/GalNet.Editor.csproj -c Release -r win-x64 -p:Benchmark=true -p:PublishProfile=WindowsReadyToRun -o Temp/EditorBenchmarkReadyToRun
+pwsh -File scripts/profile-startup-native.ps1 -Executable Temp/EditorBenchmarkReadyToRun/GalNet.Editor.exe -OutputDirectory artifacts/benchmarks/native-editor
+$capture = 'artifacts/benchmarks/native-editor'
+$targetProcessId = (Get-Content "$capture/metadata.json" -Raw | ConvertFrom-Json).ProcessId
+dotnet run scripts/analyze-startup-native.cs -- "$capture/startup.etl" $targetProcessId --symbols
+```
+
+示例 exe 必须发布时启用 Benchmark=true。Sample 同样使用 `-ApplicationArguments @('<absolute-built-game>', '--profile', '<absolute-test-profile>')`。每次使用新的输出目录。
+
+脚本仅在 WPR 明确报告空闲时启动；已有录制或无法识别的本地化状态会直接拒绝，不停止其他录制。它采集短时系统级 CPU/模块事件和 GalNet 阶段，子进程就绪后正常关闭，再停止自己启动的录制。超时只终止本次子进程树；WPR 停止合并可能比程序启动长，不计入 benchmark。
+
+分析器按 metadata 的 PID 筛选主线程栈，输出 `.analysis.json` 中逐阶段采样计数、叶帧/包含帧与原始栈，拒绝丢事件 trace。默认不访问符号服务器；显式 `--symbols` 时从微软服务器解析 D3D11、DXGI、ImageHlp、WinTrust 等系统模块，缓存到当前目录的 Temp/native-symbols，详情在 `.symbols.log`。第三方驱动未必有公开函数符号，仍可看到模块与系统调用链。
+
+CPU 采样数量不等于精确毫秒数，也不能证明线程等待或 GPU 首帧时间。若全量 GeneralProfile 有丢事件，优先缩小 profile；当前 startup-native.wprp 不启用磁盘/文件/上下文切换等高流量事件。正式 A/B 比较不同时运行 WPR 或调用栈分析。
