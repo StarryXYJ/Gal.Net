@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
@@ -164,7 +165,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     });
 
     [Test]
-    public Task I18nFailedImmediateUpdateSurvivesSourceChangeAndCategorySwitchWithoutOverwriting() => WithLocalizationProject(async project =>
+    public Task I18nPendingInputSurvivesSourceChangeAndCategorySwitchWithoutOverwriting() => WithLocalizationProject(async project =>
     {
         var item = CharacterEntry(project); WriteTranslation(project, """{"line":"原文"}""");
         var service = project.Services.GetRequiredService<GameLocalizationPanelService>(); await service.AddLanguageAsync("en-US");
@@ -207,7 +208,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     });
 
     [Test]
-    public async Task I18nMountedTableUpdatesImmediatelyProtectsCompositionAndRetainsViewState()
+    public async Task I18nMountedTableCommitsOnBlurProtectsCompositionAndRetainsViewState()
     {
         await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
         await session.Dispatch<bool>(async () =>
@@ -229,13 +230,23 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     input.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter, KeyModifiers = KeyModifiers.Control });
                     Dispatcher.UIThread.RunJobs();
                     Assert.That(service.Snapshot(item.Group).Index.FindDirect("en-US", "line")?.Text, Is.EqualTo("First\nSecond"));
-                    presenter.PreeditText = null; input.Text = "组字完成";
-                    await PumpCharacterUi(() => service.Snapshot(item.Group).Index.FindDirect("en-US", "line")?.Text == "组字完成");
+                    presenter.PreeditText = null; input.Text = "组字完成"; Dispatcher.UIThread.RunJobs();
+                    Assert.That(service.Snapshot(item.Group).Index.FindDirect("en-US", "line")?.Text, Is.EqualTo("First\nSecond"));
                     Assert.That(input.IsFocused, Is.True);
-                    input.Text = "updated";
-                    await PumpCharacterUi(() => service.Snapshot(item.Group).Index.FindDirect("en-US", "line")?.Text == "updated");
+                    Assert.That(input.VerticalContentAlignment, Is.EqualTo(Avalonia.Layout.VerticalAlignment.Top));
+                    Assert.That(input.HorizontalContentAlignment, Is.EqualTo(Avalonia.Layout.HorizontalAlignment.Left));
+                    Assert.That(presenter.TranslatePoint(default, input)!.Value.Y, Is.LessThan(12), "The actual text presenter starts at the top padding.");
+                    view.FindControl<TextBox>("LocalizationSearch")!.Focus();
+                    await PumpCharacterUi(() => service.Snapshot(item.Group).Index.FindDirect("en-US", "line")?.Text == "组字完成");
+                    input.Focus(); input.Text = "cancelled";
                     input.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Escape });
-                    Assert.That(input.Text, Is.EqualTo("updated"), "Escape does not undo successfully updated text.");
+                    Dispatcher.UIThread.RunJobs();
+                    Assert.That(input.Text, Is.EqualTo("组字完成"), "Escape cancels uncommitted input.");
+                    Assert.That(service.Snapshot(item.Group).Index.FindDirect("en-US", "line")?.Text, Is.EqualTo("组字完成"));
+                    input.Focus(); input.Text = "Save without waiting for render";
+                    await project.Services.GetRequiredService<IProjectContentSession>().SaveAsync();
+                    Assert.That(service.Snapshot(item.Group).Index.FindDirect("en-US", "line")?.Text, Is.EqualTo("Save without waiting for render"));
+                    Assert.That(input.IsFocused, Is.True, "Save All commits current input without requiring blur.");
                     var cell = model.Rows.Single().Cells[1]; cell.Text = "kept update"; await cell.CommitAsync();
                     model.SetColumnWidth("en-US", 310);
                     window.Content = null; Dispatcher.UIThread.RunJobs();

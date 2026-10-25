@@ -54,6 +54,7 @@ public sealed partial class LocalizationGridCell : ObservableObject
     private bool _pending;
     private Task? _write;
     private Exception? _writeError;
+    private string _submittingText = "";
     public string Category { get; }
     public string Key { get; }
     public string Culture { get; }
@@ -80,9 +81,13 @@ public sealed partial class LocalizationGridCell : ObservableObject
             _pending = true;
             try { _target = _panel.Service.Capture(Category, Key, Culture); }
             catch (Exception error) { SetError(error); _panel.DraftChanged(); return; }
+            _panel.DraftChanged();
         }
-        _panel.DraftChanged();
-        if (!Busy) _write = WriteAsync();
+        else if (!Busy && value == _value)
+        {
+            _pending = false; _target = null; _writeError = null; Message = "";
+            _panel.DraftChanged();
+        }
     }
     public void Refresh(LocalizationTableSnapshot snapshot)
     {
@@ -99,15 +104,16 @@ public sealed partial class LocalizationGridCell : ObservableObject
     { _writeError = error; Message = EditorText.Error(error).Render(_panel.Service.Text); }
     private async Task WriteAsync()
     {
+        var value = Text; var captured = _target;
+        _submittingText = value;
         Busy = true; Message = ""; _writeError = null;
         // Publish the task before beginning work: Save All and a second input can join it.
         await Task.Yield();
         try
         {
-            while (_pending && !_panel.IsDisposed)
+            if (_pending && !_panel.IsDisposed)
             {
-                var value = Text;
-                var target = _target ?? throw new EditorOperationException("i18n.stale", _panel.Service.Text["I18n.Stale"]);
+                var target = captured ?? throw new EditorOperationException("i18n.stale", _panel.Service.Text["I18n.Stale"]);
                 await _panel.WriteCellAsync(target, value);
                 _value = value;
                 if (Text == value) { _pending = false; _target = null; }
@@ -127,22 +133,30 @@ public sealed partial class LocalizationGridCell : ObservableObject
     public async Task CommitAsync(bool explicitValue = false)
     {
         if (_panel.IsDisposed) return;
+        if (Busy && _write is { } inFlight) await inFlight;
+        if (_panel.IsDisposed) return;
         if (!Busy && explicitValue && !_pending && IsMissing)
         { _pending = true; _target = _panel.Service.Capture(Category, Key, Culture); }
         if (!Busy && _pending) _write = WriteAsync();
         if (_write is { } write) await write;
         if (_writeError is { } error) throw error;
     }
-    // Only unsuccessful input can be discarded; successful updates use project undo.
+    // Uncommitted input can be discarded; successful updates use project undo.
     public void Revert()
     {
-        if (Busy) return;
+        if (Busy)
+        {
+            _loading = true;
+            try { Text = _submittingText; }
+            finally { _loading = false; }
+            return;
+        }
         _pending = false; _target = null; _writeError = null; Message = "";
         _panel.Refresh(); _panel.DraftChanged();
     }
 }
 
-/// <summary>Project-scoped resource table and view preferences; writes update author documents immediately.</summary>
+/// <summary>Project-scoped resource table and view preferences; text commits on blur or explicit save.</summary>
 public sealed partial class GameLocalizationPanelViewModel : ObservableObject, IUndoRedoTarget, IDisposable
 {
     public GameLocalizationPanelService Service { get; }
@@ -195,6 +209,7 @@ public sealed partial class GameLocalizationPanelViewModel : ObservableObject, I
     private readonly Dictionary<(string Category, string Key, string Culture), LocalizationGridCell> _cells = [];
     private readonly IDisposable _draftRegistration;
     private bool _refreshing;
+    private bool _notifyingDraft;
     public bool IsDisposed { get; private set; }
     public event Action? StructureChanged;
     private readonly LocalizationExchangeService _exchange;
@@ -257,13 +272,20 @@ public sealed partial class GameLocalizationPanelViewModel : ObservableObject, I
     partial void OnSelectedChanged(LocalizationCategory? value) { if (!_refreshing) Refresh(); }
     partial void OnDevelopmentLanguageChanged(string? value) { _preview = null; PreviewMessage = ""; OnPropertyChanged(nameof(CanChangeDevelopmentLanguage)); }
     private void ContentChanged()
-    { if (Dispatcher.UIThread.CheckAccess()) Refresh(); else Dispatcher.UIThread.Post(Refresh); }
+    { if (_notifyingDraft) return; if (Dispatcher.UIThread.CheckAccess()) Refresh(); else Dispatcher.UIThread.Post(Refresh); }
     private void LocaleChanged(object? sender, PropertyChangedEventArgs args)
     {
         void Update() { Refresh(); if (!IsDisposed) StructureChanged?.Invoke(); }
         if (Dispatcher.UIThread.CheckAccess()) Update(); else Dispatcher.UIThread.Post(Update);
     }
-    public void DraftChanged() { if (!_refreshing && !IsDisposed) Service.Content.Refresh(); }
+    public void DraftChanged()
+    {
+        if (_refreshing || IsDisposed) return;
+        // Notify project dirty/save state without rebuilding this table for local input.
+        _notifyingDraft = true;
+        try { Service.Content.Refresh(); }
+        finally { _notifyingDraft = false; }
+    }
     public void Refresh()
     {
         if (_refreshing || IsDisposed) return;

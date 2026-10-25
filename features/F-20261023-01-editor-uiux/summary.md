@@ -50,3 +50,5 @@ Core、Presentation、Editor.Shared、Editor、Architecture、Primitives.Builtin
 - [使用及 DTO 扩展手册](../../docs/manual/editor-authoring-workspace.md)
 
 本地化页后续按用户反馈进一步精简：单行工具栏、紧凑资源表、结构化双行定位列、统一不透明背景、语言搜索/已有语言管理/移除及列宽与可见性。输入直接更新 Working，取消草稿/复核 UI，Save All 仍负责写盘；失败输入就地保留，成功更新通过项目撤销恢复。实现与验证边界见 [本地化精简实施](phase-localization-20261025.md)，当前规范及操作见 [本地化规范](../../docs/spec/editor-game-localization.md) 和 [使用手册](../../docs/manual/game-localization.md)。
+
+后续实测修正：输入改为失焦/Ctrl+Enter/Save All 提交，输入期间不逐字更新项目；正文和摘要左上对齐。表头明确靠左，修复隐藏语言后表格变窄时居中导致的列错位。验证见 [交互修正记录](follow-up-localization-20261025.md)。

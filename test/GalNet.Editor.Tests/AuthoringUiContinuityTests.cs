@@ -131,7 +131,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     });
 
     [Test]
-    public Task LocalizationFiltersKeepMissingEmptyAndImmediateUpdateIdentityDistinct() => WithLocalizationProject(async project =>
+    public Task LocalizationFiltersKeepMissingEmptyAndPendingIdentityDistinct() => WithLocalizationProject(async project =>
     {
         var item = CharacterEntry(project); WriteTranslation(project, """{"line":"Source"}""");
         var service = project.Services.GetRequiredService<GameLocalizationPanelService>(); await service.AddLanguageAsync("en-US");

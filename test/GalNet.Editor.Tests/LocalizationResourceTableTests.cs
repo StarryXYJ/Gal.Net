@@ -20,7 +20,7 @@ namespace GeneralTest.Editor;
 public sealed partial class ProjectWorkspaceLifecycleTests
 {
     [Test]
-    public Task I18nImmediateUpdatesRetainLatestInputWhileHistoryIsBusyAndSaveEmpty() => WithLocalizationProject(async project =>
+    public Task I18nTypingDefersWritesAndRefreshesUntilCommitAndSaveEmpty() => WithLocalizationProject(async project =>
     {
         var item = CharacterEntry(project); WriteTranslation(project, """{"line":"Source"}""");
         var service = project.Services.GetRequiredService<GameLocalizationPanelService>(); await service.AddLanguageAsync("en-US");
@@ -28,11 +28,16 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var model = project.Services.GetRequiredService<GameLocalizationPanelViewModel>(); model.Selected = model.Categories.Single(category => category.Id == item.Group);
         var cell = model.Rows.Single().Cells[1];
         var history = project.Services.GetRequiredService<EditorHistories>().Content; history.Clear();
-        var started = new TaskCompletionSource(); var release = new TaskCompletionSource();
-        var held = history.ExecuteAsync(new CallbackEdit("Hold", async () => { started.SetResult(); await release.Task; }, () => ValueTask.CompletedTask));
-        await started.Task;
-        cell.Text = "First"; await Task.Delay(20); cell.Text = "Second"; cell.Text = "Latest\n完整文本";
-        release.SetResult(); await held; await cell.CommitAsync();
+        var content = project.Services.GetRequiredService<IProjectContentSession>(); var changes = 0;
+        content.Changed += () => changes++;
+        var row = model.Rows.Single();
+        cell.Text = "First"; cell.Text = "Second"; cell.Text = "Latest\n完整文本";
+        await Task.Delay(20);
+        Assert.That(service.Snapshot(item.Group).Index.FindDirect("en-US", "line")?.Text, Is.EqualTo("Before"));
+        Assert.That(history.CanUndo, Is.False); Assert.That(cell.Busy, Is.False);
+        Assert.That(changes, Is.EqualTo(1), "Typing only notifies the first dirty transition, without per-key project refresh.");
+        Assert.That(model.Rows.Single(), Is.SameAs(row));
+        await cell.CommitAsync();
         Assert.That(service.Snapshot(item.Group).Index.FindDirect("en-US", "line")?.Text, Is.EqualTo("Latest\n完整文本"));
         Assert.That(cell.IsDirty, Is.False); Assert.That(cell.Message, Is.Empty);
         await history.UndoAsync(); Assert.That(service.Snapshot(item.Group).Index.FindDirect("en-US", "line")?.Text, Is.Not.EqualTo("Latest\n完整文本"));
@@ -43,7 +48,28 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     });
 
     [Test]
-    public Task I18nImmediateUpdateCanRetryAfterJsonRepairWithoutRetyping() => WithLocalizationProject(async project =>
+    public Task I18nInFlightCommitKeepsLaterTypingPendingUntilSaveAll() => WithLocalizationProject(async project =>
+    {
+        var item = CharacterEntry(project); WriteTranslation(project, """{"line":"Source"}""");
+        var service = project.Services.GetRequiredService<GameLocalizationPanelService>(); await service.AddLanguageAsync("en-US");
+        await service.SetAsync(service.Capture(item.Group, "line", "en-US"), "Before");
+        var model = project.Services.GetRequiredService<GameLocalizationPanelViewModel>(); model.Selected = model.Categories.Single(category => category.Id == item.Group);
+        var cell = model.Rows.Single().Cells[1];
+        var history = project.Services.GetRequiredService<EditorHistories>().Content;
+        var started = new TaskCompletionSource(); var release = new TaskCompletionSource();
+        var held = history.ExecuteAsync(new CallbackEdit("Hold", async () => { started.SetResult(); await release.Task; }, () => ValueTask.CompletedTask));
+        await started.Task;
+        cell.Text = "Submitted"; var commit = cell.CommitAsync(); cell.Text = "Still typing";
+        release.SetResult(); await held; await commit;
+        Assert.That(service.Snapshot(item.Group).Index.FindDirect("en-US", "line")?.Text, Is.EqualTo("Submitted"));
+        Assert.That(cell.Text, Is.EqualTo("Still typing")); Assert.That(cell.IsDirty, Is.True);
+        await project.Services.GetRequiredService<IProjectContentSession>().SaveAsync();
+        Assert.That(service.Snapshot(item.Group).Index.FindDirect("en-US", "line")?.Text, Is.EqualTo("Still typing"));
+        Assert.That(cell.IsDirty, Is.False);
+    });
+
+    [Test]
+    public Task I18nCellCommitCanRetryAfterJsonRepairWithoutRetyping() => WithLocalizationProject(async project =>
     {
         var item = CharacterEntry(project); WriteTranslation(project, """{"line":"Source"}""");
         WriteTranslation(project, """{"line":"Before"}""", "I18n/en-US/lines.json");
@@ -98,6 +124,47 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     });
 
     [Test]
+    public async Task I18nVisibleLanguageHeadersStayAlignedWhenTableBecomesNarrowerThanViewport()
+    {
+        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        await session.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme(); await WithLocalizationProject(async project =>
+            {
+                var item = CharacterEntry(project); WriteTranslation(project, """{"line":"Source"}""");
+                var service = project.Services.GetRequiredService<GameLocalizationPanelService>();
+                foreach (var culture in new[] { "en-US", "ja-JP", "ko-KR" }) await service.AddLanguageAsync(culture);
+                var model = project.Services.GetRequiredService<GameLocalizationPanelViewModel>(); model.Selected = model.Categories.Single(category => category.Id == item.Group);
+                var view = new GameLocalizationPanelView { DataContext = model }; var window = new Window { Content = view, Width = 1100, Height = 650 }; window.Show(); Dispatcher.UIThread.RunJobs();
+                void CheckColumns()
+                {
+                    Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
+                    var headers = view.FindControl<StackPanel>("LanguageHeaders")!.Children.OfType<Grid>().ToArray();
+                    var inputs = view.GetVisualDescendants().OfType<TextBox>().Where(input => input.Name == "LocalizationCellInput").ToArray();
+                    Assert.That(inputs.Select(input => ((LocalizationGridCell)input.DataContext!).Culture), Is.EqualTo(model.VisibleLanguages));
+                    Assert.That(headers, Has.Length.EqualTo(inputs.Length));
+                    for (var i = 0; i < headers.Length; i++)
+                    {
+                        var cellBox = (Control)inputs[i].Parent!.Parent!;
+                        Assert.That(headers[i].TranslatePoint(default, view)!.Value.X, Is.EqualTo(cellBox.TranslatePoint(default, view)!.Value.X).Within(1), "Header and cell must share the same left edge after hiding a column.");
+                        Assert.That(headers[i].Bounds.Width, Is.EqualTo(cellBox.Bounds.Width).Within(1));
+                    }
+                }
+                try
+                {
+                    CheckColumns();
+                    view.FindControl<ScrollViewer>("LocalizationTableScroll")!.Offset = new Vector(160, 0);
+                    model.SetLanguageVisible("en-US", false); CheckColumns();
+                    model.SetLanguageVisible("ko-KR", false); CheckColumns();
+                    model.SetLanguageVisible("ja-JP", false); CheckColumns();
+                    model.SetLanguageVisible("en-US", true); CheckColumns();
+                }
+                finally { window.Close(); }
+            }); return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
     public async Task I18nMountedManagerAddsAndRemovesLanguageAndTableUsesCompactOpaqueContexts()
     {
         await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
@@ -150,9 +217,10 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     { using var frame = window.CaptureRenderedFrame(); frame!.Save(Path.Combine(artifacts, "localization-manager.png")); }
                     flyout.Hide(); Dispatcher.UIThread.RunJobs();
                     source = view.GetVisualDescendants().OfType<TextBox>().Single(box => box.Name == "LocalizationCellInput" && box.DataContext is LocalizationGridCell cell && cell.Culture == "zh-CN");
-                    source.Focus(); source.Text = "即时更新";
-                    await PumpCharacterUi(() => service.Snapshot(item.Group).Index.FindDirect("zh-CN", "line")?.Text == "即时更新");
-                    Assert.That(source.IsFocused, Is.True);
+                    source.Focus(); source.Text = "失焦更新"; Dispatcher.UIThread.RunJobs();
+                    Assert.That(service.Snapshot(item.Group).Index.FindDirect("zh-CN", "line")?.Text, Is.EqualTo("Source text"));
+                    view.FindControl<TextBox>("LocalizationSearch")!.Focus();
+                    await PumpCharacterUi(() => service.Snapshot(item.Group).Index.FindDirect("zh-CN", "line")?.Text == "失焦更新");
                     Assert.That(view.GetVisualDescendants().OfType<TextBox>().Single(box => box.Name == "LocalizationCellInput" && box.DataContext is LocalizationGridCell cell && cell.Culture == "zh-CN"), Is.SameAs(source));
                 }
                 finally { window.Close(); }

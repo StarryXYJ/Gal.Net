@@ -288,4 +288,8 @@
 
 - Editor 正常 Main 在 Avalonia 初始化前启动两个 Task.Run：设置读取与本地化数据准备；完成后交给 UI/DI，文化/主题/控件仍在 UI 线程，设计器保留同步回退。20 对复核改善约 4.1%；WGL 探测未达收益门槛，默认 ANGLE 保持，见 features/F-20261025-01-cpu-startup-benchmark/parallel-native.md。
 
-- 2026-10-25 本地化资源表：常规输入直接更新 Working，取消草稿/复核 UI，Save All 等待更新写盘；连续输入保留最新值，失败就地保留并可修复后重试。语言移除仅改支持列表，保留翻译文件且可撤销；紧凑表格、结构化不透明定位列、语言候选/列宽与可见性已验证。Editor 293/293、解决方案 0 错误，见 features/F-20261023-01-editor-uiux/phase-localization-20261025.md。
+- 2026-10-25 本地化资源表实测修订：正文/摘要左上对齐；输入本地保留，失焦/Ctrl+Enter/Save All 提交，不逐字刷新项目。表头与正文明确靠左，隐藏语言使表格窄于视口仍对齐。语言移除保留翻译文件且可撤销，列宽与可见性保留在项目会话；见 features/F-20261023-01-editor-uiux/follow-up-localization-20261025.md。
+
+- [变窄表格的表头左边界](lessons/L-20261025-08-localization-header-alignment.md)：显式宽度的表头与正文都指定 Left；真实布局覆盖内容从宽于视口变成窄于视口。
+
+- [同步捕获待提交输入](lessons/L-20261025-09-textchanging-local-input.md)：Avalonia TextChanged 在渲染后异步触发；TextChanging 同步更新本地输入，作者提交仍只在失焦/明确保存边界进行。

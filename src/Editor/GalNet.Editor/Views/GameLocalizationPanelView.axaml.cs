@@ -1,6 +1,6 @@
+using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
-using System.Globalization;
 using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
@@ -166,7 +166,7 @@ public partial class GameLocalizationPanelView : UserControl
         input.Classes.Add("localizationCell");
         input.Bind(TextBox.TextProperty, new Binding(nameof(cell.Text)) { Mode = BindingMode.OneWay });
         input.Bind(IsEnabledProperty, new Binding(nameof(cell.Enabled)));
-        var preview = new TextBlock { Margin = new Thickness(10, 4), MaxLines = 2, TextWrapping = TextWrapping.Wrap, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false };
+        var preview = new TextBlock { Margin = new Thickness(10, 4), MaxLines = 2, TextWrapping = TextWrapping.Wrap, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false };
         preview.Bind(TextBlock.TextProperty, new Binding(nameof(cell.DisplayText)));
         input.Bind(TextBox.PlaceholderTextProperty, new Binding(nameof(cell.IsMissing)) { Converter = new MissingTranslationConverter(_model?.Service.Text["I18n.Missing"] ?? "") });
         content.Children.Add(input); content.Children.Add(preview);
@@ -181,7 +181,7 @@ public partial class GameLocalizationPanelView : UserControl
         {
             if (_model is not null && !Composing() && input.Text != cell.Text) cell.Text = input.Text ?? "";
         }
-        input.TextChanged += (_, _) => InputChanged();
+        input.TextChanging += (_, _) => InputChanged();
         input.TextInput += (_, _) => Dispatcher.UIThread.Post(InputChanged, DispatcherPriority.Background);
         input.GotFocus += (_, _) =>
         {
@@ -206,7 +206,8 @@ public partial class GameLocalizationPanelView : UserControl
             if (args.Key == Key.Escape)
             {
                 args.Handled = true;
-                if (cell.HasMessage) cell.Revert();
+                cell.Revert();
+                input.Text = cell.Text;
                 LocalizationSearch.Focus();
             }
             else if (args.Key == Key.Enter && args.KeyModifiers.HasFlag(KeyModifiers.Control)) { args.Handled = true; await Update(true); }
