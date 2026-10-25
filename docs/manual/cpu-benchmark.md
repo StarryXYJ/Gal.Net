@@ -47,3 +47,15 @@ dotnet test test/GalNet.Diagnostics.Tests -p:Benchmark=false -p:UseSharedCompila
 运行普通宿主构建时不传 Benchmark，或显式 `-p:Benchmark=false`。Benchmark 输出使用每项目 bin/benchmark/<Configuration>，中间产物和锁文件使用 obj/benchmark，避免与普通构建的条件依赖图互相覆盖。切换模式后的首次构建必须允许 restore；-SkipBuild 只复用同模式现有产物。Core/Contracts 不引用诊断程序集。
 
 仓库在 CI=true 时启用 locked restore；全新 CI 工作区需要先准备 Benchmark 隔离锁文件，例如显式执行一次 `dotnet restore <host.csproj> -p:Benchmark=true -p:RestoreLockedMode=false`，再复用该还原目录。脚本不修改仓库的 CI 锁定策略。
+
+## 交错比较两个固定版本
+
+先分别构建并保存完整可运行目录，再使用固定 exe 路径做对照：
+
+```powershell
+pwsh -File scripts/compare-startup.ps1 -Baseline Temp/startup-experiments/A/GalNet.Editor.exe -Candidate Temp/startup-experiments/B/GalNet.Editor.exe -Pairs 10 -OutputDirectory artifacts/benchmarks/my-comparison
+```
+
+当前比较脚本针对 Editor：两版各预热一次，再按 AB、BA 交替运行。每对只启动一个版本，保持同一个 Startup.Ready 完成点；输出 comparison.csv 和 summary.csv。每次元数据记录实际 exe 路径与 GalNet.Editor.dll SHA256，避免工作树变化后误认测量版本。单独复用固定版本也可给 benchmark-startup.ps1 传入 `-SkipBuild -Executable <path>`。
+
+Editor 额外记录 Logging、ConfigureAvalonia、RunAvalonia、Window.Opened/Loaded 和 Startup.Loaded，便于区分配置、平台初始化和首屏布局间隔。不能把启动后的整个事件循环当作一个配置阶段。

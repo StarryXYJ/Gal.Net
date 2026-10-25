@@ -8,6 +8,7 @@ param(
     [string]$GameDirectory,
     [string]$Profile,
     [string]$OutputDirectory,
+    [string]$Executable,
     [switch]$SkipBuild
 )
 
@@ -36,7 +37,8 @@ if (-not $SkipBuild) {
     if ($LASTEXITCODE -ne 0) { throw "Benchmark build failed. See $OutputDirectory/build.log" }
     $buildMilliseconds = $buildWatch.Elapsed.TotalMilliseconds
 }
-$executable = Join-Path $projectDirectory "bin/benchmark/$Configuration/net10.0/$assemblyName.exe"
+if ($Executable -and -not $SkipBuild) { throw '-Executable requires -SkipBuild; build and snapshot candidates before comparing.' }
+$executable = if ($Executable) { [IO.Path]::GetFullPath($Executable) } else { Join-Path $projectDirectory "bin/benchmark/$Configuration/net10.0/$assemblyName.exe" }
 if (-not (Test-Path -LiteralPath $executable)) { throw "Executable missing: $executable" }
 $runs = [Collections.Generic.List[object]]::new()
 for ($index = 0; $index -lt ($Warmup + $Iterations); $index++) {
@@ -120,6 +122,8 @@ $metadata = [ordered]@{
     Commit = (& git -C $repositoryRoot rev-parse HEAD); DirtyFiles = @(& git -C $repositoryRoot status --short)
     OS = [Environment]::OSVersion.ToString(); ProcessorCount = [Environment]::ProcessorCount
     Dotnet = (& dotnet --version); GameDirectory = $GameDirectory; Profile = $Profile
+    Executable = $executable
+    AssemblySha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path (Split-Path $executable) "$assemblyName.dll")).Hash
     Runs = @($runs | Select-Object Run, Warmup, ProcessLifetimeMs)
 }
 $metadata | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $OutputDirectory 'metadata.json')

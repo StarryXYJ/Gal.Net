@@ -11,11 +11,15 @@ public partial class StartupPageView : UserControl
 #endif
         InitializeComponent();
 #if BENCHMARK
-        Loaded += (_, _) => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        Loaded += (_, _) =>
         {
-            if (GalNet.Diagnostics.StartupBenchmark.Complete())
-                (TopLevel.GetTopLevel(this) as Window)?.Close();
-        }, Avalonia.Threading.DispatcherPriority.Background);
+            GalNet.Diagnostics.CpuProfiler.Shared.Mark("Editor.Startup.Loaded");
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                if (GalNet.Diagnostics.StartupBenchmark.Complete())
+                    (TopLevel.GetTopLevel(this) as Window)?.Close();
+            }, Avalonia.Threading.DispatcherPriority.Background);
+        };
 #endif
     }
 }

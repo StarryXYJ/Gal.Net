@@ -19,22 +19,34 @@ sealed class Program
 #if BENCHMARK
         GalNet.Diagnostics.StartupBenchmark.Start();
 #endif
-        Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
-            .WriteTo.Console(
-                formatProvider: CultureInfo.InvariantCulture,
-                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
-            .WriteTo.Debug(
-                formatProvider: CultureInfo.InvariantCulture,
-                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
-            .WriteTo.Sink(EditorLogSink.Instance)
-            .CreateLogger();
+        {
+#if BENCHMARK
+            using var measurement = GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.Logging");
+#endif
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .WriteTo.Console(
+                    formatProvider: CultureInfo.InvariantCulture,
+                    outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+                .WriteTo.Debug(
+                    formatProvider: CultureInfo.InvariantCulture,
+                    outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+                .WriteTo.Sink(EditorLogSink.Instance)
+                .CreateLogger();
+        }
 
         try
         {
             Log.Information("GalNet Editor starting");
-            BuildAvaloniaApp()
-                .StartWithClassicDesktopLifetime(args);
+            AppBuilder app;
+#if BENCHMARK
+            using (GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.ConfigureAvalonia"))
+#endif
+                app = BuildAvaloniaApp();
+#if BENCHMARK
+            GalNet.Diagnostics.CpuProfiler.Shared.Mark("Editor.RunAvalonia");
+#endif
+            app.StartWithClassicDesktopLifetime(args);
         }
         catch (Exception ex)
         {
