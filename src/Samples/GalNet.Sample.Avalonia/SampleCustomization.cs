@@ -84,6 +84,16 @@ internal static class SampleCustomization
             Configurations = ProjectSchemas.Configurations,
             SelectDefaultCulture = configuration => configuration.ReadDefaultOptions().TargetLocale.Code
         },
+        SelectProjectOptions = configuration =>
+        {
+            var options = configuration.ReadDefaultOptions();
+            return new()
+            {
+                SaveSlotCount = options.SaveSlotCount,
+                DefaultCulture = options.TargetLocale.Code,
+                Audio = new(options.AudioTracks, options.AudioGroups)
+            };
+        },
         ConfigureExecution = (registration, presentation, page, content) => ConfigureExecution(registration,
             presentation.Presenters, page, content, presentation.Effects, presentation.Audio,
             presentation.Video, presentation.AudioModule, presentation.ImageVariants)

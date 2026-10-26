@@ -170,7 +170,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(group.Name, Is.EqualTo("Local undo sentinel"), "Local text undo must consume the shortcut before the project history.");
                 input.SelectAll();
                 window.KeyTextInput("Renamed");
-                panel.SaveSlotCount = 19;
+                await Stage(panel, "saveSlotCount", 19);
                 Assert.That(project.Name, Is.EqualTo("Original"), "Typing stays in the page draft until explicit commit.");
                 Assert.That(await projects.CheckUnsavedChangesAsync(), Is.True);
                 await ((IAsyncRelayCommand)view.FindControl<Button>("ApplySettingsButton")!.Command!).ExecuteAsync(null);
@@ -240,19 +240,19 @@ public sealed partial class ProjectWorkspaceLifecycleTests
 
     [TestCase(false)]
     [TestCase(true)]
-    public async Task InvalidSettingsDraftBlocksSaveAndCloseWithoutDiscardingTheInput(bool invalidLocale)
+    public async Task InvalidSettingsDraftBlocksSaveAndCloseWithoutDiscardingTheInput(bool invalidValue)
     {
         using var services = Services(new TestClosePrompt(ProjectCloseChoice.Save));
         var projects = services.GetRequiredService<IProjectService>();
         var project = await projects.CreateAsync(Path.Combine(_root, "InvalidDraft"), "Before", new(), Contracts());
         var panel = project.Services.GetRequiredService<ProjectSettingsPanelViewModel>();
-        if (invalidLocale) panel.TargetLocale = "";
+        if (invalidValue) Setting(panel, "defaultWidth").Draft!.Update("not a number", true, null, false);
         else panel.ProjectName = "";
-        panel.SaveSlotCount = 19;
+        await Stage(panel, "saveSlotCount", 19);
         try { await projects.CloseAsync(); Assert.Fail("An invalid draft must block Save and Close."); }
-        catch (EditorOperationException failure) { Assert.That(failure.Code, Does.StartWith(invalidLocale ? "settings." : "project.")); }
+        catch (EditorOperationException failure) { Assert.That(failure.Code, Does.StartWith(invalidValue ? "settings." : "project.")); }
         Assert.That(projects.Current, Is.SameAs(project));
-        Assert.That(invalidLocale ? panel.TargetLocale : panel.ProjectName, Is.Empty);
+        Assert.That(invalidValue ? Setting(panel, "defaultWidth").Draft!.Text : panel.ProjectName, Is.EqualTo(invalidValue ? "not a number" : ""));
         Assert.That(project.Configuration.ReadDefaultOptions().SaveSlotCount, Is.EqualTo(60), "Invalid input must not partially apply other settings.");
         Assert.That(panel.IsDirtyText, Is.Not.Empty);
         panel.CancelDraftCommand.Execute(null);
@@ -327,7 +327,6 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var project = await projects.CreateAsync(Path.Combine(_root, "LateWorkspace"), "Before", new(), Contracts());
         var panel = project.Services.GetRequiredService<ProjectSettingsPanelViewModel>();
         panel.ProjectName = "Edited before opening Graph";
-        panel.TargetLocale = "zh_cn";
         await panel.SaveSettingsCommand.ExecuteAsync(null);
         var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
         Assert.That(workspace.UndoRedoHistory.CanUndo, Is.True);

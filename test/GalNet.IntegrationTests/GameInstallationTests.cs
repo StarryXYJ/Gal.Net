@@ -19,7 +19,7 @@ namespace GalNet.Assets.Tests;
 
 public sealed class GameInstallationTests
 {
-    public sealed class HostOptions { public double SubtitleScale { get; set; } = 1; }
+    public sealed class HostOptions { public double SubtitleScale { get; set; } = 1; public int Slots { get; set; } = 60; }
 
     [Test]
     public async Task Exporter_writes_direct_content_and_installed_resources()
@@ -33,7 +33,7 @@ public sealed class GameInstallationTests
         {
             var resourceTypes = BuiltinResourceTypes.CreateCatalog();
             var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
-            var section = new ConfigurationSection<HostOptions>("host.options", [new("subtitleScale", new ValueDescriptor(typeof(double), allowNull: false))]);
+            var section = new ConfigurationSection<HostOptions>("host.options", [new("subtitleScale", new ValueDescriptor(typeof(double), allowNull: false)), new("slots", new ValueDescriptor(typeof(int), allowNull: false))]);
             var configurations = new ProjectConfigurationSchema([DefaultProjectConfiguration.Section, section]);
             var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
             await File.WriteAllBytesAsync(Path.Combine(project, "Assets", "hero.png"), "hero"u8.ToArray());
@@ -43,7 +43,7 @@ public sealed class GameInstallationTests
                 { "version": 1, "sections": { "galnet.project": { "version": 1, "data": { "audioGroups": [{ "id": "environment", "name": "Environment" }], "audioTracks": [ { "id": "ambient", "groupId": "environment", "preserveDuringCatchUp": true, "defaultGain": 0.3, "maxVoices": 2, "overflowPolicy": "StopOldest" } ] } } } }
                 """);
             var edit = await new ProjectEditService(project, catalog, configurations).ExecuteJsonAsync(
-                """{"commandId":"project.configuration.patch","sectionId":"host.options","values":{"subtitleScale":1.5}}""");
+                """{"commandId":"project.configuration.patch","sectionId":"host.options","values":{"subtitleScale":1.5,"slots":3}}""");
             Assert.That(edit.Success, Is.True, JsonSerializer.Serialize(edit.Diagnostics));
 
             var development = await GameInstallation.OpenAsync(project);
@@ -68,6 +68,15 @@ public sealed class GameInstallationTests
             var installedContent = await installation.CreateContentProvider(resourceTypes, galleryTypes,
                 new GameContentLoadOptions { Configurations = configurations }).LoadAsync();
             Assert.That(installedContent.Configuration.Read(section).SubtitleScale, Is.EqualTo(1.5));
+            var host = new GalNet.Avalonia.GameHost.AvaloniaGameHostOptions
+            {
+                CreateContentCatalogs = () => (resourceTypes, galleryTypes),
+                ConfigureExecution = (_, _, _, _) => { },
+                SelectProjectOptions = configuration => new() { SaveSlotCount = configuration.Read(section).Slots }
+            };
+            using var player = await FilePlayerSession.OpenAsync(Path.Combine(root, "profile"), installedContent.Gallery,
+                host.SelectProjectOptions(installedContent.Configuration).SaveSlotCount);
+            Assert.That(await player.ListSlotsAsync(CancellationToken.None), Has.Count.EqualTo(3));
             Assert.That(installedContent.Graph.Name, Is.EqualTo("export-test"));
             Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioGroups.Single().Id, Is.EqualTo("environment"));
             Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioTracks.Single().GroupId, Is.EqualTo("environment"));

@@ -131,3 +131,5 @@ R4b 实施边界：Core 只提供版本化配置文档和 section 描述协议�
 R4b 精简修订：用户要求去掉不必要的新增代码。配置只走普通 DTO + 显式 FieldDescriptor 的标准 JSON 路径，移除尚无产品消费者的 ForDto/DataType/DefaultData 和 IFieldDto 专用读写分支；不为配置维护另一套生成 DTO 编解码。JSON 属性 converter 由标准 serializer 处理。SDK JSON 信封解析替代手写成员解析和递归重复检查；已知字段/领域验证在合并后的候选上统一执行，未知数据和原子发布保持。
 
 R4c 按实际消费者拆分：先以通用配置补丁替代固定字段 switch，让已声明 schema 贯穿作者命令、构建与导出，证明自有 DTO 的保存/安装链路；再用已有字段表单和项目历史接入 GUI 与宿主。当前并行 Editor 调整移除了内嵌预览，后续验收使用外部调试/游戏宿主，不恢复旧预览。各步单独验证提交，R4 总体验收仍保留 GUI/历史及自有运行配置要求。
+
+R4c2 复用 DtoEditorHost/FieldDraftState，设置窗口只做 schema 字段草稿、批量提交和数据历史；普通复合值复用 JSON 编辑，不再保留音频列表专用模型。Configuration.Patch 同时服务命令和 GUI，Resolve 为表单提供隔离的有效默认值快照。Avalonia 宿主在项目组合根通过 SelectProjectOptions 投影存档容量、语言和音频声明，启动后缓存简单配置，不读取默认 DTO。

@@ -73,14 +73,14 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var notes = Path.Combine(project.RootPath, "notes.txt"); File.WriteAllText(notes, "before");
             var buffer = project.Services.GetRequiredService<ProjectTextFiles>().Open("notes.txt");
             var monitor = project.Services.GetRequiredService<ProjectExternalChanges>(); await monitor.CheckNowAsync();
-            settings.DefaultWidth = 1700; buffer.Text = "unsaved input";
+            await Stage(settings, "defaultWidth", 1700); buffer.Text = "unsaved input";
             var edited = await new ProjectEditService(project.RootPath, project.Services.GetRequiredService<IEntryCatalog>()).ExecuteAsync([new GalNet.Editor.Abstraction.Commands.RenameProjectCommand("External")]);
             Assert.That(edited.Success, Is.True);
             File.WriteAllText(notes, "外部 text", Encoding.Unicode);
             Assert.That(await monitor.CheckNowAsync(), Is.EqualTo(ExternalReloadResult.LocalChanges));
-            Assert.That(settings.DefaultWidth, Is.EqualTo(1700)); Assert.That(buffer.Text, Is.EqualTo("unsaved input"));
+            Assert.That(Setting(settings, "defaultWidth").Read().Json!.Value.GetInt32(), Is.EqualTo(1700)); Assert.That(buffer.Text, Is.EqualTo("unsaved input"));
             Assert.That(await monitor.CheckNowAsync(true), Is.EqualTo(ExternalReloadResult.Reloaded));
-            Assert.That(settings.ProjectName, Is.EqualTo("External")); Assert.That(settings.DefaultWidth, Is.EqualTo(1920));
+            Assert.That(settings.ProjectName, Is.EqualTo("External")); Assert.That(Setting(settings, "defaultWidth").Read().Json!.Value.GetInt32(), Is.EqualTo(1920));
             Assert.That(buffer.Text, Is.EqualTo("外部 text")); Assert.That(buffer.Information, Is.EqualTo("utf-16"));
             Assert.That(content.IsDirty, Is.False);
             buffer.Text = "saved after reload"; await content.SaveAsync();

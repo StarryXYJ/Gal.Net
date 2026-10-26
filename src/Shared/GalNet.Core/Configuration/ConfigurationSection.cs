@@ -21,6 +21,7 @@ public abstract class ConfigurationSection
     public int Version { get; }
     public IReadOnlyList<FieldDescriptor> Fields { get; }
     public abstract void Validate(ProjectSectionData value);
+    public abstract JsonElement Resolve(ProjectSectionData? value);
 }
 
 public sealed class ConfigurationSection<T>(string id, IReadOnlyList<FieldDescriptor> fields, Action<T>? validate = null, int version = 1)
@@ -54,6 +55,7 @@ public sealed class ConfigurationSection<T>(string id, IReadOnlyList<FieldDescri
     }
 
     public override void Validate(ProjectSectionData value) => _ = Read(value);
+    public override JsonElement Resolve(ProjectSectionData? value) => Encode(Read(value));
 }
 
 /// <summary>Explicit project contract declarations; unknown sections remain opaque author data.</summary>

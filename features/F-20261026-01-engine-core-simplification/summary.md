@@ -157,3 +157,12 @@ R4c 仍需完成通用 section 编辑/历史及自有 DTO 的完整导出、安�
 以 b87297f 为基线组成隔离候选，当前阶段源码 SHA-256 一致。locked restore、完整解决方案构建、格式/diff 检查通过；初轮构建发现 builder 缺少持久化命名空间引用，补齐后最终构建通过。1089 项通过：Core 166、Architecture 49、Editor.Shared 430、Editor 318、Integration 126；Shared 2 项和 Integration 1 项仍因 Windows 创建符号链接权限失败，Shared 另有 2 项跳过。NU1900 漏洞源不可达警告保留，没有依赖或锁文件变更。
 
 ProjectContractPipelineTests 覆盖实际 CLI 修改、显式 null/删除、领域校验整批拒绝、版本拒绝、未知数据、两种导出和安装保留；GameInstallationTests 验证自有 DTO 经命令保存、导出、安装后由所选 schema 重新加载。证据位于 artifacts/engine-core-audit/r4c1-build-final.log、r4c1-restore.log、r4c1-results 与 r4c1-sources.json。协议与用法已同步至 file-formats 和 new-presentation-layer；GUI 通用表单、Undo/Redo 和自有配置的宿主映射属于 R4c2，R4 整体仍在进行中，不恢复内嵌预览。
+
+
+## R4c2：通用表单、历史与宿主投影
+
+删除固定设置/音频编辑模型，用 DtoEditorHost 和 FieldDraftState 生成 section 表单；普通复合值复用 JSON 编辑。草稿应用/保存整批校验，历史只保留数据与必要项目引用，Undo 可恢复缺省 section，未知 section/字段和无关更新保留。命令与 GUI 共享 Configuration.Patch；Resolve 为表单读取 DTO 的有效默认值，不回写原始配置。默认语言声明仍由 I18n 的内容迁移操作维护。AvaloniaGameHostOptions.SelectProjectOptions 将项目 DTO 映射为存档容量、语言和音频声明，宿主启动后缓存这些简单配置，删除宿主对默认 DTO 的直接读取。产品净减 143 行。
+
+11 项定向测试通过；初轮发现语言切换清掉错误提示及新增挂载测试缺少主题，均修正后通过。完整解决方案构建、格式/diff 检查与 1091 项相关回归通过（Core 166、Architecture 49、Shared 430、Editor 320、Integration 126）；3 项符号链接权限失败、2 项跳过保留。新增真实挂载验证覆盖字段输入、批量应用、过期绑定、Undo/Redo、保存、导出、安装及重新打开；安装用例进一步验证自有 DTO 映射存档容量并实际生成对应数量槽位。
+
+显式原生外进程 3 项实际完成启动、变量编辑、Seek、Step、停止/重启和旧 run 拒绝，均在请求关闭后的退出等待超时。首次诊断读取活动日志遇到 FileShare 冲突，改为共享读写读取后暴露真实关闭超时；未吞掉异常或把失败计为通过。日志保留于 artifacts/engine-core-audit/r4c2-native*.log/trx，关闭链路继续纳入 R7/R8；不阻塞其余重构。其他证据为 r4c2-verified-build.log、r4c2-targeted-final.log、r4c2-results。正式用法同步 new-presentation-layer 与 file-formats。

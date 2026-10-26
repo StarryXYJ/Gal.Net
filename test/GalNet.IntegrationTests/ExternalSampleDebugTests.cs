@@ -159,11 +159,15 @@ public sealed class ExternalSampleDebugTests
                 catch (Exception error) when (error is OperationCanceledException or IOException) { }
             });
             await Task.Delay(300, timeout.Token);
-            app.CloseMainWindow();
+            app.Refresh();
+            Assert.That(app.CloseMainWindow(), Is.True, "The Sample must have a native main window that can receive Close.");
             try { await app.WaitForExitAsync(timeout.Token).WaitAsync(TimeSpan.FromSeconds(5)); }
             catch (TimeoutException)
             {
-                TestContext.Out.WriteLine(await File.ReadAllTextAsync(Directory.GetFiles(Path.Combine(profile, "logs"), "game-*.log").Single()));
+                await using var log = new FileStream(Directory.GetFiles(Path.Combine(profile, "logs"), "game-*.log").Single(),
+                    FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                using var reader = new StreamReader(log);
+                TestContext.Out.WriteLine(await reader.ReadToEndAsync());
                 throw;
             }
             finally { await pollingCancellation.CancelAsync(); await polling; }

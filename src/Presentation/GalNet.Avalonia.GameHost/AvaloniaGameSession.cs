@@ -1,4 +1,3 @@
-using GalNet.Contracts.Builtins;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Avalonia.GameHost.Settings;
@@ -28,6 +27,7 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
     private readonly ObservableCollection<GameSaveSlot> _saveSlots = [];
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySaveSlots;
     private GameResourceScope? _resources;
+    private AvaloniaProjectOptions _projectOptions = new();
     private AvaloniaGameResources? _visualResources;
     private PlayerSession? _saveSession;
     private IGalleryResourceResolver? _galleryResources;
@@ -90,17 +90,19 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
             var catalogs = _options.CreateContentCatalogs();
             var resources = await GameResourceScope.OpenAsync(gameDirectory,
                 catalogs.Resources, catalogs.Gallery, _options.Content, cancellationToken);
+            AvaloniaProjectOptions projectOptions;
             profileDirectory ??= Path.Combine(resources.GameDirectory, ".galnet");
             PlayerSession? saveSession = null;
             AvaloniaGameResources? visuals = null;
             IGalleryResourceResolver? galleryResources = null;
             try
             {
+                projectOptions = _options.SelectProjectOptions(resources.Content.Configuration);
                 _options.ConfigureDecoders(resources.Assets);
                 visuals = await AvaloniaGameResources.CreateAsync(resources.Assets,
                     _options.SelectTexturePreloads, _options.SelectEffectPrograms, cancellationToken);
                 saveSession = await FilePlayerSession.OpenAsync(profileDirectory, resources.Content.Gallery,
-                    resources.Content.Configuration.ReadDefaultOptions().SaveSlotCount, cancellationToken);
+                    projectOptions.SaveSlotCount, cancellationToken);
                 galleryResources = await AssetGalleryResourceResolver.CreateAsync(resources.Assets,
                     resources.Content.Gallery, cancellationToken, resources.MediaFiles);
             }
@@ -116,6 +118,7 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
             }
 
             _resources = resources;
+            _projectOptions = projectOptions;
             _visualResources = visuals;
             _saveSession = saveSession;
             _galleryResources = galleryResources;
@@ -136,10 +139,10 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
 
             await RefreshSlotsAsync(cancellationToken);
             if (!await _startup.InitializeAsync(saveSession.Variables,
-                    resources.Content.Configuration.ReadDefaultOptions().TargetLocale.Code, selectLanguage, cancellationToken))
+                    projectOptions.DefaultCulture, selectLanguage, cancellationToken))
                 throw new OperationCanceledException("Language selection was cancelled.", cancellationToken);
             await _settings.AttachAsync(saveSession.Variables, new GameSettings(),
-                new(resources.Content.Configuration.ReadDefaultOptions().AudioTracks, resources.Content.Configuration.ReadDefaultOptions().AudioGroups), _options.ShowTrackAudioControls, cancellationToken);
+                projectOptions.Audio, _options.ShowTrackAudioControls, cancellationToken);
             await _settings.RestoreDisplayAsync(cancellationToken);
 
             IsReady = true;
@@ -192,7 +195,7 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
             {
                 if (saveSession is not null)
                     await _settings.AttachAsync(saveSession.Variables, new GameSettings(),
-                        _resources is { } resources ? new(resources.Content.Configuration.ReadDefaultOptions().AudioTracks, resources.Content.Configuration.ReadDefaultOptions().AudioGroups) : null,
+                        _projectOptions.Audio,
                         _options.ShowTrackAudioControls, token);
                 _gameplay.TextSpeed = _settings.RuntimeSettings.TextSpeed;
                 _gameplay.IsNvlMode = false;
@@ -294,6 +297,7 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
             _settings,
             _localization,
             _options,
+            _projectOptions.Audio,
             _mediaRuntime.Instance,
             UpdateRunnerStateAsync,
             () => RefreshSlotsAsync(CancellationToken.None),

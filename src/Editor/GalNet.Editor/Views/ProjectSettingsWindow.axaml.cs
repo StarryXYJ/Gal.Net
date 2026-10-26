@@ -15,7 +15,7 @@ public partial class ProjectSettingsWindow : UrsaWindow
             if (_approved || DataContext is not ProjectSettingsPanelViewModel viewModel) return;
             args.Cancel = true;
             try { await viewModel.CommitDraftAsync(); _approved = true; Close(); }
-            catch (System.IO.InvalidDataException) { }
+            catch (System.IO.IOException) { }
         };
         Closed += (_, _) => (DataContext as System.IDisposable)?.Dispose();
     }

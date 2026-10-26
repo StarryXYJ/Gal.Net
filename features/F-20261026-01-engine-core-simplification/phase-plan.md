@@ -91,7 +91,7 @@ primitive/呈现仅借用 IGameContext，Engine 管理 IGameRuntime 与 IPrimiti
 | R1 | 执行协议与管理类型归位 | 已提交基线 | [x] verified |
 | R2 | 设置模型与模块配置解耦 | R1 | [x] verified |
 | R3 | 自定义音频分组与轨道控制 | R2 | [x] verified |
-| R4 | 自定义配置贯穿作者与运行链路 | R2、R3 | [ ] in-progress |
+| R4 | 自定义配置贯穿作者与运行链路 | R2、R3 | [x] verified |
 | R5 | 剥离可选领域与场景依赖 | R1–R4 | [ ] planned |
 | R6 | 统一参数描述与基础校验 | R5 | [ ] planned |
 | R7 | 收敛执行与异步生命周期重复 | R5、R6 | [ ] planned |
@@ -115,31 +115,14 @@ Engine 只接收/更新不可变 PlaybackOptions，音频只接收隔离轨道�
 
 1752 项测试通过，4 项既有符号链接权限失败、3 项跳过；完整解决方案构建、空白格式与 diff 检查通过。最终修正后的 Builtins 185 项全通过，Integration 123 通过/1 项权限失败。证据含 AudioConfigurationTests、AudioRuntimeTests、ProjectAudioSettingsTests、SampleLocalizationTests 与 GameInstallationTests；记录见 [summary](summary.md#r3自定义音频分组与轨道)，规范见 [runtime](../../docs/spec/runtime.md) 和[接入手册](../../docs/manual/new-presentation-layer.md)。原生/外进程环境项继续保留，完整自定义 section/领域归位归 R4/R5。
 
-### R4 — 自定义配置贯穿作者与运行链路
+### R4 — verified
 
-实施拆分：R4a、R4b verified；R4b-cleanup verified；R4c in-progress，先完成通用 section 命令和构建/导出校验，再完成 GUI/历史及宿主接入验证。每步独立验证提交，R4 仅在完整链路退出条件满足后勾选。
+版本化配置、通用 schema 表单和批量历史贯穿作者命令、保存、两种导出与安装加载；宿主显式投影自有 DTO，默认语言编辑仍归 I18n 面板。未知数据和缺省 section 的 Undo/Redo 无损。R4c2 产品净减 143 行，构建及 1091 项相关回归通过，3 项符号链接权限失败、2 项跳过；实际外部 Sample 的运行/Seek/停止通过，原生关闭超时继续纳入 R7/R8，不记为完整原生验收。
 
-- **目标/模块**：内容契约、Editor.Abstraction/Shared/UI、Storage.FileSystem、导出、Preview、安装加载与项目模板。
-- **任务**：解除 GameContent 和 Editor document 对完整固定 ProjectSettings 的绑定；明确最小内容描述、可选模块配置与项目自有 section 的归属。复用现有 schema/表单能力提供必要 section 适配，未理解的 JSON 保留。迁移默认模板、语言/变量声明等实际消费者，删除重复权威来源；需要派生副本时由一个权威源生成。只保留一套项目自有模型和映射示例，两种 Sample 宿主复用同一项目配置定义。
-- **验证/退出**：自定义 section 经打开→编辑→Undo/Redo→保存→导出→安装加载→运行/预览仍保留且生效；未知 section 编辑保存无损。作者校验与运行加载使用相同配置规则；明确发生变更的文件格式版本。补齐项目扩展手册。
-- **风险**：只加 JsonExtensionData、任意字典或把类型换成 object 不算完成。纯项目偏好可保留默认值；无效内容不能被默认配置掩盖。
-
-#### R4a — verified
-
-Graph 独自持久化变量声明，删除设置中的副本、同步和无用归一化入口；仓库 Load 只接收路径。868 项相关回归通过，4 项既有符号链接权限失败、2 项跳过；构建、locked restore、格式与 diff 检查通过，提交 `5a08d4f`。详见 [summary](summary.md#r4a变量单一数据源与仓库输入)。
-
-#### R4b — verified
-
-版本化配置 section/schema 取代 Core 固定 ProjectSettings；默认 DTO 归可选 Builtins，作者/加载边界验证所选 schema，未知 section 与未声明字段保留。1770 项通过、4 项既有符号链接权限失败、3 项跳过；解决方案构建、格式和 diff 检查通过。语言名称解析修正另提交 `2a92fb6`。详见 [summary](summary.md#r4b配置协议与默认模型归位)。R4c 及 R4 整体仍未完成。
-
-#### R4b-cleanup — verified
-
-配置统一普通 DTO/schema 路径，删除预留元数据、手写 JSON 处理和重复验证；产品代码净删 88 行，Core 配置 239→166 行。隔离解决方案构建/locked restore、774 项相关回归及格式/diff 检查通过，4 项既有符号链接权限失败、2 项跳过。详见 [summary](summary.md#r4b-精简)，R4c 进度见下。
-
-#### R4c — in-progress
-
-- [x] R4c1：通用配置补丁、构建/导出及外部调试 schema 传递；自有 DTO 经修改、保存、导出和安装加载验证通过。产品净减 20 行，1089 项通过、3 项既有符号链接权限失败、2 项跳过；构建/locked restore/格式检查通过，证据见 [summary](summary.md#r4c1通用配置命令与发布链路)。
-- [ ] R4c2：复用现有字段表单与项目历史完成 GUI 编辑，宿主显式投影自有配置；沿当前外部调试运行路径验收，不恢复已移除的内嵌预览。
+- [x] R4a：变量单一来源，`5a08d4f`。
+- [x] R4b：配置协议/默认模型归位，`1228f94`；精简 `6218d5f`。
+- [x] R4c1：通用命令与发布链路，`3d37f50`。
+- [x] R4c2：通用界面、批量历史和宿主投影；见 [summary](summary.md#r4c2通用表单历史与宿主投影)。
 
 ### R5 — 剥离可选领域与场景依赖
 

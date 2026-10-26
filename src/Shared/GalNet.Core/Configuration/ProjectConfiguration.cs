@@ -45,6 +45,22 @@ public sealed class ProjectConfiguration
     }
 
     public bool Remove(string id) => _sections.Remove(id);
+    public void Patch(ConfigurationSection section, IReadOnlyDictionary<string, JsonElement> values, IReadOnlyList<string>? remove = null)
+    {
+        var previous = _sections.GetValueOrDefault(section.Id);
+        if (previous is not null && previous.Version != section.Version)
+            throw new InvalidDataException($"Unsupported configuration version {previous.Version} for '{section.Id}'.");
+        var fields = section.Fields.Select(field => field.Id).ToHashSet(StringComparer.Ordinal);
+        if (values.Keys.Concat(remove ?? []).Any(id => !fields.Contains(id)))
+            throw new ArgumentException($"The patch contains undeclared fields in '{section.Id}'.");
+        var candidate = previous?.Data.EnumerateObject().ToDictionary(property => property.Name, property => property.Value, StringComparer.Ordinal) ?? new();
+        foreach (var id in remove ?? []) candidate.Remove(id);
+        foreach (var (id, value) in values) candidate[id] = value;
+        var data = new ProjectSectionData(section.Version, JsonSerializer.SerializeToElement(candidate));
+        section.Validate(data);
+        SetRaw(section.Id, data);
+    }
+
     public ProjectConfiguration Clone()
     {
         var clone = new ProjectConfiguration();

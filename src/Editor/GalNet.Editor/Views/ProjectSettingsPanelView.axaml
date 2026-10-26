@@ -2,9 +2,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="using:GalNet.Editor.MarkupExtensions"
              xmlns:vm="using:GalNet.Editor.ViewModels"
+             xmlns:services="using:GalNet.Editor.Services"
+             xmlns:forms="using:GalNet.Game.Controls.Forms"
              x:Class="GalNet.Editor.Views.ProjectSettingsPanelView"
              x:DataType="vm:ProjectSettingsPanelViewModel"
              Background="{DynamicResource SemiColorBackground0}">
+    <UserControl.Styles><StyleInclude Source="/Controls/AuthorFormStyles.axaml" /></UserControl.Styles>
     <Grid RowDefinitions="Auto,*,Auto" Margin="12">
         <TextBlock Grid.Row="0" Text="{loc:Localize Settings.Project.Title}"
                    FontSize="16" FontWeight="Bold"
@@ -15,66 +18,15 @@
             <StackPanel Spacing="8">
                 <TextBlock Text="{loc:Localize Settings.Project.Name}" />
                 <TextBox Name="ProjectNameInput" Text="{Binding ProjectName}" />
-                <TextBlock Text="{loc:Localize Settings.Project.DefaultResolution}"
-                           Foreground="{DynamicResource SemiColorText2}"
-                           FontSize="12" />
-                <ComboBox ItemsSource="{Binding ResolutionPresets}"
-                          Text="{Binding Resolution}"
-                          IsEditable="True"
-                          Foreground="{DynamicResource SemiColorText0}" />
-
-                <TextBlock Text="{loc:Localize Settings.Project.SaveSlotCount}"
-                           Foreground="{DynamicResource SemiColorText2}"
-                           FontSize="12"
-                           Margin="0,4,0,0" />
-                <NumericUpDown Value="{Binding SaveSlotCount}"
-                               Minimum="1" Maximum="999" Increment="1"
-                               Foreground="{DynamicResource SemiColorText0}" />
-
-                <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
-                    <TextBlock Text="{loc:Localize Settings.Project.AudioGroups}" />
-                    <Button Grid.Column="1" Content="{loc:Localize Settings.Project.AddGroup}" Command="{Binding AddAudioGroupCommand}" />
-                </Grid>
-                <ItemsControl ItemsSource="{Binding AudioGroups}">
+                <ItemsControl ItemsSource="{Binding Sections}">
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:AudioGroupEditorItem">
-                            <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="6" Margin="0,2">
-                                <TextBox Text="{Binding Id}" PlaceholderText="{loc:Localize Settings.Project.GroupId}" />
-                                <TextBox Grid.Column="1" Text="{Binding Name}" PlaceholderText="{loc:Localize Settings.Project.TrackName}" />
-                                <Button Grid.Column="2" Content="×" Command="{Binding RemoveCommand}" ToolTip.Tip="{loc:Localize Settings.Project.RemoveGroup}" />
-                            </Grid>
+                        <DataTemplate x:DataType="services:ConfigurationSectionEditor">
+                            <Expander Header="{Binding Id}" IsExpanded="True" HorizontalAlignment="Stretch">
+                                <forms:DtoEditorHost Item="{Binding Item}" Registry="{Binding Registry}" />
+                            </Expander>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-
-                <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
-                    <TextBlock Text="{loc:Localize Settings.Project.AudioTracks}" Foreground="{DynamicResource SemiColorText2}" FontSize="12" />
-                    <Button Grid.Column="1" Content="{loc:Localize Settings.Project.AddTrack}" Command="{Binding AddAudioTrackCommand}" />
-                </Grid>
-                <ItemsControl ItemsSource="{Binding AudioTracks}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:AudioTrackEditorItem">
-                            <Grid ColumnDefinitions="*,*,110,80,70,70,Auto,Auto" ColumnSpacing="6" Margin="0,2">
-                                <TextBox Grid.Column="0" Text="{Binding Id}" PlaceholderText="{loc:Localize Settings.Project.TrackId}" />
-                                <TextBox Grid.Column="1" Text="{Binding Name}" PlaceholderText="{loc:Localize Settings.Project.TrackName}" />
-                                <TextBox Grid.Column="2" Text="{Binding GroupId}" PlaceholderText="{loc:Localize Settings.Project.GroupId}" />
-                                <NumericUpDown Grid.Column="3" Value="{Binding DefaultGain}" ToolTip.Tip="{loc:Localize Settings.Project.Gain}" AutomationProperties.Name="{loc:Localize Settings.Project.Gain}" Minimum="0" Increment="0.05" />
-                                <NumericUpDown Grid.Column="4" Value="{Binding MaxVoices}" ToolTip.Tip="{loc:Localize Settings.Project.Voices}" AutomationProperties.Name="{loc:Localize Settings.Project.Voices}" Minimum="1" Increment="1" />
-                                <NumericUpDown Grid.Column="5" Value="{Binding MaxQueuedItems}" ToolTip.Tip="{loc:Localize Settings.Project.Queue}" AutomationProperties.Name="{loc:Localize Settings.Project.Queue}" Minimum="0" Increment="1" />
-                                <CheckBox Grid.Column="6" IsChecked="{Binding PreserveDuringCatchUp}" ToolTip.Tip="{loc:Localize Settings.Project.PreserveAudio}" AutomationProperties.Name="{loc:Localize Settings.Project.PreserveAudio}" />
-                                <Button Grid.Column="7" Content="×" Command="{Binding RemoveCommand}" ToolTip.Tip="{loc:Localize Settings.Project.RemoveTrack}" AutomationProperties.Name="{loc:Localize Settings.Project.RemoveTrack}" />
-                            </Grid>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <TextBlock Text="{loc:Localize Settings.Project.TargetLanguage}"
-                           Foreground="{DynamicResource SemiColorText2}"
-                           FontSize="12"
-                           Margin="0,4,0,0" />
-                <TextBox Text="{Binding TargetLocale}" IsReadOnly="True" ToolTip.Tip="{loc:Localize I18n.UsePanel}"
-                         Foreground="{DynamicResource SemiColorText0}"
-                         PlaceholderText="zh-CN" />
                 <Expander Header="{loc:Localize Debug.Configuration}">
                     <StackPanel Spacing="6">
                         <TextBox Text="{Binding DebugExecutable}" PlaceholderText="{loc:Localize Debug.Executable}"/>

@@ -51,7 +51,7 @@ public partial class ProjectSettingsPanelView : UserControl
         {
             args.Handled = true;
             try { await viewModel.CommitDraftAsync(); }
-            catch (System.IO.InvalidDataException) { }
+            catch (System.IO.IOException) { }
         }
     }
 }

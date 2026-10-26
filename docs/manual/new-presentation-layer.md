@@ -82,7 +82,7 @@ var view = registration.AddBuiltinImplementations(projectCatalog,
 
 `ProjectSchemas.Configurations` 可返回 `ProjectConfigurationSchema`；未声明时为空。通过 `ConfigurationSection<MyOptions>` 为普通 DTO 显式提供 FieldDescriptor。配置统一使用标准 JSON 序列化和属性 converter，不另设生成 DTO 编解码入口。版本默认为 1，领域校验可通过声明时的委托提供。
 
-通过 `content.Configuration.Read(section)` 取得独立 DTO，修改后用 `content.Configuration.Set(section, options)` 发布；读取缺省配置不会写文件。运行模块继续接收由 DTO 投影的小配置。Storage 加载通过 `GameContentLoadOptions.Configurations` 显式选择 schema，并通过 `SelectDefaultCulture` 提供文化代码。默认 Sample 的组合见 SampleCustomization.CreateHostOptions，默认字段定义见 DefaultProjectConfiguration；它们是可选示例，不由 Core/Runtime 自动选择。通用 section 编辑 UI、历史和自有配置宿主映射仍待 R4c2，调试沿外部宿主路径进行。
+通过 `content.Configuration.Read(section)` 取得独立 DTO，修改后用 `content.Configuration.Set(section, options)` 发布；读取缺省配置不会写文件。运行模块继续接收由 DTO 投影的小配置。Storage 加载通过 `GameContentLoadOptions.Configurations` 显式选择 schema，并通过 `SelectDefaultCulture` 提供文化代码。默认 Sample 的组合见 SampleCustomization.CreateHostOptions，默认字段定义见 DefaultProjectConfiguration；它们是可选示例，不由 Core/Runtime 自动选择。项目设置窗口按声明生成通用字段表单，复合值使用共享 JSON 编辑器；应用或保存全部时验证整份候选，一次提交可撤销的配置变更。未知数据保留，默认模型的语言声明继续在 I18n 面板维护。调试沿外部宿主路径进行。
 
 CLI 可用 `execute <project> <patch.json>` 修改已声明的 section。例如：
 
@@ -91,6 +91,8 @@ CLI 可用 `execute <project> <patch.json>` 修改已声明的 section。例如�
 ```
 
 `values` 写入原始 JSON，`null` 是显式空值；`remove` 删除字段，使读取时恢复 schema 或 DTO 默认值。同一字段同时出现时以 `values` 为准。整份候选通过字段和领域校验后才发布，未知 section/字段不能通过补丁写入，已有未知数据仍保留。CLI 构建、两种导出及 Editor 导出/外部调试构建均传入项目 schema；直接调用共享服务时，通过 `configurations` 参数显式选择声明，无效配置在替换既有产物前失败。
+
+默认 Avalonia 宿主通过 `AvaloniaGameHostOptions.SelectProjectOptions` 接收项目投影，返回 `AvaloniaProjectOptions` 的存档容量、默认语言和 `AudioConfiguration`。宿主启动时只投影一次，随后运行、重置偏好和重新开局复用这些简单值；它不读取 `DefaultProjectOptions`。Sample 在组合根显式完成默认示例模型的映射，自有 DTO 可替换该回调。
 
 ## 验证清单
 

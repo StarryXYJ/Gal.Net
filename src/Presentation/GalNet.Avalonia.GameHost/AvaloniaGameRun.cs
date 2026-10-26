@@ -1,4 +1,3 @@
-using GalNet.Contracts.Builtins;
 using GalNet.Avalonia.GameHost.Settings;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.ViewModels;
@@ -54,7 +53,7 @@ internal sealed class AvaloniaGameRun : IGameRun
     public static async Task<AvaloniaGameRun> CreateAsync(
         GamePageViewModel gameplay, GamePage page, GameResourceScope resources, AvaloniaGameResources visuals,
         PlayerSession saveSession, AvaloniaPlayerSettingsService playerSettings, ITextResolver textResolver, AvaloniaGameHostOptions options,
-        LibVLC? sharedLibVlc, Func<bool, string?, Task> updateStateAsync,
+        GalNet.Core.Audio.AudioConfiguration audioConfiguration, LibVLC? sharedLibVlc, Func<bool, string?, Task> updateStateAsync,
         Func<Task> runCompletedAsync, Func<Task> resetPresentationAsync,
         Func<Action, Task> onUiAsync, CancellationToken cancellationToken)
     {
@@ -63,7 +62,7 @@ internal sealed class AvaloniaGameRun : IGameRun
             (registration, presentation) => options.ConfigureExecution(registration, presentation, page, resources.Content),
             resources.Content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>()
                 .SelectMany(group => group.Entries).Select(entry => entry.Type), options.Presentation, sharedLibVlc,
-            audioConfiguration: new GalNet.Core.Audio.AudioConfiguration(resources.Content.Configuration.ReadDefaultOptions().AudioTracks, resources.Content.Configuration.ReadDefaultOptions().AudioGroups), cancellationToken: cancellationToken);
+            audioConfiguration: audioConfiguration, cancellationToken: cancellationToken);
         GameRun? run = null;
         AvaloniaGameRun? adapter = null;
         try

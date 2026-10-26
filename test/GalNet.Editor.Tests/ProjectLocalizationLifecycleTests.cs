@@ -103,9 +103,11 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 {
                     language.SelectedItem = editorSettings.AvailableCultures.Single(culture => culture.Name == locale);
                     window.UpdateLayout();
-                    var gain = settingsView.GetVisualDescendants().OfType<NumericUpDown>().First(input => ReferenceEquals(input.DataContext, panel.AudioTracks[0]));
+                    var gain = settingsView.GetVisualDescendants().OfType<TextBox>().Single(input => input.DataContext is GalNet.Game.Controls.Forms.FieldEditorContext context && context.Field.Id == "audioTracks");
                     var expectedGain = gains[gainIndex++];
-                    gain.Value = expectedGain;
+                    var tracks = project.Configuration.ReadDefaultOptions().AudioTracks;
+                    tracks[0] = tracks[0] with { DefaultGain = (float)expectedGain };
+                    gain.Text = JsonSerializer.Serialize(tracks, new JsonSerializerOptions(JsonSerializerDefaults.Web) { Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
                     await panel.SaveSettingsCommand.ExecuteAsync(null);
                     await workspace.SaveAsync();
                     using var json = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(project.RootPath, "settings.json")));
