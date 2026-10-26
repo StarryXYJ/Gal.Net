@@ -78,7 +78,7 @@ CharacterAuthoringService 以 catalog 为唯一角色身份来源，以项目 Ta
 
 标记 CharacterReference 的字符串字段使用专属输入框，根字段与嵌套表单共用语义注册。候选按姓名/key 不区分大小写匹配，最多显示 50 项；选择提交精确 ID。搜索后默认高亮第一项，候选打开且输入非空时，在输入框按 Enter 可直接采用高亮角色；也可用向下键进入候选列表后按 Enter 确认。候选关闭或没有匹配时的 Enter、直接输入失焦仍按精确 key、唯一精确姓名的顺序解析；同名歧义要求选择，其他非空文本创建角色。空白输入清空引用，不创建角色。输入法组合期间不拦截 Enter/Escape，组合完成后 Escape 还原草稿；过期表单、取消或已移除 Entry 不能继续创建角色。普通未标记字符串保持原提交行为。
 
-角色身份只来源于 catalog，ProjectSettings 不再包含 Speakers。没有旧角色候选、旧姓名迁移或导入兼容入口；未知 speaker ID 报告 character.unknown。原文/JSON 草稿冲突沿用受管理文档的校验与保留规则。
+角色身份只来源于 catalog，默认项目配置不包含 Speakers。没有旧角色候选、旧姓名迁移或导入兼容入口；未知 speaker ID 报告 character.unknown。原文/JSON 草稿冲突沿用受管理文档的校验与保留规则。
 
 ## 默认语言文本与稳定身份
 

@@ -155,7 +155,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         WriteTranslation(project, JsonSerializer.Serialize(new Dictionary<string, string> { [key] = "Cross-project" }), "I18n/en-US/lines.json");
         var clip = project.Services.GetRequiredService<GroupEntryAuthoringService>().Copy(item.Group, [item.Entry.StableId]);
         var projects = project.Services.GetRequiredService<IProjectService>(); await projects.CloseAsync();
-        var target = await projects.CreateAsync(Path.Combine(_root, "OtherLocalization"), "Other", new() { TargetLocale = new("en-US"), AvailableLocales = [new("en-US")] }, Contracts());
+        var target = await projects.CreateAsync(Path.Combine(_root, "OtherLocalization"), "Other", new DefaultProjectOptions { TargetLocale = new("en-US"), AvailableLocales = [new("en-US")] }.ToConfiguration(), Contracts());
         var group = target.Services.GetRequiredService<IEditorDocumentService>().Groups.First().Key;
         var copy = (await target.Services.GetRequiredService<GroupEntryAuthoringService>().PasteAsync(group, clip, null)).Single(); var copiedKey = copy.Source.Parameters["content"].GetString()!;
         Assert.That(copiedKey, Is.Not.EqualTo(key)); var store = target.Services.GetRequiredService<LocalizationDocumentStore>();

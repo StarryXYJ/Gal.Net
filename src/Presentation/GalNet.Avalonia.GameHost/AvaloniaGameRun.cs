@@ -1,9 +1,9 @@
+using GalNet.Contracts.Builtins;
 using GalNet.Avalonia.GameHost.Settings;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Runtime;
 using GalNet.Core.Services;
-using GalNet.Core.Settings;
 using GalNet.GameHost;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Logging;
@@ -63,7 +63,7 @@ internal sealed class AvaloniaGameRun : IGameRun
             (registration, presentation) => options.ConfigureExecution(registration, presentation, page, resources.Content),
             resources.Content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>()
                 .SelectMany(group => group.Entries).Select(entry => entry.Type), options.Presentation, sharedLibVlc,
-            audioConfiguration: new GalNet.Core.Audio.AudioConfiguration(resources.Content.Settings.AudioTracks, resources.Content.Settings.AudioGroups), cancellationToken: cancellationToken);
+            audioConfiguration: new GalNet.Core.Audio.AudioConfiguration(resources.Content.Configuration.ReadDefaultOptions().AudioTracks, resources.Content.Configuration.ReadDefaultOptions().AudioGroups), cancellationToken: cancellationToken);
         GameRun? run = null;
         AvaloniaGameRun? adapter = null;
         try

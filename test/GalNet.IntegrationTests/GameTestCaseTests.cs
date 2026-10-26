@@ -8,7 +8,6 @@ using GalNet.Core.Entry;
 using GalNet.Core.Execution;
 using GalNet.Core.Gallery;
 using GalNet.Core.Graph;
-using GalNet.Core.Settings;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
 using GalNet.Presentation.Abstractions.View;
@@ -52,7 +51,7 @@ public class GameTestCaseTests
             var variants = await assets.LoadImageVariantsCatalogAsync();
             await using var view = new GameRegistration().AddBuiltins(presenter, gallery: content.Gallery,
                 nvlPresenter: presenter, characters: content.Localization.Characters, imageVariants: variants,
-                audioConfiguration: new GalNet.Core.Audio.AudioConfiguration(content.Settings.AudioTracks, content.Settings.AudioGroups)).BuildView();
+                audioConfiguration: new GalNet.Core.Audio.AudioConfiguration(content.Configuration.ReadDefaultOptions().AudioTracks, content.Configuration.ReadDefaultOptions().AudioGroups)).BuildView();
             await using var engine = new GameEngine(content.Graph, view, localization, choicePresenter: presenter);
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             await engine.AdvanceAsync(timeout.Token);

@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using GalNet.Core.Entry;
@@ -25,7 +26,7 @@ public sealed class GameTextAuthoringService(LocalizationDocumentStore store, Pr
     private readonly Dictionary<string, GameTextDraft> _drafts = new(StringComparer.Ordinal);
     public IEditorLocalizationService Text => text;
     public event Action? Changed { add => content.Changed += value; remove => content.Changed -= value; }
-    public string Culture => content.CaptureWorking().Settings.TargetLocale.Code;
+    public string Culture => content.CaptureWorking().Configuration.ReadDefaultOptions().TargetLocale.Code;
     public string? Read(string key) => string.IsNullOrEmpty(key) ? null : query.Get()?.FindDirect(Culture, key)?.Text;
     public int Uses(string key) => query.Get()?.References.Count(reference => reference.Semantic == FieldValueSemantic.LocalizedText && reference.Key == key) ?? 0;
     public LocalizationTextTarget Capture(string key, string owner) => store.CaptureText(key.Length == 0 ? NewKey(owner) : key, newFile: $"I18n/{Culture}/authoring.json");

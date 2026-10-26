@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -106,7 +107,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
     private void LoadFromProject()
     {
         if (_projectService.Current is not { } project) return;
-        var settings = project.Settings;
+        var settings = project.Configuration.ReadDefaultOptions();
 
         _isLoading = true;
         ProjectName = project.Name;
@@ -166,16 +167,16 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
             try { locale = new Core.I18n.I18nLocale(TargetLocale).Code; }
             catch (Exception failure) when (failure is ArgumentException or FormatException)
             { throw new EditorOperationException("settings.localeInvalid", failure.Message, TargetLocale); }
-            if (locale != project.Settings.TargetLocale.Code)
+            if (locale != project.Configuration.ReadDefaultOptions().TargetLocale.Code)
                 throw new EditorOperationException("i18n.development", L["I18n.UsePanel"]);
-            var before = SettingsSnapshot.From(project.Name, project.Settings);
+            var before = SettingsSnapshot.From(project.Name, project.Configuration);
             var after = new SettingsSnapshot(ProjectName.Trim(), DefaultWidth, DefaultHeight, SaveSlotCount, locale, AudioTracks.Select(item => item.ToDefinition()).ToArray(), AudioGroups.Select(item => item.ToDefinition()).ToArray());
             _ = new AudioConfiguration(after.AudioTracks, after.AudioGroups);
             if (before.Matches(after)) { LoadFromProject(); return; }
             if (!NewProjectPanelViewModel.TryParseResolution($"{DefaultWidth}×{DefaultHeight}", out _, out _) || SaveSlotCount <= 0)
                 throw new EditorOperationException("settings.invalid", "Invalid project dimensions or save slot count.");
             var graph = project.Services.GetRequiredService<IEditorDocumentService>().CurrentDocument;
-            await _histories.Content.ExecuteAsync(new SettingsEdit(project.Settings, graph, before, after));
+            await _histories.Content.ExecuteAsync(new SettingsEdit(project.Configuration, graph, before, after));
             LoadFromProject();
             UpdateDirtyText();
             Log.Information("Project settings updated");
@@ -292,10 +293,10 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
     }
 
     private bool HasDraftChanges => _hasDraft && _projectService.Current is { } project &&
-        !SettingsSnapshot.From(project.Name, project.Settings).Matches(new((ProjectName ?? "").Trim(), DefaultWidth, DefaultHeight, SaveSlotCount,
+        !SettingsSnapshot.From(project.Name, project.Configuration).Matches(new((ProjectName ?? "").Trim(), DefaultWidth, DefaultHeight, SaveSlotCount,
             TargetLocale, AudioTracks.Select(item => item.ToDefinition()).ToArray(), AudioGroups.Select(item => item.ToDefinition()).ToArray()));
 
-    private sealed record SettingsEdit(Core.Settings.ProjectSettings Settings, EditorGraphDocument Graph, SettingsSnapshot Before, SettingsSnapshot After) : IUndoableEdit
+    private sealed record SettingsEdit(Core.Configuration.ProjectConfiguration Settings, EditorGraphDocument Graph, SettingsSnapshot Before, SettingsSnapshot After) : IUndoableEdit
     {
         public long RetainedBytes => System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(Before).LongLength + System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(After).LongLength;
         public string Description => "Change project name and settings";
@@ -313,18 +314,23 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
     private sealed record SettingsSnapshot(string Name, int Width, int Height, int SaveSlots, string Locale,
         IReadOnlyList<AudioTrackDefinition> AudioTracks, IReadOnlyList<AudioGroupDefinition> AudioGroups)
     {
-        public static SettingsSnapshot From(string name, Core.Settings.ProjectSettings settings) =>
-            new(name, settings.DefaultWidth, settings.DefaultHeight, settings.SaveSlotCount, settings.TargetLocale.Code,
+        public static SettingsSnapshot From(string name, Core.Configuration.ProjectConfiguration configuration)
+        {
+            var settings = configuration.ReadDefaultOptions();
+            return new(name, settings.DefaultWidth, settings.DefaultHeight, settings.SaveSlotCount, settings.TargetLocale.Code,
                 settings.AudioTracks.ToArray(), settings.AudioGroups.ToArray());
+        }
         public bool Matches(SettingsSnapshot other) =>
             Name == other.Name && Width == other.Width && Height == other.Height && SaveSlots == other.SaveSlots && Locale == other.Locale &&
             AudioTracks.SequenceEqual(other.AudioTracks) && AudioGroups.SequenceEqual(other.AudioGroups);
-        public void Apply(Core.Settings.ProjectSettings settings)
+        public void Apply(Core.Configuration.ProjectConfiguration configuration)
         {
+            var settings = configuration.ReadDefaultOptions();
             settings.DefaultWidth = Width; settings.DefaultHeight = Height; settings.SaveSlotCount = SaveSlots;
             settings.TargetLocale = new Core.I18n.I18nLocale(Locale);
             settings.AudioTracks = AudioTracks.ToList();
             settings.AudioGroups = AudioGroups.ToList();
+            configuration.Set(DefaultProjectConfiguration.Section, settings);
         }
     }
 }

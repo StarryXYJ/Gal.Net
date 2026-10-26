@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 
@@ -44,7 +45,7 @@ public sealed partial class LocalizationDocumentStore(IProjectContentSession con
     {
         RequireActive();
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
-        culture = System.Globalization.CultureInfo.GetCultureInfo(culture ?? content.CaptureWorking().Settings.TargetLocale.Code).Name;
+        culture = System.Globalization.CultureInfo.GetCultureInfo(culture ?? content.CaptureWorking().Configuration.ReadDefaultOptions().TargetLocale.Code).Name;
         var source = query.Get()?.FindDirect(culture, key);
         var path = source?.File ?? newFile ?? $"I18n/{culture}/authoring.json";
         path = LocalizationJson.Path(path);

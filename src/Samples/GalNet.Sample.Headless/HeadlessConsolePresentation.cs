@@ -1,6 +1,5 @@
 using GalNet.Core.Execution;
 using GalNet.Core.Scene;
-using GalNet.Core.Settings;
 using GalNet.Core.Text;
 using GalNet.Presentation.Abstractions.View;
 

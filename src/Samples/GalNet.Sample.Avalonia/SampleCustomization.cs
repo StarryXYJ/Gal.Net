@@ -10,6 +10,7 @@ using GalNet.Avalonia.Themes;
 using GalNet.Core.Assets;
 using GalNet.Core.Audio;
 using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins;
 using GalNet.Game.Controls.Forms;
 using GalNet.Media.LibVlc;
 using GalNet.Presentation.Abstractions.View;
@@ -78,6 +79,11 @@ internal static class SampleCustomization
         NoGameMessage = "Usage: GalNet.Sample.Avalonia <game-data-directory> [--profile <directory>]",
         CreateContentCatalogs = CreateContentCatalogs,
         AttachDebugRun = attachDebugRun,
+        Content = new GameContentLoadOptions
+        {
+            Configurations = ProjectSchemas.Configurations,
+            SelectDefaultCulture = configuration => configuration.ReadDefaultOptions().TargetLocale.Code
+        },
         ConfigureExecution = (registration, presentation, page, content) => ConfigureExecution(registration,
             presentation.Presenters, page, content, presentation.Effects, presentation.Audio,
             presentation.Video, presentation.AudioModule, presentation.ImageVariants)

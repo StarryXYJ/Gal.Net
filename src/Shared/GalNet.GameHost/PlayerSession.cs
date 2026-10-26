@@ -1,6 +1,5 @@
 using GalNet.Core.Gallery;
 using GalNet.Core.Runtime;
-using GalNet.Core.Settings;
 using GalNet.Runtime.Persistence;
 using GalNet.Runtime.Progress;
 using GalNet.Runtime.Variables;

@@ -31,14 +31,14 @@ public sealed class GameInstallationTests
             await File.WriteAllTextAsync(Path.Combine(project, "Assets", "hero.png.meta"), """{"id":"hero","type":"sprite","path":"hero.png","filter":"bilinear","compress":"none"}""");
             await File.WriteAllTextAsync(Path.Combine(project, "Graph", "graph.json"), """{"version":2,"name":"export-test","rootNodeId":"","nodes":[],"edges":[],"playerVariables":[],"saveVariables":[]}""");
             await File.WriteAllTextAsync(Path.Combine(project, "settings.json"), """
-                { "audioGroups": [{ "id": "environment", "name": "Environment" }], "audioTracks": [ { "id": "ambient", "groupId": "environment", "preserveDuringCatchUp": true, "defaultGain": 0.3, "maxVoices": 2, "overflowPolicy": "StopOldest" } ] }
+                { "version": 1, "sections": { "galnet.project": { "version": 1, "data": { "audioGroups": [{ "id": "environment", "name": "Environment" }], "audioTracks": [ { "id": "ambient", "groupId": "environment", "preserveDuringCatchUp": true, "defaultGain": 0.3, "maxVoices": 2, "overflowPolicy": "StopOldest" } ] } } } }
                 """);
 
             var development = await GameInstallation.OpenAsync(project);
             Assert.That(development.IsPackaged, Is.False);
             var developmentContent = await development.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync();
             Assert.That(developmentContent.Graph.Name, Is.EqualTo("export-test"));
-            Assert.That(developmentContent.Settings.AudioTracks.Single().Id, Is.EqualTo("ambient"));
+            Assert.That(developmentContent.Configuration.ReadDefaultOptions().AudioTracks.Single().Id, Is.EqualTo("ambient"));
             using (var sourceAssets = new AssetManager(development.CreateAssetProviders(resourceTypes)))
                 Assert.That((await sourceAssets.GetFileAsync("hero"))?.Path, Is.EqualTo("hero.png"));
 
@@ -55,11 +55,11 @@ public sealed class GameInstallationTests
             Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "Assets", "Paks", "000-base.pak")), Is.True);
             var installedContent = await installation.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync();
             Assert.That(installedContent.Graph.Name, Is.EqualTo("export-test"));
-            Assert.That(installedContent.Settings.AudioGroups.Single().Id, Is.EqualTo("environment"));
-            Assert.That(installedContent.Settings.AudioTracks.Single().GroupId, Is.EqualTo("environment"));
-            Assert.That(installedContent.Settings.AudioTracks.Single().PreserveDuringCatchUp, Is.True);
-            Assert.That(installedContent.Settings.AudioTracks.Single().DefaultGain, Is.EqualTo(.3f));
-            Assert.That(installedContent.Settings.AudioTracks.Single().OverflowPolicy, Is.EqualTo(GalNet.Core.Audio.AudioOverflowPolicy.StopOldest));
+            Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioGroups.Single().Id, Is.EqualTo("environment"));
+            Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioTracks.Single().GroupId, Is.EqualTo("environment"));
+            Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioTracks.Single().PreserveDuringCatchUp, Is.True);
+            Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioTracks.Single().DefaultGain, Is.EqualTo(.3f));
+            Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioTracks.Single().OverflowPolicy, Is.EqualTo(GalNet.Core.Audio.AudioOverflowPolicy.StopOldest));
 
             using var assets = new AssetManager(installation.CreateAssetProviders(resourceTypes));
             Assert.That((await assets.GetFileAsync("hero"))?.Path, Is.EqualTo("hero.png"));
@@ -123,7 +123,7 @@ public sealed class GameInstallationTests
             var translation = Path.Combine(external, "third-party.json");
             await File.WriteAllTextAsync(translation, """{"line":"preserved"}""");
             Assert.That(await GalpakInstaller.InstallAsync(package), Is.EqualTo(installed));
-            await CreatePackageAsync(package, files.Append(("settings.json", "{}"u8.ToArray())).ToArray());
+            await CreatePackageAsync(package, files.Append(("settings.json", """{"version":1,"sections":{}}"""u8.ToArray())).ToArray());
             Assert.ThrowsAsync<InvalidOperationException>(() => GalpakInstaller.InstallAsync(package));
             Assert.That(await File.ReadAllTextAsync(translation), Does.Contain("preserved"));
         }

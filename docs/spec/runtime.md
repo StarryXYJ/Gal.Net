@@ -98,7 +98,9 @@ Choice 节点由 Engine 求值并过滤可见选项，再通过 `IChoicePresente
 
 `GameRuntime` 是游戏事实的唯一来源：
 
-内容 provider 将项目与安装目录的 `settings.json` 解析为 `GameContent.Settings`，该作者内容模型暂由加载/编辑边界持有。宿主把轨道定义显式传入 BuiltinAudioModule，把 PlaybackOptions 传给 Engine；GameRuntime 和 IGameContext 不携带完整设置或设置容器。未配置音频模块轨道时为空，不隐式创建默认轨道。缺少项目文件仍由加载器采用默认作者设置，非法 JSON 明确拒绝。
+内容 provider 将项目与安装目录的 `settings.json` 解析为 `GameContent.Configuration`（Core.Configuration.ProjectConfiguration）。它是版本化的作者内容文档，保存 section ID、版本和 JSON；不含固定游戏设置模型。宿主通过 GameContentLoadOptions 显式提供配置 schema 和开发语言选择委托；Storage 不引用默认 DTO。文件缺省时返回空文档，读取 section 默认值不修改内容，未知 section/字段保留，非法信封或已声明配置拒绝加载。默认模板和 Sample 选择 Contracts.Builtins 的 DefaultProjectOptions；自有项目可声明自己的 section。通用 section 编辑与完整自有 DTO 预览接入仍在实施。
+
+宿主把轨道定义显式传入 BuiltinAudioModule，把 PlaybackOptions 传给 Engine；GameRuntime 和 IGameContext 不携带完整设置或设置容器。未配置音频模块轨道时为空，不隐式创建默认轨道。
 
 | 状态 | 说明 |
 | --- | --- |

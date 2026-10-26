@@ -209,7 +209,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
         return EditorDocumentCloner.Clone(new()
         {
             Graph = documents.CurrentDocument,
-            Settings = project.Settings,
+            Configuration = project.Configuration,
             GroupEntries = documents.LoadedProject.GroupEntries,
             Files = _files
         });
@@ -229,6 +229,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
                 throw new EditorOperationException("project.externalContracts", "Project contracts changed. Reopen the project to load the new contract safely.");
             if (!ExternalProjectSnapshotReader.IsCurrent(_project.RootPath, snapshot, _files.Values)) return ExternalReloadResult.Retry;
             if (ExternalProjectSnapshotReader.Same(snapshot.Files, _externalBaseline)) return ExternalReloadResult.Unchanged;
+            _project.Configurations.Validate(snapshot.Configuration);
             if (IsDirty && !discardLocalChanges) return ExternalReloadResult.LocalChanges;
             if (discardLocalChanges)
             {
@@ -241,7 +242,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
             }
             // All fallible disk inspection precedes the in-memory version transition.
             repository.AdoptExternalBaseline(snapshot.AuthorSources);
-            CopySettings(snapshot.Settings, _project.Settings);
+            _project.Configuration.ReplaceFrom(snapshot.Configuration);
             foreach (var group in _files.Values.Where(file => file.ManagedContent).GroupBy(file => file.Path, ProjectFilePaths.Comparer))
             {
                 var file = group.FirstOrDefault(file => file.Exists) ?? group.First();
@@ -268,13 +269,6 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
             return ExternalReloadResult.Reloaded;
         }
         finally { _saveGate.Release(); Refresh(); }
-    }
-
-    private static void CopySettings(GalNet.Core.Settings.ProjectSettings source, GalNet.Core.Settings.ProjectSettings target)
-    {
-        target.TargetLocale = source.TargetLocale; target.AvailableLocales = source.AvailableLocales;
-        target.SaveSlotCount = source.SaveSlotCount;
-        target.AudioTracks = source.AudioTracks; target.AudioGroups = source.AudioGroups; target.DefaultWidth = source.DefaultWidth; target.DefaultHeight = source.DefaultHeight;
     }
 
     private void AcceptPublication(ProjectSavePlan plan)
@@ -346,7 +340,8 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
                     throw new EditorOperationException("project.externalSettings", "Project settings changed outside the editor. Reload before saving.");
                 var content = repository.PrepareSave(project.RootPath, snapshot.Graph,
                     snapshot.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value));
-                settings = JsonSerializer.SerializeToUtf8Bytes(snapshot.Settings, JsonOptions);
+                project.Configurations.Validate(snapshot.Configuration);
+                settings = JsonSerializer.SerializeToUtf8Bytes(snapshot.Configuration, JsonOptions);
                 var writes = new Dictionary<string, byte[]>(content.Writes)
                 {
                     ["settings.json"] = settings,
@@ -466,7 +461,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
                 repository.ApplySave(project.RootPath, plan);
                 try
                 {
-                    change.Apply(new() { Graph = documents.CurrentDocument, Settings = project.Settings, GroupEntries = documents.LoadedProject.GroupEntries, Files = _files }, AuthorDocumentVersion.Working);
+                    change.Apply(new() { Graph = documents.CurrentDocument, Configuration = project.Configuration, GroupEntries = documents.LoadedProject.GroupEntries, Files = _files }, AuthorDocumentVersion.Working);
                     documents.SynchronizeGroups();
                 }
                 catch (Exception failure)
@@ -508,13 +503,14 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
 
     private ProjectSavePlan PrepareAuthorPlan(GalProject project, EditorProjectDocument snapshot, bool checkSettingsBaseline = true)
     {
+        project.Configurations.Validate(snapshot.Configuration);
         if (checkSettingsBaseline) CheckTrackedFiles();
         if (checkSettingsBaseline && !File.ReadAllBytes(Path.Combine(project.RootPath, "settings.json")).AsSpan().SequenceEqual(_settingsBaseline))
             throw new EditorOperationException("project.externalSettings", "Project settings changed outside the editor.");
         _ = Serialize(snapshot);
         var content = repository.PrepareSave(project.RootPath, snapshot.Graph,
             snapshot.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value));
-        var writes = new Dictionary<string, byte[]>(content.Writes) { ["settings.json"] = JsonSerializer.SerializeToUtf8Bytes(snapshot.Settings, JsonOptions) };
+        var writes = new Dictionary<string, byte[]>(content.Writes) { ["settings.json"] = JsonSerializer.SerializeToUtf8Bytes(snapshot.Configuration, JsonOptions) };
         foreach (var file in snapshot.Files.Values.Where(file => file.Exists && file.ManagedContent)) writes[file.Path] = file.Data;
         var previous = JsonSerializer.Deserialize<EditorProjectDocument>(_baseline, JsonOptions)!;
         var removed = previous.Files.Values.Where(file => file.ManagedContent && file.Exists &&

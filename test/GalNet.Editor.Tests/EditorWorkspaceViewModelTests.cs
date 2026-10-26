@@ -9,7 +9,7 @@ using Avalonia.VisualTree;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.Parameters;
-using GalNet.Core.Settings;
+using GalNet.Core.Configuration;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Extensibility;
 using GalNet.Editor.Abstraction.Project;
@@ -212,7 +212,7 @@ public sealed class EditorWorkspaceViewModelTests
             "test",
             "Test Project",
             "C:\\test-project",
-            new ProjectSettings(),
+            new ProjectConfiguration(),
             new EditorProjectState(),
             new FakeScope()));
         var documents = new EditorDocumentService();
@@ -262,7 +262,7 @@ public sealed class EditorWorkspaceViewModelTests
                     "test",
                     "Test Project",
                     _root,
-                    new ProjectSettings(),
+                    new ProjectConfiguration(),
                     new EditorProjectState(),
                     projectScope));
             }
@@ -283,7 +283,7 @@ public sealed class EditorWorkspaceViewModelTests
             var variableDefinitions = new VariableDefinitionService(DocumentService);
             var repository = new FakeDocumentRepository(loaded);
             DocumentService.Load(loaded);
-            File.WriteAllText(Path.Combine(_root, "settings.json"), System.Text.Json.JsonSerializer.Serialize(ProjectService.Current!.Settings));
+            File.WriteAllText(Path.Combine(_root, "settings.json"), System.Text.Json.JsonSerializer.Serialize(ProjectService.Current!.Configuration));
             _content = new ProjectContentSession(DocumentService, repository);
             _content.Open(ProjectService.Current!);
             ProjectService.Content = _content;
@@ -340,7 +340,7 @@ public sealed class EditorWorkspaceViewModelTests
 
         public void SetCurrent(GalProject project) => Current = project;
         public Task<GalProject> OpenAsync(string projectPath) => throw new NotSupportedException();
-        public Task<GalProject> CreateAsync(string projectPath, string name, ProjectSettings settings, string contractsDirectory) => throw new NotSupportedException();
+        public Task<GalProject> CreateAsync(string projectPath, string name, ProjectConfiguration settings, string contractsDirectory) => throw new NotSupportedException();
         public Task CloseAsync() => Task.CompletedTask;
         public Task SaveAsync() { SaveCount++; return Content?.SaveAsync() ?? Task.CompletedTask; }
         public IReadOnlyList<RecentProjectInfo> GetRecentProjects() => [];

@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using System.Globalization;
 using System.Text.Json.Nodes;
 using GalNet.Core.I18n;
@@ -41,8 +42,8 @@ public sealed class GameLocalizationPanelService(IProjectContentSession content,
         Active();
         projects.Current!.Services.GetRequiredService<GalNet.Editor.Dock.EditorDockFactory>().NavigateLocalization(reference.Owner, reference.EntryId);
     }
-    private string Source => content.CaptureWorking().Settings.TargetLocale.Code;
-    public IReadOnlyList<string> Languages => new[] { Source }.Concat(content.CaptureWorking().Settings.AvailableLocales.Select(locale => locale.Code))
+    private string Source => content.CaptureWorking().Configuration.ReadDefaultOptions().TargetLocale.Code;
+    public IReadOnlyList<string> Languages => new[] { Source }.Concat(content.CaptureWorking().Configuration.ReadDefaultOptions().AvailableLocales.Select(locale => locale.Code))
         .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
     private void Active() { _ = store.CaptureFile(LocalizationJson.MetadataPath); }
     private static string Normalize(string value)
@@ -63,7 +64,7 @@ public sealed class GameLocalizationPanelService(IProjectContentSession content,
     }
     public LocalizationTableSnapshot Snapshot(string category)
     {
-        Active(); var document = content.CaptureWorking(); var index = query.Get()!; var source = document.Settings.TargetLocale.Code;
+        Active(); var document = content.CaptureWorking(); var index = query.Get()!; var source = document.Configuration.ReadDefaultOptions().TargetLocale.Code;
         var categories = new List<LocalizationCategory> { new("characters", text["I18n.Characters"]) };
         categories.AddRange(document.Graph.Nodes.Where(node => node.Type == "Group").Select(node => new LocalizationCategory(node.Id, node.Name)));
         categories.Add(new("branches", text["I18n.Branches"]));
@@ -198,10 +199,11 @@ public sealed class GameLocalizationPanelService(IProjectContentSession content,
     }
     private Task SetLanguagesAsync(string source, IReadOnlyList<string> languages, Action? validate = null)
     {
-        Active(); var settings = projects.Current!.Settings;
-        return histories.Content.ExecuteAsync(new LanguageEdit(settings, settings.TargetLocale.Code, settings.AvailableLocales.Select(locale => locale.Code).ToArray(), source, languages.ToArray(), Active, validate));
+        Active(); var configuration = projects.Current!.Configuration;
+        var settings = configuration.ReadDefaultOptions();
+        return histories.Content.ExecuteAsync(new LanguageEdit(configuration, settings.TargetLocale.Code, settings.AvailableLocales.Select(locale => locale.Code).ToArray(), source, languages.ToArray(), Active, validate));
     }
-    private sealed record LanguageEdit(GalNet.Core.Settings.ProjectSettings Settings, string BeforeSource, string[] Before, string AfterSource, string[] After, Action Active, Action? Validate) : IUndoableEdit
+    private sealed record LanguageEdit(GalNet.Core.Configuration.ProjectConfiguration Configuration, string BeforeSource, string[] Before, string AfterSource, string[] After, Action Active, Action? Validate) : IUndoableEdit
     {
         public string Description => "Change project languages";
         public EditorText DisplayText => new("History.Languages");
@@ -211,9 +213,11 @@ public sealed class GameLocalizationPanelService(IProjectContentSession content,
         private void Apply(string expectedSource, string[] expected, string source, string[] value)
         {
             Active();
-            if (Settings.TargetLocale.Code != expectedSource || !Settings.AvailableLocales.Select(locale => locale.Code).SequenceEqual(expected))
+            var settings = Configuration.ReadDefaultOptions();
+            if (settings.TargetLocale.Code != expectedSource || !settings.AvailableLocales.Select(locale => locale.Code).SequenceEqual(expected))
                 throw new EditorOperationException("i18n.stale", "Project languages changed.");
-            Settings.TargetLocale = new I18nLocale(source); Settings.AvailableLocales = value.Select(code => new I18nLocale(code)).ToList();
+            settings.TargetLocale = new I18nLocale(source); settings.AvailableLocales = value.Select(code => new I18nLocale(code)).ToList();
+            Configuration.Set(DefaultProjectConfiguration.Section, settings);
         }
     }
 }

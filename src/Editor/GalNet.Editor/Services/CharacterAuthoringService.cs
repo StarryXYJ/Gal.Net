@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using GalNet.Core.Entry;
@@ -30,7 +31,7 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
     public IReadOnlyList<CharacterRow> Rows()
     {
         var index = Index;
-        var culture = content.CaptureWorking().Settings.TargetLocale.Code;
+        var culture = content.CaptureWorking().Configuration.ReadDefaultOptions().TargetLocale.Code;
         var counts = index.References.Where(reference => reference.Semantic == FieldValueSemantic.CharacterReference)
             .GroupBy(reference => reference.Key, StringComparer.Ordinal).ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
         return index.Characters.Select(character => new CharacterRow(character.Id, character.DisplayNameKey,
@@ -64,7 +65,7 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
     private static JsonObject Find(JsonArray array, string id) => array.Select(node => node!.AsObject()).Single(node => node["id"]!.GetValue<string>() == id);
     private async Task EnsureFilesAsync()
     {
-        var locale = content.CaptureWorking().Settings.TargetLocale.Code;
+        var locale = content.CaptureWorking().Configuration.ReadDefaultOptions().TargetLocale.Code;
         var files = new[] { store.CaptureFile(LocalizationJson.CatalogPath), store.CaptureFile($"I18n/{locale}/characters.json") };
         var missing = files.Where(file => !file.Exists).Select(file => new LocalizationFilePatch(file, file.Data)).ToArray();
         if (missing.Length > 0) await store.Prepare(missing).ApplyAsync(true);
@@ -109,7 +110,7 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
         if (array.Any(node => node!["id"]!.GetValue<string>() == key)) throw Error("character.duplicate");
         var nameKey = "character." + Guid.NewGuid().ToString("N") + ".name";
         array.Add(new JsonObject { ["id"] = key, ["displayNameKey"] = nameKey });
-        var target = store.CaptureText(nameKey, newFile: $"I18n/{content.CaptureWorking().Settings.TargetLocale.Code}/characters.json");
+        var target = store.CaptureText(nameKey, newFile: $"I18n/{content.CaptureWorking().Configuration.ReadDefaultOptions().TargetLocale.Code}/characters.json");
         await content.CommitFileDraftsAsync(target.File.Id);
         var patches = new[] { new LocalizationFilePatch(file, LocalizationJson.WriteLike(file.Data, array)), store.PrepareText(target, name) };
         await authoring.ApplyAsync(store.Prepare(patches), key, "History.Character");
@@ -191,7 +192,7 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
                 await EnsureFilesAsync();
                 foreach (var name in needed.Keys.ToArray()) { needed[name] = await store.ReserveCharacterKeyAsync(); Current(); }
                 var file = store.CaptureFile(LocalizationJson.CatalogPath); var array = ReadCatalog(file);
-                var nameFile = store.CaptureFile($"I18n/{content.CaptureWorking().Settings.TargetLocale.Code}/characters.json");
+                var nameFile = store.CaptureFile($"I18n/{content.CaptureWorking().Configuration.ReadDefaultOptions().TargetLocale.Code}/characters.json");
                 await content.CommitFileDraftsAsync(nameFile.Id); Current(); nameFile = store.CaptureFile(nameFile.Path);
                 var namesBytes = nameFile.Data;
                 foreach (var (name, id) in needed)

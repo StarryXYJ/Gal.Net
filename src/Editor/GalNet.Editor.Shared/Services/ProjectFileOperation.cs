@@ -297,7 +297,7 @@ public sealed partial class ProjectFileOperation : IDisposable
                         if (values.Any(value => text.Contains(value, StringComparison.OrdinalIgnoreCase))) references.Add(new("group/" + pair.Key + "/entry/" + entry.StableId, parameter.Key, values.Contains(text) && editor?.Contains("asset", StringComparison.OrdinalIgnoreCase) == true));
                 }
         }
-        if (Strings(JsonSerializer.SerializeToElement(document.Settings)).Any(text => values.Any(value => text.Contains(value, StringComparison.OrdinalIgnoreCase))))
+        if (Strings(JsonSerializer.SerializeToElement(document.Configuration)).Any(text => values.Any(value => text.Contains(value, StringComparison.OrdinalIgnoreCase))))
             references.Add(new("settings.json", "custom", false));
         foreach (var file in document.Files.Values.Where(file => file.Exists && file.ManagedContent && !_roots.Any(root => ProjectFilePaths.Within(file.Path, root))))
         {

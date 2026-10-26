@@ -92,14 +92,14 @@ internal static class Program
             var entryCatalog = projectSchema.Catalog;
             if (verb == "project.apply")
             {
-                var applied = await new ProjectApplyService(projectPath, entryCatalog).ApplyAsync(invocation.Positionals[1], invocation.Has("--dry-run"));
+                var applied = await new ProjectApplyService(projectPath, entryCatalog, configurations: projectSchema.Configurations).ApplyAsync(invocation.Positionals[1], invocation.Has("--dry-run"));
                 WriteJson(applied);
                 return applied.Success ? 0 : 5;
             }
             if (verb == "project.build") return await BuildAsync(projectPath, args, entryCatalog);
             if (verb == "project.export") return await ExportAsync(projectPath, args, entryCatalog);
             if (verb == "project.export-directory") return await ExportDirectoryAsync(projectPath, args, entryCatalog);
-            var edits = new ProjectEditService(projectPath, entryCatalog);
+            var edits = new ProjectEditService(projectPath, entryCatalog, projectSchema.Configurations);
             if (verb is "project.rename" or "group.create" or "group.rename" or "group.delete")
             {
                 IProjectEditCommand command = verb switch

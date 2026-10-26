@@ -20,7 +20,7 @@ public sealed class AuthoringDraftPersistenceTests
     {
         _root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "GalNet-drafts-" + Guid.NewGuid())).FullName;
         _catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
-        Put("Graph/graph.json", Graph); Put("settings.json", "{}");
+        Put("Graph/graph.json", Graph); Put("settings.json", """{"version":1,"sections":{}}""");
         Put(Source, """{"version":2,"kind":"Raw","entries":[]}""");
     }
     [TearDown] public void TearDown() => Directory.Delete(_root, true);

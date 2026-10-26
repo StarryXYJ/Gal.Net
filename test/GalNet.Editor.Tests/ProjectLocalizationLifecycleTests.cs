@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using System.Globalization;
 using System.Text.Json;
 using Avalonia;
@@ -31,7 +32,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var projects = services.GetRequiredService<IProjectService>();
             var audio = GalNet.Contracts.Builtins.BuiltinAudioDefaults.Create();
             var project = await projects.CreateAsync(Path.Combine(_root, "Localized"), "Authored 名称",
-                new() { AudioGroups = audio.Groups.ToList(), AudioTracks = audio.Tracks.ToList() }, Contracts());
+                new DefaultProjectOptions { AudioGroups = audio.Groups.ToList(), AudioTracks = audio.Tracks.ToList() }.ToConfiguration(), Contracts());
             var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
             var panel = project.Services.GetRequiredService<ProjectSettingsPanelViewModel>();
             var page = project.Services.GetRequiredService<EditorPageViewModel>();
@@ -88,7 +89,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     Assert.That(JsonSerializer.Serialize(content.CaptureWorking()), Is.EqualTo(snapshot));
                     Assert.That(content.IsDirty, Is.EqualTo(beforeDirty));
                     Assert.That(history.UndoDescription, Is.EqualTo(undo));
-                    Assert.That(project.Settings.TargetLocale.Code, Is.EqualTo("zh-CN"));
+                    Assert.That(project.Configuration.ReadDefaultOptions().TargetLocale.Code, Is.EqualTo("zh-CN"));
                     if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } artifacts)
                     {
                         using var frame = window.CaptureRenderedFrame(); frame!.Save(Path.Combine(artifacts, "p2i-workspace-" + locale + ".png"));
@@ -108,7 +109,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     await panel.SaveSettingsCommand.ExecuteAsync(null);
                     await workspace.SaveAsync();
                     using var json = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(project.RootPath, "settings.json")));
-                    Assert.That(json.RootElement.GetProperty("audioTracks")[0].GetProperty("defaultGain").GetDouble(), Is.EqualTo((double)expectedGain).Within(0.00001));
+                    Assert.That(json.RootElement.GetProperty("sections").GetProperty("galnet.project").GetProperty("data").GetProperty("audioTracks")[0].GetProperty("defaultGain").GetDouble(), Is.EqualTo((double)expectedGain).Within(0.00001));
                 }
             }
             finally

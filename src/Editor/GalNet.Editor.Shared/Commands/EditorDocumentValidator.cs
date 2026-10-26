@@ -5,11 +5,11 @@ namespace GalNet.Editor.Shared.Commands;
 
 public sealed class EditorDocumentValidator
 {
-    public static ValidationResult Validate(EditorProjectDocument document)
+    public static ValidationResult Validate(EditorProjectDocument document, GalNet.Core.Configuration.ProjectConfigurationSchema? configurations = null)
     {
         var diagnostics = new List<EditorDiagnostic>();
-        try { _ = new GalNet.Core.Audio.AudioConfiguration(document.Settings.AudioTracks, document.Settings.AudioGroups); }
-        catch (InvalidDataException error) { diagnostics.Add(EditorDiagnostic.Error("settings.audio.invalid", error.Message, "settings.json")); }
+        try { configurations?.Validate(document.Configuration); }
+        catch (InvalidDataException error) { diagnostics.Add(EditorDiagnostic.Error("settings.configuration.invalid", error.Message, "settings.json")); }
         AddDuplicateDiagnostics(document.Graph.Nodes.Select(node => node.Id), "graph.node.duplicateId", "node", diagnostics);
         AddDuplicateDiagnostics(document.Graph.Edges.Select(edge => edge.Id), "graph.edge.duplicateId", "edge", diagnostics);
         if (document.Graph.Nodes.Any(node => string.IsNullOrWhiteSpace(node.Id)))

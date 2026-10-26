@@ -1,12 +1,14 @@
 using System.Text.Json;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
+using GalNet.Core.Configuration;
 using GalNet.Core.Primitives;
 
 namespace GalNet.Project.Contracts;
 
 public static class ProjectSchemas
 {
+    public static ProjectConfigurationSchema Configurations { get; } = DefaultProjectConfiguration.Schema;
     public static IReadOnlyList<IEntryModule> Modules { get; } = Array.AsReadOnly<IEntryModule>(
     [
         BuiltinSchemas.CreateDialogueModule(),

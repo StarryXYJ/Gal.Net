@@ -125,3 +125,5 @@ Sample 继续只声明音乐、音效、语音三个分组，默认设置 UI 按
 R1–R3 已按计划实现并验证，相关当前事实已同步 docs/spec/manual；其余目标尚未实现，不视为当前规范。上轮提交及各阶段环境验收限制以 summary.md 为准。
 
 R4 按可验证依赖拆分：R4a 先删除 settings 中的变量声明副本与仓库 Load 的无用名称/设置输入；Graph 是唯一变量持久源。R4b 再落地版本化配置 section 协议、项目契约的 schema 声明和默认模型归属；R4c 验证编辑/历史/保存/导出/安装/预览与项目自有 DTO。R4a 不等于完整自定义配置链路完成，GameContent 与作者模型尚存的固定绑定继续保留为 R4b/R4c 工作。
+
+R4b 实施边界：Core 只提供版本化配置文档和 section 描述协议，值仍由项目 DTO/schema 定义，复用 FieldDescriptor/ValueValidation；它是作者/内容交换数据，不是运行时服务容器。读取不写默认值，提交前验证，未知 section/字段保留。默认项目 DTO 归可选 Contracts.Builtins，组合根显式投影；GameContent/作者聚合只持有配置文档。项目契约公开 Configurations 目录；加载器接收目录与开发语言选择委托，不依赖默认 DTO。R4c 补齐通用 section 编辑 UI、历史和最终自有 DTO 接入验证。

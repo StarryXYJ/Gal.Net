@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using System.Text.Json;
 using GalNet.Core.I18n;
 using GalNet.Editor.Abstraction.Commands;
@@ -20,6 +21,7 @@ public sealed partial class BuiltInEditorCommandHandler
     {
         if (command.Values.Count == 0)
             return Error("project.settings.emptyPatch", "At least one project setting is required.");
+        var settings = document.Configuration.ReadDefaultOptions();
         foreach (var (key, value) in command.Values)
         {
             try
@@ -27,19 +29,19 @@ public sealed partial class BuiltInEditorCommandHandler
                 switch (key)
                 {
                     case "defaultWidth":
-                        document.Settings.DefaultWidth = PositiveInt(value, key);
+                        settings.DefaultWidth = PositiveInt(value, key);
                         break;
                     case "defaultHeight":
-                        document.Settings.DefaultHeight = PositiveInt(value, key);
+                        settings.DefaultHeight = PositiveInt(value, key);
                         break;
                     case "saveSlotCount":
-                        document.Settings.SaveSlotCount = NonNegativeInt(value, key);
+                        settings.SaveSlotCount = NonNegativeInt(value, key);
                         break;
                     case "targetLocale":
                         var locale = new I18nLocale(value.GetString() ?? throw new JsonException("A locale string is required."));
-                        document.Settings.TargetLocale = locale;
-                        if (!document.Settings.AvailableLocales.Contains(locale))
-                            document.Settings.AvailableLocales.Add(locale);
+                        settings.TargetLocale = locale;
+                        if (!settings.AvailableLocales.Contains(locale))
+                            settings.AvailableLocales.Add(locale);
                         break;
                     default:
                         return Error("project.settings.unknownField", $"Project setting '{key}' is not editable through this command.");
@@ -50,6 +52,7 @@ public sealed partial class BuiltInEditorCommandHandler
                 return Error("project.settings.invalidValue", $"Invalid value for '{key}': {exception.Message}");
             }
         }
+        document.Configuration.Set(DefaultProjectConfiguration.Section, settings);
         return Success($"Updated {command.Values.Count} project setting(s).", "History.ProjectSettings.Patch", ["project/settings"], command.Values.Count);
     }
 

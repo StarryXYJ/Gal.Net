@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using GalNet.Core.I18n;
-using GalNet.Core.Settings;
 
 namespace GalNet.Editor.Abstraction.Settings;
 

@@ -35,6 +35,8 @@ public sealed class EditorGameDataProvider : IGameContentProvider
     public Task<GameContent> LoadAsync(CancellationToken cancellationToken = default)
     {
         var project = _projectService.Current ?? throw new InvalidOperationException("A project must be open before preview data is requested.");
+        var configuration = project.Configuration.Clone();
+        project.Configurations.Validate(configuration);
         var directory = project.Services.GetRequiredService<EditorWorkspaceViewModel>().BuildPreviewData();
         var graph = GraphLoader.LoadFromJson(File.ReadAllText(Path.Combine(directory, "graph.json")));
         foreach (var group in graph.Nodes.OfType<GalNet.Core.Graph.Group>())
@@ -45,6 +47,6 @@ public sealed class EditorGameDataProvider : IGameContentProvider
         using var assets = new LocalFileProvider(project.AssetsPath, _resourceTypes, optional: true);
         using var archive = assets.OpenArchive("assets");
         var gallery = new GalleryCatalogCompiler(_resourceTypes, _galleryTypes).Compile(archive.AssetIds.Select(id => archive.GetAsset(id)!.Metadata));
-        return Task.FromResult(new GameContent { Graph = graph, AssetRoot = project.AssetsPath, Gallery = gallery });
+        return Task.FromResult(new GameContent { Graph = graph, AssetRoot = project.AssetsPath, Gallery = gallery, Configuration = configuration });
     }
 }

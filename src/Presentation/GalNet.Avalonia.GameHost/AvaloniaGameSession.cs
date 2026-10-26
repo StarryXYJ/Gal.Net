@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Avalonia.GameHost.Settings;
@@ -88,7 +89,7 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
         {
             var catalogs = _options.CreateContentCatalogs();
             var resources = await GameResourceScope.OpenAsync(gameDirectory,
-                catalogs.Resources, catalogs.Gallery, cancellationToken);
+                catalogs.Resources, catalogs.Gallery, _options.Content, cancellationToken);
             profileDirectory ??= Path.Combine(resources.GameDirectory, ".galnet");
             PlayerSession? saveSession = null;
             AvaloniaGameResources? visuals = null;
@@ -99,7 +100,7 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
                 visuals = await AvaloniaGameResources.CreateAsync(resources.Assets,
                     _options.SelectTexturePreloads, _options.SelectEffectPrograms, cancellationToken);
                 saveSession = await FilePlayerSession.OpenAsync(profileDirectory, resources.Content.Gallery,
-                    resources.Content.Settings.SaveSlotCount, cancellationToken);
+                    resources.Content.Configuration.ReadDefaultOptions().SaveSlotCount, cancellationToken);
                 galleryResources = await AssetGalleryResourceResolver.CreateAsync(resources.Assets,
                     resources.Content.Gallery, cancellationToken, resources.MediaFiles);
             }
@@ -135,10 +136,10 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
 
             await RefreshSlotsAsync(cancellationToken);
             if (!await _startup.InitializeAsync(saveSession.Variables,
-                    resources.Content.Settings.TargetLocale.Code, selectLanguage, cancellationToken))
+                    resources.Content.Configuration.ReadDefaultOptions().TargetLocale.Code, selectLanguage, cancellationToken))
                 throw new OperationCanceledException("Language selection was cancelled.", cancellationToken);
             await _settings.AttachAsync(saveSession.Variables, new GameSettings(),
-                new(resources.Content.Settings.AudioTracks, resources.Content.Settings.AudioGroups), _options.ShowTrackAudioControls, cancellationToken);
+                new(resources.Content.Configuration.ReadDefaultOptions().AudioTracks, resources.Content.Configuration.ReadDefaultOptions().AudioGroups), _options.ShowTrackAudioControls, cancellationToken);
             await _settings.RestoreDisplayAsync(cancellationToken);
 
             IsReady = true;
@@ -191,7 +192,7 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
             {
                 if (saveSession is not null)
                     await _settings.AttachAsync(saveSession.Variables, new GameSettings(),
-                        _resources is { } resources ? new(resources.Content.Settings.AudioTracks, resources.Content.Settings.AudioGroups) : null,
+                        _resources is { } resources ? new(resources.Content.Configuration.ReadDefaultOptions().AudioTracks, resources.Content.Configuration.ReadDefaultOptions().AudioGroups) : null,
                         _options.ShowTrackAudioControls, token);
                 _gameplay.TextSpeed = _settings.RuntimeSettings.TextSpeed;
                 _gameplay.IsNvlMode = false;

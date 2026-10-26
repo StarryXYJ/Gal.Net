@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using System.Globalization;
 using DynamicLocalization.Core.Providers;
 using GalNet.Core.Services;
@@ -27,7 +28,7 @@ public sealed class GameLocalizationProvider : ITextResolver, ILocalizationProvi
             provider.LoadJsonString(source.Json, source.Culture);
             sources.Add(Adapt(provider, CultureInfo.GetCultureInfo(source.Culture)));
         }
-        _resolver = new GameTextResolver(sources, content.Settings.TargetLocale.ToCultureInfo(), currentCulture);
+        _resolver = new GameTextResolver(sources, content.Configuration.ReadDefaultOptions().TargetLocale.ToCultureInfo(), currentCulture);
     }
 
     public string Name => "Sample.Game";

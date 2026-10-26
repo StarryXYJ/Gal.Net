@@ -11,7 +11,8 @@ using GalNet.Editor.Shared.Services;
 namespace GalNet.Editor.Shared.Commands;
 
 /// <summary>Optimistic, all-or-compensated publication of externally prepared project files.</summary>
-public sealed class ProjectApplyService(string root, IEntryCatalog catalog, AuthorFileTransaction? transaction = null)
+public sealed class ProjectApplyService(string root, IEntryCatalog catalog, AuthorFileTransaction? transaction = null,
+    GalNet.Core.Configuration.ProjectConfigurationSchema? configurations = null)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     { UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow, PropertyNameCaseInsensitive = false, RespectNullableAnnotations = true };
@@ -98,7 +99,7 @@ public sealed class ProjectApplyService(string root, IEntryCatalog catalog, Auth
             // Empty descriptor folders participate in image-variants validation too.
             CopyEmptyAssetDirectories(reader, candidate);
             _ = DirectProjectPersistence.LoadSettings(candidate);
-            var validation = new ProjectValidationService(candidate).Validate(catalog: catalog);
+            var validation = new ProjectValidationService(candidate).Validate(catalog: catalog, configurations: configurations);
             var referenceDiagnostics = validation.Success ? RemovedReferences(reader, candidate, finalFiles, targets, plan.Deletes) : [];
             var report = new ProjectApplyReport(dryRun, plan.Copies.Keys.Order(StringComparer.Ordinal).ToArray(), plan.Deletes.Order(StringComparer.Ordinal).ToArray(),
                 contentHashes, (ProjectValidationReport)validation.Data!);

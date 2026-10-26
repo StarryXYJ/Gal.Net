@@ -21,7 +21,7 @@ public sealed class ProjectAuthoringSafetyTests
         _catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
         Put("Graph/graph.json", """{"version":2,"name":"Original","rootNodeId":"entry","nodes":[{"id":"entry","name":"Entry","type":"Entry"},{"id":"a","name":"A","type":"Group","file":"groups/a.rawgalgroup"}],"edges":[{"id":"edge","fromNodeId":"entry","fromOutlet":0,"toNodeId":"a"}],"playerVariables":[],"saveVariables":[]}""");
         Put("Graph/groups/a.rawgalgroup", """{"version":2,"kind":"Raw","entries":[{"id":"text","type":"dialogue.text","parameters":{"content":""}}]}""");
-        Put("settings.json", "{}");
+        Put("settings.json", """{"version":1,"sections":{}}""");
     }
     [TearDown]
     public void TearDown() => Directory.Delete(_root, true);
@@ -41,12 +41,16 @@ public sealed class ProjectAuthoringSafetyTests
     }
 
     [Test]
-    public void UnknownSettings_AreRejectedWithoutLoss()
+    public async Task UnknownConfigurationSections_ArePreservedOnSave()
     {
-        Put("settings.json", """{"custom":{"keep":true}}""");
-        var original = Snapshot();
-        Assert.That(() => Persistence().Load(), Throws.TypeOf<JsonException>().With.Message.Contains("custom"));
-        AssertSnapshot(original);
+        Put("settings.json", """{"version":1,"sections":{"custom":{"version":7,"data":{"keep":true}}}}""");
+        var persistence = Persistence();
+        var document = persistence.Load();
+        document.Graph.Name = "Renamed";
+        await persistence.SaveAsync(document);
+        var stored = DirectProjectPersistence.LoadSettings(_root).Sections["custom"];
+        Assert.That(stored.Version, Is.EqualTo(7));
+        Assert.That(stored.Data.GetProperty("keep").GetBoolean(), Is.True);
     }
 
     [Test]

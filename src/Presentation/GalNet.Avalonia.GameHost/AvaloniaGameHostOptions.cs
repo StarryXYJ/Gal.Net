@@ -11,6 +11,7 @@ namespace GalNet.Avalonia.GameHost;
 /// <summary>Project policies supplied to the default Avalonia player composition.</summary>
 public sealed class AvaloniaGameHostOptions
 {
+    public GameContentLoadOptions Content { get; init; } = new();
     public AvaloniaGamePresentationOptions Presentation { get; init; } = new();
     public bool ShowTrackAudioControls { get; init; }
     public string GameTitle { get; init; } = "GalNet";

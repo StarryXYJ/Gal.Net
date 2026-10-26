@@ -5,7 +5,7 @@ using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
-using GalNet.Core.Settings;
+using GalNet.Core.Configuration;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
@@ -303,7 +303,7 @@ public sealed class LocalizationReferenceIndexTests
         public GalProject? Current => project;
         public event Action<GalProject?>? CurrentChanged { add { } remove { } }
         public Task<GalProject> OpenAsync(string projectPath) => throw new NotSupportedException();
-        public Task<GalProject> CreateAsync(string projectPath, string name, ProjectSettings settings, string contractsDirectory) => throw new NotSupportedException();
+        public Task<GalProject> CreateAsync(string projectPath, string name, ProjectConfiguration settings, string contractsDirectory) => throw new NotSupportedException();
         public Task CloseAsync() => throw new NotSupportedException();
         public Task SaveAsync() => throw new NotSupportedException();
         public IReadOnlyList<RecentProjectInfo> GetRecentProjects() => [];

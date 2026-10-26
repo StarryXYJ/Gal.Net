@@ -3,7 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using GalNet.Core.Entry;
 using GalNet.Core.Parameters;
-using GalNet.Core.Settings;
+using GalNet.Core.Configuration;
 using GalNet.Core.Variable;
 
 namespace GalNet.Editor.Abstraction.Documents;
@@ -149,7 +149,7 @@ public sealed class EditorProjectDocument
 {
     public EditorGraphDocument Graph { get; set; } = new();
     public Dictionary<string, List<EditorEntryData>> GroupEntries { get; set; } = [];
-    public ProjectSettings Settings { get; set; } = new();
+    public ProjectConfiguration Configuration { get; set; } = new();
     public Dictionary<string, EditorFileDocument> Files { get; set; } = [];
 }
 

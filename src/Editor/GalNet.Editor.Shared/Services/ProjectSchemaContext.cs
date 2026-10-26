@@ -3,6 +3,7 @@ using System.Runtime.Loader;
 using System.Security.Cryptography;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
+using GalNet.Core.Configuration;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -17,14 +18,16 @@ public sealed class ProjectSchemaContext : IDisposable
     private SchemaLoadContext? _loadContext;
     private IEntryCatalog? _catalog;
 
-    private ProjectSchemaContext(string assemblyPath, string fingerprint, SchemaLoadContext context, IEntryCatalog catalog)
+    private ProjectSchemaContext(string assemblyPath, string fingerprint, SchemaLoadContext context, IEntryCatalog catalog, ProjectConfigurationSchema configurations)
     {
         AssemblyPath = assemblyPath;
         Fingerprint = fingerprint;
         _loadContext = context;
         _catalog = catalog;
+        Configurations = configurations;
     }
 
+    public ProjectConfigurationSchema Configurations { get; private set; }
     public string AssemblyPath { get; }
     public string Fingerprint { get; }
     public IEntryCatalog Catalog => _catalog ?? throw new ObjectDisposedException(nameof(ProjectSchemaContext));
@@ -67,7 +70,17 @@ public sealed class ProjectSchemaContext : IDisposable
                 if (module is null || string.IsNullOrWhiteSpace(module.Id))
                     throw new InvalidDataException($"Null or empty schema module ID '{module?.Id}'.");
             }
-            return new ProjectSchemaContext(path, fingerprint, context, new TargetProfileEntryCatalog(modules));
+            var configurationProperty = type.GetProperty("Configurations", BindingFlags.Public | BindingFlags.Static);
+            var configurations = ProjectConfigurationSchema.Empty;
+            if (configurationProperty is not null)
+            {
+                if (configurationProperty.PropertyType != typeof(ProjectConfigurationSchema) ||
+                    configurationProperty.GetMethod is not { IsPublic: true, IsStatic: true } || configurationProperty.GetIndexParameters().Length != 0 ||
+                    configurationProperty.GetValue(null) is not ProjectConfigurationSchema declared)
+                    throw new InvalidDataException("ProjectSchemas.Configurations must return a nonnull ProjectConfigurationSchema.");
+                configurations = declared;
+            }
+            return new ProjectSchemaContext(path, fingerprint, context, new TargetProfileEntryCatalog(modules), configurations);
         }
         catch (Exception exception)
         {
@@ -79,6 +92,7 @@ public sealed class ProjectSchemaContext : IDisposable
     public void Dispose()
     {
         _catalog = null;
+        Configurations = ProjectConfigurationSchema.Empty;
         var context = Interlocked.Exchange(ref _loadContext, null);
         context?.Unload();
     }

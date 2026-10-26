@@ -117,7 +117,7 @@ Engine 只接收/更新不可变 PlaybackOptions，音频只接收隔离轨道�
 
 ### R4 — 自定义配置贯穿作者与运行链路
 
-实施拆分：R4a（verified）删除变量声明副本和仓库无用输入；R4b 配置 section 契约与默认模型归位；R4c 编辑/历史/导出/安装/预览与自定义 DTO 完整验证。每步独立验证提交，R4 仅在完整链路退出条件满足后勾选。
+实施拆分：R4a、R4b verified；R4c planned，完成通用 section 编辑/历史及自定义 DTO 的导出、安装、运行与预览验证。每步独立验证提交，R4 仅在完整链路退出条件满足后勾选。
 
 - **目标/模块**：内容契约、Editor.Abstraction/Shared/UI、Storage.FileSystem、导出、Preview、安装加载与项目模板。
 - **任务**：解除 GameContent 和 Editor document 对完整固定 ProjectSettings 的绑定；明确最小内容描述、可选模块配置与项目自有 section 的归属。复用现有 schema/表单能力提供必要 section 适配，未理解的 JSON 保留。迁移默认模板、语言/变量声明等实际消费者，删除重复权威来源；需要派生副本时由一个权威源生成。只保留一套项目自有模型和映射示例，两种 Sample 宿主复用同一项目配置定义。
@@ -126,7 +126,11 @@ Engine 只接收/更新不可变 PlaybackOptions，音频只接收隔离轨道�
 
 #### R4a — verified
 
-Graph 独自持久化变量声明，删除设置中的副本、同步和无用归一化入口；仓库 Load 只接收路径。868 项相关回归通过，4 项既有符号链接权限失败、2 项跳过；普通与同源码隔离解决方案构建、locked restore、格式与 diff 检查通过。初次 GUI 回归出现一次已有 Headless 会话释放竞态，定向与完整 GUI 重跑通过，原日志保留。证据见 [summary](summary.md#r4a变量单一数据源与仓库输入)。R4b/R4c 仍 planned，R4 整体不勾选。
+Graph 独自持久化变量声明，删除设置中的副本、同步和无用归一化入口；仓库 Load 只接收路径。868 项相关回归通过，4 项既有符号链接权限失败、2 项跳过；构建、locked restore、格式与 diff 检查通过，提交 `5a08d4f`。详见 [summary](summary.md#r4a变量单一数据源与仓库输入)。
+
+#### R4b — verified
+
+版本化配置 section/schema 取代 Core 固定 ProjectSettings；默认 DTO 归可选 Builtins，作者/加载边界验证所选 schema，未知 section 与未声明字段保留。1770 项通过、4 项既有符号链接权限失败、3 项跳过；解决方案构建、格式和 diff 检查通过。语言名称解析修正另提交 `2a92fb6`。详见 [summary](summary.md#r4b配置协议与默认模型归位)。R4c 及 R4 整体仍未完成。
 
 ### R5 — 剥离可选领域与场景依赖
 

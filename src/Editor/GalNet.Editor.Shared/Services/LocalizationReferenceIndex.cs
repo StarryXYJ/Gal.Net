@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
@@ -64,7 +65,8 @@ public sealed class LocalizationReferenceIndex
                 Reference(node.Id, option.Id, "/text", option.Text, FieldValueSemantic.LocalizedText);
             }
         var ids = _characters.Select(character => character.Id).ToHashSet(StringComparer.Ordinal);
-        var defaultKeys = _texts.Where(text => text.Culture.Equals(document.Settings.TargetLocale.Code, StringComparison.OrdinalIgnoreCase))
+        var defaultCulture = document.Configuration.ReadDefaultOptions().TargetLocale.Code;
+        var defaultKeys = _texts.Where(text => text.Culture.Equals(defaultCulture, StringComparison.OrdinalIgnoreCase))
             .Select(text => text.Key).ToHashSet(StringComparer.Ordinal);
         foreach (var reference in _references)
             if (reference.Semantic == FieldValueSemantic.CharacterReference ? !ids.Contains(reference.Key) : !defaultKeys.Contains(reference.Key))

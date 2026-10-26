@@ -1,5 +1,6 @@
 extern alias GameViewAssembly;
 extern alias ThemesAssembly;
+using GalNet.Contracts.Builtins;
 using System.Collections.ObjectModel;
 using Avalonia;
 using Avalonia.Controls;
@@ -10,7 +11,6 @@ using GalNet.Core.Assets;
 using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
 using GalNet.Core.Runtime;
-using GalNet.Core.Settings;
 using GalNet.Media.LibVlc;
 using GalNet.Presentation.Abstractions.Runtime;
 using GalNet.Presentation.Abstractions.View;
@@ -299,7 +299,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
             content.Gallery,
             _pageView.ParticlePresenter,
             _pageView.NvlPresenter,
-            _audio, imageVariants: imageVariants, audioConfiguration: new GalNet.Core.Audio.AudioConfiguration(content.Settings.AudioTracks, content.Settings.AudioGroups)).BuildView();
+            _audio, imageVariants: imageVariants, audioConfiguration: new GalNet.Core.Audio.AudioConfiguration(content.Configuration.ReadDefaultOptions().AudioTracks, content.Configuration.ReadDefaultOptions().AudioGroups)).BuildView();
         try { view.RequireInstructions(content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>().SelectMany(group => group.Entries).Select(entry => entry.Type)); }
         catch { view.Dispose(); throw; }
         var runtime = new GameRuntime(null, content.Graph.RootNodeId, _context.Variables);

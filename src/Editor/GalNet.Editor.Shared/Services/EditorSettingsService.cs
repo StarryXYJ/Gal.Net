@@ -2,7 +2,6 @@ using GalNet.Editor.Abstraction.Settings;
 using System;
 using System.IO;
 using System.Text.Json;
-using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Services;
 using Serilog;
 

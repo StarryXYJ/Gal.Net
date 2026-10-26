@@ -1,8 +1,8 @@
 using GalNet.Core.I18n;
 
-namespace GalNet.Core.Settings;
+namespace GalNet.Contracts.Builtins;
 
-public sealed class ProjectSettings
+public sealed class DefaultProjectOptions
 {
     public I18nLocale TargetLocale { get; set; } = I18nLocale.ZhCn;
 

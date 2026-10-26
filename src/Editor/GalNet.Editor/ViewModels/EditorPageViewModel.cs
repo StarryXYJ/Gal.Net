@@ -424,7 +424,7 @@ public partial class EditorPageViewModel : PageViewModelBase, IMenuProvider, IDi
                 HeaderKey = "Editor.Menu.Settings",
                 Children = new AvaloniaList<MenuData>
                 {
-                    new() { HeaderKey = "Editor.Menu.ProjectSettings", Command = ShowProjectSettingsCommand },
+                    new() { HeaderKey = "Editor.Menu.ProjectConfiguration", Command = ShowProjectSettingsCommand },
                     new() { HeaderKey = "Editor.Menu.EditorSettings", Command = ShowEditorSettingsCommand },
                 }
             },

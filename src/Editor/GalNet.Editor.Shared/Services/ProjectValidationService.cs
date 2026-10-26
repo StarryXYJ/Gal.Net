@@ -2,6 +2,7 @@ using System.Text.Json;
 using GalNet.Core.Assets;
 using GalNet.Core.Compilation;
 using GalNet.Core.Entry;
+using GalNet.Core.Configuration;
 using GalNet.Core.Serialization;
 using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Commands;
@@ -18,7 +19,7 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public ToolResult Validate(string scope = "project", GroupSelector? selector = null, bool structureOnly = false,
-        IEntryCatalog? catalog = null, string? contractSha256 = null)
+        IEntryCatalog? catalog = null, string? contractSha256 = null, ProjectConfigurationSchema? configurations = null)
     {
         if (scope is not ("project" or "graph" or "group")) throw new ArgumentException("Unknown validation scope.");
         _ = _reader.Resolve(GraphFile);
@@ -66,9 +67,19 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
         {
             if (!structureOnly && scope != "graph" && catalog is null)
             {
-                try { context = ProjectSchemaContext.Load(_reader.Root); catalog = context.Catalog; contractSha256 = context.Fingerprint; }
+                try { context = ProjectSchemaContext.Load(_reader.Root); catalog = context.Catalog; contractSha256 = context.Fingerprint; configurations = context.Configurations; }
                 catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
                 { Error(diagnostics, "contract.load", exception.Message, "Contracts/" + ProjectSchemaContext.AssemblyFileName, ""); }
+            }
+            if (scope == "project")
+            {
+                try
+                {
+                    var configuration = DirectProjectPersistence.LoadSettings(_reader.Root);
+                    if (!structureOnly) configurations?.Validate(configuration);
+                }
+                catch (Exception error) when (error is IOException or JsonException or InvalidDataException or ArgumentException)
+                { Error(diagnostics, "configuration.invalid", error.Message, "settings.json", ""); }
             }
             foreach (var file in groups.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal))
             {
@@ -91,7 +102,9 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
         if (scope == "project") checks.AddRange(["settings-json", "metadata-guid-and-adjacent-file", "image-variants"]);
         if (!structureOnly) checks.Add("condition-syntax");
         if (!structureOnly && scope != "graph" && catalog is not null) checks.AddRange(["entry-parameters-and-contract-validator", "composite-compilation"]);
-        var skipped = new List<string> { "runtime-expression-evaluation", "custom-code-references", "asset-payloads", "settings-semantics" };
+        var skipped = new List<string> { "runtime-expression-evaluation", "custom-code-references", "asset-payloads" };
+        if (scope == "project" && !structureOnly && configurations is not null) checks.Add("configuration-schema");
+        else skipped.Add("configuration-schema");
         if (!structureOnly && scope == "project" && catalog is not null) checks.Add("localization-semantics");
         else skipped.Add("localization-semantics");
         if (structureOnly) skipped.AddRange(["condition-syntax", "entry-contracts", "graph-source-references"]);

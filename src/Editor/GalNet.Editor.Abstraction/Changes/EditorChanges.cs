@@ -42,7 +42,7 @@ public static class EditorDocumentCloner
         GroupEntries = source.GroupEntries.ToDictionary(
             pair => pair.Key,
             pair => pair.Value.Select(CloneEntry).ToList()),
-        Settings = CloneSettings(source.Settings),
+        Configuration = source.Configuration.Clone(),
         Files = source.Files.ToDictionary(pair => pair.Key, pair => new EditorFileDocument { Id = pair.Value.Id, Path = pair.Value.Path, Exists = pair.Value.Exists, ManagedContent = pair.Value.ManagedContent, Data = pair.Value.Data.ToArray() })
     };
 
@@ -96,15 +96,6 @@ public static class EditorDocumentCloner
         Parameters = source.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value.Clone())
     };
 
-    private static GalNet.Core.Settings.ProjectSettings CloneSettings(GalNet.Core.Settings.ProjectSettings source) => new()
-    {
-        TargetLocale = new GalNet.Core.I18n.I18nLocale(source.TargetLocale.Code),
-        AvailableLocales = source.AvailableLocales.Select(locale => new GalNet.Core.I18n.I18nLocale(locale.Code)).ToList(),
-        SaveSlotCount = source.SaveSlotCount,
-        DefaultWidth = source.DefaultWidth,
-        DefaultHeight = source.DefaultHeight,
-        AudioTracks = source.AudioTracks.ToList(),
-        AudioGroups = source.AudioGroups.ToList()
-    };
+
 
 }

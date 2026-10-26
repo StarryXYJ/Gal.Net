@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [配置 schema 与 JSON 字段身份](lessons/L-20261026-04-configuration-json-casing.md)：精确 ID 校验后须同样按大小写精确解码 DTO，避免未知大小写字段覆盖已验证值；原始未知字段继续保留。
+
 - [查询事实与写入上下文](lessons/L-20261026-03-query-result-and-write-context.md)：候选结果版本不能代替写入方身份/基线版本；异步准备按局部作者依赖与资源代次续租，相关变化再撤销不能复活旧选择。
 
 - [作者代次与视图生命周期](lessons/L-20261026-02-author-incarnation-view-lifetime.md)：作者删除/换类型使旧绑定失效；页面关闭只释放表单，不推进作者 incarnation，项目草稿须跨页面继续共享并可保存。
@@ -56,7 +58,7 @@
 - Entry 契约与执行已分离：IEntryModule 只含 schema/composite，IPrimitiveModule 按领域共享状态并贡献完整指令 ID；GameRegistration 独立注册，AddBuiltins 为完整内置运行入口；独立 GalNet.Contracts.Builtins 只依赖 Core，CreateAllModules 返回 14 个组件模块，包含 custom.invoke 的固定双字符串 schema。可选 schema、部分内置实现或全自定义；仅完整 ID 排他。同前缀和 schema 模块名可重复。音频用 AudioRuntime + IAudioPlaybackHost 组合，不强制继承。见 docs/spec/runtime.md、docs/spec/entry-types.md 和 docs/manual/。
 - 当前 GameSnapshot 版本为 4，不兼容旧版；持久数据在注册式 GameState 表中，快照为 StateId → version/JSON payload；读档先验证，再取消旧 scope 并替换整个状态根。Engine 不拥有执行 view，宿主先释放 Engine，再异步释放 view 与后端。
 - Engine 提供终态 StopAsync 和 StateChanged，覆盖玩家推进、Choice 与阻塞实例自然完成；GameHost 仅协调应用会话，不复制 Engine 执行机制。AvaloniaGamePresenters 只组合端口，AvaloniaGamePresentation 管理平台资源。见 docs/spec/runtime.md 和 docs/spec/architecture.md。
-- Presentation.Defaults 已删除，空 NullGameView 位于展示抽象的 View 命名空间；当前程序集布局见 docs/spec/architecture.md。GameContent.Settings 包含项目设置，项目/安装加载器与两个 Sample 已接通自定义音频轨道配置。
+- Presentation.Defaults 已删除，空 NullGameView 位于展示抽象的 View 命名空间；当前程序集布局见 docs/spec/architecture.md。GameContent.Configuration 保存版本化 section 文档；默认作者模型位于可选 Contracts.Builtins，项目/安装加载器通过 GameContentLoadOptions 接收 schema 与文化代码投影。
 - 旧的 `GalNet.Control` 与 `GalNet.Control.Abstraction` 已完成迁移并删除；当前共享 Avalonia 游戏页面唯一入口是 `GalNet.Avalonia.GameView`，页面架构见 `docs/spec/control.md`。
 - 持久条目先在 `GameState.Update` 中修改唯一数据记录，再通知展示层；模块通过 PrimitiveRegistry.State/Restore/ValidateState 声明状态、恢复依赖和校验，宿主使用展示抽象 StateRestoreSession 统一恢复、等待和逆序清理。旧 SceneState/Active* 镜像与 Builtins 中央 replay 已删除。
 - 视觉扩展应通过展示抽象和渲染端口接入；不要把平台类型或渲染资源泄漏进 Core/Runtime。
@@ -308,3 +310,5 @@
 - 2026-10-26 引擎重构 R3 已验证：Core.Audio.AudioConfiguration 隔离/校验任意分组与轨道，空/未分组合法；混音支持 master/group/track，快进保留由 PreserveDuringCatchUp 指定。固定 AudioBuses/Core 默认集合和指令隐含目标已删除；可选 Contracts.Builtins.BuiltinAudioDefaults 由 Sample/模板显式选用，默认 Avalonia 设置按声明生成控件并支持可选单轨控制。Editor 的分组/策略历史、保存、导出和安装加载共用配置规则。1752 项通过、4 项既有符号链接权限失败，R4/R5 完整项目配置及领域归属仍待实施。见 features/F-20261026-01-engine-core-simplification/phase-plan.md。
 
 - 2026-10-26 R4a 已验证：变量声明只保存在作者 Graph，ProjectSettings 的 PlayerVariables/SaveVariables 与同步副本已删除；IEditorDocumentRepository.Load 只接收项目路径。868 项相关回归通过，4 项既有符号链接权限失败；同源码隔离构建/locked restore 通过。R4b/R4c 配置 section 和完整链路仍待实施。见引擎重构 phase-plan/summary。
+
+- 2026-10-26 R4b 已验证：Core.Configuration 提供版本化配置文档与 section/schema，删除固定 ProjectSettings；默认 DTO DefaultProjectOptions 归 Contracts.Builtins。GameContent/GalProject/作者文档使用 Configuration，缺省读取不写盘，未知 section/未声明字段保留，已声明规则在作者与加载边界校验；Storage 不引用默认模型。1770 项通过，4 项既有符号链接权限失败；构建/格式通过。R4c 通用编辑与自有 DTO 完整链路仍待实施，见引擎重构 phase-plan/summary。

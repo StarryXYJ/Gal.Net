@@ -1,6 +1,7 @@
+using GalNet.Contracts.Builtins;
 using System.Text.Json;
 using GalNet.Core.Entry;
-using GalNet.Core.Settings;
+using GalNet.Core.Configuration;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Project;
@@ -12,7 +13,7 @@ public static class EditorProjectCreator
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
-    public static async Task<ToolResult> CreateAsync(ProjectCreateRequest request, ProjectSettings? settings = null,
+    public static async Task<ToolResult> CreateAsync(ProjectCreateRequest request, ProjectConfiguration? settings = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(request.Path);
@@ -65,7 +66,7 @@ public static class EditorProjectCreator
             var catalog = deployed?.Catalog ?? new TargetProfileEntryCatalog([]);
             var document = new EditorProjectDocument
             {
-                Settings = settings ?? DefaultSettings(),
+                Configuration = settings ?? DefaultSettings(),
                 Graph = new EditorGraphDocument
                 {
                     Name = name,
@@ -79,7 +80,7 @@ public static class EditorProjectCreator
                 },
                 GroupEntries = { [groupId] = [] }
             };
-            await new DirectProjectPersistence(stage, new EditorDocumentRepository(catalog)).SaveAsync(document, cancellationToken);
+            await new DirectProjectPersistence(stage, new EditorDocumentRepository(catalog), contract?.Configurations).SaveAsync(document, cancellationToken);
             await File.WriteAllTextAsync(Path.Combine(stage, ".galnet/editor-state.json"), JsonSerializer.Serialize(new EditorProjectState(), JsonOptions), cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             EnsureEmptyTarget(root);
@@ -101,10 +102,10 @@ public static class EditorProjectCreator
         }
     }
 
-    private static ProjectSettings DefaultSettings()
+    private static ProjectConfiguration DefaultSettings()
     {
         var audio = GalNet.Contracts.Builtins.BuiltinAudioDefaults.Create();
-        return new ProjectSettings { AudioGroups = audio.Groups.ToList(), AudioTracks = audio.Tracks.ToList() };
+        return new GalNet.Contracts.Builtins.DefaultProjectOptions { AudioGroups = audio.Groups.ToList(), AudioTracks = audio.Tracks.ToList() }.ToConfiguration();
     }
 
     private static void EnsureEmptyTarget(string root)

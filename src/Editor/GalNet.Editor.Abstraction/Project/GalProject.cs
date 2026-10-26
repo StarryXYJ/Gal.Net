@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using GalNet.Core.Settings;
+using GalNet.Core.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Editor.Abstraction.Project;
@@ -58,7 +58,9 @@ public sealed class GalProject : IDisposable, IAsyncDisposable
     public string EditorStateFilePath => Path.Combine(EditorStateDirectory, "editor-state.json");
 
     /// <summary>项目设置（持久化在 settings.json，每个项目一份）</summary>
-    public ProjectSettings Settings { get; }
+    public ProjectConfiguration Configuration { get; }
+
+    public ProjectConfigurationSchema Configurations { get; private set; }
 
     public EditorProjectState EditorState { get; }
 
@@ -68,12 +70,14 @@ public sealed class GalProject : IDisposable, IAsyncDisposable
     /// <summary>项目级 ServiceProvider</summary>
     public IServiceProvider Services => Scope.ServiceProvider;
 
-    public GalProject(string id, string name, string rootPath, ProjectSettings settings, EditorProjectState editorState, IServiceScope scope)
+    public GalProject(string id, string name, string rootPath, ProjectConfiguration settings, EditorProjectState editorState, IServiceScope scope,
+        ProjectConfigurationSchema? configurations = null)
     {
         Id = id;
         Name = name;
         RootPath = rootPath;
-        Settings = settings;
+        Configuration = settings;
+        Configurations = configurations ?? ProjectConfigurationSchema.Empty;
         EditorState = editorState;
         Scope = scope;
     }
@@ -108,6 +112,7 @@ public sealed class GalProject : IDisposable, IAsyncDisposable
             }
         }
         _closingCallbacks.Clear();
+        Configurations = ProjectConfigurationSchema.Empty;
         Scope.Dispose();
 
         if (failures is { Count: > 0 })
@@ -120,6 +125,7 @@ public sealed class GalProject : IDisposable, IAsyncDisposable
             return;
         _disposed = true;
         _closingCallbacks.Clear();
+        Configurations = ProjectConfigurationSchema.Empty;
         Scope.Dispose();
     }
 

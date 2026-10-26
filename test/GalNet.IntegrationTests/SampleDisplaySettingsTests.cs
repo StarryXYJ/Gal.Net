@@ -4,7 +4,6 @@ using GalNet.Avalonia.GameHost.Settings;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
-using GalNet.Core.Settings;
 using GalNet.Runtime.Variables;
 using GalNet.Sample.Avalonia.Services;
 using GalNet.Storage.FileSystem;

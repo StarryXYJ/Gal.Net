@@ -33,9 +33,9 @@ public sealed class GameInstallation
         return new GameInstallation(fullPath, Directory.EnumerateFiles(fullPath, "*.galnet", SearchOption.TopDirectoryOnly).Any());
     }
 
-    public IGameContentProvider CreateContentProvider(IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes) => IsPackaged
-        ? new InstalledGameContentProvider(RootDirectory, resourceTypes, galleryTypes)
-        : new ProjectGameContentProvider(RootDirectory, resourceTypes, galleryTypes);
+    public IGameContentProvider CreateContentProvider(IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes, GameContentLoadOptions? options = null) => IsPackaged
+        ? new InstalledGameContentProvider(RootDirectory, resourceTypes, galleryTypes, options)
+        : new ProjectGameContentProvider(RootDirectory, resourceTypes, galleryTypes, options);
 
     /// <summary>Returns every resource PAK in descending relative-path priority, or the source directory.</summary>
     public IReadOnlyList<IAssetProvider> CreateAssetProviders(IResourceTypeCatalog resourceTypes)

@@ -29,7 +29,7 @@ public sealed class ProjectContractPipelineTests
         _root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "GalNet-pipeline-" + Guid.NewGuid())).FullName;
         Put("Graph/graph.json", """{"version":2,"name":"Custom","rootNodeId":"a","nodes":[{"id":"a","name":"A","type":"Group","file":"groups/a.rawgalgroup"}],"edges":[],"playerVariables":[],"saveVariables":[]}""");
         Put("Graph/groups/a.rawgalgroup", """{"version":2,"kind":"Raw","entries":[{"id":"bundle","type":"custom.bundle","parameters":{}}]}""");
-        Put("settings.json", "{}");
+        Put("settings.json", """{"version":1,"sections":{}}""");
         Deploy("SchemaA");
     }
     [TearDown]

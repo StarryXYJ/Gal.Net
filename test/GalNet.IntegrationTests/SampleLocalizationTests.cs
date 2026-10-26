@@ -7,7 +7,6 @@ using GalNet.Avalonia.GameHost.Settings;
 using GalNet.Avalonia.GameView.MarkupExtensions;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
-using GalNet.Core.Settings;
 using GalNet.Runtime.Variables;
 using GalNet.Sample.Avalonia;
 using GalNet.Sample.Avalonia.Services;

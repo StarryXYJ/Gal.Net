@@ -37,6 +37,22 @@ Project/
 
 Compiled primitive 使用 `{ id, typeId, batchId, condition, arguments }` 信封。`arguments` 保存 JSON 值，不保存 CLR 类型名；当前 target profile 的冻结 schema 负责校验。Graph 与 Group 目前是特殊内容文件，不通过资源 GUID provider 查询。
 
+## 项目配置 `settings.json`
+
+配置文档版本为 1，替代旧的平铺设置格式，不提供兼容迁移：
+
+```json
+{
+  "version": 1,
+  "sections": {
+    "galnet.project": { "version": 1, "data": { "defaultWidth": 1920 } },
+    "developer.options": { "version": 1, "data": { "enabled": true } }
+  }
+}
+```
+
+根信封固定为 version/sections；section 信封固定为正整数 version 和对象 data。重复 JSON 属性拒绝。未知 section 的版本和 data 原样保留；已声明 section 的未知字段在类型化修改时保留。缺省 section 按调用方声明读取新的默认 DTO，不写入文件。类型化读取是隔离快照，修改后须调用 `configuration.Set(section, dto)` 显式发布。项目契约可公开静态 `ProjectConfigurationSchema Configurations`，缺省为空；schema 复用 FieldDescriptor/ValueValidation，负责已声明字段和领域规则。默认模板显式选择可选 `DefaultProjectConfiguration.Schema`，不由 Core/Storage 自动注入。
+
 ## `.galpak` 导出与安装
 
 `.galpak` 是 ZIP 分发容器：

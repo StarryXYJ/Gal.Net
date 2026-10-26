@@ -156,6 +156,6 @@ Engine 的导航索引持有验证后的私有图副本，不共享作者集合�
 
 展示执行抽象的 StateRestoreSession 拥有重放 continuation；宿主在执行 view 和平台 presenter 释放前异步释放该会话。Suspend 等待取消后仍保留旧实例，下一次重放或释放会继续等待真实展示清理。
 
-Engine 只接收/更新 PlaybackOptions，音频接收不可变 AudioConfiguration 分组/轨道声明和 AudioMixOptions 的 master/group/track 混音值，不依赖完整玩家设置或运行上下文的设置容器。默认玩家偏好模型 GameSettings 位于 Avalonia.GameHost.Settings，通过组合根投影为模块输入；通用 PlayerSession 只持有玩家持久化与进度，不持有该偏好模型。清空玩家数据后由默认宿主重新绑定默认偏好。Editor 没有另设未使用的游戏偏好服务。ProjectSettings 目前仍是 Editor/内容加载器共享的作者 DTO，尚未完成自定义作者配置链路的重构，不能将该边界描述为已完全可替换。
+Engine 只接收/更新 PlaybackOptions，音频接收不可变 AudioConfiguration 分组/轨道声明和 AudioMixOptions 的 master/group/track 混音值，不依赖完整玩家设置或运行上下文的设置容器。默认玩家偏好模型 GameSettings 位于 Avalonia.GameHost.Settings，通过组合根投影为模块输入；通用 PlayerSession 只持有玩家持久化与进度，不持有该偏好模型。清空玩家数据后由默认宿主重新绑定默认偏好。Editor 没有另设未使用的游戏偏好服务。Core.Configuration 只定义版本化 ProjectConfiguration/ConfigurationSection 协议；GameContent、GalProject 和作者文档使用 Configuration，不再绑定固定 ProjectSettings。默认项目 DTO DefaultProjectOptions 位于可选 Contracts.Builtins，默认模板/Sample 显式选择其 schema；Storage 通过 GameContentLoadOptions 接收 schema 和文化代码投影，运行模块仍接收小配置。通用 section 编辑和自有 DTO 的完整预览链路仍在 R4c 实施。
 
 运行与宿主资源的依赖及生命周期以本页的游戏运行段和[运行时规范](runtime.md)为准，包括 GameView 对 Assets 的媒体 adapter 默认实现依赖。

@@ -6,7 +6,6 @@ using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
-using GalNet.Core.Settings;
 using GalNet.Core.Variable;
 using GalNet.Game.Controls.Forms;
 using GalNet.GameHost;

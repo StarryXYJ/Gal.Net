@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
@@ -47,7 +48,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         else
         {
             await write; Assert.ThrowsAsync<EditorOperationException>(async () => await change);
-            Assert.That(project.Settings.TargetLocale.Code, Is.EqualTo("zh-CN"));
+            Assert.That(project.Configuration.ReadDefaultOptions().TargetLocale.Code, Is.EqualTo("zh-CN"));
         }
     });
 
@@ -80,11 +81,13 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         WriteTranslation(project, """{"line":"English"}""", "I18n/en-US/lines.json");
         Assert.ThrowsAsync<EditorOperationException>(async () => await panel.ChangeDevelopmentLanguageAsync(preview));
         await panel.ChangeDevelopmentLanguageAsync(panel.Preview("en-US"));
-        Assert.That(project.Settings.TargetLocale.Code, Is.EqualTo("en-US"));
+        Assert.That(project.Configuration.ReadDefaultOptions().TargetLocale.Code, Is.EqualTo("en-US"));
         Assert.That(project.Services.GetRequiredService<GameTextAuthoringService>().Read("line"), Is.EqualTo("English"));
-        project.Settings.DefaultWidth = 1280;
+        var options = project.Configuration.ReadDefaultOptions();
+        options.DefaultWidth = 1280;
+        project.Configuration.Set(DefaultProjectConfiguration.Section, options);
         await project.Services.GetRequiredService<EditorHistories>().Content.UndoAsync();
-        Assert.That(project.Settings.TargetLocale.Code, Is.EqualTo("zh-CN")); Assert.That(project.Settings.DefaultWidth, Is.EqualTo(1280));
+        Assert.That(project.Configuration.ReadDefaultOptions().TargetLocale.Code, Is.EqualTo("zh-CN")); Assert.That(project.Configuration.ReadDefaultOptions().DefaultWidth, Is.EqualTo(1280));
         Assert.That(item.Entry.Parameters["content"].GetString(), Is.EqualTo("line"));
     });
 
@@ -203,7 +206,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         Assert.That(model.Rows.Single().Cells[1].Text, Is.EqualTo("原文"));
         await project.Services.GetRequiredService<IProjectContentSession>().SaveAsync();
         var projects = project.Services.GetRequiredService<IProjectService>(); await projects.CloseAsync(); var reopened = await projects.OpenAsync(project.RootPath);
-        Assert.That(reopened.Settings.TargetLocale.Code, Is.EqualTo("en-US"));
+        Assert.That(reopened.Configuration.ReadDefaultOptions().TargetLocale.Code, Is.EqualTo("en-US"));
         Assert.That(reopened.Services.GetRequiredService<GameLocalizationPanelService>().Languages[0], Is.EqualTo("en-US"));
     });
 
@@ -277,7 +280,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     {
         var item = CharacterEntry(project); WriteTranslation(project, """{"line":"原文"}""");
         var service = project.Services.GetRequiredService<GameLocalizationPanelService>(); await service.AddLanguageAsync("ZH_hans_cn");
-        Assert.That(project.Settings.AvailableLocales[^1].Code, Is.EqualTo("zh-Hans-CN"));
+        Assert.That(project.Configuration.ReadDefaultOptions().AvailableLocales[^1].Code, Is.EqualTo("zh-Hans-CN"));
         await service.SetAsync(service.Capture(item.Group, "line", "zh-Hans-CN"), "简体");
         await service.ChangeDevelopmentLanguageAsync(service.Preview("zh-Hans-CN"));
         await SetGameText(project, item.Group, item.Entry, "开发原文");

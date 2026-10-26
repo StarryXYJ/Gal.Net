@@ -19,7 +19,7 @@ public sealed class ProjectValidationServiceTests
     {
         _root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "GalNet-validation-" + Guid.NewGuid())).FullName;
         Put("Graph/graph.json", Graph);
-        Put("settings.json", "{}");
+        Put("settings.json", """{"version":1,"sections":{}}""");
         Put(Source, """{"version":2,"kind":"Raw","entries":[{"id":"e","type":"custom.test","parameters":{"value":2,"mode":"one"}}]}""");
     }
     [TearDown]

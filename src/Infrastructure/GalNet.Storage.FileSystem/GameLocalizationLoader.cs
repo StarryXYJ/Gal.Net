@@ -3,7 +3,6 @@ using System.Text.Json;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.I18n;
-using GalNet.Core.Settings;
 using GalNet.Runtime.Content;
 
 namespace GalNet.Storage.FileSystem;
@@ -13,7 +12,7 @@ public static class GameLocalizationLoader
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    public static GameLocalizationContent Load(string gameDirectory, Graph graph, ProjectSettings settings,
+    public static GameLocalizationContent Load(string gameDirectory, Graph graph, string? defaultCulture = null,
         CancellationToken cancellationToken = default)
     {
         var root = Path.Combine(Path.GetFullPath(gameDirectory), "I18n");
@@ -58,7 +57,7 @@ public static class GameLocalizationLoader
                     using var document = JsonDocument.Parse(json);
                     var keys = new HashSet<string>(StringComparer.Ordinal);
                     ReadKeys(document.RootElement, "", keys);
-                    if (string.Equals(culture.Name, settings.TargetLocale.Code, StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(culture.Name, defaultCulture, StringComparison.OrdinalIgnoreCase))
                         defaultKeys.UnionWith(keys);
                 }
                 catch (JsonException error)
@@ -69,7 +68,7 @@ public static class GameLocalizationLoader
             }
         }
 
-        ValidateRequiredKeys(graph, characters, defaultKeys, settings.TargetLocale.Code);
+        if (defaultCulture is not null) ValidateRequiredKeys(graph, characters, defaultKeys, defaultCulture);
         var diagnostics = new List<GameLocalizationDiagnostic>();
         var externalSources = LoadExternal(Path.Combine(root, "External"), diagnostics, cancellationToken);
         return new GameLocalizationContent

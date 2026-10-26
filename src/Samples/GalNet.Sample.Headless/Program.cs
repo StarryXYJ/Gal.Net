@@ -1,8 +1,8 @@
+using GalNet.Contracts.Builtins;
 using GalNet.Assets;
 using GalNet.Assets.Variants;
 using GalNet.Core.Assets;
 using GalNet.Core.Gallery;
-using GalNet.Core.Settings;
 using GalNet.GameHost;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
@@ -25,15 +25,19 @@ try
     var installation = await GameInstallation.OpenAsync(options!.GameDirectory);
     var resourceTypes = BuiltinResourceTypes.CreateCatalog();
     var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
-    var content = await installation.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync();
+    var content = await installation.CreateContentProvider(resourceTypes, galleryTypes, new()
+    {
+        Configurations = GalNet.Project.Contracts.ProjectSchemas.Configurations,
+        SelectDefaultCulture = configuration => configuration.ReadDefaultOptions().TargetLocale.Code
+    }).LoadAsync();
     using var assets = new AssetManager(installation.CreateAssetProviders(resourceTypes));
     assets.RegisterImageVariantsDecoder();
     var imageVariants = await assets.LoadImageVariantsCatalogAsync();
     foreach (var diagnostic in content.Localization.Diagnostics)
         Console.Error.WriteLine($"Skipped localization source '{diagnostic.RelativePath}': {diagnostic.Message}");
-    var textResolver = new GameLocalizationProvider(content, () => content.Settings.TargetLocale.ToCultureInfo());
+    var textResolver = new GameLocalizationProvider(content, () => content.Configuration.ReadDefaultOptions().TargetLocale.ToCultureInfo());
 
-    var saves = new FileSaveService(options.ProfileDirectory, content.Settings.SaveSlotCount);
+    var saves = new FileSaveService(options.ProfileDirectory, content.Configuration.ReadDefaultOptions().SaveSlotCount);
     var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(options.ProfileDirectory));
     variables.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(content.Gallery));
     await using var progress = new FileGameProgressService(options.ProfileDirectory);
@@ -43,7 +47,7 @@ try
     registration.UseCatalog(GalNet.Project.Contracts.ProjectSchemas.CreateCatalog());
     await using var view = registration.AddBuiltinImplementations(registration.BuildCatalog(),
         presentation, presentation, presentation, presentation, content.Gallery, nvlPresenter: presentation,
-        characters: content.Localization.Characters, imageVariants: imageVariants, audioConfiguration: new GalNet.Core.Audio.AudioConfiguration(content.Settings.AudioTracks, content.Settings.AudioGroups)).BuildView();
+        characters: content.Localization.Characters, imageVariants: imageVariants, audioConfiguration: new GalNet.Core.Audio.AudioConfiguration(content.Configuration.ReadDefaultOptions().AudioTracks, content.Configuration.ReadDefaultOptions().AudioGroups)).BuildView();
     view.RequireInstructions(content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>().SelectMany(group => group.Entries).Select(entry => entry.Type));
 
     var runtime = new GameRuntime(textResolver, content.Graph.RootNodeId, variables);

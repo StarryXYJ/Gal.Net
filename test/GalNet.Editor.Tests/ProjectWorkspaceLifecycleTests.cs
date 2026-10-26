@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
@@ -9,7 +10,6 @@ using Dock.Model.Controls;
 using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
 using GalNet.Core.Scene;
-using GalNet.Core.Settings;
 using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Abstraction.Documents;
@@ -149,7 +149,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());
             using var services = Services();
             var projects = services.GetRequiredService<IProjectService>();
-            var project = await projects.CreateAsync(Path.Combine(_root, "SettingsHistory"), "Original", new() { DefaultHeight = 777 }, Contracts());
+            var project = await projects.CreateAsync(Path.Combine(_root, "SettingsHistory"), "Original", new DefaultProjectOptions { DefaultHeight = 777 }.ToConfiguration(), Contracts());
             var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
             var panel = project.Services.GetRequiredService<ProjectSettingsPanelViewModel>();
             var view = new ProjectSettingsPanelView { DataContext = panel };
@@ -183,7 +183,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     frame!.Save(Path.Combine(artifacts, "p1b-project-settings.png"));
                 }
                 Assert.That(project.Name, Is.EqualTo("Renamed"));
-                Assert.That(project.Settings.SaveSlotCount, Is.EqualTo(19));
+                Assert.That(project.Configuration.ReadDefaultOptions().SaveSlotCount, Is.EqualTo(19));
                 await workspace.SaveAsync();
                 panel.ProjectName = "AfterSave";
                 await panel.SaveSettingsCommand.ExecuteAsync(null);
@@ -195,12 +195,12 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(project.Services.GetRequiredService<IProjectContentSession>().IsDirty, Is.False);
                 await router.RedoAsync();
                 Assert.That(project.Name, Is.EqualTo("AfterSave"));
-                Assert.That(project.Settings.DefaultHeight, Is.EqualTo(777));
+                Assert.That(project.Configuration.ReadDefaultOptions().DefaultHeight, Is.EqualTo(777));
                 await workspace.SaveAsync();
                 await projects.CloseAsync();
                 var reopened = await projects.OpenAsync(project.RootPath);
                 Assert.That(reopened.Name, Is.EqualTo("AfterSave"));
-                Assert.That(reopened.Settings.SaveSlotCount, Is.EqualTo(19));
+                Assert.That(reopened.Configuration.ReadDefaultOptions().SaveSlotCount, Is.EqualTo(19));
                 await projects.CloseAsync();
             }
             finally { panel.Dispose(); window.Close(); }
@@ -254,7 +254,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         catch (EditorOperationException failure) { Assert.That(failure.Code, Does.StartWith(invalidLocale ? "settings." : "project.")); }
         Assert.That(projects.Current, Is.SameAs(project));
         Assert.That(invalidLocale ? panel.TargetLocale : panel.ProjectName, Is.Empty);
-        Assert.That(project.Settings.SaveSlotCount, Is.EqualTo(60), "Invalid input must not partially apply other settings.");
+        Assert.That(project.Configuration.ReadDefaultOptions().SaveSlotCount, Is.EqualTo(60), "Invalid input must not partially apply other settings.");
         Assert.That(panel.IsDirtyText, Is.Not.Empty);
         panel.CancelDraftCommand.Execute(null);
         Assert.That(panel.ProjectName, Is.EqualTo("Before"));
@@ -427,7 +427,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     {
         using var services = Services();
         var projects = services.GetRequiredService<IProjectService>();
-        var project = await projects.CreateAsync(Path.Combine(_root, "Settings"), "Settings", new() { DefaultHeight = 777 }, Contracts());
+        var project = await projects.CreateAsync(Path.Combine(_root, "Settings"), "Settings", new DefaultProjectOptions { DefaultHeight = 777 }.ToConfiguration(), Contracts());
         var value = new Variable { Name = "score" };
         value.SetValue(4);
         var documents = project.Services.GetRequiredService<IEditorDocumentService>();
@@ -438,7 +438,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         Assert.That(saved.RootElement.TryGetProperty("saveVariables", out _), Is.False);
         using var graph = JsonDocument.Parse(File.ReadAllText(Path.Combine(project.GraphPath, "graph.json")));
         Assert.That(graph.RootElement.GetProperty("playerVariables")[0].GetProperty("name").GetString(), Is.EqualTo("score"));
-        Assert.That(project.Settings.DefaultHeight, Is.EqualTo(777));
+        Assert.That(project.Configuration.ReadDefaultOptions().DefaultHeight, Is.EqualTo(777));
         await projects.CloseAsync();
     }
 

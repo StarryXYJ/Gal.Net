@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Documents;
@@ -14,9 +15,9 @@ public static class LocalizationValidation
         try
         {
             var reader = new ProjectRawReader(root);
-            var settings = File.Exists(reader.Resolve("settings.json")) ? DirectProjectPersistence.LoadSettings(root) : new GalNet.Core.Settings.ProjectSettings();
+            var settings = File.Exists(reader.Resolve("settings.json")) ? DirectProjectPersistence.LoadSettings(root) : new GalNet.Core.Configuration.ProjectConfiguration();
             var loaded = new EditorDocumentRepository(catalog, EditorDocumentValidation.Authoring).Load(root);
-            var snapshot = new EditorProjectDocument { Graph = loaded.Document, GroupEntries = loaded.GroupEntries, Settings = settings };
+            var snapshot = new EditorProjectDocument { Graph = loaded.Document, GroupEntries = loaded.GroupEntries, Configuration = settings };
             var paths = Directory.Exists(reader.Resolve("I18n")) ? reader.Files("I18n", diagnostics) : [];
             var sources = paths.Where(path => path.EndsWith(".json", StringComparison.OrdinalIgnoreCase) && !path.StartsWith("I18n/External/", StringComparison.OrdinalIgnoreCase))
                 .Select(path => new LocalizationSource(path, File.ReadAllText(reader.Resolve(path)))).ToArray();
@@ -36,8 +37,9 @@ public static class LocalizationValidation
                 diagnostics.Add(new("localization." + issue.Code, incomplete ? "warning" : "error", issue.Message, file, reference?.EntryId, pointer));
             }
             if (!index.Complete) diagnostics.Add(new("localization.incomplete", "warning", "Localization analysis is incomplete; provide all custom field schemas."));
-            if (settings.AvailableLocales.Select(locale => locale.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count() != settings.AvailableLocales.Count ||
-                !settings.AvailableLocales.Any(locale => locale.Code == settings.TargetLocale.Code))
+            var options = settings.ReadDefaultOptions();
+            if (options.AvailableLocales.Select(locale => locale.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count() != options.AvailableLocales.Count ||
+                !options.AvailableLocales.Any(locale => locale.Code == options.TargetLocale.Code))
                 diagnostics.Add(new("localization.languages", "error", "Project languages must be unique and include the development language.", "settings.json"));
             var metadata = reader.Resolve(LocalizationJson.MetadataPath);
             if (File.Exists(metadata)) LocalizationJson.Validate(LocalizationJson.MetadataPath, File.ReadAllBytes(metadata));

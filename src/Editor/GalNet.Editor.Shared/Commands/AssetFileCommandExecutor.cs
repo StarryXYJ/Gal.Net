@@ -7,7 +7,8 @@ using GalNet.Editor.Shared.Services;
 namespace GalNet.Editor.Shared.Commands;
 
 /// <summary>CLI adapter. The same planner and publisher are used by the GUI; only the GUI retains undo records.</summary>
-public sealed class AssetFileCommandExecutor(IEntryCatalog catalog, IResourceTypeCatalog? resourceTypes = null) : IProjectFileCommandExecutor
+public sealed class AssetFileCommandExecutor(IEntryCatalog catalog, IResourceTypeCatalog? resourceTypes = null,
+    GalNet.Core.Configuration.ProjectConfigurationSchema? configurations = null) : IProjectFileCommandExecutor
 {
     public static ProjectFileRequest Translate(IProjectFileCommand command)
     {
@@ -29,7 +30,7 @@ public sealed class AssetFileCommandExecutor(IEntryCatalog catalog, IResourceTyp
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var persistence = new DirectProjectPersistence(projectPath, new EditorDocumentRepository(catalog));
+            var persistence = new DirectProjectPersistence(projectPath, new EditorDocumentRepository(catalog), configurations);
             var document = persistence.Load();
             using var edit = new ProjectFileOperation(projectPath, Translate(command), catalog, resourceTypes);
             await edit.ApplyAsync(true, prepare => persistence.PublishStructureAsync(document, prepare, cancellationToken));

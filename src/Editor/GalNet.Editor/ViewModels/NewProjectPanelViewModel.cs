@@ -4,7 +4,7 @@ using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GalNet.Core.Settings;
+using GalNet.Contracts.Builtins;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Services;
 using GalNet.Editor.Services.Interfaces;
@@ -89,13 +89,13 @@ public partial class NewProjectPanelViewModel : PageViewModelBase, IDisposable
                 ? Path.Combine(AppContext.BaseDirectory, "DefaultContracts")
                 : ContractsDirectory;
             var audio = GalNet.Contracts.Builtins.BuiltinAudioDefaults.Create();
-            await _projectService.CreateAsync(projectPath, ProjectName, new ProjectSettings
+            await _projectService.CreateAsync(projectPath, ProjectName, new DefaultProjectOptions
             {
                 DefaultWidth = width,
                 DefaultHeight = height,
                 AudioGroups = audio.Groups.ToList(),
                 AudioTracks = audio.Tracks.ToList()
-            }, contracts);
+            }.ToConfiguration(), contracts);
             _navigation.NavigateTo(_editorPageFactory.CreateEditorPage());
         }
         catch (Exception ex)

@@ -42,7 +42,7 @@ await using var engine = new GameEngine(graph, runtime, dispatcher, playbackOpti
 await engine.UpdatePlaybackOptionsAsync(playback with { AutoAdvanceIntervalMilliseconds = 1500 });
 ```
 
-PlaybackOptions 位于 Core.Execution，AudioMixOptions/AudioMixLevel 位于 Runtime.Audio，BuiltinAudioModule 位于 Primitives.Builtins。默认 Avalonia.GameHost.Settings.GameSettings 提供示例映射方法，可直接使用或完全替换。音频模块不会读取 GameContent.Settings，也不会自动创建轨道；默认宿主负责提供项目声明的轨道。轨道声明和混音字典在入口隔离，后续修改项目对象不等于更新运行配置。文本速度传给文本呈现，窗口偏好交给显示服务，保存槽数交给保存服务，不把整个偏好对象塞进运行上下文。
+PlaybackOptions 位于 Core.Execution，AudioMixOptions/AudioMixLevel 位于 Runtime.Audio，BuiltinAudioModule 位于 Primitives.Builtins。默认 Avalonia.GameHost.Settings.GameSettings 提供示例映射方法，可直接使用或完全替换。音频模块不会读取 GameContent.Configuration，也不会自动创建轨道；默认宿主负责从配置文档投影项目声明的轨道。轨道声明和混音字典在入口隔离，后续修改项目对象不等于更新运行配置。文本速度传给文本呈现，窗口偏好交给显示服务，保存槽数交给保存服务，不把整个偏好对象塞进运行上下文。
 
 ## 声明音频分组与轨道
 
@@ -77,6 +77,12 @@ var view = registration.AddBuiltinImplementations(projectCatalog,
 ```
 
 图集定义无需持有资源租约；sprite 图片仍按现有 presenter 生命周期管理。普通 `ILayerPresenter.ShowLayer/ReplaceLayer` 已足够，渲染器不解析文件名或维度。会话播放中目录不变，读档由同一目录进行同步内容预检；切换内容或项目时重新准备，不能把旧目录挂到新项目。默认 Avalonia 配置回调可从 `presentation.ImageVariants` 获取已准备目录，并传入 AddBuiltinImplementations。
+
+## 项目配置声明
+
+`ProjectSchemas.Configurations` 可返回 `ProjectConfigurationSchema`；未声明时为空。使用现有生成 DTO 时，通过 `ConfigurationSection.ForDto<MyOptions>("my.project")` 声明 section，复用 DTO 的字段 schema；普通 DTO 也可用 `ConfigurationSection<MyOptions>` 显式提供 FieldDescriptor。版本默认为 1，领域校验可通过声明时的委托提供。
+
+通过 `content.Configuration.Read(section)` 取得独立 DTO，修改后用 `content.Configuration.Set(section, options)` 发布；读取缺省配置不会写文件。运行模块继续接收由 DTO 投影的小配置。Storage 加载通过 `GameContentLoadOptions.Configurations` 显式选择 schema，并通过 `SelectDefaultCulture` 提供文化代码。默认 Sample 的组合见 SampleCustomization.CreateHostOptions，默认字段定义见 DefaultProjectConfiguration；它们是可选示例，不由 Core/Runtime 自动选择。通用 section 编辑 UI 与自有 DTO 的完整预览接入仍待 R4c。
 
 ## 验证清单
 

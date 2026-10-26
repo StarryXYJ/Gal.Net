@@ -69,14 +69,16 @@ public sealed class ProjectContentSessionTests
     public async Task SaveAllIncludesGraphGroupsAndCompleteSettingsAndComparesActualContent()
     {
         _documents.CurrentDocument.Name = "Renamed";
-        _project.Settings.DefaultWidth = 1440;
-        _project.Settings.SaveSlotCount = 17;
+        var options = _project.Configuration.ReadDefaultOptions();
+        options.DefaultWidth = 1440;
+        options.SaveSlotCount = 17;
+        _project.Configuration.Set(DefaultProjectConfiguration.Section, options);
         Assert.That(_session.IsDirty, Is.True);
         await _session.SaveAsync();
         Assert.That(_session.IsDirty, Is.False);
         Assert.That(_repository.LastPlan!.Writes.Keys, Does.Contain("Graph/graph.json"));
         Assert.That(_repository.LastPlan.Writes.Keys.Any(path => path.EndsWith(".rawgalgroup", StringComparison.Ordinal)), Is.True);
-        Assert.That(DirectProjectPersistence.LoadSettings(_root).DefaultWidth, Is.EqualTo(1440));
+        Assert.That(DirectProjectPersistence.LoadSettings(_root).ReadDefaultOptions().DefaultWidth, Is.EqualTo(1440));
         _documents.CurrentDocument.Name = "Other";
         Assert.That(_session.IsDirty, Is.True);
         _documents.CurrentDocument.Name = "Renamed";
@@ -129,7 +131,9 @@ public sealed class ProjectContentSessionTests
     {
         var original = File.ReadAllBytes(Path.Combine(_root, "Graph/graph.json"));
         _documents.CurrentDocument.Name = "Unsaved";
-        _project.Settings.DefaultWidth = 1440;
+        var options = _project.Configuration.ReadDefaultOptions();
+        options.DefaultWidth = 1440;
+        _project.Configuration.Set(DefaultProjectConfiguration.Section, options);
         _repository.Transaction = new FaultTransaction(failRecovery, 3);
         try { await _session.SaveAsync(); Assert.Fail("Injected publication must fail."); }
         catch (IOException) { }
@@ -207,11 +211,13 @@ public sealed class ProjectContentSessionTests
         var file = Path.Combine(_root, "Graph/groups/created.rawgalgroup");
         Assert.That(File.Exists(file), Is.True);
         Assert.That(_session.IsDirty, Is.False);
-        _project.Settings.DefaultWidth = 1440;
+        var options = _project.Configuration.ReadDefaultOptions();
+        options.DefaultWidth = 1440;
+        _project.Configuration.Set(DefaultProjectConfiguration.Section, options);
         await _session.PublishStructureAsync(new GroupPresence(false));
         Assert.That(File.Exists(file), Is.False);
         Assert.That(_session.IsDirty, Is.True);
-        Assert.That(DirectProjectPersistence.LoadSettings(_root).DefaultWidth, Is.EqualTo(1920));
+        Assert.That(DirectProjectPersistence.LoadSettings(_root).ReadDefaultOptions().DefaultWidth, Is.EqualTo(1920));
     }
 
     [Test]

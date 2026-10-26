@@ -128,3 +128,17 @@ ProjectSettings 不再包含 PlayerVariables/SaveVariables，删除命令编辑�
 最终相关回归 868 项通过：Editor.Shared 422（3 项既有符号链接权限失败、2 跳过）、Editor 323、Integration 123（1 项既有符号链接权限失败）。初次 Editor 回归 322 通过、1 项 Timeline 测试在 HeadlessUnitTestSession.DisposeAsync 发生空引用，与现有 Avalonia 12.0.5 会话发布竞态 lesson 的失败位置一致；定向 1 项与完整 323 项重跑通过，未修改 Timeline 业务代码，保留原失败日志，不声称修复框架竞态。空白格式和 git diff 检查通过，依赖/锁文件没有变化。日志位于忽略产物 artifacts/engine-core-audit/r4a-*.log。
 
 R4a 收尾时默认输出不再占用，普通 GalNet.slnx 完整构建也通过，日志 r4a-final-standard-build.log。工作区后来出现本地化面板的并行变更，保留且不纳入本阶段提交；868 项回归以本阶段同源码隔离产物为依据。
+
+## R4b：配置协议与默认模型归位
+
+删除 Core.Settings.ProjectSettings，默认作者模型改为可选 Contracts.Builtins.DefaultProjectOptions；Core.Configuration 仅持有版本化配置文档、section/schema 协议，复用 FieldDescriptor/ValueValidation。GameContent、GalProject、作者快照和外部重载统一使用 Configuration，没有旧 Settings 别名。settings.json 改为 version/sections 信封，各 section 带版本与对象 data，不读取旧平铺格式。
+
+类型化读取返回独立 DTO，缺省读取不落盘；显式 Set 在验证后发布，保留 section 中未声明的字段和不认识的 section。生成 DTO 使用字段 codecs/schema 默认，普通 DTO 可显式提供字段描述。未知版本只在声明消费该 section 时检查；修改已知字段失败不发布半份配置，合法更新可修复旧的已知无效值。字段检查与 DTO 解码统一区分大小写，避免未知大小写字段在解码时覆盖已验证值。
+
+项目契约可公开 ProjectSchemas.Configurations；缺省为空，关闭项目/契约时释放对自有 CLR 类型的引用。Editor 打开、保存、结构发布和外部重载应用所选 schema；CLI 编辑与 apply 接收 schema。Storage 不依赖默认模型，由 GameContentLoadOptions 接收 schema 与开发语言选择委托；本地化加载器只接收文化代码。两种 Sample 和默认契约显式选择默认 schema。预览 provider 补齐项目配置副本，避免预览丢失声明的音频配置。
+
+初轮全量回归暴露 caada23 中的语言显示名称输入问题：设置显示字符串触发过滤，候选列表已清空，旧候选匹配无法取得代码。保留新的 Code 绑定，只恢复显示字符串回退的代码提取，单独提交。另去掉 DirectProjectPersistence 为复制配置进行的 JSON 编解码往返，使用文档 Clone；本地化索引单次取得文化代码，避免每条文本重新解码配置。
+
+R4c 仍需完成通用 section 编辑/历史及自有 DTO 的完整导出、安装、运行与预览链路，R4 整体尚未完成。正式协议见 [file-formats](../../docs/spec/file-formats.md)、[runtime](../../docs/spec/runtime.md)，接入见 [new-presentation-layer](../../docs/manual/new-presentation-layer.md)。
+
+最终全量回归 1770 项通过、4 项既有符号链接权限失败、3 项跳过：Core 166、Runtime 141、Builtins 185、Editor 323、Editor.Shared 424、Integration 125、Presentation 243、Architecture 49、Assets 57、GameHost 6、Debugging 10、Diagnostics 1、Storage 22、Generator 18。普通解决方案构建通过，无依赖或锁文件变更；格式和 diff 检查通过。格式工具的 MSBuild 工作区因沙箱命名管道权限不可用，使用 folder 模式完成格式化与只读核验。初轮语言名称失败日志保留，独立修复提交为 `2a92fb6`，最终完整 GUI 回归通过。原生媒体/显式外进程未执行；符号链接环境限制不隐藏。证据位于忽略产物 artifacts/engine-core-audit/r4b-final-build.log、r4b-final-tests.log/trx 与 r4b-format-verify.log。

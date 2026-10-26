@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -59,8 +60,8 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
     [ObservableProperty]
     private VariableListEditorViewModel? _saveVariables;
 
-    public int DesignWidth => _projectService.Current?.Settings.DefaultWidth ?? 1920;
-    public int DesignHeight => _projectService.Current?.Settings.DefaultHeight ?? 1080;
+    public int DesignWidth => _projectService.Current?.Configuration.ReadDefaultOptions().DefaultWidth ?? 1920;
+    public int DesignHeight => _projectService.Current?.Configuration.ReadDefaultOptions().DefaultHeight ?? 1080;
 
     public ObservableCollection<string> OutputLines { get; } = [];
 
@@ -114,7 +115,7 @@ public partial class GamePreviewPanelViewModel : ObservableObject, IDisposable, 
                 _assets,
                 _contentProvider,
                 _variableService,
-                new FileSaveService(profileDirectory, project.Settings.SaveSlotCount),
+                new FileSaveService(profileDirectory, project.Configuration.ReadDefaultOptions().SaveSlotCount),
                 new FileGameProgressService(profileDirectory),
                 OnRuntimeCreated,
                 OnGameStarted,

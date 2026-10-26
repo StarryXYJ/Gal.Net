@@ -1,6 +1,5 @@
 using GalNet.Core.Runtime;
 using GalNet.Core.Services;
-using GalNet.Core.Settings;
 using GalNet.Core.Variable;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;

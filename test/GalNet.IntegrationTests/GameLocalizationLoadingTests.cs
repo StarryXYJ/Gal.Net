@@ -1,10 +1,11 @@
 using System.Text.Json;
+using GalNet.Contracts.Builtins;
 using DynamicLocalization.Core;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
 using GalNet.Core.Graph;
-using GalNet.Core.Settings;
+using GalNet.Core.Configuration;
 using GalNet.Runtime.Content;
 using GalNet.Sample.Avalonia.Services;
 using GalNet.Storage.FileSystem;
@@ -38,8 +39,8 @@ public sealed class GameLocalizationLoadingTests
         var content = new GameContent
         {
             Graph = new(),
-            Settings = new() { TargetLocale = GalNet.Core.I18n.I18nLocale.EnUs },
-            Localization = GameLocalizationLoader.Load(_root, new(), new() { TargetLocale = GalNet.Core.I18n.I18nLocale.EnUs })
+            Configuration = new DefaultProjectOptions { TargetLocale = GalNet.Core.I18n.I18nLocale.EnUs }.ToConfiguration(),
+            Localization = GameLocalizationLoader.Load(_root, new(), "en-US")
         };
         var cultures = new CultureService();
         using var resolver = new SampleLocalizationService(cultures);
@@ -67,7 +68,7 @@ public sealed class GameLocalizationLoadingTests
         File.WriteAllText(Path.Combine(external, "b.json"), "{broken");
         File.WriteAllText(Path.Combine(external, "c.json"), """{"line":1}""");
         File.WriteAllText(Path.Combine(external, "nested", "z.json"), """{"line":"last"}""");
-        var loaded = GameLocalizationLoader.Load(_root, new(), new());
+        var loaded = GameLocalizationLoader.Load(_root, new());
         Assert.That(loaded.ExternalSources.Select(source => source.RelativePath),
             Is.EqualTo(new[] { "External/en-US/a.json", "External/en-US/nested/z.json" }));
         Assert.That(loaded.Diagnostics, Has.Count.EqualTo(2));
@@ -84,15 +85,15 @@ public sealed class GameLocalizationLoadingTests
         Directory.CreateDirectory(Path.Combine(_root, "I18n", "zh"));
         File.WriteAllText(Path.Combine(_root, "I18n", "zh-CN", "main.json"), """{"line":"specific"}""");
         File.WriteAllText(Path.Combine(_root, "I18n", "zh", "main.json"), """{"line":"parent","parentOnly":"inherited"}""");
-        var settings = new ProjectSettings();
-        var content = new GameContent { Graph = new(), Settings = settings, Localization = GameLocalizationLoader.Load(_root, new(), settings) };
+        var settings = new ProjectConfiguration();
+        var content = new GameContent { Graph = new(), Configuration = settings, Localization = GameLocalizationLoader.Load(_root, new(), "zh-CN") };
         using var resolver = new SampleLocalizationService(new CultureService());
         resolver.AttachGame(content);
         resolver.ApplyCulture("zh-CN");
         Assert.That(resolver.Resolve("line"), Is.EqualTo("specific"));
         Assert.That(resolver.Resolve("parentOnly"), Is.EqualTo("inherited"));
         File.WriteAllText(Path.Combine(_root, "I18n", "en-US", "invalid.json"), "{broken");
-        Assert.That(() => GameLocalizationLoader.Load(_root, new(), settings),
+        Assert.That(() => GameLocalizationLoader.Load(_root, new(), "zh-CN"),
             Throws.TypeOf<InvalidDataException>().With.Message.Contains("invalid.json"));
     }
 
@@ -103,11 +104,11 @@ public sealed class GameLocalizationLoadingTests
         {
             Nodes = { new Group { Entries = { new PrimitiveEntry("dialogue.text", JsonSerializer.SerializeToElement(new { content = "required", speaker = "" })) } } }
         };
-        Assert.That(() => GameLocalizationLoader.Load(_root, graph, new ProjectSettings()),
+        Assert.That(() => GameLocalizationLoader.Load(_root, graph, "zh-CN"),
             Throws.TypeOf<InvalidDataException>().With.Message.Contains("required"));
         File.WriteAllText(Path.Combine(_root, "I18n", "en-US", "main.json"), """{"required":"Present"}""");
         ((Group)graph.Nodes[0]).Entries[0] = new PrimitiveEntry("dialogue.text", JsonSerializer.SerializeToElement(new { content = "required", speaker = "unknown" }));
-        Assert.That(() => GameLocalizationLoader.Load(_root, graph, new() { TargetLocale = GalNet.Core.I18n.I18nLocale.EnUs }),
+        Assert.That(() => GameLocalizationLoader.Load(_root, graph, "en-US"),
             Throws.TypeOf<InvalidDataException>().With.Message.Contains("unknown"));
     }
 
@@ -129,7 +130,7 @@ public sealed class GameLocalizationLoadingTests
                 new Branch { BranchType = BranchType.Choice, Options = [new() { Text = "" }, new() { Text = "   " }] }
             }
         };
-        Assert.That(() => GameLocalizationLoader.Load(_root, graph, new()), Throws.Nothing);
+        Assert.That(() => GameLocalizationLoader.Load(_root, graph, "zh-CN"), Throws.Nothing);
     }
 
     [Test]
@@ -157,5 +158,36 @@ public sealed class GameLocalizationLoadingTests
         cultures.SetCulture("zh-CN");
         Assert.That(resolver.Resolve("character.guide.name"), Is.EqualTo("向导"));
         Assert.That(project.AssetRoot, Is.EqualTo(Path.Combine(_root, "Assets")), "I18n remains outside the asset root.");
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task ConfigurationSchemasAndCultureProjectionAreExplicitAtTheLoadingBoundary(bool installed)
+    {
+        Directory.CreateDirectory(Path.Combine(_root, "Graph"));
+        File.WriteAllText(Path.Combine(_root, "Graph", "graph.json"), """{"nodes":[],"edges":[],"rootNodeId":""}""");
+        File.WriteAllText(Path.Combine(_root, "settings.json"), """
+            {"version":1,"sections":{"galnet.project":{"version":1,"data":{"defaultWidth":0}},"custom":{"version":8,"data":{"flag":true}}}}
+            """);
+        var types = BuiltinResourceTypes.CreateCatalog();
+        var galleries = BuiltinGalleryTypes.CreateCatalog(types);
+        File.WriteAllText(Path.Combine(_root, "gallery.json"), JsonSerializer.Serialize(
+            new GalleryConfiguration { Types = galleries.Types.ToList(), Items = [] }, JsonSerializerOptions.Web));
+        IGameContentProvider Provider(GameContentLoadOptions? options = null) => installed
+            ? new InstalledGameContentProvider(_root, types, galleries, options)
+            : new ProjectGameContentProvider(_root, types, galleries, options);
+        var opaque = await Provider().LoadAsync();
+        Assert.That(opaque.Configuration.Sections["custom"].Version, Is.EqualTo(8));
+        Assert.ThrowsAsync<InvalidDataException>(async () => await Provider(new() { Configurations = DefaultProjectConfiguration.Schema }).LoadAsync());
+        var observed = false;
+        await Provider(new()
+        {
+            SelectDefaultCulture = configuration =>
+            {
+                observed = configuration.Sections["custom"].Data.GetProperty("flag").GetBoolean();
+                return "en-US";
+            }
+        }).LoadAsync();
+        Assert.That(observed, Is.True);
     }
 }

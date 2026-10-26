@@ -8,11 +8,13 @@ namespace GalNet.Storage.FileSystem;
 public sealed class InstalledGameContentProvider : IGameContentProvider
 {
     private readonly string _directory;
+    private readonly GameContentLoadOptions _options;
     private readonly IGalleryTypeCatalog _galleryTypes;
 
-    public InstalledGameContentProvider(string directory, IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes)
+    public InstalledGameContentProvider(string directory, IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes, GameContentLoadOptions? options = null)
     {
         _directory = Path.GetFullPath(directory);
+        _options = options ?? new();
         ArgumentNullException.ThrowIfNull(resourceTypes);
         _galleryTypes = galleryTypes ?? throw new ArgumentNullException(nameof(galleryTypes));
     }
@@ -22,8 +24,8 @@ public sealed class InstalledGameContentProvider : IGameContentProvider
         cancellationToken.ThrowIfCancellationRequested();
         var graph = GameGraphContentLoader.Load(_directory, Path.Combine("Graph", "graph.json"), Path.Combine("Graph", "groups"), cancellationToken);
         var gallery = GalleryFileLoader.LoadGenerated(Path.Combine(_directory, "gallery.json"), _galleryTypes);
-        var settings = GameProjectSettingsLoader.Load(_directory);
-        var localization = GameLocalizationLoader.Load(_directory, graph, settings, cancellationToken);
-        return new GameContent { Graph = graph, Gallery = gallery, Settings = settings, Localization = localization };
+        var settings = GameProjectConfigurationLoader.Load(_directory, _options.Configurations);
+        var localization = GameLocalizationLoader.Load(_directory, graph, _options.SelectDefaultCulture?.Invoke(settings), cancellationToken);
+        return new GameContent { Graph = graph, Gallery = gallery, Configuration = settings, Localization = localization };
     }, cancellationToken);
 }
