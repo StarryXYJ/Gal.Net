@@ -23,6 +23,23 @@ public sealed class ProjectContentBuilderTests
     }
 
     [Test]
+    public async Task BuildReturnsTheSourceMapOfItsActualCompiledFiles()
+    {
+        await WriteProjectAsync("groups/source.rawgalgroup", "opening");
+        var output = Path.Combine(_root, "Output", "Debug");
+        var result = await new ProjectContentBuilder(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).BuildAsync(_root, output);
+        using var compiled = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(output, "Graph", "groups", "opening.galgroup")));
+        var ids = compiled.RootElement.GetProperty("entries").EnumerateArray().Select(entry => entry.GetProperty("id").GetString()).ToArray();
+        Assert.That(result.SourceEntries.SelectMany(entry => entry.PrimitiveIds), Is.EqualTo(ids));
+        Assert.That(result.SourceEntries.First().Start, Is.Zero);
+        Assert.That(result.SourceEntries.Last().End, Is.EqualTo(ids.Length));
+        var signature = result.AuthorSignature;
+        await File.WriteAllTextAsync(Path.Combine(_root, "Graph", "groups", "source.rawgalgroup"), "changed after build");
+        Assert.That(result.AuthorSignature, Is.EqualTo(signature));
+        Assert.That(result.AuthorSignature, Has.Length.EqualTo(64));
+    }
+
+    [Test]
     public async Task BuildAsync_RejectsMissingDevelopmentTextBeforeReplacingOutputEvenWhenExternalHasIt()
     {
         await WriteProjectAsync("groups/opening.rawgalgroup", "opening");

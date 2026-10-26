@@ -18,7 +18,6 @@ namespace GalNet.Editor.Dock;
 public static class EditorDockPanelIds
 {
     public const string NodeGraph = "NodeGraph";
-    public const string GamePreview = "GamePreview";
     public const string Assets = "Assets";
     public const string Log = "Log";
     public const string GroupEditor = "GroupEditor";

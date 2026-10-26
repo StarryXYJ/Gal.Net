@@ -84,8 +84,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var projects = services.GetRequiredService<IProjectService>();
                 Assert.That(projects.Current!.Name, Is.EqualTo("Authored"));
                 Assert.That(services.GetRequiredService<INavigationService>().CurrentPage, Is.TypeOf<EditorPageViewModel>());
-                Assert.That(projects.Current.Services.GetRequiredService<EditorWorkspaceViewModel>().ActivePreview, Is.Null);
-                Assert.That(services.GetRequiredService<IEditorExtensionRegistry>().FindDockPanel(EditorDockPanelIds.GamePreview), Is.Null);
+                Assert.That(services.GetRequiredService<IEditorExtensionRegistry>().FindDockPanel("GamePreview"), Is.Null);
                 var projectPath = projects.Current.RootPath;
                 Assert.That(File.Exists(Path.Combine(projectPath, "Contracts", ProjectSchemaContext.AssemblyFileName)), Is.True);
                 await projects.CloseAsync();
@@ -479,7 +478,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var entry = group.Entries.Single();
         entry.ConfigureParameterFields(catalog, [], []);
         var field = (IFieldBinding)entry.ParameterFields.Single();
-        new GroupEntryAuthoringService(store, documents, catalog, histories).Delete("group", [entry.StableId]);
+        new GroupEntryAuthoringService(documents, catalog, histories).Delete("group", [entry.StableId]);
         store.Dispose();
         Assert.That(await field.CommitAsync(new(JsonSerializer.SerializeToElement(9)), CancellationToken.None), Is.Not.Null);
         Assert.That(entry.Source.Parameters["count"].GetInt32(), Is.EqualTo(4));

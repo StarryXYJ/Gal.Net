@@ -22,7 +22,6 @@ public sealed class EditorViewFactory : IEditorViewFactory
         [typeof(TimelinePanelViewModel)] = typeof(TimelinePanelView),
         [typeof(FileDocumentPanelViewModel)] = typeof(FileDocumentPanelView),
         [typeof(NewProjectPanelViewModel)] = typeof(NewProjectPanelView),
-        [typeof(GamePreviewPanelViewModel)] = typeof(GamePreviewPanelView),
         [typeof(LogPanelViewModel)] = typeof(LogPanelView)
         ,
         [typeof(AssetPanelViewModel)] = typeof(AssetPanelView)

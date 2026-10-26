@@ -16,7 +16,7 @@
 
 `UndoRedoHistory.AuthorChanges` 在一次成功 Execute、Undo 或 Redo 完成并更新历史游标后发布一个 `AuthorChangeSet`，版本单调增加。Group 范围包含稳定 Group/Entry 身份、最早受影响位置及条件/参数/类型/成员/顺序变更标记；复合操作合并子范围。尚未声明完整范围的旧操作及混合复合操作标记 UnknownScope，消费者保守刷新。失败及其补偿不发布内容结果；Clear、MarkSaved、忙碌状态和空 Undo/Redo 不生成内容提交。发布期间禁止历史重入，单个订阅者异常记录在通知错误中，不阻止后续订阅者。
 
-Entry 字段、批量新增/粘贴/删除/重排直接修改项目作者数据。Group 的可观察集合只由投影同步更新，外部不能通过增删该集合写回作者文档；列表通知的接收者读取到的是完整作者操作。投影集合的单个观察者异常单独记录，既有内容与历史继续有效。Group 投影和 Timeline 的内容刷新使用成功提交事件；历史按钮、保存状态及其他尚未迁移的界面仍可使用 History.Changed。当前投影仍整组刷新，场景查询仍整快照换代，局部失效与旧对象回收另行推进。
+Entry 字段、批量新增/粘贴/删除/重排直接修改项目作者数据。Group 的可观察集合只由投影同步更新，外部不能通过增删该集合写回作者文档；列表通知的接收者读取到的是完整作者操作。投影集合的单个观察者异常单独记录，既有内容与历史继续有效。Group 投影和 Timeline 的内容刷新使用成功提交事件；历史按钮、保存状态及其他尚未迁移的界面仍可使用 History.Changed。已知 Group 范围按 Entry 身份刷新投影，场景查询按受影响 Group 更新作者快照并复用分析；现有查询结果与写入上下文未变化时不广播作者刷新。Timeline 自身按活动 Group 接受作者提交，其他 Group 通过实际场景查询变化触发刷新。UnknownScope 仍保守刷新。
 
 ## 保存全部与关闭
 
@@ -24,9 +24,9 @@ GUI 的项目保存统一经过项目 scope 的 `ProjectContentSession`。先提
 
 Graph、Group、settings 与当前 editor-state 在同一作者文件事务发布。变量定义只保存在 Graph 中，settings 不再包含同名列表。视口状态可以单独保存，不会自动保存其他作者内容。尚未采纳的外部作者文件或 settings 变化会使保存明确失败，不以自己的旧内容覆盖；不承诺跨进程多文件原子性。
 
-GUI 的 Repository 显式使用 Authoring 验证策略：Raw Group 可以保留未知类型/参数、缺必填值、无效参数类型或未完成条件表达式，Graph 分支条件也可保留未完成文本；保存不 Normalize、不补默认值。当前格式、稳定身份、严格 JSON shape、重复属性、Graph 拓扑、源路径/归属及外部冲突仍检查。仓库默认 Complete 供 CLI 严格写入使用，validate/group compile 和预览编译不因 GUI 草稿可保存而放宽。保存后继续撤销类型变更会恢复原作者 JSON，并重新成为未保存内容。
+GUI 的 Repository 显式使用 Authoring 验证策略：Raw Group 可以保留未知类型/参数、缺必填值、无效参数类型或未完成条件表达式，Graph 分支条件也可保留未完成文本；保存不 Normalize、不补默认值。当前格式、稳定身份、严格 JSON shape、重复属性、Graph 拓扑、源路径/归属及外部冲突仍检查。仓库默认 Complete 供 CLI 严格写入使用，validate/group compile 和外部调试构建不因 GUI 草稿可保存而放宽。保存后继续撤销类型变更会恢复原作者 JSON，并重新成为未保存内容。
 
-GUI 的 dirty 状态统一由 ProjectContentSession 依据当前作者内容与最近成功保存内容比较，独立于历史位置；History.IsDirty 查询同一会话，保存和关闭检查不依赖 Document 或 GalProject 的手工 dirty 标记。比较忽略 Group 查询字典的插入顺序、参数查询顺序和显示行号；保留实际 Graph/Entry 顺序与 JSON 值。保存失败不更新基线，保存期间产生的新编辑仍为 dirty。设置草稿也参与关闭脏检查。
+GUI 的 dirty 状态统一由 ProjectContentSession 依据当前作者内容与最近成功保存内容比较，独立于历史位置；History.IsDirty 查询同一会话，保存和关闭检查不依赖 Document 或 GalProject 的手工 dirty 标记。比较忽略 Group 查询字典的插入顺序、参数查询顺序和显示行号；保留实际 Graph/Entry 顺序与 JSON 值。保存失败不更新基线，保存期间产生的新编辑仍为 dirty。设置草稿也参与关闭脏检查。`ProjectContentBaseline` 保留已保存快照，直接比较当前内存内容，读取状态不再执行全项目 JSON 克隆和序列化；可变作者模型的直接修改仍可被识别。草稿登记、预校验、提交和取消由 `ProjectDraftRegistry` 管理，发布门与历史捕获门仍由 ContentSession 统一协调。
 
 关闭项目或应用时先挂起并等待当前编辑与保存队列，取消尚未开始的自动保存。若有未保存内容，提供 Save All、Discard Unsaved Content、Cancel；取消保持原项目与草稿，保存失败也保留会话。保存期间再次产生未保存内容时重新检查，不能保存旧捕获版后直接关闭。放弃只丢弃未保存内容；已经完成的结构写盘不反向撤销。
 

@@ -69,7 +69,10 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         InitializeEvents();
         Refresh();
     }
-    private void OnAuthorCommitted(AuthorChangeSet _) => Refresh();
+    private void OnAuthorCommitted(AuthorChangeSet change)
+    {
+        if (change.UnknownScope || _selection.Current is { } target && change.Groups.Any(group => group.GroupId == target.GroupId)) Refresh();
+    }
     private void OnSelection() { ClearObjectDrafts(); _frame = 0; OnPropertyChanged(nameof(Frame)); Refresh(); }
     private void OnLocale(object? sender, PropertyChangedEventArgs args)
     {

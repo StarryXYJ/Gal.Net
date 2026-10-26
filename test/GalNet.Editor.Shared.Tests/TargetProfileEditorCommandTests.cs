@@ -8,6 +8,42 @@ namespace GeneralTest.Editor;
 
 public class TargetProfileEditorCommandTests
 {
+    [TestCase("Choice"), TestCase("Condition")]
+    public void EmptyBranchCannotConnectThroughAPhantomOutlet(string kind)
+    {
+        var document = new EditorProjectDocument
+        {
+            Graph = new()
+            {
+                Nodes =
+            [new() { Id = "branch", Type = "Branch", BranchType = kind, Options = [], Conditions = [] }, new() { Id = "target", Type = "Group" }]
+            }
+        };
+        var handler = new BuiltInEditorCommandHandler(new TargetProfileEntryCatalog([]));
+        var result = handler.Execute(document, new ConnectNodesCommand("branch", 0, "target"), new(0, false));
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.Diagnostics.Single().Code, Is.EqualTo("graph.edge.invalidOutlet"));
+        Assert.That(document.Graph.Edges, Is.Empty);
+    }
+
+    [Test]
+    public void DuplicateEdgeIdentityDoesNotRemoveTheExistingOutputConnection()
+    {
+        var old = new EditorGraphEdgeDto { Id = "old", FromNodeId = "a", ToNodeId = "b" };
+        var other = new EditorGraphEdgeDto { Id = "taken", FromNodeId = "b", ToNodeId = "c" };
+        var document = new EditorProjectDocument
+        {
+            Graph = new()
+            {
+                Nodes = [new() { Id = "a", Type = "Group" }, new() { Id = "b", Type = "Group" }, new() { Id = "c", Type = "Group" }],
+                Edges = [old, other]
+            }
+        };
+        var handler = new BuiltInEditorCommandHandler(new TargetProfileEntryCatalog([]));
+        Assert.That(handler.Execute(document, new ConnectNodesCommand("a", 0, "c", "taken"), new(0, false)).Success, Is.False);
+        Assert.That(document.Graph.Edges, Is.EqualTo(new[] { old, other }));
+    }
+
     [Test]
     public void ConnectingAnotherPredecessorPreservesConvergenceAndReplacesOnlyItsOutput()
     {

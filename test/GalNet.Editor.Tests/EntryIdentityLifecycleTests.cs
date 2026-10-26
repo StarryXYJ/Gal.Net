@@ -41,7 +41,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         Assert.That(author.IsPendingMove(source.Id, creator.StableId), Is.True);
         var canceled = await author.PasteAsync(target.Id, cut.Text, null, _ => Task.FromResult(false));
         Assert.That(canceled, Is.Empty); Assert.That(author.HasPendingMove, Is.True); Assert.That(history.CanUndo, Is.False);
-        var moved = (await author.PasteAsync(target.Id, cut.Text, null)).Single();
+        var movedId = (await author.PasteAsync(target.Id, cut.Text, null)).Single();
+        var moved = target.Entries.Single(entry => entry.StableId == movedId);
         Assert.That(moved.StableId, Is.Not.EqualTo(creator.StableId)); Assert.That(moved.Source.Parameters["handleId"].GetString(), Is.EqualTo(handle));
         Assert.That(consumer.Source.Parameters["handleId"].GetString(), Is.EqualTo(handle)); Assert.That(author.HasPendingMove, Is.False);
         Assert.That(moved.Source.Parameters["future"][1].GetInt64(), Is.EqualTo(9007199254740993L));
@@ -50,20 +51,23 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         await history.UndoAsync(); Assert.That(source.Entries[0], Is.SameAs(creator)); Assert.That(target.Entries, Has.Count.EqualTo(1));
         Assert.That(notifications.Last().Moves.Single().SourceGroupId, Is.EqualTo(target.Id));
         await history.RedoAsync(); Assert.That(target.Entries.Last().StableId, Is.EqualTo(moved.StableId));
-        var repeated = (await author.PasteAsync(target.Id, cut.Text, null)).Single();
+        var repeatedId = (await author.PasteAsync(target.Id, cut.Text, null)).Single();
+        var repeated = target.Entries.Single(entry => entry.StableId == repeatedId);
         Assert.That(author.LastPasteCopiedMove, Is.True); Assert.That(repeated.Source.Parameters["handleId"].GetString(), Is.Not.EqualTo(handle));
         var next = author.PrepareCut(target.Id, [moved.StableId])!; author.BeginCut(next);
         moved.Condition = "true"; Assert.That(author.HasPendingMove, Is.False);
-        var copied = (await author.PasteAsync(source.Id, next.Text, null)).Single();
+        var copiedId = (await author.PasteAsync(source.Id, next.Text, null)).Single();
+        var copied = source.Entries.Single(entry => entry.StableId == copiedId);
         Assert.That(author.LastPasteCopiedMove, Is.True); Assert.That(copied.Source.Parameters["handleId"].GetString(), Is.Not.EqualTo(handle));
-        await workspace.SaveAsync(); var path = project.RootPath; var targetId = target.Id; var movedId = moved.StableId;
+        await workspace.SaveAsync(); var path = project.RootPath; var targetId = target.Id;
         await projects.CloseAsync(); project = await projects.OpenAsync(path);
         Assert.That(project.Services.GetRequiredService<IEditorDocumentService>().Groups[targetId].Entries.Single(entry => entry.StableId == movedId).Parameters["handleId"].GetString(), Is.EqualTo(handle));
         await projects.CloseAsync();
         project = await projects.CreateAsync(Path.Combine(_root, "ForeignMoveProject"), "Foreign", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
         var foreignGroup = project.Services.GetRequiredService<EditorWorkspaceViewModel>().Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
         var foreignAuthor = project.Services.GetRequiredService<GroupEntryAuthoringService>();
-        var foreign = (await foreignAuthor.PasteAsync(foreignGroup.Id, next.Text, null)).Single();
+        var foreignId = (await foreignAuthor.PasteAsync(foreignGroup.Id, next.Text, null)).Single();
+        var foreign = foreignGroup.Entries.Single(entry => entry.StableId == foreignId);
         Assert.That(foreignAuthor.LastPasteCopiedMove, Is.True); Assert.That(foreign.Source.Parameters["handleId"].GetString(), Is.Not.EqualTo(handle));
         await projects.CloseAsync();
     }
@@ -125,7 +129,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         using (var limited = new EntryEditSession(content, texts, scope.GetRequiredService<IEditorLocalizationService>(), documents, projects, new(0, 1024)))
         {
             var state = limited.Get(entry, entry.DetailForm!.Fields.Single()); state.Update("retained", true, null, false);
-            using var author = new GroupEntryAuthoringService(scope.GetRequiredService<EditorGroupProjectionStore>(), documents, scope.GetRequiredService<IEntryCatalog>(), history, texts, limited);
+            using var author = new GroupEntryAuthoringService(documents, scope.GetRequiredService<IEntryCatalog>(), history, texts, limited);
             Assert.Throws<EditorOperationException>(() => author.Delete(group.Id, [entry.StableId]));
             Assert.That(group.Entries, Has.Count.EqualTo(1)); Assert.That(limited.PendingCount, Is.EqualTo(1)); Assert.That(limited.Archives, Is.Empty);
             Assert.That(history.Content.CanUndo, Is.False); state.Clear();
@@ -141,7 +145,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         using (var corrupt = new EntryEditSession(content, texts, scope.GetRequiredService<IEditorLocalizationService>(), documents, projects))
         {
             var retained = corrupt.Get(entry, entry.DetailForm!.Fields.Single()); retained.Update("preserved after corruption", true, null, false);
-            using var author = new GroupEntryAuthoringService(scope.GetRequiredService<EditorGroupProjectionStore>(), documents, scope.GetRequiredService<IEntryCatalog>(), history, texts, corrupt);
+            using var author = new GroupEntryAuthoringService(documents, scope.GetRequiredService<IEntryCatalog>(), history, texts, corrupt);
             Assert.Throws<EditorOperationException>(() => author.Delete(group.Id, [entry.StableId]));
             Assert.That(corrupt.ArchiveError, Is.Not.Null); Assert.That(corrupt.PendingCount, Is.EqualTo(1)); Assert.That(group.Entries, Has.Count.EqualTo(1));
             Assert.That(File.ReadAllText(archivePath), Is.EqualTo("{broken recovery")); retained.Clear();
@@ -187,7 +191,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         Assert.That(source.Entries.Last(), Is.SameAs(entries[0])); await history.UndoAsync(); Assert.That(source.Entries, Is.EqualTo(entries));
         history.Clear(); var old = inputs.Get(entries[0], entries[0].DetailForm!.Fields.Single()); old.Update("6", true, null, false);
         offer = author.PrepareCut(source.Id, [entries[0].StableId])!; author.BeginCut(offer);
-        var moved = (await author.PasteAsync(target.Id, offer.Text, null)).Single();
+        var movedId = (await author.PasteAsync(target.Id, offer.Text, null)).Single();
+        var moved = target.Entries.Single(entry => entry.StableId == movedId);
         Assert.That(inputs.PendingCount, Is.Zero); Assert.That(inputs.Archives.Single().Owner.GroupId, Is.EqualTo(target.Id));
         Assert.That(inputs.CanRestore(inputs.Archives.Single()), Is.True); Assert.That(old.CanCommit, Is.False);
         await history.UndoAsync(); Assert.That(inputs.Archives.Single().Owner.GroupId, Is.EqualTo(source.Id));

@@ -34,7 +34,7 @@ public sealed class EntryInspectorViewModel : ObservableObject, IInspectorContro
         if (_navigation is not null) _navigation.Requested += Navigate;
         Page.PropertyChanged += PageChanged;
         Page.SelectedEntries.CollectionChanged += SelectionChanged;
-        Page.Workspace.Nodes.CollectionChanged += NodesChanged;
+        ((INotifyCollectionChanged)Page.Workspace.Nodes).CollectionChanged += NodesChanged;
         Page.Workspace.UndoRedoHistory!.Changed += Refresh;
         Sync();
     }
@@ -68,7 +68,7 @@ public sealed class EntryInspectorViewModel : ObservableObject, IInspectorContro
         if (_navigation is not null) _navigation.Requested -= Navigate;
         Page.PropertyChanged -= PageChanged;
         Page.SelectedEntries.CollectionChanged -= SelectionChanged;
-        Page.Workspace.Nodes.CollectionChanged -= NodesChanged;
+        ((INotifyCollectionChanged)Page.Workspace.Nodes).CollectionChanged -= NodesChanged;
         Page.Workspace.UndoRedoHistory!.Changed -= Refresh;
     }
 }

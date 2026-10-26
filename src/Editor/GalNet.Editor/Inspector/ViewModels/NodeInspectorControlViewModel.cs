@@ -40,7 +40,7 @@ public sealed partial class NodeInspectorControlViewModel : ObservableObject, II
         _localization = localization;
         SyncSelection();
         Workspace.PropertyChanged += OnWorkspacePropertyChanged;
-        Workspace.Nodes.CollectionChanged += OnNodesChanged;
+        ((System.Collections.Specialized.INotifyCollectionChanged)Workspace.Nodes).CollectionChanged += OnNodesChanged;
         Workspace.VariableDefinitionsChanged += OnVariableDefinitionsChanged;
         _localization.PropertyChanged += OnLocalizationPropertyChanged;
     }
@@ -123,7 +123,7 @@ public sealed partial class NodeInspectorControlViewModel : ObservableObject, II
     public void Dispose()
     {
         Workspace.PropertyChanged -= OnWorkspacePropertyChanged;
-        Workspace.Nodes.CollectionChanged -= OnNodesChanged;
+        ((System.Collections.Specialized.INotifyCollectionChanged)Workspace.Nodes).CollectionChanged -= OnNodesChanged;
         Workspace.VariableDefinitionsChanged -= OnVariableDefinitionsChanged;
         _localization.PropertyChanged -= OnLocalizationPropertyChanged;
     }

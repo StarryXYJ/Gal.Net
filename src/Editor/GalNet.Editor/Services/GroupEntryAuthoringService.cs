@@ -5,15 +5,14 @@ using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
-using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Shared.Services;
 
 namespace GalNet.Editor.Services;
 
 /// <summary>Project-owned batch entry intents. History never retains a Group page.</summary>
-public sealed partial class GroupEntryAuthoringService(EditorGroupProjectionStore groups, IEditorDocumentService documents, IEntryCatalog catalog, EditorHistories histories, GameTextAuthoringService? texts = null, EntryEditSession? edits = null) : IDisposable
+public sealed partial class GroupEntryAuthoringService(IEditorDocumentService documents, IEntryCatalog catalog, EditorHistories histories, GameTextAuthoringService? texts = null, EntryEditSession? edits = null) : IDisposable
 {
-    public IReadOnlyList<EntryEditorItemViewModel> Insert(string groupId, int index, int count, string? type)
+    public IReadOnlyList<string> Insert(string groupId, int index, int count, string? type)
     {
         var group = Group(groupId);
         type ??= GalNet.Contracts.Builtins.BuiltinEntryIds.Text;
@@ -27,7 +26,7 @@ public sealed partial class GroupEntryAuthoringService(EditorGroupProjectionStor
         }).ToArray();
         histories.Content.Execute(Presence(groupId, inserted.Select((entry, offset) => new PositionedEntry(index + offset, entry)).ToArray(), true,
             new("History.AddEntries", inserted.Length)));
-        return Resolve(groupId, inserted);
+        return inserted.Select(entry => entry.StableId).ToArray();
     }
     private sealed record EntryClipboard(string Kind, int Version, List<EditorEntryData> Entries, GameTextClipboard Texts, string? MoveToken = null);
     private const string ClipboardKind = "GalNet.Entries";
@@ -42,12 +41,6 @@ public sealed partial class GroupEntryAuthoringService(EditorGroupProjectionStor
         return group;
     }
 
-    private IReadOnlyList<EntryEditorItemViewModel> Resolve(string groupId, IEnumerable<EditorEntryData> entries)
-    {
-        var projection = groups.Get(groupId);
-        var selected = entries.ToHashSet();
-        return projection.Entries.Where(entry => selected.Contains(entry.Source)).ToArray();
-    }
     private void Record(string groupId, int first, GroupChangeKind kind, IEnumerable<string> ids) => histories.Content.AuthorChanges.Record(groupId, first, kind, ids);
 
     public string Copy(string groupId, IEnumerable<string> ids)
@@ -61,7 +54,7 @@ public sealed partial class GroupEntryAuthoringService(EditorGroupProjectionStor
         return text;
     }
 
-    public async Task<IReadOnlyList<EntryEditorItemViewModel>> PasteAsync(string groupId, string text, string? anchorId, Func<PreparedEntryEdit, Task<bool>>? review = null)
+    public async Task<IReadOnlyList<string>> PasteAsync(string groupId, string text, string? anchorId, Func<PreparedEntryEdit, Task<bool>>? review = null)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         LastPasteCopiedMove = false;
@@ -70,7 +63,7 @@ public sealed partial class GroupEntryAuthoringService(EditorGroupProjectionStor
             if (move is null) return [];
             if (review is not null && !await review(move.Edit)) return [];
             move.Edit.Commit(); CancelPendingMove();
-            return groups.Get(groupId).Entries.Where(entry => move.TargetIds.Contains(entry.StableId)).ToArray();
+            return Group(groupId).Entries.Where(entry => move.TargetIds.Contains(entry.StableId)).Select(entry => entry.StableId).ToArray();
         }
         var group = Group(groupId);
         var index = anchorId is null ? group.Entries.Count : group.Entries.ToList().FindIndex(entry => entry.StableId == anchorId) + 1;
@@ -104,7 +97,7 @@ public sealed partial class GroupEntryAuthoringService(EditorGroupProjectionStor
         var presence = Presence(groupId, positions, true, new("History.PasteEntries", inserted.Length));
         if (copy is null) histories.Content.Execute(presence);
         else await histories.Content.ExecuteAsync(new AsyncCompositeEdit("Paste entries", [copy, new AsyncEditAdapter(presence)], new("History.PasteEntries", inserted.Length)));
-        return Resolve(groupId, inserted);
+        return inserted.Select(entry => entry.StableId).ToArray();
     }
 
     public void Delete(string groupId, IEnumerable<string> ids)

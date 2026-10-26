@@ -11,7 +11,7 @@ public sealed partial class BuiltInEditorCommandHandler
             return Error("graph.node.idRequired", "Node ID is required.");
         if (FindNode(document, command.NodeId) is not null)
             return Error("graph.node.duplicateId", $"Node '{command.NodeId}' already exists.", NodeResource(command.NodeId));
-        if (!double.IsFinite(command.X) || !double.IsFinite(command.Y))
+        if (!GraphEditRules.IsFinitePosition(command.X, command.Y))
             return Error("graph.node.invalidPosition", "Node coordinates must be finite numbers.");
         if (command.Kind == EditorNodeKind.LinearGroup && (command.NodeId is "." or ".." || command.NodeId.Contains('/') || command.NodeId.Contains('\\') || command.NodeId.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0))
             return Error("graph.node.invalidGroupId", "Group node ID must be a valid single filename component.");
@@ -33,7 +33,7 @@ public sealed partial class BuiltInEditorCommandHandler
                 EditorNodeKind.ConditionBranch => "Condition",
                 _ => null
             },
-            Name = string.IsNullOrWhiteSpace(command.Name) ? command.NodeId : command.Name.Trim(),
+            Name = string.IsNullOrWhiteSpace(command.Name) ? command.NodeId : GraphEditRules.NormalizeName(command.Name),
             X = command.X,
             Y = command.Y,
             File = command.Kind == EditorNodeKind.LinearGroup ? $"groups/{command.NodeId}.rawgalgroup" : null,
@@ -81,7 +81,7 @@ public sealed partial class BuiltInEditorCommandHandler
         if (string.IsNullOrWhiteSpace(command.Name))
             return Error("graph.node.nameRequired", "Node name is required.", NodeResource(command.NodeId));
         var oldName = node.Name;
-        node.Name = command.Name.Trim();
+        node.Name = GraphEditRules.NormalizeName(command.Name);
         return Success($"Renamed node '{oldName}' to '{node.Name}'.", "History.Graph.RenameNode", NodeResource(node.Id), oldName, node.Name);
     }
 
@@ -97,7 +97,7 @@ public sealed partial class BuiltInEditorCommandHandler
             var node = FindNode(document, position.NodeId);
             if (node is null)
                 return NotFound("graph.node.notFound", "Node", position.NodeId, NodeResource(position.NodeId));
-            if (!double.IsFinite(position.X) || !double.IsFinite(position.Y))
+            if (!GraphEditRules.IsFinitePosition(position.X, position.Y))
                 return Error("graph.node.invalidPosition", $"Coordinates for node '{position.NodeId}' must be finite.");
         }
         foreach (var position in command.Nodes)
@@ -129,15 +129,9 @@ public sealed partial class BuiltInEditorCommandHandler
             return NotFound("graph.node.notFound", "Node", command.FromNodeId, NodeResource(command.FromNodeId));
         if (to is null)
             return NotFound("graph.node.notFound", "Node", command.ToNodeId, NodeResource(command.ToNodeId));
-        if (from.Id == to.Id)
-            return Error("graph.edge.selfConnection", "A node cannot connect to itself.");
-        if (IsEntryNode(to))
-            return Error("graph.edge.entryInput", "The entry node cannot have an incoming edge.", NodeResource(to.Id));
-        if (command.Outlet < 0 || command.Outlet >= OutputCount(from))
-            return Error("graph.edge.invalidOutlet", $"Outlet {command.Outlet} does not exist on node '{from.Id}'.", NodeResource(from.Id));
+        if (GraphEditRules.ConnectionError(from, command.Outlet, to) is { } issue)
+            return CommandExecution.Failed(issue);
 
-        document.Graph.Edges.RemoveAll(edge =>
-            (edge.FromNodeId == from.Id && edge.FromOutlet == command.Outlet));
         var edge = new EditorGraphEdgeDto
         {
             Id = string.IsNullOrWhiteSpace(command.EdgeId) ? Guid.NewGuid().ToString("N") : command.EdgeId,
@@ -147,6 +141,8 @@ public sealed partial class BuiltInEditorCommandHandler
         };
         if (document.Graph.Edges.Any(item => item.Id == edge.Id))
             return Error("graph.edge.duplicateId", $"Edge '{edge.Id}' already exists.");
+        document.Graph.Edges.RemoveAll(edge =>
+            (edge.FromNodeId == from.Id && edge.FromOutlet == command.Outlet));
         document.Graph.Edges.Add(edge);
         return Success(
             $"Connected '{from.Id}' outlet {command.Outlet} to '{to.Id}'.",
@@ -192,11 +188,6 @@ public sealed partial class BuiltInEditorCommandHandler
         node.Type.Equals("Branch", StringComparison.OrdinalIgnoreCase) &&
         node.BranchType?.Equals("Condition", StringComparison.OrdinalIgnoreCase) == true;
 
-    private static int OutputCount(EditorGraphNodeDto node)
-    {
-        if (IsChoiceNode(node)) return Math.Max(1, node.Options?.Count ?? 0);
-        if (IsConditionNode(node)) return Math.Max(1, node.Conditions?.Count ?? 0);
-        return 1;
-    }
+    private static int OutputCount(EditorGraphNodeDto node) => GraphEditRules.OutputCount(node);
 
 }

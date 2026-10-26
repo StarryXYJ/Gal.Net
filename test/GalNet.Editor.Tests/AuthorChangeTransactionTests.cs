@@ -26,9 +26,11 @@ public sealed class AuthorChangeTransactionTests
             var fields = new EntryFieldAuthoringService(documents, histories);
             using var projections = new EditorGroupProjectionStore(documents, catalog, fields);
             using var query = new ProjectSceneTargets(documents, histories: histories);
-            var batches = new GroupEntryAuthoringService(projections, documents, catalog, histories);
-            var creator = batches.Insert("g", 0, 1, BuiltinEntryIds.ShowLayer).Single();
-            var consumer = batches.Insert("g", 1, 1, BuiltinEntryIds.HideLayer).Single();
+            var batches = new GroupEntryAuthoringService(documents, catalog, histories);
+            var creatorId = batches.Insert("g", 0, 1, BuiltinEntryIds.ShowLayer).Single();
+            var creator = projections.Get("g").Entries.Single(entry => entry.StableId == creatorId);
+            var consumerId = batches.Insert("g", 1, 1, BuiltinEntryIds.HideLayer).Single();
+            var consumer = projections.Get("g").Entries.Single(entry => entry.StableId == consumerId);
             Dispatcher.UIThread.RunJobs();
             var counts = new List<int>();
             query.Changed += () => counts.Add(query.Before("g", consumer.StableId).Targets.Count);
@@ -48,11 +50,12 @@ public sealed class AuthorChangeTransactionTests
         documents.Load(new() { Document = new() { Nodes = [new() { Id = "g", Type = "Group", File = "groups/g.rawgalgroup" }] }, GroupEntries = { ["g"] = [] } });
         var fields = new EntryFieldAuthoringService(documents, histories);
         using var projections = new EditorGroupProjectionStore(documents, catalog, fields);
-        var group = projections.Get("g"); var batches = new GroupEntryAuthoringService(projections, documents, catalog, histories);
+        var group = projections.Get("g"); var batches = new GroupEntryAuthoringService(documents, catalog, histories);
         var observed = new List<(AuthorChangeSet Change, int Count, bool Busy, bool Undo, bool Redo)>();
         histories.Content.AuthorChanges.Committed += change => observed.Add((change, documents.Groups["g"].Entries.Count, histories.Content.IsBusy, histories.Content.CanUndo, histories.Content.CanRedo));
-        var added = batches.Insert("g", 0, 3, "custom.value");
-        Assert.That(added, Has.Count.EqualTo(3)); Assert.That(group.Entries.Select(entry => entry.Source), Is.EqualTo(documents.Groups["g"].Entries));
+        var addedIds = batches.Insert("g", 0, 3, "custom.value");
+        var added = group.Entries.Where(entry => addedIds.Contains(entry.StableId)).ToArray();
+        Assert.That(added, Has.Length.EqualTo(3)); Assert.That(group.Entries.Select(entry => entry.Source), Is.EqualTo(documents.Groups["g"].Entries));
         fields.SetCondition("g", added[1].Source, "true");
         fields.SetCondition("g", added[1].Source, "true"); // No-op is not a transaction.
         histories.Content.MarkSaved(); histories.Clear();

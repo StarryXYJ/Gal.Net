@@ -7,4 +7,5 @@ public interface IEditorWindowFactory
     ProjectSettingsWindow CreateProjectSettingsWindow();
     EditorSettingsWindow CreateEditorSettingsWindow();
     ExportWindow CreateExportWindow();
+    Task<string?> RequestLayoutNameAsync(GalNet.Editor.Abstraction.Services.IEditorLocalizationService localization);
 }

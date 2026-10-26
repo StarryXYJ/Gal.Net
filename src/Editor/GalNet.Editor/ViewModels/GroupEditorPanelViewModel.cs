@@ -150,7 +150,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         var pasted = await _authoring.PasteAsync(GroupId, text, anchor, ReviewAsync);
         if (_disposed) return;
         _copiedMove = _authoring.LastPasteCopiedMove;
-        if (pasted.Count > 0) SetSelection(pasted);
+        if (pasted.Count > 0) SetSelection(_entries.Where(entry => pasted.Contains(entry.StableId)));
         OnPropertyChanged(nameof(MoveStatus));
     }
     public async Task DuplicateSelectionAsync()

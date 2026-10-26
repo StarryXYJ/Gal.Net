@@ -44,7 +44,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         group.Entries.CollectionChanged += failAlways; group.Entries.CollectionChanged += later;
         try
         {
-            var inserted = await author.PasteAsync(group.Id, clip, null);
+            var inserted = (await author.PasteAsync(group.Id, clip, null)).Select(id => group.Entries.Single(entry => entry.StableId == id)).ToArray();
             Assert.That(group.Entries, Has.Count.EqualTo(6)); Assert.That(history.CanUndo, Is.True);
             expectedCount = 3; await history.UndoAsync(); Assert.That(group.Entries, Is.EqualTo(original));
             expectedCount = 6; await history.RedoAsync(); Assert.That(group.Entries.Skip(3).Select(entry => entry.StableId), Is.EqualTo(inserted.Select(entry => entry.StableId)));
@@ -82,7 +82,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var clip = author.Copy(source.Id, [effect.StableId, original[0].StableId]);
         original[0].Condition = "changed";
         history.Clear();
-        var pasted = await author.PasteAsync(target.Id, clip, null);
+        var pasted = (await author.PasteAsync(target.Id, clip, null)).Select(id => target.Entries.Single(entry => entry.StableId == id)).ToArray();
         Assert.That(pasted.Select(entry => entry.Type), Is.EqualTo(new[] { BuiltinEntryIds.Wait, BuiltinEntryIds.ApplyEffect }));
         Assert.That(pasted[0].Condition, Is.EqualTo("score > 1"));
         Assert.That(pasted[0].Source.Parameters.ContainsKey("duration"), Is.False);
@@ -127,10 +127,10 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         }
         Assert.ThrowsAsync<EditorOperationException>(async () => await author.PasteAsync(group.Id, clip, "deleted-anchor"));
         Assert.That(history.CanUndo, Is.False);
-        var pasted = await author.PasteAsync(group.Id, unsupported.ToJsonString(), null);
+        var pasted = (await author.PasteAsync(group.Id, unsupported.ToJsonString(), null)).Select(id => group.Entries.Single(entry => entry.StableId == id)).ToArray();
         Assert.That(pasted[^1].Type, Is.EqualTo("unavailable.custom")); Assert.That(pasted[^1].IsUnknownType, Is.True);
         await history.UndoAsync(); Assert.That(group.Entries.Single(), Is.SameAs(entry));
-        pasted = await author.PasteAsync(group.Id, unknownField.ToJsonString(), null);
+        pasted = (await author.PasteAsync(group.Id, unknownField.ToJsonString(), null)).Select(id => group.Entries.Single(entry => entry.StableId == id)).ToArray();
         Assert.That(pasted.Single().Source.Parameters["newField"].GetInt32(), Is.EqualTo(1)); Assert.That(pasted.Single().HasUnknownParameters, Is.True);
         await history.UndoAsync(); Assert.That(group.Entries.Single(), Is.SameAs(entry));
         await projects.CloseAsync();

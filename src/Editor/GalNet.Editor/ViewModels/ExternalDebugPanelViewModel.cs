@@ -21,6 +21,8 @@ using GalNet.Core.Variable;
 using GalNet.Debugging;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Models.Graph;
+using GalNet.Editor.History;
+using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Shared.Services;
 using GalNet.Runtime.Engine;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,8 +35,9 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     private readonly ExternalGameDebugClient _client;
     private readonly IProjectService _projects;
     private readonly IEditorDocumentService _documents;
-    private readonly IEntryCatalog _catalog;
+    private readonly ProjectDebugPreparation _preparation;
     private readonly EditorWorkspaceViewModel _workspace;
+    private readonly AuthorChangeJournal _authorChanges;
     private readonly IFileDialogService _files;
     private readonly Dictionary<(string Group, string Primitive), string> _sources = [];
     private readonly Dictionary<(string Group, string Source), int> _positions = [];
@@ -79,9 +82,9 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     public GameDebugState? RuntimeState => _client.State;
 
     public ExternalDebugPanelViewModel(ExternalGameDebugClient client, IProjectService projects, IEditorDocumentService documents,
-        IEntryCatalog catalog, EditorWorkspaceViewModel workspace, IFileDialogService files, IEditorLocalizationService localization)
+        ProjectDebugPreparation preparation, EditorWorkspaceViewModel workspace, IFileDialogService files, IEditorLocalizationService localization, EditorHistories histories)
     {
-        _client = client; _projects = projects; _documents = documents; _catalog = catalog; _workspace = workspace; _files = files; L = localization;
+        _client = client; _projects = projects; _documents = documents; _preparation = preparation; _workspace = workspace; _files = files; L = localization;
         if (projects.Current is { } project)
         {
             try
@@ -92,6 +95,8 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
             catch (Exception error) when (error is IOException or JsonException or UnauthorizedAccessException) { Error = error.Message; }
             _closing = project.RegisterClosingCallback(CloseProjectAsync);
         }
+        _authorChanges = histories.Content.AuthorChanges;
+        _authorChanges.Committed += OnAuthorCommitted;
         _client.Changed += OnClientChanged;
         _documents.DocumentChanged += OnAuthorChanged;
         Refresh();
@@ -115,6 +120,7 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         Refresh();
         if (Busy && _operationStatus is { } operationStatus) Status = operationStatus;
     });
+    private void OnAuthorCommitted(AuthorChangeSet _) => OnAuthorChanged();
     private void OnAuthorChanged()
     {
         if (_authorSignature is not null) ContentChanged = Signature() != _authorSignature;
@@ -239,63 +245,20 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     });
     private async Task<string> PrepareAsync()
     {
-        await _client.DisconnectAsync();
-        var project = _projects.Current ?? throw new InvalidOperationException("No project.");
-        var profileRoot = Path.Combine(project.RootPath, ".galnet", "debug-profile");
-        _client.BeginDiagnostics(profileRoot);
-        var preparation = Stopwatch.StartNew();
-        SetOperationStatus(L["Debug.SavingProject"]);
-        _client.RecordDiagnostic("Saving project changes before building test content.");
-        await _projects.SaveAsync();
-        _client.RecordDiagnostic($"Project save completed in {preparation.ElapsedMilliseconds} ms.");
-        preparation.Restart();
-        var output = Path.Combine(project.RootPath, "Output", "Debug");
-        SetOperationStatus(L["Debug.BuildingContent"]);
-        _client.RecordDiagnostic($"Building test content at {output}.");
-        var builder = new ProjectContentBuilder(_catalog);
-        // BuildAsync performs substantial synchronous validation before its first await.
-        // Keep that CPU and filesystem work off Avalonia's UI thread.
-        await Task.Run(() => builder.BuildAsync(project.RootPath, output));
-        _client.RecordDiagnostic($"Test content build completed in {preparation.ElapsedMilliseconds} ms.");
-        preparation.Restart();
-        SetOperationStatus(L["Debug.PreparingSourceMap"]);
-        var authorGroups = _documents.Groups.Values
-            .Select(group => (Id: group.Id, Entries: group.Entries.ToArray()))
-            .ToArray();
-        var sourceMap = await Task.Run(() =>
-        {
-            var sources = new Dictionary<(string Group, string Primitive), string>();
-            var positions = new Dictionary<(string Group, string Source), int>();
-            var spans = new Dictionary<(string Group, string Source), GameDebugSpan>();
-            var repository = new EditorDocumentRepository(_catalog);
-            foreach (var group in authorGroups)
-            {
-                var result = GalgroupCompiler.Compile(new GroupDocument { Kind = GroupDocumentKind.Raw, Entries = group.Entries.Select(repository.SerializeEntry).ToList() }, _catalog);
-                var offset = 0;
-                foreach (var entry in group.Entries)
-                {
-                    positions[(group.Id, entry.StableId)] = offset;
-                    foreach (var primitive in result.SourceMap[entry.StableId]) { sources[(group.Id, primitive)] = entry.StableId; offset++; }
-                    spans[(group.Id, entry.StableId)] = new(group.Id, positions[(group.Id, entry.StableId)], offset);
-                }
-            }
-            return (sources, positions, spans);
-        });
+        var result = await _preparation.PrepareAsync(key => SetOperationStatus(L[key]));
+        if (_closed) throw new OperationCanceledException("The debug project was closed.");
         _sources.Clear(); _positions.Clear(); _spans.Clear(); _breakpointRun = null;
-        foreach (var pair in sourceMap.sources) _sources.Add(pair.Key, pair.Value);
-        foreach (var pair in sourceMap.positions) _positions.Add(pair.Key, pair.Value);
-        foreach (var pair in sourceMap.spans) _spans.Add(pair.Key, pair.Value);
-        _client.RecordDiagnostic($"Author source map prepared in {preparation.ElapsedMilliseconds} ms for {authorGroups.Length} Group(s).");
-        _authorSignature = Signature(); ContentChanged = false;
-        var identity = new DebugIdentity(project.Id, DebugContentIdentity.Compute(output), project.Services.GetRequiredService<ProjectSchemaSession>().Context.Fingerprint);
-        _client.Listen(identity);
-        return output;
+        foreach (var entry in result.SourceEntries)
+        {
+            _positions[(entry.GroupId, entry.EntryId)] = entry.Start;
+            _spans[(entry.GroupId, entry.EntryId)] = new(entry.GroupId, entry.Start, entry.End);
+            foreach (var primitive in entry.PrimitiveIds) _sources[(entry.GroupId, primitive)] = entry.EntryId;
+        }
+        _authorSignature = result.AuthorSignature;
+        ContentChanged = Signature() != _authorSignature;
+        return result.OutputPath;
     }
-    private string Signature() => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
-    {
-        Graph = _documents.CurrentDocument,
-        Groups = _documents.Groups.Select(pair => new { pair.Key, Entries = pair.Value.Entries.Select(entry => new { entry.StableId, entry.Type, entry.Condition, entry.Parameters }) }).ToArray()
-    }))));
+    private string Signature() => ProjectAuthorIdentity.Compute(_documents.CurrentDocument, _documents.LoadedProject.GroupEntries);
     [RelayCommand] private Task StartGameAsync() => CommandAsync("start");
     [RelayCommand] private Task StopGameAsync() => CommandAsync("stop");
     [RelayCommand] private Task PauseAsync() => CommandAsync("pause");
@@ -390,7 +353,7 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     }
     private async Task CloseProjectAsync()
     {
-        _closed = true; _client.Changed -= OnClientChanged; _documents.DocumentChanged -= OnAuthorChanged;
+        _closed = true; _client.Changed -= OnClientChanged; _documents.DocumentChanged -= OnAuthorChanged; _authorChanges.Committed -= OnAuthorCommitted;
         foreach (var row in PlayerVariables.Concat(SaveVariables)) row.Invalidate();
         await _client.DisconnectAsync(); _closing?.Dispose();
     }

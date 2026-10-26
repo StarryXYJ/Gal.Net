@@ -99,6 +99,17 @@ public sealed class EditorWorkspaceViewModelTests
     }
 
     [Test]
+    public void GraphProjectionCannotBeUsedAsAnAuthorWriteChannel()
+    {
+        using var fixture = new WorkspaceFixture();
+        var count = fixture.DocumentService.CurrentDocument.Nodes.Count;
+        Assert.Throws<NotSupportedException>(() => ((IList<GraphNode>)fixture.Workspace.Nodes).Clear());
+        Assert.Throws<NotSupportedException>(() => ((IList<GraphEdge>)fixture.Workspace.Edges).Clear());
+        Assert.That(fixture.DocumentService.CurrentDocument.Nodes, Has.Count.EqualTo(count));
+        Assert.That(fixture.Workspace.UndoRedoHistory.CanUndo, Is.False);
+    }
+
+    [Test]
     public void Selection_KeepsNodeAndEdgeFlagsConsistent()
     {
         using var fixture = new WorkspaceFixture();
@@ -216,12 +227,10 @@ public sealed class EditorWorkspaceViewModelTests
             new EditorProjectState(),
             new FakeScope()));
         var documents = new EditorDocumentService();
-        var saveCoordinator = new CapturingSaveCoordinator();
         var persistence = new EditorWorkspacePersistence(
             projects,
             new FakeDocumentRepository(WorkspaceFixture.CreateLoadedDocument()),
-            documents,
-            saveCoordinator);
+            documents);
 
         var graph = persistence.LoadCurrentProject()!;
         var saved = await persistence.SaveCurrentProjectAsync();
@@ -241,7 +250,6 @@ public sealed class EditorWorkspaceViewModelTests
     {
         public FakeProjectService ProjectService { get; } = new();
         public EditorDocumentService DocumentService { get; } = new();
-        public CapturingSaveCoordinator SaveCoordinator { get; } = new();
         public ImmediateSaveScheduler SaveScheduler { get; } = new();
         public EditorWorkspaceViewModel Workspace { get; }
         public IEntryCatalog Catalog { get; }
@@ -289,8 +297,8 @@ public sealed class EditorWorkspaceViewModelTests
             ProjectService.Content = _content;
             var histories = new EditorHistories(_content);
             var groups = new EditorGroupProjectionStore(DocumentService, catalog, new EntryFieldAuthoringService(DocumentService, histories));
-            var persistence = new EditorWorkspacePersistence(ProjectService, repository, DocumentService, SaveCoordinator, groups);
-            EntryAuthoring = new GroupEntryAuthoringService(groups, DocumentService, catalog, histories);
+            var persistence = new EditorWorkspacePersistence(ProjectService, repository, DocumentService, groups);
+            EntryAuthoring = new GroupEntryAuthoringService(DocumentService, catalog, histories);
             Workspace = new EditorWorkspaceViewModel(
                 ProjectService,
                 histories,
@@ -364,10 +372,6 @@ public sealed class EditorWorkspaceViewModelTests
         public void Save(string projectPath, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries) => throw new NotSupportedException();
     }
 
-    private sealed class CapturingSaveCoordinator : IEditorSaveCoordinator
-    {
-        public string BuildPreviewData(string previewPath, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries) => previewPath;
-    }
 
     private sealed class ImmediateSaveScheduler : IProjectSaveScheduler
     {

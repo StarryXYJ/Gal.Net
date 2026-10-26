@@ -18,7 +18,6 @@ using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Controls;
 using GalNet.Editor.Services;
 using GalNet.Game.Controls.Forms;
-using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Models.Graph;
 

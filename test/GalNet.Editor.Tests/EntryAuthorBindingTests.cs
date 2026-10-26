@@ -108,7 +108,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         Assert.That(JsonElement.DeepEquals(original, JsonSerializer.SerializeToElement(source.Parameters)), Is.True);
         Assert.That(await field.CommitAsync(new(JsonSerializer.SerializeToElement(9)), CancellationToken.None), Is.Not.Null, "Undoing a type change must not revive an old field lease.");
         field = (IFieldBinding)entry.ParameterFields.Single(item => item.Id == "count");
-        var batch = new GroupEntryAuthoringService(store, documents, catalog, histories); histories.Clear(); batch.Delete("group", [entry.StableId]);
+        var batch = new GroupEntryAuthoringService(documents, catalog, histories); histories.Clear(); batch.Delete("group", [entry.StableId]);
         Assert.That(await field.CommitAsync(new(JsonSerializer.SerializeToElement(9)), CancellationToken.None), Is.Not.Null);
         await histories.Content.UndoAsync(); entry.ConfigureParameterFields(catalog, [], []);
         Assert.That(await field.CommitAsync(new(JsonSerializer.SerializeToElement(9)), CancellationToken.None), Is.Not.Null, "Undoing removal must not revive the old control lease.");

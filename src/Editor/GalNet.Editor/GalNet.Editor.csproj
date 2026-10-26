@@ -57,12 +57,10 @@
     <ItemGroup>
       <ProjectReference Include="..\GalNet.Editor.Abstraction\GalNet.Editor.Abstraction.csproj" />
       <ProjectReference Include="..\..\Shared\GalNet.Assets\GalNet.Assets.csproj" />
-      <ProjectReference Include="..\..\Presentation\GalNet.Avalonia.Themes\GalNet.Avalonia.Themes.csproj" Aliases="ThemesAssembly" />
       <ProjectReference Include="..\..\Presentation\GalNet.Avalonia.Controls\GalNet.Avalonia.Controls.csproj" />
       <ProjectReference Include="..\..\Presentation\GalNet.Avalonia.Rendering\GalNet.Avalonia.Rendering.csproj" />
       <ProjectReference Include="..\..\Presentation\GalNet.Avalonia.GameView\GalNet.Avalonia.GameView.csproj" Aliases="GameViewAssembly" />
       <ProjectReference Include="..\..\Shared\GalNet.Core\GalNet.Core.csproj" />
-      <ProjectReference Include="..\..\Shared\GalNet.Primitives.Builtins\GalNet.Primitives.Builtins.csproj" />
       <ProjectReference Include="..\..\Shared\GalNet.Contracts.Builtins\GalNet.Contracts.Builtins.csproj" />
       <ProjectReference Include="..\GalNet.Editor.Shared\GalNet.Editor.Shared.csproj" />
       <ProjectReference Include="..\..\Shared\GalNet.Presentation.Abstractions\GalNet.Presentation.Abstractions.csproj" />
@@ -79,9 +77,6 @@
       </Compile>
       <Compile Update="Views\EditorSettingsPanelView.axaml.cs">
         <DependentUpon>EditorSettingsPanelView.axaml</DependentUpon>
-      </Compile>
-      <Compile Update="Views\GamePreviewPanelView.axaml.cs">
-        <DependentUpon>GamePreviewPanelView.axaml</DependentUpon>
       </Compile>
       <Compile Update="Views\ProjectSettingsWindow.axaml.cs">
         <DependentUpon>ProjectSettingsWindow.axaml</DependentUpon>

@@ -44,6 +44,52 @@ public sealed class ProjectContentSessionTests
     }
 
     [Test]
+    public async Task DirtyComparisonDetectsDirectLateMutationsAndIgnoresDisplayNumbers()
+    {
+        var entries = _documents.LoadedProject.GroupEntries.Values.First();
+        entries.Clear();
+        entries.Add(new()
+        {
+            StableId = "line",
+            Id = 1,
+            Type = BuiltinEntryIds.Wait,
+            Parameters = new() { ["duration"] = JsonSerializer.SerializeToElement(1f) }
+        });
+        await _session.SaveAsync();
+        entries[0].Id = 99;
+        Assert.That(_session.IsDirty, Is.False);
+        entries[0].Parameters["future"] = JsonSerializer.SerializeToElement(new { precise = 9007199254740993L });
+        Assert.That(_session.IsDirty, Is.True, "A read cannot cache away a mutation outside history notifications.");
+        entries[0].Parameters.Remove("future");
+        Assert.That(_session.IsDirty, Is.False);
+        entries[0].StableId = "replacement";
+        Assert.That(_session.IsDirty, Is.True);
+        entries[0].StableId = "line";
+        Assert.That(_session.IsDirty, Is.False);
+    }
+
+    [Test]
+    public async Task RepeatedDirtyReadsDoNotAllocateSerializedCopiesOfEveryEntry()
+    {
+        var entries = _documents.LoadedProject.GroupEntries.Values.First();
+        entries.Clear();
+        for (var index = 0; index < 500; index++) entries.Add(new()
+        {
+            StableId = "line-" + index,
+            Type = BuiltinEntryIds.Wait,
+            Parameters = new() { ["duration"] = JsonSerializer.SerializeToElement(1f) }
+        });
+        await _session.SaveAsync();
+        _ = _session.IsDirty;
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var dirty = false;
+        for (var index = 0; index < 20; index++) dirty |= _session.IsDirty;
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Assert.That(dirty, Is.False);
+        Assert.That(allocated, Is.LessThan(2_000_000), "Status reads must not serialize and clone the complete project.");
+    }
+
+    [Test]
     public async Task StructurePreparationSeesTheBaselineOfAnEarlierSaveThatWasStillPublishing()
     {
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

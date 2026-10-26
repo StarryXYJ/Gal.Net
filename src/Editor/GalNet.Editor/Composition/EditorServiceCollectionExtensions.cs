@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
@@ -19,7 +20,6 @@ using GalNet.Editor.Shared.Services;
 using GalNet.Editor.ViewModels;
 using GalNet.Editor.Views;
 using GalNet.Game.Controls.Forms;
-using GalNet.Primitives.Builtins;
 using GalNet.Runtime.Content;
 using GalNet.Runtime.Variables;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,6 +32,7 @@ public static class EditorServiceCollectionExtensions
     {
         services.AddScoped<ProjectSchemaSession>();
         services.AddScoped<ExternalGameDebugClient>();
+        services.AddScoped<ProjectDebugPreparation>();
         services.AddScoped<ExternalDebugPanelViewModel>();
         services.AddScoped<IEntryCatalog>(sp => sp.GetRequiredService<ProjectSchemaSession>().Catalog);
         services.AddEditorCoreServices();
@@ -55,8 +56,6 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<IEditorLocalizationService, EditorLocalizationService>();
         services.AddSingleton<IThemeRegistry, ThemeRegistry>();
         services.AddSingleton<IThemeService, ThemeService>();
-        services.AddSingleton<IGameExitService, EditorGameExitService>();
-        services.AddScoped<IEditorPlayerVariableStore, EditorPlayerVariableStore>();
         services.AddScoped<GraphAuthoringService>();
         services.AddScoped<GroupEntryAuthoringService>();
         services.AddScoped<EntryFieldAuthoringService>();
@@ -83,16 +82,20 @@ public static class EditorServiceCollectionExtensions
         services.AddTransient<VariablesPanelViewModel>();
         services.AddScoped<EditorRegistry>(sp =>
         {
+            var definitions = sp.GetRequiredService<IVariableDefinitionService>();
+            IReadOnlyList<GalNet.Core.Variable.ProjectVariableDefinition> Variables() =>
+                [.. definitions.GetDefinitions(GalNet.Core.Variable.VariableScope.Player), .. definitions.GetDefinitions(GalNet.Core.Variable.VariableScope.Save)];
             var registry = EditorFieldEditors.CreateDefault(sp.GetRequiredService<SceneTargetCatalog>(), context =>
             {
                 if (context.IsEnabled && context.HostContext is Models.Graph.IEntryFieldOrigin { GroupId: { } groupId } origin)
                     sp.GetRequiredService<EditorDockFactory>().OpenTimeline(groupId, origin.EntryId);
             }, sp.GetRequiredService<IAssetManager>(), sp.GetRequiredService<CharacterAuthoringService>(), sp.GetRequiredService<GameTextAuthoringService>());
             registry.Replace("entry.expression", context => AuthoringExpressionFieldEditors.Expression(context,
-                () => sp.GetRequiredService<EditorWorkspaceViewModel>().GetConditionVariableSuggestions(),
-                () => sp.GetRequiredService<EditorWorkspaceViewModel>().AllProjectVariableDefinitions));
+                () => definitions.GetDefinitions(GalNet.Core.Variable.VariableScope.Player).Select(variable => new ConditionVariableSuggestion { Name = variable.Name, Scope = GalNet.Core.Variable.VariableScope.Player })
+                    .Concat(definitions.GetDefinitions(GalNet.Core.Variable.VariableScope.Save).Select(variable => new ConditionVariableSuggestion { Name = variable.Name, Scope = GalNet.Core.Variable.VariableScope.Save })).ToArray(),
+                Variables));
             registry.Replace("entry.variablename", context => AuthoringExpressionFieldEditors.Variable(context,
-                () => sp.GetRequiredService<EditorWorkspaceViewModel>().AllProjectVariableDefinitions.Select(variable => variable.Name).ToArray()));
+                () => Variables().Select(variable => variable.Name).ToArray()));
             return registry;
         });
         services.AddScoped<IGraphEditingService, GraphEditingService>();
@@ -112,14 +115,9 @@ public static class EditorServiceCollectionExtensions
         services.AddScoped<UndoRedoRouter>();
         services.AddScoped<IEditorDocumentRepository>(provider => new EditorDocumentRepository(provider.GetRequiredService<IEntryCatalog>(), EditorDocumentValidation.Authoring));
         services.AddScoped<IEditorDocumentService, EditorDocumentService>();
-        services.AddScoped<IEditorSaveCoordinator, EditorSaveCoordinator>();
         services.AddScoped<IProjectSaveScheduler, ProjectSaveScheduler>();
         services.AddScoped<IProjectEditLifetime>(sp => (ProjectSaveScheduler)sp.GetRequiredService<IProjectSaveScheduler>());
         services.AddScoped<IVariableDefinitionService, VariableDefinitionService>();
-        services.AddScoped<EditorVariableService>();
-        services.AddScoped<IVariableService>(sp => sp.GetRequiredService<EditorVariableService>());
-        services.AddSingleton<EditorGameDataProvider>();
-        services.AddSingleton<IGameContentProvider>(sp => sp.GetRequiredService<EditorGameDataProvider>());
         services.AddSingleton<IEditorExtensionRegistry>(_ =>
         {
             var registry = new EditorExtensionRegistry();
@@ -179,7 +177,6 @@ public static class EditorServiceCollectionExtensions
         services.AddTransient<ExternalDebugPanelView>();
         services.AddTransient<InspectorHostView>();
         services.AddTransient<NodeInspectorControl>();
-        services.AddTransient<PreviewVariablesInspectorControl>();
         services.AddTransient<AssetInspectorControl>();
         services.AddTransient<ProjectSettingsWindow>();
         services.AddTransient<EditorSettingsWindow>();
@@ -205,7 +202,6 @@ public static class EditorServiceCollectionExtensions
         services.AddTransient<ProjectSettingsPanelViewModel>();
         services.AddTransient<EditorSettingsPanelViewModel>();
         services.AddTransient<ExportPanelViewModel>();
-        services.AddTransient<GamePreviewPanelViewModel>();
         services.AddTransient<MainWindowViewModel>();
 
         return services;

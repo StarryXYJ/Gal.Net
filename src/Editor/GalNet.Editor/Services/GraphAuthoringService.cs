@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
@@ -12,7 +13,7 @@ public sealed partial class GraphAuthoringService(IEditorDocumentService documen
     public async Task<string> AddNodeAsync(GraphNodeKind kind, double x, double y, string? fromId = null, int outlet = 0, string? fromItemId = null)
     {
         if (kind == GraphNodeKind.Entry) throw new EditorOperationException("graph.rootExists", "The project already owns its Entry root.");
-        if (!double.IsFinite(x) || !double.IsFinite(y)) throw new EditorOperationException("graph.coordinates", "Node coordinates must be finite.");
+        if (!GraphEditRules.IsFinitePosition(x, y)) throw new EditorOperationException("graph.coordinates", "Node coordinates must be finite.");
         var id = Guid.NewGuid().ToString("N");
         var node = new EditorGraphNodeDto
         {
@@ -49,6 +50,7 @@ public sealed partial class GraphAuthoringService(IEditorDocumentService documen
     public void Rename(string id, string value)
     {
         if (string.IsNullOrWhiteSpace(value)) throw new EditorOperationException("graph.nameRequired", "Node name is required.");
+        value = GraphEditRules.NormalizeName(value);
         var before = Find(id).Name;
         if (before != value) histories.Content.Execute(new NameEdit(documents, id, before, value));
     }
@@ -58,7 +60,7 @@ public sealed partial class GraphAuthoringService(IEditorDocumentService documen
         var changes = positions.Select(pair =>
         {
             var node = Find(pair.Key);
-            if (!double.IsFinite(pair.Value.X) || !double.IsFinite(pair.Value.Y)) throw new EditorOperationException("graph.coordinates", "Node coordinates must be finite.");
+            if (!GraphEditRules.IsFinitePosition(pair.Value.X, pair.Value.Y)) throw new EditorOperationException("graph.coordinates", "Node coordinates must be finite.");
             return new Position(pair.Key, node.X, node.Y, pair.Value.X, pair.Value.Y);
         }).Where(item => item.X != item.NextX || item.Y != item.NextY).ToArray();
         if (changes.Length > 0) histories.Content.Execute(new MoveEdit(documents, changes));
@@ -84,10 +86,8 @@ public sealed partial class GraphAuthoringService(IEditorDocumentService documen
     private void ValidateConnection(string fromId, int outlet, EditorGraphNodeDto to)
     {
         var from = Find(fromId);
-        var count = from.BranchType == "Choice" ? from.Options?.Count ?? 0
-            : from.BranchType == "Condition" ? from.Conditions?.Count ?? 0 : 1;
-        if (from.Id == to.Id || to.Type == "Entry" || outlet < 0 || outlet >= count)
-            throw new EditorOperationException("graph.connection", "Invalid graph connection.");
+        if (GraphEditRules.ConnectionError(from, outlet, to) is { } issue)
+            throw new EditorOperationException(issue.Code, issue.Message);
     }
 
     private static int ResolveOutlet(EditorGraphNodeDto? from, int outlet, string? itemId) => from is null ? -1 : itemId is null ? outlet
@@ -181,8 +181,7 @@ public sealed partial class GraphAuthoringService(IEditorDocumentService documen
                     var from = working.Graph.Nodes.SingleOrDefault(node => node.Id == fromId)
                         ?? throw new EditorOperationException("graph.targetRemoved", "The starting node was removed before this edit.");
                     if (fromItemId is not null) outlet = from.BranchType == "Choice" ? from.Options!.FindIndex(item => item.Id == fromItemId) : from.Conditions!.FindIndex(item => item.Id == fromItemId);
-                    var count = from.BranchType == "Choice" ? from.Options?.Count ?? 0
-                        : from.BranchType == "Condition" ? from.Conditions?.Count ?? 0 : 1;
+                    var count = GraphEditRules.OutputCount(from);
                     if (outlet < 0 || outlet >= count) throw new EditorOperationException("graph.targetRemoved", "The starting outlet changed before this edit.");
                 }
                 // Capture only after publication is available: an earlier save may advance Saved while we wait.

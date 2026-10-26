@@ -68,7 +68,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var author = project.Services.GetRequiredService<GroupEntryAuthoringService>(); var clip = author.Copy(item.Group, [item.Entry.StableId]);
         await SetGameText(project, item.Group, item.Entry, "复制后改原文");
         var history = project.Services.GetRequiredService<EditorHistories>().Content; history.Clear();
-        var copied = (await author.PasteAsync(item.Group, clip, null)).Single(); var key = copied.Source.Parameters["content"].GetString()!;
+        var copiedId = (await author.PasteAsync(item.Group, clip, null)).Single();
+        var copied = project.Services.GetRequiredService<EditorGroupProjectionStore>().Get(item.Group).Entries.Single(entry => entry.StableId == copiedId); var key = copied.Source.Parameters["content"].GetString()!;
         var store = project.Services.GetRequiredService<LocalizationDocumentStore>();
         Assert.That(key, Is.Not.EqualTo(original)); Assert.That(store.CaptureText(key).Text, Is.EqualTo("复制前")); Assert.That(store.CaptureText(key, "en-US").Text, Is.EqualTo("English"));
         Assert.That(copied.Source.Parameters["speaker"].GetString(), Is.EqualTo(role.Id));
@@ -157,7 +158,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var projects = project.Services.GetRequiredService<IProjectService>(); await projects.CloseAsync();
         var target = await projects.CreateAsync(Path.Combine(_root, "OtherLocalization"), "Other", new DefaultProjectOptions { TargetLocale = new("en-US"), AvailableLocales = [new("en-US")] }.ToConfiguration(), Contracts());
         var group = target.Services.GetRequiredService<IEditorDocumentService>().Groups.First().Key;
-        var copy = (await target.Services.GetRequiredService<GroupEntryAuthoringService>().PasteAsync(group, clip, null)).Single(); var copiedKey = copy.Source.Parameters["content"].GetString()!;
+        var copyId = (await target.Services.GetRequiredService<GroupEntryAuthoringService>().PasteAsync(group, clip, null)).Single();
+        var copy = target.Services.GetRequiredService<EditorGroupProjectionStore>().Get(group).Entries.Single(entry => entry.StableId == copyId); var copiedKey = copy.Source.Parameters["content"].GetString()!;
         Assert.That(copiedKey, Is.Not.EqualTo(key)); var store = target.Services.GetRequiredService<LocalizationDocumentStore>();
         Assert.That(store.CaptureText(copiedKey).Text, Is.EqualTo("Cross-project")); Assert.That(store.CaptureText(copiedKey, "zh-CN").Text, Is.EqualTo("跨项目原文"));
         await target.Services.GetRequiredService<IProjectContentSession>().SaveAsync();

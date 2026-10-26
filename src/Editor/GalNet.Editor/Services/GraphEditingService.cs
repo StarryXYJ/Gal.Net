@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+using System.Collections.Generic;
 using System.Linq;
 using GalNet.Editor.ViewModels;
 
@@ -6,7 +6,7 @@ namespace GalNet.Editor.Services;
 
 public sealed class GraphEditingService : IGraphEditingService
 {
-    public void UpdateConnectorStates(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges)
+    public void UpdateConnectorStates(IEnumerable<GraphNode> nodes, IEnumerable<GraphEdge> edges)
     {
         foreach (var connector in nodes.SelectMany(node => node.InputConnectors.Concat(node.OutputConnectors)))
             connector.IsConnected = false;

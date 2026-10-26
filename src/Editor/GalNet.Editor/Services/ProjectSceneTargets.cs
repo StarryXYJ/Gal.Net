@@ -69,8 +69,9 @@ public sealed class ProjectSceneTargets : IDisposable
     }
     private void OnAuthorCommitted(AuthorChangeSet change)
     {
-        lock (_gate) { _captureDirty = true; _pendingChange = change; if (!Capture(true)) return; QueuePreparation(); RefreshQueries(); }
-        NotifyChanged();
+        bool changed;
+        lock (_gate) { _captureDirty = true; _pendingChange = change; if (!Capture(true)) return; QueuePreparation(); changed = RefreshQueries(); }
+        if (changed) NotifyChanged();
     }
     private void OnDocumentChanged()
     {
@@ -128,14 +129,18 @@ public sealed class ProjectSceneTargets : IDisposable
     }
     private SceneTargetResult Evaluate((string Group, string? Entry, SceneTimelinePosition? Position) key) => key.Position is null
         ? _analysis!.Before(key.Group, key.Entry) : key.Entry is null ? new([], false, false) : _analysis!.AtTimeline(key.Group, key.Entry, key.Position);
-    private void RefreshQueries(bool author = true)
+    private bool RefreshQueries(bool author = true)
     {
-        if (_queries.Count == 0) return;
+        if (_queries.Count == 0) return true;
+        var changed = false;
         EnsureAnalysis();
         foreach (var key in _queries.Keys.ToArray())
         {
-            UpdateQuery(key, author);
+            var previous = _queries[key];
+            var next = UpdateQuery(key, author);
+            changed |= previous.Revision != next.Revision || previous.ContextRevision != next.ContextRevision || previous.AuthorRevision != next.AuthorRevision;
         }
+        return changed;
     }
     private SceneTargetResult UpdateQuery((string Group, string? Entry, SceneTimelinePosition? Position) key, bool author = true)
     {

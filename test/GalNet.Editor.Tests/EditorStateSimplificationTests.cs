@@ -39,24 +39,6 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         await projects.SaveAsync();
         Assert.That(await projects.CheckUnsavedChangesAsync(), Is.False);
 
-        var runtime = scope.GetRequiredService<EditorVariableService>();
-        var preview = new VariableListEditorViewModel(declarations.GetDefinitions(VariableScope.Save), true,
-            name => runtime.GetSnapshot(VariableScope.Save).GetValueOrDefault(name), (name, value) =>
-            {
-                var next = new Variable { Name = name }; next.SetValue(value);
-                runtime.NotifyVariableChanged(VariableScope.Save, name, next);
-            });
-        var undoBeforeRuntimeEdit = history.UndoDescription;
-        preview.Items.Single().CurrentIntValue = 42;
-        Assert.Multiple(() =>
-        {
-            Assert.That(runtime.GetSnapshot(VariableScope.Save)["score"].AsInt(), Is.EqualTo(42));
-            Assert.That(author.Get(VariableScope.Save).Single().DefaultValue.AsInt(), Is.EqualTo(3));
-            Assert.That(content.IsDirty, Is.False);
-            Assert.That(history.IsDirty, Is.False);
-            Assert.That(history.UndoDescription, Is.EqualTo(undoBeforeRuntimeEdit));
-        });
-
         author.Update(VariableScope.Save, uid, "points", VariableType.Int, "9", "Updated");
         Assert.That(entry.Condition, Is.EqualTo("[points] > 0"));
         Assert.That(await projects.CheckUnsavedChangesAsync(), Is.True);
