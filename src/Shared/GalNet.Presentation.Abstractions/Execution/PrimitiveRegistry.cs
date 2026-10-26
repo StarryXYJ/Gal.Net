@@ -14,8 +14,8 @@ public sealed class PrimitiveRegistry
     private Func<string, bool>? _selection;
     private readonly StateCatalogBuilder _states = new();
     private readonly List<StateRestorer> _restorers = [];
-    internal List<Action<IGameRuntime, GameState>> StateValidators { get; } = [];
-    public void ValidateState(Action<IGameRuntime, GameState> validate)
+    internal List<Action<IGameContext, GameState>> StateValidators { get; } = [];
+    public void ValidateState(Action<IGameContext, GameState> validate)
     {
         ObjectDisposedException.ThrowIf(_frozen, this);
         StateValidators.Add(validate);

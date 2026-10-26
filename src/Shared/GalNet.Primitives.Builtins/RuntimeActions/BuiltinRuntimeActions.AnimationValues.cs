@@ -7,7 +7,7 @@ namespace GalNet.Primitives.Builtins;
 internal static partial class BuiltinRuntimeActions
 {
     private static void ApplyAnimationValue(
-        IGameRuntime runtime,
+        IGameContext runtime,
         string handleId,
         string property,
         float authoredValue,
@@ -24,7 +24,7 @@ internal static partial class BuiltinRuntimeActions
         runtime.State.Update(() => target.TrySetAnimationValue(property, finalValue, out _));
     }
 
-    private static void TrackLoopingAnimation(IGameRuntime runtime, LoopAnimationState state)
+    private static void TrackLoopingAnimation(IGameContext runtime, LoopAnimationState state)
     {
         if (string.IsNullOrWhiteSpace(state.Id)) return;
         runtime.State.Update(() =>
@@ -36,7 +36,7 @@ internal static partial class BuiltinRuntimeActions
         });
     }
 
-    private static bool TryResolveAnimationStartValue(IGameRuntime runtime, AnimationRequest request, out float value)
+    private static bool TryResolveAnimationStartValue(IGameContext runtime, AnimationRequest request, out float value)
     {
         if (request.From.HasValue)
         {

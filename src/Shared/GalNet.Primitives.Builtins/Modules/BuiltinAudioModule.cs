@@ -100,7 +100,7 @@ public sealed class BuiltinAudioModule : PrimitiveModule
         private CancellationToken _token;
         private GalNet.Core.Runtime.GameState? _boundState;
         private CancellationTokenRegistration _registration;
-        public void Bind(GalNet.Core.Runtime.IGameRuntime game, CancellationToken token)
+        public void Bind(GalNet.Core.Runtime.IGameContext game, CancellationToken token)
         {
             if (_token == token && ReferenceEquals(_boundState, game.State)) return;
             _boundState = game.State;

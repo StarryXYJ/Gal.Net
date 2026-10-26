@@ -123,7 +123,7 @@ public sealed class GameState
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
         Converters = { new JsonStringEnumConverter() }
     };
-    public object SyncRoot { get; } = new();
+    internal object SyncRoot { get; } = new();
     private readonly Dictionary<Type, IStateTable> _tables = [];
     private readonly Dictionary<string, ISceneInstance> _scene = new(StringComparer.Ordinal);
     private StateCatalog? _lastCatalog;
@@ -154,6 +154,7 @@ public sealed class GameState
             : throw new InvalidOperationException($"State type '{typeof(T).Name}' is not registered.");
     }
     public void Update(Action action) { lock (SyncRoot) action(); }
+    public T Update<T>(Func<T> update) { lock (SyncRoot) return update(); }
     public T Read<T>(Func<T> read) { lock (SyncRoot) return read(); }
     public Dictionary<string, StateSection> Capture()
     {

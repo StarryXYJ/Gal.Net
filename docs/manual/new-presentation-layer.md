@@ -6,7 +6,7 @@
 
 1. 新建框架专属项目，引用 `GalNet.GameHost`、`GalNet.Presentation.Abstractions`、`GalNet.Runtime` 和所需的内容/存储项目；禁止让这些内层项目反向引用新框架。
 2. 以项目契约构建 `IEntryCatalog`，再通过 `GameRegistration` 注册对应的 `IPrimitiveModule`。只注册内容实际允许的 schema 和具有执行实现的 type ID。
-3. 实现 `IGameView`，或组合框架专属的 dialogue、choice、layer、animation、effect、particle、video presenter 后构建它。Presenter 将 Runtime 的中立请求映射为框架对象；不得把 UI 控件、Dispatcher 或媒体对象写入 `GameState`。
+3. 实现 `IPrimitiveDispatcher`，或组合框架专属的 dialogue、choice、layer、animation、effect、particle、video presenter 后构建它。Presenter 将 Runtime 的中立请求映射为框架对象；不得把 UI 控件、Dispatcher 或媒体对象写入 `GameState`。
 4. 创建 `GameSession`/`GameRun` 的应用组合根。它负责开始、存档、替换运行和退出；停止时先释放 Engine，再异步释放 view、presenter、媒体后端及资源。
 5. 通过 `IAssetManager` 获取图片、音频和视频。若后端必须使用文件，使用 Asset 的 materializer/lease 产生临时实体文件，lease 存续期间才可使用。
 

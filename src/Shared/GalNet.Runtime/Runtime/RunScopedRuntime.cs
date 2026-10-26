@@ -8,7 +8,7 @@ using GalVariable = GalNet.Core.Variable.Variable;
 namespace GalNet.Runtime.Runtime;
 
 /// <summary>Old callbacks retain their old scene and cannot change a restored run's control flow or variables.</summary>
-internal sealed class RunScopedRuntime : IGameRuntime
+internal sealed class RunScopedRuntime : IGameContext
 {
     private readonly IGameRuntime _runtime;
     private readonly CancellationToken _cancellation;
@@ -30,16 +30,14 @@ internal sealed class RunScopedRuntime : IGameRuntime
     public SettingsContainer Settings => _runtime.Settings;
     public GameState State { get; }
     public ISceneInstanceManager SceneInstances { get; }
-    public void JumpTo(string nodeId, int entryIndex = 0) { Check(); _runtime.JumpTo(nodeId, entryIndex); }
-    public void SetEntryIndex(int entryIndex) { Check(); _runtime.SetEntryIndex(entryIndex); }
-    public void EndGame() { Check(); _runtime.EndGame(); }
-    public void SetVariable(string name, object value) { Check(); if (!_ignoreVariableWrites) _runtime.SetVariable(name, value); }
-    public GalVariable? GetVariable(string name) { Check(); return _runtime.GetVariable(name); }
-    public bool TryGetVariable(string name, out GalVariable variable) { Check(); return _runtime.TryGetVariable(name, out variable!); }
-    public IReadOnlyDictionary<string, GalVariable> GetVariables(VariableScope scope) { Check(); return _runtime.GetVariables(scope); }
-    public bool EvaluateCondition(string expression) { Check(); return _runtime.EvaluateCondition(expression); }
-    public object? EvaluateExpression(string expression) { Check(); return _runtime.EvaluateExpression(expression); }
-    public GameSnapshot CreateSnapshot() { Check(); return _runtime.CreateSnapshot(); }
-    public void RestoreFrom(GameSnapshot snapshot) => throw new InvalidOperationException("Only the engine can restore a run.");
+    public void EndGame() => State.Update(() => { Check(); _runtime.EndGame(); });
+    public void SetVariable(string name, object value) => State.Update(() =>
+    { Check(); if (!_ignoreVariableWrites) _runtime.SetVariable(name, value); });
+    public GalVariable? GetVariable(string name) => Read(() => _runtime.GetVariable(name));
+    public bool TryGetVariable(string name, out GalVariable variable) { variable = GetVariable(name)!; return variable is not null; }
+    public IReadOnlyDictionary<string, GalVariable> GetVariables(VariableScope scope) => Read(() => _runtime.GetVariables(scope));
+    public bool EvaluateCondition(string expression) => Read(() => _runtime.EvaluateCondition(expression));
+    public object? EvaluateExpression(string expression) => Read(() => _runtime.EvaluateExpression(expression));
+    private T Read<T>(Func<T> read) => State.Read(() => { Check(); return read(); });
     private void Check() => _cancellation.ThrowIfCancellationRequested();
 }

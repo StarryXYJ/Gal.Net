@@ -184,7 +184,7 @@ public sealed class ImageVariantsRuntimeTests
         Assert.That(runtime.State.Table<Layer>().Get("hero").Variants!.Reason, Is.EqualTo(ImageVariantResolutionReason.Default));
         var saved = runtime.CreateSnapshot();
         await using var engine = new GameEngine(new Graph { RootNodeId = "root", Nodes = [new Group { Id = "root" }] }, runtime, view);
-        engine.RestoreFrom(saved);
+        await engine.RestoreFromAsync(saved);
         var restored = runtime.State.Table<Layer>().Get("hero");
         Assert.That(restored.Variants!.ProtectedDimensions, Is.EqualTo(new[] { "outfit" }));
         Assert.That(restored.AssetId, Is.EqualTo("sprite-idle_coat"));
@@ -229,7 +229,7 @@ public sealed class ImageVariantsRuntimeTests
         var runtime = new GameRuntime(null, "root", stateCatalog: targetView.StateCatalog);
         var root = runtime.State;
         await using var engine = new GameEngine(new Graph { RootNodeId = "root", Nodes = [new Group { Id = "root" }] }, runtime, targetView);
-        Assert.Throws<InvalidDataException>(() => engine.RestoreFrom(snapshot));
+        Assert.ThrowsAsync<InvalidDataException>(() => engine.RestoreFromAsync(snapshot));
         Assert.That(runtime.State, Is.SameAs(root));
         Assert.That(runtime.State.Table<Layer>().Values, Is.Empty);
     }

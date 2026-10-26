@@ -104,7 +104,7 @@ public sealed class EditorRegistry
         if (_typeFactories.TryGetValue(type, out var custom)) return custom;
         var id = field.Editor?.EditorId;
         if (id is null)
-            id = field.Value.TryGetConstraint("enum", out _) || field.Value.TryGetConstraint("options", out _)
+            id = field.Value.TryGetConstraint("enum", out _)
                 ? ValueEditorIds.Choice : _defaults.TryGetValue(type, out var mapped) ? mapped
                     : type.IsEnum ? ValueEditorIds.Choice : StructuredFieldEditor.Supports(type) ? "structure" : ValueEditorIds.Json;
         return _factories.TryGetValue(id, out var factory) ? factory

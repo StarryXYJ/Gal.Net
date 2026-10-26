@@ -2,14 +2,14 @@ using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
 
-namespace GalNet.Presentation.Abstractions.View;
+namespace GalNet.Presentation.Abstractions.Execution;
 
 /// <summary>Resolves and dispatches one compiled primitive call.</summary>
-public interface IGameView : IDisposable, IAsyncDisposable
+public interface IPrimitiveDispatcher : IDisposable, IAsyncDisposable
 {
     StateCatalog StateCatalog => StateCatalog.Empty;
     bool RequiresStateRestore => false;
-    void ValidateState(IGameRuntime runtime, GameState state) { }
+    void ValidateState(IGameContext runtime, GameState state) { }
     IReadOnlyCollection<EntryDefinition> Primitives { get; }
 
     bool TryGetEntry(string primitiveType, out EntryDefinition? entry);
@@ -18,7 +18,7 @@ public interface IGameView : IDisposable, IAsyncDisposable
 
     PrimitiveInstance Dispatch(
         PrimitiveEntry entry,
-        IGameRuntime runtime,
+        IGameContext runtime,
         CancellationToken cancellationToken,
         PrimitiveInvocationMode mode = PrimitiveInvocationMode.Normal);
 

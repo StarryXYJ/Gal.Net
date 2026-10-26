@@ -11,7 +11,7 @@ public sealed class AnimationPrimitiveInstance : PrimitiveInstance
 {
     private readonly object _gate = new();
     private readonly bool _restoring;
-    private readonly IGameRuntime _runtime;
+    private readonly IGameContext _runtime;
     private readonly IAnimationPresenter? _presenter;
     private readonly AnimationRequest _request;
     private readonly CancellationToken _scopeCancellation;
@@ -28,7 +28,7 @@ public sealed class AnimationPrimitiveInstance : PrimitiveInstance
     { }
 
     public AnimationPrimitiveInstance(
-        IGameRuntime runtime,
+        IGameContext runtime,
         IAnimationPresenter? presenter,
         AnimationRequest request,
         string? batchId,

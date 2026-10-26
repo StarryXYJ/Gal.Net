@@ -6,6 +6,23 @@ namespace GeneralTest.Runtime;
 
 public class GameRuntimeSnapshotTests
 {
+    [Test]
+    public void VariableReadResultsAreDetachedAndWritesStillUseNotificationPath()
+    {
+        var runtime = new GameRuntime(null);
+        runtime.SetVariable("score", 42);
+        var value = runtime.GetVariable("score")!;
+        var snapshot = runtime.GetVariables(GalNet.Core.Variable.VariableScope.Save);
+        value.SetValue(999);
+        snapshot["score"].SetValue(555);
+        runtime.SetVariable("later", true);
+        Assert.That(runtime.GetVariable("score")!.AsInt(), Is.EqualTo(42));
+        Assert.That(snapshot.ContainsKey("later"), Is.False);
+        runtime.SetVariable("score", 43);
+        Assert.That(runtime.GetVariable("score")!.AsInt(), Is.EqualTo(43));
+        Assert.That(value.Uid, Is.EqualTo(runtime.GetVariable("score")!.Uid));
+    }
+
     private static StateCatalog Catalog()
     {
         var builder = new StateCatalogBuilder();

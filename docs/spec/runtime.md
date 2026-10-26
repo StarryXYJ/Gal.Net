@@ -8,7 +8,7 @@
 Graph + .galgroup
   -> GraphLoader / GalgroupLoader
   -> GameEngine
-  -> IGameView.Dispatch
+  -> IPrimitiveDispatcher.Dispatch
   -> PrimitiveInstance
 ```
 
@@ -16,12 +16,14 @@ Runtime 只执行 primitive entry。Composite entry 只能存在于 `.rawgalgrou
 
 ## GameEngine
 
-`GameEngine` 持有编译图索引、`IGameRuntime`、`IGameView`、可选 `IChoicePresenter`，以及当前活动的 `PrimitiveInstance` 队列。对玩家或 UI 只暴露一个推进入口：
+条件与变量表达式共用 NCalc 求值入口；双引号字符串按 JSON 转义规则读取，单引号字符串保留 NCalc 语法，未知变量读取为 null。非法条件按 false 处理并记录 `expression.invalid`（包含运行位置）；同一求值器对相同非法条件只报告一次，最多记录 64 个条件，避免循环刷屏。作者侧验证仍直接报告表达式错误。可选展示失败由对应内置模块降级，必需执行/状态错误继续传播；音频诊断订阅者异常不能阻止播放清理。
+
+`GameEngine` 持有编译图索引、`IGameRuntime`、`IPrimitiveDispatcher`、可选 `IChoicePresenter`，以及当前活动的 `PrimitiveInstance` 队列。对玩家或 UI 只暴露一个推进入口：
 
 ```csharp
 public Task<bool> AdvanceAsync(CancellationToken cancellationToken = default);
 public GameSnapshot CreateSaveData();
-public void RestoreFrom(GameSnapshot data);
+public Task RestoreFromAsync(GameSnapshot data, CancellationToken cancellationToken = default);
 public Task StopAsync();
 public ValueTask DisposeAsync();
 ```
@@ -31,8 +33,14 @@ public ValueTask DisposeAsync();
 1. 清理已完成实例。
 2. 在稳定边界更新最后稳定快照。
 3. 如果存在 pending Choice，直接返回。
-4. 如果调用开始时已有未完成 blocking instance，选择 sequence 最早者所属 batch，只 skip 该 batch 中当前已分发且可跳过的实例。
+4. 如果调用开始时已有未完成 blocking instance，选择分发顺序最早者所属 batch，只 skip 该 batch 中当前已分发且可跳过的实例。
 5. 如果当前 blocking 已解除，继续按顺序消费剧情，直到遇到新的 blocking instance、Choice 等待或剧情结束。
+
+长推进每批让出执行门，重新取得门后复核运行 scope 和阻塞边界；调用方取消仅结束本次推进，保留当前有效运行，不发布 Faulted。批次预算不是内容长度上限。`CheckpointCreated` 在执行门外发布，每个订阅者收到独立快照，订阅者失败不影响剧情。
+
+恢复在执行门内先准备隔离的 `GameRestorePoint`，验证变量、状态表、图位置与模块语义，随后才取消旧 scope 并提交；验证失败保留当前运行。已准备的状态表直接用于提交，不二次反序列化。
+
+GameSession 替换已有运行时先通过旧运行的 ValidateSnapshotAsync 校验候选存档，通过后才停止旧运行；无效存档不会释放当前运行。实际新运行仍自行验证和恢复，不能把预检结果当作任意运行的授权。呈现恢复失败发生在切换之后，正常报告故障，不声称已经回滚平台资源。
 
 手动模式下 Blocking instance 自然完成时，Engine 只执行无 skip 权限的内部 continue；它不是第二个玩家入口，也不能跳过下一个新遇到的 batch。自动/快速模式在有效推进边界等待全部 `IsAutoBlocking` 解除，再计时推进；不会通过模拟点击执行。
 
@@ -40,9 +48,9 @@ public ValueTask DisposeAsync();
 
 `State` 和 `StateChanged(GameEngineStateChange)` 统一报告 `Ready`、`Running`、`Completed`、`Faulted`、`Stopped`；失败通知附带原始异常。自然阻塞完成、Choice 结果/异常和玩家推进都经过同一状态机制，宿主不需要分别推断终态。通知在执行锁外按发生顺序发布，重复状态不重复通知；订阅者异常只诊断，不改变剧情状态。事件处理器不应同步等待 Engine 的异步操作；UI 线程切换、日志文案和存档槽刷新由宿主处理。
 
-`StopAsync()` 是该 Engine 的终态操作：立即拒绝新推进，取消执行 scope，清理活动实例和 pending Choice，并等待内部 continuation 退出和已读进度 FlushAsync 完成后报告 `Stopped`。Choice 后端即使没有协作取消，Engine 的等待也能退出；平台资源本身仍由宿主释放。停止后推进返回 `false`，不能恢复该 Engine；重开使用新 Engine。正常完成后再次推进不会重放已经结束的内容。未停止时 `RestoreFrom()` 取消旧 scope 并重新进入 `Ready`。
+`StopAsync()` 是该 Engine 的终态操作：立即拒绝新推进，取消执行 scope，清理活动实例和 pending Choice，并等待内部 continuation 退出和已读进度 FlushAsync 完成后报告 `Stopped`。Choice 后端即使没有协作取消，Engine 的等待也能退出；平台资源本身仍由宿主释放。停止后推进返回 `false`，不能恢复该 Engine；重开使用新 Engine。正常完成后再次推进不会重放已经结束的内容。未停止时 `RestoreFromAsync()` 取消旧 scope 并重新进入 `Ready`。
 
-Engine 同时支持同步和异步释放；异步宿主优先使用 `await using`。释放 Engine 不释放借用的 `IGameView`：先停止/释放 Engine，再异步释放执行 view，最后释放 presenters、媒体后端及资源。不新增通用 Runner 或要求平台实现继承宿主基类。
+Engine 同时支持同步和异步释放；异步宿主优先使用 `await using`。释放 Engine 不释放借用的 `IPrimitiveDispatcher`：先停止/释放 Engine，再异步释放执行 view，最后释放 presenters、媒体后端及资源。不新增通用 Runner 或要求平台实现继承宿主基类。
 
 ## Batch 与活动实例
 
@@ -71,7 +79,7 @@ Runtime 本地变量表归一化作用域前缀；向 IVariableService 回写已
 - 空 `BatchId` 表示实例独立成批。
 - skip 只发送给当前 `IsSkippable == true` 且尚未完成的实例；实例自己的 `Skip()` 仍必须幂等并重新判断阶段。
 
-`IGameView` 不保存活动队列，不选择 skip batch，也不推进剧情。活动队列、sequence、完成事件订阅、清理与内部 continue 都由 Engine 管理。
+`IPrimitiveDispatcher` 不保存活动队列，不选择 skip batch，也不推进剧情。活动队列、分发顺序、完成事件订阅、清理与内部 continue 都由 Engine 管理。
 
 ## Choice 与控制流
 
@@ -187,7 +195,7 @@ Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`
 - `particle.burst`：用 `count` 向 `IParticlePresenter` 发出一次性 burst，不创建 Runtime scene state，也不参与存档恢复。有限持续效果由流程或 animation timeline 编排 play/stop；重复 burst 由 animation timeline 事件表达，跳过 timeline 时不补发未来 burst。
 - `video.play` / `video.stop`：视频是 Runtime Layer，`IVideoPresenter` 将平台解码帧送入场景管线；阻塞时每次推进跳到当前播放位置之后的下一时间戳，跳转期间保持阻塞，结束后继续剧情。稳定存档只保存视频图层定义，非阻塞视频恢复时从零播放；播放 identity 和游标不入存档。
 - `flow.wait`：blocking、skippable 的等待实例。
-- `variable.set`：求值后写入 Runtime 变量。
+- `variable.set`：求值后写入 Runtime 变量；表达式非法或没有值时拒绝本次赋值、保留原值并给出定位诊断，不把失败转换为空字符串。写入/状态错误仍正常传播。
 - `gallery.unlock`：按稳定 item ID 解锁 Gallery，写入对应的系统 Player bool。
 - `custom.invoke`：`BuiltinCustomActionModule` 按 ordinal action ID 查注册的实例工厂，原样传入 argument。注册在 view 组合时冻结，重复/空白 ID 拒绝。`RegisterImmediate` 同步非阻塞；`RegisterAsync` 支持运行 scope/模块生命周期联合取消和可选阻塞，并通过 PrimitiveTaskScope 在异步释放时取消、排空任务和聚合错误。两种便利入口 Normal 调 execute，Quick 调 quick 或回退 execute，CatchUp 调 catchUp 或空操作；运行中模式切换不重启委托。`RegisterFactory` 返回的独立实例自行管理完整模式/跳过/完成和资源清理语义。未匹配时所有模式 warning 后同步完成，可配置严格缺失报错；处理器自身失败正常传播。模块不自动注册持久状态，也不序列化委托或资源。接入见[通用 action](../manual/custom-actions.md)。
 
@@ -202,6 +210,14 @@ Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`
 `ReadProgressIndex` 在 Runtime 中维护内存索引与 revision。文件实现 MarkRead 不执行磁盘 I/O，默认每 2 秒批量写入；同一个进度实例串行化 flush/clear，写入期间的新标记保留 dirty 状态。后台失败由 LastPersistenceError 暴露并在下个周期重试。Engine StopAsync 在执行与 continuation 退出后等待 FlushAsync，失败仍发布 Stopped 并向调用者传播；Sample 保存前 flush，销毁进度实例时取消定时器并完成最终提交。强制终止可能丢失自上次成功 flush 以来的标记（正常 I/O 时最多一个周期，持续失败时不保证时间上限）。存档槽恢复不回滚玩家已读进度。
 
 ## 执行内部协作者
+
+primitive 和呈现恢复只借用 `IGameContext`：游戏位置只读，允许变量/场景操作和显式 EndGame，不提供游标修改、快照或读档方法。Engine 持有的 `IGameRuntime` 才拥有这些运行管理能力；旧 scope 在状态同步边界内检查取消，不能在恢复提交后写入新代变量。
+
+`IPrimitiveDispatcher` 位于 Presentation.Abstractions.Execution，描述 schema/执行模块分发和状态验证，与具体 presenter/UI 无关；CompositeGameView 是其组合实现。`EngineNotifications` 统一按产生顺序排队状态、播放模式和检查点通知，在执行门外发布并隔离每个订阅者。活动实例列表本身保持分发顺序，不维护额外排序或自动阻塞镜像集合。
+
+运行图在 Engine 构造时验证并复制到私有导航索引；外部修改作者图、条目参数或边不会改变已创建的运行。重复节点/出口、缺失根/边目标和非法出口在启动时拒绝；没有后继边仍表示正常结束，合法循环不因批次预算被拒绝。
+
+Runtime 的变量读取和变量集合快照均返回独立 Variable，稳定 UID 保留，写入必须经过 SetVariable。模块使用的 StateTable/SceneInstances 仍返回同一持久记录，必须在 State.Update 内修改；这是执行模块内部的共享数据边界，不是隔离快照。GameState 不公开锁对象，跨层同步使用 Read/Update，编码后的 Capture 才是可传递的隔离状态。
 
 Engine 保持唯一执行门禁、运行取消和终态通知。ActivePrimitiveRegistry 拥有实例顺序、group execution identity、事件订阅、完成实例清理与 skip batch；GameGraphNavigator 在启动时索引编译图，运行期间拓扑保持稳定。AudioRuntime 保留轨道、票据、队列溢出、音量和 SEffect 逻辑；AudioBackendDispatcher 负责逐 voice 命令顺序、待加载 start 取消、能力降级和异步工作 drain，并共享 AudioRuntime 的锁。同步后端终态回调的清理在提交完成后取得同一锁，且纳入销毁等待。
 

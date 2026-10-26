@@ -8,6 +8,18 @@ namespace GeneralTest.Runtime;
 public class AudioRuntimeTests
 {
     [Test]
+    public async Task DiagnosticObserverFailureDoesNotStrandPlayback()
+    {
+        await using var runtime = new AudioRuntime(new ThrowingHost());
+        var reports = 0;
+        runtime.Diagnostic += _ => throw new IOException("observer failed");
+        runtime.Diagnostic += _ => reports++;
+        var ticket = runtime.Play(Tracks, new("bgm", "failed", AudioPlacement.Replace));
+        await ticket.Completion.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.That(reports, Is.GreaterThan(0));
+    }
+
+    [Test]
     public async Task BackendStartExceptionReleasesLogicalPlayback()
     {
         await using var runtime = new AudioRuntime(new ThrowingHost());

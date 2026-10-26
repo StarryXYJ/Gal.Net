@@ -65,7 +65,7 @@ public class ModularSaveRestoreTests
             Assert.That(snapshot, Is.Not.Null);
             Assert.That(snapshot!.Version, Is.EqualTo(4));
             await using var restored = new GameEngine(graph, view);
-            restored.RestoreFrom(snapshot);
+            await restored.RestoreFromAsync(snapshot);
             await using var restoration = new StateRestoreSession(view);
             await restored.SynchronizePresentationAsync(restoration.RestoreAsync);
             Assert.That(restored.Runtime.State.Table<Layer>().Values.Select(value => value.Id), Is.EquivalentTo(new[] { "background", "teacher" }));

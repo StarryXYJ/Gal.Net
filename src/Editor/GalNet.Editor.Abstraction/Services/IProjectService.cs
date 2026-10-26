@@ -1,3 +1,4 @@
+using GalNet.Editor.Abstraction.Settings;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;

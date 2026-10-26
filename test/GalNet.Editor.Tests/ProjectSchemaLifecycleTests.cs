@@ -1,3 +1,4 @@
+using GalNet.Editor.Abstraction.Settings;
 using GalNet.Core.Entry;
 using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Commands;

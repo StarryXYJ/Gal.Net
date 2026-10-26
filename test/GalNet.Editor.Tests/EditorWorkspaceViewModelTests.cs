@@ -1,3 +1,4 @@
+using GalNet.Editor.Abstraction.Settings;
 using System.ComponentModel;
 using System.Globalization;
 using Avalonia;

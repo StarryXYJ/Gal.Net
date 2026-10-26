@@ -23,7 +23,7 @@ public sealed class GroupEntryAuthoringService(EditorGroupProjectionStore groups
         {
             StableId = Guid.NewGuid().ToString("N"),
             Type = type,
-            Parameters = SceneAuthoringIdentities.NewEntry(type, EditorEntryData.ParseParameters(catalog, type, catalog.Create(type).Values))
+            Parameters = SceneAuthoringIdentities.NewEntry(type, EditorEntryData.CreateParameters(catalog, type))
         }).ToArray();
         histories.Content.Execute(new PresenceEdit(this, groupId, inserted.Select((entry, offset) => new PositionedEntry(index + offset, entry)).ToArray(), true,
             new("History.AddEntries", inserted.Length)));

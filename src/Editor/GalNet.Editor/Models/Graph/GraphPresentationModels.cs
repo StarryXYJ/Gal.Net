@@ -393,12 +393,12 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         set
         {
             if (Type == value) return;
-            if (_authoring is not null) ChangeAuthorType(value, _authorCatalog!.Create(value).Values);
+            if (_authoring is not null) ChangeAuthorType(value, EditorEntryData.CreateParameters(_authorCatalog!, value));
             else { Source.Type = value; SetProperty(ref _type, value); }
         }
     }
-    internal void ChangeAuthorType(string type, IReadOnlyDictionary<string, string> parameters) =>
-        _authoring!.SetType(_groupId!, Source, type, EditorEntryData.ParseParameters(_authorCatalog!, type, parameters));
+    internal void ChangeAuthorType(string type, IReadOnlyDictionary<string, JsonElement> parameters) =>
+        _authoring!.SetType(_groupId!, Source, type, parameters.ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal));
     public string Condition
     {
         get => Source.Condition;

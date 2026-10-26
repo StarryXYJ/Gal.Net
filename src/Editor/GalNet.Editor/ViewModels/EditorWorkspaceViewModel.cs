@@ -430,7 +430,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         return true;
     }
 
-    public void ChangeEntryType(GraphNode groupNode, EntryEditorItemViewModel entry, string type, IReadOnlyDictionary<string, string> parameters)
+    public void ChangeEntryType(GraphNode groupNode, EntryEditorItemViewModel entry, string type, IReadOnlyDictionary<string, System.Text.Json.JsonElement> parameters)
     {
         if (!groupNode.Entries.Contains(entry) || entry.Type == type) return;
         entry.ChangeAuthorType(type, parameters);

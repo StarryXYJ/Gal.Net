@@ -125,7 +125,7 @@ public sealed class DtoExecutionTests
         {
             Entries = [new() { Id = "invalid", Type = "test.expand", Parameters = new() { ["unknown"] = JsonSerializer.SerializeToElement(1) } }]
         }, catalog), Throws.TypeOf<InvalidDataException>().With.Message.Contains("unknown"));
-        var authoring = (CompositeEntry)catalog.Create("test.expand", values: new Dictionary<string, string> { ["name"] = "manual" });
+        var authoring = (CompositeEntry)catalog.Create("test.expand", arguments: JsonSerializer.SerializeToElement(new { name = "manual" }));
         authoring.Compile(new EntryCompileContext { SourceEntryId = "manual", Condition = "" });
         Assert.That(received[1].Name, Is.EqualTo("manual"));
         Assert.That(received[1].Numbers, Is.Not.SameAs(received[0].Numbers));

@@ -81,7 +81,7 @@ public sealed partial class GameEngine
         var token = cancellation.Token;
         var beganPresentation = false;
         Exception? failure = null;
-        IGameRuntime? scopedRuntime = null;
+        IGameContext? scopedRuntime = null;
         try
         {
             await _dispatchGate.WaitAsync(token).ConfigureAwait(false);
@@ -125,7 +125,7 @@ public sealed partial class GameEngine
                     RemoveCompleted();
                     if (!_catchUpActive || !IsRunning || _pendingChoice is not null) break;
                     _catchUpBudget = 128;
-                    ContinueUntilBlocked();
+                    await ContinueUntilBlockedAsync(token).ConfigureAwait(false);
                     ThrowFlowError();
                     if (!_catchUpActive || !IsRunning || _pendingChoice is not null) break;
                     waiting = _active.HasBlockingInstance();
@@ -152,7 +152,7 @@ public sealed partial class GameEngine
                         await _catchUpPresentation.EndCatchUpAsync(scopedRuntime, _scopeCancellation.Token).ConfigureAwait(false);
                     if (resumeAtBoundary)
                     {
-                        ContinueUntilBlocked();
+                        await ContinueUntilBlockedAsync().ConfigureAwait(false);
                     }
                 }
             }

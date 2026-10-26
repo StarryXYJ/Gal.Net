@@ -73,7 +73,7 @@ public class PlaybackModeTests
     {
         using var view = Registration().RegisterInstruction("test.text", _ => new ReadingWait()).BuildView();
         await using var engine = new GameEngine(GraphOf("test.text"), view);
-        IGameRuntime? oldRuntime = null;
+        IGameContext? oldRuntime = null;
         CancellationToken oldToken = default;
         await engine.SynchronizePresentationAsync((runtime, token) =>
         {
@@ -82,7 +82,7 @@ public class PlaybackModeTests
             return Task.CompletedTask;
         });
         Assert.That(oldToken.CanBeCanceled, Is.True);
-        engine.RestoreFrom(engine.Runtime.CreateSnapshot());
+        await engine.RestoreFromAsync(engine.Runtime.CreateSnapshot());
         Assert.That(oldToken.IsCancellationRequested, Is.True);
         Assert.That(oldRuntime!.State, Is.Not.SameAs(engine.Runtime.State));
         Assert.Throws<OperationCanceledException>(() => oldRuntime.SetVariable("late", 1));
@@ -245,7 +245,7 @@ public class PlaybackModeTests
         await engine.AdvanceAsync();
         first.Presented();
         await engine.SetPlaybackModeAsync(PlaybackMode.Auto);
-        engine.RestoreFrom(snapshot);
+        await engine.RestoreFromAsync(snapshot);
         await engine.AdvanceAsync();
         first.CompleteAdvance();
         await Task.Delay(100);
@@ -528,7 +528,7 @@ public class PlaybackModeTests
         public TaskCompletionSource EndEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource EndReleased { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public Task BeginCatchUpAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-        public Task EndCatchUpAsync(IGameRuntime runtime, CancellationToken cancellationToken)
+        public Task EndCatchUpAsync(IGameContext runtime, CancellationToken cancellationToken)
         {
             EndEntered.TrySetResult();
             return EndReleased.Task.WaitAsync(cancellationToken);

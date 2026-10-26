@@ -5,7 +5,7 @@ using GalNet.Presentation.Abstractions.View;
 
 namespace GalNet.Primitives.Builtins;
 
-public sealed class ApplyEffectPrimitiveInstance(IGameRuntime runtime, IEffectPresenter? presenter,
+public sealed class ApplyEffectPrimitiveInstance(IGameContext runtime, IEffectPresenter? presenter,
     EffectRequest request, string? batchId, CancellationToken scopeCancellation)
     : BuiltinPresentationPrimitiveInstance(batchId, scopeCancellation)
 {
@@ -17,7 +17,7 @@ public sealed class ApplyEffectPrimitiveInstance(IGameRuntime runtime, IEffectPr
         presenter?.StartEffectAsync(request, token) ?? Task.CompletedTask;
 }
 
-public sealed class StopEffectPrimitiveInstance(IGameRuntime runtime, IEffectPresenter? presenter,
+public sealed class StopEffectPrimitiveInstance(IGameContext runtime, IEffectPresenter? presenter,
     string instanceId, string? batchId, CancellationToken scopeCancellation)
     : BuiltinPresentationPrimitiveInstance(batchId, scopeCancellation)
 {

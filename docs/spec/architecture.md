@@ -8,7 +8,7 @@
 Core ───────────────────── 领域模型、资源/Gallery registry、服务契约
 Diagnostics ────────────── 可选 Benchmark 构建的 CPU 事件与启动捕获，独立于领域层
 Contracts.Builtins ──────── 仅依赖 Core 的内置 schema、参数和 Composite
-Presentation.Abstractions ─ IGameView、presenter 与平台无关应用契约
+Presentation.Abstractions ─ IPrimitiveDispatcher、presenter 与平台无关应用契约
 GameHost ───────────────── 游戏会话、运行生命周期、玩家持久化与偏好规则
 Avalonia.GameHost ───────── 默认 Avalonia 会话、展示组合、设置 UI 和平台适配
 Media.LibVlc ────────────── 可供不同 UI 框架复用的 LibVLC 音频后端
@@ -87,9 +87,9 @@ src/
 
 可选 `GalNet.Debugging` 组件提供本机长度帧 JSON 连接、会话/内容身份校验、App 服务和借用的运行绑定。组件可以引用 Runtime，Runtime 不反向依赖通信。App 的调试连接与当前游戏运行独立，开始回调可省略；Editor/Sample 的默认交互接入仍按 feature 后续阶段推进。
 
-`GameEngine` 持有 `IGameRuntime`，解释图、条目、Choice、skip batch 和快照；它不认识具体 UI。Engine 统一报告运行状态，负责停止、取消执行 scope 和等待内部 continuation 退出，不拥有执行 view 或平台后端。`IGameView` 解析 entry schema、创建 primitive instance 并调用 presenter 端口。影响场景的 primitive 先写入 `GameState`，再通知呈现端；读取快照后由宿主调用注册式 StateRestoreSession。
+`GameEngine` 持有 `IGameRuntime`，解释图、条目、Choice、skip batch 和快照；它不认识具体 UI。Engine 统一报告运行状态，负责停止、取消执行 scope 和等待内部 continuation 退出，不拥有执行 view 或平台后端。`IPrimitiveDispatcher` 解析 entry schema、创建 primitive instance 并调用 presenter 端口。影响场景的 primitive 先写入 `GameState`，再通知呈现端；读取快照后由宿主调用注册式 StateRestoreSession。
 
-Avalonia 展示按领域拆为 dialogue/choice、layer、animation 和 particle presenter；`AvaloniaGamePresenters` 只创建并暴露这些 presenter，`CompositeGameView` 组合独立的 schema catalog 与执行模块，提供 Runtime 使用的 `IGameView`。`GameHost.GameSession` 串行化准备、开始、存档回调、运行替换与停止，拥有可替换的 `IGameRun`；默认 `GameRun` 组合 Engine 与展示恢复，不注册任何 Builtins，也不要求 Layer Presenter。`PlayerSession` 协调玩家持久化，`PlayerPreferences` 和 `PlayerStartup` 提供偏好与首次启动规则。文件实现通过 `GameResourceScope` 和 `FilePlayerSession` 组合。
+Avalonia 展示按领域拆为 dialogue/choice、layer、animation 和 particle presenter；`AvaloniaGamePresenters` 只创建并暴露这些 presenter，`CompositeGameView` 组合独立的 schema catalog 与执行模块，提供 Runtime 使用的 `IPrimitiveDispatcher`。`GameHost.GameSession` 串行化准备、开始、存档回调、运行替换与停止，拥有可替换的 `IGameRun`；默认 `GameRun` 组合 Engine 与展示恢复，不注册任何 Builtins，也不要求 Layer Presenter。`PlayerSession` 协调玩家持久化，`PlayerPreferences` 和 `PlayerStartup` 提供偏好与首次启动规则。文件实现通过 `GameResourceScope` 和 `FilePlayerSession` 组合。
 
 `Avalonia.GameHost` 提供可直接使用的 `AvaloniaGameSession`、页面绑定 `AvaloniaGameRun`、展示组合 `AvaloniaGamePresentation`、纹理租约 `AvaloniaGameResources` 以及默认设置/窗口/手柄适配。`AvaloniaGameHostOptions` 由项目提供 catalog 和执行注册，预加载策略可替换；`AvaloniaGamePresentationOptions` 可替换 Layer 工厂与音频后端，新建适配对象的所有权交给展示会话。Sample 只保留启动参数、项目策略、本地化适配与调试扩展。
 
@@ -150,6 +150,10 @@ Integration 测试只承载必须联合多个外层实现的场景；单一生�
 变量桥接实现 `PlayerVariableService` 归 Runtime.Variables，仅通过 `IPlayerVariableStore` 持久化；文件实现为 `FilePlayerVariableStore`。变量值复制使用 Core 的 `Variable.Clone`，保留 Uid 并可显式替换名称；不可变 VariableValue 可共享。
 
 Runtime 的 GraphLoader/GalgroupLoader/SaveManager 仅解析和序列化内容；文件路径和 I/O 由外层内容 provider、宿主和 ISaveService 实现处理。
+
+Engine 的导航索引持有验证后的私有图副本，不共享作者集合或可变条目。外部变量读取返回独立值；执行模块共享的场景记录仍统一在 GameState.Read/Update 边界访问，不跨程序集暴露锁对象。
+
+执行模块/呈现端只依赖 Core.Runtime.IGameContext，Engine 才依赖包含游标与恢复操作的 IGameRuntime。Runtime 面向 Execution.IPrimitiveDispatcher，呈现端口仍留在 View。编辑器主题、Dock、快捷键、最近项目及嵌入布局 JSON 编码属于 Editor.Abstraction.Settings；Core 不持有这些宿主配置，未使用的 LauncherSettings 已删除。
 
 展示执行抽象的 StateRestoreSession 拥有重放 continuation；宿主在执行 view 和平台 presenter 释放前异步释放该会话。Suspend 等待取消后仍保留旧实例，下一次重放或释放会继续等待真实展示清理。
 

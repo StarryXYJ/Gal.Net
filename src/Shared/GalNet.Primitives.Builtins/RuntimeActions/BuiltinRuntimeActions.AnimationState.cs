@@ -8,7 +8,7 @@ namespace GalNet.Primitives.Builtins;
 
 internal static partial class BuiltinRuntimeActions
 {
-    public static void ApplyAnimationStableState(IGameRuntime runtime, AnimationRequest request)
+    public static void ApplyAnimationStableState(IGameContext runtime, AnimationRequest request)
     {
         if (request.LoopMode == AnimationLoopMode.Once)
         {
@@ -28,10 +28,10 @@ internal static partial class BuiltinRuntimeActions
         TrackLoopingAnimation(runtime, new LoopAnimationState { Id = request.PlaybackHandleId, Request = request });
     }
 
-    public static void ApplyAnimationTerminalValue(IGameRuntime runtime, AnimationRequest request) =>
+    public static void ApplyAnimationTerminalValue(IGameContext runtime, AnimationRequest request) =>
         ApplyAnimationValue(runtime, request.HandleId, request.Property, request.To, request.BlendMode);
 
-    public static void ApplyTimelineStableState(IGameRuntime runtime, TimelineDefinition timeline)
+    public static void ApplyTimelineStableState(IGameContext runtime, TimelineDefinition timeline)
     {
         if (timeline.LoopMode != AnimationLoopMode.Once)
         {
@@ -53,7 +53,7 @@ internal static partial class BuiltinRuntimeActions
         ApplyTimelineTerminalState(runtime, timeline);
     }
 
-    public static void ApplyTimelineTerminalState(IGameRuntime runtime, TimelineDefinition timeline)
+    public static void ApplyTimelineTerminalState(IGameContext runtime, TimelineDefinition timeline)
     {
         foreach (var item in timeline.Events.OrderBy(item => item.Frame))
             ApplyTimelineEventToRuntime(runtime, item);
@@ -68,7 +68,7 @@ internal static partial class BuiltinRuntimeActions
                     track.BlendMode);
     }
 
-    public static void StopAnimationState(IGameRuntime runtime, string playbackHandleId)
+    public static void StopAnimationState(IGameContext runtime, string playbackHandleId)
     {
         if (string.IsNullOrWhiteSpace(playbackHandleId))
             return;

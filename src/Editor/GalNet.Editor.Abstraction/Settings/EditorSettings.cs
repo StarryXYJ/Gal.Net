@@ -2,8 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using GalNet.Core.I18n;
+using GalNet.Core.Settings;
 
-namespace GalNet.Core.Settings;
+namespace GalNet.Editor.Abstraction.Settings;
 
 /// <summary>
 /// 编辑器全局设置 —— 持久化在编辑器配置目录。

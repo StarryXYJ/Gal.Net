@@ -4,9 +4,9 @@ using GalNet.Presentation.Abstractions.View;
 
 namespace GalNet.Presentation.Abstractions.Execution;
 
-public sealed class StateRestoreContext(IGameRuntime runtime, Action<PrimitiveInstance> track, Action<Func<Task>> own, CancellationToken token)
+public sealed class StateRestoreContext(IGameContext runtime, Action<PrimitiveInstance> track, Action<Func<Task>> own, CancellationToken token)
 {
-    public IGameRuntime Runtime { get; } = runtime;
+    public IGameContext Runtime { get; } = runtime;
     public CancellationToken CancellationToken { get; } = token;
     public void Start(PrimitiveInstance instance) { track(instance); instance.Dispatch(); }
     public void Own(Func<Task> cleanup) => own(cleanup);
@@ -24,7 +24,7 @@ public sealed class StateRestoreSession(CompositeGameView view) : IAsyncDisposab
     private readonly object _disposeSync = new();
     private Task? _disposeTask;
     private volatile bool _disposed;
-    public async Task RestoreAsync(IGameRuntime runtime, CancellationToken cancellationToken = default)
+    public async Task RestoreAsync(IGameContext runtime, CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);

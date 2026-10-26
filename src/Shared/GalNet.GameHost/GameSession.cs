@@ -20,6 +20,7 @@ public sealed class GameSession(Func<CancellationToken, Task<IGameRun>> createRu
 
     private async Task PrepareCoreAsync(GameSnapshot? snapshot, CancellationToken token)
     {
+        if (snapshot is not null && _run is not null) await _run.ValidateSnapshotAsync(snapshot, token);
         await ReleaseRunAsync();
         var run = await createRun(token);
         _run = run;

@@ -12,7 +12,7 @@ public sealed class GameDebugOptions
     public long MaxEntrancePayloadBytes { get; init; } = 64L * 1024 * 1024;
     public int MaxEntranceGroups { get; init; } = 256;
     public IReadOnlyDictionary<string, DebugReplayBehavior> Instructions { get; init; } = new Dictionary<string, DebugReplayBehavior>();
-    public Func<IGameRuntime, CancellationToken, Task>? SynchronizePresentation { get; init; }
+    public Func<IGameContext, CancellationToken, Task>? SynchronizePresentation { get; init; }
 }
 public sealed record GameDebugRouteEdge(string From, int Outlet, string To);
 public sealed record GameDebugSeek(string GroupId, int EntryIndex, GameDebugRouteEdge[] Route, int? TargetEnd = null, bool InitialScene = false);
@@ -164,7 +164,7 @@ public sealed partial class GameEngine
                     };
                 }
                 finally { _engine._dispatchGate.Release(); }
-                ownedGeneration = _engine.RestoreFromCore(baseline, this, generation);
+                ownedGeneration = await _engine.RestoreFromCoreAsync(baseline, this, generation, cancellation.Token).ConfigureAwait(false);
                 changed = true;
 
                 await _engine._dispatchGate.WaitAsync(cancellation.Token).ConfigureAwait(false);
@@ -196,7 +196,7 @@ public sealed partial class GameEngine
                         if (budget-- == 0) throw new InvalidOperationException("Debug replay exceeded its execution budget.");
                         _engine._catchUpBudget = 128;
                         _engine.RemoveCompleted();
-                        _engine.ContinueUntilBlocked();
+                        await _engine.ContinueUntilBlockedAsync(cancellation.Token).ConfigureAwait(false);
                         _engine.ThrowFlowError();
                         if (Paused)
                         {

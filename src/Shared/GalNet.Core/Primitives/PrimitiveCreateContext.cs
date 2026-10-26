@@ -10,7 +10,7 @@ public sealed class PrimitiveCreateContext
     public PrimitiveCreateContext(
         EntryDefinition definition,
         PrimitiveEntry entry,
-        IGameRuntime runtime,
+        IGameContext runtime,
         CancellationToken scopeCancellation)
     {
         ArgumentNullException.ThrowIfNull(definition);
@@ -24,7 +24,7 @@ public sealed class PrimitiveCreateContext
 
     public EntryDefinition Definition { get; }
     public PrimitiveEntry Entry { get; }
-    public IGameRuntime Runtime { get; }
+    public IGameContext Runtime { get; }
     public CancellationToken ScopeCancellation { get; }
     public DynamicParameterTable Parameters => Definition.DynamicParameters!;
     public JsonElement Arguments => Entry.Arguments;

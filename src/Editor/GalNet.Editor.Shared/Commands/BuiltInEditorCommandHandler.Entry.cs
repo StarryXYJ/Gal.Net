@@ -28,7 +28,7 @@ public sealed partial class BuiltInEditorCommandHandler
             StableId = command.EntryId,
             Type = type,
             Condition = command.Condition ?? "",
-            Parameters = EditorEntryData.ParseParameters(catalog, type, catalog.Create(type, values: command.Parameters).Values)
+            Parameters = EditorEntryData.CreateParameters(catalog, type, command.Parameters)
         };
         groupEntries.Insert(index, entry);
         Renumber(groupEntries);
@@ -68,7 +68,7 @@ public sealed partial class BuiltInEditorCommandHandler
         if (!catalog.TryGet(type, out _))
             return Error("group.entry.unknownType", $"Unknown entry type '{type}'.");
         entry!.Type = type;
-        entry.Parameters = EditorEntryData.ParseParameters(catalog, type, catalog.Create(type).Values);
+        entry.Parameters = EditorEntryData.CreateParameters(catalog, type);
         return Success($"Set entry '{command.EntryId}' type to '{entry.Type}'.", "History.Entry.SetType", EntryResource(command.GroupId, command.EntryId), command.EntryId, entry.Type);
     }
 
@@ -86,7 +86,7 @@ public sealed partial class BuiltInEditorCommandHandler
             return failure!;
         if (command.Parameters.Keys.FirstOrDefault(key => !catalog.Get(entry!.Type).Parameters.ContainsKey(key)) is { } unknown)
             return Error("group.entry.unknownParameter", $"Unknown parameter '{unknown}' for '{entry!.Type}'.");
-        entry!.Parameters = EditorEntryData.ParseParameters(catalog, entry.Type, catalog.Create(entry.Type, values: command.Parameters).Values);
+        entry!.Parameters = EditorEntryData.CreateParameters(catalog, entry.Type, command.Parameters);
         return Success($"Replaced parameters for entry '{command.EntryId}'.", "History.Entry.SetParameters", EntryResource(command.GroupId, command.EntryId), command.EntryId);
     }
 
@@ -104,7 +104,7 @@ public sealed partial class BuiltInEditorCommandHandler
             if (value is null) parameters.Remove(key);
             else parameters[key] = value;
         }
-        entry.Parameters = EditorEntryData.ParseParameters(catalog, entry.Type, catalog.Create(entry.Type, values: parameters).Values);
+        entry.Parameters = EditorEntryData.CreateParameters(catalog, entry.Type, parameters);
         return Success($"Patched parameters for entry '{command.EntryId}'.", "History.Entry.PatchParameters", EntryResource(command.GroupId, command.EntryId), command.EntryId);
     }
 

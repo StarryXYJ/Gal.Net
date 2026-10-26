@@ -16,7 +16,7 @@ public sealed class GameRun : IGameRun
     private readonly object _disposeGate = new();
     private Task? _disposeTask;
 
-    public GameRun(Graph graph, IGameRuntime runtime, IGameView view,
+    public GameRun(Graph graph, IGameRuntime runtime, IPrimitiveDispatcher view,
         IGameProgressService? progress = null, IChoicePresenter? choices = null,
         ICatchUpPresentation? catchUp = null, StateRestoreSession? restoration = null)
     {
@@ -27,13 +27,15 @@ public sealed class GameRun : IGameRun
 
     public GameEngine Engine { get; }
     public GameSnapshot CreateSaveData() => Engine.CreateSaveData();
+    public Task ValidateSnapshotAsync(GameSnapshot snapshot, CancellationToken cancellationToken) =>
+        Engine.ValidateRestoreAsync(snapshot, cancellationToken);
 
     public async Task PrepareAsync(GameSnapshot? snapshot, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (snapshot is not null)
         {
-            Engine.RestoreFrom(snapshot);
+            await Engine.RestoreFromAsync(snapshot, cancellationToken);
             if (_restoration is not null)
                 await Engine.SynchronizePresentationAsync(_restoration.RestoreAsync, cancellationToken);
         }

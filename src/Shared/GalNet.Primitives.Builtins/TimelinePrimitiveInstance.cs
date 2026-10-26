@@ -12,7 +12,7 @@ public sealed class TimelinePrimitiveInstance : PrimitiveInstance, IDisposable
 {
     private readonly object _gate = new();
     private readonly bool _restoring;
-    private readonly IGameRuntime _runtime;
+    private readonly IGameContext _runtime;
     private readonly IAnimationPresenter? _animationPresenter;
     private readonly ILayerPresenter? _layerPresenter;
     private readonly IEffectPresenter? _effectPresenter;
@@ -40,7 +40,7 @@ public sealed class TimelinePrimitiveInstance : PrimitiveInstance, IDisposable
     { }
 
     public TimelinePrimitiveInstance(
-        IGameRuntime runtime,
+        IGameContext runtime,
         IAnimationPresenter? animationPresenter,
         ILayerPresenter? layerPresenter,
         IEffectPresenter? effectPresenter,

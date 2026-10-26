@@ -7,7 +7,7 @@ namespace GalNet.Primitives.Builtins;
 
 internal static partial class BuiltinRuntimeActions
 {
-    public static void ApplyTimelineEventToRuntime(IGameRuntime runtime, TimelineEventDefinition planEvent)
+    public static void ApplyTimelineEventToRuntime(IGameContext runtime, TimelineEventDefinition planEvent)
     {
         switch (planEvent.Type)
         {

@@ -16,8 +16,8 @@ public class TargetProfileEntryCatalogTests
             new("day", new GalNet.Core.Parameters.ValueDescriptor(typeof(DayOfWeek), jsonOptions: options), defaultValue: JsonSerializer.SerializeToElement("Monday")),
             new("name", typeof(string), defaultValue: JsonSerializer.SerializeToElement<string?>(null), allowNull: true)]))])]);
         var entry = catalog.Create("custom.defaults");
-        Assert.That(entry.Values["day"], Is.EqualTo("\"Monday\""));
-        Assert.That(entry.Values.ContainsKey("name"), Is.False);
+        Assert.That(entry.Arguments.GetProperty("day").GetString(), Is.EqualTo("Monday"));
+        Assert.That(entry.Arguments.GetProperty("name").ValueKind, Is.EqualTo(JsonValueKind.Null));
         Assert.That(catalog.Get("custom.defaults").DynamicParameters!["name"].DefaultValue!.Value.ValueKind, Is.EqualTo(JsonValueKind.Null));
     }
     [Test]

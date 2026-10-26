@@ -8,7 +8,7 @@ using GalNet.Runtime.Logging;
 namespace GalNet.Primitives.Builtins;
 
 public sealed class VideoPrimitiveInstance(
-    IGameRuntime runtime,
+    IGameContext runtime,
     IVideoPresenter? presenter,
     VideoRenderRequest request,
     bool blocking,

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace GalNet.Core.Settings;
+namespace GalNet.Editor.Abstraction.Settings;
 
 /// <summary>Stores a JSON document held as text as an embedded JSON value.</summary>
 public sealed class EmbeddedJsonStringConverter : JsonConverter<string>

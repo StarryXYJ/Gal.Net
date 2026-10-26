@@ -11,42 +11,48 @@ internal sealed class SceneInstanceManager(GameState state) : ISceneInstanceMana
         state.SceneObjects<T>().Concat(_transient.Values.OfType<T>()).ToArray());
     public bool TryGet<T>(string id, out T instance) where T : class, ISceneInstance
     {
-        lock (state.SyncRoot)
+        T? found = null;
+        var exists = state.Read(() =>
         {
-            if (_transient.TryGetValue(id, out var value)) { instance = value as T ?? null!; return instance is not null; }
-            return state.TryGetScene(id, out instance);
-        }
+            if (_transient.TryGetValue(id, out var value)) { found = value as T; return found is not null; }
+            return state.TryGetScene(id, out found);
+        });
+        instance = found!;
+        return exists;
     }
     public T GetOrAdd<T>(string id, Func<string, T> factory) where T : class, ISceneInstance
     {
-        lock (state.SyncRoot)
+        return state.Update(() =>
         {
             if (TryGet<T>(id, out var existing)) return existing;
             if (_transient.ContainsKey(id)) throw new InvalidOperationException($"Scene handle '{id}' is already in use.");
             var value = factory(id);
             state.Table<T>().Add(value);
             return value;
-        }
+        });
     }
     public T GetOrAddTransient<T>(string id, Func<string, T> factory) where T : class, ISceneInstance
     {
-        lock (state.SyncRoot)
+        return state.Update(() =>
         {
             if (TryGet<T>(id, out var existing)) return existing;
             if (GetAll<ISceneInstance>().Any(item => item.Id == id)) throw new InvalidOperationException($"Scene handle '{id}' is already in use.");
             var value = factory(id);
             _transient.Add(id, value);
             return value;
-        }
+        });
     }
     public bool Remove<T>(string id, out T? instance) where T : class, ISceneInstance
     {
-        lock (state.SyncRoot)
+        T? removed = null;
+        var result = state.Update(() =>
         {
-            if (!TryGet<T>(id, out var existing)) { instance = null; return false; }
-            instance = existing;
+            if (!TryGet<T>(id, out var existing)) return false;
+            removed = existing;
             if (_transient.Remove(id)) return true;
             return state.Table<T>().Remove(id);
-        }
+        });
+        instance = removed;
+        return result;
     }
 }

@@ -6,7 +6,7 @@ namespace GalNet.Primitives.Builtins;
 
 internal static partial class BuiltinRuntimeActions
 {
-    public static void ApplyParticleState(IGameRuntime runtime, ParticleEmitterRequest request)
+    public static void ApplyParticleState(IGameContext runtime, ParticleEmitterRequest request)
     {
         runtime.State.Update(() =>
         {
@@ -18,13 +18,13 @@ internal static partial class BuiltinRuntimeActions
         });
     }
 
-    public static void RemoveParticleState(IGameRuntime runtime, string instanceId)
+    public static void RemoveParticleState(IGameContext runtime, string instanceId)
     {
         if (string.IsNullOrWhiteSpace(instanceId)) return;
         runtime.SceneInstances.Remove<ParticleEmitterInstance>(instanceId, out _);
     }
 
-    public static void ApplyEffectState(IGameRuntime runtime, EffectRequest request)
+    public static void ApplyEffectState(IGameContext runtime, EffectRequest request)
     {
         runtime.State.Update(() =>
         {
@@ -48,7 +48,7 @@ internal static partial class BuiltinRuntimeActions
         });
     }
 
-    public static void RemoveEffectState(IGameRuntime runtime, string instanceId)
+    public static void RemoveEffectState(IGameContext runtime, string instanceId)
     {
         if (string.IsNullOrWhiteSpace(instanceId))
             return;

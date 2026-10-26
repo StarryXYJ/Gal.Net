@@ -97,6 +97,8 @@ internal sealed class AvaloniaGameRun : IGameRun
     }
 
     public GameSnapshot CreateSaveData() => _run.CreateSaveData();
+    public Task ValidateSnapshotAsync(GameSnapshot snapshot, CancellationToken cancellationToken) =>
+        _run.ValidateSnapshotAsync(snapshot, cancellationToken);
 
     public Task PrepareAsync(GameSnapshot? snapshot, CancellationToken cancellationToken) =>
         _run.PrepareAsync(snapshot, cancellationToken);

@@ -1,5 +1,9 @@
 # GalNet Agent Knowledge
 
+- [旧运行取消与恢复提交](lessons/L-20261026-02-detached-run-cancellation.md)：旧 scope 的取消回调异常不能截断合法恢复；候选先验证，旧 scope 的变量操作与恢复提交共用同步边界。
+
+- 2026-10-26 核心精简：primitive/呈现借用 Core.Runtime.IGameContext；游标与恢复归 IGameRuntime/Engine。执行端口为 Presentation.Abstractions.Execution.IPrimitiveDispatcher，IGameView 已移除；Engine 用 RestoreFromAsync/GameRestorePoint，宿主替换前预检存档。Entry 统一 Arguments JSON，作者/编译类型分离，无 Values/IsGeneric；Choices 归一为 enum。EditorSettings/RecentProjectInfo/布局编码移至 Editor.Abstraction.Settings。见 features/F-20261026-01-engine-core-simplification/phase-plan.md 和 docs/spec/runtime.md、entry-types.md、architecture.md；P6 环境验证限制以 feature 总结为准。
+
 - [基线对照恢复与增量时间戳](lessons/L-20261026-01-baseline-restore-timestamps.md)：恢复源码备份可能保留早于基线 DLL 的时间戳，候选验证需独立输出、Rebuild 或显式失效增量构建，并核对源字节。
 
 - [空本地化引用边界一致性](lessons/L-20261025-10-empty-localization-references.md)：作者索引、启动加载和运行解析都将空引用按空文本处理；空对象/数组不触发 opaque，非空未知结构仍保留诊断。

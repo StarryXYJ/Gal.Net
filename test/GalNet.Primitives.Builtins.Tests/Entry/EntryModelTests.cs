@@ -1,6 +1,7 @@
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Primitives.Builtins;
+using System.Text.Json;
 
 namespace GeneralTest.Entry;
 
@@ -22,20 +23,20 @@ public class EntryModelTests
     }
 
     [Test]
-    public void Create_Should_Apply_Defaults_And_Discard_Unknown_Values()
+    public void AuthoringCreatePreservesJsonAndUnknownDraftFields()
     {
-        var entry = Catalog.Create(BuiltinEntryIds.ShowLayer, 3, "flag", new Dictionary<string, string>
+        var entry = Catalog.Create(BuiltinEntryIds.ShowLayer, 3, "flag", JsonSerializer.SerializeToElement(new Dictionary<string, string>
         {
             ["handleId"] = "hero",
             ["unknown"] = "discard"
-        });
+        }));
 
         Assert.That(entry, Is.TypeOf<AuthoringPrimitiveEntry>());
         Assert.That(entry.Id, Is.EqualTo(3));
         Assert.That(entry.Condition, Is.EqualTo("flag"));
-        Assert.That(entry.Values["handleId"], Is.EqualTo("hero"));
-        Assert.That(entry.Values, Does.Not.ContainKey("unknown"));
-        Assert.That(entry.Values, Does.Not.ContainKey("transitionDuration"));
+        Assert.That(entry.Arguments.GetProperty("handleId").GetString(), Is.EqualTo("hero"));
+        Assert.That(entry.Arguments.GetProperty("unknown").GetString(), Is.EqualTo("discard"));
+        Assert.That(entry.Arguments.TryGetProperty("transitionDuration", out _), Is.False);
     }
 
     [Test]
@@ -43,8 +44,8 @@ public class EntryModelTests
     {
         var first = Catalog.Create(BuiltinEntryIds.Text);
         var second = Catalog.Create(BuiltinEntryIds.Text);
-        first.Values["content"] = "first";
-        Assert.That(second.Values, Does.Not.ContainKey("content"));
+        first.SetArguments(JsonSerializer.SerializeToElement(new { content = "first" }));
+        Assert.That(second.Arguments.TryGetProperty("content", out _), Is.False);
     }
 
     [Test]
@@ -68,7 +69,7 @@ public class EntryModelTests
     {
         var definition = Catalog.Get(BuiltinEntryIds.Text);
         Assert.That(definition.Parameters.Keys, Is.EquivalentTo(TextParameters));
-        Assert.That(Catalog.Create(BuiltinEntryIds.Text).Values, Does.Not.ContainKey("widget"));
+        Assert.That(Catalog.Create(BuiltinEntryIds.Text).Arguments.TryGetProperty("widget", out _), Is.False);
     }
 
     [Test]

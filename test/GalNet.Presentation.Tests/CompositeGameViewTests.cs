@@ -254,7 +254,7 @@ public class CompositeGameViewTests
     public async Task AsyncDisposalThroughGameViewInterfaceUsesModuleAsyncCleanup()
     {
         var module = new AsyncDisposableModule();
-        await using (IGameView view = new GameRegistration().RegisterImplementation(module).BuildView())
+        await using (IPrimitiveDispatcher view = new GameRegistration().RegisterImplementation(module).BuildView())
             Assert.That(module.CleanedUp, Is.False);
         Assert.That(module.CleanedUp, Is.True);
     }

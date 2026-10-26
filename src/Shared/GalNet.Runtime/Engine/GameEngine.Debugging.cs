@@ -63,16 +63,16 @@ public sealed partial class GameEngine
                     _engine._runtime.GetVariables(scope).Values.Select(variable =>
                         new GameDebugVariable(scope, variable.Uid, variable.Name, variable.Type, variable.Value.Serialize()))).ToArray();
                 return new(Generation, _engine.State, Paused, _engine.CurrentNodeId, _engine.EntryIndex,
-                    _engine._active.Where(item => !item.Instance.IsCompleted).OrderBy(item => item.Sequence).Select(item => item.StableId).ToArray(), variables,
+                    _engine._active.Where(item => !item.Instance.IsCompleted).Select(item => item.StableId).ToArray(), variables,
                     _engine._navigation.Nodes.OfType<Group>().Select(group => new GameDebugGroup(group.Id,
                         group.Entries.OfType<GalNet.Core.Entry.PrimitiveEntry>().Select(entry => entry.StableId).ToArray())).ToArray(),
                     _entrances.Keys.ToArray(), _engine._flowError?.ToString(),
                     _engine._pendingChoice is { } choice ? new(choice.Id, choice.Options.Select(item => item.Text).ToArray()) : null,
-                    _engine._active.Where(item => !item.Instance.IsCompleted).OrderBy(item => item.Sequence)
+                    _engine._active.Where(item => !item.Instance.IsCompleted)
                         .Select(item => new GameDebugActiveEntry(item.GroupId, item.StableId)).ToArray(),
                     new(_entrances.Count, _cacheBytes, _options.MaxEntrancePayloadBytes, _options.MaxEntranceGroups), _lastReplay);
             }
-            finally { _engine._dispatchGate.Release(); }
+            finally { _engine._dispatchGate.Release(); _engine.PublishStateChanges(); }
         }
 
         public async Task SetVariableAsync(long generation, GameDebugVariable expected, string value, CancellationToken cancellationToken = default)
@@ -89,7 +89,7 @@ public sealed partial class GameEngine
                 _engine._runtime.SetVariable((expected.Scope == VariableScope.Player ? "player." : "save.") + expected.Name, parsed);
                 _engine.UpdateLastStableSnapshot();
             }
-            finally { _engine._dispatchGate.Release(); }
+            finally { _engine._dispatchGate.Release(); _engine.PublishStateChanges(); }
         }
 
         public async Task PauseAsync(long generation, CancellationToken cancellationToken = default)
@@ -125,7 +125,8 @@ public sealed partial class GameEngine
                     _engine._started = true;
                     _engine.IsRunning = true;
                 }
-                if (_engine.IsRunning && !_engine._restorationPending) _engine.ContinueUntilBlocked();
+                if (_engine.IsRunning && !_engine._restorationPending)
+                    await _engine.ContinueUntilBlockedAsync(cancellationToken).ConfigureAwait(false);
             }
             finally { _engine.CaptureStateChange(); _engine._dispatchGate.Release(); _engine.PublishStateChanges(); }
         }
@@ -141,7 +142,7 @@ public sealed partial class GameEngine
                 if (pending.Id != choiceId) throw new InvalidOperationException("The choice has changed.");
                 if ((uint)visibleIndex >= pending.Options.Count) throw new ArgumentOutOfRangeException(nameof(visibleIndex));
             }
-            finally { _engine._dispatchGate.Release(); }
+            finally { _engine._dispatchGate.Release(); _engine.PublishStateChanges(); }
             pending.Cancellation.Cancel();
             await _engine.CompleteChoiceAsync(pending, Task.FromResult(visibleIndex)).ConfigureAwait(false);
         }
@@ -172,7 +173,7 @@ public sealed partial class GameEngine
                 _disposed = true;
                 if (ReferenceEquals(_engine._debugger, this)) _engine._debugger = null;
             }
-            finally { _engine._dispatchGate.Release(); }
+            finally { _engine._dispatchGate.Release(); _engine.PublishStateChanges(); }
         }
     }
 }

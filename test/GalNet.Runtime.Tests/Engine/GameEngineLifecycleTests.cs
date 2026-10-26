@@ -3,6 +3,7 @@ using System.Text.Json;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
+using GalNet.Core.Runtime;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Runtime.Engine;
@@ -12,6 +13,124 @@ namespace GeneralTest.Runtime;
 
 public sealed class GameEngineLifecycleTests
 {
+    [Test]
+    public async Task ObsoleteCancellationCallbackFailureCannotLeaveRestorationHalfApplied()
+    {
+        var calls = 0;
+        using var view = View(context =>
+        {
+            if (++calls == 1) context.ScopeCancellation.Register(() => throw new IOException("obsolete callback"));
+            return new Blocker();
+        });
+        await using var engine = new GameEngine(GroupGraph(), view);
+        var saved = engine.CreateSaveData();
+        await engine.AdvanceAsync();
+        await engine.RestoreFromAsync(saved);
+        Assert.That(engine.State, Is.EqualTo(GameEngineState.Ready));
+        await engine.AdvanceAsync();
+        Assert.That(calls, Is.EqualTo(2));
+        Assert.That(engine.State, Is.EqualTo(GameEngineState.Running));
+    }
+
+    [Test]
+    public async Task InstructionsReceiveGameplayContextWithoutEngineRestorationOrCursorControl()
+    {
+        PrimitiveCreateContext? context = null;
+        using var view = View(value => { context = value; return new Blocker(); });
+        await using var engine = new GameEngine(GroupGraph(), view);
+        var saved = engine.CreateSaveData();
+        await engine.AdvanceAsync();
+        Assert.That(context!.Runtime, Is.Not.InstanceOf<IGameRuntime>());
+        var oldContext = context.Runtime;
+        await engine.RestoreFromAsync(saved);
+        engine.Runtime.SetVariable("value", 42);
+        Assert.Throws<OperationCanceledException>(() => oldContext.SetVariable("value", 99));
+        Assert.That(engine.Runtime.GetVariable("value")!.AsInt(), Is.EqualTo(42));
+    }
+
+    [Test]
+    public async Task HostMutationsCannotChangeAnExistingRunGraph()
+    {
+        var dispatched = 0;
+        using var view = View(_ => new ImmediatePrimitiveInstance(() => dispatched++));
+        var graph = GroupGraph();
+        await using var engine = new GameEngine(graph, view);
+        ((PrimitiveEntry)((Group)graph.Nodes[0]).Entries[0]).Condition = "false";
+        ((Group)graph.Nodes[0]).Entries.Clear();
+        graph.Nodes.Clear();
+        graph.RootNodeId = "changed";
+        await engine.AdvanceAsync();
+        Assert.That(dispatched, Is.EqualTo(1));
+        Assert.That(engine.State, Is.EqualTo(GameEngineState.Completed));
+    }
+
+    [TestCase("node")]
+    [TestCase("edge")]
+    [TestCase("root")]
+    [TestCase("target")]
+    [TestCase("outlet")]
+    public void InvalidGraphIsRejectedBeforeExecution(string fault)
+    {
+        using var view = View(_ => new ImmediatePrimitiveInstance());
+        var graph = GroupGraph();
+        switch (fault)
+        {
+            case "node": graph.Nodes.Add(new Group { Id = "main" }); break;
+            case "edge": graph.Edges.Add(new("main", 0, "main")); graph.Edges.Add(new("main", 0, "main")); break;
+            case "root": graph.RootNodeId = "missing"; break;
+            case "target": graph.Edges.Add(new("main", 0, "missing")); break;
+            case "outlet": graph.Edges.Add(new("main", 1, "main")); break;
+        }
+        Assert.Throws<InvalidDataException>(() => new GameEngine(graph, view));
+    }
+
+    [Test]
+    public async Task CheckpointObserversCanRestoreAndFailuresDoNotFaultStory()
+    {
+        using var view = View(_ => new ImmediatePrimitiveInstance());
+        await using var engine = new GameEngine(GroupGraph(), view);
+        var initial = engine.CreateSaveData();
+        Task? restored = null;
+        engine.CheckpointCreated += _ => throw new IOException("observer failed");
+        engine.CheckpointCreated += _ => restored ??= engine.RestoreFromAsync(initial);
+        await engine.AdvanceAsync().WaitAsync(TimeSpan.FromSeconds(2));
+        await restored!.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.That(engine.State, Is.EqualTo(GameEngineState.Ready));
+    }
+
+    [TestCase("missing", 0)]
+    [TestCase("main", -1)]
+    [TestCase("main", 5)]
+    public async Task InvalidSavePositionLeavesCurrentScopeIntact(string node, int index)
+    {
+        PrimitiveCreateContext? context = null;
+        using var view = View(value => { context = value; return new Blocker(); });
+        await using var engine = new GameEngine(GroupGraph(), view);
+        await engine.AdvanceAsync();
+        var state = engine.Runtime.State;
+        Assert.ThrowsAsync<InvalidDataException>(() => engine.RestoreFromAsync(new GameSnapshot
+        { NodeId = node, EntryIndex = index, States = engine.CreateSaveData().States }));
+        Assert.That(engine.Runtime.State, Is.SameAs(state));
+        Assert.That(context!.ScopeCancellation.IsCancellationRequested, Is.False);
+        Assert.That(engine.State, Is.EqualTo(GameEngineState.Running));
+    }
+
+    [Test]
+    public async Task NonblockingCycleYieldsAndCallerCancellationKeepsRunUsable()
+    {
+        using var view = View(_ => new ImmediatePrimitiveInstance());
+        var graph = GroupGraph();
+        graph.Edges.Add(new Edge("main", 0, "main"));
+        await using var engine = new GameEngine(graph, view);
+        using var cancellation = new CancellationTokenSource();
+        engine.CheckpointCreated += _ => cancellation.Cancel();
+        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            await engine.AdvanceAsync(cancellation.Token).WaitAsync(TimeSpan.FromSeconds(2)));
+        Assert.That(engine.State, Is.EqualTo(GameEngineState.Running));
+        await engine.StopAsync().WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.That(engine.State, Is.EqualTo(GameEngineState.Stopped));
+    }
+
     [Test]
     public async Task CompletionIsReportedOnceAndFurtherAdvanceDoesNotReplayContent()
     {
@@ -114,7 +233,7 @@ public sealed class GameEngineLifecycleTests
             Assert.That(engine.CurrentNodeId, Is.EqualTo("choice"));
         });
         Assert.That(await engine.AdvanceAsync(), Is.False);
-        Assert.Throws<InvalidOperationException>(() => engine.RestoreFrom(engine.CreateSaveData()));
+        Assert.ThrowsAsync<InvalidOperationException>(() => engine.RestoreFromAsync(engine.CreateSaveData()));
     }
 
     [Test]
@@ -165,7 +284,7 @@ public sealed class GameEngineLifecycleTests
             if (change.State is GameEngineState.Completed or GameEngineState.Faulted) completion.TrySetResult(change);
         };
 
-        engine.RestoreFrom(snapshot);
+        await engine.RestoreFromAsync(snapshot);
         oldResult.SetException(new InvalidOperationException("obsolete"));
         await engine.AdvanceAsync();
         choice.Result.SetResult(0);
@@ -183,13 +302,15 @@ public sealed class GameEngineLifecycleTests
         using var view = View(_ => new ImmediatePrimitiveInstance());
         await using var engine = new GameEngine(GroupGraph(), view);
         var snapshot = engine.CreateSaveData();
+        Task? restore = null;
         engine.StateChanged += _ => throw new InvalidOperationException("observer failed");
         engine.StateChanged += change =>
         {
-            if (change.State == GameEngineState.Completed) engine.RestoreFrom(snapshot);
+            if (change.State == GameEngineState.Completed) restore = engine.RestoreFromAsync(snapshot);
         };
 
         await engine.AdvanceAsync().WaitAsync(TimeSpan.FromSeconds(2));
+        await restore!.WaitAsync(TimeSpan.FromSeconds(2));
 
         Assert.That(engine.State, Is.EqualTo(GameEngineState.Ready));
     }

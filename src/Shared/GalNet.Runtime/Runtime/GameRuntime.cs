@@ -4,6 +4,7 @@ using GalNet.Core.Services;
 using GalNet.Core.Settings;
 using GalNet.Core.Variable;
 using GalNet.Runtime.Variables;
+using GalNet.Runtime.Logging;
 using GalVariable = GalNet.Core.Variable.Variable;
 
 namespace GalNet.Runtime.Runtime;
@@ -15,11 +16,11 @@ namespace GalNet.Runtime.Runtime;
 public sealed class GameRuntime : IGameRuntime
 {
     // ── 位置 ──
-    public string CurrentNodeId { get; set; } = "";
-    public int EntryIndex { get; set; }
+    public string CurrentNodeId { get; private set; } = "";
+    public int EntryIndex { get; private set; }
 
     // ── 游戏结束标志 ──
-    public bool IsGameEnded { get; set; }
+    public bool IsGameEnded { get; private set; }
 
     // ── 核心引用 ──
     public ITextResolver TextResolver { get; }
@@ -57,7 +58,9 @@ public sealed class GameRuntime : IGameRuntime
             _variables.RestoreSaveFrom(variableService.GetSnapshot(VariableScope.Save));
         }
 
-        _evaluator = new ExpressionEvaluator(_variables);
+        _evaluator = new ExpressionEvaluator(_variables, (expression, error) => GameLog.Logger.Warning(error,
+            "{DiagnosticCode} at group {GroupId}, entry index {EntryIndex}: {Expression}",
+            "expression.invalid", CurrentNodeId, EntryIndex, expression));
     }
 
     private void OnVariableChanged(VariableScope scope, string name, GalVariable variable)
@@ -91,15 +94,17 @@ public sealed class GameRuntime : IGameRuntime
 
     public GalVariable? GetVariable(string name)
     {
-        _variables.TryGet(name, out var v);
-        return v;
+        return State.Read(() => _variables.TryGet(name, out var value) ? value : null);
     }
 
-    public bool TryGetVariable(string name, out GalVariable variable) =>
-        _variables.TryGet(name, out variable!);
+    public bool TryGetVariable(string name, out GalVariable variable)
+    {
+        variable = GetVariable(name)!;
+        return variable is not null;
+    }
 
     public IReadOnlyDictionary<string, GalVariable> GetVariables(VariableScope scope) =>
-        _variables.GetSnapshot(scope);
+        State.Read(() => _variables.GetSnapshot(scope));
 
     public bool EvaluateCondition(string expression) => _evaluator.EvaluateCondition(expression);
 
@@ -112,20 +117,24 @@ public sealed class GameRuntime : IGameRuntime
         Version = GameSnapshot.CurrentFormatVersion,
         NodeId = CurrentNodeId,
         EntryIndex = EntryIndex,
-        Variables = _variables.SaveSnapshot.ToDictionary(pair => pair.Key, pair => SnapshotCopy.CloneVariable(pair.Value)),
+        Variables = _variables.SaveSnapshot.ToDictionary(pair => pair.Key, pair => pair.Value),
         States = State.Capture()
     });
 
-    public void RestoreFrom(GameSnapshot snapshot)
+    public GameRestorePoint PrepareRestore(GameSnapshot snapshot) => GameRestorePoint.Prepare(State.Catalog, snapshot);
+
+    public void RestoreFrom(GameSnapshot snapshot) => Restore(PrepareRestore(snapshot));
+
+    public void Restore(GameRestorePoint point)
     {
-        if (snapshot.Version != GameSnapshot.CurrentFormatVersion)
-            throw new InvalidDataException($"Unsupported save version '{snapshot.Version}'.");
-        var state = GameState.Restore(State.Catalog, snapshot.States);
-        CurrentNodeId = snapshot.NodeId;
-        EntryIndex = snapshot.EntryIndex;
-        _variables.RestoreSaveFrom(snapshot.Variables);
-        IsGameEnded = false;
-        State = state;
-        SceneInstances = new SceneInstanceManager(State);
+        State.Update(() =>
+        {
+            CurrentNodeId = point.NodeId;
+            EntryIndex = point.EntryIndex;
+            _variables.RestoreSaveFrom(point.Variables);
+            IsGameEnded = false;
+            State = point.State;
+            SceneInstances = new SceneInstanceManager(State);
+        });
     }
 }

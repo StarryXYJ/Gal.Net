@@ -107,6 +107,14 @@ public sealed class EditorEntryData
     /// <summary>Owned author JSON. A missing key and a provided JSON null are distinct.</summary>
     public Dictionary<string, JsonElement> Parameters { get; set; } = new();
 
+    /// <summary>Text-to-JSON adaptation lives at the author input boundary, not in Core entries.</summary>
+    public static Dictionary<string, JsonElement> CreateParameters(IEntryCatalog catalog, string type,
+        IReadOnlyDictionary<string, string>? text = null)
+    {
+        var entry = catalog.Create(type, arguments: text is null ? null : JsonSerializer.SerializeToElement(ParseParameters(catalog, type, text)));
+        return entry.Arguments.EnumerateObject().ToDictionary(property => property.Name, property => property.Value.Clone(), StringComparer.Ordinal);
+    }
+
     public static Dictionary<string, JsonElement> ParseParameters(IEntryCatalog catalog, string type, IReadOnlyDictionary<string, string> values) =>
         values.ToDictionary(pair => pair.Key,
             pair => catalog.TryGet(type, out var schema) && schema.Parameters.ContainsKey(pair.Key)

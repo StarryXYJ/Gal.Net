@@ -8,15 +8,13 @@ namespace GalNet.Runtime.Engine;
 
 public sealed partial class GameEngine
 {
-    private readonly HashSet<PrimitiveInstance> _autoBlockers = new(ReferenceEqualityComparer.Instance);
-    private readonly Queue<PlaybackMode> _playbackChanges = new();
     private PlaybackMode _playbackMode;
     private bool _advanceBoundary;
     private long _playbackRevision;
     private CancellationTokenSource? _playbackTimer;
 
     public PlaybackMode PlaybackMode => _playbackMode;
-    public event Action<PlaybackMode>? PlaybackModeChanged;
+    public event Action<PlaybackMode>? PlaybackModeChanged { add => _notifications.PlaybackChanged += value; remove => _notifications.PlaybackChanged -= value; }
 
     /// <summary>Immediately invalidates a pending advance; the following mode request updates state.</summary>
     public void CancelPlayback()
@@ -72,7 +70,7 @@ public sealed partial class GameEngine
         if (_playbackMode == mode) return;
         CancelPlaybackTimer();
         _playbackMode = mode;
-        lock (_notificationSync) _playbackChanges.Enqueue(mode);
+        _notifications.Playback(mode);
     }
 
     private void CheckReadingBoundary(Group group, PrimitiveEntry entry)
@@ -92,8 +90,6 @@ public sealed partial class GameEngine
 
     private void ReconcileAutoBlocker(ActivePrimitive item)
     {
-        if (item.Instance.IsAutoBlocking) _autoBlockers.Add(item.Instance);
-        else _autoBlockers.Remove(item.Instance);
         if (_debugger?.SuppressReadProgress != true && !item.ReadMarked && item.IsReading && item.Instance is IAdvanceWaitInstance { IsTextPresented: true })
         {
             if (string.IsNullOrWhiteSpace(item.StableId))
@@ -119,7 +115,7 @@ public sealed partial class GameEngine
 
     private bool CanSchedulePlayback() => _debugger?.Paused != true && _playbackMode != PlaybackMode.Manual && _advanceBoundary && IsRunning &&
         _pendingChoice is null && !_disposed && Volatile.Read(ref _stopRequested) == 0 &&
-        _autoBlockers.Count == 0 && _active.All(item => !item.Instance.IsBlocking || item.Instance.IsCompleted ||
+        !_active.Any(item => item.Instance.IsAutoBlocking) && _active.All(item => !item.Instance.IsBlocking || item.Instance.IsCompleted ||
             item.Instance is IAdvanceWaitInstance { IsWaitingForAdvance: true });
 
     private void ReconcilePlaybackTimer()
@@ -160,7 +156,7 @@ public sealed partial class GameEngine
                     if (item.Instance is IAdvanceWaitInstance wait) wait.CompleteAdvance();
                 RemoveCompleted();
                 UpdateLastStableSnapshot();
-                ContinueUntilBlocked();
+                await ContinueUntilBlockedAsync(cancellation.Token).ConfigureAwait(false);
             }
             catch (Exception exception) { _flowError = exception; IsRunning = false; }
             finally { CaptureStateChange(); _dispatchGate.Release(); PublishStateChanges(); }
@@ -178,15 +174,4 @@ public sealed partial class GameEngine
         }
     }
 
-    private void PublishPlaybackChanges()
-    {
-        while (true)
-        {
-            PlaybackMode mode;
-            lock (_notificationSync) if (!_playbackChanges.TryDequeue(out mode)) return;
-            foreach (var handler in PlaybackModeChanged?.GetInvocationList() ?? [])
-                try { ((Action<PlaybackMode>)handler)(mode); }
-                catch (Exception exception) { GameLog.Logger.Error(exception, "Playback observer failed"); }
-        }
-    }
 }

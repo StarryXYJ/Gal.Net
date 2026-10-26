@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace GalNet.Core.Entry;
 
 /// <summary>
@@ -48,18 +50,20 @@ public sealed class TargetProfileEntryCatalog : IEntryCatalog
         ? definition
         : throw new InvalidDataException($"Entry type '{type}' is not enabled by this target profile.");
 
-    public Entry Create(string type, int id = 0, string condition = "", IReadOnlyDictionary<string, string>? values = null)
+    public Entry Create(string type, int id = 0, string condition = "", JsonElement? arguments = null)
     {
         var definition = Get(type);
         var entry = definition.Factory();
         entry.Id = id;
         entry.Condition = condition;
-        foreach (var (name, value) in definition.Defaults)
-            entry.Values[name] = value;
-        if (values is null) return entry;
-
-        foreach (var (name, value) in values)
-            if (definition.Parameters.ContainsKey(name)) entry.Values[name] = value;
+        var values = definition.DynamicParameters!.Values.Where(parameter => parameter.DefaultValue.HasValue)
+            .ToDictionary(parameter => parameter.Name, parameter => parameter.DefaultValue!.Value.Clone(), StringComparer.Ordinal);
+        if (arguments is { } provided)
+        {
+            if (provided.ValueKind != JsonValueKind.Object) throw new ArgumentException("Author arguments must be an object.", nameof(arguments));
+            foreach (var property in provided.EnumerateObject()) values[property.Name] = property.Value.Clone();
+        }
+        entry.SetArguments(JsonSerializer.SerializeToElement(values));
         return entry;
     }
 

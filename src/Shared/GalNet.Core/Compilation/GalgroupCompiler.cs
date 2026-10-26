@@ -79,7 +79,7 @@ public static class GalgroupCompiler
     private static Entry.Entry CreateEntry(GroupEntryDocument source, int index, IEntryCatalog catalog)
     {
         if (string.IsNullOrWhiteSpace(source.Type)) throw new InvalidDataException("Source entry type is required.");
-        RejectLegacyLayerTransitionParameters(source);
+
         try
         {
             var definition = catalog.Get(source.Type);
@@ -88,37 +88,20 @@ public static class GalgroupCompiler
                 var parameters = definition.DynamicParameters ?? throw new InvalidDataException($"Primitive '{source.Type}' has no dynamic parameter schema.");
                 var rawArguments = JsonSerializer.SerializeToElement(source.Parameters);
                 var (arguments, batchId) = PrimitiveArgumentHelper.NormalizeCompiledArguments(parameters, rawArguments);
-                var primitive = new AuthoringPrimitiveEntry(source.Type)
+                var primitive = new PrimitiveEntry(source.Type, arguments, batchId)
                 {
                     Id = index,
-                    Condition = source.Condition,
-                    BatchId = batchId
+                    Condition = source.Condition
                 };
-                primitive.SetArguments(arguments);
                 return primitive;
             }
 
-            var composite = catalog.Create(
-                source.Type,
-                index,
-                source.Condition,
-                source.Parameters.ToDictionary(pair => pair.Key, pair => ToValue(pair.Value), StringComparer.Ordinal));
-            if (composite is CompositeEntry typedComposite)
-                typedComposite.SetSourceArguments(JsonSerializer.SerializeToElement(source.Parameters));
-            return composite;
+            return catalog.Create(source.Type, index, source.Condition, JsonSerializer.SerializeToElement(source.Parameters));
         }
         catch (Exception exception) when (exception is InvalidDataException or JsonException or ArgumentException)
         {
             throw new InvalidDataException($"Invalid source entry '{source.Id}' ({source.Type}): {exception.Message}", exception);
         }
-    }
-
-    private static void RejectLegacyLayerTransitionParameters(GroupEntryDocument source)
-    {
-        if (source.Type is not ("layer.show" or "layer.hide")) return;
-        var legacy = source.Parameters.Keys.FirstOrDefault(name => name is "transitionId" or "transitionDuration" or "transitionBlocking" or "transitionParameters");
-        if (legacy is not null)
-            throw new InvalidDataException($"'{source.Type}.{legacy}' is no longer supported. Use a transition.* entry, which compiles into Layer and animation primitives.");
     }
 
     private static PrimitiveEntryDocument SerializeEntry(string generatedId, PrimitiveEntry entry)
@@ -130,32 +113,9 @@ public static class GalgroupCompiler
             BatchId = entry.BatchId,
             ReadingBoundaryId = entry.ReadingBoundaryId,
             Condition = entry.Condition,
-            Arguments = entry.IsGeneric || entry is AuthoringPrimitiveEntry
-                ? entry.Arguments.Clone()
-                : SerializeArguments(entry, catalog: null)
+            Arguments = entry.Arguments.Clone()
         };
     }
-
-    private static JsonElement SerializeArguments(PrimitiveEntry entry, IEntryCatalog? catalog)
-    {
-        if (catalog is null)
-            throw new InvalidOperationException("Only generic primitives may be emitted without a catalog.");
-        var definition = catalog.Get(entry.Type);
-        var arguments = entry.Values.ToDictionary(
-            pair => pair.Key,
-            pair => ValueCodec.FromEditorText((definition.DynamicParameters ?? throw new InvalidDataException($"Entry '{entry.Type}' has no dynamic parameter schema."))[pair.Key].Value, pair.Value),
-            StringComparer.Ordinal);
-        return JsonSerializer.SerializeToElement(arguments);
-    }
-
-    private static string ToValue(JsonElement value) => value.ValueKind switch
-    {
-        JsonValueKind.String => value.GetString() ?? "",
-        JsonValueKind.Number or JsonValueKind.True or JsonValueKind.False => value.GetRawText(),
-        JsonValueKind.Object or JsonValueKind.Array => value.GetRawText(),
-        JsonValueKind.Null => "",
-        _ => throw new InvalidDataException("Entry parameter values cannot be undefined.")
-    };
 
     private static string CombineConditions(string parent, string child)
     {

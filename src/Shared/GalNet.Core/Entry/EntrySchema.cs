@@ -25,7 +25,7 @@ public static class EntrySchema
         ArgumentNullException.ThrowIfNull(parameters);
         return new DynamicParameterTable(parameters.Select(pair =>
         {
-            var constraints = CreateConstraints(options?.GetValueOrDefault(pair.Key));
+            var constraints = CreateConstraints(GetValueType(pair.Value), options?.GetValueOrDefault(pair.Key));
             return new DynamicParameterDescriptor(
                 pair.Key,
                 GetValueType(pair.Value),
@@ -56,10 +56,10 @@ public static class EntrySchema
         _ => typeof(string)
     };
 
-    private static JsonElement CreateConstraints(IReadOnlyList<string>? options)
+    private static JsonElement CreateConstraints(Type valueType, IReadOnlyList<string>? options)
     {
         var constraints = new Dictionary<string, object?>();
-        if (options is not null) constraints["options"] = options;
+        if (options is not null) constraints["enum"] = options.Select(value => ValueCodec.ParseEditorText(new ValueDescriptor(valueType), value)).ToArray();
         return JsonSerializer.SerializeToElement(constraints);
     }
 

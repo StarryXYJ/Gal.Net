@@ -78,7 +78,7 @@ public sealed class TypedBuiltinAuthoringTests
         Assert.That(() => Compile(catalog, "particle.burst", new { count = 0 }), Throws.TypeOf<InvalidDataException>());
         Assert.That(() => Compile(catalog, "video.play", new { asset = "movie", skipPoints = new[] { 2, 1 } }), Throws.TypeOf<InvalidDataException>());
         var choices = catalog.Get("animation.animate").DynamicParameters!["property"];
-        Assert.That(choices.TryGetConstraint("options", out var properties), Is.True);
+        Assert.That(choices.TryGetConstraint("enum", out var properties), Is.True);
         Assert.That(properties.EnumerateArray().Select(value => value.GetString()), Is.EqualTo(GalNet.Core.Scene.Layer.AnimationProperties
             .Concat(GalNet.Core.Scene.ParticleEmitterInstance.AnimationProperties).Select(property => property.Name).Append("time").Distinct(StringComparer.Ordinal)));
     }

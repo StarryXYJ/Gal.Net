@@ -208,14 +208,14 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     }
     public void ChangeType(EntryEditorItemViewModel entry, string type)
     {
-        if (!_disposed && EntryTypes.Any(item => item.Value == type)) Workspace.ChangeEntryType(GroupNode, entry, type, _catalog.Create(type).Values);
+        if (!_disposed && EntryTypes.Any(item => item.Value == type)) Workspace.ChangeEntryType(GroupNode, entry, type, GalNet.Editor.Abstraction.Documents.EditorEntryData.CreateParameters(_catalog, type));
     }
     public Task ChangeTypeAsync(EntryEditorItemViewModel entry, string type)
     {
         if (_disposed || entry.Type == type || !GroupNode.Entries.Contains(entry) || !EntryTypes.Any(item => item.Value == type)) return Task.CompletedTask;
         var fields = _projects.Current?.Services.GetService(typeof(EntryFieldAuthoringService)) as EntryFieldAuthoringService;
         if (fields is null) throw new InvalidOperationException("Entry authoring is unavailable.");
-        return CommitReviewedAsync(fields.PrepareType(GroupId, entry.Source, type, GalNet.Editor.Abstraction.Documents.EditorEntryData.ParseParameters(_catalog, type, _catalog.Create(type).Values)));
+        return CommitReviewedAsync(fields.PrepareType(GroupId, entry.Source, type, GalNet.Editor.Abstraction.Documents.EditorEntryData.CreateParameters(_catalog, type)));
     }
     private void InsertEntries(int index, int count, string? anchorId = null)
     {

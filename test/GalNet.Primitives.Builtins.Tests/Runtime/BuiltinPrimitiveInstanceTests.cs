@@ -15,6 +15,19 @@ namespace GeneralTest.Runtime;
 
 public class BuiltinPrimitiveInstanceTests
 {
+    [TestCase("1 +")]
+    [TestCase("[unknown]")]
+    public void FailedVariableExpressionPreservesExistingValue(string expression)
+    {
+        using var view = new GameRegistration().AddBuiltins().BuildView();
+        var runtime = new GameRuntime(null);
+        runtime.SetVariable("score", 42);
+        var instance = view.Dispatch(Primitive(BuiltinEntryIds.SetVariable,
+            new Dictionary<string, object?> { ["target"] = "score", ["expression"] = expression }), runtime, default);
+        Assert.That(instance.IsCompleted, Is.True);
+        Assert.That(runtime.GetVariable("score")!.AsInt(), Is.EqualTo(42));
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public void AnimationStateVersionTwoRoundTripsAnimateAndTimelineAndRejectsVersionOne(bool timeline)

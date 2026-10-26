@@ -229,8 +229,6 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
         }
         IEnumerable<JsonElement> values = [];
         if (Field.Value.TryGetConstraint("enum", out var choices)) values = choices.EnumerateArray();
-        else if (Field.Value.TryGetConstraint("options", out choices))
-            values = choices.EnumerateArray().Select(choice => ValueCodec.FromEditorText(Field.Value, choice.GetString()!));
         else if ((Nullable.GetUnderlyingType(Field.Value.ValueType) ?? Field.Value.ValueType) is { IsEnum: true } type)
             values = Enum.GetValues(type).Cast<object>().Select(value => ValueCodec.Serialize(Field.Value, value));
         return Array.AsReadOnly(values.Select((value, index) => new FieldEditorOption(index.ToString(CultureInfo.InvariantCulture),

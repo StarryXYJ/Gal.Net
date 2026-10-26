@@ -89,7 +89,7 @@ public class DebugSessionTests
         Assert.That(JsonSerializer.Serialize(engine.Runtime.CreateSnapshot().States), Is.EqualTo(expectedStates));
         Assert.That(root.Cache!.PayloadBytes, Is.LessThanOrEqualTo(root.Cache.BudgetBytes));
         TestContext.Out.WriteLine($"entrance={local.Replay.Milliseconds:F2}ms/{local.Replay.Instructions} primitives; root={root.Replay.Milliseconds:F2}ms/{root.Replay.Instructions} primitives; payload={root.Cache.PayloadBytes} bytes");
-        engine.RestoreFrom(engine.Runtime.CreateSnapshot());
+        await engine.RestoreFromAsync(engine.Runtime.CreateSnapshot());
         Assert.That((await debug.InspectAsync()).Cache!.PayloadBytes, Is.Zero);
     }
 
@@ -169,7 +169,7 @@ public class DebugSessionTests
         await engine.AdvanceAsync();
         var operation = debug.SeekAsync(debug.Generation, new("main", 2, []));
         await blocker.Entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
-        if (restore) engine.RestoreFrom(initial);
+        if (restore) await engine.RestoreFromAsync(initial);
         else await engine.StopAsync().WaitAsync(TimeSpan.FromSeconds(2));
         Assert.CatchAsync<OperationCanceledException>(async () => await operation.WaitAsync(TimeSpan.FromSeconds(2)));
         Assert.That(engine.State, Is.EqualTo(restore ? GameEngineState.Ready : GameEngineState.Stopped));
@@ -227,7 +227,12 @@ public class DebugSessionTests
     public async Task ExplicitRouteIgnoresConditionsAndChoiceWithoutWritingVariables()
     {
         var graph = GraphOf(Entry("test.text", "first"), Entry("test.scene", "conditional", "false"), Entry("test.write", "write"));
-        graph.Nodes.Add(new Branch { Id = "choice", BranchType = BranchType.Choice });
+        graph.Nodes.Add(new Branch
+        {
+            Id = "choice",
+            BranchType = BranchType.Choice,
+            Options = Enumerable.Range(0, 8).Select(index => new BranchOption { Text = $"choice {index}", Condition = "false" }).ToList()
+        });
         graph.Nodes.Add(new Group { Id = "target", Entries = { Entry("test.text", "target") } });
         graph.Edges.AddRange([new Edge("main", 0, "choice"), new Edge("choice", 7, "target")]);
         using var view = Registration().RegisterInstruction("test.text", _ => new TextWait())
@@ -297,7 +302,7 @@ public class DebugSessionTests
         Assert.ThrowsAsync<InvalidOperationException>(async () => await debug.SetVariableAsync(before.Generation, variable, "10"));
         var current = (await debug.InspectAsync()).Variables.Single();
         Assert.ThrowsAsync<FormatException>(async () => await debug.SetVariableAsync(before.Generation, current, "not-an-int"));
-        engine.RestoreFrom(engine.Runtime.CreateSnapshot());
+        await engine.RestoreFromAsync(engine.Runtime.CreateSnapshot());
         Assert.ThrowsAsync<InvalidOperationException>(async () => await debug.SetVariableAsync(before.Generation, current, "11"));
     }
 
@@ -343,7 +348,7 @@ public class DebugSessionTests
         public override bool IsSkippable => false;
         protected override void OnDispatch() => Entered.TrySetResult();
     }
-    private sealed class CompressingWait(IGameRuntime runtime) : PrimitiveInstance
+    private sealed class CompressingWait(IGameContext runtime) : PrimitiveInstance
     {
         public override bool IsBlocking => true;
         public override bool IsSkippable => false;

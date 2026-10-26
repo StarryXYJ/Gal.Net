@@ -1,3 +1,4 @@
+using GalNet.Editor.Abstraction.Settings;
 using GalNet.Core.Settings;
 
 namespace GalNet.Editor.Abstraction.Services;

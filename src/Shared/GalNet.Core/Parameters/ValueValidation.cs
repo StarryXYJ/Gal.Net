@@ -54,8 +54,7 @@ public static class ValueValidation
             issue = new("value.length", "Value is outside its supported length.");
         else if (value.ValueKind == JsonValueKind.Array && OutsideLength(descriptor, "minItems", "maxItems", value.GetArrayLength()))
             issue = new("value.items", "Array is outside its supported length.");
-        else if (descriptor.TryGetConstraint("enum", out var choices) && !choices.EnumerateArray().Any(choice => JsonElement.DeepEquals(choice, value)) ||
-            descriptor.TryGetConstraint("options", out var options) && !options.EnumerateArray().Any(option => JsonElement.DeepEquals(ValueCodec.ParseEditorText(descriptor, option.GetString()!), value)))
+        else if (descriptor.TryGetConstraint("enum", out var choices) && !choices.EnumerateArray().Any(choice => JsonElement.DeepEquals(choice, value)))
             issue = new("value.option", "Value has an unsupported value.");
         return result;
     }

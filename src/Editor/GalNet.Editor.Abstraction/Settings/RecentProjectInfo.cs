@@ -1,4 +1,4 @@
-namespace GalNet.Core.Settings;
+namespace GalNet.Editor.Abstraction.Settings;
 
 /// <summary>
 /// 最近项目信息 —— 持久化到编辑器设置中。

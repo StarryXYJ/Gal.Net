@@ -20,7 +20,8 @@
 | 编译组文件 | `.galgroup` | 仅供 Runtime 加载的 Group 产物，只含 primitive，`kind` 为 `Compiled`。 |
 | 运行时 | `IGameRuntime` / `GameRuntime` | 当前节点、条目位置、变量、场景实例和文本解析器的唯一状态源。 |
 | 游戏引擎 | `GameEngine` | 驱动节点转移、活动 primitive 队列、batch skip、Choice 和稳定快照。 |
-| 游戏视图 | `IGameView` | 单条 primitive 的定义解析、参数规范化、实例创建和 dispatch 入口。 |
+| 指令分发端口 | `IPrimitiveDispatcher` | 单条 primitive 的定义解析、参数规范化、实例创建和 dispatch 入口。 |
+| 游戏执行上下文 | `IGameContext` | primitive/呈现借用的变量、场景与游戏能力；游标修改和读档由 Engine 管理。 |
 | 呈现端口 | presenter interfaces | 宿主提供的窄端口，例如 dialogue、choice、layer、animation、effect。 |
 | 快照 | `GameSnapshot` | 可保存和恢复的运行时位置、变量与场景状态。 |
 | Gallery 目录 | `GalleryCatalog` | 由资源 `.meta.gallery[]` 与冻结类型注册聚合、在发行包中生成快照的不可变类型与资源条目索引，通过 `GameContent.Gallery` 交给宿主。 |

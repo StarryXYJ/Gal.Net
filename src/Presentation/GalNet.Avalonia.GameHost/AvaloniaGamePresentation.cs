@@ -92,7 +92,7 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
         await Restorer.SuspendAsync(cancellationToken);
     }
 
-    public async Task EndCatchUpAsync(IGameRuntime runtime, CancellationToken cancellationToken)
+    public async Task EndCatchUpAsync(IGameContext runtime, CancellationToken cancellationToken)
     {
         await AvaloniaUiDispatcher.Instance.InvokeAsync(() =>
         {

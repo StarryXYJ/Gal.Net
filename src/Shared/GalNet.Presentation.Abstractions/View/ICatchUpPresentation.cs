@@ -6,5 +6,5 @@ namespace GalNet.Presentation.Abstractions.View;
 public interface ICatchUpPresentation
 {
     Task BeginCatchUpAsync(CancellationToken cancellationToken);
-    Task EndCatchUpAsync(IGameRuntime runtime, CancellationToken cancellationToken);
+    Task EndCatchUpAsync(IGameContext runtime, CancellationToken cancellationToken);
 }

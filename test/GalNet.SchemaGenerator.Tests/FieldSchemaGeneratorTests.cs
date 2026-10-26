@@ -91,7 +91,7 @@ public sealed class FieldSchemaGeneratorTests
         Assert.That(diagnostics, Is.Empty);
         Assert.That(output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error), Is.Empty);
         var code = driver.GetRunResult().GeneratedTrees.Single().ToString();
-        Assert.That(code, Does.Contain("ValueCodec.ParseDefault").And.Contains("[1,2]").And.Contains("[\"options\"] = new string[]"));
+        Assert.That(code, Does.Contain("ValueCodec.ParseDefault").And.Contains("[1,2]").And.Contains("choices: new string[]"));
     }
 
     [Test]

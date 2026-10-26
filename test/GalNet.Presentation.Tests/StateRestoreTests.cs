@@ -105,9 +105,9 @@ public class StateRestoreTests
         var saved = engine.CreateSaveData();
         var broken = engine.CreateSaveData(); broken.States.Clear();
         var oldState = engine.Runtime.State;
-        Assert.Throws<InvalidDataException>(() => engine.RestoreFrom(broken));
+        Assert.ThrowsAsync<InvalidDataException>(() => engine.RestoreFromAsync(broken));
         Assert.That(engine.Runtime.State, Is.SameAs(oldState));
-        engine.RestoreFrom(saved);
+        await engine.RestoreFromAsync(saved);
         Assert.That(await engine.AdvanceAsync(), Is.True);
         Assert.That(engine.State, Is.EqualTo(GameEngineState.Ready));
         await using var restorer = new StateRestoreSession(view);

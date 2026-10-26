@@ -82,14 +82,7 @@ public static class ValueCodec
         var schema = new JsonObject { ["allOf"] = new JsonArray(exported), ["not"] = new JsonObject { ["type"] = "null" } };
         if (descriptor.Constraints is { } constraints)
             foreach (var constraint in constraints.EnumerateObject())
-                if (constraint.Name == "options")
-                {
-                    var options = new JsonArray();
-                    foreach (var option in constraint.Value.EnumerateArray())
-                        options.Add(JsonNode.Parse(ParseEditorText(descriptor, option.GetString()!).GetRawText()));
-                    schema["enum"] = options;
-                }
-                else if (constraint.Name is "minimum" or "maximum" or "minLength" or "maxLength" or "minItems" or "maxItems" or "enum")
+                if (constraint.Name is "minimum" or "maximum" or "minLength" or "maxLength" or "minItems" or "maxItems" or "enum")
                     schema[constraint.Name] = JsonNode.Parse(constraint.Value.GetRawText());
         return JsonSerializer.SerializeToElement(descriptor.AllowNull
             ? new JsonObject { ["anyOf"] = new JsonArray(schema, new JsonObject { ["type"] = "null" }) }

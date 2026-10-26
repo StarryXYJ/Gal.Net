@@ -6,7 +6,7 @@ namespace GalNet.Primitives.Builtins;
 
 internal static partial class BuiltinRuntimeActions
 {
-    public static void ShowLayer(IGameRuntime runtime, ILayerPresenter? presenter, LayerRenderRequest request, bool notify = true,
+    public static void ShowLayer(IGameContext runtime, ILayerPresenter? presenter, LayerRenderRequest request, bool notify = true,
         LayerVariantsState? variants = null)
     {
         runtime.State.Update(() =>
@@ -30,7 +30,7 @@ internal static partial class BuiltinRuntimeActions
             presenter?.ShowLayer(request);
     }
 
-    public static void HideLayer(IGameRuntime runtime, ILayerPresenter? presenter, string handleId, bool notify = true)
+    public static void HideLayer(IGameContext runtime, ILayerPresenter? presenter, string handleId, bool notify = true)
     {
         runtime.SceneInstances.Remove<Layer>(handleId, out _);
         if (notify)
@@ -38,7 +38,7 @@ internal static partial class BuiltinRuntimeActions
     }
 
     public static void MoveLayer(
-        IGameRuntime runtime,
+        IGameContext runtime,
         ILayerPresenter? presenter,
         string handleId,
         LayerTransform transform,
@@ -58,7 +58,7 @@ internal static partial class BuiltinRuntimeActions
             presenter?.MoveLayer(handleId, transform, z, durationSeconds);
     }
 
-    public static void ReplaceLayer(IGameRuntime runtime, ILayerPresenter? presenter, string handleId, string assetId, bool notify = true)
+    public static void ReplaceLayer(IGameContext runtime, ILayerPresenter? presenter, string handleId, string assetId, bool notify = true)
     {
         runtime.State.Update(() =>
         {

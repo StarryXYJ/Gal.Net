@@ -173,10 +173,11 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
                 return;
             }
 
+            if (_engine is not null) await _engine.ValidateRestoreAsync(snapshot, cancellationToken);
             await StopCurrentRunAsync();
             DisposeEngine();
             await EnsureEngineAsync(cancellationToken);
-            _engine!.RestoreFrom(snapshot);
+            await _engine!.RestoreFromAsync(snapshot, cancellationToken);
             StartRun();
             StatusMessage = $"Loaded slot {slotIndex}.";
         }
@@ -204,7 +205,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
             await StopCurrentRunAsync();
             DisposeEngine();
             await EnsureEngineAsync(cancellationToken);
-            if (snapshot is not null) _engine!.RestoreFrom(snapshot);
+            if (snapshot is not null) await _engine!.RestoreFromAsync(snapshot, cancellationToken);
             StartRun();
         }
         finally { _lifecycle.Release(); }
