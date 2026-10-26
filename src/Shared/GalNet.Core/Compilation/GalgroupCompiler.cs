@@ -18,6 +18,17 @@ public static class GalgroupCompiler
 
     /// <summary>Expands every non-primitive entry and returns a deterministic compiled document plus source mapping.</summary>
     public static CompiledGroupResult Compile(GroupDocument source, IEntryCatalog catalog)
+        => CompileCore(source, catalog, null);
+
+    /// <summary>Compiles once while collecting entry-local errors; failed analyses expose no partial output.</summary>
+    public static GroupCompilationAnalysis Analyze(GroupDocument source, IEntryCatalog catalog)
+    {
+        var errors = new List<GroupCompilationIssue>();
+        var result = CompileCore(source, catalog, errors);
+        return new(errors.Count == 0 ? result : null, errors.AsReadOnly());
+    }
+
+    private static CompiledGroupResult CompileCore(GroupDocument source, IEntryCatalog catalog, List<GroupCompilationIssue>? errors)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         if (source.Version != GroupDocument.CurrentVersion) throw new InvalidDataException($"Unsupported .rawgalgroup version '{source.Version}'.");
@@ -29,46 +40,55 @@ public static class GalgroupCompiler
 
         foreach (var (sourceEntry, sourceIndex) in source.Entries.Select((entry, index) => (entry, index)))
         {
-            if (string.IsNullOrWhiteSpace(sourceEntry.Id) || !stableIds.Add(sourceEntry.Id))
-                throw new InvalidDataException($"Source entry #{sourceIndex + 1} must have a unique non-empty id.");
-
-            var entry = CreateEntry(sourceEntry, sourceIndex + 1, catalog);
-            IReadOnlyList<PrimitiveEntry> primitives = entry switch
+            var parametersReady = false;
+            try
             {
-                PrimitiveEntry primitive => [primitive],
-                CompositeEntry composite => composite.Compile(new EntryCompileContext
+                if (string.IsNullOrWhiteSpace(sourceEntry.Id) || !stableIds.Add(sourceEntry.Id))
+                    throw new InvalidDataException($"Source entry #{sourceIndex + 1} must have a unique non-empty id.");
+
+                var entry = CreateEntry(sourceEntry, sourceIndex + 1, catalog);
+                parametersReady = true;
+                IReadOnlyList<PrimitiveEntry> primitives = entry switch
                 {
-                    SourceEntryId = sourceEntry.Id,
-                    Condition = sourceEntry.Condition
-                }),
-                _ => throw new InvalidDataException($"Entry '{sourceEntry.Type}' is neither a primitive nor a composite entry.")
-            };
+                    PrimitiveEntry primitive => [primitive],
+                    CompositeEntry composite => composite.Compile(new EntryCompileContext
+                    {
+                        SourceEntryId = sourceEntry.Id,
+                        Condition = sourceEntry.Condition
+                    }),
+                    _ => throw new InvalidDataException($"Entry '{sourceEntry.Type}' is neither a primitive nor a composite entry.")
+                };
 
-            var emittedIds = new List<string>(primitives.Count);
-            var readingIndices = primitives.Select((primitive, index) => (primitive, index))
-                .Where(item => catalog.Get(item.primitive.Type).IsReading).Select(item => item.index).ToArray();
-            if (readingIndices.Length > 1)
-                throw new InvalidDataException($"Composite '{sourceEntry.Id}' contains multiple reading boundaries. Split it into separate source entries.");
-            var readingIndex = readingIndices.FirstOrDefault(-1);
-            if (readingIndex >= 0)
-            {
-                if (primitives.Take(readingIndex + 1).Any(primitive => primitive.Condition != primitives[readingIndex].Condition))
-                    throw new InvalidDataException($"Composite '{sourceEntry.Id}' has inconsistent reading-boundary conditions.");
-                primitives[0].ReadingBoundaryId = $"{sourceEntry.Id}#{readingIndex + 1}";
-            }
-            for (var emittedIndex = 0; emittedIndex < primitives.Count; emittedIndex++)
-            {
-                var primitive = primitives[emittedIndex];
-                primitive.Id = compiled.Entries.Count + 1;
-                primitive.Condition = CombineConditions(sourceEntry.Condition, primitive.Condition);
-                var generatedId = $"{sourceEntry.Id}#{emittedIndex + 1}";
-                var schema = catalog.Get(primitive.Type);
-                primitive.SetArguments(PrimitiveArgumentHelper.Normalize(schema.DynamicParameters, primitive.Arguments));
-                compiled.Entries.Add(SerializeEntry(generatedId, primitive));
-                emittedIds.Add(generatedId);
-            }
+                var emittedIds = new List<string>(primitives.Count);
+                var readingIndices = primitives.Select((primitive, index) => (primitive, index))
+                    .Where(item => catalog.Get(item.primitive.Type).IsReading).Select(item => item.index).ToArray();
+                if (readingIndices.Length > 1)
+                    throw new InvalidDataException($"Composite '{sourceEntry.Id}' contains multiple reading boundaries. Split it into separate source entries.");
+                var readingIndex = readingIndices.FirstOrDefault(-1);
+                if (readingIndex >= 0)
+                {
+                    if (primitives.Take(readingIndex + 1).Any(primitive => primitive.Condition != primitives[readingIndex].Condition))
+                        throw new InvalidDataException($"Composite '{sourceEntry.Id}' has inconsistent reading-boundary conditions.");
+                    primitives[0].ReadingBoundaryId = $"{sourceEntry.Id}#{readingIndex + 1}";
+                }
+                for (var emittedIndex = 0; emittedIndex < primitives.Count; emittedIndex++)
+                {
+                    var primitive = primitives[emittedIndex];
+                    primitive.Id = compiled.Entries.Count + 1;
+                    primitive.Condition = CombineConditions(sourceEntry.Condition, primitive.Condition);
+                    var generatedId = $"{sourceEntry.Id}#{emittedIndex + 1}";
+                    if (entry is CompositeEntry)
+                        primitive.SetArguments(PrimitiveArgumentHelper.Normalize(catalog.Get(primitive.Type).DynamicParameters, primitive.Arguments));
+                    compiled.Entries.Add(SerializeEntry(generatedId, primitive));
+                    emittedIds.Add(generatedId);
+                }
 
-            sourceMap.Add(sourceEntry.Id, emittedIds);
+                sourceMap.Add(sourceEntry.Id, emittedIds);
+            }
+            catch (Exception exception) when (errors is not null)
+            {
+                errors.Add(new(sourceIndex, !parametersReady, exception.Message));
+            }
         }
 
         return new CompiledGroupResult(compiled, sourceMap);
@@ -95,7 +115,8 @@ public static class GalgroupCompiler
                 return primitive;
             }
 
-            return catalog.Create(source.Type, index, source.Condition, JsonSerializer.SerializeToElement(source.Parameters));
+            var normalized = PrimitiveArgumentHelper.Normalize(definition.DynamicParameters, JsonSerializer.SerializeToElement(source.Parameters));
+            return catalog.Create(source.Type, index, source.Condition, normalized);
         }
         catch (Exception exception) when (exception is InvalidDataException or JsonException or ArgumentException)
         {
@@ -128,3 +149,6 @@ public static class GalgroupCompiler
 public sealed record CompiledGroupResult(
     CompiledGroupDocument Document,
     IReadOnlyDictionary<string, IReadOnlyList<string>> SourceMap);
+
+public sealed record GroupCompilationIssue(int SourceIndex, bool IsParameterError, string Message);
+public sealed record GroupCompilationAnalysis(CompiledGroupResult? Compilation, IReadOnlyList<GroupCompilationIssue> Issues);

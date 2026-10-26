@@ -125,10 +125,9 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceT
             cancellationToken.ThrowIfCancellationRequested();
             var rawPath = sources[group.Id];
             var diagnostics = new List<GalNet.Editor.Abstraction.Commands.ToolDiagnostic>();
-            var raw = new ProjectValidationService(sourceRoot).ValidateGroup(DisplayPath(sourceRoot, rawPath), diagnostics, _entryCatalog)
+            var raw = new ProjectValidationService(sourceRoot).ValidateGroup(DisplayPath(sourceRoot, rawPath), diagnostics, out var compilation, _entryCatalog)
                 ?? throw new InvalidDataException(string.Join("; ", diagnostics.Select(item => $"{item.File}{item.JsonPointer}: {item.Message}")));
-            var compilation = GalgroupCompiler.Compile(raw, _entryCatalog);
-            var compiled = compilation.Document;
+            var compiled = compilation!.Document;
             var offset = 0;
             foreach (var entry in raw.Entries)
             {

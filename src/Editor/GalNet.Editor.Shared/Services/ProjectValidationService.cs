@@ -117,13 +117,23 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
 
     /// <summary>Checks a selected source and returns a DTO only after its raw structure is accepted.</summary>
     public GroupDocument? ValidateGroup(string file, IList<ToolDiagnostic> diagnostics, IEntryCatalog? catalog = null, bool structureOnly = false)
+        => ValidateGroup(file, diagnostics, out _, catalog, structureOnly);
+
+    internal GroupDocument? ValidateGroup(string file, IList<ToolDiagnostic> diagnostics, out CompiledGroupResult? compilation,
+        IEntryCatalog? catalog = null, bool structureOnly = false)
     {
+        compilation = null;
         var content = _reader.Read(file, diagnostics);
-        return content is null ? null : ValidateGroupDocument(content.Value, file, diagnostics, catalog, structureOnly);
+        return content is null ? null : ValidateGroupDocument(content.Value, file, diagnostics, out compilation, catalog, structureOnly);
     }
 
     public static GroupDocument? ValidateGroupDocument(JsonElement raw, string file, IList<ToolDiagnostic> diagnostics, IEntryCatalog? catalog = null, bool structureOnly = false)
+        => ValidateGroupDocument(raw, file, diagnostics, out _, catalog, structureOnly);
+
+    private static GroupDocument? ValidateGroupDocument(JsonElement raw, string file, IList<ToolDiagnostic> diagnostics,
+        out CompiledGroupResult? compilation, IEntryCatalog? catalog, bool structureOnly)
     {
+        compilation = null;
         var start = diagnostics.Count;
         if (!Shape(raw, file, "", diagnostics, ["version", "kind", "entries"])) return null;
         DuplicateProperties(raw, file, "", diagnostics);
@@ -145,19 +155,17 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
             var type = ProjectRawReader.Text(entry, "type");
             if (type is null || !catalog.TryGet(type, out var definition))
             { Error(diagnostics, "entry.typeUnknown", $"Entry '{type}' is not declared by the project contract.", file, pointer + "/type", ProjectRawReader.Text(entry, "id")); continue; }
-            try
-            {
-                _ = PrimitiveArgumentHelper.Normalize(definition.DynamicParameters, parameters);
-            }
-            catch (Exception exception)
-            { Error(diagnostics, "entry.parametersInvalid", exception.Message, file, pointer + "/parameters", ProjectRawReader.Text(entry, "id")); }
         }
         if (diagnostics.Skip(start).Any(item => item.Severity == "error")) return null;
         var document = JsonSerializer.Deserialize<GroupDocument>(raw, JsonOptions)!;
         if (!structureOnly && catalog is not null)
-            foreach (var (entry, index) in document.Entries.Select((entry, index) => (entry, index)))
-                try { _ = GalgroupCompiler.Compile(new GroupDocument { Entries = [entry] }, catalog); }
-                catch (Exception exception) { Error(diagnostics, "entry.compileInvalid", exception.Message, file, $"/entries/{index}", entry.Id); }
+        {
+            var analysis = GalgroupCompiler.Analyze(document, catalog);
+            compilation = analysis.Compilation;
+            foreach (var issue in analysis.Issues)
+                Error(diagnostics, issue.IsParameterError ? "entry.parametersInvalid" : "entry.compileInvalid", issue.Message, file,
+                    $"/entries/{issue.SourceIndex}" + (issue.IsParameterError ? "/parameters" : ""), document.Entries[issue.SourceIndex].Id);
+        }
         return diagnostics.Skip(start).Any(item => item.Severity == "error") ? null : document;
     }
 

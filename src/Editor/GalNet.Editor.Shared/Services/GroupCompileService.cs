@@ -28,11 +28,10 @@ public sealed class GroupCompileService(string projectDirectory)
             { diagnostics.Add(new("contract.load", "error", exception.Message, "Contracts/" + ProjectSchemaContext.AssemblyFileName)); return Result(null, diagnostics); }
             using (schema)
             {
-                var document = new ProjectValidationService(_reader.Root).ValidateGroup(source, diagnostics, schema.Catalog);
+                var document = new ProjectValidationService(_reader.Root).ValidateGroup(source, diagnostics, out var compiled, schema.Catalog);
                 if (document is null) return Result(null, diagnostics);
                 cancellationToken.ThrowIfCancellationRequested();
-                var compiled = GalgroupCompiler.Compile(document, schema.Catalog);
-                report = new(source, output, request.DryRun, document.Entries.Count, compiled.Document.Entries.Count, compiled.SourceMap, schema.Fingerprint);
+                report = new(source, output, request.DryRun, document.Entries.Count, compiled!.Document.Entries.Count, compiled.SourceMap, schema.Fingerprint);
                 if (request.DryRun) return Result(report, diagnostics);
                 ValidateOutputPath(output);
                 Directory.CreateDirectory(Path.GetDirectoryName(output)!);
