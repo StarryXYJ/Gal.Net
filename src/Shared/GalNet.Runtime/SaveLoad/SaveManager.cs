@@ -31,7 +31,7 @@ public static class SaveManager
             formatVersion != GameSnapshot.CurrentFormatVersion)
             return null;
 
-        var snapshot = JsonSerializer.Deserialize<GameSnapshot>(document.RootElement.GetRawText(), Options);
+        var snapshot = JsonSerializer.Deserialize<GameSnapshot>(document.RootElement, Options);
         return snapshot?.Version == GameSnapshot.CurrentFormatVersion ? snapshot : null;
     }
 
