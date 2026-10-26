@@ -10,7 +10,7 @@ using Avalonia.Media;
 using Avalonia.VisualTree;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Parameters;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Controls;
 using GalNet.Editor.Dock;

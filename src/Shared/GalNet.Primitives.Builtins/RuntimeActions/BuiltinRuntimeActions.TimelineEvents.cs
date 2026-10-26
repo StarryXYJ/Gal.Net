@@ -1,6 +1,6 @@
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Runtime;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Presentation.Abstractions.View;
 
 namespace GalNet.Primitives.Builtins;

@@ -1,6 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using GalNet.Core.Audio;
+using GalNet.Contracts.Builtins.Audio;
 using GalNet.Core.Configuration;
 using GalNet.Core.I18n;
 using GalNet.Core.Parameters;

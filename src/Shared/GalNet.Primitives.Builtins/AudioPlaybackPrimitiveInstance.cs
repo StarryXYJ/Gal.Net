@@ -1,5 +1,5 @@
 using GalNet.Core.Primitives;
-using GalNet.Runtime.Audio;
+using GalNet.Primitives.Builtins.Audio;
 
 namespace GalNet.Primitives.Builtins;
 

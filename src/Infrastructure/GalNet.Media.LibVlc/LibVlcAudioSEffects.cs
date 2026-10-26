@@ -1,5 +1,5 @@
 using System.Text.Json;
-using GalNet.Core.Audio;
+using GalNet.Contracts.Builtins.Audio;
 
 namespace GalNet.Media.LibVlc;
 

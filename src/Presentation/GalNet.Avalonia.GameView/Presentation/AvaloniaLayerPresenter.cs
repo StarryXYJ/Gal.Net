@@ -1,5 +1,5 @@
 using GalNet.Avalonia.GameView.ViewModels;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Rendering.Scene;
 

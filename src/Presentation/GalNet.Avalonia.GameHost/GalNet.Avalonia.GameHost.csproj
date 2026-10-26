@@ -14,4 +14,5 @@
     <ProjectReference Include="../../Shared/GalNet.Core/GalNet.Core.csproj" />
     <ProjectReference Include="../GalNet.Avalonia.Rendering/GalNet.Avalonia.Rendering.csproj" />
   </ItemGroup>
+  <ItemGroup><ProjectReference Include="../../Shared/GalNet.Contracts.Builtins/GalNet.Contracts.Builtins.csproj" /></ItemGroup>
 </Project>

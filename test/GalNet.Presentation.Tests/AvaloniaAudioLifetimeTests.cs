@@ -1,5 +1,5 @@
 using GalNet.Core.Assets;
-using GalNet.Core.Audio;
+using GalNet.Contracts.Builtins.Audio;
 using GalNet.Media.LibVlc;
 
 namespace GeneralTest.Presentation;

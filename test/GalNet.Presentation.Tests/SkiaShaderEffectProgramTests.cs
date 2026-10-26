@@ -1,4 +1,4 @@
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Rendering.Scene;
 
 namespace GeneralTest.Scene;

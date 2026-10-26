@@ -1,4 +1,4 @@
-using GalNet.Core.Audio;
+using GalNet.Contracts.Builtins.Audio;
 using GalNet.Core.Entry;
 using GalNet.Core.Parameters;
 

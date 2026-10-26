@@ -1,5 +1,5 @@
 using GalNet.Core.Runtime;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Variable;
 using GalVariable = GalNet.Core.Variable.Variable;
 

@@ -1,4 +1,3 @@
-using GalNet.Core.Scene;
 using GalNet.Core.Services;
 using GalNet.Core.Variable;
 using GalVariable = GalNet.Core.Variable.Variable;
@@ -13,7 +12,6 @@ public interface IGameContext
     bool IsGameEnded { get; }
     ITextResolver TextResolver { get; }
     GameState State { get; }
-    ISceneInstanceManager SceneInstances { get; }
     void EndGame();
     void SetVariable(string name, object value);
     GalVariable? GetVariable(string name);

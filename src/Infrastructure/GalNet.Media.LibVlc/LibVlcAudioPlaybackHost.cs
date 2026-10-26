@@ -1,7 +1,7 @@
 using System.Threading.Channels;
 using GalNet.Assets;
 using GalNet.Core.Assets;
-using GalNet.Core.Audio;
+using GalNet.Contracts.Builtins.Audio;
 using LibVLCSharp.Shared;
 using LibVlcMedia = LibVLCSharp.Shared.Media;
 

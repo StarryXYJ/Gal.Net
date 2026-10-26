@@ -1,7 +1,7 @@
 using System.Collections.Frozen;
 using System.Text.Json;
 using GalNet.Core.Entry;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 
 namespace GalNet.Contracts.Builtins;
 

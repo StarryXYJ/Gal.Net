@@ -1,6 +1,6 @@
 using Avalonia;
 using Avalonia.Media;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using SkiaSharp;
 
 namespace GalNet.Rendering.Scene;

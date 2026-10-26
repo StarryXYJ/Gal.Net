@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 
 namespace GalNet.Editor.Services;
 

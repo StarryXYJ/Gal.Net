@@ -1,5 +1,5 @@
 using GalNet.Core.Runtime;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Presentation.Abstractions.View;
 
 namespace GalNet.Primitives.Builtins;
@@ -11,8 +11,8 @@ internal static partial class BuiltinRuntimeActions
     {
         runtime.State.Update(() =>
         {
-            runtime.SceneInstances.Remove<Layer>(request.HandleId, out _);
-            runtime.SceneInstances.GetOrAdd(request.HandleId, id => new Layer
+            runtime.Scene().Remove<Layer>(request.HandleId, out _);
+            runtime.Scene().GetOrAdd(request.HandleId, id => new Layer
             {
                 Id = id,
                 AssetId = request.AssetId,
@@ -32,7 +32,7 @@ internal static partial class BuiltinRuntimeActions
 
     public static void HideLayer(IGameContext runtime, ILayerPresenter? presenter, string handleId, bool notify = true)
     {
-        runtime.SceneInstances.Remove<Layer>(handleId, out _);
+        runtime.Scene().Remove<Layer>(handleId, out _);
         if (notify)
             presenter?.HideLayer(handleId);
     }
@@ -48,7 +48,7 @@ internal static partial class BuiltinRuntimeActions
     {
         runtime.State.Update(() =>
         {
-            if (runtime.SceneInstances.TryGet<Layer>(handleId, out var layer))
+            if (runtime.Scene().TryGet<Layer>(handleId, out var layer))
             {
                 layer.Transform = transform.Clone();
                 layer.Z = z;
@@ -62,7 +62,7 @@ internal static partial class BuiltinRuntimeActions
     {
         runtime.State.Update(() =>
         {
-            if (runtime.SceneInstances.TryGet<Layer>(handleId, out var layer))
+            if (runtime.Scene().TryGet<Layer>(handleId, out var layer))
             {
                 runtime.State.Table<Layer>().Set(new Layer
                 {

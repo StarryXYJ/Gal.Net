@@ -1,10 +1,10 @@
 using GalNet.Assets.Variants;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Core.Assets;
-using GalNet.Core.Audio;
+using GalNet.Contracts.Builtins.Audio;
 using GalNet.Core.Configuration;
 using GalNet.Core.Gallery;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Runtime.Content;
 

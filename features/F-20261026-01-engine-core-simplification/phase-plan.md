@@ -92,7 +92,7 @@ primitive/呈现仅借用 IGameContext，Engine 管理 IGameRuntime 与 IPrimiti
 | R2 | 设置模型与模块配置解耦 | R1 | [x] verified |
 | R3 | 自定义音频分组与轨道控制 | R2 | [x] verified |
 | R4 | 自定义配置贯穿作者与运行链路 | R2、R3 | [x] verified |
-| R5 | 剥离可选领域与场景依赖 | R1–R4 | [ ] planned |
+| R5 | 剥离可选领域与场景依赖 | R1–R4 | [ ] in-progress |
 | R6 | 统一参数描述与基础校验 | R5 | [ ] planned |
 | R7 | 收敛执行与异步生命周期重复 | R5、R6 | [ ] planned |
 | R8 | 最小项目、完整回归与文档收尾 | R1–R7 | [ ] planned |
@@ -124,7 +124,12 @@ Engine 只接收/更新不可变 PlaybackOptions，音频只接收隔离轨道�
 - [x] R4c1：通用命令与发布链路，`3d37f50`。
 - [x] R4c2：通用界面、批量历史和宿主投影；见 [summary](summary.md#r4c2通用表单历史与宿主投影)。
 
-### R5 — 剥离可选领域与场景依赖
+### R5 — in-progress
+
+- [x] R5a：场景/音频契约与纯算法归可选 Builtins，音频执行/场景管理归内置模块；Runtime 仅依赖 Core，产品净减 31 行。1776 项通过，3 项权限失败/3 项跳过；构建、locked restore、格式通过，见 [summary](summary.md#r5a场景音频领域归位)。
+- [ ] R5b：Gallery/资源默认策略与宿主内容模型归位，补齐最小运行及依赖门禁。
+
+### R5 范围
 
 - **目标/模块**：Core.Scene/Audio/Gallery、Runtime.Audio/Gallery/SceneInstanceManager、Contracts.Builtins、Primitives.Builtins、展示端口与宿主组合。
 - **任务**：默认视觉/音频领域的数据、纯算法和校验迁入实际共享的内置契约；音频队列/票据/后端调度等运行实现移出通用 Runtime。SceneInstances 从通用上下文移交场景模块，GameState 不直接维护 ISceneInstance 专用索引。Gallery 的 catalog/解锁/宿主组合成为可选领域，不强塞 primitive 模块；其包装位置按消费者决定。检查默认资源/Gallery 注册与低层 fallback，确保默认工厂由明确的组合入口选择，资源访问/注册协议继续按其复用需要共享。

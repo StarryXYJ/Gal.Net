@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 
 namespace GalNet.Editor.Services;
 

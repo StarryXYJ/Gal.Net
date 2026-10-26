@@ -39,10 +39,10 @@ public sealed class PrimitiveRegistry
         return ordered;
     }
     public void State<T>(string id, Func<T, string> key, Func<StateRestoreContext, Task>? restore = null,
-        Action<T>? validate = null, int version = 1, params string[] after) where T : class
+        Action<T>? validate = null, int version = 1, string? keySpace = null, params string[] after) where T : class
     {
         ObjectDisposedException.ThrowIf(_frozen, this);
-        _states.Register(id, key, validate, version);
+        _states.Register(id, key, validate, version, keySpace);
         if (restore is not null) Restore(id, restore, after);
     }
     public void Restore(string id, Func<StateRestoreContext, Task> restore, params string[] after)

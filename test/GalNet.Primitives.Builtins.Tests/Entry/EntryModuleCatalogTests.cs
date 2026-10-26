@@ -21,7 +21,7 @@ public class EntryModuleTests
         Assert.That(schema.FieldDataType, Is.EqualTo(typeof(TimelineOptions)));
         var value = PrimitiveArgumentHelper.Normalize(schema.DynamicParameters!, JsonSerializer.SerializeToElement(new
         {
-            timeline = new GalNet.Core.Scene.TimelineDefinition { PlaybackHandleId = "intro", DurationFrames = 30 }
+            timeline = new GalNet.Contracts.Builtins.Scene.TimelineDefinition { PlaybackHandleId = "intro", DurationFrames = 30 }
         }));
         Assert.That(value.TryGetProperty("timeline", out _), Is.True);
         Assert.That(value.TryGetProperty("plan", out _), Is.False);

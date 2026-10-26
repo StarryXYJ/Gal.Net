@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using SkiaSharp;
 
 namespace GalNet.Rendering.Scene;

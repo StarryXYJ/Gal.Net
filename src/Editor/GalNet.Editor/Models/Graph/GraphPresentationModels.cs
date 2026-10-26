@@ -13,7 +13,7 @@ using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Controls;
 using GalNet.Editor.Services;

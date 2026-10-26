@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using SkiaSharp;
 
 namespace GalNet.Rendering.Scene;

@@ -1,5 +1,5 @@
 using GalNet.Contracts.Builtins;
-using GalNet.Core.Audio;
+using GalNet.Contracts.Builtins.Audio;
 using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
 using GalNet.Core.I18n;

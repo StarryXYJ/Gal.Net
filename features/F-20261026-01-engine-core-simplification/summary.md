@@ -166,3 +166,12 @@ ProjectContractPipelineTests 覆盖实际 CLI 修改、显式 null/删除、领�
 11 项定向测试通过；初轮发现语言切换清掉错误提示及新增挂载测试缺少主题，均修正后通过。完整解决方案构建、格式/diff 检查与 1091 项相关回归通过（Core 166、Architecture 49、Shared 430、Editor 320、Integration 126）；3 项符号链接权限失败、2 项跳过保留。新增真实挂载验证覆盖字段输入、批量应用、过期绑定、Undo/Redo、保存、导出、安装及重新打开；安装用例进一步验证自有 DTO 映射存档容量并实际生成对应数量槽位。
 
 显式原生外进程 3 项实际完成启动、变量编辑、Seek、Step、停止/重启和旧 run 拒绝，均在请求关闭后的退出等待超时。首次诊断读取活动日志遇到 FileShare 冲突，改为共享读写读取后暴露真实关闭超时；未吞掉异常或把失败计为通过。日志保留于 artifacts/engine-core-audit/r4c2-native*.log/trx，关闭链路继续纳入 R7/R8；不阻塞其余重构。其他证据为 r4c2-verified-build.log、r4c2-targeted-final.log、r4c2-results。正式用法同步 new-presentation-layer 与 file-formats。
+
+
+## R5a：场景、音频领域归位
+
+Scene/Audio 数据、端口和纯算法从 Core 迁到 Contracts.Builtins；音频执行/后台调度/票据迁入 Primitives.Builtins.Audio，混音输入归可选契约。删除 IGameContext/GameRuntime 的场景管理器要求及无消费者的接口，内置模块通过 runtime.Scene() 使用按 GameState 根隔离的场景服务。GameState 的场景专用字典改为状态契约选择的 keySpace 身份索引，写入/恢复时继续保证跨表唯一性与 O(1) 查询；不保存额外状态镜像。相关领域测试随职责迁移，调试引擎夹具改用自有普通状态，补充通用身份空间写入/恢复测试。产品 C# 净减 31 行。
+
+完整解决方案构建、locked restore、格式/diff 检查通过。14 个测试项目共 1776 项通过，3 项既有符号链接权限失败、3 项跳过；Runtime 115、Builtin 232、Core 147、Presentation 243、Editor 320、Shared 430、Integration 126，其余架构/资源/生成器/宿主等全部通过。验证覆盖场景跨类型冲突、临时控制不入档、旧状态根/旧 scope 隔离、音频队列/drain/恢复及无 Builtins 的自有执行器。23 个锁文件只有项目引用变化，第三方依赖/目标框架/哈希不变。证据为 artifacts/engine-core-audit/r5a-results、r5a-verified-build.log、r5a-locked-restore.log。
+
+R5 整体仍在进行中：Gallery、资源默认策略和 Runtime.Content 的宿主归属留在 R5b；已观察到的原生关闭超时仍归 R7/R8，未计为本阶段原生验收。

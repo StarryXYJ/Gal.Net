@@ -1,5 +1,4 @@
 using GalNet.Core.Runtime;
-using GalNet.Core.Scene;
 using GalNet.Core.Services;
 using GalNet.Core.Variable;
 using GalVariable = GalNet.Core.Variable.Variable;
@@ -19,7 +18,6 @@ internal sealed class RunScopedRuntime : IGameContext
         _cancellation = cancellation;
         _ignoreVariableWrites = ignoreVariableWrites;
         State = runtime.State;
-        SceneInstances = runtime.SceneInstances;
     }
 
     public string CurrentNodeId => _runtime.CurrentNodeId;
@@ -27,7 +25,6 @@ internal sealed class RunScopedRuntime : IGameContext
     public bool IsGameEnded => _runtime.IsGameEnded;
     public ITextResolver TextResolver => _runtime.TextResolver;
     public GameState State { get; }
-    public ISceneInstanceManager SceneInstances { get; }
     public void EndGame() => State.Update(() => { Check(); _runtime.EndGame(); });
     public void SetVariable(string name, object value) => State.Update(() =>
     { Check(); if (!_ignoreVariableWrites) _runtime.SetVariable(name, value); });

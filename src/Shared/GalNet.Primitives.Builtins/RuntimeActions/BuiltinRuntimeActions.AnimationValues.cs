@@ -1,5 +1,5 @@
 using GalNet.Core.Runtime;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Presentation.Abstractions.View;
 
 namespace GalNet.Primitives.Builtins;
@@ -13,7 +13,7 @@ internal static partial class BuiltinRuntimeActions
         float authoredValue,
         AnimationBlendMode blendMode)
     {
-        if (!runtime.SceneInstances.TryGet<AnimatableSceneInstance>(handleId, out var target))
+        if (!runtime.Scene().TryGet<AnimatableSceneInstance>(handleId, out var target))
             return;
 
         var finalValue = authoredValue;
@@ -29,8 +29,8 @@ internal static partial class BuiltinRuntimeActions
         if (string.IsNullOrWhiteSpace(state.Id)) return;
         runtime.State.Update(() =>
         {
-            runtime.SceneInstances.Remove<AnimationPlaybackInstance>(state.Id, out _);
-            runtime.SceneInstances.GetOrAddTransient(state.Id, id => new AnimationPlaybackInstance
+            runtime.Scene().Remove<AnimationPlaybackInstance>(state.Id, out _);
+            runtime.Scene().GetOrAddTransient(state.Id, id => new AnimationPlaybackInstance
             { Id = id, LoopMode = state.Request?.LoopMode ?? state.Timeline!.LoopMode });
             runtime.State.Table<LoopAnimationState>().Set(state);
         });
@@ -44,7 +44,7 @@ internal static partial class BuiltinRuntimeActions
             return true;
         }
 
-        if (runtime.SceneInstances.TryGet<AnimatableSceneInstance>(request.HandleId, out var target) &&
+        if (runtime.Scene().TryGet<AnimatableSceneInstance>(request.HandleId, out var target) &&
             target.TryGetAnimationValue(request.Property, out value))
             return true;
 

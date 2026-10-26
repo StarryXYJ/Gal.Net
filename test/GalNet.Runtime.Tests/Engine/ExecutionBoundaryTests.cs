@@ -42,6 +42,9 @@ public sealed class ExecutionBoundaryTests
             (name.StartsWith("GalNet.Presentation.", StringComparison.Ordinal) ||
              name.StartsWith("GalNet.Avalonia.", StringComparison.Ordinal) ||
              name is "GalNet.Primitives.Builtins" or "GalNet.Contracts.Builtins")), Is.Empty);
+        Assert.That(typeof(IGameContext).GetProperties().Select(property => property.Name), Does.Not.Contain("SceneInstances"));
+        Assert.That(typeof(GameState).Assembly.GetExportedTypes().Select(type => type.Namespace),
+            Does.Not.Contain("GalNet.Core.Scene").And.Not.Contain("GalNet.Core.Audio"));
     }
 
     private sealed class CounterDispatcher : IPrimitiveDispatcher

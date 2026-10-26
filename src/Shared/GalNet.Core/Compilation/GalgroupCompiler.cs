@@ -3,7 +3,6 @@ using System.Text.Json.Serialization;
 using GalNet.Core.Entry;
 using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
-using GalNet.Core.Scene;
 using GalNet.Core.Serialization;
 
 namespace GalNet.Core.Compilation;

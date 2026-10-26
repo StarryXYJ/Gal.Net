@@ -2,7 +2,7 @@ using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Runtime.Logging;
 
@@ -82,9 +82,9 @@ public sealed class TimelinePrimitiveInstance : PrimitiveInstance, IDisposable
     protected override void OnDispatch()
     {
         if (!_restoring) BuiltinRuntimeActions.ApplyTimelineStableState(_runtime, _timeline);
-        else _runtime.SceneInstances.GetOrAddTransient(_timeline.PlaybackHandleId,
+        else _runtime.Scene().GetOrAddTransient(_timeline.PlaybackHandleId,
             id => new AnimationPlaybackInstance { Id = id, LoopMode = _timeline.LoopMode });
-        _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_timeline.PlaybackHandleId, out _playback!);
+        _runtime.Scene().TryGet<AnimationPlaybackInstance>(_timeline.PlaybackHandleId, out _playback!);
         if (_animationPresenter is null)
         {
             Dispose();
@@ -151,7 +151,7 @@ public sealed class TimelinePrimitiveInstance : PrimitiveInstance, IDisposable
         {
             _runtime.State.Update(() =>
             {
-                if (!_catchUpDetached && _playback is not null && _runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(_timeline.PlaybackHandleId, out var current) && ReferenceEquals(current, _playback))
+                if (!_catchUpDetached && _playback is not null && _runtime.Scene().TryGet<AnimationPlaybackInstance>(_timeline.PlaybackHandleId, out var current) && ReferenceEquals(current, _playback))
                     BuiltinRuntimeActions.StopAnimationState(_runtime, _timeline.PlaybackHandleId);
             });
             bool skipRequested;

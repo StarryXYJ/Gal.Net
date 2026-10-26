@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using GalNet.Core.Scene;
 
 namespace GalNet.Core.Runtime;
 
@@ -18,28 +17,29 @@ public sealed class StateCatalog
 public sealed class StateCatalogBuilder
 {
     private readonly List<StateContract> _contracts = [];
-    public void Register<T>(string id, Func<T, string> key, Action<T>? validate = null, int version = 1) where T : class
+    public void Register<T>(string id, Func<T, string> key, Action<T>? validate = null, int version = 1, string? keySpace = null) where T : class
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentNullException.ThrowIfNull(key);
         ArgumentOutOfRangeException.ThrowIfLessThan(version, 1);
         if (_contracts.Any(item => item.Id == id || item.Type == typeof(T)))
             throw new InvalidOperationException($"Duplicate state contract '{id}' / '{typeof(T).Name}'.");
-        _contracts.Add(new StateContract<T>(id, version, key, validate));
+        _contracts.Add(new StateContract<T>(id, version, key, validate, keySpace));
     }
     public StateCatalog Build() => new(_contracts);
 }
 
-internal abstract class StateContract(string id, int version, Type type)
+internal abstract class StateContract(string id, int version, Type type, string? keySpace)
 {
     public string Id { get; } = id;
     public int Version { get; } = version;
     public Type Type { get; } = type;
+    public string? KeySpace { get; } = keySpace;
     public abstract IStateTable Create(GameState owner, JsonElement? payload);
 }
 
-internal sealed class StateContract<T>(string id, int version, Func<T, string> key, Action<T>? validate)
-    : StateContract(id, version, typeof(T)) where T : class
+internal sealed class StateContract<T>(string id, int version, Func<T, string> key, Action<T>? validate, string? keySpace)
+    : StateContract(id, version, typeof(T), keySpace) where T : class
 {
     public override IStateTable Create(GameState owner, JsonElement? payload)
     {
@@ -88,7 +88,7 @@ public sealed class StateTable<T> : IStateTable where T : class
             if (string.IsNullOrWhiteSpace(id)) throw new InvalidDataException($"State '{_contract.Id}' has an empty ID.");
             _validate?.Invoke(value);
             if (!replace && _values.ContainsKey(id)) throw new InvalidDataException($"Duplicate state item '{_contract.Id}/{id}'.");
-            _owner.CheckSceneIdentity(value, _values.GetValueOrDefault(id));
+            _owner.CheckIdentity(_contract.KeySpace, id, value, _values.GetValueOrDefault(id));
             _values[id] = value;
         }
     }
@@ -97,7 +97,7 @@ public sealed class StateTable<T> : IStateTable where T : class
         lock (_owner.SyncRoot)
         {
             if (!_values.Remove(id, out var value)) return false;
-            _owner.RemoveSceneIdentity(value);
+            _owner.RemoveIdentity(_contract.KeySpace, id, value);
             return true;
         }
     }
@@ -105,7 +105,7 @@ public sealed class StateTable<T> : IStateTable where T : class
     {
         lock (_owner.SyncRoot)
         {
-            foreach (var value in _values.Values) _owner.RemoveSceneIdentity(value);
+            foreach (var (id, value) in _values) _owner.RemoveIdentity(_contract.KeySpace, id, value);
             _values.Clear();
         }
     }
@@ -125,7 +125,7 @@ public sealed class GameState
     };
     internal object SyncRoot { get; } = new();
     private readonly Dictionary<Type, IStateTable> _tables = [];
-    private readonly Dictionary<string, ISceneInstance> _scene = new(StringComparer.Ordinal);
+    private readonly Dictionary<(string Space, string Id), object> _identities = new();
     private StateCatalog? _lastCatalog;
     public GameState(StateCatalog? catalog = null) => Configure(catalog ?? StateCatalog.Empty);
     public void Configure(StateCatalog catalog)
@@ -137,7 +137,7 @@ public sealed class GameState
             {
                 if (_tables.TryGetValue(contract.Type, out var existing))
                 {
-                    if (existing.Contract.Id != contract.Id || existing.Contract.Version != contract.Version)
+                    if (existing.Contract.Id != contract.Id || existing.Contract.Version != contract.Version || existing.Contract.KeySpace != contract.KeySpace)
                         throw new InvalidOperationException($"Conflicting state contract '{contract.Id}'.");
                     continue;
                 }
@@ -174,28 +174,28 @@ public sealed class GameState
         }
         return state;
     }
-    internal void CheckSceneIdentity(object value, object? previous)
+    internal void CheckIdentity(string? space, string id, object value, object? previous)
     {
-        if (value is not ISceneInstance scene) return;
-        if (_scene.TryGetValue(scene.Id, out var existing) && !ReferenceEquals(existing, previous))
-            throw new InvalidOperationException($"Scene handle '{scene.Id}' is already in use.");
-        _scene[scene.Id] = scene;
+        if (space is null) return;
+        if (_identities.TryGetValue((space, id), out var existing) && !ReferenceEquals(existing, previous))
+            throw new InvalidOperationException($"State handle '{id}' is already in use in '{space}'.");
+        _identities[(space, id)] = value;
     }
-    internal void RemoveSceneIdentity(object value)
+    internal void RemoveIdentity(string? space, string id, object value)
     {
-        if (value is ISceneInstance scene && _scene.TryGetValue(scene.Id, out var existing) && ReferenceEquals(existing, value))
-            _scene.Remove(scene.Id);
+        if (space is not null && _identities.TryGetValue((space, id), out var existing) && ReferenceEquals(existing, value))
+            _identities.Remove((space, id));
     }
-    public bool TryGetScene<T>(string id, out T value) where T : class, ISceneInstance
+    public bool TryGetIdentity<T>(string space, string id, out T value) where T : class
     {
         lock (SyncRoot)
         {
-            value = _scene.GetValueOrDefault(id) as T ?? null!;
+            value = _identities.GetValueOrDefault((space, id)) as T ?? null!;
             return value is not null;
         }
     }
-    public IReadOnlyList<T> SceneObjects<T>() where T : class, ISceneInstance
+    public IReadOnlyList<T> IdentityObjects<T>(string space) where T : class
     {
-        lock (SyncRoot) return _scene.Values.OfType<T>().ToArray();
+        lock (SyncRoot) return _identities.Where(pair => pair.Key.Space == space).Select(pair => pair.Value).OfType<T>().ToArray();
     }
 }

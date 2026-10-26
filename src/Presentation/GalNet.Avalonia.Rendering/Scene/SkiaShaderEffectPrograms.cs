@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using GalNet.Core.Assets;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using SkiaSharp;
 
 namespace GalNet.Rendering.Scene;

@@ -1,5 +1,5 @@
 using GalNet.Contracts.Builtins;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 
@@ -18,7 +18,7 @@ public sealed class BuiltinEffectModule(IEffectPresenter? presenter = null) : Pr
                     effect.Order, effect.Parameters, effect.ProgramResource)
                 { AnimationValues = effect.AnimationValues }, context.CancellationToken).ConfigureAwait(false);
             }
-        }, after: ["builtin.layers"]);
+        }, keySpace: BuiltinScene.KeySpace, after: ["builtin.layers"]);
         registry.Register<EffectApplyOptions>(BuiltinEntryIds.ApplyEffect, (context, options) =>
             new ApplyEffectPrimitiveInstance(presenter, context, options));
         registry.Register<InstanceIdOptions>(BuiltinEntryIds.StopEffect, (context, options) =>

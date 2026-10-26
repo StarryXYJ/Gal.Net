@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Threading.Channels;
 using GalNet.Contracts.Builtins;
-using GalNet.Core.Audio;
+using GalNet.Contracts.Builtins.Audio;
 using GalNet.Core.Compilation;
 using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
@@ -78,8 +78,8 @@ public sealed class TypedBuiltinAuthoringTests
         Assert.That(() => Compile(catalog, "video.play", new { asset = "movie", skipPoints = new[] { 2, 1 } }), Throws.TypeOf<InvalidDataException>());
         var choices = catalog.Get("animation.animate").DynamicParameters!["property"];
         Assert.That(choices.TryGetConstraint("enum", out var properties), Is.True);
-        Assert.That(properties.EnumerateArray().Select(value => value.GetString()), Is.EqualTo(GalNet.Core.Scene.Layer.AnimationProperties
-            .Concat(GalNet.Core.Scene.ParticleEmitterInstance.AnimationProperties).Select(property => property.Name).Append("time").Distinct(StringComparer.Ordinal)));
+        Assert.That(properties.EnumerateArray().Select(value => value.GetString()), Is.EqualTo(GalNet.Contracts.Builtins.Scene.Layer.AnimationProperties
+            .Concat(GalNet.Contracts.Builtins.Scene.ParticleEmitterInstance.AnimationProperties).Select(property => property.Name).Append("time").Distinct(StringComparer.Ordinal)));
     }
 
     [TestCase("animation.stop", "playbackHandleId")]

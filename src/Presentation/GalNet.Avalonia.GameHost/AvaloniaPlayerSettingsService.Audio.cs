@@ -1,7 +1,6 @@
 using System.Collections.ObjectModel;
 using GalNet.Avalonia.GameView.Settings;
-using GalNet.Core.Audio;
-using GalNet.Runtime.Audio;
+using GalNet.Contracts.Builtins.Audio;
 
 namespace GalNet.Avalonia.GameHost;
 

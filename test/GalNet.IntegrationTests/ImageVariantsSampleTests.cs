@@ -9,7 +9,7 @@ using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
 using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Variants;
 using GalNet.Editor.Shared.Services;
 using GalNet.Presentation.Abstractions.Execution;

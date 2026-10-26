@@ -1,9 +1,9 @@
 using System.Text.Json;
 using GalNet.Contracts.Builtins;
-using GalNet.Core.Audio;
+using GalNet.Contracts.Builtins.Audio;
 using GalNet.Core.Primitives;
 using GalNet.Presentation.Abstractions.Execution;
-using GalNet.Runtime.Audio;
+using GalNet.Primitives.Builtins.Audio;
 using GalNet.Runtime.Logging;
 
 namespace GalNet.Primitives.Builtins;

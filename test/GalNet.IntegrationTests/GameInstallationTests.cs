@@ -82,7 +82,7 @@ public sealed class GameInstallationTests
             Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioTracks.Single().GroupId, Is.EqualTo("environment"));
             Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioTracks.Single().PreserveDuringCatchUp, Is.True);
             Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioTracks.Single().DefaultGain, Is.EqualTo(.3f));
-            Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioTracks.Single().OverflowPolicy, Is.EqualTo(GalNet.Core.Audio.AudioOverflowPolicy.StopOldest));
+            Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioTracks.Single().OverflowPolicy, Is.EqualTo(GalNet.Contracts.Builtins.Audio.AudioOverflowPolicy.StopOldest));
 
             using var assets = new AssetManager(installation.CreateAssetProviders(resourceTypes));
             Assert.That((await assets.GetFileAsync("hero"))?.Path, Is.EqualTo("hero.png"));

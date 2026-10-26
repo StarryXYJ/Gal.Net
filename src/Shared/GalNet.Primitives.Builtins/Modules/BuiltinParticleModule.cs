@@ -1,5 +1,5 @@
 using GalNet.Contracts.Builtins;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 
@@ -17,7 +17,7 @@ public sealed class BuiltinParticleModule(IParticlePresenter? presenter = null) 
                 await presenter.StartParticleEmitterAsync(new ParticleEmitterRequest(emitter.Id, emitter.Definition, emitter.Z)
                 { AnimationValues = emitter.AnimationValues }, context.CancellationToken).ConfigureAwait(false);
             }
-        });
+        }, keySpace: BuiltinScene.KeySpace);
         registry.Register<ParticlePlayOptions>(BuiltinEntryIds.PlayParticleEmitter, (context, options) =>
             new PlayParticlePrimitiveInstance(presenter, context, options));
         registry.Register<ParticleBurstOptions>(BuiltinEntryIds.BurstParticles, (context, options) =>

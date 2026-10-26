@@ -8,7 +8,7 @@ using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Avalonia.Themes;
 using GalNet.Core.Assets;
-using GalNet.Core.Audio;
+using GalNet.Contracts.Builtins.Audio;
 using GalNet.Core.Gallery;
 using GalNet.Contracts.Builtins;
 using GalNet.Game.Controls.Forms;

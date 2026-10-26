@@ -4,7 +4,7 @@ using GalNet.Core.Entry;
 using GalNet.Core.Execution;
 using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
@@ -426,7 +426,7 @@ public class GameEnginePrimitiveDispatchTests
             .RegisterSchema(new DefaultEntryModule("test", entries.Select(entry => new DefaultPrimitiveEntryBase(entry.Type, DynamicParameterTable.Empty))))
             .RegisterImplementation(new PrimitiveModule(registry =>
             {
-                registry.State<Layer>("test.layers", layer => layer.Id);
+                registry.State<Layer>("test.layers", layer => layer.Id, keySpace: GalNet.Primitives.Builtins.BuiltinScene.KeySpace);
                 foreach (var entry in entries) registry.Register(entry.Type, entry.Factory);
             }))
             .BuildView();

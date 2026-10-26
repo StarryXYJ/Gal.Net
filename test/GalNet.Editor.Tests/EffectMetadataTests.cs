@@ -8,7 +8,7 @@ using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Composition;
 using GalNet.Editor.History;

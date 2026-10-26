@@ -4,7 +4,7 @@ using System.Text.Json.Nodes;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using GalNet.Core.Parameters;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Game.Controls.Forms;
 
 namespace GalNet.Editor.Controls;

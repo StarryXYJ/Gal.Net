@@ -1,7 +1,7 @@
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Runtime.Logging;
 
@@ -45,8 +45,8 @@ public sealed class VideoPrimitiveInstance(
         var owned = false;
         runtime.State.Update(() =>
         {
-            owned = runtime.SceneInstances.TryGet<Layer>(request.Layer.HandleId, out var layer) && ReferenceEquals(layer, _layer);
-            if (owned && blocking) runtime.SceneInstances.Remove<Layer>(request.Layer.HandleId, out _);
+            owned = runtime.Scene().TryGet<Layer>(request.Layer.HandleId, out var layer) && ReferenceEquals(layer, _layer);
+            if (owned && blocking) runtime.Scene().Remove<Layer>(request.Layer.HandleId, out _);
         });
         if (owned) presenter?.StopVideo(request.Layer.HandleId);
         TryComplete();
@@ -81,9 +81,9 @@ public sealed class VideoPrimitiveInstance(
         {
             runtime.State.Update(() =>
             {
-                if (!_catchUpDetached && runtime.SceneInstances.TryGet<Layer>(request.Layer.HandleId, out var layer) &&
+                if (!_catchUpDetached && runtime.Scene().TryGet<Layer>(request.Layer.HandleId, out var layer) &&
                     ReferenceEquals(layer, _layer))
-                    runtime.SceneInstances.Remove<Layer>(request.Layer.HandleId, out _);
+                    runtime.Scene().Remove<Layer>(request.Layer.HandleId, out _);
             });
             TryComplete();
         }

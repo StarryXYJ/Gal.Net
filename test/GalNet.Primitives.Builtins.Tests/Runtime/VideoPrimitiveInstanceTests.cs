@@ -1,7 +1,7 @@
 using System.Text.Json;
 using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
@@ -82,7 +82,7 @@ public sealed class VideoPrimitiveInstanceTests
     public void Image_cannot_replace_an_active_animation_playback_handle()
     {
         var runtime = BuiltinTestRuntime.Create(null);
-        runtime.SceneInstances.GetOrAddTransient("playback", id => new AnimationPlaybackInstance { Id = id });
+        runtime.Scene().GetOrAddTransient("playback", id => new AnimationPlaybackInstance { Id = id });
         using var view = new GameRegistration().AddBuiltins().BuildView();
         Assert.Throws<InvalidOperationException>(() => view.Dispatch(new PrimitiveEntry("layer.show",
             JsonSerializer.SerializeToElement(new { handleId = "playback", assetId = "image" })), runtime, default));

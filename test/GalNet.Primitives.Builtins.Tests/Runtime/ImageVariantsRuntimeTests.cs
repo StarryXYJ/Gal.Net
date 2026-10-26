@@ -5,7 +5,7 @@ using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Variants;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
@@ -127,7 +127,7 @@ public sealed class ImageVariantsRuntimeTests
         Execute(view, runtime, BuiltinEntryIds.SelectVariants, new { handleId = "hero", dimension = "expression", value = "weap" });
         Assert.That(instance.IsCompleted, Is.False);
         Assert.That(runtime.State.Table<LoopAnimationState>().Get("loop"), Is.SameAs(loop));
-        Assert.That(runtime.SceneInstances.TryGet<AnimationPlaybackInstance>("loop", out _), Is.True);
+        Assert.That(runtime.Scene().TryGet<AnimationPlaybackInstance>("loop", out _), Is.True);
         animations.Completion.SetResult(AnimationOutcome.Completed);
         await instance.PresentationCompletion;
     }

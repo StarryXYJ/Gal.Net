@@ -2,7 +2,7 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Input;
 using Avalonia.Media;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 
 namespace GalNet.Game.Controls.Timeline;
 

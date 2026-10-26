@@ -1,6 +1,6 @@
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Core.Assets;
-using GalNet.Core.Audio;
+using GalNet.Contracts.Builtins.Audio;
 using GalNet.Media.LibVlc;
 using GalNet.Rendering.Scene;
 using LibVLCSharp.Shared;

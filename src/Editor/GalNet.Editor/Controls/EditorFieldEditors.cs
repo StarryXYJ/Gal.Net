@@ -3,7 +3,7 @@ using Avalonia.Controls.Templates;
 using Avalonia.Data;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Parameters;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Editor.MarkupExtensions;
 using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Services;

@@ -159,7 +159,7 @@ public sealed partial class AvaloniaPlayerSettingsService : IPlayerSettingsServi
     }
 
     public async Task AttachAsync(PlayerVariableService variables, GameSettings runtimeSettings,
-        GalNet.Core.Audio.AudioConfiguration? audioConfiguration = null, bool showTrackControls = false,
+        GalNet.Contracts.Builtins.Audio.AudioConfiguration? audioConfiguration = null, bool showTrackControls = false,
         CancellationToken cancellationToken = default)
     {
         await FlushAsync();
@@ -169,7 +169,7 @@ public sealed partial class AvaloniaPlayerSettingsService : IPlayerSettingsServi
         _restoring = true;
         try
         {
-            ConfigureAudio(audioConfiguration ?? GalNet.Core.Audio.AudioConfiguration.Empty, showTrackControls);
+            ConfigureAudio(audioConfiguration ?? GalNet.Contracts.Builtins.Audio.AudioConfiguration.Empty, showTrackControls);
             var stored = variables.GetSnapshot(VariableScope.Player);
             Input.Restore(stored.TryGetValue("player.galnet.input.bindings", out var bindings) && bindings.Type == VariableType.String ? bindings.AsString() : null);
             var languages = Languages();

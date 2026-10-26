@@ -133,3 +133,5 @@ R4b 精简修订：用户要求去掉不必要的新增代码。配置只走普�
 R4c 按实际消费者拆分：先以通用配置补丁替代固定字段 switch，让已声明 schema 贯穿作者命令、构建与导出，证明自有 DTO 的保存/安装链路；再用已有字段表单和项目历史接入 GUI 与宿主。当前并行 Editor 调整移除了内嵌预览，后续验收使用外部调试/游戏宿主，不恢复旧预览。各步单独验证提交，R4 总体验收仍保留 GUI/历史及自有运行配置要求。
 
 R4c2 复用 DtoEditorHost/FieldDraftState，设置窗口只做 schema 字段草稿、批量提交和数据历史；普通复合值复用 JSON 编辑，不再保留音频列表专用模型。Configuration.Patch 同时服务命令和 GUI，Resolve 为表单提供隔离的有效默认值快照。Avalonia 宿主在项目组合根通过 SelectProjectOptions 投影存档容量、语言和音频声明，启动后缓存简单配置，不读取默认 DTO。
+
+R5 实施选择：复用 Contracts.Builtins 承载场景/音频/Gallery 的共享领域契约和采样算法，不新增 Common 包；运行侧音频与场景管理归 Primitives.Builtins。GameState 原有场景专用字典改为状态契约可选声明的 keySpace 索引，保留跨表身份冲突在写入/恢复时拒绝及 O(1) 查询，Core 不认识场景类型。场景模块按旧 GameState 根持有临时控制，恢复后不会解析到新根。R5a 先处理场景/音频，R5b 再处理 Gallery、资源默认策略和内容宿主归属。

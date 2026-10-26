@@ -2,7 +2,7 @@ using System.Text.Json;
 using GalNet.Contracts.Builtins;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Shared.Services;
-using SceneLayer = GalNet.Core.Scene.Layer;
+using SceneLayer = GalNet.Contracts.Builtins.Scene.Layer;
 
 namespace GeneralTest.Editor;
 

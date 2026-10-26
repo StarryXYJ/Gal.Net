@@ -1,7 +1,7 @@
 using System.Text.Json;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Runtime;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Presentation.Abstractions.View;
 
 namespace GalNet.Primitives.Builtins;
@@ -75,7 +75,7 @@ internal static partial class BuiltinRuntimeActions
 
         runtime.State.Update(() =>
         {
-            runtime.SceneInstances.Remove<AnimationPlaybackInstance>(playbackHandleId, out _);
+            runtime.Scene().Remove<AnimationPlaybackInstance>(playbackHandleId, out _);
             runtime.State.Table<LoopAnimationState>().Remove(playbackHandleId);
         });
     }

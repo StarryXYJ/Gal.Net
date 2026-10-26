@@ -107,15 +107,14 @@ Choice 节点由 Engine 求值并过滤可见选项，再通过 `IChoicePresente
 | `CurrentNodeId` / `EntryIndex` | 当前流程位置 |
 | `IsGameEnded` | 结束标记 |
 | `TextResolver` | 宿主提供的剧情文本解析器；默认原样返回 |
-| `Settings` | 运行期设置容器 |
-| `State` / `SceneInstances` | 按注册类型/ID 存储的 GameState，以及其派生场景句柄索引与临时执行控制 |
+| `State` | 按注册类型/ID 存储的通用 GameState；契约可选择 keySpace 共享跨表身份索引 |
 | 变量存储 | Player / Save 作用域变量与表达式求值 |
 
 `GameSnapshot` 当前版本为 4，旧版本直接拒绝，不提供迁移兼容。它包含 `NodeId`、`EntryIndex`、Save 变量与 `States`：稳定 StateId → section version / JSON payload。模块组合时显式注册纯数据表与恢复处理器，未注册类型、重复 ID、缺失/未知 section、版本不符及无效载荷明确报错。builtin.animations 当前 section version 为 2，LoopAnimationState 保存 Request 或 Timeline；builtin.layers 当前 section version 也为 2，新增可选的 LayerVariantsState；两者均明确拒绝旧 v1 section。PrimitiveRegistry.State 的 version 参数传递到 Core 状态契约，其他模块默认仍为 1。每份存档写出全部注册表，包括空表；不写 CLR 类型名、Task 或后端对象。
 
 差分 Layer 保存图集资源 ID、完整请求、最后保护集合、实际变体键和解析原因，实际 sprite ID 仍以 Layer.AssetId 为真源。解码阶段检查来源互斥与状态结构，模块的同步 ValidateState 使用会话已准备的不可变 ImageVariantsCatalog 重新解析，核对实际变体/图片/原因，再允许替换状态根；内容版本变更导致不一致时拒绝读档。展示恢复还会在呈现前复核内容。定义异步加载在会话准备阶段完成，show/select 本身同步，无需改变 Engine 读档协议。恢复后继续选择仍保留曾因缺组合而未显示的服装等意图。
 
-`CreateSaveData()` 返回 Engine 保存的最后稳定快照。状态表编码共享短同步边界，JSON 载荷和变量与运行对象隔离；不再由中央代码逐类型复制字段。读档先解码/校验候选状态与模块规则，再取消旧 scope 并替换整个 GameState/SceneInstances。旧回调保留旧状态根，不能清理新代。展示恢复成功前暂停推进，恢复失败进入 Faulted。
+`CreateSaveData()` 返回 Engine 保存的最后稳定快照。状态表编码共享短同步边界，JSON 载荷和变量与运行对象隔离；不再由中央代码逐类型复制字段。读档先解码/校验候选状态与模块规则，再取消旧 scope 并替换整个 GameState；可选场景模块按新状态根解析独立场景服务。旧回调保留旧状态根，不能清理新代。展示恢复成功前暂停推进，恢复失败进入 Faulted。
 
 Save scope 随存档槽保存和恢复；Player scope 由宿主变量服务独立持久化，普通读档不得回滚。内置系统可以通过 `SystemVariableDefinition` 注册生成变量。Gallery 为每个 item 注册默认 `false` 的 Player bool `gallery_<item-id>_unlocked`；`gallery.unlock` 校验 item ID 后把该变量设为 `true`。
 
@@ -217,13 +216,15 @@ primitive 和呈现恢复只借用 `Core.Runtime.IGameContext`：游戏位置只
 
 执行上下文没有 Settings 属性。Engine 以 Core.Execution.PlaybackOptions 的不可变值保存自动/快速推进配置，宿主通过 UpdatePlaybackOptionsAsync 一致更新；无效间隔在提交前拒绝，不更改当前配置或使运行 Faulted。音频模块借构造参数获取独立的轨道定义副本，以 AudioConfiguration 接收已验证的分组/轨道声明，以 AudioMixOptions 接收主音量与分别按分组/轨道 ID 索引的混音值；ApplyMix 复制集合后更新已有及后续 voice，不在每次播放时读取完整玩家模型。Avalonia.GameHost.Settings.GameSettings 只是默认宿主的偏好模型，映射到上述输入，项目不必继承它。窗口、文本和保存设置由各自宿主/呈现服务消费。SettingsContainer、SettingsSection、无消费者的 SaveSettings 和旧 SfxChannelCount 已删除；并发数量只由每轨 MaxVoices 表达。
 
-`IPrimitiveDispatcher`、IChoicePresenter、ICatchUpPresentation 和 IPlayerPlaybackController 位于 Core.Execution，描述分发、状态验证、Choice 输入、快进同步和玩家播放控制，与具体 presenter/UI 无关；CompositeGameView 是分发协议的组合实现。音频后端端口位于 Core.Audio，Runtime 无需引用 Presentation.Abstractions 即可使用这些协议。`EngineNotifications` 统一按产生顺序排队状态、播放模式和检查点通知，在执行门外发布并隔离每个订阅者。活动实例列表本身保持分发顺序，不维护额外排序或自动阻塞镜像集合。
+`IPrimitiveDispatcher`、IChoicePresenter、ICatchUpPresentation 和 IPlayerPlaybackController 位于 Core.Execution，描述分发、状态验证、Choice 输入、快进同步和玩家播放控制，与具体 presenter/UI 无关；CompositeGameView 是分发协议的组合实现。音频后端端口位于可选 Contracts.Builtins.Audio，Runtime 不引用 Presentation.Abstractions 或内置场景/音频契约。`EngineNotifications` 统一按产生顺序排队状态、播放模式和检查点通知，在执行门外发布并隔离每个订阅者。活动实例列表本身保持分发顺序，不维护额外排序或自动阻塞镜像集合。
 
 运行图在 Engine 构造时验证并复制到私有导航索引；外部修改作者图、条目参数或边不会改变已创建的运行。重复节点/出口、缺失根/边目标和非法出口在启动时拒绝；没有后继边仍表示正常结束，合法循环不因批次预算被拒绝。
 
-Runtime 的变量读取和变量集合快照均返回独立 Variable，稳定 UID 保留，写入必须经过 SetVariable。模块使用的 StateTable/SceneInstances 仍返回同一持久记录，必须在 State.Update 内修改；这是执行模块内部的共享数据边界，不是隔离快照。GameState 不公开锁对象，跨层同步使用 Read/Update，编码后的 Capture 才是可传递的隔离状态。
+Runtime 的变量读取和变量集合快照均返回独立 Variable，稳定 UID 保留，写入必须经过 SetVariable。模块使用的 StateTable/可选 runtime.Scene() 仍返回同一持久记录，必须在 State.Update 内修改；这是执行模块内部的共享数据边界，不是隔离快照。GameState 不公开锁对象，跨层同步使用 Read/Update，编码后的 Capture 才是可传递的隔离状态。
 
 Engine 保持唯一执行门禁、运行取消和终态通知。ActivePrimitiveRegistry 拥有实例顺序、group execution identity、事件订阅、完成实例清理与 skip batch；GameGraphNavigator 在启动时索引编译图，运行期间拓扑保持稳定。AudioRuntime 保留轨道、票据、队列溢出、音量和 SEffect 逻辑；AudioBackendDispatcher 负责逐 voice 命令顺序、待加载 start 取消、能力降级和异步工作 drain，并共享 AudioRuntime 的锁。同步后端终态回调的清理在提交完成后取得同一锁，且纳入销毁等待。
 
 
 状态表是持久事实的唯一来源；Layer、EffectInstance、ParticleEmitterInstance 在此处是中立数据/动画属性对象，不包含播放任务。AnimationPlaybackInstance 等停止控制只存在于派生运行索引。读取活动数据后修改属性必须在 `State.Update` 中完成，展示/异步操作放在同步边界外。当前保存仍恢复检查点时刻的状态；检查点之后自然结束的声音不会反向改写已冻结的历史快照。
+
+内置场景的唯一句柄由状态契约显式声明 keySpace="builtin.scene"，写入与恢复使用同一通用跨表身份检查。可选 Primitives.Builtins.BuiltinScene 按 GameState 根提供 Scene()，持久对象来自上述索引，临时动画控制只属于该根。读取旧 scope 不能解析到读档后的新状态。音频运行、后端调度与票据移入 Primitives.Builtins.Audio，混音配置与后端端口位于 Contracts.Builtins.Audio。

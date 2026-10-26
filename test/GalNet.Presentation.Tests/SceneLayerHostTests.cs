@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using Avalonia.Media;
 using GalNet.Avalonia.GameView.Presentation;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Rendering.Scene;
 using SkiaSharp;
 

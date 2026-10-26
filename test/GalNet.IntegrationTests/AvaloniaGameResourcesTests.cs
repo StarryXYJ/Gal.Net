@@ -20,7 +20,7 @@ public sealed class AvaloniaGameResourcesTests
             using var assets = new Assets(texture);
             Assert.ThrowsAsync<IOException>(() => AvaloniaGameResources.CreateAsync(assets,
                 (_, _) => Task.FromResult<IReadOnlyList<IGameFile>>([new Source("ok"), new Source("fail")]),
-                (_, _) => Task.FromResult(Array.Empty<GalNet.Core.Scene.EffectProgramResource>())));
+                (_, _) => Task.FromResult(Array.Empty<GalNet.Contracts.Builtins.Scene.EffectProgramResource>())));
             Assert.That(assets.Released, Is.EqualTo(1));
             await Task.CompletedTask;
             return true;
@@ -64,13 +64,13 @@ public sealed class AvaloniaGameResourcesTests
         public SceneTexture ResolveTexture(string assetId) => texture;
         public void Dispose() => Disposals++;
     }
-    private sealed class Audio : GalNet.Core.Audio.IAudioPlaybackHost
+    private sealed class Audio : GalNet.Contracts.Builtins.Audio.IAudioPlaybackHost
     {
         public int Disposals { get; private set; }
-        public GalNet.Core.Audio.AudioBackendCapabilities Capabilities => GalNet.Core.Audio.AudioBackendCapabilities.None;
-        public GalNet.Core.Audio.ISEffectCatalog SEffects => GalNet.Core.Audio.SEffectCatalog.Empty;
-        public event Action<GalNet.Core.Audio.AudioBackendEvent>? EventReceived { add { } remove { } }
-        public Task ApplyAsync(GalNet.Core.Audio.AudioBackendRequest request, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public GalNet.Contracts.Builtins.Audio.AudioBackendCapabilities Capabilities => GalNet.Contracts.Builtins.Audio.AudioBackendCapabilities.None;
+        public GalNet.Contracts.Builtins.Audio.ISEffectCatalog SEffects => GalNet.Contracts.Builtins.Audio.SEffectCatalog.Empty;
+        public event Action<GalNet.Contracts.Builtins.Audio.AudioBackendEvent>? EventReceived { add { } remove { } }
+        public Task ApplyAsync(GalNet.Contracts.Builtins.Audio.AudioBackendRequest request, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public void Dispose() => Disposals++;
     }
 

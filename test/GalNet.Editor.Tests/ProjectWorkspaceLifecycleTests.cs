@@ -9,7 +9,7 @@ using CommunityToolkit.Mvvm.Input;
 using Dock.Model.Controls;
 using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Abstraction.Documents;

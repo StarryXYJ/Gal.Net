@@ -54,7 +54,7 @@ public sealed class AvaloniaAudioSEffectTests
 
     private sealed class TestProcessor : IAudioSEffectProcessor
     {
-        public GalNet.Core.Audio.SEffectDefinition Definition { get; } = new("seffect.test", new HashSet<GalNet.Core.Audio.SEffectScope> { GalNet.Core.Audio.SEffectScope.Track }, []);
+        public GalNet.Contracts.Builtins.Audio.SEffectDefinition Definition { get; } = new("seffect.test", new HashSet<GalNet.Contracts.Builtins.Audio.SEffectScope> { GalNet.Contracts.Builtins.Audio.SEffectScope.Track }, []);
         public void Apply(JsonElement parameters, LibVlcAudioSEffectState state) { }
     }
 }

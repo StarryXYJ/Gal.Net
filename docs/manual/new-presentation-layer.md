@@ -15,7 +15,7 @@
 - `GameEngine` 是唯一的剧情推进器；UI 不自行推进、跳过 batch 或推断 Engine 终态。
 - primitive 先在 `GameState.Update` 提交可存档事实，再通知 presenter。读档后的展示由注册的恢复处理器和 `StateRestoreSession` 重建。
 - `GameSnapshot` 当前版本为 4；不要序列化 UI、Task、取消源、播放器 identity 或媒体时间轴。
-- 音频平台实现通过 `GalNet.Core.Audio.IAudioPlaybackHost` 组合；同一逻辑轨道的队列和状态仍由 `AudioRuntime` 管理。
+- 音频平台实现通过 `GalNet.Contracts.Builtins.Audio.IAudioPlaybackHost` 组合；同一逻辑轨道的队列和状态仍由 `AudioRuntime` 管理。
 - 新的自定义 primitive 需要同时提供 schema、执行注册、参数/恢复验证和覆盖其生命周期的测试。
 
 ## 从项目设置映射模块配置
@@ -42,7 +42,7 @@ await using var engine = new GameEngine(graph, runtime, dispatcher, playbackOpti
 await engine.UpdatePlaybackOptionsAsync(playback with { AutoAdvanceIntervalMilliseconds = 1500 });
 ```
 
-PlaybackOptions 位于 Core.Execution，AudioMixOptions/AudioMixLevel 位于 Runtime.Audio，BuiltinAudioModule 位于 Primitives.Builtins。默认 Avalonia.GameHost.Settings.GameSettings 提供示例映射方法，可直接使用或完全替换。音频模块不会读取 GameContent.Configuration，也不会自动创建轨道；默认宿主负责从配置文档投影项目声明的轨道。轨道声明和混音字典在入口隔离，后续修改项目对象不等于更新运行配置。文本速度传给文本呈现，窗口偏好交给显示服务，保存槽数交给保存服务，不把整个偏好对象塞进运行上下文。
+PlaybackOptions 位于 Core.Execution，AudioMixOptions/AudioMixLevel 位于 Contracts.Builtins.Audio，BuiltinAudioModule 位于 Primitives.Builtins。默认 Avalonia.GameHost.Settings.GameSettings 提供示例映射方法，可直接使用或完全替换。音频模块不会读取 GameContent.Configuration，也不会自动创建轨道；默认宿主负责从配置文档投影项目声明的轨道。轨道声明和混音字典在入口隔离，后续修改项目对象不等于更新运行配置。文本速度传给文本呈现，窗口偏好交给显示服务，保存槽数交给保存服务，不把整个偏好对象塞进运行上下文。
 
 ## 声明音频分组与轨道
 

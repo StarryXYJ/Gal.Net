@@ -6,7 +6,7 @@ using Avalonia.VisualTree;
 using GalNet.Assets.Variants;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Variants;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Composition;

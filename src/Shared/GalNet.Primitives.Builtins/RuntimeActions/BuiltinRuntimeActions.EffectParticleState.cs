@@ -1,5 +1,5 @@
 using GalNet.Core.Runtime;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Presentation.Abstractions.View;
 
 namespace GalNet.Primitives.Builtins;
@@ -12,7 +12,7 @@ internal static partial class BuiltinRuntimeActions
         {
 
             RemoveParticleState(runtime, request.InstanceId);
-            var emitter = runtime.SceneInstances.GetOrAdd(request.InstanceId, id => new ParticleEmitterInstance(id, request.Definition, request.Z));
+            var emitter = runtime.Scene().GetOrAdd(request.InstanceId, id => new ParticleEmitterInstance(id, request.Definition, request.Z));
             emitter.RestoreAnimationValues(request.AnimationValues);
 
         });
@@ -21,7 +21,7 @@ internal static partial class BuiltinRuntimeActions
     public static void RemoveParticleState(IGameContext runtime, string instanceId)
     {
         if (string.IsNullOrWhiteSpace(instanceId)) return;
-        runtime.SceneInstances.Remove<ParticleEmitterInstance>(instanceId, out _);
+        runtime.Scene().Remove<ParticleEmitterInstance>(instanceId, out _);
     }
 
     public static void ApplyEffectState(IGameContext runtime, EffectRequest request)
@@ -33,7 +33,7 @@ internal static partial class BuiltinRuntimeActions
                 return;
 
             RemoveEffectState(runtime, request.InstanceId);
-            var effect = runtime.SceneInstances.GetOrAdd(request.InstanceId, _ => new EffectInstance
+            var effect = runtime.Scene().GetOrAdd(request.InstanceId, _ => new EffectInstance
             {
                 Id = request.InstanceId,
                 EffectId = request.Id,
@@ -53,6 +53,6 @@ internal static partial class BuiltinRuntimeActions
         if (string.IsNullOrWhiteSpace(instanceId))
             return;
 
-        runtime.SceneInstances.Remove<EffectInstance>(instanceId, out _);
+        runtime.Scene().Remove<EffectInstance>(instanceId, out _);
     }
 }

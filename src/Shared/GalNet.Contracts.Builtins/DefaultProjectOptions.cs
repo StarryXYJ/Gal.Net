@@ -10,8 +10,8 @@ public sealed class DefaultProjectOptions
 
     public int SaveSlotCount { get; set; } = 60;
 
-    public List<GalNet.Core.Audio.AudioGroupDefinition> AudioGroups { get; set; } = [];
-    public List<GalNet.Core.Audio.AudioTrackDefinition> AudioTracks { get; set; } = [];
+    public List<GalNet.Contracts.Builtins.Audio.AudioGroupDefinition> AudioGroups { get; set; } = [];
+    public List<GalNet.Contracts.Builtins.Audio.AudioTrackDefinition> AudioTracks { get; set; } = [];
 
     public int DefaultWidth { get; set; } = 1920;
 

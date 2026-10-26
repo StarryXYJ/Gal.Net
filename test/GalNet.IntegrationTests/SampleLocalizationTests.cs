@@ -122,7 +122,7 @@ public sealed class SampleLocalizationTests
                 using var localization = CreateLocalization();
                 using var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory));
                 using var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!));
-                var configuration = new GalNet.Core.Audio.AudioConfiguration(
+                var configuration = new GalNet.Contracts.Builtins.Audio.AudioConfiguration(
                     [new() { Id = "rain/near", GroupId = "ambience" }, new() { Id = "wind", GroupId = "ambience" }],
                     [new() { Id = "ambience", Name = "Environment" }]);
                 await settings.AttachAsync(variables, new(), configuration, showTrackControls: true);

@@ -1,5 +1,5 @@
 using GalNet.Contracts.Builtins;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 
@@ -15,7 +15,7 @@ public sealed class BuiltinAnimationModule(
         registry.ValidateState((_, state) =>
         {
             foreach (var animation in state.Table<LoopAnimationState>().Values)
-                if (state.SceneObjects<ISceneInstance>().Any(item => item.Id == animation.Id))
+                if (state.IdentityObjects<ISceneInstance>(BuiltinScene.KeySpace).Any(item => item.Id == animation.Id))
                     throw new InvalidDataException($"Animation playback handle '{animation.Id}' conflicts with a scene object.");
         });
         registry.State<LoopAnimationState>("builtin.animations", value => value.Id, context =>
@@ -42,7 +42,7 @@ public sealed class BuiltinAnimationModule(
             {
                 var playbackHandleId = options.PlaybackHandleId ?? "";
                 var mode = options.Mode ?? AnimationStopMode.AfterIteration;
-                if (context.Runtime.SceneInstances.TryGet<AnimationPlaybackInstance>(playbackHandleId, out var playback))
+                if (context.Runtime.Scene().TryGet<AnimationPlaybackInstance>(playbackHandleId, out var playback))
                     playback.RequestStop(mode);
                 if (mode == AnimationStopMode.CompleteImmediately)
                 {

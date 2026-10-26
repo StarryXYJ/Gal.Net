@@ -5,9 +5,9 @@
 `Core` 不依赖 UI、文件系统或 DI。Runtime 的项目依赖只有 Core，不引用呈现抽象或默认执行模块；宿主组装文件系统、资源、媒体和页面实现。旧 `GalNet.Storage.Abstractions` 项目已删除。
 
 ```text
-Core ───────────────────── 领域模型、执行协议、资源/Gallery registry、服务契约
+Core ───────────────────── 通用数据、执行/状态协议、资源/Gallery registry、服务契约
 Diagnostics ────────────── 可选 Benchmark 构建的 CPU 事件与启动捕获，独立于领域层
-Contracts.Builtins ──────── 仅依赖 Core 的内置 schema、参数和 Composite
+Contracts.Builtins ──────── 内置场景/音频契约、纯采样算法、schema 和 Composite
 Presentation.Abstractions ─ 执行注册/恢复组合、presenter 与平台无关应用契约
 GameHost ───────────────── 游戏会话、运行生命周期、玩家持久化与偏好规则
 Avalonia.GameHost ───────── 默认 Avalonia 会话、展示组合、设置 UI 和平台适配
@@ -44,6 +44,7 @@ flowchart TB
     GameView --> Ports
     GameView --> Rendering[Avalonia.Rendering]
     Runtime --> Core
+    Ports --> Contracts
     Ports --> Core
     Contracts --> Core
     Assets --> Core
@@ -64,7 +65,7 @@ src/
 
 物理分组用于表达查找和所有权，不改变程序集名称、根命名空间或依赖方向。新增生产项目应放入与其职责一致的分组，并同步 `GalNet.slnx`；测试项目统一位于 `test/<Assembly>.Tests`。
 
-程序集拥有自己的根命名空间：展示与执行注册端口位于 `GalNet.Presentation.Abstractions.*`，内置 schema、Entry DTO 与 Composite 位于 `GalNet.Contracts.Builtins`，primitive 和执行 module 位于 `GalNet.Primitives.Builtins`。契约项目只依赖 Core，执行模块按领域共享状态，可依赖 Runtime 的平台无关逻辑（如音频轨道）；Runtime 不反向依赖 Builtins。扩展程序集不得在 `GalNet.Core.*` 下声明类型；Core 只保留领域基础类型和扩展协议。注册的精确规则见[条目类型](entry-types.md)。
+程序集拥有自己的根命名空间：展示与执行注册端口位于 `GalNet.Presentation.Abstractions.*`，内置 schema、Entry DTO 与 Composite 位于 `GalNet.Contracts.Builtins`，primitive 和执行 module 位于 `GalNet.Primitives.Builtins`。契约项目只依赖 Core，执行模块按领域共享状态，可依赖 Runtime 的平台无关逻辑；Runtime 不反向依赖 Builtins。扩展程序集不得在 `GalNet.Core.*` 下声明类型；Core 只保留领域基础类型和扩展协议。注册的精确规则见[条目类型](entry-types.md)。
 
 资源层只向上暴露 `IAssetProvider`、`IArchive`、`IGameFile` 和 `IAssetManager`。provider 定位源文件；manager 负责 GUID 查询、decoder 分派、缓存和 `AssetHandle<T>` 生命周期。Core、Runtime 与 Editor.Shared 不引用 Avalonia。
 
@@ -156,10 +157,12 @@ Runtime 的 GraphLoader/GalgroupLoader/SaveManager 仅解析和序列化内容�
 
 Engine 的导航索引持有验证后的私有图副本，不共享作者集合或可变条目。外部变量读取返回独立值；执行模块共享的场景记录仍统一在 GameState.Read/Update 边界访问，不跨程序集暴露锁对象。
 
-执行模块/呈现端借用 Core.Runtime.IGameContext；Engine 管理能力 IGameRuntime 与恢复候选 GameRestorePoint 属于 Runtime.Runtime。Core.Execution 拥有 IPrimitiveDispatcher、IChoicePresenter、ICatchUpPresentation 和 IPlayerPlaybackController，这些协议只包含中立执行数据；音频后端端口 IAudioPlaybackHost 与现有音频协议同属 Core.Audio。注册、分发及展示恢复组合仍位于 Presentation.Abstractions，具体 presenter 端口仍位于其 View。编辑器主题、Dock、快捷键、最近项目及嵌入布局 JSON 编码属于 Editor.Abstraction.Settings；Core 不持有这些宿主配置，未使用的 LauncherSettings 已删除。
+执行模块/呈现端借用 Core.Runtime.IGameContext；Engine 管理能力 IGameRuntime 与恢复候选 GameRestorePoint 属于 Runtime.Runtime。Core.Execution 拥有 IPrimitiveDispatcher、IChoicePresenter、ICatchUpPresentation 和 IPlayerPlaybackController，这些协议只包含中立执行数据；音频后端端口 IAudioPlaybackHost 与音频协议属于 Contracts.Builtins.Audio，音频执行、队列和票据属于 Primitives.Builtins.Audio。注册、分发及展示恢复组合仍位于 Presentation.Abstractions，具体 presenter 端口仍位于其 View。编辑器主题、Dock、快捷键、最近项目及嵌入布局 JSON 编码属于 Editor.Abstraction.Settings；Core 不持有这些宿主配置，未使用的 LauncherSettings 已删除。
 
 展示执行抽象的 StateRestoreSession 拥有重放 continuation；宿主在执行 view 和平台 presenter 释放前异步释放该会话。Suspend 等待取消后仍保留旧实例，下一次重放或释放会继续等待真实展示清理。
 
 Engine 只接收/更新 PlaybackOptions，音频接收不可变 AudioConfiguration 分组/轨道声明和 AudioMixOptions 的 master/group/track 混音值，不依赖完整玩家设置或运行上下文的设置容器。默认玩家偏好模型 GameSettings 位于 Avalonia.GameHost.Settings，通过组合根投影为模块输入；通用 PlayerSession 只持有玩家持久化与进度，不持有该偏好模型。清空玩家数据后由默认宿主重新绑定默认偏好。Editor 没有另设未使用的游戏偏好服务。Core.Configuration 只定义版本化 ProjectConfiguration/ConfigurationSection 协议；GameContent、GalProject 和作者文档使用 Configuration，不再绑定固定 ProjectSettings。默认项目 DTO DefaultProjectOptions 位于可选 Contracts.Builtins，默认模板/Sample 显式选择其 schema；Storage 通过 GameContentLoadOptions 接收 schema 和文化代码投影，运行模块仍接收小配置。通用 section 编辑和自有 DTO 的完整预览链路仍在 R4c 实施。
 
 运行与宿主资源的依赖及生命周期以本页的游戏运行段和[运行时规范](runtime.md)为准，包括 GameView 对 Assets 的媒体 adapter 默认实现依赖。
+
+场景/音频领域类型及纯算法位于可选 Contracts.Builtins.Scene/Audio。IGameContext 和 GameRuntime 不提供 SceneInstances；内置视觉模块通过 runtime.Scene() 访问按 GameState 根隔离的场景服务，临时动画控制不进入快照。StateCatalog 的可选 keySpace 提供跨表唯一性和查询，Core 只处理通用身份，不认识 ISceneInstance；内置视觉状态显式选择 builtin.scene。Runtime 仅引用 Core，最小自定义 primitive 不需要场景或音频模块。

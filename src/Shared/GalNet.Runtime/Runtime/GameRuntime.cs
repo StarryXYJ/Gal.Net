@@ -1,5 +1,4 @@
 using GalNet.Core.Runtime;
-using GalNet.Core.Scene;
 using GalNet.Core.Services;
 using GalNet.Core.Variable;
 using GalNet.Runtime.Logging;
@@ -26,7 +25,6 @@ public sealed class GameRuntime : IGameRuntime
 
     // ── 场景状态 ──
     public GameState State { get; private set; } = new();
-    public ISceneInstanceManager SceneInstances { get; private set; }
 
     // ── 内部状态 ──
     private readonly VariableStore _variables;
@@ -39,7 +37,6 @@ public sealed class GameRuntime : IGameRuntime
         TextResolver = textResolver ?? PassthroughTextResolver.Instance;
         CurrentNodeId = rootNodeId;
         State = new GameState(stateCatalog);
-        SceneInstances = new SceneInstanceManager(State);
         _variableService = variableService;
 
         _variables = new VariableStore(
@@ -128,7 +125,6 @@ public sealed class GameRuntime : IGameRuntime
             _variables.RestoreSaveFrom(point.Variables);
             IsGameEnded = false;
             State = point.State;
-            SceneInstances = new SceneInstanceManager(State);
         });
     }
 }

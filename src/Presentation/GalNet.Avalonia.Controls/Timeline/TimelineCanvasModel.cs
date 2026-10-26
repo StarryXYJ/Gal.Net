@@ -1,5 +1,5 @@
 using System.ComponentModel;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 
 namespace GalNet.Game.Controls.Timeline;
 

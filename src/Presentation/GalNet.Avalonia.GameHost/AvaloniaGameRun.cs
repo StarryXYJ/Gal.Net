@@ -53,7 +53,7 @@ internal sealed class AvaloniaGameRun : IGameRun
     public static async Task<AvaloniaGameRun> CreateAsync(
         GamePageViewModel gameplay, GamePage page, GameResourceScope resources, AvaloniaGameResources visuals,
         PlayerSession saveSession, AvaloniaPlayerSettingsService playerSettings, ITextResolver textResolver, AvaloniaGameHostOptions options,
-        GalNet.Core.Audio.AudioConfiguration audioConfiguration, LibVLC? sharedLibVlc, Func<bool, string?, Task> updateStateAsync,
+        GalNet.Contracts.Builtins.Audio.AudioConfiguration audioConfiguration, LibVLC? sharedLibVlc, Func<bool, string?, Task> updateStateAsync,
         Func<Task> runCompletedAsync, Func<Task> resetPresentationAsync,
         Func<Action, Task> onUiAsync, CancellationToken cancellationToken)
     {

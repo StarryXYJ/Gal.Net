@@ -120,10 +120,10 @@ public partial class TimelinePanelView : UserControl
             item.Click += (_, _) => { action(); menu.Hide(); }; return item;
         }
         var interpolation = new MenuItem { Header = text["Timeline.Curve.Interpolation"] };
-        foreach (var mode in Enum.GetValues<GalNet.Core.Scene.AnimationInterpolation>())
+        foreach (var mode in Enum.GetValues<GalNet.Contracts.Builtins.Scene.AnimationInterpolation>())
         {
             var captured = mode;
-            interpolation.Items.Add(Item("TimelineInterpolation" + mode, mode == GalNet.Core.Scene.AnimationInterpolation.CubicHermite ? "Timeline.Curve.Hermite" : "Timeline.Key." + mode,
+            interpolation.Items.Add(Item("TimelineInterpolation" + mode, mode == GalNet.Contracts.Builtins.Scene.AnimationInterpolation.CubicHermite ? "Timeline.Curve.Hermite" : "Timeline.Key." + mode,
                 () => { draft.InterpolationIndex = (int)captured; draft.CommitInterpolation(); }, draft.InterpolationIndex == (int)mode));
         }
         menu.Items.Add(interpolation);
