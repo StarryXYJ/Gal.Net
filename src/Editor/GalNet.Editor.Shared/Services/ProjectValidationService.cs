@@ -270,8 +270,6 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
         foreach (var (edge, index) in document.Edges.Select((edge, index) => (edge, index)))
         {
             if (!occupied.Add((edge.FromNodeId, edge.FromOutlet))) Error(diagnostics, "graph.outletDuplicate", "An outlet can have only one outgoing edge.", GraphFile, $"/edges/{index}", edge.Id);
-            if (edge.FromNodeId == edge.ToNodeId) Error(diagnostics, "graph.edge.selfConnection", "A node cannot connect to itself.", GraphFile, $"/edges/{index}", edge.Id);
-            if (document.Nodes.Any(node => node.Id == edge.ToNodeId && node.Type == "Entry")) Error(diagnostics, "graph.edge.entryInput", "Entry nodes cannot have incoming edges.", GraphFile, $"/edges/{index}", edge.Id);
         }
         foreach (var diagnostic in EditorDocumentValidator.Validate(new EditorProjectDocument { Graph = document }).Diagnostics)
         {

@@ -14,10 +14,10 @@ public static class GraphEditRules
         "Condition" => node.Conditions?.Count ?? 0,
         _ => 1
     };
-    public static EditorDiagnostic? ConnectionError(EditorGraphNodeDto from, int outlet, EditorGraphNodeDto to)
+    public static EditorDiagnostic? ConnectionError(EditorGraphNodeDto from, int outlet, EditorGraphNodeDto? to)
     {
-        if (from.Id == to.Id) return EditorDiagnostic.Error("graph.edge.selfConnection", "A node cannot connect to itself.");
-        if (to.Type.Equals("Entry", StringComparison.OrdinalIgnoreCase))
+        if (from.Id == to?.Id) return EditorDiagnostic.Error("graph.edge.selfConnection", "A node cannot connect to itself.");
+        if (to?.Type.Equals("Entry", StringComparison.OrdinalIgnoreCase) == true)
             return EditorDiagnostic.Error("graph.edge.entryInput", "The entry node cannot have an incoming edge.", $"graph/nodes/{to.Id}");
         return outlet < 0 || outlet >= OutputCount(from)
             ? EditorDiagnostic.Error("graph.edge.invalidOutlet", $"Outlet {outlet} does not exist on node '{from.Id}'.", $"graph/nodes/{from.Id}") : null;
