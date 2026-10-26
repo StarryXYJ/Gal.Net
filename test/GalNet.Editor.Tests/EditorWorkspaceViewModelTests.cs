@@ -34,7 +34,7 @@ public sealed class EditorWorkspaceViewModelTests
     [TestCase(false), TestCase(true), NonParallelizable]
     public async Task SchemaFieldCommitUsesWorkspaceHistoryAndSaveSnapshot(bool useDto)
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             using var fixture = new WorkspaceFixture(withProject: true, useDto: useDto);

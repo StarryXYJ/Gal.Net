@@ -213,7 +213,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task I18nMountedTableCommitsOnBlurProtectsCompositionAndRetainsViewState()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); await WithLocalizationProject(async project =>
@@ -290,7 +290,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task I18nMountedCategoriesAndRowsVirtualizeAndScrollToTheLastText()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); await WithLocalizationProject(async project =>

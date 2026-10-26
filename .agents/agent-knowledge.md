@@ -1,5 +1,9 @@
 # GalNet Agent Knowledge
 
+- [Ready 与宿主活动状态](lessons/L-20261026-06-ready-is-not-session-end.md)：Ready 是恢复/Seek 的中间准备状态，默认宿主保留已有 IsPlaying，不应触发返回标题。
+
+- [原生 Sample 窗口与显式用例验证](lessons/L-20261026-05-native-sample-window-validation.md)：Process.MainWindowHandle 可能选择无标题 native helper；仅对自有 PID 的明确 Sample 窗口发 Close，并核对显式测试实际执行数。
+
 - [配置 schema 与 JSON 字段身份](lessons/L-20261026-04-configuration-json-casing.md)：精确 ID 校验后须同样按大小写精确解码 DTO，避免未知大小写字段覆盖已验证值；原始未知字段继续保留。
 
 - [查询事实与写入上下文](lessons/L-20261026-03-query-result-and-write-context.md)：候选结果版本不能代替写入方身份/基线版本；异步准备按局部作者依赖与资源代次续租，相关变化再撤销不能复活旧选择。
@@ -68,6 +72,11 @@
 - Runtime.I18n.GameTextResolver 提供 culture-first、父文化与默认文化回退，只依赖宿主查询委托；DynamicLocalization/JSON 适配留在 Sample 的 GameLocalizationProvider。见 docs/spec/i18n.md。
 - Assets 的 AssetFileMaterializer 经 IAssetManager acquire 字节实体化媒体；Core 的 AssetFileLease 持有文件租约。Sample 将同一实例供音频/视频/Gallery 使用，最后租约释放才删除文件。见 docs/spec/assets.md。
 - 已读进度 MarkRead 只写 Runtime ReadProgressIndex；文件实现默认 2 秒批量提交，失败保留 dirty revision 并重试。Engine StopAsync、Sample 存档和进度对象销毁均等待 flush，失败向调用者传播；后台失败可读 LastPersistenceError。见 docs/spec/runtime.md。
+
+- 核心重构当前边界：Runtime 仅引用 Core；场景/音频/Gallery/差分图片契约与纯算法归 Contracts.Builtins，音频执行与按 GameState 根隔离的场景管理归 Primitives.Builtins。Core 的 keySpace 身份索引按状态注册选择，不认识场景类型。GameContent/加载配置与 Gallery 玩家组合归 GameHost。见 docs/spec/architecture.md。
+- 项目模型与运行输入：ProjectConfiguration 提供版本化 section/普通 DTO，Editor 通用表单、命令、历史、保存、导出和安装使用项目 schema，未知 JSON 保留。宿主通过 SelectProjectOptions 显式投影，Engine 只消费 PlaybackOptions，音频只消费 AudioConfiguration/AudioMixOptions，文本直接接收速度。变量声明只保存在作者 Graph。见 docs/manual/new-presentation-layer.md。
+- AudioConfiguration/AudioMixOptions 位于 Contracts.Builtins.Audio，允许任意分组/轨道及空/未分组；混音为 master/group/track，快进保留由显式 PreserveDuringCatchUp 控制。Sample/模板显式选择三分组示例，默认模块不注入固定轨道。
+- EntryDefinition.DynamicParameters 是唯一参数源，Parameters/Defaults/Options 副本及旧 ABI 适配已删除；具体编辑器投影位于 Editor.Abstraction.Schemas，Effect/SEffect 基础约束共用 ValueValidation，领域 stage/scope 继续分别拥有。
 
 ## 文档分层
 
@@ -307,8 +316,4 @@
 - [静态引用不完整警告](lessons/L-20261025-11-static-reference-warning.md)：References 正常带 references.partial warning；消费方按 error/实际引用拒绝，并保留 ReferencesComplete=false，不能用诊断总数判失败。
 - 外部项目创作：CLI project.apply 使用期望哈希和原生文件清单，同事务发布 Graph/Group/资源/本地化；产品 Skill 在 skills/galnet-project-authoring，随 CLI 分发。Editor 通用热重载采纳干净项目，在同一 scope 推进所有基线并清除旧历史；本地草稿冲突保留，Contracts DLL 仍需重开。见 features/F-20261025-02-external-project-authoring/summary.md 与 docs/manual/external-project-authoring.md。
 
-- 2026-10-26 引擎重构 R3 已验证：Core.Audio.AudioConfiguration 隔离/校验任意分组与轨道，空/未分组合法；混音支持 master/group/track，快进保留由 PreserveDuringCatchUp 指定。固定 AudioBuses/Core 默认集合和指令隐含目标已删除；可选 Contracts.Builtins.BuiltinAudioDefaults 由 Sample/模板显式选用，默认 Avalonia 设置按声明生成控件并支持可选单轨控制。Editor 的分组/策略历史、保存、导出和安装加载共用配置规则。1752 项通过、4 项既有符号链接权限失败，R4/R5 完整项目配置及领域归属仍待实施。见 features/F-20261026-01-engine-core-simplification/phase-plan.md。
-
-- 2026-10-26 R4a 已验证：变量声明只保存在作者 Graph，ProjectSettings 的 PlayerVariables/SaveVariables 与同步副本已删除；IEditorDocumentRepository.Load 只接收项目路径。868 项相关回归通过，4 项既有符号链接权限失败；同源码隔离构建/locked restore 通过。R4b/R4c 配置 section 和完整链路仍待实施。见引擎重构 phase-plan/summary。
-
-- 2026-10-26 R4b 已验证：Core.Configuration 提供版本化配置文档与 section/schema，删除固定 ProjectSettings；默认 DTO DefaultProjectOptions 归 Contracts.Builtins。GameContent/GalProject/作者文档使用 Configuration，缺省读取不写盘，未知 section/未声明字段保留，已声明规则在作者与加载边界校验；Storage 不引用默认模型。1770 项通过，4 项既有符号链接权限失败；构建/格式通过。R4c 通用编辑与自有 DTO 完整链路仍待实施，见引擎重构 phase-plan/summary。
+- 2026-10-26 引擎核心重构已完整验收：P0–P6、R1–R8 verified，1789 项普通与 10 项原生测试通过；完整构建/locked restore/格式通过。当前架构事实见前述及 docs/spec，分阶段提交与原始失败证据见 features/F-20261026-01-engine-core-simplification/summary.md。性能专项按用户要求延期。

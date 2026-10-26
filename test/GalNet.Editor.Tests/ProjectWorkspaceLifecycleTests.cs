@@ -45,7 +45,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [TestCase(true)]
     public async Task NewProjectView_CreatesWithDefaultOrCustomContractWithoutStartingPreview(bool customContract)
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             Application.Current!.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
@@ -101,7 +101,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task GroupPagesShareProjectContentAndClosingThemDoesNotDiscardEdits()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             using var services = Services();
@@ -142,7 +142,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task SettingsViewCommitsOneEditAndHistorySurvivesClosingThePage()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());
@@ -372,7 +372,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [TestCase(null, ProjectCloseChoice.Cancel)]
     public async Task CloseDialogButtonsAndWindowCloseReturnTheExpectedChoice(string? buttonLabel, ProjectCloseChoice expected)
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());
@@ -644,7 +644,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task GraphCanvasActualPointerDragCanCancelAndCommitOneHistoryStep()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());

@@ -87,7 +87,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task EffectMetadataTimelineUsesRealPropertyMenuHistoryRefreshAndSaveReopen()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var assets = new MetadataAssets(); using var resources = new MetadataResources();

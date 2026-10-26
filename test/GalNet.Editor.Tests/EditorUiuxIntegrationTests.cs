@@ -29,7 +29,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task UiuxVariableEditorsMountCompletionControlsAndSaveOtherValidDrafts()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -60,7 +60,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task UiuxNestedDraftCreatesAnOmittedObjectAndRejectsLaterSourceChanges()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -98,7 +98,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task UiuxProjectOwnedPanelsRemainLiveAfterClosingAndReopeningTheirDocks()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -127,7 +127,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task UiuxRealViewsMountAtSmallSizesAndIconThemesKeepKeyboardAndCheckedFeedback()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme();
@@ -218,7 +218,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task UiuxLocalizedDraftsSynchronizeAndSaveAfterEveryViewCloses()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -259,7 +259,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task UiuxCommonAndFullEditorsShareDraftsAcrossDockClosureAndSave()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -307,7 +307,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task UiuxPresetsRetainDocumentsSelectionAndHistoryAndRestoreMaximization()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -334,7 +334,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task UiuxProblemsValidateUnsavedAuthorValuesAndKeepStableEntryNavigation()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();

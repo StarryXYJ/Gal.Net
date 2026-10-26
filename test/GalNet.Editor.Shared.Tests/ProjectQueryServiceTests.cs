@@ -183,9 +183,7 @@ public sealed class ProjectQueryServiceTests
         var link = Path.Combine(_root, "linked");
         try
         {
-            try { Directory.CreateSymbolicLink(link, outside); }
-            catch (Exception exception) when (exception is UnauthorizedAccessException or IOException)
-            { Assert.Ignore($"Creating a directory link is unavailable: {exception.Message}"); }
+            DirectoryLinks.Create(link, outside);
             var result = new ProjectQueryService(_root).Files(new());
             Assert.That(result.Diagnostics.Any(item => item.Code == "file.linkSkipped"), Is.True);
             Assert.Throws<InvalidDataException>(() => new ProjectQueryService(_root).Files(new(Root: "linked")));

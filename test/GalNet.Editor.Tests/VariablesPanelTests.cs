@@ -23,7 +23,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task VariablePanelRenamesOnlyKnownReferencesWithOneHistoryAndPreservesDescriptionsOnReopen()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -122,7 +122,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task VariablesPanelMountedControlsCommitDraftSwitchScopesAndReleaseDockPage()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();

@@ -28,7 +28,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task GroupTransformAndColorUseRealControlsSingleHistoryAndLosslessSave()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); Application.Current!.Styles.Add(new Semi.Avalonia.ColorPicker.ColorPickerSemiTheme());
@@ -114,7 +114,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task TimelinePropertyOpensItsOwnEntryAndReopensDockWithoutCreatingMissingData()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -156,7 +156,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task CompactInputsDistinguishEmptyStringAbsentNullDefaultAndMissingRequired()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); var registry = EditorFieldEditors.CreateDefault();
@@ -208,7 +208,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task TransformListUsesRegisteredElementControlAndRejectsReorderedEditors()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); var binding = new PropertyBinding("[{\"X\":1,\"opaque\":true},{\"X\":2}]");
@@ -243,7 +243,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task CompactObjectOffersRepairWhenAnotherInvalidMemberBlocksLocalEditing()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); var binding = new PropertyBinding("{\"Count\":\"bad\",\"Name\":3,\"opaque\":true}");

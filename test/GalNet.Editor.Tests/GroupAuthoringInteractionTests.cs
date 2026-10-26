@@ -25,7 +25,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task EntrySearchUsesLocalizedNamesIdsAliasesAndKeyboardWithoutChangingOnCancel()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());
@@ -62,7 +62,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task GroupToolbarBatchesAreSingleHistoryStepsAndSpaceInsertsOneAtCapturedAnchor()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme();
@@ -115,7 +115,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task CollapsedEntryRemainsCollapsedInDragPreviewAfterReorderAndUndo()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();

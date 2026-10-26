@@ -29,7 +29,7 @@ public sealed class SampleCustomizationTests
     [TestCase(true)]
     public async Task HostCompositionSharesScopedServicesAndReleasesLocalization(bool enableDebug)
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ScreenshotTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ScreenshotTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             var services = new ServiceCollection();
@@ -56,7 +56,7 @@ public sealed class SampleCustomizationTests
     [Test]
     public async Task ProjectCompositionExecutesCompiledScreenshotAndDoesNotShareModulesAcrossViews()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ScreenshotTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ScreenshotTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             var catalog = ProjectSchemas.CreateCatalog();

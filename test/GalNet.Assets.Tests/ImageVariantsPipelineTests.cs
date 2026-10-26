@@ -172,8 +172,7 @@ public sealed class ImageVariantsPipelineTests
     {
         Fixture();
         var link = Path.Combine(Assets, "linked");
-        try { Directory.CreateSymbolicLink(link, Path.Combine(Assets, "alice")); }
-        catch (Exception exception) when (exception is UnauthorizedAccessException or IOException) { Assert.Ignore("Symbolic links unavailable: " + exception.Message); }
+        DirectoryLinks.Create(link, Path.Combine(Assets, "alice"));
         try
         {
             using var provider = new LocalFileProvider(Assets, Types);

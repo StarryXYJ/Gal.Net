@@ -167,7 +167,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task CharacterPanelMountedControlsCreateRenameFilterAndDisposeDock()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme();
@@ -197,7 +197,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task CharacterSpeakerMountedFocusLossSearchSelectionAndComposition()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); await WithLocalizationProject(async project =>
@@ -256,7 +256,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task CharacterNestedListFieldUsesSemanticEditorAndRenameUpdatesStoredWirePath()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme();

@@ -17,7 +17,7 @@ public sealed class AuthorChangeTransactionTests
     [Test]
     public async Task SceneQueryPublishesDeletedAndRestoredTargetsAfterCommittedEdits()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             using var histories = new EditorHistories(); var documents = new EditorDocumentService();

@@ -17,6 +17,8 @@ using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Shared.Services;
 using GalNet.Game.Controls.Forms;
 
+[assembly: AvaloniaTestApplication(typeof(GeneralTest.Editor.EditorFormTestApplication))]
+
 namespace GeneralTest.Editor;
 
 [NonParallelizable]
@@ -87,7 +89,7 @@ public sealed class EntrySchemaFormTests
     [Test]
     public async Task ProjectMetadataPreservesLargeIntegersConvertersAndTypedJsonOnSave()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             var options = new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } };
@@ -136,7 +138,7 @@ public sealed class EntrySchemaFormTests
     [Test]
     public async Task OmittedDefaultAndExplicitNullableNumberStayDistinctAndOldSchemaCannotCommit()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             var table = new DynamicParameterTable([new("count", typeof(int), defaultValue: Json("5")), new("optional", typeof(int?), allowNull: true)]);

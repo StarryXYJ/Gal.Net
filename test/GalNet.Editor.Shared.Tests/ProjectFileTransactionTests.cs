@@ -103,11 +103,14 @@ public sealed class ProjectFileTransactionTests
         Assert.ThrowsAsync<EditorOperationException>(() => operation.ApplyAsync(true, prepare => persistence.PublishStructureAsync(document, prepare)));
         Assert.That(Directory.GetFiles(Path.Combine(_root, "target")), Is.Empty);
         var link = Path.Combine(_root, "link");
-        try { Directory.CreateSymbolicLink(link, Path.Combine(_root, "target")); }
-        catch (Exception error) when (error is UnauthorizedAccessException or IOException) { Assert.Ignore("Directory links unavailable: " + error.Message); }
-        using var linked = new ProjectFileOperation(_root, new(ProjectFileAction.Move, ["first/a.bin"], "link"), catalog);
-        Assert.ThrowsAsync<InvalidDataException>(() => linked.ApplyAsync(true, prepare => persistence.PublishStructureAsync(document, prepare)));
-        Assert.That(File.Exists(Path.Combine(_root, "first/a.bin")), Is.True);
+        DirectoryLinks.Create(link, Path.Combine(_root, "target"));
+        try
+        {
+            using var linked = new ProjectFileOperation(_root, new(ProjectFileAction.Move, ["first/a.bin"], "link"), catalog);
+            Assert.ThrowsAsync<InvalidDataException>(() => linked.ApplyAsync(true, prepare => persistence.PublishStructureAsync(document, prepare)));
+            Assert.That(File.Exists(Path.Combine(_root, "first/a.bin")), Is.True);
+        }
+        finally { Directory.Delete(link); }
     }
 
     [TestCase(false)]

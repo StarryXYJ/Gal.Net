@@ -172,7 +172,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task ExchangeMountedExportImportPreviewAndApplyUseFileDialogsAndOneHistory()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); await WithLocalizationProject(async project =>

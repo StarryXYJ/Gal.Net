@@ -37,7 +37,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task TimelineDockOpensOnDemandFollowsActiveEntryAndNumericEditsRoundTripThroughHistoryAndDisk()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -114,7 +114,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task TimelineSelectionOwnersMissingInvalidAndDeletedEntriesNeverReviveOldRows()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -146,7 +146,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [TestCase("\"invalid\"", "Timeline.Invalid")]
     public async Task TimelineSelectionNeverNormalizesOrRewritesIncompleteOrInvalidAuthorJson(string json, string status)
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             using var services = Services(); var projects = services.GetRequiredService<IProjectService>();

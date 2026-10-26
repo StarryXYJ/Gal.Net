@@ -1,8 +1,16 @@
 # 引擎核心精简与职责收敛
 
-状态：上一轮 P1–P5 verified，P6 保留环境待验证项；后续整体重构 R1–R2 verified，R3–R8 planned。下列“实现结果”记录上一轮；后续归属变化见本文 R1 段。
+状态：completed。P0–P6、R1–R8 verified；最终 1789 项普通测试、10 项真实原生测试通过。各轮原始失败记录保留，最终结论见 R8。
 
-## 实现结果
+## 整体结果
+
+- Core/Runtime 保留通用执行与状态协议；可选场景、音频、Gallery、差分图片契约归 Contracts.Builtins，执行归 Primitives.Builtins，内容聚合归 GameHost。
+- 项目自有 DTO/schema 贯穿表单、命令、历史、保存、导出与安装；组合根投影为推进、文本、音频等小配置。默认示例不再是内核要求。
+- 轨道和分组由项目定义，支持 master/group/track gain/mute；Sample 继续保留三个默认分组。
+- Entry 只有一份参数描述，效果基础约束共用现有校验；执行收尾共用方法，领域生命周期差异保留。R6–R8 产品 C# 净减 125 行。
+- 构建、locked restore、格式和最终回归通过；已验证配置/运行链路与剩余范围见下文 R8。
+
+## 首轮实现结果（P1–P5）
 
 - 表达式双引号文本按 JSON 转义绑定为值，保留 NCalc 单引号语法；非法条件按 false 处理并限量诊断。变量赋值表达式失败/无值时保留原值，不把失败写成空字符串。
 - 状态、播放模式和检查点由 EngineNotifications 按发生顺序在执行门外发布，隔离订阅者异常。音频诊断观察者不能阻断后端清理。
@@ -191,6 +199,24 @@ EntryDefinition 只保留不可为空的 DynamicParameterTable；删除 Paramete
 
 ## R7：执行收尾与快照复用
 
-Engine 的玩家推进、同步呈现、恢复、异步完成、计时播放、追帧、Step/Seek 共用 FinishDispatch：锁内捕获状态，finally 释放唯一执行门，再锁外通知。只释放门禁、已在其他位置捕获状态及分批让出的不同语义继续显式保留。前跳 Seek 对收束后的状态与当前变量使用同一次快照，保持 terminal scene 和变量语义。产品净减 7 行。
+Engine 的玩家推进、同步呈现、恢复、异步完成、计时播放、追帧、Step/Seek 共用 FinishDispatch：锁内捕获状态，finally 释放唯一执行门，再锁外通知。只释放门禁、已在其他位置捕获状态及分批让出的不同语义继续显式保留。前跳 Seek 对收束后的状态与当前变量使用同一次快照，保持 terminal scene 和变量语义。产品净减 5 行。
 
 审核确认 ContinueUntilBlockedAsync、AsyncPrimitiveInstance、PrimitiveTaskScope 已覆盖真实共享机制；动画、视频、Timeline 的业务完成/失败/恢复差异不再强抽取，不增加 Runner 或布尔策略框架。完整解决方案构建、格式/diff 检查通过；Runtime 115、Builtins 272、Presentation 243、Debugging 10，共 640 项通过。包括取消/自然阻塞完成、Choice、播放模式、Step/Seek、前跳动画终态、变量保留、呈现失败和观察者锁外通知。证据为 artifacts/engine-core-audit/r7-build.log、r7-results。原生关闭与测试框架会话稳定性仍归 R8，未宣称完成原生验收。
+
+## R8：最小组合与最终验收
+
+自有 ProjectOptions 在配置 JSON 往返后直接控制 Engine 自动推进、实际 Avalonia 文本呈现速度和自定义 ambience 分组音量，不使用默认设置 section。既有 ExecutionBoundaryTests 继续证明仅自有分发器的最小执行/恢复无需 Builtins；GUI 配置、CLI、历史、保存、导出、安装和 Sample 三分组的证据沿用各阶段回归。
+
+原生验收修正了两个实际问题：测试的 Process.MainWindowHandle 选择无标题辅助窗口，改为仅定位自有 PID 的明确 Sample 窗口后发送 Close；默认宿主把恢复/Seek 的中间 Ready 映射成 IsPlaying=false，触发 GameShell 返回标题，现保留当前会话状态。真实外进程运行/变量编辑/Seek/Step/停止/重启/旧 run 拒绝与正常退出 3 项通过；真实打包安装、删除作者源后五个不同呈现检查点及正常关闭 1 项通过；原生视频解码/自然结束/提前关闭/延迟加载取消 4 项、音频停止/销毁取消加载 2 项通过。已查看实际呈现场景截图。
+
+Windows 链接测试先创建真实 symlink，仅在错误 1314 时改用无需该特权的目录 junction，继续验证相同 reparse-point/祖先路径拒绝；其他错误不降级，不更改系统设置。六个原先失败/跳过的链接用例现执行产品断言。首次发现一例递归清理 junction 失败，改为测试 finally 显式移除链接，再清理临时目录。此调整验证的是当前路径安全不变量，不声称获得了真实 symlink 特权。当前解决方案已无 Browser 工程，完整构建没有旧 WebAssembly 包哈希失败，不宣称恢复已移除的平台目标。
+
+Editor 与剩余 Integration Headless 测试改用框架缓存 worker，沿用每次 Dispatch 的应用隔离与显式资源释放，不吞框架异常。最终普通回归 14 项目共 1789 通过、0 失败/跳过：Core 113、Runtime 115、Builtins 272、Shared 434、Editor 320、Integration 128、Presentation 243、Assets 58、GameHost 6、Architecture 49、SchemaGenerator 18、Storage 22、Debugging 10、Diagnostics 1。上述 10 项显式原生测试另行执行，不重复计入普通矩阵。
+
+完整解决方案构建、locked restore、格式/diff 检查通过；无第三方依赖/锁文件变更。NU1900 漏洞元数据源不可达及既有分析器警告保留。原生截图首次受沙箱 Pictures 写入权限限制，随后以受控测试权限复验；修正前后的真实失败日志均保留。混合普通/显式 OR 过滤曾只运行普通用例，最终按显式方法/fixture 单独过滤并核对 TRX 数量。
+
+最终回归期间出现独立图校验工作：其提交 0c436b42 和继续进行的其他源码改动不属于本 feature。完整构建/普通矩阵主体基于变动前的本 feature；共享层最后使用 7da84d26 加本 feature 文件的独立候选，62 个 C#/props 源文件 SHA-256 与工作区一致。候选首次缺少 CLI 测试固定查找的 DefaultContracts/bin 产物，补建同源码默认契约后完整 Shared 434 项通过；没有复用旧 DLL。所有权清单与指纹保留，不将其他工作混入 R8 提交。
+
+证据位于 artifacts/engine-core-audit/r8-final-results、r8-results（其中 external-native-final / packaged-native-final / VideoNativeSmokeTests / AvaloniaAudioLifetimeTests 为最终原生结果）、r8-verified-build.log、r8-locked-restore.log、r8-owned-shared-verified.log、r8-owned-sources.json；真实截图保留于 artifacts/image-variants-p5/native。当前规范同步 architecture/runtime/entry-types 与 new-presentation-layer，agent lessons 记录窗口身份和 Ready 映射。
+
+本 feature 无未完成实现或阻塞项。benchmark/profile、缓存/对象池/并行调度仍按用户要求延期；旧数据/API 兼容不保留，其他工作区并行改动单独保留。

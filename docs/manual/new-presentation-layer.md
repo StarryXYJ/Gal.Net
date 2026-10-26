@@ -96,6 +96,8 @@ CLI 可用 `execute <project> <patch.json>` 修改已声明的 section。例如�
 
 ## 验证清单
 
+最小自有分发器执行/恢复见 [ExecutionBoundaryTests](../../test/GalNet.Runtime.Tests/Engine/ExecutionBoundaryTests.cs)。自有 DTO 同时控制自动推进、实际文本呈现和 ambience 音量的组合验证见 [ProjectConfigurationCompositionTests](../../test/GalNet.IntegrationTests/ProjectConfigurationCompositionTests.cs)；自定义配置的保存/导出/安装链路另由 Editor 表单与安装测试覆盖。Sample 继续作为三个默认音频分组的完整接入示例。
+
 - 只含自定义 schema/执行的最小内容可编译和运行，缺失执行会明确失败。
 - 正常推进、Choice、阻塞实例自然完成、停止和重新打开不会并发推进或泄漏旧回调。
 - 存档/读档能重放 layer、effect、particle、循环动画及音频的稳定状态。

@@ -39,7 +39,7 @@ public sealed class ScreenshotEntryTests
     [TestCase(PrimitiveInvocationMode.Quick)]
     public async Task ConcreteGamePage_CapturesRealScenePng_AndQuickStillCaptures(PrimitiveInvocationMode mode)
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ScreenshotTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ScreenshotTestApplication).Assembly);
         await DispatchAsync(session, async () =>
         {
             var (page, window) = Scene();
@@ -67,7 +67,7 @@ public sealed class ScreenshotEntryTests
     [Test]
     public async Task CompiledSchemaToModuleToEngine_ExecutesAndSurfacesAsyncCaptureFailure()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ScreenshotTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ScreenshotTestApplication).Assembly);
         await DispatchAsync(session, async () =>
         {
             var (page, window) = Scene();
@@ -115,7 +115,7 @@ public sealed class ScreenshotEntryTests
     [Test]
     public async Task CatchUp_Cancellation_AndConflict_PublishNoExtraFiles()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ScreenshotTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ScreenshotTestApplication).Assembly);
         await DispatchAsync(session, async () =>
         {
             var catchUp = new ScreenshotPrimitiveInstance(new GamePage(), () => throw new InvalidOperationException("must not resolve directory"), null, null, default);
@@ -147,7 +147,7 @@ public sealed class ScreenshotEntryTests
     [Test]
     public async Task GeneratedNames_AreUnique_AndRelativeOrLinkedDirectoriesAreRejected()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ScreenshotTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ScreenshotTestApplication).Assembly);
         await DispatchAsync(session, async () =>
         {
             var (page, window) = Scene();
@@ -166,7 +166,7 @@ public sealed class ScreenshotEntryTests
                 Assert.ThrowsAsync<InvalidDataException>(async () => await relative.PresentationCompletion);
                 var target = Directory.CreateDirectory(Path.Combine(_root, "target")).FullName;
                 var link = Path.Combine(_root, "link");
-                Directory.CreateSymbolicLink(link, target);
+                DirectoryLinks.Create(link, target);
                 try
                 {
                     var linked = new ScreenshotPrimitiveInstance(page, () => link, null, null, default);
@@ -183,7 +183,7 @@ public sealed class ScreenshotEntryTests
     [Test]
     public async Task DisposingModule_CancelsAndDrainsQueuedCaptureBeforeSceneRelease()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ScreenshotTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ScreenshotTestApplication).Assembly);
         await DispatchAsync(session, async () =>
         {
             var (page, window) = Scene();
@@ -205,7 +205,7 @@ public sealed class ScreenshotEntryTests
     [Test]
     public async Task DisposedModuleRejectsDispatchAndUndispatchedScopeDoesNotBlockCleanup()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(ScreenshotTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ScreenshotTestApplication).Assembly);
         await DispatchAsync(session, async () =>
         {
             using var scope = new GalNet.Presentation.Abstractions.Execution.PrimitiveTaskScope();

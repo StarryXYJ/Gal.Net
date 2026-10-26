@@ -14,7 +14,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [TestCase(true)]
     public async Task MainWindowPreparesStartupBeforeShowAndDoesNotResetNavigationOnLoad(bool navigateBeforeShow)
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(() =>
         {
             PrepareGroupTheme();

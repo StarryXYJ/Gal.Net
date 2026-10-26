@@ -26,7 +26,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task DirectoryExpandersAreKnownWhenTheirParentOpensAndRefreshAfterChanges()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());
@@ -65,7 +65,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task BrowserAddressBlocksDropAndGlobalSearchExitFollowSelection()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());
@@ -195,7 +195,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task ProjectFileBrowserMountedControlsNavigateSelectRenameCopyAndConfirmDelete()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());
@@ -266,7 +266,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task TextPageBindsRealInputAndDockTitleFollowsTheSameBuffer()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());
@@ -373,7 +373,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task SelectedAndLockedAssetInspectorFollowIdentityThroughRenameDeleteAndUndo()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             using var services = Services(); var projects = services.GetRequiredService<IProjectService>();

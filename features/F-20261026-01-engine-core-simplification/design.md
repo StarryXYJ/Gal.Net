@@ -1,6 +1,6 @@
 # 后续架构提案：缩小内核，分离默认领域与项目策略
 
-状态：实施中，R1–R3 verified，R4 in-progress，R5–R8 planned。用户已确认“轨道与分组均可自定义、支持两个层级的控制、设置模型归高层、内部接收简单配置、Sample 保留三个默认分组”的方向，并授权按整体计划开始实施；具体拆分仍依实际消费者收敛。不改变上一轮已完成阶段的实现事实，也不将 P6 环境待验证项标为完成。
+状态：completed，R1–R8 verified；当前实现与最终验收见 phase-plan.md / summary.md。用户已确认“轨道与分组均可自定义、支持两个层级的控制、设置模型归高层、内部接收简单配置、Sample 保留三个默认分组”的方向，并授权按整体计划开始实施；具体拆分仍依实际消费者收敛。上一轮 P6 的适用环境项已在 R8 复核，原始失败和调整依据保留在 summary.md。
 
 依据：2026-10-26 用户提出 Core 中的游戏设置、固定音频分类和 Core/Runtime 领域分布需要重新审视；用户允许破坏性调整，以功能、低耦合、精简和职责清晰为先。本文记录设计与取舍，实施和验收进度以 phase-plan.md 为准。
 
@@ -122,7 +122,7 @@ Sample 继续只声明音乐、音效、语音三个分组，默认设置 UI 按
 - Runtime 不引用默认展示/领域实现；契约项目不引用 Runtime。架构测试除程序集引用外，检查内核不得重新依赖具体设置和内置视觉/音频类型。
 - 不以文件移动数量或行数下降证明架构完成；以最小自定义项目和端到端配置路径证明。
 
-R1–R3 已按计划实现并验证，相关当前事实已同步 docs/spec/manual；其余目标尚未实现，不视为当前规范。上轮提交及各阶段环境验收限制以 summary.md 为准。
+R1–R8 已实施并验证，当前事实同步 docs/spec/manual；本文保留设计方向与实施取舍，最终证据及历史限制以 summary.md 为准。
 
 R4 按可验证依赖拆分：R4a 先删除 settings 中的变量声明副本与仓库 Load 的无用名称/设置输入；Graph 是唯一变量持久源。R4b 再落地版本化配置 section 协议、项目契约的 schema 声明和默认模型归属；R4c 验证编辑/历史/保存/导出/安装/预览与项目自有 DTO。R4a 不等于完整自定义配置链路完成，GameContent 与作者模型尚存的固定绑定继续保留为 R4b/R4c 工作。
 
@@ -143,3 +143,7 @@ R5b 精简：没有独立 metadata 字段的六个默认空 DTO 直接共用 Ass
 R6 选择 DynamicParameterTable 为 Entry 唯一参数源，删除平铺 Parameters/Defaults/Options、nullable schema 回退和旧字典转 schema 工厂。具体编辑器类型投影移到 Editor.Abstraction，显示文本/选项在 UI 需要时生成；不在注册期预格式化。Effect/SEffect 元数据在 catalog 边界投影为既有 FieldDescriptor，复用 ValueValidation；目标 stage/scope 和 Shader 语法仍由领域拥有。目录复制输入集合以保证元数据查询与缓存校验一致，删除 EditorHints 的旧 ABI 兼容重载。
 
 R7 审核后只抽取 Engine 内完全相同的状态捕获/释放/锁外通知，并消除前跳 Seek 收束后的重复快照。ContinueUntilBlockedAsync 已被玩家推进、追帧与调试回放共用；AsyncPrimitiveInstance 与 PrimitiveTaskScope 已覆盖实际共享异步机制。视频、动画、Timeline 的完成/恢复策略不同，继续保留领域实现，不新增 Runner、策略参数或生命周期框架。原生窗口关闭与测试基础设施统一留在 R8 集成验收，避免混入通用 Engine。
+
+R8 验收调整：Windows 链接边界测试的目标是拒绝 reparse point 和祖先链接，不依赖特定 symlink tag；测试辅助在系统明确报告缺少 symlink 特权（1314）时创建无需该权限的目录 junction，仍执行相同产品断言，其他错误不降级。真实 symlink 仍优先使用，记录实际替代，不更改系统权限，也不将 junction 说成 symlink 特权验证。Editor/Integration 的 Headless 测试改用官方缓存会话，沿用 Presentation 的 PerTest 隔离与资源释放；原生关闭先记录窗口身份，再按证据修正。
+
+R8 原生验证发现宿主把恢复/Seek 的中间 Ready 映射成 IsPlaying=false，GameShell 因而导航到标题页。Ready 保留既有宿主会话状态，只有实际 Running/终态更新活动标志；首次准备仍保持未开始状态。此修正位于默认 Avalonia 宿主，不改变 Engine 状态协议，也不把 UI 策略放回 Core。

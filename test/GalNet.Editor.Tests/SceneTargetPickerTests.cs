@@ -25,7 +25,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task AssetPickerUsesSharedCardsForSearchKeyboardSelectionAndEmptyValue()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(() =>
         {
             PrepareGroupTheme(); using var assets = new PickerAssets();
@@ -115,7 +115,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task SharedScenePickerSelectsObjectsThenAddsPropertiesFromObjectRowsAndSaves()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -231,7 +231,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task TimelineOverrideRemovalIsAtomicRejectsStaleRowsAndPreservesOtherRawTracks()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();

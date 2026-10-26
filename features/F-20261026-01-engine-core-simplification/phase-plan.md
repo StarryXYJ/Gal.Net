@@ -1,6 +1,6 @@
 # 引擎核心精简与职责收敛
 
-状态：P1–P5、R1–R6 verified；R7/R8 待完成，P6 环境项在最终验收复核。
+状态：completed。P0–P6、R1–R8 均 verified；最终验收 1789 项普通测试与 10 项原生测试通过。
 
 本文件是整个重构的实施与进度入口。P0–P6 保留已提交的历史；R1–R8 整理后续工作，设计依据见 [design.md](design.md)。设计整理完成不代表实现完成。
 
@@ -30,7 +30,7 @@
 | P3 | 收紧状态访问，隔离运行图 | [x] verified |
 | P4 | 统一 Entry 数据，删除旧路径 | [x] verified |
 | P5 | 收敛引擎协作者与模块边界 | [x] verified |
-| P6 | 集成验证与文档收尾 | [ ] in-progress |
+| P6 | 集成验证与文档收尾 | [x] verified |
 
 ## P0 — verified
 
@@ -70,11 +70,9 @@ Entry 统一为 JSON，作者/编译类型分离，删除 IsGeneric、字符串 
 ## P5 — verified
 
 primitive/呈现仅借用 IGameContext，Engine 管理 IGameRuntime 与 IPrimitiveDispatcher；通知统一为 EngineNotifications，删除阻塞镜像和冗余排序，Editor 设置移回 Editor.Abstraction，移除无使用者的 LauncherSettings。另补宿主替换前存档预检，避免上层提前释放旧运行。Runtime 133、Builtins 177、Presentation 243、GameHost 6、Architecture 49 项通过；Editor 构建通过，正式边界见 runtime/architecture。
-## P6 — in-progress（环境待验证）
+## P6 — verified（R8 复核）
 
-实现、正式文档、经验和自审已收尾；最终 1648 项通过、4 项创建符号链接权限失败、2 项跳过，Editor 308 项全通过。解决方案构建仅余 Browser WebAssembly SDK 包哈希不匹配，本地 locked restore 仍复现。原生桌面/显式外进程未执行。详见 [summary](summary.md) 与 [review](review.md)。
-
-退出条件：在具备符号链接特权、正确 WebAssembly SDK 包和原生桌面条件的环境复核上述限制后，才将本阶段勾选为 verified。
+适用当前仓库的验收已完成：完整解决方案/locked restore 通过，链接安全断言以真实 symlink 优先、缺权限时 junction 执行，10 项真实原生/外进程测试通过。Browser 工程已不在当前解决方案，不宣称验证已移除的 WebAssembly 目标。原始限制和验收调整保留在 [summary](summary.md#r8最小组合与最终验收)。
 
 ## 可顺手做的优化
 
@@ -95,7 +93,7 @@ primitive/呈现仅借用 IGameContext，Engine 管理 IGameRuntime 与 IPrimiti
 | R5 | 剥离可选领域与场景依赖 | R1–R4 | [x] verified |
 | R6 | 统一参数描述与基础校验 | R5 | [x] verified |
 | R7 | 收敛执行与异步生命周期重复 | R5、R6 | [x] verified |
-| R8 | 最小项目、完整回归与文档收尾 | R1–R7 | [ ] planned |
+| R8 | 最小项目、完整回归与文档收尾 | R1–R7 | [x] verified |
 
 ### R1 — verified
 
@@ -134,14 +132,11 @@ Entry 仅保存 DynamicParameterTable，编辑器按需投影；效果基础约�
 
 ### R7 — verified
 
-共享 Engine 完全相同的收尾，确保门禁在状态捕获异常时也能释放；Seek 复用收束后快照。推进内核与异步基础已有复用，领域差异保留，不新增框架。产品净减 7 行，完整构建、格式及 Runtime/Builtins/Presentation/Debugging 640 项通过。证据见 [summary](summary.md#r7执行收尾与快照复用)。
+共享 Engine 完全相同的收尾，确保门禁在状态捕获异常时也能释放；Seek 复用收束后快照。推进内核与异步基础已有复用，领域差异保留，不新增框架。产品净减 5 行，完整构建、格式及 Runtime/Builtins/Presentation/Debugging 640 项通过。证据见 [summary](summary.md#r7执行收尾与快照复用)。
 
-### R8 — 最小项目、完整回归与文档收尾
+### R8 — verified
 
-- **目标/模块**：架构门禁、单元/集成测试、Sample/模板、正式文档和 feature 收尾。
-- **任务**：以“最小无内置领域运行”与“Sample 自有设置 + 三分组”验证最终边界；测试任意自定义组/轨道及自定义配置完整链路。删除旧 API/无用类型/过时命名空间和过渡路径，检查公开契约、模板和包版本。执行与变更相关的构建/完整回归，更新 spec/manual、agent 已验证事实和 summary/review。
-- **验证/退出**：仓库调用方全量迁移、架构门禁与可执行测试通过，默认 Sample 可以运行；实现、验证、限制可追溯。上一轮 P6 的符号链接权限、WebAssembly 包哈希、原生桌面/外进程待验证项独立复核，未解决则继续明确保留，不计为已验收。
-- **风险**：不因为文档或源码搬迁完成就勾选验收，不将环境失败包装成通过。不开展 benchmark/profile、缓存/对象池/并行执行等专项优化。
+最小无内置执行/恢复、自有 DTO 控制推进/实际文本/ambience、Sample 三分组和配置完整链路均通过；修正宿主把恢复 Ready 当成停止的映射。完整构建、locked restore、格式、1789 项普通回归及 10 项原生回归通过，无失败/跳过的普通用例；R6–R8 产品 C# 合计净减 125 行。并行图校验改动独立保留，共享层使用源码一致的隔离候选验证。见 [summary](summary.md#r8最小组合与最终验收) 与 [review](review.md#r8最终自审)。
 
 后续同样遵循前述进度维护规则：只勾选实际 verified 阶段，完成后压缩为“结果一句话 + 验证 + 证据”。用户已授权开始实施；各阶段状态以本表及实际验证证据为准。
 

@@ -29,7 +29,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task MountedEntryResourceFollowsIdAcrossRenameMoveUndoAndReopen()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -74,7 +74,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [TestCase(true)]
     public async Task OpenVariantBufferRebasesFolderAndPreservesSavedAndUnsavedChanges(bool moveImages)
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -139,7 +139,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task PickerNeverRebindsToReplacementAtSamePathAndDistinguishesReadErrors()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var manager = services.GetRequiredService<EditorAssetManager>();
@@ -166,7 +166,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task PickerDropsOldLoadsAndCachesThumbnailsUntilResourceGenerationChanges()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var manager = services.GetRequiredService<EditorAssetManager>(); var provider = new ResourceTestProvider(); manager.RegisterProvider(provider);

@@ -13,7 +13,7 @@ public sealed class AvaloniaGameResourcesTests
     [Test]
     public async Task PartialPreloadFailureReleasesSuccessfulAcquisitions()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(ScreenshotTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ScreenshotTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             using var texture = new SceneTexture(LayerImageFallback.MissingImage);
@@ -30,7 +30,7 @@ public sealed class AvaloniaGameResourcesTests
     [Test]
     public async Task DefaultPresentationUsesAndReleasesInjectedAdapters()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(ScreenshotTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ScreenshotTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             using var texture = new SceneTexture(LayerImageFallback.MissingImage);

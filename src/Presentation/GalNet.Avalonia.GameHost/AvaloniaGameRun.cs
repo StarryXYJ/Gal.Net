@@ -180,6 +180,8 @@ internal sealed class AvaloniaGameRun : IGameRun
                 _ => null
             };
             GameLog.Logger.Information("Game engine state changed to {State}", change.State);
+            // Restore/Seek temporarily prepares the engine without ending the active host run.
+            if (change.State == GameEngineState.Ready) return;
             if (change.Error is { } error)
             {
                 _presentation.Presenters.FailInitialPresentation(error);

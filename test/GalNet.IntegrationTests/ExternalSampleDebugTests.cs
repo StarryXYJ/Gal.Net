@@ -160,7 +160,7 @@ public sealed class ExternalSampleDebugTests
             });
             await Task.Delay(300, timeout.Token);
             app.Refresh();
-            Assert.That(app.CloseMainWindow(), Is.True, "The Sample must have a native main window that can receive Close.");
+            NativeSampleWindow.Close(app);
             try { await app.WaitForExitAsync(timeout.Token).WaitAsync(TimeSpan.FromSeconds(5)); }
             catch (TimeoutException)
             {

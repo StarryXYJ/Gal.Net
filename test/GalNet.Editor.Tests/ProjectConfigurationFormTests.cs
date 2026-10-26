@@ -24,7 +24,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task CustomConfigurationMountedFormPreservesUnknownDataThroughHistorySaveExportAndLoading()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             Avalonia.Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());
