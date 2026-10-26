@@ -141,7 +141,7 @@ public partial class GameLocalizationPanelView : UserControl
             foreach (var location in row.Source.Locations)
             {
                 var target = new Button { Content = location.Title + " · " + location.Slot, HorizontalAlignment = HorizontalAlignment.Stretch };
-                ToolTip.SetTip(target, location.Details);
+                ToolTip.SetTip(target, location.DisplayDetails);
                 target.Click += (_, _) => { navigate.Flyout?.Hide(); model.Service.Navigate(location.Reference); };
                 locations.Children.Add(target);
             }

@@ -10,7 +10,10 @@ using Microsoft.Extensions.DependencyInjection;
 namespace GalNet.Editor.Services;
 
 public sealed record LocalizationCategory(string Id, string Name);
-public sealed record LocalizationRowContext(string Title, string Slot, string Details, LocalizationReference Reference);
+public sealed record LocalizationRowContext(string Title, string Slot, string Details, LocalizationReference Reference)
+{
+    public string DisplayDetails { get; init; } = Details;
+}
 public sealed record LocalizationTableRow(string Key, string Context, IReadOnlyList<LocalizationReference> References)
 {
     public IReadOnlyList<LocalizationRowContext> Locations { get; init; } = [];
@@ -69,6 +72,8 @@ public sealed class GameLocalizationPanelService(IProjectContentSession content,
             var id = reference.EntryId ?? reference.Owner;
             var title = id.Length > 12 ? id[..8] + "…" + id[^4..] : id;
             var slot = reference.JsonPointer.TrimStart('/');
+            var details = reference.Owner + "/" + id + reference.JsonPointer;
+            var displayDetails = details;
             if (category == "characters")
             {
                 var character = index.Characters.FirstOrDefault(item => item.Id == reference.EntryId);
@@ -81,12 +86,23 @@ public sealed class GameLocalizationPanelService(IProjectContentSession content,
                 title = node?.Name ?? reference.Owner;
                 slot = id + " · " + slot;
             }
-            return new(title, slot, reference.Owner + "/" + id + reference.JsonPointer, reference);
+            else
+            {
+                var entry = reference.EntryId is { } entryId
+                    ? document.GroupEntries.GetValueOrDefault(reference.Owner)?.FirstOrDefault(item => item.StableId == entryId)
+                    : null;
+                if (entry is not null)
+                {
+                    title = $"Entry{entry.Id}";
+                    displayDetails = $"Entry{entry.Id}{reference.JsonPointer}";
+                }
+            }
+            return new(title, slot, details, reference) { DisplayDetails = displayDetails };
         }
         var rows = References(index, category).GroupBy(reference => reference.Key, StringComparer.Ordinal).Select(group =>
         {
             var refs = group.ToArray(); var locations = refs.Select(Context).ToArray();
-            var context = string.Join(" · ", locations.Select(location => location.Title + " " + location.Slot + " " + location.Details));
+            var context = string.Join(" · ", locations.Select(location => location.Title + " " + location.Slot + " " + location.DisplayDetails));
             return new LocalizationTableRow(group.Key, context, refs) { Locations = locations };
         }).ToArray();
         return new(source, Languages, categories, rows, index, store.CaptureFile(LocalizationJson.MetadataPath).Data);

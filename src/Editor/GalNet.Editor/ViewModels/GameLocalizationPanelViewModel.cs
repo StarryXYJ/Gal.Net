@@ -18,7 +18,7 @@ public sealed class LocalizationGridRow(LocalizationTableRow source, IReadOnlyLi
     public string Context => Source.Context;
     public string Title => Source.Locations.FirstOrDefault()?.Title ?? "";
     public string Slot => Source.Locations.FirstOrDefault()?.Slot ?? "";
-    public string Details => string.Join("\n", Source.Locations.Select(location => location.Details));
+    public string Details => string.Join("\n", Source.Locations.Select(location => location.DisplayDetails));
     public string ReferenceCount => Source.References.Count > 1 ? "×" + Source.References.Count : "";
     public void Update(LocalizationTableRow value)
     {
@@ -26,6 +26,11 @@ public sealed class LocalizationGridRow(LocalizationTableRow source, IReadOnlyLi
         OnPropertyChanged(nameof(Title)); OnPropertyChanged(nameof(Slot));
         OnPropertyChanged(nameof(Details)); OnPropertyChanged(nameof(ReferenceCount));
     }
+}
+
+public sealed record LocalizationLanguageSuggestion(string Code, string NativeName)
+{
+    public string DisplayText => $"{Code} — {NativeName}";
 }
 
 public sealed partial class LocalizationImportRowViewModel : ObservableObject
@@ -191,16 +196,20 @@ public sealed partial class GameLocalizationPanelViewModel : ObservableObject, I
         finally { _writes.Release(); }
     }
     public IReadOnlyList<string> LanguageSuggestions { get; private set; } = [];
+    public IReadOnlyList<LocalizationLanguageSuggestion> LanguageOptions { get; private set; } = [];
     partial void OnNewLanguageChanged(string value) => UpdateLanguageSuggestions();
     private void UpdateLanguageSuggestions()
     {
-        LanguageSuggestions = CultureInfo.GetCultures(CultureTypes.NeutralCultures | CultureTypes.SpecificCultures)
+        LanguageOptions = CultureInfo.GetCultures(CultureTypes.NeutralCultures | CultureTypes.SpecificCultures)
             .Where(culture => culture.Name.Length > 0 && !Languages.Contains(culture.Name, StringComparer.OrdinalIgnoreCase))
             .Where(culture => string.IsNullOrWhiteSpace(NewLanguage) || new[] { culture.Name, culture.NativeName, culture.EnglishName }
                 .Any(name => name.Contains(NewLanguage.Trim().Replace('_', '-'), StringComparison.OrdinalIgnoreCase)))
             .OrderBy(culture => culture.Name is "en-US" or "zh-CN" or "ja-JP" or "ko-KR" ? 0 : 1)
             .ThenBy(culture => culture.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(culture => culture.Name + " — " + culture.NativeName).ToArray();
+            .Select(culture => new LocalizationLanguageSuggestion(culture.Name, culture.NativeName)).ToArray();
+        // Keep the display-only list for existing callers; UI selection binds to LanguageOptions.Code.
+        LanguageSuggestions = LanguageOptions.Select(option => option.DisplayText).ToArray();
+        OnPropertyChanged(nameof(LanguageOptions));
         OnPropertyChanged(nameof(LanguageSuggestions));
     }
     public bool HasRows => Rows.Count > 0;
@@ -347,7 +356,10 @@ public sealed partial class GameLocalizationPanelViewModel : ObservableObject, I
     [RelayCommand]
     private Task AddLanguageAsync() => RunAsync(async () =>
     {
-        var code = NewLanguage.Split(" — ", 2, StringSplitOptions.None)[0];
+        // AutoCompleteBox uses ValueMemberBinding to put the canonical code in NewLanguage.
+        // Also resolve an existing display string for callers that set it directly.
+        var code = LanguageOptions.FirstOrDefault(option => string.Equals(option.DisplayText, NewLanguage, StringComparison.Ordinal))?.Code
+            ?? NewLanguage.Trim().Replace('_', '-');
         await Service.AddLanguageAsync(code); _hiddenLanguages.Remove(code); NewLanguage = "";
     });
     public Task RemoveLanguageAsync(string code) => RunAsync(async () =>
