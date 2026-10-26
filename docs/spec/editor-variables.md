@@ -10,7 +10,7 @@
 
 外部声明刷新不静默覆盖未应用草稿，提交时按原声明快照检查冲突；发生冲突可还原后重新编辑。原 UID 删除后显示失效提示并保留草稿，可通过撤销删除恢复或显式放弃；同名新变量不会继承旧选择或草稿。变量新增仍立即创建一条声明历史，切页不会隐式应用草稿，Save All 只保存已经应用的声明。
 
-新增、应用和删除各是一条项目历史，变量稳定 UID 不随改名/类型变化改变；关闭面板仍可撤销。Graph 的 playerVariables/saveVariables 为唯一作者来源，settings 中同名列表由保存派生，不由面板另外维护。GUI 声明修改统一通过 VariableAuthoringService，不依赖 Workspace 监听声明变化后补记历史。
+新增、应用和删除各是一条项目历史，变量稳定 UID 不随改名/类型变化改变；关闭面板仍可撤销。Graph 的 playerVariables/saveVariables 为唯一持久来源，settings 不再包含同名列表。GUI 声明修改统一通过 VariableAuthoringService，不依赖 Workspace 监听声明变化后补记历史。
 
 IVariableDefinitionService 只提供保留稳定 UID 的独立声明快照和刷新通知，不提供声明写入或改名接口。Preview 显示只读名称、类型、默认值，并通过运行时变量服务编辑当前值；不提供声明新增、删除、排序、改名和默认值编辑。运行时变化更新 Preview 显示，不回写声明、不增加内容历史，也不影响作者内容的未保存状态。声明刷新后重建 Preview 行，已替换或隐藏的行不能继续提交当前值。
 

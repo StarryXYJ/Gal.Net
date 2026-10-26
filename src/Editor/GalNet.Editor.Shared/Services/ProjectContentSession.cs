@@ -275,7 +275,6 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
         target.TargetLocale = source.TargetLocale; target.AvailableLocales = source.AvailableLocales;
         target.SaveSlotCount = source.SaveSlotCount;
         target.AudioTracks = source.AudioTracks; target.AudioGroups = source.AudioGroups; target.DefaultWidth = source.DefaultWidth; target.DefaultHeight = source.DefaultHeight;
-        target.PlayerVariables = source.PlayerVariables; target.SaveVariables = source.SaveVariables;
     }
 
     private void AcceptPublication(ProjectSavePlan plan)
@@ -311,9 +310,6 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
             entry.Id = 0;
             entry.Parameters = entry.Parameters.OrderBy(pair => pair.Key, StringComparer.Ordinal).ToDictionary(pair => pair.Key, pair => pair.Value);
         }
-        // Runtime's settings variable copies are derived, never a second author truth.
-        document.Settings.PlayerVariables = document.Graph.PlayerVariables.Select(item => item.Clone()).ToList();
-        document.Settings.SaveVariables = document.Graph.SaveVariables.Select(item => item.Clone()).ToList();
         return JsonSerializer.SerializeToUtf8Bytes(document, JsonOptions);
     }
 

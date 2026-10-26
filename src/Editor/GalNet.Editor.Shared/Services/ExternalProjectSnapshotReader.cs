@@ -19,7 +19,7 @@ public static class ExternalProjectSnapshotReader
         var contracts = ContractsFingerprint(root);
         var settings = DirectProjectPersistence.LoadSettings(root);
         var repository = new EditorDocumentRepository(catalog, EditorDocumentValidation.Authoring);
-        var loaded = repository.Load(root, "", settings);
+        var loaded = repository.Load(root);
         if (loaded.Document.Nodes.Count(node => node.Type == "Entry") != 1 ||
             !loaded.Document.Nodes.Any(node => node.Type == "Entry" && node.Id == loaded.Document.RootNodeId))
             throw new InvalidDataException("The editor graph requires one explicit Entry root node.");

@@ -1,11 +1,9 @@
 using GalNet.Core.I18n;
-using GalNet.Core.Variable;
 
 namespace GalNet.Core.Settings;
 
 public sealed class ProjectSettings
 {
-
     public I18nLocale TargetLocale { get; set; } = I18nLocale.ZhCn;
 
     public List<I18nLocale> AvailableLocales { get; set; } = [I18nLocale.ZhCn];
@@ -18,8 +16,4 @@ public sealed class ProjectSettings
     public int DefaultWidth { get; set; } = 1920;
 
     public int DefaultHeight { get; set; } = 1080;
-
-    public List<ProjectVariableDefinition> PlayerVariables { get; set; } = [];
-
-    public List<ProjectVariableDefinition> SaveVariables { get; set; } = [];
 }

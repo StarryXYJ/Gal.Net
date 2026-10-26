@@ -13,7 +13,7 @@ public sealed class ProjectContractPipelineTests
         Put("Graph/groups/a.rawgalgroup", """{"version":2,"kind":"Raw","entries":[{"id":"opaque","type":"future.custom","parameters":{"payload":[null,{"kept":true}]}}]}""");
         using var schema = ProjectSchemaContext.Load(_root);
         var repository = new EditorDocumentRepository(schema.Catalog, EditorDocumentValidation.Authoring);
-        var loaded = repository.Load(_root, "Draft", new());
+        var loaded = repository.Load(_root);
         repository.Save(_root, loaded.Document, loaded.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<GalNet.Editor.Abstraction.Documents.EditorEntryData>)pair.Value));
         var original = File.ReadAllBytes(Path.Combine(_root, "Graph/groups/a.rawgalgroup"));
         var validation = await CliHelpTests.Invoke(["validate", _root]);

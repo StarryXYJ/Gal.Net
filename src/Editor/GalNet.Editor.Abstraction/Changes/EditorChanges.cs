@@ -103,8 +103,6 @@ public static class EditorDocumentCloner
         SaveSlotCount = source.SaveSlotCount,
         DefaultWidth = source.DefaultWidth,
         DefaultHeight = source.DefaultHeight,
-        PlayerVariables = source.PlayerVariables.Select(variable => variable.Clone()).ToList(),
-        SaveVariables = source.SaveVariables.Select(variable => variable.Clone()).ToList(),
         AudioTracks = source.AudioTracks.ToList(),
         AudioGroups = source.AudioGroups.ToList()
     };

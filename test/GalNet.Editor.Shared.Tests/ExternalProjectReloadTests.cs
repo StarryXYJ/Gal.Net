@@ -29,7 +29,7 @@ public sealed class ExternalProjectReloadTests
         _catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
         _repository = new(_catalog, EditorDocumentValidation.Authoring);
         var settings = DirectProjectPersistence.LoadSettings(_root);
-        _documents = new(); _documents.Load(_repository.Load(_root, "", settings));
+        _documents = new(); _documents.Load(_repository.Load(_root));
         _project = new("project", "Original", _root, settings, new(), new EmptyScope());
         _content = new(_documents, _repository); _content.Open(_project);
     }

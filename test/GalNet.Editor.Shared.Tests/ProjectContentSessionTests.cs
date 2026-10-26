@@ -29,7 +29,7 @@ public sealed class ProjectContentSessionTests
         var settings = DirectProjectPersistence.LoadSettings(_root);
         _repository = new(new EditorDocumentRepository(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())));
         _documents = new();
-        _documents.Load(_repository.Load(_root, "Original", settings));
+        _documents.Load(_repository.Load(_root));
         _project = new("project", "Original", _root, settings, new(), new EmptyScope());
         _session = new(_documents, _repository);
         _session.Open(_project);
@@ -387,7 +387,7 @@ public sealed class ProjectContentSessionTests
         public Action? BeforeApply { get; set; }
         public AuthorFileTransaction? Transaction { get; set; }
         public ProjectSavePlan? LastPlan { get; private set; }
-        public LoadedEditorProjectDocument Load(string path, string name, GalNet.Core.Settings.ProjectSettings settings) => inner.Load(path, name, settings);
+        public LoadedEditorProjectDocument Load(string path) => inner.Load(path);
         public ProjectSavePlan PrepareSave(string path, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> entries) => inner.PrepareSave(path, document, entries);
         public void ApplySave(string path, ProjectSavePlan plan, CancellationToken cancellationToken = default)
         {

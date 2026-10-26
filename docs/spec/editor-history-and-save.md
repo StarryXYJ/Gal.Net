@@ -22,7 +22,7 @@ Entry 字段、批量新增/粘贴/删除/重排直接修改项目作者数据�
 
 GUI 的项目保存统一经过项目 scope 的 `ProjectContentSession`。先提交设置草稿，在历史捕获租约中复制同一版本的 Graph、全部 Group 与完整设置，再形成一次写入/删除计划。普通保存的后台文件发布不持有历史捕获租约，用户后续编辑保留为新的未保存内容。不能在持有发布门时等待历史门，否则会与结构编辑形成锁反转。
 
-Graph、Group、settings 与当前 editor-state 在同一作者文件事务发布。变量定义以 Graph 为准，settings 中的变量副本由序列化派生。视口状态可以单独保存，不会自动保存其他作者内容。尚未采纳的外部作者文件或 settings 变化会使保存明确失败，不以自己的旧内容覆盖；不承诺跨进程多文件原子性。
+Graph、Group、settings 与当前 editor-state 在同一作者文件事务发布。变量定义只保存在 Graph 中，settings 不再包含同名列表。视口状态可以单独保存，不会自动保存其他作者内容。尚未采纳的外部作者文件或 settings 变化会使保存明确失败，不以自己的旧内容覆盖；不承诺跨进程多文件原子性。
 
 GUI 的 Repository 显式使用 Authoring 验证策略：Raw Group 可以保留未知类型/参数、缺必填值、无效参数类型或未完成条件表达式，Graph 分支条件也可保留未完成文本；保存不 Normalize、不补默认值。当前格式、稳定身份、严格 JSON shape、重复属性、Graph 拓扑、源路径/归属及外部冲突仍检查。仓库默认 Complete 供 CLI 严格写入使用，validate/group compile 和预览编译不因 GUI 草稿可保存而放宽。保存后继续撤销类型变更会恢复原作者 JSON，并重新成为未保存内容。
 

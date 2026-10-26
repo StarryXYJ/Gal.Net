@@ -423,7 +423,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     }
 
     [Test]
-    public async Task SettingsSaveDerivesVariablesFromTheGraphAndPreservesOtherConfiguration()
+    public async Task VariablesPersistOnlyInTheGraphWhileSettingsRemainIndependent()
     {
         using var services = Services();
         var projects = services.GetRequiredService<IProjectService>();
@@ -432,10 +432,12 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         value.SetValue(4);
         var documents = project.Services.GetRequiredService<IEditorDocumentService>();
         documents.CurrentDocument.PlayerVariables.Add(new() { Name = "score", DefaultValue = value });
-        project.Settings.PlayerVariables.Clear();
         await projects.SaveAsync();
         using var saved = JsonDocument.Parse(File.ReadAllText(project.SettingsFilePath));
-        Assert.That(saved.RootElement.GetProperty("playerVariables")[0].GetProperty("name").GetString(), Is.EqualTo("score"));
+        Assert.That(saved.RootElement.TryGetProperty("playerVariables", out _), Is.False);
+        Assert.That(saved.RootElement.TryGetProperty("saveVariables", out _), Is.False);
+        using var graph = JsonDocument.Parse(File.ReadAllText(Path.Combine(project.GraphPath, "graph.json")));
+        Assert.That(graph.RootElement.GetProperty("playerVariables")[0].GetProperty("name").GetString(), Is.EqualTo("score"));
         Assert.That(project.Settings.DefaultHeight, Is.EqualTo(777));
         await projects.CloseAsync();
     }

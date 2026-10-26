@@ -60,7 +60,7 @@ public sealed class ProjectService : IProjectService
             scope.ServiceProvider.GetRequiredService<ProjectSchemaSession>().Open(projectPath);
             settings = Commands.DirectProjectPersistence.LoadSettings(projectPath);
             editorState = await LoadEditorProjectStateAsync(projectPath);
-            var loaded = scope.ServiceProvider.GetRequiredService<IEditorDocumentRepository>().Load(projectPath, "", settings);
+            var loaded = scope.ServiceProvider.GetRequiredService<IEditorDocumentRepository>().Load(projectPath);
             if (loaded.Document.Nodes.Count(node => node.Type == "Entry") != 1 ||
                 !loaded.Document.Nodes.Any(node => node.Type == "Entry" && node.Id == loaded.Document.RootNodeId))
                 throw new InvalidDataException("The editor graph requires one explicit Entry root node.");

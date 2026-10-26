@@ -306,3 +306,5 @@
 - 外部项目创作：CLI project.apply 使用期望哈希和原生文件清单，同事务发布 Graph/Group/资源/本地化；产品 Skill 在 skills/galnet-project-authoring，随 CLI 分发。Editor 通用热重载采纳干净项目，在同一 scope 推进所有基线并清除旧历史；本地草稿冲突保留，Contracts DLL 仍需重开。见 features/F-20261025-02-external-project-authoring/summary.md 与 docs/manual/external-project-authoring.md。
 
 - 2026-10-26 引擎重构 R3 已验证：Core.Audio.AudioConfiguration 隔离/校验任意分组与轨道，空/未分组合法；混音支持 master/group/track，快进保留由 PreserveDuringCatchUp 指定。固定 AudioBuses/Core 默认集合和指令隐含目标已删除；可选 Contracts.Builtins.BuiltinAudioDefaults 由 Sample/模板显式选用，默认 Avalonia 设置按声明生成控件并支持可选单轨控制。Editor 的分组/策略历史、保存、导出和安装加载共用配置规则。1752 项通过、4 项既有符号链接权限失败，R4/R5 完整项目配置及领域归属仍待实施。见 features/F-20261026-01-engine-core-simplification/phase-plan.md。
+
+- 2026-10-26 R4a 已验证：变量声明只保存在作者 Graph，ProjectSettings 的 PlayerVariables/SaveVariables 与同步副本已删除；IEditorDocumentRepository.Load 只接收项目路径。868 项相关回归通过，4 项既有符号链接权限失败；同源码隔离构建/locked restore 通过。R4b/R4c 配置 section 和完整链路仍待实施。见引擎重构 phase-plan/summary。

@@ -31,3 +31,7 @@ Codex 受限 workspace 中的 GalNet .NET/Avalonia 构建与测试。
 
 - `features/F-20260922-01-entry-instance-runtime/phase-plan.md`
 - 成功验证命令：`dotnet build test/GeneralTest/GeneralTest.csproj --no-restore -m:1 -v:minimal -p:UseSharedCompilation=false`
+
+## 2026-10-26 补充：还原也应限制 MSBuild 并发
+
+F-20261026-01 的 R4a 隔离还原使用默认 dotnet restore 调度时没有输出诊断即退出 1，并遗留 380 个同一父进程启动的 MSBuild /nodemode:1 /nodeReuse:true worker。具体退出根因尚未确认，不把它归因于业务代码。通过进程父 ID、命令行和启动时间确认归属后，只清理本次遗留 worker；保留用户 Editor 与其他进程。相同 locked/artifacts 参数加 --disable-parallel -m:1 /nr:false 后还原成功。还原与构建均优先使用串行、不复用节点的验证参数；命令返回 running session 时须等待实际结束，不能把一次等待超时视为结束后启动下一构建。

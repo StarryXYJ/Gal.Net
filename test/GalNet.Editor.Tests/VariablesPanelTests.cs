@@ -61,7 +61,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 window.Close(); groupPage.Dispose(); await projects.CloseAsync();
                 var reopened = await projects.OpenAsync(path); var declaration = reopened.Services.GetRequiredService<VariableAuthoringService>().Get(VariableScope.Save).Single();
                 Assert.That(declaration.Description, Is.EqualTo("Updated description")); Assert.That(declaration.DefaultValue.Uid, Is.EqualTo(uid));
-                Assert.That(reopened.Settings.SaveVariables.Single().Description, Is.EqualTo("Updated description"));
+                Assert.That(reopened.Services.GetRequiredService<IEditorDocumentService>().CurrentDocument.SaveVariables.Single().Description, Is.EqualTo("Updated description"));
                 await projects.CloseAsync();
             }
             finally { window.Close(); groupPage.Dispose(); if (projects.Current is not null) await projects.CloseAsync(); }

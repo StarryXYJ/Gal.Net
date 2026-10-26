@@ -147,7 +147,7 @@ public sealed class ProjectAuthoringSafetyTests
     public void RepositoryTracksOnlyItsOwnFiles_WhenEditorSavesSettingsSeparately()
     {
         var repository = new EditorDocumentRepository(_catalog);
-        var loaded = repository.Load(_root, "Original", new());
+        var loaded = repository.Load(_root);
         var entries = loaded.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value);
         loaded.Document.Name = "First";
         repository.Save(_root, loaded.Document, entries);
@@ -183,7 +183,7 @@ public sealed class ProjectAuthoringSafetyTests
     public void Preview_PreservesAuthorIdentityAndDoesNotDiscardUnknownParameters()
     {
         var repository = new EditorDocumentRepository(_catalog);
-        var loaded = repository.Load(_root, "Original", new());
+        var loaded = repository.Load(_root);
         var entries = loaded.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value);
         var coordinator = new EditorSaveCoordinator(repository, _catalog);
         var preview = Path.Combine(_root, "Temp/Preview");
@@ -200,7 +200,7 @@ public sealed class ProjectAuthoringSafetyTests
     public void Preview_GroupIdsCannotBecomeOutputPaths()
     {
         var repository = new EditorDocumentRepository(_catalog);
-        var loaded = repository.Load(_root, "Original", new());
+        var loaded = repository.Load(_root);
         loaded.Document.Nodes[1].Id = "../../escape";
         loaded.Document.Edges[0].ToNodeId = "../../escape";
         var entries = new Dictionary<string, IReadOnlyList<EditorEntryData>> { ["../../escape"] = loaded.GroupEntries["a"] };
@@ -218,7 +218,7 @@ public sealed class ProjectAuthoringSafetyTests
     public void Preview_RejectsLinkedOutputBeforeWriting()
     {
         var repository = new EditorDocumentRepository(_catalog);
-        var loaded = repository.Load(_root, "Original", new());
+        var loaded = repository.Load(_root);
         var target = Directory.CreateDirectory(Path.Combine(_root, "target")).FullName;
         var link = Path.Combine(_root, "preview-link");
         Directory.CreateSymbolicLink(link, target);

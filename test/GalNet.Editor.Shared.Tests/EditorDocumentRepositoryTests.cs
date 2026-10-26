@@ -7,7 +7,6 @@ using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
 using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
-using GalNet.Core.Settings;
 using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Shared.Services;
@@ -38,7 +37,7 @@ public class EditorDocumentRepositoryTests
     }
 
     [Test]
-    public void Load_DoesNotMigrateSettingsVariables_AndRejectsUnknownParameters()
+    public void Load_UsesGraphVariables_AndRejectsUnknownParameters()
     {
         var groupId = "group_1";
         var document = new EditorGraphDocument
@@ -60,23 +59,11 @@ public class EditorDocumentRepositoryTests
             Path.Combine(_tempDir, "Graph", "groups", $"{groupId}.rawgalgroup"),
             """{ "version": 2, "kind": "Raw", "entries": [ { "id": "entry-1", "type": "dialogue.text", "parameters": { "content": "hello", "obsolete": "discard" } } ] }""");
 
-        var settings = new ProjectSettings
-        {
-            PlayerVariables =
-            [
-                new() { Name = "player_flag", DefaultValue = new GalNet.Core.Variable.Variable { Name = "player_flag", Value = VariableValue.From(false) } }
-            ],
-            SaveVariables =
-            [
-                new() { Name = "save_count", DefaultValue = new GalNet.Core.Variable.Variable { Name = "save_count", Value = VariableValue.From(1) } }
-            ]
-        };
-
         var repository = new EditorDocumentRepository(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()));
-        Assert.That(() => repository.Load(_tempDir, "Demo", settings), Throws.TypeOf<InvalidDataException>().With.Message.Contains("obsolete"));
+        Assert.That(() => repository.Load(_tempDir), Throws.TypeOf<InvalidDataException>().With.Message.Contains("obsolete"));
         File.WriteAllText(Path.Combine(_tempDir, "Graph", "groups", $"{groupId}.rawgalgroup"),
             """{"version":2,"kind":"Raw","entries":[{"id":"entry-1","type":"dialogue.text","parameters":{"content":"hello"}}]}""");
-        var loaded = repository.Load(_tempDir, "Demo", settings);
+        var loaded = repository.Load(_tempDir);
 
         Assert.That(loaded.Document.PlayerVariables, Is.Empty);
         Assert.That(loaded.Document.SaveVariables, Is.Empty);
@@ -128,7 +115,7 @@ public class EditorDocumentRepositoryTests
         Assert.That(savedDocument, Is.Not.Null);
         Assert.That(savedDocument!.PlayerVariables.Select(v => v.Name), Is.EqualTo(ExpectedPlayerName));
         Assert.That(savedDocument.SaveVariables.Select(v => v.Name), Is.EqualTo(ExpectedSaveSlot));
-        var reloaded = repository.Load(_tempDir, "Demo", new ProjectSettings());
+        var reloaded = repository.Load(_tempDir);
         var savedGroupDocument = JsonDocument.Parse(savedGroup);
         Assert.That(savedGroupDocument.RootElement.GetProperty("kind").GetString(), Is.EqualTo("Raw"));
         var entry = savedGroupDocument.RootElement.GetProperty("entries")[0];
@@ -158,7 +145,7 @@ public class EditorDocumentRepositoryTests
             """{ "version": 2, "kind": "Raw", "entries": [ { "id": "pulse-1", "type": "custom.pulse", "parameters": { "count": 3 } } ] }""");
 
         var repository = new EditorDocumentRepository(catalog);
-        var loaded = repository.Load(_tempDir, "Custom", new ProjectSettings());
+        var loaded = repository.Load(_tempDir);
         repository.Save(_tempDir, loaded.Document, loaded.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value));
 
         Assert.That(loaded.GroupEntries[groupId].Single().Parameters["count"].GetInt32(), Is.EqualTo(3));
@@ -185,7 +172,7 @@ public class EditorDocumentRepositoryTests
         File.WriteAllText(sourcePath,
             """{"version":2,"kind":"Raw","entries":[{"id":"day-1","type":"custom.day","parameters":{"day":"Monday"}}]}""");
         var repository = new EditorDocumentRepository(catalog);
-        var loaded = repository.Load(_tempDir, "Days", new ProjectSettings());
+        var loaded = repository.Load(_tempDir);
         Assert.That(loaded.GroupEntries[groupId][0].Parameters["day"].GetString(), Is.EqualTo("Monday"));
         loaded.GroupEntries[groupId][0].Parameters["day"] = JsonSerializer.SerializeToElement("Tuesday");
         repository.Save(_tempDir, loaded.Document,

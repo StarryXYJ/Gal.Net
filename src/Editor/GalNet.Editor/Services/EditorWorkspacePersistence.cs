@@ -36,7 +36,7 @@ public sealed class EditorWorkspacePersistence
         }
 
         if (!_documents.IsLoaded)
-            _documents.Load(_repository.Load(project.RootPath, project.Name, project.Settings));
+            _documents.Load(_repository.Load(project.RootPath));
         return GraphDocumentMapper.Load(_documents.LoadedProject, _groups);
     }
 

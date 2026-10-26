@@ -15,7 +15,7 @@ public static class LocalizationValidation
         {
             var reader = new ProjectRawReader(root);
             var settings = File.Exists(reader.Resolve("settings.json")) ? DirectProjectPersistence.LoadSettings(root) : new GalNet.Core.Settings.ProjectSettings();
-            var loaded = new EditorDocumentRepository(catalog, EditorDocumentValidation.Authoring).Load(root, "", settings);
+            var loaded = new EditorDocumentRepository(catalog, EditorDocumentValidation.Authoring).Load(root);
             var snapshot = new EditorProjectDocument { Graph = loaded.Document, GroupEntries = loaded.GroupEntries, Settings = settings };
             var paths = Directory.Exists(reader.Resolve("I18n")) ? reader.Files("I18n", diagnostics) : [];
             var sources = paths.Where(path => path.EndsWith(".json", StringComparison.OrdinalIgnoreCase) && !path.StartsWith("I18n/External/", StringComparison.OrdinalIgnoreCase))

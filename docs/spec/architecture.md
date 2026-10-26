@@ -102,7 +102,7 @@ Avalonia GameView 通过精确 Gallery `typeId` 的 `IGalleryPageRegistry` 选�
 
 `EditorProjectDocument` 是 UI 无关的图、Group、设置编辑聚合。资源 metadata 属于 `Assets/`；Gallery annotation 不进入 Editor document，也不存在集中式 Gallery authoring 文件。预览编译 Raw Group，并用当前项目的 metadata 和共享 catalog 构建 `GameContent.Gallery`。
 
-GUI 的 `IEditorDocumentService`、变量定义服务和 `EditorDockFactory` 由项目 scope 持有。项目打开时加载作者 Graph/Group 一次；Group 以稳定 ID 和独立源路径登记为 `EditorGroupDocument`，项目级 `EditorGroupProjectionStore` 缓存可观察投影。Graph 节点、边、分支项直接引用作者 DTO，Group 页面以 ID 打开，页面关闭只释放订阅，不丢弃未保存内容。`EditorEntryData.Parameters` 保留原始 JSON 值；字符串仅用于控件和既有 CLI 输入适配。变量声明以 Graph 为权威，保存 settings 时派生所需副本。
+GUI 的 `IEditorDocumentService`、变量定义服务和 `EditorDockFactory` 由项目 scope 持有。项目打开时加载作者 Graph/Group 一次；Group 以稳定 ID 和独立源路径登记为 `EditorGroupDocument`，项目级 `EditorGroupProjectionStore` 缓存可观察投影。Graph 节点、边、分支项直接引用作者 DTO，Group 页面以 ID 打开，页面关闭只释放订阅，不丢弃未保存内容。`EditorEntryData.Parameters` 保留原始 JSON 值；字符串仅用于控件和既有 CLI 输入适配。变量声明只保存在 Graph 的 playerVariables/saveVariables，settings 不再维护或派生变量副本。文档仓库仅接收项目路径，不消费设置模型或额外项目名称。
 
 Editor 随发行包提供默认契约模板，新建项目不需要用户准备 DLL；留空自定义契约目录时，自动将默认契约复制到项目 `Contracts/`。新项目随后使用同一项目契约加载路径，自定义目录仅供需要自定义 schema 的项目选择。打开已有项目不会用该模板替换缺失或损坏的契约。
 

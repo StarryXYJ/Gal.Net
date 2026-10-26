@@ -116,3 +116,15 @@ AudioConfiguration 在组合/加载入口验证并复制分组与轨道，声明
 新增回归覆盖配置集合隔离、空/未分组/任意分组、同组两轨的独立混音、各层静音、当前/后续 voice、与名称无关的快进策略、大增益饱和、动态偏好恢复/隐藏控件/重新配置、Editor 历史与重开及包安装。初轮发现 DTO 空串属性初始化值仍导出 schema 默认，按现有 lesson 改为构造函数初始化，并扩展所有音频/语音 schema 的缺省/null 回归。
 
 最终验证 1752 项通过、4 项既有符号链接权限失败、3 项跳过；Core 152、Runtime 141、Builtins 185、Editor 323、Editor.Shared 422（3 失败/2 跳过）、Integration 123（1 失败）、Presentation 243、Architecture 49、Assets 57（1 跳过）、GameHost 6、Debugging 10、Diagnostics 1、Storage 22、Generator 18。完整解决方案构建通过；最后仅迁移遗漏的测试轨道目标及复合测试断言，分别重建并重跑 Builtins/Integration。C# 空白格式和 git diff 检查通过，无依赖/锁文件变更。原生媒体、显式外进程及符号链接权限限制继续保留。日志位于忽略产物 artifacts/engine-core-audit/r3-*.log。正式行为见 [runtime](../../docs/spec/runtime.md)、[entry-types](../../docs/spec/entry-types.md)，接入见 [new-presentation-layer](../../docs/manual/new-presentation-layer.md)。完整自定义项目 section 和领域归属仍归 R4/R5，本阶段不将其计为完成。
+
+## R4a：变量单一数据源与仓库输入
+
+ProjectSettings 不再包含 PlayerVariables/SaveVariables，删除命令编辑、快照比较、克隆和保存时的派生副本与同步。变量定义只由 Graph 保存并供运行初始化使用；不保留旧设置变量适配。EditorDocumentRepository.Load 仅接收项目路径，删除一直未使用的项目名与完整设置参数，迁移 GUI、CLI/Shared、外部重载和测试包装器。未使用的 VariableNameRules.Normalize 和重复定义清理分支已删除，保留实际使用的名称验证/清理。
+
+保存断言改为确认 settings 无变量列表、Graph 保留原声明；面板重开继续从 Graph 验证描述、UID 和默认值。完整配置 section 和默认 DTO 归属仍待 R4b/R4c，R4 总阶段尚未完成。
+
+普通输出构建遇到正在运行的用户 Editor 锁定 DLL，保留其进程并改用 artifacts/engine-core-audit/r4a-isolated。locked restore 和同源码隔离解决方案构建通过；固定路径的契约夹具由本次隔离输出补齐，没有取用不明版本 DLL。初次默认并发 restore 未输出诊断即退出并遗留 380 个 MSBuild worker，按父 ID/命令行/启动时间确认后只清理本次 worker；串行 --disable-parallel -m:1 /nr:false 后成功。根因尚未确认，经验补充到现有构建 lesson。
+
+最终相关回归 868 项通过：Editor.Shared 422（3 项既有符号链接权限失败、2 跳过）、Editor 323、Integration 123（1 项既有符号链接权限失败）。初次 Editor 回归 322 通过、1 项 Timeline 测试在 HeadlessUnitTestSession.DisposeAsync 发生空引用，与现有 Avalonia 12.0.5 会话发布竞态 lesson 的失败位置一致；定向 1 项与完整 323 项重跑通过，未修改 Timeline 业务代码，保留原失败日志，不声称修复框架竞态。空白格式和 git diff 检查通过，依赖/锁文件没有变化。日志位于忽略产物 artifacts/engine-core-audit/r4a-*.log。
+
+R4a 收尾时默认输出不再占用，普通 GalNet.slnx 完整构建也通过，日志 r4a-final-standard-build.log。工作区后来出现本地化面板的并行变更，保留且不纳入本阶段提交；868 项回归以本阶段同源码隔离产物为依据。

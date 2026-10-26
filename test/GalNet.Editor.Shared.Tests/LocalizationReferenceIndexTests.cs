@@ -266,7 +266,7 @@ public sealed class LocalizationReferenceIndexTests
             var repository = new EditorDocumentRepository(catalog);
             var settings = DirectProjectPersistence.LoadSettings(root);
             var documents = new EditorDocumentService();
-            documents.Load(repository.Load(root, "Localization", settings));
+            documents.Load(repository.Load(root));
             await using var project = new GalProject("id", "Localization", root, settings, new(), new EmptyScope());
             using var session = new ProjectContentSession(documents, repository);
             session.Open(project);
@@ -288,7 +288,7 @@ public sealed class LocalizationReferenceIndexTests
             documents.Unload();
             Assert.That(query.Get(), Is.Null);
             Assert.That(query.Revision, Is.GreaterThan(beforeUnload));
-            documents.Load(repository.Load(root, "Localization", settings));
+            documents.Load(repository.Load(root));
             Assert.That(query.Get(), Is.Not.Null);
             var revision = query.Revision;
             query.Dispose();

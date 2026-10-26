@@ -26,7 +26,7 @@ public sealed class DirectProjectPersistence(string projectPath, IEditorDocument
         if (!Directory.Exists(_projectPath)) throw new DirectoryNotFoundException($"Project directory not found: {_projectPath}");
         var settings = LoadSettings(_projectPath);
         _settingsBaseline = File.ReadAllBytes(new ProjectRawReader(_projectPath).Resolve("settings.json"));
-        var loaded = _repository.Load(_projectPath, Path.GetFileName(Path.TrimEndingDirectorySeparator(_projectPath)), settings);
+        var loaded = _repository.Load(_projectPath);
         return new EditorProjectDocument { Graph = loaded.Document, GroupEntries = loaded.GroupEntries, Settings = settings };
     }
 
@@ -50,8 +50,6 @@ public sealed class DirectProjectPersistence(string projectPath, IEditorDocument
             document.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value));
         var settings = JsonSerializer.SerializeToElement(document.Settings, JsonOptions).Deserialize<ProjectSettings>(JsonOptions)!;
         _ = new GalNet.Core.Audio.AudioConfiguration(settings.AudioTracks, settings.AudioGroups);
-        settings.PlayerVariables = document.Graph.PlayerVariables.Select(item => item.Clone()).ToList();
-        settings.SaveVariables = document.Graph.SaveVariables.Select(item => item.Clone()).ToList();
         var writes = new Dictionary<string, byte[]>(plan.Writes)
         { ["settings.json"] = JsonSerializer.SerializeToUtf8Bytes(settings, JsonOptions) };
         return new(writes, plan.DeletedFiles);
