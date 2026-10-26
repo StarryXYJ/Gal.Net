@@ -9,9 +9,8 @@ namespace GalNet.Editor.Abstraction.Settings;
 /// <summary>
 /// 编辑器全局设置 —— 持久化在编辑器配置目录。
 /// </summary>
-public sealed class EditorSettings : SettingsSection
+public sealed class EditorSettings
 {
-    public override string SectionKey => "editor";
 
     /// <summary>编辑器 UI 语言</summary>
     public I18nLocale UiLocale { get; set; } = I18nLocale.ZhCn;

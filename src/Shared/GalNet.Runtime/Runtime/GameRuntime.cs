@@ -1,7 +1,6 @@
 using GalNet.Core.Runtime;
 using GalNet.Core.Scene;
 using GalNet.Core.Services;
-using GalNet.Core.Settings;
 using GalNet.Core.Variable;
 using GalNet.Runtime.Variables;
 using GalNet.Runtime.Logging;
@@ -25,9 +24,6 @@ public sealed class GameRuntime : IGameRuntime
     // ── 核心引用 ──
     public ITextResolver TextResolver { get; }
 
-    // ── 设置 ──
-    public SettingsContainer Settings { get; }
-
     // ── 场景状态 ──
     public GameState State { get; private set; } = new();
     public ISceneInstanceManager SceneInstances { get; private set; }
@@ -38,12 +34,10 @@ public sealed class GameRuntime : IGameRuntime
     private readonly IVariableService? _variableService;
 
     public GameRuntime(ITextResolver? textResolver, string rootNodeId = "",
-        SettingsContainer? settings = null,
         IVariableService? variableService = null, StateCatalog? stateCatalog = null)
     {
         TextResolver = textResolver ?? PassthroughTextResolver.Instance;
         CurrentNodeId = rootNodeId;
-        Settings = settings ?? new SettingsContainer();
         State = new GameState(stateCatalog);
         SceneInstances = new SceneInstanceManager(State);
         _variableService = variableService;

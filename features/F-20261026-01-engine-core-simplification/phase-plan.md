@@ -1,6 +1,6 @@
 # 引擎核心精简与职责收敛
 
-状态：上一轮 P1–P5 verified，P6 保留环境待验证项；后续架构重构 R1 verified，R2–R8 planned。
+状态：上一轮 P1–P5 verified，P6 保留环境待验证项；后续架构重构 R1 verified，R2 in-progress，R3–R8 planned。
 
 本文件是整个重构的实施与进度入口。P0–P6 保留已提交的历史；R1–R8 整理后续工作，设计依据见 [design.md](design.md)。设计整理完成不代表实现完成。
 
@@ -87,7 +87,7 @@ primitive/呈现仅借用 IGameContext，Engine 管理 IGameRuntime 与 IPrimiti
 | 阶段 | 内容 | 依赖 | 状态 |
 | --- | --- | --- | --- |
 | R1 | 执行协议与管理类型归位 | 已提交基线 | [x] verified |
-| R2 | 设置模型与模块配置解耦 | R1 | [ ] planned |
+| R2 | 设置模型与模块配置解耦 | R1 | [ ] in-progress |
 | R3 | 自定义音频分组与轨道控制 | R2 | [ ] planned |
 | R4 | 自定义配置贯穿作者与运行链路 | R2、R3 | [ ] planned |
 | R5 | 剥离可选领域与场景依赖 | R1–R4 | [ ] planned |
@@ -101,11 +101,12 @@ primitive/呈现仅借用 IGameContext，Engine 管理 IGameRuntime 与 IPrimiti
 
 893 项相关回归通过，1 项集成夹具受既有符号链接权限限制；普通桌面解决方案构建、locked restore、格式和架构门禁通过。34 个锁文件仅有项目依赖变化，第三方版本/哈希和目标框架键保持不变；Browser/R2R/原生平台验证限制见 [summary](summary.md#r1执行协议与管理类型归位)。证据含 Runtime 的 ExecutionBoundaryTests（自定义分发器执行/恢复、编译产物依赖检查）与 ProjectDependencyTests，正式边界见 [architecture](../../docs/spec/architecture.md)。
 
-### R2 — 设置模型与模块配置解耦
+### R2 — in-progress：设置模型与模块配置解耦
 
 - **目标/模块**：Engine、Audio、文本呈现、GameHost、默认 Avalonia 宿主与 Sample。模块只接收自身所需的强类型配置值。
 - **任务**：推进配置归 Engine，轨道/混音配置归音频模块，文本速度归 Presenter，显示/存档选项归宿主或对应服务。完整玩家/项目模型移交高层，取消内部 Get<GameSettings>/Get<ProjectSettings>。通过显式更新应用配置，不保留高层可变 DTO 引用。清除消费者后删除 IGameContext.Settings；SettingsContainer/SettingsSection 仅在有实际用途的外层保留，否则删除。核实并移除无用 SaveSettings 和 SfxChannelCount 及其 UI/CLI 字段。
-- **验证/退出**：使用普通项目 DTO 映射即可更新推进、文本、音频和显示，无需继承框架设置基类；Core/Runtime 无具体项目/玩家设置模型依赖。默认宿主保持可运行；更新/取消/恢复相关回归通过。更新接入说明。
+- **验证/退出**：使用普通项目 DTO 映射即可更新推进、文本、音频和显示，无需继承框架设置基类；Core 不再持有玩家偏好模型，Runtime/Builtins 执行路径不依赖完整项目/玩家设置。默认宿主保持可运行；更新/取消/恢复相关回归通过。更新接入说明。
+- **边界核实**：内容的 GameContent.Settings 与 Editor/Storage 共用 ProjectSettings，完整作者模型归属与格式在 R4 同步调整；R2 不为搬移这一个类型新增跨层依赖，不把它算作完整配置链路验收。无实际消费者的 Editor 游戏设置服务一并删除。音频先接收中立分组混音值，分组声明/轨道级控制及预设迁移仍归 R3。
 - **风险**：配置热更新、清空玩家数据和运行切换不能各持一份不同步副本。R2 消除运行端绑定，作者文档/文件格式扩展在 R4 完整验收，不提前宣称整条链路完成。
 
 ### R3 — 自定义音频分组与轨道控制

@@ -10,5 +10,5 @@ public interface IPlayerPlaybackController
     void CancelPlayback();
     Task SetPlaybackModeAsync(PlaybackMode mode, CancellationToken cancellationToken = default);
     Task SkipToUnreadAsync(CancellationToken cancellationToken = default);
-    Task RefreshPlaybackSettingsAsync(CancellationToken cancellationToken = default);
+    Task UpdatePlaybackOptionsAsync(PlaybackOptions options, CancellationToken cancellationToken = default);
 }

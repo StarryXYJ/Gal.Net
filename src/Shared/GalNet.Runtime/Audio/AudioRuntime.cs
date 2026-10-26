@@ -1,6 +1,5 @@
 using GalNet.Core.Audio;
 using GalNet.Core.Runtime;
-using GalNet.Core.Settings;
 
 namespace GalNet.Runtime.Audio;
 
@@ -16,7 +15,7 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
     private readonly Dictionary<string, List<AudioPlaybackTicket>> _tickets = new(StringComparer.Ordinal);
     private GameState _state;
     private long _nextGeneration;
-    private GameSettings _settings = new();
+    private AudioMixOptions _mix = new();
     private bool _disposed;
     private bool _catchUp;
     public event Action<string>? Diagnostic;
@@ -139,11 +138,13 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
                 foreach (var item in track.State.Active.ToArray()) Project(track, item, 0);
         });
     }
-    public void ApplyPlayerSettings(GameSettings settings)
+    public void ApplyMix(AudioMixOptions options)
     {
+        ArgumentNullException.ThrowIfNull(options);
+        var snapshot = options.Snapshot();
         lock (_gate) _state.Update(() =>
         {
-            _settings = settings;
+            _mix = snapshot;
             foreach (var track in _tracks.Values)
                 foreach (var item in track.State.Active.ToArray()) SendItem(track, item, AudioBackendAction.SetGain);
         });
@@ -297,14 +298,9 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
     }
     private float Gain(TrackBinding track, AudioItemState item)
     {
-        var (volume, muted) = track.Definition.Bus switch
-        {
-            AudioBuses.Bgm => (_settings.BgmVolume, _settings.BgmMuted),
-            AudioBuses.Vocal => (_settings.VoiceVolume, _settings.VoiceMuted),
-            _ => (_settings.SfxVolume, _settings.SfxMuted)
-        };
-        if (_settings.MasterMuted || muted) return 0;
-        var gain = track.Definition.DefaultGain * item.Request.Gain * volume * _settings.MasterVolume;
+        _mix.Groups.TryGetValue(track.Definition.Bus, out var group);
+        if (_mix.MasterMuted || group?.Muted == true) return 0;
+        var gain = track.Definition.DefaultGain * item.Request.Gain * (group?.Gain ?? 1f) * _mix.MasterGain;
         return float.IsFinite(gain) ? Math.Clamp(gain, 0, 1) : 0;
     }
     private List<AudioPlaybackTicket> Tickets(string id)

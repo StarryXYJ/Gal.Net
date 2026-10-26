@@ -1,7 +1,7 @@
 using GalNet.Core.Entry;
+using GalNet.Core.Execution;
 using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
-using GalNet.Core.Settings;
 using GalNet.Runtime.Logging;
 
 namespace GalNet.Runtime.Engine;
@@ -9,6 +9,7 @@ namespace GalNet.Runtime.Engine;
 public sealed partial class GameEngine
 {
     private PlaybackMode _playbackMode;
+    private PlaybackOptions _playbackOptions;
     private bool _advanceBoundary;
     private long _playbackRevision;
     private CancellationTokenSource? _playbackTimer;
@@ -50,11 +51,15 @@ public sealed partial class GameEngine
         }
     }
 
-    public async Task RefreshPlaybackSettingsAsync(CancellationToken cancellationToken = default)
+    public async Task UpdatePlaybackOptionsAsync(PlaybackOptions options, CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(options);
+        options.Validate();
         await _dispatchGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            _playbackOptions = options;
             CancelPlaybackTimer();
             if (_playbackMode == PlaybackMode.Quick && IsQuickBlockedByUnreadText()) SetPlaybackModeCore(PlaybackMode.Manual);
             ReconcilePlaybackTimer();
@@ -62,7 +67,7 @@ public sealed partial class GameEngine
         finally { _dispatchGate.Release(); PublishStateChanges(); }
     }
 
-    private bool IsQuickBlockedByUnreadText() => _runtime.Settings.Get<GameSettings>().QuickReadOnly &&
+    private bool IsQuickBlockedByUnreadText() => _playbackOptions.QuickReadOnly &&
         _active.Any(item => item.IsReading && !item.WasRead);
 
     private void SetPlaybackModeCore(PlaybackMode mode)
@@ -84,7 +89,7 @@ public sealed partial class GameEngine
             _catchUpStopAtBoundary = true;
         }
         if (readingId is not null && _playbackMode == PlaybackMode.Quick &&
-            _runtime.Settings.Get<GameSettings>().QuickReadOnly && _progress?.IsRead(group.Id, readingId) != true)
+            _playbackOptions.QuickReadOnly && _progress?.IsRead(group.Id, readingId) != true)
             SetPlaybackModeCore(PlaybackMode.Manual);
     }
 
@@ -123,9 +128,7 @@ public sealed partial class GameEngine
         foreach (var item in _active) ReconcileAutoBlocker(item);
         if (!CanSchedulePlayback()) { CancelPlaybackTimer(); return; }
         if (_playbackTimer is not null) return;
-        var settings = _runtime.Settings.Get<GameSettings>();
-        var interval = _playbackMode == PlaybackMode.Auto ? settings.AutoAdvanceIntervalMilliseconds : settings.QuickAdvanceIntervalMilliseconds;
-        if (interval < 0) throw new InvalidDataException("Playback intervals must be nonnegative milliseconds.");
+        var interval = _playbackMode == PlaybackMode.Auto ? _playbackOptions.AutoAdvanceIntervalMilliseconds : _playbackOptions.QuickAdvanceIntervalMilliseconds;
         var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_scopeCancellation.Token);
         _playbackTimer = cancellation;
         var revision = Interlocked.Increment(ref _playbackRevision);

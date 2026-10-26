@@ -4,7 +4,6 @@ using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
 using GalNet.Core.Services;
-using GalNet.Core.Settings;
 using GalNet.Runtime.Logging;
 using GalNet.Runtime.Progress;
 using GalNet.Runtime.Runtime;
@@ -43,17 +42,18 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         Graph graph,
         IPrimitiveDispatcher view,
         ITextResolver? textResolver = null,
-        SettingsContainer? settings = null,
+        PlaybackOptions? playbackOptions = null,
         IGameProgressService? progress = null,
         IChoicePresenter? choicePresenter = null,
         ICatchUpPresentation? catchUpPresentation = null)
         : this(
             graph,
-            new GameRuntime(textResolver, graph?.RootNodeId ?? "", settings),
+            new GameRuntime(textResolver, graph?.RootNodeId ?? ""),
             view,
             progress,
             choicePresenter,
-            catchUpPresentation)
+            catchUpPresentation,
+            playbackOptions)
     { }
 
     public GameEngine(
@@ -62,9 +62,12 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         IPrimitiveDispatcher view,
         IGameProgressService? progress = null,
         IChoicePresenter? choicePresenter = null,
-        ICatchUpPresentation? catchUpPresentation = null)
+        ICatchUpPresentation? catchUpPresentation = null,
+        PlaybackOptions? playbackOptions = null)
     {
         ArgumentNullException.ThrowIfNull(graph);
+        _playbackOptions = playbackOptions ?? new PlaybackOptions();
+        _playbackOptions.Validate();
         _navigation = new GameGraphNavigator(graph);
         _active = new ActivePrimitiveRegistry(OnBlockingCompleted, OnAutoBlockingChanged);
         _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));

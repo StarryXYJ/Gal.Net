@@ -3,17 +3,14 @@ using GalNet.Core.Variable;
 
 namespace GalNet.Core.Settings;
 
-public sealed class ProjectSettings : SettingsSection
+public sealed class ProjectSettings
 {
-    public override string SectionKey => "project";
 
     public I18nLocale TargetLocale { get; set; } = I18nLocale.ZhCn;
 
     public List<I18nLocale> AvailableLocales { get; set; } = [I18nLocale.ZhCn];
 
     public int SaveSlotCount { get; set; } = 60;
-
-    public int SfxChannelCount { get; set; } = 4;
 
     /// <summary>Author-controlled logical audio routes. Bus CRUD is intentionally not part of this version.</summary>
     public List<GalNet.Core.Audio.AudioTrackDefinition> AudioTracks { get; set; } = GalNet.Core.Audio.AudioTrackDefinition.CreateDefaults();

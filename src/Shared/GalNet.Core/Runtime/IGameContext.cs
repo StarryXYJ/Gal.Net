@@ -1,6 +1,5 @@
 using GalNet.Core.Scene;
 using GalNet.Core.Services;
-using GalNet.Core.Settings;
 using GalNet.Core.Variable;
 using GalVariable = GalNet.Core.Variable.Variable;
 
@@ -13,7 +12,6 @@ public interface IGameContext
     int EntryIndex { get; }
     bool IsGameEnded { get; }
     ITextResolver TextResolver { get; }
-    SettingsContainer Settings { get; }
     GameState State { get; }
     ISceneInstanceManager SceneInstances { get; }
     void EndGame();

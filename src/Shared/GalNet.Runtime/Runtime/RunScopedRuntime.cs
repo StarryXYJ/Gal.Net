@@ -1,7 +1,6 @@
 using GalNet.Core.Runtime;
 using GalNet.Core.Scene;
 using GalNet.Core.Services;
-using GalNet.Core.Settings;
 using GalNet.Core.Variable;
 using GalVariable = GalNet.Core.Variable.Variable;
 
@@ -27,7 +26,6 @@ internal sealed class RunScopedRuntime : IGameContext
     public int EntryIndex => _runtime.EntryIndex;
     public bool IsGameEnded => _runtime.IsGameEnded;
     public ITextResolver TextResolver => _runtime.TextResolver;
-    public SettingsContainer Settings => _runtime.Settings;
     public GameState State { get; }
     public ISceneInstanceManager SceneInstances { get; }
     public void EndGame() => State.Update(() => { Check(); _runtime.EndGame(); });
