@@ -45,32 +45,20 @@ public static class GamePackageExporter
             Directory.CreateDirectory(targetParent);
             publishRoot = Path.Combine(targetParent, $".{Path.GetFileName(targetRoot)}.export-{Guid.NewGuid():N}");
             stagingRoot = Path.Combine(targetParent, $".{Path.GetFileName(targetRoot)}.content-{Guid.NewGuid():N}");
-            await new ProjectContentBuilder(entryCatalog, resourceTypes, configurations)
-                .BuildAsync(sourceRoot, stagingRoot, cancellationToken)
-                .ConfigureAwait(false);
-
-            var assets = await LoadAssetsAsync(Path.Combine(stagingRoot, "Assets"), resourceTypes, cancellationToken);
-            var gallery = new GalleryCatalogCompiler(resourceTypes, galleryTypes).Compile(assets.Select(asset => asset.Metadata));
-            var assetsPak = PakBuilder.Build("assets", assets, resourceTypes, GalNet.Core.Assets.CompressionMode.Brotli);
-            var contentFiles = BuildContentFiles(stagingRoot, gallery, cancellationToken);
-            var payloads = new[] { (AssetsPakPath, assetsPak) }.Concat(contentFiles).ToArray();
-            var manifestFiles = payloads.Select(file => new GalpakFileEntry(file.Item1, Hash(file.Item2), file.Item2.Length)).ToArray();
-            var safeName = SafeFileName(projectName);
-            var manifestPath = $"{safeName}.galnet";
-            var manifestBytes = JsonSerializer.SerializeToUtf8Bytes(
-                new GalpakManifest(1, projectId, projectName, DateTimeOffset.UtcNow, manifestFiles), JsonOptions);
+            var prepared = await PrepareAsync(projectId, projectName, sourceRoot, stagingRoot,
+                resourceTypes, galleryTypes, entryCatalog, configurations, cancellationToken).ConfigureAwait(false);
 
             Directory.CreateDirectory(publishRoot);
-            foreach (var (relativePath, data) in payloads)
+            foreach (var (relativePath, data) in prepared.Payloads)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var destination = GetSafeDestination(publishRoot, relativePath);
                 Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
                 await File.WriteAllBytesAsync(destination, data, cancellationToken).ConfigureAwait(false);
             }
-            await File.WriteAllBytesAsync(GetSafeDestination(publishRoot, manifestPath), manifestBytes, cancellationToken).ConfigureAwait(false);
+            await File.WriteAllBytesAsync(GetSafeDestination(publishRoot, prepared.ManifestPath), prepared.ManifestBytes, cancellationToken).ConfigureAwait(false);
             Directory.CreateDirectory(Path.Combine(publishRoot, "I18n", "External"));
-            await VerifyDirectoryAsync(publishRoot, manifestFiles, resourceTypes, cancellationToken).ConfigureAwait(false);
+            await VerifyDirectoryAsync(publishRoot, prepared.Files, resourceTypes, cancellationToken).ConfigureAwait(false);
 
             cancellationToken.ThrowIfCancellationRequested();
             Directory.Move(publishRoot, targetRoot);
@@ -115,24 +103,16 @@ public static class GamePackageExporter
             ArgumentNullException.ThrowIfNull(resourceTypes);
             ArgumentNullException.ThrowIfNull(galleryTypes);
             stagingRoot = Path.Combine(Path.GetTempPath(), $"galnet-export-{Guid.NewGuid():N}");
-            await new ProjectContentBuilder(entryCatalog, resourceTypes, configurations)
-                .BuildAsync(projectRoot, stagingRoot, cancellationToken)
-                .ConfigureAwait(false);
-            var assets = await LoadAssetsAsync(Path.Combine(stagingRoot, "Assets"), resourceTypes, cancellationToken);
-            var gallery = new GalleryCatalogCompiler(resourceTypes, galleryTypes).Compile(assets.Select(asset => asset.Metadata));
-            var assetsPak = PakBuilder.Build("assets", assets, resourceTypes, GalNet.Core.Assets.CompressionMode.Brotli);
-            var contentFiles = BuildContentFiles(stagingRoot, gallery, cancellationToken);
-            var packageFiles = new[] { (AssetsPakPath, assetsPak) }.Concat(contentFiles).ToArray();
-            var packages = packageFiles.Select(file => new GalpakFileEntry(file.Item1, Hash(file.Item2), file.Item2.Length)).ToArray();
+            var prepared = await PrepareAsync(projectId, projectName, projectRoot, stagingRoot,
+                resourceTypes, galleryTypes, entryCatalog, configurations, cancellationToken).ConfigureAwait(false);
             await using (var file = File.Create(temporaryPath))
             using (var zip = new ZipArchive(file, ZipArchiveMode.Create, leaveOpen: false))
             {
-                foreach (var packageFile in packageFiles)
+                foreach (var packageFile in prepared.Payloads)
                     await WriteEntryAsync(zip, packageFile.Item1, packageFile.Item2, cancellationToken);
-                var manifest = new GalpakManifest(1, projectId, projectName, DateTimeOffset.UtcNow, packages);
-                await WriteEntryAsync(zip, $"{SafeFileName(projectName)}.galnet", JsonSerializer.SerializeToUtf8Bytes(manifest, JsonOptions), cancellationToken);
+                await WriteEntryAsync(zip, prepared.ManifestPath, prepared.ManifestBytes, cancellationToken);
             }
-            await VerifyAsync(temporaryPath, packages, resourceTypes, cancellationToken);
+            await VerifyAsync(temporaryPath, prepared.Files, resourceTypes, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             File.Move(temporaryPath, packagePath, true);
             return GamePackageExportResult.Succeeded(packagePath);
@@ -151,6 +131,26 @@ public static class GamePackageExporter
         {
             if (stagingRoot is not null && Directory.Exists(stagingRoot)) Directory.Delete(stagingRoot, recursive: true);
         }
+    }
+
+    private sealed record PreparedExport((string Path, byte[] Data)[] Payloads, GalpakFileEntry[] Files, string ManifestPath, byte[] ManifestBytes);
+
+    private static async Task<PreparedExport> PrepareAsync(string projectId, string projectName, string projectRoot,
+        string stagingRoot, IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes, IEntryCatalog entryCatalog,
+        ProjectConfigurationSchema? configurations, CancellationToken ct)
+    {
+        var (_, prepared) = await new ProjectContentBuilder(entryCatalog, resourceTypes, configurations).BuildPreparedAsync(
+            projectRoot, stagingRoot, async (stage, token) =>
+            {
+                var assets = await LoadAssetsAsync(Path.Combine(stage, "Assets"), resourceTypes, token).ConfigureAwait(false);
+                var gallery = new GalleryCatalogCompiler(resourceTypes, galleryTypes).Compile(assets.Select(asset => asset.Metadata));
+                var assetsPak = PakBuilder.Build("assets", assets, resourceTypes, GalNet.Core.Assets.CompressionMode.Brotli);
+                var payloads = new[] { (Path: AssetsPakPath, Data: assetsPak) }.Concat(BuildContentFiles(stage, gallery, token)).ToArray();
+                var files = payloads.Select(file => new GalpakFileEntry(file.Path, Hash(file.Data), file.Data.Length)).ToArray();
+                var manifest = new GalpakManifest(1, projectId, projectName, DateTimeOffset.UtcNow, files);
+                return new PreparedExport(payloads, files, $"{SafeFileName(projectName)}.galnet", JsonSerializer.SerializeToUtf8Bytes(manifest, JsonOptions));
+            }, ct).ConfigureAwait(false);
+        return prepared;
     }
 
     private static async Task<IReadOnlyList<IGameFile>> LoadAssetsAsync(string assetsPath, IResourceTypeCatalog resourceTypes, CancellationToken ct)

@@ -29,6 +29,22 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceT
         string? outputRoot = null,
         CancellationToken cancellationToken = default)
     {
+        var (build, _) = await BuildPreparedAsync(projectRoot, outputRoot, (stage, token) =>
+        {
+            token.ThrowIfCancellationRequested();
+            var diagnostics = ImageVariantsValidation.Validate(stage, resourceTypes ?? BuiltinResourceTypes.CreateCatalog());
+            if (diagnostics.Any(item => item.Severity == "error"))
+                throw new InvalidDataException(string.Join("; ", diagnostics.Select(item => $"{item.File}{item.JsonPointer}: {item.Message}")));
+            return Task.FromResult(true);
+        }, cancellationToken).ConfigureAwait(false);
+        return build;
+    }
+
+    /// <summary>Prepares and validates assets from the private stage before publication; prepared values must own their bytes.</summary>
+    internal async Task<(ProjectContentBuildResult Build, T Prepared)> BuildPreparedAsync<T>(
+        string projectRoot, string? outputRoot, Func<string, CancellationToken, Task<T>> prepare,
+        CancellationToken cancellationToken)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectRoot);
         var sourceRoot = Path.GetFullPath(projectRoot);
         if (!Directory.Exists(sourceRoot))
@@ -40,7 +56,6 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceT
         if (configurations is not null) configurations.Validate(DirectProjectPersistence.LoadSettings(sourceRoot));
         var validation = new ProjectValidationService(sourceRoot).Validate("graph");
         var diagnostics = validation.Diagnostics.ToList();
-        diagnostics.AddRange(ImageVariantsValidation.Validate(sourceRoot, resourceTypes ?? BuiltinResourceTypes.CreateCatalog()));
         diagnostics.AddRange(LocalizationValidation.ValidateDisk(sourceRoot, _entryCatalog));
         _ = new ProjectRawReader(sourceRoot).Files(null, diagnostics);
         if (!validation.Success || diagnostics.Any(item => item.Code == "file.linkSkipped" || item.Severity == "error"))
@@ -54,6 +69,7 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceT
         {
             Directory.CreateDirectory(stageRoot);
             var result = await BuildStageAsync(sourceRoot, stageRoot, cancellationToken).ConfigureAwait(false);
+            var prepared = await prepare(stageRoot, cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
 
             Directory.CreateDirectory(Path.GetDirectoryName(targetRoot)!);
@@ -84,7 +100,7 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceT
                 backupRoot = null;
             }
 
-            return result with { OutputPath = targetRoot, Diagnostics = diagnostics.ToArray() };
+            return (result with { OutputPath = targetRoot, Diagnostics = diagnostics.ToArray() }, prepared);
         }
         finally
         {

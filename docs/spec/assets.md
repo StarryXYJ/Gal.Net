@@ -46,6 +46,8 @@ IAssetProvider / IArchive / IGameFile
 
 ## 来源与发布边界
 
+目录导出与 `.galpak` 导出共用一份导出准备流程：在私有暂存内容上加载资源、编译图集与 Gallery、生成 PAK 和清单，随后由各自写出方式发布。资源编译结果在暂存目录移动前转为自有字节，不缓存指向旧目录的文件对象。普通 build 同样在暂存内容上检查图集，资源准备失败不会替换旧输出；最终产物的哈希及归档校验仍在发布前执行。
+
 | 输入 | 内容 provider | 资源 provider |
 | --- | --- | --- |
 | 开发项目目录 | `ProjectGameContentProvider` 读取 `Graph/`、`settings.json`、`I18n/`，并从 `Assets/**/*.meta` 编译 Gallery | `LocalFileProvider(Assets/)` |
