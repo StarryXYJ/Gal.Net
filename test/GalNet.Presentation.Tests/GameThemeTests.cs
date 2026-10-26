@@ -20,6 +20,7 @@ using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Avalonia.Themes;
+using GalNet.Core.Execution;
 using GalNet.Core.Gallery;
 using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;

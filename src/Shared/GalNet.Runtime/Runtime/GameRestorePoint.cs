@@ -1,7 +1,8 @@
 using System.Collections.ObjectModel;
+using GalNet.Core.Runtime;
 using GalVariable = GalNet.Core.Variable.Variable;
 
-namespace GalNet.Core.Runtime;
+namespace GalNet.Runtime.Runtime;
 
 /// <summary>A validated, isolated candidate prepared before replacing a running scope.</summary>
 public sealed class GameRestorePoint

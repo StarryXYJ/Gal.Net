@@ -1,4 +1,4 @@
-namespace GalNet.Presentation.Abstractions.View;
+namespace GalNet.Core.Execution;
 
 /// <summary>Presents one already-filtered choice and returns its visible index.</summary>
 public interface IChoicePresenter

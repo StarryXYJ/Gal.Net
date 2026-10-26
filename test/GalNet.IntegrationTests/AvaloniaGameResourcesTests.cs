@@ -64,7 +64,7 @@ public sealed class AvaloniaGameResourcesTests
         public SceneTexture ResolveTexture(string assetId) => texture;
         public void Dispose() => Disposals++;
     }
-    private sealed class Audio : GalNet.Presentation.Abstractions.Audio.IAudioPlaybackHost
+    private sealed class Audio : GalNet.Core.Audio.IAudioPlaybackHost
     {
         public int Disposals { get; private set; }
         public GalNet.Core.Audio.AudioBackendCapabilities Capabilities => GalNet.Core.Audio.AudioBackendCapabilities.None;

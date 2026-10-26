@@ -1,6 +1,6 @@
 using GalNet.Core.Runtime;
 
-namespace GalNet.Presentation.Abstractions.View;
+namespace GalNet.Core.Execution;
 
 /// <summary>Host presentation suspension and final-state synchronization for forward catch-up.</summary>
 public interface ICatchUpPresentation

@@ -1,6 +1,4 @@
-using GalNet.Core.Audio;
-
-namespace GalNet.Presentation.Abstractions.Audio;
+namespace GalNet.Core.Audio;
 
 /// <summary>Platform playback boundary. Hosts execute voice commands but never own queues.</summary>
 public interface IAudioPlaybackHost : IDisposable

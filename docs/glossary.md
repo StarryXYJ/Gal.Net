@@ -18,9 +18,9 @@
 | target profile | `TargetProfileEntryCatalog` | 组合根为某个编辑或运行目标冻结的一组 Entry 模块及其 schema；它决定哪些 primitive/composite 可作者化和编译，未挂载类型不会回退到全局内置目录。 |
 | 原始组文件 | `.rawgalgroup` | 编辑器保存的 Group 源文件，可含 primitive 和 composite，`kind` 为 `Raw`。 |
 | 编译组文件 | `.galgroup` | 仅供 Runtime 加载的 Group 产物，只含 primitive，`kind` 为 `Compiled`。 |
-| 运行时 | `IGameRuntime` / `GameRuntime` | 当前节点、条目位置、变量、场景实例和文本解析器的唯一状态源。 |
+| 运行时 | `GalNet.Runtime.Runtime.IGameRuntime` / `GameRuntime` | 当前节点、条目位置、变量、场景实例和文本解析器的唯一状态源；执行模块借用 Core.Runtime.IGameContext。 |
 | 游戏引擎 | `GameEngine` | 驱动节点转移、活动 primitive 队列、batch skip、Choice 和稳定快照。 |
-| 指令分发端口 | `IPrimitiveDispatcher` | 单条 primitive 的定义解析、参数规范化、实例创建和 dispatch 入口。 |
+| 指令分发端口 | `Core.Execution.IPrimitiveDispatcher` | 单条 primitive 的定义解析、参数规范化、实例创建和 dispatch 入口。 |
 | 游戏执行上下文 | `IGameContext` | primitive/呈现借用的变量、场景与游戏能力；游标修改和读档由 Engine 管理。 |
 | 呈现端口 | presenter interfaces | 宿主提供的窄端口，例如 dialogue、choice、layer、animation、effect。 |
 | 快照 | `GameSnapshot` | 可保存和恢复的运行时位置、变量与场景状态。 |

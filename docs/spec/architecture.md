@@ -2,13 +2,13 @@
 
 ## 分层
 
-`Core` 不依赖 UI、文件系统或 DI。Runtime 只依赖 Core 与呈现抽象；宿主组装文件系统、资源、媒体和页面实现。旧 `GalNet.Storage.Abstractions` 项目已删除。
+`Core` 不依赖 UI、文件系统或 DI。Runtime 的项目依赖只有 Core，不引用呈现抽象或默认执行模块；宿主组装文件系统、资源、媒体和页面实现。旧 `GalNet.Storage.Abstractions` 项目已删除。
 
 ```text
-Core ───────────────────── 领域模型、资源/Gallery registry、服务契约
+Core ───────────────────── 领域模型、执行协议、资源/Gallery registry、服务契约
 Diagnostics ────────────── 可选 Benchmark 构建的 CPU 事件与启动捕获，独立于领域层
 Contracts.Builtins ──────── 仅依赖 Core 的内置 schema、参数和 Composite
-Presentation.Abstractions ─ IPrimitiveDispatcher、presenter 与平台无关应用契约
+Presentation.Abstractions ─ 执行注册/恢复组合、presenter 与平台无关应用契约
 GameHost ───────────────── 游戏会话、运行生命周期、玩家持久化与偏好规则
 Avalonia.GameHost ───────── 默认 Avalonia 会话、展示组合、设置 UI 和平台适配
 Media.LibVlc ────────────── 可供不同 UI 框架复用的 LibVLC 音频后端
@@ -43,7 +43,7 @@ flowchart TB
     Media --> Ports[Presentation.Abstractions]
     GameView --> Ports
     GameView --> Rendering[Avalonia.Rendering]
-    Runtime --> Ports
+    Runtime --> Core
     Ports --> Core
     Contracts --> Core
     Assets --> Core
@@ -153,7 +153,7 @@ Runtime 的 GraphLoader/GalgroupLoader/SaveManager 仅解析和序列化内容�
 
 Engine 的导航索引持有验证后的私有图副本，不共享作者集合或可变条目。外部变量读取返回独立值；执行模块共享的场景记录仍统一在 GameState.Read/Update 边界访问，不跨程序集暴露锁对象。
 
-执行模块/呈现端只依赖 Core.Runtime.IGameContext，Engine 才依赖包含游标与恢复操作的 IGameRuntime。Runtime 面向 Execution.IPrimitiveDispatcher，呈现端口仍留在 View。编辑器主题、Dock、快捷键、最近项目及嵌入布局 JSON 编码属于 Editor.Abstraction.Settings；Core 不持有这些宿主配置，未使用的 LauncherSettings 已删除。
+执行模块/呈现端借用 Core.Runtime.IGameContext；Engine 管理能力 IGameRuntime 与恢复候选 GameRestorePoint 属于 Runtime.Runtime。Core.Execution 拥有 IPrimitiveDispatcher、IChoicePresenter、ICatchUpPresentation 和 IPlayerPlaybackController，这些协议只包含中立执行数据；音频后端端口 IAudioPlaybackHost 与现有音频协议同属 Core.Audio。注册、分发及展示恢复组合仍位于 Presentation.Abstractions，具体 presenter 端口仍位于其 View。编辑器主题、Dock、快捷键、最近项目及嵌入布局 JSON 编码属于 Editor.Abstraction.Settings；Core 不持有这些宿主配置，未使用的 LauncherSettings 已删除。
 
 展示执行抽象的 StateRestoreSession 拥有重放 continuation；宿主在执行 view 和平台 presenter 释放前异步释放该会话。Suspend 等待取消后仍保留旧实例，下一次重放或释放会继续等待真实展示清理。
 

@@ -1,6 +1,7 @@
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.ViewModels;
+using GalNet.Core.Execution;
 using GalNet.Core.Scene;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Rendering.Scene;

@@ -1,4 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
-  <ItemGroup><ProjectReference Include="../../src/Shared/GalNet.Debugging/GalNet.Debugging.csproj" /></ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Shared/GalNet.Debugging/GalNet.Debugging.csproj" />
+    <ProjectReference Include="../../src/Shared/GalNet.Presentation.Abstractions/GalNet.Presentation.Abstractions.csproj" />
+  </ItemGroup>
 </Project>

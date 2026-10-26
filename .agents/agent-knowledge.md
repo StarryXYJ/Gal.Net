@@ -1,8 +1,10 @@
 # GalNet Agent Knowledge
 
+- [强制还原与包哈希](lessons/L-20261026-03-forced-restore-package-hash.md)：force-evaluate 用于重算锁图，可能接受新的包哈希；生成后检查差异，再用不带 force-evaluate 的 locked restore 验证。
+
 - [旧运行取消与恢复提交](lessons/L-20261026-02-detached-run-cancellation.md)：旧 scope 的取消回调异常不能截断合法恢复；候选先验证，旧 scope 的变量操作与恢复提交共用同步边界。
 
-- 2026-10-26 核心精简：primitive/呈现借用 Core.Runtime.IGameContext；游标与恢复归 IGameRuntime/Engine。执行端口为 Presentation.Abstractions.Execution.IPrimitiveDispatcher，IGameView 已移除；Engine 用 RestoreFromAsync/GameRestorePoint，宿主替换前预检存档。Entry 统一 Arguments JSON，作者/编译类型分离，无 Values/IsGeneric；Choices 归一为 enum。EditorSettings/RecentProjectInfo/布局编码移至 Editor.Abstraction.Settings。见 features/F-20261026-01-engine-core-simplification/phase-plan.md 和 docs/spec/runtime.md、entry-types.md、architecture.md；P6 环境验证限制以 feature 总结为准。
+- 2026-10-26 核心精简：primitive/呈现借用 Core.Runtime.IGameContext；游标与恢复管理 IGameRuntime/GameRestorePoint 归 Runtime.Runtime。执行、Choice、快进同步和玩家播放端口位于 Core.Execution，IAudioPlaybackHost 位于 Core.Audio；Runtime 的项目依赖只有 Core。IGameView 已移除；Engine 用 RestoreFromAsync，宿主替换前预检存档。Entry 统一 Arguments JSON，作者/编译类型分离，无 Values/IsGeneric；Choices 归一为 enum。EditorSettings/RecentProjectInfo/布局编码移至 Editor.Abstraction.Settings。见 features/F-20261026-01-engine-core-simplification/phase-plan.md 和 docs/spec/runtime.md、entry-types.md、architecture.md；P6 环境验证限制以 feature 总结为准。
 
 - [基线对照恢复与增量时间戳](lessons/L-20261026-01-baseline-restore-timestamps.md)：恢复源码备份可能保留早于基线 DLL 的时间戳，候选验证需独立输出、Rebuild 或显式失效增量构建，并核对源字节。
 

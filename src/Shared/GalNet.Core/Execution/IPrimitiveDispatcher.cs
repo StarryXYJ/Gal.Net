@@ -2,7 +2,7 @@ using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
 
-namespace GalNet.Presentation.Abstractions.Execution;
+namespace GalNet.Core.Execution;
 
 /// <summary>Resolves and dispatches one compiled primitive call.</summary>
 public interface IPrimitiveDispatcher : IDisposable, IAsyncDisposable

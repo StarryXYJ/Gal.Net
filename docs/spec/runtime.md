@@ -211,9 +211,9 @@ Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`
 
 ## 执行内部协作者
 
-primitive 和呈现恢复只借用 `IGameContext`：游戏位置只读，允许变量/场景操作和显式 EndGame，不提供游标修改、快照或读档方法。Engine 持有的 `IGameRuntime` 才拥有这些运行管理能力；旧 scope 在状态同步边界内检查取消，不能在恢复提交后写入新代变量。
+primitive 和呈现恢复只借用 `Core.Runtime.IGameContext`：游戏位置只读，允许变量/场景操作和显式 EndGame，不提供游标修改、快照或读档方法。Engine 持有的 `Runtime.Runtime.IGameRuntime` 才拥有这些运行管理能力，准备恢复使用同程序集的 GameRestorePoint；旧 scope 在状态同步边界内检查取消，不能在恢复提交后写入新代变量。
 
-`IPrimitiveDispatcher` 位于 Presentation.Abstractions.Execution，描述 schema/执行模块分发和状态验证，与具体 presenter/UI 无关；CompositeGameView 是其组合实现。`EngineNotifications` 统一按产生顺序排队状态、播放模式和检查点通知，在执行门外发布并隔离每个订阅者。活动实例列表本身保持分发顺序，不维护额外排序或自动阻塞镜像集合。
+`IPrimitiveDispatcher`、IChoicePresenter、ICatchUpPresentation 和 IPlayerPlaybackController 位于 Core.Execution，描述分发、状态验证、Choice 输入、快进同步和玩家播放控制，与具体 presenter/UI 无关；CompositeGameView 是分发协议的组合实现。音频后端端口位于 Core.Audio，Runtime 无需引用 Presentation.Abstractions 即可使用这些协议。`EngineNotifications` 统一按产生顺序排队状态、播放模式和检查点通知，在执行门外发布并隔离每个订阅者。活动实例列表本身保持分发顺序，不维护额外排序或自动阻塞镜像集合。
 
 运行图在 Engine 构造时验证并复制到私有导航索引；外部修改作者图、条目参数或边不会改变已创建的运行。重复节点/出口、缺失根/边目标和非法出口在启动时拒绝；没有后继边仍表示正常结束，合法循环不因批次预算被拒绝。
 

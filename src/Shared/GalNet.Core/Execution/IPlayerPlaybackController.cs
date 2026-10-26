@@ -1,6 +1,6 @@
 using GalNet.Core.Primitives;
 
-namespace GalNet.Presentation.Abstractions.View;
+namespace GalNet.Core.Execution;
 
 /// <summary>Player commands without a dependency on an engine or UI implementation.</summary>
 public interface IPlayerPlaybackController

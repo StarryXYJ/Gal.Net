@@ -94,7 +94,7 @@ Sample 在会话初始化后将设置接入 Player 变量存储，恢复语言�
 
 游戏工具栏的快速/自动模式互斥且允许均关闭，再次点击已选模式可取消。两模式未选中时保持透明，仅选中时显示主题色背景；其他工具栏按钮平时透明，悬浮使用淡色背景，按下加深。左键取消旧模式后，模式按钮按点击前状态决定开启/关闭，并从权威播放状态刷新选中绑定；工具栏操作不同时推进剧情。
 
-Runtime 只依赖 `GalNet.Presentation.Abstractions` 中的 `IPrimitiveDispatcher` 与细分接口（文本、NVL、交互、图层、转场、音频、视频、效果）。`AvaloniaGamePresenters` 是页面侧 presenter 的组合器，分别暴露 dialogue/NVL/choice、layer、animation 和 particle 端口；它不是页面或执行 view。宿主通过 `CompositeGameView` 把这些端口组合成 Runtime 使用的 `IPrimitiveDispatcher`。`NullGameView` 供测试和无界面宿主使用。
+Runtime 通过 `GalNet.Core.Execution` 中的 IPrimitiveDispatcher、Choice 与快进/播放控制协议接入宿主，不引用呈现程序集。`GalNet.Presentation.Abstractions` 提供文本、NVL、图层、转场、视频、效果等具体领域 presenter 协议及执行注册/恢复组合。`AvaloniaGamePresenters` 是页面侧 presenter 的组合器，分别暴露 dialogue/NVL/choice、layer、animation 和 particle 端口；它不是页面或执行 view。宿主通过 `CompositeGameView` 把这些端口组合成 Runtime 使用的 `IPrimitiveDispatcher`。`NullGameView` 供测试和无界面宿主使用。
 
 各 presenter 共享 `IAvaloniaUiDispatcher`，但分别拥有自己的等待、动画和粒子生命周期。`AvaloniaGamePresenters` 通过宿主提供的 `IGamePageLayerFactory` 解析图层图像，因而共享页面不会自行推断资源路径。玩家推进从 `GamePageViewModel.AdvanceRequested` 直接连接宿主，不经过 dialogue presenter 或 presenter 集合转发。动画逐帧更新由呈现实现完成；Runtime 只维护可存档的场景状态和动画结束后的稳定属性。
 

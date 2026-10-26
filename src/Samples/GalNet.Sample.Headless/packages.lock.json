@@ -77,7 +77,6 @@
         "dependencies": {
           "CoreCLR-NCalc": "[3.1.253, )",
           "GalNet.Core": "[1.0.0, )",
-          "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "Serilog": "[4.2.0, )"
         }
       },

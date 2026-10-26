@@ -16,7 +16,7 @@ public class ProjectDependencyTests
             ["GalNet.SchemaGenerator"] = [],
             ["GalNet.Presentation.Abstractions"] = ["GalNet.Core"],
             ["GalNet.GameHost"] = ["GalNet.Core", "GalNet.Runtime", "GalNet.Presentation.Abstractions"],
-            ["GalNet.Runtime"] = ["GalNet.Core", "GalNet.Presentation.Abstractions"],
+            ["GalNet.Runtime"] = ["GalNet.Core"],
             ["GalNet.Debugging"] = ["GalNet.Runtime"],
             ["GalNet.Primitives.Builtins"] = ["GalNet.Core", "GalNet.Contracts.Builtins", "GalNet.Presentation.Abstractions", "GalNet.Runtime"],
             ["GalNet.Media.LibVlc"] = ["GalNet.Core", "GalNet.Assets", "GalNet.Presentation.Abstractions"],
@@ -49,7 +49,7 @@ public class ProjectDependencyTests
         {
             ["GalNet.Architecture.Tests"] = [],
             ["GalNet.Diagnostics.Tests"] = ["GalNet.Diagnostics"],
-            ["GalNet.Debugging.Tests"] = ["GalNet.Debugging"],
+            ["GalNet.Debugging.Tests"] = ["GalNet.Debugging", "GalNet.Presentation.Abstractions"],
             ["GalNet.GameHost.Tests"] = ["GalNet.GameHost"],
             ["GalNet.Core.Tests"] = ["GalNet.Core"],
             ["GalNet.Runtime.Tests"] = ["GalNet.Core", "GalNet.Presentation.Abstractions", "GalNet.Runtime"],

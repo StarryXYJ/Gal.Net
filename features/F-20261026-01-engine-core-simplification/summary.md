@@ -1,6 +1,6 @@
 # 引擎核心精简与职责收敛
 
-状态：实现已落地；P1–P5 verified，P6 保留环境待验证项。
+状态：上一轮 P1–P5 verified，P6 保留环境待验证项；后续整体重构 R1 verified，R2–R8 planned。下列“实现结果”记录上一轮；后续归属变化见本文 R1 段。
 
 ## 实现结果
 
@@ -63,3 +63,30 @@ P6 保持 in-progress，待具备目录符号链接特权、正确 WebAssembly S
 - [Entry 与参数](../../docs/spec/entry-types.md)
 - [术语](../../docs/glossary.md)
 - [接入表现层](../../docs/manual/new-presentation-layer.md)
+
+## R1：执行协议与管理类型归位
+
+执行契约移入 Core.Execution：IPrimitiveDispatcher、IChoicePresenter、ICatchUpPresentation、IPlayerPlaybackController；IAudioPlaybackHost 与现有音频数据协议同归 Core.Audio。IGameRuntime 与 GameRestorePoint 移入 Runtime.Runtime。Runtime 的项目依赖现在只有 Core，注册与展示恢复组合继续留在 Presentation.Abstractions，没有新增包装类型或变更播放/恢复语义。音频领域整体可选化仍待 R5。
+
+仓库内宿主、呈现、内置模块、Sample 和测试调用方已迁移。Debugging.Tests 夹具使用 GameRegistration，以前借 Runtime 获得隐式呈现引用；现在由测试项目直接声明 Presentation.Abstractions，生产 Debugging/Runtime 不因此依赖展示实现。
+
+相关测试共 893 通过、1 个既有符号链接夹具失败：
+
+| 项目 | 通过 | 限制 |
+| --- | ---: | --- |
+| Core | 150 | 无 |
+| Runtime | 136 | 含新增自定义分发器执行/恢复与编译产物依赖测试 |
+| Architecture | 49 | Runtime allowlist 仅 Core |
+| GameHost | 6 | 无 |
+| Presentation | 243 | 无 |
+| Primitives.Builtins | 177 | 无 |
+| Debugging | 10 | 无 |
+| Integration | 122 | 1 项 ScreenshotEntryTests 在 Directory.CreateSymbolicLink 缺少 Windows 特权 |
+
+普通桌面/测试解决方案构建通过，包含 Editor、两个 Sample 和所有桌面测试项目；该验证使用忽略产物 r1-desktop.slnx 排除 Android/iOS/Browser，不等同于全部平台解决方案构建。Editor 单独构建也通过。普通桌面图从本地缓存执行不含 force-evaluate 的 locked restore 通过；定向 C# 未使用引用清理和空白格式通过，git diff --check 通过。日志在忽略产物 artifacts/engine-core-audit/r1-*.log。
+
+34 个普通/ReadyToRun 锁文件已重算并审查，仅删除 Runtime→Presentation 的项目依赖及无其他消费者的项目节点，第三方版本/哈希和框架键保持原值。发布验证仍有限制：R2R 本地缺少 .NET Runtime/WindowsDesktop/AspNetCore/Crossgen2 等 win-x64 包，未完成发布还原/构建；Browser 恢复仓库原哈希后，普通 locked restore 仍复现 WebAssembly.Pack 10.0.12 的 NU1403。不能把锁图生成成功当作发布验证成功。iOS 本地还原曾派生出不同平台版本键，已撤回该无关生成差异；原生平台未构建。
+
+强制重算 Browser 锁图会接受本地包的不同 contentHash，即使同时使用 locked-mode 也不是原锁哈希验证。本轮恢复原哈希后以不含 force-evaluate 的 locked restore 复现失败，没有改写缓存或关闭验证来绕过问题；可复用经验见 .agents/lessons/L-20261026-03-forced-restore-package-hash.md。新增测试初版在 Engine 构造后才初始化变量，却读取构造期稳定快照，夹具改为构造前初始化；生产检查点语义未改动。
+
+R1 的普通执行边界退出条件已满足；完整平台限制继续保留在 P6/R8，不视为解决。后续 R2 从设置模型与模块配置解耦开始。外部消费者需要随公开类型迁移重新构建，不提供旧命名空间适配。

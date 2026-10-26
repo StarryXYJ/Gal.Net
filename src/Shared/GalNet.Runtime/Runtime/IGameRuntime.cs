@@ -1,4 +1,6 @@
-namespace GalNet.Core.Runtime;
+using GalNet.Core.Runtime;
+
+namespace GalNet.Runtime.Runtime;
 
 /// <summary>Engine-owned cursor and restoration operations, excluded from primitive contexts.</summary>
 public interface IGameRuntime : IGameContext

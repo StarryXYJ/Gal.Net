@@ -1,6 +1,8 @@
 # 引擎核心精简与职责收敛
 
-状态：in-progress；P1–P5 verified，P6 实现与可执行验证已完成，保留环境待验证项。
+状态：上一轮 P1–P5 verified，P6 保留环境待验证项；后续架构重构 R1 verified，R2–R8 planned。
+
+本文件是整个重构的实施与进度入口。P0–P6 保留已提交的历史；R1–R8 整理后续工作，设计依据见 [design.md](design.md)。设计整理完成不代表实现完成。
 
 ## 目标与约束
 
@@ -75,6 +77,80 @@ primitive/呈现仅借用 IGameContext，Engine 管理 IGameRuntime 与 IPrimiti
 ## 可顺手做的优化
 
 仅在触及相应代码时进行：活动实例顺序已经单调时删除多余 OrderBy；复用已经准备好的恢复结果；消除同一边界内无必要的重复查询/转换。保留必要的输入校验、隔离复制和检查点语义；若优化需要额外缓存或改变所有权，移出本轮。
+
+## 后续整体重构
+
+目标：项目策略归高层，通用执行归 Runtime，可选内置领域不进入内核；通过删除多份表示和共享实际重复机制精简代码。
+
+设置模型归高层、内部接收简单配置、轨道/分组可自定义、Sample 保留三个分组是已确认方向。其余拆分位置为实施方向，具体类型/程序集归属依据消费者核实，不为完成表格制造新框架。实施时遇到会改变行为或范围的偏差，先更新设计与本计划。
+
+| 阶段 | 内容 | 依赖 | 状态 |
+| --- | --- | --- | --- |
+| R1 | 执行协议与管理类型归位 | 已提交基线 | [x] verified |
+| R2 | 设置模型与模块配置解耦 | R1 | [ ] planned |
+| R3 | 自定义音频分组与轨道控制 | R2 | [ ] planned |
+| R4 | 自定义配置贯穿作者与运行链路 | R2、R3 | [ ] planned |
+| R5 | 剥离可选领域与场景依赖 | R1–R4 | [ ] planned |
+| R6 | 统一参数描述与基础校验 | R5 | [ ] planned |
+| R7 | 收敛执行与异步生命周期重复 | R5、R6 | [ ] planned |
+| R8 | 最小项目、完整回归与文档收尾 | R1–R7 | [ ] planned |
+
+### R1 — verified
+
+执行/Choice/快进/播放端口归 Core.Execution，音频后端端口归 Core.Audio，IGameRuntime/GameRestorePoint 下移 Runtime.Runtime；Runtime 项目只依赖 Core，调用方与锁图已迁移，无兼容包装或行为变更。音频领域整体迁移仍归 R5。
+
+893 项相关回归通过，1 项集成夹具受既有符号链接权限限制；普通桌面解决方案构建、locked restore、格式和架构门禁通过。34 个锁文件仅有项目依赖变化，第三方版本/哈希和目标框架键保持不变；Browser/R2R/原生平台验证限制见 [summary](summary.md#r1执行协议与管理类型归位)。证据含 Runtime 的 ExecutionBoundaryTests（自定义分发器执行/恢复、编译产物依赖检查）与 ProjectDependencyTests，正式边界见 [architecture](../../docs/spec/architecture.md)。
+
+### R2 — 设置模型与模块配置解耦
+
+- **目标/模块**：Engine、Audio、文本呈现、GameHost、默认 Avalonia 宿主与 Sample。模块只接收自身所需的强类型配置值。
+- **任务**：推进配置归 Engine，轨道/混音配置归音频模块，文本速度归 Presenter，显示/存档选项归宿主或对应服务。完整玩家/项目模型移交高层，取消内部 Get<GameSettings>/Get<ProjectSettings>。通过显式更新应用配置，不保留高层可变 DTO 引用。清除消费者后删除 IGameContext.Settings；SettingsContainer/SettingsSection 仅在有实际用途的外层保留，否则删除。核实并移除无用 SaveSettings 和 SfxChannelCount 及其 UI/CLI 字段。
+- **验证/退出**：使用普通项目 DTO 映射即可更新推进、文本、音频和显示，无需继承框架设置基类；Core/Runtime 无具体项目/玩家设置模型依赖。默认宿主保持可运行；更新/取消/恢复相关回归通过。更新接入说明。
+- **风险**：配置热更新、清空玩家数据和运行切换不能各持一份不同步副本。R2 消除运行端绑定，作者文档/文件格式扩展在 R4 完整验收，不提前宣称整条链路完成。
+
+### R3 — 自定义音频分组与轨道控制
+
+- **目标/模块**：音频契约、内置音频模块、后端适配、设置 UI 和 Sample；这是行为扩展，与后续领域搬迁分开验证。
+- **任务**：分组/轨道均由开发者声明 ID；移除固定 AudioBuses 校验与增益 switch。一个轨道可不分组或属于一个组，配置加载/更新时验证唯一性与引用。分别支持 master/group/track 的 gain/mute，叠加轨道预设与内容 gain；任一层 mute 则静音，未设偏好采用中性值。更新影响已有和后续 voice。预设名称、增益、默认轨道和语音 Composite 的目标默认值由高层明确提供。
+- **验证/退出**：自定义 ambience、同组多轨、单轨互不干扰、增益/静音组合、配置更新和读档恢复有行为回归；队列/并发/溢出/票据与 drain 不退化。Sample 只保留音乐/音效/语音三个声明式分组，设置 UI 走同一声明路径。更新音频设计/接入文档。
+- **风险**：不建设总线树、多组路由、分组 DSP 或任意设置继承系统；其他能力将来分别定义规则。玩家混音不写回剧情快照，恢复使用当前偏好。
+
+### R4 — 自定义配置贯穿作者与运行链路
+
+- **目标/模块**：内容契约、Editor.Abstraction/Shared/UI、Storage.FileSystem、导出、Preview、安装加载与项目模板。
+- **任务**：解除 GameContent 和 Editor document 对完整固定 ProjectSettings 的绑定；明确最小内容描述、可选模块配置与项目自有 section 的归属。复用现有 schema/表单能力提供必要 section 适配，未理解的 JSON 保留。迁移默认模板、语言/变量声明等实际消费者，删除重复权威来源；需要派生副本时由一个权威源生成。只保留一套项目自有模型和映射示例，两种 Sample 宿主复用同一项目配置定义。
+- **验证/退出**：自定义 section 经打开→编辑→Undo/Redo→保存→导出→安装加载→运行/预览仍保留且生效；未知 section 编辑保存无损。作者校验与运行加载使用相同配置规则；明确发生变更的文件格式版本。补齐项目扩展手册。
+- **风险**：只加 JsonExtensionData、任意字典或把类型换成 object 不算完成。纯项目偏好可保留默认值；无效内容不能被默认配置掩盖。
+
+### R5 — 剥离可选领域与场景依赖
+
+- **目标/模块**：Core.Scene/Audio/Gallery、Runtime.Audio/Gallery/SceneInstanceManager、Contracts.Builtins、Primitives.Builtins、展示端口与宿主组合。
+- **任务**：默认视觉/音频领域的数据、纯算法和校验迁入实际共享的内置契约；音频队列/票据/后端调度等运行实现移出通用 Runtime。SceneInstances 从通用上下文移交场景模块，GameState 不直接维护 ISceneInstance 专用索引。Gallery 的 catalog/解锁/宿主组合成为可选领域，不强塞 primitive 模块；其包装位置按消费者决定。检查默认资源/Gallery 注册与低层 fallback，确保默认工厂由明确的组合入口选择，资源访问/注册协议继续按其复用需要共享。
+- **验证/退出**：最小自定义 primitive 可只用通用执行能力运行和恢复，无音频、场景、Gallery 或 Avalonia 要求；默认视觉/音频/Gallery 集成继续通过。句柄跨类型唯一、旧 scope 隔离、临时控制不入档、恢复顺序/drain 均保留。架构图与依赖门禁同步。
+- **风险**：移动契约会影响多个消费者，不按目录机械搬迁。优先复用现有程序集，若出现循环依赖再依据真实边界选择专门领域契约；不建立万能 Common，不建立可变持久状态镜像。可拆为连续小提交，每个提交保持可验证。
+
+### R6 — 统一参数描述与基础校验
+
+- **目标/模块**：EntryDefinition、EntryModule、Parameters、视觉/音频效果 schema、SchemaGenerator、Editor 适配。
+- **任务**：以 DynamicParameterTable 为 Entry 唯一参数来源，移除独立保存的 Parameters/Defaults/Options；文本和表单投影在外层按需生成，消除无意义的 nullable/fallback。Effect/SEffect 的类型、必填、范围和 enum 校验复用 FieldDescriptor/ValueValidation。目标范围、效果 stage、支持能力等业务检查留在领域模块；Shader 元数据解析器继续负责其语法。
+- **验证/退出**：DTO→schema→作者输入→编译→执行及表单/CLI 默认值、类型化 enum、必填/空值行为一致；删除旧表示后 Core/Generator/Editor/内置模块相关测试通过。更新参数规范。
+- **风险**：不新增另一套通用 schema；不同领域错误策略和草稿未知字段保留规则不能被统一校验意外覆盖。
+
+### R7 — 收敛执行与异步生命周期重复
+
+- **目标/模块**：GameEngine 各 partial、快进/调试回放、内置异步 primitive 与现有 AsyncPrimitiveInstance/PrimitiveTaskScope。
+- **任务**：共享同一引擎内分批推进、阻塞等待、scope 检查和必要收尾机制；玩家快进/调试路线的停止策略、已读与副作用继续分别定义。收敛重复的状态捕获、门禁释放和锁外通知，保留唯一执行门。基于真实重复复用异步任务观察/完成/清理，保留动画、视频、Timeline 的领域状态与失败策略；可读性收益不足的抽取不强做。
+- **验证/退出**：长剧情、取消、阻塞自然完成、Choice、自动/快速模式、断点/Step/Seek、读档、观察者异常与呈现失败相关回归通过；通知仍在锁外，取消不误报 Faulted，无第二个剧情 Runner。更新生命周期规范及实现说明。
+- **风险**：不使用大量布尔策略参数隐藏不同语义，不统一吞异常；不得以缩短文件为由增加反向回调或通用执行框架。
+
+### R8 — 最小项目、完整回归与文档收尾
+
+- **目标/模块**：架构门禁、单元/集成测试、Sample/模板、正式文档和 feature 收尾。
+- **任务**：以“最小无内置领域运行”与“Sample 自有设置 + 三分组”验证最终边界；测试任意自定义组/轨道及自定义配置完整链路。删除旧 API/无用类型/过时命名空间和过渡路径，检查公开契约、模板和包版本。执行与变更相关的构建/完整回归，更新 spec/manual、agent 已验证事实和 summary/review。
+- **验证/退出**：仓库调用方全量迁移、架构门禁与可执行测试通过，默认 Sample 可以运行；实现、验证、限制可追溯。上一轮 P6 的符号链接权限、WebAssembly 包哈希、原生桌面/外进程待验证项独立复核，未解决则继续明确保留，不计为已验收。
+- **风险**：不因为文档或源码搬迁完成就勾选验收，不将环境失败包装成通过。不开展 benchmark/profile、缓存/对象池/并行执行等专项优化。
+
+后续同样遵循前述进度维护规则：只勾选实际 verified 阶段，完成后压缩为“结果一句话 + 验证 + 证据”。用户已授权开始实施；各阶段状态以本表及实际验证证据为准。
 
 ## 参考
 
