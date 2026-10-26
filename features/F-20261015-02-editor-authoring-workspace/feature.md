@@ -7,7 +7,12 @@ created: 2026-10-15
 updated: 2026-10-26
 ---
 
+Group 一致性补充改造 GC1–GC5 已完成并验证：删除引用影响、移动身份、输入归档（含整 Group/文件删除）、局部查询、实时搜索/友好摘要及对象释放已收口。最终 926 项回归通过，当前源码解决方案构建、格式与指纹核对通过；四项原生 GUI 及人工 IME/剪贴板流程未验收。详见 [阶段记录](phase-group-consistency.md)、[实现后复核](review.md) 和 [摘要](summary.md)。整个 feature 的其他 P6/P7 计划继续分别追踪，status 保持 in-progress。
+
 # Editor 创作工作区重构
+
+2026-10-26 GC3 Entry 身份与输入生命周期 verified：待移动剪切、相容输出身份迁移、删除输入持久归档和新绑定显式恢复已接通；四项目 918 项执行通过，4 项 Explicit 原生 GUI 未执行，四语/格式/32 文件指纹通过，见 [阶段记录](phase-group-consistency.md#gc3身份与输入生命周期)。GC4/GC5 和整 Group/文件结构删除的独立输入协调验收保留。
+
 
 2026-10-26 用户要求继续，GC2 语义与引用诊断 verified：统一声明/索引、位置影响、Group 删除与换类型确认、Problems 警告已接通；四项目 909 项执行通过，4 项 Explicit 原生 GUI 未运行，四语/格式/指纹通过。GC1 提交为 `1496e0c`，本阶段证据见 [实施记录](phase-group-consistency.md#gc2语义引用诊断与操作影响)。剪切身份、删除输入、局部失效及释放仍按 GC3–GC5 保留。
 

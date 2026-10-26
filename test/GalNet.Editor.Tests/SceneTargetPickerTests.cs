@@ -146,12 +146,13 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var localization = scope.GetRequiredService<IEditorLocalizationService>(); localization.ApplyLocale("en-US"); TimelinePump(entryWindow);
                 Assert.That(button.Content?.ToString(), Does.Contain(localization["Timeline.Kind.Layer"]));
                 await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); Assert.That(hide.Source.Parameters["handleId"].GetString(), Is.EqualTo("missing-reference")); await history.RedoAsync();
-                // An open selector cannot commit after its author context changes.
+                // Removing a candidate invalidates the open selector even after a concurrent Timeline made presence uncertain.
                 TimelineClick(entryWindow, button); var oldPicker = (SceneTargetPicker)fieldFlyout.Content!;
-                scope.GetRequiredService<EntryFieldAuthoringService>().SetCondition(group.Id, layers[1].Source, "save.optional");
+                scope.GetRequiredService<EntryFieldAuthoringService>().SetCondition(group.Id, layers[1].Source, "false");
                 var beforeStale = JsonSerializer.Serialize(hide.Source.Parameters);
                 PressGroupKey(oldPicker.ResourcePanel.Search, Key.Down); PressGroupKey(oldPicker.ResourcePanel.Search, Key.Enter); TimelinePump(entryWindow);
                 Assert.That(JsonSerializer.Serialize(hide.Source.Parameters), Is.EqualTo(beforeStale)); fieldFlyout.Hide();
+                scope.GetRequiredService<EntryFieldAuthoringService>().SetCondition(group.Id, layers[1].Source, "save.optional");
                 page.SelectedEntry = timeline; timelineWindow.Show(); TimelinePump(timelineWindow); history.Clear();
                 var session = scope.GetRequiredService<TimelineEditSession>(); Assert.That(session.VisibleNodes, Is.Empty, "The default tree contains authored tracks only.");
                 var add = timelineView.FindControl<Button>("AddTimelineObject")!; TimelineClick(timelineWindow, add);

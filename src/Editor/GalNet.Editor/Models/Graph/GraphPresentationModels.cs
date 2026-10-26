@@ -357,6 +357,15 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     private string? _groupId;
     private SceneTargetCatalog? _scenes;
     private int _schemaGeneration;
+    internal Guid DraftIncarnation { get; private set; } = Guid.NewGuid();
+    internal Func<EntryEditorItemViewModel> DraftOwnerFactory()
+    {
+        var source = Source; var catalog = _authorCatalog; var authoring = _authoring; var group = _groupId;
+        var incarnation = DraftIncarnation; var parameters = _formParameters;
+        // Capture only neutral author data and project services, never this projection or its forms.
+        return () => new EntryEditorItemViewModel(source, catalog!) { _authoring = authoring, _groupId = group, DraftIncarnation = incarnation, _formParameters = parameters };
+    }
+    internal void RefreshSummary() => OnPropertyChanged(nameof(Summary));
     internal void BindAuthoring(string groupId, EntryFieldAuthoringService authoring, SceneTargetCatalog? scenes) { _groupId = groupId; _authoring = authoring; _scenes = scenes; }
     internal IReadOnlyList<FieldEditorOption>? SceneOptions(string field) => _scenes?.FieldOptions(_groupId!, StableId, Type, field);
     internal bool IsSceneOutput(string field) => SceneFieldSemantics.IsOutput(Type, field);
@@ -368,7 +377,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         var values = Source.GetParameterText(catalog);
         var parametersChanged = !_parameters.OrderBy(pair => pair.Key).SequenceEqual(values.OrderBy(pair => pair.Key));
         _parameters = values;
-        if (_type != Source.Type) InvalidateParameterFields();
+        if (_type != Source.Type) InvalidateAuthorBindings();
         SetProperty(ref _type, Source.Type, nameof(Type));
         SetProperty(ref _condition, Source.Condition, nameof(Condition));
         if (parametersChanged) OnPropertyChanged(nameof(Parameters));
@@ -434,10 +443,11 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     [ObservableProperty] private EntryParameterFormBinding? _parameterForm;
     private EntryParameterFormBinding? _detailForm;
     public EntryParameterFormBinding? DetailForm => ParameterForm ?? _detailForm;
-    public string Summary => EditSession?.Summary(this) ?? string.Join(" · ", Source.Parameters.Where(pair => pair.Key is "content" or "speaker" or "asset" or "assetId" or "target" or "expression" or "handleId")
-        .Select(pair => pair.Value.ValueKind == JsonValueKind.String ? pair.Value.GetString() : pair.Value.GetRawText()).Where(value => !string.IsNullOrEmpty(value))).Replace('\n', ' ');
+    public string Summary => EditSession?.Summary(this) ?? FormatSummary();
+    internal string FormatSummary(Func<string, string?>? text = null) => EntrySummaryFormatter.Build(Source, text, _scenes, _groupId);
     public bool HasCondition => !string.IsNullOrWhiteSpace(Condition);
     [ObservableProperty] private int _problemCount;
+    [ObservableProperty] private bool _isPendingMove;
     public bool HasProblems => ProblemCount > 0;
     partial void OnProblemCountChanged(int value) => OnPropertyChanged(nameof(HasProblems));
     public bool HasParameterForm => ParameterForm is not null;
@@ -496,6 +506,11 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         UpdateEffectHints();
     }
 
+    internal void InvalidateAuthorBindings()
+    {
+        DraftIncarnation = Guid.NewGuid();
+        InvalidateParameterFields();
+    }
     internal void InvalidateParameterFields()
     {
         _detailForm?.Dispose(); _detailForm = null;

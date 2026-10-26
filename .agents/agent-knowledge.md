@@ -1,12 +1,8 @@
 # GalNet Agent Knowledge
 
-- 2026-10-26 R2 已验证：IGameContext/GameRuntime 不携带 Settings；Engine 接收/显式更新 Core.Execution.PlaybackOptions，音频接收隔离轨道与 Runtime.Audio.AudioMixOptions。完整默认玩家偏好仅在 Avalonia.GameHost.Settings，通用 PlayerSession 不拥有它；清空后由默认宿主重绑。SettingsContainer/SettingsSection/SaveSettings、旧 Editor 游戏设置服务和 SfxChannelCount 已删除。ProjectSettings 仍暂属作者内容边界，完整迁移在 R4；自定义分组/单轨控制在 R3。用户要求每阶段验证完成后单独提交。见 feature phase-plan/summary。
+- [查询事实与写入上下文](lessons/L-20261026-03-query-result-and-write-context.md)：候选结果版本不能代替写入方身份/基线版本；异步准备按局部作者依赖与资源代次续租，相关变化再撤销不能复活旧选择。
 
-- [强制还原与包哈希](lessons/L-20261026-03-forced-restore-package-hash.md)：force-evaluate 用于重算锁图，可能接受新的包哈希；生成后检查差异，再用不带 force-evaluate 的 locked restore 验证。
-
-- [旧运行取消与恢复提交](lessons/L-20261026-02-detached-run-cancellation.md)：旧 scope 的取消回调异常不能截断合法恢复；候选先验证，旧 scope 的变量操作与恢复提交共用同步边界。
-
-- 2026-10-26 核心精简：primitive/呈现借用 Core.Runtime.IGameContext；游标与恢复管理 IGameRuntime/GameRestorePoint 归 Runtime.Runtime。执行、Choice、快进同步和玩家播放端口位于 Core.Execution，IAudioPlaybackHost 位于 Core.Audio；Runtime 的项目依赖只有 Core。IGameView 已移除；Engine 用 RestoreFromAsync，宿主替换前预检存档。Entry 统一 Arguments JSON，作者/编译类型分离，无 Values/IsGeneric；Choices 归一为 enum。EditorSettings/RecentProjectInfo/布局编码移至 Editor.Abstraction.Settings。见 features/F-20261026-01-engine-core-simplification/phase-plan.md 和 docs/spec/runtime.md、entry-types.md、architecture.md；P6 环境验证限制以 feature 总结为准。
+- [作者代次与视图生命周期](lessons/L-20261026-02-author-incarnation-view-lifetime.md)：作者删除/换类型使旧绑定失效；页面关闭只释放表单，不推进作者 incarnation，项目草稿须跨页面继续共享并可保存。
 
 - [基线对照恢复与增量时间戳](lessons/L-20261026-01-baseline-restore-timestamps.md)：恢复源码备份可能保留早于基线 DLL 的时间戳，候选验证需独立输出、Rebuild 或显式失效增量构建，并核对源字节。
 

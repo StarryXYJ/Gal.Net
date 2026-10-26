@@ -1066,5 +1066,16 @@
   "Scene.Diagnostic.scene.coverage.unknown": "This Entry has no built-in scene relationship declaration.",
   "Scene.Diagnostic.scene.coverage.structure": "Scene relationship structure could not be fully analyzed.",
   "Scene.Diagnostic.scene.analysis.limit": "Scene analysis reached its safety limit.",
-  "Error.entry.impactChanged": "Author content changed during review. Review the operation again."
+  "Error.entry.impactChanged": "Author content changed during review. Review the operation again.",
+  "Entry.MovePending": "Entries are marked for moving. Paste to move them.",
+  "Entry.MoveFallback": "The move was unavailable or expired; pasted a copy with new identities.",
+  "Entry.MoveCancel": "Cancel move",
+  "Scene.Impact.Inputs": "{0} unsubmitted input(s) will be archived in Problems. They will not block saving.",
+  "Uiux.Draft.Archived": "Archived input: its target is absent or no longer matches. Copy its text before discarding.",
+  "Uiux.Draft.Recoverable": "Archived input can be restored through a new field binding. It does not block saving.",
+  "Uiux.Draft.RestoreRequested": "Restore requested. Open or expand the corresponding field to recover its input.",
+  "Uiux.Draft.Restore": "Restore input",
+  "Error.entry.archiveFull": "Input recovery is full. Copy or discard archived inputs in Problems before removing more entries.",
+  "Error.entry.archiveUnavailable": "Input recovery is unavailable. Preserve and repair .galnet/editor/input-archive.json first.",
+  "Error.entry.archiveChanged": "The archived input no longer matches its author target. Copy its text before discarding it."
 }

@@ -1066,5 +1066,16 @@
   "Scene.Diagnostic.scene.coverage.unknown": "此 Entry 尚无内置场景关系声明。",
   "Scene.Diagnostic.scene.coverage.structure": "场景关系结构无法完整分析。",
   "Scene.Diagnostic.scene.analysis.limit": "场景分析已达到安全上限。",
-  "Error.entry.impactChanged": "检查期间作者内容已改变，请重新检查操作影响。"
+  "Error.entry.impactChanged": "检查期间作者内容已改变，请重新检查操作影响。",
+  "Entry.MovePending": "条目已标记待移动，粘贴后完成移动。",
+  "Entry.MoveFallback": "移动凭据已失效或不属于本项目，本次按复制粘贴并分配新身份。",
+  "Entry.MoveCancel": "取消移动",
+  "Scene.Impact.Inputs": "{0} 项未提交输入将归档到 Problems，不再阻止保存。",
+  "Uiux.Draft.Archived": "输入已归档：目标不存在或基线不匹配。可复制文本后明确丢弃。",
+  "Uiux.Draft.Recoverable": "目标已恢复，可通过新字段绑定恢复输入；归档不阻止保存。",
+  "Uiux.Draft.RestoreRequested": "已请求恢复。打开或展开对应字段即可恢复输入。",
+  "Uiux.Draft.Restore": "恢复输入",
+  "Error.entry.archiveFull": "输入恢复区已满，请先在 Problems 中复制或丢弃归档，再删除更多条目。",
+  "Error.entry.archiveUnavailable": "输入恢复区不可用，请先保留并修复 .galnet/editor/input-archive.json。",
+  "Error.entry.archiveChanged": "归档输入与当前作者目标不匹配，请先复制文本再丢弃。"
 }

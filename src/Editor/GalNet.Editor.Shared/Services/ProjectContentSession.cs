@@ -21,6 +21,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     private bool _suspended;
     private bool _disposed;
     private readonly List<DraftRegistration> _drafts = [];
+    private readonly List<Action<EditorProjectDocument, EditorProjectDocument, Action>> _structureTransitions = [];
     private readonly Dictionary<string, EditorFileDocument> _files = [];
     public IReadOnlyDictionary<string, EditorFileDocument> FileDocuments => _files;
     public EditorFileDocument TrackFile(string path, byte[]? textBytes = null)
@@ -88,6 +89,18 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
         _drafts.Add(registration);
         return registration;
     }
+    public IDisposable RegisterDraft(Func<bool> hasChanges, Func<ProjectDraftCommitContext, Task> commit, Action discard)
+    {
+        var registration = new DraftRegistration(_drafts, hasChanges, () => commit(default), Discard: discard, ContextualCommit: commit);
+        _drafts.Add(registration); return registration;
+    }
+    public IDisposable RegisterStructureTransition(Action<EditorProjectDocument, EditorProjectDocument, Action> transition)
+    {
+        _structureTransitions.Add(transition); return new StructureRegistration(_structureTransitions, transition);
+    }
+    private sealed record StructureRegistration(List<Action<EditorProjectDocument, EditorProjectDocument, Action>> Owner,
+        Action<EditorProjectDocument, EditorProjectDocument, Action> Transition) : IDisposable
+    { public void Dispose() => Owner.Remove(Transition); }
     public IDisposable RegisterFileDraft(string fileId, Func<bool> hasChanges, Func<Task> commit, Action validate)
     {
         var registration = new DraftRegistration(_drafts, hasChanges, commit, fileId, validate);
@@ -119,14 +132,15 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
         public void Dispose() => owner._captureGuard = null;
     }
 
-    public async Task CommitDraftsAsync()
+    public Task CommitDraftsAsync() => CommitDraftsAsync(default);
+    public async Task CommitDraftsAsync(ProjectDraftCommitContext context)
     {
         foreach (var draft in _drafts.ToArray())
-            if (draft.HasChanges()) await draft.Commit();
+            if (draft.HasChanges()) await (draft.ContextualCommit?.Invoke(context) ?? draft.Commit());
     }
 
     private sealed record DraftRegistration(List<DraftRegistration> Owner, Func<bool> HasChanges, Func<Task> Commit,
-        string? FileId = null, Action? Validate = null, Action? Discard = null) : IDisposable
+        string? FileId = null, Action? Validate = null, Action? Discard = null, Func<ProjectDraftCommitContext, Task>? ContextualCommit = null) : IDisposable
     {
         public void Dispose() => Owner.Remove(this);
     }
@@ -451,31 +465,38 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
                 foreach (var pair in plan.Files!.ExpectedHashes) files.Files.ExpectedHashes[pair.Key] = pair.Value;
                 plan = plan with { Files = files.Files };
             }
-            repository.ApplySave(project.RootPath, plan);
-            try
+            void Publish()
             {
-                change.Apply(new() { Graph = documents.CurrentDocument, Settings = project.Settings, GroupEntries = documents.LoadedProject.GroupEntries, Files = _files }, AuthorDocumentVersion.Working);
-                documents.SynchronizeGroups();
-            }
-            catch (Exception failure)
-            {
+                repository.ApplySave(project.RootPath, plan);
                 try
                 {
-                    var restore = PrepareAuthorPlan(project, saved, checkSettingsBaseline: false);
-                    repository.ApplySave(project.RootPath, restore);
-                    _settingsBaseline = restore.Writes["settings.json"];
+                    change.Apply(new() { Graph = documents.CurrentDocument, Settings = project.Settings, GroupEntries = documents.LoadedProject.GroupEntries, Files = _files }, AuthorDocumentVersion.Working);
+                    documents.SynchronizeGroups();
                 }
-                catch (Exception compensation)
+                catch (Exception failure)
                 {
-                    BlockWrites(new AggregateException("Structure publication could not be compensated.", failure, compensation));
-                    throw new ProjectRepairRequiredException(Path.Combine(project.RootPath, ".galnet/editor"), LastError!);
+                    try
+                    {
+                        var restore = PrepareAuthorPlan(project, saved, checkSettingsBaseline: false);
+                        repository.ApplySave(project.RootPath, restore);
+                        _settingsBaseline = restore.Writes["settings.json"];
+                    }
+                    catch (Exception compensation)
+                    {
+                        BlockWrites(new AggregateException("Structure publication could not be compensated.", failure, compensation));
+                        throw new ProjectRepairRequiredException(Path.Combine(project.RootPath, ".galnet/editor"), LastError!);
+                    }
+                    throw;
                 }
-                throw;
+                _baseline = Serialize(nextSaved);
+                _settingsBaseline = plan.Writes["settings.json"];
+                AcceptPublication(plan);
+                LastError = null;
             }
-            _baseline = Serialize(nextSaved);
-            _settingsBaseline = plan.Writes["settings.json"];
-            AcceptPublication(plan);
-            LastError = null;
+            Action publish = Publish;
+            foreach (var transition in _structureTransitions.ToArray().Reverse())
+            { var next = publish; publish = () => transition(working, nextWorking, next); }
+            publish();
             Refresh();
         }
         catch (Exception failure)
@@ -572,6 +593,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
         _lifetime.Cancel();
         _closingRegistration?.Dispose();
         _drafts.Clear();
+        _structureTransitions.Clear();
         _lifetime.Dispose();
         _saveGate.Dispose();
         GC.SuppressFinalize(this);

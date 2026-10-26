@@ -198,7 +198,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var pending = new TaskCompletionSource(); view.Write = _ => pending.Task;
                 var cut = view.CopySelectionAsync(cut: true); original[0].Condition = "changed while copying"; pending.SetResult(); await cut;
                 Assert.That(group.Entries, Is.EqualTo(original)); Assert.That(vm.ErrorText, Is.Not.Empty); history.Clear();
-                view.Write = _ => Task.CompletedTask; await view.CopySelectionAsync(cut: true); Assert.That(group.Entries, Has.Count.EqualTo(1)); await history.UndoAsync(); Assert.That(group.Entries, Is.EqualTo(original)); Assert.That(history.CanUndo, Is.False);
+                view.Write = _ => Task.CompletedTask; await view.CopySelectionAsync(cut: true); Assert.That(group.Entries, Is.EqualTo(original)); Assert.That(vm.HasPendingMove, Is.True); Assert.That(vm.SelectedEntries.All(entry => entry.IsPendingMove), Is.True); Assert.That(history.CanUndo, Is.False); vm.CancelPendingMove(); Assert.That(vm.HasPendingMove, Is.False);
                 vm.SelectedEntry = original[0]; var clip = vm.CopySelection(); var read = new TaskCompletionSource<string?>(); view.Read = () => read.Task; var paste = view.PasteSelectionAsync();
                 vm.SelectedEntry = original[2]; read.SetResult(clip); await paste; Assert.That(group.Entries[1].StableId, Is.Not.EqualTo(original[1].StableId), "Paste uses the captured anchor, not the later selection.");
                 await history.UndoAsync(); history.Clear(); vm.SelectedEntry = original[0]; read = new(); view.Read = () => read.Task; paste = view.PasteSelectionAsync();

@@ -19,13 +19,13 @@ internal static class SceneIdentityWalker
         if (depth > 8) { gap(new(pointer, "scene.analysis.limit")); return; }
         var semantics = SceneAuthoringSemantics.Find(type);
         if (semantics is null) { gap(new(pointer, "scene.coverage.unknown")); return; }
-        foreach (var output in semantics.Outputs) Visit(parameters, output.Field, pointer, output.Domain, output, null, position, eventId, slot, gap);
+        foreach (var output in semantics.Outputs.Where(output => output.Container is null)) Visit(parameters, output.Field, pointer, output.Domain, output, null, position, eventId, slot, gap);
         foreach (var reference in semantics.References) Visit(parameters, reference.Field, pointer, reference.Domain, null, reference, position, eventId, slot, gap);
         if (!semantics.Timeline) return;
         if (parameters["timeline"] is not JsonObject timeline) { gap(new(pointer + "/timeline", "scene.coverage.structure")); return; }
         var root = pointer + "/timeline";
         var playback = Key(timeline, "playbackHandleId", root, gap);
-        if (playback is not null) Visit(timeline, playback, root, SceneIdentityDomain.Playback, new(playback, "playback", SceneIdentityDomain.Playback, SceneTargetKind.Playback), null, position, eventId, slot, gap);
+        if (playback is not null) Visit(timeline, playback, root, SceneIdentityDomain.Playback, semantics.Outputs.Single(output => output.Container == "timeline") with { Field = playback }, null, position, eventId, slot, gap);
         var tracks = Key(timeline, "tracks", root, gap);
         if (tracks is not null && timeline[tracks] is JsonArray trackArray)
             for (var index = 0; index < trackArray.Count; index++)

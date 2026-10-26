@@ -43,6 +43,11 @@ public static class SceneEntryImpactPrompt
         RenderGroups(); rows.Children.Add(groups);
         System.ComponentModel.PropertyChangedEventHandler groupChanged = (_, _) => RenderGroups();
         text.PropertyChanged += groupChanged; bindings.Add(new CallbackDisposable(() => text.PropertyChanged -= groupChanged));
+        if (impact.ArchivedInputs > 0)
+        {
+            var inputs = new TextBlock { TextWrapping = Avalonia.Media.TextWrapping.Wrap };
+            bindings.Add(LocalizedBindings.Bind(inputs, TextBlock.TextProperty, text, "Scene.Impact.Inputs", impact.ArchivedInputs)); rows.Children.Add(inputs);
+        }
         if (!impact.Complete)
         {
             var incomplete = new TextBlock { TextWrapping = Avalonia.Media.TextWrapping.Wrap };

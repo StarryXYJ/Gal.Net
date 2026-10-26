@@ -1066,5 +1066,16 @@
   "Scene.Diagnostic.scene.coverage.unknown": "この Entry の組み込みシーン関係宣言がありません。",
   "Scene.Diagnostic.scene.coverage.structure": "シーン関係の構造を完全には解析できません。",
   "Scene.Diagnostic.scene.analysis.limit": "シーン解析が安全上限に達しました。",
-  "Error.entry.impactChanged": "確認中に編集内容が変わりました。操作の影響を再確認してください。"
+  "Error.entry.impactChanged": "確認中に編集内容が変わりました。操作の影響を再確認してください。",
+  "Entry.MovePending": "項目を移動待ちにしました。貼り付けで移動します。",
+  "Entry.MoveFallback": "移動情報が無効か別のプロジェクトのものです。新しい識別子でコピーしました。",
+  "Entry.MoveCancel": "移動をキャンセル",
+  "Scene.Impact.Inputs": "未確定の入力 {0} 件を Problems に保管します。保存は妨げません。",
+  "Uiux.Draft.Archived": "保管済み入力：対象がないか基準値が一致しません。破棄前にテキストをコピーできます。",
+  "Uiux.Draft.Recoverable": "新しいフィールド接続で入力を復元できます。保管済み入力は保存を妨げません。",
+  "Uiux.Draft.RestoreRequested": "復元を要求しました。対応するフィールドを開くか展開してください。",
+  "Uiux.Draft.Restore": "入力を復元",
+  "Error.entry.archiveFull": "入力保管領域が満杯です。Problems でコピーまたは破棄してから項目を削除してください。",
+  "Error.entry.archiveUnavailable": "入力保管領域を利用できません。.galnet/editor/input-archive.json を保全して修復してください。",
+  "Error.entry.archiveChanged": "保管済み入力が現在の対象と一致しません。破棄前にテキストをコピーしてください。"
 }

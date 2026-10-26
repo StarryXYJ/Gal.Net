@@ -7,11 +7,11 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.Scene;
+using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
 using GalNet.Editor.Shared.Services;
-using GalNet.Editor.Abstraction.Changes;
 
 namespace GalNet.Editor.Services;
 
@@ -89,11 +89,11 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         var root = next?.Parameters.TryGetValue("timeline", out var value) == true ? (JsonElement?)value.Clone() : null;
         var scene = next is null ? new SceneTargetResult([], false, false) : _sceneQuery.Before(_selection.Current!.GroupId, next.StableId);
         if (next?.Type == BuiltinEntryIds.PlayTimeline) scene = _sceneQuery.AtTimeline(_selection.Current!.GroupId, next.StableId, new(Frame, IncludeFuture: true));
-        var sceneSignature = JsonSerializer.Serialize(scene);
+        var sceneSignature = JsonSerializer.Serialize(scene with { Revision = 0, ContextRevision = 0, AuthorRevision = 0 });
         var sameValue = _baseline is { } previous ? root is { } current && JsonElement.DeepEquals(previous, current) : root is null;
-        if (_target == _selection.Current && ReferenceEquals(_entry, next) && _type == next?.Type && sameValue && sceneSignature == _sceneSignature && _sceneRevision == _sceneQuery.Revision)
+        if (_target == _selection.Current && ReferenceEquals(_entry, next) && _type == next?.Type && sameValue && sceneSignature == _sceneSignature && _sceneRevision == scene.Revision)
         { RefreshSource(); foreach (var node in Tree.SelectMany(node => node.Descendants())) node.RefreshLabel(); return; }
-        EndObjectEdit(); _scene = scene; _sceneSignature = sceneSignature; _sceneRevision = _sceneQuery.Revision;
+        EndObjectEdit(); _scene = scene; _sceneSignature = sceneSignature; _sceneRevision = scene.Revision;
         SaveExpansion(); DetachTree(); InvalidateKeyDocument(); _generation++; Rows.Clear(); Tree.Clear(); _document = null; _baseline = null; Message = "";
         InvalidateEvents();
         _target = _selection.Current; _entry = next; _type = next?.Type; _baseline = root;
@@ -123,7 +123,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         if (_document is not null && CanEdit && _target?.EntryId is { } id)
         {
             _scene = _sceneQuery.AtTimeline(_target.GroupId, id, new(Frame, IncludeFuture: true));
-            _sceneSignature = JsonSerializer.Serialize(_scene);
+            _sceneSignature = JsonSerializer.Serialize(_scene with { Revision = 0, ContextRevision = 0, AuthorRevision = 0 }); _sceneRevision = _scene.Revision;
             zero = Frame == 0 ? _scene : _sceneQuery.AtTimeline(_target.GroupId, id, new(0));
         }
         PruneObjectDrafts();
@@ -178,8 +178,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
     }
     private bool Submit(JsonElement value)
     {
-        if (_target?.EntryId is { } entryId) _sceneQuery.Before(_target.GroupId, entryId);
-        if (_sceneRevision != _sceneQuery.Revision) { Refresh(); return false; }
+        if (_target?.EntryId is { } entryId && _sceneRevision != _sceneQuery.AtTimeline(_target.GroupId, entryId, new(Frame, IncludeFuture: true)).Revision) { Refresh(); return false; }
         if (_entry is null || !ReferenceEquals(_entry, Find(_target)) || _entry.Type != BuiltinEntryIds.PlayTimeline || _selection.Current != _target) return false;
         var current = _entry.Parameters.TryGetValue("timeline", out var json) ? (JsonElement?)json : null;
         if (_baseline is { } expected ? current is not { } actual || !JsonElement.DeepEquals(expected, actual)

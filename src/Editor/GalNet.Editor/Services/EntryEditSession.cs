@@ -8,17 +8,32 @@ using GalNet.Game.Controls.Forms;
 namespace GalNet.Editor.Services;
 
 /// <summary>Project-owned drafts. Closing a view never releases unsubmitted author input.</summary>
-public sealed class EntryEditSession : IDisposable
+public sealed partial class EntryEditSession : IDisposable
 {
-    private readonly Dictionary<string, Draft> _drafts = new(StringComparer.Ordinal);
+    private sealed record DraftKey(string GroupId, string EntryId, string RootId, string Path, Guid Incarnation);
+    private readonly DraftRepository _drafts = new();
+    private bool _disposed;
     private readonly IDisposable _registration;
+    private readonly IDisposable _structureRegistration;
     private readonly IProjectContentSession _content;
     private readonly GameTextAuthoringService _texts;
     private readonly IEditorLocalizationService _localization;
-    public EntryEditSession(IProjectContentSession content, GameTextAuthoringService texts, IEditorLocalizationService localization)
+    public EntryEditSession(IProjectContentSession content, GameTextAuthoringService texts, IEditorLocalizationService localization,
+        IEditorDocumentService? documents = null, IProjectService? projects = null, EntryDraftArchiveLimits? limits = null, GalNet.Editor.History.EditorHistories? histories = null)
     {
         _content = content; _texts = texts; _localization = localization;
-        _registration = content.RegisterDraft(() => PendingCount > 0, CommitAsync, DiscardDrafts);
+        _documents = documents; _projects = projects; _limits = limits ?? new();
+        _registration = content.RegisterDraft(() => PendingCount > 0, context => CommitAsync(context), DiscardDrafts);
+        _structureRegistration = content.RegisterStructureTransition((before, after, publish) =>
+        {
+            var surviving = after.Graph.Nodes.Where(node => node.Type == "Group").Select(node => node.Id).ToHashSet(StringComparer.Ordinal);
+            var removed = before.GroupEntries.Where(pair => !surviving.Contains(pair.Key)).SelectMany(pair => pair.Value.Select(entry =>
+            { var address = new GalNet.Editor.Shared.Services.SceneAuthorAddress(pair.Key, entry.StableId); return new EntryAddressTransition(address, address); })).ToArray();
+            if (removed.Length == 0) publish();
+            else
+                try { ApplyAuthorEdit(removed, publish, histories?.Content.AuthorChanges); }
+                catch (GalNet.Editor.History.HistoryRepairRequiredException failure) { content.BlockWrites(failure); throw; }
+        });
         content.Changed += CheckSources;
     }
     public event Action? Changed;
@@ -26,31 +41,43 @@ public sealed class EntryEditSession : IDisposable
     public IEnumerable<Draft> Pending => _drafts.Values.Where(draft => draft.State.IsDirty || !draft.State.CanCommit);
 
     public FieldDraftState Get(EntryEditorItemViewModel owner, FieldDescriptor field) => Get(owner, field, field, []);
-    private FieldDraftState Get(EntryEditorItemViewModel owner, FieldDescriptor root, FieldDescriptor field, string[] path)
+    private FieldDraftState Get(EntryEditorItemViewModel owner, FieldDescriptor root, FieldDescriptor field, string[] path) => Get(new DraftOwner(owner), root, field, path);
+    private FieldDraftState Get(DraftOwner ownership, FieldDescriptor root, FieldDescriptor field, string[] path)
     {
-        var key = owner.AuthorGroupId + "/" + owner.StableId + "/" + root.Id + "/" + string.Join("/", path);
-        // The author object is a generation boundary: undo may restore the same ID with a new source.
-        key += "/" + owner.Type + "/" + System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(owner.Source);
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var owner = ownership.Get();
+        var incarnation = owner.DraftIncarnation;
+        var key = new DraftKey(owner.AuthorGroupId!, owner.StableId, root.Id, JsonSerializer.Serialize(path), incarnation);
         if (_drafts.TryGetValue(key, out var found)) return found.State;
         var type = owner.Type;
         string Snapshot()
         {
-            if (!owner.IsCurrent || owner.Source.Type != type) return "<obsolete>";
-            var value = owner.Source.Parameters.GetValueOrDefault(root.Id);
+            var current = ownership.Get();
+            if (!current.IsCurrent || current.Source.Type != type || current.DraftIncarnation != incarnation) return "<obsolete>";
+            var value = current.Source.Parameters.GetValueOrDefault(root.Id);
             return value.GetRawTextSafe() + (root.Semantic == FieldValueSemantic.LocalizedText && value.ValueKind == JsonValueKind.String ? "\n" + _texts.Read(value.GetString()!) : "");
         }
         var state = new FieldDraftState(Snapshot);
-        var draft = new Draft(owner, root, field, path, type, state);
+        var draft = new Draft(ownership, root, field, path, type, state, incarnation);
         _drafts.Add(key, draft);
-        state.Child = (child, segment) => Get(owner, root, child, [.. path, segment]);
+        state.Child = (child, segment) => Get(ownership, root, child, [.. path, segment]);
         state.Commit = () => CommitAsync(draft);
-        state.Changed += OnChanged;
+        draft.OnChanged = () => { _drafts.Track(draft); OnChanged(); };
+        state.Changed += draft.OnChanged;
+        TryRestore(draft);
         return state;
     }
-    private void OnChanged() { _content.Refresh(); Changed?.Invoke(); }
+    private void OnChanged() { Revision++; _content.Refresh(); NotifyChanged(); }
+    private void NotifyChanged()
+    {
+        if (Changed is null) return;
+        foreach (Action observer in Changed.GetInvocationList())
+            try { observer(); } catch (Exception failure) { Serilog.Log.Error(failure, "An entry input observer failed"); }
+    }
     private void CheckSources()
     {
         foreach (var draft in _drafts.Values) draft.State.CheckSource();
+        NotifyChanged();
     }
     private void DiscardDrafts()
     {
@@ -60,10 +87,11 @@ public sealed class EntryEditSession : IDisposable
     private ValueIssue Error(string code) => new(code, _localization["Uiux.Draft." + code]);
     private async Task<ValueIssue?> CommitAsync(Draft draft)
     {
+        if (_disposed) return Error("Conflict");
         var state = draft.State;
         if (!state.CanCommit) return Error("Composing");
         if (!state.IsDirty) return null;
-        if (state.IsConflicted || !draft.Owner.IsCurrent || draft.Owner.Type != draft.Type) return Error("Conflict");
+        if (state.IsConflicted || !draft.Owner.IsCurrent || draft.Owner.Type != draft.Type || draft.Owner.DraftIncarnation != draft.Incarnation) return Error("Conflict");
         try
         {
             FieldValue candidate;
@@ -117,10 +145,11 @@ public sealed class EntryEditSession : IDisposable
         return matches.Length > 1 ? throw new InvalidDataException("The draft's property name is ambiguous.") : matches.SingleOrDefault() ?? name;
     }
     private static JsonNode? Child(JsonNode node, string name) => node is JsonArray array ? array[int.Parse(name, System.Globalization.CultureInfo.InvariantCulture)] : node[Wire(node, name)];
-    public async Task CommitAsync()
+    public Task CommitAsync() => CommitAsync(default(ProjectDraftCommitContext));
+    private async Task CommitAsync(ProjectDraftCommitContext context)
     {
         var failures = new List<string>();
-        foreach (var draft in Pending.ToArray())
+        foreach (var draft in Pending.Where(draft => context.RemovingGroups?.Contains(draft.Owner.AuthorGroupId!) != true).ToArray())
             if (await CommitAsync(draft) is { } issue)
             {
                 draft.State.Update(draft.State.Text, draft.State.IsDirty, issue, draft.State.JsonText);
@@ -130,17 +159,28 @@ public sealed class EntryEditSession : IDisposable
     }
     public void Dispose()
     {
+        _disposed = true;
         _registration.Dispose();
+        _structureRegistration.Dispose();
         _content.Changed -= CheckSources;
-        foreach (var draft in _drafts.Values) draft.State.Changed -= OnChanged;
-        _drafts.Clear(); Changed = null;
+        foreach (var draft in _drafts.Values) draft.State.Changed -= draft.OnChanged;
+        _drafts.Clear(); _archives.Clear(); _restoreRequested.Clear(); Changed = null;
     }
-    public sealed record Draft(EntryEditorItemViewModel Owner, FieldDescriptor Root, FieldDescriptor Field, string[] Path, string Type, FieldDraftState State);
-    internal string Summary(EntryEditorItemViewModel owner) => string.Join(" · ", owner.Source.Parameters
-        .Where(pair => pair.Key is "content" or "speaker" or "asset" or "assetId" or "target" or "expression" or "handleId")
-        .Select(pair => pair.Key == "content" && pair.Value.ValueKind == JsonValueKind.String ? _texts.Read(pair.Value.GetString()!) ?? pair.Value.GetString()
-            : pair.Value.ValueKind == JsonValueKind.String ? pair.Value.GetString() : pair.Value.GetRawText())
-        .Where(value => !string.IsNullOrWhiteSpace(value))).Replace('\n', ' ');
+    public sealed class Draft
+    {
+        private readonly DraftOwner _owner;
+        internal Draft(DraftOwner owner, FieldDescriptor root, FieldDescriptor field, string[] path, string type, FieldDraftState state, Guid incarnation)
+        { _owner = owner; Root = root; Field = field; Path = path; Type = type; State = state; Incarnation = incarnation; }
+        public EntryEditorItemViewModel Owner => _owner.Get();
+        public FieldDescriptor Root { get; }
+        public FieldDescriptor Field { get; }
+        public string[] Path { get; }
+        public string Type { get; }
+        public FieldDraftState State { get; }
+        public Guid Incarnation { get; }
+        internal Action? OnChanged { get; set; }
+    }
+    internal string Summary(EntryEditorItemViewModel owner) => owner.FormatSummary(_texts.Read);
 }
 
 internal static class DraftJson

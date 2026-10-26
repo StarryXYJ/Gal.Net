@@ -126,6 +126,7 @@ public partial class EntryListEditorControl : ReorderableListControl
         }
         if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None)
         {
+            viewModel.CancelPendingMove();
             viewModel.SetSelection([]); e.Handled = true; return;
         }
 
@@ -145,13 +146,15 @@ public partial class EntryListEditorControl : ReorderableListControl
 
     public Task CopySelectionAsync(bool cut = false) => RunEntryAction(async vm =>
     {
-        var ids = vm.SelectedEntries.Select(entry => entry.StableId).ToArray();
-        var text = vm.CopySelection();
+        var offer = cut ? vm.PrepareCutSelection() : null;
+        var text = cut ? offer?.Text ?? "" : vm.CopySelection();
         if (text.Length == 0) return;
         await WriteClipboardAsync(text);
-        // A failed clipboard write must never remove the originals. A late completion
-        // after the page/project closes must not modify a replacement project.
-        if (cut && !vm.IsDisposed && ReferenceEquals(DataContext, vm)) await vm.DeleteCopiedEntriesAsync(ids, text);
+        if (!vm.IsDisposed && ReferenceEquals(DataContext, vm))
+        {
+            if (offer is not null) vm.BeginCut(offer);
+            else vm.CancelPendingMove();
+        }
     });
 
     public Task PasteSelectionAsync() => RunEntryAction(async vm =>

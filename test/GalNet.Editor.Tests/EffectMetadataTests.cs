@@ -98,6 +98,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             fx.Source.Parameters["program"] = JsonSerializer.SerializeToElement("program"); fx.Source.Parameters["parameters"] = JsonSerializer.Deserialize<JsonElement>("{\"amount\":0.6,\"unknown\":[9007199254740993,null]}");
             var timeline = workspace.InsertEntriesInto(group, 1, 1, BuiltinEntryIds.PlayTimeline).Single();
             timeline.Source.Parameters["timeline"] = JsonSerializer.Deserialize<JsonElement>("{\"durationFrames\":20,\"tracks\":[],\"events\":[]}");
+            scope.GetRequiredService<IEditorDocumentService>().SynchronizeGroups();
             var query = scope.GetRequiredService<ProjectSceneTargets>(); await query.PrepareAsync();
             using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = timeline;
             var session = scope.GetRequiredService<TimelineEditSession>(); var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear();

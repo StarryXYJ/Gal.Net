@@ -14,6 +14,10 @@ namespace GalNet.Editor.ViewModels;
 public sealed record AuthorProblem(string Severity, string Message, string Source, AuthorNavigationTarget? Target, Action? Discard = null)
 {
     public SceneReferenceDiagnostic? SceneReference { get; init; }
+    public Action? Restore { get; init; }
+    public string? InputText { get; init; }
+    public bool HasRestore => Restore is not null;
+    public bool HasInputText => InputText is not null;
     public bool HasDiscard => Discard is not null;
     public bool IsError => Severity == "error";
     public bool IsWarning => Severity == "warning";
@@ -34,7 +38,8 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     private readonly ProjectSceneTargets? _scenes;
     private IReadOnlyList<SceneReferenceDiagnostic> _sceneDiagnostics = [];
     private readonly List<AuthorProblem> _external = [];
-    private string _signature;
+    private long _authorRevision;
+    private readonly IEditorDocumentService? _documents;
     private bool _incomplete;
     [ObservableProperty] private bool _onlyErrors;
     public IEnumerable<AuthorProblem> VisibleProblems => Problems.Where(problem => !OnlyErrors || problem.IsError).OrderBy(problem => problem.IsError ? 0 : problem.IsWarning ? 1 : 2);
@@ -47,13 +52,14 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     public string Status => _text[_validatedRevision is null ? "Uiux.Validation.Unchecked" : _validatedRevision != _revision ? "Uiux.Validation.Stale"
         : _validation.Any(problem => problem.Severity == "error") ? "Uiux.Validation.Failed" : _incomplete || _sceneDiagnostics.Any(diagnostic => diagnostic.Code is "scene.reference.uncertain" or "scene.coverage.unknown" or "scene.coverage.structure" or "scene.analysis.limit") ? "Uiux.Validation.Incomplete" : "Uiux.Validation.Passed"];
     public ProblemsPanelViewModel(EntryEditSession edits, IProjectContentSession content, IProjectService projects, IEntryCatalog catalog,
-        EditorHistories histories, IEditorLocalizationService text, AuthorNavigationService navigation, EditorGroupProjectionStore groups, ProjectLocalizationQuery localization, ProjectSceneTargets? scenes = null)
+        EditorHistories histories, IEditorLocalizationService text, AuthorNavigationService navigation, EditorGroupProjectionStore groups, ProjectLocalizationQuery localization, ProjectSceneTargets? scenes = null, IEditorDocumentService? documents = null)
     {
         _edits = edits; _content = content; _projects = projects; _catalog = catalog; _histories = histories; _text = text; _navigation = navigation;
         _groups = groups;
         _scenes = scenes;
         if (scenes is not null) scenes.Changed += SceneChanged;
-        _localization = localization; _signature = JsonSerializer.Serialize(content.CaptureWorking());
+        _localization = localization; _authorRevision = histories.Content.AuthorChanges.Revision; _documents = documents;
+        content.ExternalReloaded += ExternalReloaded;
         edits.Changed += Refresh; histories.Changed += ContentChanged; text.PropertyChanged += LocaleChanged; Refresh();
     }
     private void LocaleChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args) => Refresh();
@@ -64,35 +70,51 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     }
     private void ContentChanged()
     {
-        var signature = JsonSerializer.Serialize(_content.CaptureWorking());
-        if (signature != _signature)
+        var revision = _histories.Content.AuthorChanges.Revision;
+        if (revision != _authorRevision)
         {
-            _signature = signature; _revision++;
+            _authorRevision = revision; _revision++;
             if (_validatedRevision is not null && _scenes is not null) _sceneDiagnostics = _scenes.Diagnostics();
         }
         Refresh();
     }
+    private void ExternalReloaded() { _revision++; if (_scenes is not null && _validatedRevision is not null) _sceneDiagnostics = _scenes.Diagnostics(); Refresh(); }
+    private bool IsPresent(AuthorNavigationTarget? target) => _documents is null || target?.NodeId is null
+        || _documents.CurrentDocument.Nodes.Any(node => node.Id == target.NodeId) && (target.EntryId is null
+            || _documents.Groups.TryGetValue(target.NodeId, out var group) && group.Entries.Any(entry => entry.StableId == target.EntryId));
     private void Refresh()
     {
         Problems.Clear();
         foreach (var draft in _edits.Pending)
             Problems.Add(new(draft.State.IsConflicted || draft.State.Issue is not null ? "error" : "info", draft.State.IsConflicted ? _text["Uiux.Draft.Conflict"] : draft.State.Issue?.Message ?? _text["Uiux.Draft.Pending"],
                 $"{draft.Owner.Type} / {draft.Owner.Id} / {draft.Root.Id}", new(draft.Owner.AuthorGroupId, draft.Owner.StableId, draft.Root.Id, Revision: _revision), draft.State.Clear));
-        foreach (var problem in _validation) Problems.Add(problem);
+        foreach (var archive in _edits.Archives)
+        {
+            var target = new AuthorNavigationTarget(archive.Owner.GroupId, archive.Owner.EntryId, archive.RootId);
+            var ready = _edits.CanRestore(archive);
+            Problems.Add(new("info", _text[_edits.IsRestoreRequested(archive) ? "Uiux.Draft.RestoreRequested" : ready ? "Uiux.Draft.Recoverable" : "Uiux.Draft.Archived"],
+                archive.Type + " / " + archive.RootId + (archive.Path.Length == 0 ? "" : "/" + string.Join("/", archive.Path)), target, () => _edits.RemoveArchive(archive))
+            {
+                InputText = archive.Text,
+                Restore = ready ? () => { _edits.RequestRestore(archive); _navigation.Navigate(target); }
+                : null
+            });
+        }
+        if (_edits.ArchiveError is not null) Problems.Add(new("error", _text["Error.entry.archiveUnavailable"], ".galnet/editor/input-archive.json", null));
+        foreach (var problem in _validation.Where(problem => IsPresent(problem.Target))) Problems.Add(problem);
         foreach (var diagnostic in _sceneDiagnostics)
             Problems.Add(new("warning", _text["Scene.Diagnostic." + diagnostic.Code], diagnostic.Owner.GroupId + diagnostic.JsonPointer,
                 new(diagnostic.Owner.GroupId, diagnostic.Owner.EntryId, diagnostic.JsonPointer.Split('/').ElementAtOrDefault(2), Revision: _revision))
             { SceneReference = diagnostic });
         foreach (var problem in _external) Problems.Add(problem);
         foreach (var group in _groups.Loaded)
-            foreach (var entry in group.Entries) entry.ProblemCount = Problems.Count(problem => problem.Target?.NodeId == group.Document.Id && problem.Target?.EntryId == entry.StableId);
+            foreach (var entry in group.Entries) entry.ProblemCount = Problems.Count(problem => problem.InputText is null && (problem.Target?.Revision is null || problem.Target.Revision == _revision) && problem.Target?.NodeId == group.Document.Id && problem.Target?.EntryId == entry.StableId);
         OnPropertyChanged(nameof(Count)); OnPropertyChanged(nameof(Status)); OnPropertyChanged(nameof(VisibleProblems));
     }
     [RelayCommand]
     private void Validate()
     {
         var snapshot = _content.CaptureWorking();
-        _signature = JsonSerializer.Serialize(snapshot);
         var diagnostics = new List<ToolDiagnostic>();
         var validator = new ProjectValidationService(_projects.Current!.RootPath);
         validator.ValidateGraph(JsonSerializer.SerializeToElement(snapshot.Graph), diagnostics, checkSourceReferences: false);
@@ -137,6 +159,12 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     public void Report(string severity, string message, string source, AuthorNavigationTarget? target = null)
     { if (!_external.Any(problem => problem.Source == source && problem.Message == message)) _external.Add(new(severity, message, source, target)); Refresh(); }
     [RelayCommand] private void Navigate(AuthorProblem? problem) { if (problem?.Target is { } target) _navigation.Navigate(target); }
-    [RelayCommand] private void Discard(AuthorProblem? problem) => problem?.Discard?.Invoke();
-    public void Dispose() { _edits.Changed -= Refresh; _histories.Changed -= ContentChanged; _text.PropertyChanged -= LocaleChanged; if (_scenes is not null) _scenes.Changed -= SceneChanged; }
+    [RelayCommand] private void Discard(AuthorProblem? problem) => ChangeArchive(problem?.Discard);
+    [RelayCommand] private void Restore(AuthorProblem? problem) => ChangeArchive(problem?.Restore);
+    private void ChangeArchive(Action? action)
+    {
+        try { action?.Invoke(); }
+        catch (Exception failure) { Report("error", EditorText.Error(failure).Render(_text), ".galnet/editor/input-archive.json"); }
+    }
+    public void Dispose() { _edits.Changed -= Refresh; _histories.Changed -= ContentChanged; _content.ExternalReloaded -= ExternalReloaded; _text.PropertyChanged -= LocaleChanged; if (_scenes is not null) _scenes.Changed -= SceneChanged; }
 }

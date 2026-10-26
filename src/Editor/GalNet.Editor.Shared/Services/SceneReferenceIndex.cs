@@ -49,7 +49,8 @@ public sealed record SceneReferenceState(string Code, bool Complete, bool Reacha
 public sealed record SceneReferenceChange(SceneIdentityReference Reference, SceneReferenceState Before, SceneReferenceState After);
 public sealed record SceneEditImpact(IReadOnlyList<SceneReferenceChange> References, IReadOnlyList<string> ChangedGroups, IReadOnlyList<SceneReferenceDiagnostic> Coverage, bool Complete)
 {
-    public bool RequiresReview => References.Count != 0 || ChangedGroups.Count != 0 || !Complete;
+    public int ArchivedInputs { get; init; }
+    public bool RequiresReview => References.Count != 0 || ChangedGroups.Count != 0 || !Complete || ArchivedInputs != 0;
 }
 
 /// <summary>Position analysis and operation previews share one classifier. Missing targets remain author warnings.</summary>
@@ -73,7 +74,8 @@ public static class SceneReferenceAnalysis
             reference.Owner, reference.JsonPointer, reference.Handle, index.Candidates(reference));
     }).OfType<SceneReferenceDiagnostic>()).ToArray();
 
-    public static SceneEditImpact Compare(EditorGraphDocument graph, IReadOnlyDictionary<string, List<EditorEntryData>> before, IReadOnlyDictionary<string, List<EditorEntryData>> after)
+    public static SceneEditImpact Compare(EditorGraphDocument graph, IReadOnlyDictionary<string, List<EditorEntryData>> before, IReadOnlyDictionary<string, List<EditorEntryData>> after,
+        IReadOnlyDictionary<SceneAuthorAddress, SceneAuthorAddress>? originalOwners = null)
     {
         var oldIndex = new SceneReferenceIndex(before); var newIndex = new SceneReferenceIndex(after);
         var oldAnalysis = new SceneTargetAnalysis(graph, before); var newAnalysis = new SceneTargetAnalysis(graph, after);
@@ -83,7 +85,8 @@ public static class SceneReferenceAnalysis
         // Remaining consumers only; references deleted in the same batch are intentionally excluded.
         foreach (var reference in newIndex.References)
         {
-            if (!oldReferences.TryGetValue((reference.Owner, reference.JsonPointer), out var old)) continue;
+            var original = originalOwners?.GetValueOrDefault(reference.Owner) ?? reference.Owner;
+            if (!oldReferences.TryGetValue((original, reference.JsonPointer), out var old)) continue;
             var previous = Resolve(old, oldAnalysis); var next = Resolve(reference, newAnalysis);
             complete &= (!previous.Reachable || previous.Complete) && (!next.Reachable || next.Complete);
             if (Signature(previous) != Signature(next)) changes.Add(new(reference, previous, next));

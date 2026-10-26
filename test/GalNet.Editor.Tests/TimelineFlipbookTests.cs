@@ -30,6 +30,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             layer.Source.Parameters["flipbook"] = JsonSerializer.Deserialize<JsonElement>("{\"columns\":3,\"rows\":2,\"frameCount\":5,\"index\":2.5,\"future\":[9007199254740993,null]}");
             var timeline = workspace.InsertEntriesInto(group, 2, 1, BuiltinEntryIds.PlayTimeline).Single();
             timeline.Source.Parameters["timeline"] = JsonSerializer.Deserialize<JsonElement>("{\"durationFrames\":20,\"tracks\":[],\"events\":[],\"future\":true}");
+            scope.GetRequiredService<IEditorDocumentService>().SynchronizeGroups();
             using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = timeline;
             var session = scope.GetRequiredService<TimelineEditSession>(); var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear();
             var view = scope.GetRequiredService<GalNet.Editor.Views.TimelinePanelView>(); view.DataContext = scope.GetRequiredService<TimelinePanelViewModel>();

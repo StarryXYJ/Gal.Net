@@ -4,6 +4,8 @@ using GalNet.Editor.Abstraction.Project;
 
 namespace GalNet.Editor.Abstraction.Services;
 
+public readonly record struct ProjectDraftCommitContext(IReadOnlySet<string>? RemovingGroups = null);
+
 public interface IProjectContentSession
 {
     bool IsDirty { get; }
@@ -16,11 +18,15 @@ public interface IProjectContentSession
     event Action? ExternalReloaded { add { } remove { } }
     IDisposable RegisterDraft(Func<bool> hasChanges, Func<Task> commit);
     IDisposable RegisterDraft(Func<bool> hasChanges, Func<Task> commit, Action discard) => RegisterDraft(hasChanges, commit);
+    IDisposable RegisterDraft(Func<bool> hasChanges, Func<ProjectDraftCommitContext, Task> commit, Action discard) => RegisterDraft(hasChanges, () => commit(default), discard);
+    /// <summary>Wraps the synchronous publication boundary after preparation/validation and before any file or live author mutation.</summary>
+    IDisposable RegisterStructureTransition(Action<EditorProjectDocument, EditorProjectDocument, Action> transition) => RegisterDraft(() => false, () => Task.CompletedTask);
     IDisposable RegisterFileDraft(string fileId, Func<bool> hasChanges, Func<Task> commit, Action validate) => RegisterDraft(hasChanges, commit);
     IDisposable RegisterFileDraft(string fileId, Func<bool> hasChanges, Func<Task> commit, Action validate, Action discard) => RegisterFileDraft(fileId, hasChanges, commit, validate);
     Task CommitFileDraftsAsync(string fileId) => CommitDraftsAsync();
     IDisposable RegisterCaptureGuard(Func<bool, CancellationToken, Task<IDisposable>> acquire);
     Task CommitDraftsAsync();
+    Task CommitDraftsAsync(ProjectDraftCommitContext context) => CommitDraftsAsync();
     void Open(GalProject project);
     void Refresh();
     void BlockWrites(Exception failure);
