@@ -42,6 +42,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     new { frame = 15, type = BuiltinEntryIds.ShowLayer, editorId = "creator", parameters = new { handleId = "future-object", assetId = "future.png" } }
                 }
             });
+            scope.GetRequiredService<IEditorDocumentService>().SynchronizeGroups();
             using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = timeline;
             var session = scope.GetRequiredService<TimelineEditSession>(); var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear();
             var localization = scope.GetRequiredService<IEditorLocalizationService>(); var query = scope.GetRequiredService<ProjectSceneTargets>();

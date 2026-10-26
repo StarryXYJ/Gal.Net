@@ -19,6 +19,9 @@ public sealed record SceneTarget(SceneLocator Locator, string Handle, SceneTarge
 public sealed record SceneTargetResult(IReadOnlyList<SceneTarget> Targets, bool Complete, bool Reachable)
 {
     public IReadOnlyList<SceneTarget> Playbacks { get; init; } = [];
+    public long Revision { get; init; }
+    public long ContextRevision { get; init; }
+    public long AuthorRevision { get; init; }
 }
 
 /// <summary>Pure, finite abstract interpretation. Never instantiates a game or executes an entry.</summary>
@@ -42,17 +45,18 @@ public sealed partial class SceneTargetAnalysis
     private readonly IEffectCatalog? _effects;
     private readonly IReadOnlyDictionary<string, ImageVariantsDefinition?>? _variants;
     private readonly Dictionary<string, State> _inputs = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, State> _outputs = new(StringComparer.Ordinal);
     private bool _budgetExceeded;
     public SceneTargetAnalysis(EditorGraphDocument graph, IReadOnlyDictionary<string, List<EditorEntryData>> groups, int budget = 10000,
         IReadOnlyDictionary<string, ShaderEffectDescriptor?>? programs = null, IEffectCatalog? effects = null,
-        IReadOnlyDictionary<string, ImageVariantsDefinition?>? variants = null)
+        IReadOnlyDictionary<string, ImageVariantsDefinition?>? variants = null, SceneTargetAnalysis? previousAnalysis = null)
     {
         // Caller owns the immutable snapshot for this generation.
         _groups = groups;
         _programs = programs; _effects = effects; _variants = variants;
         var nodes = graph.Nodes.ToDictionary(node => node.Id, StringComparer.Ordinal);
         if (!nodes.ContainsKey(graph.RootNodeId)) return;
-        var outputs = new Dictionary<string, State>(StringComparer.Ordinal);
+        var outputs = _outputs;
         var queue = new Queue<string>(); queue.Enqueue(graph.RootNodeId);
         var successors = graph.Edges.GroupBy(edge => edge.FromNodeId).ToDictionary(group => group.Key, group => group.Select(edge => edge.ToNodeId).Distinct().Where(nodes.ContainsKey).ToArray());
         var predecessors = graph.Edges.GroupBy(edge => edge.ToNodeId).ToDictionary(group => group.Key, group => group.Select(edge => edge.FromNodeId).Distinct().ToArray());
@@ -68,7 +72,7 @@ public sealed partial class SceneTargetAnalysis
             var node = nodes[id];
             if (node.Type == "Group")
             {
-                if (groups.TryGetValue(id, out var entries)) foreach (var entry in entries) output = Apply(output, id, entry);
+                if (groups.TryGetValue(id, out var entries)) output = TransferGroup(input, id, entries, previousAnalysis);
                 else output.Uncertain();
             }
             else if (node.Type is not ("Entry" or "Branch" or "Exit")) output.Uncertain();
@@ -82,6 +86,9 @@ public sealed partial class SceneTargetAnalysis
     private State? StateBefore(string groupId, string? entryId)
     {
         if (!_inputs.TryGetValue(groupId, out var input) || !_groups.TryGetValue(groupId, out var entries)) return null;
+        var end = entryId is null ? entries.Count : entries.FindIndex(entry => entry.StableId == entryId);
+        if (end < 0) return null;
+        if (!_budgetExceeded) return Prefix(input, groupId, entries, end);
         var state = input.Clone();
         if (_budgetExceeded)
         {
@@ -145,6 +152,7 @@ public sealed partial class SceneTargetAnalysis
         && pair.Value.Values.Count == other.Values.Count && pair.Value.Values.All(value => other.Values.TryGetValue(value.Key, out var number) && number == value.Value));
     private State Apply(State before, string group, EditorEntryData entry)
     {
+        EntryTransferCount++;
         if (entry.Condition.Trim().Equals("false", StringComparison.OrdinalIgnoreCase)) return before.Clone();
         var after = before.Clone();
         try { Transfer(after, group, entry); }

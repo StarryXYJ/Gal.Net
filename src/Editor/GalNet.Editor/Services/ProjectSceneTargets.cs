@@ -26,6 +26,7 @@ public sealed class ProjectSceneTargets : IDisposable
     private readonly IProjectService? _projects;
     private readonly IResourceTypeCatalog? _types;
     private readonly AuthorChangeJournal? _changes;
+    private readonly UndoRedoHistory? _history;
     private string _workingFingerprint = "";
     private readonly object _gate = new();
     private CancellationTokenSource _resourceLifetime = new();
@@ -33,6 +34,16 @@ public sealed class ProjectSceneTargets : IDisposable
     private string? _snapshot;
     private EditorProjectDocument? _frozen;
     private SceneTargetAnalysis? _analysis;
+    private SceneTargetAnalysis? _previousAnalysis;
+    private bool _captureDirty = true;
+    private object? _documentIdentity;
+    private AuthorChangeSet? _pendingChange;
+    private readonly Dictionary<(string Group, string? Entry, SceneTimelinePosition? Position), SceneTargetResult> _queries = [];
+    private readonly Dictionary<(string Group, string? Entry, SceneTimelinePosition? Position), EditorEntryData?> _queryOwners = [];
+    private readonly Dictionary<(string Group, string? Entry, SceneTimelinePosition? Position), EditorEntryData?> _querySources = [];
+    private long _queryRevision;
+    public int AuthorCaptureCount { get; private set; }
+    public int AnalysisEntryTransferCount { get { lock (_gate) return _analysis?.EntryTransferCount ?? 0; } }
     private IReadOnlyDictionary<string, ShaderEffectDescriptor?> _programs = new Dictionary<string, ShaderEffectDescriptor?>(StringComparer.Ordinal);
     private IReadOnlyDictionary<string, ImageVariantsDefinition?> _variants = new Dictionary<string, ImageVariantsDefinition?>(StringComparer.OrdinalIgnoreCase);
     private Task? _loading;
@@ -40,7 +51,8 @@ public sealed class ProjectSceneTargets : IDisposable
     public event Action? Changed;
     public long Revision { get; private set; }
     public bool IsAvailable { get { lock (_gate) return !_disposed && _documents.IsLoaded; } }
-    internal (object? Author, long Resources) PreparationStamp { get { lock (_gate) return (Capture() ? _frozen : null, _resourceEpoch); } }
+    internal (long Author, long Resources) PreparationStamp(string group, string entry, SceneTimelinePosition? position)
+    { lock (_gate) return (Query(group, entry, position).AuthorRevision, _resourceEpoch); }
 
     public ProjectSceneTargets(IEditorDocumentService documents, IAssetManager? assets = null,
         IEffectCatalog? effects = null, IAssetCatalogService? resources = null, IProjectContentSession? content = null,
@@ -48,14 +60,25 @@ public sealed class ProjectSceneTargets : IDisposable
     {
         _documents = documents; _assets = assets; _effects = effects; _resources = resources;
         _content = content; _projects = projects; _types = types;
-        _changes = histories?.Content.AuthorChanges;
+        _history = histories?.Content; _changes = _history?.AuthorChanges;
         if (_changes is not null) _changes.Committed += OnAuthorCommitted;
+        _documents.DocumentChanged += OnDocumentChanged;
         if (_content is not null) _content.Changed += OnContentChanged;
         if (_resources is not null) _resources.Changed += OnResourcesChanged;
     }
-    private void OnAuthorCommitted(AuthorChangeSet _)
+    private void OnAuthorCommitted(AuthorChangeSet change)
     {
-        lock (_gate) { if (!Capture()) return; QueuePreparation(); }
+        lock (_gate) { _captureDirty = true; _pendingChange = change; if (!Capture(true)) return; QueuePreparation(); RefreshQueries(); }
+        NotifyChanged();
+    }
+    private void OnDocumentChanged()
+    {
+        lock (_gate)
+        {
+            _captureDirty = true; _pendingChange = null;
+            if (_history?.IsBusy == true) return;
+            Capture(); RefreshQueries();
+        }
         NotifyChanged();
     }
     public ImageVariantsDefinition? VariantDefinition(string id)
@@ -78,7 +101,7 @@ public sealed class ProjectSceneTargets : IDisposable
         {
             if (!Capture()) return [];
             QueuePreparation();
-            _analysis ??= new(_frozen!.Graph, _frozen.GroupEntries, programs: _assets is null ? null : _programs, effects: _effects, variants: _variants);
+            EnsureAnalysis();
             return SceneReferenceAnalysis.Diagnose(new SceneReferenceIndex(_frozen!.GroupEntries), _analysis).Select(diagnostic => diagnostic with { Revision = Revision }).ToArray();
         }
     }
@@ -88,9 +111,40 @@ public sealed class ProjectSceneTargets : IDisposable
         {
             if (!Capture()) return new([], false, false);
             QueuePreparation();
-            _analysis ??= new(_frozen!.Graph, _frozen.GroupEntries, programs: _assets is null ? null : _programs, effects: _effects, variants: _variants);
-            return position is null ? _analysis.Before(groupId, entryId) : entryId is null ? new([], false, false) : _analysis.AtTimeline(groupId, entryId, position);
+            EnsureAnalysis();
+            var key = (groupId, entryId, position);
+            if (!_queries.ContainsKey(key) && _queries.Count >= 256) { var oldest = _queries.Keys.First(); _queries.Remove(oldest); _queryOwners.Remove(oldest); _querySources.Remove(oldest); }
+            return UpdateQuery(key);
         }
+    }
+    private void EnsureAnalysis()
+    {
+        if (_analysis is not null || _frozen is null) return;
+        _analysis = new(_frozen.Graph, _frozen.GroupEntries, programs: _assets is null ? null : _programs, effects: _effects, variants: _variants, previousAnalysis: _previousAnalysis);
+        _previousAnalysis = null;
+    }
+    private SceneTargetResult Evaluate((string Group, string? Entry, SceneTimelinePosition? Position) key) => key.Position is null
+        ? _analysis!.Before(key.Group, key.Entry) : key.Entry is null ? new([], false, false) : _analysis!.AtTimeline(key.Group, key.Entry, key.Position);
+    private void RefreshQueries(bool author = true)
+    {
+        if (_queries.Count == 0) return;
+        EnsureAnalysis();
+        foreach (var key in _queries.Keys.ToArray())
+        {
+            UpdateQuery(key, author);
+        }
+    }
+    private SceneTargetResult UpdateQuery((string Group, string? Entry, SceneTimelinePosition? Position) key, bool author = true)
+    {
+        var next = _analysis is null ? new SceneTargetResult([], false, false) : Evaluate(key);
+        var owner = _frozen?.GroupEntries.GetValueOrDefault(key.Group)?.FirstOrDefault(entry => entry.StableId == key.Entry);
+        var source = _documents.Groups.GetValueOrDefault(key.Group)?.Entries.FirstOrDefault(entry => entry.StableId == key.Entry);
+        _queries.TryGetValue(key, out var previous);
+        var version = previous is not null && SceneTargetAnalysis.Equivalent(previous, next) ? previous.Revision : ++_queryRevision;
+        var context = previous is not null && ReferenceEquals(_querySources.GetValueOrDefault(key), source) && SceneTargetAnalysis.SameEntry(_queryOwners.GetValueOrDefault(key), owner) ? previous.ContextRevision : ++_queryRevision;
+        var dependency = previous is not null && (!author || version == previous.Revision && context == previous.ContextRevision) ? previous.AuthorRevision : ++_queryRevision;
+        _queryOwners[key] = owner; _querySources[key] = source;
+        return _queries[key] = next with { Revision = version, ContextRevision = context, AuthorRevision = dependency };
     }
 
     // Only the caller's wait is cancelled; resource IO belongs to the project/refresh generation.
@@ -105,13 +159,26 @@ public sealed class ProjectSceneTargets : IDisposable
         }
     }
 
-    private bool Capture()
+    private bool Capture(bool committed = false)
     {
         if (_disposed) return false;
         if (!_documents.IsLoaded)
         {
             if (_snapshot is not null) Revision++;
-            _snapshot = null; _frozen = null; _analysis = null; return false;
+            _snapshot = null; _frozen = null; _analysis = null; _previousAnalysis = null; _queries.Clear(); _queryOwners.Clear(); _querySources.Clear(); _captureDirty = true; return false;
+        }
+        // Managed projects publish mutations through the author journal/document notification. Standalone callers retain the legacy snapshot fallback.
+        if (_changes is not null && !_captureDirty) return true;
+        if (!committed && _history?.IsBusy == true && _frozen is not null) return true;
+        if (_changes is not null && ReferenceEquals(_documentIdentity, _documents.CurrentDocument) && _frozen is not null && _pendingChange is { UnknownScope: false } change)
+        {
+            var groups = _frozen.GroupEntries.ToDictionary(pair => pair.Key, pair => pair.Value);
+            foreach (var group in change.Groups)
+                if (_documents.Groups.TryGetValue(group.GroupId, out var source)) groups[group.GroupId] = JsonSerializer.Deserialize<List<EditorEntryData>>(JsonSerializer.Serialize(source.Entries))!;
+                else groups.Remove(group.GroupId);
+            _frozen = new() { Graph = _frozen.Graph, GroupEntries = groups };
+            _snapshot = null; _previousAnalysis = _analysis; _analysis = null; _captureDirty = false; _pendingChange = null; AuthorCaptureCount++; Revision++;
+            return true;
         }
         var snapshot = JsonSerializer.Serialize(new EditorProjectDocument
         {
@@ -121,8 +188,9 @@ public sealed class ProjectSceneTargets : IDisposable
         if (snapshot != _snapshot)
         {
             _frozen = JsonSerializer.Deserialize<EditorProjectDocument>(snapshot)!;
-            _snapshot = snapshot; _analysis = null; Revision++;
+            _snapshot = snapshot; _previousAnalysis = _analysis; _analysis = null; AuthorCaptureCount++; Revision++;
         }
+        _captureDirty = false; _pendingChange = null; _documentIdentity = _documents.CurrentDocument;
         return true;
     }
 
@@ -195,7 +263,7 @@ public sealed class ProjectSceneTargets : IDisposable
                 var referencedVariants = Variants(_frozen).Distinct(StringComparer.OrdinalIgnoreCase).Take(256).ToHashSet(StringComparer.OrdinalIgnoreCase);
                 var mergedVariants = _variants.Where(pair => referencedVariants.Contains(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
                 foreach (var pair in loadedVariants.Where(pair => referencedVariants.Contains(pair.Key))) mergedVariants[pair.Key] = pair.Value;
-                _programs = merged; _variants = mergedVariants; _analysis = null; Revision++;
+                _programs = merged; _variants = mergedVariants; _analysis = null; _previousAnalysis = null; Revision++; RefreshQueries(false);
             }
             NotifyChanged();
         }
@@ -235,9 +303,9 @@ public sealed class ProjectSceneTargets : IDisposable
         {
             if (_disposed) return;
             _resourceEpoch++; _resourceLifetime.Cancel(); _resourceLifetime.Dispose(); _resourceLifetime = new();
-            _programs = new Dictionary<string, ShaderEffectDescriptor?>(StringComparer.Ordinal); _loading = null; _analysis = null; Revision++;
+            _programs = new Dictionary<string, ShaderEffectDescriptor?>(StringComparer.Ordinal); _loading = null; _analysis = null; _previousAnalysis = null; Revision++;
             _variants = new Dictionary<string, ImageVariantsDefinition?>(StringComparer.OrdinalIgnoreCase);
-            if (Capture()) QueuePreparation();
+            if (Capture()) { QueuePreparation(); RefreshQueries(false); }
         }
         NotifyChanged();
     }
@@ -251,7 +319,8 @@ public sealed class ProjectSceneTargets : IDisposable
             if (_resources is not null) _resources.Changed -= OnResourcesChanged;
             if (_content is not null) _content.Changed -= OnContentChanged;
             if (_changes is not null) _changes.Committed -= OnAuthorCommitted;
-            _snapshot = null; _frozen = null; _analysis = null; _programs = new Dictionary<string, ShaderEffectDescriptor?>(); Revision++; Changed = null;
+            _documents.DocumentChanged -= OnDocumentChanged;
+            _snapshot = null; _frozen = null; _analysis = null; _previousAnalysis = null; _queries.Clear(); _queryOwners.Clear(); _querySources.Clear(); _programs = new Dictionary<string, ShaderEffectDescriptor?>(); Revision++; Changed = null;
             _variants = new Dictionary<string, ImageVariantsDefinition?>();
         }
     }

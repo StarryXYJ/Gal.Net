@@ -29,7 +29,12 @@ public sealed class EditorGroupProjectionStore : IDisposable
         changes.Committed += OnCommitted;
     }
     public Exception? LastNotificationError { get; private set; }
-    private void OnCommitted(AuthorChangeSet _) => Synchronize();
+    private void OnCommitted(AuthorChangeSet change)
+    {
+        if (change.UnknownScope) { Synchronize(); return; }
+        foreach (var group in change.Groups)
+            if (_groups.TryGetValue(group.GroupId, out var projection)) projection.Synchronize(catalog, group);
+    }
     private void Synchronize()
     {
         foreach (var group in _groups.Values.ToArray()) group.Synchronize(catalog);
@@ -80,11 +85,11 @@ public sealed class EditorGroupProjection : IDisposable
         foreach (var entry in Entries) Bind(entry);
     }
 
-    public void Synchronize(IEntryCatalog catalog)
+    public void Synchronize(IEntryCatalog catalog, AuthorGroupChange? change = null)
     {
         if (Document.Entries.SequenceEqual(Entries.Select(entry => entry.Source)))
         {
-            foreach (var entry in Entries) Refresh(entry, catalog);
+            foreach (var entry in Entries.Where(entry => change is null || change.EntryIds.Contains(entry.StableId) || entry.Id != entry.Source.Id)) Refresh(entry, catalog);
             return;
         }
         var previous = Entries.ToArray();

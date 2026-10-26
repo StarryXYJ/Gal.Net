@@ -70,6 +70,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             Assert.That(handles.All(value => Guid.TryParse(value, out _)), Is.True); Assert.That(handles.Distinct().Count(), Is.EqualTo(2));
             var timeline = workspace.InsertEntriesInto(group, 2, 1, BuiltinEntryIds.PlayTimeline).Single();
             timeline.Source.Parameters = new() { ["timeline"] = JsonSerializer.Deserialize<JsonElement>("""{"playbackHandleId":"play","durationFrames":60,"future":[9007199254740993,null],"tracks":[],"events":[]}""") };
+            scope.GetRequiredService<IEditorDocumentService>().SynchronizeGroups();
             using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = timeline;
             var session = scope.GetRequiredService<TimelineEditSession>(); var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear();
             var view = scope.GetRequiredService<TimelinePanelView>(); view.DataContext = scope.GetRequiredService<TimelinePanelViewModel>();
