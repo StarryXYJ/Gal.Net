@@ -130,9 +130,7 @@ public sealed class LocalFileProvider : IAssetProvider, IDisposable
 
     private Task<ScanResult> ScanAsync(int version) => Task.Run(() =>
     {
-        for (var ancestor = new DirectoryInfo(_assetsRoot); ancestor is not null; ancestor = ancestor.Parent)
-            if (ancestor.Exists && (ancestor.Attributes & FileAttributes.ReparsePoint) != 0)
-                throw new InvalidDataException("Assets root must not traverse a directory link.");
+        FileSystemPaths.RequireNoLinks(_assetsRoot, "Assets root must not traverse a directory link.");
         var files = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var directories = new List<string>();
         var pending = new Stack<string>();

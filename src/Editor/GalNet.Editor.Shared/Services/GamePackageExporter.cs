@@ -220,17 +220,7 @@ public static class GamePackageExporter
         }
     }
 
-    private static string GetSafeDestination(string root, string relativePath)
-    {
-        if (string.IsNullOrWhiteSpace(relativePath) || Path.IsPathRooted(relativePath) || relativePath.Contains('\\') ||
-            relativePath.Split('/').Any(part => part is "" or "." or ".."))
-            throw new InvalidDataException($"Export path '{relativePath}' is not a safe relative path.");
-        var rootPath = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        var destination = Path.GetFullPath(Path.Combine(rootPath, relativePath.Replace('/', Path.DirectorySeparatorChar)));
-        if (!destination.StartsWith(rootPath, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException($"Export path '{relativePath}' escapes its output directory.");
-        return destination;
-    }
+    private static string GetSafeDestination(string root, string relativePath) => FileSystemPaths.ResolveRelativeFile(root, relativePath);
 
     private static void DeleteTemporary(string? path) { if (path is not null && File.Exists(path)) File.Delete(path); }
     private static string Hash(byte[] data) => Convert.ToHexString(SHA256.HashData(data)).ToLowerInvariant();

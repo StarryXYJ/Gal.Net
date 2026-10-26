@@ -6,6 +6,7 @@ using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Shared.Services;
+using GalNet.Assets;
 
 namespace GalNet.Editor.Shared.Commands;
 
@@ -20,9 +21,7 @@ public static class EditorProjectCreator
         var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(request.Path));
         if (root == Path.GetPathRoot(root)) throw new ArgumentException("A filesystem root cannot be a project target.");
         var parent = Path.GetDirectoryName(root)!;
-        for (var current = root; current is not null; current = Path.GetDirectoryName(current))
-            if ((File.Exists(current) || Directory.Exists(current)) && (File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
-                throw new InvalidDataException("Project creation cannot traverse filesystem links.");
+        FileSystemPaths.RequireNoLinks(root, "Project creation cannot traverse filesystem links.");
         EnsureEmptyTarget(root);
         var name = request.Name is null ? Path.GetFileName(root) : request.Name.Trim();
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Project display name is required.");

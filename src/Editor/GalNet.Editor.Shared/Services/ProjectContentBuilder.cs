@@ -8,6 +8,7 @@ using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Shared.Commands;
+using GalNet.Assets;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -227,26 +228,16 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceT
 
     internal static void ValidateOutputPath(string sourceRoot, string targetRoot)
     {
-        if (string.Equals(sourceRoot, targetRoot, StringComparison.OrdinalIgnoreCase) || IsSameOrChild(sourceRoot, targetRoot))
+        if (IsSameOrChild(sourceRoot, targetRoot))
             throw new InvalidDataException("Build output must not be the project directory or one of its ancestors.");
 
         foreach (var protectedDirectory in new[] { "Graph", "Assets", "I18n", ".galnet", "Temp", "Contracts", ".git" })
             if (IsSameOrChild(targetRoot, Path.Combine(sourceRoot, protectedDirectory)))
                 throw new InvalidDataException($"Build output must not be inside project '{protectedDirectory}/'.");
-        var current = Path.GetPathRoot(targetRoot)!;
-        foreach (var component in targetRoot[current.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
-        {
-            current = Path.Combine(current, component);
-            if ((File.Exists(current) || Directory.Exists(current)) && (File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
-                throw new InvalidDataException("Build/export output must not traverse filesystem links.");
-        }
+        FileSystemPaths.RequireNoLinks(targetRoot, "Build/export output must not traverse filesystem links.");
     }
 
-    private static bool IsSameOrChild(string candidate, string parent)
-    {
-        var relative = Path.GetRelativePath(parent, candidate);
-        return relative.Length == 0 || (!Path.IsPathRooted(relative) && !relative.Equals("..", StringComparison.Ordinal) && !relative.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal));
-    }
+    private static bool IsSameOrChild(string candidate, string parent) => FileSystemPaths.IsSameOrChild(candidate, parent);
 
     private static string DisplayPath(string basePath, string path) => Path.GetRelativePath(basePath, path).Replace('\\', '/');
 }

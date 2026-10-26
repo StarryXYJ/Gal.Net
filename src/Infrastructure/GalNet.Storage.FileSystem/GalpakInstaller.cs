@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text.Json;
 using GalNet.Core.Serialization;
+using GalNet.Assets;
 
 namespace GalNet.Storage.FileSystem;
 
@@ -151,19 +152,7 @@ public static class GalpakInstaller
             throw new InvalidDataException($"Package entry '{package.Path}' checksum does not match its manifest.");
     }
 
-    private static string GetSafeDestination(string root, string relativePath)
-    {
-        ValidateRelativePath(relativePath);
-        var rootPath = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        var destination = Path.GetFullPath(Path.Combine(rootPath, relativePath.Replace('/', Path.DirectorySeparatorChar)));
-        if (!destination.StartsWith(rootPath, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException($"Package entry '{relativePath}' escapes its installation directory.");
-        return destination;
-    }
+    private static string GetSafeDestination(string root, string relativePath) => FileSystemPaths.ResolveRelativeFile(root, relativePath);
 
-    private static void ValidateRelativePath(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path) || Path.IsPathRooted(path) || path.Contains('\\') || path.Split('/').Any(part => part is "" or "." or ".."))
-            throw new InvalidDataException($"Package entry path '{path}' is not a safe relative ZIP path.");
-    }
+    private static void ValidateRelativePath(string path) => FileSystemPaths.ValidateRelativeFile(path);
 }
