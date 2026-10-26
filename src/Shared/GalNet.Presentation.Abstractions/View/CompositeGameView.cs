@@ -65,17 +65,10 @@ public sealed class CompositeGameView : IPrimitiveDispatcher
         if (!_instructions.TryGetValue(entry.Type, out var implementation))
             throw new InvalidOperationException($"Instruction '{entry.Type}' has no registered implementation.");
         var definition = _catalog.Get(entry.Type);
-        var normalized = new PrimitiveEntry(entry.Type,
-            PrimitiveArgumentHelper.Normalize(definition.DynamicParameters, entry.Arguments), entry.BatchId)
-        {
-            Id = entry.Id,
-            StableId = entry.StableId,
-            ReadingBoundaryId = entry.ReadingBoundaryId,
-            Condition = entry.Condition
-        };
-        var instance = implementation(new PrimitiveCreateContext(definition, normalized, runtime, cancellationToken))
+        var instance = implementation(new PrimitiveCreateContext(definition, entry, runtime, cancellationToken))
             ?? throw new InvalidOperationException($"Instruction '{entry.Type}' returned no instance.");
-        if (!string.Equals(instance.BatchId, normalized.BatchId, StringComparison.Ordinal))
+        var expectedBatchId = string.IsNullOrWhiteSpace(entry.BatchId) ? null : entry.BatchId;
+        if (!string.Equals(instance.BatchId, expectedBatchId, StringComparison.Ordinal))
             throw new InvalidOperationException($"Instruction '{entry.Type}' created an instance with a different BatchId.");
         instance.Dispatch(mode);
         return instance;

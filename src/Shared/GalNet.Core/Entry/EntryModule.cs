@@ -115,8 +115,8 @@ public sealed class DefaultCompositeEntryBase : CompositeEntryBase
         public override string Type => name;
         public override IReadOnlyList<PrimitiveEntry> Compile(EntryCompileContext context)
         {
-            var normalized = PrimitiveArgumentHelper.Normalize(parameters, Arguments);
-            return compile(context, ValueCodec.DeserializeFields<T>(parameters.Fields, normalized));
+            var (_, options) = PrimitiveArgumentHelper.NormalizeFields<T>(parameters, Arguments);
+            return compile(context, options);
         }
     }
 }

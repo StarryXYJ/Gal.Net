@@ -36,7 +36,7 @@ DynamicParameterTable 的 ValidatePartialArguments 用于尚未补默认值的�
 
 BuiltinEntryIds 集中声明 45 个内置稳定 wire ID。内置 Primitive 的作者类壳及取 ID 的泛型工厂已移除；catalog.Create 继续返回 Core 的通用作者表示，运行时依旧使用通用 PrimitiveEntry。项目仍显式选择 14 个独立 schema modules，不通过 CLR 类扫描启用指令。
 
-Field.DefaultJson 声明经值 codec 校验的 JSON 默认，不能与属性初始化值同时声明；Choices 提供固定合法选项。StringBooleanValueConverter / StringEnumValueConverter 通过 IStringValueEncoding 保留字符串 wire 类型、选项及编辑文本，同时提供强类型成员；普通 converter 行为不改变。audio.stop 已用 AudioStopOptions，clearQueue 保持字符串 true/false 与显式 null 的旧行为。DefaultCompositeEntryBase.ForDto<T> 提供类型化编译展开，共用 ValueCodec.DeserializeFields，源 JSON 保留 null/presence，输出仍通过目标 primitive 契约规范化。
+Field.DefaultJson 声明经值 codec 校验的 JSON 默认，不能与属性初始化值同时声明；Choices 提供固定合法选项。StringBooleanValueConverter / StringEnumValueConverter 通过 IStringValueEncoding 保留字符串 wire 类型、选项及编辑文本，同时提供强类型成员；普通 converter 行为不改变。audio.stop 已用 AudioStopOptions，clearQueue 保持字符串 true/false 与显式 null 的旧行为。DefaultCompositeEntryBase.ForDto<T> 提供类型化编译展开，通过 PrimitiveArgumentHelper.NormalizeFields<T> 在归一化时直接填入独立 DTO，源 JSON 保留 null/presence，输出仍通过目标 primitive 契约规范化。
 
 ## Entry Module
 

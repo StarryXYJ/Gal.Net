@@ -2,6 +2,7 @@ using GalNet.Core.Entry;
 using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
+using System.Text.Json;
 
 namespace GalNet.Presentation.Abstractions.Execution;
 
@@ -57,14 +58,33 @@ public sealed class PrimitiveRegistry
     internal PrimitiveRegistry(IEntryCatalog catalog) => _catalog = catalog;
     internal void Freeze() => _frozen = true;
 
-    public void Register(string type, Func<PrimitiveCreateContext, PrimitiveInstance> factory) => Add(type, factory, null);
+    public void Register(string type, Func<PrimitiveCreateContext, PrimitiveInstance> factory)
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+        Add(type, context => factory(WithArguments(context,
+            PrimitiveArgumentHelper.Normalize(context.Parameters, context.Arguments))), null);
+    }
 
     /// <summary>Checks the DTO contract now and decodes independent Options for each invocation.</summary>
     public void Register<T>(string type, Func<PrimitiveCreateContext, T, PrimitiveInstance> factory)
         where T : IFieldDto, IFieldSchema<T>, new()
     {
         ArgumentNullException.ThrowIfNull(factory);
-        Add(type, context => factory(context, ValueCodec.DeserializeFields<T>(context.Parameters.Fields, context.Arguments)), typeof(T));
+        Add(type, context =>
+        {
+            var (arguments, options) = PrimitiveArgumentHelper.NormalizeFields<T>(context.Parameters, context.Arguments);
+            return factory(WithArguments(context, arguments), options);
+        }, typeof(T));
+    }
+
+    private static PrimitiveCreateContext WithArguments(PrimitiveCreateContext context, JsonElement arguments)
+    {
+        var source = context.Entry;
+        var entry = new PrimitiveEntry(source.Type, arguments, source.BatchId)
+        {
+            Id = source.Id, StableId = source.StableId, ReadingBoundaryId = source.ReadingBoundaryId, Condition = source.Condition
+        };
+        return new(context.Definition, entry, context.Runtime, context.ScopeCancellation);
     }
 
     private void Add(string type, Func<PrimitiveCreateContext, PrimitiveInstance> factory, Type? optionsType)
