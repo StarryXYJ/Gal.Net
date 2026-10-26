@@ -35,11 +35,8 @@ public sealed class FilePlayerVariableStore : IPlayerVariableStore, IDisposable
         await _gate.WaitAsync(ct);
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
             var copy = variables.ToDictionary(pair => pair.Key, pair => Clone(pair.Key, pair.Value), StringComparer.Ordinal);
-            var temporaryPath = _path + ".tmp";
-            await File.WriteAllTextAsync(temporaryPath, JsonSerializer.Serialize(copy), ct);
-            File.Move(temporaryPath, _path, true);
+            await FileReplacement.WriteTextAsync(_path, JsonSerializer.Serialize(copy), ct).ConfigureAwait(false);
         }
         finally { _gate.Release(); }
     }

@@ -212,6 +212,8 @@ Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`
 
 ## 已读进度提交边界
 
+存档槽、玩家变量和已读进度的文件写入共用替换工具：每次写入使用同目录下独立临时文件，成功写完并检查取消后替换目标，失败时清理本次临时文件。各服务继续负责自身的锁、数据快照和提交时机；进度 revision 只在替换成功后推进。
+
 `ReadProgressIndex` 在 Runtime 中维护内存索引与 revision。文件实现 MarkRead 不执行磁盘 I/O，默认每 2 秒批量写入；同一个进度实例串行化 flush/clear，写入期间的新标记保留 dirty 状态。后台失败由 LastPersistenceError 暴露并在下个周期重试。Engine StopAsync 在执行与 continuation 退出后等待 FlushAsync，失败仍发布 Stopped 并向调用者传播；Sample 保存前 flush，销毁进度实例时取消定时器并完成最终提交。强制终止可能丢失自上次成功 flush 以来的标记（正常 I/O 时最多一个周期，持续失败时不保证时间上限）。存档槽恢复不回滚玩家已读进度。
 
 ## 执行内部协作者

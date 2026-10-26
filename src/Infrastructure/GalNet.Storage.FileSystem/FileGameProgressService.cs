@@ -60,11 +60,7 @@ public sealed class FileGameProgressService : IGameProgressService, IDisposable,
                     ReadEntries = _index.Snapshot().Select(entry => JsonSerializer.Serialize(new[] { entry.GroupId, entry.EntryId })).ToHashSet()
                 };
             }
-            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-            var temporaryPath = _path + ".tmp";
-            await File.WriteAllTextAsync(temporaryPath, JsonSerializer.Serialize(data), cancellationToken).ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
-            File.Move(temporaryPath, _path, overwrite: true);
+            await FileReplacement.WriteTextAsync(_path, JsonSerializer.Serialize(data), cancellationToken).ConfigureAwait(false);
             lock (_sync) { _flushedRevision = revision; _lastError = null; }
         }
         catch (Exception error)

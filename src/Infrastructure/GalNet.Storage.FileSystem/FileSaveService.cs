@@ -79,12 +79,9 @@ public sealed class FileSaveService : ISaveService, IDisposable
         await _gate.WaitAsync(ct);
         try
         {
-            Directory.CreateDirectory(_root);
             var payload = new StoredSave { Version = FormatVersion, Timestamp = DateTimeOffset.UtcNow, Description = request.Description, Snapshot = request.Snapshot };
             var path = GetPath(slot, quick);
-            var temp = path + ".tmp";
-            await File.WriteAllTextAsync(temp, JsonSerializer.Serialize(payload), ct);
-            File.Move(temp, path, true);
+            await FileReplacement.WriteTextAsync(path, JsonSerializer.Serialize(payload), ct).ConfigureAwait(false);
             if (request.PreviewImage is { Length: > 0 }) await File.WriteAllBytesAsync(GetPreviewPath(slot, quick), request.PreviewImage, ct);
         }
         finally { _gate.Release(); }
