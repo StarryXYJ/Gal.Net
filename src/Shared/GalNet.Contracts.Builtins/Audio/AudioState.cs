@@ -6,6 +6,7 @@ namespace GalNet.Contracts.Builtins.Audio;
 public sealed class AudioItemState
 {
     public string Id { get; init; } = Guid.NewGuid().ToString("N");
+    public int CompletedIterations { get; set; }
     public AudioPlayRequest Request { get; set; } = new("", "", AudioPlacement.Enqueue);
 }
 

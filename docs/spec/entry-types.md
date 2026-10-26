@@ -100,6 +100,8 @@ flow.wait, variable.set, gallery.unlock
 custom.invoke
 ```
 
+`audio.play` 与 `audio.enqueue` 支持 `loopCount`（非负整数，默认 1，0 为无限）及 `completion`（`discard` 或 `requeueTail`，默认 `discard`）。`loopCount` 控制一个播放项的连续播放次数，`completion` 控制次数耗尽后是否回到队尾；失败或显式移除不会重新入队。Editor 使用数字输入和选项下拉编辑，使用方式见[音频重复与轮播](../manual/audio-playback.md)。
+
 `gallery.unlock` 的参数是正整数 `id`，其值必须是当前 `GalleryCatalog` 中存在的稳定 Gallery item ID。执行时写入 `player.gallery_<id>_unlocked = true`；Gallery item 从资源 `.meta.gallery[]` 聚合，发行运行读取其生成快照。旧的 category/sequence 参数不受支持。
 
 ## 图片差分指令

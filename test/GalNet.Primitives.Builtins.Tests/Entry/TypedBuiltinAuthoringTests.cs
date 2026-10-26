@@ -14,6 +14,46 @@ namespace GeneralTest.Entry;
 
 public sealed class TypedBuiltinAuthoringTests
 {
+    [Test]
+    public async Task CompiledRepeatAndCompletionReachRuntimeAndAutoBlockingWaitsForAllIterations()
+    {
+        using var host = new RecordingHost();
+        await using var view = new GameRegistration().AddBuiltins(audioHost: host, audioConfiguration: BuiltinAudioDefaults.Create()).BuildView();
+        var runtime = new GameRuntime(null); var catalog = new TargetProfileEntryCatalog([BuiltinSchemas.CreateAudioModule()]);
+        var finite = Compile(catalog, "audio.play", new { trackId = "bgm", asset = "finite", loopCount = 2, autoBlocking = "true" });
+        var instance = view.Dispatch(new PrimitiveEntry(finite.TypeId, finite.Arguments), runtime, default);
+        var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        instance.Completed += _ => completed.TrySetResult();
+        var first = await host.TakeAsync(AudioBackendAction.Start); host.End(first);
+        var second = await host.TakeAsync(AudioBackendAction.Start);
+        Assert.That(instance.IsCompleted, Is.False); host.End(second);
+        await completed.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        var rotating = Compile(catalog, "audio.play", new { trackId = "bgm", asset = "rotating", completion = "requeueTail" });
+        view.Dispatch(new PrimitiveEntry(rotating.TypeId, rotating.Arguments), runtime, default);
+        var original = await host.TakeAsync(AudioBackendAction.Start); host.End(original);
+        var repeated = await host.TakeAsync(AudioBackendAction.Start);
+        Assert.That(repeated.AssetId, Is.EqualTo("rotating")); Assert.That(repeated.VoiceId, Is.Not.EqualTo(original.VoiceId));
+        var stop = Compile(catalog, "audio.stop", new { trackId = "bgm" });
+        view.Dispatch(new PrimitiveEntry(stop.TypeId, stop.Arguments), runtime, default); host.End(repeated);
+        Assert.That(runtime.State.Table<AudioTrackState>().Get("bgm").Active, Is.Empty);
+    }
+
+    [TestCase("audio.play")]
+    [TestCase("audio.enqueue")]
+    public void AudioCompletionAndRepeatHaveExplicitDefaultsAndRejectInvalidAuthorValues(string type)
+    {
+        var catalog = new TargetProfileEntryCatalog([BuiltinSchemas.CreateAudioModule()]);
+        var defaults = Compile(catalog, type, new { trackId = "bgm", asset = "music" }).Arguments;
+        Assert.That(defaults.GetProperty("loopCount").GetInt32(), Is.EqualTo(1));
+        Assert.That(defaults.GetProperty("completion").GetString(), Is.EqualTo("discard"));
+        var loop = Compile(catalog, type, new { trackId = "bgm", asset = "music", loopCount = 0, completion = "requeueTail" }).Arguments;
+        var options = GalNet.Core.Parameters.ValueCodec.DeserializeFields<AudioPlayOptions>(AudioPlayOptions.Schema, loop);
+        Assert.That(options.LoopCount, Is.Zero); Assert.That(options.Completion, Is.EqualTo(AudioCompletion.RequeueTail));
+        Assert.That(() => Compile(catalog, type, new { trackId = "bgm", loopCount = -1 }), Throws.TypeOf<InvalidDataException>());
+        Assert.That(() => Compile(catalog, type, new { trackId = "bgm", loopCount = 1.5 }), Throws.TypeOf<InvalidDataException>());
+        Assert.That(() => Compile(catalog, type, new { trackId = "bgm", completion = "RequeueTail" }), Throws.TypeOf<InvalidDataException>());
+    }
+
     [TestCase(BuiltinEntryIds.TextVoice, BuiltinEntryIds.Text)]
     [TestCase(BuiltinEntryIds.AppendVoiceNvl, BuiltinEntryIds.AppendNvl)]
     public void TypedVoiceExpansionKeepsConditionsReadingBoundaryNullAndSourceMap(string type, string textType)
@@ -253,7 +293,8 @@ public sealed class TypedBuiltinAuthoringTests
         private readonly Channel<AudioBackendRequest> _requests = Channel.CreateUnbounded<AudioBackendRequest>();
         public AudioBackendCapabilities Capabilities { get; } = new(true, true, true);
         public ISEffectCatalog SEffects { get; } = new SEffectCatalog([]);
-        public event Action<AudioBackendEvent>? EventReceived { add { } remove { } }
+        public event Action<AudioBackendEvent>? EventReceived;
+        public void End(AudioBackendRequest request) => EventReceived?.Invoke(new(AudioBackendEventKind.Ended, request.TrackId, request.VoiceId, request.Generation));
         public Task ApplyAsync(AudioBackendRequest request, CancellationToken cancellationToken = default)
         {
             _requests.Writer.TryWrite(request);

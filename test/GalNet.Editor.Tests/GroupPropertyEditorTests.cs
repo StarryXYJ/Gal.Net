@@ -25,6 +25,133 @@ namespace GeneralTest.Editor;
 
 public sealed partial class ProjectWorkspaceLifecycleTests
 {
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task AudioTrackComboboxIsMountedInTheActualGroupPageAndInspector(bool common)
+    {
+        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        await ui.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
+            var project = await projects.CreateAsync(Path.Combine(_root, "GroupTrackInput"), "Tracks", new DefaultProjectOptions { AudioTracks = BuiltinAudioDefaults.Create().Tracks.ToList(), AudioGroups = BuiltinAudioDefaults.Create().Groups.ToList() }.ToConfiguration(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
+            var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
+            var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
+            var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.PlayAudio).Single();
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id);
+            var view = new EntryListEditorControl { DataContext = page, UseCommonFields = common };
+            var inspector = new DtoEditorHost { Item = entry.DetailForm!.Item, Registry = page.FieldEditors };
+            inspector.Styles.Add(new StyleInclude(new Uri("avares://GalNet.Editor/")) { Source = new Uri("avares://GalNet.Editor/Controls/AuthorFormStyles.axaml") });
+            var panel = new StackPanel { Children = { view, inspector } };
+            var window = new Window { Content = panel, Width = 1000, Height = 1000 }; window.Show(); TimelinePump(window);
+            try
+            {
+                var input = view.GetVisualDescendants().OfType<ComboBox>().Single(control => control.Name == "AudioTrackInput");
+                Assert.That(input.IsEffectivelyVisible, Is.True);
+                Assert.That(inspector.GetVisualDescendants().OfType<ComboBox>().Single(control => control.Name == "AudioTrackInput").IsEffectivelyVisible, Is.True);
+                input.SelectedItem = input.Items.Cast<object>().Single(item => item.ToString()!.EndsWith("(sfx)", StringComparison.Ordinal));
+                TimelinePump(window);
+                Assert.That(entry.Source.Parameters["trackId"].GetString(), Is.EqualTo("sfx"));
+                await project.Services.GetRequiredService<EditorHistories>().Content.UndoAsync();
+                Assert.That(entry.Source.Parameters.GetValueOrDefault("trackId").ValueKind is JsonValueKind.Undefined || entry.Source.Parameters["trackId"].GetString() == "bgm", Is.True);
+            }
+            finally { window.Close(); page.Dispose(); await projects.CloseAsync(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
+    public async Task FlipbookInputsPatchSingleMembersPreserveDraftsAndRejectInvalidGrid()
+    {
+        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        await ui.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme();
+            var registry = EditorFieldEditors.CreateDefault();
+            var binding = new PropertyBinding("{\"Columns\":4,\"rows\":2,\"frameCount\":8,\"index\":0,\"opaque\":9007199254740993}");
+            var field = LayerShowOptions.Schema.Single(item => item.Id == "flipbook");
+            using var context = new FieldEditorContext(field, binding, registry);
+            using var lease = registry.Resolve(field, typeof(LayerShowOptions))(context);
+            var window = new Window { Content = lease.Control, Width = 700, Height = 500 }; window.Show(); TimelinePump(window);
+            try
+            {
+                TextBox Input(string name) => lease.Control.GetVisualDescendants().OfType<TextBox>().Single(input => input.Name == "Flipbook" + name);
+                Assert.That(binding.Commits, Is.Zero);
+                Assert.That(Input("Columns").Text, Is.EqualTo("4"));
+                Input("Index").Text = "2.5"; PressGroupKey(Input("Index"), Key.Enter); TimelinePump(window);
+                Assert.That(binding.Commits, Is.EqualTo(1));
+                Assert.That(binding.Value.Json!.Value.GetProperty("index").GetSingle(), Is.EqualTo(2.5f));
+                Assert.That(binding.Value.Json.Value.GetProperty("Columns").GetInt32(), Is.EqualTo(4));
+                Assert.That(binding.Value.Json.Value.GetProperty("opaque").GetRawText(), Is.EqualTo("9007199254740993"));
+                Input("FrameCount").Text = "9"; PressGroupKey(Input("FrameCount"), Key.Enter); TimelinePump(window);
+                Assert.That(binding.Commits, Is.EqualTo(1));
+                Assert.That(Input("FrameCount").Text, Is.EqualTo("9"), "Rejected input remains editable.");
+                PressGroupKey(Input("FrameCount"), Key.Escape);
+                Assert.That(Input("FrameCount").Text, Is.EqualTo("8"));
+                Input("Rows").Text = "-";
+                Input("Index").Text = "3"; PressGroupKey(Input("Index"), Key.Enter); TimelinePump(window);
+                Assert.That(Input("Rows").Text, Is.EqualTo("-"), "A sibling edit retains the local draft.");
+                Input("Columns").Text = "0"; PressGroupKey(Input("Columns"), Key.Enter); TimelinePump(window);
+                Assert.That(binding.Commits, Is.EqualTo(2));
+                Assert.That(binding.Value.Json.Value.GetProperty("Columns").GetInt32(), Is.EqualTo(4));
+            }
+            finally { window.Close(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
+    public async Task AudioTrackComboboxesUseProjectTracksAndPreserveUnknownIdsWithoutInitialWrites()
+    {
+        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        await ui.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
+            var tracks = BuiltinAudioDefaults.Create().Tracks.ToList();
+            tracks.Add(new() { Id = "ambience", Name = "Ambience", GroupId = "sfx" });
+            var project = await projects.CreateAsync(Path.Combine(_root, "TrackInputs"), "Tracks", new DefaultProjectOptions { AudioTracks = tracks, AudioGroups = BuiltinAudioDefaults.Create().Groups.ToList() }.ToConfiguration(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
+            try
+            {
+                var registry = project.Services.GetRequiredService<EditorRegistry>();
+                var tables = new (Type Type, FieldDescriptor Field)[]
+                {
+                    (typeof(AudioTrackOptions), AudioTrackOptions.Schema.Single(field => field.Id == "trackId")),
+                    (typeof(AudioStopOptions), AudioStopOptions.Schema.Single(field => field.Id == "trackId")),
+                    (typeof(AudioPlayOptions), AudioPlayOptions.Schema.Single(field => field.Id == "trackId")),
+                    (typeof(AudioSEffectOptions), AudioSEffectOptions.Schema.Single(field => field.Id == "trackId")),
+                    (typeof(AudioSEffectStopOptions), AudioSEffectStopOptions.Schema.Single(field => field.Id == "trackId")),
+                    (typeof(TextVoiceOptions), TextVoiceOptions.Schema.Single(field => field.Id == "trackId")),
+                    (typeof(NvlVoiceOptions), NvlVoiceOptions.Schema.Single(field => field.Id == "trackId"))
+                };
+                foreach (var (type, field) in tables)
+                {
+                    var binding = new PropertyBinding("\"legacy\"");
+                    using var context = new FieldEditorContext(field, binding, registry);
+                    using var lease = registry.Resolve(field, type)(context);
+                    var input = (ComboBox)lease.Control;
+                    Assert.That(input.Name, Is.EqualTo("AudioTrackInput"));
+                    Assert.That(input.SelectedItem!.ToString(), Is.EqualTo("legacy"));
+                    Assert.That(binding.Commits, Is.Zero);
+                    input.SelectedItem = input.Items.Cast<object>().Single(item => item.ToString() == "Ambience (ambience)");
+                    Assert.That(binding.Commits, Is.EqualTo(1));
+                    Assert.That(binding.Value.Json!.Value.GetString(), Is.EqualTo("ambience"));
+                    Assert.That(input.Items.Cast<object>().Any(item => item.ToString() == "legacy"), Is.False);
+                    var options = project.Configuration.ReadDefaultOptions();
+                    var index = options.AudioTracks.FindIndex(track => track.Id == "ambience");
+                    options.AudioTracks[index] = options.AudioTracks[index] with { Name = "Atmosphere" };
+                    project.Configuration.Set(DefaultProjectConfiguration.Section, options);
+                    project.Services.GetRequiredService<IProjectContentSession>().Refresh();
+                    Assert.That(input.SelectedItem!.ToString(), Is.EqualTo("Atmosphere (ambience)"));
+                    Assert.That(binding.Commits, Is.EqualTo(1), "Refreshing project settings must not write the entry.");
+                    options.AudioTracks[index] = options.AudioTracks[index] with { Name = "Ambience" };
+                    project.Configuration.Set(DefaultProjectConfiguration.Section, options);
+                    project.Services.GetRequiredService<IProjectContentSession>().Refresh();
+                }
+            }
+            finally { await projects.CloseAsync(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
     [Test]
     public async Task GroupTransformAndColorUseRealControlsSingleHistoryAndLosslessSave()
     {

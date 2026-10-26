@@ -13,6 +13,7 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
     private readonly Dictionary<string, TrackBinding> _tracks = new(StringComparer.Ordinal);
     private readonly Dictionary<string, VoiceBinding> _voices = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<AudioPlaybackTicket>> _tickets = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, RetiringVoice> _retiring = new(StringComparer.Ordinal);
     private GameState _state;
     private long _nextGeneration;
     private AudioMixOptions _mix = new();
@@ -90,7 +91,10 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
         foreach (var item in track.Active.Concat(track.Pending))
             if (item is null || item.Request is null || string.IsNullOrWhiteSpace(item.Id) || !ids.Add(item.Id) || item.Request.TrackId != track.Id ||
                 string.IsNullOrWhiteSpace(item.Request.AssetId) || !float.IsFinite(item.Request.Gain) || item.Request.Gain < 0 ||
-                !float.IsFinite(item.Request.FadeInSeconds) || item.Request.FadeInSeconds < 0)
+                !float.IsFinite(item.Request.FadeInSeconds) || item.Request.FadeInSeconds < 0 ||
+                !Enum.IsDefined(item.Request.Placement) || !Enum.IsDefined(item.Request.Completion) || item.Request.LoopCount < 0 ||
+                item.CompletedIterations < 0 || item.Request.LoopCount > 0 && item.CompletedIterations >= item.Request.LoopCount ||
+                item.Request.LoopCount == 0 && item.CompletedIterations != 0)
                 throw new InvalidDataException($"Invalid playback item in track '{track.Id}'.");
     }
     private void ValidateEffect(AudioSEffectState effect)
@@ -147,6 +151,9 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
             _mix = snapshot;
             foreach (var track in _tracks.Values)
                 foreach (var item in track.State.Active.ToArray()) SendItem(track, item, AudioBackendAction.SetGain);
+            foreach (var retiring in _retiring.Values.ToArray())
+                _dispatcher.Enqueue(new(AudioBackendAction.SetGain, retiring.Binding.TrackId, retiring.Binding.Id,
+                    retiring.Binding.Generation, Gain: Gain(retiring.Track, retiring.Item)));
         });
     }
     public AudioPlaybackTicket Play(AudioConfiguration configuration, AudioPlayRequest request)
@@ -154,6 +161,9 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
         lock (_gate) return _state.Update(() =>
         {
             var ticket = new AudioPlaybackTicket(StopTicket);
+            if (request.LoopCount < 0 || !Enum.IsDefined(request.Completion) || !Enum.IsDefined(request.Placement) ||
+                !float.IsFinite(request.Gain) || request.Gain < 0 || !float.IsFinite(request.FadeInSeconds) || request.FadeInSeconds < 0)
+            { Report("Invalid audio playback request."); ticket.Complete(); return ticket; }
             var track = GetTrack(configuration, request.TrackId);
             if (track is null || string.IsNullOrWhiteSpace(request.AssetId) || _catchUp && !track.Definition.PreserveDuringCatchUp)
             { ticket.Complete(); return ticket; }
@@ -162,7 +172,12 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
                 var same = track.State.Active.Where(item => item.Request.AssetId == request.AssetId).ToArray();
                 if (same.Length > 0)
                 {
-                    foreach (var item in same) { item.Request = item.Request with { Gain = request.Gain }; SendItem(track, item, AudioBackendAction.SetGain); }
+                    foreach (var item in same)
+                    {
+                        if (item.Request.LoopCount != request.LoopCount) item.CompletedIterations = 0;
+                        item.Request = item.Request with { Gain = request.Gain, LoopCount = request.LoopCount, Completion = request.Completion };
+                        SendItem(track, item, AudioBackendAction.SetGain);
+                    }
                     if (_host is not null) Tickets(same[0].Id).Add(ticket);
                     if (_host is null) ticket.Complete();
                     return ticket;
@@ -192,6 +207,9 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
         lock (_gate) _state.Update(() =>
         {
             var track = GetTrack(configuration, request.TrackId); if (track is null) return;
+            foreach (var retiring in _retiring.Values.Where(value => value.Binding.TrackId == request.TrackId).ToArray())
+                _dispatcher.Enqueue(new(AudioBackendAction.Stop, retiring.Binding.TrackId, retiring.Binding.Id,
+                    retiring.Binding.Generation, FadeSeconds: Math.Max(0, request.FadeOutSeconds)));
             StopActive(track, request.FadeOutSeconds); if (request.ClearQueue) ClearPending(track);
         });
     }
@@ -310,15 +328,22 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
     { if (_tickets.Remove(item.Id, out var tickets)) foreach (var ticket in tickets) ticket.Complete(); }
     private void StopVoice(TrackBinding track, AudioItemState item, float fade)
     {
-        track.State.Active.Remove(item); SendItem(track, item, AudioBackendAction.Stop, Math.Max(0, fade));
-        _voices.Remove(item.Id); Complete(item);
+        track.State.Active.Remove(item);
+        if (_voices.Remove(item.Id, out var binding))
+        {
+            if (fade > 0 && _host?.Capabilities.SupportsFade == true)
+                _retiring[binding.Id] = new(track, item, binding);
+            _dispatcher.Enqueue(new(AudioBackendAction.Stop, binding.TrackId, binding.Id, binding.Generation, FadeSeconds: Math.Max(0, fade)));
+        }
+        Complete(item);
     }
     private void StopActive(TrackBinding track, float fade) { foreach (var item in track.State.Active.ToArray()) StopVoice(track, item, fade); }
     private void ClearPending(TrackBinding track) { foreach (var item in track.State.Pending) Complete(item); track.State.Pending.Clear(); }
     private void StopBindings()
     {
-        var bindings = _voices.Values.ToArray();
+        var bindings = _voices.Values.Concat(_retiring.Values.Select(value => value.Binding)).ToArray();
         _voices.Clear();
+        _retiring.Clear();
         var pendingTickets = _tickets.Values.SelectMany(tickets => tickets).ToArray();
         _tickets.Clear();
         // Some hosts report an end synchronously from Stop. Invalidate identities before calling them.
@@ -330,11 +355,39 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
     {
         lock (_gate) _state.Update(() =>
         {
-            if (_disposed || value.Kind is not (AudioBackendEventKind.Ended or AudioBackendEventKind.Failed) || !_tracks.TryGetValue(value.TrackId, out var track)) return;
+            if (_disposed || value.Kind is not (AudioBackendEventKind.Ended or AudioBackendEventKind.Failed)) return;
+            if (_retiring.TryGetValue(value.VoiceId, out var retiring) && retiring.Binding.TrackId == value.TrackId && retiring.Binding.Generation == value.Generation)
+            { _retiring.Remove(value.VoiceId); _dispatcher.CompleteVoice(value.VoiceId); return; }
+            if (!_tracks.TryGetValue(value.TrackId, out var track)) return;
             var item = track.State.Active.FirstOrDefault(item => _voices.TryGetValue(item.Id, out var voice) && voice.Id == value.VoiceId && voice.Generation == value.Generation);
             if (item is null) return;
-            track.State.Active.Remove(item); _voices.Remove(item.Id); _dispatcher.CompleteVoice(value.VoiceId);
+            _voices.Remove(item.Id); _dispatcher.CompleteVoice(value.VoiceId);
+            if (value.Kind == AudioBackendEventKind.Ended &&
+                (item.Request.LoopCount == 0 || item.CompletedIterations < item.Request.LoopCount - 1))
+            {
+                if (item.Request.LoopCount > 0) item.CompletedIterations++;
+                Project(track, item, 0);
+                return;
+            }
+            track.State.Active.Remove(item);
             if (value.Kind == AudioBackendEventKind.Failed) Report(value.Message ?? $"Audio backend failed for '{item.Request.AssetId}'.");
+            if (value.Kind == AudioBackendEventKind.Ended && item.Request.Completion == AudioCompletion.RequeueTail)
+            {
+                item.CompletedIterations = 0;
+                if (track.State.Pending.Count == 0) Start(track, item);
+                else
+                {
+                    // Free a voice for the existing queue before applying the idle queue budget.
+                    track.State.Pending.Add(item); Pump(track);
+                    if (track.State.Pending.Count > track.Definition.MaxQueuedItems)
+                    {
+                        var index = track.Definition.QueueOverflowPolicy == AudioQueueOverflowPolicy.DropNewest ? track.State.Pending.Count - 1 : 0;
+                        var dropped = track.State.Pending[index]; track.State.Pending.RemoveAt(index); Complete(dropped);
+                        Report("Audio queue limit reached while requeuing completed playback.");
+                    }
+                }
+                return;
+            }
             Pump(track);
             Complete(item);
         });
@@ -369,5 +422,6 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
             catch (Exception) { /* Diagnostic observers cannot interrupt backend cleanup. */ }
     }
     private sealed record TrackBinding(AudioTrackDefinition Definition, AudioTrackState State);
+    private sealed record RetiringVoice(TrackBinding Track, AudioItemState Item, VoiceBinding Binding);
     private sealed record VoiceBinding(string TrackId, string Id, long Generation);
 }

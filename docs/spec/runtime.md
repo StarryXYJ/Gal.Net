@@ -195,6 +195,7 @@ Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`
 - `animation.animate` / `timeline.play` / `animation.stop`：创建 animation primitive instance；一次性动画先提交最终逻辑状态，循环动画提交第 0 帧状态并保存完整重放定义，再启动呈现动画。timeline 是单个 instance，内部事件只作为 animation 模块私有 layer/effect 事件处理，不重新进入通用 Entry 分发。
 - `effect.apply` / `effect.stop`：维护唯一的 EffectInstance 数据表和 `IEffectPresenter` 调用；动画直接修改同一记录，不维护 ActiveEffectState 镜像。Skia effect-program 的 `@gal.effect` 元数据声明可动画参数，动画使用其逻辑参数名；`time` 可映射到常见 shader 时间 uniform。
 - `audio.play` / `audio.stop` / `audio.pause` / `audio.resume` / `audio.enqueue` / `audio.next` / `audio.clear`：`AudioRuntime` 持有轨道队列与 voice 生命周期，`IAudioPlaybackHost` 只执行平台播放请求。`dialogue.textVoice` 与 `nvl.appendVoice` 会先发出非阻塞的 `audio.play(replaceIfDifferent)`，默认使用 `vocal` 轨道，再按正常文本语义阻塞。
+- `audio.play` / `audio.enqueue` 的 `loopCount` 默认 1，0 为无限重复；`completion` 默认为 `discard`，`requeueTail` 在完整播放次数结束后回到队尾。单项重复优先于 completion，失败、停止、替换、next 与 scope 清理不触发重播。每轮重新生成后端 identity；这是结束事件驱动的重复播放，不承诺无缝。有限循环保存 `CompletedIterations`，旧数据缺省为 0；旧请求缺省仍为一次播放并丢弃，因此 audio state section 维持 v1。无限循环计数不累加。暂停期间结束的播放保留逻辑项，Resume 后启动新一轮。
 - `audio.seffect.apply` / `audio.seffect.stop`：以 `trackId` 和 `instanceId` 附着或移除宿主 catalog 已注册的轨道 SEffect；当前 Avalonia host 支持 `seffect.gain`、基于 equalizer 频段近似的 `seffect.lowPass` 与 `seffect.highPass`。未知 ID、非法参数或不支持 scope 只记录诊断，不会静默附着。
 - `particle.play` / `particle.stop`：用 `rate` 创建和停止持续 emitter，维护唯一的 ParticleEmitterInstance 数据表，场景句柄查找引用同一记录。存档只保存 emitter 定义、排序与动画值；宿主读档后通过模块注册的恢复处理器 以相同 seed 从头重建，不保存单颗粒子。`initial` 的 lifetime、velocity、size、rotation、angular velocity、color 以及 `flipbook` 的播放速度与起始帧都按粒子确定性采样；`motion` 提供 gravity、noise、drag、radial、orbit、attractor，`lifetime` 曲线线性插值 size、opacity、velocity、rotation、color。当前粒子年龄、位置和 flipbook 帧不单独存档。
 - `particle.burst`：用 `count` 向 `IParticlePresenter` 发出一次性 burst，不创建 Runtime scene state，也不参与存档恢复。有限持续效果由流程或 animation timeline 编排 play/stop；重复 burst 由 animation timeline 事件表达，跳过 timeline 时不补发未来 burst。
@@ -205,6 +206,10 @@ Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`
 - `custom.invoke`：`BuiltinCustomActionModule` 按 ordinal action ID 查注册的实例工厂，原样传入 argument。注册在 view 组合时冻结，重复/空白 ID 拒绝。`RegisterImmediate` 同步非阻塞；`RegisterAsync` 支持运行 scope/模块生命周期联合取消和可选阻塞，并通过 PrimitiveTaskScope 在异步释放时取消、排空任务和聚合错误。两种便利入口 Normal 调 execute，Quick 调 quick 或回退 execute，CatchUp 调 catchUp 或空操作；运行中模式切换不重启委托。`RegisterFactory` 返回的独立实例自行管理完整模式/跳过/完成和资源清理语义。未匹配时所有模式 warning 后同步完成，可配置严格缺失报错；处理器自身失败正常传播。模块不自动注册持久状态，也不序列化委托或资源。接入见[通用 action](../manual/custom-actions.md)。
 
 视频图层与音频的轨道播放、淡化、队列和当前轨道 SEffect 行为由内置模块实现。玩家音量/静音按 master × group × track × 内容 gain × 轨道默认 gain 合成并应用到当前及后续 voice；item effect 和音频参数动画仍未实现。AudioTrackState 保存轨道当前播放项、内容 gain、暂停状态与有序队列；AudioSEffectState 单独保存轨道效果，空闲时仍保留并作用于后续 voice。所有仍存在的自定义轨道状态按检查点恢复；活动内容从头开始，不恢复游标和淡化时钟。暂停轨道在 Resume 前不启动播放器。恢复重新读取项目轨道配置并应用当前玩家音量；正常结束先更新逻辑状态和队列，后端身份/ticket 不入存档。Gallery 的平台无关 catalog 与解锁数据层由 Core/Runtime 提供；默认 Avalonia 前端通过宿主提供的 `IGameGallerySession` 浏览 CG、视频和音频，不把页面或媒体状态写入 Runtime。
+
+循环播放读档时从当前轮开头重播并保留已完成轮数；重新入队开始新一轮循环计数。ticket 随完整逻辑播放完成，轮播/无限重复需通过停止、替换或跳过终止。`ReplaceIfDifferent` 命中相同资源时更新 gain、completion 与 loopCount，次数改变时重新计数，不重启当前后端声音。
+
+淡出项立即从逻辑播放集合移除，但 AudioRuntime 保留运行期 retiring voice，继续发送玩家音量/静音更新；retiring 不进入存档，也不占逻辑声部/队列容量。支持淡出的 host 必须在真实结束（含显式停止、淡出完成、停止尚未启动的声音）时上报对应 Ended，供运行时清理身份；scope 切换和释放会强制立即停止所有 retiring。此类结束不会重新入队。
 
 动画 timeline 的事件与轨道共用 presenter 的播放时间源。`PlayTimelineAsync` 必须在采样前 await `beforeFrame(elapsedFrames)`，正常完成前提供末帧；Loop/PingPong 的 elapsedFrames 单调增加，不在循环时归零。跳过不补发未来 particle burst。
 

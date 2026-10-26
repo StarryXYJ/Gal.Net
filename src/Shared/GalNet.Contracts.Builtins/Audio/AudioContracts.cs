@@ -11,6 +11,12 @@ public enum AudioPlacement
     ReplaceIfDifferent
 }
 
+public enum AudioCompletion
+{
+    Discard,
+    RequeueTail
+}
+
 public enum AudioBackendAction
 {
     Start,
@@ -62,7 +68,9 @@ public sealed record AudioPlayRequest(
     string AssetId,
     AudioPlacement Placement,
     float Gain = 1f,
-    float FadeInSeconds = 0f);
+    float FadeInSeconds = 0f,
+    int LoopCount = 1,
+    AudioCompletion Completion = AudioCompletion.Discard);
 
 public sealed record AudioStopRequest(string TrackId, bool ClearQueue, float FadeOutSeconds = 0f);
 
