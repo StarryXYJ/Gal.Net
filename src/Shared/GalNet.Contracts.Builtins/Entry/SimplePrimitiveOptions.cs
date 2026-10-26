@@ -52,9 +52,10 @@ public partial class InstanceIdOptions
 [GenerateFieldSchema]
 public partial class AudioSEffectStopOptions
 {
-    [Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)]
+    public AudioSEffectStopOptions() => TrackId = "";
+    [Field(0, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)]
     [Common]
-    public string? TrackId { get; set; } = "bgm";
+    public string TrackId { get; set; }
     [Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)]
     public string? InstanceId { get; set; }
 }

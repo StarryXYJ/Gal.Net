@@ -8,7 +8,12 @@ namespace GeneralTest.Runtime;
 
 public class AudioPersistenceTests
 {
-    private static readonly List<AudioTrackDefinition> Tracks = AudioTrackDefinition.CreateDefaults();
+    private static readonly AudioConfiguration Tracks = new(
+    [
+        new() { Id = "bgm", GroupId = "bgm", PreserveDuringCatchUp = true, DefaultGain = .8f, MaxQueuedItems = 64, OverflowPolicy = AudioOverflowPolicy.StopOldest },
+        new() { Id = "sfx", GroupId = "sfx", MaxVoices = 8 },
+        new() { Id = "vocal", GroupId = "vocal", MaxQueuedItems = 64, OverflowPolicy = AudioOverflowPolicy.StopOldest }
+    ], [new() { Id = "bgm" }, new() { Id = "sfx" }, new() { Id = "vocal" }]);
     private static StateCatalog Catalog()
     {
         var builder = new StateCatalogBuilder();

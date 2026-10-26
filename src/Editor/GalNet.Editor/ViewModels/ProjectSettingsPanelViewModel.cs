@@ -19,7 +19,7 @@ namespace GalNet.Editor.ViewModels;
 public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposable, IUndoRedoTarget
 {
     public IReadOnlyList<string> ResolutionPresets { get; } = NewProjectPanelViewModel.ResolutionPresets;
-    public IReadOnlyList<string> AudioBuses { get; } = [GalNet.Core.Audio.AudioBuses.Bgm, GalNet.Core.Audio.AudioBuses.Sfx, GalNet.Core.Audio.AudioBuses.Vocal];
+    public ObservableCollection<AudioGroupEditorItem> AudioGroups { get; } = [];
     public ObservableCollection<AudioTrackEditorItem> AudioTracks { get; } = [];
     private readonly IProjectService _projectService;
     private readonly EditorHistories _histories;
@@ -99,6 +99,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
         _session.ExternalReloaded -= LoadFromProject;
         L.PropertyChanged -= OnLocalizationChanged;
         foreach (var track in AudioTracks) { track.Changed -= TriggerAutoSave; track.RemoveRequested = null; }
+        foreach (var group in AudioGroups) { group.Changed -= TriggerAutoSave; group.RemoveRequested = null; }
         GC.SuppressFinalize(this);
     }
 
@@ -127,6 +128,14 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
         TargetLocale = settings.TargetLocale.Code;
         foreach (var track in AudioTracks) track.Changed -= TriggerAutoSave;
         AudioTracks.Clear();
+        foreach (var group in AudioGroups) { group.Changed -= TriggerAutoSave; group.RemoveRequested = null; }
+        AudioGroups.Clear();
+        foreach (var group in settings.AudioGroups)
+        {
+            var item = new AudioGroupEditorItem { Id = group.Id, Name = group.Name, RemoveRequested = RemoveAudioGroup };
+            item.Changed += TriggerAutoSave;
+            AudioGroups.Add(item);
+        }
         foreach (var track in settings.AudioTracks)
         {
             var item = AttachTrack(AudioTrackEditorItem.From(track));
@@ -160,11 +169,11 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
             if (locale != project.Settings.TargetLocale.Code)
                 throw new EditorOperationException("i18n.development", L["I18n.UsePanel"]);
             var before = SettingsSnapshot.From(project.Name, project.Settings);
-            var after = new SettingsSnapshot(ProjectName.Trim(), DefaultWidth, DefaultHeight, SaveSlotCount, locale, AudioTracks.Select(item => item.ToDefinition()).ToArray());
-            ValidateTracks(after.AudioTracks);
+            var after = new SettingsSnapshot(ProjectName.Trim(), DefaultWidth, DefaultHeight, SaveSlotCount, locale, AudioTracks.Select(item => item.ToDefinition()).ToArray(), AudioGroups.Select(item => item.ToDefinition()).ToArray());
+            _ = new AudioConfiguration(after.AudioTracks, after.AudioGroups);
             if (before.Matches(after)) { LoadFromProject(); return; }
             if (!NewProjectPanelViewModel.TryParseResolution($"{DefaultWidth}×{DefaultHeight}", out _, out _) || SaveSlotCount <= 0)
-                throw new EditorOperationException("settings.invalid", "Invalid project dimensions or channel/slot count.");
+                throw new EditorOperationException("settings.invalid", "Invalid project dimensions or save slot count.");
             var graph = project.Services.GetRequiredService<IEditorDocumentService>().CurrentDocument;
             await _histories.Content.ExecuteAsync(new SettingsEdit(project.Settings, graph, before, after));
             LoadFromProject();
@@ -191,14 +200,21 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
 
     partial void OnTargetLocaleChanged(string value) => TriggerAutoSave();
 
+    private string NextTrackId()
+    {
+        var number = 1;
+        while (AudioTracks.Any(track => track.Id == $"track_{number}")) number++;
+        return $"track_{number}";
+    }
+
     [RelayCommand]
     private void AddAudioTrack()
     {
         var item = new AudioTrackEditorItem
         {
-            Id = $"track_{AudioTracks.Count + 1}",
+            Id = NextTrackId(),
             Name = "New track",
-            Bus = GalNet.Core.Audio.AudioBuses.Sfx,
+            GroupId = "",
             DefaultGain = 1,
             MaxVoices = 1,
             MaxQueuedItems = 0
@@ -222,13 +238,25 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
         return item;
     }
 
-    private static void ValidateTracks(IReadOnlyList<AudioTrackDefinition> tracks)
+    [RelayCommand]
+    private void AddAudioGroup()
     {
-        if (tracks.Count == 0) throw new EditorOperationException("settings.tracksRequired", "At least one audio track is required.");
-        if (tracks.Any(track => string.IsNullOrWhiteSpace(track.Id)) || tracks.Select(track => track.Id).Distinct(StringComparer.Ordinal).Count() != tracks.Count)
-            throw new EditorOperationException("settings.trackIds", "Audio track IDs must be non-empty and unique.");
-        if (tracks.Any(track => !GalNet.Core.Audio.AudioBuses.IsValid(track.Bus) || !float.IsFinite(track.DefaultGain) || track.DefaultGain < 0 || track.DefaultGain > 1 || track.MaxVoices <= 0 || track.MaxQueuedItems < 0))
-            throw new EditorOperationException("settings.trackInvalid", "Audio track configuration contains an invalid bus, gain, or voice limit.");
+        var number = 1;
+        while (AudioGroups.Any(group => group.Id == $"group_{number}")) number++;
+        var item = new AudioGroupEditorItem { Id = $"group_{number}", Name = "New group", RemoveRequested = RemoveAudioGroup };
+        item.Changed += TriggerAutoSave;
+        AudioGroups.Add(item);
+        TriggerAutoSave();
+    }
+
+    [RelayCommand]
+    private void RemoveAudioGroup(AudioGroupEditorItem? item)
+    {
+        if (item is null || !AudioGroups.Remove(item)) return;
+        item.Changed -= TriggerAutoSave;
+        item.RemoveRequested = null;
+        foreach (var track in AudioTracks.Where(track => track.GroupId == item.Id)) track.GroupId = "";
+        TriggerAutoSave();
     }
 
     private void TriggerAutoSave()
@@ -265,7 +293,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
 
     private bool HasDraftChanges => _hasDraft && _projectService.Current is { } project &&
         !SettingsSnapshot.From(project.Name, project.Settings).Matches(new((ProjectName ?? "").Trim(), DefaultWidth, DefaultHeight, SaveSlotCount,
-            TargetLocale, AudioTracks.Select(item => item.ToDefinition()).ToArray()));
+            TargetLocale, AudioTracks.Select(item => item.ToDefinition()).ToArray(), AudioGroups.Select(item => item.ToDefinition()).ToArray()));
 
     private sealed record SettingsEdit(Core.Settings.ProjectSettings Settings, EditorGraphDocument Graph, SettingsSnapshot Before, SettingsSnapshot After) : IUndoableEdit
     {
@@ -282,38 +310,35 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
         }
     }
 
-    private sealed record SettingsSnapshot(string Name, int Width, int Height, int SaveSlots, string Locale, IReadOnlyList<AudioTrackDefinition> AudioTracks)
+    private sealed record SettingsSnapshot(string Name, int Width, int Height, int SaveSlots, string Locale,
+        IReadOnlyList<AudioTrackDefinition> AudioTracks, IReadOnlyList<AudioGroupDefinition> AudioGroups)
     {
         public static SettingsSnapshot From(string name, Core.Settings.ProjectSettings settings) =>
-            new(name, settings.DefaultWidth, settings.DefaultHeight, settings.SaveSlotCount, settings.TargetLocale.Code, settings.AudioTracks.Select(CopyTrack).ToArray());
+            new(name, settings.DefaultWidth, settings.DefaultHeight, settings.SaveSlotCount, settings.TargetLocale.Code,
+                settings.AudioTracks.ToArray(), settings.AudioGroups.ToArray());
         public bool Matches(SettingsSnapshot other) =>
             Name == other.Name && Width == other.Width && Height == other.Height && SaveSlots == other.SaveSlots && Locale == other.Locale &&
-            AudioTracks.Count == other.AudioTracks.Count && AudioTracks.Zip(other.AudioTracks).All(pair => Same(pair.First, pair.Second));
+            AudioTracks.SequenceEqual(other.AudioTracks) && AudioGroups.SequenceEqual(other.AudioGroups);
         public void Apply(Core.Settings.ProjectSettings settings)
         {
-            var locale = new Core.I18n.I18nLocale(Locale);
-            var tracks = AudioTracks.Select(CopyTrack).ToList();
             settings.DefaultWidth = Width; settings.DefaultHeight = Height; settings.SaveSlotCount = SaveSlots;
-            settings.TargetLocale = locale;
-            settings.AudioTracks = tracks;
+            settings.TargetLocale = new Core.I18n.I18nLocale(Locale);
+            settings.AudioTracks = AudioTracks.ToList();
+            settings.AudioGroups = AudioGroups.ToList();
         }
-
-        private static bool Same(AudioTrackDefinition left, AudioTrackDefinition right) =>
-            left.Id == right.Id && left.Name == right.Name && left.Bus == right.Bus && left.DefaultGain == right.DefaultGain &&
-            left.MaxVoices == right.MaxVoices && left.MaxQueuedItems == right.MaxQueuedItems &&
-            left.OverflowPolicy == right.OverflowPolicy && left.QueueOverflowPolicy == right.QueueOverflowPolicy;
-        private static AudioTrackDefinition CopyTrack(AudioTrackDefinition track) => new()
-        {
-            Id = track.Id,
-            Name = track.Name,
-            Bus = track.Bus,
-            DefaultGain = track.DefaultGain,
-            MaxVoices = track.MaxVoices,
-            MaxQueuedItems = track.MaxQueuedItems,
-            OverflowPolicy = track.OverflowPolicy,
-            QueueOverflowPolicy = track.QueueOverflowPolicy
-        };
     }
+}
+
+public sealed partial class AudioGroupEditorItem : ObservableObject
+{
+    public event Action? Changed;
+    public Action<AudioGroupEditorItem>? RemoveRequested { get; set; }
+    [ObservableProperty] private string _id = "";
+    [ObservableProperty] private string _name = "";
+    public AudioGroupDefinition ToDefinition() => new() { Id = Id, Name = Name };
+    [RelayCommand] private void Remove() => RemoveRequested?.Invoke(this);
+    partial void OnIdChanged(string value) => Changed?.Invoke();
+    partial void OnNameChanged(string value) => Changed?.Invoke();
 }
 
 public sealed partial class AudioTrackEditorItem : ObservableObject
@@ -322,7 +347,8 @@ public sealed partial class AudioTrackEditorItem : ObservableObject
     public Action<AudioTrackEditorItem>? RemoveRequested { get; set; }
     [ObservableProperty] private string _id = "";
     [ObservableProperty] private string _name = "";
-    [ObservableProperty] private string _bus = AudioBuses.Sfx;
+    [ObservableProperty] private string _groupId = "";
+    [ObservableProperty] private bool _preserveDuringCatchUp;
     [ObservableProperty] private double _defaultGain = 1;
     [ObservableProperty] private int _maxVoices = 1;
     [ObservableProperty] private int _maxQueuedItems;
@@ -333,7 +359,8 @@ public sealed partial class AudioTrackEditorItem : ObservableObject
     {
         Id = track.Id,
         Name = track.Name,
-        Bus = track.Bus,
+        GroupId = track.GroupId ?? "",
+        PreserveDuringCatchUp = track.PreserveDuringCatchUp,
         DefaultGain = track.DefaultGain,
         MaxVoices = track.MaxVoices,
         MaxQueuedItems = track.MaxQueuedItems,
@@ -344,7 +371,8 @@ public sealed partial class AudioTrackEditorItem : ObservableObject
     {
         Id = Id,
         Name = Name,
-        Bus = Bus,
+        GroupId = string.IsNullOrWhiteSpace(GroupId) ? null : GroupId,
+        PreserveDuringCatchUp = PreserveDuringCatchUp,
         DefaultGain = (float)DefaultGain,
         MaxVoices = MaxVoices,
         MaxQueuedItems = MaxQueuedItems,
@@ -357,8 +385,11 @@ public sealed partial class AudioTrackEditorItem : ObservableObject
 
     partial void OnIdChanged(string value) => Changed?.Invoke();
     partial void OnNameChanged(string value) => Changed?.Invoke();
-    partial void OnBusChanged(string value) => Changed?.Invoke();
+    partial void OnGroupIdChanged(string value) => Changed?.Invoke();
     partial void OnDefaultGainChanged(double value) => Changed?.Invoke();
     partial void OnMaxVoicesChanged(int value) => Changed?.Invoke();
     partial void OnMaxQueuedItemsChanged(int value) => Changed?.Invoke();
+    partial void OnPreserveDuringCatchUpChanged(bool value) => Changed?.Invoke();
+    partial void OnOverflowPolicyChanged(AudioOverflowPolicy value) => Changed?.Invoke();
+    partial void OnQueueOverflowPolicyChanged(AudioQueueOverflowPolicy value) => Changed?.Invoke();
 }

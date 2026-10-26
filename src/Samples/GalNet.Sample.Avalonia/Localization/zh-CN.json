@@ -119,5 +119,6 @@
   "Debug.OpenLogDirectory": "打开日志目录",
   "DebugLog.Title": "调试日志",
   "DebugLog.Clear": "清空日志",
-  "DebugLog.OpenDirectory": "打开日志目录"
+  "DebugLog.OpenDirectory": "打开日志目录",
+  "Settings.Muted": "静音"
 }

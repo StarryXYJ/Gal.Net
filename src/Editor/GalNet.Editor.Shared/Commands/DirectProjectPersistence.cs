@@ -49,6 +49,7 @@ public sealed class DirectProjectPersistence(string projectPath, IEditorDocument
         var plan = _repository.PrepareSave(_projectPath, document.Graph,
             document.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value));
         var settings = JsonSerializer.SerializeToElement(document.Settings, JsonOptions).Deserialize<ProjectSettings>(JsonOptions)!;
+        _ = new GalNet.Core.Audio.AudioConfiguration(settings.AudioTracks, settings.AudioGroups);
         settings.PlayerVariables = document.Graph.PlayerVariables.Select(item => item.Clone()).ToList();
         settings.SaveVariables = document.Graph.SaveVariables.Select(item => item.Clone()).ToList();
         var writes = new Dictionary<string, byte[]>(plan.Writes)
@@ -77,7 +78,9 @@ public sealed class DirectProjectPersistence(string projectPath, IEditorDocument
         var diagnostics = new List<GalNet.Editor.Abstraction.Commands.ToolDiagnostic>();
         ProjectValidationService.DuplicateProperties(raw.RootElement, "settings.json", "", diagnostics);
         if (diagnostics.Count != 0) throw new InvalidDataException(string.Join("\n", diagnostics.Select(item => $"{item.JsonPointer}: {item.Message}")));
-        return raw.RootElement.Deserialize<ProjectSettings>(JsonOptions)
+        var settings = raw.RootElement.Deserialize<ProjectSettings>(JsonOptions)
             ?? throw new InvalidDataException("Project settings must be an object.");
+        _ = new GalNet.Core.Audio.AudioConfiguration(settings.AudioTracks, settings.AudioGroups);
+        return settings;
     }
 }

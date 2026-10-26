@@ -34,12 +34,12 @@ public static class BuiltinRegistration
         BuiltinAudioModule? audioModule = null,
         ImageVariantsCatalog? imageVariants = null,
         BuiltinCustomActionModule? customActions = null,
-        IReadOnlyList<AudioTrackDefinition>? audioTracks = null)
+        AudioConfiguration? audioConfiguration = null)
     {
         registration.AddBuiltinSchemas();
         return registration.AddBuiltinImplementations(registration.BuildCatalog(),
             dialoguePresenter, layerPresenter, animationPresenter, effectPresenter, gallery,
-            particlePresenter, nvlPresenter, audioHost, videoPresenter, characters, audioModule, imageVariants, customActions, audioTracks);
+            particlePresenter, nvlPresenter, audioHost, videoPresenter, characters, audioModule, imageVariants, customActions, audioConfiguration);
     }
 
     /// <summary>Registers logical implementations. Optional presenters select state-only/headless operation.</summary>
@@ -59,14 +59,14 @@ public static class BuiltinRegistration
         BuiltinAudioModule? audioModule = null,
         ImageVariantsCatalog? imageVariants = null,
         BuiltinCustomActionModule? customActions = null,
-        IReadOnlyList<AudioTrackDefinition>? audioTracks = null)
+        AudioConfiguration? audioConfiguration = null)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         IPrimitiveModule[] modules =
         [
             new BuiltinDialogueModule(dialoguePresenter, characters), new BuiltinNvlModule(nvlPresenter),
             new BuiltinLayerModule(layerPresenter, imageVariants), new BuiltinAnimationModule(animationPresenter, layerPresenter, effectPresenter, particlePresenter),
-            audioModule ?? new BuiltinAudioModule(audioHost, tracks: audioTracks), new BuiltinVideoModule(videoPresenter),
+            audioModule ?? new BuiltinAudioModule(audioHost, configuration: audioConfiguration), new BuiltinVideoModule(videoPresenter),
             new BuiltinEffectModule(effectPresenter), new BuiltinParticleModule(particlePresenter),
             new BuiltinFlowModule(), new BuiltinVariableModule(), new BuiltinGalleryModule(gallery),
             customActions ?? new BuiltinCustomActionModule()
@@ -89,7 +89,7 @@ public static class BuiltinRegistration
     public static GameRegistration AddBuiltinCustomActions(this GameRegistration registration, BuiltinCustomActionModule? module = null) =>
         registration.RegisterImplementation(module ?? new BuiltinCustomActionModule());
     public static GameRegistration AddBuiltinAudio(this GameRegistration registration, IAudioPlaybackHost? host = null,
-        IReadOnlyList<AudioTrackDefinition>? tracks = null) => registration.RegisterImplementation(new BuiltinAudioModule(host, tracks: tracks));
+        AudioConfiguration? configuration = null) => registration.RegisterImplementation(new BuiltinAudioModule(host, configuration: configuration));
     public static GameRegistration AddBuiltinGallery(this GameRegistration registration, GalleryCatalog? gallery = null) => registration.RegisterImplementation(new BuiltinGalleryModule(gallery));
     public static GameRegistration AddBuiltinDialogue(this GameRegistration registration, IDialoguePresenter? presenter = null, CharacterCatalog? characters = null) => registration.RegisterImplementation(new BuiltinDialogueModule(presenter, characters));
     public static GameRegistration AddBuiltinNvl(this GameRegistration registration, INvlPresenter? presenter = null) => registration.RegisterImplementation(new BuiltinNvlModule(presenter));

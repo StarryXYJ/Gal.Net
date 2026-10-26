@@ -1077,5 +1077,10 @@
   "Uiux.Draft.Restore": "入力を復元",
   "Error.entry.archiveFull": "入力保管領域が満杯です。Problems でコピーまたは破棄してから項目を削除してください。",
   "Error.entry.archiveUnavailable": "入力保管領域を利用できません。.galnet/editor/input-archive.json を保全して修復してください。",
-  "Error.entry.archiveChanged": "保管済み入力が現在の対象と一致しません。破棄前にテキストをコピーしてください。"
+  "Error.entry.archiveChanged": "保管済み入力が現在の対象と一致しません。破棄前にテキストをコピーしてください。",
+  "Settings.Project.AudioGroups": "音声グループ",
+  "Settings.Project.AddGroup": "グループを追加",
+  "Settings.Project.RemoveGroup": "グループを削除",
+  "Settings.Project.GroupId": "グループ ID（省略可）",
+  "Settings.Project.PreserveAudio": "早送り後も再生を保持"
 }

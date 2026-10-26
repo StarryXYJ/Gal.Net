@@ -10,20 +10,26 @@ public sealed record AudioMixOptions
     public float MasterGain { get; init; } = 1f;
     public bool MasterMuted { get; init; }
     public IReadOnlyDictionary<string, AudioMixLevel> Groups { get; init; } = ReadOnlyDictionary<string, AudioMixLevel>.Empty;
+    public IReadOnlyDictionary<string, AudioMixLevel> Tracks { get; init; } = ReadOnlyDictionary<string, AudioMixLevel>.Empty;
 
     internal AudioMixOptions Snapshot()
     {
         ValidateGain(MasterGain);
-        ArgumentNullException.ThrowIfNull(Groups);
+        return this with { Groups = CopyLevels(Groups), Tracks = CopyLevels(Tracks) };
+    }
+
+    private static IReadOnlyDictionary<string, AudioMixLevel> CopyLevels(IReadOnlyDictionary<string, AudioMixLevel> values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
         var groups = new Dictionary<string, AudioMixLevel>(StringComparer.Ordinal);
-        foreach (var (id, level) in Groups)
+        foreach (var (id, level) in values)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(id);
             ArgumentNullException.ThrowIfNull(level);
             ValidateGain(level.Gain);
             groups.Add(id, level);
         }
-        return this with { Groups = new ReadOnlyDictionary<string, AudioMixLevel>(groups) };
+        return new ReadOnlyDictionary<string, AudioMixLevel>(groups);
     }
 
     private static void ValidateGain(float gain)

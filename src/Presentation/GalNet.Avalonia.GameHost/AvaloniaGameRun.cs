@@ -63,7 +63,7 @@ internal sealed class AvaloniaGameRun : IGameRun
             (registration, presentation) => options.ConfigureExecution(registration, presentation, page, resources.Content),
             resources.Content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>()
                 .SelectMany(group => group.Entries).Select(entry => entry.Type), options.Presentation, sharedLibVlc,
-            audioTracks: resources.Content.Settings.AudioTracks, cancellationToken: cancellationToken);
+            audioConfiguration: new GalNet.Core.Audio.AudioConfiguration(resources.Content.Settings.AudioTracks, resources.Content.Settings.AudioGroups), cancellationToken: cancellationToken);
         GameRun? run = null;
         AvaloniaGameRun? adapter = null;
         try

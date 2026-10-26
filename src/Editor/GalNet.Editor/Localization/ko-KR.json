@@ -1077,5 +1077,10 @@
   "Uiux.Draft.Restore": "입력 복원",
   "Error.entry.archiveFull": "입력 보관 영역이 가득 찼습니다. Problems에서 복사하거나 버린 후 항목을 삭제하세요.",
   "Error.entry.archiveUnavailable": "입력 보관 영역을 사용할 수 없습니다. .galnet/editor/input-archive.json을 보존하고 복구하세요.",
-  "Error.entry.archiveChanged": "보관된 입력이 현재 대상과 일치하지 않습니다. 버리기 전에 텍스트를 복사하세요."
+  "Error.entry.archiveChanged": "보관된 입력이 현재 대상과 일치하지 않습니다. 버리기 전에 텍스트를 복사하세요.",
+  "Settings.Project.AudioGroups": "오디오 그룹",
+  "Settings.Project.AddGroup": "그룹 추가",
+  "Settings.Project.RemoveGroup": "그룹 삭제",
+  "Settings.Project.GroupId": "그룹 ID (선택 사항)",
+  "Settings.Project.PreserveAudio": "빨리 감기 후 재생 유지"
 }

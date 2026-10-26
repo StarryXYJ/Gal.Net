@@ -42,9 +42,10 @@ public sealed class ProjectDocumentOwnershipTests
             Settings = new ProjectSettings
             {
                 AvailableLocales = [new("en-US")],
+                AudioGroups = [new() { Id = "ambience", Name = "Environment" }],
                 AudioTracks = [new AudioTrackDefinition
                 {
-                    Id = "custom", Name = "Custom", Bus = AudioBuses.Sfx, DefaultGain = .4f, MaxVoices = 3, MaxQueuedItems = 4,
+                    Id = "custom", Name = "Custom", GroupId = "ambience", PreserveDuringCatchUp = true, DefaultGain = .4f, MaxVoices = 3, MaxQueuedItems = 4,
                     OverflowPolicy = AudioOverflowPolicy.StopOldest, QueueOverflowPolicy = AudioQueueOverflowPolicy.DropOldest
                 }]
             },
@@ -54,7 +55,8 @@ public sealed class ProjectDocumentOwnershipTests
             project.GroupEntries["opening"][0].Parameters = json.RootElement.EnumerateObject().ToDictionary(property => property.Name, property => property.Value.Clone());
         var clone = EditorDocumentCloner.Clone(project);
         project.Settings.AvailableLocales.Clear();
-        project.Settings.AudioTracks[0].Name = "Changed";
+        project.Settings.AudioGroups.Clear();
+        project.Settings.AudioTracks[0] = project.Settings.AudioTracks[0] with { Name = "Changed" };
         project.GroupEntries["opening"][0].Parameters.Clear();
         var values = clone.GroupEntries["opening"].Single().Parameters;
         Assert.That(values["payload"].GetProperty("items")[0].GetInt64(), Is.EqualTo(9007199254740993L));
@@ -62,6 +64,8 @@ public sealed class ProjectDocumentOwnershipTests
         Assert.That(values.ContainsKey("omitted"), Is.False);
         Assert.That(clone.Settings.AvailableLocales.Single().Code, Is.EqualTo("en-US"));
         Assert.That(clone.Settings.AudioTracks[0].Name, Is.EqualTo("Custom"));
+        Assert.That(clone.Settings.AudioGroups.Single().Id, Is.EqualTo("ambience"));
+        Assert.That(clone.Settings.AudioTracks[0].PreserveDuringCatchUp, Is.True);
         Assert.That(clone.Settings.AudioTracks[0].DefaultGain, Is.EqualTo(.4f));
         Assert.That(clone.Settings.AudioTracks[0].MaxQueuedItems, Is.EqualTo(4));
         Assert.That(clone.Settings.AudioTracks[0].OverflowPolicy, Is.EqualTo(AudioOverflowPolicy.StopOldest));

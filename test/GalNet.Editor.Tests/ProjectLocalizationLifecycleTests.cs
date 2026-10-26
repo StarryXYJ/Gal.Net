@@ -29,7 +29,9 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var localization = new EditorLocalizationService();
             using var services = Services(localization: localization);
             var projects = services.GetRequiredService<IProjectService>();
-            var project = await projects.CreateAsync(Path.Combine(_root, "Localized"), "Authored 名称", new(), Contracts());
+            var audio = GalNet.Contracts.Builtins.BuiltinAudioDefaults.Create();
+            var project = await projects.CreateAsync(Path.Combine(_root, "Localized"), "Authored 名称",
+                new() { AudioGroups = audio.Groups.ToList(), AudioTracks = audio.Tracks.ToList() }, Contracts());
             var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
             var panel = project.Services.GetRequiredService<ProjectSettingsPanelViewModel>();
             var page = project.Services.GetRequiredService<EditorPageViewModel>();

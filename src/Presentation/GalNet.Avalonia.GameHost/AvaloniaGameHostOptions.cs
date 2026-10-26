@@ -12,6 +12,7 @@ namespace GalNet.Avalonia.GameHost;
 public sealed class AvaloniaGameHostOptions
 {
     public AvaloniaGamePresentationOptions Presentation { get; init; } = new();
+    public bool ShowTrackAudioControls { get; init; }
     public string GameTitle { get; init; } = "GalNet";
     public string NoGameMessage { get; init; } = "Select a game directory to start.";
     public required Func<(IResourceTypeCatalog Resources, IGalleryTypeCatalog Gallery)> CreateContentCatalogs { get; init; }

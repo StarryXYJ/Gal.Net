@@ -105,17 +105,8 @@ public static class EditorDocumentCloner
         DefaultHeight = source.DefaultHeight,
         PlayerVariables = source.PlayerVariables.Select(variable => variable.Clone()).ToList(),
         SaveVariables = source.SaveVariables.Select(variable => variable.Clone()).ToList(),
-        AudioTracks = source.AudioTracks.Select(track => new GalNet.Core.Audio.AudioTrackDefinition
-        {
-            Id = track.Id,
-            Name = track.Name,
-            Bus = track.Bus,
-            DefaultGain = track.DefaultGain,
-            MaxVoices = track.MaxVoices,
-            MaxQueuedItems = track.MaxQueuedItems,
-            OverflowPolicy = track.OverflowPolicy,
-            QueueOverflowPolicy = track.QueueOverflowPolicy
-        }).ToList()
+        AudioTracks = source.AudioTracks.ToList(),
+        AudioGroups = source.AudioGroups.ToList()
     };
 
 }

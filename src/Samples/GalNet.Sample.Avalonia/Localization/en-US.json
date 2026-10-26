@@ -119,5 +119,6 @@
   "Debug.OpenLogDirectory": "Open log directory",
   "DebugLog.Title": "Debug log",
   "DebugLog.Clear": "Clear log",
-  "DebugLog.OpenDirectory": "Open log directory"
+  "DebugLog.OpenDirectory": "Open log directory",
+  "Settings.Muted": "Muted"
 }

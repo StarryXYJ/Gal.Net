@@ -12,3 +12,5 @@
 证据：CustomActionTests.Contract_rejects_invalid_arguments_before_handler_creation 初轮缺 argument 的用例失败，调整 DTO 声明后通过；显式 null 也有拒绝回归。编译入口额外断言两个字段 IsRequired、AllowNull=false、DefaultValue=null。
 
 适用范围：可接受空串但不接受缺省/null 的 DTO 字段。不要把 Required=true 等同于“即使有默认值也必须显式提供”，也不要为了局部字段语义修改全局 Normalize 的默认值规则。关联：docs/spec/entry-types.md、docs/manual/custom-actions.md。
+
+复现补充：F-20261026-01 引擎重构 R3 自定义音频中，将 TrackId 从固定 bgm/vocal 改为 Required 时，保留空串属性初始化值同样导致省略参数仍通过。统一改为构造函数初始化，并对全部普通音频/语音 schema 断言 DefaultValue=null、缺省/null 拒绝；不要仅改 Required 标记。

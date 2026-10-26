@@ -137,7 +137,8 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
             if (!await _startup.InitializeAsync(saveSession.Variables,
                     resources.Content.Settings.TargetLocale.Code, selectLanguage, cancellationToken))
                 throw new OperationCanceledException("Language selection was cancelled.", cancellationToken);
-            await _settings.AttachAsync(saveSession.Variables, new GameSettings(), cancellationToken);
+            await _settings.AttachAsync(saveSession.Variables, new GameSettings(),
+                new(resources.Content.Settings.AudioTracks, resources.Content.Settings.AudioGroups), _options.ShowTrackAudioControls, cancellationToken);
             await _settings.RestoreDisplayAsync(cancellationToken);
 
             IsReady = true;
@@ -189,7 +190,9 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
             await AvaloniaUiDispatcher.Instance.InvokeAsync(async () =>
             {
                 if (saveSession is not null)
-                    await _settings.AttachAsync(saveSession.Variables, new GameSettings(), token);
+                    await _settings.AttachAsync(saveSession.Variables, new GameSettings(),
+                        _resources is { } resources ? new(resources.Content.Settings.AudioTracks, resources.Content.Settings.AudioGroups) : null,
+                        _options.ShowTrackAudioControls, token);
                 _gameplay.TextSpeed = _settings.RuntimeSettings.TextSpeed;
                 _gameplay.IsNvlMode = false;
                 _gameplay.IsUiHidden = false;

@@ -23,20 +23,10 @@ public sealed class GameSettings
     /// <summary>Quick mode stops before text not read before this visit.</summary>
     public bool QuickReadOnly { get; set; } = true;
 
-    /// <summary>BGM 默认音量（0~1）</summary>
-    public float BgmVolume { get; set; } = 1f;
-
-    /// <summary>音效默认音量（0~1）</summary>
-    public float SfxVolume { get; set; } = 1f;
-
-    /// <summary>语音默认音量（0~1）</summary>
-    public float VoiceVolume { get; set; } = 1f;
-
     public float MasterVolume { get; set; } = 1f;
     public bool MasterMuted { get; set; }
-    public bool BgmMuted { get; set; }
-    public bool SfxMuted { get; set; }
-    public bool VoiceMuted { get; set; }
+    public Dictionary<string, AudioMixLevel> Groups { get; } = new(StringComparer.Ordinal);
+    public Dictionary<string, AudioMixLevel> Tracks { get; } = new(StringComparer.Ordinal);
 
     public PlaybackOptions ToPlaybackOptions() => new()
     {
@@ -49,11 +39,7 @@ public sealed class GameSettings
     {
         MasterGain = MasterVolume,
         MasterMuted = MasterMuted,
-        Groups = new Dictionary<string, AudioMixLevel>(StringComparer.Ordinal)
-        {
-            [AudioBuses.Bgm] = new(BgmVolume, BgmMuted),
-            [AudioBuses.Sfx] = new(SfxVolume, SfxMuted),
-            [AudioBuses.Vocal] = new(VoiceVolume, VoiceMuted)
-        }
+        Groups = Groups,
+        Tracks = Tracks
     };
 }

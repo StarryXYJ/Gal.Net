@@ -52,7 +52,7 @@ public class GameTestCaseTests
             var variants = await assets.LoadImageVariantsCatalogAsync();
             await using var view = new GameRegistration().AddBuiltins(presenter, gallery: content.Gallery,
                 nvlPresenter: presenter, characters: content.Localization.Characters, imageVariants: variants,
-                audioTracks: content.Settings.AudioTracks).BuildView();
+                audioConfiguration: new GalNet.Core.Audio.AudioConfiguration(content.Settings.AudioTracks, content.Settings.AudioGroups)).BuildView();
             await using var engine = new GameEngine(content.Graph, view, localization, choicePresenter: presenter);
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             await engine.AdvanceAsync(timeout.Token);

@@ -1,6 +1,6 @@
 # 引擎核心精简与职责收敛
 
-状态：上一轮 P1–P5 verified，P6 保留环境待验证项；后续架构重构 R1–R2 verified，R3–R8 planned。
+状态：上一轮 P1–P5 verified，P6 保留环境待验证项；后续架构重构 R1–R3 verified，R4–R8 planned。
 
 本文件是整个重构的实施与进度入口。P0–P6 保留已提交的历史；R1–R8 整理后续工作，设计依据见 [design.md](design.md)。设计整理完成不代表实现完成。
 
@@ -20,7 +20,7 @@
 
 完成阶段的详细清单压缩为：**完成结果一句话 + 验证结果 + 证据链接/提交**。实际缺口不能被压缩掉；延期项标记 `skipped` 并说明原因，不计作完成。重要偏差在收尾 `summary.md` 中保留原因。
 
-用户追加约定：每个阶段验证完成后单独提交 Git，再继续下一阶段；未完成或仅规划的阶段不能标为完成。R1 提交为 `76753fc`。
+用户追加约定：每个阶段验证完成后单独提交 Git，再继续下一阶段；未完成或仅规划的阶段不能标为完成。R1 提交为 `76753fc`，R2 提交为 `669b586`（部分早期修改另包含在独立清理提交 `2a5c678`）。
 
 | 阶段 | 内容 | 状态 |
 | --- | --- | --- |
@@ -90,7 +90,7 @@ primitive/呈现仅借用 IGameContext，Engine 管理 IGameRuntime 与 IPrimiti
 | --- | --- | --- | --- |
 | R1 | 执行协议与管理类型归位 | 已提交基线 | [x] verified |
 | R2 | 设置模型与模块配置解耦 | R1 | [x] verified |
-| R3 | 自定义音频分组与轨道控制 | R2 | [ ] planned |
+| R3 | 自定义音频分组与轨道控制 | R2 | [x] verified |
 | R4 | 自定义配置贯穿作者与运行链路 | R2、R3 | [ ] planned |
 | R5 | 剥离可选领域与场景依赖 | R1–R4 | [ ] planned |
 | R6 | 统一参数描述与基础校验 | R5 | [ ] planned |
@@ -109,12 +109,11 @@ Engine 只接收/更新不可变 PlaybackOptions，音频只接收隔离轨道�
 
 1645 项相关测试通过，4 项为既有符号链接权限失败，2 项跳过；当前完整解决方案构建、locked restore、格式与 diff 检查通过。覆盖显式配置更新/拒绝、集合隔离、已有/后续 voice、默认偏好清空重绑和存档容量。证据见 [summary](summary.md#r2设置模型与模块配置解耦)、PlaybackModeTests、AudioRuntimeTests、TypedBuiltinAuthoringTests、SampleLocalizationTests、SampleSaveSessionTests；接入示例见 [manual](../../docs/manual/new-presentation-layer.md#从项目设置映射模块配置)。
 
-### R3 — 自定义音频分组与轨道控制
+### R3 — verified
 
-- **目标/模块**：音频契约、内置音频模块、后端适配、设置 UI 和 Sample；这是行为扩展，与后续领域搬迁分开验证。
-- **任务**：分组/轨道均由开发者声明 ID；移除固定 AudioBuses 校验与增益 switch。一个轨道可不分组或属于一个组，配置加载/更新时验证唯一性与引用。分别支持 master/group/track 的 gain/mute，叠加轨道预设与内容 gain；任一层 mute 则静音，未设偏好采用中性值。更新影响已有和后续 voice。预设名称、增益、默认轨道和语音 Composite 的目标默认值由高层明确提供。
-- **验证/退出**：自定义 ambience、同组多轨、单轨互不干扰、增益/静音组合、配置更新和读档恢复有行为回归；队列/并发/溢出/票据与 drain 不退化。Sample 只保留音乐/音效/语音三个声明式分组，设置 UI 走同一声明路径。更新音频设计/接入文档。
-- **风险**：不建设总线树、多组路由、分组 DSP 或任意设置继承系统；其他能力将来分别定义规则。玩家混音不写回剧情快照，恢复使用当前偏好。
+分组/轨道任意声明，允许空配置/未分组；不可变 AudioConfiguration 在入口统一校验，master/group/track 混音影响当前及后续 voice，快进保留为显式轨道策略。删除固定分类与指令默认目标；Sample/模板明确选择三分组，默认 UI 和 Editor 复用同一声明。
+
+1752 项测试通过，4 项既有符号链接权限失败、3 项跳过；完整解决方案构建、空白格式与 diff 检查通过。最终修正后的 Builtins 185 项全通过，Integration 123 通过/1 项权限失败。证据含 AudioConfigurationTests、AudioRuntimeTests、ProjectAudioSettingsTests、SampleLocalizationTests 与 GameInstallationTests；记录见 [summary](summary.md#r3自定义音频分组与轨道)，规范见 [runtime](../../docs/spec/runtime.md) 和[接入手册](../../docs/manual/new-presentation-layer.md)。原生/外进程环境项继续保留，完整自定义 section/领域归位归 R4/R5。
 
 ### R4 — 自定义配置贯穿作者与运行链路
 

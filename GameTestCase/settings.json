@@ -9,5 +9,48 @@
     {
       "code": "zh-CN"
     }
+  ],
+  "audioGroups": [
+    {
+      "id": "bgm",
+      "name": "Settings.BgmVolume"
+    },
+    {
+      "id": "sfx",
+      "name": "Settings.SfxVolume"
+    },
+    {
+      "id": "vocal",
+      "name": "Settings.VoiceVolume"
+    }
+  ],
+  "audioTracks": [
+    {
+      "id": "bgm",
+      "groupId": "bgm",
+      "name": "Music",
+      "preserveDuringCatchUp": true,
+      "defaultGain": 0.8,
+      "maxVoices": 1,
+      "maxQueuedItems": 64
+    },
+    {
+      "id": "sfx",
+      "groupId": "sfx",
+      "name": "Effects",
+      "preserveDuringCatchUp": false,
+      "defaultGain": 1,
+      "maxVoices": 8,
+      "maxQueuedItems": 0
+    },
+    {
+      "id": "vocal",
+      "groupId": "vocal",
+      "name": "Voice",
+      "preserveDuringCatchUp": false,
+      "defaultGain": 1,
+      "maxVoices": 1,
+      "maxQueuedItems": 64
+    }
   ]
 }

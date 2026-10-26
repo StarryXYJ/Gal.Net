@@ -7,6 +7,71 @@ namespace GeneralTest.Runtime;
 public class AudioRuntimeTests
 {
     [Test]
+    public void CustomGroupAndTrackMixControlsCurrentAndFutureVoicesIndependently()
+    {
+        var configuration = new AudioConfiguration(
+            [new() { Id = "rain", GroupId = "ambience", DefaultGain = .8f },
+             new() { Id = "wind", GroupId = "ambience" }, new() { Id = "alert" }],
+            [new() { Id = "ambience" }]);
+        var host = new RecordingHost();
+        using var runtime = new AudioRuntime(host);
+        runtime.Play(configuration, new("rain", "rain", AudioPlacement.Replace, .5f));
+        runtime.Play(configuration, new("wind", "wind", AudioPlacement.Replace));
+        runtime.Play(configuration, new("alert", "alert", AudioPlacement.Replace));
+        var tracks = new Dictionary<string, AudioMixLevel> { ["rain"] = new(.25f) };
+        var mix = new AudioMixOptions
+        {
+            MasterGain = .5f,
+            Groups = new Dictionary<string, AudioMixLevel> { ["ambience"] = new(.5f) },
+            Tracks = tracks
+        };
+        runtime.ApplyMix(mix);
+        AssertGains(.025f, .25f, .5f);
+        tracks["rain"] = new(1f, true);
+        runtime.Play(configuration, new("rain", "second", AudioPlacement.Replace, .5f));
+        AssertGains(.025f, .25f, .5f);
+        runtime.ApplyMix(mix);
+        AssertGains(0, .25f, .5f);
+        runtime.ApplyMix(mix with { Tracks = new Dictionary<string, AudioMixLevel>(), Groups = new Dictionary<string, AudioMixLevel> { ["ambience"] = new(1f, true) } });
+        AssertGains(0, 0, .5f);
+        runtime.ApplyMix(mix with { MasterMuted = true });
+        AssertGains(0, 0, 0);
+
+        void AssertGains(float rain, float wind, float alert)
+        {
+            Assert.That(host.Requests.Last(request => request.TrackId == "rain").Gain, Is.EqualTo(rain).Within(.000001));
+            Assert.That(host.Requests.Last(request => request.TrackId == "wind").Gain, Is.EqualTo(wind).Within(.000001));
+            Assert.That(host.Requests.Last(request => request.TrackId == "alert").Gain, Is.EqualTo(alert).Within(.000001));
+        }
+    }
+
+    [Test]
+    public void CatchUpUsesExplicitPolicyRatherThanTrackOrGroupName()
+    {
+        var host = new RecordingHost();
+        using var runtime = new AudioRuntime(host);
+        var configuration = new AudioConfiguration(
+            [new() { Id = "weather", PreserveDuringCatchUp = true }, new() { Id = "bgm" }]);
+        runtime.BeginCatchUp();
+        runtime.Play(configuration, new("weather", "rain", AudioPlacement.Replace));
+        var discarded = runtime.Play(configuration, new("bgm", "music", AudioPlacement.Replace));
+        Assert.That(discarded.IsCompleted, Is.True);
+        Assert.That(host.Requests, Is.Empty);
+        runtime.EndCatchUp();
+        Assert.That(host.Requests.Single().TrackId, Is.EqualTo("weather"));
+    }
+
+    [Test]
+    public void FiniteLargeContentGainSaturatesAtBackendLimit()
+    {
+        var host = new RecordingHost();
+        using var runtime = new AudioRuntime(host);
+        runtime.Play(new([new() { Id = "loud", DefaultGain = float.MaxValue }]),
+            new("loud", "clip", AudioPlacement.Replace, float.MaxValue));
+        Assert.That(host.Requests.Single().Gain, Is.EqualTo(1));
+    }
+
+    [Test]
     public void MixerSnapshotsHostCollectionsAndRejectsInvalidUpdatesWithoutChangingActiveOrFutureGain()
     {
         var host = new RecordingHost();
@@ -120,8 +185,9 @@ public class AudioRuntimeTests
         Assert.That(first.IsCompleted && attached.IsCompleted, Is.True);
     }
 
-    private static readonly IReadOnlyList<AudioTrackDefinition> Tracks =
-    [new() { Id = "bgm", Bus = AudioBuses.Bgm, MaxVoices = 1, MaxQueuedItems = 2, DefaultGain = 0.8f }];
+    private static readonly AudioConfiguration Tracks = new(
+        [new() { Id = "bgm", GroupId = "bgm", PreserveDuringCatchUp = true, MaxVoices = 1, MaxQueuedItems = 2, DefaultGain = .8f }],
+        [new() { Id = "bgm" }]);
 
     [Test]
     public async Task Replace_stops_current_voice_then_starts_the_new_asset()

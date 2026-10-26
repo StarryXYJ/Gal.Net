@@ -274,7 +274,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     {
         target.TargetLocale = source.TargetLocale; target.AvailableLocales = source.AvailableLocales;
         target.SaveSlotCount = source.SaveSlotCount;
-        target.AudioTracks = source.AudioTracks; target.DefaultWidth = source.DefaultWidth; target.DefaultHeight = source.DefaultHeight;
+        target.AudioTracks = source.AudioTracks; target.AudioGroups = source.AudioGroups; target.DefaultWidth = source.DefaultWidth; target.DefaultHeight = source.DefaultHeight;
         target.PlayerVariables = source.PlayerVariables; target.SaveVariables = source.SaveVariables;
     }
 

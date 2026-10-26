@@ -31,6 +31,7 @@ public class GameTextLocalizationTests
                     Parameters = new()
                     {
                         ["content"] = JsonSerializer.SerializeToElement(key),
+                        ["trackId"] = JsonSerializer.SerializeToElement("vocal"),
                         ["asset"] = JsonSerializer.SerializeToElement("voice")
                     }
                 }

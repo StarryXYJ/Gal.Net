@@ -17,8 +17,10 @@ internal static class GameProjectSettingsLoader
         if (!File.Exists(path)) return new ProjectSettings();
         try
         {
-            return JsonSerializer.Deserialize<ProjectSettings>(File.ReadAllText(path), JsonOptions)
+            var settings = JsonSerializer.Deserialize<ProjectSettings>(File.ReadAllText(path), JsonOptions)
                 ?? throw new InvalidDataException("Project settings must be a JSON object.");
+            _ = new GalNet.Core.Audio.AudioConfiguration(settings.AudioTracks, settings.AudioGroups);
+            return settings;
         }
         catch (JsonException error)
         {

@@ -28,11 +28,13 @@ var playback = new PlaybackOptions
     AutoAdvanceIntervalMilliseconds = preferences.AutoDelay,
     QuickReadOnly = preferences.ReadOnlySkip
 };
-var audio = new BuiltinAudioModule(audioBackend, tracks: projectTracks);
+var configuration = new AudioConfiguration(projectTracks, projectGroups);
+var audio = new BuiltinAudioModule(audioBackend, configuration: configuration);
 audio.ApplyMix(new AudioMixOptions
 {
     MasterGain = preferences.MasterVolume,
-    Groups = new Dictionary<string, AudioMixLevel> { ["bgm"] = new(preferences.MusicVolume) }
+    Groups = new Dictionary<string, AudioMixLevel> { ["ambience"] = new(preferences.AmbienceVolume) },
+    Tracks = new Dictionary<string, AudioMixLevel> { ["rain"] = new(preferences.RainVolume) }
 });
 // Register the configured audio module with the other implementations.
 var runtime = new GameRuntime(textResolver, graph.RootNodeId, variableService: variables);
@@ -41,6 +43,24 @@ await engine.UpdatePlaybackOptionsAsync(playback with { AutoAdvanceIntervalMilli
 ```
 
 PlaybackOptions 位于 Core.Execution，AudioMixOptions/AudioMixLevel 位于 Runtime.Audio，BuiltinAudioModule 位于 Primitives.Builtins。默认 Avalonia.GameHost.Settings.GameSettings 提供示例映射方法，可直接使用或完全替换。音频模块不会读取 GameContent.Settings，也不会自动创建轨道；默认宿主负责提供项目声明的轨道。轨道声明和混音字典在入口隔离，后续修改项目对象不等于更新运行配置。文本速度传给文本呈现，窗口偏好交给显示服务，保存槽数交给保存服务，不把整个偏好对象塞进运行上下文。
+
+## 声明音频分组与轨道
+
+`AudioConfiguration` 在构造时验证并隔离轨道/分组声明；ID 由项目定义，一个轨道可以不分组，或用 `GroupId` 引用一个已声明分组。空配置合法。`BuiltinAudioDefaults.Create()` 是可选的三分组示例，Sample 和新项目模板显式选择它；Core 与音频模块不自动注入默认轨道。
+
+```csharp
+var configuration = new AudioConfiguration(
+    [new() { Id = "rain", Name = "Rain", GroupId = "ambience", PreserveDuringCatchUp = true },
+     new() { Id = "wind", Name = "Wind", GroupId = "ambience" },
+     new() { Id = "alert", Name = "Alert" }],
+    [new() { Id = "ambience", Name = "Environment" }]);
+```
+
+`AudioMixOptions` 分别接收 master、Groups 和 Tracks 的 gain/mute，缺省为 1/false。最终增益为 master × group × track × 轨道 DefaultGain × 播放内容 gain，最后限制到后端的 0–1；任一层静音则为零。ApplyMix 在入口复制字典，更新当前及后续 voice。玩家混音不写入剧情快照，恢复使用当前玩家值。
+
+`PreserveDuringCatchUp` 显式控制快进回放结束时是否投影最终播放内容，与 ID/分组名称无关。普通音频指令和语音复合指令均须显式提供 `trackId`。
+
+默认 Avalonia 设置服务从声明生成分组控件，以 `ShowTrackAudioControls` 选择是否同时显示单轨控件；隐藏单轨控件时仍恢复对应偏好。更高层可以完全采用自己的 DTO、UI 和持久化，只需映射上述配置。默认存储键按经过 URI 转义的 ID 区分 group/track，无固定三分类字段。
 
 ## 接入图片差分
 

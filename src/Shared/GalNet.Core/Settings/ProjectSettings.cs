@@ -12,8 +12,8 @@ public sealed class ProjectSettings
 
     public int SaveSlotCount { get; set; } = 60;
 
-    /// <summary>Author-controlled logical audio routes. Bus CRUD is intentionally not part of this version.</summary>
-    public List<GalNet.Core.Audio.AudioTrackDefinition> AudioTracks { get; set; } = GalNet.Core.Audio.AudioTrackDefinition.CreateDefaults();
+    public List<GalNet.Core.Audio.AudioGroupDefinition> AudioGroups { get; set; } = [];
+    public List<GalNet.Core.Audio.AudioTrackDefinition> AudioTracks { get; set; } = [];
 
     public int DefaultWidth { get; set; } = 1920;
 

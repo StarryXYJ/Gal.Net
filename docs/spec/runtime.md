@@ -199,7 +199,7 @@ Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`
 - `gallery.unlock`：按稳定 item ID 解锁 Gallery，写入对应的系统 Player bool。
 - `custom.invoke`：`BuiltinCustomActionModule` 按 ordinal action ID 查注册的实例工厂，原样传入 argument。注册在 view 组合时冻结，重复/空白 ID 拒绝。`RegisterImmediate` 同步非阻塞；`RegisterAsync` 支持运行 scope/模块生命周期联合取消和可选阻塞，并通过 PrimitiveTaskScope 在异步释放时取消、排空任务和聚合错误。两种便利入口 Normal 调 execute，Quick 调 quick 或回退 execute，CatchUp 调 catchUp 或空操作；运行中模式切换不重启委托。`RegisterFactory` 返回的独立实例自行管理完整模式/跳过/完成和资源清理语义。未匹配时所有模式 warning 后同步完成，可配置严格缺失报错；处理器自身失败正常传播。模块不自动注册持久状态，也不序列化委托或资源。接入见[通用 action](../manual/custom-actions.md)。
 
-视频图层与音频的轨道播放、淡化、队列和当前轨道 SEffect 行为由内置模块实现。玩家音量/静音按 master × bus × 内容 gain × 轨道默认 gain 合成并应用到当前及后续 voice；item effect 和音频参数动画仍未实现。AudioTrackState 保存轨道当前播放项、内容 gain、暂停状态与有序队列；AudioSEffectState 单独保存轨道效果，空闲时仍保留并作用于后续 voice。所有仍存在的轨道状态按检查点恢复，包含 SFX/Vocal；活动内容从头开始，不恢复游标和淡化时钟。暂停轨道在 Resume 前不启动播放器。恢复重新读取项目轨道配置并应用当前玩家音量；正常结束先更新逻辑状态和队列，后端身份/ticket 不入存档。Gallery 的平台无关 catalog 与解锁数据层由 Core/Runtime 提供；默认 Avalonia 前端通过宿主提供的 `IGameGallerySession` 浏览 CG、视频和音频，不把页面或媒体状态写入 Runtime。
+视频图层与音频的轨道播放、淡化、队列和当前轨道 SEffect 行为由内置模块实现。玩家音量/静音按 master × group × track × 内容 gain × 轨道默认 gain 合成并应用到当前及后续 voice；item effect 和音频参数动画仍未实现。AudioTrackState 保存轨道当前播放项、内容 gain、暂停状态与有序队列；AudioSEffectState 单独保存轨道效果，空闲时仍保留并作用于后续 voice。所有仍存在的自定义轨道状态按检查点恢复；活动内容从头开始，不恢复游标和淡化时钟。暂停轨道在 Resume 前不启动播放器。恢复重新读取项目轨道配置并应用当前玩家音量；正常结束先更新逻辑状态和队列，后端身份/ticket 不入存档。Gallery 的平台无关 catalog 与解锁数据层由 Core/Runtime 提供；默认 Avalonia 前端通过宿主提供的 `IGameGallerySession` 浏览 CG、视频和音频，不把页面或媒体状态写入 Runtime。
 
 动画 timeline 的事件与轨道共用 presenter 的播放时间源。`PlayTimelineAsync` 必须在采样前 await `beforeFrame(elapsedFrames)`，正常完成前提供末帧；Loop/PingPong 的 elapsedFrames 单调增加，不在循环时归零。跳过不补发未来 particle burst。
 
@@ -213,7 +213,7 @@ Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`
 
 primitive 和呈现恢复只借用 `Core.Runtime.IGameContext`：游戏位置只读，允许变量/场景操作和显式 EndGame，不提供游标修改、快照或读档方法。Engine 持有的 `Runtime.Runtime.IGameRuntime` 才拥有这些运行管理能力，准备恢复使用同程序集的 GameRestorePoint；旧 scope 在状态同步边界内检查取消，不能在恢复提交后写入新代变量。
 
-执行上下文没有 Settings 属性。Engine 以 Core.Execution.PlaybackOptions 的不可变值保存自动/快速推进配置，宿主通过 UpdatePlaybackOptionsAsync 一致更新；无效间隔在提交前拒绝，不更改当前配置或使运行 Faulted。音频模块借构造参数获取独立的轨道定义副本，以 AudioMixOptions 接收主音量与按分组 ID 索引的混音值；ApplyMix 复制集合后更新已有及后续 voice，不在每次播放时读取完整玩家模型。Avalonia.GameHost.Settings.GameSettings 只是默认宿主的偏好模型，映射到上述输入，项目不必继承它。窗口、文本和保存设置由各自宿主/呈现服务消费。SettingsContainer、SettingsSection、无消费者的 SaveSettings 和旧 SfxChannelCount 已删除；并发数量只由每轨 MaxVoices 表达。
+执行上下文没有 Settings 属性。Engine 以 Core.Execution.PlaybackOptions 的不可变值保存自动/快速推进配置，宿主通过 UpdatePlaybackOptionsAsync 一致更新；无效间隔在提交前拒绝，不更改当前配置或使运行 Faulted。音频模块借构造参数获取独立的轨道定义副本，以 AudioConfiguration 接收已验证的分组/轨道声明，以 AudioMixOptions 接收主音量与分别按分组/轨道 ID 索引的混音值；ApplyMix 复制集合后更新已有及后续 voice，不在每次播放时读取完整玩家模型。Avalonia.GameHost.Settings.GameSettings 只是默认宿主的偏好模型，映射到上述输入，项目不必继承它。窗口、文本和保存设置由各自宿主/呈现服务消费。SettingsContainer、SettingsSection、无消费者的 SaveSettings 和旧 SfxChannelCount 已删除；并发数量只由每轨 MaxVoices 表达。
 
 `IPrimitiveDispatcher`、IChoicePresenter、ICatchUpPresentation 和 IPlayerPlaybackController 位于 Core.Execution，描述分发、状态验证、Choice 输入、快进同步和玩家播放控制，与具体 presenter/UI 无关；CompositeGameView 是分发协议的组合实现。音频后端端口位于 Core.Audio，Runtime 无需引用 Presentation.Abstractions 即可使用这些协议。`EngineNotifications` 统一按产生顺序排队状态、播放模式和检查点通知，在执行门外发布并隔离每个订阅者。活动实例列表本身保持分发顺序，不维护额外排序或自动阻塞镜像集合。
 

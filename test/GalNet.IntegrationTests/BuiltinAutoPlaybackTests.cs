@@ -48,11 +48,11 @@ public sealed class BuiltinAutoPlaybackTests
         var text = new ControlledText();
         using var audio = new ControlledAudio();
         await using var view = new GameRegistration().AddBuiltins(dialoguePresenter: text, audioHost: audio,
-            audioTracks: AudioTrackDefinition.CreateDefaults()).BuildView();
+            audioConfiguration: GalNet.Contracts.Builtins.BuiltinAudioDefaults.Create()).BuildView();
         var settings = new PlaybackOptions { AutoAdvanceIntervalMilliseconds = 120 };
         var group = new Group { Id = "main" };
         group.Entries.AddRange([
-            new PrimitiveEntry("audio.play", JsonSerializer.SerializeToElement(new { trackId = AudioBuses.Vocal, asset = "voice", autoBlocking = "true" })) { StableId = "voice" },
+            new PrimitiveEntry("audio.play", JsonSerializer.SerializeToElement(new { trackId = "vocal", asset = "voice", autoBlocking = "true" })) { StableId = "voice" },
             new PrimitiveEntry("dialogue.text", JsonSerializer.SerializeToElement(new { content = "Hello" })) { StableId = "text" }
         ]);
         var graph = new Graph { RootNodeId = "main", Nodes = { group } };

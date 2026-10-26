@@ -18,11 +18,11 @@ internal static class VoiceTextEntrySupport
         new PrimitiveEntry(BuiltinEntryIds.AppendNvl, ValueCodec.SerializeFields(new NvlAppendOptions
         { Content = options.Content ?? "" })) { Condition = context.Condition }
     ];
-    private static PrimitiveEntry Audio(EntryCompileContext context, string? asset, string? track, float gain, string type)
+    private static PrimitiveEntry Audio(EntryCompileContext context, string? asset, string track, float gain, string type)
     {
         if (string.IsNullOrWhiteSpace(asset)) throw new InvalidDataException($"'{type}' requires 'asset'.");
         return new(BuiltinEntryIds.PlayAudio, ValueCodec.SerializeFields(new AudioPlayOptions
-        { TrackId = track ?? "", Asset = asset, Gain = gain, Placement = AudioPlacement.ReplaceIfDifferent, AutoBlocking = true }))
+        { TrackId = track, Asset = asset, Gain = gain, Placement = AudioPlacement.ReplaceIfDifferent, AutoBlocking = true }))
         { Condition = context.Condition };
     }
 }

@@ -23,7 +23,7 @@ public sealed class TypedBuiltinAuthoringTests
         {
             Entries = [new() { Id = "voice", Type = type, Condition = "enabled",
             Parameters = new() { ["asset"] = JsonSerializer.SerializeToElement("clip"),
-                ["content"] = JsonSerializer.SerializeToElement<object?>(null), ["trackId"] = JsonSerializer.SerializeToElement<object?>(null) } }]
+                ["content"] = JsonSerializer.SerializeToElement<object?>(null), ["trackId"] = JsonSerializer.SerializeToElement("custom-voice") } }]
         };
         var compiled = GalgroupCompiler.Compile(source, catalog);
         var entries = compiled.Document.Entries;
@@ -31,7 +31,7 @@ public sealed class TypedBuiltinAuthoringTests
         Assert.That(entries.All(entry => entry.Condition == "enabled" && entry.BatchId is null), Is.True);
         Assert.That(entries[0].ReadingBoundaryId, Is.EqualTo("voice#2"));
         Assert.That(entries[1].ReadingBoundaryId, Is.Null);
-        Assert.That(entries[0].Arguments.GetProperty("trackId").GetString(), Is.Empty);
+        Assert.That(entries[0].Arguments.GetProperty("trackId").GetString(), Is.EqualTo("custom-voice"));
         Assert.That(entries[0].Arguments.GetProperty("placement").GetString(), Is.EqualTo("replaceIfDifferent"));
         Assert.That(entries[1].Arguments.GetProperty("content").GetString(), Is.Empty);
         Assert.That(compiled.SourceMap["voice"], Is.EqualTo(new[] { "voice#1", "voice#2" }));
@@ -63,7 +63,7 @@ public sealed class TypedBuiltinAuthoringTests
     public void ComplexDtoDefaultsChoicesAndOpenPayloadKeepTheirWireContract()
     {
         var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
-        var audio = Compile(catalog, "audio.play", new { placement = "replaceIfDifferent", autoBlocking = (string?)null }).Arguments;
+        var audio = Compile(catalog, "audio.play", new { trackId = "custom", placement = "replaceIfDifferent", autoBlocking = (string?)null }).Arguments;
         var options = GalNet.Core.Parameters.ValueCodec.DeserializeFields<AudioPlayOptions>(AudioPlayOptions.Schema, audio);
         Assert.That(options.Placement, Is.EqualTo(AudioPlacement.ReplaceIfDifferent));
         Assert.That(options.AutoBlocking, Is.Null);
@@ -95,12 +95,13 @@ public sealed class TypedBuiltinAuthoringTests
     public void SimpleDtoContractsPreserveOptionalTextNullAndDiagnostics(string type, string field)
     {
         var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
-        var omitted = Compile(catalog, type, new { }).Arguments;
+        var required = type.StartsWith("audio.", StringComparison.Ordinal) ? new Dictionary<string, object?> { ["trackId"] = "custom" } : new Dictionary<string, object?>();
+        var omitted = Compile(catalog, type, required).Arguments;
         Assert.That(catalog.Get(type).FieldDataType, Is.Not.Null);
         Assert.That(omitted.TryGetProperty(field, out _), Is.EqualTo(type == "video.stop"));
-        var explicitNull = Compile(catalog, type, new Dictionary<string, object?> { [field] = null }).Arguments;
+        var explicitNull = Compile(catalog, type, required.Concat(new Dictionary<string, object?> { [field] = null }).ToDictionary()).Arguments;
         Assert.That(explicitNull.GetProperty(field).ValueKind, Is.EqualTo(JsonValueKind.Null));
-        Assert.That(() => Compile(catalog, type, new Dictionary<string, object?> { [field] = 42 }),
+        Assert.That(() => Compile(catalog, type, required.Concat(new Dictionary<string, object?> { [field] = 42 }).ToDictionary()),
             Throws.TypeOf<InvalidDataException>().With.Message.Contains(field));
         Assert.That(() => Compile(catalog, type, new { unexpected = "value" }),
             Throws.TypeOf<InvalidDataException>().With.Message.Contains("unexpected"));
@@ -131,26 +132,38 @@ public sealed class TypedBuiltinAuthoringTests
     public void AudioStopPreservesStringBooleanDefaultsAndExplicitNull()
     {
         var catalog = new TargetProfileEntryCatalog([BuiltinSchemas.CreateAudioModule()]);
-        var defaults = Compile(catalog, "audio.stop", new { }).Arguments;
+        var defaults = Compile(catalog, "audio.stop", new { trackId = "custom" }).Arguments;
         Assert.That(defaults.GetProperty("clearQueue").GetString(), Is.EqualTo("true"));
         var options = GalNet.Core.Parameters.ValueCodec.DeserializeFields<AudioStopOptions>(AudioStopOptions.Schema, defaults);
         Assert.That(options.ClearQueue, Is.True);
-        var explicitNull = Compile(catalog, "audio.stop", new { clearQueue = (string?)null }).Arguments;
+        var explicitNull = Compile(catalog, "audio.stop", new { trackId = "custom", clearQueue = (string?)null }).Arguments;
         Assert.That(GalNet.Core.Parameters.ValueCodec.DeserializeFields<AudioStopOptions>(AudioStopOptions.Schema, explicitNull).ClearQueue, Is.Null);
         Assert.That(() => Compile(catalog, "audio.stop", new { clearQueue = true }), Throws.TypeOf<InvalidDataException>());
         Assert.That(() => Compile(catalog, "audio.stop", new { fadeOut = -1 }), Throws.TypeOf<InvalidDataException>());
     }
 
+    [TestCase("audio.play")]
+    [TestCase("audio.enqueue")]
+    [TestCase("audio.stop")]
+    [TestCase("audio.seffect.apply")]
+    [TestCase("audio.seffect.stop")]
+    [TestCase(BuiltinEntryIds.TextVoice)]
+    [TestCase(BuiltinEntryIds.AppendVoiceNvl)]
     [TestCase("audio.pause")]
     [TestCase("audio.resume")]
     [TestCase("audio.next")]
     [TestCase("audio.clear")]
-    public void AudioDefaultsNullAndInvalidFieldsRetainTheirContract(string type)
+    public void AudioControlsRequireExplicitNonNullTrackTargets(string type)
     {
-        var catalog = new TargetProfileEntryCatalog([BuiltinSchemas.CreateAudioModule()]);
-        Assert.That(catalog.Get(type).FieldDataType, Is.EqualTo(typeof(AudioTrackOptions)));
-        Assert.That(Compile(catalog, type, new { }).Arguments.GetProperty("trackId").GetString(), Is.EqualTo("bgm"));
-        Assert.That(Compile(catalog, type, new { trackId = (string?)null }).Arguments.GetProperty("trackId").ValueKind, Is.EqualTo(JsonValueKind.Null));
+        var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
+        var track = catalog.Get(type).DynamicParameters!["trackId"];
+        Assert.That(track.IsRequired, Is.True);
+        Assert.That(track.DefaultValue, Is.Null);
+        Assert.That(() => Compile(catalog, type, new { }), Throws.TypeOf<InvalidDataException>().With.Message.Contains("trackId"));
+        var supplied = new Dictionary<string, object?> { ["trackId"] = "custom" };
+        if (type is BuiltinEntryIds.TextVoice or BuiltinEntryIds.AppendVoiceNvl) supplied["asset"] = "clip";
+        Assert.That(PrimitiveArgumentHelper.Normalize(catalog.Get(type).DynamicParameters!, JsonSerializer.SerializeToElement(supplied)).GetProperty("trackId").GetString(), Is.EqualTo("custom"));
+        Assert.That(() => Compile(catalog, type, new { trackId = (string?)null }), Throws.TypeOf<InvalidDataException>().With.Message.Contains("trackId"));
         Assert.That(() => Compile(catalog, type, new { trackId = 1 }), Throws.TypeOf<InvalidDataException>().With.Message.Contains("trackId"));
         Assert.That(() => Compile(catalog, type, new { other = "bgm" }), Throws.TypeOf<InvalidDataException>().With.Message.Contains("other"));
     }
@@ -159,11 +172,12 @@ public sealed class TypedBuiltinAuthoringTests
     public async Task AudioModuleOwnsItsTrackConfigurationWithoutRuntimeSettings()
     {
         using var host = new RecordingHost();
-        var tracks = AudioTrackDefinition.CreateDefaults();
+        var defaults = BuiltinAudioDefaults.Create();
+        var tracks = defaults.Tracks.ToList();
+        var configuration = new AudioConfiguration(tracks, defaults.Groups);
         await using var view = new GameRegistration().RegisterSchema(BuiltinSchemas.CreateAudioModule())
-            .AddBuiltinAudio(host, tracks).BuildView();
-        tracks[0].Id = "reassigned";
-        tracks[0].DefaultGain = 0;
+            .AddBuiltinAudio(host, configuration).BuildView();
+        tracks[0] = tracks[0] with { Id = "reassigned", DefaultGain = 0 };
         tracks.Clear();
 
         view.Dispatch(new PrimitiveEntry("audio.play", JsonSerializer.SerializeToElement(new { trackId = "bgm", asset = "music" })),
@@ -177,26 +191,26 @@ public sealed class TypedBuiltinAuthoringTests
     public async Task CompiledTypedAudioControlsReachTheBackendAndCancellationStillStopsDispatch()
     {
         using var host = new RecordingHost();
-        await using var view = new GameRegistration().AddBuiltins(audioHost: host, audioTracks: AudioTrackDefinition.CreateDefaults()).BuildView();
+        await using var view = new GameRegistration().AddBuiltins(audioHost: host, audioConfiguration: BuiltinAudioDefaults.Create()).BuildView();
         var runtime = new GameRuntime(null);
         var catalog = new TargetProfileEntryCatalog([BuiltinSchemas.CreateAudioModule()]);
-        Dispatch("audio.play", new { asset = "first" });
+        Dispatch("audio.play", new { trackId = "bgm", asset = "first" });
         await host.TakeAsync(AudioBackendAction.Start);
-        Dispatch("audio.pause", new { });
+        Dispatch("audio.pause", new { trackId = "bgm" });
         Assert.That((await host.TakeAsync(AudioBackendAction.Pause)).TrackId, Is.EqualTo("bgm"));
         Dispatch("audio.resume", new { trackId = "bgm" });
         Assert.That((await host.TakeAsync(AudioBackendAction.Resume)).TrackId, Is.EqualTo("bgm"));
-        Dispatch("audio.stop", new { });
+        Dispatch("audio.stop", new { trackId = "bgm" });
         Assert.That((await host.TakeAsync(AudioBackendAction.Stop)).TrackId, Is.EqualTo("bgm"));
-        Dispatch("audio.play", new { asset = "second" });
+        Dispatch("audio.play", new { trackId = "bgm", asset = "second" });
         await host.TakeAsync(AudioBackendAction.Start);
-        Dispatch("audio.play", new { asset = "queued" });
-        Dispatch("audio.clear", new { });
-        Dispatch("audio.next", new { });
+        Dispatch("audio.play", new { trackId = "bgm", asset = "queued" });
+        Dispatch("audio.clear", new { trackId = "bgm" });
+        Dispatch("audio.next", new { trackId = "bgm" });
         Assert.That((await host.TakeAsync(AudioBackendAction.Stop)).TrackId, Is.EqualTo("bgm"));
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
-        Assert.That(() => view.Dispatch(new PrimitiveEntry("audio.pause", JsonSerializer.SerializeToElement(new { })),
+        Assert.That(() => view.Dispatch(new PrimitiveEntry("audio.pause", JsonSerializer.SerializeToElement(new { trackId = "bgm" })),
             runtime, cancellation.Token), Throws.TypeOf<OperationCanceledException>());
 
         void Dispatch(string type, object arguments)

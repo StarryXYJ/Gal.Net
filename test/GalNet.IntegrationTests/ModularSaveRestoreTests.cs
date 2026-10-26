@@ -45,7 +45,7 @@ public class ModularSaveRestoreTests
         assets.RegisterImageVariantsDecoder();
         var variants = await assets.LoadImageVariantsCatalogAsync();
         using var registration = new GameRegistration().AddBuiltins(audioHost: host, imageVariants: variants,
-            audioTracks: AudioTrackDefinition.CreateDefaults());
+            audioConfiguration: GalNet.Contracts.Builtins.BuiltinAudioDefaults.Create());
         var compiled = GalgroupCompiler.Compile(commands, registration.BuildCatalog()).Document;
         var group = new Group { Id = "intro" };
         GalgroupLoader.LoadIntoGroupFromContent(group, JsonSerializer.Serialize(compiled));

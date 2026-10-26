@@ -16,7 +16,7 @@ using GalNet.Runtime.Variables;
 namespace GalNet.Avalonia.GameHost;
 
 /// <summary>Applies preferences and persists them through the session's player variables.</summary>
-public sealed class AvaloniaPlayerSettingsService : IPlayerSettingsService, IDisposable
+public sealed partial class AvaloniaPlayerSettingsService : IPlayerSettingsService, IDisposable
 {
     public const string LocaleVariable = PlayerPreferences.LocaleVariable;
     public const string TextSpeedVariable = PlayerPreferences.TextSpeedVariable;
@@ -85,7 +85,7 @@ public sealed class AvaloniaPlayerSettingsService : IPlayerSettingsService, IDis
                 await _displayMode.TrySetValueAsync(_display.Mode == PlayerDisplayMode.Window
                     ? PlayerDisplayMode.BorderlessFullscreen : PlayerDisplayMode.Window);
         };
-        Categories = Array.AsReadOnly(new[]
+        _categories = new System.Collections.ObjectModel.ObservableCollection<SettingCategory>(new[]
         {
             new SettingCategory("game", "Settings.Game",
             [
@@ -101,22 +101,18 @@ public sealed class AvaloniaPlayerSettingsService : IPlayerSettingsService, IDis
             new SettingCategory("audio", "Settings.Audio",
             [
                 Number("masterVolume", "Settings.MasterVolume", 1, 1, .01, () => RuntimeSettings.MasterVolume, value => RuntimeSettings.MasterVolume = (float)value, NumericEditorKind.Slider, livePreview: true),
-                Boolean("masterMuted", "Settings.MasterMuted", false, () => RuntimeSettings.MasterMuted, value => RuntimeSettings.MasterMuted = value),
-                Number("bgmVolume", "Settings.BgmVolume", 1, 1, .01, () => RuntimeSettings.BgmVolume, value => RuntimeSettings.BgmVolume = (float)value, NumericEditorKind.Slider, livePreview: true),
-                Boolean("bgmMuted", "Settings.BgmMuted", false, () => RuntimeSettings.BgmMuted, value => RuntimeSettings.BgmMuted = value),
-                Number("sfxVolume", "Settings.SfxVolume", 1, 1, .01, () => RuntimeSettings.SfxVolume, value => RuntimeSettings.SfxVolume = (float)value, NumericEditorKind.Slider, livePreview: true),
-                Boolean("sfxMuted", "Settings.SfxMuted", false, () => RuntimeSettings.SfxMuted, value => RuntimeSettings.SfxMuted = value),
-                Number("voiceVolume", "Settings.VoiceVolume", 1, 1, .01, () => RuntimeSettings.VoiceVolume, value => RuntimeSettings.VoiceVolume = (float)value, NumericEditorKind.Slider, livePreview: true),
-                Boolean("voiceMuted", "Settings.VoiceMuted", false, () => RuntimeSettings.VoiceMuted, value => RuntimeSettings.VoiceMuted = value)
+                Boolean("masterMuted", "Settings.MasterMuted", false, () => RuntimeSettings.MasterMuted, value => RuntimeSettings.MasterMuted = value)
             ], localization.GetString("Settings.Audio"))
         });
         _coordinator = new SettingsCoordinator { SaveAsync = token => _variables?.FlushPlayerVariablesAsync(token) ?? Task.CompletedTask };
         _coordinator.Attach(Categories);
+        _baseAudioItems = Categories.Last().Items;
+        _audioRestoreStart = _restoreValues.Count;
         localization.CultureService.CultureChanged += OnCultureChanged;
         _display.Changed += OnDisplayChanged;
     }
 
-    public IReadOnlyList<SettingCategory> Categories { get; }
+    public IReadOnlyList<SettingCategory> Categories => _categories;
     public EditorRegistry Editors { get; }
     public Task FlushAsync() => AvaloniaUiDispatcher.Instance.InvokeAsync(FlushOnUiAsync);
 
@@ -163,14 +159,18 @@ public sealed class AvaloniaPlayerSettingsService : IPlayerSettingsService, IDis
         _coordinator.RefreshAvailability();
     }
 
-    public async Task AttachAsync(PlayerVariableService variables, GameSettings runtimeSettings, CancellationToken cancellationToken = default)
+    public async Task AttachAsync(PlayerVariableService variables, GameSettings runtimeSettings,
+        GalNet.Core.Audio.AudioConfiguration? audioConfiguration = null, bool showTrackControls = false,
+        CancellationToken cancellationToken = default)
     {
+        await FlushAsync();
         _variables = variables;
         _preferences = new PlayerPreferences(variables);
         RuntimeSettings = runtimeSettings;
         _restoring = true;
         try
         {
+            ConfigureAudio(audioConfiguration ?? GalNet.Core.Audio.AudioConfiguration.Empty, showTrackControls);
             var stored = variables.GetSnapshot(VariableScope.Player);
             Input.Restore(stored.TryGetValue("player.galnet.input.bindings", out var bindings) && bindings.Type == VariableType.String ? bindings.AsString() : null);
             var languages = Languages();

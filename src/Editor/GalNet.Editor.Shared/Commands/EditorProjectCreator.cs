@@ -65,7 +65,7 @@ public static class EditorProjectCreator
             var catalog = deployed?.Catalog ?? new TargetProfileEntryCatalog([]);
             var document = new EditorProjectDocument
             {
-                Settings = settings ?? new ProjectSettings(),
+                Settings = settings ?? DefaultSettings(),
                 Graph = new EditorGraphDocument
                 {
                     Name = name,
@@ -99,6 +99,12 @@ public static class EditorProjectCreator
                 Directory.Delete(stage, recursive: true);
             }
         }
+    }
+
+    private static ProjectSettings DefaultSettings()
+    {
+        var audio = GalNet.Contracts.Builtins.BuiltinAudioDefaults.Create();
+        return new ProjectSettings { AudioGroups = audio.Groups.ToList(), AudioTracks = audio.Tracks.ToList() };
     }
 
     private static void EnsureEmptyTarget(string root)

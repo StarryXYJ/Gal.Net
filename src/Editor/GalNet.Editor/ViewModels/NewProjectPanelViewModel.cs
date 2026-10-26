@@ -88,7 +88,14 @@ public partial class NewProjectPanelViewModel : PageViewModelBase, IDisposable
             var contracts = string.IsNullOrWhiteSpace(ContractsDirectory)
                 ? Path.Combine(AppContext.BaseDirectory, "DefaultContracts")
                 : ContractsDirectory;
-            await _projectService.CreateAsync(projectPath, ProjectName, new ProjectSettings { DefaultWidth = width, DefaultHeight = height }, contracts);
+            var audio = GalNet.Contracts.Builtins.BuiltinAudioDefaults.Create();
+            await _projectService.CreateAsync(projectPath, ProjectName, new ProjectSettings
+            {
+                DefaultWidth = width,
+                DefaultHeight = height,
+                AudioGroups = audio.Groups.ToList(),
+                AudioTracks = audio.Tracks.ToList()
+            }, contracts);
             _navigation.NavigateTo(_editorPageFactory.CreateEditorPage());
         }
         catch (Exception ex)

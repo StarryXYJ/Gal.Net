@@ -1077,5 +1077,10 @@
   "Uiux.Draft.Restore": "Restore input",
   "Error.entry.archiveFull": "Input recovery is full. Copy or discard archived inputs in Problems before removing more entries.",
   "Error.entry.archiveUnavailable": "Input recovery is unavailable. Preserve and repair .galnet/editor/input-archive.json first.",
-  "Error.entry.archiveChanged": "The archived input no longer matches its author target. Copy its text before discarding it."
+  "Error.entry.archiveChanged": "The archived input no longer matches its author target. Copy its text before discarding it.",
+  "Settings.Project.AudioGroups": "Audio groups",
+  "Settings.Project.AddGroup": "Add group",
+  "Settings.Project.RemoveGroup": "Remove group",
+  "Settings.Project.GroupId": "Group ID (optional)",
+  "Settings.Project.PreserveAudio": "Preserve after catch-up"
 }

@@ -83,7 +83,8 @@ public partial class TimelineOptions
 [GenerateFieldSchema]
 public partial class AudioPlayOptions
 {
-    [Common, Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? TrackId { get; set; } = "bgm";
+    public AudioPlayOptions() => TrackId = "";
+    [Common, Field(0, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)] public string TrackId { get; set; }
     [Common, Field(1, AllowNull = true, EditorId = "entry.audioasset")] public string? Asset { get; set; }
     [Field(2, EditorId = ValueEditorIds.Numeric)] public float Gain { get; set; } = 1;
     [Field(3, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AudioPlacementValueConverter))]
@@ -98,7 +99,8 @@ public sealed class AudioPlacementValueConverter() : StringEnumValueConverter<Au
 [GenerateFieldSchema]
 public partial class AudioSEffectOptions
 {
-    [Common, Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? TrackId { get; set; } = "bgm";
+    public AudioSEffectOptions() => TrackId = "";
+    [Common, Field(0, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)] public string TrackId { get; set; }
     [Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? InstanceId { get; set; }
     [Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? Id { get; set; }
     [Field(3, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Parameters { get; set; }

@@ -43,7 +43,7 @@ try
     registration.UseCatalog(GalNet.Project.Contracts.ProjectSchemas.CreateCatalog());
     await using var view = registration.AddBuiltinImplementations(registration.BuildCatalog(),
         presentation, presentation, presentation, presentation, content.Gallery, nvlPresenter: presentation,
-        characters: content.Localization.Characters, imageVariants: imageVariants, audioTracks: content.Settings.AudioTracks).BuildView();
+        characters: content.Localization.Characters, imageVariants: imageVariants, audioConfiguration: new GalNet.Core.Audio.AudioConfiguration(content.Settings.AudioTracks, content.Settings.AudioGroups)).BuildView();
     view.RequireInstructions(content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>().SelectMany(group => group.Entries).Select(entry => entry.Type));
 
     var runtime = new GameRuntime(textResolver, content.Graph.RootNodeId, variables);

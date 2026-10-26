@@ -31,7 +31,7 @@ public sealed class GameInstallationTests
             await File.WriteAllTextAsync(Path.Combine(project, "Assets", "hero.png.meta"), """{"id":"hero","type":"sprite","path":"hero.png","filter":"bilinear","compress":"none"}""");
             await File.WriteAllTextAsync(Path.Combine(project, "Graph", "graph.json"), """{"version":2,"name":"export-test","rootNodeId":"","nodes":[],"edges":[],"playerVariables":[],"saveVariables":[]}""");
             await File.WriteAllTextAsync(Path.Combine(project, "settings.json"), """
-                { "audioTracks": [ { "id": "ambient", "bus": "bgm", "defaultGain": 0.3, "maxVoices": 2, "overflowPolicy": "StopOldest" } ] }
+                { "audioGroups": [{ "id": "environment", "name": "Environment" }], "audioTracks": [ { "id": "ambient", "groupId": "environment", "preserveDuringCatchUp": true, "defaultGain": 0.3, "maxVoices": 2, "overflowPolicy": "StopOldest" } ] }
                 """);
 
             var development = await GameInstallation.OpenAsync(project);
@@ -55,6 +55,9 @@ public sealed class GameInstallationTests
             Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "Assets", "Paks", "000-base.pak")), Is.True);
             var installedContent = await installation.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync();
             Assert.That(installedContent.Graph.Name, Is.EqualTo("export-test"));
+            Assert.That(installedContent.Settings.AudioGroups.Single().Id, Is.EqualTo("environment"));
+            Assert.That(installedContent.Settings.AudioTracks.Single().GroupId, Is.EqualTo("environment"));
+            Assert.That(installedContent.Settings.AudioTracks.Single().PreserveDuringCatchUp, Is.True);
             Assert.That(installedContent.Settings.AudioTracks.Single().DefaultGain, Is.EqualTo(.3f));
             Assert.That(installedContent.Settings.AudioTracks.Single().OverflowPolicy, Is.EqualTo(GalNet.Core.Audio.AudioOverflowPolicy.StopOldest));
 

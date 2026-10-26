@@ -88,7 +88,7 @@ public class EntryModuleTests
         using var registration = new GameRegistration().AddBuiltinSchemas()
             .RegisterInstruction("audio.play", context => new ImmediatePrimitiveInstance(() => calls++, batchId: context.BatchId));
         using var view = registration.BuildView();
-        view.Dispatch(new PrimitiveEntry("audio.play", JsonSerializer.SerializeToElement(new { asset = "clip" })), new GameRuntime(null), CancellationToken.None);
+        view.Dispatch(new PrimitiveEntry("audio.play", JsonSerializer.SerializeToElement(new { trackId = "custom", asset = "clip" })), new GameRuntime(null), CancellationToken.None);
         Assert.That(calls, Is.EqualTo(1));
         Assert.That(view.CanExecute("variable.set"), Is.False);
     }

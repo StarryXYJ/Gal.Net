@@ -299,7 +299,7 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
             content.Gallery,
             _pageView.ParticlePresenter,
             _pageView.NvlPresenter,
-            _audio, imageVariants: imageVariants, audioTracks: content.Settings.AudioTracks).BuildView();
+            _audio, imageVariants: imageVariants, audioConfiguration: new GalNet.Core.Audio.AudioConfiguration(content.Settings.AudioTracks, content.Settings.AudioGroups)).BuildView();
         try { view.RequireInstructions(content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>().SelectMany(group => group.Entries).Select(entry => entry.Type)); }
         catch { view.Dispose(); throw; }
         var runtime = new GameRuntime(null, content.Graph.RootNodeId, _context.Variables);

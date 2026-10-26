@@ -104,3 +104,15 @@ SettingsContainer/SettingsSection、无消费者的 SaveSettings、Editor 的旧
 当前完整 GalNet.slnx 构建、普通 locked restore、定向 C# 格式清理与 git diff --check 通过。工作期间的独立清理提交 2a5c678 删除 Launcher 并包含部分早期 R2 修改，保留该提交；旧临时解决方案引用删除项目导致的构建失败已改用当前 GalNet.slnx 后验证通过。当前解决方案不再包含旧 Browser 目标，这不证明其历史哈希问题被修复；原生交互、符号链接权限与 R2R 发布环境限制仍按后续阶段处理。日志在忽略产物 artifacts/engine-core-audit/r2-*.log。
 
 新增回归覆盖推进选项显式更新/无效输入、混音集合隔离和当前/后续 voice、轨道定义不借用作者对象、清空后默认偏好重绑和自定义存档容量。正式规范与接入示例已同步，未引入兼容适配层。R2 完成后按用户约定提交，再进入 R3。
+
+## R3：自定义音频分组与轨道
+
+AudioConfiguration 在组合/加载入口验证并复制分组与轨道，声明元素改为不可变 record。组与轨道 ID 均由开发者定义，轨道可以不分组，空配置合法；移除 AudioBuses 和 Core 默认轨道工厂。Runtime 使用索引查找声明，播放期间不重复验证整个配置。master/group/track 的 gain/mute 同时作用于已有和后续 voice，最终叠加轨道预设与内容增益并限制到后端范围；中间乘积使用 double，合法的大增益不会因 float 溢出意外变成静音。
+
+快进保留由 PreserveDuringCatchUp 明确指定，不按 bgm 名称推断。普通音频与语音 Composite 均要求显式 trackId；没有保留旧默认目标。可选 BuiltinAudioDefaults 位于 Contracts.Builtins，Sample/新项目模板显式选择音乐、音效、语音三组，完整路径仍复用同一配置/混音机制。
+
+默认 Avalonia 偏好改为 Groups/Tracks 字典；声明生成分组 gain/mute，ShowTrackAudioControls 可选择显示单轨控件，隐藏时仍恢复单轨偏好。存储键使用区分层级、URI 转义的 ID；清空和重绑会重建动态恢复项。Editor 支持增删分组、任意归属和快进策略，删组将成员轨道解除归属；草稿、Undo/Redo、保存、重开、导出/安装和预览保留这些值。Editor 提交/加载/保存与安装加载复用 AudioConfiguration 的校验。
+
+新增回归覆盖配置集合隔离、空/未分组/任意分组、同组两轨的独立混音、各层静音、当前/后续 voice、与名称无关的快进策略、大增益饱和、动态偏好恢复/隐藏控件/重新配置、Editor 历史与重开及包安装。初轮发现 DTO 空串属性初始化值仍导出 schema 默认，按现有 lesson 改为构造函数初始化，并扩展所有音频/语音 schema 的缺省/null 回归。
+
+最终验证 1752 项通过、4 项既有符号链接权限失败、3 项跳过；Core 152、Runtime 141、Builtins 185、Editor 323、Editor.Shared 422（3 失败/2 跳过）、Integration 123（1 失败）、Presentation 243、Architecture 49、Assets 57（1 跳过）、GameHost 6、Debugging 10、Diagnostics 1、Storage 22、Generator 18。完整解决方案构建通过；最后仅迁移遗漏的测试轨道目标及复合测试断言，分别重建并重跑 Builtins/Integration。C# 空白格式和 git diff 检查通过，无依赖/锁文件变更。原生媒体、显式外进程及符号链接权限限制继续保留。日志位于忽略产物 artifacts/engine-core-audit/r3-*.log。正式行为见 [runtime](../../docs/spec/runtime.md)、[entry-types](../../docs/spec/entry-types.md)，接入见 [new-presentation-layer](../../docs/manual/new-presentation-layer.md)。完整自定义项目 section 和领域归属仍归 R4/R5，本阶段不将其计为完成。

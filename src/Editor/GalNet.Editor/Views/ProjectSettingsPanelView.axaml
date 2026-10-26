@@ -32,20 +32,37 @@
                                Foreground="{DynamicResource SemiColorText0}" />
 
                 <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+                    <TextBlock Text="{loc:Localize Settings.Project.AudioGroups}" />
+                    <Button Grid.Column="1" Content="{loc:Localize Settings.Project.AddGroup}" Command="{Binding AddAudioGroupCommand}" />
+                </Grid>
+                <ItemsControl ItemsSource="{Binding AudioGroups}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:AudioGroupEditorItem">
+                            <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="6" Margin="0,2">
+                                <TextBox Text="{Binding Id}" PlaceholderText="{loc:Localize Settings.Project.GroupId}" />
+                                <TextBox Grid.Column="1" Text="{Binding Name}" PlaceholderText="{loc:Localize Settings.Project.TrackName}" />
+                                <Button Grid.Column="2" Content="×" Command="{Binding RemoveCommand}" ToolTip.Tip="{loc:Localize Settings.Project.RemoveGroup}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
                     <TextBlock Text="{loc:Localize Settings.Project.AudioTracks}" Foreground="{DynamicResource SemiColorText2}" FontSize="12" />
                     <Button Grid.Column="1" Content="{loc:Localize Settings.Project.AddTrack}" Command="{Binding AddAudioTrackCommand}" />
                 </Grid>
                 <ItemsControl ItemsSource="{Binding AudioTracks}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:AudioTrackEditorItem">
-                            <Grid ColumnDefinitions="*,*,110,80,70,70,Auto" ColumnSpacing="6" Margin="0,2">
+                            <Grid ColumnDefinitions="*,*,110,80,70,70,Auto,Auto" ColumnSpacing="6" Margin="0,2">
                                 <TextBox Grid.Column="0" Text="{Binding Id}" PlaceholderText="{loc:Localize Settings.Project.TrackId}" />
                                 <TextBox Grid.Column="1" Text="{Binding Name}" PlaceholderText="{loc:Localize Settings.Project.TrackName}" />
-                                <TextBox Grid.Column="2" Text="{Binding Bus}" PlaceholderText="bgm / sfx / vocal" />
-                                <NumericUpDown Grid.Column="3" Value="{Binding DefaultGain}" ToolTip.Tip="{loc:Localize Settings.Project.Gain}" AutomationProperties.Name="{loc:Localize Settings.Project.Gain}" Minimum="0" Maximum="1" Increment="0.05" />
-                                <NumericUpDown Grid.Column="4" Value="{Binding MaxVoices}" ToolTip.Tip="{loc:Localize Settings.Project.Voices}" AutomationProperties.Name="{loc:Localize Settings.Project.Voices}" Minimum="1" Maximum="32" Increment="1" />
-                                <NumericUpDown Grid.Column="5" Value="{Binding MaxQueuedItems}" ToolTip.Tip="{loc:Localize Settings.Project.Queue}" AutomationProperties.Name="{loc:Localize Settings.Project.Queue}" Minimum="0" Maximum="256" Increment="1" />
-                                <Button Grid.Column="6" Content="×" Command="{Binding RemoveCommand}" ToolTip.Tip="{loc:Localize Settings.Project.RemoveTrack}" AutomationProperties.Name="{loc:Localize Settings.Project.RemoveTrack}" />
+                                <TextBox Grid.Column="2" Text="{Binding GroupId}" PlaceholderText="{loc:Localize Settings.Project.GroupId}" />
+                                <NumericUpDown Grid.Column="3" Value="{Binding DefaultGain}" ToolTip.Tip="{loc:Localize Settings.Project.Gain}" AutomationProperties.Name="{loc:Localize Settings.Project.Gain}" Minimum="0" Increment="0.05" />
+                                <NumericUpDown Grid.Column="4" Value="{Binding MaxVoices}" ToolTip.Tip="{loc:Localize Settings.Project.Voices}" AutomationProperties.Name="{loc:Localize Settings.Project.Voices}" Minimum="1" Increment="1" />
+                                <NumericUpDown Grid.Column="5" Value="{Binding MaxQueuedItems}" ToolTip.Tip="{loc:Localize Settings.Project.Queue}" AutomationProperties.Name="{loc:Localize Settings.Project.Queue}" Minimum="0" Increment="1" />
+                                <CheckBox Grid.Column="6" IsChecked="{Binding PreserveDuringCatchUp}" ToolTip.Tip="{loc:Localize Settings.Project.PreserveAudio}" AutomationProperties.Name="{loc:Localize Settings.Project.PreserveAudio}" />
+                                <Button Grid.Column="7" Content="×" Command="{Binding RemoveCommand}" ToolTip.Tip="{loc:Localize Settings.Project.RemoveTrack}" AutomationProperties.Name="{loc:Localize Settings.Project.RemoveTrack}" />
                             </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>

@@ -63,7 +63,7 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
             _catchUp = false;
         });
     }
-    public void Validate(GameState state, IReadOnlyList<AudioTrackDefinition> definitions)
+    public void Validate(GameState state, AudioConfiguration configuration)
     {
         var identities = new HashSet<string>(StringComparer.Ordinal);
         foreach (var track in state.Table<AudioTrackState>().Values)
@@ -71,9 +71,9 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
             ValidateTrack(track);
             if (track.Active.Concat(track.Pending).Any(item => !identities.Add(item.Id)))
                 throw new InvalidDataException("Saved audio item identities must be unique across tracks.");
-            var definition = definitions.SingleOrDefault(item => item.Id == track.Id)
-                ?? throw new InvalidDataException($"Unknown saved audio track '{track.Id}'.");
-            if (!ValidDefinition(definition) || track.Active.Count > definition.MaxVoices || track.Pending.Count > definition.MaxQueuedItems)
+            if (!configuration.TryGetTrack(track.Id, out var definition))
+                throw new InvalidDataException($"Unknown saved audio track '{track.Id}'.");
+            if (track.Active.Count > definition.MaxVoices || track.Pending.Count > definition.MaxQueuedItems)
                 throw new InvalidDataException($"Saved audio track '{track.Id}' exceeds its configured limits.");
         }
         foreach (var effect in state.Table<AudioSEffectState>().Values)
@@ -99,9 +99,9 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
         var diagnostics = _effects.Validate(effect.SEffectId, SEffectScope.Track, effect.Parameters);
         if (diagnostics.Count > 0) throw new InvalidDataException(string.Join(" ", diagnostics));
     }
-    public async Task RestoreAsync(GameState state, IReadOnlyList<AudioTrackDefinition> definitions, CancellationToken token)
+    public async Task RestoreAsync(GameState state, AudioConfiguration configuration, CancellationToken token)
     {
-        Validate(state, definitions);
+        Validate(state, configuration);
         Bind(state);
         lock (_gate) StopBindings();
         await _dispatcher.DrainAsync().WaitAsync(token).ConfigureAwait(false);
@@ -111,7 +111,7 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
             if (!ReferenceEquals(_state, state)) throw new OperationCanceledException("The audio run was replaced.", token);
             foreach (var saved in _state.Table<AudioTrackState>().Values)
             {
-                var track = GetTrack(definitions, saved.Id)!;
+                var track = GetTrack(configuration, saved.Id)!;
                 foreach (var item in saved.Active.ToArray()) Project(track, item, fade: 0);
             }
         });
@@ -123,8 +123,8 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
             if (_catchUp || _disposed) return;
             StopBindings();
             _catchUp = true;
-            // CatchUp suppresses one-shot sounds while preserving its existing BGM projection policy.
-            foreach (var track in _tracks.Values.Where(track => track.Definition.Bus != AudioBuses.Bgm))
+            // CatchUp projection is a declared track policy, independent of group names.
+            foreach (var track in _tracks.Values.Where(track => !track.Definition.PreserveDuringCatchUp))
             { track.State.Active.Clear(); track.State.Pending.Clear(); }
         });
     }
@@ -149,13 +149,13 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
                 foreach (var item in track.State.Active.ToArray()) SendItem(track, item, AudioBackendAction.SetGain);
         });
     }
-    public AudioPlaybackTicket Play(IReadOnlyList<AudioTrackDefinition> definitions, AudioPlayRequest request)
+    public AudioPlaybackTicket Play(AudioConfiguration configuration, AudioPlayRequest request)
     {
         lock (_gate) return _state.Update(() =>
         {
             var ticket = new AudioPlaybackTicket(StopTicket);
-            var track = GetTrack(definitions, request.TrackId);
-            if (track is null || string.IsNullOrWhiteSpace(request.AssetId) || _catchUp && track.Definition.Bus != AudioBuses.Bgm)
+            var track = GetTrack(configuration, request.TrackId);
+            if (track is null || string.IsNullOrWhiteSpace(request.AssetId) || _catchUp && !track.Definition.PreserveDuringCatchUp)
             { ticket.Complete(); return ticket; }
             if (request.Placement == AudioPlacement.ReplaceIfDifferent)
             {
@@ -187,21 +187,21 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
             return ticket;
         });
     }
-    public void Stop(IReadOnlyList<AudioTrackDefinition> definitions, AudioStopRequest request)
+    public void Stop(AudioConfiguration configuration, AudioStopRequest request)
     {
         lock (_gate) _state.Update(() =>
         {
-            var track = GetTrack(definitions, request.TrackId); if (track is null) return;
+            var track = GetTrack(configuration, request.TrackId); if (track is null) return;
             StopActive(track, request.FadeOutSeconds); if (request.ClearQueue) ClearPending(track);
         });
     }
-    public void Pause(IReadOnlyList<AudioTrackDefinition> definitions, string trackId) => SetPaused(definitions, trackId, true);
-    public void Resume(IReadOnlyList<AudioTrackDefinition> definitions, string trackId) => SetPaused(definitions, trackId, false);
-    private void SetPaused(IReadOnlyList<AudioTrackDefinition> definitions, string trackId, bool paused)
+    public void Pause(AudioConfiguration configuration, string trackId) => SetPaused(configuration, trackId, true);
+    public void Resume(AudioConfiguration configuration, string trackId) => SetPaused(configuration, trackId, false);
+    private void SetPaused(AudioConfiguration configuration, string trackId, bool paused)
     {
         lock (_gate) _state.Update(() =>
         {
-            var track = GetTrack(definitions, trackId); if (track is null) return;
+            var track = GetTrack(configuration, trackId); if (track is null) return;
             track.State.Paused = paused;
             foreach (var item in track.State.Active.ToArray())
                 if (!paused && !_voices.ContainsKey(item.Id)) Project(track, item, 0);
@@ -209,33 +209,33 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
             if (!paused) Pump(track);
         });
     }
-    public void Next(IReadOnlyList<AudioTrackDefinition> definitions, string trackId)
+    public void Next(AudioConfiguration configuration, string trackId)
     {
         lock (_gate) _state.Update(() =>
         {
-            var track = GetTrack(definitions, trackId); if (track is null) return;
+            var track = GetTrack(configuration, trackId); if (track is null) return;
             if (track.Definition.MaxVoices != 1) { Report("audio.next requires a single-voice track."); return; }
             StopActive(track, 0); Pump(track);
         });
     }
-    public void Clear(IReadOnlyList<AudioTrackDefinition> definitions, string trackId)
-    { lock (_gate) _state.Update(() => { var track = GetTrack(definitions, trackId); if (track is not null) ClearPending(track); }); }
-    public void ApplySEffect(IReadOnlyList<AudioTrackDefinition> definitions, AudioSEffectRequest request)
+    public void Clear(AudioConfiguration configuration, string trackId)
+    { lock (_gate) _state.Update(() => { var track = GetTrack(configuration, trackId); if (track is not null) ClearPending(track); }); }
+    public void ApplySEffect(AudioConfiguration configuration, AudioSEffectRequest request)
     {
         lock (_gate) _state.Update(() =>
         {
-            var track = GetTrack(definitions, request.TrackId); if (track is null) return;
+            var track = GetTrack(configuration, request.TrackId); if (track is null) return;
             var effect = new AudioSEffectState(request.TrackId, request.InstanceId, request.SEffectId, request.Parameters.Clone());
             try { ValidateEffect(effect); } catch (InvalidDataException error) { Report(error.Message); return; }
             _state.Table<AudioSEffectState>().Set(effect);
             foreach (var item in track.State.Active.ToArray()) SendEffect(track, item, effect, AudioBackendAction.ApplySEffect);
         });
     }
-    public void StopSEffect(IReadOnlyList<AudioTrackDefinition> definitions, string trackId, string instanceId)
+    public void StopSEffect(AudioConfiguration configuration, string trackId, string instanceId)
     {
         lock (_gate) _state.Update(() =>
         {
-            var track = GetTrack(definitions, trackId); if (track is null) return;
+            var track = GetTrack(configuration, trackId); if (track is null) return;
             var table = _state.Table<AudioSEffectState>();
             var key = AudioSEffectState.Key(trackId, instanceId);
             if (!table.TryGet(key, out var effect)) return;
@@ -243,12 +243,12 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
             foreach (var item in track.State.Active.ToArray()) SendEffect(track, item, effect, AudioBackendAction.StopSEffect);
         });
     }
-    private TrackBinding? GetTrack(IReadOnlyList<AudioTrackDefinition> definitions, string id)
+    private TrackBinding? GetTrack(AudioConfiguration configuration, string id)
     {
         if (_disposed) return null;
         if (_tracks.TryGetValue(id, out var cached)) return cached;
-        var definition = definitions.FirstOrDefault(value => value.Id == id);
-        if (definition is null || !ValidDefinition(definition))
+        var definition = configuration.TryGetTrack(id, out var configured) ? configured : null;
+        if (definition is null)
         { Report($"Unknown or invalid audio track '{id}'."); return null; }
         var table = _state.Table<AudioTrackState>();
         if (!table.TryGet(id, out var data)) { data = new AudioTrackState { Id = id }; table.Add(data); }
@@ -298,10 +298,11 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
     }
     private float Gain(TrackBinding track, AudioItemState item)
     {
-        _mix.Groups.TryGetValue(track.Definition.Bus, out var group);
-        if (_mix.MasterMuted || group?.Muted == true) return 0;
-        var gain = track.Definition.DefaultGain * item.Request.Gain * (group?.Gain ?? 1f) * _mix.MasterGain;
-        return float.IsFinite(gain) ? Math.Clamp(gain, 0, 1) : 0;
+        var group = track.Definition.GroupId is { } groupId ? _mix.Groups.GetValueOrDefault(groupId) : null;
+        _mix.Tracks.TryGetValue(track.Definition.Id, out var trackMix);
+        if (_mix.MasterMuted || group?.Muted == true || trackMix?.Muted == true) return 0;
+        var gain = (double)track.Definition.DefaultGain * item.Request.Gain * (group?.Gain ?? 1f) * (trackMix?.Gain ?? 1f) * _mix.MasterGain;
+        return (float)Math.Clamp(gain, 0, 1);
     }
     private List<AudioPlaybackTicket> Tickets(string id)
     { if (!_tickets.TryGetValue(id, out var tickets)) _tickets[id] = tickets = []; return tickets; }
@@ -367,8 +368,6 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
             try { ((Action<string>)handler)(message); }
             catch (Exception) { /* Diagnostic observers cannot interrupt backend cleanup. */ }
     }
-    private static bool ValidDefinition(AudioTrackDefinition value) => AudioBuses.IsValid(value.Bus) && value.MaxVoices > 0 &&
-        value.MaxQueuedItems >= 0 && float.IsFinite(value.DefaultGain);
     private sealed record TrackBinding(AudioTrackDefinition Definition, AudioTrackState State);
     private sealed record VoiceBinding(string TrackId, string Id, long Generation);
 }

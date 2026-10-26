@@ -6,8 +6,9 @@ namespace GalNet.Contracts.Builtins;
 [GenerateFieldSchema]
 public partial class AudioTrackOptions
 {
-    [Common, Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)]
-    public string? TrackId { get; set; } = "bgm";
+    public AudioTrackOptions() => TrackId = "";
+    [Common, Field(0, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)]
+    public string TrackId { get; set; }
 }
 
 [GenerateFieldSchema]
@@ -20,8 +21,9 @@ public partial class WaitOptions
 [GenerateFieldSchema]
 public partial class AudioStopOptions
 {
-    [Common, Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)]
-    public string? TrackId { get; set; } = "bgm";
+    public AudioStopOptions() => TrackId = "";
+    [Common, Field(0, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)]
+    public string TrackId { get; set; }
     [Field(1, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringBooleanValueConverter))]
     public bool? ClearQueue { get; set; } = true;
     [Field(2, Minimum = 0, EditorId = ValueEditorIds.Numeric)]
