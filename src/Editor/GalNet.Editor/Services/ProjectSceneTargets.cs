@@ -10,6 +10,8 @@ using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Services.Interfaces;
 using GalNet.Editor.Shared.Services;
+using GalNet.Editor.History;
+using GalNet.Editor.Abstraction.Changes;
 
 namespace GalNet.Editor.Services;
 
@@ -23,6 +25,7 @@ public sealed class ProjectSceneTargets : IDisposable
     private readonly IProjectContentSession? _content;
     private readonly IProjectService? _projects;
     private readonly IResourceTypeCatalog? _types;
+    private readonly AuthorChangeJournal? _changes;
     private string _workingFingerprint = "";
     private readonly object _gate = new();
     private CancellationTokenSource _resourceLifetime = new();
@@ -41,12 +44,19 @@ public sealed class ProjectSceneTargets : IDisposable
 
     public ProjectSceneTargets(IEditorDocumentService documents, IAssetManager? assets = null,
         IEffectCatalog? effects = null, IAssetCatalogService? resources = null, IProjectContentSession? content = null,
-        IProjectService? projects = null, IResourceTypeCatalog? types = null)
+        IProjectService? projects = null, IResourceTypeCatalog? types = null, EditorHistories? histories = null)
     {
         _documents = documents; _assets = assets; _effects = effects; _resources = resources;
         _content = content; _projects = projects; _types = types;
+        _changes = histories?.Content.AuthorChanges;
+        if (_changes is not null) _changes.Committed += OnAuthorCommitted;
         if (_content is not null) _content.Changed += OnContentChanged;
         if (_resources is not null) _resources.Changed += OnResourcesChanged;
+    }
+    private void OnAuthorCommitted(AuthorChangeSet _)
+    {
+        lock (_gate) { if (!Capture()) return; QueuePreparation(); }
+        NotifyChanged();
     }
     public ImageVariantsDefinition? VariantDefinition(string id)
     {
@@ -230,6 +240,7 @@ public sealed class ProjectSceneTargets : IDisposable
             _disposed = true; _resourceEpoch++; _resourceLifetime.Cancel(); _resourceLifetime.Dispose();
             if (_resources is not null) _resources.Changed -= OnResourcesChanged;
             if (_content is not null) _content.Changed -= OnContentChanged;
+            if (_changes is not null) _changes.Committed -= OnAuthorCommitted;
             _snapshot = null; _frozen = null; _analysis = null; _programs = new Dictionary<string, ShaderEffectDescriptor?>(); Revision++; Changed = null;
             _variants = new Dictionary<string, ImageVariantsDefinition?>();
         }

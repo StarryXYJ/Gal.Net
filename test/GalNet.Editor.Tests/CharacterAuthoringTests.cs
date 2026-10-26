@@ -125,7 +125,12 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         await SetSpeaker(project, item, row.Id); Assert.That(Speaker(item.Entry), Is.EqualTo(row.Id));
         var unused = await characters.CreateAsync("未用");
         var documents = project.Services.GetRequiredService<IEditorDocumentService>();
-        documents.Groups[item.Group].Entries.Add(new() { StableId = Guid.NewGuid().ToString("N"), Type = "unknown.schema" });
+        documents.Groups[item.Group].Entries.Add(new()
+        {
+            StableId = Guid.NewGuid().ToString("N"),
+            Type = "unknown.schema",
+            Parameters = new() { ["opaque"] = JsonSerializer.SerializeToElement("potential-character-reference") }
+        });
         Assert.That(characters.Complete, Is.False);
         Assert.ThrowsAsync<EditorOperationException>(async () => await characters.DeleteAsync(unused));
         Assert.ThrowsAsync<EditorOperationException>(async () => await characters.UpdateAsync(row, "renamed", row.Name!));

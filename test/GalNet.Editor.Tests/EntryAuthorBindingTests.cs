@@ -117,26 +117,24 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     }
 
     [TestCase(false), TestCase(true)]
-    public void EntryFieldNotificationsCompensateBeforeHistoryMoves(bool persistent)
+    public void EntryNotificationFailuresDoNotRollbackCommittedContent(bool persistent)
     {
         using var histories = new EditorHistories(); var documents = new EditorDocumentService();
         var source = new EditorEntryData { StableId = "line", Type = "custom.unknown" };
         documents.Load(new() { Document = new() { Nodes = [new() { Id = "group", Type = "Group", File = "groups/group.rawgalgroup" }] }, GroupEntries = { ["group"] = [source] } });
-        var authoring = new EntryFieldAuthoringService(documents, histories); var fail = true;
-        void Fail(string _) { if (persistent || fail) { fail = false; throw new IOException("entry observer"); } }
-        authoring.Changed += Fail;
-        try
-        {
-            if (persistent) Assert.Throws<HistoryRepairRequiredException>(() => authoring.SetCondition("group", source, "true"));
-            else Assert.Throws<IOException>(() => authoring.SetCondition("group", source, "true"));
-            Assert.That(source.Condition, Is.Empty); Assert.That(histories.Content.CanUndo, Is.False); Assert.That(histories.Content.RepairRequired, Is.EqualTo(persistent));
-        }
-        finally { authoring.Changed -= Fail; }
-        if (!persistent)
-        {
-            authoring.SetCondition("group", source, "true"); source.Condition = "outside";
-            Assert.Throws<EditorOperationException>(() => histories.Content.Undo());
-            Assert.That(histories.Content.CanUndo, Is.True); Assert.That(source.Condition, Is.EqualTo("outside"));
-        }
+        var authoring = new EntryFieldAuthoringService(documents, histories); var fail = true; var notified = 0;
+        void Fail(GalNet.Editor.Abstraction.Changes.AuthorChangeSet _) { if (persistent || fail) { fail = false; throw new IOException("entry observer"); } }
+        histories.Content.AuthorChanges.Committed += Fail;
+        histories.Content.AuthorChanges.Committed += _ => notified++;
+        authoring.SetCondition("group", source, "true");
+        Assert.That(source.Condition, Is.EqualTo("true")); Assert.That(histories.Content.CanUndo, Is.True);
+        Assert.That(histories.Content.AuthorChanges.LastNotificationError, Is.TypeOf<IOException>());
+        Assert.That(histories.Content.RepairRequired, Is.False); Assert.That(notified, Is.EqualTo(1));
+        histories.Content.Undo(); Assert.That(source.Condition, Is.Empty); Assert.That(notified, Is.EqualTo(2));
+        histories.Content.Redo(); Assert.That(source.Condition, Is.EqualTo("true"));
+        source.Condition = "outside";
+        Assert.Throws<EditorOperationException>(() => histories.Content.Undo());
+        Assert.That(histories.Content.CanUndo, Is.True); Assert.That(source.Condition, Is.EqualTo("outside"));
+        Assert.That(notified, Is.EqualTo(3), "Failed writes do not publish or advance the committed version.");
     }
 }

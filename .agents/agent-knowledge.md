@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [基线对照恢复与增量时间戳](lessons/L-20261026-01-baseline-restore-timestamps.md)：恢复源码备份可能保留早于基线 DLL 的时间戳，候选验证需独立输出、Rebuild 或显式失效增量构建，并核对源字节。
+
 - [空本地化引用边界一致性](lessons/L-20261025-10-empty-localization-references.md)：作者索引、启动加载和运行解析都将空引用按空文本处理；空对象/数组不触发 opaque，非空未知结构仍保留诊断。
 
 - [资源结构与缓冲重基](lessons/L-20261025-01-variant-buffer-structural-rebase.md)：ManagedContent 的写盘内容来自项目文档 Data；移动时内部 folder 要分别重基工作版和保存版，Undo/Redo 保留之后保存的其他配置。

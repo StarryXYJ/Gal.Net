@@ -470,12 +470,13 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             Document = new() { Nodes = [new() { Id = "group", Type = "Group", File = "groups/group.rawgalgroup" }] },
             GroupEntries = { ["group"] = [new() { StableId = "line", Type = "custom.value", Parameters = new() { ["count"] = JsonSerializer.SerializeToElement(4) } }] }
         });
-        var store = new EditorGroupProjectionStore(documents, catalog, new EntryFieldAuthoringService(documents, new EditorHistories()));
+        using var histories = new EditorHistories();
+        var store = new EditorGroupProjectionStore(documents, catalog, new EntryFieldAuthoringService(documents, histories));
         var group = store.Get("group");
         var entry = group.Entries.Single();
         entry.ConfigureParameterFields(catalog, [], []);
         var field = (IFieldBinding)entry.ParameterFields.Single();
-        group.Entries.Remove(entry);
+        new GroupEntryAuthoringService(store, documents, catalog, histories).Delete("group", [entry.StableId]);
         store.Dispose();
         Assert.That(await field.CommitAsync(new(JsonSerializer.SerializeToElement(9)), CancellationToken.None), Is.Not.Null);
         Assert.That(entry.Source.Parameters["count"].GetInt32(), Is.EqualTo(4));

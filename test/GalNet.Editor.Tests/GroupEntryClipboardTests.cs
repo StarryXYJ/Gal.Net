@@ -23,38 +23,45 @@ namespace GeneralTest.Editor;
 public sealed partial class ProjectWorkspaceLifecycleTests
 {
     [Test]
-    public async Task EntryBatchFailuresRestoreContentAndHistoryOrRequireRepair()
+    public async Task EntryProjectionObserversCannotRollbackCommittedAuthorChanges()
     {
         using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
         var project = await projects.CreateAsync(Path.Combine(_root, "EntryBatchFailure"), "Entries", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
         var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>(); var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
         workspace.InsertEntriesInto(group, 0, 3, BuiltinEntryIds.Wait);
         var author = project.Services.GetRequiredService<GroupEntryAuthoringService>(); var history = project.Services.GetRequiredService<EditorHistories>().Content;
+        var documents = project.Services.GetRequiredService<IEditorDocumentService>();
+        var projections = project.Services.GetRequiredService<EditorGroupProjectionStore>();
         var original = group.Entries.ToArray(); var clip = author.Copy(group.Id, original.Select(entry => entry.StableId)); history.Clear();
-        var shouldFail = false;
-        NotifyCollectionChangedEventHandler failOnce = (_, _) => { if (shouldFail) { shouldFail = false; throw new IOException("collection observer failure"); } };
-        group.Entries.CollectionChanged += failOnce;
+        var expectedCount = 6; var notifications = 0; var sawPartialAuthor = false; var sawBusyHistory = false;
+        NotifyCollectionChangedEventHandler failAlways = (_, _) => throw new IOException("persistent observer failure");
+        NotifyCollectionChangedEventHandler later = (_, _) =>
+        {
+            notifications++;
+            sawPartialAuthor |= documents.Groups[group.Id].Entries.Count != expectedCount;
+            sawBusyHistory |= history.IsBusy;
+        };
+        group.Entries.CollectionChanged += failAlways; group.Entries.CollectionChanged += later;
         try
         {
-            shouldFail = true; Assert.ThrowsAsync<IOException>(async () => await author.PasteAsync(group.Id, clip, null)); Assert.That(group.Entries, Is.EqualTo(original)); Assert.That(history.CanUndo, Is.False);
-            shouldFail = true; Assert.Throws<IOException>(() => author.Delete(group.Id, [original[0].StableId, original[2].StableId])); Assert.That(group.Entries, Is.EqualTo(original)); Assert.That(history.CanUndo, Is.False);
-            shouldFail = true; Assert.Throws<IOException>(() => author.Move(group.Id, [original[0].StableId], original[0].StableId, 2)); Assert.That(group.Entries, Is.EqualTo(original)); Assert.That(history.CanUndo, Is.False);
-            var inserted = await author.PasteAsync(group.Id, clip, null); var withPaste = group.Entries.ToArray(); shouldFail = true;
-            try { await history.UndoAsync(); Assert.Fail("Expected observer failure."); } catch (IOException) { }
-            Assert.That(group.Entries, Is.EqualTo(withPaste)); Assert.That(history.CanUndo, Is.True); Assert.That(history.CanRedo, Is.False);
-            await history.UndoAsync(); Assert.That(group.Entries, Is.EqualTo(original)); shouldFail = true;
-            try { await history.RedoAsync(); Assert.Fail("Expected observer failure."); } catch (IOException) { }
-            Assert.That(group.Entries, Is.EqualTo(original)); Assert.That(history.CanRedo, Is.True); Assert.That(history.CanUndo, Is.False);
-            await history.RedoAsync(); Assert.That(group.Entries.Skip(3).Select(entry => entry.StableId), Is.EqualTo(inserted.Select(entry => entry.StableId)));
+            var inserted = await author.PasteAsync(group.Id, clip, null);
+            Assert.That(group.Entries, Has.Count.EqualTo(6)); Assert.That(history.CanUndo, Is.True);
+            expectedCount = 3; await history.UndoAsync(); Assert.That(group.Entries, Is.EqualTo(original));
+            expectedCount = 6; await history.RedoAsync(); Assert.That(group.Entries.Skip(3).Select(entry => entry.StableId), Is.EqualTo(inserted.Select(entry => entry.StableId)));
+            expectedCount = 4; author.Delete(group.Id, [original[0].StableId, original[2].StableId]); Assert.That(group.Entries, Has.Count.EqualTo(4));
+            expectedCount = 6; await history.UndoAsync();
+            author.Move(group.Id, [original[0].StableId], original[0].StableId, 2);
+            Assert.That(group.Entries[2], Is.SameAs(original[0])); await history.UndoAsync();
+            Assert.That(group.Entries.Take(3), Is.EqualTo(original));
+            Assert.That(notifications, Is.GreaterThan(0), "A failed subscriber must not suppress later subscribers.");
+            Assert.That(sawPartialAuthor, Is.False); Assert.That(sawBusyHistory, Is.False);
+            Assert.That(projections.LastNotificationError, Is.TypeOf<IOException>());
+            Assert.That(history.RepairRequired, Is.False); Assert.That(project.Services.GetRequiredService<IProjectContentSession>().RepairRequired, Is.False);
+            Assert.Throws<InvalidOperationException>(() => group.Entries.Clear());
+            Assert.That(documents.Groups[group.Id].Entries, Has.Count.EqualTo(6));
         }
-        finally { group.Entries.CollectionChanged -= failOnce; }
-        history.Clear();
-        NotifyCollectionChangedEventHandler failAlways = (_, _) => throw new IOException("persistent observer failure");
-        group.Entries.CollectionChanged += failAlways;
-        try { Assert.ThrowsAsync<HistoryRepairRequiredException>(async () => await author.PasteAsync(group.Id, clip, null)); Assert.That(history.RepairRequired, Is.True); Assert.That(project.Services.GetRequiredService<IProjectContentSession>().RepairRequired, Is.True); }
-        finally { group.Entries.CollectionChanged -= failAlways; await projects.CloseAsync(); }
+        finally { group.Entries.CollectionChanged -= failAlways; group.Entries.CollectionChanged -= later; await projects.CloseAsync(); }
     }
-
     [Test]
     public async Task EntryClipboardPreservesDraftJsonAndBatchHistoryAcrossGroupsAndPageClose()
     {

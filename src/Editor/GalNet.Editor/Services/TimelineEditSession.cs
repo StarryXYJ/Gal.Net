@@ -11,6 +11,7 @@ using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
 using GalNet.Editor.Shared.Services;
+using GalNet.Editor.Abstraction.Changes;
 
 namespace GalNet.Editor.Services;
 
@@ -62,12 +63,13 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         _sceneQuery = sceneQuery;
         _targets = targets;
         InitializeCanvas();
-        selection.Changed += OnSelection; documents.DocumentChanged += Refresh; histories.Changed += Refresh;
+        selection.Changed += OnSelection; documents.DocumentChanged += Refresh; histories.Content.AuthorChanges.Committed += OnAuthorCommitted;
         _sceneQuery.Changed += Refresh;
         localization.PropertyChanged += OnLocale;
         InitializeEvents();
         Refresh();
     }
+    private void OnAuthorCommitted(AuthorChangeSet _) => Refresh();
     private void OnSelection() { ClearObjectDrafts(); _frame = 0; OnPropertyChanged(nameof(Frame)); Refresh(); }
     private void OnLocale(object? sender, PropertyChangedEventArgs args)
     {
@@ -197,7 +199,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         DisposeEvents();
         Canvas.PropertyChanged -= OnCanvasSelection; KeyEdit = null;
         if (_disposed) return; EndObjectEdit(); _disposed = true; DetachTree(); InvalidateKeyDocument(); _generation++; Rows.Clear(); Tree.Clear();
-        _selection.Changed -= OnSelection; _documents.DocumentChanged -= Refresh; _histories.Changed -= Refresh;
+        _selection.Changed -= OnSelection; _documents.DocumentChanged -= Refresh; _histories.Content.AuthorChanges.Committed -= OnAuthorCommitted;
         _sceneQuery.Changed -= Refresh;
         _localization.PropertyChanged -= OnLocale; _entry = null; _document = null;
     }

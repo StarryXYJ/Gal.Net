@@ -2,13 +2,14 @@ using System.Text.Json;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
+using GalNet.Editor.Abstraction.Changes;
 
 namespace GalNet.Editor.Services;
 
 /// <summary>Entry field intents retain author values and stable IDs, never a page or control.</summary>
 public sealed class EntryFieldAuthoringService(IEditorDocumentService documents, EditorHistories histories, CharacterAuthoringService? characters = null, GameTextAuthoringService? texts = null)
 {
-    public event Action<string>? Changed;
+    internal AuthorChangeJournal Changes => histories.Content.AuthorChanges;
     internal bool IsCurrent(string groupId, EditorEntryData expected) => documents.IsLoaded
         && documents.CurrentDocument.Nodes.Any(node => node.Id == groupId && node.Type == "Group")
         && documents.Groups.TryGetValue(groupId, out var group) && group.Entries.Any(entry => ReferenceEquals(entry, expected));
@@ -45,6 +46,7 @@ public sealed class EntryFieldAuthoringService(IEditorDocumentService documents,
             || !documents.Groups.TryGetValue(groupId, out var group)) throw Obsolete();
         return group.Entries.SingleOrDefault(entry => entry.StableId == id) ?? throw Obsolete();
     }
+    private int IndexOf(string groupId, EditorEntryData entry) => documents.Groups[groupId].Entries.IndexOf(entry);
 
     private sealed record EntryValue(string Type, string Condition, Dictionary<string, JsonElement> Parameters);
     private static Dictionary<string, JsonElement> Clone(IReadOnlyDictionary<string, JsonElement> values) =>
@@ -56,7 +58,7 @@ public sealed class EntryFieldAuthoringService(IEditorDocumentService documents,
     { entry.Type = value.Type; entry.Condition = value.Condition; entry.Parameters = Clone(value.Parameters); }
     private static EditorOperationException Obsolete() => new("entry.obsolete", "The entry or its schema is no longer current.");
 
-    private sealed record FieldEdit(EntryFieldAuthoringService Owner, string GroupId, string EntryId, EntryValue Before, EntryValue After, string Description) : IUndoableEdit
+    private sealed record FieldEdit(EntryFieldAuthoringService Owner, string GroupId, string EntryId, EntryValue Before, EntryValue After, string Description) : IUndoableEdit, IAuthorScopedEdit
     {
         public EditorText DisplayText => new(Description switch
         {
@@ -71,13 +73,11 @@ public sealed class EntryFieldAuthoringService(IEditorDocumentService documents,
         {
             var entry = Owner.Find(GroupId, EntryId);
             if (!Equal(Capture(entry), expected)) throw new EditorOperationException("entry.changed", "The entry changed outside this edit.");
-            try { Write(entry, value); Owner.Changed?.Invoke(GroupId); }
-            catch (Exception failure)
-            {
-                try { Write(entry, expected); Owner.Changed?.Invoke(GroupId); }
-                catch (Exception compensation) { throw new HistoryRepairRequiredException("Entry field compensation failed.", new AggregateException(failure, compensation)); }
-                throw;
-            }
+            Write(entry, value);
+            var kind = (expected.Type != value.Type ? GroupChangeKind.EntryType : GroupChangeKind.None)
+                | (expected.Condition != value.Condition ? GroupChangeKind.Condition : GroupChangeKind.None)
+                | (!Equal(expected with { Type = value.Type, Condition = value.Condition }, value) ? GroupChangeKind.Parameters : GroupChangeKind.None);
+            Owner.Changes.Record(GroupId, Owner.IndexOf(GroupId, entry), kind, [EntryId]);
         }
     }
 }
