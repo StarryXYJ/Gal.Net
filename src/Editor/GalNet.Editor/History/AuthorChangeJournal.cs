@@ -11,6 +11,7 @@ public sealed class AuthorChangeJournal
     public long Revision { get; private set; }
     public Exception? LastNotificationError { get; private set; }
     public event Action<AuthorChangeSet>? Committed;
+    internal bool IsRecording => _pending is not null;
 
     internal void Begin() { _pending = []; _moves.Clear(); _rollback.Clear(); }
     internal void OnRollback(Action rollback)

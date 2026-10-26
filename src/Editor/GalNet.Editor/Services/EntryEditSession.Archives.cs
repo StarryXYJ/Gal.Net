@@ -39,7 +39,7 @@ public sealed partial class EntryEditSession
         var bytes = EntryDraftArchiveStore.Encode(records, _limits);
         _archiveStore?.Write(bytes);
     }
-    internal void ApplyAuthorEdit(IReadOnlyList<EntryAddressTransition> addresses, Action apply, AuthorChangeJournal journal)
+    internal void ApplyAuthorEdit(IReadOnlyList<EntryAddressTransition> addresses, Action apply, AuthorChangeJournal? journal)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         LoadArchive();
@@ -67,7 +67,7 @@ public sealed partial class EntryEditSession
         foreach (var (key, draft) in affected)
         {
             var commit = draft.State.Commit; var child = draft.State.Child;
-            draft.State.Changed -= OnChanged;
+            draft.State.Changed -= draft.OnChanged;
             draft.State.Child = null;
             draft.State.Commit = () => Task.FromResult<GalNet.Core.Parameters.ValueIssue?>(Error("Conflict"));
             var blocked = draft.State.RegisterGuard(() => false);
@@ -75,10 +75,10 @@ public sealed partial class EntryEditSession
             restoreDrafts.Add(() =>
             {
                 blocked.Dispose(); draft.State.Commit = commit; draft.State.Child = child;
-                _drafts[key] = draft; draft.State.Changed += OnChanged;
+                _drafts[key] = draft; draft.State.Changed += draft.OnChanged;
             });
         }
-        journal.OnRollback(() =>
+        if (journal?.IsRecording == true) journal.OnRollback(() =>
         {
             if (changed) WriteArchive(before);
             _archives.Clear(); _archives.AddRange(before);

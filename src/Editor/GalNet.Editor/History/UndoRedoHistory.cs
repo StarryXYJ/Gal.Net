@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
-using GalNet.Editor.Services;
 using GalNet.Editor.Abstraction.Changes;
+using GalNet.Editor.Services;
 
 namespace GalNet.Editor.History;
 

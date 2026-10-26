@@ -19,7 +19,8 @@ public sealed class ProjectFileAuthoringService(IProjectService projects, IProje
     public async Task ExecuteAsync(ProjectFileRequest request)
     {
         var project = projects.Current ?? throw new InvalidOperationException("No project is open.");
-        await content.CommitDraftsAsync();
+        var removing = request.Action == ProjectFileAction.Delete && request.DeleteGroups ? Analyze(request).Groups.ToHashSet(StringComparer.Ordinal) : null;
+        await content.CommitDraftsAsync(new(removing));
         var operation = new ProjectFileOperation(project.RootPath, request, catalog, types);
         try { await histories.Content.ExecuteAsync(new FileEdit(operation, content, assets)); }
         catch { operation.Dispose(); throw; }

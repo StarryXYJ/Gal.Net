@@ -8,6 +8,18 @@ namespace GeneralTest.Editor;
 public sealed partial class SceneTargetAnalysisTests
 {
     [Test]
+    public void ReusingAnAnalysisWithNewResourceDeclarationsCannotReuseOldCapabilities()
+    {
+        Dictionary<string, List<EditorEntryData>> groups = new() { ["g"] = [Entry("fx", BuiltinEntryIds.ApplyEffect, new { instanceId = "fx", program = "program" })] };
+        var previous = new SceneTargetAnalysis(Graph("g"), groups, programs: new Dictionary<string, GalNet.Core.Scene.ShaderEffectDescriptor?> { ["program"] = EffectDescriptor() });
+        Assert.That(previous.Before("g", null).Complete, Is.True);
+        var next = new SceneTargetAnalysis(Graph("g"), groups, programs: new Dictionary<string, GalNet.Core.Scene.ShaderEffectDescriptor?> { ["program"] = null }, previousAnalysis: previous);
+        Assert.That(next.Before("g", null).Complete, Is.False);
+        Assert.That(next.Before("g", null).Targets.Single().Properties.Select(property => property.Name), Is.EqualTo(new[] { "progress" }));
+        Assert.That(next.ReusedGroupCount, Is.Zero);
+    }
+
+    [Test]
     public void PrefixCheckpointsAreBoundedReuseUnchangedGroupsAndMatchFreshAnalysis()
     {
         var graph = Graph("root", "a", "b", "merge"); Edge(graph, "root", "a"); Edge(graph, "root", "b"); Edge(graph, "a", "merge"); Edge(graph, "b", "merge");

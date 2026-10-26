@@ -7,6 +7,7 @@ namespace GalNet.Editor.Shared.Services;
 public sealed class EditorDocumentService : IEditorDocumentService
 {
     private readonly Dictionary<string, EditorGroupDocument> _groups = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, WeakReference<EditorGroupDocument>> _retiredGroups = new(StringComparer.Ordinal);
     private readonly Dictionary<string, EditorGroupDocument> _paths = new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
     public LoadedEditorProjectDocument LoadedProject { get; private set; } = new();
     public EditorGraphDocument CurrentDocument => LoadedProject.Document;
@@ -29,6 +30,7 @@ public sealed class EditorDocumentService : IEditorDocumentService
     {
         LoadedProject = new();
         _groups.Clear();
+        _retiredGroups.Clear();
         _paths.Clear();
         IsLoaded = false;
         NotifyDocumentChanged();
@@ -74,7 +76,15 @@ public sealed class EditorDocumentService : IEditorDocumentService
         if (_paths.ContainsKey(relativePath)) throw new InvalidDataException($"A Group document already owns '{relativePath}'.");
         if (!LoadedProject.GroupEntries.TryGetValue(groupId, out var entries))
             LoadedProject.GroupEntries.Add(groupId, entries = []);
-        var document = new EditorGroupDocument(groupId, relativePath, entries);
+        EditorGroupDocument document;
+        if (_retiredGroups.Remove(groupId, out var retired) && retired.TryGetTarget(out var previous))
+        {
+            document = previous;
+            if (!ReferenceEquals(document.Entries, entries))
+            { var values = entries.ToArray(); document.Entries.Clear(); document.Entries.AddRange(values); LoadedProject.GroupEntries[groupId] = document.Entries; }
+            document.ChangeSourcePath(relativePath);
+        }
+        else document = new EditorGroupDocument(groupId, relativePath, entries);
         _groups.Add(groupId, document);
         _paths.Add(relativePath, document);
         return document;
@@ -85,6 +95,10 @@ public sealed class EditorDocumentService : IEditorDocumentService
     public void SynchronizeGroups()
     {
         _paths.Clear();
+        var live = CurrentDocument.Nodes.Where(node => node.Type == "Group").Select(node => node.Id).ToHashSet(StringComparer.Ordinal);
+        foreach (var id in _retiredGroups.Where(pair => !pair.Value.TryGetTarget(out _)).Select(pair => pair.Key).ToArray()) _retiredGroups.Remove(id);
+        foreach (var id in _groups.Keys.Where(id => !live.Contains(id)).ToArray())
+        { _retiredGroups[id] = new(_groups[id]); _groups.Remove(id); }
         foreach (var node in CurrentDocument.Nodes.Where(node => node.Type == "Group"))
         {
             var path = ("Graph/" + node.File).Replace('\\', '/');

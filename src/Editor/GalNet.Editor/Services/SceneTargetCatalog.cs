@@ -16,11 +16,23 @@ public sealed record SceneFieldChoice(SceneTargetSnapshot Snapshot, SceneTargetC
 public sealed record VariantFieldSource(SceneTargetSnapshot Snapshot, ImageVariantsDefinition? Definition, string? Dimension);
 
 /// <summary>Editor adapter: stable locator choices resolve to opaque runtime handles only at commit.</summary>
-public sealed class SceneTargetCatalog(ProjectSceneTargets query, IEditorDocumentService documents, IAssetManager assets, IEditorLocalizationService localization)
+public sealed class SceneTargetCatalog : IDisposable
 {
-    private readonly Dictionary<string, string> _paths = new(StringComparer.Ordinal);
+    private readonly ProjectSceneTargets query;
+    private readonly IEditorDocumentService documents;
+    private readonly IEditorLocalizationService localization;
+    private readonly SceneSourceDescriptions _descriptions;
+    private long _resourceEpoch;
+    public SceneTargetCatalog(ProjectSceneTargets query, IEditorDocumentService documents, IAssetManager assets, IEditorLocalizationService localization)
+    {
+        this.query = query; this.documents = documents; this.localization = localization;
+        _descriptions = new(documents, assets, localization); _resourceEpoch = query.ResourceEpoch;
+        query.Changed += OnQueryChanged;
+    }
+    private void OnQueryChanged() { if (_resourceEpoch != query.ResourceEpoch) { _resourceEpoch = query.ResourceEpoch; _descriptions.Invalidate(); } }
     public IEditorLocalizationService Text => localization;
-    public event Action? Changed { add => query.Changed += value; remove => query.Changed -= value; }
+    public event Action? Changed { add { query.Changed += value; _descriptions.Changed += value; } remove { query.Changed -= value; _descriptions.Changed -= value; } }
+    internal string ResourceLabel(string id) => _descriptions.Resource(id);
     internal (long Author, long Resources) PreparationStamp(SceneTargetSnapshot snapshot) => query.PreparationStamp(snapshot.GroupId, snapshot.EntryId, snapshot.Position);
     internal bool IsSamePreparation(SceneTargetSnapshot snapshot, (long Author, long Resources) stamp)
     { var current = PreparationStamp(snapshot); return query.IsAvailable && current == stamp; }
@@ -36,24 +48,31 @@ public sealed class SceneTargetCatalog(ProjectSceneTargets query, IEditorDocumen
     public SceneTargetSnapshot Query(string groupId, string entryId, Func<SceneTarget, bool>? filter = null, SceneTimelinePosition? position = null, bool playback = false)
     {
         var result = position is null ? query.Before(groupId, entryId) : query.AtTimeline(groupId, entryId, position);
-        var choices = (playback ? result.Playbacks : result.Targets).Where(target => target.Kind != SceneTargetKind.Unresolved && (filter?.Invoke(target) ?? true)).Select(target =>
-        {
-            var group = documents.CurrentDocument.Nodes.FirstOrDefault(node => node.Id == target.Locator.GroupId);
-            var entry = documents.Groups.TryGetValue(target.Locator.GroupId, out var source) ? source.Entries.FirstOrDefault(item => item.StableId == target.Locator.EntryId) : null;
-            var origin = (group?.Name ?? "") + " / " + entry?.Id;
-            var resourceId = string.IsNullOrWhiteSpace(target.Resource) && target.Variants is { AssetIds.Count: 1 } variants ? variants.AssetIds[0] : target.Resource;
-            var resource = playback ? localization["Entry.Type." + target.Resource] : _paths.GetValueOrDefault(resourceId, resourceId);
-            var kind = localization[playback ? "Scene.Playback" : "Timeline.Kind." + target.Kind];
-            var name = playback ? resource : string.IsNullOrWhiteSpace(resource) || Guid.TryParse(resource, out _) ? kind : Path.GetFileName(resource);
-            var detail = playback ? resource + " · " + target.Resource : resource;
-            if (target.Variants is { Definite: false }) detail += " · " + localization["Variants.AmbiguousSource"];
-            if (target.CreatedAtFrame is { } created && !target.IsFuture) origin += " · " + localization.Format("Scene.CreatedAt", created);
-            var presence = target.IsFuture ? localization.Format("Scene.FutureAt", target.CreatedAtFrame) : localization[target.Presence == TargetPresence.Definite ? "Timeline.Definite" : "Timeline.Possible"];
-            return new SceneTargetChoice(target, new(JsonSerializer.Serialize(target.Locator), name + " · " + origin,
-                kind + " · " + detail + " · " + origin + " · " + presence,
-                playback ? "▶" : target.Kind == SceneTargetKind.Particle ? "✦" : target.Kind == SceneTargetKind.Effect ? "◈" : "▣", Badge: presence));
-        }).ToArray();
+        var choices = (playback ? result.Playbacks : result.Targets).Where(target => target.Kind != SceneTargetKind.Unresolved && (filter?.Invoke(target) ?? true)).Select(target => Describe(target, playback)).ToArray();
         return new(groupId, entryId, result.Revision, result.Complete, choices, filter, position, playback, result.ContextRevision);
+    }
+    internal string ReferenceLabel(string group, string entry, SceneReferenceSlot slot, string raw)
+    {
+        var result = query.InspectBefore(group, entry);
+        var playback = slot.Domain == SceneIdentityDomain.Playback;
+        var target = (playback ? result.Playbacks : result.Targets).FirstOrDefault(target => target.Handle == raw && slot.Kinds.Contains(target.Kind)
+            && (!slot.RequiresVariants || target.Variants is not null));
+        return target is null ? localization["Scene.Unresolved"] : Describe(target, playback).Item.Label;
+    }
+    private SceneTargetChoice Describe(SceneTarget target, bool playback)
+    {
+        var origin = _descriptions.Origin(target);
+        var resourceId = string.IsNullOrWhiteSpace(target.Resource) && target.Variants is { AssetIds.Count: 1 } variants ? variants.AssetIds[0] : target.Resource;
+        var resource = playback ? localization["Entry.Type." + target.Resource] : _descriptions.Resource(resourceId);
+        var kind = localization[playback ? "Scene.Playback" : "Timeline.Kind." + target.Kind];
+        var name = playback ? resource : string.IsNullOrWhiteSpace(resource) || Guid.TryParse(resource, out _) ? kind : Path.GetFileName(resource);
+        var detail = playback ? resource + " · " + target.Resource : resource;
+        if (target.Variants is { Definite: false }) detail += " · " + localization["Variants.AmbiguousSource"];
+        if (target.CreatedAtFrame is { } created && !target.IsFuture) origin += " · " + localization.Format("Scene.CreatedAt", created);
+        var presence = target.IsFuture ? localization.Format("Scene.FutureAt", target.CreatedAtFrame) : localization[target.Presence == TargetPresence.Definite ? "Timeline.Definite" : "Timeline.Possible"];
+        return new SceneTargetChoice(target, new(JsonSerializer.Serialize(target.Locator), name + " · " + origin,
+            kind + " · " + detail + " · " + origin + " · " + presence,
+            playback ? "▶" : target.Kind == SceneTargetKind.Particle ? "✦" : target.Kind == SceneTargetKind.Effect ? "◈" : "▣", Badge: presence));
     }
     public async Task PrepareAsync(string groupId, string entryId, SceneTimelinePosition? position = null, CancellationToken token = default)
     {
@@ -63,8 +82,7 @@ public sealed class SceneTargetCatalog(ProjectSceneTargets query, IEditorDocumen
         foreach (var resource in resources)
         {
             token.ThrowIfCancellationRequested();
-            var file = await assets.GetFileAsync(resource, token);
-            if (file is not null) _paths[resource] = file.Path;
+            await _descriptions.PrepareAsync(resource).WaitAsync(token);
         }
     }
     public bool IsCurrent(SceneTargetSnapshot snapshot)
@@ -83,6 +101,7 @@ public sealed class SceneTargetCatalog(ProjectSceneTargets query, IEditorDocumen
         return new[] { new FieldEditorOption("none", new SceneFieldChoice(snapshot, null, none, noneKey), JsonSerializer.SerializeToElement("")) }
             .Concat(snapshot.Choices.Select(choice => new FieldEditorOption(choice.Item.Id, new SceneFieldChoice(snapshot, choice, choice.Item), JsonSerializer.SerializeToElement(choice.Target.Handle)))).ToArray();
     }
+    public void Dispose() { query.Changed -= OnQueryChanged; _descriptions.Dispose(); }
 }
 
 internal static class SceneFieldSemantics

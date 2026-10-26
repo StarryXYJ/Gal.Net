@@ -26,10 +26,16 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var timeline = workspace.InsertEntriesInto(group, 1, 1, BuiltinEntryIds.PlayTimeline).Single();
             var later = workspace.InsertEntriesInto(group, 2, 1, BuiltinEntryIds.Wait).Single();
             var author = scope.GetRequiredService<EntryFieldAuthoringService>();
-            author.SetParameters(group.Id, timeline.Source, timeline.Type, new() { ["timeline"] = JsonSerializer.SerializeToElement(new
+            author.SetParameters(group.Id, timeline.Source, timeline.Type, new()
             {
-                playbackHandleId = "p", durationFrames = 60, tracks = new[] { new { handleId = layer.Source.Parameters["handleId"].GetString(), property = "opacity", keys = new[] { new { frame = 0, value = 1 } } } }, events = Array.Empty<object>()
-            }) });
+                ["timeline"] = JsonSerializer.SerializeToElement(new
+                {
+                    playbackHandleId = "p",
+                    durationFrames = 60,
+                    tracks = new[] { new { handleId = layer.Source.Parameters["handleId"].GetString(), property = "opacity", keys = new[] { new { frame = 0, value = 1 } } } },
+                    events = Array.Empty<object>()
+                })
+            });
             using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = timeline;
             var session = scope.GetRequiredService<TimelineEditSession>(); var query = scope.GetRequiredService<ProjectSceneTargets>();
             var row = session.Rows.Single(item => item.HasTrack); row.DraftValue = .25m;

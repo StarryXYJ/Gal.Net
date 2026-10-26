@@ -1,10 +1,10 @@
 using System.Collections.ObjectModel;
 using GalNet.Core.Entry;
+using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
-using GalNet.Editor.Models.Graph;
-using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.History;
+using GalNet.Editor.Models.Graph;
 
 namespace GalNet.Editor.Services;
 
@@ -13,6 +13,7 @@ public sealed class EditorGroupProjectionStore : IDisposable
 {
     public IEnumerable<EditorGroupProjection> Loaded => _groups.Values;
     private readonly Dictionary<string, EditorGroupProjection> _groups = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, WeakReference<EditorGroupProjection>> _retired = new(StringComparer.Ordinal);
     private readonly IEditorDocumentService documents;
     private readonly IEntryCatalog catalog;
     private readonly EntryFieldAuthoringService authoring;
@@ -27,6 +28,7 @@ public sealed class EditorGroupProjectionStore : IDisposable
         this.scenes = scenes; this.changes = histories?.Content.AuthorChanges ?? authoring.Changes; this.edits = edits;
         documents.DocumentChanged += Synchronize;
         changes.Committed += OnCommitted;
+        if (scenes is not null) { scenes.Changed += RefreshSummaries; scenes.Text.PropertyChanged += OnLocale; }
     }
     public Exception? LastNotificationError { get; private set; }
     private void OnCommitted(AuthorChangeSet change)
@@ -37,13 +39,25 @@ public sealed class EditorGroupProjectionStore : IDisposable
     }
     private void Synchronize()
     {
-        foreach (var group in _groups.Values.ToArray()) group.Synchronize(catalog);
+        foreach (var (id, group) in _groups.ToArray())
+            if (documents.Groups.TryGetValue(id, out var source)) { group.Rebind(source); group.Synchronize(catalog); }
+            else
+            {
+                group.Detach(); _groups.Remove(id);
+                foreach (var key in _retired.Where(pair => !pair.Value.TryGetTarget(out _)).Select(pair => pair.Key).ToArray()) _retired.Remove(key);
+                if (_retired.Count >= 64) _retired.Remove(_retired.Keys.First());
+                _retired[id] = new(group);
+            }
     }
+    private void OnLocale(object? sender, System.ComponentModel.PropertyChangedEventArgs args) { if (args.PropertyName == "Item[]") RefreshSummaries(); }
+    private void RefreshSummaries() { foreach (var group in _groups.Values) foreach (var entry in group.Entries) entry.RefreshSummary(); }
 
     public EditorGroupProjection Get(string groupId, string? sourcePath = null)
     {
         if (_groups.TryGetValue(groupId, out var existing)) return existing;
         var source = documents.GetOrCreateGroup(groupId, "Graph/" + (sourcePath ?? $"groups/{groupId}.rawgalgroup"));
+        if (_retired.Remove(groupId, out var cached) && cached.TryGetTarget(out var restored))
+        { restored.Rebind(source); restored.Synchronize(catalog); _groups.Add(groupId, restored); return restored; }
         var projection = new EditorGroupProjection(source, catalog, authoring, scenes, edits, failure =>
         {
             LastNotificationError = failure;
@@ -57,16 +71,19 @@ public sealed class EditorGroupProjectionStore : IDisposable
     {
         documents.DocumentChanged -= Synchronize;
         changes.Committed -= OnCommitted;
+        if (scenes is not null) { scenes.Changed -= RefreshSummaries; scenes.Text.PropertyChanged -= OnLocale; }
         foreach (var group in _groups.Values) group.Dispose();
+        foreach (var cached in _retired.Values) if (cached.TryGetTarget(out var group)) group.Dispose();
+        _retired.Clear();
         _groups.Clear();
     }
 }
 
 public sealed class EditorGroupProjection : IDisposable
 {
-    public EditorGroupDocument Document { get; }
+    public EditorGroupDocument Document { get; private set; }
     public ObservableCollection<EntryEditorItemViewModel> Entries { get; }
-    private readonly HashSet<EntryEditorItemViewModel> _allEntries = [];
+    private readonly List<WeakReference<EntryEditorItemViewModel>> _retiredEntries = [];
     private readonly ProjectionEntryCollection _entries;
     private readonly EntryFieldAuthoringService _authoring;
     private readonly SceneTargetCatalog? _scenes;
@@ -81,8 +98,21 @@ public sealed class EditorGroupProjection : IDisposable
         _report = report;
         _entries = new(document.Entries.Select(entry => new EntryEditorItemViewModel(entry, catalog)), report);
         Entries = _entries;
-        _allEntries.UnionWith(Entries);
         foreach (var entry in Entries) Bind(entry);
+    }
+    internal void Rebind(EditorGroupDocument source) => Document = source;
+    internal void Detach()
+    {
+        foreach (var entry in Entries.ToArray()) Retire(entry);
+        Document = new(Document.Id, Document.RelativePath, []);
+        _entries.Update(Entries.Clear);
+    }
+    private void Retire(EntryEditorItemViewModel entry)
+    {
+        try { entry.InvalidateAuthorBindings(); } catch (Exception failure) { _report(failure); }
+        _retiredEntries.RemoveAll(reference => !reference.TryGetTarget(out _));
+        if (_retiredEntries.Count >= 512) _retiredEntries.RemoveAt(0);
+        _retiredEntries.Add(new(entry));
     }
 
     public void Synchronize(IEntryCatalog catalog, AuthorGroupChange? change = null)
@@ -95,18 +125,19 @@ public sealed class EditorGroupProjection : IDisposable
         var previous = Entries.ToArray();
         var current = Document.Entries.ToArray();
         foreach (var entry in previous.Where(entry => !current.Contains(entry.Source)))
-            try { entry.InvalidateAuthorBindings(); } catch (Exception failure) { _report(failure); }
+            Retire(entry);
+        var active = previous.ToDictionary(entry => entry.Source, entry => entry);
         _entries.Update(() =>
         {
             for (var index = 0; index < current.Length; index++)
             {
                 var source = current[index];
-                var entry = _allEntries.FirstOrDefault(entry => ReferenceEquals(entry.Source, source)) ?? new EntryEditorItemViewModel(source, catalog);
+                var entry = active.GetValueOrDefault(source) ?? _retiredEntries.Select(reference => reference.TryGetTarget(out var item) ? item : null)
+                    .FirstOrDefault(item => ReferenceEquals(item?.Source, source)) ?? new EntryEditorItemViewModel(source, catalog);
                 Bind(entry);
                 if (Entries.Contains(entry)) { if (Entries.IndexOf(entry) != index) Entries.Move(Entries.IndexOf(entry), index); }
                 else Entries.Insert(index, entry);
                 Refresh(entry, catalog);
-                _allEntries.Add(entry);
             }
             while (Entries.Count > current.Length) Entries.RemoveAt(Entries.Count - 1);
         });
@@ -122,8 +153,9 @@ public sealed class EditorGroupProjection : IDisposable
 
     public void Dispose()
     {
-        foreach (var entry in _allEntries) entry.Dispose();
-        _allEntries.Clear();
+        foreach (var entry in Entries) entry.Dispose();
+        foreach (var reference in _retiredEntries) if (reference.TryGetTarget(out var entry)) entry.Dispose();
+        _retiredEntries.Clear();
     }
 }
 

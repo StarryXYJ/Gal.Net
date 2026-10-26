@@ -6,12 +6,12 @@ using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
 using GalNet.Core.Scene;
 using GalNet.Core.Variants;
+using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.History;
 using GalNet.Editor.Services.Interfaces;
 using GalNet.Editor.Shared.Services;
-using GalNet.Editor.History;
-using GalNet.Editor.Abstraction.Changes;
 
 namespace GalNet.Editor.Services;
 
@@ -48,6 +48,7 @@ public sealed class ProjectSceneTargets : IDisposable
     private IReadOnlyDictionary<string, ImageVariantsDefinition?> _variants = new Dictionary<string, ImageVariantsDefinition?>(StringComparer.OrdinalIgnoreCase);
     private Task? _loading;
     private long _resourceEpoch;
+    internal long ResourceEpoch { get { lock (_gate) return _resourceEpoch; } }
     public event Action? Changed;
     public long Revision { get; private set; }
     public bool IsAvailable { get { lock (_gate) return !_disposed && _documents.IsLoaded; } }
@@ -94,6 +95,7 @@ public sealed class ProjectSceneTargets : IDisposable
     }
 
     public SceneTargetResult Before(string groupId, string? entryId) => Query(groupId, entryId, null);
+    internal SceneTargetResult InspectBefore(string groupId, string entryId) => Query(groupId, entryId, null, retain: false);
     public SceneTargetResult AtTimeline(string groupId, string entryId, SceneTimelinePosition position) => Query(groupId, entryId, position);
     public IReadOnlyList<SceneReferenceDiagnostic> Diagnostics()
     {
@@ -105,7 +107,7 @@ public sealed class ProjectSceneTargets : IDisposable
             return SceneReferenceAnalysis.Diagnose(new SceneReferenceIndex(_frozen!.GroupEntries), _analysis).Select(diagnostic => diagnostic with { Revision = Revision }).ToArray();
         }
     }
-    private SceneTargetResult Query(string groupId, string? entryId, SceneTimelinePosition? position)
+    private SceneTargetResult Query(string groupId, string? entryId, SceneTimelinePosition? position, bool retain = true)
     {
         lock (_gate)
         {
@@ -113,6 +115,7 @@ public sealed class ProjectSceneTargets : IDisposable
             QueuePreparation();
             EnsureAnalysis();
             var key = (groupId, entryId, position);
+            if (!retain) return Evaluate(key);
             if (!_queries.ContainsKey(key) && _queries.Count >= 256) { var oldest = _queries.Keys.First(); _queries.Remove(oldest); _queryOwners.Remove(oldest); _querySources.Remove(oldest); }
             return UpdateQuery(key);
         }

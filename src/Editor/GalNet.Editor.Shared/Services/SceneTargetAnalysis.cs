@@ -54,6 +54,8 @@ public sealed partial class SceneTargetAnalysis
         // Caller owns the immutable snapshot for this generation.
         _groups = groups;
         _programs = programs; _effects = effects; _variants = variants;
+        if (previousAnalysis is not null && (!ReferenceEquals(programs, previousAnalysis._programs)
+            || !ReferenceEquals(effects, previousAnalysis._effects) || !ReferenceEquals(variants, previousAnalysis._variants))) previousAnalysis = null;
         var nodes = graph.Nodes.ToDictionary(node => node.Id, StringComparer.Ordinal);
         if (!nodes.ContainsKey(graph.RootNodeId)) return;
         var outputs = _outputs;

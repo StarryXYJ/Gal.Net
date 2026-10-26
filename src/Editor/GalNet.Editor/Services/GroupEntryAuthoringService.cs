@@ -1,12 +1,12 @@
 using System.Text;
 using System.Text.Json;
 using GalNet.Core.Entry;
+using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
 using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Shared.Services;
-using GalNet.Editor.Abstraction.Changes;
 
 namespace GalNet.Editor.Services;
 

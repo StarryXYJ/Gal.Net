@@ -311,6 +311,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         if (sender is not EntryEditorItemViewModel entry) return;
         if (e.PropertyName == nameof(EntryEditorItemViewModel.IsParametersExpanded)) _expanded[entry.StableId] = entry.IsParametersExpanded;
         if (e.PropertyName == nameof(EntryEditorItemViewModel.Type)) Configure(entry);
+        if (e.PropertyName is nameof(EntryEditorItemViewModel.Type) or nameof(EntryEditorItemViewModel.Summary) or nameof(EntryEditorItemViewModel.Condition) or nameof(EntryEditorItemViewModel.Id)) OnPropertyChanged(nameof(VisibleEntries));
     }
 
     private void Configure(EntryEditorItemViewModel entry) => entry.ConfigureParameterFields(

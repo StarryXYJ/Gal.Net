@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [查询事实与写入上下文](lessons/L-20261026-03-query-result-and-write-context.md)：候选结果版本不能代替写入方身份/基线版本；异步准备按局部作者依赖与资源代次续租，相关变化再撤销不能复活旧选择。
+
 - [作者代次与视图生命周期](lessons/L-20261026-02-author-incarnation-view-lifetime.md)：作者删除/换类型使旧绑定失效；页面关闭只释放表单，不推进作者 incarnation，项目草稿须跨页面继续共享并可保存。
 
 - [基线对照恢复与增量时间戳](lessons/L-20261026-01-baseline-restore-timestamps.md)：恢复源码备份可能保留早于基线 DLL 的时间戳，候选验证需独立输出、Rebuild 或显式失效增量构建，并核对源字节。
