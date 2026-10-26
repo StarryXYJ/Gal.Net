@@ -30,12 +30,12 @@ public sealed class ProjectConfigurationPersistenceTests
         document.Configuration.SetRaw("developer.options", new(4, JsonSerializer.SerializeToElement(new { enabled = true })));
         document.Configuration.SetRaw(DefaultProjectConfiguration.Section.Id, new(1,
             JsonSerializer.SerializeToElement(new { defaultWidth = 1280, future = new { enabled = true } })));
-        var handler = new BuiltInEditorCommandHandler(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()));
-        var result = handler.Execute(document, new PatchProjectSettingsCommand(new Dictionary<string, JsonElement>
+        var handler = new BuiltInEditorCommandHandler(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()), DefaultProjectConfiguration.Schema);
+        var result = handler.Execute(document, new PatchConfigurationCommand(DefaultProjectConfiguration.Section.Id, new Dictionary<string, JsonElement>
         { ["defaultWidth"] = JsonSerializer.SerializeToElement(1440), ["unknown"] = JsonSerializer.SerializeToElement(1) }), new(0, false));
         Assert.That(result.Success, Is.False);
         Assert.That(document.Configuration.ReadDefaultOptions().DefaultWidth, Is.EqualTo(1280));
-        result = handler.Execute(document, new PatchProjectSettingsCommand(new Dictionary<string, JsonElement>
+        result = handler.Execute(document, new PatchConfigurationCommand(DefaultProjectConfiguration.Section.Id, new Dictionary<string, JsonElement>
         { ["defaultWidth"] = JsonSerializer.SerializeToElement(1440) }), new(0, false));
         Assert.That(result.Success, Is.True);
         await persistence.SaveAsync(document);

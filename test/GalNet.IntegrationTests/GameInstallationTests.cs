@@ -4,10 +4,14 @@ using System.Text.Json;
 using GalNet.Assets;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
+using GalNet.Core.Configuration;
 using GalNet.Core.Entry;
+using GalNet.Core.Parameters;
 using GalNet.Core.Gallery;
 using GalNet.Core.Serialization;
 using GalNet.Editor.Shared.Services;
+using GalNet.Editor.Shared.Commands;
+using GalNet.Runtime.Content;
 using GalNet.Storage.FileSystem;
 using AssetCompressionMode = GalNet.Core.Assets.CompressionMode;
 
@@ -15,6 +19,8 @@ namespace GalNet.Assets.Tests;
 
 public sealed class GameInstallationTests
 {
+    public sealed class HostOptions { public double SubtitleScale { get; set; } = 1; }
+
     [Test]
     public async Task Exporter_writes_direct_content_and_installed_resources()
     {
@@ -27,12 +33,18 @@ public sealed class GameInstallationTests
         {
             var resourceTypes = BuiltinResourceTypes.CreateCatalog();
             var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
+            var section = new ConfigurationSection<HostOptions>("host.options", [new("subtitleScale", new ValueDescriptor(typeof(double), allowNull: false))]);
+            var configurations = new ProjectConfigurationSchema([DefaultProjectConfiguration.Section, section]);
+            var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
             await File.WriteAllBytesAsync(Path.Combine(project, "Assets", "hero.png"), "hero"u8.ToArray());
             await File.WriteAllTextAsync(Path.Combine(project, "Assets", "hero.png.meta"), """{"id":"hero","type":"sprite","path":"hero.png","filter":"bilinear","compress":"none"}""");
             await File.WriteAllTextAsync(Path.Combine(project, "Graph", "graph.json"), """{"version":2,"name":"export-test","rootNodeId":"","nodes":[],"edges":[],"playerVariables":[],"saveVariables":[]}""");
             await File.WriteAllTextAsync(Path.Combine(project, "settings.json"), """
                 { "version": 1, "sections": { "galnet.project": { "version": 1, "data": { "audioGroups": [{ "id": "environment", "name": "Environment" }], "audioTracks": [ { "id": "ambient", "groupId": "environment", "preserveDuringCatchUp": true, "defaultGain": 0.3, "maxVoices": 2, "overflowPolicy": "StopOldest" } ] } } } }
                 """);
+            var edit = await new ProjectEditService(project, catalog, configurations).ExecuteJsonAsync(
+                """{"commandId":"project.configuration.patch","sectionId":"host.options","values":{"subtitleScale":1.5}}""");
+            Assert.That(edit.Success, Is.True, JsonSerializer.Serialize(edit.Diagnostics));
 
             var development = await GameInstallation.OpenAsync(project);
             Assert.That(development.IsPackaged, Is.False);
@@ -44,7 +56,7 @@ public sealed class GameInstallationTests
 
             Directory.CreateDirectory(Path.Combine(project, "I18n", "External", "en-US"));
             await File.WriteAllTextAsync(Path.Combine(project, "I18n", "External", "en-US", "private.json"), "{}");
-            var export = await GamePackageExporter.ExportAsync("project", "Sample", project, output, resourceTypes, galleryTypes, new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()));
+            var export = await GamePackageExporter.ExportAsync("project", "Sample", project, output, resourceTypes, galleryTypes, catalog, configurations);
             Assert.That(export.Success, Is.True, export.Error);
             using (var packageZip = ZipFile.OpenRead(export.PackagePath!))
                 Assert.That(packageZip.Entries.Any(entry => entry.FullName.StartsWith("I18n/External/", StringComparison.OrdinalIgnoreCase)), Is.False);
@@ -53,7 +65,9 @@ public sealed class GameInstallationTests
             Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "gallery.json")), Is.True);
             Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "Graph", "graph.json")), Is.True);
             Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "Assets", "Paks", "000-base.pak")), Is.True);
-            var installedContent = await installation.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync();
+            var installedContent = await installation.CreateContentProvider(resourceTypes, galleryTypes,
+                new GameContentLoadOptions { Configurations = configurations }).LoadAsync();
+            Assert.That(installedContent.Configuration.Read(section).SubtitleScale, Is.EqualTo(1.5));
             Assert.That(installedContent.Graph.Name, Is.EqualTo("export-test"));
             Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioGroups.Single().Id, Is.EqualTo("environment"));
             Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioTracks.Single().GroupId, Is.EqualTo("environment"));

@@ -6,6 +6,7 @@ using GalNet.Core.Configuration;
 using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
 using GalNet.Editor.Abstraction.Documents;
+using GalNet.Editor.Shared.Commands;
 
 namespace GalNet.Editor.Shared.Services;
 

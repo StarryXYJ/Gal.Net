@@ -148,3 +148,12 @@ R4c 仍需完成通用 section 编辑/历史及自有 DTO 的完整导出、安�
 按用户反馈删除配置专用 IFieldDto 分支、ForDto 工厂和无消费者的 DataType/DefaultData，统一普通 DTO + 字段 schema 的 JSON 路径；默认值和候选验证共用 Read。SDK JSON 信封反序列化、重复属性选项及标准序列化替代手写解析/递归检查/输出。Set 在合并后验证一次，持久化移除重复读取/克隆和无效 serializer 配置。保留构造默认值、schema 默认值、未知数据、大小写规则、版本与原子拒绝行为；不把外部同时进行的 Editor 精简混入本次提交。
 
 产品代码净删 88 行，Core 配置从 239 缩到 166 行；测试代码净删 7 行，只移除已删除能力的模拟 DTO，关键行为回归保留。当前工作区并行 Editor 重构曾导致 DebugApplicationProcess.Error/Status/Changed 未定义，未修改这些外部文件；以 1228f94 基线和五个配置改动源码组成独立候选，SHA-256 与提交源码核对一致。候选 locked restore、完整解决方案构建和格式检查通过；774 项通过（Core 166、Architecture 49、Editor.Shared 424、Integration 125、配置相关 GUI 10），4 项既有符号链接权限失败、2 项跳过。原生/显式外进程未执行，NU1900 漏洞源不可达警告保留，无依赖/锁文件变更。证据：artifacts/engine-core-audit/r4b-cleanup-candidate-*.log、r4b-cleanup-results 和 candidate-source.json。
+
+
+## R4c1：通用配置命令与发布链路
+
+用 project.configuration.patch 取代固定设置字段分支，按项目 schema 验证整份 section 候选后发布；values 支持显式 null，remove 表示删除并恢复读取默认值，同键以 values 为准。拒绝未声明字段/section 和不支持的版本，保留已有未知数据。CLI 构建、两种导出、Editor 导出及外部调试构建显式传递所选 schema，无效配置不能覆盖既有产物。没有新增配置框架，产品代码净减 20 行；新增主要为测试夹具与验证。
+
+以 b87297f 为基线组成隔离候选，当前阶段源码 SHA-256 一致。locked restore、完整解决方案构建、格式/diff 检查通过；初轮构建发现 builder 缺少持久化命名空间引用，补齐后最终构建通过。1089 项通过：Core 166、Architecture 49、Editor.Shared 430、Editor 318、Integration 126；Shared 2 项和 Integration 1 项仍因 Windows 创建符号链接权限失败，Shared 另有 2 项跳过。NU1900 漏洞源不可达警告保留，没有依赖或锁文件变更。
+
+ProjectContractPipelineTests 覆盖实际 CLI 修改、显式 null/删除、领域校验整批拒绝、版本拒绝、未知数据、两种导出和安装保留；GameInstallationTests 验证自有 DTO 经命令保存、导出、安装后由所选 schema 重新加载。证据位于 artifacts/engine-core-audit/r4c1-build-final.log、r4c1-restore.log、r4c1-results 与 r4c1-sources.json。协议与用法已同步至 file-formats 和 new-presentation-layer；GUI 通用表单、Undo/Redo 和自有配置的宿主映射属于 R4c2，R4 整体仍在进行中，不恢复内嵌预览。

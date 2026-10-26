@@ -1,6 +1,5 @@
-using GalNet.Contracts.Builtins;
+using GalNet.Core.Configuration;
 using System.Text.Json;
-using GalNet.Core.I18n;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Documents;
 
@@ -17,55 +16,30 @@ public sealed partial class BuiltInEditorCommandHandler
         return Success($"Renamed project '{oldName}' to '{document.Graph.Name}'.", "History.Project.Rename", "project", oldName, document.Graph.Name);
     }
 
-    private static CommandExecution PatchSettings(EditorProjectDocument document, PatchProjectSettingsCommand command)
+    private static CommandExecution PatchConfiguration(EditorProjectDocument document, PatchConfigurationCommand command,
+        ProjectConfigurationSchema configurations)
     {
-        if (command.Values.Count == 0)
-            return Error("project.settings.emptyPatch", "At least one project setting is required.");
-        var settings = document.Configuration.ReadDefaultOptions();
-        foreach (var (key, value) in command.Values)
+        var section = configurations.Sections.FirstOrDefault(section => section.Id == command.SectionId);
+        if (section is null) return Error("project.configuration.unknownSection", $"Configuration section '{command.SectionId}' is not declared.");
+        if (command.Values is null || command.Values.Count + (command.Remove?.Count ?? 0) == 0)
+            return Error("project.configuration.emptyPatch", "At least one field change is required.");
+        try
         {
-            try
-            {
-                switch (key)
-                {
-                    case "defaultWidth":
-                        settings.DefaultWidth = PositiveInt(value, key);
-                        break;
-                    case "defaultHeight":
-                        settings.DefaultHeight = PositiveInt(value, key);
-                        break;
-                    case "saveSlotCount":
-                        settings.SaveSlotCount = NonNegativeInt(value, key);
-                        break;
-                    case "targetLocale":
-                        var locale = new I18nLocale(value.GetString() ?? throw new JsonException("A locale string is required."));
-                        settings.TargetLocale = locale;
-                        if (!settings.AvailableLocales.Contains(locale))
-                            settings.AvailableLocales.Add(locale);
-                        break;
-                    default:
-                        return Error("project.settings.unknownField", $"Project setting '{key}' is not editable through this command.");
-                }
-            }
-            catch (Exception exception) when (exception is JsonException or InvalidOperationException or ArgumentException)
-            {
-                return Error("project.settings.invalidValue", $"Invalid value for '{key}': {exception.Message}");
-            }
+            var previous = document.Configuration.Sections.GetValueOrDefault(section.Id);
+            if (previous is not null && previous.Version != section.Version)
+                throw new InvalidDataException($"Unsupported configuration version {previous.Version} for '{section.Id}'.");
+            var fields = section.Fields.Select(field => field.Id).ToHashSet(StringComparer.Ordinal);
+            if (command.Values.Keys.Concat(command.Remove ?? []).FirstOrDefault(id => !fields.Contains(id)) is { } unknown)
+                return Error("project.configuration.unknownField", $"Configuration field '{section.Id}/{unknown}' is not declared.");
+            var values = previous?.Data.EnumerateObject().ToDictionary(property => property.Name, property => property.Value, StringComparer.Ordinal) ?? new();
+            foreach (var id in command.Remove ?? []) values.Remove(id);
+            foreach (var (id, value) in command.Values) values[id] = value;
+            var candidate = new ProjectSectionData(section.Version, JsonSerializer.SerializeToElement(values));
+            section.Validate(candidate);
+            document.Configuration.SetRaw(section.Id, candidate);
+            return Success($"Updated configuration '{section.Id}'.", "History.ProjectSettings.Patch", ["project/configuration/" + section.Id], command.Values.Count + (command.Remove?.Count ?? 0));
         }
-        document.Configuration.Set(DefaultProjectConfiguration.Section, settings);
-        return Success($"Updated {command.Values.Count} project setting(s).", "History.ProjectSettings.Patch", ["project/settings"], command.Values.Count);
+        catch (Exception error) when (error is JsonException or InvalidDataException or ArgumentException)
+        { return Error("project.configuration.invalidValue", error.Message); }
     }
-
-    private static int PositiveInt(JsonElement value, string key)
-    {
-        var result = value.GetInt32();
-        return result > 0 ? result : throw new InvalidOperationException($"'{key}' must be greater than zero.");
-    }
-
-    private static int NonNegativeInt(JsonElement value, string key)
-    {
-        var result = value.GetInt32();
-        return result >= 0 ? result : throw new InvalidOperationException($"'{key}' cannot be negative.");
-    }
-
 }

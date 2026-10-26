@@ -96,9 +96,9 @@ internal static class Program
                 WriteJson(applied);
                 return applied.Success ? 0 : 5;
             }
-            if (verb == "project.build") return await BuildAsync(projectPath, args, entryCatalog);
-            if (verb == "project.export") return await ExportAsync(projectPath, args, entryCatalog);
-            if (verb == "project.export-directory") return await ExportDirectoryAsync(projectPath, args, entryCatalog);
+            if (verb == "project.build") return await BuildAsync(projectPath, args, projectSchema);
+            if (verb == "project.export") return await ExportAsync(projectPath, args, projectSchema);
+            if (verb == "project.export-directory") return await ExportDirectoryAsync(projectPath, args, projectSchema);
             var edits = new ProjectEditService(projectPath, entryCatalog, projectSchema.Configurations);
             if (verb is "project.rename" or "group.create" or "group.rename" or "group.delete")
             {
@@ -132,7 +132,7 @@ internal static class Program
         catch (Exception exception) { return Fail(exception.Message, 1); }
     }
 
-    private static async Task<int> ExportAsync(string projectPath, string[] args, IEntryCatalog entryCatalog)
+    private static async Task<int> ExportAsync(string projectPath, string[] args, ProjectSchemaContext schema)
     {
         if (!Directory.Exists(projectPath)) throw new DirectoryNotFoundException($"Project directory not found: {projectPath}");
         var outputIndex = Array.IndexOf(args, "--output");
@@ -143,13 +143,13 @@ internal static class Program
         var projectName = Path.GetFileName(Path.TrimEndingDirectorySeparator(projectPath));
         var resourceTypes = BuiltinResourceTypes.CreateCatalog();
         var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
-        var result = await GamePackageExporter.ExportAsync(projectName, projectName, projectPath, outputDirectory, resourceTypes, galleryTypes, entryCatalog);
+        var result = await GamePackageExporter.ExportAsync(projectName, projectName, projectPath, outputDirectory, resourceTypes, galleryTypes, schema.Catalog, schema.Configurations);
         WriteJson(new ToolResult("project.export", result.Success, new ProjectExportReport(result.PackagePath),
             result.Success ? [] : [new("project.exportFailed", "error", result.Error ?? "Export failed.")]));
         return result.Success ? 0 : 5;
     }
 
-    private static async Task<int> ExportDirectoryAsync(string projectPath, string[] args, IEntryCatalog entryCatalog)
+    private static async Task<int> ExportDirectoryAsync(string projectPath, string[] args, ProjectSchemaContext schema)
     {
         if (!Directory.Exists(projectPath)) throw new DirectoryNotFoundException($"Project directory not found: {projectPath}");
         var outputIndex = Array.IndexOf(args, "--output");
@@ -159,19 +159,19 @@ internal static class Program
         var resourceTypes = BuiltinResourceTypes.CreateCatalog();
         var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
         var result = await GamePackageExporter.ExportDirectoryAsync(projectName, projectName, projectPath, outputDirectory,
-            resourceTypes, galleryTypes, entryCatalog);
+            resourceTypes, galleryTypes, schema.Catalog, schema.Configurations);
         WriteJson(new ToolResult(_operationId, result.Success, result.Success ? new ProjectExportDirectoryReport(result.ContentDirectory!) : null,
             result.Success ? [] : [new("project.exportFailed", "error", result.Error ?? "Export failed.")]));
         return result.Success ? 0 : 5;
     }
 
-    private static async Task<int> BuildAsync(string projectPath, string[] args, IEntryCatalog entryCatalog)
+    private static async Task<int> BuildAsync(string projectPath, string[] args, ProjectSchemaContext schema)
     {
         if (!Directory.Exists(projectPath)) throw new DirectoryNotFoundException($"Project directory not found: {projectPath}");
         var outputIndex = Array.IndexOf(args, "--output");
         if (outputIndex >= 0 && outputIndex + 1 >= args.Length) return Fail("--output requires a directory path.");
         var outputDirectory = outputIndex >= 0 ? Path.GetFullPath(args[outputIndex + 1]) : null;
-        var result = await new ProjectContentBuilder(entryCatalog).BuildAsync(projectPath, outputDirectory);
+        var result = await new ProjectContentBuilder(schema.Catalog, configurations: schema.Configurations).BuildAsync(projectPath, outputDirectory);
         WriteJson(new ToolResult("project.build", true, new ProjectBuildReport(result.OutputPath, result.CompiledGroupCount), result.Diagnostics));
         return 0;
     }

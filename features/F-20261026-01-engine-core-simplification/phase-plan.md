@@ -117,7 +117,7 @@ Engine 只接收/更新不可变 PlaybackOptions，音频只接收隔离轨道�
 
 ### R4 — 自定义配置贯穿作者与运行链路
 
-实施拆分：R4a、R4b verified；R4b-cleanup verified；R4c planned，完成通用 section 编辑/历史及自定义 DTO 的导出、安装、运行与预览验证。每步独立验证提交，R4 仅在完整链路退出条件满足后勾选。
+实施拆分：R4a、R4b verified；R4b-cleanup verified；R4c in-progress，先完成通用 section 命令和构建/导出校验，再完成 GUI/历史及宿主接入验证。每步独立验证提交，R4 仅在完整链路退出条件满足后勾选。
 
 - **目标/模块**：内容契约、Editor.Abstraction/Shared/UI、Storage.FileSystem、导出、Preview、安装加载与项目模板。
 - **任务**：解除 GameContent 和 Editor document 对完整固定 ProjectSettings 的绑定；明确最小内容描述、可选模块配置与项目自有 section 的归属。复用现有 schema/表单能力提供必要 section 适配，未理解的 JSON 保留。迁移默认模板、语言/变量声明等实际消费者，删除重复权威来源；需要派生副本时由一个权威源生成。只保留一套项目自有模型和映射示例，两种 Sample 宿主复用同一项目配置定义。
@@ -134,7 +134,12 @@ Graph 独自持久化变量声明，删除设置中的副本、同步和无用�
 
 #### R4b-cleanup — verified
 
-配置统一普通 DTO/schema 路径，删除预留元数据、手写 JSON 处理和重复验证；产品代码净删 88 行，Core 配置 239→166 行。隔离解决方案构建/locked restore、774 项相关回归及格式/diff 检查通过，4 项既有符号链接权限失败、2 项跳过。详见 [summary](summary.md#r4b-精简)，R4c 仍 planned。
+配置统一普通 DTO/schema 路径，删除预留元数据、手写 JSON 处理和重复验证；产品代码净删 88 行，Core 配置 239→166 行。隔离解决方案构建/locked restore、774 项相关回归及格式/diff 检查通过，4 项既有符号链接权限失败、2 项跳过。详见 [summary](summary.md#r4b-精简)，R4c 进度见下。
+
+#### R4c — in-progress
+
+- [x] R4c1：通用配置补丁、构建/导出及外部调试 schema 传递；自有 DTO 经修改、保存、导出和安装加载验证通过。产品净减 20 行，1089 项通过、3 项既有符号链接权限失败、2 项跳过；构建/locked restore/格式检查通过，证据见 [summary](summary.md#r4c1通用配置命令与发布链路)。
+- [ ] R4c2：复用现有字段表单与项目历史完成 GUI 编辑，宿主显式投影自有配置；沿当前外部调试运行路径验收，不恢复已移除的内嵌预览。
 
 ### R5 — 剥离可选领域与场景依赖
 

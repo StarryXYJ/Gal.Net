@@ -216,7 +216,8 @@ public sealed record RenameProjectCommand(string Name) : IProjectEditCommand
     public string CommandId => "project.rename";
 }
 
-public sealed record PatchProjectSettingsCommand(IReadOnlyDictionary<string, JsonElement> Values) : IProjectEditCommand
+public sealed record PatchConfigurationCommand(string SectionId, IReadOnlyDictionary<string, JsonElement> Values,
+    IReadOnlyList<string>? Remove = null) : IProjectEditCommand
 {
-    public string CommandId => "project.settings.patch";
+    public string CommandId => "project.configuration.patch";
 }

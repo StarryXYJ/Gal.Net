@@ -4,6 +4,7 @@ using System.Text.Json;
 using GalNet.Assets;
 using GalNet.Assets.Provider;
 using GalNet.Core.Assets;
+using GalNet.Core.Configuration;
 using GalNet.Core.Entry;
 using GalNet.Core.Gallery;
 using GalNet.Core.Serialization;
@@ -23,6 +24,7 @@ public static class GamePackageExporter
         IResourceTypeCatalog resourceTypes,
         IGalleryTypeCatalog galleryTypes,
         IEntryCatalog entryCatalog,
+        ProjectConfigurationSchema? configurations = null,
         CancellationToken cancellationToken = default)
     {
         string? stagingRoot = null;
@@ -43,7 +45,7 @@ public static class GamePackageExporter
             Directory.CreateDirectory(targetParent);
             publishRoot = Path.Combine(targetParent, $".{Path.GetFileName(targetRoot)}.export-{Guid.NewGuid():N}");
             stagingRoot = Path.Combine(targetParent, $".{Path.GetFileName(targetRoot)}.content-{Guid.NewGuid():N}");
-            await new ProjectContentBuilder(entryCatalog, resourceTypes)
+            await new ProjectContentBuilder(entryCatalog, resourceTypes, configurations)
                 .BuildAsync(sourceRoot, stagingRoot, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -98,6 +100,7 @@ public static class GamePackageExporter
         IResourceTypeCatalog resourceTypes,
         IGalleryTypeCatalog galleryTypes,
         IEntryCatalog entryCatalog,
+        ProjectConfigurationSchema? configurations = null,
         CancellationToken cancellationToken = default)
     {
         string? temporaryPath = null;
@@ -112,7 +115,7 @@ public static class GamePackageExporter
             ArgumentNullException.ThrowIfNull(resourceTypes);
             ArgumentNullException.ThrowIfNull(galleryTypes);
             stagingRoot = Path.Combine(Path.GetTempPath(), $"galnet-export-{Guid.NewGuid():N}");
-            await new ProjectContentBuilder(entryCatalog, resourceTypes)
+            await new ProjectContentBuilder(entryCatalog, resourceTypes, configurations)
                 .BuildAsync(projectRoot, stagingRoot, cancellationToken)
                 .ConfigureAwait(false);
             var assets = await LoadAssetsAsync(Path.Combine(stagingRoot, "Assets"), resourceTypes, cancellationToken);
@@ -139,7 +142,7 @@ public static class GamePackageExporter
             DeleteTemporary(temporaryPath);
             return GamePackageExportResult.Failed("Export canceled.");
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or InvalidOperationException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or InvalidOperationException or ArgumentException)
         {
             DeleteTemporary(temporaryPath);
             return GamePackageExportResult.Failed(ex.Message);

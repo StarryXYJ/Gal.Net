@@ -29,7 +29,7 @@ public sealed class ProjectDebugPreparation(IProjectService projects, IEntryCata
         reportStage?.Invoke("Debug.BuildingContent");
         var output = Path.Combine(project.RootPath, "Output", "Debug");
         client.RecordDiagnostic($"Building test content at {output}.");
-        var result = await Task.Run(() => new ProjectContentBuilder(catalog).BuildAsync(project.RootPath, output, token), token);
+        var result = await Task.Run(() => new ProjectContentBuilder(catalog, configurations: project.Configurations).BuildAsync(project.RootPath, output, token), token);
         RequireCurrent();
         client.RecordDiagnostic($"Test content and author source map built in {timer.ElapsedMilliseconds} ms for {result.CompiledGroupCount} Group(s).");
         client.Listen(new(project.Id, DebugContentIdentity.Compute(result.OutputPath), schemas.Context.Fingerprint));

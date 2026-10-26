@@ -1,4 +1,5 @@
 using GalNet.Core.Entry;
+using GalNet.Core.Configuration;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Documents;
 
@@ -14,10 +15,10 @@ public sealed partial class BuiltInEditorCommandHandler
 
     private readonly ICommandDomain[] Domains;
 
-    public BuiltInEditorCommandHandler(IEntryCatalog catalog)
+    public BuiltInEditorCommandHandler(IEntryCatalog catalog, ProjectConfigurationSchema? configurations = null)
     {
         ArgumentNullException.ThrowIfNull(catalog);
-        Domains = [new GraphDomain(), new EntryDomain(catalog), new VariableDomain(), new ProjectDomain()];
+        Domains = [new GraphDomain(), new EntryDomain(catalog), new VariableDomain(), new ProjectDomain(configurations ?? ProjectConfigurationSchema.Empty)];
     }
 
     private sealed class GraphDomain : ICommandDomain
@@ -77,10 +78,10 @@ public sealed partial class BuiltInEditorCommandHandler
             _ => throw new InvalidOperationException()
         };
     }
-    private sealed class ProjectDomain : ICommandDomain
+    private sealed class ProjectDomain(ProjectConfigurationSchema configurations) : ICommandDomain
     {
-        public bool CanHandle(IProjectEditCommand command) => command is RenameProjectCommand or PatchProjectSettingsCommand;
-        public CommandExecution Execute(EditorProjectDocument d, IProjectEditCommand c, EditorCommandContext _) => c switch { RenameProjectCommand v => RenameProject(d, v), PatchProjectSettingsCommand v => PatchSettings(d, v), _ => throw new InvalidOperationException() };
+        public bool CanHandle(IProjectEditCommand command) => command is RenameProjectCommand or PatchConfigurationCommand;
+        public CommandExecution Execute(EditorProjectDocument d, IProjectEditCommand c, EditorCommandContext _) => c switch { RenameProjectCommand v => RenameProject(d, v), PatchConfigurationCommand v => PatchConfiguration(d, v, configurations), _ => throw new InvalidOperationException() };
     }
 
 }

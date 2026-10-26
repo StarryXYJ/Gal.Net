@@ -20,7 +20,7 @@ public sealed class GameExportService(
         var project = projects.Current;
         if (project is null) return GameExportResult.Failed("Open a project before exporting.");
         var catalog = project.Services.GetRequiredService<IEntryCatalog>();
-        var result = await GamePackageExporter.ExportAsync(project.Id, project.Name, project.RootPath, outputDirectory, resourceTypes, galleryTypes, catalog, cancellationToken);
+        var result = await GamePackageExporter.ExportAsync(project.Id, project.Name, project.RootPath, outputDirectory, resourceTypes, galleryTypes, catalog, project.Configurations, cancellationToken);
         return new GameExportResult(result.Success, result.PackagePath, result.Error);
     }
 }

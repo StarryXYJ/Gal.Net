@@ -43,7 +43,7 @@ public sealed class ProjectEditService(string projectPath, IEntryCatalog catalog
             var pathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
             var ownedFiles = document.Graph.Nodes.Where(node => node.Type == "Group")
                 .Select(node => reader.Relative(reader.Resolve("Graph/" + node.File))).Append("Graph/graph.json").ToHashSet(pathComparer);
-            var handler = new BuiltInEditorCommandHandler(catalog);
+            var handler = new BuiltInEditorCommandHandler(catalog, configurations);
             var descriptions = new List<string>();
             var changed = new List<string>();
             var references = new List<ProjectReferenceItem>();
