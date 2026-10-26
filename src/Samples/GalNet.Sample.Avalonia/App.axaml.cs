@@ -1,3 +1,4 @@
+using GalNet.Avalonia.GameHost;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
@@ -37,15 +38,15 @@ public partial class App : Application
 #if BENCHMARK
             using (GalNet.Diagnostics.CpuProfiler.Shared.Measure("Sample.RegisterServices"))
 #endif
-                SampleCustomization.ConfigureServices(services);
+            SampleCustomization.ConfigureServices(services);
 
 #if BENCHMARK
             using (GalNet.Diagnostics.CpuProfiler.Shared.Measure("Sample.BuildServiceProvider"))
 #endif
-                _rootServices = services.BuildServiceProvider();
+            _rootServices = services.BuildServiceProvider();
             _gameScope = _rootServices.CreateAsyncScope();
             var scopedServices = _gameScope.Value.ServiceProvider;
-            var localization = scopedServices.GetRequiredService<SampleLocalizationService>();
+            var localization = scopedServices.GetRequiredService<IPlayerLocalization>();
             GalNet.Avalonia.GameView.MarkupExtensions.PlayerTextExtension.Resolve = localization.GetString;
 
             scopedServices.GetRequiredService<IGameNavigationService>().ResetTo<TitlePageViewModel>(NavigationTransition.None);
@@ -54,7 +55,7 @@ public partial class App : Application
 #if BENCHMARK
             using (GalNet.Diagnostics.CpuProfiler.Shared.Measure("Sample.CreateMainWindow"))
 #endif
-                mainWindow = scopedServices.GetRequiredService<MainWindow>();
+            mainWindow = scopedServices.GetRequiredService<MainWindow>();
             desktop.MainWindow = mainWindow;
             var startupCancellation = new CancellationTokenSource();
             mainWindow.Opened += async (_, _) =>

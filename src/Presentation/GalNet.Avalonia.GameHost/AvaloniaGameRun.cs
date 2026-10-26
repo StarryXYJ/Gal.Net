@@ -19,32 +19,35 @@ internal sealed class AvaloniaGameRun : IGameRun
     private readonly GameRun _run;
     private GameEngine _engine => _run.Engine;
     private readonly AvaloniaGamePresentation _presentation;
-    private readonly AvaloniaPlayerSettingsService _playerSettings;
+    private readonly IAvaloniaPlayerSettings _playerSettings;
     private readonly Func<bool, string?, Task> _updateStateAsync;
     private readonly Func<Task> _runCompletedAsync;
     private readonly Func<Task> _resetPresentationAsync;
     private readonly Func<Action, Task> _onUiAsync;
     private readonly Func<Task> _flushPlayerVariables;
     private Task _stateUpdate = Task.CompletedTask;
+    private Task _settingsUpdate = Task.CompletedTask;
     private bool _disposed;
-    private IDisposable? _debugBinding;
+    private IDisposable? _runBinding;
+    private readonly Func<GameEngine, IDisposable>? _attachRun;
 
     private AvaloniaGameRun(
-        GamePageViewModel gameplay, GameRun run, AvaloniaGamePresentation presentation, AvaloniaPlayerSettingsService playerSettings,
+        GamePageViewModel gameplay, GameRun run, AvaloniaGamePresentation presentation, IAvaloniaPlayerSettings playerSettings,
         Func<bool, string?, Task> updateStateAsync, Func<Task> runCompletedAsync,
-        Func<Task> resetPresentationAsync, Func<Action, Task> onUiAsync, Func<Task> flushPlayerVariables)
+        Func<Task> resetPresentationAsync, Func<Action, Task> onUiAsync, Func<Task> flushPlayerVariables, Func<GameEngine, IDisposable>? attachRun)
     {
+        _attachRun = attachRun;
         _gameplay = gameplay;
         _run = run;
         _presentation = presentation;
         _playerSettings = playerSettings;
-        _playerSettings.SettingsChanged += OnPlayerSettingsChanged;
-        OnPlayerSettingsChanged(playerSettings.RuntimeSettings);
         _updateStateAsync = updateStateAsync;
         _runCompletedAsync = runCompletedAsync;
         _resetPresentationAsync = resetPresentationAsync;
         _onUiAsync = onUiAsync;
         _flushPlayerVariables = flushPlayerVariables;
+        OnPlayerSettingsChanged();
+        _playerSettings.SettingsChanged += OnPlayerSettingsChanged;
         _gameplay.AdvanceRequested += OnAdvanceRequested;
         _gameplay.BindPlayback(_engine);
         _engine.StateChanged += OnEngineStateChanged;
@@ -52,7 +55,7 @@ internal sealed class AvaloniaGameRun : IGameRun
 
     public static async Task<AvaloniaGameRun> CreateAsync(
         GamePageViewModel gameplay, GamePage page, GameResourceScope resources, AvaloniaGameResources visuals,
-        PlayerSession saveSession, AvaloniaPlayerSettingsService playerSettings, ITextResolver textResolver, AvaloniaGameHostOptions options,
+        PlayerSession saveSession, IAvaloniaPlayerSettings playerSettings, ITextResolver textResolver, AvaloniaGameHostOptions options,
         GalNet.Contracts.Builtins.Audio.AudioConfiguration audioConfiguration, LibVLC? sharedLibVlc, Func<bool, string?, Task> updateStateAsync,
         Func<Task> runCompletedAsync, Func<Task> resetPresentationAsync,
         Func<Action, Task> onUiAsync, CancellationToken cancellationToken)
@@ -70,10 +73,9 @@ internal sealed class AvaloniaGameRun : IGameRun
             var runtime = new GameRuntime(textResolver, resources.Content.Graph.RootNodeId, saveSession.Variables);
             run = new GameRun(resources.Content.Graph, runtime, presentation.View,
                 saveSession.Progress, presentation.Presenters.ChoicePresenter, presentation, presentation.Restorer,
-                playbackOptions: playerSettings.RuntimeSettings.ToPlaybackOptions());
+                playbackOptions: playerSettings.PlaybackOptions);
             adapter = new AvaloniaGameRun(gameplay, run, presentation, playerSettings,
-                updateStateAsync, runCompletedAsync, resetPresentationAsync, onUiAsync, () => saveSession.Variables.FlushPlayerVariablesAsync());
-            adapter._debugBinding = options.AttachDebugRun?.Invoke(run.Engine);
+                updateStateAsync, runCompletedAsync, resetPresentationAsync, onUiAsync, () => saveSession.Variables.FlushPlayerVariablesAsync(), options.AttachRun);
             return adapter;
         }
         catch (Exception error)
@@ -99,8 +101,11 @@ internal sealed class AvaloniaGameRun : IGameRun
     public Task ValidateSnapshotAsync(GameSnapshot snapshot, CancellationToken cancellationToken) =>
         _run.ValidateSnapshotAsync(snapshot, cancellationToken);
 
-    public Task PrepareAsync(GameSnapshot? snapshot, CancellationToken cancellationToken) =>
-        _run.PrepareAsync(snapshot, cancellationToken);
+    public async Task PrepareAsync(GameSnapshot? snapshot, CancellationToken cancellationToken)
+    {
+        await _run.PrepareAsync(snapshot, cancellationToken);
+        _runBinding = _attachRun?.Invoke(_engine);
+    }
 
     public async Task StartPreparedAsync(CancellationToken cancellationToken)
     {
@@ -112,10 +117,16 @@ internal sealed class AvaloniaGameRun : IGameRun
 
     public async Task StopAsync()
     {
-        await _run.StopAsync();
-        _presentation.Presenters.CompleteInitialPresentation();
-        await _stateUpdate;
-        await _flushPlayerVariables();
+        var cleanup = new ResourceCleanup();
+        await cleanup.RunAsync(() => new(_settingsUpdate));
+        await cleanup.RunAsync(() => new(_run.StopAsync()));
+        var binding = _runBinding;
+        _runBinding = null;
+        await cleanup.RunAsync(() => ResourceCleanup.DisposeAsync(binding));
+        cleanup.Run(_presentation.Presenters.CompleteInitialPresentation);
+        await cleanup.RunAsync(() => new(_stateUpdate));
+        await cleanup.RunAsync(() => new(_flushPlayerVariables()));
+        cleanup.ThrowIfFailed();
     }
 
     public async ValueTask DisposeAsync()
@@ -128,9 +139,11 @@ internal sealed class AvaloniaGameRun : IGameRun
         _gameplay.AdvanceRequested -= OnAdvanceRequested;
         _engine.StateChanged -= OnEngineStateChanged;
         cleanup.Run(_presentation.Presenters.CompleteInitialPresentation);
+        await cleanup.RunAsync(() => new(_settingsUpdate));
         await cleanup.RunAsync(() => _run.DisposeAsync());
         await cleanup.RunAsync(() => new(_flushPlayerVariables()));
-        cleanup.Run(() => _debugBinding?.Dispose());
+        await cleanup.RunAsync(() => ResourceCleanup.DisposeAsync(_runBinding));
+        _runBinding = null;
         await cleanup.RunAsync(() => new(_presentation.Restorer.SuspendAsync(CancellationToken.None)));
         await cleanup.RunAsync(() => new(_stateUpdate));
         await cleanup.RunAsync(() => new(_resetPresentationAsync()));
@@ -154,7 +167,20 @@ internal sealed class AvaloniaGameRun : IGameRun
     }
 
     private void OnAdvanceRequested() => _ = AdvanceAsync();
-    private void OnPlayerSettingsChanged(GameSettings settings) => _presentation.AudioModule.ApplyMix(settings.ToAudioMixOptions());
+    private void OnPlayerSettingsChanged()
+    {
+        _presentation.AudioModule.ApplyMix(_playerSettings.AudioMix);
+        _gameplay.TextSpeed = _playerSettings.TextSpeed;
+        _settingsUpdate = ApplyPlaybackOptionsAsync(_settingsUpdate);
+    }
+
+    private async Task ApplyPlaybackOptionsAsync(Task previous)
+    {
+        await previous;
+        if (_disposed) return;
+        try { await _engine.UpdatePlaybackOptionsAsync(_playerSettings.PlaybackOptions); }
+        catch (Exception error) { GameLog.Logger.Error(error, "Player playback settings failed"); }
+    }
 
     private async Task AdvanceAsync()
     {

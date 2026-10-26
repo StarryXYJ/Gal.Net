@@ -143,7 +143,7 @@ public sealed class SampleStartupTests
         Assert.That(await fallback, Is.Null);
     }
 
-    private static SampleLocalizationService CreateLocalization()
+    private static AvaloniaPlayerLocalization CreateLocalization()
     {
         var provider = new JsonLocalizationProvider();
         provider.LoadJsonString("""{"line":"English"}""", "en-US");
@@ -151,7 +151,7 @@ public sealed class SampleStartupTests
         var culture = new CultureService();
         culture.RegisterProvider(provider);
         culture.SetCulture("en-US");
-        return new SampleLocalizationService(culture, [provider]);
+        return new AvaloniaPlayerLocalization(culture, [provider]);
     }
 
     private sealed class FailedStore : IPlayerVariableStore

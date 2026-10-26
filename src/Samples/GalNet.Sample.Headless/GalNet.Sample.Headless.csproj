@@ -12,8 +12,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DynamicLocalization.Core" />
-    <Compile Include="..\Shared\GameLocalizationProvider.cs" Link="Localization\GameLocalizationProvider.cs" />
   </ItemGroup>
 
   <ItemGroup>

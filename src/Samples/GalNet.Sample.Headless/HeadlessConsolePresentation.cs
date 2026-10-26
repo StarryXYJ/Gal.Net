@@ -15,6 +15,8 @@ internal sealed class ConsolePresentation : IDialoguePresenter, INvlPresenter, I
 
     public ConsolePresentation(float textSpeed = 30f) => _textSpeed = textSpeed;
 
+    private readonly TaskCompletionSource<Exception> _inputFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public Task<Exception> InputFailure => _inputFailure.Task;
     public event Action? AdvanceRequested;
 
     public void ShowLayer(LayerRenderRequest request) =>
@@ -117,7 +119,7 @@ internal sealed class ConsolePresentation : IDialoguePresenter, INvlPresenter, I
         while (true)
         {
             Console.Write("  Select: ");
-            var input = await Task.Run(Console.ReadLine, ct);
+            var input = await Task.Run(Console.ReadLine).WaitAsync(ct);
             if (input is null)
                 throw new EndOfStreamException("Console input closed while waiting for a choice.");
             if (int.TryParse(input, out var selected) && selected >= 1 && selected <= options.Length) return selected - 1;
@@ -158,11 +160,12 @@ internal sealed class ConsolePresentation : IDialoguePresenter, INvlPresenter, I
         try
         {
             Console.Write("  >> ");
-            if (await Task.Run(Console.ReadLine, cancellationToken) is null)
+            if (await Task.Run(Console.ReadLine).WaitAsync(cancellationToken) is null)
                 throw new EndOfStreamException("Console input closed while waiting to advance.");
             AdvanceRequested?.Invoke();
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception error) { _inputFailure.TrySetResult(error); }
         finally
         {
             Interlocked.Exchange(ref _advancePromptActive, 0);

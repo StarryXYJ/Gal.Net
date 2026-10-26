@@ -1,3 +1,4 @@
+using GalNet.Avalonia.GameHost;
 using GalNet.Contracts.Builtins.Assets;
 using DynamicLocalization.Core;
 using GalNet.Assets;
@@ -43,7 +44,7 @@ public class GameTestCaseTests
             var types = BuiltinResourceTypes.CreateCatalog();
             var content = await new ProjectGameContentProvider(output, types, BuiltinGalleryTypes.CreateCatalog(types)).LoadAsync();
             var cultures = new CultureService();
-            using var localization = new SampleLocalizationService(cultures);
+            using var localization = new AvaloniaPlayerLocalization(cultures);
             localization.AttachGame(content);
             localization.ApplyCulture(culture);
             var presenter = new SmokeTextPresenter(route);

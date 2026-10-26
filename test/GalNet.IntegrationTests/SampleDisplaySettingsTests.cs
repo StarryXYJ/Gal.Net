@@ -22,7 +22,7 @@ public sealed class SampleDisplaySettingsTests
         var directory = Path.Combine(Path.GetTempPath(), "galnet-display-" + Guid.NewGuid().ToString("N"));
         try
         {
-            using var localization = new SampleLocalizationService(new CultureService());
+            using var localization = new AvaloniaPlayerLocalization(new CultureService());
             using var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory));
             var display = new Display();
             using (var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!), display))
@@ -58,7 +58,7 @@ public sealed class SampleDisplaySettingsTests
     [Test]
     public async Task FailedModeChangeReportsErrorAndDoesNotPersistAnUnappliedValue()
     {
-        using var localization = new SampleLocalizationService(new CultureService());
+        using var localization = new AvaloniaPlayerLocalization(new CultureService());
         var display = new Display { FailMode = true };
         using var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!), display);
         var mode = settings.Categories.SelectMany(category => category.Items).OfType<ChoiceSetting<PlayerDisplayMode>>().Single();

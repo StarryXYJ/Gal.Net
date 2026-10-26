@@ -207,7 +207,7 @@ public sealed class SampleLocalizationTests
         finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
     }
 
-    private static SampleLocalizationService CreateLocalization()
+    private static AvaloniaPlayerLocalization CreateLocalization()
     {
         var provider = new JsonLocalizationProvider();
         provider.Initialize(new JsonLocalizationProviderOptions
@@ -219,7 +219,7 @@ public sealed class SampleLocalizationTests
         var culture = new CultureService();
         culture.RegisterProvider(provider);
         culture.SetCulture("en-US");
-        return new SampleLocalizationService(culture, [provider]);
+        return new AvaloniaPlayerLocalization(culture, [provider]);
     }
 
     [Test]

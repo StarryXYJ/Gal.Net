@@ -172,3 +172,12 @@ StructuredFieldEditor 复用 Expander 主题（StyleKey 为 Expander，宿主样
 `IFieldBinding.Draft` 可选返回宿主拥有的 `FieldDraftState`。控件上下文同步输入和诊断，挂载结束只解除订阅；宿主决定草稿的保存、冲突和生命周期。ScopedBinding 转发该状态，结构化对象/列表和 Transform 子编辑器通过子路径取得独立草稿。输入法组合保护随控件租约登记，项目保存不能越过组合输入。没有宿主草稿的设置/游戏表单沿用控件本地生命周期。
 
 需要来源版本保护的宿主在内容变化时调用 `FieldDraftState.CheckSource()`；一旦观察到冲突，即使源值随后恢复相同内容也保留冲突，直到明确清除草稿。
+
+
+## 默认宿主扩展边界
+
+默认页面服务以 TryAdd 注册。项目可替换接口实现，或将 TitlePageViewModel、SettingsPageViewModel、GamePageViewModel、GameShellViewModel 的 DI 别名映射到自己的派生类型，并注册该实际类型的 View。标题命令支持重载；标题/Shell VM 的 Dispose 可扩展。默认 GamePage 的四个呈现部件约束继续有效。
+
+默认 Avalonia 会话依赖 IAvaloniaPlayerSettings 与 IPlayerStartup，不要求项目使用默认 GameSettings DTO 或自动字段 UI。设置接口只暴露模块输入及接入/保存/窗口生命周期，SettingsChanged 更新当前运行；IPlayerSettingsService 可供默认页面使用，手写页面可直接绑定项目模型。
+
+AvaloniaGameHostOptions.AttachPlayer 借用已准备的玩家服务和 profile；AttachRun 借用每次 Prepare 后的 Engine。绑定由宿主按运行→玩家→资源的依赖顺序释放，同时实现 IAsyncDisposable 时优先异步排空。业务活动、覆盖层和自定义保存语义归项目服务/模块，不属于默认页面注册协议。

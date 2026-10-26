@@ -60,7 +60,11 @@ public sealed class PlayerVariableService : IVariableService, IDisposable
     {
         var target = scope == VariableScope.Player ? _playerVariables : _saveVariables;
         target[name] = Clone(name, variable);
-        VariableChanged?.Invoke(scope, name, variable);
+        foreach (var observer in VariableChanged?.GetInvocationList() ?? [])
+        {
+            try { ((Action<VariableScope, string, GalVariable>)observer)(scope, name, variable.Clone()); }
+            catch (Exception error) { GalNet.Runtime.Logging.GameLog.Logger.Warning(error, "Variable change observer failed for {Name}", name); }
+        }
     }
 
     public Task FlushPlayerVariablesAsync(CancellationToken ct = default) => _playerStore.SaveAsync(_playerVariables, ct);

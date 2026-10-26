@@ -234,3 +234,10 @@ Engine 保持唯一执行门禁、运行取消和终态通知。ActivePrimitiveR
 状态表是持久事实的唯一来源；Layer、EffectInstance、ParticleEmitterInstance 在此处是中立数据/动画属性对象，不包含播放任务。AnimationPlaybackInstance 等停止控制只存在于派生运行索引。读取活动数据后修改属性必须在 `State.Update` 中完成，展示/异步操作放在同步边界外。当前保存仍恢复检查点时刻的状态；检查点之后自然结束的声音不会反向改写已冻结的历史快照。
 
 内置场景的唯一句柄由状态契约显式声明 keySpace="builtin.scene"，写入与恢复使用同一通用跨表身份检查。可选 Primitives.Builtins.BuiltinScene 按 GameState 根提供 Scene()，持久对象来自上述索引，临时动画控制只属于该根。读取旧 scope 不能解析到读档后的新状态。音频运行、后端调度与票据移入 Primitives.Builtins.Audio，混音配置与后端端口位于 Contracts.Builtins.Audio。
+
+
+## 宿主显式变量修改
+
+GameEngine.SetVariablesAsync 接收带 player./save. 前缀的有限基础值批次，复制并预验证输入后，通过唯一执行门及 GameState 同步边界提交；恢复或停止使已排队的旧 scope 请求失效。它不推进剧情，也不捕获未完成的呈现状态，仅把本批显式存档变量合入原稳定快照，并在执行锁外发布检查点通知。玩家变量由原变量桥接回写，持久化仍由宿主协调。变量观察者接收独立副本，异常记录日志且不截断其他更新。
+
+UpdateVariablesAsync 可在同一门内读取独立变量快照并同步计算修改批次，计算/校验失败不提交，适合条件扣款和计数累加。该入口不提供任意异步业务事务或阻塞活动原地恢复；项目通过模块状态及明确检查点策略处理复杂行为。通过 Runtime 对象直接写入不会自动刷新 Engine 的稳定存档快照，外部应用应使用此入口。

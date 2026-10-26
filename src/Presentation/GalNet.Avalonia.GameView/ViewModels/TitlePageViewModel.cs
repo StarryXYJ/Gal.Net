@@ -8,7 +8,7 @@ using Serilog;
 
 namespace GalNet.Avalonia.GameView.ViewModels;
 
-public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
+public partial class TitlePageViewModel : PageViewModelBase, IDisposable
 {
     private readonly IGameSessionService _session;
     private readonly IGameNavigationService _navigation;
@@ -41,7 +41,7 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
     [ObservableProperty] private bool _isLoading;
 
     [RelayCommand]
-    private async Task StartNewGameAsync(CancellationToken cancellationToken)
+    protected virtual async Task StartNewGameAsync(CancellationToken cancellationToken)
     {
         if (!CanStartNewGame) return;
         IsLoading = true;
@@ -56,7 +56,7 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private async Task ContinueAsync(CancellationToken cancellationToken)
+    protected virtual async Task ContinueAsync(CancellationToken cancellationToken)
     {
         if (!CanContinueGame) return;
         IsLoading = true;
@@ -80,12 +80,12 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private Task OpenLoadSlotsAsync(CancellationToken cancellationToken) =>
+    protected virtual Task OpenLoadSlotsAsync(CancellationToken cancellationToken) =>
         _navigation.NavigateAsync<SaveSlotsPageViewModel, SaveSlotsMode>(SaveSlotsMode.Load, cancellationToken);
 
-    [RelayCommand] private void OpenSettings() => _navigation.Navigate<SettingsPageViewModel>();
+    [RelayCommand] protected virtual void OpenSettings() => _navigation.Navigate<SettingsPageViewModel>();
     [RelayCommand]
-    private async Task OpenGalleryAsync(CancellationToken cancellationToken)
+    protected virtual async Task OpenGalleryAsync(CancellationToken cancellationToken)
     {
         var types = GetGalleryTypes();
         if (types.Count == 0) return;
@@ -96,9 +96,9 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
         }
         await _navigation.NavigateAsync<GalleryPageViewModel, IReadOnlyList<GalleryTypeData>>(types, cancellationToken);
     }
-    [RelayCommand] private void OpenAbout() => _navigation.Navigate<AboutPageViewModel>();
+    [RelayCommand] protected virtual void OpenAbout() => _navigation.Navigate<AboutPageViewModel>();
 
-    public void Dispose() => _session.PropertyChanged -= OnSessionPropertyChanged;
+    public virtual void Dispose() => _session.PropertyChanged -= OnSessionPropertyChanged;
 
     private void OnSessionPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {

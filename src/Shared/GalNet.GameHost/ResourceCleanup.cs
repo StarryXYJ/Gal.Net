@@ -4,6 +4,13 @@ namespace GalNet.GameHost;
 public sealed class ResourceCleanup
 {
     private readonly List<Exception> _errors = [];
+    /// <summary>Prefer asynchronous draining when a borrowed binding supports both disposal contracts.</summary>
+    public static ValueTask DisposeAsync(IDisposable? resource)
+    {
+        if (resource is IAsyncDisposable asynchronous) return asynchronous.DisposeAsync();
+        resource?.Dispose();
+        return ValueTask.CompletedTask;
+    }
     public void Run(Action release)
     {
         try { release(); }

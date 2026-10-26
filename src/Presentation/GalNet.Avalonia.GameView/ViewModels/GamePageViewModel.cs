@@ -10,7 +10,7 @@ using GalNet.Rendering.Scene;
 namespace GalNet.Avalonia.GameView.ViewModels;
 
 /// <summary>Platform UI state shared by the editor preview and the official Avalonia sample.</summary>
-public sealed partial class GamePageViewModel : PageViewModelBase
+public partial class GamePageViewModel : PageViewModelBase
 {
     private readonly IGameNavigationService _navigation;
     private TaskCompletionSource? _advanceWaiter;

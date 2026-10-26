@@ -4,6 +4,7 @@ using DynamicLocalization.Core.Providers;
 using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameView.Composition;
 using GalNet.Avalonia.GameView.Page;
+using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
@@ -32,17 +33,18 @@ internal static class SampleCustomization
 {
     internal static IGameLayoutTheme PlayerTheme { get; } = new ClassicTheme(GamePalette.Mono);
 
-    internal static void ConfigureServices(IServiceCollection services, bool enableDebug = true)
+    internal static void ConfigureServices(IServiceCollection services, bool enableDebug = true, Action<IPageViewRegistryBuilder>? configureViews = null)
     {
-        services.AddAvaloniaGameViewPages(theme: PlayerTheme)
+        services.AddAvaloniaGameViewPages(theme: PlayerTheme, configureViews: configureViews)
             .AddSingleton(_ => CreateLocalizationService())
-            .AddSingleton<IPlayerLocalization>(provider => provider.GetRequiredService<SampleLocalizationService>())
+            .AddSingleton<IPlayerLocalization>(provider => provider.GetRequiredService<AvaloniaPlayerLocalization>())
             .AddSingleton<LibVlcRuntime>()
             .AddScoped(provider => new AvaloniaPlayerSettingsService(provider.GetRequiredService<IPlayerLocalization>(),
                 provider.GetRequiredService<GamePageViewModel>(), editors: CreateFieldEditors()))
-            .AddScoped<AvaloniaPlayerStartup>()
+            .AddScoped<IPlayerStartup, AvaloniaPlayerStartup>()
             .AddScoped<LanguageSelectionViewModel>()
-            .AddScoped<IPlayerSettingsService>(provider => provider.GetRequiredService<AvaloniaPlayerSettingsService>())
+            .AddScoped<IAvaloniaPlayerSettings>(provider => provider.GetRequiredService<AvaloniaPlayerSettingsService>())
+            .AddScoped<IPlayerSettingsService>(provider => provider.GetRequiredService<IAvaloniaPlayerSettings>())
             .AddScoped<SampleGameSessionService>()
             .AddScoped<IGameSessionService>(provider => provider.GetRequiredService<SampleGameSessionService>())
             .AddTransient<MainWindow>();
@@ -52,7 +54,7 @@ internal static class SampleCustomization
 
     internal static EditorRegistry CreateFieldEditors() => EditorRegistry.CreateDefault().Freeze();
 
-    internal static SampleLocalizationService CreateLocalizationService()
+    internal static AvaloniaPlayerLocalization CreateLocalizationService()
     {
         var cultureService = new CultureService();
         var provider = new JsonLocalizationProvider();
@@ -64,8 +66,7 @@ internal static class SampleCustomization
         });
         cultureService.RegisterProvider(provider);
         cultureService.SetCulture("en-US");
-        LocalizationService.Initialize(cultureService);
-        return SampleLocalizationService.Create(cultureService, [provider]);
+        return new AvaloniaPlayerLocalization(cultureService, [provider]);
     }
 
     internal static (IResourceTypeCatalog Resources, IGalleryTypeCatalog Gallery) CreateContentCatalogs()
@@ -74,12 +75,12 @@ internal static class SampleCustomization
         return (resources, BuiltinGalleryTypes.CreateCatalog(resources));
     }
 
-    internal static AvaloniaGameHostOptions CreateHostOptions(Func<GalNet.Runtime.Engine.GameEngine, IDisposable>? attachDebugRun = null) => new()
+    internal static AvaloniaGameHostOptions CreateHostOptions(Func<GalNet.Runtime.Engine.GameEngine, IDisposable>? attachRun = null) => new()
     {
         GameTitle = "GalNet Avalonia Sample",
         NoGameMessage = "Usage: GalNet.Sample.Avalonia <game-data-directory> [--profile <directory>]",
         CreateContentCatalogs = CreateContentCatalogs,
-        AttachDebugRun = attachDebugRun,
+        AttachRun = attachRun,
         Content = new GameContentLoadOptions
         {
             Configurations = ProjectSchemas.Configurations,

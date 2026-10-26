@@ -17,7 +17,6 @@
     <Folder Include="Models\" />
     <AvaloniaResource Include="Assets\**" />
     <EmbeddedResource Include="Localization\*.json" />
-    <Compile Include="..\Shared\GameLocalizationProvider.cs" Link="Localization\GameLocalizationProvider.cs" />
     <Folder Include="ViewModels\" />
     <Compile Update="Views\LanguageSelectionView.axaml.cs">
       <DependentUpon>LanguageSelectionView.axaml</DependentUpon>

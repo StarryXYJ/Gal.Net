@@ -10,8 +10,8 @@ namespace GalNet.Sample.Avalonia.Services;
 
 /// <summary>Project launch arguments and debug-only save policies.</summary>
 internal sealed class SampleGameSessionService(
-    GamePageViewModel gameplay, GamePage page, AvaloniaPlayerSettingsService settings,
-    SampleLocalizationService localization, AvaloniaPlayerStartup startup, LibVlcRuntime mediaRuntime, IServiceProvider services)
+    GamePageViewModel gameplay, GamePage page, IAvaloniaPlayerSettings settings,
+    IPlayerLocalization localization, IPlayerStartup startup, LibVlcRuntime mediaRuntime, IServiceProvider services)
     : AvaloniaGameSession(SampleCustomization.CreateHostOptions(App.LaunchOptions.DebugInvitation is null ? null :
         engine => services.GetRequiredService<SampleExternalDebug>().Attach(engine)), gameplay, page, settings, localization, startup, mediaRuntime)
 {

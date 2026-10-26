@@ -93,7 +93,7 @@ src/
 
 Avalonia 展示按领域拆为 dialogue/choice、layer、animation 和 particle presenter；`AvaloniaGamePresenters` 只创建并暴露这些 presenter，`CompositeGameView` 组合独立的 schema catalog 与执行模块，提供 Runtime 使用的 `IPrimitiveDispatcher`。`GameHost.GameSession` 串行化准备、开始、存档回调、运行替换与停止，拥有可替换的 `IGameRun`；默认 `GameRun` 组合 Engine 与展示恢复，不注册任何 Builtins，也不要求 Layer Presenter。`PlayerSession` 协调玩家持久化，`PlayerPreferences` 和 `PlayerStartup` 提供偏好与首次启动规则。文件实现通过 `GameResourceScope` 和 `FilePlayerSession` 组合。
 
-`Avalonia.GameHost` 提供可直接使用的 `AvaloniaGameSession`、页面绑定 `AvaloniaGameRun`、展示组合 `AvaloniaGamePresentation`、纹理租约 `AvaloniaGameResources` 以及默认设置/窗口/手柄适配。`AvaloniaGameHostOptions` 由项目提供 catalog 和执行注册，预加载策略可替换；`AvaloniaGamePresentationOptions` 可替换 Layer 工厂与音频后端，新建适配对象的所有权交给展示会话。Sample 只保留启动参数、项目策略、本地化适配与调试扩展。
+`Avalonia.GameHost` 提供可直接使用的 `AvaloniaGameSession`、页面绑定 `AvaloniaGameRun`、展示组合 `AvaloniaGamePresentation`、纹理租约 `AvaloniaGameResources` 以及默认设置/窗口/手柄适配。`AvaloniaGameHostOptions` 由项目提供 catalog 和执行注册，预加载策略可替换；`AvaloniaGamePresentationOptions` 可替换 Layer 工厂与音频后端，新建适配对象的所有权交给展示会话。Sample 只保留启动参数、项目策略、本地化资源配置与调试扩展；默认本地化服务归 Avalonia.GameHost，中立 JSON 文本源适配归 GameHost。
 
 会话、显示能力和 Gallery 路径契约位于 `Presentation.Abstractions.Application`。共享 LibVLC 音频后端位于 `Media.LibVlc`，不引用 Avalonia；视频画面适配仍位于 Avalonia。释放顺序为运行/Engine → 展示恢复与执行 view → 平台后端 → Gallery 媒体与玩家持久化 → 纹理租约 → 内容资源。
 

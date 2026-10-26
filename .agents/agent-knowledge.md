@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- 2026-10-26 Sample 扩展边界：默认会话通过 IAvaloniaPlayerSettings/IPlayerStartup 消费项目偏好；默认页面 VM 可扩展、DI 使用 TryAdd。AttachPlayer/AttachRun 接入项目借用绑定并优先异步释放。外部剧情变量走 Engine.SetVariablesAsync/UpdateVariablesAsync，同步提交显式 scope 值并合入稳定快照；业务模块自行定义复杂状态恢复。AvaloniaPlayerLocalization 归 Avalonia.GameHost，中立 JSON 查询归 GameHost，Sample 不再共享 GameLocalizationProvider 源文件。见 features/F-20261026-02-sample-extensibility 与 docs/manual/customize-avalonia-sample.md。
+
 - [Ready 与宿主活动状态](lessons/L-20261026-06-ready-is-not-session-end.md)：Ready 是恢复/Seek 的中间准备状态，默认宿主保留已有 IsPlaying，不应触发返回标题。
 
 - [原生 Sample 窗口与显式用例验证](lessons/L-20261026-05-native-sample-window-validation.md)：Process.MainWindowHandle 可能选择无标题 native helper；仅对自有 PID 的明确 Sample 窗口发 Close，并核对显式测试实际执行数。
@@ -69,7 +71,7 @@
 - 新增 feature 的长期实现意图记录在其自身 feature 目录；只有已验证的稳定事实才合并到 docs/spec/。
 
 - 玩家变量桥接实现为 Runtime.Variables.PlayerVariableService，存储通过 IPlayerVariableStore 注入；Variable.Clone 保留 Uid，VariableValue 不可变，可共享。Runtime loader/SaveManager 不执行文件 I/O。见 docs/spec/architecture.md。
-- Runtime.I18n.GameTextResolver 提供 culture-first、父文化与默认文化回退，只依赖宿主查询委托；DynamicLocalization/JSON 适配留在 Sample 的 GameLocalizationProvider。见 docs/spec/i18n.md。
+- Runtime.I18n.GameTextResolver 提供 culture-first、父文化与默认文化回退，只依赖宿主查询委托；中立 JSON 文本源归 GameHost.Content，DynamicLocalization 适配归 Avalonia.GameHost.AvaloniaPlayerLocalization。见 docs/spec/i18n.md。
 - Assets 的 AssetFileMaterializer 经 IAssetManager acquire 字节实体化媒体；Core 的 AssetFileLease 持有文件租约。Sample 将同一实例供音频/视频/Gallery 使用，最后租约释放才删除文件。见 docs/spec/assets.md。
 - 已读进度 MarkRead 只写 Runtime ReadProgressIndex；文件实现默认 2 秒批量提交，失败保留 dirty revision 并重试。Engine StopAsync、Sample 存档和进度对象销毁均等待 flush，失败向调用者传播；后台失败可读 LastPersistenceError。见 docs/spec/runtime.md。
 

@@ -73,7 +73,7 @@ public sealed class SampleCleanupTests
                 var settings = root.GetRequiredService<AvaloniaPlayerSettingsService>();
                 var gameplay = root.GetRequiredService<GamePageViewModel>();
                 var session = new SampleGameSessionService(gameplay, new GamePage(), settings,
-                    root.GetRequiredService<SampleLocalizationService>(), root.GetRequiredService<AvaloniaPlayerStartup>(),
+                    root.GetRequiredService<AvaloniaPlayerLocalization>(), root.GetRequiredService<IPlayerStartup>(),
                     root.GetRequiredService<LibVlcRuntime>(), root);
                 var profile = Path.Combine(directory, "profile");
                 Assert.That(await session.InitializeAsync(new GameLaunchOptions(directory, profile), (_, _) => Task.FromResult<string?>("en-US")), Is.True);

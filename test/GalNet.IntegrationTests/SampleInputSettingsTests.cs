@@ -20,7 +20,7 @@ public sealed class SampleInputSettingsTests
             var directory = Path.Combine(Path.GetTempPath(), "galnet-input-" + Guid.NewGuid().ToString("N"));
             try
             {
-                using var localization = new SampleLocalizationService(new CultureService());
+                using var localization = new AvaloniaPlayerLocalization(new CultureService());
                 using (var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory)))
                 using (var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!)))
                 {

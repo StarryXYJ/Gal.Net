@@ -54,11 +54,9 @@ public static class GameLocalizationLoader
                 var json = File.ReadAllText(path);
                 try
                 {
-                    using var document = JsonDocument.Parse(json);
-                    var keys = new HashSet<string>(StringComparer.Ordinal);
-                    ReadKeys(document.RootElement, "", keys);
+                    var text = new GameLocalizationSource(culture.Name, relative, json).ReadText();
                     if (string.Equals(culture.Name, defaultCulture, StringComparison.OrdinalIgnoreCase))
-                        defaultKeys.UnionWith(keys);
+                        defaultKeys.UnionWith(text.Keys);
                 }
                 catch (JsonException error)
                 {
@@ -73,6 +71,7 @@ public static class GameLocalizationLoader
         var externalSources = LoadExternal(Path.Combine(root, "External"), diagnostics, cancellationToken);
         return new GameLocalizationContent
         {
+            DefaultCulture = defaultCulture ?? "en-US",
             Characters = characters,
             Sources = sources.AsReadOnly(),
             ExternalSources = externalSources,
@@ -99,8 +98,7 @@ public static class GameLocalizationLoader
                     if (!relative.Contains('/')) throw new InvalidDataException("External JSON must be below a culture directory.");
                     var culture = CultureInfo.GetCultureInfo(relative.Split('/')[0]);
                     var json = File.ReadAllText(path);
-                    using var document = JsonDocument.Parse(json);
-                    ReadKeys(document.RootElement, "", new(StringComparer.Ordinal));
+                    _ = new GameLocalizationSource(culture.Name, relative, json).ReadText();
                     sources.Add(new(culture.Name, $"External/{relative}", json));
                 }
                 catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException)
@@ -114,19 +112,6 @@ public static class GameLocalizationLoader
             diagnostics.Add(new("External", error.Message));
         }
         return sources.AsReadOnly();
-    }
-
-    private static void ReadKeys(JsonElement element, string prefix, HashSet<string> keys)
-    {
-        if (element.ValueKind != JsonValueKind.Object) throw new InvalidDataException("Localization documents must contain JSON objects with string leaves.");
-        foreach (var property in element.EnumerateObject())
-        {
-            if (string.IsNullOrWhiteSpace(property.Name)) throw new InvalidDataException("Localization keys cannot be empty.");
-            var key = prefix.Length == 0 ? property.Name : $"{prefix}.{property.Name}";
-            if (property.Value.ValueKind == JsonValueKind.Object) ReadKeys(property.Value, key, keys);
-            else if (property.Value.ValueKind == JsonValueKind.String) keys.Add(key);
-            else throw new InvalidDataException($"Localization key '{key}' must have a string value.");
-        }
     }
 
     private static void ValidateRequiredKeys(Graph graph, CharacterCatalog characters, HashSet<string> defaultKeys, string defaultCulture)

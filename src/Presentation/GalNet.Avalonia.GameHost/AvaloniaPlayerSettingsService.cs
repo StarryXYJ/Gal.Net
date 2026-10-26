@@ -15,7 +15,7 @@ using GalNet.Runtime.Variables;
 namespace GalNet.Avalonia.GameHost;
 
 /// <summary>Applies preferences and persists them through the session's player variables.</summary>
-public sealed partial class AvaloniaPlayerSettingsService : IPlayerSettingsService, IDisposable
+public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSettings, IDisposable
 {
     public const string LocaleVariable = PlayerPreferences.LocaleVariable;
     public const string TextSpeedVariable = PlayerPreferences.TextSpeedVariable;
@@ -36,7 +36,14 @@ public sealed partial class AvaloniaPlayerSettingsService : IPlayerSettingsServi
     private long _liveSaveRevision;
     private readonly List<Action<IReadOnlyDictionary<string, GalNet.Core.Variable.Variable>>> _restoreValues = [];
     public GameSettings RuntimeSettings { get; private set; } = new();
-    public event Action<GameSettings>? SettingsChanged;
+    public GalNet.Core.Execution.PlaybackOptions PlaybackOptions => RuntimeSettings.ToPlaybackOptions();
+    public GalNet.Contracts.Builtins.Audio.AudioMixOptions AudioMix => RuntimeSettings.ToAudioMixOptions();
+    public double TextSpeed => RuntimeSettings.TextSpeed;
+    public event Action? SettingsChanged;
+
+    Task IAvaloniaPlayerSettings.AttachAsync(PlayerVariableService variables,
+        GalNet.Contracts.Builtins.Audio.AudioConfiguration audio, bool showTracks, CancellationToken cancellationToken) =>
+        AttachAsync(variables, new GameSettings(), audio, showTracks, cancellationToken);
     public PlayerInputSettings Input { get; } = new();
     private readonly CustomSetting<PlayerInputConfiguration> _inputSetting;
     private readonly AvaloniaGamepadInput _gamepadInput;
@@ -223,7 +230,7 @@ public sealed partial class AvaloniaPlayerSettingsService : IPlayerSettingsServi
         _audioPreviewTimer.Stop();
         if (!_audioPreviewPending) return;
         _audioPreviewPending = false;
-        try { SettingsChanged?.Invoke(RuntimeSettings); }
+        try { SettingsChanged?.Invoke(); }
         catch (Exception exception) { GameLog.Logger.Error(exception, "Live audio settings preview failed"); }
     }
 
@@ -265,7 +272,7 @@ public sealed partial class AvaloniaPlayerSettingsService : IPlayerSettingsServi
     private async Task ApplyRuntimeSettingAsync(string variable, Action apply, object storedValue, CancellationToken cancellationToken)
     {
         apply();
-        SettingsChanged?.Invoke(RuntimeSettings);
+        SettingsChanged?.Invoke();
         await _gameplay.UpdatePlaybackOptionsAsync(RuntimeSettings.ToPlaybackOptions(), cancellationToken);
         Store(variable, storedValue);
     }

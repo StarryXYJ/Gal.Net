@@ -5,7 +5,7 @@ using GalNet.Game.Controls.Forms;
 
 namespace GalNet.Avalonia.GameView.ViewModels;
 
-public sealed partial class SettingsPageViewModel(IGameNavigationService navigation,
+public partial class SettingsPageViewModel(IGameNavigationService navigation,
     IPlayerSettingsService settings)
     : BackNavigablePageViewModel(navigation)
 {

@@ -38,9 +38,10 @@ public sealed class SampleCustomizationTests
             {
                 await using var first = root.CreateAsyncScope();
                 await using var second = root.CreateAsyncScope();
-                var localization = first.ServiceProvider.GetRequiredService<SampleLocalizationService>();
+                var localization = first.ServiceProvider.GetRequiredService<AvaloniaPlayerLocalization>();
+                GalNet.Avalonia.GameView.MarkupExtensions.PlayerTextExtension.Resolve = localization.GetString;
                 Assert.That(localization.CultureService.AvailableCultures.Select(culture => culture.Name), Does.Contain("en-US"));
-                Assert.That(second.ServiceProvider.GetRequiredService<SampleLocalizationService>(), Is.SameAs(localization));
+                Assert.That(second.ServiceProvider.GetRequiredService<AvaloniaPlayerLocalization>(), Is.SameAs(localization));
                 var settings = first.ServiceProvider.GetRequiredService<AvaloniaPlayerSettingsService>();
                 Assert.That(first.ServiceProvider.GetRequiredService<IPlayerSettingsService>(), Is.SameAs(settings));
                 Assert.That(second.ServiceProvider.GetRequiredService<AvaloniaPlayerSettingsService>().Editors, Is.Not.SameAs(settings.Editors));
@@ -48,7 +49,7 @@ public sealed class SampleCustomizationTests
                 Assert.That(first.ServiceProvider.GetRequiredService<IGameSessionService>(), Is.SameAs(game));
                 Assert.That(first.ServiceProvider.GetService<SampleDebugViewModel>() is not null, Is.EqualTo(enableDebug));
             }
-            Assert.That(SampleLocalizationService.Current, Is.Null);
+            Assert.That(GalNet.Avalonia.GameView.MarkupExtensions.PlayerTextExtension.Resolve, Is.Null);
             return true;
         }, TestContext.CurrentContext.CancellationToken);
     }

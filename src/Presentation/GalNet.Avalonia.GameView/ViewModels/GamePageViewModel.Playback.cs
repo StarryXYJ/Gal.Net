@@ -7,7 +7,7 @@ using GalNet.Presentation.Abstractions.View;
 
 namespace GalNet.Avalonia.GameView.ViewModels;
 
-public sealed partial class GamePageViewModel
+public partial class GamePageViewModel
 {
     public GalNet.Avalonia.GameView.Input.PlayerInputSettings? Input { get; set; }
     public Task SetQuickHeldAsync(bool held) => RequestModeAsync(held ? PlaybackMode.Quick : PlaybackMode.Manual);

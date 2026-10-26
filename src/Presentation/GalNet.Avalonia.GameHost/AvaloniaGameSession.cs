@@ -20,9 +20,9 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
     private readonly AvaloniaGameHostOptions _options;
     private readonly GamePageViewModel _gameplay;
     private readonly GamePage _page;
-    private readonly AvaloniaPlayerSettingsService _settings;
+    private readonly IAvaloniaPlayerSettings _settings;
     private readonly IPlayerLocalization _localization;
-    private readonly AvaloniaPlayerStartup _startup;
+    private readonly IPlayerStartup _startup;
     private readonly LibVlcRuntime _mediaRuntime;
     private readonly ObservableCollection<GameSaveSlot> _saveSlots = [];
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySaveSlots;
@@ -32,13 +32,14 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
     private PlayerSession? _saveSession;
     private IGalleryResourceResolver? _galleryResources;
     private readonly GameSession _session;
+    private IDisposable? _playerBinding;
     private readonly SemaphoreSlim _initialization = new(1, 1);
     private bool _disposed;
     private readonly object _disposeGate = new();
     private Task? _disposeTask;
 
-    public AvaloniaGameSession(AvaloniaGameHostOptions options, GamePageViewModel gameplay, GamePage page, AvaloniaPlayerSettingsService settings,
-        IPlayerLocalization localization, AvaloniaPlayerStartup startup, LibVlcRuntime mediaRuntime)
+    public AvaloniaGameSession(AvaloniaGameHostOptions options, GamePageViewModel gameplay, GamePage page, IAvaloniaPlayerSettings settings,
+        IPlayerLocalization localization, IPlayerStartup startup, LibVlcRuntime mediaRuntime)
     {
         _options = options;
         GameTitle = options.GameTitle;
@@ -141,10 +142,11 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
             if (!await _startup.InitializeAsync(saveSession.Variables,
                     projectOptions.DefaultCulture, selectLanguage, cancellationToken))
                 throw new OperationCanceledException("Language selection was cancelled.", cancellationToken);
-            await _settings.AttachAsync(saveSession.Variables, new GameSettings(),
+            await _settings.AttachAsync(saveSession.Variables,
                 projectOptions.Audio, _options.ShowTrackAudioControls, cancellationToken);
             await _settings.RestoreDisplayAsync(cancellationToken);
 
+            _playerBinding = _options.AttachPlayer?.Invoke(new(saveSession, resources.Content, profileDirectory));
             IsReady = true;
             StatusMessage = $"Loaded game data: {resources.GameDirectory}";
             _gameplay.StatusMessage = "Ready";
@@ -194,10 +196,10 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
             await AvaloniaUiDispatcher.Instance.InvokeAsync(async () =>
             {
                 if (saveSession is not null)
-                    await _settings.AttachAsync(saveSession.Variables, new GameSettings(),
+                    await _settings.AttachAsync(saveSession.Variables,
                         _projectOptions.Audio,
                         _options.ShowTrackAudioControls, token);
-                _gameplay.TextSpeed = _settings.RuntimeSettings.TextSpeed;
+                _gameplay.TextSpeed = _settings.TextSpeed;
                 _gameplay.IsNvlMode = false;
                 _gameplay.IsUiHidden = false;
                 _gameplay.StatusMessage = "Player state cleared. Restarting...";
@@ -256,6 +258,8 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
             _gameplay.InteractionObserved -= OnInteractionObserved;
             await cleanup.RunAsync(() => _session.DisposeAsync());
             await cleanup.RunAsync(() => new(_settings.FlushAsync()));
+            await cleanup.RunAsync(() => ResourceCleanup.DisposeAsync(_playerBinding));
+            _playerBinding = null;
             var saves = _saveSession;
             _saveSession = null;
             GalleryResources = null;

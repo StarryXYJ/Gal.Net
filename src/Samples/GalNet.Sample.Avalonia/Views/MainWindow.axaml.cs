@@ -14,7 +14,7 @@ namespace GalNet.Sample.Avalonia.Views;
 public partial class MainWindow : UrsaWindow
 {
     private readonly IServiceProvider _services;
-    private readonly AvaloniaPlayerSettingsService _settings;
+    private readonly IAvaloniaPlayerSettings _settings;
     private bool _bindingsDetached;
     private readonly SampleDebugLogStore? _debugLogStore;
     private readonly SampleDebugViewModel? _debugViewModel;
@@ -28,7 +28,7 @@ public partial class MainWindow : UrsaWindow
         _debugViewModel = services.GetService<SampleDebugViewModel>();
         _languageSelectionViewModel = services.GetRequiredService<LanguageSelectionViewModel>();
         InitializeComponent();
-        _settings = services.GetRequiredService<AvaloniaPlayerSettingsService>();
+        _settings = services.GetRequiredService<IAvaloniaPlayerSettings>();
         _settings.BindWindow(this);
         PlayerRoot.Styles.Add(SampleCustomization.PlayerTheme.CreateStyles());
         LanguageSelection.DataContext = _languageSelectionViewModel;

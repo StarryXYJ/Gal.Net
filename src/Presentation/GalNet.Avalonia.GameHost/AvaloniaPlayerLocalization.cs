@@ -2,18 +2,18 @@ using DynamicLocalization.Core;
 using DynamicLocalization.Core.Providers;
 using GalNet.Core.Services;
 using GalNet.GameHost.Content;
-using GalNet.Sample.Localization;
+using System.Globalization;
+using GalNet.Runtime.I18n;
 
-namespace GalNet.Sample.Avalonia.Services;
+namespace GalNet.Avalonia.GameHost;
 
-/// <summary>Owns the official demo's observable LocalizedString values for the Sample lifetime.</summary>
-public sealed class SampleLocalizationService(CultureService cultureService,
-    IEnumerable<ILocalizationProvider>? bootstrapProviders = null) : IDisposable, GalNet.Avalonia.GameHost.IPlayerLocalization
+/// <summary>Owns observable localized strings and the replaceable game text provider.</summary>
+public sealed class AvaloniaPlayerLocalization(CultureService cultureService,
+    IEnumerable<ILocalizationProvider>? bootstrapProviders = null) : IDisposable, IPlayerLocalization
 {
     private readonly Dictionary<string, LocalizedString> _strings = new(StringComparer.Ordinal);
-    private GameLocalizationProvider? _gameProvider;
+    private TextProvider? _gameProvider;
     private readonly ILocalizationProvider[] _bootstrapProviders = bootstrapProviders?.ToArray() ?? [];
-    public static SampleLocalizationService? Current { get; private set; }
 
     public CultureService CultureService { get; } = cultureService;
 
@@ -21,7 +21,10 @@ public sealed class SampleLocalizationService(CultureService cultureService,
 
     public void AttachGame(GameContent content, IEnumerable<GameLocalizationSource>? additionalSources = null)
     {
-        var provider = new GameLocalizationProvider(content, () => CultureService.CurrentCulture, _bootstrapProviders, additionalSources);
+        var sources = _bootstrapProviders.SelectMany(provider => provider.GetAvailableCultures().Select(culture =>
+            new LocalizedTextSource(culture, key => provider.TryGetString(key, culture, out var value) ? value : null)));
+        var provider = new TextProvider(content.Localization.CreateResolver(
+            () => CultureService.CurrentCulture, sources, additionalSources));
         foreach (var bootstrap in _bootstrapProviders) CultureService.UnregisterProvider(bootstrap.Name);
         if (_gameProvider is not null) CultureService.UnregisterProvider(_gameProvider.Name);
         _gameProvider = provider;
@@ -48,18 +51,21 @@ public sealed class SampleLocalizationService(CultureService cultureService,
         _gameProvider = null;
         foreach (var text in _strings.Values) text.Dispose();
         _strings.Clear();
-        if (ReferenceEquals(Current, this))
-        {
-            Current = null;
+        if (GalNet.Avalonia.GameView.MarkupExtensions.PlayerTextExtension.Resolve?.Target == this)
             GalNet.Avalonia.GameView.MarkupExtensions.PlayerTextExtension.Resolve = null;
-        }
     }
 
-    public static SampleLocalizationService Create(CultureService cultureService,
-        IEnumerable<ILocalizationProvider>? bootstrapProviders = null)
+    private sealed class TextProvider(GameTextResolver resolver) : ILocalizationProvider
     {
-        var service = new SampleLocalizationService(cultureService, bootstrapProviders);
-        Current = service;
-        return service;
+        public string Name => "GalNet.Game";
+        public IEnumerable<CultureInfo> GetAvailableCultures() => resolver.AvailableCultures;
+        public string GetString(string key, CultureInfo culture) => resolver.GetString(key, culture);
+        public bool TryGetString(string key, CultureInfo culture, out string? value) => resolver.TryGetString(key, culture, out value);
+        public string Resolve(string key) => resolver.Resolve(key);
+        public Task ReloadAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
     }
 }

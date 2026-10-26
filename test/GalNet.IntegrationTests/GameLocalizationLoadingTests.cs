@@ -1,3 +1,4 @@
+using GalNet.Avalonia.GameHost;
 using GalNet.Contracts.Builtins.Assets;
 using System.Text.Json;
 using GalNet.Contracts.Builtins;
@@ -44,7 +45,7 @@ public sealed class GameLocalizationLoadingTests
             Localization = GameLocalizationLoader.Load(_root, new(), "en-US")
         };
         var cultures = new CultureService();
-        using var resolver = new SampleLocalizationService(cultures);
+        using var resolver = new AvaloniaPlayerLocalization(cultures);
         resolver.AttachGame(content);
         cultures.SetCulture("en-US");
         Assert.That(resolver.Resolve("line"), Is.EqualTo("last"));
@@ -73,7 +74,7 @@ public sealed class GameLocalizationLoadingTests
         Assert.That(loaded.ExternalSources.Select(source => source.RelativePath),
             Is.EqualTo(new[] { "External/en-US/a.json", "External/en-US/nested/z.json" }));
         Assert.That(loaded.Diagnostics, Has.Count.EqualTo(2));
-        using var resolver = new SampleLocalizationService(new CultureService());
+        using var resolver = new AvaloniaPlayerLocalization(new CultureService());
         resolver.AttachGame(new GameContent { Graph = new(), Localization = loaded });
         resolver.ApplyCulture("en-US");
         Assert.That(resolver.Resolve("line"), Is.EqualTo("last"));
@@ -88,7 +89,7 @@ public sealed class GameLocalizationLoadingTests
         File.WriteAllText(Path.Combine(_root, "I18n", "zh", "main.json"), """{"line":"parent","parentOnly":"inherited"}""");
         var settings = new ProjectConfiguration();
         var content = new GameContent { Graph = new(), Configuration = settings, Localization = GameLocalizationLoader.Load(_root, new(), "zh-CN") };
-        using var resolver = new SampleLocalizationService(new CultureService());
+        using var resolver = new AvaloniaPlayerLocalization(new CultureService());
         resolver.AttachGame(content);
         resolver.ApplyCulture("zh-CN");
         Assert.That(resolver.Resolve("line"), Is.EqualTo("specific"));
@@ -154,7 +155,7 @@ public sealed class GameLocalizationLoadingTests
             Assert.That(installed.Localization.Characters.GetRequired("guide"), Is.EqualTo(project.Localization.Characters.GetRequired("guide")));
         });
         var cultures = new CultureService();
-        using var resolver = new SampleLocalizationService(cultures);
+        using var resolver = new AvaloniaPlayerLocalization(cultures);
         resolver.AttachGame(installed);
         cultures.SetCulture("zh-CN");
         Assert.That(resolver.Resolve("character.guide.name"), Is.EqualTo("向导"));

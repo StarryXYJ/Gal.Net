@@ -61,31 +61,31 @@ public static class AvaloniaGameViewServiceCollectionExtensions
         }
         services.AddSingleton(viewRegistry);
         services.AddSingleton(galleryPages.Build());
-        services.AddScoped<GameNavigationTransitionCoordinator>();
-        services.AddScoped<IGameNavigationTransitionCoordinator>(provider =>
+        services.TryAddScoped<GameNavigationTransitionCoordinator>();
+        services.TryAddScoped<IGameNavigationTransitionCoordinator>(provider =>
             provider.GetRequiredService<GameNavigationTransitionCoordinator>());
-        services.AddScoped<IGameNavigationService, GameNavigationService>();
-        services.AddScoped<IPlayerSettingsService, DefaultPlayerSettingsService>();
-        services.AddScoped<GalleryNavigationService>();
-        services.AddScoped<GameLaunchFlow>();
-        services.AddScoped<IPageViewFactory, PageViewFactory>();
-        services.AddScoped<IGameScreenshotService, AvaloniaGameScreenshotService>();
-        services.AddScoped<GalleryMediaService>();
-        services.AddScoped<GameShellViewModel>();
-        services.AddScoped<TitlePageViewModel>();
-        services.AddScoped<GamePageViewModel>();
-        services.AddScoped<SaveSlotsPageViewModel>();
-        services.AddScoped<SettingsPageViewModel>();
-        services.AddScoped<GalleryPageViewModel>();
-        services.AddScoped<CgGalleryImagePageViewModel>();
-        services.AddScoped<VideoGalleryPlayerPageViewModel>();
-        services.AddScoped<MissingGalleryPageViewModel>();
-        services.AddScoped<AboutPageViewModel>();
-        services.AddScoped<LoadingPageViewModel>();
-        services.AddScoped<GameShell>();
+        services.TryAddScoped<IGameNavigationService, GameNavigationService>();
+        services.TryAddScoped<IPlayerSettingsService, DefaultPlayerSettingsService>();
+        services.TryAddScoped<GalleryNavigationService>();
+        services.TryAddScoped<GameLaunchFlow>();
+        services.TryAddScoped<IPageViewFactory, PageViewFactory>();
+        services.TryAddScoped<IGameScreenshotService, AvaloniaGameScreenshotService>();
+        services.TryAddScoped<GalleryMediaService>();
+        services.TryAddScoped<GameShellViewModel>();
+        services.TryAddScoped<TitlePageViewModel>();
+        services.TryAddScoped<GamePageViewModel>();
+        services.TryAddScoped<SaveSlotsPageViewModel>();
+        services.TryAddScoped<SettingsPageViewModel>();
+        services.TryAddScoped<GalleryPageViewModel>();
+        services.TryAddScoped<CgGalleryImagePageViewModel>();
+        services.TryAddScoped<VideoGalleryPlayerPageViewModel>();
+        services.TryAddScoped<MissingGalleryPageViewModel>();
+        services.TryAddScoped<AboutPageViewModel>();
+        services.TryAddScoped<LoadingPageViewModel>();
+        services.TryAddScoped<GameShell>();
 
-        if (gamePageType == typeof(GamePage)) services.AddScoped<GamePage>();
-        else services.AddScoped<GamePage>(provider => (GamePage)provider.GetRequiredService(gamePageType));
+        if (gamePageType == typeof(GamePage)) services.TryAddScoped<GamePage>();
+        else services.TryAddScoped<GamePage>(provider => (GamePage)provider.GetRequiredService(gamePageType));
         return services;
     }
 }
