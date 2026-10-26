@@ -14,8 +14,11 @@ public sealed class VisualPresetTests
 
     internal static TimelineDefinition Compile(string type, object parameters)
     {
-        var source = new GroupDocument { Entries = [new() { Id = "preset", Type = type, Condition = "true",
-            Parameters = JsonSerializer.SerializeToElement(parameters).EnumerateObject().ToDictionary(p => p.Name, p => p.Value.Clone()) }] };
+        var source = new GroupDocument
+        {
+            Entries = [new() { Id = "preset", Type = type, Condition = "true",
+            Parameters = JsonSerializer.SerializeToElement(parameters).EnumerateObject().ToDictionary(p => p.Name, p => p.Value.Clone()) }]
+        };
         var compiled = GalgroupCompiler.Compile(source, new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).Document.Entries.Single();
         Assert.That(compiled.TypeId, Is.EqualTo(BuiltinEntryIds.PlayTimeline));
         return compiled.Arguments.GetProperty("timeline").Deserialize<TimelineDefinition>(Options)!;
@@ -113,4 +116,3 @@ public sealed class VisualPresetTests
         Assert.Throws<InvalidDataException>(() => Compile(BuiltinEntryIds.RevealTransition, new { playbackHandleId = "p", oldHandleId = "same", newHandleId = "same", assetId = "image", program = "shader" }));
     }
 }
-

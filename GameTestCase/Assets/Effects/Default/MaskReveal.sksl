@@ -1,0 +1,33 @@
+/*
+@gal.effect v=1
+@input source
+@targets layer
+
+@param progress
+  uniform: progress
+  type: float
+  default: 0
+  range: 0..1
+  animatable: true
+
+@param softness
+  uniform: softness
+  type: float
+  default: 0.05
+  range: 0.001..1
+  animatable: true
+
+@texture mask
+  uniform: mask
+  required: true
+*/
+uniform shader source;
+uniform shader mask;
+uniform float progress, softness;
+half4 main(float2 p) {
+    if (progress <= 0.0) return half4(0);
+    if (progress >= 1.0) return source.eval(p);
+    float value = dot(float3(mask.eval(p).rgb),float3(0.2126,0.7152,0.0722));
+    float edge = mix(-softness,1.0+softness,progress);
+    return source.eval(p)*half(1.0-smoothstep(edge-softness,edge+softness,value));
+}

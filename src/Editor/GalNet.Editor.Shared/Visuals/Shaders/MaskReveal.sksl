@@ -31,4 +31,3 @@ half4 main(float2 p) {
     float edge = mix(-softness,1.0+softness,progress);
     return source.eval(p)*half(1.0-smoothstep(edge-softness,edge+softness,value));
 }
-

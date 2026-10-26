@@ -1,0 +1,45 @@
+/*
+@gal.effect v=1
+@input source
+@targets layer,scenePost
+
+@param exposure
+  uniform: exposure
+  type: float
+  default: 0
+  range: -4..4
+  animatable: true
+
+@param saturation
+  uniform: saturation
+  type: float
+  default: 1
+  range: 0..2
+  animatable: true
+
+@param contrast
+  uniform: contrast
+  type: float
+  default: 1
+  range: 0..2
+  animatable: true
+
+@param temperature
+  uniform: temperature
+  type: float
+  default: 0
+  range: -1..1
+  animatable: true
+*/
+uniform shader source;
+uniform float exposure, saturation, contrast, temperature;
+half4 main(float2 p) {
+    half4 c = source.eval(p);
+    if (c.a <= 0.0) return c;
+    float3 rgb = float3(c.rgb) / float(c.a);
+    rgb *= exp2(exposure);
+    rgb = mix(float3(dot(rgb,float3(0.2126,0.7152,0.0722))),rgb,saturation);
+    rgb = (rgb - 0.5) * contrast + 0.5;
+    rgb += temperature * float3(0.12,0.025,-0.12);
+    return half4(half3(clamp(rgb,0.0,1.0) * c.a), c.a);
+}

@@ -40,4 +40,3 @@ half4 main(float2 p) {
     float fade = smoothstep(radius, radius + max(softness,0.001), d);
     return half4(c.rgb * half(1.0 - strength * fade), c.a);
 }
-

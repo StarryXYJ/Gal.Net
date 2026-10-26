@@ -70,25 +70,33 @@ uniform float4 color;
 float hash(float x) { return fract(sin(x*127.1+311.7)*43758.5453); }
 half4 main(float2 p) {
     float2 q = (p-center*size)/max(min(size.x,size.y),1.0);
-    float phase, gate;
+    float stroke;
     if (mode < 0.5) {
-        float sector = floor((atan(q.y,q.x)+3.14159265)/6.2831853*floor(density));
+        float angular = (atan(q.y,q.x)+3.14159265)/6.2831853*floor(density);
+        float sector = floor(angular);
         float noise = hash(sector);
-        phase = length(q)*12.0 - time*speed + noise*8.0;
-        gate = smoothstep(0.12+noise*0.12,0.55,length(q)) * step(0.55,noise);
+        float width = mix(0.035,0.14,hash(sector+71.0));
+        float across = 1.0-smoothstep(width,width+0.045,abs(fract(angular)-0.5));
+        float r = length(q);
+        float head = fract(time*speed*0.25+noise)*1.6;
+        float along = smoothstep(head-0.8,head-0.65,r)*(1.0-smoothstep(head,head+0.12,r));
+        stroke = across * along * smoothstep(0.08+noise*0.1,0.36,r);
     } else {
         float a = angle*0.01745329252;
         float2 axis = float2(cos(a),sin(a));
-        float lane = floor(dot(q,float2(-axis.y,axis.x))*density);
+        float coordinate = dot(q,float2(-axis.y,axis.x))*density;
+        float lane = floor(coordinate);
         float noise = hash(lane);
-        phase = dot(q,axis)*8.0-time*speed+noise*8.0;
-        gate = step(0.65,noise);
+        float width = mix(0.035,0.14,hash(lane+71.0));
+        float aa = max(0.02,0.5*density/max(min(size.x,size.y),1.0));
+        float across = 1.0-smoothstep(max(0.0,width-aa),width+aa,abs(fract(coordinate)-0.5));
+        float u = fract((dot(q,axis)-time*speed)*0.5+noise);
+        float along = smoothstep(0.1,0.2,u)*(1.0-smoothstep(0.8,0.9,u));
+        stroke = across * along;
     }
-    float pulse = smoothstep(0.45,0.9,fract(phase));
     float blink = 1.0-flicker*(0.5+0.5*sin(time*37.0));
-    float alpha = clamp(gate*pulse*blink*strength*color.a,0.0,1.0);
+    float alpha = clamp(stroke*blink*strength*color.a,0.0,1.0);
     // A shader-generated overlay; the transparent source is an explicit layer carrier.
     half4 inputColor = source.eval(p);
     return half4(half3(color.rgb*alpha),half(alpha)) + inputColor * half(1.0-alpha);
 }
-

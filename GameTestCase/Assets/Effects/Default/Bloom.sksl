@@ -1,0 +1,54 @@
+/*
+@gal.effect v=1
+@input source
+@targets layer,scenePost
+
+@param strength
+  uniform: strength
+  type: float
+  default: 0
+  range: 0..5
+  animatable: true
+
+@param radius
+  uniform: radius
+  type: float
+  default: 16
+  range: 0..64
+  animatable: true
+
+@param threshold
+  uniform: threshold
+  type: float
+  default: 0.8
+  range: 0..1
+  animatable: true
+
+@param softKnee
+  uniform: softKnee
+  type: float
+  default: 0.1
+  range: 0.001..1
+  animatable: true
+*/
+uniform shader source;
+uniform float strength, radius, threshold, softKnee;
+half4 main(float2 p) {
+    half4 c = source.eval(p);
+    float3 glow = float3(0);
+    float weights = 0.0;
+    for (int y = -2; y <= 2; y++) {
+        for (int x = -2; x <= 2; x++) {
+            float3 rgb = float3(source.eval(p + float2(float(x),float(y))*radius*0.5).rgb);
+            float luma = dot(rgb,float3(0.2126,0.7152,0.0722));
+            float soft = clamp(luma-threshold+softKnee,0.0,2.0*softKnee);
+            soft = soft*soft/(4.0*max(softKnee,0.001));
+            float w = exp(-float(x*x+y*y)/4.5);
+            glow += rgb * (max(luma-threshold,soft)/max(luma,0.0001)) * w;
+            weights += w;
+        }
+    }
+    // Keep premultiplied RGB inside alpha for partially transparent layers.
+    float3 room = max(float3(c.a)-float3(c.rgb),float3(0));
+    return half4(half3(float3(c.rgb)+room*clamp(glow*strength/max(weights,0.001),0.0,1.0)),c.a);
+}

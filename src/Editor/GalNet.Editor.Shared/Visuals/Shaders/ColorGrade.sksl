@@ -43,4 +43,3 @@ half4 main(float2 p) {
     rgb += temperature * float3(0.12,0.025,-0.12);
     return half4(half3(clamp(rgb,0.0,1.0) * c.a), c.a);
 }
-

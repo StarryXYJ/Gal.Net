@@ -32,4 +32,3 @@ half4 main(float2 p) {
     }
     return half4(sum / weights);
 }
-

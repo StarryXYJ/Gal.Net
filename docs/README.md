@@ -27,6 +27,8 @@
 
 ## 二次开发手册
 
+- [默认视觉资源与演出预设](manual/default-visuals.md)
+
 - [接入新的表现层](manual/new-presentation-layer.md)：为 WPF、WinUI 或其他 UI 框架实现宿主和呈现适配的最小路径。
 - [定制 Avalonia Sample](manual/customize-avalonia-sample.md)：基于现有 Sample 落地项目配置、主题、原语和平台能力。
 - [注册通用 action](manual/custom-actions.md)：用固定双字符串原语调用项目逻辑，配置同步、异步和完整实例的运行行为。

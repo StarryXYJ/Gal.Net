@@ -11,12 +11,15 @@ internal static class VisualPresetCompiler
     private static string Require(string? value, string name) => TransitionEntrySupport.Require(value, name, "visual preset");
     private static TimelineEventDefinition Event(int frame, string type, object parameters) => new()
     {
-        Frame = frame, Type = type,
+        Frame = frame,
+        Type = type,
         Parameters = Json(parameters).EnumerateObject().ToDictionary(p => p.Name, p => p.Value.Clone(), StringComparer.Ordinal)
     };
     private static TimelineTrackDefinition Track(string handle, string property, int frames, float from, float to, AnimationBlendMode blend = AnimationBlendMode.Replace) => new()
     {
-        HandleId = handle, Property = property, BlendMode = blend,
+        HandleId = handle,
+        Property = property,
+        BlendMode = blend,
         Keys = [new() { Frame = 0, Value = from }, new() { Frame = frames, Value = to }]
     };
     private static TimelineDefinition Clip(VisualClipOptions options)
@@ -80,14 +83,14 @@ internal static class VisualPresetCompiler
         // The incoming layer must already be transparent when frame-zero events dispatch.
         timeline.Events[0].Parameters["opacity"] = Json(0f);
         foreach (var incoming in new[] { false, true })
-        for (var axis = 0; axis < 2; axis++)
-        {
-            var id = Id(timeline, (incoming ? "new" : "old") + "-blur-" + axis);
-            var handle = incoming ? options.NewHandleId! : options.OldHandleId!;
-            timeline.Events.Add(Apply(0, id, handle, options.BlurProgram, new { radius = incoming ? options.Radius : 0, direction = axis == 0 ? new[] { 1, 0 } : new[] { 0, 1 } }, axis));
-            timeline.Tracks.Add(Track(id, "radius", timeline.DurationFrames, incoming ? options.Radius : 0, incoming ? 0 : options.Radius));
-            timeline.Events.Add(Stop(timeline.DurationFrames, id));
-        }
+            for (var axis = 0; axis < 2; axis++)
+            {
+                var id = Id(timeline, (incoming ? "new" : "old") + "-blur-" + axis);
+                var handle = incoming ? options.NewHandleId! : options.OldHandleId!;
+                timeline.Events.Add(Apply(0, id, handle, options.BlurProgram, new { radius = incoming ? options.Radius : 0, direction = axis == 0 ? new[] { 1, 0 } : new[] { 0, 1 } }, axis));
+                timeline.Tracks.Add(Track(id, "radius", timeline.DurationFrames, incoming ? options.Radius : 0, incoming ? 0 : options.Radius));
+                timeline.Events.Add(Stop(timeline.DurationFrames, id));
+            }
         timeline.Events.Add(CrossFadeTransition.HideLayer(options.OldHandleId!, timeline.DurationFrames));
         return Finish(context, timeline, options.BatchId);
     }
@@ -159,16 +162,16 @@ internal static class VisualPresetCompiler
         var samples = Math.Min(timeline.DurationFrames, cycles * 4);
         var radians = angle * MathF.PI / 180;
         foreach (var handle in handles)
-        foreach (var (property, axis) in new[] { ("transform.x", MathF.Cos(radians)), ("transform.y", MathF.Sin(radians)) })
-        {
-            var track = new TimelineTrackDefinition { HandleId = handle, Property = property, BlendMode = AnimationBlendMode.Additive };
-            for (var i = 0; i <= samples; i++)
+            foreach (var (property, axis) in new[] { ("transform.x", MathF.Cos(radians)), ("transform.y", MathF.Sin(radians)) })
             {
-                var t = (float)i / samples;
-                track.Keys.Add(new() { Frame = (int)MathF.Round(t * timeline.DurationFrames), Value = i == 0 || i == samples ? 0 : amplitude * axis * (1-t) * MathF.Sin(i * MathF.PI * .5f) });
+                var track = new TimelineTrackDefinition { HandleId = handle, Property = property, BlendMode = AnimationBlendMode.Additive };
+                for (var i = 0; i <= samples; i++)
+                {
+                    var t = (float)i / samples;
+                    track.Keys.Add(new() { Frame = (int)MathF.Round(t * timeline.DurationFrames), Value = i == 0 || i == samples ? 0 : amplitude * axis * (1 - t) * MathF.Sin(i * MathF.PI * .5f) });
+                }
+                timeline.Tracks.Add(track);
             }
-            timeline.Tracks.Add(track);
-        }
     }
     public static IReadOnlyList<PrimitiveEntry> Shake(EntryCompileContext context, ShakePresetOptions options)
     {
@@ -205,8 +208,8 @@ internal static class VisualPresetCompiler
             throw new InvalidDataException("Impact targets cannot use the playback's reserved /visual/ namespace.");
         AddShake(timeline, handles, options.Amplitude, options.Cycles, options.Angle);
         foreach (var handle in handles)
-        foreach (var property in new[] { "transform.scaleX", "transform.scaleY" })
-            timeline.Tracks.Add(Pulse(handle, property, timeline.DurationFrames, .08f));
+            foreach (var property in new[] { "transform.scaleX", "transform.scaleY" })
+                timeline.Tracks.Add(Pulse(handle, property, timeline.DurationFrames, .08f));
         AddLines(timeline, options);
         var flash = Id(timeline, "flash");
         timeline.Events.Add(Event(0, BuiltinEntryIds.ShowColorLayer, new { handleId = flash, color = "#FFFFFF", z = options.Z + 1, opacity = options.FlashOpacity }));
@@ -217,4 +220,3 @@ internal static class VisualPresetCompiler
         return Finish(context, timeline, options.BatchId);
     }
 }
-

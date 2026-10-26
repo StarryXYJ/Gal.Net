@@ -1,5 +1,7 @@
 # Compiled-content runtime and presentation smoke test
 
+Both routes now finish with the default visual library showcase in `Graph/groups/ending.rawgalgroup`: bloom, vignette, grading, Z-based rack focus, character motion, synchronized shake, animated radial/directional speed lines, impact, wipe, blur and image-mask transitions. The editable default shaders live in `Assets/Effects/Default/`; see [the visual authoring manual](../docs/manual/default-visuals.md).
+
 This Raw-authoring game exercises the compiled runtime slice:
 
 The game includes English (`en-US`, its configured default) and Simplified Chinese

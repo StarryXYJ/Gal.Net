@@ -64,4 +64,3 @@ half4 main(float2 p) {
     float alpha = 1.0-smoothstep(edge-softness,edge+softness,value);
     return source.eval(p)*half(alpha);
 }
-

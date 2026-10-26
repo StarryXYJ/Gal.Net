@@ -23,6 +23,32 @@ namespace GeneralTest.Runtime;
 public class GameTestCaseTests
 {
     [Test]
+    public async Task Default_visual_programs_and_mask_image_survive_export_into_the_resource_package()
+    {
+        var project = Path.Combine(FindRepositoryDirectory(), "GameTestCase");
+        var output = Path.Combine(Path.GetTempPath(), "galnet-visual-export-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var types = BuiltinResourceTypes.CreateCatalog();
+            var exported = await GamePackageExporter.ExportDirectoryAsync("visuals", "Visuals", project, output, types,
+                BuiltinGalleryTypes.CreateCatalog(types), new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()), DefaultProjectConfiguration.Schema);
+            Assert.That(exported.Success, Is.True, exported.Error);
+            var content = await new ProjectGameContentProvider(output, types, BuiltinGalleryTypes.CreateCatalog(types)).LoadAsync();
+            using var assets = new AssetManager([new PakFileProvider(Path.Combine(output, "Assets/Paks/000-base.pak"), "assets", types)]);
+            var programs = content.Configuration.ReadDefaultOptions().DefaultVisualPrograms;
+            Assert.That(programs, Has.Count.EqualTo(8));
+            foreach (var id in programs.Values)
+            {
+                var file = await assets.GetFileAsync(id);
+                Assert.That(file, Is.Not.Null);
+                Assert.That(file!.TypeId, Is.EqualTo("effect-program"));
+            }
+            Assert.That((await assets.GetFileAsync("a1000000000000000000000000000003"))?.TypeId, Is.EqualTo("sprite"));
+        }
+        finally { if (Directory.Exists(output)) Directory.Delete(output, true); }
+    }
+
+    [Test]
     public void AuthoringSamplePassesDocumentValidation()
     {
         var source = Path.Combine(FindRepositoryDirectory(), "GameTestCase");

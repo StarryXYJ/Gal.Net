@@ -1,5 +1,7 @@
 # 项目工具 CLI
 
+默认视觉资源可通过 `project visuals install <project> [--dry-run]` 显式补入；保留已有绑定与作者修改，需先部署当前项目契约。使用方式见[默认视觉库](../../../docs/manual/default-visuals.md)。
+
 外部 Agent 创作 Skill 随 CLI 分发在 `Skills/galnet-project-authoring/`，支持文本转 Group、给对白补演出和资源导入。完整使用流程及 Editor 热重载见[外部工具创作](../../../docs/manual/external-project-authoring.md)。
 
 ```text

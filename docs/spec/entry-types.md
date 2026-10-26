@@ -26,15 +26,15 @@ Core Entry 的参数权威是 `Arguments` JSON，不再保留字符串 Values。
 
 dialogue.text、nvl.append、layer.hide/replace、animation.stop、audio.seffect.stop、video.stop、effect.stop、particle.stop、variable.set 和 gallery.unlock 已采用 DTO 参数与强类型执行读取；effect.stop/particle.stop 共用 InstanceIdOptions。对白/NVL 保留 reading 标记与独立实例；Gallery 的正整数和 catalog 检查仍在原执行边界。Editor 含专属字符串编辑提示的 DTO 保留补全、多行文本、资源选择和表达式控件投影，普通字段仍使用共享 binding，不另维护参数表。
 
-其余带参数的内置 Primitive 也采用 DTO：layer.show/showColor/move、animation.animate/play、audio.play/enqueue/seffect.apply、video.play、effect.apply、particle.play/burst。audio.play/enqueue 共用 AudioPlayOptions，enqueue 仍显式选择 Enqueue 策略。嵌套 JSON 字段保留 JsonElement 与原解析规则；固定标量、布尔和枚举使用强类型属性。动画 from 的省略由规范化参数 presence 判断，batchId 仍由编译信封提取；快照/重放与复杂实例生命周期未改变。
+其余带参数的内置 Primitive 也采用 DTO：layer.show/showColor/move、animation.animate、timeline.play、audio.play/enqueue/seffect.apply、video.play、effect.apply、particle.play/burst。audio.play/enqueue 共用 AudioPlayOptions，enqueue 仍显式选择 Enqueue 策略。嵌套 JSON 字段保留 JsonElement 与原解析规则；固定标量、布尔和枚举使用强类型属性。动画 from 的省略由规范化参数 presence 判断，batchId 仍由编译信封提取；快照/重放与复杂实例生命周期未改变。
 
 `animation.animate.property` 的内置选择包含 `time`，供 effect-program 元数据将该逻辑参数映射到 shader 时间 uniform；具体 program 仍需把对应参数标为可动画。
 
 DynamicParameterTable 的 ValidatePartialArguments 用于尚未补默认值的局部作者参数；可选回调省略时沿用完整 validator。ForDto<T> 可显式提供 validatePartialArguments；字段自身校验照常执行，Normalize 的完整业务校验仍使用 ValidateArguments。内置视频/粒子/动画计划将完整业务规则保留在编译/执行边界，逐字段创作不要求其他尚未填写的字段。
 
-所有 8 条内置 Composite 使用 ForDto<T> 接收输入，普通 schema 类型/选项/未知字段检查由同一 Normalize 执行；业务展开、正数/颜色/变换校验保持显式。语音子指令及计划 Primitive 外层参数通过 ValueCodec.SerializeFields 使用对应子 DTO 的字段 codec；undefined JSON 字段省略，null 默认保留，可显式选择省略 null。黑白与自定义颜色过渡共用源基类的 12 个字段；生成器合并继承字段并拒绝隐藏/重写或 Order/ID 冲突。
+所有 14 条内置 Composite 使用 ForDto<T> 接收输入，普通 schema 类型/选项/未知字段检查由同一 Normalize 执行；业务展开、正数/颜色/变换校验保持显式。语音子指令及计划 Primitive 外层参数通过 ValueCodec.SerializeFields 使用对应子 DTO 的字段 codec；undefined JSON 字段省略，null 默认保留，可显式选择省略 null。黑白与自定义颜色过渡共用源基类的 12 个字段；生成器合并继承字段并拒绝隐藏/重写或 Order/ID 冲突。
 
-BuiltinEntryIds 集中声明 45 个内置稳定 wire ID。内置 Primitive 的作者类壳及取 ID 的泛型工厂已移除；catalog.Create 继续返回 Core 的通用作者表示，运行时依旧使用通用 PrimitiveEntry。项目仍显式选择 14 个独立 schema modules，不通过 CLR 类扫描启用指令。
+BuiltinEntryIds 集中声明 51 个内置稳定 wire ID。内置 Primitive 的作者类壳及取 ID 的泛型工厂已移除；catalog.Create 继续返回 Core 的通用作者表示，运行时依旧使用通用 PrimitiveEntry。项目仍显式选择 14 个独立 schema modules，不通过 CLR 类扫描启用指令。
 
 Field.DefaultJson 声明经值 codec 校验的 JSON 默认，不能与属性初始化值同时声明；Choices 提供固定合法选项。StringBooleanValueConverter / StringEnumValueConverter 通过 IStringValueEncoding 保留字符串 wire 类型、选项及编辑文本，同时提供强类型成员；普通 converter 行为不改变。audio.stop 已用 AudioStopOptions，clearQueue 保持字符串 true/false 与显式 null 的旧行为。DefaultCompositeEntryBase.ForDto<T> 提供类型化编译展开，通过 PrimitiveArgumentHelper.NormalizeFields<T> 在归一化时直接填入独立 DTO，源 JSON 保留 null/presence，输出仍通过目标 primitive 契约规范化。
 
@@ -72,9 +72,17 @@ transition.blinds
 transition.fadeBlack
 transition.fadeWhite
 transition.fadeColor
+transition.reveal
+transition.blur
+preset.motion
+preset.shake
+preset.speedLines
+preset.impact
 ```
 
 这些 entry 不是 Runtime primitive，也不绕过 target profile：展开后的每一个 primitive 都必须在所选 profile 中存在。
+
+视觉预设均编译为 `timeline.play`，shader 由 Entry 的 program / blurProgram 显式资源参数传递。编辑器插入/类型切换时从项目 defaultVisualPrograms 用途绑定填入 GUID；编译器不查找隐藏默认 shader，不新增各 shader 专用 primitive。project/group validate、单组编译和 build/export 在项目资源边界校验所需 shader stage、参数种类、可动画性与数值范围。震动/冲击目标为 targets[].handleId，参与场景引用索引、复制重映射和时间线终态分析。参数及停止边界见[默认视觉库手册](../manual/default-visuals.md)。
 
 ## 内置 primitive ID
 

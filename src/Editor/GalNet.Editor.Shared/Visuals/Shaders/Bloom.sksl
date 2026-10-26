@@ -52,4 +52,3 @@ half4 main(float2 p) {
     float3 room = max(float3(c.a)-float3(c.rgb),float3(0));
     return half4(half3(float3(c.rgb)+room*clamp(glow*strength/max(weights,0.001),0.0,1.0)),c.a);
 }
-

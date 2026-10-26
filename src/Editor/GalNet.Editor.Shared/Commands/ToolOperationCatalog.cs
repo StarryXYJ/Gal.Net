@@ -49,6 +49,8 @@ public sealed class ToolOperationCatalog
                     new("--dry-run", "boolean", "Validate the final project and report the batch without changing project files.", Default: false)),
                 readOnly: false, requiresContract: true, dryRun: true, batchMode: "Native author files, resources and sidecars in one transaction.") with
                 { DocumentInputSchema = ManifestSchema() },
+            Route("project.visuals.install", "project visuals install", "Adds missing default shader assets and project bindings atomically. Existing bindings are preserved; occupied asset paths are rejected without overwrite.",
+                Project(new CliParameter("--dry-run", "boolean", "Validate and report missing visuals without writing the project.", Default: false)), readOnly: false, requiresContract: true, dryRun: true),
             Route("project.create", "project create", "Creates an empty author project, optionally deploying a validated contract directory. Without a contract, semantic operations remain unavailable.",
                 Project(new CliParameter("--name", "string", "Project display name."), new("--contracts", "string", "Built contract directory containing GalNet.Project.Contracts.dll and managed dependencies."),
                     new("--dry-run", "boolean", "Validate inputs and report files without creating directories or files.", Default: false)), readOnly: false, requiresProject: false, dryRun: true),
@@ -153,6 +155,7 @@ public sealed class ToolOperationCatalog
         Type? dataType = operation.OperationId switch
         {
             "project.create" => typeof(ProjectCreateReport),
+            "project.visuals.install" => typeof(GalNet.Editor.Shared.Visuals.DefaultVisualInstallReport),
             "project.apply" => typeof(ProjectApplyReport),
             "project.build" => typeof(ProjectBuildReport),
             "project.export" => typeof(ProjectExportReport),

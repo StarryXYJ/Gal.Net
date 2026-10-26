@@ -5,11 +5,69 @@ using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
 using GalNet.Editor.Shared.Visuals;
+using GeneralTest.Editor.Shared;
 
 namespace GalNet.Editor.Shared.Tests;
 
 public sealed class DefaultVisualTemplateTests
 {
+    [Test]
+    public async Task Explicit_install_preserves_modified_bound_shaders_supports_dry_run_and_rejects_path_collisions()
+    {
+        var directory = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
+        while (!File.Exists(Path.Combine(directory.FullName, "GalNet.slnx"))) directory = directory.Parent!;
+#if DEBUG
+        const string configuration = "Debug";
+#else
+        const string configuration = "Release";
+#endif
+        var contracts = Path.Combine(directory.FullName, "src/Editor/GalNet.Editor.DefaultContracts/bin", configuration, "net10.0");
+        var parent = Path.Combine(Path.GetTempPath(), "GalNet-visual-install-" + Guid.NewGuid());
+        var target = Path.Combine(parent, "Content");
+        try
+        {
+            await EditorProjectCreator.CreateAsync(new(target, ContractsDirectory: contracts));
+            var settingsPath = Path.Combine(target, "settings.json");
+            var settings = JsonSerializer.Deserialize<ProjectConfiguration>(File.ReadAllBytes(settingsPath))!;
+            var options = settings.ReadDefaultOptions();
+            var bloom = options.DefaultVisualPrograms["bloom"];
+            options.DefaultVisualPrograms = new() { ["bloom"] = bloom };
+            settings.Set(DefaultProjectConfiguration.Section, options);
+            File.WriteAllText(settingsPath, JsonSerializer.Serialize(settings));
+            var bloomPath = Path.Combine(target, "Assets/Effects/Default/Bloom.sksl");
+            File.AppendAllText(bloomPath, "\n// author modification\n");
+            var modified = File.ReadAllBytes(bloomPath);
+            // Missing bindings do not authorize overwriting existing files.
+            using (var schema = ProjectSchemaContext.Load(target))
+            {
+                var conflict = await DefaultVisualInstaller.InstallAsync(target, schema.Catalog, schema.Configurations);
+                Assert.That(conflict.Success, Is.False);
+                Assert.That(File.ReadAllBytes(bloomPath), Is.EqualTo(modified));
+            }
+            foreach (var name in DefaultVisualTemplate.ProgramNames.Values.Where(name => name != "Bloom"))
+            {
+                File.Delete(Path.Combine(target, "Assets/Effects/Default", name + ".sksl"));
+                File.Delete(Path.Combine(target, "Assets/Effects/Default", name + ".sksl.meta"));
+            }
+            var original = File.ReadAllBytes(settingsPath);
+            var dryRun = await CliHelpTests.Invoke(["project", "visuals", "install", target, "--dry-run"]);
+            Assert.That(dryRun.ExitCode, Is.Zero, dryRun.Output);
+            Assert.That(File.ReadAllBytes(settingsPath), Is.EqualTo(original));
+            Assert.That(Directory.GetFiles(Path.Combine(target, "Assets/Effects/Default"), "*.sksl"), Has.Length.EqualTo(1));
+            var installation = await CliHelpTests.Invoke(["project", "visuals", "install", target]);
+            Assert.That(installation.ExitCode, Is.Zero, installation.Output);
+            Assert.That(File.ReadAllBytes(bloomPath), Is.EqualTo(modified));
+            settings = JsonSerializer.Deserialize<ProjectConfiguration>(File.ReadAllBytes(settingsPath))!;
+            Assert.That(settings.ReadDefaultOptions().DefaultVisualPrograms["bloom"], Is.EqualTo(bloom));
+            Assert.That(settings.ReadDefaultOptions().DefaultVisualPrograms, Has.Count.EqualTo(8));
+            var installed = File.ReadAllBytes(settingsPath);
+            var repeated = await CliHelpTests.Invoke(["project", "visuals", "install", target]);
+            Assert.That(repeated.ExitCode, Is.Zero, repeated.Output);
+            Assert.That(File.ReadAllBytes(settingsPath), Is.EqualTo(installed));
+        }
+        finally { if (Directory.Exists(parent)) Directory.Delete(parent, true); }
+    }
+
     [Test]
     public void Plan_preserves_author_bindings_and_unknown_configuration_without_mutating_input()
     {

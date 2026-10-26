@@ -80,4 +80,3 @@ public partial class ImpactPresetOptions : SpeedLinesPresetOptionsBase
     [Field(14)] public float Angle { get; set; }
     [Field(15, Minimum = 0, Maximum = 1)] public float FlashOpacity { get; set; } = .7f;
 }
-

@@ -2,7 +2,7 @@
 
 ## 当前事实
 
-GameTestCase 有 Bloom / Blur / ColorGrade / Blinds 项目资源。Composite 已将转场展开为 animation.play；效果 time 可由时间线驱动。渲染支持 layer 与 scenePost，shader 的 size uniform 自动绑定。图层 Z 当前仅决定合成顺序。shader texture 参数尚无纹理解析器。
+GameTestCase 有 Bloom / Blur / ColorGrade / Blinds 项目资源。Composite 已将转场展开为 timeline.play；效果 time 可由时间线驱动。渲染支持 layer 与 scenePost，shader 的 size uniform 自动绑定。图层 Z 当前仅决定合成顺序。shader texture 参数尚无纹理解析器。
 
 ## 设计方向
 
@@ -25,7 +25,7 @@ GameTestCase 有 Bloom / Blur / ColorGrade / Blinds 项目资源。Composite 已
 
 数据流：初始化模板 → 项目 shader 资产与用途绑定 → 编辑器填入复合 Entry 的资源参数 → 编译得到显式 `effect.apply` 与动画计划 → 运行时按项目资源 ID 加载。
 
-示例（资源 ID 为占位符，配置 section 与字段最终名称待实现核对）：
+已实现的配置示例（资源 ID 为占位符；字段位于 galnet.project section 的 data 内）：
 
 ```json
 {
@@ -49,7 +49,7 @@ GameTestCase 有 Bloom / Blur / ColorGrade / Blinds 项目资源。Composite 已
 }
 ```
 
-示例 type ID 与字段名是设计示意，尚未声明为已发布 wire 契约。预设编译生成承载图层、效果实例、时间/透明度轨道和末尾清理；资源 ID 从输入传递，临时实例 ID 与资源 ID 分开。
+上述 type ID 与字段名已实现；资源 ID 占位符需要替换为项目自身 GUID。预设编译生成承载图层、效果实例、时间/透明度轨道和末尾清理；资源 ID 从输入传递，临时实例 ID 与资源 ID 分开。
 
 视觉配方契约与纯时间线编译位于 Contracts.Builtins；SkSL 及模板部署资源由 Editor.Shared 分发，平台渲染能力留在 Rendering / GameView。效果资源不进入 Core。
 
@@ -61,7 +61,7 @@ GameTestCase 有 Bloom / Blur / ColorGrade / Blinds 项目资源。Composite 已
 
 ## 组合与边界
 
-组合优先只输出一个 animation.play，沿用事件、轨道、存读档与快进机制。临时 ID 从显式 playbackHandleId 派生；调用方保证播放期间唯一。相对动作使用 Additive 并回到零；保留终态的镜头/登退场明确使用 Replace。取消语义沿用现有 animation.stop；不宣称取消一定执行末帧清理，必须验证并说明。
+组合优先只输出一个 timeline.play，沿用事件、轨道、存读档与快进机制。临时 ID 从显式 playbackHandleId 派生；调用方保证播放期间唯一。相对动作使用 Additive 并回到零；保留终态的镜头/登退场明确使用 Replace。取消语义沿用现有 animation.stop；不宣称取消一定执行末帧清理，必须验证并说明。
 
 默认配方需要编辑器能分析其展开，不让新增类型全部变成 opaque。新转场复用既有分析，演出按编译结果传递状态。
 

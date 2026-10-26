@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- 2026-10-27 默认视觉库：模板部署为项目 shader 资产，defaultVisualPrograms 仅用于创作填充；预设保存显式 program/blurProgram GUID 并编译为 timeline.play。CPU/GPU 层链注入当前 layerZ，texture 参数租约归效果实例。project visuals install 显式补入且不覆盖已有绑定/占用路径。见 docs/manual/default-visuals.md 和 features/F-20261026-03-default-visual-library；[采样像素与视觉 QA](lessons/L-20261027-01-shader-sampling-visual-qa.md)。
+
 - 2026-10-26 Sample 扩展边界：默认会话通过 IAvaloniaPlayerSettings/IPlayerStartup 消费项目偏好；默认页面 VM 可扩展、DI 使用 TryAdd。AttachPlayer/AttachRun 接入项目借用绑定并优先异步释放。外部剧情变量走 Engine.SetVariablesAsync/UpdateVariablesAsync，同步提交显式 scope 值并合入稳定快照；业务模块自行定义复杂状态恢复。AvaloniaPlayerLocalization 归 Avalonia.GameHost，中立 JSON 查询归 GameHost，Sample 不再共享 GameLocalizationProvider 源文件。见 features/F-20261026-02-sample-extensibility 与 docs/manual/customize-avalonia-sample.md。
 
 - [Ready 与宿主活动状态](lessons/L-20261026-06-ready-is-not-session-end.md)：Ready 是恢复/Seek 的中间准备状态，默认宿主保留已有 IsPlaying，不应触发返回标题。

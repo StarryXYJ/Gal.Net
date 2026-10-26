@@ -11,8 +11,14 @@ public static class DefaultVisualTemplate
 {
     private static readonly IReadOnlyDictionary<string, string> Programs = new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(StringComparer.Ordinal)
     {
-        ["bloom"] = "Bloom", ["blur"] = "Blur", ["vignette"] = "Vignette", ["colorGrade"] = "ColorGrade",
-        ["depthBlur"] = "DepthBlur", ["speedLines"] = "SpeedLines", ["reveal"] = "Reveal", ["maskReveal"] = "MaskReveal"
+        ["bloom"] = "Bloom",
+        ["blur"] = "Blur",
+        ["vignette"] = "Vignette",
+        ["colorGrade"] = "ColorGrade",
+        ["depthBlur"] = "DepthBlur",
+        ["speedLines"] = "SpeedLines",
+        ["reveal"] = "Reveal",
+        ["maskReveal"] = "MaskReveal"
     });
 
     public static IReadOnlyDictionary<string, string> ProgramNames => Programs;

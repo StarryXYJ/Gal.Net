@@ -8,6 +8,58 @@ namespace GeneralTest.Scene;
 
 public sealed class DefaultVisualRenderingTests
 {
+    [Test, Explicit("Writes the feature's CPU rendering contact sheet for visual inspection.")]
+    public void WriteDefaultVisualPreview()
+    {
+        var directory = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
+        while (!File.Exists(Path.Combine(directory.FullName, "GalNet.slnx"))) directory = directory.Parent!;
+        var root = directory.FullName;
+        var imagePath = Directory.GetFiles(Path.Combine(root, "GameTestCase/Assets"), "*.meta", SearchOption.AllDirectories).Single(path =>
+        {
+            using var metadata = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path));
+            return metadata.RootElement.GetProperty("id").GetString() == "a1000000000000000000000000000001";
+        })[..^5];
+        using var texture = new SceneTexture(new Avalonia.Media.DrawingImage(), SKBitmap.Decode(imagePath));
+        var layer = new SceneLayerItem { HandleId = "background", Texture = texture, DisplayMode = LayerDisplayMode.Fill, Z = 50 };
+        var overlay = new SceneLayerItem { HandleId = "lines", Color = "#00000000", Z = 100 };
+        var plan = SceneRenderPlan.Create([new(layer, 0), new(overlay, 1)]);
+        var programs = new List<SkiaShaderEffectProgramLoadResult>();
+        SceneEffectInstance Effect(string name, EffectStage stage, string target, string parameters)
+        {
+            var program = DefaultVisualShaderTests.Load(name); programs.Add(program);
+            return new(name, new ShaderProgramTextureEffectFactory(name, stage, new(name), program), target, 0, parameters);
+        }
+        try
+        {
+            var panels = new (string Title, SceneEffectInstance[] Effects)[]
+            {
+                ("Original", []),
+                ("Bloom + warm grade", [Effect("Bloom", EffectStage.ScenePost, "", "{\"strength\":3,\"radius\":24}"), Effect("ColorGrade", EffectStage.ScenePost, "", "{\"temperature\":0.5}")]),
+                ("Vignette", [Effect("Vignette", EffectStage.ScenePost, "", "{\"strength\":0.9,\"radius\":0.2}")]),
+                ("Layer Z depth blur", [Effect("DepthBlur", EffectStage.Layer, "background", "{\"falloff\":1,\"maxRadius\":16}")]),
+                ("Dynamic radial lines", [Effect("SpeedLines", EffectStage.Layer, "lines", "{\"time\":0.137}")]),
+                ("Dynamic directional lines", [Effect("SpeedLines", EffectStage.Layer, "lines", "{\"mode\":\"Directional\",\"time\":0.137}")])
+            };
+            using var sheet = new SKBitmap(1440, 600);
+            using var canvas = new SKCanvas(sheet); canvas.Clear(new SKColor(20, 24, 32));
+            using var font = new SKFont(SKTypeface.Default, 18);
+            using var paint = new SKPaint { Color = SKColors.White, IsAntialias = true };
+            for (var i = 0; i < panels.Length; i++)
+            {
+                var x = i % 3 * 480; var y = i / 3 * 300;
+                using var scene = SceneRenderPipeline.Render(plan, panels[i].Effects, null, new Size(480, 270));
+                canvas.DrawText(panels[i].Title, x + 12, y + 22, font, paint);
+                canvas.DrawBitmap(scene, x, y + 30);
+                foreach (var effect in panels[i].Effects) effect.Dispose();
+            }
+            using var image = SKImage.FromBitmap(sheet);
+            using var encoded = image.Encode(SKEncodedImageFormat.Png, 100);
+            Directory.CreateDirectory(Path.Combine(root, "artifacts"));
+            File.WriteAllBytes(Path.Combine(root, "artifacts/visual-library-preview.png"), encoded.ToArray());
+        }
+        finally { foreach (var program in programs) program.RuntimeEffect?.Dispose(); }
+    }
+
     [Test]
     public void Depth_blur_uses_current_layer_z_on_every_draw()
     {

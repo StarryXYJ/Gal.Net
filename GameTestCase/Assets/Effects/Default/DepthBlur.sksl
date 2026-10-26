@@ -1,0 +1,51 @@
+/*
+@gal.effect v=1
+@input source
+@targets layer
+
+@param focusZ
+  uniform: focusZ
+  type: float
+  default: 0
+  animatable: true
+
+@param focusRange
+  uniform: focusRange
+  type: float
+  default: 0
+  range: 0..100000
+  animatable: true
+
+@param falloff
+  uniform: falloff
+  type: float
+  default: 0.1
+  range: 0..64
+  animatable: true
+
+@param maxRadius
+  uniform: maxRadius
+  type: float
+  default: 24
+  range: 0..64
+  animatable: true
+*/
+uniform shader source;
+uniform float layerZ;
+uniform float focusZ, focusRange, falloff, maxRadius;
+half4 main(float2 p) {
+    float r = clamp((abs(layerZ-focusZ)-focusRange)*falloff,0.0,maxRadius);
+    if (r <= 0.001) return source.eval(p);
+    float4 sum = float4(source.eval(p));
+    float weights = 1.0;
+    // A dense disk avoids the repeated-image grid produced by widely spaced square taps.
+    for (int i = 1; i <= 48; i++) {
+        float t = float(i)/48.0;
+        float angle = float(i)*2.39996323;
+        float2 offset = float2(cos(angle),sin(angle))*sqrt(t)*r;
+        float w = exp(-4.5*t);
+        sum += float4(source.eval(p+offset))*w;
+        weights += w;
+    }
+    return half4(sum/weights);
+}

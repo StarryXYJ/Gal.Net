@@ -98,3 +98,9 @@ folder 相对描述文件，允许 `.` 和不越过 Assets 的 `..`，兼容两�
 `IAssetFileMaterializer` / `AssetFileLease` 位于 Core.Assets；Assets 的 `AssetFileMaterializer` 通过 AssetManager acquire 的字节实体化媒体。同一会话内资源 ID（忽略大小写）共享文件，最后一个租约释放才删除。关闭 materializer 取消待加载请求并拒绝新请求，已借用文件仍有效直到释放。Sample 将同一实例传给剧情音频、视频与 Gallery；视频先释放原生播放器再释放文件租约。Gallery 缩略图抽取和临时缓存由独立服务拥有。
 
 LibVLC 音频后端同样为每个 voice 持有独立文件租约，先销毁播放器再释放租约；自然结束、立即停止、淡出完成、创建失败与取消加载均归还租约。后端不再将播放过的文件保留到整个会话结束，也不另建音频引用计数或闲置缓存层。多个声音及视频/Gallery 仍通过同一个 materializer 共享文件，音频停止不会删除其他消费者仍在使用的文件。
+
+## 默认视觉资源
+
+默认契约项目初始化将 Editor.Shared 内嵌模板复制为 `Assets/Effects/Default/` 下的 8 个普通 effect-program 资源及 sidecar，每个项目生成自身 GUID。`galnet.project.defaultVisualPrograms` 保存创作用途绑定，不是运行时隐藏效果目录。`project visuals install` 通过现有作者文件事务显式补入缺失绑定及资源，保留已有绑定，拒绝覆盖被占用路径。自定义契约需声明相应配置字段及 effect.apply 能力才启用默认模板。
+
+Shader 的可选保留 `layerZ` uniform 在 CPU/GPU 图层效果链每次绘制时取当前图层 Z；不可声明为作者参数。texture 参数由效果运行器通过 AssetManager 获得独立租约，按画布大小绑定，停止、替换、释放或准备失败时归还。预览和运行只读取项目资源；导出包含项目 shader 和纹理。使用方式及景深、停止边界见[默认视觉库](../manual/default-visuals.md)。

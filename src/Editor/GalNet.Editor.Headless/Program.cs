@@ -91,6 +91,12 @@ internal static class Program
             }
             using var projectSchema = ProjectSchemaContext.Load(projectPath);
             var entryCatalog = projectSchema.Catalog;
+            if (verb == "project.visuals.install")
+            {
+                var result = await GalNet.Editor.Shared.Visuals.DefaultVisualInstaller.InstallAsync(projectPath, entryCatalog, projectSchema.Configurations, invocation.Has("--dry-run"));
+                WriteJson(result);
+                return result.Success ? 0 : 5;
+            }
             if (verb == "project.apply")
             {
                 var applied = await new ProjectApplyService(projectPath, entryCatalog, configurations: projectSchema.Configurations).ApplyAsync(invocation.Positionals[1], invocation.Has("--dry-run"));
