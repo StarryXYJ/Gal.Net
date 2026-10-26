@@ -9,6 +9,9 @@ updated: 2026-10-26
 
 # Editor 创作工作区重构
 
+2026-10-26 GC3 Entry 身份与输入生命周期 verified：待移动剪切、相容输出身份迁移、删除输入持久归档和新绑定显式恢复已接通；四项目 918 项执行通过，4 项 Explicit 原生 GUI 未执行，四语/格式/32 文件指纹通过，见 [阶段记录](phase-group-consistency.md#gc3身份与输入生命周期)。GC4/GC5 和整 Group/文件结构删除的独立输入协调验收保留。
+
+
 2026-10-26 用户要求继续，GC2 语义与引用诊断 verified：统一声明/索引、位置影响、Group 删除与换类型确认、Problems 警告已接通；四项目 909 项执行通过，4 项 Explicit 原生 GUI 未运行，四语/格式/指纹通过。GC1 提交为 `1496e0c`，本阶段证据见 [实施记录](phase-group-consistency.md#gc2语义引用诊断与操作影响)。剪切身份、删除输入、局部失效及释放仍按 GC3–GC5 保留。
 
 2026-10-26 用户授权开始 Group 一致性重构，按 [补充阶段](phase-plan.md#group-一致性补充阶段2026-10-26) 推进；GC1 作者提交边界 verified，四项目 900 项执行通过、4 项 Explicit 原生 GUI 未执行，格式与源码指纹通过，见 [阶段记录](phase-group-consistency.md)。后续引用、身份/草稿、依赖缓存和释放分阶段验证。授权覆盖设计推荐方向，具体行为与偏差随阶段记录；此前 proposed 表示设计形成时的状态。

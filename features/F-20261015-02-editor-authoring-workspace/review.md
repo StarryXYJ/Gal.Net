@@ -6,6 +6,8 @@
 
 2026-10-26 GC2 后续实施已验证：Group 页面删除/换类型和当前剪切删除路径接入统一影响确认，Problems 接入版本化场景诊断；问题 1 的上述路径已修复，Graph 操作的逐项预检与运行时缺目标全路径核验不在本阶段。四项目 909 项通过、4 项 Explicit GUI 未运行，见 [GC2 记录](phase-group-consistency.md#gc2语义引用诊断与操作影响)。问题 2–4、6–9 仍按后续阶段保留，整个改造继续 in-progress，原始 blocked 审核不因局部修复而撤销。
 
+2026-10-26 GC3 后续实施已验证：问题 2 的 Entry 剪切改为会话待移动，粘贴单历史保留场景身份；问题 3 的 Entry 作者删除将原始输入持久归档，归档不阻塞保存，Undo 后明确恢复到新绑定。相容换类型按语义角色迁移。四项目 918 项通过，4 项 Explicit GUI 未执行，见 [GC3 记录](phase-group-consistency.md#gc3身份与输入生命周期)。整 Group/文件结构删除仍沿原发布协议单列验收，问题 4、6–9 留 GC4/GC5；整个 feature 继续 in-progress。
+
 ## 范围与证据边界
 
 检查 Group 新增/删除/剪切/粘贴/换类型/重排、项目历史、作者投影、场景查询、普通 Locator 字段、Timeline、未提交草稿、Problems 和保存链路。规范以 `docs/spec/editor-groups.md`、`editor-scene-targets.md`、`editor-history-and-save.md` 为准，并核对本 feature 的 feature/design/phase-plan。

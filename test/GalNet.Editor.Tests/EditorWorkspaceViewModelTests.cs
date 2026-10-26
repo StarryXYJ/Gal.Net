@@ -48,7 +48,7 @@ public sealed class EditorWorkspaceViewModelTests
             // Supply only layout icon resources; the real parameter panel and bindings are used below.
             foreach (var key in new[] { "AddIcon", "DeleteRegularIcon", "ChevronUpRegular", "ChevronDownRegular" })
                 Application.Current!.Resources[key] = StreamGeometry.Parse("M0,0 L8,8");
-            var panel = new GroupEditorPanelViewModel(workspace, group.Id, null!, fixture.ProjectService,
+            var panel = new GroupEditorPanelViewModel(workspace, group.Id, fixture.EntryAuthoring, fixture.ProjectService,
                 null!, null!, null!, catalog, new GalNet.Editor.Services.EntrySelectionContext());
             Application.Current!.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
             Application.Current.Styles.Add(new Semi.Avalonia.SemiTheme());
@@ -244,6 +244,7 @@ public sealed class EditorWorkspaceViewModelTests
         public ImmediateSaveScheduler SaveScheduler { get; } = new();
         public EditorWorkspaceViewModel Workspace { get; }
         public IEntryCatalog Catalog { get; }
+        public GroupEntryAuthoringService EntryAuthoring { get; }
 
         private readonly string _root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "GalNet-workspace-test-" + Guid.NewGuid().ToString("N"))).FullName;
         private readonly ProjectContentSession _content;
@@ -288,6 +289,7 @@ public sealed class EditorWorkspaceViewModelTests
             var histories = new EditorHistories(_content);
             var groups = new EditorGroupProjectionStore(DocumentService, catalog, new EntryFieldAuthoringService(DocumentService, histories));
             var persistence = new EditorWorkspacePersistence(ProjectService, repository, DocumentService, SaveCoordinator, groups);
+            EntryAuthoring = new GroupEntryAuthoringService(groups, DocumentService, catalog, histories);
             Workspace = new EditorWorkspaceViewModel(
                 ProjectService,
                 histories,
@@ -299,12 +301,13 @@ public sealed class EditorWorkspaceViewModelTests
                 localization,
                 SaveScheduler,
                 new GraphSelectionState(),
-                persistence, new GraphAuthoringService(DocumentService, histories, _content), new GroupEntryAuthoringService(groups, DocumentService, catalog, histories));
+                persistence, new GraphAuthoringService(DocumentService, histories, _content), EntryAuthoring);
         }
 
         public void Dispose()
         {
             Workspace.Dispose();
+            EntryAuthoring.Dispose();
             _content.Dispose();
             ProjectService.Current?.Dispose();
             Directory.Delete(_root, true);

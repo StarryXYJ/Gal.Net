@@ -90,7 +90,7 @@ public sealed class EditorGroupProjection : IDisposable
         var previous = Entries.ToArray();
         var current = Document.Entries.ToArray();
         foreach (var entry in previous.Where(entry => !current.Contains(entry.Source)))
-            try { entry.InvalidateParameterFields(); } catch (Exception failure) { _report(failure); }
+            try { entry.InvalidateAuthorBindings(); } catch (Exception failure) { _report(failure); }
         _entries.Update(() =>
         {
             for (var index = 0; index < current.Length; index++)

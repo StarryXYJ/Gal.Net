@@ -12,9 +12,14 @@
         <StyleInclude Source="avares://GalNet.Editor/Controls/AuthorFormStyles.axaml"/>
         <Style Selector="Border.debugEntry"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}"/><Setter Property="BorderThickness" Value="1"/></Style>
         <Style Selector="Border.debugEntry.debugCurrent"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorSuccess}"/><Setter Property="BorderThickness" Value="3"/></Style>
+        <Style Selector="Border.pendingMove"><Setter Property="Opacity" Value="0.65"/></Style>
     </controls:ReorderableListControl.Styles>
     <Grid RowDefinitions="Auto,*,Auto">
         <WrapPanel x:Name="EntryToolbar" Orientation="Horizontal">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding MoveStatus}" VerticalAlignment="Center" Margin="0,0,6,0" TextWrapping="Wrap"/>
+                <Button Name="CancelEntryMove" Content="{loc:Localize Entry.MoveCancel}" Command="{Binding CancelPendingMoveCommand}" IsVisible="{Binding HasPendingMove}" Margin="0,0,6,0"/>
+            </StackPanel>
             <TextBox Width="170" Text="{Binding SearchText}" PlaceholderText="{loc:Localize Uiux.Entry.Search}" Margin="0,0,6,0" />
             <Button Theme="{DynamicResource EditorIconButton}" ToolTip.Tip="{loc:Localize Entry.Add}" AutomationProperties.Name="{loc:Localize Entry.Add}" Command="{Binding AddEntryCommand}" Margin="0,0,6,0"><PathIcon Width="16" Height="16" Data="{StaticResource AddIcon}"/></Button>
             <Button Content="{loc:Localize Entry.AppendBatch}" Command="{Binding AppendEntriesCommand}" Margin="0,0,6,0" />
@@ -36,6 +41,7 @@
                 <DataTemplate x:DataType="models:EntryEditorItemViewModel">
                     <Border Margin="0,3"
                             Classes="debugEntry"
+                            Classes.pendingMove="{Binding IsPendingMove}"
                             Classes.debugCurrent="{Binding IsDebugCurrent}"
                             Padding="6"
                             Background="{DynamicResource SemiColorBackground1}"

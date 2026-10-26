@@ -145,10 +145,15 @@ public sealed class UndoRedoHistory(int capacity = 200, long byteBudget = 1024L 
         catch (HistoryRepairRequiredException) { RepairRequired = true; throw; }
         finally
         {
-            AuthorChanges.Cancel(); IsBusy = false;
-            // Publish with the new history cursor, while reentrant edits are still excluded.
-            if (committed is not null) AuthorChanges.Publish(committed);
-            _executing.Value = false; _gate.Release(); NotifyChanged();
+            try { AuthorChanges.Cancel(); }
+            catch (HistoryRepairRequiredException) { RepairRequired = true; throw; }
+            finally
+            {
+                IsBusy = false;
+                // Publish with the new history cursor, while reentrant edits are still excluded.
+                if (committed is not null) AuthorChanges.Publish(committed);
+                _executing.Value = false; _gate.Release(); NotifyChanged();
+            }
         }
     }
 
@@ -202,9 +207,14 @@ public sealed class UndoRedoHistory(int capacity = 200, long byteBudget = 1024L 
         catch (HistoryRepairRequiredException) { RepairRequired = true; throw; }
         finally
         {
-            AuthorChanges.Cancel(); IsBusy = false;
-            if (committed is not null) AuthorChanges.Publish(committed);
-            _executing.Value = false; _gate.Release(); NotifyChanged();
+            try { AuthorChanges.Cancel(); }
+            catch (HistoryRepairRequiredException) { RepairRequired = true; throw; }
+            finally
+            {
+                IsBusy = false;
+                if (committed is not null) AuthorChanges.Publish(committed);
+                _executing.Value = false; _gate.Release(); NotifyChanged();
+            }
         }
     }
 

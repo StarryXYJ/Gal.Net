@@ -8,16 +8,20 @@ using GalNet.Game.Controls.Forms;
 namespace GalNet.Editor.Services;
 
 /// <summary>Project-owned drafts. Closing a view never releases unsubmitted author input.</summary>
-public sealed class EntryEditSession : IDisposable
+public sealed partial class EntryEditSession : IDisposable
 {
-    private readonly Dictionary<string, Draft> _drafts = new(StringComparer.Ordinal);
+    private sealed record DraftKey(string GroupId, string EntryId, string RootId, string Path, Guid Incarnation);
+    private readonly Dictionary<DraftKey, Draft> _drafts = [];
+    private bool _disposed;
     private readonly IDisposable _registration;
     private readonly IProjectContentSession _content;
     private readonly GameTextAuthoringService _texts;
     private readonly IEditorLocalizationService _localization;
-    public EntryEditSession(IProjectContentSession content, GameTextAuthoringService texts, IEditorLocalizationService localization)
+    public EntryEditSession(IProjectContentSession content, GameTextAuthoringService texts, IEditorLocalizationService localization,
+        IEditorDocumentService? documents = null, IProjectService? projects = null, EntryDraftArchiveLimits? limits = null)
     {
         _content = content; _texts = texts; _localization = localization;
+        _documents = documents; _projects = projects; _limits = limits ?? new();
         _registration = content.RegisterDraft(() => PendingCount > 0, CommitAsync, DiscardDrafts);
         content.Changed += CheckSources;
     }
@@ -28,29 +32,37 @@ public sealed class EntryEditSession : IDisposable
     public FieldDraftState Get(EntryEditorItemViewModel owner, FieldDescriptor field) => Get(owner, field, field, []);
     private FieldDraftState Get(EntryEditorItemViewModel owner, FieldDescriptor root, FieldDescriptor field, string[] path)
     {
-        var key = owner.AuthorGroupId + "/" + owner.StableId + "/" + root.Id + "/" + string.Join("/", path);
-        // The author object is a generation boundary: undo may restore the same ID with a new source.
-        key += "/" + owner.Type + "/" + System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(owner.Source);
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var incarnation = owner.DraftIncarnation;
+        var key = new DraftKey(owner.AuthorGroupId!, owner.StableId, root.Id, JsonSerializer.Serialize(path), incarnation);
         if (_drafts.TryGetValue(key, out var found)) return found.State;
         var type = owner.Type;
         string Snapshot()
         {
-            if (!owner.IsCurrent || owner.Source.Type != type) return "<obsolete>";
+            if (!owner.IsCurrent || owner.Source.Type != type || owner.DraftIncarnation != incarnation) return "<obsolete>";
             var value = owner.Source.Parameters.GetValueOrDefault(root.Id);
             return value.GetRawTextSafe() + (root.Semantic == FieldValueSemantic.LocalizedText && value.ValueKind == JsonValueKind.String ? "\n" + _texts.Read(value.GetString()!) : "");
         }
         var state = new FieldDraftState(Snapshot);
-        var draft = new Draft(owner, root, field, path, type, state);
+        var draft = new Draft(owner, root, field, path, type, state, incarnation);
         _drafts.Add(key, draft);
         state.Child = (child, segment) => Get(owner, root, child, [.. path, segment]);
         state.Commit = () => CommitAsync(draft);
         state.Changed += OnChanged;
+        TryRestore(draft);
         return state;
     }
-    private void OnChanged() { _content.Refresh(); Changed?.Invoke(); }
+    private void OnChanged() { Revision++; _content.Refresh(); NotifyChanged(); }
+    private void NotifyChanged()
+    {
+        if (Changed is null) return;
+        foreach (Action observer in Changed.GetInvocationList())
+            try { observer(); } catch (Exception failure) { Serilog.Log.Error(failure, "An entry input observer failed"); }
+    }
     private void CheckSources()
     {
         foreach (var draft in _drafts.Values) draft.State.CheckSource();
+        NotifyChanged();
     }
     private void DiscardDrafts()
     {
@@ -60,10 +72,11 @@ public sealed class EntryEditSession : IDisposable
     private ValueIssue Error(string code) => new(code, _localization["Uiux.Draft." + code]);
     private async Task<ValueIssue?> CommitAsync(Draft draft)
     {
+        if (_disposed) return Error("Conflict");
         var state = draft.State;
         if (!state.CanCommit) return Error("Composing");
         if (!state.IsDirty) return null;
-        if (state.IsConflicted || !draft.Owner.IsCurrent || draft.Owner.Type != draft.Type) return Error("Conflict");
+        if (state.IsConflicted || !draft.Owner.IsCurrent || draft.Owner.Type != draft.Type || draft.Owner.DraftIncarnation != draft.Incarnation) return Error("Conflict");
         try
         {
             FieldValue candidate;
@@ -130,12 +143,13 @@ public sealed class EntryEditSession : IDisposable
     }
     public void Dispose()
     {
+        _disposed = true;
         _registration.Dispose();
         _content.Changed -= CheckSources;
         foreach (var draft in _drafts.Values) draft.State.Changed -= OnChanged;
-        _drafts.Clear(); Changed = null;
+        _drafts.Clear(); _archives.Clear(); _restoreRequested.Clear(); Changed = null;
     }
-    public sealed record Draft(EntryEditorItemViewModel Owner, FieldDescriptor Root, FieldDescriptor Field, string[] Path, string Type, FieldDraftState State);
+    public sealed record Draft(EntryEditorItemViewModel Owner, FieldDescriptor Root, FieldDescriptor Field, string[] Path, string Type, FieldDraftState State, Guid Incarnation);
     internal string Summary(EntryEditorItemViewModel owner) => string.Join(" · ", owner.Source.Parameters
         .Where(pair => pair.Key is "content" or "speaker" or "asset" or "assetId" or "target" or "expression" or "handleId")
         .Select(pair => pair.Key == "content" && pair.Value.ValueKind == JsonValueKind.String ? _texts.Read(pair.Value.GetString()!) ?? pair.Value.GetString()

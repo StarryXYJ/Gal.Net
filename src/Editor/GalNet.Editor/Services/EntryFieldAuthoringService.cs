@@ -7,7 +7,7 @@ using GalNet.Editor.Abstraction.Changes;
 namespace GalNet.Editor.Services;
 
 /// <summary>Entry field intents retain author values and stable IDs, never a page or control.</summary>
-public sealed class EntryFieldAuthoringService(IEditorDocumentService documents, EditorHistories histories, CharacterAuthoringService? characters = null, GameTextAuthoringService? texts = null)
+public sealed class EntryFieldAuthoringService(IEditorDocumentService documents, EditorHistories histories, CharacterAuthoringService? characters = null, GameTextAuthoringService? texts = null, EntryEditSession? edits = null)
 {
     internal AuthorChangeJournal Changes => histories.Content.AuthorChanges;
     internal bool IsCurrent(string groupId, EditorEntryData expected) => documents.IsLoaded
@@ -30,14 +30,20 @@ public sealed class EntryFieldAuthoringService(IEditorDocumentService documents,
     }
 
     public void SetType(string groupId, EditorEntryData expected, string type, Dictionary<string, JsonElement> parameters) =>
-        Update(groupId, expected, expected.Type, new(type, expected.Condition, GalNet.Editor.Shared.Services.SceneAuthoringIdentities.NewEntry(type, Clone(parameters))), "Edit Type");
+        Update(groupId, expected, expected.Type, TypeValue(expected, type, parameters), "Edit Type");
+
+    private static EntryValue TypeValue(EditorEntryData entry, string type, Dictionary<string, JsonElement> parameters) =>
+        new(type, entry.Condition, GalNet.Editor.Shared.Services.SceneAuthoringIdentities.ChangeType(entry.Type, entry.Parameters, type, Clone(parameters)));
 
     public PreparedEntryEdit PrepareType(string groupId, EditorEntryData expected, string type, Dictionary<string, JsonElement> parameters)
     {
         if (!IsCurrent(groupId, expected)) throw Obsolete();
-        var after = new EntryValue(type, expected.Condition, GalNet.Editor.Shared.Services.SceneAuthoringIdentities.NewEntry(type, Clone(parameters)));
-        return new(documents, histories, new FieldEdit(this, groupId, expected.StableId, Capture(expected), after, "Edit Type"),
-            candidate => Write(candidate.GroupEntries[groupId].Single(entry => entry.StableId == expected.StableId), after));
+        var after = TypeValue(expected, type, parameters);
+        var address = new GalNet.Editor.Shared.Services.SceneAuthorAddress(groupId, expected.StableId);
+        var draftRevision = edits?.Revision;
+        return new(documents, histories, Wrap(new FieldEdit(this, groupId, expected.StableId, Capture(expected), after, "Edit Type")),
+            candidate => Write(candidate.GroupEntries[groupId].Single(entry => entry.StableId == expected.StableId), after),
+            edits?.CountPending([address]) ?? 0, () => edits?.Revision == draftRevision);
     }
 
     private void Update(string groupId, EditorEntryData expected, string expectedType, EntryValue after, string description)
@@ -45,8 +51,10 @@ public sealed class EntryFieldAuthoringService(IEditorDocumentService documents,
         var entry = Find(groupId, expected.StableId);
         if (!ReferenceEquals(entry, expected) || entry.Type != expectedType) throw Obsolete();
         var before = Capture(entry);
-        if (!Equal(before, after)) histories.Content.Execute(new FieldEdit(this, groupId, entry.StableId, before, after, description));
+        if (!Equal(before, after)) histories.Content.Execute(Wrap(new FieldEdit(this, groupId, entry.StableId, before, after, description)));
     }
+    private IUndoableEdit Wrap(FieldEdit edit) => edit.Before.Type != edit.After.Type && edits is not null
+        ? new EntryDraftLifecycleEdit(edits, edit, [new(new(edit.GroupId, edit.EntryId), new(edit.GroupId, edit.EntryId))], Changes) : edit;
 
     private EditorEntryData Find(string groupId, string id)
     {

@@ -61,7 +61,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         try { ErrorText = _localization is null ? _errorMessage.Key ?? "" : _errorMessage.Render(_localization); }
         finally { _renderingError = false; }
     }
-    private void OnLocaleChanged(object? sender, PropertyChangedEventArgs args) { if (args.PropertyName == "Item[]") RenderError(); }
+    private void OnLocaleChanged(object? sender, PropertyChangedEventArgs args) { if (args.PropertyName == "Item[]") { RenderError(); OnPropertyChanged(nameof(MoveStatus)); } }
     public IReadOnlyList<ConditionVariableSuggestion> ConditionSuggestions => Workspace.GetConditionVariableSuggestions();
     public IReadOnlyList<GalNet.Core.Variable.ProjectVariableDefinition> ValidationVariables => Workspace.AllProjectVariableDefinitions;
     public IAssetManager AssetManager { get; }
@@ -116,15 +116,26 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     public bool IsDisposed => _disposed;
     public void PublishSelection() { if (!_disposed) _selection.Select(_selectionOwner, GroupId, SelectedEntry?.StableId); }
     public string CopySelection() => _authoring.Copy(GroupId, SelectedEntries.Select(entry => entry.StableId));
+    public EntryCutOffer? PrepareCutSelection() => _authoring.PrepareCut(GroupId, SelectedEntries.Select(entry => entry.StableId));
+    public void BeginCut(EntryCutOffer offer) { if (!_disposed) { _authoring.CancelPendingMove(); _authoring.BeginCut(offer); } }
+    public bool HasPendingMove => _authoring.HasPendingMove;
+    private bool _copiedMove;
+    public string MoveStatus => HasPendingMove ? _localization?["Entry.MovePending"] ?? "" : _copiedMove ? _localization?["Entry.MoveFallback"] ?? "" : "";
+    [RelayCommand] public void CancelPendingMove() { _authoring.CancelPendingMove(); _copiedMove = false; OnPropertyChanged(nameof(MoveStatus)); }
+    private void PendingMoveChanged()
+    {
+        foreach (var entry in _entries) entry.IsPendingMove = _authoring.IsPendingMove(GroupId, entry.StableId);
+        OnPropertyChanged(nameof(HasPendingMove)); OnPropertyChanged(nameof(MoveStatus));
+    }
     public void DeleteEntries(IEnumerable<string> ids) { if (!_disposed) _authoring.Delete(GroupId, ids); }
     public void DeleteSelection() => DeleteEntries(SelectedEntries.Select(entry => entry.StableId).ToArray());
     public Func<SceneEditImpact, Task<bool>>? ReviewImpactAsync { get; set; }
     private async Task CommitReviewedAsync(PreparedEntryEdit? edit)
     {
-        if (edit is null || _disposed) return;
-        if (edit.Impact.RequiresReview && !await (ReviewImpactAsync?.Invoke(edit.Impact) ?? SceneEntryImpactPrompt.ConfirmAsync(edit.Impact, _localization, Describe))) return;
-        if (!_disposed) edit.Commit();
+        if (edit is not null && await ReviewAsync(edit)) edit.Commit();
     }
+    private async Task<bool> ReviewAsync(PreparedEntryEdit edit) => !_disposed && (!edit.Impact.RequiresReview ||
+        await (ReviewImpactAsync?.Invoke(edit.Impact) ?? SceneEntryImpactPrompt.ConfirmAsync(edit.Impact, _localization, Describe))) && !_disposed;
     private string Describe(SceneAuthorAddress address)
     {
         var node = Workspace.Nodes.FirstOrDefault(item => item.Id == address.GroupId);
@@ -133,19 +144,15 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     }
     public Task DeleteEntriesAsync(IEnumerable<string> ids) => _disposed ? Task.CompletedTask : CommitReviewedAsync(_authoring.PrepareDelete(GroupId, ids));
     public Task DeleteSelectionAsync() => DeleteEntriesAsync(SelectedEntries.Select(entry => entry.StableId).ToArray());
-    public void DeleteCopiedEntries(string[] ids, string text)
+    public async Task PasteAsync(string text, string? anchor)
     {
         if (_disposed) return;
-        if (_authoring.Copy(GroupId, ids) != text) throw new EditorOperationException("entry.cutChanged", "The source entries changed while writing the clipboard. They were not removed.");
-        DeleteEntries(ids);
-    }
-    public async Task DeleteCopiedEntriesAsync(string[] ids, string text)
-    {
+        var pasted = await _authoring.PasteAsync(GroupId, text, anchor, ReviewAsync);
         if (_disposed) return;
-        if (_authoring.Copy(GroupId, ids) != text) throw new EditorOperationException("entry.cutChanged", "The source entries changed while writing the clipboard. They were not removed.");
-        await DeleteEntriesAsync(ids);
+        _copiedMove = _authoring.LastPasteCopiedMove;
+        if (pasted.Count > 0) SetSelection(pasted);
+        OnPropertyChanged(nameof(MoveStatus));
     }
-    public async Task PasteAsync(string text, string? anchor) { if (!_disposed) { var pasted = await _authoring.PasteAsync(GroupId, text, anchor); if (!_disposed) SetSelection(pasted); } }
     public async Task DuplicateSelectionAsync()
     {
         var text = CopySelection();
@@ -161,6 +168,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         GroupId = groupId;
         _entries = GroupNode.Entries;
         _authoring = authoring;
+        _authoring.PendingMoveChanged += PendingMoveChanged;
         _projects = projects;
         _effects = effects;
         _catalog = catalog;
@@ -292,6 +300,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     private void Attach(EntryEditorItemViewModel entry)
     {
         if (!_attached.Add(entry)) return;
+        entry.IsPendingMove = _authoring.IsPendingMove(GroupId, entry.StableId);
         entry.IsParametersExpanded = _expanded.GetValueOrDefault(entry.StableId, true);
         entry.PropertyChanged += OnEntryPropertyChanged;
         Configure(entry);
@@ -314,6 +323,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     {
         if (_disposed) return;
         _disposed = true;
+        _authoring.PendingMoveChanged -= PendingMoveChanged;
         _selection.Clear(_selectionOwner);
         if (_localization is not null) _localization.PropertyChanged -= OnLocaleChanged;
         Workspace.VariableDefinitionsChanged -= OnVariableDefinitionsChanged;

@@ -357,6 +357,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     private string? _groupId;
     private SceneTargetCatalog? _scenes;
     private int _schemaGeneration;
+    internal Guid DraftIncarnation { get; private set; } = Guid.NewGuid();
     internal void BindAuthoring(string groupId, EntryFieldAuthoringService authoring, SceneTargetCatalog? scenes) { _groupId = groupId; _authoring = authoring; _scenes = scenes; }
     internal IReadOnlyList<FieldEditorOption>? SceneOptions(string field) => _scenes?.FieldOptions(_groupId!, StableId, Type, field);
     internal bool IsSceneOutput(string field) => SceneFieldSemantics.IsOutput(Type, field);
@@ -368,7 +369,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         var values = Source.GetParameterText(catalog);
         var parametersChanged = !_parameters.OrderBy(pair => pair.Key).SequenceEqual(values.OrderBy(pair => pair.Key));
         _parameters = values;
-        if (_type != Source.Type) InvalidateParameterFields();
+        if (_type != Source.Type) InvalidateAuthorBindings();
         SetProperty(ref _type, Source.Type, nameof(Type));
         SetProperty(ref _condition, Source.Condition, nameof(Condition));
         if (parametersChanged) OnPropertyChanged(nameof(Parameters));
@@ -438,6 +439,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         .Select(pair => pair.Value.ValueKind == JsonValueKind.String ? pair.Value.GetString() : pair.Value.GetRawText()).Where(value => !string.IsNullOrEmpty(value))).Replace('\n', ' ');
     public bool HasCondition => !string.IsNullOrWhiteSpace(Condition);
     [ObservableProperty] private int _problemCount;
+    [ObservableProperty] private bool _isPendingMove;
     public bool HasProblems => ProblemCount > 0;
     partial void OnProblemCountChanged(int value) => OnPropertyChanged(nameof(HasProblems));
     public bool HasParameterForm => ParameterForm is not null;
@@ -496,6 +498,11 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         UpdateEffectHints();
     }
 
+    internal void InvalidateAuthorBindings()
+    {
+        DraftIncarnation = Guid.NewGuid();
+        InvalidateParameterFields();
+    }
     internal void InvalidateParameterFields()
     {
         _detailForm?.Dispose(); _detailForm = null;

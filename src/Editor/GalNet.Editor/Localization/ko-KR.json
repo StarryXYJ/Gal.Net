@@ -1067,5 +1067,16 @@
   "Scene.Diagnostic.scene.coverage.unknown": "이 Entry에 대한 기본 장면 관계 선언이 없습니다.",
   "Scene.Diagnostic.scene.coverage.structure": "장면 관계 구조를 완전히 분석할 수 없습니다.",
   "Scene.Diagnostic.scene.analysis.limit": "장면 분석이 안전 한도에 도달했습니다.",
-  "Error.entry.impactChanged": "검토 중 편집 내용이 바뀌었습니다. 작업의 영향을 다시 확인하세요."
+  "Error.entry.impactChanged": "검토 중 편집 내용이 바뀌었습니다. 작업의 영향을 다시 확인하세요.",
+  "Entry.MovePending": "항목을 이동 대기로 표시했습니다. 붙여넣으면 이동합니다.",
+  "Entry.MoveFallback": "이동 정보가 만료되었거나 다른 프로젝트의 정보입니다. 새 식별자로 복사했습니다.",
+  "Entry.MoveCancel": "이동 취소",
+  "Scene.Impact.Inputs": "제출하지 않은 입력 {0}개를 Problems에 보관합니다. 저장을 막지 않습니다.",
+  "Uiux.Draft.Archived": "보관된 입력: 대상이 없거나 기준값이 다릅니다. 버리기 전에 텍스트를 복사할 수 있습니다.",
+  "Uiux.Draft.Recoverable": "새 필드 바인딩으로 입력을 복원할 수 있습니다. 보관된 입력은 저장을 막지 않습니다.",
+  "Uiux.Draft.RestoreRequested": "복원을 요청했습니다. 해당 필드를 열거나 펼쳐 주세요.",
+  "Uiux.Draft.Restore": "입력 복원",
+  "Error.entry.archiveFull": "입력 보관 영역이 가득 찼습니다. Problems에서 복사하거나 버린 후 항목을 삭제하세요.",
+  "Error.entry.archiveUnavailable": "입력 보관 영역을 사용할 수 없습니다. .galnet/editor/input-archive.json을 보존하고 복구하세요.",
+  "Error.entry.archiveChanged": "보관된 입력이 현재 대상과 일치하지 않습니다. 버리기 전에 텍스트를 복사하세요."
 }

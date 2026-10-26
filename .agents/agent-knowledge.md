@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [作者代次与视图生命周期](lessons/L-20261026-02-author-incarnation-view-lifetime.md)：作者删除/换类型使旧绑定失效；页面关闭只释放表单，不推进作者 incarnation，项目草稿须跨页面继续共享并可保存。
+
 - [基线对照恢复与增量时间戳](lessons/L-20261026-01-baseline-restore-timestamps.md)：恢复源码备份可能保留早于基线 DLL 的时间戳，候选验证需独立输出、Rebuild 或显式失效增量构建，并核对源字节。
 
 - [空本地化引用边界一致性](lessons/L-20261025-10-empty-localization-references.md)：作者索引、启动加载和运行解析都将空引用按空文本处理；空对象/数组不触发 opaque，非空未知结构仍保留诊断。

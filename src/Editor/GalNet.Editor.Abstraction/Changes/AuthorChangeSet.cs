@@ -17,4 +17,8 @@ public enum GroupChangeKind
 public sealed record AuthorGroupChange(string GroupId, int FirstIndex, GroupChangeKind Kind, IReadOnlyList<string> EntryIds);
 
 /// <summary>One successful content transaction. Unknown scope conservatively covers legacy edits.</summary>
-public sealed record AuthorChangeSet(long Revision, AuthorChangeCause Cause, IReadOnlyList<AuthorGroupChange> Groups, bool UnknownScope);
+public sealed record AuthorEntryMove(string SourceGroupId, string SourceEntryId, string TargetGroupId, string TargetEntryId);
+public sealed record AuthorChangeSet(long Revision, AuthorChangeCause Cause, IReadOnlyList<AuthorGroupChange> Groups, bool UnknownScope)
+{
+    public IReadOnlyList<AuthorEntryMove> Moves { get; init; } = [];
+}
