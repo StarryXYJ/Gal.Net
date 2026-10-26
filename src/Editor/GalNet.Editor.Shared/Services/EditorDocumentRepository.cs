@@ -116,7 +116,7 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog, EditorDocume
         {
             var definition = catalog.Get(entry.Type);
             foreach (var key in entry.Parameters.Keys)
-                if (!definition.Parameters.ContainsKey(key)) throw new InvalidDataException($"Unknown parameter '{key}' for '{entry.Type}'.");
+                if (!definition.DynamicParameters.ContainsKey(key)) throw new InvalidDataException($"Unknown parameter '{key}' for '{entry.Type}'.");
         }
         return new GroupEntryDocument
         {

@@ -45,7 +45,7 @@ public sealed class LocalizationReferenceIndex
                 if (!Spend(groupId, "", 0, entry.StableId)) break;
                 if (string.IsNullOrWhiteSpace(entry.StableId) || !identities.Add(entry.StableId))
                     Issue("entry.identity", groupId, "", "Entry identity is missing or duplicated.", entryId: entry.StableId);
-                if (!catalog.TryGet(entry.Type, out var definition) || definition.DynamicParameters is null)
+                if (!catalog.TryGet(entry.Type, out var definition))
                 {
                     if (entry.Parameters.Values.Any(value => !IsEmpty(value)))
                         Issue("schema.unavailable", groupId, "", $"No field schema for '{entry.Type}'.", entryId: entry.StableId);

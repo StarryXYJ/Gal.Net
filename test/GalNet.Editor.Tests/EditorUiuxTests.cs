@@ -10,10 +10,6 @@ public sealed class EditorUiuxTests
         Assert.That(CommonDerivedOptions.Schema.Single(field => field.Id == "title").Editor!.IsCommon, Is.True);
         Assert.That(CommonDerivedOptions.Schema.Single(field => field.Id == "advanced").Editor!.IsCommon, Is.False);
         Assert.That(new EditorHints(IsCommon: true).IsCommon, Is.True);
-        var legacyConstructor = typeof(EditorHints).GetConstructor([typeof(string), typeof(double?), typeof(string), typeof(string)]);
-        Assert.That(legacyConstructor, Is.Not.Null, "Previously compiled contract metadata keeps its constructor ABI.");
-        var legacy = (EditorHints)legacyConstructor!.Invoke(["text", null, null, null]);
-        Assert.That(legacy.IsCommon, Is.False);
     }
 }
 

@@ -1,3 +1,4 @@
+using GalNet.Core.Parameters;
 using System.Text.Json;
 
 namespace GalNet.Contracts.Builtins.Scene;
@@ -38,14 +39,21 @@ public interface IEffectCatalog
 public sealed class EffectCatalog : IEffectCatalog
 {
     private readonly IReadOnlyDictionary<string, EffectDefinition> _byId;
-    private readonly Dictionary<string, IReadOnlyDictionary<string, EffectParameterDefinition>> _parametersByEffect;
+    private readonly Dictionary<string, IReadOnlyDictionary<string, FieldDescriptor>> _parametersByEffect;
 
     public EffectCatalog(IEnumerable<EffectDefinition> definitions)
     {
-        _byId = definitions.ToDictionary(definition => definition.Id, StringComparer.OrdinalIgnoreCase);
+        _byId = definitions.Select(definition => definition with
+        {
+            Parameters = Array.AsReadOnly(definition.Parameters.Select(parameter => parameter with { Options = parameter.Options is { } choices ? Array.AsReadOnly(choices.ToArray()) : null }).ToArray()),
+            AnimatableProperties = Array.AsReadOnly(definition.AnimatableProperties.ToArray())
+        }).ToDictionary(definition => definition.Id, StringComparer.OrdinalIgnoreCase);
         _parametersByEffect = _byId.Values.ToDictionary(
             definition => definition.Id,
-            definition => (IReadOnlyDictionary<string, EffectParameterDefinition>)definition.Parameters.ToDictionary(parameter => parameter.Name, StringComparer.Ordinal),
+            definition => (IReadOnlyDictionary<string, FieldDescriptor>)definition.Parameters.ToDictionary(parameter => parameter.Name,
+                parameter => ParameterValidation.Field(parameter.Name, parameter.Kind switch
+                { EffectParameterKind.Integer => typeof(int), EffectParameterKind.Float => typeof(float), EffectParameterKind.Boolean => typeof(bool), _ => typeof(string) },
+                    parameter.Required, parameter.Minimum, parameter.Maximum, parameter.Options), StringComparer.Ordinal),
             StringComparer.OrdinalIgnoreCase);
         Definitions = _byId.Values.OrderBy(definition => definition.Id, StringComparer.OrdinalIgnoreCase).ToArray();
     }
@@ -67,56 +75,8 @@ public sealed class EffectCatalog : IEffectCatalog
         catch (JsonException error) { diagnostics.Add($"Effect parameters are not valid JSON: {error.Message}"); return diagnostics; }
         using (document)
         {
-            if (document.RootElement.ValueKind != JsonValueKind.Object)
-            {
-                diagnostics.Add("Effect parameters must be a JSON object.");
-                return diagnostics;
-            }
-
-            var known = _parametersByEffect[definition.Id];
-            foreach (var value in document.RootElement.EnumerateObject())
-            {
-                if (!known.TryGetValue(value.Name, out var parameter))
-                {
-                    diagnostics.Add($"Effect '{id}' does not declare parameter '{value.Name}'.");
-                    continue;
-                }
-                ValidateValue(parameter, value.Value, diagnostics);
-            }
-            foreach (var parameter in definition.Parameters.Where(parameter => parameter.Required && !document.RootElement.TryGetProperty(parameter.Name, out _)))
-                diagnostics.Add($"Effect '{id}' requires parameter '{parameter.Name}'.");
+            diagnostics.AddRange(ParameterValidation.Validate("Effect", id, document.RootElement, _parametersByEffect[definition.Id]));
         }
         return diagnostics;
-    }
-
-    private static void ValidateValue(EffectParameterDefinition parameter, JsonElement value, List<string> diagnostics)
-    {
-        var expected = parameter.Kind switch
-        {
-            EffectParameterKind.Text or EffectParameterKind.ImageAsset or EffectParameterKind.Select => JsonValueKind.String,
-            EffectParameterKind.Integer or EffectParameterKind.Float => JsonValueKind.Number,
-            EffectParameterKind.Boolean => JsonValueKind.True,
-            _ => JsonValueKind.Undefined
-        };
-        if (parameter.Kind == EffectParameterKind.Boolean)
-        {
-            if (value.ValueKind is JsonValueKind.True or JsonValueKind.False) return;
-            diagnostics.Add($"Effect parameter '{parameter.Name}' must be Boolean.");
-            return;
-        }
-        if (value.ValueKind != expected)
-        {
-            diagnostics.Add($"Effect parameter '{parameter.Name}' must be {parameter.Kind}.");
-            return;
-        }
-        if (parameter.Kind == EffectParameterKind.Integer && !value.TryGetInt32(out _))
-            diagnostics.Add($"Effect parameter '{parameter.Name}' must be an Integer.");
-        if ((parameter.Kind is EffectParameterKind.Integer or EffectParameterKind.Float) && value.TryGetDouble(out var number))
-        {
-            if (!double.IsFinite(number) || parameter.Minimum is { } minimum && number < minimum || parameter.Maximum is { } maximum && number > maximum)
-                diagnostics.Add($"Effect parameter '{parameter.Name}' is outside its supported range.");
-        }
-        if (parameter.Kind == EffectParameterKind.Select && parameter.Options is { Count: > 0 } options && !options.Contains(value.GetString() ?? "", StringComparer.Ordinal))
-            diagnostics.Add($"Effect parameter '{parameter.Name}' has an unsupported value.");
     }
 }

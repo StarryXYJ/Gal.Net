@@ -66,7 +66,7 @@ public sealed class CompositeGameView : IPrimitiveDispatcher
             throw new InvalidOperationException($"Instruction '{entry.Type}' has no registered implementation.");
         var definition = _catalog.Get(entry.Type);
         var normalized = new PrimitiveEntry(entry.Type,
-            PrimitiveArgumentHelper.Normalize(definition.DynamicParameters!, entry.Arguments), entry.BatchId)
+            PrimitiveArgumentHelper.Normalize(definition.DynamicParameters, entry.Arguments), entry.BatchId)
         {
             Id = entry.Id,
             StableId = entry.StableId,

@@ -104,7 +104,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         RefreshSource();
         StatusKey = _entry is null ? "Timeline.SelectEntry" : "Timeline.Unsupported";
         if (_entry?.Type != BuiltinEntryIds.PlayTimeline || !_catalog.TryGet(_entry.Type, out var schema)
-            || schema.DynamicParameters?.TryGetValue("timeline", out var field) != true || field.Value.ValueType != typeof(JsonElement))
+            || schema.DynamicParameters.TryGetValue("timeline", out var field) != true || field.Value.ValueType != typeof(JsonElement))
         { NotifyState(); return; }
         if (!_entry.Parameters.TryGetValue("timeline", out var json) || json.ValueKind == JsonValueKind.Null)
         { CanCreate = true; StatusKey = "Timeline.Missing"; NotifyState(); return; }
@@ -190,7 +190,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         parameters["timeline"] = value.Clone();
         try
         {
-            _catalog.Get(_entry.Type).DynamicParameters!.ValidatePartialArguments(JsonSerializer.SerializeToElement(parameters));
+            _catalog.Get(_entry.Type).DynamicParameters.ValidatePartialArguments(JsonSerializer.SerializeToElement(parameters));
             _authoring.SetParameters(_target!.GroupId, _entry, _entry.Type, parameters); return true;
         }
         catch (Exception error) { Message = EditorText.Error(error).Render(_localization); return false; }

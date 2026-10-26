@@ -147,7 +147,6 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
             { Error(diagnostics, "entry.typeUnknown", $"Entry '{type}' is not declared by the project contract.", file, pointer + "/type", ProjectRawReader.Text(entry, "id")); continue; }
             try
             {
-                if (definition.DynamicParameters is null) throw new InvalidDataException($"Entry '{type}' has no parameter contract.");
                 _ = PrimitiveArgumentHelper.Normalize(definition.DynamicParameters, parameters);
             }
             catch (Exception exception)

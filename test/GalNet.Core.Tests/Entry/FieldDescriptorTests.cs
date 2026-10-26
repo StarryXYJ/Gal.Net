@@ -34,21 +34,6 @@ public class FieldDescriptorTests
     }
 
     [Test]
-    public void BuiltinEditorHintsAreSeparateFromLegalOptionsAndPreserveLegacyEditorTypes()
-    {
-        var types = Enum.GetValues<EntryParameterType>();
-        var parameters = EntrySchema.DynamicParameters(types.ToDictionary(type => type.ToString(), type => type),
-            options: EntrySchema.Options(("Select", ["first", "second"])));
-        foreach (var type in types)
-        {
-            Assert.That(EntrySchema.GetEditorType(parameters[type.ToString()]), Is.EqualTo(type));
-            Assert.That(parameters[type.ToString()].TryGetConstraint("editorType", out _), Is.False);
-        }
-        Assert.That(parameters["Select"].Editor!.EditorId, Is.EqualTo(ValueEditorIds.Choice));
-        Assert.Throws<ArgumentException>(() => parameters["Select"].Validate(JsonSerializer.SerializeToElement("other")));
-    }
-
-    [Test]
     public void EditorTextKeepsJsonStringQuotesForStringEncodedEnumsAndUsesCustomOptions()
     {
         var options = new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } };

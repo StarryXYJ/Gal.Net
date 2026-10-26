@@ -182,3 +182,9 @@ R5 整体仍在进行中：Gallery、资源默认策略和 Runtime.Content 的�
 Gallery/ImageVariants 领域及默认资源工厂迁入 Contracts.Builtins；GameContent、加载选项、本地化聚合和 GalleryDataSource 归 GameHost。Core 仅保留通用资源协议、metadata 与目录，Gallery 通过可选扩展读写原始注解；未知 annotation 字段在资源复制重编号后仍保留。默认资源类型由 catalog.DefaultType 显式选择，provider/PAK 不再创建默认目录。六个没有额外字段的默认空 DTO 共用 AssetMeta，仅 sprite 保留 filter DTO；删除无生产消费者的 AssetRoot。R5b 产品 C# 净增 35 行，与 R5a 合计净增 4 行，没有新建公共程序集。
 
 全量及受影响重跑共 1779 项通过，3 项既有符号链接权限失败、3 项跳过；Core 114、Builtin 268、Runtime 115、Shared 430、Editor 320、Integration 126、Presentation 243，其余项目全部通过。补充目录自选默认类型、未声明默认时的类型解析，以及可选 Gallery 注解未知字段保留测试。初轮发现旧测试辅助函数仍传 null 目录，迁移为显式选择后 8 项恢复；provider 在构造入口报告缺失目录，不留后续空引用。完整构建、locked restore、格式/diff 通过；18 个锁文件只有项目引用变化，第三方依赖及哈希未变。证据为 artifacts/engine-core-audit/r5b-results、r5b-clean-build.log、r5b-final-*.log、r5b-locked-restore.log；最初失败日志保留。
+
+## R6：唯一参数源与共享基础校验
+
+EntryDefinition 只保留不可为空的 DynamicParameterTable；删除 Parameters/Defaults/Options 的注册期副本和旧字典构造路径。具体编辑器类型与投影归 Editor.Abstraction，UI 按需生成文本和选项。Effect/SEffect 在目录边界转换为已有 FieldDescriptor 并复用 ValueValidation；目标 stage/scope 等领域规则独立保留，输入集合隔离复制。删除 EditorHints 的旧 ABI 重载及其兼容断言，实际 Common 字段测试保留。产品 C# 净减 122 行。
+
+完整构建、格式/diff 检查通过。14 项目回归 1781 通过，3 项创建符号链接权限失败，3 项跳过，1 项 HeadlessUnitTestSession.DisposeAsync 空引用；该 GUI 用例单独复核通过，合计 1782 项功能验证通过。首次测试仍检查已删除的 ABI，移除该断言后构建通过。完整 GUI 319 通过/1 框架释放失败，竞态符合既有 lesson；R8 将复用 Presentation 已采用的框架缓存会话，失败原始日志保留，不把一次重跑记为框架修复。证据为 artifacts/engine-core-audit/r6-final-build.log、r6-results、r6-editor-recheck.log、r6-editor-targeted.log。参数规范已更新；无依赖或锁文件变化。

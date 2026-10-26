@@ -99,7 +99,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var scope = project.Services; var workspace = scope.GetRequiredService<EditorWorkspaceViewModel>(); var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
         var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.Wait).Single(); await workspace.SaveAsync();
         entry.Condition = "save.unsaved";
-        var inputs = scope.GetRequiredService<EntryEditSession>(); var field = scope.GetRequiredService<IEntryCatalog>().Get(entry.Type).DynamicParameters!.Fields.Single();
+        var inputs = scope.GetRequiredService<EntryEditSession>(); var field = scope.GetRequiredService<IEntryCatalog>().Get(entry.Type).DynamicParameters.Fields.Single();
         var state = inputs.Get(entry, field); state.Update("unfinished", true, new("invalid", "invalid"), false);
         var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear();
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously); var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -136,7 +136,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var project = await projects.CreateAsync(Path.Combine(_root, "StructureArchiveFailure"), "Failure", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
         var scope = project.Services; var workspace = scope.GetRequiredService<EditorWorkspaceViewModel>(); var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
         var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.Wait).Single(); await workspace.SaveAsync();
-        var inputs = scope.GetRequiredService<EntryEditSession>(); var field = scope.GetRequiredService<IEntryCatalog>().Get(entry.Type).DynamicParameters!.Fields.Single();
+        var inputs = scope.GetRequiredService<EntryEditSession>(); var field = scope.GetRequiredService<IEntryCatalog>().Get(entry.Type).DynamicParameters.Fields.Single();
         var state = inputs.Get(entry, field); state.Update("pending", true, null, false);
         var content = scope.GetRequiredService<IProjectContentSession>(); var before = JsonSerializer.Serialize(content.CaptureWorking()); var saved = JsonSerializer.Serialize(content.CaptureSaved());
         var blocked = Path.Combine(project.RootPath, ".galnet/editor/input-archive.json"); Directory.CreateDirectory(blocked);
@@ -152,7 +152,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     private static (WeakReference View, FieldDraftState State) DeletedProjection(IServiceProvider scope, GraphNode group, bool dirty)
     {
         var workspace = scope.GetRequiredService<EditorWorkspaceViewModel>(); var entry = workspace.InsertEntriesInto(group, group.Entries.Count, 1, BuiltinEntryIds.Wait).Single();
-        var field = scope.GetRequiredService<IEntryCatalog>().Get(entry.Type).DynamicParameters!.Fields.Single();
+        var field = scope.GetRequiredService<IEntryCatalog>().Get(entry.Type).DynamicParameters.Fields.Single();
         var state = scope.GetRequiredService<EntryEditSession>().Get(entry, field);
         if (dirty) state.Update("preserve input", true, null, false);
         var reference = new WeakReference(entry); scope.GetRequiredService<GroupEntryAuthoringService>().Delete(group.Id, [entry.StableId]);

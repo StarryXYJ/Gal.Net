@@ -100,7 +100,7 @@ public sealed partial class TimelineEditSession
     public bool AddEvent(string type)
     {
         if (_disposed || !CanEdit || _document is null || !TimelineEventCapabilities.Supports(type) || !_catalog.TryGet(type, out var schema)) return false;
-        var parameters = schema.DynamicParameters!.Values.Where(parameter => parameter.DefaultValue is not null).ToDictionary(parameter => parameter.Name, parameter => parameter.DefaultValue!.Value.Clone());
+        var parameters = schema.DynamicParameters.Values.Where(parameter => parameter.DefaultValue is not null).ToDictionary(parameter => parameter.Name, parameter => parameter.DefaultValue!.Value.Clone());
         parameters = SceneAuthoringIdentities.NewEntry(type, parameters);
         var index = _document.Events.Count;
         if (!Submit(_document.AddEvent(type, Frame, parameters))) return false;
@@ -137,7 +137,7 @@ public sealed partial class TimelineEditSession
     public TimelineEventEdit? BeginEventEdit(TimelineEventRow row)
     {
         EndEventEdit();
-        if (_disposed || !CanEdit || _document is null || !Events.Contains(row) || !TimelineEventCapabilities.Supports(row.Type) || !_catalog.TryGet(row.Type, out var schema) || schema.DynamicParameters is null) return null;
+        if (_disposed || !CanEdit || _document is null || !Events.Contains(row) || !TimelineEventCapabilities.Supports(row.Type) || !_catalog.TryGet(row.Type, out var schema)) return null;
         EventCanvas.Cancel(); Canvas.Cancel(); SelectEvent(row);
         try { EventEdit = new(this, _document, _generation, Frame, row.Index, row.Type, schema.FieldDataType, schema.DynamicParameters.Fields); }
         catch (Exception error) when (error is JsonException or InvalidDataException or InvalidOperationException or ArgumentException) { EditError(error); return null; }

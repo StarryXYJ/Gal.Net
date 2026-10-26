@@ -26,7 +26,7 @@ public sealed class PrimitiveCreateContext
     public PrimitiveEntry Entry { get; }
     public IGameContext Runtime { get; }
     public CancellationToken ScopeCancellation { get; }
-    public DynamicParameterTable Parameters => Definition.DynamicParameters!;
+    public DynamicParameterTable Parameters => Definition.DynamicParameters;
     public JsonElement Arguments => Entry.Arguments;
     public string? BatchId => Entry.BatchId;
 }

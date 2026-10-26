@@ -294,7 +294,7 @@ public sealed partial class ProjectFileOperation : IDisposable
                 foreach (var parameter in entry.Parameters)
                 {
                     var schema = _catalog.Definitions.FirstOrDefault(item => item.Type == entry.Type);
-                    var editor = schema?.DynamicParameters?.GetValueOrDefault(parameter.Key)?.Editor?.EditorId;
+                    var editor = schema?.DynamicParameters.GetValueOrDefault(parameter.Key)?.Editor?.EditorId;
                     foreach (var text in Strings(parameter.Value))
                         if (values.Any(value => text.Contains(value, StringComparison.OrdinalIgnoreCase))) references.Add(new("group/" + pair.Key + "/entry/" + entry.StableId, parameter.Key, values.Contains(text) && editor?.Contains("asset", StringComparison.OrdinalIgnoreCase) == true));
                 }

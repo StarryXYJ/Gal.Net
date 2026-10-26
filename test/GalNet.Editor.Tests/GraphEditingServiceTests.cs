@@ -88,7 +88,7 @@ public class GraphEditingServiceTests
         var asset = entry.ParameterFields.OfType<AssetEntryParameterEditorItemViewModel>().Single();
         var handle = entry.ParameterFields.OfType<SchemaEntryParameterEditorItemViewModel>().Single();
         Assert.That(asset.AssetFilter, Is.EqualTo(GalNet.Editor.Models.AssetPickerFilter.Image));
-        Assert.That(handle.Definition.Field, Is.SameAs(catalog.Get(entry.Type).DynamicParameters!["handleId"].Field));
+        Assert.That(handle.Definition.Field, Is.SameAs(catalog.Get(entry.Type).DynamicParameters["handleId"].Field));
         asset.StringValue = "background";
         Assert.That(await handle.CommitAsync(new(JsonSerializer.SerializeToElement("scene")), default), Is.Null);
         Assert.That(entry.Parameters, Is.EquivalentTo(new Dictionary<string, string> { ["handleId"] = "scene", ["assetId"] = "background" }));

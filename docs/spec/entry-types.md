@@ -10,7 +10,9 @@
 
 Core Entry 的参数权威是 `Arguments` JSON，不再保留字符串 Values。`AuthoringPrimitiveEntry` 与 `CompositeEntry` 是作者表示，均不继承编译后的 sealed `PrimitiveEntry`；运行与作者类型在类型边界区分，不使用 IsGeneric 标志。`IEntryCatalog.Create` 接收 JSON arguments、应用 JSON 默认并保留草稿未知字段；完整编译/运行校验仍拒绝未知参数。Editor/CLI 的字符串输入由 EditorEntryData 适配，显式 null 与缺省不混淆。
 
-`EntryParameterType` 是当前编辑器的 UI hint，由独立的 `EditorHints` 适配，不是执行协议。内置描述不再把 editorType 放入值 constraints。
+`EntryDefinition.DynamicParameters` 是唯一参数描述，不再保存平铺的 Parameters/Defaults/Options 字典。`EntryParameterType` 与按需投影的 `EntrySchema` 位于 `GalNet.Editor.Abstraction.Schemas`，仅服务编辑器；Core 通过开放的 `EditorHints` 提供展示提示，不依赖具体控件分类。内置描述不把 editorType 放入值 constraints。
+
+视觉 Effect 与音频 SEffect 的参数类型、必填、有限数值、范围和选项校验复用 `FieldDescriptor` / `ValueValidation`。目录复制调用方的参数、选项和能力集合，使查询元数据与校验规则保持一致；效果 stage、目标和 scope 的规则仍归各自领域，校验返回诊断，由调用方决定处理方式。
 
 `FieldDescriptor` 组合稳定 ID、值描述、required/默认值、标签 key 和可选编辑提示；`DynamicParameterDescriptor.Field` 是 Entry 的唯一字段元数据来源，`DynamicParameterTable.Fields` 按声明输入顺序冻结。`EditorHints.EditorId` 为开放字符串，内置值见 `ValueEditorIds`，宿主可以声明自己的 ID；Step/Format/UnitKey 仅描述展示，Step 不限制合法值。合法选项留在值约束，展示标签及动态选项留在宿主。CLI schema 查询单独输出 editor 提示，值 schema 不混入 UI 规则。共享 Avalonia SchemaForm/默认工厂及 Editor/设置最小宿主接入已实现，见 [表单契约](control.md#schema-字段表单)。
 

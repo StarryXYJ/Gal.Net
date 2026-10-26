@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.Text.Json;
 using GalNet.Core.Primitives;
 
@@ -53,71 +52,29 @@ public sealed class EntryCompileContext
     public required string SourceEntryId { get; init; }
     public required string Condition { get; init; }
 }
-/// <summary>Editor-facing input kind for a serialized entry parameter.</summary>
-public enum EntryParameterType
-{
-    Text,
-    MultilineText,
-    Integer,
-    Float,
-    Autocomplete,
-    ImageAsset,
-    AudioAsset,
-    VideoAsset,
-    EffectProgramAsset,
-    Select,
-    VariableName,
-    Expression,
-    Json
-}
-
 /// <summary>Schema used to create, validate, and edit one registered entry type.</summary>
-/// <remarks>Defaults are copied into each new entry; options constrain editor choices but are not persisted separately.</remarks>
+/// <remarks>Parameter defaults and constraints are owned by the immutable parameter table.</remarks>
 public sealed class EntryDefinition
 {
-    public EntryDefinition(
-        string type,
-        string category,
-        Func<Entry> factory,
-        IReadOnlyDictionary<string, EntryParameterType> parameters,
-        IReadOnlyDictionary<string, string> defaults,
-        IReadOnlyDictionary<string, IReadOnlyList<string>> options,
-        EntryKind kind,
-        DynamicParameterTable? dynamicParameters = null)
+    public EntryDefinition(string type, string category, Func<Entry> factory, EntryKind kind, DynamicParameterTable parameters)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(type);
         ArgumentException.ThrowIfNullOrWhiteSpace(category);
         ArgumentNullException.ThrowIfNull(factory);
         ArgumentNullException.ThrowIfNull(parameters);
-        ArgumentNullException.ThrowIfNull(defaults);
-        ArgumentNullException.ThrowIfNull(options);
-
         Type = type;
         Category = category;
         Factory = factory;
-        Parameters = Freeze(parameters);
-        Defaults = Freeze(defaults);
-        Options = new ReadOnlyDictionary<string, IReadOnlyList<string>>(options.ToDictionary(
-            pair => pair.Key,
-            pair => (IReadOnlyList<string>)Array.AsReadOnly(pair.Value.ToArray()),
-            StringComparer.Ordinal));
         Kind = kind;
-        DynamicParameters = dynamicParameters;
+        DynamicParameters = parameters;
     }
-
     public string Type { get; }
     public string Category { get; }
     public Func<Entry> Factory { get; }
-    public IReadOnlyDictionary<string, EntryParameterType> Parameters { get; }
-    public IReadOnlyDictionary<string, string> Defaults { get; }
-    public IReadOnlyDictionary<string, IReadOnlyList<string>> Options { get; }
     public EntryKind Kind { get; }
-    public DynamicParameterTable? DynamicParameters { get; }
+    public DynamicParameterTable DynamicParameters { get; }
     public bool IsReading { get; init; }
     public Type? FieldDataType { get; init; }
-
-    private static ReadOnlyDictionary<TKey, TValue> Freeze<TKey, TValue>(IReadOnlyDictionary<TKey, TValue> values)
-        where TKey : notnull => new ReadOnlyDictionary<TKey, TValue>(values.ToDictionary(pair => pair.Key, pair => pair.Value));
 }
 
 /// <summary>

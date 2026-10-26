@@ -136,8 +136,8 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
                 results.Add(new(diagnostic.Severity, diagnostic.Message, path, new(pair.Key, diagnostic.ObjectId ?? entry?.StableId, field, Revision: _revision)));
             }
             foreach (var entry in pair.Value)
-                if (_catalog.TryGet(entry.Type, out var schema) && schema.DynamicParameters is { } parameters)
-                    foreach (var field in parameters.Fields)
+                if (_catalog.TryGet(entry.Type, out var schema))
+                    foreach (var field in schema.DynamicParameters.Fields)
                     {
                         var issue = entry.Parameters.TryGetValue(field.Id, out var value) ? GalNet.Core.Parameters.ValueValidation.Validate(field.Value, value)
                             : field.IsRequired && field.DefaultValue is null ? new GalNet.Core.Parameters.ValueIssue("field.required", _text["Uiux.Draft.Invalid"]) : null;

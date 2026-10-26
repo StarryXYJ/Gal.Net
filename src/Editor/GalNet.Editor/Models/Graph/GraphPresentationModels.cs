@@ -1,3 +1,4 @@
+using GalNet.Editor.Abstraction.Schemas;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -455,7 +456,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<EntryParameterEditorItemViewModel> ParameterFields { get; } = [];
     public bool IsUnknownType => _authorCatalog is not null && !_authorCatalog.TryGet(Type, out _);
-    public bool HasUnknownParameters => _authorCatalog is not null && _authorCatalog.TryGet(Type, out var schema) && Source.Parameters.Keys.Any(key => !schema.Parameters.ContainsKey(key));
+    public bool HasUnknownParameters => _authorCatalog is not null && _authorCatalog.TryGet(Type, out var schema) && Source.Parameters.Keys.Any(key => !schema.DynamicParameters.ContainsKey(key));
     /// <summary>Builds the editor projection from the Core registry, the single schema source.</summary>
     public void ConfigureParameterFields(IEntryCatalog catalog, IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames, IEffectCatalog? effectCatalog = null)
     {
@@ -472,14 +473,14 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsUnknownType));
         OnPropertyChanged(nameof(HasUnknownParameters));
         if (!catalog.TryGet(Type, out var schema)) { UpdateEffectHints(); return; }
-        var parameters = schema.DynamicParameters ?? EntrySchema.DynamicParameters(schema.Parameters, schema.Defaults, schema.Options);
+        var parameters = schema.DynamicParameters;
         _detailForm = new EntryParameterFormBinding(this, parameters.Fields, schema.FieldDataType);
         OnPropertyChanged(nameof(DetailForm));
 
         if (schema.FieldDataType is not null)
         {
             _formParameters = parameters;
-            if (!schema.Parameters.Any(pair => UsesDedicatedEditor(parameters[pair.Key].Field, pair.Value)))
+            if (!parameters.Values.Any(parameter => UsesDedicatedEditor(parameter.Field, EntrySchema.GetEditorType(parameter))))
             {
                 ParameterForm = new EntryParameterFormBinding(this, parameters.Fields, schema.FieldDataType);
                 UpdateEffectHints();
@@ -487,12 +488,15 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
             }
         }
 
-        foreach (var (id, type) in schema.Parameters)
+        foreach (var parameter in parameters.Values)
         {
-            var defaultValue = schema.Defaults.GetValueOrDefault(id, "");
+            var id = parameter.Name;
+            var type = EntrySchema.GetEditorType(parameter);
+            var defaultValue = parameter.DefaultValue is { } fallback ? ValueCodec.ToEditorText(parameter.Value, fallback) : "";
             var options = (Type == BuiltinEntryIds.ApplyEffect && id == "id" && effectCatalog is not null
                     ? effectCatalog.Definitions.Select(definition => definition.Id).ToArray()
-                    : schema.Options.GetValueOrDefault(id, []))
+                    : parameter.TryGetConstraint("enum", out var choices) ? choices.EnumerateArray().Select(value => ValueCodec.ToEditorText(parameter.Value, value)).ToArray()
+                        : parameter.ValueType == typeof(bool) ? new[] { "true", "false" } : [])
                 .Select(value => new EntrySelectOption(value, $"Entry.Option.{(value.Length == 0 ? "None" : value)}"))
                 .ToArray();
             var source = parameters[id].Field;
@@ -548,7 +552,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     private void SetParameter(string id, string value)
     {
         var updated = Source.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal);
-        var field = _authorCatalog!.Get(Type).DynamicParameters![id].Field;
+        var field = _authorCatalog!.Get(Type).DynamicParameters[id].Field;
         if (value.Length == 0 && (!field.IsRequired || field.DefaultValue is not null) &&
             field.Editor?.EditorId is "entry.imageasset" or "entry.audioasset" or "entry.videoasset" or "entry.effectprogramasset") updated.Remove(id);
         else updated[id] = ValueCodec.ParseEditorText(field.Value, value);

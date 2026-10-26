@@ -63,7 +63,7 @@ public static class GalgroupCompiler
                 primitive.Condition = CombineConditions(sourceEntry.Condition, primitive.Condition);
                 var generatedId = $"{sourceEntry.Id}#{emittedIndex + 1}";
                 var schema = catalog.Get(primitive.Type);
-                primitive.SetArguments(PrimitiveArgumentHelper.Normalize(schema.DynamicParameters!, primitive.Arguments));
+                primitive.SetArguments(PrimitiveArgumentHelper.Normalize(schema.DynamicParameters, primitive.Arguments));
                 compiled.Entries.Add(SerializeEntry(generatedId, primitive));
                 emittedIds.Add(generatedId);
             }
@@ -84,7 +84,7 @@ public static class GalgroupCompiler
             var definition = catalog.Get(source.Type);
             if (definition.Kind == EntryKind.Primitive)
             {
-                var parameters = definition.DynamicParameters ?? throw new InvalidDataException($"Primitive '{source.Type}' has no dynamic parameter schema.");
+                var parameters = definition.DynamicParameters;
                 var rawArguments = JsonSerializer.SerializeToElement(source.Parameters);
                 var (arguments, batchId) = PrimitiveArgumentHelper.NormalizeCompiledArguments(parameters, rawArguments);
                 var primitive = new PrimitiveEntry(source.Type, arguments, batchId)

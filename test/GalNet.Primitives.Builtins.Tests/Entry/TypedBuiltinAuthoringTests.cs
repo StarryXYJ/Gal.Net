@@ -76,7 +76,7 @@ public sealed class TypedBuiltinAuthoringTests
         Assert.That(() => Compile(catalog, "layer.move", new { duration = -1 }), Throws.TypeOf<InvalidDataException>());
         Assert.That(() => Compile(catalog, "particle.burst", new { count = 0 }), Throws.TypeOf<InvalidDataException>());
         Assert.That(() => Compile(catalog, "video.play", new { asset = "movie", skipPoints = new[] { 2, 1 } }), Throws.TypeOf<InvalidDataException>());
-        var choices = catalog.Get("animation.animate").DynamicParameters!["property"];
+        var choices = catalog.Get("animation.animate").DynamicParameters["property"];
         Assert.That(choices.TryGetConstraint("enum", out var properties), Is.True);
         Assert.That(properties.EnumerateArray().Select(value => value.GetString()), Is.EqualTo(GalNet.Contracts.Builtins.Scene.Layer.AnimationProperties
             .Concat(GalNet.Contracts.Builtins.Scene.ParticleEmitterInstance.AnimationProperties).Select(property => property.Name).Append("time").Distinct(StringComparer.Ordinal)));
@@ -156,13 +156,13 @@ public sealed class TypedBuiltinAuthoringTests
     public void AudioControlsRequireExplicitNonNullTrackTargets(string type)
     {
         var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
-        var track = catalog.Get(type).DynamicParameters!["trackId"];
+        var track = catalog.Get(type).DynamicParameters["trackId"];
         Assert.That(track.IsRequired, Is.True);
         Assert.That(track.DefaultValue, Is.Null);
         Assert.That(() => Compile(catalog, type, new { }), Throws.TypeOf<InvalidDataException>().With.Message.Contains("trackId"));
         var supplied = new Dictionary<string, object?> { ["trackId"] = "custom" };
         if (type is BuiltinEntryIds.TextVoice or BuiltinEntryIds.AppendVoiceNvl) supplied["asset"] = "clip";
-        Assert.That(PrimitiveArgumentHelper.Normalize(catalog.Get(type).DynamicParameters!, JsonSerializer.SerializeToElement(supplied)).GetProperty("trackId").GetString(), Is.EqualTo("custom"));
+        Assert.That(PrimitiveArgumentHelper.Normalize(catalog.Get(type).DynamicParameters, JsonSerializer.SerializeToElement(supplied)).GetProperty("trackId").GetString(), Is.EqualTo("custom"));
         Assert.That(() => Compile(catalog, type, new { trackId = (string?)null }), Throws.TypeOf<InvalidDataException>().With.Message.Contains("trackId"));
         Assert.That(() => Compile(catalog, type, new { trackId = 1 }), Throws.TypeOf<InvalidDataException>().With.Message.Contains("trackId"));
         Assert.That(() => Compile(catalog, type, new { other = "bgm" }), Throws.TypeOf<InvalidDataException>().With.Message.Contains("other"));

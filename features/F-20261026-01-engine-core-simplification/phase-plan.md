@@ -1,6 +1,6 @@
 # 引擎核心精简与职责收敛
 
-状态：上一轮 P1–P5 verified，P6 保留环境待验证项；后续架构重构 R1–R3 verified，R4 in-progress，R5–R8 planned。
+状态：P1–P5、R1–R6 verified；R7/R8 待完成，P6 环境项在最终验收复核。
 
 本文件是整个重构的实施与进度入口。P0–P6 保留已提交的历史；R1–R8 整理后续工作，设计依据见 [design.md](design.md)。设计整理完成不代表实现完成。
 
@@ -93,7 +93,7 @@ primitive/呈现仅借用 IGameContext，Engine 管理 IGameRuntime 与 IPrimiti
 | R3 | 自定义音频分组与轨道控制 | R2 | [x] verified |
 | R4 | 自定义配置贯穿作者与运行链路 | R2、R3 | [x] verified |
 | R5 | 剥离可选领域与场景依赖 | R1–R4 | [x] verified |
-| R6 | 统一参数描述与基础校验 | R5 | [ ] planned |
+| R6 | 统一参数描述与基础校验 | R5 | [x] verified |
 | R7 | 收敛执行与异步生命周期重复 | R5、R6 | [ ] planned |
 | R8 | 最小项目、完整回归与文档收尾 | R1–R7 | [ ] planned |
 
@@ -128,12 +128,9 @@ Engine 只接收/更新不可变 PlaybackOptions，音频只接收隔离轨道�
 
 场景/音频/Gallery/差分图片契约归可选 Builtins，运行侧音频/场景管理归内置执行，内容聚合与 Gallery 玩家包装归宿主；Core/Runtime 无上述领域依赖，最小自有执行与恢复通过。资源目录显式传递，默认类型由组合根选择；删除六个空 metadata DTO 和未使用的 AssetRoot。R5a `469a4ba`、R5b 合计产品 C# 净增 4 行；R5b 全量相关回归 1779 通过，3 项权限失败/3 项跳过，构建/locked restore/格式通过。证据见 [summary](summary.md#r5bgallery资源默认策略与宿主内容归位)。原生关闭问题继续归 R7/R8。
 
-### R6 — 统一参数描述与基础校验
+### R6 — verified
 
-- **目标/模块**：EntryDefinition、EntryModule、Parameters、视觉/音频效果 schema、SchemaGenerator、Editor 适配。
-- **任务**：以 DynamicParameterTable 为 Entry 唯一参数来源，移除独立保存的 Parameters/Defaults/Options；文本和表单投影在外层按需生成，消除无意义的 nullable/fallback。Effect/SEffect 的类型、必填、范围和 enum 校验复用 FieldDescriptor/ValueValidation。目标范围、效果 stage、支持能力等业务检查留在领域模块；Shader 元数据解析器继续负责其语法。
-- **验证/退出**：DTO→schema→作者输入→编译→执行及表单/CLI 默认值、类型化 enum、必填/空值行为一致；删除旧表示后 Core/Generator/Editor/内置模块相关测试通过。更新参数规范。
-- **风险**：不新增另一套通用 schema；不同领域错误策略和草稿未知字段保留规则不能被统一校验意外覆盖。
+Entry 仅保存 DynamicParameterTable，编辑器按需投影；效果基础约束共用 ValueValidation，删除旧字典/回退/ABI 兼容路径。产品 C# 净减 122 行，构建/格式通过，完整回归 1781 通过、3 项权限失败及 1 项已知 Headless 释放竞态；该 GUI 用例单独复核通过（合计 1782）。测试框架会话稳定性与原生关闭仍归 R8。证据见 [summary](summary.md#r6唯一参数源与共享基础校验)。
 
 ### R7 — 收敛执行与异步生命周期重复
 

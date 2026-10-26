@@ -294,9 +294,9 @@ public sealed class CustomActionTests
         };
         var result = GalgroupCompiler.Compile(source, catalog).Document.Entries.Single();
         Assert.That(result.Arguments.GetProperty("argument").GetString(), Is.EqualTo(argument));
-        Assert.That(catalog.Get(BuiltinEntryIds.InvokeCustom).DynamicParameters!.Fields.Select(field => field.Id),
+        Assert.That(catalog.Get(BuiltinEntryIds.InvokeCustom).DynamicParameters.Fields.Select(field => field.Id),
             Is.EqualTo(ParameterNames));
-        var fields = catalog.Get(BuiltinEntryIds.InvokeCustom).DynamicParameters!.Fields;
+        var fields = catalog.Get(BuiltinEntryIds.InvokeCustom).DynamicParameters.Fields;
         Assert.That(fields.All(field => field.IsRequired && !field.Value.AllowNull && field.DefaultValue is null), Is.True);
     }
 

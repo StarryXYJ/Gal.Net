@@ -56,7 +56,7 @@ public sealed class TargetProfileEntryCatalog : IEntryCatalog
         var entry = definition.Factory();
         entry.Id = id;
         entry.Condition = condition;
-        var values = definition.DynamicParameters!.Values.Where(parameter => parameter.DefaultValue.HasValue)
+        var values = definition.DynamicParameters.Values.Where(parameter => parameter.DefaultValue.HasValue)
             .ToDictionary(parameter => parameter.Name, parameter => parameter.DefaultValue!.Value.Clone(), StringComparer.Ordinal);
         if (arguments is { } provided)
         {

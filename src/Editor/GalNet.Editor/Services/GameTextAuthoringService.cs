@@ -72,7 +72,7 @@ public sealed class GameTextAuthoringService(LocalizationDocumentStore store, Pr
         }
         Current(); var change = await PrepareEntryAsync(group, entry, parameters, [], Current);
         if (change is null) return false;
-        Current(); catalog.Get(type).DynamicParameters?.ValidatePartialArguments(JsonSerializer.SerializeToElement(change.Parameters.Where(pair => catalog.Get(type).Parameters.ContainsKey(pair.Key) &&
+        Current(); catalog.Get(type).DynamicParameters.ValidatePartialArguments(JsonSerializer.SerializeToElement(change.Parameters.Where(pair => catalog.Get(type).DynamicParameters.ContainsKey(pair.Key) &&
             (!before.TryGetValue(pair.Key, out var previous) || !JsonElement.DeepEquals(previous, pair.Value))).ToDictionary(pair => pair.Key, pair => pair.Value)));
         if (change.Files.Count == 0 && LocalizationEditOperation.Same(before, change.Parameters)) return true;
         await authoring.ApplyAsync(store.PrepareWithEntries(change.Files, [new(group, entry.StableId, type, before, change.Parameters)]), entry.StableId, "History.GameText");

@@ -62,21 +62,21 @@ public class EntryModelTests
     [Test]
     public void Concrete_Action_Types_Should_Not_Declare_Action_Parameter() =>
         Assert.That(Catalog.Definitions.Where(x => x.Type != BuiltinEntryIds.InvokeCustom)
-            .All(x => !x.Parameters.ContainsKey("action")), Is.True);
+            .All(x => !x.DynamicParameters.ContainsKey("action")), Is.True);
 
     [Test]
     public void TextEntry_Should_Not_Expose_Widget_Parameter()
     {
         var definition = Catalog.Get(BuiltinEntryIds.Text);
-        Assert.That(definition.Parameters.Keys, Is.EquivalentTo(TextParameters));
+        Assert.That(definition.DynamicParameters.Keys, Is.EquivalentTo(TextParameters));
         Assert.That(Catalog.Create(BuiltinEntryIds.Text).Arguments.TryGetProperty("widget", out _), Is.False);
     }
 
     [Test]
     public void Dialogue_Visibility_Entries_Should_Have_No_Parameters()
     {
-        Assert.That(Catalog.Get(BuiltinEntryIds.ShowDialogue).Parameters, Is.Empty);
-        Assert.That(Catalog.Get(BuiltinEntryIds.HideDialogue).Parameters, Is.Empty);
+        Assert.That(Catalog.Get(BuiltinEntryIds.ShowDialogue).DynamicParameters, Is.Empty);
+        Assert.That(Catalog.Get(BuiltinEntryIds.HideDialogue).DynamicParameters, Is.Empty);
     }
 
     [Test]
@@ -84,10 +84,10 @@ public class EntryModelTests
     {
         Assert.Multiple(() =>
         {
-            Assert.That(Catalog.Get(BuiltinEntryIds.ShowNvl).Parameters, Is.Empty);
-            Assert.That(Catalog.Get(BuiltinEntryIds.HideNvl).Parameters, Is.Empty);
-            Assert.That(Catalog.Get(BuiltinEntryIds.ClearNvl).Parameters, Is.Empty);
-            Assert.That(Catalog.Get(BuiltinEntryIds.AppendNvl).Parameters.Keys, Is.EquivalentTo(["content"]));
+            Assert.That(Catalog.Get(BuiltinEntryIds.ShowNvl).DynamicParameters, Is.Empty);
+            Assert.That(Catalog.Get(BuiltinEntryIds.HideNvl).DynamicParameters, Is.Empty);
+            Assert.That(Catalog.Get(BuiltinEntryIds.ClearNvl).DynamicParameters, Is.Empty);
+            Assert.That(Catalog.Get(BuiltinEntryIds.AppendNvl).DynamicParameters.Keys, Is.EquivalentTo(["content"]));
         });
     }
 
@@ -95,9 +95,9 @@ public class EntryModelTests
     public void SetVariable_Should_Only_Expose_Target_And_Expression()
     {
         var definition = Catalog.Get(BuiltinEntryIds.SetVariable);
-        Assert.That(definition.Parameters.Keys, Is.EquivalentTo(VariableParameters));
-        Assert.That(definition.Parameters["target"], Is.EqualTo(EntryParameterType.VariableName));
-        Assert.That(definition.Parameters["expression"], Is.EqualTo(EntryParameterType.Expression));
+        Assert.That(definition.DynamicParameters.Keys, Is.EquivalentTo(VariableParameters));
+        Assert.That(definition.DynamicParameters["target"].Editor!.EditorId, Is.EqualTo("entry.variablename"));
+        Assert.That(definition.DynamicParameters["expression"].Editor!.EditorId, Is.EqualTo("entry.expression"));
     }
 
     [Test]
@@ -111,13 +111,13 @@ public class EntryModelTests
         {
             var definition = Catalog.Get(type);
             Assert.That(definition.Kind, Is.EqualTo(EntryKind.Composite));
-            Assert.That(definition.Parameters.Keys, Does.Contain("fromLayerHandleId"));
-            Assert.That(definition.Parameters.Keys, Does.Contain("toLayerHandleId"));
-            Assert.That(definition.Parameters.Keys, Does.Contain("fadeInDuration"));
-            Assert.That(definition.Parameters.Keys, Does.Contain("holdDuration"));
-            Assert.That(definition.Parameters.Keys, Does.Contain("fadeOutDuration"));
+            Assert.That(definition.DynamicParameters.Keys, Does.Contain("fromLayerHandleId"));
+            Assert.That(definition.DynamicParameters.Keys, Does.Contain("toLayerHandleId"));
+            Assert.That(definition.DynamicParameters.Keys, Does.Contain("fadeInDuration"));
+            Assert.That(definition.DynamicParameters.Keys, Does.Contain("holdDuration"));
+            Assert.That(definition.DynamicParameters.Keys, Does.Contain("fadeOutDuration"));
         }
-        Assert.That(Catalog.Get(BuiltinEntryIds.ColorFadeTransition).Parameters.Keys, Does.Contain("color"));
+        Assert.That(Catalog.Get(BuiltinEntryIds.ColorFadeTransition).DynamicParameters.Keys, Does.Contain("color"));
     }
 
     [Test]
@@ -125,9 +125,9 @@ public class EntryModelTests
     {
         var definition = Catalog.Get(BuiltinEntryIds.SlideTransition);
         Assert.That(definition.Kind, Is.EqualTo(EntryKind.Composite));
-        Assert.That(definition.Parameters["direction"], Is.EqualTo(EntryParameterType.Select));
-        Assert.That(definition.Parameters["distance"], Is.EqualTo(EntryParameterType.Float));
-        Assert.That(definition.Options["direction"], Is.EquivalentTo(SlideDirections));
+        Assert.That(definition.DynamicParameters["direction"].Editor!.EditorId, Is.EqualTo("choice"));
+        Assert.That(definition.DynamicParameters["distance"].ValueType, Is.EqualTo(typeof(float)));
+        Assert.That(definition.DynamicParameters["direction"].Constraints!.Value.GetProperty("enum").EnumerateArray().Select(value => value.GetString()), Is.EquivalentTo(SlideDirections));
     }
 
     [Test]
@@ -135,16 +135,16 @@ public class EntryModelTests
     {
         var definition = Catalog.Get(BuiltinEntryIds.BlindsTransition);
         Assert.That(definition.Kind, Is.EqualTo(EntryKind.Composite));
-        Assert.That(definition.Parameters["maskProgram"], Is.EqualTo(EntryParameterType.EffectProgramAsset));
-        Assert.That(definition.Parameters["bladeCount"], Is.EqualTo(EntryParameterType.Integer));
-        Assert.That(definition.Parameters["orientation"], Is.EqualTo(EntryParameterType.Select));
-        Assert.That(definition.Options["orientation"], Is.EquivalentTo(BlindOrientations));
+        Assert.That(definition.DynamicParameters["maskProgram"].Editor!.EditorId, Is.EqualTo("entry.effectprogramasset"));
+        Assert.That(definition.DynamicParameters["bladeCount"].ValueType, Is.EqualTo(typeof(int)));
+        Assert.That(definition.DynamicParameters["orientation"].Editor!.EditorId, Is.EqualTo("choice"));
+        Assert.That(definition.DynamicParameters["orientation"].Constraints!.Value.GetProperty("enum").EnumerateArray().Select(value => value.GetString()), Is.EquivalentTo(BlindOrientations));
     }
 
     [Test]
     public void Effect_apply_uses_a_typed_program_resource()
     {
         var definition = Catalog.Get(BuiltinEntryIds.ApplyEffect);
-        Assert.That(definition.Parameters["program"], Is.EqualTo(EntryParameterType.EffectProgramAsset));
+        Assert.That(definition.DynamicParameters["program"].Editor!.EditorId, Is.EqualTo("entry.effectprogramasset"));
     }
 }

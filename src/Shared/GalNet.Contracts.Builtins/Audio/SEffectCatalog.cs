@@ -1,3 +1,5 @@
+using System.Collections.Frozen;
+using GalNet.Core.Parameters;
 using System.Text.Json;
 
 namespace GalNet.Contracts.Builtins.Audio;
@@ -29,10 +31,17 @@ public interface ISEffectCatalog
 public sealed class SEffectCatalog : ISEffectCatalog
 {
     private readonly IReadOnlyDictionary<string, SEffectDefinition> _byId;
+    private readonly Dictionary<string, IReadOnlyDictionary<string, FieldDescriptor>> _fields;
 
     public SEffectCatalog(IEnumerable<SEffectDefinition> definitions)
     {
-        _byId = definitions.ToDictionary(definition => definition.Id, StringComparer.OrdinalIgnoreCase);
+        _byId = definitions.Select(definition => definition with
+        { SupportedScopes = definition.SupportedScopes.ToFrozenSet(), Parameters = Array.AsReadOnly(definition.Parameters.ToArray()) })
+            .ToDictionary(definition => definition.Id, StringComparer.OrdinalIgnoreCase);
+        _fields = _byId.Values.ToDictionary(definition => definition.Id,
+            definition => (IReadOnlyDictionary<string, FieldDescriptor>)definition.Parameters.ToDictionary(parameter => parameter.Name,
+                parameter => ParameterValidation.Field(parameter.Name, typeof(float), parameter.Required, parameter.Minimum, parameter.Maximum), StringComparer.Ordinal),
+            StringComparer.OrdinalIgnoreCase);
         Definitions = _byId.Values.OrderBy(definition => definition.Id, StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
@@ -50,27 +59,6 @@ public sealed class SEffectCatalog : ISEffectCatalog
     {
         if (!TryGet(id, out var definition)) return [$"Unsupported SEffect '{id}'."];
         if (!definition.SupportedScopes.Contains(scope)) return [$"SEffect '{id}' does not support {scope} scope."];
-        if (parameters.ValueKind != JsonValueKind.Object) return [$"SEffect '{id}' parameters must be a JSON object."];
-
-        var declared = definition.Parameters.ToDictionary(parameter => parameter.Name, StringComparer.Ordinal);
-        var diagnostics = new List<string>();
-        foreach (var value in parameters.EnumerateObject())
-        {
-            if (!declared.TryGetValue(value.Name, out var parameter))
-            {
-                diagnostics.Add($"SEffect '{id}' does not declare parameter '{value.Name}'.");
-                continue;
-            }
-            if (value.Value.ValueKind != JsonValueKind.Number || !value.Value.TryGetSingle(out var number) || !float.IsFinite(number))
-            {
-                diagnostics.Add($"SEffect parameter '{value.Name}' must be a finite number.");
-                continue;
-            }
-            if (parameter.Minimum is { } minimum && number < minimum || parameter.Maximum is { } maximum && number > maximum)
-                diagnostics.Add($"SEffect parameter '{value.Name}' is outside its supported range.");
-        }
-        foreach (var parameter in definition.Parameters.Where(parameter => parameter.Required && !parameters.TryGetProperty(parameter.Name, out _)))
-            diagnostics.Add($"SEffect '{id}' requires parameter '{parameter.Name}'.");
-        return diagnostics;
+        return ParameterValidation.Validate("SEffect", id, parameters, _fields[definition.Id]);
     }
 }

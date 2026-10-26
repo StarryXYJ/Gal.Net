@@ -147,8 +147,8 @@ public sealed class ProjectFileTransactionTests
         var persistence = new DirectProjectPersistence(_root, new EditorDocumentRepository(catalog)); var document = persistence.Load();
         File.WriteAllBytes(Path.Combine(_root, "Assets/a.png"), [1]);
         File.WriteAllText(Path.Combine(_root, "Assets/a.png.meta"), """{"id":"asset-a","type":"sprite","path":"a.png"}""");
-        var definition = catalog.Definitions.First(item => item.DynamicParameters?.Values.Any(field => field.Editor?.EditorId?.Contains("asset", StringComparison.OrdinalIgnoreCase) == true) == true);
-        var parameter = definition.DynamicParameters!.First(pair => pair.Value.Editor?.EditorId?.Contains("asset", StringComparison.OrdinalIgnoreCase) == true).Key;
+        var definition = catalog.Definitions.First(item => item.DynamicParameters.Values.Any(field => field.Editor?.EditorId?.Contains("asset", StringComparison.OrdinalIgnoreCase) == true));
+        var parameter = definition.DynamicParameters.First(pair => pair.Value.Editor?.EditorId?.Contains("asset", StringComparison.OrdinalIgnoreCase) == true).Key;
         document.GroupEntries.Values.First().Add(new() { StableId = "reference-entry", Type = definition.Type, Parameters = new() { [parameter] = JsonSerializer.SerializeToElement("asset-a") } });
         using var operation = new ProjectFileOperation(_root, new(ProjectFileAction.Delete, ["Assets/a.png"], AllowCandidateReferences: true), catalog);
         Assert.That(operation.Analyze(document, document).References.Single().Certain, Is.True);

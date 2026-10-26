@@ -15,11 +15,11 @@ public sealed class BuiltinSchemaComponentsTests
     public void BasicRangesAreDeclaredAndEnforcedBySharedValueRules(string type, string name, int minimum)
     {
         var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
-        var parameter = catalog.Get(type).DynamicParameters![name];
+        var parameter = catalog.Get(type).DynamicParameters[name];
         Assert.That(parameter.TryGetConstraint("minimum", out var bound), Is.True);
         Assert.That(bound.GetInt32(), Is.EqualTo(minimum));
         Assert.That(ValueValidation.Validate(parameter.Value, JsonSerializer.SerializeToElement(minimum - 1))!.Code, Is.EqualTo("value.range"));
-        Assert.Throws<InvalidDataException>(() => PrimitiveArgumentHelper.Normalize(catalog.Get(type).DynamicParameters!,
+        Assert.Throws<InvalidDataException>(() => PrimitiveArgumentHelper.Normalize(catalog.Get(type).DynamicParameters,
             JsonSerializer.SerializeToElement(new Dictionary<string, object> { [name] = minimum - 1 })));
         Assert.That(ValueCodec.Describe(parameter.Value).GetProperty("minimum").GetInt32(), Is.EqualTo(minimum));
     }

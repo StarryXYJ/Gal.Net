@@ -25,38 +25,8 @@ public abstract class EntryBase
 
     internal abstract EntryDefinition CreateDefinition();
 
-    protected EntryDefinition BuildDefinition(
-        Func<Entry> factory,
-        EntryKind kind)
-    {
-        var editorParameters = new Dictionary<string, EntryParameterType>(StringComparer.Ordinal);
-        var defaults = new Dictionary<string, string>(StringComparer.Ordinal);
-        var options = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
-        foreach (var parameter in Parameters.Values)
-        {
-            editorParameters.Add(parameter.Name, EntrySchema.GetEditorType(parameter));
-            if (parameter.DefaultValue is { } defaultValue)
-            {
-                var text = ValueCodec.ToEditorText(parameter.Value, defaultValue);
-                if (JsonElement.DeepEquals(defaultValue, ValueCodec.ParseEditorText(parameter.Value, text))) defaults.Add(parameter.Name, text);
-            }
-            if (parameter.TryGetConstraint("enum", out var values) && values.ValueKind == JsonValueKind.Array)
-                options.Add(parameter.Name, values.EnumerateArray().Select(value => ValueCodec.ToEditorText(parameter.Value, value)).ToArray());
-            else if (parameter.ValueType == typeof(bool))
-                options.Add(parameter.Name, ["true", "false"]);
-        }
-
-        return new EntryDefinition(
-            Name,
-            Category,
-            factory,
-            editorParameters,
-            defaults,
-            options,
-            kind,
-            Parameters)
-        { IsReading = IsReading, FieldDataType = FieldDataType };
-    }
+    protected EntryDefinition BuildDefinition(Func<Entry> factory, EntryKind kind) =>
+        new(Name, Category, factory, kind, Parameters) { IsReading = IsReading, FieldDataType = FieldDataType };
 
     private static string GetDefaultCategory(string name)
     {

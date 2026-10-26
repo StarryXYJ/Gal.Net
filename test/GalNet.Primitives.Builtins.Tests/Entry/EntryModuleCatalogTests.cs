@@ -19,13 +19,13 @@ public class EntryModuleTests
         Assert.That(catalog.TryGet("animation.play", out _), Is.False);
         var schema = catalog.Get(BuiltinEntryIds.PlayTimeline);
         Assert.That(schema.FieldDataType, Is.EqualTo(typeof(TimelineOptions)));
-        var value = PrimitiveArgumentHelper.Normalize(schema.DynamicParameters!, JsonSerializer.SerializeToElement(new
+        var value = PrimitiveArgumentHelper.Normalize(schema.DynamicParameters, JsonSerializer.SerializeToElement(new
         {
             timeline = new GalNet.Contracts.Builtins.Scene.TimelineDefinition { PlaybackHandleId = "intro", DurationFrames = 30 }
         }));
         Assert.That(value.TryGetProperty("timeline", out _), Is.True);
         Assert.That(value.TryGetProperty("plan", out _), Is.False);
-        Assert.Throws<InvalidDataException>(() => PrimitiveArgumentHelper.Normalize(schema.DynamicParameters!,
+        Assert.Throws<InvalidDataException>(() => PrimitiveArgumentHelper.Normalize(schema.DynamicParameters,
             JsonSerializer.SerializeToElement(new { plan = new { durationFrames = 30 } })));
     }
 
@@ -49,7 +49,7 @@ public class EntryModuleTests
     public void AnimationContractRejectsUnknownEmbeddedEvents()
     {
         var schema = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()).Get("timeline.play");
-        Assert.Throws<InvalidDataException>(() => PrimitiveArgumentHelper.Normalize(schema.DynamicParameters!,
+        Assert.Throws<InvalidDataException>(() => PrimitiveArgumentHelper.Normalize(schema.DynamicParameters,
             JsonSerializer.SerializeToElement(new
             {
                 timeline = new { durationFrames = 1, events = new[] { new { frame = 0, type = "custom.unsupported", parameters = new { } } } }

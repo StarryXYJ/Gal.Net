@@ -36,11 +36,11 @@ public sealed class EntrySchemaFormTests
         var second = payloadFirst ? id : payload;
         Assert.That(await first.CommitAsync(new(payloadFirst ? Json("{\"particleTexture\":\"snow\"}") : Json("\"snow\"")), default), Is.Null);
         var incomplete = new EditorDocumentRepository(catalog).SerializeEntry(new EditorEntryData { StableId = entry.StableId, Type = entry.Type, Parameters = entry.Source.Parameters });
-        Assert.That(() => PrimitiveArgumentHelper.Normalize(catalog.Get(entry.Type).DynamicParameters!, JsonSerializer.SerializeToElement(incomplete.Parameters)),
+        Assert.That(() => PrimitiveArgumentHelper.Normalize(catalog.Get(entry.Type).DynamicParameters, JsonSerializer.SerializeToElement(incomplete.Parameters)),
             Throws.TypeOf<InvalidDataException>());
         Assert.That(await second.CommitAsync(new(payloadFirst ? Json("\"snow\"") : Json("{\"particleTexture\":\"snow\"}")), default), Is.Null);
         var saved = new EditorDocumentRepository(catalog).SerializeEntry(new EditorEntryData { StableId = entry.StableId, Type = entry.Type, Parameters = entry.Source.Parameters });
-        Assert.That(() => PrimitiveArgumentHelper.Normalize(catalog.Get(entry.Type).DynamicParameters!, JsonSerializer.SerializeToElement(saved.Parameters)), Throws.Nothing);
+        Assert.That(() => PrimitiveArgumentHelper.Normalize(catalog.Get(entry.Type).DynamicParameters, JsonSerializer.SerializeToElement(saved.Parameters)), Throws.Nothing);
     }
 
     [Test]

@@ -139,3 +139,5 @@ R5 实施选择：复用 Contracts.Builtins 承载场景/音频/Gallery 的共�
 R5b 根据消费者归位：Gallery、ImageVariants 及默认资源 DTO/工厂属于可选 Contracts.Builtins；AssetMeta 只保留通用字段和原始扩展 JSON，Gallery 通过可选扩展读写该注解。GameContent/加载选项/本地化内容聚合归 GameHost.Content，Runtime 不拥有宿主内容组合。资源默认类型由 catalog 显式声明；provider/PAK 强制接收调用方目录，不在低层补默认 Builtins。
 
 R5b 精简：没有独立 metadata 字段的六个默认空 DTO 直接共用 AssetMeta，类型身份仍由 resource type ID 决定；仅 sprite 的 filter 需要独立 DTO。删除 GameContent 中没有生产消费者的 AssetRoot。
+
+R6 选择 DynamicParameterTable 为 Entry 唯一参数源，删除平铺 Parameters/Defaults/Options、nullable schema 回退和旧字典转 schema 工厂。具体编辑器类型投影移到 Editor.Abstraction，显示文本/选项在 UI 需要时生成；不在注册期预格式化。Effect/SEffect 元数据在 catalog 边界投影为既有 FieldDescriptor，复用 ValueValidation；目标 stage/scope 和 Shader 语法仍由领域拥有。目录复制输入集合以保证元数据查询与缓存校验一致，删除 EditorHints 的旧 ABI 兼容重载。

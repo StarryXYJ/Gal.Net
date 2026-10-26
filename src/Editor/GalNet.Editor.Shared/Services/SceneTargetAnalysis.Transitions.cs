@@ -21,7 +21,7 @@ public sealed partial class SceneTargetAnalysis
         {
             Entries = [new() { Id = entry.StableId, Type = entry.Type,
                 // Unknown author extensions remain on the original document, not in the strict compiler input.
-                Parameters = entry.Parameters.Where(pair => definition.Parameters.ContainsKey(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value.Clone()) }]
+                Parameters = entry.Parameters.Where(pair => definition.DynamicParameters.ContainsKey(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value.Clone()) }]
         };
         var expanded = GalgroupCompiler.Compile(source, TransitionCatalog.Value).Document.Entries.Single();
         if (expanded.TypeId != BuiltinEntryIds.PlayTimeline) throw new InvalidDataException("Unsupported transition expansion.");
