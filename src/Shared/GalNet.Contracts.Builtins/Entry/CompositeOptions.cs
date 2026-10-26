@@ -5,8 +5,7 @@ using GalNet.Contracts.Builtins.Scene;
 
 namespace GalNet.Contracts.Builtins;
 
-[GenerateFieldSchema]
-public partial class CrossFadeOptions
+public abstract class CrossFadeOptionsBase
 {
     [Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? PlaybackHandleId { get; set; }
     [Common, Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? OldHandleId { get; set; }
@@ -20,6 +19,9 @@ public partial class CrossFadeOptions
     [Common, Field(8, EditorId = ValueEditorIds.Numeric)] public int DurationFrames { get; set; } = 48;
     [Field(9, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? BatchId { get; set; }
 }
+
+[GenerateFieldSchema]
+public partial class CrossFadeOptions : CrossFadeOptionsBase;
 
 public enum SlideDirection { Left, Right, Up, Down }
 public enum BlindsOrientation { Vertical, Horizontal }

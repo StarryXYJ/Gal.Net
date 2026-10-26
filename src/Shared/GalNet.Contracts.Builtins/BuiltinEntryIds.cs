@@ -46,6 +46,12 @@ public static class BuiltinEntryIds
     public const string BlackFadeTransition = "transition.fadeBlack";
     public const string WhiteFadeTransition = "transition.fadeWhite";
     public const string ColorFadeTransition = "transition.fadeColor";
+    public const string RevealTransition = "transition.reveal";
+    public const string BlurTransition = "transition.blur";
+    public const string MotionPreset = "preset.motion";
+    public const string ShakePreset = "preset.shake";
+    public const string SpeedLinesPreset = "preset.speedLines";
+    public const string ImpactPreset = "preset.impact";
     public const string TextVoice = "dialogue.textVoice";
     public const string AppendVoiceNvl = "nvl.appendVoice";
 }

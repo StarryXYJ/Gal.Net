@@ -15,6 +15,28 @@ namespace GeneralTest.Runtime;
 
 public class BuiltinPrimitiveInstanceTests
 {
+    [TestCase(PrimitiveInvocationMode.Normal)]
+    [TestCase(PrimitiveInvocationMode.Quick)]
+    [TestCase(PrimitiveInvocationMode.CatchUp)]
+    public void Compiled_impact_keeps_terminal_state_clean_during_playback_and_snapshot_restore(PrimitiveInvocationMode mode)
+    {
+        using var view = new GameRegistration().AddBuiltins().BuildView();
+        var runtime = new GameRuntime(null, stateCatalog: view.StateCatalog);
+        runtime.Scene().GetOrAdd("hero", id => new Layer { Id = id, AssetId = "image", Transform = new LayerTransform { X = 37 } });
+        var timeline = GeneralTest.Entry.VisualPresetTests.Compile(BuiltinEntryIds.ImpactPreset,
+            new { playbackHandleId = "impact", program = "shader-id", targets = new[] { new { handleId = "hero" } } });
+        var primitive = Primitive(BuiltinEntryIds.PlayTimeline, new { timeline });
+        var instance = view.Dispatch(primitive, runtime, CancellationToken.None)!;
+        instance.ApplyPlaybackMode(mode);
+        Assert.That(instance.IsCompleted, Is.True);
+        Assert.That(runtime.State.Table<Layer>().Values.Select(layer => layer.Id), Is.EqualTo(new[] { "hero" }));
+        Assert.That(runtime.State.Table<EffectInstance>().Values, Is.Empty);
+        Assert.That(runtime.State.Table<Layer>().Values.Single().Transform.X, Is.EqualTo(37));
+        var restored = GalNet.Core.Runtime.GameState.Restore(view.StateCatalog, runtime.State.Capture());
+        Assert.That(restored.Table<Layer>().Values.Single().Transform.X, Is.EqualTo(37));
+        Assert.That(restored.Table<EffectInstance>().Values, Is.Empty);
+    }
+
     [TestCase("1 +")]
     [TestCase("[unknown]")]
     public void FailedVariableExpressionPreservesExistingValue(string expression)

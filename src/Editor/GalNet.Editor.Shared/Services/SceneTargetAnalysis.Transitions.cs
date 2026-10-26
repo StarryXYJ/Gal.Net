@@ -42,9 +42,9 @@ public sealed partial class SceneTargetAnalysis
         candidate.Complete = true;
         TransferTimeline(candidate, group, TransitionTimeline(entry));
         if (!candidate.Complete) throw new InvalidDataException("Incomplete transition expansion.");
-        var slot = SceneAuthoringIdentities.CreationSlot(entry.Type)!;
-        var handle = entry.Parameters[slot].GetString()!;
-        if (candidate.Targets.TryGetValue(handle, out var target) && target.Locator.GroupId == group && target.Locator.EntryId == entry.StableId)
+        var slot = SceneAuthoringIdentities.CreationSlot(entry.Type);
+        var handle = slot is null ? null : entry.Parameters[slot].GetString();
+        if (slot is not null && handle is not null && candidate.Targets.TryGetValue(handle, out var target) && target.Locator.GroupId == group && target.Locator.EntryId == entry.StableId)
             candidate.Targets[handle] = target with { Locator = new(group, entry.StableId, slot), CreatedAtFrame = null, IsFuture = false };
         state.Targets.Clear();
         foreach (var pair in candidate.Targets) state.Targets.Add(pair.Key, pair.Value);

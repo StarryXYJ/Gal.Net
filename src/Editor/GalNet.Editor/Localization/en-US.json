@@ -1,4 +1,11 @@
 {
+  "Entry.Type.transition.reveal": "Shader reveal",
+  "Entry.Type.transition.blur": "Blur crossfade",
+  "Entry.Type.preset.motion": "Character motion",
+  "Entry.Type.preset.shake": "Screen shake",
+  "Entry.Type.preset.speedLines": "Dynamic speed lines",
+  "Entry.Type.preset.impact": "Impact",
+  "Entry.Category.Preset": "Performance presets",
   "External.Reload": "Reload from disk",
   "External.Retry": "Check again",
   "External.Publishing": "Waiting for an external file transaction to finish. If the external tool stopped unexpectedly, inspect its transaction recovery material before continuing.",

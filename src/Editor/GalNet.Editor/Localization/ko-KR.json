@@ -1,4 +1,11 @@
 {
+  "Entry.Type.transition.reveal": "셰이더 전환",
+  "Entry.Type.transition.blur": "블러 크로스페이드",
+  "Entry.Type.preset.motion": "캐릭터 동작",
+  "Entry.Type.preset.shake": "화면 흔들림",
+  "Entry.Type.preset.speedLines": "동적 집중선",
+  "Entry.Type.preset.impact": "충격 연출",
+  "Entry.Category.Preset": "연출 프리셋",
   "External.Reload": "디스크에서 다시 불러오기",
   "External.Retry": "다시 확인",
   "External.Publishing": "외부 파일 트랜잭션이 끝나기를 기다립니다. 도구가 비정상 종료되었다면 트랜잭션 복구 자료를 먼저 확인하세요.",

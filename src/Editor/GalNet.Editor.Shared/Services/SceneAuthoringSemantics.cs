@@ -4,7 +4,7 @@ namespace GalNet.Editor.Shared.Services;
 
 public enum SceneIdentityDomain { Object, Playback }
 public sealed record SceneOutputSlot(string Field, string Role, SceneIdentityDomain Domain, SceneTargetKind Kind, string? Container = null);
-public sealed record SceneReferenceSlot(string Field, SceneIdentityDomain Domain, IReadOnlyList<SceneTargetKind> Kinds, bool RequiresVariants = false, bool AllowsGlobal = false);
+public sealed record SceneReferenceSlot(string Field, SceneIdentityDomain Domain, IReadOnlyList<SceneTargetKind> Kinds, bool RequiresVariants = false, bool AllowsGlobal = false, string? Container = null);
 public sealed record SceneEntrySemantics(IReadOnlyList<SceneOutputSlot> Outputs, IReadOnlyList<SceneReferenceSlot> References, bool SceneNeutral = false, bool Timeline = false);
 
 /// <summary>Built-in author relationships, independent of value schemas and runtime execution.</summary>
@@ -32,9 +32,13 @@ public static class SceneAuthoringSemantics
         Add(BuiltinEntryIds.StopEffect, [], [Reference("instanceId", SceneTargetKind.Effect)]);
         Add(BuiltinEntryIds.Animate, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)], [Reference("handleId", SceneTargetKind.Layer, SceneTargetKind.Particle, SceneTargetKind.Effect)]);
         Add(BuiltinEntryIds.StopAnimation, [], [Reference("playbackHandleId", SceneTargetKind.Playback)]);
-        foreach (var type in new[] { BuiltinEntryIds.CrossFadeTransition, BuiltinEntryIds.BlindsTransition, BuiltinEntryIds.SlideTransition, BuiltinEntryIds.BlackFadeTransition, BuiltinEntryIds.WhiteFadeTransition, BuiltinEntryIds.ColorFadeTransition })
+        Add(BuiltinEntryIds.MotionPreset, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)], [Reference("handleId", SceneTargetKind.Layer)]);
+        Add(BuiltinEntryIds.ShakePreset, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)], [Reference("handleId", SceneTargetKind.Layer) with { Container = "targets" }]);
+        Add(BuiltinEntryIds.ImpactPreset, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)], [Reference("handleId", SceneTargetKind.Layer) with { Container = "targets" }]);
+        Add(BuiltinEntryIds.SpeedLinesPreset, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)], []);
+        foreach (var type in new[] { BuiltinEntryIds.CrossFadeTransition, BuiltinEntryIds.BlindsTransition, BuiltinEntryIds.SlideTransition, BuiltinEntryIds.BlackFadeTransition, BuiltinEntryIds.WhiteFadeTransition, BuiltinEntryIds.ColorFadeTransition, BuiltinEntryIds.RevealTransition, BuiltinEntryIds.BlurTransition })
         {
-            var cross = type is BuiltinEntryIds.CrossFadeTransition or BuiltinEntryIds.BlindsTransition;
+            var cross = type is BuiltinEntryIds.CrossFadeTransition or BuiltinEntryIds.BlindsTransition or BuiltinEntryIds.RevealTransition or BuiltinEntryIds.BlurTransition;
             Add(type, [Output(cross ? "newHandleId" : "toLayerHandleId", "primaryLayer", SceneTargetKind.Layer), Output("playbackHandleId", "playback", SceneTargetKind.Playback)], [Reference(cross ? "oldHandleId" : "fromLayerHandleId", SceneTargetKind.Layer)]);
         }
         Add(BuiltinEntryIds.PlayTimeline, [Output("playbackHandleId", "playback", SceneTargetKind.Playback) with { Container = "timeline" }], [], timeline: true);

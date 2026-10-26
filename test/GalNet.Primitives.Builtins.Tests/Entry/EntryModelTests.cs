@@ -17,7 +17,7 @@ public class EntryModelTests
     [Test]
     public void Registry_Should_Create_All_BuiltIn_Entries()
     {
-        Assert.That(Catalog.Definitions, Has.Count.EqualTo(45));
+        Assert.That(Catalog.Definitions, Has.Count.EqualTo(51));
         foreach (var definition in Catalog.Definitions)
             Assert.That(Catalog.Create(definition.Type).Type, Is.EqualTo(definition.Type));
     }

@@ -84,7 +84,7 @@ public sealed class TypedBuiltinAuthoringTests
     {
         var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
         var composites = catalog.Definitions.Where(definition => definition.Kind == EntryKind.Composite).ToArray();
-        Assert.That(composites, Has.Length.EqualTo(8));
+        Assert.That(composites, Has.Length.EqualTo(14));
         Assert.That(composites.All(definition => definition.FieldDataType is not null), Is.True);
         Assert.That(catalog.Get(BuiltinEntryIds.BlackFadeTransition).FieldDataType, Is.EqualTo(typeof(ColorFieldOptions)));
         Assert.That(catalog.Get(BuiltinEntryIds.WhiteFadeTransition).FieldDataType, Is.EqualTo(typeof(ColorFieldOptions)));

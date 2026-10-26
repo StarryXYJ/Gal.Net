@@ -1,4 +1,11 @@
 {
+  "Entry.Type.transition.reveal": "シェーダー切り替え",
+  "Entry.Type.transition.blur": "ぼかしクロスフェード",
+  "Entry.Type.preset.motion": "キャラクター動作",
+  "Entry.Type.preset.shake": "画面振動",
+  "Entry.Type.preset.speedLines": "動的集中線",
+  "Entry.Type.preset.impact": "衝撃演出",
+  "Entry.Category.Preset": "演出プリセット",
   "External.Reload": "ディスクから再読み込み",
   "External.Retry": "再確認",
   "External.Publishing": "外部ファイルの更新完了を待っています。ツールが異常終了した場合は、トランザクションの復元データを確認してください。",

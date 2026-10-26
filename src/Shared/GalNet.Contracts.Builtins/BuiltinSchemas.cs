@@ -57,6 +57,12 @@ public static class BuiltinSchemas
         DefaultPrimitiveEntryBase.ForDto<AnimationOptions>(BuiltinEntryIds.Animate),
         DefaultPrimitiveEntryBase.ForDto<TimelineOptions>(BuiltinEntryIds.PlayTimeline, arguments => BuiltinArgumentValidation.Validate(BuiltinEntryIds.PlayTimeline, arguments), validatePartialArguments: static _ => { }),
         DefaultPrimitiveEntryBase.ForDto<AnimationStopOptions>(BuiltinEntryIds.StopAnimation)
+    ], compositeEntries:
+    [
+        DefaultCompositeEntryBase.ForDto<MotionPresetOptions>(BuiltinEntryIds.MotionPreset, VisualPresetCompiler.Motion, category: "Preset"),
+        DefaultCompositeEntryBase.ForDto<ShakePresetOptions>(BuiltinEntryIds.ShakePreset, VisualPresetCompiler.Shake, category: "Preset"),
+        DefaultCompositeEntryBase.ForDto<SpeedLinesPresetOptions>(BuiltinEntryIds.SpeedLinesPreset, VisualPresetCompiler.SpeedLines, category: "Preset"),
+        DefaultCompositeEntryBase.ForDto<ImpactPresetOptions>(BuiltinEntryIds.ImpactPreset, VisualPresetCompiler.Impact, category: "Preset")
     ]);
 
     public static IEntryModule CreateAudioModule() => new DefaultEntryModule("audio",

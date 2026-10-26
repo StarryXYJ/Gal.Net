@@ -20,7 +20,19 @@ internal static class SceneIdentityWalker
         var semantics = SceneAuthoringSemantics.Find(type);
         if (semantics is null) { gap(new(pointer, "scene.coverage.unknown")); return; }
         foreach (var output in semantics.Outputs.Where(output => output.Container is null)) Visit(parameters, output.Field, pointer, output.Domain, output, null, position, eventId, slot, gap);
-        foreach (var reference in semantics.References) Visit(parameters, reference.Field, pointer, reference.Domain, null, reference, position, eventId, slot, gap);
+        foreach (var reference in semantics.References)
+        {
+            if (reference.Container is null) Visit(parameters, reference.Field, pointer, reference.Domain, null, reference, position, eventId, slot, gap);
+            else if (parameters[reference.Container] is JsonArray array)
+                for (var index = 0; index < array.Count; index++)
+                {
+                    step?.Invoke();
+                    var path = pointer + "/" + Escape(reference.Container) + "/" + index;
+                    if (array[index] is JsonObject item) Visit(item, reference.Field, path, reference.Domain, null, reference, position, eventId, slot, gap);
+                    else gap(new(path, "scene.coverage.structure"));
+                }
+            else gap(new(pointer + "/" + reference.Container, "scene.coverage.structure"));
+        }
         if (!semantics.Timeline) return;
         if (parameters["timeline"] is not JsonObject timeline) { gap(new(pointer + "/timeline", "scene.coverage.structure")); return; }
         var root = pointer + "/timeline";

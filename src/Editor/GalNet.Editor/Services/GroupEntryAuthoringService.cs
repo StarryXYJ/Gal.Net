@@ -10,7 +10,7 @@ using GalNet.Editor.Shared.Services;
 namespace GalNet.Editor.Services;
 
 /// <summary>Project-owned batch entry intents. History never retains a Group page.</summary>
-public sealed partial class GroupEntryAuthoringService(IEditorDocumentService documents, IEntryCatalog catalog, EditorHistories histories, GameTextAuthoringService? texts = null, EntryEditSession? edits = null) : IDisposable
+public sealed partial class GroupEntryAuthoringService(IEditorDocumentService documents, IEntryCatalog catalog, EditorHistories histories, GameTextAuthoringService? texts = null, EntryEditSession? edits = null, IProjectContentSession? content = null) : IDisposable
 {
     public IReadOnlyList<string> Insert(string groupId, int index, int count, string? type)
     {
@@ -18,11 +18,13 @@ public sealed partial class GroupEntryAuthoringService(IEditorDocumentService do
         type ??= GalNet.Contracts.Builtins.BuiltinEntryIds.Text;
         if (!catalog.TryGet(type, out _)) return [];
         index = Math.Clamp(index, 0, group.Entries.Count);
+        var configuration = content?.CaptureWorking().Configuration;
         var inserted = Enumerable.Range(0, Math.Clamp(count, 1, MaximumEntries)).Select(_ => new EditorEntryData
         {
             StableId = Guid.NewGuid().ToString("N"),
             Type = type,
-            Parameters = SceneAuthoringIdentities.NewEntry(type, EditorEntryData.CreateParameters(catalog, type))
+            Parameters = SceneAuthoringIdentities.NewEntry(type, GalNet.Editor.Shared.Visuals.VisualPresetBindings.Fill(type,
+                EditorEntryData.CreateParameters(catalog, type), configuration))
         }).ToArray();
         histories.Content.Execute(Presence(groupId, inserted.Select((entry, offset) => new PositionedEntry(index + offset, entry)).ToArray(), true,
             new("History.AddEntries", inserted.Length)));

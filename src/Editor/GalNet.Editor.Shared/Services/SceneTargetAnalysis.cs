@@ -244,6 +244,12 @@ public sealed partial class SceneTargetAnalysis
             case BuiltinEntryIds.BlindsTransition:
             case BuiltinEntryIds.BlackFadeTransition:
             case BuiltinEntryIds.WhiteFadeTransition:
+            case BuiltinEntryIds.RevealTransition:
+            case BuiltinEntryIds.BlurTransition:
+            case BuiltinEntryIds.MotionPreset:
+            case BuiltinEntryIds.ShakePreset:
+            case BuiltinEntryIds.SpeedLinesPreset:
+            case BuiltinEntryIds.ImpactPreset:
             case BuiltinEntryIds.ColorFadeTransition: TransferTransition(state, group, entry); break;
             case BuiltinEntryIds.Animate:
                 TransferAnimationPlayback(state, group, entry);

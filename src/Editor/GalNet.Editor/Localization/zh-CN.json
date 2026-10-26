@@ -1,4 +1,11 @@
 {
+  "Entry.Type.transition.reveal": "Shader 遮罩转场",
+  "Entry.Type.transition.blur": "模糊交叉淡化",
+  "Entry.Type.preset.motion": "人物动作",
+  "Entry.Type.preset.shake": "震屏",
+  "Entry.Type.preset.speedLines": "动态集中线",
+  "Entry.Type.preset.impact": "冲击演出",
+  "Entry.Category.Preset": "演出预设",
   "External.Reload": "从磁盘重新加载",
   "External.Retry": "重新检查",
   "External.Publishing": "正在等待外部文件事务完成。如果外部工具异常退出，请先检查事务恢复材料。",

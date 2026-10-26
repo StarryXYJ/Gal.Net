@@ -14,9 +14,13 @@
 
 结果：CPU/GPU 层效果链每次绘制传入当前图层 Z，通用 shader 自动绑定保留的 `layerZ` uniform；外部 texture 参数按画布缩放，缺省可选纹理绑定透明值。默认宿主向效果运行器注入 AssetManager，各效果独立拥有纹理租约；替换/停止/Dispose/部分准备失败释放。异步准备使用实例代次防止停止后复活。27 项 shader/像素/生命周期及既有效果测试通过；GameHost 构建通过（既有 BuiltinScene nullable 警告 1 项）。像素测试验证移动 Z 后失焦及恢复、径向/定向集中线随 time 变化、遮罩实际采样及缩放。GPU 共享绑定路径构建通过，未宣称本阶段有真实 GPU 截图验收。
 
-## P3 转场与演出组合 — planned
+## P3 转场与演出组合 — verified
 
 实现 catalog 第一批组合，带 schema、边界校验、临时资源清理和作者分析；不为每种 shader 新增效果 Entry。编辑器从项目用途绑定填充显式资源参数，编译器只传递 Entry 上的引用。验证缺失绑定、手动替换、项目绑定变更不追改旧 Entry、CLI 显式参数、shader 契约匹配与生成事件的资源依赖。验证展开、末帧、短时长、非法参数、不同播放 handle、快进/停止行为。退出：推荐第一批可调用且编译结果通过现有时间线验证，导出包含所需 shader 与纹理。
+
+结果：新增 transition.reveal（Wipe/Radial/Noise/Blinds/Mask）、transition.blur、preset.motion（9 种动作）、preset.shake（最多 32 个同步图层）、preset.speedLines、preset.impact，共 6 个 Composite；未新增 shader 专用 Primitive。资源检查在项目 ValidateGroup / build / export 入口验证资源存在、layer stage、参数种类/可动画性/范围。编辑器插入与类型切换填充用途绑定；CLI 编译仍要求显式资源。场景分析编译复合时间线，引用/复制支持 targets[].handleId。新增四种编辑器语言标签。
+
+验证：Builtins 完整 306 项通过；Editor.Shared 完整 447 项通过；后续范围检查调整后 4 项资源/作者用例再次通过；独立 artifacts 输出的桌面作者交互 9 项通过（实际预设创建/类型切换/Undo/Redo/保存重开、6 种原转场选择器、引用审查、批量插入）。两帧短时长、不同模式、锚点推近、显式引用传递、末帧清理、Normal/Quick/CatchUp 稳定状态与快照恢复均有测试。普通 Editor 输出被已打开的编辑器 PID 锁定，改用独立输出；未关闭用户进程。animation.stop 的现有 Cancel/Replaced 语义不承诺执行末帧清理；完整收尾使用 CompleteImmediately，P4 手册说明。
 
 ## P4 展示、回归与文档 — planned
 

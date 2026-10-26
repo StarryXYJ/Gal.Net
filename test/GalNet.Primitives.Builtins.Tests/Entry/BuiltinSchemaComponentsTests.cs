@@ -36,9 +36,9 @@ public sealed class BuiltinSchemaComponentsTests
         {
             Assert.That(modules, Has.Count.EqualTo(14));
             Assert.That(modules.Select(module => module.Id).Distinct().Count(), Is.EqualTo(14));
-            Assert.That(catalog.Definitions, Has.Count.EqualTo(45));
+            Assert.That(catalog.Definitions, Has.Count.EqualTo(51));
             Assert.That(catalog.Definitions.Count(entry => entry.Kind == EntryKind.Primitive), Is.EqualTo(37));
-            Assert.That(catalog.Definitions.Count(entry => entry.Kind == EntryKind.Composite), Is.EqualTo(8));
+            Assert.That(catalog.Definitions.Count(entry => entry.Kind == EntryKind.Composite), Is.EqualTo(14));
             Assert.That(() => ((IList<IEntryModule>)modules).Clear(), Throws.TypeOf<NotSupportedException>());
         });
     }

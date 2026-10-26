@@ -17,6 +17,7 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
 {
     private readonly string GraphFile = graphFile.Replace('\\', '/');
     private readonly ProjectRawReader _reader = new(projectDirectory);
+    private readonly GalNet.Editor.Shared.Visuals.VisualPresetResourceValidator _visuals = new(projectDirectory);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public ToolResult Validate(string scope = "project", GroupSelector? selector = null, bool structureOnly = false,
@@ -124,7 +125,19 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
     {
         compilation = null;
         var content = _reader.Read(file, diagnostics);
-        return content is null ? null : ValidateGroupDocument(content.Value, file, diagnostics, out compilation, catalog, structureOnly);
+        var document = content is null ? null : ValidateGroupDocument(content.Value, file, diagnostics, out compilation, catalog, structureOnly);
+        if (document is null || structureOnly || catalog is null) return document;
+        foreach (var entry in document.Entries)
+        {
+            try { _visuals.Validate(entry.Type, entry.Parameters); }
+            catch (Exception error) when (error is IOException or InvalidDataException or JsonException or ArgumentException or InvalidOperationException)
+            {
+                Error(diagnostics, "visual.programInvalid", error.Message, file, "/entries/" + document.Entries.IndexOf(entry) + "/parameters", entry.Id);
+                compilation = null;
+                return null;
+            }
+        }
+        return document;
     }
 
     public static GroupDocument? ValidateGroupDocument(JsonElement raw, string file, IList<ToolDiagnostic> diagnostics, IEntryCatalog? catalog = null, bool structureOnly = false)

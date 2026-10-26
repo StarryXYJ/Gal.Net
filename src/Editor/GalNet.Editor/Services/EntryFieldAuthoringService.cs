@@ -7,7 +7,7 @@ using GalNet.Editor.History;
 namespace GalNet.Editor.Services;
 
 /// <summary>Entry field intents retain author values and stable IDs, never a page or control.</summary>
-public sealed class EntryFieldAuthoringService(IEditorDocumentService documents, EditorHistories histories, CharacterAuthoringService? characters = null, GameTextAuthoringService? texts = null, EntryEditSession? edits = null)
+public sealed class EntryFieldAuthoringService(IEditorDocumentService documents, EditorHistories histories, CharacterAuthoringService? characters = null, GameTextAuthoringService? texts = null, EntryEditSession? edits = null, IProjectContentSession? content = null)
 {
     internal AuthorChangeJournal Changes => histories.Content.AuthorChanges;
     internal bool IsCurrent(string groupId, EditorEntryData expected) => documents.IsLoaded
@@ -32,8 +32,9 @@ public sealed class EntryFieldAuthoringService(IEditorDocumentService documents,
     public void SetType(string groupId, EditorEntryData expected, string type, Dictionary<string, JsonElement> parameters) =>
         Update(groupId, expected, expected.Type, TypeValue(expected, type, parameters), "Edit Type");
 
-    private static EntryValue TypeValue(EditorEntryData entry, string type, Dictionary<string, JsonElement> parameters) =>
-        new(type, entry.Condition, GalNet.Editor.Shared.Services.SceneAuthoringIdentities.ChangeType(entry.Type, entry.Parameters, type, Clone(parameters)));
+    private EntryValue TypeValue(EditorEntryData entry, string type, Dictionary<string, JsonElement> parameters) =>
+        new(type, entry.Condition, GalNet.Editor.Shared.Services.SceneAuthoringIdentities.ChangeType(entry.Type, entry.Parameters, type,
+            GalNet.Editor.Shared.Visuals.VisualPresetBindings.Fill(type, Clone(parameters), content?.CaptureWorking().Configuration)));
 
     public PreparedEntryEdit PrepareType(string groupId, EditorEntryData expected, string type, Dictionary<string, JsonElement> parameters)
     {
