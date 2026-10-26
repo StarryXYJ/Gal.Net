@@ -72,6 +72,16 @@ public sealed class ProjectSceneTargets : IDisposable
 
     public SceneTargetResult Before(string groupId, string? entryId) => Query(groupId, entryId, null);
     public SceneTargetResult AtTimeline(string groupId, string entryId, SceneTimelinePosition position) => Query(groupId, entryId, position);
+    public IReadOnlyList<SceneReferenceDiagnostic> Diagnostics()
+    {
+        lock (_gate)
+        {
+            if (!Capture()) return [];
+            QueuePreparation();
+            _analysis ??= new(_frozen!.Graph, _frozen.GroupEntries, programs: _assets is null ? null : _programs, effects: _effects, variants: _variants);
+            return SceneReferenceAnalysis.Diagnose(new SceneReferenceIndex(_frozen!.GroupEntries), _analysis).Select(diagnostic => diagnostic with { Revision = Revision }).ToArray();
+        }
+    }
     private SceneTargetResult Query(string groupId, string? entryId, SceneTimelinePosition? position)
     {
         lock (_gate)

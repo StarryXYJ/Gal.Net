@@ -32,6 +32,14 @@ public sealed class EntryFieldAuthoringService(IEditorDocumentService documents,
     public void SetType(string groupId, EditorEntryData expected, string type, Dictionary<string, JsonElement> parameters) =>
         Update(groupId, expected, expected.Type, new(type, expected.Condition, GalNet.Editor.Shared.Services.SceneAuthoringIdentities.NewEntry(type, Clone(parameters))), "Edit Type");
 
+    public PreparedEntryEdit PrepareType(string groupId, EditorEntryData expected, string type, Dictionary<string, JsonElement> parameters)
+    {
+        if (!IsCurrent(groupId, expected)) throw Obsolete();
+        var after = new EntryValue(type, expected.Condition, GalNet.Editor.Shared.Services.SceneAuthoringIdentities.NewEntry(type, Clone(parameters)));
+        return new(documents, histories, new FieldEdit(this, groupId, expected.StableId, Capture(expected), after, "Edit Type"),
+            candidate => Write(candidate.GroupEntries[groupId].Single(entry => entry.StableId == expected.StableId), after));
+    }
+
     private void Update(string groupId, EditorEntryData expected, string expectedType, EntryValue after, string description)
     {
         var entry = Find(groupId, expected.StableId);

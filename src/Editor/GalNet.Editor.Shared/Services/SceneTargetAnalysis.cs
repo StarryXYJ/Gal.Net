@@ -240,30 +240,7 @@ public sealed partial class SceneTargetAnalysis
                 if (state.Targets.TryGetValue(Text("handleId"), out var animated)) state.Targets[animated.Handle] = animated with { Values = EmptyValues };
                 break;
             case BuiltinEntryIds.StopAnimation: StopPlayback(state, entry); break;
-            // Proven scene-neutral built-ins. Unknown/composite/Timeline semantics must never be neutral by default.
-            case BuiltinEntryIds.Text:
-            case BuiltinEntryIds.ShowDialogue:
-            case BuiltinEntryIds.HideDialogue:
-            case BuiltinEntryIds.ShowNvl:
-            case BuiltinEntryIds.HideNvl:
-            case BuiltinEntryIds.ClearNvl:
-            case BuiltinEntryIds.AppendNvl:
-            case BuiltinEntryIds.TextVoice:
-            case BuiltinEntryIds.AppendVoiceNvl:
-            case BuiltinEntryIds.Wait:
-            case BuiltinEntryIds.SetVariable:
-            case BuiltinEntryIds.UnlockGallery:
-            case BuiltinEntryIds.PlayAudio:
-            case BuiltinEntryIds.StopAudio:
-            case BuiltinEntryIds.PauseAudio:
-            case BuiltinEntryIds.ResumeAudio:
-            case BuiltinEntryIds.NextAudio:
-            case BuiltinEntryIds.ClearAudio:
-            case BuiltinEntryIds.EnqueueAudio:
-            case BuiltinEntryIds.ApplyAudioSEffect:
-            case BuiltinEntryIds.StopAudioSEffect:
-            case BuiltinEntryIds.BurstParticles: break;
-            default: state.Uncertain(); break;
+            default: if (SceneAuthoringSemantics.Find(entry.Type)?.SceneNeutral != true) state.Uncertain(); break;
         }
     }
 }

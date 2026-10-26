@@ -1053,5 +1053,19 @@
   "Uiux.I18n.RemoveSource": "Switch the development language before removing it.",
   "Uiux.I18n.LanguageActions": "Language actions",
   "Uiux.I18n.ReloadCell": "Discard unsuccessful input and reload",
-  "Uiux.I18n.SourceChanged": "Source text changed"
+  "Uiux.I18n.SourceChanged": "Source text changed",
+  "Scene.Impact.Title": "Review scene effects",
+  "Scene.Impact.Message": "This operation changes scene availability or references. Existing references will be kept; missing targets remain warnings and can be saved.",
+  "Scene.Impact.Continue": "Continue",
+  "Scene.Impact.Groups": "Availability changes in {0} Group(s).",
+  "Scene.Impact.Incomplete": "Analysis is incomplete. Other references or effects may exist.",
+  "Scene.Diagnostic.scene.reference.resolved": "Target is available at this position.",
+  "Scene.Diagnostic.scene.reference.missing": "No matching target is available at this position.",
+  "Scene.Diagnostic.scene.reference.possible": "Target may only exist on some paths.",
+  "Scene.Diagnostic.scene.reference.uncertain": "Target availability could not be fully determined.",
+  "Scene.Diagnostic.scene.reference.unreachable": "This Group is unreachable from the current root.",
+  "Scene.Diagnostic.scene.coverage.unknown": "This Entry has no built-in scene relationship declaration.",
+  "Scene.Diagnostic.scene.coverage.structure": "Scene relationship structure could not be fully analyzed.",
+  "Scene.Diagnostic.scene.analysis.limit": "Scene analysis reached its safety limit.",
+  "Error.entry.impactChanged": "Author content changed during review. Review the operation again."
 }

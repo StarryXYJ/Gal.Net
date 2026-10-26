@@ -1053,5 +1053,19 @@
   "Uiux.I18n.RemoveSource": "除外する前に開発言語を切り替えてください。",
   "Uiux.I18n.LanguageActions": "言語の操作",
   "Uiux.I18n.ReloadCell": "失敗した入力を破棄して再読み込み",
-  "Uiux.I18n.SourceChanged": "原文が変更されました"
+  "Uiux.I18n.SourceChanged": "原文が変更されました",
+  "Scene.Impact.Title": "シーンへの影響を確認",
+  "Scene.Impact.Message": "この操作はシーンの対象や参照の利用可能性を変えます。既存の参照は保持され、対象の欠落は保存可能な警告になります。",
+  "Scene.Impact.Continue": "操作を続行",
+  "Scene.Impact.Groups": "{0} 個の Group の終了時の状態が変わります。",
+  "Scene.Impact.Incomplete": "解析は不完全です。他の参照や影響がある可能性があります。",
+  "Scene.Diagnostic.scene.reference.resolved": "この位置で対象を利用できます。",
+  "Scene.Diagnostic.scene.reference.missing": "この位置で一致する対象がありません。",
+  "Scene.Diagnostic.scene.reference.possible": "対象は一部の実行経路でのみ存在する可能性があります。",
+  "Scene.Diagnostic.scene.reference.uncertain": "対象の利用可能性を完全には判断できません。",
+  "Scene.Diagnostic.scene.reference.unreachable": "現在のルートからこの Group に到達できません。",
+  "Scene.Diagnostic.scene.coverage.unknown": "この Entry の組み込みシーン関係宣言がありません。",
+  "Scene.Diagnostic.scene.coverage.structure": "シーン関係の構造を完全には解析できません。",
+  "Scene.Diagnostic.scene.analysis.limit": "シーン解析が安全上限に達しました。",
+  "Error.entry.impactChanged": "確認中に編集内容が変わりました。操作の影響を再確認してください。"
 }

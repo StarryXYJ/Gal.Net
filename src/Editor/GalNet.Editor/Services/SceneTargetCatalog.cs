@@ -77,8 +77,8 @@ public sealed class SceneTargetCatalog(ProjectSceneTargets query, IEditorDocumen
     public IReadOnlyList<FieldEditorOption>? FieldOptions(string groupId, string entryId, string type, string field, SceneTimelinePosition? position = null)
     {
         var kinds = SceneFieldSemantics.TargetKinds(type, field); if (kinds is null) return null;
-        var snapshot = Query(groupId, entryId, target => kinds.Contains(target.Kind) && (type != BuiltinEntryIds.SelectVariants || target.Variants is not null), position, type == BuiltinEntryIds.StopAnimation);
-        var noneKey = type == BuiltinEntryIds.ApplyEffect ? "Scene.Global" : "Scene.None";
+        var snapshot = Query(groupId, entryId, target => kinds.Contains(target.Kind) && (SceneAuthoringSemantics.Reference(type, field)?.RequiresVariants != true || target.Variants is not null), position, SceneAuthoringSemantics.Reference(type, field)?.Domain == SceneIdentityDomain.Playback);
+        var noneKey = SceneAuthoringSemantics.Reference(type, field)?.AllowsGlobal == true ? "Scene.Global" : "Scene.None";
         var none = new ResourcePickerItem("none", localization[noneKey], "", "×");
         return new[] { new FieldEditorOption("none", new SceneFieldChoice(snapshot, null, none, noneKey), JsonSerializer.SerializeToElement("")) }
             .Concat(snapshot.Choices.Select(choice => new FieldEditorOption(choice.Item.Id, new SceneFieldChoice(snapshot, choice, choice.Item), JsonSerializer.SerializeToElement(choice.Target.Handle)))).ToArray();
@@ -87,18 +87,7 @@ public sealed class SceneTargetCatalog(ProjectSceneTargets query, IEditorDocumen
 
 internal static class SceneFieldSemantics
 {
-    public static SceneTargetKind[]? TargetKinds(string type, string field) => (type, field) switch
-    {
-        (BuiltinEntryIds.StopAnimation, "playbackHandleId") => [SceneTargetKind.Playback],
-        (BuiltinEntryIds.HideLayer or BuiltinEntryIds.MoveLayer or BuiltinEntryIds.ReplaceLayer or BuiltinEntryIds.StopVideo or BuiltinEntryIds.SelectVariants, "handleId") => [SceneTargetKind.Layer],
-        (BuiltinEntryIds.Animate, "handleId") => [SceneTargetKind.Layer, SceneTargetKind.Particle, SceneTargetKind.Effect],
-        (BuiltinEntryIds.ApplyEffect, "targetHandleId") => [SceneTargetKind.Layer],
-        (BuiltinEntryIds.CrossFadeTransition or BuiltinEntryIds.BlindsTransition, "oldHandleId") => [SceneTargetKind.Layer],
-        (BuiltinEntryIds.SlideTransition or BuiltinEntryIds.BlackFadeTransition or BuiltinEntryIds.WhiteFadeTransition or BuiltinEntryIds.ColorFadeTransition, "fromLayerHandleId") => [SceneTargetKind.Layer],
-        (BuiltinEntryIds.StopEffect, "instanceId") => [SceneTargetKind.Effect],
-        (BuiltinEntryIds.StopParticleEmitter, "instanceId") => [SceneTargetKind.Particle],
-        _ => null
-    };
+    public static IReadOnlyList<SceneTargetKind>? TargetKinds(string type, string field) => SceneAuthoringSemantics.Reference(type, field)?.Kinds;
     public static bool IsOutput(string type, string field) => SceneAuthoringIdentities.IsOutput(type, field);
-    public static string? Label(string type, string field) => TargetKinds(type, field) is null ? null : type == BuiltinEntryIds.StopAnimation ? "Scene.Playback" : "Scene.Target";
+    public static string? Label(string type, string field) => TargetKinds(type, field) is null ? null : SceneAuthoringSemantics.Reference(type, field)?.Domain == SceneIdentityDomain.Playback ? "Scene.Playback" : "Scene.Target";
 }

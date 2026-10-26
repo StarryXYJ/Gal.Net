@@ -13,6 +13,7 @@ namespace GalNet.Editor.ViewModels;
 
 public sealed record AuthorProblem(string Severity, string Message, string Source, AuthorNavigationTarget? Target, Action? Discard = null)
 {
+    public SceneReferenceDiagnostic? SceneReference { get; init; }
     public bool HasDiscard => Discard is not null;
     public bool IsError => Severity == "error";
     public bool IsWarning => Severity == "warning";
@@ -30,6 +31,8 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     private readonly AuthorNavigationService _navigation;
     private readonly EditorGroupProjectionStore _groups;
     private readonly ProjectLocalizationQuery _localization;
+    private readonly ProjectSceneTargets? _scenes;
+    private IReadOnlyList<SceneReferenceDiagnostic> _sceneDiagnostics = [];
     private readonly List<AuthorProblem> _external = [];
     private string _signature;
     private bool _incomplete;
@@ -42,20 +45,31 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     public ObservableCollection<AuthorProblem> Problems { get; } = [];
     public int Count => Problems.Count;
     public string Status => _text[_validatedRevision is null ? "Uiux.Validation.Unchecked" : _validatedRevision != _revision ? "Uiux.Validation.Stale"
-        : _validation.Any(problem => problem.Severity == "error") ? "Uiux.Validation.Failed" : _incomplete ? "Uiux.Validation.Incomplete" : "Uiux.Validation.Passed"];
+        : _validation.Any(problem => problem.Severity == "error") ? "Uiux.Validation.Failed" : _incomplete || _sceneDiagnostics.Any(diagnostic => diagnostic.Code is "scene.reference.uncertain" or "scene.coverage.unknown" or "scene.coverage.structure" or "scene.analysis.limit") ? "Uiux.Validation.Incomplete" : "Uiux.Validation.Passed"];
     public ProblemsPanelViewModel(EntryEditSession edits, IProjectContentSession content, IProjectService projects, IEntryCatalog catalog,
-        EditorHistories histories, IEditorLocalizationService text, AuthorNavigationService navigation, EditorGroupProjectionStore groups, ProjectLocalizationQuery localization)
+        EditorHistories histories, IEditorLocalizationService text, AuthorNavigationService navigation, EditorGroupProjectionStore groups, ProjectLocalizationQuery localization, ProjectSceneTargets? scenes = null)
     {
         _edits = edits; _content = content; _projects = projects; _catalog = catalog; _histories = histories; _text = text; _navigation = navigation;
         _groups = groups;
+        _scenes = scenes;
+        if (scenes is not null) scenes.Changed += SceneChanged;
         _localization = localization; _signature = JsonSerializer.Serialize(content.CaptureWorking());
         edits.Changed += Refresh; histories.Changed += ContentChanged; text.PropertyChanged += LocaleChanged; Refresh();
     }
     private void LocaleChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args) => Refresh();
+    private void SceneChanged()
+    {
+        if (_validatedRevision is null || _scenes is null) return;
+        _sceneDiagnostics = _scenes.Diagnostics(); Refresh();
+    }
     private void ContentChanged()
     {
         var signature = JsonSerializer.Serialize(_content.CaptureWorking());
-        if (signature != _signature) { _signature = signature; _revision++; }
+        if (signature != _signature)
+        {
+            _signature = signature; _revision++;
+            if (_validatedRevision is not null && _scenes is not null) _sceneDiagnostics = _scenes.Diagnostics();
+        }
         Refresh();
     }
     private void Refresh()
@@ -65,6 +79,10 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
             Problems.Add(new(draft.State.IsConflicted || draft.State.Issue is not null ? "error" : "info", draft.State.IsConflicted ? _text["Uiux.Draft.Conflict"] : draft.State.Issue?.Message ?? _text["Uiux.Draft.Pending"],
                 $"{draft.Owner.Type} / {draft.Owner.Id} / {draft.Root.Id}", new(draft.Owner.AuthorGroupId, draft.Owner.StableId, draft.Root.Id, Revision: _revision), draft.State.Clear));
         foreach (var problem in _validation) Problems.Add(problem);
+        foreach (var diagnostic in _sceneDiagnostics)
+            Problems.Add(new("warning", _text["Scene.Diagnostic." + diagnostic.Code], diagnostic.Owner.GroupId + diagnostic.JsonPointer,
+                new(diagnostic.Owner.GroupId, diagnostic.Owner.EntryId, diagnostic.JsonPointer.Split('/').ElementAtOrDefault(2), Revision: _revision))
+            { SceneReference = diagnostic });
         foreach (var problem in _external) Problems.Add(problem);
         foreach (var group in _groups.Loaded)
             foreach (var entry in group.Entries) entry.ProblemCount = Problems.Count(problem => problem.Target?.NodeId == group.Document.Id && problem.Target?.EntryId == entry.StableId);
@@ -114,10 +132,11 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
                 node is not null ? new(node.Id, reference?.EntryId, field, Revision: _revision) : new(File: issue.File, Revision: _revision)));
         }
         _validation = results; _validatedRevision = _revision; Refresh();
+        SceneChanged();
     }
     public void Report(string severity, string message, string source, AuthorNavigationTarget? target = null)
     { if (!_external.Any(problem => problem.Source == source && problem.Message == message)) _external.Add(new(severity, message, source, target)); Refresh(); }
     [RelayCommand] private void Navigate(AuthorProblem? problem) { if (problem?.Target is { } target) _navigation.Navigate(target); }
     [RelayCommand] private void Discard(AuthorProblem? problem) => problem?.Discard?.Invoke();
-    public void Dispose() { _edits.Changed -= Refresh; _histories.Changed -= ContentChanged; _text.PropertyChanged -= LocaleChanged; }
+    public void Dispose() { _edits.Changed -= Refresh; _histories.Changed -= ContentChanged; _text.PropertyChanged -= LocaleChanged; if (_scenes is not null) _scenes.Changed -= SceneChanged; }
 }

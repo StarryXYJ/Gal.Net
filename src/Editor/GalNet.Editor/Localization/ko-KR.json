@@ -1053,5 +1053,19 @@
   "Uiux.I18n.RemoveSource": "제거하기 전에 개발 언어를 변경하세요.",
   "Uiux.I18n.LanguageActions": "언어 작업",
   "Uiux.I18n.ReloadCell": "실패한 입력을 버리고 다시 읽기",
-  "Uiux.I18n.SourceChanged": "원문 변경됨"
+  "Uiux.I18n.SourceChanged": "원문 변경됨",
+  "Scene.Impact.Title": "장면 영향 검토",
+  "Scene.Impact.Message": "이 작업은 장면 대상이나 참조의 사용 가능 여부를 바꿉니다. 기존 참조는 유지되며, 대상이 없어도 경고로 표시하고 저장할 수 있습니다.",
+  "Scene.Impact.Continue": "작업 계속",
+  "Scene.Impact.Groups": "{0}개 Group의 종료 상태가 바뀝니다.",
+  "Scene.Impact.Incomplete": "분석이 완료되지 않았습니다. 다른 참조나 영향이 있을 수 있습니다.",
+  "Scene.Diagnostic.scene.reference.resolved": "이 위치에서 대상을 사용할 수 있습니다.",
+  "Scene.Diagnostic.scene.reference.missing": "이 위치에 일치하는 대상이 없습니다.",
+  "Scene.Diagnostic.scene.reference.possible": "일부 실행 경로에만 대상이 존재할 수 있습니다.",
+  "Scene.Diagnostic.scene.reference.uncertain": "대상의 사용 가능 여부를 완전히 판단할 수 없습니다.",
+  "Scene.Diagnostic.scene.reference.unreachable": "현재 루트에서 이 Group에 도달할 수 없습니다.",
+  "Scene.Diagnostic.scene.coverage.unknown": "이 Entry에 대한 기본 장면 관계 선언이 없습니다.",
+  "Scene.Diagnostic.scene.coverage.structure": "장면 관계 구조를 완전히 분석할 수 없습니다.",
+  "Scene.Diagnostic.scene.analysis.limit": "장면 분석이 안전 한도에 도달했습니다.",
+  "Error.entry.impactChanged": "검토 중 편집 내용이 바뀌었습니다. 작업의 영향을 다시 확인하세요."
 }

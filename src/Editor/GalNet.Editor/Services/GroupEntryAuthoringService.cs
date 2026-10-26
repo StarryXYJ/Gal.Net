@@ -104,6 +104,15 @@ public sealed class GroupEntryAuthoringService(EditorGroupProjectionStore groups
         if (entries.Length > 0) histories.Content.Execute(new PresenceEdit(this, groupId, entries, false, new("History.DeleteEntries", entries.Length)));
     }
 
+    public PreparedEntryEdit? PrepareDelete(string groupId, IEnumerable<string> ids)
+    {
+        var selected = ids.ToHashSet(StringComparer.Ordinal);
+        var entries = Group(groupId).Entries.Select((entry, index) => new PositionedEntry(index, entry)).Where(item => selected.Contains(item.Entry.StableId)).ToArray();
+        return entries.Length == 0 ? null : new(documents, histories,
+            new PresenceEdit(this, groupId, entries, false, new("History.DeleteEntries", entries.Length)),
+            candidate => candidate.GroupEntries[groupId].RemoveAll(entry => selected.Contains(entry.StableId)));
+    }
+
     public void Move(string groupId, IEnumerable<string> ids, string draggedId, int newIndex)
     {
         var entries = Group(groupId).Entries;

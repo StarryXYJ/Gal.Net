@@ -98,9 +98,9 @@ public partial class EntryListEditorControl : ReorderableListControl
         if (DataContext is GroupEditorPanelViewModel vm) vm.InsertType(args.Type, _insertAnchor);
         ScrollSelectionIntoView();
     }
-    private void OnEntryTypeConfirmed(object? sender, EntryTypeConfirmedEventArgs args)
+    private async void OnEntryTypeConfirmed(object? sender, EntryTypeConfirmedEventArgs args)
     {
-        if (sender is Control { DataContext: EntryEditorItemViewModel entry } && DataContext is GroupEditorPanelViewModel vm) vm.ChangeType(entry, args.Type);
+        if (sender is Control { DataContext: EntryEditorItemViewModel entry }) await RunEntryAction(vm => vm.ChangeTypeAsync(entry, args.Type));
     }
 
     private async void OnListKeyDown(object? sender, KeyEventArgs e)
@@ -121,7 +121,7 @@ public partial class EntryListEditorControl : ReorderableListControl
         if (e.Key == Key.Delete && e.KeyModifiers == KeyModifiers.None)
         {
             e.Handled = true;
-            await RunEntryAction(vm => { vm.DeleteSelection(); return Task.CompletedTask; });
+            await RunEntryAction(vm => vm.DeleteSelectionAsync());
             return;
         }
         if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None)
@@ -151,7 +151,7 @@ public partial class EntryListEditorControl : ReorderableListControl
         await WriteClipboardAsync(text);
         // A failed clipboard write must never remove the originals. A late completion
         // after the page/project closes must not modify a replacement project.
-        if (cut && !vm.IsDisposed && ReferenceEquals(DataContext, vm)) vm.DeleteCopiedEntries(ids, text);
+        if (cut && !vm.IsDisposed && ReferenceEquals(DataContext, vm)) await vm.DeleteCopiedEntriesAsync(ids, text);
     });
 
     public Task PasteSelectionAsync() => RunEntryAction(async vm =>
@@ -207,7 +207,7 @@ public partial class EntryListEditorControl : ReorderableListControl
         Add("Entry.Menu.Cut", "Ctrl+X", () => CopySelectionAsync(cut: true), selected);
         Add("Entry.Menu.Paste", "Ctrl+V", PasteSelectionAsync);
         Add("Entry.Menu.Duplicate", "Ctrl+D", () => RunEntryAction(model => model.DuplicateSelectionAsync()), selected);
-        Add("Entry.Menu.Delete", "Delete", () => RunEntryAction(model => { model.DeleteSelection(); return Task.CompletedTask; }), selected);
+        Add("Entry.Menu.Delete", "Delete", () => RunEntryAction(model => model.DeleteSelectionAsync()), selected);
         menu.Items.Add(new Separator());
         Add("Entry.Menu.SelectAll", "Ctrl+A", () => { ItemsListBox.SelectAll(); return Task.CompletedTask; });
         menu.ShowAt((Control?)row ?? ItemsListBox); args.Handled = true;

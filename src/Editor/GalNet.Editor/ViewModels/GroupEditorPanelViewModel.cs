@@ -15,6 +15,7 @@ using GalNet.Editor.Commands;
 using GalNet.Editor.Controls;
 using GalNet.Editor.History;
 using GalNet.Editor.Services;
+using GalNet.Editor.Shared.Services;
 using GalNet.Game.Controls.Forms;
 
 namespace GalNet.Editor.ViewModels;
@@ -117,11 +118,32 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     public string CopySelection() => _authoring.Copy(GroupId, SelectedEntries.Select(entry => entry.StableId));
     public void DeleteEntries(IEnumerable<string> ids) { if (!_disposed) _authoring.Delete(GroupId, ids); }
     public void DeleteSelection() => DeleteEntries(SelectedEntries.Select(entry => entry.StableId).ToArray());
+    public Func<SceneEditImpact, Task<bool>>? ReviewImpactAsync { get; set; }
+    private async Task CommitReviewedAsync(PreparedEntryEdit? edit)
+    {
+        if (edit is null || _disposed) return;
+        if (edit.Impact.RequiresReview && !await (ReviewImpactAsync?.Invoke(edit.Impact) ?? SceneEntryImpactPrompt.ConfirmAsync(edit.Impact, _localization, Describe))) return;
+        if (!_disposed) edit.Commit();
+    }
+    private string Describe(SceneAuthorAddress address)
+    {
+        var node = Workspace.Nodes.FirstOrDefault(item => item.Id == address.GroupId);
+        var entry = node?.Entries.FirstOrDefault(item => item.StableId == address.EntryId);
+        return (node?.Name ?? address.GroupId) + " / " + entry?.Id + " · " + Workspace.Localize("Entry.Type." + entry?.Type);
+    }
+    public Task DeleteEntriesAsync(IEnumerable<string> ids) => _disposed ? Task.CompletedTask : CommitReviewedAsync(_authoring.PrepareDelete(GroupId, ids));
+    public Task DeleteSelectionAsync() => DeleteEntriesAsync(SelectedEntries.Select(entry => entry.StableId).ToArray());
     public void DeleteCopiedEntries(string[] ids, string text)
     {
         if (_disposed) return;
         if (_authoring.Copy(GroupId, ids) != text) throw new EditorOperationException("entry.cutChanged", "The source entries changed while writing the clipboard. They were not removed.");
         DeleteEntries(ids);
+    }
+    public async Task DeleteCopiedEntriesAsync(string[] ids, string text)
+    {
+        if (_disposed) return;
+        if (_authoring.Copy(GroupId, ids) != text) throw new EditorOperationException("entry.cutChanged", "The source entries changed while writing the clipboard. They were not removed.");
+        await DeleteEntriesAsync(ids);
     }
     public async Task PasteAsync(string text, string? anchor) { if (!_disposed) { var pasted = await _authoring.PasteAsync(GroupId, text, anchor); if (!_disposed) SetSelection(pasted); } }
     public async Task DuplicateSelectionAsync()
@@ -188,6 +210,13 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     {
         if (!_disposed && EntryTypes.Any(item => item.Value == type)) Workspace.ChangeEntryType(GroupNode, entry, type, _catalog.Create(type).Values);
     }
+    public Task ChangeTypeAsync(EntryEditorItemViewModel entry, string type)
+    {
+        if (_disposed || entry.Type == type || !GroupNode.Entries.Contains(entry) || !EntryTypes.Any(item => item.Value == type)) return Task.CompletedTask;
+        var fields = _projects.Current?.Services.GetService(typeof(EntryFieldAuthoringService)) as EntryFieldAuthoringService;
+        if (fields is null) throw new InvalidOperationException("Entry authoring is unavailable.");
+        return CommitReviewedAsync(fields.PrepareType(GroupId, entry.Source, type, GalNet.Editor.Abstraction.Documents.EditorEntryData.ParseParameters(_catalog, type, _catalog.Create(type).Values)));
+    }
     private void InsertEntries(int index, int count, string? anchorId = null)
     {
         if (_disposed) return;
@@ -199,12 +228,12 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     }
 
     [RelayCommand]
-    private void RemoveEntry(EntryEditorItemViewModel? entry)
+    private async Task RemoveEntryAsync(EntryEditorItemViewModel? entry)
     {
         if (entry is null)
             return;
 
-        try { _authoring.Delete(GroupId, [entry.StableId]); }
+        try { await DeleteEntriesAsync([entry.StableId]); }
         catch (Exception error) { ReportError(error); }
     }
 

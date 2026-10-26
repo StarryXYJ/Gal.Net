@@ -1053,5 +1053,19 @@
   "Uiux.I18n.RemoveSource": "请先切换开发语言，再移除此语言。",
   "Uiux.I18n.LanguageActions": "语言操作",
   "Uiux.I18n.ReloadCell": "放弃失败输入并重新读取",
-  "Uiux.I18n.SourceChanged": "原文已变更"
+  "Uiux.I18n.SourceChanged": "原文已变更",
+  "Scene.Impact.Title": "检查场景影响",
+  "Scene.Impact.Message": "此操作会改变场景对象或引用的可用性。已有引用会保留；缺少目标仍是警告，可以保存。",
+  "Scene.Impact.Continue": "继续操作",
+  "Scene.Impact.Groups": "{0} 个 Group 的出口状态将改变。",
+  "Scene.Impact.Incomplete": "分析尚不完整，可能还有其他引用或影响。",
+  "Scene.Diagnostic.scene.reference.resolved": "此位置的目标可用。",
+  "Scene.Diagnostic.scene.reference.missing": "此位置没有可匹配的目标。",
+  "Scene.Diagnostic.scene.reference.possible": "目标可能只在部分执行路径中存在。",
+  "Scene.Diagnostic.scene.reference.uncertain": "无法完整判断目标的可用性。",
+  "Scene.Diagnostic.scene.reference.unreachable": "当前根节点无法到达此 Group。",
+  "Scene.Diagnostic.scene.coverage.unknown": "此 Entry 尚无内置场景关系声明。",
+  "Scene.Diagnostic.scene.coverage.structure": "场景关系结构无法完整分析。",
+  "Scene.Diagnostic.scene.analysis.limit": "场景分析已达到安全上限。",
+  "Error.entry.impactChanged": "检查期间作者内容已改变，请重新检查操作影响。"
 }
