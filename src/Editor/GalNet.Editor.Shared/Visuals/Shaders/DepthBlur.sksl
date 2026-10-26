@@ -1,0 +1,50 @@
+/*
+@gal.effect v=1
+@input source
+@targets layer
+
+@param focusZ
+  uniform: focusZ
+  type: float
+  default: 0
+  animatable: true
+
+@param focusRange
+  uniform: focusRange
+  type: float
+  default: 0
+  range: 0..100000
+  animatable: true
+
+@param falloff
+  uniform: falloff
+  type: float
+  default: 0.1
+  range: 0..64
+  animatable: true
+
+@param maxRadius
+  uniform: maxRadius
+  type: float
+  default: 24
+  range: 0..64
+  animatable: true
+*/
+uniform shader source;
+uniform float layerZ;
+uniform float focusZ, focusRange, falloff, maxRadius;
+half4 main(float2 p) {
+    float r = clamp((abs(layerZ-focusZ)-focusRange)*falloff,0.0,maxRadius);
+    if (r <= 0.001) return source.eval(p);
+    float4 sum = float4(0);
+    float weights = 0.0;
+    for (int y = -2; y <= 2; y++) {
+        for (int x = -2; x <= 2; x++) {
+            float w = exp(-float(x*x+y*y)/2.0);
+            sum += float4(source.eval(p+float2(float(x),float(y))*r*0.5))*w;
+            weights += w;
+        }
+    }
+    return half4(sum/weights);
+}
+

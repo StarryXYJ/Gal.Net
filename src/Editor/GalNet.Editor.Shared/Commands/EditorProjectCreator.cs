@@ -7,6 +7,7 @@ using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Shared.Services;
 using GalNet.Assets;
+using GalNet.Editor.Shared.Visuals;
 
 namespace GalNet.Editor.Shared.Commands;
 
@@ -36,8 +37,16 @@ public static class EditorProjectCreator
         }
         var entryId = Guid.NewGuid().ToString("N");
         var groupId = Guid.NewGuid().ToString("N");
+        var configuration = (settings ?? DefaultSettings()).Clone();
+        // A custom contract opts in by declaring this authoring field and effect capability.
+        var includeVisuals = contract is not null && contract.Catalog.TryGet(BuiltinEntryIds.ApplyEffect, out _) &&
+            contract.Configurations.Sections.Any(section => section.Id == DefaultProjectConfiguration.Section.Id &&
+                section.Fields.Any(field => field.Id == "defaultVisualPrograms"));
+        var visuals = includeVisuals ? DefaultVisualTemplate.Prepare(configuration) : null;
+        configuration = visuals?.Configuration ?? configuration;
         var files = new[] { "Graph/graph.json", $"Graph/groups/{groupId}.rawgalgroup", "settings.json", ".galnet/editor-state.json" }
             .Concat(contractFiles.Keys.Select(file => "Contracts/" + file))
+            .Concat(visuals?.Files.Keys ?? Enumerable.Empty<string>())
             .Concat(contract is null ? ["Contracts/README.md"] : Array.Empty<string>()).Order(StringComparer.Ordinal).ToArray();
         var report = new ProjectCreateReport(root, name, request.DryRun, contract is not null, contract?.Fingerprint, files);
         if (request.DryRun) return new("project.create", true, report, []);
@@ -58,6 +67,12 @@ public static class EditorProjectCreator
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                 await File.WriteAllBytesAsync(path, bytes, cancellationToken);
             }
+            foreach (var (file, bytes) in visuals?.Files ?? new Dictionary<string, byte[]>())
+            {
+                var path = new ProjectRawReader(stage).Resolve(file);
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                await File.WriteAllBytesAsync(path, bytes, cancellationToken);
+            }
             if (contract is null)
                 await File.WriteAllTextAsync(Path.Combine(stage, "Contracts/README.md"),
                     "Deploy GalNet.Project.Contracts.dll and its managed dependencies here. The public static GalNet.Project.Contracts.ProjectSchemas.Modules property declares this project's schemas. No built-in fallback is used.\n", cancellationToken);
@@ -65,7 +80,7 @@ public static class EditorProjectCreator
             var catalog = deployed?.Catalog ?? new TargetProfileEntryCatalog([]);
             var document = new EditorProjectDocument
             {
-                Configuration = settings ?? DefaultSettings(),
+                Configuration = configuration,
                 Graph = new EditorGraphDocument
                 {
                     Name = name,

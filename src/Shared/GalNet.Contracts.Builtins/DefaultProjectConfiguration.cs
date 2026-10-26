@@ -17,7 +17,8 @@ public static class DefaultProjectConfiguration
         Field("targetLocale", typeof(I18nLocale)), Field("availableLocales", typeof(List<I18nLocale>)),
         Field("defaultWidth", typeof(int), minimum: 1), Field("defaultHeight", typeof(int), minimum: 1),
         Field("saveSlotCount", typeof(int), minimum: 0),
-        Field("audioGroups", typeof(List<AudioGroupDefinition>)), Field("audioTracks", typeof(List<AudioTrackDefinition>))
+        Field("audioGroups", typeof(List<AudioGroupDefinition>)), Field("audioTracks", typeof(List<AudioTrackDefinition>)),
+        Field("defaultVisualPrograms", typeof(Dictionary<string, string>))
     ], value => _ = new AudioConfiguration(value.AudioTracks, value.AudioGroups));
     public static ProjectConfigurationSchema Schema { get; } = new([Section]);
 
