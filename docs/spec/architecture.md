@@ -60,7 +60,6 @@ src/
   Infrastructure/  Storage.FileSystem、Media.LibVlc
   Editor/          Editor.Abstraction、Editor.Shared、Editor、Editor.Headless
   Samples/         Sample.Contracts、Sample.Avalonia、Sample.Headless
-  Launcher/        Launcher 共享项目与 Android、Browser、Desktop、iOS 宿主
 ```
 
 物理分组用于表达查找和所有权，不改变程序集名称、根命名空间或依赖方向。新增生产项目应放入与其职责一致的分组，并同步 `GalNet.slnx`；测试项目统一位于 `test/<Assembly>.Tests`。
@@ -156,5 +155,7 @@ Engine 的导航索引持有验证后的私有图副本，不共享作者集合�
 执行模块/呈现端借用 Core.Runtime.IGameContext；Engine 管理能力 IGameRuntime 与恢复候选 GameRestorePoint 属于 Runtime.Runtime。Core.Execution 拥有 IPrimitiveDispatcher、IChoicePresenter、ICatchUpPresentation 和 IPlayerPlaybackController，这些协议只包含中立执行数据；音频后端端口 IAudioPlaybackHost 与现有音频协议同属 Core.Audio。注册、分发及展示恢复组合仍位于 Presentation.Abstractions，具体 presenter 端口仍位于其 View。编辑器主题、Dock、快捷键、最近项目及嵌入布局 JSON 编码属于 Editor.Abstraction.Settings；Core 不持有这些宿主配置，未使用的 LauncherSettings 已删除。
 
 展示执行抽象的 StateRestoreSession 拥有重放 continuation；宿主在执行 view 和平台 presenter 释放前异步释放该会话。Suspend 等待取消后仍保留旧实例，下一次重放或释放会继续等待真实展示清理。
+
+Engine 只接收/更新 PlaybackOptions，音频接收显式轨道和 AudioMixOptions，不依赖完整玩家设置或运行上下文的设置容器。默认玩家偏好模型 GameSettings 位于 Avalonia.GameHost.Settings，通过组合根投影为模块输入；通用 PlayerSession 只持有玩家持久化与进度，不持有该偏好模型。清空玩家数据后由默认宿主重新绑定默认偏好。Editor 没有另设未使用的游戏偏好服务。ProjectSettings 目前仍是 Editor/内容加载器共享的作者 DTO，尚未完成自定义作者配置链路的重构，不能将该边界描述为已完全可替换。
 
 运行与宿主资源的依赖及生命周期以本页的游戏运行段和[运行时规范](runtime.md)为准，包括 GameView 对 Assets 的媒体 adapter 默认实现依赖。

@@ -1,4 +1,3 @@
-using GalNet.Editor.Abstraction.Settings;
 using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
@@ -16,6 +15,7 @@ using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Extensibility;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Abstraction.Settings;
 using GalNet.Editor.Composition;
 using GalNet.Editor.Dock;
 using GalNet.Editor.History;
@@ -149,7 +149,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());
             using var services = Services();
             var projects = services.GetRequiredService<IProjectService>();
-            var project = await projects.CreateAsync(Path.Combine(_root, "SettingsHistory"), "Original", new() { SfxChannelCount = 7 }, Contracts());
+            var project = await projects.CreateAsync(Path.Combine(_root, "SettingsHistory"), "Original", new() { DefaultHeight = 777 }, Contracts());
             var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
             var panel = project.Services.GetRequiredService<ProjectSettingsPanelViewModel>();
             var view = new ProjectSettingsPanelView { DataContext = panel };
@@ -195,7 +195,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(project.Services.GetRequiredService<IProjectContentSession>().IsDirty, Is.False);
                 await router.RedoAsync();
                 Assert.That(project.Name, Is.EqualTo("AfterSave"));
-                Assert.That(project.Settings.SfxChannelCount, Is.EqualTo(7));
+                Assert.That(project.Settings.DefaultHeight, Is.EqualTo(777));
                 await workspace.SaveAsync();
                 await projects.CloseAsync();
                 var reopened = await projects.OpenAsync(project.RootPath);
@@ -427,7 +427,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     {
         using var services = Services();
         var projects = services.GetRequiredService<IProjectService>();
-        var project = await projects.CreateAsync(Path.Combine(_root, "Settings"), "Settings", new() { SfxChannelCount = 7 }, Contracts());
+        var project = await projects.CreateAsync(Path.Combine(_root, "Settings"), "Settings", new() { DefaultHeight = 777 }, Contracts());
         var value = new Variable { Name = "score" };
         value.SetValue(4);
         var documents = project.Services.GetRequiredService<IEditorDocumentService>();
@@ -436,7 +436,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         await projects.SaveAsync();
         using var saved = JsonDocument.Parse(File.ReadAllText(project.SettingsFilePath));
         Assert.That(saved.RootElement.GetProperty("playerVariables")[0].GetProperty("name").GetString(), Is.EqualTo("score"));
-        Assert.That(project.Settings.SfxChannelCount, Is.EqualTo(7));
+        Assert.That(project.Settings.DefaultHeight, Is.EqualTo(777));
         await projects.CloseAsync();
     }
 

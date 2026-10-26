@@ -1,9 +1,9 @@
 using System.Text.Json;
 using GalNet.Core.Audio;
 using GalNet.Core.Entry;
+using GalNet.Core.Execution;
 using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
-using GalNet.Core.Settings;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
@@ -21,16 +21,15 @@ public sealed class BuiltinAutoPlaybackTests
     {
         var text = new ControlledText();
         await using var view = new GameRegistration().AddBuiltins(dialoguePresenter: text, nvlPresenter: text).BuildView();
-        var settings = new SettingsContainer();
-        settings.Set(new GameSettings
+        var settings = new PlaybackOptions
         {
             QuickReadOnly = false,
             AutoAdvanceIntervalMilliseconds = 120,
             QuickAdvanceIntervalMilliseconds = 120
-        });
+        };
         var group = new Group { Id = "main" };
         group.Entries.Add(new PrimitiveEntry(type, JsonSerializer.SerializeToElement(new { content = "Hello" })) { StableId = "text" });
-        await using var engine = new GameEngine(new Graph { RootNodeId = "main", Nodes = { group } }, view, settings: settings);
+        await using var engine = new GameEngine(new Graph { RootNodeId = "main", Nodes = { group } }, view, playbackOptions: settings);
         var ended = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         engine.StateChanged += state => { if (state.State == GameEngineState.Completed) ended.TrySetResult(); };
         await engine.AdvanceAsync();
@@ -48,17 +47,16 @@ public sealed class BuiltinAutoPlaybackTests
     {
         var text = new ControlledText();
         using var audio = new ControlledAudio();
-        await using var view = new GameRegistration().AddBuiltins(dialoguePresenter: text, audioHost: audio).BuildView();
-        var settings = new SettingsContainer();
-        settings.Set(new ProjectSettings());
-        settings.Set(new GameSettings { AutoAdvanceIntervalMilliseconds = 120 });
+        await using var view = new GameRegistration().AddBuiltins(dialoguePresenter: text, audioHost: audio,
+            audioTracks: AudioTrackDefinition.CreateDefaults()).BuildView();
+        var settings = new PlaybackOptions { AutoAdvanceIntervalMilliseconds = 120 };
         var group = new Group { Id = "main" };
         group.Entries.AddRange([
             new PrimitiveEntry("audio.play", JsonSerializer.SerializeToElement(new { trackId = AudioBuses.Vocal, asset = "voice", autoBlocking = "true" })) { StableId = "voice" },
             new PrimitiveEntry("dialogue.text", JsonSerializer.SerializeToElement(new { content = "Hello" })) { StableId = "text" }
         ]);
         var graph = new Graph { RootNodeId = "main", Nodes = { group } };
-        await using var engine = new GameEngine(graph, view, settings: settings);
+        await using var engine = new GameEngine(graph, view, playbackOptions: settings);
         var ended = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         engine.StateChanged += state => { if (state.State == GameEngineState.Completed) ended.TrySetResult(); };
         await engine.AdvanceAsync();

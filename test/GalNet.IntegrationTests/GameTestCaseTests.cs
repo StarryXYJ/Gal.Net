@@ -51,10 +51,9 @@ public class GameTestCaseTests
             assets.RegisterImageVariantsDecoder();
             var variants = await assets.LoadImageVariantsCatalogAsync();
             await using var view = new GameRegistration().AddBuiltins(presenter, gallery: content.Gallery,
-                nvlPresenter: presenter, characters: content.Localization.Characters, imageVariants: variants).BuildView();
-            var settings = new SettingsContainer();
-            settings.Set(content.Settings);
-            await using var engine = new GameEngine(content.Graph, view, localization, settings, choicePresenter: presenter);
+                nvlPresenter: presenter, characters: content.Localization.Characters, imageVariants: variants,
+                audioTracks: content.Settings.AudioTracks).BuildView();
+            await using var engine = new GameEngine(content.Graph, view, localization, choicePresenter: presenter);
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             await engine.AdvanceAsync(timeout.Token);
             while (engine.State == GameEngineState.Running)

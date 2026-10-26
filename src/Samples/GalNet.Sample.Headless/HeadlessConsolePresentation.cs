@@ -9,12 +9,12 @@ namespace GalNet.Sample.Headless;
 /// <summary>Basic interactive console adapters used by the official sample player.</summary>
 internal sealed class ConsolePresentation : IDialoguePresenter, INvlPresenter, IChoicePresenter, ILayerPresenter, IAnimationPresenter, IEffectPresenter
 {
-    private readonly GameSettings _settings;
+    private readonly float _textSpeed;
     private volatile bool _skipCurrentTypewriter;
     private volatile bool _instantTypewriter;
     private int _advancePromptActive;
 
-    public ConsolePresentation(GameSettings settings) => _settings = settings;
+    public ConsolePresentation(float textSpeed = 30f) => _textSpeed = textSpeed;
 
     public event Action? AdvanceRequested;
 
@@ -82,8 +82,8 @@ internal sealed class ConsolePresentation : IDialoguePresenter, INvlPresenter, I
                         {
                             ct.ThrowIfCancellationRequested();
                             Console.Write(character);
-                            if (!_skipCurrentTypewriter && !_instantTypewriter && _settings.TextSpeed > 0)
-                                await Task.Delay(TimeSpan.FromSeconds(1d / _settings.TextSpeed), ct);
+                            if (!_skipCurrentTypewriter && !_instantTypewriter && _textSpeed > 0)
+                                await Task.Delay(TimeSpan.FromSeconds(1d / _textSpeed), ct);
                         }
                         break;
                     case RichTypewriterTokenKind.LineBreak:

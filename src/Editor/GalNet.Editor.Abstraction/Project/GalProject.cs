@@ -10,7 +10,7 @@ namespace GalNet.Editor.Abstraction.Project;
 /// <summary>
 /// 编辑器打开中的一个游戏工程。
 /// 承载工程元数据、路径、项目设置、项目级 DI Scope。
-/// 注意：编辑器级设置（字体、主题、快捷键等）不在此处，走全局 ISettingsService。
+/// 注意：编辑器级设置（字体、主题、快捷键等）不在此处，走全局 IEditorSettingsService。
 /// </summary>
 public sealed class GalProject : IDisposable, IAsyncDisposable
 {

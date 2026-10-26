@@ -95,7 +95,6 @@
   "Settings.Project.Title": "프로젝트 설정",
   "Settings.Project.DefaultResolution": "기본 해상도",
   "Settings.Project.SaveSlotCount": "저장 슬롯 수",
-  "Settings.Project.SfxChannelCount": "효과음 채널 수",
   "Settings.Project.TargetLanguage": "대상 언어",
   "Settings.Project.Unsaved": "(저장되지 않은 변경 사항)",
   "Theme.Default": "시스템 기본값",

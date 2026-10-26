@@ -2,10 +2,10 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using GalNet.Core.Entry;
 using GalNet.Core.Execution;
+using GalNet.Core.Execution;
 using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
-using GalNet.Core.Settings;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Runtime.Engine;
@@ -15,13 +15,34 @@ namespace GeneralTest.Runtime;
 
 public class PlaybackModeTests
 {
+    [Test]
+    public async Task ExplicitOptionsUpdateStopsQuickAtUnreadTextAndRejectsInvalidInputWithoutFaulting()
+    {
+        var line = new ReadingWait();
+        using var view = Registration().RegisterInstruction("test.text", _ => line).BuildView();
+        await using var engine = new GameEngine(GraphOf("test.text"), view,
+            playbackOptions: Settings(5000) with { QuickReadOnly = false });
+        await engine.AdvanceAsync();
+        await engine.SetPlaybackModeAsync(PlaybackMode.Quick);
+        Assert.That(engine.PlaybackMode, Is.EqualTo(PlaybackMode.Quick));
+
+        Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => engine.UpdatePlaybackOptionsAsync(
+            new PlaybackOptions { AutoAdvanceIntervalMilliseconds = -1 }));
+        Assert.That(engine.State, Is.EqualTo(GameEngineState.Running));
+        Assert.That(engine.PlaybackMode, Is.EqualTo(PlaybackMode.Quick));
+
+        await engine.UpdatePlaybackOptionsAsync(Settings(5000));
+        Assert.That(engine.PlaybackMode, Is.EqualTo(PlaybackMode.Manual));
+        Assert.That(engine.State, Is.EqualTo(GameEngineState.Running));
+    }
+
     [TestCase(PlaybackMode.Auto)]
     [TestCase(PlaybackMode.Quick)]
     public async Task CancelledCatchUpOnExistingUnskippableBlockerPreservesPlaybackBoundary(PlaybackMode mode)
     {
         var blocker = new UnskippableWait();
         using var view = Registration().RegisterInstruction("test.voice", _ => blocker).BuildView();
-        await using var engine = new GameEngine(GraphOf("test.voice"), view, settings: Settings(0));
+        await using var engine = new GameEngine(GraphOf("test.voice"), view, playbackOptions: Settings(0));
         var completed = Terminal(engine);
         await engine.AdvanceAsync();
         var skip = engine.SkipToUnreadAsync();
@@ -40,9 +61,9 @@ public class PlaybackModeTests
     {
         var line = new ReadingWait(skipCompletes: false);
         var settings = Settings(0);
-        settings.Get<GameSettings>().QuickReadOnly = false;
+        settings = settings with { QuickReadOnly = false };
         using var view = Registration().RegisterInstruction("test.text", _ => line).BuildView();
-        await using var engine = new GameEngine(GraphOf("test.text"), view, settings: settings);
+        await using var engine = new GameEngine(GraphOf("test.text"), view, playbackOptions: settings);
         var completed = Terminal(engine);
         await engine.AdvanceAsync();
         await engine.AdvanceAsync();
@@ -58,7 +79,7 @@ public class PlaybackModeTests
     {
         var blocker = new UnskippableWait();
         using var view = Registration().RegisterInstruction("test.voice", _ => blocker).BuildView();
-        await using var engine = new GameEngine(GraphOf("test.voice"), view, settings: Settings(0));
+        await using var engine = new GameEngine(GraphOf("test.voice"), view, playbackOptions: Settings(0));
         var completed = Terminal(engine);
         await engine.AdvanceAsync();
         await engine.AdvanceAsync();
@@ -241,7 +262,7 @@ public class PlaybackModeTests
         var next = new ReadingWait();
         var calls = 0;
         using var view = Registration().RegisterInstruction("test.text", _ => ++calls == 1 ? first : next).BuildView();
-        await using var engine = new GameEngine(GraphOf("test.text"), view, settings: Settings(50));
+        await using var engine = new GameEngine(GraphOf("test.text"), view, playbackOptions: Settings(50));
         var snapshot = engine.CreateSaveData();
         await engine.AdvanceAsync();
         first.Presented();
@@ -321,7 +342,7 @@ public class PlaybackModeTests
         var line = new ReadingWait();
         using var view = Registration().RegisterInstruction("test.voice", _ => voice)
             .RegisterInstruction("test.text", _ => line).BuildView();
-        await using var engine = new GameEngine(GraphOf("test.voice", "test.text"), view, settings: Settings(0));
+        await using var engine = new GameEngine(GraphOf("test.voice", "test.text"), view, playbackOptions: Settings(0));
         var completed = Terminal(engine);
         await engine.AdvanceAsync();
         await engine.SetPlaybackModeAsync(PlaybackMode.Auto);
@@ -341,7 +362,7 @@ public class PlaybackModeTests
         var line = new ReadingWait();
         using var view = Registration().RegisterInstruction("test.voice", _ => voice)
             .RegisterInstruction("test.text", _ => line).BuildView();
-        await using var engine = new GameEngine(GraphOf("test.voice", "test.text"), view, settings: Settings(80));
+        await using var engine = new GameEngine(GraphOf("test.voice", "test.text"), view, playbackOptions: Settings(80));
         var completed = Terminal(engine);
         await engine.AdvanceAsync();
         voice.Block(false);
@@ -359,7 +380,7 @@ public class PlaybackModeTests
     {
         var line = new ReadingWait();
         using var view = Registration().RegisterInstruction("test.text", _ => line).BuildView();
-        await using var engine = new GameEngine(GraphOf("test.text"), view, settings: Settings(50));
+        await using var engine = new GameEngine(GraphOf("test.text"), view, playbackOptions: Settings(50));
         await engine.AdvanceAsync();
         line.Presented();
         await engine.SetPlaybackModeAsync(PlaybackMode.Auto);
@@ -396,7 +417,7 @@ public class PlaybackModeTests
             .RegisterInstruction("test.voice", _ => new RecordMode(mode => voiceMode = mode)).BuildView();
         var graph = GraphOf("test.text", "test.voice", "test.text");
         ((PrimitiveEntry)((Group)graph.Nodes[0]).Entries[1]).ReadingBoundaryId = "line-2";
-        await using var engine = new GameEngine(graph, view, settings: Settings(0), progress: progress);
+        await using var engine = new GameEngine(graph, view, playbackOptions: Settings(0), progress: progress);
         await engine.AdvanceAsync();
         await engine.SetPlaybackModeAsync(PlaybackMode.Quick);
         first.Presented();
@@ -456,12 +477,8 @@ public class PlaybackModeTests
             JsonSerializer.SerializeToElement(new { })) { StableId = $"line-{index}" }).ToList() } }
     };
 
-    private static SettingsContainer Settings(int interval)
-    {
-        var settings = new SettingsContainer();
-        settings.Set(new GameSettings { AutoAdvanceIntervalMilliseconds = interval, QuickAdvanceIntervalMilliseconds = interval });
-        return settings;
-    }
+    private static PlaybackOptions Settings(int interval) => new()
+    { AutoAdvanceIntervalMilliseconds = interval, QuickAdvanceIntervalMilliseconds = interval };
 
     private static Task Terminal(GameEngine engine)
     {

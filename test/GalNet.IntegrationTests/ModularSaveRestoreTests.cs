@@ -44,7 +44,8 @@ public class ModularSaveRestoreTests
         using var assets = new AssetManager([new LocalFileProvider(Path.Combine(directory.FullName, "GameTestCase", "Assets"), BuiltinResourceTypes.CreateCatalog())]);
         assets.RegisterImageVariantsDecoder();
         var variants = await assets.LoadImageVariantsCatalogAsync();
-        using var registration = new GameRegistration().AddBuiltins(audioHost: host, imageVariants: variants);
+        using var registration = new GameRegistration().AddBuiltins(audioHost: host, imageVariants: variants,
+            audioTracks: AudioTrackDefinition.CreateDefaults());
         var compiled = GalgroupCompiler.Compile(commands, registration.BuildCatalog()).Document;
         var group = new Group { Id = "intro" };
         GalgroupLoader.LoadIntoGroupFromContent(group, JsonSerializer.Serialize(compiled));

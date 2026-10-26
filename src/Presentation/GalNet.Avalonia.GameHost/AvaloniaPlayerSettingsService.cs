@@ -1,5 +1,6 @@
 using Avalonia.Threading;
 using DynamicLocalization.Core;
+using GalNet.Avalonia.GameHost.Settings;
 using GalNet.Avalonia.GameView.Input;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
@@ -266,7 +267,7 @@ public sealed class AvaloniaPlayerSettingsService : IPlayerSettingsService, IDis
     {
         apply();
         SettingsChanged?.Invoke(RuntimeSettings);
-        await _gameplay.RefreshPlaybackSettingsAsync(cancellationToken);
+        await _gameplay.UpdatePlaybackOptionsAsync(RuntimeSettings.ToPlaybackOptions(), cancellationToken);
         Store(variable, storedValue);
     }
 

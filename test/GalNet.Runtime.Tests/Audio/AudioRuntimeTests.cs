@@ -7,6 +7,30 @@ namespace GeneralTest.Runtime;
 public class AudioRuntimeTests
 {
     [Test]
+    public void MixerSnapshotsHostCollectionsAndRejectsInvalidUpdatesWithoutChangingActiveOrFutureGain()
+    {
+        var host = new RecordingHost();
+        using var runtime = new AudioRuntime(host);
+        var groups = new Dictionary<string, AudioMixLevel> { ["bgm"] = new(.5f) };
+        runtime.ApplyMix(new AudioMixOptions { MasterGain = .5f, Groups = groups });
+        runtime.Play(Tracks, new("bgm", "first", AudioPlacement.Replace, .5f));
+        Assert.That(host.Requests.Last().Gain, Is.EqualTo(.1f));
+
+        groups["bgm"] = new(1f, true);
+        runtime.Play(Tracks, new("bgm", "second", AudioPlacement.Replace, .5f));
+        Assert.That(host.Requests.Last().Gain, Is.EqualTo(.1f), "Changing a host dictionary is not an explicit mixer update.");
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => runtime.ApplyMix(new AudioMixOptions { MasterGain = float.NaN }));
+        runtime.Play(Tracks, new("bgm", "third", AudioPlacement.Replace, .5f));
+        Assert.That(host.Requests.Last().Gain, Is.EqualTo(.1f));
+
+        runtime.ApplyMix(new AudioMixOptions { Groups = groups });
+        Assert.That(host.Requests.Last().Gain, Is.Zero);
+        runtime.Play(Tracks, new("bgm", "fourth", AudioPlacement.Replace, .5f));
+        Assert.That(host.Requests.Last().Gain, Is.Zero);
+    }
+
+    [Test]
     public async Task DiagnosticObserverFailureDoesNotStrandPlayback()
     {
         await using var runtime = new AudioRuntime(new ThrowingHost());
@@ -47,15 +71,15 @@ public class AudioRuntimeTests
     {
         var host = new RecordingHost();
         using var runtime = new AudioRuntime(host);
-        var settings = new GalNet.Core.Settings.GameSettings { MasterVolume = .5f, BgmVolume = .5f };
-        runtime.ApplyPlayerSettings(settings);
+        var settings = new AudioMixOptions { MasterGain = .5f, Groups = new Dictionary<string, AudioMixLevel> { ["bgm"] = new(.5f) } };
+        runtime.ApplyMix(settings);
         runtime.Play(Tracks, new("bgm", "music", AudioPlacement.Replace, .5f));
         Assert.That(host.Requests[0].Gain, Is.EqualTo(.1f));
-        settings.BgmMuted = true;
-        runtime.ApplyPlayerSettings(settings);
+        settings = settings with { Groups = new Dictionary<string, AudioMixLevel> { ["bgm"] = new(.5f, true) } };
+        runtime.ApplyMix(settings);
         Assert.That(host.Requests.Last().Gain, Is.Zero);
-        settings.BgmMuted = false;
-        runtime.ApplyPlayerSettings(settings);
+        settings = settings with { Groups = new Dictionary<string, AudioMixLevel> { ["bgm"] = new(.5f) } };
+        runtime.ApplyMix(settings);
         Assert.That(host.Requests.Last().Gain, Is.EqualTo(.1f));
     }
 

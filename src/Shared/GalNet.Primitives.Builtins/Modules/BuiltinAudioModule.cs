@@ -2,7 +2,6 @@ using System.Text.Json;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Audio;
 using GalNet.Core.Primitives;
-using GalNet.Core.Settings;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Runtime.Audio;
 using GalNet.Runtime.Logging;
@@ -13,15 +12,20 @@ public sealed class BuiltinAudioModule : PrimitiveModule
 {
     private readonly AudioRuntime _runtime;
     private readonly AudioScope _scope;
-    public void ApplyPlayerSettings(GameSettings settings) => _runtime.ApplyPlayerSettings(settings);
+    public void ApplyMix(AudioMixOptions options) => _runtime.ApplyMix(options);
     public void BeginCatchUp() => _runtime.BeginCatchUp();
     public void EndCatchUp() => _runtime.EndCatchUp();
 
-    public BuiltinAudioModule(IAudioPlaybackHost? host = null, ISEffectCatalog? effects = null) : this(new AudioRuntime(host, effects)) { }
+    public BuiltinAudioModule(IAudioPlaybackHost? host = null, ISEffectCatalog? effects = null,
+        IReadOnlyList<AudioTrackDefinition>? tracks = null) : this(CopyTracks(tracks ?? []), host, effects) { }
 
-    private BuiltinAudioModule(AudioRuntime runtime) : this(runtime, new AudioScope(runtime)) { }
+    private BuiltinAudioModule(AudioTrackDefinition[] tracks, IAudioPlaybackHost? host, ISEffectCatalog? effects)
+        : this(new AudioRuntime(host, effects), tracks) { }
 
-    private BuiltinAudioModule(AudioRuntime runtime, AudioScope scope) : base(registry => RegisterPrimitives(registry, runtime, scope))
+    private BuiltinAudioModule(AudioRuntime runtime, AudioTrackDefinition[] tracks) : this(runtime, new AudioScope(runtime), tracks) { }
+
+    private BuiltinAudioModule(AudioRuntime runtime, AudioScope scope, AudioTrackDefinition[] tracks)
+        : base(registry => RegisterPrimitives(registry, runtime, scope, tracks))
     {
         _runtime = runtime;
         _scope = scope;
@@ -47,52 +51,61 @@ public sealed class BuiltinAudioModule : PrimitiveModule
         }
     }
 
-    private static List<AudioTrackDefinition> Tracks(PrimitiveCreateContext context) => context.Runtime.Settings.Get<ProjectSettings>().AudioTracks;
-
-    private static void RegisterPrimitives(PrimitiveRegistry registry, AudioRuntime runtime, AudioScope scope)
+    private static void RegisterPrimitives(PrimitiveRegistry registry, AudioRuntime runtime, AudioScope scope,
+        IReadOnlyList<AudioTrackDefinition> tracks)
     {
         registry.State<AudioTrackState>("builtin.audio.tracks", value => value.Id, validate: AudioRuntime.ValidateTrack);
         registry.State<AudioSEffectState>("builtin.audio.seffects", value => AudioSEffectState.Key(value.TrackId, value.InstanceId));
-        registry.ValidateState((game, state) => runtime.Validate(state, game.Settings.Get<ProjectSettings>().AudioTracks));
+        registry.ValidateState((_, state) => runtime.Validate(state, tracks));
         registry.Restore("builtin.audio", async context =>
         {
             scope.Bind(context.Runtime, context.CancellationToken);
             context.Own(() => runtime.SuspendAsync(context.Runtime.State));
-            runtime.ApplyPlayerSettings(context.Runtime.Settings.Get<GameSettings>());
-            await runtime.RestoreAsync(context.Runtime.State, context.Runtime.Settings.Get<ProjectSettings>().AudioTracks,
+            await runtime.RestoreAsync(context.Runtime.State, tracks,
                 context.CancellationToken).ConfigureAwait(false);
         });
-        registry.Register<AudioPlayOptions>(BuiltinEntryIds.PlayAudio, (context, options) => Playback(context, runtime, scope,
+        registry.Register<AudioPlayOptions>(BuiltinEntryIds.PlayAudio, (context, options) => Playback(context, runtime, scope, tracks,
             options, options.Placement ?? AudioPlacement.Enqueue));
         registry.Register<AudioStopOptions>(BuiltinEntryIds.StopAudio, (context, options) => Audio(context, scope, () =>
-            runtime.Stop(Tracks(context), new AudioStopRequest(
+            runtime.Stop(tracks, new AudioStopRequest(
                 options.TrackId ?? "", options.ClearQueue ?? true, options.FadeOut))));
-        Track(registry, BuiltinEntryIds.PauseAudio, scope, (context, track) => runtime.Pause(Tracks(context), track));
-        Track(registry, BuiltinEntryIds.ResumeAudio, scope, (context, track) => runtime.Resume(Tracks(context), track));
-        Track(registry, BuiltinEntryIds.NextAudio, scope, (context, track) => runtime.Next(Tracks(context), track));
-        Track(registry, BuiltinEntryIds.ClearAudio, scope, (context, track) => runtime.Clear(Tracks(context), track));
-        registry.Register<AudioPlayOptions>(BuiltinEntryIds.EnqueueAudio, (context, options) => Playback(context, runtime, scope, options, AudioPlacement.Enqueue));
+        Track(registry, BuiltinEntryIds.PauseAudio, scope, (_, track) => runtime.Pause(tracks, track));
+        Track(registry, BuiltinEntryIds.ResumeAudio, scope, (_, track) => runtime.Resume(tracks, track));
+        Track(registry, BuiltinEntryIds.NextAudio, scope, (_, track) => runtime.Next(tracks, track));
+        Track(registry, BuiltinEntryIds.ClearAudio, scope, (_, track) => runtime.Clear(tracks, track));
+        registry.Register<AudioPlayOptions>(BuiltinEntryIds.EnqueueAudio, (context, options) => Playback(context, runtime, scope, tracks, options, AudioPlacement.Enqueue));
         registry.Register<AudioSEffectOptions>(BuiltinEntryIds.ApplyAudioSEffect, (context, options) => Audio(context, scope, () =>
-            runtime.ApplySEffect(Tracks(context), new AudioSEffectRequest(
+            runtime.ApplySEffect(tracks, new AudioSEffectRequest(
                 options.TrackId ?? "", options.InstanceId ?? "",
                 options.Id ?? "", Arguments.Json<JsonElement>(options.Parameters)))));
         registry.Register<AudioSEffectStopOptions>(BuiltinEntryIds.StopAudioSEffect, (context, options) => Audio(context, scope, () =>
-            runtime.StopSEffect(Tracks(context), options.TrackId ?? "", options.InstanceId ?? "")));
+            runtime.StopSEffect(tracks, options.TrackId ?? "", options.InstanceId ?? "")));
     }
 
     private static AudioPlayRequest PlayRequest(AudioPlayOptions options, AudioPlacement placement) => new(
         options.TrackId ?? "", options.Asset ?? "", placement, options.Gain, options.FadeIn);
 
     private static AudioPlaybackPrimitiveInstance Playback(PrimitiveCreateContext context, AudioRuntime runtime,
-        AudioScope scope, AudioPlayOptions options, AudioPlacement placement) => new(() =>
+        AudioScope scope, IReadOnlyList<AudioTrackDefinition> tracks, AudioPlayOptions options, AudioPlacement placement) => new(() =>
         {
             scope.Bind(context.Runtime, context.ScopeCancellation);
             context.ScopeCancellation.ThrowIfCancellationRequested();
-            runtime.ApplyPlayerSettings(context.Runtime.Settings.Get<GameSettings>());
-            return runtime.Play(Tracks(context), PlayRequest(options, placement));
+            return runtime.Play(tracks, PlayRequest(options, placement));
         }, options.AutoBlocking ?? false, context.BatchId, context.ScopeCancellation);
 
     private static void OnDiagnostic(string message) => GameLog.Logger.Warning("Audio: {Diagnostic}", message);
+
+    private static AudioTrackDefinition[] CopyTracks(IReadOnlyList<AudioTrackDefinition> tracks) => tracks.Select(track => new AudioTrackDefinition
+    {
+        Id = track.Id,
+        Name = track.Name,
+        Bus = track.Bus,
+        DefaultGain = track.DefaultGain,
+        MaxVoices = track.MaxVoices,
+        MaxQueuedItems = track.MaxQueuedItems,
+        OverflowPolicy = track.OverflowPolicy,
+        QueueOverflowPolicy = track.QueueOverflowPolicy
+    }).ToArray();
 
     private sealed class AudioScope(AudioRuntime runtime) : IDisposable
     {

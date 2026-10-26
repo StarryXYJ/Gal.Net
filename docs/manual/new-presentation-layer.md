@@ -18,6 +18,30 @@
 - 音频平台实现通过 `GalNet.Core.Audio.IAudioPlaybackHost` 组合；同一逻辑轨道的队列和状态仍由 `AudioRuntime` 管理。
 - 新的自定义 primitive 需要同时提供 schema、执行注册、参数/恢复验证和覆盖其生命周期的测试。
 
+## 从项目设置映射模块配置
+
+项目可以采用自己的普通 DTO，不必继承框架设置基类。组合根只传入模块需要的值：
+
+```csharp
+var playback = new PlaybackOptions
+{
+    AutoAdvanceIntervalMilliseconds = preferences.AutoDelay,
+    QuickReadOnly = preferences.ReadOnlySkip
+};
+var audio = new BuiltinAudioModule(audioBackend, tracks: projectTracks);
+audio.ApplyMix(new AudioMixOptions
+{
+    MasterGain = preferences.MasterVolume,
+    Groups = new Dictionary<string, AudioMixLevel> { ["bgm"] = new(preferences.MusicVolume) }
+});
+// Register the configured audio module with the other implementations.
+var runtime = new GameRuntime(textResolver, graph.RootNodeId, variableService: variables);
+await using var engine = new GameEngine(graph, runtime, dispatcher, playbackOptions: playback);
+await engine.UpdatePlaybackOptionsAsync(playback with { AutoAdvanceIntervalMilliseconds = 1500 });
+```
+
+PlaybackOptions 位于 Core.Execution，AudioMixOptions/AudioMixLevel 位于 Runtime.Audio，BuiltinAudioModule 位于 Primitives.Builtins。默认 Avalonia.GameHost.Settings.GameSettings 提供示例映射方法，可直接使用或完全替换。音频模块不会读取 GameContent.Settings，也不会自动创建轨道；默认宿主负责提供项目声明的轨道。轨道声明和混音字典在入口隔离，后续修改项目对象不等于更新运行配置。文本速度传给文本呈现，窗口偏好交给显示服务，保存槽数交给保存服务，不把整个偏好对象塞进运行上下文。
+
 ## 接入图片差分
 
 内置 layers 模块包含 `variants.show/select`。资源 scope 建立后，先注册 decoder 并异步准备目录，再构造执行 view：

@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- 2026-10-26 R2 已验证：IGameContext/GameRuntime 不携带 Settings；Engine 接收/显式更新 Core.Execution.PlaybackOptions，音频接收隔离轨道与 Runtime.Audio.AudioMixOptions。完整默认玩家偏好仅在 Avalonia.GameHost.Settings，通用 PlayerSession 不拥有它；清空后由默认宿主重绑。SettingsContainer/SettingsSection/SaveSettings、旧 Editor 游戏设置服务和 SfxChannelCount 已删除。ProjectSettings 仍暂属作者内容边界，完整迁移在 R4；自定义分组/单轨控制在 R3。用户要求每阶段验证完成后单独提交。见 feature phase-plan/summary。
+
 - [强制还原与包哈希](lessons/L-20261026-03-forced-restore-package-hash.md)：force-evaluate 用于重算锁图，可能接受新的包哈希；生成后检查差异，再用不带 force-evaluate 的 locked restore 验证。
 
 - [旧运行取消与恢复提交](lessons/L-20261026-02-detached-run-cancellation.md)：旧 scope 的取消回调异常不能截断合法恢复；候选先验证，旧 scope 的变量操作与恢复提交共用同步边界。

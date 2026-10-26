@@ -41,8 +41,6 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
     [ObservableProperty]
     private int _saveSlotCount = 60;
 
-    [ObservableProperty]
-    private int _sfxChannelCount = 4;
 
     [ObservableProperty]
     private string _targetLocale = "zh-CN";
@@ -125,7 +123,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
         DefaultHeight = settings.DefaultHeight;
         Resolution = $"{DefaultWidth}×{DefaultHeight}";
         SaveSlotCount = settings.SaveSlotCount;
-        SfxChannelCount = settings.SfxChannelCount;
+
         TargetLocale = settings.TargetLocale.Code;
         foreach (var track in AudioTracks) track.Changed -= TriggerAutoSave;
         AudioTracks.Clear();
@@ -162,10 +160,10 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
             if (locale != project.Settings.TargetLocale.Code)
                 throw new EditorOperationException("i18n.development", L["I18n.UsePanel"]);
             var before = SettingsSnapshot.From(project.Name, project.Settings);
-            var after = new SettingsSnapshot(ProjectName.Trim(), DefaultWidth, DefaultHeight, SaveSlotCount, SfxChannelCount, locale, AudioTracks.Select(item => item.ToDefinition()).ToArray());
+            var after = new SettingsSnapshot(ProjectName.Trim(), DefaultWidth, DefaultHeight, SaveSlotCount, locale, AudioTracks.Select(item => item.ToDefinition()).ToArray());
             ValidateTracks(after.AudioTracks);
             if (before.Matches(after)) { LoadFromProject(); return; }
-            if (!NewProjectPanelViewModel.TryParseResolution($"{DefaultWidth}×{DefaultHeight}", out _, out _) || SaveSlotCount <= 0 || SfxChannelCount <= 0)
+            if (!NewProjectPanelViewModel.TryParseResolution($"{DefaultWidth}×{DefaultHeight}", out _, out _) || SaveSlotCount <= 0)
                 throw new EditorOperationException("settings.invalid", "Invalid project dimensions or channel/slot count.");
             var graph = project.Services.GetRequiredService<IEditorDocumentService>().CurrentDocument;
             await _histories.Content.ExecuteAsync(new SettingsEdit(project.Settings, graph, before, after));
@@ -190,7 +188,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
         _isLoading = true; DefaultWidth = width; DefaultHeight = height; _isLoading = false; TriggerAutoSave();
     }
     partial void OnSaveSlotCountChanged(int value) => TriggerAutoSave();
-    partial void OnSfxChannelCountChanged(int value) => TriggerAutoSave();
+
     partial void OnTargetLocaleChanged(string value) => TriggerAutoSave();
 
     [RelayCommand]
@@ -267,7 +265,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
 
     private bool HasDraftChanges => _hasDraft && _projectService.Current is { } project &&
         !SettingsSnapshot.From(project.Name, project.Settings).Matches(new((ProjectName ?? "").Trim(), DefaultWidth, DefaultHeight, SaveSlotCount,
-            SfxChannelCount, TargetLocale, AudioTracks.Select(item => item.ToDefinition()).ToArray()));
+            TargetLocale, AudioTracks.Select(item => item.ToDefinition()).ToArray()));
 
     private sealed record SettingsEdit(Core.Settings.ProjectSettings Settings, EditorGraphDocument Graph, SettingsSnapshot Before, SettingsSnapshot After) : IUndoableEdit
     {
@@ -284,19 +282,19 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
         }
     }
 
-    private sealed record SettingsSnapshot(string Name, int Width, int Height, int SaveSlots, int SfxChannels, string Locale, IReadOnlyList<AudioTrackDefinition> AudioTracks)
+    private sealed record SettingsSnapshot(string Name, int Width, int Height, int SaveSlots, string Locale, IReadOnlyList<AudioTrackDefinition> AudioTracks)
     {
         public static SettingsSnapshot From(string name, Core.Settings.ProjectSettings settings) =>
-            new(name, settings.DefaultWidth, settings.DefaultHeight, settings.SaveSlotCount, settings.SfxChannelCount, settings.TargetLocale.Code, settings.AudioTracks.Select(CopyTrack).ToArray());
+            new(name, settings.DefaultWidth, settings.DefaultHeight, settings.SaveSlotCount, settings.TargetLocale.Code, settings.AudioTracks.Select(CopyTrack).ToArray());
         public bool Matches(SettingsSnapshot other) =>
-            Name == other.Name && Width == other.Width && Height == other.Height && SaveSlots == other.SaveSlots && SfxChannels == other.SfxChannels && Locale == other.Locale &&
+            Name == other.Name && Width == other.Width && Height == other.Height && SaveSlots == other.SaveSlots && Locale == other.Locale &&
             AudioTracks.Count == other.AudioTracks.Count && AudioTracks.Zip(other.AudioTracks).All(pair => Same(pair.First, pair.Second));
         public void Apply(Core.Settings.ProjectSettings settings)
         {
             var locale = new Core.I18n.I18nLocale(Locale);
             var tracks = AudioTracks.Select(CopyTrack).ToList();
             settings.DefaultWidth = Width; settings.DefaultHeight = Height; settings.SaveSlotCount = SaveSlots;
-            settings.SfxChannelCount = SfxChannels; settings.TargetLocale = locale;
+            settings.TargetLocale = locale;
             settings.AudioTracks = tracks;
         }
 

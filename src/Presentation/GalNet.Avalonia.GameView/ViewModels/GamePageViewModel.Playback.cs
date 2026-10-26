@@ -104,8 +104,8 @@ public sealed partial class GamePageViewModel
         catch (Exception error) { ReportPlaybackFailure(controller, error); }
     }
 
-    public Task RefreshPlaybackSettingsAsync(CancellationToken cancellationToken = default) =>
-        _playback?.RefreshPlaybackSettingsAsync(cancellationToken) ?? Task.CompletedTask;
+    public Task UpdatePlaybackOptionsAsync(PlaybackOptions options, CancellationToken cancellationToken = default) =>
+        _playback?.UpdatePlaybackOptionsAsync(options, cancellationToken) ?? Task.CompletedTask;
     private void ReportPlaybackFailure(IPlayerPlaybackController? controller, Exception error)
     {
         if (!ReferenceEquals(controller, _playback)) return;

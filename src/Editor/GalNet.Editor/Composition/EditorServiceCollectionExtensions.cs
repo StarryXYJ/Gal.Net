@@ -49,7 +49,6 @@ public static class EditorServiceCollectionExtensions
         var resourceTypes = BuiltinResourceTypes.CreateCatalog();
         services.AddSingleton<IResourceTypeCatalog>(resourceTypes);
         services.AddSingleton<IGalleryTypeCatalog>(BuiltinGalleryTypes.CreateCatalog(resourceTypes));
-        services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IProjectService, ProjectService>();
         services.AddSingleton<IFileDialogService, FileDialogService>();
         services.AddSingleton<IEditorSettingsService, EditorSettingsService>();

@@ -20,9 +20,9 @@ public sealed class GameRun : IGameRun
 
     public GameRun(Graph graph, IGameRuntime runtime, IPrimitiveDispatcher view,
         IGameProgressService? progress = null, IChoicePresenter? choices = null,
-        ICatchUpPresentation? catchUp = null, StateRestoreSession? restoration = null)
+        ICatchUpPresentation? catchUp = null, StateRestoreSession? restoration = null, PlaybackOptions? playbackOptions = null)
     {
-        Engine = new GameEngine(graph, runtime, view, progress, choices, catchUp);
+        Engine = new GameEngine(graph, runtime, view, progress, choices, catchUp, playbackOptions);
         _ownsRestoration = restoration is null && view is CompositeGameView;
         _restoration = restoration ?? (view is CompositeGameView composite ? new StateRestoreSession(composite) : null);
     }

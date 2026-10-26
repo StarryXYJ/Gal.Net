@@ -3,6 +3,7 @@ using Avalonia.Data;
 using DynamicLocalization.Core;
 using DynamicLocalization.Core.Providers;
 using GalNet.Avalonia.GameHost;
+using GalNet.Avalonia.GameHost.Settings;
 using GalNet.Avalonia.GameView.MarkupExtensions;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
@@ -155,6 +156,18 @@ public sealed class SampleLocalizationTests
                 Assert.That(restoredRuntime.MasterVolume, Is.EqualTo(.37).Within(.000001));
                 Assert.That(restoredRuntime.VoiceMuted, Is.True);
                 Assert.That(restoredVariables.GetSnapshot(GalNet.Core.Variable.VariableScope.Player)["player.other"].AsString(), Is.EqualTo("preserved"));
+            });
+
+            await restoredVariables.ResetPlayerVariablesAsync(CancellationToken.None);
+            var defaults = new GameSettings();
+            await restoredSettings.AttachAsync(restoredVariables, defaults);
+            Assert.Multiple(() =>
+            {
+                Assert.That(restoredSettings.RuntimeSettings, Is.SameAs(defaults));
+                Assert.That(defaults.TextSpeed, Is.EqualTo(30));
+                Assert.That(defaults.MasterVolume, Is.EqualTo(1));
+                Assert.That(defaults.VoiceMuted, Is.False);
+                Assert.That(defaults.QuickReadOnly, Is.True);
             });
         }
         finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }

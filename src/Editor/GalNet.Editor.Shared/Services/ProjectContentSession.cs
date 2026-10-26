@@ -259,7 +259,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     private static void CopySettings(GalNet.Core.Settings.ProjectSettings source, GalNet.Core.Settings.ProjectSettings target)
     {
         target.TargetLocale = source.TargetLocale; target.AvailableLocales = source.AvailableLocales;
-        target.SaveSlotCount = source.SaveSlotCount; target.SfxChannelCount = source.SfxChannelCount;
+        target.SaveSlotCount = source.SaveSlotCount;
         target.AudioTracks = source.AudioTracks; target.DefaultWidth = source.DefaultWidth; target.DefaultHeight = source.DefaultHeight;
         target.PlayerVariables = source.PlayerVariables; target.SaveVariables = source.SaveVariables;
     }

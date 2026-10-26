@@ -101,7 +101,6 @@ public static class EditorDocumentCloner
         TargetLocale = new GalNet.Core.I18n.I18nLocale(source.TargetLocale.Code),
         AvailableLocales = source.AvailableLocales.Select(locale => new GalNet.Core.I18n.I18nLocale(locale.Code)).ToList(),
         SaveSlotCount = source.SaveSlotCount,
-        SfxChannelCount = source.SfxChannelCount,
         DefaultWidth = source.DefaultWidth,
         DefaultHeight = source.DefaultHeight,
         PlayerVariables = source.PlayerVariables.Select(variable => variable.Clone()).ToList(),

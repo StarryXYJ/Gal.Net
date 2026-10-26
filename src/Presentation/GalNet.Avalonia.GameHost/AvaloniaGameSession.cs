@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using GalNet.Avalonia.GameHost.Settings;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
@@ -97,7 +98,8 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
                 _options.ConfigureDecoders(resources.Assets);
                 visuals = await AvaloniaGameResources.CreateAsync(resources.Assets,
                     _options.SelectTexturePreloads, _options.SelectEffectPrograms, cancellationToken);
-                saveSession = await FilePlayerSession.OpenAsync(profileDirectory, resources.Content.Gallery, cancellationToken);
+                saveSession = await FilePlayerSession.OpenAsync(profileDirectory, resources.Content.Gallery,
+                    resources.Content.Settings.SaveSlotCount, cancellationToken);
                 galleryResources = await AssetGalleryResourceResolver.CreateAsync(resources.Assets,
                     resources.Content.Gallery, cancellationToken, resources.MediaFiles);
             }
@@ -135,7 +137,7 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
             if (!await _startup.InitializeAsync(saveSession.Variables,
                     resources.Content.Settings.TargetLocale.Code, selectLanguage, cancellationToken))
                 throw new OperationCanceledException("Language selection was cancelled.", cancellationToken);
-            await _settings.AttachAsync(saveSession.Variables, saveSession.Settings, cancellationToken);
+            await _settings.AttachAsync(saveSession.Variables, new GameSettings(), cancellationToken);
             await _settings.RestoreDisplayAsync(cancellationToken);
 
             IsReady = true;
@@ -184,9 +186,11 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
             var saveSession = _saveSession;
             await _settings.FlushAsync();
             if (saveSession is not null) await saveSession.ClearAsync(token);
-            await OnUiAsync(() =>
+            await AvaloniaUiDispatcher.Instance.InvokeAsync(async () =>
             {
-                _gameplay.TextSpeed = saveSession?.Settings.TextSpeed ?? _gameplay.TextSpeed;
+                if (saveSession is not null)
+                    await _settings.AttachAsync(saveSession.Variables, new GameSettings(), token);
+                _gameplay.TextSpeed = _settings.RuntimeSettings.TextSpeed;
                 _gameplay.IsNvlMode = false;
                 _gameplay.IsUiHidden = false;
                 _gameplay.StatusMessage = "Player state cleared. Restarting...";

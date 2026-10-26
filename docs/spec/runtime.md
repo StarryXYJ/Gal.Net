@@ -98,7 +98,7 @@ Choice 节点由 Engine 求值并过滤可见选项，再通过 `IChoicePresente
 
 `GameRuntime` 是游戏事实的唯一来源：
 
-内容 provider 将项目与安装目录的 `settings.json` 解析为 `GameContent.Settings`；两个 Sample 都把它注入 Runtime 的 `SettingsContainer`，自定义音频轨道不会退回默认轨道。缺少文件使用默认设置，非法 JSON 明确拒绝。
+内容 provider 将项目与安装目录的 `settings.json` 解析为 `GameContent.Settings`，该作者内容模型暂由加载/编辑边界持有。宿主把轨道定义显式传入 BuiltinAudioModule，把 PlaybackOptions 传给 Engine；GameRuntime 和 IGameContext 不携带完整设置或设置容器。未配置音频模块轨道时为空，不隐式创建默认轨道。缺少项目文件仍由加载器采用默认作者设置，非法 JSON 明确拒绝。
 
 | 状态 | 说明 |
 | --- | --- |
@@ -164,7 +164,7 @@ Dialogue/NVL 使用 Builtins 的 `TextAdvancePrimitiveInstance` 共用打字、�
 
 `SynchronizePresentationAsync` 与追帧展示协调在 Engine 执行门内调用；回调及其等待的清理任务不得重新进入或等待 Engine 推进/模式操作，否则会形成循环等待。同步使用该代隔离的 runtime 和 run token；调用者 token 只控制进入同步门，不作为持久播放的生命周期 token。
 
-玩家间隔配置为 `GameSettings.AutoAdvanceIntervalMilliseconds` 与 `QuickAdvanceIntervalMilliseconds`（int，默认 2000/50），Runtime 以毫秒计时并拒绝负值。Normal/Quick/CatchUp 分发与 `IsAutoBlocking`、状态事件、`IAdvanceWaitInstance` 分别表达呈现策略、自动等待和全文后推进等待；自动模式不会把对白等待下一次推进误当作仍在打字。完整阅读成功使用 group ID + 稳定编译条目 ID 记录，progress v2 与 compiled v3 拒绝旧格式，不迁移。
+玩家间隔配置为 `PlaybackOptions.AutoAdvanceIntervalMilliseconds` 与 `QuickAdvanceIntervalMilliseconds`（int，默认 2000/50），Runtime 以毫秒计时并在更新入口拒绝负值。Normal/Quick/CatchUp 分发与 `IsAutoBlocking`、状态事件、`IAdvanceWaitInstance` 分别表达呈现策略、自动等待和全文后推进等待；自动模式不会把对白等待下一次推进误当作仍在打字。完整阅读成功使用 group ID + 稳定编译条目 ID 记录，progress v2 与 compiled v3 拒绝旧格式，不迁移。
 
 ## Entry Module 与 GameView
 
@@ -212,6 +212,8 @@ Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`
 ## 执行内部协作者
 
 primitive 和呈现恢复只借用 `Core.Runtime.IGameContext`：游戏位置只读，允许变量/场景操作和显式 EndGame，不提供游标修改、快照或读档方法。Engine 持有的 `Runtime.Runtime.IGameRuntime` 才拥有这些运行管理能力，准备恢复使用同程序集的 GameRestorePoint；旧 scope 在状态同步边界内检查取消，不能在恢复提交后写入新代变量。
+
+执行上下文没有 Settings 属性。Engine 以 Core.Execution.PlaybackOptions 的不可变值保存自动/快速推进配置，宿主通过 UpdatePlaybackOptionsAsync 一致更新；无效间隔在提交前拒绝，不更改当前配置或使运行 Faulted。音频模块借构造参数获取独立的轨道定义副本，以 AudioMixOptions 接收主音量与按分组 ID 索引的混音值；ApplyMix 复制集合后更新已有及后续 voice，不在每次播放时读取完整玩家模型。Avalonia.GameHost.Settings.GameSettings 只是默认宿主的偏好模型，映射到上述输入，项目不必继承它。窗口、文本和保存设置由各自宿主/呈现服务消费。SettingsContainer、SettingsSection、无消费者的 SaveSettings 和旧 SfxChannelCount 已删除；并发数量只由每轨 MaxVoices 表达。
 
 `IPrimitiveDispatcher`、IChoicePresenter、ICatchUpPresentation 和 IPlayerPlaybackController 位于 Core.Execution，描述分发、状态验证、Choice 输入、快进同步和玩家播放控制，与具体 presenter/UI 无关；CompositeGameView 是分发协议的组合实现。音频后端端口位于 Core.Audio，Runtime 无需引用 Presentation.Abstractions 即可使用这些协议。`EngineNotifications` 统一按产生顺序排队状态、播放模式和检查点通知，在执行门外发布并隔离每个订阅者。活动实例列表本身保持分发顺序，不维护额外排序或自动阻塞镜像集合。
 

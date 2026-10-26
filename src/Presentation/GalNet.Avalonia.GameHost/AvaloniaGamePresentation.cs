@@ -45,7 +45,8 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
         IReadOnlyList<EffectProgramResource> effectPrograms, IAssetFileMaterializer files,
         Action<GameRegistration, AvaloniaGamePresentation> configure,
         IEnumerable<string> requiredInstructions,
-        AvaloniaGamePresentationOptions? options = null, LibVLC? sharedLibVlc = null, CancellationToken cancellationToken = default)
+        AvaloniaGamePresentationOptions? options = null, LibVLC? sharedLibVlc = null,
+        IReadOnlyList<AudioTrackDefinition>? audioTracks = null, CancellationToken cancellationToken = default)
     {
         options ??= new AvaloniaGamePresentationOptions();
         var presentation = new AvaloniaGamePresentation();
@@ -63,7 +64,7 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
                 preload.UsableProgramCount, preload.RequestedProgramCount, preload.Cache.TotalLoadTime.TotalMilliseconds);
             presentation.Effects = new AvaloniaEffectRuntime(gameplay, presentation._programs);
             presentation.Audio = options.CreateAudioHost(assets, files, sharedLibVlc);
-            presentation.AudioModule = new BuiltinAudioModule(presentation.Audio);
+            presentation.AudioModule = new BuiltinAudioModule(presentation.Audio, tracks: audioTracks);
             presentation.Video = new AvaloniaVideoPresenter(assets, gameplay, files: files,
                 sharedLibVlc: sharedLibVlc);
             using var registration = new GameRegistration();

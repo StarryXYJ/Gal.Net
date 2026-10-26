@@ -95,7 +95,6 @@
   "Settings.Project.Title": "プロジェクト設定",
   "Settings.Project.DefaultResolution": "既定の解像度",
   "Settings.Project.SaveSlotCount": "セーブスロット数",
-  "Settings.Project.SfxChannelCount": "効果音チャンネル数",
   "Settings.Project.TargetLanguage": "対象言語",
   "Settings.Project.Unsaved": "（未保存の変更があります）",
   "Theme.Default": "システム設定",

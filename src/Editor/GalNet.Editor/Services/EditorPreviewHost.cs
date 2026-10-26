@@ -299,10 +299,10 @@ internal sealed partial class EditorPreviewSessionService : ObservableObject, IG
             content.Gallery,
             _pageView.ParticlePresenter,
             _pageView.NvlPresenter,
-            _audio, imageVariants: imageVariants).BuildView();
+            _audio, imageVariants: imageVariants, audioTracks: content.Settings.AudioTracks).BuildView();
         try { view.RequireInstructions(content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>().SelectMany(group => group.Entries).Select(entry => entry.Type)); }
         catch { view.Dispose(); throw; }
-        var runtime = new GameRuntime(null, content.Graph.RootNodeId, new SettingsContainer(), _context.Variables);
+        var runtime = new GameRuntime(null, content.Graph.RootNodeId, _context.Variables);
         _engine = new GameEngine(content.Graph, runtime, view, _context.Progress, _pageView.ChoicePresenter);
         _gameplay.BindPlayback(_engine);
         _gameplay.AdvanceRequested += OnAdvanceRequested;

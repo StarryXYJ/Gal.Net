@@ -22,8 +22,6 @@ public partial class App : Application
     /// <summary>DI container for application-level services.</summary>
     public static IServiceProvider? ServiceProvider { get; private set; }
 
-    public static ISettingsService GetSettingsService() =>
-        ServiceProvider!.GetRequiredService<ISettingsService>();
 
     public override void Initialize()
     {
@@ -82,7 +80,7 @@ public partial class App : Application
 #if BENCHMARK
             using (GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.CreateMainWindow"))
 #endif
-                desktop.MainWindow = ServiceProvider.GetRequiredService<MainWindow>();
+            desktop.MainWindow = ServiceProvider.GetRequiredService<MainWindow>();
             desktop.Exit += (_, _) =>
             {
                 var navigation = ServiceProvider.GetRequiredService<INavigationService>();

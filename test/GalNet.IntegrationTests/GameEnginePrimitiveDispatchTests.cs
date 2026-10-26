@@ -30,15 +30,14 @@ public class GameEnginePrimitiveDispatchTests
     {
         var video = new SegmentedVideoPresenter();
         var markers = 0;
-        var settings = new SettingsContainer();
-        settings.Set(new GameSettings { QuickAdvanceIntervalMilliseconds = 0, AutoAdvanceIntervalMilliseconds = 0 });
+        var settings = new PlaybackOptions { QuickAdvanceIntervalMilliseconds = 0, AutoAdvanceIntervalMilliseconds = 0 };
         using var view = new GameRegistration().AddBuiltins(videoPresenter: video)
             .RegisterSchema(new DefaultEntryModule("test", [new DefaultPrimitiveEntryBase("test.mark", DynamicParameterTable.Empty)]))
             .RegisterInstruction("test.mark", context => new ImmediatePrimitiveInstance(() => Interlocked.Increment(ref markers), batchId: context.BatchId))
             .BuildView();
         await using var engine = new GameEngine(GraphWithGroup(
             Primitive("video.play", new { asset = "clip", skipPoints = VideoSkipPoints }),
-            Primitive("test.mark")), view, settings: settings);
+            Primitive("test.mark")), view, playbackOptions: settings);
         await engine.AdvanceAsync();
         for (var index = 0; index < clicks; index++) await engine.AdvanceAsync();
         Assert.That(video.Advances, Is.EqualTo(clicks));

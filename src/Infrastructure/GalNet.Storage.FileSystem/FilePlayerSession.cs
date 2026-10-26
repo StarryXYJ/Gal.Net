@@ -9,9 +9,9 @@ namespace GalNet.Storage.FileSystem;
 public static class FilePlayerSession
 {
     public static async Task<PlayerSession> OpenAsync(string profileDirectory, GalleryCatalog gallery,
-        CancellationToken cancellationToken = default)
+        int maxSlots = 60, CancellationToken cancellationToken = default)
     {
-        var saves = new FileSaveService(profileDirectory);
+        var saves = new FileSaveService(profileDirectory, maxSlots);
         PlayerVariableService? variables = null;
         FileGameProgressService? progress = null;
         try

@@ -1,6 +1,6 @@
 # 引擎核心精简与职责收敛
 
-状态：上一轮 P1–P5 verified，P6 保留环境待验证项；后续整体重构 R1 verified，R2–R8 planned。下列“实现结果”记录上一轮；后续归属变化见本文 R1 段。
+状态：上一轮 P1–P5 verified，P6 保留环境待验证项；后续整体重构 R1–R2 verified，R3–R8 planned。下列“实现结果”记录上一轮；后续归属变化见本文 R1 段。
 
 ## 实现结果
 
@@ -90,3 +90,17 @@ P6 保持 in-progress，待具备目录符号链接特权、正确 WebAssembly S
 强制重算 Browser 锁图会接受本地包的不同 contentHash，即使同时使用 locked-mode 也不是原锁哈希验证。本轮恢复原哈希后以不含 force-evaluate 的 locked restore 复现失败，没有改写缓存或关闭验证来绕过问题；可复用经验见 .agents/lessons/L-20261026-03-forced-restore-package-hash.md。新增测试初版在 Engine 构造后才初始化变量，却读取构造期稳定快照，夹具改为构造前初始化；生产检查点语义未改动。
 
 R1 的普通执行边界退出条件已满足；完整平台限制继续保留在 P6/R8，不视为解决。后续 R2 从设置模型与模块配置解耦开始。外部消费者需要随公开类型迁移重新构建，不提供旧命名空间适配。
+
+## R2：设置模型与模块配置解耦
+
+IGameContext/GameRuntime 不再携带 Settings。Engine 构造和 UpdatePlaybackOptionsAsync 只接收不可变 PlaybackOptions，配置无效时拒绝本次更新，不替换旧值或使运行 Faulted。BuiltinAudioModule 在组合时接收独立的轨道定义副本，以 AudioMixOptions/AudioMixLevel 接收主音量和按分组 ID 索引的混音值；入口复制集合，不在每次播放或恢复时读取完整项目/玩家模型，更新作用于当前及后续 voice。
+
+默认 GameSettings 上移 Avalonia.GameHost.Settings；它向模块投影配置，项目不必继承此模型。通用 PlayerSession 不再拥有该模型，清空玩家数据后由默认宿主重新绑定偏好。Headless 文本只消费速度值，项目轨道显式传入模块；FilePlayerSession 接收简单 maxSlots 参数，两个默认宿主都将项目 SaveSlotCount 传入保存服务，修正原先忽略该值的问题。
+
+SettingsContainer/SettingsSection、无消费者的 SaveSettings、Editor 的旧游戏设置接口/空实现/DI 入口，以及 SfxChannelCount 字段与 UI/CLI/复制路径已删除。编辑器历史夹具用实际仍生效的分辨率字段验证无关设置保留。分组声明与单轨混音仍待 R3；GameContent/Editor/Storage 共用的作者 ProjectSettings 归属和自定义配置链路仍待 R4，本阶段没有用额外跨层依赖把作者模型简单搬家。
+
+验证共 1645 项通过、4 项符号链接权限失败、2 项跳过：Core 150、Runtime 138、Builtins 178、GameHost 6、Presentation 243、Architecture 49、Debugging 10、Storage 22、Editor.Shared 419（3 失败、2 跳过）、Editor 308、Integration 122（1 失败）。4 个失败仍为先前记录的 Directory.CreateSymbolicLink 特权不足，没有新增未修复的代码失败。默认偏好模型最终上移后重跑了 GameHost/Integration，存档槽映射补齐后重跑了 Storage/Integration。
+
+当前完整 GalNet.slnx 构建、普通 locked restore、定向 C# 格式清理与 git diff --check 通过。工作期间的独立清理提交 2a5c678 删除 Launcher 并包含部分早期 R2 修改，保留该提交；旧临时解决方案引用删除项目导致的构建失败已改用当前 GalNet.slnx 后验证通过。当前解决方案不再包含旧 Browser 目标，这不证明其历史哈希问题被修复；原生交互、符号链接权限与 R2R 发布环境限制仍按后续阶段处理。日志在忽略产物 artifacts/engine-core-audit/r2-*.log。
+
+新增回归覆盖推进选项显式更新/无效输入、混音集合隔离和当前/后续 voice、轨道定义不借用作者对象、清空后默认偏好重绑和自定义存档容量。正式规范与接入示例已同步，未引入兼容适配层。R2 完成后按用户约定提交，再进入 R3。

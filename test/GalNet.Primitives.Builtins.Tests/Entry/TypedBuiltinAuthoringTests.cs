@@ -156,10 +156,28 @@ public sealed class TypedBuiltinAuthoringTests
     }
 
     [Test]
+    public async Task AudioModuleOwnsItsTrackConfigurationWithoutRuntimeSettings()
+    {
+        using var host = new RecordingHost();
+        var tracks = AudioTrackDefinition.CreateDefaults();
+        await using var view = new GameRegistration().RegisterSchema(BuiltinSchemas.CreateAudioModule())
+            .AddBuiltinAudio(host, tracks).BuildView();
+        tracks[0].Id = "reassigned";
+        tracks[0].DefaultGain = 0;
+        tracks.Clear();
+
+        view.Dispatch(new PrimitiveEntry("audio.play", JsonSerializer.SerializeToElement(new { trackId = "bgm", asset = "music" })),
+            new GameRuntime(null), CancellationToken.None);
+        var started = await host.TakeAsync(AudioBackendAction.Start);
+        Assert.That(started.TrackId, Is.EqualTo("bgm"));
+        Assert.That(started.Gain, Is.EqualTo(.8f));
+    }
+
+    [Test]
     public async Task CompiledTypedAudioControlsReachTheBackendAndCancellationStillStopsDispatch()
     {
         using var host = new RecordingHost();
-        await using var view = new GameRegistration().AddBuiltins(audioHost: host).BuildView();
+        await using var view = new GameRegistration().AddBuiltins(audioHost: host, audioTracks: AudioTrackDefinition.CreateDefaults()).BuildView();
         var runtime = new GameRuntime(null);
         var catalog = new TargetProfileEntryCatalog([BuiltinSchemas.CreateAudioModule()]);
         Dispatch("audio.play", new { asset = "first" });

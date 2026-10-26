@@ -24,7 +24,6 @@ public sealed class PlayerSession : IDisposable
 
     public PlayerVariableService Variables { get; }
     public IGameProgressService Progress { get; }
-    public GameSettings Settings { get; private set; } = new();
     public IGalleryDataSource GalleryDataSource { get; }
 
     public async Task SaveAsync(int slotIndex, GameSnapshot snapshot, CancellationToken cancellationToken)
@@ -77,7 +76,6 @@ public sealed class PlayerSession : IDisposable
     {
         await _clearStorage(cancellationToken);
         await Variables.ResetPlayerVariablesAsync(cancellationToken);
-        Settings = new GameSettings();
     }
 
     public void Dispose()

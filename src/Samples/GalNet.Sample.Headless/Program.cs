@@ -32,24 +32,21 @@ try
     foreach (var diagnostic in content.Localization.Diagnostics)
         Console.Error.WriteLine($"Skipped localization source '{diagnostic.RelativePath}': {diagnostic.Message}");
     var textResolver = new GameLocalizationProvider(content, () => content.Settings.TargetLocale.ToCultureInfo());
-    var settings = new SettingsContainer();
-    settings.Set(content.Settings);
-    settings.Set(new GameSettings());
 
-    var saves = new FileSaveService(options.ProfileDirectory);
+    var saves = new FileSaveService(options.ProfileDirectory, content.Settings.SaveSlotCount);
     var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(options.ProfileDirectory));
     variables.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(content.Gallery));
     await using var progress = new FileGameProgressService(options.ProfileDirectory);
 
-    var presentation = new ConsolePresentation(settings.Get<GameSettings>());
+    var presentation = new ConsolePresentation();
     using var registration = new GameRegistration();
     registration.UseCatalog(GalNet.Project.Contracts.ProjectSchemas.CreateCatalog());
     await using var view = registration.AddBuiltinImplementations(registration.BuildCatalog(),
         presentation, presentation, presentation, presentation, content.Gallery, nvlPresenter: presentation,
-        characters: content.Localization.Characters, imageVariants: imageVariants).BuildView();
+        characters: content.Localization.Characters, imageVariants: imageVariants, audioTracks: content.Settings.AudioTracks).BuildView();
     view.RequireInstructions(content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>().SelectMany(group => group.Entries).Select(entry => entry.Type));
 
-    var runtime = new GameRuntime(textResolver, content.Graph.RootNodeId, settings, variables);
+    var runtime = new GameRuntime(textResolver, content.Graph.RootNodeId, variables);
     await using var run = new GameRun(content.Graph, runtime, view, progress, presentation);
     var engine = run.Engine;
 

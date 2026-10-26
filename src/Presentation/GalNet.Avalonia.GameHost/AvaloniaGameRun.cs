@@ -1,3 +1,4 @@
+using GalNet.Avalonia.GameHost.Settings;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Runtime;
@@ -61,17 +62,16 @@ internal sealed class AvaloniaGameRun : IGameRun
             visuals.PreloadedTextures, visuals.EffectPrograms, resources.MediaFiles,
             (registration, presentation) => options.ConfigureExecution(registration, presentation, page, resources.Content),
             resources.Content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>()
-                .SelectMany(group => group.Entries).Select(entry => entry.Type), options.Presentation, sharedLibVlc, cancellationToken);
+                .SelectMany(group => group.Entries).Select(entry => entry.Type), options.Presentation, sharedLibVlc,
+            audioTracks: resources.Content.Settings.AudioTracks, cancellationToken: cancellationToken);
         GameRun? run = null;
         AvaloniaGameRun? adapter = null;
         try
         {
-            var settings = new SettingsContainer();
-            settings.Set(resources.Content.Settings);
-            settings.Set(saveSession.Settings);
-            var runtime = new GameRuntime(textResolver, resources.Content.Graph.RootNodeId, settings, saveSession.Variables);
+            var runtime = new GameRuntime(textResolver, resources.Content.Graph.RootNodeId, saveSession.Variables);
             run = new GameRun(resources.Content.Graph, runtime, presentation.View,
-                saveSession.Progress, presentation.Presenters.ChoicePresenter, presentation, presentation.Restorer);
+                saveSession.Progress, presentation.Presenters.ChoicePresenter, presentation, presentation.Restorer,
+                playbackOptions: playerSettings.RuntimeSettings.ToPlaybackOptions());
             adapter = new AvaloniaGameRun(gameplay, run, presentation, playerSettings,
                 updateStateAsync, runCompletedAsync, resetPresentationAsync, onUiAsync, () => saveSession.Variables.FlushPlayerVariablesAsync());
             adapter._debugBinding = options.AttachDebugRun?.Invoke(run.Engine);
@@ -155,7 +155,7 @@ internal sealed class AvaloniaGameRun : IGameRun
     }
 
     private void OnAdvanceRequested() => _ = AdvanceAsync();
-    private void OnPlayerSettingsChanged(GameSettings settings) => _presentation.AudioModule.ApplyPlayerSettings(settings);
+    private void OnPlayerSettingsChanged(GameSettings settings) => _presentation.AudioModule.ApplyMix(settings.ToAudioMixOptions());
 
     private async Task AdvanceAsync()
     {

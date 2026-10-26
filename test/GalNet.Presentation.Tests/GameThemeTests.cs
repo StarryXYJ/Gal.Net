@@ -293,7 +293,7 @@ public sealed class GameThemeTests
             return Task.CompletedTask;
         }
         public Task SkipToUnreadAsync(CancellationToken cancellationToken = default) { Skips++; return Task.CompletedTask; }
-        public Task RefreshPlaybackSettingsAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task UpdatePlaybackOptionsAsync(PlaybackOptions options, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
     [Test]

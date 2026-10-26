@@ -1,5 +1,6 @@
 using DynamicLocalization.Core;
 using GalNet.Avalonia.GameHost;
+using GalNet.Avalonia.GameHost.Settings;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;

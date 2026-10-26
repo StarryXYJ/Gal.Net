@@ -27,7 +27,7 @@ public class AudioPersistenceTests
         audio.Pause(Tracks, "bgm");
         var original = host.Requests.Single(value => value.Action == AudioBackendAction.Start);
         var restored = GameState.Restore(catalog, state.Capture());
-        audio.ApplyPlayerSettings(new GameSettings { MasterVolume = .5f, BgmVolume = .5f });
+        audio.ApplyMix(new AudioMixOptions { MasterGain = .5f, Groups = new Dictionary<string, AudioMixLevel> { ["bgm"] = new(.5f) } });
         await audio.RestoreAsync(restored, Tracks, default);
         Assert.That(host.Requests.Count(value => value.Action == AudioBackendAction.Start), Is.EqualTo(1), "Paused restoration must not briefly start playback.");
         audio.Reset(state); // A delayed cancellation from the old generation is harmless.

@@ -35,9 +35,6 @@ public sealed partial class BuiltInEditorCommandHandler
                     case "saveSlotCount":
                         document.Settings.SaveSlotCount = NonNegativeInt(value, key);
                         break;
-                    case "sfxChannelCount":
-                        document.Settings.SfxChannelCount = PositiveInt(value, key);
-                        break;
                     case "targetLocale":
                         var locale = new I18nLocale(value.GetString() ?? throw new JsonException("A locale string is required."));
                         document.Settings.TargetLocale = locale;

@@ -31,14 +31,6 @@
                                Minimum="1" Maximum="999" Increment="1"
                                Foreground="{DynamicResource SemiColorText0}" />
 
-                <TextBlock Text="{loc:Localize Settings.Project.SfxChannelCount}"
-                           Foreground="{DynamicResource SemiColorText2}"
-                           FontSize="12"
-                           Margin="0,4,0,0" />
-                <NumericUpDown Value="{Binding SfxChannelCount}"
-                               Minimum="1" Maximum="16" Increment="1"
-                               Foreground="{DynamicResource SemiColorText0}" />
-
                 <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
                     <TextBlock Text="{loc:Localize Settings.Project.AudioTracks}" Foreground="{DynamicResource SemiColorText2}" FontSize="12" />
                     <Button Grid.Column="1" Content="{loc:Localize Settings.Project.AddTrack}" Command="{Binding AddAudioTrackCommand}" />

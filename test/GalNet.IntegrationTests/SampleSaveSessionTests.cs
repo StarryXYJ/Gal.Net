@@ -18,7 +18,8 @@ public sealed class SampleSaveSessionTests
         try
         {
             using var assets = new EmptyAssetManager();
-            using var session = await FilePlayerSession.OpenAsync(directory, new GameContent { Graph = new Graph() }.Gallery, CancellationToken.None);
+            using var session = await FilePlayerSession.OpenAsync(directory, new GameContent { Graph = new Graph() }.Gallery,
+                cancellationToken: CancellationToken.None);
             await session.SaveAsync(0, new GameSnapshot { NodeId = "original" }, CancellationToken.None);
             await File.WriteAllTextAsync(Path.Combine(directory, "saves", "slot-001.json"), "corrupt");
             var slots = await Task.WhenAll(
@@ -46,8 +47,8 @@ public sealed class SampleSaveSessionTests
         try
         {
             using var assets = new EmptyAssetManager();
-            using var session = await FilePlayerSession.OpenAsync(profileDirectory, new GameContent { Graph = new Graph() }.Gallery, CancellationToken.None);
-            var originalSettings = session.Settings;
+            using var session = await FilePlayerSession.OpenAsync(profileDirectory, new GameContent { Graph = new Graph() }.Gallery,
+                maxSlots: 3, cancellationToken: CancellationToken.None);
             var score = new GalVariable { Name = "score" };
             score.SetValue(42);
             session.Variables.NotifyVariableChanged(VariableScope.Player, score.Name, score);
@@ -60,12 +61,11 @@ public sealed class SampleSaveSessionTests
             {
                 Assert.That(session.Variables.GetSnapshot(VariableScope.Player), Is.Empty);
                 Assert.That(session.Progress.IsRead("chapter-1", "line-1"), Is.False);
-                Assert.That(session.Settings, Is.Not.SameAs(originalSettings));
             });
             Assert.That(await session.LoadAsync(0, CancellationToken.None), Is.Null);
-            Assert.That(
-                await session.ListSlotsAsync(CancellationToken.None),
-                Has.All.Matches<SaveSlotInfo>(slot => slot.Timestamp == default && !slot.IsCorrupt));
+            var slots = await session.ListSlotsAsync(CancellationToken.None);
+            Assert.That(slots, Has.Count.EqualTo(3));
+            Assert.That(slots, Has.All.Matches<SaveSlotInfo>(slot => slot.Timestamp == default && !slot.IsCorrupt));
 
             session.Dispose();
         }
