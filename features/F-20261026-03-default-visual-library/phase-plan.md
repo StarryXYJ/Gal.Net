@@ -8,9 +8,11 @@
 
 验证：ProjectCreationTests + DefaultVisualTemplateTests 共 9 项通过；DefaultVisualShaderTests 共 8 项通过（metadata 及 SKRuntimeEffect 实际编译）。Editor.Shared 串行构建 0 警告/0 错误（RunAnalyzers=false）。普通多进程构建曾无诊断退出，串行构建通过；受限环境 testhost 连接超时，沙箱外相同测试通过，未将该超时归因为业务代码失败。尚不宣称 DepthBlur 的 layerZ 注入或 MaskReveal 的纹理绑定完成，二者属于 P2。
 
-## P2 渲染能力 — planned
+## P2 渲染能力 — verified
 
 注入图层 Z；补齐 texture 参数租约和绑定。验证景深在 Z 变化后更新、遮罩真实采样、alpha 与资源释放。退出：CPU 像素证据与已有渲染回归通过；GPU 路径共享绑定代码并构建通过。
+
+结果：CPU/GPU 层效果链每次绘制传入当前图层 Z，通用 shader 自动绑定保留的 `layerZ` uniform；外部 texture 参数按画布缩放，缺省可选纹理绑定透明值。默认宿主向效果运行器注入 AssetManager，各效果独立拥有纹理租约；替换/停止/Dispose/部分准备失败释放。异步准备使用实例代次防止停止后复活。27 项 shader/像素/生命周期及既有效果测试通过；GameHost 构建通过（既有 BuiltinScene nullable 警告 1 项）。像素测试验证移动 Z 后失焦及恢复、径向/定向集中线随 time 变化、遮罩实际采样及缩放。GPU 共享绑定路径构建通过，未宣称本阶段有真实 GPU 截图验收。
 
 ## P3 转场与演出组合 — planned
 

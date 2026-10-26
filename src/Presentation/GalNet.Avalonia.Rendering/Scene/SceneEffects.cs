@@ -27,11 +27,11 @@ public interface ITextureEffectFactory
 }
 
 /// <summary>Live renderer-owned state for a texture effect instance.</summary>
-public sealed class SceneEffectInstance : INotifyPropertyChanged
+public sealed class SceneEffectInstance : INotifyPropertyChanged, IDisposable
 {
     private readonly Dictionary<string, float> _animatedValues = new(StringComparer.Ordinal);
     private readonly Lazy<IReadOnlyDictionary<string, JsonElement>> _staticValues;
-    public SceneEffectInstance(string instanceId, ITextureEffectFactory factory, string targetHandleId, int order, string parameters, long insertionOrder = 0)
+    public SceneEffectInstance(string instanceId, ITextureEffectFactory factory, string targetHandleId, int order, string parameters, long insertionOrder = 0, ShaderTextureBindings? textures = null)
     {
         InstanceId = instanceId;
         Factory = factory;
@@ -40,6 +40,7 @@ public sealed class SceneEffectInstance : INotifyPropertyChanged
         Order = order;
         Parameters = parameters;
         InsertionOrder = insertionOrder;
+        Textures = textures;
         _staticValues = new Lazy<IReadOnlyDictionary<string, JsonElement>>(ParseStaticValues, LazyThreadSafetyMode.ExecutionAndPublication);
     }
     public string InstanceId { get; }
@@ -50,6 +51,10 @@ public sealed class SceneEffectInstance : INotifyPropertyChanged
     public int Order { get; }
     public long InsertionOrder { get; }
     public string Parameters { get; }
+    public ShaderTextureBindings? Textures { get; }
+    // Draw-local context, refreshed from the current render entry on both CPU and GPU paths.
+    internal float LayerZ { get; set; }
+    public void Dispose() => Textures?.Dispose();
     public event PropertyChangedEventHandler? PropertyChanged;
     public void SetAnimatedValue(string name, float value)
     {

@@ -11,6 +11,60 @@ namespace GeneralTest.Scene;
 public sealed class TextureEffectsTests
 {
     [Test]
+    public async Task Texture_leases_are_released_on_replace_stop_and_failed_preparation()
+    {
+        const string shader = """
+            /*
+            @gal.effect v=1
+            @input source
+            @targets layer
+            @texture mask
+              uniform: mask
+              required: true
+            @texture second
+              uniform: second
+            */
+            uniform shader source;
+            uniform shader mask;
+            uniform shader second;
+            half4 main(float2 p) { return source.eval(p)*mask.eval(p).a + second.eval(p)*0.0; }
+            """;
+        using var texture = new SceneTexture(new Avalonia.Media.DrawingImage(), Solid(SKColors.White));
+        using var assets = new TextureAssetManager(texture);
+        var page = new GamePageViewModel(new NoOpGameNavigationService());
+        using var resolver = new SkiaShaderEffectProgramResolver(new StaticShaderSource(shader));
+        using var runtime = new AvaloniaEffectRuntime(page, resolver, assets);
+        var request = new EffectRequest("", "mask", "layer", Parameters: "{\"mask\":\"ok\"}", ProgramResource: "mask-program");
+        await runtime.StartEffectAsync(request, CancellationToken.None);
+        Assert.That(assets.Released, Is.Zero);
+        await runtime.StartEffectAsync(request, CancellationToken.None);
+        Assert.That(assets.Released, Is.EqualTo(1));
+        await runtime.StopEffectAsync("mask", CancellationToken.None);
+        Assert.That(assets.Released, Is.EqualTo(2));
+        Assert.That(page.TextureEffects, Is.Empty);
+        await runtime.StartEffectAsync(request with { Parameters = "{\"mask\":\"ok\",\"second\":\"missing\"}" }, CancellationToken.None);
+        Assert.That(assets.Released, Is.EqualTo(3), "Partial preparation must release the first acquired texture.");
+        Assert.That(page.TextureEffects, Is.Empty);
+        await runtime.StartEffectAsync(request, CancellationToken.None);
+        runtime.Dispose();
+        Assert.That(assets.Released, Is.EqualTo(4));
+        Assert.That(page.TextureEffects, Is.Empty);
+    }
+
+    private sealed class TextureAssetManager(SceneTexture texture) : GalNet.Core.Assets.IAssetManager
+    {
+        public int Released { get; private set; }
+        public Task<GalNet.Core.Assets.AssetHandle<T>?> AcquireAsync<T>(string assetId, CancellationToken ct = default) where T : class =>
+            Task.FromResult(assetId == "ok" && texture is T value ? new GalNet.Core.Assets.AssetHandle<T>(assetId, "sprite", value, () => Released++) : null);
+        public Task<GalNet.Core.Assets.AssetHandle<T>?> AcquireByPathAsync<T>(string path, CancellationToken ct = default) where T : class => throw new NotSupportedException();
+        public Task<GalNet.Core.Assets.IGameFile?> GetFileAsync(string assetId, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<GalNet.Core.Assets.IGameFile>> GetFilesAsync(string? typeId = null, CancellationToken ct = default) => throw new NotSupportedException();
+        public void RegisterDecoder<T>(string resourceTypeId, GalNet.Core.Assets.IAssetDecoder<T> decoder) where T : class => throw new NotSupportedException();
+        public void RegisterProvider(GalNet.Core.Assets.IAssetProvider provider) => throw new NotSupportedException();
+        public void Dispose() { }
+    }
+
+    [Test]
     public void Program_factory_derives_layer_and_scene_contract_from_one_project_shader()
     {
         var layer = CreateFactory(ColorGradeSource, EffectStage.Layer).Definition;

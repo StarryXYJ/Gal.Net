@@ -87,7 +87,7 @@ public static class SceneRenderPipeline
 
             using var layer = NewBitmap(width, height);
             using (var layerCanvas = new SKCanvas(layer)) entry.Renderable.Render(new SceneRenderContext(layerCanvas, new SKSize(width, height), false));
-            using var output = ApplyEffects(layer, layerEffects, budget);
+            using var output = ApplyEffects(layer, layerEffects, budget, (float)entry.Renderable.Z);
             sceneCanvas.DrawBitmap(output ?? layer, 0, 0);
         }
 
@@ -99,11 +99,12 @@ public static class SceneRenderPipeline
         return result;
     }
 
-    private static SKBitmap? ApplyEffects(SKBitmap source, IEnumerable<SceneEffectInstance> effects, SceneRenderBudgetGuard budget)
+    private static SKBitmap? ApplyEffects(SKBitmap source, IEnumerable<SceneEffectInstance> effects, SceneRenderBudgetGuard budget, float layerZ = 0)
     {
         SKBitmap? current = null;
         foreach (var effect in effects)
         {
+            effect.LayerZ = layerZ;
             if (!budget.TryAcquireEffectPass(effect, source.Width, source.Height)) continue;
             var next = NewBitmap(source.Width, source.Height);
             using (var canvas = new SKCanvas(next))
@@ -143,7 +144,7 @@ public static class SceneRenderPipeline
             entry.Renderable.Render(new SceneRenderContext(layerSurface.Canvas, new SKSize(width, height), true));
             layerSurface.Flush();
             using var input = layerSurface.Snapshot();
-            using var output = ApplyGpuEffects(gpuContext, input, layerEffects, width, height, budget);
+            using var output = ApplyGpuEffects(gpuContext, input, layerEffects, width, height, budget, (float)entry.Renderable.Z);
             canvas.DrawImage(output ?? input, 0, 0);
         }
 
@@ -156,11 +157,12 @@ public static class SceneRenderPipeline
             .OrderBy(entry => entry.Order).ThenBy(entry => entry.InsertionOrder);
     }
 
-    private static SKImage? ApplyGpuEffects(GRContext gpuContext, SKImage source, IEnumerable<SceneEffectInstance> effects, int width, int height, SceneRenderBudgetGuard budget)
+    private static SKImage? ApplyGpuEffects(GRContext gpuContext, SKImage source, IEnumerable<SceneEffectInstance> effects, int width, int height, SceneRenderBudgetGuard budget, float layerZ = 0)
     {
         SKImage? current = null;
         foreach (var effect in effects)
         {
+            effect.LayerZ = layerZ;
             if (!budget.TryAcquireEffectPass(effect, width, height)) continue;
             using var nextSurface = NewGpuSurface(gpuContext, width, height)
                 ?? throw new InvalidOperationException("Unable to allocate a GPU effect surface.");
