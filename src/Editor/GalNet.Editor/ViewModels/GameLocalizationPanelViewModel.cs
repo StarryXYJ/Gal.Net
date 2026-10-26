@@ -359,7 +359,7 @@ public sealed partial class GameLocalizationPanelViewModel : ObservableObject, I
         // AutoCompleteBox uses ValueMemberBinding to put the canonical code in NewLanguage.
         // Also resolve an existing display string for callers that set it directly.
         var code = LanguageOptions.FirstOrDefault(option => string.Equals(option.DisplayText, NewLanguage, StringComparison.Ordinal))?.Code
-            ?? NewLanguage.Trim().Replace('_', '-');
+            ?? NewLanguage.Split(" — ", 2, StringSplitOptions.None)[0].Trim().Replace('_', '-');
         await Service.AddLanguageAsync(code); _hiddenLanguages.Remove(code); NewLanguage = "";
     });
     public Task RemoveLanguageAsync(string code) => RunAsync(async () =>
