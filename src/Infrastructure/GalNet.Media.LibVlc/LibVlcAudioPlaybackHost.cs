@@ -14,11 +14,9 @@ public sealed class LibVlcAudioPlaybackHost : IAudioPlaybackHost, IAsyncDisposab
     private readonly IAssetFileMaterializer _files;
     private readonly bool _ownsFiles;
     private readonly Dictionary<string, Voice> _voices = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, AssetFileLease> _paths = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, PendingLoad> _pending = new(StringComparer.Ordinal);
     private readonly List<Task> _loads = [];
     private readonly CancellationTokenSource _shutdown = new();
-    private readonly SemaphoreSlim _materialization = new(1, 1);
     private readonly Channel<(Voice Voice, AudioBackendEventKind Kind, string? Message)> _terminalEvents =
         Channel.CreateUnbounded<(Voice, AudioBackendEventKind, string?)>(new UnboundedChannelOptions { SingleReader = true });
     private readonly Task _terminalWorker;
@@ -118,10 +116,7 @@ public sealed class LibVlcAudioPlaybackHost : IAudioPlaybackHost, IAsyncDisposab
         try { await Task.WhenAll(loads.Append(_terminalWorker)).ConfigureAwait(false); }
         finally
         {
-            foreach (var lease in _paths.Values) lease.Dispose();
-            _paths.Clear();
             if (_ownsLibVlc) _libVlc?.Dispose();
-            _materialization.Dispose();
             _shutdown.Dispose();
             if (_ownsFiles) await _files.DisposeAsync().ConfigureAwait(false);
         }
@@ -165,8 +160,8 @@ public sealed class LibVlcAudioPlaybackHost : IAudioPlaybackHost, IAsyncDisposab
             return;
         }
 
-        string path;
-        try { path = await MaterializeAsync(request.AssetId, cancellationToken).ConfigureAwait(false); }
+        AssetFileLease? file;
+        try { file = await _files.AcquireAsync(request.AssetId, cancellationToken).ConfigureAwait(false); }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception exception)
         {
@@ -174,60 +169,49 @@ public sealed class LibVlcAudioPlaybackHost : IAudioPlaybackHost, IAsyncDisposab
             return;
         }
 
-        Voice voice;
-        lock (_gate)
+        Voice? voice = null;
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (_disposed) return;
-            RemoveVoice(request.VoiceId);
-            var player = new MediaPlayer(_libVlc);
-            voice = new Voice(request, player);
-            player.EndReached += (_, _) => Ended(voice);
-            player.EncounteredError += (_, _) => Failed(voice, "LibVLC could not play the audio asset.");
-            _voices.Add(request.VoiceId, voice);
-            voice.BaseGain = request.Gain;
-            voice.FadeGain = request.FadeSeconds > 0 ? 0 : 1;
-            ReapplySEffects(voice);
-            using var media = new LibVlcMedia(_libVlc, path);
-            player.Play(media);
+            lock (_gate)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (_disposed) return;
+                RemoveVoice(request.VoiceId);
+                var player = new MediaPlayer(_libVlc);
+                voice = new Voice(request, player, file); file = null;
+                player.EndReached += (_, _) => Ended(voice);
+                player.EncounteredError += (_, _) => Failed(voice, "LibVLC could not play the audio asset.");
+                _voices.Add(request.VoiceId, voice);
+                voice.BaseGain = request.Gain;
+                voice.FadeGain = request.FadeSeconds > 0 ? 0 : 1;
+                ReapplySEffects(voice);
+                using var media = new LibVlcMedia(_libVlc, voice.File.Path);
+                if (!player.Play(media)) throw new InvalidOperationException("LibVLC rejected the audio playback request.");
+            }
         }
+        catch { lock (_gate) { if (voice is not null && _voices.GetValueOrDefault(request.VoiceId) == voice) RemoveVoice(request.VoiceId); } throw; }
+        finally { file?.Dispose(); }
         Raise(new(AudioBackendEventKind.Started, request.TrackId, request.VoiceId, request.Generation));
         if (request.FadeSeconds > 0) _ = FadeAsync(voice, 0, 1, request.FadeSeconds, stopWhenDone: false);
     }
 
-    private async Task<string> MaterializeAsync(string assetId, CancellationToken cancellationToken)
-    {
-        await _materialization.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            lock (_gate)
-                if (_paths.TryGetValue(assetId, out var existing)) return existing.Path;
-            var lease = await _files.AcquireAsync(assetId, cancellationToken).ConfigureAwait(false);
-            lock (_gate)
-            {
-                if (_disposed) { lease.Dispose(); throw new ObjectDisposedException(nameof(LibVlcAudioPlaybackHost)); }
-                _paths.Add(assetId, lease);
-                return lease.Path;
-            }
-        }
-        finally { _materialization.Release(); }
-    }
-
     private void Stop(AudioBackendRequest request, float fadeSeconds)
     {
+        var finished = false;
         lock (_gate)
+        {
             if (_pending.TryGetValue(request.VoiceId, out var pending) && pending.Generation == request.Generation)
                 pending.Cancellation.Cancel();
-        WithVoice(request, voice =>
-        {
-            if (fadeSeconds <= 0)
+            if (!_voices.TryGetValue(request.VoiceId, out var voice) || voice.Request.Generation != request.Generation) finished = true;
+            else if (fadeSeconds <= 0)
             {
                 voice.Player.Stop();
                 RemoveVoice(voice.Request.VoiceId);
-                return;
+                finished = true;
             }
-            _ = FadeAsync(voice, voice.FadeGain, 0, fadeSeconds, stopWhenDone: true);
-        });
+            else _ = FadeAsync(voice, voice.FadeGain, 0, fadeSeconds, stopWhenDone: true);
+        }
+        if (finished) Raise(new(AudioBackendEventKind.Ended, request.TrackId, request.VoiceId, request.Generation));
     }
 
     private void ApplySEffect(AudioBackendRequest request) => WithVoice(request, voice =>
@@ -265,14 +249,17 @@ public sealed class LibVlcAudioPlaybackHost : IAudioPlaybackHost, IAsyncDisposab
             }
             if (stopWhenDone)
             {
+                var finished = false;
                 lock (_gate)
                 {
                     if (_voices.TryGetValue(voice.Request.VoiceId, out var current) && ReferenceEquals(current, voice))
                     {
                         voice.Player.Stop();
                         RemoveVoice(voice.Request.VoiceId);
+                        finished = true;
                     }
                 }
+                if (finished) Raise(new(AudioBackendEventKind.Ended, voice.Request.TrackId, voice.Request.VoiceId, voice.Request.Generation));
             }
         }
         catch (OperationCanceledException) { }
@@ -351,10 +338,11 @@ public sealed class LibVlcAudioPlaybackHost : IAudioPlaybackHost, IAsyncDisposab
     private static void SetVolume(Voice voice) => voice.Player.Volume = ToVolume(CurrentGain(voice));
     private void Raise(AudioBackendEvent @event) => EventReceived?.Invoke(@event);
 
-    private sealed class Voice(AudioBackendRequest request, MediaPlayer player) : IDisposable
+    private sealed class Voice(AudioBackendRequest request, MediaPlayer player, AssetFileLease file) : IDisposable
     {
         public AudioBackendRequest Request { get; } = request;
         public MediaPlayer Player { get; } = player;
+        public AssetFileLease File { get; } = file;
         public float BaseGain { get; set; }
         public float FadeGain { get; set; } = 1;
         public float EffectGain { get; set; } = 1;
@@ -373,7 +361,8 @@ public sealed class LibVlcAudioPlaybackHost : IAudioPlaybackHost, IAsyncDisposab
         {
             FadeCancellation.Cancel();
             FadeCancellation.Dispose();
-            Player.Dispose();
+            try { Player.Dispose(); }
+            finally { File.Dispose(); }
         }
     }
 

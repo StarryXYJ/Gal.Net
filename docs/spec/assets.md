@@ -96,3 +96,5 @@ folder 相对描述文件，允许 `.` 和不越过 Assets 的 `..`，兼容两�
 ## 后端媒体文件租约
 
 `IAssetFileMaterializer` / `AssetFileLease` 位于 Core.Assets；Assets 的 `AssetFileMaterializer` 通过 AssetManager acquire 的字节实体化媒体。同一会话内资源 ID（忽略大小写）共享文件，最后一个租约释放才删除。关闭 materializer 取消待加载请求并拒绝新请求，已借用文件仍有效直到释放。Sample 将同一实例传给剧情音频、视频与 Gallery；视频先释放原生播放器再释放文件租约。Gallery 缩略图抽取和临时缓存由独立服务拥有。
+
+LibVLC 音频后端同样为每个 voice 持有独立文件租约，先销毁播放器再释放租约；自然结束、立即停止、淡出完成、创建失败与取消加载均归还租约。后端不再将播放过的文件保留到整个会话结束，也不另建音频引用计数或闲置缓存层。多个声音及视频/Gallery 仍通过同一个 materializer 共享文件，音频停止不会删除其他消费者仍在使用的文件。

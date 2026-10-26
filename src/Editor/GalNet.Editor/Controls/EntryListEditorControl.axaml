@@ -10,6 +10,9 @@
              MoveCommand="{Binding ReorderEntryCommand}" Focusable="True">
     <controls:ReorderableListControl.Styles>
         <StyleInclude Source="avares://GalNet.Editor/Controls/AuthorFormStyles.axaml"/>
+        <Style Selector="controls|EntryTypePicker">
+            <Setter Property="MinWidth" Value="140" />
+        </Style>
         <Style Selector="Border.debugEntry"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}"/><Setter Property="BorderThickness" Value="1"/></Style>
         <Style Selector="Border.debugEntry.debugCurrent"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorSuccess}"/><Setter Property="BorderThickness" Value="3"/></Style>
         <Style Selector="Border.pendingMove"><Setter Property="Opacity" Value="0.65"/></Style>
@@ -24,7 +27,7 @@
             <Button Theme="{DynamicResource EditorIconButton}" ToolTip.Tip="{loc:Localize Entry.Add}" AutomationProperties.Name="{loc:Localize Entry.Add}" Command="{Binding AddEntryCommand}" Margin="0,0,6,0"><PathIcon Width="16" Height="16" Data="{StaticResource AddIcon}"/></Button>
             <Button Content="{loc:Localize Entry.AppendBatch}" Command="{Binding AppendEntriesCommand}" Margin="0,0,6,0" />
             <NumericUpDown x:Name="BatchCount" Width="90" Minimum="1" Maximum="1000" Increment="1" FormatString="0" Value="{Binding BatchAddCount,Mode=TwoWay}" Margin="0,0,6,0" ToolTip.Tip="{loc:Localize Entry.BatchCount}" />
-            <controls:EntryTypePicker x:Name="InsertPicker" MinWidth="180" MinHeight="32" VerticalAlignment="Center" Options="{Binding EntryTypes}" ShortcutService="{Binding ShortcutService}" SelectedValue="{Binding InsertionType,Mode=OneWay}" Opened="OnInsertPickerOpened" Closed="OnInsertPickerClosed" TypeConfirmed="OnInsertTypeConfirmed" />
+            <controls:EntryTypePicker x:Name="InsertPicker" MinHeight="32" VerticalAlignment="Center"  Options="{Binding EntryTypes}" ShortcutService="{Binding ShortcutService}" SelectedValue="{Binding InsertionType,Mode=OneWay}" Opened="OnInsertPickerOpened" Closed="OnInsertPickerClosed" TypeConfirmed="OnInsertTypeConfirmed" />
             <Button Theme="{DynamicResource EditorIconButton}" ToolTip.Tip="{loc:Localize Uiux.Entry.ExpandAll}" AutomationProperties.Name="{loc:Localize Uiux.Entry.ExpandAll}" Command="{Binding ExpandAllCommand}" Margin="0,0,6,0"><PathIcon Width="16" Height="16" Data="{StaticResource ChevronDownRegular}"/></Button>
             <Button Theme="{DynamicResource EditorIconButton}" ToolTip.Tip="{loc:Localize Uiux.Entry.CollapseAll}" AutomationProperties.Name="{loc:Localize Uiux.Entry.CollapseAll}" Command="{Binding CollapseAllCommand}" Margin="0,0,6,0"><PathIcon Width="16" Height="16" Data="{StaticResource ChevronUpRegular}"/></Button>
         </WrapPanel>
@@ -47,7 +50,8 @@
                             Background="{DynamicResource SemiColorBackground1}"
                             CornerRadius="6">
                         <StackPanel>
-                        <Grid ColumnDefinitions="Auto,48,140,*,Auto,Auto"
+                        <!-- Match the field editors' 130-DIP label column plus 8-DIP spacing. -->
+                        <Grid ColumnDefinitions="24,98,Auto,*,Auto,Auto"
                               ColumnSpacing="8">
                             <Border Padding="6,0"
                                     VerticalAlignment="Center"
@@ -63,7 +67,7 @@
                                                       Options="{Binding #Root.DataContext.EntryTypes}"
                                                       ShortcutService="{Binding #Root.DataContext.ShortcutService}"
                                                       SelectedValue="{Binding Type, Mode=OneWay}" TypeConfirmed="OnEntryTypeConfirmed"
-                                                      MinHeight="32" VerticalAlignment="Center" HorizontalAlignment="Stretch" />
+                                                      MinWidth="140" MinHeight="32" VerticalAlignment="Center" HorizontalAlignment="Left" />
                             <controls:ConditionEditorControl Grid.Column="3"
                                                              IsVisible="{Binding !#Root.UseCommonFields}"
                                                              Text="{Binding Condition}"

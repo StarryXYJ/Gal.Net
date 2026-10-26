@@ -92,9 +92,13 @@ public partial class AudioPlayOptions
     [Field(4, Minimum = 0, EditorId = ValueEditorIds.Numeric)] public float FadeIn { get; set; } = 0;
     [Field(5, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringBooleanValueConverter))]
     public bool? AutoBlocking { get; set; } = false;
+    [Field(6, Minimum = 0, EditorId = ValueEditorIds.Numeric)] public int LoopCount { get; set; } = 1;
+    [Field(7, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AudioCompletionValueConverter))]
+    public AudioCompletion Completion { get; set; } = AudioCompletion.Discard;
 }
 
 public sealed class AudioPlacementValueConverter() : StringEnumValueConverter<AudioPlacement>(JsonNamingPolicy.CamelCase);
+public sealed class AudioCompletionValueConverter() : StringEnumValueConverter<AudioCompletion>(JsonNamingPolicy.CamelCase);
 
 [GenerateFieldSchema]
 public partial class AudioSEffectOptions
