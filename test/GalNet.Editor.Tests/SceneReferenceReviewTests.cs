@@ -1,7 +1,5 @@
 using System.Text.Json;
-using Avalonia.Controls;
 using Avalonia.Headless;
-using Avalonia.VisualTree;
 using GalNet.Contracts.Builtins;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
@@ -60,7 +58,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     }
 
     [Test]
-    public async Task GroupReviewRoutesDeleteAndTypeChangeThroughSameImpactAndCancellationKeepsHistory()
+    public async Task GroupDeleteTypeChangeAndMoveCommitWithoutDialogsAndRefreshProblemsWithoutValidation()
     {
         var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
@@ -73,22 +71,34 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             scope.GetRequiredService<EntryFieldAuthoringService>().SetParameters(group.Id, consumer.Source, consumer.Type, new() { ["handleId"] = creator.Source.Parameters["handleId"] });
             var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear();
             using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id);
-            var reviews = 0;
-            page.ReviewImpactAsync = impact => { reviews++; Assert.That(impact.References, Has.Count.EqualTo(1)); return Task.FromResult(false); };
-            page.SetSelection([creator]); await page.DeleteSelectionAsync();
-            await page.ChangeTypeAsync(creator, BuiltinEntryIds.Wait);
-            Assert.That(reviews, Is.EqualTo(2)); Assert.That(history.CanUndo, Is.False); Assert.That(creator.Type, Is.EqualTo(BuiltinEntryIds.ShowColorLayer));
-            var preview = scope.GetRequiredService<GroupEntryAuthoringService>().PrepareDelete(group.Id, [creator.StableId])!;
-            var dialog = SceneEntryImpactPrompt.CreateDialog(preview.Impact, scope.GetRequiredService<IEditorLocalizationService>());
-            dialog.Show();
-            Assert.That(dialog.GetVisualDescendants().OfType<Button>().Select(button => button.Name), Does.Contain("CommitEntryEdit").And.Contain("CancelEntryEdit"));
-            dialog.Close();
-            page.ReviewImpactAsync = _ => Task.FromResult(true);
+            var problems = scope.GetRequiredService<ProblemsPanelViewModel>();
+            bool Missing() => problems.Problems.Any(problem => problem.SceneReference?.Code == "scene.reference.missing" && problem.Target?.EntryId == consumer.StableId);
+            var handle = consumer.Source.Parameters["handleId"].GetString();
+            Assert.That(Missing(), Is.False);
             await page.ChangeTypeAsync(creator, BuiltinEntryIds.Wait);
             Assert.That(creator.Type, Is.EqualTo(BuiltinEntryIds.Wait)); Assert.That(history.CanUndo, Is.True);
+            Assert.That(Missing(), Is.True);
+            await history.UndoAsync(); Assert.That(Missing(), Is.False);
+            page.SetSelection([creator]);
+            await page.DeleteSelectionAsync(); Assert.That(group.Entries, Has.Count.EqualTo(1)); Assert.That(Missing(), Is.True);
+            Assert.That(consumer.ProblemCount, Is.GreaterThan(0));
+            Assert.That(consumer.Source.Parameters["handleId"].GetString(), Is.EqualTo(handle));
+            await history.UndoAsync(); Assert.That(group.Entries, Has.Count.EqualTo(2)); Assert.That(Missing(), Is.False);
+            await history.RedoAsync(); Assert.That(Missing(), Is.True);
             await history.UndoAsync();
-            await page.DeleteSelectionAsync(); Assert.That(group.Entries, Has.Count.EqualTo(1));
-            await history.UndoAsync(); Assert.That(group.Entries, Has.Count.EqualTo(2));
+            var target = await workspace.AddNodeAsync(GraphNodeKind.LinearGroup, 500, 250);
+            using var targetPage = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, target.Id);
+            page.SetSelection([creator]);
+            var cut = page.PrepareCutSelection()!; page.BeginCut(cut);
+            await targetPage.PasteAsync(cut.Text, null);
+            Assert.That(target.Entries.Single().StableId, Is.EqualTo(creator.StableId));
+            Assert.That(Missing(), Is.True); Assert.That(page.HasPendingMove, Is.False);
+            await history.UndoAsync(); Assert.That(Missing(), Is.False);
+            await history.RedoAsync(); Assert.That(Missing(), Is.True);
+            await workspace.SaveAsync(); var root = project.RootPath;
+            await projects.CloseAsync();
+            var reopened = await projects.OpenAsync(root);
+            Assert.That(reopened.Services.GetRequiredService<ProblemsPanelViewModel>().Problems.Any(problem => problem.SceneReference?.Code == "scene.reference.missing"), Is.True);
             await projects.CloseAsync(); return true;
         }, CancellationToken.None);
     }

@@ -1,5 +1,7 @@
 # 已实施切片摘要
 
+2026-10-26 Group 直接编辑修订已验证：删除、换类型、移动不再显示影响确认，Problems 自动展示当前引用警告；原引用、输入归档、Undo/Redo 和严格编译/构建校验保留。Editor 325 项及 Shared 相关 34 项通过，原生 GUI 未执行，见 [修订记录](group-direct-editing.md)。
+
 本 feature 仍在实施；完整阶段状态见 [phase-plan.md](phase-plan.md)，此前实施记录在各 Phase 文档中。本页从 P6e4c3b 起维护已收口切片，不表示整体 feature 已完成。
 
 ## P6e4c3b：效果 metadata 能力

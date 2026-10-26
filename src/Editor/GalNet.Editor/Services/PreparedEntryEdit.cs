@@ -6,7 +6,7 @@ using GalNet.Editor.Shared.Services;
 
 namespace GalNet.Editor.Services;
 
-/// <summary>A read-only preview tied to its source snapshot. Confirmation cannot silently target newer content.</summary>
+/// <summary>An edit tied to its source snapshot, with optional impact analysis.</summary>
 public sealed class PreparedEntryEdit
 {
     private readonly IEditorDocumentService _documents;
@@ -16,7 +16,8 @@ public sealed class PreparedEntryEdit
     private readonly EditorGraphDocument _document;
     private readonly Func<bool>? _precondition;
     private bool _committed;
-    public SceneEditImpact Impact { get; }
+    private readonly Lazy<SceneEditImpact> _impact;
+    public SceneEditImpact Impact => _impact.Value;
     internal PreparedEntryEdit(IEditorDocumentService documents, EditorHistories histories, IUndoableEdit edit, Action<EditorProjectDocument> apply, int archivedInputs = 0, Func<bool>? precondition = null,
         IReadOnlyDictionary<SceneAuthorAddress, SceneAuthorAddress>? originalOwners = null)
     {
@@ -24,10 +25,14 @@ public sealed class PreparedEntryEdit
         _document = documents.CurrentDocument;
         _precondition = precondition;
         _source = Capture(documents);
-        var before = JsonSerializer.Deserialize<EditorProjectDocument>(_source)!;
-        var after = JsonSerializer.Deserialize<EditorProjectDocument>(_source)!;
-        apply(after);
-        Impact = SceneReferenceAnalysis.Compare(before.Graph, before.GroupEntries, after.GroupEntries, originalOwners) with { ArchivedInputs = archivedInputs };
+        var source = _source;
+        _impact = new(() =>
+        {
+            var before = JsonSerializer.Deserialize<EditorProjectDocument>(source)!;
+            var after = JsonSerializer.Deserialize<EditorProjectDocument>(source)!;
+            apply(after);
+            return SceneReferenceAnalysis.Compare(before.Graph, before.GroupEntries, after.GroupEntries, originalOwners) with { ArchivedInputs = archivedInputs };
+        });
     }
     public void Commit()
     {

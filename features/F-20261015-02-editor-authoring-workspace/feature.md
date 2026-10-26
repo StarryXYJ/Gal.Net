@@ -11,6 +11,8 @@ Group 一致性补充改造 GC1–GC5 已完成并验证：删除引用影响、
 
 # Editor 创作工作区重构
 
+2026-10-26 Group 交互简化 verified：删除、换类型、移动直接执行，引用问题在 Problems 自动更新，无需影响确认或先点击检查；保留严格编译/构建错误门禁。Editor 325 项与 Shared 相关 34 项通过，详见 [直接编辑修订](group-direct-editing.md)。此修订替代下文历史记录中的 Group 影响弹窗行为。
+
 2026-10-26 GC3 Entry 身份与输入生命周期 verified：待移动剪切、相容输出身份迁移、删除输入持久归档和新绑定显式恢复已接通；四项目 918 项执行通过，4 项 Explicit 原生 GUI 未执行，四语/格式/32 文件指纹通过，见 [阶段记录](phase-group-consistency.md#gc3身份与输入生命周期)。GC4/GC5 和整 Group/文件结构删除的独立输入协调验收保留。
 
 

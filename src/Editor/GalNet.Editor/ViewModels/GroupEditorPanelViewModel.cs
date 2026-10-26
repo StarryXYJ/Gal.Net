@@ -129,25 +129,17 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     }
     public void DeleteEntries(IEnumerable<string> ids) { if (!_disposed) _authoring.Delete(GroupId, ids); }
     public void DeleteSelection() => DeleteEntries(SelectedEntries.Select(entry => entry.StableId).ToArray());
-    public Func<SceneEditImpact, Task<bool>>? ReviewImpactAsync { get; set; }
-    private async Task CommitReviewedAsync(PreparedEntryEdit? edit)
+    private Task CommitAsync(PreparedEntryEdit? edit)
     {
-        if (edit is not null && await ReviewAsync(edit)) edit.Commit();
+        if (!_disposed) edit?.Commit();
+        return Task.CompletedTask;
     }
-    private async Task<bool> ReviewAsync(PreparedEntryEdit edit) => !_disposed && (!edit.Impact.RequiresReview ||
-        await (ReviewImpactAsync?.Invoke(edit.Impact) ?? SceneEntryImpactPrompt.ConfirmAsync(edit.Impact, _localization, Describe))) && !_disposed;
-    private string Describe(SceneAuthorAddress address)
-    {
-        var node = Workspace.Nodes.FirstOrDefault(item => item.Id == address.GroupId);
-        var entry = node?.Entries.FirstOrDefault(item => item.StableId == address.EntryId);
-        return (node?.Name ?? address.GroupId) + " / " + entry?.Id + " · " + Workspace.Localize("Entry.Type." + entry?.Type);
-    }
-    public Task DeleteEntriesAsync(IEnumerable<string> ids) => _disposed ? Task.CompletedTask : CommitReviewedAsync(_authoring.PrepareDelete(GroupId, ids));
+    public Task DeleteEntriesAsync(IEnumerable<string> ids) => _disposed ? Task.CompletedTask : CommitAsync(_authoring.PrepareDelete(GroupId, ids));
     public Task DeleteSelectionAsync() => DeleteEntriesAsync(SelectedEntries.Select(entry => entry.StableId).ToArray());
     public async Task PasteAsync(string text, string? anchor)
     {
         if (_disposed) return;
-        var pasted = await _authoring.PasteAsync(GroupId, text, anchor, ReviewAsync);
+        var pasted = await _authoring.PasteAsync(GroupId, text, anchor);
         if (_disposed) return;
         _copiedMove = _authoring.LastPasteCopiedMove;
         if (pasted.Count > 0) SetSelection(_entries.Where(entry => pasted.Contains(entry.StableId)));
@@ -223,7 +215,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         if (_disposed || entry.Type == type || !GroupNode.Entries.Contains(entry) || !EntryTypes.Any(item => item.Value == type)) return Task.CompletedTask;
         var fields = _projects.Current?.Services.GetService(typeof(EntryFieldAuthoringService)) as EntryFieldAuthoringService;
         if (fields is null) throw new InvalidOperationException("Entry authoring is unavailable.");
-        return CommitReviewedAsync(fields.PrepareType(GroupId, entry.Source, type, GalNet.Editor.Abstraction.Documents.EditorEntryData.CreateParameters(_catalog, type)));
+        return CommitAsync(fields.PrepareType(GroupId, entry.Source, type, GalNet.Editor.Abstraction.Documents.EditorEntryData.CreateParameters(_catalog, type)));
     }
     private void InsertEntries(int index, int count, string? anchorId = null)
     {

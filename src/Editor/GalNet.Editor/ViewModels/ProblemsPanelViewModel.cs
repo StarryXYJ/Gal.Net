@@ -60,12 +60,14 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
         if (scenes is not null) scenes.Changed += SceneChanged;
         _localization = localization; _authorRevision = histories.Content.AuthorChanges.Revision; _documents = documents;
         content.ExternalReloaded += ExternalReloaded;
-        edits.Changed += Refresh; histories.Changed += ContentChanged; text.PropertyChanged += LocaleChanged; Refresh();
+        edits.Changed += Refresh; histories.Changed += ContentChanged; text.PropertyChanged += LocaleChanged;
+        SceneChanged();
+        if (scenes is null) Refresh();
     }
     private void LocaleChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args) => Refresh();
     private void SceneChanged()
     {
-        if (_validatedRevision is null || _scenes is null) return;
+        if (_scenes is null) return;
         _sceneDiagnostics = _scenes.Diagnostics(); Refresh();
     }
     private void ContentChanged()
@@ -74,11 +76,11 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
         if (revision != _authorRevision)
         {
             _authorRevision = revision; _revision++;
-            if (_validatedRevision is not null && _scenes is not null) _sceneDiagnostics = _scenes.Diagnostics();
+            if (_scenes is not null) _sceneDiagnostics = _scenes.Diagnostics();
         }
         Refresh();
     }
-    private void ExternalReloaded() { _revision++; if (_scenes is not null && _validatedRevision is not null) _sceneDiagnostics = _scenes.Diagnostics(); Refresh(); }
+    private void ExternalReloaded() { _revision++; if (_scenes is not null) _sceneDiagnostics = _scenes.Diagnostics(); Refresh(); }
     private bool IsPresent(AuthorNavigationTarget? target) => _documents is null || target?.NodeId is null
         || _documents.CurrentDocument.Nodes.Any(node => node.Id == target.NodeId) && (target.EntryId is null
             || _documents.Groups.TryGetValue(target.NodeId, out var group) && group.Entries.Any(entry => entry.StableId == target.EntryId));

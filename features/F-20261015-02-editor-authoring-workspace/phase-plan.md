@@ -1,5 +1,7 @@
 # Editor 创作工作区实施计划
 
+2026-10-26 Group 无弹窗修订（verified）：移除页面影响确认，Problems 无需先检查即可刷新场景诊断，保留严格编译/构建门禁及草稿/历史保护。Editor 325 项及 Shared 相关 34 项通过，覆盖删除、换类型、移动、Undo/Redo、保存重开和既有编译错误拒绝；隔离输出编译及 diff 格式检查通过，原生 GUI 未执行，详见 [修订记录](group-direct-editing.md)。
+
 ## Group 一致性补充阶段（2026-10-26）
 
 用户“开始吧”授权实施 [Group 一致性设计](group-authoring-consistency-design.md)，随后要求继续至全部完成。GC1–GC5 现已逐阶段实现与验证；本轮 Group 改造收口，整个 feature 其他 P6/P7 状态仍分别保留。
