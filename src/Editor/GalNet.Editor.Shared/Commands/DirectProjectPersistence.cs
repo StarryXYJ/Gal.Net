@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using GalNet.Core.Configuration;
 using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Abstraction.Documents;
@@ -10,13 +9,7 @@ namespace GalNet.Editor.Shared.Commands;
 
 public sealed class DirectProjectPersistence(string projectPath, IEditorDocumentRepository repository, ProjectConfigurationSchema? configurations = null)
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        WriteIndented = true,
-        PropertyNameCaseInsensitive = false,
-        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
-        Converters = { new JsonStringEnumConverter() }
-    };
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     private readonly string _projectPath = Path.GetFullPath(projectPath);
     private readonly IEditorDocumentRepository _repository = repository ?? throw new ArgumentNullException(nameof(repository));
     private byte[]? _settingsBaseline;
@@ -34,7 +27,6 @@ public sealed class DirectProjectPersistence(string projectPath, IEditorDocument
     public Task SaveAsync(EditorProjectDocument document, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (File.Exists(Path.Combine(_projectPath, "settings.json"))) _ = LoadSettings(_projectPath);
         var plan = PrepareSave(document);
         _repository.ApplySave(_projectPath, plan, cancellationToken);
         _settingsBaseline = plan.Writes["settings.json"].ToArray();
@@ -50,9 +42,8 @@ public sealed class DirectProjectPersistence(string projectPath, IEditorDocument
         if (File.Exists(settingsPath)) _ = LoadSettings(_projectPath);
         var plan = _repository.PrepareSave(_projectPath, document.Graph,
             document.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value));
-        var settings = document.Configuration.Clone();
         var writes = new Dictionary<string, byte[]>(plan.Writes)
-        { ["settings.json"] = JsonSerializer.SerializeToUtf8Bytes(settings, JsonOptions) };
+        { ["settings.json"] = JsonSerializer.SerializeToUtf8Bytes(document.Configuration, JsonOptions) };
         return new(writes, plan.DeletedFiles);
     }
 

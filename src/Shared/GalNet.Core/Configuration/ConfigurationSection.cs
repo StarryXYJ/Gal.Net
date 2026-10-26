@@ -20,27 +20,7 @@ public abstract class ConfigurationSection
     public string Id { get; }
     public int Version { get; }
     public IReadOnlyList<FieldDescriptor> Fields { get; }
-    public abstract Type DataType { get; }
-    public abstract JsonElement DefaultData { get; }
     public abstract void Validate(ProjectSectionData value);
-    protected void ValidateFields(ProjectSectionData value)
-    {
-        if (value.Version != Version) throw new InvalidDataException($"Unsupported configuration version {value.Version} for '{Id}'; expected {Version}.");
-        if (value.Data.ValueKind != JsonValueKind.Object) throw new InvalidDataException($"Configuration section '{Id}' must contain an object.");
-        foreach (var field in Fields)
-        {
-            if (value.Data.TryGetProperty(field.Id, out var json))
-            {
-                if (ValueValidation.Validate(field.Value, json) is { } issue)
-                    throw new InvalidDataException($"Configuration '{Id}/{field.Id}': {issue.Message}");
-            }
-            else if (field.IsRequired && field.DefaultValue is null)
-                throw new InvalidDataException($"Configuration '{Id}' requires '{field.Id}'.");
-        }
-    }
-
-    public static ConfigurationSection<T> ForDto<T>(string id, Action<T>? validate = null, int version = 1) where T : IFieldDto, IFieldSchema<T>, new() =>
-        new(id, T.Schema, validate, version);
 }
 
 public sealed class ConfigurationSection<T>(string id, IReadOnlyList<FieldDescriptor> fields, Action<T>? validate = null, int version = 1)
@@ -48,51 +28,27 @@ public sealed class ConfigurationSection<T>(string id, IReadOnlyList<FieldDescri
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     { PropertyNameCaseInsensitive = false, Converters = { new JsonStringEnumConverter() } };
-    public override Type DataType => typeof(T);
-    public override JsonElement DefaultData => Encode(CreateDefault());
-    public T CreateDefault()
-    {
-        var value = new T();
-        if (value is IFieldDto dto)
-        {
-            foreach (var field in Fields)
-                if (field.DefaultValue is { } fallback) dto.WriteField(field.Id, ValueCodec.Deserialize(field.Value, fallback));
-        }
-        else if (Fields.Any(field => field.DefaultValue is not null))
-        {
-            var data = JsonSerializer.SerializeToElement(value, JsonOptions).EnumerateObject()
-                .ToDictionary(property => property.Name, property => property.Value, StringComparer.Ordinal);
-            foreach (var field in Fields)
-                if (field.DefaultValue is { } fallback) data[field.Id] = fallback;
-            value = JsonSerializer.SerializeToElement(data).Deserialize<T>(JsonOptions)!;
-        }
-        _ = Encode(value);
-        return value;
-    }
+    internal JsonElement Encode(T value) => JsonSerializer.SerializeToElement(value, JsonOptions);
 
-    public JsonElement Encode(T value)
+    public T Read(ProjectSectionData? value)
     {
-        ArgumentNullException.ThrowIfNull(value);
-        var data = value is IFieldDto dto ? ValueCodec.SerializeFields(dto) : JsonSerializer.SerializeToElement(value, JsonOptions);
-        ValidateFields(new(Version, data));
-        validate?.Invoke(value);
-        return data;
-    }
-
-    public T Read(ProjectSectionData value)
-    {
-        ValidateFields(value);
-        var normalized = value.Data.EnumerateObject().ToDictionary(property => property.Name, property => property.Value, StringComparer.Ordinal);
+        if (value is not null && value.Version != Version) throw new InvalidDataException($"Unsupported configuration version {value.Version} for '{Id}'; expected {Version}.");
+        var data = value?.Data ?? Encode(new T());
+        if (data.ValueKind != JsonValueKind.Object) throw new InvalidDataException($"Configuration section '{Id}' must contain an object.");
+        var normalized = data.EnumerateObject().ToDictionary(property => property.Name, property => property.Value, StringComparer.Ordinal);
         foreach (var field in Fields)
-            if (!normalized.ContainsKey(field.Id) && field.DefaultValue is { } fallback) normalized.Add(field.Id, fallback);
-        var data = JsonSerializer.SerializeToElement(normalized);
-        var result = new T();
-        if (result is IFieldDto dto)
         {
-            foreach (var field in Fields)
-                if (data.TryGetProperty(field.Id, out var json)) dto.WriteField(field.Id, ValueCodec.Deserialize(field.Value, json));
+            if (field.DefaultValue is { } fallback && (value is null || !normalized.ContainsKey(field.Id))) normalized[field.Id] = fallback;
+            if (!normalized.TryGetValue(field.Id, out var json))
+            {
+                if (field.IsRequired) throw new InvalidDataException($"Configuration '{Id}' requires '{field.Id}'.");
+                else continue;
+            }
+            if (ValueValidation.Validate(field.Value, json) is { } issue)
+                throw new InvalidDataException($"Configuration '{Id}/{field.Id}': {issue.Message}");
         }
-        else result = data.Deserialize<T>(JsonOptions) ?? throw new InvalidDataException($"Configuration '{Id}' cannot be null.");
+        var result = JsonSerializer.SerializeToElement(normalized).Deserialize<T>(JsonOptions)
+            ?? throw new InvalidDataException($"Configuration '{Id}' cannot be null.");
         validate?.Invoke(result);
         return result;
     }

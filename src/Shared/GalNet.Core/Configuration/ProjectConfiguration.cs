@@ -15,10 +15,11 @@ public sealed class ProjectConfiguration
     public IReadOnlyDictionary<string, ProjectSectionData> Sections => new ReadOnlyDictionary<string, ProjectSectionData>(_sections);
 
     public T Read<T>(ConfigurationSection<T> section) where T : new() =>
-        _sections.TryGetValue(section.Id, out var stored) ? section.Read(stored) : section.CreateDefault();
+        section.Read(_sections.GetValueOrDefault(section.Id));
 
     public void Set<T>(ConfigurationSection<T> section, T value) where T : new()
     {
+        ArgumentNullException.ThrowIfNull(value);
         var data = section.Encode(value);
         if (_sections.TryGetValue(section.Id, out var previous))
         {
@@ -39,8 +40,8 @@ public sealed class ProjectConfiguration
         ArgumentNullException.ThrowIfNull(value);
         if (value.Version < 1 || value.Data.ValueKind != JsonValueKind.Object)
             throw new InvalidDataException($"Configuration section '{id}' requires a positive version and object data.");
-        ProjectConfigurationJsonConverter.RequireUniqueProperties(value.Data);
-        _sections[id] = value with { Data = value.Data.Clone() };
+        using var document = JsonDocument.Parse(value.Data.GetRawText(), new JsonDocumentOptions { AllowDuplicateProperties = false });
+        _sections[id] = value with { Data = document.RootElement.Clone() };
     }
 
     public bool Remove(string id) => _sections.Remove(id);
@@ -60,58 +61,28 @@ public sealed class ProjectConfiguration
 
 public sealed class ProjectConfigurationJsonConverter : JsonConverter<ProjectConfiguration>
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNameCaseInsensitive = false,
+        NumberHandling = JsonNumberHandling.Strict,
+        AllowDuplicateProperties = false,
+        RespectRequiredConstructorParameters = true,
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
+    };
+    private sealed record Envelope(int Version, IReadOnlyDictionary<string, ProjectSectionData> Sections);
+
     public override ProjectConfiguration Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
-        using var document = JsonDocument.ParseValue(ref reader);
-        var root = document.RootElement;
-        RequireUniqueProperties(root);
-        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("version", out var version) ||
-            version.ValueKind != JsonValueKind.Number || !version.TryGetInt32(out var number) || number != ProjectConfiguration.CurrentVersion ||
-            !root.TryGetProperty("sections", out var sections) || sections.ValueKind != JsonValueKind.Object ||
-            root.EnumerateObject().Any(property => property.Name is not ("version" or "sections")))
+        var envelope = JsonSerializer.Deserialize<Envelope>(ref reader, JsonOptions);
+        if (envelope is not { Version: ProjectConfiguration.CurrentVersion, Sections: not null })
             throw new JsonException("Project configuration requires version 1 and an object of sections.");
         var result = new ProjectConfiguration();
-        foreach (var property in sections.EnumerateObject())
-        {
-            var envelope = property.Value;
-            if (envelope.ValueKind != JsonValueKind.Object || !envelope.TryGetProperty("version", out var sectionVersion) ||
-                sectionVersion.ValueKind != JsonValueKind.Number || !sectionVersion.TryGetInt32(out var sectionNumber) || !envelope.TryGetProperty("data", out var data) ||
-                envelope.EnumerateObject().Any(member => member.Name is not ("version" or "data")))
-                throw new JsonException($"Invalid configuration section '{property.Name}'.");
-            result.SetRaw(property.Name, new(sectionNumber, data));
-        }
+        foreach (var (id, section) in envelope.Sections)
+            result.SetRaw(id, section ?? throw new JsonException($"Invalid configuration section '{id}'."));
         return result;
     }
 
-    public override void Write(Utf8JsonWriter writer, ProjectConfiguration value, JsonSerializerOptions options)
-    {
-        writer.WriteStartObject();
-        writer.WriteNumber("version", ProjectConfiguration.CurrentVersion);
-        writer.WriteStartObject("sections");
-        foreach (var (id, section) in value.Sections.OrderBy(pair => pair.Key, StringComparer.Ordinal))
-        {
-            writer.WriteStartObject(id);
-            writer.WriteNumber("version", section.Version);
-            writer.WritePropertyName("data");
-            section.Data.WriteTo(writer);
-            writer.WriteEndObject();
-        }
-        writer.WriteEndObject();
-        writer.WriteEndObject();
-    }
-
-    internal static void RequireUniqueProperties(JsonElement value)
-    {
-        if (value.ValueKind == JsonValueKind.Object)
-        {
-            var names = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var property in value.EnumerateObject())
-            {
-                if (!names.Add(property.Name)) throw new JsonException($"Duplicate configuration property '{property.Name}'.");
-                RequireUniqueProperties(property.Value);
-            }
-        }
-        else if (value.ValueKind == JsonValueKind.Array)
-            foreach (var item in value.EnumerateArray()) RequireUniqueProperties(item);
-    }
+    public override void Write(Utf8JsonWriter writer, ProjectConfiguration value, JsonSerializerOptions options) =>
+        JsonSerializer.Serialize(writer, new Envelope(ProjectConfiguration.CurrentVersion,
+            value.Sections.OrderBy(pair => pair.Key, StringComparer.Ordinal).ToDictionary()), JsonOptions);
 }

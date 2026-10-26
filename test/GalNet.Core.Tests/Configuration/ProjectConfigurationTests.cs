@@ -96,14 +96,16 @@ public sealed class ProjectConfigurationTests
     }
 
     [Test]
-    public void DtoSchemaDefaultsUseFieldCodecsWithoutLeakingMetadata()
+    public void DefaultsAndRequiredValuesUseFieldSchema()
     {
-        var section = ConfigurationSection.ForDto<DtoOptions>("custom.dto");
+        var section = new ConfigurationSection<Options>("custom.defaults",
+            [new("count", new ValueDescriptor(typeof(int)), defaultValue: JsonSerializer.SerializeToElement(9))]);
         var configuration = new ProjectConfiguration();
         Assert.That(configuration.Read(section).Count, Is.EqualTo(9));
         configuration.Set(section, configuration.Read(section));
-        Assert.That(configuration.Sections[section.Id].Data.EnumerateObject().Select(property => property.Name), Is.EqualTo(new[] { "count" }));
+        Assert.That(configuration.Read(section).Count, Is.EqualTo(9));
         var required = new ConfigurationSection<Options>("required", [new("count", new ValueDescriptor(typeof(int)), isRequired: true)]);
+        Assert.That(configuration.Read(required).Count, Is.EqualTo(1), "An absent section uses the DTO constructor defaults.");
         Assert.That(() => required.Read(new(1, JsonSerializer.Deserialize<JsonElement>("{}"))), Throws.TypeOf<InvalidDataException>());
     }
 
@@ -113,13 +115,4 @@ public sealed class ProjectConfigurationTests
         public List<string> Names { get; set; } = [];
     }
 
-    public sealed class DtoOptions : IFieldDto, IFieldSchema<DtoOptions>
-    {
-        public int Count { get; set; }
-        public static IReadOnlyList<FieldDescriptor> Schema { get; } =
-            [new("count", new ValueDescriptor(typeof(int)), defaultValue: JsonSerializer.SerializeToElement(9))];
-        public IReadOnlyList<FieldDescriptor> Fields => Schema;
-        public object? ReadField(string id) => Count;
-        public void WriteField(string id, object? value) => Count = (int)value!;
-    }
 }

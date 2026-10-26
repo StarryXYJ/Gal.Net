@@ -142,3 +142,9 @@ R4a 收尾时默认输出不再占用，普通 GalNet.slnx 完整构建也通过
 R4c 仍需完成通用 section 编辑/历史及自有 DTO 的完整导出、安装、运行与预览链路，R4 整体尚未完成。正式协议见 [file-formats](../../docs/spec/file-formats.md)、[runtime](../../docs/spec/runtime.md)，接入见 [new-presentation-layer](../../docs/manual/new-presentation-layer.md)。
 
 最终全量回归 1770 项通过、4 项既有符号链接权限失败、3 项跳过：Core 166、Runtime 141、Builtins 185、Editor 323、Editor.Shared 424、Integration 125、Presentation 243、Architecture 49、Assets 57、GameHost 6、Debugging 10、Diagnostics 1、Storage 22、Generator 18。普通解决方案构建通过，无依赖或锁文件变更；格式和 diff 检查通过。格式工具的 MSBuild 工作区因沙箱命名管道权限不可用，使用 folder 模式完成格式化与只读核验。初轮语言名称失败日志保留，独立修复提交为 `2a92fb6`，最终完整 GUI 回归通过。原生媒体/显式外进程未执行；符号链接环境限制不隐藏。证据位于忽略产物 artifacts/engine-core-audit/r4b-final-build.log、r4b-final-tests.log/trx 与 r4b-format-verify.log。
+
+### R4b 精简
+
+按用户反馈删除配置专用 IFieldDto 分支、ForDto 工厂和无消费者的 DataType/DefaultData，统一普通 DTO + 字段 schema 的 JSON 路径；默认值和候选验证共用 Read。SDK JSON 信封反序列化、重复属性选项及标准序列化替代手写解析/递归检查/输出。Set 在合并后验证一次，持久化移除重复读取/克隆和无效 serializer 配置。保留构造默认值、schema 默认值、未知数据、大小写规则、版本与原子拒绝行为；不把外部同时进行的 Editor 精简混入本次提交。
+
+产品代码净删 88 行，Core 配置从 239 缩到 166 行；测试代码净删 7 行，只移除已删除能力的模拟 DTO，关键行为回归保留。当前工作区并行 Editor 重构曾导致 DebugApplicationProcess.Error/Status/Changed 未定义，未修改这些外部文件；以 1228f94 基线和五个配置改动源码组成独立候选，SHA-256 与提交源码核对一致。候选 locked restore、完整解决方案构建和格式检查通过；774 项通过（Core 166、Architecture 49、Editor.Shared 424、Integration 125、配置相关 GUI 10），4 项既有符号链接权限失败、2 项跳过。原生/显式外进程未执行，NU1900 漏洞源不可达警告保留，无依赖/锁文件变更。证据：artifacts/engine-core-audit/r4b-cleanup-candidate-*.log、r4b-cleanup-results 和 candidate-source.json。
