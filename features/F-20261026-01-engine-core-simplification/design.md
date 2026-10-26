@@ -141,3 +141,5 @@ R5b 根据消费者归位：Gallery、ImageVariants 及默认资源 DTO/工厂�
 R5b 精简：没有独立 metadata 字段的六个默认空 DTO 直接共用 AssetMeta，类型身份仍由 resource type ID 决定；仅 sprite 的 filter 需要独立 DTO。删除 GameContent 中没有生产消费者的 AssetRoot。
 
 R6 选择 DynamicParameterTable 为 Entry 唯一参数源，删除平铺 Parameters/Defaults/Options、nullable schema 回退和旧字典转 schema 工厂。具体编辑器类型投影移到 Editor.Abstraction，显示文本/选项在 UI 需要时生成；不在注册期预格式化。Effect/SEffect 元数据在 catalog 边界投影为既有 FieldDescriptor，复用 ValueValidation；目标 stage/scope 和 Shader 语法仍由领域拥有。目录复制输入集合以保证元数据查询与缓存校验一致，删除 EditorHints 的旧 ABI 兼容重载。
+
+R7 审核后只抽取 Engine 内完全相同的状态捕获/释放/锁外通知，并消除前跳 Seek 收束后的重复快照。ContinueUntilBlockedAsync 已被玩家推进、追帧与调试回放共用；AsyncPrimitiveInstance 与 PrimitiveTaskScope 已覆盖实际共享异步机制。视频、动画、Timeline 的完成/恢复策略不同，继续保留领域实现，不新增 Runner、策略参数或生命周期框架。原生窗口关闭与测试基础设施统一留在 R8 集成验收，避免混入通用 Engine。

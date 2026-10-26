@@ -115,7 +115,7 @@ public sealed partial class GameEngine
             ReconcilePlaybackTimer();
         }
         catch (Exception exception) { _flowError = exception; IsRunning = false; }
-        finally { CaptureStateChange(); _dispatchGate.Release(); PublishStateChanges(); }
+        finally { FinishDispatch(); }
     });
 
     private bool CanSchedulePlayback() => _debugger?.Paused != true && _playbackMode != PlaybackMode.Manual && _advanceBoundary && IsRunning &&
@@ -162,7 +162,7 @@ public sealed partial class GameEngine
                 await ContinueUntilBlockedAsync(cancellation.Token).ConfigureAwait(false);
             }
             catch (Exception exception) { _flowError = exception; IsRunning = false; }
-            finally { CaptureStateChange(); _dispatchGate.Release(); PublishStateChanges(); }
+            finally { FinishDispatch(); }
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
         finally

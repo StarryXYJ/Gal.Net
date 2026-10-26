@@ -46,6 +46,8 @@ GameSession 替换已有运行时先通过旧运行的 ValidateSnapshotAsync 校
 
 ### 状态通知和停止
 
+玩家推进、播放计时、追帧、Step/Seek 的常规收尾共用状态捕获与门禁释放方法，释放后才发布通知；只需释放门禁的只读/准备步骤仍保持独立。追帧与调试回放共用现有推进内核，停止目标和逻辑副作用策略由各自入口明确决定。
+
 `State` 和 `StateChanged(GameEngineStateChange)` 统一报告 `Ready`、`Running`、`Completed`、`Faulted`、`Stopped`；失败通知附带原始异常。自然阻塞完成、Choice 结果/异常和玩家推进都经过同一状态机制，宿主不需要分别推断终态。通知在执行锁外按发生顺序发布，重复状态不重复通知；订阅者异常只诊断，不改变剧情状态。事件处理器不应同步等待 Engine 的异步操作；UI 线程切换、日志文案和存档槽刷新由宿主处理。
 
 `StopAsync()` 是该 Engine 的终态操作：立即拒绝新推进，取消执行 scope，清理活动实例和 pending Choice，并等待内部 continuation 退出和已读进度 FlushAsync 完成后报告 `Stopped`。Choice 后端即使没有协作取消，Engine 的等待也能退出；平台资源本身仍由宿主释放。停止后推进返回 `false`，不能恢复该 Engine；重开使用新 Engine。正常完成后再次推进不会重放已经结束的内容。未停止时 `RestoreFromAsync()` 取消旧 scope 并重新进入 `Ready`。

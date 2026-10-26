@@ -97,9 +97,7 @@ public sealed partial class GameEngine
             {
                 if (stepping) Paused = true;
                 _stepBoundary = null;
-                _engine.CaptureStateChange();
-                _engine._dispatchGate.Release();
-                _engine.PublishStateChanges();
+                _engine.FinishDispatch();
             }
         }
     }

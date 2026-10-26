@@ -160,9 +160,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         }
         finally
         {
-            CaptureStateChange();
-            _dispatchGate.Release();
-            PublishStateChanges();
+            FinishDispatch();
         }
     }
 
@@ -192,7 +190,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             IsRunning = false;
             throw;
         }
-        finally { CaptureStateChange(); _dispatchGate.Release(); PublishStateChanges(); }
+        finally { FinishDispatch(); }
     }
 
     public Task RestoreFromAsync(GameSnapshot data, CancellationToken cancellationToken = default) =>
@@ -254,9 +252,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         }
         finally
         {
-            CaptureStateChange();
-            _dispatchGate.Release();
-            PublishStateChanges();
+            FinishDispatch();
         }
     }
 
@@ -574,9 +570,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         }
         finally
         {
-            CaptureStateChange();
-            _dispatchGate.Release();
-            PublishStateChanges();
+            FinishDispatch();
         }
     }
 
@@ -594,9 +588,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         }
         finally
         {
-            CaptureStateChange();
-            _dispatchGate.Release();
-            PublishStateChanges();
+            FinishDispatch();
         }
     }
 
@@ -630,9 +622,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         }
         finally
         {
-            CaptureStateChange();
-            _dispatchGate.Release();
-            PublishStateChanges();
+            FinishDispatch();
         }
     }
 
@@ -655,6 +645,14 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         if (state == _reportedState) return;
         _reportedState = state;
         _notifications.State(new GameEngineStateChange(state, state == GameEngineState.Faulted ? _flowError : null));
+    }
+
+    // Called with the execution gate held; observers are always invoked after release.
+    private void FinishDispatch()
+    {
+        try { CaptureStateChange(); }
+        finally { _dispatchGate.Release(); }
+        PublishStateChanges();
     }
 
     private void PublishStateChanges() => _notifications.Publish();

@@ -188,3 +188,9 @@ Gallery/ImageVariants 领域及默认资源工厂迁入 Contracts.Builtins；Gam
 EntryDefinition 只保留不可为空的 DynamicParameterTable；删除 Parameters/Defaults/Options 的注册期副本和旧字典构造路径。具体编辑器类型与投影归 Editor.Abstraction，UI 按需生成文本和选项。Effect/SEffect 在目录边界转换为已有 FieldDescriptor 并复用 ValueValidation；目标 stage/scope 等领域规则独立保留，输入集合隔离复制。删除 EditorHints 的旧 ABI 重载及其兼容断言，实际 Common 字段测试保留。产品 C# 净减 122 行。
 
 完整构建、格式/diff 检查通过。14 项目回归 1781 通过，3 项创建符号链接权限失败，3 项跳过，1 项 HeadlessUnitTestSession.DisposeAsync 空引用；该 GUI 用例单独复核通过，合计 1782 项功能验证通过。首次测试仍检查已删除的 ABI，移除该断言后构建通过。完整 GUI 319 通过/1 框架释放失败，竞态符合既有 lesson；R8 将复用 Presentation 已采用的框架缓存会话，失败原始日志保留，不把一次重跑记为框架修复。证据为 artifacts/engine-core-audit/r6-final-build.log、r6-results、r6-editor-recheck.log、r6-editor-targeted.log。参数规范已更新；无依赖或锁文件变化。
+
+## R7：执行收尾与快照复用
+
+Engine 的玩家推进、同步呈现、恢复、异步完成、计时播放、追帧、Step/Seek 共用 FinishDispatch：锁内捕获状态，finally 释放唯一执行门，再锁外通知。只释放门禁、已在其他位置捕获状态及分批让出的不同语义继续显式保留。前跳 Seek 对收束后的状态与当前变量使用同一次快照，保持 terminal scene 和变量语义。产品净减 7 行。
+
+审核确认 ContinueUntilBlockedAsync、AsyncPrimitiveInstance、PrimitiveTaskScope 已覆盖真实共享机制；动画、视频、Timeline 的业务完成/失败/恢复差异不再强抽取，不增加 Runner 或布尔策略框架。完整解决方案构建、格式/diff 检查通过；Runtime 115、Builtins 272、Presentation 243、Debugging 10，共 640 项通过。包括取消/自然阻塞完成、Choice、播放模式、Step/Seek、前跳动画终态、变量保留、呈现失败和观察者锁外通知。证据为 artifacts/engine-core-audit/r7-build.log、r7-results。原生关闭与测试框架会话稳定性仍归 R8，未宣称完成原生验收。

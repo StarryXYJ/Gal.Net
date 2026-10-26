@@ -94,7 +94,7 @@ primitive/呈现仅借用 IGameContext，Engine 管理 IGameRuntime 与 IPrimiti
 | R4 | 自定义配置贯穿作者与运行链路 | R2、R3 | [x] verified |
 | R5 | 剥离可选领域与场景依赖 | R1–R4 | [x] verified |
 | R6 | 统一参数描述与基础校验 | R5 | [x] verified |
-| R7 | 收敛执行与异步生命周期重复 | R5、R6 | [ ] planned |
+| R7 | 收敛执行与异步生命周期重复 | R5、R6 | [x] verified |
 | R8 | 最小项目、完整回归与文档收尾 | R1–R7 | [ ] planned |
 
 ### R1 — verified
@@ -132,12 +132,9 @@ Engine 只接收/更新不可变 PlaybackOptions，音频只接收隔离轨道�
 
 Entry 仅保存 DynamicParameterTable，编辑器按需投影；效果基础约束共用 ValueValidation，删除旧字典/回退/ABI 兼容路径。产品 C# 净减 122 行，构建/格式通过，完整回归 1781 通过、3 项权限失败及 1 项已知 Headless 释放竞态；该 GUI 用例单独复核通过（合计 1782）。测试框架会话稳定性与原生关闭仍归 R8。证据见 [summary](summary.md#r6唯一参数源与共享基础校验)。
 
-### R7 — 收敛执行与异步生命周期重复
+### R7 — verified
 
-- **目标/模块**：GameEngine 各 partial、快进/调试回放、内置异步 primitive 与现有 AsyncPrimitiveInstance/PrimitiveTaskScope。
-- **任务**：共享同一引擎内分批推进、阻塞等待、scope 检查和必要收尾机制；玩家快进/调试路线的停止策略、已读与副作用继续分别定义。收敛重复的状态捕获、门禁释放和锁外通知，保留唯一执行门。基于真实重复复用异步任务观察/完成/清理，保留动画、视频、Timeline 的领域状态与失败策略；可读性收益不足的抽取不强做。
-- **验证/退出**：长剧情、取消、阻塞自然完成、Choice、自动/快速模式、断点/Step/Seek、读档、观察者异常与呈现失败相关回归通过；通知仍在锁外，取消不误报 Faulted，无第二个剧情 Runner。更新生命周期规范及实现说明。
-- **风险**：不使用大量布尔策略参数隐藏不同语义，不统一吞异常；不得以缩短文件为由增加反向回调或通用执行框架。
+共享 Engine 完全相同的收尾，确保门禁在状态捕获异常时也能释放；Seek 复用收束后快照。推进内核与异步基础已有复用，领域差异保留，不新增框架。产品净减 7 行，完整构建、格式及 Runtime/Builtins/Presentation/Debugging 640 项通过。证据见 [summary](summary.md#r7执行收尾与快照复用)。
 
 ### R8 — 最小项目、完整回归与文档收尾
 

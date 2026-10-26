@@ -130,7 +130,7 @@ public sealed partial class GameEngine
                     if (!_catchUpActive || !IsRunning || _pendingChoice is not null) break;
                     waiting = _active.HasBlockingInstance();
                 }
-                finally { CaptureStateChange(); _dispatchGate.Release(); PublishStateChanges(); }
+                finally { FinishDispatch(); }
                 if (waiting) await _catchUpSignal.WaitAsync(token).ConfigureAwait(false);
                 else await Task.Yield();
             }
@@ -164,7 +164,7 @@ public sealed partial class GameEngine
                     _flowError = failure;
                     IsRunning = false;
                 }
-                CaptureStateChange(); _dispatchGate.Release(); PublishStateChanges();
+                FinishDispatch();
             }
             lock (_lifecycleSync)
             {

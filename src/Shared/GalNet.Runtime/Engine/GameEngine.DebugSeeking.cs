@@ -154,13 +154,14 @@ public sealed partial class GameEngine
                     Check(generation);
                     // Active transitions may commit their terminal scene while being
                     // compressed. A forward baseline must include that committed state.
-                    if (fromCurrent) baseline = _engine._runtime.CreateSnapshot();
+                    var current = _engine._runtime.CreateSnapshot();
+                    if (fromCurrent) baseline = current;
                     baseline = new GameSnapshot
                     {
                         NodeId = baseline.NodeId,
                         EntryIndex = baseline.EntryIndex,
                         States = baseline.States,
-                        Variables = _engine._runtime.CreateSnapshot().Variables
+                        Variables = current.Variables
                     };
                 }
                 finally { _engine._dispatchGate.Release(); }
@@ -207,7 +208,7 @@ public sealed partial class GameEngine
                         if (!_engine.IsRunning) throw new InvalidOperationException("The debug route ended before the target.");
                         waiting = _engine._active.HasBlockingInstance();
                     }
-                    finally { _engine.CaptureStateChange(); _engine._dispatchGate.Release(); _engine.PublishStateChanges(); }
+                    finally { _engine.FinishDispatch(); }
                     if (waiting) await _engine._catchUpSignal.WaitAsync(cancellation.Token).ConfigureAwait(false);
                     else await Task.Yield();
                 }
@@ -257,9 +258,7 @@ public sealed partial class GameEngine
                 }
                 finally
                 {
-                    _engine.CaptureStateChange();
-                    _engine._dispatchGate.Release();
-                    _engine.PublishStateChanges();
+                    _engine.FinishDispatch();
                     _seekCancellation = null;
                     cancellation.Dispose();
                     completion.TrySetResult();
