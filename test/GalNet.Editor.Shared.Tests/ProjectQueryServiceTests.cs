@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins.Assets;
 using System.Text.Json;
 using GalNet.Core.Assets;
 using GalNet.Editor.Abstraction.Commands;
@@ -26,7 +27,7 @@ public sealed class ProjectQueryServiceTests
         Put("Graph/groups/b.rawgalgroup", """{"version":2,"kind":"Raw","entries":[{"id":"same","type":"unknown.other","parameters":{}}]}""");
         Put("Graph/groups/orphan.rawgalgroup", """{"version":2,"kind":"Raw","entries":[]} """);
         Put("Assets/picture.bin", "asset");
-        Put("Assets/picture.bin.meta", new AssetMetaCodec(BuiltinResourceTypes.CreateCatalog()).Serialize(new BinaryAssetMeta
+        Put("Assets/picture.bin.meta", new AssetMetaCodec(BuiltinResourceTypes.CreateCatalog()).Serialize(new AssetMeta
         { Id = "f2700971-d36e-4be4-94dd-a5c282861c57", TypeId = "data", Path = "picture.bin" }));
         Put("Output/ignored.json", "{}");
         Put("Contracts/placeholder.txt", "not a schema");
@@ -75,7 +76,7 @@ public sealed class ProjectQueryServiceTests
     {
         var resourceId = usePascalCase ? "f2700971-d36e-4be4-94dd-a5c282861c57" : "f2700971d36e4be494dda5c282861c57";
         var options = new JsonSerializerOptions(JsonSerializerDefaults.Web) { PropertyNamingPolicy = usePascalCase ? null : JsonNamingPolicy.CamelCase };
-        Put("Assets/picture.bin.meta", new AssetMetaCodec(BuiltinResourceTypes.CreateCatalog(), options).Serialize(new BinaryAssetMeta
+        Put("Assets/picture.bin.meta", new AssetMetaCodec(BuiltinResourceTypes.CreateCatalog(), options).Serialize(new AssetMeta
         { Id = resourceId, TypeId = "data", Path = "picture.bin" }));
         var query = new ProjectQueryService(_root);
         var files = query.Files(new(Kind: "resource"));

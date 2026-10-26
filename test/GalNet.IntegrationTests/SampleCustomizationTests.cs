@@ -11,7 +11,7 @@ using GalNet.Core.Primitives;
 using GalNet.Core.Serialization;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Project.Contracts;
-using GalNet.Runtime.Content;
+using GalNet.GameHost.Content;
 using GalNet.Runtime.Runtime;
 using GalNet.Sample.Avalonia;
 using GalNet.Sample.Avalonia.Debug;

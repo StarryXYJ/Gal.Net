@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins.Assets;
 using System.Text.Json;
 using GalNet.Core.Assets;
 using GalNet.Core.Compilation;

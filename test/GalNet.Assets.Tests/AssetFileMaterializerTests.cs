@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins.Assets;
 using GalNet.Assets;
 using GalNet.Assets.Provider;
 
@@ -14,7 +15,7 @@ public sealed class AssetFileMaterializerTests
         {
             await File.WriteAllBytesAsync(Path.Combine(root, "clip.mp4"), [1, 2, 3]);
             await File.WriteAllTextAsync(Path.Combine(root, "clip.mp4.meta"), """{"id":"clip","type":"video","path":"clip.mp4","compress":"none"}""");
-            using var assets = new AssetManager([new LocalFileProvider(root)]);
+            using var assets = new AssetManager([new LocalFileProvider(root, BuiltinResourceTypes.CreateCatalog())]);
             await using var files = new AssetFileMaterializer(assets);
             var leases = await Task.WhenAll(files.AcquireAsync("clip"), files.AcquireAsync("CLIP"));
             try
@@ -42,7 +43,7 @@ public sealed class AssetFileMaterializerTests
         {
             await File.WriteAllBytesAsync(Path.Combine(root, "clip.mp4"), [1]);
             await File.WriteAllTextAsync(Path.Combine(root, "clip.mp4.meta"), """{"id":"clip","type":"video","path":"clip.mp4","compress":"none"}""");
-            using var assets = new AssetManager([new LocalFileProvider(root)]);
+            using var assets = new AssetManager([new LocalFileProvider(root, BuiltinResourceTypes.CreateCatalog())]);
             await using var files = new AssetFileMaterializer(assets);
             Assert.That(() => files.AcquireAsync("clip", new CancellationToken(true)), Throws.InstanceOf<OperationCanceledException>());
             using var lease = await files.AcquireAsync("clip");

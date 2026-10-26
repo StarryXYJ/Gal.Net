@@ -1,7 +1,7 @@
 using System.Text.Json;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
-using GalNet.Core.Variants;
+using GalNet.Contracts.Builtins.Variants;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Shared.Services;

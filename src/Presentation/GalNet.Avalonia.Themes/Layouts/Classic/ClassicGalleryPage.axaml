@@ -4,7 +4,7 @@
              xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
              xmlns:local="using:GalNet.Avalonia.GameView.Page"
              xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
-             xmlns:gallery="using:GalNet.Core.Gallery"
+             xmlns:gallery="using:GalNet.Contracts.Builtins.Gallery"
              x:Class="GalNet.Avalonia.Themes.Layouts.Classic.ClassicGalleryPage"
              x:DataType="vm:GalleryPageViewModel">
   <Grid Background="{DynamicResource GalNet.Brush.Background}">

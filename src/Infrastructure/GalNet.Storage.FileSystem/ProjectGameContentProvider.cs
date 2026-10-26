@@ -1,7 +1,7 @@
 using GalNet.Assets.Provider;
 using GalNet.Core.Assets;
-using GalNet.Core.Gallery;
-using GalNet.Runtime.Content;
+using GalNet.Contracts.Builtins.Gallery;
+using GalNet.GameHost.Content;
 
 namespace GalNet.Storage.FileSystem;
 
@@ -32,6 +32,6 @@ public sealed class ProjectGameContentProvider : IGameContentProvider
             .Compile(archive.AssetIds.Select(id => archive.GetAsset(id)!.Metadata));
         var settings = GameProjectConfigurationLoader.Load(_directory, _options.Configurations);
         var localization = GameLocalizationLoader.Load(_directory, graph, _options.SelectDefaultCulture?.Invoke(settings), cancellationToken);
-        return new GameContent { Graph = graph, AssetRoot = assetsDirectory, Gallery = gallery, Configuration = settings, Localization = localization };
+        return new GameContent { Graph = graph, Gallery = gallery, Configuration = settings, Localization = localization };
     }, cancellationToken);
 }

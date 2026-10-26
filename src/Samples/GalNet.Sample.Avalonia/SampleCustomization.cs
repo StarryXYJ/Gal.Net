@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins.Assets;
 using DynamicLocalization.Core;
 using DynamicLocalization.Core.Providers;
 using GalNet.Avalonia.GameHost;
@@ -9,14 +10,14 @@ using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Avalonia.Themes;
 using GalNet.Core.Assets;
 using GalNet.Contracts.Builtins.Audio;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Contracts.Builtins;
 using GalNet.Game.Controls.Forms;
 using GalNet.Media.LibVlc;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
 using GalNet.Project.Contracts;
-using GalNet.Runtime.Content;
+using GalNet.GameHost.Content;
 using GalNet.Sample.Avalonia.Debug;
 using GalNet.Sample.Avalonia.Presentation;
 using GalNet.Sample.Avalonia.Services;
@@ -102,7 +103,7 @@ internal static class SampleCustomization
     internal static void ConfigureExecution(
         GameRegistration registration, AvaloniaGamePresenters presenters, GamePage page,
         GameContent content, AvaloniaEffectRuntime? effects, IAudioPlaybackHost? audio,
-        AvaloniaVideoPresenter? video, BuiltinAudioModule? audioModule, GalNet.Core.Variants.ImageVariantsCatalog? imageVariants = null)
+        AvaloniaVideoPresenter? video, BuiltinAudioModule? audioModule, GalNet.Contracts.Builtins.Variants.ImageVariantsCatalog? imageVariants = null)
     {
         registration.UseCatalog(ProjectSchemas.CreateCatalog());
         registration.AddBuiltinImplementations(registration.BuildCatalog(),

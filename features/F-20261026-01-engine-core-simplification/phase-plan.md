@@ -92,7 +92,7 @@ primitive/呈现仅借用 IGameContext，Engine 管理 IGameRuntime 与 IPrimiti
 | R2 | 设置模型与模块配置解耦 | R1 | [x] verified |
 | R3 | 自定义音频分组与轨道控制 | R2 | [x] verified |
 | R4 | 自定义配置贯穿作者与运行链路 | R2、R3 | [x] verified |
-| R5 | 剥离可选领域与场景依赖 | R1–R4 | [ ] in-progress |
+| R5 | 剥离可选领域与场景依赖 | R1–R4 | [x] verified |
 | R6 | 统一参数描述与基础校验 | R5 | [ ] planned |
 | R7 | 收敛执行与异步生命周期重复 | R5、R6 | [ ] planned |
 | R8 | 最小项目、完整回归与文档收尾 | R1–R7 | [ ] planned |
@@ -124,17 +124,9 @@ Engine 只接收/更新不可变 PlaybackOptions，音频只接收隔离轨道�
 - [x] R4c1：通用命令与发布链路，`3d37f50`。
 - [x] R4c2：通用界面、批量历史和宿主投影；见 [summary](summary.md#r4c2通用表单历史与宿主投影)。
 
-### R5 — in-progress
+### R5 — verified
 
-- [x] R5a：场景/音频契约与纯算法归可选 Builtins，音频执行/场景管理归内置模块；Runtime 仅依赖 Core，产品净减 31 行。1776 项通过，3 项权限失败/3 项跳过；构建、locked restore、格式通过，见 [summary](summary.md#r5a场景音频领域归位)。
-- [ ] R5b：Gallery/资源默认策略与宿主内容模型归位，补齐最小运行及依赖门禁。
-
-### R5 范围
-
-- **目标/模块**：Core.Scene/Audio/Gallery、Runtime.Audio/Gallery/SceneInstanceManager、Contracts.Builtins、Primitives.Builtins、展示端口与宿主组合。
-- **任务**：默认视觉/音频领域的数据、纯算法和校验迁入实际共享的内置契约；音频队列/票据/后端调度等运行实现移出通用 Runtime。SceneInstances 从通用上下文移交场景模块，GameState 不直接维护 ISceneInstance 专用索引。Gallery 的 catalog/解锁/宿主组合成为可选领域，不强塞 primitive 模块；其包装位置按消费者决定。检查默认资源/Gallery 注册与低层 fallback，确保默认工厂由明确的组合入口选择，资源访问/注册协议继续按其复用需要共享。
-- **验证/退出**：最小自定义 primitive 可只用通用执行能力运行和恢复，无音频、场景、Gallery 或 Avalonia 要求；默认视觉/音频/Gallery 集成继续通过。句柄跨类型唯一、旧 scope 隔离、临时控制不入档、恢复顺序/drain 均保留。架构图与依赖门禁同步。
-- **风险**：移动契约会影响多个消费者，不按目录机械搬迁。优先复用现有程序集，若出现循环依赖再依据真实边界选择专门领域契约；不建立万能 Common，不建立可变持久状态镜像。可拆为连续小提交，每个提交保持可验证。
+场景/音频/Gallery/差分图片契约归可选 Builtins，运行侧音频/场景管理归内置执行，内容聚合与 Gallery 玩家包装归宿主；Core/Runtime 无上述领域依赖，最小自有执行与恢复通过。资源目录显式传递，默认类型由组合根选择；删除六个空 metadata DTO 和未使用的 AssetRoot。R5a `469a4ba`、R5b 合计产品 C# 净增 4 行；R5b 全量相关回归 1779 通过，3 项权限失败/3 项跳过，构建/locked restore/格式通过。证据见 [summary](summary.md#r5bgallery资源默认策略与宿主内容归位)。原生关闭问题继续归 R7/R8。
 
 ### R6 — 统一参数描述与基础校验
 

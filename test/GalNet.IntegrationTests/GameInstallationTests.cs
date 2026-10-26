@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins.Assets;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -7,11 +8,11 @@ using GalNet.Core.Assets;
 using GalNet.Core.Configuration;
 using GalNet.Core.Entry;
 using GalNet.Core.Parameters;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Serialization;
 using GalNet.Editor.Shared.Services;
 using GalNet.Editor.Shared.Commands;
-using GalNet.Runtime.Content;
+using GalNet.GameHost.Content;
 using GalNet.Storage.FileSystem;
 using AssetCompressionMode = GalNet.Core.Assets.CompressionMode;
 
@@ -102,7 +103,7 @@ public sealed class GameInstallationTests
         {
             var types = BuiltinResourceTypes.CreateCatalog();
             var galleryTypes = BuiltinGalleryTypes.CreateCatalog(types);
-            var baseAssets = PakBuilder.Build("assets", [Asset("hero", "base")], AssetCompressionMode.None, types);
+            var baseAssets = PakBuilder.Build("assets", [Asset("hero", "base")], types, AssetCompressionMode.None);
             var contentFiles = BuildContentFiles(types);
             var packagePath = Path.Combine(root, "sample.galpak");
             await CreatePackageAsync(packagePath, new (string Path, byte[] Data)[]
@@ -117,7 +118,7 @@ public sealed class GameInstallationTests
             Assert.That((await installation.CreateContentProvider(types, galleryTypes).LoadAsync()).Graph.Name, Is.EqualTo("package-test"));
 
             var resourcePaks = Path.Combine(installation.RootDirectory, "Assets", "Paks");
-            await File.WriteAllBytesAsync(Path.Combine(resourcePaks, "100-extra.pak"), PakBuilder.Build("assets", [Asset("hero", "patch")], AssetCompressionMode.None, types));
+            await File.WriteAllBytesAsync(Path.Combine(resourcePaks, "100-extra.pak"), PakBuilder.Build("assets", [Asset("hero", "patch")], types, AssetCompressionMode.None));
 
             using var manager = new AssetManager(installation.CreateAssetProviders(types));
             using var handle = await manager.AcquireAsync<string>("hero");

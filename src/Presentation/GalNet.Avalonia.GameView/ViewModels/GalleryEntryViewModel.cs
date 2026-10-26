@@ -1,7 +1,7 @@
 using System.Globalization;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 
 namespace GalNet.Avalonia.GameView.ViewModels;
 

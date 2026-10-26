@@ -41,7 +41,7 @@ public sealed class AssetMetaCodec(IResourceTypeCatalog resourceTypes, JsonSeria
         if (!string.IsNullOrWhiteSpace(declared)) return resourceTypes.NormalizeTypeId(declared);
         var extension = Path.GetExtension(pathHint ?? "");
         if (resourceTypes.TryGetByExtension(extension, out var inferred)) return inferred.TypeId;
-        return "data";
+        return resourceTypes.DefaultTypeId ?? throw new InvalidDataException("Asset metadata requires a type or a catalog-defined default for this extension.");
     }
 
     private AssetMeta DeserializeOrDefault(string json, ResourceTypeRegistration registration, string typeId)

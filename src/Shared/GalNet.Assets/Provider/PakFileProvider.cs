@@ -13,15 +13,15 @@ public sealed class PakFileProvider : IAssetProvider
     private readonly bool _optional;
     private readonly IResourceTypeCatalog _resourceTypes;
 
-    public PakFileProvider(string pakDirectory, IResourceTypeCatalog? resourceTypes = null, bool optional = false)
+    public PakFileProvider(string pakDirectory, IResourceTypeCatalog resourceTypes, bool optional = false)
     {
         _pakDirectory = pakDirectory.Replace('\\', '/').TrimEnd('/');
         _optional = optional;
-        _resourceTypes = resourceTypes ?? BuiltinResourceTypes.CreateCatalog();
+        _resourceTypes = resourceTypes ?? throw new ArgumentNullException(nameof(resourceTypes));
     }
 
     /// <summary>Maps one explicitly named archive to a PAK file, for example a patch PAK.</summary>
-    public PakFileProvider(string pakPath, string archiveName, IResourceTypeCatalog? resourceTypes = null, bool optional = false)
+    public PakFileProvider(string pakPath, string archiveName, IResourceTypeCatalog resourceTypes, bool optional = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(pakPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(archiveName);
@@ -29,7 +29,7 @@ public sealed class PakFileProvider : IAssetProvider
         _pakPath = Path.GetFullPath(pakPath);
         _archiveName = NormalizeArchiveName(archiveName);
         _optional = optional;
-        _resourceTypes = resourceTypes ?? BuiltinResourceTypes.CreateCatalog();
+        _resourceTypes = resourceTypes ?? throw new ArgumentNullException(nameof(resourceTypes));
     }
 
     public string Name => $"PakFile({_pakPath ?? _pakDirectory})";

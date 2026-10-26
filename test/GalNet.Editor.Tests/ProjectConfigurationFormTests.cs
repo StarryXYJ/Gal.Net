@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins.Assets;
 using System.Text.Json;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -5,14 +6,14 @@ using Avalonia.VisualTree;
 using GalNet.Core.Assets;
 using GalNet.Core.Configuration;
 using GalNet.Core.Entry;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
 using GalNet.Editor.Shared.Services;
 using GalNet.Editor.ViewModels;
 using GalNet.Editor.Views;
 using GalNet.Game.Controls.Forms;
-using GalNet.Runtime.Content;
+using GalNet.GameHost.Content;
 using GalNet.Storage.FileSystem;
 using Microsoft.Extensions.DependencyInjection;
 

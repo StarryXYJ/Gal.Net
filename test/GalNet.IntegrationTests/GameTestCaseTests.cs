@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins.Assets;
 using DynamicLocalization.Core;
 using GalNet.Assets;
 using GalNet.Assets.Provider;
@@ -6,7 +7,7 @@ using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
 using GalNet.Core.Execution;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Graph;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
@@ -98,7 +99,7 @@ public class GameTestCaseTests
                 Assert.That(groups.Single(group => group.Id == "intro").Entries.OfType<PrimitiveEntry>(),
                     Has.One.Matches<PrimitiveEntry>(entry =>
                         entry.Type == "gallery.unlock" && entry.Arguments.GetProperty("id").GetInt32() == 100));
-                Assert.That(content.Gallery.GetItems("cg"), Has.One.Matches<GalNet.Core.Gallery.GalleryItem>(item =>
+                Assert.That(content.Gallery.GetItems("cg"), Has.One.Matches<GalNet.Contracts.Builtins.Gallery.GalleryItem>(item =>
                     item.Id == 100 && item.ResourceId == "a1000000000000000000000000000001"));
             });
         }

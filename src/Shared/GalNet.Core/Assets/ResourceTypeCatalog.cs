@@ -8,6 +8,7 @@ public sealed record ResourceTypeRegistration(string TypeId, Type MetaDtoType, I
 public interface IResourceTypeCatalog
 {
     IReadOnlyList<ResourceTypeRegistration> Types { get; }
+    string? DefaultTypeId { get; }
     ResourceTypeRegistration Get(string typeId);
     bool TryGet(string? typeId, out ResourceTypeRegistration registration);
     bool TryGetByExtension(string? extension, out ResourceTypeRegistration registration);
@@ -18,6 +19,9 @@ public sealed class ResourceTypeCatalogBuilder
 {
     private readonly Dictionary<string, Type> _registrations = new(StringComparer.Ordinal);
     private readonly List<(string TypeId, string Extension)> _extensions = [];
+    private string? _defaultTypeId;
+    public ResourceTypeCatalogBuilder DefaultType(string typeId)
+    { _defaultTypeId = ResourceTypeCatalog.NormalizeTypeIdCore(typeId); return this; }
 
     public ResourceTypeCatalogBuilder Add<TMeta>(string typeId, params string[] extensions) where TMeta : AssetMeta => Add(typeId, typeof(TMeta), false, extensions);
     public ResourceTypeCatalogBuilder Replace<TMeta>(string typeId, params string[] extensions) where TMeta : AssetMeta => Add(typeId, typeof(TMeta), true, extensions);
@@ -39,8 +43,10 @@ public sealed class ResourceTypeCatalogBuilder
             owners[extension] = typeId;
             if (!values.Contains(extension, StringComparer.Ordinal)) values.Add(extension);
         }
+        if (_defaultTypeId is not null && !_registrations.ContainsKey(_defaultTypeId))
+            throw new InvalidOperationException($"Default resource type '{_defaultTypeId}' must be registered.");
         return new ResourceTypeCatalog(_registrations.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair =>
-            new ResourceTypeRegistration(pair.Key, pair.Value, new ReadOnlyCollection<string>(byType[pair.Key].OrderBy(item => item, StringComparer.Ordinal).ToList()))).ToList());
+            new ResourceTypeRegistration(pair.Key, pair.Value, new ReadOnlyCollection<string>(byType[pair.Key].OrderBy(item => item, StringComparer.Ordinal).ToList()))).ToList(), _defaultTypeId);
     }
 
     private ResourceTypeCatalogBuilder Add(string typeId, Type metaType, bool replace, IEnumerable<string> extensions)
@@ -57,13 +63,15 @@ public sealed class ResourceTypeCatalog : IResourceTypeCatalog
 {
     private readonly FrozenDictionary<string, ResourceTypeRegistration> _byType;
     private readonly FrozenDictionary<string, ResourceTypeRegistration> _byExtension;
-    internal ResourceTypeCatalog(IReadOnlyList<ResourceTypeRegistration> types)
+    internal ResourceTypeCatalog(IReadOnlyList<ResourceTypeRegistration> types, string? defaultTypeId)
     {
+        DefaultTypeId = defaultTypeId;
         Types = new ReadOnlyCollection<ResourceTypeRegistration>(types.ToList());
         _byType = types.ToFrozenDictionary(type => type.TypeId, StringComparer.Ordinal);
         _byExtension = types.SelectMany(type => type.Extensions.Select(extension => (extension, type))).ToFrozenDictionary(pair => pair.extension, pair => pair.type, StringComparer.Ordinal);
     }
     public IReadOnlyList<ResourceTypeRegistration> Types { get; }
+    public string? DefaultTypeId { get; }
     public ResourceTypeRegistration Get(string typeId) => TryGet(typeId, out var result) ? result : throw new KeyNotFoundException($"Resource type '{typeId}' is not registered.");
     public bool TryGet(string? typeId, out ResourceTypeRegistration registration)
     {

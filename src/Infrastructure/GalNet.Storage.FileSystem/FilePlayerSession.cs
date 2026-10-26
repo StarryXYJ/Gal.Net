@@ -1,6 +1,6 @@
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.GameHost;
-using GalNet.Runtime.Gallery;
+using GalNet.GameHost.Gallery;
 using GalNet.Runtime.Variables;
 
 namespace GalNet.Storage.FileSystem;

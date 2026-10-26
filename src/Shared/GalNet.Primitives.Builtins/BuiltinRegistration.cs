@@ -1,9 +1,9 @@
 using GalNet.Contracts.Builtins;
 using GalNet.Contracts.Builtins.Audio;
 using GalNet.Core.Entry;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.I18n;
-using GalNet.Core.Variants;
+using GalNet.Contracts.Builtins.Variants;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 

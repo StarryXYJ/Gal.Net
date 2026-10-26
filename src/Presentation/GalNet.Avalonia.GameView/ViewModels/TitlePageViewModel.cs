@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Services;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using Serilog;
 
 namespace GalNet.Avalonia.GameView.ViewModels;

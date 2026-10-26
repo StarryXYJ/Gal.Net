@@ -102,3 +102,5 @@ CLI 可用 `execute <project> <patch.json>` 修改已声明的 section。例如�
 - 资源、临时媒体文件、平台对象和 DI scope 均按失败路径释放。
 
 详细模块契约请分别查看[运行时](../spec/runtime.md)、[条目类型](../spec/entry-types.md)、[资源](../spec/assets.md)和[架构](../spec/architecture.md)。
+
+默认资源与 Gallery 工厂在 Contracts.Builtins.Assets/Gallery，差分图片契约在 Contracts.Builtins.Variants；不选择默认工厂时可直接组装自有目录，并按需要声明 DefaultType。创建 provider/PAK 时始终传入同一资源目录。宿主内容类型在 GameHost.Content，通用 Runtime 不再拥有 GameContent 或 Gallery 玩家包装。

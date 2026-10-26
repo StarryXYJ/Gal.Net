@@ -94,4 +94,5 @@
   <ItemGroup Condition="'$(Benchmark)' == 'true'">
     <ProjectReference Include="../../Shared/GalNet.Diagnostics/GalNet.Diagnostics.csproj" />
   </ItemGroup>
+  <ItemGroup><ProjectReference Include="../../Shared/GalNet.GameHost/GalNet.GameHost.csproj" /></ItemGroup>
 </Project>

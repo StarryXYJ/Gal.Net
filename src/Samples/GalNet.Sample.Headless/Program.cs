@@ -1,8 +1,9 @@
+using GalNet.Contracts.Builtins.Assets;
 using GalNet.Contracts.Builtins;
 using GalNet.Assets;
 using GalNet.Assets.Variants;
 using GalNet.Core.Assets;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.GameHost;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;

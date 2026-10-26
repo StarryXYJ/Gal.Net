@@ -3,7 +3,7 @@ using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Services;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 
 namespace GalNet.Avalonia.GameView.ViewModels;
 

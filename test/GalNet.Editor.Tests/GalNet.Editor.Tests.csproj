@@ -17,4 +17,5 @@
     <ProjectReference Include="..\..\src\Shared\GalNet.Primitives.Builtins\GalNet.Primitives.Builtins.csproj" />
     <ProjectReference Include="..\..\src\Shared\GalNet.Contracts.Builtins\GalNet.Contracts.Builtins.csproj" />
   </ItemGroup>
+  <ItemGroup><ProjectReference Include="../../src/Shared/GalNet.GameHost/GalNet.GameHost.csproj" /></ItemGroup>
 </Project>

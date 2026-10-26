@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins.Assets;
 using System.Text.Json;
 using GalNet.Assets;
 using GalNet.Assets.Provider;

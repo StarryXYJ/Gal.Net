@@ -31,11 +31,11 @@ public sealed class LocalFileProvider : IAssetProvider, IDisposable
     /// </summary>
     /// <param name="assetsRoot">Assets 目录的绝对路径</param>
     /// <param name="optional">若目录不存在是否静默返回空归档</param>
-    public LocalFileProvider(string assetsRoot, IResourceTypeCatalog? resourceTypes = null, bool optional = false)
+    public LocalFileProvider(string assetsRoot, IResourceTypeCatalog resourceTypes, bool optional = false)
     {
         _assetsRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(assetsRoot));
         _optional = optional;
-        _resourceTypes = resourceTypes ?? BuiltinResourceTypes.CreateCatalog();
+        _resourceTypes = resourceTypes ?? throw new ArgumentNullException(nameof(resourceTypes));
     }
 
     public string Name => $"LocalFile({_assetsRoot})";

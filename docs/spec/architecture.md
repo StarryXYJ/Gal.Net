@@ -5,11 +5,11 @@
 `Core` 不依赖 UI、文件系统或 DI。Runtime 的项目依赖只有 Core，不引用呈现抽象或默认执行模块；宿主组装文件系统、资源、媒体和页面实现。旧 `GalNet.Storage.Abstractions` 项目已删除。
 
 ```text
-Core ───────────────────── 通用数据、执行/状态协议、资源/Gallery registry、服务契约
+Core ───────────────────── 通用数据、执行/状态协议、通用资源 registry、服务契约
 Diagnostics ────────────── 可选 Benchmark 构建的 CPU 事件与启动捕获，独立于领域层
-Contracts.Builtins ──────── 内置场景/音频契约、纯采样算法、schema 和 Composite
+Contracts.Builtins ──────── 内置场景/音频/Gallery/差分图片契约、默认资源、纯算法与 schema
 Presentation.Abstractions ─ 执行注册/恢复组合、presenter 与平台无关应用契约
-GameHost ───────────────── 游戏会话、运行生命周期、玩家持久化与偏好规则
+GameHost ───────────────── 游戏会话、内容聚合、运行生命周期、玩家持久化与偏好规则
 Avalonia.GameHost ───────── 默认 Avalonia 会话、展示组合、设置 UI 和平台适配
 Media.LibVlc ────────────── 可供不同 UI 框架复用的 LibVLC 音频后端
 Runtime ────────────────── Graph、Compiled Group、Engine、存档状态与宿主端口
@@ -47,6 +47,8 @@ flowchart TB
     Ports --> Contracts
     Ports --> Core
     Contracts --> Core
+    Assets --> Contracts
+    Host --> Contracts
     Assets --> Core
 ```
 
@@ -166,3 +168,5 @@ Engine 只接收/更新 PlaybackOptions，音频接收不可变 AudioConfigurati
 运行与宿主资源的依赖及生命周期以本页的游戏运行段和[运行时规范](runtime.md)为准，包括 GameView 对 Assets 的媒体 adapter 默认实现依赖。
 
 场景/音频领域类型及纯算法位于可选 Contracts.Builtins.Scene/Audio。IGameContext 和 GameRuntime 不提供 SceneInstances；内置视觉模块通过 runtime.Scene() 访问按 GameState 根隔离的场景服务，临时动画控制不进入快照。StateCatalog 的可选 keySpace 提供跨表唯一性和查询，Core 只处理通用身份，不认识 ISceneInstance；内置视觉状态显式选择 builtin.scene。Runtime 仅引用 Core，最小自定义 primitive 不需要场景或音频模块。
+
+GameContent、GameContentLoadOptions 和 GameLocalizationContent 属于 GameHost.Content；GalleryDataSource 属于 GameHost.Gallery。它们是宿主选择的默认内容/玩家组合，Engine 不依赖这些聚合。Core.Assets 只保留通用 metadata、资源类型目录、查询与租约协议；默认 DTO/工厂和 Gallery/ImageVariants 数据属于 Contracts.Builtins。资源目录的默认类型由组合根显式选择，provider 和 PAK 接收该目录，不自行创建 Builtins。没有专属字段的默认资源复用 AssetMeta，sprite 另有 filter DTO。

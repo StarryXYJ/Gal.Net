@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins.Assets;
 using System.IO.Compression;
 using System.Text.Json;
 using GalNet.Assets;
@@ -6,7 +7,7 @@ using GalNet.Assets.Variants;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
@@ -40,7 +41,7 @@ public sealed class ImageVariantsResourceTests
 
     private async Task<byte[]> Compiled(string descriptor, IResourceTypeCatalog? resourceTypes = null)
     {
-        using var provider = new LocalFileProvider(Path.Combine(_root, "Assets"), resourceTypes);
+        using var provider = new LocalFileProvider(Path.Combine(_root, "Assets"), resourceTypes ?? BuiltinResourceTypes.CreateCatalog());
         using var archive = await provider.OpenArchiveAsync("assets");
         return archive.GetAssetByPath(descriptor)!.ReadAllBytes();
     }
@@ -154,9 +155,9 @@ public sealed class ImageVariantsResourceTests
     {
         var types = new ResourceTypeCatalogBuilder()
             .Add<SpriteAssetMeta>("sprite", ".png")
-            .Add<AudioAssetMeta>("audio", ".ogg")
-            .Add<VideoAssetMeta>("video", ".mp4")
-            .Add<ImageVariantsAssetMeta>("image-variants", ".variants")
+            .Add<AssetMeta>("audio", ".ogg")
+            .Add<AssetMeta>("video", ".mp4")
+            .Add<AssetMeta>("image-variants", ".variants")
             .Add<CustomMeta>("custom-test", ".customtest").Build();
         PutAsset("extra.customtest", "custom-test", "custom");
         var before = await Compiled("alice.variants", types);

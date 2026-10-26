@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins.Assets;
 using Avalonia;
 using GalNet.Assets;
 using GalNet.Assets.Provider;
@@ -26,7 +27,7 @@ public sealed class VideoNativeSmokeTests
         var duration = probe.Duration / 1000d;
         Assert.That(duration, Is.GreaterThan(0));
         TestContext.Out.WriteLine($"Video duration: {duration} seconds.");
-        using var assets = new AssetManager([new LocalFileProvider(assetsRoot)]);
+        using var assets = new AssetManager([new LocalFileProvider(assetsRoot, BuiltinResourceTypes.CreateCatalog())]);
         var state = new GamePageViewModel(new NoOpGameNavigationService());
         await using var presenter = new AvaloniaVideoPresenter(assets, state, new ImmediateDispatcher());
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(20));
@@ -71,7 +72,7 @@ public sealed class VideoNativeSmokeTests
     public async Task Hiding_or_replacing_during_asset_loading_prevents_late_video_publication(bool replace)
     {
         LibVLCSharp.Shared.Core.Initialize(Environment.GetEnvironmentVariable("GALNET_VIDEO_LIBVLC")!);
-        using var realAssets = new AssetManager([new LocalFileProvider(Environment.GetEnvironmentVariable("GALNET_VIDEO_ASSETS")!)]);
+        using var realAssets = new AssetManager([new LocalFileProvider(Environment.GetEnvironmentVariable("GALNET_VIDEO_ASSETS")!, BuiltinResourceTypes.CreateCatalog())]);
         var assets = new DelayedAssets(realAssets);
         var state = new GamePageViewModel(new NoOpGameNavigationService());
         await using var presenter = new AvaloniaVideoPresenter(assets, state, new ImmediateDispatcher());

@@ -4,7 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
 using GalNet.Core.Variable;

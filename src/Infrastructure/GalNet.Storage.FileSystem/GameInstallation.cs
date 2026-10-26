@@ -1,7 +1,7 @@
 using GalNet.Assets.Provider;
 using GalNet.Core.Assets;
-using GalNet.Core.Gallery;
-using GalNet.Runtime.Content;
+using GalNet.Contracts.Builtins.Gallery;
+using GalNet.GameHost.Content;
 
 namespace GalNet.Storage.FileSystem;
 

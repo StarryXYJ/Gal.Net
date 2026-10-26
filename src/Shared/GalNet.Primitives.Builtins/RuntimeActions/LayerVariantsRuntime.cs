@@ -1,7 +1,7 @@
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Primitives;
 using GalNet.Contracts.Builtins.Scene;
-using GalNet.Core.Variants;
+using GalNet.Contracts.Builtins.Variants;
 using GalNet.Presentation.Abstractions.View;
 
 namespace GalNet.Primitives.Builtins;

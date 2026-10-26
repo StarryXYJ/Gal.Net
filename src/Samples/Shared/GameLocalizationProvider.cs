@@ -2,7 +2,7 @@ using GalNet.Contracts.Builtins;
 using System.Globalization;
 using DynamicLocalization.Core.Providers;
 using GalNet.Core.Services;
-using GalNet.Runtime.Content;
+using GalNet.GameHost.Content;
 using GalNet.Runtime.I18n;
 
 namespace GalNet.Sample.Localization;

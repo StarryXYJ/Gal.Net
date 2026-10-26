@@ -3,7 +3,7 @@ using System.Text.Json;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.I18n;
-using GalNet.Runtime.Content;
+using GalNet.GameHost.Content;
 
 namespace GalNet.Storage.FileSystem;
 

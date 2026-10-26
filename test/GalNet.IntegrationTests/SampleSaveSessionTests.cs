@@ -2,7 +2,7 @@ using GalNet.Core.Assets;
 using GalNet.Core.Graph;
 using GalNet.Core.Runtime;
 using GalNet.Core.Variable;
-using GalNet.Runtime.Content;
+using GalNet.GameHost.Content;
 using GalNet.Runtime.Persistence;
 using GalNet.Storage.FileSystem;
 using GalVariable = GalNet.Core.Variable.Variable;

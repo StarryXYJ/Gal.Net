@@ -87,9 +87,9 @@ public sealed class Archive : IArchive
     // ── 序列化/反序列化 ──
 
     /// <summary>将二进制数据反序列化为 Archive。</summary>
-    public static Archive Deserialize(string name, byte[] pakData, IResourceTypeCatalog? resourceTypes = null)
+    public static Archive Deserialize(string name, byte[] pakData, IResourceTypeCatalog resourceTypes)
     {
-        var metaCodec = new AssetMetaCodec(resourceTypes ?? BuiltinResourceTypes.CreateCatalog());
+        var metaCodec = new AssetMetaCodec(resourceTypes);
         var span = new ReadOnlySpan<byte>(pakData);
         var offset = 0;
 
@@ -175,9 +175,9 @@ public sealed class Archive : IArchive
 
     /// <summary>将 Archive 序列化为二进制数据（.pak 格式）。</summary>
     public static byte[] Serialize(string name, IReadOnlyList<IGameFile> files,
-        CompressionMode compression = CompressionMode.Brotli, IResourceTypeCatalog? resourceTypes = null)
+        IResourceTypeCatalog resourceTypes, CompressionMode compression = CompressionMode.Brotli)
     {
-        var metaCodec = new AssetMetaCodec(resourceTypes ?? BuiltinResourceTypes.CreateCatalog());
+        var metaCodec = new AssetMetaCodec(resourceTypes);
         // Build entry descriptors (compress if needed)
         var entryList = new List<(IGameFile file, byte[] storedData, CompressionMode actualCompression, string hash, byte[] typeBytes, byte[] metadataBytes)>();
         foreach (var file in files)

@@ -79,7 +79,7 @@ public sealed class SampleStartupTests
     public async Task SeparateProfilesAndExternalLanguagesAreSupported()
     {
         using var localization = CreateLocalization();
-        localization.AttachGame(new GalNet.Runtime.Content.GameContent
+        localization.AttachGame(new GalNet.GameHost.Content.GameContent
         {
             Graph = new(),
             Localization = new() { ExternalSources = [new("ja-JP", "external", """{"line":"日本語"}""")] }
@@ -117,7 +117,7 @@ public sealed class SampleStartupTests
     {
         using var localization = CreateLocalization();
         var model = new LanguageSelectionViewModel(localization);
-        localization.AttachGame(new GalNet.Runtime.Content.GameContent
+        localization.AttachGame(new GalNet.GameHost.Content.GameContent
         {
             Graph = new(),
             Localization = new() { ExternalSources = [new("ja-JP", "external", """{"line":"日本語"}""")] }
@@ -127,7 +127,7 @@ public sealed class SampleStartupTests
         Assert.That(model.Languages.Select(option => option.Value), Is.EqualTo(expectedCultures));
         Assert.That(model.SelectedLanguage!.Value, Is.EqualTo("ja-JP"));
         Assert.ThrowsAsync<InvalidOperationException>(() => model.ChooseAsync("en-US", CancellationToken.None));
-        localization.AttachGame(new GalNet.Runtime.Content.GameContent { Graph = new() });
+        localization.AttachGame(new GalNet.GameHost.Content.GameContent { Graph = new() });
         Assert.That(model.Languages.Select(option => option.Value), Does.Contain("ja-JP"), "No provider-change subscription.");
         model.SelectedLanguage = null;
         Assert.That(model.ConfirmCommand.CanExecute(null), Is.False);

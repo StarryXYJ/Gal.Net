@@ -6,7 +6,7 @@ using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
 using GalNet.Contracts.Builtins.Scene;
-using GalNet.Core.Variants;
+using GalNet.Contracts.Builtins.Variants;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;

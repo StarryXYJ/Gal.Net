@@ -2,7 +2,7 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Services;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using LibVLCSharp.Shared;
 
 namespace GalNet.Avalonia.GameView.ViewModels;

@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins.Assets;
 using System.Diagnostics;
 using System.Text.Json;
 using GalNet.Assets;
@@ -6,11 +7,11 @@ using GalNet.Assets.Variants;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
 using GalNet.Contracts.Builtins.Scene;
-using GalNet.Core.Variants;
+using GalNet.Contracts.Builtins.Variants;
 using GalNet.Editor.Shared.Services;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;

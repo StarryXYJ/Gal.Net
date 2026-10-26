@@ -1,9 +1,10 @@
+using GalNet.Contracts.Builtins.Assets;
 using System;
 using System.Linq;
 using System.Collections.Generic;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Extensibility;
 using GalNet.Editor.Abstraction.Services;
@@ -20,7 +21,7 @@ using GalNet.Editor.Shared.Services;
 using GalNet.Editor.ViewModels;
 using GalNet.Editor.Views;
 using GalNet.Game.Controls.Forms;
-using GalNet.Runtime.Content;
+using GalNet.GameHost.Content;
 using GalNet.Runtime.Variables;
 using Microsoft.Extensions.DependencyInjection;
 

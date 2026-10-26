@@ -21,6 +21,11 @@
 - 可选字段缺失时使用 DTO 默认值；未知字段保存在 extension data，供 Editor 重写时保留。未知 `type`、无效 JSON、缺失 GUID 或缺失源文件是加载错误，不能静默跳过。
 - `gallery` 是 Gallery 的唯一作者真源。每项使用全局唯一正整数 ID；没有 `sortOrder` 或项目根可编辑 `gallery.json`。
 
+
+通用 `AssetMeta` 与类型目录协议位于 Core.Assets；`BuiltinResourceTypes`、sprite metadata 及默认 Gallery/ImageVariants 契约位于 Contracts.Builtins。没有专属字段的默认资源共用 AssetMeta，身份由 type ID 决定。Gallery 用可选 ReadGallery/SetGallery 扩展读取、重写 extension data，未知 annotation 字段也保留。
+
+组合根可通过 `ResourceTypeCatalogBuilder.DefaultType(id)` 为未知扩展选择默认类型；没有显式 type、扩展映射或该默认值时才报无法解析类型。默认工厂明确选择 data，低层 codec 不假定 data 必须存在。LocalFileProvider、PakFileProvider、Archive 和 PakBuilder 必须接收调用方目录；例如 `PakBuilder.Build("assets", files, types)`，压缩模式为后续可选参数。
+
 资源类型只负责识别、保存、枚举和打包；它不注册 decoder、Editor inspector 或 Avalonia 页面。decoder 以 `(typeId, target CLR type)` 另行注册。
 
 Editor 将原始资源与 sidecar 作为一次项目文件编辑：移动保留 ID 并重定位 path，导入/复制生成新资源 ID，保留 Gallery 内容与 metadata 扩展；Gallery ID 与项目/同批内容冲突时为副本重新分配正整数 ID，type/title 保持原值；无法无损类型化的 metadata 拒绝重写。资源索引刷新只读，不负责补建 sidecar。GUI 操作支持项目历史撤销，CLI 共用事务而不保留 GUI 历史，见 [Editor 项目文件操作](editor-files.md)。

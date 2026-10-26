@@ -16,4 +16,5 @@
     <ProjectReference Include="..\..\src\Samples\GalNet.Sample.Avalonia\GalNet.Sample.Avalonia.csproj" />
     <ProjectReference Include="..\..\src\Infrastructure\GalNet.Storage.FileSystem\GalNet.Storage.FileSystem.csproj" />
   </ItemGroup>
+  <ItemGroup><ProjectReference Include="../../src/Shared/GalNet.GameHost/GalNet.GameHost.csproj" /></ItemGroup>
 </Project>

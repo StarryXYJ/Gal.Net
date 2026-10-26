@@ -1,5 +1,5 @@
 using GalNet.Contracts.Builtins;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Presentation.Abstractions.Execution;
 
 namespace GalNet.Primitives.Builtins;

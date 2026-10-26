@@ -1,0 +1,17 @@
+using GalNet.Contracts.Builtins.Assets;
+using GalNet.Core.Assets;
+
+namespace GalNet.Contracts.Builtins.Assets;
+
+public static class BuiltinResourceTypes
+{
+    public static IResourceTypeCatalog CreateCatalog() => new ResourceTypeCatalogBuilder()
+        .Add<SpriteAssetMeta>("sprite", ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".avif")
+        .Add<AssetMeta>("image-variants", ".variants")
+        .Add<AssetMeta>("audio", ".mp3", ".wav", ".ogg", ".flac")
+        .Add<AssetMeta>("video", ".mp4", ".webm", ".mkv")
+        .Add<AssetMeta>("font", ".ttf", ".otf", ".woff", ".woff2")
+        .Add<AssetMeta>("effect-program", ".sksl")
+        .Add<AssetMeta>("data")
+        .DefaultType("data").Build();
+}

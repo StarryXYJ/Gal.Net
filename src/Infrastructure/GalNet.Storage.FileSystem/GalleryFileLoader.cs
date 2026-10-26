@@ -1,5 +1,5 @@
 using System.Text.Json;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 
 namespace GalNet.Storage.FileSystem;
 

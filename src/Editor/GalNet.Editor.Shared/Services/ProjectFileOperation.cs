@@ -1,3 +1,5 @@
+using GalNet.Contracts.Builtins.Gallery;
+using GalNet.Contracts.Builtins.Assets;
 using System.Globalization;
 using System.Text.Json;
 using GalNet.Core.Assets;
@@ -334,26 +336,27 @@ public sealed partial class ProjectFileOperation : IDisposable
         }
         else
         {
-            var type = _types.TryGetByExtension(Path.GetExtension(destination), out var registration) ? registration : _types.Get("data");
+            var type = _types.TryGetByExtension(Path.GetExtension(destination), out var registration) ? registration : _types.Get(_types.DefaultTypeId ?? throw new InvalidDataException("No default resource type was selected."));
             meta = (AssetMeta)Activator.CreateInstance(type.MetaDtoType)!; meta.TypeId = type.TypeId; meta.Id = Guid.NewGuid().ToString("N");
         }
         if (newId) meta.Id = Guid.NewGuid().ToString("N");
-        if (newId && meta.Gallery is { Count: > 0 })
+        var annotations = meta.ReadGallery();
+        if (newId && annotations.Count > 0)
         {
             if (_galleryIds is null)
             {
                 _galleryIds = [];
                 if (Directory.Exists(_reader.Resolve("Assets")))
                     foreach (var path in Enumerate(_reader.Resolve("Assets")).Files.Where(path => path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)))
-                        foreach (var item in _codec.Deserialize(File.ReadAllText(path), _reader.Relative(path)[7..^5]).Gallery ?? []) _galleryIds.Add(item.Id);
+                        foreach (var item in _codec.Deserialize(File.ReadAllText(path), _reader.Relative(path)[7..^5]).ReadGallery()) _galleryIds.Add(item.Id);
             }
-            meta.Gallery = meta.Gallery.Select(item =>
+            meta.SetGallery(annotations.Select(item =>
             {
                 if (item.Id <= 0) throw ProjectFilePaths.Error("galleryId", destination);
                 if (_galleryIds.Add(item.Id)) return item;
                 var id = 1; while (_galleryIds.Contains(id)) id = checked(id + 1);
                 _galleryIds.Add(id); return item with { Id = id };
-            }).ToList();
+            }));
         }
         meta.Path = destination[7..];
         if (_request.Action == ProjectFileAction.Metadata) { if (meta is SpriteAssetMeta sprite && _request.Filter is not null) sprite.Filter = _request.Filter; if (_request.Compression is not null) meta.Compress = _request.Compression; }

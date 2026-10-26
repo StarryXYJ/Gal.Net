@@ -1,8 +1,9 @@
+using GalNet.Contracts.Builtins.Assets;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;

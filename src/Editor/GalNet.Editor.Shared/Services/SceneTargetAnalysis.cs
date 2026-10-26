@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using System.Text.Json;
 using GalNet.Contracts.Builtins;
 using GalNet.Contracts.Builtins.Scene;
-using GalNet.Core.Variants;
+using GalNet.Contracts.Builtins.Variants;
 using GalNet.Editor.Abstraction.Documents;
 
 namespace GalNet.Editor.Shared.Services;

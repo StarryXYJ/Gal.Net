@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GalNet.Core.Assets;
-using GalNet.Core.Variants;
+using GalNet.Contracts.Builtins.Variants;
 
 namespace GalNet.Assets.Variants;
 

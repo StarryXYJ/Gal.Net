@@ -1,4 +1,4 @@
-using GalNet.Core.Variants;
+using GalNet.Contracts.Builtins.Variants;
 
 namespace GalNet.Contracts.Builtins.Scene;
 

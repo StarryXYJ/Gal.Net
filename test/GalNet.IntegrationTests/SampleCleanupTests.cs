@@ -6,7 +6,7 @@ using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Variable;
 using GalNet.GameHost;
 using GalNet.Media.LibVlc;
-using GalNet.Runtime.Gallery;
+using GalNet.GameHost.Gallery;
 using GalNet.Runtime.Persistence;
 using GalNet.Runtime.Variables;
 using GalNet.Sample.Avalonia;

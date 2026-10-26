@@ -230,7 +230,7 @@ public sealed class SampleLocalizationTests
         {
             using var localization = CreateLocalization();
             using var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!));
-            localization.AttachGame(new GalNet.Runtime.Content.GameContent
+            localization.AttachGame(new GalNet.GameHost.Content.GameContent
             {
                 Graph = new(),
                 Localization = new() { ExternalSources = [new("ja-JP", "external", """{"line":"日本語"}""")] }
@@ -239,7 +239,7 @@ public sealed class SampleLocalizationTests
             await settings.AttachAsync(variables, new GameSettings(), GalNet.Contracts.Builtins.BuiltinAudioDefaults.Create());
             var language = settings.Categories.SelectMany(category => category.Items).OfType<ChoiceSetting<string>>().Single();
             Assert.That(language.Choices.Select(option => option.Value), Does.Contain("ja-JP"));
-            localization.AttachGame(new GalNet.Runtime.Content.GameContent { Graph = new() });
+            localization.AttachGame(new GalNet.GameHost.Content.GameContent { Graph = new() });
             Assert.That(language.Choices.Select(option => option.Value), Does.Contain("ja-JP"), "No runtime provider-change refresh.");
         }
         finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
@@ -250,8 +250,8 @@ public sealed class SampleLocalizationTests
     {
         using var localization = CreateLocalization();
         using var title = new LocalizedString(localization.CultureService, "App.Title");
-        localization.AttachGame(new GalNet.Runtime.Content.GameContent { Graph = new() });
-        localization.AttachGame(new GalNet.Runtime.Content.GameContent { Graph = new() });
+        localization.AttachGame(new GalNet.GameHost.Content.GameContent { Graph = new() });
+        localization.AttachGame(new GalNet.GameHost.Content.GameContent { Graph = new() });
         Assert.That(title.Value, Is.EqualTo("GalNet Avalonia Sample Player"));
         localization.CultureService.SetCulture("zh-CN");
         Assert.That(localization["Debug.Menu"], Is.EqualTo("调试"));
@@ -262,7 +262,7 @@ public sealed class SampleLocalizationTests
     {
         using var localization = CreateLocalization();
         using var title = new LocalizedString(localization.CultureService, "App.Title");
-        var content = new GalNet.Runtime.Content.GameContent
+        var content = new GalNet.GameHost.Content.GameContent
         {
             Graph = new(),
             Localization = new()
@@ -287,7 +287,7 @@ public sealed class SampleLocalizationTests
         localization.ApplyCulture("en-US");
         localization.AttachGame(content, [new("en-US", "custom", """{"line":"custom"}""")]);
         Assert.That(localization.Resolve("line"), Is.EqualTo("custom"));
-        localization.AttachGame(new GalNet.Runtime.Content.GameContent { Graph = new() });
+        localization.AttachGame(new GalNet.GameHost.Content.GameContent { Graph = new() });
         Assert.That(title.Value, Is.EqualTo("GalNet Avalonia Sample Player"));
     }
 

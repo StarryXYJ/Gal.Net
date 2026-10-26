@@ -1,8 +1,9 @@
+using GalNet.Contracts.Builtins.Assets;
 using GalNet.Assets;
 using GalNet.Assets.Provider;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Core.Assets;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 
 namespace GeneralTest.Presentation;
 
@@ -23,7 +24,7 @@ public sealed class AssetGalleryResourceResolverTests
                 Items = [new GalleryItem { Id = 1, TypeId = "cg", ResourceId = "asset-opening" }]
             });
 
-            using var assets = new AssetManager([new LocalFileProvider(root)]);
+            using var assets = new AssetManager([new LocalFileProvider(root, BuiltinResourceTypes.CreateCatalog())]);
             using var resolver = await AssetGalleryResourceResolver.CreateAsync(assets, gallery);
             var path = resolver.ResolvePath("asset-opening");
 

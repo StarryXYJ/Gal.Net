@@ -6,7 +6,7 @@ using GalNet.Assets.Provider;
 using GalNet.Core.Assets;
 using GalNet.Core.Configuration;
 using GalNet.Core.Entry;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Serialization;
 
 namespace GalNet.Editor.Shared.Services;
@@ -51,7 +51,7 @@ public static class GamePackageExporter
 
             var assets = await LoadAssetsAsync(Path.Combine(stagingRoot, "Assets"), resourceTypes, cancellationToken);
             var gallery = new GalleryCatalogCompiler(resourceTypes, galleryTypes).Compile(assets.Select(asset => asset.Metadata));
-            var assetsPak = PakBuilder.Build("assets", assets, GalNet.Core.Assets.CompressionMode.Brotli, resourceTypes);
+            var assetsPak = PakBuilder.Build("assets", assets, resourceTypes, GalNet.Core.Assets.CompressionMode.Brotli);
             var contentFiles = BuildContentFiles(stagingRoot, gallery, cancellationToken);
             var payloads = new[] { (AssetsPakPath, assetsPak) }.Concat(contentFiles).ToArray();
             var manifestFiles = payloads.Select(file => new GalpakFileEntry(file.Item1, Hash(file.Item2), file.Item2.Length)).ToArray();
@@ -120,7 +120,7 @@ public static class GamePackageExporter
                 .ConfigureAwait(false);
             var assets = await LoadAssetsAsync(Path.Combine(stagingRoot, "Assets"), resourceTypes, cancellationToken);
             var gallery = new GalleryCatalogCompiler(resourceTypes, galleryTypes).Compile(assets.Select(asset => asset.Metadata));
-            var assetsPak = PakBuilder.Build("assets", assets, GalNet.Core.Assets.CompressionMode.Brotli, resourceTypes);
+            var assetsPak = PakBuilder.Build("assets", assets, resourceTypes, GalNet.Core.Assets.CompressionMode.Brotli);
             var contentFiles = BuildContentFiles(stagingRoot, gallery, cancellationToken);
             var packageFiles = new[] { (AssetsPakPath, assetsPak) }.Concat(contentFiles).ToArray();
             var packages = packageFiles.Select(file => new GalpakFileEntry(file.Item1, Hash(file.Item2), file.Item2.Length)).ToArray();

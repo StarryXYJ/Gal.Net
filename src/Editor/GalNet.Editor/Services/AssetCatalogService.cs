@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins.Assets;
 using System;
 using System.Collections.Generic;
 using System.IO;

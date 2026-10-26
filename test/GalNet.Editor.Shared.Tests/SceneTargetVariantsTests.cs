@@ -1,6 +1,6 @@
 using System.Text.Json;
 using GalNet.Contracts.Builtins;
-using GalNet.Core.Variants;
+using GalNet.Contracts.Builtins.Variants;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Shared.Services;
 

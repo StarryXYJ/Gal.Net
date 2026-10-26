@@ -9,7 +9,7 @@ using GalNet.Contracts.Builtins.Audio;
 using GalNet.Core.Execution;
 using GalNet.Core.Runtime;
 using GalNet.Contracts.Builtins.Scene;
-using GalNet.Core.Variants;
+using GalNet.Contracts.Builtins.Variants;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;

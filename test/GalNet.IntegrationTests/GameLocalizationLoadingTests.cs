@@ -1,12 +1,13 @@
+using GalNet.Contracts.Builtins.Assets;
 using System.Text.Json;
 using GalNet.Contracts.Builtins;
 using DynamicLocalization.Core;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Graph;
 using GalNet.Core.Configuration;
-using GalNet.Runtime.Content;
+using GalNet.GameHost.Content;
 using GalNet.Sample.Avalonia.Services;
 using GalNet.Storage.FileSystem;
 
@@ -157,7 +158,6 @@ public sealed class GameLocalizationLoadingTests
         resolver.AttachGame(installed);
         cultures.SetCulture("zh-CN");
         Assert.That(resolver.Resolve("character.guide.name"), Is.EqualTo("向导"));
-        Assert.That(project.AssetRoot, Is.EqualTo(Path.Combine(_root, "Assets")), "I18n remains outside the asset root.");
     }
 
     [TestCase(false)]

@@ -1,4 +1,4 @@
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Runtime;
 using GalNet.Runtime.Persistence;
 using GalNet.Runtime.Progress;

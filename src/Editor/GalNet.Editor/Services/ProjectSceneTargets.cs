@@ -5,7 +5,7 @@ using GalNet.Assets.Variants;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
 using GalNet.Contracts.Builtins.Scene;
-using GalNet.Core.Variants;
+using GalNet.Contracts.Builtins.Variants;
 using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;

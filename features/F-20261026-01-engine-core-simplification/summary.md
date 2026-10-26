@@ -175,3 +175,10 @@ Scene/Audio 数据、端口和纯算法从 Core 迁到 Contracts.Builtins；音�
 完整解决方案构建、locked restore、格式/diff 检查通过。14 个测试项目共 1776 项通过，3 项既有符号链接权限失败、3 项跳过；Runtime 115、Builtin 232、Core 147、Presentation 243、Editor 320、Shared 430、Integration 126，其余架构/资源/生成器/宿主等全部通过。验证覆盖场景跨类型冲突、临时控制不入档、旧状态根/旧 scope 隔离、音频队列/drain/恢复及无 Builtins 的自有执行器。23 个锁文件只有项目引用变化，第三方依赖/目标框架/哈希不变。证据为 artifacts/engine-core-audit/r5a-results、r5a-verified-build.log、r5a-locked-restore.log。
 
 R5 整体仍在进行中：Gallery、资源默认策略和 Runtime.Content 的宿主归属留在 R5b；已观察到的原生关闭超时仍归 R7/R8，未计为本阶段原生验收。
+
+
+## R5b：Gallery、资源默认策略与宿主内容归位
+
+Gallery/ImageVariants 领域及默认资源工厂迁入 Contracts.Builtins；GameContent、加载选项、本地化聚合和 GalleryDataSource 归 GameHost。Core 仅保留通用资源协议、metadata 与目录，Gallery 通过可选扩展读写原始注解；未知 annotation 字段在资源复制重编号后仍保留。默认资源类型由 catalog.DefaultType 显式选择，provider/PAK 不再创建默认目录。六个没有额外字段的默认空 DTO 共用 AssetMeta，仅 sprite 保留 filter DTO；删除无生产消费者的 AssetRoot。R5b 产品 C# 净增 35 行，与 R5a 合计净增 4 行，没有新建公共程序集。
+
+全量及受影响重跑共 1779 项通过，3 项既有符号链接权限失败、3 项跳过；Core 114、Builtin 268、Runtime 115、Shared 430、Editor 320、Integration 126、Presentation 243，其余项目全部通过。补充目录自选默认类型、未声明默认时的类型解析，以及可选 Gallery 注解未知字段保留测试。初轮发现旧测试辅助函数仍传 null 目录，迁移为显式选择后 8 项恢复；provider 在构造入口报告缺失目录，不留后续空引用。完整构建、locked restore、格式/diff 通过；18 个锁文件只有项目引用变化，第三方依赖及哈希未变。证据为 artifacts/engine-core-audit/r5b-results、r5b-clean-build.log、r5b-final-*.log、r5b-locked-restore.log；最初失败日志保留。

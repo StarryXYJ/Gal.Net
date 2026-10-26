@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins.Assets;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
