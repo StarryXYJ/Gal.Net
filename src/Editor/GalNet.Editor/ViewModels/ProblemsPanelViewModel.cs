@@ -247,12 +247,14 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
         _incomplete = localization?.Complete != true;
         foreach (var issue in localization?.Issues ?? [])
         {
-            var reference = localization!.References.FirstOrDefault(item => item.Owner == issue.File && item.JsonPointer == issue.JsonPointer);
             var node = snapshot.Graph.Nodes.FirstOrDefault(item => item.Id == issue.File);
-            var field = issue.JsonPointer.Split('/').LastOrDefault();
+            var segments = issue.JsonPointer.Split('/').Skip(1)
+                .Select(segment => segment.Replace("~1", "/", StringComparison.Ordinal).Replace("~0", "~", StringComparison.Ordinal)).ToArray();
+            var field = segments.FirstOrDefault();
+            var fieldPath = segments.Skip(1).ToArray();
             results.Add(new(issue.Code is "schema.unavailable" or "field.unknown" or "field.opaque" or "analysis.limit" ? "warning" : "error", issue.Message, issue.File,
-                node is not null ? new(node.Id, reference?.EntryId, field, Revision: revision) : new(File: issue.File, Revision: revision))
-            { Details = issue.Message, Code = "localization." + issue.Code });
+                node is not null ? new(node.Id, issue.EntryId, field, Revision: revision, FieldPath: fieldPath) : new(File: issue.File, Revision: revision))
+            { Details = issue.Message, Code = "localization." + issue.Code, FieldPath = node is not null ? fieldPath : null });
         }
         _validation = results; _validatedRevision = revision; _checking = false; Refresh();
     }
@@ -286,6 +288,7 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
                 "condition.syntaxInvalid" => _text["Problem.Condition"],
                 "entry.typeUnknown" => _text["Problem.Entry.UnknownType"],
                 "entry.parametersInvalid" or "entry.compileInvalid" => _text["Problem.Entry.Compile"],
+                "localization.field.opaque" => _text["Problem.Localization.Opaque"],
                 { } other when !other.StartsWith("scene.", StringComparison.Ordinal) => _text["Problem.Generic"],
                 _ => problem.Message
             };

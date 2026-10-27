@@ -1144,6 +1144,7 @@
   "Problem.Entry.UnknownType": "이 항목의 형식이 프로젝트 계약에 없습니다. 형식이나 계약을 확인하세요.",
   "Problem.Condition": "조건식을 해석할 수 없습니다. 괄호, 연산자, 변수 이름을 확인하세요.",
   "Problem.Generic": "검증에 실패했습니다. 해당 위치와 기술 세부 정보를 확인하세요.",
+  "Problem.Localization.Opaque": "필드 구조 정의가 없어 내부의 텍스트나 캐릭터 참조를 확인할 수 없습니다. 값이 잘못되었다는 뜻은 아닙니다.",
   "Problem.Details": "기술 세부 정보",
   "Problem.Navigate": "문제 위치로 이동",
   "Problem.Unavailable": "원래 위치가 없거나 열 수 없습니다. 다시 검사하세요.",

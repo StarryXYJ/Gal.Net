@@ -1144,6 +1144,7 @@
   "Problem.Entry.UnknownType": "此条目的类型不在当前项目契约中，请重新选择类型或检查契约。",
   "Problem.Condition": "条件表达式无法解析，请检查括号、运算符和变量写法。",
   "Problem.Generic": "当前内容未通过检查，请检查对应位置及技术详情。",
+  "Problem.Localization.Opaque": "无法检查此字段内部的文本或角色引用：缺少字段结构定义。这不代表字段值有错。",
   "Problem.Details": "技术详情",
   "Problem.Navigate": "定位到问题位置",
   "Problem.Unavailable": "原位置已不存在或当前无法打开；请重新检查。",

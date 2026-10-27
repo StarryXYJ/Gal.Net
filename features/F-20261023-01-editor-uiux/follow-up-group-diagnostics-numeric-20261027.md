@@ -38,3 +38,11 @@ Phase 1：诊断状态、自动检查与定位；Phase 2：数字输入与控件
 检查覆盖沿用现有 Graph/Group/本地化与场景静态规则，不把运行期和所有资源解码问题声称为静态可判定。无法唯一识别的复杂同名嵌套子字段仍定位到根字段。原生桌面 IME、DPI 与辅助技术体验保留人工验收边界。
 
 正式规范同步：[Group 编辑](../../docs/spec/editor-groups.md)、[共享表单](../../docs/spec/control.md)、[历史与保存](../../docs/spec/editor-history-and-save.md)；接入示例见 [创作工作区手册](../../docs/manual/editor-authoring-workspace.md#选择数值编辑器)。
+
+## 本地化分析警告定位修正（2026-10-27）
+
+用户实测 `Structured value has no traversable field schema.` 无法定位到 Entry。原因是 Problems 从成功解析的 References 查询 Entry 身份，未使用 LocalizationIssue.EntryId；无法遍历的结构恰好没有成功引用，相同路径还可能误用另一条目的引用。现改为直接使用诊断自己的稳定身份，JSON Pointer 解码为根字段和嵌套路径；`field.opaque` 四语正文解释为引用检查覆盖不足，保留 warning 及原始技术详情。
+
+回归 `LocalizationAnalysisWarningsNavigateToTheirOwnEntriesWithoutResolvedReferences` 使用两个真实 MoveLayer 条目的非空 Transform，验证同字段警告分别定位正确 Entry、参数展开和 Inspector 字段请求，并检查四语提示和含 `/`、`~` 的字段身份。它与既有自动检查/Undo/Redo/实际字段聚焦、稳定导航及两项语言资源回归共 5 项通过，见 `test/GalNet.Editor.Tests/TestResults/localization-navigation-verified.trx`。
+
+Editor.Tests 的 Release 依赖构建成功、0 错误，既有分析器警告保留；changed C# whitespace 与 `git diff --check` 通过。Debug 构建因正在使用的 Editor DLL 被占用而失败，随后改用 Release 验证，未关闭运行中的 Editor。构建日志位于 `artifacts/.tmp-localization-navigation-final-build.log`。当前运行实例需使用新构建重新启动后才能体现修复。

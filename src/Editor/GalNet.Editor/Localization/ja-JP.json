@@ -1144,6 +1144,7 @@
   "Problem.Entry.UnknownType": "この項目の型はプロジェクト契約にありません。型または契約を確認してください。",
   "Problem.Condition": "条件式を解析できません。括弧、演算子、変数名を確認してください。",
   "Problem.Generic": "検証に失敗しました。該当箇所と技術情報を確認してください。",
+  "Problem.Localization.Opaque": "フィールド構造の定義がないため、内部のテキストやキャラクター参照を確認できません。値が不正であることを意味するものではありません。",
   "Problem.Details": "技術情報",
   "Problem.Navigate": "問題の箇所へ移動",
   "Problem.Unavailable": "元の箇所が存在しないか開けません。再検証してください。",

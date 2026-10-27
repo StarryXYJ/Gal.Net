@@ -1144,6 +1144,7 @@
   "Problem.Entry.UnknownType": "This entry type is not in the project contract. Choose a type or check the contract.",
   "Problem.Condition": "The condition cannot be parsed. Check brackets, operators and variable names.",
   "Problem.Generic": "This content failed validation. Check its location and technical details.",
+  "Problem.Localization.Opaque": "Text or character references inside this field could not be checked because its field schema is unavailable. This does not mean the value is invalid.",
   "Problem.Details": "Technical details",
   "Problem.Navigate": "Go to this issue",
   "Problem.Unavailable": "The original location is unavailable. Check again.",

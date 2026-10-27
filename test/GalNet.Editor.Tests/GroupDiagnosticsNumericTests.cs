@@ -84,6 +84,63 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     }
 
     [Test]
+    public async Task LocalizationAnalysisWarningsNavigateToTheirOwnEntriesWithoutResolvedReferences()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
+            var project = await projects.CreateAsync(Path.Combine(_root, "LocalizationProblemNavigation"), "Localization", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
+            var scope = project.Services; var workspace = scope.GetRequiredService<EditorWorkspaceViewModel>();
+            var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
+            var entries = workspace.InsertEntriesInto(group, 0, 2, BuiltinEntryIds.MoveLayer).ToArray();
+            var authoring = scope.GetRequiredService<EntryFieldAuthoringService>();
+            foreach (var entry in entries)
+            {
+                var parameters = new Dictionary<string, JsonElement>(entry.Source.Parameters)
+                {
+                    ["transform"] = JsonSerializer.SerializeToElement(new { X = 1f, Y = 2f, ScaleX = 1f, ScaleY = 1f, RotationDegrees = 0f })
+                };
+                authoring.SetParameters(group.Id, entry.Source, entry.Type, parameters);
+            }
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id);
+            var problems = scope.GetRequiredService<ProblemsPanelViewModel>(); await AwaitAutomaticProblems(problems);
+            var warnings = problems.Problems.Where(problem => problem.Code == "localization.field.opaque" && problem.Target?.FieldId == "transform").ToArray();
+            Assert.That(warnings.Select(problem => problem.Target!.EntryId), Is.EquivalentTo(entries.Select(entry => entry.StableId)),
+                "Incomplete analysis still has an exact diagnostic owner; identical field paths in different entries must not merge.");
+            var factory = scope.GetRequiredService<EditorDockFactory>(); var layout = factory.CreateLayout(); factory.InitLayout(layout);
+            foreach (var warning in warnings)
+            {
+                Assert.That(warning.IsWarning, Is.True); Assert.That(warning.CanNavigate, Is.True);
+                Assert.That(warning.Details, Is.EqualTo("Structured value has no traversable field schema."));
+                foreach (var locale in new[] { "en-US", "ja-JP", "ko-KR", "zh-CN" })
+                {
+                    var text = scope.GetRequiredService<IEditorLocalizationService>(); text.ApplyLocale(locale);
+                    Assert.That(problems.Problems.Single(problem => problem.Code == warning.Code && problem.Target == warning.Target).Message,
+                        Is.EqualTo(text["Problem.Localization.Opaque"]));
+                }
+                page.SearchText = "hide all entries";
+                problems.NavigateCommand.Execute(warning);
+                Assert.That(scope.GetRequiredService<EntrySelectionContext>().Current?.EntryId, Is.EqualTo(warning.Target!.EntryId));
+                Assert.That(entries.Single(entry => entry.StableId == warning.Target.EntryId).IsParametersExpanded, Is.True);
+                var inspector = TimelineDockables(layout).Select(item => item.Context).OfType<InspectorHostViewModel>()
+                    .Select(item => item.CurrentInspectorViewModel).OfType<EntryInspectorViewModel>().Single();
+                Assert.That(inspector.Entry?.StableId, Is.EqualTo(warning.Target.EntryId));
+                Assert.That(inspector.RequestedField, Is.EqualTo("transform"));
+            }
+            var owner = entries[1];
+            var unknown = new Dictionary<string, JsonElement>(owner.Source.Parameters) { ["custom/field~name"] = JsonSerializer.SerializeToElement(1) };
+            authoring.SetParameters(group.Id, owner.Source, owner.Type, unknown); await AwaitAutomaticProblems(problems);
+            var unknownProblem = problems.Problems.Single(problem => problem.Code == "localization.field.unknown" && problem.Target?.EntryId == owner.StableId);
+            Assert.That(unknownProblem.Target!.FieldId, Is.EqualTo("custom/field~name"), "JSON Pointer escaping must not leak into field identity.");
+            Assert.That(unknownProblem.CanNavigate, Is.True);
+            problems.NavigateCommand.Execute(unknownProblem);
+            Assert.That(scope.GetRequiredService<EntrySelectionContext>().Current?.EntryId, Is.EqualTo(owner.StableId));
+            await projects.CloseAsync(); return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
     public async Task GroupProblemsAutomaticallyFollowEditsUndoAndRedoAndKeepPendingInputNeutral()
     {
         var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
