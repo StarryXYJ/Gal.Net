@@ -1,8 +1,8 @@
-using GalNet.Core.Serialization;
-using GalNet.Runtime.Serialization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GalNet.Core.Graph;
+using GalNet.Core.Serialization;
+using GalNet.Runtime.Serialization;
 
 namespace GalNet.Runtime.Loader;
 

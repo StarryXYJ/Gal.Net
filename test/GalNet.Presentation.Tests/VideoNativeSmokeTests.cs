@@ -1,4 +1,3 @@
-using GalNet.Contracts.Builtins.Assets;
 using Avalonia;
 using GalNet.Assets;
 using GalNet.Assets.Provider;
@@ -6,8 +5,9 @@ using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
-using GalNet.Core.Assets;
+using GalNet.Contracts.Builtins.Assets;
 using GalNet.Contracts.Builtins.Scene;
+using GalNet.Core.Assets;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Rendering.Scene;
 

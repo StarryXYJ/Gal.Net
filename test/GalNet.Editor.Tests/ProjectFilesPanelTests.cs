@@ -1,5 +1,3 @@
-using GalNet.Contracts.Builtins.Gallery;
-using GalNet.Contracts.Builtins.Assets;
 using System.Text;
 using Avalonia;
 using Avalonia.Controls;
@@ -9,6 +7,8 @@ using Avalonia.Input.Raw;
 using Avalonia.VisualTree;
 using Dock.Model.Controls;
 using Dock.Model.Core;
+using GalNet.Contracts.Builtins.Assets;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Dock;
 using GalNet.Editor.History;

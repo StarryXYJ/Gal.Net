@@ -1,5 +1,8 @@
 # GalNet Agent Knowledge
 
+- [Solution fixture 配置](lessons/L-20261027-11-solution-fixture-configuration.md)：solution 外引用工程可能回到 Debug，测试却读取 Release；契约 fixture 已加入 GalNet.slnx，验证构建日志和实际输出配置。
+- [源生成 init 默认值](lessons/L-20261027-12-generated-init-defaults.md)：音轨/Bus 精简 JSON 会丢失 init 属性初始化值；显式 JsonConstructor 可选参数保留容量/增益默认值，不放宽校验或改成可变 DTO。
+
 - [开放 shader 参数](lessons/L-20261027-10-open-shader-parameters.md)：已知 shader 的额外参数是合法、不解释的 JSON，保留且不 warning；声明字段仍校验，未知 shader 与封闭契约仍诊断。
 
 - [属性逻辑路径与 wire 边界](lessons/L-20261027-06-property-wire-boundaries.md)：JSON Pointer 不能穿过 JSON 字符串；引用识别、比较、复制与回写须同时迁移类型化路径。JsonArray 递归修改返回原节点时不能再次挂载该实例。

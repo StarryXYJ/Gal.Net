@@ -1,5 +1,5 @@
-using GalNet.Core.Assets;
 using GalNet.Contracts.Builtins.Variants;
+using GalNet.Core.Assets;
 
 namespace GalNet.Assets.Variants;
 

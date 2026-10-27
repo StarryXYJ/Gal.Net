@@ -1,7 +1,7 @@
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.ViewModels;
-using GalNet.Core.Assets;
 using GalNet.Contracts.Builtins.Audio;
+using GalNet.Core.Assets;
 using GalNet.Media.Miniaudio;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Rendering.Scene;

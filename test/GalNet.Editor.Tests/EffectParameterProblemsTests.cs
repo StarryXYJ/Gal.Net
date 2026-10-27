@@ -34,10 +34,15 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             effect.Source.Parameters["instanceId"] = JsonSerializer.SerializeToElement("c2121d4d69544d4d8a584d392dfedbe6");
             effect.Source.Parameters["parameters"] = JsonSerializer.SerializeToElement(new { radius = 32, angle = 0 });
             unknown.Source.Parameters["program"] = JsonSerializer.SerializeToElement("unavailable");
-            clip.Source.Parameters["timeline"] = JsonSerializer.SerializeToElement(new { playbackHandleId = "play", frameRate = 60, durationFrames = 60,
+            clip.Source.Parameters["timeline"] = JsonSerializer.SerializeToElement(new
+            {
+                playbackHandleId = "play",
+                frameRate = 60,
+                durationFrames = 60,
                 tracks = new[] { new { handleId = "c2121d4d69544d4d8a584d392dfedbe6", property = "radius", blendMode = "Replace",
                     keys = new[] { new { frame = 0, value = 32f, interpolationToNext = "Linear" }, new { frame = 10, value = 34.3f, interpolationToNext = "Linear" } } } },
-                events = new[] { new { frame = 8, type = BuiltinEntryIds.ShowLayer, editorId = "create", parameters = new { transform = new { }, z = 0, opacity = 1, displayMode = "Native", handleId = "new-layer" } } } });
+                events = new[] { new { frame = 8, type = BuiltinEntryIds.ShowLayer, editorId = "create", parameters = new { transform = new { }, z = 0, opacity = 1, displayMode = "Native", handleId = "new-layer" } } }
+            });
             scope.GetRequiredService<IEditorDocumentService>().SynchronizeGroups();
             var scenes = scope.GetRequiredService<ProjectSceneTargets>(); await scenes.PrepareAsync();
             var problems = scope.GetRequiredService<ProblemsPanelViewModel>(); await AwaitAutomaticProblems(problems);

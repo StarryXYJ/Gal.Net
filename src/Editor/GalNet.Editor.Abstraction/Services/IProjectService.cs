@@ -1,9 +1,9 @@
-using GalNet.Editor.Abstraction.Settings;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using GalNet.Core.Configuration;
 using GalNet.Editor.Abstraction.Project;
+using GalNet.Editor.Abstraction.Settings;
 
 namespace GalNet.Editor.Abstraction.Services;
 

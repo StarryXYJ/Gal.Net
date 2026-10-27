@@ -36,10 +36,18 @@ public sealed partial class EffectParameterLocalizationTests
     [Test]
     public void TimelineAuthorMetadataAndCaseInsensitiveWireNamesRemainCoveredWhileUnknownMembersAreDiagnosed()
     {
-        var entry = Entry("clip", BuiltinEntryIds.PlayTimeline, new { timeline = new { FrameRate = 60, DurationFrames = 30, LoopMode = "Loop",
-            Tracks = new[] { new { HandleId = "fx", Property = "radius", BlendMode = "Additive", Keys = new[] {
+        var entry = Entry("clip", BuiltinEntryIds.PlayTimeline, new
+        {
+            timeline = new
+            {
+                FrameRate = 60,
+                DurationFrames = 30,
+                LoopMode = "Loop",
+                Tracks = new[] { new { HandleId = "fx", Property = "radius", BlendMode = "Additive", Keys = new[] {
                 new { Frame = 0, Value = 0, InterpolationToNext = "CubicHermite", EditorTangents = new { Incoming = "Auto", Outgoing = "Free", Linked = true } } } } },
-            Events = new[] { new { Frame = 0, Execution = "Once", Type = BuiltinEntryIds.ShowLayer, EditorId = "event", Parameters = new { handleId = "layer", transform = new { X = 12 } } } } } });
+                Events = new[] { new { Frame = 0, Execution = "Once", Type = BuiltinEntryIds.ShowLayer, EditorId = "event", Parameters = new { handleId = "layer", transform = new { X = 12 } } } }
+            }
+        });
         Assert.That(Scan(Document(entry)).Issues, Is.Empty);
         entry.Parameters["timeline"] = JsonSerializer.Deserialize<JsonElement>("""{"tracks":[{"handleId":"fx","keys":[{"frame":0,"value":"bad","extension":{"x":1}}]}]}""");
         var issues = Scan(Document(entry)).Issues;
@@ -52,8 +60,15 @@ public sealed partial class EffectParameterLocalizationTests
     {
         var shader = new ShaderEffectDescriptor(new("nested"), 1, "source", new HashSet<EffectStage> { EffectStage.ScenePost },
             [new("radius", "radius", ShaderEffectParameterKind.Float)]);
-        var entry = Entry("clip", BuiltinEntryIds.PlayTimeline, new { timeline = new { tracks = Array.Empty<object>(), events = new[] {
-            new { frame = 0, type = BuiltinEntryIds.ApplyEffect, parameters = new { program = "nested", instanceId = "fx", parameters = new { radius = 32, angle = 0, unused = new { text = "literal" } } } } } } });
+        var entry = Entry("clip", BuiltinEntryIds.PlayTimeline, new
+        {
+            timeline = new
+            {
+                tracks = Array.Empty<object>(),
+                events = new[] {
+            new { frame = 0, type = BuiltinEntryIds.ApplyEffect, parameters = new { program = "nested", instanceId = "fx", parameters = new { radius = 32, angle = 0, unused = new { text = "literal" } } } } }
+            }
+        });
         var document = Document(entry);
         Assert.That(EntryParameterMetadata.ProgramIds(document), Is.EqualTo(new[] { "nested" }));
         Assert.That(Scan(document, new(Programs: new Dictionary<string, ShaderEffectDescriptor?> { ["nested"] = shader })).Issues, Is.Empty);
@@ -69,8 +84,14 @@ public sealed partial class EffectParameterLocalizationTests
         var catalog = new TargetProfileEntryCatalog([new DefaultEntryModule("custom", [
             DefaultPrimitiveEntryBase.ForDto<TimelineOptions>(BuiltinEntryIds.PlayTimeline),
             new DefaultPrimitiveEntryBase(BuiltinEntryIds.ApplyEffect, new DynamicParameterTable([new(payload)]))])]);
-        var document = Document(Entry("clip", BuiltinEntryIds.PlayTimeline, new { timeline = new { events = new[] {
-            new { frame = 0, type = BuiltinEntryIds.ApplyEffect, parameters = new { caption = "line" } } } } }));
+        var document = Document(Entry("clip", BuiltinEntryIds.PlayTimeline, new
+        {
+            timeline = new
+            {
+                events = new[] {
+            new { frame = 0, type = BuiltinEntryIds.ApplyEffect, parameters = new { caption = "line" } } }
+            }
+        }));
         var index = new LocalizationReferenceIndex(document, catalog, [new("I18n/zh-CN/test.json", """{"line":"正文"}""")]);
         Assert.That(index.References.Single().JsonPointer, Is.EqualTo("/timeline/events/0/parameters/caption"));
         Assert.That(index.Issues, Is.Empty);

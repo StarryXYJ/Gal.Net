@@ -1,6 +1,6 @@
 using GalNet.Editor.Dock;
-using GalNet.Editor.ViewModels;
 using GalNet.Editor.Services.Interfaces;
+using GalNet.Editor.ViewModels;
 
 namespace GalNet.Editor.Services;
 

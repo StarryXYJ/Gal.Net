@@ -1,9 +1,9 @@
+using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using GalNet.Core.Entry;
 using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
 
 namespace GalNet.Presentation.Abstractions.Execution;
 
@@ -91,7 +91,10 @@ public sealed class PrimitiveRegistry
         var source = context.Entry;
         var entry = new PrimitiveEntry(source.Type, arguments, source.BatchId)
         {
-            Id = source.Id, StableId = source.StableId, ReadingBoundaryId = source.ReadingBoundaryId, Condition = source.Condition
+            Id = source.Id,
+            StableId = source.StableId,
+            ReadingBoundaryId = source.ReadingBoundaryId,
+            Condition = source.Condition
         };
         return new(context.Definition, entry, context.Runtime, context.ScopeCancellation);
     }

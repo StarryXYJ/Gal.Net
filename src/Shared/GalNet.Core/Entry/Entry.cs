@@ -1,6 +1,6 @@
-using GalNet.Core.Serialization;
 using System.Text.Json;
 using GalNet.Core.Primitives;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Core.Entry;
 

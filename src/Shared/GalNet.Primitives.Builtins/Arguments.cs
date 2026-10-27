@@ -1,8 +1,8 @@
-using GalNet.Core.Serialization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using GalNet.Core.Primitives;
 using GalNet.Contracts.Builtins;
+using GalNet.Core.Primitives;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Primitives.Builtins;
 

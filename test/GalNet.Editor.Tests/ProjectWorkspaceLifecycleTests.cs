@@ -1,4 +1,3 @@
-using GalNet.Contracts.Builtins;
 using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
@@ -7,9 +6,10 @@ using Avalonia.Input;
 using Avalonia.VisualTree;
 using CommunityToolkit.Mvvm.Input;
 using Dock.Model.Controls;
+using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
-using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Abstraction.Documents;

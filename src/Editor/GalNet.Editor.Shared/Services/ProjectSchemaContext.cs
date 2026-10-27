@@ -2,8 +2,8 @@ using System.Reflection;
 using System.Runtime.Loader;
 using System.Security.Cryptography;
 using GalNet.Contracts.Builtins;
-using GalNet.Core.Entry;
 using GalNet.Core.Configuration;
+using GalNet.Core.Entry;
 
 namespace GalNet.Editor.Shared.Services;
 

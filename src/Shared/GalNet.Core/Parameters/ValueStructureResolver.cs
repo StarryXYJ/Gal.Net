@@ -1,9 +1,9 @@
-using System.Reflection;
 using System.Diagnostics.CodeAnalysis;
-using GalNet.Core.Serialization;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Core.Parameters;
 

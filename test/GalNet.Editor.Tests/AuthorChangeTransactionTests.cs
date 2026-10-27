@@ -1,4 +1,7 @@
 using System.Text.Json;
+using Avalonia.Headless;
+using Avalonia.Threading;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
 using GalNet.Editor.Abstraction.Changes;
@@ -6,9 +9,6 @@ using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.History;
 using GalNet.Editor.Services;
 using GalNet.Editor.Shared.Services;
-using Avalonia.Headless;
-using Avalonia.Threading;
-using GalNet.Contracts.Builtins;
 
 namespace GeneralTest.Editor;
 

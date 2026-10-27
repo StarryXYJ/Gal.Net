@@ -1,9 +1,9 @@
-using GalNet.Contracts.Builtins.Assets;
 using System.Text.Json;
 using GalNet.Assets.Provider;
 using GalNet.Assets.Variants;
-using GalNet.Core.Assets;
+using GalNet.Contracts.Builtins.Assets;
 using GalNet.Contracts.Builtins.Variants;
+using GalNet.Core.Assets;
 
 namespace GalNet.Assets.Tests;
 

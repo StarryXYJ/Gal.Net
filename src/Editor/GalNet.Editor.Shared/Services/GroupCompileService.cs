@@ -1,7 +1,7 @@
 using System.Text.Json;
+using GalNet.Assets;
 using GalNet.Core.Compilation;
 using GalNet.Editor.Abstraction.Commands;
-using GalNet.Assets;
 
 namespace GalNet.Editor.Shared.Services;
 

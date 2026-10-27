@@ -1,8 +1,8 @@
+using System.Text;
+using System.Text.Json;
 using GalNet.Core.Variable;
 using GalNet.Runtime.Logging;
 using NCalc;
-using System.Text;
-using System.Text.Json;
 
 namespace GalNet.Runtime.Variables;
 

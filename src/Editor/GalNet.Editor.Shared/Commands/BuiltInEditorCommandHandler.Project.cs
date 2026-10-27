@@ -1,5 +1,5 @@
-using GalNet.Core.Configuration;
 using System.Text.Json;
+using GalNet.Core.Configuration;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Documents;
 

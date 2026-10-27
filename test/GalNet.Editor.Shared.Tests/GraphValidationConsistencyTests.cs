@@ -33,9 +33,13 @@ public sealed class GraphValidationConsistencyTests
         if (to != from) nodes.Add(new { id = "b", name = "B", type = targetType });
         var raw = JsonSerializer.SerializeToElement(new
         {
-            version = 2, name = "Graph", rootNodeId = "a", nodes,
+            version = 2,
+            name = "Graph",
+            rootNodeId = "a",
+            nodes,
             edges = new[] { new { id = "edge", fromNodeId = from, toNodeId = to, fromOutlet = 0 } },
-            playerVariables = Array.Empty<object>(), saveVariables = Array.Empty<object>()
+            playerVariables = Array.Empty<object>(),
+            saveVariables = Array.Empty<object>()
         });
         var diagnostics = new List<ToolDiagnostic>();
         new ProjectValidationService(Path.GetTempPath()).ValidateGraph(raw, diagnostics, checkSourceReferences: false);

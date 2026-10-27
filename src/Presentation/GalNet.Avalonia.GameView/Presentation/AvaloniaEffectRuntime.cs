@@ -1,11 +1,11 @@
+using System.Collections.Concurrent;
+using System.Text.Json;
 using Avalonia.Threading;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Contracts.Builtins.Scene;
+using GalNet.Core.Assets;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Rendering.Scene;
-using GalNet.Core.Assets;
-using System.Text.Json;
-using System.Collections.Concurrent;
 
 namespace GalNet.Avalonia.GameView.Presentation;
 

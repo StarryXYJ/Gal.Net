@@ -16,7 +16,9 @@ public sealed class GroupValidationCompilationTests
             [new DefaultPrimitiveEntryBase("test.run", new DynamicParameterTable([], _ => calls++))])]);
         var raw = JsonSerializer.SerializeToElement(new
         {
-            version = 2, kind = "Raw", entries = new[] { new { id = "one", type = "test.run", parameters = new { } } }
+            version = 2,
+            kind = "Raw",
+            entries = new[] { new { id = "one", type = "test.run", parameters = new { } } }
         });
         var diagnostics = new List<ToolDiagnostic>();
         Assert.That(ProjectValidationService.ValidateGroupDocument(raw, "group.rawgalgroup", diagnostics, catalog), Is.Not.Null);

@@ -1,5 +1,5 @@
-using GalNet.Contracts.Builtins.Audio;
 using System.Text.Json;
+using GalNet.Contracts.Builtins.Audio;
 
 namespace GalNet.Media.Audio;
 

@@ -1,4 +1,3 @@
-using GalNet.Editor.Abstraction.Settings;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,6 +7,7 @@ using System.Threading.Tasks;
 using GalNet.Core.Configuration;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Abstraction.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 

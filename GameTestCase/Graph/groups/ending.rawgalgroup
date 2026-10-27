@@ -251,14 +251,7 @@
       "type": "preset.shake",
       "parameters": {
         "playbackHandleId": "visual-shake",
-        "targets": [
-          {
-            "handleId": "visual-bg"
-          },
-          {
-            "handleId": "visual-hero"
-          }
-        ],
+        "handleId": "visual-hero",
         "amplitude": 12,
         "angle": 15,
         "durationFrames": 36
@@ -299,14 +292,7 @@
       "parameters": {
         "playbackHandleId": "visual-impact",
         "program": "b1000000000000000000000000000006",
-        "targets": [
-          {
-            "handleId": "visual-bg"
-          },
-          {
-            "handleId": "visual-hero"
-          }
-        ],
+        "handleId": "visual-hero",
         "amplitude": 18,
         "durationFrames": 48
       }

@@ -1,4 +1,3 @@
-using GalNet.Contracts.Builtins;
 using System.Globalization;
 using System.Text.Json;
 using Avalonia;
@@ -6,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.VisualTree;
 using CommunityToolkit.Mvvm.Input;
+using GalNet.Contracts.Builtins;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
 using GalNet.Editor.Models.Graph;

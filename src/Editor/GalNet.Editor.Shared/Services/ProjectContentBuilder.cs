@@ -1,6 +1,7 @@
-using GalNet.Contracts.Builtins.Assets;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using GalNet.Assets;
+using GalNet.Contracts.Builtins.Assets;
 using GalNet.Core.Assets;
 using GalNet.Core.Compilation;
 using GalNet.Core.Configuration;
@@ -8,7 +9,6 @@ using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Shared.Commands;
-using GalNet.Assets;
 
 namespace GalNet.Editor.Shared.Services;
 

@@ -170,7 +170,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     foreach (var animated in window.GetVisualDescendants().OfType<Avalonia.Animation.Animatable>()) animated.ClearValue(Avalonia.Animation.Animatable.TransitionsProperty);
                     app.RequestedThemeVariant = theme; window.RequestedThemeVariant = theme;
                     await Task.Delay(200); TimelinePump(window);
-                    var add = groupView.GetVisualDescendants().OfType<Button>().Single(button => ReferenceEquals(button.Command, page.AddEntryCommand));
+                    var add = groupView.GetVisualDescendants().OfType<Button>().Single(button => ReferenceEquals(button.Command, page.ExpandAllCommand));
                     Assert.That(add.Bounds.Width, Is.EqualTo(32)); Assert.That(add.Bounds.Height, Is.EqualTo(32));
                     var surface = add.GetVisualDescendants().OfType<Border>().Single(border => border.Name == "ButtonSurface");
                     Assert.That((surface.Background as ISolidColorBrush)?.Color.A ?? 0, Is.Zero, "Icon buttons keep a transparent normal surface.");

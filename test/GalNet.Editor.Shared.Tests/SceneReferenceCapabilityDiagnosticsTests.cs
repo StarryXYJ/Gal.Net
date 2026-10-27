@@ -14,10 +14,18 @@ public sealed partial class SceneTargetAnalysisTests
             [new("radius", "radius", ShaderEffectParameterKind.Float, "0", 0, 64, Animatable: true)]);
         var effect = Entry("fx", BuiltinEntryIds.ApplyEffect, new { instanceId = "c2121d4d69544d4d8a584d392dfedbe6", program = "blur", parameters = new { radius = 32 } });
         var unrelated = Entry("unknown", BuiltinEntryIds.ApplyEffect, new { instanceId = "unrelated", program = "missing" });
-        var clip = Entry("clip", BuiltinEntryIds.PlayTimeline, new { timeline = new { playbackHandleId = "play", frameRate = 60, durationFrames = 60,
-            tracks = new[] { new { handleId = "c2121d4d69544d4d8a584d392dfedbe6", property = "radius", blendMode = "Replace",
+        var clip = Entry("clip", BuiltinEntryIds.PlayTimeline, new
+        {
+            timeline = new
+            {
+                playbackHandleId = "play",
+                frameRate = 60,
+                durationFrames = 60,
+                tracks = new[] { new { handleId = "c2121d4d69544d4d8a584d392dfedbe6", property = "radius", blendMode = "Replace",
                 keys = new[] { new { frame = 0, value = 32f }, new { frame = 10, value = 34.3f } } } },
-            events = new[] { new { frame = 8, type = BuiltinEntryIds.ShowLayer, editorId = "create", parameters = new { transform = new { }, z = 0, opacity = 1, displayMode = "Native", handleId = "new-layer" } } } } });
+                events = new[] { new { frame = 8, type = BuiltinEntryIds.ShowLayer, editorId = "create", parameters = new { transform = new { }, z = 0, opacity = 1, displayMode = "Native", handleId = "new-layer" } } }
+            }
+        });
         Dictionary<string, List<EditorEntryData>> groups = new() { ["g"] = [effect, unrelated, clip] };
         var analysis = new SceneTargetAnalysis(Graph("g"), groups, programs: new Dictionary<string, ShaderEffectDescriptor?> { ["blur"] = descriptor, ["missing"] = null });
         var before = analysis.AtTimeline("g", "clip", new(0));

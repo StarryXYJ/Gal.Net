@@ -1,6 +1,6 @@
 using GalNet.Contracts.Builtins;
-using GalNet.Core.Entry;
 using GalNet.Core.Configuration;
+using GalNet.Core.Entry;
 
 namespace GalNet.Project.Contracts;
 

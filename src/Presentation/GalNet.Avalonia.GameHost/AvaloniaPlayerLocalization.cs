@@ -1,8 +1,8 @@
+using System.Globalization;
 using DynamicLocalization.Core;
 using DynamicLocalization.Core.Providers;
 using GalNet.Core.Services;
 using GalNet.GameHost.Content;
-using System.Globalization;
 using GalNet.Runtime.I18n;
 
 namespace GalNet.Avalonia.GameHost;

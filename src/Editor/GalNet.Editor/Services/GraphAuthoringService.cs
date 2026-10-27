@@ -1,9 +1,9 @@
 using System.Text.Json;
-using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
+using GalNet.Editor.Shared.Commands;
 
 namespace GalNet.Editor.Services;
 

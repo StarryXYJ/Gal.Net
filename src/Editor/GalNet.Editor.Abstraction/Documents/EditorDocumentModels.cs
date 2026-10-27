@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using GalNet.Core.Configuration;
 using GalNet.Core.Entry;
 using GalNet.Core.Parameters;
-using GalNet.Core.Configuration;
 using GalNet.Core.Variable;
 
 namespace GalNet.Editor.Abstraction.Documents;

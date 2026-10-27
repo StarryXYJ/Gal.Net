@@ -1,6 +1,6 @@
-using GalNet.Avalonia.GameHost;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Sample.Avalonia.Services;
 

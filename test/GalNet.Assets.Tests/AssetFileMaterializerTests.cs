@@ -1,6 +1,6 @@
-using GalNet.Contracts.Builtins.Assets;
 using GalNet.Assets;
 using GalNet.Assets.Provider;
+using GalNet.Contracts.Builtins.Assets;
 
 namespace GeneralTest.Assets;
 

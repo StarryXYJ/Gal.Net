@@ -46,21 +46,25 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             try
             {
                 var catalog = scope.GetRequiredService<SceneTargetCatalog>(); var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear();
-                void SelectTarget(EntryEditorItemViewModel entry, EntryEditorItemViewModel layer)
+                async Task SelectTarget(EntryEditorItemViewModel entry, EntryEditorItemViewModel layer)
                 {
+                    await catalog.PrepareAsync(group.Id, entry.StableId);
                     page.SelectedEntry = entry; TimelinePump(window);
                     var button = view.GetVisualDescendants().OfType<Button>().Single(control => control.Name == "SceneTargetField");
-                    TimelineClick(window, button);
-                    var picker = (SceneTargetPicker)((Flyout)button.Flyout!).Content!;
+                    Assert.That(button.IsEffectivelyEnabled, Is.True);
+                    // Test this field's selector contract independently of shared headless pointer state.
+                    var flyout = (Flyout)button.Flyout!;
+                    flyout.ShowAt(button); TimelinePump(window);
+                    var picker = (SceneTargetPicker)flyout.Content!;
                     var choice = catalog.Query(group.Id, entry.StableId).Choices.Single(item => item.Target.Locator.EntryId == layer.StableId);
                     picker.ResourcePanel.Search.Text = choice.Item.Label; TimelinePump(window);
                     PressGroupKey(picker.ResourcePanel.Search, Key.Down); PressGroupKey(picker.ResourcePanel.Search, Key.Enter); TimelinePump(window);
                     Assert.That(entry.Source.Parameters["handleId"].GetString(), Is.EqualTo(choice.Target.Handle));
                 }
-                SelectTarget(shake, layers[0]);
+                await SelectTarget(shake, layers[0]);
                 Assert.That(shake.Source.Parameters.ContainsKey("targets"), Is.False);
                 Assert.That(shake.Source.Parameters["future"].GetProperty("retained").GetBoolean(), Is.True);
-                SelectTarget(impact, layers[1]);
+                await SelectTarget(impact, layers[1]);
                 Assert.That(impact.Source.Parameters.ContainsKey("targets"), Is.False);
                 Assert.That(history.CanUndo, Is.True);
                 await history.UndoAsync();

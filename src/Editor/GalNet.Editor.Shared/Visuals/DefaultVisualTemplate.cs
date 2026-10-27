@@ -1,6 +1,6 @@
+using System.Collections.ObjectModel;
 using System.Text;
 using System.Text.Json;
-using System.Collections.ObjectModel;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Configuration;
 

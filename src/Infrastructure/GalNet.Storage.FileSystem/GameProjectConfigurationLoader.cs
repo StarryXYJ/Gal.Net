@@ -1,6 +1,6 @@
-using GalNet.Core.Serialization;
 using System.Text.Json;
 using GalNet.Core.Configuration;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Storage.FileSystem;
 

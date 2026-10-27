@@ -2,12 +2,12 @@ using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Data;
 using GalNet.Contracts.Builtins;
-using GalNet.Core.Parameters;
 using GalNet.Contracts.Builtins.Scene;
+using GalNet.Core.Parameters;
+using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.MarkupExtensions;
 using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Services;
-using GalNet.Editor.Abstraction.Services;
 using GalNet.Game.Controls.Forms;
 
 namespace GalNet.Editor.Controls;

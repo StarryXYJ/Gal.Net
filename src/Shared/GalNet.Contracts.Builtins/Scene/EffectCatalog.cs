@@ -1,5 +1,5 @@
-using GalNet.Core.Parameters;
 using System.Text.Json;
+using GalNet.Core.Parameters;
 
 namespace GalNet.Contracts.Builtins.Scene;
 

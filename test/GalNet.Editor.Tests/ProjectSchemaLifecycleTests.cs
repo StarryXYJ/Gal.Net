@@ -1,7 +1,7 @@
-using GalNet.Editor.Abstraction.Settings;
 using GalNet.Core.Entry;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Abstraction.Settings;
 using GalNet.Editor.Commands;
 using GalNet.Editor.Composition;
 using GalNet.Editor.Services.Interfaces;

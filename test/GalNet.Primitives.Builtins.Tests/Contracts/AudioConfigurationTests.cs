@@ -1,9 +1,27 @@
+using System.Text.Json;
+using GalNet.Contracts.Builtins;
 using GalNet.Contracts.Builtins.Audio;
+using GalNet.Core.Serialization;
 
 namespace GeneralTest;
 
 public class AudioConfigurationTests
 {
+    [Test]
+    public void GeneratedMetadataPreservesDefaultsForOmittedAudioFields()
+    {
+        var options = BuiltinJson.CreateOptions(new(JsonSerializerDefaults.Web));
+        var track = JsonCodec.Deserialize<AudioTrackDefinition>("""{"id":"rain"}""", options)!;
+        var bus = JsonCodec.Deserialize<AudioBusDefinition>("""{"id":"ambience"}""", options)!;
+        Assert.Multiple(() =>
+        {
+            Assert.That(track.MaxVoices, Is.EqualTo(1));
+            Assert.That(track.DefaultGain, Is.EqualTo(1f));
+            Assert.That(bus.DefaultGain, Is.EqualTo(1f));
+        });
+        Assert.DoesNotThrow(() => new AudioConfiguration([track], [bus]));
+    }
+
     [Test]
     public void EmptyUngroupedAndCustomDeclarationsAreValidOwnedValues()
     {

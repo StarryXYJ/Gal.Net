@@ -4,8 +4,8 @@ using GalNet.Contracts.Builtins.Audio;
 using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Entry;
 using GalNet.Editor.Abstraction.Documents;
-using GalNet.Editor.Shared.Services;
 using GalNet.Editor.Shared.Commands;
+using GalNet.Editor.Shared.Services;
 
 namespace GeneralTest.Editor;
 
@@ -54,8 +54,22 @@ public sealed partial class EffectParameterLocalizationTests
             new("count", "count", ShaderEffectParameterKind.Integer), new("enabled", "enabled", ShaderEffectParameterKind.Boolean),
             new("offset", "offset", ShaderEffectParameterKind.Vector2), new("channels", "channels", ShaderEffectParameterKind.Vector4)]);
         var metadata = new EntryParameterMetadata(Programs: new Dictionary<string, ShaderEffectDescriptor?> { ["shader"] = shader });
-        var entry = Entry("fx", type, new { program = "shader", parameters = new { amount = .5, direction = new[] { 1, 2, 3 }, tint = "#11223344", mask = "image", style = "soft",
-            count = 2, enabled = true, offset = new[] { 0, 1 }, channels = new[] { 1, 2, 3, 4 } } });
+        var entry = Entry("fx", type, new
+        {
+            program = "shader",
+            parameters = new
+            {
+                amount = .5,
+                direction = new[] { 1, 2, 3 },
+                tint = "#11223344",
+                mask = "image",
+                style = "soft",
+                count = 2,
+                enabled = true,
+                offset = new[] { 0, 1 },
+                channels = new[] { 1, 2, 3, 4 }
+            }
+        });
         var document = Document(entry);
         Assert.That(Scan(document, metadata).Issues, Is.Empty);
         Assert.That(Scan(document, metadata).References, Is.Empty, "Colors, texture IDs and enum choices are not localized text keys.");
@@ -73,8 +87,19 @@ public sealed partial class EffectParameterLocalizationTests
     public void KnownShaderAcceptsPreservedAdditionalParametersAsLegalUninterpretedData(string type)
     {
         var parsed = ShaderEffectMetadataParser.Parse(new("bloom"), GalNet.Editor.Shared.Visuals.DefaultVisualTemplate.ReadShader("Bloom"));
-        var entry = Entry("fx", type, new { program = "bloom", parameters = new { angle = 0, strength = 4, softKnee = .2, radius = 32, threshold = .5,
-            future = new { caption = "literal", nested = new[] { "not-a-localization-key" } } } });
+        var entry = Entry("fx", type, new
+        {
+            program = "bloom",
+            parameters = new
+            {
+                angle = 0,
+                strength = 4,
+                softKnee = .2,
+                radius = 32,
+                threshold = .5,
+                future = new { caption = "literal", nested = new[] { "not-a-localization-key" } }
+            }
+        });
         var document = Document(entry); var before = JsonSerializer.Serialize(document);
         var metadata = new EntryParameterMetadata(Programs: new Dictionary<string, ShaderEffectDescriptor?> { ["bloom"] = parsed.Descriptor });
         var index = Scan(document, metadata);

@@ -1,6 +1,6 @@
-using GalNet.Primitives.Builtins;
-using GalNet.Core.Runtime;
 using GalNet.Contracts.Builtins.Scene;
+using GalNet.Core.Runtime;
+using GalNet.Primitives.Builtins;
 using GalNet.Runtime.Runtime;
 
 namespace GeneralTest.Runtime;

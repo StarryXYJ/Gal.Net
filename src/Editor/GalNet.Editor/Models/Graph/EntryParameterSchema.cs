@@ -1,4 +1,3 @@
-using GalNet.Editor.Abstraction.Schemas;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,6 +7,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Core.Entry;
 using GalNet.Core.Parameters;
+using GalNet.Editor.Abstraction.Schemas;
 using GalNet.Editor.Models;
 using GalNet.Editor.Services;
 using GalNet.Game.Controls.Forms;

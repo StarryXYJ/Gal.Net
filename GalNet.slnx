@@ -6,6 +6,15 @@
   <Folder Name="/test/Schema/">
     <Project Path="test/GalNet.SchemaGenerator.Tests/GalNet.SchemaGenerator.Tests.csproj" />
   </Folder>
+  <Folder Name="/test/Fixtures/">
+    <Project Path="test/Fixtures/SchemaA/SchemaA.csproj" />
+    <Project Path="test/Fixtures/SchemaB/SchemaB.csproj" />
+    <Project Path="test/Fixtures/SchemaDependency/SchemaDependency.csproj" />
+    <Project Path="test/Fixtures/SchemaDuplicate/SchemaDuplicate.csproj" />
+    <Project Path="test/Fixtures/SchemaIncompatible/SchemaIncompatible.csproj" />
+    <Project Path="test/Fixtures/SchemaInvalid/SchemaInvalid.csproj" />
+    <Project Path="test/Fixtures/VersionedCore/VersionedCore.csproj" />
+  </Folder>
   <Folder Name="/src/Editor/">
     <Project Path="src/Editor/GalNet.Editor.DefaultContracts/GalNet.Editor.DefaultContracts.csproj" />
     <Project Path="src/Editor/GalNet.Editor.Abstraction/GalNet.Editor.Abstraction.csproj" />

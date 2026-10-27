@@ -1,7 +1,17 @@
+using System.Text.Json.Serialization;
+
 namespace GalNet.Contracts.Builtins.Audio;
 
 public sealed record AudioBusDefinition
 {
+    public AudioBusDefinition() { }
+
+    [JsonConstructor]
+    public AudioBusDefinition(string id, string name = "", float defaultGain = 1f)
+    {
+        Id = id; Name = name; DefaultGain = defaultGain;
+    }
+
     public string Id { get; init; } = "";
     public string Name { get; init; } = "";
     public float DefaultGain { get; init; } = 1f;

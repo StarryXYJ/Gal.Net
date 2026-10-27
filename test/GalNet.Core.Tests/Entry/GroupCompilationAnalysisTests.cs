@@ -37,6 +37,8 @@ public sealed class GroupCompilationAnalysisTests
 
     private static GroupEntryDocument Entry(string id, object value) => new()
     {
-        Id = id, Type = "test.run", Parameters = new() { ["value"] = JsonSerializer.SerializeToElement(value) }
+        Id = id,
+        Type = "test.run",
+        Parameters = new() { ["value"] = JsonSerializer.SerializeToElement(value) }
     };
 }

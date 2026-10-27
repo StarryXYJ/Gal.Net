@@ -1,5 +1,5 @@
-using GalNet.Core.Entry;
 using GalNet.Core.Configuration;
+using GalNet.Core.Entry;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Documents;
 

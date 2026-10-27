@@ -3,138 +3,36 @@ name: CI
 on:
   pull_request:
   push:
-    branches:
-      - master
+    branches: [master]
   workflow_dispatch:
 
 permissions:
   contents: read
 
-jobs:
-  format:
-    runs-on: windows-latest
-    timeout-minutes: 20
-    env:
-      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
-      DOTNET_NOLOGO: '1'
-      AVALONIA_TELEMETRY_OPTOUT: '1'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 10.0.401
-      - name: Restore locked dependencies (excluding launcher)
-        shell: pwsh
-        run: |
-          $projects = Get-ChildItem src, test -Filter *.csproj -Recurse |
-            Where-Object { $_.FullName -notmatch '[\\/]src[\\/]Launcher[\\/]' } |
-            Sort-Object FullName
-          foreach ($project in $projects) {
-            dotnet restore $project.FullName --locked-mode
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
-      - name: Verify whitespace
-        shell: pwsh
-        run: |
-          $projects = Get-ChildItem src, test -Filter *.csproj -Recurse |
-            Where-Object { $_.FullName -notmatch '[\\/]src[\\/]Launcher[\\/]' } |
-            Sort-Object FullName
-          foreach ($project in $projects) {
-            dotnet format whitespace $project.FullName --no-restore --verify-no-changes --verbosity quiet
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
-      - name: Verify imports
-        shell: pwsh
-        run: |
-          $projects = Get-ChildItem src, test -Filter *.csproj -Recurse |
-            Where-Object { $_.FullName -notmatch '[\\/]src[\\/]Launcher[\\/]' } |
-            Sort-Object FullName
-          foreach ($project in $projects) {
-            dotnet format style $project.FullName --no-restore --verify-no-changes --diagnostics IDE0005 --verbosity quiet
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
-  desktop-build-and-test:
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        stage: [Format, BuildTest]
     runs-on: windows-latest
-    timeout-minutes: 30
-    env:
-      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
-      DOTNET_NOLOGO: '1'
-      AVALONIA_TELEMETRY_OPTOUT: '1'
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 10.0.401
-      - name: Restore test projects
+          global-json-file: global.json
+      - name: Run shared local CI entry
         shell: pwsh
-        run: |
-          Get-ChildItem test -Filter *.csproj -Recurse | ForEach-Object {
-            dotnet restore $_.FullName --locked-mode
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
-      - name: Restore editor CLI
-        run: dotnet restore src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj --locked-mode
-      - name: Restore headless sample
-        run: dotnet restore src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj --locked-mode
-      - name: Build editor CLI
-        run: dotnet build src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj --no-restore --configuration Release -p:ContinuousIntegrationBuild=true
-      - name: Build headless sample
-        run: dotnet build src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj --no-restore --configuration Release -p:ContinuousIntegrationBuild=true
-      - name: Test pure logic and architecture with coverage
-        shell: pwsh
-        run: |
-          $projects = @(
-            'GalNet.Architecture.Tests',
-            'GalNet.Core.Tests',
-            'GalNet.Runtime.Tests',
-            'GalNet.GameHost.Tests',
-            'GalNet.Primitives.Builtins.Tests',
-            'GalNet.Assets.Tests',
-            'GalNet.Storage.FileSystem.Tests'
-          )
-          foreach ($project in $projects) {
-            dotnet test "test/$project/$project.csproj" --no-restore --configuration Release --logger "trx;LogFileName=$project.trx" --results-directory artifacts/test-results --collect:"XPlat Code Coverage"
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
-      - name: Test editor and presentation with coverage
-        shell: pwsh
-        run: |
-          $projects = @(
-            'GalNet.Editor.Shared.Tests',
-            'GalNet.Editor.Tests',
-            'GalNet.Presentation.Tests'
-          )
-          foreach ($project in $projects) {
-            dotnet test "test/$project/$project.csproj" --no-restore --configuration Release --logger "trx;LogFileName=$project.trx" --results-directory artifacts/test-results --collect:"XPlat Code Coverage"
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
-      - name: Test integration with coverage
-        run: dotnet test test/GalNet.IntegrationTests/GalNet.IntegrationTests.csproj --no-restore --configuration Release --logger "trx;LogFileName=GalNet.IntegrationTests.trx" --results-directory artifacts/test-results --collect:"XPlat Code Coverage"
-      - name: Upload test results
+        run: ./scripts/ci/Invoke-CI.ps1 -Stage ${{ matrix.stage }} -OutputRoot out/ci/${{ matrix.stage }} -Coverage
+      - name: Upload check logs and test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: desktop-test-results
-          path: artifacts/test-results
+          name: ci-${{ matrix.stage }}
+          path: out/ci/${{ matrix.stage }}
           if-no-files-found: warn
-
-  platform-solution-build:
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: windows-latest
-    timeout-minutes: 45
-    env:
-      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
-      DOTNET_NOLOGO: '1'
-      AVALONIA_TELEMETRY_OPTOUT: '1'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 10.0.401
-      - name: Restore workloads
-        run: dotnet workload restore GalNet.slnx --version 10.0.401.1
-      - name: Restore locked dependencies
-        run: dotnet restore GalNet.slnx --locked-mode
-      - name: Build full solution
-        run: dotnet build GalNet.slnx --no-restore --configuration Release -p:ContinuousIntegrationBuild=true

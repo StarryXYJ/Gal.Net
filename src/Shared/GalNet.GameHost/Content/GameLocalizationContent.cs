@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
-using GalNet.Runtime.I18n;
 using GalNet.Core.I18n;
+using GalNet.Runtime.I18n;
 
 namespace GalNet.GameHost.Content;
 

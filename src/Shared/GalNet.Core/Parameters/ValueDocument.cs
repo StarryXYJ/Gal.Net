@@ -1,6 +1,6 @@
-using GalNet.Core.Serialization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Core.Parameters;
 

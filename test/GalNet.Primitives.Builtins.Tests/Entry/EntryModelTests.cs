@@ -1,7 +1,7 @@
+using System.Text.Json;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Primitives.Builtins;
-using System.Text.Json;
 
 namespace GeneralTest.Entry;
 

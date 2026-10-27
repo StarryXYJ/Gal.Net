@@ -1,4 +1,3 @@
-using GalNet.Editor.Abstraction.Settings;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -17,13 +16,14 @@ using Dock.Model.Controls;
 using Dock.Model.Core;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Abstraction.Settings;
 using GalNet.Editor.Commands;
 using GalNet.Editor.Dock;
 using GalNet.Editor.History;
 using GalNet.Editor.Models;
 using GalNet.Editor.Services;
-using GalNet.Editor.Shell;
 using GalNet.Editor.Shared.Services;
+using GalNet.Editor.Shell;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 

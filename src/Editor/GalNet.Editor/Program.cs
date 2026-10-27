@@ -43,7 +43,7 @@ sealed class Program
 #if BENCHMARK
             using (GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.ConfigureAvalonia"))
 #endif
-                app = ConfigureApp(AppBuilder.Configure(() => new App { Preparation = preparation }));
+            app = ConfigureApp(AppBuilder.Configure(() => new App { Preparation = preparation }));
 #if BENCHMARK
             GalNet.Diagnostics.CpuProfiler.Shared.Mark("Editor.RunAvalonia");
 #endif
