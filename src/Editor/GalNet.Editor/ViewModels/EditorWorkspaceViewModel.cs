@@ -27,6 +27,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
     private readonly GraphSelectionState _selection;
     private readonly EditorWorkspacePersistence _persistence;
     private readonly IEditorSettingsService _editorSettings;
+    public bool ExpandNewEntries => _editorSettings.GetSettings().ExpandNewEntries;
     private readonly IEditorLocalizationService _localization;
     private readonly IVariableDefinitionService _variableDefinitionService;
     private readonly Action<GalProject?> _projectChangedHandler;

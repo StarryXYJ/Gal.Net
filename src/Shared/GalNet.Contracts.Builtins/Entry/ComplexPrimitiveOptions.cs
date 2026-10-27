@@ -43,7 +43,7 @@ public partial class AnimationOptions
 {
     [Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? PlaybackHandleId { get; set; }
     [Common, Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? HandleId { get; set; }
-    [Field(2, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AnimationPropertyValueConverter))]
+    [Field(2, AllowNull = true, EditorId = ValueEditorIds.Choice)]
     [Common]
     public string? Property { get; set; }
     [Common, Field(3, EditorId = ValueEditorIds.Numeric)] public float From { get; set; }
@@ -60,17 +60,6 @@ public partial class AnimationOptions
     public AnimationLoopMode? LoopMode { get; set; } = AnimationLoopMode.Once;
     [Field(11, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<AnimationBlendMode>))]
     public AnimationBlendMode? BlendMode { get; set; } = AnimationBlendMode.Replace;
-}
-
-public sealed class AnimationPropertyValueConverter : JsonConverter<string>, IStringValueEncoding
-{
-    public IReadOnlyList<string> Choices { get; } = Array.AsReadOnly(Layer.AnimationProperties
-        .Concat(ParticleEmitterInstance.AnimationProperties)
-        // Shader effect properties come from program metadata, so the compiler cannot enumerate
-        // them here. Keep the common Shadertoy time property authorable.
-        .Select(property => property.Name).Append("time").Distinct(StringComparer.Ordinal).ToArray());
-    public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => reader.GetString();
-    public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options) => writer.WriteStringValue(value);
 }
 
 [GenerateFieldSchema]

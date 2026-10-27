@@ -365,7 +365,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         // Capture only neutral author data and project services, never this projection or its forms.
         return () => new EntryEditorItemViewModel(source, catalog!) { _authoring = authoring, _groupId = group, DraftIncarnation = incarnation, _formParameters = parameters };
     }
-    internal void RefreshSummary() => OnPropertyChanged(nameof(Summary));
+    internal void RefreshSummary() { OnPropertyChanged(nameof(Summary)); ParameterForm?.Refresh(); _detailForm?.Refresh(); _effectInlineForm?.Refresh(); }
     internal void BindAuthoring(string groupId, EntryFieldAuthoringService authoring, SceneTargetCatalog? scenes) { _groupId = groupId; _authoring = authoring; _scenes = scenes; }
     internal IReadOnlyList<FieldEditorOption>? SceneOptions(string field) => _scenes?.FieldOptions(_groupId!, StableId, Type, field);
     internal bool IsSceneOutput(string field) => SceneFieldSemantics.IsOutput(Type, field);

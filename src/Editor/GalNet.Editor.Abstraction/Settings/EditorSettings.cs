@@ -32,6 +32,9 @@ public sealed class EditorSettings
 
     public bool AutoSaveProject { get; set; } = true;
 
+    /// <summary>Whether newly inserted Group entries show their parameter fields.</summary>
+    public bool ExpandNewEntries { get; set; } = true;
+
     /// <summary>Stable UI command ID to Avalonia gesture text. Empty text disables the shortcut.</summary>
     public Dictionary<string, string> GestureOverrides { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }

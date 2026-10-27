@@ -23,7 +23,7 @@ public sealed class FieldEditorRow : Grid
     public IFieldBinding? Binding { get => GetValue(BindingProperty); set => SetValue(BindingProperty, value); }
     public bool ShowLabel { get => GetValue(ShowLabelProperty); set => SetValue(ShowLabelProperty, value); }
     private readonly ContentControl _label = new() { Name = "FieldLabel", VerticalAlignment = VerticalAlignment.Top, Margin = new(0, 6, 0, 0) };
-    private readonly ContentControl _editor = new() { HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Top };
+    private readonly ContentControl _editor = new() { Name = "FieldEditor", HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Top };
     private readonly FieldEditorActions _actions = new() { Simplified = true, VerticalAlignment = VerticalAlignment.Top };
     private readonly TextBlock _issue = new() { TextWrapping = global::Avalonia.Media.TextWrapping.Wrap };
     private FieldEditorContext? _owned, _active;

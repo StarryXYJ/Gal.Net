@@ -100,6 +100,20 @@ public sealed partial class SceneTargetCatalog : IDisposable
     }
     public IReadOnlyList<FieldEditorOption>? FieldOptions(string groupId, string entryId, string type, string field, SceneTimelinePosition? position = null)
     {
+        if (type == BuiltinEntryIds.Animate && field == "property")
+        {
+            if (!documents.Groups.TryGetValue(groupId, out var group) || group.Entries.FirstOrDefault(entry => entry.StableId == entryId) is not { } entry
+                || !entry.Parameters.TryGetValue("handleId", out var handleValue) || handleValue.ValueKind != JsonValueKind.String)
+                return [];
+            var handle = handleValue.GetString();
+            var target = Query(groupId, entryId, position: position).Choices.FirstOrDefault(choice => choice.Target.Handle == handle)?.Target;
+            return target?.Properties.Select(property =>
+            {
+                var key = "Timeline.Property." + property.Name;
+                var label = localization[key];
+                return new FieldEditorOption(property.Name, label == "[" + key + "]" ? property.Name : label, JsonSerializer.SerializeToElement(property.Name));
+            }).ToArray() ?? [];
+        }
         if (SceneAuthoringSemantics.Reference(type, field)?.Domain == SceneIdentityDomain.AudioEffect) return AudioFieldOptions(groupId, entryId, type);
         var kinds = SceneFieldSemantics.TargetKinds(type, field); if (kinds is null) return null;
         var snapshot = Query(groupId, entryId, target => kinds.Contains(target.Kind) && (SceneAuthoringSemantics.Reference(type, field)?.RequiresVariants != true || target.Variants is not null), position, SceneAuthoringSemantics.Reference(type, field)?.Domain == SceneIdentityDomain.Playback);

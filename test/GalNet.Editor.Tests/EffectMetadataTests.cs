@@ -349,6 +349,39 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     }
 
     [Test]
+    public async Task AnimationPropertyChoicesFollowSelectedLayerAndShaderMetadata()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(async () =>
+        {
+            using var assets = new MetadataAssets(); using var resources = new MetadataResources();
+            using var services = EffectServices(assets, resources); var projects = services.GetRequiredService<IProjectService>();
+            var project = await projects.CreateAsync(Path.Combine(_root, "AnimationChoices"), "Choices", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
+            try
+            {
+                var scope = project.Services; var workspace = scope.GetRequiredService<EditorWorkspaceViewModel>();
+                var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
+                var layer = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.ShowLayer).Single();
+                var fx = workspace.InsertEntriesInto(group, 1, 1, BuiltinEntryIds.ApplyEffect).Single();
+                fx.Source.Parameters["program"] = JsonSerializer.SerializeToElement("program");
+                var animation = workspace.InsertEntriesInto(group, 2, 1, BuiltinEntryIds.Animate).Single();
+                scope.GetRequiredService<IEditorDocumentService>().SynchronizeGroups();
+                var catalog = scope.GetRequiredService<SceneTargetCatalog>();
+                await scope.GetRequiredService<ProjectSceneTargets>().PrepareAsync();
+                string[] Choices() => catalog.FieldOptions(group.Id, animation.StableId, animation.Type, "property")!.Select(option => option.Id).ToArray();
+                animation.Source.Parameters["handleId"] = layer.Source.Parameters["handleId"].Clone();
+                Assert.That(Choices(), Does.Contain("opacity")); Assert.That(Choices(), Does.Not.Contain("amount"));
+                animation.Source.Parameters["handleId"] = fx.Source.Parameters["instanceId"].Clone();
+                Assert.That(Choices(), Does.Contain("amount")); Assert.That(Choices(), Does.Contain("progress")); Assert.That(Choices(), Does.Not.Contain("opacity"));
+                animation.Source.Parameters["handleId"] = JsonSerializer.SerializeToElement("unknown");
+                Assert.That(Choices(), Is.Empty);
+            }
+            finally { await projects.CloseAsync(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
     public async Task EffectMetadataTimelineUsesRealPropertyMenuHistoryRefreshAndSaveReopen()
     {
         var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);

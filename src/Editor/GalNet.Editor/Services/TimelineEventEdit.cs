@@ -11,6 +11,7 @@ public sealed class TimelineEventEdit : IDisposable
     private readonly Dictionary<string, JsonElement> _values;
     private readonly Dictionary<string, EventField> _fields;
     private bool _disposed;
+    internal bool Independent { get; }
     internal TimelineDocument Document { get; }
     internal int Generation { get; }
     internal int Frame { get; }
@@ -18,8 +19,9 @@ public sealed class TimelineEventEdit : IDisposable
     internal Dictionary<string, FieldValue> Patch { get; } = new(StringComparer.Ordinal);
     public bool IsCurrent => !_disposed && _owner.IsEventEditCurrent(this);
     public DtoEditorItem Item { get; }
-    internal TimelineEventEdit(TimelineEditSession owner, TimelineDocument document, int generation, int frame, int index, string type, Type? dtoType, IReadOnlyList<FieldDescriptor> fields)
+    internal TimelineEventEdit(TimelineEditSession owner, TimelineDocument document, int generation, int frame, int index, string type, Type? dtoType, IReadOnlyList<FieldDescriptor> fields, bool independent = false)
     {
+        Independent = independent;
         _owner = owner; Document = document; Generation = generation; Frame = frame; Index = index;
         var raw = document.Events[index].Raw;
         var parameters = raw.EnumerateObject().FirstOrDefault(pair => pair.Name.Equals("parameters", StringComparison.OrdinalIgnoreCase)).Value;

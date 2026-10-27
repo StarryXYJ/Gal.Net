@@ -26,10 +26,9 @@
                 <Button Name="CancelEntryMove" Content="{loc:Localize Entry.MoveCancel}" Command="{Binding CancelPendingMoveCommand}" IsVisible="{Binding HasPendingMove}" Margin="0,0,6,0"/>
             </StackPanel>
             <TextBox Width="170" Text="{Binding SearchText}" PlaceholderText="{loc:Localize Uiux.Entry.Search}" Margin="0,0,6,0" />
-            <Button Theme="{DynamicResource EditorIconButton}" ToolTip.Tip="{loc:Localize Entry.Add}" AutomationProperties.Name="{loc:Localize Entry.Add}" Command="{Binding AddEntryCommand}" Margin="0,0,6,0"><PathIcon Width="16" Height="16" Data="{StaticResource AddIcon}"/></Button>
-            <Button Content="{loc:Localize Entry.AppendBatch}" Command="{Binding AppendEntriesCommand}" Margin="0,0,6,0" />
+            <controls:EntryTypePicker x:Name="InsertPicker" ButtonLabel="{loc:Localize Entry.Add}" Options="{Binding EntryTypes}" ShortcutService="{Binding ShortcutService}" Opened="OnInsertPickerOpened" Closed="OnInsertPickerClosed" TypeConfirmed="OnInsertTypeConfirmed" Margin="0,0,6,0" />
+            <controls:EntryTypePicker x:Name="AppendPicker" ButtonLabel="{loc:Localize Entry.AppendBatch}" Options="{Binding EntryTypes}" ShortcutService="{Binding ShortcutService}" TypeConfirmed="OnAppendTypeConfirmed" Margin="0,0,6,0" />
             <NumericUpDown x:Name="BatchCount" Width="90" Minimum="1" Maximum="1000" Increment="1" FormatString="0" Value="{Binding BatchAddCount,Mode=TwoWay}" Margin="0,0,6,0" ToolTip.Tip="{loc:Localize Entry.BatchCount}" />
-            <controls:EntryTypePicker x:Name="InsertPicker" MinHeight="32" VerticalAlignment="Center"  Options="{Binding EntryTypes}" ShortcutService="{Binding ShortcutService}" SelectedValue="{Binding InsertionType,Mode=OneWay}" Opened="OnInsertPickerOpened" Closed="OnInsertPickerClosed" TypeConfirmed="OnInsertTypeConfirmed" />
             <Button Theme="{DynamicResource EditorIconButton}" ToolTip.Tip="{loc:Localize Uiux.Entry.ExpandAll}" AutomationProperties.Name="{loc:Localize Uiux.Entry.ExpandAll}" Command="{Binding ExpandAllCommand}" Margin="0,0,6,0"><PathIcon Width="16" Height="16" Data="{StaticResource ChevronDownRegular}"/></Button>
             <Button Theme="{DynamicResource EditorIconButton}" ToolTip.Tip="{loc:Localize Uiux.Entry.CollapseAll}" AutomationProperties.Name="{loc:Localize Uiux.Entry.CollapseAll}" Command="{Binding CollapseAllCommand}" Margin="0,0,6,0"><PathIcon Width="16" Height="16" Data="{StaticResource ChevronUpRegular}"/></Button>
         </WrapPanel>

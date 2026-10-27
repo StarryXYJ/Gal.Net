@@ -354,6 +354,35 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         }, CancellationToken.None);
     }
 
+    [Test]
+    public async Task GeneratedCheckboxIsCenteredInTheEditorColumnAtWideAndNarrowWidths()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme(); var registry = EditorFieldEditors.CreateDefault();
+            var binding = new PropertyBinding("true");
+            using var context = new FieldEditorContext(new("enabled", new(typeof(bool))), binding, registry);
+            using var lease = registry.Resolve(context.Field)(context);
+            var checkbox = (CheckBox)lease.Control;
+            var row = new FieldEditorRow { Context = context, Label = "Enabled", Editor = checkbox };
+            var window = new Window { Content = row, Width = 700, Height = 150 }; window.Show(); TimelinePump(window);
+            try
+            {
+                void CheckCenter()
+                {
+                    var column = row.GetVisualDescendants().OfType<ContentControl>().Single(item => item.Name == "FieldEditor");
+                    var x = checkbox.TranslatePoint(default, column)!.Value.X;
+                    Assert.That(x + checkbox.Bounds.Width / 2, Is.EqualTo(column.Bounds.Width / 2).Within(1));
+                }
+                CheckCenter(); window.Width = 350; TimelinePump(window); CheckCenter();
+                checkbox.IsChecked = false; Assert.That(binding.Value.Json!.Value.GetBoolean(), Is.False);
+            }
+            finally { window.Close(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
     private sealed class PropertyBinding(string json) : IFieldBinding
     {
         public FieldValue Value { get; private set; } = new(JsonSerializer.Deserialize<JsonElement>(json));

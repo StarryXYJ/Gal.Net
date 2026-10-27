@@ -56,7 +56,7 @@ public static class DefaultFieldEditors
     {
         Require(context, typeof(bool));
         if (context.EffectiveValue is { } json && ValueValidation.Validate(context.Field.Value, json) is not null) return CreateJson(context);
-        var control = new CheckBox { IsThreeState = context.Field.Value.AllowNull };
+        var control = new CheckBox { IsThreeState = context.Field.Value.AllowNull, HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Center, VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center, VerticalContentAlignment = global::Avalonia.Layout.VerticalAlignment.Center };
         return Bind(control, context,
             () => control.IsChecked = (bool?)context.ReadValue(),
             change =>

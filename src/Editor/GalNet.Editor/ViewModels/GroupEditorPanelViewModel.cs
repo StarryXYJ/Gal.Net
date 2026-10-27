@@ -173,7 +173,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         EntryTypes = catalog.Definitions.Select(definition => new EntryTypeOption(definition.Type, definition.Category, $"Entry.Type.{definition.Type}")).ToArray();
         Workspace.VariableDefinitionsChanged += OnVariableDefinitionsChanged;
         _entries.CollectionChanged += OnEntriesChanged;
-        foreach (var entry in _entries) Attach(entry);
+        foreach (var entry in _entries) Attach(entry, isNew: false);
     }
 
     [RelayCommand]
@@ -196,6 +196,13 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     }
 
     private int BatchCount => (int)Math.Clamp(BatchAddCount, 1, 1000);
+    public void InsertChosenType(string type, string? anchorId)
+    {
+        if (_disposed || !EntryTypes.Any(item => item.Value == type)) return;
+        var index = anchorId is null ? GroupNode.Entries.Count : GroupNode.Entries.ToList().FindIndex(entry => entry.StableId == anchorId) + 1;
+        if (anchorId is not null && index == 0) { ErrorText = EditorLocalizationService.Current?["Entry.AnchorMissing"] ?? "The insertion target was removed."; return; }
+        InsertionType = type; InsertEntries(index, BatchCount);
+    }
     public void InsertType(string type, string? anchorId)
     {
         if (_disposed) return;
@@ -284,16 +291,17 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         OnPropertyChanged(nameof(VisibleEntries));
         if (e.Action == NotifyCollectionChangedAction.Move) return;
         foreach (var entry in _attached.Where(entry => !_entries.Contains(entry)).ToArray()) { entry.PropertyChanged -= OnEntryPropertyChanged; _attached.Remove(entry); }
-        foreach (var entry in _entries.Where(entry => !_attached.Contains(entry)).ToArray()) Attach(entry);
+        foreach (var entry in _entries.Where(entry => !_attached.Contains(entry)).ToArray()) Attach(entry, isNew: true);
         foreach (var entry in SelectedEntries.Where(entry => !_entries.Contains(entry)).ToArray()) SelectedEntries.Remove(entry);
         UpdateActiveSelection(null);
     }
 
-    private void Attach(EntryEditorItemViewModel entry)
+    private void Attach(EntryEditorItemViewModel entry, bool isNew)
     {
         if (!_attached.Add(entry)) return;
         entry.IsPendingMove = _authoring.IsPendingMove(GroupId, entry.StableId);
-        entry.IsParametersExpanded = _expanded.GetValueOrDefault(entry.StableId, true);
+        entry.IsParametersExpanded = _expanded.GetValueOrDefault(entry.StableId, !isNew || Workspace.ExpandNewEntries);
+        _expanded[entry.StableId] = entry.IsParametersExpanded;
         entry.PropertyChanged += OnEntryPropertyChanged;
         Configure(entry);
     }

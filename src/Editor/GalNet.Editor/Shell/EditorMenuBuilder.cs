@@ -57,7 +57,7 @@ internal sealed class EditorMenuBuilder(EditorShortcutService shortcuts, EditorD
                 HeaderKey = "Editor.Menu.Settings",
                 Children = new AvaloniaList<MenuData>
                 {
-                    new() { HeaderKey = "Editor.Menu.ProjectConfiguration", Command = commands.ShowProjectSettings },
+                    new() { HeaderKey = "Editor.Menu.ProjectSettings", Command = commands.ShowProjectSettings },
                     new() { HeaderKey = "Editor.Menu.EditorSettings", Command = commands.ShowEditorSettings },
                 }
             },

@@ -39,6 +39,9 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
     [ObservableProperty]
     private bool _autoSaveProject = true;
 
+    [ObservableProperty]
+    private bool _expandNewEntries = true;
+
     public ObservableCollection<ThemeSelectionItem> AvailableThemes { get; } = [];
     public ObservableCollection<CultureInfo> AvailableCultures { get; } = [];
     public ObservableCollection<ShortcutSettingItemViewModel> Shortcuts { get; } = [];
@@ -97,6 +100,7 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
                           ?? AvailableCultures.FirstOrDefault(culture => culture.Name == "zh-CN")
                           ?? AvailableCultures.FirstOrDefault();
         AutoSaveProject = settings.AutoSaveProject;
+        ExpandNewEntries = settings.ExpandNewEntries;
         _loading = false;
     }
 
@@ -167,6 +171,14 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
         _editorSettings.SaveSettings();
         L.ApplyCulture(value);
 
+        SetStatus(new("Settings.Saved"));
+    }
+
+    partial void OnExpandNewEntriesChanged(bool value)
+    {
+        if (_loading) return;
+        _editorSettings.GetSettings().ExpandNewEntries = value;
+        _editorSettings.SaveSettings();
         SetStatus(new("Settings.Saved"));
     }
 

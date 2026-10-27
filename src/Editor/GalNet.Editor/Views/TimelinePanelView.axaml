@@ -82,7 +82,7 @@
       <Grid Name="TimelineEventsSection" Grid.Row="2" RowDefinitions="32,*" IsVisible="{Binding Session.CanEdit}"><Grid.ColumnDefinitions><ColumnDefinition Width="{Binding #Root.TreeColumnWidth,Mode=TwoWay}" MinWidth="180" MaxWidth="600"/><ColumnDefinition Width="5"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
         <Grid ColumnDefinitions="*,Auto" Margin="4,0,6,0">
           <TextBlock Text="{loc:Localize Timeline.Event.Title}" FontWeight="SemiBold" VerticalAlignment="Center"/>
-          <controls:EntryTypePicker Grid.Column="1" Name="TimelineEventType" Width="170" Options="{Binding Session.EventTypes}" SelectedValue="layer.show" ToolTip.Tip="{loc:Localize Timeline.Event.Add}" AutomationProperties.Name="{loc:Localize Timeline.Event.Add}" Opened="OnEventTypeOpened" Closed="OnEventTypeClosed" TypeConfirmed="OnEventTypeConfirmed"/>
+          <controls:EntryTypePicker Grid.Column="1" Name="TimelineEventType" ButtonLabel="{loc:Localize Timeline.Event.Add}" Options="{Binding Session.EventTypes}" SelectedValue="layer.show" ToolTip.Tip="{loc:Localize Timeline.Event.Add}" AutomationProperties.Name="{loc:Localize Timeline.Event.Add}" Opened="OnEventTypeOpened" Closed="OnEventTypeClosed" TypeConfirmed="OnEventTypeConfirmed"/>
         </Grid>
         <timeline:TimelineCanvas Grid.Column="2" Name="TimelineEventRuler" IsRuler="True" Model="{Binding Session.Canvas}"/>
         <ScrollViewer Grid.Row="1" Grid.ColumnSpan="3" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -93,7 +93,7 @@
                   <Grid ColumnDefinitions="20,*,Auto" Margin="4,0,6,0">
                     <TextBlock Text="◆" Foreground="DodgerBlue" IsVisible="{Binding IsSelected}" VerticalAlignment="Center"/>
                     <TextBlock Grid.Column="1" Text="{Binding Label}" ToolTip.Tip="{Binding Label}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                    <Button Grid.Column="2" Name="EditTimelineEvent" Content="{loc:Localize Timeline.Event.Edit}" IsEnabled="{Binding CanEdit}" Click="OnEditEvent"/>
+
                   </Grid>
                 </Border>
               </DataTemplate></ItemsControl.ItemTemplate>

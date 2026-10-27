@@ -76,15 +76,16 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             {
                 var history = project.Services.GetRequiredService<EditorHistories>().Content; history.Clear();
                 var original = group.Entries.Select(entry => entry.StableId).ToArray(); vm.SelectedEntry = group.Entries[0]; vm.BatchAddCount = 3;
-                var toolbar = view.FindControl<WrapPanel>("EntryToolbar")!; var buttons = toolbar.Children.OfType<Button>().ToArray(); Click(window, buttons[0]);
+                var picker = view.FindControl<EntryTypePicker>("InsertPicker")!; var appendPicker = view.FindControl<EntryTypePicker>("AppendPicker")!;
+                Click(window, picker.FindControl<ToggleButton>("OpenButton")!); Dispatcher.UIThread.RunJobs(); var search = picker.FindControl<TextBox>("SearchInput")!; SetGroupSearch(search, "flow.wait"); PressGroupKey(search, Key.Down); PressGroupKey(search, Key.Enter);
                 Assert.That(group.Entries, Has.Count.EqualTo(6)); Assert.That(group.Entries[0].StableId, Is.EqualTo(original[0])); Assert.That(group.Entries[4].StableId, Is.EqualTo(original[1]));
                 var inserted = group.Entries.Skip(1).Take(3).Select(entry => entry.StableId).ToArray(); Assert.That(inserted.Distinct().Count(), Is.EqualTo(3));
                 await history.UndoAsync(); Assert.That(group.Entries.Select(entry => entry.StableId), Is.EqualTo(original)); Assert.That(history.CanUndo, Is.False);
                 await history.RedoAsync(); Assert.That(group.Entries.Skip(1).Take(3).Select(entry => entry.StableId), Is.EqualTo(inserted));
-                vm.SelectedEntry = group.Entries[0]; vm.BatchAddCount = 2; Click(window, buttons[1]); Assert.That(group.Entries, Has.Count.EqualTo(8)); Assert.That(vm.SelectedEntry, Is.SameAs(group.Entries[^1]));
-                var list = view.FindControl<ListBox>("ItemsListBox")!; var picker = view.FindControl<EntryTypePicker>("InsertPicker")!;
+                vm.SelectedEntry = group.Entries[0]; vm.BatchAddCount = 2; Click(window, appendPicker.FindControl<ToggleButton>("OpenButton")!); Dispatcher.UIThread.RunJobs(); var appendSearch = appendPicker.FindControl<TextBox>("SearchInput")!; SetGroupSearch(appendSearch, "flow.wait"); PressGroupKey(appendSearch, Key.Down); PressGroupKey(appendSearch, Key.Enter); Assert.That(group.Entries, Has.Count.EqualTo(8)); Assert.That(vm.SelectedEntry, Is.SameAs(group.Entries[^1]));
+                var list = view.FindControl<ListBox>("ItemsListBox")!;
                 vm.SelectedEntry = group.Entries[0]; list.Focus(); PressGroupKey(list, Key.Space); Dispatcher.UIThread.RunJobs();
-                Assert.That(picker.IsOpen, Is.True); var search = picker.FindControl<TextBox>("SearchInput")!; SetGroupSearch(search, "flow.wait"); PressGroupKey(search, Key.Down); PressGroupKey(search, Key.Enter);
+                Assert.That(picker.IsOpen, Is.True); SetGroupSearch(search, "flow.wait"); PressGroupKey(search, Key.Down); PressGroupKey(search, Key.Enter);
                 Assert.That(group.Entries, Has.Count.EqualTo(9), "Picker confirmation always inserts one, independent of batch count."); Assert.That(vm.SelectedEntry, Is.SameAs(group.Entries[1])); Assert.That(vm.SelectedEntry!.Type, Is.EqualTo(BuiltinEntryIds.Wait));
                 foreach (var entry in group.Entries) entry.IsParametersExpanded = false;
                 Dispatcher.UIThread.RunJobs(); window.UpdateLayout(); var scroll = list.GetVisualDescendants().OfType<ScrollViewer>().First(); scroll.Offset = new Vector(0, Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height)); window.UpdateLayout();
@@ -92,8 +93,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(vm.SelectedEntry, Is.Null); list.Focus(); PressGroupKey(list, Key.Space); Dispatcher.UIThread.RunJobs(); SetGroupSearch(search, "flow.wait"); PressGroupKey(search, Key.Down); PressGroupKey(search, Key.Enter);
                 Assert.That(group.Entries, Has.Count.EqualTo(10)); Assert.That(vm.SelectedEntry, Is.SameAs(group.Entries[^1]));
                 vm.SelectedEntry = group.Entries[0]; vm.InsertionType = "not.available"; vm.BatchAddCount = 3;
-                Click(window, buttons[1]); Dispatcher.UIThread.RunJobs(); Assert.That(picker.IsOpen, Is.True);
-                SetGroupSearch(search, "flow.wait"); PressGroupKey(search, Key.Down); PressGroupKey(search, Key.Enter);
+                Click(window, appendPicker.FindControl<ToggleButton>("OpenButton")!); Dispatcher.UIThread.RunJobs(); Assert.That(appendPicker.IsOpen, Is.True);
+                SetGroupSearch(appendSearch, "flow.wait"); PressGroupKey(appendSearch, Key.Down); PressGroupKey(appendSearch, Key.Enter);
                 Assert.That(group.Entries, Has.Count.EqualTo(13), "A button that requires type selection retains its batch count and append intent."); Assert.That(vm.SelectedEntry, Is.SameAs(group.Entries[^1]));
                 foreach (var entry in group.Entries) entry.IsParametersExpanded = false;
                 Dispatcher.UIThread.RunJobs(); window.UpdateLayout(); scroll.Offset = new Vector(0, Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height)); window.UpdateLayout();
@@ -104,6 +105,15 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var anchor = vm.SelectedEntry!; workspace.RemoveEntryFrom(group, anchor); var count = group.Entries.Count;
                 SetGroupSearch(search, "flow.wait"); PressGroupKey(search, Key.Down); PressGroupKey(search, Key.Enter); Assert.That(group.Entries.Count, Is.EqualTo(count)); Assert.That(vm.ErrorText, Is.Not.Empty);
                 var number = view.FindControl<NumericUpDown>("BatchCount")!; number.Focus(); var key = PressGroupKey(number, Key.Space); Assert.That(picker.IsOpen, Is.False); Assert.That(key.Handled, Is.False);
+                var preferences = project.Services.GetRequiredService<EditorSettingsPanelViewModel>();
+                preferences.ExpandNewEntries = false;
+                var newEntry = workspace.InsertEntriesInto(group, group.Entries.Count, 1, BuiltinEntryIds.Wait).Single();
+                Assert.That(newEntry.IsParametersExpanded, Is.False);
+                newEntry.IsParametersExpanded = true;
+                preferences.ExpandNewEntries = true;
+                Assert.That(newEntry.IsParametersExpanded, Is.True, "Changing the preference does not reset existing entries.");
+                Assert.That(workspace.InsertEntriesInto(group, group.Entries.Count, 1, BuiltinEntryIds.Wait).Single().IsParametersExpanded, Is.True);
+                preferences.Dispose();
                 await project.Services.GetRequiredService<IProjectContentSession>().SaveAsync(); Assert.That(project.Services.GetRequiredService<IProjectContentSession>().IsDirty, Is.False);
                 if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } artifacts) { using var frame = window.CaptureRenderedFrame(); frame!.Save(Path.Combine(artifacts, "group-toolbar.png")); }
             }

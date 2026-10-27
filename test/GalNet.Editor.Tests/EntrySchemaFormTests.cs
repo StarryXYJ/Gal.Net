@@ -121,7 +121,10 @@ public sealed class EntrySchemaFormTests
                 Assert.That(entry.Parameters["count"], Is.EqualTo("9007199254740993"));
                 input.Text = "9007199254740995";
                 Assert.That(await form.Contexts[0].CommitTextAsync(), Is.True);
-                ((CheckBox)form.Editors[2].Control).IsChecked = false;
+                var checkbox = (CheckBox)form.Editors[2].Control;
+                Assert.That(checkbox.VerticalAlignment, Is.EqualTo(Avalonia.Layout.VerticalAlignment.Center));
+                Assert.That(checkbox.VerticalContentAlignment, Is.EqualTo(Avalonia.Layout.VerticalAlignment.Center));
+                checkbox.IsChecked = false;
                 ((ComboBox)form.Editors[1].Control).SelectedItem = form.Contexts[1].Options.Single(item => item.Value.GetString() == "Friday");
                 var saved = new EditorDocumentRepository(catalog).SerializeEntry(new EditorEntryData
                 { StableId = entry.StableId, Type = entry.Type, Parameters = entry.Source.Parameters });

@@ -51,6 +51,16 @@ public sealed class EditorLocalizationTests
         foreach (var map in maps)
         {
             Assert.That(map.Keys, Is.EquivalentTo(maps[0].Keys));
+            foreach (var definition in new GalNet.Core.Entry.TargetProfileEntryCatalog(GalNet.Contracts.Builtins.BuiltinSchemas.CreateAllModules()).Definitions)
+            {
+                Assert.That(map, Does.ContainKey("Entry.Type." + definition.Type), definition.Type);
+                Assert.That(map, Does.ContainKey("Entry.Category." + definition.Category), definition.Category);
+
+            }
+            var missingFields = new GalNet.Core.Entry.TargetProfileEntryCatalog(GalNet.Contracts.Builtins.BuiltinSchemas.CreateAllModules()).Definitions
+                .SelectMany(definition => definition.DynamicParameters.Fields).Where(field => field.LabelKey is null && !map.ContainsKey("Entry.Parameter." + field.Id)).Select(field => field.Id).Distinct().ToArray();
+            Assert.That(missingFields, Is.Empty);
+            Assert.That(map, Does.ContainKey("Editor.Menu.ProjectSettings"));
             foreach (var (key, value) in map)
             {
                 Assert.That(value, Is.Not.Empty, key);

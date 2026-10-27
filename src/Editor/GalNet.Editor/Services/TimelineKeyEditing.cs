@@ -124,7 +124,7 @@ public sealed partial class TimelineEditSession
     {
         if (_document is null) return;
         var tracks = SelectedTracks(); if (tracks.Length == 0) tracks = Enumerable.Range(0, _document.Tracks.Count).ToArray();
-        var frames = tracks.SelectMany(track => _document.Tracks[track].Keys.Select(key => key.Frame));
+        var frames = tracks.SelectMany(track => _document.Tracks[track].Keys.Select(key => key.Frame)).Concat(_document.Events.Select(item => item.Frame));
         var next = direction < 0 ? frames.Where(frame => frame < Frame).DefaultIfEmpty(0).Max() : frames.Where(frame => frame > Frame).DefaultIfEmpty(Duration).Min(); Frame = next;
     }
     public void CancelTimingInput(bool frameRate)

@@ -49,7 +49,9 @@ public static class BuiltInDockContributions
             sp => sp.GetRequiredService<CharactersPanelViewModel>(), typeof(CharactersPanelView), null));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<TimelinePanelViewModel>(
             EditorDockPanelIds.Timeline, "Dock.Panel.Timeline", DockPanelPlacement.BottomDocument, true, true, true, false, true,
-            sp => sp.GetRequiredService<TimelinePanelViewModel>(), typeof(TimelinePanelView), null));
+            sp => sp.GetRequiredService<TimelinePanelViewModel>(), typeof(TimelinePanelView),
+            new DelegateInspectorContribution<TimelinePanelViewModel, TimelineEventInspectorViewModel>(
+                (sp, page) => new TimelineEventInspectorViewModel(page), typeof(TimelineEventInspectorView))));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<VariablesPanelViewModel>(
             EditorDockPanelIds.Variables, "Dock.Panel.Variables", DockPanelPlacement.MainDocument, true, true, true, false, true,
             sp => { var vm = sp.GetRequiredService<VariablesPanelViewModel>(); vm.Navigation = sp.GetService<AuthorNavigationService>(); return vm; }, typeof(VariablesPanelView), null));

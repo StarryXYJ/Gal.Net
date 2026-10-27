@@ -93,9 +93,11 @@ public partial class EntryListEditorControl : ReorderableListControl
         (DataContext as GroupEditorPanelViewModel)?.CancelInsertion();
         if (_quickInsert) ItemsListBox.Focus(); _quickInsert = false;
     }
+    private void OnAppendTypeConfirmed(object? sender, EntryTypeConfirmedEventArgs args)
+    { if (DataContext is GroupEditorPanelViewModel vm) vm.InsertChosenType(args.Type, null); ScrollSelectionIntoView(); }
     private void OnInsertTypeConfirmed(object? sender, EntryTypeConfirmedEventArgs args)
     {
-        if (DataContext is GroupEditorPanelViewModel vm) vm.InsertType(args.Type, _insertAnchor);
+        if (DataContext is GroupEditorPanelViewModel vm) { if (_quickInsert) vm.InsertType(args.Type, _insertAnchor); else vm.InsertChosenType(args.Type, _insertAnchor); }
         ScrollSelectionIntoView();
     }
     private async void OnEntryTypeConfirmed(object? sender, EntryTypeConfirmedEventArgs args)
