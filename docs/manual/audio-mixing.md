@@ -1,6 +1,6 @@
 # Track / Bus 音频混音
 
-默认宿主使用 `MiniaudioAudioPlaybackHost`，Windows x64 设备/解码适配位于 `GalNet.Media.Miniaudio`，跨平台 PCM 混音与 DSP 位于 `GalNet.Media.Audio`。LibVLC 继续服务视频和 Gallery，剧情音频不再通过独立 LibVLC player 输出。
+默认宿主使用 `MiniaudioAudioPlaybackHost`，原生设备/解码适配位于 `GalNet.Media.Miniaudio`，跨平台 PCM 混音与 DSP 位于 `GalNet.Media.Audio`。LibVLC 继续服务视频和 Gallery，剧情音频不再通过独立 LibVLC player 输出。
 
 ## 对象职责
 
@@ -52,8 +52,12 @@ Editor 的应用表单依次选择作用范围、Track/Bus、效果类型，再�
 
 默认 `galnet.project` section 版本为 2，使用 `audioBuses` / `audioTracks[].busId`。旧 section v1 被明确拒绝，需更新字段和版本；SEffect 旧 `trackId` 改为 `targetId`，旧 EQ 参数 `attenuationDb` 删除。音频轨道/效果状态表版本为 2，并新增 `builtin.audio.channels`，旧档不能混用。
 
-Windows 开发构建需要 Visual Studio C++ x64 Build Tools；源码固定 miniaudio 0.11.23，构建自动生成并复制 `galnet_miniaudio.dll`，发布目录也包含它。玩家只需发布产物，无需编译器。当前验证 Windows x64；其他设备平台保留 `IAudioOutput` / `IAudioPcmDecoder` 适配边界。内置解码支持 WAV/MP3/Ogg Vorbis/FLAC，其他格式明确报错；当前不提供 Send、跨 Bus 路由或 Sidechain。
+Windows 开发构建需要 Visual Studio C++ Build Tools；源码固定 miniaudio 0.11.23，构建按目标 RID 选择 x64/ARM64 工具链，在 `obj/native/<rid>/` 生成并复制 `galnet_miniaudio.dll`，发布目录也包含它。ARM64 需要安装对应 C++ 工具。其他系统通过 `native/CMakeLists.txt` 构建，并由 `GalNetMiniaudioNativePath` 传入匹配目标的动态库；Android/iOS 的包内原生库归宿主平台项目部署，不能仅依赖普通 Content 复制。当前实机验证 Windows x64。内置解码支持 WAV/MP3/Ogg Vorbis/FLAC，其他格式明确报错；当前不提供 Send、跨 Bus 路由或 Sidechain。构建示例和验收边界见[跨平台后端接入](cross-platform-backends.md)。
+
+原生 ABI 当前为 2：路径统一为 UTF-8，Windows 内部转换为宽字符；设备回调使用静态 `UnmanagedCallersOnly` 入口和显式上下文，导入使用 `LibraryImport`。托管适配器和原生库必须一起更新，ABI 检查会拒绝不匹配版本；旧库缺少版本入口时同样不能运行。
 
 后端构造工厂为 `AvaloniaGamePresentationOptions.CreateAudioHost(assets, files)`。新适配器的所有权交给呈现会话，借用的 materializer 仍由宿主拥有。默认后端在后台解码至每实例两秒 PCM 有界缓冲，设备回调不读文件、不等待 Runtime 锁、不发布终态订阅；终态与文件释放在后台完成。源耗尽导致的缓冲不足填静音，不能据此宣称任意存储/设备条件下绝无断音。
 
 设备不可用时保留 PCM 效果目录和逻辑能力，避免设备状态使可移植存档的效果校验失效；实际 Start 通过 Failed 终态降级。
+
+`PcmAudioPlaybackHost.SupportsOutputSuspension` 表示输出实现是否支持可选的 `IAudioOutputLifecycle`。宿主可在控制线程调用 `SuspendOutput()` / `ResumeOutput()`；不得从设备渲染回调调用。暂停等待设备回调结束，不改变剧情 voice 的 Pause、gain、位置或 DSP 状态；解码仍可在有界缓冲范围内预读。Miniaudio 暂停时释放设备，恢复时重新选择默认设备，失败可重试；不自动监听系统音频焦点、路由或应用事件。宿主应先处理系统音频会话，再通知后端，并单独协调剧情推进。输出暂停不等于 Engine 停止，也不生成系统终止后的恢复点。

@@ -335,3 +335,5 @@
 - 外部项目创作：CLI project.apply 使用期望哈希和原生文件清单，同事务发布 Graph/Group/资源/本地化；产品 Skill 在 skills/galnet-project-authoring，随 CLI 分发。Editor 通用热重载采纳干净项目，在同一 scope 推进所有基线并清除旧历史；本地草稿冲突保留，Contracts DLL 仍需重开。见 features/F-20261025-02-external-project-authoring/summary.md 与 docs/manual/external-project-authoring.md。
 
 - 2026-10-26 引擎核心重构已完整验收：P0–P6、R1–R8 verified，1789 项普通与 10 项原生测试通过；完整构建/locked restore/格式通过。当前架构事实见前述及 docs/spec，分阶段提交与原始失败证据见 features/F-20261026-01-engine-core-simplification/summary.md。性能专项按用户要求延期。
+
+- [原生音频 UTF-8 ABI](lessons/L-20261027-06-native-audio-utf8-abi.md)：Windows miniaudio 窄字符 fopen 使用 ANSI；统一 UTF-8 ABI 后内部转宽字符，托管/原生同步升级。跨平台构建与 AOT 限制见 docs/manual/cross-platform-backends.md。

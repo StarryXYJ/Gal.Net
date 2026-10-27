@@ -12,7 +12,7 @@ Presentation.Abstractions ─ 执行注册/恢复组合、presenter 与平台无
 GameHost ───────────────── 游戏会话、内容聚合、运行生命周期、玩家持久化与偏好规则
 Avalonia.GameHost ───────── 默认 Avalonia 会话、展示组合、设置 UI 和平台适配
 Media.Audio ─────────────── 跨平台 PCM 混音与 DSP
-Media.Miniaudio ──────────── Windows x64 设备与流式解码
+Media.Miniaudio ──────────── 原生设备与流式解码适配（当前实机验证 Windows x64）
 Media.LibVlc ────────────── 视频/Gallery 共用的 LibVLC 生命周期
 Runtime ────────────────── Graph、Compiled Group、Engine、存档状态与宿主端口
 Assets ─────────────────── Local/PAK provider、Archive、AssetManager
@@ -65,7 +65,7 @@ flowchart TB
 src/
   Shared/          Core、Contracts.Builtins、Runtime、Assets、Presentation.Abstractions、Primitives.Builtins、GameHost、Diagnostics
   Presentation/    Avalonia.Controls、Avalonia.Rendering、Avalonia.GameView、Avalonia.Themes、Avalonia.GameHost
-  Infrastructure/  Storage.FileSystem、Media.LibVlc
+  Infrastructure/  Storage.FileSystem、Media.Audio、Media.Miniaudio、Media.LibVlc
   Editor/          Editor.Abstraction、Editor.Shared、Editor、Editor.Headless
   Samples/         Sample.Contracts、Sample.Avalonia、Sample.Headless
 ```
@@ -100,7 +100,7 @@ Avalonia 展示按领域拆为 dialogue/choice、layer、animation 和 particle 
 
 `Avalonia.GameHost` 提供可直接使用的 `AvaloniaGameSession`、页面绑定 `AvaloniaGameRun`、展示组合 `AvaloniaGamePresentation`、纹理租约 `AvaloniaGameResources` 以及默认设置/窗口/手柄适配。`AvaloniaGameHostOptions` 由项目提供 catalog 和执行注册，预加载策略可替换；`AvaloniaGamePresentationOptions` 可替换 Layer 工厂与音频后端，新建适配对象的所有权交给展示会话。Sample 只保留启动参数、项目策略、本地化资源配置与调试扩展；默认本地化服务归 Avalonia.GameHost，中立 JSON 文本源适配归 GameHost。
 
-会话、显示能力和 Gallery 路径契约位于 `Presentation.Abstractions.Application`。剧情音频的混音/DSP 位于 `Media.Audio`，Windows x64 设备/解码适配位于 `Media.Miniaudio`，均不引用 Avalonia；`Media.LibVlc` 保留视频/Gallery 的原生运行时；视频画面适配仍位于 Avalonia。释放顺序为运行/Engine → 展示恢复与执行 view → 平台后端 → Gallery 媒体与玩家持久化 → 纹理租约 → 内容资源。
+会话、显示能力和 Gallery 路径契约位于 `Presentation.Abstractions.Application`。剧情音频的混音/DSP 位于 `Media.Audio`，原生设备/解码适配位于 `Media.Miniaudio`，均不引用 Avalonia。Miniaudio 使用 UTF-8 路径和静态原生回调，提供 Windows x64/ARM64 构建选择及跨平台 CMake 入口；当前实机验证 Windows x64，其他平台需要宿主部署对应原生库并验收。`Media.LibVlc` 保留视频/Gallery 的原生运行时，接受平台初始化工厂；剧情视频通过 `IVideoPresenter` 和 `AvaloniaGamePresentationOptions.CreateVideoPresenter` 替换，缺省仍为 Avalonia LibVLC 像素输出。自定义视频适配器由展示会话拥有，优先异步释放。释放顺序为运行/Engine → 展示恢复与执行 view → 平台后端 → Gallery 媒体与玩家持久化 → 纹理租约 → 内容资源。
 
 Gallery catalog 是平台无关的静态内容。宿主把其自动生成的 `gallery_<item-id>_unlocked` Player bool 注册到变量服务；`GalleryDataSource` 合并 catalog 与当前 Player 值。Gallery 解锁不存于独立 UI 状态或存档槽。
 

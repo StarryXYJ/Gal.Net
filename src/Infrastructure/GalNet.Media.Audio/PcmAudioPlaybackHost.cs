@@ -20,10 +20,39 @@ public class PcmAudioPlaybackHost : IAudioPlaybackHost, IAsyncDisposable
     private Task? _dispose;
     private bool _disposed;
     private Exception? _renderError;
+    private bool _outputSuspended;
     public AudioBackendCapabilities Capabilities { get; }
     public ISEffectCatalog SEffects => SEffectCatalog.Builtins;
     public string? InitializationError { get; }
     public event Action<AudioBackendEvent>? EventReceived;
+    public bool SupportsOutputSuspension => _output is IAudioOutputLifecycle;
+
+    /// <summary>Stops device pulls without changing story pauses, voice positions or DSP state.</summary>
+    public void SuspendOutput()
+    {
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (InitializationError is not null) throw new InvalidOperationException(InitializationError);
+            if (_output is not IAudioOutputLifecycle lifecycle) throw new NotSupportedException("This audio output does not support suspension.");
+            if (_outputSuspended) return;
+            lifecycle.SuspendOutput();
+            _outputSuspended = true;
+        }
+    }
+
+    public void ResumeOutput()
+    {
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (InitializationError is not null) throw new InvalidOperationException(InitializationError);
+            if (_output is not IAudioOutputLifecycle lifecycle) throw new NotSupportedException("This audio output does not support suspension.");
+            if (!_outputSuspended) return;
+            lifecycle.ResumeOutput();
+            _outputSuspended = false;
+        }
+    }
 
     public PcmAudioPlaybackHost(IAssetFileMaterializer files, Func<string, IAudioPcmDecoder> decode, IAudioOutput output)
     {

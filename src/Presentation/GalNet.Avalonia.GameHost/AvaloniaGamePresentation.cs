@@ -33,7 +33,7 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
     public AvaloniaGamePresenters Presenters { get; private set; } = null!;
     public AvaloniaEffectRuntime Effects { get; private set; } = null!;
     public IAudioPlaybackHost Audio { get; private set; } = null!;
-    public AvaloniaVideoPresenter Video { get; private set; } = null!;
+    public IVideoPresenter Video { get; private set; } = null!;
     public CompositeGameView View { get; private set; } = null!;
     public BuiltinAudioModule AudioModule { get; private set; } = null!;
     public StateRestoreSession Restorer { get; private set; } = null!;
@@ -65,8 +65,9 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
             presentation.Effects = new AvaloniaEffectRuntime(gameplay, presentation._programs, assets);
             presentation.Audio = options.CreateAudioHost(assets, files);
             presentation.AudioModule = new BuiltinAudioModule(presentation.Audio, configuration: audioConfiguration);
-            presentation.Video = new AvaloniaVideoPresenter(assets, gameplay, files: files,
-                sharedLibVlc: sharedLibVlc);
+            presentation.Video = options.CreateVideoPresenter is { } createVideo
+                ? createVideo(assets, gameplay, files) ?? throw new InvalidOperationException("The video presenter factory returned null.")
+                : new AvaloniaVideoPresenter(assets, gameplay, files: files, sharedLibVlc: sharedLibVlc);
             using var registration = new GameRegistration();
             configure(registration, presentation);
             presentation.View = registration.BuildView();
@@ -114,7 +115,8 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
         // Implementations borrow platform ports, so release the view first.
         await cleanup.RunAsync(() => Restorer?.DisposeAsync() ?? ValueTask.CompletedTask);
         await cleanup.RunAsync(() => View?.DisposeAsync() ?? ValueTask.CompletedTask);
-        await cleanup.RunAsync(() => Video?.DisposeAsync() ?? ValueTask.CompletedTask);
+        if (Video is IAsyncDisposable asyncVideo) await cleanup.RunAsync(asyncVideo.DisposeAsync);
+        else cleanup.Run(() => (Video as IDisposable)?.Dispose());
         if (Audio is IAsyncDisposable asyncAudio) await cleanup.RunAsync(asyncAudio.DisposeAsync);
         else cleanup.Run(() => Audio?.Dispose());
         cleanup.Run(() =>

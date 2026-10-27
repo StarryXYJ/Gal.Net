@@ -4,7 +4,6 @@ using GalNet.Media.Miniaudio;
 
 namespace GalNet.Media.Audio.Tests;
 
-[Platform("Win")]
 public sealed class MiniaudioTests
 {
     [Test]
@@ -39,7 +38,7 @@ public sealed class MiniaudioTests
         for (var index = 0; index < buffer.Length; index += 2) Assert.That(buffer[index], Is.EqualTo(buffer[index + 1]).Within(.00001));
     }
 
-    [Test, Explicit("Opens the default Windows audio device and plays a quiet 100 ms signal.")]
+    [Test, Explicit("Opens the platform's default audio device and plays a quiet 100 ms signal.")]
     public async Task Windows_device_renders_a_real_source_and_completes_with_its_lease_released()
     {
         using var file = new WaveFile();
@@ -57,6 +56,39 @@ public sealed class MiniaudioTests
         await host.ApplyAsync(new(AudioBackendAction.StopSEffect, "test", "", 0, SEffectInstanceId: "filter"));
         var terminal = await ended.Task.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.That(terminal.Kind, Is.EqualTo(AudioBackendEventKind.Ended)); Assert.That(file.Releases, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Decoder_rejects_paths_that_would_be_truncated_by_the_native_abi()
+    {
+        Assert.Throws<ArgumentException>(() => new MiniaudioDecoder("valid.wav\0different.wav"));
+    }
+
+    [Test, Explicit("Opens the platform's default audio device to verify native callback and suspension lifetimes.")]
+    public async Task Native_output_suspends_callbacks_resumes_and_does_not_leak_a_callback_after_disposal()
+    {
+        var output = new MiniaudioOutput();
+        var callbacks = 0;
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        try
+        {
+            output.Start(samples => { samples.Clear(); Interlocked.Increment(ref callbacks); started.TrySetResult(); });
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Throws<InvalidOperationException>(() => output.Start(samples => samples.Clear()));
+            output.SuspendOutput();
+            var stoppedAt = Volatile.Read(ref callbacks);
+            await Task.Delay(50);
+            Assert.That(Volatile.Read(ref callbacks), Is.EqualTo(stoppedAt));
+            output.ResumeOutput();
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            while (Volatile.Read(ref callbacks) == stoppedAt) await Task.Delay(5, timeout.Token);
+            output.Dispose();
+            stoppedAt = Volatile.Read(ref callbacks);
+            await Task.Delay(50);
+            Assert.That(Volatile.Read(ref callbacks), Is.EqualTo(stoppedAt));
+            Assert.Throws<ObjectDisposedException>(() => output.ResumeOutput());
+        }
+        finally { output.Dispose(); }
     }
 
     private sealed class WaveFile : IAssetFileMaterializer

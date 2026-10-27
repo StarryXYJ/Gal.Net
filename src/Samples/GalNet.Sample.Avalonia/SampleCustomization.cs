@@ -108,7 +108,7 @@ internal static class SampleCustomization
     internal static void ConfigureExecution(
         GameRegistration registration, AvaloniaGamePresenters presenters, GamePage page,
         GameContent content, AvaloniaEffectRuntime? effects, IAudioPlaybackHost? audio,
-        AvaloniaVideoPresenter? video, BuiltinAudioModule? audioModule, GalNet.Contracts.Builtins.Variants.ImageVariantsCatalog? imageVariants = null)
+        IVideoPresenter? video, BuiltinAudioModule? audioModule, GalNet.Contracts.Builtins.Variants.ImageVariantsCatalog? imageVariants = null)
     {
         registration.UseCatalog(ProjectSchemas.CreateCatalog());
         registration.AddBuiltinImplementations(registration.BuildCatalog(),

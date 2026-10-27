@@ -1,0 +1,68 @@
+name: Backend portability
+
+on:
+  pull_request:
+    paths:
+      - 'src/Shared/**'
+      - 'src/Infrastructure/**'
+      - 'src/Tooling/**'
+      - 'test/GalNet.Assets.Tests/**'
+      - 'test/GalNet.Media.Audio.Tests/**'
+      - 'Directory.*'
+      - 'global.json'
+      - '.github/workflows/backend-portability.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portable-backends:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            library: galnet_miniaudio.dll
+          - os: ubuntu-latest
+            library: libgalnet_miniaudio.so
+          - os: macos-latest
+            library: libgalnet_miniaudio.dylib
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.401
+      - name: Build native audio library
+        shell: pwsh
+        run: |
+          cmake -S src/Infrastructure/GalNet.Media.Miniaudio/native -B artifacts/native -DCMAKE_BUILD_TYPE=Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build artifacts/native --config Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --install artifacts/native --config Release --prefix artifacts/native/install
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify shared resources and audio decoding
+        shell: pwsh
+        run: |
+          $nativePath = Join-Path $PWD 'artifacts/native/install/${{ matrix.library }}'
+          foreach ($project in @('GalNet.Assets.Tests', 'GalNet.Media.Audio.Tests')) {
+            $projectPath = "test/$project/$project.csproj"
+            dotnet restore $projectPath --locked-mode -p:GalNetMiniaudioNativePath="$nativePath"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            dotnet build $projectPath --no-restore --configuration Release -p:GalNetMiniaudioNativePath="$nativePath"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            dotnet test $projectPath --no-build --no-restore --configuration Release -p:GalNetMiniaudioNativePath="$nativePath" --logger "trx;LogFileName=$project.trx" --results-directory artifacts/results
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-tests-${{ matrix.os }}
+          path: artifacts/results
+          if-no-files-found: warn

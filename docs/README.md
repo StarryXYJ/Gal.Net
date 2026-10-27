@@ -28,6 +28,7 @@
 ## 二次开发手册
 
 - [Track / Bus 音频混音](manual/audio-mixing.md)
+- [跨平台后端接入](manual/cross-platform-backends.md)：原生媒体构建、包内 PAK、缓存目录、设备生命周期及移动端验收边界。
 - [默认视觉资源与演出预设](manual/default-visuals.md)
 
 - [接入新的表现层](manual/new-presentation-layer.md)：为 WPF、WinUI 或其他 UI 框架实现宿主和呈现适配的最小路径。
