@@ -80,7 +80,8 @@ public static class BuiltInDockContributions
                 sp.GetRequiredService<EntrySelectionContext>(),
                 sp.GetRequiredService<GalNet.Game.Controls.Forms.EditorRegistry>()),
             typeof(GroupEditorPanelView), new DelegateInspectorContribution<GroupEditorPanelViewModel, EntryInspectorViewModel>(
-                (sp, page) => new EntryInspectorViewModel(page, sp.GetService<AuthorNavigationService>(), sp.GetRequiredService<ProjectSceneTargets>()), typeof(EntryInspectorView))));
+                (sp, page) => new EntryInspectorViewModel(page, sp.GetService<AuthorNavigationService>(),
+                    sp.GetRequiredService<ProjectSceneTargets>(), sp.GetRequiredService<IAssetManager>()), typeof(EntryInspectorView))));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<FileDocumentPanelViewModel, string>(
             EditorDockPanelIds.FileEditor, "Files.Document", DockPanelPlacement.MainDocument, false, true, true, false, false,
             (sp, id) => new FileDocumentPanelViewModel(sp.GetRequiredService<ProjectTextFiles>().Get(id)), typeof(FileDocumentPanelView), null));

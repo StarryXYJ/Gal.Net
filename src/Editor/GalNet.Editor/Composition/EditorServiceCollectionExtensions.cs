@@ -22,6 +22,7 @@ using GalNet.Editor.ViewModels;
 using GalNet.Editor.Views;
 using GalNet.Game.Controls.Forms;
 using GalNet.GameHost.Content;
+using GalNet.Rendering.Scene;
 using GalNet.Runtime.Variables;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -129,7 +130,12 @@ public static class EditorServiceCollectionExtensions
         services.AddSingleton<DockLayoutSerializer>();
         services.AddSingleton<IAssetCatalogService, AssetCatalogService>();
         services.AddSingleton<EditorAssetManager>();
-        services.AddSingleton<IAssetManager>(sp => sp.GetRequiredService<EditorAssetManager>());
+        services.AddSingleton<IAssetManager>(sp =>
+        {
+            var assets = sp.GetRequiredService<EditorAssetManager>();
+            assets.RegisterDecoder<SceneTexture>("sprite", new SceneTextureAssetDecoder());
+            return assets;
+        });
         services.AddScoped<IGameExportService, GameExportService>();
 
         return services;

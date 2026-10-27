@@ -19,6 +19,13 @@
    <Expander Header="{loc:Localize Entry.Parameter.parameters}" IsVisible="{Binding IsShaderMode}">
     <forms:DtoEditorHost Item="{Binding ShaderRawForm.Item}" Registry="{Binding FieldEditors}"/>
    </Expander>
+   <Expander Header="{loc:Localize Uiux.Inspector.Preview}" IsExpanded="True" IsVisible="{Binding IsShaderMode}">
+    <StackPanel Spacing="8" Margin="8">
+     <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsShaderPreviewLoading}" Height="3"/>
+     <Image Name="ShaderEffectPreview" Source="{Binding ShaderPreview}" Width="192" Height="192" Stretch="Fill" HorizontalAlignment="Left"/>
+     <TextBlock Text="{Binding ShaderPreviewError}" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" TextWrapping="Wrap"/>
+    </StackPanel>
+   </Expander>
   </StackPanel>
  </ScrollViewer>
 </UserControl>

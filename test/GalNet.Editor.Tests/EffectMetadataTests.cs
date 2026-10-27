@@ -22,6 +22,7 @@ using GalNet.Editor.ViewModels;
 using GalNet.Editor.Views;
 using GalNet.Game.Controls.Forms;
 using Microsoft.Extensions.DependencyInjection;
+using SkiaSharp;
 
 namespace GeneralTest.Editor;
 
@@ -71,12 +72,89 @@ public sealed partial class ProjectWorkspaceLifecycleTests
           uniform: uMask
         */
         """;
+    private const string EffectPreviewSource = """
+        /*
+        @gal.effect v=1
+        @input source
+        @targets layer
+        @param amount
+          uniform: amount
+          type: float
+          default: 0
+        */
+        uniform shader source;
+        uniform float amount;
+        half4 main(float2 p) {
+            half4 color = source.eval(p);
+            return half4(color.r * amount, color.g, color.b, color.a);
+        }
+        """;
     private static ServiceProvider EffectServices(MetadataAssets assets, MetadataResources resources) => new ServiceCollection().AddEditorServices()
         .AddSingleton<IEditorLocalizationService>(new EditorLocalizationService())
         .AddSingleton<IProjectClosePrompt>(new DiscardProjectClosePrompt())
         .AddSingleton<IEditorSettingsService>(new TestSettings()).AddSingleton<IFileDialogService>(new TestDialogs())
         .AddSingleton<IEffectCatalog>(new EffectCatalog([])).AddSingleton<IAssetManager>(assets)
         .AddSingleton<IAssetCatalogService>(resources).BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+
+    [Test]
+    public async Task ShaderInspectorPreviewsSelectedProgramAndRefreshesAfterParameterEdit()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme(); using var assets = new MetadataAssets(); assets.File.Source = EffectPreviewSource;
+            using var resources = new MetadataResources(); using var services = EffectServices(assets, resources);
+            var projects = services.GetRequiredService<IProjectService>();
+            var project = await projects.CreateAsync(Path.Combine(_root, "ShaderPreview"), "Shader", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
+            var scope = project.Services; var workspace = scope.GetRequiredService<EditorWorkspaceViewModel>();
+            var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
+            var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.ApplyEffect).Single();
+            entry.Source.Parameters["program"] = JsonSerializer.SerializeToElement("program");
+            entry.Source.Parameters["parameters"] = JsonSerializer.Deserialize<JsonElement>("{\"amount\":0}");
+            scope.GetRequiredService<IEditorDocumentService>().SynchronizeGroups();
+            var query = scope.GetRequiredService<ProjectSceneTargets>(); await query.PrepareAsync();
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = entry;
+            using var inspector = new EntryInspectorViewModel(page, sceneTargets: query, assets: assets);
+            var view = new EntryInspectorView { DataContext = inspector };
+            var window = new Window { Content = view, Width = 480, Height = 780 }; window.Show(); TimelinePump(window);
+            try
+            {
+                await inspector.PreviewLoading; TimelinePump(window);
+                Assert.That(inspector.ShaderPreviewError, Is.Null);
+                Assert.That(inspector.ShaderPreview, Is.Not.Null);
+                var image = view.GetVisualDescendants().OfType<Image>().Single(control => control.Name == "ShaderEffectPreview");
+                Assert.That(image.Source, Is.SameAs(inspector.ShaderPreview));
+                using var beforeStream = new MemoryStream(); inspector.ShaderPreview!.Save(beforeStream); beforeStream.Position = 0;
+                using var before = SKBitmap.Decode(beforeStream);
+                Assert.That(before.Width, Is.EqualTo(ShaderEffectPreviewRenderer.Size));
+                Assert.That(before.Height, Is.EqualTo(ShaderEffectPreviewRenderer.Size));
+                Assert.That(before.GetPixel(64, 64).Red, Is.LessThan(10));
+
+                var form = view.GetVisualDescendants().OfType<DtoEditorHost>().Single(host => host.Name == "ShaderParameters");
+                var amount = form.GetVisualDescendants().OfType<FieldEditorRow>().Single(row => row.Context!.Field.Id == "amount");
+                Assert.That(await amount.Context!.CommitValueAsync(1f), Is.True);
+                await inspector.PreviewLoading; TimelinePump(window);
+                using var afterStream = new MemoryStream(); inspector.ShaderPreview!.Save(afterStream); afterStream.Position = 0;
+                using var after = SKBitmap.Decode(afterStream);
+                Assert.That(after.GetPixel(64, 64).Red, Is.GreaterThan(200));
+
+                assets.File.Source = EffectPreviewSource.Replace("color.r * amount", "color.r * (1 - amount)", StringComparison.Ordinal);
+                resources.RaiseChanged(); TimelinePump(window); await query.PrepareAsync(); TimelinePump(window);
+                await inspector.PreviewLoading; TimelinePump(window);
+                using var refreshedStream = new MemoryStream(); inspector.ShaderPreview!.Save(refreshedStream); refreshedStream.Position = 0;
+                using var refreshed = SKBitmap.Decode(refreshedStream);
+                Assert.That(refreshed.GetPixel(64, 64).Red, Is.LessThan(10));
+
+                entry.Source.Parameters["program"] = JsonSerializer.SerializeToElement("missing");
+                entry.RefreshAuthorReferences(scope.GetRequiredService<GalNet.Core.Entry.IEntryCatalog>());
+                await inspector.PreviewLoading; TimelinePump(window);
+                Assert.That(inspector.ShaderPreview, Is.Null);
+                Assert.That(inspector.ShaderPreviewError, Does.Contain("not found"));
+                return true;
+            }
+            finally { window.Close(); await projects.CloseAsync(); }
+        }, CancellationToken.None);
+    }
 
     [Test]
     public async Task ShaderInspectorBuildsMetadataFieldsAndPatchesOnlySelectedParameter()
