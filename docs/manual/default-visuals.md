@@ -56,9 +56,9 @@ project visuals install <project>
 | transition.reveal | oldHandleId、newHandleId、assetId、program、mode；Mask 另需 maskAsset |
 | transition.blur | oldHandleId、newHandleId、assetId、blurProgram、radius；双层各两遍模糊 |
 | preset.motion | handleId、motion；FadeIn/FadeOut/SlideIn/SlideOut/PopIn/Jump/Nod/ShakeHead/Push |
-| preset.shake | targets 数组（每项含 handleId）、amplitude、cycles、angle、playbackMode；最多 32 个同步图层 |
+| preset.shake | handleId、amplitude、cycles、angle、playbackMode；一个条目作用于一个图层 |
 | preset.speedLines | program、parameters（shader 参数对象）、speed、flicker、z、playbackMode |
-| preset.impact | 集中线参数加 targets、amplitude、cycles、angle、flashOpacity；组合震动、缩放脉冲、闪白和集中线 |
+| preset.impact | 集中线参数加 handleId、amplitude、cycles、angle、flashOpacity；组合震动、缩放脉冲、闪白和集中线 |
 
 ```json
 {
@@ -66,7 +66,7 @@ project visuals install <project>
   "parameters": {
     "playbackHandleId": "impact-01",
     "program": "<speedLines shader GUID>",
-    "targets": [{ "handleId": "background" }, { "handleId": "hero" }],
+    "handleId": "hero",
     "parameters": { "mode": "Radial", "density": 80, "color": "#FFFFFF" },
     "durationFrames": 48,
     "amplitude": 16,
@@ -92,7 +92,7 @@ Push 的 anchorX/anchorY 为相对画布中心的逻辑坐标。锚点缩放与 
   "type": "preset.shake",
   "parameters": {
     "playbackHandleId": "earthquake",
-    "targets": [{ "handleId": "background" }, { "handleId": "hero" }],
+    "handleId": "background",
     "playbackMode": "UntilStopped",
     "durationFrames": 60,
     "cycles": 4,
@@ -100,6 +100,8 @@ Push 的 anchorX/anchorY 为相对画布中心的逻辑坐标。锚点缩放与 
   }
 }
 ```
+
+需要同时震动多个图层时，为每个图层添加一个 `preset.shake` 条目，分别选择 `handleId` 和唯一的 `playbackHandleId`。`preset.impact` 同样每个条目只选择一个图层。旧的 `targets` 数组不再作为输入；已有多目标配置需拆成多个条目。
 
 ```json
 {

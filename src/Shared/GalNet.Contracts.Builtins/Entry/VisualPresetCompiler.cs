@@ -131,7 +131,7 @@ internal static class VisualPresetCompiler
             case MotionPreset.Jump: timeline.Tracks.Add(Pulse(handle, "transform.y", frames, -options.Distance)); break;
             case MotionPreset.Nod: timeline.Tracks.Add(Pulse(handle, "transform.rotationDegrees", frames, options.RotationDegrees)); break;
             case MotionPreset.ShakeHead:
-                AddShake(timeline, [handle], options.Distance, 2, 0); break;
+                AddShake(timeline, handle, options.Distance, 2, 0); break;
             case MotionPreset.Push:
                 Add("transform.x", transform.X, transform.X + x + (transform.X - options.AnchorX) * (options.Scale - 1));
                 Add("transform.y", transform.Y, transform.Y + y + (transform.Y - options.AnchorY) * (options.Scale - 1));
@@ -148,36 +148,26 @@ internal static class VisualPresetCompiler
         track.Keys.Insert(1, new() { Frame = frames / 2, Value = peak });
         return track;
     }
-    private static string[] Targets(JsonElement targets)
-    {
-        if (targets.ValueKind != JsonValueKind.Array || targets.GetArrayLength() is < 1 or > 32) throw new InvalidDataException("Targets requires 1..32 objects with handleId.");
-        var handles = targets.EnumerateArray().Select(target =>
-            target.ValueKind == JsonValueKind.Object && target.TryGetProperty("handleId", out var value) && value.ValueKind == JsonValueKind.String
-                ? Require(value.GetString(), "targets.handleId") : throw new InvalidDataException("Each target requires handleId.")).ToArray();
-        if (handles.Distinct(StringComparer.Ordinal).Count() != handles.Length) throw new InvalidDataException("Duplicate visual targets.");
-        return handles;
-    }
-    private static void AddShake(TimelineDefinition timeline, IEnumerable<string> handles, float amplitude, int cycles, float angle, bool sustained = false)
+    private static void AddShake(TimelineDefinition timeline, string handle, float amplitude, int cycles, float angle, bool sustained = false)
     {
         var samples = Math.Min(timeline.DurationFrames, cycles * 4);
         var radians = angle * MathF.PI / 180;
-        foreach (var handle in handles)
-            foreach (var (property, axis) in new[] { ("transform.x", MathF.Cos(radians)), ("transform.y", MathF.Sin(radians)) })
+        foreach (var (property, axis) in new[] { ("transform.x", MathF.Cos(radians)), ("transform.y", MathF.Sin(radians)) })
+        {
+            var track = new TimelineTrackDefinition { HandleId = handle, Property = property, BlendMode = AnimationBlendMode.Additive };
+            for (var i = 0; i <= samples; i++)
             {
-                var track = new TimelineTrackDefinition { HandleId = handle, Property = property, BlendMode = AnimationBlendMode.Additive };
-                for (var i = 0; i <= samples; i++)
-                {
-                    var t = (float)i / samples;
-                    track.Keys.Add(new() { Frame = (int)MathF.Round(t * timeline.DurationFrames), Value = i == 0 || i == samples ? 0 : amplitude * axis * (sustained ? 1 : 1 - t) * MathF.Sin(i * MathF.PI * .5f) });
-                }
-                timeline.Tracks.Add(track);
+                var t = (float)i / samples;
+                track.Keys.Add(new() { Frame = (int)MathF.Round(t * timeline.DurationFrames), Value = i == 0 || i == samples ? 0 : amplitude * axis * (sustained ? 1 : 1 - t) * MathF.Sin(i * MathF.PI * .5f) });
             }
+            timeline.Tracks.Add(track);
+        }
     }
     public static IReadOnlyList<PrimitiveEntry> Shake(EntryCompileContext context, ShakePresetOptions options)
     {
         var timeline = Clip(options);
         Sustain(timeline, options.PlaybackMode);
-        AddShake(timeline, Targets(options.Targets), options.Amplitude, options.Cycles, options.Angle, options.PlaybackMode == VisualPlaybackMode.UntilStopped);
+        AddShake(timeline, Require(options.HandleId, "handleId"), options.Amplitude, options.Cycles, options.Angle, options.PlaybackMode == VisualPlaybackMode.UntilStopped);
         return Finish(context, timeline, options.BatchId);
     }
     private static void Sustain(TimelineDefinition timeline, VisualPlaybackMode mode)
@@ -220,13 +210,12 @@ internal static class VisualPresetCompiler
     public static IReadOnlyList<PrimitiveEntry> Impact(EntryCompileContext context, ImpactPresetOptions options)
     {
         var timeline = Clip(options);
-        var handles = Targets(options.Targets);
-        if (handles.Any(handle => handle.StartsWith(options.PlaybackHandleId + "/visual/", StringComparison.Ordinal)))
-            throw new InvalidDataException("Impact targets cannot use the playback's reserved /visual/ namespace.");
-        AddShake(timeline, handles, options.Amplitude, options.Cycles, options.Angle);
-        foreach (var handle in handles)
-            foreach (var property in new[] { "transform.scaleX", "transform.scaleY" })
-                timeline.Tracks.Add(Pulse(handle, property, timeline.DurationFrames, .08f));
+        var handle = Require(options.HandleId, "handleId");
+        if (handle.StartsWith(options.PlaybackHandleId + "/visual/", StringComparison.Ordinal))
+            throw new InvalidDataException("Impact target cannot use the playback's reserved /visual/ namespace.");
+        AddShake(timeline, handle, options.Amplitude, options.Cycles, options.Angle);
+        foreach (var property in new[] { "transform.scaleX", "transform.scaleY" })
+            timeline.Tracks.Add(Pulse(handle, property, timeline.DurationFrames, .08f));
         AddLines(timeline, options);
         var flash = Id(timeline, "flash");
         timeline.Events.Add(Event(0, BuiltinEntryIds.ShowColorLayer, new { handleId = flash, color = "#FFFFFF", z = options.Z + 1, opacity = options.FlashOpacity }));

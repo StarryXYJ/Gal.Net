@@ -81,14 +81,16 @@ public sealed class VisualPresetTests
 
     [TestCase(2)]
     [TestCase(36)]
-    public void Shake_targets_move_together_and_return_to_zero_without_destroying_base_transform(int frames)
+    public void Separate_shake_entries_move_one_target_each_and_return_to_zero(int frames)
     {
-        var timeline = Compile(BuiltinEntryIds.ShakePreset, new { playbackHandleId = "quake", targets = new[] { new { handleId = "background" }, new { handleId = "hero" } }, durationFrames = frames });
-        var x = timeline.Tracks.Where(t => t.Property == "transform.x").ToArray();
-        Assert.That(x, Has.Length.EqualTo(2));
-        Assert.That(x[0].Keys.Select(k => k.Value), Is.EqualTo(x[1].Keys.Select(k => k.Value)));
-        Assert.That(x[0].Keys.Any(k => Math.Abs(k.Value) > 1), Is.True);
-        Assert.That(timeline.Tracks.All(t => t.BlendMode == AnimationBlendMode.Additive && t.Keys.Last().Value == 0), Is.True);
+        var background = Compile(BuiltinEntryIds.ShakePreset, new { playbackHandleId = "quake-background", handleId = "background", durationFrames = frames });
+        var hero = Compile(BuiltinEntryIds.ShakePreset, new { playbackHandleId = "quake-hero", handleId = "hero", durationFrames = frames });
+        var backgroundX = background.Tracks.Single(t => t.Property == "transform.x");
+        var heroX = hero.Tracks.Single(t => t.Property == "transform.x");
+        Assert.That(backgroundX.Keys.Select(k => k.Value), Is.EqualTo(heroX.Keys.Select(k => k.Value)));
+        Assert.That(backgroundX.Keys.Any(k => Math.Abs(k.Value) > 1), Is.True);
+        Assert.That(background.Tracks.All(t => t.HandleId == "background" && t.BlendMode == AnimationBlendMode.Additive && t.Keys.Last().Value == 0), Is.True);
+        Assert.That(hero.Tracks.All(t => t.HandleId == "hero" && t.BlendMode == AnimationBlendMode.Additive && t.Keys.Last().Value == 0), Is.True);
     }
 
     [TestCase(BuiltinEntryIds.SpeedLinesPreset)]
@@ -96,7 +98,7 @@ public sealed class VisualPresetTests
     public void Dynamic_lines_compile_time_tracks_and_terminal_cleanup(string type)
     {
         var parameters = new Dictionary<string, object> { ["playbackHandleId"] = "impact", ["program"] = "lines-shader", ["blocking"] = false, ["durationFrames"] = 60 };
-        if (type == BuiltinEntryIds.ImpactPreset) parameters["targets"] = new[] { new { handleId = "hero" } };
+        if (type == BuiltinEntryIds.ImpactPreset) parameters["handleId"] = "hero";
         var timeline = Compile(type, parameters);
         var time = timeline.Tracks.Single(t => t.Property == "time");
         Assert.That(time.Keys.Last().Value, Is.EqualTo(1));
@@ -113,7 +115,7 @@ public sealed class VisualPresetTests
         var timeline = Compile(BuiltinEntryIds.ShakePreset, new
         {
             playbackHandleId = "quake",
-            targets = new[] { new { handleId = "hero" } },
+            handleId = "hero",
             durationFrames = 60,
             cycles = 4,
             amplitude = 16,
@@ -131,7 +133,7 @@ public sealed class VisualPresetTests
             Assert.That(x.Keys[^1].Value, Is.Zero);
         });
         Assert.Throws<InvalidDataException>(() => Compile(BuiltinEntryIds.ShakePreset,
-            new { playbackHandleId = "quake", targets = new[] { new { handleId = "hero" } }, playbackMode = "forever" }));
+            new { playbackHandleId = "quake", handleId = "hero", playbackMode = "forever" }));
     }
 
     [Test]
@@ -149,11 +151,12 @@ public sealed class VisualPresetTests
     }
 
     [Test]
-    public void Missing_shader_duplicate_targets_and_reserved_handle_collisions_are_rejected()
+    public void Missing_shader_target_and_reserved_handle_collisions_are_rejected()
     {
         Assert.Throws<InvalidDataException>(() => Compile(BuiltinEntryIds.SpeedLinesPreset, new { playbackHandleId = "p" }));
-        Assert.Throws<InvalidDataException>(() => Compile(BuiltinEntryIds.ShakePreset, new { playbackHandleId = "p", targets = new[] { new { handleId = "hero" }, new { handleId = "hero" } } }));
-        Assert.Throws<InvalidDataException>(() => Compile(BuiltinEntryIds.ImpactPreset, new { playbackHandleId = "p", program = "shader", targets = new[] { new { handleId = "p/visual/lines" } } }));
+        Assert.Throws<InvalidDataException>(() => Compile(BuiltinEntryIds.ShakePreset, new { playbackHandleId = "p", handleId = "" }));
+        Assert.Throws<InvalidDataException>(() => Compile(BuiltinEntryIds.ShakePreset, new { playbackHandleId = "p", targets = new[] { new { handleId = "hero" } } }));
+        Assert.Throws<InvalidDataException>(() => Compile(BuiltinEntryIds.ImpactPreset, new { playbackHandleId = "p", program = "shader", handleId = "p/visual/lines" }));
         Assert.Throws<InvalidDataException>(() => Compile(BuiltinEntryIds.RevealTransition, new { playbackHandleId = "p", oldHandleId = "same", newHandleId = "same", assetId = "image", program = "shader" }));
     }
 }

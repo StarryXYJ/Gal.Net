@@ -11,6 +11,8 @@ using GalNet.Core.Assets;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Controls;
 using GalNet.Editor.History;
+using GalNet.Editor.Inspector.ViewModels;
+using GalNet.Editor.Inspector.Views;
 using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Services;
 using GalNet.Editor.Shared.Services;
@@ -22,6 +24,53 @@ namespace GeneralTest.Editor;
 
 public sealed partial class ProjectWorkspaceLifecycleTests
 {
+    [Test]
+    public async Task ShakeAndImpactUseSingleSceneTargetPicker()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
+            var project = await projects.CreateAsync(Path.Combine(_root, "PresetSingleTarget"), "Preset", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
+            var scope = project.Services; var workspace = scope.GetRequiredService<EditorWorkspaceViewModel>();
+            var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
+            var layers = workspace.InsertEntriesInto(group, 0, 2, BuiltinEntryIds.ShowLayer);
+            foreach (var layer in layers) layer.Source.Parameters["assetId"] = JsonSerializer.SerializeToElement("same.png");
+            var shake = workspace.InsertEntriesInto(group, 2, 1, BuiltinEntryIds.ShakePreset).Single();
+            var impact = workspace.InsertEntriesInto(group, 3, 1, BuiltinEntryIds.ImpactPreset).Single();
+            shake.Source.Parameters["future"] = JsonSerializer.SerializeToElement(new { retained = true });
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = shake;
+            using var inspector = new EntryInspectorViewModel(page);
+            var view = new EntryInspectorView { DataContext = inspector };
+            var window = new Window { Content = view, Width = 650, Height = 950 }; window.Show(); TimelinePump(window);
+            try
+            {
+                var catalog = scope.GetRequiredService<SceneTargetCatalog>(); var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear();
+                void SelectTarget(EntryEditorItemViewModel entry, EntryEditorItemViewModel layer)
+                {
+                    page.SelectedEntry = entry; TimelinePump(window);
+                    var button = view.GetVisualDescendants().OfType<Button>().Single(control => control.Name == "SceneTargetField");
+                    TimelineClick(window, button);
+                    var picker = (SceneTargetPicker)((Flyout)button.Flyout!).Content!;
+                    var choice = catalog.Query(group.Id, entry.StableId).Choices.Single(item => item.Target.Locator.EntryId == layer.StableId);
+                    picker.ResourcePanel.Search.Text = choice.Item.Label; TimelinePump(window);
+                    PressGroupKey(picker.ResourcePanel.Search, Key.Down); PressGroupKey(picker.ResourcePanel.Search, Key.Enter); TimelinePump(window);
+                    Assert.That(entry.Source.Parameters["handleId"].GetString(), Is.EqualTo(choice.Target.Handle));
+                }
+                SelectTarget(shake, layers[0]);
+                Assert.That(shake.Source.Parameters.ContainsKey("targets"), Is.False);
+                Assert.That(shake.Source.Parameters["future"].GetProperty("retained").GetBoolean(), Is.True);
+                SelectTarget(impact, layers[1]);
+                Assert.That(impact.Source.Parameters.ContainsKey("targets"), Is.False);
+                Assert.That(history.CanUndo, Is.True);
+                await history.UndoAsync();
+                Assert.That(impact.Source.Parameters["handleId"].GetString(), Is.Empty);
+                return true;
+            }
+            finally { window.Close(); await projects.CloseAsync(); }
+        }, CancellationToken.None);
+    }
+
     [Test]
     public async Task AssetPickerUsesSharedCardsForSearchKeyboardSelectionAndEmptyValue()
     {

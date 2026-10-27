@@ -33,8 +33,8 @@ public static class SceneAuthoringSemantics
         Add(BuiltinEntryIds.Animate, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)], [Reference("handleId", SceneTargetKind.Layer, SceneTargetKind.Particle, SceneTargetKind.Effect)]);
         Add(BuiltinEntryIds.StopAnimation, [], [Reference("playbackHandleId", SceneTargetKind.Playback)]);
         Add(BuiltinEntryIds.MotionPreset, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)], [Reference("handleId", SceneTargetKind.Layer)]);
-        Add(BuiltinEntryIds.ShakePreset, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)], [Reference("handleId", SceneTargetKind.Layer) with { Container = "targets" }]);
-        Add(BuiltinEntryIds.ImpactPreset, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)], [Reference("handleId", SceneTargetKind.Layer) with { Container = "targets" }]);
+        Add(BuiltinEntryIds.ShakePreset, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)], [Reference("handleId", SceneTargetKind.Layer)]);
+        Add(BuiltinEntryIds.ImpactPreset, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)], [Reference("handleId", SceneTargetKind.Layer)]);
         Add(BuiltinEntryIds.SpeedLinesPreset, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)], []);
         foreach (var type in new[] { BuiltinEntryIds.CrossFadeTransition, BuiltinEntryIds.BlindsTransition, BuiltinEntryIds.SlideTransition, BuiltinEntryIds.BlackFadeTransition, BuiltinEntryIds.WhiteFadeTransition, BuiltinEntryIds.ColorFadeTransition, BuiltinEntryIds.RevealTransition, BuiltinEntryIds.BlurTransition })
         {

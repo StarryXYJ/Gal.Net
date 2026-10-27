@@ -27,15 +27,15 @@ public sealed class VisualPresetAuthoringTests
     }
 
     [Test]
-    public void Nested_shake_targets_are_indexed_and_remapped_with_copied_layers()
+    public void Shake_target_is_indexed_and_remapped_with_copied_layer()
     {
         var layer = new EditorEntryData { StableId = "layer", Type = BuiltinEntryIds.ShowColorLayer, Parameters = Parameters(new { handleId = "hero", color = "#FFFFFF" }) };
-        var shake = new EditorEntryData { StableId = "shake", Type = BuiltinEntryIds.ShakePreset, Parameters = Parameters(new { playbackHandleId = "quake", targets = new[] { new { handleId = "hero" } } }) };
+        var shake = new EditorEntryData { StableId = "shake", Type = BuiltinEntryIds.ShakePreset, Parameters = Parameters(new { playbackHandleId = "quake", handleId = "hero" }) };
         var index = new SceneReferenceIndex(new Dictionary<string, List<EditorEntryData>> { ["g"] = [layer, shake] });
         Assert.That(index.Complete, Is.True);
-        Assert.That(index.References.Single().JsonPointer, Is.EqualTo("/parameters/targets/0/handleId"));
+        Assert.That(index.References.Single().JsonPointer, Is.EqualTo("/parameters/handleId"));
         SceneAuthoringIdentities.RemapCopy([layer, shake]);
-        Assert.That(shake.Parameters["targets"][0].GetProperty("handleId").GetString(), Is.EqualTo(layer.Parameters["handleId"].GetString()));
+        Assert.That(shake.Parameters["handleId"].GetString(), Is.EqualTo(layer.Parameters["handleId"].GetString()));
         Assert.That(layer.Parameters["handleId"].GetString(), Is.Not.EqualTo("hero"));
     }
 
@@ -44,7 +44,7 @@ public sealed class VisualPresetAuthoringTests
     {
         var graph = new EditorGraphDocument { RootNodeId = "g", Nodes = [new() { Id = "g", Type = "Group" }] };
         var layer = new EditorEntryData { StableId = "hero", Type = BuiltinEntryIds.ShowColorLayer, Parameters = Parameters(new { handleId = "hero", color = "#FFFFFF" }) };
-        var impact = new EditorEntryData { StableId = "impact", Type = BuiltinEntryIds.ImpactPreset, Parameters = Parameters(new { playbackHandleId = "impact-play", program = "shader", targets = new[] { new { handleId = "hero" } } }) };
+        var impact = new EditorEntryData { StableId = "impact", Type = BuiltinEntryIds.ImpactPreset, Parameters = Parameters(new { playbackHandleId = "impact-play", program = "shader", handleId = "hero" }) };
         var analysis = new SceneTargetAnalysis(graph, new Dictionary<string, List<EditorEntryData>> { ["g"] = [layer, impact] });
         var result = analysis.Before("g", null);
         Assert.That(result.Complete, Is.True);
@@ -61,7 +61,7 @@ public sealed class VisualPresetAuthoringTests
             StableId = "shake",
             Type = BuiltinEntryIds.ShakePreset,
             Parameters = Parameters(new
-            { playbackHandleId = "quake", targets = new[] { new { handleId = "hero" } }, playbackMode = "UntilStopped" })
+            { playbackHandleId = "quake", handleId = "hero", playbackMode = "UntilStopped" })
         };
         var stop = new EditorEntryData { StableId = "stop", Type = BuiltinEntryIds.StopAnimation, Parameters = Parameters(new { playbackHandleId = "quake", mode = "CompleteImmediately" }) };
         var analysis = new SceneTargetAnalysis(graph, new Dictionary<string, List<EditorEntryData>> { ["g"] = [layer, shake, stop] });

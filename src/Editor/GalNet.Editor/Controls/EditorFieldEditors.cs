@@ -97,6 +97,8 @@ public static class EditorFieldEditors
             registry.RegisterMember<VariantsSelectOptions>(options => options.Dimension, context => VariantFieldEditor.Create(context, scenes, selection: false, dimension: true));
             registry.RegisterMember<VariantsSelectOptions>(options => options.Value, context => VariantFieldEditor.Create(context, scenes, selection: false));
             FieldEditorLease Target(FieldEditorContext context) => SceneTargetFieldEditor.Create(context, scenes);
+            registry.RegisterMember<ShakePresetOptions>(options => options.HandleId, Target);
+            registry.RegisterMember<ImpactPresetOptions>(options => options.HandleId, Target);
             registry.RegisterMember<LayerHandleOptions>(options => options.HandleId, Target);
             registry.RegisterMember<LayerMoveOptions>(options => options.HandleId, Target);
             registry.RegisterMember<LayerReplaceOptions>(options => options.HandleId, Target);

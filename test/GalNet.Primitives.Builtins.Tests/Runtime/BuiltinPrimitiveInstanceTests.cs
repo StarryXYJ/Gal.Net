@@ -24,7 +24,7 @@ public class BuiltinPrimitiveInstanceTests
         var runtime = new GameRuntime(null, stateCatalog: view.StateCatalog);
         runtime.Scene().GetOrAdd("hero", id => new Layer { Id = id, AssetId = "image", Transform = new LayerTransform { X = 37 } });
         var timeline = GeneralTest.Entry.VisualPresetTests.Compile(BuiltinEntryIds.ImpactPreset,
-            new { playbackHandleId = "impact", program = "shader-id", targets = new[] { new { handleId = "hero" } } });
+            new { playbackHandleId = "impact", program = "shader-id", handleId = "hero" });
         var primitive = Primitive(BuiltinEntryIds.PlayTimeline, new { timeline });
         var instance = view.Dispatch(primitive, runtime, CancellationToken.None)!;
         instance.ApplyPlaybackMode(mode);

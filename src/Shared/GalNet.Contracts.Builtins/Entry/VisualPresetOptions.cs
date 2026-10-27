@@ -55,7 +55,7 @@ public partial class MotionPresetOptions : VisualClipOptions
 public partial class ShakePresetOptions : VisualClipOptions
 {
     [Common, Field(10, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<VisualPlaybackMode>))] public VisualPlaybackMode PlaybackMode { get; set; }
-    [Common, Field(6, DefaultJson = "[]", EditorId = ValueEditorIds.Json)] public JsonElement Targets { get; set; }
+    [Common, Field(6, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)] public string HandleId { get; set; } = "";
     [Field(7, Minimum = 0, Maximum = 10000)] public float Amplitude { get; set; } = 16;
     [Field(8, Minimum = 1, Maximum = 30)] public int Cycles { get; set; } = 4;
     [Field(9)] public float Angle { get; set; }
@@ -79,7 +79,7 @@ public partial class SpeedLinesPresetOptions : SpeedLinesPresetOptionsBase
 [GenerateFieldSchema]
 public partial class ImpactPresetOptions : SpeedLinesPresetOptionsBase
 {
-    [Common, Field(11, DefaultJson = "[]", EditorId = ValueEditorIds.Json)] public JsonElement Targets { get; set; }
+    [Common, Field(11, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)] public string HandleId { get; set; } = "";
     [Field(12, Minimum = 0, Maximum = 10000)] public float Amplitude { get; set; } = 16;
     [Field(13, Minimum = 1, Maximum = 30)] public int Cycles { get; set; } = 4;
     [Field(14)] public float Angle { get; set; }
