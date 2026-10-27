@@ -7,7 +7,10 @@
   <Style Selector="TextBlock.severity.warning"><Setter Property="Foreground" Value="{DynamicResource SemiColorWarning}"/></Style>
  </UserControl.Styles>
  <Grid RowDefinitions="Auto,*" Margin="8" RowSpacing="6">
-  <WrapPanel><Button Content="{loc:Localize Uiux.Validation.Check}" Command="{Binding ValidateCommand}" Margin="0,0,8,0"/><TextBlock Text="{Binding Status}" VerticalAlignment="Center" Margin="0,0,8,0"/><CheckBox Content="{loc:Localize Log.ErrorsOnly}" IsChecked="{Binding OnlyErrors}"/></WrapPanel>
+  <WrapPanel>
+   <Button Content="{loc:Localize Uiux.Validation.Check}" Command="{Binding ValidateCommand}" Margin="0,0,8,0"/><TextBlock Text="{Binding Status}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+   <CheckBox VerticalAlignment="Center" Content="{loc:Localize Log.ErrorsOnly}" IsChecked="{Binding OnlyErrors}"/>
+  </WrapPanel>
   <ListBox Grid.Row="1" ItemsSource="{Binding VisibleProblems}">
    <ListBox.ItemTemplate><DataTemplate x:DataType="vm:AuthorProblem">
     <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="4">
