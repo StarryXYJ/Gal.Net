@@ -12,6 +12,7 @@ public partial class EntryInspectorView : UserControl
     public EntryInspectorView()
     {
         InitializeComponent();
+        SizeChanged += (_, _) => ShaderPreviewPanel.MaxHeight = Math.Max(40, Bounds.Height * 0.5);
         DataContextChanged += (_, _) => Connect();
         AttachedToVisualTree += (_, _) => Connect();
         DetachedFromVisualTree += (_, _) => Disconnect();

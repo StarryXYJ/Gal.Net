@@ -122,6 +122,9 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 await inspector.PreviewLoading; TimelinePump(window);
                 Assert.That(inspector.ShaderPreviewError, Is.Null);
                 Assert.That(inspector.ShaderPreview, Is.Not.Null);
+                var previewPanel = view.GetVisualDescendants().OfType<Expander>().Single(control => control.Name == "ShaderPreviewPanel");
+                Assert.That(Grid.GetRow(previewPanel), Is.EqualTo(2), "The preview is docked below the scrollable fields.");
+                Assert.That(previewPanel.Parent, Is.TypeOf<Grid>());
                 var image = view.GetVisualDescendants().OfType<Image>().Single(control => control.Name == "ShaderEffectPreview");
                 Assert.That(image.Source, Is.SameAs(inspector.ShaderPreview));
                 using var beforeStream = new MemoryStream(); inspector.ShaderPreview!.Save(beforeStream); beforeStream.Position = 0;

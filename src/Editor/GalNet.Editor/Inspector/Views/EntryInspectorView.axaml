@@ -4,7 +4,8 @@
  x:Class="GalNet.Editor.Inspector.Views.EntryInspectorView" x:DataType="vm:EntryInspectorViewModel"
  Background="{DynamicResource SemiColorBackground0}" Foreground="{DynamicResource SemiColorText0}">
  <UserControl.Styles><StyleInclude Source="avares://GalNet.Editor/Controls/AuthorFormStyles.axaml"/></UserControl.Styles>
- <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+ <Grid RowDefinitions="*,Auto,Auto">
+ <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Disabled">
   <StackPanel Margin="10" Spacing="8">
    <SelectableTextBlock Text="{Binding TargetDescription}" TextWrapping="Wrap" FontWeight="SemiBold"/>
    <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding HasMultipleSelection}"><TextBlock Text="{loc:Localize Uiux.Entry.Selected}"/><TextBlock Text="{Binding SelectionCount}"/><TextBlock Text="{loc:Localize Uiux.Entry.ActiveOnly}"/></StackPanel>
@@ -19,13 +20,17 @@
    <Expander Header="{loc:Localize Entry.Parameter.parameters}" IsVisible="{Binding IsShaderMode}">
     <forms:DtoEditorHost Item="{Binding ShaderRawForm.Item}" Registry="{Binding FieldEditors}"/>
    </Expander>
-   <Expander Header="{loc:Localize Uiux.Inspector.Preview}" IsExpanded="True" IsVisible="{Binding IsShaderMode}">
-    <StackPanel Spacing="8" Margin="8">
-     <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsShaderPreviewLoading}" Height="3"/>
-     <Image Name="ShaderEffectPreview" Source="{Binding ShaderPreview}" Width="192" Height="192" Stretch="Fill" HorizontalAlignment="Left"/>
-     <TextBlock Text="{Binding ShaderPreviewError}" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" TextWrapping="Wrap"/>
-    </StackPanel>
-   </Expander>
   </StackPanel>
  </ScrollViewer>
+ <GridSplitter Grid.Row="1" Height="6" ResizeDirection="Rows" HorizontalAlignment="Stretch" Background="Transparent" IsVisible="{Binding IsShaderMode}"/>
+ <Expander x:Name="ShaderPreviewPanel" Grid.Row="2" Header="{loc:Localize Uiux.Inspector.Preview}" IsExpanded="True" IsVisible="{Binding IsShaderMode}" HorizontalAlignment="Stretch" MaxHeight="300">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" Margin="12,4,12,12">
+   <StackPanel Spacing="8">
+    <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsShaderPreviewLoading}" Height="3"/>
+    <Image Name="ShaderEffectPreview" Source="{Binding ShaderPreview}" MaxHeight="220" Stretch="Uniform"/>
+    <TextBlock Text="{Binding ShaderPreviewError}" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" TextWrapping="Wrap"/>
+   </StackPanel>
+  </ScrollViewer>
+ </Expander>
+ </Grid>
 </UserControl>
