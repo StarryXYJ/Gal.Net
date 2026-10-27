@@ -60,7 +60,11 @@ out/release/<version>/
 - `GalNet-Sample-GameTestCase-<version>-win-x64-r2r.zip`：包含编译并展开的 GameTestCase，运行 `Run-GameTestCase.cmd`。
 - `GalNet-Sample-Contracts-<version>.zip`：与 Sample 匹配的 Core、Contracts.Builtins、GalNet.Project.Contracts 三个 IL DLL，给 Editor 项目使用。
 
-玩家关闭外部调试接入，不分发 PDB，保留运行日志。契约闭包排除 R2R 转换；内容编译直接使用这一份玩家契约，不另外重建一份。Editor 自带的默认契约与 Sample 契约不同，分别放置。
+应用 ZIP（包括 Editor 内嵌 CLI）不分发 PDB；构建目录仍保留调试符号，运行日志照常输出。仅保留 VLC 的 win-x64 原生文件，过滤原生 NuGet 附带的 win-x86 / win-arm64 文件。玩家关闭外部调试接入。契约闭包排除 R2R 转换；内容编译直接使用这一份玩家契约，不另外重建一份。Editor 自带的默认契约与 Sample 契约不同，分别放置。
+
+整合 GameTestCase 经过 `project export-directory` 编译：资源在 `Assets/Paks/*.pak`，剧情在 `Graph/groups/*.galgroup`；Graph 索引、配置和本地化 JSON 按运行时格式保留，不是作者项目副本。验收要求非空 PAK、已编译剧情，并拒绝散装素材、rawgalgroup 和作者 Contracts 目录。
+
+这些应用自带 .NET 运行时，无需用户安装 .NET；系统 DLL、Avalonia/Skia/HarfBuzz 与 VLC 视频插件都是体积来源。R2R 保留 IL 并增加预编译代码，不能按 AOT 的体积预期评估。DLL 数量主要来自 VLC 插件，不能仅按扩展名删除；当前保留 x64 插件能力集合。Editor 内嵌 CLI 保持独立自包含目录，因此仍有一份运行时副本。
 
 每个 ZIP 都有版本/commit/文件哈希清单。流水线还会重新解压、验证哈希、检查 R2R 标记和契约字节身份，并执行分发 CLI 的 help。可单独运行分发验证，`-DesktopSmoke` 额外验证真实桌面玩家使用展开内容完成初始化：
 

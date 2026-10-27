@@ -29,6 +29,20 @@
 
 ZIP 大小约：Editor 261.43 MiB，纯 Sample 191.81 MiB，整合 Sample 222.17 MiB，Contracts 0.34 MiB。五个 NuGet 合计约 2.4 MiB。
 
+### 2026-10-28 发行体积跟进
+
+真实载荷发现 VLC NuGet 带了约 178.4 MiB 的 win-x86 / win-arm64，Editor 还有约 102.8 MiB PDB。现在在生成 manifest 前过滤全部 PDB 及上述非目标架构文件，保留 x64 核心与插件。Editor 的独立自包含 CLI 暂时仍保留运行时副本。
+
+| 应用 ZIP | 首次候选 MiB | 精简后 MiB |
+| --- | --- | --- |
+| Editor | 261.43 | 149.66 |
+| Sample | 191.81 | 107.35 |
+| Sample-GameTestCase | 222.17 | 137.70 |
+
+`out/release-size-check/0.1.0-dev.2` 为本次 Apps 候选；未重复构建 NuGet。所有应用 PDB=0，Sample 的 DLL 数量由 1214 降到 577。四个 ZIP 的解压/hash/契约/R2R/CLI/架构及内容检查通过；`out/release-size-smoke/dev2/app-validation.json` 为 passed=true、desktopStartup=true；7 项发布保护用例再次通过。第一次验证因用户同时清理输出目录而中断，换独立输出根重跑后成功。
+
+整合 GameTestCase 原本已通过 export-directory 编译，本次进一步锁定产物形态：资源 `Assets/Paks/000-base.pak` 约 30.4 MiB、剧情 `.galgroup`，保留运行时 Graph/配置/本地化 JSON；发布验证拒绝散装作者素材、rawgalgroup 和 Contracts 作者目录。不能将这些运行时 JSON 当作“未编译素材”删除。
+
 本地候选从 CI 修复 commit `88c12e7b` 及当时未提交的发布脚本构建，索引如实标记 dirty=true，没有 tag，因此不能通过公开上传门禁。它是可运行开发候选，不冒充正式 tag 发行。SDK/第三方源审计遇到网络问题时仍有 NU1900 警告；构建和测试的通过不代表零警告。
 
 ## 未完成与实际限制

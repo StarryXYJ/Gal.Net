@@ -146,6 +146,19 @@ function Add-PackageManifest([string]$PackageRoot, [string]$Kind) {
 }
 
 function Complete-Package([string]$Kind, [string]$PackageRoot) {
+    # Some native NuGet content ignores the publish RID and symbol-copy setting.
+    # Filter the final payload, including the nested CLI, before hashing it.
+    $payloadRoot = [IO.Path]::GetFullPath($PackageRoot).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
+    $unwanted = @(Get-ChildItem -LiteralPath $PackageRoot -Recurse -File | Where-Object {
+        $_.Extension -eq '.pdb' -or
+        (Get-RelativePath $PackageRoot $_.FullName).Replace('\', '/') -match '(^|/)libvlc/win-(x86|arm64)/'
+    })
+    foreach ($file in $unwanted) {
+        if (!$file.FullName.StartsWith($payloadRoot, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Refusing to remove a file outside the release payload: $($file.FullName)"
+        }
+        Remove-Item -LiteralPath $file.FullName -Force
+    }
     Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $PackageRoot 'LICENSE') -Force
     Add-PackageManifest $PackageRoot $Kind
     $modeSuffix = if ($IncludeModeInName) { '-r2r' } else { '' }
@@ -253,10 +266,11 @@ setlocal
 "%~dp0GalNet.Sample.Avalonia.exe" "%~dp0GameTestCase" --profile "%LOCALAPPDATA%\GalNet\Sample\GameTestCase"
 '@ | Set-Content -LiteralPath (Join-Path $packageRoot 'Run-GameTestCase.cmd') -Encoding ascii
             @'
-GalNet Sample with expanded GameTestCase content
+GalNet Sample with compiled GameTestCase content
 
-Run Run-GameTestCase.cmd. The GameTestCase directory is already expanded and
-verified; no .galpak extraction step is needed on the target machine.
+Run Run-GameTestCase.cmd. Resources are compiled into Assets/Paks/*.pak,
+and story groups into Graph/groups/*.galgroup. This is installed runtime
+content; no authoring sources or .galpak extraction step are needed.
 '@ | Set-Content -LiteralPath (Join-Path $packageRoot 'README.txt') -Encoding utf8
             Complete-Package 'Sample-GameTestCase' $packageRoot
         }

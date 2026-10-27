@@ -18,6 +18,15 @@ foreach ($kind in @('Editor', 'Sample', 'Sample-GameTestCase', 'Sample-Contracts
     if (Test-Path -LiteralPath $root) { throw "Use a fresh validation directory: $root" }
     [IO.Compression.ZipFile]::ExtractToDirectory($zip, $root)
     $roots[$kind] = $root
+    if (Get-ChildItem -LiteralPath $root -Recurse -Filter '*.pdb') { throw "$kind ZIP contains PDB files." }
+    if (Get-ChildItem -LiteralPath $root -Recurse -File | Where-Object {
+        [IO.Path]::GetRelativePath($root, $_.FullName).Replace('\', '/') -match '(^|/)libvlc/win-(x86|arm64)/'
+    }) { throw "$kind ZIP contains VLC assets for another architecture." }
+    if ($kind -ne 'Sample-Contracts') {
+        foreach ($name in @('libvlc.dll', 'libvlccore.dll', 'plugins/codec/libavcodec_plugin.dll')) {
+            if (!(Test-Path (Join-Path $root "libvlc/win-x64/$name"))) { throw "Missing VLC x64 dependency: $kind / $name" }
+        }
+    }
     $manifest = Get-Content (Join-Path $root 'release-manifest.json') -Raw | ConvertFrom-Json
     if ($manifest.version -ne $Version) { throw "Incorrect version in $kind manifest." }
     foreach ($file in $manifest.files) {
@@ -26,7 +35,6 @@ foreach ($kind in @('Editor', 'Sample', 'Sample-GameTestCase', 'Sample-Contracts
         if ((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() -cne $file.sha256) { throw "Hash mismatch in $kind : $($file.path)" }
     }
     if ($kind -in @('Sample', 'Sample-GameTestCase')) {
-        if (Get-ChildItem -LiteralPath $root -Recurse -Filter '*.pdb') { throw 'Player ZIP contains PDB files.' }
         foreach ($name in @('GalNet.Sample.Avalonia.exe', 'coreclr.dll', 'galnet_miniaudio.dll')) {
             if (!(Test-Path (Join-Path $root $name))) { throw "Missing player dependency $name" }
         }
@@ -49,6 +57,11 @@ Invoke-ReleaseCommand 'distributed-cli-help' $cli @('help')
 if (!(Test-Path (Join-Path $roots.Editor 'CLI/Skills/galnet-project-authoring/SKILL.md'))) { throw 'Distributed CLI is missing its authoring skill.' }
 $game = Join-Path $roots['Sample-GameTestCase'] 'GameTestCase'
 if (!(Test-Path (Join-Path $game 'Graph/graph.json'))) { throw 'Integrated game content is missing.' }
+$paks = @(Get-ChildItem (Join-Path $game 'Assets/Paks') -Filter '*.pak' -File -ErrorAction SilentlyContinue)
+if (!$paks.Count -or ($paks | Where-Object Length -eq 0)) { throw 'Integrated game resources must be compiled into nonempty PAK files.' }
+if (Get-ChildItem (Join-Path $game 'Assets') -Recurse -File | Where-Object Extension -ne '.pak') { throw 'Integrated game contains loose authoring assets.' }
+if (!(Get-ChildItem (Join-Path $game 'Graph/groups') -Filter '*.galgroup' -File)) { throw 'Integrated game has no compiled story groups.' }
+if ((Test-Path (Join-Path $game 'Contracts')) -or (Get-ChildItem $game -Recurse -Filter '*.rawgalgroup')) { throw 'Integrated game contains authoring sources.' }
 if (Test-Path (Join-Path $roots.Sample 'GameTestCase')) { throw 'Pure player contains integrated game content.' }
 
 if ($DesktopSmoke) {

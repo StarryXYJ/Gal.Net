@@ -16,3 +16,5 @@ P1 证据：`out/ci/local-pass/ci-results.json` 整体 passed=true；15 份 TRX 
 P2：`out/release/0.1.0-dev.1/release-index.json` 包含 5 个 NuGet 与 4 个 ZIP、完整文件哈希。独立消费工程编译/运行、所有 GalNet 程序集公开类型加载、源生成器、native DLL 加载通过；ZIP 解压/hash/R2R 标记/契约身份/CLI help/Skill 文件验证通过。`out/release-smoke/dev1/app-validation.json` 为 passed=true、desktopStartup=true，日志确认 11 个 sprite 和 15 个 effect program 资产发现，Session initialized。
 
 P3：真实桌面 NativeAOT 严格链接失败，见 ci-investigation.md；保留诊断脚本和明确拒绝 AOT/Both 的发布门禁。不能标记本 feature 全部完成。
+
+2026-10-28 P2 跟进 verified：用户要求核实体积及整合内容形态。过滤全部应用 PDB 和非 x64 VLC 内容；发布验收检查仅保留所需架构，并要求整合内容为非空 PAK / 编译剧情而非原始作者文件。`Release.ps1 -Version 0.1.0-dev.2 -Target Apps -OutputRoot out/release-size-check`、独立解压 DesktopSmoke（`out/release-size-smoke/dev2/app-validation.json`）及 7 项保护检查均通过。ZIP 体积对比见 summary.md。
