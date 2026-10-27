@@ -79,7 +79,7 @@ public sealed class EntryInspectorViewModel : ObservableObject, IInspectorContro
             if (entry is not null) entry.PropertyChanged += EntryChanged;
             if (entry?.DetailForm is { } form)
             {
-                Form = new EntryParameterFormBinding(entry, shaderMode ? form.Fields.Where(field => field.Id != "parameters").ToArray() : form.Fields, entry.ParameterDtoType);
+                Form = new EntryParameterFormBinding(entry, shaderMode ? form.Fields.Where(field => field.Id is not ("id" or "parameters")).ToArray() : form.Fields, entry.ParameterDtoType);
                 if (shaderMode && form.Fields.FirstOrDefault(field => field.Id == "parameters") is { } root)
                     ShaderRawForm = new EntryParameterFormBinding(entry, [root], entry.ParameterDtoType);
             }

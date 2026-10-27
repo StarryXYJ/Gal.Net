@@ -93,6 +93,9 @@ public sealed class ShaderProgramTextureEffect : IGpuTextureEffect
             case ShaderEffectParameterKind.Vector2:
                 uniforms.Add(parameter.Uniform, ReadVector(instance, parameter, 2));
                 break;
+            case ShaderEffectParameterKind.Vector3:
+                uniforms.Add(parameter.Uniform, ReadVector(instance, parameter, 3));
+                break;
             case ShaderEffectParameterKind.Vector4:
                 uniforms.Add(parameter.Uniform, ReadVector(instance, parameter, 4));
                 break;

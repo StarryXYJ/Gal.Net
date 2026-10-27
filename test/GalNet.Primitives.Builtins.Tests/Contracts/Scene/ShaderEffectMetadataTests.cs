@@ -125,6 +125,30 @@ public sealed class ShaderEffectMetadataTests
         });
     }
 
+    [TestCase("float2", ShaderEffectParameterKind.Vector2, "[0,0]")]
+    [TestCase("float3", ShaderEffectParameterKind.Vector3, "[0,0,0]")]
+    [TestCase("float4", ShaderEffectParameterKind.Vector4, "[0,0,0,0]")]
+    public void Parser_accepts_float_vector_types_with_fixed_defaults(string type, ShaderEffectParameterKind kind, string defaultValue)
+    {
+        var source = """
+            /*
+            @gal.effect v=1
+            @input source
+            @targets layer
+            @param direction
+              uniform: uDirection
+              type: TYPE
+            */
+            uniform TYPE uDirection;
+            """.Replace("TYPE", type, StringComparison.Ordinal);
+        var result = ShaderEffectMetadataParser.Parse(Program, source);
+
+        Assert.That(result.Success, Is.True, string.Join(Environment.NewLine, result.Diagnostics));
+        var direction = result.Descriptor!.Parameters.Single();
+        Assert.That(direction.Kind, Is.EqualTo(kind));
+        Assert.That(direction.DefaultValue, Is.EqualTo(defaultValue));
+    }
+
     [Test]
     public void Attachment_keeps_runtime_handle_internal_and_enumerates_static_resource_dependencies()
     {

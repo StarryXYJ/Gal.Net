@@ -21,7 +21,7 @@ public readonly record struct EffectProgramResource
 }
 
 /// <summary>Value kinds declared by an <c>@param</c> or <c>@texture</c> metadata entry.</summary>
-public enum ShaderEffectParameterKind { Float, Integer, Boolean, Color, Vector2, Vector4, Texture, Enum }
+public enum ShaderEffectParameterKind { Float, Integer, Boolean, Color, Vector2, Vector4, Texture, Enum, Vector3 }
 
 /// <summary>Editor and validation metadata parsed from a shader resource comment block.</summary>
 public sealed record ShaderEffectParameterDescriptor(
@@ -357,6 +357,7 @@ public static class ShaderEffectMetadataParser
             ShaderEffectParameterKind.Integer or
             ShaderEffectParameterKind.Color or
             ShaderEffectParameterKind.Vector2 or
+            ShaderEffectParameterKind.Vector3 or
             ShaderEffectParameterKind.Vector4;
 
         private static string? DefaultValue(ShaderEffectParameterKind kind, string[] options) => kind switch
@@ -365,6 +366,7 @@ public static class ShaderEffectMetadataParser
             ShaderEffectParameterKind.Boolean => "false",
             ShaderEffectParameterKind.Color => "#00000000",
             ShaderEffectParameterKind.Vector2 => "[0,0]",
+            ShaderEffectParameterKind.Vector3 => "[0,0,0]",
             ShaderEffectParameterKind.Vector4 => "[0,0,0,0]",
             ShaderEffectParameterKind.Texture => null,
             ShaderEffectParameterKind.Enum => options.Length > 0 ? options[0] : null,
@@ -377,8 +379,9 @@ public static class ShaderEffectMetadataParser
             "int" or "integer" => ShaderEffectParameterKind.Integer,
             "bool" or "boolean" => ShaderEffectParameterKind.Boolean,
             "color" => ShaderEffectParameterKind.Color,
-            "vec2" or "vector2" => ShaderEffectParameterKind.Vector2,
-            "vec4" or "vector4" => ShaderEffectParameterKind.Vector4,
+            "vec2" or "vector2" or "float2" => ShaderEffectParameterKind.Vector2,
+            "vec3" or "vector3" or "float3" => ShaderEffectParameterKind.Vector3,
+            "vec4" or "vector4" or "float4" => ShaderEffectParameterKind.Vector4,
             "texture" => ShaderEffectParameterKind.Texture,
             "enum" => ShaderEffectParameterKind.Enum,
             _ => null

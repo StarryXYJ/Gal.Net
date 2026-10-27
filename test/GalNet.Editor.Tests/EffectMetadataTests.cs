@@ -57,6 +57,12 @@ public sealed partial class ProjectWorkspaceLifecycleTests
           uniform: uOffset
           type: vec2
           default: [0,0]
+        @param direction
+          uniform: uDirection
+          type: vec3
+        @param channels
+          uniform: uChannels
+          type: vec4
         @param style
           uniform: uStyle
           type: enum
@@ -100,12 +106,18 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(entry.EffectInlineForm!.Item.Fields.Select(field => field.Id), Is.EqualTo(new[] { "program" }));
                 var inline = groupView.GetVisualDescendants().OfType<DtoEditorHost>().Single(host => ReferenceEquals(host.Item, entry.EffectInlineForm.Item));
                 Assert.That(inline.GetVisualDescendants().OfType<FieldEditorRow>().Select(row => row.Context!.Field.Id), Is.EqualTo(new[] { "program" }));
-                Assert.That(inspector.ShaderForm!.Item.Fields.Select(field => field.Id), Is.EqualTo(new[] { "amount", "tint", "offset", "style", "mask" }));
+                Assert.That(inspector.Form!.Item.Fields.Select(field => field.Id), Does.Not.Contain("id"));
+                Assert.That(inspector.ShaderForm!.Item.Fields.Select(field => field.Id), Is.EqualTo(new[] { "amount", "tint", "offset", "direction", "channels", "style", "mask" }));
                 var form = view.GetVisualDescendants().OfType<DtoEditorHost>().Single(host => host.Name == "ShaderParameters");
                 var rows = form.GetVisualDescendants().OfType<FieldEditorRow>().ToDictionary(row => row.Context!.Field.Id);
-                Assert.That(rows.Keys, Is.EquivalentTo(new[] { "amount", "tint", "offset", "style", "mask" }));
+                Assert.That(rows.Keys, Is.EquivalentTo(new[] { "amount", "tint", "offset", "direction", "channels", "style", "mask" }));
                 Assert.That(rows["amount"].Editor, Is.TypeOf<TextBox>());
-                Assert.That(rows["offset"].Editor, Is.Not.Null);
+                foreach (var (name, count) in new[] { ("offset", 2), ("direction", 3), ("channels", 4) })
+                {
+                    Assert.That(rows[name].Editor, Is.Not.Null);
+                    Assert.That(rows[name].Editor!.GetVisualDescendants().OfType<TextBox>().Count(), Is.EqualTo(count));
+                    Assert.That(rows[name].Editor!.GetVisualDescendants().OfType<Button>().Any(button => button.Name is "AddItem" or "RemoveItem" or "MoveItem"), Is.False);
+                }
                 Assert.That(entry.Source.Parameters["parameters"].TryGetProperty("style", out _), Is.False, "Metadata defaults must remain unprovided until edited.");
                 var old = rows["amount"].Context!;
                 var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear();
@@ -113,7 +125,13 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var changed = entry.Source.Parameters["parameters"];
                 Assert.That(changed.GetProperty("amount").GetSingle(), Is.EqualTo(.8f));
                 Assert.That(changed.GetProperty("unknown")[0].GetInt64(), Is.EqualTo(9007199254740993L));
+                var vectorX = rows["direction"].Editor!.GetVisualDescendants().OfType<TextBox>().Single(input => input.Name == "ShaderVectorX");
+                vectorX.Focus(); vectorX.Text = "2.5"; TimelinePump(window); PressGroupKey(vectorX, Key.Enter); TimelinePump(window);
+                Assert.That(entry.Source.Parameters["parameters"].GetProperty("direction").EnumerateArray().Select(value => value.GetSingle()), Is.EqualTo(new[] { 2.5f, 0f, 0f }));
+                Assert.That(entry.Source.Parameters["parameters"].GetProperty("unknown")[0].GetInt64(), Is.EqualTo(9007199254740993L));
                 Assert.That(history.CanUndo, Is.True);
+                await history.UndoAsync();
+                Assert.That(entry.Source.Parameters["parameters"].TryGetProperty("direction", out _), Is.False);
                 await history.UndoAsync();
                 Assert.That(entry.Source.Parameters["parameters"].GetProperty("amount").GetSingle(), Is.EqualTo(.6f));
                 var tint = rows["tint"].Editor!.GetVisualDescendants().OfType<TextBox>().Single(input => input.Name == "ColorHex");
@@ -127,6 +145,9 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 entry.RefreshAuthorReferences(scope.GetRequiredService<GalNet.Core.Entry.IEntryCatalog>());
                 Assert.That(inspector.ShaderForm, Is.Null);
                 Assert.That(entry.Source.Parameters["parameters"].GetProperty("amount").GetSingle(), Is.EqualTo(.6f));
+                entry.Source.Parameters["program"] = JsonSerializer.SerializeToElement("");
+                entry.RefreshAuthorReferences(scope.GetRequiredService<GalNet.Core.Entry.IEntryCatalog>());
+                Assert.That(inspector.Form!.Item.Fields.Select(field => field.Id), Does.Contain("id"));
                 return true;
             }
             finally { window.Close(); await projects.CloseAsync(); }

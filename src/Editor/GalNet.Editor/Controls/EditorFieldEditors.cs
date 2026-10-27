@@ -26,6 +26,9 @@ public static class EditorFieldEditors
         registry.Register("entry.audioasset", context => AssetFieldEditor.Create(context, assets, Models.AssetPickerFilter.Audio));
         registry.Register("entry.videoasset", context => AssetFieldEditor.Create(context, assets, Models.AssetPickerFilter.Video));
         registry.Register("shader.color", context => ColorFieldEditor.Create(context, rgba: true));
+        registry.Register("shader.vector2", context => ShaderVectorFieldEditor.Create(context, 2));
+        registry.Register("shader.vector3", context => ShaderVectorFieldEditor.Create(context, 3));
+        registry.Register("shader.vector4", context => ShaderVectorFieldEditor.Create(context, 4));
         foreach (var id in new[] { "entry.autocomplete", "entry.multilinetext" })
             registry.Register(id, context => DefaultFieldEditors.CreateText(context));
         registry.Register("entry.expression", context => AuthoringExpressionFieldEditors.Expression(context, () => [], () => []));

@@ -279,6 +279,25 @@ public sealed class TextureEffectsTests
         });
     }
 
+    [Test]
+    public void Project_shader_binds_three_component_vector_from_json()
+    {
+        using var source = Solid(SKColors.White);
+        using var target = new SKBitmap(source.Info);
+        var effect = new SceneEffectInstance("rgb", CreateFactory(RgbSource, EffectStage.Layer), "layer", 0,
+            "{\"rgb\":[0.25,0.5,0.75]}");
+
+        effect.Effect.Render(new SKCanvas(target), source, effect);
+        var result = target.GetPixel(2, 2);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Red, Is.InRange(62, 66));
+            Assert.That(result.Green, Is.InRange(126, 130));
+            Assert.That(result.Blue, Is.InRange(190, 194));
+        });
+    }
+
     private static SKBitmap Solid(SKColor color)
     {
         var bitmap = new SKBitmap(8, 8);
@@ -402,5 +421,19 @@ public sealed class TextureEffectsTests
         uniform float4 tint;
         uniform float2 offset;
         half4 main(float2 p) { return source.eval(p + offset) * half4(tint); }
+        """;
+
+    private const string RgbSource = """
+        /*
+        @gal.effect v=1
+        @input source
+        @targets layer
+        @param rgb
+          uniform: rgb
+          type: vec3
+        */
+        uniform shader source;
+        uniform float3 rgb;
+        half4 main(float2 p) { return source.eval(p) * half4(half3(rgb), 1); }
         """;
 }

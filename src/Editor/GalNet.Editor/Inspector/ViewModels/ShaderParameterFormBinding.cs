@@ -43,7 +43,7 @@ public sealed class ShaderParameterFormBinding : IDisposable
             ShaderEffectParameterKind.Float => typeof(float),
             ShaderEffectParameterKind.Integer => typeof(int),
             ShaderEffectParameterKind.Boolean => typeof(bool),
-            ShaderEffectParameterKind.Vector2 or ShaderEffectParameterKind.Vector4 => typeof(float[]),
+            ShaderEffectParameterKind.Vector2 or ShaderEffectParameterKind.Vector3 or ShaderEffectParameterKind.Vector4 => typeof(float[]),
             _ => typeof(string)
         };
         var constraints = new Dictionary<string, object>();
@@ -51,13 +51,21 @@ public sealed class ShaderParameterFormBinding : IDisposable
         if (parameter.Maximum is { } maximum && type != typeof(float[])) constraints["maximum"] = maximum;
         if (parameter.Kind == ShaderEffectParameterKind.Enum && parameter.Options is { Count: > 0 } options)
             constraints["enum"] = options;
-        if (parameter.Kind is ShaderEffectParameterKind.Vector2 or ShaderEffectParameterKind.Vector4)
-            constraints["minItems"] = constraints["maxItems"] = parameter.Kind == ShaderEffectParameterKind.Vector2 ? 2 : 4;
+        if (parameter.Kind is ShaderEffectParameterKind.Vector2 or ShaderEffectParameterKind.Vector3 or ShaderEffectParameterKind.Vector4)
+            constraints["minItems"] = constraints["maxItems"] = parameter.Kind switch
+            {
+                ShaderEffectParameterKind.Vector2 => 2,
+                ShaderEffectParameterKind.Vector3 => 3,
+                _ => 4
+            };
         var descriptor = new ValueDescriptor(type, allowNull: false, constraints: JsonSerializer.SerializeToElement(constraints));
         var editor = parameter.Kind switch
         {
             ShaderEffectParameterKind.Texture => "entry.imageasset",
             ShaderEffectParameterKind.Color => "shader.color",
+            ShaderEffectParameterKind.Vector2 => "shader.vector2",
+            ShaderEffectParameterKind.Vector3 => "shader.vector3",
+            ShaderEffectParameterKind.Vector4 => "shader.vector4",
             ShaderEffectParameterKind.Boolean => ValueEditorIds.Toggle,
             ShaderEffectParameterKind.Enum => ValueEditorIds.Choice,
             ShaderEffectParameterKind.Float or ShaderEffectParameterKind.Integer => ValueEditorIds.Numeric,
@@ -77,7 +85,7 @@ public sealed class ShaderParameterFormBinding : IDisposable
                 ShaderEffectParameterKind.Float => float.Parse(text, CultureInfo.InvariantCulture),
                 ShaderEffectParameterKind.Integer => int.Parse(text, CultureInfo.InvariantCulture),
                 ShaderEffectParameterKind.Boolean => bool.Parse(text),
-                ShaderEffectParameterKind.Vector2 or ShaderEffectParameterKind.Vector4 => JsonSerializer.Deserialize<float[]>(text)!,
+                ShaderEffectParameterKind.Vector2 or ShaderEffectParameterKind.Vector3 or ShaderEffectParameterKind.Vector4 => JsonSerializer.Deserialize<float[]>(text)!,
                 _ => text
             };
             var json = JsonSerializer.SerializeToElement(value, descriptor.ValueType, descriptor.JsonOptions);
