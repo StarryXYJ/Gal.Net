@@ -26,3 +26,9 @@
 真实桌面 Sample 在独立 artifacts 目录发布，最终 ILC 将约 60 条裁剪/AOT 分析诊断视为错误。涉及源生成 JSON 缺口、反射绑定、动态主题资源、DI 类型保留，以及 Serilog / Ursa / Ursa.Themes.Semi。没有压制这些诊断，也没有产出标记为支持 AOT 的发行 ZIP。
 
 `Test-DesktopAot.ps1` 保留可复现的严格试编译；Release.ps1 对 Aot/Both 明确失败，不回退 R2R。桌面 AOT 仍是未完成阶段，需要单独完成闭包迁移、依赖处理和真实 UI/音视频验收。
+
+## 首发远端 CI 跟进（2026-10-28）
+
+已将 2f64e423 推送到 dev，并手动触发 CI 40559879643。Format 成功，solution build 0 errors；BuildTest 仅 Editor 的 ColdAtlasSelectorCanFinishPreparationButAnAuthorEditStillInvalidatesIt 失败（341 passed / 1 failed），其余测试项目通过。测试在作者操作已经触发后台资源读取后才设置 Gate，无法保证冷查询；改为项目创建前安装 Gate，并显式断言准备任务受控阻塞。后续 tag Release 自带完整 CI 门禁，不跳过失败测试。
+
+修复本地验收：定向用例 1/1、完整 Editor 342/342 成功，证据在 `out/ci/editor-first-release-diagnostic`；修改文件的 whitespace 门禁通过。完整回归使用逐项日志确认持续推进，5.66 分钟完成。仓库已配置 NUGET_API_KEY，用户确认首发版本 v0.1.0-preview.1。

@@ -27,16 +27,19 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task ColdAtlasSelectorCanFinishPreparationButAnAuthorEditStillInvalidatesIt()
     {
-        using var assets = new VariantsAssets(); using var services = VariantsServices(assets); var projects = services.GetRequiredService<IProjectService>();
+        var gate = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var assets = new VariantsAssets(); assets.File.Gate = gate;
+        using var services = VariantsServices(assets); var projects = services.GetRequiredService<IProjectService>();
         var project = await projects.CreateAsync(Path.Combine(_root, "ColdAtlas"), "Atlas", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
         var scope = project.Services; var workspace = scope.GetRequiredService<EditorWorkspaceViewModel>(); var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
         var show = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.ShowVariants).Single(); show.Source.Parameters["assetId"] = JsonSerializer.SerializeToElement("atlas");
         var select = workspace.InsertEntriesInto(group, 1, 1, BuiltinEntryIds.SelectVariants).Single();
-        var gate = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously); assets.File.Gate = gate;
         var catalog = scope.GetRequiredService<SceneTargetCatalog>(); using var selection = new SceneTargetSelection(catalog, catalog.Query(group.Id, select.StableId));
         Assert.That(selection.Select(selection.Items.Single().Id), Is.True, "The initial cold snapshot must be selectable before preparation.");
         var preparing = selection.PrepareAsync();
-        await assets.File.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10)); gate.SetResult(AtlasBytes()); await preparing;
+        await assets.File.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.That(preparing.IsCompleted, Is.False, "Resource preparation must remain cold until the controlled read completes.");
+        gate.SetResult(AtlasBytes()); await preparing;
         var resolved = selection.TryResolve(out var handle);
         if (!resolved)
         {
