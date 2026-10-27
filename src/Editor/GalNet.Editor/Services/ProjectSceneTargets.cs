@@ -313,7 +313,8 @@ public sealed class ProjectSceneTargets : IDisposable
     {
         foreach (var entry in project.GroupEntries.Values.SelectMany(entries => entries))
         {
-            if (entry.Type == "effect.apply" && entry.Parameters.TryGetValue("program", out var program)
+            if ((entry.Type is BuiltinEntryIds.ApplyEffect or BuiltinEntryIds.SpeedLinesPreset or BuiltinEntryIds.ImpactPreset)
+                && entry.Parameters.TryGetValue("program", out var program)
                 && program.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(program.GetString())) yield return program.GetString()!;
             if (entry.Type != "timeline.play" || !entry.Parameters.TryGetValue("timeline", out var timeline) || timeline.ValueKind != JsonValueKind.Object) continue;
             var events = Member(timeline, "events");

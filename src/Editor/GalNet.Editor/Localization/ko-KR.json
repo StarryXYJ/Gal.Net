@@ -380,7 +380,7 @@
   "Entry.Parameter.type": "효과 유형",
   "Entry.Parameter.parameters": "매개변수(JSON)",
   "Entry.ShaderParameters": "셰이더 매개변수",
-  "Entry.ShaderMetadataUnavailable": "셰이더 메타데이터를 불러오는 중이거나 사용할 수 없습니다. 아래 JSON에서 매개변수를 편집할 수 있습니다.",
+  "Entry.ShaderMetadataUnavailable": "셰이더 메타데이터를 불러오는 중이거나 사용할 수 없습니다.",
   "Entry.Parameter.target": "대상",
   "Entry.Parameter.valueType": "값 유형",
   "Entry.Parameter.expression": "식",

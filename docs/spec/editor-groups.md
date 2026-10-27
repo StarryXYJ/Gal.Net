@@ -34,7 +34,9 @@ Timeline 参数常态为“打开时间轴”及帧数/FPS/轨道数摘要。点
 
 生成 DTO 的对象字段按展开创建嵌套表单，常用一维数组/List 支持逐元素编辑、添加、删除与上下移动。三层 registry 在嵌套处仍有效；没有专属工厂时，没有 schema、字典、复杂转换器、超过八层或 200 元素的结构使用明确的多行 JSON 回退。成员覆盖与自定义类型工厂优先于显式 EditorId；无覆盖时显式 EditorId 决定常规工厂，不强行展开声明为 JSON 的字段。JSON 使用 Ctrl+Enter 或失焦提交，Escape 恢复未提交输入。
 
-`effect.apply` 在 Group 条目行内只展示 shader `program` 资源选择；Inspector 保留适用的外层字段。选择了 program 时隐藏仅供内置效果工厂使用的 `id`；未指定 program 时显示 `id`。项目 shader 元数据可用时，Inspector 从 `@gal.effect` 参数声明生成数字、布尔、选项、颜色、向量与纹理字段，逐字段提交到原 `parameters` JSON 对象。`vec2`/`float2`、`vec3`/`float3`、`vec4`/`float4` 分别使用固定 2、3、4 个数值输入，提交时整体更新对应向量，异常旧值可经 JSON 入口修复。切换 program 只刷新表单，不自动写入默认值或删除旧参数；未知键及未修改成员保留。元数据不可用或参数根值异常时，Inspector 仍提供折叠的原始 JSON 编辑入口。旧 program 的字段租约在选择或元数据更新后失效；未指定 program 的内置 effect 路径仍使用原参数编辑方式。预设条目的 shader 参数尚未接入此表单。
+`effect.apply` 在 Group 条目行内只展示 shader `program` 资源选择；Inspector 保留适用的外层字段。选择了 program 时隐藏仅供内置效果工厂使用的 `id`；未指定 program 时显示 `id`。项目 shader 元数据可用时，Inspector 从 `@gal.effect` 参数声明生成数字、布尔、选项、颜色、向量与纹理字段，逐字段提交到原 `parameters` JSON 对象。`vec2`/`float2`、`vec3`/`float3`、`vec4`/`float4` 分别使用固定 2、3、4 个数值输入，提交时整体更新对应向量。选择 shader 后不再显示原始 JSON 参数编辑区；元数据不可用时显示提示。切换 program 只刷新表单，不自动写入默认值或删除旧参数；未知键及未修改成员保留，旧 program 的字段租约在选择或元数据更新后失效。未指定 program 的内置 effect 路径仍使用原参数编辑方式。`preset.speedLines` 与 `preset.impact` 的参数字段也使用同一 shader 元数据与字段控件，编译器接管的 `time`、`speed`、`flicker` 不列为自定义参数。`preset.motion` 的 Transform 与 `transition.reveal` 的 Center 分别使用已有 Transform 与二维向量控件。
+
+仍保留 JSON 字段的明确范围：`preset.shake`/`preset.impact` 的目标数组、`video.play` 的跳过时间数组、粒子参数模块，以及没有 shader program 的内置 `effect.apply` 参数。目标数组与跳过时间数组已有固定结构，可继续做专属列表控件；粒子参数按模块和曲线组织，需要独立的分组表单。其他 Transform、Variants 选择、Flipbook 和 Timeline 已由专属控件处理。
 
 选中 shader 的 `effect.apply` Inspector 将预览区固定在底部，与上方字段滚动区分离，沿用图片资源 Inspector 的可调整分隔条和折叠预览。预览在 192×192 示例贴图上用当前 `program`、`parameters` 和声明的额外纹理，经游戏使用的 SkSL 编译与纹理效果路径离屏渲染；修改参数、切换 shader 或刷新资源会重新生成，过期生成结果不覆盖新选择。预览图片只属于 Inspector 会话，不写入作者数据或内容历史；shader 无法编译、资源缺失或参数值异常时显示诊断。
 

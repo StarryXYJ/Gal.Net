@@ -15,7 +15,7 @@ namespace GalNet.Editor.Controls;
 /// <summary>Editor-owned presentation extensions; value conversion and submission stay in the shared factory.</summary>
 public static class EditorFieldEditors
 {
-    public static EditorRegistry CreateDefault(SceneTargetCatalog? scenes = null, Action<FieldEditorContext>? openTimeline = null, GalNet.Core.Assets.IAssetManager? assets = null, CharacterAuthoringService? characters = null, GameTextAuthoringService? texts = null, IProjectContentSession? content = null)
+    public static EditorRegistry CreateDefault(SceneTargetCatalog? scenes = null, Action<FieldEditorContext>? openTimeline = null, GalNet.Core.Assets.IAssetManager? assets = null, CharacterAuthoringService? characters = null, GameTextAuthoringService? texts = null, IProjectContentSession? content = null, ProjectSceneTargets? shaderPrograms = null)
     {
         var registry = EditorRegistry.CreateDefault(emptyInputClearsOptionalFields: true, copyValue: texts is null ? null : texts.StageCopy);
         if (characters is not null) registry.RegisterSemantic(FieldValueSemantic.CharacterReference, context => CharacterFieldEditor.Create(context, characters));
@@ -34,6 +34,10 @@ public static class EditorFieldEditors
         registry.Register("entry.expression", context => AuthoringExpressionFieldEditors.Expression(context, () => [], () => []));
         registry.Register("entry.variablename", context => AuthoringExpressionFieldEditors.Variable(context, () => []));
         registry.RegisterDefault<LayerTransform>(TransformFieldEditor.Create);
+        registry.RegisterMember<MotionPresetOptions>(value => value.Transform, TransformFieldEditor.Create);
+        registry.RegisterMember<RevealTransitionOptions>(value => value.Center, context => ShaderVectorFieldEditor.Create(context, 2));
+        registry.RegisterMember<SpeedLinesPresetOptions>(value => value.Parameters, context => PresetShaderParametersFieldEditor.Create(context, shaderPrograms));
+        registry.RegisterMember<ImpactPresetOptions>(value => value.Parameters, context => PresetShaderParametersFieldEditor.Create(context, shaderPrograms));
         registry.RegisterMember<LayerShowOptions>(value => value.Flipbook, FlipbookFieldEditor.Create);
         FieldEditorLease Track(FieldEditorContext context) => AudioTrackFieldEditor.Create(context, content);
         registry.RegisterMember<AudioTrackOptions>(value => value.TrackId, Track);

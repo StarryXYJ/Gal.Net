@@ -97,6 +97,75 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         .AddSingleton<IAssetCatalogService>(resources).BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 
     [Test]
+    public async Task PresetInspectorReusesTransformVectorAndShaderMetadataEditors()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme(); using var assets = new MetadataAssets { File = { Source = EffectEditorSource } };
+            using var resources = new MetadataResources(); using var services = EffectServices(assets, resources);
+            var projects = services.GetRequiredService<IProjectService>();
+            var project = await projects.CreateAsync(Path.Combine(_root, "PresetInspector"), "Preset", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
+            var scope = project.Services; var workspace = scope.GetRequiredService<EditorWorkspaceViewModel>();
+            var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
+            var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.SpeedLinesPreset).Single();
+            entry.Source.Parameters["program"] = JsonSerializer.SerializeToElement("program");
+            entry.Source.Parameters["parameters"] = JsonSerializer.Deserialize<JsonElement>("{\"amount\":0.6,\"unknown\":[9007199254740993,null]}");
+            scope.GetRequiredService<IEditorDocumentService>().SynchronizeGroups();
+            var query = scope.GetRequiredService<ProjectSceneTargets>(); await query.PrepareAsync();
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = entry;
+            using var inspector = new EntryInspectorViewModel(page, sceneTargets: query);
+            var view = new EntryInspectorView { DataContext = inspector };
+            var window = new Window { Content = view, Width = 650, Height = 950 }; window.Show(); TimelinePump(window);
+            try
+            {
+                Assert.That(query.ProgramDescriptor("program"), Is.Not.Null);
+                Assert.That(inspector.Form!.Item.Fields.Select(field => field.Id), Does.Contain("parameters"));
+                var host = view.GetVisualDescendants().OfType<DtoEditorHost>().Single(control => control.Name == "EntryDetails");
+                Assert.That(host.Diagnostics, Is.Empty);
+                var mounted = view.GetVisualDescendants().OfType<FieldEditorRow>().ToArray();
+                Assert.That(mounted.Select(row => row.Context?.Field.Id), Does.Contain("parameters"));
+                var parameters = mounted.Single(row => row.Context?.Field.Id == "parameters");
+                var preset = new[] { parameters.Editor! }.Concat(parameters.Editor!.GetVisualDescendants())
+                    .OfType<StackPanel>().Single(panel => panel.Name == "PresetShaderParameters");
+                Assert.That(preset.GetVisualDescendants().OfType<TextBox>().Any(), Is.True);
+                var fields = preset.GetVisualDescendants().OfType<TextBox>().ToArray();
+                Assert.That(fields.Length, Is.GreaterThanOrEqualTo(2));
+                var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear();
+                var amount = fields.First(); amount.Focus(); amount.Text = "0.8"; TimelinePump(window); PressGroupKey(amount, Key.Enter); TimelinePump(window);
+                Assert.That(entry.Source.Parameters["parameters"].GetProperty("amount").GetSingle(), Is.EqualTo(.8f));
+                Assert.That(entry.Source.Parameters["parameters"].GetProperty("unknown")[0].GetInt64(), Is.EqualTo(9007199254740993L));
+                await history.UndoAsync(); TimelinePump(window);
+                Assert.That(entry.Source.Parameters["parameters"].GetProperty("amount").GetSingle(), Is.EqualTo(.6f));
+
+                entry.Source.Parameters["program"] = JsonSerializer.SerializeToElement("missing");
+                entry.RefreshAuthorReferences(scope.GetRequiredService<GalNet.Core.Entry.IEntryCatalog>()); TimelinePump(window);
+                Assert.That(preset.GetVisualDescendants().OfType<TextBox>(), Is.Empty);
+
+                var motion = workspace.InsertEntriesInto(group, 1, 1, BuiltinEntryIds.MotionPreset).Single();
+                page.SelectedEntry = motion; TimelinePump(window);
+                var transform = view.GetVisualDescendants().OfType<FieldEditorRow>().Single(row => row.Context?.Field.Id == "transform");
+                Assert.That(new[] { transform.Editor! }.Concat(transform.Editor!.GetVisualDescendants()).OfType<Grid>().Any(grid => grid.Name == "TransformEditor"), Is.True);
+
+                var reveal = workspace.InsertEntriesInto(group, 2, 1, BuiltinEntryIds.RevealTransition).Single();
+                page.SelectedEntry = reveal; TimelinePump(window);
+                var center = view.GetVisualDescendants().OfType<FieldEditorRow>().Single(row => row.Context?.Field.Id == "center");
+                Assert.That(new[] { center.Editor! }.Concat(center.Editor!.GetVisualDescendants()).OfType<StackPanel>().Any(panel => panel.Name == "ShaderVectorEditor"), Is.True);
+
+                var impact = workspace.InsertEntriesInto(group, 3, 1, BuiltinEntryIds.ImpactPreset).Single();
+                impact.Source.Parameters["program"] = JsonSerializer.SerializeToElement("program");
+                impact.RefreshAuthorReferences(scope.GetRequiredService<GalNet.Core.Entry.IEntryCatalog>());
+                page.SelectedEntry = impact; await query.PrepareAsync(); TimelinePump(window);
+                var impactParameters = view.GetVisualDescendants().OfType<FieldEditorRow>().Single(row => row.Context?.Field.Id == "parameters");
+                Assert.That(new[] { impactParameters.Editor! }.Concat(impactParameters.Editor!.GetVisualDescendants())
+                    .OfType<StackPanel>().Any(panel => panel.Name == "PresetShaderParameters"), Is.True);
+                return true;
+            }
+            finally { window.Close(); await projects.CloseAsync(); }
+        }, CancellationToken.None);
+    }
+
+    [Test]
     public async Task ShaderInspectorPreviewsSelectedProgramAndRefreshesAfterParameterEdit()
     {
         var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
@@ -189,6 +258,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(inline.GetVisualDescendants().OfType<FieldEditorRow>().Select(row => row.Context!.Field.Id), Is.EqualTo(new[] { "program" }));
                 Assert.That(inspector.Form!.Item.Fields.Select(field => field.Id), Does.Not.Contain("id"));
                 Assert.That(inspector.ShaderForm!.Item.Fields.Select(field => field.Id), Is.EqualTo(new[] { "amount", "tint", "offset", "direction", "channels", "style", "mask" }));
+                Assert.That(view.GetVisualDescendants().OfType<DtoEditorHost>().Count(host => host.Item?.Fields.Any(field => field.Id == "parameters") == true), Is.Zero,
+                    "The shader inspector must not expose a second raw JSON editor.");
                 var form = view.GetVisualDescendants().OfType<DtoEditorHost>().Single(host => host.Name == "ShaderParameters");
                 var rows = form.GetVisualDescendants().OfType<FieldEditorRow>().ToDictionary(row => row.Context!.Field.Id);
                 Assert.That(rows.Keys, Is.EquivalentTo(new[] { "amount", "tint", "offset", "direction", "channels", "style", "mask" }));

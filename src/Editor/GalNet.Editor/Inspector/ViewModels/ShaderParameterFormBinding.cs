@@ -36,7 +36,7 @@ public sealed class ShaderParameterFormBinding : IDisposable
     public void Refresh() { if (!_disposed) _changed?.Invoke(this, EventArgs.Empty); }
     public void Dispose() { _disposed = true; _changed = null; }
 
-    private static FieldDescriptor CreateField(ShaderEffectParameterDescriptor parameter)
+    internal static FieldDescriptor CreateField(ShaderEffectParameterDescriptor parameter)
     {
         var type = parameter.Kind switch
         {
@@ -121,7 +121,7 @@ public sealed class ShaderParameterFormBinding : IDisposable
             if (value.Json is { } candidate && ValueValidation.Validate(descriptor.Value, candidate) is { } issue) return issue;
             var source = form._owner.Source.Parameters.GetValueOrDefault("parameters");
             if (source.ValueKind is not (JsonValueKind.Undefined or JsonValueKind.Object))
-                return new("shader.parameters", "Repair the parameters JSON object before editing its fields.");
+                return new("shader.parameters", "Shader parameters must be an object.");
             var values = source.ValueKind == JsonValueKind.Object
                 ? source.EnumerateObject().ToDictionary(item => item.Name, item => item.Value.Clone(), StringComparer.Ordinal)
                 : new Dictionary<string, JsonElement>(StringComparer.Ordinal);

@@ -17,9 +17,6 @@
    <TextBlock Text="{loc:Localize Entry.ShaderParameters}" IsVisible="{Binding IsShaderMode}" FontWeight="SemiBold"/>
    <forms:DtoEditorHost Name="ShaderParameters" Item="{Binding ShaderForm.Item}" Registry="{Binding FieldEditors}" IsVisible="{Binding IsShaderMode}"/>
    <TextBlock Text="{loc:Localize Entry.ShaderMetadataUnavailable}" IsVisible="{Binding ShaderUnavailable}" TextWrapping="Wrap"/>
-   <Expander Header="{loc:Localize Entry.Parameter.parameters}" IsVisible="{Binding IsShaderMode}">
-    <forms:DtoEditorHost Item="{Binding ShaderRawForm.Item}" Registry="{Binding FieldEditors}"/>
-   </Expander>
   </StackPanel>
  </ScrollViewer>
  <GridSplitter Grid.Row="1" Height="6" ResizeDirection="Rows" HorizontalAlignment="Stretch" Background="Transparent" IsVisible="{Binding IsShaderMode}"/>

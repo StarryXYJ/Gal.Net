@@ -30,7 +30,6 @@ public sealed class EntryInspectorViewModel : ObservableObject, IInspectorContro
     private bool _disposed;
     public string? RequestedField { get; private set; }
     public EntryParameterFormBinding? Form { get; private set; }
-    public EntryParameterFormBinding? ShaderRawForm { get; private set; }
     public ShaderParameterFormBinding? ShaderForm { get; private set; }
     public bool IsShaderMode { get; private set; }
     public bool ShaderUnavailable => IsShaderMode && ShaderForm is null;
@@ -88,17 +87,14 @@ public sealed class EntryInspectorViewModel : ObservableObject, IInspectorContro
         if (ownerChanged || entry?.Type != _formType || shaderMode != IsShaderMode)
         {
             if (_formOwner is not null) _formOwner.PropertyChanged -= EntryChanged;
-            Form?.Dispose(); Form = null; ShaderRawForm?.Dispose(); ShaderRawForm = null;
+            Form?.Dispose(); Form = null;
             _formOwner = entry; _formType = entry?.Type; IsShaderMode = shaderMode;
             if (entry is not null) entry.PropertyChanged += EntryChanged;
             if (entry?.DetailForm is { } form)
             {
                 Form = new EntryParameterFormBinding(entry, shaderMode ? form.Fields.Where(field => field.Id is not ("id" or "parameters")).ToArray() : form.Fields, entry.ParameterDtoType);
-                if (shaderMode && form.Fields.FirstOrDefault(field => field.Id == "parameters") is { } root)
-                    ShaderRawForm = new EntryParameterFormBinding(entry, [root], entry.ParameterDtoType);
             }
             OnPropertyChanged(nameof(Form));
-            OnPropertyChanged(nameof(ShaderRawForm));
             OnPropertyChanged(nameof(IsShaderMode));
         }
         var descriptor = shaderMode && _sceneTargets is not null ? _sceneTargets.ProgramDescriptor(program!) : null;
@@ -112,7 +108,6 @@ public sealed class EntryInspectorViewModel : ObservableObject, IInspectorContro
             OnPropertyChanged(nameof(ShaderUnavailable));
         }
         Form?.Refresh();
-        ShaderRawForm?.Refresh();
         ShaderForm?.Refresh();
         RefreshPreview(entry, program);
         OnPropertyChanged(nameof(Entry)); OnPropertyChanged(nameof(IsAvailable)); OnPropertyChanged(nameof(TargetDescription));
@@ -166,7 +161,7 @@ public sealed class EntryInspectorViewModel : ObservableObject, IInspectorContro
         _previewCancellation?.Cancel(); _previewCancellation?.Dispose(); _previewCancellation = null;
         ShaderPreview?.Dispose(); ShaderPreview = null;
         Form?.Dispose();
-        ShaderRawForm?.Dispose(); ShaderForm?.Dispose();
+        ShaderForm?.Dispose();
         if (_formOwner is not null) _formOwner.PropertyChanged -= EntryChanged;
         if (_navigation is not null) _navigation.Requested -= Navigate;
         if (_sceneTargets is not null) _sceneTargets.Changed -= Refresh;

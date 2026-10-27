@@ -91,7 +91,8 @@ public static class EditorServiceCollectionExtensions
             {
                 if (context.IsEnabled && context.HostContext is Models.Graph.IEntryFieldOrigin { GroupId: { } groupId } origin)
                     sp.GetRequiredService<EditorDockFactory>().OpenTimeline(groupId, origin.EntryId);
-            }, sp.GetRequiredService<IAssetManager>(), sp.GetRequiredService<CharacterAuthoringService>(), sp.GetRequiredService<GameTextAuthoringService>(), sp.GetRequiredService<IProjectContentSession>());
+            }, sp.GetRequiredService<IAssetManager>(), sp.GetRequiredService<CharacterAuthoringService>(), sp.GetRequiredService<GameTextAuthoringService>(),
+                sp.GetRequiredService<IProjectContentSession>(), sp.GetRequiredService<ProjectSceneTargets>());
             registry.Replace("entry.expression", context => AuthoringExpressionFieldEditors.Expression(context,
                 () => definitions.GetDefinitions(GalNet.Core.Variable.VariableScope.Player).Select(variable => new ConditionVariableSuggestion { Name = variable.Name, Scope = GalNet.Core.Variable.VariableScope.Player })
                     .Concat(definitions.GetDefinitions(GalNet.Core.Variable.VariableScope.Save).Select(variable => new ConditionVariableSuggestion { Name = variable.Name, Scope = GalNet.Core.Variable.VariableScope.Save })).ToArray(),

@@ -380,7 +380,7 @@
   "Entry.Parameter.type": "Effect type",
   "Entry.Parameter.parameters": "Parameters (JSON)",
   "Entry.ShaderParameters": "Shader parameters",
-  "Entry.ShaderMetadataUnavailable": "Shader metadata is loading or unavailable. You can still edit the parameters JSON below.",
+  "Entry.ShaderMetadataUnavailable": "Shader metadata is loading or unavailable.",
   "Entry.Parameter.target": "Target",
   "Entry.Parameter.valueType": "Value type",
   "Entry.Parameter.expression": "Expression",

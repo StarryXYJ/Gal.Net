@@ -41,7 +41,8 @@ internal static class ShaderVectorFieldEditor
                 submitting = true;
                 try
                 {
-                    return await context.CommitValueAsync(values) ? null : context.Issue ?? new("shader.vector", "The vector could not be saved.");
+                    return await context.CommitAsync(new(JsonSerializer.SerializeToElement(values))) ? null
+                        : context.Issue ?? new("shader.vector", "The vector could not be saved.");
                 }
                 finally { submitting = false; }
             });
