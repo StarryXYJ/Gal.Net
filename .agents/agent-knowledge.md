@@ -337,3 +337,5 @@
 - 2026-10-26 引擎核心重构已完整验收：P0–P6、R1–R8 verified，1789 项普通与 10 项原生测试通过；完整构建/locked restore/格式通过。当前架构事实见前述及 docs/spec，分阶段提交与原始失败证据见 features/F-20261026-01-engine-core-simplification/summary.md。性能专项按用户要求延期。
 
 - [原生音频 UTF-8 ABI](lessons/L-20261027-06-native-audio-utf8-abi.md)：Windows miniaudio 窄字符 fopen 使用 ANSI；统一 UTF-8 ABI 后内部转宽字符，托管/原生同步升级。跨平台构建与 AOT 限制见 docs/manual/cross-platform-backends.md。
+
+- [完整 MSVC 工具集选择](lessons/L-20261027-07-complete-msvc-toolsets.md)：按目标架构检查编译器、头文件和 CRT，再显式选择并存工具集；Windows ARM64 原生库已用 14.44 交叉编译并核对 PE/ABI，x64 保持 14.51。

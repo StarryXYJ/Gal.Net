@@ -52,7 +52,7 @@ Editor 的应用表单依次选择作用范围、Track/Bus、效果类型，再�
 
 默认 `galnet.project` section 版本为 2，使用 `audioBuses` / `audioTracks[].busId`。旧 section v1 被明确拒绝，需更新字段和版本；SEffect 旧 `trackId` 改为 `targetId`，旧 EQ 参数 `attenuationDb` 删除。音频轨道/效果状态表版本为 2，并新增 `builtin.audio.channels`，旧档不能混用。
 
-Windows 开发构建需要 Visual Studio C++ Build Tools；源码固定 miniaudio 0.11.23，构建按目标 RID 选择 x64/ARM64 工具链，在 `obj/native/<rid>/` 生成并复制 `galnet_miniaudio.dll`，发布目录也包含它。ARM64 需要安装对应 C++ 工具。其他系统通过 `native/CMakeLists.txt` 构建，并由 `GalNetMiniaudioNativePath` 传入匹配目标的动态库；Android/iOS 的包内原生库归宿主平台项目部署，不能仅依赖普通 Content 复制。当前实机验证 Windows x64。内置解码支持 WAV/MP3/Ogg Vorbis/FLAC，其他格式明确报错；当前不提供 Send、跨 Bus 路由或 Sidechain。构建示例和验收边界见[跨平台后端接入](cross-platform-backends.md)。
+Windows 开发构建需要 Visual Studio C++ Build Tools；源码固定 miniaudio 0.11.23，构建按目标 RID 选择 x64/ARM64 工具链，在 `obj/native/<rid>/` 生成并复制 `galnet_miniaudio.dll`，发布目录也包含它。ARM64 需要安装对应 C++ 工具；脚本按目标架构检查编译器、头文件和静态运行库，并显式选择版本最高的完整 MSVC 工具集，允许 ARM64 与 x64 使用不同的并存版本。其他系统通过 `native/CMakeLists.txt` 构建，并由 `GalNetMiniaudioNativePath` 传入匹配目标的动态库；Android/iOS 的包内原生库归宿主平台项目部署，不能仅依赖普通 Content 复制。当前实机验证 Windows x64，Windows ARM64 已验证原生库交叉编译、PE 架构和导出接口。内置解码支持 WAV/MP3/Ogg Vorbis/FLAC，其他格式明确报错；当前不提供 Send、跨 Bus 路由或 Sidechain。构建示例和验收边界见[跨平台后端接入](cross-platform-backends.md)。
 
 原生 ABI 当前为 2：路径统一为 UTF-8，Windows 内部转换为宽字符；设备回调使用静态 `UnmanagedCallersOnly` 入口和显式上下文，导入使用 `LibraryImport`。托管适配器和原生库必须一起更新，ABI 检查会拒绝不匹配版本；旧库缺少版本入口时同样不能运行。
 

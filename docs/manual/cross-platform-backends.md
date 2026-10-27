@@ -28,7 +28,7 @@ cmake --build out/native --config Release
 cmake --install out/native --config Release --prefix out/native/install
 ```
 
-产物为 Windows 的 `galnet_miniaudio.dll`、Linux 的 `libgalnet_miniaudio.so`、macOS 的 `libgalnet_miniaudio.dylib`。Windows 默认托管构建也可自动调用 MSVC，按目标 RID 选择 win-x64/win-arm64，原生输出按 RID 隔离。自备动态库时传入绝对路径：
+产物为 Windows 的 `galnet_miniaudio.dll`、Linux 的 `libgalnet_miniaudio.so`、macOS 的 `libgalnet_miniaudio.dylib`。Windows 默认托管构建也可自动调用 MSVC，按目标 RID 选择 win-x64/win-arm64，原生输出按 RID 隔离。脚本从已发现的 VS 实例中选择目标架构的编译器、头文件和静态运行库齐全的最高版本工具集，并用 `-vcvars_ver` 显式初始化；不要求默认最新工具集也安装该架构。自备动态库时传入绝对路径：
 
 ```sh
 dotnet build path/to/Host.csproj -p:GalNetMiniaudioNativePath=/absolute/path/libgalnet_miniaudio.so
@@ -75,4 +75,4 @@ cmake --build out/native-ios --config Release
 
 不要用全局关闭裁剪或吞掉 IL 警告作为 AOT 支持证据。源生成 JSON/显式 codec 应与自定义状态、资源类型和项目配置的注册边界一起设计；本轮不修改正在进行的递归属性/schema 改动。
 
-本轮本地证据：资源测试 76 项、音频普通测试 26 项、真实 Windows x64 设备测试 2 项、视频工厂/失败清理测试 5 项及架构测试 52 项通过；CMake 动态库在 Windows x64 构建成功。Core/Runtime 的 AOT/裁剪分析构建通过但仍报告 IL2026/IL3050 等警告。Windows ARM64 交叉编译已尝试，当前环境缺少 ARM64 `libcmt.lib`，未完成 DLL 链接，不能算已验证。`.github/workflows/backend-portability.yml` 增加 Windows/Linux/macOS 的资源、原生解码和 CMake 验证任务，远端任务尚未在本地执行。Android/iOS 原生打包、系统中断、移动 GPU/Shader 和全引擎 AOT 发布验收仍待对应环境完成。
+本轮本地证据：资源测试 76 项、音频普通测试 26 项、真实 Windows x64 设备测试 2 项、视频工厂/失败清理测试 5 项及架构测试 52 项通过；CMake 动态库在 Windows x64 构建成功。Core/Runtime 的 AOT/裁剪分析构建通过但仍报告 IL2026/IL3050 等警告。补装 ARM64 MSVC 14.44 后，Windows ARM64 原生库交叉编译通过，确认 PE Machine 为 `0xAA64` 且 8 个原生 ABI 导出齐全；`GalNet.Media.Miniaudio` 的 Release / `-r win-arm64` 托管及原生组合构建也通过，0 错误。并验证 x64 仍选用完整的 MSVC 14.51，PE Machine 为 `0x8664`。Windows ARM64 尚未做实机运行验收。`.github/workflows/backend-portability.yml` 增加 Windows/Linux/macOS 的资源、原生解码和 CMake 验证任务，远端任务尚未在本地执行。Android/iOS 原生打包、系统中断、移动 GPU/Shader 和全引擎 AOT 发布验收仍待对应环境完成。
