@@ -1,6 +1,6 @@
 namespace GalNet.Contracts.Builtins.Audio;
 
-/// <summary>Platform playback boundary. Hosts execute voice commands but never own queues.</summary>
+/// <summary>Playback and target-mixer boundary. Hosts execute voice/graph commands but never own queues.</summary>
 public interface IAudioPlaybackHost : IDisposable
 {
     AudioBackendCapabilities Capabilities { get; }

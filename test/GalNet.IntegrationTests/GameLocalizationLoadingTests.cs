@@ -168,7 +168,7 @@ public sealed class GameLocalizationLoadingTests
         Directory.CreateDirectory(Path.Combine(_root, "Graph"));
         File.WriteAllText(Path.Combine(_root, "Graph", "graph.json"), """{"nodes":[],"edges":[],"rootNodeId":""}""");
         File.WriteAllText(Path.Combine(_root, "settings.json"), """
-            {"version":1,"sections":{"galnet.project":{"version":1,"data":{"defaultWidth":0}},"custom":{"version":8,"data":{"flag":true}}}}
+            {"version":1,"sections":{"galnet.project":{"version":2,"data":{"defaultWidth":0}},"custom":{"version":8,"data":{"flag":true}}}}
             """);
         var types = BuiltinResourceTypes.CreateCatalog();
         var galleries = BuiltinGalleryTypes.CreateCatalog(types);

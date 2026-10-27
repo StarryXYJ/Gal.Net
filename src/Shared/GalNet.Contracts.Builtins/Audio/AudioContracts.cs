@@ -25,7 +25,11 @@ public enum AudioBackendAction
     Resume,
     SetGain,
     ApplySEffect,
-    StopSEffect
+    StopSEffect,
+    Configure,
+    SetMix,
+    ResetMixer,
+    SetLevel
 }
 
 public enum AudioBackendEventKind
@@ -38,12 +42,13 @@ public enum AudioBackendEventKind
 public sealed record AudioBackendCapabilities(
     bool SupportsConcurrentVoices = false,
     bool SupportsFade = false,
-    bool SupportsTrackSEffects = false)
+    bool SupportsTrackSEffects = false,
+    bool SupportsMixer = false)
 {
     public static AudioBackendCapabilities None { get; } = new();
 }
 
-/// <summary>A voice-level request. Queue ownership always remains in AudioRuntime.</summary>
+/// <summary>A voice or mixer command. TrackId identifies the scoped target for target-level actions; queue ownership remains in AudioRuntime.</summary>
 public sealed record AudioBackendRequest(
     AudioBackendAction Action,
     string TrackId,
@@ -54,7 +59,12 @@ public sealed record AudioBackendRequest(
     float FadeSeconds = 0f,
     string? SEffectId = null,
     string? SEffectInstanceId = null,
-    JsonElement? SEffectParameters = null);
+    JsonElement? SEffectParameters = null,
+    SEffectScope Scope = SEffectScope.Track,
+    AudioConfiguration? Configuration = null,
+    AudioMixOptions? Mix = null,
+    float FadeOutSeconds = 0,
+    bool Muted = false);
 
 public sealed record AudioBackendEvent(
     AudioBackendEventKind Kind,
@@ -70,12 +80,14 @@ public sealed record AudioPlayRequest(
     float Gain = 1f,
     float FadeInSeconds = 0f,
     int LoopCount = 1,
-    AudioCompletion Completion = AudioCompletion.Discard);
+    AudioCompletion Completion = AudioCompletion.Discard,
+    float FadeOutSeconds = 0f);
 
-public sealed record AudioStopRequest(string TrackId, bool ClearQueue, float FadeOutSeconds = 0f);
+public sealed record AudioStopRequest(string TrackId, bool ClearQueue, float? FadeOutSeconds = null);
 
 public sealed record AudioSEffectRequest(
-    string TrackId,
+    string TargetId,
     string InstanceId,
     string SEffectId,
-    JsonElement Parameters);
+    JsonElement Parameters,
+    SEffectScope Scope = SEffectScope.Track);

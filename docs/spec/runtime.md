@@ -196,7 +196,7 @@ Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`
 - `effect.apply` / `effect.stop`：维护唯一的 EffectInstance 数据表和 `IEffectPresenter` 调用；动画直接修改同一记录，不维护 ActiveEffectState 镜像。Skia effect-program 的 `@gal.effect` 元数据声明可动画参数，动画使用其逻辑参数名；`time` 可映射到常见 shader 时间 uniform。
 - `audio.play` / `audio.stop` / `audio.pause` / `audio.resume` / `audio.enqueue` / `audio.next` / `audio.clear`：`AudioRuntime` 持有轨道队列与 voice 生命周期，`IAudioPlaybackHost` 只执行平台播放请求。`dialogue.textVoice` 与 `nvl.appendVoice` 会先发出非阻塞的 `audio.play(replaceIfDifferent)`，默认使用 `vocal` 轨道，再按正常文本语义阻塞。
 - `audio.play` / `audio.enqueue` 的 `loopCount` 默认 1，0 为无限重复；`completion` 默认为 `discard`，`requeueTail` 在完整播放次数结束后回到队尾。单项重复优先于 completion，失败、停止、替换、next 与 scope 清理不触发重播。每轮重新生成后端 identity；这是结束事件驱动的重复播放，不承诺无缝。有限循环保存 `CompletedIterations`，旧数据缺省为 0；旧请求缺省仍为一次播放并丢弃，因此 audio state section 维持 v1。无限循环计数不累加。暂停期间结束的播放保留逻辑项，Resume 后启动新一轮。
-- `audio.seffect.apply` / `audio.seffect.stop`：以 `trackId` 和 `instanceId` 附着或移除宿主 catalog 已注册的轨道 SEffect；当前 Avalonia host 支持 `seffect.gain`、基于 equalizer 频段近似的 `seffect.lowPass` 与 `seffect.highPass`。未知 ID、非法参数或不支持 scope 只记录诊断，不会静默附着。
+- `audio.seffect.apply` / `audio.seffect.stop`：以 `scope`（track/bus）、`targetId` 和 `instanceId` 管理有序目标效果链。默认 PCM 后端支持 gain、真正的二阶 lowPass/highPass（cutoffHz/q）和 reverb（roomSize/decaySeconds/damping/mix），不再使用 EQ 频段近似。相同实例更新保留顺序，启停平滑；参数或目标非法则诊断。`audio.mix.set` 保存独立于玩家偏好的目标 gain/muted。
 - `particle.play` / `particle.stop`：用 `rate` 创建和停止持续 emitter，维护唯一的 ParticleEmitterInstance 数据表，场景句柄查找引用同一记录。存档只保存 emitter 定义、排序与动画值；宿主读档后通过模块注册的恢复处理器 以相同 seed 从头重建，不保存单颗粒子。`initial` 的 lifetime、velocity、size、rotation、angular velocity、color 以及 `flipbook` 的播放速度与起始帧都按粒子确定性采样；`motion` 提供 gravity、noise、drag、radial、orbit、attractor，`lifetime` 曲线线性插值 size、opacity、velocity、rotation、color。当前粒子年龄、位置和 flipbook 帧不单独存档。
 - `particle.burst`：用 `count` 向 `IParticlePresenter` 发出一次性 burst，不创建 Runtime scene state，也不参与存档恢复。有限持续效果由流程或 animation timeline 编排 play/stop；重复 burst 由 animation timeline 事件表达，跳过 timeline 时不补发未来 burst。
 - `video.play` / `video.stop`：视频是 Runtime Layer，`IVideoPresenter` 将平台解码帧送入场景管线；阻塞时每次推进跳到当前播放位置之后的下一时间戳，跳转期间保持阻塞，结束后继续剧情。稳定存档只保存视频图层定义，非阻塞视频恢复时从零播放；播放 identity 和游标不入存档。
@@ -205,7 +205,7 @@ Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`
 - `gallery.unlock`：按稳定 item ID 解锁 Gallery，写入对应的系统 Player bool。
 - `custom.invoke`：`BuiltinCustomActionModule` 按 ordinal action ID 查注册的实例工厂，原样传入 argument。注册在 view 组合时冻结，重复/空白 ID 拒绝。`RegisterImmediate` 同步非阻塞；`RegisterAsync` 支持运行 scope/模块生命周期联合取消和可选阻塞，并通过 PrimitiveTaskScope 在异步释放时取消、排空任务和聚合错误。两种便利入口 Normal 调 execute，Quick 调 quick 或回退 execute，CatchUp 调 catchUp 或空操作；运行中模式切换不重启委托。`RegisterFactory` 返回的独立实例自行管理完整模式/跳过/完成和资源清理语义。未匹配时所有模式 warning 后同步完成，可配置严格缺失报错；处理器自身失败正常传播。模块不自动注册持久状态，也不序列化委托或资源。接入见[通用 action](../manual/custom-actions.md)。
 
-视频图层与音频的轨道播放、淡化、队列和当前轨道 SEffect 行为由内置模块实现。玩家音量/静音按 master × group × track × 内容 gain × 轨道默认 gain 合成并应用到当前及后续 voice；item effect 和音频参数动画仍未实现。AudioTrackState 保存轨道当前播放项、内容 gain、暂停状态与有序队列；AudioSEffectState 单独保存轨道效果，空闲时仍保留并作用于后续 voice。所有仍存在的自定义轨道状态按检查点恢复；活动内容从头开始，不恢复游标和淡化时钟。暂停轨道在 Resume 前不启动播放器。恢复重新读取项目轨道配置并应用当前玩家音量；正常结束先更新逻辑状态和队列，后端身份/ticket 不入存档。Gallery 的平台无关 catalog 与解锁数据层由 Core/Runtime 提供；默认 Avalonia 前端通过宿主提供的 `IGameGallerySession` 浏览 CG、视频和音频，不把页面或媒体状态写入 Runtime。
+音频实例保存资源、内容 gain、淡入淡出与完成处理；Track 管理容量、顺序/随机选择和 None/One/All 循环策略。跨平台 PCM 路径为实例 → Track 汇总/效果/音量 → Bus 汇总/效果/音量 → Master 限幅。玩家 mix 与剧情目标 mix 独立相乘，Bus 效果处理一次汇总结果，源结束后继续输出尾音。AudioTrackState/AudioSEffectState 版本为 2，新增 AudioChannelState；随机状态、队列、暂停和效果顺序可恢复。读档活动源从头开始，不保存媒体游标、包络或 DSP 缓冲；暂停源在 Resume 前不启动。配置 `galnet.project` v2 使用 audioBuses / busId。旧配置/状态版本拒绝，详见 [音频混音](../manual/audio-mixing.md)。
 
 循环播放读档时从当前轮开头重播并保留已完成轮数；重新入队开始新一轮循环计数。ticket 随完整逻辑播放完成，轮播/无限重复需通过停止、替换或跳过终止。`ReplaceIfDifferent` 命中相同资源时更新 gain、completion 与 loopCount，次数改变时重新计数，不重启当前后端声音。
 
@@ -213,7 +213,7 @@ Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`
 
 动画 timeline 的事件与轨道共用 presenter 的播放时间源。`PlayTimelineAsync` 必须在采样前 await `beforeFrame(elapsedFrames)`，正常完成前提供末帧；Loop/PingPong 的 elapsedFrames 单调增加，不在循环时归零。跳过不补发未来 particle burst。
 
-音频后端请求按 voice 顺序提交，Stop 即刻取消尚未完成的 Start；异步销毁等待排队请求结束。Avalonia host 先登记待加载音频，停止/销毁取消加载，等待加载结束后释放 LibVLC 与临时目录。读档停止旧 scope 音频，模块恢复时重新生成后端 identity。旧 scope Reset 与延迟终态事件不能影响新代。Headless 仍保留轨道/效果逻辑数据；缺少 host 时流程 ticket 完成。
+音频后端请求按 voice 顺序提交，目标级 Configure/Mix/Effect/Reset 另有顺序屏障，Start 等待已提交的目标配置。Stop 即刻取消待加载 Start；异步销毁等待后台源和设备回调退出。Windows miniaudio 解码至每实例有界 PCM 缓冲；设备回调不执行文件 I/O、不取得 Runtime 锁或调用终态订阅。取消后的租约和原生解码器均释放，读档清空旧图，旧 scope Reset 与迟到终态不能影响新代。Headless 保留逻辑状态；无 host 时流程 ticket 完成。
 
 ## 已读进度提交边界
 
@@ -225,7 +225,7 @@ Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`
 
 primitive 和呈现恢复只借用 `Core.Runtime.IGameContext`：游戏位置只读，允许变量/场景操作和显式 EndGame，不提供游标修改、快照或读档方法。Engine 持有的 `Runtime.Runtime.IGameRuntime` 才拥有这些运行管理能力，准备恢复使用同程序集的 GameRestorePoint；旧 scope 在状态同步边界内检查取消，不能在恢复提交后写入新代变量。
 
-执行上下文没有 Settings 属性。Engine 以 Core.Execution.PlaybackOptions 的不可变值保存自动/快速推进配置，宿主通过 UpdatePlaybackOptionsAsync 一致更新；无效间隔在提交前拒绝，不更改当前配置或使运行 Faulted。音频模块借构造参数获取独立的轨道定义副本，以 AudioConfiguration 接收已验证的分组/轨道声明，以 AudioMixOptions 接收主音量与分别按分组/轨道 ID 索引的混音值；ApplyMix 复制集合后更新已有及后续 voice，不在每次播放时读取完整玩家模型。Avalonia.GameHost.Settings.GameSettings 只是默认宿主的偏好模型，映射到上述输入，项目不必继承它。窗口、文本和保存设置由各自宿主/呈现服务消费。SettingsContainer、SettingsSection、无消费者的 SaveSettings 和旧 SfxChannelCount 已删除；并发数量只由每轨 MaxVoices 表达。
+执行上下文没有 Settings 属性。Engine 以 Core.Execution.PlaybackOptions 的不可变值保存自动/快速推进配置，宿主通过 UpdatePlaybackOptionsAsync 一致更新；无效间隔在提交前拒绝，不更改当前配置或使运行 Faulted。音频模块借构造参数获取独立的轨道定义副本，以 AudioConfiguration 接收已验证的 Bus/Track 声明，以 AudioMixOptions 接收主音量与分别按 Bus/Track ID 索引的混音值；ApplyMix 复制集合后更新已有及后续 voice，不在每次播放时读取完整玩家模型。Avalonia.GameHost.Settings.GameSettings 只是默认宿主的偏好模型，映射到上述输入，项目不必继承它。窗口、文本和保存设置由各自宿主/呈现服务消费。SettingsContainer、SettingsSection、无消费者的 SaveSettings 和旧 SfxChannelCount 已删除；并发数量只由每轨 MaxVoices 表达。
 
 `IPrimitiveDispatcher`、IChoicePresenter、ICatchUpPresentation 和 IPlayerPlaybackController 位于 Core.Execution，描述分发、状态验证、Choice 输入、快进同步和玩家播放控制，与具体 presenter/UI 无关；CompositeGameView 是分发协议的组合实现。音频后端端口位于可选 Contracts.Builtins.Audio，Runtime 不引用 Presentation.Abstractions 或内置场景/音频契约。`EngineNotifications` 统一按产生顺序排队状态、播放模式和检查点通知，在执行门外发布并隔离每个订阅者。活动实例列表本身保持分发顺序，不维护额外排序或自动阻塞镜像集合。
 

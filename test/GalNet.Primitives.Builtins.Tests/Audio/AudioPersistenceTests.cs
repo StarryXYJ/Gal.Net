@@ -9,15 +9,16 @@ public class AudioPersistenceTests
 {
     private static readonly AudioConfiguration Tracks = new(
     [
-        new() { Id = "bgm", GroupId = "bgm", PreserveDuringCatchUp = true, DefaultGain = .8f, MaxQueuedItems = 64, OverflowPolicy = AudioOverflowPolicy.StopOldest },
-        new() { Id = "sfx", GroupId = "sfx", MaxVoices = 8 },
-        new() { Id = "vocal", GroupId = "vocal", MaxQueuedItems = 64, OverflowPolicy = AudioOverflowPolicy.StopOldest }
+        new() { Id = "bgm", BusId = "bgm", PreserveDuringCatchUp = true, DefaultGain = .8f, MaxQueuedItems = 64, OverflowPolicy = AudioOverflowPolicy.StopOldest },
+        new() { Id = "sfx", BusId = "sfx", MaxVoices = 8 },
+        new() { Id = "vocal", BusId = "vocal", MaxQueuedItems = 64, OverflowPolicy = AudioOverflowPolicy.StopOldest }
     ], [new() { Id = "bgm" }, new() { Id = "sfx" }, new() { Id = "vocal" }]);
     private static StateCatalog Catalog()
     {
         var builder = new StateCatalogBuilder();
         builder.Register<AudioTrackState>("builtin.audio.tracks", value => value.Id, AudioRuntime.ValidateTrack);
-        builder.Register<AudioSEffectState>("builtin.audio.seffects", value => AudioSEffectState.Key(value.TrackId, value.InstanceId));
+        builder.Register<AudioSEffectState>("builtin.audio.seffects", value => value.Key());
+        builder.Register<AudioChannelState>("builtin.audio.channels", value => value.Key(), AudioRuntime.ValidateChannel);
         return builder.Build();
     }
     [Test]
@@ -31,7 +32,7 @@ public class AudioPersistenceTests
         audio.Pause(Tracks, "bgm");
         var original = host.Requests.Single(value => value.Action == AudioBackendAction.Start);
         var restored = GameState.Restore(catalog, state.Capture());
-        audio.ApplyMix(new AudioMixOptions { MasterGain = .5f, Groups = new Dictionary<string, AudioMixLevel> { ["bgm"] = new(.5f) } });
+        audio.ApplyMix(new AudioMixOptions { MasterGain = .5f, Buses = new Dictionary<string, AudioMixLevel> { ["bgm"] = new(.5f) } });
         await audio.RestoreAsync(restored, Tracks, default);
         Assert.That(host.Requests.Count(value => value.Action == AudioBackendAction.Start), Is.EqualTo(1), "Paused restoration must not briefly start playback.");
         audio.Reset(state); // A delayed cancellation from the old generation is harmless.

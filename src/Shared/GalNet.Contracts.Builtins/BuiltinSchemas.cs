@@ -75,6 +75,7 @@ public static class BuiltinSchemas
         DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(BuiltinEntryIds.ClearAudio),
         DefaultPrimitiveEntryBase.ForDto<AudioPlayOptions>(BuiltinEntryIds.EnqueueAudio),
         DefaultPrimitiveEntryBase.ForDto<AudioSEffectOptions>(BuiltinEntryIds.ApplyAudioSEffect),
+        DefaultPrimitiveEntryBase.ForDto<AudioLevelOptions>(BuiltinEntryIds.SetAudioLevel),
         DefaultPrimitiveEntryBase.ForDto<AudioSEffectStopOptions>(BuiltinEntryIds.StopAudioSEffect)
     ]);
 

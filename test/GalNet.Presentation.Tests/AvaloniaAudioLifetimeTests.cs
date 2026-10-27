@@ -1,17 +1,17 @@
 using GalNet.Core.Assets;
 using GalNet.Contracts.Builtins.Assets;
 using GalNet.Contracts.Builtins.Audio;
-using GalNet.Media.LibVlc;
+using GalNet.Media.Audio;
+using GalNet.Media.Miniaudio;
 
 namespace GeneralTest.Presentation;
 
+[Platform("Win")]
 public sealed class AvaloniaAudioLifetimeTests
 {
-    [Test, Explicit("Requires GALNET_AUDIO_LIBVLC pointing to native LibVLC."), NonParallelizable]
+    [Test, NonParallelizable]
     public async Task AudioVoicesShareExistingMaterializerAndCannotDeleteAnotherConsumersFile()
     {
-        LibVLCSharp.Shared.Core.Initialize(Environment.GetEnvironmentVariable("GALNET_AUDIO_LIBVLC")!);
-        using var lib = new LibVLCSharp.Shared.LibVLC("--aout=dummy", "--no-video", "--quiet");
         var root = Directory.CreateDirectory(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "GalNet-shared-audio-" + Guid.NewGuid().ToString("N"))).FullName;
         try
         {
@@ -21,7 +21,9 @@ public sealed class AvaloniaAudioLifetimeTests
             using var assets = new GalNet.Assets.AssetManager([new GalNet.Assets.Provider.LocalFileProvider(root, BuiltinResourceTypes.CreateCatalog())]);
             await using var files = new GalNet.Assets.AssetFileMaterializer(assets);
             using var external = await files.AcquireAsync("clip");
-            await using var host = new LibVlcAudioPlaybackHost(assets, files: files, sharedLibVlc: lib);
+            await using var host = CreateHost(files);
+            var ended = 0;
+            host.EventReceived += value => { if (value.Kind == AudioBackendEventKind.Ended) Interlocked.Increment(ref ended); };
             var first = new AudioBackendRequest(AudioBackendAction.Start, "sfx", "first", 1, "clip");
             var second = first with { VoiceId = "second", Generation = 2 };
             await Task.WhenAll(host.ApplyAsync(first), host.ApplyAsync(second));
@@ -29,18 +31,17 @@ public sealed class AvaloniaAudioLifetimeTests
             Assert.That(File.Exists(external.Path), Is.True);
             await host.ApplyAsync(second with { Action = AudioBackendAction.Stop });
             Assert.That(File.Exists(external.Path), Is.True, "Video/Gallery-style consumers still own this file.");
+            await WaitUntilAsync(() => Volatile.Read(ref ended) == 2);
             external.Dispose(); Assert.That(File.Exists(external.Path), Is.False);
         }
         finally { Directory.Delete(root, true); }
     }
 
-    [Test, Explicit("Requires GALNET_AUDIO_LIBVLC pointing to native LibVLC."), NonParallelizable]
+    [Test, NonParallelizable]
     public async Task CancellationAfterAcquireReturnsItsFileEvenIfTheProviderIgnoredCancellation()
     {
-        LibVLCSharp.Shared.Core.Initialize(Environment.GetEnvironmentVariable("GALNET_AUDIO_LIBVLC")!);
-        using var lib = new LibVLCSharp.Shared.LibVLC("--aout=dummy", "--no-video", "--quiet");
         using var assets = new DelayedAssets(); await using var files = new WaveFiles(1) { Block = true };
-        await using var host = new LibVlcAudioPlaybackHost(assets, files: files, sharedLibVlc: lib);
+        await using var host = CreateHost(files);
         var events = new System.Collections.Concurrent.ConcurrentQueue<AudioBackendEvent>(); host.EventReceived += events.Enqueue;
         var request = new AudioBackendRequest(AudioBackendAction.Start, "bgm", "pending", 1, "wave");
         var starting = host.ApplyAsync(request); await files.Entered.Task.WaitAsync(TimeSpan.FromSeconds(3));
@@ -50,13 +51,11 @@ public sealed class AvaloniaAudioLifetimeTests
         Assert.That(events.Any(value => value.Kind is AudioBackendEventKind.Started or AudioBackendEventKind.Failed), Is.False);
     }
 
-    [TestCase(0f), TestCase(.2f), Explicit("Requires GALNET_AUDIO_LIBVLC pointing to native LibVLC."), NonParallelizable]
+    [TestCase(0f), TestCase(.2f), NonParallelizable]
     public async Task StoppingAVoiceReleasesItsFileAfterFadeAndReportsTerminalEvent(float fade)
     {
-        LibVLCSharp.Shared.Core.Initialize(Environment.GetEnvironmentVariable("GALNET_AUDIO_LIBVLC")!);
-        using var lib = new LibVLCSharp.Shared.LibVLC("--aout=dummy", "--no-video", "--quiet");
         using var assets = new DelayedAssets(); await using var files = new WaveFiles(3);
-        await using var host = new LibVlcAudioPlaybackHost(assets, files: files, sharedLibVlc: lib);
+        await using var host = CreateHost(files);
         var ended = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         host.EventReceived += value => { if (value.Kind == AudioBackendEventKind.Ended) ended.TrySetResult(); };
         var start = new AudioBackendRequest(AudioBackendAction.Start, "bgm", "voice", 1, "wave");
@@ -67,18 +66,41 @@ public sealed class AvaloniaAudioLifetimeTests
         Assert.That(File.Exists(files.Path), Is.False); Assert.That(files.Releases, Is.EqualTo(1));
     }
 
-    [Test, Explicit("Requires GALNET_AUDIO_LIBVLC pointing to native LibVLC."), NonParallelizable]
+    [Test, NonParallelizable]
     public async Task NaturalCompletionReleasesTheVoiceFileWithoutDisposingTheHost()
     {
-        LibVLCSharp.Shared.Core.Initialize(Environment.GetEnvironmentVariable("GALNET_AUDIO_LIBVLC")!);
-        using var lib = new LibVLCSharp.Shared.LibVLC("--aout=dummy", "--no-video", "--quiet");
         using var assets = new DelayedAssets(); await using var files = new WaveFiles(.1);
-        await using var host = new LibVlcAudioPlaybackHost(assets, files: files, sharedLibVlc: lib);
+        await using var host = CreateHost(files);
         var ended = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         host.EventReceived += value => { if (value.Kind == AudioBackendEventKind.Ended) ended.TrySetResult(); };
         await host.ApplyAsync(new(AudioBackendAction.Start, "bgm", "voice", 1, "wave"));
         await ended.Task.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.That(File.Exists(files.Path), Is.False); Assert.That(files.Releases, Is.EqualTo(1));
+    }
+
+    private static PcmAudioPlaybackHost CreateHost(IAssetFileMaterializer files)
+    {
+        var host = new PcmAudioPlaybackHost(files, path => new MiniaudioDecoder(path), new TestOutput());
+        host.ApplyAsync(new(AudioBackendAction.Configure, "", "", 0,
+            Configuration: new([new() { Id = "bgm" }, new() { Id = "sfx", MaxVoices = 8 }]))).GetAwaiter().GetResult();
+        return host;
+    }
+    private static async Task WaitUntilAsync(Func<bool> predicate)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        while (!predicate()) await Task.Delay(5, timeout.Token);
+    }
+    private sealed class TestOutput : IAudioOutput
+    {
+        private readonly CancellationTokenSource _cancel = new();
+        private Task? _render;
+        public void Start(AudioRenderCallback callback) => _render = Task.Run(async () =>
+        {
+            var buffer = new float[960];
+            try { while (true) { await Task.Delay(10, _cancel.Token); callback(buffer); } }
+            catch (OperationCanceledException) when (_cancel.IsCancellationRequested) { }
+        });
+        public void Dispose() { _cancel.Cancel(); _render?.GetAwaiter().GetResult(); _cancel.Dispose(); }
     }
 
     private sealed class WaveFiles(double seconds) : IAssetFileMaterializer
@@ -104,12 +126,12 @@ public sealed class AvaloniaAudioLifetimeTests
         public ValueTask DisposeAsync() { Dispose(); return ValueTask.CompletedTask; }
     }
 
-    [TestCase(false), TestCase(true), Explicit("Requires GALNET_AUDIO_LIBVLC pointing to native LibVLC."), NonParallelizable]
+    [TestCase(false), TestCase(true), NonParallelizable]
     public async Task Stop_or_dispose_cancels_loading_before_a_voice_can_start(bool dispose)
     {
-        LibVLCSharp.Shared.Core.Initialize(Environment.GetEnvironmentVariable("GALNET_AUDIO_LIBVLC")!);
         using var assets = new DelayedAssets();
-        await using var host = new LibVlcAudioPlaybackHost(assets);
+        await using var files = new GalNet.Assets.AssetFileMaterializer(assets);
+        await using var host = CreateHost(files);
         Assert.That(host.InitializationError, Is.Null);
         var events = new List<AudioBackendEvent>();
         host.EventReceived += events.Add;

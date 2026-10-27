@@ -11,6 +11,7 @@ internal sealed class AudioBackendDispatcher(IAudioPlaybackHost? host, object ga
     private readonly Action<AudioBackendEvent> _terminal = terminal;
     private readonly Dictionary<string, BackendQueue> _backendQueues = new(StringComparer.Ordinal);
     private readonly List<Task> _pendingRequests = [];
+    private Task _mixerTail = Task.CompletedTask;
 
     public void CompleteVoice(string voiceId)
     {
@@ -50,6 +51,13 @@ internal sealed class AudioBackendDispatcher(IAudioPlaybackHost? host, object ga
                 _report($"Audio backend does not support SEffect on '{request.TrackId}'.");
                 return;
             }
+            if (_host.Capabilities.SupportsMixer && request.Action is AudioBackendAction.Configure or AudioBackendAction.SetMix or AudioBackendAction.ResetMixer or AudioBackendAction.SetLevel or AudioBackendAction.ApplySEffect or AudioBackendAction.StopSEffect)
+            {
+                _mixerTail = SendMixerAsync(_mixerTail, request);
+                _pendingRequests.RemoveAll(task => task.IsCompleted);
+                _pendingRequests.Add(_mixerTail);
+                return;
+            }
             if (request.FadeSeconds > 0 && !_host.Capabilities.SupportsFade)
             {
                 _report($"Audio backend does not support fades on '{request.TrackId}'; applying immediately.");
@@ -63,10 +71,16 @@ internal sealed class AudioBackendDispatcher(IAudioPlaybackHost? host, object ga
             // Stop invalidates an in-flight asset load immediately; subsequent commands
             // for this voice still run in order after the producer has observed cancellation.
             if (request.Action == AudioBackendAction.Stop) queue.StartCancellation.Cancel();
-            queue.Tail = SendAsync(queue.Tail, queue, request);
+            queue.Tail = SendAsync(Task.WhenAll(queue.Tail, _mixerTail), queue, request);
             _pendingRequests.RemoveAll(task => task.IsCompleted);
             _pendingRequests.Add(queue.Tail);
         }
+    }
+
+    private async Task SendMixerAsync(Task previous, AudioBackendRequest request)
+    {
+        try { await previous.ConfigureAwait(false); await _host!.ApplyAsync(request).ConfigureAwait(false); }
+        catch (Exception error) { _report($"Audio mixer request failed: {error.Message}"); }
     }
 
     private async Task SendAsync(Task previous, BackendQueue queue, AudioBackendRequest request)

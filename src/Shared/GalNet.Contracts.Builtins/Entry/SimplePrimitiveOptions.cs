@@ -52,12 +52,13 @@ public partial class InstanceIdOptions
 [GenerateFieldSchema]
 public partial class AudioSEffectStopOptions
 {
-    public AudioSEffectStopOptions() => TrackId = "";
+    public AudioSEffectStopOptions() => TargetId = "";
     [Field(0, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)]
     [Common]
-    public string TrackId { get; set; }
+    public string TargetId { get; set; }
     [Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)]
     public string? InstanceId { get; set; }
+    [Field(2, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AudioTargetScopeValueConverter))] public GalNet.Contracts.Builtins.Audio.SEffectScope Scope { get; set; } = GalNet.Contracts.Builtins.Audio.SEffectScope.Track;
 }
 
 [GenerateFieldSchema]

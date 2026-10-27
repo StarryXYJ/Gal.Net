@@ -15,7 +15,7 @@ public sealed partial class AvaloniaPlayerSettingsService
     {
         _restoreValues.RemoveRange(_audioRestoreStart, _restoreValues.Count - _audioRestoreStart);
         var items = _baseAudioItems.ToList();
-        foreach (var group in configuration.Groups) AddLevel(false, group.Id, group.Name, true);
+        foreach (var group in configuration.Buses) AddLevel(false, group.Id, group.Name, true);
         foreach (var track in configuration.Tracks) AddLevel(true, track.Id, track.Name, showTracks);
         var index = _categories.IndexOf(_categories.Single(category => category.Id == "audio"));
         _categories[index] = new SettingCategory("audio", "Settings.Audio", items, _localization.GetString("Settings.Audio"));
@@ -30,7 +30,7 @@ public sealed partial class AvaloniaPlayerSettingsService
             var mute = Boolean(prefix + ".muted", "Settings.Muted", false,
                 () => Level().Muted, value => Levels()[id] = Level() with { Muted = value });
             if (visible) { items.Add(gain); items.Add(mute); }
-            Dictionary<string, AudioMixLevel> Levels() => isTrack ? RuntimeSettings.Tracks : RuntimeSettings.Groups;
+            Dictionary<string, AudioMixLevel> Levels() => isTrack ? RuntimeSettings.Tracks : RuntimeSettings.Buses;
             AudioMixLevel Level() => Levels().GetValueOrDefault(id) ?? NeutralMix;
         }
     }

@@ -24,7 +24,7 @@ public sealed class GameSettings
 
     public float MasterVolume { get; set; } = 1f;
     public bool MasterMuted { get; set; }
-    public Dictionary<string, AudioMixLevel> Groups { get; } = new(StringComparer.Ordinal);
+    public Dictionary<string, AudioMixLevel> Buses { get; } = new(StringComparer.Ordinal);
     public Dictionary<string, AudioMixLevel> Tracks { get; } = new(StringComparer.Ordinal);
 
     public PlaybackOptions ToPlaybackOptions() => new()
@@ -38,7 +38,7 @@ public sealed class GameSettings
     {
         MasterGain = MasterVolume,
         MasterMuted = MasterMuted,
-        Groups = Groups,
+        Buses = Buses,
         Tracks = Tracks
     };
 }

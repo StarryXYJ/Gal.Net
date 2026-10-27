@@ -44,21 +44,21 @@ await engine.UpdatePlaybackOptionsAsync(playback with { AutoAdvanceIntervalMilli
 
 PlaybackOptions 位于 Core.Execution，AudioMixOptions/AudioMixLevel 位于 Contracts.Builtins.Audio，BuiltinAudioModule 位于 Primitives.Builtins。默认 Avalonia.GameHost.Settings.GameSettings 提供示例映射方法，可直接使用或完全替换。音频模块不会读取 GameContent.Configuration，也不会自动创建轨道；默认宿主负责从配置文档投影项目声明的轨道。轨道声明和混音字典在入口隔离，后续修改项目对象不等于更新运行配置。文本速度传给文本呈现，窗口偏好交给显示服务，保存槽数交给保存服务，不把整个偏好对象塞进运行上下文。
 
-## 声明音频分组与轨道
+## 声明音频 Bus 与 Track
 
-`AudioConfiguration` 在构造时验证并隔离轨道/分组声明；ID 由项目定义，一个轨道可以不分组，或用 `GroupId` 引用一个已声明分组。空配置合法。`BuiltinAudioDefaults.Create()` 是可选的三分组示例，Sample 和新项目模板显式选择它；Core 与音频模块不自动注入默认轨道。
+`AudioConfiguration` 在构造时验证并隔离Track/Bus 声明；ID 由项目定义，一个轨道可以不指定 Bus，或用 `BusId` 引用一个已声明 Bus。空配置合法。`BuiltinAudioDefaults.Create()` 是可选的三 Bus 示例，Sample 和新项目模板显式选择它；Core 与音频模块不自动注入默认轨道。
 
 ```csharp
 var configuration = new AudioConfiguration(
-    [new() { Id = "rain", Name = "Rain", GroupId = "ambience", PreserveDuringCatchUp = true },
-     new() { Id = "wind", Name = "Wind", GroupId = "ambience" },
+    [new() { Id = "rain", Name = "Rain", BusId = "ambience", PreserveDuringCatchUp = true },
+     new() { Id = "wind", Name = "Wind", BusId = "ambience" },
      new() { Id = "alert", Name = "Alert" }],
     [new() { Id = "ambience", Name = "Environment" }]);
 ```
 
-`AudioMixOptions` 分别接收 master、Groups 和 Tracks 的 gain/mute，缺省为 1/false。最终增益为 master × group × track × 轨道 DefaultGain × 播放内容 gain，最后限制到后端的 0–1；任一层静音则为零。ApplyMix 在入口复制字典，更新当前及后续 voice。玩家混音不写入剧情快照，恢复使用当前玩家值。
+`AudioMixOptions` 分别接收 master、Buses 和 Tracks 的 gain/mute，缺省为 1/false。默认 PCM 后端在 Track/Bus 汇总后分别执行效果和音量，最后应用 Master 静音/音量及采样限幅；不会把 Bus 效果分配给各个实例。ApplyMix 在入口复制字典，更新当前和后续声音。玩家混音不写入剧情快照，恢复使用当前玩家值。
 
-`PreserveDuringCatchUp` 显式控制快进回放结束时是否投影最终播放内容，与 ID/分组名称无关。普通音频指令和语音复合指令均须显式提供 `trackId`。
+`PreserveDuringCatchUp` 显式控制快进回放结束时是否投影最终播放内容，与 ID/Bus 名称无关。普通音频指令和语音复合指令均须显式提供 `trackId`。
 
 默认 Avalonia 设置服务从声明生成分组控件，以 `ShowTrackAudioControls` 选择是否同时显示单轨控件；隐藏单轨控件时仍恢复对应偏好。更高层可以完全采用自己的 DTO、UI 和持久化，只需映射上述配置。默认存储键按经过 URI 转义的 ID 区分 group/track，无固定三分类字段。
 
@@ -96,7 +96,7 @@ CLI 可用 `execute <project> <patch.json>` 修改已声明的 section。例如�
 
 ## 验证清单
 
-最小自有分发器执行/恢复见 [ExecutionBoundaryTests](../../test/GalNet.Runtime.Tests/Engine/ExecutionBoundaryTests.cs)。自有 DTO 同时控制自动推进、实际文本呈现和 ambience 音量的组合验证见 [ProjectConfigurationCompositionTests](../../test/GalNet.IntegrationTests/ProjectConfigurationCompositionTests.cs)；自定义配置的保存/导出/安装链路另由 Editor 表单与安装测试覆盖。Sample 继续作为三个默认音频分组的完整接入示例。
+最小自有分发器执行/恢复见 [ExecutionBoundaryTests](../../test/GalNet.Runtime.Tests/Engine/ExecutionBoundaryTests.cs)。自有 DTO 同时控制自动推进、实际文本呈现和 ambience 音量的组合验证见 [ProjectConfigurationCompositionTests](../../test/GalNet.IntegrationTests/ProjectConfigurationCompositionTests.cs)；自定义配置的保存/导出/安装链路另由 Editor 表单与安装测试覆盖。Sample 继续作为三个默认音频 Bus的完整接入示例。
 
 - 只含自定义 schema/执行的最小内容可编译和运行，缺失执行会明确失败。
 - 正常推进、Choice、阻塞实例自然完成、停止和重新打开不会并发推进或泄漏旧回调。
@@ -106,3 +106,5 @@ CLI 可用 `execute <project> <patch.json>` 修改已声明的 section。例如�
 详细模块契约请分别查看[运行时](../spec/runtime.md)、[条目类型](../spec/entry-types.md)、[资源](../spec/assets.md)和[架构](../spec/architecture.md)。
 
 默认资源与 Gallery 工厂在 Contracts.Builtins.Assets/Gallery，差分图片契约在 Contracts.Builtins.Variants；不选择默认工厂时可直接组装自有目录，并按需要声明 DefaultType。创建 provider/PAK 时始终传入同一资源目录。宿主内容类型在 GameHost.Content，通用 Runtime 不再拥有 GameContent 或 Gallery 玩家包装。
+
+新的目标效果、混响、默认配置 v2 与 Windows 后端构建见 [音频混音手册](audio-mixing.md)。

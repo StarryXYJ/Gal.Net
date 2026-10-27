@@ -1091,9 +1091,14 @@
   "Error.entry.archiveFull": "输入恢复区已满，请先在 Problems 中复制或丢弃归档，再删除更多条目。",
   "Error.entry.archiveUnavailable": "输入恢复区不可用，请先保留并修复 .galnet/editor/input-archive.json。",
   "Error.entry.archiveChanged": "归档输入与当前作者目标不匹配，请先复制文本再丢弃。",
-  "Settings.Project.AudioGroups": "音频分组",
+  "Settings.Project.AudioBuses": "音频总线",
   "Settings.Project.AddGroup": "添加分组",
   "Settings.Project.RemoveGroup": "删除分组",
   "Settings.Project.GroupId": "分组 ID（可留空）",
-  "Settings.Project.PreserveAudio": "快进回放后保留音频"
+  "Settings.Project.PreserveAudio": "快进回放后保留音频",
+  "Entry.Parameter.targetId": "目标 ID",
+  "Entry.Parameter.scope": "作用范围",
+  "Entry.Option.track": "轨道",
+  "Entry.Option.bus": "总线",
+  "Settings.Project.BusId": "总线 ID（可留空）"
 }

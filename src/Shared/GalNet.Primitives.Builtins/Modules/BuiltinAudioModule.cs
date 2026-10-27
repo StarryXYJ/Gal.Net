@@ -50,8 +50,9 @@ public sealed class BuiltinAudioModule : PrimitiveModule
     private static void RegisterPrimitives(PrimitiveRegistry registry, AudioRuntime runtime, AudioScope scope,
         AudioConfiguration tracks)
     {
-        registry.State<AudioTrackState>("builtin.audio.tracks", value => value.Id, validate: AudioRuntime.ValidateTrack);
-        registry.State<AudioSEffectState>("builtin.audio.seffects", value => AudioSEffectState.Key(value.TrackId, value.InstanceId));
+        registry.State<AudioTrackState>("builtin.audio.tracks", value => value.Id, validate: AudioRuntime.ValidateTrack, version: 2);
+        registry.State<AudioSEffectState>("builtin.audio.seffects", value => value.Key(), version: 2);
+        registry.State<AudioChannelState>("builtin.audio.channels", value => value.Key(), validate: AudioRuntime.ValidateChannel);
         registry.ValidateState((_, state) => runtime.Validate(state, tracks));
         registry.Restore("builtin.audio", async context =>
         {
@@ -72,14 +73,16 @@ public sealed class BuiltinAudioModule : PrimitiveModule
         registry.Register<AudioPlayOptions>(BuiltinEntryIds.EnqueueAudio, (context, options) => Playback(context, runtime, scope, tracks, options, AudioPlacement.Enqueue));
         registry.Register<AudioSEffectOptions>(BuiltinEntryIds.ApplyAudioSEffect, (context, options) => Audio(context, scope, () =>
             runtime.ApplySEffect(tracks, new AudioSEffectRequest(
-                options.TrackId, options.InstanceId ?? "",
-                options.Id ?? "", Arguments.Json<JsonElement>(options.Parameters)))));
+                options.TargetId, options.InstanceId ?? "",
+                options.Id ?? "", Arguments.Json<JsonElement>(options.Parameters), options.Scope))));
         registry.Register<AudioSEffectStopOptions>(BuiltinEntryIds.StopAudioSEffect, (context, options) => Audio(context, scope, () =>
-            runtime.StopSEffect(tracks, options.TrackId, options.InstanceId ?? "")));
+            runtime.StopSEffect(tracks, options.TargetId, options.InstanceId ?? "", options.Scope)));
+        registry.Register<AudioLevelOptions>(BuiltinEntryIds.SetAudioLevel, (context, options) => Audio(context, scope, () =>
+            runtime.SetLevel(tracks, new(options.TargetId, options.Scope, options.Gain, options.Muted))));
     }
 
     private static AudioPlayRequest PlayRequest(AudioPlayOptions options, AudioPlacement placement) => new(
-        options.TrackId, options.Asset ?? "", placement, options.Gain, options.FadeIn, options.LoopCount, options.Completion);
+        options.TrackId, options.Asset ?? "", placement, options.Gain, options.FadeIn, options.LoopCount, options.Completion, options.FadeOut);
 
     private static AudioPlaybackPrimitiveInstance Playback(PrimitiveCreateContext context, AudioRuntime runtime,
         AudioScope scope, AudioConfiguration tracks, AudioPlayOptions options, AudioPlacement placement) => new(() =>

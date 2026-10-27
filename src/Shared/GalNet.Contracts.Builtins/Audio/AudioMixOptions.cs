@@ -9,13 +9,13 @@ public sealed record AudioMixOptions
 {
     public float MasterGain { get; init; } = 1f;
     public bool MasterMuted { get; init; }
-    public IReadOnlyDictionary<string, AudioMixLevel> Groups { get; init; } = ReadOnlyDictionary<string, AudioMixLevel>.Empty;
+    public IReadOnlyDictionary<string, AudioMixLevel> Buses { get; init; } = ReadOnlyDictionary<string, AudioMixLevel>.Empty;
     public IReadOnlyDictionary<string, AudioMixLevel> Tracks { get; init; } = ReadOnlyDictionary<string, AudioMixLevel>.Empty;
 
     public AudioMixOptions Snapshot()
     {
         ValidateGain(MasterGain);
-        return this with { Groups = CopyLevels(Groups), Tracks = CopyLevels(Tracks) };
+        return this with { Buses = CopyLevels(Buses), Tracks = CopyLevels(Tracks) };
     }
 
     private static IReadOnlyDictionary<string, AudioMixLevel> CopyLevels(IReadOnlyDictionary<string, AudioMixLevel> values)

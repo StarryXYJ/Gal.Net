@@ -93,7 +93,7 @@ public partial class NewProjectPanelViewModel : PageViewModelBase, IDisposable
             {
                 DefaultWidth = width,
                 DefaultHeight = height,
-                AudioGroups = audio.Groups.ToList(),
+                AudioBuses = audio.Buses.ToList(),
                 AudioTracks = audio.Tracks.ToList()
             }.ToConfiguration(), contracts);
             _navigation.NavigateTo(_editorPageFactory.CreateEditorPage());

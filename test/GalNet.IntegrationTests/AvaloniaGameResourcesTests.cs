@@ -41,7 +41,7 @@ public sealed class AvaloniaGameResourcesTests
             var options = new AvaloniaGamePresentationOptions
             {
                 CreateLayers = _ => layers,
-                CreateAudioHost = (_, _, _) => audio
+                CreateAudioHost = (_, _) => audio
             };
             var presentation = await AvaloniaGamePresentation.CreateAsync(
                 new GalNet.Avalonia.GameView.ViewModels.GamePageViewModel(null!),

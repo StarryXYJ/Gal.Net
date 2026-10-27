@@ -135,7 +135,7 @@ public sealed class TypedBuiltinAuthoringTests
     public void SimpleDtoContractsPreserveOptionalTextNullAndDiagnostics(string type, string field)
     {
         var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
-        var required = type.StartsWith("audio.", StringComparison.Ordinal) ? new Dictionary<string, object?> { ["trackId"] = "custom" } : new Dictionary<string, object?>();
+        var required = type.StartsWith("audio.", StringComparison.Ordinal) ? new Dictionary<string, object?> { ["targetId"] = "custom" } : new Dictionary<string, object?>();
         var omitted = Compile(catalog, type, required).Arguments;
         Assert.That(catalog.Get(type).FieldDataType, Is.Not.Null);
         Assert.That(omitted.TryGetProperty(field, out _), Is.EqualTo(type == "video.stop"));
@@ -196,15 +196,16 @@ public sealed class TypedBuiltinAuthoringTests
     public void AudioControlsRequireExplicitNonNullTrackTargets(string type)
     {
         var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
-        var track = catalog.Get(type).DynamicParameters["trackId"];
+        var field = type.StartsWith("audio.seffect.", StringComparison.Ordinal) ? "targetId" : "trackId";
+        var track = catalog.Get(type).DynamicParameters[field];
         Assert.That(track.IsRequired, Is.True);
         Assert.That(track.DefaultValue, Is.Null);
-        Assert.That(() => Compile(catalog, type, new { }), Throws.TypeOf<InvalidDataException>().With.Message.Contains("trackId"));
-        var supplied = new Dictionary<string, object?> { ["trackId"] = "custom" };
+        Assert.That(() => Compile(catalog, type, new { }), Throws.TypeOf<InvalidDataException>().With.Message.Contains(field));
+        var supplied = new Dictionary<string, object?> { [field] = "custom" };
         if (type is BuiltinEntryIds.TextVoice or BuiltinEntryIds.AppendVoiceNvl) supplied["asset"] = "clip";
-        Assert.That(PrimitiveArgumentHelper.Normalize(catalog.Get(type).DynamicParameters, JsonSerializer.SerializeToElement(supplied)).GetProperty("trackId").GetString(), Is.EqualTo("custom"));
-        Assert.That(() => Compile(catalog, type, new { trackId = (string?)null }), Throws.TypeOf<InvalidDataException>().With.Message.Contains("trackId"));
-        Assert.That(() => Compile(catalog, type, new { trackId = 1 }), Throws.TypeOf<InvalidDataException>().With.Message.Contains("trackId"));
+        Assert.That(PrimitiveArgumentHelper.Normalize(catalog.Get(type).DynamicParameters, JsonSerializer.SerializeToElement(supplied)).GetProperty(field).GetString(), Is.EqualTo("custom"));
+        Assert.That(() => Compile(catalog, type, new Dictionary<string, object?> { [field] = null }), Throws.TypeOf<InvalidDataException>().With.Message.Contains(field));
+        Assert.That(() => Compile(catalog, type, new Dictionary<string, object?> { [field] = 1 }), Throws.TypeOf<InvalidDataException>().With.Message.Contains(field));
         Assert.That(() => Compile(catalog, type, new { other = "bgm" }), Throws.TypeOf<InvalidDataException>().With.Message.Contains("other"));
     }
 
@@ -214,7 +215,7 @@ public sealed class TypedBuiltinAuthoringTests
         using var host = new RecordingHost();
         var defaults = BuiltinAudioDefaults.Create();
         var tracks = defaults.Tracks.ToList();
-        var configuration = new AudioConfiguration(tracks, defaults.Groups);
+        var configuration = new AudioConfiguration(tracks, defaults.Buses);
         await using var view = new GameRegistration().RegisterSchema(BuiltinSchemas.CreateAudioModule())
             .AddBuiltinAudio(host, configuration).BuildView();
         tracks[0] = tracks[0] with { Id = "reassigned", DefaultGain = 0 };

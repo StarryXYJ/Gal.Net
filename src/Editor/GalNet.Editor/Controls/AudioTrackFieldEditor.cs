@@ -3,13 +3,14 @@ using System.Text.Json;
 using Avalonia.Controls;
 using GalNet.Contracts.Builtins;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Models.Graph;
 using GalNet.Game.Controls.Forms;
 
 namespace GalNet.Editor.Controls;
 
 internal static class AudioTrackFieldEditor
 {
-    public static FieldEditorLease Create(FieldEditorContext context, IProjectContentSession? content)
+    public static FieldEditorLease Create(FieldEditorContext context, IProjectContentSession? content, bool target = false)
     {
         var input = new ComboBox { Name = "AudioTrackInput", HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Stretch };
         var disposed = false; var updating = false; var busy = false;
@@ -19,8 +20,15 @@ internal static class AudioTrackFieldEditor
             updating = true;
             try
             {
-                var tracks = content is null ? [] : content.CaptureWorking().Configuration.ReadDefaultOptions().AudioTracks;
-                var rows = tracks.Select(track => new TrackOption(track.Id, string.IsNullOrEmpty(track.Name) ? track.Id : $"{track.Name} ({track.Id})")).ToList();
+                var snapshot = content?.CaptureWorking();
+                var options = snapshot?.Configuration.ReadDefaultOptions();
+                var bus = target && context.HostContext is IEntryFieldOrigin { GroupId: { } group } origin && snapshot is not null &&
+                    snapshot.GroupEntries.TryGetValue(group, out var entries) &&
+                    entries.FirstOrDefault(entry => entry.StableId == origin.EntryId)?.Parameters.TryGetValue("scope", out var scope) == true &&
+                    scope.ValueKind == JsonValueKind.String && scope.GetString() == "bus";
+                var rows = bus
+                    ? options!.AudioBuses.Select(item => new TrackOption(item.Id, string.IsNullOrEmpty(item.Name) ? item.Id : $"{item.Name} ({item.Id})")).ToList()
+                    : (options?.AudioTracks ?? []).Select(item => new TrackOption(item.Id, string.IsNullOrEmpty(item.Name) ? item.Id : $"{item.Name} ({item.Id})")).ToList();
                 var value = context.EffectiveValue;
                 var id = value is { ValueKind: JsonValueKind.String } json ? json.GetString() : null;
                 // Keep unresolved author IDs visible without selecting a replacement on refresh.

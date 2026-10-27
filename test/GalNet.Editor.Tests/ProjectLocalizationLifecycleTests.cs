@@ -32,7 +32,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var projects = services.GetRequiredService<IProjectService>();
             var audio = GalNet.Contracts.Builtins.BuiltinAudioDefaults.Create();
             var project = await projects.CreateAsync(Path.Combine(_root, "Localized"), "Authored 名称",
-                new DefaultProjectOptions { AudioGroups = audio.Groups.ToList(), AudioTracks = audio.Tracks.ToList() }.ToConfiguration(), Contracts());
+                new DefaultProjectOptions { AudioBuses = audio.Buses.ToList(), AudioTracks = audio.Tracks.ToList() }.ToConfiguration(), Contracts());
             var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
             var panel = project.Services.GetRequiredService<ProjectSettingsPanelViewModel>();
             var page = project.Services.GetRequiredService<EditorPageViewModel>();

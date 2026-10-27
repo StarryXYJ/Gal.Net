@@ -1091,9 +1091,14 @@
   "Error.entry.archiveFull": "Input recovery is full. Copy or discard archived inputs in Problems before removing more entries.",
   "Error.entry.archiveUnavailable": "Input recovery is unavailable. Preserve and repair .galnet/editor/input-archive.json first.",
   "Error.entry.archiveChanged": "The archived input no longer matches its author target. Copy its text before discarding it.",
-  "Settings.Project.AudioGroups": "Audio groups",
+  "Settings.Project.AudioBuses": "Audio buses",
   "Settings.Project.AddGroup": "Add group",
   "Settings.Project.RemoveGroup": "Remove group",
   "Settings.Project.GroupId": "Group ID (optional)",
-  "Settings.Project.PreserveAudio": "Preserve after catch-up"
+  "Settings.Project.PreserveAudio": "Preserve after catch-up",
+  "Entry.Parameter.targetId": "Target ID",
+  "Entry.Parameter.scope": "Scope",
+  "Entry.Option.track": "Track",
+  "Entry.Option.bus": "Bus",
+  "Settings.Project.BusId": "Bus ID (optional)"
 }

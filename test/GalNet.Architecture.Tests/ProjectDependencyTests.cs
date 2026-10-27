@@ -19,6 +19,8 @@ public class ProjectDependencyTests
             ["GalNet.Runtime"] = ["GalNet.Core"],
             ["GalNet.Debugging"] = ["GalNet.Runtime"],
             ["GalNet.Primitives.Builtins"] = ["GalNet.Core", "GalNet.Contracts.Builtins", "GalNet.Presentation.Abstractions", "GalNet.Runtime"],
+            ["GalNet.Media.Audio"] = ["GalNet.Contracts.Builtins", "GalNet.Core"],
+            ["GalNet.Media.Miniaudio"] = ["GalNet.Contracts.Builtins", "GalNet.Core", "GalNet.Media.Audio"],
             ["GalNet.Media.LibVlc"] = ["GalNet.Contracts.Builtins", "GalNet.Core", "GalNet.Assets", "GalNet.Presentation.Abstractions"],
             ["GalNet.Assets"] = ["GalNet.Contracts.Builtins", "GalNet.Core"],
             ["GalNet.Storage.FileSystem"] = ["GalNet.Contracts.Builtins", "GalNet.Core", "GalNet.Runtime", "GalNet.Assets", "GalNet.GameHost"],
@@ -33,7 +35,7 @@ public class ProjectDependencyTests
                 "GalNet.Runtime",
                 "GalNet.Assets"
             ],
-            ["GalNet.Avalonia.GameHost"] = ["GalNet.Contracts.Builtins", "GalNet.Storage.FileSystem", "GalNet.Media.LibVlc", "GalNet.GameHost", "GalNet.Avalonia.Controls", "GalNet.Avalonia.GameView", "GalNet.Avalonia.Rendering", "GalNet.Primitives.Builtins", "GalNet.Runtime", "GalNet.Presentation.Abstractions", "GalNet.Assets", "GalNet.Core"],
+            ["GalNet.Avalonia.GameHost"] = ["GalNet.Contracts.Builtins", "GalNet.Storage.FileSystem", "GalNet.Media.LibVlc", "GalNet.Media.Miniaudio", "GalNet.GameHost", "GalNet.Avalonia.Controls", "GalNet.Avalonia.GameView", "GalNet.Avalonia.Rendering", "GalNet.Primitives.Builtins", "GalNet.Runtime", "GalNet.Presentation.Abstractions", "GalNet.Assets", "GalNet.Core"],
             ["GalNet.Avalonia.Controls"] = ["GalNet.Contracts.Builtins", "GalNet.Core"],
             ["GalNet.Avalonia.Themes"] = ["GalNet.Contracts.Builtins", "GalNet.Avalonia.Controls", "GalNet.Avalonia.GameView"],
             ["GalNet.Avalonia.GameView"] =
@@ -71,6 +73,7 @@ public class ProjectDependencyTests
             ],
             ["GalNet.Editor.Shared.Tests"] =
             [
+                "GalNet.Editor.DefaultContracts",
                 "GalNet.Editor.Headless",
                 "SchemaA", "SchemaB", "SchemaDuplicate", "SchemaInvalid", "SchemaIncompatible",
                 "GalNet.Core",
@@ -91,7 +94,7 @@ public class ProjectDependencyTests
                 "GalNet.Contracts.Builtins"
             ],
             ["GalNet.Presentation.Tests"] =
-            ["GalNet.Contracts.Builtins",
+            ["GalNet.Contracts.Builtins", "GalNet.Media.Miniaudio",
                 "GalNet.Media.LibVlc",
                 "GalNet.SchemaGenerator",
                 "GalNet.Assets",
@@ -103,6 +106,7 @@ public class ProjectDependencyTests
                 "GalNet.Presentation.Abstractions",
                 "GalNet.Runtime"
             ],
+            ["GalNet.Media.Audio.Tests"] = ["GalNet.Media.Miniaudio", "GalNet.Primitives.Builtins"],
             ["GalNet.SchemaGenerator.Tests"] = ["GalNet.SchemaGenerator", "GalNet.Core"],
             ["GalNet.IntegrationTests"] =
             ["GalNet.GameHost",

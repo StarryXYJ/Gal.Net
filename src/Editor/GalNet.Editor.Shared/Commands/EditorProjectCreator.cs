@@ -119,7 +119,7 @@ public static class EditorProjectCreator
     private static ProjectConfiguration DefaultSettings()
     {
         var audio = GalNet.Contracts.Builtins.BuiltinAudioDefaults.Create();
-        return new GalNet.Contracts.Builtins.DefaultProjectOptions { AudioGroups = audio.Groups.ToList(), AudioTracks = audio.Tracks.ToList() }.ToConfiguration();
+        return new GalNet.Contracts.Builtins.DefaultProjectOptions { AudioBuses = audio.Buses.ToList(), AudioTracks = audio.Tracks.ToList() }.ToConfiguration();
     }
 
     private static void EnsureEmptyTarget(string root)

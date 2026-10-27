@@ -19,6 +19,7 @@
       "galnet.presentation.abstractions": {
         "type": "Project",
         "dependencies": {
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )"
         }
       },
@@ -45,7 +46,6 @@
         "resolved": "4.2.0",
         "contentHash": "gmoWVOvKgbME8TYR+gwMf7osROiWAURterc6Rt2dQyX7wtjZYpqFiA/pY6ztjGQKKV62GGCyOcmtP1UKMHgSmA=="
       }
-    },
-    "net10.0/win-x64": {}
+    }
   }
 }

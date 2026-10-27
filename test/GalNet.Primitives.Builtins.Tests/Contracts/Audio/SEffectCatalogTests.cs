@@ -21,7 +21,7 @@ public sealed class SEffectCatalogTests
 
         using var invalid = JsonDocument.Parse("{\"cutoffHz\": 4}");
         Assert.That(catalog.Validate("seffect.lowPass", SEffectScope.Track, invalid.RootElement), Does.Contain("SEffect parameter 'cutoffHz' is outside its supported range."));
-        Assert.That(catalog.Validate("seffect.lowPass", SEffectScope.Item, document.RootElement), Does.Contain("SEffect 'seffect.lowPass' does not support Item scope."));
+        Assert.That(catalog.Validate("seffect.lowPass", (SEffectScope)99, document.RootElement), Does.Contain("SEffect 'seffect.lowPass' does not support 99 scope."));
     }
 
     [Test]

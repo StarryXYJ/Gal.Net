@@ -95,6 +95,7 @@ public partial class AudioPlayOptions
     [Field(6, Minimum = 0, EditorId = ValueEditorIds.Numeric)] public int LoopCount { get; set; } = 1;
     [Field(7, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AudioCompletionValueConverter))]
     public AudioCompletion Completion { get; set; } = AudioCompletion.Discard;
+    [Field(8, Minimum = 0, EditorId = ValueEditorIds.Numeric)] public float FadeOut { get; set; } = 0;
 }
 
 public sealed class AudioPlacementValueConverter() : StringEnumValueConverter<AudioPlacement>(JsonNamingPolicy.CamelCase);
@@ -103,11 +104,24 @@ public sealed class AudioCompletionValueConverter() : StringEnumValueConverter<A
 [GenerateFieldSchema]
 public partial class AudioSEffectOptions
 {
-    public AudioSEffectOptions() => TrackId = "";
-    [Common, Field(0, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)] public string TrackId { get; set; }
+    public AudioSEffectOptions() => TargetId = "";
+    [Common, Field(0, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)] public string TargetId { get; set; }
     [Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? InstanceId { get; set; }
     [Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? Id { get; set; }
     [Field(3, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Parameters { get; set; }
+    [Field(4, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AudioTargetScopeValueConverter))] public SEffectScope Scope { get; set; } = SEffectScope.Track;
+}
+
+public sealed class AudioTargetScopeValueConverter() : StringEnumValueConverter<SEffectScope>(JsonNamingPolicy.CamelCase);
+
+[GenerateFieldSchema]
+public partial class AudioLevelOptions
+{
+    public AudioLevelOptions() => TargetId = "";
+    [Common, Field(0, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)] public string TargetId { get; set; }
+    [Field(1, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AudioTargetScopeValueConverter))] public SEffectScope Scope { get; set; } = SEffectScope.Track;
+    [Field(2, Minimum = 0, Maximum = 1, EditorId = ValueEditorIds.Numeric)] public float Gain { get; set; } = 1;
+    [Field(3, EditorId = ValueEditorIds.Choice)] public bool Muted { get; set; }
 }
 
 [GenerateFieldSchema]

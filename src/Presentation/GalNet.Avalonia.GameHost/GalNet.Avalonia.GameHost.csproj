@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="../../Infrastructure/GalNet.Storage.FileSystem/GalNet.Storage.FileSystem.csproj" />
     <ProjectReference Include="../../Infrastructure/GalNet.Media.LibVlc/GalNet.Media.LibVlc.csproj" />
+    <ProjectReference Include="../../Infrastructure/GalNet.Media.Miniaudio/GalNet.Media.Miniaudio.csproj" />
     <PackageReference Include="DynamicLocalization.Core" />
     <ProjectReference Include="../../Shared/GalNet.GameHost/GalNet.GameHost.csproj" />
     <ProjectReference Include="../GalNet.Avalonia.Controls/GalNet.Avalonia.Controls.csproj" />

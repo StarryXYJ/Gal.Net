@@ -10,7 +10,7 @@ public sealed class DefaultProjectOptions
 
     public int SaveSlotCount { get; set; } = 60;
 
-    public List<GalNet.Contracts.Builtins.Audio.AudioGroupDefinition> AudioGroups { get; set; } = [];
+    public List<GalNet.Contracts.Builtins.Audio.AudioBusDefinition> AudioBuses { get; set; } = [];
     public List<GalNet.Contracts.Builtins.Audio.AudioTrackDefinition> AudioTracks { get; set; } = [];
 
     /// <summary>Authoring defaults only. Saved entries retain their explicit program resource IDs.</summary>

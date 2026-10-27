@@ -93,7 +93,7 @@ internal static class SampleCustomization
             {
                 SaveSlotCount = options.SaveSlotCount,
                 DefaultCulture = options.TargetLocale.Code,
-                Audio = new(options.AudioTracks, options.AudioGroups)
+                Audio = new(options.AudioTracks, options.AudioBuses)
             };
         },
         ConfigureExecution = (registration, presentation, page, content) => ConfigureExecution(registration,

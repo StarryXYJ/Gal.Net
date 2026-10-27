@@ -14,6 +14,8 @@
     <Project Path="src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj" />
   </Folder>
   <Folder Name="/src/Infrastructure/">
+    <Project Path="src/Infrastructure/GalNet.Media.Audio/GalNet.Media.Audio.csproj" />
+    <Project Path="src/Infrastructure/GalNet.Media.Miniaudio/GalNet.Media.Miniaudio.csproj" />
     <Project Path="src/Infrastructure/GalNet.Media.LibVlc/GalNet.Media.LibVlc.csproj" />
     <Project Path="src/Infrastructure/GalNet.Storage.FileSystem/GalNet.Storage.FileSystem.csproj" />
   </Folder>
@@ -41,6 +43,7 @@
     <Project Path="src/Shared/GalNet.Runtime/GalNet.Runtime.csproj" />
   </Folder>
   <Folder Name="/test/">
+    <Project Path="test/GalNet.Media.Audio.Tests/GalNet.Media.Audio.Tests.csproj" />
     <Project Path="test/GalNet.Diagnostics.Tests/GalNet.Diagnostics.Tests.csproj" />
     <Project Path="test/GalNet.Debugging.Tests/GalNet.Debugging.Tests.csproj" />
     <Project Path="test/GalNet.GameHost.Tests/GalNet.GameHost.Tests.csproj" />

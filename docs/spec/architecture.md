@@ -11,7 +11,9 @@ Contracts.Builtins ──────── 内置场景/音频/Gallery/差分�
 Presentation.Abstractions ─ 执行注册/恢复组合、presenter 与平台无关应用契约
 GameHost ───────────────── 游戏会话、内容聚合、运行生命周期、玩家持久化与偏好规则
 Avalonia.GameHost ───────── 默认 Avalonia 会话、展示组合、设置 UI 和平台适配
-Media.LibVlc ────────────── 可供不同 UI 框架复用的 LibVLC 音频后端
+Media.Audio ─────────────── 跨平台 PCM 混音与 DSP
+Media.Miniaudio ──────────── Windows x64 设备与流式解码
+Media.LibVlc ────────────── 视频/Gallery 共用的 LibVLC 生命周期
 Runtime ────────────────── Graph、Compiled Group、Engine、存档状态与宿主端口
 Assets ─────────────────── Local/PAK provider、Archive、AssetManager
 Storage.FileSystem ─────── 项目/安装内容、保存、变量与进度实现
@@ -33,6 +35,9 @@ flowchart TB
     AvaloniaHost --> Host[GameHost]
     AvaloniaHost --> Builtins[Primitives.Builtins]
     AvaloniaHost --> Storage[Storage.FileSystem]
+    AvaloniaHost --> Audio[Media.Miniaudio]
+    Audio --> Mixer[Media.Audio]
+    Mixer --> Contracts
     AvaloniaHost --> Media[Media.LibVlc]
     Host --> Runtime
     Builtins --> Runtime
@@ -95,7 +100,7 @@ Avalonia 展示按领域拆为 dialogue/choice、layer、animation 和 particle 
 
 `Avalonia.GameHost` 提供可直接使用的 `AvaloniaGameSession`、页面绑定 `AvaloniaGameRun`、展示组合 `AvaloniaGamePresentation`、纹理租约 `AvaloniaGameResources` 以及默认设置/窗口/手柄适配。`AvaloniaGameHostOptions` 由项目提供 catalog 和执行注册，预加载策略可替换；`AvaloniaGamePresentationOptions` 可替换 Layer 工厂与音频后端，新建适配对象的所有权交给展示会话。Sample 只保留启动参数、项目策略、本地化资源配置与调试扩展；默认本地化服务归 Avalonia.GameHost，中立 JSON 文本源适配归 GameHost。
 
-会话、显示能力和 Gallery 路径契约位于 `Presentation.Abstractions.Application`。共享 LibVLC 音频后端位于 `Media.LibVlc`，不引用 Avalonia；视频画面适配仍位于 Avalonia。释放顺序为运行/Engine → 展示恢复与执行 view → 平台后端 → Gallery 媒体与玩家持久化 → 纹理租约 → 内容资源。
+会话、显示能力和 Gallery 路径契约位于 `Presentation.Abstractions.Application`。剧情音频的混音/DSP 位于 `Media.Audio`，Windows x64 设备/解码适配位于 `Media.Miniaudio`，均不引用 Avalonia；`Media.LibVlc` 保留视频/Gallery 的原生运行时；视频画面适配仍位于 Avalonia。释放顺序为运行/Engine → 展示恢复与执行 view → 平台后端 → Gallery 媒体与玩家持久化 → 纹理租约 → 内容资源。
 
 Gallery catalog 是平台无关的静态内容。宿主把其自动生成的 `gallery_<item-id>_unlocked` Player bool 注册到变量服务；`GalleryDataSource` 合并 catalog 与当前 Player 值。Gallery 解锁不存于独立 UI 状态或存档槽。
 
@@ -163,7 +168,7 @@ Engine 的导航索引持有验证后的私有图副本，不共享作者集合�
 
 展示执行抽象的 StateRestoreSession 拥有重放 continuation；宿主在执行 view 和平台 presenter 释放前异步释放该会话。Suspend 等待取消后仍保留旧实例，下一次重放或释放会继续等待真实展示清理。
 
-Engine 只接收/更新 PlaybackOptions，音频接收不可变 AudioConfiguration 分组/轨道声明和 AudioMixOptions 的 master/group/track 混音值，不依赖完整玩家设置或运行上下文的设置容器。默认玩家偏好模型 GameSettings 位于 Avalonia.GameHost.Settings，通过组合根投影为模块输入；通用 PlayerSession 只持有玩家持久化与进度，不持有该偏好模型。清空玩家数据后由默认宿主重新绑定默认偏好。Editor 没有另设未使用的游戏偏好服务。Core.Configuration 只定义版本化 ProjectConfiguration/ConfigurationSection 协议；GameContent、GalProject 和作者文档使用 Configuration，不再绑定固定 ProjectSettings。默认项目 DTO DefaultProjectOptions 位于可选 Contracts.Builtins，默认模板/Sample 显式选择其 schema；Storage 通过 GameContentLoadOptions 接收 schema 和文化代码投影，运行模块仍接收小配置。Editor 按项目 schema 生成通用 section 表单，批量提交、Undo/Redo、保存、导出和安装加载保留未知配置；默认语言声明由 I18n 面板编辑。宿主通过 SelectProjectOptions 显式投影，自有 DTO 控制模块输入；调试使用外部游戏宿主。
+Engine 只接收/更新 PlaybackOptions，音频接收不可变 AudioConfiguration Bus/Track 声明和 AudioMixOptions 的 master/bus/track 混音值，不依赖完整玩家设置或运行上下文的设置容器。默认玩家偏好模型 GameSettings 位于 Avalonia.GameHost.Settings，通过组合根投影为模块输入；通用 PlayerSession 只持有玩家持久化与进度，不持有该偏好模型。清空玩家数据后由默认宿主重新绑定默认偏好。Editor 没有另设未使用的游戏偏好服务。Core.Configuration 只定义版本化 ProjectConfiguration/ConfigurationSection 协议；GameContent、GalProject 和作者文档使用 Configuration，不再绑定固定 ProjectSettings。默认项目 DTO DefaultProjectOptions 位于可选 Contracts.Builtins，默认模板/Sample 显式选择其 schema；Storage 通过 GameContentLoadOptions 接收 schema 和文化代码投影，运行模块仍接收小配置。Editor 按项目 schema 生成通用 section 表单，批量提交、Undo/Redo、保存、导出和安装加载保留未知配置；默认语言声明由 I18n 面板编辑。宿主通过 SelectProjectOptions 显式投影，自有 DTO 控制模块输入；调试使用外部游戏宿主。
 
 运行与宿主资源的依赖及生命周期以本页的游戏运行段和[运行时规范](runtime.md)为准，包括 GameView 对 Assets 的媒体 adapter 默认实现依赖。
 

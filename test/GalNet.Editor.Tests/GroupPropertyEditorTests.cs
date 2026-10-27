@@ -33,7 +33,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
-            var project = await projects.CreateAsync(Path.Combine(_root, "GroupTrackInput"), "Tracks", new DefaultProjectOptions { AudioTracks = BuiltinAudioDefaults.Create().Tracks.ToList(), AudioGroups = BuiltinAudioDefaults.Create().Groups.ToList() }.ToConfiguration(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
+            var project = await projects.CreateAsync(Path.Combine(_root, "GroupTrackInput"), "Tracks", new DefaultProjectOptions { AudioTracks = BuiltinAudioDefaults.Create().Tracks.ToList(), AudioBuses = BuiltinAudioDefaults.Create().Buses.ToList() }.ToConfiguration(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
             var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
             var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
             var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.PlayAudio).Single();
@@ -53,6 +53,41 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(entry.Source.Parameters["trackId"].GetString(), Is.EqualTo("sfx"));
                 await project.Services.GetRequiredService<EditorHistories>().Content.UndoAsync();
                 Assert.That(entry.Source.Parameters.GetValueOrDefault("trackId").ValueKind is JsonValueKind.Undefined || entry.Source.Parameters["trackId"].GetString() == "bgm", Is.True);
+            }
+            finally { window.Close(); page.Dispose(); await projects.CloseAsync(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
+    public async Task AudioBusEffectTargetUsesBusDeclarationsInTheMountedInspector()
+    {
+        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        await ui.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
+            var defaults = BuiltinAudioDefaults.Create();
+            var project = await projects.CreateAsync(Path.Combine(_root, "BusEffectInput"), "Audio", new DefaultProjectOptions
+            {
+                AudioTracks = defaults.Tracks.ToList(),
+                AudioBuses = [.. defaults.Buses, new() { Id = "room", Name = "Room" }]
+            }.ToConfiguration(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
+            var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
+            var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
+            var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.ApplyAudioSEffect).Single();
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id);
+            var scope = entry.DetailForm!.Fields.Single(field => field.Id == "scope");
+            await entry.DetailForm.Binding(scope).CommitAsync(new(JsonSerializer.SerializeToElement("bus")), default);
+            var inspector = new DtoEditorHost { Item = entry.DetailForm.Item, Registry = page.FieldEditors };
+            inspector.Styles.Add(new StyleInclude(new Uri("avares://GalNet.Editor/")) { Source = new Uri("avares://GalNet.Editor/Controls/AuthorFormStyles.axaml") });
+            var window = new Window { Content = inspector, Width = 800, Height = 900 }; window.Show(); TimelinePump(window);
+            try
+            {
+                var input = inspector.GetVisualDescendants().OfType<ComboBox>().Single(control => control.Name == "AudioTrackInput");
+                input.SelectedItem = input.Items.Cast<object>().Single(item => item.ToString() == "Room (room)");
+                TimelinePump(window);
+                Assert.That(entry.Source.Parameters["targetId"].GetString(), Is.EqualTo("room"));
+                Assert.That(entry.Source.Parameters["scope"].GetString(), Is.EqualTo("bus"));
             }
             finally { window.Close(); page.Dispose(); await projects.CloseAsync(); }
             return true;
@@ -107,8 +142,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
             var tracks = BuiltinAudioDefaults.Create().Tracks.ToList();
-            tracks.Add(new() { Id = "ambience", Name = "Ambience", GroupId = "sfx" });
-            var project = await projects.CreateAsync(Path.Combine(_root, "TrackInputs"), "Tracks", new DefaultProjectOptions { AudioTracks = tracks, AudioGroups = BuiltinAudioDefaults.Create().Groups.ToList() }.ToConfiguration(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
+            tracks.Add(new() { Id = "ambience", Name = "Ambience", BusId = "sfx" });
+            var project = await projects.CreateAsync(Path.Combine(_root, "TrackInputs"), "Tracks", new DefaultProjectOptions { AudioTracks = tracks, AudioBuses = BuiltinAudioDefaults.Create().Buses.ToList() }.ToConfiguration(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
             try
             {
                 var registry = project.Services.GetRequiredService<EditorRegistry>();
@@ -117,8 +152,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     (typeof(AudioTrackOptions), AudioTrackOptions.Schema.Single(field => field.Id == "trackId")),
                     (typeof(AudioStopOptions), AudioStopOptions.Schema.Single(field => field.Id == "trackId")),
                     (typeof(AudioPlayOptions), AudioPlayOptions.Schema.Single(field => field.Id == "trackId")),
-                    (typeof(AudioSEffectOptions), AudioSEffectOptions.Schema.Single(field => field.Id == "trackId")),
-                    (typeof(AudioSEffectStopOptions), AudioSEffectStopOptions.Schema.Single(field => field.Id == "trackId")),
+                    (typeof(AudioSEffectOptions), AudioSEffectOptions.Schema.Single(field => field.Id == "targetId")),
+                    (typeof(AudioSEffectStopOptions), AudioSEffectStopOptions.Schema.Single(field => field.Id == "targetId")),
                     (typeof(TextVoiceOptions), TextVoiceOptions.Schema.Single(field => field.Id == "trackId")),
                     (typeof(NvlVoiceOptions), NvlVoiceOptions.Schema.Single(field => field.Id == "trackId"))
                 };

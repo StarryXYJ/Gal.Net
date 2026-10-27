@@ -21,7 +21,9 @@ public sealed class BuiltinSchemaComponentsTests
         Assert.That(ValueValidation.Validate(parameter.Value, JsonSerializer.SerializeToElement(minimum - 1))!.Code, Is.EqualTo("value.range"));
         Assert.Throws<InvalidDataException>(() => PrimitiveArgumentHelper.Normalize(catalog.Get(type).DynamicParameters,
             JsonSerializer.SerializeToElement(new Dictionary<string, object> { [name] = minimum - 1 })));
-        Assert.That(ValueCodec.Describe(parameter.Value).GetProperty("minimum").GetInt32(), Is.EqualTo(minimum));
+        var schema = ValueCodec.Describe(parameter.Value);
+        if (parameter.Value.AllowNull) schema = schema.GetProperty("anyOf")[0];
+        Assert.That(schema.GetProperty("minimum").GetInt32(), Is.EqualTo(minimum));
     }
 
     private static readonly string[] SelectedTypes = ["dialogue.text", "dialogue.show", "dialogue.hide", "flow.wait"];
@@ -36,8 +38,8 @@ public sealed class BuiltinSchemaComponentsTests
         {
             Assert.That(modules, Has.Count.EqualTo(14));
             Assert.That(modules.Select(module => module.Id).Distinct().Count(), Is.EqualTo(14));
-            Assert.That(catalog.Definitions, Has.Count.EqualTo(51));
-            Assert.That(catalog.Definitions.Count(entry => entry.Kind == EntryKind.Primitive), Is.EqualTo(37));
+            Assert.That(catalog.Definitions, Has.Count.EqualTo(52));
+            Assert.That(catalog.Definitions.Count(entry => entry.Kind == EntryKind.Primitive), Is.EqualTo(38));
             Assert.That(catalog.Definitions.Count(entry => entry.Kind == EntryKind.Composite), Is.EqualTo(14));
             Assert.That(() => ((IList<IEntryModule>)modules).Clear(), Throws.TypeOf<NotSupportedException>());
         });

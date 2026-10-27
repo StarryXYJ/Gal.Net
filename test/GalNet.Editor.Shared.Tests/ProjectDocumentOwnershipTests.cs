@@ -43,10 +43,10 @@ public sealed class ProjectDocumentOwnershipTests
             Configuration = new DefaultProjectOptions
             {
                 AvailableLocales = [new("en-US")],
-                AudioGroups = [new() { Id = "ambience", Name = "Environment" }],
+                AudioBuses = [new() { Id = "ambience", Name = "Environment" }],
                 AudioTracks = [new AudioTrackDefinition
                 {
-                    Id = "custom", Name = "Custom", GroupId = "ambience", PreserveDuringCatchUp = true, DefaultGain = .4f, MaxVoices = 3, MaxQueuedItems = 4,
+                    Id = "custom", Name = "Custom", BusId = "ambience", PreserveDuringCatchUp = true, DefaultGain = .4f, MaxVoices = 3, MaxQueuedItems = 4,
                     OverflowPolicy = AudioOverflowPolicy.StopOldest, QueueOverflowPolicy = AudioQueueOverflowPolicy.DropOldest
                 }]
             }.ToConfiguration(),
@@ -57,7 +57,7 @@ public sealed class ProjectDocumentOwnershipTests
         var clone = EditorDocumentCloner.Clone(project);
         var options = project.Configuration.ReadDefaultOptions();
         options.AvailableLocales.Clear();
-        options.AudioGroups[0] = options.AudioGroups[0] with { Name = "Changed group" };
+        options.AudioBuses[0] = options.AudioBuses[0] with { Name = "Changed group" };
         options.AudioTracks[0] = options.AudioTracks[0] with { Name = "Changed" };
         project.Configuration.Set(DefaultProjectConfiguration.Section, options);
         project.GroupEntries["opening"][0].Parameters.Clear();
@@ -67,7 +67,7 @@ public sealed class ProjectDocumentOwnershipTests
         Assert.That(values.ContainsKey("omitted"), Is.False);
         Assert.That(clone.Configuration.ReadDefaultOptions().AvailableLocales.Single().Code, Is.EqualTo("en-US"));
         Assert.That(clone.Configuration.ReadDefaultOptions().AudioTracks[0].Name, Is.EqualTo("Custom"));
-        Assert.That(clone.Configuration.ReadDefaultOptions().AudioGroups.Single().Id, Is.EqualTo("ambience"));
+        Assert.That(clone.Configuration.ReadDefaultOptions().AudioBuses.Single().Id, Is.EqualTo("ambience"));
         Assert.That(clone.Configuration.ReadDefaultOptions().AudioTracks[0].PreserveDuringCatchUp, Is.True);
         Assert.That(clone.Configuration.ReadDefaultOptions().AudioTracks[0].DefaultGain, Is.EqualTo(.4f));
         Assert.That(clone.Configuration.ReadDefaultOptions().AudioTracks[0].MaxQueuedItems, Is.EqualTo(4));

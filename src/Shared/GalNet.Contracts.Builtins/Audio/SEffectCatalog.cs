@@ -5,7 +5,7 @@ using System.Text.Json;
 namespace GalNet.Contracts.Builtins.Audio;
 
 /// <summary>The attachment targets supported by an audio effect descriptor.</summary>
-public enum SEffectScope { Track, Item }
+public enum SEffectScope { Track, Bus }
 
 /// <summary>Metadata for one numeric parameter accepted by a sound effect.</summary>
 public sealed record SEffectParameterDefinition(
@@ -47,11 +47,11 @@ public sealed class SEffectCatalog : ISEffectCatalog
 
     public static SEffectCatalog Empty { get; } = new([]);
     public static SEffectCatalog Builtins { get; } = new([
-        new("seffect.gain", new HashSet<SEffectScope> { SEffectScope.Track }, [new("gain", Required: true, Minimum: 0, Maximum: 1)]),
-        new("seffect.lowPass", new HashSet<SEffectScope> { SEffectScope.Track },
-            [new("cutoffHz", Required: true, Minimum: 20, Maximum: 20_000), new("attenuationDb", Minimum: -20, Maximum: 0)]),
-        new("seffect.highPass", new HashSet<SEffectScope> { SEffectScope.Track },
-            [new("cutoffHz", Required: true, Minimum: 20, Maximum: 20_000), new("attenuationDb", Minimum: -20, Maximum: 0)])]);
+        new("seffect.gain", Scopes(), [new("gain", Required: true, Minimum: 0, Maximum: 1)]),
+        new("seffect.lowPass", Scopes(), [new("cutoffHz", Required: true, Minimum: 20, Maximum: 20_000), new("q", Minimum: .1f, Maximum: 10)]),
+        new("seffect.highPass", Scopes(), [new("cutoffHz", Required: true, Minimum: 20, Maximum: 20_000), new("q", Minimum: .1f, Maximum: 10)]),
+        new("seffect.reverb", Scopes(), [new("roomSize", Minimum: 0, Maximum: 1), new("decaySeconds", Minimum: .1f, Maximum: 20), new("damping", Minimum: 0, Maximum: 1), new("mix", Minimum: 0, Maximum: 1)])]);
+    private static HashSet<SEffectScope> Scopes() => [SEffectScope.Track, SEffectScope.Bus];
     public IReadOnlyList<SEffectDefinition> Definitions { get; }
     public bool TryGet(string id, out SEffectDefinition definition) => _byId.TryGetValue(id, out definition!);
 

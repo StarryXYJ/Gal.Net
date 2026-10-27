@@ -41,7 +41,7 @@ public sealed class GameInstallationTests
             await File.WriteAllTextAsync(Path.Combine(project, "Assets", "hero.png.meta"), """{"id":"hero","type":"sprite","path":"hero.png","filter":"bilinear","compress":"none"}""");
             await File.WriteAllTextAsync(Path.Combine(project, "Graph", "graph.json"), """{"version":2,"name":"export-test","rootNodeId":"","nodes":[],"edges":[],"playerVariables":[],"saveVariables":[]}""");
             await File.WriteAllTextAsync(Path.Combine(project, "settings.json"), """
-                { "version": 1, "sections": { "galnet.project": { "version": 1, "data": { "audioGroups": [{ "id": "environment", "name": "Environment" }], "audioTracks": [ { "id": "ambient", "groupId": "environment", "preserveDuringCatchUp": true, "defaultGain": 0.3, "maxVoices": 2, "overflowPolicy": "StopOldest" } ] } } } }
+                { "version": 1, "sections": { "galnet.project": { "version": 2, "data": { "audioBuses": [{ "id": "environment", "name": "Environment" }], "audioTracks": [ { "id": "ambient", "busId": "environment", "preserveDuringCatchUp": true, "defaultGain": 0.3, "maxVoices": 2, "overflowPolicy": "StopOldest" } ] } } } }
                 """);
             var edit = await new ProjectEditService(project, catalog, configurations).ExecuteJsonAsync(
                 """{"commandId":"project.configuration.patch","sectionId":"host.options","values":{"subtitleScale":1.5,"slots":3}}""");
@@ -79,8 +79,8 @@ public sealed class GameInstallationTests
                 host.SelectProjectOptions(installedContent.Configuration).SaveSlotCount);
             Assert.That(await player.ListSlotsAsync(CancellationToken.None), Has.Count.EqualTo(3));
             Assert.That(installedContent.Graph.Name, Is.EqualTo("export-test"));
-            Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioGroups.Single().Id, Is.EqualTo("environment"));
-            Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioTracks.Single().GroupId, Is.EqualTo("environment"));
+            Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioBuses.Single().Id, Is.EqualTo("environment"));
+            Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioTracks.Single().BusId, Is.EqualTo("environment"));
             Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioTracks.Single().PreserveDuringCatchUp, Is.True);
             Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioTracks.Single().DefaultGain, Is.EqualTo(.3f));
             Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioTracks.Single().OverflowPolicy, Is.EqualTo(GalNet.Contracts.Builtins.Audio.AudioOverflowPolicy.StopOldest));

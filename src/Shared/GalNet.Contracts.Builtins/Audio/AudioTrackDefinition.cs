@@ -12,12 +12,17 @@ public enum AudioQueueOverflowPolicy
     DropOldest
 }
 
+public enum AudioPlaybackOrder { Sequential, Random }
+public enum AudioTrackRepeat { None, One, All }
+
 /// <summary>Author-configured logical route, independent from backend players.</summary>
 public sealed record AudioTrackDefinition
 {
     public string Id { get; init; } = "";
     public string Name { get; init; } = "";
-    public string? GroupId { get; init; }
+    public string? BusId { get; init; }
+    public AudioPlaybackOrder PlaybackOrder { get; init; }
+    public AudioTrackRepeat Repeat { get; init; }
     public bool PreserveDuringCatchUp { get; init; }
     public float DefaultGain { get; init; } = 1f;
     public int MaxVoices { get; init; } = 1;

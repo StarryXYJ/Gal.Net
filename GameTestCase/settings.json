@@ -2,7 +2,7 @@
   "version": 1,
   "sections": {
     "galnet.project": {
-      "version": 1,
+      "version": 2,
       "data": {
         "defaultVisualPrograms": {
           "bloom": "b1000000000000000000000000000001",
@@ -25,7 +25,7 @@
             "code": "zh-CN"
           }
         ],
-        "audioGroups": [
+        "audioBuses": [
           {
             "id": "bgm",
             "name": "Settings.BgmVolume"
@@ -42,7 +42,7 @@
         "audioTracks": [
           {
             "id": "bgm",
-            "groupId": "bgm",
+            "busId": "bgm",
             "name": "Music",
             "preserveDuringCatchUp": true,
             "defaultGain": 0.8,
@@ -51,7 +51,7 @@
           },
           {
             "id": "sfx",
-            "groupId": "sfx",
+            "busId": "sfx",
             "name": "Effects",
             "preserveDuringCatchUp": false,
             "defaultGain": 1,
@@ -60,7 +60,7 @@
           },
           {
             "id": "vocal",
-            "groupId": "vocal",
+            "busId": "vocal",
             "name": "Voice",
             "preserveDuringCatchUp": false,
             "defaultGain": 1,

@@ -26,6 +26,6 @@ public partial class AudioStopOptions
     public string TrackId { get; set; }
     [Field(1, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringBooleanValueConverter))]
     public bool? ClearQueue { get; set; } = true;
-    [Field(2, Minimum = 0, EditorId = ValueEditorIds.Numeric)]
-    public float FadeOut { get; set; } = 0;
+    [Field(2, AllowNull = true, Minimum = 0, EditorId = ValueEditorIds.Numeric)]
+    public float? FadeOut { get; set; }
 }

@@ -26,27 +26,27 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var path = Path.Combine(_root, "CustomAudio");
         var project = await projects.CreateAsync(path, "CustomAudio", new(), Contracts());
         var panel = project.Services.GetRequiredService<ProjectSettingsPanelViewModel>();
-        await Stage(panel, "audioGroups", new[] { new { id = "ambience", name = "Environment" } });
-        await Stage(panel, "audioTracks", new[] { new { id = "rain", groupId = "ambience", preserveDuringCatchUp = true } });
+        await Stage(panel, "audioBuses", new[] { new { id = "ambience", name = "Environment" } });
+        await Stage(panel, "audioTracks", new[] { new { id = "rain", busId = "ambience", preserveDuringCatchUp = true } });
         await panel.CommitDraftAsync();
         Assert.That(project.Configuration.ReadDefaultOptions().AudioTracks.Single().PreserveDuringCatchUp, Is.True);
         await panel.UndoRedoHistory.UndoAsync();
-        Assert.That(project.Configuration.ReadDefaultOptions().AudioGroups, Is.Empty);
+        Assert.That(project.Configuration.ReadDefaultOptions().AudioBuses, Is.Empty);
         Assert.That(project.Configuration.ReadDefaultOptions().AudioTracks, Is.Empty);
         await panel.UndoRedoHistory.RedoAsync();
-        Assert.That(project.Configuration.ReadDefaultOptions().AudioGroups.Single().Id, Is.EqualTo("ambience"));
-        await Stage(panel, "audioGroups", Array.Empty<object>());
+        Assert.That(project.Configuration.ReadDefaultOptions().AudioBuses.Single().Id, Is.EqualTo("ambience"));
+        await Stage(panel, "audioBuses", Array.Empty<object>());
         await Stage(panel, "audioTracks", new[] { new { id = "rain", preserveDuringCatchUp = true } });
         await panel.CommitDraftAsync();
-        Assert.That(project.Configuration.ReadDefaultOptions().AudioTracks.Single().GroupId, Is.Null);
+        Assert.That(project.Configuration.ReadDefaultOptions().AudioTracks.Single().BusId, Is.Null);
         await panel.UndoRedoHistory.UndoAsync();
-        Assert.That(project.Configuration.ReadDefaultOptions().AudioTracks.Single().GroupId, Is.EqualTo("ambience"));
+        Assert.That(project.Configuration.ReadDefaultOptions().AudioTracks.Single().BusId, Is.EqualTo("ambience"));
         await projects.SaveAsync();
         await projects.CloseAsync();
         await projects.OpenAsync(path);
         var restored = projects.Current!.Configuration.ReadDefaultOptions();
-        Assert.That(restored.AudioGroups.Single().Id, Is.EqualTo("ambience"));
-        Assert.That(restored.AudioTracks.Single().GroupId, Is.EqualTo("ambience"));
+        Assert.That(restored.AudioBuses.Single().Id, Is.EqualTo("ambience"));
+        Assert.That(restored.AudioTracks.Single().BusId, Is.EqualTo("ambience"));
         await projects.CloseAsync();
     }
 }

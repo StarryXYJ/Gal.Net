@@ -10,8 +10,8 @@ public class AudioRuntimeTests
     public void CustomGroupAndTrackMixControlsCurrentAndFutureVoicesIndependently()
     {
         var configuration = new AudioConfiguration(
-            [new() { Id = "rain", GroupId = "ambience", DefaultGain = .8f },
-             new() { Id = "wind", GroupId = "ambience" }, new() { Id = "alert" }],
+            [new() { Id = "rain", BusId = "ambience", DefaultGain = .8f },
+             new() { Id = "wind", BusId = "ambience" }, new() { Id = "alert" }],
             [new() { Id = "ambience" }]);
         var host = new RecordingHost();
         using var runtime = new AudioRuntime(host);
@@ -22,7 +22,7 @@ public class AudioRuntimeTests
         var mix = new AudioMixOptions
         {
             MasterGain = .5f,
-            Groups = new Dictionary<string, AudioMixLevel> { ["ambience"] = new(.5f) },
+            Buses = new Dictionary<string, AudioMixLevel> { ["ambience"] = new(.5f) },
             Tracks = tracks
         };
         runtime.ApplyMix(mix);
@@ -32,7 +32,7 @@ public class AudioRuntimeTests
         AssertGains(.025f, .25f, .5f);
         runtime.ApplyMix(mix);
         AssertGains(0, .25f, .5f);
-        runtime.ApplyMix(mix with { Tracks = new Dictionary<string, AudioMixLevel>(), Groups = new Dictionary<string, AudioMixLevel> { ["ambience"] = new(1f, true) } });
+        runtime.ApplyMix(mix with { Tracks = new Dictionary<string, AudioMixLevel>(), Buses = new Dictionary<string, AudioMixLevel> { ["ambience"] = new(1f, true) } });
         AssertGains(0, 0, .5f);
         runtime.ApplyMix(mix with { MasterMuted = true });
         AssertGains(0, 0, 0);
@@ -77,7 +77,7 @@ public class AudioRuntimeTests
         var host = new RecordingHost();
         using var runtime = new AudioRuntime(host);
         var groups = new Dictionary<string, AudioMixLevel> { ["bgm"] = new(.5f) };
-        runtime.ApplyMix(new AudioMixOptions { MasterGain = .5f, Groups = groups });
+        runtime.ApplyMix(new AudioMixOptions { MasterGain = .5f, Buses = groups });
         runtime.Play(Tracks, new("bgm", "first", AudioPlacement.Replace, .5f));
         Assert.That(host.Requests.Last().Gain, Is.EqualTo(.1f));
 
@@ -89,7 +89,7 @@ public class AudioRuntimeTests
         runtime.Play(Tracks, new("bgm", "third", AudioPlacement.Replace, .5f));
         Assert.That(host.Requests.Last().Gain, Is.EqualTo(.1f));
 
-        runtime.ApplyMix(new AudioMixOptions { Groups = groups });
+        runtime.ApplyMix(new AudioMixOptions { Buses = groups });
         Assert.That(host.Requests.Last().Gain, Is.Zero);
         runtime.Play(Tracks, new("bgm", "fourth", AudioPlacement.Replace, .5f));
         Assert.That(host.Requests.Last().Gain, Is.Zero);
@@ -136,14 +136,14 @@ public class AudioRuntimeTests
     {
         var host = new RecordingHost();
         using var runtime = new AudioRuntime(host);
-        var settings = new AudioMixOptions { MasterGain = .5f, Groups = new Dictionary<string, AudioMixLevel> { ["bgm"] = new(.5f) } };
+        var settings = new AudioMixOptions { MasterGain = .5f, Buses = new Dictionary<string, AudioMixLevel> { ["bgm"] = new(.5f) } };
         runtime.ApplyMix(settings);
         runtime.Play(Tracks, new("bgm", "music", AudioPlacement.Replace, .5f));
         Assert.That(host.Requests[0].Gain, Is.EqualTo(.1f));
-        settings = settings with { Groups = new Dictionary<string, AudioMixLevel> { ["bgm"] = new(.5f, true) } };
+        settings = settings with { Buses = new Dictionary<string, AudioMixLevel> { ["bgm"] = new(.5f, true) } };
         runtime.ApplyMix(settings);
         Assert.That(host.Requests.Last().Gain, Is.Zero);
-        settings = settings with { Groups = new Dictionary<string, AudioMixLevel> { ["bgm"] = new(.5f) } };
+        settings = settings with { Buses = new Dictionary<string, AudioMixLevel> { ["bgm"] = new(.5f) } };
         runtime.ApplyMix(settings);
         Assert.That(host.Requests.Last().Gain, Is.EqualTo(.1f));
     }
@@ -186,7 +186,7 @@ public class AudioRuntimeTests
     }
 
     private static readonly AudioConfiguration Tracks = new(
-        [new() { Id = "bgm", GroupId = "bgm", PreserveDuringCatchUp = true, MaxVoices = 1, MaxQueuedItems = 2, DefaultGain = .8f }],
+        [new() { Id = "bgm", BusId = "bgm", PreserveDuringCatchUp = true, MaxVoices = 1, MaxQueuedItems = 2, DefaultGain = .8f }],
         [new() { Id = "bgm" }]);
 
     [Test]

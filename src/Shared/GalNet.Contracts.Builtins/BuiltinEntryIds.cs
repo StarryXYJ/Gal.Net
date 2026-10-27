@@ -30,6 +30,7 @@ public static class BuiltinEntryIds
     public const string ClearAudio = "audio.clear";
     public const string EnqueueAudio = "audio.enqueue";
     public const string ApplyAudioSEffect = "audio.seffect.apply";
+    public const string SetAudioLevel = "audio.mix.set";
     public const string StopAudioSEffect = "audio.seffect.stop";
     public const string PlayVideo = "video.play";
     public const string StopVideo = "video.stop";

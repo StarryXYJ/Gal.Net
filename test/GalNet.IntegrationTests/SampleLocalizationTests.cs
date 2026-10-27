@@ -123,7 +123,7 @@ public sealed class SampleLocalizationTests
                 using var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory));
                 using var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!));
                 var configuration = new GalNet.Contracts.Builtins.Audio.AudioConfiguration(
-                    [new() { Id = "rain/near", GroupId = "ambience" }, new() { Id = "wind", GroupId = "ambience" }],
+                    [new() { Id = "rain/near", BusId = "ambience" }, new() { Id = "wind", BusId = "ambience" }],
                     [new() { Id = "ambience", Name = "Environment" }]);
                 await settings.AttachAsync(variables, new(), configuration, showTrackControls: true);
                 var items = settings.Categories.Single(category => category.Id == "audio").Items.ToDictionary(item => item.Id);
@@ -133,16 +133,16 @@ public sealed class SampleLocalizationTests
                 await settings.FlushAsync();
                 var restored = new GameSettings();
                 await settings.AttachAsync(variables, restored, configuration);
-                Assert.That(restored.Groups["ambience"].Gain, Is.EqualTo(.4f));
+                Assert.That(restored.Buses["ambience"].Gain, Is.EqualTo(.4f));
                 Assert.That(restored.Tracks["rain/near"].Gain, Is.EqualTo(.6f));
                 Assert.That(restored.Tracks["wind"].Muted, Is.True);
                 Assert.That(settings.Categories.Single(category => category.Id == "audio").Items.Any(item => item.Id.StartsWith("audio.track.", StringComparison.Ordinal)), Is.False);
                 var empty = new GameSettings();
                 await settings.AttachAsync(variables, empty);
-                Assert.That(empty.Groups, Is.Empty);
+                Assert.That(empty.Buses, Is.Empty);
                 Assert.That(empty.Tracks, Is.Empty);
                 Assert.That(settings.Categories.Single(category => category.Id == "audio").Items, Has.Count.EqualTo(2));
-                Assert.That(GalNet.Contracts.Builtins.BuiltinAudioDefaults.Create().Groups, Has.Count.EqualTo(3));
+                Assert.That(GalNet.Contracts.Builtins.BuiltinAudioDefaults.Create().Buses, Has.Count.EqualTo(3));
             }
             finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
         });
@@ -171,7 +171,7 @@ public sealed class SampleLocalizationTests
                 await ((DoubleSetting)items["masterVolume"]).TrySetValueAsync(.37);
                 await ((BoolSetting)items["audio.group.vocal.muted"]).TrySetValueAsync(true);
                 Assert.That(runtime.QuickReadOnly, Is.False);
-                Assert.That(runtime.Groups["vocal"].Muted, Is.True);
+                Assert.That(runtime.Buses["vocal"].Muted, Is.True);
                 await settings.FlushAsync();
             }
             using var restoredLocalization = CreateLocalization();
@@ -188,7 +188,7 @@ public sealed class SampleLocalizationTests
                 Assert.That(restoredRuntime.AutoAdvanceIntervalMilliseconds, Is.EqualTo(3250));
                 Assert.That(restoredVariables.GetSnapshot(GalNet.Core.Variable.VariableScope.Player)["player.galnet.settings.quickInterval"].Type, Is.EqualTo(GalNet.Core.Variable.VariableType.Int));
                 Assert.That(restoredRuntime.MasterVolume, Is.EqualTo(.37).Within(.000001));
-                Assert.That(restoredRuntime.Groups["vocal"].Muted, Is.True);
+                Assert.That(restoredRuntime.Buses["vocal"].Muted, Is.True);
                 Assert.That(restoredVariables.GetSnapshot(GalNet.Core.Variable.VariableScope.Player)["player.other"].AsString(), Is.EqualTo("preserved"));
             });
 
@@ -200,7 +200,7 @@ public sealed class SampleLocalizationTests
                 Assert.That(restoredSettings.RuntimeSettings, Is.SameAs(defaults));
                 Assert.That(defaults.TextSpeed, Is.EqualTo(30));
                 Assert.That(defaults.MasterVolume, Is.EqualTo(1));
-                Assert.That(defaults.Groups["vocal"].Muted, Is.False);
+                Assert.That(defaults.Buses["vocal"].Muted, Is.False);
                 Assert.That(defaults.QuickReadOnly, Is.True);
             });
         }

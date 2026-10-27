@@ -14,12 +14,19 @@ public sealed class AudioTrackState
 {
     public string Id { get; init; } = "";
     public bool Paused { get; set; }
+    public uint RandomState { get; set; } = 0x9e3779b9;
     public List<AudioItemState> Active { get; init; } = [];
     public List<AudioItemState> Pending { get; init; } = [];
 }
 
-public sealed record AudioSEffectState(string TrackId, string InstanceId, string SEffectId, JsonElement Parameters)
+public sealed record AudioSEffectState(string TargetId, string InstanceId, string SEffectId, JsonElement Parameters, SEffectScope Scope = SEffectScope.Track)
 {
     // JSON array encoding preserves the existing track-local identity without separator collisions.
     public static string Key(string trackId, string instanceId) => JsonSerializer.Serialize(new[] { trackId, instanceId });
+    public string Key() => Scope == SEffectScope.Track ? Key(TargetId, InstanceId) : JsonSerializer.Serialize(new[] { "bus", TargetId, InstanceId });
+}
+
+public sealed record AudioChannelState(string TargetId, SEffectScope Scope, float Gain = 1, bool Muted = false)
+{
+    public string Key() => JsonSerializer.Serialize(new[] { Scope.ToString(), TargetId });
 }

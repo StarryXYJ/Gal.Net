@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Shared/GalNet.Contracts.Builtins/GalNet.Contracts.Builtins.csproj" />
+    <ProjectReference Include="../../Shared/GalNet.Core/GalNet.Core.csproj" />
+    <ProjectReference Include="../GalNet.Media.Audio/GalNet.Media.Audio.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <Content Include="$(MSBuildProjectDirectory)/obj/native/galnet_miniaudio.dll" Link="galnet_miniaudio.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="BuildMiniaudio" BeforeTargets="PrepareForBuild" Condition="$([MSBuild]::IsOSPlatform('Windows'))" Inputs="native/miniaudio.h;native/stb_vorbis.c;native/galnet_miniaudio.c;native/build.ps1" Outputs="$(MSBuildProjectDirectory)/obj/native/galnet_miniaudio.dll">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)/native/build.ps1&quot; -OutputDirectory &quot;$(MSBuildProjectDirectory)/obj/native&quot;" />
+  </Target>
+</Project>

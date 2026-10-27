@@ -63,7 +63,7 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
                 "Preloaded {UsableEffectProgramCount}/{EffectProgramCount} effect programs in {ElapsedMilliseconds} ms",
                 preload.UsableProgramCount, preload.RequestedProgramCount, preload.Cache.TotalLoadTime.TotalMilliseconds);
             presentation.Effects = new AvaloniaEffectRuntime(gameplay, presentation._programs, assets);
-            presentation.Audio = options.CreateAudioHost(assets, files, sharedLibVlc);
+            presentation.Audio = options.CreateAudioHost(assets, files);
             presentation.AudioModule = new BuiltinAudioModule(presentation.Audio, configuration: audioConfiguration);
             presentation.Video = new AvaloniaVideoPresenter(assets, gameplay, files: files,
                 sharedLibVlc: sharedLibVlc);

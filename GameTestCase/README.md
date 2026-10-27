@@ -139,3 +139,5 @@ Contracts/ 是本机构建产物，不提交 DLL；游戏 Sample 正常引用同
 intro 在 gain 效果启用后新增暂停 BGM 的对白检查点。运行到提示时新建存档，然后读档：背景/立绘与 gain 轨道效果应恢复，BGM 保持暂停；推进执行 audio.resume 后从头播放，并保留该效果直到后续 stop 指令。使用新存档验证，旧格式文件不做迁移。
 
 自动回归 `ModularSaveRestoreTests` 直接编译该实际作者文件中的图层/音频条目，通过 FileSaveService 写入全新槽位，再由 Engine 和注册式恢复会话读回；后端使用可观察的测试 host。实际 LibVLC 声音效果仍需按上面的原生媒体方式人工检查。
+
+Audio uses project section v2 (`audioBuses` / `busId`). The intro combines real track low/high-pass filters with bus `seffect.reverb`; effect entries use `scope` / `targetId`. The default Windows x64 host uses miniaudio; videos remain on LibVLC.

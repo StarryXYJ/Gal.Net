@@ -28,7 +28,7 @@ public sealed class ProjectConfigurationPersistenceTests
         var persistence = Persistence();
         var document = persistence.Load();
         document.Configuration.SetRaw("developer.options", new(4, JsonSerializer.SerializeToElement(new { enabled = true })));
-        document.Configuration.SetRaw(DefaultProjectConfiguration.Section.Id, new(1,
+        document.Configuration.SetRaw(DefaultProjectConfiguration.Section.Id, new(DefaultProjectConfiguration.Section.Version,
             JsonSerializer.SerializeToElement(new { defaultWidth = 1280, future = new { enabled = true } })));
         var handler = new BuiltInEditorCommandHandler(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()), DefaultProjectConfiguration.Schema);
         var result = handler.Execute(document, new PatchConfigurationCommand(DefaultProjectConfiguration.Section.Id, new Dictionary<string, JsonElement>
@@ -53,7 +53,7 @@ public sealed class ProjectConfigurationPersistenceTests
         var document = persistence.Load();
         var path = Path.Combine(_root, "settings.json");
         var original = File.ReadAllBytes(path);
-        document.Configuration.SetRaw(DefaultProjectConfiguration.Section.Id, new(1, JsonSerializer.SerializeToElement(new { defaultWidth = 0 })));
+        document.Configuration.SetRaw(DefaultProjectConfiguration.Section.Id, new(DefaultProjectConfiguration.Section.Version, JsonSerializer.SerializeToElement(new { defaultWidth = 0 })));
         Assert.That(() => persistence.PrepareSave(document), Throws.TypeOf<InvalidDataException>());
         Assert.That(File.ReadAllBytes(path), Is.EqualTo(original));
         File.WriteAllText(path, JsonSerializer.Serialize(document.Configuration));

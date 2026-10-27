@@ -1,5 +1,9 @@
 # GalNet Agent Knowledge
 
+- 2026-10-27 音频 PCM：实例拥有 gain/淡入淡出/结束处理，Track 管理顺序/随机和循环队列，Bus 实际汇总后执行共享效果。Media.Audio 为跨平台混音/DSP，Media.Miniaudio 为 Windows x64 设备/解码；LibVLC 仅保留视频/Gallery。默认项目 section v2（audioBuses/busId），音频状态 tracks/seffects v2、channels v1；SEffect scope/targetId 与真实滤波/混响见 docs/manual/audio-mixing.md。实现和验收限制见 features/F-20261027-01-audio-mixer/summary.md。
+
+- [分数延迟环绕边界](lessons/L-20261027-02-fractional-audio-delay-wrap.md)：float 负分数位置加长度后可能舍入到长度本身；使用 double 并复核上边界，默认参数与非默认参数均验证。
+
 - 2026-10-27 默认视觉库：模板部署为项目 shader 资产，defaultVisualPrograms 仅用于创作填充；预设保存显式 program/blurProgram GUID 并编译为 timeline.play。CPU/GPU 层链注入当前 layerZ，texture 参数租约归效果实例。project visuals install 显式补入且不覆盖已有绑定/占用路径。见 docs/manual/default-visuals.md 和 features/F-20261026-03-default-visual-library；[采样像素与视觉 QA](lessons/L-20261027-01-shader-sampling-visual-qa.md)。
 
 - 2026-10-26 Sample 扩展边界：默认会话通过 IAvaloniaPlayerSettings/IPlayerStartup 消费项目偏好；默认页面 VM 可扩展、DI 使用 TryAdd。AttachPlayer/AttachRun 接入项目借用绑定并优先异步释放。外部剧情变量走 Engine.SetVariablesAsync/UpdateVariablesAsync，同步提交显式 scope 值并合入稳定快照；业务模块自行定义复杂状态恢复。AvaloniaPlayerLocalization 归 Avalonia.GameHost，中立 JSON 查询归 GameHost，Sample 不再共享 GameLocalizationProvider 源文件。见 features/F-20261026-02-sample-extensibility 与 docs/manual/customize-avalonia-sample.md。
@@ -58,7 +62,7 @@
 
 ## 项目事实（已从仓库文档确认）
 
-- 宿主分层已落地：GameHost 提供 GameSession/IGameRun/GameRun、PlayerSession、PlayerPreferences/PlayerStartup；Avalonia.GameHost 提供默认页面会话、运行绑定、展示组合、资源预加载和设置/输入/窗口适配。Sample 仅保留项目配置、启动适配、本地化和调试。中立应用接口在 Presentation.Abstractions.Application，共享音频后端在 Media.LibVlc；项目删除与 ProjectTools.Windows 已移除。见 docs/spec/architecture.md。
+- 宿主分层已落地：GameHost 提供 GameSession/IGameRun/GameRun、PlayerSession、PlayerPreferences/PlayerStartup；Avalonia.GameHost 提供默认页面会话、运行绑定、展示组合、资源预加载和设置/输入/窗口适配。Sample 仅保留项目配置、启动适配、本地化和调试。中立应用接口在 Presentation.Abstractions.Application，共享音频混音/DSP 在 Media.Audio，Windows 适配在 Media.Miniaudio；项目删除与 ProjectTools.Windows 已移除。见 docs/spec/architecture.md。
 
 - 解决方案入口是 `GalNet.slnx`。
 - `docs/spec/` 描述已经实现的稳定事实；`docs/manual/` 描述二次开发路径；`features/` 保留实现过程和历史。
@@ -79,7 +83,7 @@
 
 - 核心重构当前边界：Runtime 仅引用 Core；场景/音频/Gallery/差分图片契约与纯算法归 Contracts.Builtins，音频执行与按 GameState 根隔离的场景管理归 Primitives.Builtins。Core 的 keySpace 身份索引按状态注册选择，不认识场景类型。GameContent/加载配置与 Gallery 玩家组合归 GameHost。见 docs/spec/architecture.md。
 - 项目模型与运行输入：ProjectConfiguration 提供版本化 section/普通 DTO，Editor 通用表单、命令、历史、保存、导出和安装使用项目 schema，未知 JSON 保留。宿主通过 SelectProjectOptions 显式投影，Engine 只消费 PlaybackOptions，音频只消费 AudioConfiguration/AudioMixOptions，文本直接接收速度。变量声明只保存在作者 Graph。见 docs/manual/new-presentation-layer.md。
-- AudioConfiguration/AudioMixOptions 位于 Contracts.Builtins.Audio，允许任意分组/轨道及空/未分组；混音为 master/group/track，快进保留由显式 PreserveDuringCatchUp 控制。Sample/模板显式选择三分组示例，默认模块不注入固定轨道。
+- AudioConfiguration/AudioMixOptions 位于 Contracts.Builtins.Audio，允许任意 Bus/Track 及空/未路由 Track；混音为 master/bus/track，快进保留由显式 PreserveDuringCatchUp 控制。Sample/模板显式选择三 Bus 示例，默认模块不注入固定轨道。
 - EntryDefinition.DynamicParameters 是唯一参数源，Parameters/Defaults/Options 副本及旧 ABI 适配已删除；具体编辑器投影位于 Editor.Abstraction.Schemas，Effect/SEffect 基础约束共用 ValueValidation，领域 stage/scope 继续分别拥有。
 
 ## 文档分层

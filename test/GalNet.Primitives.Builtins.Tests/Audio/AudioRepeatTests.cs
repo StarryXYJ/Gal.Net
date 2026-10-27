@@ -73,7 +73,8 @@ public sealed class AudioRepeatTests
     {
         var builder = new StateCatalogBuilder();
         builder.Register<AudioTrackState>("builtin.audio.tracks", value => value.Id, AudioRuntime.ValidateTrack);
-        builder.Register<AudioSEffectState>("builtin.audio.seffects", value => AudioSEffectState.Key(value.TrackId, value.InstanceId));
+        builder.Register<AudioSEffectState>("builtin.audio.seffects", value => value.Key());
+        builder.Register<AudioChannelState>("builtin.audio.channels", value => value.Key(), AudioRuntime.ValidateChannel);
         var catalog = builder.Build(); var state = new GameState(catalog);
         var host = new Host(); await using var audio = new AudioRuntime(host); audio.Bind(state);
         audio.Play(Tracks, new("bgm", "music", AudioPlacement.Replace, LoopCount: 3)); host.End(host.Starts.Last());
@@ -92,7 +93,8 @@ public sealed class AudioRepeatTests
     public async Task FadingVoicesStillReceiveMuteAndAreStoppedByScopeResetButNeverEnterSnapshot()
     {
         var builder = new StateCatalogBuilder(); builder.Register<AudioTrackState>("builtin.audio.tracks", value => value.Id);
-        builder.Register<AudioSEffectState>("builtin.audio.seffects", value => AudioSEffectState.Key(value.TrackId, value.InstanceId));
+        builder.Register<AudioSEffectState>("builtin.audio.seffects", value => value.Key());
+        builder.Register<AudioChannelState>("builtin.audio.channels", value => value.Key(), AudioRuntime.ValidateChannel);
         var state = new GameState(builder.Build()); var host = new Host(); await using var audio = new AudioRuntime(host); audio.Bind(state);
         audio.Play(Tracks, new("bgm", "music", AudioPlacement.Replace)); var first = host.Starts.Last();
         audio.Stop(Tracks, new("bgm", true, 5)); audio.ApplyMix(new() { MasterMuted = true });

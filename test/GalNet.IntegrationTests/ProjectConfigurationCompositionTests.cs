@@ -50,8 +50,8 @@ public sealed class ProjectConfigurationCompositionTests
             using var text = new AvaloniaDialoguePresenter(state, page, AvaloniaUiDispatcher.Instance);
             using var audio = new RecordingAudio();
             var module = new BuiltinAudioModule(audio, configuration: new AudioConfiguration(
-                [new() { Id = "rain", GroupId = "ambience" }], [new() { Id = "ambience" }]));
-            module.ApplyMix(new() { Groups = new Dictionary<string, AudioMixLevel> { ["ambience"] = new(options.WeatherVolume) } });
+                [new() { Id = "rain", BusId = "ambience" }], [new() { Id = "ambience" }]));
+            module.ApplyMix(new() { Buses = new Dictionary<string, AudioMixLevel> { ["ambience"] = new(options.WeatherVolume) } });
             await using var view = new GameRegistration().AddBuiltins(dialoguePresenter: text, audioModule: module).BuildView();
             var group = new Group
             {
