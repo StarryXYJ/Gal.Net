@@ -1,6 +1,6 @@
 # 本地 CI 与 R2R 发布实现总结
 
-日期：2026-10-28。范围：已完成本地 CI、五个聚合 NuGet、Windows x64 R2R 与 Contracts ZIP；未完成桌面 AOT，没有公开上传或远端验证。
+日期：2026-10-28。范围：已完成本地/远端 CI、五个聚合 NuGet、Windows x64 R2R 与 Contracts ZIP；v0.1.0-preview.1 已公开发行，桌面 AOT 未完成。
 
 ## 实现结果
 
@@ -9,7 +9,7 @@
 - `packaging/packages.json` 明确 19 个库项目归属；按 Contracts / Engine / Desktop / Avalonia / SchemaGenerator 发布 5 个聚合包，每个 DLL 只有一个 owner，保留原程序集与命名空间。没有 Editor SDK 包。
 - `Release.ps1` 统一版本、构建、NuGet pack、仓库外消费测试、R2R 应用/内容组装、ZIP 验收及最终索引；只有全流程成功才暴露版本目录。
 - Editor 附独立、自包含的 Headless CLI 与项目创作 Skill。纯 Sample 与整合 Sample 复用相同玩家，整合内容直接展开；Contracts ZIP 从实际玩家复制三份匹配 IL DLL，不重新构建另一份契约。
-- `Push.ps1` 只上传索引列出的文件，检查哈希/版本/干净 tag/消费验收；使用 draft、依赖顺序、逐文件 journal，不重新编译或静默跳过重复版本。当前只验证了不触达外部命令的负例，没有实际推包。
+- `Push.ps1` 只上传索引列出的文件，检查哈希/版本/干净 tag/消费验收；使用 draft、依赖顺序、逐文件 journal，不重新编译或静默跳过重复版本。首次实际推包与 GitHub prerelease 已成功。
 - Release workflow 调用相同 CI/本地发布入口；workflow_dispatch 仅生成候选，tag 才进入公开上传 job。NuGet 认证由 NUGET_API_KEY 环境变量提供。
 
 ## 本地证据
@@ -48,7 +48,7 @@ ZIP 大小约：Editor 261.43 MiB，纯 Sample 191.81 MiB，整合 Sample 222.17
 ## 未完成与实际限制
 
 1. **桌面 Sample AOT 未完成。** 首次真实 ILC 严格链接约 60 条诊断，涉及 JSON、反射绑定、主题资源、DI 保留和 Serilog/Ursa 裁剪。没有全局吞警告，也没有伪造 AOT ZIP。`Test-DesktopAot.ps1` 可重现；Release 的 Aot/Both 明确失败。Headless 通过不能替代桌面验收。
-2. **远端尚未验证。** 已读取旧失败 job 的真实堆栈，当前本地已通过；未推送或重跑 GitHub Actions，不能宣称远端已绿。公开上传、凭据配置及跨服务中断恢复还需实际 preview 发布验证。
+2. **中断恢复尚未实测。** 首次远端完整 CI、公开 NuGet 上传与 GitHub prerelease 已成功；跨服务部分上传中断后的恢复仍未实测。
 3. **桌面 smoke 范围有限。** 验证解压后玩家加载整合内容并初始化，不代表完整剧情、全部音视频设备、存读档和正常退出均已完成原生验收；测试只终止自己启动的进程。
 4. 首期仅 win-x64；ARM64、其他系统和移动端未纳入发行。CLI 自包含分发已验收，但 Editor 原有“导出游戏”界面的仓库脚本依赖仍保留，未宣称 GUI 已成为脱离源码的完整构建工具链。
 
@@ -59,6 +59,8 @@ ZIP 大小约：Editor 261.43 MiB，纯 Sample 191.81 MiB，整合 Sample 222.17
 - 本地执行的是 Actions 共用的真实检查脚本，不模拟 checkout、权限、GitHub artifact 服务或 NuGet 上传端点。后者必须在远端或实际预发布时验证。
 
 ## 文档与经验
+
+2026-10-28 首发：用户授权 `v0.1.0-preview.1`，tag 指向 `bea00e144e8dd489c3e83ac5cd29c9805eee053a`。首次手动 CI 暴露冷图集测试 Gate 安装过晚，修复后本地 Editor 342/342、远端 15 项目 2011 passed / 0 failed。Release workflow [40566476656](https://github.com/StarryXYJ/Gal.Net/actions/runs/40566476656) 的 build/publish 均成功；NuGet 五次返回 Created / Your package was pushed；[GitHub prerelease](https://github.com/StarryXYJ/Gal.Net/releases/tag/v0.1.0-preview.1) isDraft=false、isPrerelease=true，四 ZIP 加索引/校验和共六个资产。公开索引 dirty=false、consumer validation passed=true。证据在 `out/first-release-cloud-evidence` 与 `out/first-release-cloud-index`；NuGet 上传后查询 flat-container 暂为 404，公开索引传播仍需时间，不能将服务器已接收等同于客户端已经可恢复。
 
 - 当前使用说明：`docs/manual/release-packaging.md`、`scripts/README.md`。
 - 过程与远端证据：`ci-investigation.md`。

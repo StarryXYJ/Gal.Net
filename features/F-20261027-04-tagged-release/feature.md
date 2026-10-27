@@ -1,6 +1,6 @@
 # Tag 驱动的 NuGet 与 Windows Release
 
-- 状态：本地 CI、五包 NuGet 与 Windows R2R 发行已验收；桌面 Sample AOT 未完成，远端执行与公开上传未验证。
+- 状态：本地与远端 CI、五包 NuGet 与 Windows R2R 发行已验收；v0.1.0-preview.1 已公开发布。桌面 Sample AOT 未完成。
 - 日期：2026-10-27。
 - 需求：本地先运行完整发布流水线，后续 CI 在版本 tag 上调用同一套仓库脚本，生成 NuGet 和 GitHub Release。
 - 已确认：Editor 不做 AOT；仅 Sample 提供 R2R / NativeAOT 两种模式。Release 包含纯 Sample、整合 GameTestCase 的 Sample、Editor 和 Sample Contracts DLL。
