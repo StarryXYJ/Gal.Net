@@ -66,13 +66,8 @@ cmake --build out/native-ios --config Release
 
 ## AOT 与验证范围
 
-静态音频回调和源生成 P/Invoke 消除了该原生边界的动态委托 thunk 需求，但不代表整个引擎已完成 AOT/裁剪适配。当前代码与 Core 分析器检查确认仍需处理：
+静态音频回调和源生成 P/Invoke 已消除该原生边界的动态委托 thunk；Core/Runtime、内置契约、Assets 和文件持久化的玩家 JSON 路径也已接入源生成元数据。状态数组、自定义资源、配置和字段 schema 均提供显式注册入口，普通 JIT 保留反射兼容路径。现有 Headless Sample 用标准 PublishAot 选项完成 Windows x64 原生发布并运行自检，确认动态代码/反射 JSON 均关闭；最终 ILLink/ILC 警告作为错误处理。操作和验收范围见 [NativeAOT 发布与扩展契约](native-aot.md)。
 
-- GameState 泛型状态数组的反射 JSON 编解码，以及项目自定义状态的序列化元数据注册。
-- AssetMetaCodec 按运行时 Type 序列化/构造 metadata、配置 DTO 与 ValueDescriptor 的反射 JSON 路径。
-- 作者 schema 属性反射的裁剪注解及生成元数据边界；应区分编辑器路径与实际玩家运行闭包。
-- NCalc、LibVLCSharp、Avalonia/Skia 和项目扩展的最终发布闭包，仍需平台构建及运行验证。
+桌面自检覆盖引擎和文件后端，不代表 Avalonia/Skia、LibVLC、原生设备或 Editor/CLI 作者编译器全部支持 AOT。移动端最终发布闭包、原生打包和实机生命周期仍需对应环境验收。不要用全局关闭裁剪或吞掉 IL 警告作为支持证据。
 
-不要用全局关闭裁剪或吞掉 IL 警告作为 AOT 支持证据。源生成 JSON/显式 codec 应与自定义状态、资源类型和项目配置的注册边界一起设计；本轮不修改正在进行的递归属性/schema 改动。
-
-本轮本地证据：资源测试 76 项、音频普通测试 26 项、真实 Windows x64 设备测试 2 项、视频工厂/失败清理测试 5 项及架构测试 52 项通过；CMake 动态库在 Windows x64 构建成功。Core/Runtime 的 AOT/裁剪分析构建通过但仍报告 IL2026/IL3050 等警告。补装 ARM64 MSVC 14.44 后，Windows ARM64 原生库交叉编译通过，确认 PE Machine 为 `0xAA64` 且 8 个原生 ABI 导出齐全；`GalNet.Media.Miniaudio` 的 Release / `-r win-arm64` 托管及原生组合构建也通过，0 错误。并验证 x64 仍选用完整的 MSVC 14.51，PE Machine 为 `0x8664`。Windows ARM64 尚未做实机运行验收。`.github/workflows/backend-portability.yml` 增加 Windows/Linux/macOS 的资源、原生解码和 CMake 验证任务，远端任务尚未在本地执行。Android/iOS 原生打包、系统中断、移动 GPU/Shader 和全引擎 AOT 发布验收仍待对应环境完成。
+本轮本地证据：资源测试 76 项、音频普通测试 26 项、真实 Windows x64 设备测试 2 项、视频工厂/失败清理测试 5 项及架构测试 52 项通过；CMake 动态库在 Windows x64 构建成功。Core/Runtime 的 AOT/裁剪分析构建通过但仍报告 IL2026/IL3050 等警告。补装 ARM64 MSVC 14.44 后，Windows ARM64 原生库交叉编译通过，确认 PE Machine 为 `0xAA64` 且 8 个原生 ABI 导出齐全；`GalNet.Media.Miniaudio` 的 Release / `-r win-arm64` 托管及原生组合构建也通过，0 错误。并验证 x64 仍选用完整的 MSVC 14.51，PE Machine 为 `0x8664`。Windows ARM64 尚未做实机运行验收。`.github/workflows/backend-portability.yml` 增加 Windows/Linux/macOS 的资源、原生解码和 CMake 验证任务，远端任务尚未在本地执行。Android/iOS 原生打包、系统中断、移动 GPU/Shader 和移动宿主 AOT 发布验收仍待对应环境完成。

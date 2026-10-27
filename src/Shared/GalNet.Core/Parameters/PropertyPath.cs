@@ -1,3 +1,4 @@
+using GalNet.Core.Serialization;
 using System.Collections;
 using System.Globalization;
 using System.Text.Json;
@@ -64,7 +65,7 @@ public sealed class PropertyPath : IReadOnlyList<PropertySegment>
             }
             throw new ArgumentException("The wire property no longer exists.");
         }
-        return JsonSerializer.SerializeToElement(Apply(JsonNode.Parse(source.GetRawText()), 0));
+        return JsonCodec.SerializeToElement(Apply(JsonNode.Parse(source.GetRawText()), 0));
     }
     public IEnumerator<PropertySegment> GetEnumerator() => ((IEnumerable<PropertySegment>)_segments).GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

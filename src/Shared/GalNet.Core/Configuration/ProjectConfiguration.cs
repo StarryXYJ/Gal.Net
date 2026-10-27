@@ -1,3 +1,4 @@
+using GalNet.Core.Serialization;
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -28,7 +29,7 @@ public sealed class ProjectConfiguration
             // A typed editor owns declared members; retain fields it doesn't understand.
             var merged = previous.Data.EnumerateObject().ToDictionary(property => property.Name, property => property.Value, StringComparer.Ordinal);
             foreach (var property in data.EnumerateObject()) merged[property.Name] = property.Value;
-            data = JsonSerializer.SerializeToElement(merged);
+            data = JsonCodec.SerializeToElement(merged);
         }
         section.Validate(new(section.Version, data));
         SetRaw(section.Id, new(section.Version, data));
@@ -56,7 +57,7 @@ public sealed class ProjectConfiguration
         var candidate = previous?.Data.EnumerateObject().ToDictionary(property => property.Name, property => property.Value, StringComparer.Ordinal) ?? new();
         foreach (var id in remove ?? []) candidate.Remove(id);
         foreach (var (id, value) in values) candidate[id] = value;
-        var data = new ProjectSectionData(section.Version, JsonSerializer.SerializeToElement(candidate));
+        var data = new ProjectSectionData(section.Version, JsonCodec.SerializeToElement(candidate));
         section.Validate(data);
         SetRaw(section.Id, data);
     }
@@ -85,11 +86,11 @@ public sealed class ProjectConfigurationJsonConverter : JsonConverter<ProjectCon
         RespectRequiredConstructorParameters = true,
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
     };
-    private sealed record Envelope(int Version, IReadOnlyDictionary<string, ProjectSectionData> Sections);
+    internal sealed record Envelope(int Version, IReadOnlyDictionary<string, ProjectSectionData> Sections);
 
     public override ProjectConfiguration Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
-        var envelope = JsonSerializer.Deserialize<Envelope>(ref reader, JsonOptions);
+        var envelope = JsonCodec.Deserialize<Envelope>(ref reader, JsonOptions);
         if (envelope is not { Version: ProjectConfiguration.CurrentVersion, Sections: not null })
             throw new JsonException("Project configuration requires version 1 and an object of sections.");
         var result = new ProjectConfiguration();
@@ -99,6 +100,6 @@ public sealed class ProjectConfigurationJsonConverter : JsonConverter<ProjectCon
     }
 
     public override void Write(Utf8JsonWriter writer, ProjectConfiguration value, JsonSerializerOptions options) =>
-        JsonSerializer.Serialize(writer, new Envelope(ProjectConfiguration.CurrentVersion,
+        JsonCodec.Serialize(writer, new Envelope(ProjectConfiguration.CurrentVersion,
             value.Sections.OrderBy(pair => pair.Key, StringComparer.Ordinal).ToDictionary()), JsonOptions);
 }

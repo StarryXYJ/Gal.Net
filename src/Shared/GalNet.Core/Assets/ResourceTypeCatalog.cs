@@ -1,9 +1,14 @@
 using System.Collections.Frozen;
 using System.Collections.ObjectModel;
+using System.Text.Json.Serialization.Metadata;
 
 namespace GalNet.Core.Assets;
 
-public sealed record ResourceTypeRegistration(string TypeId, Type MetaDtoType, IReadOnlyList<string> Extensions);
+public sealed record ResourceTypeRegistration(string TypeId, Type MetaDtoType, IReadOnlyList<string> Extensions)
+{
+    public IJsonTypeInfoResolver? JsonResolver { get; init; }
+    public Func<AssetMeta>? Create { get; init; }
+}
 
 public interface IResourceTypeCatalog
 {
@@ -17,14 +22,16 @@ public interface IResourceTypeCatalog
 
 public sealed class ResourceTypeCatalogBuilder
 {
-    private readonly Dictionary<string, Type> _registrations = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, (Type Type, IJsonTypeInfoResolver? Resolver, Func<AssetMeta> Create)> _registrations = new(StringComparer.Ordinal);
     private readonly List<(string TypeId, string Extension)> _extensions = [];
     private string? _defaultTypeId;
     public ResourceTypeCatalogBuilder DefaultType(string typeId)
     { _defaultTypeId = ResourceTypeCatalog.NormalizeTypeIdCore(typeId); return this; }
 
-    public ResourceTypeCatalogBuilder Add<TMeta>(string typeId, params string[] extensions) where TMeta : AssetMeta => Add(typeId, typeof(TMeta), false, extensions);
-    public ResourceTypeCatalogBuilder Replace<TMeta>(string typeId, params string[] extensions) where TMeta : AssetMeta => Add(typeId, typeof(TMeta), true, extensions);
+    public ResourceTypeCatalogBuilder Add<TMeta>(string typeId, params string[] extensions) where TMeta : AssetMeta, new() => Add(typeId, typeof(TMeta), false, extensions, null, static () => new TMeta());
+    public ResourceTypeCatalogBuilder Replace<TMeta>(string typeId, params string[] extensions) where TMeta : AssetMeta, new() => Add(typeId, typeof(TMeta), true, extensions, null, static () => new TMeta());
+    public ResourceTypeCatalogBuilder Add<TMeta>(string typeId, IJsonTypeInfoResolver resolver, params string[] extensions) where TMeta : AssetMeta, new() => Add(typeId, typeof(TMeta), false, extensions, resolver, static () => new TMeta());
+    public ResourceTypeCatalogBuilder Replace<TMeta>(string typeId, IJsonTypeInfoResolver resolver, params string[] extensions) where TMeta : AssetMeta, new() => Add(typeId, typeof(TMeta), true, extensions, resolver, static () => new TMeta());
     public ResourceTypeCatalogBuilder AddExtensions(string typeId, params string[] extensions)
     {
         var normalizedType = ResourceTypeCatalog.NormalizeTypeIdCore(typeId);
@@ -46,15 +53,16 @@ public sealed class ResourceTypeCatalogBuilder
         if (_defaultTypeId is not null && !_registrations.ContainsKey(_defaultTypeId))
             throw new InvalidOperationException($"Default resource type '{_defaultTypeId}' must be registered.");
         return new ResourceTypeCatalog(_registrations.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair =>
-            new ResourceTypeRegistration(pair.Key, pair.Value, new ReadOnlyCollection<string>(byType[pair.Key].OrderBy(item => item, StringComparer.Ordinal).ToList()))).ToList(), _defaultTypeId);
+            new ResourceTypeRegistration(pair.Key, pair.Value.Type, new ReadOnlyCollection<string>(byType[pair.Key].OrderBy(item => item, StringComparer.Ordinal).ToList()))
+            { JsonResolver = pair.Value.Resolver, Create = pair.Value.Create }).ToList(), _defaultTypeId);
     }
 
-    private ResourceTypeCatalogBuilder Add(string typeId, Type metaType, bool replace, IEnumerable<string> extensions)
+    private ResourceTypeCatalogBuilder Add(string typeId, Type metaType, bool replace, IEnumerable<string> extensions,
+        IJsonTypeInfoResolver? resolver, Func<AssetMeta> create)
     {
         var normalized = ResourceTypeCatalog.NormalizeTypeIdCore(typeId);
-        if (!typeof(AssetMeta).IsAssignableFrom(metaType) || metaType.IsAbstract || metaType.GetConstructor(Type.EmptyTypes) is null) throw new ArgumentException($"'{metaType}' must be a concrete AssetMeta DTO with a parameterless constructor.", nameof(metaType));
         if (_registrations.ContainsKey(normalized) && !replace) throw new InvalidOperationException($"Resource type '{normalized}' is already fully registered. Use Replace explicitly.");
-        _registrations[normalized] = metaType;
+        _registrations[normalized] = (metaType, resolver, create);
         return AddExtensions(normalized, extensions.ToArray());
     }
 }

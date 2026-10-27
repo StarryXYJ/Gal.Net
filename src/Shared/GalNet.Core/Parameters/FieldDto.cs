@@ -3,6 +3,13 @@ namespace GalNet.Core.Parameters;
 [AttributeUsage(AttributeTargets.Class)]
 public sealed class GenerateFieldSchemaAttribute : Attribute;
 
+/// <summary>The assembly's source-generated JSON context used by generated field contracts.</summary>
+[AttributeUsage(AttributeTargets.Assembly)]
+public sealed class FieldSchemaJsonContextAttribute(Type contextType) : Attribute
+{
+    public Type ContextType { get; } = contextType;
+}
+
 /// <summary>Display this field in an author's compact, common-fields view.</summary>
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
 public sealed class CommonAttribute : Attribute;

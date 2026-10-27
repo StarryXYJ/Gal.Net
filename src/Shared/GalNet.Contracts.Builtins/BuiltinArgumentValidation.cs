@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GalNet.Core.Serialization;
 using System.Text.Json.Serialization;
 using GalNet.Core.Entry;
 using GalNet.Contracts.Builtins.Scene;
@@ -8,11 +9,10 @@ namespace GalNet.Contracts.Builtins;
 /// <summary>Portable semantic checks shared by compilation and every implementation of built-in contracts.</summary>
 internal static class BuiltinArgumentValidation
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    private static readonly JsonSerializerOptions JsonOptions = BuiltinJson.CreateOptions(new()
     {
         PropertyNameCaseInsensitive = true,
-        Converters = { new JsonStringEnumConverter() }
-    };
+    }, stringEnums: true);
 
     public static void Validate(string type, JsonElement arguments)
     {
@@ -25,7 +25,7 @@ internal static class BuiltinArgumentValidation
                 break;
             case BuiltinEntryIds.PlayVideo:
                 RequireText(type, arguments, "asset", "handleId");
-                var points = arguments.GetProperty("skipPoints").Deserialize<double[]>(JsonOptions)
+                var points = JsonCodec.Deserialize<double[]>(arguments.GetProperty("skipPoints"), JsonOptions)
                     ?? throw new InvalidDataException("video.play skipPoints must be an array.");
                 if (points.Any(point => !double.IsFinite(point) || point < 0) ||
                     points.Zip(points.Skip(1), (left, right) => right > left).Any(valid => !valid))
@@ -34,7 +34,7 @@ internal static class BuiltinArgumentValidation
             case BuiltinEntryIds.PlayTimeline:
                 if (!arguments.TryGetProperty("timeline", out var value) || value.ValueKind != JsonValueKind.Object)
                     throw new InvalidDataException("timeline.play requires a timeline object.");
-                ValidateTimeline(value.Deserialize<TimelineDefinition>(JsonOptions)!);
+                ValidateTimeline(JsonCodec.Deserialize<TimelineDefinition>(value, JsonOptions)!);
                 break;
             case BuiltinEntryIds.PlayParticleEmitter:
             case BuiltinEntryIds.BurstParticles:

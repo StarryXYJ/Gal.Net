@@ -3,6 +3,7 @@ using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 
 namespace GalNet.Presentation.Abstractions.Execution;
 
@@ -63,6 +64,14 @@ public sealed class PrimitiveRegistry
         ArgumentNullException.ThrowIfNull(factory);
         Add(type, context => factory(WithArguments(context,
             PrimitiveArgumentHelper.Normalize(context.Parameters, context.Arguments))), null);
+    }
+    public void State<T>(JsonTypeInfo<T[]> jsonTypeInfo, string id, Func<T, string> key, Func<StateRestoreContext, Task>? restore = null,
+        Action<T>? validate = null, int version = 1, string? keySpace = null, params string[] after) where T : class
+    {
+        ObjectDisposedException.ThrowIf(_frozen, this);
+        ArgumentNullException.ThrowIfNull(jsonTypeInfo);
+        _states.Register(id, key, validate, version, keySpace, jsonTypeInfo);
+        if (restore is not null) Restore(id, restore, after);
     }
 
     /// <summary>Checks the DTO contract now and decodes independent Options for each invocation.</summary>

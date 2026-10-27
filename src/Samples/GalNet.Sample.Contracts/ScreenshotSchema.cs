@@ -22,7 +22,7 @@ public static class ScreenshotSchema
 
     public static void ValidateFileName(string? name)
     {
-        FileNameParameter.Validate(JsonSerializer.SerializeToElement(name));
+        FileNameParameter.Validate(GalNet.Core.Serialization.JsonCodec.SerializeToElement(name));
 
         if (string.IsNullOrWhiteSpace(name) || name.Any(character => char.IsControl(character) || "<>:\"/\\|?*".Contains(character)) ||
             name.Trim() != name || !name.EndsWith(".png", StringComparison.OrdinalIgnoreCase))

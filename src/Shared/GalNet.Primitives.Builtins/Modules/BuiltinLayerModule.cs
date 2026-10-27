@@ -15,7 +15,7 @@ public sealed class BuiltinLayerModule(ILayerPresenter? presenter = null, ImageV
         {
             foreach (var layer in state.Table<Layer>().Values) LayerVariantsRuntime.ValidateContent(layer, variants);
         });
-        registry.State<Layer>("builtin.layers", value => value.Id, context =>
+        registry.State<Layer>(BuiltinJson.StateTypeInfo<Layer>(), "builtin.layers", value => value.Id, context =>
         {
             foreach (var layer in context.Runtime.State.Table<Layer>().Values) LayerVariantsRuntime.ValidateContent(layer, variants);
             if (presenter is null) return Task.CompletedTask;

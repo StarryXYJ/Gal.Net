@@ -8,7 +8,7 @@ namespace GalNet.Primitives.Builtins;
 public sealed class BuiltinEffectModule(IEffectPresenter? presenter = null) : PrimitiveModule(
     registry =>
     {
-        registry.State<EffectInstance>("builtin.effects", value => value.Id, async context =>
+        registry.State<EffectInstance>(BuiltinJson.StateTypeInfo<EffectInstance>(), "builtin.effects", value => value.Id, async context =>
         {
             if (presenter is null) return;
             foreach (var effect in context.Runtime.State.Table<EffectInstance>().Values)

@@ -1,5 +1,7 @@
+using GalNet.Core.Serialization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 namespace GalNet.Core.Runtime;
 
@@ -17,14 +19,15 @@ public sealed class StateCatalog
 public sealed class StateCatalogBuilder
 {
     private readonly List<StateContract> _contracts = [];
-    public void Register<T>(string id, Func<T, string> key, Action<T>? validate = null, int version = 1, string? keySpace = null) where T : class
+    public void Register<T>(string id, Func<T, string> key, Action<T>? validate = null, int version = 1, string? keySpace = null,
+        JsonTypeInfo<T[]>? jsonTypeInfo = null) where T : class
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentNullException.ThrowIfNull(key);
         ArgumentOutOfRangeException.ThrowIfLessThan(version, 1);
         if (_contracts.Any(item => item.Id == id || item.Type == typeof(T)))
             throw new InvalidOperationException($"Duplicate state contract '{id}' / '{typeof(T).Name}'.");
-        _contracts.Add(new StateContract<T>(id, version, key, validate, keySpace));
+        _contracts.Add(new StateContract<T>(id, version, key, validate, keySpace, jsonTypeInfo));
     }
     public StateCatalog Build() => new(_contracts);
 }
@@ -38,9 +41,11 @@ internal abstract class StateContract(string id, int version, Type type, string?
     public abstract IStateTable Create(GameState owner, JsonElement? payload);
 }
 
-internal sealed class StateContract<T>(string id, int version, Func<T, string> key, Action<T>? validate, string? keySpace)
+internal sealed class StateContract<T>(string id, int version, Func<T, string> key, Action<T>? validate, string? keySpace,
+    JsonTypeInfo<T[]>? jsonTypeInfo)
     : StateContract(id, version, typeof(T), keySpace) where T : class
 {
+    internal JsonTypeInfo<T[]> JsonTypeInfo => jsonTypeInfo ?? JsonMetadata.GetTypeInfo<T[]>(GameState.JsonOptions);
     public override IStateTable Create(GameState owner, JsonElement? payload)
     {
         var table = new StateTable<T>(owner, this, key, validate);
@@ -48,7 +53,7 @@ internal sealed class StateContract<T>(string id, int version, Func<T, string> k
         {
             if (json.ValueKind != JsonValueKind.Array) throw new InvalidDataException($"State '{Id}' must be an array.");
             T[] values;
-            try { values = json.Deserialize<T[]>(GameState.JsonOptions) ?? throw new InvalidDataException($"Invalid state '{Id}'."); }
+            try { values = JsonSerializer.Deserialize(json, JsonTypeInfo) ?? throw new InvalidDataException($"Invalid state '{Id}'."); }
             catch (JsonException error) { throw new InvalidDataException($"Invalid state '{Id}': {error.Message}", error); }
             foreach (var value in values)
                 table.Add(value);
@@ -70,9 +75,9 @@ public sealed class StateTable<T> : IStateTable where T : class
     private readonly Func<T, string> _key;
     private readonly Action<T>? _validate;
     private readonly Dictionary<string, T> _values = new(StringComparer.Ordinal);
-    private readonly StateContract _contract;
+    private readonly StateContract<T> _contract;
     StateContract IStateTable.Contract => _contract;
-    internal StateTable(GameState owner, StateContract contract, Func<T, string> key, Action<T>? validate)
+    internal StateTable(GameState owner, StateContract<T> contract, Func<T, string> key, Action<T>? validate)
     { _owner = owner; _contract = contract; _key = key; _validate = validate; }
     public IReadOnlyList<T> Values { get { lock (_owner.SyncRoot) return _values.Values.ToArray(); } }
     public bool TryGet(string id, out T value) { lock (_owner.SyncRoot) return _values.TryGetValue(id, out value!); }
@@ -109,20 +114,19 @@ public sealed class StateTable<T> : IStateTable where T : class
             _values.Clear();
         }
     }
-    JsonElement IStateTable.Encode() => JsonSerializer.SerializeToElement(_values.Values.ToArray(), GameState.JsonOptions);
+    JsonElement IStateTable.Encode() => JsonSerializer.SerializeToElement(_values.Values.ToArray(), _contract.JsonTypeInfo);
 }
 
 /// <summary>Canonical persistent facts for one run. Old run references never resolve through a new state root.</summary>
 public sealed class GameState
 {
-    internal static JsonSerializerOptions JsonOptions { get; } = new()
+    public static JsonSerializerOptions JsonOptions { get; } = JsonMetadata.CreateOptions(new()
     {
         AllowDuplicateProperties = false,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         IgnoreReadOnlyProperties = true,
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
-        Converters = { new JsonStringEnumConverter() }
-    };
+    }, stringEnums: true);
     internal object SyncRoot { get; } = new();
     private readonly Dictionary<Type, IStateTable> _tables = [];
     private readonly Dictionary<(string Space, string Id), object> _identities = new();

@@ -1,3 +1,4 @@
+using GalNet.Core.Serialization;
 using System.Text.Json;
 
 namespace GalNet.Core.Parameters;
@@ -13,7 +14,7 @@ public static class ValueValidation
             return new("value.finite", "Value must be finite.");
         try
         {
-            return Validate(descriptor, JsonSerializer.SerializeToElement(value, descriptor.ValueType, descriptor.JsonOptions));
+            return Validate(descriptor, JsonCodec.SerializeToElement(value, descriptor.ValueType, descriptor.JsonOptions));
         }
         catch (Exception exception) when (exception is JsonException or ArgumentException)
         {
@@ -38,7 +39,7 @@ public static class ValueValidation
         if (value.ValueKind == JsonValueKind.Null)
             return descriptor.ValueType == typeof(JsonElement) ? value.Clone() : null;
         object? result;
-        try { result = JsonSerializer.Deserialize(value, descriptor.ValueType, descriptor.JsonOptions); }
+        try { result = JsonCodec.Deserialize(value, descriptor.ValueType, descriptor.JsonOptions); }
         catch (JsonException exception)
         {
             issue = new("value.type", $"Value is not compatible with '{descriptor.ValueType.Name}'.", exception.Path);

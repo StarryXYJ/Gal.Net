@@ -124,7 +124,8 @@ public sealed class ExpressionEvaluator
                     else if (expression[index] == '"') break;
                 }
                 if (index >= expression.Length) throw new FormatException("Unterminated expression string.");
-                var literal = JsonSerializer.Deserialize<string>(expression[start..(index + 1)])!;
+                using var literalDocument = JsonDocument.Parse(expression[start..(index + 1)]);
+                var literal = literalDocument.RootElement.GetString()!;
                 var suffix = literals.Count;
                 string name;
                 do { name = $"__gal_literal_{suffix++}"; }

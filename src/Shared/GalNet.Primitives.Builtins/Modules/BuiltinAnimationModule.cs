@@ -18,7 +18,7 @@ public sealed class BuiltinAnimationModule(
                 if (state.IdentityObjects<ISceneInstance>(BuiltinScene.KeySpace).Any(item => item.Id == animation.Id))
                     throw new InvalidDataException($"Animation playback handle '{animation.Id}' conflicts with a scene object.");
         });
-        registry.State<LoopAnimationState>("builtin.animations", value => value.Id, context =>
+        registry.State<LoopAnimationState>(BuiltinJson.StateTypeInfo<LoopAnimationState>(), "builtin.animations", value => value.Id, context =>
         {
             if (animationPresenter is null) return Task.CompletedTask;
             foreach (var state in context.Runtime.State.Table<LoopAnimationState>().Values)

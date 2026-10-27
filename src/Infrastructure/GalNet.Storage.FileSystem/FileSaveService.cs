@@ -1,3 +1,4 @@
+using GalNet.Core.Serialization;
 using System.Text.Json;
 using GalNet.Core.Runtime;
 using GalNet.Runtime.Persistence;
@@ -8,6 +9,7 @@ namespace GalNet.Storage.FileSystem;
 public sealed class FileSaveService : ISaveService, IDisposable
 {
     private const int FormatVersion = GameSnapshot.CurrentFormatVersion;
+    private static readonly JsonSerializerOptions JsonOptions = JsonMetadata.CreateOptions(resolver: StorageJsonContext.Default);
     private readonly string _root;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -81,7 +83,7 @@ public sealed class FileSaveService : ISaveService, IDisposable
         {
             var payload = new StoredSave { Version = FormatVersion, Timestamp = DateTimeOffset.UtcNow, Description = request.Description, Snapshot = request.Snapshot };
             var path = GetPath(slot, quick);
-            await FileReplacement.WriteTextAsync(path, JsonSerializer.Serialize(payload), ct).ConfigureAwait(false);
+            await FileReplacement.WriteTextAsync(path, JsonCodec.Serialize(payload, JsonOptions), ct).ConfigureAwait(false);
             if (request.PreviewImage is { Length: > 0 }) await File.WriteAllBytesAsync(GetPreviewPath(slot, quick), request.PreviewImage, ct);
         }
         finally { _gate.Release(); }
@@ -94,7 +96,7 @@ public sealed class FileSaveService : ISaveService, IDisposable
         try
         {
             var json = await File.ReadAllTextAsync(path, ct);
-            var stored = JsonSerializer.Deserialize<StoredSave>(json);
+            var stored = JsonCodec.Deserialize<StoredSave>(json, JsonOptions);
             if (stored?.Version != FormatVersion || stored.Snapshot is null) throw new InvalidDataException();
             var preview = GetPreviewPath(slot, quick);
             return new SaveSlotInfo { SlotIndex = slot, IsQuickSave = quick, Timestamp = stored.Timestamp.LocalDateTime, Description = stored.Description, PreviewImage = File.Exists(preview) ? preview : null };
@@ -108,7 +110,7 @@ public sealed class FileSaveService : ISaveService, IDisposable
         if (!File.Exists(path)) return null;
         try
         {
-            var stored = JsonSerializer.Deserialize<StoredSave>(await File.ReadAllTextAsync(path, ct));
+            var stored = JsonCodec.Deserialize<StoredSave>(await File.ReadAllTextAsync(path, ct), JsonOptions);
             return stored?.Version == FormatVersion ? stored.Snapshot : null;
         }
         catch (OperationCanceledException) { throw; }
@@ -130,7 +132,7 @@ public sealed class FileSaveService : ISaveService, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private sealed class StoredSave
+    internal sealed class StoredSave
     {
         public int Version { get; set; }
         public DateTimeOffset Timestamp { get; set; }

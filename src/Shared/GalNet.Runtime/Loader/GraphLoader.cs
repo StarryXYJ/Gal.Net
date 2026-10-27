@@ -1,3 +1,5 @@
+using GalNet.Core.Serialization;
+using GalNet.Runtime.Serialization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GalNet.Core.Graph;
@@ -9,17 +11,17 @@ namespace GalNet.Runtime.Loader;
 /// </summary>
 public static class GraphLoader
 {
-    private static readonly JsonSerializerOptions Options = new()
+    private static readonly JsonSerializerOptions Options = JsonMetadata.CreateOptions(new()
     {
         PropertyNameCaseInsensitive = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         Converters = { new NodeJsonConverter() }
-    };
+    }, RuntimeJsonContext.Default);
 
     /// <summary>从 JSON 字符串加载图。</summary>
     public static Graph LoadFromJson(string json)
     {
-        var dto = JsonSerializer.Deserialize<GraphDto>(json, Options)
+        var dto = JsonCodec.Deserialize<GraphDto>(json, Options)
                   ?? throw new InvalidOperationException("Failed to deserialize graph.json");
 
         var graph = new Graph
@@ -61,7 +63,7 @@ public static class GraphLoader
 
     // ── DTO types ──
 
-    private sealed class GraphDto
+    internal sealed class GraphDto
     {
         public string Name { get; set; } = "";
         public string RootNodeId { get; set; } = "";
@@ -69,7 +71,7 @@ public static class GraphLoader
         public List<EdgeDto>? Edges { get; set; }
     }
 
-    private sealed class NodeDto
+    internal sealed class NodeDto
     {
         public string Id { get; set; } = "";
         public string Type { get; set; } = "";
@@ -79,20 +81,20 @@ public static class GraphLoader
         public List<ConditionDto>? Conditions { get; set; }
     }
 
-    private sealed class EdgeDto
+    internal sealed class EdgeDto
     {
         public string FromNodeId { get; set; } = "";
         public int FromOutlet { get; set; }
         public string ToNodeId { get; set; } = "";
     }
 
-    private sealed class OptionDto
+    internal sealed class OptionDto
     {
         public string? Text { get; set; }
         public string? Condition { get; set; }
     }
 
-    private sealed class ConditionDto
+    internal sealed class ConditionDto
     {
         public string? Expression { get; set; }
     }

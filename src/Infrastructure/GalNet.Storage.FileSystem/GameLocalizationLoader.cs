@@ -1,3 +1,4 @@
+using GalNet.Core.Serialization;
 using System.Globalization;
 using System.Text.Json;
 using GalNet.Core.Entry;
@@ -25,7 +26,7 @@ public static class GameLocalizationLoader
             RejectLink(charactersPath);
             try
             {
-                var definitions = JsonSerializer.Deserialize<List<CharacterDefinition>>(File.ReadAllText(charactersPath), JsonOptions)
+                var definitions = JsonCodec.Deserialize<List<CharacterDefinition>>(File.ReadAllText(charactersPath), JsonOptions)
                     ?? throw new InvalidDataException("Character catalog must be a JSON array.");
                 characters = new CharacterCatalog(definitions);
             }

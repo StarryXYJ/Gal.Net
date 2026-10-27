@@ -1,4 +1,6 @@
 using System.Reflection;
+using System.Diagnostics.CodeAnalysis;
+using GalNet.Core.Serialization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
@@ -38,7 +40,7 @@ public sealed class ValueStructureResolver : IDisposable
             var type = Nullable.GetUnderlyingType(declaration?.SchemaType ?? descriptor.ValueType) ?? declaration?.SchemaType ?? descriptor.ValueType;
             if (declaration is null && descriptor.IsStringEncoded && IsScalar(type)) return new(ValueStructureKind.Scalar, []);
             if (declaration is null && type == typeof(JsonElement)) return Opaque("Structured value has no traversable field schema.");
-            var info = descriptor.JsonOptions.GetTypeInfo(type);
+            var info = JsonMetadata.GetTypeInfo(type, descriptor.JsonOptions);
             if (info.Kind == JsonTypeInfoKind.None)
                 return declaration?.SchemaType is not null
                     ? new(ValueStructureKind.Opaque, [], Issue: new("schema.invalid", "The declared structure type does not expose an object or collection contract."))
@@ -46,13 +48,15 @@ public sealed class ValueStructureResolver : IDisposable
                     ? new(ValueStructureKind.Scalar, []) : Opaque("The value codec does not expose a traversable structure.");
             var element = ElementType(type);
             if (info.Kind == JsonTypeInfoKind.Enumerable && element is not null)
-                return new(ValueStructureKind.Sequence, [], new("element", new(element, jsonOptions: descriptor.JsonOptions)), AllowsJsonString: declaration?.AllowsJsonString == true);
+                return new(ValueStructureKind.Sequence, [], Child("element", element, descriptor), AllowsJsonString: declaration?.AllowsJsonString == true);
             var map = MapType(type);
             if (info.Kind == JsonTypeInfoKind.Dictionary && map is not null)
-                return new(ValueStructureKind.Map, [], new("value", new(map, jsonOptions: descriptor.JsonOptions)), AllowsJsonString: declaration?.AllowsJsonString == true);
+                return new(ValueStructureKind.Map, [], Child("value", map, descriptor), AllowsJsonString: declaration?.AllowsJsonString == true);
             if (!typeof(IFieldDto).IsAssignableFrom(type) || info.Kind != JsonTypeInfoKind.Object)
                 return Opaque("Structured value has no traversable field schema.");
-            if (type.GetProperty("Schema", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)?.GetValue(null) is not IReadOnlyList<FieldDescriptor> fields)
+            var fields = descriptor.SchemaProvider?.Invoke();
+            if (fields is null && JsonSerializer.IsReflectionEnabledByDefault) fields = ReflectionSchema(type);
+            if (fields is null)
                 return new(ValueStructureKind.Opaque, [], Issue: new("schema.unavailable", "Nested DTO has no readable schema."));
             var members = fields.Select(field => MapMember(field, type, descriptor.JsonOptions, info, declaration?.UsesFieldIds == true)).ToArray();
             var comparer = declaration?.IgnoresCase == true || descriptor.JsonOptions.PropertyNameCaseInsensitive ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
@@ -66,6 +70,25 @@ public sealed class ValueStructureResolver : IDisposable
     }
     private static ValueStructureMember MapMember(FieldDescriptor field, Type type, JsonSerializerOptions parent, JsonTypeInfo info, bool usesFieldIds)
     {
+        JsonPropertyInfo? wire;
+        if (field.MemberName is { } memberName)
+        {
+            var name = field.JsonPropertyName ?? parent.PropertyNamingPolicy?.ConvertName(memberName) ?? memberName;
+            wire = info.Properties.FirstOrDefault(property => property.Name == name)
+                ?? throw new InvalidOperationException($"Field '{field.Id}' is absent from the wire contract.");
+        }
+        else if (JsonSerializer.IsReflectionEnabledByDefault) wire = ReflectionMember(field, type, info);
+        else wire = info.Properties.FirstOrDefault(property => property.Name == field.Id);
+        return new(Inherit(field, parent), usesFieldIds ? field.Id : wire?.Name ?? field.Id);
+    }
+
+    [RequiresUnreferencedCode("Only used by reflection-enabled desktop hosts for handwritten schemas.")]
+    private static IReadOnlyList<FieldDescriptor>? ReflectionSchema(Type type) =>
+        type.GetProperty("Schema", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)?.GetValue(null) as IReadOnlyList<FieldDescriptor>;
+
+    [RequiresUnreferencedCode("Generated fields carry their CLR and JSON member names directly.")]
+    private static JsonPropertyInfo? ReflectionMember(FieldDescriptor field, Type type, JsonTypeInfo info)
+    {
         var source = type.GetMembers(BindingFlags.Public | BindingFlags.Instance).FirstOrDefault(member => member is PropertyInfo or FieldInfo
             && member.GetCustomAttribute<FieldAttribute>() is not null
             && (member.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name ?? JsonNamingPolicy.CamelCase.ConvertName(member.Name)) == field.Id);
@@ -73,7 +96,13 @@ public sealed class ValueStructureResolver : IDisposable
         // Handwritten IFieldDto schemas may describe wire members without Field annotations.
         wire ??= info.Properties.FirstOrDefault(property => property.Name == field.Id);
         if (source is not null && wire is null) throw new InvalidOperationException($"Field '{field.Id}' is absent from the wire contract.");
-        return new(Inherit(field, parent), usesFieldIds ? field.Id : wire?.Name ?? field.Id);
+        return wire;
+    }
+    private static FieldDescriptor Child(string id, Type type, ValueDescriptor parent)
+    {
+        var value = new ValueDescriptor(type, jsonOptions: parent.JsonOptions);
+        if (parent.SchemaProvider is { } schema) value = value.WithSchemaProvider(schema);
+        return new(id, value);
     }
     private static FieldDescriptor Inherit(FieldDescriptor field, JsonSerializerOptions parent)
     {
@@ -85,7 +114,8 @@ public sealed class ValueStructureResolver : IDisposable
             foreach (var converter in field.Value.JsonOptions.Converters.Reverse()) options.Converters.Insert(0, converter);
         }
         var value = field.Value.WithJsonOptions(options);
-        return new(field.Id, value, field.IsRequired, field.DefaultValue, field.Editor, field.LabelKey, field.DescriptionKey, field.Semantic);
+        var inherited = new FieldDescriptor(field.Id, value, field.IsRequired, field.DefaultValue, field.Editor, field.LabelKey, field.DescriptionKey, field.Semantic);
+        return field.MemberName is { } name ? inherited.WithMember(name, field.JsonPropertyName) : inherited;
     }
     public static Type? ElementType(Type type) => type.IsArray && type.GetArrayRank() == 1 ? type.GetElementType()
         : type.IsGenericType && type.GetGenericTypeDefinition() is var generic &&

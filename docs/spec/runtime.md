@@ -118,6 +118,8 @@ Choice 节点由 Engine 求值并过滤可见选项，再通过 `IChoicePresente
 
 差分 Layer 保存图集资源 ID、完整请求、最后保护集合、实际变体键和解析原因，实际 sprite ID 仍以 Layer.AssetId 为真源。解码阶段检查来源互斥与状态结构，模块的同步 ValidateState 使用会话已准备的不可变 ImageVariantsCatalog 重新解析，核对实际变体/图片/原因，再允许替换状态根；内容版本变更导致不一致时拒绝读档。展示恢复还会在呈现前复核内容。定义异步加载在会话准备阶段完成，show/select 本身同步，无需改变 Engine 读档协议。恢复后继续选择仍保留曾因缺组合而未显示的服装等意图。
 
+状态编解码支持显式 `JsonTypeInfo<T[]>`：Core 使用 `StateCatalogBuilder.Register` 的 `jsonTypeInfo` 参数，执行模块可使用 metadata 在首位的 `PrimitiveRegistry.State` 重载。内置模块已注册源生成数组元数据，自定义 AOT 状态需在组合期提供相同契约。`GameState.JsonOptions` 公开冻结的存档设置，配置 section 也可显式提供 DTO resolver；接入见 [NativeAOT 手册](../manual/native-aot.md)。
+
 `CreateSaveData()` 返回 Engine 保存的最后稳定快照。状态表编码共享短同步边界，JSON 载荷和变量与运行对象隔离；不再由中央代码逐类型复制字段。读档先解码/校验候选状态与模块规则，再取消旧 scope 并替换整个 GameState；可选场景模块按新状态根解析独立场景服务。旧回调保留旧状态根，不能清理新代。展示恢复成功前暂停推进，恢复失败进入 Faulted。
 
 Save scope 随存档槽保存和恢复；Player scope 由宿主变量服务独立持久化，普通读档不得回滚。内置系统可以通过 `SystemVariableDefinition` 注册生成变量。Gallery 为每个 item 注册默认 `false` 的 Player bool `gallery_<item-id>_unlocked`；`gallery.unlock` 校验 item ID 后把该变量设为 `true`。

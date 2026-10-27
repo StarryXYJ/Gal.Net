@@ -1,3 +1,4 @@
+using GalNet.Core.Serialization;
 using System.Text.Json;
 
 namespace GalNet.Contracts.Builtins.Audio;
@@ -18,7 +19,7 @@ public static class SEffectParameters
             if (!seen.Add(item.Name)) throw new InvalidDataException("Duplicate audio effect parameter.");
             values[item.Name] = item.Value;
         }
-        return JsonSerializer.SerializeToElement(values);
+        return JsonCodec.SerializeToElement(values);
     }
 }
 

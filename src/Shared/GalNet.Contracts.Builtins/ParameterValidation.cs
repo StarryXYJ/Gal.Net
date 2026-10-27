@@ -1,3 +1,4 @@
+using GalNet.Core.Serialization;
 using System.Text.Json;
 using GalNet.Core.Parameters;
 
@@ -12,7 +13,7 @@ internal static class ParameterValidation
         if (minimum is { } min) constraints["minimum"] = min;
         if (maximum is { } max) constraints["maximum"] = max;
         if (options is { Count: > 0 }) constraints["enum"] = options;
-        return new(name, new ValueDescriptor(type, allowNull: false, constraints: JsonSerializer.SerializeToElement(constraints)), required);
+        return new(name, new ValueDescriptor(type, allowNull: false, constraints: JsonCodec.SerializeToElement(constraints)), required);
     }
     public static IReadOnlyList<string> Validate(string kind, string id, JsonElement values, IReadOnlyDictionary<string, FieldDescriptor> fields)
     {

@@ -94,7 +94,7 @@ public static class GalpakInstaller
     private static async Task<GalpakManifest> ReadManifestAsync(ZipArchiveEntry entry, CancellationToken ct)
     {
         await using var stream = entry.Open();
-        var manifest = await JsonSerializer.DeserializeAsync<GalpakManifest>(stream, JsonOptions, ct);
+        var manifest = await JsonCodec.DeserializeAsync<GalpakManifest>(stream, JsonOptions, ct);
         return manifest ?? throw new InvalidDataException("Package manifest is empty.");
     }
 

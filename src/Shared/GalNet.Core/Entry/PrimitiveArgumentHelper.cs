@@ -1,3 +1,4 @@
+using GalNet.Core.Serialization;
 using System.Text.Json;
 using GalNet.Core.Primitives;
 using GalNet.Core.Parameters;
@@ -51,7 +52,7 @@ public static class PrimitiveArgumentHelper
             catch (ArgumentException exception) { throw new InvalidDataException(exception.Message, exception); }
         }
 
-        var result = JsonSerializer.SerializeToElement(normalized);
+        var result = JsonCodec.SerializeToElement(normalized);
         parameters.ValidateArguments(result);
         return result;
     }
@@ -76,7 +77,7 @@ public static class PrimitiveArgumentHelper
             }
             values.Add(property.Name, property.Value.Clone());
         }
-        return (JsonSerializer.SerializeToElement(values), batchId);
+        return (JsonCodec.SerializeToElement(values), batchId);
     }
 
     private static object? Read(DynamicParameterDescriptor parameter, JsonElement value)

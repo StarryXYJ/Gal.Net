@@ -6,7 +6,7 @@ namespace GalNet.Contracts.Builtins.Assets;
 public static class BuiltinResourceTypes
 {
     public static IResourceTypeCatalog CreateCatalog() => new ResourceTypeCatalogBuilder()
-        .Add<SpriteAssetMeta>("sprite", ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".avif")
+        .Add<SpriteAssetMeta>("sprite", BuiltinJson.Resolver, ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".avif")
         .Add<AssetMeta>("image-variants", ".variants")
         .Add<AssetMeta>("audio", ".mp3", ".wav", ".ogg", ".flac")
         .Add<AssetMeta>("video", ".mp4", ".webm", ".mkv")

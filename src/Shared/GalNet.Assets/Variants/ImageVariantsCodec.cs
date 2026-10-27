@@ -1,3 +1,4 @@
+using GalNet.Core.Serialization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GalNet.Core.Assets;
@@ -9,23 +10,23 @@ namespace GalNet.Assets.Variants;
 public static class ImageVariantsCodec
 {
     public const string ResourceType = "image-variants";
-    private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
+    private static readonly JsonSerializerOptions Options = JsonMetadata.CreateOptions(new(JsonSerializerDefaults.Web)
     {
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
         AllowDuplicateProperties = false,
         PropertyNameCaseInsensitive = false
-    };
+    }, AssetsJsonContext.Default);
 
     public static ImageVariantsSource ReadSource(ReadOnlyMemory<byte> data)
     {
-        return JsonSerializer.Deserialize<ImageVariantsSource>(data.Span, Options)
+        return JsonCodec.Deserialize<ImageVariantsSource>(data.Span, Options)
             ?? throw new InvalidDataException("Image variants source must be an object.");
     }
 
     public static byte[] Encode(ImageVariantsDefinition definition)
     {
         ArgumentNullException.ThrowIfNull(definition);
-        return JsonSerializer.SerializeToUtf8Bytes(new Payload
+        return JsonCodec.SerializeToUtf8Bytes(new Payload
         {
             Kind = "image-variants",
             Version = 1,
@@ -37,7 +38,7 @@ public static class ImageVariantsCodec
 
     public static ImageVariantsDefinition Decode(ReadOnlyMemory<byte> data)
     {
-        var payload = JsonSerializer.Deserialize<Payload>(data.Span, Options);
+        var payload = JsonCodec.Deserialize<Payload>(data.Span, Options);
         if (payload is not { Kind: "image-variants", Version: 1, Dimensions: not null, Variants: not null })
             throw new InvalidDataException("Unsupported compiled image variants payload.");
         if (payload.Variants.Any(item => item is null || string.IsNullOrEmpty(item.Key)))
@@ -57,7 +58,7 @@ public static class ImageVariantsCodec
     internal static ImageVariantsDefinition RequireDefinition(ImageVariantsBuildResult result) => result.Definition
         ?? throw new InvalidDataException(string.Join("; ", result.Diagnostics.Select(item => $"{item.Path} [{item.Code}]: {item.Message}")));
 
-    private sealed class Payload
+    internal sealed class Payload
     {
         public string Kind { get; set; } = "";
         public int Version { get; set; }
@@ -66,7 +67,7 @@ public static class ImageVariantsCodec
         public List<Variant>? Variants { get; set; }
     }
 
-    private sealed class Variant
+    internal sealed class Variant
     {
         public string Key { get; set; } = "";
         public string AssetId { get; set; } = "";

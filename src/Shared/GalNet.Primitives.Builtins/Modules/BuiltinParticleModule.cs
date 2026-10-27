@@ -8,7 +8,7 @@ namespace GalNet.Primitives.Builtins;
 public sealed class BuiltinParticleModule(IParticlePresenter? presenter = null) : PrimitiveModule(
     registry =>
     {
-        registry.State<ParticleEmitterInstance>("builtin.particles", value => value.Id, async context =>
+        registry.State<ParticleEmitterInstance>(BuiltinJson.StateTypeInfo<ParticleEmitterInstance>(), "builtin.particles", value => value.Id, async context =>
         {
             if (presenter is null) return;
             foreach (var emitter in context.Runtime.State.Table<ParticleEmitterInstance>().Values)

@@ -6,10 +6,13 @@ on:
       - 'src/Shared/**'
       - 'src/Infrastructure/**'
       - 'src/Tooling/**'
+      - 'src/Samples/GalNet.Sample.Headless/**'
+      - 'src/Samples/GalNet.Sample.Contracts/**'
       - 'test/GalNet.Assets.Tests/**'
       - 'test/GalNet.Media.Audio.Tests/**'
       - 'Directory.*'
       - 'global.json'
+      - 'scripts/test-native-aot.ps1'
       - '.github/workflows/backend-portability.yml'
   workflow_dispatch:
 
@@ -66,3 +69,22 @@ jobs:
           name: backend-tests-${{ matrix.os }}
           path: artifacts/results
           if-no-files-found: warn
+
+  native-aot:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.401
+      - name: Publish and execute NativeAOT engine acceptance
+        shell: pwsh
+        run: ./scripts/test-native-aot.ps1

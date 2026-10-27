@@ -22,6 +22,8 @@ Core Entry 的参数权威是 `Arguments` JSON，不再保留字符串 Values。
 
 ### 嵌套属性访问
 
+字段生成器支持程序集级 `FieldSchemaJsonContext`，将显式 JSON context resolver 注入字段 codec，并生成 `FieldDescriptor.WithMember` 的 CLR/JSON 成员身份及 `ValueDescriptor.WithSchemaProvider` 的延迟子 schema。集合中的生成 DTO 同样保留子 schema；反射关闭的玩家通过这些元数据解析嵌套结构。手写 schema 可显式提供相同信息；反射只保留为启用了反射 JSON 的桌面兼容路径。扩展方式见 [NativeAOT 手册](../manual/native-aot.md)。
+
 `ValueDescriptor.WithStructure` 为值关联不可变 ValueStructure，旧构造函数签名保留。原生 IFieldDto 使用其静态 Schema；固定 JsonElement 字段可用 Field.StructureType 关联结构类型，生成器输出延迟类型引用，不在初始化时递归展开 schema。StructureAllowsJsonString、StructureIgnoresCase、StructureUsesFieldIds 仅为显式兼容表示提供规则，不改变通用 JSON 的默认命名或运行 codec；内置 Transform 保留原成员拼写与字符串表示，Flipbook 新成员沿用字段 ID。
 
 ValueStructure 提供 ForType、Object、Sequence、Map 和 Dynamic 声明，集合元素/Map 值可拥有独立字段约束与文本/角色语义。ValueStructureResolver 使用实际 JSON options 解析 wire 成员，缓存属于调用方作用域；无法解释的 converter/结构返回可定位诊断。IValueStructureProvider 只消费调用方提供的冻结上下文；动态领域查询及依赖有效性仍由调用方负责，接口本身不执行项目 I/O。

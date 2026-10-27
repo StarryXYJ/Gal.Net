@@ -1,3 +1,4 @@
+using GalNet.Core.Serialization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Schema;
@@ -18,7 +19,7 @@ public static class ValueCodec
             if (value is JsonElement { ValueKind: JsonValueKind.Undefined } || omitNullValues && value is null) continue;
             values.Add(field.Id, Serialize(field.Value, value));
         }
-        return JsonSerializer.SerializeToElement(values);
+        return JsonCodec.SerializeToElement(values);
     }
 
     public static T DeserializeFields<T>(IReadOnlyList<FieldDescriptor> fields, JsonElement arguments) where T : IFieldDto, new()
@@ -45,7 +46,7 @@ public static class ValueCodec
 
     public static JsonElement Serialize(ValueDescriptor descriptor, object? value)
     {
-        var json = JsonSerializer.SerializeToElement(value, descriptor.ValueType, descriptor.JsonOptions);
+        var json = JsonCodec.SerializeToElement(value, descriptor.ValueType, descriptor.JsonOptions);
         _ = Deserialize(descriptor, json);
         return json;
     }
@@ -59,7 +60,7 @@ public static class ValueCodec
 
     /// <summary>Parse a draft without enforcing constraints; validate before committing it.</summary>
     public static JsonElement ParseEditorText(ValueDescriptor descriptor, string text) =>
-        descriptor.IsStringEncoded ? JsonSerializer.SerializeToElement(text) : JsonDocumentValue(NormalizeEditorNumber(descriptor, text));
+        descriptor.IsStringEncoded ? JsonCodec.SerializeToElement(text) : JsonDocumentValue(NormalizeEditorNumber(descriptor, text));
 
     private static bool IsFractional(ValueDescriptor descriptor) =>
         (Nullable.GetUnderlyingType(descriptor.ValueType) ?? descriptor.ValueType) is var type &&
@@ -103,8 +104,8 @@ public static class ValueCodec
     public static JsonElement Describe(ValueDescriptor descriptor, string? referencePrefix = null)
     {
         var schemaOptions = descriptor.JsonOptions.Converters.Any(converter => converter is IStringValueEncoding && converter.CanConvert(typeof(string)))
-            ? JsonSerializerOptions.Default : descriptor.JsonOptions;
-        var exported = schemaOptions.GetJsonSchemaAsNode(descriptor.IsStringEncoded ? typeof(string) : descriptor.ValueType);
+            ? JsonMetadata.Prepare() : descriptor.JsonOptions;
+        var exported = JsonMetadata.GetTypeInfo(descriptor.IsStringEncoded ? typeof(string) : descriptor.ValueType, schemaOptions).GetJsonSchemaAsNode();
         var prefix = referencePrefix ?? "#";
         RebaseReferences(exported, prefix + (descriptor.AllowNull ? "/anyOf/0/allOf/0" : "/allOf/0"));
         // Root rules must not alter the nullability or constraints of recursively referenced child types.
@@ -113,7 +114,7 @@ public static class ValueCodec
             foreach (var constraint in constraints.EnumerateObject())
                 if (constraint.Name is "minimum" or "maximum" or "minLength" or "maxLength" or "minItems" or "maxItems" or "enum")
                     schema[constraint.Name] = JsonNode.Parse(constraint.Value.GetRawText());
-        return JsonSerializer.SerializeToElement(descriptor.AllowNull
+        return JsonCodec.SerializeToElement(descriptor.AllowNull
             ? new JsonObject { ["anyOf"] = new JsonArray(schema, new JsonObject { ["type"] = "null" }) }
             : schema);
     }

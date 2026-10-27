@@ -81,7 +81,7 @@ public sealed class FieldSchemaGeneratorTests
         var code = string.Join("\n", driver.GetRunResult().GeneratedTrees.Select(tree => tree.ToString()));
         Assert.That(code, Does.Contain("ValueStructure.ForType(typeof(global::Child)").And.Contain("allowsJsonString: true").And.Contain("ignoresCase: true"));
         Assert.That(code, Does.Contain("typeof(global::System.Text.Json.JsonElement)"));
-        Assert.That(code, Does.Not.Contain("Child.Schema"), "Recursive child schemas must not be initialized while creating metadata.");
+        Assert.That(code, Does.Contain("WithSchemaProvider(static () => global::Child.Schema)"), "Recursive child schemas must be deferred through a static delegate.");
     }
 
     [Test]
@@ -137,7 +137,7 @@ public sealed class FieldSchemaGeneratorTests
         Assert.That(output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error), Is.Empty);
         var code = driver.GetRunResult().GeneratedTrees.Single().ToString();
         Assert.That(code, Does.Contain("this.@Data").And.Contains("this.@Enabled").And.Contains("StringBooleanValueConverter").And.Contains("ValueCodec.ParseDefault"));
-        Assert.That(code.IndexOf("new(\"enabled\"", StringComparison.Ordinal), Is.LessThan(code.IndexOf("new(\"count\"", StringComparison.Ordinal)));
+        Assert.That(code.IndexOf("(\"enabled\"", StringComparison.Ordinal), Is.LessThan(code.IndexOf("(\"count\"", StringComparison.Ordinal)));
     }
 
     [TestCase("public new int Value {get;set;}")]
@@ -186,7 +186,7 @@ public sealed class FieldSchemaGeneratorTests
         Assert.That(diagnostics, Is.Empty);
         Assert.That(output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error), Is.Empty);
         var code = driver.GetRunResult().GeneratedTrees.Single().ToString();
-        Assert.That(code, Does.Contain("new(\"urlValue\"").And.Contains("new(\"asset-id\""));
+        Assert.That(code, Does.Contain("(\"urlValue\"").And.Contains("(\"asset-id\""));
     }
     [Test]
     public void ConstantDefaultsAndMemberChangesGenerateCompilableOrderedAccessors()
@@ -204,7 +204,7 @@ public sealed class FieldSchemaGeneratorTests
         Assert.That(diagnostics, Is.Empty);
         Assert.That(output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error), Is.Empty);
         var generated = driver.GetRunResult().GeneratedTrees.Single().ToString();
-        Assert.That(generated.IndexOf("new(\"number\"", StringComparison.Ordinal), Is.LessThan(generated.IndexOf("new(\"text\"", StringComparison.Ordinal)));
+        Assert.That(generated.IndexOf("(\"number\"", StringComparison.Ordinal), Is.LessThan(generated.IndexOf("(\"text\"", StringComparison.Ordinal)));
         driver = driver.RunGeneratorsAndUpdateCompilation(Compile(source.Replace("Number", "Amount").Replace("2.5", "3.5")), out output, out diagnostics);
         Assert.That(output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error), Is.Empty);
         var changed = driver.GetRunResult().GeneratedTrees.Single().ToString();

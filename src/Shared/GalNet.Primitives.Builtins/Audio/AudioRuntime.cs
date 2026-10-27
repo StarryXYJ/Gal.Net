@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins;
 using GalNet.Contracts.Builtins.Audio;
 using System.Text.Json;
 using GalNet.Core.Runtime;
@@ -29,9 +30,9 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
         _host = host;
         _effects = effects ?? host?.SEffects ?? SEffectCatalog.Builtins;
         var builder = new StateCatalogBuilder();
-        builder.Register<AudioTrackState>("builtin.audio.tracks", value => value.Id, ValidateTrack);
-        builder.Register<AudioSEffectState>("builtin.audio.seffects", value => value.Key(), ValidateEffect);
-        builder.Register<AudioChannelState>("builtin.audio.channels", value => value.Key(), ValidateChannel);
+        builder.Register<AudioTrackState>("builtin.audio.tracks", value => value.Id, ValidateTrack, jsonTypeInfo: BuiltinJson.StateTypeInfo<AudioTrackState>());
+        builder.Register<AudioSEffectState>("builtin.audio.seffects", value => value.Key(), ValidateEffect, jsonTypeInfo: BuiltinJson.StateTypeInfo<AudioSEffectState>());
+        builder.Register<AudioChannelState>("builtin.audio.channels", value => value.Key(), ValidateChannel, jsonTypeInfo: BuiltinJson.StateTypeInfo<AudioChannelState>());
         _state = new GameState(builder.Build());
         _dispatcher = new(host, _gate, Report, OnBackendEvent);
         if (host is not null) host.EventReceived += OnBackendEvent;

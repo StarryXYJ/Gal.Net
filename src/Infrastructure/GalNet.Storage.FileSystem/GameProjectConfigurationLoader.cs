@@ -1,3 +1,4 @@
+using GalNet.Core.Serialization;
 using System.Text.Json;
 using GalNet.Core.Configuration;
 
@@ -11,7 +12,7 @@ internal static class GameProjectConfigurationLoader
         if (!File.Exists(path)) return new ProjectConfiguration();
         try
         {
-            var settings = JsonSerializer.Deserialize<ProjectConfiguration>(File.ReadAllText(path))
+            var settings = JsonCodec.Deserialize<ProjectConfiguration>(File.ReadAllText(path))
                 ?? throw new InvalidDataException("Project settings must be a JSON object.");
             schema?.Validate(settings);
             return settings;

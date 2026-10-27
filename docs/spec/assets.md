@@ -24,6 +24,8 @@
 
 通用 `AssetMeta` 与类型目录协议位于 Core.Assets；`BuiltinResourceTypes`、sprite metadata 及默认 Gallery/ImageVariants 契约位于 Contracts.Builtins。没有专属字段的默认资源共用 AssetMeta，身份由 type ID 决定。Gallery 用可选 ReadGallery/SetGallery 扩展读取、重写 extension data，未知 annotation 字段也保留。
 
+资源注册可显式传入 JSON resolver，`AssetMetaCodec` 按注册类型组合源生成元数据并缓存 options；默认实例由注册时的泛型工厂创建，`Add/Replace<TMeta>` 要求公开无参构造函数。内置目录已提供元数据；反射关闭的玩家扩展须注册自己的 context，见 [NativeAOT 手册](../manual/native-aot.md)。
+
 组合根可通过 `ResourceTypeCatalogBuilder.DefaultType(id)` 为未知扩展选择默认类型；没有显式 type、扩展映射或该默认值时才报无法解析类型。默认工厂明确选择 data，低层 codec 不假定 data 必须存在。LocalFileProvider、PakFileProvider、Archive 和 PakBuilder 必须接收调用方目录；例如 `PakBuilder.Build("assets", files, types)`，压缩模式为后续可选参数。
 
 资源类型只负责识别、保存、枚举和打包；它不注册 decoder、Editor inspector 或 Avalonia 页面。decoder 以 `(typeId, target CLR type)` 另行注册。

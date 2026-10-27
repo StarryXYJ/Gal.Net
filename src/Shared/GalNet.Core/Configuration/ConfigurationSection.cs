@@ -1,5 +1,7 @@
+using GalNet.Core.Serialization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using GalNet.Core.Parameters;
 
 namespace GalNet.Core.Configuration;
@@ -24,12 +26,13 @@ public abstract class ConfigurationSection
     public abstract JsonElement Resolve(ProjectSectionData? value);
 }
 
-public sealed class ConfigurationSection<T>(string id, IReadOnlyList<FieldDescriptor> fields, Action<T>? validate = null, int version = 1)
+public sealed class ConfigurationSection<T>(string id, IReadOnlyList<FieldDescriptor> fields, Action<T>? validate = null, int version = 1,
+    IJsonTypeInfoResolver? jsonResolver = null)
     : ConfigurationSection(id, fields, version) where T : new()
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    { PropertyNameCaseInsensitive = false, Converters = { new JsonStringEnumConverter() } };
-    internal JsonElement Encode(T value) => JsonSerializer.SerializeToElement(value, JsonOptions);
+    private readonly JsonSerializerOptions _jsonOptions = JsonMetadata.CreateOptions(new(JsonSerializerDefaults.Web)
+    { PropertyNameCaseInsensitive = false }, jsonResolver, stringEnums: true);
+    internal JsonElement Encode(T value) => JsonCodec.SerializeToElement(value, _jsonOptions);
 
     public T Read(ProjectSectionData? value)
     {
@@ -48,7 +51,7 @@ public sealed class ConfigurationSection<T>(string id, IReadOnlyList<FieldDescri
             if (ValueValidation.Validate(field.Value, json) is { } issue)
                 throw new InvalidDataException($"Configuration '{Id}/{field.Id}': {issue.Message}");
         }
-        var result = JsonSerializer.SerializeToElement(normalized).Deserialize<T>(JsonOptions)
+        var result = JsonCodec.Deserialize<T>(JsonCodec.SerializeToElement(normalized), _jsonOptions)
             ?? throw new InvalidDataException($"Configuration '{Id}' cannot be null.");
         validate?.Invoke(result);
         return result;

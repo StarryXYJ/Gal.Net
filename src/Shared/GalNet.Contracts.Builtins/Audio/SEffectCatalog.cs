@@ -1,3 +1,4 @@
+using GalNet.Core.Serialization;
 using System.Collections.Frozen;
 using GalNet.Core.Parameters;
 using System.Text.Json;
@@ -16,7 +17,7 @@ public sealed record SEffectParameterDefinition(
     float? DefaultValue = null)
 {
     public FieldDescriptor Field => new(Name, ParameterValidation.Field(Name, typeof(float), Required, Minimum, Maximum).Value,
-        Required, defaultValue: DefaultValue is { } value ? JsonSerializer.SerializeToElement(value) : null);
+        Required, defaultValue: DefaultValue is { } value ? JsonCodec.SerializeToElement(value) : null);
 }
 
 /// <summary>Platform-neutral authoring metadata for one named audio effect.</summary>
@@ -25,7 +26,7 @@ public sealed record SEffectDefinition(
     IReadOnlySet<SEffectScope> SupportedScopes,
     IReadOnlyList<SEffectParameterDefinition> Parameters)
 {
-    public JsonElement DefaultParameters => JsonSerializer.SerializeToElement(Parameters.Where(parameter => parameter.DefaultValue is not null)
+    public JsonElement DefaultParameters => JsonCodec.SerializeToElement(Parameters.Where(parameter => parameter.DefaultValue is not null)
         .ToDictionary(parameter => parameter.Name, parameter => parameter.DefaultValue!.Value));
 }
 

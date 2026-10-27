@@ -3,7 +3,7 @@ namespace GalNet.Contracts.Builtins.Gallery;
 
 public sealed record GalleryAnnotation
 {
-    [JsonExtensionData] public Dictionary<string, System.Text.Json.JsonElement>? ExtensionData { get; init; }
+    [JsonExtensionData] public Dictionary<string, System.Text.Json.JsonElement>? ExtensionData { get; set; }
     [JsonPropertyName("id")] public int Id { get; init; }
     [JsonPropertyName("typeId")] public string TypeId { get; init; } = "";
     [JsonPropertyName("title")]

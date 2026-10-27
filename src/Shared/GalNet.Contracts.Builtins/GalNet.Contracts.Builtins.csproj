@@ -3,7 +3,7 @@
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../Tooling/GalNet.SchemaGenerator/GalNet.SchemaGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" GlobalPropertiesToRemove="OutputPath;OutDir" />
+    <ProjectReference Include="../../Tooling/GalNet.SchemaGenerator/GalNet.SchemaGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" GlobalPropertiesToRemove="OutputPath;OutDir;PublishAot;SelfContained;RuntimeIdentifier" />
     <ProjectReference Include="..\GalNet.Core\GalNet.Core.csproj" />
   </ItemGroup>
 </Project>

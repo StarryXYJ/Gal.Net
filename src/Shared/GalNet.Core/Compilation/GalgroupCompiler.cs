@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using GalNet.Core.Entry;
 using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
@@ -10,12 +9,6 @@ namespace GalNet.Core.Compilation;
 /// <summary>Compiles editor-source group documents into Runtime-only primitive documents.</summary>
 public static class GalgroupCompiler
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        Converters = { new JsonStringEnumConverter() }
-    };
-
     /// <summary>Expands every non-primitive entry and returns a deterministic compiled document plus source mapping.</summary>
     public static CompiledGroupResult Compile(GroupDocument source, IEntryCatalog catalog)
         => CompileCore(source, catalog, null);
@@ -105,7 +98,7 @@ public static class GalgroupCompiler
             if (definition.Kind == EntryKind.Primitive)
             {
                 var parameters = definition.DynamicParameters;
-                var rawArguments = JsonSerializer.SerializeToElement(source.Parameters);
+                var rawArguments = JsonCodec.SerializeToElement(source.Parameters);
                 var (arguments, batchId) = PrimitiveArgumentHelper.NormalizeCompiledArguments(parameters, rawArguments);
                 var primitive = new PrimitiveEntry(source.Type, arguments, batchId)
                 {
@@ -115,7 +108,7 @@ public static class GalgroupCompiler
                 return primitive;
             }
 
-            var normalized = PrimitiveArgumentHelper.Normalize(definition.DynamicParameters, JsonSerializer.SerializeToElement(source.Parameters));
+            var normalized = PrimitiveArgumentHelper.Normalize(definition.DynamicParameters, JsonCodec.SerializeToElement(source.Parameters));
             return catalog.Create(source.Type, index, source.Condition, normalized);
         }
         catch (Exception exception) when (exception is InvalidDataException or JsonException or ArgumentException)

@@ -81,5 +81,5 @@ public sealed class PrimitiveEntryDocument
     public string Condition { get; set; } = "";
 
     [JsonPropertyName("arguments")]
-    public JsonElement Arguments { get; set; } = JsonSerializer.SerializeToElement(new Dictionary<string, object?>());
+    public JsonElement Arguments { get; set; } = JsonCodec.SerializeToElement(new Dictionary<string, object?>());
 }

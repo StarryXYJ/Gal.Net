@@ -1,3 +1,4 @@
+using GalNet.Core.Serialization;
 using System.Text.Json;
 using GalNet.Core.Primitives;
 
@@ -9,7 +10,7 @@ public abstract class Entry
     public int Id { get; set; }
     public string Condition { get; set; } = "";
     public abstract string Type { get; }
-    public JsonElement Arguments { get; private set; } = JsonSerializer.SerializeToElement(new Dictionary<string, object?>());
+    public JsonElement Arguments { get; private set; } = JsonCodec.SerializeToElement(new Dictionary<string, object?>());
     public void SetArguments(JsonElement arguments)
     {
         if (arguments.ValueKind != JsonValueKind.Object)

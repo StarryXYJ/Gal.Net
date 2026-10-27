@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GalNet.Core.Serialization;
 using GalNet.Contracts.Builtins;
 using GalNet.Contracts.Builtins.Scene;
 using GalNet.Presentation.Abstractions.View;
@@ -97,6 +98,6 @@ internal static partial class BuiltinRuntimeActions
 
     private static T? Json<T>(IReadOnlyDictionary<string, JsonElement> parameters, string name) =>
         parameters.TryGetValue(name, out var value)
-            ? value.Deserialize<T>(Arguments.JsonOptions)
+            ? JsonCodec.Deserialize<T>(value, Arguments.JsonOptions)
             : default;
 }

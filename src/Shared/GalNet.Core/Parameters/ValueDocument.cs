@@ -1,3 +1,4 @@
+using GalNet.Core.Serialization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -144,7 +145,7 @@ public sealed class ValueDocument : IDisposable
         }
         else return new(null, new("structure.obsolete", "The parent value is not an editable container."));
         return new(structure.AllowsJsonString && property.Value is { ValueKind: JsonValueKind.String }
-            ? JsonSerializer.SerializeToElement(node.ToJsonString()) : JsonSerializer.SerializeToElement(node), null);
+            ? JsonCodec.SerializeToElement(node.ToJsonString()) : JsonCodec.SerializeToElement(node), null);
     }
 }
 

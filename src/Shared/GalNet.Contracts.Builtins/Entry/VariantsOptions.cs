@@ -1,3 +1,4 @@
+using GalNet.Core.Serialization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GalNet.Core.Parameters;
@@ -48,10 +49,10 @@ public static class VariantsArgumentValidation
 
     public static LayerTransform ReadTransform(JsonElement value)
     {
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, AllowDuplicateProperties = false };
+        var options = BuiltinJson.CreateOptions(new() { PropertyNameCaseInsensitive = true, AllowDuplicateProperties = false });
         var transform = value.ValueKind == JsonValueKind.String
-            ? JsonSerializer.Deserialize<LayerTransform>(value.GetString()!, options)
-            : value.Deserialize<LayerTransform>(options);
+            ? JsonCodec.Deserialize<LayerTransform>(value.GetString()!, options)
+            : JsonCodec.Deserialize<LayerTransform>(value, options);
         if (transform is null || !float.IsFinite(transform.X) || !float.IsFinite(transform.Y) || !float.IsFinite(transform.RotationDegrees)
             || !float.IsFinite(transform.ScaleX) || !float.IsFinite(transform.ScaleY) || transform.ScaleX < .001f || transform.ScaleY < .001f)
             throw new InvalidDataException("Variant transform requires finite values and positive scale.");

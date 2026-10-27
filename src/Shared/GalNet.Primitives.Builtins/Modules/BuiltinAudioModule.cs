@@ -50,9 +50,9 @@ public sealed class BuiltinAudioModule : PrimitiveModule
     private static void RegisterPrimitives(PrimitiveRegistry registry, AudioRuntime runtime, AudioScope scope,
         AudioConfiguration tracks)
     {
-        registry.State<AudioTrackState>("builtin.audio.tracks", value => value.Id, validate: AudioRuntime.ValidateTrack, version: 2);
-        registry.State<AudioSEffectState>("builtin.audio.seffects", value => value.Key(), version: 2);
-        registry.State<AudioChannelState>("builtin.audio.channels", value => value.Key(), validate: AudioRuntime.ValidateChannel);
+        registry.State<AudioTrackState>(BuiltinJson.StateTypeInfo<AudioTrackState>(), "builtin.audio.tracks", value => value.Id, validate: AudioRuntime.ValidateTrack, version: 2);
+        registry.State<AudioSEffectState>(BuiltinJson.StateTypeInfo<AudioSEffectState>(), "builtin.audio.seffects", value => value.Key(), version: 2);
+        registry.State<AudioChannelState>(BuiltinJson.StateTypeInfo<AudioChannelState>(), "builtin.audio.channels", value => value.Key(), validate: AudioRuntime.ValidateChannel);
         registry.ValidateState((_, state) => runtime.Validate(state, tracks));
         registry.Restore("builtin.audio", async context =>
         {

@@ -1,3 +1,4 @@
+using GalNet.Core.Serialization;
 using System.Collections.Frozen;
 using System.Text.Json;
 using GalNet.Core.Entry;
@@ -27,7 +28,7 @@ public static class TimelineEventCapabilities
     public static JsonElement NormalizeEvent(TimelineEventDefinition item)
     {
         if (item is null || item.Parameters is null || !Supports(item.Type)) throw new InvalidDataException("Unsupported or incomplete Timeline event.");
-        return PrimitiveArgumentHelper.Normalize(Catalog.Value.Get(item.Type).DynamicParameters, JsonSerializer.SerializeToElement(item.Parameters));
+        return PrimitiveArgumentHelper.Normalize(Catalog.Value.Get(item.Type).DynamicParameters, JsonCodec.SerializeToElement(item.Parameters));
     }
     public static void ValidateStructure(TimelineDefinition timeline) => BuiltinArgumentValidation.ValidateTimelineStructure(timeline);
 }

@@ -1,3 +1,4 @@
+using GalNet.Core.Serialization;
 using System.Text.Json;
 
 namespace GalNet.Contracts.Builtins.Audio;
@@ -22,11 +23,11 @@ public sealed class AudioTrackState
 public sealed record AudioSEffectState(string TargetId, string InstanceId, string SEffectId, JsonElement Parameters, SEffectScope Scope = SEffectScope.Track)
 {
     // JSON array encoding preserves the existing track-local identity without separator collisions.
-    public static string Key(string trackId, string instanceId) => JsonSerializer.Serialize(new[] { trackId, instanceId });
-    public string Key() => Scope == SEffectScope.Track ? Key(TargetId, InstanceId) : JsonSerializer.Serialize(new[] { "bus", TargetId, InstanceId });
+    public static string Key(string trackId, string instanceId) => JsonCodec.Serialize(new[] { trackId, instanceId });
+    public string Key() => Scope == SEffectScope.Track ? Key(TargetId, InstanceId) : JsonCodec.Serialize(new[] { "bus", TargetId, InstanceId });
 }
 
 public sealed record AudioChannelState(string TargetId, SEffectScope Scope, float Gain = 1, bool Muted = false)
 {
-    public string Key() => JsonSerializer.Serialize(new[] { Scope.ToString(), TargetId });
+    public string Key() => JsonCodec.Serialize(new[] { Scope.ToString(), TargetId });
 }

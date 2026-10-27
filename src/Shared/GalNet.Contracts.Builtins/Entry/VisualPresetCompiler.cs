@@ -1,3 +1,4 @@
+using GalNet.Core.Serialization;
 using System.Text.Json;
 using GalNet.Core.Entry;
 using GalNet.Contracts.Builtins.Scene;
@@ -7,7 +8,7 @@ namespace GalNet.Contracts.Builtins;
 /// <summary>Pure composition. Shader locators are always supplied by the author entry.</summary>
 internal static class VisualPresetCompiler
 {
-    private static JsonElement Json<T>(T value) => JsonSerializer.SerializeToElement(value, TransitionEntrySupport.TimelineJsonOptions);
+    private static JsonElement Json<T>(T value) => JsonCodec.SerializeToElement(value, TransitionEntrySupport.TimelineJsonOptions);
     private static string Require(string? value, string name) => TransitionEntrySupport.Require(value, name, "visual preset");
     private static TimelineEventDefinition Event(int frame, string type, object parameters) => new()
     {

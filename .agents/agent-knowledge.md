@@ -341,3 +341,5 @@
 - [原生音频 UTF-8 ABI](lessons/L-20261027-06-native-audio-utf8-abi.md)：Windows miniaudio 窄字符 fopen 使用 ANSI；统一 UTF-8 ABI 后内部转宽字符，托管/原生同步升级。跨平台构建与 AOT 限制见 docs/manual/cross-platform-backends.md。
 
 - [完整 MSVC 工具集选择](lessons/L-20261027-07-complete-msvc-toolsets.md)：按目标架构检查编译器、头文件和 CRT，再显式选择并存工具集；Windows ARM64 原生库已用 14.44 交叉编译并核对 PE/ABI，x64 保持 14.51。
+- [NativeAOT 与编译工具隔离](lessons/L-20261027-08-aot-build-tool-isolation.md)：标准 PublishAot 不能污染 netstandard 源生成器，restore 图和开发锁需隔离；复用 Headless Sample 自检，见 docs/manual/native-aot.md。
+- [源生成 extension data](lessons/L-20261027-09-sourcegen-extension-data.md)：GalleryAnnotation 的 init 字典触发构造绑定限制，改用 set 并验证未知字段往返。

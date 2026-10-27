@@ -1,16 +1,17 @@
+using GalNet.Core.Serialization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GalNet.Core.Primitives;
+using GalNet.Contracts.Builtins;
 
 namespace GalNet.Primitives.Builtins;
 
 internal static class Arguments
 {
-    internal static readonly JsonSerializerOptions JsonOptions = new()
+    internal static readonly JsonSerializerOptions JsonOptions = BuiltinJson.CreateOptions(new()
     {
         PropertyNameCaseInsensitive = true,
-        Converters = { new JsonStringEnumConverter() }
-    };
+    }, stringEnums: true);
 
     public static string RawJson(JsonElement value, string fallback = "{}") =>
         value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined ? fallback : value.GetRawText();
@@ -21,8 +22,8 @@ internal static class Arguments
         if (value.ValueKind == JsonValueKind.String)
         {
             var json = value.GetString();
-            return string.IsNullOrWhiteSpace(json) ? default : JsonSerializer.Deserialize<T>(json, JsonOptions);
+            return string.IsNullOrWhiteSpace(json) ? default : JsonCodec.Deserialize<T>(json, JsonOptions);
         }
-        return value.Deserialize<T>(JsonOptions);
+        return JsonCodec.Deserialize<T>(value, JsonOptions);
     }
 }

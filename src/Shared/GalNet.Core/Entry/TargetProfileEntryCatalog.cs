@@ -1,3 +1,4 @@
+using GalNet.Core.Serialization;
 using System.Text.Json;
 
 namespace GalNet.Core.Entry;
@@ -63,7 +64,7 @@ public sealed class TargetProfileEntryCatalog : IEntryCatalog
             if (provided.ValueKind != JsonValueKind.Object) throw new ArgumentException("Author arguments must be an object.", nameof(arguments));
             foreach (var property in provided.EnumerateObject()) values[property.Name] = property.Value.Clone();
         }
-        entry.SetArguments(JsonSerializer.SerializeToElement(values));
+        entry.SetArguments(JsonCodec.SerializeToElement(values));
         return entry;
     }
 

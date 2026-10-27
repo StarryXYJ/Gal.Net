@@ -34,4 +34,10 @@ public sealed class FieldDescriptor
     public string? LabelKey { get; }
     public string? DescriptionKey { get; }
     public FieldValueSemantic Semantic { get; }
+    public string? MemberName { get; private init; }
+    public string? JsonPropertyName { get; private init; }
+
+    public FieldDescriptor WithMember(string memberName, string? jsonPropertyName = null) =>
+        new(Id, Value, IsRequired, DefaultValue, Editor, LabelKey, DescriptionKey, Semantic)
+        { MemberName = memberName, JsonPropertyName = jsonPropertyName };
 }

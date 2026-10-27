@@ -15,6 +15,9 @@ using System.Globalization;
 using GalNet.Runtime.Engine;
 using GalNet.Storage.FileSystem;
 
+if (args.Contains("--aot-self-test"))
+    return await GalNet.Sample.Headless.Acceptance.AotAcceptance.RunAsync(args);
+
 if (!HeadlessOptions.TryParse(args, out var options, out var error))
 {
     Console.Error.WriteLine(error);
