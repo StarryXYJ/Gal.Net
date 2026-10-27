@@ -103,6 +103,8 @@
                                     CommandParameter="{Binding}"><PathIcon Width="16" Height="16" Data="{StaticResource DeleteRegularIcon}" /></Button>
                         </Grid>
                         <StackPanel Margin="0,6,0,0" Spacing="4" IsVisible="{Binding #ParametersToggle.IsChecked}">
+                            <forms:DtoEditorHost Item="{Binding EffectInlineForm.Item}" Registry="{Binding #Root.DataContext.FieldEditors}" IsVisible="{Binding IsEffectApply}" />
+                            <StackPanel IsVisible="{Binding !IsEffectApply}">
                             <forms:DtoEditorHost Item="{Binding DetailForm.Item}" Registry="{Binding #Root.DataContext.FieldEditors}" DisplayMode="Common" IsVisible="{Binding #Root.UseCommonFields}" />
                             <StackPanel IsVisible="{Binding !#Root.UseCommonFields}">
                             <TextBlock Text="{loc:Localize Entry.UnknownTypePreserved}" IsVisible="{Binding IsUnknownType}" TextWrapping="Wrap" />
@@ -128,6 +130,7 @@
                             </ItemsControl>
                             <TextBlock Text="{Binding EffectHint}" Opacity="0.72" TextWrapping="Wrap" IsVisible="{Binding !HasEffectDiagnostic}" />
                             <TextBlock Text="{Binding EffectDiagnostic}" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" TextWrapping="Wrap" IsVisible="{Binding HasEffectDiagnostic}" />
+                            </StackPanel>
                             </StackPanel>
 
                         </StackPanel>

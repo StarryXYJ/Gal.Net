@@ -14,9 +14,13 @@ using GalNet.Editor.Composition;
 using GalNet.Editor.History;
 using GalNet.Editor.Models;
 using GalNet.Editor.Models.Graph;
+using GalNet.Editor.Inspector.ViewModels;
+using GalNet.Editor.Inspector.Views;
 using GalNet.Editor.Services;
 using GalNet.Editor.Services.Interfaces;
 using GalNet.Editor.ViewModels;
+using GalNet.Editor.Views;
+using GalNet.Game.Controls.Forms;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GeneralTest.Editor;
@@ -35,12 +39,99 @@ public sealed partial class ProjectWorkspaceLifecycleTests
           range: 0..1
         */
         """;
+    private const string EffectEditorSource = """
+        /*
+        @gal.effect v=1
+        @input source
+        @targets layer,scenePost
+        @param amount
+          uniform: uAmount
+          type: float
+          default: 0.25
+          range: 0..1
+        @param tint
+          uniform: uTint
+          type: color
+          default: #ff0000ff
+        @param offset
+          uniform: uOffset
+          type: vec2
+          default: [0,0]
+        @param style
+          uniform: uStyle
+          type: enum
+          options: soft,hard
+        @texture mask
+          uniform: uMask
+        */
+        """;
     private static ServiceProvider EffectServices(MetadataAssets assets, MetadataResources resources) => new ServiceCollection().AddEditorServices()
         .AddSingleton<IEditorLocalizationService>(new EditorLocalizationService())
         .AddSingleton<IProjectClosePrompt>(new DiscardProjectClosePrompt())
         .AddSingleton<IEditorSettingsService>(new TestSettings()).AddSingleton<IFileDialogService>(new TestDialogs())
         .AddSingleton<IEffectCatalog>(new EffectCatalog([])).AddSingleton<IAssetManager>(assets)
         .AddSingleton<IAssetCatalogService>(resources).BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+
+    [Test]
+    public async Task ShaderInspectorBuildsMetadataFieldsAndPatchesOnlySelectedParameter()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme(); using var assets = new MetadataAssets(); assets.File.Source = EffectEditorSource;
+            using var resources = new MetadataResources(); using var services = EffectServices(assets, resources);
+            var projects = services.GetRequiredService<IProjectService>();
+            var project = await projects.CreateAsync(Path.Combine(_root, "ShaderInspector"), "Shader", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
+            var scope = project.Services; var workspace = scope.GetRequiredService<EditorWorkspaceViewModel>();
+            var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
+            var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.ApplyEffect).Single();
+            entry.Source.Parameters["program"] = JsonSerializer.SerializeToElement("program");
+            entry.Source.Parameters["parameters"] = JsonSerializer.Deserialize<JsonElement>("{\"amount\":0.6,\"unknown\":[9007199254740993,null]}");
+            scope.GetRequiredService<IEditorDocumentService>().SynchronizeGroups();
+            var query = scope.GetRequiredService<ProjectSceneTargets>(); await query.PrepareAsync();
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = entry;
+            using var inspector = new EntryInspectorViewModel(page, sceneTargets: query);
+            var view = new EntryInspectorView { DataContext = inspector };
+            var groupView = new GroupEditorPanelView { DataContext = page };
+            var layout = new Grid { ColumnDefinitions = new("45*,55*") }; layout.Children.Add(groupView); Grid.SetColumn(view, 1); layout.Children.Add(view);
+            var window = new Window { Content = layout, Width = 1200, Height = 900 }; window.Show(); TimelinePump(window);
+            try
+            {
+                Assert.That(entry.EffectInlineForm!.Item.Fields.Select(field => field.Id), Is.EqualTo(new[] { "program" }));
+                var inline = groupView.GetVisualDescendants().OfType<DtoEditorHost>().Single(host => ReferenceEquals(host.Item, entry.EffectInlineForm.Item));
+                Assert.That(inline.GetVisualDescendants().OfType<FieldEditorRow>().Select(row => row.Context!.Field.Id), Is.EqualTo(new[] { "program" }));
+                Assert.That(inspector.ShaderForm!.Item.Fields.Select(field => field.Id), Is.EqualTo(new[] { "amount", "tint", "offset", "style", "mask" }));
+                var form = view.GetVisualDescendants().OfType<DtoEditorHost>().Single(host => host.Name == "ShaderParameters");
+                var rows = form.GetVisualDescendants().OfType<FieldEditorRow>().ToDictionary(row => row.Context!.Field.Id);
+                Assert.That(rows.Keys, Is.EquivalentTo(new[] { "amount", "tint", "offset", "style", "mask" }));
+                Assert.That(rows["amount"].Editor, Is.TypeOf<TextBox>());
+                Assert.That(rows["offset"].Editor, Is.Not.Null);
+                Assert.That(entry.Source.Parameters["parameters"].TryGetProperty("style", out _), Is.False, "Metadata defaults must remain unprovided until edited.");
+                var old = rows["amount"].Context!;
+                var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear();
+                Assert.That(await old.CommitValueAsync(.8f), Is.True);
+                var changed = entry.Source.Parameters["parameters"];
+                Assert.That(changed.GetProperty("amount").GetSingle(), Is.EqualTo(.8f));
+                Assert.That(changed.GetProperty("unknown")[0].GetInt64(), Is.EqualTo(9007199254740993L));
+                Assert.That(history.CanUndo, Is.True);
+                await history.UndoAsync();
+                Assert.That(entry.Source.Parameters["parameters"].GetProperty("amount").GetSingle(), Is.EqualTo(.6f));
+                var tint = rows["tint"].Editor!.GetVisualDescendants().OfType<TextBox>().Single(input => input.Name == "ColorHex");
+                tint.Focus(); tint.Text = "#11223344"; TimelinePump(window); PressGroupKey(tint, Key.Enter); TimelinePump(window);
+                Assert.That(entry.Source.Parameters["parameters"].GetProperty("tint").GetString(), Is.EqualTo("#11223344"));
+                assets.File.Source = EffectEditorSource.Replace("amount", "replacement", StringComparison.Ordinal);
+                resources.RaiseChanged(); TimelinePump(window); await query.PrepareAsync(); TimelinePump(window);
+                Assert.That(inspector.ShaderForm!.Item.Fields.Any(field => field.Id == "replacement"), Is.True);
+                Assert.That(await old.CommitValueAsync(.9f), Is.False, "Reloading metadata must retire the old field binding.");
+                entry.Source.Parameters["program"] = JsonSerializer.SerializeToElement("other");
+                entry.RefreshAuthorReferences(scope.GetRequiredService<GalNet.Core.Entry.IEntryCatalog>());
+                Assert.That(inspector.ShaderForm, Is.Null);
+                Assert.That(entry.Source.Parameters["parameters"].GetProperty("amount").GetSingle(), Is.EqualTo(.6f));
+                return true;
+            }
+            finally { window.Close(); await projects.CloseAsync(); }
+        }, CancellationToken.None);
+    }
 
     [Test]
     public async Task EffectMetadataLoadsOffQueryAndRefreshRejectsOldLeasesWithoutResurrectingDisposedProjects()

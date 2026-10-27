@@ -376,6 +376,8 @@
   "Entry.Parameter.value": "値",
   "Entry.Parameter.type": "エフェクト種類",
   "Entry.Parameter.parameters": "パラメーター（JSON）",
+  "Entry.ShaderParameters": "シェーダーパラメーター",
+  "Entry.ShaderMetadataUnavailable": "シェーダーのメタデータを読み込み中、または利用できません。下の JSON でパラメーターを編集できます。",
   "Entry.Parameter.target": "対象",
   "Entry.Parameter.valueType": "値の種類",
   "Entry.Parameter.expression": "式",

@@ -13,6 +13,12 @@
    <TextBlock Text="{loc:Localize Entry.UnknownTypePreserved}" IsVisible="{Binding Entry.IsUnknownType}" TextWrapping="Wrap"/>
    <TextBlock Text="{loc:Localize Entry.UnknownParametersPreserved}" IsVisible="{Binding Entry.HasUnknownParameters}" TextWrapping="Wrap"/>
    <forms:DtoEditorHost Name="EntryDetails" Item="{Binding Form.Item}" Registry="{Binding FieldEditors}"/>
+   <TextBlock Text="{loc:Localize Entry.ShaderParameters}" IsVisible="{Binding IsShaderMode}" FontWeight="SemiBold"/>
+   <forms:DtoEditorHost Name="ShaderParameters" Item="{Binding ShaderForm.Item}" Registry="{Binding FieldEditors}" IsVisible="{Binding IsShaderMode}"/>
+   <TextBlock Text="{loc:Localize Entry.ShaderMetadataUnavailable}" IsVisible="{Binding ShaderUnavailable}" TextWrapping="Wrap"/>
+   <Expander Header="{loc:Localize Entry.Parameter.parameters}" IsVisible="{Binding IsShaderMode}">
+    <forms:DtoEditorHost Item="{Binding ShaderRawForm.Item}" Registry="{Binding FieldEditors}"/>
+   </Expander>
   </StackPanel>
  </ScrollViewer>
 </UserControl>

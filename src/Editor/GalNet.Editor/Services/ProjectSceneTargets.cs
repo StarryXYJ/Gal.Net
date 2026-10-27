@@ -87,6 +87,11 @@ public sealed class ProjectSceneTargets : IDisposable
     {
         lock (_gate) { if (!Capture()) return null; QueuePreparation(); return _variants.GetValueOrDefault(id.Trim()); }
     }
+    public ShaderEffectDescriptor? ProgramDescriptor(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return null;
+        lock (_gate) { if (!Capture()) return null; QueuePreparation(); return _programs.GetValueOrDefault(id.Trim()); }
+    }
     private void OnContentChanged()
     {
         var fingerprint = string.Join("\n", _content!.FileDocuments.Values.Where(file => file.Exists && file.ManagedContent && file.Path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))

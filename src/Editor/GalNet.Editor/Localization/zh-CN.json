@@ -376,6 +376,8 @@
   "Entry.Parameter.value": "值",
   "Entry.Parameter.type": "特效类型",
   "Entry.Parameter.parameters": "参数（JSON）",
+  "Entry.ShaderParameters": "Shader 参数",
+  "Entry.ShaderMetadataUnavailable": "Shader 元数据正在加载或不可用，仍可在下方编辑参数 JSON。",
   "Entry.Parameter.target": "目标",
   "Entry.Parameter.valueType": "值类型",
   "Entry.Parameter.expression": "表达式",

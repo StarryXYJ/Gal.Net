@@ -379,12 +379,14 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         _parameters = values;
         if (_type != Source.Type) InvalidateAuthorBindings();
         SetProperty(ref _type, Source.Type, nameof(Type));
+        OnPropertyChanged(nameof(IsEffectApply));
         SetProperty(ref _condition, Source.Condition, nameof(Condition));
         if (parametersChanged) OnPropertyChanged(nameof(Parameters));
         OnPropertyChanged(nameof(HasUnknownParameters));
         foreach (var field in ParameterFields) field.RefreshValue(Parameters.GetValueOrDefault(field.Id, field.Definition.DefaultValue));
         ParameterForm?.Refresh();
         _detailForm?.Refresh();
+        _effectInlineForm?.Refresh();
         OnPropertyChanged(nameof(DetailForm));
         OnPropertyChanged(nameof(Summary));
         OnPropertyChanged(nameof(HasCondition));
@@ -442,7 +444,10 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     private DynamicParameterTable? _formParameters;
     [ObservableProperty] private EntryParameterFormBinding? _parameterForm;
     private EntryParameterFormBinding? _detailForm;
+    private EntryParameterFormBinding? _effectInlineForm;
     public EntryParameterFormBinding? DetailForm => ParameterForm ?? _detailForm;
+    public EntryParameterFormBinding? EffectInlineForm => _effectInlineForm;
+    public bool IsEffectApply => Type == BuiltinEntryIds.ApplyEffect;
     public string Summary => EditSession?.Summary(this) ?? FormatSummary();
     internal string FormatSummary(Func<string, string?>? text = null) => EntrySummaryFormatter.Build(Source, text, _scenes, _groupId);
     public bool HasCondition => !string.IsNullOrWhiteSpace(Condition);
@@ -466,6 +471,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         ParameterForm?.Dispose();
         ParameterForm = null;
         _detailForm?.Dispose(); _detailForm = null;
+        _effectInlineForm?.Dispose(); _effectInlineForm = null;
         _formParameters = null;
         _effectCatalog = effectCatalog;
         _schemaGeneration++;
@@ -475,7 +481,10 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         if (!catalog.TryGet(Type, out var schema)) { UpdateEffectHints(); return; }
         var parameters = schema.DynamicParameters;
         _detailForm = new EntryParameterFormBinding(this, parameters.Fields, schema.FieldDataType);
+        if (IsEffectApply && parameters.Fields.FirstOrDefault(field => field.Id == "program") is { } program)
+            _effectInlineForm = new EntryParameterFormBinding(this, [program], schema.FieldDataType);
         OnPropertyChanged(nameof(DetailForm));
+        OnPropertyChanged(nameof(EffectInlineForm));
 
         if (schema.FieldDataType is not null)
         {
@@ -517,11 +526,13 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     internal void InvalidateParameterFields()
     {
         _detailForm?.Dispose(); _detailForm = null;
+        _effectInlineForm?.Dispose(); _effectInlineForm = null;
         _schemaGeneration++;
         ParameterForm?.Dispose();
         ParameterForm = null;
         ParameterFields.Clear();
         OnPropertyChanged(nameof(DetailForm));
+        OnPropertyChanged(nameof(EffectInlineForm));
     }
 
     private static bool UsesDedicatedEditor(FieldDescriptor field, EntryParameterType type) =>
@@ -619,6 +630,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         if (_disposed) return;
         _disposed = true;
         _detailForm?.Dispose();
+        _effectInlineForm?.Dispose();
         ParameterForm?.Dispose();
         ParameterFields.Clear();
         GC.SuppressFinalize(this);
