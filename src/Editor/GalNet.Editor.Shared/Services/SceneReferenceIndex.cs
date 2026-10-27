@@ -4,8 +4,10 @@ using GalNet.Editor.Abstraction.Documents;
 namespace GalNet.Editor.Shared.Services;
 
 public sealed record SceneAuthorAddress(string GroupId, string EntryId);
-public sealed record SceneIdentityDefinition(SceneAuthorAddress Owner, string JsonPointer, string Handle, SceneOutputSlot Slot, string? EventId);
-public sealed record SceneIdentityReference(SceneAuthorAddress Owner, string JsonPointer, string Handle, SceneReferenceSlot Slot, SceneTimelinePosition? Position, string? EventId);
+public sealed record SceneIdentityDefinition(SceneAuthorAddress Owner, string JsonPointer, string Handle, SceneOutputSlot Slot, string? EventId)
+{ public string? Qualifier { get; init; } }
+public sealed record SceneIdentityReference(SceneAuthorAddress Owner, string JsonPointer, string Handle, SceneReferenceSlot Slot, SceneTimelinePosition? Position, string? EventId)
+{ public string? Qualifier { get; init; } }
 public sealed record SceneReferenceDiagnostic(string Code, SceneAuthorAddress Owner, string JsonPointer, string? Handle = null, IReadOnlyList<SceneIdentityDefinition>? Candidates = null, long? Revision = null);
 
 /// <summary>Syntactic relationships include unreachable and unopened Groups. They do not prove a unique creator.</summary>
@@ -31,8 +33,8 @@ public sealed class SceneReferenceIndex
                 {
                     if (--remaining < 0) throw new IndexBudgetExceededException();
                     if (string.IsNullOrWhiteSpace(slot.Handle)) return;
-                    if (slot.Output is { } output) definitions.Add(new(owner, slot.Pointer, slot.Handle, output, slot.EventId));
-                    if (slot.Reference is { } reference) references.Add(new(owner, slot.Pointer, slot.Handle, reference, slot.Position, slot.EventId));
+                    if (slot.Output is { } output) definitions.Add(new(owner, slot.Pointer, slot.Handle, output, slot.EventId) { Qualifier = slot.Qualifier });
+                    if (slot.Reference is { } reference) references.Add(new(owner, slot.Pointer, slot.Handle, reference, slot.Position, slot.EventId) { Qualifier = slot.Qualifier });
                 }, gap => { if (--remaining < 0) throw new IndexBudgetExceededException(); coverage.Add(new(gap.Code, owner, gap.Pointer)); }, step: () => { if (--remaining < 0) throw new IndexBudgetExceededException(); });
                 }
                 catch (IndexBudgetExceededException) { coverage.Add(new("scene.analysis.limit", owner, "/parameters")); goto Finished; }
@@ -41,11 +43,12 @@ public sealed class SceneReferenceIndex
         Definitions = definitions.AsReadOnly(); References = references.AsReadOnly(); Coverage = coverage.Distinct().ToArray();
     }
     public IReadOnlyList<SceneIdentityDefinition> Candidates(SceneIdentityReference reference) => Definitions.Where(definition =>
-        definition.Handle == reference.Handle && definition.Slot.Domain == reference.Slot.Domain && reference.Slot.Kinds.Contains(definition.Slot.Kind)).ToArray();
+        definition.Handle == reference.Handle && definition.Slot.Domain == reference.Slot.Domain && definition.Qualifier == reference.Qualifier && reference.Slot.Kinds.Contains(definition.Slot.Kind)).ToArray();
     private sealed class IndexBudgetExceededException : Exception { }
 }
 
-public sealed record SceneReferenceState(string Code, bool Complete, bool Reachable, IReadOnlyList<SceneTarget> Targets);
+public sealed record SceneReferenceState(string Code, bool Complete, bool Reachable, IReadOnlyList<SceneTarget> Targets)
+{ public IReadOnlyList<AudioEffectTarget> AudioEffects { get; init; } = []; }
 public sealed record SceneReferenceChange(SceneIdentityReference Reference, SceneReferenceState Before, SceneReferenceState After);
 public sealed record SceneEditImpact(IReadOnlyList<SceneReferenceChange> References, IReadOnlyList<string> ChangedGroups, IReadOnlyList<SceneReferenceDiagnostic> Coverage, bool Complete)
 {
@@ -60,6 +63,15 @@ public static class SceneReferenceAnalysis
     {
         var result = reference.Position is { } position ? analysis.AtTimeline(reference.Owner.GroupId, reference.Owner.EntryId, position)
             : analysis.Before(reference.Owner.GroupId, reference.Owner.EntryId);
+        if (reference.Slot.Domain == SceneIdentityDomain.AudioEffect)
+        {
+            var effects = result.AudioEffects.Where(effect => effect.Key.InstanceId == reference.Handle &&
+                JsonSerializer.Serialize(new[] { effect.Key.Scope == GalNet.Contracts.Builtins.Audio.SEffectScope.Bus ? "bus" : "track", effect.Key.TargetId }) == reference.Qualifier).ToArray();
+            var audioCode = !result.Reachable ? "scene.reference.unreachable" : effects.Length == 0
+                ? result.AudioComplete ? "scene.reference.missing" : "scene.reference.uncertain"
+                : effects.Any(effect => effect.Presence == TargetPresence.Possible) ? "scene.reference.possible" : "scene.reference.resolved";
+            return new(audioCode, result.AudioComplete, result.Reachable, []) { AudioEffects = effects };
+        }
         var candidates = (reference.Slot.Domain == SceneIdentityDomain.Playback ? result.Playbacks : result.Targets).Where(target => target.Handle == reference.Handle).ToArray();
         var matching = candidates.Where(target => reference.Slot.Kinds.Contains(target.Kind) && (!reference.Slot.RequiresVariants || target.Variants is not null)).ToArray();
         var code = !result.Reachable ? "scene.reference.unreachable" : matching.Length == 0
@@ -97,11 +109,11 @@ public static class SceneReferenceAnalysis
             var previous = oldAnalysis.Before(group, null); var next = newAnalysis.Before(group, null);
             // Unreachable groups are still indexed, but their execution state is not a proven effect.
             if (!previous.Reachable && !next.Reachable) continue;
-            complete &= previous.Complete && next.Complete;
+            complete &= previous.Complete && next.Complete && previous.AudioComplete && next.AudioComplete;
             if (ResultSignature(previous) != ResultSignature(next)) groups.Add(group);
         }
         return new(changes.AsReadOnly(), groups.AsReadOnly(), coverage.AsReadOnly(), complete);
     }
-    private static string Signature(SceneReferenceState state) => JsonSerializer.Serialize(new { state.Code, state.Complete, state.Reachable, Targets = state.Targets.OrderBy(target => target.Handle, StringComparer.Ordinal) });
-    private static string ResultSignature(SceneTargetResult result) => JsonSerializer.Serialize(new { result.Complete, result.Reachable, result.Targets, result.Playbacks });
+    private static string Signature(SceneReferenceState state) => JsonSerializer.Serialize(new { state.Code, state.Complete, state.Reachable, state.AudioEffects, Targets = state.Targets.OrderBy(target => target.Handle, StringComparer.Ordinal) });
+    private static string ResultSignature(SceneTargetResult result) => JsonSerializer.Serialize(new { result.Complete, result.Reachable, result.Targets, result.Playbacks, result.AudioComplete, result.AudioEffects });
 }

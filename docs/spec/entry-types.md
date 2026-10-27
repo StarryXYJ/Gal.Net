@@ -100,7 +100,7 @@ variants.show, variants.select
 animation.animate, animation.stop
 timeline.play
 audio.play, audio.stop, audio.pause, audio.resume, audio.enqueue, audio.next, audio.clear
-audio.seffect.apply, audio.seffect.stop, audio.mix.set
+audio.seffect.apply, audio.seffect.update, audio.seffect.stop, audio.mix.set
 video.play, video.stop
 effect.apply, effect.stop
 particle.play, particle.stop
@@ -163,3 +163,5 @@ Timeline 使用 TimelineOptions.Timeline 对应的 timeline 根参数（JsonElem
 Timeline 事件的 `execution` 默认为 `EachIteration`，按帧逐轮执行；`Once` 仅允许帧 0，属于整次播放的初始化；`OnCompletion` 仅允许结束帧的 layer.hide/effect.stop/particle.stop，属于整次播放的收尾，不随循环触发。恢复不重复已提交的首帧初始化。震屏/集中线预设支持 `playbackMode=Timed/UntilStopped`；持续模式编译为非阻塞、不可点击跳过的 Loop，集中线的创建和移除分别使用 Once/OnCompletion。其他预设保持单次。
 
 音频效果条目目标为 `scope`（track/bus）与必填 `targetId`；播放/轨道控制仍使用 `trackId`。效果参数和新 PCM 后端见 [音频混音](../manual/audio-mixing.md)。
+
+`audio.seffect.update` 使用 `AudioSEffectUpdateOptions`，以 `instanceId` 引用已有实例，`parameters` 为字段 patch；合并后验证，缺失实例无操作。`audio.seffect.stop` 的 `all` 默认 false；true 时停止目标上的全部效果且不能同时指定非空实例身份。Editor 自动隐藏 apply 的输出身份，类型/参数及 stop/update 的引用选择见 [作者目标查询](editor-scene-targets.md)。

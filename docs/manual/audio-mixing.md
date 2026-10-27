@@ -14,9 +14,27 @@
 
 `audio.seffect.apply` / `audio.seffect.stop` 使用 `scope`（`track` / `bus`）、必填 `targetId` 和 `instanceId`。首次 apply 添加到链尾；相同实例/类型更新参数并保留链位置。移除平滑旁路，不重启声音。已附着的效果可在空闲时保留，新音源第一帧即经过目标链。
 
+Editor 的应用表单依次选择作用范围、Track/Bus、效果类型，再编辑参数。效果类型为 ComboBox；`id` 是其内部值。新建条目自动生成隐藏的 `instanceId`，复制时生成新身份并重映射批内引用，打开和保存既有内容不会补写身份。同一条目在剧情循环中再次执行仍操作原实例。
+
+停止表单先选择 Track/Bus，再选择该剧情位置之前已经挂载的实例，列表显示效果类型、创建来源和一定/可能存在。只列出直接挂载的效果；Track 不列出所属 Bus 的效果。分支、循环或自定义语义使分析不完整时显示提示，候选不要求先运行游戏。
+
+“全部效果”是显式 `all: true`，此时不填写 `instanceId`；不能同时指定非空实例。省略实例不会隐含停止全部。应用效果要求非空实例身份，既有无效身份保留原文供修复。
+
 ```json
 {"type":"audio.seffect.apply","parameters":{"scope":"bus","targetId":"environment","instanceId":"room","id":"seffect.reverb","parameters":{"roomSize":0.65,"decaySeconds":1.8,"damping":0.4,"mix":0.25}}}
 ```
+
+剧情后续调整已有实例使用 `audio.seffect.update`。在 Editor 中选择目标和实例后会展示对应参数；只填写需要改变的字段，未指定值保持不变。运行时合并后验证全部参数，失败时保留原值；实例不存在时无操作，不改变类型、不创建新实例、不改变链位置。
+
+```json
+{"type":"audio.seffect.update","parameters":{"scope":"bus","targetId":"environment","instanceId":"room","parameters":{"mix":0.4}}}
+```
+
+```json
+{"type":"audio.seffect.stop","parameters":{"scope":"bus","targetId":"environment","all":true}}
+```
+
+同一精确挂载身份在不同分支来自不同类型时，仍能停止，但更新表单不会猜测参数类型。既有未知类型、参数和失效引用保留，查询刷新不自动清空或改选。音频效果参数尚未接入 Timeline 动画，也没有新增音频 Timeline 事件。
 
 内置效果：
 

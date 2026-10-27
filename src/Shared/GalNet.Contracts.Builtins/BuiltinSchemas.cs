@@ -75,8 +75,9 @@ public static class BuiltinSchemas
         DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(BuiltinEntryIds.ClearAudio),
         DefaultPrimitiveEntryBase.ForDto<AudioPlayOptions>(BuiltinEntryIds.EnqueueAudio),
         DefaultPrimitiveEntryBase.ForDto<AudioSEffectOptions>(BuiltinEntryIds.ApplyAudioSEffect),
+        DefaultPrimitiveEntryBase.ForDto<AudioSEffectUpdateOptions>(BuiltinEntryIds.UpdateAudioSEffect),
         DefaultPrimitiveEntryBase.ForDto<AudioLevelOptions>(BuiltinEntryIds.SetAudioLevel),
-        DefaultPrimitiveEntryBase.ForDto<AudioSEffectStopOptions>(BuiltinEntryIds.StopAudioSEffect)
+        DefaultPrimitiveEntryBase.ForDto<AudioSEffectStopOptions>(BuiltinEntryIds.StopAudioSEffect, arguments => BuiltinArgumentValidation.Validate(BuiltinEntryIds.StopAudioSEffect, arguments))
     ]);
 
     public static IEntryModule CreateVideoModule() => new DefaultEntryModule("video",

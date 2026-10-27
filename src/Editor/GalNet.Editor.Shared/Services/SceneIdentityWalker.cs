@@ -6,6 +6,7 @@ namespace GalNet.Editor.Shared.Services;
 internal sealed record SceneIdentitySlot(JsonObject Owner, string Field, string Pointer, SceneIdentityDomain Domain, SceneOutputSlot? Output, SceneReferenceSlot? Reference, SceneTimelinePosition? Position, string? EventId)
 {
     public string? Handle => Owner[Field] is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+    public string? Qualifier => Domain == SceneIdentityDomain.AudioEffect ? AudioAuthoringTarget.Qualifier(Owner) : null;
 }
 internal sealed record SceneCoverageGap(string Pointer, string Code);
 
@@ -22,6 +23,7 @@ internal static class SceneIdentityWalker
         foreach (var output in semantics.Outputs.Where(output => output.Container is null)) Visit(parameters, output.Field, pointer, output.Domain, output, null, position, eventId, slot, gap);
         foreach (var reference in semantics.References)
         {
+            if (reference.Domain == SceneIdentityDomain.AudioEffect && parameters["all"] is JsonValue all && all.TryGetValue<bool>(out var stopAll) && stopAll) continue;
             if (reference.Container is null) Visit(parameters, reference.Field, pointer, reference.Domain, null, reference, position, eventId, slot, gap);
             else if (parameters[reference.Container] is JsonArray array)
                 for (var index = 0; index < array.Count; index++)

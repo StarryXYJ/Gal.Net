@@ -105,11 +105,11 @@ public sealed class AudioCompletionValueConverter() : StringEnumValueConverter<A
 public partial class AudioSEffectOptions
 {
     public AudioSEffectOptions() => TargetId = "";
-    [Common, Field(0, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)] public string TargetId { get; set; }
-    [Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? InstanceId { get; set; }
-    [Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? Id { get; set; }
-    [Field(3, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Parameters { get; set; }
-    [Field(4, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AudioTargetScopeValueConverter))] public SEffectScope Scope { get; set; } = SEffectScope.Track;
+    [Common, Field(1, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)] public string TargetId { get; set; }
+    [Field(4, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? InstanceId { get; set; }
+    [Common, Field(2, AllowNull = true, EditorId = ValueEditorIds.Choice)] public string? Id { get; set; }
+    [Common, Field(3, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Parameters { get; set; }
+    [Common, Field(0, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AudioTargetScopeValueConverter))] public SEffectScope Scope { get; set; } = SEffectScope.Track;
 }
 
 public sealed class AudioTargetScopeValueConverter() : StringEnumValueConverter<SEffectScope>(JsonNamingPolicy.CamelCase);

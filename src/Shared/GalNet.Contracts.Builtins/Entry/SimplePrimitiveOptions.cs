@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using GalNet.Core.Parameters;
 using GalNet.Contracts.Builtins.Scene;
@@ -53,12 +54,23 @@ public partial class InstanceIdOptions
 public partial class AudioSEffectStopOptions
 {
     public AudioSEffectStopOptions() => TargetId = "";
-    [Field(0, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)]
+    [Field(1, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)]
     [Common]
     public string TargetId { get; set; }
-    [Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)]
+    [Common, Field(2, AllowNull = true, EditorId = ValueEditorIds.Choice)]
     public string? InstanceId { get; set; }
-    [Field(2, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AudioTargetScopeValueConverter))] public GalNet.Contracts.Builtins.Audio.SEffectScope Scope { get; set; } = GalNet.Contracts.Builtins.Audio.SEffectScope.Track;
+    [Common, Field(0, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AudioTargetScopeValueConverter))] public GalNet.Contracts.Builtins.Audio.SEffectScope Scope { get; set; } = GalNet.Contracts.Builtins.Audio.SEffectScope.Track;
+    [Field(3, EditorId = ValueEditorIds.Choice)] public bool All { get; set; }
+}
+
+[GenerateFieldSchema]
+public partial class AudioSEffectUpdateOptions
+{
+    [Common, Field(0, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AudioTargetScopeValueConverter))]
+    public GalNet.Contracts.Builtins.Audio.SEffectScope Scope { get; set; } = GalNet.Contracts.Builtins.Audio.SEffectScope.Track;
+    [Common, Field(1, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)] public string TargetId { get; set; } = "";
+    [Common, Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? InstanceId { get; set; }
+    [Common, Field(3, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Parameters { get; set; }
 }
 
 [GenerateFieldSchema]

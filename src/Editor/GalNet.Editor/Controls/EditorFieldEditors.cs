@@ -42,6 +42,12 @@ public static class EditorFieldEditors
         FieldEditorLease AudioTarget(FieldEditorContext context) => AudioTrackFieldEditor.Create(context, content, target: true);
         registry.RegisterMember<AudioSEffectOptions>(value => value.TargetId, AudioTarget);
         registry.RegisterMember<AudioSEffectStopOptions>(value => value.TargetId, AudioTarget);
+        registry.RegisterMember<AudioSEffectUpdateOptions>(value => value.TargetId, AudioTarget);
+        registry.RegisterMember<AudioSEffectOptions>(value => value.Id, context => AudioEffectFieldEditor.Type(context, scenes));
+        registry.RegisterMember<AudioSEffectOptions>(value => value.Parameters, context => AudioEffectParametersFieldEditor.Create(context, scenes));
+        registry.RegisterMember<AudioSEffectUpdateOptions>(value => value.Parameters, context => AudioEffectParametersFieldEditor.Create(context, scenes));
+        registry.RegisterMember<AudioSEffectStopOptions>(value => value.InstanceId, context => AudioEffectFieldEditor.Instance(context, scenes));
+        registry.RegisterMember<AudioSEffectUpdateOptions>(value => value.InstanceId, context => AudioEffectFieldEditor.Instance(context, scenes));
         registry.RegisterMember<AudioLevelOptions>(value => value.TargetId, AudioTarget);
         registry.RegisterMember<TextVoiceOptions>(value => value.TrackId, Track);
         registry.RegisterMember<NvlVoiceOptions>(value => value.TrackId, Track);

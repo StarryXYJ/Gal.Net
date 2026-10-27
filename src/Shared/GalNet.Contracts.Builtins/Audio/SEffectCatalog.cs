@@ -12,13 +12,22 @@ public sealed record SEffectParameterDefinition(
     string Name,
     bool Required = false,
     float? Minimum = null,
-    float? Maximum = null);
+    float? Maximum = null,
+    float? DefaultValue = null)
+{
+    public FieldDescriptor Field => new(Name, ParameterValidation.Field(Name, typeof(float), Required, Minimum, Maximum).Value,
+        Required, defaultValue: DefaultValue is { } value ? JsonSerializer.SerializeToElement(value) : null);
+}
 
 /// <summary>Platform-neutral authoring metadata for one named audio effect.</summary>
 public sealed record SEffectDefinition(
     string Id,
     IReadOnlySet<SEffectScope> SupportedScopes,
-    IReadOnlyList<SEffectParameterDefinition> Parameters);
+    IReadOnlyList<SEffectParameterDefinition> Parameters)
+{
+    public JsonElement DefaultParameters => JsonSerializer.SerializeToElement(Parameters.Where(parameter => parameter.DefaultValue is not null)
+        .ToDictionary(parameter => parameter.Name, parameter => parameter.DefaultValue!.Value));
+}
 
 public interface ISEffectCatalog
 {
@@ -40,17 +49,17 @@ public sealed class SEffectCatalog : ISEffectCatalog
             .ToDictionary(definition => definition.Id, StringComparer.OrdinalIgnoreCase);
         _fields = _byId.Values.ToDictionary(definition => definition.Id,
             definition => (IReadOnlyDictionary<string, FieldDescriptor>)definition.Parameters.ToDictionary(parameter => parameter.Name,
-                parameter => ParameterValidation.Field(parameter.Name, typeof(float), parameter.Required, parameter.Minimum, parameter.Maximum), StringComparer.Ordinal),
+                parameter => parameter.Field, StringComparer.Ordinal),
             StringComparer.OrdinalIgnoreCase);
         Definitions = _byId.Values.OrderBy(definition => definition.Id, StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
     public static SEffectCatalog Empty { get; } = new([]);
     public static SEffectCatalog Builtins { get; } = new([
-        new("seffect.gain", Scopes(), [new("gain", Required: true, Minimum: 0, Maximum: 1)]),
-        new("seffect.lowPass", Scopes(), [new("cutoffHz", Required: true, Minimum: 20, Maximum: 20_000), new("q", Minimum: .1f, Maximum: 10)]),
-        new("seffect.highPass", Scopes(), [new("cutoffHz", Required: true, Minimum: 20, Maximum: 20_000), new("q", Minimum: .1f, Maximum: 10)]),
-        new("seffect.reverb", Scopes(), [new("roomSize", Minimum: 0, Maximum: 1), new("decaySeconds", Minimum: .1f, Maximum: 20), new("damping", Minimum: 0, Maximum: 1), new("mix", Minimum: 0, Maximum: 1)])]);
+        new("seffect.gain", Scopes(), [new("gain", Required: true, Minimum: 0, Maximum: 1, DefaultValue: SEffectDefaults.Gain)]),
+        new("seffect.lowPass", Scopes(), [new("cutoffHz", Required: true, Minimum: 20, Maximum: 20_000, DefaultValue: SEffectDefaults.LowPassCutoff), new("q", Minimum: .1f, Maximum: 10, DefaultValue: SEffectDefaults.Q)]),
+        new("seffect.highPass", Scopes(), [new("cutoffHz", Required: true, Minimum: 20, Maximum: 20_000, DefaultValue: SEffectDefaults.HighPassCutoff), new("q", Minimum: .1f, Maximum: 10, DefaultValue: SEffectDefaults.Q)]),
+        new("seffect.reverb", Scopes(), [new("roomSize", Minimum: 0, Maximum: 1, DefaultValue: SEffectDefaults.RoomSize), new("decaySeconds", Minimum: .1f, Maximum: 20, DefaultValue: SEffectDefaults.DecaySeconds), new("damping", Minimum: 0, Maximum: 1, DefaultValue: SEffectDefaults.Damping), new("mix", Minimum: 0, Maximum: 1, DefaultValue: SEffectDefaults.Mix)])]);
     private static HashSet<SEffectScope> Scopes() => [SEffectScope.Track, SEffectScope.Bus];
     public IReadOnlyList<SEffectDefinition> Definitions { get; }
     public bool TryGet(string id, out SEffectDefinition definition) => _byId.TryGetValue(id, out definition!);

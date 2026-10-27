@@ -3,6 +3,7 @@ namespace GalNet.Contracts.Builtins;
 /// <summary>Stable wire identities for the explicitly registered built-in entries.</summary>
 public static class BuiltinEntryIds
 {
+    public const string UpdateAudioSEffect = "audio.seffect.update";
     public const string Animate = "animation.animate";
     public const string PlayTimeline = "timeline.play";
     public const string StopAnimation = "animation.stop";

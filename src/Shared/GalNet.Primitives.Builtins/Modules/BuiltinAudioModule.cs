@@ -76,7 +76,9 @@ public sealed class BuiltinAudioModule : PrimitiveModule
                 options.TargetId, options.InstanceId ?? "",
                 options.Id ?? "", Arguments.Json<JsonElement>(options.Parameters), options.Scope))));
         registry.Register<AudioSEffectStopOptions>(BuiltinEntryIds.StopAudioSEffect, (context, options) => Audio(context, scope, () =>
-            runtime.StopSEffect(tracks, options.TargetId, options.InstanceId ?? "", options.Scope)));
+            runtime.StopSEffect(tracks, options.TargetId, options.InstanceId ?? "", options.Scope, options.All)));
+        registry.Register<AudioSEffectUpdateOptions>(BuiltinEntryIds.UpdateAudioSEffect, (context, options) => Audio(context, scope, () =>
+            runtime.UpdateSEffect(tracks, options.TargetId, options.InstanceId ?? "", options.Parameters, options.Scope)));
         registry.Register<AudioLevelOptions>(BuiltinEntryIds.SetAudioLevel, (context, options) => Audio(context, scope, () =>
             runtime.SetLevel(tracks, new(options.TargetId, options.Scope, options.Gain, options.Muted))));
     }

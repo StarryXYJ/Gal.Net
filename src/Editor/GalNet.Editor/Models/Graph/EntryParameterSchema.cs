@@ -23,6 +23,14 @@ public interface IEntryFieldOrigin
     string EntryId { get; }
 }
 
+/// <summary>Dependent fields submit one author intent, preserving sibling and extension values.</summary>
+public interface IEntryParameterPatchOrigin : IEntryFieldOrigin
+{
+    string EntryType { get; }
+    IReadOnlyDictionary<string, JsonElement> Parameters { get; }
+    Task<ValueIssue?> CommitPatchAsync(IReadOnlyDictionary<string, FieldValue> patch, CancellationToken token);
+}
+
 /// <summary>Schema-driven edits read the author document directly; no DTO snapshot or synchronization is needed.</summary>
 public sealed class EntryParameterFormBinding : IDisposable
 {
@@ -50,12 +58,17 @@ public sealed class EntryParameterFormBinding : IDisposable
     public void Refresh() { if (!_disposed) _changed?.Invoke(this, EventArgs.Empty); }
     public void Dispose() { _disposed = true; _changed = null; }
 
-    private sealed class DocumentField(EntryParameterFormBinding form, FieldDescriptor field) : IFieldBinding, IEntryFieldOrigin
+    private sealed class DocumentField(EntryParameterFormBinding form, FieldDescriptor field) : IFieldBinding, IEntryParameterPatchOrigin
     {
         public FieldDraftState? Draft => GetDraft();
         private FieldDraftState? GetDraft() => form.IsCurrent ? form._owner.EditSession?.Get(form._owner, field) : null;
         public string? GroupId => form._owner.AuthorGroupId;
         public string EntryId => form._owner.StableId;
+        public string EntryType => form._owner.Type;
+        public IReadOnlyDictionary<string, JsonElement> Parameters => form._owner.Source.Parameters;
+        public Task<ValueIssue?> CommitPatchAsync(IReadOnlyDictionary<string, FieldValue> patch, CancellationToken token) => !form.IsCurrent
+            ? Task.FromResult<ValueIssue?>(new("entry.obsolete", "Entry schema has changed."))
+            : form._owner.CommitParametersAsync(patch.ToDictionary(pair => pair.Key, pair => (form.Fields.Single(field => field.Id == pair.Key), pair.Value)), token);
         public object HostContext => this;
         public object? Label => SceneFieldSemantics.Label(form._owner.Type, @field.Id) ?? @field.LabelKey ?? "Entry.Parameter." + @field.Id;
         public bool IsEnabled => form.IsCurrent;
@@ -132,10 +145,15 @@ public partial class EntryParameterEditorItemViewModel : ObservableObject
 
 /// <summary>Field adapter submits through the project's explicit Entry intent.</summary>
 public sealed class SchemaEntryParameterEditorItemViewModel(EntryParameterDefinition definition, EntryEditorItemViewModel owner,
-    Action<string, string> set) : EntryParameterEditorItemViewModel(definition, "", [], set), IFieldBinding, IEntryFieldOrigin
+    Action<string, string> set) : EntryParameterEditorItemViewModel(definition, "", [], set), IFieldBinding, IEntryParameterPatchOrigin
 {
     public string? GroupId => owner.AuthorGroupId;
     public string EntryId => owner.StableId;
+    public string EntryType => owner.Type;
+    public IReadOnlyDictionary<string, JsonElement> Parameters => owner.Source.Parameters;
+    public Task<ValueIssue?> CommitPatchAsync(IReadOnlyDictionary<string, FieldValue> patch, CancellationToken token) => !IsEnabled
+        ? Task.FromResult<ValueIssue?>(new("entry.obsolete", "Entry schema has changed."))
+        : owner.CommitParametersAsync(patch.ToDictionary(pair => pair.Key, pair => (owner.DetailForm!.Fields.Single(field => field.Id == pair.Key), pair.Value)), token);
     public object HostContext => this;
     public bool IsEnabled => owner.IsCurrent && owner.Type == _type && owner.ParameterFields.Contains(this);
     public bool CanReset => owner.Type != GalNet.Contracts.Builtins.BuiltinEntryIds.PlayTimeline || Id != "timeline" || Definition.Field.DefaultValue is not null;

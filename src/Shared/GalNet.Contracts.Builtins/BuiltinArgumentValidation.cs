@@ -18,6 +18,11 @@ internal static class BuiltinArgumentValidation
     {
         switch (type)
         {
+            case BuiltinEntryIds.StopAudioSEffect:
+                if (arguments.TryGetProperty("all", out var all) && all.ValueKind == JsonValueKind.True &&
+                    arguments.TryGetProperty("instanceId", out var instance) && instance.ValueKind == JsonValueKind.String && !string.IsNullOrEmpty(instance.GetString()))
+                    throw new ArgumentException("Stopping all audio effects cannot specify an instance.");
+                break;
             case BuiltinEntryIds.PlayVideo:
                 RequireText(type, arguments, "asset", "handleId");
                 var points = arguments.GetProperty("skipPoints").Deserialize<double[]>(JsonOptions)

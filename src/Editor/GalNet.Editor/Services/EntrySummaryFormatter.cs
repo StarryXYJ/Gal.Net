@@ -9,6 +9,14 @@ internal static class EntrySummaryFormatter
     public static string Build(EditorEntryData entry, Func<string, string?>? text = null, SceneTargetCatalog? scenes = null, string? group = null)
     {
         List<string> parts = [];
+        if (entry.Type is GalNet.Contracts.Builtins.BuiltinEntryIds.ApplyAudioSEffect or GalNet.Contracts.Builtins.BuiltinEntryIds.StopAudioSEffect or GalNet.Contracts.Builtins.BuiltinEntryIds.UpdateAudioSEffect)
+        {
+            if (entry.Parameters.GetValueOrDefault("targetId") is { ValueKind: JsonValueKind.String } target) parts.Add(target.GetString() ?? "");
+            if (entry.Type == GalNet.Contracts.Builtins.BuiltinEntryIds.ApplyAudioSEffect && entry.Parameters.GetValueOrDefault("id") is { ValueKind: JsonValueKind.String } effectType)
+                parts.Add(scenes?.AudioTypeName(effectType.GetString() ?? "") ?? effectType.GetString() ?? "");
+            if (entry.Type == GalNet.Contracts.Builtins.BuiltinEntryIds.StopAudioSEffect && entry.Parameters.GetValueOrDefault("all").ValueKind == JsonValueKind.True)
+                parts.Add(scenes?.Text["Audio.AllEffects"] ?? "All effects");
+        }
         foreach (var (field, value) in entry.Parameters)
         {
             if (field is not ("content" or "speaker" or "asset" or "assetId" or "expression" or "toAssetId" or "program")) continue;

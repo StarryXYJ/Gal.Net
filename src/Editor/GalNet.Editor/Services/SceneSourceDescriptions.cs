@@ -23,9 +23,11 @@ internal sealed class SceneSourceDescriptions(IEditorDocumentService documents, 
         return !string.IsNullOrEmpty(path) ? Path.GetFileName(path) : Guid.TryParse(id, out _) ? text["Scene.Unresolved"] : id;
     }
     public string Origin(SceneTarget target)
+        => Origin(target.Locator);
+    public string Origin(SceneLocator locator)
     {
-        var group = documents.CurrentDocument.Nodes.FirstOrDefault(node => node.Id == target.Locator.GroupId);
-        var entry = documents.Groups.GetValueOrDefault(target.Locator.GroupId)?.Entries.FirstOrDefault(item => item.StableId == target.Locator.EntryId);
+        var group = documents.CurrentDocument.Nodes.FirstOrDefault(node => node.Id == locator.GroupId);
+        var entry = documents.Groups.GetValueOrDefault(locator.GroupId)?.Entries.FirstOrDefault(item => item.StableId == locator.EntryId);
         return (group?.Name ?? "") + " / " + entry?.Id;
     }
     public Task PrepareAsync(string id)

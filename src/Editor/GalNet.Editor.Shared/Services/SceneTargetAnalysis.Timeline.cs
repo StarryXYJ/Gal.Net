@@ -38,7 +38,11 @@ public sealed partial class SceneTargetAnalysis
     }
     private static SceneTargetResult Result(State state) => new(state.Targets.Values.OrderBy(target => target.Locator.GroupId, StringComparer.Ordinal)
         .ThenBy(target => target.Locator.EntryId, StringComparer.Ordinal).ThenBy(target => target.CreatedAtFrame).ThenBy(target => target.Locator.EventId, StringComparer.Ordinal).ToArray(), state.Complete && state.Targets.Values.All(target => target.CapabilitiesComplete), true)
-    { Playbacks = state.Playbacks.Values.OrderBy(target => target.Locator.GroupId, StringComparer.Ordinal).ThenBy(target => target.Locator.EntryId, StringComparer.Ordinal).ToArray() };
+    {
+        AudioEffects = state.AudioEffects.Values.OrderBy(effect => effect.Key.Scope).ThenBy(effect => effect.Key.TargetId, StringComparer.Ordinal).ThenBy(effect => effect.Key.InstanceId, StringComparer.Ordinal).ToArray(),
+        AudioComplete = state.AudioComplete && state.AudioEffects.Values.All(effect => effect.MetadataComplete),
+        Playbacks = state.Playbacks.Values.OrderBy(target => target.Locator.GroupId, StringComparer.Ordinal).ThenBy(target => target.Locator.EntryId, StringComparer.Ordinal).ToArray()
+    };
     public SceneTargetResult AtTimeline(string groupId, string entryId, SceneTimelinePosition position)
     {
         var state = StateBefore(groupId, entryId);

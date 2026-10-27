@@ -3,6 +3,7 @@ using System.Text.Json;
 using Avalonia.Threading;
 using GalNet.Assets.Variants;
 using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Audio;
 using GalNet.Core.Assets;
 using GalNet.Contracts.Builtins.Scene;
 using GalNet.Contracts.Builtins.Variants;
@@ -21,6 +22,9 @@ public sealed class ProjectSceneTargets : IDisposable
     private readonly IEditorDocumentService _documents;
     private readonly IAssetManager? _assets;
     private readonly IEffectCatalog? _effects;
+    public ISEffectCatalog AudioCatalog { get; }
+    private AudioConfiguration? _audioConfiguration;
+    private string _audioConfigurationFingerprint = "";
     private readonly IAssetCatalogService? _resources;
     private readonly IProjectContentSession? _content;
     private readonly IProjectService? _projects;
@@ -57,9 +61,9 @@ public sealed class ProjectSceneTargets : IDisposable
 
     public ProjectSceneTargets(IEditorDocumentService documents, IAssetManager? assets = null,
         IEffectCatalog? effects = null, IAssetCatalogService? resources = null, IProjectContentSession? content = null,
-        IProjectService? projects = null, IResourceTypeCatalog? types = null, EditorHistories? histories = null)
+        IProjectService? projects = null, IResourceTypeCatalog? types = null, EditorHistories? histories = null, ISEffectCatalog? audioEffects = null)
     {
-        _documents = documents; _assets = assets; _effects = effects; _resources = resources;
+        _documents = documents; _assets = assets; _effects = effects; AudioCatalog = audioEffects ?? SEffectCatalog.Builtins; _resources = resources;
         _content = content; _projects = projects; _types = types;
         _history = histories?.Content; _changes = _history?.AuthorChanges;
         if (_changes is not null) _changes.Committed += OnAuthorCommitted;
@@ -94,6 +98,7 @@ public sealed class ProjectSceneTargets : IDisposable
     }
     private void OnContentChanged()
     {
+        lock (_gate) RefreshAudioConfiguration();
         var fingerprint = string.Join("\n", _content!.FileDocuments.Values.Where(file => file.Exists && file.ManagedContent && file.Path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
             .OrderBy(file => file.Id, StringComparer.Ordinal).Select(file => file.Id + ":" + file.Path + ":" + Convert.ToBase64String(file.Data)));
         if (fingerprint == _workingFingerprint) return;
@@ -119,6 +124,7 @@ public sealed class ProjectSceneTargets : IDisposable
         {
             if (!Capture()) return new([], false, false);
             QueuePreparation();
+            RefreshAudioConfiguration();
             EnsureAnalysis();
             var key = (groupId, entryId, position);
             if (!retain) return Evaluate(key);
@@ -126,10 +132,24 @@ public sealed class ProjectSceneTargets : IDisposable
             return UpdateQuery(key);
         }
     }
+    private void RefreshAudioConfiguration()
+    {
+        if (_content is null || _disposed || !_documents.IsLoaded) return;
+        var options = (_projects?.Current?.Configuration ?? _content.CaptureWorking().Configuration).ReadDefaultOptions();
+        var fingerprint = JsonSerializer.Serialize(new { options.AudioTracks, options.AudioBuses });
+        if (fingerprint == _audioConfigurationFingerprint) return;
+        _audioConfigurationFingerprint = fingerprint;
+        try { _audioConfiguration = new(options.AudioTracks, options.AudioBuses); }
+        catch (InvalidDataException) { _audioConfiguration = AudioConfiguration.Empty; }
+        _analysis = null; _previousAnalysis = null;
+        Revision++;
+        RefreshQueries();
+        NotifyChanged();
+    }
     private void EnsureAnalysis()
     {
         if (_analysis is not null || _frozen is null) return;
-        _analysis = new(_frozen.Graph, _frozen.GroupEntries, programs: _assets is null ? null : _programs, effects: _effects, variants: _variants, previousAnalysis: _previousAnalysis);
+        _analysis = new(_frozen.Graph, _frozen.GroupEntries, programs: _assets is null ? null : _programs, effects: _effects, variants: _variants, previousAnalysis: _previousAnalysis, audioConfiguration: _audioConfiguration, audioCatalog: AudioCatalog);
         _previousAnalysis = null;
     }
     private SceneTargetResult Evaluate((string Group, string? Entry, SceneTimelinePosition? Position) key) => key.Position is null
@@ -143,7 +163,7 @@ public sealed class ProjectSceneTargets : IDisposable
         {
             var previous = _queries[key];
             var next = UpdateQuery(key, author);
-            changed |= previous.Revision != next.Revision || previous.ContextRevision != next.ContextRevision || previous.AuthorRevision != next.AuthorRevision;
+            changed |= previous.AudioRevision != next.AudioRevision || previous.Revision != next.Revision || previous.ContextRevision != next.ContextRevision || previous.AuthorRevision != next.AuthorRevision;
         }
         return changed;
     }
@@ -154,10 +174,11 @@ public sealed class ProjectSceneTargets : IDisposable
         var source = _documents.Groups.GetValueOrDefault(key.Group)?.Entries.FirstOrDefault(entry => entry.StableId == key.Entry);
         _queries.TryGetValue(key, out var previous);
         var version = previous is not null && SceneTargetAnalysis.Equivalent(previous, next) ? previous.Revision : ++_queryRevision;
+        var audioVersion = previous is not null && SceneTargetAnalysis.EquivalentAudio(previous, next) ? previous.AudioRevision : ++_queryRevision;
         var context = previous is not null && ReferenceEquals(_querySources.GetValueOrDefault(key), source) && SceneTargetAnalysis.SameEntry(_queryOwners.GetValueOrDefault(key), owner) ? previous.ContextRevision : ++_queryRevision;
         var dependency = previous is not null && (!author || version == previous.Revision && context == previous.ContextRevision) ? previous.AuthorRevision : ++_queryRevision;
         _queryOwners[key] = owner; _querySources[key] = source;
-        return _queries[key] = next with { Revision = version, ContextRevision = context, AuthorRevision = dependency };
+        return _queries[key] = next with { Revision = version, AudioRevision = audioVersion, ContextRevision = context, AuthorRevision = dependency };
     }
 
     // Only the caller's wait is cancelled; resource IO belongs to the project/refresh generation.

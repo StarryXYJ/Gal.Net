@@ -2,7 +2,7 @@ using GalNet.Contracts.Builtins;
 
 namespace GalNet.Editor.Shared.Services;
 
-public enum SceneIdentityDomain { Object, Playback }
+public enum SceneIdentityDomain { Object, Playback, AudioEffect }
 public sealed record SceneOutputSlot(string Field, string Role, SceneIdentityDomain Domain, SceneTargetKind Kind, string? Container = null);
 public sealed record SceneReferenceSlot(string Field, SceneIdentityDomain Domain, IReadOnlyList<SceneTargetKind> Kinds, bool RequiresVariants = false, bool AllowsGlobal = false, string? Container = null);
 public sealed record SceneEntrySemantics(IReadOnlyList<SceneOutputSlot> Outputs, IReadOnlyList<SceneReferenceSlot> References, bool SceneNeutral = false, bool Timeline = false);
@@ -42,7 +42,10 @@ public static class SceneAuthoringSemantics
             Add(type, [Output(cross ? "newHandleId" : "toLayerHandleId", "primaryLayer", SceneTargetKind.Layer), Output("playbackHandleId", "playback", SceneTargetKind.Playback)], [Reference(cross ? "oldHandleId" : "fromLayerHandleId", SceneTargetKind.Layer)]);
         }
         Add(BuiltinEntryIds.PlayTimeline, [Output("playbackHandleId", "playback", SceneTargetKind.Playback) with { Container = "timeline" }], [], timeline: true);
-        foreach (var type in new[] { BuiltinEntryIds.Text, BuiltinEntryIds.ShowDialogue, BuiltinEntryIds.HideDialogue, BuiltinEntryIds.ShowNvl, BuiltinEntryIds.HideNvl, BuiltinEntryIds.ClearNvl, BuiltinEntryIds.AppendNvl, BuiltinEntryIds.TextVoice, BuiltinEntryIds.AppendVoiceNvl, BuiltinEntryIds.Wait, BuiltinEntryIds.SetVariable, BuiltinEntryIds.UnlockGallery, BuiltinEntryIds.PlayAudio, BuiltinEntryIds.StopAudio, BuiltinEntryIds.PauseAudio, BuiltinEntryIds.ResumeAudio, BuiltinEntryIds.NextAudio, BuiltinEntryIds.ClearAudio, BuiltinEntryIds.EnqueueAudio, BuiltinEntryIds.ApplyAudioSEffect, BuiltinEntryIds.StopAudioSEffect, BuiltinEntryIds.SetAudioLevel, BuiltinEntryIds.BurstParticles }) entries.Add(type, Neutral);
+        entries.Add(BuiltinEntryIds.ApplyAudioSEffect, new([new("instanceId", "audioEffect", SceneIdentityDomain.AudioEffect, SceneTargetKind.AudioEffect)], [], SceneNeutral: true));
+        foreach (var type in new[] { BuiltinEntryIds.StopAudioSEffect, BuiltinEntryIds.UpdateAudioSEffect })
+            entries.Add(type, new([], [new("instanceId", SceneIdentityDomain.AudioEffect, [SceneTargetKind.AudioEffect])], SceneNeutral: true));
+        foreach (var type in new[] { BuiltinEntryIds.Text, BuiltinEntryIds.ShowDialogue, BuiltinEntryIds.HideDialogue, BuiltinEntryIds.ShowNvl, BuiltinEntryIds.HideNvl, BuiltinEntryIds.ClearNvl, BuiltinEntryIds.AppendNvl, BuiltinEntryIds.TextVoice, BuiltinEntryIds.AppendVoiceNvl, BuiltinEntryIds.Wait, BuiltinEntryIds.SetVariable, BuiltinEntryIds.UnlockGallery, BuiltinEntryIds.PlayAudio, BuiltinEntryIds.StopAudio, BuiltinEntryIds.PauseAudio, BuiltinEntryIds.ResumeAudio, BuiltinEntryIds.NextAudio, BuiltinEntryIds.ClearAudio, BuiltinEntryIds.EnqueueAudio, BuiltinEntryIds.SetAudioLevel, BuiltinEntryIds.BurstParticles }) entries.Add(type, Neutral);
         return entries;
     }
 }

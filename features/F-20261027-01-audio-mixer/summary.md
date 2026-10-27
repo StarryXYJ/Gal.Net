@@ -45,3 +45,7 @@ miniaudio 0.11.23 和固定提交 stb_vorbis 的源码、授权、SHA256 随 nat
 混响为基础算法空间，不是卷积 IR。没有公开 Voice/Send、跨 Bus 路由、Sidechain 或 VST；只有 Windows x64 设备验收。没有保存精确游标、DSP 尾音或包络时钟，也未承诺无缝队列/循环或任何负载下的绝对无断音。尚未对混响进行专业主观调音或长时间压力测试。
 
 当前接口与示例见 [音频手册](../../docs/manual/audio-mixing.md)、[Runtime](../../docs/spec/runtime.md)、[架构](../../docs/spec/architecture.md)。
+
+## 音频效果创作增量
+
+基线提交 `f3c19655` 后，已实现类型 ComboBox、隐藏自动身份、直接挂载实例分析/选择、显式停止全部和参数 patch 更新。独立验证与设计校正见 [创作实现记录](authoring-summary.md)，不覆盖本文的后端历史证据和全仓保留项。

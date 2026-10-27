@@ -1,3 +1,4 @@
+using GalNet.Contracts.Builtins.Audio;
 using System.Text.Json;
 
 namespace GalNet.Media.Audio;
@@ -30,8 +31,8 @@ internal sealed class PcmEffect
         }
     }
     public void Update(JsonElement parameters) => Volatile.Write(ref _parameters, Parse(parameters));
-    private static Parameters Parse(JsonElement parameters) => new(Value(parameters, "cutoffHz", 20_000), Value(parameters, "q", .7071068f),
-        Value(parameters, "gain", 1), Value(parameters, "roomSize", .5f), Value(parameters, "decaySeconds", 1.5f), Value(parameters, "damping", .4f), Value(parameters, "mix", .25f));
+    private Parameters Parse(JsonElement parameters) => new(Value(parameters, "cutoffHz", Id.Equals("seffect.highPass", StringComparison.OrdinalIgnoreCase) ? SEffectDefaults.HighPassCutoff : SEffectDefaults.LowPassCutoff), Value(parameters, "q", SEffectDefaults.Q),
+        Value(parameters, "gain", SEffectDefaults.Gain), Value(parameters, "roomSize", SEffectDefaults.RoomSize), Value(parameters, "decaySeconds", SEffectDefaults.DecaySeconds), Value(parameters, "damping", SEffectDefaults.Damping), Value(parameters, "mix", SEffectDefaults.Mix));
     private static float Value(JsonElement parameters, string name, float fallback) => parameters.TryGetProperty(name, out var value) ? value.GetSingle() : fallback;
     public void Process(Span<float> samples)
     {

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Audio;
 using GalNet.Contracts.Builtins.Scene;
 using GalNet.Contracts.Builtins.Variants;
 using GalNet.Editor.Abstraction.Documents;
@@ -8,7 +9,7 @@ using GalNet.Editor.Abstraction.Documents;
 namespace GalNet.Editor.Shared.Services;
 
 public enum TargetPresence { Definite, Possible }
-public enum SceneTargetKind { Layer, Particle, Effect, Unresolved, Playback }
+public enum SceneTargetKind { Layer, Particle, Effect, Unresolved, Playback, AudioEffect }
 public sealed record SceneLocator(string GroupId, string EntryId, string Slot, string? EventId = null);
 public sealed record SceneTimelinePosition(int Frame, int? BeforeEventIndex = null, bool IncludeFuture = false);
 public sealed record SceneTarget(SceneLocator Locator, string Handle, SceneTargetKind Kind, string Resource,
@@ -19,6 +20,9 @@ public sealed record SceneTarget(SceneLocator Locator, string Handle, SceneTarge
 public sealed record SceneTargetResult(IReadOnlyList<SceneTarget> Targets, bool Complete, bool Reachable)
 {
     public IReadOnlyList<SceneTarget> Playbacks { get; init; } = [];
+    public IReadOnlyList<AudioEffectTarget> AudioEffects { get; init; } = [];
+    public bool AudioComplete { get; init; }
+    public long AudioRevision { get; init; }
     public long Revision { get; init; }
     public long ContextRevision { get; init; }
     public long AuthorRevision { get; init; }
@@ -31,8 +35,16 @@ public sealed partial class SceneTargetAnalysis
     {
         public Dictionary<string, SceneTarget> Targets { get; } = new(StringComparer.Ordinal);
         public Dictionary<string, SceneTarget> Playbacks { get; } = new(StringComparer.Ordinal);
+        public Dictionary<AudioEffectKey, AudioEffectTarget> AudioEffects { get; } = [];
+        public bool AudioComplete { get; set; } = true;
         public bool Complete { get; set; } = true;
-        public State Clone() { var copy = new State { Complete = Complete }; foreach (var pair in Targets) copy.Targets.Add(pair.Key, pair.Value); foreach (var pair in Playbacks) copy.Playbacks.Add(pair.Key, pair.Value); return copy; }
+        public State Clone() { var copy = new State { Complete = Complete, AudioComplete = AudioComplete }; foreach (var pair in AudioEffects) copy.AudioEffects.Add(pair.Key, pair.Value); foreach (var pair in Targets) copy.Targets.Add(pair.Key, pair.Value); foreach (var pair in Playbacks) copy.Playbacks.Add(pair.Key, pair.Value); return copy; }
+        public void UncertainAudio()
+        {
+            AudioComplete = false;
+            foreach (var (key, effect) in AudioEffects.ToArray()) AudioEffects[key] = effect with { Presence = TargetPresence.Possible };
+        }
+        public void UncertainAll() { Uncertain(); UncertainAudio(); }
         public void Uncertain()
         {
             Complete = false;
@@ -46,16 +58,19 @@ public sealed partial class SceneTargetAnalysis
     private readonly IReadOnlyDictionary<string, ImageVariantsDefinition?>? _variants;
     private readonly Dictionary<string, State> _inputs = new(StringComparer.Ordinal);
     private readonly Dictionary<string, State> _outputs = new(StringComparer.Ordinal);
+    private readonly AudioConfiguration? _audioConfiguration;
+    private readonly ISEffectCatalog _audioCatalog;
     private bool _budgetExceeded;
     public SceneTargetAnalysis(EditorGraphDocument graph, IReadOnlyDictionary<string, List<EditorEntryData>> groups, int budget = 10000,
         IReadOnlyDictionary<string, ShaderEffectDescriptor?>? programs = null, IEffectCatalog? effects = null,
-        IReadOnlyDictionary<string, ImageVariantsDefinition?>? variants = null, SceneTargetAnalysis? previousAnalysis = null)
+        IReadOnlyDictionary<string, ImageVariantsDefinition?>? variants = null, SceneTargetAnalysis? previousAnalysis = null, AudioConfiguration? audioConfiguration = null, ISEffectCatalog? audioCatalog = null)
     {
         // Caller owns the immutable snapshot for this generation.
-        _groups = groups;
+        _groups = groups; _audioConfiguration = audioConfiguration; _audioCatalog = audioCatalog ?? SEffectCatalog.Builtins;
         _programs = programs; _effects = effects; _variants = variants;
         if (previousAnalysis is not null && (!ReferenceEquals(programs, previousAnalysis._programs)
-            || !ReferenceEquals(effects, previousAnalysis._effects) || !ReferenceEquals(variants, previousAnalysis._variants))) previousAnalysis = null;
+            || !ReferenceEquals(effects, previousAnalysis._effects) || !ReferenceEquals(variants, previousAnalysis._variants) || !ReferenceEquals(audioConfiguration, previousAnalysis._audioConfiguration)
+            || !ReferenceEquals(_audioCatalog, previousAnalysis._audioCatalog))) previousAnalysis = null;
         var nodes = graph.Nodes.ToDictionary(node => node.Id, StringComparer.Ordinal);
         if (!nodes.ContainsKey(graph.RootNodeId)) return;
         var outputs = _outputs;
@@ -75,9 +90,9 @@ public sealed partial class SceneTargetAnalysis
             if (node.Type == "Group")
             {
                 if (groups.TryGetValue(id, out var entries)) output = TransferGroup(input, id, entries, previousAnalysis);
-                else output.Uncertain();
+                else output.UncertainAll();
             }
-            else if (node.Type is not ("Entry" or "Branch" or "Exit")) output.Uncertain();
+            else if (node.Type is not ("Entry" or "Branch" or "Exit")) output.UncertainAll();
             if (outputs.TryGetValue(id, out var old) && Equal(old, output)) continue;
             outputs[id] = output;
             if (successors.TryGetValue(id, out var next)) foreach (var target in next) queue.Enqueue(target);
@@ -95,7 +110,7 @@ public sealed partial class SceneTargetAnalysis
         if (_budgetExceeded)
         {
             // Do not publish an unfinished fixed point as a definite fact.
-            state.Uncertain();
+            state.UncertainAll();
             foreach (var (id, group) in _groups) foreach (var entry in group)
             {
                 var candidate = Apply(new State(), id, entry);
@@ -110,12 +125,13 @@ public sealed partial class SceneTargetAnalysis
             state = Apply(state, groupId, entry);
         }
         if (!found) return null;
-        if (_budgetExceeded) state.Uncertain();
+        if (_budgetExceeded) state.UncertainAll();
         return state;
     }
     private static State Merge(IReadOnlyList<State> states)
     {
-        var result = new State { Complete = states.All(state => state.Complete) };
+        var result = new State { Complete = states.All(state => state.Complete), AudioComplete = states.All(state => state.AudioComplete) };
+        MergeAudio(result.AudioEffects, states.Select(state => state.AudioEffects).ToArray());
         MergeDomain(result.Targets, states.Select(state => state.Targets).ToArray());
         MergeDomain(result.Playbacks, states.Select(state => state.Playbacks).ToArray());
         return result;
@@ -144,7 +160,7 @@ public sealed partial class SceneTargetAnalysis
             };
         }
     }
-    private static bool Equal(State left, State right) => left.Complete == right.Complete && EqualDomain(left.Targets, right.Targets) && EqualDomain(left.Playbacks, right.Playbacks);
+    private static bool Equal(State left, State right) => left.Complete == right.Complete && left.AudioComplete == right.AudioComplete && EqualAudio(left.AudioEffects, right.AudioEffects) && EqualDomain(left.Targets, right.Targets) && EqualDomain(left.Playbacks, right.Playbacks);
     private static bool EqualDomain(Dictionary<string, SceneTarget> left, Dictionary<string, SceneTarget> right) => left.Count == right.Count && left.All(pair =>
         right.TryGetValue(pair.Key, out var other) && pair.Value.Locator == other.Locator && pair.Value.Kind == other.Kind && pair.Value.Resource == other.Resource
         && pair.Value.CreatedAtFrame == other.CreatedAtFrame && pair.Value.IsFuture == other.IsFuture
@@ -157,6 +173,8 @@ public sealed partial class SceneTargetAnalysis
         EntryTransferCount++;
         if (entry.Condition.Trim().Equals("false", StringComparison.OrdinalIgnoreCase)) return before.Clone();
         var after = before.Clone();
+        try { TransferAudio(after, group, entry); }
+        catch (Exception error) when (error is JsonException or InvalidOperationException or ArgumentException or InvalidDataException or OverflowException) { after.UncertainAudio(); }
         try { Transfer(after, group, entry); }
         catch (Exception error) when (error is JsonException or InvalidOperationException or ArgumentException or InvalidDataException or OverflowException) { after.Uncertain(); }
         return string.IsNullOrWhiteSpace(entry.Condition) || entry.Condition.Trim().Equals("true", StringComparison.OrdinalIgnoreCase) ? after : Merge([before, after]);

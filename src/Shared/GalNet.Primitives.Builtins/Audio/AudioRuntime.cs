@@ -1,4 +1,5 @@
 using GalNet.Contracts.Builtins.Audio;
+using System.Text.Json;
 using GalNet.Core.Runtime;
 
 namespace GalNet.Primitives.Builtins.Audio;
@@ -287,11 +288,34 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
             else if (track is not null) foreach (var item in track.State.Active.ToArray()) SendEffect(track, item, effect, AudioBackendAction.ApplySEffect);
         });
     }
-    public void StopSEffect(AudioConfiguration configuration, string trackId, string instanceId, SEffectScope scope = SEffectScope.Track)
+    public void UpdateSEffect(AudioConfiguration configuration, string targetId, string instanceId, JsonElement parameters, SEffectScope scope = SEffectScope.Track)
     {
         lock (_gate) _state.Update(() =>
         {
             Configure(configuration);
+            if (!_state.Table<AudioSEffectState>().TryGet(new AudioSEffectState(targetId, instanceId, "", default, scope).Key(), out var effect)) return;
+            try
+            {
+                var merged = SEffectParameters.Merge(effect.Parameters, parameters);
+                var diagnostics = _effects.Validate(effect.SEffectId, scope, merged);
+                if (diagnostics.Count != 0) { Report(string.Join(" ", diagnostics)); return; }
+                ApplySEffect(configuration, new(targetId, instanceId, effect.SEffectId, merged, scope));
+            }
+            catch (InvalidDataException error) { Report(error.Message); }
+        });
+    }
+    public void StopSEffect(AudioConfiguration configuration, string trackId, string instanceId, SEffectScope scope = SEffectScope.Track, bool all = false)
+    {
+        lock (_gate) _state.Update(() =>
+        {
+            Configure(configuration);
+            if (all && !string.IsNullOrEmpty(instanceId)) { Report("Stop all effects cannot specify an instance."); return; }
+            if (all)
+            {
+                foreach (var stoppedEffect in _state.Table<AudioSEffectState>().Values.Where(effect => effect.Scope == scope && effect.TargetId == trackId).ToArray())
+                    StopSEffect(configuration, trackId, stoppedEffect.InstanceId, scope);
+                return;
+            }
             var track = scope == SEffectScope.Track ? GetTrack(configuration, trackId) : null;
             var table = _state.Table<AudioSEffectState>();
             var key = new AudioSEffectState(trackId, instanceId, "", default, scope).Key();

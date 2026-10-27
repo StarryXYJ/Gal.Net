@@ -49,11 +49,12 @@ public static class SceneAuthoringIdentities
         var roots = entries.Select(entry => (Entry: entry, Parameters: JsonSerializer.SerializeToNode(entry.Parameters)!.AsObject())).ToArray();
         var slots = new List<SceneIdentitySlot>();
         foreach (var root in roots) SceneIdentityWalker.Walk(root.Entry.Type, root.Parameters, slots.Add, _ => { });
-        var replacements = new Dictionary<(SceneIdentityDomain Domain, string Handle), string>();
+        var replacements = new Dictionary<(SceneIdentityDomain Domain, string? Qualifier, string Handle), string>();
         foreach (var slot in slots.Where(slot => slot.Output is not null))
-            if (!string.IsNullOrWhiteSpace(slot.Handle)) replacements.TryAdd((slot.Domain, slot.Handle), Guid.NewGuid().ToString("N"));
+            if (!string.IsNullOrWhiteSpace(slot.Handle) && (slot.Domain != SceneIdentityDomain.AudioEffect || slot.Qualifier is not null))
+                replacements.TryAdd((slot.Domain, slot.Qualifier, slot.Handle), Guid.NewGuid().ToString("N"));
         foreach (var slot in slots)
-            if (slot.Handle is { } handle && replacements.TryGetValue((slot.Domain, handle), out var replacement)) slot.Owner[slot.Field] = replacement;
+            if (slot.Handle is { } handle && replacements.TryGetValue((slot.Domain, slot.Qualifier, handle), out var replacement)) slot.Owner[slot.Field] = replacement;
         foreach (var root in roots) root.Entry.Parameters = root.Parameters.ToDictionary(pair => pair.Key, pair => JsonSerializer.SerializeToElement(pair.Value));
     }
 }

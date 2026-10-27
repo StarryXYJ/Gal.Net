@@ -10,4 +10,4 @@
 
 见 [设计](design.md)、[阶段](phase-plan.md)。
 
-2026-10-27 创作交互补充：用户确认效果类型使用 ComboBox、实例身份类似 Layer 自动生成并隐藏，停止时按 Track/Bus 选择已有实例，复用现有选择和分析机制。状态：designed，尚未实现；见 [音频效果创作与目标分析设计](authoring-design.md)。后续更新 Entry 与 stop-all 的契约方案也在该文档中明确区分，未记为现有能力。
+2026-10-27 创作交互补充：用户确认效果类型使用 ComboBox、实例身份类似 Layer 自动生成并隐藏，停止时按 Track/Bus 选择已有实例，复用现有选择和分析机制。状态：implemented，音频范围验证通过；类型/参数表单、自动身份、已有实例与全部停止、参数 patch 更新已交付。见 [创作设计](authoring-design.md) 和 [创作实现记录](authoring-summary.md)。全仓 Timeline 失败继续保留。

@@ -16,7 +16,7 @@ public sealed record SceneFieldChoice(SceneTargetSnapshot Snapshot, SceneTargetC
 public sealed record VariantFieldSource(SceneTargetSnapshot Snapshot, ImageVariantsDefinition? Definition, string? Dimension);
 
 /// <summary>Editor adapter: stable locator choices resolve to opaque runtime handles only at commit.</summary>
-public sealed class SceneTargetCatalog : IDisposable
+public sealed partial class SceneTargetCatalog : IDisposable
 {
     private readonly ProjectSceneTargets query;
     private readonly IEditorDocumentService documents;
@@ -53,6 +53,12 @@ public sealed class SceneTargetCatalog : IDisposable
     }
     internal string ReferenceLabel(string group, string entry, SceneReferenceSlot slot, string raw)
     {
+        if (slot.Domain == SceneIdentityDomain.AudioEffect)
+        {
+            var snapshot = QueryAudio(group, entry, retain: false);
+            var effect = snapshot.Targets.FirstOrDefault(effect => effect.Key.InstanceId == raw);
+            return effect is null ? localization["Scene.Unresolved"] : AudioDescription(effect);
+        }
         var result = query.InspectBefore(group, entry);
         var playback = slot.Domain == SceneIdentityDomain.Playback;
         var target = (playback ? result.Playbacks : result.Targets).FirstOrDefault(target => target.Handle == raw && slot.Kinds.Contains(target.Kind)
@@ -94,6 +100,7 @@ public sealed class SceneTargetCatalog : IDisposable
     }
     public IReadOnlyList<FieldEditorOption>? FieldOptions(string groupId, string entryId, string type, string field, SceneTimelinePosition? position = null)
     {
+        if (SceneAuthoringSemantics.Reference(type, field)?.Domain == SceneIdentityDomain.AudioEffect) return AudioFieldOptions(groupId, entryId, type);
         var kinds = SceneFieldSemantics.TargetKinds(type, field); if (kinds is null) return null;
         var snapshot = Query(groupId, entryId, target => kinds.Contains(target.Kind) && (SceneAuthoringSemantics.Reference(type, field)?.RequiresVariants != true || target.Variants is not null), position, SceneAuthoringSemantics.Reference(type, field)?.Domain == SceneIdentityDomain.Playback);
         var noneKey = SceneAuthoringSemantics.Reference(type, field)?.AllowsGlobal == true ? "Scene.Global" : "Scene.None";
@@ -107,6 +114,9 @@ public sealed class SceneTargetCatalog : IDisposable
 internal static class SceneFieldSemantics
 {
     public static IReadOnlyList<SceneTargetKind>? TargetKinds(string type, string field) => SceneAuthoringSemantics.Reference(type, field)?.Kinds;
-    public static bool IsOutput(string type, string field) => SceneAuthoringIdentities.IsOutput(type, field);
-    public static string? Label(string type, string field) => TargetKinds(type, field) is null ? null : SceneAuthoringSemantics.Reference(type, field)?.Domain == SceneIdentityDomain.Playback ? "Scene.Playback" : "Scene.Target";
+    public static bool IsOutput(string type, string field) => SceneAuthoringIdentities.IsOutput(type, field) || type == GalNet.Contracts.Builtins.BuiltinEntryIds.StopAudioSEffect && field == "all";
+    public static string? Label(string type, string field) => type is GalNet.Contracts.Builtins.BuiltinEntryIds.ApplyAudioSEffect or GalNet.Contracts.Builtins.BuiltinEntryIds.StopAudioSEffect or GalNet.Contracts.Builtins.BuiltinEntryIds.UpdateAudioSEffect
+        ? field switch { "id" => "Audio.EffectType", "targetId" => "Audio.Target", "parameters" => "Audio.Parameters", "instanceId" => "Audio.Effect", _ => null }
+        : TargetKinds(type, field) is null ? null : SceneAuthoringSemantics.Reference(type, field)?.Domain switch
+        { SceneIdentityDomain.Playback => "Scene.Playback", _ => "Scene.Target" };
 }
